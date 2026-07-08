@@ -1,0 +1,33 @@
+name: Deploy via FTP
+
+on:
+  push:
+    branches: [ "main" ]   
+    
+jobs:
+  ftp-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: ftp 프로그램 설치
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: 카페24 서버로 파일 덮어쓰기 (lftp)
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASS }}
+        run: |
+          cat <<EOF > deploy.lftp
+          set ftp:ssl-allow no
+          set ftp:passive-mode true
+
+          open -u $FTP_USERNAME,$FTP_PASSWORD ftp://$FTP_SERVER
+
+          # 해외 IP 접속 허용이 켜져있어야 www 가 보임 (카페24 호스팅관리 > FTP/보안 설정)
+          mirror -R -v --parallel=5 --overwrite --no-perms ${GITHUB_WORKSPACE}/app/dist/ 
+          bye
+          EOF
+          lftp -f deploy.lftp
