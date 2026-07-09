@@ -1,0 +1,35 @@
+'use client'
+
+import { useState } from 'react'
+import Button from '@/components/ui/Button'
+import { useToast } from '@/components/ui/Toast'
+import { useRouter } from 'next/navigation'
+
+export default function SyncButton() {
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
+  const router = useRouter()
+
+  async function handleSync() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/strava/sync', { method: 'POST' })
+      if (res.ok) {
+        toast('동기화 완료!', 'success')
+        router.refresh()
+      } else {
+        toast('동기화 실패. 잠시 후 다시 시도해주세요.', 'error')
+      }
+    } catch {
+      toast('네트워크 오류가 발생했습니다.', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Button variant="secondary" size="sm" loading={loading} onClick={handleSync}>
+      지금 동기화
+    </Button>
+  )
+}
