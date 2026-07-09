@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
+/*
+ * JAM!은 라이트 테마가 없는 다크 전용 앱입니다.
+ * prefers-color-scheme에 상관없이 항상 다크 배경을 고정해야
+ * 기기가 라이트 모드일 때 max-w 컨테이너 바깥/세이프에어리어에
+ * 흰 배경이 드러나는 문제가 생기지 않습니다.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,11 +18,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--background);
+  color-scheme: dark;
 }
 
 body {
