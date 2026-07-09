@@ -34,6 +34,7 @@ export default async function AdminBadgesPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10 text-white/40 text-left">
+              <th className="px-5 py-3 font-medium">이미지</th>
               <th className="px-5 py-3 font-medium">이름</th>
               <th className="px-5 py-3 font-medium">타입</th>
               <th className="px-5 py-3 font-medium">희귀도</th>
@@ -45,7 +46,7 @@ export default async function AdminBadgesPage() {
           <tbody>
             {badges.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-white/30">
+                <td colSpan={7} className="px-5 py-10 text-center text-white/30">
                   등록된 배지가 없습니다.
                 </td>
               </tr>
@@ -55,6 +56,22 @@ export default async function AdminBadgesPage() {
                 key={badge.id}
                 className="border-b border-white/5 hover:bg-white/5 transition-colors"
               >
+                <td className="px-5 py-3">
+                  <Link href={`/admin/badges/${badge.id}`}>
+                    <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+                      {badge.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={badge.image_url}
+                          alt={badge.name}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <span className="text-white/20 text-xs">—</span>
+                      )}
+                    </div>
+                  </Link>
+                </td>
                 <td className="px-5 py-3">
                   <Link
                     href={`/admin/badges/${badge.id}`}

@@ -176,13 +176,30 @@ export default function BadgeForm({ badge }: BadgeFormProps) {
 
         <label className="flex flex-col gap-1.5 col-span-2">
           <span className="text-sm text-white/60">이미지 URL *</span>
-          <input
-            required
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
-            placeholder="https://..."
-          />
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 shrink-0 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+              {imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imageUrl}
+                  alt="미리보기"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              ) : (
+                <span className="text-white/20 text-xs">—</span>
+              )}
+            </div>
+            <input
+              required
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+              placeholder="https://... 또는 /badges/001.png"
+            />
+          </div>
         </label>
       </div>
 
