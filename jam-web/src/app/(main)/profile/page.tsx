@@ -100,14 +100,14 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-black flex items-center justify-center">
+      <div className="h-full bg-black flex items-center justify-center">
         <div className="text-gray-400 text-sm">불러오는 중...</div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 py-10">
+    <div className="min-h-full bg-black text-white px-6 py-10">
       {/* 프로필 헤더 */}
       <div className="flex items-center gap-4 mb-10">
         {profile?.avatar_url ? (
@@ -235,6 +235,6 @@ export default function ProfilePage() {
       >
         로그아웃
       </button>
-    </main>
+    </div>
   )
 }
