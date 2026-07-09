@@ -16,7 +16,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
   return (
     <ToastProvider>
-      <div className="min-h-dvh bg-[#0A0A0A] text-white flex flex-col max-w-[430px] mx-auto relative">
+      <div className="min-h-dvh bg-[#0A0A0A] text-white flex flex-col w-full relative">
         {/* 상단 헤더 */}
         <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 min-h-14 border-b border-white/10 bg-[#0A0A0A] sticky top-0 z-40">
           <Link href="/" className="flex items-center gap-1 select-none">

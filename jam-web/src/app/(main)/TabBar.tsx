@@ -76,7 +76,7 @@ export default function TabBar() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] min-h-16 bg-[#111111] border-t border-white/10 flex items-center pb-[env(safe-area-inset-bottom)] z-40">
+    <nav className="fixed bottom-0 inset-x-0 min-h-16 bg-[#111111] border-t border-white/10 flex items-center pb-[env(safe-area-inset-bottom)] z-40">
       {tabs.map((tab) => {
         const active = isActive(tab.href)
 
