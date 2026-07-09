@@ -18,7 +18,7 @@ function LoginContent() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-black px-6">
+    <main className="min-h-dvh flex flex-col items-center justify-center bg-black px-6">
       {/* 로고 & 슬로건 */}
       <div className="text-center mb-12">
         <h1 className="text-6xl font-black text-white tracking-tighter mb-3">JAM!</h1>
@@ -73,7 +73,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen flex items-center justify-center bg-black">
+        <main className="min-h-dvh flex items-center justify-center bg-black">
           <div className="text-white text-2xl font-black">JAM!</div>
         </main>
       }

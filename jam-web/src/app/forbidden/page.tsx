@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 export default function AdminForbiddenPage() {
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center">
+    <div className="min-h-dvh bg-[#0A0A0A] text-white flex items-center justify-center">
       <div className="text-center space-y-4">
         <p className="text-6xl">🚫</p>
         <h1 className="text-2xl font-bold">접근 권한 없음</h1>
