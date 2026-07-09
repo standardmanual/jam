@@ -107,3 +107,63 @@ export async function refreshStravaToken(
 export async function getAthleteProfile(accessToken: string): Promise<StravaAthlete> {
   return stravaFetch<StravaAthlete>(`${STRAVA_API_BASE}/athlete`, accessToken)
 }
+
+// =========================================
+// 활동 GPS 경로 스트림 조회
+// =========================================
+
+interface StravaStreamsResponse {
+  latlng?: {
+    data: Array<[number, number]>
+    series_type: string
+    original_size: number
+    resolution: string
+  }
+}
+
+/**
+ * 활동의 GPS 경로 데이터 조회 (Strava Streams API)
+ * @param activityId Strava 활동 ID
+ * @param accessToken Strava access_token (복호화된 평문)
+ * @returns [[lat, lng], ...] 배열, 또는 null (실내 활동 / 경로 없음)
+ */
+export async function getActivityStreams(
+  activityId: number,
+  accessToken: string
+): Promise<Array<[number, number]> | null> {
+  const url = `${STRAVA_API_BASE}/activities/${activityId}/streams?keys=latlng&key_by_type=true`
+
+  let res: Response
+  try {
+    res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+  } catch (err) {
+    console.error(`[getActivityStreams] 네트워크 오류 (activityId: ${activityId}):`, err)
+    return null
+  }
+
+  checkRateLimit(res.headers)
+
+  // 404 = 경로 데이터 없음 (실내 활동 등) — 정상 케이스
+  if (res.status === 404) {
+    return null
+  }
+
+  if (!res.ok) {
+    const body = await res.text()
+    console.warn(`[getActivityStreams] Strava Streams API 오류 ${res.status} (activityId: ${activityId}): ${body}`)
+    return null
+  }
+
+  const data = (await res.json()) as StravaStreamsResponse
+
+  if (!data.latlng?.data || data.latlng.data.length === 0) {
+    return null
+  }
+
+  return data.latlng.data
+}

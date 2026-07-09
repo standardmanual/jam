@@ -7,8 +7,9 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
-import { getActivities, refreshStravaToken } from '@/lib/strava/api'
+import { getActivities, getActivityStreams, refreshStravaToken } from '@/lib/strava/api'
 import { evaluateBadges } from '@/lib/badge-engine/index'
+import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { STRAVA_TYPE_TO_JAM, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
 import type { StravaConnectionRow } from '@/types/database'
@@ -98,7 +99,54 @@ export async function syncStravaActivities(
   // 5. NormalizedActivity로 변환
   const activities: NormalizedActivity[] = rawActivities.map(normalizeActivity)
 
-  // 6. 배지 엔진 호출
+  // 6. POI 매칭 — 각 활동의 GPS 경로를 Streams API로 조회 후 POI 반경 교차 검증
+  let poiBadgesEarned = 0
+  for (const rawActivity of rawActivities) {
+    const route = await getActivityStreams(rawActivity.id, accessToken)
+
+    if (!route) {
+      // 실내 활동 또는 경로 데이터 없음 — 건너뜀
+      continue
+    }
+
+    const matchedPois = await matchPoisForActivity(route, supabase)
+
+    for (const poi of matchedPois) {
+      if (!poi.linked_badge_id) continue
+
+      // 이미 해당 배지를 보유하고 있는지 확인 (중복 발급 방지)
+      const { data: existing } = await supabase
+        .from('user_activity_badges')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('badge_id', poi.linked_badge_id)
+        .maybeSingle()
+
+      if (existing) continue
+
+      // POI 배지 발급
+      const { error: insertError } = await supabase
+        .from('user_activity_badges')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert({
+          user_id: userId,
+          badge_id: poi.linked_badge_id,
+          triggered_by: 'poi_match',
+          triggered_by_poi_id: poi.id,
+        } as any)
+
+      if (insertError) {
+        if (insertError.code === '23505') continue // 중복 — 무시
+        console.error(`[syncStravaActivities] POI 배지 발급 오류 (poi_id: ${poi.id}):`, insertError)
+        continue
+      }
+
+      poiBadgesEarned++
+      console.info(`[syncStravaActivities] POI 배지 발급 — userId: ${userId}, poi: ${poi.name}, badge_id: ${poi.linked_badge_id}`)
+    }
+  }
+
+  // 7. 일반 배지 엔진 호출 (activity 조건 기반)
   const badgesEarned = activities.length > 0
     ? await evaluateBadges(userId, activities)
     : 0
@@ -115,5 +163,5 @@ export async function syncStravaActivities(
     console.error('[syncStravaActivities] last_synced_at 업데이트 실패:', syncUpdateError)
   }
 
-  return { synced: activities.length, badges: badgesEarned }
+  return { synced: activities.length, badges: badgesEarned + poiBadgesEarned }
 }

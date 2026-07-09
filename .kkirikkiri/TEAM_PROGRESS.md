@@ -1,90 +1,63 @@
-# 진행 상황
+# 진행 상황 — Phase 2
 
 ## 2026-07-09 — 메인세션
-- 상태: 팀 초기화 완료
-- 작업: 공유 메모리 파일 생성, 팀 스폰 준비
-- 다음: jam-lead 스폰 → 프로젝트 초기화 지시
+- 상태: Phase 2 팀 초기화
+- Phase 1 완료 확인 후 Phase 2 시작
+- 팀 구성: jam-lead, jam-poi, jam-map
 
-## 2026-07-09 — jam-lead (Task #1 완료)
-- 상태: 완료
-- 프로젝트 경로: /Users/sihyunhwang/Library/Mobile Documents/com~apple~CloudDocs/파일/Work/StandardManual/JAM!/jam-web/
-- 완료 항목:
-  - Next.js 15 프로젝트 생성 (App Router, TypeScript, Tailwind CSS, ESLint)
-  - @supabase/supabase-js @supabase/ssr 의존성 설치
-  - 전체 디렉토리 구조 생성 (src/app/(auth), (main), api, components, lib, types)
-  - .env.local / .env.example 생성 (환경변수 키 목록 포함)
-  - supabase/migrations/001_initial_schema.sql — 전체 스키마 + RLS 정책 + 트리거
-  - src/lib/supabase/client.ts — 브라우저 클라이언트
-  - src/lib/supabase/server.ts — 서버 클라이언트 + 서비스 롤 클라이언트
-  - src/types/database.ts — 전체 DB 스키마 TypeScript 타입
-  - src/types/strava.ts — Strava API 응답 타입 (NormalizedActivity 포함)
-  - src/lib/utils.ts — 암호화/복호화, 한국어 유틸, cn()
-  - TypeScript 타입 체크 통과 (npx tsc --noEmit)
+## 2026-07-09 — jam-lead Task #1 완료
 
-## Task #2, 3, 4 — 팀원 병렬 작업 시작 가능
+### DB 스키마 업데이트
+- [x] `supabase/migrations/002_phase2_poi.sql` 생성
+  - `user_activity_badges`에 `triggered_by_poi_id UUID REFERENCES poi(id)` 컬럼 추가
+  - `idx_user_activity_badges_poi` 인덱스 추가 (WHERE NOT NULL 부분 인덱스)
+- [x] `src/types/database.ts` 업데이트
+  - `UserActivityBadgeRow`에 `triggered_by_poi_id: string | null` 추가
+  - `PoiRow` 타입 기존에 존재 확인 (추가 불필요)
+  - `Database` 제네릭 Insert 타입에도 `triggered_by_poi_id` 반영
+- [x] `supabase/seeds/001_sample_poi.sql` 생성
+  - 서울/수도권 POI 5개 샘플 (남산, 뚝섬 한강, 북악스카이웨이, 청계산, 광나루 한강)
+  - 실제 위경도 사용, radius_meters=50
 
-## 2026-07-09 — jam-auth (Task #2 완료)
-- 상태: 완료
-- 담당: 인증 레이어 (미들웨어, 로그인, OAuth 콜백, 온보딩, 프로필)
-- 완료 항목:
-  - src/middleware.ts — Supabase SSR 미들웨어, 미인증 리다이렉트, /login 보호
-  - src/app/(auth)/login/page.tsx — 구글 소셜 로그인 UI (모바일 우선, 에러 처리)
-  - src/app/auth/callback/route.ts — OAuth 콜백, 온보딩 분기 처리
-  - src/app/(main)/onboarding/page.tsx — 활동 종목/지역 선택, 유효성 검사
-  - src/app/(main)/profile/page.tsx — 프로필 편집, Strava 연동 상태, 로그아웃
-- 비고: supabase-js update() 파라미터 never 타입 이슈 — @ts-expect-error 처리. TEAM_FINDINGS.md DEAD_ENDS 참고
+### 다음 단계 (jam-poi 대기)
+- Strava Streams API 연동: GET /activities/{id}/streams?keys=latlng
+- Haversine 공식으로 반경 50m 교차 검증
+- 매칭 시 UserActivityBadge 발급 + triggered_by_poi_id 기록
 
-## 2026-07-09 — jam-strava (Task #3 완료)
-- 상태: 완료
-- 담당: Strava OAuth, 동기화 로직, 배지 발급 엔진
-- 완료 항목:
-  - src/lib/strava/api.ts — Strava API 래퍼 (getActivities, refreshStravaToken, getAthleteProfile, rate limit 체크)
-  - src/app/api/strava/auth/route.ts — Strava OAuth 시작 (GET, userId를 state로 CSRF 방지)
-  - src/app/api/strava/callback/route.ts — Strava OAuth 콜백 (토큰 교환 → encrypt → upsert → 즉시 동기화)
-  - src/lib/strava/sync.ts — 핵심 동기화 로직 (토큰 갱신, last_synced_at 필터, 배지 엔진 연동)
-  - src/lib/badge-engine/index.ts — 배지 발급 엔진 (condition_json 평가, AND 조건, streak 계산)
-  - src/app/api/strava/sync/route.ts — 수동 동기화 API (POST)
-  - src/app/api/cron/sync/route.ts — Vercel Cron 정기 동기화 (GET, CRON_SECRET 검증)
-  - vercel.json — Cron 설정 (매일 12:00 UTC = 21:00 KST)
-- 부수 수정: src/types/database.ts에 Relationships:[] 추가 + Views/Functions를 Record<never,never>로 변경 → TypeScript 전체 통과
+## 2026-07-09 — jam-poi Task #2 완료
 
-## 2026-07-09 — jam-lead (Task #5 완료 — 통합 + 검증)
-- 상태: 완료
-- 담당: 통합 검증, 빌드 확인, 환경변수 가이드 작성
-- 완료 항목:
-  - TypeScript 타입 체크: 오류 없음 (npx tsc --noEmit 통과)
-  - 빌드: 성공 (Next.js 16.2.10 Turbopack, 13개 페이지/라우트 생성)
-  - 누락 파일 없음: 17개 핵심 파일 전체 존재 확인
-  - SETUP.md 생성: jam-web/SETUP.md (Supabase/Google OAuth/Strava/Vercel 단계별 가이드)
-- 빌드 경고:
-  - middleware 파일 컨벤션 deprecated 경고 (proxy로 교체 권장 — Next.js 16 변경사항, 기능은 정상 작동)
-- 남은 작업 (사람이 해야 하는 것):
-  1. 환경변수 채우기 (.env.local) — SETUP.md 참고
-  2. Supabase DB 마이그레이션 실행 (supabase db push)
-  3. Google OAuth 앱 등록 및 Supabase에 Client ID/Secret 등록
-  4. Strava API 앱 등록
-  5. Vercel에 환경변수 등록 후 배포 (vercel --prod)
+### 구현 완료
+- **`src/lib/strava/api.ts`**: `getActivityStreams(activityId, accessToken)` 추가
+  - GET /activities/{id}/streams?keys=latlng&key_by_type=true
+  - 404 및 latlng 없는 경우 null 반환 (실내 활동 정상 처리)
+  - 기존 `checkRateLimit()` 활용
+- **`src/lib/poi/matcher.ts`**: 신규 파일 생성
+  - `haversineDistance()`: Haversine 공식, 두 좌표 간 거리(미터)
+  - `isRouteNearPoi()`: route의 어느 한 점이라도 POI 반경 내이면 true
+  - `matchPoisForActivity()`: poi 테이블 전체 로드 후 필터링, SupabaseClient 인수
+- **`src/lib/strava/sync.ts`**: POI 매칭 + 배지 발급 연동
+  - rawActivities 루프 → getActivityStreams → matchPoisForActivity → POI 배지 발급
+  - `triggered_by='poi_match'`, `triggered_by_poi_id=poi.id` 저장
+  - 경로 없는 활동 skip, 중복 발급 방지(maybeSingle 선조회 + 23505 fallback)
+  - 반환값 `badges` = 일반배지 + POI배지 합산
 
-## 2026-07-09 — jam-ui (Task #4 완료)
-- 상태: 완료
-- 담당: UI 레이어 (홈 피드, 나의 배지, 배지 상세, 공유 카드, 공통 컴포넌트)
-- 완료 항목:
-  - src/components/ui/Button.tsx — 공통 버튼 (primary/secondary/ghost/danger, 사이즈, 로딩)
-  - src/components/ui/Card.tsx — 카드 컨테이너 (glow 옵션)
-  - src/components/ui/Badge.tsx — 희귀도 배지 컴포넌트 (common/rare/legendary/mythic)
-  - src/components/ui/LoadingSpinner.tsx — 로딩 스피너
-  - src/components/ui/Toast.tsx — 토스트 알림 (Context + Provider + useToast)
-  - src/components/strava/StravaStatusCard.tsx — Strava 연동 상태 카드 (jam-auth 프로필에서 사용)
-  - src/app/(main)/layout.tsx — 메인 레이아웃 (인증 체크, 헤더, 하단 탭바, safe-area)
-  - src/app/(main)/TabBar.tsx — 하단 탭 네비게이션 (홈/배지/인벤토리-준비중/프로필)
-  - src/app/(main)/page.tsx — 홈 피드 (닉네임 인사, Strava 상태, 최근 배지 3개)
-  - src/app/(main)/SyncButton.tsx — 지금 동기화 버튼 (클라이언트 컴포넌트)
-  - src/app/(main)/badges/page.tsx — 나의 배지 컬렉션 (서버 컴포넌트)
-  - src/app/(main)/badges/BadgesClient.tsx — 배지 탭 UI (액티비티/아이템북 탭)
-  - src/app/(main)/badges/[id]/page.tsx — 배지 상세 (POI 아웃링크, 실물 패치 버튼)
-  - src/app/(main)/badges/[id]/ShareCardModal.tsx — 공유 카드 생성 모달 (Web Share API)
-  - src/app/api/share-card/generate/route.tsx — 서버사이드 카드 생성 (@vercel/og, edge runtime)
-- 비고:
-  - @vercel/og 패키지 설치 완료
-  - 내 코드 타입 오류 없음 (jam-strava 파일에 타입 오류 있음 — 해당 팀 수정 필요)
-  - profile/page.tsx는 jam-auth가 이미 완료하여 중복 생성 안 함
+### 주의 사항 (jam-lead 참조)
+- Streams API 활동당 1회 호출 → 대량 동기화 시 rate limit 소진 가능
+- poi 테이블 활성화/마이그레이션은 jam-lead Task #1에서 완료됨을 확인
+
+## 2026-07-09 — jam-map Task #3 완료
+
+### 배지 상세 화면 POI 아웃링크 활성화
+- [x] `src/app/(main)/badges/[id]/PoiMapButton.tsx` 생성 (클라이언트 컴포넌트)
+  - 카카오맵 딥링크 `kakaomap://look?p={lat},{lng}` 우선 시도
+  - 300ms 후 구글맵 웹 `https://maps.google.com/?q={lat},{lng}` 폴백
+  - 단일 "지도에서 보기" 버튼 (기존 두 버튼 통합)
+- [x] `src/app/(main)/badges/[id]/page.tsx` 업데이트
+  - `user_activity_badges` 쿼리에 `poi:triggered_by_poi_id(id, name, latitude, longitude)` join 추가
+  - triggered_by_poi_id 우선, 없으면 condition_json.poi_id 폴백
+  - 기존 두 `<a>` 버튼 → `<PoiMapButton>` 컴포넌트 교체
+
+### middleware → proxy 리네임 (Next.js 16 deprecated 경고 해결)
+- [x] `src/proxy.ts` 생성 (함수명 `middleware` → `proxy` 변경, 내용 동일)
+- [x] `src/middleware.ts` 삭제
+- Next.js 16 docs 확인: file-conventions/proxy 가 새 컨벤션
