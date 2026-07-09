@@ -160,10 +160,10 @@ export async function syncStravaActivities(
     ? await evaluateBadges(userId, activities)
     : 0
 
-  // 9. 아이템북 완성 체크
-  const completedBookIds = await checkItemBookCompletion(userId)
-  if (completedBookIds.length > 0) {
-    console.info(`[syncStravaActivities] 아이템북 완성 — userId: ${userId}, 완성 수: ${completedBookIds.length}`)
+  // 9. 아이템북 완성 체크 + reward_badge 발급
+  const { completedIds, rewardBadgesIssued } = await checkItemBookCompletion(userId)
+  if (completedIds.length > 0) {
+    console.info(`[syncStravaActivities] 아이템북 완성 — userId: ${userId}, 완성 수: ${completedIds.length}, 보상 배지: ${rewardBadgesIssued}`)
   }
 
   // 10. last_synced_at 업데이트
@@ -178,5 +178,5 @@ export async function syncStravaActivities(
     console.error('[syncStravaActivities] last_synced_at 업데이트 실패:', syncUpdateError)
   }
 
-  return { synced: activities.length, badges: badgesEarned + poiBadgesEarned, itemBooksCompleted: completedBookIds.length }
+  return { synced: activities.length, badges: badgesEarned + poiBadgesEarned + rewardBadgesIssued, itemBooksCompleted: completedIds.length }
 }

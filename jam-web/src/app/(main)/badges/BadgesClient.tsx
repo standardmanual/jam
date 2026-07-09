@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BadgeRow, UserActivityBadgeRow, ItemBookRow } from '@/types/database'
+import Image from 'next/image'
+import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 
-type TabKey = 'activity' | 'itembook'
+type TabKey = 'activity' | 'item' | 'itembook'
 
 export interface ItemBookProgress {
   bookId: string
@@ -15,8 +16,19 @@ export interface ItemBookProgress {
   completed: boolean
 }
 
+export interface ItemBadgeCard {
+  itemId: string
+  badgeId: string
+  serialNumber: number
+  expiresAt: string | null
+  name: string
+  imageUrl: string | null
+  rarity: BadgeRarity
+}
+
 interface BadgesClientProps {
   badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }>
+  itemBadges: ItemBadgeCard[]
   itemBooks: ItemBookRow[]
   itemBookProgress: ItemBookProgress[]
 }
@@ -28,34 +40,51 @@ const rarityGlowMap: Record<string, string> = {
   mythic: 'shadow-[0_0_16px_rgba(245,158,11,0.4)]',
 }
 
-export default function BadgesClient({ badges, itemBooks, itemBookProgress }: BadgesClientProps) {
-  const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
+function isExpiringSoon(expiresAt: string | null): boolean {
+  if (!expiresAt) return false
+  const diff = new Date(expiresAt).getTime() - Date.now()
+  return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
+}
+
+export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookProgress }: BadgesClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('activity')
+  const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
+
+  const tabs: { key: TabKey; label: string; count: number }[] = [
+    { key: 'activity', label: '액티비티', count: badges.length },
+    { key: 'item', label: '아이템', count: itemBadges.length },
+    { key: 'itembook', label: '아이템북', count: itemBooks.length },
+  ]
 
   return (
     <div className="flex flex-col h-full">
       {/* 탭 헤더 */}
-      <div className="flex px-5 pt-5 gap-2 border-b border-white/10">
-        {[
-          { key: 'activity' as TabKey, label: '액티비티 배지' },
-          { key: 'itembook' as TabKey, label: '아이템북' },
-        ].map((tab) => (
+      <div className="flex px-5 pt-5 gap-1 border-b border-white/10">
+        {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={[
-              'pb-3 px-1 text-sm font-semibold border-b-2 transition-colors',
+              'pb-3 px-2 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5',
               activeTab === tab.key
                 ? 'border-[#AEEA00] text-[#AEEA00]'
                 : 'border-transparent text-white/40 hover:text-white/70',
             ].join(' ')}
           >
             {tab.label}
+            {tab.count > 0 && (
+              <span className={`text-[10px] rounded-full px-1.5 py-0.5 tabular-nums ${
+                activeTab === tab.key ? 'bg-[#AEEA00]/20 text-[#AEEA00]' : 'bg-white/10 text-white/30'
+              }`}>
+                {tab.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
+        {/* 액티비티 배지 탭 */}
         {activeTab === 'activity' && (
           <>
             {badges.length > 0 ? (
@@ -100,6 +129,65 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress }: Ba
           </>
         )}
 
+        {/* 아이템 배지 탭 */}
+        {activeTab === 'item' && (
+          <>
+            {itemBadges.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {itemBadges.map((item) => {
+                  const expiring = isExpiringSoon(item.expiresAt)
+                  return (
+                    <Link key={item.itemId} href={`/inventory/${item.itemId}`}>
+                      <div
+                        className={[
+                          'flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/5 border transition-all active:scale-95',
+                          expiring ? 'border-red-500/40' : 'border-white/10 hover:border-white/20',
+                          rarityGlowMap[item.rarity],
+                        ].join(' ')}
+                      >
+                        <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden relative">
+                          {item.imageUrl ? (
+                            <Image
+                              src={item.imageUrl}
+                              alt={item.name}
+                              width={64}
+                              height={64}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <span className="text-3xl">🏷️</span>
+                          )}
+                          {expiring && (
+                            <span className="absolute top-0.5 right-0.5 text-[10px]">⚠️</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-center font-medium leading-tight line-clamp-2">
+                          {item.name}
+                        </p>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <RarityBadge rarity={item.rarity} />
+                          <span className="text-[10px] text-white/30 font-mono">
+                            #{String(item.serialNumber).padStart(4, '0')}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            ) : (
+              <Card className="text-center py-10">
+                <p className="text-4xl mb-3">🏷️</p>
+                <p className="text-white/50 font-medium">아직 아이템 배지가 없어요</p>
+                <p className="text-white/30 text-sm mt-2">
+                  활동을 완료하면 확률로 아이템 배지가 드랍됩니다
+                </p>
+              </Card>
+            )}
+          </>
+        )}
+
+        {/* 아이템북 탭 */}
         {activeTab === 'itembook' && (
           <>
             {itemBooks.length > 0 ? (
