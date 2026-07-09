@@ -66,7 +66,7 @@ export default function TabBar() {
   const tabs: TabItem[] = [
     { href: '/', label: '홈', icon: <HomeIcon /> },
     { href: '/badges', label: '배지', icon: <BadgeIcon /> },
-    { href: '/inventory', label: '인벤토리', icon: <InventoryIcon />, disabled: true },
+    { href: '/inventory', label: '인벤토리', icon: <InventoryIcon /> },
     { href: '/profile', label: '프로필', icon: <ProfileIcon /> },
   ]
 
