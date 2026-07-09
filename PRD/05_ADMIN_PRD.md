@@ -120,21 +120,35 @@
 
 ### 5-5. 시뮬레이터
 
-**목표**: 실제 Strava 계정 없이 가상 액티비티 데이터를 입력해 배지 발급 파이프라인 전체를 테스트.
+**목표**: 실제 Strava 계정 없이 가상 GPX 파일을 업로드해 배지 발급 파이프라인 전체를 테스트.
 
-**입력 패널 — 가상 액티비티**
+**GPX 파일 선택 이유**
+- GPX 한 파일에 경로 좌표(트랙포인트)·타임스탬프·고도가 모두 포함됨
+- 업로드 즉시 거리·이동시간·고도상승·평균속도·경로 좌표를 자동 파싱 → 수작업 입력 불필요
+- POI 반경 매칭 테스트에 실제 경로 데이터 활용 가능
+- 실제 Strava에서 내보낸 GPX 파일로 현실적인 시뮬레이션 가능
 
-| 필드 | 설명 | 기본값 |
-|------|------|--------|
-| 대상 유저 | 유저 이메일/이름 검색·선택 | (필수) |
-| 활동 종류 | cycling / running / hiking / walking | cycling |
-| 거리 (km) | 소수 입력 | 0 |
-| 이동 시간 (분) | 숫자 입력 | 0 |
-| 고도 상승 (m) | 숫자 입력 | 0 |
-| 평균 속도 (km/h) | 소수 입력 | 0 |
-| 활동 시작 일시 | 날짜+시간 피커 | 현재 |
-| 경로 좌표 목록 | 위도,경도 쌍 여러 개 입력 (POI 매칭용) | 선택 |
-| 활동 횟수 | 이 활동을 N회 반복 입력하는 배수 | 1 |
+**입력 패널**
+
+| 필드 | 설명 | 비고 |
+|------|------|------|
+| 대상 유저 | 유저 이메일/이름 검색·선택 | 필수 |
+| GPX 파일 업로드 | `.gpx` 파일 드래그앤드롭 또는 파일 선택 | 필수 |
+| 활동 종류 | cycling / running / hiking / walking | GPX에 없으므로 직접 선택 |
+| 활동 횟수 배수 | 이 활동을 N회 반복 처리 (누적 횟수 배지 테스트용) | 기본값 1 |
+
+**GPX 파싱 결과 미리보기** (업로드 직후 자동 표시)
+```
+파일명: hangang_ride.gpx
+─────────────────────────────────
+거리:       35.2 km
+이동 시간:  1시간 14분
+고도 상승:  120 m
+평균 속도:  28.5 km/h
+시작 시각:  2026-07-09 08:32
+트랙포인트: 1,842개
+시작점:     37.5326° N, 126.9903° E
+```
 
 **실행 모드**
 
@@ -149,12 +163,16 @@
 [시뮬레이션 결과]
 ─────────────────────────────────
 대상 유저: 홍길동 (hong@example.com)
-입력 활동: 자전거 / 35.2km / 고도 120m / 28.5 km/h
+GPX 파일:  hangang_ride.gpx
+파싱 결과: 자전거 / 35.2km / 고도 120m / 28.5 km/h / 1,842 트랙포인트
 
 ■ 배지 발급 (3개)
   ✅ 한강 라이더 (rare) — 조건: 거리 30km 이상
   ✅ 스피드 킹 (legendary) — 조건: 평균 속도 25km/h 이상
   ✅ 30일 연속 라이더 (mythic) — 조건: 연속 30일 (기존 활동 포함)
+
+■ POI 매칭 (경로 내 통과 POI)
+  📍 뚝섬 한강공원 (bike_route) — 반경 50m 통과 확인
 
 ■ 아이템 드랍
   🎲 롤 결과: rare (확률 25%)
@@ -170,9 +188,19 @@
 ```
 
 **시뮬레이터 구현 원칙**
-- Dry Run: 실제 `evaluateBadges`, `tryItemDrop`, `checkItemBookCompletion` 로직을 그대로 실행하되 INSERT를 skip하고 결과만 반환
-- Apply: 동일 로직을 실제 DB에 반영 (기존 `syncStravaActivities`와 동일한 서버 사이드 함수 재사용)
-- 미발급 배지도 이유(어떤 조건이 미충족인지)와 함께 표시
+- GPX 파싱은 클라이언트 사이드에서 수행 (파일을 서버에 업로드하지 않음)
+- 파싱 결과(`NormalizedActivity` + 경로 좌표 배열)를 JSON으로 API에 전송
+- Dry Run: `evaluateBadges`, `tryItemDrop`, `checkItemBookCompletion` 로직을 그대로 실행하되 INSERT를 skip하고 결과만 반환
+- Apply: 동일 로직을 실제 DB에 반영
+- 미발급 배지도 조건별 미충족 이유(실제값 vs 필요값) 함께 표시
+
+**GPX 파싱 스펙**
+- 표준 GPX 1.1 형식 파싱 (`<trkpt lat="..." lon="..."><ele>...</ele><time>...</time></trkpt>`)
+- 거리: 연속 트랙포인트 간 하버사인(Haversine) 공식으로 누적 계산
+- 이동 시간: 첫 트랙포인트 ~ 마지막 트랙포인트 timestamp 차이
+- 고도 상승: 연속 포인트 간 양(+)의 고도 차이 누적 합산
+- 평균 속도: 거리 / 이동 시간
+- 경로 좌표: 트랙포인트 `[lat, lng]` 배열 그대로 POI 매칭에 전달
 
 ### 5-6. 유저 조회 (P1)
 
@@ -207,15 +235,33 @@ ADMIN_EMAILS=admin@example.com,dev@example.com
 POST /api/admin/simulate
 Body: {
   userId: string
-  activities: NormalizedActivity[]
   dryRun: boolean
+  activity: {
+    // GPX 클라이언트 파싱 결과
+    activityType: 'cycling' | 'running' | 'hiking' | 'walking'
+    distanceKm: number
+    movingTimeSec: number
+    elevationGainM: number
+    averageSpeedKmh: number
+    startDate: string          // ISO 8601
+    route: [number, number][]  // [[lat, lng], ...] POI 매칭용
+  }
+  repeatCount: number          // 활동 반복 횟수 배수 (기본 1)
 }
 Response: {
-  badgesEarned: BadgeResult[]
-  badgesMissed: MissedBadge[]
-  itemDrop: ItemDropResult | null
-  itemBooksCompleted: string[]
-  rewardBadgesIssued: BadgeResult[]
+  parsed: {                    // GPX 파싱 요약 (확인용 echo)
+    distanceKm: number
+    durationMin: number
+    elevationGainM: number
+    averageSpeedKmh: number
+    trackpointCount: number
+  }
+  badgesEarned: { id: string; name: string; rarity: string; reason: string }[]
+  badgesMissed: { id: string; name: string; reason: string; actual: string; required: string }[]
+  poisMatched: { id: string; name: string }[]
+  itemDrop: { badgeName: string; rarity: string } | null
+  itemBooksCompleted: { bookName: string; rewardBadgeName: string | null }[]
+  applied: boolean
 }
 ```
 
