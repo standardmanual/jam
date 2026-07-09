@@ -8,9 +8,17 @@ import Card from '@/components/ui/Card'
 
 type TabKey = 'activity' | 'itembook'
 
+export interface ItemBookProgress {
+  bookId: string
+  owned: number
+  total: number
+  completed: boolean
+}
+
 interface BadgesClientProps {
   badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }>
   itemBooks: ItemBookRow[]
+  itemBookProgress: ItemBookProgress[]
 }
 
 const rarityGlowMap: Record<string, string> = {
@@ -20,7 +28,8 @@ const rarityGlowMap: Record<string, string> = {
   mythic: 'shadow-[0_0_16px_rgba(245,158,11,0.4)]',
 }
 
-export default function BadgesClient({ badges, itemBooks }: BadgesClientProps) {
+export default function BadgesClient({ badges, itemBooks, itemBookProgress }: BadgesClientProps) {
+  const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
   const [activeTab, setActiveTab] = useState<TabKey>('activity')
 
   return (
@@ -95,27 +104,38 @@ export default function BadgesClient({ badges, itemBooks }: BadgesClientProps) {
           <>
             {itemBooks.length > 0 ? (
               <div className="flex flex-col gap-4">
-                {itemBooks.map((book) => (
-                  <Card key={book.id}>
-                    <h3 className="font-bold text-base mb-1">{book.name}</h3>
-                    <p className="text-white/50 text-sm mb-3">{book.description}</p>
-                    {/* 진척도: 필요 아이템 수 대비 진행상황 (데이터 연동은 Phase 2) */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-2 rounded-full bg-white/10">
-                        <div className="h-2 rounded-full bg-[#AEEA00] w-0" />
+                {itemBooks.map((book) => {
+                  const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false }
+                  const pct = Math.round((progress.owned / progress.total) * 100)
+                  return (
+                    <Card key={book.id} className={progress.completed ? 'border-[#AEEA00]/40' : ''}>
+                      <div className="flex items-start justify-between mb-1">
+                        <h3 className="font-bold text-base">{book.name}</h3>
+                        {progress.completed && (
+                          <span className="text-[#AEEA00] text-sm font-bold ml-2 shrink-0">완성 ✓</span>
+                        )}
                       </div>
-                      <span className="text-xs text-white/40">
-                        0 / {book.required_item_badge_ids.length + 1}
-                      </span>
-                    </div>
-                  </Card>
-                ))}
+                      <p className="text-white/50 text-sm mb-3">{book.description}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                          <div
+                            className="h-2 rounded-full bg-[#AEEA00] transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-white/40 tabular-nums">
+                          {progress.owned} / {progress.total}
+                        </span>
+                      </div>
+                    </Card>
+                  )
+                })}
               </div>
             ) : (
               <Card className="text-center py-10">
                 <p className="text-4xl mb-3">📖</p>
                 <p className="text-white/50 font-medium">아직 아이템북이 없어요</p>
-                <p className="text-white/30 text-sm mt-2">아이템북은 Phase 2에서 오픈됩니다</p>
+                <p className="text-white/30 text-sm mt-2">관리자가 아이템북을 등록하면 이 곳에 표시됩니다</p>
               </Card>
             )}
           </>

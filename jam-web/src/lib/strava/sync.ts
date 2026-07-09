@@ -11,6 +11,7 @@ import { getActivities, getActivityStreams, refreshStravaToken } from '@/lib/str
 import { evaluateBadges } from '@/lib/badge-engine/index'
 import { tryItemDrop } from '@/lib/drop-engine/index'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
+import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { STRAVA_TYPE_TO_JAM, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
 import type { StravaConnectionRow } from '@/types/database'
@@ -43,7 +44,7 @@ function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity 
  */
 export async function syncStravaActivities(
   userId: string
-): Promise<{ synced: number; badges: number }> {
+): Promise<{ synced: number; badges: number; itemBooksCompleted: number }> {
   const supabase = createServiceClient()
 
   // 1. strava_connections 조회
@@ -159,7 +160,13 @@ export async function syncStravaActivities(
     ? await evaluateBadges(userId, activities)
     : 0
 
-  // 9. last_synced_at 업데이트
+  // 9. 아이템북 완성 체크
+  const completedBookIds = await checkItemBookCompletion(userId)
+  if (completedBookIds.length > 0) {
+    console.info(`[syncStravaActivities] 아이템북 완성 — userId: ${userId}, 완성 수: ${completedBookIds.length}`)
+  }
+
+  // 10. last_synced_at 업데이트
   const syncPayload = { last_synced_at: new Date().toISOString() }
   const { error: syncUpdateError } = await supabase
     .from('strava_connections')
@@ -171,5 +178,5 @@ export async function syncStravaActivities(
     console.error('[syncStravaActivities] last_synced_at 업데이트 실패:', syncUpdateError)
   }
 
-  return { synced: activities.length, badges: badgesEarned + poiBadgesEarned }
+  return { synced: activities.length, badges: badgesEarned + poiBadgesEarned, itemBooksCompleted: completedBookIds.length }
 }
