@@ -32,7 +32,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 공개 경로 (인증 불필요)
-  const publicPaths = ['/login', '/auth/callback']
+  const publicPaths = ['/login', '/auth/callback', '/admin/forbidden']
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublicPath) {
@@ -47,6 +47,19 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
+  }
+
+  // 어드민 경로 보호: ADMIN_EMAILS에 포함된 이메일만 접근 허용
+  if (user && pathname.startsWith('/admin') && pathname !== '/admin/forbidden') {
+    const adminEmails = (process.env.ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean)
+    if (!adminEmails.includes(user.email ?? '')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/forbidden'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
