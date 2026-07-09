@@ -2,19 +2,27 @@ import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
 export default async function AdminDashboardPage() {
-  const supabase = createServiceClient()
+  let badgeCount: number | null = null
+  let poiCount: number | null = null
+  let itemBookCount: number | null = null
+  let userCount: number | null = null
+  let serviceError: string | null = null
 
-  const [
-    { count: badgeCount },
-    { count: poiCount },
-    { count: itemBookCount },
-    { count: userCount },
-  ] = await Promise.all([
-    supabase.from('badges').select('*', { count: 'exact', head: true }),
-    supabase.from('poi').select('*', { count: 'exact', head: true }),
-    supabase.from('item_books').select('*', { count: 'exact', head: true }),
-    supabase.from('users').select('*', { count: 'exact', head: true }),
-  ])
+  try {
+    const supabase = createServiceClient()
+    const [b, p, ib, u] = await Promise.all([
+      supabase.from('badges').select('*', { count: 'exact', head: true }),
+      supabase.from('poi').select('*', { count: 'exact', head: true }),
+      supabase.from('item_books').select('*', { count: 'exact', head: true }),
+      supabase.from('users').select('*', { count: 'exact', head: true }),
+    ])
+    badgeCount = b.count
+    poiCount = p.count
+    itemBookCount = ib.count
+    userCount = u.count
+  } catch (e) {
+    serviceError = e instanceof Error ? e.message : 'Service client initialization failed'
+  }
 
   const stats = [
     { label: '배지', value: badgeCount ?? 0, href: '/admin/badges', icon: '🏅' },
@@ -22,6 +30,7 @@ export default async function AdminDashboardPage() {
     { label: '아이템북', value: itemBookCount ?? 0, href: '/admin/itembooks', icon: '📖' },
     { label: '유저', value: userCount ?? 0, href: '/admin/users', icon: '👥' },
   ]
+
 
   const shortcuts = [
     { label: '배지 등록', href: '/admin/badges/new', icon: '➕' },
@@ -33,6 +42,14 @@ export default async function AdminDashboardPage() {
   return (
     <div className="p-8 max-w-4xl">
       <h1 className="text-2xl font-bold mb-8">대시보드</h1>
+
+      {serviceError && (
+        <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-sm text-red-400">
+          <p className="font-semibold mb-1">서비스 클라이언트 오류</p>
+          <p className="text-red-400/70">Vercel 환경변수에 <code className="bg-white/10 px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code>를 설정해주세요.</p>
+          <p className="text-red-400/50 text-xs mt-1">{serviceError}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-4 gap-4 mb-10">
         {stats.map((stat) => (
