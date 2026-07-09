@@ -4,9 +4,16 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
+  // 환경변수 미설정 시 인증 없이 통과 (개발/Preview 환경 안전 처리)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -25,14 +32,20 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Supabase 응답 지연/네트워크 오류 시 프록시 자체가 크래시하지 않도록 방어
+  let user: { email?: string | null } | null = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (err) {
+    console.error('[proxy] supabase.auth.getUser() 실패:', err)
+    return supabaseResponse
+  }
 
   const { pathname } = request.nextUrl
 
   // 공개 경로 (인증 불필요)
-  const publicPaths = ['/login', '/auth/callback']
+  const publicPaths = ['/login', '/auth/callback', '/forbidden']
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublicPath) {
@@ -47,6 +60,19 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
+  }
+
+  // 어드민 경로 보호: ADMIN_EMAILS에 포함된 이메일만 접근 허용
+  if (user && pathname.startsWith('/admin')) {
+    const adminEmails = (process.env.ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean)
+    if (!adminEmails.includes(user.email ?? '')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/forbidden'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
