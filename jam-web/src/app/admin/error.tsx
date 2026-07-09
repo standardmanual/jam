@@ -5,10 +5,10 @@ import Link from 'next/link'
 
 export default function AdminError({
   error,
-  reset,
+  unstable_retry,
 }: {
   error: Error & { digest?: string }
-  reset: () => void
+  unstable_retry: () => void
 }) {
   useEffect(() => {
     console.error('[Admin Error]', error)
@@ -49,7 +49,7 @@ export default function AdminError({
 
       <div className="flex gap-3">
         <button
-          onClick={reset}
+          onClick={unstable_retry}
           className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
         >
           다시 시도

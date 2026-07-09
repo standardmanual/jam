@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { redirect, unstable_rethrow } from 'next/navigation'
 
 const NAV_ITEMS = [
   { href: '/admin', label: '대시보드', icon: '📊', exact: true },
@@ -12,15 +12,25 @@ const NAV_ITEMS = [
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let userEmail: string | null = null
 
-  if (!user) redirect('/login')
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
-  if (!adminEmails.includes(user.email ?? '')) redirect('/forbidden')
+    if (!user) redirect('/login')
+
+    const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
+    if (!adminEmails.includes(user.email ?? '')) redirect('/forbidden')
+
+    userEmail = user.email ?? null
+  } catch (err) {
+    unstable_rethrow(err)
+    // Supabase 초기화 실패 등 실제 오류 → 접근 거부
+    redirect('/forbidden')
+  }
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white flex">
@@ -45,7 +55,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ))}
         </nav>
         <div className="px-5 py-4 border-t border-white/10">
-          <p className="text-xs text-white/30 truncate">{user.email}</p>
+          <p className="text-xs text-white/30 truncate">{userEmail}</p>
           <Link href="/" className="text-xs text-[#AEEA00]/60 hover:text-[#AEEA00] mt-1 inline-block transition-colors">
             ← 앱으로 돌아가기
           </Link>
