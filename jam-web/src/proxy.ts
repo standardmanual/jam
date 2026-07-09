@@ -32,9 +32,15 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Supabase 응답 지연/네트워크 오류 시 프록시 자체가 크래시하지 않도록 방어
+  let user: { email?: string | null } | null = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (err) {
+    console.error('[proxy] supabase.auth.getUser() 실패:', err)
+    return supabaseResponse
+  }
 
   const { pathname } = request.nextUrl
 
