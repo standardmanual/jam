@@ -32,7 +32,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 공개 경로 (인증 불필요)
-  const publicPaths = ['/login', '/auth/callback', '/admin/forbidden']
+  const publicPaths = ['/login', '/auth/callback', '/forbidden']
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublicPath) {
@@ -50,14 +50,14 @@ export async function proxy(request: NextRequest) {
   }
 
   // 어드민 경로 보호: ADMIN_EMAILS에 포함된 이메일만 접근 허용
-  if (user && pathname.startsWith('/admin') && pathname !== '/admin/forbidden') {
+  if (user && pathname.startsWith('/admin')) {
     const adminEmails = (process.env.ADMIN_EMAILS ?? '')
       .split(',')
       .map((e) => e.trim())
       .filter(Boolean)
     if (!adminEmails.includes(user.email ?? '')) {
       const url = request.nextUrl.clone()
-      url.pathname = '/admin/forbidden'
+      url.pathname = '/forbidden'
       return NextResponse.redirect(url)
     }
   }

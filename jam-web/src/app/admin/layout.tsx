@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user) redirect('/login')
 
   const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
-  if (!adminEmails.includes(user.email ?? '')) redirect('/admin/forbidden')
+  if (!adminEmails.includes(user.email ?? '')) redirect('/forbidden')
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white flex">
