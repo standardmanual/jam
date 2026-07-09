@@ -64,7 +64,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col px-6 py-10">
+    <div className="min-h-full bg-black text-white flex flex-col px-6 py-10">
       <div className="flex-1">
         <h1 className="text-2xl font-black mb-2">어떤 활동을 즐기세요?</h1>
         <p className="text-gray-400 text-sm mb-8">복수 선택 가능해요.</p>
@@ -135,6 +135,6 @@ export default function OnboardingPage() {
       >
         {loading ? '저장 중...' : '시작하기'}
       </button>
-    </main>
+    </div>
   )
 }
