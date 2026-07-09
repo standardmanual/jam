@@ -5,6 +5,7 @@ import { BadgeRow, PoiRow, UserActivityBadgeRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import ShareCardModal from './ShareCardModal'
+import PoiMapButton from './PoiMapButton'
 
 interface BadgeDetailPageProps {
   params: Promise<{ id: string }>
@@ -33,7 +34,7 @@ export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) 
     supabase.from('badges').select('*').eq('id', id).single(),
     supabase
       .from('user_activity_badges')
-      .select('*')
+      .select('*, poi:triggered_by_poi_id(id, name, latitude, longitude)')
       .eq('user_id', user.id)
       .eq('badge_id', id)
       .maybeSingle(),
@@ -42,11 +43,11 @@ export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) 
   if (!badge) notFound()
 
   const badgeRow = badge as BadgeRow
-  const earned = earnedRow as UserActivityBadgeRow | null
+  const earned = earnedRow as (UserActivityBadgeRow & { poi: PoiRow | null }) | null
 
-  // POI 연결 배지인 경우 POI 정보 조회
-  let poi: PoiRow | null = null
-  if (badgeRow.condition_json?.poi_id) {
+  // triggered_by_poi_id join 결과 우선 사용, 없으면 condition_json.poi_id 폴백
+  let poi: PoiRow | null = earned?.poi ?? null
+  if (!poi && badgeRow.condition_json?.poi_id) {
     const { data: poiData } = await supabase
       .from('poi')
       .select('*')
@@ -54,13 +55,6 @@ export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) 
       .single()
     poi = poiData as PoiRow | null
   }
-
-  const kakaoMapUrl = poi
-    ? `kakaomap://look?p=${poi.latitude},${poi.longitude}`
-    : null
-  const googleMapUrl = poi
-    ? `https://maps.google.com/?q=${poi.latitude},${poi.longitude}`
-    : null
 
   return (
     <div className="px-5 py-6 flex flex-col gap-6">
@@ -128,22 +122,7 @@ export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) 
         <Card>
           <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">연결 위치</h2>
           <p className="text-sm text-white/70 mb-3">{poi.name}</p>
-          <div className="flex gap-2">
-            <a
-              href={kakaoMapUrl ?? '#'}
-              className="flex-1 text-center bg-[#FEE500] text-black font-bold py-2.5 rounded-xl text-sm"
-            >
-              카카오맵으로 보기
-            </a>
-            <a
-              href={googleMapUrl ?? '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 text-center bg-white/10 text-white font-bold py-2.5 rounded-xl text-sm"
-            >
-              구글맵으로 보기
-            </a>
-          </div>
+          <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />
         </Card>
       )}
 

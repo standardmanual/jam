@@ -63,6 +63,8 @@ export interface UserActivityBadgeRow {
   badge_id: string
   earned_at: string
   triggered_by: string | null
+  /** Phase 2: POI 인증으로 발급된 경우 연결된 POI ID */
+  triggered_by_poi_id: string | null
   share_card_url: string | null
 }
 
@@ -174,6 +176,7 @@ export interface Database {
         Insert: Omit<UserActivityBadgeRow, 'id' | 'earned_at'> & {
           id?: string
           earned_at?: string
+          triggered_by_poi_id?: string | null
         }
         Update: Partial<Omit<UserActivityBadgeRow, 'id'>>
         Relationships: []
