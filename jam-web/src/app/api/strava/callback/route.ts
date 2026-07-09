@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
           backfill_completed: true, // 소급 없음 — 연동 즉시 완료로 표시
           last_synced_at: null,
         } as any,
-        { onConflict: 'user_id' }
+        { onConflict: 'strava_athlete_id' }
       )
 
     if (upsertError) {
