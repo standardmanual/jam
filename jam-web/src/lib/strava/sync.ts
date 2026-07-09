@@ -9,6 +9,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
 import { getActivities, getActivityStreams, refreshStravaToken } from '@/lib/strava/api'
 import { evaluateBadges } from '@/lib/badge-engine/index'
+import { tryItemDrop } from '@/lib/drop-engine/index'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { STRAVA_TYPE_TO_JAM, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
@@ -146,12 +147,19 @@ export async function syncStravaActivities(
     }
   }
 
-  // 7. 일반 배지 엔진 호출 (activity 조건 기반)
+  // 7. 활동별 아이템 드랍 시도
+  for (const activity of activities) {
+    if (activity.jamActivityType) {
+      await tryItemDrop(userId, activity.jamActivityType)
+    }
+  }
+
+  // 8. 일반 배지 엔진 호출 (activity 조건 기반)
   const badgesEarned = activities.length > 0
     ? await evaluateBadges(userId, activities)
     : 0
 
-  // 7. last_synced_at 업데이트
+  // 9. last_synced_at 업데이트
   const syncPayload = { last_synced_at: new Date().toISOString() }
   const { error: syncUpdateError } = await supabase
     .from('strava_connections')

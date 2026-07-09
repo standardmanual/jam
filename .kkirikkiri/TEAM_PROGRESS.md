@@ -61,3 +61,25 @@
 - [x] `src/proxy.ts` 생성 (함수명 `middleware` → `proxy` 변경, 내용 동일)
 - [x] `src/middleware.ts` 삭제
 - Next.js 16 docs 확인: file-conventions/proxy 가 새 컨벤션
+
+## 2026-07-09 — Phase 3 시작 / jam-drop Task 완료
+
+### 아이템 드랍 엔진 (Task: jam-drop)
+- [x] `src/lib/drop-engine/index.ts` 신규 생성
+  - rarity 추첨: common(40%) / rare(25%) / legendary(10%) / mythic(5%) / 드랍없음(20%)
+  - badges 테이블에서 type='item' + 해당 rarity 배지 중 랜덤 1개 선택
+  - inventory.used_slots < max_slots 슬롯 체크 (초과 시 조용히 종료)
+  - inventory_items INSERT — obtained_by='drop', expires_at=NOW()+30일
+  - inventory.used_slots +1 UPDATE
+  - 전부 service_role 클라이언트 사용
+
+### 아이템북 완성 체크 (Task: jam-drop)
+- [x] `src/lib/itembook/checker.ts` 신규 생성
+  - `checkItemBookCompletion(userId)` — 완성된 item_book id 배열 반환
+  - required_activity_badge_id → user_activity_badges 보유 여부 확인
+  - required_item_badge_ids[] → inventory_items 전체 보유 여부 확인 (AND 조건)
+
+### sync.ts 드랍 엔진 연동 (Task: jam-drop)
+- [x] `src/lib/strava/sync.ts`에 `tryItemDrop` import 및 호출 추가
+  - 활동 루프(7번 스텝)에서 jamActivityType이 있는 활동마다 tryItemDrop 호출
+  - null jamActivityType(지원 외 활동)은 드랍 skip
