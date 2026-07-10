@@ -85,7 +85,7 @@ export default function ProfilePage() {
       activity_types: selectedActivities,
       region: selectedRegion || '서울특별시',
     }
-    // @ts-expect-error supabase-js 제네릭 추론 이슈
+    // @ts-expect-error supabase-js 제네릭 추론 이슈 — update() 파라미터가 never로 추론됨 (Database 타입 개선 필요)
     const { error } = await supabase.from('users').update(updatePayload).eq('id', user.id)
 
     setSaving(false)
@@ -100,52 +100,52 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
+      <div className="h-full bg-black flex items-center justify-center">
+        <div className="text-gray-400 text-sm">불러오는 중...</div>
       </div>
     )
   }
 
   return (
-    <div className="px-5 py-4 flex flex-col gap-6">
+    <div className="min-h-full bg-black text-white px-6 py-10">
       {/* 프로필 헤더 */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 mb-10">
         {profile?.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={profile.avatar_url}
-            alt="프로필"
-            className="w-16 h-16 rounded-2xl object-cover"
+            alt="프로필 이미지"
+            className="w-16 h-16 rounded-full object-cover"
           />
         ) : (
-          <div className="w-16 h-16 rounded-2xl bg-[#E8E8E0] flex items-center justify-center text-2xl">
+          <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center text-2xl">
             👤
           </div>
         )}
         <div>
-          <p className="font-black text-xl text-[#111111]">{profile?.display_name ?? '익명'}</p>
-          <p className="text-[#AAAAAA] text-sm">{profile?.email}</p>
+          <p className="font-bold text-lg">{profile?.display_name ?? '익명'}</p>
+          <p className="text-gray-400 text-sm">{profile?.email}</p>
         </div>
       </div>
 
-      {/* 활동 종목 */}
-      <section>
-        <h2 className="font-black text-base text-[#111111] mb-3">활동 종목</h2>
-        <div className="grid grid-cols-2 gap-2">
+      {/* 활동 종목 편집 */}
+      <section className="mb-8">
+        <h2 className="text-base font-bold mb-3">활동 종목</h2>
+        <div className="grid grid-cols-2 gap-3">
           {ACTIVITIES.map(({ type, emoji }) => {
             const selected = selectedActivities.includes(type)
             return (
               <button
                 key={type}
                 onClick={() => toggleActivity(type)}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-4 border-2 transition-all active:scale-95 text-left ${
+                className={`flex flex-col items-center justify-center gap-2 rounded-2xl py-5 border-2 transition-all active:scale-95 ${
                   selected
-                    ? 'border-[#111111] bg-[#111111] text-white'
-                    : 'border-black/8 bg-white text-[#111111]'
+                    ? 'border-white bg-white/10'
+                    : 'border-gray-700 bg-gray-900'
                 }`}
               >
                 <span className="text-2xl">{emoji}</span>
-                <span className="text-sm font-bold">
+                <span className="text-sm font-semibold">
                   {ACTIVITY_TYPE_LABELS[type]}
                 </span>
               </button>
@@ -154,9 +154,9 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* 지역 */}
-      <section>
-        <h2 className="font-black text-base text-[#111111] mb-3">지역</h2>
+      {/* 지역 편집 */}
+      <section className="mb-8">
+        <h2 className="text-base font-bold mb-3">지역</h2>
         <div className="flex flex-wrap gap-2">
           {KR_REGIONS.map((region) => {
             const selected = selectedRegion === region
@@ -170,10 +170,10 @@ export default function ProfilePage() {
               <button
                 key={region}
                 onClick={() => setSelectedRegion(region)}
-                className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all active:scale-95 ${
+                className={`px-4 py-2 rounded-full text-sm border transition-all active:scale-95 ${
                   selected
-                    ? 'bg-[#111111] text-white'
-                    : 'bg-white border border-black/8 text-[#666666]'
+                    ? 'border-white bg-white text-black font-semibold'
+                    : 'border-gray-700 text-gray-400'
                 }`}
               >
                 {short}
@@ -183,49 +183,55 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* Strava 연동 */}
-      <section className="bg-white rounded-2xl border border-black/6 p-4">
-        <h2 className="font-black text-base text-[#111111] mb-3">Strava 연동</h2>
+      {/* Strava 연동 상태 */}
+      <section className="mb-8 rounded-2xl bg-gray-900 border border-gray-700 p-5">
+        <h2 className="text-base font-bold mb-2">Strava 연동</h2>
         {strava ? (
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FC4C02]" />
-            <span className="text-sm font-bold text-[#FC4C02]">연동됨</span>
+          <div className="text-sm text-gray-400">
+            <span className="text-green-400 font-semibold">연동됨</span>
             {strava.last_synced_at && (
-              <span className="text-sm text-[#AAAAAA] ml-1">
-                · {formatRelativeTime(strava.last_synced_at)}
+              <span className="ml-2">
+                · 마지막 동기화: {formatRelativeTime(strava.last_synced_at)}
               </span>
             )}
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[#AAAAAA]">연동 안됨</span>
+            <span className="text-sm text-gray-400">연동 안됨</span>
             <a
               href="/api/strava/auth"
-              className="px-4 py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-bold active:scale-95 transition-transform"
+              className="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold active:scale-95 transition-transform"
             >
-              Strava 연동
+              Strava 연동하기
             </a>
           </div>
         )}
       </section>
 
+      {/* 저장 메시지 */}
       {saveMessage && (
-        <p className={`text-sm font-bold text-center ${saveMessage.includes('실패') ? 'text-red-500' : 'text-[#111111]'}`}>
+        <p
+          className={`text-sm text-center mb-4 ${
+            saveMessage.includes('실패') ? 'text-red-400' : 'text-green-400'
+          }`}
+        >
           {saveMessage}
         </p>
       )}
 
+      {/* 저장 버튼 */}
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full py-4 rounded-2xl bg-[#111111] text-white font-black text-base active:scale-95 transition-all disabled:opacity-40"
+        className="w-full py-4 rounded-2xl bg-white text-black font-bold text-base mb-4 active:scale-95 transition-transform disabled:opacity-50"
       >
         {saving ? '저장 중...' : '저장하기'}
       </button>
 
+      {/* 로그아웃 */}
       <button
         onClick={handleLogout}
-        className="w-full py-4 rounded-2xl border-2 border-black/8 text-[#AAAAAA] font-bold text-base active:scale-95 transition-all"
+        className="w-full py-4 rounded-2xl border border-gray-700 text-gray-400 text-base active:scale-95 transition-transform"
       >
         로그아웃
       </button>

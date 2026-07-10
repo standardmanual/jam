@@ -225,7 +225,7 @@ export default function DropsClient() {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
         <div className="text-4xl">📍</div>
-        <p className="text-[#666666] text-sm">{locError}</p>
+        <p className="text-white/70 text-sm">{locError}</p>
         <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
           다시 시도
         </Button>
@@ -236,8 +236,8 @@ export default function DropsClient() {
   if (userLat === null || userLng === null) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
-        <div className="w-6 h-6 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
-        <p className="text-[#AAAAAA] text-sm">위치 확인 중...</p>
+        <div className="w-6 h-6 border-2 border-[#AEEA00] border-t-transparent rounded-full animate-spin" />
+        <p className="text-white/50 text-sm">위치 확인 중...</p>
       </div>
     )
   }
@@ -255,7 +255,7 @@ export default function DropsClient() {
   return (
     <div className="flex flex-col h-full">
       {/* 모드 탭 */}
-      <div className="flex gap-2 px-4 pt-4 pb-3">
+      <div className="flex gap-1 px-4 pt-4 pb-3">
         {(['drop', 'pickup'] as Mode[]).map((m) => (
           <button
             key={m}
@@ -267,10 +267,10 @@ export default function DropsClient() {
               setSelectedDrop(null)
             }}
             className={[
-              'flex-1 py-2.5 rounded-2xl text-sm font-black transition-all',
+              'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all',
               mode === m
-                ? 'bg-[#111111] text-white'
-                : 'bg-white border border-black/8 text-[#AAAAAA]',
+                ? 'bg-[#AEEA00] text-black'
+                : 'bg-white/10 text-white/50 hover:bg-white/15',
             ].join(' ')}
           >
             {m === 'drop' ? '드랍' : '픽업'}
@@ -281,8 +281,8 @@ export default function DropsClient() {
       {/* 지도 */}
       <div className="flex-1 px-4 pb-2 relative">
         {poisLoading && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/60 rounded-2xl mx-4 backdrop-blur-sm">
-            <div className="w-5 h-5 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/40 rounded-2xl mx-4">
+            <div className="w-5 h-5 border-2 border-[#AEEA00] border-t-transparent rounded-full animate-spin" />
           </div>
         )}
         <MapView
@@ -294,13 +294,13 @@ export default function DropsClient() {
         />
 
         {!poisLoading && pois.length === 0 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-3 text-[#666666] text-sm text-center whitespace-nowrap border border-black/6">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-xl px-4 py-3 text-white/60 text-sm text-center whitespace-nowrap">
             주변 500m에 드랍 가능한 장소가 없어요
           </div>
         )}
         {!poisLoading && pois.length > 0 && !pois.some((p) => p.in_drop_range) && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-3 text-[#666666] text-sm text-center whitespace-nowrap border border-black/6">
-            장소로 50m 이내에 가면 드랍/픽업할 수 있어요
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-xl px-4 py-3 text-white/60 text-sm text-center whitespace-nowrap">
+            지도의 장소로 50m 이내에 가면 드랍/픽업할 수 있어요
           </div>
         )}
       </div>
@@ -308,18 +308,18 @@ export default function DropsClient() {
       {/* 바텀시트: 아이템 선택 */}
       {step === 'select_item' && selectedPoi && (
         <div className="px-4 pb-4">
-          <div className="bg-white rounded-2xl border border-black/6 overflow-hidden">
+          <div className="bg-[#1a1a1a] rounded-2xl border border-white/10 overflow-hidden">
             {/* 헤더 */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-black/6">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
               <div>
-                <p className="text-xs text-[#AAAAAA] mb-0.5">{selectedPoi.name}</p>
-                <p className="text-sm font-black text-[#111111]">
+                <p className="text-xs text-white/40 mb-0.5">{selectedPoi.name}</p>
+                <p className="text-sm font-bold text-white">
                   {mode === 'drop' ? '드랍할 아이템 선택' : '픽업할 아이템 선택'}
                 </p>
               </div>
               <button
                 onClick={() => { setStep('map'); setSelectedPoi(null) }}
-                className="text-[#AAAAAA] p-1"
+                className="text-white/40 hover:text-white p-1"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -331,11 +331,11 @@ export default function DropsClient() {
             <div className="max-h-52 overflow-y-auto">
               {(mode === 'drop' ? inventoryLoading : dropItemsLoading) ? (
                 <div className="flex justify-center py-8">
-                  <div className="w-5 h-5 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-[#AEEA00] border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : mode === 'drop' ? (
                 inventoryItems.length === 0 ? (
-                  <p className="text-center text-[#AAAAAA] text-sm py-8">드랍할 아이템이 없어요</p>
+                  <p className="text-center text-white/40 text-sm py-8">드랍할 아이템이 없어요</p>
                 ) : (
                   inventoryItems.map((item) => (
                     <button
@@ -344,24 +344,24 @@ export default function DropsClient() {
                       className={[
                         'w-full flex items-center gap-3 px-4 py-3 transition-colors text-left',
                         selectedItem?.id === item.id
-                          ? 'bg-[#AEEA00]/20 border-l-4 border-[#111111]'
-                          : 'hover:bg-black/3',
+                          ? 'bg-[#AEEA00]/10 border-l-2 border-[#AEEA00]'
+                          : 'hover:bg-white/5',
                       ].join(' ')}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-[#F0F0E8] flex-shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 rounded-lg bg-white/10 flex-shrink-0 overflow-hidden">
                         {item.badge_image_url && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={item.badge_image_url} alt={item.badge_name} className="w-full h-full object-cover" />
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-[#111111] truncate">{item.badge_name}</p>
-                        <p className={`text-xs font-medium ${RARITY_COLOR[item.badge_rarity] ?? 'text-[#AAAAAA]'}`}>
+                        <p className="text-sm font-medium text-white truncate">{item.badge_name}</p>
+                        <p className={`text-xs ${RARITY_COLOR[item.badge_rarity] ?? 'text-white/40'}`}>
                           {RARITY_LABEL[item.badge_rarity] ?? item.badge_rarity}
                         </p>
                       </div>
                       {selectedItem?.id === item.id && (
-                        <div className="ml-auto text-[#111111]">
+                        <div className="ml-auto text-[#AEEA00]">
                           <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                             <path fillRule="evenodd" d="M20.293 5.293a1 1 0 010 1.414l-11 11a1 1 0 01-1.414 0l-5-5a1 1 0 111.414-1.414L8.5 15.586l10.293-10.293a1 1 0 011.5 0z" clipRule="evenodd" />
                           </svg>
@@ -372,7 +372,7 @@ export default function DropsClient() {
                 )
               ) : (
                 dropItems.length === 0 ? (
-                  <p className="text-center text-[#AAAAAA] text-sm py-8">픽업 가능한 아이템이 없어요</p>
+                  <p className="text-center text-white/40 text-sm py-8">픽업 가능한 아이템이 없어요</p>
                 ) : (
                   dropItems.map((drop) => (
                     <button
@@ -381,25 +381,25 @@ export default function DropsClient() {
                       className={[
                         'w-full flex items-center gap-3 px-4 py-3 transition-colors text-left',
                         selectedDrop?.id === drop.id
-                          ? 'bg-[#AEEA00]/20 border-l-4 border-[#111111]'
-                          : 'hover:bg-black/3',
+                          ? 'bg-[#AEEA00]/10 border-l-2 border-[#AEEA00]'
+                          : 'hover:bg-white/5',
                       ].join(' ')}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-[#F0F0E8] flex-shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 rounded-lg bg-white/10 flex-shrink-0 overflow-hidden">
                         {drop.badge_image_url && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={drop.badge_image_url} alt={drop.badge_name} className="w-full h-full object-cover" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-[#111111] truncate">{drop.badge_name}</p>
-                        <p className={`text-xs font-medium ${RARITY_COLOR[drop.badge_rarity] ?? 'text-[#AAAAAA]'}`}>
+                        <p className="text-sm font-medium text-white truncate">{drop.badge_name}</p>
+                        <p className={`text-xs ${RARITY_COLOR[drop.badge_rarity] ?? 'text-white/40'}`}>
                           {RARITY_LABEL[drop.badge_rarity] ?? drop.badge_rarity}
                         </p>
-                        <p className="text-xs text-[#AAAAAA] mt-0.5">{drop.dropper_name}이(가) 드랍</p>
+                        <p className="text-xs text-white/30 mt-0.5">{drop.dropper_name}이(가) 드랍</p>
                       </div>
                       {selectedDrop?.id === drop.id && (
-                        <div className="ml-auto text-[#111111]">
+                        <div className="ml-auto text-[#AEEA00]">
                           <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                             <path fillRule="evenodd" d="M20.293 5.293a1 1 0 010 1.414l-11 11a1 1 0 01-1.414 0l-5-5a1 1 0 111.414-1.414L8.5 15.586l10.293-10.293a1 1 0 011.5 0z" clipRule="evenodd" />
                           </svg>
@@ -413,7 +413,7 @@ export default function DropsClient() {
 
             {/* 실행 버튼 */}
             {(mode === 'drop' ? selectedItem : selectedDrop) && (
-              <div className="px-4 py-3 border-t border-black/6">
+              <div className="px-4 py-3 border-t border-white/10">
                 <Button
                   fullWidth
                   loading={mode === 'drop' ? dropping : pickingUp}

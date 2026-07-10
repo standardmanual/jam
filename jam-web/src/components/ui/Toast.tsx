@@ -53,26 +53,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }
 
   const colorMap: Record<ToastType, string> = {
-    success: 'bg-[#111111] text-white',
-    error: 'bg-red-500 text-white',
-    info: 'bg-[#111111] text-white',
+    success: 'border-[#AEEA00] text-[#AEEA00]',
+    error: 'border-red-500 text-red-400',
+    info: 'border-[#00E5FF] text-[#00E5FF]',
   }
 
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
+      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
         {toasts.map((t) => (
           <div
             key={t.id}
             className={[
-              'flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold shadow-lg pointer-events-auto',
+              'flex items-center gap-2 px-4 py-3 rounded-xl bg-[#1a1a1a] border text-sm font-medium shadow-lg pointer-events-auto',
               colorMap[t.type],
             ].join(' ')}
             onClick={() => dismiss(t.id)}
           >
             <span>{iconMap[t.type]}</span>
-            <span>{t.message}</span>
+            <span className="text-white/90">{t.message}</span>
           </div>
         ))}
       </div>

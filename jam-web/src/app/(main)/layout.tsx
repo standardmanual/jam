@@ -16,16 +16,16 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
   return (
     <ToastProvider>
-      <div className="min-h-dvh bg-[#EAEAE4] text-[#111111] flex flex-col w-full relative">
+      <div className="min-h-dvh bg-[#0A0A0A] text-white flex flex-col w-full relative">
         {/* 상단 헤더 */}
-        <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-3 min-h-14 bg-[#EAEAE4] sticky top-0 z-40">
+        <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 min-h-14 border-b border-white/10 bg-[#0A0A0A] sticky top-0 z-40">
           <Link href="/" className="flex items-center gap-1 select-none">
-            <span className="font-black text-2xl tracking-tighter text-[#111111]">JAM!</span>
+            <span className="text-[#AEEA00] font-black text-2xl tracking-tighter">JAM!</span>
           </Link>
         </header>
 
         {/* 메인 컨텐츠 */}
-        <main className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        <main className="flex-1 overflow-y-auto pb-[calc(4rem+env(safe-area-inset-bottom))]">
           {children}
         </main>
 
