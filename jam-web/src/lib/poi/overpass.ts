@@ -9,8 +9,8 @@ export interface OsmPoi {
 }
 
 // T2 대상 브랜드 필터
-const CONVENIENCE_BRANDS = ['CU', 'GS25', '세븐일레븐', '이마트24', 'Ministop', '미니스톱']
-const CAFE_BRANDS = ['스타벅스', 'Starbucks', '이디야', '투썸플레이스', '메가커피', '컴포즈커피', '빽다방', '할리스']
+const CONVENIENCE_BRANDS = ['CU', 'GS25', '세븐일레븐', '7-Eleven', '7eleven', '이마트24', 'emart24', 'Ministop', '미니스톱']
+const CAFE_BRANDS = ['스타벅스', 'Starbucks', '이디야', 'ediya', '투썸플레이스', 'twosome', '메가커피', 'mega coffee', '컴포즈커피', '빽다방', "Paik", '할리스', 'hollys']
 
 function buildOverpassQuery(lat: number, lng: number, radiusM: number): string {
   const brandRegex = (brands: string[]) =>
