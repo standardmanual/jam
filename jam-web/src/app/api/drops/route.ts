@@ -45,21 +45,27 @@ export async function GET(req: NextRequest) {
 
   // 신규 OSM POI를 DB에 upsert (osm_id 충돌 시 무시)
   if (newOsmPois.length > 0) {
+    console.log(`[drops] OSM upsert 시도: ${newOsmPois.length}개`)
     const inserts = newOsmPois.map((p) => ({
       name: p.name,
       latitude: p.latitude,
       longitude: p.longitude,
-      radius_meters: 50,
-      category: p.category === 'cafe' ? 'other' : 'other',
+      radius_meters: 500,
+      category: 'other',
       osm_id: p.osmId,
       poi_tier: 2,
     }))
-    const { data: upserted } = await (service as any)
+    const { data: upserted, error: upsertError } = await (service as any)
       .from('poi')
       .upsert(inserts, { onConflict: 'osm_id', ignoreDuplicates: true })
       .select('id, osm_id')
-    for (const row of upserted ?? []) {
-      osmIdMap.set(row.osm_id, row.id)
+    if (upsertError) {
+      console.error('[drops] OSM upsert 실패:', upsertError.message)
+    } else {
+      console.log(`[drops] OSM upsert 완료: ${(upserted ?? []).length}개 저장`)
+      for (const row of upserted ?? []) {
+        osmIdMap.set(row.osm_id, row.id)
+      }
     }
   }
 
