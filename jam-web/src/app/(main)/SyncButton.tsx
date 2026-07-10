@@ -39,7 +39,7 @@ export default function SyncButton() {
     <button
       onClick={handleSync}
       disabled={loading}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#111111] text-white text-xs font-bold disabled:opacity-40 active:scale-95 transition-all"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-jam-ink text-white text-xs font-black border-2 border-jam-ink disabled:opacity-40 active:scale-95 transition-all"
     >
       {loading ? (
         <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />

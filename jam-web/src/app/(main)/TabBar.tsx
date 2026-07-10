@@ -70,25 +70,26 @@ export default function TabBar() {
   }
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-[#F5F4F0] border-t border-black/8 flex items-end pb-[env(safe-area-inset-bottom)] z-40">
+    <nav className="fixed bottom-0 inset-x-0 bg-jam-cream border-t-[3px] border-jam-ink flex items-end pb-[env(safe-area-inset-bottom)] z-40">
       {tabs.map((tab) => {
         const active = isActive(tab.href)
         return (
           <Link
             key={tab.href}
             href={tab.href}
-            className={[
-              'flex-1 relative flex flex-col items-center justify-center gap-1 py-3 transition-colors',
-              active ? 'text-[#111111]' : 'text-[#C0C0C0]',
-            ].join(' ')}
+            className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors"
           >
-            {tab.icon}
-            <span className={`text-[9px] font-bold tracking-wider uppercase ${active ? 'text-[#111111]' : 'text-[#C0C0C0]'}`}>
+            <span
+              className={[
+                'flex items-center justify-center w-9 h-9 rounded-full transition-colors',
+                active ? 'bg-jam-lime text-jam-ink' : 'text-jam-ink/40',
+              ].join(' ')}
+            >
+              {tab.icon}
+            </span>
+            <span className={`text-[9px] font-black tracking-wider uppercase ${active ? 'text-jam-ink' : 'text-jam-ink/40'}`}>
               {tab.label}
             </span>
-            {active && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#AEEA00] rounded-full" />
-            )}
           </Link>
         )
       })}

@@ -21,10 +21,10 @@ interface Props {
 }
 
 const rarityCardBg: Record<string, string> = {
-  common: 'bg-[#F0F0E8]',
-  rare: 'bg-[#D8F0F8]',
-  legendary: 'bg-[#F0E4FC]',
-  mythic: 'bg-[#FCF4D0]',
+  common: 'bg-white',
+  rare: 'bg-jam-teal/30',
+  legendary: 'bg-jam-purple/20',
+  mythic: 'bg-jam-yellow/40',
 }
 
 export default function CombineClient({ items, hints, publicRecipes }: Props) {
@@ -78,49 +78,51 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
   }
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full bg-jam-pink">
       {/* 헤더 */}
-      <div className="px-5 pt-4 pb-5">
-        <p className="text-[#AAAAAA] text-sm font-medium">아이템 합성</p>
-        <h1 className="text-4xl font-black text-[#111111] leading-tight">조합</h1>
+      <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-5">
+        <p className="text-jam-ink/60 text-sm font-bold">아이템 합성</p>
+        <h1 className="text-4xl font-black text-jam-ink leading-tight">조합</h1>
       </div>
 
       {/* 결과 알림 */}
       {result && (
-        <div className={`mx-5 mb-4 p-4 rounded-2xl font-bold text-center ${result.success ? 'bg-[#AEEA00] text-[#111111]' : 'bg-red-100 text-red-600'}`}>
+        <div
+          className={`mx-5 mb-4 p-4 rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] font-black text-center ${result.success ? 'bg-jam-lime text-jam-ink' : 'bg-red-100 text-red-700'}`}
+        >
           {result.success ? `🎉 ${result.name} 획득!` : result.reason}
         </div>
       )}
 
       {/* 선택 슬롯 */}
       <div className="px-5 pb-5">
-        <p className="text-xs font-black text-[#AAAAAA] uppercase tracking-widest mb-3">
+        <p className="text-xs font-black text-jam-ink/50 uppercase tracking-widest mb-3">
           선택한 아이템 ({selected.length}/3)
         </p>
         <div className="flex gap-3 mb-4">
           {[0, 1, 2].map((i) => {
             const itemId = selected[i]
             const item = items.find((it) => it.id === itemId)
-            const bg = item ? (rarityCardBg[item.badge.rarity] ?? 'bg-[#F0F0E8]') : ''
+            const bg = item ? (rarityCardBg[item.badge.rarity] ?? 'bg-white') : ''
             return (
               <div
                 key={i}
-                className={`flex-1 aspect-square rounded-2xl flex items-center justify-center ${
+                className={`flex-1 aspect-square rounded-2xl flex items-center justify-center border-[3px] ${
                   item
-                    ? `${bg} cursor-pointer active:scale-95 transition-all`
-                    : 'border-2 border-dashed border-black/10'
+                    ? `${bg} border-jam-ink shadow-[3px_3px_0_0_#161616] cursor-pointer active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all`
+                    : 'border-dashed border-jam-ink/25 bg-white/20'
                 }`}
                 onClick={() => itemId && toggleItem(itemId)}
               >
                 {item ? (
                   item.badge.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.badge.image_url} alt={item.badge.name} className="w-3/4 h-3/4 object-cover rounded-xl" />
+                    <img src={item.badge.image_url} alt={item.badge.name} className="w-3/4 h-3/4 object-contain" />
                   ) : (
                     <span className="text-3xl">🏅</span>
                   )
                 ) : (
-                  <span className="text-black/15 text-2xl font-black">+</span>
+                  <span className="text-jam-ink/25 text-2xl font-black">+</span>
                 )}
               </div>
             )
@@ -130,23 +132,21 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
         <button
           onClick={handleCombine}
           disabled={loading || selected.length < 2}
-          className="w-full py-4 rounded-2xl bg-[#111111] text-white font-black text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-2xl bg-jam-ink text-white font-black text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2 border-[3px] border-jam-ink shadow-[3px_3px_0_0_rgba(0,0,0,0.3)]"
         >
           {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
           합성하기
         </button>
       </div>
 
-      <div className="h-px bg-black/6 mx-5" />
-
       {/* 힌트 */}
       {hints.length > 0 && (
         <div className="px-5 py-4">
-          <p className="text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest mb-3">힌트</p>
+          <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">힌트</p>
           <div className="flex flex-col gap-2">
             {hints.map((h, i) => (
-              <div key={i} className="bg-white border border-black/6 rounded-xl px-4 py-3">
-                <p className="text-sm text-[#666666]">{h.hint_text ?? '???'}</p>
+              <div key={i} className="bg-jam-cream border-[3px] border-jam-ink rounded-xl px-4 py-3">
+                <p className="text-sm text-jam-ink/70 font-semibold">{h.hint_text ?? '???'}</p>
               </div>
             ))}
           </div>
@@ -156,10 +156,10 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       {/* 공개 레시피 */}
       {publicRecipes.length > 0 && (
         <div className="px-5 py-4">
-          <p className="text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest mb-3">공개 레시피</p>
+          <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">공개 레시피</p>
           <div className="flex flex-col gap-2">
             {publicRecipes.map((r) => (
-              <div key={r.id} className="bg-white border border-black/6 rounded-xl px-4 py-3 text-sm text-[#666666]">
+              <div key={r.id} className="bg-jam-cream border-[3px] border-jam-ink rounded-xl px-4 py-3 text-sm text-jam-ink/70 font-semibold">
                 재료 {r.ingredient_badge_ids.length}개 → 결과 배지 · 성공률 {Math.round(r.success_rate * 100)}%
               </div>
             ))}
@@ -167,36 +167,34 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
         </div>
       )}
 
-      <div className="h-px bg-black/6 mx-5" />
-
       {/* 인벤토리 */}
-      <div className="px-5 py-4 flex-1">
-        <p className="text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest mb-3">내 아이템</p>
+      <div className="flex-1 bg-jam-cream rounded-t-[2rem] border-t-[3px] border-jam-ink px-5 py-6">
+        <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">내 아이템</p>
         {items.length === 0 ? (
-          <p className="text-[#AAAAAA] text-center py-8 font-bold">인벤토리가 비어 있어요.</p>
+          <p className="text-jam-ink/50 text-center py-8 font-bold">인벤토리가 비어 있어요.</p>
         ) : (
           <div className="grid grid-cols-3 gap-3">
             {items.map((item) => {
               const isSelected = selected.includes(item.id)
-              const cardBg = rarityCardBg[item.badge.rarity] ?? 'bg-[#F0F0E8]'
+              const cardBg = rarityCardBg[item.badge.rarity] ?? 'bg-white'
               return (
                 <button
                   key={item.id}
                   onClick={() => toggleItem(item.id)}
                   className={[
-                    'flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all active:scale-95',
+                    'flex flex-col items-center gap-1.5 p-3 rounded-2xl border-[3px] transition-all active:scale-95',
                     isSelected
-                      ? `${cardBg} ring-2 ring-[#111111]`
-                      : `${cardBg} opacity-70`,
+                      ? `${cardBg} border-jam-ink shadow-[3px_3px_0_0_#161616]`
+                      : `${cardBg} border-jam-ink/20 opacity-70`,
                   ].join(' ')}
                 >
                   {item.badge.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.badge.image_url} alt={item.badge.name} className="w-14 h-14 object-cover rounded-xl" />
+                    <img src={item.badge.image_url} alt={item.badge.name} className="w-14 h-14 object-contain" />
                   ) : (
                     <span className="text-3xl">🏅</span>
                   )}
-                  <p className="text-[10px] text-[#111111] font-bold text-center leading-tight line-clamp-2">{item.badge.name}</p>
+                  <p className="text-[10px] text-jam-ink font-bold text-center leading-tight line-clamp-2">{item.badge.name}</p>
                 </button>
               )
             })}
