@@ -7,11 +7,12 @@
  */
 
 export type ActivityType = 'cycling' | 'running' | 'hiking' | 'walking'
+export type DropRarity = 'common' | 'rare' | 'legendary' | 'mythic' | 'none'
 export type BadgeType = 'activity' | 'item'
 export type BadgeRarity = 'common' | 'rare' | 'legendary' | 'mythic'
 export type PoiCategory = 'mountain' | 'bike_route' | 'trail' | 'park' | 'other'
 export type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
-export type ItemObtainedBy = 'drop' | 'system_event'
+export type ItemObtainedBy = 'drop' | 'drop_event' | 'system_event' | 'pickup'
 
 // =========================================
 // 테이블 Row 타입
@@ -84,6 +85,19 @@ export interface InventoryItemRow {
   obtained_at: string
   obtained_by: ItemObtainedBy
   expires_at: string | null
+  dropped_at: string | null
+  drop_id: string | null
+}
+
+export interface PoiDropRow {
+  id: string
+  dropper_user_id: string
+  poi_id: string
+  badge_id: string
+  dropped_at: string
+  picked_up_by: string | null
+  picked_up_at: string | null
+  is_available: boolean
 }
 
 export interface ItemBookRow {
@@ -105,6 +119,40 @@ export interface PoiRow {
   category: PoiCategory
   linked_badge_id: string | null
   created_at: string
+}
+
+// =========================================
+// Phase 6: 드랍/픽업 시스템 Row 타입
+// =========================================
+
+export interface DropEventRow {
+  id: string
+  name: string
+  badge_id: string
+  latitude: number
+  longitude: number
+  radius_meters: number
+  total_quantity: number
+  claimed_quantity: number
+  starts_at: string
+  ends_at: string | null
+  is_active: boolean
+  created_at: string
+}
+
+export interface DropClaimRow {
+  id: string
+  drop_event_id: string
+  user_id: string
+  claimed_at: string
+  strava_activity_id: string | null
+}
+
+export interface DropProbabilityRow {
+  id: string
+  rarity: DropRarity
+  probability: number
+  updated_at: string
 }
 
 export interface TradeRow {
@@ -216,6 +264,46 @@ export interface Database {
           updated_at?: string
         }
         Update: Partial<Omit<TradeRow, 'id'>>
+        Relationships: []
+      }
+      drop_events: {
+        Row: DropEventRow
+        Insert: Omit<DropEventRow, 'id' | 'claimed_quantity' | 'created_at'> & {
+          id?: string
+          claimed_quantity?: number
+          created_at?: string
+        }
+        Update: Partial<Omit<DropEventRow, 'id'>>
+        Relationships: []
+      }
+      drop_claims: {
+        Row: DropClaimRow
+        Insert: Omit<DropClaimRow, 'id' | 'claimed_at'> & {
+          id?: string
+          claimed_at?: string
+        }
+        Update: Partial<Omit<DropClaimRow, 'id'>>
+        Relationships: []
+      }
+      drop_probability: {
+        Row: DropProbabilityRow
+        Insert: Omit<DropProbabilityRow, 'id' | 'updated_at'> & {
+          id?: string
+          updated_at?: string
+        }
+        Update: Partial<Omit<DropProbabilityRow, 'id'>>
+        Relationships: []
+      }
+      poi_drops: {
+        Row: PoiDropRow
+        Insert: Omit<PoiDropRow, 'id' | 'dropped_at' | 'picked_up_by' | 'picked_up_at' | 'is_available'> & {
+          id?: string
+          dropped_at?: string
+          picked_up_by?: string | null
+          picked_up_at?: string | null
+          is_available?: boolean
+        }
+        Update: Partial<Omit<PoiDropRow, 'id'>>
         Relationships: []
       }
     }
