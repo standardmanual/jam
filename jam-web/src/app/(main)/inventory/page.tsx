@@ -25,10 +25,10 @@ function formatExpiry(expiresAt: string | null): string {
 }
 
 const rarityCardBg: Record<string, string> = {
-  common: 'bg-[#F0F0E8]',
-  rare: 'bg-[#D8F0F8]',
-  legendary: 'bg-[#F0E4FC]',
-  mythic: 'bg-[#FCF4D0]',
+  common: 'bg-white',
+  rare: 'bg-jam-teal/30',
+  legendary: 'bg-jam-purple/20',
+  mythic: 'bg-jam-yellow/40',
 }
 
 export default async function InventoryPage() {
@@ -55,70 +55,70 @@ export default async function InventoryPage() {
   const remainingSlots = maxSlots - usedSlots
 
   return (
-    <div className="px-5 py-4 min-h-full">
+    <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 min-h-full bg-jam-teal">
       {/* 헤더 */}
       <div className="mb-5">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <p className="text-[#AAAAAA] text-sm font-medium">내 아이템</p>
-            <h1 className="text-4xl font-black text-[#111111] leading-tight">인벤토리</h1>
+            <p className="text-jam-ink/60 text-sm font-bold">내 아이템</p>
+            <h1 className="text-4xl font-black text-jam-ink leading-tight">인벤토리</h1>
           </div>
           <Link
             href="/combine"
-            className="mt-1 flex items-center gap-1.5 bg-[#AEEA00] text-[#111111] font-black text-sm px-3 py-2 rounded-xl active:scale-95 transition-all"
+            className="mt-1 flex items-center gap-1.5 bg-jam-lime text-jam-ink font-black text-sm px-3 py-2 rounded-xl active:scale-95 transition-all border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616]"
           >
             ⚗️ 조합
           </Link>
         </div>
         {/* 슬롯 프로그레스 */}
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-1.5 bg-black/6 rounded-full overflow-hidden">
+          <div className="flex-1 h-2.5 bg-white/40 rounded-full overflow-hidden border border-jam-ink/20">
             <div
-              className="h-full bg-[#111111] rounded-full transition-all"
+              className="h-full bg-jam-lime rounded-full transition-all"
               style={{ width: `${Math.min(100, (usedSlots / maxSlots) * 100)}%` }}
             />
           </div>
-          <span className="text-xs text-[#AAAAAA] font-medium shrink-0">{usedSlots}/{maxSlots}</span>
+          <span className="text-xs text-jam-ink/60 font-bold shrink-0">{usedSlots}/{maxSlots}</span>
         </div>
-        <p className="mt-1 text-xs text-[#CCCCCC]">{remainingSlots}개 슬롯 남음</p>
+        <p className="mt-1 text-xs text-jam-ink/50 font-semibold">{remainingSlots}개 슬롯 남음</p>
       </div>
 
       {/* 아이템 그리드 */}
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <span className="text-5xl mb-4">📦</span>
-          <p className="text-[#AAAAAA] font-bold">아직 아이템이 없어요</p>
-          <p className="text-[#CCCCCC] text-xs mt-1">활동을 완료하면 아이템 배지가 드랍돼요</p>
+          <p className="text-jam-ink/60 font-bold">아직 아이템이 없어요</p>
+          <p className="text-jam-ink/40 text-xs mt-1 font-semibold">활동을 완료하면 아이템 배지가 드랍돼요</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-3">
           {items.map((item) => {
             const expiring = isExpiringSoon(item.expires_at)
-            const cardBg = rarityCardBg[item.badge.rarity] ?? 'bg-[#F0F0E8]'
+            const cardBg = rarityCardBg[item.badge.rarity] ?? 'bg-white'
             return (
               <Link
                 key={item.id}
                 href={`/inventory/${item.id}`}
-                className={`flex flex-col items-center ${cardBg} rounded-2xl p-3 gap-2 active:scale-95 transition-transform`}
+                className={`flex flex-col items-center ${cardBg} border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] rounded-2xl p-3 gap-2 active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all`}
               >
-                <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center">
+                <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-jam-cream">
                   {item.badge.image_url ? (
                     <Image
                       src={item.badge.image_url}
                       alt={item.badge.name}
                       width={80}
                       height={80}
-                      className="object-cover w-full h-full"
+                      className="object-contain w-full h-full p-1"
                     />
                   ) : (
                     <span className="text-3xl">🏷️</span>
                   )}
                 </div>
-                <p className="text-[11px] text-[#111111] text-center leading-tight line-clamp-2 font-bold w-full">
+                <p className="text-[11px] text-jam-ink text-center leading-tight line-clamp-2 font-bold w-full">
                   {item.badge.name}
                 </p>
                 {expiring && item.expires_at && (
-                  <p className="text-[10px] text-red-500 font-bold">{formatExpiry(item.expires_at)}</p>
+                  <p className="text-[10px] text-red-600 font-bold">{formatExpiry(item.expires_at)}</p>
                 )}
               </Link>
             )
@@ -127,9 +127,9 @@ export default async function InventoryPage() {
           {Array.from({ length: Math.min(remainingSlots, Math.max(0, 6 - items.length)) }).map((_, i) => (
             <div
               key={`empty-${i}`}
-              className="flex items-center justify-center border-2 border-dashed border-black/8 rounded-2xl aspect-square"
+              className="flex items-center justify-center border-2 border-dashed border-jam-ink/25 rounded-2xl aspect-square bg-white/20"
             >
-              <span className="text-black/15 text-xl font-black">+</span>
+              <span className="text-jam-ink/25 text-xl font-black">+</span>
             </div>
           ))}
         </div>
@@ -139,7 +139,7 @@ export default async function InventoryPage() {
       <div className="fixed bottom-24 right-4">
         <Link
           href="/inventory/flea-market"
-          className="flex items-center gap-2 bg-[#111111] text-white font-bold text-sm px-4 py-3 rounded-full active:scale-95 transition-transform"
+          className="flex items-center gap-2 bg-jam-ink text-white font-black text-sm px-4 py-3 rounded-full active:scale-95 transition-transform border-[3px] border-jam-ink shadow-[3px_3px_0_0_rgba(0,0,0,0.3)]"
         >
           <span>🛒</span>
           <span>플리마켓</span>

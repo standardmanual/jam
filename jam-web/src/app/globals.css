@@ -1,32 +1,48 @@
 @import "tailwindcss";
 
+/*
+ * JAM! 팝아트 스티커 디자인 시스템
+ * 화면별 원색 풀블리드 배경 + 두꺼운 검은 외곽선 + 굵은 타이포.
+ * 라이트 테마 없음 — body 기본값은 잉크 컬러로 고정해
+ * 오버스크롤/세이프에어리어 바깥에 흰 배경이 드러나지 않게 한다.
+ */
 :root {
-  --bg: #EAEAE4;
-  --surface: #F5F4F0;
-  --surface-2: #FFFFFF;
-  --text: #111111;
-  --text-2: #666666;
-  --text-3: #AAAAAA;
-  --border: rgba(0, 0, 0, 0.08);
-  --accent: #AEEA00;
-  --accent-text: #111111;
+  --background: #161616;
+  --foreground: #ededed;
+}
+
+/*
+ * 직접 값을 넣는 @theme 블록 — Tailwind v4에서 @theme inline +
+ * var() 간접 참조 조합은 이 프로젝트 환경에서 유틸리티 클래스
+ * (bg-jam-*, text-jam-* 등)를 생성하지 못하는 것을 확인했습니다.
+ * 그래서 jam-* 팔레트는 리터럴 값으로 직접 정의합니다.
+ */
+@theme {
+  --color-jam-ink: #161616;
+  --color-jam-orange: #ff6b3d;
+  --color-jam-lime: #c6ff3a;
+  --color-jam-teal: #2dd4bf;
+  --color-jam-pink: #ff6fa5;
+  --color-jam-purple: #8b6cf6;
+  --color-jam-yellow: #ffc93c;
+  --color-jam-cream: #fff8ee;
 }
 
 @theme inline {
-  --color-background: var(--bg);
-  --color-foreground: var(--text);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 html {
-  background: var(--bg);
-  color-scheme: light;
+  background: var(--background);
+  color-scheme: dark;
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
+  background: var(--background);
+  color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }

@@ -9,13 +9,6 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-const rarityGlowMap: Record<string, string> = {
-  common: '',
-  rare: 'shadow-[0_0_12px_rgba(59,130,246,0.3)]',
-  legendary: 'shadow-[0_0_12px_rgba(168,85,247,0.3)]',
-  mythic: 'shadow-[0_0_16px_rgba(245,158,11,0.4)]',
-}
-
 export default async function ItemBookDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
@@ -65,14 +58,14 @@ export default async function ItemBookDetailPage({ params }: Props) {
   const pct = Math.round((ownedCount / totalCount) * 100)
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full bg-jam-teal">
       {/* 헤더 */}
-      <div className="px-5 pt-5 pb-4">
+      <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4">
         <Link
           href="/badges"
-          className="flex items-center gap-1 text-white/50 text-sm w-fit hover:text-white transition-colors mb-5"
+          className="flex items-center gap-1 text-jam-ink font-bold text-sm w-fit mb-5"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
           아이템북 목록
@@ -81,40 +74,38 @@ export default async function ItemBookDetailPage({ params }: Props) {
         {/* 아이템북 정보 (상단) */}
         <div className="flex gap-4 items-start mb-4">
           {book.image_url && (
-            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white/5 shrink-0 border border-white/10">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white border-[3px] border-jam-ink shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={book.image_url} alt={book.name} className="w-full h-full object-cover" />
+              <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1" />
             </div>
           )}
           <div className="flex-1 min-w-0 pt-1">
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl font-black leading-tight">{book.name}</h1>
+              <h1 className="text-xl font-black leading-tight text-jam-ink">{book.name}</h1>
               {completed && (
-                <span className="text-[#AEEA00] text-xs font-bold bg-[#AEEA00]/10 px-2 py-0.5 rounded-full">완성</span>
+                <span className="text-jam-ink bg-jam-lime border-2 border-jam-ink text-xs font-black px-2 py-0.5 rounded-full">완성</span>
               )}
             </div>
-            <p className="text-white/50 text-sm leading-relaxed">{book.description}</p>
+            <p className="text-jam-ink/60 text-sm leading-relaxed font-semibold">{book.description}</p>
           </div>
         </div>
 
         {/* 진행도 */}
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+          <div className="flex-1 h-2.5 rounded-full bg-white/40 overflow-hidden border border-jam-ink/20">
             <div
-              className={`h-2 rounded-full transition-all duration-500 ${completed ? 'bg-[#AEEA00]' : 'bg-white/40'}`}
+              className={`h-full rounded-full transition-all duration-500 ${completed ? 'bg-jam-lime' : 'bg-jam-ink/30'}`}
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className="text-xs text-white/40 tabular-nums">{ownedCount} / {totalCount}</span>
+          <span className="text-xs text-jam-ink/60 tabular-nums font-bold">{ownedCount} / {totalCount}</span>
         </div>
       </div>
 
-      <div className="h-px bg-white/10 mx-5" />
-
       {/* 배지 그리드 (하단) */}
-      <div className="px-5 py-5 flex-1">
+      <div className="flex-1 bg-jam-cream rounded-t-[2rem] border-t-[3px] border-jam-ink px-5 py-6">
         {book.reward_badge_id && (
-          <p className="text-xs text-white/30 mb-3 text-center">전부 모으면 보상 배지를 획득해요</p>
+          <p className="text-xs text-jam-ink/50 mb-3 text-center font-bold">전부 모으면 보상 배지를 획득해요</p>
         )}
 
         <div className="grid grid-cols-3 gap-3">
@@ -122,22 +113,21 @@ export default async function ItemBookDetailPage({ params }: Props) {
             const earned = earnedMap.get(badge.id)
             const isOwned = !!earned
             const isReward = badge.id === book.reward_badge_id
-            const glow = isOwned ? rarityGlowMap[badge.rarity] ?? '' : ''
 
             const card = (
               <div
                 className={[
-                  'flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all',
+                  'flex flex-col items-center gap-2 p-3 rounded-2xl border-[3px] transition-all',
                   isOwned
-                    ? `bg-white/5 border-white/10 hover:border-white/20 active:scale-95 ${glow}`
-                    : 'bg-white/[0.02] border-white/5',
+                    ? 'bg-white border-jam-ink shadow-[3px_3px_0_0_#161616] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]'
+                    : 'bg-white/30 border-jam-ink/20',
                   isReward ? 'col-span-3 flex-row gap-3 p-4' : '',
                 ].join(' ')}
               >
                 {/* 뱃지 이미지 */}
                 <div
                   className={[
-                    'rounded-xl flex items-center justify-center overflow-hidden',
+                    'rounded-xl flex items-center justify-center overflow-hidden bg-jam-cream',
                     isReward ? 'w-16 h-16 shrink-0' : 'w-16 h-16',
                   ].join(' ')}
                 >
@@ -147,8 +137,8 @@ export default async function ItemBookDetailPage({ params }: Props) {
                       src={badge.image_url}
                       alt={isOwned ? badge.name : '???'}
                       className={[
-                        'w-full h-full object-cover',
-                        !isOwned ? 'grayscale brightness-[0.25]' : '',
+                        'w-full h-full object-contain p-1',
+                        !isOwned ? 'grayscale brightness-[0.6] opacity-40' : '',
                       ].join(' ')}
                     />
                   ) : (
@@ -161,14 +151,14 @@ export default async function ItemBookDetailPage({ params }: Props) {
                 {/* 이름 + 희귀도 */}
                 <div className={isReward ? 'flex-1 min-w-0' : 'flex flex-col items-center gap-1 w-full'}>
                   {isReward && (
-                    <p className="text-[10px] text-[#AEEA00]/60 font-semibold uppercase tracking-wider mb-0.5">
+                    <p className="text-[10px] text-jam-ink/50 font-black uppercase tracking-wider mb-0.5">
                       완성 보상
                     </p>
                   )}
                   <p className={[
-                    'text-xs font-medium leading-tight',
+                    'text-xs font-bold leading-tight',
                     isReward ? '' : 'text-center line-clamp-2',
-                    !isOwned ? 'text-white/20' : '',
+                    !isOwned ? 'text-jam-ink/30' : 'text-jam-ink',
                   ].join(' ')}>
                     {isOwned ? badge.name : '???'}
                   </p>
@@ -178,12 +168,12 @@ export default async function ItemBookDetailPage({ params }: Props) {
                     </div>
                   )}
                   {isOwned && earned?.earned_at && (
-                    <p className={`text-[10px] text-white/30 ${isReward ? 'mt-0.5' : 'text-center'}`}>
+                    <p className={`text-[10px] text-jam-ink/40 font-semibold ${isReward ? 'mt-0.5' : 'text-center'}`}>
                       {new Date(earned.earned_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} 획득
                     </p>
                   )}
                   {!isOwned && (
-                    <p className={`text-[10px] text-white/15 ${isReward ? '' : 'text-center'}`}>
+                    <p className={`text-[10px] text-jam-ink/25 font-semibold ${isReward ? '' : 'text-center'}`}>
                       {idx + 1}번째 배지
                     </p>
                   )}
@@ -202,17 +192,17 @@ export default async function ItemBookDetailPage({ params }: Props) {
             )
           })}
         </div>
-      </div>
 
-      {/* 완성 시 보상 카드 */}
-      {completed && book.reward_badge_id && (
-        <div className="px-5 pb-6">
-          <Card glow className="text-center py-4">
-            <p className="text-[#AEEA00] font-bold text-base mb-1">🎉 아이템북 완성!</p>
-            <p className="text-white/50 text-sm">보상 배지가 지급됐어요</p>
-          </Card>
-        </div>
-      )}
+        {/* 완성 시 보상 카드 */}
+        {completed && book.reward_badge_id && (
+          <div className="mt-5">
+            <Card glow className="bg-jam-lime text-center py-4">
+              <p className="text-jam-ink font-black text-base mb-1">🎉 아이템북 완성!</p>
+              <p className="text-jam-ink/60 text-sm font-semibold">보상 배지가 지급됐어요</p>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

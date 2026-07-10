@@ -36,7 +36,7 @@ const CALLBACK = '__jam_maps_ready__'
 
 function loadMapsScript(): Promise<void> {
   // 이미 로드됐으면 즉시 resolve
-  if (window.google?.maps) return Promise.resolve()
+  if ((window as any).google?.maps) return Promise.resolve()
 
   // 이미 로딩 중이면 콜백 대기
   if (document.querySelector('script[data-jam-maps]')) {
@@ -113,7 +113,7 @@ export default function MapView({ userLat, userLng, pois, onPoiSelect, selectedP
   // POI 마커 업데이트
   useEffect(() => {
     const map = mapInstanceRef.current
-    if (!map || !window.google?.maps) return
+    if (!map || !(window as any).google?.maps) return
 
     markersRef.current.forEach((m) => m.setMap(null))
     markersRef.current = []

@@ -14,7 +14,7 @@ export default function PoiMapButton({ lat, lng, poiName }: PoiMapButtonProps) {
       href={googleUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="block w-full text-center bg-white/10 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-white/20 transition-colors"
+      className="block w-full text-center bg-jam-ink text-white font-black py-2.5 rounded-xl text-sm border-2 border-jam-ink"
     >
       {poiName} 지도에서 보기 ↗
     </a>

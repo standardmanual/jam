@@ -100,14 +100,14 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#111111] border-t-transparent rounded-full animate-spin" />
+      <div className="h-full bg-jam-pink flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-jam-ink border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="px-5 py-4 flex flex-col gap-6">
+    <div className="min-h-full bg-jam-pink text-jam-ink px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 flex flex-col gap-6">
       {/* 프로필 헤더 */}
       <div className="flex items-center gap-4">
         {profile?.avatar_url ? (
@@ -115,37 +115,37 @@ export default function ProfilePage() {
           <img
             src={profile.avatar_url}
             alt="프로필"
-            className="w-16 h-16 rounded-2xl object-cover"
+            className="w-16 h-16 rounded-2xl object-cover border-[3px] border-jam-ink"
           />
         ) : (
-          <div className="w-16 h-16 rounded-2xl bg-[#E8E8E0] flex items-center justify-center text-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-white border-[3px] border-jam-ink flex items-center justify-center text-2xl">
             👤
           </div>
         )}
         <div>
-          <p className="font-black text-xl text-[#111111]">{profile?.display_name ?? '익명'}</p>
-          <p className="text-[#AAAAAA] text-sm">{profile?.email}</p>
+          <p className="font-black text-xl">{profile?.display_name ?? '익명'}</p>
+          <p className="text-jam-ink/60 text-sm font-semibold">{profile?.email}</p>
         </div>
       </div>
 
       {/* 활동 종목 */}
       <section>
-        <h2 className="font-black text-base text-[#111111] mb-3">활동 종목</h2>
-        <div className="grid grid-cols-2 gap-2">
+        <h2 className="font-black text-base mb-3">활동 종목</h2>
+        <div className="grid grid-cols-2 gap-3">
           {ACTIVITIES.map(({ type, emoji }) => {
             const selected = selectedActivities.includes(type)
             return (
               <button
                 key={type}
                 onClick={() => toggleActivity(type)}
-                className={`flex items-center gap-3 rounded-2xl px-4 py-4 border-2 transition-all active:scale-95 text-left ${
+                className={`flex items-center gap-3 rounded-2xl px-4 py-4 border-[3px] border-jam-ink transition-all active:scale-95 text-left ${
                   selected
-                    ? 'border-[#111111] bg-[#111111] text-white'
-                    : 'border-black/8 bg-white text-[#111111]'
+                    ? 'bg-jam-lime shadow-[3px_3px_0_0_#161616]'
+                    : 'bg-white/60'
                 }`}
               >
                 <span className="text-2xl">{emoji}</span>
-                <span className="text-sm font-bold">
+                <span className="text-sm font-black">
                   {ACTIVITY_TYPE_LABELS[type]}
                 </span>
               </button>
@@ -156,7 +156,7 @@ export default function ProfilePage() {
 
       {/* 지역 */}
       <section>
-        <h2 className="font-black text-base text-[#111111] mb-3">지역</h2>
+        <h2 className="font-black text-base mb-3">지역</h2>
         <div className="flex flex-wrap gap-2">
           {KR_REGIONS.map((region) => {
             const selected = selectedRegion === region
@@ -170,10 +170,10 @@ export default function ProfilePage() {
               <button
                 key={region}
                 onClick={() => setSelectedRegion(region)}
-                className={`px-3.5 py-2 rounded-xl text-sm font-bold transition-all active:scale-95 ${
+                className={`px-3.5 py-2 rounded-full text-sm font-bold border-2 border-jam-ink transition-all active:scale-95 ${
                   selected
-                    ? 'bg-[#111111] text-white'
-                    : 'bg-white border border-black/8 text-[#666666]'
+                    ? 'bg-jam-ink text-white'
+                    : 'bg-white/60 text-jam-ink/60'
                 }`}
               >
                 {short}
@@ -184,24 +184,24 @@ export default function ProfilePage() {
       </section>
 
       {/* Strava 연동 */}
-      <section className="bg-white rounded-2xl border border-black/6 p-4">
-        <h2 className="font-black text-base text-[#111111] mb-3">Strava 연동</h2>
+      <section className="bg-jam-cream rounded-3xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-5">
+        <h2 className="font-black text-base mb-3">Strava 연동</h2>
         {strava ? (
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FC4C02]" />
-            <span className="text-sm font-bold text-[#FC4C02]">연동됨</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#FC4C02] border border-jam-ink" />
+            <span className="text-sm font-black text-[#FC4C02]">연동됨</span>
             {strava.last_synced_at && (
-              <span className="text-sm text-[#AAAAAA] ml-1">
+              <span className="text-sm text-jam-ink/50 font-semibold ml-1">
                 · {formatRelativeTime(strava.last_synced_at)}
               </span>
             )}
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[#AAAAAA]">연동 안됨</span>
+            <span className="text-sm text-jam-ink/50 font-semibold">연동 안됨</span>
             <a
               href="/api/strava/auth"
-              className="px-4 py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-bold active:scale-95 transition-transform"
+              className="px-4 py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-black active:scale-95 transition-transform border-2 border-jam-ink"
             >
               Strava 연동
             </a>
@@ -210,7 +210,7 @@ export default function ProfilePage() {
       </section>
 
       {saveMessage && (
-        <p className={`text-sm font-bold text-center ${saveMessage.includes('실패') ? 'text-red-500' : 'text-[#111111]'}`}>
+        <p className={`text-sm font-bold text-center ${saveMessage.includes('실패') ? 'text-red-700' : 'text-jam-ink'}`}>
           {saveMessage}
         </p>
       )}
@@ -218,14 +218,14 @@ export default function ProfilePage() {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full py-4 rounded-2xl bg-[#111111] text-white font-black text-base active:scale-95 transition-all disabled:opacity-40"
+        className="w-full py-4 rounded-2xl bg-jam-ink text-white font-black text-base active:scale-95 transition-all disabled:opacity-40 border-[3px] border-jam-ink shadow-[3px_3px_0_0_rgba(0,0,0,0.3)]"
       >
         {saving ? '저장 중...' : '저장하기'}
       </button>
 
       <button
         onClick={handleLogout}
-        className="w-full py-4 rounded-2xl border-2 border-black/8 text-[#AAAAAA] font-bold text-base active:scale-95 transition-all"
+        className="w-full py-4 rounded-2xl border-[3px] border-jam-ink text-jam-ink font-black text-base active:scale-95 transition-all bg-white/60"
       >
         로그아웃
       </button>
