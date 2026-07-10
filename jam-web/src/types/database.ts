@@ -82,6 +82,7 @@ export interface InventoryItemRow {
   inventory_id: string
   badge_id: string
   serial_number: number
+  serial_prefix: string | null
   obtained_at: string
   obtained_by: ItemObtainedBy
   expires_at: string | null
