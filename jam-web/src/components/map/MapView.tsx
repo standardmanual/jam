@@ -97,7 +97,7 @@ export default function MapView({ userLat, userLng, pois, onPoiSelect, selectedP
       new google.maps.Circle({
         map,
         center: { lat: userLat, lng: userLng },
-        radius: 50,
+        radius: 500,
         fillColor: '#4285F4',
         fillOpacity: 0.08,
         strokeColor: '#4285F4',
