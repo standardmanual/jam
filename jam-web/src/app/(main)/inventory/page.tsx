@@ -19,9 +19,16 @@ function isExpiringSoon(expiresAt: string | null): boolean {
 }
 
 function formatExpiry(expiresAt: string | null): string {
-  if (!expiresAt) return '기간 없음'
+  if (!expiresAt) return ''
   const date = new Date(expiresAt)
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} 만료`
+  return `${date.getMonth() + 1}/${date.getDate()} 만료`
+}
+
+const rarityCardBg: Record<string, string> = {
+  common: 'bg-[#F0F0E8]',
+  rare: 'bg-[#D8F0F8]',
+  legendary: 'bg-[#F0E4FC]',
+  mythic: 'bg-[#FCF4D0]',
 }
 
 export default async function InventoryPage() {
@@ -45,96 +52,94 @@ export default async function InventoryPage() {
   const items: InventoryItemWithBadge[] = (inventory?.inventory_items ?? []).filter(
     (item) => item.dropped_at === null
   )
-  const emptyCount = Math.max(0, usedSlots - items.length)
   const remainingSlots = maxSlots - usedSlots
 
   return (
-    <div className="px-4 pt-5 pb-6 min-h-full">
-      {/* 슬롯 현황 */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-lg font-bold text-white">인벤토리</h1>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/combine"
-              className="text-xs font-bold text-[#AEEA00] bg-[#AEEA00]/10 border border-[#AEEA00]/30 px-3 py-1.5 rounded-full hover:bg-[#AEEA00]/20 transition-colors"
-            >
-              ⚗️ 아이템 조합
-            </Link>
-            <span className="text-sm text-white/50">
-              {usedSlots} / {maxSlots} 슬롯
-            </span>
+    <div className="px-5 py-4 min-h-full">
+      {/* 헤더 */}
+      <div className="mb-5">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <p className="text-[#AAAAAA] text-sm font-medium">내 아이템</p>
+            <h1 className="text-4xl font-black text-[#111111] leading-tight">인벤토리</h1>
           </div>
+          <Link
+            href="/combine"
+            className="mt-1 flex items-center gap-1.5 bg-[#AEEA00] text-[#111111] font-black text-sm px-3 py-2 rounded-xl active:scale-95 transition-all"
+          >
+            ⚗️ 조합
+          </Link>
         </div>
-        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#AEEA00] rounded-full transition-all"
-            style={{ width: `${Math.min(100, (usedSlots / maxSlots) * 100)}%` }}
-          />
+        {/* 슬롯 프로그레스 */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-1.5 bg-black/6 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#111111] rounded-full transition-all"
+              style={{ width: `${Math.min(100, (usedSlots / maxSlots) * 100)}%` }}
+            />
+          </div>
+          <span className="text-xs text-[#AAAAAA] font-medium shrink-0">{usedSlots}/{maxSlots}</span>
         </div>
-        <p className="mt-1.5 text-xs text-white/40">{remainingSlots}개 슬롯 남음</p>
+        <p className="mt-1 text-xs text-[#CCCCCC]">{remainingSlots}개 슬롯 남음</p>
       </div>
 
       {/* 아이템 그리드 */}
-      {items.length === 0 && usedSlots === 0 ? (
+      {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <span className="text-5xl mb-4">📦</span>
-          <p className="text-white/50 text-sm">아직 아이템이 없어요</p>
-          <p className="text-white/30 text-xs mt-1">활동을 완료하면 아이템 배지가 드랍됩니다</p>
+          <p className="text-[#AAAAAA] font-bold">아직 아이템이 없어요</p>
+          <p className="text-[#CCCCCC] text-xs mt-1">활동을 완료하면 아이템 배지가 드랍돼요</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-3">
-          {/* 획득한 아이템 */}
           {items.map((item) => {
             const expiring = isExpiringSoon(item.expires_at)
+            const cardBg = rarityCardBg[item.badge.rarity] ?? 'bg-[#F0F0E8]'
             return (
               <Link
                 key={item.id}
                 href={`/inventory/${item.id}`}
-                className="flex flex-col items-center bg-white/5 border border-white/10 rounded-xl p-3 gap-2 active:scale-95 transition-transform"
+                className={`flex flex-col items-center ${cardBg} rounded-2xl p-3 gap-2 active:scale-95 transition-transform`}
               >
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-white/10 flex items-center justify-center">
+                <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center">
                   {item.badge.image_url ? (
                     <Image
                       src={item.badge.image_url}
                       alt={item.badge.name}
-                      width={64}
-                      height={64}
+                      width={80}
+                      height={80}
                       className="object-cover w-full h-full"
                     />
                   ) : (
                     <span className="text-3xl">🏷️</span>
                   )}
                 </div>
-                <p className="text-[11px] text-white/80 text-center leading-tight line-clamp-2 font-medium">
+                <p className="text-[11px] text-[#111111] text-center leading-tight line-clamp-2 font-bold w-full">
                   {item.badge.name}
                 </p>
-                {item.expires_at && (
-                  <p className={`text-[10px] ${expiring ? 'text-red-400' : 'text-white/30'}`}>
-                    {formatExpiry(item.expires_at)}
-                  </p>
+                {expiring && item.expires_at && (
+                  <p className="text-[10px] text-red-500 font-bold">{formatExpiry(item.expires_at)}</p>
                 )}
               </Link>
             )
           })}
-
-          {/* 빈 슬롯 (점선 박스) */}
-          {Array.from({ length: Math.min(emptyCount + remainingSlots, 6) }).map((_, i) => (
+          {/* 빈 슬롯 */}
+          {Array.from({ length: Math.min(remainingSlots, Math.max(0, 6 - items.length)) }).map((_, i) => (
             <div
               key={`empty-${i}`}
-              className="flex flex-col items-center justify-center bg-transparent border border-dashed border-white/15 rounded-xl p-3 h-[118px]"
+              className="flex items-center justify-center border-2 border-dashed border-black/8 rounded-2xl aspect-square"
             >
-              <span className="text-white/15 text-2xl">+</span>
+              <span className="text-black/15 text-xl font-black">+</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* 플리마켓 진입 버튼 */}
-      <div className="fixed bottom-20 right-4">
+      {/* 플리마켓 */}
+      <div className="fixed bottom-24 right-4">
         <Link
           href="/inventory/flea-market"
-          className="flex items-center gap-2 bg-[#AEEA00] text-black font-bold text-sm px-4 py-3 rounded-full shadow-lg shadow-[#AEEA00]/20 active:scale-95 transition-transform"
+          className="flex items-center gap-2 bg-[#111111] text-white font-bold text-sm px-4 py-3 rounded-full active:scale-95 transition-transform"
         >
           <span>🛒</span>
           <span>플리마켓</span>
