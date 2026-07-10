@@ -15,7 +15,7 @@ const EARTH_RADIUS_M = 6_371_000 // 지구 반지름 (미터)
 /**
  * 두 좌표 사이의 거리(미터)를 Haversine 공식으로 계산
  */
-function haversineDistance(
+export function haversineDistance(
   lat1: number,
   lng1: number,
   lat2: number,

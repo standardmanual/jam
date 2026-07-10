@@ -42,7 +42,9 @@ export default async function InventoryPage() {
 
   const usedSlots = inventory?.used_slots ?? 0
   const maxSlots = inventory?.max_slots ?? 50
-  const items: InventoryItemWithBadge[] = inventory?.inventory_items ?? []
+  const items: InventoryItemWithBadge[] = (inventory?.inventory_items ?? []).filter(
+    (item) => item.dropped_at === null
+  )
   const emptyCount = Math.max(0, usedSlots - items.length)
   const remainingSlots = maxSlots - usedSlots
 

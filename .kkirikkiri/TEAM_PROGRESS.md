@@ -1,4 +1,28 @@
-# 진행 상황 — Phase 2
+# 진행 상황 — Phase 6 + Admin
+
+## 2026-07-09 — jam-lead (Phase 6 Admin 인프라) 완료
+
+### 생성 파일
+- [x] `src/app/(admin)/layout.tsx` — ADMIN_SECRET 쿠키 검증 미들웨어 (불일치 시 /admin/login 리다이렉트)
+- [x] `src/app/(admin)/admin/login/page.tsx` — 클라이언트 로그인 폼 (POST /api/admin/auth → /admin 리다이렉트)
+- [x] `src/app/api/admin/auth/route.ts` — POST: password 검증 후 admin_token 쿠키 세팅 (httpOnly, 7일)
+- [x] `src/app/(admin)/admin/page.tsx` — Admin 홈 (배지/POI/드랍/테스트/유저통계 메뉴)
+- [x] `supabase/migrations/003_phase6_drops.sql` — drop_events, drop_claims, drop_probability 테이블 + RLS
+- [x] `src/types/database.ts` — DropRarity, DropEventRow, DropClaimRow, DropProbabilityRow 추가 + Database 인터페이스 확장
+- [x] `.env.local` — `# ADMIN_SECRET=` 주석 항목 추가
+
+### 다음 단계
+- jam-admin-content: 배지 CRUD + POI CRUD + 드랍 확률 관리 페이지 구현
+- jam-admin-test: 테스트 도구 + 유저 통계 대시보드 구현
+- jam-phase6: 드랍/픽업 백엔드 로직 + 유저 UI 구현
+- 운영: Supabase 콘솔에서 003_phase6_drops.sql 실행 필요, .env.local ADMIN_SECRET 값 설정 필요
+
+## 2026-07-09 — 메인세션 (Phase 6 + Admin 시작)
+- 팀: jam-lead, jam-admin-content, jam-admin-test, jam-phase6
+
+---
+
+# (이전 기록)
 
 ## 2026-07-09 — 메인세션
 - 상태: Phase 2 팀 초기화
