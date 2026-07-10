@@ -88,14 +88,14 @@ export default function ShareCardModal({ badgeId, badgeName }: ShareCardModalPro
           onClick={handleClose}
         >
           <div
-            className="bg-[#1a1a1a] rounded-3xl p-5 w-full max-w-sm flex flex-col gap-4"
+            className="bg-jam-cream text-jam-ink rounded-[2rem] border-[3px] border-jam-ink p-5 w-full max-w-sm flex flex-col gap-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-lg">공유 카드</h2>
+              <h2 className="font-black text-lg">공유 카드</h2>
               <button
                 onClick={handleClose}
-                className="text-white/40 hover:text-white text-2xl leading-none"
+                className="text-jam-ink/40 hover:text-jam-ink text-2xl leading-none font-black"
               >
                 ×
               </button>

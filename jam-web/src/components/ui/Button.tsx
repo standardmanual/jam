@@ -12,19 +12,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-[#111111] text-white font-bold hover:bg-[#333333] active:scale-95',
+    'bg-jam-ink text-white border-[3px] border-jam-ink font-black shadow-[3px_3px_0_0_#161616] hover:shadow-[1px_1px_0_0_#161616] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]',
   secondary:
-    'bg-transparent border-2 border-[#111111] text-[#111111] font-bold hover:bg-black/5 active:scale-95',
+    'bg-white text-jam-ink border-[3px] border-jam-ink font-black shadow-[3px_3px_0_0_#161616] hover:shadow-[1px_1px_0_0_#161616] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]',
   ghost:
-    'bg-transparent text-[#666666] hover:text-[#111111] hover:bg-black/5 active:scale-95',
+    'bg-transparent text-jam-ink/70 hover:text-jam-ink hover:bg-jam-ink/10 active:scale-95 font-bold',
   danger:
-    'bg-red-500 text-white font-bold hover:bg-red-600 active:scale-95',
+    'bg-red-600 text-white border-[3px] border-jam-ink font-black shadow-[3px_3px_0_0_#161616] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5 text-sm rounded-xl',
   md: 'px-5 py-2.5 text-base rounded-2xl',
-  lg: 'px-6 py-3.5 text-base font-black rounded-2xl',
+  lg: 'px-6 py-3.5 text-lg rounded-[1.75rem]',
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
