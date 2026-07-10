@@ -83,7 +83,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
         <div className="flex items-center gap-2">
           <RarityBadge rarity={item.badge.rarity} />
           <span className="text-white/40 text-xs font-mono">
-            #{String(item.serial_number).padStart(4, '0')}
+            {item.serial_prefix ?? '????'}{String(item.serial_number).padStart(6, '0')}
           </span>
         </div>
       </div>
@@ -95,9 +95,9 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
         </div>
         <div className="divide-y divide-white/5">
           <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-white/50">시리얼 넘버</span>
-            <span className="text-sm text-white font-mono">
-              #{String(item.serial_number).padStart(4, '0')}
+            <span className="text-sm text-white/50">일련번호</span>
+            <span className="text-sm text-white font-mono tracking-widest">
+              {item.serial_prefix ?? '????'}{String(item.serial_number).padStart(6, '0')}
             </span>
           </div>
           <div className="flex justify-between items-center px-4 py-3">
