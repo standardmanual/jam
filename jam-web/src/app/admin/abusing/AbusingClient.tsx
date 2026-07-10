@@ -227,6 +227,18 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
               </div>
             </label>
             <label className="flex flex-col gap-1">
+              <span className="text-xs text-white/50">차량 속도 필터 (km/h) — 이 속도를 초과하는 활동은 배지 평가에서 제외 (Phase 18)</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={policy.vehicle_speed_filter_kmh}
+                  onChange={(e) => policySet('vehicle_speed_filter_kmh', parseInt(e.target.value) || 60)}
+                  className="w-28 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#AEEA00]/50"
+                />
+                <span className="text-sm text-white/40">km/h (기본: 60)</span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1">
               <span className="text-xs text-white/50">POI 블록 지속 시간 (시간)</span>
               <div className="flex items-center gap-3">
                 <input

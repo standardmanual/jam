@@ -54,9 +54,17 @@ export default async function InventoryPage() {
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <h1 className="text-lg font-bold text-white">인벤토리</h1>
-          <span className="text-sm text-white/50">
-            {usedSlots} / {maxSlots} 슬롯
-          </span>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/combine"
+              className="text-xs font-bold text-[#AEEA00] bg-[#AEEA00]/10 border border-[#AEEA00]/30 px-3 py-1.5 rounded-full hover:bg-[#AEEA00]/20 transition-colors"
+            >
+              ⚗️ 아이템 조합
+            </Link>
+            <span className="text-sm text-white/50">
+              {usedSlots} / {maxSlots} 슬롯
+            </span>
+          </div>
         </div>
         <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
           <div

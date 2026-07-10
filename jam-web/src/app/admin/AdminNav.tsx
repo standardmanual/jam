@@ -12,6 +12,8 @@ const NAV_ITEMS = [
   { href: '/admin/simulator', label: '시뮬레이터', icon: '🎮' },
   { href: '/admin/users', label: '유저 조회', icon: '👥' },
   { href: '/admin/abusing', label: '어뷰징 관리', icon: '🚨' },
+  { href: '/admin/recipes', label: '조합 레시피', icon: '⚗️' },
+  { href: '/admin/missions', label: '미션 관리', icon: '🎯' },
 ]
 
 function isActive(pathname: string, item: (typeof NAV_ITEMS)[number]) {

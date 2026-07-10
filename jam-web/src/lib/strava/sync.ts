@@ -12,6 +12,7 @@ import { evaluateBadges } from '@/lib/badge-engine/index'
 import { tryItemDrop } from '@/lib/drop-engine/index'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { checkItemBookCompletion } from '@/lib/itembook/checker'
+import { checkMissions } from '@/lib/missions/checker'
 import { STRAVA_TYPE_TO_JAM, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
 import type { StravaConnectionRow } from '@/types/database'
@@ -44,7 +45,7 @@ function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity 
  */
 export async function syncStravaActivities(
   userId: string
-): Promise<{ synced: number; badges: number; itemBooksCompleted: number }> {
+): Promise<{ synced: number; badges: number; itemBooksCompleted: number; missionsCompleted: number }> {
   const supabase = createServiceClient()
 
   // 1. strava_connections 조회
@@ -155,15 +156,35 @@ export async function syncStravaActivities(
     }
   }
 
-  // 8. 일반 배지 엔진 호출 (activity 조건 기반)
-  const badgesEarned = activities.length > 0
-    ? await evaluateBadges(userId, activities)
+  // 8. Phase 18: 차량 속도 필터 적용 — 어뷰징 정책에서 임계값 조회
+  let vehicleSpeedFilterKmh = 60
+  const { data: abusingPolicy } = await supabase
+    .from('abusing_policy')
+    .select('vehicle_speed_filter_kmh')
+    .limit(1)
+    .single()
+  if (abusingPolicy && (abusingPolicy as { vehicle_speed_filter_kmh?: number }).vehicle_speed_filter_kmh) {
+    vehicleSpeedFilterKmh = (abusingPolicy as { vehicle_speed_filter_kmh: number }).vehicle_speed_filter_kmh
+  }
+  const activitiesFiltered = activities.filter(
+    (a) => a.averageSpeedKmh <= vehicleSpeedFilterKmh
+  )
+
+  // 9. 일반 배지 엔진 호출 (속도 필터 통과한 활동만)
+  const badgesEarned = activitiesFiltered.length > 0
+    ? await evaluateBadges(userId, activitiesFiltered)
     : 0
 
-  // 9. 아이템북 완성 체크 + reward_badge 발급
+  // 10. 아이템북 완성 체크 + reward_badge 발급
   const { completedIds, rewardBadgesIssued } = await checkItemBookCompletion(userId)
   if (completedIds.length > 0) {
     console.info(`[syncStravaActivities] 아이템북 완성 — userId: ${userId}, 완성 수: ${completedIds.length}, 보상 배지: ${rewardBadgesIssued}`)
+  }
+
+  // 11. Phase 16: 다이나믹 미션 달성 체크
+  const { completedMissionIds } = await checkMissions(userId, activitiesFiltered)
+  if (completedMissionIds.length > 0) {
+    console.info(`[syncStravaActivities] 미션 달성 — userId: ${userId}, 수: ${completedMissionIds.length}`)
   }
 
   // 10. last_synced_at 업데이트
@@ -178,5 +199,10 @@ export async function syncStravaActivities(
     console.error('[syncStravaActivities] last_synced_at 업데이트 실패:', syncUpdateError)
   }
 
-  return { synced: activities.length, badges: badgesEarned + poiBadgesEarned + rewardBadgesIssued, itemBooksCompleted: completedIds.length }
+  return {
+    synced: activities.length,
+    badges: badgesEarned + poiBadgesEarned + rewardBadgesIssued,
+    itemBooksCompleted: completedIds.length,
+    missionsCompleted: completedMissionIds.length,
+  }
 }

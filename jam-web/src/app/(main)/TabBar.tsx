@@ -64,6 +64,14 @@ function DropIcon() {
   )
 }
 
+function MissionIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  )
+}
+
 function ProfileIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
@@ -84,6 +92,7 @@ export default function TabBar() {
     { href: '/', label: '홈', icon: <HomeIcon /> },
     { href: '/badges', label: '배지', icon: <BadgeIcon /> },
     { href: '/drops', label: '드랍', icon: <DropIcon /> },
+    { href: '/missions', label: '미션', icon: <MissionIcon /> },
     { href: '/inventory', label: '인벤토리', icon: <InventoryIcon /> },
     { href: '/profile', label: '프로필', icon: <ProfileIcon /> },
   ]
