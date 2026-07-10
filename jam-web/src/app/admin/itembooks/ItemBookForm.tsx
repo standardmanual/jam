@@ -17,6 +17,7 @@ export default function ItemBookForm({ book, activityBadges, itemBadges, allBadg
 
   const [name, setName] = useState(book?.name ?? '')
   const [description, setDescription] = useState(book?.description ?? '')
+  const [imageUrl, setImageUrl] = useState(book?.image_url ?? '')
   const [requiredActivityBadgeId, setRequiredActivityBadgeId] = useState(
     book?.required_activity_badge_id ?? ''
   )
@@ -43,6 +44,7 @@ export default function ItemBookForm({ book, activityBadges, itemBadges, allBadg
     const body = {
       name,
       description,
+      image_url: imageUrl || null,
       required_activity_badge_id: requiredActivityBadgeId,
       required_item_badge_ids: requiredItemBadgeIds,
       reward_badge_id: rewardBadgeId || null,
@@ -99,6 +101,20 @@ export default function ItemBookForm({ book, activityBadges, itemBadges, allBadg
           className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
           placeholder="예: 서울 라이더 컬렉션"
         />
+      </label>
+
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm text-white/60">이미지 URL</span>
+        <input
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+          placeholder="https://..."
+        />
+        {imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt="미리보기" className="w-16 h-16 rounded-xl object-cover mt-1" />
+        )}
       </label>
 
       <label className="flex flex-col gap-1.5">

@@ -67,6 +67,10 @@ export interface UserActivityBadgeRow {
   /** Phase 2: POI 인증으로 발급된 경우 연결된 POI ID */
   triggered_by_poi_id: string | null
   share_card_url: string | null
+  triggered_by_strava_id: number | null
+  triggered_by_activity_name: string | null
+  triggered_by_distance_km: number | null
+  triggered_by_activity_date: string | null
 }
 
 export interface InventoryRow {
@@ -105,6 +109,7 @@ export interface ItemBookRow {
   id: string
   name: string
   description: string
+  image_url: string | null
   required_activity_badge_id: string
   required_item_badge_ids: string[] // UUID 배열
   reward_badge_id: string | null

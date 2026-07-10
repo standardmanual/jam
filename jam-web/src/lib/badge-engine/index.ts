@@ -60,6 +60,11 @@ export async function evaluateBadges(
 
     if (!qualified) continue
 
+    // 발급 트리거 액티비티: 조건의 activity_type과 맞는 가장 최근 활동
+    const triggerActivity = condition.activity_type
+      ? activities.find((a) => a.jamActivityType === condition.activity_type)
+      : activities[0]
+
     // 4. 배지 발급 (INSERT)
     const { error: insertError } = await supabase
       .from('user_activity_badges')
@@ -68,6 +73,10 @@ export async function evaluateBadges(
         user_id: userId,
         badge_id: badge.id,
         triggered_by: 'strava_sync',
+        triggered_by_strava_id: triggerActivity?.stravaId ?? null,
+        triggered_by_activity_name: triggerActivity?.name ?? null,
+        triggered_by_distance_km: triggerActivity?.distanceKm ?? null,
+        triggered_by_activity_date: triggerActivity?.startDate ?? null,
       } as any)
 
     if (insertError) {
