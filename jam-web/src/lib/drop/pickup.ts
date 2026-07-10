@@ -48,7 +48,8 @@ export async function processDropPickups(
     if (!inRange) continue
 
     // 3. drop_claims INSERT (UNIQUE 충돌 = 이미 픽업, 무시)
-    const { error: claimError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: claimError } = await (supabase as any)
       .from('drop_claims')
       .insert({
         drop_event_id: event.id,
@@ -105,7 +106,8 @@ export async function processDropPickups(
       continue
     }
 
-    const { error: itemError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: itemError } = await (supabase as any)
       .from('inventory_items')
       .insert({
         inventory_id: inv.id,
