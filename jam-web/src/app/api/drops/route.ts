@@ -104,7 +104,6 @@ export async function GET(req: NextRequest) {
       .select('poi_id')
       .in('poi_id', dbPoiIds)
       .eq('is_available', true)
-      .neq('dropper_user_id', user.id)
 
     const dropCountByPoi: Record<string, number> = {}
     for (const d of dropsRaw ?? []) {

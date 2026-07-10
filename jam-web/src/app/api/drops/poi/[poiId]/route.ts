@@ -21,7 +21,6 @@ export async function GET(
     .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
-    .neq('dropper_user_id', user.id)
     .order('dropped_at', { ascending: true })
 
   if (error) {

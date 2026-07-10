@@ -203,7 +203,6 @@ export default function DropsClient() {
         const msg: Record<string, string> = {
           already_picked_up: '이미 픽업된 아이템이에요',
           inventory_full: '인벤토리가 꽉 찼어요',
-          cannot_pickup_own_drop: '본인 드랍은 픽업할 수 없어요',
         }
         toast(msg[err.error] ?? err.error ?? '픽업 실패', 'error')
         return
