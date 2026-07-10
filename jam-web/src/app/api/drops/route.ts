@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { getNearbyPois, isUserNearPoi, haversineDistance, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
+import { isUserNearPoi, haversineDistance, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import { fetchNearbyOsmPois } from '@/lib/poi/overpass'
 import type { PoiRow, InventoryItemRow } from '@/types/database'
 
@@ -18,44 +18,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'lat, lng 파라미터 필요' }, { status: 400 })
   }
 
-  const isDebug = searchParams.get('debug') === '1'
-
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
 
   const service = createServiceClient()
-  const dbg: Record<string, unknown> = {}
 
-  // T1: DB POI 전체 로드 → 500m 이내 필터
-  const { data: poisRaw, error: dbPoiError } = await service.from('poi').select('*')
-  dbg.db_poi_total = poisRaw?.length ?? 0
-  dbg.db_poi_error = dbPoiError?.message ?? null
+  // T1: DB POI 전체 로드
+  const { data: poisRaw } = await service.from('poi').select('*')
   const allDbPois = (poisRaw ?? []) as PoiRow[]
-  const nearbyDbPois = allDbPois.filter(
-    (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= OSM_RADIUS_M
-  )
-  dbg.db_poi_nearby = nearbyDbPois.length
 
   // T2: OSM POI 조회 (실패해도 T1은 반환)
   let osmPois: Awaited<ReturnType<typeof fetchNearbyOsmPois>> = []
-  let osmError: string | null = null
   try {
     osmPois = await fetchNearbyOsmPois(lat, lng, OSM_RADIUS_M)
-  } catch (e: any) {
-    osmError = String(e?.message ?? e)
+  } catch {
+    // OSM 조회 실패 — T1만 사용
   }
-  dbg.osm_fetched = osmPois.length
-  dbg.osm_error = osmError
-  dbg.osm_sample = osmPois.slice(0, 5).map((p) => p.name)
 
-  // OSM POI 중 이미 DB에 없는 것만 upsert
+  // 신규 OSM POI만 DB에 저장
   const osmIdMap = new Map(allDbPois.filter((p) => p.osm_id).map((p) => [p.osm_id!, p.id]))
   const newOsmPois = osmPois.filter((p) => !osmIdMap.has(p.osmId))
-  dbg.osm_new = newOsmPois.length
-
-  // 신규 OSM POI를 DB에 upsert (실패해도 OSM 결과는 그대로 반환)
-  let upsertedOsmIds = new Set<string>()
   if (newOsmPois.length > 0) {
     const inserts = newOsmPois.map((p) => ({
       name: p.name,
@@ -66,57 +49,52 @@ export async function GET(req: NextRequest) {
       osm_id: p.osmId,
       poi_tier: 2,
     }))
-    const { data: upserted, error: upsertError } = await (service as any)
+    const { data: inserted, error: insertError } = await (service as any)
       .from('poi')
       .insert(inserts)
       .select('id, osm_id')
-    dbg.upsert_error = upsertError?.message ?? null
-    dbg.upserted_count = (upserted ?? []).length
-    if (!upsertError) {
-      for (const row of upserted ?? []) osmIdMap.set(row.osm_id, row.id)
+    if (!insertError) {
+      for (const row of inserted ?? []) osmIdMap.set(row.osm_id, row.id)
     }
-    upsertedOsmIds = new Set(newOsmPois.map((p) => p.osmId))
   }
 
-  // 최신 DB POI 재조회 (upsert 후 500m 이내)
+  // 최신 DB POI 재조회 → 500m 이내 필터
   const { data: poisRaw2 } = await service.from('poi').select('*')
   const allDbPois2 = (poisRaw2 ?? []) as PoiRow[]
   const nearbyDbPois2 = allDbPois2.filter(
     (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= OSM_RADIUS_M
   )
 
-  // DB에 저장된 POI 목록
-  const dbPoisMapped = nearbyDbPois2.map((p) => ({
-    id: p.id,
-    osm_id: p.osm_id,
-    name: p.name,
-    latitude: p.latitude,
-    longitude: p.longitude,
-    poi_tier: p.poi_tier ?? 1,
-    distance_meters: Math.round(haversineDistance(lat, lng, p.latitude, p.longitude)),
-    in_drop_range: haversineDistance(lat, lng, p.latitude, p.longitude) <= DROP_RADIUS_METERS,
-    available_drops_count: 0,
-  }))
-
-  // upsert 실패한 경우 OSM POI를 임시 객체로 포함 (드랍 불가, 지도 표시용)
-  const savedOsmIds = new Set(nearbyDbPois2.map((p) => p.osm_id).filter(Boolean))
-  const fallbackOsmPois = newOsmPois
+  // 저장 실패한 OSM POI는 fallback으로 포함 (지도 표시용, 드랍 불가)
+  const savedOsmIds = new Set(allDbPois2.map((p) => p.osm_id).filter(Boolean))
+  const fallbackPois = newOsmPois
     .filter((p) => !savedOsmIds.has(p.osmId))
     .map((p) => ({
-      id: p.osmId,  // 임시 ID로 osmId 사용
+      id: p.osmId,
       osm_id: p.osmId,
       name: p.name,
       latitude: p.latitude,
       longitude: p.longitude,
       poi_tier: 2,
       distance_meters: Math.round(haversineDistance(lat, lng, p.latitude, p.longitude)),
-      in_drop_range: false,  // DB에 없으면 드랍 불가
+      in_drop_range: false,
       available_drops_count: 0,
     }))
 
-  dbg.fallback_osm_count = fallbackOsmPois.length
-
-  const allPois = [...dbPoisMapped, ...fallbackOsmPois]
+  const allPois = [
+    ...nearbyDbPois2.map((p) => ({
+      id: p.id,
+      osm_id: p.osm_id,
+      name: p.name,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      poi_tier: p.poi_tier ?? 1,
+      distance_meters: Math.round(haversineDistance(lat, lng, p.latitude, p.longitude)),
+      in_drop_range: haversineDistance(lat, lng, p.latitude, p.longitude) <= DROP_RADIUS_METERS,
+      available_drops_count: 0,
+    })),
+    ...fallbackPois,
+  ]
 
   // 드랍 카운트: DB POI에만 조회
   const dbPoiIds = nearbyDbPois2.map((p) => p.id).filter(Boolean)
@@ -138,8 +116,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  dbg.final_poi_count = allPois.length
-  return NextResponse.json({ pois: allPois, ...(isDebug ? { debug: dbg } : {}) })
+  return NextResponse.json({ pois: allPois })
 }
 
 export async function POST(req: NextRequest) {
