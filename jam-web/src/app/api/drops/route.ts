@@ -18,34 +18,44 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'lat, lng 파라미터 필요' }, { status: 400 })
   }
 
+  const isDebug = searchParams.get('debug') === '1'
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
 
   const service = createServiceClient()
+  const dbg: Record<string, unknown> = {}
 
-  // T1: DB POI 전체 로드 → 500m 이내 필터 (지도 표시용, 드랍은 50m만)
-  const { data: poisRaw } = await service.from('poi').select('*')
+  // T1: DB POI 전체 로드 → 500m 이내 필터
+  const { data: poisRaw, error: dbPoiError } = await service.from('poi').select('*')
+  dbg.db_poi_total = poisRaw?.length ?? 0
+  dbg.db_poi_error = dbPoiError?.message ?? null
   const allDbPois = (poisRaw ?? []) as PoiRow[]
   const nearbyDbPois = allDbPois.filter(
     (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= OSM_RADIUS_M
   )
+  dbg.db_poi_nearby = nearbyDbPois.length
 
   // T2: OSM POI 조회 (실패해도 T1은 반환)
   let osmPois: Awaited<ReturnType<typeof fetchNearbyOsmPois>> = []
+  let osmError: string | null = null
   try {
     osmPois = await fetchNearbyOsmPois(lat, lng, OSM_RADIUS_M)
-  } catch (e) {
-    console.warn('[drops/nearby] OSM 조회 실패, T1만 반환:', e)
+  } catch (e: any) {
+    osmError = String(e?.message ?? e)
   }
+  dbg.osm_fetched = osmPois.length
+  dbg.osm_error = osmError
+  dbg.osm_sample = osmPois.slice(0, 5).map((p) => p.name)
 
   // OSM POI 중 이미 DB에 없는 것만 upsert
   const osmIdMap = new Map(allDbPois.filter((p) => p.osm_id).map((p) => [p.osm_id!, p.id]))
   const newOsmPois = osmPois.filter((p) => !osmIdMap.has(p.osmId))
+  dbg.osm_new = newOsmPois.length
 
-  // 신규 OSM POI를 DB에 upsert (osm_id 충돌 시 무시)
+  // 신규 OSM POI를 DB에 upsert
   if (newOsmPois.length > 0) {
-    console.log(`[drops] OSM upsert 시도: ${newOsmPois.length}개`)
     const inserts = newOsmPois.map((p) => ({
       name: p.name,
       latitude: p.latitude,
@@ -59,13 +69,10 @@ export async function GET(req: NextRequest) {
       .from('poi')
       .upsert(inserts, { onConflict: 'osm_id', ignoreDuplicates: true })
       .select('id, osm_id')
-    if (upsertError) {
-      console.error('[drops] OSM upsert 실패:', upsertError.message)
-    } else {
-      console.log(`[drops] OSM upsert 완료: ${(upserted ?? []).length}개 저장`)
-      for (const row of upserted ?? []) {
-        osmIdMap.set(row.osm_id, row.id)
-      }
+    dbg.upsert_error = upsertError?.message ?? null
+    dbg.upserted_count = (upserted ?? []).length
+    if (!upsertError) {
+      for (const row of upserted ?? []) osmIdMap.set(row.osm_id, row.id)
     }
   }
 
@@ -109,7 +116,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ pois: allPois })
+  dbg.final_poi_count = allPois.length
+  return NextResponse.json({ pois: allPois, ...(isDebug ? { debug: dbg } : {}) })
 }
 
 export async function POST(req: NextRequest) {
