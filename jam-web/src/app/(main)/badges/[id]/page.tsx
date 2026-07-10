@@ -107,11 +107,42 @@ export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) 
               <span className="text-sm text-white/50">획득 일시</span>
               <span className="text-sm font-medium">{formatDateTime(earned.earned_at)}</span>
             </div>
-            {earned.triggered_by && (
+            {earned.triggered_by_activity_name && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-white/50">트리거 활동</span>
-                <span className="text-sm font-medium">{earned.triggered_by}</span>
+                <span className="text-sm font-medium truncate max-w-[180px] text-right">
+                  {earned.triggered_by_activity_name}
+                </span>
               </div>
+            )}
+            {earned.triggered_by_distance_km && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-white/50">활동 거리</span>
+                <span className="text-sm font-medium">{earned.triggered_by_distance_km} km</span>
+              </div>
+            )}
+            {earned.triggered_by_activity_date && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-white/50">활동 일자</span>
+                <span className="text-sm font-medium">
+                  {new Date(earned.triggered_by_activity_date).toLocaleDateString('ko-KR', {
+                    year: 'numeric', month: 'long', day: 'numeric',
+                  })}
+                </span>
+              </div>
+            )}
+            {earned.triggered_by_strava_id && (
+              <a
+                href={`https://www.strava.com/activities/${earned.triggered_by_strava_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-[#FC4C02]/10 border border-[#FC4C02]/30 text-[#FC4C02] text-sm font-medium hover:bg-[#FC4C02]/20 transition-colors"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                  <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+                </svg>
+                Strava에서 보기
+              </a>
             )}
           </div>
         </Card>

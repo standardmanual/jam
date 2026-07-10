@@ -197,13 +197,23 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                   const pct = Math.round((progress.owned / progress.total) * 100)
                   return (
                     <Card key={book.id} className={progress.completed ? 'border-[#AEEA00]/40' : ''}>
-                      <div className="flex items-start justify-between mb-1">
-                        <h3 className="font-bold text-base">{book.name}</h3>
-                        {progress.completed && (
-                          <span className="text-[#AEEA00] text-sm font-bold ml-2 shrink-0">완성 ✓</span>
+                      <div className="flex gap-3 mb-3">
+                        {book.image_url && (
+                          <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/5 shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={book.image_url} alt={book.name} className="w-full h-full object-cover" />
+                          </div>
                         )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between">
+                            <h3 className="font-bold text-base leading-tight">{book.name}</h3>
+                            {progress.completed && (
+                              <span className="text-[#AEEA00] text-sm font-bold ml-2 shrink-0">완성 ✓</span>
+                            )}
+                          </div>
+                          <p className="text-white/50 text-sm mt-0.5">{book.description}</p>
+                        </div>
                       </div>
-                      <p className="text-white/50 text-sm mb-3">{book.description}</p>
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
                           <div
