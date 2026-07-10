@@ -54,14 +54,15 @@ export async function GET(req: NextRequest) {
   const newOsmPois = osmPois.filter((p) => !osmIdMap.has(p.osmId))
   dbg.osm_new = newOsmPois.length
 
-  // 신규 OSM POI를 DB에 upsert
+  // 신규 OSM POI를 DB에 upsert (실패해도 OSM 결과는 그대로 반환)
+  let upsertedOsmIds = new Set<string>()
   if (newOsmPois.length > 0) {
     const inserts = newOsmPois.map((p) => ({
       name: p.name,
       latitude: p.latitude,
       longitude: p.longitude,
       radius_meters: 500,
-      category: 'other',
+      category: 'other' as const,
       osm_id: p.osmId,
       poi_tier: 2,
     }))
@@ -74,6 +75,7 @@ export async function GET(req: NextRequest) {
     if (!upsertError) {
       for (const row of upserted ?? []) osmIdMap.set(row.osm_id, row.id)
     }
+    upsertedOsmIds = new Set(newOsmPois.map((p) => p.osmId))
   }
 
   // 최신 DB POI 재조회 (upsert 후 500m 이내)
@@ -83,8 +85,8 @@ export async function GET(req: NextRequest) {
     (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= OSM_RADIUS_M
   )
 
-  // 전체 POI 목록 통합 (DB + upsert된 OSM)
-  const allPois = nearbyDbPois2.map((p) => ({
+  // DB에 저장된 POI 목록
+  const dbPoisMapped = nearbyDbPois2.map((p) => ({
     id: p.id,
     osm_id: p.osm_id,
     name: p.name,
@@ -95,6 +97,26 @@ export async function GET(req: NextRequest) {
     in_drop_range: haversineDistance(lat, lng, p.latitude, p.longitude) <= DROP_RADIUS_METERS,
     available_drops_count: 0,
   }))
+
+  // upsert 실패한 경우 OSM POI를 임시 객체로 포함 (드랍 불가, 지도 표시용)
+  const savedOsmIds = new Set(nearbyDbPois2.map((p) => p.osm_id).filter(Boolean))
+  const fallbackOsmPois = newOsmPois
+    .filter((p) => !savedOsmIds.has(p.osmId))
+    .map((p) => ({
+      id: p.osmId,  // 임시 ID로 osmId 사용
+      osm_id: p.osmId,
+      name: p.name,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      poi_tier: 2,
+      distance_meters: Math.round(haversineDistance(lat, lng, p.latitude, p.longitude)),
+      in_drop_range: false,  // DB에 없으면 드랍 불가
+      available_drops_count: 0,
+    }))
+
+  dbg.fallback_osm_count = fallbackOsmPois.length
+
+  const allPois = [...dbPoisMapped, ...fallbackOsmPois]
 
   // 드랍 카운트: DB POI에만 조회
   const dbPoiIds = nearbyDbPois2.map((p) => p.id).filter(Boolean)
