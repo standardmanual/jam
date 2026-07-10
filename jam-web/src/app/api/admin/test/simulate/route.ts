@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   // 조건 매칭
   const matchedBadges: Array<{ id: string; name: string }> = []
 
-  for (const badge of allBadges ?? []) {
+  for (const badge of (allBadges ?? []) as any[]) {
     const cond = badge.condition_json as {
       activity_type?: string
       min_distance_km?: number
@@ -55,13 +55,13 @@ export async function POST(request: NextRequest) {
     // activity_types 배열 확인 (있는 경우)
     if (
       badge.activity_types &&
-      badge.activity_types.length > 0 &&
-      !badge.activity_types.includes(activityType as ActivityType)
+      (badge.activity_types as string[]).length > 0 &&
+      !(badge.activity_types as string[]).includes(activityType)
     ) {
       continue
     }
 
-    matchedBadges.push({ id: badge.id, name: badge.name })
+    matchedBadges.push({ id: badge.id as string, name: badge.name as string })
   }
 
   // 이미 보유한 배지 제외 + 미보유 배지 INSERT
@@ -109,23 +109,25 @@ export async function POST(request: NextRequest) {
 
   if (inventoryBefore) {
     // 드랍 후 새로 추가된 inventory_items 확인
-    const { data: newItem } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newItem } = await (supabase as any)
       .from('inventory_items')
       .select('badge_id, obtained_at')
-      .eq('inventory_id', inventoryBefore.id)
+      .eq('inventory_id', (inventoryBefore as any).id)
       .eq('obtained_by', 'drop')
       .order('obtained_at', { ascending: false })
       .limit(1)
       .maybeSingle()
 
     if (newItem) {
-      const { data: badgeInfo } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: badgeInfo } = await (supabase as any)
         .from('badges')
         .select('name')
-        .eq('id', newItem.badge_id)
+        .eq('id', (newItem as any).badge_id)
         .maybeSingle()
 
-      droppedItemName = badgeInfo?.name ?? null
+      droppedItemName = (badgeInfo as any)?.name ?? null
     }
   }
 
