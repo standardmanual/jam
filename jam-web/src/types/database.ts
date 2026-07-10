@@ -118,6 +118,8 @@ export interface PoiRow {
   radius_meters: number
   category: PoiCategory
   linked_badge_id: string | null
+  osm_id: string | null
+  poi_tier: number
   created_at: string
 }
 

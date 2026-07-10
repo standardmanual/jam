@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { getNearbyPois, isUserNearPoi } from '@/lib/poi/proximity'
+import { getNearbyPois, isUserNearPoi, haversineDistance, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
+import { fetchNearbyOsmPois } from '@/lib/poi/overpass'
 import type { PoiRow, InventoryItemRow } from '@/types/database'
 
-// GET /api/drops/nearby?lat=&lng=
-// POST /api/drops  (드랍 실행)
+// GET /api/drops?lat=&lng=  — T1(DB, 50m) + T2(OSM, 500m) 통합
+// POST /api/drops            — 드랍 실행
+
+const OSM_RADIUS_M = 500  // T2 OSM POI는 넓게 표시 (지도 탐색용)
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -21,37 +24,86 @@ export async function GET(req: NextRequest) {
 
   const service = createServiceClient()
 
-  // POI 전체 로드 후 50m 필터
-  const { data: poisRaw, error: poisError } = await service.from('poi').select('*')
-  if (poisError) return NextResponse.json({ error: 'POI 조회 실패' }, { status: 500 })
+  // T1: DB POI 전체 로드 → 500m 이내 필터 (지도 표시용, 드랍은 50m만)
+  const { data: poisRaw } = await service.from('poi').select('*')
+  const allDbPois = (poisRaw ?? []) as PoiRow[]
+  const nearbyDbPois = allDbPois.filter(
+    (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= OSM_RADIUS_M
+  )
 
-  const nearbyPois = getNearbyPois(lat, lng, (poisRaw ?? []) as PoiRow[])
-  if (nearbyPois.length === 0) {
-    return NextResponse.json({ pois: [] })
+  // T2: OSM POI 조회 (실패해도 T1은 반환)
+  let osmPois: Awaited<ReturnType<typeof fetchNearbyOsmPois>> = []
+  try {
+    osmPois = await fetchNearbyOsmPois(lat, lng, OSM_RADIUS_M)
+  } catch (e) {
+    console.warn('[drops/nearby] OSM 조회 실패, T1만 반환:', e)
   }
 
-  const poiIds = nearbyPois.map((p) => p.id)
+  // OSM POI 중 이미 DB에 없는 것만 upsert
+  const osmIdMap = new Map(allDbPois.filter((p) => p.osm_id).map((p) => [p.osm_id!, p.id]))
+  const newOsmPois = osmPois.filter((p) => !osmIdMap.has(p.osmId))
 
-  // 각 POI의 픽업 가능 드랍 수 조회 (본인 드랍 제외)
-  const { data: dropsRaw } = await service
-    .from('poi_drops')
-    .select('poi_id, id')
-    .in('poi_id', poiIds)
-    .eq('is_available', true)
-    .neq('dropper_user_id', user.id)
-
-  const dropCountByPoi: Record<string, number> = {}
-  for (const d of dropsRaw ?? []) {
-    const poiId = (d as { poi_id: string }).poi_id
-    dropCountByPoi[poiId] = (dropCountByPoi[poiId] ?? 0) + 1
+  // 신규 OSM POI를 DB에 upsert (osm_id 충돌 시 무시)
+  if (newOsmPois.length > 0) {
+    const inserts = newOsmPois.map((p) => ({
+      name: p.name,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      radius_meters: 50,
+      category: p.category === 'cafe' ? 'other' : 'other',
+      osm_id: p.osmId,
+      poi_tier: 2,
+    }))
+    const { data: upserted } = await (service as any)
+      .from('poi')
+      .upsert(inserts, { onConflict: 'osm_id', ignoreDuplicates: true })
+      .select('id, osm_id')
+    for (const row of upserted ?? []) {
+      osmIdMap.set(row.osm_id, row.id)
+    }
   }
 
-  const pois = nearbyPois.map((poi) => ({
-    ...poi,
-    available_drops_count: dropCountByPoi[poi.id] ?? 0,
+  // 최신 DB POI 재조회 (upsert 후 500m 이내)
+  const { data: poisRaw2 } = await service.from('poi').select('*')
+  const allDbPois2 = (poisRaw2 ?? []) as PoiRow[]
+  const nearbyDbPois2 = allDbPois2.filter(
+    (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= OSM_RADIUS_M
+  )
+
+  // 전체 POI 목록 통합 (DB + upsert된 OSM)
+  const allPois = nearbyDbPois2.map((p) => ({
+    id: p.id,
+    osm_id: p.osm_id,
+    name: p.name,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    poi_tier: p.poi_tier ?? 1,
+    distance_meters: Math.round(haversineDistance(lat, lng, p.latitude, p.longitude)),
+    in_drop_range: haversineDistance(lat, lng, p.latitude, p.longitude) <= DROP_RADIUS_METERS,
+    available_drops_count: 0,
   }))
 
-  return NextResponse.json({ pois })
+  // 드랍 카운트: DB POI에만 조회
+  const dbPoiIds = nearbyDbPois2.map((p) => p.id).filter(Boolean)
+  if (dbPoiIds.length > 0) {
+    const { data: dropsRaw } = await (service as any)
+      .from('poi_drops')
+      .select('poi_id')
+      .in('poi_id', dbPoiIds)
+      .eq('is_available', true)
+      .neq('dropper_user_id', user.id)
+
+    const dropCountByPoi: Record<string, number> = {}
+    for (const d of dropsRaw ?? []) {
+      const pid = (d as any).poi_id
+      dropCountByPoi[pid] = (dropCountByPoi[pid] ?? 0) + 1
+    }
+    for (const poi of allPois) {
+      if (poi.id) poi.available_drops_count = dropCountByPoi[poi.id] ?? 0
+    }
+  }
+
+  return NextResponse.json({ pois: allPois })
 }
 
 export async function POST(req: NextRequest) {

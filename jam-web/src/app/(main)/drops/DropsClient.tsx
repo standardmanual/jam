@@ -12,8 +12,9 @@ const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false }
 
 interface NearbyPoi extends PoiMarker {
   distance_meters: number
-  category: string
   available_drops_count: number
+  in_drop_range: boolean
+  poi_tier: number
 }
 
 interface InventoryItem {
@@ -116,6 +117,10 @@ export default function DropsClient() {
   const handlePoiSelect = useCallback(async (poiId: string) => {
     const poi = pois.find((p) => p.id === poiId)
     if (!poi) return
+    if (!poi.in_drop_range) {
+      toast(`${poi.name}까지 ${poi.distance_meters}m — 50m 이내로 이동하면 드랍/픽업할 수 있어요`, 'error')
+      return
+    }
     setSelectedPoi(poi)
     setSelectedItem(null)
     setSelectedDrop(null)
@@ -240,6 +245,8 @@ export default function DropsClient() {
     latitude: p.latitude,
     longitude: p.longitude,
     availableDrops: p.available_drops_count,
+    inDropRange: p.in_drop_range,
+    poiTier: p.poi_tier,
   }))
 
   return (
@@ -283,11 +290,14 @@ export default function DropsClient() {
           selectedPoiId={selectedPoi?.id}
         />
 
-        {pois.length === 0 && !poisLoading && (
+        {!poisLoading && pois.length === 0 && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-xl px-4 py-3 text-white/60 text-sm text-center whitespace-nowrap">
-            {mode === 'drop'
-              ? '반경 50m 내 드랍 가능한 POI가 없어요'
-              : '반경 50m 내 픽업 가능한 아이템이 없어요'}
+            주변 500m에 드랍 가능한 장소가 없어요
+          </div>
+        )}
+        {!poisLoading && pois.length > 0 && !pois.some((p) => p.in_drop_range) && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-sm rounded-xl px-4 py-3 text-white/60 text-sm text-center whitespace-nowrap">
+            지도의 장소로 50m 이내에 가면 드랍/픽업할 수 있어요
           </div>
         )}
       </div>
