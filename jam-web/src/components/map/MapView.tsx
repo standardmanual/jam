@@ -8,6 +8,8 @@ export interface PoiMarker {
   latitude: number
   longitude: number
   availableDrops: number
+  inDropRange?: boolean
+  poiTier?: number
 }
 
 interface MapViewProps {
@@ -120,6 +122,10 @@ export default function MapView({ userLat, userLng, pois, onPoiSelect, selectedP
       const hasDrops = poi.availableDrops > 0
       const isSelected = poi.id === selectedPoiId
 
+      // inDropRange=undefined(구버전 호환)이면 true로 간주
+      const inRange = poi.inDropRange !== false
+      const fillColor = hasDrops ? '#AEEA00' : inRange ? '#888888' : '#444444'
+
       const marker = new google.maps.Marker({
         position: { lat: poi.latitude, lng: poi.longitude },
         map,
@@ -127,8 +133,8 @@ export default function MapView({ userLat, userLng, pois, onPoiSelect, selectedP
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: isSelected ? 14 : 10,
-          fillColor: hasDrops ? '#AEEA00' : '#555555',
-          fillOpacity: 1,
+          fillColor,
+          fillOpacity: inRange ? 1 : 0.5,
           strokeColor: isSelected ? '#ffffff' : 'transparent',
           strokeWeight: isSelected ? 2 : 0,
         },

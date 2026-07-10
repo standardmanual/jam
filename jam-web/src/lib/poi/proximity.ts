@@ -1,3 +1,4 @@
+export { haversineDistance } from './matcher'
 import { haversineDistance } from './matcher'
 import type { PoiRow } from '@/types/database'
 
