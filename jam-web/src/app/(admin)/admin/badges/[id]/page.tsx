@@ -20,7 +20,7 @@ const CONDITION_HINT = `{
 export default function BadgeActionPage() {
   const params = useParams()
   const router = useRouter()
-  const action = params.action as string
+  const action = params.id as string
   const isNew = action === 'new'
 
   const [form, setForm] = useState({
