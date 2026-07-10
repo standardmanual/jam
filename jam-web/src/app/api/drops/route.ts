@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
     }))
     const { data: upserted, error: upsertError } = await (service as any)
       .from('poi')
-      .upsert(inserts, { onConflict: 'osm_id', ignoreDuplicates: true })
+      .insert(inserts)
       .select('id, osm_id')
     dbg.upsert_error = upsertError?.message ?? null
     dbg.upserted_count = (upserted ?? []).length
