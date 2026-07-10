@@ -196,36 +196,42 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                   const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false }
                   const pct = Math.round((progress.owned / progress.total) * 100)
                   return (
-                    <Card key={book.id} className={progress.completed ? 'border-[#AEEA00]/40' : ''}>
-                      <div className="flex gap-3 mb-3">
-                        {book.image_url && (
-                          <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/5 shrink-0">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={book.image_url} alt={book.name} className="w-full h-full object-cover" />
+                    <Link key={book.id} href={`/itembooks/${book.id}`}>
+                      <Card className={`active:scale-[0.98] transition-transform ${progress.completed ? 'border-[#AEEA00]/40' : ''}`}>
+                        <div className="flex gap-3 mb-3">
+                          {book.image_url && (
+                            <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/5 shrink-0">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={book.image_url} alt={book.name} className="w-full h-full object-cover" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                              <h3 className="font-bold text-base leading-tight">{book.name}</h3>
+                              {progress.completed ? (
+                                <span className="text-[#AEEA00] text-sm font-bold ml-2 shrink-0">완성 ✓</span>
+                              ) : (
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 text-white/20 shrink-0 ml-2 mt-0.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <p className="text-white/50 text-sm mt-0.5 line-clamp-2">{book.description}</p>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-bold text-base leading-tight">{book.name}</h3>
-                            {progress.completed && (
-                              <span className="text-[#AEEA00] text-sm font-bold ml-2 shrink-0">완성 ✓</span>
-                            )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className={`h-2 rounded-full transition-all duration-500 ${progress.completed ? 'bg-[#AEEA00]' : 'bg-white/40'}`}
+                              style={{ width: `${pct}%` }}
+                            />
                           </div>
-                          <p className="text-white/50 text-sm mt-0.5">{book.description}</p>
+                          <span className="text-xs text-white/40 tabular-nums">
+                            {progress.owned} / {progress.total}
+                          </span>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
-                          <div
-                            className="h-2 rounded-full bg-[#AEEA00] transition-all duration-500"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-white/40 tabular-nums">
-                          {progress.owned} / {progress.total}
-                        </span>
-                      </div>
-                    </Card>
+                      </Card>
+                    </Link>
                   )
                 })}
               </div>

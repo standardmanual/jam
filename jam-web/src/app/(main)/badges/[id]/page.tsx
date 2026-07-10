@@ -9,6 +9,7 @@ import PoiMapButton from './PoiMapButton'
 
 interface BadgeDetailPageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ from?: string; bookId?: string }>
 }
 
 function formatDateTime(iso: string) {
@@ -21,8 +22,11 @@ function formatDateTime(iso: string) {
   })
 }
 
-export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) {
+export default async function BadgeDetailPage({ params, searchParams }: BadgeDetailPageProps) {
   const { id } = await params
+  const { from, bookId } = await searchParams
+  const backHref = from === 'itembook' && bookId ? `/itembooks/${bookId}` : '/badges'
+  const backLabel = from === 'itembook' ? '아이템북' : '배지 목록'
   const supabase = await createClient()
   const {
     data: { user },
@@ -59,11 +63,11 @@ export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) 
   return (
     <div className="px-5 py-6 flex flex-col gap-6">
       {/* 뒤로 가기 */}
-      <Link href="/badges" className="flex items-center gap-1 text-white/50 text-sm w-fit hover:text-white transition-colors">
+      <Link href={backHref} className="flex items-center gap-1 text-white/50 text-sm w-fit hover:text-white transition-colors">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
-        배지 목록
+        {backLabel}
       </Link>
 
       {/* 배지 이미지 (대형) */}
