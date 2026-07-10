@@ -143,6 +143,10 @@ export default function DropsClient() {
       try {
         const res = await fetch(`/api/drops/poi/${poiId}`)
         const json = await res.json()
+        if (!res.ok) {
+          toast(json.error ?? '드랍 목록 로드 실패', 'error')
+          return
+        }
         setDropItems(json.drops ?? [])
       } catch {
         toast('드랍 목록 로드 실패', 'error')

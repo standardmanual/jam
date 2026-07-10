@@ -15,25 +15,27 @@ export async function GET(
 
   const service = createServiceClient()
 
-  const { data, error } = await service
+  // poi_drops + badges 조인 (users 조인은 FK 중복으로 별도 조회)
+  const { data, error } = await (service as any)
     .from('poi_drops')
-    .select(`
-      id,
-      badge_id,
-      dropped_at,
-      dropper_user_id,
-      badges ( name, rarity, image_url ),
-      users!dropper_user_id ( display_name )
-    `)
+    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
     .neq('dropper_user_id', user.id)
     .order('dropped_at', { ascending: true })
 
   if (error) {
-    console.error('[poi drops] 조회 오류:', error)
-    return NextResponse.json({ error: '조회 실패' }, { status: 500 })
+    console.error('[poi drops] 조회 오류:', error.message)
+    return NextResponse.json({ error: '조회 실패', detail: error.message }, { status: 500 })
   }
+
+  // dropper display_name 별도 조회
+  const dropperIds = [...new Set((data ?? []).map((d: any) => d.dropper_user_id as string))]
+  const { data: usersData } = dropperIds.length > 0
+    ? await (service as any).from('users').select('id, display_name').in('id', dropperIds)
+    : { data: [] }
+  const nameById: Record<string, string> = {}
+  for (const u of usersData ?? []) nameById[u.id] = u.display_name
 
   const drops = (data ?? []).map((d: any) => ({
     id: d.id,
@@ -41,7 +43,7 @@ export async function GET(
     badge_name: d.badges?.name,
     badge_rarity: d.badges?.rarity,
     badge_image_url: d.badges?.image_url,
-    dropper_name: d.users?.display_name,
+    dropper_name: nameById[d.dropper_user_id] ?? '익명',
     dropped_at: d.dropped_at,
   }))
 

@@ -124,7 +124,7 @@ export default function MapView({ userLat, userLng, pois, onPoiSelect, selectedP
 
       // inDropRange=undefined(구버전 호환)이면 true로 간주
       const inRange = poi.inDropRange !== false
-      const fillColor = hasDrops ? '#AEEA00' : inRange ? '#888888' : '#444444'
+      const fillColor = hasDrops ? '#22c55e' : inRange ? '#888888' : '#444444'
 
       const marker = new google.maps.Marker({
         position: { lat: poi.latitude, lng: poi.longitude },
