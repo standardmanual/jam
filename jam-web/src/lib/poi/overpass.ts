@@ -13,15 +13,15 @@ const CONVENIENCE_BRANDS = ['CU', 'GS25', '세븐일레븐', '이마트24', 'Min
 const CAFE_BRANDS = ['스타벅스', 'Starbucks', '이디야', '투썸플레이스', '메가커피', '컴포즈커피', '빽다방', '할리스']
 
 function buildOverpassQuery(lat: number, lng: number, radiusM: number): string {
-  const brandFilter = (brands: string[]) =>
-    brands.map((b) => `["name"~"${b}",i]`).join('')
+  const brandRegex = (brands: string[]) =>
+    `["name"~"${brands.join('|')}",i]`
 
   return `
 [out:json][timeout:10];
 (
-  node["amenity"="convenience"]${brandFilter(CONVENIENCE_BRANDS)}(around:${radiusM},${lat},${lng});
-  node["shop"="convenience"]${brandFilter(CONVENIENCE_BRANDS)}(around:${radiusM},${lat},${lng});
-  node["amenity"="cafe"]${brandFilter(CAFE_BRANDS)}(around:${radiusM},${lat},${lng});
+  node["amenity"="convenience"]${brandRegex(CONVENIENCE_BRANDS)}(around:${radiusM},${lat},${lng});
+  node["shop"="convenience"]${brandRegex(CONVENIENCE_BRANDS)}(around:${radiusM},${lat},${lng});
+  node["amenity"="cafe"]${brandRegex(CAFE_BRANDS)}(around:${radiusM},${lat},${lng});
 );
 out body;
 `.trim()
