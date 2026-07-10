@@ -15,9 +15,11 @@ export default function SyncButton() {
     try {
       const res = await fetch('/api/strava/sync', { method: 'POST' })
       if (res.ok) {
-        const data: { synced: number; badges: number; itemBooksCompleted: number } = await res.json()
+        const data: { synced: number; badges: number; itemBooksCompleted: number; missionsCompleted: number } = await res.json()
         if (data.itemBooksCompleted > 0) {
           toast(`아이템북 ${data.itemBooksCompleted}개 완성! 🎉`, 'success')
+        } else if (data.missionsCompleted > 0) {
+          toast(`미션 ${data.missionsCompleted}개 달성! 🎯`, 'success')
         } else if (data.badges > 0) {
           toast(`배지 ${data.badges}개 획득! 🏅`, 'success')
         } else {

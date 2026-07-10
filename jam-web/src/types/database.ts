@@ -55,6 +55,7 @@ export interface BadgeRow {
   activity_types: ActivityType[]
   patch_available: boolean
   patch_price_krw: number | null
+  is_wandering: boolean
   created_at: string
 }
 
@@ -103,6 +104,7 @@ export interface PoiDropRow {
   picked_up_by: string | null
   picked_up_at: string | null
   is_available: boolean
+  expires_at: string
 }
 
 export interface ItemBookRow {
@@ -172,6 +174,76 @@ export interface TradeRow {
   status: TradeStatus
   created_at: string
   updated_at: string
+}
+
+// =========================================
+// Phase 15: 조합 레시피
+// =========================================
+
+export interface CombinationRecipeRow {
+  id: string
+  ingredient_badge_ids: string[]
+  result_badge_id: string
+  success_rate: number
+  hint_text: string | null
+  is_public: boolean
+  created_at: string
+}
+
+// =========================================
+// Phase 16: 다이나믹 미션
+// =========================================
+
+export type MissionType = 'distance' | 'poi_visit' | 'activity_count' | 'item_collect'
+export type MissionRewardType = 'badge' | 'points' | 'item_badge'
+
+export interface MissionCondition {
+  /** distance 타입: 목표 거리 km */
+  distance_km?: number
+  /** distance/activity_count 타입: 활동 종류 필터 */
+  activity_type?: ActivityType
+  /** poi_visit 타입: 목표 POI ID */
+  poi_id?: string
+  /** activity_count 타입: 목표 횟수 */
+  count?: number
+  /** item_collect 타입: 수집 목표 배지 ID */
+  badge_id?: string
+}
+
+export interface MissionRow {
+  id: string
+  title: string
+  description: string | null
+  mission_type: MissionType
+  condition_json: MissionCondition
+  reward_type: MissionRewardType
+  reward_id: string | null
+  reward_points: number | null
+  starts_at: string
+  ends_at: string
+  max_completions: number | null
+  created_at: string
+}
+
+export interface UserMissionCompletionRow {
+  id: string
+  user_id: string
+  mission_id: string
+  completed_at: string
+}
+
+// =========================================
+// Phase 17: 떠돌이 신화 아이템
+// =========================================
+
+export interface WanderingMythicStateRow {
+  id: string
+  badge_id: string
+  current_poi_id: string | null
+  holder_user_id: string | null
+  placed_at: string
+  expires_at: string
+  times_caught: number
 }
 
 // =========================================
@@ -312,6 +384,30 @@ export interface Database {
           is_available?: boolean
         }
         Update: Partial<Omit<PoiDropRow, 'id'>>
+        Relationships: []
+      }
+      combination_recipes: {
+        Row: CombinationRecipeRow
+        Insert: Omit<CombinationRecipeRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<CombinationRecipeRow, 'id'>>
+        Relationships: []
+      }
+      missions: {
+        Row: MissionRow
+        Insert: Omit<MissionRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<MissionRow, 'id'>>
+        Relationships: []
+      }
+      user_mission_completions: {
+        Row: UserMissionCompletionRow
+        Insert: Omit<UserMissionCompletionRow, 'id' | 'completed_at'> & { id?: string; completed_at?: string }
+        Update: Partial<Omit<UserMissionCompletionRow, 'id'>>
+        Relationships: []
+      }
+      wandering_mythic_state: {
+        Row: WanderingMythicStateRow
+        Insert: Omit<WanderingMythicStateRow, 'id'> & { id?: string }
+        Update: Partial<Omit<WanderingMythicStateRow, 'id'>>
         Relationships: []
       }
     }

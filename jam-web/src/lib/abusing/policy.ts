@@ -15,6 +15,7 @@ export interface AbusingPolicy {
   hard_mythic_rate: number
   gps_max_speed_kmh: number
   poi_block_hours: number
+  vehicle_speed_filter_kmh: number
 }
 
 const DEFAULT_POLICY: AbusingPolicy = {
@@ -28,6 +29,7 @@ const DEFAULT_POLICY: AbusingPolicy = {
   hard_mythic_rate: 0.0,
   gps_max_speed_kmh: 300,
   poi_block_hours: 72,
+  vehicle_speed_filter_kmh: 60,
 }
 
 export async function getAbusingPolicy(): Promise<AbusingPolicy> {
