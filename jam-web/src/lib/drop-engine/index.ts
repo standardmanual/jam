@@ -7,6 +7,8 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRarity, ActivityType, BadgeRow, InventoryRow } from '@/types/database'
+import { getAbusingPolicy } from '@/lib/abusing/policy'
+import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 
 // rarity별 드랍 확률 구간 (누적)
 // [0, 0.40) → common
@@ -43,14 +45,21 @@ export async function tryItemDrop(
 ): Promise<void> {
   // 1. rarity 추첨
   const rarity = rollRarity()
-  if (!rarity) {
-    // 드랍 없음
+  if (!rarity) return
+
+  // 2. 섀도우밴 체크 — 밴 레벨에 따라 고가치 아이템 드랍 차단
+  const [banLevel, policy] = await Promise.all([
+    getUserBanLevel(userId),
+    getAbusingPolicy(),
+  ])
+  if (!shouldAllowDrop(rarity, banLevel, policy)) {
+    console.info(`[tryItemDrop] 섀도우밴으로 드랍 차단 — userId: ${userId}, rarity: ${rarity}, level: ${banLevel}`)
     return
   }
 
   const supabase = createServiceClient()
 
-  // 2. 해당 rarity + type='item' 배지 목록 조회
+  // 3. 해당 rarity + type='item' 배지 목록 조회
   const { data: candidatesRaw, error: badgesError } = await supabase
     .from('badges')
     .select('id, name')
