@@ -39,10 +39,6 @@ export async function POST(
     return NextResponse.json({ error: '이미 픽업된 아이템' }, { status: 409 })
   }
 
-  if (drop.dropper_user_id === user.id) {
-    return NextResponse.json({ error: '본인 드랍 아이템은 픽업 불가' }, { status: 403 })
-  }
-
   // POI 조회 + 50m 검증
   const { data: poiRaw, error: poiError } = await service
     .from('poi')
