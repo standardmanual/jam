@@ -1,1 +1,8 @@
 .vercel
+.DS_Store
+badge/
+skills-lock.json
+# iCloud 자동 생성 복사본 ("파일 2.tsx" 등)
+**/* 2.tsx
+**/* 2.ts
+**/* 2.sql
