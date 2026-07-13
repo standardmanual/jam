@@ -10,8 +10,8 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={[
-          'rounded-2xl bg-white/5 border border-white/10 p-4',
-          glow ? 'shadow-[0_0_16px_rgba(174,234,0,0.15)]' : '',
+          'rounded-2xl bg-white border border-black/6 p-4',
+          glow ? 'ring-2 ring-[#AEEA00]/60' : '',
           className,
         ]
           .filter(Boolean)
