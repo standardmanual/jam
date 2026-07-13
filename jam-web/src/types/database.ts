@@ -225,6 +225,14 @@ export interface MissionRow {
   created_at: string
 }
 
+export interface UserMissionParticipationRow {
+  id: string
+  user_id: string
+  mission_id: string
+  joined_at: string
+  progress_value: number
+}
+
 export interface UserMissionCompletionRow {
   id: string
   user_id: string
@@ -402,6 +410,12 @@ export interface Database {
         Row: UserMissionCompletionRow
         Insert: Omit<UserMissionCompletionRow, 'id' | 'completed_at'> & { id?: string; completed_at?: string }
         Update: Partial<Omit<UserMissionCompletionRow, 'id'>>
+        Relationships: []
+      }
+      user_mission_participations: {
+        Row: UserMissionParticipationRow
+        Insert: Omit<UserMissionParticipationRow, 'id' | 'joined_at' | 'progress_value'> & { id?: string; joined_at?: string; progress_value?: number }
+        Update: Partial<Omit<UserMissionParticipationRow, 'id'>>
         Relationships: []
       }
       wandering_mythic_state: {
