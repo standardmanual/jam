@@ -6,92 +6,136 @@ import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 
-const FILTER_LABELS: Record<ActivityFeedEventType | 'all', string> = {
-  all: '전체',
-  badge_earned: '배지',
-  item_dropped: '드랍',
-  item_picked_up: '픽업',
+// ─── 필터 탭 ────────────────────────────────────────────────────────────────
+
+type FilterTab = 'all' | 'badge' | 'mission'
+
+const FILTER_TABS: { key: FilterTab; label: string }[] = [
+  { key: 'all', label: '전체' },
+  { key: 'badge', label: '배지' },
+  { key: 'mission', label: '미션' },
+]
+
+const BADGE_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
+const MISSION_EVENTS = new Set<ActivityFeedEventType>(['mission_joined', 'mission_completed', 'mission_cancelled'])
+
+function matchesFilter(item: ActivityFeedRow, tab: FilterTab): boolean {
+  if (tab === 'all') return true
+  if (tab === 'badge') return BADGE_EVENTS.has(item.event_type)
+  if (tab === 'mission') return MISSION_EVENTS.has(item.event_type)
+  return false
+}
+
+// ─── 피드 카드 내부 표현 ─────────────────────────────────────────────────────
+
+const EVENT_ICON: Record<ActivityFeedEventType, string> = {
+  badge_earned: '🏅',
+  item_dropped: '📦',
+  item_picked_up: '🎁',
+  mission_joined: '🎯',
+  mission_completed: '🎉',
+  mission_cancelled: '❌',
+}
+
+const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
+  badge_earned: '배지 획득',
+  item_dropped: '아이템 드랍',
+  item_picked_up: '아이템 픽업',
   mission_joined: '미션 참가',
   mission_completed: '미션 완료',
   mission_cancelled: '미션 취소',
 }
 
-const FILTER_TABS: Array<ActivityFeedEventType | 'all'> = [
-  'all',
-  'badge_earned',
-  'item_dropped',
-  'item_picked_up',
-  'mission_joined',
-  'mission_completed',
-  'mission_cancelled',
-]
-
-function FeedIcon({ type }: { type: ActivityFeedEventType }) {
-  const icons: Record<ActivityFeedEventType, string> = {
-    badge_earned: '🏅',
-    item_dropped: '📦',
-    item_picked_up: '🎁',
-    mission_joined: '🎯',
-    mission_completed: '🎉',
-    mission_cancelled: '❌',
-  }
-  return <span className="text-xl">{icons[type]}</span>
+const RARITY_COLOR: Record<string, string> = {
+  common: 'bg-jam-ink/20 text-jam-ink',
+  rare: 'bg-jam-teal/20 text-jam-teal',
+  legendary: 'bg-jam-purple/20 text-jam-purple',
+  mythic: 'bg-[#FF4500]/20 text-[#FF4500]',
 }
 
-function FeedLabel({ type }: { type: ActivityFeedEventType }) {
-  const labels: Record<ActivityFeedEventType, string> = {
-    badge_earned: '배지 획득',
-    item_dropped: '아이템 드랍',
-    item_picked_up: '아이템 픽업',
-    mission_joined: '미션 참가',
-    mission_completed: '미션 완료',
-    mission_cancelled: '미션 취소',
-  }
-  return <span className="text-[10px] font-black text-jam-ink/40 uppercase tracking-widest">{labels[type]}</span>
+const RARITY_LABEL: Record<string, string> = {
+  common: 'Common',
+  rare: 'Rare',
+  legendary: 'Legendary',
+  mythic: 'Mythic',
 }
 
-function FeedItemTitle({ item }: { item: ActivityFeedRow }) {
-  const meta = item.metadata as Record<string, string>
-  switch (item.event_type) {
-    case 'badge_earned':
-    case 'item_dropped':
-    case 'item_picked_up':
-      return <span className="font-black text-sm text-jam-ink">{meta.badge_name}</span>
-    case 'mission_joined':
-    case 'mission_completed':
-    case 'mission_cancelled':
-      return <span className="font-black text-sm text-jam-ink">{meta.mission_title}</span>
-    default:
-      return null
-  }
+// ─── 카드 ────────────────────────────────────────────────────────────────────
+
+function FeedCard({ item }: { item: ActivityFeedRow }) {
+  const meta = item.metadata as Record<string, string | number | null>
+  const isBadge = BADGE_EVENTS.has(item.event_type)
+  const isMission = MISSION_EVENTS.has(item.event_type)
+
+  const title = isBadge
+    ? String(meta.badge_name ?? '')
+    : String(meta.mission_title ?? '')
+
+  const sub = (() => {
+    if (item.event_type === 'item_picked_up' || item.event_type === 'item_dropped') {
+      return meta.poi_name ? String(meta.poi_name) : null
+    }
+    if (item.event_type === 'mission_completed' && meta.reward_points) {
+      return `+${meta.reward_points}P 획득`
+    }
+    return null
+  })()
+
+  const rarity = meta.rarity ? String(meta.rarity) : null
+  const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
+
+  const cardBg = item.event_type === 'mission_completed'
+    ? 'bg-jam-lime'
+    : item.event_type === 'mission_cancelled'
+    ? 'bg-white/60'
+    : 'bg-white'
+
+  return (
+    <div className={`${cardBg} border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 flex items-center gap-3`}>
+      {/* 이미지 또는 이모지 아이콘 */}
+      {badgeImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={badgeImage}
+          alt={title}
+          className="w-11 h-11 rounded-xl object-cover border-[2px] border-jam-ink shrink-0"
+        />
+      ) : (
+        <div className={`w-11 h-11 rounded-xl border-[2px] border-jam-ink flex items-center justify-center text-xl shrink-0 ${isMission ? 'bg-jam-yellow' : 'bg-jam-cream'}`}>
+          {EVENT_ICON[item.event_type]}
+        </div>
+      )}
+
+      {/* 텍스트 */}
+      <div className="flex-1 min-w-0">
+        {/* 이벤트 종류 레이블 */}
+        <p className="text-[10px] font-black text-jam-ink/40 uppercase tracking-widest mb-0.5">
+          {EVENT_LABEL[item.event_type]}
+        </p>
+
+        {/* 제목 */}
+        <p className="font-black text-sm text-jam-ink truncate">{title}</p>
+
+        {/* 서브 (POI명, 보상 등) */}
+        {sub && <p className="text-xs text-jam-ink/50 font-semibold mt-0.5 truncate">{sub}</p>}
+
+        {/* rarity 뱃지 */}
+        {rarity && RARITY_COLOR[rarity] && (
+          <span className={`inline-block mt-1 text-[10px] font-black px-1.5 py-0.5 rounded-md ${RARITY_COLOR[rarity]}`}>
+            {RARITY_LABEL[rarity]}
+          </span>
+        )}
+      </div>
+
+      {/* 시간 */}
+      <span className="text-[11px] text-jam-ink/40 font-semibold shrink-0 self-start mt-0.5">
+        {formatRelativeTime(item.event_at)}
+      </span>
+    </div>
+  )
 }
 
-function FeedItemSub({ item }: { item: ActivityFeedRow }) {
-  const meta = item.metadata as Record<string, string>
-  switch (item.event_type) {
-    case 'item_picked_up':
-      return meta.poi_name ? <span className="text-xs text-jam-ink/50 font-semibold">{meta.poi_name}</span> : null
-    case 'item_dropped':
-      return meta.poi_name ? <span className="text-xs text-jam-ink/50 font-semibold">{meta.poi_name}</span> : null
-    case 'mission_completed':
-      return meta.reward_points
-        ? <span className="text-xs text-jam-ink/50 font-semibold">+{meta.reward_points}P</span>
-        : null
-    default:
-      return null
-  }
-}
-
-function RarityDot({ rarity }: { rarity?: string }) {
-  const colors: Record<string, string> = {
-    common: 'bg-jam-ink/30',
-    rare: 'bg-jam-teal',
-    legendary: 'bg-jam-purple',
-    mythic: 'bg-[#FF4500]',
-  }
-  if (!rarity || !colors[rarity]) return null
-  return <span className={`w-2 h-2 rounded-full shrink-0 ${colors[rarity]}`} />
-}
+// ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 
 interface Props {
   profile: UserRow | null
@@ -101,11 +145,9 @@ interface Props {
 
 export default function ProfileClient({ profile, strava, feedItems }: Props) {
   const router = useRouter()
-  const [activeFilter, setActiveFilter] = useState<ActivityFeedEventType | 'all'>('all')
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
 
-  const filtered = activeFilter === 'all'
-    ? feedItems
-    : feedItems.filter((f) => f.event_type === activeFilter)
+  const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -163,70 +205,38 @@ export default function ProfileClient({ profile, strava, feedItems }: Props) {
 
       {/* 활동 피드 */}
       <section>
-        <h2 className="font-black text-base mb-3">활동 이력</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-black text-base">활동 이력</h2>
+          <span className="text-xs text-jam-ink/40 font-semibold">{filtered.length}개</span>
+        </div>
 
-        {/* 필터 탭 */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 no-scrollbar">
-          {FILTER_TABS.map((tab) => (
+        {/* 필터 탭 — 3개만 */}
+        <div className="flex gap-2 mb-4">
+          {FILTER_TABS.map(({ key, label }) => (
             <button
-              key={tab}
-              onClick={() => setActiveFilter(tab)}
-              className={`shrink-0 px-3 py-1.5 rounded-xl border-[2px] border-jam-ink text-xs font-black transition-all active:scale-95 ${
-                activeFilter === tab
-                  ? 'bg-jam-ink text-white'
+              key={key}
+              onClick={() => setActiveFilter(key)}
+              className={`flex-1 py-2 rounded-xl border-[2px] border-jam-ink text-xs font-black transition-all active:scale-95 ${
+                activeFilter === key
+                  ? 'bg-jam-ink text-white shadow-[2px_2px_0_0_#161616]'
                   : 'bg-white/60 text-jam-ink'
               }`}
             >
-              {FILTER_LABELS[tab]}
+              {label}
             </button>
           ))}
         </div>
 
         {filtered.length === 0 ? (
-          <div className="text-center py-10">
+          <div className="text-center py-12">
             <p className="text-4xl mb-3">📭</p>
             <p className="text-jam-ink/50 font-bold text-sm">아직 활동 이력이 없어요</p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {filtered.map((item) => {
-              const meta = item.metadata as Record<string, string>
-              return (
-                <div
-                  key={item.id}
-                  className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 flex items-center gap-3"
-                >
-                  {/* 아이콘 또는 배지 이미지 */}
-                  {meta.badge_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={meta.badge_image_url}
-                      alt={meta.badge_name}
-                      className="w-10 h-10 rounded-xl object-cover border-[2px] border-jam-ink shrink-0"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-jam-cream border-[2px] border-jam-ink flex items-center justify-center shrink-0">
-                      <FeedIcon type={item.event_type} />
-                    </div>
-                  )}
-
-                  {/* 콘텐츠 */}
-                  <div className="flex-1 min-w-0">
-                    <FeedLabel type={item.event_type} />
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <RarityDot rarity={meta.rarity} />
-                      <FeedItemTitle item={item} />
-                    </div>
-                    <FeedItemSub item={item} />
-                  </div>
-
-                  {/* 시간 */}
-                  <span className="text-[11px] text-jam-ink/40 font-semibold shrink-0">
-                    {formatRelativeTime(item.event_at)}
-                  </span>
-                </div>
-              )
-            })}
+            {filtered.map((item) => (
+              <FeedCard key={item.id} item={item} />
+            ))}
           </div>
         )}
       </section>
