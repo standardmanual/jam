@@ -277,6 +277,26 @@ export interface BadgeCondition {
 }
 
 // =========================================
+// 활동 피드
+// =========================================
+
+export type ActivityFeedEventType =
+  | 'badge_earned'
+  | 'item_dropped'
+  | 'item_picked_up'
+  | 'mission_joined'
+  | 'mission_completed'
+  | 'mission_cancelled'
+
+export interface ActivityFeedRow {
+  id: string
+  user_id: string
+  event_type: ActivityFeedEventType
+  event_at: string
+  metadata: Record<string, unknown>
+}
+
+// =========================================
 // Supabase Database 제네릭 타입 (createClient에 주입)
 // =========================================
 export interface Database {
@@ -422,6 +442,12 @@ export interface Database {
         Row: WanderingMythicStateRow
         Insert: Omit<WanderingMythicStateRow, 'id'> & { id?: string }
         Update: Partial<Omit<WanderingMythicStateRow, 'id'>>
+        Relationships: []
+      }
+      user_activity_feed: {
+        Row: ActivityFeedRow
+        Insert: Omit<ActivityFeedRow, 'id' | 'event_at'> & { id?: string; event_at?: string }
+        Update: Partial<Omit<ActivityFeedRow, 'id'>>
         Relationships: []
       }
     }

@@ -6,6 +6,7 @@
  * - service_role 클라이언트 사용 (RLS 우회)
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { recordFeedEvent } from '@/lib/activity-feed'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, BadgeRow, UserActivityBadgeRow } from '@/types/database'
 
@@ -88,6 +89,12 @@ export async function evaluateBadges(
 
     earnedCount++
     console.info(`[evaluateBadges] 배지 발급 완료 — userId: ${userId}, badge: ${badge.name}`)
+    await recordFeedEvent(userId, 'badge_earned', {
+      badge_id: badge.id,
+      badge_name: badge.name,
+      badge_image_url: badge.image_url,
+      rarity: badge.rarity,
+    })
   }
 
   return earnedCount

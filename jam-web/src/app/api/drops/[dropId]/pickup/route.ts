@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi } from '@/lib/poi/proximity'
+import { recordFeedEvent } from '@/lib/activity-feed'
 import type { PoiRow, PoiDropRow } from '@/types/database'
 import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
@@ -121,6 +122,21 @@ export async function POST(
       { error: result.error },
       { status: statusMap[result.error ?? ''] ?? 400 }
     )
+  }
+
+  // 피드 기록 (배지 + POI 정보 조회)
+  const poi = poiRaw as PoiRow
+  const { data: badgeRaw } = await service.from('badges').select('id, name, image_url, rarity').eq('id', drop.badge_id).single()
+  if (badgeRaw) {
+    const b = badgeRaw as { id: string; name: string; image_url: string; rarity: string }
+    await recordFeedEvent(user.id, 'item_picked_up', {
+      badge_id: b.id,
+      badge_name: b.name,
+      badge_image_url: b.image_url,
+      rarity: b.rarity,
+      poi_name: poi.name,
+      dropper_user_id: drop.dropper_user_id,
+    })
   }
 
   return NextResponse.json({ inventory_item_id: result.inventory_item_id })
