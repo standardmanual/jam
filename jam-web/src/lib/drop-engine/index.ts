@@ -6,6 +6,7 @@
  * - service_role 클라이언트 사용 (RLS 우회)
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { recordFeedEvent } from '@/lib/activity-feed'
 import type { BadgeRarity, ActivityType, BadgeRow, InventoryRow } from '@/types/database'
 import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
@@ -62,11 +63,11 @@ export async function tryItemDrop(
   // 3. 해당 rarity + type='item' 배지 목록 조회
   const { data: candidatesRaw, error: badgesError } = await supabase
     .from('badges')
-    .select('id, name')
+    .select('id, name, image_url, rarity')
     .eq('type', 'item')
     .eq('rarity', rarity)
 
-  const candidates = candidatesRaw as Pick<BadgeRow, 'id' | 'name'>[] | null
+  const candidates = candidatesRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>[] | null
 
   if (badgesError || !candidates || candidates.length === 0) {
     if (badgesError) {
@@ -130,4 +131,11 @@ export async function tryItemDrop(
   console.info(
     `[tryItemDrop] 아이템 드랍 완료 — userId: ${userId}, badge: ${picked.name}, rarity: ${rarity}, activityType: ${activityType}, expires: ${expiresAt}`
   )
+  await recordFeedEvent(userId, 'item_dropped', {
+    badge_id: picked.id,
+    badge_name: picked.name,
+    badge_image_url: picked.image_url,
+    rarity: picked.rarity,
+    poi_name: '',
+  })
 }

@@ -4,6 +4,7 @@
  * Strava 동기화 직후 활성 미션 순회 → 참가 중인 미션 progress 업데이트 → 달성 시 완료 처리
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { recordFeedEvent } from '@/lib/activity-feed'
 import type { MissionRow, MissionCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 
@@ -88,6 +89,12 @@ export async function checkMissions(
 
     completedMissionIds.push(mission.id)
     console.info(`[checkMissions] 미션 달성 — userId: ${userId}, mission: ${mission.title}`)
+    await recordFeedEvent(userId, 'mission_completed', {
+      mission_id: mission.id,
+      mission_title: mission.title,
+      reward_type: mission.reward_type,
+      reward_points: mission.reward_points,
+    })
   }
 
   return { completedMissionIds }
