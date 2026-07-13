@@ -12,19 +12,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-[#AEEA00] text-black font-bold hover:bg-[#c6ff00] active:scale-95',
+    'bg-[#111111] text-white font-bold hover:bg-[#333333] active:scale-95',
   secondary:
-    'bg-transparent border border-[#AEEA00] text-[#AEEA00] font-bold hover:bg-[#AEEA00]/10 active:scale-95',
+    'bg-transparent border-2 border-[#111111] text-[#111111] font-bold hover:bg-black/5 active:scale-95',
   ghost:
-    'bg-transparent text-white/70 hover:text-white hover:bg-white/10 active:scale-95',
+    'bg-transparent text-[#666666] hover:text-[#111111] hover:bg-black/5 active:scale-95',
   danger:
-    'bg-red-600 text-white font-bold hover:bg-red-500 active:scale-95',
+    'bg-red-500 text-white font-bold hover:bg-red-600 active:scale-95',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-sm rounded-lg',
-  md: 'px-5 py-2.5 text-base rounded-xl',
-  lg: 'px-6 py-3.5 text-lg rounded-2xl',
+  sm: 'px-3 py-1.5 text-sm rounded-xl',
+  md: 'px-5 py-2.5 text-base rounded-2xl',
+  lg: 'px-6 py-3.5 text-base font-black rounded-2xl',
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -51,7 +51,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           variantClasses[variant],
           sizeClasses[size],
           fullWidth ? 'w-full' : '',
-          isDisabled ? 'opacity-50 cursor-not-allowed active:scale-100' : 'cursor-pointer',
+          isDisabled ? 'opacity-40 cursor-not-allowed active:scale-100' : 'cursor-pointer',
           className,
         ]
           .filter(Boolean)
