@@ -44,24 +44,24 @@ export default async function MissionsPage() {
   const upcoming = missions.filter((m) => new Date(m.starts_at) > new Date())
 
   return (
-    <div className="flex flex-col min-h-full px-5 py-4">
+    <div className="flex flex-col min-h-full px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 bg-jam-yellow">
       <div className="mb-6">
-        <p className="text-[#AAAAAA] text-sm font-medium">단기 목표</p>
-        <h1 className="text-4xl font-black text-[#111111] leading-tight">미션</h1>
+        <p className="text-jam-ink/60 text-sm font-bold">단기 목표</p>
+        <h1 className="text-4xl font-black text-jam-ink leading-tight">미션</h1>
       </div>
 
       {active.length === 0 && upcoming.length === 0 && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-5xl mb-4">🎯</p>
-            <p className="text-[#AAAAAA] font-bold">진행 중인 미션이 없어요</p>
+            <p className="text-jam-ink/60 font-bold">진행 중인 미션이 없어요</p>
           </div>
         </div>
       )}
 
       {active.length > 0 && (
         <section className="mb-8">
-          <p className="text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest mb-3">진행 중</p>
+          <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">진행 중</p>
           <div className="flex flex-col gap-3">
             {active.map((m) => {
               const done = completionMap.has(m.id)
@@ -70,38 +70,38 @@ export default async function MissionsPage() {
                 <Link
                   key={m.id}
                   href={`/missions/${m.id}`}
-                  className={`rounded-2xl p-4 block active:scale-[0.98] transition-transform ${done ? 'bg-[#AEEA00]' : 'bg-white border border-black/6'}`}
+                  className={`rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4 block active:scale-[0.98] transition-transform ${done ? 'bg-jam-lime' : 'bg-white'}`}
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h3 className="font-black text-sm text-[#111111]">{m.title}</h3>
+                        <h3 className="font-black text-sm text-jam-ink">{m.title}</h3>
                         {done && (
-                          <span className="text-[10px] font-black bg-[#111111] text-white px-2 py-0.5 rounded-lg">완료</span>
+                          <span className="text-[10px] font-black bg-jam-ink text-white px-2 py-0.5 rounded-lg">완료</span>
                         )}
                         {!done && joined && (
-                          <span className="text-[10px] font-black bg-[#111111]/10 text-[#111111] px-2 py-0.5 rounded-lg">참가중</span>
+                          <span className="text-[10px] font-black bg-jam-ink/10 text-jam-ink px-2 py-0.5 rounded-lg">참가중</span>
                         )}
                       </div>
                       {m.description && (
-                        <p className="text-[#666666] text-xs line-clamp-2">{m.description}</p>
+                        <p className="text-jam-ink/60 text-xs font-semibold">{m.description}</p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-xs text-[#AAAAAA]">{timeLeft(m.ends_at)} 남음</p>
+                      <p className="text-xs text-jam-ink/50 font-semibold">{timeLeft(m.ends_at)} 남음</p>
                       {m.max_completions && (
-                        <p className="text-xs text-[#FC4C02] font-bold mt-0.5">
+                        <p className="text-xs text-[#FC4C02] font-black mt-0.5">
                           선착순 {m.max_completions.toLocaleString()}명
                         </p>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-[#888888] font-medium">
+                    <span className="text-xs text-jam-ink/50 font-bold">
                       보상: {rewardTypeLabel[m.reward_type] ?? m.reward_type}
                       {m.reward_points ? ` ${m.reward_points}P` : ''}
                     </span>
-                    <span className="text-xs text-[#CCCCCC]">상세 →</span>
+                    <span className="text-[10px] font-black text-jam-ink/30 uppercase">{m.mission_type}</span>
                   </div>
                 </Link>
               )
@@ -112,16 +112,16 @@ export default async function MissionsPage() {
 
       {upcoming.length > 0 && (
         <section>
-          <p className="text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest mb-3">예정</p>
+          <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">예정</p>
           <div className="flex flex-col gap-3">
             {upcoming.map((m) => (
               <Link
                 key={m.id}
                 href={`/missions/${m.id}`}
-                className="bg-white border border-black/6 rounded-2xl p-4 opacity-40 block"
+                className="bg-white/50 border-[3px] border-jam-ink/30 rounded-2xl p-4 block"
               >
-                <h3 className="font-black text-sm text-[#111111] mb-1">{m.title}</h3>
-                <p className="text-xs text-[#AAAAAA]">
+                <h3 className="font-black text-sm text-jam-ink/60 mb-1">{m.title}</h3>
+                <p className="text-xs text-jam-ink/40 font-semibold">
                   {new Date(m.starts_at).toLocaleDateString('ko-KR')} 시작
                 </p>
               </Link>
