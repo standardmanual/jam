@@ -61,20 +61,20 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   }
 
   return (
-    <div className="px-5 py-6 flex flex-col gap-6">
+    <div className="min-h-full bg-jam-teal px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 flex flex-col gap-6">
       {/* 뒤로 가기 */}
-      <Link href={backHref} className="flex items-center gap-1 text-white/50 text-sm w-fit hover:text-white transition-colors">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+      <Link href={backHref} className="flex items-center gap-1 text-jam-ink font-bold text-sm w-fit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-4 h-4">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
         {backLabel}
       </Link>
 
       {/* 배지 이미지 (대형) */}
-      <div className="flex flex-col items-center gap-4 py-6">
+      <div className="flex flex-col items-center gap-4 py-4">
         <div
           className={[
-            'w-40 h-40 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden',
+            'w-44 h-44 rounded-[2rem] bg-white border-[3px] border-jam-ink shadow-[5px_5px_0_0_#161616] flex items-center justify-center overflow-hidden',
             !earned ? 'grayscale opacity-50' : '',
           ].join(' ')}
         >
@@ -83,7 +83,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             <img
               src={badgeRow.image_url}
               alt={badgeRow.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain p-4"
             />
           ) : (
             <span className="text-7xl">🏅</span>
@@ -91,44 +91,44 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         </div>
 
         <div className="text-center">
-          <h1 className="text-2xl font-black mb-2">{badgeRow.name}</h1>
+          <h1 className="text-2xl font-black mb-2 text-jam-ink">{badgeRow.name}</h1>
           <RarityBadge rarity={badgeRow.rarity} />
         </div>
       </div>
 
       {/* 배지 정보 */}
       <Card>
-        <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">획득 조건</h2>
-        <p className="text-sm text-white/80 leading-relaxed">{badgeRow.description}</p>
+        <h2 className="text-xs font-black text-jam-ink/40 uppercase tracking-wider mb-2">획득 조건</h2>
+        <p className="text-sm text-jam-ink/80 leading-relaxed font-semibold">{badgeRow.description}</p>
       </Card>
 
       {/* 획득 정보 */}
       {earned && (
-        <Card glow>
-          <h2 className="text-xs font-semibold text-[#AEEA00]/60 uppercase tracking-wider mb-3">획득 정보</h2>
+        <Card glow className="bg-jam-lime">
+          <h2 className="text-xs font-black text-jam-ink/50 uppercase tracking-wider mb-3">획득 정보</h2>
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-white/50">획득 일시</span>
-              <span className="text-sm font-medium">{formatDateTime(earned.earned_at)}</span>
+              <span className="text-sm text-jam-ink/60 font-semibold">획득 일시</span>
+              <span className="text-sm font-bold">{formatDateTime(earned.earned_at)}</span>
             </div>
             {earned.triggered_by_activity_name && (
               <div className="flex justify-between items-center">
-                <span className="text-sm text-white/50">트리거 활동</span>
-                <span className="text-sm font-medium truncate max-w-[180px] text-right">
+                <span className="text-sm text-jam-ink/60 font-semibold">트리거 활동</span>
+                <span className="text-sm font-bold truncate max-w-[180px] text-right">
                   {earned.triggered_by_activity_name}
                 </span>
               </div>
             )}
             {earned.triggered_by_distance_km && (
               <div className="flex justify-between items-center">
-                <span className="text-sm text-white/50">활동 거리</span>
-                <span className="text-sm font-medium">{earned.triggered_by_distance_km} km</span>
+                <span className="text-sm text-jam-ink/60 font-semibold">활동 거리</span>
+                <span className="text-sm font-bold">{earned.triggered_by_distance_km} km</span>
               </div>
             )}
             {earned.triggered_by_activity_date && (
               <div className="flex justify-between items-center">
-                <span className="text-sm text-white/50">활동 일자</span>
-                <span className="text-sm font-medium">
+                <span className="text-sm text-jam-ink/60 font-semibold">활동 일자</span>
+                <span className="text-sm font-bold">
                   {new Date(earned.triggered_by_activity_date).toLocaleDateString('ko-KR', {
                     year: 'numeric', month: 'long', day: 'numeric',
                   })}
@@ -140,7 +140,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 href={`https://www.strava.com/activities/${earned.triggered_by_strava_id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-[#FC4C02]/10 border border-[#FC4C02]/30 text-[#FC4C02] text-sm font-medium hover:bg-[#FC4C02]/20 transition-colors"
+                className="mt-1 flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-black border-2 border-jam-ink"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                   <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
@@ -155,8 +155,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       {/* POI 위치 보기 */}
       {poi && (
         <Card>
-          <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">연결 위치</h2>
-          <p className="text-sm text-white/70 mb-3">{poi.name}</p>
+          <h2 className="text-xs font-black text-jam-ink/40 uppercase tracking-wider mb-3">연결 위치</h2>
+          <p className="text-sm text-jam-ink/70 mb-3 font-semibold">{poi.name}</p>
           <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />
         </Card>
       )}
@@ -171,7 +171,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             href="#"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full text-center bg-transparent border border-white/20 text-white/70 font-bold py-3 rounded-xl text-base hover:border-white/40 transition-colors"
+            className="w-full text-center bg-white border-[3px] border-jam-ink text-jam-ink font-black py-3 rounded-2xl text-base shadow-[3px_3px_0_0_#161616]"
           >
             실물 패치 보기 ↗
           </a>
@@ -181,8 +181,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       {/* 미획득 안내 */}
       {!earned && (
         <Card className="text-center py-4 border-dashed">
-          <p className="text-white/40 text-sm">아직 획득하지 못한 배지예요</p>
-          <p className="text-white/30 text-xs mt-1">조건을 달성하면 자동으로 획득됩니다</p>
+          <p className="text-jam-ink/60 text-sm font-bold">아직 획득하지 못한 배지예요</p>
+          <p className="text-jam-ink/40 text-xs mt-1 font-semibold">조건을 달성하면 자동으로 획득됩니다</p>
         </Card>
       )}
     </div>

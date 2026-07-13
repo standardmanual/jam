@@ -15,7 +15,7 @@ export default function LoadingSpinner({ size = 'md', className = '' }: LoadingS
       role="status"
       aria-label="로딩 중"
       className={[
-        'inline-block rounded-full border-[#AEEA00] border-t-transparent animate-spin',
+        'inline-block rounded-full border-jam-ink border-t-transparent animate-spin',
         sizeClasses[size],
         className,
       ]

@@ -58,14 +58,5 @@ export default async function CombinePage() {
     }
   }
 
-  return (
-    <div className="flex flex-col min-h-full">
-      <div className="px-5 pt-5 pb-4">
-        <h1 className="text-2xl font-black">아이템 조합</h1>
-        <p className="text-white/40 text-sm mt-1">인벤토리 아이템 2~3개를 합성해 새 아이템을 만들어요</p>
-      </div>
-      <div className="h-px bg-white/10 mx-5" />
-      <CombineClient items={items} hints={hints} publicRecipes={publicRecipes} />
-    </div>
-  )
+  return <CombineClient items={items} hints={hints} publicRecipes={publicRecipes} />
 }

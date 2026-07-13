@@ -82,11 +82,11 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
   }
 
   return (
-    <div className="flex flex-col min-h-full px-5 py-4">
-      {/* 헤더 */}
+    <div className="flex flex-col min-h-full px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 bg-jam-yellow">
+      {/* 뒤로가기 */}
       <button
         onClick={() => router.back()}
-        className="text-[#AAAAAA] text-sm mb-4 self-start active:opacity-60"
+        className="text-jam-ink/60 text-sm font-bold mb-4 self-start active:opacity-60"
       >
         ← 미션 목록
       </button>
@@ -94,72 +94,72 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
       {/* 상태 배지 */}
       <div className="flex items-center gap-2 mb-3">
         {isCompleted && (
-          <span className="text-[10px] font-black bg-[#AEEA00] text-[#111111] px-2 py-1 rounded-lg">완료</span>
+          <span className="text-[10px] font-black bg-jam-ink text-white px-2 py-1 rounded-lg">완료</span>
         )}
         {!isCompleted && participating && (
-          <span className="text-[10px] font-black bg-[#111111] text-white px-2 py-1 rounded-lg">참가중</span>
+          <span className="text-[10px] font-black bg-jam-ink text-white px-2 py-1 rounded-lg">참가중</span>
         )}
         {!isActive && !isCompleted && (
-          <span className="text-[10px] font-black bg-[#EEEEEE] text-[#AAAAAA] px-2 py-1 rounded-lg">예정</span>
+          <span className="text-[10px] font-black bg-jam-ink/20 text-jam-ink px-2 py-1 rounded-lg">예정</span>
         )}
-        <span className="text-xs text-[#AAAAAA]">{timeLeft(mission.ends_at)}</span>
+        <span className="text-xs text-jam-ink/50 font-semibold">{timeLeft(mission.ends_at)}</span>
       </div>
 
-      <h1 className="text-3xl font-black text-[#111111] leading-tight mb-2">{mission.title}</h1>
+      <h1 className="text-3xl font-black text-jam-ink leading-tight mb-2">{mission.title}</h1>
       {mission.description && (
-        <p className="text-[#666666] text-sm mb-6">{mission.description}</p>
+        <p className="text-jam-ink/60 text-sm font-semibold mb-6">{mission.description}</p>
       )}
 
       {/* 달성 조건 */}
-      <div className="bg-[#F5F5F0] rounded-2xl p-4 mb-4">
-        <p className="text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest mb-3">달성 조건</p>
+      <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4">
+        <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">달성 조건</p>
         <div className="flex items-end justify-between mb-2">
           <div>
-            <p className="text-xs text-[#888888] mb-0.5">{goal.label}</p>
-            <p className="text-2xl font-black text-[#111111]">
+            <p className="text-xs text-jam-ink/50 font-semibold mb-0.5">{goal.label}</p>
+            <p className="text-2xl font-black text-jam-ink">
               {goal.target}{goal.unit}
             </p>
           </div>
           {condition.activity_type && (
-            <span className="text-xs font-bold text-[#888888] bg-white border border-black/8 px-2 py-1 rounded-lg capitalize">
+            <span className="text-xs font-black text-jam-ink bg-jam-yellow border-[2px] border-jam-ink px-2 py-1 rounded-lg capitalize">
               {condition.activity_type}
             </span>
           )}
         </div>
       </div>
 
-      {/* 진행 상황 (참가 중이거나 완료한 경우) */}
+      {/* 진행 상황 */}
       {(participating || isCompleted) && goal.target > 0 && (
-        <div className="bg-white border border-black/8 rounded-2xl p-4 mb-4">
-          <p className="text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest mb-3">나의 진행 상황</p>
+        <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4">
+          <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">나의 진행 상황</p>
           <div className="flex items-end justify-between mb-2">
-            <p className="text-2xl font-black text-[#111111]">
+            <p className="text-2xl font-black text-jam-ink">
               {isCompleted ? goal.target : progressValue.toFixed(mission.mission_type === 'distance' ? 1 : 0)}
-              <span className="text-sm font-medium text-[#AAAAAA] ml-1">{goal.unit}</span>
+              <span className="text-sm font-bold text-jam-ink/50 ml-1">{goal.unit}</span>
             </p>
-            <p className="text-sm text-[#AAAAAA]">/ {goal.target}{goal.unit}</p>
+            <p className="text-sm text-jam-ink/50 font-semibold">/ {goal.target}{goal.unit}</p>
           </div>
-          <div className="h-2 bg-black/6 rounded-full overflow-hidden">
+          <div className="h-2.5 bg-jam-ink/10 rounded-full overflow-hidden border border-jam-ink/20">
             <div
-              className={`h-full rounded-full transition-all ${isCompleted ? 'bg-[#AEEA00]' : 'bg-[#111111]'}`}
+              className={`h-full rounded-full transition-all ${isCompleted ? 'bg-jam-lime' : 'bg-jam-ink'}`}
               style={{ width: `${isCompleted ? 100 : progressPct}%` }}
             />
           </div>
-          <p className="text-xs text-[#AAAAAA] mt-1 text-right">
+          <p className="text-xs text-jam-ink/50 font-semibold mt-1 text-right">
             {isCompleted ? '달성 완료!' : `${Math.round(progressPct)}% 달성`}
           </p>
         </div>
       )}
 
       {/* 보상 */}
-      <div className="bg-white border border-black/8 rounded-2xl p-4 mb-6">
-        <p className="text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest mb-2">보상</p>
-        <p className="text-sm font-bold text-[#111111]">
+      <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-6">
+        <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">보상</p>
+        <p className="text-sm font-black text-jam-ink">
           {rewardTypeLabel[mission.reward_type] ?? mission.reward_type}
           {mission.reward_points ? ` ${mission.reward_points}P` : ''}
         </p>
         {mission.max_completions && (
-          <p className="text-xs text-[#FC4C02] font-bold mt-1">선착순 {mission.max_completions.toLocaleString()}명</p>
+          <p className="text-xs text-[#FC4C02] font-black mt-1">선착순 {mission.max_completions.toLocaleString()}명</p>
         )}
       </div>
 
@@ -169,7 +169,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
           <button
             onClick={handleCancel}
             disabled={loading}
-            className="w-full py-4 rounded-2xl border-2 border-black/15 text-[#666666] font-black text-base active:scale-95 transition-all disabled:opacity-30"
+            className="w-full py-4 rounded-2xl border-[3px] border-jam-ink text-jam-ink font-black text-base active:scale-95 transition-all disabled:opacity-30 shadow-[3px_3px_0_0_#161616]"
           >
             {loading ? '처리 중...' : '참가 취소'}
           </button>
@@ -177,7 +177,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
           <button
             onClick={handleJoin}
             disabled={loading}
-            className="w-full py-4 rounded-2xl bg-[#111111] text-white font-black text-base active:scale-95 transition-all disabled:opacity-30"
+            className="w-full py-4 rounded-2xl bg-jam-ink text-white font-black text-base active:scale-95 transition-all disabled:opacity-30 shadow-[3px_3px_0_0_#161616]"
           >
             {loading ? '처리 중...' : '미션 참가하기'}
           </button>
@@ -185,7 +185,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
       )}
 
       {isCompleted && (
-        <div className="w-full py-4 rounded-2xl bg-[#AEEA00] text-[#111111] font-black text-base text-center">
+        <div className="w-full py-4 rounded-2xl bg-jam-lime border-[3px] border-jam-ink text-jam-ink font-black text-base text-center shadow-[3px_3px_0_0_#161616]">
           🎉 달성 완료!
         </div>
       )}

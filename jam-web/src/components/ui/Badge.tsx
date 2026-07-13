@@ -8,19 +8,19 @@ interface RarityBadgeProps {
 const rarityConfig: Record<BadgeRarity, { label: string; classes: string }> = {
   common: {
     label: '일반',
-    classes: 'bg-[#E8E8E0] text-[#888888]',
+    classes: 'bg-gray-200 text-jam-ink border-jam-ink',
   },
   rare: {
     label: '레어',
-    classes: 'bg-[#C8E8F4] text-[#2080A8]',
+    classes: 'bg-jam-teal text-jam-ink border-jam-ink',
   },
   legendary: {
     label: '레전더리',
-    classes: 'bg-[#E8D4F8] text-[#8040C0]',
+    classes: 'bg-jam-purple text-white border-jam-ink',
   },
   mythic: {
     label: '미식',
-    classes: 'bg-[#F8F0C0] text-[#A08010]',
+    classes: 'bg-jam-yellow text-jam-ink border-jam-ink',
   },
 }
 
@@ -29,7 +29,7 @@ export default function RarityBadge({ rarity, className = '' }: RarityBadgeProps
   return (
     <span
       className={[
-        'inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-black tracking-wider uppercase',
+        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black tracking-wide uppercase border-2',
         config.classes,
         className,
       ]
