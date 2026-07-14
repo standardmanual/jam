@@ -10,7 +10,7 @@ interface Props {
 export async function generateMetadata({ params }: Props) {
   const { username } = await params
   return {
-    title: `@${username} — JAM!`,
+    title: `${username} — JAM!`,
   }
 }
 
@@ -56,7 +56,7 @@ export default async function UserProfilePage({ params }: Props) {
           {profile.avatar_url ? (
             <Image
               src={profile.avatar_url}
-              alt={`@${profile.username}`}
+              alt={profile.username ?? username}
               width={96}
               height={96}
               className="object-cover w-full h-full"
@@ -65,7 +65,7 @@ export default async function UserProfilePage({ params }: Props) {
             <span className="text-4xl">👤</span>
           )}
         </div>
-        <h1 className="text-2xl font-black text-jam-ink">@{profile.username}</h1>
+        <h1 className="text-2xl font-black text-jam-ink">{profile.username}</h1>
         <p className="text-jam-ink/40 text-xs font-semibold mt-1">
           {new Date(profile.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' })} 가입
         </p>
