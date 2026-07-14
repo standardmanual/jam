@@ -237,14 +237,52 @@ interface Props {
   profile: UserRow | null
   strava: StravaConnectionRow | null
   feedItems: ActivityFeedRow[]
+  isOwnProfile: boolean
+  isFollowing: boolean
+  targetUserId: string
+  followerCount: number
+  followingCount: number
+  badgeCount: number
+  itemBookCount: number
+  username: string
 }
 
-export default function ProfileClient({ profile, strava, feedItems }: Props) {
+export default function ProfileClient({
+  profile,
+  strava,
+  feedItems,
+  isOwnProfile,
+  isFollowing,
+  targetUserId,
+  followerCount,
+  followingCount,
+  badgeCount,
+  itemBookCount,
+  username,
+}: Props) {
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [selectedItem, setSelectedItem] = useState<ActivityFeedRow | null>(null)
+  const [following, setFollowing] = useState(isFollowing)
+  const [followerCnt, setFollowerCnt] = useState(followerCount)
 
   const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
+
+  const handleFollow = async () => {
+    if (following) {
+      setFollowing(false)
+      setFollowerCnt((c) => c - 1)
+      await fetch(`/api/follows/${targetUserId}`, { method: 'DELETE' })
+    } else {
+      setFollowing(true)
+      setFollowerCnt((c) => c + 1)
+      await fetch('/api/follows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_user_id: targetUserId }),
+      })
+    }
+  }
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -281,17 +319,50 @@ export default function ProfileClient({ profile, strava, feedItems }: Props) {
         )}
         <div className="flex-1">
           <p className="font-black text-xl">{profile?.username ? `@${profile.username}` : '익명'}</p>
-          <p className="text-jam-ink/60 text-sm font-semibold">{profile?.email}</p>
+          {isOwnProfile && <p className="text-jam-ink/60 text-sm font-semibold">{profile?.email}</p>}
         </div>
-        <button
-          onClick={() => router.push('/profile/edit')}
-          className="px-3 py-1.5 rounded-xl bg-jam-ink text-white text-sm font-black border-[2px] border-jam-ink active:scale-95 transition-transform"
-        >
-          편집
-        </button>
+        {isOwnProfile ? (
+          <button
+            onClick={() => router.push('/profile/edit')}
+            className="px-3 py-1.5 rounded-xl bg-jam-ink text-white text-sm font-black border-[2px] border-jam-ink active:scale-95 transition-transform"
+          >
+            편집
+          </button>
+        ) : (
+          <button
+            onClick={handleFollow}
+            className={`px-4 py-1.5 rounded-xl text-sm font-black border-[2px] border-jam-ink active:scale-95 transition-all ${
+              following ? 'bg-white/60 text-jam-ink' : 'bg-jam-ink text-white'
+            }`}
+          >
+            {following ? '팔로잉' : '팔로우'}
+          </button>
+        )}
       </div>
 
-      {/* Strava 연동 */}
+      {/* 통계 바 */}
+      <div className="flex border-[2px] border-jam-ink rounded-2xl overflow-hidden bg-white shadow-[2px_2px_0_0_#161616]">
+        {[
+          { label: '팔로워', value: followerCnt, href: `/${username}/followers` },
+          { label: '팔로잉', value: followingCount, href: `/${username}/following` },
+          { label: '뱃지', value: badgeCount, onClick: () => { setActiveFilter('badge'); window.scrollTo(0, 0) } },
+          { label: '아이템북', value: itemBookCount, href: '/itembooks' },
+        ].map((stat, i) => (
+          <button
+            key={stat.label}
+            onClick={stat.onClick ?? (() => router.push(stat.href!))}
+            className={`flex-1 flex flex-col items-center py-3 gap-0.5 active:bg-jam-ink/5 transition-colors ${
+              i < 3 ? 'border-r-[2px] border-jam-ink' : ''
+            }`}
+          >
+            <span className="text-xl font-black text-jam-ink">{stat.value}</span>
+            <span className="text-[10px] font-black text-jam-ink/50 uppercase tracking-wider">{stat.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Strava 연동 — 본인만 */}
+      {isOwnProfile && (
       <section className="bg-jam-cream rounded-3xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-5">
         <h2 className="font-black text-base mb-3">Strava 연동</h2>
         {strava ? (
@@ -316,8 +387,10 @@ export default function ProfileClient({ profile, strava, feedItems }: Props) {
           </div>
         )}
       </section>
+      )}
 
-      {/* Feed */}
+      {/* Feed — 본인만 */}
+      {isOwnProfile && (
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-black text-base">Feed</h2>
@@ -354,13 +427,17 @@ export default function ProfileClient({ profile, strava, feedItems }: Props) {
           </div>
         )}
       </section>
+      )}
 
-      <button
-        onClick={handleLogout}
-        className="w-full py-4 rounded-2xl border-[3px] border-jam-ink text-jam-ink font-black text-base active:scale-95 transition-all bg-white/60"
-      >
-        로그아웃
-      </button>
+      {/* 로그아웃 — 본인만 */}
+      {isOwnProfile && (
+        <button
+          onClick={handleLogout}
+          className="w-full py-4 rounded-2xl border-[3px] border-jam-ink text-jam-ink font-black text-base active:scale-95 transition-all bg-white/60"
+        >
+          로그아웃
+        </button>
+      )}
 
       {/* 상세 시트 (배지/아이템 이벤트) */}
       {selectedItem && (
