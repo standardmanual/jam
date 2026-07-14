@@ -1,6 +1,4 @@
 import { notFound, redirect } from 'next/navigation'
-import Image from 'next/image'
-import Link from 'next/link'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow } from '@/types/database'
 import ProfileClient from '../profile/ProfileClient'
@@ -32,96 +30,49 @@ export default async function UserProfilePage({ params }: Props) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: targetRaw } = await (service as any)
     .from('users')
-    .select('id, username, avatar_url, created_at')
+    .select('*')
     .eq('username', username.toLowerCase())
     .maybeSingle()
 
   if (!targetRaw) notFound()
-  const target = targetRaw as { id: string; username: string | null; avatar_url: string | null; created_at: string }
+  const target = targetRaw as UserRow
+  const subjectId = target.id
+  const isOwnProfile = target.id === user.id
 
-  // ─── 타인 프로필: 간소 뷰 ───────────────────────────────────────────
-  if (target.id !== user.id) {
+  // ─── 통계 (팔로워/팔로잉/뱃지/아이템북 + isFollowing) ──────────────────
+  const [
+    followerCountResult,
+    followingCountResult,
+    badgeCountResult,
+    itemBookCountResult,
+    isFollowingResult,
+  ] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: badgesRaw } = await (service as any)
-      .from('user_activity_badges')
-      .select('earned_at, badges(id, name, image_url, rarity)')
-      .eq('user_id', target.id)
-      .order('earned_at', { ascending: false })
-      .limit(60)
-
-    type BadgeRef = { id: string; name: string; image_url: string | null; rarity: string }
-    type BadgeRow = { earned_at: string; badges: BadgeRef | null }
-
-    const badges = ((badgesRaw ?? []) as BadgeRow[])
-      .map((row) => ({ earned_at: row.earned_at, badge: row.badges }))
-      .filter((r): r is { earned_at: string; badge: BadgeRef } => r.badge !== null)
-
-    return (
-      <div className="min-h-full bg-jam-cream px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-24">
-        <div className="flex flex-col items-center text-center mb-8 pt-4">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-[3px] border-jam-ink shadow-[4px_4px_0_0_#161616] mb-4 bg-white flex items-center justify-center">
-            {target.avatar_url ? (
-              <Image src={target.avatar_url} alt={target.username ?? username} width={96} height={96} className="object-cover w-full h-full" />
-            ) : (
-              <span className="text-4xl">👤</span>
-            )}
-          </div>
-          <h1 className="text-2xl font-black text-jam-ink">{target.username}</h1>
-          <p className="text-jam-ink/40 text-xs font-semibold mt-1">
-            {new Date(target.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' })} 가입
-          </p>
-          <div className="flex gap-6 mt-4">
-            <div className="text-center">
-              <p className="text-2xl font-black text-jam-ink">{badges.length}</p>
-              <p className="text-xs text-jam-ink/50 font-bold">획득 배지</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t-[2px] border-jam-ink/10 mb-6" />
-
-        {badges.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <span className="text-5xl mb-3">🏅</span>
-            <p className="text-jam-ink/50 font-bold text-sm">아직 획득한 배지가 없어요</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-[10px] font-black text-jam-ink/40 uppercase tracking-widest mb-3">획득 배지</p>
-            <div className="grid grid-cols-3 gap-3">
-              {badges.map((r: { earned_at: string; badge: BadgeRef }, i: number) => {
-                const b = r.badge
-                return (
-                  <Link
-                    key={`${b.id}-${i}`}
-                    href={`/badges/${b.id}`}
-                    className="flex flex-col items-center bg-white border-[2px] border-jam-ink/20 rounded-2xl p-3 gap-2 active:scale-95 transition-transform"
-                  >
-                    <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-jam-cream">
-                      {b.image_url ? (
-                        <Image src={b.image_url} alt={b.name} width={80} height={80} className="object-contain w-full h-full p-1" />
-                      ) : (
-                        <span className="text-3xl">🏅</span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-jam-ink text-center leading-tight line-clamp-2 font-bold w-full">{b.name}</p>
-                  </Link>
-                )
-              })}
-            </div>
-          </>
-        )}
-      </div>
-    )
-  }
-
-  // ─── 본인 프로필: 기존 ProfileClient 전체 ────────────────────────────
-  const [profileResult, stravaResult, feedResult, invResult] = await Promise.all([
-    supabase.from('users').select('*').eq('id', user.id).single(),
-    supabase.from('strava_connections').select('*').eq('user_id', user.id).maybeSingle(),
+    (service as any).from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', subjectId),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).from('user_activity_feed').select('*').eq('user_id', user.id).order('event_at', { ascending: false }).limit(150),
-    service.from('inventory').select('id').eq('user_id', user.id).maybeSingle(),
+    (service as any).from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', subjectId),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).from('user_activity_badges').select('*', { count: 'exact', head: true }).eq('user_id', subjectId),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).from('user_item_book_completions').select('*', { count: 'exact', head: true }).eq('user_id', subjectId),
+    isOwnProfile
+      ? Promise.resolve({ data: null })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      : (service as any).from('user_follows').select('id').eq('follower_id', user.id).eq('following_id', subjectId).maybeSingle(),
+  ])
+
+  const followerCount = followerCountResult.count ?? 0
+  const followingCount = followingCountResult.count ?? 0
+  const badgeCount = badgeCountResult.count ?? 0
+  const itemBookCount = itemBookCountResult.count ?? 0
+  const isFollowing = !!isFollowingResult.data
+
+  // ─── 프로필 / Strava / 피드 (대상 유저 기준) ──────────────────────────
+  const [stravaResult, feedResult, invResult] = await Promise.all([
+    service.from('strava_connections').select('*').eq('user_id', subjectId).maybeSingle(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).from('user_activity_feed').select('*').eq('user_id', subjectId).order('event_at', { ascending: false }).limit(150),
+    service.from('inventory').select('id').eq('user_id', subjectId).maybeSingle(),
   ])
 
   const inventoryId = (invResult.data as { id: string } | null)?.id
@@ -138,7 +89,7 @@ export default async function UserProfilePage({ params }: Props) {
     (service as any)
       .from('user_activity_badges')
       .select('badge_id, earned_at, badges(id, name, image_url, rarity)')
-      .eq('user_id', user.id)
+      .eq('user_id', subjectId)
       .order('earned_at', { ascending: false })
       .limit(100),
 
@@ -157,7 +108,7 @@ export default async function UserProfilePage({ params }: Props) {
     (service as any)
       .from('poi_drops')
       .select('id, badge_id, dropped_at, poi(name), badges(id, name, image_url, rarity)')
-      .eq('dropper_user_id', user.id)
+      .eq('dropper_user_id', subjectId)
       .order('dropped_at', { ascending: false })
       .limit(50),
 
@@ -165,7 +116,7 @@ export default async function UserProfilePage({ params }: Props) {
     (service as any)
       .from('poi_drops')
       .select('id, badge_id, picked_up_at, dropper_user_id, poi(name), badges(id, name, image_url, rarity)')
-      .eq('picked_up_by', user.id)
+      .eq('picked_up_by', subjectId)
       .not('picked_up_at', 'is', null)
       .order('picked_up_at', { ascending: false })
       .limit(50),
@@ -174,7 +125,7 @@ export default async function UserProfilePage({ params }: Props) {
     (service as any)
       .from('user_mission_completions')
       .select('id, mission_id, completed_at, missions(title, reward_type, reward_points)')
-      .eq('user_id', user.id)
+      .eq('user_id', subjectId)
       .order('completed_at', { ascending: false })
       .limit(50),
 
@@ -182,7 +133,7 @@ export default async function UserProfilePage({ params }: Props) {
     (service as any)
       .from('user_mission_participations')
       .select('mission_id, joined_at, missions(title)')
-      .eq('user_id', user.id)
+      .eq('user_id', subjectId)
       .order('joined_at', { ascending: false })
       .limit(50),
   ])
@@ -246,9 +197,17 @@ export default async function UserProfilePage({ params }: Props) {
 
   return (
     <ProfileClient
-      profile={profileResult.data as UserRow | null}
+      profile={target as UserRow}
       strava={stravaResult.data as StravaConnectionRow | null}
       feedItems={allItems.slice(0, 200)}
+      isOwnProfile={isOwnProfile}
+      isFollowing={isFollowing}
+      targetUserId={target.id}
+      followerCount={followerCount}
+      followingCount={followingCount}
+      badgeCount={badgeCount}
+      itemBookCount={itemBookCount}
+      username={target.username ?? username}
     />
   )
 }

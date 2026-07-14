@@ -295,6 +295,17 @@ export interface UserItemBookCompletionRow {
 }
 
 // =========================================
+// Phase 10: 팔로우 (user_follows)
+// =========================================
+
+export interface UserFollowRow {
+  id: string
+  follower_id: string
+  following_id: string
+  created_at: string
+}
+
+// =========================================
 // 배지 발급 조건 타입 (condition_json)
 // =========================================
 export interface BadgeCondition {
@@ -506,6 +517,12 @@ export interface Database {
         Row: UserItemBookCompletionRow
         Insert: Omit<UserItemBookCompletionRow, 'completed_at'> & { completed_at?: string }
         Update: Partial<UserItemBookCompletionRow>
+        Relationships: []
+      }
+      user_follows: {
+        Row: UserFollowRow
+        Insert: Omit<UserFollowRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<UserFollowRow, 'id'>>
         Relationships: []
       }
     }
