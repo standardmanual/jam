@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ToastProvider } from '@/components/ui/Toast'
 import TabBar from './TabBar'
 
@@ -13,6 +13,15 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     redirect('/login')
   }
 
+  const service = createServiceClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profileRaw } = await (service as any)
+    .from('users')
+    .select('username')
+    .eq('id', user.id)
+    .maybeSingle()
+  const username = (profileRaw as { username: string | null } | null)?.username ?? null
+
   return (
     <ToastProvider>
       <div className="min-h-dvh flex flex-col w-full relative">
@@ -22,7 +31,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         </main>
 
         {/* 하단 탭 바 */}
-        <TabBar />
+        <TabBar username={username} />
       </div>
     </ToastProvider>
   )
