@@ -1,18 +1,9 @@
 import Link from 'next/link'
 import { StravaConnectionRow } from '@/types/database'
+import LocalDate from '@/components/LocalDate'
 
 interface StravaStatusCardProps {
   connection: StravaConnectionRow | null
-}
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 export default function StravaStatusCard({ connection }: StravaStatusCardProps) {
@@ -46,7 +37,7 @@ export default function StravaStatusCard({ connection }: StravaStatusCardProps) 
       </div>
       {connection.last_synced_at ? (
         <p className="text-white/40 text-xs">
-          마지막 동기화: {formatDateTime(connection.last_synced_at)}
+          마지막 동기화: <LocalDate iso={connection.last_synced_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
         </p>
       ) : (
         <p className="text-white/40 text-xs">아직 동기화된 데이터가 없습니다</p>

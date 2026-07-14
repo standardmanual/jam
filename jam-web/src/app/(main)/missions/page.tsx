@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { MissionRow, UserMissionCompletionRow, UserMissionParticipationRow } from '@/types/database'
+import LocalDate from '@/components/LocalDate'
 
 function timeLeft(endsAt: string): string {
   const diff = new Date(endsAt).getTime() - Date.now()
@@ -122,7 +123,7 @@ export default async function MissionsPage() {
               >
                 <h3 className="font-black text-sm text-jam-ink/60 mb-1">{m.title}</h3>
                 <p className="text-xs text-jam-ink/40 font-semibold">
-                  {new Date(m.starts_at).toLocaleDateString('ko-KR')} 시작
+                  <LocalDate iso={m.starts_at} options={{ year: 'numeric', month: 'numeric', day: 'numeric' }} /> 시작
                 </p>
               </Link>
             ))}

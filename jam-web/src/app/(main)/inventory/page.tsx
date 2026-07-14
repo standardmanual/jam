@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { InventoryRow, InventoryItemRow, BadgeRow } from '@/types/database'
+import LocalDate from '@/components/LocalDate'
 
 type InventoryItemWithBadge = InventoryItemRow & {
   badge: BadgeRow
@@ -18,11 +19,6 @@ function isExpiringSoon(expiresAt: string | null): boolean {
   return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
 }
 
-function formatExpiry(expiresAt: string | null): string {
-  if (!expiresAt) return ''
-  const date = new Date(expiresAt)
-  return `${date.getMonth() + 1}/${date.getDate()} 만료`
-}
 
 const rarityCardBg: Record<string, string> = {
   common: 'bg-white',
@@ -118,7 +114,7 @@ export default async function InventoryPage() {
                   {item.badge.name}
                 </p>
                 {expiring && item.expires_at && (
-                  <p className="text-[10px] text-red-600 font-bold">{formatExpiry(item.expires_at)}</p>
+                  <p className="text-[10px] text-red-600 font-bold"><LocalDate iso={item.expires_at} options={{ month: 'numeric', day: 'numeric' }} suffix=" 만료" /></p>
                 )}
               </Link>
             )
