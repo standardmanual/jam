@@ -1,17 +1,26 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import type { ItemBookRow, BadgeRow } from '@/types/database'
+import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
 
 export default async function AdminItemBooksPage() {
   const supabase = createServiceClient()
-  const [{ data: booksRaw }, { data: badgesRaw }] = await Promise.all([
+  const [{ data: booksRaw }, { data: badgesRaw }, { data: itemBadgesRaw }, { data: factionsRaw }] = await Promise.all([
     supabase.from('item_books').select('*').order('created_at', { ascending: false }),
     supabase.from('badges').select('id, name'),
+    supabase.from('badges').select('id, item_book_id').eq('type', 'item').not('item_book_id', 'is', null),
+    supabase.from('factions').select('id, name'),
   ])
 
   const books = (booksRaw ?? []) as ItemBookRow[]
   const badges = (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
+  const factionMap = new Map(((factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]).map((f) => [f.id, f.name]))
+
+  const itemBadgeCountMap = new Map<string, number>()
+  for (const b of (itemBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
+    if (!b.item_book_id) continue
+    itemBadgeCountMap.set(b.item_book_id, (itemBadgeCountMap.get(b.item_book_id) ?? 0) + 1)
+  }
 
   return (
     <div className="p-8">
@@ -30,15 +39,16 @@ export default async function AdminItemBooksPage() {
           <thead>
             <tr className="border-b border-white/10 text-white/40 text-left">
               <th className="px-5 py-3 font-medium">이름</th>
+              <th className="px-5 py-3 font-medium">세계관</th>
               <th className="px-5 py-3 font-medium">필수 액티비티 배지</th>
-              <th className="px-5 py-3 font-medium">필수 아이템 배지 수</th>
+              <th className="px-5 py-3 font-medium">아이템 배지 수</th>
               <th className="px-5 py-3 font-medium">보상 배지</th>
             </tr>
           </thead>
           <tbody>
             {books.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-5 py-10 text-center text-white/30">
+                <td colSpan={5} className="px-5 py-10 text-center text-white/30">
                   등록된 아이템북이 없습니다.
                 </td>
               </tr>
@@ -54,10 +64,13 @@ export default async function AdminItemBooksPage() {
                   </Link>
                 </td>
                 <td className="px-5 py-3 text-white/60">
-                  {badgeMap.get(book.required_activity_badge_id) ?? '—'}
+                  {book.faction_id ? (factionMap.get(book.faction_id) ?? '—') : '—'}
                 </td>
                 <td className="px-5 py-3 text-white/60">
-                  {book.required_item_badge_ids?.length ?? 0}개
+                  {book.required_activity_badge_id ? (badgeMap.get(book.required_activity_badge_id) ?? '—') : '—'}
+                </td>
+                <td className="px-5 py-3 text-white/60">
+                  {itemBadgeCountMap.get(book.id) ?? 0}개
                 </td>
                 <td className="px-5 py-3 text-white/60">
                   {book.reward_badge_id ? badgeMap.get(book.reward_badge_id) ?? '—' : '—'}

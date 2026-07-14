@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import type { BadgeRow } from '@/types/database'
+import type { BadgeRow, FactionRow } from '@/types/database'
 
 const rarityColor: Record<string, string> = {
   common: 'text-white/50',
@@ -11,12 +11,13 @@ const rarityColor: Record<string, string> = {
 
 export default async function AdminBadgesPage() {
   const supabase = createServiceClient()
-  const { data: badgesRaw } = await supabase
-    .from('badges')
-    .select('*')
-    .order('created_at', { ascending: false })
+  const [{ data: badgesRaw }, { data: factionsRaw }] = await Promise.all([
+    supabase.from('badges').select('*').order('created_at', { ascending: false }),
+    supabase.from('factions').select('id, name'),
+  ])
 
   const badges = (badgesRaw ?? []) as BadgeRow[]
+  const factionMap = new Map(((factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]).map((f) => [f.id, f.name]))
 
   return (
     <div className="p-8">
@@ -38,6 +39,7 @@ export default async function AdminBadgesPage() {
               <th className="px-5 py-3 font-medium">이름</th>
               <th className="px-5 py-3 font-medium">타입</th>
               <th className="px-5 py-3 font-medium">희귀도</th>
+              <th className="px-5 py-3 font-medium">세계관</th>
               <th className="px-5 py-3 font-medium">활동 종류</th>
               <th className="px-5 py-3 font-medium">조건</th>
               <th className="px-5 py-3 font-medium">패치</th>
@@ -46,7 +48,7 @@ export default async function AdminBadgesPage() {
           <tbody>
             {badges.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-white/30">
+                <td colSpan={8} className="px-5 py-10 text-center text-white/30">
                   등록된 배지가 없습니다.
                 </td>
               </tr>
@@ -83,6 +85,9 @@ export default async function AdminBadgesPage() {
                 <td className="px-5 py-3 text-white/60">{badge.type}</td>
                 <td className={`px-5 py-3 font-medium ${rarityColor[badge.rarity] ?? ''}`}>
                   {badge.rarity}
+                </td>
+                <td className="px-5 py-3 text-white/60 text-xs">
+                  {badge.faction_id ? (factionMap.get(badge.faction_id) ?? '—') : '—'}
                 </td>
                 <td className="px-5 py-3 text-white/60 text-xs">
                   {badge.activity_types?.join(', ') || '—'}

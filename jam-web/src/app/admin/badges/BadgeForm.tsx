@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity } from '@/types/database'
+import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
 
 const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'hiking', 'walking']
 const BADGE_TYPES: BadgeType[] = ['activity', 'item']
@@ -10,11 +10,13 @@ const RARITIES: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
 
 interface BadgeFormProps {
   badge?: BadgeRow
+  factions: Pick<FactionRow, 'id' | 'name'>[]
+  itemBooks: Pick<ItemBookRow, 'id' | 'name'>[]
 }
 
 const EMPTY_CONDITION: BadgeCondition = {}
 
-export default function BadgeForm({ badge }: BadgeFormProps) {
+export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps) {
   const router = useRouter()
   const isEdit = !!badge
 
@@ -38,6 +40,12 @@ export default function BadgeForm({ badge }: BadgeFormProps) {
   const [condStreakDays, setCondStreakDays] = useState<string>(initCond.streak_days?.toString() ?? '')
   const [condActivityType, setCondActivityType] = useState<string>(initCond.activity_type ?? '')
   const [condPoiId, setCondPoiId] = useState<string>(initCond.poi_id ?? '')
+
+  const [factionId, setFactionId] = useState(badge?.faction_id ?? '')
+  const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
+  const [dropWeight, setDropWeight] = useState<string>(
+    badge?.drop_weight?.toString() ?? '1.0'
+  )
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -76,6 +84,9 @@ export default function BadgeForm({ badge }: BadgeFormProps) {
       patch_available: patchAvailable,
       patch_price_krw: patchAvailable && patchPriceKrw ? parseInt(patchPriceKrw, 10) : null,
       condition_json: type === 'activity' ? buildConditionJson() : null,
+      faction_id: factionId || null,
+      item_book_id: itemBookId || null,
+      drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
     }
 
     try {
@@ -173,6 +184,52 @@ export default function BadgeForm({ badge }: BadgeFormProps) {
             ))}
           </select>
         </label>
+
+        {/* 세계관 선택 */}
+        <label className="flex flex-col gap-1.5 col-span-2">
+          <span className="text-sm text-white/60">소속 세계관</span>
+          <select
+            value={factionId}
+            onChange={(e) => setFactionId(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+          >
+            <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
+            {factions.map((f) => (
+              <option key={f.id} value={f.id} className="bg-[#1a1a1a]">{f.name}</option>
+            ))}
+          </select>
+        </label>
+
+        {/* 소속 아이템북 */}
+        <label className="flex flex-col gap-1.5 col-span-2">
+          <span className="text-sm text-white/60">소속 아이템북</span>
+          <select
+            value={itemBookId}
+            onChange={(e) => setItemBookId(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+          >
+            <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
+            {itemBooks.map((b) => (
+              <option key={b.id} value={b.id} className="bg-[#1a1a1a]">{b.name}</option>
+            ))}
+          </select>
+        </label>
+
+        {/* drop_weight (아이템 배지 타입일 때만) */}
+        {type === 'item' && (
+          <label className="flex flex-col gap-1.5 col-span-2">
+            <span className="text-sm text-white/60">드랍 가중치 (0.1 ~ 10.0)</span>
+            <input
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="10"
+              value={dropWeight}
+              onChange={(e) => setDropWeight(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+            />
+          </label>
+        )}
 
         <label className="flex flex-col gap-1.5 col-span-2">
           <span className="text-sm text-white/60">이미지 URL *</span>

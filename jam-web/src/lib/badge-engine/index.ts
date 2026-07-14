@@ -92,7 +92,7 @@ export async function evaluateBadges(
     await recordFeedEvent(userId, 'badge_earned', {
       badge_id: badge.id,
       badge_name: badge.name,
-      badge_image_url: badge.image_url,
+      badge_image_url: badge.image_url ?? '',
       rarity: badge.rarity,
     })
   }

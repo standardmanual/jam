@@ -1,15 +1,18 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import ItemBookForm from '../ItemBookForm'
-import type { BadgeRow } from '@/types/database'
+import type { BadgeRow, FactionRow } from '@/types/database'
 
 export default async function NewItemBookPage() {
   const supabase = createServiceClient()
-  const { data } = await supabase.from('badges').select('id, name, type').order('name')
-  const badges = (data ?? []) as (Pick<BadgeRow, 'id' | 'name'> & { type: string })[]
+  const [{ data: badgesRaw }, { data: factionsRaw }] = await Promise.all([
+    supabase.from('badges').select('id, name, type').order('name'),
+    supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
+  ])
 
+  const badges = (badgesRaw ?? []) as (Pick<BadgeRow, 'id' | 'name'> & { type: string })[]
+  const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
   const activityBadges = badges.filter((b) => b.type === 'activity')
-  const itemBadges = badges.filter((b) => b.type === 'item')
 
   return (
     <div className="p-8">
@@ -20,8 +23,10 @@ export default async function NewItemBookPage() {
         <h1 className="text-2xl font-bold mt-2">아이템북 등록</h1>
       </div>
       <ItemBookForm
+        factions={factions}
+        slottedBadges={[]}
+        availableBadges={[]}
         activityBadges={activityBadges}
-        itemBadges={itemBadges}
         allBadges={badges}
       />
     </div>
