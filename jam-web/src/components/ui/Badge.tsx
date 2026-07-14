@@ -25,6 +25,7 @@ const rarityConfig: Record<BadgeRarity, { label: string; classes: string }> = {
 }
 
 export default function RarityBadge({ rarity, className = '' }: RarityBadgeProps) {
+  if (rarity === 'common') return null
   const config = rarityConfig[rarity]
   return (
     <span
