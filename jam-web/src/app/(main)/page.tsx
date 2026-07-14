@@ -4,27 +4,13 @@ import { redirect } from 'next/navigation'
 import { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
 import SyncButton from './SyncButton'
+import LocalDate from '@/components/LocalDate'
 
 interface BadgeWithEarned {
   badge: BadgeRow
   earned: UserActivityBadgeRow
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('ko-KR', {
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 const rarityCardBg: Record<string, string> = {
   common: 'bg-white',
@@ -82,7 +68,7 @@ export default async function HomePage() {
               <span className="text-sm font-black text-jam-ink">Strava</span>
               {stravaConnection.last_synced_at && (
                 <span className="text-xs text-jam-ink/50 font-semibold">
-                  {formatDateTime(stravaConnection.last_synced_at)}
+                  <LocalDate iso={stravaConnection.last_synced_at} options={{ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
                 </span>
               )}
             </div>
@@ -130,7 +116,7 @@ export default async function HomePage() {
                     <p className="font-black text-sm text-jam-ink leading-tight truncate">{badge.name}</p>
                     <div className="flex items-center justify-between mt-1">
                       <RarityBadge rarity={badge.rarity} />
-                      <p className="text-[10px] text-jam-ink/50 font-semibold">{formatDate(earned.earned_at)}</p>
+                      <p className="text-[10px] text-jam-ink/50 font-semibold"><LocalDate iso={earned.earned_at} options={{ month: 'long', day: 'numeric' }} /></p>
                     </div>
                   </div>
                 </div>

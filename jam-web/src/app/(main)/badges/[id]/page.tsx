@@ -6,20 +6,11 @@ import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import ShareCardModal from './ShareCardModal'
 import PoiMapButton from './PoiMapButton'
+import LocalDate from '@/components/LocalDate'
 
 interface BadgeDetailPageProps {
   params: Promise<{ id: string }>
   searchParams: Promise<{ from?: string; bookId?: string }>
-}
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 export default async function BadgeDetailPage({ params, searchParams }: BadgeDetailPageProps) {
@@ -109,7 +100,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-jam-ink/60 font-semibold">획득 일시</span>
-              <span className="text-sm font-bold">{formatDateTime(earned.earned_at)}</span>
+              <span className="text-sm font-bold"><LocalDate iso={earned.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} /></span>
             </div>
             {earned.triggered_by_activity_name && (
               <div className="flex justify-between items-center">
@@ -129,9 +120,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               <div className="flex justify-between items-center">
                 <span className="text-sm text-jam-ink/60 font-semibold">활동 일자</span>
                 <span className="text-sm font-bold">
-                  {new Date(earned.triggered_by_activity_date).toLocaleDateString('ko-KR', {
-                    year: 'numeric', month: 'long', day: 'numeric',
-                  })}
+                  <LocalDate iso={earned.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
                 </span>
               </div>
             )}

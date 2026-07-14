@@ -4,14 +4,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import RarityBadge from '@/components/ui/Badge'
 import { InventoryItemRow, BadgeRow } from '@/types/database'
+import LocalDate from '@/components/LocalDate'
 
 type InventoryItemWithBadge = InventoryItemRow & {
   badge: BadgeRow
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, '0')}. ${String(d.getDate()).padStart(2, '0')}`
 }
 
 function isExpiringSoon(expiresAt: string | null): boolean {
@@ -105,12 +101,12 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
           </div>
           <div className="flex justify-between items-center px-4 py-3">
             <span className="text-sm text-jam-ink/50 font-semibold">획득일</span>
-            <span className="text-sm text-jam-ink font-bold">{formatDate(item.obtained_at)}</span>
+            <span className="text-sm text-jam-ink font-bold"><LocalDate iso={item.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} /></span>
           </div>
           <div className="flex justify-between items-center px-4 py-3">
             <span className="text-sm text-jam-ink/50 font-semibold">만료일</span>
             <span className={`text-sm font-bold ${expiring ? 'text-red-600' : item.expires_at ? 'text-jam-ink' : 'text-jam-ink/40'}`}>
-              {item.expires_at ? formatDate(item.expires_at) : '없음'}
+              {item.expires_at ? <LocalDate iso={item.expires_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} /> : '없음'}
               {expiring && ' ⚠️'}
             </span>
           </div>
