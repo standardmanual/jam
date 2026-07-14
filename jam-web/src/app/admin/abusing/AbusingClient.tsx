@@ -11,7 +11,7 @@ interface BanRow {
   expires_at: string | null
   created_at: string
   created_by: string
-  user: { id: string; email: string; display_name: string } | null
+  user: { id: string; email: string; username: string } | null
 }
 
 interface PoiBlockRow {
@@ -21,7 +21,7 @@ interface PoiBlockRow {
   blocked_until: string
   reason: string
   created_at: string
-  user: { id: string; email: string; display_name: string } | null
+  user: { id: string; email: string; username: string } | null
   poi: { id: string; name: string } | null
 }
 
@@ -319,7 +319,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
                 {bans.map((ban) => (
                   <tr key={ban.id} className="border-b border-white/5 hover:bg-white/5">
                     <td className="px-4 py-3">
-                      <p className="font-medium">{ban.user?.display_name ?? '—'}</p>
+                      <p className="font-medium">{ban.user?.username ?? '—'}</p>
                       <p className="text-xs text-white/40">{ban.user?.email ?? ban.user_id.slice(0, 8)}</p>
                     </td>
                     <td className="px-4 py-3">
@@ -366,7 +366,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
               {poiBlocks.map((b) => (
                 <tr key={b.id} className="border-b border-white/5 hover:bg-white/5">
                   <td className="px-4 py-3">
-                    <p className="font-medium">{b.user?.display_name ?? '—'}</p>
+                    <p className="font-medium">{b.user?.username ?? '—'}</p>
                     <p className="text-xs text-white/40">{b.user?.email ?? b.user_id.slice(0, 8)}</p>
                   </td>
                   <td className="px-4 py-3 text-white/70">{b.poi?.name ?? b.poi_id.slice(0, 8)}</td>

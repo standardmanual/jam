@@ -11,7 +11,7 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('user_shadow_bans')
-    .select('*, user:user_id(id, email, display_name)')
+    .select('*, user:user_id(id, email, username)')
     .order('created_at', { ascending: false })
     .limit(200)
 

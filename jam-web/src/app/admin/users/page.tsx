@@ -6,11 +6,11 @@ export default async function AdminUsersPage() {
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('users')
-    .select('id, email, display_name, created_at, region')
+    .select('id, email, username, created_at, region')
     .order('created_at', { ascending: false })
     .limit(100)
 
-  const users = (data ?? []) as Pick<UserRow, 'id' | 'email' | 'display_name' | 'created_at' | 'region'>[]
+  const users = (data ?? []) as Pick<UserRow, 'id' | 'email' | 'username' | 'created_at' | 'region'>[]
   const userIds = users.map((u) => u.id)
 
   // 보유 배지 수 집계
@@ -79,7 +79,7 @@ export default async function AdminUsersPage() {
             )}
             {users.map((user) => (
               <tr key={user.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                <td className="px-5 py-3 font-medium">{user.display_name}</td>
+                <td className="px-5 py-3 font-medium">{user.username ?? '—'}</td>
                 <td className="px-5 py-3 text-white/60">{user.email}</td>
                 <td className="px-5 py-3 text-white/60">{user.region ?? '—'}</td>
                 <td className="px-5 py-3 text-white/60">{badgeCountByUser.get(user.id) ?? 0}</td>
@@ -88,7 +88,7 @@ export default async function AdminUsersPage() {
                   {new Date(user.created_at).toLocaleDateString('ko-KR')}
                 </td>
                 <td className="px-5 py-3">
-                  <ResetUserButton userId={user.id} userName={user.display_name} />
+                  <ResetUserButton userId={user.id} userName={user.username ?? user.email} />
                 </td>
               </tr>
             ))}

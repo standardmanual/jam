@@ -126,7 +126,7 @@ export default function SimulatorPage() {
   const [repeatCount, setRepeatCount] = useState<number>(1)
   const [userId, setUserId] = useState('')
   const [userSearch, setUserSearch] = useState('')
-  const [users, setUsers] = useState<{ id: string; email: string; display_name: string }[]>([])
+  const [users, setUsers] = useState<{ id: string; email: string; username: string | null }[]>([])
   const [userLoading, setUserLoading] = useState(false)
   const [result, setResult] = useState<SimulateResult | null>(null)
   const [simLoading, setSimLoading] = useState(false)
@@ -268,7 +268,7 @@ export default function SimulatorPage() {
                         : 'hover:bg-white/5 text-white/70'
                     }`}
                   >
-                    <p className="font-medium">{u.display_name}</p>
+                    <p className="font-medium">{u.username ?? u.email}</p>
                     <p className="text-xs opacity-60">{u.email}</p>
                   </button>
                 ))}
@@ -276,7 +276,7 @@ export default function SimulatorPage() {
             )}
             {selectedUser && (
               <div className="bg-[#AEEA00]/10 border border-[#AEEA00]/20 rounded-xl px-3 py-2">
-                <p className="text-sm font-medium text-[#AEEA00]">선택됨: {selectedUser.display_name}</p>
+                <p className="text-sm font-medium text-[#AEEA00]">선택됨: {selectedUser.username ?? selectedUser.email}</p>
                 <p className="text-xs text-[#AEEA00]/60">{selectedUser.email}</p>
               </div>
             )}

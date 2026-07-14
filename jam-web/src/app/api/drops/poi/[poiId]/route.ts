@@ -28,13 +28,13 @@ export async function GET(
     return NextResponse.json({ error: '조회 실패', detail: error.message }, { status: 500 })
   }
 
-  // dropper display_name 별도 조회
+  // dropper username 별도 조회
   const dropperIds = [...new Set((data ?? []).map((d: any) => d.dropper_user_id as string))]
   const { data: usersData } = dropperIds.length > 0
-    ? await (service as any).from('users').select('id, display_name').in('id', dropperIds)
+    ? await (service as any).from('users').select('id, username').in('id', dropperIds)
     : { data: [] }
   const nameById: Record<string, string> = {}
-  for (const u of usersData ?? []) nameById[u.id] = u.display_name
+  for (const u of usersData ?? []) nameById[u.id] = u.username
 
   const drops = (data ?? []).map((d: any) => ({
     id: d.id,

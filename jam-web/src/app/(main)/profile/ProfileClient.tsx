@@ -279,10 +279,16 @@ export default function ProfileClient({ profile, strava, feedItems }: Props) {
             👤
           </div>
         )}
-        <div>
-          <p className="font-black text-xl">{profile?.display_name ?? '익명'}</p>
+        <div className="flex-1">
+          <p className="font-black text-xl">{profile?.username ? `@${profile.username}` : '익명'}</p>
           <p className="text-jam-ink/60 text-sm font-semibold">{profile?.email}</p>
         </div>
+        <button
+          onClick={() => router.push('/profile/edit')}
+          className="px-3 py-1.5 rounded-xl bg-jam-ink text-white text-sm font-black border-[2px] border-jam-ink active:scale-95 transition-transform"
+        >
+          편집
+        </button>
       </div>
 
       {/* Strava 연동 */}
