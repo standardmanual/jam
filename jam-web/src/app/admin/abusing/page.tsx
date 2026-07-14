@@ -17,12 +17,12 @@ export default async function AbusingPage() {
     getAbusingPolicy(),
     (supabase as any)
       .from('user_shadow_bans')
-      .select('*, user:user_id(id, email, display_name)')
+      .select('*, user:user_id(id, email, username)')
       .order('created_at', { ascending: false })
       .limit(200),
     (supabase as any)
       .from('poi_blocks')
-      .select('*, user:user_id(id, email, display_name), poi:poi_id(id, name)')
+      .select('*, user:user_id(id, email, username), poi:poi_id(id, name)')
       .gt('blocked_until', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(200),

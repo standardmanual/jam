@@ -44,7 +44,7 @@ export default async function HomePage() {
     (r) => ({ badge: r.badge, earned: r })
   )
 
-  const displayName = userProfile?.display_name ?? user.email?.split('@')[0] ?? '러너'
+  const displayName = userProfile?.username ?? user.email?.split('@')[0] ?? '러너'
 
   return (
     <div className="min-h-full bg-jam-lime px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 flex flex-col gap-6">

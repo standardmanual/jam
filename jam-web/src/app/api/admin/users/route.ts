@@ -11,12 +11,12 @@ export async function GET(req: NextRequest) {
 
   const query = supabase
     .from('users')
-    .select('id, email, display_name, created_at')
+    .select('id, email, username, created_at')
     .order('created_at', { ascending: false })
     .limit(20)
 
   if (q) {
-    query.or(`email.ilike.%${q}%,display_name.ilike.%${q}%`)
+    query.or(`email.ilike.%${q}%,username.ilike.%${q}%`)
   }
 
   const { data, error } = await query

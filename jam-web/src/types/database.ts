@@ -21,7 +21,7 @@ export type ItemObtainedBy = 'drop' | 'drop_event' | 'system_event' | 'pickup'
 export interface UserRow {
   id: string
   email: string
-  display_name: string
+  username: string | null
   avatar_url: string | null
   region: string
   activity_types: ActivityType[]
