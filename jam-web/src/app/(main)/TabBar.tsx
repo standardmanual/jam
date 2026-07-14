@@ -3,7 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const tabs = [
+interface TabBarProps {
+  username: string | null
+}
+
+const baseTabs = [
   {
     href: '/',
     label: '홈',
@@ -51,7 +55,7 @@ const tabs = [
     ),
   },
   {
-    href: '/profile',
+    href: '/profile',  // placeholder, 런타임에 username으로 교체
     label: '프로필',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
@@ -61,11 +65,17 @@ const tabs = [
   },
 ]
 
-export default function TabBar() {
+export default function TabBar({ username }: TabBarProps) {
   const pathname = usePathname()
+  const profileHref = username ? `/${username}` : '/profile'
+
+  const tabs = baseTabs.map((tab) =>
+    tab.href === '/profile' ? { ...tab, href: profileHref } : tab
+  )
 
   function isActive(href: string) {
     if (href === '/') return pathname === '/'
+    if (href === profileHref) return pathname === profileHref || pathname === '/profile'
     return pathname.startsWith(href)
   }
 
