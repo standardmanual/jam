@@ -17,7 +17,7 @@ export default async function BadgesPage() {
       .select('*, badge:badges(*)')
       .eq('user_id', user.id)
       .order('earned_at', { ascending: false }),
-    supabase.from('item_books').select('*'),
+    supabase.from('item_books').select('*').eq('is_active', true),
     supabase
       .from('inventory')
       .select('id, inventory_items(id, badge_id, serial_number, expires_at, badge:badges(id, name, image_url, rarity))')
@@ -28,8 +28,6 @@ export default async function BadgesPage() {
   const badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }> = (
     (earnedBadges ?? []) as Array<{ badge: BadgeRow } & UserActivityBadgeRow>
   ).map((r) => ({ badge: r.badge, earned: r }))
-
-  const ownedActivityBadgeIds = new Set(badges.map((b) => b.badge.id))
 
   type RawInventoryItem = {
     id: string
@@ -53,18 +51,35 @@ export default async function BadgesPage() {
     rarity: item.badge.rarity,
   }))
 
-  const ownedItemBadgeIds = new Set(rawItems.map((i) => i.badge_id))
-
   const books = (itemBooks ?? []) as ItemBookRow[]
+  const bookIds = books.map((b) => b.id)
+
+  // Phase 8: 슬롯 기반 진행도 조회
+  const [{ data: bookBadgesRaw }, { data: slotsRaw }, { data: completionsRaw }] =
+    bookIds.length > 0
+      ? await Promise.all([
+          supabase.from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item'),
+          supabase.from('user_item_book_slots').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
+          supabase.from('user_item_book_completions').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
+        ])
+      : [{ data: [] }, { data: [] }, { data: [] }]
+
+  const totalByBook = new Map<string, number>()
+  for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
+    if (!b.item_book_id) continue
+    totalByBook.set(b.item_book_id, (totalByBook.get(b.item_book_id) ?? 0) + 1)
+  }
+  const slottedByBook = new Map<string, number>()
+  for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
+    slottedByBook.set(s.item_book_id, (slottedByBook.get(s.item_book_id) ?? 0) + 1)
+  }
+  const completedSet = new Set(((completionsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id))
+
   const itemBookProgress: ItemBookProgress[] = books.map((book) => {
-    const requiredItemIds: string[] = Array.isArray(book.required_item_badge_ids)
-      ? book.required_item_badge_ids
-      : []
-    const total = 1 + requiredItemIds.length
-    let owned = 0
-    if (ownedActivityBadgeIds.has(book.required_activity_badge_id)) owned++
-    owned += requiredItemIds.filter((id) => ownedItemBadgeIds.has(id)).length
-    return { bookId: book.id, owned, total, completed: owned === total }
+    const total = totalByBook.get(book.id) ?? 0
+    const owned = slottedByBook.get(book.id) ?? 0
+    const completed = completedSet.has(book.id) || (total > 0 && owned >= total)
+    return { bookId: book.id, owned, total, completed }
   })
 
   return (

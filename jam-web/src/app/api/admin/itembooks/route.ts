@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, image_url, required_activity_badge_id, required_item_badge_ids, reward_badge_id } = body
+  const { name, description, image_url, required_activity_badge_id, reward_badge_id, faction_id, story_text, is_active } = body
 
   if (!name || !description || !required_activity_badge_id) {
     return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 })
@@ -32,8 +32,10 @@ export async function POST(req: NextRequest) {
       description,
       image_url: image_url ?? null,
       required_activity_badge_id,
-      required_item_badge_ids: required_item_badge_ids ?? [],
       reward_badge_id: reward_badge_id ?? null,
+      faction_id: faction_id ?? null,
+      story_text: story_text ?? null,
+      is_active: is_active ?? true,
     } as any)
     .select()
     .single()

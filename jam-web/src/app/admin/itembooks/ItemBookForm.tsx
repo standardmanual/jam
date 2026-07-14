@@ -2,16 +2,25 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { ItemBookRow, BadgeRow } from '@/types/database'
+import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
 
 interface ItemBookFormProps {
   book?: ItemBookRow
+  factions: Pick<FactionRow, 'id' | 'name'>[]
+  slottedBadges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
+  availableBadges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
   activityBadges: Pick<BadgeRow, 'id' | 'name'>[]
-  itemBadges: Pick<BadgeRow, 'id' | 'name'>[]
   allBadges: Pick<BadgeRow, 'id' | 'name'>[]
 }
 
-export default function ItemBookForm({ book, activityBadges, itemBadges, allBadges }: ItemBookFormProps) {
+export default function ItemBookForm({
+  book,
+  factions,
+  slottedBadges,
+  availableBadges,
+  activityBadges,
+  allBadges,
+}: ItemBookFormProps) {
   const router = useRouter()
   const isEdit = !!book
 
@@ -21,20 +30,16 @@ export default function ItemBookForm({ book, activityBadges, itemBadges, allBadg
   const [requiredActivityBadgeId, setRequiredActivityBadgeId] = useState(
     book?.required_activity_badge_id ?? ''
   )
-  const [requiredItemBadgeIds, setRequiredItemBadgeIds] = useState<string[]>(
-    book?.required_item_badge_ids ?? []
-  )
   const [rewardBadgeId, setRewardBadgeId] = useState(book?.reward_badge_id ?? '')
+  const [factionId, setFactionId] = useState(book?.faction_id ?? '')
+  const [storyText, setStoryText] = useState(book?.story_text ?? '')
+  const [isActive, setIsActive] = useState(book?.is_active ?? true)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-
-  const toggleItemBadge = (id: string) => {
-    setRequiredItemBadgeIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
-  }
+  const [showBadgeModal, setShowBadgeModal] = useState(false)
+  const [badgeSearch, setBadgeSearch] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,9 +50,11 @@ export default function ItemBookForm({ book, activityBadges, itemBadges, allBadg
       name,
       description,
       image_url: imageUrl || null,
-      required_activity_badge_id: requiredActivityBadgeId,
-      required_item_badge_ids: requiredItemBadgeIds,
+      required_activity_badge_id: requiredActivityBadgeId || null,
       reward_badge_id: rewardBadgeId || null,
+      faction_id: factionId || null,
+      story_text: storyText || null,
+      is_active: isActive,
     }
 
     try {
@@ -82,6 +89,28 @@ export default function ItemBookForm({ book, activityBadges, itemBadges, allBadg
       setError(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.')
       setLoading(false)
     }
+  }
+
+  const handleAssignBadge = async (badgeId: string) => {
+    const res = await fetch(`/api/admin/badges/${badgeId}/assign`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_book_id: book!.id }),
+    })
+    if (res.ok) {
+      router.refresh()
+      setShowBadgeModal(false)
+      setBadgeSearch('')
+    }
+  }
+
+  const handleUnassignBadge = async (badgeId: string) => {
+    const res = await fetch(`/api/admin/badges/${badgeId}/assign`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_book_id: null }),
+    })
+    if (res.ok) router.refresh()
   }
 
   return (
@@ -130,44 +159,43 @@ export default function ItemBookForm({ book, activityBadges, itemBadges, allBadg
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-white/60">필수 액티비티 배지 *</span>
+        <span className="text-sm text-white/60">스토리 텍스트</span>
+        <textarea
+          value={storyText}
+          onChange={(e) => setStoryText(e.target.value)}
+          rows={3}
+          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50 resize-none"
+          placeholder="세계관 스토리 또는 배경 설명"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm text-white/60">소속 세계관</span>
         <select
-          required
+          value={factionId}
+          onChange={(e) => setFactionId(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+        >
+          <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
+          {factions.map((f) => (
+            <option key={f.id} value={f.id} className="bg-[#1a1a1a]">{f.name}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm text-white/60">필수 액티비티 배지</span>
+        <select
           value={requiredActivityBadgeId}
           onChange={(e) => setRequiredActivityBadgeId(e.target.value)}
           className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
         >
-          <option value="" className="bg-[#1a1a1a]">— 선택 —</option>
+          <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
           {activityBadges.map((b) => (
             <option key={b.id} value={b.id} className="bg-[#1a1a1a]">{b.name}</option>
           ))}
         </select>
       </label>
-
-      <div>
-        <p className="text-sm text-white/60 mb-2">필수 아이템 배지 (복수 선택) *</p>
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 max-h-48 overflow-y-auto space-y-2">
-          {itemBadges.length === 0 && (
-            <p className="text-white/30 text-sm">등록된 아이템 배지가 없습니다.</p>
-          )}
-          {itemBadges.map((b) => (
-            <label key={b.id} className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={requiredItemBadgeIds.includes(b.id)}
-                onChange={() => toggleItemBadge(b.id)}
-                className="accent-[#AEEA00]"
-              />
-              <span className="text-sm">{b.name}</span>
-            </label>
-          ))}
-        </div>
-        {requiredItemBadgeIds.length > 0 && (
-          <p className="text-xs text-white/40 mt-1.5">
-            선택됨: {requiredItemBadgeIds.length}개
-          </p>
-        )}
-      </div>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-white/60">완성 보상 배지</span>
@@ -182,6 +210,57 @@ export default function ItemBookForm({ book, activityBadges, itemBadges, allBadg
           ))}
         </select>
       </label>
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={isActive}
+          onChange={(e) => setIsActive(e.target.checked)}
+          className="accent-[#AEEA00]"
+        />
+        <span className="text-sm">활성화</span>
+      </label>
+
+      {/* 배지 슬롯 관리 (편집 모드만) */}
+      {isEdit && (
+        <div className="border border-white/10 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-white/70">배지 슬롯 관리</p>
+            <span className="text-xs text-white/40">{slottedBadges.length}개 배지 등록됨</span>
+          </div>
+
+          {slottedBadges.length === 0 && (
+            <p className="text-white/30 text-sm">등록된 배지가 없습니다.</p>
+          )}
+          <div className="space-y-2">
+            {slottedBadges.map((b) => (
+              <div key={b.id} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5">
+                {b.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={b.image_url} alt={b.name} className="w-8 h-8 rounded-lg object-contain" />
+                )}
+                <span className="text-sm flex-1">{b.name}</span>
+                <span className="text-xs text-white/40">{b.rarity}</span>
+                <button
+                  type="button"
+                  onClick={() => handleUnassignBadge(b.id)}
+                  className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors"
+                >
+                  제거
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowBadgeModal(true)}
+            className="w-full border border-dashed border-white/20 rounded-xl py-2.5 text-sm text-white/40 hover:text-white/60 hover:border-white/30 transition-colors"
+          >
+            + 배지 추가
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 pt-2">
         <button
@@ -231,6 +310,48 @@ export default function ItemBookForm({ book, activityBadges, itemBadges, allBadg
                 취소
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 배지 선택 모달 */}
+      {showBadgeModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4">배지 추가</h3>
+            <input
+              type="text"
+              placeholder="배지 이름 검색..."
+              value={badgeSearch}
+              onChange={(e) => setBadgeSearch(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50 mb-4"
+            />
+            <div className="max-h-64 overflow-y-auto space-y-1.5">
+              {availableBadges
+                .filter((b) => b.name.toLowerCase().includes(badgeSearch.toLowerCase()))
+                .map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => handleAssignBadge(b.id)}
+                    className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-sm"
+                  >
+                    {b.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={b.image_url} alt={b.name} className="w-8 h-8 rounded-lg object-contain" />
+                    )}
+                    <span>{b.name}</span>
+                    <span className="text-white/40 text-xs ml-auto">{b.rarity}</span>
+                  </button>
+                ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => { setShowBadgeModal(false); setBadgeSearch('') }}
+              className="mt-4 w-full bg-white/5 text-white py-2.5 rounded-xl hover:bg-white/10 transition-colors text-sm"
+            >
+              닫기
+            </button>
           </div>
         </div>
       )}

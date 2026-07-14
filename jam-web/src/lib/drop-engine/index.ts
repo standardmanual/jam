@@ -36,6 +36,19 @@ function rollRarity(): BadgeRarity | null {
 }
 
 /**
+ * drop_weight 기반 가중 랜덤 선택.
+ */
+function weightedPick<T extends { drop_weight: number }>(items: T[]): T {
+  const total = items.reduce((sum, item) => sum + item.drop_weight, 0)
+  let rand = Math.random() * total
+  for (const item of items) {
+    rand -= item.drop_weight
+    if (rand <= 0) return item
+  }
+  return items[items.length - 1]
+}
+
+/**
  * 활동 1건당 아이템 드랍을 시도합니다.
  * @param userId - 대상 유저 ID
  * @param activityType - 활동 종류 ('cycling' | 'running' | 'hiking' | 'walking')
@@ -60,14 +73,14 @@ export async function tryItemDrop(
 
   const supabase = createServiceClient()
 
-  // 3. 해당 rarity + type='item' 배지 목록 조회
+  // 3. 해당 rarity + type='item' 배지 목록 조회 (drop_weight 포함)
   const { data: candidatesRaw, error: badgesError } = await supabase
     .from('badges')
-    .select('id, name, image_url, rarity')
+    .select('id, name, image_url, rarity, drop_weight')
     .eq('type', 'item')
     .eq('rarity', rarity)
 
-  const candidates = candidatesRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>[] | null
+  const candidates = candidatesRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight'>[] | null
 
   if (badgesError || !candidates || candidates.length === 0) {
     if (badgesError) {
@@ -76,10 +89,10 @@ export async function tryItemDrop(
     return
   }
 
-  // 3. 랜덤 1개 선택
-  const picked = candidates[Math.floor(Math.random() * candidates.length)]
+  // 4. drop_weight 기반 가중 랜덤 선택
+  const picked = weightedPick(candidates)
 
-  // 4. 인벤토리 슬롯 확인
+  // 5. 인벤토리 슬롯 확인
   const { data: inventoryRaw, error: inventoryError } = await supabase
     .from('inventory')
     .select('id, used_slots, max_slots')
@@ -98,7 +111,7 @@ export async function tryItemDrop(
     return
   }
 
-  // 5. inventory_items INSERT (만료일: 30일 후)
+  // 6. inventory_items INSERT (만료일: 30일 후)
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const { error: insertError } = await supabase
@@ -116,7 +129,7 @@ export async function tryItemDrop(
     return
   }
 
-  // 6. inventory.used_slots +1
+  // 7. inventory.used_slots +1
   const { error: updateError } = await supabase
     .from('inventory')
     // @ts-expect-error supabase-js update() 파라미터 never 추론 문제
@@ -134,7 +147,7 @@ export async function tryItemDrop(
   await recordFeedEvent(userId, 'item_dropped', {
     badge_id: picked.id,
     badge_name: picked.name,
-    badge_image_url: picked.image_url,
+    badge_image_url: picked.image_url ?? '',
     rarity: picked.rarity,
     poi_name: '',
   })

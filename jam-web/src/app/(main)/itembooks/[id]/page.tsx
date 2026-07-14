@@ -1,207 +1,237 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import type { BadgeRow, ItemBookRow, UserActivityBadgeRow } from '@/types/database'
-import RarityBadge from '@/components/ui/Badge'
+import type {
+  BadgeRow,
+  ItemBookRow,
+  FactionRow,
+  InventoryItemRow,
+  UserItemBookSlotRow,
+} from '@/types/database'
 import Card from '@/components/ui/Card'
+import SlotGrid, { type BadgeSlot } from './SlotGrid'
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
+type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
+
 export default async function ItemBookDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // 아이템북 조회
-  const { data: bookRaw } = await supabase.from('item_books').select('*').eq('id', id).single()
+  // 1) 아이템북 + 세계관
+  const { data: bookRaw } = await supabase
+    .from('item_books')
+    .select('*, faction:factions(*)')
+    .eq('id', id)
+    .single()
   if (!bookRaw) notFound()
-  const book = bookRaw as ItemBookRow
+  const book = bookRaw as unknown as ItemBookWithFaction
 
-  // 이 북에 포함된 모든 배지 ID
-  const allBadgeIds = [book.required_activity_badge_id, ...book.required_item_badge_ids]
-  if (book.reward_badge_id) allBadgeIds.push(book.reward_badge_id)
+  // 2) 이 북에 속한 아이템 배지
+  const { data: badgesRaw } = await supabase
+    .from('badges')
+    .select('*')
+    .eq('item_book_id', id)
+    .eq('type', 'item')
+    .order('created_at', { ascending: true })
+  const badges = (badgesRaw ?? []) as BadgeRow[]
+  const badgeIds = badges.map((b) => b.id)
 
-  // 배지 정보 + 유저 획득 여부 병렬 조회
-  const [{ data: badgesRaw }, { data: earnedRaw }] = await Promise.all([
-    supabase.from('badges').select('*').in('id', allBadgeIds),
+  // 3) 유저 인벤토리 id
+  const { data: inventoryRaw } = await supabase
+    .from('inventory')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+  const inventory = inventoryRaw as { id: string } | null
+
+  // 4~6) 인벤 아이템 / 슬롯 / 완성 병렬 조회
+  const [invRes, slotsRes, completionRes] = await Promise.all([
+    inventory && badgeIds.length > 0
+      ? supabase
+          .from('inventory_items')
+          .select('id, badge_id, serial_number, serial_prefix, slotted_in, obtained_at')
+          .eq('inventory_id', inventory.id)
+          .in('badge_id', badgeIds)
+          .is('dropped_at', null)
+          .order('obtained_at', { ascending: true })
+      : Promise.resolve({ data: [] as InventoryItemRow[] }),
     supabase
-      .from('user_activity_badges')
-      .select('badge_id, earned_at, triggered_by_strava_id, triggered_by_activity_name, triggered_by_distance_km, triggered_by_activity_date')
+      .from('user_item_book_slots')
+      .select('id, badge_id, slotted_at')
       .eq('user_id', user.id)
-      .in('badge_id', allBadgeIds),
+      .eq('item_book_id', id),
+    supabase
+      .from('user_item_book_completions')
+      .select('item_book_id')
+      .eq('user_id', user.id)
+      .eq('item_book_id', id)
+      .maybeSingle(),
   ])
 
-  const badges = (badgesRaw ?? []) as BadgeRow[]
-  const earnedMap = new Map(
-    ((earnedRaw ?? []) as Pick<UserActivityBadgeRow, 'badge_id' | 'earned_at' | 'triggered_by_strava_id' | 'triggered_by_activity_name' | 'triggered_by_distance_km' | 'triggered_by_activity_date'>[])
-      .map((e) => [e.badge_id, e])
-  )
+  const inventoryItems = (invRes.data ?? []) as Pick<
+    InventoryItemRow,
+    'id' | 'badge_id' | 'serial_number' | 'serial_prefix' | 'slotted_in'
+  >[]
+  const slots = (slotsRes.data ?? []) as Pick<
+    UserItemBookSlotRow,
+    'id' | 'badge_id' | 'slotted_at'
+  >[]
 
-  // 배지를 활동뱃지 → 아이템뱃지 → 보상뱃지 순으로 정렬
-  const orderedIds = [
-    book.required_activity_badge_id,
-    ...book.required_item_badge_ids,
-    ...(book.reward_badge_id ? [book.reward_badge_id] : []),
-  ]
-  const badgeMap = new Map(badges.map((b) => [b.id, b]))
+  // 슬롯 조합
+  const slotsMap = new Map(slots.map((s) => [s.badge_id, s]))
+  const inventoryMap = new Map<
+    string,
+    Pick<InventoryItemRow, 'id' | 'serial_number' | 'serial_prefix'>
+  >()
+  for (const item of inventoryItems) {
+    if (!item.slotted_in && !inventoryMap.has(item.badge_id)) {
+      inventoryMap.set(item.badge_id, {
+        id: item.id,
+        serial_number: item.serial_number,
+        serial_prefix: item.serial_prefix,
+      })
+    }
+  }
 
-  const orderedBadges = orderedIds
-    .map((bid) => badgeMap.get(bid))
-    .filter(Boolean) as BadgeRow[]
+  const badgeSlots: BadgeSlot[] = badges.map((badge) => {
+    const slot = slotsMap.get(badge.id)
+    return {
+      badge: {
+        id: badge.id,
+        name: badge.name,
+        image_url: badge.image_url,
+        rarity: badge.rarity,
+      },
+      inventoryItem: inventoryMap.get(badge.id) ?? null,
+      slot: slot ? { id: slot.id, slotted_at: slot.slotted_at } : null,
+    }
+  })
 
-  const ownedCount = orderedBadges.filter((b) => earnedMap.has(b.id)).length
-  const totalCount = orderedBadges.length
-  const completed = ownedCount === totalCount
-  const pct = Math.round((ownedCount / totalCount) * 100)
+  const totalBadgeCount = badges.length
+  const slottedCount = slots.length
+  const isCompleted =
+    completionRes.data != null ||
+    (totalBadgeCount > 0 && slottedCount >= totalBadgeCount)
+  const pct =
+    totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
 
   return (
     <div className="flex flex-col min-h-full bg-jam-teal">
       {/* 헤더 */}
-      <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4">
+      <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4 max-w-2xl mx-auto w-full">
         <Link
-          href="/badges"
+          href="/itembooks"
           className="flex items-center gap-1 text-jam-ink font-bold text-sm w-fit mb-5"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-4 h-4">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={3}
+            className="w-4 h-4"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
           아이템북 목록
         </Link>
 
-        {/* 아이템북 정보 (상단) */}
+        {/* 북 정보 */}
         <div className="flex gap-4 items-start mb-4">
           {book.image_url && (
             <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white border-[3px] border-jam-ink shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1" />
+              <img
+                src={book.image_url}
+                alt={book.name}
+                className="w-full h-full object-contain p-1"
+              />
             </div>
           )}
           <div className="flex-1 min-w-0 pt-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl font-black leading-tight text-jam-ink">{book.name}</h1>
-              {completed && (
-                <span className="text-jam-ink bg-jam-lime border-2 border-jam-ink text-xs font-black px-2 py-0.5 rounded-full">완성</span>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h1 className="text-xl font-black leading-tight text-jam-ink">
+                {book.name}
+              </h1>
+              {isCompleted && (
+                <span className="text-jam-ink bg-jam-lime border-2 border-jam-ink text-xs font-black px-2 py-0.5 rounded-full">
+                  완성
+                </span>
               )}
             </div>
-            <p className="text-jam-ink/60 text-sm leading-relaxed font-semibold">{book.description}</p>
+            {book.faction && (
+              <p className="text-jam-ink/70 text-xs font-black mb-1">
+                {book.faction.name}
+              </p>
+            )}
+            <p className="text-jam-ink/60 text-sm leading-relaxed font-semibold">
+              {book.description}
+            </p>
           </div>
         </div>
+
+        {/* 스토리 */}
+        {book.story_text && (
+          <p className="text-jam-ink/60 text-xs leading-relaxed font-semibold italic mb-4 whitespace-pre-line">
+            {book.story_text}
+          </p>
+        )}
 
         {/* 진행도 */}
         <div className="flex items-center gap-3">
           <div className="flex-1 h-2.5 rounded-full bg-white/40 overflow-hidden border border-jam-ink/20">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${completed ? 'bg-jam-lime' : 'bg-jam-ink/30'}`}
+              className={`h-full rounded-full transition-all duration-500 ${
+                isCompleted ? 'bg-jam-lime' : 'bg-jam-ink/30'
+              }`}
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className="text-xs text-jam-ink/60 tabular-nums font-bold">{ownedCount} / {totalCount}</span>
+          <span className="text-xs text-jam-ink/60 tabular-nums font-bold">
+            {slottedCount} / {totalBadgeCount}
+          </span>
         </div>
       </div>
 
-      {/* 배지 그리드 (하단) */}
+      {/* 크림 패널 — 슬롯 그리드 */}
       <div className="flex-1 bg-jam-cream rounded-t-[2rem] border-t-[3px] border-jam-ink px-5 py-6">
-        {book.reward_badge_id && (
-          <p className="text-xs text-jam-ink/50 mb-3 text-center font-bold">전부 모으면 보상 배지를 획득해요</p>
-        )}
+        <div className="max-w-2xl mx-auto w-full">
+          <p className="text-xs text-jam-ink/50 mb-4 text-center font-bold">
+            보유한 아이템 배지를 슬롯에 장착해 아이템북을 완성해요
+          </p>
 
-        <div className="grid grid-cols-3 gap-3">
-          {orderedBadges.map((badge, idx) => {
-            const earned = earnedMap.get(badge.id)
-            const isOwned = !!earned
-            const isReward = badge.id === book.reward_badge_id
+          {totalBadgeCount === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <span className="text-4xl mb-3">🗂️</span>
+              <p className="text-jam-ink/60 font-bold text-sm">
+                아직 이 아이템북에 등록된 배지가 없어요.
+              </p>
+            </div>
+          ) : (
+            <SlotGrid itemBookId={id} badgeSlots={badgeSlots} />
+          )}
 
-            const card = (
-              <div
-                className={[
-                  'flex flex-col items-center gap-2 p-3 rounded-2xl border-[3px] transition-all',
-                  isOwned
-                    ? 'bg-white border-jam-ink shadow-[3px_3px_0_0_#161616] active:shadow-none active:translate-x-[3px] active:translate-y-[3px]'
-                    : 'bg-white/30 border-jam-ink/20',
-                  isReward ? 'col-span-3 flex-row gap-3 p-4' : '',
-                ].join(' ')}
-              >
-                {/* 뱃지 이미지 */}
-                <div
-                  className={[
-                    'rounded-xl flex items-center justify-center overflow-hidden bg-jam-cream',
-                    isReward ? 'w-16 h-16 shrink-0' : 'w-16 h-16',
-                  ].join(' ')}
-                >
-                  {badge.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={badge.image_url}
-                      alt={isOwned ? badge.name : '???'}
-                      className={[
-                        'w-full h-full object-contain p-1',
-                        !isOwned ? 'grayscale brightness-[0.6] opacity-40' : '',
-                      ].join(' ')}
-                    />
-                  ) : (
-                    <span className={`text-3xl ${!isOwned ? 'grayscale opacity-20' : ''}`}>
-                      {isReward ? '🎁' : '🏅'}
-                    </span>
-                  )}
-                </div>
-
-                {/* 이름 + 희귀도 */}
-                <div className={isReward ? 'flex-1 min-w-0' : 'flex flex-col items-center gap-1 w-full'}>
-                  {isReward && (
-                    <p className="text-[10px] text-jam-ink/50 font-black uppercase tracking-wider mb-0.5">
-                      완성 보상
-                    </p>
-                  )}
-                  <p className={[
-                    'text-xs font-bold leading-tight',
-                    isReward ? '' : 'text-center line-clamp-2',
-                    !isOwned ? 'text-jam-ink/30' : 'text-jam-ink',
-                  ].join(' ')}>
-                    {isOwned ? badge.name : '???'}
-                  </p>
-                  {isOwned && (
-                    <div className={isReward ? 'mt-1' : ''}>
-                      <RarityBadge rarity={badge.rarity} />
-                    </div>
-                  )}
-                  {isOwned && earned?.earned_at && (
-                    <p className={`text-[10px] text-jam-ink/40 font-semibold ${isReward ? 'mt-0.5' : 'text-center'}`}>
-                      {new Date(earned.earned_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })} 획득
-                    </p>
-                  )}
-                  {!isOwned && (
-                    <p className={`text-[10px] text-jam-ink/25 font-semibold ${isReward ? '' : 'text-center'}`}>
-                      {idx + 1}번째 배지
-                    </p>
-                  )}
-                </div>
-              </div>
-            )
-
-            return isOwned ? (
-              <Link key={badge.id} href={`/badges/${badge.id}?from=itembook&bookId=${id}`} className={isReward ? 'col-span-3' : ''}>
-                {card}
-              </Link>
-            ) : (
-              <div key={badge.id} className={isReward ? 'col-span-3' : ''}>
-                {card}
-              </div>
-            )
-          })}
+          {/* 완성 카드 */}
+          {isCompleted && (
+            <div className="mt-5">
+              <Card glow className="bg-jam-lime text-center py-4">
+                <p className="text-jam-ink font-black text-base mb-1">
+                  🎉 아이템북 완성!
+                </p>
+                <p className="text-jam-ink/60 text-sm font-semibold">
+                  모든 아이템 배지를 슬롯에 장착했어요
+                </p>
+              </Card>
+            </div>
+          )}
         </div>
-
-        {/* 완성 시 보상 카드 */}
-        {completed && book.reward_badge_id && (
-          <div className="mt-5">
-            <Card glow className="bg-jam-lime text-center py-4">
-              <p className="text-jam-ink font-black text-base mb-1">🎉 아이템북 완성!</p>
-              <p className="text-jam-ink/60 text-sm font-semibold">보상 배지가 지급됐어요</p>
-            </Card>
-          </div>
-        )}
       </div>
     </div>
   )

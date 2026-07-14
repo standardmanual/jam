@@ -8,13 +8,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { name, description, image_url, required_activity_badge_id, required_item_badge_ids, reward_badge_id } = body
+  const { name, description, image_url, required_activity_badge_id, reward_badge_id, faction_id, story_text, is_active } = body
 
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('item_books')
     // @ts-expect-error Supabase 타입 추론 제한 우회
-    .update({ name, description, image_url: image_url ?? null, required_activity_badge_id, required_item_badge_ids, reward_badge_id })
+    .update({ name, description, image_url: image_url ?? null, required_activity_badge_id, reward_badge_id, faction_id: faction_id ?? null, story_text: story_text ?? null, is_active: is_active ?? true })
     .eq('id', id)
     .select()
     .single()

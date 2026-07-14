@@ -21,6 +21,16 @@ function rollRarity(): 'common' | 'rare' | 'legendary' | 'mythic' | null {
   return null
 }
 
+function weightedPick<T extends { drop_weight: number }>(items: T[]): T {
+  const total = items.reduce((sum, item) => sum + item.drop_weight, 0)
+  let rand = Math.random() * total
+  for (const item of items) {
+    rand -= item.drop_weight
+    if (rand <= 0) return item
+  }
+  return items[items.length - 1]
+}
+
 // 조건 평가 — 충족 여부 + 실패 이유 반환
 function evaluateConditionDetailed(
   condition: BadgeCondition,
@@ -187,13 +197,13 @@ export async function POST(req: NextRequest) {
   if (rarity && inventory && inventory.used_slots < inventory.max_slots) {
     const { data: candidatesRaw } = await supabase
       .from('badges')
-      .select('id, name')
+      .select('id, name, drop_weight')
       .eq('type', 'item')
       .eq('rarity', rarity)
 
-    const candidates = (candidatesRaw ?? []) as { id: string; name: string }[]
+    const candidates = (candidatesRaw ?? []) as { id: string; name: string; drop_weight: number }[]
     if (candidates.length > 0) {
-      const picked = candidates[Math.floor(Math.random() * candidates.length)]
+      const picked = weightedPick(candidates)
       itemDrop = { badgeName: picked.name, rarity }
 
       if (!dryRun && inventory) {
@@ -216,62 +226,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 6. 아이템북 완성 체크 (현재 보유 + 시뮬레이션 획득 배지 기준)
-  const { data: itemBooksRaw } = await supabase.from('item_books').select('*')
-  const itemBooksData = (itemBooksRaw ?? []) as Array<{
-    id: string
-    name: string
-    required_activity_badge_id: string
-    required_item_badge_ids: string[]
-    reward_badge_id: string | null
-  }>
-
-  const { data: inventoryItemsRaw } = inventory
-    ? await supabase.from('inventory_items').select('badge_id').eq('inventory_id', inventory.id)
-    : { data: [] }
-
-  const ownedItemBadgeIds = new Set((inventoryItemsRaw ?? []).map((i: { badge_id: string }) => i.badge_id))
-  if (droppedInventoryItemId) {
-    // 드랍된 아이템이 있으면 ID 추가 (위에서 picked를 알고 있으나 여기선 badge_id 필요)
-    // 이미 inventory_items에 inserted되었으므로 DB re-query 없이 skip
-  }
-
+  // Phase 8: 아이템북 완성은 유저가 직접 슬롯을 채우는 방식으로 변경됨.
+  // 시뮬레이션으로는 슬롯 액션을 재현할 수 없으므로 완성 체크는 생략.
   const itemBooksCompleted: { bookName: string; rewardBadgeName: string | null }[] = []
-  const rewardBadgeMap = new Map(allBadges.map((b) => [b.id, b.name]))
 
-  for (const book of itemBooksData) {
-    const hasActivityBadge = earnedBadgeIds.has(book.required_activity_badge_id)
-    if (!hasActivityBadge) continue
-
-    const requiredItemIds: string[] = Array.isArray(book.required_item_badge_ids)
-      ? book.required_item_badge_ids
-      : []
-
-    const hasAllItems = requiredItemIds.every((id) => ownedItemBadgeIds.has(id))
-    if (!hasAllItems) continue
-
-    const rewardBadgeName = book.reward_badge_id ? (rewardBadgeMap.get(book.reward_badge_id) ?? null) : null
-    itemBooksCompleted.push({ bookName: book.name, rewardBadgeName })
-
-    // Apply 모드: 아이템북 완성 보상 배지 발급
-    if (!dryRun && book.reward_badge_id) {
-      const { data: existing } = await supabase
-        .from('user_activity_badges')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('badge_id', book.reward_badge_id)
-        .maybeSingle()
-
-      if (!existing) {
-        await supabase
-          .from('user_activity_badges')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .insert({ user_id: userId, badge_id: book.reward_badge_id, triggered_by: `itembook_complete:${book.id}` } as any)
-      }
-    }
-  }
-
-  // 7. Apply 모드: 배지 실제 발급
+  // 6. Apply 모드: 배지 실제 발급
   if (!dryRun) {
     for (const earned of badgesEarned) {
       if (ownedBadgeIds.has(earned.id)) continue

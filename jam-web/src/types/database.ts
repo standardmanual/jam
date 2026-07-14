@@ -50,12 +50,16 @@ export interface BadgeRow {
   description: string
   type: BadgeType
   rarity: BadgeRarity
-  image_url: string
+  image_url: string | null
   condition_json: BadgeCondition | null
   activity_types: ActivityType[]
   patch_available: boolean
   patch_price_krw: number | null
   is_wandering: boolean
+  faction_id: string | null
+  item_book_id: string | null
+  drop_weight: number
+  drop_condition_json: Record<string, unknown> | null
   created_at: string
 }
 
@@ -93,6 +97,7 @@ export interface InventoryItemRow {
   expires_at: string | null
   dropped_at: string | null
   drop_id: string | null
+  slotted_in: string | null
 }
 
 export interface PoiDropRow {
@@ -112,9 +117,12 @@ export interface ItemBookRow {
   name: string
   description: string
   image_url: string | null
-  required_activity_badge_id: string
-  required_item_badge_ids: string[] // UUID 배열
+  required_activity_badge_id: string | null
   reward_badge_id: string | null
+  faction_id: string | null
+  story_text: string | null
+  is_active: boolean
+  drop_condition_json: Record<string, unknown> | null
   created_at: string
 }
 
@@ -252,6 +260,38 @@ export interface WanderingMythicStateRow {
   placed_at: string
   expires_at: string
   times_caught: number
+}
+
+// =========================================
+// Phase 8: 세계관(Factions) + 아이템북 슬롯
+// =========================================
+
+export interface FactionRow {
+  id: string
+  name: string
+  tagline: string | null
+  description: string | null
+  image_url: string | null
+  drop_weight: number
+  is_active: boolean
+  sort_order: number
+  drop_condition_json: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface UserItemBookSlotRow {
+  id: string
+  user_id: string
+  item_book_id: string
+  badge_id: string
+  inventory_item_id: string
+  slotted_at: string
+}
+
+export interface UserItemBookCompletionRow {
+  user_id: string
+  item_book_id: string
+  completed_at: string
 }
 
 // =========================================
@@ -448,6 +488,24 @@ export interface Database {
         Row: ActivityFeedRow
         Insert: Omit<ActivityFeedRow, 'id' | 'event_at'> & { id?: string; event_at?: string }
         Update: Partial<Omit<ActivityFeedRow, 'id'>>
+        Relationships: []
+      }
+      factions: {
+        Row: FactionRow
+        Insert: Omit<FactionRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<FactionRow, 'id'>>
+        Relationships: []
+      }
+      user_item_book_slots: {
+        Row: UserItemBookSlotRow
+        Insert: Omit<UserItemBookSlotRow, 'id' | 'slotted_at'> & { id?: string; slotted_at?: string }
+        Update: Partial<Omit<UserItemBookSlotRow, 'id'>>
+        Relationships: []
+      }
+      user_item_book_completions: {
+        Row: UserItemBookCompletionRow
+        Insert: Omit<UserItemBookCompletionRow, 'completed_at'> & { completed_at?: string }
+        Update: Partial<UserItemBookCompletionRow>
         Relationships: []
       }
     }
