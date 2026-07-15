@@ -31,6 +31,16 @@ function weightedPick<T extends { drop_weight: number }>(items: T[]): T {
   return items[items.length - 1]
 }
 
+const RARITY_TIER: Record<string, number> = { common: 1, rare: 2, legendary: 3, mythic: 4 }
+
+function getMondayKey(date: Date): string {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  const day = d.getDay()
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+  return d.toISOString().slice(0, 10)
+}
+
 // 조건 평가 — 충족 여부 + 실패 이유 반환
 function evaluateConditionDetailed(
   condition: BadgeCondition,
@@ -74,8 +84,67 @@ function evaluateConditionDetailed(
     }
   }
 
+  if (condition.duration_minutes !== undefined) {
+    const best = Math.max(...filtered.map((a) => a.movingTimeSec / 60), 0)
+    if (best < condition.duration_minutes) {
+      return { pass: false, reason: '이동 시간 부족', actual: `${Math.round(best)}분`, required: `${condition.duration_minutes}분` }
+    }
+  }
+
+  if (condition.weekend_duration_hours !== undefined) {
+    const best = Math.max(
+      ...filtered
+        .filter((a) => { const d = new Date(a.startDate).getDay(); return d === 0 || d === 6 })
+        .map((a) => a.movingTimeSec / 3600),
+      0
+    )
+    if (best < condition.weekend_duration_hours) {
+      return { pass: false, reason: '주말 활동 시간 부족', actual: `${best.toFixed(1)}시간`, required: `${condition.weekend_duration_hours}시간` }
+    }
+  }
+
+  if (condition.weekly_count !== undefined) {
+    const weekCounts = new Map<string, number>()
+    for (const a of filtered) {
+      const key = getMondayKey(new Date(a.startDate))
+      weekCounts.set(key, (weekCounts.get(key) ?? 0) + 1)
+    }
+    const maxWeek = weekCounts.size > 0 ? Math.max(...weekCounts.values()) : 0
+    if (maxWeek < condition.weekly_count) {
+      return { pass: false, reason: '주간 활동 횟수 부족', actual: `${maxWeek}회`, required: `${condition.weekly_count}회` }
+    }
+  }
+
+  if (condition.month !== undefined || condition.monthly_km !== undefined) {
+    let monthFiltered = filtered
+    if (condition.month !== undefined) {
+      monthFiltered = filtered.filter((a) => new Date(a.startDate).getMonth() + 1 === condition.month)
+    }
+    if (condition.monthly_km !== undefined) {
+      const monthKm = new Map<string, number>()
+      for (const a of monthFiltered) {
+        const d = new Date(a.startDate)
+        const key = `${d.getFullYear()}-${d.getMonth() + 1}`
+        monthKm.set(key, (monthKm.get(key) ?? 0) + a.distanceKm)
+      }
+      const maxKm = monthKm.size > 0 ? Math.max(...monthKm.values()) : 0
+      if (maxKm < condition.monthly_km) {
+        return { pass: false, reason: '월 누적 거리 부족', actual: `${Math.round(maxKm * 10) / 10}km`, required: `${condition.monthly_km}km` }
+      }
+    } else if (condition.month !== undefined && monthFiltered.length === 0) {
+      return { pass: false, reason: '해당 월 활동 없음', actual: '0회', required: '1회 이상' }
+    }
+  }
+
+  if (condition.season_count !== undefined) {
+    return { pass: false, reason: '계절 조건 미구현', actual: '-', required: `${condition.season_count}회` }
+  }
+
+  if (condition.temperature_min_c !== undefined || condition.temperature_max_c !== undefined) {
+    return { pass: false, reason: '날씨 조건 미구현', actual: '-', required: '날씨 데이터 필요' }
+  }
+
   if (condition.poi_id !== undefined) {
-    // POI 조건은 별도 경로 처리
     return { pass: false, reason: 'POI 미매칭', actual: '미통과', required: 'POI 반경 통과 필요' }
   }
 
@@ -148,21 +217,56 @@ export async function POST(req: NextRequest) {
   const { data: allBadgesRaw } = await supabase.from('badges').select('*').eq('type', 'activity')
   const allBadges = (allBadgesRaw ?? []) as BadgeRow[]
 
-  // 3. 배지 조건 평가
+  // 3. 배지 조건 평가 — 성장 티어: 이름당 최상위 레어리티 1개만
   const badgesEarned: { id: string; name: string; rarity: string; reason: string }[] = []
   const badgesMissed: { id: string; name: string; reason: string; actual: string; required: string }[] = []
   const earnedBadgeIds = new Set(ownedBadgeIds)
 
+  // 보유 배지 기준 이름별 최상위 티어
+  const highestOwnedTierByName = new Map<string, number>()
   for (const badge of allBadges) {
-    if (ownedBadgeIds.has(badge.id)) continue
-    if (!badge.condition_json) continue
+    if (ownedBadgeIds.has(badge.id)) {
+      const tier = RARITY_TIER[badge.rarity] ?? 0
+      const cur = highestOwnedTierByName.get(badge.name) ?? 0
+      if (tier > cur) highestOwnedTierByName.set(badge.name, tier)
+    }
+  }
 
-    const result = evaluateConditionDetailed(badge.condition_json as BadgeCondition, activities)
-    if (result.pass) {
-      badgesEarned.push({ id: badge.id, name: badge.name, rarity: badge.rarity, reason: '조건 충족' })
-      earnedBadgeIds.add(badge.id)
-    } else {
-      badgesMissed.push({ id: badge.id, name: badge.name, reason: result.reason, actual: result.actual, required: result.required })
+  // 이름별 그룹핑
+  const badgesByName = new Map<string, BadgeRow[]>()
+  for (const badge of allBadges) {
+    if (!badgesByName.has(badge.name)) badgesByName.set(badge.name, [])
+    badgesByName.get(badge.name)!.push(badge)
+  }
+
+  for (const [, group] of badgesByName) {
+    const highestOwned = highestOwnedTierByName.get(group[0].name) ?? 0
+
+    // 미보유 + 현재 보유 티어 초과인 것만 평가
+    const eligible: { badge: BadgeRow; result: ReturnType<typeof evaluateConditionDetailed> }[] = []
+    for (const badge of group) {
+      if (ownedBadgeIds.has(badge.id)) continue
+      if ((RARITY_TIER[badge.rarity] ?? 0) <= highestOwned) continue
+      if (!badge.condition_json) continue
+      const result = evaluateConditionDetailed(badge.condition_json as BadgeCondition, activities)
+      if (result.pass) {
+        eligible.push({ badge, result })
+      } else {
+        badgesMissed.push({ id: badge.id, name: badge.name, reason: result.reason, actual: result.actual, required: result.required })
+      }
+    }
+
+    if (eligible.length === 0) continue
+
+    // 최상위 레어리티 1개만 발급 대상으로
+    eligible.sort((a, b) => (RARITY_TIER[b.badge.rarity] ?? 0) - (RARITY_TIER[a.badge.rarity] ?? 0))
+    const { badge: toEarn } = eligible[0]
+    badgesEarned.push({ id: toEarn.id, name: toEarn.name, rarity: toEarn.rarity, reason: '조건 충족' })
+    earnedBadgeIds.add(toEarn.id)
+
+    // 조건은 통과했지만 더 낮은 티어는 missed로 표시 (성장 티어 정책)
+    for (const { badge } of eligible.slice(1)) {
+      badgesMissed.push({ id: badge.id, name: badge.name, reason: '성장 티어 — 상위 레어리티 발급됨', actual: badge.rarity, required: toEarn.rarity })
     }
   }
 
