@@ -325,6 +325,22 @@ export interface BadgeCondition {
   min_speed_kmh?: number
   /** POI ID (Phase 2+) */
   poi_id?: string
+  /** 단일 활동 최소 이동 시간 (분) */
+  duration_minutes?: number
+  /** 주말 활동 최소 이동 시간 (시간) */
+  weekend_duration_hours?: number
+  /** 같은 주 내 최소 활동 횟수 */
+  weekly_count?: number
+  /** 특정 월 (1-12) */
+  month?: number
+  /** 특정 월 내 최소 누적 거리 (km) */
+  monthly_km?: number
+  /** 특정 계절 내 활동 횟수 — condition_json에 season 필드 없어 현재 미구현 */
+  season_count?: number
+  /** 최저 기온 조건 — 날씨 데이터 미구현 */
+  temperature_min_c?: number
+  /** 최고 기온 조건 — 날씨 데이터 미구현 */
+  temperature_max_c?: number
 }
 
 // =========================================

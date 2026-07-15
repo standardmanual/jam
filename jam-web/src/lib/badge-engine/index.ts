@@ -2,25 +2,22 @@
  * JAM! 배지 발급 엔진 (서버 사이드 전용)
  *
  * - type='activity' 배지에 대해 condition_json 평가
- * - 조건 충족 시 user_activity_badges에 INSERT
- * - service_role 클라이언트 사용 (RLS 우회)
+ * - 성장 티어 정책: 배지 이름당 최상위 레어리티 1개만 발급
+ * - 미구현 조건 타입은 false 처리 (자동 통과 방지)
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, BadgeRow, UserActivityBadgeRow } from '@/types/database'
 
-/**
- * 활동 목록을 기반으로 배지 조건을 평가하고 발급합니다.
- * @returns 신규 발급된 배지 수
- */
+const RARITY_TIER: Record<string, number> = { common: 1, rare: 2, legendary: 3, mythic: 4 }
+
 export async function evaluateBadges(
   userId: string,
   activities: NormalizedActivity[]
 ): Promise<number> {
   const supabase = createServiceClient()
 
-  // 1. type='activity' 배지 전체 조회
   const { data: allBadgesRaw, error: badgesError } = await supabase
     .from('badges')
     .select('*')
@@ -33,7 +30,6 @@ export async function evaluateBadges(
     return 0
   }
 
-  // 2. 유저가 이미 보유한 배지 ID 목록
   const { data: ownedBadgesRaw, error: ownedError } = await supabase
     .from('user_activity_badges')
     .select('badge_id')
@@ -48,31 +44,53 @@ export async function evaluateBadges(
 
   const ownedBadgeIds = new Set((ownedBadges ?? []).map((b) => b.badge_id))
 
-  // 3. 미보유 배지만 평가
-  const unownedBadges = allBadges.filter((b) => !ownedBadgeIds.has(b.id))
+  // 성장 티어: 배지 이름당 현재 보유 최상위 레어리티 파악
+  const highestOwnedTierByName = new Map<string, number>()
+  for (const badge of allBadges) {
+    if (ownedBadgeIds.has(badge.id)) {
+      const tier = RARITY_TIER[badge.rarity] ?? 0
+      const current = highestOwnedTierByName.get(badge.name) ?? 0
+      if (tier > current) highestOwnedTierByName.set(badge.name, tier)
+    }
+  }
+
+  // 배지 이름별 그룹핑
+  const badgesByName = new Map<string, BadgeRow[]>()
+  for (const badge of allBadges) {
+    if (!badgesByName.has(badge.name)) badgesByName.set(badge.name, [])
+    badgesByName.get(badge.name)!.push(badge)
+  }
 
   let earnedCount = 0
 
-  for (const badge of unownedBadges) {
-    if (!badge.condition_json) continue
+  for (const [, group] of badgesByName) {
+    const highestOwned = highestOwnedTierByName.get(group[0].name) ?? 0
 
-    const condition = badge.condition_json as BadgeCondition
-    const qualified = checkCondition(condition, activities)
+    // 아직 없거나 보유 티어보다 높은 레어리티 중 조건 통과한 것만 선별
+    const eligible = group.filter((b) => {
+      if (ownedBadgeIds.has(b.id)) return false
+      if ((RARITY_TIER[b.rarity] ?? 0) <= highestOwned) return false
+      if (!b.condition_json) return false
+      return checkCondition(b.condition_json as BadgeCondition, activities)
+    })
 
-    if (!qualified) continue
+    if (eligible.length === 0) continue
 
-    // 발급 트리거 액티비티: 조건의 activity_type과 맞는 가장 최근 활동
+    // 최상위 레어리티 1개만 발급
+    eligible.sort((a, b) => (RARITY_TIER[b.rarity] ?? 0) - (RARITY_TIER[a.rarity] ?? 0))
+    const toIssue = eligible[0]
+
+    const condition = toIssue.condition_json as BadgeCondition
     const triggerActivity = condition.activity_type
       ? activities.find((a) => a.jamActivityType === condition.activity_type)
       : activities[0]
 
-    // 4. 배지 발급 (INSERT)
     const { error: insertError } = await supabase
       .from('user_activity_badges')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .insert({
         user_id: userId,
-        badge_id: badge.id,
+        badge_id: toIssue.id,
         triggered_by: 'strava_sync',
         triggered_by_strava_id: triggerActivity?.stravaId ?? null,
         triggered_by_activity_name: triggerActivity?.name ?? null,
@@ -81,19 +99,18 @@ export async function evaluateBadges(
       } as any)
 
     if (insertError) {
-      // 중복 발급 방지 — 이미 존재하는 경우 무시
       if (insertError.code === '23505') continue
-      console.error(`[evaluateBadges] 배지 발급 오류 (badge_id: ${badge.id}):`, insertError)
+      console.error(`[evaluateBadges] 배지 발급 오류 (badge_id: ${toIssue.id}):`, insertError)
       continue
     }
 
     earnedCount++
-    console.info(`[evaluateBadges] 배지 발급 완료 — userId: ${userId}, badge: ${badge.name}`)
+    console.info(`[evaluateBadges] 배지 발급 — userId: ${userId}, badge: ${toIssue.name} (${toIssue.rarity})`)
     await recordFeedEvent(userId, 'badge_earned', {
-      badge_id: badge.id,
-      badge_name: badge.name,
-      badge_image_url: badge.image_url ?? '',
-      rarity: badge.rarity,
+      badge_id: toIssue.id,
+      badge_name: toIssue.name,
+      badge_image_url: toIssue.image_url ?? '',
+      rarity: toIssue.rarity,
     })
   }
 
@@ -101,72 +118,118 @@ export async function evaluateBadges(
 }
 
 // =========================================
-// 조건 평가 로직 (Phase 1 기본 조건)
+// 조건 평가 — 미구현 조건은 false 반환
 // =========================================
 
-/**
- * condition_json 조건을 activities 목록에 대해 평가
- * 여러 조건이 있으면 AND 조건으로 처리
- */
-function checkCondition(
-  condition: BadgeCondition,
-  activities: NormalizedActivity[]
-): boolean {
-  // 활동 종류 필터 (activity_type이 명시된 경우 해당 종목만 사용)
+function checkCondition(condition: BadgeCondition, activities: NormalizedActivity[]): boolean {
   const filtered = condition.activity_type
     ? activities.filter((a) => a.jamActivityType === condition.activity_type)
     : activities
 
-  // 누적 거리 (km) 조건
+  // 누적 거리
   if (condition.distance_km !== undefined) {
     const totalKm = filtered.reduce((sum, a) => sum + a.distanceKm, 0)
     if (totalKm < condition.distance_km) return false
   }
 
-  // 활동 횟수 조건
+  // 활동 횟수
   if (condition.total_count !== undefined) {
     if (filtered.length < condition.total_count) return false
   }
 
-  // 고도 상승 누적 (m) 조건
+  // 고도 상승
   if (condition.elevation_gain_m !== undefined) {
     const totalElev = filtered.reduce((sum, a) => sum + a.elevationGainM, 0)
     if (totalElev < condition.elevation_gain_m) return false
   }
 
-  // 단일 활동 최소 속도 조건
+  // 단일 활동 최소 속도
   if (condition.min_speed_kmh !== undefined) {
     const hasSpeed = filtered.some((a) => a.averageSpeedKmh >= condition.min_speed_kmh!)
     if (!hasSpeed) return false
   }
 
-  // 연속 활동 일수 조건 (streak)
+  // 연속 활동 일수
   if (condition.streak_days !== undefined) {
-    const streak = calcMaxStreak(filtered)
-    if (streak < condition.streak_days) return false
+    if (calcMaxStreak(filtered) < condition.streak_days) return false
   }
 
-  // POI 조건은 Phase 2+에서 구현
-  if (condition.poi_id !== undefined) {
-    return false
+  // 단일 활동 최소 이동 시간 (분)
+  if (condition.duration_minutes !== undefined) {
+    const has = filtered.some((a) => a.movingTimeSec / 60 >= condition.duration_minutes!)
+    if (!has) return false
   }
+
+  // 주말 활동 최소 이동 시간 (시간)
+  if (condition.weekend_duration_hours !== undefined) {
+    const has = filtered.some((a) => {
+      const day = new Date(a.startDate).getDay() // 0=일, 6=토
+      return (day === 0 || day === 6) && a.movingTimeSec / 3600 >= condition.weekend_duration_hours!
+    })
+    if (!has) return false
+  }
+
+  // 같은 주 최소 활동 횟수
+  if (condition.weekly_count !== undefined) {
+    const weekCounts = new Map<string, number>()
+    for (const a of filtered) {
+      const key = getMondayKey(new Date(a.startDate))
+      weekCounts.set(key, (weekCounts.get(key) ?? 0) + 1)
+    }
+    const maxWeekCount = weekCounts.size > 0 ? Math.max(...weekCounts.values()) : 0
+    if (maxWeekCount < condition.weekly_count) return false
+  }
+
+  // 특정 월 + 월 누적 거리
+  if (condition.month !== undefined || condition.monthly_km !== undefined) {
+    let monthFiltered = filtered
+    if (condition.month !== undefined) {
+      monthFiltered = filtered.filter(
+        (a) => new Date(a.startDate).getMonth() + 1 === condition.month
+      )
+    }
+    if (condition.monthly_km !== undefined) {
+      const monthKm = new Map<string, number>()
+      for (const a of monthFiltered) {
+        const d = new Date(a.startDate)
+        const key = `${d.getFullYear()}-${d.getMonth() + 1}`
+        monthKm.set(key, (monthKm.get(key) ?? 0) + a.distanceKm)
+      }
+      const maxKm = monthKm.size > 0 ? Math.max(...monthKm.values()) : 0
+      if (maxKm < condition.monthly_km) return false
+    } else if (condition.month !== undefined && monthFiltered.length === 0) {
+      return false
+    }
+  }
+
+  // 미구현: season_count — condition_json에 season 필드 없어 평가 불가
+  if (condition.season_count !== undefined) return false
+
+  // 미구현: 날씨 조건 — 실시간 날씨 데이터 없음
+  if (condition.temperature_min_c !== undefined || condition.temperature_max_c !== undefined) return false
+
+  // POI 조건은 poi_match 경로에서 처리
+  if (condition.poi_id !== undefined) return false
 
   return true
 }
 
-/**
- * 최대 연속 활동 일수 계산
- */
+function getMondayKey(date: Date): string {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  const day = d.getDay()
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+  return d.toISOString().slice(0, 10)
+}
+
 function calcMaxStreak(activities: NormalizedActivity[]): number {
   if (activities.length === 0) return 0
 
-  // 날짜별 정렬 (오래된 것 먼저)
   const dates = activities
     .map((a) => new Date(a.startDate).toISOString().slice(0, 10))
     .sort()
 
   const uniqueDates = [...new Set(dates)]
-
   let maxStreak = 1
   let currentStreak = 1
 
