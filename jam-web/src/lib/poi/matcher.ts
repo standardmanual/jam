@@ -56,9 +56,19 @@ export function isRouteNearPoi(
   poiLng: number,
   radiusMeters: number
 ): boolean {
+  // Haversine 전 바운딩 박스로 사전 필터 (삼각함수 생략 → ~100배 속도 향상)
+  const latMargin = radiusMeters / 111111
+  const lngMargin = radiusMeters / (111111 * Math.cos((poiLat * Math.PI) / 180))
+  const latMin = poiLat - latMargin
+  const latMax = poiLat + latMargin
+  const lngMin = poiLng - lngMargin
+  const lngMax = poiLng + lngMargin
+
   for (const [lat, lng] of route) {
-    if (haversineDistance(lat, lng, poiLat, poiLng) <= radiusMeters) {
-      return true
+    if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) {
+      if (haversineDistance(lat, lng, poiLat, poiLng) <= radiusMeters) {
+        return true
+      }
     }
   }
   return false
@@ -93,7 +103,25 @@ export async function matchPoisForActivity(
 
   const pois = (poisRaw ?? []) as PoiRow[]
 
-  return pois.filter((poi) =>
+  // 경로 전체 바운딩 박스 계산 → 범위 밖 POI 즉시 제거
+  let routeLatMin = Infinity, routeLatMax = -Infinity
+  let routeLngMin = Infinity, routeLngMax = -Infinity
+  for (const [lat, lng] of route) {
+    if (lat < routeLatMin) routeLatMin = lat
+    if (lat > routeLatMax) routeLatMax = lat
+    if (lng < routeLngMin) routeLngMin = lng
+    if (lng > routeLngMax) routeLngMax = lng
+  }
+  const BB_MARGIN = 0.001 // ~111m 버퍼
+  const candidatePois = pois.filter(
+    (poi) =>
+      poi.latitude >= routeLatMin - BB_MARGIN &&
+      poi.latitude <= routeLatMax + BB_MARGIN &&
+      poi.longitude >= routeLngMin - BB_MARGIN &&
+      poi.longitude <= routeLngMax + BB_MARGIN
+  )
+
+  return candidatePois.filter((poi) =>
     isRouteNearPoi(route, poi.latitude, poi.longitude, poi.radius_meters)
   )
 }
