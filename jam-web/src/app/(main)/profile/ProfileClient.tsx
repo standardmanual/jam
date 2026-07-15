@@ -318,7 +318,7 @@ export default function ProfileClient({
           </div>
         )}
         <div className="flex-1">
-          <p className="font-black text-xl">{profile?.username ? `@${profile.username}` : '익명'}</p>
+          <p className="font-black text-xl">{profile?.username ?? '익명'}</p>
           {isOwnProfile && <p className="text-jam-ink/60 text-sm font-semibold">{profile?.email}</p>}
         </div>
         {isOwnProfile ? (
