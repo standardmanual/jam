@@ -137,7 +137,25 @@ function evaluateConditionDetailed(
   }
 
   if (condition.season_count !== undefined) {
-    return { pass: false, reason: '계절 조건 미구현', actual: '-', required: `${condition.season_count}회` }
+    if (!condition.season) {
+      return { pass: false, reason: '계절 조건 미구현 (season 필드 없음)', actual: '-', required: `${condition.season_count}회` }
+    }
+    const SEASON_MONTHS: Record<string, number[]> = {
+      spring: [3, 4, 5],
+      summer: [6, 7, 8],
+      fall:   [9, 10, 11],
+      winter: [12, 1, 2],
+    }
+    const seasonFiltered = condition.season === 'all'
+      ? filtered
+      : filtered.filter((a) => {
+          const m = new Date(a.startDate).getMonth() + 1
+          return (SEASON_MONTHS[condition.season!] ?? []).includes(m)
+        })
+    if (seasonFiltered.length < condition.season_count) {
+      const seasonLabel = condition.season === 'all' ? '전체' : ({ spring: '봄', summer: '여름', fall: '가을', winter: '겨울' }[condition.season] ?? condition.season)
+      return { pass: false, reason: `${seasonLabel} 활동 횟수 부족`, actual: `${seasonFiltered.length}회`, required: `${condition.season_count}회` }
+    }
   }
 
   if (condition.temperature_min_c !== undefined || condition.temperature_max_c !== undefined) {
