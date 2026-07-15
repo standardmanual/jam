@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { DotmHex8 } from '@/components/ui/dotm-hex-8'
 import { formatRelativeTime } from '@/lib/utils'
 import type { UserRow, ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 
@@ -327,7 +328,17 @@ export default function ProfileClient({
     if (tabLoading) {
       return (
         <div className="flex items-center justify-center py-16">
-          <div className="w-6 h-6 rounded-full border-[3px] border-jam-ink border-t-transparent animate-spin" />
+          <DotmHex8
+            size={89}
+            dotSize={14}
+            speed={1.35}
+            pattern="full"
+            colorPreset="grad-fire"
+            animated
+            opacityBase={0.12}
+            opacityMid={0.42}
+            opacityPeak={1}
+          />
         </div>
       )
     }
