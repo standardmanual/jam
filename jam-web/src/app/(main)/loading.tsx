@@ -2,7 +2,7 @@ import { DotmHex8 } from '@/components/ui/dotm-hex-8'
 
 export default function Loading() {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-jam-cream/90 backdrop-blur-sm">
+    <div className="jam-loader-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-jam-cream/90 backdrop-blur-sm">
       <DotmHex8
         size={89}
         dotSize={14}
