@@ -222,7 +222,7 @@ export default function SimulatorPage() {
             elevationGainM: gpx.elevationGainM,
             averageSpeedKmh: gpx.averageSpeedKmh,
             startDate: gpx.startDate,
-            route: downsampleRoute(gpx.route, 500),
+            route: downsampleRoute(gpx.route, 5000),
           },
           repeatCount,
         }),

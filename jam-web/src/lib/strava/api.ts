@@ -131,7 +131,8 @@ export async function getActivityStreams(
   activityId: number,
   accessToken: string
 ): Promise<Array<[number, number]> | null> {
-  const url = `${STRAVA_API_BASE}/activities/${activityId}/streams?keys=latlng&key_by_type=true`
+  // resolution=medium: 최대 1000포인트로 제한 (high는 포인트 무제한으로 타임아웃 위험)
+  const url = `${STRAVA_API_BASE}/activities/${activityId}/streams?keys=latlng&key_by_type=true&resolution=medium`
 
   let res: Response
   try {
