@@ -25,8 +25,9 @@ const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
   mission_joined: '미션 참가', mission_completed: '미션 완료', mission_cancelled: '미션 취소',
 }
 const RARITY_COLOR: Record<string, string> = {
-  common: 'bg-jam-ink/10 text-jam-ink', rare: 'bg-jam-teal/20 text-jam-teal',
-  legendary: 'bg-jam-purple/20 text-jam-purple', mythic: 'bg-[#FF4500]/20 text-[#FF4500]',
+  rare: 'bg-jam-teal/20 text-jam-teal',
+  legendary: 'bg-jam-purple/20 text-jam-purple',
+  mythic: 'bg-[#FF4500]/20 text-[#FF4500]',
 }
 const RARITY_LABEL: Record<string, string> = {
   common: 'Common', rare: 'Rare', legendary: 'Legendary', mythic: 'Mythic',

@@ -38,14 +38,12 @@ type Mode = 'drop' | 'pickup'
 type Step = 'map' | 'select_item' | 'confirm'
 
 const RARITY_COLOR: Record<string, string> = {
-  common: 'text-jam-ink/50',
   rare: 'text-jam-teal',
   legendary: 'text-jam-purple',
   mythic: 'text-jam-yellow',
 }
 
 const RARITY_LABEL: Record<string, string> = {
-  common: 'COMMON',
   rare: 'RARE',
   legendary: 'LEGENDARY',
   mythic: 'MYTHIC',
@@ -363,9 +361,11 @@ export default function DropsClient() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-jam-ink truncate">{item.badge_name}</p>
-                        <p className={`text-xs font-black ${RARITY_COLOR[item.badge_rarity] ?? 'text-jam-ink/40'}`}>
-                          {RARITY_LABEL[item.badge_rarity] ?? item.badge_rarity}
-                        </p>
+                        {item.badge_rarity !== 'common' && (
+                          <p className={`text-xs font-black ${RARITY_COLOR[item.badge_rarity] ?? 'text-jam-ink/40'}`}>
+                            {RARITY_LABEL[item.badge_rarity] ?? item.badge_rarity}
+                          </p>
+                        )}
                       </div>
                       {selectedItem?.id === item.id && (
                         <div className="ml-auto text-jam-ink">
@@ -400,9 +400,11 @@ export default function DropsClient() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-jam-ink truncate">{drop.badge_name}</p>
-                        <p className={`text-xs font-black ${RARITY_COLOR[drop.badge_rarity] ?? 'text-jam-ink/40'}`}>
-                          {RARITY_LABEL[drop.badge_rarity] ?? drop.badge_rarity}
-                        </p>
+                        {drop.badge_rarity !== 'common' && (
+                          <p className={`text-xs font-black ${RARITY_COLOR[drop.badge_rarity] ?? 'text-jam-ink/40'}`}>
+                            {RARITY_LABEL[drop.badge_rarity] ?? drop.badge_rarity}
+                          </p>
+                        )}
                         <p className="text-xs text-jam-ink/40 mt-0.5 font-semibold">{drop.dropper_name}이(가) 드랍</p>
                       </div>
                       {selectedDrop?.id === drop.id && (

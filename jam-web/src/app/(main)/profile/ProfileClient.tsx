@@ -41,7 +41,6 @@ const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
 }
 
 const RARITY_COLOR: Record<string, string> = {
-  common: 'bg-jam-ink/10 text-jam-ink',
   rare: 'bg-jam-teal/20 text-jam-teal',
   legendary: 'bg-jam-purple/20 text-jam-purple',
   mythic: 'bg-[#FF4500]/20 text-[#FF4500]',
