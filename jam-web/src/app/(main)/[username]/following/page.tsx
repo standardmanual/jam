@@ -88,7 +88,7 @@ export default async function FollowingPage({ params }: Props) {
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-jam-cream border-[2px] border-jam-ink flex items-center justify-center text-lg shrink-0">👤</div>
                 )}
-                <span className="font-black text-sm text-jam-ink truncate">@{u.username}</span>
+                <span className="font-black text-sm text-jam-ink truncate">{u.username}</span>
               </Link>
               {u.id !== user.id && (
                 <FollowButton targetUserId={u.id} initialFollowing={u.isFollowing} />
