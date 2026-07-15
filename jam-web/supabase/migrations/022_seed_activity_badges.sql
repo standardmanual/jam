@@ -4,9 +4,14 @@
 -- ============================================================
 
 -- 기존 activity 배지 관련 데이터 정리
+-- (poi.linked_badge_id로 참조된 배지는 FK 제약으로 인해 제외)
 DELETE FROM public.user_activity_badges
   WHERE badge_id IN (SELECT id FROM public.badges WHERE type = 'activity');
-DELETE FROM public.badges WHERE type = 'activity';
+DELETE FROM public.badges
+  WHERE type = 'activity'
+    AND id NOT IN (
+      SELECT linked_badge_id FROM public.poi WHERE linked_badge_id IS NOT NULL
+    );
 
 INSERT INTO public.badges
   (name, description, type, rarity, image_url, condition_json, activity_types, patch_available)
