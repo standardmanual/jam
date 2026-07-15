@@ -247,7 +247,7 @@ export default function ProfileClient({
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
 
   const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
-  const badgeItems = feedItems.filter((f) => BADGE_EVENTS.has(f.event_type))
+  const badgeItems = feedItems.filter((f) => f.event_type === 'badge_earned')
 
   // ── 해시 읽기 (마운트 시) ──────────────────────────────────────────────────
   useEffect(() => {

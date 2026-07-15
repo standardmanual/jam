@@ -47,6 +47,28 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: feedDeleteError.message }, { status: 500 })
   }
 
+  // 1-3. POI 드랍 삭제 (legacyItems 빌드 소스 제거)
+  //      - 이 유저가 드랍한 행 삭제
+  //      - 이 유저가 픽업한 행의 픽업 정보 초기화
+  const { error: poiDropDeleteError } = await supabase
+    .from('poi_drops')
+    .delete()
+    .eq('dropper_user_id', userId)
+
+  if (poiDropDeleteError) {
+    return NextResponse.json({ error: poiDropDeleteError.message }, { status: 500 })
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: poiPickupResetError } = await (supabase as any)
+    .from('poi_drops')
+    .update({ picked_up_by: null, picked_up_at: null })
+    .eq('picked_up_by', userId)
+
+  if (poiPickupResetError) {
+    return NextResponse.json({ error: poiPickupResetError.message }, { status: 500 })
+  }
+
   // 2. 인벤토리 아이템 전체 삭제 + 슬롯 리셋
   const { data: inventoryRaw, error: inventoryError } = await supabase
     .from('inventory')
