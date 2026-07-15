@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
 import type { UserRow, ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
@@ -422,7 +421,8 @@ export default function ProfileClient({
           <div key={u.id} className="flex items-center gap-3 bg-white border-[2px] border-jam-ink rounded-2xl p-3 shadow-[2px_2px_0_0_#161616]">
             <Link href={`/${u.username}`} className="flex items-center gap-3 flex-1 min-w-0">
               {u.avatar_url ? (
-                <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover border-[2px] border-jam-ink shrink-0" />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={u.avatar_url} alt={u.username ?? ''} className="w-10 h-10 rounded-full object-cover border-[2px] border-jam-ink shrink-0" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-jam-cream border-[2px] border-jam-ink flex items-center justify-center text-lg shrink-0">👤</div>
               )}
