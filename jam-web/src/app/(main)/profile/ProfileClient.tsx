@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
-import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
+import type { UserRow, ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 
 // ─── 탭 ─────────────────────────────────────────────────────────────────────
 
@@ -18,23 +18,8 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'following', label: '팔로잉' },
 ]
 
-// ─── 피드 필터 (본인 Feed 섹션용) ────────────────────────────────────────────
-
-type FilterTab = 'all' | 'badge' | 'mission'
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all', label: '전체' },
-  { key: 'badge', label: '배지' },
-  { key: 'mission', label: '미션' },
-]
 const BADGE_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
 const MISSION_EVENTS = new Set<ActivityFeedEventType>(['mission_joined', 'mission_completed', 'mission_cancelled'])
-
-function matchesFilter(item: ActivityFeedRow, tab: FilterTab): boolean {
-  if (tab === 'all') return true
-  if (tab === 'badge') return BADGE_EVENTS.has(item.event_type)
-  if (tab === 'mission') return MISSION_EVENTS.has(item.event_type)
-  return false
-}
 
 // ─── 상수 ───────────────────────────────────────────────────────────────────
 
@@ -201,7 +186,6 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
 
 interface Props {
   profile: UserRow | null
-  strava: StravaConnectionRow | null
   feedItems: ActivityFeedRow[]
   isOwnProfile: boolean
   isFollowing: boolean
@@ -216,7 +200,6 @@ interface Props {
 
 export default function ProfileClient({
   profile,
-  strava,
   feedItems,
   isOwnProfile,
   isFollowing,
@@ -238,15 +221,12 @@ export default function ProfileClient({
   const [itembooksData, setItembooksData] = useState<ItemBookItem[] | null>(null)
   const [listFollowStates, setListFollowStates] = useState<Record<string, boolean>>({})
 
-  // ── 본인 피드 상태 ─────────────────────────────────────────────────────────
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [selectedItem, setSelectedItem] = useState<ActivityFeedRow | null>(null)
 
   // ── 팔로우 (프로필 헤더) ───────────────────────────────────────────────────
   const [following, setFollowing] = useState(isFollowing)
   const [followerCnt, setFollowerCnt] = useState(followerCount)
 
-  const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
   const badgeItems = feedItems.filter((f) => BADGE_EVENTS.has(f.event_type))
 
   // ── 해시 읽기 (마운트 시) ──────────────────────────────────────────────────
@@ -525,64 +505,6 @@ export default function ProfileClient({
       <section>
         {renderTabContent()}
       </section>
-
-      {/* Strava 연동 — 본인만 */}
-      {isOwnProfile && (
-        <section className="bg-jam-cream rounded-3xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-5">
-          <h2 className="font-black text-base mb-3">Strava 연동</h2>
-          {strava ? (
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FC4C02] border border-jam-ink" />
-              <span className="text-sm font-black text-[#FC4C02]">연동됨</span>
-              {strava.last_synced_at && (
-                <span className="text-sm text-jam-ink/50 font-semibold ml-1">· {formatRelativeTime(strava.last_synced_at)}</span>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-jam-ink/50 font-semibold">연동 안됨</span>
-              <a href="/api/strava/auth" className="px-4 py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-black active:scale-95 transition-transform border-2 border-jam-ink">
-                Strava 연동
-              </a>
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Feed — 본인만 */}
-      {isOwnProfile && (
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-black text-base">Feed</h2>
-            <span className="text-xs text-jam-ink/40 font-semibold">{filtered.length}개</span>
-          </div>
-          <div className="flex gap-2 mb-4">
-            {FILTER_TABS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setActiveFilter(key)}
-                className={`flex-1 py-2 rounded-xl border-[2px] border-jam-ink text-xs font-black transition-all active:scale-95 ${
-                  activeFilter === key ? 'bg-jam-ink text-white shadow-[2px_2px_0_0_#161616]' : 'bg-white/60 text-jam-ink'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {filtered.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-4xl mb-3">📭</p>
-              <p className="text-jam-ink/50 font-bold text-sm">아직 기록이 없어요</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {filtered.map(item => (
-                <FeedCard key={item.id} item={item} onClick={() => handleCardClick(item)} />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
 
       {/* 로그아웃 — 본인만 */}
       {isOwnProfile && (

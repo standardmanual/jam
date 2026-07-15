@@ -1,14 +1,20 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/types/database'
+import { ActivityFeedRow, BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
 import SyncButton from './SyncButton'
 import LocalDate from '@/components/LocalDate'
+import HomeFeedSection from './HomeFeedSection'
 
 interface BadgeWithEarned {
   badge: BadgeRow
   earned: UserActivityBadgeRow
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeFeedItem(id: string, event_type: ActivityFeedRow['event_type'], event_at: string, metadata: Record<string, any>): ActivityFeedRow {
+  return { id, user_id: '', event_type, event_at, metadata }
 }
 
 
@@ -27,13 +33,16 @@ export default async function HomePage() {
 
   if (!user) redirect('/login')
 
+  const service = createServiceClient()
+  const userId = user.id
+
   const [{ data: profile }, { data: stravaConn }, { data: recentBadges }] = await Promise.all([
-    supabase.from('users').select('*').eq('id', user.id).single(),
-    supabase.from('strava_connections').select('*').eq('user_id', user.id).maybeSingle(),
+    supabase.from('users').select('*').eq('id', userId).single(),
+    supabase.from('strava_connections').select('*').eq('user_id', userId).maybeSingle(),
     supabase
       .from('user_activity_badges')
       .select('*, badge:badges(*)')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('earned_at', { ascending: false })
       .limit(4),
   ])
@@ -43,6 +52,132 @@ export default async function HomePage() {
   const badgeWithEarned: BadgeWithEarned[] = ((recentBadges ?? []) as Array<{badge: BadgeRow} & UserActivityBadgeRow>).map(
     (r) => ({ badge: r.badge, earned: r })
   )
+
+  // ─── 피드 데이터 ──────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [feedResult, invResult] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).from('user_activity_feed').select('*').eq('user_id', userId).order('event_at', { ascending: false }).limit(150),
+    service.from('inventory').select('id').eq('user_id', userId).maybeSingle(),
+  ])
+
+  const inventoryId = (invResult.data as { id: string } | null)?.id
+
+  const [
+    badgesHistoryResult,
+    actDropsResult,
+    poiDropsResult,
+    pickupsResult,
+    completionsResult,
+    participationsResult,
+  ] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)
+      .from('user_activity_badges')
+      .select('badge_id, earned_at, badges(id, name, image_url, rarity)')
+      .eq('user_id', userId)
+      .order('earned_at', { ascending: false })
+      .limit(100),
+
+    inventoryId
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? (service as any)
+          .from('inventory_items')
+          .select('id, badge_id, obtained_at, badges(id, name, image_url, rarity)')
+          .eq('inventory_id', inventoryId)
+          .eq('obtained_by', 'drop')
+          .order('obtained_at', { ascending: false })
+          .limit(100)
+      : Promise.resolve({ data: [] }),
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)
+      .from('poi_drops')
+      .select('id, badge_id, dropped_at, poi(name), badges(id, name, image_url, rarity)')
+      .eq('dropper_user_id', userId)
+      .order('dropped_at', { ascending: false })
+      .limit(50),
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)
+      .from('poi_drops')
+      .select('id, badge_id, picked_up_at, dropper_user_id, poi(name), badges(id, name, image_url, rarity)')
+      .eq('picked_up_by', userId)
+      .not('picked_up_at', 'is', null)
+      .order('picked_up_at', { ascending: false })
+      .limit(50),
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)
+      .from('user_mission_completions')
+      .select('id, mission_id, completed_at, missions(title, reward_type, reward_points)')
+      .eq('user_id', userId)
+      .order('completed_at', { ascending: false })
+      .limit(50),
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)
+      .from('user_mission_participations')
+      .select('mission_id, joined_at, missions(title)')
+      .eq('user_id', userId)
+      .order('joined_at', { ascending: false })
+      .limit(50),
+  ])
+
+  const feedItems = (feedResult.data ?? []) as ActivityFeedRow[]
+  const feedBadgeIds = new Set(feedItems.filter(f => f.event_type === 'badge_earned').map(f => (f.metadata as Record<string, string>).badge_id))
+  const feedActivityDropIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => (f.metadata as Record<string, string>).badge_id))
+  const feedMissionCompleted = new Set(feedItems.filter(f => f.event_type === 'mission_completed').map(f => (f.metadata as Record<string, string>).mission_id))
+  const feedMissionJoined = new Set(feedItems.filter(f => f.event_type === 'mission_joined').map(f => (f.metadata as Record<string, string>).mission_id))
+
+  const legacyItems: ActivityFeedRow[] = []
+
+  for (const row of badgesHistoryResult.data ?? []) {
+    if (feedBadgeIds.has(row.badge_id)) continue
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
+    if (!b) continue
+    legacyItems.push(makeFeedItem(`legacy_badge_${row.badge_id}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }))
+  }
+
+  const feedDropItemIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => String((f.metadata as Record<string, unknown>).__legacy_item_id ?? '')))
+  for (const row of actDropsResult.data ?? []) {
+    if (feedDropItemIds.has(row.id)) continue
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
+    if (!b) continue
+    legacyItems.push(makeFeedItem(`legacy_actdrop_${row.id}`, 'item_dropped', row.obtained_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: '' }))
+  }
+
+  for (const row of poiDropsResult.data ?? []) {
+    if (feedActivityDropIds.has(row.badge_id)) { /* POI드랍은 별도 이벤트 */ }
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
+    const poiName = (row.poi as { name: string } | null)?.name ?? ''
+    if (!b) continue
+    legacyItems.push(makeFeedItem(`legacy_poidrop_${row.id}`, 'item_dropped', row.dropped_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: poiName }))
+  }
+
+  for (const row of pickupsResult.data ?? []) {
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
+    const poiName = (row.poi as { name: string } | null)?.name ?? ''
+    if (!b) continue
+    legacyItems.push(makeFeedItem(`legacy_pickup_${row.id}`, 'item_picked_up', row.picked_up_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: poiName, dropper_user_id: row.dropper_user_id }))
+  }
+
+  for (const row of completionsResult.data ?? []) {
+    if (feedMissionCompleted.has(row.mission_id)) continue
+    const m = row.missions as { title: string; reward_type: string; reward_points: number | null } | null
+    if (!m) continue
+    legacyItems.push(makeFeedItem(`legacy_complete_${row.id}`, 'mission_completed', row.completed_at, { mission_id: row.mission_id, mission_title: m.title, reward_type: m.reward_type, reward_points: m.reward_points }))
+  }
+
+  for (const row of participationsResult.data ?? []) {
+    if (feedMissionJoined.has(row.mission_id)) continue
+    const m = row.missions as { title: string } | null
+    if (!m) continue
+    legacyItems.push(makeFeedItem(`legacy_join_${row.mission_id}`, 'mission_joined', row.joined_at, { mission_id: row.mission_id, mission_title: m.title }))
+  }
+
+  const allFeedItems = [...feedItems, ...legacyItems]
+  allFeedItems.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime())
 
   const displayName = userProfile?.username ?? user.email?.split('@')[0] ?? '러너'
 
@@ -157,6 +292,9 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      {/* 피드 */}
+      <HomeFeedSection feedItems={allFeedItems.slice(0, 200)} />
     </div>
   )
 }

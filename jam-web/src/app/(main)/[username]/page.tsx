@@ -198,7 +198,6 @@ export default async function UserProfilePage({ params }: Props) {
   return (
     <ProfileClient
       profile={target as UserRow}
-      strava={stravaResult.data as StravaConnectionRow | null}
       feedItems={allItems.slice(0, 200)}
       isOwnProfile={isOwnProfile}
       isFollowing={isFollowing}
