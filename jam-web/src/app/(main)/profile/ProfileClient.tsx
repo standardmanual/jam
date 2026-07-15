@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -17,6 +17,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'followers', label: '팔로워' },
   { key: 'following', label: '팔로잉' },
 ]
+const VALID_TABS = new Set<string>(['badge', 'itembooks', 'followers', 'following'])
 
 // ─── 피드 필터 (본인 Feed 섹션용) ────────────────────────────────────────────
 
@@ -229,13 +230,15 @@ export default function ProfileClient({
 }: Props) {
   const router = useRouter()
 
-  // ── 탭 상태 ──────────────────────────────────────────────────────────────
+  // ── 탭/해시 상태 ──────────────────────────────────────────────────────────
+  const [hashFragment, setHashFragment] = useState<string>('')
   const [activeTab, setActiveTab] = useState<TabKey>('badge')
   const [tabLoading, setTabLoading] = useState(false)
   const [followersData, setFollowersData] = useState<FollowUser[] | null>(null)
   const [followingData, setFollowingData] = useState<FollowUser[] | null>(null)
   const [itembooksData, setItembooksData] = useState<ItemBookItem[] | null>(null)
   const [listFollowStates, setListFollowStates] = useState<Record<string, boolean>>({})
+  const fetchedRef = useRef<Set<TabKey>>(new Set())
 
   const [selectedItem, setSelectedItem] = useState<ActivityFeedRow | null>(null)
 
@@ -246,59 +249,74 @@ export default function ProfileClient({
   // ── 본인 피드 상태 ─────────────────────────────────────────────────────────
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
 
-  // badge_earned는 배지 탭 갤러리에서 표시 — Feed 섹션 중복 제외
+  // badge_earned는 배지 갤러리에서 표시 — Feed 섹션 중복 제외
   const filtered = feedItems
     .filter((f) => f.event_type !== 'badge_earned')
     .filter((f) => matchesFilter(f, activeFilter))
   const badgeItems = feedItems.filter((f) => f.event_type === 'badge_earned')
 
-  // ── 해시 읽기 (마운트 시) ──────────────────────────────────────────────────
+  // ── 탭뷰 여부 ─────────────────────────────────────────────────────────────
+  // 본인 프로필: 해시 없으면 기본뷰(Strava+Feed), 유효 해시 있으면 탭콘텐츠
+  // 타인 프로필: 항상 탭콘텐츠 (기본=배지갤러리)
+  const isTabView = !isOwnProfile || VALID_TABS.has(hashFragment)
+
+  // ── 해시 동기화 (마운트·뒤로가기 포함) ────────────────────────────────────
   useEffect(() => {
-    const hash = window.location.hash.slice(1) as TabKey
-    if (['badge', 'itembooks', 'followers', 'following'].includes(hash)) {
-      selectTab(hash, false)
+    const fetchIfNeeded = async (tab: TabKey) => {
+      if (fetchedRef.current.has(tab)) return
+      fetchedRef.current.add(tab)
+      setTabLoading(true)
+      try {
+        if (tab === 'followers') {
+          const res = await fetch(`/api/users/${username}/followers`)
+          const json = await res.json()
+          const users: FollowUser[] = json.users ?? []
+          setFollowersData(users)
+          setListFollowStates(prev => {
+            const next = { ...prev }
+            for (const u of users) next[u.id] = u.isFollowing
+            return next
+          })
+        } else if (tab === 'following') {
+          const res = await fetch(`/api/users/${username}/following`)
+          const json = await res.json()
+          const users: FollowUser[] = json.users ?? []
+          setFollowingData(users)
+          setListFollowStates(prev => {
+            const next = { ...prev }
+            for (const u of users) next[u.id] = u.isFollowing
+            return next
+          })
+        } else if (tab === 'itembooks') {
+          const res = await fetch(`/api/users/${username}/itembooks`)
+          const json = await res.json()
+          setItembooksData(json.books ?? [])
+        }
+      } finally {
+        setTabLoading(false)
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
-  // ── 탭 선택 + 데이터 lazy fetch ────────────────────────────────────────────
-  const selectTab = useCallback(async (tab: TabKey, pushHistory = true) => {
-    if (pushHistory) window.history.replaceState(null, '', `#${tab}`)
-    setActiveTab(tab)
-
-    if (tab === 'followers' && followersData === null) {
-      setTabLoading(true)
-      const res = await fetch(`/api/users/${username}/followers`)
-      const json = await res.json()
-      const users: FollowUser[] = json.users ?? []
-      setFollowersData(users)
-      setListFollowStates(prev => {
-        const next = { ...prev }
-        for (const u of users) next[u.id] = u.isFollowing
-        return next
-      })
-      setTabLoading(false)
-    } else if (tab === 'following' && followingData === null) {
-      setTabLoading(true)
-      const res = await fetch(`/api/users/${username}/following`)
-      const json = await res.json()
-      const users: FollowUser[] = json.users ?? []
-      setFollowingData(users)
-      setListFollowStates(prev => {
-        const next = { ...prev }
-        for (const u of users) next[u.id] = u.isFollowing
-        return next
-      })
-      setTabLoading(false)
-    } else if (tab === 'itembooks' && itembooksData === null) {
-      setTabLoading(true)
-      const res = await fetch(`/api/users/${username}/itembooks`)
-      const json = await res.json()
-      setItembooksData(json.books ?? [])
-      setTabLoading(false)
+    const sync = () => {
+      const hash = window.location.hash.slice(1)
+      setHashFragment(hash)
+      if (VALID_TABS.has(hash)) {
+        const tab = hash as TabKey
+        setActiveTab(tab)
+        fetchIfNeeded(tab)
+      }
     }
+
+    sync()
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username, followersData, followingData, itembooksData])
+  }, [username])
+
+  // ── 탭 클릭 — 해시 이동 (브라우저 뒤로가기 지원) ────────────────────────────
+  const handleTabClick = (tab: TabKey) => {
+    window.location.hash = tab
+  }
 
   // ── 리스트 내 팔로우 토글 ──────────────────────────────────────────────────
   const handleListFollow = async (targetId: string) => {
@@ -537,33 +555,61 @@ export default function ProfileClient({
         )}
       </div>
 
-      {/* 통계 바 (탭) */}
+      {/* 통계 바 */}
       <div className="flex border-[2px] border-jam-ink rounded-2xl overflow-hidden bg-white shadow-[2px_2px_0_0_#161616]">
-        {TABS.map((tab, i) => (
-          <button
-            key={tab.key}
-            onClick={() => selectTab(tab.key)}
-            className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors ${
-              i < TABS.length - 1 ? 'border-r-[2px] border-jam-ink' : ''
-            } ${activeTab === tab.key ? 'bg-jam-ink text-white' : 'active:bg-jam-ink/5'}`}
-          >
-            <span className={`text-xl font-black ${activeTab === tab.key ? 'text-white' : 'text-jam-ink'}`}>
-              {statCounts[tab.key]}
-            </span>
-            <span className={`text-[10px] font-black uppercase tracking-wider ${activeTab === tab.key ? 'text-white/80' : 'text-jam-ink/50'}`}>
-              {tab.label}
-            </span>
-          </button>
-        ))}
+        {TABS.map((tab, i) => {
+          const isActive = isTabView && activeTab === tab.key
+          return (
+            <button
+              key={tab.key}
+              onClick={() => handleTabClick(tab.key)}
+              className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors ${
+                i < TABS.length - 1 ? 'border-r-[2px] border-jam-ink' : ''
+              } ${isActive ? 'bg-jam-ink text-white' : 'active:bg-jam-ink/5'}`}
+            >
+              <span className={`text-xl font-black ${isActive ? 'text-white' : 'text-jam-ink'}`}>
+                {statCounts[tab.key]}
+              </span>
+              <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-white/80' : 'text-jam-ink/50'}`}>
+                {tab.label}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* 탭 콘텐츠 */}
-      <section>
-        {renderTabContent()}
-      </section>
+      {/* 탭 콘텐츠 — 탭뷰일 때만 */}
+      {isTabView && (
+        <section>
+          {renderTabContent()}
+        </section>
+      )}
 
-      {/* Feed — 본인만 */}
-      {isOwnProfile && (
+      {/* Strava 연동 — 본인 + 기본뷰(해시 없음)일 때 */}
+      {isOwnProfile && !isTabView && (
+        <section className="bg-jam-cream rounded-3xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-5">
+          <h2 className="font-black text-base mb-3">Strava 연동</h2>
+          {strava ? (
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FC4C02] border border-jam-ink" />
+              <span className="text-sm font-black text-[#FC4C02]">연동됨</span>
+              {strava.last_synced_at && (
+                <span className="text-sm text-jam-ink/50 font-semibold ml-1">· {formatRelativeTime(strava.last_synced_at)}</span>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-jam-ink/50 font-semibold">연동 안됨</span>
+              <a href="/api/strava/auth" className="px-4 py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-black active:scale-95 transition-transform border-2 border-jam-ink">
+                Strava 연동
+              </a>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Feed — 본인 + 기본뷰(해시 없음)일 때 */}
+      {isOwnProfile && !isTabView && (
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-black text-base">Feed</h2>
@@ -592,29 +638,6 @@ export default function ProfileClient({
               {filtered.map(item => (
                 <FeedCard key={item.id} item={item} onClick={() => handleCardClick(item)} />
               ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Strava 연동 — 본인만 */}
-      {isOwnProfile && (
-        <section className="bg-jam-cream rounded-3xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-5">
-          <h2 className="font-black text-base mb-3">Strava 연동</h2>
-          {strava ? (
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FC4C02] border border-jam-ink" />
-              <span className="text-sm font-black text-[#FC4C02]">연동됨</span>
-              {strava.last_synced_at && (
-                <span className="text-sm text-jam-ink/50 font-semibold ml-1">· {formatRelativeTime(strava.last_synced_at)}</span>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-jam-ink/50 font-semibold">연동 안됨</span>
-              <a href="/api/strava/auth" className="px-4 py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-black active:scale-95 transition-transform border-2 border-jam-ink">
-                Strava 연동
-              </a>
             </div>
           )}
         </section>
