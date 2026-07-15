@@ -537,29 +537,6 @@ export default function ProfileClient({
         {renderTabContent()}
       </section>
 
-      {/* Strava 연동 — 본인만 */}
-      {isOwnProfile && (
-        <section className="bg-jam-cream rounded-3xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-5">
-          <h2 className="font-black text-base mb-3">Strava 연동</h2>
-          {strava ? (
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FC4C02] border border-jam-ink" />
-              <span className="text-sm font-black text-[#FC4C02]">연동됨</span>
-              {strava.last_synced_at && (
-                <span className="text-sm text-jam-ink/50 font-semibold ml-1">· {formatRelativeTime(strava.last_synced_at)}</span>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-jam-ink/50 font-semibold">연동 안됨</span>
-              <a href="/api/strava/auth" className="px-4 py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-black active:scale-95 transition-transform border-2 border-jam-ink">
-                Strava 연동
-              </a>
-            </div>
-          )}
-        </section>
-      )}
-
       {/* Feed — 본인만 */}
       {isOwnProfile && (
         <section>
@@ -590,6 +567,29 @@ export default function ProfileClient({
               {filtered.map(item => (
                 <FeedCard key={item.id} item={item} onClick={() => handleCardClick(item)} />
               ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Strava 연동 — 본인만 */}
+      {isOwnProfile && (
+        <section className="bg-jam-cream rounded-3xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-5">
+          <h2 className="font-black text-base mb-3">Strava 연동</h2>
+          {strava ? (
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FC4C02] border border-jam-ink" />
+              <span className="text-sm font-black text-[#FC4C02]">연동됨</span>
+              {strava.last_synced_at && (
+                <span className="text-sm text-jam-ink/50 font-semibold ml-1">· {formatRelativeTime(strava.last_synced_at)}</span>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-jam-ink/50 font-semibold">연동 안됨</span>
+              <a href="/api/strava/auth" className="px-4 py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-black active:scale-95 transition-transform border-2 border-jam-ink">
+                Strava 연동
+              </a>
             </div>
           )}
         </section>
