@@ -21,19 +21,21 @@ const VALID_TABS = new Set<string>(['badge', 'itembooks', 'followers', 'followin
 
 // ─── 피드 필터 (본인 Feed 섹션용) ────────────────────────────────────────────
 
-type FilterTab = 'all' | 'badge' | 'mission'
+type FilterTab = 'all' | 'badge' | 'mission' | 'activity_badge'
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'all', label: '전체' },
   { key: 'badge', label: '아이템' },
   { key: 'mission', label: '미션' },
+  { key: 'activity_badge', label: '배지' },
 ]
 const BADGE_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
 const MISSION_EVENTS = new Set<ActivityFeedEventType>(['mission_joined', 'mission_completed', 'mission_cancelled'])
 
 function matchesFilter(item: ActivityFeedRow, tab: FilterTab): boolean {
   if (tab === 'all') return true
-  if (tab === 'badge') return BADGE_EVENTS.has(item.event_type)
+  if (tab === 'badge') return BADGE_EVENTS.has(item.event_type) && item.event_type !== 'badge_earned'
   if (tab === 'mission') return MISSION_EVENTS.has(item.event_type)
+  if (tab === 'activity_badge') return item.event_type === 'badge_earned'
   return false
 }
 
@@ -249,10 +251,7 @@ export default function ProfileClient({
   // ── 본인 피드 상태 ─────────────────────────────────────────────────────────
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
 
-  // badge_earned는 배지 갤러리에서 표시 — Feed 섹션 중복 제외
-  const filtered = feedItems
-    .filter((f) => f.event_type !== 'badge_earned')
-    .filter((f) => matchesFilter(f, activeFilter))
+  const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
   const badgeItems = feedItems.filter((f) => f.event_type === 'badge_earned')
 
   // ── 탭뷰 여부 ─────────────────────────────────────────────────────────────
