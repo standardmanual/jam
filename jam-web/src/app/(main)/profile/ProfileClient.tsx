@@ -23,7 +23,7 @@ const TABS: { key: TabKey; label: string }[] = [
 type FilterTab = 'all' | 'badge' | 'mission'
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'all', label: '전체' },
-  { key: 'badge', label: '배지' },
+  { key: 'badge', label: '아이템' },
   { key: 'mission', label: '미션' },
 ]
 const BADGE_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
@@ -246,7 +246,10 @@ export default function ProfileClient({
   // ── 본인 피드 상태 ─────────────────────────────────────────────────────────
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
 
-  const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
+  // badge_earned는 배지 탭 갤러리에서 표시 — Feed 섹션 중복 제외
+  const filtered = feedItems
+    .filter((f) => f.event_type !== 'badge_earned')
+    .filter((f) => matchesFilter(f, activeFilter))
   const badgeItems = feedItems.filter((f) => f.event_type === 'badge_earned')
 
   // ── 해시 읽기 (마운트 시) ──────────────────────────────────────────────────
@@ -374,10 +377,32 @@ export default function ProfileClient({
         )
       }
       return (
-        <div className="flex flex-col gap-2">
-          {badgeItems.map(item => (
-            <FeedCard key={item.id} item={item} onClick={() => handleCardClick(item)} />
-          ))}
+        <div className="grid grid-cols-3 gap-3">
+          {badgeItems.map(item => {
+            const meta = item.metadata as Record<string, string>
+            const rarityColor: Record<string, string> = {
+              common: 'bg-white',
+              rare: 'bg-jam-teal/20',
+              legendary: 'bg-jam-purple/20',
+              mythic: 'bg-jam-yellow/30',
+            }
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleCardClick(item)}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border-[2px] border-jam-ink shadow-[2px_2px_0_0_#161616] active:scale-95 transition-transform ${rarityColor[meta.rarity] ?? 'bg-white'}`}
+              >
+                {meta.badge_image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={meta.badge_image_url} alt={meta.badge_name} className="w-12 h-12 object-contain" />
+                ) : (
+                  <span className="text-3xl">🏅</span>
+                )}
+                <span className="text-[10px] font-black text-jam-ink text-center leading-tight line-clamp-2">{meta.badge_name}</span>
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-jam-ink/10 text-jam-ink/60">{meta.rarity}</span>
+              </button>
+            )
+          })}
         </div>
       )
     }
