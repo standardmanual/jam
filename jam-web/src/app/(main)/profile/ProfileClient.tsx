@@ -343,10 +343,10 @@ export default function ProfileClient({
       {/* 통계 바 */}
       <div className="flex border-[2px] border-jam-ink rounded-2xl overflow-hidden bg-white shadow-[2px_2px_0_0_#161616]">
         {[
+          { label: '뱃지', value: badgeCount, onClick: () => { setActiveFilter('badge'); document.getElementById('badge-section')?.scrollIntoView({ behavior: 'smooth' }) } },
+          { label: '아이템북', value: itemBookCount, href: isOwnProfile ? '/itembooks' : `/${username}/itembooks` },
           { label: '팔로워', value: followerCnt, href: `/${username}/followers` },
           { label: '팔로잉', value: followingCount, href: `/${username}/following` },
-          { label: '뱃지', value: badgeCount, onClick: () => { setActiveFilter('badge'); window.scrollTo(0, 0) } },
-          { label: '아이템북', value: itemBookCount, href: '/itembooks' },
         ].map((stat, i) => (
           <button
             key={stat.label}
@@ -389,45 +389,63 @@ export default function ProfileClient({
       </section>
       )}
 
-      {/* Feed — 본인만 */}
-      {isOwnProfile && (
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-black text-base">Feed</h2>
-          <span className="text-xs text-jam-ink/40 font-semibold">{filtered.length}개</span>
-        </div>
-
-        {/* 필터 탭 */}
-        <div className="flex gap-2 mb-4">
-          {FILTER_TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setActiveFilter(key)}
-              className={`flex-1 py-2 rounded-xl border-[2px] border-jam-ink text-xs font-black transition-all active:scale-95 ${
-                activeFilter === key
-                  ? 'bg-jam-ink text-white shadow-[2px_2px_0_0_#161616]'
-                  : 'bg-white/60 text-jam-ink'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-4xl mb-3">📭</p>
-            <p className="text-jam-ink/50 font-bold text-sm">아직 기록이 없어요</p>
-          </div>
+      {/* 뱃지 섹션 — 본인: 필터 탭 포함 전체 피드 / 타인: 뱃지만 */}
+      <section id="badge-section">
+        {isOwnProfile ? (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-black text-base">Feed</h2>
+              <span className="text-xs text-jam-ink/40 font-semibold">{filtered.length}개</span>
+            </div>
+            <div className="flex gap-2 mb-4">
+              {FILTER_TABS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveFilter(key)}
+                  className={`flex-1 py-2 rounded-xl border-[2px] border-jam-ink text-xs font-black transition-all active:scale-95 ${
+                    activeFilter === key
+                      ? 'bg-jam-ink text-white shadow-[2px_2px_0_0_#161616]'
+                      : 'bg-white/60 text-jam-ink'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {filtered.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-4xl mb-3">📭</p>
+                <p className="text-jam-ink/50 font-bold text-sm">아직 기록이 없어요</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {filtered.map((item) => (
+                  <FeedCard key={item.id} item={item} onClick={() => handleCardClick(item)} />
+                ))}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="flex flex-col gap-2">
-            {filtered.map((item) => (
-              <FeedCard key={item.id} item={item} onClick={() => handleCardClick(item)} />
-            ))}
-          </div>
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-black text-base">뱃지</h2>
+              <span className="text-xs text-jam-ink/40 font-semibold">{feedItems.filter(f => BADGE_EVENTS.has(f.event_type)).length}개</span>
+            </div>
+            {feedItems.filter(f => BADGE_EVENTS.has(f.event_type)).length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-4xl mb-3">🏅</p>
+                <p className="text-jam-ink/50 font-bold text-sm">아직 획득한 배지가 없어요</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {feedItems.filter(f => BADGE_EVENTS.has(f.event_type)).map((item) => (
+                  <FeedCard key={item.id} item={item} onClick={() => handleCardClick(item)} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </section>
-      )}
 
       {/* 로그아웃 — 본인만 */}
       {isOwnProfile && (
