@@ -208,6 +208,7 @@ export default async function UserProfilePage({ params }: Props) {
       badgeCount={badgeCount}
       itemBookCount={itemBookCount}
       username={target.username ?? username}
+      currentUserId={user.id}
     />
   )
 }
