@@ -202,8 +202,23 @@ function checkCondition(condition: BadgeCondition, activities: NormalizedActivit
     }
   }
 
-  // 미구현: season_count — condition_json에 season 필드 없어 평가 불가
-  if (condition.season_count !== undefined) return false
+  // 계절별 활동 횟수 (season 필드 필수)
+  if (condition.season_count !== undefined) {
+    if (!condition.season) return false // season 필드 없으면 평가 불가
+    const SEASON_MONTHS: Record<string, number[]> = {
+      spring: [3, 4, 5],
+      summer: [6, 7, 8],
+      fall:   [9, 10, 11],
+      winter: [12, 1, 2],
+    }
+    const seasonFiltered = condition.season === 'all'
+      ? filtered
+      : filtered.filter((a) => {
+          const m = new Date(a.startDate).getMonth() + 1
+          return (SEASON_MONTHS[condition.season!] ?? []).includes(m)
+        })
+    if (seasonFiltered.length < condition.season_count) return false
+  }
 
   // 미구현: 날씨 조건 — 실시간 날씨 데이터 없음
   if (condition.temperature_min_c !== undefined || condition.temperature_max_c !== undefined) return false

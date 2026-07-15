@@ -335,8 +335,10 @@ export interface BadgeCondition {
   month?: number
   /** 특정 월 내 최소 누적 거리 (km) */
   monthly_km?: number
-  /** 특정 계절 내 활동 횟수 — condition_json에 season 필드 없어 현재 미구현 */
+  /** 특정 계절 내 활동 횟수 */
   season_count?: number
+  /** 계절 구분: spring(3-5월) | summer(6-8월) | fall(9-11월) | winter(12-2월) | all */
+  season?: 'spring' | 'summer' | 'fall' | 'winter' | 'all'
   /** 최저 기온 조건 — 날씨 데이터 미구현 */
   temperature_min_c?: number
   /** 최고 기온 조건 — 날씨 데이터 미구현 */
