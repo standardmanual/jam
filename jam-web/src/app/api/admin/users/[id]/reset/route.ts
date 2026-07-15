@@ -35,6 +35,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: badgeDeleteError.message }, { status: 500 })
   }
 
+  // 1-2. 활동 피드에서 배지/아이템 관련 이벤트 삭제
+  //      (피드가 남아있으면 배지 탭에 삭제된 배지가 계속 표시됨)
+  const { error: feedDeleteError } = await supabase
+    .from('user_activity_feed')
+    .delete()
+    .eq('user_id', userId)
+    .in('event_type', ['badge_earned', 'item_dropped', 'item_picked_up'])
+
+  if (feedDeleteError) {
+    return NextResponse.json({ error: feedDeleteError.message }, { status: 500 })
+  }
+
   // 2. 인벤토리 아이템 전체 삭제 + 슬롯 리셋
   const { data: inventoryRaw, error: inventoryError } = await supabase
     .from('inventory')
