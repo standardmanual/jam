@@ -106,6 +106,15 @@ function parseGpx(text: string, fileName: string): GpxParsed {
   }
 }
 
+function downsampleRoute(route: [number, number][], maxPoints: number): [number, number][] {
+  if (route.length <= maxPoints) return route
+  const step = Math.ceil(route.length / maxPoints)
+  const sampled: [number, number][] = []
+  for (let i = 0; i < route.length; i += step) sampled.push(route[i])
+  if (sampled[sampled.length - 1] !== route[route.length - 1]) sampled.push(route[route.length - 1])
+  return sampled
+}
+
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
@@ -213,7 +222,7 @@ export default function SimulatorPage() {
             elevationGainM: gpx.elevationGainM,
             averageSpeedKmh: gpx.averageSpeedKmh,
             startDate: gpx.startDate,
-            route: gpx.route,
+            route: downsampleRoute(gpx.route, 500),
           },
           repeatCount,
         }),
