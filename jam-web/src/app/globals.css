@@ -1,15 +1,6 @@
 @import "tailwindcss";
 @import "../components/dotmatrix-loader.css";
 
-/* 300ms 미만 로드는 로더를 아예 노출하지 않음 (SSR loading.tsx 전용) */
-@keyframes jam-loader-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-.jam-loader-overlay {
-  animation: jam-loader-in 80ms ease-out 300ms both;
-}
-
 /*
  * JAM! 팝아트 스티커 디자인 시스템
  * 화면별 원색 풀블리드 배경 + 두꺼운 검은 외곽선 + 굵은 타이포.
