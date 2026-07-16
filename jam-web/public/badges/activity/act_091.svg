@@ -1,0 +1,12 @@
+<svg viewBox="0 0 200 190" xmlns="http://www.w3.org/2000/svg">
+  <rect x="7" y="7" width="186" height="176" rx="24" fill="rgba(0,0,0,0.2)"/>
+  <rect x="3" y="3" width="186" height="176" rx="24" fill="#BF360C" stroke="black" stroke-width="8"/>
+  <rect x="9" y="9" width="174" height="164" rx="20" fill="none" stroke="white" stroke-width="2" opacity="0.25"/>
+  <rect x="14" y="14" width="172" height="118" rx="16" fill="white" opacity="0.1"/>
+  
+        <path d="M100,138 C66,138 44,114 44,90 C44,72 62,60 76,55 C72,70 78,81 100,76 C87,64 85,46 100,37 C114,53 120,69 108,83 C125,78 133,67 131,54 C147,66 157,83 155,102 C153,120 134,138 100,138 Z" fill="white" stroke="black" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M100,128 C80,124 68,108 70,90 C78,98 92,100 100,97 C92,86 91,75 100,67 C110,79 111,96 105,106 C115,101 118,90 116,79 C128,90 129,109 122,120 C117,127 109,130 100,128 Z" fill="black" opacity="0.2"/>
+    
+  <rect x="10" y="142" width="174" height="30" rx="8" fill="white" opacity="0.88"/>
+  <text x="100" y="170" text-anchor="middle" font-size="13" font-weight="900" font-family="Apple SD Gothic Neo, Malgun Gothic, sans-serif" fill="black">꺾이지 않는 투지</text>
+</svg>

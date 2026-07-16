@@ -1,0 +1,16 @@
+<svg viewBox="0 0 200 190" xmlns="http://www.w3.org/2000/svg">
+  <rect x="7" y="7" width="186" height="176" rx="24" fill="rgba(0,0,0,0.2)"/>
+  <rect x="3" y="3" width="186" height="176" rx="24" fill="#FF5722" stroke="black" stroke-width="8"/>
+  <rect x="9" y="9" width="174" height="164" rx="20" fill="none" stroke="white" stroke-width="2" opacity="0.25"/>
+  <rect x="14" y="14" width="172" height="118" rx="16" fill="white" opacity="0.1"/>
+  
+        <path d="M60,107 C60,79 74,68 88,67 L120,67 C133,66 141,76 141,87 L141,113 C141,119 137,123 130,123 L66,123 C62,123 60,120 60,115 Z" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round"/>
+        <path d="M56,119 L144,119 C144,128 137,134 130,134 L66,134 C59,134 56,128 56,119 Z" fill="black"/>
+        <line x1="80" y1="88" x2="118" y2="88" stroke="black" stroke-width="4" stroke-linecap="round"/>
+        <line x1="78" y1="100" x2="120" y2="100" stroke="black" stroke-width="4" stroke-linecap="round"/>
+        <path d="M73,68 C70,58 73,48 82,45" stroke="black" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <circle cx="108" cy="55" r="4" fill="black"/>
+    
+  <rect x="10" y="142" width="174" height="30" rx="8" fill="white" opacity="0.88"/>
+  <text x="100" y="170" text-anchor="middle" font-size="13" font-weight="900" font-family="Apple SD Gothic Neo, Malgun Gothic, sans-serif" fill="black">횡단보도의 지배자</text>
+</svg>
