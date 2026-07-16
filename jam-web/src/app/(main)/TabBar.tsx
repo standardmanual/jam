@@ -80,7 +80,7 @@ export default function TabBar({ username }: TabBarProps) {
   }
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 bg-jam-cream border-t-[3px] border-jam-ink flex items-end pb-[env(safe-area-inset-bottom)] z-40">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-jam-cream border-t-[3px] border-jam-ink flex items-end pb-[env(safe-area-inset-bottom)] z-40">
       {tabs.map((tab) => {
         const active = isActive(tab.href)
         return (
