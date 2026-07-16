@@ -132,7 +132,7 @@ export default async function InventoryPage() {
       )}
 
       {/* 플리마켓 */}
-      <div className="fixed bottom-24 right-4">
+      <div className="fixed bottom-24" style={{ right: 'max(calc((100vw - 430px) / 2 + 1rem), 1rem)' }}>
         <Link
           href="/inventory/flea-market"
           className="flex items-center gap-2 bg-jam-ink text-white font-black text-sm px-4 py-3 rounded-full active:scale-95 transition-transform border-[3px] border-jam-ink shadow-[3px_3px_0_0_rgba(0,0,0,0.3)]"

@@ -109,7 +109,7 @@ function DetailSheet({ item, onClose }: { item: ActivityFeedRow; onClose: () => 
   return (
     <>
       <div className="fixed inset-0 bg-jam-ink/40 z-40" onClick={onClose} />
-      <div className={`fixed bottom-0 left-0 right-0 z-50 ${sheetBg} border-t-[3px] border-jam-ink rounded-t-3xl px-6 pt-5 pb-[calc(env(safe-area-inset-bottom)+2rem)]`}>
+      <div className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50 ${sheetBg} border-t-[3px] border-jam-ink rounded-t-3xl px-6 pt-5 pb-[calc(env(safe-area-inset-bottom)+2rem)]`}>
         <div className="w-10 h-1 bg-jam-ink/20 rounded-full mx-auto mb-5" />
         <div className="flex justify-center mb-5">
           {badgeImage ? (
