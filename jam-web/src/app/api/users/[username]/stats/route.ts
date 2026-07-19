@@ -32,11 +32,15 @@ export async function GET(
   }
   const targetId = (targetRaw as { id: string }).id
 
+  // 인벤토리 ID 먼저 조회 (아이템북 디스커버리 카운트에 필요)
+  const { data: invRaw } = await service.from('inventory').select('id').eq('user_id', targetId).maybeSingle()
+  const inventoryId = (invRaw as { id: string } | null)?.id
+
   const [
     { count: followerCount },
     { count: followingCount },
     { count: badgeCount },
-    { count: itemBookCount },
+    invItemsResult,
     followingRes,
   ] = await Promise.all([
     // 팔로워 수: 나를 팔로우하는 사람
@@ -54,11 +58,10 @@ export async function GET(
       .from('user_activity_badges')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', targetId),
-    // 아이템북 수 (완성한 아이템북 기준 — item_books는 유저 소유 개념이 없음)
-    service
-      .from('user_item_book_completions')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', targetId),
+    // 아이템북 디스커버리용 인벤 배지 목록
+    inventoryId
+      ? service.from('inventory_items').select('badge_id').eq('inventory_id', inventoryId)
+      : Promise.resolve({ data: [] }),
     // 로그인 유저가 이 유저를 팔로우 중인지
     user && user.id !== targetId
       ? service
@@ -69,13 +72,26 @@ export async function GET(
       : Promise.resolve({ count: 0 }),
   ])
 
+  // 보유한 아이템 배지 기반으로 발견한 아이템북 수 산출
+  const ownedBadgeIds = [...new Set(((invItemsResult.data ?? []) as { badge_id: string }[]).map((i) => i.badge_id))]
+  let itemBookCount = 0
+  if (ownedBadgeIds.length > 0) {
+    const { data: booksRaw } = await service
+      .from('badges')
+      .select('item_book_id')
+      .in('id', ownedBadgeIds)
+      .eq('type', 'item')
+      .not('item_book_id', 'is', null)
+    itemBookCount = new Set(((booksRaw ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id)).size
+  }
+
   const isFollowing = (followingRes.count ?? 0) > 0
 
   return NextResponse.json({
     followerCount: followerCount ?? 0,
     followingCount: followingCount ?? 0,
     badgeCount: badgeCount ?? 0,
-    itemBookCount: itemBookCount ?? 0,
+    itemBookCount,
     isFollowing,
   })
 }
