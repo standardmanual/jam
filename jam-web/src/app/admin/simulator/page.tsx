@@ -128,6 +128,10 @@ const rarityColors: Record<string, string> = {
   mythic: 'text-yellow-400',
 }
 
+const RARITY_LABEL: Record<string, string> = {
+  common: 'Common', rare: 'Rare', legendary: 'Legend', mythic: 'Mythic',
+}
+
 export default function SimulatorPage() {
   const [gpx, setGpx] = useState<GpxParsed | null>(null)
   const [gpxError, setGpxError] = useState<string | null>(null)
@@ -432,7 +436,7 @@ export default function SimulatorPage() {
                         <span className="text-green-400">✅</span>
                         <span className="font-medium">{b.name}</span>
                         <span className={`text-xs ${rarityColors[b.rarity] ?? 'text-white/50'}`}>
-                          ({b.rarity})
+                          ({RARITY_LABEL[b.rarity] ?? b.rarity})
                         </span>
                         <span className="text-white/30 text-xs ml-auto">{b.reason}</span>
                       </div>
@@ -470,7 +474,7 @@ export default function SimulatorPage() {
                     <span>🏷️</span>
                     <span className="font-medium">{result.itemDrop.badgeName}</span>
                     <span className={`text-xs ${rarityColors[result.itemDrop.rarity] ?? 'text-white/50'}`}>
-                      ({result.itemDrop.rarity})
+                      ({RARITY_LABEL[result.itemDrop.rarity] ?? result.itemDrop.rarity})
                     </span>
                   </div>
                 ) : (
