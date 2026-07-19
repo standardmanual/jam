@@ -5,6 +5,7 @@ import Link from 'next/link'
 import RarityBadge from '@/components/ui/Badge'
 import { InventoryItemRow, BadgeRow } from '@/types/database'
 import LocalDate from '@/components/LocalDate'
+import InventoryItemHistorySheet from './InventoryItemHistorySheet'
 
 type InventoryItemWithBadge = InventoryItemRow & {
   badge: BadgeRow
@@ -93,12 +94,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
             <span className="text-sm text-jam-ink/50 font-semibold">일련번호</span>
             <span className="text-sm text-jam-ink font-mono tracking-widest font-bold">{serial}</span>
           </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-jam-ink/50 font-semibold">획득 방법</span>
-            <span className="text-sm text-jam-ink font-bold">
-              {item.obtained_by === 'drop' ? '활동 드랍' : '시스템 지급'}
-            </span>
-          </div>
+          <InventoryItemHistorySheet itemId={itemId} obtainedBy={item.obtained_by} />
           <div className="flex justify-between items-center px-4 py-3">
             <span className="text-sm text-jam-ink/50 font-semibold">획득일</span>
             <span className="text-sm text-jam-ink font-bold"><LocalDate iso={item.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} /></span>
