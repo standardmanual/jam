@@ -7,9 +7,11 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
-import type { BadgeRarity, ActivityType, BadgeRow, InventoryRow } from '@/types/database'
+import type { BadgeRarity, ActivityType, BadgeRow, BadgeCondition, InventoryRow } from '@/types/database'
+import type { NormalizedActivity } from '@/types/strava'
 import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
+import { checkCondition } from '@/lib/badge-engine/index'
 
 // rarity별 드랍 확률 구간 (누적)
 // [0, 0.40) → common
@@ -55,7 +57,8 @@ function weightedPick<T extends { drop_weight: number }>(items: T[]): T {
  */
 export async function tryItemDrop(
   userId: string,
-  activityType: ActivityType | string
+  activityType: ActivityType | string,
+  activities: NormalizedActivity[] = []
 ): Promise<void> {
   // 1. rarity 추첨
   const rarity = rollRarity()
@@ -77,25 +80,34 @@ export async function tryItemDrop(
   const now = new Date().toISOString()
   const { data: candidatesRaw, error: badgesError } = await supabase
     .from('badges')
-    .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until')
+    .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json')
     .eq('type', 'item')
     .eq('rarity', rarity)
     .or(`valid_from.is.null,valid_from.lte.${now}`)
     .or(`valid_until.is.null,valid_until.gte.${now}`)
 
-  const candidates = candidatesRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight' | 'valid_from' | 'valid_until'>[] | null
+  const candidatesAll = candidatesRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight' | 'valid_from' | 'valid_until' | 'condition_json'>[] | null
 
-  if (badgesError || !candidates || candidates.length === 0) {
+  if (badgesError || !candidatesAll || candidatesAll.length === 0) {
     if (badgesError) {
       console.error(`[tryItemDrop] 배지 조회 오류 (rarity: ${rarity}):`, badgesError)
     }
     return
   }
 
-  // 4. drop_weight 기반 가중 랜덤 선택
+  // 4. condition_json 필터 — 조건이 있는 배지는 조건 충족 시에만 드랍 풀에 포함
+  const candidates = candidatesAll.filter((b) => {
+    const cond = b.condition_json as BadgeCondition | null
+    if (!cond || Object.keys(cond).length === 0) return true
+    return checkCondition(cond, activities)
+  })
+
+  if (candidates.length === 0) return
+
+  // 5. drop_weight 기반 가중 랜덤 선택
   const picked = weightedPick(candidates)
 
-  // 5. 인벤토리 슬롯 확인
+  // 6. 인벤토리 슬롯 확인
   const { data: inventoryRaw, error: inventoryError } = await supabase
     .from('inventory')
     .select('id, used_slots, max_slots')

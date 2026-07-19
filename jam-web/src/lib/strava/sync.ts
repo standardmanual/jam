@@ -149,14 +149,7 @@ export async function syncStravaActivities(
     }
   }
 
-  // 7. 활동별 아이템 드랍 시도
-  for (const activity of activities) {
-    if (activity.jamActivityType) {
-      await tryItemDrop(userId, activity.jamActivityType)
-    }
-  }
-
-  // 8. Phase 18: 차량 속도 필터 적용 — 어뷰징 정책에서 임계값 조회
+  // 7. Phase 18: 차량 속도 필터 적용 — 어뷰징 정책에서 임계값 조회
   let vehicleSpeedFilterKmh = 60
   const { data: abusingPolicy } = await supabase
     .from('abusing_policy')
@@ -170,7 +163,14 @@ export async function syncStravaActivities(
     (a) => a.averageSpeedKmh <= vehicleSpeedFilterKmh
   )
 
-  // 9. 일반 배지 엔진 호출 (속도 필터 통과한 활동만)
+  // 8. 활동별 아이템 드랍 시도 (조건 평가에 speed-filtered 활동 목록 전달)
+  for (const activity of activitiesFiltered) {
+    if (activity.jamActivityType) {
+      await tryItemDrop(userId, activity.jamActivityType, activitiesFiltered)
+    }
+  }
+
+  // 9. 일반 배지 엔진 호출 (speed-filtered 활동만)
   const badgesEarned = activitiesFiltered.length > 0
     ? await evaluateBadges(userId, activitiesFiltered)
     : 0

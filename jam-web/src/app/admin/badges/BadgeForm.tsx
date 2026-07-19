@@ -101,7 +101,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       activity_types: activityTypes,
       patch_available: patchAvailable,
       patch_price_krw: patchAvailable && patchPriceKrw ? parseInt(patchPriceKrw, 10) : null,
-      condition_json: type === 'activity' ? buildConditionJson() : null,
+      condition_json: buildConditionJson(),
       faction_id: factionId || null,
       item_book_id: itemBookId || null,
       drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
@@ -326,10 +326,15 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         )}
       </div>
 
-      {/* condition_json 빌더 (activity 타입만) */}
-      {type === 'activity' && (
+      {/* condition_json 빌더 (activity + item 공통) */}
+      {(
         <div className="border border-white/10 rounded-2xl p-5 space-y-4">
-          <p className="text-sm font-semibold text-white/70">발급 조건 (condition_json)</p>
+          <p className="text-sm font-semibold text-white/70">
+            {type === 'item' ? '드랍 조건 (condition_json)' : '발급 조건 (condition_json)'}
+          </p>
+          {type === 'item' && (
+            <p className="text-xs text-white/40">조건을 설정하면 해당 조건을 충족한 유저에게만 이 배지가 드랍 풀에 포함됩니다. 설정하지 않으면 모든 유저에게 드랍 가능.</p>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
