@@ -64,12 +64,13 @@ export async function evaluateBadges(
     badgesByName.get(badge.name)!.push(badge)
   }
 
-  let earnedCount = 0
+  // ── 1단계: 이름별 후보 선정 (이름당 최상위 티어 1개) ──────────────────
+  type Candidate = { badge: BadgeRow; condition: BadgeCondition; progressionKey: string | null; progressionValue: number }
+  const candidates: Candidate[] = []
 
   for (const [, group] of badgesByName) {
     const highestOwned = highestOwnedTierByName.get(group[0].name) ?? 0
 
-    // 아직 없거나 보유 티어보다 높은 레어리티 중 조건 통과한 것만 선별
     const eligible = group.filter((b) => {
       if (ownedBadgeIds.has(b.id)) return false
       if ((RARITY_TIER[b.rarity] ?? 0) <= highestOwned) return false
@@ -79,11 +80,37 @@ export async function evaluateBadges(
 
     if (eligible.length === 0) continue
 
-    // 최상위 레어리티 1개만 발급
+    // 이름당 최상위 레어리티 1개
     eligible.sort((a, b) => (RARITY_TIER[b.rarity] ?? 0) - (RARITY_TIER[a.rarity] ?? 0))
-    const toIssue = eligible[0]
+    const winner = eligible[0]
+    const condition = winner.condition_json as BadgeCondition
+    const prog = getProgressionKey(condition)
+    candidates.push({ badge: winner, condition, progressionKey: prog?.key ?? null, progressionValue: prog?.value ?? 0 })
+  }
 
-    const condition = toIssue.condition_json as BadgeCondition
+  // ── 2단계: 진행 트랙별 최고값 1개만 남기기 ───────────────────────────
+  // 진행 트랙: activity_type + 단일 스칼라 조건(distance_km 또는 total_count)만 있는 배지
+  // 동일 트랙에 여러 배지가 동시에 조건을 만족하면 가장 높은 값 1개만 발급
+  const trackWinners = new Map<string, Candidate>()
+  const standalones: Candidate[] = []
+
+  for (const c of candidates) {
+    if (c.progressionKey === null) {
+      standalones.push(c)
+    } else {
+      const existing = trackWinners.get(c.progressionKey)
+      if (!existing || c.progressionValue > existing.progressionValue) {
+        trackWinners.set(c.progressionKey, c)
+      }
+    }
+  }
+
+  const toIssueList = [...trackWinners.values(), ...standalones]
+
+  // ── 3단계: 발급 ──────────────────────────────────────────────────────
+  let earnedCount = 0
+
+  for (const { badge: toIssue, condition } of toIssueList) {
     const triggerActivity = condition.activity_type
       ? activities.find((a) => a.jamActivityType === condition.activity_type)
       : activities[0]
@@ -267,4 +294,29 @@ function calcMaxStreak(activities: NormalizedActivity[]): number {
   }
 
   return maxStreak
+}
+
+// ── 진행 트랙 키 추출 ────────────────────────────────────────────────────
+// 단일 스칼라 조건(distance_km 또는 total_count)만 있는 배지 = 진행 트랙 소속
+// 추가 수식어 조건이 있으면 standalone으로 분류 (트랙 dedup 제외)
+const PROGRESSION_MODIFIERS = [
+  'elevation_gain_m', 'min_speed_kmh', 'streak_days', 'duration_minutes',
+  'weekend_duration_hours', 'monthly_km', 'weekly_count', 'season_count',
+  'month', 'season', 'temperature_min_c', 'temperature_max_c', 'poi_id',
+] as const
+
+function getProgressionKey(condition: BadgeCondition): { key: string; value: number } | null {
+  const hasModifier = PROGRESSION_MODIFIERS.some(
+    (m) => (condition as Record<string, unknown>)[m] !== undefined
+  )
+  if (hasModifier) return null
+
+  const actType = condition.activity_type ?? 'all'
+  if (condition.distance_km !== undefined) {
+    return { key: `${actType}:distance_km`, value: condition.distance_km }
+  }
+  if (condition.total_count !== undefined) {
+    return { key: `${actType}:total_count`, value: condition.total_count }
+  }
+  return null
 }
