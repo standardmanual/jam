@@ -76,13 +76,24 @@ export async function tryItemDrop(
 
   const supabase = createServiceClient()
 
-  // 3. 해당 rarity + type='item' 배지 목록 조회 (유효 기간 필터 포함)
+  // 3. 해당 rarity + type='item' 배지 목록 조회 (유효 기간 필터 + 활성 아이템북 소속만)
   const now = new Date().toISOString()
+
+  // 3-a. is_active = true 인 아이템북 ID 목록
+  const { data: activeBooksRaw } = await supabase
+    .from('item_books')
+    .select('id')
+    .eq('is_active', true)
+  const activeBookIds = ((activeBooksRaw ?? []) as { id: string }[]).map((b) => b.id)
+  if (activeBookIds.length === 0) return
+
+  // 3-b. 활성 아이템북 소속 배지만 드랍 풀에 포함
   const { data: candidatesRaw, error: badgesError } = await supabase
     .from('badges')
     .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json')
     .eq('type', 'item')
     .eq('rarity', rarity)
+    .in('item_book_id', activeBookIds)
     .or(`valid_from.is.null,valid_from.lte.${now}`)
     .or(`valid_until.is.null,valid_until.gte.${now}`)
 
