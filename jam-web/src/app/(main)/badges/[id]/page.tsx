@@ -1,12 +1,84 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { BadgeRow, PoiRow, UserActivityBadgeRow } from '@/types/database'
+import { ActivityType, BadgeCondition, BadgeRow, PoiRow, UserActivityBadgeRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import ShareCardModal from './ShareCardModal'
 import PoiMapButton from './PoiMapButton'
 import LocalDate from '@/components/LocalDate'
+
+const ACTIVITY_LABELS: Record<ActivityType, string> = {
+  cycling: '자전거 타기',
+  running: '러닝',
+  hiking: '하이킹',
+  walking: '걷기',
+}
+
+const SEASON_LABELS: Record<string, string> = {
+  spring: '봄(3~5월)',
+  summer: '여름(6~8월)',
+  fall: '가을(9~11월)',
+  winter: '겨울(12~2월)',
+  all: '전 계절',
+}
+
+const MONTH_LABELS: Record<number, string> = {
+  1: '1월', 2: '2월', 3: '3월', 4: '4월', 5: '5월', 6: '6월',
+  7: '7월', 8: '8월', 9: '9월', 10: '10월', 11: '11월', 12: '12월',
+}
+
+function formatConditionText(condition: BadgeCondition | null): string {
+  if (!condition || Object.keys(condition).length === 0) {
+    return '관리자에 의해 특별 발급되는 배지입니다.'
+  }
+
+  const actType = condition.activity_type ? ACTIVITY_LABELS[condition.activity_type] : '활동'
+  const parts: string[] = []
+
+  if (condition.distance_km !== undefined) {
+    parts.push(`${actType}으로 누적 ${condition.distance_km}km 이상 달성`)
+  }
+  if (condition.total_count !== undefined) {
+    parts.push(`${actType} ${condition.total_count}회 이상 완료`)
+  }
+  if (condition.streak_days !== undefined) {
+    parts.push(`${condition.streak_days}일 연속으로 활동 완료`)
+  }
+  if (condition.elevation_gain_m !== undefined) {
+    parts.push(`누적 고도 상승 ${condition.elevation_gain_m}m 이상 달성`)
+  }
+  if (condition.min_speed_kmh !== undefined) {
+    parts.push(`단일 ${actType} 활동의 평균 속도 ${condition.min_speed_kmh}km/h 이상`)
+  }
+  if (condition.duration_minutes !== undefined) {
+    parts.push(`단일 ${actType} 활동 ${condition.duration_minutes}분 이상 이동`)
+  }
+  if (condition.weekend_duration_hours !== undefined) {
+    parts.push(`주말 ${actType} 활동 ${condition.weekend_duration_hours}시간 이상 이동`)
+  }
+  if (condition.weekly_count !== undefined) {
+    parts.push(`한 주에 ${actType} ${condition.weekly_count}회 이상 완료`)
+  }
+  if (condition.monthly_km !== undefined) {
+    const monthLabel = condition.month ? `${MONTH_LABELS[condition.month] ?? `${condition.month}월`} 한 달간` : '한 달간'
+    parts.push(`${monthLabel} ${actType}으로 ${condition.monthly_km}km 이상 달성`)
+  } else if (condition.month !== undefined) {
+    parts.push(`${MONTH_LABELS[condition.month] ?? `${condition.month}월`}에 ${actType} 활동 완료`)
+  }
+  if (condition.season_count !== undefined && condition.season) {
+    parts.push(`${SEASON_LABELS[condition.season] ?? condition.season}에 ${actType} ${condition.season_count}회 이상 완료`)
+  }
+  if (condition.poi_id) {
+    parts.push('지정된 장소를 직접 방문하여 위치 인증')
+  }
+
+  if (parts.length === 0) {
+    return '관리자에 의해 특별 발급되는 배지입니다.'
+  }
+
+  return parts.join(', ') + '하면 획득할 수 있습니다.'
+}
 
 interface BadgeDetailPageProps {
   params: Promise<{ id: string }>
@@ -87,10 +159,15 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         </div>
       </div>
 
-      {/* 배지 정보 */}
+      {/* 배지 설명 */}
+      <p className="text-sm text-jam-ink/70 leading-relaxed font-semibold px-1">{badgeRow.description}</p>
+
+      {/* 획득 조건 */}
       <Card>
         <h2 className="text-xs font-black text-jam-ink/40 uppercase tracking-wider mb-2">획득 조건</h2>
-        <p className="text-sm text-jam-ink/80 leading-relaxed font-semibold">{badgeRow.description}</p>
+        <p className="text-sm text-jam-ink/80 leading-relaxed font-semibold">
+          {formatConditionText(badgeRow.condition_json)}
+        </p>
       </Card>
 
       {/* 획득 정보 */}
