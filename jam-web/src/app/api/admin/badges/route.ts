@@ -7,7 +7,7 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const supabase = createServiceClient()
-  const { data, error } = await supabase.from('badges').select('*').order('created_at', { ascending: false })
+  const { data, error } = await supabase.from('badges').select('*').order('created_at', { ascending: false }).limit(5000)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ badges: data })
 }

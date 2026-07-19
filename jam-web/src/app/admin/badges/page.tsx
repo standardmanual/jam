@@ -16,7 +16,7 @@ const RARITY_LABEL: Record<string, string> = {
 export default async function AdminBadgesPage() {
   const supabase = createServiceClient()
   const [{ data: badgesRaw }, { data: factionsRaw }] = await Promise.all([
-    supabase.from('badges').select('*').order('created_at', { ascending: false }),
+    supabase.from('badges').select('*').order('created_at', { ascending: false }).limit(5000),
     supabase.from('factions').select('id, name'),
   ])
 
