@@ -70,7 +70,7 @@ export async function evaluateBadges(
     const eligible = group.filter((b) => {
       if (ownedBadgeIds.has(b.id)) return false
       if ((RARITY_TIER[b.rarity] ?? 0) <= highestOwned) return false
-      if (!b.condition_json) return false
+      if (!b.condition_json || Object.keys(b.condition_json as object).length === 0) return false
       return checkCondition(b.condition_json as BadgeCondition, activities)
     })
 
@@ -122,6 +122,8 @@ export async function evaluateBadges(
 // =========================================
 
 function checkCondition(condition: BadgeCondition, activities: NormalizedActivity[]): boolean {
+  if (Object.keys(condition).length === 0) return false
+
   const filtered = condition.activity_type
     ? activities.filter((a) => a.jamActivityType === condition.activity_type)
     : activities
