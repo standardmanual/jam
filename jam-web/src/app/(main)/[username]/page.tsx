@@ -39,12 +39,11 @@ export default async function UserProfilePage({ params }: Props) {
   const subjectId = target.id
   const isOwnProfile = target.id === user.id
 
-  // ─── 통계 (팔로워/팔로잉/뱃지/아이템북 + isFollowing) ──────────────────
+  // ─── 통계 (팔로워/팔로잉/뱃지 + isFollowing) ──────────────────
   const [
     followerCountResult,
     followingCountResult,
     badgeCountResult,
-    itemBookCountResult,
     isFollowingResult,
   ] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,8 +52,6 @@ export default async function UserProfilePage({ params }: Props) {
     (service as any).from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', subjectId),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).from('user_activity_badges').select('*', { count: 'exact', head: true }).eq('user_id', subjectId),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).from('user_item_book_completions').select('*', { count: 'exact', head: true }).eq('user_id', subjectId),
     isOwnProfile
       ? Promise.resolve({ data: null })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -64,7 +61,6 @@ export default async function UserProfilePage({ params }: Props) {
   const followerCount = followerCountResult.count ?? 0
   const followingCount = followingCountResult.count ?? 0
   const badgeCount = badgeCountResult.count ?? 0
-  const itemBookCount = itemBookCountResult.count ?? 0
   const isFollowing = !!isFollowingResult.data
 
   // ─── 프로필 / Strava / 피드 (대상 유저 기준) ──────────────────────────
@@ -76,6 +72,27 @@ export default async function UserProfilePage({ params }: Props) {
   ])
 
   const inventoryId = (invResult.data as { id: string } | null)?.id
+
+  // 발견한 아이템북 수 = 인벤에 보유한 아이템 배지가 연결된 아이템북 수
+  let itemBookCount = 0
+  if (inventoryId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: invItemsForCount } = await (service as any)
+      .from('inventory_items')
+      .select('badge_id')
+      .eq('inventory_id', inventoryId)
+    const ownedBadgeIds = [...new Set(((invItemsForCount ?? []) as { badge_id: string }[]).map((i) => i.badge_id))]
+    if (ownedBadgeIds.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: booksForCount } = await (service as any)
+        .from('badges')
+        .select('item_book_id')
+        .in('id', ownedBadgeIds)
+        .eq('type', 'item')
+        .not('item_book_id', 'is', null)
+      itemBookCount = new Set(((booksForCount ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id)).size
+    }
+  }
 
   const [
     badgesHistoryResult,

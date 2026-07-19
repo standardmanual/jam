@@ -11,13 +11,12 @@ export default async function BadgesPage() {
 
   if (!user) redirect('/login')
 
-  const [{ data: earnedBadges }, { data: itemBooks }, { data: inventoryData }] = await Promise.all([
+  const [{ data: earnedBadges }, { data: inventoryData }] = await Promise.all([
     supabase
       .from('user_activity_badges')
       .select('*, badge:badges(*)')
       .eq('user_id', user.id)
       .order('earned_at', { ascending: false }),
-    supabase.from('item_books').select('*').eq('is_active', true),
     supabase
       .from('inventory')
       .select('id, inventory_items(id, badge_id, serial_number, expires_at, badge:badges(id, name, image_url, rarity))')
@@ -51,36 +50,52 @@ export default async function BadgesPage() {
     rarity: item.badge.rarity,
   }))
 
-  const books = (itemBooks ?? []) as ItemBookRow[]
-  const bookIds = books.map((b) => b.id)
+  // 보유한 아이템 배지에 연결된 아이템북만 표시
+  const ownedBadgeIds = [...new Set(rawItems.map((i) => i.badge_id))]
 
-  // Phase 8: 슬롯 기반 진행도 조회
-  const [{ data: bookBadgesRaw }, { data: slotsRaw }, { data: completionsRaw }] =
-    bookIds.length > 0
-      ? await Promise.all([
+  let books: ItemBookRow[] = []
+  let itemBookProgress: ItemBookProgress[] = []
+
+  if (ownedBadgeIds.length > 0) {
+    const { data: ownedBadgesWithBook } = await supabase
+      .from('badges')
+      .select('id, item_book_id')
+      .in('id', ownedBadgeIds)
+      .eq('type', 'item')
+      .not('item_book_id', 'is', null)
+
+    const bookIds = [...new Set(((ownedBadgesWithBook ?? []) as { id: string; item_book_id: string }[]).map((b) => b.item_book_id))]
+
+    if (bookIds.length > 0) {
+      const [{ data: booksRaw }, { data: bookBadgesRaw }, { data: slotsRaw }, { data: completionsRaw }] =
+        await Promise.all([
+          supabase.from('item_books').select('*').in('id', bookIds),
           supabase.from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item'),
           supabase.from('user_item_book_slots').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
           supabase.from('user_item_book_completions').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
         ])
-      : [{ data: [] }, { data: [] }, { data: [] }]
 
-  const totalByBook = new Map<string, number>()
-  for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
-    if (!b.item_book_id) continue
-    totalByBook.set(b.item_book_id, (totalByBook.get(b.item_book_id) ?? 0) + 1)
-  }
-  const slottedByBook = new Map<string, number>()
-  for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
-    slottedByBook.set(s.item_book_id, (slottedByBook.get(s.item_book_id) ?? 0) + 1)
-  }
-  const completedSet = new Set(((completionsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id))
+      books = (booksRaw ?? []) as ItemBookRow[]
 
-  const itemBookProgress: ItemBookProgress[] = books.map((book) => {
-    const total = totalByBook.get(book.id) ?? 0
-    const owned = slottedByBook.get(book.id) ?? 0
-    const completed = completedSet.has(book.id) || (total > 0 && owned >= total)
-    return { bookId: book.id, owned, total, completed }
-  })
+      const totalByBook = new Map<string, number>()
+      for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
+        if (!b.item_book_id) continue
+        totalByBook.set(b.item_book_id, (totalByBook.get(b.item_book_id) ?? 0) + 1)
+      }
+      const slottedByBook = new Map<string, number>()
+      for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
+        slottedByBook.set(s.item_book_id, (slottedByBook.get(s.item_book_id) ?? 0) + 1)
+      }
+      const completedSet = new Set(((completionsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id))
+
+      itemBookProgress = books.map((book) => {
+        const total = totalByBook.get(book.id) ?? 0
+        const owned = slottedByBook.get(book.id) ?? 0
+        const completed = completedSet.has(book.id) || (total > 0 && owned >= total)
+        return { bookId: book.id, owned, total, completed }
+      })
+    }
+  }
 
   return (
     <BadgesClient
