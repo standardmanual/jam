@@ -31,3 +31,21 @@
 ```
 
 6. 새 문서를 같은 커밋 또는 별도 커밋에 포함하여 push한다.
+
+---
+
+## 문서 자동 업데이트 루틴 (1시간 주기)
+
+**세션 시작 시 반드시 CronCreate 툴로 아래 크론을 등록한다.**
+
+- cron: `"13 * * * *"` (매 시간 :13분)
+- recurring: true
+
+### 크론 동작
+
+1. 지난 1시간 내 아래 경로의 커밋이 있는지 확인:
+   - `jam-web/src/lib/`, `jam-web/src/app/api/`, `jam-web/supabase/migrations/`, `jam-web/src/app/(main)/`
+2. 변경 없으면 → 종료 (아무것도 하지 않음)
+3. 변경 있으면 → 위 "문서 자동 업데이트 규칙"과 동일하게 새 SERVICE_OPERATIONS 파일 생성 + commit + push
+
+> 크론은 세션 종료 시 소멸하므로 매 세션 시작 시 재등록한다.
