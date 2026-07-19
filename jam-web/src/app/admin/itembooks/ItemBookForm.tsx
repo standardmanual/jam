@@ -13,6 +13,10 @@ interface ItemBookFormProps {
   allBadges: Pick<BadgeRow, 'id' | 'name'>[]
 }
 
+const RARITY_LABEL: Record<string, string> = {
+  common: 'Common', rare: 'Rare', legendary: 'Legend', mythic: 'Mythic',
+}
+
 export default function ItemBookForm({
   book,
   factions,
@@ -240,7 +244,7 @@ export default function ItemBookForm({
                   <img src={b.image_url} alt={b.name} className="w-8 h-8 rounded-lg object-contain" />
                 )}
                 <span className="text-sm flex-1">{b.name}</span>
-                <span className="text-xs text-white/40">{b.rarity}</span>
+                <span className="text-xs text-white/40">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
                 <button
                   type="button"
                   onClick={() => handleUnassignBadge(b.id)}
@@ -341,7 +345,7 @@ export default function ItemBookForm({
                       <img src={b.image_url} alt={b.name} className="w-8 h-8 rounded-lg object-contain" />
                     )}
                     <span>{b.name}</span>
-                    <span className="text-white/40 text-xs ml-auto">{b.rarity}</span>
+                    <span className="text-white/40 text-xs ml-auto">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
                   </button>
                 ))}
             </div>

@@ -9,6 +9,10 @@ const rarityColor: Record<string, string> = {
   mythic: 'text-yellow-400',
 }
 
+const RARITY_LABEL: Record<string, string> = {
+  common: 'Common', rare: 'Rare', legendary: 'Legend', mythic: 'Mythic',
+}
+
 export default async function AdminBadgesPage() {
   const supabase = createServiceClient()
   const [{ data: badgesRaw }, { data: factionsRaw }] = await Promise.all([
@@ -84,7 +88,7 @@ export default async function AdminBadgesPage() {
                 </td>
                 <td className="px-5 py-3 text-white/60">{badge.type}</td>
                 <td className={`px-5 py-3 font-medium ${rarityColor[badge.rarity] ?? ''}`}>
-                  {badge.rarity}
+                  {RARITY_LABEL[badge.rarity] ?? badge.rarity}
                 </td>
                 <td className="px-5 py-3 text-white/60 text-xs">
                   {badge.faction_id ? (factionMap.get(badge.faction_id) ?? '—') : '—'}
