@@ -18,10 +18,13 @@ export async function evaluateBadges(
 ): Promise<number> {
   const supabase = createServiceClient()
 
+  const now = new Date().toISOString()
   const { data: allBadgesRaw, error: badgesError } = await supabase
     .from('badges')
     .select('*')
     .eq('type', 'activity')
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
 
   const allBadges = allBadgesRaw as BadgeRow[] | null
 

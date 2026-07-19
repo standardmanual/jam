@@ -105,8 +105,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       faction_id: factionId || null,
       item_book_id: itemBookId || null,
       drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
-      valid_from: type === 'item' && validFrom ? new Date(validFrom).toISOString() : null,
-      valid_until: type === 'item' && validUntil ? new Date(validUntil).toISOString() : null,
+      valid_from: validFrom ? new Date(validFrom).toISOString() : null,
+      valid_until: validUntil ? new Date(validUntil).toISOString() : null,
     }
 
     try {
@@ -251,40 +251,6 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
               />
             </label>
 
-            <div className="col-span-2 border border-white/10 rounded-2xl p-5 space-y-4">
-              <p className="text-sm font-semibold text-white/70">유효 기간 (아이템 배지)</p>
-              <p className="text-xs text-white/40">설정하면 해당 기간에만 드랍되며, 획득된 배지의 만료일은 <strong>종료일</strong>로 자동 설정됩니다. 설정하지 않으면 상시 드랍 / 만료 없음.</p>
-              <div className="grid grid-cols-2 gap-4">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs text-white/50">시작일 (yyyy-mm-dd)</span>
-                  <input
-                    type="date"
-                    value={validFrom}
-                    onChange={(e) => setValidFrom(e.target.value)}
-                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs text-white/50">종료일 (yyyy-mm-dd)</span>
-                  <input
-                    type="date"
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
-                    min={validFrom || undefined}
-                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
-                  />
-                </label>
-              </div>
-              {(validFrom || validUntil) && (
-                <button
-                  type="button"
-                  onClick={() => { setValidFrom(''); setValidUntil('') }}
-                  className="text-xs text-white/30 hover:text-white/60 transition-colors"
-                >
-                  기간 설정 초기화
-                </button>
-              )}
-            </div>
           </>
         )}
 
@@ -533,6 +499,46 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           </div>
         </div>
       )}
+
+      {/* 유효 기간 (공통) */}
+      <div className="border border-white/10 rounded-2xl p-5 space-y-4">
+        <p className="text-sm font-semibold text-white/70">유효 기간</p>
+        <p className="text-xs text-white/40">
+          {type === 'item'
+            ? '설정하면 해당 기간에만 드랍되며, 획득된 배지의 만료일은 종료일로 자동 설정됩니다. 설정하지 않으면 상시 드랍 / 만료 없음.'
+            : '설정하면 해당 기간에만 발급 조건이 평가됩니다. 기간 외 액티비티 싱크에서는 이 배지가 건너뛰어집니다. 설정하지 않으면 상시 평가.'}
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-white/50">시작일 (yyyy-mm-dd)</span>
+            <input
+              type="date"
+              value={validFrom}
+              onChange={(e) => setValidFrom(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-white/50">종료일 (yyyy-mm-dd)</span>
+            <input
+              type="date"
+              value={validUntil}
+              onChange={(e) => setValidUntil(e.target.value)}
+              min={validFrom || undefined}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+            />
+          </label>
+        </div>
+        {(validFrom || validUntil) && (
+          <button
+            type="button"
+            onClick={() => { setValidFrom(''); setValidUntil('') }}
+            className="text-xs text-white/30 hover:text-white/60 transition-colors"
+          >
+            기간 설정 초기화
+          </button>
+        )}
+      </div>
 
       <div className="flex items-center gap-3 pt-2">
         <button
