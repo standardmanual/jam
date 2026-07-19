@@ -41,10 +41,10 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
  * 배지 희귀도 레이블
  */
 export const BADGE_RARITY_LABELS: Record<string, string> = {
-  common: '커먼',
-  rare: '레어',
-  legendary: '레전더리',
-  mythic: '미식',
+  common: 'Common',
+  rare: 'Rare',
+  legendary: 'Legend',
+  mythic: 'Mythic',
 }
 
 /**
