@@ -124,7 +124,7 @@ export async function evaluateBadges(
 // 조건 평가 — 미구현 조건은 false 반환
 // =========================================
 
-function checkCondition(condition: BadgeCondition, activities: NormalizedActivity[]): boolean {
+export function checkCondition(condition: BadgeCondition, activities: NormalizedActivity[]): boolean {
   if (Object.keys(condition).length === 0) return false
 
   const filtered = condition.activity_type
