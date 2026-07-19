@@ -40,12 +40,23 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [condStreakDays, setCondStreakDays] = useState<string>(initCond.streak_days?.toString() ?? '')
   const [condActivityType, setCondActivityType] = useState<string>(initCond.activity_type ?? '')
   const [condPoiId, setCondPoiId] = useState<string>(initCond.poi_id ?? '')
+  const [condDurationMinutes, setCondDurationMinutes] = useState<string>(initCond.duration_minutes?.toString() ?? '')
+  const [condWeekendDurationHours, setCondWeekendDurationHours] = useState<string>(initCond.weekend_duration_hours?.toString() ?? '')
+  const [condWeeklyCount, setCondWeeklyCount] = useState<string>(initCond.weekly_count?.toString() ?? '')
+  const [condMonth, setCondMonth] = useState<string>(initCond.month?.toString() ?? '')
+  const [condMonthlyKm, setCondMonthlyKm] = useState<string>(initCond.monthly_km?.toString() ?? '')
+  const [condSeasonCount, setCondSeasonCount] = useState<string>(initCond.season_count?.toString() ?? '')
+  const [condSeason, setCondSeason] = useState<string>(initCond.season ?? '')
 
   const [factionId, setFactionId] = useState(badge?.faction_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
   const [dropWeight, setDropWeight] = useState<string>(
     badge?.drop_weight?.toString() ?? '1.0'
   )
+  const toDateInput = (iso: string | null | undefined) =>
+    iso ? iso.slice(0, 10) : ''
+  const [validFrom, setValidFrom] = useState<string>(toDateInput(badge?.valid_from))
+  const [validUntil, setValidUntil] = useState<string>(toDateInput(badge?.valid_until))
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +71,13 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     if (condStreakDays) cond.streak_days = parseInt(condStreakDays, 10)
     if (condActivityType) cond.activity_type = condActivityType as ActivityType
     if (condPoiId) cond.poi_id = condPoiId
+    if (condDurationMinutes) cond.duration_minutes = parseInt(condDurationMinutes, 10)
+    if (condWeekendDurationHours) cond.weekend_duration_hours = parseFloat(condWeekendDurationHours)
+    if (condWeeklyCount) cond.weekly_count = parseInt(condWeeklyCount, 10)
+    if (condMonth) cond.month = parseInt(condMonth, 10)
+    if (condMonthlyKm) cond.monthly_km = parseFloat(condMonthlyKm)
+    if (condSeasonCount) cond.season_count = parseInt(condSeasonCount, 10)
+    if (condSeason) cond.season = condSeason as BadgeCondition['season']
     return Object.keys(cond).length > 0 ? cond : null
   }
 
@@ -87,6 +105,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       faction_id: factionId || null,
       item_book_id: itemBookId || null,
       drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
+      valid_from: type === 'item' && validFrom ? new Date(validFrom).toISOString() : null,
+      valid_until: type === 'item' && validUntil ? new Date(validUntil).toISOString() : null,
     }
 
     try {
@@ -215,20 +235,57 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           </select>
         </label>
 
-        {/* drop_weight (아이템 배지 타입일 때만) */}
+        {/* 아이템 배지 전용 설정 */}
         {type === 'item' && (
-          <label className="flex flex-col gap-1.5 col-span-2">
-            <span className="text-sm text-white/60">드랍 가중치 (0.1 ~ 10.0)</span>
-            <input
-              type="number"
-              step="0.1"
-              min="0.1"
-              max="10"
-              value={dropWeight}
-              onChange={(e) => setDropWeight(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
-            />
-          </label>
+          <>
+            <label className="flex flex-col gap-1.5 col-span-2">
+              <span className="text-sm text-white/60">드랍 가중치 (0.1 ~ 10.0)</span>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="10"
+                value={dropWeight}
+                onChange={(e) => setDropWeight(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+              />
+            </label>
+
+            <div className="col-span-2 border border-white/10 rounded-2xl p-5 space-y-4">
+              <p className="text-sm font-semibold text-white/70">유효 기간 (아이템 배지)</p>
+              <p className="text-xs text-white/40">설정하면 해당 기간에만 드랍되며, 획득된 배지의 만료일은 <strong>종료일</strong>로 자동 설정됩니다. 설정하지 않으면 상시 드랍 / 만료 없음.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs text-white/50">시작일 (yyyy-mm-dd)</span>
+                  <input
+                    type="date"
+                    value={validFrom}
+                    onChange={(e) => setValidFrom(e.target.value)}
+                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs text-white/50">종료일 (yyyy-mm-dd)</span>
+                  <input
+                    type="date"
+                    value={validUntil}
+                    onChange={(e) => setValidUntil(e.target.value)}
+                    min={validFrom || undefined}
+                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                  />
+                </label>
+              </div>
+              {(validFrom || validUntil) && (
+                <button
+                  type="button"
+                  onClick={() => { setValidFrom(''); setValidUntil('') }}
+                  className="text-xs text-white/30 hover:text-white/60 transition-colors"
+                >
+                  기간 설정 초기화
+                </button>
+              )}
+            </div>
+          </>
         )}
 
         <label className="flex flex-col gap-1.5 col-span-2">
@@ -385,6 +442,88 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
               placeholder="POI UUID"
             />
           </label>
+
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">단일 활동 최소 이동 시간 (분)</span>
+              <input
+                type="number"
+                value={condDurationMinutes}
+                onChange={(e) => setCondDurationMinutes(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                placeholder="예: 60"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">주말 활동 최소 이동 시간 (시간)</span>
+              <input
+                type="number"
+                step="0.5"
+                value={condWeekendDurationHours}
+                onChange={(e) => setCondWeekendDurationHours(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                placeholder="예: 2"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">한 주 내 최소 활동 횟수</span>
+              <input
+                type="number"
+                value={condWeeklyCount}
+                onChange={(e) => setCondWeeklyCount(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                placeholder="예: 3"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">특정 월 (1~12)</span>
+              <input
+                type="number"
+                min="1"
+                max="12"
+                value={condMonth}
+                onChange={(e) => setCondMonth(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                placeholder="예: 8"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">월 누적 거리 (km)</span>
+              <input
+                type="number"
+                step="0.1"
+                value={condMonthlyKm}
+                onChange={(e) => setCondMonthlyKm(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                placeholder="예: 100"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">계절 활동 횟수</span>
+              <input
+                type="number"
+                value={condSeasonCount}
+                onChange={(e) => setCondSeasonCount(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                placeholder="예: 5"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5 col-span-2">
+              <span className="text-xs text-white/50">계절</span>
+              <select
+                value={condSeason}
+                onChange={(e) => setCondSeason(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+              >
+                <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
+                <option value="spring" className="bg-[#1a1a1a]">봄 (3~5월)</option>
+                <option value="summer" className="bg-[#1a1a1a]">여름 (6~8월)</option>
+                <option value="fall" className="bg-[#1a1a1a]">가을 (9~11월)</option>
+                <option value="winter" className="bg-[#1a1a1a]">겨울 (12~2월)</option>
+                <option value="all" className="bg-[#1a1a1a]">전 계절</option>
+              </select>
+            </label>
+          </div>
 
           <div className="bg-black/30 rounded-xl p-3">
             <p className="text-xs text-white/40 mb-1.5">JSON 미리보기</p>

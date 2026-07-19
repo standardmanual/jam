@@ -8,7 +8,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight } = body
+  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight, valid_from, valid_until } = body
 
   const supabase = createServiceClient()
   const { data, error } = await supabase
@@ -27,6 +27,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       faction_id: faction_id ?? null,
       item_book_id: item_book_id ?? null,
       drop_weight: drop_weight ?? 1.0,
+      valid_from: valid_from ?? null,
+      valid_until: valid_until ?? null,
     })
     .eq('id', id)
     .select()

@@ -60,6 +60,8 @@ export interface BadgeRow {
   item_book_id: string | null
   drop_weight: number
   drop_condition_json: Record<string, unknown> | null
+  valid_from: string | null
+  valid_until: string | null
   created_at: string
 }
 

@@ -7,19 +7,19 @@ interface RarityBadgeProps {
 
 const rarityConfig: Record<BadgeRarity, { label: string; classes: string }> = {
   common: {
-    label: '일반',
+    label: 'Common',
     classes: 'bg-gray-200 text-jam-ink border-jam-ink',
   },
   rare: {
-    label: '레어',
+    label: 'Rare',
     classes: 'bg-jam-teal text-jam-ink border-jam-ink',
   },
   legendary: {
-    label: '레전더리',
+    label: 'Legend',
     classes: 'bg-jam-purple text-white border-jam-ink',
   },
   mythic: {
-    label: '미식',
+    label: 'Mythic',
     classes: 'bg-jam-yellow text-jam-ink border-jam-ink',
   },
 }
