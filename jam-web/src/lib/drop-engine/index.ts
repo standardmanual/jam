@@ -73,14 +73,17 @@ export async function tryItemDrop(
 
   const supabase = createServiceClient()
 
-  // 3. 해당 rarity + type='item' 배지 목록 조회 (drop_weight 포함)
+  // 3. 해당 rarity + type='item' 배지 목록 조회 (유효 기간 필터 포함)
+  const now = new Date().toISOString()
   const { data: candidatesRaw, error: badgesError } = await supabase
     .from('badges')
-    .select('id, name, image_url, rarity, drop_weight')
+    .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until')
     .eq('type', 'item')
     .eq('rarity', rarity)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
 
-  const candidates = candidatesRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight'>[] | null
+  const candidates = candidatesRaw as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight' | 'valid_from' | 'valid_until'>[] | null
 
   if (badgesError || !candidates || candidates.length === 0) {
     if (badgesError) {
@@ -111,8 +114,8 @@ export async function tryItemDrop(
     return
   }
 
-  // 6. inventory_items INSERT (만료일: 30일 후)
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  // 6. inventory_items INSERT (만료일: 배지의 valid_until, 없으면 null)
+  const expiresAt = picked.valid_until ?? null
 
   const { error: insertError } = await supabase
     .from('inventory_items')
