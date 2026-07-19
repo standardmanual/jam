@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   const rarityLabelMap: Record<string, string> = {
     common: 'COMMON',
     rare: 'RARE',
-    legendary: 'LEGENDARY',
+    legendary: 'LEGEND',
     mythic: 'MYTHIC',
   }
 

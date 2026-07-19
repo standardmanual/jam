@@ -30,7 +30,7 @@ const RARITY_COLOR: Record<string, string> = {
   mythic: 'bg-[#FF4500]/20 text-[#FF4500]',
 }
 const RARITY_LABEL: Record<string, string> = {
-  common: 'Common', rare: 'Rare', legendary: 'Legendary', mythic: 'Mythic',
+  common: 'Common', rare: 'Rare', legendary: 'Legend', mythic: 'Mythic',
 }
 
 function formatFullDate(iso: string) {

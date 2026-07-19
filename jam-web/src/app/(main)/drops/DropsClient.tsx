@@ -45,7 +45,7 @@ const RARITY_COLOR: Record<string, string> = {
 
 const RARITY_LABEL: Record<string, string> = {
   rare: 'RARE',
-  legendary: 'LEGENDARY',
+  legendary: 'LEGEND',
   mythic: 'MYTHIC',
 }
 
