@@ -257,10 +257,18 @@ export async function POST(req: NextRequest) {
     badgesByName.get(badge.name)!.push(badge)
   }
 
+  // ── 1단계: 이름별 후보 선정 (이름당 최상위 티어 1개) ──────────────────
+  type SimCandidate = {
+    badge: BadgeRow
+    condition: BadgeCondition
+    progressionKey: string | null
+    progressionValue: number
+  }
+  const simCandidates: SimCandidate[] = []
+
   for (const [, group] of badgesByName) {
     const highestOwned = highestOwnedTierByName.get(group[0].name) ?? 0
 
-    // 미보유 + 현재 보유 티어 초과인 것만 평가
     const eligible: { badge: BadgeRow; result: ReturnType<typeof evaluateConditionDetailed> }[] = []
     for (const badge of group) {
       if (ownedBadgeIds.has(badge.id)) continue
@@ -276,16 +284,37 @@ export async function POST(req: NextRequest) {
 
     if (eligible.length === 0) continue
 
-    // 최상위 레어리티 1개만 발급 대상으로
     eligible.sort((a, b) => (RARITY_TIER[b.badge.rarity] ?? 0) - (RARITY_TIER[a.badge.rarity] ?? 0))
     const { badge: toEarn } = eligible[0]
-    badgesEarned.push({ id: toEarn.id, name: toEarn.name, rarity: toEarn.rarity, reason: '조건 충족' })
-    earnedBadgeIds.add(toEarn.id)
+    const condition = toEarn.condition_json as BadgeCondition
+    const prog = simGetProgressionKey(condition)
+    simCandidates.push({ badge: toEarn, condition, progressionKey: prog?.key ?? null, progressionValue: prog?.value ?? 0 })
 
-    // 조건은 통과했지만 더 낮은 티어는 missed로 표시 (성장 티어 정책)
     for (const { badge } of eligible.slice(1)) {
       badgesMissed.push({ id: badge.id, name: badge.name, reason: '성장 티어 — 상위 레어리티 발급됨', actual: badge.rarity, required: toEarn.rarity })
     }
+  }
+
+  // ── 2단계: 진행 트랙별 최고값 1개만 남기기 ───────────────────────────
+  const trackWinners = new Map<string, SimCandidate>()
+  const standalones: SimCandidate[] = []
+
+  for (const c of simCandidates) {
+    if (c.progressionKey === null) {
+      standalones.push(c)
+    } else {
+      const existing = trackWinners.get(c.progressionKey)
+      if (!existing || c.progressionValue > existing.progressionValue) {
+        trackWinners.set(c.progressionKey, c)
+      }
+    }
+  }
+
+  const toIssueList = [...trackWinners.values(), ...standalones]
+
+  for (const { badge: toEarn } of toIssueList) {
+    badgesEarned.push({ id: toEarn.id, name: toEarn.name, rarity: toEarn.rarity, reason: '조건 충족' })
+    earnedBadgeIds.add(toEarn.id)
   }
 
   // 4. POI 매칭
@@ -379,4 +408,27 @@ export async function POST(req: NextRequest) {
     itemBooksCompleted,
     applied: !dryRun,
   })
+}
+
+// ── 진행 트랙 키 추출 (badge-engine/index.ts의 getProgressionKey와 동일 로직) ──
+const SIM_PROGRESSION_MODIFIERS = [
+  'elevation_gain_m', 'min_speed_kmh', 'streak_days', 'duration_minutes',
+  'weekend_duration_hours', 'monthly_km', 'weekly_count', 'season_count',
+  'month', 'season', 'temperature_min_c', 'temperature_max_c', 'poi_id',
+] as const
+
+function simGetProgressionKey(condition: BadgeCondition): { key: string; value: number } | null {
+  const hasModifier = SIM_PROGRESSION_MODIFIERS.some(
+    (m) => (condition as Record<string, unknown>)[m] !== undefined
+  )
+  if (hasModifier) return null
+
+  const actType = condition.activity_type ?? 'all'
+  if (condition.distance_km !== undefined) {
+    return { key: `${actType}:distance_km`, value: condition.distance_km }
+  }
+  if (condition.total_count !== undefined) {
+    return { key: `${actType}:total_count`, value: condition.total_count }
+  }
+  return null
 }
