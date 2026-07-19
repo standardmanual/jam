@@ -56,7 +56,7 @@ export async function GET() {
   // 4) 활성 아이템북 + 전체 아이템 배지 수 + 슬롯 카운트 + 완성 여부 병렬 조회
   const [{ data: booksRaw }, { data: allBadgesRaw }, { data: slotsRaw }, { data: compRaw }] =
     await Promise.all([
-      supabase.from('item_books').select('*').in('id', bookIds).eq('is_active', true),
+      supabase.from('item_books').select('*').in('id', bookIds),
       supabase.from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item'),
       supabase
         .from('user_item_book_slots')
