@@ -1,7 +1,7 @@
 # JAM! 서비스 운영 로직 전체 정리
 
 > 현재 운영 중인 코드 기준으로 작성된 기술 운영 문서.  
-> 최종 업데이트: 2026-07-15
+> 최종 업데이트: 2026-07-20
 
 ---
 
@@ -186,55 +186,138 @@ if (expires_at - 60초 < now) {
 | `activity` | 활동 누적 달성 배지 | Strava 동기화 후 자동 평가 |
 | `item` | 인벤토리 아이템 (드랍) | 드랍 엔진에서 발급 |
 
-### 4-2. 활동 배지 발급 조건 평가 (evaluateBadges)
+### 4-2. 활동 배지 발급 전체 흐름 (evaluateBadgesDetailed)
 
 ```
-1. badges WHERE type='activity' 전체 조회
+0. users.initial_sync_done 조회
+   → false이면 isFirstSync = true (첫 싱크 게이트 활성화)
+
+1. badges WHERE type='activity' 전체 조회 (유효기간 필터 포함)
 
 2. user_activity_badges WHERE user_id=유저 조회
-   → 이미 보유한 배지 ID Set 구성
-   → 미보유 배지만 평가 (중복 발급 방지)
+   → 보유 배지 ID Set 및 보유 배지 이름 Set 구성 (선행 배지 체크용)
 
-3. 각 배지의 condition_json 평가 (checkCondition):
+[Step 1: 이름별 후보 선정]
+3. 배지를 이름(그룹) 단위로 묶어 반복:
+   A. 이미 보유한 배지 → 건너뜀
+   B. 보유 티어보다 낮거나 같은 티어 → 건너뜀 (성장 티어 정책)
+   C. prerequisite_badge_names 체크:
+      condition_json.prerequisite_badge_names 존재 시
+      → 나열된 배지 이름 중 하나라도 보유 Set에 포함되어야 통과
+      → 미보유 시 missed 처리 (reason: '선행 배지 미보유')
+   D. condition_json 조건 평가 (evaluateConditionDetailed)
+      → 통과: eligible 후보 추가
+      → 실패: missed 추가
+   E. eligible 중 최상위 티어 1개만 후보(candidate)로 선정
 
-   ① activity_type 지정 시 해당 종목 활동만 필터
-     - condition_json.activity_type ∈ NormalizedActivity.jamActivityType
+[Step 2: 진행 트랙 중복 제거]
+4. 순수 거리/횟수 조건만 있는 배지 → 동일 트랙 내 최고값 1개만 통과
+   (고도·속도·연속일·시간대·계절 등 PROGRESSION_MODIFIERS 포함 시 트랙 독립)
 
-   ② 누적 조건 (AND 방식, 모두 통과해야 발급):
-     - distance_km: 누적 거리(km) ≥ 조건값
-     - total_count: 활동 횟수 ≥ 조건값
-     - elevation_gain_m: 누적 고도 상승(m) ≥ 조건값
-     - min_speed_kmh: 단일 활동 평균속도 ≥ 조건값 (어느 활동이라도 1개 통과 시 OK)
-     - streak_days: 최대 연속 활동 일수 ≥ 조건값
-       (날짜별 중복 제거 → 날짜 오름차순 정렬 → 1일 간격 연속 카운트)
+[Step 2.5: 배지 홍수 방지]
+5. 30일 롤링 윈도우 내 activity_type당 최대 3개
+   (mythic → common 우선순위로 처리, 초과 시 missed)
 
-   ③ poi_id 조건: 미구현 (항상 false)
+[Step 2.8: 첫 싱크 게이트]
+6. isFirstSync = true인 경우:
+   → finalIssueList에서 Common 이외 배지 모두 제외
+   → 제외된 배지: missed (reason: '첫 싱크 게이트 — Common 등급만 발급')
 
-4. 조건 통과 시:
+[Step 3: 발급]
+7. gatedIssueList 배지 발급:
    user_activity_badges INSERT {
      user_id, badge_id,
-     triggered_by: 'strava_sync',
-     triggered_by_strava_id: activityId,
-     triggered_by_distance_km: 누적 거리
+     triggered_by, triggered_by_strava_id,
+     triggered_by_activity_name, triggered_by_distance_km, triggered_by_activity_date
    }
-   → UNIQUE(user_id, badge_id) 위반(코드 23505) → 무시(skip)
+   → UNIQUE(user_id, badge_id) 위반(23505) → skip
 
-5. 발급 후 recordFeedEvent 호출
-   → user_activity_feed INSERT { event_type: 'badge_earned', metadata: {badge_id, badge_name, badge_image_url, rarity} }
+8. recordFeedEvent 호출 (silent=false인 경우)
+   → event_type: 'badge_earned'
+
+9. 첫 싱크 플래그 세팅 (dryRun=false이고 overrideFirstSync=undefined인 경우만):
+   users.initial_sync_done = true UPDATE
 ```
 
-### 4-3. POI 통과 배지 발급
+### 4-3. 첫 싱크 게이트 (initial_sync_done)
+
+신규 유저의 첫 Strava 동기화 시 아무리 누적 스탯이 높아도 **Common 등급 배지만 발급**한다.
+
+```
+users.initial_sync_done
+  DEFAULT: false
+  → 첫 싱크 완료 후: true로 갱신 (이후 싱크부터 정상 평가)
+
+어드민 유저 리셋(POST /api/admin/users/[id]/reset) 시:
+  initial_sync_done = false로 초기화
+  → 다음 싱크가 재첫싱크로 동작
+```
+
+### 4-4. 크로스-어트리뷰트 선행 배지 게이트 (prerequisite_badge_names)
+
+Rare 이상 배지에 `condition_json.prerequisite_badge_names: string[]`를 설정하면,  
+나열된 배지 이름 중 하나를 보유하고 있어야만 해당 배지가 발급 가능하다.
+
+```
+용도: 같은 종목의 다른 속성(거리 → 속도, 거리 → 연속일 등) 배지를 먼저 획득해야
+      상위 배지로 진행할 수 있게 하는 크로스-어트리뷰트 진행 설계
+
+예시:
+  "카본 앨리 Rare" condition_json:
+    { activity_type: 'cycling', distance_km: 200,
+      prerequisite_badge_names: ['카본 앨리 Common', '첫 페달'] }
+  → 자전거 Common 배지 중 하나를 보유해야 Rare 평가 대상에 포함
+```
+
+어드민 배지 폼에서 "선행 배지 이름 (쉼표 구분)" 필드로 관리.
+
+### 4-5. 조건 평가 (evaluateConditionDetailed)
+
+조건 필드는 **AND 방식**이며 모두 통과해야 `pass: true`.  
+`prerequisite_badge_names`는 이 함수가 아닌 엔진 Step 1에서 처리된다.
+
+| 조건 필드 | 평가 방식 |
+|-----------|-----------|
+| `activity_type` | 해당 종목으로 활동 필터링 |
+| `distance_km` | 필터 활동의 누적 거리 합계 ≥ 조건값 |
+| `total_count` | 필터 활동 건수 ≥ 조건값 |
+| `elevation_gain_m` | 누적 고도 상승(m) ≥ 조건값 |
+| `min_speed_kmh` | 단일 활동 최대 평균속도 ≥ 조건값 |
+| `streak_days` | 날짜별 최장 연속 스트릭 ≥ 조건값 |
+| `duration_minutes` | 단일 활동 이동 시간 최대값(분) ≥ 조건값 |
+| `weekend_duration_hours` | 주말 활동 이동 시간 최대값(시간) ≥ 조건값 |
+| `weekly_count` | 한 주 내 활동 횟수 최대값 ≥ 조건값 |
+| `month` + `monthly_km` | 해당 월 누적 거리 최대값 ≥ 조건값 |
+| `season` + `season_count` | 해당 계절 활동 횟수 ≥ 조건값 |
+| `temperature_min_c` | 활동 중 기온 ≥ 조건값 (폭염 배지, Strava 온도 의존) |
+| `temperature_max_c` | 활동 중 기온 ≤ 조건값 (한파 배지, Strava 온도 의존) |
+| `time_range` | startDateLocal의 HH:MM이 {start, end} 범위 내 (자정 경계 지원) |
+| `poi_id` | 항상 false — GPS 경로 매칭(sync.ts)으로만 발급 |
+| `prerequisite_badge_names` | 엔진 Step 1에서 처리 (이 함수에서는 무시) |
+
+### 4-6. 성장 티어 · 진행 트랙 · 홍수 방지 정책
+
+**성장 티어:** 같은 이름 그룹에서 이미 보유한 티어보다 낮거나 같은 배지는 평가 대상 제외.  
+Common 보유 시 → Rare부터 평가. Legendary 이미 보유 시 → Mythic만 평가.
+
+**진행 트랙:** 순수 거리 또는 횟수 조건만 있는 배지는 `actType:distance_km` 또는 `actType:total_count` 키로 묶여 최고값 1개만 발급.  
+PROGRESSION_MODIFIERS(`elevation_gain_m`, `min_speed_kmh`, `streak_days`, `duration_minutes`, `weekend_duration_hours`, `monthly_km`, `weekly_count`, `season_count`, `month`, `season`, `temperature_min/max_c`, `poi_id`, `time_range`) 중 하나라도 있으면 트랙 독립.
+
+**홍수 방지:** 30일 롤링 윈도우 내 동일 `activity_type`당 최대 **3개** 발급.  
+초과 시 mythic 우선 통과, 나머지 missed 처리.
+
+### 4-7. POI 통과 배지 발급
 
 ```
 matchPoisForActivity(latlngPath, pois):
   각 POI에 대해:
-  → 활동 경로의 모든 GPS 좌표 중 POI 반경 내 진입 여부 체크
+  → 활동 경로의 GPS 좌표 중 POI 반경 내 진입 여부 체크
   → 매칭 시 poi.linked_badge_id → user_activity_badges INSERT
      triggered_by: 'poi_match'
      triggered_by_poi_id: poi.id
 ```
 
-### 4-4. 아이템북 완성 보상 배지
+### 4-8. 아이템북 완성 보상 배지
 
 ```
 아이템북 완성 시 → item_books.reward_badge_id 존재하면
@@ -244,14 +327,14 @@ matchPoisForActivity(latlngPath, pois):
   (인벤토리 아이템이 아닌 activity badge로 발급)
 ```
 
-### 4-5. Rarity 등급
+### 4-9. Rarity 등급
 
-| rarity | 의미 |
-|--------|------|
-| `common` | 일반 (UI에서 표시 없음) |
-| `rare` | 레어 |
-| `legendary` | 레전더리 |
-| `mythic` | 신화 |
+| rarity | 의미 | 첫 싱크 발급 |
+|--------|------|-------------|
+| `common` | 일반 | ✅ 허용 |
+| `rare` | 레어 | ❌ 차단 (initial_sync_done 후 해제) |
+| `legendary` | 레전더리 | ❌ 차단 |
+| `mythic` | 신화 | ❌ 차단 |
 
 ---
 
@@ -824,7 +907,7 @@ GET /api/cron/wandering (Authorization: Bearer CRON_SECRET)
 
 | 테이블 | 설명 | 생성 마이그레이션 |
 |--------|------|------------------|
-| `users` | 유저 기본 정보 (id, email, username, avatar_url, last_location) | 001 |
+| `users` | 유저 기본 정보 (id, email, username, avatar_url, last_location, **initial_sync_done**) | 001, 032 |
 | `strava_connections` | Strava OAuth 토큰 + 동기화 상태 | 001 |
 | `badges` | 배지 정의 (type, rarity, condition_json, drop_weight, is_wandering) | 001 |
 | `user_activity_badges` | 유저 획득 배지 기록 (triggered_by, strava 메타) | 001 |
