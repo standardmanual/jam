@@ -210,10 +210,10 @@ export async function evaluateBadgesDetailed(
 
   const { data: ownedBadgesRaw, error: ownedError } = await supabase
     .from('user_activity_badges')
-    .select('badge_id')
+    .select('badge_id, created_at')
     .eq('user_id', userId)
 
-  const ownedBadges = ownedBadgesRaw as Pick<UserActivityBadgeRow, 'badge_id'>[] | null
+  const ownedBadges = ownedBadgesRaw as Pick<UserActivityBadgeRow, 'badge_id' | 'created_at'>[] | null
 
   if (ownedError) {
     console.error('[evaluateBadgesDetailed] 보유 배지 조회 오류:', ownedError)
@@ -291,10 +291,49 @@ export async function evaluateBadgesDetailed(
   }
 
   const toIssueList = [...trackWinners.values(), ...standalones]
+
+  // ── 2.5단계: 배지 홍수 방지 (30일 내 activity_type당 최대 3개) ──────────
+  const MAX_PER_ACTIVITY_30D = 3
+  const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+  const recentByActivity = new Map<string, number>()
+  for (const owned of ownedBadges ?? []) {
+    if ((owned.created_at ?? '') >= cutoff30d) {
+      const badge = allBadges.find((b) => b.id === owned.badge_id)
+      const actType = (badge?.condition_json as BadgeCondition | null)?.activity_type ?? 'all'
+      recentByActivity.set(actType, (recentByActivity.get(actType) ?? 0) + 1)
+    }
+  }
+
+  const RARITY_PRIORITY: Record<string, number> = { mythic: 4, legendary: 3, rare: 2, common: 1 }
+  toIssueList.sort(
+    (a, b) =>
+      (RARITY_PRIORITY[b.badge.rarity.toLowerCase()] ?? 0) -
+      (RARITY_PRIORITY[a.badge.rarity.toLowerCase()] ?? 0)
+  )
+
+  const finalIssueList: typeof toIssueList = []
+  for (const c of toIssueList) {
+    const actType = (c.condition.activity_type ?? 'all') as string
+    const recentCount = recentByActivity.get(actType) ?? 0
+    const pendingCount = finalIssueList.filter((x) => (x.condition.activity_type ?? 'all') === actType).length
+    if (recentCount + pendingCount < MAX_PER_ACTIVITY_30D) {
+      finalIssueList.push(c)
+    } else {
+      missed.push({
+        id: c.badge.id,
+        name: c.badge.name,
+        reason: `배지 홍수 방지 (${actType}: 30일 내 ${MAX_PER_ACTIVITY_30D}개 상한)`,
+        actual: String(recentCount + pendingCount),
+        required: String(MAX_PER_ACTIVITY_30D),
+      })
+    }
+  }
+
   const earned: BadgeEarnedInfo[] = []
 
   // ── 3단계: 발급 (dryRun=false일 때만) ───────────────────────────────
-  for (const { badge: toIssue, condition } of toIssueList) {
+  for (const { badge: toIssue, condition } of finalIssueList) {
     earned.push({ id: toIssue.id, name: toIssue.name, rarity: toIssue.rarity, reason: '조건 충족' })
 
     if (!dryRun) {
