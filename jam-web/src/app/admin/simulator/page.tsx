@@ -141,6 +141,7 @@ export default function SimulatorPage() {
   const [userSearch, setUserSearch] = useState('')
   const [users, setUsers] = useState<{ id: string; email: string; username: string | null }[]>([])
   const [userLoading, setUserLoading] = useState(false)
+  const [firstSync, setFirstSync] = useState(false)
   const [result, setResult] = useState<SimulateResult | null>(null)
   const [simLoading, setSimLoading] = useState(false)
   const [simError, setSimError] = useState<string | null>(null)
@@ -219,6 +220,7 @@ export default function SimulatorPage() {
         body: JSON.stringify({
           userId,
           dryRun,
+          firstSync,
           activity: {
             activityType,
             distanceKm: gpx.distanceKm,
@@ -363,6 +365,15 @@ export default function SimulatorPage() {
                 />
               </label>
             </div>
+            <label className="flex items-center gap-3 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={firstSync}
+                onChange={(e) => setFirstSync(e.target.checked)}
+                className="accent-[#AEEA00] w-4 h-4"
+              />
+              <span className="text-sm text-white/70">첫 싱크 모드 (Common 배지만 발급)</span>
+            </label>
           </div>
 
           {simError && (

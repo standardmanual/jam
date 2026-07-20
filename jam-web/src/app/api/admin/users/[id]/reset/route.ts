@@ -17,7 +17,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const { data: userRow, error: userError } = await supabase
     .from('users')
-    .select('id')
+    .select('id, initial_sync_done')
     .eq('id', userId)
     .maybeSingle()
 
@@ -79,6 +79,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const parallelError = e1 ?? e2 ?? e3 ?? e4 ?? e5 ?? e6 ?? e7 ?? e8
   if (parallelError) return NextResponse.json({ error: parallelError.message }, { status: 500 })
+
+  // initial_sync_done 초기화 — 다음 싱크가 재첫싱크로 동작하도록
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from('users') as any).update({ initial_sync_done: false }).eq('id', userId)
 
   console.info(
     `[admin/users/reset] userId: ${userId}, 배지: ${deletedBadgeCount ?? 0}개, 아이템: ${deletedItemCount}개 (by admin: ${admin.email})`
