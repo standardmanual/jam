@@ -14,6 +14,15 @@
 | [03_PHASES.md](./03_PHASES.md) | Phase별 기능, 체크리스트, 시작 프롬프트 | 개발 순서 정할 때 / 다음 Phase 시작할 때 |
 | [04_PROJECT_SPEC.md](./04_PROJECT_SPEC.md) | 기술 스택, 절대 금지 목록, 환경변수 | AI에게 코드 시킬 때마다 함께 공유 |
 
+### Phase별 추가 문서
+
+| Phase | 주제 | 문서 |
+|-------|------|------|
+| 7 | — | Phase7_01~04 |
+| 8 | — | Phase8_01~04 |
+| 9 | 구글 로그인 온보딩 (username + 프로필 이미지) | Phase9_01~04 |
+| 10 | 유저 검색 (홈 검색창 → 결과 페이지 → 프로필) | [Phase10_01_PRD.md](./Phase10_01_PRD.md), [Phase10_02_DATA_MODEL.md](./Phase10_02_DATA_MODEL.md), [Phase10_03_PHASES.md](./Phase10_03_PHASES.md), [Phase10_04_PROJECT_SPEC.md](./Phase10_04_PROJECT_SPEC.md) |
+
 ---
 
 ## 한 줄 요약
