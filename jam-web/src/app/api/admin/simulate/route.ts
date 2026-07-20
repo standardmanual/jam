@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { userId, dryRun, activity, repeatCount = 1 } = body
+  const { userId, dryRun, activity, repeatCount = 1, firstSync = false } = body
 
   if (!userId || !activity) {
     return NextResponse.json({ error: '필수 파라미터가 누락되었습니다.' }, { status: 400 })
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   const { earned: badgesEarned, missed: badgesMissed } = await evaluateBadgesDetailed(
     userId,
     activities,
-    { dryRun, triggeredBy: 'admin_simulate', silent: true }
+    { dryRun, triggeredBy: 'admin_simulate', silent: true, overrideFirstSync: firstSync || undefined }
   )
 
   // 2. 기존 보유 배지 조회 — POI 배지 중복 발급 방지에 사용
