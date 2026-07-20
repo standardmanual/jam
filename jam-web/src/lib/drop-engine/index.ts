@@ -53,7 +53,7 @@ function weightedPick<T extends { drop_weight: number }>(items: T[]): T {
 /**
  * 활동 1건당 아이템 드랍을 시도합니다.
  * @param userId - 대상 유저 ID
- * @param activityType - 활동 종류 ('cycling' | 'running' | 'hiking' | 'walking')
+ * @param activityType - 활동 종류 ('cycling' | 'running' | 'road_running' | 'trail_running' | 'hiking' | 'walking')
  */
 export async function tryItemDrop(
   userId: string,

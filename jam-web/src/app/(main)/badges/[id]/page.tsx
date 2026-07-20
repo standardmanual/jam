@@ -11,6 +11,8 @@ import LocalDate from '@/components/LocalDate'
 const ACTIVITY_LABELS: Record<ActivityType, string> = {
   cycling: '자전거 타기',
   running: '러닝',
+  road_running: '로드러닝',
+  trail_running: '트레일러닝',
   hiking: '하이킹',
   walking: '걷기',
 }

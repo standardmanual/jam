@@ -210,10 +210,10 @@ export async function evaluateBadgesDetailed(
 
   const { data: ownedBadgesRaw, error: ownedError } = await supabase
     .from('user_activity_badges')
-    .select('badge_id, created_at')
+    .select('badge_id, earned_at')
     .eq('user_id', userId)
 
-  const ownedBadges = ownedBadgesRaw as Pick<UserActivityBadgeRow, 'badge_id' | 'created_at'>[] | null
+  const ownedBadges = ownedBadgesRaw as Pick<UserActivityBadgeRow, 'badge_id' | 'earned_at'>[] | null
 
   if (ownedError) {
     console.error('[evaluateBadgesDetailed] 보유 배지 조회 오류:', ownedError)
@@ -298,7 +298,7 @@ export async function evaluateBadgesDetailed(
 
   const recentByActivity = new Map<string, number>()
   for (const owned of ownedBadges ?? []) {
-    if ((owned.created_at ?? '') >= cutoff30d) {
+    if ((owned.earned_at ?? '') >= cutoff30d) {
       const badge = allBadges.find((b) => b.id === owned.badge_id)
       const actType = (badge?.condition_json as BadgeCondition | null)?.activity_type ?? 'all'
       recentByActivity.set(actType, (recentByActivity.get(actType) ?? 0) + 1)
