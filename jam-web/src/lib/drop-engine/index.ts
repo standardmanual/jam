@@ -38,6 +38,45 @@ function rollRarity(): BadgeRarity | null {
 }
 
 /**
+ * 드랍엔진은 활동 1건(또는 이번 싱크 배치)만으로 조건을 평가한다.
+ * 아래 필드는 유저 이력 전반에 걸친 누적/기간 집계가 있어야 올바르게 평가되므로,
+ * 단일 활동 시점에서는 평가가 불가능하다. 이런 필드를 가진 아이템 배지는
+ * 드랍 대상에서 명시적으로 제외한다 (자동 통과·오발급 방지).
+ *
+ * - monthly_km   : 특정 월 누적 거리
+ * - season_count : 계절 내 활동 횟수
+ * - weekly_count : 같은 주 내 활동 횟수
+ * - streak_days  : 연속 활동 일수
+ * - total_count  : 누적 활동 횟수
+ */
+const CUMULATIVE_CONDITION_FIELDS: (keyof BadgeCondition)[] = [
+  'monthly_km',
+  'season_count',
+  'weekly_count',
+  'streak_days',
+  'total_count',
+]
+
+export function hasCumulativeCondition(cond: BadgeCondition): boolean {
+  return CUMULATIVE_CONDITION_FIELDS.some((f) => cond[f] !== undefined)
+}
+
+/**
+ * 아이템 배지가 이번 활동 시점에서 드랍 가능한지 판정한다.
+ * - 조건 없음 → 항상 드랍 가능
+ * - 누적/기간 조건 포함 → 드랍 불가 (단일 활동으로 평가 불가)
+ * - 그 외 단일 활동 평가 가능 조건 → checkCondition 결과에 따름
+ */
+export function isDroppableForActivity(
+  cond: BadgeCondition | null,
+  activities: NormalizedActivity[]
+): boolean {
+  if (!cond || Object.keys(cond).length === 0) return true
+  if (hasCumulativeCondition(cond)) return false
+  return checkCondition(cond, activities)
+}
+
+/**
  * drop_weight 기반 가중 랜덤 선택.
  */
 function weightedPick<T extends { drop_weight: number }>(items: T[]): T {
@@ -106,12 +145,12 @@ export async function tryItemDrop(
     return
   }
 
-  // 4. condition_json 필터 — 조건이 있는 배지는 조건 충족 시에만 드랍 풀에 포함
-  const candidates = candidatesAll.filter((b) => {
-    const cond = b.condition_json as BadgeCondition | null
-    if (!cond || Object.keys(cond).length === 0) return true
-    return checkCondition(cond, activities)
-  })
+  // 4. condition_json 필터 — 조건이 있는 배지는 조건 충족 시에만 드랍 풀에 포함.
+  //    누적/기간 조건(monthly_km, season_count 등)을 가진 배지는 단일 활동으로
+  //    평가할 수 없으므로 드랍 대상에서 제외한다 (isDroppableForActivity).
+  const candidates = candidatesAll.filter((b) =>
+    isDroppableForActivity(b.condition_json as BadgeCondition | null, activities)
+  )
 
   if (candidates.length === 0) return
 
