@@ -99,7 +99,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   if (!user) redirect('/login')
 
-  const [{ data: badge }, { data: earnedRow }] = await Promise.all([
+  const [{ data: badge }, { data: earnedRow }, { data: ownedBadgesRaw }] = await Promise.all([
     supabase.from('badges').select('*').eq('id', id).single(),
     supabase
       .from('user_activity_badges')
@@ -107,12 +107,29 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       .eq('user_id', user.id)
       .eq('badge_id', id)
       .maybeSingle(),
+    supabase.from('user_activity_badges').select('badge_id').eq('user_id', user.id),
   ])
 
   if (!badge) notFound()
 
   const badgeRow = badge as BadgeRow
   const earned = earnedRow as (UserActivityBadgeRow & { poi: PoiRow | null }) | null
+
+  // 선행 배지 보유 여부 계산
+  const prereqs = badgeRow.condition_json?.prerequisite_badge_names ?? []
+  let prereqStatus: { name: string; owned: boolean }[] = []
+  if (prereqs.length > 0) {
+    const ownedBadgeIds = new Set((ownedBadgesRaw ?? []).map((b: { badge_id: string }) => b.badge_id))
+    const { data: prereqBadgesRaw } = await supabase
+      .from('badges')
+      .select('id, name')
+      .in('name', prereqs)
+    const prereqBadges = (prereqBadgesRaw ?? []) as { id: string; name: string }[]
+    prereqStatus = prereqs.map((name) => {
+      const match = prereqBadges.find((b) => b.name === name)
+      return { name, owned: match ? ownedBadgeIds.has(match.id) : false }
+    })
+  }
 
   // triggered_by_poi_id join 결과 우선 사용, 없으면 condition_json.poi_id 폴백
   let poi: PoiRow | null = earned?.poi ?? null
@@ -163,6 +180,27 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
       {/* 배지 설명 */}
       <p className="text-sm text-jam-ink/70 leading-relaxed font-semibold px-1">{badgeRow.description}</p>
+
+      {/* 선행 배지 조건 (prerequisite) */}
+      {prereqStatus.length > 0 && (
+        <Card className={prereqStatus.some((p) => !p.owned) && !earned ? 'border-amber-500/40 bg-amber-500/5' : ''}>
+          <h2 className="text-xs font-black text-jam-ink/40 uppercase tracking-wider mb-3">선행 배지 필요</h2>
+          <p className="text-xs text-jam-ink/50 mb-3 font-semibold">아래 배지 중 하나를 먼저 획득해야 이 배지를 받을 수 있어요.</p>
+          <div className="flex flex-col gap-2">
+            {prereqStatus.map((p) => (
+              <div key={p.name} className="flex items-center gap-2">
+                <span className={p.owned ? 'text-green-500' : 'text-jam-ink/30'}>
+                  {p.owned ? '✓' : '○'}
+                </span>
+                <span className={`text-sm font-bold ${p.owned ? 'text-jam-ink' : 'text-jam-ink/50'}`}>
+                  {p.name}
+                </span>
+                {p.owned && <span className="text-xs text-green-500 font-semibold ml-auto">보유</span>}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* 획득 조건 */}
       <Card>
