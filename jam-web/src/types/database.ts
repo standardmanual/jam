@@ -25,6 +25,8 @@ export interface UserRow {
   avatar_url: string | null
   region: string
   activity_types: ActivityType[]
+  /** 첫 Strava 싱크 완료 여부 — false이면 배지 엔진이 Common만 발급 */
+  initial_sync_done: boolean
   created_at: string
   updated_at: string
 }
@@ -347,6 +349,12 @@ export interface BadgeCondition {
   temperature_max_c?: number
   /** 활동 시작 시간대 조건 { start: "HH:MM", end: "HH:MM" } */
   time_range?: { start: string; end: string }
+  /**
+   * 선행 배지 이름 목록 — Rare 이상 배지에 적용.
+   * 나열된 이름 중 하나라도 보유하고 있어야 이 배지가 발급 가능해진다.
+   * 크로스-어트리뷰트 진행 게이트 구현에 사용.
+   */
+  prerequisite_badge_names?: string[]
 }
 
 // =========================================
@@ -377,9 +385,10 @@ export interface Database {
     Tables: {
       users: {
         Row: UserRow
-        Insert: Omit<UserRow, 'created_at' | 'updated_at'> & {
+        Insert: Omit<UserRow, 'created_at' | 'updated_at' | 'initial_sync_done'> & {
           created_at?: string
           updated_at?: string
+          initial_sync_done?: boolean
         }
         Update: Partial<Omit<UserRow, 'id'>>
         Relationships: []

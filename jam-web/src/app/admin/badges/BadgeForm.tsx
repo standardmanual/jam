@@ -48,6 +48,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [condSeasonCount, setCondSeasonCount] = useState<string>(initCond.season_count?.toString() ?? '')
   const [condSeason, setCondSeason] = useState<string>(initCond.season ?? '')
 
+  const [condPrerequisiteNames, setCondPrerequisiteNames] = useState<string>(
+    (initCond.prerequisite_badge_names ?? []).join(', ')
+  )
+
   const [factionId, setFactionId] = useState(badge?.faction_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
   const [dropWeight, setDropWeight] = useState<string>(
@@ -78,6 +82,11 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     if (condMonthlyKm) cond.monthly_km = parseFloat(condMonthlyKm)
     if (condSeasonCount) cond.season_count = parseInt(condSeasonCount, 10)
     if (condSeason) cond.season = condSeason as BadgeCondition['season']
+    const prereqs = condPrerequisiteNames
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (prereqs.length > 0) cond.prerequisite_badge_names = prereqs
     return Object.keys(cond).length > 0 ? cond : null
   }
 
@@ -495,6 +504,17 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
               </select>
             </label>
           </div>
+
+          <label className="flex flex-col gap-1.5 col-span-2">
+            <span className="text-xs text-white/50">선행 배지 이름 (쉼표 구분)</span>
+            <input
+              value={condPrerequisiteNames}
+              onChange={(e) => setCondPrerequisiteNames(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+              placeholder="예: 첫 페달, 아스팔트 입문 (Rare 이상에만 설정)"
+            />
+            <span className="text-xs text-white/30">이 배지를 받으려면 나열된 배지 중 하나를 먼저 보유해야 합니다.</span>
+          </label>
 
           <div className="bg-black/30 rounded-xl p-3">
             <p className="text-xs text-white/40 mb-1.5">JSON 미리보기</p>

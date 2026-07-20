@@ -196,3 +196,41 @@ describe('poi_id', () => {
     expect(result.reason).toContain('GPS 경로 매칭')
   })
 })
+
+// ── prerequisite_badge_names (엔진 레벨 처리 검증) ───────────────────────
+// prerequisite_badge_names는 evaluateConditionDetailed 바깥(엔진 Step 1)에서 처리됨.
+// condition 평가 자체에는 영향을 미치지 않아야 한다.
+
+describe('prerequisite_badge_names (condition 평가 영향 없음)', () => {
+  it('prerequisite_badge_names가 있어도 다른 조건이 충족되면 pass', () => {
+    const cond: BadgeCondition = {
+      activity_type: 'road_running',
+      distance_km: 5,
+      prerequisite_badge_names: ['첫 페달', '아스팔트 입문'],
+    }
+    const acts = [makeActivity({ distanceKm: 10, jamActivityType: 'road_running' })]
+    // 조건(거리) 충족 → evaluateConditionDetailed는 pass (prerequisite는 엔진에서 별도 체크)
+    expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
+  })
+
+  it('prerequisite_badge_names만 있고 다른 조건이 없으면 pass (빈 조건과 동일 처리 제외)', () => {
+    // prerequisite_badge_names 외 평가할 조건이 있어야 pass 가능
+    const cond: BadgeCondition = {
+      distance_km: 3,
+      prerequisite_badge_names: ['선행 배지'],
+    }
+    const acts = [makeActivity({ distanceKm: 5 })]
+    expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
+  })
+
+  it('prerequisite_badge_names가 있어도 조건 미달이면 fail', () => {
+    const cond: BadgeCondition = {
+      distance_km: 50,
+      prerequisite_badge_names: ['선행 배지'],
+    }
+    const acts = [makeActivity({ distanceKm: 10 })]
+    const result = evaluateConditionDetailed(cond, acts)
+    expect(result.pass).toBe(false)
+    expect(result.reason).toContain('거리 부족')
+  })
+})

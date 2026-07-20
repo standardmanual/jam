@@ -231,11 +231,22 @@ export async function evaluateBadgesDetailed(
     dryRun?: boolean
     triggeredBy?: string
     silent?: boolean
+    /** 시뮬레이터 전용: true이면 첫 싱크 게이트를 강제 적용하되 initial_sync_done은 갱신하지 않음 */
+    overrideFirstSync?: boolean
   }
 ): Promise<{ earned: BadgeEarnedInfo[]; missed: BadgeMissedInfo[] }> {
-  const { dryRun = false, triggeredBy = 'strava_sync', silent = false } = options ?? {}
+  const { dryRun = false, triggeredBy = 'strava_sync', silent = false, overrideFirstSync } = options ?? {}
 
   const supabase = createServiceClient()
+
+  // initial_sync_done 조회 — 첫 싱크 게이트 판단용
+  const { data: userRowRaw } = await supabase
+    .from('users')
+    .select('initial_sync_done')
+    .eq('id', userId)
+    .maybeSingle()
+  const userInitialSyncDone = (userRowRaw as { initial_sync_done: boolean } | null)?.initial_sync_done ?? false
+  const isFirstSync = overrideFirstSync ?? !userInitialSyncDone
 
   const now = new Date().toISOString()
   const { data: allBadgesRaw, error: badgesError } = await supabase
@@ -265,6 +276,12 @@ export async function evaluateBadgesDetailed(
   }
 
   const ownedBadgeIds = new Set((ownedBadges ?? []).map((b) => b.badge_id))
+
+  // 선행 배지 체크용 — 보유 배지의 이름 집합
+  const ownedBadgeNames = new Set<string>()
+  for (const b of allBadges) {
+    if (ownedBadgeIds.has(b.id)) ownedBadgeNames.add(b.name)
+  }
 
   const highestOwnedTierByName = new Map<string, number>()
   for (const badge of allBadges) {
@@ -298,6 +315,16 @@ export async function evaluateBadgesDetailed(
     for (const badge of group) {
       if (ownedBadgeIds.has(badge.id)) continue
       if ((RARITY_TIER[badge.rarity] ?? 0) <= highestOwned) continue
+
+      // 선행 배지 게이트: prerequisite_badge_names 중 하나라도 보유해야 통과
+      const prereqs = (badge.condition_json as BadgeCondition | null)?.prerequisite_badge_names
+      if (prereqs && prereqs.length > 0) {
+        if (!prereqs.some((n) => ownedBadgeNames.has(n))) {
+          missed.push({ id: badge.id, name: badge.name, reason: '선행 배지 미보유', actual: '없음', required: prereqs.join(' 또는 ') })
+          continue
+        }
+      }
+
       const evalResult = evaluateConditionDetailed(badge.condition_json as BadgeCondition ?? {}, activities)
       if (evalResult.pass) {
         eligible.push({ badge, evalResult })
@@ -374,10 +401,26 @@ export async function evaluateBadgesDetailed(
     }
   }
 
+  // ── 2.8단계: 첫 싱크 게이트 — initial_sync_done=false이면 Common만 발급 ──
+  const gatedIssueList: typeof finalIssueList = []
+  for (const c of finalIssueList) {
+    if (isFirstSync && c.badge.rarity !== 'common') {
+      missed.push({
+        id: c.badge.id,
+        name: c.badge.name,
+        reason: '첫 싱크 게이트 — Common 등급만 발급',
+        actual: c.badge.rarity,
+        required: 'common',
+      })
+    } else {
+      gatedIssueList.push(c)
+    }
+  }
+
   const earned: BadgeEarnedInfo[] = []
 
   // ── 3단계: 발급 (dryRun=false일 때만) ───────────────────────────────
-  for (const { badge: toIssue, condition } of finalIssueList) {
+  for (const { badge: toIssue, condition } of gatedIssueList) {
     earned.push({ id: toIssue.id, name: toIssue.name, rarity: toIssue.rarity, reason: '조건 충족' })
 
     if (!dryRun) {
@@ -415,6 +458,12 @@ export async function evaluateBadgesDetailed(
         })
       }
     }
+  }
+
+  // 첫 싱크 완료 플래그 세팅 (dryRun·시뮬레이터 모드에서는 갱신 안 함)
+  if (!dryRun && !overrideFirstSync && !userInitialSyncDone) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('users') as any).update({ initial_sync_done: true }).eq('id', userId)
   }
 
   return { earned, missed }
