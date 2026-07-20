@@ -6,7 +6,7 @@
  * Supabase 프로젝트 연결 전이므로 수동 정의
  */
 
-export type ActivityType = 'cycling' | 'running' | 'hiking' | 'walking'
+export type ActivityType = 'cycling' | 'running' | 'road_running' | 'trail_running' | 'hiking' | 'walking'
 export type DropRarity = 'common' | 'rare' | 'legendary' | 'mythic' | 'none'
 export type BadgeType = 'activity' | 'item'
 export type BadgeRarity = 'common' | 'rare' | 'legendary' | 'mythic'

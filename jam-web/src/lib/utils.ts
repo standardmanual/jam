@@ -33,6 +33,8 @@ export type KrRegion = typeof KR_REGIONS[number]
 export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   cycling: '자전거',
   running: '달리기',
+  road_running: '로드러닝',
+  trail_running: '트레일러닝',
   hiking: '등산',
   walking: '걷기',
 }

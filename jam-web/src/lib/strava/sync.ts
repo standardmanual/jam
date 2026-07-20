@@ -13,7 +13,7 @@ import { tryItemDrop } from '@/lib/drop-engine/index'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { checkMissions } from '@/lib/missions/checker'
-import { STRAVA_TYPE_TO_JAM, metersToKm, metersPerSecToKmH } from '@/types/strava'
+import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
 import type { StravaConnectionRow } from '@/types/database'
 
@@ -27,7 +27,7 @@ function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity 
     distanceKm: metersToKm(activity.distance),
     movingTimeSec: activity.moving_time,
     elevationGainM: activity.total_elevation_gain,
-    jamActivityType: STRAVA_TYPE_TO_JAM[activity.type] ?? null,
+    jamActivityType: getJamActivityType(activity),
     startDate: activity.start_date,
     averageSpeedKmh: metersPerSecToKmH(activity.average_speed),
     startLatLng: activity.start_latlng.length === 2
