@@ -1,0 +1,568 @@
+<title>JAM! 배지 시스템 다이어그램</title>
+<style>
+  :root {
+    --bg: #080810;
+    --surface: #10101e;
+    --card: #14142a;
+    --border: rgba(255,255,255,0.08);
+    --accent: #AEEA00;
+    --accent-dim: rgba(174,234,0,0.15);
+    --text: #e2e8f0;
+    --sub: rgba(226,232,240,0.5);
+    --muted: rgba(226,232,240,0.25);
+    --c-common: #94a3b8;
+    --c-rare: #60a5fa;
+    --c-legendary: #c084fc;
+    --c-mythic: #fbbf24;
+    --c-warn: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Helvetica Neue', sans-serif; min-height: 100vh; }
+
+  header { padding: 20px 24px 0; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+  .logo { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #000; font-size: 14px; flex-shrink: 0; }
+  .title-block h1 { font-size: 16px; font-weight: 700; color: var(--text); }
+  .title-block p { font-size: 12px; color: var(--sub); }
+  .tabs { display: flex; gap: 0; margin-left: auto; }
+  .tab { padding: 10px 18px; font-size: 13px; font-weight: 500; color: var(--sub); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel { display: none; padding: 24px; }
+  .panel.active { display: block; }
+
+  /* ─── ENGINE FLOW ─── */
+  .engines { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1100px; }
+  @media (max-width: 700px) { .engines { grid-template-columns: 1fr; } }
+  .engine-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .engine-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .engine-head .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .engine-head h2 { font-size: 14px; font-weight: 700; }
+  .engine-head .sub { font-size: 11px; color: var(--sub); margin-left: auto; }
+  .flow { padding: 16px 20px; display: flex; flex-direction: column; gap: 0; }
+  .step { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; }
+  .step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--sub); flex-shrink: 0; margin-top: 1px; }
+  .step-body { flex: 1; }
+  .step-label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .step-desc { font-size: 11px; color: var(--sub); margin-top: 2px; line-height: 1.5; }
+  .step-arrow { margin: 0 0 0 33px; color: var(--border); font-size: 16px; line-height: 1; }
+  .tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px; vertical-align: middle; }
+  .tag-green { background: var(--accent-dim); color: var(--accent); }
+  .tag-warn { background: rgba(248,113,113,0.12); color: var(--c-warn); }
+  .tag-blue { background: rgba(96,165,250,0.12); color: var(--c-rare); }
+
+  .prob-bar { margin: 12px 20px 16px; background: var(--surface); border-radius: 8px; overflow: hidden; height: 28px; display: flex; }
+  .prob-seg { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; height: 100%; transition: filter .2s; cursor: default; }
+  .prob-seg:hover { filter: brightness(1.2); }
+
+  /* ─── CONDITION TABLE ─── */
+  .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+  .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--card); color: var(--sub); font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .filter-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+  .filter-btn.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(174,234,0,0.3); }
+  .search-wrap { margin-left: auto; }
+  .search-input { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; color: var(--text); font-size: 12px; width: 180px; outline: none; }
+  .search-input:focus { border-color: rgba(174,234,0,0.4); }
+  .search-input::placeholder { color: var(--muted); }
+
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: var(--surface); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--sub); white-space: nowrap; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .group-name { font-weight: 600; color: var(--text); }
+  .cat-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+  .cond-val { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; color: var(--text); }
+  .cond-val.warn { color: var(--c-warn); }
+  .rarity-common { color: var(--c-common); }
+  .rarity-rare { color: var(--c-rare); }
+  .rarity-legendary { color: var(--c-legendary); }
+  .rarity-mythic { color: var(--c-mythic); }
+
+  /* ─── TIER STRUCTURE ─── */
+  .tier-intro { font-size: 13px; color: var(--sub); max-width: 640px; line-height: 1.6; margin-bottom: 20px; }
+  .tier-rules { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .rule-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .rule-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+  .rule-body { font-size: 12px; color: var(--sub); line-height: 1.6; }
+  .rule-body code { background: var(--surface); padding: 1px 5px; border-radius: 3px; font-family: monospace; color: var(--accent); font-size: 11px; }
+
+  .tier-example { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; max-width: 560px; }
+  .tier-ex-title { font-size: 12px; font-weight: 600; color: var(--sub); margin-bottom: 14px; }
+  .tier-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .tier-row:last-child { border-bottom: none; }
+  .tier-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .tier-rarity { width: 68px; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .tier-cond { font-family: monospace; font-size: 12px; color: var(--text); flex: 1; }
+  .tier-state { font-size: 11px; color: var(--sub); text-align: right; flex-shrink: 0; }
+  .tier-state.earned { color: var(--accent); }
+  .tier-state.skip { color: var(--c-warn); }
+  .tier-state.next { color: var(--c-rare); }
+
+  .flood-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; max-width: 480px; margin-top: 20px; }
+  .flood-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+  .flood-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .flood-label { font-size: 12px; color: var(--sub); width: 110px; flex-shrink: 0; }
+  .flood-bar-wrap { flex: 1; height: 8px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+  .flood-bar { height: 100%; border-radius: 4px; transition: width .3s; }
+  .flood-val { font-size: 12px; font-weight: 700; width: 40px; text-align: right; flex-shrink: 0; }
+</style>
+
+<header>
+  <div class="logo">J</div>
+  <div class="title-block">
+    <h1>JAM! 배지 시스템</h1>
+    <p>엔진 흐름도 · 발급 조건 · 레어리티 티어 구조</p>
+  </div>
+  <nav class="tabs">
+    <div class="tab active" onclick="switchTab('flow')">엔진 흐름도</div>
+    <div class="tab" onclick="switchTab('table')">배지 조건표</div>
+    <div class="tab" onclick="switchTab('tier')">티어 구조</div>
+  </nav>
+</header>
+
+<!-- TAB 1: FLOW -->
+<div id="panel-flow" class="panel active">
+  <div class="engines">
+
+    <!-- BADGE ENGINE -->
+    <div class="engine-card">
+      <div class="engine-head">
+        <div class="dot" style="background:#AEEA00"></div>
+        <h2>배지 발급 엔진</h2>
+        <span class="sub">activity 타입 배지 · 결정론적</span>
+      </div>
+
+      <div style="padding:12px 20px 4px; font-size:11px; color:var(--sub);">드랍 확률</div>
+      <div class="prob-bar">
+        <div class="prob-seg" style="width:100%;background:var(--accent);color:#000;" title="조건 충족 시 100% 발급">조건 충족 → 100% 발급</div>
+      </div>
+
+      <div class="flow">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-label">Strava 활동 동기화</div>
+            <div class="step-desc">normalizeActivity() → NormalizedActivity[]<br>jamActivityType 매핑 (sport_type 우선)</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-label">배지 목록 조회</div>
+            <div class="step-desc">type='activity' + 유효기간 필터<br>보유 배지 목록 조회 (badge_id, earned_at)</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-label">이름별 그룹 조건 평가</div>
+            <div class="step-desc">evaluateConditionDetailed() 각 배지에 실행<br>이미 보유 / 낮은 tier → 건너뜀</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-label">성장 티어 중복 제거</div>
+            <div class="step-desc">같은 이름 내 최상위 레어리티 1개만 후보 선정<br>common 보유 시 rare부터 평가</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-label">진행 트랙 중복 제거</div>
+            <div class="step-desc">단순 거리/횟수 조건 → activity_type 별 최고값 1개<br>복합 조건(고도/속도 등) → 트랙 독립, 중복 허용</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <div class="step-label">홍수 방지 <span class="tag tag-blue">30일 윈도우</span></div>
+            <div class="step-desc">activity_type당 최대 3개/30일<br>mythic 우선 정렬 후 순서대로 적용</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">7</div>
+          <div class="step-body">
+            <div class="step-label">발급 <span class="tag tag-green">user_activity_badges</span></div>
+            <div class="step-desc">INSERT + 피드 이벤트 (badge_earned)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DROP ENGINE -->
+    <div class="engine-card">
+      <div class="engine-head">
+        <div class="dot" style="background:#60a5fa"></div>
+        <h2>드랍 엔진</h2>
+        <span class="sub">item 타입 배지 · 확률론적</span>
+      </div>
+
+      <div style="padding:12px 20px 4px; font-size:11px; color:var(--sub);">레어리티 추첨 확률</div>
+      <div class="prob-bar">
+        <div class="prob-seg" style="width:40%;background:#94a3b8;color:#000;" title="common 40%">C 40%</div>
+        <div class="prob-seg" style="width:25%;background:#60a5fa;color:#000;" title="rare 25%">R 25%</div>
+        <div class="prob-seg" style="width:10%;background:#c084fc;color:#000;" title="legendary 10%">L 10%</div>
+        <div class="prob-seg" style="width:5%;background:#fbbf24;color:#000;" title="mythic 5%">M 5%</div>
+        <div class="prob-seg" style="width:20%;background:var(--surface);color:var(--sub);font-weight:400;" title="드랍 없음 20%">없음 20%</div>
+      </div>
+
+      <div class="flow">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-label">레어리티 추첨 (rollRarity)</div>
+            <div class="step-desc">Math.random() → 누적 확률 비교<br>null 반환(20%) 시 즉시 종료</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-label">섀도우밴 체크 <span class="tag tag-warn">어뷰징 방어</span></div>
+            <div class="step-desc">getUserBanLevel() + getAbusingPolicy()<br>밴 레벨 높을수록 고레어리티 드랍 차단</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-label">드랍 풀 구성</div>
+            <div class="step-desc">is_active=true 아이템북 소속 배지만<br>유효기간 필터 (valid_from~valid_until)</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-label">condition_json 필터</div>
+            <div class="step-desc">조건 있는 배지: checkCondition() 통과 시에만 포함<br>조건 없는 배지: 항상 포함</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-label">가중 랜덤 선택 (weightedPick)</div>
+            <div class="step-desc">각 배지의 drop_weight 비례 확률<br>기본 drop_weight = 1.0</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <div class="step-label">인벤토리 슬롯 확인</div>
+            <div class="step-desc">used_slots ≥ max_slots → 드랍 취소</div>
+          </div>
+        </div>
+        <div class="step-arrow">↓</div>
+        <div class="step">
+          <div class="step-num">7</div>
+          <div class="step-body">
+            <div class="step-label">드랍 <span class="tag tag-blue">inventory_items</span></div>
+            <div class="step-desc">INSERT + used_slots +1 + 피드 이벤트 (item_dropped)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 조건 타입 범례 -->
+  <div style="margin-top:24px; max-width:1100px;">
+    <div style="font-size:12px; font-weight:600; color:var(--sub); margin-bottom:10px; text-transform:uppercase; letter-spacing:.06em;">조건 타입 구현 상태</div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;"><span style="color:var(--accent);font-weight:700;">✓</span> distance_km — 누적 거리</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;"><span style="color:var(--accent);font-weight:700;">✓</span> elevation_gain_m — 고도 상승</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;"><span style="color:var(--accent);font-weight:700;">✓</span> streak_days — 연속 일수</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;"><span style="color:var(--accent);font-weight:700;">✓</span> duration_minutes — 이동 시간</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;"><span style="color:var(--accent);font-weight:700;">✓</span> monthly_km — 월 누적 거리</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;"><span style="color:var(--accent);font-weight:700;">✓</span> season_count — 계절 활동 횟수</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;"><span style="color:var(--c-warn);font-weight:700;">⚠</span> temperature_min/max_c — 날씨</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;"><span style="color:var(--c-warn);font-weight:700;">⚠</span> time_range — 시간대</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;"><span style="color:var(--c-warn);font-weight:700;">⚠</span> poi_id — POI 위치</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: TABLE -->
+<div id="panel-table" class="panel">
+  <div class="filter-bar">
+    <button class="filter-btn active" data-cat="all" onclick="setFilter('all')">전체</button>
+    <button class="filter-btn" data-cat="road_running" onclick="setFilter('road_running')">🏃 로드러닝</button>
+    <button class="filter-btn" data-cat="trail_running" onclick="setFilter('trail_running')">🌲 트레일러닝</button>
+    <button class="filter-btn" data-cat="cycling" onclick="setFilter('cycling')">🚴 사이클링</button>
+    <button class="filter-btn" data-cat="hiking" onclick="setFilter('hiking')">⛰️ 등산</button>
+    <button class="filter-btn" data-cat="walking" onclick="setFilter('walking')">🚶 걷기</button>
+    <button class="filter-btn" data-cat="streak" onclick="setFilter('streak')">🔥 연속활동</button>
+    <button class="filter-btn" data-cat="weather" onclick="setFilter('weather')">⚠️ 날씨(미구현)</button>
+    <button class="filter-btn" data-cat="time" onclick="setFilter('time')">⚠️ 시간대(미구현)</button>
+    <div class="search-wrap"><input class="search-input" id="search" placeholder="배지 이름 검색..." oninput="renderTable()"></div>
+  </div>
+  <div class="table-wrap">
+    <table id="badge-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>그룹명</th>
+          <th>카테고리</th>
+          <th>조건 타입</th>
+          <th class="rarity-common">Common</th>
+          <th class="rarity-rare">Rare</th>
+          <th class="rarity-legendary">Legendary</th>
+          <th class="rarity-mythic">Mythic</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+  <div id="table-count" style="margin-top:10px;font-size:12px;color:var(--sub);"></div>
+</div>
+
+<!-- TAB 3: TIER -->
+<div id="panel-tier" class="panel">
+  <p class="tier-intro">JAM! 배지는 <strong>같은 이름</strong> 안에서 Common → Rare → Legendary → Mythic으로 성장하는 티어 구조를 가진다. 엔진은 유저가 이미 보유한 최상위 티어보다 높은 것만 평가하며, 동시에 여러 조건을 통과해도 가장 높은 레어리티 1개만 발급한다.</p>
+
+  <div class="tier-rules">
+    <div class="rule-card">
+      <div class="rule-title">성장 티어 정책</div>
+      <div class="rule-body">같은 이름 그룹 내에서<br>이미 보유한 티어보다 낮거나 같으면 건너뜀.<br>항상 <code>최상위 미보유 1개</code>만 발급.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-title">진행 트랙 중복 제거</div>
+      <div class="rule-body">순수 거리/횟수 조건 배지는 같은 activity_type 내에서 <code>최고값 1개</code>만.<br>복합 조건(고도, 속도 포함)은 트랙 독립.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-title">홍수 방지 (Flood Cap)</div>
+      <div class="rule-body"><code>30일 윈도우</code> 기준 activity_type당 최대 <code>3개</code>.<br>초과 시 mythic 우선 보존, 낮은 티어부터 탈락.</div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-title">중복 발급 방지</div>
+      <div class="rule-body">DB INSERT 시 <code>23505 (unique violation)</code> 오류 발생 시 무시하고 계속.<br>이미 발급된 배지는 재발급 없음.</div>
+    </div>
+  </div>
+
+  <div style="font-size:13px;font-weight:600;color:var(--sub);margin-bottom:12px;">예시: "첫 숨결" 그룹 (로드러닝 누적 거리)</div>
+  <div class="tier-example">
+    <div class="tier-ex-title">시나리오: 총 누적 거리 45km 달성 시</div>
+    <div class="tier-row">
+      <div class="tier-dot" style="background:var(--c-common)"></div>
+      <div class="tier-rarity rarity-common">Common</div>
+      <div class="tier-cond">≥ 3km</div>
+      <div class="tier-state skip">⊘ 건너뜀 (기 보유)</div>
+    </div>
+    <div class="tier-row">
+      <div class="tier-dot" style="background:var(--c-rare)"></div>
+      <div class="tier-rarity rarity-rare">Rare</div>
+      <div class="tier-cond">≥ 9km</div>
+      <div class="tier-state skip">⊘ 건너뜀 (기 보유)</div>
+    </div>
+    <div class="tier-row">
+      <div class="tier-dot" style="background:var(--c-legendary)"></div>
+      <div class="tier-rarity rarity-legendary">Legendary</div>
+      <div class="tier-cond">≥ 21km ✓</div>
+      <div class="tier-state skip">⊘ 건너뜀 (더 높은 티어 있음)</div>
+    </div>
+    <div class="tier-row">
+      <div class="tier-dot" style="background:var(--c-mythic)"></div>
+      <div class="tier-rarity rarity-mythic">Mythic</div>
+      <div class="tier-cond">≥ 42km → ✗ (45km 부족)</div>
+      <div class="tier-state">미달</div>
+    </div>
+    <div style="margin-top:12px;padding:10px 12px;background:var(--accent-dim);border-radius:8px;font-size:12px;color:var(--accent);">
+      → Legendary 발급 (45km ≥ 21km, 42km 미달로 Mythic 제외 → 가장 높은 통과 티어)
+    </div>
+  </div>
+
+  <div class="flood-card" style="max-width:480px;margin-top:24px;">
+    <div class="flood-title">홍수 방지 시각화 — 30일 내 road_running 발급 현황</div>
+    <div class="flood-row">
+      <div class="flood-label">발급됨</div>
+      <div class="flood-bar-wrap"><div class="flood-bar" style="width:66.6%;background:var(--accent);"></div></div>
+      <div class="flood-val" style="color:var(--accent);">2/3</div>
+    </div>
+    <div class="flood-row">
+      <div class="flood-label">남은 슬롯</div>
+      <div class="flood-bar-wrap"><div class="flood-bar" style="width:33.3%;background:var(--surface);border:1px dashed var(--border);"></div></div>
+      <div class="flood-val" style="color:var(--sub);">1개</div>
+    </div>
+    <div style="font-size:11px;color:var(--sub);margin-top:10px;line-height:1.5;">이 상태에서 활동 동기화 시 road_running 배지는 최대 1개만 추가 발급 가능.<br>Mythic → Legendary → Rare → Common 우선 순으로 선택.</div>
+  </div>
+</div>
+
+<script>
+const CATS = {
+  road_running: { label:'로드러닝', color:'#AEEA00', condType:'누적 거리' },
+  trail_running: { label:'트레일러닝', color:'#34d399', condType:'거리 + 고도' },
+  cycling: { label:'사이클링', color:'#60a5fa', condType:'거리 + 시간 + 고도' },
+  hiking: { label:'등산', color:'#fb923c', condType:'거리 + 고도' },
+  walking: { label:'걷기', color:'#a78bfa', condType:'누적 거리' },
+  streak: { label:'연속활동', color:'#f97316', condType:'연속 일수' },
+  weather: { label:'날씨 ⚠️', color:'#f87171', condType:'온도 (미구현)' },
+  time: { label:'시간대 ⚠️', color:'#f87171', condType:'시간대 (미구현)' },
+};
+
+const BADGES = [
+  // ─── ROAD RUNNING ───
+  {cat:'road_running',n:'첫 숨결',C:'3km',R:'9km',L:'21km',M:'42km'},
+  {cat:'road_running',n:'도심의 맥박',C:'5km',R:'11km',L:'24.5km',M:'46km'},
+  {cat:'road_running',n:'아스팔트 위의 깃털',C:'6km',R:'14km',L:'28km',M:'50km'},
+  {cat:'road_running',n:'심장의 독주곡',C:'8km',R:'16km',L:'31.5km',M:'54km'},
+  {cat:'road_running',n:'바람의 꼬리깃',C:'9km',R:'18km',L:'35km',M:'59km'},
+  {cat:'road_running',n:'빌딩 숲의 투사',C:'10km',R:'21km',L:'38.5km',M:'63km'},
+  {cat:'road_running',n:'페이스 메이커',C:'12km',R:'23km',L:'42km',M:'67km'},
+  {cat:'road_running',n:'땀방울의 중력',C:'14km',R:'25km',L:'45.5km',M:'71km'},
+  {cat:'road_running',n:'가쁜 숨의 카타르시스',C:'15km',R:'28km',L:'49km',M:'75km'},
+  {cat:'road_running',n:'한계의 동반자',C:'16km',R:'30km',L:'52.5km',M:'79km'},
+  {cat:'road_running',n:'그림자 추적기',C:'18km',R:'33km',L:'56km',M:'83km'},
+  {cat:'road_running',n:'멈추지 않는 페이싱',C:'20km',R:'35km',L:'59.5km',M:'88km'},
+  {cat:'road_running',n:'도시의 순례자',C:'21.1km',R:'37km',L:'63km',M:'92km'},
+  {cat:'road_running',n:'무호흡의 경계선',C:'23km',R:'40km',L:'66.5km',M:'96km'},
+  {cat:'road_running',n:'엔진의 증명',C:'25km',R:'42km',L:'70km',M:'100km'},
+  // ─── TRAIL RUNNING ───
+  {cat:'trail_running',n:'야생의 첫발',C:'10km+100m',R:'25km+200m',L:'100km+800m',M:'160km+2000m'},
+  {cat:'trail_running',n:'흙내음의 시작',C:'10km+180m',R:'25km+350m',L:'100km+1300m',M:'160km+2600m'},
+  {cat:'trail_running',n:'능선의 바람',C:'10km+260m',R:'25km+500m',L:'100km+1800m',M:'160km+3100m'},
+  {cat:'trail_running',n:'숲길의 유랑자',C:'10km+340m',R:'25km+650m',L:'100km+2300m',M:'160km+3700m'},
+  {cat:'trail_running',n:'바위틈의 생명력',C:'10km+410m',R:'25km+800m',L:'100km+2800m',M:'160km+4300m'},
+  {cat:'trail_running',n:'진흙탕의 영광',C:'10km+490m',R:'25km+950m',L:'100km+3300m',M:'160km+4900m'},
+  {cat:'trail_running',n:'고독한 심산행',C:'10km+570m',R:'25km+1100m',L:'100km+3800m',M:'160km+5400m'},
+  {cat:'trail_running',n:'나무들의 증언',C:'10km+650m',R:'25km+1250m',L:'100km+4300m',M:'160km+6000m'},
+  {cat:'trail_running',n:'새벽이슬의 개척',C:'10km+730m',R:'25km+1400m',L:'100km+4700m',M:'160km+6600m'},
+  {cat:'trail_running',n:'안개 속의 독주',C:'10km+810m',R:'25km+1550m',L:'100km+5200m',M:'160km+7100m'},
+  {cat:'trail_running',n:'은밀한 살롱의 손님',C:'10km+890m',R:'25km+1700m',L:'100km+5700m',M:'160km+7700m'},
+  {cat:'trail_running',n:'야생의 포식자',C:'10km+960m',R:'25km+1850m',L:'100km+6200m',M:'160km+8300m'},
+  {cat:'trail_running',n:'거인의 심장소리',C:'10km+1040m',R:'25km+2000m',L:'100km+6700m',M:'160km+8900m'},
+  {cat:'trail_running',n:'지평선의 한계선',C:'10km+1120m',R:'25km+2150m',L:'100km+7200m',M:'160km+9400m'},
+  {cat:'trail_running',n:'백두대간의 거인',C:'10km+1200m',R:'25km+2300m',L:'100km+7500m',M:'160km+10000m'},
+  // ─── CYCLING ───
+  {cat:'cycling',n:'두 바퀴의 태동',C:'10km/25분/80m',R:'20km/50분/160m',L:'40km/95분/320m',M:'80km/190분/640m'},
+  {cat:'cycling',n:'체인의 속삭임',C:'15km/35분/100m',R:'26km/60분/170m',L:'51km/120분/340m',M:'96km/230분/640m'},
+  {cat:'cycling',n:'안장 위의 방랑자',C:'20km/50분/120m',R:'31km/75분/190m',L:'63km/150분/380m',M:'111km/265분/670m'},
+  {cat:'cycling',n:'바람을 타는 돛',C:'25km/60분/140m',R:'37km/90분/210m',L:'74km/180분/410m',M:'127km/305분/710m'},
+  {cat:'cycling',n:'허벅지의 노래',C:'30km/70분/160m',R:'43km/105분/230m',L:'86km/205분/460m',M:'143km/345분/760m'},
+  {cat:'cycling',n:'스프라켓의 변주',C:'35km/85분/180m',R:'49km/120분/250m',L:'97km/235분/500m',M:'159km/380분/820m'},
+  {cat:'cycling',n:'지속 주행의 미학',C:'40km/95분/200m',R:'54km/130분/270m',L:'109km/260분/540m',M:'174km/420분/870m'},
+  {cat:'cycling',n:'중력의 극복',C:'45km/110분/220m',R:'60km/145분/290m',L:'120km/290분/590m',M:'190km/455분/930m'},
+  {cat:'cycling',n:'아스팔트 서퍼',C:'50km/120분/240m',R:'66km/160분/320m',L:'131km/315분/630m',M:'206km/495분/990m'},
+  {cat:'cycling',n:'대지의 기둥 정복',C:'55km/130분/260m',R:'71km/170분/340m',L:'143km/345분/680m',M:'221km/530분/1050m'},
+  {cat:'cycling',n:'심야의 항속',C:'60km/145분/280m',R:'77km/185분/360m',L:'154km/370분/720m',M:'237km/570분/1110m'},
+  {cat:'cycling',n:'끝없는 페달링',C:'65km/155분/300m',R:'83km/200분/380m',L:'166km/400분/770m',M:'253km/605분/1170m'},
+  {cat:'cycling',n:'지구력의 증명',C:'70km/170분/320m',R:'89km/215분/410m',L:'177km/425분/810m',M:'269km/645분/1230m'},
+  {cat:'cycling',n:'란도너의 심장',C:'75km/180분/340m',R:'94km/225분/430m',L:'189km/455분/860m',M:'284km/680분/1290m'},
+  {cat:'cycling',n:'두 바퀴의 영원성',C:'100km/240분/450m',R:'150km/360분/680m',L:'200km/480분/900m',M:'300km/720분/1350m'},
+  // ─── HIKING ───
+  {cat:'hiking',n:'산자락의 첫발',C:'2km+100m',R:'5km+400m',L:'8km+800m',M:'11km+1200m'},
+  {cat:'hiking',n:'비탈길의 투사',C:'2.5km+150m',R:'5.5km+450m',L:'8.5km+850m',M:'11.5km+1250m'},
+  {cat:'hiking',n:'나무 그늘의 안식',C:'3km+200m',R:'6km+500m',L:'9km+900m',M:'12km+1300m'},
+  {cat:'hiking',n:'능선 위의 조망자',C:'3.5km+250m',R:'6.5km+550m',L:'9.5km+950m',M:'12.5km+1350m'},
+  {cat:'hiking',n:'안개 낀 정상',C:'4km+300m',R:'7km+600m',L:'10km+1000m',M:'13km+1400m'},
+  {cat:'hiking',n:'산울림의 답장',C:'4.5km+350m',R:'7.5km+650m',L:'10.5km+1050m',M:'13.5km+1450m'},
+  {cat:'hiking',n:'돌계단의 시험',C:'5km+400m',R:'8km+700m',L:'11km+1100m',M:'14km+1500m'},
+  {cat:'hiking',n:'바람길의 방랑자',C:'5.5km+450m',R:'8.5km+750m',L:'11.5km+1150m',M:'14.5km+1550m'},
+  {cat:'hiking',n:'별빛 아래 등반',C:'6km+500m',R:'9km+800m',L:'12km+1200m',M:'15km+1600m'},
+  {cat:'hiking',n:'수평선 너머의 봉우리',C:'6.5km+550m',R:'9.5km+850m',L:'12.5km+1250m',M:'15.5km+1650m'},
+  {cat:'hiking',n:'지맥의 중심에서',C:'7km+600m',R:'10km+900m',L:'13km+1300m',M:'16km+1700m'},
+  {cat:'hiking',n:'백두대간의 품',C:'7.5km+650m',R:'10.5km+950m',L:'13.5km+1350m',M:'16.5km+1750m'},
+  {cat:'hiking',n:'구름을 뚫는 자',C:'8km+700m',R:'11km+1000m',L:'14km+1400m',M:'17km+1800m'},
+  {cat:'hiking',n:'하늘의 계단',C:'8.5km+750m',R:'11.5km+1050m',L:'14.5km+1450m',M:'17.5km+1850m'},
+  {cat:'hiking',n:'거인의 왕좌',C:'9km+800m',R:'12km+1100m',L:'15km+1500m',M:'18km+1900m'},
+  // ─── WALKING ───
+  {cat:'walking',n:'동네 산책러',C:'1km',R:'3km',L:'8km',M:'20km'},
+  {cat:'walking',n:'골목길 탐험가',C:'2km',R:'6km',L:'11km',M:'22km'},
+  {cat:'walking',n:'콘크리트 유랑자',C:'3km',R:'9km',L:'13km',M:'24km'},
+  {cat:'walking',n:'가로등의 호위',C:'4km',R:'11km',L:'16km',M:'26km'},
+  {cat:'walking',n:'도심의 관찰자',C:'5km',R:'14km',L:'19km',M:'29km'},
+  {cat:'walking',n:'만보의 달인',C:'7km',R:'17km',L:'22km',M:'31km'},
+  {cat:'walking',n:'낙엽 소리의 동반자',C:'9km',R:'20km',L:'24km',M:'33km'},
+  {cat:'walking',n:'그림자 놀이꾼',C:'12km',R:'22km',L:'27km',M:'35km'},
+  {cat:'walking',n:'대지의 맥박',C:'15km',R:'25km',L:'30km',M:'37km'},
+  {cat:'walking',n:'첫 새벽의 발자국',C:'18km',R:'28km',L:'32km',M:'39km'},
+  {cat:'walking',n:'자정의 사유자',C:'22km',R:'31km',L:'35km',M:'41km'},
+  {cat:'walking',n:'느림의 미학',C:'26km',R:'34km',L:'38km',M:'44km'},
+  {cat:'walking',n:'공원의 수호자',C:'30km',R:'36km',L:'41km',M:'46km'},
+  {cat:'walking',n:'숨겨진 지름길',C:'35km',R:'39km',L:'43km',M:'48km'},
+  {cat:'walking',n:'지평선 너머의 산책',C:'40km',R:'42km',L:'46km',M:'50km'},
+  // ─── STREAK ───
+  {cat:'streak',n:'작심삼일의 파괴자',C:'3일',R:'8일',L:'13일',M:'18일'},
+  {cat:'streak',n:'습관의 조각가',C:'5일',R:'10일',L:'15일',M:'20일'},
+  {cat:'streak',n:'매일의 톱니바퀴',C:'7일',R:'12일',L:'17일',M:'22일'},
+  {cat:'streak',n:'일상의 지휘자',C:'9일',R:'14일',L:'19일',M:'24일'},
+  {cat:'streak',n:'시간의 축적',C:'11일',R:'16일',L:'21일',M:'26일'},
+  {cat:'streak',n:'의지의 견고함',C:'13일',R:'18일',L:'23일',M:'28일'},
+  {cat:'streak',n:'철의 규율',C:'15일',R:'20일',L:'25일',M:'30일'},
+  {cat:'streak',n:'지치지 않는 엔진',C:'17일',R:'22일',L:'27일',M:'32일'},
+  {cat:'streak',n:'시간의 수호자',C:'19일',R:'24일',L:'29일',M:'34일'},
+  {cat:'streak',n:'영원의 궤도',C:'21일',R:'26일',L:'31일',M:'36일'},
+  // ─── WEATHER COLD ───
+  {cat:'weather',n:'서리 낀 숨결',C:'≤10°C',R:'≤5°C',L:'≤0°C',M:'≤-5°C',warn:true},
+  {cat:'weather',n:'얼어붙은 물통',C:'≤0°C',R:'≤-5°C',L:'≤-10°C',M:'≤-15°C',warn:true},
+  {cat:'weather',n:'동장군의 친구',C:'≤-7°C',R:'≤-12°C',L:'≤-17°C',M:'≤-22°C',warn:true},
+  {cat:'weather',n:'혹한의 심장',C:'≤-15°C',R:'≤-20°C',L:'≤-25°C',M:'≤-30°C',warn:true},
+  {cat:'weather',n:'눈보라의 개척자',C:'≤-20°C',R:'≤-25°C',L:'≤-30°C',M:'≤-35°C',warn:true},
+  // ─── WEATHER HOT ───
+  {cat:'weather',n:'태양의 입맞춤',C:'≥28°C',R:'≥30°C',L:'≥32°C',M:'≥35°C',warn:true},
+  {cat:'weather',n:'끓어오르는 땀방울',C:'≥30°C',R:'≥33°C',L:'≥36°C',M:'≥39°C',warn:true},
+  {cat:'weather',n:'아지랑이 사냥꾼',C:'≥33°C',R:'≥36°C',L:'≥39°C',M:'≥42°C',warn:true},
+  {cat:'weather',n:'타오르는 투지',C:'≥36°C',R:'≥39°C',L:'≥42°C',M:'≥45°C',warn:true},
+  {cat:'weather',n:'태양의 전사',C:'≥38°C',R:'≥41°C',L:'≥44°C',M:'≥47°C',warn:true},
+  // ─── TIME RANGE ───
+  {cat:'time',n:'새벽의 파수꾼',C:'2km(새벽)',R:'3.5km(새벽)',L:'6km(새벽)',M:'10km(새벽)',warn:true},
+  {cat:'time',n:'안개 낀 아침의 기수',C:'2.5km(새벽)',R:'4.4km(새벽)',L:'7.5km(새벽)',M:'12.5km(새벽)',warn:true},
+  {cat:'time',n:'첫 햇살의 환영',C:'3km(새벽)',R:'5.2km(새벽)',L:'9km(새벽)',M:'15km(새벽)',warn:true},
+  {cat:'time',n:'여명의 추적자',C:'3.5km(새벽)',R:'6.1km(새벽)',L:'—',M:'—',warn:true},
+];
+
+let currentFilter = 'all';
+
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+  if (id === 'table') renderTable();
+}
+
+function setFilter(cat) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  renderTable();
+}
+
+function renderTable() {
+  const q = (document.getElementById('search')?.value || '').toLowerCase();
+  const rows = BADGES.filter(b => {
+    if (currentFilter !== 'all' && b.cat !== currentFilter) return false;
+    if (q && !b.n.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('table-body');
+  const catInfo = cat => CATS[cat] || { label: cat, color: '#888', condType: '—' };
+  tbody.innerHTML = rows.map((b, i) => {
+    const ci = catInfo(b.cat);
+    const warnClass = b.warn ? ' warn' : '';
+    return `<tr>
+      <td style="color:var(--muted);font-variant-numeric:tabular-nums;">${i+1}</td>
+      <td class="group-name">${b.n}</td>
+      <td><span class="cat-badge" style="background:${ci.color}22;color:${ci.color};">${ci.label}</span></td>
+      <td style="color:var(--sub);font-size:11px;">${ci.condType}</td>
+      <td><span class="cond-val rarity-common${warnClass}">${b.C}</span></td>
+      <td><span class="cond-val rarity-rare${warnClass}">${b.R}</span></td>
+      <td><span class="cond-val rarity-legendary${warnClass}">${b.L}</span></td>
+      <td><span class="cond-val rarity-mythic${warnClass}">${b.M}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('table-count').textContent = `${rows.length}개 그룹 표시 중 (총 ${rows.length * 4}개 배지)`;
+}
+
+document.addEventListener('DOMContentLoaded', renderTable);
+</script>
