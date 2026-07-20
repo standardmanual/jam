@@ -1,6 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import type { BadgeRow, BadgeCondition, FactionRow } from '@/types/database'
+import BadgesFilterBar from './BadgesFilterBar'
 
 const rarityColor: Record<string, string> = {
   common: 'text-white/50',
@@ -80,15 +82,46 @@ function conditionSummary(c: BadgeCondition | null): string[] {
   return chips
 }
 
-export default async function AdminBadgesPage() {
+interface AdminBadgesPageProps {
+  searchParams: Promise<{
+    activityType?: string
+    type?: string
+    rarity?: string
+    sort?: string
+  }>
+}
+
+export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageProps) {
+  const { activityType, type, rarity, sort } = await searchParams
+
   const supabase = createServiceClient()
   const [{ data: badgesRaw }, { data: factionsRaw }] = await Promise.all([
     supabase.from('badges').select('*').order('created_at', { ascending: false }).limit(5000),
     supabase.from('factions').select('id, name'),
   ])
 
-  const badges = (badgesRaw ?? []) as BadgeRow[]
+  const allBadges = (badgesRaw ?? []) as BadgeRow[]
   const factionMap = new Map(((factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]).map((f) => [f.id, f.name]))
+
+  // 필터 적용
+  let badges = allBadges
+  if (activityType && activityType !== 'all') {
+    badges = badges.filter((b) => b.activity_types?.includes(activityType as never))
+  }
+  if (type && type !== 'all') {
+    badges = badges.filter((b) => b.type === type)
+  }
+  if (rarity && rarity !== 'all') {
+    badges = badges.filter((b) => b.rarity === rarity)
+  }
+
+  // 정렬 적용
+  if (sort === 'name_asc') {
+    badges = [...badges].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+  } else if (sort === 'name_desc') {
+    badges = [...badges].sort((a, b) => b.name.localeCompare(a.name, 'ko'))
+  }
+  // 기본값(created_desc)은 Supabase 쿼리 결과 순서 그대로
 
   return (
     <div className="p-8">
@@ -101,6 +134,10 @@ export default async function AdminBadgesPage() {
           + 배지 등록
         </Link>
       </div>
+
+      <Suspense>
+        <BadgesFilterBar total={allBadges.length} filtered={badges.length} />
+      </Suspense>
 
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
