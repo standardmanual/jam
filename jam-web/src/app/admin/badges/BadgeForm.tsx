@@ -47,6 +47,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [condMonthlyKm, setCondMonthlyKm] = useState<string>(initCond.monthly_km?.toString() ?? '')
   const [condSeasonCount, setCondSeasonCount] = useState<string>(initCond.season_count?.toString() ?? '')
   const [condSeason, setCondSeason] = useState<string>(initCond.season ?? '')
+  const [condTempMinC, setCondTempMinC] = useState<string>(initCond.temperature_min_c?.toString() ?? '')
+  const [condTempMaxC, setCondTempMaxC] = useState<string>(initCond.temperature_max_c?.toString() ?? '')
+  const [condTimeStart, setCondTimeStart] = useState<string>(initCond.time_range?.start ?? '')
+  const [condTimeEnd, setCondTimeEnd] = useState<string>(initCond.time_range?.end ?? '')
 
   const [condPrerequisiteNames, setCondPrerequisiteNames] = useState<string>(
     (initCond.prerequisite_badge_names ?? []).join(', ')
@@ -82,6 +86,9 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     if (condMonthlyKm) cond.monthly_km = parseFloat(condMonthlyKm)
     if (condSeasonCount) cond.season_count = parseInt(condSeasonCount, 10)
     if (condSeason) cond.season = condSeason as BadgeCondition['season']
+    if (condTempMinC) cond.temperature_min_c = parseFloat(condTempMinC)
+    if (condTempMaxC) cond.temperature_max_c = parseFloat(condTempMaxC)
+    if (condTimeStart && condTimeEnd) cond.time_range = { start: condTimeStart, end: condTimeEnd }
     const prereqs = condPrerequisiteNames
       .split(',')
       .map((s) => s.trim())
@@ -96,9 +103,39 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     )
   }
 
+  const validateCondition = (cond: BadgeCondition | null): string | null => {
+    if (!cond) return null
+    // 계절 조건은 season_count 와 짝을 이뤄야 함
+    if (cond.season && cond.season !== 'all' && !cond.season_count) {
+      return '계절(season)을 설정하면 계절 활동 횟수(season_count)도 입력해야 합니다.'
+    }
+    if (cond.season_count && !cond.season) {
+      return '계절 활동 횟수(season_count)를 설정하면 계절(season)도 선택해야 합니다.'
+    }
+    // time_range 는 start/end 둘 다, HH:MM 형식이어야 함
+    const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/
+    if (condTimeStart || condTimeEnd) {
+      if (!condTimeStart || !condTimeEnd) {
+        return '시간대 조건은 시작·종료 시각을 모두 입력해야 합니다.'
+      }
+      if (!hhmm.test(condTimeStart) || !hhmm.test(condTimeEnd)) {
+        return '시간대 조건의 시각은 HH:MM 형식이어야 합니다. (예: 05:30)'
+      }
+    }
+    return null
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    const conditionJson = buildConditionJson()
+    const condError = validateCondition(conditionJson)
+    if (condError) {
+      setError(condError)
+      return
+    }
+
     setLoading(true)
 
     const body = {
@@ -110,7 +147,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       activity_types: activityTypes,
       patch_available: patchAvailable,
       patch_price_krw: patchAvailable && patchPriceKrw ? parseInt(patchPriceKrw, 10) : null,
-      condition_json: buildConditionJson(),
+      condition_json: conditionJson,
       faction_id: factionId || null,
       item_book_id: itemBookId || null,
       drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
@@ -503,7 +540,50 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                 <option value="all" className="bg-[#1a1a1a]">전 계절</option>
               </select>
             </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">최저 기온 조건 (°C 이상 · 폭염)</span>
+              <input
+                type="number"
+                step="0.1"
+                value={condTempMinC}
+                onChange={(e) => setCondTempMinC(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                placeholder="예: 30"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">최고 기온 조건 (°C 이하 · 한파)</span>
+              <input
+                type="number"
+                step="0.1"
+                value={condTempMaxC}
+                onChange={(e) => setCondTempMaxC(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+                placeholder="예: 0"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">활동 시작 시간대 — 시작 (HH:MM)</span>
+              <input
+                type="time"
+                value={condTimeStart}
+                onChange={(e) => setCondTimeStart(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-white/50">활동 시작 시간대 — 종료 (HH:MM)</span>
+              <input
+                type="time"
+                value={condTimeEnd}
+                onChange={(e) => setCondTimeEnd(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#AEEA00]/50"
+              />
+            </label>
           </div>
+          <p className="text-xs text-white/30 -mt-1">
+            시간대는 자정을 넘겨 설정 가능합니다 (예: 22:00~05:00 심야). 종료 시각이 시작보다 이르면 익일로 해석됩니다.
+          </p>
 
           <label className="flex flex-col gap-1.5 col-span-2">
             <span className="text-xs text-white/50">선행 배지 이름 (쉼표 구분)</span>

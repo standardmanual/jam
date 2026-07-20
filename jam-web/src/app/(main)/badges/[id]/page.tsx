@@ -30,6 +30,18 @@ const MONTH_LABELS: Record<number, string> = {
   7: '7월', 8: '8월', 9: '9월', 10: '10월', 11: '11월', 12: '12월',
 }
 
+// "HH:MM" 시작 시간을 사람이 읽기 쉬운 시간대 이름으로 변환
+function timeSlotLabel(start: string): string {
+  const [h] = start.split(':').map(Number)
+  if (Number.isNaN(h)) return ''
+  if (h >= 4 && h < 8) return '새벽'
+  if (h >= 8 && h < 11) return '아침'
+  if (h >= 11 && h < 14) return '점심'
+  if (h >= 14 && h < 18) return '오후'
+  if (h >= 18 && h < 22) return '저녁'
+  return '심야'
+}
+
 function formatConditionText(condition: BadgeCondition | null): string {
   if (!condition || Object.keys(condition).length === 0) {
     return '관리자에 의해 특별 발급되는 배지입니다.'
@@ -71,6 +83,17 @@ function formatConditionText(condition: BadgeCondition | null): string {
   if (condition.season_count !== undefined && condition.season) {
     parts.push(`${SEASON_LABELS[condition.season] ?? condition.season}에 ${actType} ${condition.season_count}회 이상 완료`)
   }
+  if (condition.temperature_min_c !== undefined) {
+    parts.push(`활동 중 기온이 ${condition.temperature_min_c}°C 이상인 조건에서 ${actType} 완료`)
+  }
+  if (condition.temperature_max_c !== undefined) {
+    parts.push(`활동 중 기온이 ${condition.temperature_max_c}°C 이하인 조건에서 ${actType} 완료`)
+  }
+  if (condition.time_range) {
+    const { start, end } = condition.time_range
+    const slot = timeSlotLabel(start)
+    parts.push(`${slot ? `${slot} 시간대(${start}~${end})` : `${start}~${end} 시간대`}에 ${actType} 활동`)
+  }
   if (condition.poi_id) {
     parts.push('지정된 장소를 직접 방문하여 위치 인증')
   }
@@ -79,7 +102,19 @@ function formatConditionText(condition: BadgeCondition | null): string {
     return '관리자에 의해 특별 발급되는 배지입니다.'
   }
 
-  return parts.join(', ') + '하면 획득할 수 있습니다.'
+  // 서로 다른 활동에서 각각 달성해도 인정되는 속성 조건이 2개 이상이면 안내 추가
+  const perActivityAttrs = [
+    condition.min_speed_kmh,
+    condition.duration_minutes,
+    condition.elevation_gain_m,
+    condition.temperature_min_c,
+    condition.temperature_max_c,
+  ].filter((v) => v !== undefined).length
+  const crossAttrNote = perActivityAttrs >= 2
+    ? ' (각 조건은 서로 다른 활동에서 달성해도 인정돼요)'
+    : ''
+
+  return parts.join(', ') + '하면 획득할 수 있습니다.' + crossAttrNote
 }
 
 interface BadgeDetailPageProps {
