@@ -105,8 +105,21 @@ export function evaluateConditionDetailed(
   }
 
   if (condition.weekly_count !== undefined) {
+    // time_range와 함께 쓰이면 해당 시간대 활동만 주간 집계 ("새벽 주 N회" 엄격 의미)
+    let weeklyPool = filtered
+    if (condition.time_range) {
+      const { start, end } = condition.time_range
+      const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
+      const startMin = toMin(start)
+      const endMin = toMin(end)
+      const cross = startMin > endMin
+      weeklyPool = filtered.filter((a) => {
+        const t = toMin((a.startDateLocal ?? a.startDate).slice(11, 16))
+        return cross ? t >= startMin || t <= endMin : t >= startMin && t <= endMin
+      })
+    }
     const weekCounts = new Map<string, number>()
-    for (const a of filtered) {
+    for (const a of weeklyPool) {
       const key = getMondayKey(new Date(a.startDate))
       weekCounts.set(key, (weekCounts.get(key) ?? 0) + 1)
     }
@@ -178,7 +191,9 @@ export function evaluateConditionDetailed(
     }
   }
 
-  if (condition.time_range !== undefined) {
+  if (condition.time_range !== undefined && condition.weekly_count === undefined) {
+    // weekly_count와 함께 쓰이는 경우 weekly_count 블록에서 통합 처리됨.
+    // 단독으로만 쓰일 때: 이력 전반에서 해당 시간대 활동이 1건이라도 있으면 통과.
     const { start, end } = condition.time_range
     const toMinutes = (hhmm: string): number => {
       const [h, m] = hhmm.split(':').map(Number)
