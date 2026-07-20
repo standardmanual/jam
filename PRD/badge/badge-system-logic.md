@@ -70,12 +70,10 @@ JAM!의 배지는 **발급 방식이 다른 두 엔진**으로 처리된다.
 | `month` | 해당 월 활동 존재 여부 (monthly_km와 함께 사용) | ✅ |
 | `monthly_km` | 월별 누적 거리 최대값 ≥ 조건값 | ✅ |
 | `season` + `season_count` | 해당 계절 활동 횟수 ≥ 조건값 | ✅ |
-| `temperature_min_c` | **미구현** → 항상 pass:false | ⚠️ |
-| `temperature_max_c` | **미구현** → 항상 pass:false | ⚠️ |
-| `poi_id` | **미구현** → 항상 pass:false | ⚠️ |
-| `time_range` | **미구현** → 조건 필드 자체를 엔진이 무시 (거리만 평가됨) | ⚠️ |
-
-> **time_range 주의**: 엔진이 `time_range` 필드를 명시적으로 처리하지 않음. 해당 배지들은 `distance_km`만 있으면 통과될 수 있어 의도치 않은 발급 가능성 있음.
+| `temperature_min_c` | 활동 중 Strava average_temp ≥ 조건값 (폭염 배지). 날씨 데이터 없으면 fail | ✅ |
+| `temperature_max_c` | 활동 중 Strava average_temp ≤ 조건값 (한파 배지). 날씨 데이터 없으면 fail | ✅ |
+| `poi_id` | 항상 pass:false — POI 배지는 sync.ts의 GPS 경로 매칭(matchPoisForActivity)으로 별도 발급 | ⚠️ 스켈레톤 |
+| `time_range` | startDateLocal의 HH:MM이 {start, end} 범위 내이면 pass. 자정 걸치는 범위(start>end) 지원 | ✅ |
 
 ### 성장 티어 정책
 
@@ -194,12 +192,12 @@ supabase/migrations/029_*.sql     배지 전체 시드 데이터
 
 ---
 
-## 5. 알려진 미구현 사항 (경고)
+## 5. 알려진 미구현/주의 사항
 
-| 항목 | 영향 | 우선순위 |
-|------|------|---------|
-| `temperature_min/max_c` 조건 미구현 | 날씨 배지 40개 영구 미발급 | 중 (날씨 API 연동 필요) |
-| `time_range` 조건 미구현 | 새벽/야간 배지 오발급 가능성 | 높 (엔진 로직 추가 필요) |
-| `poi_id` 조건 미구현 | POI 연계 배지 미발급 | 낮 (POI 기능 미완성) |
-| 주말 여부 판단 시 UTC 기준 | KST 주말 경계 오차 | 낮 |
+| 항목 | 영향 | 상태 |
+|------|------|------|
+| `temperature_min/max_c` | Strava가 average_temp를 제공하지 않는 활동은 날씨 배지 미발급 | ✅ 구현 (Strava 데이터 의존) |
+| `time_range` | startDateLocal 기반 시간대 필터. Strava 로컬 시각 의존 | ✅ 구현 |
+| `poi_id` (condition_json) | condition_json의 poi_id는 GPS 경로 매칭으로 발급 — badge engine 내 평가 불가 | ⚠️ 스켈레톤 |
+| 주말 여부 판단 시 UTC 기준 | KST 주말 경계 오차 (startDateLocal 미사용) | 낮 |
 | streak 판단 시 UTC 기준 | 자정 직후 활동 날짜 오차 | 낮 |

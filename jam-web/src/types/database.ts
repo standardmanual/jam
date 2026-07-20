@@ -341,10 +341,12 @@ export interface BadgeCondition {
   season_count?: number
   /** 계절 구분: spring(3-5월) | summer(6-8월) | fall(9-11월) | winter(12-2월) | all */
   season?: 'spring' | 'summer' | 'fall' | 'winter' | 'all'
-  /** 최저 기온 조건 — 날씨 데이터 미구현 */
+  /** 최저 기온 조건 — 활동 중 기온이 이 값 이상이어야 함 (폭염 배지) */
   temperature_min_c?: number
-  /** 최고 기온 조건 — 날씨 데이터 미구현 */
+  /** 최고 기온 조건 — 활동 중 기온이 이 값 이하이어야 함 (한파 배지) */
   temperature_max_c?: number
+  /** 활동 시작 시간대 조건 { start: "HH:MM", end: "HH:MM" } */
+  time_range?: { start: string; end: string }
 }
 
 // =========================================
