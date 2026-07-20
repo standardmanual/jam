@@ -156,12 +156,56 @@ export function evaluateConditionDetailed(
     }
   }
 
-  if (condition.temperature_min_c !== undefined || condition.temperature_max_c !== undefined) {
-    return { pass: false, reason: '날씨 조건 미구현', actual: '-', required: '날씨 데이터 필요' }
+  if (condition.temperature_min_c !== undefined) {
+    const temps = filtered.map((a) => a.weatherTempC).filter((t): t is number => t != null)
+    if (temps.length === 0) {
+      return { pass: false, reason: '날씨 데이터 없음 (Strava 미제공)', actual: '-', required: `≥${condition.temperature_min_c}°C` }
+    }
+    const maxTemp = Math.max(...temps)
+    if (maxTemp < condition.temperature_min_c) {
+      return { pass: false, reason: '기온 부족 (폭염 조건 미달)', actual: `${maxTemp}°C`, required: `≥${condition.temperature_min_c}°C` }
+    }
+  }
+
+  if (condition.temperature_max_c !== undefined) {
+    const temps = filtered.map((a) => a.weatherTempC).filter((t): t is number => t != null)
+    if (temps.length === 0) {
+      return { pass: false, reason: '날씨 데이터 없음 (Strava 미제공)', actual: '-', required: `≤${condition.temperature_max_c}°C` }
+    }
+    const minTemp = Math.min(...temps)
+    if (minTemp > condition.temperature_max_c) {
+      return { pass: false, reason: '기온 초과 (한파 조건 미달)', actual: `${minTemp}°C`, required: `≤${condition.temperature_max_c}°C` }
+    }
+  }
+
+  if (condition.time_range !== undefined) {
+    const { start, end } = condition.time_range
+    const toMinutes = (hhmm: string): number => {
+      const [h, m] = hhmm.split(':').map(Number)
+      return h * 60 + m
+    }
+    const startMin = toMinutes(start)
+    const endMin = toMinutes(end)
+    const crossesMidnight = startMin > endMin
+
+    const inRange = filtered.some((a) => {
+      const local = a.startDateLocal ?? a.startDate
+      const timePart = local.slice(11, 16) // "HH:MM"
+      const actMin = toMinutes(timePart)
+      return crossesMidnight
+        ? actMin >= startMin || actMin <= endMin
+        : actMin >= startMin && actMin <= endMin
+    })
+
+    if (!inRange) {
+      return { pass: false, reason: '활동 시간대 불일치', actual: '-', required: `${start}~${end}` }
+    }
   }
 
   if (condition.poi_id !== undefined) {
-    return { pass: false, reason: 'POI 미매칭', actual: '미통과', required: 'POI 반경 통과 필요' }
+    // POI 배지는 sync.ts의 GPS 경로 매칭(matchPoisForActivity)으로 별도 발급됨.
+    // condition_json의 poi_id 경로는 현재 미지원 — 항상 false.
+    return { pass: false, reason: 'POI 조건은 GPS 경로 매칭으로만 발급됩니다', actual: '-', required: `poi: ${condition.poi_id}` }
   }
 
   return { pass: true, reason: '조건 충족', actual: '', required: '' }
@@ -423,7 +467,7 @@ function calcMaxStreak(activities: NormalizedActivity[]): number {
 const PROGRESSION_MODIFIERS = [
   'elevation_gain_m', 'min_speed_kmh', 'streak_days', 'duration_minutes',
   'weekend_duration_hours', 'monthly_km', 'weekly_count', 'season_count',
-  'month', 'season', 'temperature_min_c', 'temperature_max_c', 'poi_id',
+  'month', 'season', 'temperature_min_c', 'temperature_max_c', 'poi_id', 'time_range',
 ] as const
 
 function getProgressionKey(condition: BadgeCondition): { key: string; value: number } | null {

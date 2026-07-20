@@ -29,6 +29,7 @@ function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity 
     elevationGainM: activity.total_elevation_gain,
     jamActivityType: getJamActivityType(activity),
     startDate: activity.start_date,
+    startDateLocal: activity.start_date_local,
     averageSpeedKmh: metersPerSecToKmH(activity.average_speed),
     startLatLng: activity.start_latlng.length === 2
       ? (activity.start_latlng as [number, number])
@@ -36,6 +37,7 @@ function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity 
     endLatLng: activity.end_latlng.length === 2
       ? (activity.end_latlng as [number, number])
       : null,
+    weatherTempC: activity.average_temp ?? null,
   }
 }
 

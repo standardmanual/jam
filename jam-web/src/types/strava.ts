@@ -105,6 +105,7 @@ export interface StravaSummaryActivity {
   has_kudoed: boolean
   workout_type: number | null
   suffer_score: number | null
+  average_temp?: number | null   // 섭씨, Strava가 제공하는 경우만 존재
 }
 
 // Strava 활동 타입 (JAM!에서 사용하는 주요 타입)
@@ -195,10 +196,12 @@ export interface NormalizedActivity {
   movingTimeSec: number
   elevationGainM: number
   jamActivityType: string | null  // cycling | running | hiking | walking | null
-  startDate: string               // ISO 8601
+  startDate: string               // ISO 8601 UTC
+  startDateLocal?: string         // Strava start_date_local (현지시간, time_range 평가에 사용)
   averageSpeedKmh: number
   startLatLng: [number, number] | null
   endLatLng: [number, number] | null
+  weatherTempC?: number | null    // Strava average_temp (섭씨, 없으면 null)
 }
 
 /**
