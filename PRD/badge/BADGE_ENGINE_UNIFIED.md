@@ -178,31 +178,3 @@ Step 6. 발급: user_activity_badges INSERT + 피드 + initial_sync_done 갱신
 | `user_drop_state` (신규) | 모멘텀·pity·일일 카운터 | 🆕 설계 |
 
 `user_drop_state` 스키마·엔진 의사코드 전문: `ITEM_DROP_GAMIFICATION_V2.md` §5.
-
----
-
-## 6. 적용 로드맵 (드랍 v2)
-
-1. **Phase A (스키마)**: `item_books.world_id` + `worlds`/`world_adjacency` 시드(xlsx 원천) + `user_drop_state` + 일련번호 무작위화
-2. **Phase B (빈도)**: Layer 1 교체 — 확정 1개 + 보너스 + rare+ pity + 복귀 보너스
-3. **Phase C (서사)**: Layer 2·3 — 모멘텀·인접·완성 감쇠·마지막 조각
-4. **Phase D (맥락)**: 맥락 오버라이드 — 배지엔진이 이미 쓰는 날씨·시간 데이터 연결
-
-성공 지표·튜닝 파라미터·윤리 체크리스트: `ITEM_DROP_GAMIFICATION_V2.md` §6~8.
-
----
-
-## 7. 관련 파일
-
-```
-src/lib/badge-engine/index.ts             액티비티배지 엔진 (구현)
-src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현, v2 설계 반영 대상)
-src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출)
-src/lib/abusing/                          섀도우밴 정책 (공용)
-supabase/migrations/033_reseed_activity_badges_v3.sql   액티비티배지 시드
-PRD/badge/BADGE_POLICY_V3.md              액티비티배지 상세 (원본)
-PRD/badge/ITEM_DROP_GAMIFICATION_V2.md    드랍 v2 상세 (원본)
-PRD/badge/액티비티배지 레시피.md            액티비티배지 목록
-PRD/badge/아이템북 레시피.xlsx             아이템배지 목록 + 세계관 인접 시트
-Plan/04 JAM! 세계관.md                     세계관 서사 원전
-```
