@@ -136,14 +136,20 @@ export async function syncStravaActivities(
   const activities: NormalizedActivity[] = rawActivities.map(normalizeActivity)
 
   // 6. POI 매칭 — 각 활동의 GPS 경로를 Streams API로 조회 후 POI 반경 교차 검증
-  //    백필 시 Strava API 폭주 방지: 최신 활동 N개만 매칭
+  //    백필 시 Strava API 폭주 방지: 최신 활동 N개만 매칭.
+  //    Streams 조회(외부 API, 네트워크 지연의 주 원인)는 병렬로 먼저 가져오고,
+  //    배지 발급(DB 쓰기)은 순서 보장을 위해 순차 처리한다.
   const poiMatchTargets = [...rawActivities]
     .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
     .slice(0, MAX_POI_MATCH_ACTIVITIES_PER_SYNC)
+  const routesByActivity = await Promise.all(
+    poiMatchTargets.map(async (rawActivity) => ({
+      rawActivity,
+      route: await getActivityStreams(rawActivity.id, accessToken),
+    }))
+  )
   let poiBadgesEarned = 0
-  for (const rawActivity of poiMatchTargets) {
-    const route = await getActivityStreams(rawActivity.id, accessToken)
-
+  for (const { route } of routesByActivity) {
     if (!route) {
       // 실내 활동 또는 경로 데이터 없음 — 건너뜀
       continue

@@ -10,6 +10,9 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { syncStravaActivities } from '@/lib/strava/sync'
 import type { StravaConnectionRow } from '@/types/database'
 
+// 전체 유저 순차 동기화 — 유저 수·백필 규모에 따라 오래 걸릴 수 있어 최대치로 설정
+export const maxDuration = 300
+
 export async function GET(request: NextRequest) {
   // CRON_SECRET 검증
   const authHeader = request.headers.get('authorization')
