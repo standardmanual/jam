@@ -168,7 +168,7 @@ export async function syncStravaActivities(
   // 8. 활동별 아이템 드랍 시도 (조건 평가에 speed-filtered 활동 목록 전달)
   for (const activity of activitiesFiltered) {
     if (activity.jamActivityType) {
-      await tryItemDrop(userId, activity.jamActivityType, activitiesFiltered)
+      await tryItemDrop(userId, activity, activitiesFiltered)
     }
   }
 
