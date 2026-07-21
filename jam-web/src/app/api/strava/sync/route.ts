@@ -8,6 +8,11 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { syncStravaActivities } from '@/lib/strava/sync'
 
+// 백필(최초 연동) 시 Strava Streams 조회 + 드랍/배지 평가로 수 초~수십 초가 걸릴 수 있어
+// Vercel 기본 타임아웃(플랜별 10~15초)보다 넉넉한 실행 시간을 확보한다.
+export const maxDuration = 60
+export const dynamic = 'force-dynamic'
+
 export async function POST() {
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()

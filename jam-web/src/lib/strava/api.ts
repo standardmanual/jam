@@ -7,6 +7,9 @@ import type { StravaSummaryActivity, StravaAthlete, StravaRefreshResponse } from
 const STRAVA_API_BASE = 'https://www.strava.com/api/v3'
 const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
 
+/** Strava가 응답 없이 지연될 때 요청이 무한 대기하지 않도록 하는 타임아웃 (ms) */
+const STRAVA_FETCH_TIMEOUT_MS = 8_000
+
 // =========================================
 // Rate Limit 헬퍼
 // =========================================
@@ -28,6 +31,7 @@ async function stravaFetch<T>(url: string, accessToken: string): Promise<T> {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
+    signal: AbortSignal.timeout(STRAVA_FETCH_TIMEOUT_MS),
   })
 
   checkRateLimit(res.headers)
@@ -83,6 +87,7 @@ export async function refreshStravaToken(
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
     }),
+    signal: AbortSignal.timeout(STRAVA_FETCH_TIMEOUT_MS),
   })
 
   if (!res.ok) {
@@ -141,8 +146,10 @@ export async function getActivityStreams(
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(STRAVA_FETCH_TIMEOUT_MS),
     })
   } catch (err) {
+    // 타임아웃(AbortError) 포함 — 개별 활동 실패는 POI 매칭을 건너뛰고 계속 진행
     console.error(`[getActivityStreams] 네트워크 오류 (activityId: ${activityId}):`, err)
     return null
   }
