@@ -5,8 +5,10 @@ import type { InventoryRow } from '@/types/database'
 
 /**
  * 유저 전체 초기화 (시뮬레이터 반복 테스트용)
- * 유지: users, strava_connections (계정·연동 정보)
- * 삭제: 활동·배지·아이템·미션·피드·POI드랍·팔로우 전체
+ * 유지: users 계정, strava_connections 행(토큰·연동 상태)
+ * 삭제: 활동·배지·아이템·미션·피드·POI드랍·팔로우·드랍상태·아이템북완성 전체
+ * 초기화: initial_sync_done=false + strava last_synced_at=NULL
+ *         → 다음 싱크가 "최초 연동"처럼 과거 이력 전체를 다시 불러온다 (연동은 유지)
  */
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -80,9 +82,24 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const parallelError = e1 ?? e2 ?? e3 ?? e4 ?? e5 ?? e6 ?? e7 ?? e8
   if (parallelError) return NextResponse.json({ error: parallelError.message }, { status: 500 })
 
-  // initial_sync_done 초기화 — 다음 싱크가 재첫싱크로 동작하도록
+  // ── 3단계: 드랍엔진 v2 상태 + 아이템북 완성 기록 삭제 ─────────
+  // (user_item_book_slots는 inventory_items ON DELETE CASCADE로 이미 정리됨)
+  const [{ error: e9 }, { error: e10 }] = await Promise.all([
+    supabase.from('user_drop_state').delete().eq('user_id', userId),
+    supabase.from('user_item_book_completions').delete().eq('user_id', userId),
+  ])
+  const stateError = e9 ?? e10
+  if (stateError) return NextResponse.json({ error: stateError.message }, { status: 500 })
+
+  // ── 4단계: 싱크 이력 초기화 (연동 자체는 유지) ─────────
+  // initial_sync_done=false + last_synced_at=NULL → 다음 싱크가 최초 연동처럼 전체 이력 재수집
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase.from('users') as any).update({ initial_sync_done: false }).eq('id', userId)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: stravaError } = await (supabase.from('strava_connections') as any)
+    .update({ last_synced_at: null, backfill_completed: false })
+    .eq('user_id', userId)
+  if (stravaError) return NextResponse.json({ error: stravaError.message }, { status: 500 })
 
   console.info(
     `[admin/users/reset] userId: ${userId}, 배지: ${deletedBadgeCount ?? 0}개, 아이템: ${deletedItemCount}개 (by admin: ${admin.email})`
