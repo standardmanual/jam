@@ -1,5 +1,4 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ActivityType, BadgeCondition, BadgeRow, PoiRow, UserActivityBadgeRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
@@ -7,6 +6,7 @@ import Card from '@/components/ui/Card'
 import ShareCardModal from './ShareCardModal'
 import PoiMapButton from './PoiMapButton'
 import LocalDate from '@/components/LocalDate'
+import BackButton from './BackButton'
 
 const ACTIVITY_LABELS: Record<ActivityType, string> = {
   cycling: '자전거 타기',
@@ -119,14 +119,10 @@ function formatConditionText(condition: BadgeCondition | null): string {
 
 interface BadgeDetailPageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ from?: string; bookId?: string }>
 }
 
-export default async function BadgeDetailPage({ params, searchParams }: BadgeDetailPageProps) {
+export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) {
   const { id } = await params
-  const { from, bookId } = await searchParams
-  const backHref = from === 'itembook' && bookId ? `/itembooks/${bookId}` : '/badges'
-  const backLabel = from === 'itembook' ? '아이템북' : '배지 목록'
   const supabase = await createClient()
   const {
     data: { user },
@@ -180,12 +176,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   return (
     <div className="min-h-full bg-jam-teal px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 flex flex-col gap-6">
       {/* 뒤로 가기 */}
-      <Link href={backHref} className="flex items-center gap-1 text-jam-ink font-bold text-sm w-fit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-4 h-4">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-        {backLabel}
-      </Link>
+      <BackButton />
 
       {/* 배지 이미지 (대형) */}
       <div className="flex flex-col items-center gap-4 py-4">

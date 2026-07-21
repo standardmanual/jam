@@ -40,16 +40,27 @@ function formatFullDate(iso: string) {
 }
 
 function DetailSheet({ item, onClose }: { item: ActivityFeedRow; onClose: () => void }) {
+  const router = useRouter()
   const meta = item.metadata as Record<string, string | number | null>
   const rarity = meta.rarity ? String(meta.rarity) : null
   const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
   const isMissionCompleted = item.event_type === 'mission_completed'
   const title = BADGE_EVENTS.has(item.event_type) ? String(meta.badge_name ?? '') : String(meta.mission_title ?? '')
+  const isBadgeEvent = BADGE_EVENTS.has(item.event_type) && Boolean(meta.badge_id)
 
   return (
     <>
       <div className="fixed inset-0 bg-jam-ink/40 z-40" onClick={onClose} />
       <div className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50 ${isMissionCompleted ? 'bg-jam-lime' : 'bg-jam-cream'} border-t-[3px] border-jam-ink rounded-t-3xl px-6 pt-5 pb-[calc(env(safe-area-inset-bottom)+2rem)]`}>
+        <button
+          onClick={onClose}
+          aria-label="닫기"
+          className="absolute top-4 right-4 w-8 h-8 rounded-xl border-[2px] border-jam-ink bg-white flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-4 h-4 text-jam-ink">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
         <div className="w-10 h-1 bg-jam-ink/20 rounded-full mx-auto mb-5" />
         <div className="flex justify-center mb-5">
           {badgeImage ? (
@@ -86,7 +97,16 @@ function DetailSheet({ item, onClose }: { item: ActivityFeedRow; onClose: () => 
             <span className="text-sm font-black text-jam-ink">{formatFullDate(item.event_at)}</span>
           </div>
         </div>
-        <button onClick={onClose} className="w-full py-4 rounded-2xl border-[3px] border-jam-ink bg-jam-ink text-white font-black text-base active:scale-95 transition-all shadow-[3px_3px_0_0_#161616]">닫기</button>
+        {isBadgeEvent ? (
+          <button
+            onClick={() => router.push(`/badges/${meta.badge_id}`)}
+            className="w-full py-4 rounded-2xl border-[3px] border-jam-ink bg-jam-ink text-white font-black text-base active:scale-95 transition-all shadow-[3px_3px_0_0_#161616]"
+          >
+            상세보기
+          </button>
+        ) : (
+          <button onClick={onClose} className="w-full py-4 rounded-2xl border-[3px] border-jam-ink bg-jam-ink text-white font-black text-base active:scale-95 transition-all shadow-[3px_3px_0_0_#161616]">닫기</button>
+        )}
       </div>
     </>
   )
