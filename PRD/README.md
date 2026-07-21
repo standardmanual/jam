@@ -22,6 +22,7 @@
 | 8 | — | Phase8_01~04 |
 | 9 | 구글 로그인 온보딩 (username + 프로필 이미지) | Phase9_01~04 |
 | 10 | 유저 검색 (홈 검색창 → 결과 페이지 → 프로필) | [Phase10_01_PRD.md](./Phase10_01_PRD.md), [Phase10_02_DATA_MODEL.md](./Phase10_02_DATA_MODEL.md), [Phase10_03_PHASES.md](./Phase10_03_PHASES.md), [Phase10_04_PROJECT_SPEC.md](./Phase10_04_PROJECT_SPEC.md) |
+| 11 | 배지 체계 업그레이드 — 드랍엔진 v2 (3레이어·세계관 모멘텀·어드민 설정) | [Phase11_01_PRD.md](./Phase11_01_PRD.md), [Phase11_02_DATA_MODEL.md](./Phase11_02_DATA_MODEL.md), [Phase11_03_PHASES.md](./Phase11_03_PHASES.md), [Phase11_04_PROJECT_SPEC.md](./Phase11_04_PROJECT_SPEC.md) |
 
 ---
 
