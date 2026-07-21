@@ -6,6 +6,7 @@ import RarityBadge from '@/components/ui/Badge'
 import SyncButton from './SyncButton'
 import LocalDate from '@/components/LocalDate'
 import HomeFeedSection from './HomeFeedSection'
+import UserSearchBar from './UserSearchBar'
 
 interface BadgeWithEarned {
   badge: BadgeRow
@@ -222,6 +223,9 @@ export default async function HomePage() {
           </Link>
         </div>
       )}
+
+      {/* 유저 검색 */}
+      <UserSearchBar />
 
       {/* 최근 획득 배지 */}
       <section>
