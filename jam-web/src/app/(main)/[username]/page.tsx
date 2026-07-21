@@ -158,7 +158,7 @@ export default async function UserProfilePage({ params }: Props) {
   const feedItems = (feedResult.data ?? []) as ActivityFeedRow[]
   const feedBadgeIds = new Set(feedItems.filter(f => f.event_type === 'badge_earned').map(f => (f.metadata as Record<string, string>).badge_id))
   const feedActivityDropIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => (f.metadata as Record<string, string>).badge_id))
-  const feedPickupDropIds = new Set<string>()
+  const feedPickupDropIds = new Set(feedItems.filter(f => f.event_type === 'item_picked_up').map(f => String((f.metadata as Record<string, unknown>).poi_drop_id ?? '')))
   const feedMissionCompleted = new Set(feedItems.filter(f => f.event_type === 'mission_completed').map(f => (f.metadata as Record<string, string>).mission_id))
   const feedMissionJoined = new Set(feedItems.filter(f => f.event_type === 'mission_joined').map(f => (f.metadata as Record<string, string>).mission_id))
 
@@ -171,7 +171,7 @@ export default async function UserProfilePage({ params }: Props) {
     legacyItems.push(makeFeedItem(`legacy_badge_${row.badge_id}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }))
   }
 
-  const feedDropItemIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => String((f.metadata as Record<string, unknown>).__legacy_item_id ?? '')))
+  const feedDropItemIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => String((f.metadata as Record<string, unknown>).inventory_item_id ?? '')))
   for (const row of actDropsResult.data ?? []) {
     if (feedDropItemIds.has(row.id)) continue
     const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
@@ -188,7 +188,7 @@ export default async function UserProfilePage({ params }: Props) {
   }
 
   for (const row of pickupsResult.data ?? []) {
-    feedPickupDropIds.add(`legacy_pickup_${row.id}`)
+    if (feedPickupDropIds.has(row.id)) continue
     const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
     const poiName = (row.poi as { name: string } | null)?.name ?? ''
     if (!b) continue

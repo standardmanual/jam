@@ -375,7 +375,7 @@ async function insertDrop(
   const supabase = createServiceClient()
   const expiresAt = picked.valid_until ?? null
 
-  const { error: insertError } = await supabase
+  const { data: insertedRaw, error: insertError } = await supabase
     .from('inventory_items')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .insert({
@@ -384,12 +384,18 @@ async function insertDrop(
       obtained_by: 'drop',
       expires_at: expiresAt,
     } as any)
+    .select('id')
+    .single()
   if (insertError) {
     console.error(`[tryItemDrop] inventory_items 삽입 오류 (badge_id: ${picked.id}):`, insertError)
     return false
   }
+  const inventoryItemId = (insertedRaw as { id: string }).id
 
   await recordFeedEvent(userId, 'item_dropped', {
+    // 홈/프로필 피드가 inventory_items를 다시 훑어 "레거시" 항목을 합성할 때
+    // 이 필드로 이미 실기록된 드랍인지 식별해 중복 표시를 막는다 (page.tsx 참고)
+    inventory_item_id: inventoryItemId,
     badge_id: picked.id,
     badge_name: picked.name,
     badge_image_url: picked.image_url ?? '',

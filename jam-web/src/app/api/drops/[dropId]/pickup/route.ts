@@ -136,6 +136,7 @@ export async function POST(
       rarity: b.rarity,
       poi_name: poi.name,
       dropper_user_id: drop.dropper_user_id,
+      poi_drop_id: dropId,
     })
   }
 
