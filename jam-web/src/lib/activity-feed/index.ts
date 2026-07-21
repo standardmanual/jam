@@ -10,7 +10,17 @@ export type FeedEventType =
 
 export interface FeedEventMeta {
   badge_earned: { badge_id: string; badge_name: string; badge_image_url: string; rarity: string }
-  item_dropped: { badge_id: string; badge_name: string; badge_image_url: string; rarity: string; poi_name: string }
+  item_dropped: {
+    badge_id: string
+    badge_name: string
+    badge_image_url: string
+    rarity: string
+    poi_name: string
+    /** 드랍엔진 v2: 드랍된 배지의 세계관 이름 (레거시 이벤트에는 없음) */
+    faction_name?: string
+    /** 드랍엔진 v2: 아이템북 마지막 파편 여부 */
+    is_last_piece?: boolean
+  }
   item_picked_up: { badge_id: string; badge_name: string; badge_image_url: string; rarity: string; poi_name: string; dropper_user_id: string }
   mission_joined: { mission_id: string; mission_title: string }
   mission_completed: { mission_id: string; mission_title: string; reward_type: string; reward_points: number | null }

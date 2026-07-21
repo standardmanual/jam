@@ -137,8 +137,12 @@ export function pickFaction(policy: DropPolicy, input: FactionPickInput, rand: R
 
   if (pool.length === 0) return mysteryAvailable && isHighRarity ? mystery : null
 
-  // 2) 맥락 오버라이드
-  const contextPool = input.contextFactionIds.filter((id) => pool.includes(id))
+  // 2) 맥락 오버라이드 — 미스터리 헌터는 rare+ 드랍일 때만 맥락 대상 (러너스 하이)
+  const contextPool = input.contextFactionIds.filter(
+    (id) =>
+      pool.includes(id) ||
+      (id === mystery && mysteryAvailable && input.rarity !== 'common')
+  )
   if (contextPool.length > 0) {
     return contextPool[Math.floor(rand() * contextPool.length)]
   }
