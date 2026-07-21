@@ -140,7 +140,7 @@ export default async function HomePage() {
     legacyItems.push(makeFeedItem(`legacy_badge_${row.badge_id}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }))
   }
 
-  const feedDropItemIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => String((f.metadata as Record<string, unknown>).__legacy_item_id ?? '')))
+  const feedDropItemIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => String((f.metadata as Record<string, unknown>).inventory_item_id ?? '')))
   for (const row of actDropsResult.data ?? []) {
     if (feedDropItemIds.has(row.id)) continue
     const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
@@ -156,7 +156,9 @@ export default async function HomePage() {
     legacyItems.push(makeFeedItem(`legacy_poidrop_${row.id}`, 'item_dropped', row.dropped_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: poiName }))
   }
 
+  const feedPickupDropIds = new Set(feedItems.filter(f => f.event_type === 'item_picked_up').map(f => String((f.metadata as Record<string, unknown>).poi_drop_id ?? '')))
   for (const row of pickupsResult.data ?? []) {
+    if (feedPickupDropIds.has(row.id)) continue
     const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
     const poiName = (row.poi as { name: string } | null)?.name ?? ''
     if (!b) continue

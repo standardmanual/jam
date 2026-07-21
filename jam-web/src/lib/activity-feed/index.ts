@@ -20,8 +20,20 @@ export interface FeedEventMeta {
     faction_name?: string
     /** 드랍엔진 v2: 아이템북 마지막 파편 여부 */
     is_last_piece?: boolean
+    /** inventory_items.id — 홈/프로필 피드가 inventory_items를 다시 훑어 "레거시" 항목을
+     *  합성할 때 이 값으로 이미 실기록된 드랍인지 판별해 중복 표시를 막는다. */
+    inventory_item_id?: string
   }
-  item_picked_up: { badge_id: string; badge_name: string; badge_image_url: string; rarity: string; poi_name: string; dropper_user_id: string }
+  item_picked_up: {
+    badge_id: string
+    badge_name: string
+    badge_image_url: string
+    rarity: string
+    poi_name: string
+    dropper_user_id: string
+    /** poi_drops.id — 홈/프로필 피드의 poi_drops 재구성 중복 방지용 */
+    poi_drop_id?: string
+  }
   mission_joined: { mission_id: string; mission_title: string }
   mission_completed: { mission_id: string; mission_title: string; reward_type: string; reward_points: number | null }
   mission_cancelled: { mission_id: string; mission_title: string }
