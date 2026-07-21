@@ -283,6 +283,51 @@ export interface FactionRow {
   created_at: string
 }
 
+export interface FactionAdjacencyRow {
+  faction_id: string
+  adjacent_faction_id: string
+}
+
+export interface UserDropStateRow {
+  user_id: string
+  last_drop_faction_id: string | null
+  last_drop_book_id: string | null
+  common_streak: number
+  last_piece_pity: Record<string, number>
+  daily_drop_count: number
+  daily_drop_date: string | null
+  total_drops: number
+  last_activity_at: string | null
+  updated_at: string
+}
+
+export interface DropPolicyRow {
+  id: number
+  rarity_common: number
+  rarity_rare: number
+  rarity_legendary: number
+  rarity_mythic: number
+  bonus_drop_rate: number
+  bonus_drop_rate_intense: number
+  intense_duration_min: number
+  intense_elevation_m: number
+  rare_pity_threshold: number
+  daily_downgrade_from: number
+  daily_downgrade_common: number
+  comeback_gap_days: number
+  weekly_first_rare_mult: number
+  momentum_weight: number
+  adjacent_weight: number
+  explore_weight: number
+  context_override_rate: number
+  mystery_spice_rate: number
+  completion_decay: number
+  completed_book_weight: number
+  same_book_penalty: number
+  last_piece_pity_threshold: number
+  updated_at: string
+}
+
 export interface UserItemBookSlotRow {
   id: string
   user_id: string
@@ -536,6 +581,24 @@ export interface Database {
         Row: FactionRow
         Insert: Omit<FactionRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
         Update: Partial<Omit<FactionRow, 'id'>>
+        Relationships: []
+      }
+      faction_adjacency: {
+        Row: FactionAdjacencyRow
+        Insert: FactionAdjacencyRow
+        Update: Partial<FactionAdjacencyRow>
+        Relationships: []
+      }
+      user_drop_state: {
+        Row: UserDropStateRow
+        Insert: Omit<UserDropStateRow, 'updated_at'> & { updated_at?: string }
+        Update: Partial<Omit<UserDropStateRow, 'user_id'>>
+        Relationships: []
+      }
+      drop_policy: {
+        Row: DropPolicyRow
+        Insert: Partial<DropPolicyRow> & { id: number }
+        Update: Partial<Omit<DropPolicyRow, 'id'>>
         Relationships: []
       }
       user_item_book_slots: {
