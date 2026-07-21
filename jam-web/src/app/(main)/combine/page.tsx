@@ -27,11 +27,13 @@ export default async function CombinePage() {
   const inv = invRaw as { id: string } | null
 
   if (inv) {
+    // 아이템북 슬롯에 장착된 아이템은 조합 재료로 사용할 수 없다 (인벤토리·아이템북 중 한 곳에만 위치)
     const { data: itemsRaw } = await service
       .from('inventory_items')
       .select('id, badge_id, serial_prefix, serial_number')
       .eq('inventory_id', inv.id)
       .is('dropped_at', null)
+      .is('slotted_in', null)
       .order('obtained_at', { ascending: false })
 
     const inventoryItems = (itemsRaw ?? []) as Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'>[]
