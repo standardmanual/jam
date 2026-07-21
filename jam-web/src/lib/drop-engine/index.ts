@@ -36,27 +36,16 @@ import {
   type RarityContext,
   type BookCandidate,
 } from './layers'
+import { matchContextFactions } from './context'
 
-// ────────────────────────────────────────────────────────────
-// 세계관 고정 상수 (019_seed_worldview.sql 고정 UUID)
-// ────────────────────────────────────────────────────────────
+import {
+  MYSTERY_FACTION_ID,
+  RESOLUTION_FACTION_ID,
+  ONBOARDING_FACTION_BY_ACTIVITY,
+  ONBOARDING_DROP_COUNT,
+} from './constants'
 
-/** 미스터리 헌터 — legendary+ 전용 전역 스파이스 */
-export const MYSTERY_FACTION_ID = '24d7af8e-a4ef-8798-a7f1-f1f2d6c9d582'
-/** 작심삼일 클럽 — 신규 유저 온보딩 + 복귀 서사 */
-export const RESOLUTION_FACTION_ID = 'e9e608d7-812c-4139-88c4-81d129076e3f'
-
-/** 신규 유저 온보딩(첫 3드랍): 주 활동종목 → 세계관 매핑 */
-const ONBOARDING_FACTION_BY_ACTIVITY: Record<string, string> = {
-  walking: '73f0f601-2382-900c-8ca2-5cc7c93ed95d', // 숲속의 갱단
-  running: 'e33307bb-5191-5ad5-58e0-053b40cb09f0', // 비트 마에스트로
-  road_running: 'e33307bb-5191-5ad5-58e0-053b40cb09f0',
-  cycling: '1d75e1ea-ad3c-b2e8-a8a3-0a062fc3e41d', // 장비병 환자들
-  hiking: '7a91727e-e2e1-b7f7-45f0-899ce04716bd', // 아스팔트 레인저
-  trail_running: '7a91727e-e2e1-b7f7-45f0-899ce04716bd',
-}
-
-const ONBOARDING_DROP_COUNT = 3
+export { MYSTERY_FACTION_ID, RESOLUTION_FACTION_ID }
 
 // ────────────────────────────────────────────────────────────
 // 조건 가드 (v1 유지)
@@ -99,6 +88,8 @@ type DropBadge = Pick<
 interface DropStructure {
   /** 활성 북 id → faction id */
   factionOfBook: Map<string, string>
+  /** faction id → 이름 (피드 이벤트 payload용) */
+  factionNames: Map<string, string>
   /** 활성 북 id → 소속 전체 배지 id 목록 (completion 계산용) */
   badgeIdsOfBook: Map<string, string[]>
   /** 유효기간 내 + 조건 통과한 드랍 후보 배지 */
@@ -118,9 +109,10 @@ async function fetchDropStructure(
   const supabase = createServiceClient()
   const now = new Date().toISOString()
 
-  const [{ data: booksRaw }, { data: inventoryRaw }] = await Promise.all([
+  const [{ data: booksRaw }, { data: inventoryRaw }, { data: factionsRaw }] = await Promise.all([
     supabase.from('item_books').select('id, faction_id').eq('is_active', true),
     supabase.from('inventory').select('id, used_slots, max_slots').eq('user_id', userId).single(),
+    supabase.from('factions').select('id, name'),
   ])
 
   const books = (booksRaw ?? []) as { id: string; faction_id: string | null }[]
@@ -176,8 +168,13 @@ async function fetchDropStructure(
     (((ownedRes as { data: { badge_id: string }[] | null }).data ?? [])).map((r) => r.badge_id)
   )
 
+  const factionNames = new Map(
+    (((factionsRaw ?? []) as { id: string; name: string }[])).map((f) => [f.id, f.name])
+  )
+
   return {
     factionOfBook,
+    factionNames,
     badgeIdsOfBook,
     droppable,
     adjacentFactionIds,
@@ -214,6 +211,7 @@ function selectBadge(
   structure: DropStructure,
   state: UserDropStateRow,
   rarity: BadgeRarity,
+  contextFactionIds: string[],
   rand: () => number
 ): PickResult | null {
   for (const tryRarity of rarityFallbackOrder(rarity)) {
@@ -241,7 +239,7 @@ function selectBadge(
         adjacentFactionIds: structure.adjacentFactionIds,
         mysteryFactionId: MYSTERY_FACTION_ID,
         rarity: tryRarity,
-        contextFactionIds: [], // 맥락 오버라이드는 Step D에서 연결
+        contextFactionIds,
       },
       rand
     )
@@ -370,7 +368,9 @@ async function applyShadowBanCap(userId: string, rarity: BadgeRarity): Promise<B
 async function insertDrop(
   inventoryId: string,
   userId: string,
-  picked: DropBadge
+  picked: DropBadge,
+  factionName: string,
+  isLastPiece: boolean
 ): Promise<boolean> {
   const supabase = createServiceClient()
   const expiresAt = picked.valid_until ?? null
@@ -395,6 +395,8 @@ async function insertDrop(
     badge_image_url: picked.image_url ?? '',
     rarity: picked.rarity,
     poi_name: '',
+    faction_name: factionName,
+    is_last_piece: isLastPiece,
   })
   return true
 }
@@ -436,6 +438,9 @@ export async function tryItemDrop(
   const weeklyFirst = isWeeklyFirstActivity(state.last_activity_at, activityStartDate)
   const intense = act ? isIntenseActivity(policy, act) : false
 
+  // 맥락 오버라이드 매칭 (복귀는 발동률 무시하고 항상 적용)
+  const contextMatch = matchContextFactions(act, comeback)
+
   // Layer 1: 드랍 개수 — 1개 확정 + 보너스
   const dropCount = 1 + (rollBonusDrop(policy, intense, rand) ? 1 : 0)
   let usedSlots = structure.inventory.used_slots
@@ -457,11 +462,22 @@ export async function tryItemDrop(
     const capped = await applyShadowBanCap(userId, rolled)
     if (!capped) continue
 
+    // 맥락 오버라이드 발동 판정 — 복귀는 항상, 그 외는 context_override_rate 확률
+    const contextActive =
+      contextMatch !== null && (contextMatch.always || rand() < policy.context_override_rate)
+    const contextFactionIds = contextActive ? contextMatch.factionIds : []
+
     // Layer 2·3: 세계관 → 아이템북 → 배지
-    const result = selectBadge(policy, structure, state, capped, rand)
+    const result = selectBadge(policy, structure, state, capped, contextFactionIds, rand)
     if (!result) continue
 
-    const inserted = await insertDrop(structure.inventory.id, userId, result.badge)
+    const inserted = await insertDrop(
+      structure.inventory.id,
+      userId,
+      result.badge,
+      structure.factionNames.get(result.factionId) ?? '',
+      result.isLastPiece
+    )
     if (!inserted) break
 
     usedSlots += 1

@@ -93,16 +93,22 @@ function DetailSheet({ item, onClose }: { item: ActivityFeedRow; onClose: () => 
 }
 
 function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => void }) {
-  const meta = item.metadata as Record<string, string | number | null>
+  const meta = item.metadata as Record<string, string | number | boolean | null>
   const isMission = MISSION_EVENTS.has(item.event_type)
   const rarity = meta.rarity ? String(meta.rarity) : null
   const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
   const title = BADGE_EVENTS.has(item.event_type) ? String(meta.badge_name ?? '') : String(meta.mission_title ?? '')
   const sub = (() => {
-    if (item.event_type === 'item_picked_up' || item.event_type === 'item_dropped') return meta.poi_name ? String(meta.poi_name) : null
+    if (item.event_type === 'item_dropped') {
+      // 드랍엔진 v2: 세계관 이름 노출 ("아스팔트 레인저의 파편")
+      if (meta.faction_name) return `${meta.faction_name}의 파편`
+      return meta.poi_name ? String(meta.poi_name) : null
+    }
+    if (item.event_type === 'item_picked_up') return meta.poi_name ? String(meta.poi_name) : null
     if (item.event_type === 'mission_completed' && meta.reward_points) return `+${meta.reward_points}P`
     return null
   })()
+  const isLastPiece = item.event_type === 'item_dropped' && meta.is_last_piece === true
   const cardBg = item.event_type === 'mission_completed' ? 'bg-jam-lime' : item.event_type === 'mission_cancelled' ? 'bg-white/60' : 'bg-white'
 
   return (
@@ -119,9 +125,16 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
         <p className="text-[10px] font-black text-jam-ink/40 uppercase tracking-widest mb-0.5">{EVENT_LABEL[item.event_type]}</p>
         <p className="font-black text-sm text-jam-ink truncate">{title}</p>
         {sub && <p className="text-xs text-jam-ink/50 font-semibold mt-0.5 truncate">{sub}</p>}
-        {rarity && RARITY_COLOR[rarity] && (
-          <span className={`inline-block mt-1 text-[10px] font-black px-1.5 py-0.5 rounded-md ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
-        )}
+        <span className="inline-flex items-center gap-1.5 mt-1">
+          {rarity && RARITY_COLOR[rarity] && (
+            <span className={`inline-block text-[10px] font-black px-1.5 py-0.5 rounded-md ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
+          )}
+          {isLastPiece && (
+            <span className="inline-block text-[10px] font-black px-1.5 py-0.5 rounded-md bg-jam-ink text-jam-lime">
+              🧩 마지막 파편!
+            </span>
+          )}
+        </span>
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
         <span className="text-[11px] text-jam-ink/40 font-semibold">{formatRelativeTime(item.event_at)}</span>
