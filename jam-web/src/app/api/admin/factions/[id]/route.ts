@@ -19,7 +19,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { name, tagline, description, image_url, drop_weight, is_active, sort_order } = body
+  const { name, tagline, description, image_url, drop_weight, is_active, sort_order, adjacent_faction_ids } = body
 
   const supabase = createServiceClient()
   const { data, error } = await supabase
@@ -31,6 +31,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // 인접 세계관 갱신 (배열 전달 시에만) — 드랍엔진 v2 Layer 2의 인접 버킷 원천
+  if (Array.isArray(adjacent_faction_ids)) {
+    const ids = (adjacent_faction_ids as string[]).filter((a) => a && a !== id)
+    await supabase.from('faction_adjacency').delete().eq('faction_id', id)
+    if (ids.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: adjError } = await (supabase as any)
+        .from('faction_adjacency')
+        .insert(ids.map((adjacent_faction_id) => ({ faction_id: id, adjacent_faction_id })))
+      if (adjError) return NextResponse.json({ error: `인접 저장 실패: ${adjError.message}` }, { status: 500 })
+    }
+  }
+
   return NextResponse.json({ faction: data })
 }
 
