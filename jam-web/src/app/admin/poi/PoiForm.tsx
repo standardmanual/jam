@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { PoiRow, PoiCategory, BadgeRow } from '@/types/database'
+import type { NaverSearchResult } from '@/lib/poi/naver'
 
 const CATEGORIES: PoiCategory[] = ['mountain', 'bike_route', 'trail', 'park', 'other']
 
@@ -25,6 +26,35 @@ export default function PoiForm({ poi, badges }: PoiFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const [naverQuery, setNaverQuery] = useState('')
+  const [naverResults, setNaverResults] = useState<NaverSearchResult[]>([])
+  const [naverSearching, setNaverSearching] = useState(false)
+  const [naverError, setNaverError] = useState<string | null>(null)
+
+  const handleNaverSearch = async () => {
+    if (!naverQuery.trim()) return
+    setNaverSearching(true)
+    setNaverError(null)
+    try {
+      const res = await fetch(`/api/admin/poi/naver-search?query=${encodeURIComponent(naverQuery)}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? '검색 실패')
+      setNaverResults(data.results)
+    } catch (err) {
+      setNaverError(err instanceof Error ? err.message : '검색 중 오류가 발생했습니다.')
+    } finally {
+      setNaverSearching(false)
+    }
+  }
+
+  const handleSelectNaverResult = (result: NaverSearchResult) => {
+    setName(result.name)
+    setLatitude(result.latitude.toString())
+    setLongitude(result.longitude.toString())
+    setNaverResults([])
+    setNaverQuery('')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,6 +109,46 @@ export default function PoiForm({ poi, badges }: PoiFormProps) {
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
           {error}
+        </div>
+      )}
+
+      {!isEdit && (
+        <div className="flex flex-col gap-2 bg-white/5 border border-white/10 rounded-xl p-4">
+          <span className="text-sm text-white/60">네이버 장소 검색으로 채우기</span>
+          <div className="flex gap-2">
+            <input
+              value={naverQuery}
+              onChange={(e) => setNaverQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleNaverSearch() } }}
+              placeholder="예: 뚝섬 한강공원"
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+            />
+            <button
+              type="button"
+              onClick={handleNaverSearch}
+              disabled={naverSearching}
+              className="bg-white/10 text-white px-4 py-2.5 rounded-xl hover:bg-white/20 disabled:opacity-50 transition-colors"
+            >
+              {naverSearching ? '검색 중...' : '검색'}
+            </button>
+          </div>
+          {naverError && <p className="text-red-400 text-sm">{naverError}</p>}
+          {naverResults.length > 0 && (
+            <ul className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+              {naverResults.map((r, i) => (
+                <li key={i}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectNaverResult(r)}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
+                  >
+                    <div className="text-white text-sm font-semibold">{r.name}</div>
+                    <div className="text-white/40 text-xs">{r.address}</div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
