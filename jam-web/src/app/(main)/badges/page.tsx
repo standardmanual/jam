@@ -19,7 +19,7 @@ export default async function BadgesPage() {
       .order('earned_at', { ascending: false }),
     supabase
       .from('inventory')
-      .select('id, inventory_items(id, badge_id, serial_number, expires_at, badge:badges(id, name, image_url, rarity))')
+      .select('id, inventory_items(id, badge_id, serial_number, expires_at, dropped_at, badge:badges(id, name, image_url, rarity))')
       .eq('user_id', user.id)
       .maybeSingle(),
   ])
@@ -33,12 +33,16 @@ export default async function BadgesPage() {
     badge_id: string
     serial_number: number
     expires_at: string | null
+    dropped_at: string | null
     badge: { id: string; name: string; image_url: string | null; rarity: BadgeRarity }
   }
   type RawInventory = { id: string; inventory_items: RawInventoryItem[] }
 
   const inventory = inventoryData as RawInventory | null
-  const rawItems: RawInventoryItem[] = inventory?.inventory_items ?? []
+  // 아이템배지 탭: 드랍(양도)한 건 제외하고, 아이템북 슬롯에 넣었든 안 넣었든 소유 중인 건 전부 표시
+  const rawItems: RawInventoryItem[] = (inventory?.inventory_items ?? []).filter(
+    (item) => item.dropped_at === null
+  )
 
   const itemBadges: ItemBadgeCard[] = rawItems.map((item) => ({
     itemId: item.id,
