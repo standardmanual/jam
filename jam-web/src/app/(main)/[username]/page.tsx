@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow } from '@/types/database'
 import ProfileClient from '../profile/ProfileClient'
+import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -155,7 +156,9 @@ export default async function UserProfilePage({ params }: Props) {
       .limit(50),
   ])
 
-  const feedItems = (feedResult.data ?? []) as ActivityFeedRow[]
+  // 기록 시점 스냅샷(이름·이미지·등급)을 최신 배지 정보로 리프레시 — 피드가 항상
+  // 옛 데이터를 보여주는 문제의 근본 해결 (src/lib/activity-feed/hydrate.ts 참고)
+  const feedItems = await hydrateFeedBadgeInfo((feedResult.data ?? []) as ActivityFeedRow[])
   const feedBadgeIds = new Set(feedItems.filter(f => f.event_type === 'badge_earned').map(f => (f.metadata as Record<string, string>).badge_id))
   const feedActivityDropIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => (f.metadata as Record<string, string>).badge_id))
   const feedPickupDropIds = new Set(feedItems.filter(f => f.event_type === 'item_picked_up').map(f => String((f.metadata as Record<string, unknown>).poi_drop_id ?? '')))

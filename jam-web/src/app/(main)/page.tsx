@@ -7,6 +7,7 @@ import SyncButton from './SyncButton'
 import LocalDate from '@/components/LocalDate'
 import HomeFeedSection from './HomeFeedSection'
 import UserSearchBar from './UserSearchBar'
+import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
 
 interface BadgeWithEarned {
   badge: BadgeRow
@@ -125,7 +126,9 @@ export default async function HomePage() {
       .limit(50),
   ])
 
-  const feedItems = (feedResult.data ?? []) as ActivityFeedRow[]
+  // 기록 시점 스냅샷(이름·이미지·등급)을 최신 배지 정보로 리프레시 — 피드가 항상
+  // 옛 데이터를 보여주는 문제의 근본 해결 (src/lib/activity-feed/hydrate.ts 참고)
+  const feedItems = await hydrateFeedBadgeInfo((feedResult.data ?? []) as ActivityFeedRow[])
   const feedBadgeIds = new Set(feedItems.filter(f => f.event_type === 'badge_earned').map(f => (f.metadata as Record<string, string>).badge_id))
   const feedActivityDropIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => (f.metadata as Record<string, string>).badge_id))
   const feedMissionCompleted = new Set(feedItems.filter(f => f.event_type === 'mission_completed').map(f => (f.metadata as Record<string, string>).mission_id))
