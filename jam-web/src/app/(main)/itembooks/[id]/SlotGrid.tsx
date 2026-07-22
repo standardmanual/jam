@@ -27,9 +27,11 @@ export interface BadgeSlot {
 interface SlotGridProps {
   itemBookId: string
   badgeSlots: BadgeSlot[]
+  /** 다른 유저의 아이템북을 보는 중이면 true — 슬롯/해제 버튼을 숨기고 조회만 가능하게 함 */
+  readOnly?: boolean
 }
 
-export default function SlotGrid({ itemBookId, badgeSlots }: SlotGridProps) {
+export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: SlotGridProps) {
   const router = useRouter()
   // 현재 처리 중인 배지 id (버튼 disabled 용)
   const [pendingBadgeId, setPendingBadgeId] = useState<string | null>(null)
@@ -176,8 +178,8 @@ export default function SlotGrid({ itemBookId, badgeSlots }: SlotGridProps) {
                 <RarityBadge rarity={badge.rarity as BadgeRarity} />
               )}
 
-              {/* 상태별 하단 */}
-              {isSlotted && (
+              {/* 상태별 하단 (다른 유저 조회 시 조작 버튼 숨김) */}
+              {isSlotted && !readOnly && (
                 <button
                   type="button"
                   onClick={() => handleUnslot(badge.id, slot!.id)}
@@ -188,7 +190,7 @@ export default function SlotGrid({ itemBookId, badgeSlots }: SlotGridProps) {
                 </button>
               )}
 
-              {isSlottable && (
+              {isSlottable && !readOnly && (
                 <div className="flex flex-col items-center gap-1 w-full">
                   <p className="text-[10px] text-jam-ink/50 font-bold tabular-nums">
                     {serialLabel}

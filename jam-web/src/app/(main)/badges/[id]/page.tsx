@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ActivityType, BadgeCondition, BadgeRow, PoiRow, UserActivityBadgeRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
@@ -118,10 +118,12 @@ function formatConditionText(condition: BadgeCondition | null): string {
 
 interface BadgeDetailPageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ u?: string }>
 }
 
-export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) {
+export default async function BadgeDetailPage({ params, searchParams }: BadgeDetailPageProps) {
   const { id } = await params
+  const { u } = await searchParams
   const supabase = await createClient()
   const {
     data: { user },
@@ -129,15 +131,36 @@ export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) 
 
   if (!user) redirect('/login')
 
+  // ?u=username — 다른 유저의 프로필/피드에서 진입한 경우 그 유저 기준으로 획득 정보를 보여준다
+  // user_activity_badges는 RLS로 본인 행만 조회 가능해서, 다른 유저 조회는 service client 필요
+  const service = createServiceClient()
+  let subjectId = user.id
+  let subjectUsername: string | null = null
+  if (u) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: subjectRaw } = await (service as any)
+      .from('users')
+      .select('id, username')
+      .eq('username', u.toLowerCase())
+      .maybeSingle()
+    if (subjectRaw) {
+      subjectId = (subjectRaw as { id: string; username: string }).id
+      subjectUsername = (subjectRaw as { id: string; username: string }).username
+    }
+  }
+  const isOwnBadge = subjectId === user.id
+
   const [{ data: badge }, { data: earnedRow }, { data: ownedBadgesRaw }] = await Promise.all([
     supabase.from('badges').select('*').eq('id', id).single(),
-    supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)
       .from('user_activity_badges')
       .select('*, poi:triggered_by_poi_id(id, name, latitude, longitude)')
-      .eq('user_id', user.id)
+      .eq('user_id', subjectId)
       .eq('badge_id', id)
       .maybeSingle(),
-    supabase.from('user_activity_badges').select('badge_id').eq('user_id', user.id),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).from('user_activity_badges').select('badge_id').eq('user_id', subjectId),
   ])
 
   if (!badge) notFound()
@@ -175,7 +198,7 @@ export default async function BadgeDetailPage({ params }: BadgeDetailPageProps) 
   return (
     <div className="min-h-full bg-jam-teal px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 flex flex-col gap-6">
       {/* 뒤로 가기 */}
-      <BackButton />
+      <BackButton href={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
 
       {/* 배지 이미지 (대형) */}
       <div className="flex flex-col items-center gap-4 py-4">

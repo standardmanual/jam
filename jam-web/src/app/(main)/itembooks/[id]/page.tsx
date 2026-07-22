@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
   BadgeRow,
   ItemBookRow,
@@ -13,17 +13,38 @@ import SlotGrid, { type BadgeSlot } from './SlotGrid'
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ u?: string }>
 }
 
 type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
 
-export default async function ItemBookDetailPage({ params }: Props) {
+export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
+  const { u } = await searchParams
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // ?u=username — 다른 유저의 프로필에서 진입한 경우 그 유저 기준으로 슬롯 현황을 보여준다.
+  // inventory/user_item_book_slots 등은 RLS로 본인 행만 조회 가능해서 service client 필요.
+  const service = createServiceClient()
+  let subjectId = user.id
+  let subjectUsername: string | null = null
+  if (u) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: subjectRaw } = await (service as any)
+      .from('users')
+      .select('id, username')
+      .eq('username', u.toLowerCase())
+      .maybeSingle()
+    if (subjectRaw) {
+      subjectId = (subjectRaw as { id: string; username: string }).id
+      subjectUsername = (subjectRaw as { id: string; username: string }).username
+    }
+  }
+  const isOwnBook = subjectId === user.id
 
   // 1) 아이템북 + 세계관
   const { data: bookRaw } = await supabase
@@ -44,18 +65,20 @@ export default async function ItemBookDetailPage({ params }: Props) {
   const badges = (badgesRaw ?? []) as BadgeRow[]
   const badgeIds = badges.map((b) => b.id)
 
-  // 3) 유저 인벤토리 id
-  const { data: inventoryRaw } = await supabase
+  // 3) 대상 유저 인벤토리 id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: inventoryRaw } = await (service as any)
     .from('inventory')
     .select('id')
-    .eq('user_id', user.id)
+    .eq('user_id', subjectId)
     .single()
   const inventory = inventoryRaw as { id: string } | null
 
-  // 4~6) 인벤 아이템 / 슬롯 / 완성 병렬 조회
+  // 4~6) 인벤 아이템 / 슬롯 / 완성 병렬 조회 (대상 유저 기준)
   const [invRes, slotsRes, completionRes] = await Promise.all([
     inventory && badgeIds.length > 0
-      ? supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? (service as any)
           .from('inventory_items')
           .select('id, badge_id, serial_number, serial_prefix, slotted_in, obtained_at')
           .eq('inventory_id', inventory.id)
@@ -63,15 +86,17 @@ export default async function ItemBookDetailPage({ params }: Props) {
           .is('dropped_at', null)
           .order('obtained_at', { ascending: true })
       : Promise.resolve({ data: [] as InventoryItemRow[] }),
-    supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)
       .from('user_item_book_slots')
       .select('id, badge_id, slotted_at')
-      .eq('user_id', user.id)
+      .eq('user_id', subjectId)
       .eq('item_book_id', id),
-    supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)
       .from('user_item_book_completions')
       .select('item_book_id')
-      .eq('user_id', user.id)
+      .eq('user_id', subjectId)
       .eq('item_book_id', id)
       .maybeSingle(),
   ])
@@ -128,7 +153,7 @@ export default async function ItemBookDetailPage({ params }: Props) {
       {/* 헤더 */}
       <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4 max-w-2xl mx-auto w-full">
         <Link
-          href="/itembooks"
+          href={isOwnBook ? '/itembooks' : `/${subjectUsername}#itembooks`}
           className="flex items-center gap-1 text-jam-ink font-bold text-sm w-fit mb-5"
         >
           <svg
@@ -215,7 +240,7 @@ export default async function ItemBookDetailPage({ params }: Props) {
               </p>
             </div>
           ) : (
-            <SlotGrid itemBookId={id} badgeSlots={badgeSlots} />
+            <SlotGrid itemBookId={id} badgeSlots={badgeSlots} readOnly={!isOwnBook} />
           )}
 
           {/* 완성 카드 */}
