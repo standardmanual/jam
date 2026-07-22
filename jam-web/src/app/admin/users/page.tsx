@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { UserRow, InventoryRow } from '@/types/database'
 import { ResetUserButton } from './ResetUserButton'
@@ -79,7 +80,11 @@ export default async function AdminUsersPage() {
             )}
             {users.map((user) => (
               <tr key={user.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                <td className="px-5 py-3 font-medium">{user.username ?? '—'}</td>
+                <td className="px-5 py-3 font-medium">
+                  <Link href={`/admin/users/${user.id}`} className="hover:underline">
+                    {user.username ?? '—'}
+                  </Link>
+                </td>
                 <td className="px-5 py-3 text-white/60">{user.email}</td>
                 <td className="px-5 py-3 text-white/60">{user.region ?? '—'}</td>
                 <td className="px-5 py-3 text-white/60">{badgeCountByUser.get(user.id) ?? 0}</td>

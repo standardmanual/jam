@@ -83,6 +83,26 @@ export interface UserActivityBadgeRow {
   triggered_by_activity_name: string | null
   triggered_by_distance_km: number | null
   triggered_by_activity_date: string | null
+  /** 어드민 전용 — 발급 근거 스냅샷(조건/실측값/트리거 활동). 일반 유저 화면에 노출 금지 */
+  condition_snapshot: BadgeConditionSnapshot | null
+}
+
+/** 어드민 전용 — 배지 발급 시점의 조건·실측값·트리거 활동 스냅샷 */
+export interface BadgeConditionSnapshot {
+  condition: BadgeCondition
+  actual: string
+  required: string
+  reason: string
+  trigger_activity: {
+    stravaId: number | null
+    name: string | null
+    activityType: string | null
+    distanceKm: number | null
+    movingTimeSec: number | null
+    elevationGainM: number | null
+    averageSpeedKmh: number | null
+    startDate: string | null
+  } | null
 }
 
 export interface InventoryRow {

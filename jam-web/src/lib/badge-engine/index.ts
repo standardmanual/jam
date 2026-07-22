@@ -9,7 +9,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import type { NormalizedActivity } from '@/types/strava'
-import type { BadgeCondition, BadgeRow, UserActivityBadgeRow } from '@/types/database'
+import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, UserActivityBadgeRow } from '@/types/database'
 
 const RARITY_TIER: Record<string, number> = { common: 1, rare: 2, legendary: 3, mythic: 4 }
 
@@ -51,17 +51,25 @@ export function evaluateConditionDetailed(
     ? activities.filter((a) => a.jamActivityType === condition.activity_type)
     : activities
 
+  // 통과한 필드의 실측값도 남겨서(어드민이 나중에 "왜 발급됐는지" 확인 가능하도록) 누적한다
+  const actualParts: string[] = []
+  const requiredParts: string[] = []
+
   if (condition.distance_km !== undefined) {
     const totalKm = Math.round(filtered.reduce((sum, a) => sum + a.distanceKm, 0) * 10) / 10
     if (totalKm < condition.distance_km) {
       return { pass: false, reason: '거리 부족', actual: `${totalKm}km`, required: `${condition.distance_km}km` }
     }
+    actualParts.push(`거리: ${totalKm}km`)
+    requiredParts.push(`거리: ${condition.distance_km}km`)
   }
 
   if (condition.total_count !== undefined) {
     if (filtered.length < condition.total_count) {
       return { pass: false, reason: '활동 횟수 부족', actual: `${filtered.length}회`, required: `${condition.total_count}회` }
     }
+    actualParts.push(`횟수: ${filtered.length}회`)
+    requiredParts.push(`횟수: ${condition.total_count}회`)
   }
 
   if (condition.elevation_gain_m !== undefined) {
@@ -69,6 +77,8 @@ export function evaluateConditionDetailed(
     if (totalElev < condition.elevation_gain_m) {
       return { pass: false, reason: '고도 상승 부족', actual: `${totalElev}m`, required: `${condition.elevation_gain_m}m` }
     }
+    actualParts.push(`고도: ${totalElev}m`)
+    requiredParts.push(`고도: ${condition.elevation_gain_m}m`)
   }
 
   if (condition.min_speed_kmh !== undefined) {
@@ -76,6 +86,8 @@ export function evaluateConditionDetailed(
     if (maxSpeed < condition.min_speed_kmh) {
       return { pass: false, reason: '속도 부족', actual: `${maxSpeed}km/h`, required: `${condition.min_speed_kmh}km/h` }
     }
+    actualParts.push(`속도: ${maxSpeed}km/h`)
+    requiredParts.push(`속도: ${condition.min_speed_kmh}km/h`)
   }
 
   if (condition.streak_days !== undefined) {
@@ -83,6 +95,8 @@ export function evaluateConditionDetailed(
     if (streak < condition.streak_days) {
       return { pass: false, reason: '연속 일수 부족', actual: `${streak}일`, required: `${condition.streak_days}일` }
     }
+    actualParts.push(`연속일수: ${streak}일`)
+    requiredParts.push(`연속일수: ${condition.streak_days}일`)
   }
 
   if (condition.duration_minutes !== undefined) {
@@ -90,6 +104,8 @@ export function evaluateConditionDetailed(
     if (best < condition.duration_minutes) {
       return { pass: false, reason: '이동 시간 부족', actual: `${Math.round(best)}분`, required: `${condition.duration_minutes}분` }
     }
+    actualParts.push(`이동시간: ${Math.round(best)}분`)
+    requiredParts.push(`이동시간: ${condition.duration_minutes}분`)
   }
 
   if (condition.weekend_duration_hours !== undefined) {
@@ -102,6 +118,8 @@ export function evaluateConditionDetailed(
     if (best < condition.weekend_duration_hours) {
       return { pass: false, reason: '주말 활동 시간 부족', actual: `${best.toFixed(1)}시간`, required: `${condition.weekend_duration_hours}시간` }
     }
+    actualParts.push(`주말활동시간: ${best.toFixed(1)}시간`)
+    requiredParts.push(`주말활동시간: ${condition.weekend_duration_hours}시간`)
   }
 
   if (condition.weekly_count !== undefined) {
@@ -127,6 +145,8 @@ export function evaluateConditionDetailed(
     if (maxWeek < condition.weekly_count) {
       return { pass: false, reason: '주간 활동 횟수 부족', actual: `${maxWeek}회`, required: `${condition.weekly_count}회` }
     }
+    actualParts.push(`주간횟수: ${maxWeek}회`)
+    requiredParts.push(`주간횟수: ${condition.weekly_count}회`)
   }
 
   if (condition.month !== undefined || condition.monthly_km !== undefined) {
@@ -145,6 +165,8 @@ export function evaluateConditionDetailed(
       if (maxKm < condition.monthly_km) {
         return { pass: false, reason: '월 누적 거리 부족', actual: `${Math.round(maxKm * 10) / 10}km`, required: `${condition.monthly_km}km` }
       }
+      actualParts.push(`월누적거리: ${Math.round(maxKm * 10) / 10}km`)
+      requiredParts.push(`월누적거리: ${condition.monthly_km}km`)
     } else if (condition.month !== undefined && monthFiltered.length === 0) {
       return { pass: false, reason: '해당 월 활동 없음', actual: '0회', required: '1회 이상' }
     }
@@ -167,6 +189,8 @@ export function evaluateConditionDetailed(
       const label = condition.season === 'all' ? '전체' : ({ spring: '봄', summer: '여름', fall: '가을', winter: '겨울' }[condition.season] ?? condition.season)
       return { pass: false, reason: `${label} 활동 횟수 부족`, actual: `${seasonFiltered.length}회`, required: `${condition.season_count}회` }
     }
+    actualParts.push(`계절활동: ${seasonFiltered.length}회`)
+    requiredParts.push(`계절활동: ${condition.season_count}회`)
   }
 
   if (condition.temperature_min_c !== undefined) {
@@ -178,6 +202,8 @@ export function evaluateConditionDetailed(
     if (maxTemp < condition.temperature_min_c) {
       return { pass: false, reason: '기온 부족 (폭염 조건 미달)', actual: `${maxTemp}°C`, required: `≥${condition.temperature_min_c}°C` }
     }
+    actualParts.push(`최고기온: ${maxTemp}°C`)
+    requiredParts.push(`최고기온: ≥${condition.temperature_min_c}°C`)
   }
 
   if (condition.temperature_max_c !== undefined) {
@@ -189,6 +215,8 @@ export function evaluateConditionDetailed(
     if (minTemp > condition.temperature_max_c) {
       return { pass: false, reason: '기온 초과 (한파 조건 미달)', actual: `${minTemp}°C`, required: `≤${condition.temperature_max_c}°C` }
     }
+    actualParts.push(`최저기온: ${minTemp}°C`)
+    requiredParts.push(`최저기온: ≤${condition.temperature_max_c}°C`)
   }
 
   if (condition.time_range !== undefined && condition.weekly_count === undefined) {
@@ -203,7 +231,7 @@ export function evaluateConditionDetailed(
     const endMin = toMinutes(end)
     const crossesMidnight = startMin > endMin
 
-    const inRange = filtered.some((a) => {
+    const matchedActivity = filtered.find((a) => {
       const local = a.startDateLocal ?? a.startDate
       const timePart = local.slice(11, 16) // "HH:MM"
       const actMin = toMinutes(timePart)
@@ -212,9 +240,12 @@ export function evaluateConditionDetailed(
         : actMin >= startMin && actMin <= endMin
     })
 
-    if (!inRange) {
+    if (!matchedActivity) {
       return { pass: false, reason: '활동 시간대 불일치', actual: '-', required: `${start}~${end}` }
     }
+    const matchedTime = (matchedActivity.startDateLocal ?? matchedActivity.startDate).slice(11, 16)
+    actualParts.push(`활동시각: ${matchedTime}`)
+    requiredParts.push(`시간대: ${start}~${end}`)
   }
 
   if (condition.poi_id !== undefined) {
@@ -223,7 +254,12 @@ export function evaluateConditionDetailed(
     return { pass: false, reason: 'POI 조건은 GPS 경로 매칭으로만 발급됩니다', actual: '-', required: `poi: ${condition.poi_id}` }
   }
 
-  return { pass: true, reason: '조건 충족', actual: '', required: '' }
+  return {
+    pass: true,
+    reason: '조건 충족',
+    actual: actualParts.join(', '),
+    required: requiredParts.join(', '),
+  }
 }
 
 export function checkCondition(condition: BadgeCondition, activities: NormalizedActivity[]): boolean {
@@ -319,6 +355,7 @@ export async function evaluateBadgesDetailed(
     condition: BadgeCondition
     progressionKey: string | null
     progressionValue: number
+    evalResult: EvalConditionResult
   }
   const candidates: Candidate[] = []
   const missed: BadgeMissedInfo[] = []
@@ -351,10 +388,10 @@ export async function evaluateBadgesDetailed(
     if (eligible.length === 0) continue
 
     eligible.sort((a, b) => (RARITY_TIER[b.badge.rarity] ?? 0) - (RARITY_TIER[a.badge.rarity] ?? 0))
-    const { badge: winner } = eligible[0]
+    const { badge: winner, evalResult } = eligible[0]
     const condition = winner.condition_json as BadgeCondition
     const prog = getProgressionKey(condition)
-    candidates.push({ badge: winner, condition, progressionKey: prog?.key ?? null, progressionValue: prog?.value ?? 0 })
+    candidates.push({ badge: winner, condition, progressionKey: prog?.key ?? null, progressionValue: prog?.value ?? 0, evalResult })
 
     for (const { badge } of eligible.slice(1)) {
       missed.push({ id: badge.id, name: badge.name, reason: '성장 티어 — 상위 레어리티 발급됨', actual: badge.rarity, required: winner.rarity })
@@ -435,7 +472,7 @@ export async function evaluateBadgesDetailed(
   const earned: BadgeEarnedInfo[] = []
 
   // ── 3단계: 발급 (dryRun=false일 때만) ───────────────────────────────
-  for (const { badge: toIssue, condition } of gatedIssueList) {
+  for (const { badge: toIssue, condition, evalResult } of gatedIssueList) {
     earned.push({ id: toIssue.id, name: toIssue.name, rarity: toIssue.rarity, reason: '조건 충족' })
 
     if (!dryRun) {
@@ -443,9 +480,28 @@ export async function evaluateBadgesDetailed(
         ? activities.find((a) => a.jamActivityType === condition.activity_type)
         : activities[0]
 
+      // 어드민 전용 — 발급 근거(조건/실측값/트리거 활동) 스냅샷. 일반 유저 화면에는 노출 안 함
+      const conditionSnapshot: BadgeConditionSnapshot = {
+        condition,
+        actual: evalResult.actual,
+        required: evalResult.required,
+        reason: evalResult.reason,
+        trigger_activity: triggerActivity
+          ? {
+              stravaId: triggerActivity.stravaId,
+              name: triggerActivity.name,
+              activityType: triggerActivity.jamActivityType,
+              distanceKm: triggerActivity.distanceKm,
+              movingTimeSec: triggerActivity.movingTimeSec,
+              elevationGainM: triggerActivity.elevationGainM,
+              averageSpeedKmh: triggerActivity.averageSpeedKmh,
+              startDate: triggerActivity.startDate,
+            }
+          : null,
+      }
+
       const { error: insertError } = await supabase
         .from('user_activity_badges')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .insert({
           user_id: userId,
           badge_id: toIssue.id,
@@ -454,6 +510,8 @@ export async function evaluateBadgesDetailed(
           triggered_by_activity_name: triggerActivity?.name ?? null,
           triggered_by_distance_km: triggerActivity?.distanceKm ?? null,
           triggered_by_activity_date: triggerActivity?.startDate ?? null,
+          condition_snapshot: conditionSnapshot,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any)
 
       if (insertError) {
