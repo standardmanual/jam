@@ -26,4 +26,4 @@ export const LEVEL_2_CATEGORIES = POI_CATEGORIES.filter((c) => c.level === 2)
 export const LEVEL_2_FALLBACK_THRESHOLD = 3
 
 // 같은 위치·카테고리 조합의 네이버 재검색을 건너뛰는 캐시 유효 시간
-export const SEARCH_CACHE_TTL_SECONDS = 60 * 60 // 1시간
+export const SEARCH_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7 // 1주일
