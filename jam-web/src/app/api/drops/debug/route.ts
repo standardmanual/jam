@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { fetchNearbyOsmPois } from '@/lib/poi/overpass'
+import { fetchNearbyNaverPois } from '@/lib/poi/naver'
 
 // GET /api/drops/debug?lat=&lng=
 // 인증 없이 단계별 진단 결과 반환 (개발/운영 디버그용)
@@ -16,28 +16,28 @@ export async function GET(req: NextRequest) {
 
   const result: Record<string, unknown> = { lat, lng }
 
-  // 1. DB poi 테이블 컬럼 확인 (osm_id 있는지)
+  // 1. DB poi 테이블 컬럼 확인 (naver_id 있는지)
   const service = createServiceClient()
   const { data: samplePoi, error: poiError } = await (service as any)
     .from('poi')
-    .select('id, name, osm_id, poi_tier')
+    .select('id, name, naver_id, poi_tier')
     .limit(3)
 
   result.db_poi_sample = samplePoi
   result.db_poi_error = poiError?.message ?? null
-  result.db_has_osm_id_column = poiError === null
+  result.db_has_naver_id_column = poiError === null
 
-  // 2. Overpass 쿼리 직접 실행
-  let osmPois: Awaited<ReturnType<typeof fetchNearbyOsmPois>> = []
-  let osmError: string | null = null
+  // 2. 네이버 지역검색 쿼리 직접 실행
+  let naverPois: Awaited<ReturnType<typeof fetchNearbyNaverPois>> = []
+  let naverError: string | null = null
   try {
-    osmPois = await fetchNearbyOsmPois(lat, lng, 1000)
+    naverPois = await fetchNearbyNaverPois(lat, lng, 1000)
   } catch (e: any) {
-    osmError = String(e?.message ?? e)
+    naverError = String(e?.message ?? e)
   }
-  result.osm_count = osmPois.length
-  result.osm_error = osmError
-  result.osm_pois = osmPois.slice(0, 10)
+  result.naver_count = naverPois.length
+  result.naver_error = naverError
+  result.naver_pois = naverPois.slice(0, 10)
 
   // 3. DB의 T2 POI 수
   const { count: t2Count } = await (service as any)

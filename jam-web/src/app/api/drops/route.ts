@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi, haversineDistance, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
-import { fetchNearbyOsmPois } from '@/lib/poi/overpass'
+import { fetchNearbyNaverPois } from '@/lib/poi/naver'
 import type { PoiRow, InventoryItemRow } from '@/types/database'
 
-// GET /api/drops?lat=&lng=  — T1(DB, 50m) + T2(OSM, 500m) 통합
+// GET /api/drops?lat=&lng=  — T1(DB, 50m) + T2(네이버 지역검색, 500m) 통합
 // POST /api/drops            — 드랍 실행
 
-const OSM_RADIUS_M = 500  // T2 OSM POI는 넓게 표시 (지도 탐색용)
+const NAVER_RADIUS_M = 500  // T2 네이버 POI는 넓게 표시 (지도 탐색용)
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -28,33 +28,35 @@ export async function GET(req: NextRequest) {
   const { data: poisRaw } = await service.from('poi').select('*')
   const allDbPois = (poisRaw ?? []) as PoiRow[]
 
-  // T2: OSM POI 조회 (실패해도 T1은 반환)
-  let osmPois: Awaited<ReturnType<typeof fetchNearbyOsmPois>> = []
+  // T2: 네이버 지역검색 POI 조회 (실패해도 T1은 반환)
+  let naverPois: Awaited<ReturnType<typeof fetchNearbyNaverPois>> = []
   try {
-    osmPois = await fetchNearbyOsmPois(lat, lng, OSM_RADIUS_M)
+    naverPois = await fetchNearbyNaverPois(lat, lng, NAVER_RADIUS_M)
   } catch {
-    // OSM 조회 실패 — T1만 사용
+    // 네이버 조회 실패 — T1만 사용
   }
 
-  // 신규 OSM POI만 DB에 저장
-  const osmIdMap = new Map(allDbPois.filter((p) => p.osm_id).map((p) => [p.osm_id!, p.id]))
-  const newOsmPois = osmPois.filter((p) => !osmIdMap.has(p.osmId))
-  if (newOsmPois.length > 0) {
-    const inserts = newOsmPois.map((p) => ({
+  // 신규 네이버 POI만 DB에 저장 (naver_id 없는 결과는 dedup 불가 — 매번 신규 삽입 시도, DB 유니크 제약이 NULL은 허용하므로 중복 행이 쌓일 수 있음)
+  const naverIdMap = new Map(allDbPois.filter((p) => p.naver_id).map((p) => [p.naver_id!, p.id]))
+  const newNaverPois = naverPois.filter((p) => !p.naverId || !naverIdMap.has(p.naverId))
+  if (newNaverPois.length > 0) {
+    const inserts = newNaverPois.map((p) => ({
       name: p.name,
       latitude: p.latitude,
       longitude: p.longitude,
       radius_meters: 500,
       category: 'other' as const,
-      osm_id: p.osmId,
+      naver_id: p.naverId,
       poi_tier: 2,
     }))
     const { data: inserted, error: insertError } = await (service as any)
       .from('poi')
       .insert(inserts)
-      .select('id, osm_id')
+      .select('id, naver_id')
     if (!insertError) {
-      for (const row of inserted ?? []) osmIdMap.set(row.osm_id, row.id)
+      for (const row of inserted ?? []) {
+        if (row.naver_id) naverIdMap.set(row.naver_id, row.id)
+      }
     }
   }
 
@@ -62,16 +64,16 @@ export async function GET(req: NextRequest) {
   const { data: poisRaw2 } = await service.from('poi').select('*')
   const allDbPois2 = (poisRaw2 ?? []) as PoiRow[]
   const nearbyDbPois2 = allDbPois2.filter(
-    (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= OSM_RADIUS_M
+    (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= NAVER_RADIUS_M
   )
 
-  // 저장 실패한 OSM POI는 fallback으로 포함 (지도 표시용, 드랍 불가)
-  const savedOsmIds = new Set(allDbPois2.map((p) => p.osm_id).filter(Boolean))
-  const fallbackPois = newOsmPois
-    .filter((p) => !savedOsmIds.has(p.osmId))
+  // 저장 실패한(또는 naver_id 없어 dedup 불가한) 네이버 POI는 fallback으로 포함 (지도 표시용, 드랍 불가)
+  const savedNaverIds = new Set(allDbPois2.map((p) => p.naver_id).filter(Boolean))
+  const fallbackPois = newNaverPois
+    .filter((p) => !p.naverId || !savedNaverIds.has(p.naverId))
     .map((p) => ({
-      id: p.osmId,
-      osm_id: p.osmId,
+      id: p.naverId ?? `${p.name}_${p.latitude}_${p.longitude}`,
+      naver_id: p.naverId,
       name: p.name,
       latitude: p.latitude,
       longitude: p.longitude,
@@ -84,7 +86,7 @@ export async function GET(req: NextRequest) {
   const allPois = [
     ...nearbyDbPois2.map((p) => ({
       id: p.id,
-      osm_id: p.osm_id,
+      naver_id: p.naver_id,
       name: p.name,
       latitude: p.latitude,
       longitude: p.longitude,

@@ -6,12 +6,12 @@ interface PoiMapButtonProps {
   poiName: string
 }
 
-export default function PoiMapButton({ lat, lng, poiName }: PoiMapButtonProps) {
-  const googleUrl = `https://maps.google.com/?q=${lat},${lng}`
+export default function PoiMapButton({ poiName }: PoiMapButtonProps) {
+  const naverUrl = `https://map.naver.com/p/search/${encodeURIComponent(poiName)}`
 
   return (
     <a
-      href={googleUrl}
+      href={naverUrl}
       target="_blank"
       rel="noopener noreferrer"
       className="block w-full text-center bg-jam-ink text-white font-black py-2.5 rounded-xl text-sm border-2 border-jam-ink"
