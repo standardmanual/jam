@@ -1,13 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi, haversineDistance, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
-import { fetchNearbyNaverPois } from '@/lib/poi/naver'
+import { fetchNearbyNaverPoisForCategories, type NaverPlace } from '@/lib/poi/naver'
+import { LEVEL_1_CATEGORIES, LEVEL_2_CATEGORIES, LEVEL_2_FALLBACK_THRESHOLD, type PoiCategoryConfig } from '@/lib/poi/categories'
+import { computeGridKey, shouldSearch, markSearched } from '@/lib/poi/search-cache'
 import type { PoiRow, InventoryItemRow } from '@/types/database'
 
-// GET /api/drops?lat=&lng=  — T1(DB, 50m) + T2(네이버 지역검색, 500m) 통합
+// GET /api/drops?lat=&lng=  — T1(DB) + T2(네이버 지역검색, 카테고리 레벨 기반) 통합
 // POST /api/drops            — 드랍 실행
 
 const NAVER_RADIUS_M = 500  // T2 네이버 POI는 넓게 표시 (지도 탐색용)
+
+// 캐시가 만료된 카테고리만 네이버로 검색해 DB에 신규 저장. 반환값은 저장 실패한 fallback POI 목록.
+async function searchAndPersistCategories(
+  service: ReturnType<typeof createServiceClient>,
+  lat: number,
+  lng: number,
+  gridKey: string,
+  categories: PoiCategoryConfig[],
+  existingNaverIds: Map<string, string>
+): Promise<NaverPlace[]> {
+  const toSearch: PoiCategoryConfig[] = []
+  for (const cfg of categories) {
+    if (await shouldSearch(service, gridKey, cfg.category)) toSearch.push(cfg)
+  }
+  if (toSearch.length === 0) return []
+
+  let naverPois: NaverPlace[] = []
+  try {
+    naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, NAVER_RADIUS_M, toSearch)
+  } catch {
+    // 네이버 조회 실패 — 기존 DB 데이터만 사용
+  }
+
+  await Promise.all(toSearch.map((cfg) => markSearched(service, gridKey, cfg.category)))
+
+  const newPois = naverPois.filter((p) => !existingNaverIds.has(p.naverId))
+  if (newPois.length === 0) return []
+
+  const inserts = newPois.map((p) => ({
+    name: p.name,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    radius_meters: 500,
+    category: p.category,
+    naver_id: p.naverId,
+    poi_tier: 2,
+  }))
+  const { data: inserted, error: insertError } = await (service as any)
+    .from('poi')
+    .insert(inserts)
+    .select('id, naver_id')
+
+  if (insertError) return newPois // 저장 실패 — 전부 fallback으로 취급
+
+  const insertedRows = (inserted ?? []) as Array<{ id: string; naver_id: string }>
+  const insertedIds = new Set(insertedRows.map((row) => row.naver_id))
+  for (const row of insertedRows) existingNaverIds.set(row.naver_id, row.id)
+  return newPois.filter((p) => !insertedIds.has(p.naverId))
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -27,40 +78,29 @@ export async function GET(req: NextRequest) {
   // T1: DB POI 전체 로드
   const { data: poisRaw } = await service.from('poi').select('*')
   const allDbPois = (poisRaw ?? []) as PoiRow[]
-
-  // T2: 네이버 지역검색 POI 조회 (실패해도 T1은 반환)
-  let naverPois: Awaited<ReturnType<typeof fetchNearbyNaverPois>> = []
-  try {
-    naverPois = await fetchNearbyNaverPois(lat, lng, NAVER_RADIUS_M)
-  } catch {
-    // 네이버 조회 실패 — T1만 사용
-  }
-
-  // 신규 네이버 POI만 DB에 저장 (naver_id는 항상 존재 — 안정 ID 없으면 이름+좌표 기반 합성 ID로 대체되어 dedup 보장됨)
   const naverIdMap = new Map(allDbPois.filter((p) => p.naver_id).map((p) => [p.naver_id!, p.id]))
-  const newNaverPois = naverPois.filter((p) => !naverIdMap.has(p.naverId))
-  if (newNaverPois.length > 0) {
-    const inserts = newNaverPois.map((p) => ({
-      name: p.name,
-      latitude: p.latitude,
-      longitude: p.longitude,
-      radius_meters: 500,
-      category: 'other' as const,
-      naver_id: p.naverId,
-      poi_tier: 2,
-    }))
-    const { data: inserted, error: insertError } = await (service as any)
-      .from('poi')
-      .insert(inserts)
-      .select('id, naver_id')
-    if (!insertError) {
-      for (const row of inserted ?? []) {
-        if (row.naver_id) naverIdMap.set(row.naver_id, row.id)
-      }
-    }
+  const gridKey = computeGridKey(lat, lng)
+
+  // 레벨 1 카테고리(관공서/교통/병원/약국/관광명소/자연)는 항상 검색(캐시 만료분만)
+  let fallbackPois = await searchAndPersistCategories(
+    service, lat, lng, gridKey, LEVEL_1_CATEGORIES, naverIdMap
+  )
+
+  // 레벨 1 결과가 지역 내 부족하면 레벨 2(편의점·마트/카페·음식점)까지 보조 검색
+  const level1Categories = new Set(LEVEL_1_CATEGORIES.map((c) => c.category))
+  const { data: poisAfterLevel1 } = await service.from('poi').select('*')
+  const level1NearbyCount = ((poisAfterLevel1 ?? []) as PoiRow[]).filter(
+    (p) => level1Categories.has(p.category) && haversineDistance(lat, lng, p.latitude, p.longitude) <= NAVER_RADIUS_M
+  ).length
+
+  if (level1NearbyCount < LEVEL_2_FALLBACK_THRESHOLD) {
+    const level2Fallback = await searchAndPersistCategories(
+      service, lat, lng, gridKey, LEVEL_2_CATEGORIES, naverIdMap
+    )
+    fallbackPois = [...fallbackPois, ...level2Fallback]
   }
 
-  // 최신 DB POI 재조회 → 500m 이내 필터
+  // 최신 DB POI 재조회 → 반경 이내 필터
   const { data: poisRaw2 } = await service.from('poi').select('*')
   const allDbPois2 = (poisRaw2 ?? []) as PoiRow[]
   const nearbyDbPois2 = allDbPois2.filter(
@@ -68,20 +108,17 @@ export async function GET(req: NextRequest) {
   )
 
   // 저장 실패한 네이버 POI는 fallback으로 포함 (지도 표시용, 드랍 불가)
-  const savedNaverIds = new Set(allDbPois2.map((p) => p.naver_id).filter(Boolean))
-  const fallbackPois = newNaverPois
-    .filter((p) => !savedNaverIds.has(p.naverId))
-    .map((p) => ({
-      id: p.naverId,
-      naver_id: p.naverId,
-      name: p.name,
-      latitude: p.latitude,
-      longitude: p.longitude,
-      poi_tier: 2,
-      distance_meters: Math.round(haversineDistance(lat, lng, p.latitude, p.longitude)),
-      in_drop_range: false,
-      available_drops_count: 0,
-    }))
+  const fallbackPoisMapped = fallbackPois.map((p) => ({
+    id: p.naverId,
+    naver_id: p.naverId,
+    name: p.name,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    poi_tier: 2,
+    distance_meters: Math.round(haversineDistance(lat, lng, p.latitude, p.longitude)),
+    in_drop_range: false,
+    available_drops_count: 0,
+  }))
 
   const allPois = [
     ...nearbyDbPois2.map((p) => ({
@@ -95,7 +132,7 @@ export async function GET(req: NextRequest) {
       in_drop_range: haversineDistance(lat, lng, p.latitude, p.longitude) <= DROP_RADIUS_METERS,
       available_drops_count: 0,
     })),
-    ...fallbackPois,
+    ...fallbackPoisMapped,
   ]
 
   // 드랍 카운트: DB POI에만 조회
