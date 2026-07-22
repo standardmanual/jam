@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { fetchNearbyNaverPois } from '@/lib/poi/naver'
+import { fetchNearbyNaverPoisForCategories } from '@/lib/poi/naver'
+import { POI_CATEGORIES } from '@/lib/poi/categories'
 
 // GET /api/drops/debug?lat=&lng=
 // 인증 없이 단계별 진단 결과 반환 (개발/운영 디버그용)
@@ -27,11 +28,11 @@ export async function GET(req: NextRequest) {
   result.db_poi_error = poiError?.message ?? null
   result.db_has_naver_id_column = poiError === null
 
-  // 2. 네이버 지역검색 쿼리 직접 실행
-  let naverPois: Awaited<ReturnType<typeof fetchNearbyNaverPois>> = []
+  // 2. 네이버 지역검색 쿼리 직접 실행 (전체 카테고리)
+  let naverPois: Awaited<ReturnType<typeof fetchNearbyNaverPoisForCategories>> = []
   let naverError: string | null = null
   try {
-    naverPois = await fetchNearbyNaverPois(lat, lng, 1000)
+    naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, 1000, POI_CATEGORIES)
   } catch (e: any) {
     naverError = String(e?.message ?? e)
   }

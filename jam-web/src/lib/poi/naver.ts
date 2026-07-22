@@ -1,13 +1,15 @@
-// 네이버 지역검색(Local Search) 오픈API로 T2 POI (편의점·카페) 조회
+// 네이버 지역검색(Local Search) 오픈API로 T2 POI 조회 (관공서/교통/병원/약국/관광명소/자연/편의점/카페 등)
 // 참조: https://developers.naver.com/docs/serviceapi/search/local/local.md
 import { haversineDistance } from './matcher'
+import type { PoiCategory } from '@/types/database'
+import type { PoiCategoryConfig } from './categories'
 
 export interface NaverPlace {
   naverId: string
   name: string
   latitude: number
   longitude: number
-  category: 'convenience' | 'cafe'
+  category: PoiCategory
   address: string
 }
 
@@ -23,10 +25,6 @@ export interface NaverSearchResult {
 
 const LOCAL_SEARCH_URL = 'https://openapi.naver.com/v1/search/local.json'
 const FETCH_TIMEOUT_MS = 8_000
-
-// T2 대상 브랜드 필터 (overpass.ts에서 이전)
-const CONVENIENCE_BRANDS = ['CU', 'GS25', '세븐일레븐', '이마트24', '미니스톱']
-const CAFE_BRANDS = ['스타벅스', '이디야', '투썸플레이스', '메가커피', '컴포즈커피', '빽다방', '할리스']
 
 function stripHtml(text: string): string {
   return text.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"')
@@ -81,26 +79,27 @@ function parseNaverCoord(mapx: string, mapy: string): { latitude: number; longit
   }
 }
 
-export async function fetchNearbyNaverPois(
+// 지정된 카테고리(들)의 키워드로 네이버 지역검색을 수행해 반경 내 결과만 반환
+export async function fetchNearbyNaverPoisForCategories(
   lat: number,
   lng: number,
-  radiusM = 500
+  radiusM: number,
+  categories: PoiCategoryConfig[]
 ): Promise<NaverPlace[]> {
-  const brandQueries: Array<{ brand: string; category: NaverPlace['category'] }> = [
-    ...CONVENIENCE_BRANDS.map((brand) => ({ brand, category: 'convenience' as const })),
-    ...CAFE_BRANDS.map((brand) => ({ brand, category: 'cafe' as const })),
-  ]
+  const keywordQueries = categories.flatMap(({ category, keywords }) =>
+    keywords.map((keyword) => ({ keyword, category }))
+  )
 
   const results: NaverPlace[] = []
   const seen = new Set<string>()
 
   const searches = await Promise.allSettled(
-    brandQueries.map(({ brand }) => fetchNaverLocalSearch(brand))
+    keywordQueries.map(({ keyword }) => fetchNaverLocalSearch(keyword))
   )
 
   searches.forEach((result, i) => {
     if (result.status !== 'fulfilled') return
-    const { category } = brandQueries[i]
+    const { category } = keywordQueries[i]
 
     for (const item of result.value) {
       if (!item.mapx || !item.mapy) continue

@@ -10,7 +10,10 @@ export type ActivityType = 'cycling' | 'running' | 'road_running' | 'trail_runni
 export type DropRarity = 'common' | 'rare' | 'legendary' | 'mythic' | 'none'
 export type BadgeType = 'activity' | 'item'
 export type BadgeRarity = 'common' | 'rare' | 'legendary' | 'mythic'
-export type PoiCategory = 'mountain' | 'bike_route' | 'trail' | 'park' | 'other'
+export type PoiCategory =
+  | 'mountain' | 'bike_route' | 'trail' | 'park' | 'other'
+  | 'government' | 'transit' | 'hospital' | 'pharmacy' | 'tourist_attraction'
+  | 'convenience' | 'food' | 'nature'
 export type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
 export type ItemObtainedBy = 'drop' | 'drop_event' | 'system_event' | 'pickup'
 
