@@ -74,7 +74,8 @@ export default async function UserProfilePage({ params }: Props) {
 
   const inventoryId = (invResult.data as { id: string } | null)?.id
 
-  // 발견한 아이템북 수 = 인벤에 보유한 아이템 배지가 연결된 아이템북 수
+  // 발견한 아이템북 수 = 인벤에 "현재 보유 중인"(드랍하지 않은) 아이템 배지가 연결된, 활성 상태인 아이템북 수
+  // (/api/users/[username]/itembooks의 목록 필터와 반드시 일치시켜야 함 — 안 그러면 숫자와 목록이 어긋남)
   let itemBookCount = 0
   if (inventoryId) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,6 +83,7 @@ export default async function UserProfilePage({ params }: Props) {
       .from('inventory_items')
       .select('badge_id')
       .eq('inventory_id', inventoryId)
+      .is('dropped_at', null)
     const ownedBadgeIds = [...new Set(((invItemsForCount ?? []) as { badge_id: string }[]).map((i) => i.badge_id))]
     if (ownedBadgeIds.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -91,7 +93,16 @@ export default async function UserProfilePage({ params }: Props) {
         .in('id', ownedBadgeIds)
         .eq('type', 'item')
         .not('item_book_id', 'is', null)
-      itemBookCount = new Set(((booksForCount ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id)).size
+      const bookIdsForCount = [...new Set(((booksForCount ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id))]
+      if (bookIdsForCount.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { count } = await (service as any)
+          .from('item_books')
+          .select('*', { count: 'exact', head: true })
+          .in('id', bookIdsForCount)
+          .eq('is_active', true)
+        itemBookCount = count ?? 0
+      }
     }
   }
 
