@@ -3,7 +3,7 @@
 import { haversineDistance } from './matcher'
 
 export interface NaverPlace {
-  naverId: string | null
+  naverId: string
   name: string
   latitude: number
   longitude: number
@@ -13,7 +13,7 @@ export interface NaverPlace {
 
 // 어드민 자유 검색용 (카테고리는 네이버가 내려주는 원문 그대로)
 export interface NaverSearchResult {
-  naverId: string | null
+  naverId: string
   name: string
   latitude: number
   longitude: number
@@ -33,10 +33,12 @@ function stripHtml(text: string): string {
 }
 
 // link 필드에서 네이버 플레이스 ID 추출 시도 (예: m.place.naver.com/place/12345678)
-// 없으면 null — 그 경우 이름+좌표 기반으로 별도 dedup 필요
-function extractNaverId(link: string): string | null {
+// 실제로는 체인점 결과 대부분이 브랜드 홈페이지 링크라 거의 매칭되지 않음(실API 확인) —
+// 그 경우 이름+좌표 기반 합성 ID로 대체해 DB naver_id UNIQUE 제약을 통한 dedup이 항상 동작하도록 함
+function resolveNaverId(link: string, name: string, latitude: number, longitude: number): string {
   const match = link.match(/place\/(\d+)/)
-  return match ? match[1] : null
+  if (match) return match[1]
+  return `syn:${name}_${latitude.toFixed(5)}_${longitude.toFixed(5)}`
 }
 
 interface NaverLocalSearchItem {
@@ -105,14 +107,14 @@ export async function fetchNearbyNaverPois(
       const { latitude, longitude } = parseNaverCoord(item.mapx, item.mapy)
       if (haversineDistance(lat, lng, latitude, longitude) > radiusM) continue
 
-      const naverId = extractNaverId(item.link)
-      const dedupKey = naverId ?? `${stripHtml(item.title)}_${latitude.toFixed(5)}_${longitude.toFixed(5)}`
-      if (seen.has(dedupKey)) continue
-      seen.add(dedupKey)
+      const name = stripHtml(item.title)
+      const naverId = resolveNaverId(item.link, name, latitude, longitude)
+      if (seen.has(naverId)) continue
+      seen.add(naverId)
 
       results.push({
         naverId,
-        name: stripHtml(item.title),
+        name,
         latitude,
         longitude,
         category,
@@ -132,9 +134,10 @@ export async function searchNaverPlaces(query: string): Promise<NaverSearchResul
     .filter((item) => item.mapx && item.mapy)
     .map((item) => {
       const { latitude, longitude } = parseNaverCoord(item.mapx, item.mapy)
+      const name = stripHtml(item.title)
       return {
-        naverId: extractNaverId(item.link),
-        name: stripHtml(item.title),
+        naverId: resolveNaverId(item.link, name, latitude, longitude),
+        name,
         latitude,
         longitude,
         category: item.category,

@@ -36,9 +36,9 @@ export async function GET(req: NextRequest) {
     // 네이버 조회 실패 — T1만 사용
   }
 
-  // 신규 네이버 POI만 DB에 저장 (naver_id 없는 결과는 dedup 불가 — 매번 신규 삽입 시도, DB 유니크 제약이 NULL은 허용하므로 중복 행이 쌓일 수 있음)
+  // 신규 네이버 POI만 DB에 저장 (naver_id는 항상 존재 — 안정 ID 없으면 이름+좌표 기반 합성 ID로 대체되어 dedup 보장됨)
   const naverIdMap = new Map(allDbPois.filter((p) => p.naver_id).map((p) => [p.naver_id!, p.id]))
-  const newNaverPois = naverPois.filter((p) => !p.naverId || !naverIdMap.has(p.naverId))
+  const newNaverPois = naverPois.filter((p) => !naverIdMap.has(p.naverId))
   if (newNaverPois.length > 0) {
     const inserts = newNaverPois.map((p) => ({
       name: p.name,
@@ -67,12 +67,12 @@ export async function GET(req: NextRequest) {
     (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= NAVER_RADIUS_M
   )
 
-  // 저장 실패한(또는 naver_id 없어 dedup 불가한) 네이버 POI는 fallback으로 포함 (지도 표시용, 드랍 불가)
+  // 저장 실패한 네이버 POI는 fallback으로 포함 (지도 표시용, 드랍 불가)
   const savedNaverIds = new Set(allDbPois2.map((p) => p.naver_id).filter(Boolean))
   const fallbackPois = newNaverPois
-    .filter((p) => !p.naverId || !savedNaverIds.has(p.naverId))
+    .filter((p) => !savedNaverIds.has(p.naverId))
     .map((p) => ({
-      id: p.naverId ?? `${p.name}_${p.latitude}_${p.longitude}`,
+      id: p.naverId,
       naver_id: p.naverId,
       name: p.name,
       latitude: p.latitude,
