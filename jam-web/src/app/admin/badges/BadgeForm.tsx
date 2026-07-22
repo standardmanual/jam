@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
 
-const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'road_running', 'trail_running', 'hiking', 'walking']
+const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'trail_running', 'hiking', 'walking']
 const BADGE_TYPES: BadgeType[] = ['activity', 'item']
 const RARITIES: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
 

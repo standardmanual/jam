@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 
-type ActivityType = 'cycling' | 'running' | 'road_running' | 'trail_running' | 'hiking' | 'walking'
+type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
 
 interface GpxParsed {
   distanceKm: number
@@ -348,7 +348,7 @@ export default function SimulatorPage() {
                   onChange={(e) => setActivityType(e.target.value as ActivityType)}
                   className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
                 >
-                  {(['cycling', 'running', 'road_running', 'trail_running', 'hiking', 'walking'] as ActivityType[]).map((t) => (
+                  {(['cycling', 'running', 'trail_running', 'hiking', 'walking'] as ActivityType[]).map((t) => (
                     <option key={t} value={t} className="bg-[#1a1a1a]">{t}</option>
                   ))}
                 </select>

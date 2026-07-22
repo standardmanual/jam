@@ -92,7 +92,7 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 단일 조건 배지는 `activity_type:조건타입` 트랙으로 묶여 동일 트랙 내 최고값 1개만 발급.
 
 ```
-트랙 키 예시: 'walking:distance_km', 'road_running:min_speed_kmh', 'cycling:elevation_gain_m'
+트랙 키 예시: 'walking:distance_km', 'running:min_speed_kmh', 'cycling:elevation_gain_m'
 ```
 
 복합 조건 배지(time_range+weekly_count, min_speed+duration 등)는 트랙 제외 → 각각 독립 발급.
@@ -122,7 +122,7 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 
 ### 2.9 배지 구성
 
-5종목(걷기·로드러닝·사이클·등산·트레일) × 속성 그룹 × 4등급 = **115종 (v3.1)**.  
+5종목(걷기·러닝·사이클·등산·트레일) × 속성 그룹 × 4등급 = **115종 (v3.1)**.  
 전체 목록·조건값·설명: **`액티비티배지 레시피.md`** (단일 진실 원천). DB 시드: `033_reseed_activity_badges_v3.sql`.
 
 ---

@@ -23,7 +23,7 @@ function makeActivity(overrides: Partial<NormalizedActivity> = {}): NormalizedAc
     distanceKm: 10,
     movingTimeSec: 3600,
     elevationGainM: 100,
-    jamActivityType: 'road_running',
+    jamActivityType: 'running',
     startDate: '2026-07-20T05:30:00Z',
     startDateLocal: '2026-07-20T05:30:00',
     averageSpeedKmh: 10,
@@ -204,11 +204,11 @@ describe('poi_id', () => {
 describe('prerequisite_badge_names (condition 평가 영향 없음)', () => {
   it('prerequisite_badge_names가 있어도 다른 조건이 충족되면 pass', () => {
     const cond: BadgeCondition = {
-      activity_type: 'road_running',
+      activity_type: 'running',
       distance_km: 5,
       prerequisite_badge_names: ['첫 페달', '아스팔트 입문'],
     }
-    const acts = [makeActivity({ distanceKm: 10, jamActivityType: 'road_running' })]
+    const acts = [makeActivity({ distanceKm: 10, jamActivityType: 'running' })]
     // 조건(거리) 충족 → evaluateConditionDetailed는 pass (prerequisite는 엔진에서 별도 체크)
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })

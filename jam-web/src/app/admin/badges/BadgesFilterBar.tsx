@@ -6,7 +6,7 @@ import { useCallback } from 'react'
 const ACTIVITY_OPTIONS = [
   { value: 'all', label: '전체 종목' },
   { value: 'walking', label: '걷기' },
-  { value: 'road_running', label: '로드러닝' },
+  { value: 'running', label: '러닝' },
   { value: 'cycling', label: '사이클' },
   { value: 'hiking', label: '등산' },
   { value: 'trail_running', label: '트레일' },

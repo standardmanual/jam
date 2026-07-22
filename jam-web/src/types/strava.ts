@@ -123,14 +123,14 @@ export type StravaActivityType =
   | string  // 기타 Strava 지원 타입
 
 // JAM! 활동 종류 ↔ Strava 활동 타입(type) 매핑
-// 주의: Strava `type`은 러닝 세분화가 없어 Run은 기본적으로 road_running으로 처리한다.
+// 주의: Strava `type`은 러닝 세분화가 없어 Run은 기본적으로 running(로드 러닝)으로 처리한다.
 //       트레일 러닝 구분은 sport_type을 우선 참조해야 하므로 getJamActivityType()를 사용할 것.
 export const STRAVA_TYPE_TO_JAM: Record<string, string> = {
   Ride: 'cycling',
   EBikeRide: 'cycling',
   VirtualRide: 'cycling',
-  Run: 'road_running',
-  VirtualRun: 'road_running',
+  Run: 'running',
+  VirtualRun: 'running',
   Hike: 'hiking',
   Walk: 'walking',
 }
@@ -139,8 +139,8 @@ export const STRAVA_TYPE_TO_JAM: Record<string, string> = {
 export const STRAVA_SPORT_TYPE_TO_JAM: Record<string, string> = {
   TrailRun: 'trail_running',
   TrailRunning: 'trail_running',
-  Run: 'road_running',
-  VirtualRun: 'road_running',
+  Run: 'running',
+  VirtualRun: 'running',
   Ride: 'cycling',
   MountainBikeRide: 'cycling',
   GravelRide: 'cycling',

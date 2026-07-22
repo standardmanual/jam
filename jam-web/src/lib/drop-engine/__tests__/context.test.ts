@@ -11,7 +11,7 @@ const base: NormalizedActivity = {
   distanceKm: 5,
   movingTimeSec: 1800,
   elevationGainM: 50,
-  jamActivityType: 'road_running',
+  jamActivityType: 'running',
   startDate: '2026-07-21T10:00:00Z',
   startDateLocal: '2026-07-21T19:00:00Z',
   averageSpeedKmh: 10,

@@ -136,7 +136,7 @@ describe('time_range + weekly_count (독립 AND)', () => {
 })
 
 // ── weekend_duration_hours ────────────────────────────────────────────────
-// 레시피: {"activity_type":"road_running","weekend_duration_hours":0.5}
+// 레시피: {"activity_type":"running","weekend_duration_hours":0.5}
 
 describe('weekend_duration_hours', () => {
   it('주말 활동의 이동 시간이 조건 이상이면 pass', () => {
