@@ -98,7 +98,7 @@ interface ItemBookItem {
 
 // ─── 서브 컴포넌트 ────────────────────────────────────────────────────────────
 
-function DetailSheet({ item, onClose }: { item: ActivityFeedRow; onClose: () => void }) {
+function DetailSheet({ item, onClose, username }: { item: ActivityFeedRow; onClose: () => void; username: string }) {
   const router = useRouter()
   const meta = item.metadata as Record<string, string | number | null>
   const rarity = meta.rarity ? String(meta.rarity) : null
@@ -154,7 +154,7 @@ function DetailSheet({ item, onClose }: { item: ActivityFeedRow; onClose: () => 
         </div>
         {isBadgeEvent ? (
           <button
-            onClick={() => router.push(`/badges/${meta.badge_id}`)}
+            onClick={() => router.push(`/badges/${meta.badge_id}?u=${username}`)}
             className="w-full py-4 rounded-2xl border-[3px] border-jam-ink bg-jam-ink text-white font-black text-base active:scale-95 transition-all shadow-[3px_3px_0_0_#161616]"
           >
             상세보기
@@ -436,7 +436,9 @@ export default function ProfileClient({
                   <span className="text-3xl">🏅</span>
                 )}
                 <span className="text-[10px] font-black text-jam-ink text-center leading-tight line-clamp-2">{meta.badge_name}</span>
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-jam-ink/10 text-jam-ink/60">{meta.rarity}</span>
+                {meta.rarity !== 'common' && (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-jam-ink/10 text-jam-ink/60">{meta.rarity}</span>
+                )}
               </button>
             )
           })}
@@ -461,7 +463,7 @@ export default function ProfileClient({
             return (
               <Link
                 key={book.id}
-                href={`/itembooks/${book.id}`}
+                href={`/itembooks/${book.id}?u=${username}`}
                 className={`flex flex-col rounded-2xl border-[3px] p-3 gap-2 transition-all active:shadow-none active:translate-x-[3px] active:translate-y-[3px] ${
                   book.isCompleted
                     ? 'bg-jam-lime border-jam-ink shadow-[3px_3px_0_0_#161616]'
@@ -670,7 +672,7 @@ export default function ProfileClient({
       )}
 
       {/* 상세 시트 */}
-      {selectedItem && <DetailSheet item={selectedItem} onClose={() => setSelectedItem(null)} />}
+      {selectedItem && <DetailSheet item={selectedItem} onClose={() => setSelectedItem(null)} username={username} />}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 interface TabBarProps {
   username: string | null
@@ -67,7 +67,15 @@ const baseTabs = [
 
 export default function TabBar({ username }: TabBarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const profileHref = username ? `/${username}` : '/profile'
+
+  // 배지/아이템북 상세를 다른 유저의 프로필 맥락(?u=)에서 보고 있으면 "내" 탭으로 취급하지 않음
+  const viewingOtherUser = (() => {
+    const u = searchParams.get('u')
+    if (!u) return false
+    return !username || u.toLowerCase() !== username.toLowerCase()
+  })()
 
   const tabs = baseTabs.map((tab) =>
     tab.href === '/profile' ? { ...tab, href: profileHref } : tab
@@ -76,6 +84,7 @@ export default function TabBar({ username }: TabBarProps) {
   function isActive(href: string) {
     if (href === '/') return pathname === '/'
     if (href === profileHref) return pathname === profileHref || pathname === '/profile'
+    if (viewingOtherUser && pathname.startsWith('/badges')) return false
     return pathname.startsWith(href)
   }
 
