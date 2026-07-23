@@ -301,7 +301,7 @@ export default function DropsClient() {
 
         {!poisLoading && pois.length === 0 && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-jam-cream rounded-2xl px-4 py-3 text-jam-ink/70 text-sm font-bold text-center whitespace-nowrap border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616]">
-            주변 500m에 드랍 가능한 장소가 없어요
+            주변 500m에 {mode === 'drop' ? '드랍' : '픽업'} 가능한 장소가 없어요
           </div>
         )}
         {!poisLoading && pois.length > 0 && !pois.some((p) => p.in_drop_range) && (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi, haversineDistance, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import { fetchNearbyNaverPoisForCategories, type NaverPlace } from '@/lib/poi/naver'
+import { reverseGeocodeToRegionName } from '@/lib/poi/reverse-geocode'
 import { LEVEL_1_CATEGORIES, LEVEL_2_CATEGORIES, LEVEL_2_FALLBACK_THRESHOLD, type PoiCategoryConfig } from '@/lib/poi/categories'
 import { computeGridKey, shouldSearch, markSearched } from '@/lib/poi/search-cache'
 import type { PoiRow, InventoryItemRow } from '@/types/database'
@@ -18,7 +19,8 @@ async function searchAndPersistCategories(
   lng: number,
   gridKey: string,
   categories: PoiCategoryConfig[],
-  existingNaverIds: Map<string, string>
+  existingNaverIds: Map<string, string>,
+  regionName: string | null
 ): Promise<NaverPlace[]> {
   const toSearch: PoiCategoryConfig[] = []
   for (const cfg of categories) {
@@ -28,7 +30,7 @@ async function searchAndPersistCategories(
 
   let naverPois: NaverPlace[] = []
   try {
-    naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, NAVER_RADIUS_M, toSearch)
+    naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, NAVER_RADIUS_M, toSearch, regionName)
   } catch {
     // 네이버 조회 실패 — 기존 DB 데이터만 사용
   }
@@ -81,9 +83,13 @@ export async function GET(req: NextRequest) {
   const naverIdMap = new Map(allDbPois.filter((p) => p.naver_id).map((p) => [p.naver_id!, p.id]))
   const gridKey = computeGridKey(lat, lng)
 
+  // 네이버 지역검색 API는 좌표/반경 파라미터가 없어 순수 키워드("카페")만 넘기면 전국
+  // 무작위 결과가 나온다 — 역지오코딩한 "구 동" 문자열을 키워드 앞에 붙여 검색 범위를 좁힌다.
+  const regionName = await reverseGeocodeToRegionName(lat, lng)
+
   // 레벨 1 카테고리(관공서/교통/병원/약국/관광명소/자연)는 항상 검색(캐시 만료분만)
   let fallbackPois = await searchAndPersistCategories(
-    service, lat, lng, gridKey, LEVEL_1_CATEGORIES, naverIdMap
+    service, lat, lng, gridKey, LEVEL_1_CATEGORIES, naverIdMap, regionName
   )
 
   // 레벨 1 결과가 지역 내 부족하면 레벨 2(편의점·마트/카페·음식점)까지 보조 검색
@@ -95,7 +101,7 @@ export async function GET(req: NextRequest) {
 
   if (level1NearbyCount < LEVEL_2_FALLBACK_THRESHOLD) {
     const level2Fallback = await searchAndPersistCategories(
-      service, lat, lng, gridKey, LEVEL_2_CATEGORIES, naverIdMap
+      service, lat, lng, gridKey, LEVEL_2_CATEGORIES, naverIdMap, regionName
     )
     fallbackPois = [...fallbackPois, ...level2Fallback]
   }

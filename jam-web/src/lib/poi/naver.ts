@@ -80,14 +80,23 @@ function parseNaverCoord(mapx: string, mapy: string): { latitude: number; longit
 }
 
 // 지정된 카테고리(들)의 키워드로 네이버 지역검색을 수행해 반경 내 결과만 반환
+//
+// regionName: 역지오코딩으로 얻은 "구 동" 문자열(reverse-geocode.ts). 네이버 지역검색 API는
+// 좌표/반경 파라미터가 없어 순수 키워드("카페")만 넘기면 전국 무작위 결과가 나온다 —
+// 지역명을 키워드 앞에 붙여("서초구 서초동 카페") 실제로 해당 지역 결과가 나오게 한다.
+// null이면(역지오코딩 실패) 기존처럼 순수 키워드로 폴백 — 결과가 적게 나올 수 있음.
 export async function fetchNearbyNaverPoisForCategories(
   lat: number,
   lng: number,
   radiusM: number,
-  categories: PoiCategoryConfig[]
+  categories: PoiCategoryConfig[],
+  regionName?: string | null
 ): Promise<NaverPlace[]> {
   const keywordQueries = categories.flatMap(({ category, keywords }) =>
-    keywords.map((keyword) => ({ keyword, category }))
+    keywords.map((keyword) => ({
+      keyword: regionName ? `${regionName} ${keyword}` : keyword,
+      category,
+    }))
   )
 
   const results: NaverPlace[] = []
