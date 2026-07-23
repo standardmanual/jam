@@ -27,3 +27,8 @@ export const LEVEL_2_FALLBACK_THRESHOLD = 3
 
 // 같은 위치·카테고리 조합의 네이버 재검색을 건너뛰는 캐시 유효 시간
 export const SEARCH_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7 // 1주일
+
+// 결과가 0건이었던 검색의 캐시 유효 시간(짧게) — API 응답 문제·일시적 이슈로 0건이 나온
+// 경우 7일씩 묶여있지 않고 빠르게 재시도되게 한다. 실제로 POI가 없는 지역이면 계속 0건이
+// 나올 뿐이라 손해 없음.
+export const EMPTY_RESULT_CACHE_TTL_SECONDS = 60 * 60 // 1시간

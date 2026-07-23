@@ -29,13 +29,23 @@ async function searchAndPersistCategories(
   if (toSearch.length === 0) return []
 
   let naverPois: NaverPlace[] = []
+  let fetchFailed = false
   try {
     naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, NAVER_RADIUS_M, toSearch, regionName)
   } catch {
-    // 네이버 조회 실패 — 기존 DB 데이터만 사용
+    // 네이버 조회 실패 — 기존 DB 데이터만 사용, 캐시는 짧은 TTL로 남겨 곧 재시도되게 함
+    fetchFailed = true
   }
 
-  await Promise.all(toSearch.map((cfg) => markSearched(service, gridKey, cfg.category)))
+  const resultCountByCategory = new Map<string, number>()
+  for (const p of naverPois) {
+    resultCountByCategory.set(p.category, (resultCountByCategory.get(p.category) ?? 0) + 1)
+  }
+  await Promise.all(
+    toSearch.map((cfg) =>
+      markSearched(service, gridKey, cfg.category, !fetchFailed && (resultCountByCategory.get(cfg.category) ?? 0) > 0)
+    )
+  )
 
   const newPois = naverPois.filter((p) => !existingNaverIds.has(p.naverId))
   if (newPois.length === 0) return []
