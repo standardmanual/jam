@@ -127,16 +127,22 @@ export interface InventoryItemRow {
   slotted_in: string | null
 }
 
+export type PoiDropSource = 'user' | 'system'
+
 export interface PoiDropRow {
   id: string
-  dropper_user_id: string
+  /** source='system'(앰비언트 드랍)이면 null */
+  dropper_user_id: string | null
   poi_id: string
   badge_id: string
   dropped_at: string
   picked_up_by: string | null
   picked_up_at: string | null
   is_available: boolean
-  expires_at: string
+  /** source='system'(앰비언트 드랍)이면 null — 만료 없음 */
+  expires_at: string | null
+  /** 'user' = 유저가 인벤토리에서 드랍, 'system' = 앰비언트 자동 배치 */
+  source: PoiDropSource
 }
 
 export interface ItemBookRow {
@@ -352,6 +358,19 @@ export interface DropPolicyRow {
   updated_at: string
 }
 
+export interface AmbientDropPolicyRow {
+  id: number
+  rarity_common: number
+  rarity_rare: number
+  rarity_legendary: number
+  target_coverage_ratio: number
+  min_target_total: number
+  max_target_total: number
+  max_active_per_poi: number
+  replenish_batch_size: number
+  updated_at: string
+}
+
 export interface UserItemBookSlotRow {
   id: string
   user_id: string
@@ -555,14 +574,21 @@ export interface Database {
       }
       poi_drops: {
         Row: PoiDropRow
-        Insert: Omit<PoiDropRow, 'id' | 'dropped_at' | 'picked_up_by' | 'picked_up_at' | 'is_available'> & {
+        Insert: Omit<PoiDropRow, 'id' | 'dropped_at' | 'picked_up_by' | 'picked_up_at' | 'is_available' | 'source'> & {
           id?: string
           dropped_at?: string
           picked_up_by?: string | null
           picked_up_at?: string | null
           is_available?: boolean
+          source?: PoiDropSource
         }
         Update: Partial<Omit<PoiDropRow, 'id'>>
+        Relationships: []
+      }
+      ambient_drop_policy: {
+        Row: AmbientDropPolicyRow
+        Insert: Partial<AmbientDropPolicyRow> & { id: number }
+        Update: Partial<Omit<AmbientDropPolicyRow, 'id'>>
         Relationships: []
       }
       combination_recipes: {

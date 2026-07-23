@@ -30,7 +30,8 @@ export interface FeedEventMeta {
     badge_image_url: string
     rarity: string
     poi_name: string
-    dropper_user_id: string
+    /** 앰비언트(시스템) 드랍 픽업이면 null */
+    dropper_user_id: string | null
     /** poi_drops.id — 홈/프로필 피드의 poi_drops 재구성 중복 방지용 */
     poi_drop_id?: string
   }

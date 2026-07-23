@@ -30,7 +30,8 @@ interface DropItem {
   badge_name: string
   badge_rarity: string
   badge_image_url: string
-  dropper_name: string
+  dropper_name: string | null
+  is_ambient?: boolean
   dropped_at: string
 }
 
@@ -405,7 +406,9 @@ export default function DropsClient() {
                             {RARITY_LABEL[drop.badge_rarity] ?? drop.badge_rarity}
                           </p>
                         )}
-                        <p className="text-xs text-jam-ink/40 mt-0.5 font-semibold">{drop.dropper_name}이(가) 드랍</p>
+                        <p className="text-xs text-jam-ink/40 mt-0.5 font-semibold">
+                          {drop.is_ambient ? '이 근처에서 발견됨' : `${drop.dropper_name}이(가) 드랍`}
+                        </p>
                       </div>
                       {selectedDrop?.id === drop.id && (
                         <div className="ml-auto text-jam-ink">
