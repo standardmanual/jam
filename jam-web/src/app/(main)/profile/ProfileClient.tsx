@@ -150,6 +150,9 @@ function DetailSheet({ item, onClose, username }: { item: ActivityFeedRow; onClo
           {item.event_type === 'mission_completed' && meta.reward_points && (
             <Row label="보상" value={`${meta.reward_points}P`} />
           )}
+          {item.event_type === 'badge_earned' && typeof meta.point_reward === 'number' && meta.point_reward > 0 && (
+            <Row label="포인트" value={`+${Number(meta.point_reward).toLocaleString('ko-KR')}P`} />
+          )}
           <Row label="일시" value={formatFullDate(item.event_at)} />
         </div>
         {isBadgeEvent ? (
@@ -234,6 +237,8 @@ interface Props {
   itemBookCount: number
   username: string
   currentUserId: string
+  /** 본인 프로필에서만 전달됨. 타인 프로필에서는 null. */
+  pointBalance: number | null
 }
 
 export default function ProfileClient({
@@ -249,6 +254,7 @@ export default function ProfileClient({
   itemBookCount,
   username,
   currentUserId,
+  pointBalance,
 }: Props) {
   const router = useRouter()
 
@@ -559,6 +565,19 @@ export default function ProfileClient({
         <div className="flex-1">
           <p className="font-black text-xl">{profile?.username ?? '익명'}</p>
           {isOwnProfile && <p className="text-jam-ink/60 text-sm font-semibold">{profile?.email}</p>}
+          {/* 잼 포인트 잔액 — 본인 프로필에서만, 이메일 바로 아래 노출 */}
+          {isOwnProfile && pointBalance !== null && (
+            <button
+              onClick={() => router.push('/points')}
+              className="mt-1 inline-flex items-center gap-1.5 text-sm font-black text-jam-ink active:scale-95 transition-transform"
+            >
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-jam-lime border-[2px] border-jam-ink text-[10px]">P</span>
+              {pointBalance.toLocaleString('ko-KR')}P
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-3.5 h-3.5 text-jam-ink/40">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
         </div>
         {isOwnProfile ? (
           <button onClick={() => router.push('/profile/edit')} className="px-3 py-1.5 rounded-xl bg-jam-ink text-white text-sm font-black border-[2px] border-jam-ink active:scale-95 transition-transform">

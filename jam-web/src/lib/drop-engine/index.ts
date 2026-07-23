@@ -12,6 +12,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
+import { awardPoints } from '@/lib/points'
 import type {
   BadgeRarity,
   BadgeRow,
@@ -82,7 +83,7 @@ export function isDroppableForActivity(
 
 type DropBadge = Pick<
   BadgeRow,
-  'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight' | 'valid_from' | 'valid_until' | 'condition_json' | 'item_book_id'
+  'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight' | 'valid_from' | 'valid_until' | 'condition_json' | 'item_book_id' | 'point_reward'
 >
 
 interface DropStructure {
@@ -126,7 +127,7 @@ async function fetchDropStructure(
   const [{ data: badgesRaw, error: badgesError }, adjacencyRes, ownedRes] = await Promise.all([
     supabase
       .from('badges')
-      .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json, item_book_id')
+      .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json, item_book_id, point_reward')
       .eq('type', 'item')
       .in('item_book_id', activeBookIds),
     lastFactionId
@@ -391,6 +392,13 @@ async function insertDrop(
     return false
   }
   const inventoryItemId = (insertedRaw as { id: string }).id
+
+  // 잼 포인트 지급 — 아이템배지에 point_reward가 붙어 있으면 획득 직후 1회 지급.
+  // (아이템배지도 badges 테이블이므로 point_reward를 가질 수 있음. 0이면 스킵.)
+  const pointReward = picked.point_reward ?? 0
+  if (pointReward > 0) {
+    await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: picked.id })
+  }
 
   await recordFeedEvent(userId, 'item_dropped', {
     // 홈/프로필 피드가 inventory_items를 다시 훑어 "레거시" 항목을 합성할 때

@@ -1,50 +1,19 @@
 # 진행 상황
 
-## 2026-07-20 — 메인세션: badge-impl 팀 초기화
+## 2026-07-23 — 메인세션: phase12-points 팀 초기화
 - 상태: 완료
-- 작업: 팀 구성 + 공유 메모리 초기화
-- 결과: TEAM_PLAN.md 작성 완료, 팀원 스폰 예정
-- 다음: Lead + dev-engine 스폰 → 탐색 시작
+- 작업: 팀 구성 + 공유 메모리 초기화(TEAM_PLAN/PROGRESS/FINDINGS 재작성, 이전 phase10 팀 기록 대체)
+- 결과: 팀장 스폰 준비 완료
+- 다음: 팀장이 Step A부터 순서대로 팀원 배분
 
-## 2026-07-20 — 팀장(lead): 아키텍처 파악 + 결정 확정
+## 2026-07-23 — 팀장: Step A~D + 문서화 완료, 세션 한도로 중단
+- 상태: 완료(팀장이 문서화 마무리 중 세션 사용량 한도로 조기 종료됨 — 코드/문서 자체는 완성된 상태)
+- 작업: 마이그레이션 045 + award_points RPC + points 헬퍼(Step A), 배지/드랍/미션 3개 지점 적립 연동(Step B), 내 프로필·포인트내역·배지상세(Step C), /admin/points·유저 지급회수 공용폼·배지/미션 에디터 확장(Step D), SERVICE_OPERATIONS_20260723_1501.md + 설계문서 2종 헤더 갱신
+- 결과: git status로 전 파일 존재 확인, 마이그레이션 SQL·points 라이브러리·3개 훅 지점·프로필 노출조건·고액확인 API 코드 직접 리뷰 완료 — 스펙과 일치
+- 미비점: TEAM_PROGRESS/TEAM_FINDINGS를 팀원들이 기록하지 않음(작업 자체는 됐으나 공유메모리 규율 미준수), 포인트 관련 단위 테스트 파일 없었음
+
+## 2026-07-23 — 메인세션: 검증 + 누락된 테스트 보완
 - 상태: 완료
-- 작업: 배지엔진·드랍엔진·타입·어드민폼·어드민API·유저목록·유저상세·테스트 8개 파일 정독
-- 결과: TEAM_PLAN "주요 결정사항" + TEAM_FINDINGS 리뷰 결과 기록. 핵심 결론 = 엔진/드랍/타입은 이미 신규 조건 전부 지원(변경 불필요), 실제 작업은 (a)어드민 BadgeForm time_range·temperature 입력 추가, (b)유저 상세 formatConditionText 문구 추가, (c)신규 조건 단위 테스트.
-- 다음: dev-admin(T3/T4)·dev-ui(T6)·tester(T7) 실작업. dev-engine(T1/T2)는 검증만.
-- 리포트: .kkirikkiri/kkirikkiri-report-badge-impl.md
-
-## 2026-07-20 — dev-engine: 엔진 점검 시작
-- 상태: 진행 중
-- 작업: badge-engine + drop-engine 신규 condition 지원 확인
-
-## 2026-07-20 — dev-engine: 엔진 점검 완료
-- 상태: 완료
-- 작업:
-  - 배지엔진: 신규 조건 8종 전부 이미 정상 동작 확인 → 코드 변경 불필요
-  - 드랍엔진: 누적/기간 조건(monthly_km·season_count·weekly_count·streak_days·total_count) 방어 가드 추가(옵션 A)
-  - 타입: BadgeCondition에 신규 필드 모두 이미 정의됨 → 변경 불필요
-  - 테스트: 신규 조건 배지엔진 테스트 + 드랍엔진 droppable 테스트 작성
-- 결과:
-  - monthly_km 단독(month 없이) — 엔진 line 119 분기가 이미 처리(월별 최대 누적)
-  - time_range + weekly_count — 독립 AND 평가, 레시피 "이력 전반 독립 평가"와 일치
-  - 드랍엔진에 isDroppableForActivity/hasCumulativeCondition export 추가, filter 교체
-  - tsc --noEmit 전체 0 에러
-- 변경 파일:
-  - jam-web/src/lib/drop-engine/index.ts (가드 추가 + filter 교체)
-  - jam-web/src/lib/badge-engine/__tests__/new-conditions.test.ts (신규)
-  - jam-web/src/lib/drop-engine/__tests__/droppable.test.ts (신규)
-- 다음: dev-admin, dev-ui 의존 없음. (lead 결론 "드랍 변경 불필요"와 달리, 방어 가드는 유지 — 아래 FINDINGS 참고)
-
-## 2026-07-20 — dev-admin: 어드민 UI 검토 시작
-- 상태: 완료
-- 작업: 배지 어드민 생성/수정 UI 전면 검토
-- 결과:
-  - BadgeForm.tsx: temperature_min_c / temperature_max_c / time_range(start·end) 입력 UI + buildConditionJson 조립 + 유효성검사(season↔season_count, time_range HH:MM) 추가
-  - admin/badges/page.tsx: condition_json 기반 카테고리 자동판별(기본/고난이도/복합속성/리텐션) 컬럼 추가
-  - api/admin/badges/route.ts: POST에 item_book_id 누락 버그 수정
-  - npx tsc --noEmit: 에러 0
-- 범위 준수: 데이터 인서트/SQL 없음, 엔진 로직 미수정
-
-## 2026-07-20 — dev-ui: UI 검토 시작
-- 상태: 진행 중
-- 작업: 어드민 + 유저 서비스 배지 UI 탐색
+- 작업: 코드 리뷰(마이그레이션/RPC/훅 3곳/프로필 노출조건/고액지급 422 가드) 통과 확인. tsc 전체 실행 — 포인트 관련 파일 0 에러(남은 에러는 전부 기존 프로젝트의 테스트러너 미설치 이슈, points와 무관). 누락됐던 단위 테스트 2개 파일 작성: `src/lib/points/__tests__/reasons.test.ts`, `src/lib/points/__tests__/award-points-guards.test.ts`
+- 결과: 태스크 #1~#6 전부 completed로 갱신
+- 남은 것: 마이그레이션 045 원격 Supabase 미적용(로컬 DB 없어 SQL 작성만 됨), git commit은 사용자 확인 후 진행

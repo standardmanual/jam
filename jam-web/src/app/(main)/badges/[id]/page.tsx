@@ -229,6 +229,18 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       {/* 배지 설명 */}
       <p className="text-sm text-jam-ink/70 leading-relaxed font-semibold px-1">{badgeRow.description}</p>
 
+      {/* 잼 포인트 안내 — 이 배지에 포인트가 붙어 있을 때만 */}
+      {badgeRow.point_reward > 0 && (
+        <div className="flex items-center gap-3 bg-jam-lime border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] px-4 py-3">
+          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white border-[2px] border-jam-ink font-black text-jam-ink shrink-0">P</span>
+          <p className="text-sm font-black text-jam-ink">
+            {earned
+              ? `이 배지는 ${badgeRow.point_reward.toLocaleString('ko-KR')} 포인트를 함께 드렸어요`
+              : `이 배지를 획득하면 ${badgeRow.point_reward.toLocaleString('ko-KR')} 포인트를 함께 드려요`}
+          </p>
+        </div>
+      )}
+
       {/* 선행 배지 조건 (prerequisite) */}
       {prereqStatus.length > 0 && (
         <Card className={prereqStatus.some((p) => !p.owned) && !earned ? 'border-amber-500/40 bg-amber-500/5' : ''}>

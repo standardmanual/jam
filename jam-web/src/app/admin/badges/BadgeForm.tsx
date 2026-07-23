@@ -30,6 +30,9 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [patchPriceKrw, setPatchPriceKrw] = useState<string>(
     badge?.patch_price_krw?.toString() ?? ''
   )
+  const [pointReward, setPointReward] = useState<string>(
+    badge?.point_reward?.toString() ?? '0'
+  )
 
   // condition_json builder state
   const initCond = (badge?.condition_json as BadgeCondition) ?? EMPTY_CONDITION
@@ -153,6 +156,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
       valid_from: validFrom ? new Date(validFrom).toISOString() : null,
       valid_until: validUntil ? new Date(validUntil).toISOString() : null,
+      point_reward: Math.max(0, parseInt(pointReward, 10) || 0),
     }
 
     try {
@@ -299,6 +303,19 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
           </>
         )}
+
+        <label className="flex flex-col gap-1.5 col-span-2">
+          <span className="text-sm text-white/60">포인트 보상</span>
+          <input
+            type="number"
+            min="0"
+            value={pointReward}
+            onChange={(e) => setPointReward(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50 max-w-xs"
+            placeholder="0"
+          />
+          <span className="text-xs text-white/30">이 배지가 발급될 때 함께 지급되는 잼 포인트. 0이면 없음. 발급 시점 값으로 1회 지급되며, 이후 값을 바꿔도 이미 지급된 포인트는 소급 변경되지 않습니다.</span>
+        </label>
 
         <label className="flex flex-col gap-1.5 col-span-2">
           <span className="text-sm text-white/60">이미지 URL *</span>

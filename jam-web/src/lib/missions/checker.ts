@@ -5,6 +5,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
+import { awardPoints } from '@/lib/points'
 import type { MissionRow, MissionCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 
@@ -89,6 +90,15 @@ export async function checkMissions(
 
     completedMissionIds.push(mission.id)
     console.info(`[checkMissions] 미션 달성 — userId: ${userId}, mission: ${mission.title}`)
+
+    // 잼 포인트 지급 — 보상 타입이 'points'이면 완료 판정 직후 실제 잔액에 적립.
+    // (지금까지 화면에만 "+100P"로 표시되던 값을 실제 지급과 연결. 0/누락이면 스킵.)
+    if (mission.reward_type === 'points' && (mission.reward_points ?? 0) > 0) {
+      await awardPoints(userId, mission.reward_points as number, 'mission_point_reward', {
+        sourceMissionId: mission.id,
+      })
+    }
+
     await recordFeedEvent(userId, 'mission_completed', {
       mission_id: mission.id,
       mission_title: mission.title,
