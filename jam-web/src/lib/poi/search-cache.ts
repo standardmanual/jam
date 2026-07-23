@@ -2,7 +2,7 @@
 // (실제 POI 데이터는 poi 테이블에 영구 저장되어 계속 재사용됨. 이 모듈은 "이 지역을
 // 언제 마지막으로 검색했는지"만 추적해 네이버 API 하루 호출 한도를 아끼는 용도)
 import { createServiceClient } from '@/lib/supabase/server'
-import { SEARCH_CACHE_TTL_SECONDS } from './categories'
+import { SEARCH_CACHE_TTL_SECONDS, EMPTY_RESULT_CACHE_TTL_SECONDS } from './categories'
 
 type ServiceClient = ReturnType<typeof createServiceClient>
 
@@ -13,6 +13,8 @@ export function computeGridKey(lat: number, lng: number): string {
 }
 
 // 캐시에 없거나 TTL이 지났으면 true(=검색 필요)
+// 직전 검색이 결과 0건이었으면(had_results=false) 훨씬 짧은 TTL로 재시도 —
+// API 이슈·버그로 인한 0건이 길게 캐시되는 것을 방지
 export async function shouldSearch(
   service: ServiceClient,
   gridKey: string,
@@ -20,22 +22,24 @@ export async function shouldSearch(
 ): Promise<boolean> {
   const { data } = await (service as any)
     .from('poi_search_cache')
-    .select('searched_at')
+    .select('searched_at, had_results')
     .eq('grid_key', gridKey)
     .eq('category', category)
     .maybeSingle()
 
   if (!data) return true
   const searchedAt = new Date(data.searched_at).getTime()
-  return Date.now() - searchedAt > SEARCH_CACHE_TTL_SECONDS * 1000
+  const ttl = data.had_results ? SEARCH_CACHE_TTL_SECONDS : EMPTY_RESULT_CACHE_TTL_SECONDS
+  return Date.now() - searchedAt > ttl * 1000
 }
 
 export async function markSearched(
   service: ServiceClient,
   gridKey: string,
-  category: string
+  category: string,
+  hadResults: boolean
 ): Promise<void> {
   await (service as any)
     .from('poi_search_cache')
-    .upsert({ grid_key: gridKey, category, searched_at: new Date().toISOString() })
+    .upsert({ grid_key: gridKey, category, searched_at: new Date().toISOString(), had_results: hadResults })
 }
