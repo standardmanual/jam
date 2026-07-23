@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { UserRow, BadgeConditionSnapshot } from '@/types/database'
+import UserGrantForm from '../../points/UserGrantForm'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -64,6 +65,11 @@ export default async function AdminUserDetailPage({ params }: Props) {
         <p className="text-white/40 text-sm mt-1">
           {user.email} · {user.region || '지역 미설정'} · 가입 {formatDateTime(user.created_at)}
         </p>
+      </div>
+
+      {/* 잼 포인트 지급/회수 (공용 폼 — /admin/points와 동일 실행 로직) */}
+      <div className="mb-8 max-w-xl">
+        <UserGrantForm userId={user.id} username={user.username} />
       </div>
 
       <div className="mb-4 flex items-center justify-between">

@@ -67,6 +67,8 @@ export interface BadgeRow {
   drop_condition_json: Record<string, unknown> | null
   valid_from: string | null
   valid_until: string | null
+  /** 배지 발급 시 함께 지급하는 잼 포인트. 0이면 없음. 발급 시점 값으로 1회 지급(소급 변경 없음). */
+  point_reward: number
   created_at: string
 }
 
@@ -466,6 +468,56 @@ export interface ActivityFeedRow {
 }
 
 // =========================================
+// 잼 포인트 시스템 (Phase 12, 1a단계)
+// =========================================
+
+/** point_transactions.reason 허용값 (마이그레이션 045 CHECK 제약과 일치) */
+export type PointReason =
+  | 'badge_point_reward'
+  | 'mission_point_reward'
+  | 'admin_grant'
+  | 'admin_deduct'
+
+/** 유저별 잔액 캐시 (직접 UPDATE 금지 — award_points RPC로만 변경) */
+export interface PointWalletRow {
+  user_id: string
+  balance: number
+  updated_at: string
+}
+
+/** 불변 원장 (append-only, 수정/삭제 없음) */
+export interface PointTransactionRow {
+  id: string
+  user_id: string
+  amount: number // 양수=적립, 음수=차감
+  reason: PointReason
+  source_badge_id: string | null
+  source_mission_id: string | null
+  admin_reason_label: string | null
+  admin_reason_note: string | null
+  created_at: string
+}
+
+/** 서비스 전체 발행 장부 (싱글톤, 어드민 전용) */
+export interface PointTreasuryRow {
+  id: number
+  total_minted: number
+  total_reclaimed: number
+  updated_at: string
+}
+
+/** award_points() RPC 인자 */
+export interface AwardPointsArgs {
+  p_user_id: string
+  p_amount: number
+  p_reason: PointReason
+  p_source_badge_id?: string | null
+  p_source_mission_id?: string | null
+  p_admin_reason_label?: string | null
+  p_admin_reason_note?: string | null
+}
+
+// =========================================
 // Supabase Database 제네릭 타입 (createClient에 주입)
 // =========================================
 export interface Database {
@@ -669,9 +721,32 @@ export interface Database {
         Update: Partial<Omit<UserFollowRow, 'id'>>
         Relationships: []
       }
+      point_wallets: {
+        Row: PointWalletRow
+        Insert: Omit<PointWalletRow, 'updated_at'> & { updated_at?: string }
+        Update: Partial<Omit<PointWalletRow, 'user_id'>>
+        Relationships: []
+      }
+      point_transactions: {
+        Row: PointTransactionRow
+        Insert: Omit<PointTransactionRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<PointTransactionRow, 'id'>>
+        Relationships: []
+      }
+      point_treasury: {
+        Row: PointTreasuryRow
+        Insert: Partial<PointTreasuryRow> & { id: number }
+        Update: Partial<Omit<PointTreasuryRow, 'id'>>
+        Relationships: []
+      }
     }
     Views: Record<never, never>
-    Functions: Record<never, never>
+    Functions: {
+      award_points: {
+        Args: AwardPointsArgs
+        Returns: PointTransactionRow
+      }
+    }
     Enums: {
       badge_type: BadgeType
       badge_rarity: BadgeRarity

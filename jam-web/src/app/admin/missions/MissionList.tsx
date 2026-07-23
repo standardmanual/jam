@@ -4,9 +4,16 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { MissionRow } from '@/types/database'
 
+interface BadgeOption {
+  id: string
+  name: string
+  point_reward: number
+}
+
 interface Props {
   missions: MissionRow[]
   completionCounts: Map<string, number>
+  badges: BadgeOption[]
 }
 
 const missionTypes = ['distance', 'poi_visit', 'activity_count', 'item_collect'] as const
@@ -25,12 +32,18 @@ const emptyForm = {
   max_completions: '',
 }
 
-export default function MissionList({ missions, completionCounts }: Props) {
+export default function MissionList({ missions, completionCounts, badges }: Props) {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [conditionError, setConditionError] = useState('')
   const router = useRouter()
+
+  // 선택된 보상 배지의 포인트 보상 (경고 문구용)
+  const selectedBadgePointReward =
+    form.reward_type === 'badge' || form.reward_type === 'item_badge'
+      ? badges.find((b) => b.id === form.reward_id)?.point_reward ?? 0
+      : 0
 
   async function handleSave() {
     try {
@@ -128,6 +141,27 @@ export default function MissionList({ missions, completionCounts }: Props) {
                 <label className="text-xs text-white/40 mb-1 block">포인트 수</label>
                 <input type="number" value={form.reward_points} onChange={(e) => setForm((f) => ({ ...f, reward_points: Number(e.target.value) }))}
                   className="w-full bg-white/5 border border-white/20 rounded-xl px-3 py-2 text-sm" />
+              </div>
+            )}
+
+            {(form.reward_type === 'badge' || form.reward_type === 'item_badge') && (
+              <div className="col-span-2">
+                <label className="text-xs text-white/40 mb-1 block">보상 배지</label>
+                <select value={form.reward_id} onChange={(e) => setForm((f) => ({ ...f, reward_id: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/20 rounded-xl px-3 py-2 text-sm">
+                  <option value="" className="bg-[#1a1a1a]">— 배지 선택 —</option>
+                  {badges.map((b) => (
+                    <option key={b.id} value={b.id} className="bg-[#1a1a1a]">
+                      {b.name}{b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''}
+                    </option>
+                  ))}
+                </select>
+                {selectedBadgePointReward > 0 && (
+                  <div className="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 text-amber-300 text-xs leading-relaxed">
+                    ⚠ 이 배지는 발급 시 자동으로 {selectedBadgePointReward.toLocaleString('ko-KR')} 포인트도 함께 지급됩니다.
+                    미션 완료 시 유저는 배지와 포인트를 모두 받게 됩니다(의도된 설계라면 그대로 진행하세요).
+                  </div>
+                )}
               </div>
             )}
 

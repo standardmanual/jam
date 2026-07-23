@@ -9,7 +9,7 @@ export type FeedEventType =
   | 'mission_cancelled'
 
 export interface FeedEventMeta {
-  badge_earned: { badge_id: string; badge_name: string; badge_image_url: string; rarity: string }
+  badge_earned: { badge_id: string; badge_name: string; badge_image_url: string; rarity: string; point_reward?: number }
   item_dropped: {
     badge_id: string
     badge_name: string

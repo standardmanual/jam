@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow } from '@/types/database'
 import ProfileClient from '../profile/ProfileClient'
 import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
+import { getWallet } from '@/lib/points'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -39,6 +40,10 @@ export default async function UserProfilePage({ params }: Props) {
   const target = targetRaw as UserRow
   const subjectId = target.id
   const isOwnProfile = target.id === user.id
+
+  // 잼 포인트 잔액 — 본인 프로필에서만 노출(이메일과 같은 급의 비공개 정보).
+  // 타인 프로필 조회 시엔 조회조차 하지 않는다.
+  const pointBalance = isOwnProfile ? await getWallet(user.id) : null
 
   // ─── 통계 (팔로워/팔로잉/뱃지 + isFollowing) ──────────────────
   const [
@@ -240,6 +245,7 @@ export default async function UserProfilePage({ params }: Props) {
       itemBookCount={itemBookCount}
       username={target.username ?? username}
       currentUserId={user.id}
+      pointBalance={pointBalance}
     />
   )
 }
