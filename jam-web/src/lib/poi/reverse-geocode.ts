@@ -3,12 +3,13 @@
 // query 문자열만으로 매칭한다. "카페" 같은 순수 키워드만 넘기면 전국 아무 데서나
 // 무작위 결과가 나와 유저 근처 필터링 시 거의 항상 0건이 된다.
 // 좌표를 "구 동" 지역명으로 변환해 키워드 앞에 붙여 실제로 해당 지역 결과가 나오게 한다.
-// 참조: https://api.ncloud-docs.com/docs/ai-naver-mapsreversegeocoding-gc
+// 참조: https://api.ncloud-docs.com/docs/application-maps-reversegeocoding
 // 자격증명은 지도 JS SDK와 동일한 NCP Maps 것을 재사용 (신규 발급 불필요)
-//   NEXT_PUBLIC_NAVER_MAP_CLIENT_ID → X-NCP-APIGW-API-KEY-ID
-//   NCP_MAP_CLIENT_SECRET           → X-NCP-APIGW-API-KEY
+//   NEXT_PUBLIC_NAVER_MAP_CLIENT_ID → x-ncp-apigw-api-key-id
+//   NCP_MAP_CLIENT_SECRET           → x-ncp-apigw-api-key
+// 주의: 구 도메인 naveropenapi.apigw.ntruss.com이 아니라 신규 통합 도메인 maps.apigw.ntruss.com
 
-const REVERSE_GEOCODE_URL = 'https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc'
+const REVERSE_GEOCODE_URL = 'https://maps.apigw.ntruss.com/map-reversegeocode/v2/gc'
 const FETCH_TIMEOUT_MS = 5_000
 
 interface NcpRegionArea {
@@ -40,8 +41,8 @@ export async function reverseGeocodeToRegionName(lat: number, lng: number): Prom
     const url = `${REVERSE_GEOCODE_URL}?coords=${lng},${lat}&output=json&orders=legalcode,admcode`
     const res = await fetch(url, {
       headers: {
-        'X-NCP-APIGW-API-KEY-ID': clientId,
-        'X-NCP-APIGW-API-KEY': clientSecret,
+        'x-ncp-apigw-api-key-id': clientId,
+        'x-ncp-apigw-api-key': clientSecret,
       },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     })
