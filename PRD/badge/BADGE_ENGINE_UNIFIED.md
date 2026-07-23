@@ -298,7 +298,7 @@ mythic은 앰비언트 드랍 대상에서 완전히 제외 — 신화 등급의
 
 **일련번호**: 앰비언트 드랍을 픽업해 발급되는 일련번호는 **50,001~999,999** 범위로 제한(`assign_random_serial()` 트리거가 `drop_id → poi_drops.source`로 판별). 다른 모든 획득 경로는 기존 1~999,999 전체 범위 그대로.
 
-**보충 크론** (`/api/cron/ambient-drop-monitor`, 매시간):
+**보충 크론** (`/api/cron/ambient-drop-monitor`, 매일 05:00 — Hobby 플랜은 하루 1회보다 잦은 cron을 배포 시점에 거부해 매시간에서 하향):
 ```
 1. 활성 POI 수 → target_total 계산
 2. 활성 시스템 드랍 수 카운트 → 부족분 산출 (replenish_batch_size로 상한, 기본 30)

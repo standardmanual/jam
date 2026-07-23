@@ -1,7 +1,8 @@
 /**
  * GET /api/cron/ambient-drop-monitor
- * 매시간 실행: 전체 POI의 시스템 드랍(source='system') 활성 수량을 목표치와 비교해 부족분 보충
- * Vercel Cron: "0 * * * *"
+ * 매일 05:00 실행: 전체 POI의 시스템 드랍(source='system') 활성 수량을 목표치와 비교해 부족분 보충
+ * Vercel Cron: "0 5 * * *"
+ * (Hobby 플랜은 하루 1회보다 잦은 cron을 배포 시점에 거부함 — 매시간에서 일 1회로 하향)
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAmbientDropPolicy } from '@/lib/ambient-drop/policy'
