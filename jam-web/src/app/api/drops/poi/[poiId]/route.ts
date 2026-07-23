@@ -18,7 +18,7 @@ export async function GET(
   // poi_drops + badges 조인 (users 조인은 FK 중복으로 별도 조회)
   const { data, error } = await (service as any)
     .from('poi_drops')
-    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url )`)
+    .select(`id, badge_id, dropped_at, dropper_user_id, source, badges ( name, rarity, image_url )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
     .order('dropped_at', { ascending: true })
@@ -28,8 +28,8 @@ export async function GET(
     return NextResponse.json({ error: '조회 실패', detail: error.message }, { status: 500 })
   }
 
-  // dropper username 별도 조회
-  const dropperIds = [...new Set((data ?? []).map((d: any) => d.dropper_user_id as string))]
+  // dropper username 별도 조회 (앰비언트 드랍은 dropper_user_id가 null이라 자연히 제외됨)
+  const dropperIds = [...new Set((data ?? []).map((d: any) => d.dropper_user_id as string | null).filter(Boolean))]
   const { data: usersData } = dropperIds.length > 0
     ? await (service as any).from('users').select('id, username').in('id', dropperIds)
     : { data: [] }
@@ -42,7 +42,8 @@ export async function GET(
     badge_name: d.badges?.name,
     badge_rarity: d.badges?.rarity,
     badge_image_url: d.badges?.image_url,
-    dropper_name: nameById[d.dropper_user_id] ?? '익명',
+    dropper_name: d.source === 'system' ? null : (nameById[d.dropper_user_id] ?? '익명'),
+    is_ambient: d.source === 'system',
     dropped_at: d.dropped_at,
   }))
 

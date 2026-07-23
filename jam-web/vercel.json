@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/poi-cleanup",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/ambient-drop-monitor",
+      "schedule": "0 * * * *"
     }
   ]
 }

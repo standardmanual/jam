@@ -33,7 +33,7 @@ export async function GET(
 
   const drop = data as PoiDropRow & {
     badges: { name: string; rarity: string; image_url: string }
-    users: { username: string }
+    users: { username: string } | null
   }
 
   return NextResponse.json({
@@ -42,7 +42,8 @@ export async function GET(
     badge_name: drop.badges.name,
     badge_rarity: drop.badges.rarity,
     badge_image_url: drop.badges.image_url,
-    dropper_name: drop.users.username,
+    dropper_name: drop.source === 'system' ? null : (drop.users?.username ?? '익명'),
+    is_ambient: drop.source === 'system',
     dropped_at: drop.dropped_at,
     is_available: drop.is_available,
     is_own: drop.dropper_user_id === user.id,
