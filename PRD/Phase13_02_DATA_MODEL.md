@@ -18,11 +18,22 @@
 ALTER TABLE public.missions
   ADD COLUMN status_display_type TEXT NOT NULL DEFAULT 'ranking'
     CHECK (status_display_type IN ('ranking', 'achievement')),
-  ADD COLUMN visible_rank_count INTEGER; -- NULL = 전체 공개, 숫자 = 상위 N명만 목록에 노출(본인은 항상 별도 표시)
+  ADD COLUMN visible_rank_count INTEGER, -- NULL = 전체 공개, 숫자 = 상위 N명만 목록에 노출(본인은 항상 별도 표시)
+  ADD COLUMN reward_badge_ids UUID[] NOT NULL DEFAULT '{}'; -- 복수 배지 보상 (신규)
+
+-- 기존 단일 배지 보상(reward_type IN ('badge','item_badge') AND reward_id IS NOT NULL)을 배열로 이관
+UPDATE public.missions
+SET reward_badge_ids = ARRAY[reward_id]
+WHERE reward_type IN ('badge', 'item_badge') AND reward_id IS NOT NULL;
+
+-- reward_type/reward_id는 배지+포인트 동시 구성으로 대체되어 더 이상 필수 아님 (컬럼은 legacy로 보존, 새 코드는 참조 안 함)
+ALTER TABLE public.missions ALTER COLUMN reward_type DROP NOT NULL;
 ```
 
 - `status_display_type`: 관리자가 미션 등록/수정 시 선택. 기본값 `'ranking'`.
 - `visible_rank_count`: 관리자가 미션마다 지정. NULL이면 참가자 전원 노출.
+- `reward_badge_ids`: 관리자가 검색·다중 선택. 액티비티배지·아이템배지 구분 없이 `badges.id` 배열.
+- `reward_type`/`reward_id`: **폐기(deprecated), 컬럼은 삭제하지 않고 남겨둠**(데이터 손실 방지) — 새 코드는 읽지도 쓰지도 않는다.
 
 ## 3. `checker.ts` 로직 변경 (참가 게이트)
 
@@ -95,6 +106,45 @@ interface AchievementEntry {
 - 정렬 규칙(랭킹형): `isCompleted DESC, completedAt ASC(먼저 달성한 사람 우선), progressValue DESC`
 - `username`은 `users.username` 조인 (기존 유저 검색 API와 동일하게 `username IS NOT NULL`인 유저만 표시 — NULL이면 "익명"으로 폴백)
 
-## 6. 마이그레이션 파일
+## 6. 보상 지급 로직 (`src/lib/missions/rewards.ts`, 신규)
 
-- `jam-web/supabase/migrations/0XX_mission_status_display.sql`: 위 §2의 `ALTER TABLE missions` — 번호는 구현 시점의 최신 번호 다음 값 사용.
+완료 판정 직후 호출. 배지 타입(`badges.type`)에 따라 지급 테이블이 갈린다.
+
+```
+grantMissionRewards(userId, mission):
+  1. reward_badge_ids로 badges 조회 (id, name, image_url, type, rarity)
+  2. 타입별 분리:
+     - type='activity': user_activity_badges에 이미 있으면 skip, 없으면 INSERT
+       (triggered_by: `mission_reward:${mission.id}`)
+     - type='item': inventory 조회 → 슬롯 가득 차면 skip, 아니면 inventory_items INSERT
+       (obtained_by: 'system_event') + inventory.used_slots +1
+  3. 지급된 배지 각각의 badges.point_reward가 0보다 크면
+     awardPoints(userId, point_reward, 'badge_point_reward', {sourceBadgeId}) 개별 호출
+     — badge-engine/drop-engine의 자동 포인트 지급은 DB 트리거가 아니라 그 코드 안에만
+       있어서, rewards.ts에서 직접 INSERT하면 여기서 명시적으로 재현해야 함
+  4. reward_points > 0이면 awardPoints(userId, reward_points, 'mission_point_reward', {sourceMissionId})
+     — 배지 포인트와는 별개 사유(reason)로 추가 지급
+  5. 반환: { awardedBadgeIds, awardedBadgeNames, totalAwardedPoints } — 피드 메타데이터에 그대로 사용
+```
+
+## 7. 피드 메타데이터 확장 (`mission_completed`)
+
+```typescript
+// FeedEventMeta['mission_completed'] (기존 reward_type 필드 제거, 아래로 대체)
+{
+  mission_id: string
+  mission_title: string
+  reward_points: number | null           // 유지 (실제 지급된 값)
+  awarded_badge_ids: string[]            // 신규 — 실제 지급된 배지 id 목록
+  awarded_badge_names: string[]          // 신규 — 표시용 이름 (badge_image_url은 렌더링 시 배지별로 별도 조회하거나 이름만 표시)
+  final_progress_value: number           // 신규 — 완료 시점 진행값 ("결과 요약"용)
+  target_value: number                   // 신규 — 완료 당시 목표치 스냅샷 (예: "52km / 목표 50km")
+}
+```
+
+- 홈/프로필 피드 카드: "미션 완료 — {mission_title}" + 결과 요약(`final_progress_value`/`target_value`) + 보상 배지 이름들 + `+{reward_points}P`
+- 기존 `reward_type` 필드는 더 이상 metadata에 넣지 않음 — 표시 로직(`HomeFeedSection.tsx`/`ProfileClient.tsx`)에서 `rewardTypeLabel` 참조 제거하고 위 필드 기반으로 재작성.
+
+## 8. 마이그레이션 파일
+
+- `jam-web/supabase/migrations/0XX_mission_status_display.sql`: §2의 `ALTER TABLE missions` (status_display_type + visible_rank_count + reward_badge_ids) — 번호는 구현 시점의 최신 번호 다음 값 사용.
