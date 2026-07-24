@@ -47,6 +47,7 @@ function timeLeft(endsAt: string): string {
 export default function MissionDetailClient({ mission, isParticipating, isCompleted, progressValue, rewardBadges }: Props) {
   const [participating, setParticipating] = useState(isParticipating)
   const [loading, setLoading] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -59,15 +60,17 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
   const achieved = isCompleted || progressValue >= 1
 
   async function handleJoin() {
-    if (!confirm('한번 참가하면 취소할 수 없어요. 참가할까요?')) return
     setLoading(true)
     try {
       const res = await fetch(`/api/missions/${mission.id}/join`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) { toast(data.error ?? '오류가 발생했어요.', 'error'); return }
       setParticipating(true)
+      setConfirming(false)
       toast('미션에 참가했어요!', 'success')
       router.refresh()
+    } catch {
+      toast('네트워크 오류가 발생했어요. 다시 시도해주세요.', 'error')
     } finally {
       setLoading(false)
     }
@@ -197,18 +200,40 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
         </Link>
       )}
 
-      {/* 참가 버튼 — 참가 취소는 불가(Phase13) */}
+      {/* 참가 버튼 — 참가 취소는 불가(Phase13). 네이티브 confirm() 대신 인앱 확인 UI 사용
+          (모바일/PWA에서 연속 confirm() 호출이 브라우저에 의해 조용히 차단되는 문제 회피) */}
       {isActive && !isCompleted && !participating && (
-        <>
-          <button
-            onClick={handleJoin}
-            disabled={loading}
-            className="w-full py-4 rounded-2xl bg-jam-ink text-white font-black text-base active:scale-95 transition-all disabled:opacity-30 shadow-[3px_3px_0_0_#161616]"
-          >
-            {loading ? '처리 중...' : '미션 참가하기'}
-          </button>
-          <p className="text-xs text-jam-ink/50 font-semibold text-center mt-2">참가 후에는 취소할 수 없어요.</p>
-        </>
+        confirming ? (
+          <div className="rounded-2xl border-[3px] border-jam-ink bg-white p-4 shadow-[3px_3px_0_0_#161616]">
+            <p className="text-sm font-black text-jam-ink text-center mb-3">한번 참가하면 취소할 수 없어요. 참가할까요?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirming(false)}
+                disabled={loading}
+                className="flex-1 py-3 rounded-xl bg-jam-ink/10 text-jam-ink font-black text-sm active:scale-95 transition-all disabled:opacity-30"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleJoin}
+                disabled={loading}
+                className="flex-1 py-3 rounded-xl bg-jam-ink text-white font-black text-sm active:scale-95 transition-all disabled:opacity-30"
+              >
+                {loading ? '처리 중...' : '참가 확정'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={() => setConfirming(true)}
+              className="w-full py-4 rounded-2xl bg-jam-ink text-white font-black text-base active:scale-95 transition-all shadow-[3px_3px_0_0_#161616]"
+            >
+              미션 참가하기
+            </button>
+            <p className="text-xs text-jam-ink/50 font-semibold text-center mt-2">참가 후에는 취소할 수 없어요.</p>
+          </>
+        )
       )}
 
       {isCompleted && (
