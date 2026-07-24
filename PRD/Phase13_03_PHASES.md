@@ -39,7 +39,20 @@
 
 **완료 기준**: 참가자만 미션 상황 진입 가능, 랭킹형/달성형 화면 정상 렌더링, 어드민에서 신규 필드 저장됨
 
-## Step E: 검증 + 문서
+## Step E: 보상 구성(배지 복수선택+포인트) + 실제 지급 + 피드 확장
+
+- 마이그레이션에 `missions.reward_badge_ids UUID[]` 추가 (Step C 마이그레이션에 함께 포함해도 됨) + 기존 단일 보상 데이터 이관
+- 신규 `src/lib/missions/rewards.ts`: `grantMissionRewards()` — 배지 타입별 지급 분기 + 포인트 지급 (Phase13_02 §6)
+- `checker.ts`: 기존 `if (reward_type==='points')` 블록을 `grantMissionRewards()` 호출로 교체, 반환값으로 `recordFeedEvent` 메타데이터 구성
+- `src/lib/activity-feed/index.ts`: `FeedEventMeta['mission_completed']`를 Phase13_02 §7 스펙으로 교체 (reward_type 제거)
+- `src/app/admin/missions/MissionList.tsx`: 배지 단일 select → **검색 가능한 다중 선택 UI**로 교체, 선택된 배지들의 `point_reward` 합 + `reward_points`를 더한 "총 지급 포인트" 미리보기 표시
+- `src/app/api/admin/missions/route.ts`: `reward_badge_ids` 배열 저장 확인 (body 통째 insert라 필드명만 맞으면 대부분 자동 반영 — 검증만)
+- 피드 렌더링(`HomeFeedSection.tsx`/`ProfileClient.tsx`): `mission_completed` 카드에 결과 요약(`final_progress_value`/`target_value`) + 보상 배지 이름 목록 + 포인트 표시, `rewardTypeLabel` 참조 제거
+- `mission_joined`(참가) 피드는 기존 로직 그대로 — 회귀만 확인
+
+**완료 기준**: 배지 여러 개 선택해 미션 등록 → 완료 시 전부 실제 지급됨(중복 보유 배지는 스킵) + 포인트도 지급 + 피드에 결과 요약과 실제 지급 내역이 정확히 표시됨
+
+## Step F: 검증 + 문서
 
 - `npx tsc --noEmit` 0 에러
 - `PRD/badge/BADGE_ENGINE_UNIFIED.md`는 배지 로직 문서라 미션은 범위 밖 — 대신 `PRD/SERVICE_OPERATIONS_YYYYMMDD_HHMM.md` 신규 생성 (API·lib·마이그레이션·(main) 변경 해당)
