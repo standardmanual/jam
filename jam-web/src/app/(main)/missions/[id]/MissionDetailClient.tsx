@@ -2,20 +2,22 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useToast } from '@/components/ui/Toast'
 import type { MissionRow, MissionCondition } from '@/types/database'
+
+export interface RewardBadgeInfo {
+  id: string
+  name: string
+  image_url: string | null
+}
 
 interface Props {
   mission: MissionRow
   isParticipating: boolean
   isCompleted: boolean
   progressValue: number
-}
-
-const rewardTypeLabel: Record<string, string> = {
-  badge: '배지',
-  points: 'JAM 포인트',
-  item_badge: '아이템 배지',
+  rewardBadges: RewardBadgeInfo[]
 }
 
 function missionGoalText(type: string, condition: MissionCondition): { label: string; unit: string; target: number } {
@@ -42,7 +44,7 @@ function timeLeft(endsAt: string): string {
   return `${h}시간 ${m}분 남음`
 }
 
-export default function MissionDetailClient({ mission, isParticipating, isCompleted, progressValue }: Props) {
+export default function MissionDetailClient({ mission, isParticipating, isCompleted, progressValue, rewardBadges }: Props) {
   const [participating, setParticipating] = useState(isParticipating)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -52,8 +54,12 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
   const goal = missionGoalText(mission.mission_type, condition)
   const progressPct = goal.target > 0 ? Math.min(100, (progressValue / goal.target) * 100) : 0
   const isActive = new Date(mission.starts_at) <= new Date() && new Date(mission.ends_at) > new Date()
+  // 달성형(poi_visit/item_collect) — 진행 바 대신 달성/미달성 배지로 표시
+  const isAchievementType = mission.mission_type === 'poi_visit' || mission.mission_type === 'item_collect'
+  const achieved = isCompleted || progressValue >= 1
 
   async function handleJoin() {
+    if (!confirm('한번 참가하면 취소할 수 없어요. 참가할까요?')) return
     setLoading(true)
     try {
       const res = await fetch(`/api/missions/${mission.id}/join`, { method: 'POST' })
@@ -61,20 +67,6 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
       if (!res.ok) { toast(data.error ?? '오류가 발생했어요.', 'error'); return }
       setParticipating(true)
       toast('미션에 참가했어요!', 'success')
-      router.refresh()
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleCancel() {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/missions/${mission.id}/join`, { method: 'DELETE' })
-      const data = await res.json()
-      if (!res.ok) { toast(data.error ?? '오류가 발생했어요.', 'error'); return }
-      setParticipating(false)
-      toast('미션 참가를 취소했어요.', 'info')
       router.refresh()
     } finally {
       setLoading(false)
@@ -130,50 +122,84 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
 
       {/* 진행 상황 */}
       {(participating || isCompleted) && goal.target > 0 && (
-        <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4">
-          <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">나의 진행 상황</p>
-          <div className="flex items-end justify-between mb-2">
-            <p className="text-2xl font-black text-jam-ink">
-              {isCompleted ? goal.target : progressValue.toFixed(mission.mission_type === 'distance' ? 1 : 0)}
-              <span className="text-sm font-bold text-jam-ink/50 ml-1">{goal.unit}</span>
+        isAchievementType ? (
+          <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4">
+            <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">나의 진행 상황</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-jam-ink/60">{goal.label}</p>
+              {achieved ? (
+                <span className="text-sm font-black bg-jam-lime border-[2px] border-jam-ink text-jam-ink px-3 py-1.5 rounded-xl">✓ 달성</span>
+              ) : (
+                <span className="text-sm font-black bg-jam-ink/10 border-[2px] border-jam-ink/20 text-jam-ink/50 px-3 py-1.5 rounded-xl">미달성</span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4">
+            <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">나의 진행 상황</p>
+            <div className="flex items-end justify-between mb-2">
+              <p className="text-2xl font-black text-jam-ink">
+                {isCompleted ? goal.target : progressValue.toFixed(mission.mission_type === 'distance' ? 1 : 0)}
+                <span className="text-sm font-bold text-jam-ink/50 ml-1">{goal.unit}</span>
+              </p>
+              <p className="text-sm text-jam-ink/50 font-semibold">/ {goal.target}{goal.unit}</p>
+            </div>
+            <div className="h-2.5 bg-jam-ink/10 rounded-full overflow-hidden border border-jam-ink/20">
+              <div
+                className={`h-full rounded-full transition-all ${isCompleted ? 'bg-jam-lime' : 'bg-jam-ink'}`}
+                style={{ width: `${isCompleted ? 100 : progressPct}%` }}
+              />
+            </div>
+            <p className="text-xs text-jam-ink/50 font-semibold mt-1 text-right">
+              {isCompleted ? '달성 완료!' : `${Math.round(progressPct)}% 달성`}
             </p>
-            <p className="text-sm text-jam-ink/50 font-semibold">/ {goal.target}{goal.unit}</p>
           </div>
-          <div className="h-2.5 bg-jam-ink/10 rounded-full overflow-hidden border border-jam-ink/20">
-            <div
-              className={`h-full rounded-full transition-all ${isCompleted ? 'bg-jam-lime' : 'bg-jam-ink'}`}
-              style={{ width: `${isCompleted ? 100 : progressPct}%` }}
-            />
-          </div>
-          <p className="text-xs text-jam-ink/50 font-semibold mt-1 text-right">
-            {isCompleted ? '달성 완료!' : `${Math.round(progressPct)}% 달성`}
-          </p>
-        </div>
+        )
       )}
 
       {/* 보상 */}
       <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-6">
         <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">보상</p>
-        <p className="text-sm font-black text-jam-ink">
-          {rewardTypeLabel[mission.reward_type] ?? mission.reward_type}
-          {mission.reward_points ? ` ${mission.reward_points}P` : ''}
-        </p>
+        {rewardBadges.length === 0 && !mission.reward_points ? (
+          <p className="text-sm font-black text-jam-ink/40">보상 없음</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {rewardBadges.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {rewardBadges.map((b) => (
+                  <span key={b.id} className="flex items-center gap-1.5 text-xs font-black text-jam-ink bg-jam-yellow border-[2px] border-jam-ink px-2 py-1 rounded-lg">
+                    {b.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={b.image_url} alt="" className="w-4 h-4 object-contain" />
+                    )}
+                    {b.name}
+                  </span>
+                ))}
+              </div>
+            )}
+            {mission.reward_points ? (
+              <p className="text-sm font-black text-jam-ink">JAM 포인트 {mission.reward_points}P</p>
+            ) : null}
+          </div>
+        )}
         {mission.max_completions && (
           <p className="text-xs text-[#FC4C02] font-black mt-1">선착순 {mission.max_completions.toLocaleString()}명</p>
         )}
       </div>
 
-      {/* 참가/취소 버튼 */}
-      {isActive && !isCompleted && (
-        participating ? (
-          <button
-            onClick={handleCancel}
-            disabled={loading}
-            className="w-full py-4 rounded-2xl border-[3px] border-jam-ink text-jam-ink font-black text-base active:scale-95 transition-all disabled:opacity-30 shadow-[3px_3px_0_0_#161616]"
-          >
-            {loading ? '처리 중...' : '참가 취소'}
-          </button>
-        ) : (
+      {/* 미션 상황 — 참가자만 노출 */}
+      {(participating || isCompleted) && (
+        <Link
+          href={`/missions/${mission.id}/status`}
+          className="w-full py-3 mb-4 rounded-2xl bg-white border-[3px] border-jam-ink text-jam-ink font-black text-sm text-center shadow-[3px_3px_0_0_#161616] active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+        >
+          📊 미션 상황 보기
+        </Link>
+      )}
+
+      {/* 참가 버튼 — 참가 취소는 불가(Phase13) */}
+      {isActive && !isCompleted && !participating && (
+        <>
           <button
             onClick={handleJoin}
             disabled={loading}
@@ -181,7 +207,8 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
           >
             {loading ? '처리 중...' : '미션 참가하기'}
           </button>
-        )
+          <p className="text-xs text-jam-ink/50 font-semibold text-center mt-2">참가 후에는 취소할 수 없어요.</p>
+        </>
       )}
 
       {isCompleted && (

@@ -36,7 +36,20 @@ export interface FeedEventMeta {
     poi_drop_id?: string
   }
   mission_joined: { mission_id: string; mission_title: string }
-  mission_completed: { mission_id: string; mission_title: string; reward_type: string; reward_points: number | null }
+  mission_completed: {
+    mission_id: string
+    mission_title: string
+    /** 실제 지급된 총 포인트(배지 자체 포인트 + 미션 포인트). null이면 없음 */
+    reward_points: number | null
+    /** 실제 지급된 배지 id 목록 (Phase13) */
+    awarded_badge_ids: string[]
+    /** 표시용 배지 이름 목록 (Phase13) */
+    awarded_badge_names: string[]
+    /** 완료 시점 진행값 — "결과 요약"용 (Phase13) */
+    final_progress_value: number
+    /** 완료 당시 목표치 스냅샷 (Phase13) */
+    target_value: number
+  }
   mission_cancelled: { mission_id: string; mission_title: string }
 }
 
