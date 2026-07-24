@@ -107,6 +107,8 @@ function DetailSheet({ item, onClose, username }: { item: ActivityFeedRow; onClo
   const title = BADGE_EVENTS.has(item.event_type) ? String(meta.badge_name ?? '') : String(meta.mission_title ?? '')
   const sheetBg = isMissionCompleted ? 'bg-jam-lime' : 'bg-jam-cream'
   const isBadgeEvent = BADGE_EVENTS.has(item.event_type) && Boolean(meta.badge_id)
+  const rawBadgeNames = (item.metadata as Record<string, unknown>).awarded_badge_names
+  const missionBadgeNames = Array.isArray(rawBadgeNames) ? (rawBadgeNames as string[]) : []
 
   return (
     <>
@@ -147,8 +149,14 @@ function DetailSheet({ item, onClose, username }: { item: ActivityFeedRow; onClo
           {(item.event_type === 'item_dropped' || item.event_type === 'item_picked_up') && meta.poi_name && (
             <Row label="장소" value={String(meta.poi_name)} />
           )}
+          {item.event_type === 'mission_completed' && meta.target_value != null && Number(meta.target_value) > 0 && (
+            <Row label="결과" value={`${String(meta.final_progress_value ?? 0)} / 목표 ${String(meta.target_value)}`} />
+          )}
+          {item.event_type === 'mission_completed' && missionBadgeNames.length > 0 && (
+            <Row label="보상 배지" value={missionBadgeNames.join(', ')} />
+          )}
           {item.event_type === 'mission_completed' && meta.reward_points && (
-            <Row label="보상" value={`${meta.reward_points}P`} />
+            <Row label="보상 포인트" value={`${meta.reward_points}P`} />
           )}
           {item.event_type === 'badge_earned' && typeof meta.point_reward === 'number' && meta.point_reward > 0 && (
             <Row label="포인트" value={`+${Number(meta.point_reward).toLocaleString('ko-KR')}P`} />

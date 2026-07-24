@@ -14,10 +14,13 @@ function timeLeft(endsAt: string): string {
   return `${h}시간 ${m}분`
 }
 
-const rewardTypeLabel: Record<string, string> = {
-  badge: '배지',
-  points: 'JAM 포인트',
-  item_badge: '아이템 배지',
+// Phase13: 보상은 배지 복수 + 포인트 조합 — 목록에서는 간단히 요약
+function rewardSummary(m: MissionRow): string {
+  const parts: string[] = []
+  const badgeCount = m.reward_badge_ids?.length ?? 0
+  if (badgeCount > 0) parts.push(`배지 ${badgeCount}개`)
+  if (m.reward_points) parts.push(`${m.reward_points}P`)
+  return parts.length > 0 ? parts.join(' + ') : '없음'
 }
 
 export default async function MissionsPage() {
@@ -99,8 +102,7 @@ export default async function MissionsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-jam-ink/50 font-bold">
-                      보상: {rewardTypeLabel[m.reward_type] ?? m.reward_type}
-                      {m.reward_points ? ` ${m.reward_points}P` : ''}
+                      보상: {rewardSummary(m)}
                     </span>
                     <span className="text-[10px] font-black text-jam-ink/30 uppercase">{m.mission_type}</span>
                   </div>

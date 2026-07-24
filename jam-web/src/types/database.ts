@@ -240,6 +240,8 @@ export interface CombinationRecipeRow {
 
 export type MissionType = 'distance' | 'poi_visit' | 'activity_count' | 'item_collect'
 export type MissionRewardType = 'badge' | 'points' | 'item_badge'
+/** Phase13: 미션 상황 표시 방식 — 랭킹형(등수) / 달성형(완료 여부) */
+export type MissionStatusDisplayType = 'ranking' | 'achievement'
 
 export interface MissionCondition {
   /** distance 타입: 목표 거리 km */
@@ -260,9 +262,17 @@ export interface MissionRow {
   description: string | null
   mission_type: MissionType
   condition_json: MissionCondition
-  reward_type: MissionRewardType
+  /** @deprecated Phase13 이후 미사용(legacy 보존) — 보상은 reward_badge_ids + reward_points 사용 */
+  reward_type: MissionRewardType | null
+  /** @deprecated Phase13 이후 미사용(legacy 보존) */
   reward_id: string | null
   reward_points: number | null
+  /** Phase13: 복수 배지 보상 (활동배지/아이템배지 무관, badges.id 배열) */
+  reward_badge_ids: string[]
+  /** Phase13: 미션 상황 표시 방식 (기본 ranking) */
+  status_display_type: MissionStatusDisplayType
+  /** Phase13: 상위 N명 노출 (null = 전체) */
+  visible_rank_count: number | null
   starts_at: string
   ends_at: string
   max_completions: number | null

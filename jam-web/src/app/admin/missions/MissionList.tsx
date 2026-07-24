@@ -17,16 +17,20 @@ interface Props {
 }
 
 const missionTypes = ['distance', 'poi_visit', 'activity_count', 'item_collect'] as const
-const rewardTypes = ['badge', 'points', 'item_badge'] as const
+const statusDisplayTypes = [
+  { value: 'ranking', label: '랭킹형 (등수/진행값)' },
+  { value: 'achievement', label: '달성형 (완료 여부)' },
+] as const
 
 const emptyForm = {
   title: '',
   description: '',
   mission_type: 'distance' as string,
   condition_json: '{"distance_km": 50}',
-  reward_type: 'points' as string,
-  reward_id: '',
+  reward_badge_ids: [] as string[],
   reward_points: 100,
+  status_display_type: 'ranking' as string,
+  visible_rank_count: '' as string, // 빈값 = 전체 공개
   starts_at: '',
   ends_at: '',
   max_completions: '',
@@ -37,13 +41,26 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [conditionError, setConditionError] = useState('')
+  const [badgeQuery, setBadgeQuery] = useState('')
   const router = useRouter()
 
-  // 선택된 보상 배지의 포인트 보상 (경고 문구용)
-  const selectedBadgePointReward =
-    form.reward_type === 'badge' || form.reward_type === 'item_badge'
-      ? badges.find((b) => b.id === form.reward_id)?.point_reward ?? 0
-      : 0
+  // 보상 배지 다중 선택 관련 계산
+  const selectedBadges = badges.filter((b) => form.reward_badge_ids.includes(b.id))
+  const badgePointsSum = selectedBadges.reduce((sum, b) => sum + (b.point_reward ?? 0), 0)
+  const missionPoints = Number(form.reward_points) || 0
+  const totalPoints = badgePointsSum + missionPoints
+  const filteredBadges = badgeQuery.trim()
+    ? badges.filter((b) => b.name.toLowerCase().includes(badgeQuery.trim().toLowerCase()))
+    : badges
+
+  function toggleBadge(id: string) {
+    setForm((f) => ({
+      ...f,
+      reward_badge_ids: f.reward_badge_ids.includes(id)
+        ? f.reward_badge_ids.filter((x) => x !== id)
+        : [...f.reward_badge_ids, id],
+    }))
+  }
 
   async function handleSave() {
     try {
@@ -60,9 +77,10 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
       description: form.description || null,
       mission_type: form.mission_type,
       condition_json: JSON.parse(form.condition_json),
-      reward_type: form.reward_type,
-      reward_id: form.reward_id || null,
-      reward_points: form.reward_type === 'points' ? Number(form.reward_points) : null,
+      reward_badge_ids: form.reward_badge_ids,
+      reward_points: missionPoints > 0 ? missionPoints : null,
+      status_display_type: form.status_display_type,
+      visible_rank_count: form.visible_rank_count ? Number(form.visible_rank_count) : null,
       starts_at: new Date(form.starts_at).toISOString(),
       ends_at: new Date(form.ends_at).toISOString(),
       max_completions: form.max_completions ? Number(form.max_completions) : null,
@@ -75,6 +93,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
     })
     setSaving(false)
     setForm(emptyForm)
+    setBadgeQuery('')
     setShowForm(false)
     router.refresh()
   }
@@ -121,11 +140,20 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
             </div>
 
             <div>
-              <label className="text-xs text-white/40 mb-1 block">보상 타입</label>
-              <select value={form.reward_type} onChange={(e) => setForm((f) => ({ ...f, reward_type: e.target.value }))}
+              <label className="text-xs text-white/40 mb-1 block">미션 상황 표시 방식</label>
+              <select value={form.status_display_type} onChange={(e) => setForm((f) => ({ ...f, status_display_type: e.target.value }))}
                 className="w-full bg-white/5 border border-white/20 rounded-xl px-3 py-2 text-sm">
-                {rewardTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                {statusDisplayTypes.map((t) => <option key={t.value} value={t.value} className="bg-[#1a1a1a]">{t.label}</option>)}
               </select>
+              <p className="text-white/30 text-xs mt-1">
+                {form.mission_type === 'poi_visit' || form.mission_type === 'item_collect' ? '추천: 달성형' : '추천: 랭킹형'}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">공개 인원 (빈칸=전체)</label>
+              <input type="number" value={form.visible_rank_count} onChange={(e) => setForm((f) => ({ ...f, visible_rank_count: e.target.value }))}
+                className="w-full bg-white/5 border border-white/20 rounded-xl px-3 py-2 text-sm" placeholder="상위 N명 (본인은 항상 표시)" />
             </div>
 
             <div className="col-span-2">
@@ -136,34 +164,54 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
               <p className="text-white/30 text-xs mt-1">예: {`{"distance_km": 50, "activity_type": "cycling"}`}</p>
             </div>
 
-            {form.reward_type === 'points' && (
+            {/* 보상 구성 — 배지 복수 선택 + 포인트 */}
+            <div className="col-span-2 border border-white/10 rounded-2xl p-4 space-y-3">
+              <p className="text-xs font-bold text-white/60">보상 구성</p>
+
               <div>
-                <label className="text-xs text-white/40 mb-1 block">포인트 수</label>
+                <label className="text-xs text-white/40 mb-1 block">미션 포인트 (선택, 0=없음)</label>
                 <input type="number" value={form.reward_points} onChange={(e) => setForm((f) => ({ ...f, reward_points: Number(e.target.value) }))}
                   className="w-full bg-white/5 border border-white/20 rounded-xl px-3 py-2 text-sm" />
               </div>
-            )}
 
-            {(form.reward_type === 'badge' || form.reward_type === 'item_badge') && (
-              <div className="col-span-2">
-                <label className="text-xs text-white/40 mb-1 block">보상 배지</label>
-                <select value={form.reward_id} onChange={(e) => setForm((f) => ({ ...f, reward_id: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/20 rounded-xl px-3 py-2 text-sm">
-                  <option value="" className="bg-[#1a1a1a]">— 배지 선택 —</option>
-                  {badges.map((b) => (
-                    <option key={b.id} value={b.id} className="bg-[#1a1a1a]">
-                      {b.name}{b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''}
-                    </option>
-                  ))}
-                </select>
-                {selectedBadgePointReward > 0 && (
-                  <div className="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 text-amber-300 text-xs leading-relaxed">
-                    ⚠ 이 배지는 발급 시 자동으로 {selectedBadgePointReward.toLocaleString('ko-KR')} 포인트도 함께 지급됩니다.
-                    미션 완료 시 유저는 배지와 포인트를 모두 받게 됩니다(의도된 설계라면 그대로 진행하세요).
+              <div>
+                <label className="text-xs text-white/40 mb-1 block">보상 배지 (복수 선택 가능)</label>
+                {selectedBadges.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {selectedBadges.map((b) => (
+                      <button key={b.id} onClick={() => toggleBadge(b.id)}
+                        className="text-xs bg-[#AEEA00]/20 text-[#AEEA00] border border-[#AEEA00]/40 rounded-lg px-2 py-1 hover:bg-[#AEEA00]/30">
+                        {b.name}{b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''} ✕
+                      </button>
+                    ))}
                   </div>
                 )}
+                <input type="text" value={badgeQuery} onChange={(e) => setBadgeQuery(e.target.value)}
+                  placeholder="배지 이름 검색..." className="w-full bg-white/5 border border-white/20 rounded-xl px-3 py-2 text-sm mb-2" />
+                <div className="max-h-44 overflow-y-auto border border-white/10 rounded-xl divide-y divide-white/5">
+                  {filteredBadges.length === 0 && <p className="text-white/30 text-xs px-3 py-2">검색 결과 없음</p>}
+                  {filteredBadges.map((b) => {
+                    const checked = form.reward_badge_ids.includes(b.id)
+                    return (
+                      <button key={b.id} onClick={() => toggleBadge(b.id)}
+                        className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-white/5 ${checked ? 'text-[#AEEA00]' : 'text-white/70'}`}>
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${checked ? 'bg-[#AEEA00] border-[#AEEA00] text-black' : 'border-white/30'}`}>
+                          {checked ? '✓' : ''}
+                        </span>
+                        {b.name}{b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            )}
+
+              {/* 총 지급 포인트 미리보기 */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 text-amber-300 text-xs leading-relaxed">
+                총 지급 포인트 미리보기: <b>{totalPoints.toLocaleString('ko-KR')}P</b>
+                {' '}(미션 {missionPoints.toLocaleString('ko-KR')}P + 배지 자체 포인트 {badgePointsSum.toLocaleString('ko-KR')}P)
+                {badgePointsSum > 0 && ' — 선택한 배지의 자동 포인트가 합산 지급됩니다.'}
+              </div>
+            </div>
 
             <div>
               <label className="text-xs text-white/40 mb-1 block">시작 일시</label>

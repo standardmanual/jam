@@ -42,37 +42,4 @@ export async function POST(_req: Request, { params }: Params) {
   return NextResponse.json({ success: true })
 }
 
-// DELETE /api/missions/[id]/join — 미션 참가 취소
-export async function DELETE(_req: Request, { params }: Params) {
-  const { id: missionId } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-
-  const service = createServiceClient()
-
-  // 완료한 미션은 취소 불가
-  const [{ data: completion }, { data: missionRaw }] = await Promise.all([
-    service.from('user_mission_completions').select('id').eq('user_id', user.id).eq('mission_id', missionId).maybeSingle(),
-    service.from('missions').select('title').eq('id', missionId).single(),
-  ])
-
-  if (completion) {
-    return NextResponse.json({ error: '이미 완료한 미션은 취소할 수 없어요.' }, { status: 400 })
-  }
-
-  const { error } = await service
-    .from('user_mission_participations')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('mission_id', missionId)
-
-  if (error) {
-    return NextResponse.json({ error: '취소 처리 중 오류가 발생했어요.' }, { status: 500 })
-  }
-
-  const missionTitle = (missionRaw as { title: string } | null)?.title ?? ''
-  await recordFeedEvent(user.id, 'mission_cancelled', { mission_id: missionId, mission_title: missionTitle })
-
-  return NextResponse.json({ success: true })
-}
+// 참가 취소(DELETE)는 Phase13에서 폐지 — 한번 참가하면 되돌릴 수 없다.

@@ -47,6 +47,8 @@ function DetailSheet({ item, onClose }: { item: ActivityFeedRow; onClose: () => 
   const isMissionCompleted = item.event_type === 'mission_completed'
   const title = BADGE_EVENTS.has(item.event_type) ? String(meta.badge_name ?? '') : String(meta.mission_title ?? '')
   const isBadgeEvent = BADGE_EVENTS.has(item.event_type) && Boolean(meta.badge_id)
+  const rawBadgeNames = (item.metadata as Record<string, unknown>).awarded_badge_names
+  const missionBadgeNames = Array.isArray(rawBadgeNames) ? (rawBadgeNames as string[]) : []
 
   return (
     <>
@@ -86,9 +88,21 @@ function DetailSheet({ item, onClose }: { item: ActivityFeedRow; onClose: () => 
               <span className="text-sm font-black text-jam-ink">{String(meta.poi_name)}</span>
             </div>
           )}
+          {item.event_type === 'mission_completed' && meta.target_value != null && Number(meta.target_value) > 0 && (
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-xs font-black text-jam-ink/40 uppercase tracking-widest">결과</span>
+              <span className="text-sm font-black text-jam-ink">{String(meta.final_progress_value ?? 0)} / 목표 {String(meta.target_value)}</span>
+            </div>
+          )}
+          {item.event_type === 'mission_completed' && missionBadgeNames.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 gap-3">
+              <span className="text-xs font-black text-jam-ink/40 uppercase tracking-widest shrink-0">보상 배지</span>
+              <span className="text-sm font-black text-jam-ink text-right">{missionBadgeNames.join(', ')}</span>
+            </div>
+          )}
           {item.event_type === 'mission_completed' && meta.reward_points && (
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-xs font-black text-jam-ink/40 uppercase tracking-widest">보상</span>
+              <span className="text-xs font-black text-jam-ink/40 uppercase tracking-widest">보상 포인트</span>
               <span className="text-sm font-black text-jam-ink">{meta.reward_points}P</span>
             </div>
           )}
