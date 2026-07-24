@@ -23,6 +23,8 @@
 | 9 | 구글 로그인 온보딩 (username + 프로필 이미지) | Phase9_01~04 |
 | 10 | 유저 검색 (홈 검색창 → 결과 페이지 → 프로필) | [Phase10_01_PRD.md](./Phase10_01_PRD.md), [Phase10_02_DATA_MODEL.md](./Phase10_02_DATA_MODEL.md), [Phase10_03_PHASES.md](./Phase10_03_PHASES.md), [Phase10_04_PROJECT_SPEC.md](./Phase10_04_PROJECT_SPEC.md) |
 | 11 | 배지 체계 업그레이드 — 드랍엔진 v2 (3레이어·세계관 모멘텀·어드민 설정) | [Phase11_01_PRD.md](./Phase11_01_PRD.md), [Phase11_02_DATA_MODEL.md](./Phase11_02_DATA_MODEL.md), [Phase11_03_PHASES.md](./Phase11_03_PHASES.md), [Phase11_04_PROJECT_SPEC.md](./Phase11_04_PROJECT_SPEC.md) |
+| 12 | 잼 포인트 시스템 | [Phase12_01_PRD.md](./Phase12_01_PRD.md), [Phase12_02_DATA_MODEL.md](./Phase12_02_DATA_MODEL.md), [Phase12_03_PHASES.md](./Phase12_03_PHASES.md), [Phase12_04_PROJECT_SPEC.md](./Phase12_04_PROJECT_SPEC.md) |
+| 13 | 미션 참가 확정(참가필수·취소불가) + 미션 상황(랭킹/달성 현황) | [Phase13_01_PRD.md](./Phase13_01_PRD.md), [Phase13_02_DATA_MODEL.md](./Phase13_02_DATA_MODEL.md), [Phase13_03_PHASES.md](./Phase13_03_PHASES.md), [Phase13_04_PROJECT_SPEC.md](./Phase13_04_PROJECT_SPEC.md) |
 
 ---
 
