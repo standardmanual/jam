@@ -1,4 +1,4 @@
-// GET /api/inventory/items — 드랍 가능한 인벤토리 아이템 목록 (dropped_at IS NULL)
+// GET /api/inventory/items — 드랍 가능한 인벤토리 아이템 목록 (dropped_at IS NULL, slotted_in IS NULL)
 
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
@@ -30,6 +30,7 @@ export async function GET() {
     `)
     .eq('inventory_id', inventoryId)
     .is('dropped_at', null)
+    .is('slotted_in', null)
     .order('obtained_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: '조회 실패' }, { status: 500 })
