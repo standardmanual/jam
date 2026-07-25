@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { InventoryRow, InventoryItemRow, BadgeRow } from '@/types/database'
-import LocalDate from '@/components/LocalDate'
+import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 
 type InventoryItemWithBadge = InventoryItemRow & {
   badge: BadgeRow
@@ -11,20 +10,6 @@ type InventoryItemWithBadge = InventoryItemRow & {
 
 type InventoryWithItems = InventoryRow & {
   inventory_items: InventoryItemWithBadge[]
-}
-
-function isExpiringSoon(expiresAt: string | null): boolean {
-  if (!expiresAt) return false
-  const diff = new Date(expiresAt).getTime() - Date.now()
-  return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
-}
-
-
-const rarityCardBg: Record<string, string> = {
-  common: 'bg-white',
-  rare: 'bg-jam-teal/30',
-  legendary: 'bg-jam-purple/20',
-  mythic: 'bg-jam-yellow/40',
 }
 
 export default async function InventoryPage() {
@@ -50,6 +35,14 @@ export default async function InventoryPage() {
     (item) => item.dropped_at === null && item.slotted_in === null
   )
   const remainingSlots = maxSlots - usedSlots
+
+  const gridItems: InventoryGridItem[] = items.map((item) => ({
+    id: item.id,
+    badgeName: item.badge.name,
+    badgeImageUrl: item.badge.image_url,
+    badgeRarity: item.badge.rarity,
+    expiresAt: item.expires_at,
+  }))
 
   return (
     <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 min-h-full bg-jam-teal">
@@ -88,48 +81,11 @@ export default async function InventoryPage() {
           <p className="text-jam-ink/40 text-xs mt-1 font-semibold">활동을 완료하면 아이템 배지가 드랍돼요</p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
-          {items.map((item) => {
-            const expiring = isExpiringSoon(item.expires_at)
-            const cardBg = rarityCardBg[item.badge.rarity] ?? 'bg-white'
-            return (
-              <Link
-                key={item.id}
-                href={`/inventory/${item.id}`}
-                className={`flex flex-col items-center ${cardBg} border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] rounded-2xl p-3 gap-2 active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all`}
-              >
-                <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-jam-cream">
-                  {item.badge.image_url ? (
-                    <Image
-                      src={item.badge.image_url}
-                      alt={item.badge.name}
-                      width={80}
-                      height={80}
-                      className="object-contain w-full h-full p-1"
-                    />
-                  ) : (
-                    <span className="text-3xl">🏷️</span>
-                  )}
-                </div>
-                <p className="text-[11px] text-jam-ink text-center leading-tight line-clamp-2 font-bold w-full">
-                  {item.badge.name}
-                </p>
-                {expiring && item.expires_at && (
-                  <p className="text-[10px] text-red-600 font-bold"><LocalDate iso={item.expires_at} options={{ month: 'numeric', day: 'numeric' }} suffix=" 만료" /></p>
-                )}
-              </Link>
-            )
-          })}
-          {/* 빈 슬롯 */}
-          {Array.from({ length: Math.min(remainingSlots, Math.max(0, 6 - items.length)) }).map((_, i) => (
-            <div
-              key={`empty-${i}`}
-              className="flex items-center justify-center border-2 border-dashed border-jam-ink/25 rounded-2xl aspect-square bg-white/20"
-            >
-              <span className="text-jam-ink/25 text-xl font-black">+</span>
-            </div>
-          ))}
-        </div>
+        <InventoryGrid
+          items={gridItems}
+          mode="navigate"
+          emptySlots={Math.min(remainingSlots, Math.max(0, 6 - items.length))}
+        />
       )}
 
       {/* 플리마켓 */}
