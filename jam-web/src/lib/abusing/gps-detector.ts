@@ -40,6 +40,7 @@ export async function checkAndUpdateLocation(
     .single()
 
   const now = Date.now()
+  let result: GpsSpoofResult = { detected: false }
 
   if (
     userRow?.last_location_lat != null &&
@@ -56,11 +57,15 @@ export async function checkAndUpdateLocation(
     const speedKmh = elapsedHours > 0 ? distKm / elapsedHours : 0
 
     if (distKm >= MIN_DISTANCE_KM && speedKmh > policy.gps_max_speed_kmh) {
-      return { detected: true, speedKmh: Math.round(speedKmh) }
+      result = { detected: true, speedKmh: Math.round(speedKmh) }
     }
   }
 
-  // 위치 업데이트
+  // 위치는 감지 여부와 무관하게 항상 갱신한다.
+  // (예전엔 감지 시 업데이트를 건너뛰어서, 오탐으로 한 번 나쁜 좌표가 저장되면
+  //  그 좌표가 영원히 기준점으로 남아 이후 모든 정상 시도까지 계속 오탐나는
+  //  자가-고착 버그가 있었음 — 매번 최신 좌표로 갱신해 다음 판정은 항상
+  //  "방금 요청"을 기준으로 하도록 함.)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any)
     .from('users')
@@ -71,5 +76,5 @@ export async function checkAndUpdateLocation(
     })
     .eq('id', userId)
 
-  return { detected: false }
+  return result
 }

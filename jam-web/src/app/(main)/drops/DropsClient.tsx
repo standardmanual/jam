@@ -66,7 +66,11 @@ export default function DropsClient() {
         setUserLat(pos.coords.latitude)
         setUserLng(pos.coords.longitude)
       },
-      () => setLocError('위치 권한을 허용해 주세요.')
+      () => setLocError('위치 권한을 허용해 주세요.'),
+      // 실내 등에서 WiFi/기지국 기반 저정밀 위치가 잡히면 방문마다 좌표가
+      // 수백m씩 튀어 GPS 조작 오탐(gps-detector.ts)의 원인이 됨 — GPS 기반
+      // 고정밀 위치를 요청해 변동폭을 줄인다.
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
   }, [])
 
