@@ -2,7 +2,14 @@
  * GPS 조작 감지
  * - 마지막 위치와 현재 위치의 이동 속도를 계산
  * - 정책의 gps_max_speed_kmh 초과 시 조작으로 판정
+ *
+ * 최소 이동거리 가드: 속도 = 거리/시간이라 두 요청이 짧은 시간 안에 연달아
+ * 오면(연속 클릭, 실내 GPS 노이즈로 같은 자리에서도 좌표가 수십m씩 흔들림)
+ * 이동거리가 몇 십m에 불과해도 시간이 1~2초면 계산상 속도가 수백km/h로
+ * 튀어 오탐(false positive)이 난다. MIN_DISTANCE_KM 미만이면 애초에 "이동"으로
+ * 보지 않고 검사를 건너뛴다 — 실제 텔레포트(수백m~수km 순간이동)만 잡아낸다.
  */
+const MIN_DISTANCE_KM = 0.15 // 실내 GPS 오차 범위(수십~100m대) 감안한 최소 이동거리
 import { createServiceClient } from '@/lib/supabase/server'
 import { haversineDistance } from '@/lib/poi/proximity'
 import type { AbusingPolicy } from './policy'
@@ -48,7 +55,7 @@ export async function checkAndUpdateLocation(
     const elapsedHours = (now - new Date(userRow.last_location_at).getTime()) / 3_600_000
     const speedKmh = elapsedHours > 0 ? distKm / elapsedHours : 0
 
-    if (speedKmh > policy.gps_max_speed_kmh) {
+    if (distKm >= MIN_DISTANCE_KM && speedKmh > policy.gps_max_speed_kmh) {
       return { detected: true, speedKmh: Math.round(speedKmh) }
     }
   }
