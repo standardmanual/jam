@@ -133,7 +133,7 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                 {itemBadges.map((item) => {
                   const expiring = isExpiringSoon(item.expiresAt)
                   return (
-                    <Link key={item.itemId} href={`/inventory/${item.itemId}`}>
+                    <Link key={item.itemId} href={`/inventory/${item.itemId}?from=badges`}>
                       <div
                         className={[
                           'flex flex-col items-center gap-2 p-3 rounded-2xl bg-white border-[3px] shadow-[3px_3px_0_0_#161616] active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all',
