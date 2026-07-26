@@ -49,6 +49,7 @@ function makeCard(partial: Partial<TodayCardRow>): TodayCardRow {
   return {
     id: 'card-1',
     template_type: 'badge_spotlight',
+    layout_type: 'large_thumbnail',
     title: 't',
     subtitle: null,
     cover_image_url: null,

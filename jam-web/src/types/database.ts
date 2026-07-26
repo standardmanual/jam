@@ -421,9 +421,18 @@ export type TodayCardTemplateType =
   | 'drop_alert'
   | 'editorial_article'
 
+/** 카드가 화면에 어떤 형태로 노출될지 — template_type(콘텐츠 종류)과 별개 축 */
+export type TodayCardLayoutType =
+  | 'large_thumbnail' // 큰 썸네일형 — 커버 이미지 크게 + 제목/부제
+  | 'badge_gallery'    // 배지목록형 — 배지 여러 개를 갤러리/리스트로 나열
+  | 'shortcut'         // 바로가기형 — 이미지 없이 짧은 CTA 한 줄
+  | 'banner'           // 배너형 — 가로로 넓은 띠 배너, 이미지 위 텍스트 오버레이
+  | 'other'            // 기타 — 위 4종에 안 맞는 경우의 기본형
+
 export interface TodayCardRow {
   id: string
   template_type: TodayCardTemplateType
+  layout_type: TodayCardLayoutType
   title: string
   subtitle: string | null
   cover_image_url: string | null

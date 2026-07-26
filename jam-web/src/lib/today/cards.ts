@@ -49,8 +49,19 @@ export function resolveTargetHref(card: TodayCardRow): string {
   }
 }
 
+export interface ResolvedBadge {
+  id: string
+  name: string
+  image_url: string | null
+  rarity: string
+}
+
 /** resolveTargetHref 를 적용한 카드 (UI에서 바로 링크로 사용) */
-export type TodayCardWithHref = TodayCardRow & { resolved_href: string }
+export type TodayCardWithHref = TodayCardRow & {
+  resolved_href: string
+  /** badge_ids 를 실제 배지 정보로 조회한 결과 (badge_gallery 레이아웃 렌더링용, badge_ids 없으면 빈 배열) */
+  resolved_badges: ResolvedBadge[]
+}
 
 /**
  * 유저에게 지금 노출할 투데이 카드 목록을 조회한다.
@@ -82,10 +93,33 @@ export async function getTodayCards(
     return []
   }
 
-  return ((data ?? []) as TodayCardRow[]).map((card) => ({
+  const cards = (data ?? []) as TodayCardRow[]
+  const badgesById = await fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []))
+
+  return cards.map((card) => ({
     ...card,
     resolved_href: resolveTargetHref(card),
+    resolved_badges: (card.badge_ids ?? []).map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b)),
   }))
+}
+
+/** badge_ids 배열(중복 포함 가능)을 한 번에 조회해 id → 배지정보 맵으로 반환 */
+async function fetchBadgesById(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  badgeIds: string[],
+): Promise<Map<string, ResolvedBadge>> {
+  const uniqueIds = [...new Set(badgeIds)]
+  if (uniqueIds.length === 0) return new Map()
+
+  const { data } = await supabase
+    .from('badges')
+    .select('id, name, image_url, rarity')
+    .in('id', uniqueIds)
+
+  const map = new Map<string, ResolvedBadge>()
+  for (const b of (data ?? []) as ResolvedBadge[]) map.set(b.id, b)
+  return map
 }
 
 /**
