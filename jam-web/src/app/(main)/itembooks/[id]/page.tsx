@@ -13,14 +13,16 @@ import SlotGrid, { type BadgeSlot } from './SlotGrid'
 
 interface Props {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ u?: string }>
+  searchParams: Promise<{ u?: string; from?: string; itemId?: string }>
 }
 
 type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
 
 export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
-  const { u } = await searchParams
+  const { u, from, itemId } = await searchParams
+  // 아이템배지 상세(/inventory/[itemId])에서 들어온 경우 뒤로가기도 그 화면으로
+  const backHref = from === 'badge' && itemId ? `/inventory/${itemId}` : null
   const supabase = await createClient()
   const {
     data: { user },
@@ -153,7 +155,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       {/* 헤더 */}
       <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4 max-w-2xl mx-auto w-full">
         <Link
-          href={isOwnBook ? '/itembooks' : `/${subjectUsername}#itembooks`}
+          href={backHref ?? (isOwnBook ? '/itembooks' : `/${subjectUsername}#itembooks`)}
           className="flex items-center gap-1 text-jam-ink font-bold text-sm w-fit mb-5"
         >
           <svg
@@ -165,7 +167,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          아이템북 목록
+          {backHref ? '배지 상세' : '아이템북 목록'}
         </Link>
 
         {/* 북 정보 */}
