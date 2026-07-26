@@ -410,6 +410,39 @@ export interface UserFollowRow {
 }
 
 // =========================================
+// Phase 15: 투데이 콘텐츠 카드 (today_cards)
+// =========================================
+export type TodayCardTemplateType =
+  | 'badge_spotlight'
+  | 'progress_nudge'
+  | 'mission_spotlight'
+  | 'itembook_milestone'
+  | 'location_trend'
+  | 'drop_alert'
+  | 'editorial_article'
+
+export interface TodayCardRow {
+  id: string
+  template_type: TodayCardTemplateType
+  title: string
+  subtitle: string | null
+  cover_image_url: string | null
+  badge_ids: string[]
+  mission_id: string | null
+  item_book_id: string | null
+  region_label: string | null
+  body_markdown: string | null
+  target_href: string | null
+  exposure_tags: string[]
+  starts_at: string
+  ends_at: string
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  created_by: string | null
+}
+
+// =========================================
 // 배지 발급 조건 타입 (condition_json)
 // =========================================
 export interface BadgeCondition {
@@ -747,6 +780,12 @@ export interface Database {
         Row: PointTreasuryRow
         Insert: Partial<PointTreasuryRow> & { id: number }
         Update: Partial<Omit<PointTreasuryRow, 'id'>>
+        Relationships: []
+      }
+      today_cards: {
+        Row: TodayCardRow
+        Insert: Omit<TodayCardRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<TodayCardRow, 'id'>>
         Relationships: []
       }
     }

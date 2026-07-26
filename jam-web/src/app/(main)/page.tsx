@@ -8,6 +8,8 @@ import LocalDate from '@/components/LocalDate'
 import HomeFeedSection from './HomeFeedSection'
 import UserSearchBar from './UserSearchBar'
 import { hydrateFeedBadgeInfo } from '@/lib/activity-feed/hydrate'
+import TodayCardStack from './TodayCardStack'
+import { getTodayCards } from '@/lib/today/cards'
 
 interface BadgeWithEarned {
   badge: BadgeRow
@@ -187,6 +189,9 @@ export default async function HomePage() {
 
   const displayName = userProfile?.username ?? user.email?.split('@')[0] ?? '러너'
 
+  // ─── 투데이 카드 스택 (Phase 15) ─────────────────────────────────────
+  const todayCards = await getTodayCards(userId, userProfile?.created_at)
+
   return (
     <div className="min-h-full bg-jam-lime px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 flex flex-col gap-6">
       {/* 헤더 */}
@@ -231,6 +236,9 @@ export default async function HomePage() {
 
       {/* 유저 검색 */}
       <UserSearchBar />
+
+      {/* 투데이 카드 스택 (Phase 15) — 조건 매칭 카드 0개면 자동 미노출 */}
+      <TodayCardStack cards={todayCards} />
 
       {/* 최근 획득 배지 */}
       <section>
