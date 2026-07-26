@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import RarityBadge from '@/components/ui/Badge'
-import { InventoryItemRow, BadgeRow } from '@/types/database'
+import { InventoryItemRow, BadgeRow, ItemBookRow } from '@/types/database'
 import LocalDate from '@/components/LocalDate'
 import InventoryItemHistorySheet from './InventoryItemHistorySheet'
 
@@ -45,6 +45,17 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
     .single()
 
   if (!inventoryCheck) notFound()
+
+  // 연결된 아이템북 (있으면 상세 화면 링크로 노출)
+  let itemBook: ItemBookRow | null = null
+  if (item.badge.item_book_id) {
+    const { data: itemBookRaw } = await supabase
+      .from('item_books')
+      .select('*')
+      .eq('id', item.badge.item_book_id)
+      .maybeSingle()
+    itemBook = itemBookRaw as ItemBookRow | null
+  }
 
   const expiring = isExpiringSoon(item.expires_at)
   const serial = `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`
@@ -124,6 +135,28 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
           </p>
         </div>
       </div>
+
+      {/* 연결된 아이템북 */}
+      {itemBook && (
+        <Link
+          href={`/itembooks/${itemBook.id}?from=badge&itemId=${itemId}`}
+          className="mt-4 bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] px-4 py-3 flex items-center gap-3 active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_#161616] transition-transform"
+        >
+          {itemBook.image_url ? (
+            <div className="w-11 h-11 rounded-xl overflow-hidden bg-jam-teal/10 border-2 border-jam-ink shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={itemBook.image_url} alt={itemBook.name} className="w-full h-full object-contain p-1" />
+            </div>
+          ) : (
+            <div className="w-11 h-11 rounded-xl bg-jam-teal/10 border-2 border-jam-ink flex items-center justify-center text-xl shrink-0">🗂️</div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-jam-ink/50 uppercase tracking-wider font-black">속한 아이템북</p>
+            <p className="text-sm font-black text-jam-ink truncate">{itemBook.name}</p>
+          </div>
+          <span className="text-jam-ink/30 text-lg shrink-0">›</span>
+        </Link>
+      )}
 
       {expiring && (
         <div className="mt-4 bg-red-50 border-[3px] border-red-600 rounded-xl px-4 py-3">
