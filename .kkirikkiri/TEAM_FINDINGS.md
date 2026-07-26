@@ -19,6 +19,34 @@
 
 (phase13-mission 작업에서 실패한 접근이 나오면 여기에: 시도 → 실패 이유 → 근거 형식으로 기록)
 
+## 2026-07-26 — phase15-lead: DDL 직접 실행 전부 실패 (재시도 금지)
+- **Management API** (`POST https://api.supabase.com/v1/projects/{ref}/database/query`, Bearer=service_role JWT) → **401 `{"message":"JWT failed verification"}`**. 이 API는 Supabase 개인 액세스 토큰(PAT, `sbp_...`)이 필요한데 .env.local엔 없음.
+- **SQL-exec RPC** (`exec_sql`/`execute_sql`/`exec`/`sql`/`run_sql`) → 전부 **404 PGRST202** (그런 함수 없음). PostgREST엔 DDL 실행 RPC 미존재.
+- **pg 직접 연결** → `node_modules/pg` 미설치 + DB 비밀번호/커넥션스트링/pooler 리전 정보 전무. service_role는 JWT(PostgREST/GoTrue용)일 뿐 postgres role 비밀번호가 아니라 TCP 직결 불가.
+- **결론: DDL(CREATE TABLE)은 이 세션에서 실행 불가.** `supabase/migrations/048_today_cards.sql`을 정확히 작성해두고, **유저가 Supabase 대시보드 SQL Editor에 붙여넣어 실행해야 함.** 테이블 생성 후엔 `.from('today_cards').insert()`(PostgREST)로 샘플 20개 삽입 가능 → 시드 실행 스크립트도 준비해둠(`/tmp` node 스크립트 + `supabase/seed_phase15_today_cards_20.sql`).
+- 확인: `GET /rest/v1/today_cards` → 404 PGRST205 (테이블 아직 없음).
+
+---
+
+## 2026-07-26 — 메인세션: phase15-today 사전 정보
+- DB 직접 접근: jam-web/.env.local에 NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 있음(gitignore됨). TLS는 `security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain > /tmp/system-ca.pem` 후 NODE_EXTRA_CA_CERTS로 우회.
+- 프로젝트 ref: ceehnkzdbecxwzxrhhns (URL: https://ceehnkzdbecxwzxrhhns.supabase.co)
+- supabase-js service_role로는 PostgREST CRUD(INSERT/UPDATE/SELECT)만 가능, DDL(CREATE TABLE)은 불가 — DDL 실행 방법은 phase15-lead가 직접 조사 필요(Supabase Management API 등). 안 되면 SQL 파일만 준비하고 메인세션에 보고.
+- 마이그레이션 최신 번호는 047(047_reallow_pickup_own_drop.sql)까지 사용됨 — 다음은 048, 단 실물 ls로 재확인 필수(이 프로젝트 중복번호 전례 많음: 012, 044/045, 045/046 등).
+- 홈 화면 구조/DB 스키마 조사 결과는 Phase15_01/02_PRD.md에 이미 반영됨 — today_cards 없음, 활동로그 원본 테이블 없음(활동기반 자동세그먼트 불가, Phase2로 미룸).
+
+---
+
+## 2026-07-25 — 메인세션: phase14-dropmenu 사전 조사 요약 (PRD 작성 시 확인됨)
+- `/drops` 화면: `src/app/(main)/drops/page.tsx` → `DropsClient.tsx`. 현재 헤더 타이틀 + 드랍/픽업 모드탭 + 카드형(비풀스크린) 지도.
+- 지도: `src/components/map/MapView.tsx` (네이버 지도, dynamic ssr:false). 마커 색: 초록(available_drops_count>0) / 회색(범위내 드랍없음) / 흐림(범위밖). `available_drops_count` 집계는 이미 source(user/system) 구분 없이 카운트 — 앰비언트 드랍도 이미 초록으로 표시되고 있음(추가 작업 불필요, 확인만).
+- 드랍 API: `POST /api/drops` (src/app/api/drops/route.ts) — 50m 검증(`isUserNearPoi`), 변경 없음.
+- 픽업 API: `POST /api/drops/[dropId]/pickup` — 50m+어뷰징 검증, `pickup_drop()` RPC. 변경 없음.
+- POI별 배지 목록: `GET /api/drops/poi/[poiId]` — 이미 배열 반환(`is_ambient` 필드 포함), 변경 없음. Step C에서 이 API를 "픽업모드일 때만"이 아니라 POI 클릭마다 항상 먼저 호출하도록 호출 시점만 바꾸면 됨.
+- 인벤토리 그리드: `src/app/(main)/inventory/page.tsx`에 3열 그리드가 인라인으로 있음 — Step A에서 `src/components/inventory/InventoryGrid.tsx`로 추출 필요(신규 컴포넌트).
+- 배지 상세: `src/app/(main)/badges/[id]/page.tsx` — 기존 페이지 스타일을 참고해 픽업용 오버레이(`BadgeDetailSheet`, 신규)를 만들되 페이지 이동이 아닌 시트/모달로.
+- DB 스키마 변경 전혀 없음 (Phase14_02_DATA_MODEL.md §1) — poi_drops가 이미 POI당 여러 행 허용.
+
 ---
 
 # phase13-lead 발견사항 (2026-07-24)
