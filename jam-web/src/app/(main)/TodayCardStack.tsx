@@ -117,19 +117,19 @@ function ShortcutCard({ card }: { card: TodayCardWithHref }) {
   )
 }
 
-/** 배너형 — 가로로 넓은 띠 배너, 이미지 위 텍스트 오버레이 */
+/** 배너형 — 4:5 비율 포스터 배너, 이미지 위 텍스트 오버레이(하단 그라디언트) */
 function BannerCard({ card }: { card: TodayCardWithHref }) {
   const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
   return (
-    <article className="relative rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] overflow-hidden h-24 active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_#161616] transition-transform bg-jam-ink">
+    <article className="relative rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] overflow-hidden aspect-[4/5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_#161616] transition-transform bg-jam-ink">
       {cover && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={cover} alt={card.title} className="absolute inset-0 w-full h-full object-cover opacity-50" />
+        <img src={cover} alt={card.title} className="absolute inset-0 w-full h-full object-cover" />
       )}
-      <div className="relative h-full flex flex-col justify-center px-4">
-        <span className="text-[10px] font-black tracking-wide uppercase text-jam-lime mb-0.5">{templateLabel[card.template_type]}</span>
-        <h3 className="font-black text-base text-white leading-tight truncate">{card.title}</h3>
-        {card.subtitle && <p className="text-xs text-white/70 font-semibold truncate">{card.subtitle}</p>}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pt-10 pb-4">
+        <span className="text-[10px] font-black tracking-wide uppercase text-jam-lime mb-1 inline-block">{templateLabel[card.template_type]}</span>
+        <h3 className="font-black text-lg text-white leading-tight">{card.title}</h3>
+        {card.subtitle && <p className="text-sm text-white/80 font-semibold mt-1 leading-snug">{card.subtitle}</p>}
       </div>
     </article>
   )
