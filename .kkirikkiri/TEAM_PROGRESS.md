@@ -1,5 +1,10 @@
 # 진행 상황
 
+## 2026-07-26 — phase15-lead: 최종 — 커밋 c39d979, push 완료, 배포 Ready
+- 커밋 해시: **c39d979** (main push 완료, 75a1cda..c39d979). 관련 19파일만 스테이징(무관한 미커밋 변경 미포함).
+- Vercel: 최신 프로덕션 배포 `jam-g6nym8czu` **Ready**, `jam-rose.vercel.app` alias 연결 확인(HTTP 307 → /login, 정상).
+- **유저 후속 작업 필요**: Supabase SQL Editor에서 (1) `jam-web/supabase/migrations/048_today_cards.sql` (2) `jam-web/supabase/seed_phase15_today_cards_20.sql` 순서로 실행 → today_cards 테이블 생성 + 샘플 20개 삽입 → 투데이 탭 노출.
+
 ## 2026-07-26 — phase15-lead: Step A~G 전체 완료 (커밋 대기 중 → 아래 최종 기록 참조)
 - **Step A** ✅ `supabase/migrations/048_today_cards.sql`(다음 번호 048 실물 확인). `database.ts`에 `TodayCardRow`/`TodayCardTemplateType` + Database.Tables.today_cards 등록. `TabBar.tsx` 라벨 '홈'→'투데이'. **DDL은 실행 불가**(아래 참조) — 마이그레이션 파일만 준비, 유저가 SQL Editor 실행 필요.
 - **Step B** ✅ `src/lib/today/exposure.ts`(computeUserExposureTags, KST 시간대, 미션/아이템북 존재쿼리), `src/lib/today/cards.ts`(getTodayCards + resolveTargetHref + getPublishedArticleCard). 유닛테스트 `__tests__/today-logic.test.ts` **16/16 통과**(tsx).
