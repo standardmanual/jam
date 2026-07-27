@@ -2,14 +2,15 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import PoiForm from '../PoiForm'
-import type { PoiRow, BadgeRow } from '@/types/database'
+import type { PoiRow, BadgeRow, PoiCategoryRow } from '@/types/database'
 
 export default async function EditPoiPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = createServiceClient()
-  const [{ data: poiRaw }, { data: badgesRaw }] = await Promise.all([
+  const [{ data: poiRaw }, { data: badgesRaw }, { data: categoriesRaw }] = await Promise.all([
     supabase.from('poi').select('*').eq('id', id).single(),
     supabase.from('badges').select('id, name').order('name'),
+    supabase.from('poi_categories').select('*').order('slug'),
   ])
 
   if (!poiRaw) notFound()
@@ -25,6 +26,7 @@ export default async function EditPoiPage({ params }: { params: Promise<{ id: st
       <PoiForm
         poi={poiRaw as PoiRow}
         badges={(badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]}
+        categories={(categoriesRaw ?? []) as PoiCategoryRow[]}
       />
     </div>
   )

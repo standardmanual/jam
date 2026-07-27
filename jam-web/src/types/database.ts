@@ -10,10 +10,8 @@ export type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 
 export type DropRarity = 'common' | 'rare' | 'legendary' | 'mythic' | 'none'
 export type BadgeType = 'activity' | 'item'
 export type BadgeRarity = 'common' | 'rare' | 'legendary' | 'mythic'
-export type PoiCategory =
-  | 'mountain' | 'bike_route' | 'trail' | 'park' | 'other'
-  | 'government' | 'transit' | 'hospital' | 'pharmacy' | 'tourist_attraction'
-  | 'convenience' | 'food' | 'nature'
+// poi_categories 테이블에서 어드민이 자유롭게 생성/삭제/수정 가능한 슬러그 — 고정 유니언이 아닌 string
+export type PoiCategory = string
 export type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
 export type ItemObtainedBy = 'drop' | 'drop_event' | 'system_event' | 'pickup'
 
@@ -172,6 +170,12 @@ export interface PoiRow {
   osm_id: string | null
   naver_id: string | null
   poi_tier: number
+  created_at: string
+}
+
+export interface PoiCategoryRow {
+  slug: string
+  label: string
   created_at: string
 }
 
@@ -638,6 +642,12 @@ export interface Database {
         Update: Partial<Omit<PoiRow, 'id'>>
         Relationships: []
       }
+      poi_categories: {
+        Row: PoiCategoryRow
+        Insert: Omit<PoiCategoryRow, 'created_at'> & { created_at?: string }
+        Update: Partial<Omit<PoiCategoryRow, 'slug'>>
+        Relationships: []
+      }
       trades: {
         Row: TradeRow
         Insert: Omit<TradeRow, 'id' | 'created_at' | 'updated_at'> & {
@@ -808,7 +818,6 @@ export interface Database {
     Enums: {
       badge_type: BadgeType
       badge_rarity: BadgeRarity
-      poi_category: PoiCategory
       trade_status: TradeStatus
     }
   }
