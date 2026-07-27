@@ -150,6 +150,7 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     .select('id, name, rarity')
     .eq('type', 'item')
     .eq('rarity', 'common')
+    .is('deleted_at', null)
     .not('faction_id', 'is', null)
     .not('faction_id', 'in', `(${sourceFactionIds.length > 0 ? sourceFactionIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
 

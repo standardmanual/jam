@@ -48,6 +48,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     .select('id, item_book_id, type')
     .in('item_book_id', bookIds)
     .in('type', ['item', 'poi'])
+    .is('deleted_at', null)
 
   const bookBadges = (badgesRaw ?? []) as { id: string; item_book_id: string; type: BadgeType }[]
 
@@ -144,8 +145,8 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   // 6. 완성 기록 upsert
   await supabase
     .from('user_item_book_completions')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .upsert(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       completedIds.map((id) => ({ user_id: userId, item_book_id: id })) as any,
       { onConflict: 'user_id,item_book_id', ignoreDuplicates: true }
     )
@@ -175,11 +176,11 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
 
     const { error: insertError } = await supabase
       .from('user_activity_badges')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .insert({
         user_id: userId,
         badge_id: book.reward_badge_id,
         triggered_by: `itembook_complete:${book.id}`,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
 
     if (insertError) {
