@@ -22,7 +22,7 @@ interface LinkablePoi {
 interface BadgeFormProps {
   badge?: BadgeRow
   factions: Pick<FactionRow, 'id' | 'name'>[]
-  itemBooks: Pick<ItemBookRow, 'id' | 'name' | 'rarity_mode' | 'uniform_rarity'>[]
+  itemBooks: Pick<ItemBookRow, 'id' | 'name'>[]
 }
 
 const EMPTY_CONDITION: BadgeCondition = {}
@@ -71,16 +71,6 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
   const [factionId, setFactionId] = useState(badge?.faction_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
-  const selectedBook = itemBooks.find((b) => b.id === itemBookId)
-  const rarityLocked = !!selectedBook && selectedBook.rarity_mode === 'uniform'
-
-  function handleItemBookChange(newItemBookId: string) {
-    setItemBookId(newItemBookId)
-    const book = itemBooks.find((b) => b.id === newItemBookId)
-    if (book?.rarity_mode === 'uniform' && book.uniform_rarity) {
-      setRarity(book.uniform_rarity)
-    }
-  }
   const [dropWeight, setDropWeight] = useState<string>(
     badge?.drop_weight?.toString() ?? '1.0'
   )
@@ -335,20 +325,14 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           <span className="text-sm text-[#374151]">희귀도 *</span>
           <select
             required
-            disabled={rarityLocked}
             value={rarity}
             onChange={(e) => setRarity(e.target.value as BadgeRarity)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
           >
             {RARITIES.map((r) => (
               <option key={r} value={r} className="bg-white">{r}</option>
             ))}
           </select>
-          {rarityLocked && (
-            <span className="text-xs text-[#6b7280]">
-              &apos;{selectedBook?.name}&apos; 아이템북이 &apos;동일한 등급&apos; 정책이라 자동으로 고정됩니다.
-            </span>
-          )}
         </label>
 
         {/* 세계관 선택 */}
@@ -371,7 +355,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           <span className="text-sm text-[#374151]">소속 아이템북</span>
           <select
             value={itemBookId}
-            onChange={(e) => handleItemBookChange(e.target.value)}
+            onChange={(e) => setItemBookId(e.target.value)}
             className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
           >
             <option value="" className="bg-white">— 없음 —</option>
