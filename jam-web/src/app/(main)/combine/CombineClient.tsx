@@ -27,24 +27,26 @@ const rarityCardBg: Record<string, string> = {
   mythic: 'bg-jam-yellow/40',
 }
 
+const MAX_SELECT = 10
+
 export default function CombineClient({ items, hints, publicRecipes }: Props) {
   const [selected, setSelected] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; name?: string; reason?: string } | null>(null)
+  const [result, setResult] = useState<{ success: boolean; names?: string[]; reason?: string } | null>(null)
   const { toast } = useToast()
   const router = useRouter()
 
   function toggleItem(itemId: string) {
     setSelected((prev) => {
       if (prev.includes(itemId)) return prev.filter((id) => id !== itemId)
-      if (prev.length >= 3) return prev
+      if (prev.length >= MAX_SELECT) return prev
       return [...prev, itemId]
     })
   }
 
   async function handleCombine() {
     if (selected.length < 2) {
-      toast('아이템 2~3개를 선택해주세요.', 'error')
+      toast('아이템 2~10개를 선택해주세요.', 'error')
       return
     }
     setLoading(true)
@@ -59,16 +61,24 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       const data = await res.json()
 
       if (data.success) {
-        setResult({ success: true, name: data.resultBadgeName })
+        const names = (data.resultBadges ?? []).map((b: { name: string }) => b.name)
+        setResult({ success: true, names })
         setSelected([])
         router.refresh()
       } else {
         const msgs: Record<string, string> = {
-          no_recipe: '이 조합에 맞는 레시피가 없어요.',
-          chance_fail: '조합에 실패했어요. 아이템이 소각됐습니다.',
+          invalid_count: '아이템 2~10개를 선택해주세요.',
           items_not_found: '아이템을 찾을 수 없어요.',
+          recipe_fail: '조합에 실패했어요. 아이템이 소각됐습니다.',
+          fail: '조합에 실패했어요. 아이템이 소각됐습니다.',
         }
-        setResult({ success: false, reason: msgs[data.reason] ?? '조합 실패' })
+        let reason = msgs[data.reason] ?? '조합 실패'
+        if (data.pointsAwarded > 0) {
+          reason += ` (위로 잼 포인트 +${data.pointsAwarded})`
+        }
+        setResult({ success: false, reason })
+        setSelected([])
+        router.refresh()
       }
     } catch {
       toast('오류가 발생했어요.', 'error')
@@ -90,17 +100,17 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
         <div
           className={`mx-5 mb-4 p-4 rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] font-black text-center ${result.success ? 'bg-jam-lime text-jam-ink' : 'bg-red-100 text-red-700'}`}
         >
-          {result.success ? `🎉 ${result.name} 획득!` : result.reason}
+          {result.success ? `🎉 ${(result.names ?? []).join(', ')} 획득!` : result.reason}
         </div>
       )}
 
       {/* 선택 슬롯 */}
       <div className="px-5 pb-5">
         <p className="text-xs font-black text-jam-ink/50 uppercase tracking-widest mb-3">
-          선택한 아이템 ({selected.length}/3)
+          선택한 아이템 ({selected.length}/{MAX_SELECT})
         </p>
-        <div className="flex gap-3 mb-4">
-          {[0, 1, 2].map((i) => {
+        <div className="grid grid-cols-5 gap-2 mb-4">
+          {Array.from({ length: MAX_SELECT }, (_, i) => i).map((i) => {
             const itemId = selected[i]
             const item = items.find((it) => it.id === itemId)
             const bg = item ? (rarityCardBg[item.badge.rarity] ?? 'bg-white') : ''
