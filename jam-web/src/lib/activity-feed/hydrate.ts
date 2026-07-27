@@ -15,6 +15,11 @@ import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 
 const BADGE_METADATA_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
 
+/**
+ * 소프트 삭제된 배지(badges.deleted_at)는 서비스 화면(피드 포함)에서 완전히 숨긴다.
+ * DB의 user_activity_feed/user_activity_badges 등 원본 기록은 건드리지 않으므로
+ * 필요 시 관리자·시스템 조회로는 여전히 확인 가능하다 — 여기서는 화면 노출만 걸러낸다.
+ */
 export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<ActivityFeedRow[]> {
   const badgeIds = new Set<string>()
   for (const item of items) {
@@ -25,27 +30,39 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
   if (badgeIds.size === 0) return items
 
   const supabase = createServiceClient()
-  const { data } = await supabase.from('badges').select('id, name, image_url, rarity').in('id', [...badgeIds])
+  const { data } = await supabase
+    .from('badges')
+    .select('id, name, image_url, rarity, deleted_at')
+    .in('id', [...badgeIds])
 
   const badgeMap = new Map(
-    ((data ?? []) as { id: string; name: string; image_url: string | null; rarity: string }[]).map((b) => [b.id, b])
+    ((data ?? []) as { id: string; name: string; image_url: string | null; rarity: string; deleted_at: string | null }[])
+      .map((b) => [b.id, b])
   )
-  if (badgeMap.size === 0) return items
 
-  return items.map((item) => {
-    if (!BADGE_METADATA_EVENTS.has(item.event_type)) return item
-    const meta = item.metadata as Record<string, unknown>
-    const badgeId = meta.badge_id
-    const live = typeof badgeId === 'string' ? badgeMap.get(badgeId) : undefined
-    if (!live) return item
-    return {
-      ...item,
-      metadata: {
-        ...meta,
-        badge_name: live.name,
-        badge_image_url: live.image_url ?? '',
-        rarity: live.rarity,
-      },
-    }
-  })
+  return items
+    .filter((item) => {
+      if (!BADGE_METADATA_EVENTS.has(item.event_type)) return true
+      const badgeId = (item.metadata as Record<string, unknown>).badge_id
+      if (typeof badgeId !== 'string') return true
+      const badge = badgeMap.get(badgeId)
+      // 조회 안 되거나(삭제 등으로 아예 없어짐) 소프트 삭제된 배지는 피드에서 제외
+      return !!badge && !badge.deleted_at
+    })
+    .map((item) => {
+      if (!BADGE_METADATA_EVENTS.has(item.event_type)) return item
+      const meta = item.metadata as Record<string, unknown>
+      const badgeId = meta.badge_id
+      const live = typeof badgeId === 'string' ? badgeMap.get(badgeId) : undefined
+      if (!live) return item
+      return {
+        ...item,
+        metadata: {
+          ...meta,
+          badge_name: live.name,
+          badge_image_url: live.image_url ?? '',
+          rarity: live.rarity,
+        },
+      }
+    })
 }

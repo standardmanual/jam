@@ -31,8 +31,9 @@ export default async function InventoryPage() {
   const usedSlots = inventory?.used_slots ?? 0
   const maxSlots = inventory?.max_slots ?? 50
   // 아이템북 슬롯에 장착된 아이템은 인벤토리에 동시에 표시하지 않는다 (한 아이템은 인벤토리·아이템북 중 한 곳에만 위치)
+  // 소프트 삭제된 배지(badges.deleted_at)도 서비스 화면에서는 숨긴다.
   const items: InventoryItemWithBadge[] = (inventory?.inventory_items ?? []).filter(
-    (item) => item.dropped_at === null && item.slotted_in === null
+    (item) => item.dropped_at === null && item.slotted_in === null && item.badge && !item.badge.deleted_at
   )
   const remainingSlots = maxSlots - usedSlots
 
