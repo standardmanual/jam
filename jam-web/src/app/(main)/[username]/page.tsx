@@ -56,8 +56,13 @@ export default async function UserProfilePage({ params }: Props) {
     (service as any).from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', subjectId),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', subjectId),
+    // 소프트 삭제된 배지는 보유 개수에서 제외 (badges!inner + deleted_at 필터)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).from('user_activity_badges').select('*', { count: 'exact', head: true }).eq('user_id', subjectId),
+    (service as any)
+      .from('user_activity_badges')
+      .select('*, badges!inner(deleted_at)', { count: 'exact', head: true })
+      .eq('user_id', subjectId)
+      .is('badges.deleted_at', null),
     isOwnProfile
       ? Promise.resolve({ data: null })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,7 +127,7 @@ export default async function UserProfilePage({ params }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any)
       .from('user_activity_badges')
-      .select('badge_id, earned_at, badges(id, name, image_url, rarity)')
+      .select('badge_id, earned_at, badges(id, name, image_url, rarity, deleted_at)')
       .eq('user_id', subjectId)
       .order('earned_at', { ascending: false })
       .limit(100),
@@ -131,7 +136,7 @@ export default async function UserProfilePage({ params }: Props) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ? (service as any)
           .from('inventory_items')
-          .select('id, badge_id, obtained_at, badges(id, name, image_url, rarity)')
+          .select('id, badge_id, obtained_at, badges(id, name, image_url, rarity, deleted_at)')
           .eq('inventory_id', inventoryId)
           .eq('obtained_by', 'drop')
           .order('obtained_at', { ascending: false })
@@ -141,7 +146,7 @@ export default async function UserProfilePage({ params }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any)
       .from('poi_drops')
-      .select('id, badge_id, dropped_at, poi(name), badges(id, name, image_url, rarity)')
+      .select('id, badge_id, dropped_at, poi(name), badges(id, name, image_url, rarity, deleted_at)')
       .eq('dropper_user_id', subjectId)
       .order('dropped_at', { ascending: false })
       .limit(50),
@@ -149,7 +154,7 @@ export default async function UserProfilePage({ params }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any)
       .from('poi_drops')
-      .select('id, badge_id, picked_up_at, dropper_user_id, poi(name), badges(id, name, image_url, rarity)')
+      .select('id, badge_id, picked_up_at, dropper_user_id, poi(name), badges(id, name, image_url, rarity, deleted_at)')
       .eq('picked_up_by', subjectId)
       .not('picked_up_at', 'is', null)
       .order('picked_up_at', { ascending: false })
@@ -183,34 +188,35 @@ export default async function UserProfilePage({ params }: Props) {
 
   const legacyItems: ActivityFeedRow[] = []
 
+  // 소프트 삭제된 배지(badges.deleted_at)는 레거시 피드 재구성에서도 제외 — 서비스 화면에서 완전히 숨긴다.
   for (const row of badgesHistoryResult.data ?? []) {
     if (feedBadgeIds.has(row.badge_id)) continue
-    const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
-    if (!b) continue
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string; deleted_at: string | null } | null
+    if (!b || b.deleted_at) continue
     legacyItems.push(makeFeedItem(`legacy_badge_${row.badge_id}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }))
   }
 
   const feedDropItemIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => String((f.metadata as Record<string, unknown>).inventory_item_id ?? '')))
   for (const row of actDropsResult.data ?? []) {
     if (feedDropItemIds.has(row.id)) continue
-    const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
-    if (!b) continue
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string; deleted_at: string | null } | null
+    if (!b || b.deleted_at) continue
     legacyItems.push(makeFeedItem(`legacy_actdrop_${row.id}`, 'item_dropped', row.obtained_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: '' }))
   }
 
   for (const row of poiDropsResult.data ?? []) {
     if (feedActivityDropIds.has(row.badge_id)) { /* POI드랍은 별도 이벤트 */ }
-    const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string; deleted_at: string | null } | null
     const poiName = (row.poi as { name: string } | null)?.name ?? ''
-    if (!b) continue
+    if (!b || b.deleted_at) continue
     legacyItems.push(makeFeedItem(`legacy_poidrop_${row.id}`, 'item_dropped', row.dropped_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: poiName }))
   }
 
   for (const row of pickupsResult.data ?? []) {
     if (feedPickupDropIds.has(row.id)) continue
-    const b = row.badges as { id: string; name: string; image_url: string; rarity: string } | null
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string; deleted_at: string | null } | null
     const poiName = (row.poi as { name: string } | null)?.name ?? ''
-    if (!b) continue
+    if (!b || b.deleted_at) continue
     legacyItems.push(makeFeedItem(`legacy_pickup_${row.id}`, 'item_picked_up', row.picked_up_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, poi_name: poiName, dropper_user_id: row.dropper_user_id }))
   }
 
