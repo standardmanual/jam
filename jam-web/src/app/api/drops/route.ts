@@ -3,7 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi, haversineDistance, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import { fetchNearbyNaverPoisForCategories, type NaverPlace } from '@/lib/poi/naver'
 import { reverseGeocodeToRegionName } from '@/lib/poi/reverse-geocode'
-import { LEVEL_1_CATEGORIES, LEVEL_2_CATEGORIES, LEVEL_2_FALLBACK_THRESHOLD, type PoiCategoryConfig } from '@/lib/poi/categories'
+import { loadPipelineCategories, LEVEL_2_FALLBACK_THRESHOLD, type PoiCategoryConfig } from '@/lib/poi/categories'
 import { computeGridKey, shouldSearch, markSearched } from '@/lib/poi/search-cache'
 import type { PoiRow, InventoryItemRow } from '@/types/database'
 
@@ -97,7 +97,10 @@ export async function GET(req: NextRequest) {
   // 무작위 결과가 나온다 — 역지오코딩한 "구 동" 문자열을 키워드 앞에 붙여 검색 범위를 좁힌다.
   const regionName = await reverseGeocodeToRegionName(lat, lng)
 
-  // 레벨 1 카테고리(관공서/교통/병원/약국/관광명소/자연)는 항상 검색(캐시 만료분만)
+  // 파이프라인 연동 카테고리(어드민 /admin/poi/categories에서 관리)를 티어별로 로드
+  const { level1: LEVEL_1_CATEGORIES, level2: LEVEL_2_CATEGORIES } = await loadPipelineCategories(service)
+
+  // 레벨 1 카테고리는 항상 검색(캐시 만료분만)
   let fallbackPois = await searchAndPersistCategories(
     service, lat, lng, gridKey, LEVEL_1_CATEGORIES, naverIdMap, regionName
   )

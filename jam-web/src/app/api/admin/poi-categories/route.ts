@@ -14,12 +14,25 @@ export async function GET() {
   return NextResponse.json({ categories: data })
 }
 
+// pipeline_linked 관련 필드 검증 — true면 tier(1|2) + 키워드 1개 이상 필수
+function validatePipelineFields(pipelineLinked: boolean, tier: unknown, keywords: unknown): string | null {
+  if (!pipelineLinked) return null
+  if (tier !== 1 && tier !== 2) return '파이프라인 연동 카테고리는 티어(1 또는 2)를 지정해야 합니다.'
+  if (!Array.isArray(keywords) || keywords.length === 0) {
+    return '파이프라인 연동 카테고리는 키워드가 최소 1개 필요합니다.'
+  }
+  if (keywords.some((k) => typeof k !== 'string' || !k.trim())) {
+    return '키워드는 빈 문자열일 수 없습니다.'
+  }
+  return null
+}
+
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { slug, label } = body
+  const { slug, label, pipeline_linked = false, tier = null, keywords = [] } = body
 
   if (!slug || !label) {
     return NextResponse.json({ error: 'slug, label은 필수입니다.' }, { status: 400 })
@@ -30,12 +43,21 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     )
   }
+  const validationError = validatePipelineFields(pipeline_linked, tier, keywords)
+  if (validationError) return NextResponse.json({ error: validationError }, { status: 400 })
 
   const supabase = createServiceClient()
+  const insertPayload = {
+    slug,
+    label,
+    pipeline_linked,
+    tier: pipeline_linked ? tier : null,
+    keywords: pipeline_linked ? keywords : [],
+  }
   const { data, error } = await supabase
     .from('poi_categories')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert({ slug, label } as any)
+    .insert(insertPayload as any)
     .select()
     .single()
 

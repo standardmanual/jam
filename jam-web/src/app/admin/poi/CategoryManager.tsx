@@ -7,20 +7,46 @@ import type { PoiCategoryRow } from '@/types/database'
 interface CategoryManagerProps {
   categories: PoiCategoryRow[]
   usageCounts: Record<string, number>
-  pipelineLinkedSlugs: string[]
 }
 
-export default function CategoryManager({ categories, usageCounts, pipelineLinkedSlugs }: CategoryManagerProps) {
-  const router = useRouter()
-  const pipelineSet = new Set(pipelineLinkedSlugs)
+// 콤마로 구분된 키워드 입력 문자열 <-> string[] 배열 변환
+function parseKeywords(input: string): string[] {
+  return input
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean)
+}
 
+interface EditState {
+  label: string
+  pipelineLinked: boolean
+  tier: 1 | 2
+  keywordsInput: string
+}
+
+function toEditState(c: PoiCategoryRow): EditState {
+  return {
+    label: c.label,
+    pipelineLinked: c.pipeline_linked,
+    tier: c.tier ?? 1,
+    keywordsInput: c.keywords.join(', '),
+  }
+}
+
+export default function CategoryManager({ categories, usageCounts }: CategoryManagerProps) {
+  const router = useRouter()
+
+  // 생성 폼 상태
   const [slug, setSlug] = useState('')
   const [label, setLabel] = useState('')
+  const [pipelineLinked, setPipelineLinked] = useState(false)
+  const [tier, setTier] = useState<1 | 2>(1)
+  const [keywordsInput, setKeywordsInput] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [editingSlug, setEditingSlug] = useState<string | null>(null)
-  const [editLabel, setEditLabel] = useState('')
+  const [editState, setEditState] = useState<EditState | null>(null)
   const [deletingSlug, setDeletingSlug] = useState<string | null>(null)
   const [rowError, setRowError] = useState<Record<string, string>>({})
 
@@ -32,12 +58,21 @@ export default function CategoryManager({ categories, usageCounts, pipelineLinke
       const res = await fetch('/api/admin/poi-categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, label }),
+        body: JSON.stringify({
+          slug,
+          label,
+          pipeline_linked: pipelineLinked,
+          tier: pipelineLinked ? tier : null,
+          keywords: pipelineLinked ? parseKeywords(keywordsInput) : [],
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '생성 실패')
       setSlug('')
       setLabel('')
+      setPipelineLinked(false)
+      setTier(1)
+      setKeywordsInput('')
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : '생성 중 오류가 발생했습니다.')
@@ -48,21 +83,28 @@ export default function CategoryManager({ categories, usageCounts, pipelineLinke
 
   const startEdit = (c: PoiCategoryRow) => {
     setEditingSlug(c.slug)
-    setEditLabel(c.label)
+    setEditState(toEditState(c))
     setRowError((prev) => ({ ...prev, [c.slug]: '' }))
   }
 
   const handleSaveEdit = async (targetSlug: string) => {
+    if (!editState) return
     setRowError((prev) => ({ ...prev, [targetSlug]: '' }))
     try {
       const res = await fetch(`/api/admin/poi-categories/${targetSlug}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: editLabel }),
+        body: JSON.stringify({
+          label: editState.label,
+          pipeline_linked: editState.pipelineLinked,
+          tier: editState.pipelineLinked ? editState.tier : null,
+          keywords: editState.pipelineLinked ? parseKeywords(editState.keywordsInput) : [],
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '수정 실패')
       setEditingSlug(null)
+      setEditState(null)
       router.refresh()
     } catch (err) {
       setRowError((prev) => ({
@@ -90,128 +132,223 @@ export default function CategoryManager({ categories, usageCounts, pipelineLinke
 
   return (
     <div className="flex flex-col gap-6">
-      <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-3 bg-white border border-[#e5e7eb] rounded-2xl p-5">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">slug *</span>
+      <form onSubmit={handleCreate} className="flex flex-col gap-3 bg-white border border-[#e5e7eb] rounded-2xl p-5">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-[#374151]">slug *</span>
+            <input
+              required
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="fitness_center"
+              className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 font-mono text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-[#374151]">표시 이름 *</span>
+            <input
+              required
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="헬스장"
+              className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={creating}
+            className="bg-[#111111] text-white font-bold px-5 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+          >
+            {creating ? '생성 중...' : '카테고리 추가'}
+          </button>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-[#374151]">
           <input
-            required
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="fitness_center"
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 font-mono text-sm"
+            type="checkbox"
+            checked={pipelineLinked}
+            onChange={(e) => setPipelineLinked(e.target.checked)}
+            className="accent-[#111111]"
           />
+          드랍/픽업 자동검색 파이프라인에 연동
         </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">표시 이름 *</span>
-          <input
-            required
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="헬스장"
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={creating}
-          className="bg-[#111111] text-white font-bold px-5 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
-        >
-          {creating ? '생성 중...' : '카테고리 추가'}
-        </button>
-        {error && <p className="text-red-600 text-sm w-full">{error}</p>}
+
+        {pipelineLinked && (
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm text-[#374151]">티어</span>
+              <select
+                value={tier}
+                onChange={(e) => setTier(Number(e.target.value) as 1 | 2)}
+                className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] text-sm focus:outline-none focus:border-[#111111]/50"
+              >
+                <option value={1} className="bg-white">티어 1 — 항상 검색</option>
+                <option value={2} className="bg-white">티어 2 — 티어1 부족 시 보조 검색</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5 flex-1 min-w-[220px]">
+              <span className="text-sm text-[#374151]">키워드 (콤마로 구분) *</span>
+              <input
+                value={keywordsInput}
+                onChange={(e) => setKeywordsInput(e.target.value)}
+                placeholder="헬스장, 필라테스"
+                className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-sm"
+              />
+            </label>
+          </div>
+        )}
+
+        {error && <p className="text-red-600 text-sm">{error}</p>}
       </form>
 
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
               <th className="px-5 py-3 font-medium">slug</th>
               <th className="px-5 py-3 font-medium">표시 이름</th>
               <th className="px-5 py-3 font-medium">사용 중인 POI</th>
-              <th className="px-5 py-3 font-medium">구분</th>
+              <th className="px-5 py-3 font-medium">연동</th>
+              <th className="px-5 py-3 font-medium">티어</th>
+              <th className="px-5 py-3 font-medium">키워드</th>
               <th className="px-5 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {categories.map((c) => (
-              <tr key={c.slug} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] transition-colors align-top">
-                <td className="px-5 py-3 font-mono text-[#374151]">{c.slug}</td>
-                <td className="px-5 py-3">
-                  {editingSlug === c.slug ? (
-                    <input
-                      value={editLabel}
-                      onChange={(e) => setEditLabel(e.target.value)}
-                      className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-1.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 text-sm"
-                    />
-                  ) : (
-                    c.label
-                  )}
-                </td>
-                <td className="px-5 py-3 text-[#374151]">{usageCounts[c.slug] ?? 0}개</td>
-                <td className="px-5 py-3">
-                  {pipelineSet.has(c.slug) && (
-                    <span
-                      title="드랍/픽업 자동검색 파이프라인이 키워드로 사용 중인 카테고리입니다. 삭제/수정 시 자동검색 동작이 바뀔 수 있어요."
-                      className="text-xs bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2.5 py-1"
-                    >
-                      파이프라인 연동
-                    </span>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-right whitespace-nowrap">
-                  {editingSlug === c.slug ? (
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        onClick={() => handleSaveEdit(c.slug)}
-                        className="text-[#111111] hover:text-[#242424] px-2 py-1"
-                      >
-                        저장
-                      </button>
-                      <button
-                        onClick={() => setEditingSlug(null)}
-                        className="text-[#6b7280] hover:text-[#111111] px-2 py-1"
-                      >
-                        취소
-                      </button>
-                    </div>
-                  ) : deletingSlug === c.slug ? (
-                    <div className="flex gap-2 justify-end items-center">
-                      <span className="text-[#6b7280] text-xs">정말 삭제할까요?</span>
-                      <button
-                        onClick={() => handleDelete(c.slug)}
-                        className="text-red-600 hover:text-red-700 px-2 py-1"
-                      >
-                        삭제 확인
-                      </button>
-                      <button
-                        onClick={() => setDeletingSlug(null)}
-                        className="text-[#6b7280] hover:text-[#111111] px-2 py-1"
-                      >
-                        취소
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        onClick={() => startEdit(c)}
-                        className="text-[#374151] hover:text-[#111111] px-2 py-1"
-                      >
-                        수정
-                      </button>
-                      <button
-                        onClick={() => setDeletingSlug(c.slug)}
-                        className="text-red-500 hover:text-red-600 px-2 py-1"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  )}
-                  {rowError[c.slug] && (
-                    <p className="text-red-600 text-xs mt-1">{rowError[c.slug]}</p>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {categories.map((c) => {
+              const isEditing = editingSlug === c.slug
+              return (
+                <tr key={c.slug} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] transition-colors align-top">
+                  <td className="px-5 py-3 font-mono text-[#374151] whitespace-nowrap">{c.slug}</td>
+                  <td className="px-5 py-3 min-w-[120px]">
+                    {isEditing && editState ? (
+                      <input
+                        value={editState.label}
+                        onChange={(e) => setEditState({ ...editState, label: e.target.value })}
+                        className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-1.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 text-sm w-full"
+                      />
+                    ) : (
+                      c.label
+                    )}
+                  </td>
+                  <td className="px-5 py-3 text-[#374151] whitespace-nowrap">{usageCounts[c.slug] ?? 0}개</td>
+                  <td className="px-5 py-3">
+                    {isEditing && editState ? (
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={editState.pipelineLinked}
+                          onChange={(e) => setEditState({ ...editState, pipelineLinked: e.target.checked })}
+                          className="accent-[#111111]"
+                        />
+                      </label>
+                    ) : c.pipeline_linked ? (
+                      <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2.5 py-1 whitespace-nowrap">
+                        연동중
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[#898989]">미연동</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3 whitespace-nowrap">
+                    {isEditing && editState ? (
+                      editState.pipelineLinked ? (
+                        <select
+                          value={editState.tier}
+                          onChange={(e) => setEditState({ ...editState, tier: Number(e.target.value) as 1 | 2 })}
+                          className="bg-white border border-[#e5e7eb] rounded-lg px-2 py-1.5 text-[#111111] text-xs focus:outline-none focus:border-[#111111]/50"
+                        >
+                          <option value={1} className="bg-white">티어 1</option>
+                          <option value={2} className="bg-white">티어 2</option>
+                        </select>
+                      ) : (
+                        <span className="text-[#898989] text-xs">—</span>
+                      )
+                    ) : c.tier ? (
+                      `티어 ${c.tier}`
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td className="px-5 py-3 min-w-[200px]">
+                    {isEditing && editState ? (
+                      editState.pipelineLinked ? (
+                        <input
+                          value={editState.keywordsInput}
+                          onChange={(e) => setEditState({ ...editState, keywordsInput: e.target.value })}
+                          placeholder="키워드1, 키워드2"
+                          className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-1.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-xs w-full"
+                        />
+                      ) : (
+                        <span className="text-[#898989] text-xs">—</span>
+                      )
+                    ) : c.keywords.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {c.keywords.map((k) => (
+                          <span key={k} className="text-xs bg-[#f5f5f5] text-[#374151] rounded-full px-2 py-0.5">
+                            {k}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[#898989] text-xs">—</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3 text-right whitespace-nowrap">
+                    {isEditing ? (
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => handleSaveEdit(c.slug)}
+                          className="text-[#111111] hover:text-[#242424] px-2 py-1"
+                        >
+                          저장
+                        </button>
+                        <button
+                          onClick={() => { setEditingSlug(null); setEditState(null) }}
+                          className="text-[#6b7280] hover:text-[#111111] px-2 py-1"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    ) : deletingSlug === c.slug ? (
+                      <div className="flex gap-2 justify-end items-center">
+                        <span className="text-[#6b7280] text-xs">정말 삭제할까요?</span>
+                        <button
+                          onClick={() => handleDelete(c.slug)}
+                          className="text-red-600 hover:text-red-700 px-2 py-1"
+                        >
+                          삭제 확인
+                        </button>
+                        <button
+                          onClick={() => setDeletingSlug(null)}
+                          className="text-[#6b7280] hover:text-[#111111] px-2 py-1"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => startEdit(c)}
+                          className="text-[#374151] hover:text-[#111111] px-2 py-1"
+                        >
+                          수정
+                        </button>
+                        <button
+                          onClick={() => setDeletingSlug(c.slug)}
+                          className="text-red-500 hover:text-red-600 px-2 py-1"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    )}
+                    {rowError[c.slug] && (
+                      <p className="text-red-600 text-xs mt-1">{rowError[c.slug]}</p>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

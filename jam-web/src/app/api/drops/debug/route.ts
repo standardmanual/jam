@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { fetchNearbyNaverPoisForCategories } from '@/lib/poi/naver'
-import { POI_CATEGORIES } from '@/lib/poi/categories'
+import { loadPipelineCategories } from '@/lib/poi/categories'
 
 // GET /api/drops/debug?lat=&lng=
 // 인증 없이 단계별 진단 결과 반환 (개발/운영 디버그용)
@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
   let naverPois: Awaited<ReturnType<typeof fetchNearbyNaverPoisForCategories>> = []
   let naverError: string | null = null
   try {
-    naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, 1000, POI_CATEGORIES)
+    const { all: pipelineCategories } = await loadPipelineCategories(service)
+    naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, 1000, pipelineCategories)
   } catch (e: any) {
     naverError = String(e?.message ?? e)
   }
