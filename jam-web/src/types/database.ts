@@ -256,7 +256,8 @@ export interface TradeRow {
 export interface CombinationRecipeRow {
   id: string
   ingredient_badge_ids: string[]
-  result_badge_id: string
+  /** 결과 배지가 삭제되면 NULL — 결과 미지정 상태(재지정 전까지 매칭돼도 지급 불가) */
+  result_badge_id: string | null
   success_rate: number
   hint_text: string | null
   is_public: boolean

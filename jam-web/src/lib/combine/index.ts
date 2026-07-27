@@ -78,6 +78,9 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
 
   const ingredientMatches = recipes.filter((r) => {
+    // 결과 배지가 삭제되어 result_badge_id가 NULL인 레시피는 아직 지급할 게 없으므로
+    // "매칭"으로 인정하지 않는다 — 확률형(B) 경로로 자연스럽게 폴백된다.
+    if (!r.result_badge_id) return false
     const sorted = [...r.ingredient_badge_ids].sort()
     if (sorted.length !== ingredientBadgeIds.length) return false
     return sorted.every((id, idx) => id === ingredientBadgeIds[idx])
@@ -113,7 +116,7 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     return { success: false, reason: 'items_not_found', pointsAwarded: 0, streak: 0 }
   }
 
-  if (matched) {
+  if (matched && matched.result_badge_id) {
     // A) 정석 레시피 경로 — 피티 미적용
     if (Math.random() <= matched.success_rate) {
       const resultBadge = await grantBadge(supabase, inventory.id, matched.result_badge_id)

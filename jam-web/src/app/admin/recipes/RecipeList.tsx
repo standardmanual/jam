@@ -40,7 +40,7 @@ export default function RecipeList({ recipes, badges }: Props) {
     setEditingId(r.id)
     setForm({
       ingredient_badge_ids: [...r.ingredient_badge_ids],
-      result_badge_id: r.result_badge_id,
+      result_badge_id: r.result_badge_id ?? '',
       success_rate: r.success_rate,
       hint_text: r.hint_text ?? '',
       is_public: r.is_public,
@@ -263,7 +263,11 @@ export default function RecipeList({ recipes, badges }: Props) {
                 <td className="px-5 py-3 text-[#6b7280] text-xs">
                   {r.required_activity_badge_id ? (badgeMap.get(r.required_activity_badge_id) ?? '—') : '—'}
                 </td>
-                <td className="px-5 py-3">{badgeMap.get(r.result_badge_id) ?? '—'}</td>
+                <td className="px-5 py-3">
+                  {r.result_badge_id ? (badgeMap.get(r.result_badge_id) ?? '—') : (
+                    <span className="text-red-600 text-xs">결과 미지정</span>
+                  )}
+                </td>
                 <td className="px-5 py-3 text-[#374151]">{Math.round(r.success_rate * 100)}%</td>
                 <td className="px-5 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${r.is_public ? 'bg-emerald-50 text-emerald-600' : 'bg-[#f3f4f6] text-[#6b7280]'}`}>
