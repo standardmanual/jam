@@ -162,6 +162,8 @@ export interface PoiDropRow {
   source: PoiDropSource
 }
 
+export type ItemBookRarityMode = 'mixed' | 'uniform'
+
 export interface ItemBookRow {
   id: string
   name: string
@@ -173,6 +175,10 @@ export interface ItemBookRow {
   story_text: string | null
   is_active: boolean
   drop_condition_json: Record<string, unknown> | null
+  /** 'mixed'(등급무관, 기본값): 책 내 아이템이 자유롭게 여러 등급을 가짐. 'uniform': uniform_rarity로 고정. */
+  rarity_mode: ItemBookRarityMode
+  /** rarity_mode='uniform'일 때만 사용 — 이 책의 모든 아이템에 적용할 고정 등급. */
+  uniform_rarity: BadgeRarity | null
   created_at: string
 }
 

@@ -38,6 +38,8 @@ export default function ItemBookForm({
   const [factionId, setFactionId] = useState(book?.faction_id ?? '')
   const [storyText, setStoryText] = useState(book?.story_text ?? '')
   const [isActive, setIsActive] = useState(book?.is_active ?? true)
+  const [rarityMode, setRarityMode] = useState<'mixed' | 'uniform'>(book?.rarity_mode ?? 'mixed')
+  const [uniformRarity, setUniformRarity] = useState(book?.uniform_rarity ?? 'common')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +61,8 @@ export default function ItemBookForm({
       faction_id: factionId || null,
       story_text: storyText || null,
       is_active: isActive,
+      rarity_mode: rarityMode,
+      uniform_rarity: rarityMode === 'uniform' ? uniformRarity : null,
     }
 
     try {
@@ -186,6 +190,44 @@ export default function ItemBookForm({
           ))}
         </select>
       </label>
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm text-[#374151]">등급 정책</span>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer text-sm">
+            <input
+              type="radio"
+              name="rarity_mode"
+              checked={rarityMode === 'mixed'}
+              onChange={() => setRarityMode('mixed')}
+              className="accent-[#111111]"
+            />
+            등급무관 (기본값 — 책 내 아이템이 여러 등급을 가짐)
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer text-sm">
+            <input
+              type="radio"
+              name="rarity_mode"
+              checked={rarityMode === 'uniform'}
+              onChange={() => setRarityMode('uniform')}
+              className="accent-[#111111]"
+            />
+            동일한 등급
+          </label>
+        </div>
+        {rarityMode === 'uniform' && (
+          <select
+            value={uniformRarity}
+            onChange={(e) => setUniformRarity(e.target.value as typeof uniformRarity)}
+            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 mt-1"
+          >
+            <option value="common" className="bg-white">Common</option>
+            <option value="rare" className="bg-white">Rare</option>
+            <option value="legendary" className="bg-white">Legend</option>
+            <option value="mythic" className="bg-white">Mythic</option>
+          </select>
+        )}
+      </div>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-[#374151]">필수 액티비티 배지</span>
