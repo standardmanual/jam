@@ -2,16 +2,18 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { PoiRow, PoiCategory, PoiCategoryRow, BadgeRow } from '@/types/database'
+import type { PoiRow, PoiCategory, PoiCategoryRow } from '@/types/database'
 import type { NaverSearchResult } from '@/lib/poi/naver'
+import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 
 interface PoiFormProps {
   poi?: PoiRow
-  badges: Pick<BadgeRow, 'id' | 'name'>[]
+  /** 수정 화면 진입 시 연결 배지 콤보박스에 처음 보여줄 이름 */
+  linkedBadgeLabel?: string
   categories: PoiCategoryRow[]
 }
 
-export default function PoiForm({ poi, badges, categories }: PoiFormProps) {
+export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormProps) {
   const router = useRouter()
   const isEdit = !!poi
 
@@ -217,16 +219,13 @@ export default function PoiForm({ poi, badges, categories }: PoiFormProps) {
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-[#374151]">연결 배지</span>
-        <select
+        <BadgeSearchSelect
+          key={poi?.id ?? 'new'}
           value={linkedBadgeId}
-          onChange={(e) => setLinkedBadgeId(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
-        >
-          <option value="" className="bg-white">— 없음 —</option>
-          {badges.map((b) => (
-            <option key={b.id} value={b.id} className="bg-white">{b.name}</option>
-          ))}
-        </select>
+          initialLabel={linkedBadgeLabel}
+          placeholder="배지 이름 검색..."
+          onChange={(id) => setLinkedBadgeId(id)}
+        />
       </label>
 
       <div className="flex items-center gap-3 pt-2">

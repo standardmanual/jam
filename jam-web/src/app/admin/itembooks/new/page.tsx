@@ -1,18 +1,17 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import ItemBookForm from '../ItemBookForm'
-import type { BadgeRow, FactionRow } from '@/types/database'
+import type { FactionRow } from '@/types/database'
 
 export default async function NewItemBookPage() {
   const supabase = createServiceClient()
-  const [{ data: badgesRaw }, { data: factionsRaw }] = await Promise.all([
-    supabase.from('badges').select('id, name, type').is('deleted_at', null).order('name').limit(10000),
-    supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
-  ])
+  const { data: factionsRaw } = await supabase
+    .from('factions')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order')
 
-  const badges = (badgesRaw ?? []) as (Pick<BadgeRow, 'id' | 'name'> & { type: string })[]
   const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
-  const activityBadges = badges.filter((b) => b.type === 'activity')
 
   return (
     <div className="p-8">
@@ -26,8 +25,6 @@ export default async function NewItemBookPage() {
         factions={factions}
         slottedBadges={[]}
         availableBadges={[]}
-        activityBadges={activityBadges}
-        allBadges={badges}
       />
     </div>
   )

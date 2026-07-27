@@ -13,22 +13,27 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
     { data: factionsRaw },
     { data: slottedRaw },
     { data: availableRaw },
-    { data: badgesRaw },
   ] = await Promise.all([
     supabase.from('item_books').select('*').eq('id', id).single(),
     supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
     supabase.from('badges').select('id, name, rarity, image_url').eq('item_book_id', id).eq('type', 'item'),
     supabase.from('badges').select('id, name, rarity, image_url').is('item_book_id', null).is('deleted_at', null).eq('type', 'item').limit(10000),
-    supabase.from('badges').select('id, name, type').is('deleted_at', null).order('name').limit(10000),
   ])
 
   if (!bookRaw) notFound()
 
+  const book = bookRaw as ItemBookRow
   const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
   const slottedBadges = (slottedRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
   const availableBadges = (availableRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
-  const badges = (badgesRaw ?? []) as (Pick<BadgeRow, 'id' | 'name'> & { type: string })[]
-  const activityBadges = badges.filter((b) => b.type === 'activity')
+
+  // 필수 액티비티/완성 보상 배지는 전체 목록을 가져오지 않고, 이미 지정된 값이 있을 때만
+  // 콤보박스 초기 라벨용으로 그 배지 하나씩만 콕 집어서 조회한다.
+  const labelIds = [book.required_activity_badge_id, book.reward_badge_id].filter((v): v is string => !!v)
+  const { data: labelBadgesRaw } = labelIds.length > 0
+    ? await supabase.from('badges').select('id, name').in('id', labelIds)
+    : { data: [] as Pick<BadgeRow, 'id' | 'name'>[] }
+  const labelBadgeMap = new Map(((labelBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]).map((b) => [b.id, b.name]))
 
   return (
     <div className="p-8">
@@ -39,12 +44,12 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
         <h1 className="text-2xl font-bold mt-2">아이템북 수정</h1>
       </div>
       <ItemBookForm
-        book={bookRaw as ItemBookRow}
+        book={book}
         factions={factions}
         slottedBadges={slottedBadges}
         availableBadges={availableBadges}
-        activityBadges={activityBadges}
-        allBadges={badges}
+        requiredActivityBadgeLabel={book.required_activity_badge_id ? labelBadgeMap.get(book.required_activity_badge_id) : undefined}
+        rewardBadgeLabel={book.reward_badge_id ? labelBadgeMap.get(book.reward_badge_id) : undefined}
       />
     </div>
   )
