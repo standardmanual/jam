@@ -17,6 +17,7 @@ const emptyForm = {
   success_rate: 1.0,
   hint_text: '',
   is_public: false,
+  required_activity_badge_id: '',
 }
 
 export default function RecipeList({ recipes, badges }: Props) {
@@ -27,6 +28,7 @@ export default function RecipeList({ recipes, badges }: Props) {
   const router = useRouter()
 
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
+  const activityBadges = badges.filter((b) => b.type === 'activity')
 
   function startCreate() {
     setEditingId(null)
@@ -42,6 +44,7 @@ export default function RecipeList({ recipes, badges }: Props) {
       success_rate: r.success_rate,
       hint_text: r.hint_text ?? '',
       is_public: r.is_public,
+      required_activity_badge_id: r.required_activity_badge_id ?? '',
     })
     setShowForm(true)
   }
@@ -50,17 +53,22 @@ export default function RecipeList({ recipes, badges }: Props) {
     const ingredients = form.ingredient_badge_ids.filter(Boolean)
     if (ingredients.length < 2 || !form.result_badge_id) return
     setSaving(true)
+    const payload = {
+      ...form,
+      ingredient_badge_ids: ingredients,
+      required_activity_badge_id: form.required_activity_badge_id || null,
+    }
     if (editingId) {
       await fetch(`/api/admin/recipes/${editingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, ingredient_badge_ids: ingredients }),
+        body: JSON.stringify(payload),
       })
     } else {
       await fetch('/api/admin/recipes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, ingredient_badge_ids: ingredients }),
+        body: JSON.stringify(payload),
       })
     }
     setSaving(false)
@@ -168,6 +176,23 @@ export default function RecipeList({ recipes, badges }: Props) {
             </select>
           </div>
 
+          {/* 필수 액티비티 배지 (소모되지 않는 보유 조건) */}
+          <div>
+            <label className="text-xs text-[#6b7280] mb-2 block">
+              필수 액티비티 배지 (선택 — 소모되지 않고 보유 여부만 검증)
+            </label>
+            <select
+              value={form.required_activity_badge_id}
+              onChange={(e) => setForm((f) => ({ ...f, required_activity_badge_id: e.target.value }))}
+              className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm"
+            >
+              <option value="">— 없음 —</option>
+              {activityBadges.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* 성공률 */}
           <div>
             <label className="text-xs text-[#6b7280] mb-2 block">성공률 ({Math.round(form.success_rate * 100)}%)</label>
@@ -218,6 +243,7 @@ export default function RecipeList({ recipes, badges }: Props) {
           <thead>
             <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
               <th className="px-5 py-3 font-medium">재료</th>
+              <th className="px-5 py-3 font-medium">필수 액티비티</th>
               <th className="px-5 py-3 font-medium">결과</th>
               <th className="px-5 py-3 font-medium">성공률</th>
               <th className="px-5 py-3 font-medium">공개</th>
@@ -227,12 +253,15 @@ export default function RecipeList({ recipes, badges }: Props) {
           </thead>
           <tbody>
             {recipes.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-10 text-center text-[#898989]">레시피 없음</td></tr>
+              <tr><td colSpan={7} className="px-5 py-10 text-center text-[#898989]">레시피 없음</td></tr>
             )}
             {recipes.map((r) => (
               <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
                 <td className="px-5 py-3 text-[#374151]">
                   {r.ingredient_badge_ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(' + ')}
+                </td>
+                <td className="px-5 py-3 text-[#6b7280] text-xs">
+                  {r.required_activity_badge_id ? (badgeMap.get(r.required_activity_badge_id) ?? '—') : '—'}
                 </td>
                 <td className="px-5 py-3">{badgeMap.get(r.result_badge_id) ?? '—'}</td>
                 <td className="px-5 py-3 text-[#374151]">{Math.round(r.success_rate * 100)}%</td>

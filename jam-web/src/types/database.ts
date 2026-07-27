@@ -264,6 +264,8 @@ export interface CombinationRecipeRow {
   success_rate: number
   hint_text: string | null
   is_public: boolean
+  /** 소모되지 않는 보유 조건 — 설정 시 이 액티비티 배지를 보유해야 매칭됨 (item_books.required_activity_badge_id와 동일 패턴) */
+  required_activity_badge_id: string | null
   created_at: string
 }
 
