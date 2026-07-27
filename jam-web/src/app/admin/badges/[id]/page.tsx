@@ -10,11 +10,11 @@ export default async function EditBadgePage({ params }: { params: Promise<{ id: 
   const [{ data }, { data: factionsRaw }, { data: itemBooksRaw }] = await Promise.all([
     supabase.from('badges').select('*').eq('id', id).single(),
     supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
-    supabase.from('item_books').select('id, name, rarity_mode, uniform_rarity').order('name'),
+    supabase.from('item_books').select('id, name').order('name'),
   ])
   if (!data) notFound()
   const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
-  const itemBooks = (itemBooksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name' | 'rarity_mode' | 'uniform_rarity'>[]
+  const itemBooks = (itemBooksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name'>[]
 
   return (
     <div className="p-8">
