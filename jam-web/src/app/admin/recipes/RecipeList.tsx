@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BadgeRow, CombinationRecipeRow } from '@/types/database'
+import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 
 interface Props {
   recipes: CombinationRecipeRow[]
@@ -22,17 +23,37 @@ const emptyForm = {
 
 export default function RecipeList({ recipes, badges }: Props) {
   const [form, setForm] = useState(emptyForm)
+  // 수정 화면 진입 시 이미 선택된 배지의 표시용 이름 — 검색 콤보박스가 처음에 보여줄 라벨
+  const [formLabels, setFormLabels] = useState<{
+    ingredients: string[]
+    result: string
+    requiredActivity: string
+  }>({ ingredients: [], result: '', requiredActivity: '' })
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const router = useRouter()
 
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
-  const activityBadges = badges.filter((b) => b.type === 'activity')
+
+  function labelOf(badge?: { name: string; type: string; rarity: string }) {
+    return badge ? `${badge.name} [${badge.type}/${badge.rarity}]` : ''
+  }
+
+  function setResultBadge(id: string, badge?: { name: string; type: string; rarity: string }) {
+    setForm((f) => ({ ...f, result_badge_id: id }))
+    setFormLabels((l) => ({ ...l, result: labelOf(badge) }))
+  }
+
+  function setRequiredActivityBadge(id: string, badge?: { name: string; type: string; rarity: string }) {
+    setForm((f) => ({ ...f, required_activity_badge_id: id }))
+    setFormLabels((l) => ({ ...l, requiredActivity: labelOf(badge) }))
+  }
 
   function startCreate() {
     setEditingId(null)
     setForm(emptyForm)
+    setFormLabels({ ingredients: [], result: '', requiredActivity: '' })
     setShowForm(true)
   }
 
@@ -45,6 +66,11 @@ export default function RecipeList({ recipes, badges }: Props) {
       hint_text: r.hint_text ?? '',
       is_public: r.is_public,
       required_activity_badge_id: r.required_activity_badge_id ?? '',
+    })
+    setFormLabels({
+      ingredients: r.ingredient_badge_ids.map((id) => badgeMap.get(id) ?? ''),
+      result: r.result_badge_id ? (badgeMap.get(r.result_badge_id) ?? '') : '',
+      requiredActivity: r.required_activity_badge_id ? (badgeMap.get(r.required_activity_badge_id) ?? '') : '',
     })
     setShowForm(true)
   }
@@ -84,11 +110,16 @@ export default function RecipeList({ recipes, badges }: Props) {
     router.refresh()
   }
 
-  function setIngredient(idx: number, value: string) {
+  function setIngredient(idx: number, value: string, label?: string) {
     setForm((prev) => {
       const arr = [...prev.ingredient_badge_ids]
       arr[idx] = value
       return { ...prev, ingredient_badge_ids: arr }
+    })
+    setFormLabels((prev) => {
+      const arr = [...prev.ingredients]
+      arr[idx] = label ?? ''
+      return { ...prev, ingredients: arr }
     })
   }
 
@@ -98,6 +129,7 @@ export default function RecipeList({ recipes, badges }: Props) {
         ? prev
         : { ...prev, ingredient_badge_ids: [...prev.ingredient_badge_ids, ''] }
     )
+    setFormLabels((prev) => ({ ...prev, ingredients: [...prev.ingredients, ''] }))
   }
 
   function removeIngredientSlot(idx: number) {
@@ -106,6 +138,7 @@ export default function RecipeList({ recipes, badges }: Props) {
       const arr = prev.ingredient_badge_ids.filter((_, i) => i !== idx)
       return { ...prev, ingredient_badge_ids: arr }
     })
+    setFormLabels((prev) => ({ ...prev, ingredients: prev.ingredients.filter((_, i) => i !== idx) }))
   }
 
   return (
@@ -131,16 +164,16 @@ export default function RecipeList({ recipes, badges }: Props) {
             </label>
             {form.ingredient_badge_ids.map((val, i) => (
               <div key={i} className="flex items-center gap-2 mb-2">
-                <select
-                  value={val}
-                  onChange={(e) => setIngredient(i, e.target.value)}
-                  className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm"
-                >
-                  <option value="">재료 {i + 1} 선택</option>
-                  {badges.map((b) => (
-                    <option key={b.id} value={b.id}>{b.name} [{b.type}/{b.rarity}]</option>
-                  ))}
-                </select>
+                <div className="flex-1">
+                  <BadgeSearchSelect
+                    key={`${editingId ?? 'new'}-${i}`}
+                    value={val}
+                    initialLabel={formLabels.ingredients[i]}
+                    typeFilter="item"
+                    placeholder={`재료 ${i + 1} 검색...`}
+                    onChange={(id, badge) => setIngredient(i, id, labelOf(badge))}
+                  />
+                </div>
                 {form.ingredient_badge_ids.length > 2 && (
                   <button
                     onClick={() => removeIngredientSlot(i)}
@@ -164,16 +197,14 @@ export default function RecipeList({ recipes, badges }: Props) {
           {/* 결과 배지 */}
           <div>
             <label className="text-xs text-[#6b7280] mb-2 block">결과 배지</label>
-            <select
+            <BadgeSearchSelect
+              key={editingId ?? 'new'}
               value={form.result_badge_id}
-              onChange={(e) => setForm((f) => ({ ...f, result_badge_id: e.target.value }))}
-              className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm"
-            >
-              <option value="">선택</option>
-              {badges.map((b) => (
-                <option key={b.id} value={b.id}>{b.name} [{b.rarity}]</option>
-              ))}
-            </select>
+              initialLabel={formLabels.result}
+              typeFilter="item"
+              placeholder="결과 배지 검색..."
+              onChange={setResultBadge}
+            />
           </div>
 
           {/* 필수 액티비티 배지 (소모되지 않는 보유 조건) */}
@@ -181,16 +212,14 @@ export default function RecipeList({ recipes, badges }: Props) {
             <label className="text-xs text-[#6b7280] mb-2 block">
               필수 액티비티 배지 (선택 — 소모되지 않고 보유 여부만 검증)
             </label>
-            <select
+            <BadgeSearchSelect
+              key={editingId ?? 'new'}
               value={form.required_activity_badge_id}
-              onChange={(e) => setForm((f) => ({ ...f, required_activity_badge_id: e.target.value }))}
-              className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm"
-            >
-              <option value="">— 없음 —</option>
-              {activityBadges.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
+              initialLabel={formLabels.requiredActivity}
+              typeFilter="activity"
+              placeholder="필수 액티비티 배지 검색..."
+              onChange={setRequiredActivityBadge}
+            />
           </div>
 
           {/* 성공률 */}

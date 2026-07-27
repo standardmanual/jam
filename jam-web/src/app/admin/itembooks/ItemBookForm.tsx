@@ -3,14 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
+import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 
 interface ItemBookFormProps {
   book?: ItemBookRow
   factions: Pick<FactionRow, 'id' | 'name'>[]
   slottedBadges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
   availableBadges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
-  activityBadges: Pick<BadgeRow, 'id' | 'name'>[]
-  allBadges: Pick<BadgeRow, 'id' | 'name'>[]
+  /** 수정 화면 진입 시 필수 액티비티/완성 보상 배지 콤보박스에 처음 보여줄 이름 */
+  requiredActivityBadgeLabel?: string
+  rewardBadgeLabel?: string
 }
 
 const RARITY_LABEL: Record<string, string> = {
@@ -22,8 +24,8 @@ export default function ItemBookForm({
   factions,
   slottedBadges,
   availableBadges,
-  activityBadges,
-  allBadges,
+  requiredActivityBadgeLabel,
+  rewardBadgeLabel,
 }: ItemBookFormProps) {
   const router = useRouter()
   const isEdit = !!book
@@ -189,30 +191,25 @@ export default function ItemBookForm({
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-[#374151]">필수 액티비티 배지</span>
-        <select
+        <BadgeSearchSelect
+          key={book?.id ?? 'new'}
           value={requiredActivityBadgeId}
-          onChange={(e) => setRequiredActivityBadgeId(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
-        >
-          <option value="" className="bg-white">— 없음 —</option>
-          {activityBadges.map((b) => (
-            <option key={b.id} value={b.id} className="bg-white">{b.name}</option>
-          ))}
-        </select>
+          initialLabel={requiredActivityBadgeLabel}
+          typeFilter="activity"
+          placeholder="액티비티 배지 검색..."
+          onChange={(id) => setRequiredActivityBadgeId(id)}
+        />
       </label>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-[#374151]">완성 보상 배지</span>
-        <select
+        <BadgeSearchSelect
+          key={book?.id ?? 'new'}
           value={rewardBadgeId}
-          onChange={(e) => setRewardBadgeId(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
-        >
-          <option value="" className="bg-white">— 없음 —</option>
-          {allBadges.map((b) => (
-            <option key={b.id} value={b.id} className="bg-white">{b.name}</option>
-          ))}
-        </select>
+          initialLabel={rewardBadgeLabel}
+          placeholder="보상 배지 검색..."
+          onChange={(id) => setRewardBadgeId(id)}
+        />
       </label>
 
       <label className="flex items-center gap-3 cursor-pointer">
