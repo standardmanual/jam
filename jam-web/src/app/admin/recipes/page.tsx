@@ -5,16 +5,36 @@ import RecipeList from './RecipeList'
 export default async function AdminRecipesPage() {
   const supabase = createServiceClient()
 
-  const [{ data: recipesRaw }, { data: badgesRaw }] = await Promise.all([
-    supabase.from('combination_recipes').select('*').order('created_at', { ascending: false }),
-    // 배지 총 개수가 Supabase 기본 조회 제한(1000행)을 넘길 수 있어(등급 4종 x 세력별
-    // 대량 아이템) 명시적으로 크게 잡아둔다 — 안 그러면 뒤쪽 배지가 누락되어 레시피
-    // 목록의 결과 배지 이름이 DB엔 있는데도 화면에서 빈칸으로 보이는 문제가 생긴다.
+  const { data: recipesRaw } = await supabase
+    .from('combination_recipes')
+    .select('*')
+    .order('created_at', { ascending: false })
+  const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
+
+  // 이미 레시피에 쓰인 배지 id 전부 — 전체 배지 목록 조회가 Supabase 서버 단 Max Rows
+  // 상한에 걸려 일부만 내려와도(코드의 limit()으론 그 상한을 못 넘김), 기존 레시피가
+  // 참조하는 배지만큼은 정확히 짚어서 별도로 가져와 이름이 항상 정상 표시되도록 한다.
+  const usedBadgeIds = [
+    ...new Set(
+      recipes.flatMap((r) => [
+        ...r.ingredient_badge_ids,
+        r.result_badge_id,
+        r.required_activity_badge_id,
+      ]).filter((id): id is string => !!id)
+    ),
+  ]
+
+  const [{ data: badgesRaw }, { data: usedBadgesRaw }] = await Promise.all([
     supabase.from('badges').select('id, name, rarity, type').is('deleted_at', null).order('type').order('rarity').limit(10000),
+    usedBadgeIds.length > 0
+      ? supabase.from('badges').select('id, name, rarity, type').in('id', usedBadgeIds)
+      : Promise.resolve({ data: [] as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[] }),
   ])
 
-  const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
-  const badges = (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[]
+  const badgeById = new Map<string, Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>>()
+  for (const b of (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[]) badgeById.set(b.id, b)
+  for (const b of (usedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[]) badgeById.set(b.id, b)
+  const badges = [...badgeById.values()]
 
   return (
     <div className="p-8">
