@@ -148,13 +148,13 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
         <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4 flex flex-col gap-3">
           <div>
             <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">정렬</p>
-            <div className="flex gap-1 bg-jam-ink/5 p-1 rounded-xl border-[2px] border-jam-ink">
+            <div className="flex flex-wrap gap-1.5">
               {SORT_OPTIONS.map((s) => (
                 <button
                   key={s.key}
                   onClick={() => setSortKey(s.key)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-colors ${
-                    sortKey === s.key ? 'bg-jam-ink text-white' : 'text-jam-ink/60'
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black border-[2px] border-jam-ink ${
+                    sortKey === s.key ? 'bg-jam-ink text-white' : 'bg-white text-jam-ink'
                   }`}
                 >
                   {s.label}
