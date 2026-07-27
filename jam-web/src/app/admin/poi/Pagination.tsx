@@ -43,20 +43,20 @@ export default function Pagination({ page, totalPages, searchParams }: Paginatio
         href={buildHref(searchParams, Math.max(1, page - 1))}
         aria-disabled={page === 1}
         className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-          page === 1 ? 'text-white/20 pointer-events-none' : 'text-white/60 hover:bg-white/10'
+          page === 1 ? 'text-[#898989] pointer-events-none' : 'text-[#374151] hover:bg-[#f3f4f6]'
         }`}
       >
         이전
       </Link>
       {pageList.map((p, i) =>
         p === 'ellipsis' ? (
-          <span key={`e${i}`} className="px-2 text-white/30 text-sm">…</span>
+          <span key={`e${i}`} className="px-2 text-[#898989] text-sm">…</span>
         ) : (
           <Link
             key={p}
             href={buildHref(searchParams, p)}
             className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              p === page ? 'bg-[#AEEA00] text-black font-bold' : 'text-white/60 hover:bg-white/10'
+              p === page ? 'bg-[#111111] text-white font-bold' : 'text-[#374151] hover:bg-[#f3f4f6]'
             }`}
           >
             {p}
@@ -67,7 +67,7 @@ export default function Pagination({ page, totalPages, searchParams }: Paginatio
         href={buildHref(searchParams, Math.min(totalPages, page + 1))}
         aria-disabled={page === totalPages}
         className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-          page === totalPages ? 'text-white/20 pointer-events-none' : 'text-white/60 hover:bg-white/10'
+          page === totalPages ? 'text-[#898989] pointer-events-none' : 'text-[#374151] hover:bg-[#f3f4f6]'
         }`}
       >
         다음

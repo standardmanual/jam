@@ -26,16 +26,16 @@ export default async function AdminFactionsPage() {
         <h1 className="text-2xl font-bold">세계관 관리</h1>
         <Link
           href="/admin/factions/new"
-          className="bg-[#AEEA00] text-black font-bold px-5 py-2.5 rounded-xl hover:bg-[#c6ff00] transition-colors text-sm"
+          className="bg-[#111111] text-white font-bold px-5 py-2.5 rounded-xl hover:bg-[#242424] transition-colors text-sm"
         >
           + 세계관 등록
         </Link>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-white/40 text-xs uppercase tracking-wider">
+            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-xs uppercase tracking-wider">
               <th className="text-left px-5 py-3">이름</th>
               <th className="text-left px-5 py-3">태그라인</th>
               <th className="text-center px-5 py-3">드랍 가중치</th>
@@ -49,26 +49,26 @@ export default async function AdminFactionsPage() {
           <tbody>
             {factions.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-10 text-white/30">
+                <td colSpan={8} className="text-center py-10 text-[#898989]">
                   등록된 세계관이 없습니다.
                 </td>
               </tr>
             )}
             {factions.map((f) => (
-              <tr key={f.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+              <tr key={f.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] transition-colors">
                 <td className="px-5 py-3.5 font-medium">{f.name}</td>
-                <td className="px-5 py-3.5 text-white/50">{f.tagline ?? '—'}</td>
+                <td className="px-5 py-3.5 text-[#6b7280]">{f.tagline ?? '—'}</td>
                 <td className="px-5 py-3.5 text-center">{f.drop_weight.toFixed(1)}</td>
-                <td className="px-5 py-3.5 text-center text-white/60">{badgeCountMap.get(f.id) ?? 0}</td>
-                <td className="px-5 py-3.5 text-center text-white/60">{bookCountMap.get(f.id) ?? 0}</td>
-                <td className="px-5 py-3.5 text-center text-white/40">{f.sort_order}</td>
+                <td className="px-5 py-3.5 text-center text-[#374151]">{badgeCountMap.get(f.id) ?? 0}</td>
+                <td className="px-5 py-3.5 text-center text-[#374151]">{bookCountMap.get(f.id) ?? 0}</td>
+                <td className="px-5 py-3.5 text-center text-[#6b7280]">{f.sort_order}</td>
                 <td className="px-5 py-3.5 text-center">
                   <span
                     className={[
                       'inline-block px-2.5 py-1 rounded-full text-xs font-semibold',
                       f.is_active
-                        ? 'bg-[#AEEA00]/10 text-[#AEEA00]'
-                        : 'bg-white/5 text-white/30',
+                        ? 'bg-[#111111]/10 text-[#111111]'
+                        : 'bg-white text-[#898989]',
                     ].join(' ')}
                   >
                     {f.is_active ? '활성' : '비활성'}
@@ -77,7 +77,7 @@ export default async function AdminFactionsPage() {
                 <td className="px-5 py-3.5 text-right">
                   <Link
                     href={`/admin/factions/${f.id}`}
-                    className="text-xs text-white/40 hover:text-white transition-colors"
+                    className="text-xs text-[#6b7280] hover:text-[#111111] transition-colors"
                   >
                     편집
                   </Link>

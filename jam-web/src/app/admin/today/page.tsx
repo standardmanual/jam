@@ -23,7 +23,7 @@ export default async function AdminTodayPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">투데이 콘텐츠 관리</h1>
-          <p className="text-white/40 text-sm mt-1">
+          <p className="text-[#6b7280] text-sm mt-1">
             홈(투데이) 카드 CMS — 템플릿별 카드 제작 · 예약 발행 · 노출조건 태그
           </p>
         </div>

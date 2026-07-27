@@ -38,16 +38,16 @@ function RateInput({
 }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs text-white/50">{label}</span>
+      <span className="text-xs text-[#6b7280]">{label}</span>
       <div className="flex items-center gap-2">
         <input
           type="range"
           min={0} max={1} step={0.1}
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
-          className="flex-1 accent-[#AEEA00]"
+          className="flex-1 accent-[#111111]"
         />
-        <span className={`text-sm font-mono w-8 text-right ${value === 0 ? 'text-red-400' : value < 1 ? 'text-yellow-400' : 'text-[#AEEA00]'}`}>
+        <span className={`text-sm font-mono w-8 text-right ${value === 0 ? 'text-red-600' : value < 1 ? 'text-amber-600' : 'text-[#111111]'}`}>
           {value === 0 ? '차단' : value < 1 ? `${Math.round(value * 100)}%` : '정상'}
         </span>
       </div>
@@ -153,29 +153,29 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">어뷰징 정책 관리</h1>
-          <p className="text-white/40 text-sm mt-0.5">투트랙 섀도우밴 + POI GPS 조작 감지</p>
+          <p className="text-[#6b7280] text-sm mt-0.5">투트랙 섀도우밴 + POI GPS 조작 감지</p>
         </div>
         {msg && (
-          <div className={`text-sm font-medium px-4 py-2 rounded-xl ${msg.type === 'ok' ? 'bg-[#AEEA00]/10 text-[#AEEA00]' : 'bg-red-500/10 text-red-400'}`}>
+          <div className={`text-sm font-medium px-4 py-2 rounded-xl ${msg.type === 'ok' ? 'bg-[#111111]/10 text-[#111111]' : 'bg-red-50 text-red-600'}`}>
             {msg.text}
           </div>
         )}
       </div>
 
       {/* 탭 */}
-      <div className="flex gap-1 border-b border-white/10 mb-6">
+      <div className="flex gap-1 border-b border-[#e5e7eb] mb-6">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={[
               'pb-3 px-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5',
-              tab === t.key ? 'border-[#AEEA00] text-[#AEEA00]' : 'border-transparent text-white/40 hover:text-white/70',
+              tab === t.key ? 'border-[#111111] text-[#111111]' : 'border-transparent text-[#6b7280] hover:text-[#374151]',
             ].join(' ')}
           >
             {t.label}
             {t.count != null && (
-              <span className={`text-[10px] rounded-full px-1.5 py-0.5 ${tab === t.key ? 'bg-[#AEEA00]/20 text-[#AEEA00]' : 'bg-white/10 text-white/30'}`}>
+              <span className={`text-[10px] rounded-full px-1.5 py-0.5 ${tab === t.key ? 'bg-[#111111]/20 text-[#111111]' : 'bg-[#f3f4f6] text-[#898989]'}`}>
                 {t.count}
               </span>
             )}
@@ -187,15 +187,15 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
       {tab === 'policy' && (
         <div className="space-y-6">
           {/* 안내 */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white/60 leading-relaxed">
-            <p className="font-semibold text-white mb-1">투트랙 정책</p>
-            <p><span className="text-yellow-400 font-medium">Soft-ban</span> — 폰 흔들기 등 소프트 어뷰저. 잡템은 허용하되 고가치 아이템(legendary/mythic) 차단.</p>
-            <p className="mt-1"><span className="text-red-400 font-medium">Hard-ban</span> — GPS 조작 등 생태계 파괴. 유저 화면은 정상이지만 희귀 아이템 드랍률 0% 고정.</p>
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-4 text-sm text-[#374151] leading-relaxed">
+            <p className="font-semibold text-[#111111] mb-1">투트랙 정책</p>
+            <p><span className="text-amber-600 font-medium">Soft-ban</span> — 폰 흔들기 등 소프트 어뷰저. 잡템은 허용하되 고가치 아이템(legendary/mythic) 차단.</p>
+            <p className="mt-1"><span className="text-red-600 font-medium">Hard-ban</span> — GPS 조작 등 생태계 파괴. 유저 화면은 정상이지만 희귀 아이템 드랍률 0% 고정.</p>
           </div>
 
           {/* Soft-ban 설정 */}
-          <div className="bg-white/5 border border-yellow-400/20 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-yellow-400 uppercase tracking-wider">Soft-ban 드랍 배율</h3>
+          <div className="bg-white border border-amber-100 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-amber-600 uppercase tracking-wider">Soft-ban 드랍 배율</h3>
             <RateInput label="Common" value={policy.soft_common_rate} onChange={(v) => policySet('soft_common_rate', v)} />
             <RateInput label="Rare" value={policy.soft_rare_rate} onChange={(v) => policySet('soft_rare_rate', v)} />
             <RateInput label="Legendary" value={policy.soft_legendary_rate} onChange={(v) => policySet('soft_legendary_rate', v)} />
@@ -203,8 +203,8 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
           </div>
 
           {/* Hard-ban 설정 */}
-          <div className="bg-white/5 border border-red-500/20 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-red-400 uppercase tracking-wider">Hard-ban 드랍 배율</h3>
+          <div className="bg-white border border-red-100 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-red-600 uppercase tracking-wider">Hard-ban 드랍 배율</h3>
             <RateInput label="Common" value={policy.hard_common_rate} onChange={(v) => policySet('hard_common_rate', v)} />
             <RateInput label="Rare" value={policy.hard_rare_rate} onChange={(v) => policySet('hard_rare_rate', v)} />
             <RateInput label="Legendary" value={policy.hard_legendary_rate} onChange={(v) => policySet('hard_legendary_rate', v)} />
@@ -212,42 +212,42 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
           </div>
 
           {/* GPS 설정 */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider">GPS 조작 감지</h3>
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-[#374151] uppercase tracking-wider">GPS 조작 감지</h3>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-white/50">이동 속도 임계값 (km/h) — 이 속도를 초과하면 GPS 조작으로 판단</span>
+              <span className="text-xs text-[#6b7280]">이동 속도 임계값 (km/h) — 이 속도를 초과하면 GPS 조작으로 판단</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
                   value={policy.gps_max_speed_kmh}
                   onChange={(e) => policySet('gps_max_speed_kmh', parseInt(e.target.value) || 300)}
-                  className="w-28 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#AEEA00]/50"
+                  className="w-28 bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-[#111111] text-sm focus:outline-none focus:border-[#111111]/50"
                 />
-                <span className="text-sm text-white/40">km/h (기본: 300)</span>
+                <span className="text-sm text-[#6b7280]">km/h (기본: 300)</span>
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-white/50">차량 속도 필터 (km/h) — 이 속도를 초과하는 활동은 배지 평가에서 제외 (Phase 18)</span>
+              <span className="text-xs text-[#6b7280]">차량 속도 필터 (km/h) — 이 속도를 초과하는 활동은 배지 평가에서 제외 (Phase 18)</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
                   value={policy.vehicle_speed_filter_kmh}
                   onChange={(e) => policySet('vehicle_speed_filter_kmh', parseInt(e.target.value) || 60)}
-                  className="w-28 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#AEEA00]/50"
+                  className="w-28 bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-[#111111] text-sm focus:outline-none focus:border-[#111111]/50"
                 />
-                <span className="text-sm text-white/40">km/h (기본: 60)</span>
+                <span className="text-sm text-[#6b7280]">km/h (기본: 60)</span>
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-white/50">POI 블록 지속 시간 (시간)</span>
+              <span className="text-xs text-[#6b7280]">POI 블록 지속 시간 (시간)</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
                   value={policy.poi_block_hours}
                   onChange={(e) => policySet('poi_block_hours', parseInt(e.target.value) || 72)}
-                  className="w-28 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#AEEA00]/50"
+                  className="w-28 bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-[#111111] text-sm focus:outline-none focus:border-[#111111]/50"
                 />
-                <span className="text-sm text-white/40">시간 (기본: 72시간 = 3일)</span>
+                <span className="text-sm text-[#6b7280]">시간 (기본: 72시간 = 3일)</span>
               </div>
             </label>
           </div>
@@ -255,7 +255,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
           <button
             onClick={savePolicy}
             disabled={saving}
-            className="bg-[#AEEA00] text-black font-bold px-6 py-2.5 rounded-xl hover:bg-[#c6ff00] disabled:opacity-50 transition-colors"
+            className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
           >
             {saving ? '저장 중...' : '정책 저장'}
           </button>
@@ -266,33 +266,33 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
       {tab === 'bans' && (
         <div className="space-y-5">
           {/* 새 밴 추가 */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-white/60">수동 섀도우밴 적용</h3>
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-[#374151]">수동 섀도우밴 적용</h3>
             <input
               value={banUserId}
               onChange={(e) => setBanUserId(e.target.value)}
               placeholder="유저 UUID"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+              className="w-full bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] text-sm placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
             />
             <div className="flex gap-2">
               <select
                 value={banLevel}
                 onChange={(e) => setBanLevel(e.target.value as 'soft' | 'hard')}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none"
+                className="bg-white border border-[#e5e7eb] rounded-xl px-3 py-2.5 text-[#111111] text-sm focus:outline-none"
               >
-                <option value="soft" className="bg-[#1a1a1a]">Soft-ban</option>
-                <option value="hard" className="bg-[#1a1a1a]">Hard-ban</option>
+                <option value="soft" className="bg-white">Soft-ban</option>
+                <option value="hard" className="bg-white">Hard-ban</option>
               </select>
               <input
                 value={banReason}
                 onChange={(e) => setBanReason(e.target.value)}
                 placeholder="사유 (내부 기록용)"
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+                className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] text-sm placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
               />
               <button
                 onClick={addBan}
                 disabled={banAdding || !banUserId.trim() || !banReason.trim()}
-                className="bg-red-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-red-500 disabled:opacity-40 transition-colors text-sm"
+                className="bg-red-600 text-white font-bold px-4 py-2.5 rounded-xl hover:bg-red-700 disabled:opacity-40 transition-colors text-sm"
               >
                 적용
               </button>
@@ -300,10 +300,10 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
           </div>
 
           {/* 밴 목록 */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-white/40 text-left">
+                <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
                   <th className="px-4 py-3 font-medium">유저</th>
                   <th className="px-4 py-3 font-medium">레벨</th>
                   <th className="px-4 py-3 font-medium">사유</th>
@@ -314,26 +314,26 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
               </thead>
               <tbody>
                 {bans.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-white/30">섀도우밴 유저 없음</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[#898989]">섀도우밴 유저 없음</td></tr>
                 )}
                 {bans.map((ban) => (
-                  <tr key={ban.id} className="border-b border-white/5 hover:bg-white/5">
+                  <tr key={ban.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
                     <td className="px-4 py-3">
                       <p className="font-medium">{ban.user?.username ?? '—'}</p>
-                      <p className="text-xs text-white/40">{ban.user?.email ?? ban.user_id.slice(0, 8)}</p>
+                      <p className="text-xs text-[#6b7280]">{ban.user?.email ?? ban.user_id.slice(0, 8)}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${ban.ban_level === 'hard' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-400/20 text-yellow-400'}`}>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${ban.ban_level === 'hard' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
                         {ban.ban_level.toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-white/60 text-xs max-w-[160px] truncate">{ban.reason}</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">{ban.expires_at ? new Date(ban.expires_at).toLocaleDateString('ko-KR') : '영구'}</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">{ban.created_by}</td>
+                    <td className="px-4 py-3 text-[#374151] text-xs max-w-[160px] truncate">{ban.reason}</td>
+                    <td className="px-4 py-3 text-[#6b7280] text-xs">{ban.expires_at ? new Date(ban.expires_at).toLocaleDateString('ko-KR') : '영구'}</td>
+                    <td className="px-4 py-3 text-[#6b7280] text-xs">{ban.created_by}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => removeBan(ban.user_id)}
-                        className="text-xs text-white/40 hover:text-white px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+                        className="text-xs text-[#6b7280] hover:text-[#111111] px-2 py-1 rounded-lg hover:bg-[#f8f9fa] transition-colors"
                       >
                         해제
                       </button>
@@ -348,10 +348,10 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
 
       {/* POI 블록 탭 */}
       {tab === 'poi-blocks' && (
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-white/40 text-left">
+              <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
                 <th className="px-4 py-3 font-medium">유저</th>
                 <th className="px-4 py-3 font-medium">POI</th>
                 <th className="px-4 py-3 font-medium">사유</th>
@@ -361,23 +361,23 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
             </thead>
             <tbody>
               {poiBlocks.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-white/30">활성 POI 블록 없음</td></tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-[#898989]">활성 POI 블록 없음</td></tr>
               )}
               {poiBlocks.map((b) => (
-                <tr key={b.id} className="border-b border-white/5 hover:bg-white/5">
+                <tr key={b.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
                   <td className="px-4 py-3">
                     <p className="font-medium">{b.user?.username ?? '—'}</p>
-                    <p className="text-xs text-white/40">{b.user?.email ?? b.user_id.slice(0, 8)}</p>
+                    <p className="text-xs text-[#6b7280]">{b.user?.email ?? b.user_id.slice(0, 8)}</p>
                   </td>
-                  <td className="px-4 py-3 text-white/70">{b.poi?.name ?? b.poi_id.slice(0, 8)}</td>
-                  <td className="px-4 py-3 text-white/40 text-xs">{b.reason}</td>
-                  <td className="px-4 py-3 text-white/40 text-xs">
+                  <td className="px-4 py-3 text-[#374151]">{b.poi?.name ?? b.poi_id.slice(0, 8)}</td>
+                  <td className="px-4 py-3 text-[#6b7280] text-xs">{b.reason}</td>
+                  <td className="px-4 py-3 text-[#6b7280] text-xs">
                     {new Date(b.blocked_until).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => removePoiBlock(b.user_id, b.poi_id)}
-                      className="text-xs text-white/40 hover:text-white px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+                      className="text-xs text-[#6b7280] hover:text-[#111111] px-2 py-1 rounded-lg hover:bg-[#f8f9fa] transition-colors"
                     >
                       해제
                     </button>

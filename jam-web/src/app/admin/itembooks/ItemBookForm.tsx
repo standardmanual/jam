@@ -120,28 +120,28 @@ export default function ItemBookForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-w-xl">
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
           {error}
         </div>
       )}
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-white/60">아이템북 이름 *</span>
+        <span className="text-sm text-[#374151]">아이템북 이름 *</span>
         <input
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
           placeholder="예: 서울 라이더 컬렉션"
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-white/60">이미지 URL</span>
+        <span className="text-sm text-[#374151]">이미지 URL</span>
         <input
           value={imageUrl}
           onChange={(e) => setImageUrl(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
           placeholder="https://..."
         />
         {imageUrl && (
@@ -151,66 +151,66 @@ export default function ItemBookForm({
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-white/60">설명 *</span>
+        <span className="text-sm text-[#374151]">설명 *</span>
         <textarea
           required
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50 resize-none"
+          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 resize-none"
           placeholder="아이템북 설명을 입력하세요"
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-white/60">스토리 텍스트</span>
+        <span className="text-sm text-[#374151]">스토리 텍스트</span>
         <textarea
           value={storyText}
           onChange={(e) => setStoryText(e.target.value)}
           rows={3}
-          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50 resize-none"
+          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 resize-none"
           placeholder="세계관 스토리 또는 배경 설명"
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-white/60">소속 세계관</span>
+        <span className="text-sm text-[#374151]">소속 세계관</span>
         <select
           value={factionId}
           onChange={(e) => setFactionId(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
         >
-          <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
+          <option value="" className="bg-white">— 없음 —</option>
           {factions.map((f) => (
-            <option key={f.id} value={f.id} className="bg-[#1a1a1a]">{f.name}</option>
+            <option key={f.id} value={f.id} className="bg-white">{f.name}</option>
           ))}
         </select>
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-white/60">필수 액티비티 배지</span>
+        <span className="text-sm text-[#374151]">필수 액티비티 배지</span>
         <select
           value={requiredActivityBadgeId}
           onChange={(e) => setRequiredActivityBadgeId(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
         >
-          <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
+          <option value="" className="bg-white">— 없음 —</option>
           {activityBadges.map((b) => (
-            <option key={b.id} value={b.id} className="bg-[#1a1a1a]">{b.name}</option>
+            <option key={b.id} value={b.id} className="bg-white">{b.name}</option>
           ))}
         </select>
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-white/60">완성 보상 배지</span>
+        <span className="text-sm text-[#374151]">완성 보상 배지</span>
         <select
           value={rewardBadgeId}
           onChange={(e) => setRewardBadgeId(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
         >
-          <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
+          <option value="" className="bg-white">— 없음 —</option>
           {allBadges.map((b) => (
-            <option key={b.id} value={b.id} className="bg-[#1a1a1a]">{b.name}</option>
+            <option key={b.id} value={b.id} className="bg-white">{b.name}</option>
           ))}
         </select>
       </label>
@@ -220,35 +220,35 @@ export default function ItemBookForm({
           type="checkbox"
           checked={isActive}
           onChange={(e) => setIsActive(e.target.checked)}
-          className="accent-[#AEEA00]"
+          className="accent-[#111111]"
         />
         <span className="text-sm">활성화</span>
       </label>
 
       {/* 배지 슬롯 관리 (편집 모드만) */}
       {isEdit && (
-        <div className="border border-white/10 rounded-2xl p-5 space-y-4">
+        <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-white/70">배지 슬롯 관리</p>
-            <span className="text-xs text-white/40">{slottedBadges.length}개 배지 등록됨</span>
+            <p className="text-sm font-semibold text-[#374151]">배지 슬롯 관리</p>
+            <span className="text-xs text-[#6b7280]">{slottedBadges.length}개 배지 등록됨</span>
           </div>
 
           {slottedBadges.length === 0 && (
-            <p className="text-white/30 text-sm">등록된 배지가 없습니다.</p>
+            <p className="text-[#898989] text-sm">등록된 배지가 없습니다.</p>
           )}
           <div className="space-y-2">
             {slottedBadges.map((b) => (
-              <div key={b.id} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5">
+              <div key={b.id} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5">
                 {b.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={b.image_url} alt={b.name} className="w-8 h-8 rounded-lg object-contain" />
                 )}
                 <span className="text-sm flex-1">{b.name}</span>
-                <span className="text-xs text-white/40">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
+                <span className="text-xs text-[#6b7280]">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
                 <button
                   type="button"
                   onClick={() => handleUnassignBadge(b.id)}
-                  className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-lg hover:bg-red-500/10 transition-colors"
+                  className="text-xs text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
                 >
                   제거
                 </button>
@@ -259,7 +259,7 @@ export default function ItemBookForm({
           <button
             type="button"
             onClick={() => setShowBadgeModal(true)}
-            className="w-full border border-dashed border-white/20 rounded-xl py-2.5 text-sm text-white/40 hover:text-white/60 hover:border-white/30 transition-colors"
+            className="w-full border border-dashed border-[#e5e7eb] rounded-xl py-2.5 text-sm text-[#6b7280] hover:text-[#374151] hover:border-[#d1d5db] transition-colors"
           >
             + 배지 추가
           </button>
@@ -270,14 +270,14 @@ export default function ItemBookForm({
         <button
           type="submit"
           disabled={loading}
-          className="bg-[#AEEA00] text-black font-bold px-6 py-2.5 rounded-xl hover:bg-[#c6ff00] disabled:opacity-50 transition-colors"
+          className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
         >
           {loading ? '저장 중...' : isEdit ? '수정 저장' : '아이템북 등록'}
         </button>
         <button
           type="button"
           onClick={() => router.push('/admin/itembooks')}
-          className="text-white/50 hover:text-white px-4 py-2.5 rounded-xl hover:bg-white/5 transition-colors"
+          className="text-[#6b7280] hover:text-[#111111] px-4 py-2.5 rounded-xl hover:bg-[#f8f9fa] transition-colors"
         >
           취소
         </button>
@@ -285,7 +285,7 @@ export default function ItemBookForm({
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="ml-auto text-red-400 hover:text-red-300 hover:bg-red-500/10 px-4 py-2.5 rounded-xl transition-colors"
+            className="ml-auto text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2.5 rounded-xl transition-colors"
           >
             삭제
           </button>
@@ -294,22 +294,22 @@ export default function ItemBookForm({
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 max-w-sm w-full mx-4">
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">아이템북 삭제</h3>
-            <p className="text-white/50 text-sm mb-5">
+            <p className="text-[#6b7280] text-sm mb-5">
               &apos;{book?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={handleDelete}
                 disabled={loading}
-                className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-500 disabled:opacity-50 transition-colors"
+                className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
                 {loading ? '삭제 중...' : '삭제 확인'}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 bg-white/5 text-white py-2.5 rounded-xl hover:bg-white/10 transition-colors"
+                className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors"
               >
                 취소
               </button>
@@ -321,14 +321,14 @@ export default function ItemBookForm({
       {/* 배지 선택 모달 */}
       {showBadgeModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4">
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-bold mb-4">배지 추가</h3>
             <input
               type="text"
               placeholder="배지 이름 검색..."
               value={badgeSearch}
               onChange={(e) => setBadgeSearch(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50 mb-4"
+              className="w-full bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 mb-4"
             />
             <div className="max-h-64 overflow-y-auto space-y-1.5">
               {availableBadges
@@ -338,21 +338,21 @@ export default function ItemBookForm({
                     key={b.id}
                     type="button"
                     onClick={() => handleAssignBadge(b.id)}
-                    className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors text-sm"
+                    className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#f8f9fa] transition-colors text-sm"
                   >
                     {b.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={b.image_url} alt={b.name} className="w-8 h-8 rounded-lg object-contain" />
                     )}
                     <span>{b.name}</span>
-                    <span className="text-white/40 text-xs ml-auto">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
+                    <span className="text-[#6b7280] text-xs ml-auto">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
                   </button>
                 ))}
             </div>
             <button
               type="button"
               onClick={() => { setShowBadgeModal(false); setBadgeSearch('') }}
-              className="mt-4 w-full bg-white/5 text-white py-2.5 rounded-xl hover:bg-white/10 transition-colors text-sm"
+              className="mt-4 w-full bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors text-sm"
             >
               닫기
             </button>

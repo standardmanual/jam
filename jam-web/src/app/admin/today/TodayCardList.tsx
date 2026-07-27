@@ -180,20 +180,20 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
   }
 
   const now = new Date()
-  const inputCls = 'w-full bg-white/5 border border-white/20 rounded-xl px-3 py-2 text-sm'
-  const labelCls = 'text-xs text-white/40 mb-1 block'
+  const inputCls = 'w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm'
+  const labelCls = 'text-xs text-[#6b7280] mb-1 block'
 
   return (
     <div className="space-y-6">
       <button
         onClick={() => setShowForm((v) => !v)}
-        className="bg-[#AEEA00] text-black font-bold px-4 py-2 rounded-xl hover:bg-[#c6ff00] transition-colors text-sm"
+        className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
       >
         {showForm ? '취소' : '+ 콘텐츠 추가'}
       </button>
 
       {showForm && (
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 space-y-4">
           <h2 className="font-bold">새 투데이 카드</h2>
 
           <div className="grid grid-cols-2 gap-4">
@@ -205,7 +205,7 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
                   setForm((f) => ({ ...f, template_type, layout_type: suggestedLayoutFor[template_type] }))
                 }}
                 className={inputCls}>
-                {templates.map((t) => <option key={t.value} value={t.value} className="bg-[#1a1a1a]">{t.label}</option>)}
+                {templates.map((t) => <option key={t.value} value={t.value} className="bg-white">{t.label}</option>)}
               </select>
             </div>
             <div>
@@ -213,7 +213,7 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
               <select value={form.layout_type}
                 onChange={(e) => setForm((f) => ({ ...f, layout_type: e.target.value as TodayCardLayoutType }))}
                 className={inputCls}>
-                {layoutTypes.map((t) => <option key={t.value} value={t.value} className="bg-[#1a1a1a]">{t.label}</option>)}
+                {layoutTypes.map((t) => <option key={t.value} value={t.value} className="bg-white">{t.label}</option>)}
               </select>
             </div>
           </div>
@@ -238,13 +238,13 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
 
           {/* 템플릿별 참조 필드 */}
           {fields.badges && (
-            <div className="border border-white/10 rounded-2xl p-4 space-y-2">
+            <div className="border border-[#e5e7eb] rounded-2xl p-4 space-y-2">
               <label className={labelCls}>배지 선택 (복수 가능)</label>
               {selectedBadges.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {selectedBadges.map((b) => (
                     <button key={b.id} onClick={() => toggleBadge(b.id)}
-                      className="text-xs bg-[#AEEA00]/20 text-[#AEEA00] border border-[#AEEA00]/40 rounded-lg px-2 py-1 hover:bg-[#AEEA00]/30">
+                      className="text-xs bg-[#111111]/20 text-[#111111] border border-[#111111]/40 rounded-lg px-2 py-1 hover:bg-[#111111]/30">
                       {b.name} ✕
                     </button>
                   ))}
@@ -252,14 +252,14 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
               )}
               <input type="text" value={badgeQuery} onChange={(e) => setBadgeQuery(e.target.value)}
                 placeholder="배지 이름 검색..." className={inputCls} />
-              <div className="max-h-44 overflow-y-auto border border-white/10 rounded-xl divide-y divide-white/5">
-                {filteredBadges.length === 0 && <p className="text-white/30 text-xs px-3 py-2">검색 결과 없음</p>}
+              <div className="max-h-44 overflow-y-auto border border-[#e5e7eb] rounded-xl divide-y divide-[#f3f4f6]">
+                {filteredBadges.length === 0 && <p className="text-[#898989] text-xs px-3 py-2">검색 결과 없음</p>}
                 {filteredBadges.slice(0, 100).map((b) => {
                   const checked = form.badge_ids.includes(b.id)
                   return (
                     <button key={b.id} onClick={() => toggleBadge(b.id)}
-                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-white/5 ${checked ? 'text-[#AEEA00]' : 'text-white/70'}`}>
-                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${checked ? 'bg-[#AEEA00] border-[#AEEA00] text-black' : 'border-white/30'}`}>
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-[#f8f9fa] ${checked ? 'text-[#111111]' : 'text-[#374151]'}`}>
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${checked ? 'bg-[#111111] border-[#111111] text-white' : 'border-[#e5e7eb]'}`}>
                         {checked ? '✓' : ''}
                       </span>
                       {b.name}
@@ -275,8 +275,8 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
               <label className={labelCls}>미션 선택{form.template_type === 'progress_nudge' ? ' (선택)' : ''}</label>
               <select value={form.mission_id} onChange={(e) => setForm((f) => ({ ...f, mission_id: e.target.value }))}
                 className={inputCls}>
-                <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
-                {missions.map((m) => <option key={m.id} value={m.id} className="bg-[#1a1a1a]">{m.title}</option>)}
+                <option value="" className="bg-white">— 없음 —</option>
+                {missions.map((m) => <option key={m.id} value={m.id} className="bg-white">{m.title}</option>)}
               </select>
             </div>
           )}
@@ -286,8 +286,8 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
               <label className={labelCls}>아이템북 선택</label>
               <select value={form.item_book_id} onChange={(e) => setForm((f) => ({ ...f, item_book_id: e.target.value }))}
                 className={inputCls}>
-                <option value="" className="bg-[#1a1a1a]">— 없음 —</option>
-                {itemBooks.map((b) => <option key={b.id} value={b.id} className="bg-[#1a1a1a]">{b.name}</option>)}
+                <option value="" className="bg-white">— 없음 —</option>
+                {itemBooks.map((b) => <option key={b.id} value={b.id} className="bg-white">{b.name}</option>)}
               </select>
             </div>
           )}
@@ -316,21 +316,21 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
             </div>
           )}
           {form.template_type === 'drop_alert' && (
-            <p className="text-white/30 text-xs">이동 경로는 /drops 로 고정됩니다.</p>
+            <p className="text-[#898989] text-xs">이동 경로는 /drops 로 고정됩니다.</p>
           )}
           {form.template_type === 'editorial_article' && (
-            <p className="text-white/30 text-xs">이동 경로는 /today/{'{id}'} (전용 기사 페이지)로 고정됩니다.</p>
+            <p className="text-[#898989] text-xs">이동 경로는 /today/{'{id}'} (전용 기사 페이지)로 고정됩니다.</p>
           )}
 
           {/* 노출조건 태그 */}
-          <div className="border border-white/10 rounded-2xl p-4">
+          <div className="border border-[#e5e7eb] rounded-2xl p-4">
             <label className={labelCls}>노출조건 태그 (OR 매칭 — 하나라도 해당하면 노출)</label>
             <div className="flex flex-wrap gap-2 mt-1">
               {exposureTagOptions.map((t) => {
                 const checked = form.exposure_tags.includes(t.value)
                 return (
                   <button key={t.value} onClick={() => toggleTag(t.value)}
-                    className={`text-xs rounded-lg px-2 py-1 border ${checked ? 'bg-[#AEEA00]/20 text-[#AEEA00] border-[#AEEA00]/40' : 'text-white/50 border-white/20 hover:bg-white/5'}`}>
+                    className={`text-xs rounded-lg px-2 py-1 border ${checked ? 'bg-[#111111]/20 text-[#111111] border-[#111111]/40' : 'text-[#6b7280] border-[#e5e7eb] hover:bg-[#f8f9fa]'}`}>
                     {t.label}
                   </button>
                 )
@@ -355,27 +355,27 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
                 className={inputCls} />
             </div>
             <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm text-white/70">
+              <label className="flex items-center gap-2 text-sm text-[#374151]">
                 <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
                 활성화
               </label>
             </div>
           </div>
 
-          {error && <p className="text-red-400 text-xs">{error}</p>}
+          {error && <p className="text-red-600 text-xs">{error}</p>}
 
           <button onClick={handleSave} disabled={saving}
-            className="bg-[#AEEA00] text-black font-bold px-4 py-2 rounded-xl hover:bg-[#c6ff00] transition-colors text-sm">
+            className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm">
             {saving ? '저장 중...' : '저장'}
           </button>
         </div>
       )}
 
       {/* 카드 목록 */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-white/40 text-left">
+            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
               <th className="px-5 py-3 font-medium">제목</th>
               <th className="px-5 py-3 font-medium">템플릿</th>
               <th className="px-5 py-3 font-medium">노출형태</th>
@@ -387,21 +387,21 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
           </thead>
           <tbody>
             {cards.length === 0 && (
-              <tr><td colSpan={7} className="px-5 py-10 text-center text-white/30">카드 없음</td></tr>
+              <tr><td colSpan={7} className="px-5 py-10 text-center text-[#898989]">카드 없음</td></tr>
             )}
             {cards.map((c) => {
               const started = new Date(c.starts_at) <= now
               const ended = new Date(c.ends_at) < now
               const live = c.is_active && started && !ended
               const status = !c.is_active ? '비활성' : ended ? '종료' : !started ? '예약' : '노출중'
-              const statusCls = live ? 'bg-[#AEEA00]/20 text-[#AEEA00]' : ended || !c.is_active ? 'bg-white/10 text-white/30' : 'bg-amber-500/20 text-amber-400'
+              const statusCls = live ? 'bg-[#111111]/20 text-[#111111]' : ended || !c.is_active ? 'bg-[#f3f4f6] text-[#898989]' : 'bg-amber-50 text-amber-600'
               return (
-                <tr key={c.id} className="border-b border-white/5 hover:bg-white/5 align-top">
+                <tr key={c.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] align-top">
                   <td className="px-5 py-3 font-medium max-w-[220px]">{c.title}</td>
-                  <td className="px-5 py-3 text-white/60 text-xs">{c.template_type}</td>
-                  <td className="px-5 py-3 text-white/60 text-xs">{c.layout_type}</td>
-                  <td className="px-5 py-3 text-white/50 text-xs max-w-[180px]">{c.exposure_tags.join(', ')}</td>
-                  <td className="px-5 py-3 text-white/50 text-xs">
+                  <td className="px-5 py-3 text-[#374151] text-xs">{c.template_type}</td>
+                  <td className="px-5 py-3 text-[#374151] text-xs">{c.layout_type}</td>
+                  <td className="px-5 py-3 text-[#6b7280] text-xs max-w-[180px]">{c.exposure_tags.join(', ')}</td>
+                  <td className="px-5 py-3 text-[#6b7280] text-xs">
                     {new Date(c.starts_at).toLocaleDateString('ko-KR')} ~<br />
                     {new Date(c.ends_at).toLocaleDateString('ko-KR')}
                   </td>
@@ -409,10 +409,10 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
                     <span className={`text-xs px-2 py-0.5 rounded-full ${statusCls}`}>{status}</span>
                   </td>
                   <td className="px-5 py-3 whitespace-nowrap">
-                    <button onClick={() => handleToggleActive(c)} className="text-white/50 hover:text-white text-xs mr-3">
+                    <button onClick={() => handleToggleActive(c)} className="text-[#6b7280] hover:text-[#111111] text-xs mr-3">
                       {c.is_active ? '비활성화' : '활성화'}
                     </button>
-                    <button onClick={() => handleDelete(c.id)} className="text-red-400 hover:text-red-300 text-xs">삭제</button>
+                    <button onClick={() => handleDelete(c.id)} className="text-red-600 hover:text-red-700 text-xs">삭제</button>
                   </td>
                 </tr>
               )

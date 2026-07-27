@@ -29,22 +29,22 @@ export default function PoiFilters({ categories }: PoiFiltersProps) {
       <select
         value={category}
         onChange={(e) => updateParams({ category: e.target.value })}
-        className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#AEEA00]/50"
+        className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2 text-[#111111] text-sm focus:outline-none focus:border-[#111111]/50"
       >
-        <option value="all" className="bg-[#1a1a1a]">전체 카테고리</option>
+        <option value="all" className="bg-white">전체 카테고리</option>
         {categories.map((c) => (
-          <option key={c.slug} value={c.slug} className="bg-[#1a1a1a]">{c.label} ({c.slug})</option>
+          <option key={c.slug} value={c.slug} className="bg-white">{c.label} ({c.slug})</option>
         ))}
       </select>
 
       <select
         value={sort}
         onChange={(e) => updateParams({ sort: e.target.value })}
-        className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#AEEA00]/50"
+        className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2 text-[#111111] text-sm focus:outline-none focus:border-[#111111]/50"
       >
-        <option value="created_desc" className="bg-[#1a1a1a]">최근 등록순</option>
-        <option value="name_asc" className="bg-[#1a1a1a]">이름 오름차순</option>
-        <option value="name_desc" className="bg-[#1a1a1a]">이름 내림차순</option>
+        <option value="created_desc" className="bg-white">최근 등록순</option>
+        <option value="name_asc" className="bg-white">이름 오름차순</option>
+        <option value="name_desc" className="bg-white">이름 내림차순</option>
       </select>
     </div>
   )
