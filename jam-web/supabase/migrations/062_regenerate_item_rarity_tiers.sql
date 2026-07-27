@@ -16,7 +16,7 @@ INSERT INTO public.badges (
 )
 SELECT
   name, description, type, 'rare'::badge_rarity, image_url, condition_json, activity_types,
-  patch_available, patch_price_krw, is_wandering, faction_id, NULL,
+  patch_available, patch_price_krw, is_wandering, faction_id, NULL::uuid,
   drop_weight, drop_condition_json, valid_from, valid_until, point_reward
 FROM public.badges
 WHERE type = 'item' AND rarity = 'common' AND deleted_at IS NULL
@@ -25,7 +25,7 @@ UNION ALL
 
 SELECT
   name, description, type, 'legendary'::badge_rarity, image_url, condition_json, activity_types,
-  patch_available, patch_price_krw, is_wandering, faction_id, NULL,
+  patch_available, patch_price_krw, is_wandering, faction_id, NULL::uuid,
   drop_weight, drop_condition_json, valid_from, valid_until, point_reward
 FROM public.badges
 WHERE type = 'item' AND rarity = 'common' AND deleted_at IS NULL
@@ -34,7 +34,7 @@ UNION ALL
 
 SELECT
   name, description, type, 'mythic'::badge_rarity, image_url, condition_json, activity_types,
-  patch_available, patch_price_krw, is_wandering, faction_id, NULL,
+  patch_available, patch_price_krw, is_wandering, faction_id, NULL::uuid,
   drop_weight, drop_condition_json, valid_from, valid_until, point_reward
 FROM public.badges
 WHERE type = 'item' AND rarity = 'common' AND deleted_at IS NULL;
