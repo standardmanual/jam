@@ -11,7 +11,7 @@ interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id
 
 interface PublicHint {
   hint_text: string | null
-  result_badge_id: string
+  result_badge_id: string | null
 }
 
 interface Props {
