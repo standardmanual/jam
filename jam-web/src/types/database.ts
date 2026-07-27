@@ -176,6 +176,12 @@ export interface PoiRow {
 export interface PoiCategoryRow {
   slug: string
   label: string
+  /** 드랍/픽업 자동검색 파이프라인이 이 카테고리를 검색하는지 여부 */
+  pipeline_linked: boolean
+  /** 1: 항상 검색, 2: level 1 결과 부족 시 보조 검색. pipeline_linked=false면 null */
+  tier: 1 | 2 | null
+  /** 네이버 지역검색에 쓸 키워드 목록 (pipeline_linked=true일 때만 의미 있음) */
+  keywords: string[]
   created_at: string
 }
 
