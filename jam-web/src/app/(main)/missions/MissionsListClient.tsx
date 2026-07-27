@@ -16,7 +16,7 @@ interface Props {
 }
 
 type Tab = 'ongoing' | 'joined' | 'ended'
-type SortKey = 'default' | 'ending_soon' | 'newest'
+type SortKey = 'newest' | 'oldest' | 'ending_soon'
 
 const NEW_MISSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7일 이내 생성 = 신규
 
@@ -31,9 +31,9 @@ const ACTIVITY_TYPES: ActivityType[] = ['running', 'cycling', 'trail_running', '
 const MISSION_TYPES: MissionType[] = ['distance', 'activity_count', 'poi_visit', 'item_collect']
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'default', label: '기본순' },
+  { key: 'newest', label: '최신순' },
+  { key: 'oldest', label: '오래된순' },
   { key: 'ending_soon', label: '종료임박순' },
-  { key: 'newest', label: '신규순' },
 ]
 
 function isNewMission(createdAt: string): boolean {
@@ -66,7 +66,7 @@ const TABS: { key: Tab; label: string }[] = [
 
 export default function MissionsListClient({ ongoing, ended }: Props) {
   const [tab, setTab] = useState<Tab>('ongoing')
-  const [sortKey, setSortKey] = useState<SortKey>('default')
+  const [sortKey, setSortKey] = useState<SortKey>('newest')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
   const [typeFilter, setTypeFilter] = useState<MissionType | 'all'>('all')
   const [filterOpen, setFilterOpen] = useState(false)
@@ -92,6 +92,8 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
       result = [...result].sort((a, b) => new Date(a.ends_at).getTime() - new Date(b.ends_at).getTime())
     } else if (sortKey === 'newest') {
       result = [...result].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    } else if (sortKey === 'oldest') {
+      result = [...result].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     }
     return result
   }, [baseList, sortKey, activityFilter, typeFilter])
@@ -109,24 +111,24 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
 
   return (
     <>
-      {/* 정렬 */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex gap-1 flex-1 bg-jam-ink/5 p-1 rounded-xl border-[2px] border-jam-ink">
-          {SORT_OPTIONS.map((s) => (
+      {/* 탭 + 필터 버튼 */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex gap-1 flex-1 bg-jam-ink/5 p-1 rounded-2xl border-[3px] border-jam-ink">
+          {TABS.map((t) => (
             <button
-              key={s.key}
-              onClick={() => setSortKey(s.key)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-colors ${
-                sortKey === s.key ? 'bg-jam-ink text-white' : 'text-jam-ink/60'
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-colors ${
+                tab === t.key ? 'bg-jam-ink text-white' : 'text-jam-ink/60'
               }`}
             >
-              {s.label}
+              {t.label}
             </button>
           ))}
         </div>
         <button
           onClick={() => setFilterOpen((v) => !v)}
-          className={`shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl border-[2px] border-jam-ink text-xs font-black transition-colors ${
+          className={`shrink-0 flex items-center gap-1 px-3 py-2.5 rounded-xl border-[3px] border-jam-ink text-xs font-black transition-colors ${
             filterOpen || activeFilterCount > 0 ? 'bg-jam-ink text-white' : 'bg-white text-jam-ink'
           }`}
         >
@@ -144,6 +146,22 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
       {/* 필터 패널 */}
       {filterOpen && (
         <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4 flex flex-col gap-3">
+          <div>
+            <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">정렬</p>
+            <div className="flex gap-1 bg-jam-ink/5 p-1 rounded-xl border-[2px] border-jam-ink">
+              {SORT_OPTIONS.map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => setSortKey(s.key)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-colors ${
+                    sortKey === s.key ? 'bg-jam-ink text-white' : 'text-jam-ink/60'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div>
             <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">활동 종류</p>
             <div className="flex flex-wrap gap-1.5">
@@ -199,20 +217,6 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
           )}
         </div>
       )}
-
-      <div className="flex gap-1 mb-6 bg-jam-ink/5 p-1 rounded-2xl border-[3px] border-jam-ink">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-colors ${
-              tab === t.key ? 'bg-jam-ink text-white' : 'text-jam-ink/60'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {list.length === 0 ? (
         <div className="flex-1 flex items-center justify-center py-16">
