@@ -29,13 +29,19 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
   const to = from + PAGE_SIZE - 1
   query = query.range(from, to)
 
-  const [{ data: poisRaw, count }, { data: badgesRaw }, { data: categoriesRaw }] = await Promise.all([
+  const [{ data: poisRaw, count }, { data: categoriesRaw }] = await Promise.all([
     query,
-    supabase.from('badges').select('id, name'),
     supabase.from('poi_categories').select('*').order('slug'),
   ])
 
   const pois = (poisRaw ?? []) as PoiRow[]
+
+  // 전체 배지를 불러오지 않고, 이 페이지에 보이는 POI들이 실제로 연결한 배지 id만
+  // targeted 조회 — 배지 총 개수(수천 개)와 무관하게 항상 정확하다.
+  const linkedBadgeIds = [...new Set(pois.map((p) => p.linked_badge_id).filter((id): id is string => !!id))]
+  const { data: badgesRaw } = linkedBadgeIds.length > 0
+    ? await supabase.from('badges').select('id, name').in('id', linkedBadgeIds)
+    : { data: [] as Pick<BadgeRow, 'id' | 'name'>[] }
   const badges = (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
   const categories = (categoriesRaw ?? []) as PoiCategoryRow[]
