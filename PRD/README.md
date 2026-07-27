@@ -25,6 +25,7 @@
 | 11 | 배지 체계 업그레이드 — 드랍엔진 v2 (3레이어·세계관 모멘텀·어드민 설정) | [Phase11_01_PRD.md](./Phase11_01_PRD.md), [Phase11_02_DATA_MODEL.md](./Phase11_02_DATA_MODEL.md), [Phase11_03_PHASES.md](./Phase11_03_PHASES.md), [Phase11_04_PROJECT_SPEC.md](./Phase11_04_PROJECT_SPEC.md) |
 | 12 | 잼 포인트 시스템 | [Phase12_01_PRD.md](./Phase12_01_PRD.md), [Phase12_02_DATA_MODEL.md](./Phase12_02_DATA_MODEL.md), [Phase12_03_PHASES.md](./Phase12_03_PHASES.md), [Phase12_04_PROJECT_SPEC.md](./Phase12_04_PROJECT_SPEC.md) |
 | 13 | 미션 참가 확정(참가필수·취소불가) + 미션 상황(랭킹/달성 현황) | [Phase13_01_PRD.md](./Phase13_01_PRD.md), [Phase13_02_DATA_MODEL.md](./Phase13_02_DATA_MODEL.md), [Phase13_03_PHASES.md](./Phase13_03_PHASES.md), [Phase13_04_PROJECT_SPEC.md](./Phase13_04_PROJECT_SPEC.md) |
+| 16 | POI 배지 타입 추가 — 반복 획득, 어드민 검색 연결, 아이템북 POI 배지 구성 | [Phase16_01_PRD.md](./Phase16_01_PRD.md), [Phase16_02_DATA_MODEL.md](./Phase16_02_DATA_MODEL.md), [Phase16_03_PHASES.md](./Phase16_03_PHASES.md), [Phase16_04_PROJECT_SPEC.md](./Phase16_04_PROJECT_SPEC.md) |
 
 ---
 
