@@ -48,7 +48,7 @@ INSERT INTO public.badges (name, description, type, rarity, item_book_id, factio
 SELECT
   COALESCE(tp.rare_prefix, '레어 ') || s.name,
   s.description || ' 흔치 않은 개체 — 남들과는 조금 다른 존재감을 지닙니다.',
-  'item', 'rare', s.item_book_id, s.faction_id, s.activity_types, s.drop_weight
+  'item'::badge_type, 'rare'::badge_rarity, s.item_book_id, s.faction_id, s.activity_types, s.drop_weight
 FROM source s LEFT JOIN tier_prefix tp ON tp.faction_id = s.faction_id
 
 UNION ALL
@@ -56,7 +56,7 @@ UNION ALL
 SELECT
   COALESCE(tp.legendary_prefix, '레전드 ') || s.name,
   s.description || ' 손에 넣는 순간 주변의 시선이 집중되는, 좀처럼 보기 힘든 물건입니다.',
-  'item', 'legendary', s.item_book_id, s.faction_id, s.activity_types, s.drop_weight
+  'item'::badge_type, 'legendary'::badge_rarity, s.item_book_id, s.faction_id, s.activity_types, s.drop_weight
 FROM source s LEFT JOIN tier_prefix tp ON tp.faction_id = s.faction_id
 
 UNION ALL
@@ -64,5 +64,5 @@ UNION ALL
 SELECT
   COALESCE(tp.mythic_prefix, '미스틱 ') || s.name,
   s.description || ' 존재 자체가 소문으로만 떠돌던, 극소수만이 손에 넣어본 전설의 물건입니다.',
-  'item', 'mythic', s.item_book_id, s.faction_id, s.activity_types, s.drop_weight
+  'item'::badge_type, 'mythic'::badge_rarity, s.item_book_id, s.faction_id, s.activity_types, s.drop_weight
 FROM source s LEFT JOIN tier_prefix tp ON tp.faction_id = s.faction_id;
