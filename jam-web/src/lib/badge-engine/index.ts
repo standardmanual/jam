@@ -249,12 +249,6 @@ export function evaluateConditionDetailed(
     requiredParts.push(`시간대: ${start}~${end}`)
   }
 
-  if (condition.poi_id !== undefined) {
-    // POI 배지는 sync.ts의 GPS 경로 매칭(matchPoisForActivity)으로 별도 발급됨.
-    // condition_json의 poi_id 경로는 현재 미지원 — 항상 false.
-    return { pass: false, reason: 'POI 조건은 GPS 경로 매칭으로만 발급됩니다', actual: '-', required: `poi: ${condition.poi_id}` }
-  }
-
   return {
     pass: true,
     reason: '조건 충족',
@@ -598,7 +592,7 @@ function calcMaxStreak(activities: NormalizedActivity[]): number {
 const PROGRESSION_MODIFIERS = [
   'elevation_gain_m', 'min_speed_kmh', 'streak_days', 'duration_minutes',
   'weekend_duration_hours', 'monthly_km', 'weekly_count', 'season_count',
-  'month', 'season', 'temperature_min_c', 'temperature_max_c', 'poi_id', 'time_range',
+  'month', 'season', 'temperature_min_c', 'temperature_max_c', 'time_range',
 ] as const
 
 function getProgressionKey(condition: BadgeCondition): { key: string; value: number } | null {

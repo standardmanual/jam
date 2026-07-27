@@ -57,15 +57,18 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   if (!bookRaw) notFound()
   const book = bookRaw as unknown as ItemBookWithFaction
 
-  // 2) 이 북에 속한 아이템 배지
+  // 2) 이 북에 속한 배지 — 아이템(슬롯팅) + POI(획득 여부만)
   const { data: badgesRaw } = await supabase
     .from('badges')
     .select('*')
     .eq('item_book_id', id)
-    .eq('type', 'item')
+    .in('type', ['item', 'poi'])
     .order('created_at', { ascending: true })
-  const badges = (badgesRaw ?? []) as BadgeRow[]
+  const allBookBadges = (badgesRaw ?? []) as BadgeRow[]
+  const badges = allBookBadges.filter((b) => b.type === 'item')
+  const poiBadges = allBookBadges.filter((b) => b.type === 'poi')
   const badgeIds = badges.map((b) => b.id)
+  const poiBadgeIds = poiBadges.map((b) => b.id)
 
   // 3) 대상 유저 인벤토리 id
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,8 +79,8 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     .single()
   const inventory = inventoryRaw as { id: string } | null
 
-  // 4~6) 인벤 아이템 / 슬롯 / 완성 병렬 조회 (대상 유저 기준)
-  const [invRes, slotsRes, completionRes] = await Promise.all([
+  // 4~7) 인벤 아이템 / 슬롯 / 완성 / POI 배지 획득 이력 병렬 조회 (대상 유저 기준)
+  const [invRes, slotsRes, completionRes, poiEarnsRes] = await Promise.all([
     inventory && badgeIds.length > 0
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ? (service as any)
@@ -101,6 +104,15 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       .eq('user_id', subjectId)
       .eq('item_book_id', id)
       .maybeSingle(),
+    // POI 배지는 슬롯팅 없이 "1회 이상 획득했는가"로만 판정한다
+    poiBadgeIds.length > 0
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (service as any)
+          .from('user_poi_badge_earns')
+          .select('badge_id')
+          .eq('user_id', subjectId)
+          .in('badge_id', poiBadgeIds)
+      : Promise.resolve({ data: [] as { badge_id: string }[] }),
   ])
 
   const inventoryItems = (invRes.data ?? []) as Pick<
@@ -142,8 +154,13 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     }
   })
 
-  const totalBadgeCount = badges.length
-  const slottedCount = slots.length
+  // 획득한 POI 배지 id 집합(반복 획득해도 1개로만 카운트)
+  const earnedPoiBadgeIds = new Set(
+    ((poiEarnsRes.data ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
+  )
+
+  const totalBadgeCount = badges.length + poiBadges.length
+  const slottedCount = slots.length + earnedPoiBadgeIds.size
   const isCompleted =
     completionRes.data != null ||
     (totalBadgeCount > 0 && slottedCount >= totalBadgeCount)
@@ -230,9 +247,11 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       {/* 크림 패널 — 슬롯 그리드 */}
       <div className="flex-1 bg-jam-cream rounded-t-[2rem] border-t-[3px] border-jam-ink px-5 py-6">
         <div className="max-w-2xl mx-auto w-full">
-          <p className="text-xs text-jam-ink/50 mb-4 text-center font-bold">
-            보유한 아이템 배지를 슬롯에 장착해 아이템북을 완성해요
-          </p>
+          {badges.length > 0 && (
+            <p className="text-xs text-jam-ink/50 mb-4 text-center font-bold">
+              보유한 아이템 배지를 슬롯에 장착해 아이템북을 완성해요
+            </p>
+          )}
 
           {totalBadgeCount === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -242,7 +261,58 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
               </p>
             </div>
           ) : (
-            <SlotGrid itemBookId={id} badgeSlots={badgeSlots} readOnly={!isOwnBook} />
+            badges.length > 0 && (
+              <SlotGrid itemBookId={id} badgeSlots={badgeSlots} readOnly={!isOwnBook} />
+            )
+          )}
+
+          {/* POI 배지 — 슬롯팅 없이 방문(획득) 여부만 표시 */}
+          {poiBadges.length > 0 && (
+            <div className={badges.length > 0 ? 'mt-6' : ''}>
+              <p className="text-xs text-jam-ink/50 mb-3 text-center font-bold">
+                POI 배지는 해당 장소를 지나가면 자동으로 채워져요
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {poiBadges.map((poiBadge) => {
+                  const earned = earnedPoiBadgeIds.has(poiBadge.id)
+                  return (
+                    <div
+                      key={poiBadge.id}
+                      className={`rounded-2xl border-[3px] border-jam-ink p-2 flex flex-col items-center text-center ${
+                        earned ? 'bg-white' : 'bg-jam-ink/5'
+                      }`}
+                    >
+                      <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center">
+                        {poiBadge.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={poiBadge.image_url}
+                            alt={poiBadge.name}
+                            className={`w-full h-full object-contain ${earned ? '' : 'opacity-25 grayscale'}`}
+                          />
+                        ) : (
+                          <span className="text-2xl opacity-30">📍</span>
+                        )}
+                      </div>
+                      <p
+                        className={`mt-1.5 text-[11px] font-black leading-tight ${
+                          earned ? 'text-jam-ink' : 'text-jam-ink/40'
+                        }`}
+                      >
+                        {poiBadge.name}
+                      </p>
+                      <span
+                        className={`mt-1 text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-jam-ink ${
+                          earned ? 'bg-jam-lime text-jam-ink' : 'bg-white/60 text-jam-ink/40 border-jam-ink/20'
+                        }`}
+                      >
+                        {earned ? '획득' : '미획득'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )}
 
           {/* 완성 카드 */}

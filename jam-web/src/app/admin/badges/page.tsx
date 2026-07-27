@@ -3,6 +3,9 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import type { BadgeRow, BadgeCondition, FactionRow } from '@/types/database'
 import BadgesFilterBar from './BadgesFilterBar'
+import Pagination from '../poi/Pagination'
+
+const PAGE_SIZE = 30
 
 const rarityColor: Record<string, string> = {
   common: 'text-[#6b7280]',
@@ -77,51 +80,44 @@ function conditionSummary(c: BadgeCondition | null): string[] {
   if (c.temperature_min_c !== undefined) chips.push(`≥${c.temperature_min_c}°C`)
   if (c.temperature_max_c !== undefined) chips.push(`≤${c.temperature_max_c}°C`)
   if (c.time_range) chips.push(`${c.time_range.start}~${c.time_range.end}`)
-  if (c.poi_id) chips.push('POI')
   if (c.prerequisite_badge_names?.length) chips.push(`선행 ${c.prerequisite_badge_names.length}`)
   return chips
 }
 
 interface AdminBadgesPageProps {
-  searchParams: Promise<{
-    activityType?: string
-    type?: string
-    rarity?: string
-    sort?: string
-  }>
+  searchParams: Promise<Record<string, string | undefined>>
 }
 
 export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageProps) {
-  const { activityType, type, rarity, sort } = await searchParams
+  const params = await searchParams
+  const { activityType, type, rarity, sort } = params
+  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
 
   const supabase = createServiceClient()
-  const [{ data: badgesRaw }, { data: factionsRaw }] = await Promise.all([
-    supabase.from('badges').select('*').order('created_at', { ascending: false }).limit(5000),
+
+  // 필터·정렬·페이지네이션을 전부 DB 쿼리에서 처리한다(페이지 단위 조회이므로 JS 필터링 불가)
+  let query = supabase.from('badges').select('*', { count: 'exact' })
+  if (activityType && activityType !== 'all') query = query.contains('activity_types', [activityType])
+  if (type && type !== 'all') query = query.eq('type', type as BadgeRow['type'])
+  if (rarity && rarity !== 'all') query = query.eq('rarity', rarity as BadgeRow['rarity'])
+
+  if (sort === 'name_asc') query = query.order('name', { ascending: true })
+  else if (sort === 'name_desc') query = query.order('name', { ascending: false })
+  else query = query.order('created_at', { ascending: false })
+
+  const from = (page - 1) * PAGE_SIZE
+  query = query.range(from, from + PAGE_SIZE - 1)
+
+  const [{ data: badgesRaw, count }, { count: totalCount }, { data: factionsRaw }] = await Promise.all([
+    query,
+    supabase.from('badges').select('id', { count: 'exact', head: true }),
     supabase.from('factions').select('id, name'),
   ])
 
-  const allBadges = (badgesRaw ?? []) as BadgeRow[]
+  const badges = (badgesRaw ?? []) as BadgeRow[]
   const factionMap = new Map(((factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]).map((f) => [f.id, f.name]))
-
-  // 필터 적용
-  let badges = allBadges
-  if (activityType && activityType !== 'all') {
-    badges = badges.filter((b) => b.activity_types?.includes(activityType as never))
-  }
-  if (type && type !== 'all') {
-    badges = badges.filter((b) => b.type === type)
-  }
-  if (rarity && rarity !== 'all') {
-    badges = badges.filter((b) => b.rarity === rarity)
-  }
-
-  // 정렬 적용
-  if (sort === 'name_asc') {
-    badges = [...badges].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
-  } else if (sort === 'name_desc') {
-    badges = [...badges].sort((a, b) => b.name.localeCompare(a.name, 'ko'))
-  }
-  // 기본값(created_desc)은 Supabase 쿼리 결과 순서 그대로
+  const filteredCount = count ?? 0
+  const totalPages = Math.max(1, Math.ceil(filteredCount / PAGE_SIZE))
 
   return (
     <div className="p-8">
@@ -136,7 +132,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
       </div>
 
       <Suspense>
-        <BadgesFilterBar total={allBadges.length} filtered={badges.length} />
+        <BadgesFilterBar total={totalCount ?? 0} filtered={filteredCount} />
       </Suspense>
 
       <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
@@ -239,6 +235,8 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} searchParams={params} basePath="/admin/badges" />
     </div>
   )
 }

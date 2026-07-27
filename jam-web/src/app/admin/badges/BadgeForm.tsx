@@ -1,12 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
 
 const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'trail_running', 'hiking', 'walking']
-const BADGE_TYPES: BadgeType[] = ['activity', 'item']
+const BADGE_TYPES: BadgeType[] = ['activity', 'item', 'poi']
 const RARITIES: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
+
+/** 배지에 연결할 수 있는 POI(이미 DB에 등록된 것) */
+interface LinkablePoi {
+  id: string
+  name: string
+  category: string
+  latitude: number
+  longitude: number
+  radius_meters: number
+  linked_badge_id: string | null
+}
 
 interface BadgeFormProps {
   badge?: BadgeRow
@@ -42,7 +53,6 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [condMinSpeedKmh, setCondMinSpeedKmh] = useState<string>(initCond.min_speed_kmh?.toString() ?? '')
   const [condStreakDays, setCondStreakDays] = useState<string>(initCond.streak_days?.toString() ?? '')
   const [condActivityType, setCondActivityType] = useState<string>(initCond.activity_type ?? '')
-  const [condPoiId, setCondPoiId] = useState<string>(initCond.poi_id ?? '')
   const [condDurationMinutes, setCondDurationMinutes] = useState<string>(initCond.duration_minutes?.toString() ?? '')
   const [condWeekendDurationHours, setCondWeekendDurationHours] = useState<string>(initCond.weekend_duration_hours?.toString() ?? '')
   const [condWeeklyCount, setCondWeeklyCount] = useState<string>(initCond.weekly_count?.toString() ?? '')
@@ -73,6 +83,62 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
+  // ── POI 배지 전용: 연결된 POI 목록 ──────────────────────────────
+  const [linkedPois, setLinkedPois] = useState<LinkablePoi[]>([])
+  const [poiQuery, setPoiQuery] = useState('')
+  const [poiResults, setPoiResults] = useState<LinkablePoi[]>([])
+  const [poiSearching, setPoiSearching] = useState(false)
+  const [poiSearched, setPoiSearched] = useState(false)
+  const poiLinksLoadedRef = useRef(false)
+
+  // 수정 모드에서 poi 타입일 때 현재 연결된 POI를 최초 1회 불러온다
+  useEffect(() => {
+    if (!isEdit || !badge || type !== 'poi' || poiLinksLoadedRef.current) return
+    poiLinksLoadedRef.current = true
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/admin/badges/${badge.id}/poi-links`)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error ?? 'POI 연결 목록 조회 실패')
+        if (!cancelled) setLinkedPois((data.pois ?? []) as LinkablePoi[])
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'POI 연결 목록 조회 실패')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isEdit, badge, type])
+
+  const searchPois = useCallback(async () => {
+    const q = poiQuery.trim()
+    if (!q) {
+      setPoiResults([])
+      setPoiSearched(false)
+      return
+    }
+    setPoiSearching(true)
+    try {
+      const res = await fetch(`/api/admin/poi/search?query=${encodeURIComponent(q)}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'POI 검색 실패')
+      setPoiResults((data.pois ?? []) as LinkablePoi[])
+      setPoiSearched(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'POI 검색 실패')
+    } finally {
+      setPoiSearching(false)
+    }
+  }, [poiQuery])
+
+  const addLinkedPoi = (poi: LinkablePoi) => {
+    setLinkedPois((prev) => (prev.some((p) => p.id === poi.id) ? prev : [...prev, poi]))
+  }
+  const removeLinkedPoi = (poiId: string) => {
+    setLinkedPois((prev) => prev.filter((p) => p.id !== poiId))
+  }
+
   const buildConditionJson = (): BadgeCondition | null => {
     const cond: BadgeCondition = {}
     if (condDistanceKm) cond.distance_km = parseFloat(condDistanceKm)
@@ -81,7 +147,6 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     if (condMinSpeedKmh) cond.min_speed_kmh = parseFloat(condMinSpeedKmh)
     if (condStreakDays) cond.streak_days = parseInt(condStreakDays, 10)
     if (condActivityType) cond.activity_type = condActivityType as ActivityType
-    if (condPoiId) cond.poi_id = condPoiId
     if (condDurationMinutes) cond.duration_minutes = parseInt(condDurationMinutes, 10)
     if (condWeekendDurationHours) cond.weekend_duration_hours = parseFloat(condWeekendDurationHours)
     if (condWeeklyCount) cond.weekly_count = parseInt(condWeeklyCount, 10)
@@ -132,7 +197,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     e.preventDefault()
     setError(null)
 
-    const conditionJson = buildConditionJson()
+    // POI 배지는 활동 조건을 쓰지 않는다 — 조건 빌더 값이 남아 있어도 무시
+    const conditionJson = type === 'poi' ? null : buildConditionJson()
     const condError = validateCondition(conditionJson)
     if (condError) {
       setError(condError)
@@ -170,6 +236,20 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       )
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '저장 실패')
+
+      // POI 배지: 저장된 배지 id로 연결 POI 목록을 통째로 반영
+      if (type === 'poi') {
+        const savedBadgeId: string | undefined = data.badge?.id ?? (isEdit ? badge.id : undefined)
+        if (!savedBadgeId) throw new Error('저장된 배지 ID를 확인할 수 없어 POI 연결에 실패했습니다.')
+        const linkRes = await fetch(`/api/admin/badges/${savedBadgeId}/poi-links`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ poi_ids: linkedPois.map((p) => p.id) }),
+        })
+        const linkData = await linkRes.json()
+        if (!linkRes.ok) throw new Error(linkData.error ?? 'POI 연결 저장 실패')
+      }
+
       router.push('/admin/badges')
       router.refresh()
     } catch (err) {
@@ -389,8 +469,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         )}
       </div>
 
-      {/* condition_json 빌더 (activity + item 공통) */}
-      {(
+      {/* condition_json 빌더 (activity + item 공통 — POI 배지는 조건 대신 연결 POI로 판정) */}
+      {type !== 'poi' && (
         <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
           <p className="text-sm font-semibold text-[#374151]">
             {type === 'item' ? '드랍 조건 (condition_json)' : '발급 조건 (condition_json)'}
@@ -466,16 +546,6 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
               </select>
             </label>
           </div>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-[#6b7280]">POI ID</span>
-            <input
-              value={condPoiId}
-              onChange={(e) => setCondPoiId(e.target.value)}
-              className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
-              placeholder="POI UUID"
-            />
-          </label>
 
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
@@ -618,6 +688,126 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             <pre className="text-xs text-[#111111]/80 font-mono overflow-x-auto">
               {condPreview ? JSON.stringify(condPreview, null, 2) : 'null (조건 없음)'}
             </pre>
+          </div>
+        </div>
+      )}
+
+      {/* 연결된 POI (poi 타입 전용) */}
+      {type === 'poi' && (
+        <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-[#374151]">연결된 POI</p>
+            <p className="text-xs text-[#6b7280] mt-1">
+              여기에 연결한 POI 반경을 액티비티 GPS 경로가 지나가면 이 배지가 발급됩니다. 여러 개 연결할 수 있고,
+              방문할 때마다 반복 발급됩니다. 판정 반경은 각 POI에 등록된 값을 그대로 사용합니다.
+            </p>
+          </div>
+
+          {/* 검색 */}
+          <div className="flex items-center gap-2">
+            <input
+              value={poiQuery}
+              onChange={(e) => setPoiQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  searchPois()
+                }
+              }}
+              className="flex-1 bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+              placeholder="등록된 POI 이름으로 검색 (예: 대림창고)"
+            />
+            <button
+              type="button"
+              onClick={searchPois}
+              disabled={poiSearching || !poiQuery.trim()}
+              className="bg-[#111111] text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-[#242424] disabled:opacity-50 transition-colors shrink-0"
+            >
+              {poiSearching ? '검색 중...' : '검색'}
+            </button>
+          </div>
+
+          {/* 검색 결과 */}
+          {poiSearched && (
+            <div className="border border-[#e5e7eb] rounded-xl overflow-hidden">
+              {poiResults.length === 0 ? (
+                <p className="px-4 py-4 text-sm text-[#898989]">검색 결과가 없습니다.</p>
+              ) : (
+                <ul className="max-h-64 overflow-y-auto divide-y divide-[#f3f4f6]">
+                  {poiResults.map((poi) => {
+                    const already = linkedPois.some((p) => p.id === poi.id)
+                    const linkedElsewhere =
+                      !!poi.linked_badge_id && poi.linked_badge_id !== (badge?.id ?? '')
+                    return (
+                      <li key={poi.id} className="flex items-center gap-3 px-4 py-2.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-[#111111] truncate">{poi.name}</p>
+                          <p className="text-xs text-[#6b7280]">
+                            {poi.category} · 반경 {poi.radius_meters}m
+                            {linkedElsewhere && (
+                              <span className="text-amber-600"> · 다른 배지에 연결됨 (추가 시 이 배지로 이동)</span>
+                            )}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => addLinkedPoi(poi)}
+                          disabled={already}
+                          className="text-sm px-3 py-1.5 rounded-lg border border-[#e5e7eb] text-[#374151] hover:bg-[#f3f4f6] disabled:opacity-40 disabled:hover:bg-white transition-colors shrink-0"
+                        >
+                          {already ? '추가됨' : '추가'}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* 연결 목록 */}
+          <div>
+            <p className="text-xs text-[#6b7280] mb-2">연결된 POI {linkedPois.length}개</p>
+            {linkedPois.length === 0 ? (
+              <div className="bg-[#f5f5f5] border border-[#e5e7eb] rounded-xl px-4 py-5 text-center">
+                <p className="text-sm text-[#898989]">아직 연결된 POI가 없습니다. 위에서 검색해 추가하세요.</p>
+              </div>
+            ) : (
+              <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
+                      <th className="px-4 py-2.5 font-medium">이름</th>
+                      <th className="px-4 py-2.5 font-medium">카테고리</th>
+                      <th className="px-4 py-2.5 font-medium">반경</th>
+                      <th className="px-4 py-2.5 font-medium w-12"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {linkedPois.map((poi) => (
+                      <tr key={poi.id} className="border-b border-[#f3f4f6] last:border-b-0">
+                        <td className="px-4 py-2.5 text-[#111111]">{poi.name}</td>
+                        <td className="px-4 py-2.5 text-[#374151] text-xs">{poi.category}</td>
+                        <td className="px-4 py-2.5 text-[#374151] text-xs">{poi.radius_meters}m</td>
+                        <td className="px-4 py-2.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeLinkedPoi(poi.id)}
+                            aria-label={`${poi.name} 연결 해제`}
+                            className="text-[#898989] hover:text-red-600 transition-colors px-1.5"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="text-xs text-[#898989] mt-2">
+              반경 수정은 POI 관리 화면에서 할 수 있습니다.
+            </p>
           </div>
         </div>
       )}
