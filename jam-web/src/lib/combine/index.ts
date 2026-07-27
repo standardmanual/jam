@@ -71,16 +71,35 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   const sourceBadges = (sourceBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'faction_id'>[]
   const sourceFactionIds = [...new Set(sourceBadges.map((b) => b.faction_id).filter((f): f is string => !!f))]
 
-  // 4. 정석 레시피 정확 매칭 탐색 (순서 무관)
+  // 4. 정석 레시피 정확 매칭 탐색 (순서 무관) — 재료가 일치해도 required_activity_badge_id가
+  //    설정돼 있으면 해당 액티비티 배지를 보유해야 최종 매칭으로 인정한다(소모되지 않는 조건).
   const ingredientBadgeIds = [...badgeIds].sort()
   const { data: recipesRaw } = await supabase.from('combination_recipes').select('*')
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
 
-  const matched = recipes.find((r) => {
+  const ingredientMatches = recipes.filter((r) => {
     const sorted = [...r.ingredient_badge_ids].sort()
     if (sorted.length !== ingredientBadgeIds.length) return false
     return sorted.every((id, idx) => id === ingredientBadgeIds[idx])
   })
+
+  let matched: CombinationRecipeRow | undefined
+  for (const candidate of ingredientMatches) {
+    if (!candidate.required_activity_badge_id) {
+      matched = candidate
+      break
+    }
+    const { data: hasActivityBadge } = await supabase
+      .from('user_activity_badges')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('badge_id', candidate.required_activity_badge_id)
+      .maybeSingle()
+    if (hasActivityBadge) {
+      matched = candidate
+      break
+    }
+  }
 
   // 5. 원본 아이템 소각 — 성공/실패 무관 항상 소각
   const { error: deleteError } = await supabase
