@@ -2,17 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { PoiRow, PoiCategory, BadgeRow } from '@/types/database'
+import type { PoiRow, PoiCategory, PoiCategoryRow, BadgeRow } from '@/types/database'
 import type { NaverSearchResult } from '@/lib/poi/naver'
-
-const CATEGORIES: PoiCategory[] = ['mountain', 'bike_route', 'trail', 'park', 'other']
 
 interface PoiFormProps {
   poi?: PoiRow
   badges: Pick<BadgeRow, 'id' | 'name'>[]
+  categories: PoiCategoryRow[]
 }
 
-export default function PoiForm({ poi, badges }: PoiFormProps) {
+export default function PoiForm({ poi, badges, categories }: PoiFormProps) {
   const router = useRouter()
   const isEdit = !!poi
 
@@ -20,7 +19,7 @@ export default function PoiForm({ poi, badges }: PoiFormProps) {
   const [latitude, setLatitude] = useState<string>(poi?.latitude.toString() ?? '')
   const [longitude, setLongitude] = useState<string>(poi?.longitude.toString() ?? '')
   const [radiusMeters, setRadiusMeters] = useState<string>(poi?.radius_meters.toString() ?? '50')
-  const [category, setCategory] = useState<PoiCategory>(poi?.category ?? 'other')
+  const [category, setCategory] = useState<PoiCategory>(poi?.category ?? categories[0]?.slug ?? 'other')
   const [linkedBadgeId, setLinkedBadgeId] = useState<string>(poi?.linked_badge_id ?? '')
 
   const [loading, setLoading] = useState(false)
@@ -209,8 +208,8 @@ export default function PoiForm({ poi, badges }: PoiFormProps) {
             onChange={(e) => setCategory(e.target.value as PoiCategory)}
             className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
           >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c} className="bg-[#1a1a1a]">{c}</option>
+            {categories.map((c) => (
+              <option key={c.slug} value={c.slug} className="bg-[#1a1a1a]">{c.label} ({c.slug})</option>
             ))}
           </select>
         </label>
