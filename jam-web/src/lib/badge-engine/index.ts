@@ -299,6 +299,7 @@ export async function evaluateBadgesDetailed(
     .from('badges')
     .select('*')
     .eq('type', 'activity')
+    .is('deleted_at', null)
     .or(`valid_from.is.null,valid_from.lte.${now}`)
     .or(`valid_until.is.null,valid_until.gte.${now}`)
 

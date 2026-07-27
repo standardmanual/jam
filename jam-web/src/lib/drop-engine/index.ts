@@ -129,6 +129,7 @@ async function fetchDropStructure(
       .from('badges')
       .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json, item_book_id, point_reward')
       .eq('type', 'item')
+      .is('deleted_at', null)
       .in('item_book_id', activeBookIds),
     lastFactionId
       ? createServiceClient().from('faction_adjacency').select('adjacent_faction_id').eq('faction_id', lastFactionId)
@@ -378,12 +379,12 @@ async function insertDrop(
 
   const { data: insertedRaw, error: insertError } = await supabase
     .from('inventory_items')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .insert({
       inventory_id: inventoryId,
       badge_id: picked.id,
       obtained_by: 'drop',
       expires_at: expiresAt,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
     .select('id')
     .single()

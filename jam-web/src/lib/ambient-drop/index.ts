@@ -78,6 +78,7 @@ export async function replenishAmbientDrops(policy: AmbientDropPolicy): Promise<
     .from('badges')
     .select('id, rarity, valid_from, valid_until')
     .eq('type', 'item')
+    .is('deleted_at', null)
     .in('rarity', ['common', 'rare', 'legendary'])
 
   const badgesByRarity: Record<'common' | 'rare' | 'legendary', EligibleBadge[]> = {

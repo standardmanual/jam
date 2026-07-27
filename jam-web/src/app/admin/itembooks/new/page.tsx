@@ -6,7 +6,7 @@ import type { BadgeRow, FactionRow } from '@/types/database'
 export default async function NewItemBookPage() {
   const supabase = createServiceClient()
   const [{ data: badgesRaw }, { data: factionsRaw }] = await Promise.all([
-    supabase.from('badges').select('id, name, type').order('name'),
+    supabase.from('badges').select('id, name, type').is('deleted_at', null).order('name'),
     supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
   ])
 

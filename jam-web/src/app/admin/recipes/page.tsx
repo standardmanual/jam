@@ -7,7 +7,7 @@ export default async function AdminRecipesPage() {
 
   const [{ data: recipesRaw }, { data: badgesRaw }] = await Promise.all([
     supabase.from('combination_recipes').select('*').order('created_at', { ascending: false }),
-    supabase.from('badges').select('id, name, rarity, type').order('type').order('rarity'),
+    supabase.from('badges').select('id, name, rarity, type').is('deleted_at', null).order('type').order('rarity'),
   ])
 
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]

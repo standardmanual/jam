@@ -96,7 +96,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   const supabase = createServiceClient()
 
   // 필터·정렬·페이지네이션을 전부 DB 쿼리에서 처리한다(페이지 단위 조회이므로 JS 필터링 불가)
-  let query = supabase.from('badges').select('*', { count: 'exact' })
+  let query = supabase.from('badges').select('*', { count: 'exact' }).is('deleted_at', null)
   if (activityType && activityType !== 'all') query = query.contains('activity_types', [activityType])
   if (type && type !== 'all') query = query.eq('type', type as BadgeRow['type'])
   if (rarity && rarity !== 'all') query = query.eq('rarity', rarity as BadgeRow['rarity'])
@@ -110,7 +110,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
 
   const [{ data: badgesRaw, count }, { count: totalCount }, { data: factionsRaw }] = await Promise.all([
     query,
-    supabase.from('badges').select('id', { count: 'exact', head: true }),
+    supabase.from('badges').select('id', { count: 'exact', head: true }).is('deleted_at', null),
     supabase.from('factions').select('id, name'),
   ])
 

@@ -67,6 +67,8 @@ export interface BadgeRow {
   valid_until: string | null
   /** 배지 발급 시 함께 지급하는 잼 포인트. 0이면 없음. 발급 시점 값으로 1회 지급(소급 변경 없음). */
   point_reward: number
+  /** 소프트 삭제 시각. NULL 아니면 신규 발급/드랍/노출 대상에서 제외 — 기존 보유자 이력은 유지됨 */
+  deleted_at: string | null
   created_at: string
 }
 
