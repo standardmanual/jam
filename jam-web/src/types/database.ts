@@ -261,6 +261,41 @@ export interface CombinationRecipeRow {
   created_at: string
 }
 
+/**
+ * Phase 19: 조합 v2 — 세계관 다양성 티어 + 피티 정책 (싱글톤 id=1)
+ * 패턴: drop_policy — 실패 시 기본값 폴백
+ */
+export interface CombinePolicyRow {
+  id: number
+  tier1_max_items: number
+  tier1_min_factions: number
+  tier1_b_rate: number
+  tier1_b_count: number
+  tier2_max_items: number
+  tier2_min_factions: number
+  tier2_b_rate: number
+  tier2_b_count: number
+  tier3_max_items: number
+  tier3_min_factions: number
+  tier3_b_rate: number
+  tier3_b_count: number
+  pity_prob_increment: number
+  pity_prob_cap: number
+  pity_points_start_streak: number
+  pity_points_base: number
+  pity_points_step: number
+  pity_points_increment: number
+  pity_points_cap: number
+  updated_at: string
+}
+
+/** 유저별 조합 연속 실패 스트릭 (전역 1개 카운터 — 성공 시 리셋) */
+export interface UserCombineStateRow {
+  user_id: string
+  consecutive_fail_count: number
+  updated_at: string
+}
+
 // =========================================
 // Phase 16: 다이나믹 미션
 // =========================================
@@ -554,6 +589,7 @@ export type PointReason =
   | 'mission_point_reward'
   | 'admin_grant'
   | 'admin_deduct'
+  | 'combine_pity_reward'
 
 /** 유저별 잔액 캐시 (직접 UPDATE 금지 — award_points RPC로만 변경) */
 export interface PointWalletRow {
@@ -739,6 +775,18 @@ export interface Database {
         Row: CombinationRecipeRow
         Insert: Omit<CombinationRecipeRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
         Update: Partial<Omit<CombinationRecipeRow, 'id'>>
+        Relationships: []
+      }
+      combine_policy: {
+        Row: CombinePolicyRow
+        Insert: Partial<CombinePolicyRow> & { id: number }
+        Update: Partial<Omit<CombinePolicyRow, 'id'>>
+        Relationships: []
+      }
+      user_combine_state: {
+        Row: UserCombineStateRow
+        Insert: Partial<UserCombineStateRow> & { user_id: string }
+        Update: Partial<Omit<UserCombineStateRow, 'user_id'>>
         Relationships: []
       }
       missions: {

@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: '/admin/users', label: '유저 조회', icon: '👥' },
   { href: '/admin/abusing', label: '어뷰징 관리', icon: '🚨' },
   { href: '/admin/recipes', label: '조합 레시피', icon: '⚗️' },
+  { href: '/admin/combine-policy', label: '조합 정책', icon: '🧪' },
   { href: '/admin/missions', label: '미션 관리', icon: '🎯' },
   { href: '/admin/today', label: '투데이 콘텐츠', icon: '📰' },
   { href: '/admin/points', label: '포인트 관리', icon: '💎' },

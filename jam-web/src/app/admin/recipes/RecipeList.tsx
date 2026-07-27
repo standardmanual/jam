@@ -9,6 +9,8 @@ interface Props {
   badges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[]
 }
 
+const MAX_INGREDIENTS = 10
+
 const emptyForm = {
   ingredient_badge_ids: ['', ''] as string[],
   result_badge_id: '',
@@ -21,21 +23,49 @@ export default function RecipeList({ recipes, badges }: Props) {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const router = useRouter()
 
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
+
+  function startCreate() {
+    setEditingId(null)
+    setForm(emptyForm)
+    setShowForm(true)
+  }
+
+  function startEdit(r: CombinationRecipeRow) {
+    setEditingId(r.id)
+    setForm({
+      ingredient_badge_ids: [...r.ingredient_badge_ids],
+      result_badge_id: r.result_badge_id,
+      success_rate: r.success_rate,
+      hint_text: r.hint_text ?? '',
+      is_public: r.is_public,
+    })
+    setShowForm(true)
+  }
 
   async function handleSave() {
     const ingredients = form.ingredient_badge_ids.filter(Boolean)
     if (ingredients.length < 2 || !form.result_badge_id) return
     setSaving(true)
-    await fetch('/api/admin/recipes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, ingredient_badge_ids: ingredients }),
-    })
+    if (editingId) {
+      await fetch(`/api/admin/recipes/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, ingredient_badge_ids: ingredients }),
+      })
+    } else {
+      await fetch('/api/admin/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, ingredient_badge_ids: ingredients }),
+      })
+    }
     setSaving(false)
     setForm(emptyForm)
+    setEditingId(null)
     setShowForm(false)
     router.refresh()
   }
@@ -54,12 +84,28 @@ export default function RecipeList({ recipes, badges }: Props) {
     })
   }
 
+  function addIngredientSlot() {
+    setForm((prev) =>
+      prev.ingredient_badge_ids.length >= MAX_INGREDIENTS
+        ? prev
+        : { ...prev, ingredient_badge_ids: [...prev.ingredient_badge_ids, ''] }
+    )
+  }
+
+  function removeIngredientSlot(idx: number) {
+    setForm((prev) => {
+      if (prev.ingredient_badge_ids.length <= 2) return prev
+      const arr = prev.ingredient_badge_ids.filter((_, i) => i !== idx)
+      return { ...prev, ingredient_badge_ids: arr }
+    })
+  }
+
   return (
     <div className="space-y-6">
       {/* 등록 폼 토글 */}
       <div>
         <button
-          onClick={() => setShowForm((v) => !v)}
+          onClick={() => (showForm ? setShowForm(false) : startCreate())}
           className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
         >
           {showForm ? '취소' : '+ 레시피 등록'}
@@ -68,24 +114,43 @@ export default function RecipeList({ recipes, badges }: Props) {
 
       {showForm && (
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 space-y-4">
-          <h2 className="font-bold mb-4">새 레시피</h2>
+          <h2 className="font-bold mb-4">{editingId ? '레시피 수정' : '새 레시피'}</h2>
 
           {/* 재료 선택 */}
           <div>
-            <label className="text-xs text-[#6b7280] mb-2 block">재료 배지 (2~3개)</label>
-            {[0, 1, 2].map((i) => (
-              <select
-                key={i}
-                value={form.ingredient_badge_ids[i] ?? ''}
-                onChange={(e) => setIngredient(i, e.target.value)}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm mb-2"
-              >
-                <option value="">재료 {i + 1} 선택{i >= 2 ? ' (선택사항)' : ''}</option>
-                {badges.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name} [{b.type}/{b.rarity}]</option>
-                ))}
-              </select>
+            <label className="text-xs text-[#6b7280] mb-2 block">
+              재료 배지 (2~{MAX_INGREDIENTS}개) — 소재 세계관을 제외한 세계관에서 결과가 나옵니다
+            </label>
+            {form.ingredient_badge_ids.map((val, i) => (
+              <div key={i} className="flex items-center gap-2 mb-2">
+                <select
+                  value={val}
+                  onChange={(e) => setIngredient(i, e.target.value)}
+                  className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm"
+                >
+                  <option value="">재료 {i + 1} 선택</option>
+                  {badges.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name} [{b.type}/{b.rarity}]</option>
+                  ))}
+                </select>
+                {form.ingredient_badge_ids.length > 2 && (
+                  <button
+                    onClick={() => removeIngredientSlot(i)}
+                    className="text-[#898989] hover:text-red-600 text-xs px-2"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
             ))}
+            {form.ingredient_badge_ids.length < MAX_INGREDIENTS && (
+              <button
+                onClick={addIngredientSlot}
+                className="text-xs text-[#6b7280] hover:text-[#111111] border border-dashed border-[#e5e7eb] rounded-lg px-3 py-1.5 mt-1"
+              >
+                + 재료 슬롯 추가
+              </button>
+            )}
           </div>
 
           {/* 결과 배지 */}
@@ -142,7 +207,7 @@ export default function RecipeList({ recipes, badges }: Props) {
             disabled={saving}
             className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
           >
-            {saving ? '저장 중...' : '저장'}
+            {saving ? '저장 중...' : editingId ? '수정 저장' : '저장'}
           </button>
         </div>
       )}
@@ -178,12 +243,20 @@ export default function RecipeList({ recipes, badges }: Props) {
                 </td>
                 <td className="px-5 py-3 text-[#6b7280] text-xs max-w-[200px] truncate">{r.hint_text ?? '—'}</td>
                 <td className="px-5 py-3">
-                  <button
-                    onClick={() => handleDelete(r.id)}
-                    className="text-red-600 hover:text-red-700 text-xs"
-                  >
-                    삭제
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => startEdit(r)}
+                      className="text-[#374151] hover:text-[#111111] text-xs"
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={() => handleDelete(r.id)}
+                      className="text-red-600 hover:text-red-700 text-xs"
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
