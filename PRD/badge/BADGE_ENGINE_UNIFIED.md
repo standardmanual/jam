@@ -306,6 +306,18 @@ mythic은 앰비언트 드랍 대상에서 완전히 제외 — 신화 등급의
 4. 레어리티 추첨 → 해당 등급 type='item' 배지 랜덤 선택 → poi_drops INSERT
 ```
 
+### 3.13 POI 배지 타입(`type='poi'`) — 실데이터 일괄 생성 (2026-07-27)
+
+Phase 16에서 스키마만 추가됐던 `type='poi'` 배지에 실제 데이터를 채웠다. `poi_categories`의 `transit`(대중교통, 973개), `mountain`(산, 847개) 카테고리 POI 전체(총 1,820개)에 대해 **POI 1개 = 배지 1개**로 1:1 생성했다.
+
+- **이름**: 배지 이름 = POI 이름 그대로 사용 (동명 POI가 46그룹 존재 — 위치가 다르므로 각각 별도 배지로 생성, 이름 중복 허용).
+- **설명**: 자동 생성. mountain → `"{POI명}을(를) 올랐습니다"`, transit → `"{POI명}을(를) 지나갔습니다"` (한글 받침 유무로 을/를 자동 판별).
+- **아이콘**: 1,820개 전부 동일 아이콘 사용 — `public/badges/poi/anyway_star.png` (별 모양 "ANYWAY" 로고, 사용자 제공).
+- **등급**: 전부 `rarity='common'`.
+- **연결**: `poi.linked_badge_id`에 신규 생성된 배지 id를 1:1로 세팅 (다대일 연결 UI는 어드민 `/admin/badges/[id]/poi-links`에서 계속 지원되며, 이번 일괄 생성과는 별개로 이후 개별 POI를 재연결할 수도 있음).
+- **반복 획득**: 기존 설계대로 `user_poi_badge_earns`에 매 통과마다 새 행 적재 (평생 1회 제약 없음).
+- **재현용 SQL**: `supabase/seed_poi_badges_20260727.sql` (INSERT/UPDATE 전량 기록, service_role 키로 직접 실행됨).
+
 ---
 
 ## 4. 두 엔진의 게이미피케이션 역할 분담
