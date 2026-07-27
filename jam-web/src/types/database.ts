@@ -8,7 +8,7 @@
 
 export type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
 export type DropRarity = 'common' | 'rare' | 'legendary' | 'mythic' | 'none'
-export type BadgeType = 'activity' | 'item'
+export type BadgeType = 'activity' | 'item' | 'poi'
 export type BadgeRarity = 'common' | 'rare' | 'legendary' | 'mythic'
 // poi_categories 테이블에서 어드민이 자유롭게 생성/삭제/수정 가능한 슬러그 — 고정 유니언이 아닌 string
 export type PoiCategory = string
@@ -85,6 +85,23 @@ export interface UserActivityBadgeRow {
   triggered_by_activity_date: string | null
   /** 어드민 전용 — 발급 근거 스냅샷(조건/실측값/트리거 활동). 일반 유저 화면에 노출 금지 */
   condition_snapshot: BadgeConditionSnapshot | null
+}
+
+/**
+ * Phase 16: POI 배지 획득 이력 (반복 획득 가능)
+ * user_activity_badges와 달리 UNIQUE(user_id, badge_id) 제약이 없어 방문할 때마다 행이 쌓임.
+ * UNIQUE(user_id, badge_id, poi_id, triggered_by_strava_id)는 동일 활동 재처리 방지용.
+ */
+export interface UserPoiBadgeEarnRow {
+  id: string
+  user_id: string
+  badge_id: string
+  poi_id: string
+  earned_at: string
+  triggered_by_strava_id: number | null
+  triggered_by_activity_name: string | null
+  triggered_by_distance_km: number | null
+  triggered_by_activity_date: string | null
 }
 
 /** 어드민 전용 — 배지 발급 시점의 조건·실측값·트리거 활동 스냅샷 */
@@ -479,8 +496,6 @@ export interface BadgeCondition {
   elevation_gain_m?: number
   /** 최소 속도 (km/h) */
   min_speed_kmh?: number
-  /** POI ID (Phase 2+) */
-  poi_id?: string
   /** 단일 활동 최소 이동 시간 (분) */
   duration_minutes?: number
   /** 주말 활동 최소 이동 시간 (시간) */
@@ -619,6 +634,15 @@ export interface Database {
           triggered_by_poi_id?: string | null
         }
         Update: Partial<Omit<UserActivityBadgeRow, 'id'>>
+        Relationships: []
+      }
+      user_poi_badge_earns: {
+        Row: UserPoiBadgeEarnRow
+        Insert: Omit<UserPoiBadgeEarnRow, 'id' | 'earned_at'> & {
+          id?: string
+          earned_at?: string
+        }
+        Update: Partial<Omit<UserPoiBadgeEarnRow, 'id'>>
         Relationships: []
       }
       inventory: {

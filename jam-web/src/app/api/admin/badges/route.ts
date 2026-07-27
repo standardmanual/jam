@@ -24,26 +24,28 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
+  const insertPayload = {
+    name,
+    description,
+    type,
+    rarity,
+    image_url,
+    activity_types: activity_types ?? [],
+    patch_available: patch_available ?? false,
+    patch_price_krw: patch_price_krw ?? null,
+    // POI 배지는 "어느 POI를 지나갔는가"로만 판정 — 활동 조건이 섞이지 않도록 강제 null
+    condition_json: type === 'poi' ? null : condition_json ?? null,
+    faction_id: faction_id ?? null,
+    item_book_id: item_book_id ?? null,
+    drop_weight: drop_weight ?? 1.0,
+    valid_from: valid_from ?? null,
+    valid_until: valid_until ?? null,
+    point_reward: Math.max(0, Math.trunc(Number(point_reward) || 0)),
+  }
   const { data, error } = await supabase
     .from('badges')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert({
-      name,
-      description,
-      type,
-      rarity,
-      image_url,
-      activity_types: activity_types ?? [],
-      patch_available: patch_available ?? false,
-      patch_price_krw: patch_price_krw ?? null,
-      condition_json: condition_json ?? null,
-      faction_id: faction_id ?? null,
-      item_book_id: item_book_id ?? null,
-      drop_weight: drop_weight ?? 1.0,
-      valid_from: valid_from ?? null,
-      valid_until: valid_until ?? null,
-      point_reward: Math.max(0, Math.trunc(Number(point_reward) || 0)),
-    } as any)
+    .insert(insertPayload as any)
     .select()
     .single()
 

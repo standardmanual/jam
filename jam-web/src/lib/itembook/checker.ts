@@ -12,7 +12,7 @@
  * service_role 클라이언트 사용 (RLS 우회)
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import type { ItemBookRow, InventoryRow } from '@/types/database'
+import type { ItemBookRow, InventoryRow, BadgeType } from '@/types/database'
 
 export interface ItemBookCompletionResult {
   completedIds: string[]
@@ -41,17 +41,26 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
 
   const bookIds = itemBooks.map((b) => b.id)
 
-  // 2. 북별 전체 아이템 배지 수
+  // 2. 북별 전체 소속 배지 수 (item + poi)
+  //    Phase 16: poi 타입 배지도 북에 소속 가능. "보유" 판정 방식만 타입별로 다름.
   const { data: badgesRaw } = await supabase
     .from('badges')
-    .select('id, item_book_id')
+    .select('id, item_book_id, type')
     .in('item_book_id', bookIds)
-    .eq('type', 'item')
+    .in('type', ['item', 'poi'])
+
+  const bookBadges = (badgesRaw ?? []) as { id: string; item_book_id: string; type: BadgeType }[]
 
   const badgeCountByBook = new Map<string, number>()
-  for (const b of (badgesRaw ?? []) as { id: string; item_book_id: string }[]) {
+  const poiBadgesByBook = new Map<string, string[]>()
+  for (const b of bookBadges) {
     if (!b.item_book_id) continue
     badgeCountByBook.set(b.item_book_id, (badgeCountByBook.get(b.item_book_id) ?? 0) + 1)
+    if (b.type === 'poi') {
+      const list = poiBadgesByBook.get(b.item_book_id) ?? []
+      list.push(b.id)
+      poiBadgesByBook.set(b.item_book_id, list)
+    }
   }
 
   // 3. 유저의 슬롯 수 (북별)
@@ -69,6 +78,33 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   const slotCountByBook = new Map<string, number>()
   for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
     slotCountByBook.set(s.item_book_id, (slotCountByBook.get(s.item_book_id) ?? 0) + 1)
+  }
+
+  // 3-1. Phase 16: poi 타입 배지는 슬롯팅이 아니라 "1회 이상 획득 이력 존재"로 채움 판정
+  //      (반복 획득되지만 완성 기여는 배지당 1로만 카운트)
+  const allPoiBadgeIds = Array.from(poiBadgesByBook.values()).flat()
+  if (allPoiBadgeIds.length > 0) {
+    const { data: poiEarnsRaw, error: poiEarnsError } = await supabase
+      .from('user_poi_badge_earns')
+      .select('badge_id')
+      .eq('user_id', userId)
+      .in('badge_id', allPoiBadgeIds)
+
+    if (poiEarnsError) {
+      console.error('[checkItemBookCompletion] user_poi_badge_earns 조회 오류:', poiEarnsError)
+      return { completedIds: [], rewardBadgesIssued: 0 }
+    }
+
+    const earnedPoiBadgeIds = new Set(
+      ((poiEarnsRaw ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
+    )
+
+    for (const [bookId, poiBadgeIds] of poiBadgesByBook) {
+      const earnedCount = poiBadgeIds.filter((id) => earnedPoiBadgeIds.has(id)).length
+      if (earnedCount > 0) {
+        slotCountByBook.set(bookId, (slotCountByBook.get(bookId) ?? 0) + earnedCount)
+      }
+    }
   }
 
   // 4. 기존 완성 기록 조회 (중복 처리 방지)

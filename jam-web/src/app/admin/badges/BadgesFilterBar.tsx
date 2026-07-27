@@ -16,6 +16,7 @@ const TYPE_OPTIONS = [
   { value: 'all', label: '전체 타입' },
   { value: 'activity', label: '액티비티' },
   { value: 'item', label: '아이템' },
+  { value: 'poi', label: 'POI' },
 ]
 
 const RARITY_OPTIONS = [
@@ -48,6 +49,8 @@ export default function BadgesFilterBar({ total, filtered }: { total: number; fi
       } else {
         params.set(key, value)
       }
+      // 필터/정렬이 바뀌면 항상 1페이지부터
+      params.delete('page')
       router.push(`${pathname}?${params.toString()}`)
     },
     [router, pathname, searchParams]

@@ -15,7 +15,7 @@ import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { checkMissions } from '@/lib/missions/checker'
 import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
-import type { StravaConnectionRow } from '@/types/database'
+import type { StravaConnectionRow, BadgeType, PoiRow } from '@/types/database'
 
 /** 싱크 1회당 아이템 드랍을 시도할 최대 활동 수 (최신순). 백필 시 드랍 폭주·타임아웃 방지 */
 const MAX_DROP_ACTIVITIES_PER_SYNC = 3
@@ -149,17 +149,82 @@ export async function syncStravaActivities(
     }))
   )
   let poiBadgesEarned = 0
-  for (const { route } of routesByActivity) {
+
+  // 6-1. 활동별 POI 매칭 결과를 먼저 모은다 (연결 배지 사전 조회를 위해)
+  const poiMatchResults: { rawActivity: StravaSummaryActivity; matchedPois: PoiRow[] }[] = []
+  for (const { rawActivity, route } of routesByActivity) {
     if (!route) {
       // 실내 활동 또는 경로 데이터 없음 — 건너뜀
       continue
     }
-
     const matchedPois = await matchPoisForActivity(route, supabase)
+    if (matchedPois.length > 0) poiMatchResults.push({ rawActivity, matchedPois })
+  }
+
+  // 6-2. 매칭된 POI들의 linked_badge_id를 한 번에 조회 (N+1 방지)
+  const linkedBadgeIds = Array.from(
+    new Set(
+      poiMatchResults.flatMap(({ matchedPois }) =>
+        matchedPois
+          .map((poi) => poi.linked_badge_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    )
+  )
+  const badgeById = new Map<string, { id: string; type: BadgeType }>()
+  if (linkedBadgeIds.length > 0) {
+    const { data: linkedBadgesRaw, error: linkedBadgeError } = await supabase
+      .from('badges')
+      .select('id, type')
+      .in('id', linkedBadgeIds)
+    if (linkedBadgeError) {
+      console.error('[syncStravaActivities] POI 연결 배지 조회 오류:', linkedBadgeError)
+    }
+    for (const badge of (linkedBadgesRaw ?? []) as { id: string; type: BadgeType }[]) {
+      badgeById.set(badge.id, badge)
+    }
+  }
+
+  // 6-3. 배지 타입별 발급
+  //      - poi 타입: user_poi_badge_earns에 매번 새 행(반복 획득). 보유 여부 체크 없음.
+  //      - 그 외(레거시 activity): 기존 user_activity_badges 경로 그대로(1인 1회)
+  for (const { rawActivity, matchedPois } of poiMatchResults) {
+    const normalized = activities.find((a) => a.stravaId === rawActivity.id)
 
     for (const poi of matchedPois) {
       if (!poi.linked_badge_id) continue
+      const badge = badgeById.get(poi.linked_badge_id)
+      if (!badge) continue
 
+      if (badge.type === 'poi') {
+        const earnPayload = {
+          user_id: userId,
+          badge_id: badge.id,
+          poi_id: poi.id,
+          triggered_by_strava_id: rawActivity.id,
+          triggered_by_activity_name: rawActivity.name,
+          triggered_by_distance_km: normalized?.distanceKm ?? null,
+          triggered_by_activity_date: rawActivity.start_date,
+        }
+        const { error: earnError } = await supabase
+          .from('user_poi_badge_earns')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .insert(earnPayload as any)
+
+        if (earnError) {
+          // 23505 = 동일 활동 재처리(웹훅 재전송/수동 재싱크) — 무시하고 계속
+          if (earnError.code !== '23505') {
+            console.error(`[syncStravaActivities] POI 배지 이력 기록 오류 (poi_id: ${poi.id}):`, earnError)
+          }
+          continue
+        }
+
+        poiBadgesEarned++
+        console.info(`[syncStravaActivities] POI 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}`)
+        continue
+      }
+
+      // 레거시 호환 — activity 타입 배지에 linked_badge_id가 붙어있는 과거 데이터
       // 이미 해당 배지를 보유하고 있는지 확인 (중복 발급 방지)
       const { data: existing } = await supabase
         .from('user_activity_badges')
@@ -171,15 +236,16 @@ export async function syncStravaActivities(
       if (existing) continue
 
       // POI 배지 발급
+      const legacyEarnPayload = {
+        user_id: userId,
+        badge_id: poi.linked_badge_id,
+        triggered_by: 'poi_match',
+        triggered_by_poi_id: poi.id,
+      }
       const { error: insertError } = await supabase
         .from('user_activity_badges')
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .insert({
-          user_id: userId,
-          badge_id: poi.linked_badge_id,
-          triggered_by: 'poi_match',
-          triggered_by_poi_id: poi.id,
-        } as any)
+        .insert(legacyEarnPayload as any)
 
       if (insertError) {
         if (insertError.code === '23505') continue // 중복 — 무시

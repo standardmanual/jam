@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { ActivityType, BadgeCondition, BadgeRow, PoiRow, UserActivityBadgeRow } from '@/types/database'
+import { ActivityType, BadgeCondition, BadgeRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import ShareCardModal from './ShareCardModal'
@@ -93,10 +93,6 @@ function formatConditionText(condition: BadgeCondition | null): string {
     const slot = timeSlotLabel(start)
     parts.push(`${slot ? `${slot} 시간대(${start}~${end})` : `${start}~${end} 시간대`}에 ${actType} 활동`)
   }
-  if (condition.poi_id) {
-    parts.push('지정된 장소를 직접 방문하여 위치 인증')
-  }
-
   if (parts.length === 0) {
     return '관리자에 의해 특별 발급되는 배지입니다.'
   }
@@ -168,6 +164,22 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   const badgeRow = badge as BadgeRow
   const earned = earnedRow as (UserActivityBadgeRow & { poi: PoiRow | null }) | null
 
+  // Phase 16: poi 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
+  let poiEarns: (UserPoiBadgeEarnRow & { poi: PoiRow | null })[] = []
+  if (badgeRow.type === 'poi') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: poiEarnsRaw } = await (service as any)
+      .from('user_poi_badge_earns')
+      .select('*, poi:poi_id(id, name, latitude, longitude)')
+      .eq('user_id', subjectId)
+      .eq('badge_id', id)
+      .order('earned_at', { ascending: false })
+    poiEarns = (poiEarnsRaw ?? []) as (UserPoiBadgeEarnRow & { poi: PoiRow | null })[]
+  }
+
+  // 획득 여부 — poi 타입은 이력 1건 이상, 그 외는 기존 단건 조회 결과
+  const hasEarned = badgeRow.type === 'poi' ? poiEarns.length > 0 : Boolean(earned)
+
   // 선행 배지 보유 여부 계산
   const prereqs = badgeRow.condition_json?.prerequisite_badge_names ?? []
   let prereqStatus: { name: string; owned: boolean }[] = []
@@ -184,16 +196,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     })
   }
 
-  // triggered_by_poi_id join 결과 우선 사용, 없으면 condition_json.poi_id 폴백
-  let poi: PoiRow | null = earned?.poi ?? null
-  if (!poi && badgeRow.condition_json?.poi_id) {
-    const { data: poiData } = await supabase
-      .from('poi')
-      .select('*')
-      .eq('id', badgeRow.condition_json.poi_id)
-      .single()
-    poi = poiData as PoiRow | null
-  }
+  // triggered_by_poi_id join 결과(활동 배지) 또는 최근 POI 획득 이력의 POI
+  const poi: PoiRow | null = earned?.poi ?? poiEarns[0]?.poi ?? null
 
   return (
     <div className="min-h-full bg-jam-teal px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 flex flex-col gap-6">
@@ -205,7 +209,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         <div
           className={[
             'w-44 h-44 rounded-[2rem] bg-white border-[3px] border-jam-ink shadow-[5px_5px_0_0_#161616] flex items-center justify-center overflow-hidden',
-            !earned ? 'grayscale opacity-50' : '',
+            !hasEarned ? 'grayscale opacity-50' : '',
           ].join(' ')}
         >
           {badgeRow.image_url ? (
@@ -234,7 +238,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         <div className="flex items-center gap-3 bg-jam-lime border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] px-4 py-3">
           <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white border-[2px] border-jam-ink font-black text-jam-ink shrink-0">P</span>
           <p className="text-sm font-black text-jam-ink">
-            {earned
+            {hasEarned
               ? `이 배지는 ${badgeRow.point_reward.toLocaleString('ko-KR')} 포인트를 함께 드렸어요`
               : `이 배지를 획득하면 ${badgeRow.point_reward.toLocaleString('ko-KR')} 포인트를 함께 드려요`}
           </p>
@@ -243,7 +247,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
       {/* 선행 배지 조건 (prerequisite) */}
       {prereqStatus.length > 0 && (
-        <Card className={prereqStatus.some((p) => !p.owned) && !earned ? 'border-amber-500/40 bg-amber-500/5' : ''}>
+        <Card className={prereqStatus.some((p) => !p.owned) && !hasEarned ? 'border-amber-500/40 bg-amber-500/5' : ''}>
           <h2 className="text-xs font-black text-jam-ink/40 uppercase tracking-wider mb-3">선행 배지 필요</h2>
           <p className="text-xs text-jam-ink/50 mb-3 font-semibold">아래 배지 중 하나를 먼저 획득해야 이 배지를 받을 수 있어요.</p>
           <div className="flex flex-col gap-2">
@@ -266,9 +270,46 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       <Card>
         <h2 className="text-xs font-black text-jam-ink/40 uppercase tracking-wider mb-2">획득 조건</h2>
         <p className="text-sm text-jam-ink/80 leading-relaxed font-semibold">
-          {formatConditionText(badgeRow.condition_json)}
+          {badgeRow.type === 'poi'
+            ? '연결된 장소(POI)를 지나가는 활동을 기록하면 자동으로 획득돼요. 방문할 때마다 이력이 쌓여요.'
+            : formatConditionText(badgeRow.condition_json)}
         </p>
       </Card>
+
+      {/* 획득 이력 (poi 타입 — 반복 획득) */}
+      {badgeRow.type === 'poi' && poiEarns.length > 0 && (
+        <Card glow className="bg-jam-lime">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-xs font-black text-jam-ink/50 uppercase tracking-wider">획득 이력</h2>
+            <span className="text-xs font-black text-jam-ink/60">총 {poiEarns.length}회</span>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {poiEarns.map((e) => (
+              <li
+                key={e.id}
+                className="bg-white border-[2px] border-jam-ink rounded-xl px-3 py-2 flex flex-col gap-1"
+              >
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-sm font-black text-jam-ink truncate">
+                    {e.poi?.name ?? '알 수 없는 장소'}
+                  </span>
+                  <span className="text-xs font-bold text-jam-ink/60 shrink-0">
+                    <LocalDate
+                      iso={e.earned_at}
+                      options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }}
+                    />
+                  </span>
+                </div>
+                {e.triggered_by_activity_name && (
+                  <span className="text-xs font-semibold text-jam-ink/50 truncate">
+                    {e.triggered_by_activity_name}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {/* 획득 정보 */}
       {earned && (
@@ -329,7 +370,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
       {/* 액션 버튼들 */}
       <div className="flex flex-col gap-3">
-        {earned && (
+        {hasEarned && (
           <ShareCardModal badgeId={badgeRow.id} badgeName={badgeRow.name} />
         )}
         {badgeRow.patch_available && (
@@ -345,7 +386,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       </div>
 
       {/* 미획득 안내 */}
-      {!earned && (
+      {!hasEarned && (
         <Card className="text-center py-4 border-dashed">
           <p className="text-jam-ink/60 text-sm font-bold">아직 획득하지 못한 배지예요</p>
           <p className="text-jam-ink/40 text-xs mt-1 font-semibold">조건을 달성하면 자동으로 획득됩니다</p>
