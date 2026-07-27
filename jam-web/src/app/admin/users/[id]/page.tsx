@@ -58,11 +58,11 @@ export default async function AdminUserDetailPage({ params }: Props) {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <Link href="/admin/users" className="text-white/40 hover:text-white text-sm transition-colors">
+        <Link href="/admin/users" className="text-[#6b7280] hover:text-[#111111] text-sm transition-colors">
           ← 유저 목록
         </Link>
         <h1 className="text-2xl font-bold mt-2">{user.username ?? '(닉네임 없음)'}</h1>
-        <p className="text-white/40 text-sm mt-1">
+        <p className="text-[#6b7280] text-sm mt-1">
           {user.email} · {user.region || '지역 미설정'} · 가입 {formatDateTime(user.created_at)}
         </p>
       </div>
@@ -74,13 +74,13 @@ export default async function AdminUserDetailPage({ params }: Props) {
 
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold">배지 발급 히스토리</h2>
-        <p className="text-white/40 text-sm">총 {badgeHistory.length}개</p>
+        <p className="text-[#6b7280] text-sm">총 {badgeHistory.length}개</p>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-white/40 text-left">
+            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
               <th className="px-5 py-3 font-medium">배지</th>
               <th className="px-5 py-3 font-medium">등급</th>
               <th className="px-5 py-3 font-medium">발급 경로</th>
@@ -92,7 +92,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
           <tbody>
             {badgeHistory.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-white/30">
+                <td colSpan={6} className="px-5 py-10 text-center text-[#898989]">
                   발급된 배지가 없습니다.
                 </td>
               </tr>
@@ -100,26 +100,26 @@ export default async function AdminUserDetailPage({ params }: Props) {
             {badgeHistory.map((row) => {
               const snapshot = row.condition_snapshot
               return (
-                <tr key={row.id} className="border-b border-white/5 hover:bg-white/5 transition-colors align-top">
+                <tr key={row.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] transition-colors align-top">
                   <td className="px-5 py-3 font-medium">{row.badges?.name ?? '(삭제된 배지)'}</td>
-                  <td className="px-5 py-3 text-white/60">{RARITY_LABEL[row.badges?.rarity ?? ''] ?? row.badges?.rarity ?? '—'}</td>
-                  <td className="px-5 py-3 text-white/60">{row.triggered_by ?? '—'}</td>
-                  <td className="px-5 py-3 text-white/60">
+                  <td className="px-5 py-3 text-[#374151]">{RARITY_LABEL[row.badges?.rarity ?? ''] ?? row.badges?.rarity ?? '—'}</td>
+                  <td className="px-5 py-3 text-[#374151]">{row.triggered_by ?? '—'}</td>
+                  <td className="px-5 py-3 text-[#374151]">
                     {snapshot ? (
                       <div className="flex flex-col gap-0.5">
-                        <span className="text-white/80">{snapshot.actual || '—'}</span>
-                        <span className="text-white/30 text-xs">기준: {snapshot.required || '—'}</span>
+                        <span className="text-[#111111]">{snapshot.actual || '—'}</span>
+                        <span className="text-[#898989] text-xs">기준: {snapshot.required || '—'}</span>
                       </div>
                     ) : (
-                      <span className="text-white/30">기록 없음</span>
+                      <span className="text-[#898989]">기록 없음</span>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-white/60">
+                  <td className="px-5 py-3 text-[#374151]">
                     {snapshot?.trigger_activity
                       ? formatActivity(snapshot.trigger_activity)
                       : (row.triggered_by_activity_name ?? '—')}
                   </td>
-                  <td className="px-5 py-3 text-white/40 text-xs whitespace-nowrap">
+                  <td className="px-5 py-3 text-[#6b7280] text-xs whitespace-nowrap">
                     {formatDateTime(row.earned_at)}
                   </td>
                 </tr>

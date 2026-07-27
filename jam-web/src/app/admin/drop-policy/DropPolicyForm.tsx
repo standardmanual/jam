@@ -107,20 +107,20 @@ export default function DropPolicyForm({ initial }: { initial: DropPolicy }) {
   return (
     <div className="space-y-8 max-w-3xl">
       {SECTIONS.map((section) => (
-        <section key={section.title} className="bg-white/5 border border-white/10 rounded-2xl p-6">
+        <section key={section.title} className="bg-white border border-[#e5e7eb] rounded-2xl p-6">
           <h2 className="font-bold mb-1">{section.title}</h2>
-          <p className="text-white/40 text-xs mb-4">{section.description}</p>
+          <p className="text-[#6b7280] text-xs mb-4">{section.description}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {section.fields.map((f) => (
               <label key={f.key} className="block">
-                <span className="text-white/60 text-xs">{f.label}</span>
+                <span className="text-[#374151] text-xs">{f.label}</span>
                 <input
                   type="number"
                   step={f.step ?? '0.01'}
                   min="0"
                   value={values[f.key]}
                   onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#AEEA00]/50"
+                  className="mt-1 w-full bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#111111]/50"
                 />
               </label>
             ))}
@@ -132,21 +132,21 @@ export default function DropPolicyForm({ initial }: { initial: DropPolicy }) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-[#AEEA00] text-black font-bold px-6 py-2.5 rounded-xl hover:bg-[#c6ff00] transition-colors text-sm disabled:opacity-50"
+          className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] transition-colors text-sm disabled:opacity-50"
         >
           {saving ? '저장 중…' : '저장'}
         </button>
         <div className="text-xs space-x-4">
-          <span className={Math.abs(raritySum - 1) > 0.001 ? 'text-red-400' : 'text-white/30'}>
+          <span className={Math.abs(raritySum - 1) > 0.001 ? 'text-red-600' : 'text-[#898989]'}>
             rarity 합: {raritySum.toFixed(3)} {Math.abs(raritySum - 1) > 0.001 && '(1이어야 함)'}
           </span>
-          <span className={bucketSum > 1.001 ? 'text-red-400' : 'text-white/30'}>
+          <span className={bucketSum > 1.001 ? 'text-red-600' : 'text-[#898989]'}>
             세계관 버킷 합: {bucketSum.toFixed(3)} {bucketSum > 1.001 && '(1 이하여야 함)'}
           </span>
         </div>
       </div>
       {message && (
-        <p className={`text-sm ${message.type === 'ok' ? 'text-green-400' : 'text-red-400'}`}>
+        <p className={`text-sm ${message.type === 'ok' ? 'text-emerald-600' : 'text-red-600'}`}>
           {message.text}
         </p>
       )}

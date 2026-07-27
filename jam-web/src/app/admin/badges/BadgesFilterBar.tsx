@@ -33,7 +33,7 @@ const SORT_OPTIONS = [
 ]
 
 const SELECT_CLASS =
-  'bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/80 focus:outline-none focus:border-[#AEEA00]/50 cursor-pointer'
+  'bg-white border border-[#e5e7eb] rounded-lg px-3 py-1.5 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50 cursor-pointer'
 
 export default function BadgesFilterBar({ total, filtered }: { total: number; filtered: number }) {
   const router = useRouter()
@@ -66,7 +66,7 @@ export default function BadgesFilterBar({ total, filtered }: { total: number; fi
         onChange={(e) => update('activityType', e.target.value)}
       >
         {ACTIVITY_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value} className="bg-[#1a1a1a]">
+          <option key={o.value} value={o.value} className="bg-white">
             {o.label}
           </option>
         ))}
@@ -78,7 +78,7 @@ export default function BadgesFilterBar({ total, filtered }: { total: number; fi
         onChange={(e) => update('type', e.target.value)}
       >
         {TYPE_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value} className="bg-[#1a1a1a]">
+          <option key={o.value} value={o.value} className="bg-white">
             {o.label}
           </option>
         ))}
@@ -90,13 +90,13 @@ export default function BadgesFilterBar({ total, filtered }: { total: number; fi
         onChange={(e) => update('rarity', e.target.value)}
       >
         {RARITY_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value} className="bg-[#1a1a1a]">
+          <option key={o.value} value={o.value} className="bg-white">
             {o.label}
           </option>
         ))}
       </select>
 
-      <div className="h-5 w-px bg-white/10" />
+      <div className="h-5 w-px bg-[#f3f4f6]" />
 
       <select
         className={SELECT_CLASS}
@@ -104,7 +104,7 @@ export default function BadgesFilterBar({ total, filtered }: { total: number; fi
         onChange={(e) => update('sort', e.target.value)}
       >
         {SORT_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value} className="bg-[#1a1a1a]">
+          <option key={o.value} value={o.value} className="bg-white">
             {o.label}
           </option>
         ))}
@@ -113,13 +113,13 @@ export default function BadgesFilterBar({ total, filtered }: { total: number; fi
       {hasFilter && (
         <button
           onClick={() => router.push(pathname)}
-          className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
+          className="text-xs text-[#6b7280] hover:text-[#374151] transition-colors underline underline-offset-2"
         >
           필터 초기화
         </button>
       )}
 
-      <span className="ml-auto text-xs text-white/30">
+      <span className="ml-auto text-xs text-[#898989]">
         {hasFilter ? `${filtered} / ${total}개` : `${total}개`}
       </span>
     </div>

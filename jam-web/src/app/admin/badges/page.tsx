@@ -5,10 +5,10 @@ import type { BadgeRow, BadgeCondition, FactionRow } from '@/types/database'
 import BadgesFilterBar from './BadgesFilterBar'
 
 const rarityColor: Record<string, string> = {
-  common: 'text-white/50',
-  rare: 'text-blue-400',
-  legendary: 'text-purple-400',
-  mythic: 'text-yellow-400',
+  common: 'text-[#6b7280]',
+  rare: 'text-blue-600',
+  legendary: 'text-violet-600',
+  mythic: 'text-amber-600',
 }
 
 const RARITY_LABEL: Record<string, string> = {
@@ -18,10 +18,10 @@ const RARITY_LABEL: Record<string, string> = {
 type BadgeCategory = 'basic' | 'hard' | 'composite' | 'retention'
 
 const CATEGORY_META: Record<BadgeCategory, { label: string; cls: string }> = {
-  basic: { label: '기본', cls: 'text-white/40' },
-  hard: { label: '고난이도', cls: 'text-orange-400' },
+  basic: { label: '기본', cls: 'text-[#6b7280]' },
+  hard: { label: '고난이도', cls: 'text-orange-600' },
   composite: { label: '복합속성', cls: 'text-cyan-400' },
-  retention: { label: '리텐션', cls: 'text-pink-400' },
+  retention: { label: '리텐션', cls: 'text-pink-600' },
 }
 
 /**
@@ -129,7 +129,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
         <h1 className="text-2xl font-bold">배지 관리</h1>
         <Link
           href="/admin/badges/new"
-          className="bg-[#AEEA00] text-black font-bold px-4 py-2 rounded-xl hover:bg-[#c6ff00] transition-colors text-sm"
+          className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
         >
           + 배지 등록
         </Link>
@@ -139,10 +139,10 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
         <BadgesFilterBar total={allBadges.length} filtered={badges.length} />
       </Suspense>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-white/40 text-left">
+            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
               <th className="px-5 py-3 font-medium">이미지</th>
               <th className="px-5 py-3 font-medium">이름</th>
               <th className="px-5 py-3 font-medium">타입</th>
@@ -157,7 +157,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
           <tbody>
             {badges.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-5 py-10 text-center text-white/30">
+                <td colSpan={9} className="px-5 py-10 text-center text-[#898989]">
                   등록된 배지가 없습니다.
                 </td>
               </tr>
@@ -165,11 +165,11 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
             {badges.map((badge) => (
               <tr
                 key={badge.id}
-                className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] transition-colors"
               >
                 <td className="px-5 py-3">
                   <Link href={`/admin/badges/${badge.id}`}>
-                    <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
                       {badge.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -178,7 +178,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
                           className="w-full h-full object-contain"
                         />
                       ) : (
-                        <span className="text-white/20 text-xs">—</span>
+                        <span className="text-[#898989] text-xs">—</span>
                       )}
                     </div>
                   </Link>
@@ -186,12 +186,12 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
                 <td className="px-5 py-3">
                   <Link
                     href={`/admin/badges/${badge.id}`}
-                    className="font-medium hover:text-[#AEEA00] transition-colors"
+                    className="font-medium hover:text-[#111111] transition-colors"
                   >
                     {badge.name}
                   </Link>
                 </td>
-                <td className="px-5 py-3 text-white/60">{badge.type}</td>
+                <td className="px-5 py-3 text-[#374151]">{badge.type}</td>
                 <td className={`px-5 py-3 font-medium ${rarityColor[badge.rarity] ?? ''}`}>
                   {RARITY_LABEL[badge.rarity] ?? badge.rarity}
                 </td>
@@ -201,22 +201,22 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
                     return <span className={cat.cls}>{cat.label}</span>
                   })()}
                 </td>
-                <td className="px-5 py-3 text-white/60 text-xs">
+                <td className="px-5 py-3 text-[#374151] text-xs">
                   {badge.faction_id ? (factionMap.get(badge.faction_id) ?? '—') : '—'}
                 </td>
-                <td className="px-5 py-3 text-white/60 text-xs">
+                <td className="px-5 py-3 text-[#374151] text-xs">
                   {badge.activity_types?.join(', ') || '—'}
                 </td>
                 <td className="px-5 py-3">
                   {(() => {
                     const chips = conditionSummary(badge.condition_json as BadgeCondition | null)
-                    if (chips.length === 0) return <span className="text-white/20 text-xs">없음</span>
+                    if (chips.length === 0) return <span className="text-[#898989] text-xs">없음</span>
                     return (
                       <div className="flex flex-wrap gap-1 max-w-[240px]">
                         {chips.map((chip, i) => (
                           <span
                             key={i}
-                            className="text-[#AEEA00]/80 text-[11px] bg-[#AEEA00]/10 rounded px-1.5 py-0.5 whitespace-nowrap"
+                            className="text-[#111111]/80 text-[11px] bg-[#111111]/10 rounded px-1.5 py-0.5 whitespace-nowrap"
                           >
                             {chip}
                           </span>
@@ -227,11 +227,11 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
                 </td>
                 <td className="px-5 py-3">
                   {badge.patch_available ? (
-                    <span className="text-green-400 text-xs">
+                    <span className="text-emerald-600 text-xs">
                       {badge.patch_price_krw?.toLocaleString()}원
                     </span>
                   ) : (
-                    <span className="text-white/20 text-xs">—</span>
+                    <span className="text-[#898989] text-xs">—</span>
                   )}
                 </td>
               </tr>

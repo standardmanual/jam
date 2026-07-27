@@ -122,10 +122,10 @@ function formatDuration(minutes: number): string {
 }
 
 const rarityColors: Record<string, string> = {
-  common: 'text-white/60',
-  rare: 'text-blue-400',
-  legendary: 'text-purple-400',
-  mythic: 'text-yellow-400',
+  common: 'text-[#374151]',
+  rare: 'text-blue-600',
+  legendary: 'text-violet-600',
+  mythic: 'text-amber-600',
 }
 
 const RARITY_LABEL: Record<string, string> = {
@@ -253,7 +253,7 @@ export default function SimulatorPage() {
       <div className="grid grid-cols-2 gap-6">
         {/* 입력 패널 */}
         <div className="space-y-5">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
             <h2 className="font-semibold">대상 유저</h2>
             <div className="flex gap-2">
               <input
@@ -261,12 +261,12 @@ export default function SimulatorPage() {
                 onChange={(e) => setUserSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleUserSearch()}
                 placeholder="이메일 또는 이름 검색"
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+                className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2 text-sm text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
               />
               <button
                 onClick={handleUserSearch}
                 disabled={userLoading}
-                className="bg-white/10 text-white px-4 py-2 rounded-xl text-sm hover:bg-white/15 disabled:opacity-50 transition-colors"
+                className="bg-[#f3f4f6] text-[#111111] px-4 py-2 rounded-xl text-sm hover:bg-[#e5e7eb] disabled:opacity-50 transition-colors"
               >
                 {userLoading ? '...' : '검색'}
               </button>
@@ -279,8 +279,8 @@ export default function SimulatorPage() {
                     onClick={() => setUserId(u.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                       userId === u.id
-                        ? 'bg-[#AEEA00]/20 text-[#AEEA00]'
-                        : 'hover:bg-white/5 text-white/70'
+                        ? 'bg-[#111111]/20 text-[#111111]'
+                        : 'hover:bg-[#f8f9fa] text-[#374151]'
                     }`}
                   >
                     <p className="font-medium">{u.username ?? u.email}</p>
@@ -290,24 +290,24 @@ export default function SimulatorPage() {
               </div>
             )}
             {selectedUser && (
-              <div className="bg-[#AEEA00]/10 border border-[#AEEA00]/20 rounded-xl px-3 py-2">
-                <p className="text-sm font-medium text-[#AEEA00]">선택됨: {selectedUser.username ?? selectedUser.email}</p>
-                <p className="text-xs text-[#AEEA00]/60">{selectedUser.email}</p>
+              <div className="bg-[#111111]/10 border border-[#111111]/20 rounded-xl px-3 py-2">
+                <p className="text-sm font-medium text-[#111111]">선택됨: {selectedUser.username ?? selectedUser.email}</p>
+                <p className="text-xs text-[#111111]/60">{selectedUser.email}</p>
               </div>
             )}
           </div>
 
           {/* GPX 업로드 */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
             <h2 className="font-semibold">GPX 파일</h2>
             <div
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-white/40 transition-colors"
+              className="border-2 border-dashed border-[#e5e7eb] rounded-xl p-8 text-center cursor-pointer hover:border-[#d1d5db] transition-colors"
             >
               <p className="text-3xl mb-2">📁</p>
-              <p className="text-sm text-white/50">
+              <p className="text-sm text-[#6b7280]">
                 드래그앤드롭 또는 클릭해서 .gpx 파일 선택
               </p>
               <input
@@ -320,48 +320,48 @@ export default function SimulatorPage() {
             </div>
 
             {gpxError && (
-              <p className="text-red-400 text-sm">{gpxError}</p>
+              <p className="text-red-600 text-sm">{gpxError}</p>
             )}
 
             {gpx && (
-              <div className="bg-black/30 rounded-xl p-4 font-mono text-xs space-y-1">
-                <p className="text-white/40 mb-2">{gpx.fileName}</p>
-                <p><span className="text-white/40">거리:</span> <span className="text-white">{gpx.distanceKm} km</span></p>
-                <p><span className="text-white/40">이동 시간:</span> <span className="text-white">{formatDuration(gpx.durationMin)}</span></p>
-                <p><span className="text-white/40">고도 상승:</span> <span className="text-white">{gpx.elevationGainM} m</span></p>
-                <p><span className="text-white/40">평균 속도:</span> <span className="text-white">{gpx.averageSpeedKmh} km/h</span></p>
-                <p><span className="text-white/40">시작 시각:</span> <span className="text-white">{new Date(gpx.startDate).toLocaleString('ko-KR')}</span></p>
-                <p><span className="text-white/40">트랙포인트:</span> <span className="text-white">{gpx.trackpointCount.toLocaleString()}개</span></p>
-                <p><span className="text-white/40">시작점:</span> <span className="text-white">{gpx.startLat.toFixed(4)}° N, {gpx.startLng.toFixed(4)}° E</span></p>
+              <div className="bg-[#f5f5f5] border border-[#e5e7eb] rounded-xl p-4 font-mono text-xs space-y-1">
+                <p className="text-[#6b7280] mb-2">{gpx.fileName}</p>
+                <p><span className="text-[#6b7280]">거리:</span> <span className="text-[#111111]">{gpx.distanceKm} km</span></p>
+                <p><span className="text-[#6b7280]">이동 시간:</span> <span className="text-[#111111]">{formatDuration(gpx.durationMin)}</span></p>
+                <p><span className="text-[#6b7280]">고도 상승:</span> <span className="text-[#111111]">{gpx.elevationGainM} m</span></p>
+                <p><span className="text-[#6b7280]">평균 속도:</span> <span className="text-[#111111]">{gpx.averageSpeedKmh} km/h</span></p>
+                <p><span className="text-[#6b7280]">시작 시각:</span> <span className="text-[#111111]">{new Date(gpx.startDate).toLocaleString('ko-KR')}</span></p>
+                <p><span className="text-[#6b7280]">트랙포인트:</span> <span className="text-[#111111]">{gpx.trackpointCount.toLocaleString()}개</span></p>
+                <p><span className="text-[#6b7280]">시작점:</span> <span className="text-[#111111]">{gpx.startLat.toFixed(4)}° N, {gpx.startLng.toFixed(4)}° E</span></p>
               </div>
             )}
           </div>
 
           {/* 활동 설정 */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
             <h2 className="font-semibold">활동 설정</h2>
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm text-white/60">활동 종류</span>
+                <span className="text-sm text-[#374151]">활동 종류</span>
                 <select
                   value={activityType}
                   onChange={(e) => setActivityType(e.target.value as ActivityType)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+                  className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
                 >
                   {(['cycling', 'running', 'trail_running', 'hiking', 'walking'] as ActivityType[]).map((t) => (
-                    <option key={t} value={t} className="bg-[#1a1a1a]">{t}</option>
+                    <option key={t} value={t} className="bg-white">{t}</option>
                   ))}
                 </select>
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm text-white/60">활동 횟수 배수</span>
+                <span className="text-sm text-[#374151]">활동 횟수 배수</span>
                 <input
                   type="number"
                   min={1}
                   max={100}
                   value={repeatCount}
                   onChange={(e) => setRepeatCount(parseInt(e.target.value, 10) || 1)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#AEEA00]/50"
+                  className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
                 />
               </label>
             </div>
@@ -370,14 +370,14 @@ export default function SimulatorPage() {
                 type="checkbox"
                 checked={firstSync}
                 onChange={(e) => setFirstSync(e.target.checked)}
-                className="accent-[#AEEA00] w-4 h-4"
+                className="accent-[#111111] w-4 h-4"
               />
-              <span className="text-sm text-white/70">첫 싱크 모드 (Common 배지만 발급)</span>
+              <span className="text-sm text-[#374151]">첫 싱크 모드 (Common 배지만 발급)</span>
             </label>
           </div>
 
           {simError && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
               {simError}
             </div>
           )}
@@ -386,14 +386,14 @@ export default function SimulatorPage() {
             <button
               onClick={() => runSimulate(true)}
               disabled={!gpx || !userId || simLoading}
-              className="flex-1 bg-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/15 disabled:opacity-40 transition-colors"
+              className="flex-1 bg-[#f3f4f6] text-[#111111] font-bold py-3 rounded-xl hover:bg-[#e5e7eb] disabled:opacity-40 transition-colors"
             >
               {simLoading ? '실행 중...' : '미리보기 (Dry Run)'}
             </button>
             <button
               onClick={() => runSimulate(false)}
               disabled={!gpx || !userId || simLoading}
-              className="flex-1 bg-[#AEEA00] text-black font-bold py-3 rounded-xl hover:bg-[#c6ff00] disabled:opacity-40 transition-colors"
+              className="flex-1 bg-[#111111] text-white font-bold py-3 rounded-xl hover:bg-[#242424] disabled:opacity-40 transition-colors"
             >
               {simLoading ? '실행 중...' : '실제 적용 (Apply)'}
             </button>
@@ -404,7 +404,7 @@ export default function SimulatorPage() {
         <div>
           {!result && !simLoading && (
             <div className="h-full flex items-center justify-center text-center">
-              <div className="text-white/20">
+              <div className="text-[#898989]">
                 <p className="text-5xl mb-3">🎮</p>
                 <p>GPX를 업로드하고 유저를 선택한 뒤<br />시뮬레이션을 실행하세요</p>
               </div>
@@ -413,21 +413,21 @@ export default function SimulatorPage() {
 
           {simLoading && (
             <div className="h-full flex items-center justify-center">
-              <div className="text-center text-white/40">
-                <div className="w-8 h-8 border-2 border-[#AEEA00] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <div className="text-center text-[#6b7280]">
+                <div className="w-8 h-8 border-2 border-[#111111] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                 <p>시뮬레이션 실행 중...</p>
               </div>
             </div>
           )}
 
           {result && (
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-5 text-sm">
+            <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-5 text-sm">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold">시뮬레이션 결과</h2>
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                   result.applied
-                    ? 'bg-[#AEEA00]/20 text-[#AEEA00]'
-                    : 'bg-white/10 text-white/60'
+                    ? 'bg-[#111111]/20 text-[#111111]'
+                    : 'bg-[#f3f4f6] text-[#374151]'
                 }`}>
                   {result.applied ? '실제 적용됨' : 'Dry Run — DB 반영 없음'}
                 </span>
@@ -435,21 +435,21 @@ export default function SimulatorPage() {
 
               {/* 배지 발급 */}
               <div>
-                <p className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2">
+                <p className="text-[#6b7280] text-xs font-medium uppercase tracking-wider mb-2">
                   배지 발급 ({result.badgesEarned.length}개)
                 </p>
                 {result.badgesEarned.length === 0 ? (
-                  <p className="text-white/30 text-xs">발급 가능한 배지 없음</p>
+                  <p className="text-[#898989] text-xs">발급 가능한 배지 없음</p>
                 ) : (
                   <div className="space-y-1.5">
                     {result.badgesEarned.map((b) => (
                       <div key={b.id} className="flex items-center gap-2">
-                        <span className="text-green-400">✅</span>
+                        <span className="text-emerald-600">✅</span>
                         <span className="font-medium">{b.name}</span>
-                        <span className={`text-xs ${rarityColors[b.rarity] ?? 'text-white/50'}`}>
+                        <span className={`text-xs ${rarityColors[b.rarity] ?? 'text-[#6b7280]'}`}>
                           ({RARITY_LABEL[b.rarity] ?? b.rarity})
                         </span>
-                        <span className="text-white/30 text-xs ml-auto">{b.reason}</span>
+                        <span className="text-[#898989] text-xs ml-auto">{b.reason}</span>
                       </div>
                     ))}
                   </div>
@@ -458,11 +458,11 @@ export default function SimulatorPage() {
 
               {/* POI 매칭 */}
               <div>
-                <p className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2">
+                <p className="text-[#6b7280] text-xs font-medium uppercase tracking-wider mb-2">
                   POI 매칭 ({result.poisMatched.length}개)
                 </p>
                 {result.poisMatched.length === 0 ? (
-                  <p className="text-white/30 text-xs">통과한 POI 없음</p>
+                  <p className="text-[#898989] text-xs">통과한 POI 없음</p>
                 ) : (
                   <div className="space-y-1.5">
                     {result.poisMatched.map((p) => (
@@ -477,29 +477,29 @@ export default function SimulatorPage() {
 
               {/* 아이템 드랍 */}
               <div>
-                <p className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2">
+                <p className="text-[#6b7280] text-xs font-medium uppercase tracking-wider mb-2">
                   아이템 드랍
                 </p>
                 {result.itemDrop ? (
                   <div className="flex items-center gap-2">
                     <span>🏷️</span>
                     <span className="font-medium">{result.itemDrop.badgeName}</span>
-                    <span className={`text-xs ${rarityColors[result.itemDrop.rarity] ?? 'text-white/50'}`}>
+                    <span className={`text-xs ${rarityColors[result.itemDrop.rarity] ?? 'text-[#6b7280]'}`}>
                       ({RARITY_LABEL[result.itemDrop.rarity] ?? result.itemDrop.rarity})
                     </span>
                   </div>
                 ) : (
-                  <p className="text-white/30 text-xs">드랍 없음</p>
+                  <p className="text-[#898989] text-xs">드랍 없음</p>
                 )}
               </div>
 
               {/* 아이템북 완성 */}
               <div>
-                <p className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2">
+                <p className="text-[#6b7280] text-xs font-medium uppercase tracking-wider mb-2">
                   아이템북 완성 ({result.itemBooksCompleted.length}개)
                 </p>
                 {result.itemBooksCompleted.length === 0 ? (
-                  <p className="text-white/30 text-xs">완성된 아이템북 없음</p>
+                  <p className="text-[#898989] text-xs">완성된 아이템북 없음</p>
                 ) : (
                   <div className="space-y-1.5">
                     {result.itemBooksCompleted.map((book, i) => (
@@ -507,7 +507,7 @@ export default function SimulatorPage() {
                         <span>📖</span>
                         <span className="font-medium">{book.bookName}</span>
                         {book.rewardBadgeName && (
-                          <span className="text-[#AEEA00] text-xs">→ {book.rewardBadgeName}</span>
+                          <span className="text-[#111111] text-xs">→ {book.rewardBadgeName}</span>
                         )}
                       </div>
                     ))}
@@ -518,16 +518,16 @@ export default function SimulatorPage() {
               {/* 미발급 배지 */}
               {result.badgesMissed.length > 0 && (
                 <div>
-                  <p className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2">
+                  <p className="text-[#6b7280] text-xs font-medium uppercase tracking-wider mb-2">
                     미발급 배지 ({result.badgesMissed.length}개)
                   </p>
                   <div className="space-y-1.5">
                     {result.badgesMissed.map((b) => (
                       <div key={b.id} className="flex items-start gap-2">
-                        <span className="text-red-400 shrink-0">❌</span>
+                        <span className="text-red-600 shrink-0">❌</span>
                         <div>
-                          <span className="font-medium text-white/70">{b.name}</span>
-                          <p className="text-white/30 text-xs mt-0.5">
+                          <span className="font-medium text-[#374151]">{b.name}</span>
+                          <p className="text-[#898989] text-xs mt-0.5">
                             {b.reason}: {b.actual} / {b.required} 필요
                           </p>
                         </div>

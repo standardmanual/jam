@@ -90,41 +90,41 @@ export default function CategoryManager({ categories, usageCounts, pipelineLinke
 
   return (
     <div className="flex flex-col gap-6">
-      <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-3 bg-white/5 border border-white/10 rounded-2xl p-5">
+      <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-3 bg-white border border-[#e5e7eb] rounded-2xl p-5">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-white/60">slug *</span>
+          <span className="text-sm text-[#374151]">slug *</span>
           <input
             required
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="fitness_center"
-            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50 font-mono text-sm"
+            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 font-mono text-sm"
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-white/60">표시 이름 *</span>
+          <span className="text-sm text-[#374151]">표시 이름 *</span>
           <input
             required
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="헬스장"
-            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-[#AEEA00]/50"
+            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
           />
         </label>
         <button
           type="submit"
           disabled={creating}
-          className="bg-[#AEEA00] text-black font-bold px-5 py-2.5 rounded-xl hover:bg-[#c6ff00] disabled:opacity-50 transition-colors"
+          className="bg-[#111111] text-white font-bold px-5 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
         >
           {creating ? '생성 중...' : '카테고리 추가'}
         </button>
-        {error && <p className="text-red-400 text-sm w-full">{error}</p>}
+        {error && <p className="text-red-600 text-sm w-full">{error}</p>}
       </form>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-white/40 text-left">
+            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
               <th className="px-5 py-3 font-medium">slug</th>
               <th className="px-5 py-3 font-medium">표시 이름</th>
               <th className="px-5 py-3 font-medium">사용 중인 POI</th>
@@ -134,25 +134,25 @@ export default function CategoryManager({ categories, usageCounts, pipelineLinke
           </thead>
           <tbody>
             {categories.map((c) => (
-              <tr key={c.slug} className="border-b border-white/5 hover:bg-white/5 transition-colors align-top">
-                <td className="px-5 py-3 font-mono text-white/70">{c.slug}</td>
+              <tr key={c.slug} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] transition-colors align-top">
+                <td className="px-5 py-3 font-mono text-[#374151]">{c.slug}</td>
                 <td className="px-5 py-3">
                   {editingSlug === c.slug ? (
                     <input
                       value={editLabel}
                       onChange={(e) => setEditLabel(e.target.value)}
-                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-[#AEEA00]/50 text-sm"
+                      className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-1.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 text-sm"
                     />
                   ) : (
                     c.label
                   )}
                 </td>
-                <td className="px-5 py-3 text-white/60">{usageCounts[c.slug] ?? 0}개</td>
+                <td className="px-5 py-3 text-[#374151]">{usageCounts[c.slug] ?? 0}개</td>
                 <td className="px-5 py-3">
                   {pipelineSet.has(c.slug) && (
                     <span
                       title="드랍/픽업 자동검색 파이프라인이 키워드로 사용 중인 카테고리입니다. 삭제/수정 시 자동검색 동작이 바뀔 수 있어요."
-                      className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-full px-2.5 py-1"
+                      className="text-xs bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2.5 py-1"
                     >
                       파이프라인 연동
                     </span>
@@ -163,29 +163,29 @@ export default function CategoryManager({ categories, usageCounts, pipelineLinke
                     <div className="flex gap-2 justify-end">
                       <button
                         onClick={() => handleSaveEdit(c.slug)}
-                        className="text-[#AEEA00] hover:text-[#c6ff00] px-2 py-1"
+                        className="text-[#111111] hover:text-[#242424] px-2 py-1"
                       >
                         저장
                       </button>
                       <button
                         onClick={() => setEditingSlug(null)}
-                        className="text-white/40 hover:text-white px-2 py-1"
+                        className="text-[#6b7280] hover:text-[#111111] px-2 py-1"
                       >
                         취소
                       </button>
                     </div>
                   ) : deletingSlug === c.slug ? (
                     <div className="flex gap-2 justify-end items-center">
-                      <span className="text-white/40 text-xs">정말 삭제할까요?</span>
+                      <span className="text-[#6b7280] text-xs">정말 삭제할까요?</span>
                       <button
                         onClick={() => handleDelete(c.slug)}
-                        className="text-red-400 hover:text-red-300 px-2 py-1"
+                        className="text-red-600 hover:text-red-700 px-2 py-1"
                       >
                         삭제 확인
                       </button>
                       <button
                         onClick={() => setDeletingSlug(null)}
-                        className="text-white/40 hover:text-white px-2 py-1"
+                        className="text-[#6b7280] hover:text-[#111111] px-2 py-1"
                       >
                         취소
                       </button>
@@ -194,20 +194,20 @@ export default function CategoryManager({ categories, usageCounts, pipelineLinke
                     <div className="flex gap-2 justify-end">
                       <button
                         onClick={() => startEdit(c)}
-                        className="text-white/60 hover:text-white px-2 py-1"
+                        className="text-[#374151] hover:text-[#111111] px-2 py-1"
                       >
                         수정
                       </button>
                       <button
                         onClick={() => setDeletingSlug(c.slug)}
-                        className="text-red-400/70 hover:text-red-300 px-2 py-1"
+                        className="text-red-500 hover:text-red-600 px-2 py-1"
                       >
                         삭제
                       </button>
                     </div>
                   )}
                   {rowError[c.slug] && (
-                    <p className="text-red-400 text-xs mt-1">{rowError[c.slug]}</p>
+                    <p className="text-red-600 text-xs mt-1">{rowError[c.slug]}</p>
                   )}
                 </td>
               </tr>

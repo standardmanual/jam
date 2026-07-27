@@ -17,7 +17,7 @@ export default async function NewItemBookPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <Link href="/admin/itembooks" className="text-white/40 hover:text-white text-sm transition-colors">
+        <Link href="/admin/itembooks" className="text-[#6b7280] hover:text-[#111111] text-sm transition-colors">
           ← 아이템북 목록
         </Link>
         <h1 className="text-2xl font-bold mt-2">아이템북 등록</h1>

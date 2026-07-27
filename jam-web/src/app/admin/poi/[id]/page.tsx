@@ -18,7 +18,7 @@ export default async function EditPoiPage({ params }: { params: Promise<{ id: st
   return (
     <div className="p-8">
       <div className="mb-6">
-        <Link href="/admin/poi" className="text-white/40 hover:text-white text-sm transition-colors">
+        <Link href="/admin/poi" className="text-[#6b7280] hover:text-[#111111] text-sm transition-colors">
           ← POI 목록
         </Link>
         <h1 className="text-2xl font-bold mt-2">POI 수정</h1>
