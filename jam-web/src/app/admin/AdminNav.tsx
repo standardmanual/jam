@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: '/admin/missions', label: '미션 관리', icon: '🎯' },
   { href: '/admin/today', label: '투데이 콘텐츠', icon: '📰' },
   { href: '/admin/points', label: '포인트 관리', icon: '💎' },
+  { href: '/admin/theme', label: '테마 컬러', icon: '🎨' },
 ]
 
 function isActive(pathname: string, item: (typeof NAV_ITEMS)[number]) {

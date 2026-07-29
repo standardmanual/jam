@@ -624,6 +624,15 @@ export interface PointTreasuryRow {
   updated_at: string
 }
 
+export interface ThemePresetRow {
+  id: string
+  name: string
+  main_color: string
+  sub_color: string
+  is_active: boolean
+  created_at: string
+}
+
 /** award_points() RPC 인자 */
 export interface AwardPointsArgs {
   p_user_id: string
