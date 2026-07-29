@@ -37,7 +37,7 @@ const TemplateIcon: Record<TodayCardTemplateType, ComponentType<SVGProps<SVGSVGE
 
 function TemplateChip({ card }: { card: TodayCardWithHref }) {
   return (
-    <span className="inline-flex items-center text-[12px] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+    <span className="inline-flex items-center text-[12px] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text">
       {templateLabel[card.template_type]}
     </span>
   )
