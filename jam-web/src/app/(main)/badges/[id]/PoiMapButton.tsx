@@ -1,5 +1,7 @@
 'use client'
 
+import { d, t } from '@/lib/i18n'
+
 interface PoiMapButtonProps {
   lat: number
   lng: number
@@ -14,9 +16,9 @@ export default function PoiMapButton({ poiName }: PoiMapButtonProps) {
       href={naverUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="block w-full text-center bg-jam-ink text-white font-black py-2.5 rounded-xl text-sm border-2 border-jam-ink"
+      className="inline-flex items-center justify-center w-full min-h-11 text-center rounded-[var(--radius-nav-buttons)] px-[var(--spacing-24)] py-[14px] text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-95 transition-transform duration-100"
     >
-      {poiName} 지도에서 보기 ↗
+      {t(d.badges.viewOnMap, { name: poiName })} ↗
     </a>
   )
 }

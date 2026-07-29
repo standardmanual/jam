@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
+import { CloseIcon } from '@/components/ui/icons'
+import { d } from '@/lib/i18n'
 
 interface ShareCardModalProps {
   badgeId: string
@@ -24,7 +26,7 @@ export default function ShareCardModal({ badgeId, badgeName }: ShareCardModalPro
         body: JSON.stringify({ badgeId }),
       })
       if (!res.ok) {
-        toast('카드 생성에 실패했습니다.', 'error')
+        toast(d.badges.shareCardGenerateFailed, 'error')
         return
       }
       const blob = await res.blob()
@@ -32,7 +34,7 @@ export default function ShareCardModal({ badgeId, badgeName }: ShareCardModalPro
       setImageUrl(url)
       setOpen(true)
     } catch {
-      toast('네트워크 오류가 발생했습니다.', 'error')
+      toast(d.common.networkError, 'error')
     } finally {
       setGenerating(false)
     }
@@ -72,49 +74,38 @@ export default function ShareCardModal({ badgeId, badgeName }: ShareCardModalPro
 
   return (
     <>
-      <Button
-        variant="primary"
-        size="lg"
-        fullWidth
-        loading={generating}
-        onClick={generateCard}
-      >
-        공유 카드 만들기
+      <Button variant="primary" fullWidth loading={generating} onClick={generateCard}>
+        {d.badges.shareCardButton}
       </Button>
 
       {open && imageUrl && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center px-5"
-          onClick={handleClose}
-        >
+        <div className="fixed inset-0 bg-surface/60 z-50 flex items-end justify-center" onClick={handleClose}>
           <div
-            className="bg-jam-cream text-jam-ink rounded-[2rem] border-[3px] border-jam-ink p-5 w-full max-w-sm flex flex-col gap-4"
+            className="bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] p-[var(--spacing-24)] w-full max-w-[430px] flex flex-col gap-[var(--spacing-16)]"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + var(--spacing-24))' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-black text-lg">공유 카드</h2>
+              <h2 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{d.badges.shareCardTitle}</h2>
               <button
                 onClick={handleClose}
-                className="text-jam-ink/40 hover:text-jam-ink text-2xl leading-none font-black"
+                aria-label={d.badges.shareCardClose}
+                className="w-11 h-11 -mr-2 flex items-center justify-center text-text-inverse/60 active:scale-90 transition-transform duration-100"
               >
-                ×
+                <CloseIcon className="w-5 h-5" />
               </button>
             </div>
 
             {/* 미리보기 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imageUrl}
-              alt="공유 카드 미리보기"
-              className="w-full rounded-2xl"
-            />
+            <img src={imageUrl} alt={d.badges.shareCardAlt} className="w-full rounded-[var(--radius-cards)]" />
 
-            <div className="flex gap-3">
-              <Button variant="ghost" size="md" fullWidth onClick={handleClose}>
-                닫기
+            <div className="flex gap-[var(--spacing-16)]">
+              <Button variant="outline" surface="sub" fullWidth onClick={handleClose}>
+                {d.badges.shareCardClose}
               </Button>
-              <Button variant="primary" size="md" fullWidth onClick={handleShare}>
-                공유 / 저장
+              <Button variant="primary" surface="sub" fullWidth onClick={handleShare}>
+                {d.badges.shareCardShare}
               </Button>
             </div>
           </div>
