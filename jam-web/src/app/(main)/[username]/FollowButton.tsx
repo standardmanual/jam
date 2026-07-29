@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import Button from '@/components/ui/Button'
+import { d } from '@/lib/i18n'
 
 export function FollowButton({ targetUserId, initialFollowing }: { targetUserId: string; initialFollowing: boolean }) {
   const [following, setFollowing] = useState(initialFollowing)
@@ -20,13 +22,14 @@ export function FollowButton({ targetUserId, initialFollowing }: { targetUserId:
   }
 
   return (
-    <button
+    <Button
+      variant={following ? 'outline' : 'primary'}
+      surface="sub"
+      size="sm"
       onClick={toggle}
-      className={`shrink-0 px-3 py-1 rounded-xl text-xs font-black border-[2px] border-jam-ink active:scale-95 transition-all ${
-        following ? 'bg-white/60 text-jam-ink' : 'bg-jam-ink text-white'
-      }`}
+      className="shrink-0"
     >
-      {following ? '팔로잉' : '팔로우'}
-    </button>
+      {following ? d.social.followingButton : d.social.followButton}
+    </Button>
   )
 }

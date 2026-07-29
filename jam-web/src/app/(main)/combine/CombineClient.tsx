@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
+import Card from '@/components/ui/Card'
+import { MedalIcon } from '@/components/ui/icons'
+import { d, t } from '@/lib/i18n'
 import type { BadgeRow, CombinationRecipeRow, InventoryItemRow } from '@/types/database'
 
 interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> {
@@ -20,11 +23,11 @@ interface Props {
   publicRecipes: CombinationRecipeRow[]
 }
 
-const rarityCardBg: Record<string, string> = {
-  common: 'bg-white',
-  rare: 'bg-jam-teal/30',
-  legendary: 'bg-jam-purple/20',
-  mythic: 'bg-jam-yellow/40',
+const rarityRing: Record<string, string> = {
+  common: '',
+  rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
+  legendary: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
+  mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
 }
 
 const MAX_SELECT = 10
@@ -46,7 +49,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
 
   async function handleCombine() {
     if (selected.length < 2) {
-      toast('아이템 2~10개를 선택해주세요.', 'error')
+      toast(d.combine.selectRangeError, 'error')
       return
     }
     setLoading(true)
@@ -67,61 +70,59 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
         router.refresh()
       } else {
         const msgs: Record<string, string> = {
-          invalid_count: '아이템 2~10개를 선택해주세요.',
-          items_not_found: '아이템을 찾을 수 없어요.',
-          recipe_fail: '조합에 실패했어요. 아이템이 소각됐습니다.',
-          fail: '조합에 실패했어요. 아이템이 소각됐습니다.',
+          invalid_count: d.combine.selectRangeError,
+          items_not_found: d.combine.itemsNotFound,
+          recipe_fail: d.combine.recipeFail,
+          fail: d.combine.recipeFail,
         }
-        let reason = msgs[data.reason] ?? '조합 실패'
+        let reason = msgs[data.reason] ?? d.combine.genericFail
         if (data.pointsAwarded > 0) {
-          reason += ` (위로 잼 포인트 +${data.pointsAwarded})`
+          reason += t(d.combine.consolationPoints, { points: data.pointsAwarded })
         }
         setResult({ success: false, reason })
         setSelected([])
         router.refresh()
       }
     } catch {
-      toast('오류가 발생했어요.', 'error')
+      toast(d.combine.genericError, 'error')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-jam-pink">
+    <div className="flex flex-col min-h-full bg-surface text-text">
       {/* 헤더 */}
-      <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-5">
-        <p className="text-jam-ink/60 text-sm font-bold">아이템 합성</p>
-        <h1 className="text-4xl font-black text-jam-ink leading-tight">조합</h1>
+      <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-24)]">
+        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.combine.eyebrow}</p>
+        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.combine.title}</h1>
       </div>
 
       {/* 결과 알림 */}
       {result && (
-        <div
-          className={`mx-5 mb-4 p-4 rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] font-black text-center ${result.success ? 'bg-jam-lime text-jam-ink' : 'bg-red-100 text-red-700'}`}
-        >
-          {result.success ? `🎉 ${(result.names ?? []).join(', ')} 획득!` : result.reason}
-        </div>
+        <Card className="mx-[var(--spacing-16)] mb-[var(--spacing-16)] text-center">
+          {result.success ? t(d.combine.successResult, { names: (result.names ?? []).join(', ') }) : result.reason}
+        </Card>
       )}
 
       {/* 선택 슬롯 */}
-      <div className="px-5 pb-5">
-        <p className="text-xs font-black text-jam-ink/50 uppercase tracking-widest mb-3">
-          선택한 아이템 ({selected.length}/{MAX_SELECT})
+      <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)]">
+        <p className="text-[11px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">
+          {t(d.combine.selectedCount, { count: selected.length, max: MAX_SELECT })}
         </p>
-        <div className="grid grid-cols-5 gap-2 mb-4">
+        <div className="grid grid-cols-5 gap-[var(--spacing-8)] mb-[var(--spacing-16)]">
           {Array.from({ length: MAX_SELECT }, (_, i) => i).map((i) => {
             const itemId = selected[i]
             const item = items.find((it) => it.id === itemId)
-            const bg = item ? (rarityCardBg[item.badge.rarity] ?? 'bg-white') : ''
             return (
               <div
                 key={i}
-                className={`flex-1 aspect-square rounded-2xl flex items-center justify-center border-[3px] ${
+                className={[
+                  'aspect-square rounded-[var(--radius-cards)] flex items-center justify-center transition-all',
                   item
-                    ? `${bg} border-jam-ink shadow-[3px_3px_0_0_#161616] cursor-pointer active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all`
-                    : 'border-dashed border-jam-ink/25 bg-white/20'
-                }`}
+                    ? `shadow-[inset_0_0_0_1px_var(--color-border)] cursor-pointer ${rarityRing[item.badge.rarity] ?? ''}`
+                    : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30',
+                ].join(' ')}
                 onClick={() => itemId && toggleItem(itemId)}
               >
                 {item ? (
@@ -129,10 +130,10 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={item.badge.image_url} alt={item.badge.name} className="w-3/4 h-3/4 object-contain" />
                   ) : (
-                    <span className="text-3xl">🏅</span>
+                    <MedalIcon className="w-5 h-5 text-text/40" />
                   )
                 ) : (
-                  <span className="text-jam-ink/25 text-2xl font-black">+</span>
+                  <span className="text-text/25 text-xl">+</span>
                 )}
               </div>
             )
@@ -142,22 +143,22 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
         <button
           onClick={handleCombine}
           disabled={loading || selected.length < 2}
-          className="w-full py-4 rounded-2xl bg-jam-ink text-white font-black text-base active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2 border-[3px] border-jam-ink shadow-[3px_3px_0_0_rgba(0,0,0,0.3)]"
+          className="w-full py-4 rounded-[var(--radius-pill-buttons)] bg-text text-surface text-[length:var(--text-body)] active:scale-95 transition-all disabled:opacity-30 flex items-center justify-center gap-2"
         >
-          {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-          합성하기
+          {loading && <span className="w-4 h-4 border-2 border-surface border-t-transparent rounded-full animate-spin" />}
+          {d.combine.combineButton}
         </button>
       </div>
 
       {/* 힌트 */}
       {hints.length > 0 && (
-        <div className="px-5 py-4">
-          <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">힌트</p>
-          <div className="flex flex-col gap-2">
+        <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
+          <p className="text-[10px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.hintsTitle}</p>
+          <div className="flex flex-col gap-[var(--spacing-8)]">
             {hints.map((h, i) => (
-              <div key={i} className="bg-jam-cream border-[3px] border-jam-ink rounded-xl px-4 py-3">
-                <p className="text-sm text-jam-ink/70 font-semibold">{h.hint_text ?? '???'}</p>
-              </div>
+              <Card key={i}>
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{h.hint_text ?? d.combine.hintUnknown}</p>
+              </Card>
             ))}
           </div>
         </div>
@@ -165,46 +166,48 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
 
       {/* 공개 레시피 */}
       {publicRecipes.length > 0 && (
-        <div className="px-5 py-4">
-          <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">공개 레시피</p>
-          <div className="flex flex-col gap-2">
+        <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
+          <p className="text-[10px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.recipesTitle}</p>
+          <div className="flex flex-col gap-[var(--spacing-8)]">
             {publicRecipes.map((r) => (
-              <div key={r.id} className="bg-jam-cream border-[3px] border-jam-ink rounded-xl px-4 py-3 text-sm text-jam-ink/70 font-semibold">
-                재료 {r.ingredient_badge_ids.length}개 → 결과 배지 · 성공률 {Math.round(r.success_rate * 100)}%
-              </div>
+              <Card key={r.id} className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">
+                {t(d.combine.recipeLine, {
+                  count: r.ingredient_badge_ids.length,
+                  pct: Math.round(r.success_rate * 100),
+                })}
+              </Card>
             ))}
           </div>
         </div>
       )}
 
       {/* 인벤토리 */}
-      <div className="flex-1 bg-jam-cream rounded-t-[2rem] border-t-[3px] border-jam-ink px-5 py-6">
-        <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">내 아이템</p>
+      <div className="flex-1 px-[var(--spacing-16)] py-[var(--spacing-24)] shadow-[inset_0_1px_0_0_var(--color-border)]">
+        <p className="text-[10px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.myItemsTitle}</p>
         {items.length === 0 ? (
-          <p className="text-jam-ink/50 text-center py-8 font-bold">인벤토리가 비어 있어요.</p>
+          <p className="text-text/50 text-center py-[var(--spacing-32)]">{d.combine.emptyInventory}</p>
         ) : (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
             {items.map((item) => {
               const isSelected = selected.includes(item.id)
-              const cardBg = rarityCardBg[item.badge.rarity] ?? 'bg-white'
               return (
                 <button
                   key={item.id}
                   onClick={() => toggleItem(item.id)}
                   className={[
-                    'flex flex-col items-center gap-1.5 p-3 rounded-2xl border-[3px] transition-all active:scale-95',
+                    'flex flex-col items-center gap-1.5 p-[var(--spacing-8)] rounded-[var(--radius-cards)] transition-all active:scale-95',
                     isSelected
-                      ? `${cardBg} border-jam-ink shadow-[3px_3px_0_0_#161616]`
-                      : `${cardBg} border-jam-ink/20 opacity-70`,
+                      ? `shadow-[inset_0_0_0_1px_var(--color-border)] ${rarityRing[item.badge.rarity] ?? ''}`
+                      : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-60',
                   ].join(' ')}
                 >
                   {item.badge.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={item.badge.image_url} alt={item.badge.name} className="w-14 h-14 object-contain" />
                   ) : (
-                    <span className="text-3xl">🏅</span>
+                    <MedalIcon className="w-6 h-6 text-text/40" />
                   )}
-                  <p className="text-[10px] text-jam-ink font-bold text-center leading-tight line-clamp-2">{item.badge.name}</p>
+                  <p className="text-[10px] text-text text-center leading-tight line-clamp-2">{item.badge.name}</p>
                 </button>
               )
             })}

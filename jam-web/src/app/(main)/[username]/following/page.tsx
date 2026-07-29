@@ -3,6 +3,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { FollowButton } from '../FollowButton'
+import Card from '@/components/ui/Card'
+import TopNav from '@/components/ui/TopNav'
+import { UserIcon } from '@/components/ui/icons'
+import { d, t } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -67,33 +71,31 @@ export default async function FollowingPage({ params }: Props) {
     .filter((u) => u.id)
 
   return (
-    <div className="min-h-full bg-jam-cream">
-      <div className="sticky top-0 bg-jam-cream border-b-[2px] border-jam-ink px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3 flex items-center gap-3 z-10">
-        <Link href={`/${username}`} className="font-black text-jam-ink text-xl">←</Link>
-        <h1 className="font-black text-lg text-jam-ink">팔로잉 {followingList.length}명</h1>
-      </div>
+    <div className="min-h-full bg-surface text-text">
+      <TopNav title={t(d.social.followingCount, { count: followingList.length })} backHref={`/${username}`} />
 
-      <div className="px-5 py-4 flex flex-col gap-3">
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-16)]">
         {followingList.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-4xl mb-3">👥</p>
-            <p className="text-jam-ink/50 font-bold text-sm">아직 팔로우한 사람이 없어요</p>
+          <div className="text-center py-[var(--spacing-40)]">
+            <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.social.emptyFollowing}</p>
           </div>
         ) : (
           followingList.map((u) => (
-            <div key={u.id} className="flex items-center gap-3 bg-white border-[2px] border-jam-ink rounded-2xl px-4 py-3 shadow-[2px_2px_0_0_#161616]">
-              <Link href={`/${u.username}`} className="flex items-center gap-3 flex-1 min-w-0">
+            <Card key={u.id} className="flex items-center gap-[var(--spacing-16)]">
+              <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0">
                 {u.avatar_url ? (
-                  <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover border-[2px] border-jam-ink shrink-0" />
+                  <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-jam-cream border-[2px] border-jam-ink flex items-center justify-center text-lg shrink-0">👤</div>
+                  <div className="w-10 h-10 rounded-full shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">
+                    <UserIcon className="w-4 h-4 text-text-inverse/50" />
+                  </div>
                 )}
-                <span className="font-black text-sm text-jam-ink truncate">{u.username}</span>
+                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{u.username}</span>
               </Link>
               {u.id !== user.id && (
                 <FollowButton targetUserId={u.id} initialFollowing={u.isFollowing} />
               )}
-            </div>
+            </Card>
           ))
         )}
       </div>

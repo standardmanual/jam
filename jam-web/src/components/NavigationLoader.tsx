@@ -70,7 +70,7 @@ function Inner() {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-jam-cream/90 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-surface/90 backdrop-blur-sm"
       style={{
         opacity: phase === 'fading' ? 0 : 1,
         transition: phase === 'fading' ? `opacity ${FADE_OUT_MS}ms ease-out` : 'opacity 80ms ease-in',

@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import RarityBadge from '@/components/ui/Badge'
+import { MedalIcon } from '@/components/ui/icons'
+import { d } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 
 export interface BadgeSlot {
@@ -51,7 +53,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
     try {
       const token = await getToken()
       if (!token) {
-        setError('로그인이 필요해요.')
+        setError(d.itembooks.slotLoginRequired)
         return
       }
       const res = await fetch(`/api/itembooks/${itemBookId}/slot`, {
@@ -64,12 +66,12 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error ?? '슬롯에 실패했어요.')
+        setError(data.error ?? d.itembooks.slotFailed)
         return
       }
       router.refresh()
     } catch {
-      setError('네트워크 오류가 발생했어요.')
+      setError(d.itembooks.networkError)
     } finally {
       setPendingBadgeId(null)
     }
@@ -81,7 +83,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
     try {
       const token = await getToken()
       if (!token) {
-        setError('로그인이 필요해요.')
+        setError(d.itembooks.slotLoginRequired)
         return
       }
       const res = await fetch(`/api/itembooks/${itemBookId}/slot`, {
@@ -94,12 +96,12 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error ?? '슬롯 해제에 실패했어요.')
+        setError(data.error ?? d.itembooks.unslotFailed)
         return
       }
       router.refresh()
     } catch {
-      setError('네트워크 오류가 발생했어요.')
+      setError(d.itembooks.networkError)
     } finally {
       setPendingBadgeId(null)
     }
@@ -108,12 +110,12 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
   return (
     <div>
       {error && (
-        <div className="mb-3 rounded-xl border-2 border-red-500 bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
+        <div className="mb-3 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] px-3 py-2 text-xs text-text/70">
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
         {badgeSlots.map(({ badge, inventoryItem, slot }) => {
           const isSlotted = slot != null
           const isSlottable = !isSlotted && inventoryItem != null
@@ -121,56 +123,41 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
           const pending = pendingBadgeId === badge.id
 
           const serialLabel = inventoryItem
-            ? `보유 ${inventoryItem.serial_prefix ?? '#'}${inventoryItem.serial_number}`
+            ? `${d.itembooks.ownedPrefix}${inventoryItem.serial_prefix ?? '#'}${inventoryItem.serial_number}`
             : ''
 
           return (
             <div
               key={badge.id}
               className={[
-                'flex flex-col items-center gap-2 p-3 rounded-2xl border-[3px] transition-all',
+                'flex flex-col items-center gap-2 p-[var(--spacing-8)] rounded-[var(--radius-cards)] transition-all',
                 isSlotted
-                  ? 'bg-white border-jam-ink shadow-[3px_3px_0_0_#161616]'
+                  ? 'shadow-[inset_0_0_0_1px_var(--color-border)]'
                   : isSlottable
-                    ? 'bg-white/60 border-jam-ink/40'
-                    : 'bg-white/20 border-jam-ink/15',
+                    ? 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-70'
+                    : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30',
               ].join(' ')}
             >
               {/* 배지 이미지 */}
-              <div className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden bg-jam-cream">
+              <div className="w-16 h-16 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
                 {badge.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={badge.image_url}
-                    alt={isUndiscovered ? '???' : badge.name}
+                    alt={isUndiscovered ? d.itembooks.unknownBadge : badge.name}
                     className={[
                       'w-full h-full object-contain p-1',
-                      isSlotted ? 'opacity-100' : '',
-                      isSlottable ? 'opacity-70' : '',
-                      isUndiscovered ? 'grayscale brightness-[0.6] opacity-30' : '',
+                      isUndiscovered ? 'grayscale' : '',
                     ].join(' ')}
                   />
                 ) : (
-                  <span
-                    className={[
-                      'text-3xl',
-                      isSlottable ? 'opacity-70' : '',
-                      isUndiscovered ? 'grayscale opacity-20' : '',
-                    ].join(' ')}
-                  >
-                    🏅
-                  </span>
+                  <MedalIcon className="w-6 h-6 text-text/30" />
                 )}
               </div>
 
               {/* 이름 */}
-              <p
-                className={[
-                  'text-[11px] font-bold leading-tight text-center line-clamp-2 w-full',
-                  isUndiscovered ? 'text-jam-ink/30' : 'text-jam-ink',
-                ].join(' ')}
-              >
-                {isUndiscovered ? '???' : badge.name}
+              <p className="text-[11px] leading-tight text-center line-clamp-2 w-full text-text">
+                {isUndiscovered ? d.itembooks.unknownBadge : badge.name}
               </p>
 
               {/* 희귀도 (미발견 제외) */}
@@ -184,24 +171,24 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
                   type="button"
                   onClick={() => handleUnslot(badge.id, slot!.id)}
                   disabled={pending}
-                  className="text-[11px] font-black text-jam-ink/50 underline underline-offset-2 active:text-jam-ink disabled:opacity-50"
+                  className="text-[11px] text-text/50 underline underline-offset-2 active:text-text disabled:opacity-50"
                 >
-                  {pending ? '처리 중...' : '슬롯 해제'}
+                  {pending ? d.itembooks.processing : d.itembooks.unslotButton}
                 </button>
               )}
 
               {isSlottable && !readOnly && (
                 <div className="flex flex-col items-center gap-1 w-full">
-                  <p className="text-[10px] text-jam-ink/50 font-bold tabular-nums">
+                  <p className="text-[10px] text-text/50 tabular-nums">
                     {serialLabel}
                   </p>
                   <button
                     type="button"
                     onClick={() => handleSlot(badge.id, inventoryItem!.id)}
                     disabled={pending}
-                    className="w-full bg-jam-lime text-jam-ink text-xs font-black py-1.5 rounded-lg border-[2px] border-jam-ink shadow-[2px_2px_0_0_#161616] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all disabled:opacity-60 disabled:active:translate-x-0 disabled:active:translate-y-0 disabled:active:shadow-[2px_2px_0_0_#161616]"
+                    className="w-full text-text text-xs py-1.5 rounded-[var(--radius-pill-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] transition-all disabled:opacity-60"
                   >
-                    {pending ? '처리 중...' : '슬롯'}
+                    {pending ? d.itembooks.processing : d.itembooks.slotButton}
                   </button>
                 </div>
               )}
