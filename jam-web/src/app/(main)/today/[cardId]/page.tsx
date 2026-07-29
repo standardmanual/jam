@@ -37,7 +37,7 @@ export default async function TodayArticlePage({ params }: Props) {
           &larr; {d.todayCard.backToToday}
         </Link>
 
-        <span className="inline-flex items-center mt-[var(--spacing-16)] text-[12px] font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70">
+        <span className="inline-flex items-center mt-[var(--spacing-16)] text-[12px] font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface-inverse text-text-inverse">
           {d.todayCard.editorialArticle}
         </span>
 
