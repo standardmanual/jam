@@ -10,7 +10,7 @@ import UserSearchBar from './UserSearchBar'
 import TodayCardStack from './TodayCardStack'
 import { getTodayCards } from '@/lib/today/cards'
 import { d } from '@/lib/i18n'
-import { ActivityIcon, MedalIcon, TargetIcon, PackageIcon, PinIcon, FlaskIcon } from '@/components/ui/icons'
+import { ActivityIcon, MedalIcon } from '@/components/ui/icons'
 
 interface BadgeWithEarned {
   badge: BadgeRow
@@ -101,8 +101,8 @@ export default async function HomePage() {
       <section>
         <div className="flex items-center justify-between mb-[var(--spacing-16)]">
           <h2 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{d.today.recentBadgesTitle}</h2>
-          <Link href="/badges" className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] underline underline-offset-2">
-            {d.today.recentBadgesViewAll} &rarr;
+          <Link href="/badges" className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold underline underline-offset-2">
+            {d.today.recentBadgesViewAll} &gt;
           </Link>
         </div>
 
@@ -144,29 +144,25 @@ export default async function HomePage() {
         <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
           <Link href="/missions">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
-              <TargetIcon className="w-6 h-6 text-text-inverse/60" />
-              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.shortcutMissionTitle}</p>
+              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutMissionTitle}</p>
               <p className="text-[11px] text-text-inverse/50">{d.today.shortcutMissionBody}</p>
             </Card>
           </Link>
           <Link href="/inventory">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
-              <PackageIcon className="w-6 h-6 text-text-inverse/60" />
-              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.shortcutInventoryTitle}</p>
+              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutInventoryTitle}</p>
               <p className="text-[11px] text-text-inverse/50">{d.today.shortcutInventoryBody}</p>
             </Card>
           </Link>
           <Link href="/drops">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
-              <PinIcon className="w-6 h-6 text-text-inverse/60" />
-              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.shortcutDropsTitle}</p>
+              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutDropsTitle}</p>
               <p className="text-[11px] text-text-inverse/50">{d.today.shortcutDropsBody}</p>
             </Card>
           </Link>
           <Link href="/combine">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
-              <FlaskIcon className="w-6 h-6 text-text-inverse/60" />
-              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.shortcutCombineTitle}</p>
+              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutCombineTitle}</p>
               <p className="text-[11px] text-text-inverse/50">{d.today.shortcutCombineBody}</p>
             </Card>
           </Link>

@@ -37,7 +37,7 @@ const TemplateIcon: Record<TodayCardTemplateType, ComponentType<SVGProps<SVGSVGE
 
 function TemplateChip({ card }: { card: TodayCardWithHref }) {
   return (
-    <span className="inline-flex items-center text-[10px] leading-none uppercase px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+    <span className="inline-flex items-center text-[12px] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
       {templateLabel[card.template_type]}
     </span>
   )
@@ -141,7 +141,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
       <img src={cover} alt={card.title} className="absolute inset-0 w-full h-full object-cover" />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-16)] pt-10 pb-[var(--spacing-16)]">
-        <span className="inline-flex items-center text-[10px] uppercase text-white/80 mb-1">
+        <span className="inline-flex items-center text-[12px] font-bold uppercase text-white/80 mb-1">
           {templateLabel[card.template_type]}
         </span>
         <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-white">{card.title}</h3>

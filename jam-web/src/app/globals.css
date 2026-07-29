@@ -3,14 +3,14 @@
 @import "../components/dotmatrix-loader.css";
 
 /*
- * JAM! 팝아트 스티커 디자인 시스템 (레거시 — 순차 제거 예정)
- * 화면별 원색 풀블리드 배경 + 두꺼운 검은 외곽선 + 굵은 타이포.
- * 라이트 테마 없음 — body 기본값은 잉크 컬러로 고정해
- * 오버스크롤/세이프에어리어 바깥에 흰 배경이 드러나지 않게 한다.
+ * html/body 기본 배경. 오버스크롤·세이프에어리어 바깥·max-w 컨테이너 좌우 여백에서
+ * 검은/흰 배경이 드러나지 않도록 앱 전체 배경(SuperHi Plus 코발트)과 동일하게 고정한다.
+ * --color-main은 아래 @theme 블록에서 정의되지만 CSS 커스텀 프로퍼티는 선언 순서가 아닌
+ * 캐스케이드로 해석되므로 순서와 무관하게 정상 동작한다.
  */
 :root {
-  --background: #161616;
-  --foreground: #ededed;
+  --background: var(--color-main);
+  --foreground: var(--color-sub);
 }
 
 /*
