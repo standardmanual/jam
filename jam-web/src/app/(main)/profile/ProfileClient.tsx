@@ -1,11 +1,23 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { DotmHex8 } from '@/components/ui/dotm-hex-8'
 import { formatRelativeTime } from '@/lib/utils'
+import { d, t } from '@/lib/i18n'
+import TopNav from '@/components/ui/TopNav'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
+import {
+  UserIcon,
+  UsersIcon,
+  MedalIcon,
+  BookIcon,
+  ActivityIcon,
+  ChevronRightIcon,
+} from '@/components/ui/icons'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 import FeedSection, { DetailSheet } from '../FeedSection'
 
@@ -13,10 +25,10 @@ import FeedSection, { DetailSheet } from '../FeedSection'
 
 type TabKey = 'badge' | 'itembooks' | 'followers' | 'following'
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'badge', label: '뱃지' },
-  { key: 'itembooks', label: '아이템북' },
-  { key: 'followers', label: '팔로워' },
-  { key: 'following', label: '팔로잉' },
+  { key: 'badge', label: d.tabs.badge },
+  { key: 'itembooks', label: d.tabs.itembooks },
+  { key: 'followers', label: d.tabs.followers },
+  { key: 'following', label: d.tabs.following },
 ]
 const VALID_TABS = new Set<string>(['badge', 'itembooks', 'followers', 'following'])
 
@@ -41,6 +53,18 @@ interface ItemBookItem {
   totalBadgeCount: number
   slottedCount: number
   isCompleted: boolean
+}
+
+// ─── 공통 조각 ───────────────────────────────────────────────────────────────
+
+/** 빈 상태 — 아이콘(SVG) + 안내 문구 */
+function EmptyState({ icon, message }: { icon: ReactNode; message: string }) {
+  return (
+    <Card className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-40)]">
+      <span className="text-text-inverse/40">{icon}</span>
+      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{message}</p>
+    </Card>
+  )
 }
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
@@ -229,38 +253,42 @@ export default function ProfileClient({
 
     if (activeTab === 'badge') {
       if (badgeItems.length === 0) {
-        return (
-          <div className="text-center py-12">
-            <p className="text-4xl mb-3">🏅</p>
-            <p className="text-jam-ink/50 font-bold text-sm">아직 획득한 배지가 없어요</p>
-          </div>
-        )
+        return <EmptyState icon={<MedalIcon className="w-8 h-8" />} message={d.profile.emptyBadges} />
       }
       return (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
           {badgeItems.map(item => {
             const meta = item.metadata as Record<string, string>
-            const rarityColor: Record<string, string> = {
-              common: 'bg-white',
-              rare: 'bg-jam-teal/20',
-              legendary: 'bg-jam-purple/20',
-              mythic: 'bg-jam-yellow/30',
+            /**
+             * 희귀도 상태 팔레트 — Phase 2에서 `state_color_palette` 테이블로 이관 예정.
+             * [주의] 색상값/매핑을 재조정하지 마세요(유저가 학습한 색 언어 유지).
+             * 타일 배경은 항상 아이스(surface-inverse) 고정 — 코발트 배경 위에서
+             * 반투명 희귀도 색을 타일 전체에 덮으면 코발트와 섞여 색이 죽고
+             * text-text-inverse(코발트) 글자도 함께 묻히므로, 희귀도 색은
+             * 하단 라벨 pill에만 텍스트/보더 색으로 적용한다.
+             */
+            const rarityAccent: Record<string, string> = {
+              rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
+              legendary: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
+              mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
             }
             return (
               <button
                 key={item.id}
                 onClick={() => handleCardClick(item)}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border-[2px] border-jam-ink shadow-[2px_2px_0_0_#161616] active:scale-95 transition-transform ${rarityColor[meta.rarity] ?? 'bg-white'}`}
+                className="flex flex-col items-center gap-[var(--spacing-8)] p-[var(--spacing-8)] min-h-11 rounded-[var(--radius-cards)] bg-surface-inverse text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-95 transition-transform duration-100 cursor-pointer"
               >
                 {meta.badge_image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={meta.badge_image_url} alt={meta.badge_name} className="w-12 h-12 object-contain" />
                 ) : (
-                  <span className="text-3xl">🏅</span>
+                  <MedalIcon className="w-12 h-12 text-text-inverse/40" />
                 )}
-                <span className="text-[10px] font-black text-jam-ink text-center leading-tight line-clamp-2">{meta.badge_name}</span>
+                <span className="text-[11px] leading-tight text-center line-clamp-2">{meta.badge_name}</span>
                 {meta.rarity !== 'common' && (
-                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-jam-ink/10 text-jam-ink/60">{meta.rarity}</span>
+                  <span className={`text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] ${rarityAccent[meta.rarity] ?? 'text-text-inverse/60 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'}`}>
+                    {meta.rarity}
+                  </span>
                 )}
               </button>
             )
@@ -272,47 +300,49 @@ export default function ProfileClient({
     if (activeTab === 'itembooks') {
       if (itembooksData === null) return null
       if (itembooksData.length === 0) {
-        return (
-          <div className="text-center py-12">
-            <p className="text-4xl mb-3">📕</p>
-            <p className="text-jam-ink/50 font-bold text-sm">아직 발견한 아이템북이 없어요</p>
-          </div>
-        )
+        return <EmptyState icon={<BookIcon className="w-8 h-8" />} message={d.profile.emptyItembooks} />
       }
       return (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-[var(--spacing-8)]">
           {itembooksData.map(book => {
             const pct = book.totalBadgeCount > 0 ? Math.round((book.slottedCount / book.totalBadgeCount) * 100) : 0
             return (
               <Link
                 key={book.id}
                 href={`/itembooks/${book.id}?u=${username}`}
-                className={`flex flex-col rounded-2xl border-[3px] p-3 gap-2 transition-all active:shadow-none active:translate-x-[3px] active:translate-y-[3px] ${
-                  book.isCompleted
-                    ? 'bg-jam-lime border-jam-ink shadow-[3px_3px_0_0_#161616]'
-                    : 'bg-white border-jam-ink shadow-[3px_3px_0_0_#161616]'
-                }`}
+                className={[
+                  'flex flex-col rounded-[var(--radius-cards)] p-[var(--spacing-16)] gap-[var(--spacing-8)]',
+                  'bg-surface-inverse text-text-inverse',
+                  'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]',
+                  'transition-transform duration-100 active:scale-[0.98]',
+                ].join(' ')}
               >
-                <div className="relative w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-jam-cream">
+                <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                   {book.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1.5" />
                   ) : (
-                    <span className="text-4xl">📖</span>
+                    <BookIcon className="w-10 h-10 text-text-inverse/40" />
                   )}
                   {book.isCompleted && (
-                    <span className="absolute top-1.5 right-1.5 bg-jam-ink text-white text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-white">완성</span>
+                    <span className="absolute top-1.5 right-1.5 bg-surface text-text text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)]">
+                      {d.profile.itembookCompleted}
+                    </span>
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-sm font-black text-jam-ink leading-tight line-clamp-2">{book.name}</h2>
-                  {book.faction && <p className="text-[11px] text-jam-ink/50 font-bold mt-0.5 truncate">{book.faction.name}</p>}
+                  <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
+                  {book.faction && (
+                    <p className="text-[11px] text-text-inverse/60 truncate">{book.faction.name}</p>
+                  )}
                 </div>
-                <div className="mt-auto flex items-center gap-2">
-                  <div className="flex-1 h-2 rounded-full bg-jam-ink/10 overflow-hidden border border-jam-ink/20">
-                    <div className={`h-full rounded-full transition-all ${book.isCompleted ? 'bg-jam-ink' : 'bg-jam-teal'}`} style={{ width: `${pct}%` }} />
+                <div className="mt-auto flex items-center gap-[var(--spacing-8)]">
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+                    <div className="h-full bg-surface transition-all" style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="text-[11px] text-jam-ink/70 font-black tabular-nums shrink-0">{book.slottedCount}/{book.totalBadgeCount}</span>
+                  <span className="text-[11px] text-text-inverse/60 tabular-nums shrink-0">
+                    {t(d.profile.itembookProgress, { done: book.slottedCount, total: book.totalBadgeCount })}
+                  </span>
                 </div>
               </Link>
             )
@@ -325,36 +355,39 @@ export default function ProfileClient({
     if (listData === null) return null
     if (listData.length === 0) {
       return (
-        <div className="text-center py-12">
-          <p className="text-4xl mb-3">👥</p>
-          <p className="text-jam-ink/50 font-bold text-sm">
-            {activeTab === 'followers' ? '아직 팔로워가 없어요' : '아직 팔로잉이 없어요'}
-          </p>
-        </div>
+        <EmptyState
+          icon={<UsersIcon className="w-8 h-8" />}
+          message={activeTab === 'followers' ? d.profile.emptyFollowers : d.profile.emptyFollowing}
+        />
       )
     }
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-[var(--spacing-8)]">
         {listData.map(u => (
-          <div key={u.id} className="flex items-center gap-3 bg-white border-[2px] border-jam-ink rounded-2xl p-3 shadow-[2px_2px_0_0_#161616]">
-            <Link href={`/${u.username}`} className="flex items-center gap-3 flex-1 min-w-0">
+          <div
+            key={u.id}
+            className="flex items-center gap-[var(--spacing-16)] bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] p-[var(--spacing-16)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]"
+          >
+            <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0 min-h-11">
               {u.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={u.avatar_url} alt={u.username ?? ''} className="w-10 h-10 rounded-full object-cover border-[2px] border-jam-ink shrink-0" />
+                <img src={u.avatar_url} alt={u.username ?? ''} className="w-11 h-11 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-jam-cream border-[2px] border-jam-ink flex items-center justify-center text-lg shrink-0">👤</div>
+                <div className="w-11 h-11 rounded-full bg-surface text-text flex items-center justify-center shrink-0">
+                  <UserIcon className="w-5 h-5" />
+                </div>
               )}
-              <span className="font-black text-sm text-jam-ink truncate">{u.username}</span>
+              <span className="text-[length:var(--text-body)] leading-[var(--leading-body)] truncate">{u.username}</span>
             </Link>
             {u.id !== currentUserId && (
-              <button
+              <Button
+                surface="sub"
+                variant={listFollowStates[u.id] ? 'outline' : 'primary'}
                 onClick={() => handleListFollow(u.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black border-[2px] border-jam-ink active:scale-95 transition-all shrink-0 ${
-                  listFollowStates[u.id] ? 'bg-white/60 text-jam-ink' : 'bg-jam-ink text-white'
-                }`}
+                className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
               >
-                {listFollowStates[u.id] ? '팔로잉' : '팔로우'}
-              </button>
+                {listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton}
+              </Button>
             )}
           </div>
         ))}
@@ -370,112 +403,146 @@ export default function ProfileClient({
   }
 
   return (
-    <div className="min-h-full bg-jam-pink text-jam-ink px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 flex flex-col gap-6">
-      {/* 프로필 헤더 */}
-      <div className="flex items-center gap-4">
-        {profile?.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={profile.avatar_url} alt="프로필" className="w-16 h-16 rounded-2xl object-cover border-[3px] border-jam-ink" />
-        ) : (
-          <div className="w-16 h-16 rounded-2xl bg-white border-[3px] border-jam-ink flex items-center justify-center text-2xl">👤</div>
-        )}
-        <div className="flex-1">
-          <p className="font-black text-xl">{profile?.username ?? '익명'}</p>
-          {isOwnProfile && <p className="text-jam-ink/60 text-sm font-semibold">{profile?.email}</p>}
-          {/* 잼 포인트 잔액 — 본인 프로필에서만, 이메일 바로 아래 노출 */}
-          {isOwnProfile && pointBalance !== null && (
-            <button
-              onClick={() => router.push('/points')}
-              className="mt-1 inline-flex items-center gap-1.5 text-sm font-black text-jam-ink active:scale-95 transition-transform"
-            >
-              <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-jam-lime border-[2px] border-jam-ink text-[10px]">P</span>
-              {pointBalance.toLocaleString('ko-KR')}P
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-3.5 h-3.5 text-jam-ink/40">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
-        </div>
-        {isOwnProfile ? (
-          <button onClick={() => router.push('/profile/edit')} className="px-3 py-1.5 rounded-xl bg-jam-ink text-white text-sm font-black border-[2px] border-jam-ink active:scale-95 transition-transform">
-            편집
-          </button>
-        ) : (
-          <button
-            onClick={handleFollow}
-            className={`px-4 py-1.5 rounded-xl text-sm font-black border-[2px] border-jam-ink active:scale-95 transition-all ${
-              following ? 'bg-white/60 text-jam-ink' : 'bg-jam-ink text-white'
-            }`}
-          >
-            {following ? '팔로잉' : '팔로우'}
-          </button>
-        )}
-      </div>
+    <div className="min-h-full bg-surface text-text">
+      <TopNav title={d.profile.title} showBack={!isOwnProfile} />
 
-      {/* 통계 바 */}
-      <div className="flex border-[2px] border-jam-ink rounded-2xl overflow-hidden bg-white shadow-[2px_2px_0_0_#161616]">
-        {TABS.map((tab, i) => {
-          const isActive = isTabView && activeTab === tab.key
-          return (
-            <button
-              key={tab.key}
-              onClick={() => handleTabClick(tab.key)}
-              className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors ${
-                i < TABS.length - 1 ? 'border-r-[2px] border-jam-ink' : ''
-              } ${isActive ? 'bg-jam-ink text-white' : 'active:bg-jam-ink/5'}`}
-            >
-              <span className={`text-xl font-black ${isActive ? 'text-white' : 'text-jam-ink'}`}>
-                {statCounts[tab.key]}
-              </span>
-              <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-white/80' : 'text-jam-ink/50'}`}>
-                {tab.label}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* 탭 콘텐츠 — 탭뷰일 때만 */}
-      {isTabView && (
-        <section>
-          {renderTabContent()}
-        </section>
-      )}
-
-      {/* Strava 연동 — 본인 + 기본뷰(해시 없음)일 때 */}
-      {isOwnProfile && !isTabView && (
-        <section className="bg-jam-cream rounded-3xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-5">
-          <h2 className="font-black text-base mb-3">Strava 연동</h2>
-          {strava ? (
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FC4C02] border border-jam-ink" />
-              <span className="text-sm font-black text-[#FC4C02]">연동됨</span>
-              {strava.last_synced_at && (
-                <span className="text-sm text-jam-ink/50 font-semibold ml-1">· {formatRelativeTime(strava.last_synced_at)}</span>
-              )}
-            </div>
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+        {/* 프로필 헤더 */}
+        <Card className="flex items-center gap-[var(--spacing-16)]">
+          {profile?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profile.avatar_url}
+              alt={d.profile.avatarAlt}
+              className="w-16 h-16 rounded-[var(--radius-cards)] object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]"
+            />
           ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-jam-ink/50 font-semibold">연동 안됨</span>
-              <a href="/api/strava/auth" className="px-4 py-2 rounded-xl bg-[#FC4C02] text-white text-sm font-black active:scale-95 transition-transform border-2 border-jam-ink">
-                Strava 연동
-              </a>
+            <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center shrink-0">
+              <UserIcon className="w-7 h-7" />
             </div>
           )}
-        </section>
-      )}
+          <div className="flex-1 min-w-0">
+            <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] truncate">
+              {profile?.username ?? d.profile.anonymous}
+            </p>
+            {isOwnProfile && (
+              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 truncate">
+                {profile?.email}
+              </p>
+            )}
+            {/* 잼 포인트 잔액 — 본인 프로필에서만, 이메일 바로 아래 노출 */}
+            {isOwnProfile && pointBalance !== null && (
+              <button
+                onClick={() => router.push('/points')}
+                aria-label={d.profile.pointsAriaLabel}
+                className="mt-1 -ml-2 px-2 inline-flex items-center gap-1.5 min-h-11 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse rounded-[var(--radius-nav-buttons)] active:scale-95 transition-transform duration-100 cursor-pointer"
+              >
+                {t(d.profile.pointBalance, { count: pointBalance.toLocaleString('ko-KR') })}
+                <ChevronRightIcon className="w-4 h-4 text-text-inverse/40" />
+              </button>
+            )}
+          </div>
+          {isOwnProfile ? (
+            <Button
+              surface="sub"
+              variant="outline"
+              onClick={() => router.push('/profile/edit')}
+              className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
+            >
+              {d.profile.editButton}
+            </Button>
+          ) : (
+            <Button
+              surface="sub"
+              variant={following ? 'outline' : 'primary'}
+              onClick={handleFollow}
+              className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
+            >
+              {following ? d.profile.followingButton : d.profile.followButton}
+            </Button>
+          )}
+        </Card>
 
-      {/* Feed — 본인 + 기본뷰(해시 없음)일 때 */}
-      {isOwnProfile && !isTabView && (
-        <FeedSection feedItems={feedItems} badgeLinkQuery={`?u=${username}`} />
-      )}
+        {/* 통계 바 — Card 내부를 1px inset border로 4칸 분할 */}
+        <Card className="p-0 overflow-hidden flex">
+          {TABS.map((tab, i) => {
+            const isActive = isTabView && activeTab === tab.key
+            return (
+              <button
+                key={tab.key}
+                onClick={() => handleTabClick(tab.key)}
+                aria-pressed={isActive}
+                className={[
+                  'flex-1 flex flex-col items-center justify-center gap-1 min-h-11 py-[var(--spacing-16)]',
+                  'transition-colors duration-100 cursor-pointer',
+                  i > 0 ? 'shadow-[inset_1px_0_0_0_var(--color-border-inverse)]' : '',
+                  isActive ? 'bg-surface text-text' : 'text-text-inverse',
+                ].filter(Boolean).join(' ')}
+              >
+                <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums">
+                  {statCounts[tab.key]}
+                </span>
+                <span className={`text-[11px] leading-none ${isActive ? 'text-text/80' : 'text-text-inverse/60'}`}>
+                  {tab.label}
+                </span>
+              </button>
+            )
+          })}
+        </Card>
 
-      {/* 로그아웃 — 본인만 */}
-      {isOwnProfile && (
-        <button onClick={handleLogout} className="w-full py-4 rounded-2xl border-[3px] border-jam-ink text-jam-ink font-black text-base active:scale-95 transition-all bg-white/60">
-          로그아웃
-        </button>
-      )}
+        {/* 탭 콘텐츠 — 탭뷰일 때만 */}
+        {isTabView && (
+          <section>
+            {renderTabContent()}
+          </section>
+        )}
+
+        {/* Strava 연동 — 본인 + 기본뷰(해시 없음)일 때 */}
+        {isOwnProfile && !isTabView && (
+          <Card>
+            <h2 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-[var(--spacing-16)]">
+              {d.profile.stravaTitle}
+            </h2>
+            {strava ? (
+              <div className="flex items-center gap-[var(--spacing-8)]">
+                <ActivityIcon className="w-5 h-5 text-text-inverse" />
+                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse">
+                  {d.profile.stravaConnected}
+                </span>
+                {strava.last_synced_at && (
+                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
+                    · {formatRelativeTime(strava.last_synced_at)}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-[var(--spacing-16)]">
+                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
+                  {d.profile.stravaDisconnected}
+                </span>
+                <a
+                  href="/api/strava/auth"
+                  className="inline-flex items-center justify-center gap-2 min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-pill-buttons)] bg-surface text-text text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100 shrink-0"
+                >
+                  {d.profile.stravaConnectButton}
+                </a>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Feed — 본인 + 기본뷰(해시 없음)일 때 */}
+        {isOwnProfile && !isTabView && (
+          <FeedSection feedItems={feedItems} badgeLinkQuery={`?u=${username}`} />
+        )}
+
+        {/* 로그아웃 — 본인만 */}
+        {isOwnProfile && (
+          <Button variant="outline" surface="main" fullWidth onClick={handleLogout}>
+            {d.profile.logoutButton}
+          </Button>
+        )}
+      </div>
 
       {/* 상세 시트 */}
       {selectedItem && <DetailSheet item={selectedItem} onClose={() => setSelectedItem(null)} badgeLinkQuery={`?u=${username}`} />}

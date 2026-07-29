@@ -1,8 +1,9 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 @import "tailwindcss";
 @import "../components/dotmatrix-loader.css";
 
 /*
- * JAM! 팝아트 스티커 디자인 시스템
+ * JAM! 팝아트 스티커 디자인 시스템 (레거시 — 순차 제거 예정)
  * 화면별 원색 풀블리드 배경 + 두꺼운 검은 외곽선 + 굵은 타이포.
  * 라이트 테마 없음 — body 기본값은 잉크 컬러로 고정해
  * 오버스크롤/세이프에어리어 바깥에 흰 배경이 드러나지 않게 한다.
@@ -17,6 +18,12 @@
  * var() 간접 참조 조합은 이 프로젝트 환경에서 유틸리티 클래스
  * (bg-jam-*, text-jam-* 등)를 생성하지 못하는 것을 확인했습니다.
  * 그래서 jam-* 팔레트는 리터럴 값으로 직접 정의합니다.
+ *
+ * [주의] jam-* 팔레트는 삭제하지 않습니다.
+ * - jam-teal / jam-purple / jam-yellow / jam-lime : 배지 희귀도·카테고리
+ *   상태 팔레트로 Phase 2에서 `state_color_palette` 테이블로 이관 예정.
+ *   값을 재조정하지 마세요(유저가 학습한 색 언어 유지).
+ * - 나머지(ink/cream/orange/pink)는 아직 리뉴얼되지 않은 화면들이 참조 중.
  */
 @theme {
   --color-jam-ink: #161616;
@@ -27,6 +34,45 @@
   --color-jam-purple: #8b6cf6;
   --color-jam-yellow: #ffc93c;
   --color-jam-cream: #fff8ee;
+
+  /* ---------------------------------------------------------------
+   * SuperHi Plus — 브랜드 바이너리 컬러 (어드민 가변)
+   * 역할 기반 이름만 사용합니다. 값 자체를 가리키는 이름
+   * (cobalt/ice 등)은 컴포넌트에서 참조하지 마세요.
+   * Phase 3에서 theme_presets(is_active=true) 값을 서버에서 조회해
+   * :root { --color-main / --color-sub } 인라인 주입으로 덮어씁니다.
+   * --------------------------------------------------------------- */
+  --color-main: #0033e5; /* Cobalt Voltage — 메인 서피스/버튼/헤딩 */
+  --color-sub: #f0f7ff; /* Ice White — 카운터 서피스/텍스트 반전 */
+
+  /* Cobalt Mist — 보조 필/톤 전용.
+   * [금지] 텍스트 색상으로 사용하지 마세요.
+   * Ice White 위 대비 3.6:1로 WCAG AA(4.5:1) 미달입니다. */
+  --color-cobalt-mist: #527ceb;
+
+  /* Pitch — 라이트 패널 내부의 SVG 아이콘/장식 fill 전용 */
+  --color-pitch: #000000;
+
+  /* ---------------------------------------------------------------
+   * 시맨틱 컬러 (라이트 테마 확장 대비)
+   * 컴포넌트는 가능하면 아래 시맨틱 변수를 참조합니다.
+   * 지금은 다크(코발트 배경 / 아이스 텍스트) 값에 매핑되어 있고,
+   * 라이트 테마를 추가할 땐 이 매핑만 뒤집으면 됩니다.
+   * --------------------------------------------------------------- */
+  --color-surface: var(--color-main); /* 기본 배경 (코발트) */
+  --color-surface-inverse: var(--color-sub); /* 반전 배경 (아이스) — 카드/탭바 */
+  --color-text: var(--color-sub); /* 기본 배경 위 텍스트 */
+  --color-text-inverse: var(--color-main); /* 반전 배경 위 텍스트 */
+  --color-border: var(--color-sub); /* 기본 배경 위 1px inset border */
+  --color-border-inverse: var(--color-main); /* 반전 배경 위 1px inset border */
+
+  /* Border Radius — 지정된 값만 사용 */
+  --radius-tags: 50px;
+  --radius-cards: 16px;
+  --radius-inputs: 2px;
+  --radius-buttons: 16px;
+  --radius-nav-buttons: 50px;
+  --radius-pill-buttons: 72px;
 }
 
 @theme inline {
@@ -34,6 +80,57 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/*
+ * 타이포 스케일 / 스페이싱 / elevation 토큰.
+ * @theme이 아니라 :root에 두는 이유 — Tailwind v4의 --spacing-* 네임스페이스에
+ * 넣으면 기본 스페이싱 스케일(p-8 = 2rem 등)을 덮어써 기존 화면이 전부 깨집니다.
+ * 컴포넌트에서는 arbitrary value로 참조하세요.
+ *   예) text-[length:var(--text-subheading)] / p-[var(--spacing-24)]
+ */
+:root {
+  /* Typography — Pretendard weight 400 단일. bold/light/italic 금지.
+   * 위계는 오직 크기와 컬러 대비로만 표현합니다. */
+  --font-family-base: "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  --font-weight-regular: 400;
+
+  --text-body-sm: 16px;
+  --leading-body-sm: 1.5;
+  --text-body: 18px;
+  --leading-body: 1.33;
+  --text-subheading: 24px;
+  --leading-subheading: 1.25;
+  --text-heading-sm: 32px;
+  --leading-heading-sm: 1.2;
+  --text-heading: 42px;
+  --leading-heading: 1.14;
+  --text-heading-lg: 56px;
+  --leading-heading-lg: 1.13;
+  --text-display: 85px;
+  --leading-display: 1.14;
+
+  /* Spacing — base 8px */
+  --spacing-8: 8px;
+  --spacing-16: 16px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-40: 40px;
+  --spacing-48: 48px;
+  --spacing-96: 96px;
+
+  /* Layout */
+  --layout-card-padding: 24px;
+  --layout-section-gap: 64px;
+  --layout-element-gap: 16px;
+
+  /* Elevation — 오직 1px inset border만. offset/blur/gradient 금지. */
+  --shadow-subtle: inset 0 0 0 1px var(--color-main);
+  --shadow-subtle-2: inset 0 0 0 1px var(--color-sub);
+
+  /* iOS HIG 최소 터치 영역 */
+  --touch-target-min: 44px;
 }
 
 html {
@@ -44,6 +141,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-base);
+  font-weight: var(--font-weight-regular);
   -webkit-tap-highlight-color: transparent;
 }

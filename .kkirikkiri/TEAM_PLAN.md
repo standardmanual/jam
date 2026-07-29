@@ -1,32 +1,24 @@
 # 팀 작업 계획
 
-- 팀명: kkirikkiri-dev-phase15-today
-- 목표: JAM! Phase15 — 홈 → '투데이' 개편(콘텐츠 카드 CMS + 태그 조건부 노출 + 아티클 페이지). PRD Step A~G 전체 + 실서비스 적용 샘플 콘텐츠 20개(전부 ends_at=2026-12-30 23:59:59+09).
-- 생성 시각: 2026-07-26
-- 참고 PRD: PRD/Phase15_01_PRD.md, PRD/Phase15_02_DATA_MODEL.md, PRD/Phase15_03_PHASES.md, PRD/Phase15_04_PROJECT_SPEC.md
+- 팀명: kkirikkiri-design-phase01
+- 목표: PRD/DesignRenewal/Design_Phase01_01~04 문서대로 SuperHi Plus 디자인 리뉴얼 Phase 1 구현 (jam-web/)
+- 생성 시각: 2026-07-29
+- 참고: 이 환경엔 TeamCreate(Agent Teams)가 없어 메인세션이 팀장을 겸하고, Agent 도구로 보조 AI를 불러오는 방식으로 대체함
 
-## 팀 구성 (Agent Teams 인프라 없음 — Agent+SendMessage로 대체)
-| 이름 | 역할 | 모델 | 담당 업무 |
-|------|------|------|----------|
-| phase15-lead | 팀장 겸 실행 | Opus | Step A~G 전체 순차 실행(Step D/E는 파일 겹치지 않으면 하위 위임 가능), DB 직접 적용, 샘플 20개 생성+적용, tsc 검증, 문서화, 배포 확인 |
-
-## 중요 제약
-- DB 직접 접근: jam-web/.env.local에 SUPABASE_SERVICE_ROLE_KEY 저장돼있음. DDL(CREATE TABLE)은 supabase-js .from()으로 불가 — Management API나 다른 방법 직접 조사해서 실행. 안 되면 SQL 파일만 준비 후 보고.
-- TLS 인증서 이슈: NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem 필요 (security find-certificate로 생성)
-- 샘플 20개 전부 ends_at = 2026-12-30 23:59:59+09 KST 고정, starts_at은 대부분 NOW(), 2~3개만 미래(예약발행 시연)
-- 마크다운 파서 신규설치 금지 — 아티클 본문은 빈줄기준 문단분리만
-- 기존 홈 섹션(최근배지/바로가기/피드) 삭제/순서변경 금지 — 카드스택은 추가만
-- CLAUDE.md 규칙: (main)/api/migrations 변경 커밋 시 SERVICE_OPERATIONS_YYYYMMDD_HHMM.md 신규 생성 필수
-- 코드 변경 후 항상 commit + git push origin main + vercel로 배포 확인
+## 팀 구성
+| 이름 | 역할 | 담당 업무 |
+|------|------|----------|
+| 메인세션 | 팀장 | 계획/배분/검증/통합, 브라우저 스크린샷 검증 직접 수행 |
+| dev-tokens | 토큰/공통컴포넌트 담당 | globals.css SuperHi Plus 토큰, TopNav/TabBar/Card/Button 공통 컴포넌트 |
+| dev-integration | 화면통합 담당 | i18n 딕셔너리 구조, ProfileClient.tsx 전면 교체 (dev-tokens 완료 후 착수) |
 
 ## 태스크 목록
-- [x] Step A: today_cards DB 테이블(마이그레이션 048 작성, DDL은 유저 실행 필요) + 타입 + 탭바 개명
-- [x] Step B: 노출조건 계산 + 카드조회 로직 (+ 유닛테스트 16/16)
-- [x] Step C: 홈 화면 카드스택 삽입 (기존 섹션 회귀 없음)
-- [x] Step D: 아티클 페이지 (기간 밖 접근 차단)
-- [x] Step E: 어드민 CMS (7템플릿 동적 폼 + API + 내비)
-- [x] Step F: 샘플 20개 SQL 작성(seed_phase15_today_cards_20.sql) — DB 적용은 테이블 생성(DDL) 후 가능
-- [x] Step G: tsc 0(프로덕션) + SERVICE_OPERATIONS 문서 + commit/push + 배포확인
+- [ ] 태스크 1: globals.css에 SuperHi Plus 토큰 CSS 변수 정의 → dev-tokens
+- [ ] 태스크 2: TopNav/TabBar/Card/Button 공통 컴포넌트 신설 → dev-tokens
+- [ ] 태스크 3: i18n 딕셔너리 구조 신설 (src/lib/i18n/) → dev-integration
+- [ ] 태스크 4: ProfileClient.tsx를 공통 컴포넌트 + i18n으로 전면 교체 → dev-integration
+- [ ] 태스크 5: 타입체크/빌드 확인 + 브라우저 스크린샷 검증 → 메인세션
 
 ## 주요 결정사항
-- (팀장이 결정할 때마다 기록)
+- PRD 확정 사항(01_PRD.md 7절) 그대로 준수: 이모지 금지(등록 이미지 예외), 드롭섀도 금지, 1px inset border만, Pretendard 400 고정, 상태 팔레트는 jam-teal/purple/yellow 값 그대로 이관, 색상 변수는 시맨틱 이름 병행(라이트 테마 확장 대비)
+- 기존 TabBar 라우팅/활성탭 로직은 절대 변경 금지, 스타일만 교체
