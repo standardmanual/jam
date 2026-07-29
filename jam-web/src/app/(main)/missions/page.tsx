@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { MissionRow, UserMissionCompletionRow, UserMissionParticipationRow } from '@/types/database'
 import MissionsListClient, { type MissionListItem } from './MissionsListClient'
+import { d } from '@/lib/i18n'
 
 export default async function MissionsPage() {
   const supabase = await createClient()
@@ -39,10 +40,10 @@ export default async function MissionsPage() {
   })
 
   return (
-    <div className="flex flex-col min-h-full px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 bg-jam-yellow">
-      <div className="mb-6">
-        <p className="text-jam-ink/60 text-sm font-bold">단기 목표</p>
-        <h1 className="text-4xl font-black text-jam-ink leading-tight">미션</h1>
+    <div className="flex flex-col min-h-full px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-32)] bg-surface text-text">
+      <div className="mb-[var(--spacing-24)]">
+        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.missions.eyebrow}</p>
+        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.missions.title}</h1>
       </div>
 
       <MissionsListClient

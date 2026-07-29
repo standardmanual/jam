@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { InventoryRow, InventoryItemRow, BadgeRow } from '@/types/database'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
+import { d, t } from '@/lib/i18n'
 
 type InventoryItemWithBadge = InventoryItemRow & {
   badge: BadgeRow
@@ -46,40 +47,39 @@ export default async function InventoryPage() {
   }))
 
   return (
-    <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 min-h-full bg-jam-teal">
+    <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-24)] min-h-full bg-surface text-text">
       {/* 헤더 */}
-      <div className="mb-5">
-        <div className="flex items-start justify-between mb-3">
+      <div className="mb-[var(--spacing-24)]">
+        <div className="flex items-start justify-between mb-[var(--spacing-16)]">
           <div>
-            <p className="text-jam-ink/60 text-sm font-bold">내 아이템</p>
-            <h1 className="text-4xl font-black text-jam-ink leading-tight">인벤토리</h1>
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.inventory.eyebrow}</p>
+            <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.inventory.title}</h1>
           </div>
           <Link
             href="/combine"
-            className="mt-1 flex items-center gap-1.5 bg-jam-lime text-jam-ink font-black text-sm px-3 py-2 rounded-xl active:scale-95 transition-all border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616]"
+            className="mt-1 inline-flex items-center justify-center min-h-11 rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] shadow-[inset_0_0_0_1px_var(--color-border)] active:scale-95 transition-transform duration-100"
           >
-            ⚗️ 조합
+            {d.inventory.combineButton}
           </Link>
         </div>
         {/* 슬롯 프로그레스 */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-2.5 bg-white/40 rounded-full overflow-hidden border border-jam-ink/20">
+        <div className="flex items-center gap-[var(--spacing-16)]">
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)]">
             <div
-              className="h-full bg-jam-lime rounded-full transition-all"
+              className="h-full bg-text rounded-full transition-all"
               style={{ width: `${Math.min(100, (usedSlots / maxSlots) * 100)}%` }}
             />
           </div>
-          <span className="text-xs text-jam-ink/60 font-bold shrink-0">{usedSlots}/{maxSlots}</span>
+          <span className="text-[11px] text-text/60 shrink-0">{usedSlots}/{maxSlots}</span>
         </div>
-        <p className="mt-1 text-xs text-jam-ink/50 font-semibold">{remainingSlots}개 슬롯 남음</p>
+        <p className="mt-1 text-[11px] text-text/50">{t(d.inventory.slotsRemaining, { count: remainingSlots })}</p>
       </div>
 
       {/* 아이템 그리드 */}
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <span className="text-5xl mb-4">📦</span>
-          <p className="text-jam-ink/60 font-bold">아직 아이템이 없어요</p>
-          <p className="text-jam-ink/40 text-xs mt-1 font-semibold">활동을 완료하면 아이템 배지가 드랍돼요</p>
+        <div className="flex flex-col items-center justify-center py-[var(--spacing-40)] text-center">
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.inventory.emptyTitle}</p>
+          <p className="text-[11px] text-text/40 mt-1">{d.inventory.emptyBody}</p>
         </div>
       ) : (
         <InventoryGrid
@@ -93,10 +93,9 @@ export default async function InventoryPage() {
       <div className="fixed bottom-24" style={{ right: 'max(calc((100vw - 430px) / 2 + 1rem), 1rem)' }}>
         <Link
           href="/inventory/flea-market"
-          className="flex items-center gap-2 bg-jam-ink text-white font-black text-sm px-4 py-3 rounded-full active:scale-95 transition-transform border-[3px] border-jam-ink shadow-[3px_3px_0_0_rgba(0,0,0,0.3)]"
+          className="inline-flex items-center min-h-11 rounded-[var(--radius-pill-buttons)] px-[var(--spacing-24)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface-inverse text-text-inverse active:scale-95 transition-transform duration-100"
         >
-          <span>🛒</span>
-          <span>플리마켓</span>
+          {d.inventory.fleaMarketButton}
         </Link>
       </div>
     </div>

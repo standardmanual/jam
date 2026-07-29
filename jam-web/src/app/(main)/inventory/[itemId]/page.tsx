@@ -3,9 +3,13 @@ import { redirect, notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import RarityBadge from '@/components/ui/Badge'
+import Card from '@/components/ui/Card'
+import TopNav from '@/components/ui/TopNav'
+import { MedalIcon, BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { InventoryItemRow, BadgeRow, ItemBookRow } from '@/types/database'
 import LocalDate from '@/components/LocalDate'
 import InventoryItemHistorySheet from './InventoryItemHistorySheet'
+import { d } from '@/lib/i18n'
 
 type InventoryItemWithBadge = InventoryItemRow & {
   badge: BadgeRow
@@ -61,109 +65,97 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
   const serial = `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`
 
   return (
-    <div className="px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] pb-10 min-h-full bg-jam-teal">
-      {/* 뒤로가기 */}
-      <Link
-        href="/inventory"
-        className="inline-flex items-center gap-1.5 text-jam-ink font-bold text-sm mb-6"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-4 h-4">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-        인벤토리
-      </Link>
+    <div className="min-h-full bg-surface text-text">
+      <TopNav title={item.badge.name} backHref="/inventory" />
 
-      {/* 배지 이미지 */}
-      <div className="flex flex-col items-center mb-8">
-        <div className="w-32 h-32 rounded-[1.75rem] overflow-hidden bg-white border-[3px] border-jam-ink shadow-[5px_5px_0_0_#161616] flex items-center justify-center mb-4">
-          {item.badge.image_url ? (
-            <Image
-              src={item.badge.image_url}
-              alt={item.badge.name}
-              width={128}
-              height={128}
-              className="object-contain w-full h-full p-3"
-            />
-          ) : (
-            <span className="text-6xl">🏷️</span>
-          )}
-        </div>
-        <h1 className="text-xl font-black text-jam-ink text-center mb-2">{item.badge.name}</h1>
-        <div className="flex items-center gap-2">
-          <RarityBadge rarity={item.badge.rarity} />
-          <span className="text-jam-ink/40 text-xs font-mono font-bold">{serial}</span>
-        </div>
-      </div>
-
-      {/* 정보 카드 */}
-      <div className="bg-white border-[3px] border-jam-ink rounded-2xl overflow-hidden mb-4 shadow-[3px_3px_0_0_#161616]">
-        <div className="px-4 py-3 border-b-[3px] border-jam-ink">
-          <p className="text-xs text-jam-ink/50 uppercase tracking-wider font-black">아이템 정보</p>
-        </div>
-        <div className="divide-y divide-jam-ink/10">
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-jam-ink/50 font-semibold">일련번호</span>
-            <span className="text-sm text-jam-ink font-mono tracking-widest font-bold">{serial}</span>
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
+        {/* 배지 이미지 */}
+        <div className="flex flex-col items-center mb-[var(--spacing-24)]">
+          <div className="w-32 h-32 rounded-[var(--radius-cards)] overflow-hidden bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center mb-[var(--spacing-16)]">
+            {item.badge.image_url ? (
+              <Image src={item.badge.image_url} alt={item.badge.name} width={128} height={128} className="object-contain w-full h-full p-3" />
+            ) : (
+              <MedalIcon className="w-12 h-12 text-text-inverse/40" />
+            )}
           </div>
-          <InventoryItemHistorySheet itemId={itemId} obtainedBy={item.obtained_by} />
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-jam-ink/50 font-semibold">획득일</span>
-            <span className="text-sm text-jam-ink font-bold"><LocalDate iso={item.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} /></span>
-          </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-jam-ink/50 font-semibold">만료일</span>
-            <span className={`text-sm font-bold ${expiring ? 'text-red-600' : item.expires_at ? 'text-jam-ink' : 'text-jam-ink/40'}`}>
-              {item.expires_at ? <LocalDate iso={item.expires_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} /> : '없음'}
-              {expiring && ' ⚠️'}
-            </span>
-          </div>
-          <div className="flex justify-between items-center px-4 py-3">
-            <span className="text-sm text-jam-ink/50 font-semibold">희귀도</span>
+          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center mb-2">{item.badge.name}</h1>
+          <div className="flex items-center gap-2">
             <RarityBadge rarity={item.badge.rarity} />
+            <span className="text-text/40 text-[11px] font-mono">{serial}</span>
           </div>
         </div>
-      </div>
 
-      {/* 배지 설명 */}
-      <div className="bg-white border-[3px] border-jam-ink rounded-2xl overflow-hidden shadow-[3px_3px_0_0_#161616]">
-        <div className="px-4 py-3 border-b-[3px] border-jam-ink">
-          <p className="text-xs text-jam-ink/50 uppercase tracking-wider font-black">이 아이템 정보</p>
-        </div>
-        <div className="px-4 py-4">
-          <p className="text-sm text-jam-ink/80 leading-relaxed font-semibold">
-            {item.badge.description || '설명이 없습니다.'}
-          </p>
-        </div>
-      </div>
-
-      {/* 연결된 아이템북 */}
-      {itemBook && (
-        <Link
-          href={`/itembooks/${itemBook.id}?from=badge&itemId=${itemId}`}
-          className="mt-4 bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] px-4 py-3 flex items-center gap-3 active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_#161616] transition-transform"
-        >
-          {itemBook.image_url ? (
-            <div className="w-11 h-11 rounded-xl overflow-hidden bg-jam-teal/10 border-2 border-jam-ink shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={itemBook.image_url} alt={itemBook.name} className="w-full h-full object-contain p-1" />
+        {/* 정보 카드 */}
+        <Card className="p-0 overflow-hidden mb-[var(--spacing-16)]">
+          <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
+            <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.infoSectionTitle}</p>
+          </div>
+          <div>
+            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.serialNumber}</span>
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-mono tracking-widest">{serial}</span>
             </div>
-          ) : (
-            <div className="w-11 h-11 rounded-xl bg-jam-teal/10 border-2 border-jam-ink flex items-center justify-center text-xl shrink-0">🗂️</div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-jam-ink/50 uppercase tracking-wider font-black">속한 아이템북</p>
-            <p className="text-sm font-black text-jam-ink truncate">{itemBook.name}</p>
+            <InventoryItemHistorySheet itemId={itemId} obtainedBy={item.obtained_by} />
+            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.obtainedAt}</span>
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]"><LocalDate iso={item.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} /></span>
+            </div>
+            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.expiresAt}</span>
+              <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] ${expiring ? '' : item.expires_at ? '' : 'text-text-inverse/40'}`}>
+                {item.expires_at ? <LocalDate iso={item.expires_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} /> : d.inventory.expiresNone}
+                {expiring && ` · ${d.inventory.expiringSoonTitle}`}
+              </span>
+            </div>
+            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.rarity}</span>
+              <RarityBadge rarity={item.badge.rarity} />
+            </div>
           </div>
-          <span className="text-jam-ink/30 text-lg shrink-0">›</span>
-        </Link>
-      )}
+        </Card>
 
-      {expiring && (
-        <div className="mt-4 bg-red-50 border-[3px] border-red-600 rounded-xl px-4 py-3">
-          <p className="text-sm text-red-700 font-black">⚠️ 만료 임박</p>
-          <p className="text-xs text-red-700/70 mt-0.5 font-semibold">7일 이내에 이 아이템이 만료됩니다.</p>
-        </div>
-      )}
+        {/* 배지 설명 */}
+        <Card className="p-0 overflow-hidden">
+          <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
+            <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.descSectionTitle}</p>
+          </div>
+          <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
+              {item.badge.description || d.inventory.noDescription}
+            </p>
+          </div>
+        </Card>
+
+        {/* 연결된 아이템북 */}
+        {itemBook && (
+          <Link href={`/itembooks/${itemBook.id}?from=badge&itemId=${itemId}`}>
+            <Card className="mt-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
+              {itemBook.image_url ? (
+                <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={itemBook.image_url} alt={itemBook.name} className="w-full h-full object-contain p-1" />
+                </div>
+              ) : (
+                <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">
+                  <BookIcon className="w-5 h-5 text-text-inverse/50" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.belongsToItembook}</p>
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{itemBook.name}</p>
+              </div>
+              <ChevronRightIcon className="w-4 h-4 text-text-inverse/30 shrink-0" />
+            </Card>
+          </Link>
+        )}
+
+        {expiring && (
+          <Card className="mt-[var(--spacing-16)]">
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.inventory.expiringSoonTitle}</p>
+            <p className="text-[11px] text-text-inverse/60 mt-0.5">{d.inventory.expiringSoonBody}</p>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

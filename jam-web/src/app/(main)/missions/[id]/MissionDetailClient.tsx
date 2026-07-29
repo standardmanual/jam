@@ -4,7 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useToast } from '@/components/ui/Toast'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
+import TopNav from '@/components/ui/TopNav'
 import type { MissionRow, MissionCondition } from '@/types/database'
+import { d, t } from '@/lib/i18n'
 
 export interface RewardBadgeInfo {
   id: string
@@ -23,25 +27,33 @@ interface Props {
 function missionGoalText(type: string, condition: MissionCondition): { label: string; unit: string; target: number } {
   switch (type) {
     case 'distance':
-      return { label: '달성 거리', unit: 'km', target: condition.distance_km ?? 0 }
+      return { label: d.missions.goalDistance, unit: 'km', target: condition.distance_km ?? 0 }
     case 'activity_count':
-      return { label: '활동 횟수', unit: '회', target: condition.count ?? 0 }
+      return { label: d.missions.goalActivityCount, unit: '회', target: condition.count ?? 0 }
     case 'poi_visit':
-      return { label: 'POI 방문', unit: '곳', target: 1 }
+      return { label: d.missions.goalPoiVisit, unit: '곳', target: 1 }
     case 'item_collect':
-      return { label: '아이템 수집', unit: '개', target: 1 }
+      return { label: d.missions.goalItemCollect, unit: '개', target: 1 }
     default:
-      return { label: '목표', unit: '', target: 0 }
+      return { label: d.missions.goalDefault, unit: '', target: 0 }
   }
 }
 
 function timeLeft(endsAt: string): string {
   const diff = new Date(endsAt).getTime() - Date.now()
-  if (diff <= 0) return '종료됨'
+  if (diff <= 0) return d.missions.tagEnded
   const h = Math.floor(diff / 3_600_000)
   const m = Math.floor((diff % 3_600_000) / 60_000)
-  if (h >= 24) return `${Math.floor(h / 24)}일 ${h % 24}시간 남음`
-  return `${h}시간 ${m}분 남음`
+  if (h >= 24) return `${Math.floor(h / 24)}일 ${h % 24}시간 ${d.missions.timeLeftSuffix}`
+  return `${h}시간 ${m}분 ${d.missions.timeLeftSuffix}`
+}
+
+function Tag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)]">
+      {children}
+    </span>
+  )
 }
 
 export default function MissionDetailClient({ mission, isParticipating, isCompleted, progressValue, rewardBadges }: Props) {
@@ -64,183 +76,158 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
     try {
       const res = await fetch(`/api/missions/${mission.id}/join`, { method: 'POST' })
       const data = await res.json()
-      if (!res.ok) { toast(data.error ?? '오류가 발생했어요.', 'error'); return }
+      if (!res.ok) { toast(data.error ?? d.missions.joinError, 'error'); return }
       setParticipating(true)
       setConfirming(false)
-      toast('미션에 참가했어요!', 'success')
+      toast(d.missions.joinSuccess, 'success')
       router.refresh()
     } catch {
-      toast('네트워크 오류가 발생했어요. 다시 시도해주세요.', 'error')
+      toast(d.missions.joinNetworkError, 'error')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="flex flex-col min-h-full px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 bg-jam-yellow">
-      {/* 뒤로가기 */}
-      <button
-        onClick={() => router.back()}
-        className="text-jam-ink/60 text-sm font-bold mb-4 self-start active:opacity-60"
-      >
-        ← 미션 목록
-      </button>
+    <div className="min-h-full bg-surface text-text">
+      <TopNav title={d.missions.backToList} backHref="/missions" />
 
-      {/* 상태 배지 */}
-      <div className="flex items-center gap-2 mb-3">
-        {isCompleted && (
-          <span className="text-[10px] font-black bg-jam-ink text-white px-2 py-1 rounded-lg">완료</span>
-        )}
-        {!isCompleted && participating && (
-          <span className="text-[10px] font-black bg-jam-ink text-white px-2 py-1 rounded-lg">참가중</span>
-        )}
-        {!isActive && !isCompleted && (
-          <span className="text-[10px] font-black bg-jam-ink/20 text-jam-ink px-2 py-1 rounded-lg">예정</span>
-        )}
-        <span className="text-xs text-jam-ink/50 font-semibold">{timeLeft(mission.ends_at)}</span>
-      </div>
-
-      <h1 className="text-3xl font-black text-jam-ink leading-tight mb-2">{mission.title}</h1>
-      {mission.description && (
-        <p className="text-jam-ink/60 text-sm font-semibold mb-6">{mission.description}</p>
-      )}
-
-      {/* 달성 조건 */}
-      <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4">
-        <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">달성 조건</p>
-        <div className="flex items-end justify-between mb-2">
-          <div>
-            <p className="text-xs text-jam-ink/50 font-semibold mb-0.5">{goal.label}</p>
-            <p className="text-2xl font-black text-jam-ink">
-              {goal.target}{goal.unit}
-            </p>
-          </div>
-          {condition.activity_type && (
-            <span className="text-xs font-black text-jam-ink bg-jam-yellow border-[2px] border-jam-ink px-2 py-1 rounded-lg capitalize">
-              {condition.activity_type}
-            </span>
-          )}
+      <div className="flex flex-col px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
+        {/* 상태 태그 */}
+        <div className="flex items-center gap-2 mb-[var(--spacing-16)] flex-wrap">
+          {isCompleted && <Tag>{d.missions.tagDone}</Tag>}
+          {!isCompleted && participating && <Tag>{d.missions.tagJoined}</Tag>}
+          {!isActive && !isCompleted && <Tag>{d.missions.tagUpcoming}</Tag>}
+          <span className="text-[11px] text-text/50">{timeLeft(mission.ends_at)}</span>
         </div>
-      </div>
 
-      {/* 진행 상황 */}
-      {(participating || isCompleted) && goal.target > 0 && (
-        isAchievementType ? (
-          <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4">
-            <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">나의 진행 상황</p>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-jam-ink/60">{goal.label}</p>
-              {achieved ? (
-                <span className="text-sm font-black bg-jam-lime border-[2px] border-jam-ink text-jam-ink px-3 py-1.5 rounded-xl">✓ 달성</span>
-              ) : (
-                <span className="text-sm font-black bg-jam-ink/10 border-[2px] border-jam-ink/20 text-jam-ink/50 px-3 py-1.5 rounded-xl">미달성</span>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4">
-            <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-3">나의 진행 상황</p>
-            <div className="flex items-end justify-between mb-2">
-              <p className="text-2xl font-black text-jam-ink">
-                {isCompleted ? goal.target : progressValue.toFixed(mission.mission_type === 'distance' ? 1 : 0)}
-                <span className="text-sm font-bold text-jam-ink/50 ml-1">{goal.unit}</span>
+        <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2">{mission.title}</h1>
+        {mission.description && (
+          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] mb-[var(--spacing-24)]">{mission.description}</p>
+        )}
+
+        {/* 달성 조건 */}
+        <Card className="mb-[var(--spacing-16)]">
+          <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.conditionTitle}</p>
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[11px] text-text-inverse/50 mb-0.5">{goal.label}</p>
+              <p className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">
+                {goal.target}{goal.unit}
               </p>
-              <p className="text-sm text-jam-ink/50 font-semibold">/ {goal.target}{goal.unit}</p>
             </div>
-            <div className="h-2.5 bg-jam-ink/10 rounded-full overflow-hidden border border-jam-ink/20">
-              <div
-                className={`h-full rounded-full transition-all ${isCompleted ? 'bg-jam-lime' : 'bg-jam-ink'}`}
-                style={{ width: `${isCompleted ? 100 : progressPct}%` }}
-              />
-            </div>
-            <p className="text-xs text-jam-ink/50 font-semibold mt-1 text-right">
-              {isCompleted ? '달성 완료!' : `${Math.round(progressPct)}% 달성`}
-            </p>
-          </div>
-        )
-      )}
-
-      {/* 보상 */}
-      <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-6">
-        <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">보상</p>
-        {rewardBadges.length === 0 && !mission.reward_points ? (
-          <p className="text-sm font-black text-jam-ink/40">보상 없음</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {rewardBadges.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {rewardBadges.map((b) => (
-                  <span key={b.id} className="flex items-center gap-1.5 text-xs font-black text-jam-ink bg-jam-yellow border-[2px] border-jam-ink px-2 py-1 rounded-lg">
-                    {b.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={b.image_url} alt="" className="w-4 h-4 object-contain" />
-                    )}
-                    {b.name}
-                  </span>
-                ))}
-              </div>
+            {condition.activity_type && (
+              <span className="text-[11px] capitalize px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+                {condition.activity_type}
+              </span>
             )}
-            {mission.reward_points ? (
-              <p className="text-sm font-black text-jam-ink">JAM 포인트 {mission.reward_points}P</p>
-            ) : null}
           </div>
+        </Card>
+
+        {/* 진행 상황 */}
+        {(participating || isCompleted) && goal.target > 0 && (
+          isAchievementType ? (
+            <Card className="mb-[var(--spacing-16)]">
+              <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.myProgressTitle}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{goal.label}</p>
+                {achieved ? (
+                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-[var(--spacing-16)] py-1.5 rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">{d.missions.achieved}</span>
+                ) : (
+                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/40 px-[var(--spacing-16)] py-1.5 rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">{d.missions.notAchieved}</span>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <Card className="mb-[var(--spacing-16)]">
+              <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.myProgressTitle}</p>
+              <div className="flex items-end justify-between mb-2">
+                <p className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">
+                  {isCompleted ? goal.target : progressValue.toFixed(mission.mission_type === 'distance' ? 1 : 0)}
+                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50 ml-1">{goal.unit}</span>
+                </p>
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">/ {goal.target}{goal.unit}</p>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+                <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${isCompleted ? 100 : progressPct}%` }} />
+              </div>
+              <p className="text-[11px] text-text-inverse/50 mt-1 text-right">
+                {isCompleted ? d.missions.progressDone : t(d.missions.progressPct, { pct: Math.round(progressPct) })}
+              </p>
+            </Card>
+          )
         )}
-        {mission.max_completions && (
-          <p className="text-xs text-[#FC4C02] font-black mt-1">선착순 {mission.max_completions.toLocaleString()}명</p>
+
+        {/* 보상 */}
+        <Card className="mb-[var(--spacing-24)]">
+          <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.rewardSectionTitle}</p>
+          {rewardBadges.length === 0 && !mission.reward_points ? (
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/40">{d.missions.rewardNone}</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {rewardBadges.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {rewardBadges.map((b) => (
+                    <span key={b.id} className="flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+                      {b.image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={b.image_url} alt="" className="w-4 h-4 object-contain" />
+                      )}
+                      {b.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {mission.reward_points ? (
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{t(d.missions.rewardPointsLine, { points: mission.reward_points })}</p>
+              ) : null}
+            </div>
+          )}
+          {mission.max_completions && (
+            <p className="text-[11px] text-text-inverse/50 mt-1">{t(d.missions.limitedSlots, { count: mission.max_completions.toLocaleString() })}</p>
+          )}
+        </Card>
+
+        {/* 미션 상황 — 참가자만 노출 */}
+        {(participating || isCompleted) && (
+          <Link href={`/missions/${mission.id}/status`} className="mb-[var(--spacing-16)]">
+            <Card className="text-center active:scale-[0.98] transition-transform duration-100">
+              {d.missions.statusViewButton}
+            </Card>
+          </Link>
+        )}
+
+        {/* 참가 버튼 — 참가 취소는 불가(Phase13). 네이티브 confirm() 대신 인앱 확인 UI 사용
+            (모바일/PWA에서 연속 confirm() 호출이 브라우저에 의해 조용히 차단되는 문제 회피) */}
+        {isActive && !isCompleted && !participating && (
+          confirming ? (
+            <Card>
+              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center mb-[var(--spacing-16)]">{d.missions.joinConfirmBody}</p>
+              <div className="flex gap-2">
+                <Button fullWidth variant="outline" surface="sub" onClick={() => setConfirming(false)} disabled={loading}>
+                  {d.drops.cancel}
+                </Button>
+                <Button fullWidth surface="sub" loading={loading} onClick={handleJoin}>
+                  {d.missions.joinConfirmButton}
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <>
+              <Button fullWidth onClick={() => setConfirming(true)}>
+                {d.missions.joinButton}
+              </Button>
+              <p className="text-[11px] text-text/50 text-center mt-2">{d.missions.joinNote}</p>
+            </>
+          )
+        )}
+
+        {isCompleted && (
+          <Card className="text-center">
+            {d.missions.completedBanner}
+          </Card>
         )}
       </div>
-
-      {/* 미션 상황 — 참가자만 노출 */}
-      {(participating || isCompleted) && (
-        <Link
-          href={`/missions/${mission.id}/status`}
-          className="w-full py-3 mb-4 rounded-2xl bg-white border-[3px] border-jam-ink text-jam-ink font-black text-sm text-center shadow-[3px_3px_0_0_#161616] active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-        >
-          📊 미션 상황 보기
-        </Link>
-      )}
-
-      {/* 참가 버튼 — 참가 취소는 불가(Phase13). 네이티브 confirm() 대신 인앱 확인 UI 사용
-          (모바일/PWA에서 연속 confirm() 호출이 브라우저에 의해 조용히 차단되는 문제 회피) */}
-      {isActive && !isCompleted && !participating && (
-        confirming ? (
-          <div className="rounded-2xl border-[3px] border-jam-ink bg-white p-4 shadow-[3px_3px_0_0_#161616]">
-            <p className="text-sm font-black text-jam-ink text-center mb-3">한번 참가하면 취소할 수 없어요. 참가할까요?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setConfirming(false)}
-                disabled={loading}
-                className="flex-1 py-3 rounded-xl bg-jam-ink/10 text-jam-ink font-black text-sm active:scale-95 transition-all disabled:opacity-30"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleJoin}
-                disabled={loading}
-                className="flex-1 py-3 rounded-xl bg-jam-ink text-white font-black text-sm active:scale-95 transition-all disabled:opacity-30"
-              >
-                {loading ? '처리 중...' : '참가 확정'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <button
-              onClick={() => setConfirming(true)}
-              className="w-full py-4 rounded-2xl bg-jam-ink text-white font-black text-base active:scale-95 transition-all shadow-[3px_3px_0_0_#161616]"
-            >
-              미션 참가하기
-            </button>
-            <p className="text-xs text-jam-ink/50 font-semibold text-center mt-2">참가 후에는 취소할 수 없어요.</p>
-          </>
-        )
-      )}
-
-      {isCompleted && (
-        <div className="w-full py-4 rounded-2xl bg-jam-lime border-[3px] border-jam-ink text-jam-ink font-black text-base text-center shadow-[3px_3px_0_0_#161616]">
-          🎉 달성 완료!
-        </div>
-      )}
     </div>
   )
 }

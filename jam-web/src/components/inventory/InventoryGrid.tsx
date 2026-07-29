@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import LocalDate from '@/components/LocalDate'
+import { MedalIcon } from '@/components/ui/icons'
+import { d } from '@/lib/i18n'
 
 // 인벤토리 그리드 카드에 필요한 정규화된 아이템 형태.
 // - /inventory/page.tsx: `InventoryItemRow & { badge }`를 이 형태로 매핑
@@ -27,11 +29,15 @@ interface InventoryGridProps {
   selectedItemId?: string | null
 }
 
-const rarityCardBg: Record<string, string> = {
-  common: 'bg-white',
-  rare: 'bg-jam-teal/30',
-  legendary: 'bg-jam-purple/20',
-  mythic: 'bg-jam-yellow/40',
+/**
+ * 희귀도 상태 팔레트 — Phase 2에서 `state_color_palette` 테이블로 이관 예정.
+ * [주의] 색상값/매핑을 재조정하지 마세요(유저가 학습한 색 언어 유지).
+ * 타일 배경은 항상 아이스 고정 — 코발트 배경 위 반투명 워시는 텍스트와 섞여 대비가 깨진다.
+ */
+const rarityAccent: Record<string, string> = {
+  rare: 'shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
+  legendary: 'shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
+  mythic: 'shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
 }
 
 function isExpiringSoon(expiresAt: string | null | undefined): boolean {
@@ -44,25 +50,17 @@ function CardInner({ item }: { item: InventoryGridItem }) {
   const expiring = isExpiringSoon(item.expiresAt)
   return (
     <>
-      <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-jam-cream">
+      <div className="w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
         {item.badgeImageUrl ? (
-          <Image
-            src={item.badgeImageUrl}
-            alt={item.badgeName}
-            width={80}
-            height={80}
-            className="object-contain w-full h-full p-1"
-          />
+          <Image src={item.badgeImageUrl} alt={item.badgeName} width={80} height={80} className="object-contain w-full h-full p-1" />
         ) : (
-          <span className="text-3xl">🏷️</span>
+          <MedalIcon className="w-8 h-8 text-text-inverse/40" />
         )}
       </div>
-      <p className="text-[11px] text-jam-ink text-center leading-tight line-clamp-2 font-bold w-full">
-        {item.badgeName}
-      </p>
+      <p className="text-[11px] text-center leading-tight line-clamp-2 w-full">{item.badgeName}</p>
       {expiring && item.expiresAt && (
-        <p className="text-[10px] text-red-600 font-bold">
-          <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix=" 만료" />
+        <p className="text-[10px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+          <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
         </p>
       )}
     </>
@@ -77,10 +75,10 @@ export default function InventoryGrid({
   selectedItemId = null,
 }: InventoryGridProps) {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
       {items.map((item) => {
-        const cardBg = rarityCardBg[item.badgeRarity] ?? 'bg-white'
-        const base = `flex flex-col items-center ${cardBg} border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] rounded-2xl p-3 gap-2 active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all`
+        const accent = rarityAccent[item.badgeRarity] ?? 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'
+        const base = `flex flex-col items-center bg-surface-inverse text-text-inverse ${accent} rounded-[var(--radius-cards)] p-[var(--spacing-8)] gap-2 active:scale-95 transition-transform duration-100`
 
         if (mode === 'navigate') {
           return (
@@ -96,7 +94,7 @@ export default function InventoryGrid({
             key={item.id}
             type="button"
             onClick={() => onSelect?.(item)}
-            className={`${base} text-left ${selected ? 'ring-4 ring-jam-lime' : ''}`}
+            className={`${base} text-left ${selected ? 'shadow-[inset_0_0_0_2px_var(--color-border-inverse)]' : ''}`}
           >
             <CardInner item={item} />
           </button>
@@ -106,9 +104,9 @@ export default function InventoryGrid({
       {Array.from({ length: emptySlots }).map((_, i) => (
         <div
           key={`empty-${i}`}
-          className="flex items-center justify-center border-2 border-dashed border-jam-ink/25 rounded-2xl aspect-square bg-white/20"
+          className="flex items-center justify-center rounded-[var(--radius-cards)] aspect-square shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30"
         >
-          <span className="text-jam-ink/25 text-xl font-black">+</span>
+          <span className="text-text text-xl">+</span>
         </div>
       ))}
     </div>
