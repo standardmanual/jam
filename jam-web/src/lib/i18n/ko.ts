@@ -142,7 +142,7 @@ export const ko = {
 
     // 최근 배지
     recentBadgesTitle: '최근 배지',
-    recentBadgesViewAll: '모두 보기',
+    recentBadgesViewAll: '더보기',
     recentBadgesEmptyTitle: '아직 획득한 배지가 없어요',
     recentBadgesEmptyBody: 'Strava 연동 후 활동하면 배지가 생겨요',
 
