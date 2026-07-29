@@ -8,7 +8,7 @@ import { d } from '@/lib/i18n'
 /**
  * SuperHi Plus 상단 네비게이션 (iOS HIG Navigation Bar 패턴)
  *
- * - 배경: --color-surface-inverse (아이스) / 텍스트: --color-text-inverse (코발트)
+ * - 배경: 페이지와 동일한 --color-surface (별도 표면 분리 없음) / 텍스트: --color-text
  * - elevation: 하단 1px inset border만 (드롭섀도 금지)
  * - 뒤로가기: backHref가 있으면 <Link>, 없으면 onBack ?? router.back()
  * - 터치 영역: chevron / rightSlot 모두 최소 44×44pt
@@ -53,7 +53,7 @@ export default function TopNav({ title, onBack, backHref, rightSlot, showBack = 
 
   return (
     <header
-      className="sticky top-0 z-30 bg-surface-inverse text-text-inverse shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]"
+      className="sticky top-0 z-30 bg-surface text-text"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <div className="flex items-center gap-2 px-4 h-14">
@@ -72,7 +72,7 @@ export default function TopNav({ title, onBack, backHref, rightSlot, showBack = 
           </button>
         )}
 
-        <h1 className="flex-1 min-w-0 truncate text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-normal">
+        <h1 className="flex-1 min-w-0 truncate text-[length:var(--text-body)] leading-[var(--leading-body)] font-normal">
           {title}
         </h1>
 
