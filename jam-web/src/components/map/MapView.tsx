@@ -143,5 +143,5 @@ export default function MapView({ userLat, userLng, pois, onPoiSelect, selectedP
     })
   }, [pois, selectedPoiId, onPoiSelect])
 
-  return <div ref={mapRef} className="w-full h-full rounded-2xl overflow-hidden" />
+  return <div ref={mapRef} className="w-full h-full" />
 }

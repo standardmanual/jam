@@ -229,7 +229,10 @@ export default function DropsClient() {
 
   if (locError) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-[var(--spacing-16)] px-[var(--spacing-24)] text-center bg-surface text-text">
+      <div
+        className="fixed inset-0 flex flex-col items-center justify-center gap-[var(--spacing-16)] px-[var(--spacing-24)] text-center bg-surface text-text"
+        style={{ maxWidth: 430, margin: '0 auto' }}
+      >
         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/70">{locError}</p>
         <Button variant="outline" onClick={() => window.location.reload()}>
           {d.drops.retry}
@@ -240,7 +243,10 @@ export default function DropsClient() {
 
   if (userLat === null || userLng === null) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-[var(--spacing-16)] bg-surface text-text">
+      <div
+        className="fixed inset-0 flex flex-col items-center justify-center gap-[var(--spacing-16)] bg-surface text-text"
+        style={{ maxWidth: 430, margin: '0 auto' }}
+      >
         <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.drops.locating}</p>
       </div>
@@ -267,8 +273,8 @@ export default function DropsClient() {
   const isPickupState = (poiDrops?.length ?? 0) > 0
 
   return (
-    <div className="relative h-full bg-surface overflow-hidden">
-      {/* 지도 — 풀스크린 */}
+    <div className="fixed inset-0 bg-surface overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
+      {/* 지도 — 풀스크린(노치·홈 인디케이터 영역까지 꽉 채움) */}
       <div className="absolute inset-0">
         <MapView
           userLat={userLat}
