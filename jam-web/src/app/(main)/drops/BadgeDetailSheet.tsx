@@ -2,6 +2,7 @@
 
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
+import BottomSheet from '@/components/ui/BottomSheet'
 import RarityBadge from '@/components/ui/Badge'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRarity } from '@/types/database'
@@ -37,19 +38,19 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
     : 'common')
 
   return (
-    <div className="absolute inset-0 z-30 bg-surface text-text overflow-y-auto overscroll-contain">
-      <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)] min-h-full">
+    <BottomSheet open onClose={onCancel} detent="full" showCloseButton={false}>
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)] min-h-full">
         {/* 닫기 */}
         <button
           onClick={onCancel}
-          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-text/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
+          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
         >
           &larr; {d.drops.back}
         </button>
 
         {/* 배지 이미지 (대형) */}
         <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-          <div className="w-44 h-44 rounded-[var(--radius-cards)] bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center overflow-hidden">
+          <div className="w-44 h-44 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center overflow-hidden">
             {drop.badge_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={drop.badge_image_url} alt={drop.badge_name} className="w-full h-full object-contain p-[var(--spacing-16)]" />
@@ -58,7 +59,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
             )}
           </div>
           <div className="text-center">
-            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2">{drop.badge_name}</h1>
+            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2 text-text-inverse">{drop.badge_name}</h1>
             <RarityBadge rarity={rarity} />
           </div>
         </div>
@@ -76,14 +77,14 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
 
         {/* 액션 버튼 */}
         <div className="mt-auto flex flex-col gap-[var(--spacing-16)]">
-          <Button fullWidth loading={pickingUp} onClick={onPickup}>
+          <Button fullWidth surface="sub" loading={pickingUp} onClick={onPickup}>
             {d.drops.pickupButton}
           </Button>
-          <Button fullWidth variant="outline" onClick={onCancel} disabled={pickingUp}>
+          <Button fullWidth variant="outline" surface="sub" onClick={onCancel} disabled={pickingUp}>
             {d.drops.cancel}
           </Button>
         </div>
       </div>
-    </div>
+    </BottomSheet>
   )
 }
