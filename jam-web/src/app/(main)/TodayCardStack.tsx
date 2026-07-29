@@ -1,40 +1,45 @@
 import Link from 'next/link'
+import type { ComponentType, SVGProps } from 'react'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
+import Card from '@/components/ui/Card'
+import { d } from '@/lib/i18n'
+import {
+  MedalIcon,
+  HourglassIcon,
+  TargetIcon,
+  BookIcon,
+  PinIcon,
+  PackageIcon,
+  NewspaperIcon,
+} from '@/components/ui/icons'
 
 const templateLabel: Record<TodayCardTemplateType, string> = {
-  badge_spotlight: '배지 소개',
-  progress_nudge: '진행 알림',
-  mission_spotlight: '미션',
-  itembook_milestone: '아이템북',
-  location_trend: '지역 트렌드',
-  drop_alert: '드랍',
-  editorial_article: '기사',
+  badge_spotlight: d.todayCard.badgeSpotlight,
+  progress_nudge: d.todayCard.progressNudge,
+  mission_spotlight: d.todayCard.missionSpotlight,
+  itembook_milestone: d.todayCard.itembookMilestone,
+  location_trend: d.todayCard.locationTrend,
+  drop_alert: d.todayCard.dropAlert,
+  editorial_article: d.todayCard.editorialArticle,
 }
 
-const templateChipBg: Record<TodayCardTemplateType, string> = {
-  badge_spotlight: 'bg-jam-teal/40',
-  progress_nudge: 'bg-jam-yellow/50',
-  mission_spotlight: 'bg-jam-orange/50',
-  itembook_milestone: 'bg-jam-purple/30',
-  location_trend: 'bg-jam-lime',
-  drop_alert: 'bg-jam-cream',
-  editorial_article: 'bg-jam-ink text-jam-cream',
-}
-
-const templateIcon: Record<TodayCardTemplateType, string> = {
-  badge_spotlight: '🏅',
-  progress_nudge: '⏳',
-  mission_spotlight: '🎯',
-  itembook_milestone: '📖',
-  location_trend: '📍',
-  drop_alert: '📦',
-  editorial_article: '📰',
+/** 콘텐츠 유형 식별은 색상이 아닌 아이콘 모양으로만 구분한다(바이너리 컬러 원칙 — 제3의 컬러 도입 금지) */
+const TemplateIcon: Record<TodayCardTemplateType, ComponentType<SVGProps<SVGSVGElement>>> = {
+  badge_spotlight: MedalIcon,
+  progress_nudge: HourglassIcon,
+  mission_spotlight: TargetIcon,
+  itembook_milestone: BookIcon,
+  location_trend: PinIcon,
+  drop_alert: PackageIcon,
+  editorial_article: NewspaperIcon,
 }
 
 function TemplateChip({ card }: { card: TodayCardWithHref }) {
+  const Icon = TemplateIcon[card.template_type]
   return (
-    <span className={`text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded-full border-2 border-jam-ink ${templateChipBg[card.template_type]}`}>
+    <span className="inline-flex items-center gap-1 text-[10px] leading-none uppercase px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+      <Icon className="w-3 h-3" />
       {templateLabel[card.template_type]}
     </span>
   )
@@ -44,92 +49,107 @@ function TemplateChip({ card }: { card: TodayCardWithHref }) {
 function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
   const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
   return (
-    <article className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] overflow-hidden active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_#161616] transition-transform">
+    <Card className="p-0 overflow-hidden active:scale-[0.98] transition-transform duration-100">
       {cover && (
-        <div className="w-full aspect-[16/9] bg-jam-ink/5 overflow-hidden">
+        <div className="w-full aspect-[16/9] overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={cover} alt={card.title} className="w-full h-full object-cover" />
         </div>
       )}
-      <div className="p-4">
+      <div className="p-[var(--spacing-16)]">
         <div className="flex items-center gap-2 mb-2">
           <TemplateChip card={card} />
           {card.template_type === 'location_trend' && card.region_label && (
-            <span className="text-[10px] font-black text-jam-ink/60">📍 {card.region_label}</span>
+            <span className="inline-flex items-center gap-1 text-[10px] text-text-inverse/60">
+              <PinIcon className="w-3 h-3" />{card.region_label}
+            </span>
           )}
         </div>
-        <h3 className="font-black text-lg text-jam-ink leading-tight">{card.title}</h3>
-        {card.subtitle && <p className="text-sm text-jam-ink/60 font-semibold mt-1 leading-snug">{card.subtitle}</p>}
-        <p className="text-xs font-black text-jam-ink/40 mt-3">
-          {card.template_type === 'editorial_article' ? '기사 읽기 →' : '자세히 보기 →'}
+        <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
+        {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
+        <p className="text-[11px] text-text-inverse/40 mt-3">
+          {card.template_type === 'editorial_article' ? d.today.cardReadArticle : d.today.cardReadMore} &rarr;
         </p>
       </div>
-    </article>
+    </Card>
   )
 }
 
 /** 배지목록형 — 배지 여러 개를 가로 갤러리로 나열 */
 function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
   return (
-    <article className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4 active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_#161616] transition-transform">
+    <Card className="active:scale-[0.98] transition-transform duration-100">
       <div className="flex items-center gap-2 mb-2">
         <TemplateChip card={card} />
-        {card.region_label && <span className="text-[10px] font-black text-jam-ink/60">📍 {card.region_label}</span>}
+        {card.region_label && (
+          <span className="inline-flex items-center gap-1 text-[10px] text-text-inverse/60">
+            <PinIcon className="w-3 h-3" />{card.region_label}
+          </span>
+        )}
       </div>
-      <h3 className="font-black text-lg text-jam-ink leading-tight">{card.title}</h3>
-      {card.subtitle && <p className="text-sm text-jam-ink/60 font-semibold mt-1 leading-snug">{card.subtitle}</p>}
+      <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
+      {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
 
       {card.resolved_badges.length > 0 && (
-        <div className="flex gap-3 mt-3 overflow-x-auto pb-1">
+        <div className="flex gap-[var(--spacing-16)] mt-[var(--spacing-16)] overflow-x-auto pb-1">
           {card.resolved_badges.map((b) => (
             <div key={b.id} className="flex flex-col items-center gap-1 shrink-0 w-16">
-              <div className="w-16 h-16 rounded-xl bg-jam-ink/5 border-2 border-jam-ink overflow-hidden flex items-center justify-center">
+              <div className="w-16 h-16 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden flex items-center justify-center">
                 {b.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={b.image_url} alt={b.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-xl">🏅</span>
+                  <MedalIcon className="w-6 h-6 text-text-inverse/40" />
                 )}
               </div>
-              <span className="text-[10px] font-bold text-jam-ink/70 text-center leading-tight line-clamp-2">{b.name}</span>
+              <span className="text-[10px] text-text-inverse/70 text-center leading-tight line-clamp-2">{b.name}</span>
             </div>
           ))}
         </div>
       )}
-      <p className="text-xs font-black text-jam-ink/40 mt-3">전체 보기 →</p>
-    </article>
+      <p className="text-[11px] text-text-inverse/40 mt-3">{d.today.cardViewAll} &rarr;</p>
+    </Card>
   )
 }
 
 /** 바로가기형 — 이미지 없이 짧은 CTA 한 줄 */
 function ShortcutCard({ card }: { card: TodayCardWithHref }) {
+  const Icon = TemplateIcon[card.template_type]
   return (
-    <article className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-3.5 flex items-center gap-3 active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_#161616] transition-transform">
-      <div className="w-11 h-11 rounded-xl bg-jam-ink/5 border-2 border-jam-ink flex items-center justify-center text-xl shrink-0">
-        {templateIcon[card.template_type]}
+    <Card className="p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
+      <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">
+        <Icon className="w-5 h-5 text-text-inverse/60" />
       </div>
       <div className="flex-1 min-w-0">
-        <h3 className="font-black text-sm text-jam-ink truncate">{card.title}</h3>
-        {card.subtitle && <p className="text-xs text-jam-ink/60 font-semibold truncate">{card.subtitle}</p>}
+        <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{card.title}</h3>
+        {card.subtitle && <p className="text-[11px] text-text-inverse/60 truncate">{card.subtitle}</p>}
       </div>
-      <span className="text-jam-ink/30 text-lg shrink-0">›</span>
-    </article>
+      <span className="text-text-inverse/30 shrink-0" aria-hidden="true">&rsaquo;</span>
+    </Card>
   )
 }
 
-/** 배너형 — 4:5 비율 포스터 배너, 이미지 위 텍스트 오버레이(하단 그라디언트) */
+/** 배너형 — 4:5 비율 포스터 배너, 이미지 위 텍스트 오버레이(하단 그라디언트). 커버 이미지가 없으면 일반 카드로 대체(스크림은 사진 전제이므로 이미지 없이 쓰면 배경이 무의미하게 어두워짐). */
 function BannerCard({ card }: { card: TodayCardWithHref }) {
   const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
+  const Icon = TemplateIcon[card.template_type]
+
+  if (!cover) {
+    return <OtherCard card={card} />
+  }
+
   return (
-    <article className="relative rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] overflow-hidden aspect-[4/5] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_#161616] transition-transform bg-jam-ink">
-      {cover && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={cover} alt={card.title} className="absolute inset-0 w-full h-full object-cover" />
-      )}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pt-10 pb-4">
-        <span className="text-[10px] font-black tracking-wide uppercase text-jam-lime mb-1 inline-block">{templateLabel[card.template_type]}</span>
-        <h3 className="font-black text-lg text-white leading-tight">{card.title}</h3>
-        {card.subtitle && <p className="text-sm text-white/80 font-semibold mt-1 leading-snug">{card.subtitle}</p>}
+    <article className="relative rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={cover} alt={card.title} className="absolute inset-0 w-full h-full object-cover" />
+      {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-16)] pt-10 pb-[var(--spacing-16)]">
+        <span className="inline-flex items-center gap-1 text-[10px] uppercase text-white/80 mb-1">
+          <Icon className="w-3 h-3" />
+          {templateLabel[card.template_type]}
+        </span>
+        <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-white">{card.title}</h3>
+        {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-white/80 mt-1">{card.subtitle}</p>}
       </div>
     </article>
   )
@@ -138,12 +158,12 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
 /** 기타 — 위 4종에 안 맞는 콘텐츠를 위한 기본형(이미지 없는 담백한 카드) */
 function OtherCard({ card }: { card: TodayCardWithHref }) {
   return (
-    <article className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4 active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0_0_#161616] transition-transform">
+    <Card className="active:scale-[0.98] transition-transform duration-100">
       <div className="mb-2"><TemplateChip card={card} /></div>
-      <h3 className="font-black text-base text-jam-ink leading-tight">{card.title}</h3>
-      {card.subtitle && <p className="text-sm text-jam-ink/60 font-semibold mt-1 leading-snug">{card.subtitle}</p>}
-      <p className="text-xs font-black text-jam-ink/40 mt-3">자세히 보기 →</p>
-    </article>
+      <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{card.title}</h3>
+      {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
+      <p className="text-[11px] text-text-inverse/40 mt-3">{d.today.cardReadMore} &rarr;</p>
+    </Card>
   )
 }
 
@@ -157,12 +177,12 @@ export default function TodayCardStack({ cards }: { cards: TodayCardWithHref[] }
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-black text-lg text-jam-ink">투데이</h2>
-        <span className="text-xs font-bold text-jam-ink/40">오늘의 소식</span>
+      <div className="flex items-center justify-between mb-[var(--spacing-16)]">
+        <h2 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{d.today.cardStackTitle}</h2>
+        <span className="text-[11px] text-text-inverse/40">{d.today.cardStackSubtitle}</span>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-[var(--spacing-16)]">
         {cards.map((card) => (
           <Link key={card.id} href={card.resolved_href} className="block">
             {card.layout_type === 'badge_gallery' ? <BadgeGalleryCard card={card} />

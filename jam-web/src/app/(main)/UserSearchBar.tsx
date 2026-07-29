@@ -2,6 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import Button from '@/components/ui/Button'
+import { SearchIcon } from '@/components/ui/icons'
+import { d } from '@/lib/i18n'
 
 interface UserSearchBarProps {
   /** 검색 결과 페이지 등에서 초기 검색어를 채워둘 때 사용 */
@@ -22,22 +25,20 @@ export default function UserSearchBar({ defaultValue = '' }: UserSearchBarProps)
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-3 flex items-center gap-2"
+      className="flex items-center gap-2 p-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)]"
     >
+      <SearchIcon className="w-5 h-5 shrink-0 ml-2 text-text-inverse/40" />
       <input
         type="text"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="아이디 또는 이메일로 유저 검색"
-        aria-label="유저 검색"
-        className="flex-1 min-w-0 bg-transparent px-2 py-1.5 text-sm font-semibold text-jam-ink placeholder:text-jam-ink/40 focus:outline-none"
+        placeholder={d.today.searchPlaceholder}
+        aria-label={d.today.searchAriaLabel}
+        className="flex-1 min-w-0 bg-transparent px-1 py-2 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse placeholder:text-text-inverse/40 focus:outline-none"
       />
-      <button
-        type="submit"
-        className="shrink-0 bg-[#AEEA00] text-jam-ink font-black text-sm px-4 py-2 rounded-xl border-[3px] border-jam-ink"
-      >
-        검색
-      </button>
+      <Button type="submit" variant="primary" surface="sub" size="sm" className="shrink-0">
+        {d.today.searchButton}
+      </Button>
     </form>
   )
 }

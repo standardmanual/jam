@@ -7,7 +7,7 @@
  * - 동적 값은 `{변수}` 보간 패턴을 사용한다. 예) "{count}P" → t(ko.profile.pointBalance, { count })
  * - Phase 1 범위는 ko 로케일만 채운다 (en 등 실제 번역은 별도 작업).
  *
- * namespace 규칙: common / nav / profile / tabs / feed
+ * namespace 규칙: common / nav / profile / tabs / feed / today / todayCard
  */
 export const ko = {
   /** 여러 화면에서 공통으로 쓰는 짧은 문구 */
@@ -17,6 +17,7 @@ export const ko = {
     loadMore: '더 불러오기',
     back: '뒤로',
     countItems: '{count}개',
+    networkError: '네트워크 오류가 발생했습니다',
   },
 
   /** 바텀 탭바(글로벌 네비게이션) 라벨 */
@@ -108,6 +109,66 @@ export const ko = {
     resultValue: '{current} / 목표 {target}',
     pointsValue: '{points}P',
     pointsGained: '+{points}P',
+  },
+
+  /** 투데이(홈) 화면 */
+  today: {
+    greeting: '안녕하세요',
+    wordmark: 'JAM!',
+
+    // Strava 상태 카드
+    stravaLabel: 'Strava',
+    stravaNotConnectedTitle: 'Strava 미연동',
+    stravaNotConnectedBody: '연동하면 활동 기반 배지를 자동 획득해요',
+    stravaConnectButton: '지금 연동하기',
+    syncButton: '동기화',
+    syncDone: '동기화 완료',
+    syncFailed: '동기화 실패. 잠시 후 다시 시도해주세요',
+    syncBadgeDone: '배지 {count}개 획득',
+    syncMissionDone: '미션 {count}개 달성',
+    syncItembookDone: '아이템북 {count}개 완성',
+
+    // 유저 검색
+    searchPlaceholder: '아이디 또는 이메일로 유저 검색',
+    searchAriaLabel: '유저 검색',
+    searchButton: '검색',
+
+    // 투데이 카드 스택
+    cardStackTitle: '투데이',
+    cardStackSubtitle: '오늘의 소식',
+    cardReadArticle: '기사 읽기',
+    cardReadMore: '자세히 보기',
+    cardViewAll: '전체 보기',
+
+    // 최근 배지
+    recentBadgesTitle: '최근 배지',
+    recentBadgesViewAll: '모두 보기',
+    recentBadgesEmptyTitle: '아직 획득한 배지가 없어요',
+    recentBadgesEmptyBody: 'Strava 연동 후 활동하면 배지가 생겨요',
+
+    // 바로가기
+    shortcutsTitle: '바로가기',
+    shortcutMissionTitle: '미션',
+    shortcutMissionBody: '달성하고 보상 받기',
+    shortcutInventoryTitle: '인벤토리',
+    shortcutInventoryBody: '아이템 관리',
+    shortcutDropsTitle: '드랍',
+    shortcutDropsBody: '장소에서 드랍·픽업',
+    shortcutCombineTitle: '조합',
+    shortcutCombineBody: '아이템 합성하기',
+  },
+
+  /** 투데이 카드 스택 콘텐츠 유형 (template_type) 라벨 — 색상 구분 없이 아이콘+라벨로만 식별 */
+  todayCard: {
+    badgeSpotlight: '배지 소개',
+    progressNudge: '진행 알림',
+    missionSpotlight: '미션',
+    itembookMilestone: '아이템북',
+    locationTrend: '지역 트렌드',
+    dropAlert: '드랍',
+    editorialArticle: '기사',
+    backToToday: '투데이로',
+    noBody: '본문이 없습니다',
   },
 } as const
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { CheckIcon, CloseIcon, InfoIcon } from './icons'
 
 type ToastType = 'success' | 'error' | 'info'
 
@@ -46,30 +47,27 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const iconMap: Record<ToastType, string> = {
-    success: '✓',
-    error: '✕',
-    info: 'ℹ',
-  }
-
-  const colorMap: Record<ToastType, string> = {
-    success: 'text-jam-lime',
-    error: 'text-red-400',
-    info: 'text-jam-teal',
+  const iconMap: Record<ToastType, React.ReactNode> = {
+    success: <CheckIcon className="w-4 h-4" />,
+    error: <CloseIcon className="w-4 h-4" />,
+    info: <InfoIcon className="w-4 h-4" />,
   }
 
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
+      <div
+        className="fixed left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}
+      >
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-jam-ink border-[3px] border-jam-ink text-sm font-bold shadow-[3px_3px_0_0_rgba(0,0,0,0.3)] pointer-events-auto"
+            className="flex items-center gap-2 px-4 py-3 rounded-[var(--radius-buttons)] bg-surface-inverse text-text-inverse text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] pointer-events-auto"
             onClick={() => dismiss(t.id)}
           >
-            <span className={colorMap[t.type]}>{iconMap[t.type]}</span>
-            <span className="text-white">{t.message}</span>
+            <span className="shrink-0 text-text-inverse/60">{iconMap[t.type]}</span>
+            <span>{t.message}</span>
           </div>
         ))}
       </div>

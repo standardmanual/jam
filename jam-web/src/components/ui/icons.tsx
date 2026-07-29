@@ -167,3 +167,72 @@ export function CloseIcon(props: IconProps) {
     </Svg>
   )
 }
+
+/** 진행 알림(progress_nudge) */
+export function HourglassIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 3.5h12M6 20.5h12" />
+      <path d="M7 3.5v3.2a5 5 0 002.2 4.15L12 12l2.8 1.15A5 5 0 0117 17.3v3.2M17 3.5v3.2a5 5 0 01-2.2 4.15L12 12l-2.8 1.15A5 5 0 007 17.3v3.2" />
+    </Svg>
+  )
+}
+
+/** 지역 트렌드(location_trend) / 드랍 위치 */
+export function PinIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 21.5s-6.5-5.79-6.5-11a6.5 6.5 0 1113 0c0 5.21-6.5 11-6.5 11z" />
+      <path d="M12 13a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+    </Svg>
+  )
+}
+
+/** 조합(아이템 합성) */
+export function FlaskIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9.5 3.5h5M10 3.5v5.8L5.8 16.9a2 2 0 001.75 3h8.9a2 2 0 001.75-3L14 9.3V3.5" />
+      <path d="M7.8 15h8.4" />
+    </Svg>
+  )
+}
+
+/** 기사(editorial_article) */
+export function NewspaperIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 5.5h12a1.5 1.5 0 011.5 1.5v11a2 2 0 002 2H6a2 2 0 01-2-2v-12.5z" />
+      <path d="M17.5 20V8.5a1.5 1.5 0 00-1.5-1.5" />
+      <path d="M7 9.5h6M7 12.5h6M7 15.5h4" />
+    </Svg>
+  )
+}
+
+/** 검색 */
+export function SearchIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M11 18a7 7 0 100-14 7 7 0 000 14zM21 21l-4.3-4.3" />
+    </Svg>
+  )
+}
+
+/** 성공(체크) — 토스트 등 상태 표시 */
+export function CheckIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 12.5l4.5 4.5L19 7" />
+    </Svg>
+  )
+}
+
+/** 정보(i) — 토스트 info 상태 */
+export function InfoIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path d="M12 11v5.5M12 8v.01" />
+    </Svg>
+  )
+}

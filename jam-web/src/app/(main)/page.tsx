@@ -3,22 +3,18 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
+import Card from '@/components/ui/Card'
 import SyncButton from './SyncButton'
 import LocalDate from '@/components/LocalDate'
 import UserSearchBar from './UserSearchBar'
 import TodayCardStack from './TodayCardStack'
 import { getTodayCards } from '@/lib/today/cards'
+import { d } from '@/lib/i18n'
+import { ActivityIcon, MedalIcon, TargetIcon, PackageIcon, PinIcon, FlaskIcon } from '@/components/ui/icons'
 
 interface BadgeWithEarned {
   badge: BadgeRow
   earned: UserActivityBadgeRow
-}
-
-const rarityCardBg: Record<string, string> = {
-  common: 'bg-white',
-  rare: 'bg-jam-teal/30',
-  legendary: 'bg-jam-purple/20',
-  mythic: 'bg-jam-yellow/40',
 }
 
 export default async function HomePage() {
@@ -54,45 +50,45 @@ export default async function HomePage() {
   const todayCards = await getTodayCards(userId, userProfile?.created_at)
 
   return (
-    <div className="min-h-full bg-jam-lime px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 flex flex-col gap-6">
+    <div className="min-h-full bg-surface text-text px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
       {/* 헤더 */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-jam-ink font-black text-2xl tracking-tighter">JAM!</span>
+        <div className="flex items-center justify-between mb-[var(--spacing-16)]">
+          <span className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.wordmark}</span>
         </div>
-        <p className="text-jam-ink/60 text-sm font-bold">안녕하세요</p>
-        <h1 className="text-4xl font-black leading-tight mt-0.5 text-jam-ink">
+        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.today.greeting}</p>
+        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] mt-0.5">
           {displayName}
         </h1>
       </div>
 
       {/* Strava 상태 */}
       {stravaConnection ? (
-        <div className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4">
+        <Card>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FC4C02] border border-jam-ink" />
-              <span className="text-sm font-black text-jam-ink">Strava</span>
+              <ActivityIcon className="w-5 h-5 text-text-inverse" />
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.today.stravaLabel}</span>
               {stravaConnection.last_synced_at && (
-                <span className="text-xs text-jam-ink/50 font-semibold">
+                <span className="text-[11px] text-text-inverse/50">
                   <LocalDate iso={stravaConnection.last_synced_at} options={{ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
                 </span>
               )}
             </div>
             <SyncButton />
           </div>
-        </div>
+        </Card>
       ) : (
-        <div className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-5">
-          <p className="font-black text-lg text-jam-ink mb-1">Strava 미연동</p>
-          <p className="text-jam-ink/60 text-sm mb-4 font-semibold">연동하면 활동 기반 배지를 자동 획득해요</p>
+        <Card>
+          <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-1">{d.today.stravaNotConnectedTitle}</p>
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mb-[var(--spacing-16)]">{d.today.stravaNotConnectedBody}</p>
           <Link
             href="/profile"
-            className="inline-block bg-jam-ink text-white font-black px-5 py-2.5 rounded-xl text-sm border-[3px] border-jam-ink"
+            className="inline-flex items-center justify-center min-h-11 rounded-[var(--radius-pill-buttons)] px-[var(--spacing-32)] py-[14px] bg-surface text-text text-[length:var(--text-body)] leading-[var(--leading-body)] active:scale-95 transition-transform duration-100"
           >
-            지금 연동하기 →
+            {d.today.stravaConnectButton} &rarr;
           </Link>
-        </div>
+        </Card>
       )}
 
       {/* 유저 검색 */}
@@ -103,70 +99,76 @@ export default async function HomePage() {
 
       {/* 최근 획득 배지 */}
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-black text-lg text-jam-ink">최근 배지</h2>
-          <Link href="/badges" className="text-sm font-bold text-jam-ink underline">
-            모두 보기 →
+        <div className="flex items-center justify-between mb-[var(--spacing-16)]">
+          <h2 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{d.today.recentBadgesTitle}</h2>
+          <Link href="/badges" className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] underline underline-offset-2">
+            {d.today.recentBadgesViewAll} &rarr;
           </Link>
         </div>
 
         {badgeWithEarned.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
             {badgeWithEarned.map(({ badge, earned }) => (
               <Link key={earned.id} href={`/badges/${badge.id}`}>
-                <div
-                  className={`rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4 aspect-square flex flex-col justify-between ${rarityCardBg[badge.rarity] ?? 'bg-white'}`}
-                >
+                <Card className="aspect-square flex flex-col justify-between active:scale-[0.98] transition-transform duration-100">
                   <div className="flex-1 flex items-center justify-center">
                     {badge.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={badge.image_url} alt={badge.name} className="w-20 h-20 object-contain" />
                     ) : (
-                      <span className="text-5xl">🏅</span>
+                      <MedalIcon className="w-14 h-14 text-text-inverse/40" />
                     )}
                   </div>
                   <div>
-                    <p className="font-black text-sm text-jam-ink leading-tight truncate">{badge.name}</p>
+                    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{badge.name}</p>
                     <div className="flex items-center justify-between mt-1">
                       <RarityBadge rarity={badge.rarity} />
-                      <p className="text-[10px] text-jam-ink/50 font-semibold"><LocalDate iso={earned.earned_at} options={{ month: 'long', day: 'numeric' }} /></p>
+                      <p className="text-[10px] text-text-inverse/50"><LocalDate iso={earned.earned_at} options={{ month: 'long', day: 'numeric' }} /></p>
                     </div>
                   </div>
-                </div>
+                </Card>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-8 text-center">
-            <p className="text-jam-ink/60 text-sm font-bold">아직 획득한 배지가 없어요</p>
-            <p className="text-jam-ink/40 text-xs mt-1 font-semibold">Strava 연동 후 활동하면 배지가 생겨요</p>
-          </div>
+          <Card className="text-center py-[var(--spacing-32)]">
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.today.recentBadgesEmptyTitle}</p>
+            <p className="text-[11px] text-text-inverse/40 mt-1">{d.today.recentBadgesEmptyBody}</p>
+          </Card>
         )}
       </section>
 
       {/* 바로가기 */}
       <section>
-        <h2 className="font-black text-lg text-jam-ink mb-3">바로가기</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Link href="/missions" className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4 flex flex-col gap-2">
-            <span className="text-2xl">🎯</span>
-            <p className="font-black text-jam-ink">미션</p>
-            <p className="text-xs text-jam-ink/50 font-semibold">달성하고 보상 받기</p>
+        <h2 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-[var(--spacing-16)]">{d.today.shortcutsTitle}</h2>
+        <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
+          <Link href="/missions">
+            <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
+              <TargetIcon className="w-6 h-6 text-text-inverse/60" />
+              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.shortcutMissionTitle}</p>
+              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutMissionBody}</p>
+            </Card>
           </Link>
-          <Link href="/inventory" className="bg-jam-ink rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_rgba(0,0,0,0.3)] p-4 flex flex-col gap-2">
-            <span className="text-2xl">📦</span>
-            <p className="font-black text-white">인벤토리</p>
-            <p className="text-xs text-white/50 font-semibold">아이템 관리</p>
+          <Link href="/inventory">
+            <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
+              <PackageIcon className="w-6 h-6 text-text-inverse/60" />
+              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.shortcutInventoryTitle}</p>
+              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutInventoryBody}</p>
+            </Card>
           </Link>
-          <Link href="/drops" className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4 flex flex-col gap-2">
-            <span className="text-2xl">📍</span>
-            <p className="font-black text-jam-ink">드랍</p>
-            <p className="text-xs text-jam-ink/50 font-semibold">장소에서 드랍·픽업</p>
+          <Link href="/drops">
+            <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
+              <PinIcon className="w-6 h-6 text-text-inverse/60" />
+              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.shortcutDropsTitle}</p>
+              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutDropsBody}</p>
+            </Card>
           </Link>
-          <Link href="/combine" className="bg-jam-orange rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4 flex flex-col gap-2">
-            <span className="text-2xl">⚗️</span>
-            <p className="font-black text-jam-ink">조합</p>
-            <p className="text-xs text-jam-ink/60 font-semibold">아이템 합성하기</p>
+          <Link href="/combine">
+            <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
+              <FlaskIcon className="w-6 h-6 text-text-inverse/60" />
+              <p className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.shortcutCombineTitle}</p>
+              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutCombineBody}</p>
+            </Card>
           </Link>
         </div>
       </section>
