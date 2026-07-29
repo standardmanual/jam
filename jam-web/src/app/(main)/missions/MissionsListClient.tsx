@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { ActivityType, MissionCondition, MissionRow, MissionType } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
+import Card from '@/components/ui/Card'
+import { d, t } from '@/lib/i18n'
 
 export interface MissionListItem extends MissionRow {
   joined: boolean
@@ -21,19 +23,19 @@ type SortKey = 'newest' | 'oldest' | 'ending_soon'
 const NEW_MISSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7일 이내 생성 = 신규
 
 const MISSION_TYPE_LABELS: Record<MissionType, string> = {
-  distance: '거리',
-  activity_count: '횟수',
-  poi_visit: '장소 방문',
-  item_collect: '아이템 수집',
+  distance: d.missions.missionTypeDistance,
+  activity_count: d.missions.missionTypeActivityCount,
+  poi_visit: d.missions.missionTypePoiVisit,
+  item_collect: d.missions.missionTypeItemCollect,
 }
 
 const ACTIVITY_TYPES: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 const MISSION_TYPES: MissionType[] = ['distance', 'activity_count', 'poi_visit', 'item_collect']
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'newest', label: '최신순' },
-  { key: 'oldest', label: '오래된순' },
-  { key: 'ending_soon', label: '종료임박순' },
+  { key: 'newest', label: d.missions.sortNewest },
+  { key: 'oldest', label: d.missions.sortOldest },
+  { key: 'ending_soon', label: d.missions.sortEndingSoon },
 ]
 
 function isNewMission(createdAt: string): boolean {
@@ -42,7 +44,7 @@ function isNewMission(createdAt: string): boolean {
 
 function timeLeft(endsAt: string): string {
   const diff = new Date(endsAt).getTime() - Date.now()
-  if (diff <= 0) return '종료'
+  if (diff <= 0) return d.missions.tagEnded
   const h = Math.floor(diff / 3_600_000)
   const m = Math.floor((diff % 3_600_000) / 60_000)
   if (h >= 24) return `${Math.floor(h / 24)}일 ${h % 24}시간`
@@ -53,16 +55,24 @@ function timeLeft(endsAt: string): string {
 function rewardSummary(m: MissionRow): string {
   const parts: string[] = []
   const badgeCount = m.reward_badge_ids?.length ?? 0
-  if (badgeCount > 0) parts.push(`배지 ${badgeCount}개`)
-  if (m.reward_points) parts.push(`${m.reward_points}P`)
-  return parts.length > 0 ? parts.join(' + ') : '없음'
+  if (badgeCount > 0) parts.push(t(d.missions.rewardBadgeCount, { count: badgeCount }))
+  if (m.reward_points) parts.push(t(d.missions.rewardPoints, { points: m.reward_points }))
+  return parts.length > 0 ? parts.join(' + ') : d.missions.rewardNone
 }
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'ongoing', label: '진행중' },
-  { key: 'joined', label: '참여중' },
-  { key: 'ended', label: '종료' },
+  { key: 'ongoing', label: d.missions.tabOngoing },
+  { key: 'joined', label: d.missions.tabJoined },
+  { key: 'ended', label: d.missions.tabEnded },
 ]
+
+function Tag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+      {children}
+    </span>
+  )
+}
 
 export default function MissionsListClient({ ongoing, ended }: Props) {
   const [tab, setTab] = useState<Tab>('ongoing')
@@ -99,10 +109,10 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
   }, [baseList, sortKey, activityFilter, typeFilter])
 
   const emptyText =
-    activeFilterCount > 0 ? '조건에 맞는 미션이 없어요' :
-    tab === 'ongoing' ? '진행 중인 미션이 없어요' :
-    tab === 'joined' ? '참여 중인 미션이 없어요' :
-    '종료된 참여 미션이 없어요'
+    activeFilterCount > 0 ? d.missions.emptyFiltered :
+    tab === 'ongoing' ? d.missions.emptyOngoing :
+    tab === 'joined' ? d.missions.emptyJoined :
+    d.missions.emptyEnded
 
   function resetFilters() {
     setActivityFilter('all')
@@ -112,31 +122,29 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
   return (
     <>
       {/* 탭 + 필터 버튼 */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="flex gap-1 flex-1 bg-jam-ink/5 p-1 rounded-2xl border-[3px] border-jam-ink">
-          {TABS.map((t) => (
+      <div className="flex items-center gap-2 mb-[var(--spacing-16)]">
+        <div className="flex gap-1 flex-1 p-1 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)]">
+          {TABS.map((tItem) => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-colors ${
-                tab === t.key ? 'bg-jam-ink text-white' : 'text-jam-ink/60'
+              key={tItem.key}
+              onClick={() => setTab(tItem.key)}
+              className={`flex-1 min-h-11 rounded-[var(--radius-buttons)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] transition-colors duration-100 ${
+                tab === tItem.key ? 'bg-surface-inverse text-text-inverse' : 'text-text/60'
               }`}
             >
-              {t.label}
+              {tItem.label}
             </button>
           ))}
         </div>
         <button
           onClick={() => setFilterOpen((v) => !v)}
-          className={`shrink-0 flex items-center gap-1 px-3 py-2.5 rounded-xl border-[3px] border-jam-ink text-xs font-black transition-colors ${
-            filterOpen || activeFilterCount > 0 ? 'bg-jam-ink text-white' : 'bg-white text-jam-ink'
+          className={`shrink-0 flex items-center gap-1.5 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[11px] transition-colors duration-100 ${
+            filterOpen || activeFilterCount > 0 ? 'bg-surface-inverse text-text-inverse' : 'text-text'
           }`}
         >
-          필터
+          {d.missions.filterButton}
           {activeFilterCount > 0 && (
-            <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center ${
-              filterOpen ? 'bg-white text-jam-ink' : 'bg-jam-ink text-white'
-            }`}>
+            <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center shadow-[inset_0_0_0_1px_currentColor]">
               {activeFilterCount}
             </span>
           )}
@@ -145,16 +153,16 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
 
       {/* 필터 패널 */}
       {filterOpen && (
-        <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] p-4 mb-4 flex flex-col gap-3">
+        <Card className="mb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-16)]">
           <div>
-            <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">정렬</p>
+            <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.sortLabel}</p>
             <div className="flex flex-wrap gap-1.5">
               {SORT_OPTIONS.map((s) => (
                 <button
                   key={s.key}
                   onClick={() => setSortKey(s.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black border-[2px] border-jam-ink ${
-                    sortKey === s.key ? 'bg-jam-ink text-white' : 'bg-white text-jam-ink'
+                  className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
+                    sortKey === s.key ? 'bg-surface text-text' : 'text-text-inverse'
                   }`}
                 >
                   {s.label}
@@ -163,118 +171,103 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">활동 종류</p>
+            <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.activityTypeLabel}</p>
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => setActivityFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black border-[2px] border-jam-ink ${
-                  activityFilter === 'all' ? 'bg-jam-ink text-white' : 'bg-white text-jam-ink'
+                className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
+                  activityFilter === 'all' ? 'bg-surface text-text' : 'text-text-inverse'
                 }`}
               >
-                전체
+                {d.missions.activityTypeAll}
               </button>
-              {ACTIVITY_TYPES.map((t) => (
+              {ACTIVITY_TYPES.map((tp) => (
                 <button
-                  key={t}
-                  onClick={() => setActivityFilter(t)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black border-[2px] border-jam-ink ${
-                    activityFilter === t ? 'bg-jam-ink text-white' : 'bg-white text-jam-ink'
+                  key={tp}
+                  onClick={() => setActivityFilter(tp)}
+                  className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
+                    activityFilter === tp ? 'bg-surface text-text' : 'text-text-inverse'
                   }`}
                 >
-                  {ACTIVITY_TYPE_LABELS[t] ?? t}
+                  {ACTIVITY_TYPE_LABELS[tp] ?? tp}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">미션 유형</p>
+            <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.missionTypeLabel}</p>
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => setTypeFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black border-[2px] border-jam-ink ${
-                  typeFilter === 'all' ? 'bg-jam-ink text-white' : 'bg-white text-jam-ink'
+                className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
+                  typeFilter === 'all' ? 'bg-surface text-text' : 'text-text-inverse'
                 }`}
               >
-                전체
+                {d.missions.missionTypeAll}
               </button>
-              {MISSION_TYPES.map((t) => (
+              {MISSION_TYPES.map((tp) => (
                 <button
-                  key={t}
-                  onClick={() => setTypeFilter(t)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black border-[2px] border-jam-ink ${
-                    typeFilter === t ? 'bg-jam-ink text-white' : 'bg-white text-jam-ink'
+                  key={tp}
+                  onClick={() => setTypeFilter(tp)}
+                  className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
+                    typeFilter === tp ? 'bg-surface text-text' : 'text-text-inverse'
                   }`}
                 >
-                  {MISSION_TYPE_LABELS[t]}
+                  {MISSION_TYPE_LABELS[tp]}
                 </button>
               ))}
             </div>
           </div>
           {activeFilterCount > 0 && (
-            <button onClick={resetFilters} className="self-start text-xs font-bold text-jam-ink/50 underline">
-              필터 초기화
+            <button onClick={resetFilters} className="self-start text-[11px] text-text-inverse/50 underline underline-offset-2">
+              {d.missions.filterReset}
             </button>
           )}
-        </div>
+        </Card>
       )}
 
       {list.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center py-16">
-          <div className="text-center">
-            <p className="text-5xl mb-4">🎯</p>
-            <p className="text-jam-ink/60 font-bold">{emptyText}</p>
-          </div>
+        <div className="flex-1 flex items-center justify-center py-[var(--spacing-40)]">
+          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{emptyText}</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-[var(--spacing-16)]">
           {list.map((m) => {
             const started = new Date(m.starts_at) <= new Date()
             return (
-              <Link
-                key={m.id}
-                href={`/missions/${m.id}`}
-                className={`rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4 block active:scale-[0.98] transition-transform ${
-                  m.done ? 'bg-jam-lime' : started ? 'bg-white' : 'bg-white/50'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className={`font-black text-sm ${started ? 'text-jam-ink' : 'text-jam-ink/60'}`}>{m.title}</h3>
-                      {isNewMission(m.created_at) && (
-                        <span className="text-[10px] font-black bg-[#FC4C02] text-white px-2 py-0.5 rounded-lg">NEW</span>
-                      )}
-                      {m.done && (
-                        <span className="text-[10px] font-black bg-jam-ink text-white px-2 py-0.5 rounded-lg">완료</span>
-                      )}
-                      {!m.done && m.joined && (
-                        <span className="text-[10px] font-black bg-jam-ink/10 text-jam-ink px-2 py-0.5 rounded-lg">참가중</span>
-                      )}
-                      {!started && (
-                        <span className="text-[10px] font-black bg-jam-ink/10 text-jam-ink/60 px-2 py-0.5 rounded-lg">예정</span>
+              <Link key={m.id} href={`/missions/${m.id}`}>
+                <Card className={`active:scale-[0.98] transition-transform duration-100 ${!started ? 'opacity-60' : ''}`}>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{m.title}</h3>
+                        {isNewMission(m.created_at) && <Tag>{d.missions.tagNew}</Tag>}
+                        {m.done && <Tag>{d.missions.tagDone}</Tag>}
+                        {!m.done && m.joined && <Tag>{d.missions.tagJoined}</Tag>}
+                        {!started && <Tag>{d.missions.tagUpcoming}</Tag>}
+                      </div>
+                      {m.description && (
+                        <p className="text-text-inverse/60 text-[11px]">{m.description}</p>
                       )}
                     </div>
-                    {m.description && (
-                      <p className="text-jam-ink/60 text-xs font-semibold">{m.description}</p>
-                    )}
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs text-jam-ink/50 font-semibold">
-                      {tab === 'ended' ? '종료됨' : `${timeLeft(m.ends_at)} 남음`}
-                    </p>
-                    {m.max_completions && (
-                      <p className="text-xs text-[#FC4C02] font-black mt-0.5">
-                        선착순 {m.max_completions.toLocaleString()}명
+                    <div className="text-right shrink-0">
+                      <p className="text-[11px] text-text-inverse/50">
+                        {tab === 'ended' ? d.missions.tagEnded : `${timeLeft(m.ends_at)} ${d.missions.timeLeftSuffix}`}
                       </p>
-                    )}
+                      {m.max_completions && (
+                        <p className="text-[11px] text-text-inverse/50 mt-0.5">
+                          {t(d.missions.limitedSlots, { count: m.max_completions.toLocaleString() })}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-jam-ink/50 font-bold">
-                    보상: {rewardSummary(m)}
-                  </span>
-                  <span className="text-[10px] font-black text-jam-ink/30 uppercase">{m.mission_type}</span>
-                </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-text-inverse/50">
+                      {d.missions.rewardLabel}: {rewardSummary(m)}
+                    </span>
+                    <span className="text-[10px] uppercase text-text-inverse/30">{m.mission_type}</span>
+                  </div>
+                </Card>
               </Link>
             )
           })}

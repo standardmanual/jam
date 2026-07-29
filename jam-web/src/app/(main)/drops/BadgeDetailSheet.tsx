@@ -1,8 +1,11 @@
 'use client'
 
 import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
 import RarityBadge from '@/components/ui/Badge'
+import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRarity } from '@/types/database'
+import { d, t } from '@/lib/i18n'
 
 // 픽업 대상 배지 (DropsClient의 DropItem과 동일 형태)
 export interface PickupDrop {
@@ -34,53 +37,50 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
     : 'common')
 
   return (
-    <div className="absolute inset-0 z-30 bg-jam-teal overflow-y-auto overscroll-contain">
-      <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 flex flex-col gap-6 min-h-full">
+    <div className="absolute inset-0 z-30 bg-surface text-text overflow-y-auto overscroll-contain">
+      <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)] min-h-full">
         {/* 닫기 */}
         <button
           onClick={onCancel}
-          className="self-start flex items-center gap-1 text-jam-ink/70 font-bold text-sm active:scale-95 transition-transform"
+          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-text/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          뒤로
+          &larr; {d.drops.back}
         </button>
 
         {/* 배지 이미지 (대형) */}
-        <div className="flex flex-col items-center gap-4 py-4">
-          <div className="w-44 h-44 rounded-[2rem] bg-white border-[3px] border-jam-ink shadow-[5px_5px_0_0_#161616] flex items-center justify-center overflow-hidden">
+        <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
+          <div className="w-44 h-44 rounded-[var(--radius-cards)] bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center overflow-hidden">
             {drop.badge_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={drop.badge_image_url} alt={drop.badge_name} className="w-full h-full object-contain p-4" />
+              <img src={drop.badge_image_url} alt={drop.badge_name} className="w-full h-full object-contain p-[var(--spacing-16)]" />
             ) : (
-              <span className="text-7xl">🏅</span>
+              <MedalIcon className="w-16 h-16 text-text-inverse/40" />
             )}
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-black mb-2 text-jam-ink">{drop.badge_name}</h1>
+            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2">{drop.badge_name}</h1>
             <RarityBadge rarity={rarity} />
           </div>
         </div>
 
         {/* 드랍 컨텍스트 */}
-        <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] px-4 py-3">
-          <h2 className="text-xs font-black text-jam-ink/40 uppercase tracking-wider mb-2">이 장소에 드랍됨</h2>
-          <p className="text-sm text-jam-ink/80 font-semibold">
-            {poiName}에 놓여 있는 아이템이에요.
+        <Card>
+          <h2 className="text-[10px] uppercase text-text-inverse/40 mb-2">{d.badges.connectedLocationTitle}</h2>
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
+            {poiName}
           </p>
-          <p className="text-xs text-jam-ink/50 mt-1 font-semibold">
-            {drop.is_ambient ? '이 근처에서 발견됨' : `${drop.dropper_name ?? '익명'}이(가) 드랍`}
+          <p className="text-[11px] text-text-inverse/50 mt-1">
+            {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
-        </div>
+        </Card>
 
         {/* 액션 버튼 */}
-        <div className="mt-auto flex flex-col gap-3">
-          <Button fullWidth size="lg" loading={pickingUp} onClick={onPickup}>
-            픽업하기
+        <div className="mt-auto flex flex-col gap-[var(--spacing-16)]">
+          <Button fullWidth loading={pickingUp} onClick={onPickup}>
+            {d.drops.pickupButton}
           </Button>
-          <Button fullWidth size="lg" variant="secondary" onClick={onCancel} disabled={pickingUp}>
-            취소
+          <Button fullWidth variant="outline" onClick={onCancel} disabled={pickingUp}>
+            {d.drops.cancel}
           </Button>
         </div>
       </div>

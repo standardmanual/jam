@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
+import { CloseIcon, MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import BadgeDetailSheet, { PickupDrop } from './BadgeDetailSheet'
 import type { PoiMarker } from '@/components/map/MapView'
+import { d, t } from '@/lib/i18n'
 
 const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false })
 
@@ -58,7 +60,7 @@ export default function DropsClient() {
   // 위치 획득
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocError('이 브라우저는 위치 기능을 지원하지 않아요.')
+      setLocError(d.drops.locationUnsupported)
       return
     }
     navigator.geolocation.getCurrentPosition(
@@ -66,7 +68,7 @@ export default function DropsClient() {
         setUserLat(pos.coords.latitude)
         setUserLng(pos.coords.longitude)
       },
-      () => setLocError('위치 권한을 허용해 주세요.')
+      () => setLocError(d.drops.locationDenied)
       // enableHighAccuracy는 넣지 않는다 — 실내에서는 GPS 위성 신호가
       // 잘 안 잡혀 오히려 WiFi/기지국 기반 기본 위치보다 더 크게 흔들리는
       // 값이 나올 수 있음(실측: 동일 장소에서 예전엔 문제없다가 이 옵션을
@@ -83,7 +85,7 @@ export default function DropsClient() {
       const json = await res.json()
       setPois(json.pois ?? [])
     } catch {
-      toast('POI 로드 실패', 'error')
+      toast(d.drops.loadPoiFailed, 'error')
     } finally {
       setPoisLoading(false)
     }
@@ -107,7 +109,7 @@ export default function DropsClient() {
   const fetchPoiDrops = useCallback(async (poiId: string): Promise<PickupDrop[]> => {
     const res = await fetch(`/api/drops/poi/${poiId}`)
     const json = await res.json()
-    if (!res.ok) throw new Error(json.error ?? '드랍 목록 로드 실패')
+    if (!res.ok) throw new Error(json.error ?? d.drops.loadDropsFailed)
     return (json.drops ?? []) as PickupDrop[]
   }, [])
 
@@ -116,7 +118,7 @@ export default function DropsClient() {
     const poi = pois.find((p) => p.id === poiId)
     if (!poi) return
     if (!poi.in_drop_range) {
-      toast(`${poi.name}까지 ${poi.distance_meters}m — 50m 이내로 이동하면 드랍/픽업할 수 있어요`, 'error')
+      toast(t(d.drops.outOfRange, { name: poi.name, distance: poi.distance_meters }), 'error')
       return
     }
     setSelectedPoi(poi)
@@ -130,7 +132,7 @@ export default function DropsClient() {
       const drops = await fetchPoiDrops(poiId)
       setPoiDrops(drops)
     } catch (e) {
-      toast(e instanceof Error ? e.message : '드랍 목록 로드 실패', 'error')
+      toast(e instanceof Error ? e.message : d.drops.loadDropsFailed, 'error')
       closeSheet()
     } finally {
       setPoiLoading(false)
@@ -146,7 +148,7 @@ export default function DropsClient() {
       const json = await res.json()
       setInventoryItems(json.items ?? [])
     } catch {
-      toast('인벤토리 로드 실패', 'error')
+      toast(d.drops.loadInventoryFailed, 'error')
     } finally {
       setInventoryLoading(false)
     }
@@ -169,10 +171,10 @@ export default function DropsClient() {
       })
       if (!res.ok) {
         const err = await res.json()
-        toast(err.error ?? '드랍 실패', 'error')
+        toast(err.error ?? d.drops.dropFailed, 'error')
         return
       }
-      toast('드랍 완료!', 'success')
+      toast(d.drops.dropSuccess, 'success')
       // 드랍 후: 이 POI 목록을 다시 불러와 방금 드랍한 배지를 바텀시트에 노출(픽업 상태로 전환)
       setShowInventory(false)
       setPendingDropItem(null)
@@ -185,7 +187,7 @@ export default function DropsClient() {
       }
       loadNearbyPois()
     } catch {
-      toast('드랍 실패', 'error')
+      toast(d.drops.dropFailed, 'error')
     } finally {
       setDropping(false)
     }
@@ -204,20 +206,20 @@ export default function DropsClient() {
       if (!res.ok) {
         const err = await res.json()
         const msg: Record<string, string> = {
-          already_picked_up: '이미 픽업된 아이템이에요',
-          inventory_full: '인벤토리가 꽉 찼어요',
+          already_picked_up: d.drops.pickupAlreadyDone,
+          inventory_full: d.drops.pickupInventoryFull,
         }
-        toast(msg[err.error] ?? err.error ?? '픽업 실패', 'error')
+        toast(msg[err.error] ?? err.error ?? d.drops.pickupFailed, 'error')
         return
       }
-      toast('픽업 완료! 인벤토리를 확인해보세요.', 'success')
+      toast(d.drops.pickupSuccess, 'success')
       // 상세 오버레이 닫고 목록에서 제거
       const pickedId = selectedDrop.id
       setSelectedDrop(null)
-      setPoiDrops((prev) => (prev ? prev.filter((d) => d.id !== pickedId) : prev))
+      setPoiDrops((prev) => (prev ? prev.filter((dr) => dr.id !== pickedId) : prev))
       loadNearbyPois()
     } catch {
-      toast('픽업 실패', 'error')
+      toast(d.drops.pickupFailed, 'error')
     } finally {
       setPickingUp(false)
     }
@@ -227,11 +229,10 @@ export default function DropsClient() {
 
   if (locError) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center bg-jam-orange">
-        <div className="text-4xl">📍</div>
-        <p className="text-jam-ink/70 text-sm font-bold">{locError}</p>
-        <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
-          다시 시도
+      <div className="flex flex-col items-center justify-center h-full gap-[var(--spacing-16)] px-[var(--spacing-24)] text-center bg-surface text-text">
+        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/70">{locError}</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          {d.drops.retry}
         </Button>
       </div>
     )
@@ -239,9 +240,9 @@ export default function DropsClient() {
 
   if (userLat === null || userLng === null) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 bg-jam-orange">
-        <div className="w-6 h-6 border-2 border-jam-ink border-t-transparent rounded-full animate-spin" />
-        <p className="text-jam-ink/60 text-sm font-bold">위치 확인 중...</p>
+      <div className="flex flex-col items-center justify-center h-full gap-[var(--spacing-16)] bg-surface text-text">
+        <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
+        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.drops.locating}</p>
       </div>
     )
   }
@@ -266,7 +267,7 @@ export default function DropsClient() {
   const isPickupState = (poiDrops?.length ?? 0) > 0
 
   return (
-    <div className="relative h-full bg-jam-orange overflow-hidden">
+    <div className="relative h-full bg-surface overflow-hidden">
       {/* 지도 — 풀스크린 */}
       <div className="absolute inset-0">
         <MapView
@@ -279,46 +280,44 @@ export default function DropsClient() {
       </div>
 
       {poisLoading && (
-        <div className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-1/2 -translate-x-1/2 z-10 bg-white/80 rounded-full px-3 py-1.5 backdrop-blur-sm border-2 border-jam-ink flex items-center gap-2">
-          <div className="w-4 h-4 border-2 border-jam-ink border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-bold text-jam-ink">주변 탐색 중</span>
+        <div className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] py-2 flex items-center gap-2">
+          <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin text-text-inverse" />
+          <span className="text-[11px] text-text-inverse">{d.drops.exploring}</span>
         </div>
       )}
 
       {!poisLoading && pois.length === 0 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-jam-cream rounded-2xl px-4 py-3 text-jam-ink/70 text-sm font-bold text-center whitespace-nowrap border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616]">
-          주변 500m에 드랍/픽업 가능한 장소가 없어요
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-cards)] px-[var(--spacing-16)] py-[var(--spacing-16)] text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-nowrap">
+          {d.drops.noNearbyPlaces}
         </div>
       )}
       {!poisLoading && pois.length > 0 && !pois.some((p) => p.in_drop_range) && !selectedPoi && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-jam-cream rounded-2xl px-4 py-3 text-jam-ink/70 text-sm font-bold text-center whitespace-nowrap border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616]">
-          장소로 50m 이내에 가면 드랍/픽업할 수 있어요
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-cards)] px-[var(--spacing-16)] py-[var(--spacing-16)] text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-nowrap">
+          {d.drops.moveCloser}
         </div>
       )}
 
       {/* POI 바텀시트 — 상태 분기 */}
       {selectedPoi && (
-        <div className="absolute inset-x-0 bottom-0 z-20 px-4 pb-4">
-          <div className="bg-white rounded-[1.75rem] border-[3px] border-jam-ink shadow-[4px_4px_0_0_#161616] overflow-hidden">
+        <div className="absolute inset-x-0 bottom-0 z-20 px-[var(--spacing-16)] pb-[var(--spacing-16)]">
+          <div className="bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] overflow-hidden">
             {/* 헤더 */}
-            <div className="flex items-center justify-between px-4 py-3 border-b-[3px] border-jam-ink">
+            <div className="flex items-center justify-between px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
               <div className="min-w-0">
-                <p className="text-xs text-jam-ink/50 mb-0.5 font-semibold truncate">{selectedPoi.name}</p>
-                <p className="text-sm font-black text-jam-ink">
-                  {poiLoading ? '확인 중...' : isPickupState ? '픽업할 아이템' : '이 장소'}
+                <p className="text-[11px] text-text-inverse/50 mb-0.5 truncate">{selectedPoi.name}</p>
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+                  {poiLoading ? `${d.drops.checking}...` : isPickupState ? d.drops.pickupItemsTitle : d.drops.thisPlaceTitle}
                 </p>
               </div>
-              <button onClick={closeSheet} className="text-jam-ink/50 p-1 shrink-0">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button onClick={closeSheet} aria-label={d.common.close} className="w-11 h-11 -mr-2 flex items-center justify-center text-text-inverse/50 active:scale-90 transition-transform duration-100 shrink-0">
+                <CloseIcon className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="max-h-[55vh] overflow-y-auto p-4">
+            <div className="max-h-[55vh] overflow-y-auto p-[var(--spacing-16)]">
               {poiLoading || poiDrops === null ? (
-                <div className="flex justify-center py-8">
-                  <div className="w-5 h-5 border-2 border-jam-ink border-t-transparent rounded-full animate-spin" />
+                <div className="flex justify-center py-[var(--spacing-32)]">
+                  <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : isPickupState ? (
                 /* ===== 픽업 상태 ===== */
@@ -327,23 +326,23 @@ export default function DropsClient() {
                     <button
                       key={drop.id}
                       onClick={() => setSelectedDrop(drop)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl border-[3px] border-jam-ink bg-jam-cream active:shadow-none active:translate-x-[2px] active:translate-y-[2px] shadow-[3px_3px_0_0_#161616] transition-all text-left"
+                      className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-[0.98] transition-transform duration-100 text-left"
                     >
-                      <div className="w-11 h-11 rounded-xl bg-white flex-shrink-0 overflow-hidden border-2 border-jam-ink/20">
-                        {drop.badge_image_url && (
+                      <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center">
+                        {drop.badge_image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={drop.badge_image_url} alt={drop.badge_name} className="w-full h-full object-contain p-0.5" />
+                        ) : (
+                          <MedalIcon className="w-5 h-5 text-text-inverse/40" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-jam-ink truncate">{drop.badge_name}</p>
-                        <p className="text-xs text-jam-ink/40 mt-0.5 font-semibold">
-                          {drop.is_ambient ? '이 근처에서 발견됨' : `${drop.dropper_name ?? '익명'}이(가) 드랍`}
+                        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{drop.badge_name}</p>
+                        <p className="text-[11px] text-text-inverse/40 mt-0.5">
+                          {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
                         </p>
                       </div>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5 text-jam-ink/40 shrink-0">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
+                      <ChevronRightIcon className="w-5 h-5 text-text-inverse/40 shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -351,47 +350,42 @@ export default function DropsClient() {
                 /* ===== 드랍: 인벤토리 그리드 ===== */
                 pendingDropItem ? (
                   /* 인앱 확인 UI (네이티브 confirm 대체) */
-                  <div className="flex flex-col items-center gap-4 py-4">
-                    <div className="w-20 h-20 rounded-2xl bg-jam-cream border-[3px] border-jam-ink overflow-hidden flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
+                    <div className="w-20 h-20 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden flex items-center justify-center">
                       {pendingDropItem.badgeImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={pendingDropItem.badgeImageUrl} alt={pendingDropItem.badgeName} className="w-full h-full object-contain p-1" />
                       ) : (
-                        <span className="text-3xl">🏷️</span>
+                        <MedalIcon className="w-8 h-8 text-text-inverse/40" />
                       )}
                     </div>
-                    <p className="text-sm font-bold text-jam-ink text-center">
-                      &lsquo;{pendingDropItem.badgeName}&rsquo;을(를)<br />여기에 드랍하시겠습니까?
+                    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-pre-line">
+                      {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
                     </p>
                     <div className="flex gap-2 w-full">
-                      <Button fullWidth variant="secondary" onClick={() => setPendingDropItem(null)} disabled={dropping}>
-                        취소
+                      <Button fullWidth variant="outline" surface="sub" onClick={() => setPendingDropItem(null)} disabled={dropping}>
+                        {d.drops.cancel}
                       </Button>
-                      <Button fullWidth loading={dropping} onClick={executeDrop}>
-                        드랍하기
+                      <Button fullWidth surface="sub" loading={dropping} onClick={executeDrop}>
+                        {d.drops.dropButton}
                       </Button>
                     </div>
                   </div>
                 ) : inventoryLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="w-5 h-5 border-2 border-jam-ink border-t-transparent rounded-full animate-spin" />
+                  <div className="flex justify-center py-[var(--spacing-32)]">
+                    <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : dropGridItems.length === 0 ? (
-                  <p className="text-center text-jam-ink/50 text-sm py-8 font-semibold">드랍할 아이템이 없어요</p>
+                  <p className="text-center text-text-inverse/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] py-[var(--spacing-32)]">{d.drops.dropNoItems}</p>
                 ) : (
-                  <InventoryGrid
-                    items={dropGridItems}
-                    mode="select"
-                    onSelect={(item) => setPendingDropItem(item)}
-                  />
+                  <InventoryGrid items={dropGridItems} mode="select" onSelect={(item) => setPendingDropItem(item)} />
                 )
               ) : (
                 /* ===== 드랍: 안내 + [드랍] 버튼 ===== */
-                <div className="flex flex-col items-center gap-3 py-4">
-                  <span className="text-4xl">📦</span>
-                  <p className="text-sm font-bold text-jam-ink/60 text-center">아직 아이템이 없어요</p>
-                  <Button fullWidth size="lg" onClick={openInventory}>
-                    여기에 드랍하기
+                <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
+                  <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 text-center">{d.drops.dropEmptyTitle}</p>
+                  <Button fullWidth surface="sub" onClick={openInventory}>
+                    {d.drops.dropHereButton}
                   </Button>
                 </div>
               )}
