@@ -36,10 +36,8 @@ const TemplateIcon: Record<TodayCardTemplateType, ComponentType<SVGProps<SVGSVGE
 }
 
 function TemplateChip({ card }: { card: TodayCardWithHref }) {
-  const Icon = TemplateIcon[card.template_type]
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] leading-none uppercase px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
-      <Icon className="w-3 h-3" />
+    <span className="inline-flex items-center text-[10px] leading-none uppercase px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
       {templateLabel[card.template_type]}
     </span>
   )
@@ -132,7 +130,6 @@ function ShortcutCard({ card }: { card: TodayCardWithHref }) {
 /** 배너형 — 4:5 비율 포스터 배너, 이미지 위 텍스트 오버레이(하단 그라디언트). 커버 이미지가 없으면 일반 카드로 대체(스크림은 사진 전제이므로 이미지 없이 쓰면 배경이 무의미하게 어두워짐). */
 function BannerCard({ card }: { card: TodayCardWithHref }) {
   const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
-  const Icon = TemplateIcon[card.template_type]
 
   if (!cover) {
     return <OtherCard card={card} />
@@ -144,8 +141,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
       <img src={cover} alt={card.title} className="absolute inset-0 w-full h-full object-cover" />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-16)] pt-10 pb-[var(--spacing-16)]">
-        <span className="inline-flex items-center gap-1 text-[10px] uppercase text-white/80 mb-1">
-          <Icon className="w-3 h-3" />
+        <span className="inline-flex items-center text-[10px] uppercase text-white/80 mb-1">
           {templateLabel[card.template_type]}
         </span>
         <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-white">{card.title}</h3>
