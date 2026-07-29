@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import type { HistoryEvent } from '@/app/api/inventory/items/[itemId]/history/route'
-import { ChevronRightIcon, CloseIcon, PinIcon } from '@/components/ui/icons'
+import { ChevronRightIcon, PinIcon } from '@/components/ui/icons'
+import BottomSheet from '@/components/ui/BottomSheet'
 import { d } from '@/lib/i18n'
 
 interface Props {
@@ -74,71 +75,46 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
         </span>
       </button>
 
-      {/* Overlay */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 430, margin: '0 auto' }}>
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-surface/60" onClick={() => setOpen(false)} />
-
-          {/* Sheet */}
-          <div className="relative bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] max-h-[75vh] flex flex-col">
-            {/* Handle */}
-            <div className="flex justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 rounded-full shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+      <BottomSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title={d.inventory.historyTitle}
+        closeLabel={d.common.close}
+      >
+        <div className="px-[var(--spacing-24)] py-[var(--spacing-16)]">
+          {loading && (
+            <div className="flex justify-center py-[var(--spacing-32)]">
+              <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
             </div>
+          )}
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-[var(--spacing-24)] pb-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)] shrink-0">
-              <h2 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.inventory.historyTitle}</h2>
-              <button
-                onClick={() => setOpen(false)}
-                aria-label={d.common.close}
-                className="w-11 h-11 -mr-2 flex items-center justify-center text-text-inverse/60 active:scale-90 transition-transform duration-100"
-              >
-                <CloseIcon className="w-5 h-5" />
-              </button>
-            </div>
+          {error && (
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center py-[var(--spacing-32)]">{error}</p>
+          )}
 
-            {/* Content */}
-            <div className="overflow-y-auto flex-1 px-[var(--spacing-24)] py-[var(--spacing-16)]">
-              {loading && (
-                <div className="flex justify-center py-[var(--spacing-32)]">
-                  <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
+          {events && events.length === 0 && (
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/40 text-center py-[var(--spacing-32)]">{d.inventory.historyEmpty}</p>
+          )}
 
-              {error && (
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center py-[var(--spacing-32)]">{error}</p>
-              )}
-
-              {events && events.length === 0 && (
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/40 text-center py-[var(--spacing-32)]">{d.inventory.historyEmpty}</p>
-              )}
-
-              {events && events.length > 0 && (
-                <ol className="flex flex-col gap-[var(--spacing-16)]">
-                  {events.map((ev, i) => (
-                    <li key={i} className="flex flex-col gap-0.5">
-                      <span className="text-[11px] text-text-inverse/40 font-mono">{formatTs(ev.timestamp)}</span>
-                      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                        {ev.username ?? d.inventory.historyUnknownUser} · {eventLabel(ev)}
-                      </p>
-                      {ev.poi_name && (
-                        <p className="text-[11px] text-text-inverse/50 inline-flex items-center gap-1">
-                          <PinIcon className="w-3 h-3" />{ev.poi_name}
-                        </p>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-
-            {/* Safe area padding */}
-            <div className="shrink-0 pb-[env(safe-area-inset-bottom,1rem)]" />
-          </div>
+          {events && events.length > 0 && (
+            <ol className="flex flex-col gap-[var(--spacing-16)]">
+              {events.map((ev, i) => (
+                <li key={i} className="flex flex-col gap-0.5">
+                  <span className="text-[11px] text-text-inverse/40 font-mono">{formatTs(ev.timestamp)}</span>
+                  <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+                    {ev.username ?? d.inventory.historyUnknownUser} · {eventLabel(ev)}
+                  </p>
+                  {ev.poi_name && (
+                    <p className="text-[11px] text-text-inverse/50 inline-flex items-center gap-1">
+                      <PinIcon className="w-3 h-3" />{ev.poi_name}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
-      )}
+      </BottomSheet>
     </>
   )
 }

@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
+import BottomSheet from '@/components/ui/BottomSheet'
 import { useToast } from '@/components/ui/Toast'
-import { CloseIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
 interface ShareCardModalProps {
@@ -78,24 +78,14 @@ export default function ShareCardModal({ badgeId, badgeName }: ShareCardModalPro
         {d.badges.shareCardButton}
       </Button>
 
-      {open && imageUrl && (
-        <div className="fixed inset-0 bg-surface/60 z-50 flex items-end justify-center" onClick={handleClose}>
-          <div
-            className="bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] p-[var(--spacing-24)] w-full max-w-[430px] flex flex-col gap-[var(--spacing-16)]"
-            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + var(--spacing-24))' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{d.badges.shareCardTitle}</h2>
-              <button
-                onClick={handleClose}
-                aria-label={d.badges.shareCardClose}
-                className="w-11 h-11 -mr-2 flex items-center justify-center text-text-inverse/60 active:scale-90 transition-transform duration-100"
-              >
-                <CloseIcon className="w-5 h-5" />
-              </button>
-            </div>
-
+      {imageUrl && (
+        <BottomSheet
+          open={open}
+          onClose={handleClose}
+          title={d.badges.shareCardTitle}
+          closeLabel={d.badges.shareCardClose}
+        >
+          <div className="px-[var(--spacing-24)] pb-[var(--spacing-24)] flex flex-col gap-[var(--spacing-16)]">
             {/* 미리보기 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageUrl} alt={d.badges.shareCardAlt} className="w-full rounded-[var(--radius-cards)]" />
@@ -109,7 +99,7 @@ export default function ShareCardModal({ badgeId, badgeName }: ShareCardModalPro
               </Button>
             </div>
           </div>
-        </div>
+        </BottomSheet>
       )}
     </>
   )
