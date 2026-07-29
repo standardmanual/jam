@@ -4,6 +4,10 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import UserSearchBar from '../UserSearchBar'
+import Card from '@/components/ui/Card'
+import TopNav from '@/components/ui/TopNav'
+import { UserIcon } from '@/components/ui/icons'
+import { d, t } from '@/lib/i18n'
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string }>
@@ -80,76 +84,63 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const results = hasQuery ? await searchUsers(query) : []
 
   return (
-    <div className="min-h-full bg-jam-lime px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-8 flex flex-col gap-6">
-      {/* 헤더 */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <Link href="/" className="text-jam-ink font-black text-2xl tracking-tighter">
-            JAM!
-          </Link>
-        </div>
-        <h1 className="text-3xl font-black leading-tight text-jam-ink">유저 검색</h1>
+    <div className="min-h-full bg-surface text-text">
+      <TopNav title={d.search.title} />
+
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
+        {/* 재검색 */}
+        <UserSearchBar defaultValue={q ?? ''} />
+
+        {/* 결과 */}
+        {!hasQuery ? (
+          <Card className="text-center py-[var(--spacing-32)]">
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.promptTitle}</p>
+            <p className="text-[11px] text-text-inverse/40 mt-1">{d.search.promptBody}</p>
+          </Card>
+        ) : results.length === 0 ? (
+          <Card className="text-center py-[var(--spacing-32)]">
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.emptyTitle}</p>
+            <p className="text-[11px] text-text-inverse/40 mt-1">{d.search.emptyBody}</p>
+          </Card>
+        ) : (
+          <section className="flex flex-col gap-[var(--spacing-16)]">
+            <p className="text-text/50 text-[11px]">{t(d.search.resultCount, { count: results.length })}</p>
+            {results.map((u) => (
+              <Link key={u.id} href={`/${u.username}`}>
+                <Card className="flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
+                  {u.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={u.avatar_url} alt={u.username} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0 flex items-center justify-center">
+                      <UserIcon className="w-5 h-5 text-text-inverse/50" />
+                    </div>
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{u.username}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      {u.region && (
+                        <span className="text-[11px] text-text-inverse/60">{u.region}</span>
+                      )}
+                      {u.region && u.activity_types && u.activity_types.length > 0 && (
+                        <span className="text-text-inverse/30 text-[11px]">·</span>
+                      )}
+                      {u.activity_types && u.activity_types.length > 0 && (
+                        <span className="text-[11px] text-text-inverse/50 truncate">
+                          {u.activity_types.map((a) => ACTIVITY_TYPE_LABELS[a] ?? a).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="shrink-0 text-text-inverse/40">&rarr;</span>
+                </Card>
+              </Link>
+            ))}
+          </section>
+        )}
       </div>
-
-      {/* 재검색 */}
-      <UserSearchBar defaultValue={q ?? ''} />
-
-      {/* 결과 */}
-      {!hasQuery ? (
-        <div className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-8 text-center">
-          <p className="text-jam-ink/60 text-sm font-bold">아이디 또는 이메일로 유저를 검색해보세요</p>
-          <p className="text-jam-ink/40 text-xs mt-1 font-semibold">두 글자 이상 입력해주세요</p>
-        </div>
-      ) : results.length === 0 ? (
-        <div className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-8 text-center">
-          <p className="text-jam-ink/60 text-sm font-bold">검색 결과가 없어요</p>
-          <p className="text-jam-ink/40 text-xs mt-1 font-semibold">다른 아이디나 이메일로 다시 검색해보세요</p>
-        </div>
-      ) : (
-        <section className="flex flex-col gap-3">
-          <p className="text-jam-ink/50 text-xs font-bold">{results.length}명의 유저</p>
-          {results.map((u) => (
-            <Link
-              key={u.id}
-              href={`/${u.username}`}
-              className="bg-jam-cream rounded-2xl border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616] p-4 flex items-center gap-3"
-            >
-              {/* 아바타 */}
-              {u.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={u.avatar_url}
-                  alt={u.username}
-                  className="w-12 h-12 rounded-full object-cover border-[2px] border-jam-ink shrink-0"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-jam-lime border-[2px] border-jam-ink shrink-0 flex items-center justify-center text-xl font-black text-jam-ink">
-                  {u.username.charAt(0).toUpperCase()}
-                </div>
-              )}
-
-              <div className="min-w-0 flex-1">
-                <p className="font-black text-jam-ink truncate">{u.username}</p>
-                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                  {u.region && (
-                    <span className="text-[11px] font-bold text-jam-ink/60">{u.region}</span>
-                  )}
-                  {u.region && u.activity_types && u.activity_types.length > 0 && (
-                    <span className="text-jam-ink/30 text-[11px]">·</span>
-                  )}
-                  {u.activity_types && u.activity_types.length > 0 && (
-                    <span className="text-[11px] font-semibold text-jam-ink/50 truncate">
-                      {u.activity_types.map((a) => ACTIVITY_TYPE_LABELS[a] ?? a).join(', ')}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <span className="shrink-0 text-jam-ink/40 font-black">→</span>
-            </Link>
-          ))}
-        </section>
-      )}
     </div>
   )
 }

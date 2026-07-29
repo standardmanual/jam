@@ -69,9 +69,9 @@ const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
  * [주의] 색상값을 재조정하지 마세요(유저가 학습한 색 언어 유지).
  */
 const RARITY_COLOR: Record<string, string> = {
-  rare: 'bg-jam-teal/20 text-jam-teal',
-  legendary: 'bg-jam-purple/20 text-jam-purple',
-  mythic: 'bg-[#FF4500]/20 text-[#FF4500]',
+  rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
+  legendary: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
+  mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
 }
 const RARITY_LABEL: Record<string, string> = {
   common: d.feed.rarityCommon,

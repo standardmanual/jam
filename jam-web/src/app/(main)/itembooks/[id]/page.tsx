@@ -1,5 +1,4 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
   BadgeRow,
@@ -9,7 +8,10 @@ import type {
   UserItemBookSlotRow,
 } from '@/types/database'
 import Card from '@/components/ui/Card'
+import TopNav from '@/components/ui/TopNav'
+import { BookIcon, PinIcon } from '@/components/ui/icons'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
+import { d } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -168,54 +170,38 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
 
   return (
-    <div className="flex flex-col min-h-full bg-jam-teal">
-      {/* 헤더 */}
-      <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4 max-w-2xl mx-auto w-full">
-        <Link
-          href={backHref ?? (isOwnBook ? '/itembooks' : `/${subjectUsername}#itembooks`)}
-          className="flex items-center gap-1 text-jam-ink font-bold text-sm w-fit mb-5"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={3}
-            className="w-4 h-4"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          {backHref ? '배지 상세' : '아이템북 목록'}
-        </Link>
+    <div className="flex flex-col min-h-full bg-surface text-text">
+      <TopNav
+        title={backHref ? d.itembooks.backToDetail : d.itembooks.backToList}
+        backHref={backHref ?? (isOwnBook ? '/itembooks' : `/${subjectUsername}#itembooks`)}
+      />
 
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-16)]">
         {/* 북 정보 */}
-        <div className="flex gap-4 items-start mb-4">
-          {book.image_url && (
-            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-white border-[3px] border-jam-ink shrink-0">
+        <div className="flex gap-[var(--spacing-16)] items-start mb-[var(--spacing-16)]">
+          {book.image_url ? (
+            <div className="w-20 h-20 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={book.image_url}
-                alt={book.name}
-                className="w-full h-full object-contain p-1"
-              />
+              <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1" />
+            </div>
+          ) : (
+            <div className="w-20 h-20 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0 flex items-center justify-center">
+              <BookIcon className="w-8 h-8 text-text/40" />
             </div>
           )}
           <div className="flex-1 min-w-0 pt-1">
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-xl font-black leading-tight text-jam-ink">
-                {book.name}
-              </h1>
+              <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{book.name}</h1>
               {isCompleted && (
-                <span className="text-jam-ink bg-jam-lime border-2 border-jam-ink text-xs font-black px-2 py-0.5 rounded-full">
-                  완성
+                <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)]">
+                  {d.itembooks.completed}
                 </span>
               )}
             </div>
             {book.faction && (
-              <p className="text-jam-ink/70 text-xs font-black mb-1">
-                {book.faction.name}
-              </p>
+              <p className="text-text/70 text-[11px] mb-1">{book.faction.name}</p>
             )}
-            <p className="text-jam-ink/60 text-sm leading-relaxed font-semibold">
+            <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
               {book.description}
             </p>
           </div>
@@ -223,112 +209,81 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
         {/* 스토리 */}
         {book.story_text && (
-          <p className="text-jam-ink/60 text-xs leading-relaxed font-semibold italic mb-4 whitespace-pre-line">
+          <p className="text-text/60 text-[11px] leading-relaxed italic mb-[var(--spacing-16)] whitespace-pre-line">
             {book.story_text}
           </p>
         )}
 
         {/* 진행도 */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-2.5 rounded-full bg-white/40 overflow-hidden border border-jam-ink/20">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                isCompleted ? 'bg-jam-lime' : 'bg-jam-ink/30'
-              }`}
-              style={{ width: `${pct}%` }}
-            />
+        <div className="flex items-center gap-[var(--spacing-16)]">
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)]">
+            <div className="h-full bg-text rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
           </div>
-          <span className="text-xs text-jam-ink/60 tabular-nums font-bold">
-            {slottedCount} / {totalBadgeCount}
-          </span>
+          <span className="text-[11px] text-text/60 tabular-nums">{slottedCount} / {totalBadgeCount}</span>
         </div>
       </div>
 
-      {/* 크림 패널 — 슬롯 그리드 */}
-      <div className="flex-1 bg-jam-cream rounded-t-[2rem] border-t-[3px] border-jam-ink px-5 py-6">
-        <div className="max-w-2xl mx-auto w-full">
-          {badges.length > 0 && (
-            <p className="text-xs text-jam-ink/50 mb-4 text-center font-bold">
-              보유한 아이템 배지를 슬롯에 장착해 아이템북을 완성해요
+      {/* 슬롯 그리드 */}
+      <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)]">
+        {badges.length > 0 && (
+          <p className="text-[11px] text-text/50 mb-[var(--spacing-16)] text-center">
+            {d.itembooks.slotHint}
+          </p>
+        )}
+
+        {totalBadgeCount === 0 ? (
+          <div className="flex flex-col items-center justify-center py-[var(--spacing-32)] text-center">
+            <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+              {d.itembooks.noBadgesTitle}
             </p>
-          )}
+          </div>
+        ) : (
+          badges.length > 0 && (
+            <SlotGrid itemBookId={id} badgeSlots={badgeSlots} readOnly={!isOwnBook} />
+          )
+        )}
 
-          {totalBadgeCount === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <span className="text-4xl mb-3">🗂️</span>
-              <p className="text-jam-ink/60 font-bold text-sm">
-                아직 이 아이템북에 등록된 배지가 없어요.
-              </p>
-            </div>
-          ) : (
-            badges.length > 0 && (
-              <SlotGrid itemBookId={id} badgeSlots={badgeSlots} readOnly={!isOwnBook} />
-            )
-          )}
-
-          {/* POI 배지 — 슬롯팅 없이 방문(획득) 여부만 표시 */}
-          {poiBadges.length > 0 && (
-            <div className={badges.length > 0 ? 'mt-6' : ''}>
-              <p className="text-xs text-jam-ink/50 mb-3 text-center font-bold">
-                POI 배지는 해당 장소를 지나가면 자동으로 채워져요
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                {poiBadges.map((poiBadge) => {
-                  const earned = earnedPoiBadgeIds.has(poiBadge.id)
-                  return (
-                    <div
-                      key={poiBadge.id}
-                      className={`rounded-2xl border-[3px] border-jam-ink p-2 flex flex-col items-center text-center ${
-                        earned ? 'bg-white' : 'bg-jam-ink/5'
-                      }`}
-                    >
-                      <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center">
-                        {poiBadge.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={poiBadge.image_url}
-                            alt={poiBadge.name}
-                            className={`w-full h-full object-contain ${earned ? '' : 'opacity-25 grayscale'}`}
-                          />
-                        ) : (
-                          <span className="text-2xl opacity-30">📍</span>
-                        )}
-                      </div>
-                      <p
-                        className={`mt-1.5 text-[11px] font-black leading-tight ${
-                          earned ? 'text-jam-ink' : 'text-jam-ink/40'
-                        }`}
-                      >
-                        {poiBadge.name}
-                      </p>
-                      <span
-                        className={`mt-1 text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-jam-ink ${
-                          earned ? 'bg-jam-lime text-jam-ink' : 'bg-white/60 text-jam-ink/40 border-jam-ink/20'
-                        }`}
-                      >
-                        {earned ? '획득' : '미획득'}
-                      </span>
+        {/* POI 배지 — 슬롯팅 없이 방문(획득) 여부만 표시 */}
+        {poiBadges.length > 0 && (
+          <div className={badges.length > 0 ? 'mt-[var(--spacing-24)]' : ''}>
+            <p className="text-[11px] text-text/50 mb-[var(--spacing-16)] text-center">
+              {d.itembooks.poiHint}
+            </p>
+            <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+              {poiBadges.map((poiBadge) => {
+                const earned = earnedPoiBadgeIds.has(poiBadge.id)
+                return (
+                  <Card key={poiBadge.id} className={`flex flex-col items-center text-center gap-1 p-[var(--spacing-8)] ${earned ? '' : 'opacity-50'}`}>
+                    <div className="w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
+                      {poiBadge.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={poiBadge.image_url} alt={poiBadge.name} className={`w-full h-full object-contain ${earned ? '' : 'grayscale'}`} />
+                      ) : (
+                        <PinIcon className="w-6 h-6 text-text-inverse/30" />
+                      )}
                     </div>
-                  )
-                })}
-              </div>
+                    <p className="text-[11px] leading-tight">{poiBadge.name}</p>
+                    <span className="text-[10px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/60">
+                      {earned ? d.itembooks.poiEarned : d.itembooks.poiNotEarned}
+                    </span>
+                  </Card>
+                )
+              })}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* 완성 카드 */}
-          {isCompleted && (
-            <div className="mt-5">
-              <Card glow className="bg-jam-lime text-center py-4">
-                <p className="text-jam-ink font-black text-base mb-1">
-                  🎉 아이템북 완성!
-                </p>
-                <p className="text-jam-ink/60 text-sm font-semibold">
-                  모든 아이템 배지를 슬롯에 장착했어요
-                </p>
-              </Card>
-            </div>
-          )}
-        </div>
+        {/* 완성 카드 */}
+        {isCompleted && (
+          <Card className="mt-[var(--spacing-24)] text-center">
+            <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] mb-1">
+              {d.itembooks.completedTitle}
+            </p>
+            <p className="text-text-inverse/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+              {d.itembooks.completedBody}
+            </p>
+          </Card>
+        )}
       </div>
     </div>
   )

@@ -3,15 +3,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { UserIcon } from '@/components/ui/icons'
+import { d } from '@/lib/i18n'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
 function validateFormat(value: string): string | null {
-  if (value.length === 0) return '아이디를 입력해 주세요'
-  if (value.length > 30) return '30자 이하로 입력해 주세요'
-  if (!/^[a-z0-9._]+$/.test(value)) return '영문, 숫자, ., _ 만 사용할 수 있어요'
-  if (value.startsWith('.') || value.endsWith('.')) return '점(.)으로 시작하거나 끝날 수 없어요'
-  if (value.includes('..')) return '점(.)을 연속으로 사용할 수 없어요'
+  if (value.length === 0) return d.onboarding.errorEmpty
+  if (value.length > 30) return d.onboarding.errorTooLong
+  if (!/^[a-z0-9._]+$/.test(value)) return d.onboarding.errorFormat
+  if (value.startsWith('.') || value.endsWith('.')) return d.onboarding.errorDot
+  if (value.includes('..')) return d.onboarding.errorDoubleDot
   return null
 }
 
@@ -80,10 +82,10 @@ export default function OnboardingPage() {
         const json = await res.json() as { available: boolean }
         if (json.available) {
           setStatus('available')
-          setMessage('사용 가능한 아이디예요 ✓')
+          setMessage(d.onboarding.available)
         } else {
           setStatus('taken')
-          setMessage('이미 사용 중인 아이디예요')
+          setMessage(d.onboarding.taken)
         }
       } catch {
         setStatus('idle')
@@ -106,75 +108,66 @@ export default function OnboardingPage() {
         router.replace('/')
       } else if (json.error === 'DUPLICATE') {
         setStatus('taken')
-        setMessage('이미 사용 중인 아이디예요')
+        setMessage(d.onboarding.taken)
       } else {
-        setMessage('오류가 발생했어요. 다시 시도해 주세요.')
+        setMessage(d.onboarding.genericError)
       }
     } catch {
-      setMessage('네트워크 오류가 발생했어요.')
+      setMessage(d.onboarding.networkError)
     } finally {
       setSubmitting(false)
     }
   }
 
-  const inputBorder =
-    status === 'available'
-      ? 'border-jam-lime'
-      : status === 'taken' || status === 'invalid'
-        ? 'border-red-500'
-        : 'border-jam-ink/30'
-
-  const msgColor =
-    status === 'available' ? 'text-jam-lime' : 'text-red-400'
+  // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
+  const inputBorderClass = status === 'invalid' || status === 'taken'
+    ? 'shadow-[inset_0_0_0_2px_var(--color-border-inverse)]'
+    : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'
 
   return (
-    <div className="min-h-full bg-jam-ink flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm flex flex-col items-center gap-8">
+    <div className="min-h-full bg-surface text-text flex flex-col items-center justify-center px-[var(--spacing-24)] py-[var(--spacing-48)]">
+      <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
 
         {/* 프로필 이미지 */}
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-[var(--spacing-16)]">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt="프로필"
-              className="w-24 h-24 rounded-3xl object-cover border-[3px] border-white/20"
-            />
+            <img src={avatarUrl} alt={d.onboarding.avatarAlt} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
           ) : (
-            <div className="w-24 h-24 rounded-3xl bg-white/10 border-[3px] border-white/20 flex items-center justify-center text-4xl">
-              👤
+            <div className="w-24 h-24 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center">
+              <UserIcon className="w-10 h-10 text-text/50" />
             </div>
           )}
-          <h1 className="text-white font-black text-2xl text-center leading-snug">
-            JAM! 아이디를<br />만들어 주세요
+          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line">
+            {d.onboarding.title}
           </h1>
-          <p className="text-white/50 text-sm font-semibold text-center">
-            아이디는 나중에 변경할 수 있어요
+          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">
+            {d.onboarding.subtitle}
           </p>
         </div>
 
         {/* 입력 영역 */}
         <div className="w-full flex flex-col gap-2">
-          <div className={`flex items-center w-full bg-white/10 border-[2px] ${inputBorder} rounded-xl px-4 py-3 transition-colors`}>
-            <span className="text-white/60 font-semibold mr-1">@</span>
+          <div className={`flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}`}>
+            <span className="text-text/60 mr-1">@</span>
             <input
               type="text"
               value={input}
               onChange={handleChange}
-              placeholder="username"
+              placeholder={d.onboarding.usernamePlaceholder}
               maxLength={30}
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              className="flex-1 bg-transparent text-white font-semibold placeholder:text-white/30 focus:outline-none"
+              className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
             />
             {status === 'checking' && (
-              <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin ml-2 shrink-0" />
+              <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
             )}
           </div>
 
           {message && (
-            <p className={`text-sm font-semibold px-1 ${msgColor}`}>{message}</p>
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70">{message}</p>
           )}
         </div>
 
@@ -182,9 +175,9 @@ export default function OnboardingPage() {
         <button
           onClick={handleSubmit}
           disabled={status !== 'available' || submitting}
-          className="w-full bg-jam-lime text-jam-ink font-black py-4 rounded-2xl border-[3px] border-jam-ink shadow-[4px_4px_0_0_#161616] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-lg"
+          className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
         >
-          {submitting ? '저장 중...' : '생성하기'}
+          {submitting ? d.onboarding.submitting : d.onboarding.submitButton}
         </button>
       </div>
     </div>

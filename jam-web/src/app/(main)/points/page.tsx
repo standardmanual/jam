@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { PointHistoryItem } from '@/app/api/points/route'
+import TopNav from '@/components/ui/TopNav'
+import Card from '@/components/ui/Card'
+import { ChevronRightIcon } from '@/components/ui/icons'
+import { d } from '@/lib/i18n'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ko-KR', {
@@ -17,7 +20,6 @@ function formatAmount(n: number): string {
 }
 
 export default function PointsPage() {
-  const router = useRouter()
   const [balance, setBalance] = useState<number | null>(null)
   const [items, setItems] = useState<PointHistoryItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -66,95 +68,81 @@ export default function PointsPage() {
   }, [])
 
   return (
-    <div className="min-h-full bg-jam-pink text-jam-ink px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 flex flex-col gap-6">
-      {/* 헤더 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => router.back()}
-          aria-label="뒤로"
-          className="w-9 h-9 rounded-xl border-[2px] border-jam-ink bg-white flex items-center justify-center active:scale-95 transition-transform"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-4 h-4 text-jam-ink">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-xl font-black">잼 포인트</h1>
-      </div>
+    <div className="min-h-full bg-surface text-text">
+      <TopNav title={d.points.title} />
 
-      {/* 잔액 카드 */}
-      <div className="bg-jam-lime border-[3px] border-jam-ink rounded-3xl shadow-[4px_4px_0_0_#161616] px-6 py-7 text-center">
-        <p className="text-[11px] font-black text-jam-ink/50 uppercase tracking-widest mb-2">현재 잔액</p>
-        <p className="text-4xl font-black text-jam-ink">
-          {balance === null ? '—' : `${balance.toLocaleString('ko-KR')}P`}
-        </p>
-      </div>
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+        {/* 잔액 카드 */}
+        <Card className="text-center py-[var(--spacing-32)]">
+          <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.points.balanceLabel}</p>
+          <p className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">
+            {balance === null ? '—' : `${balance.toLocaleString('ko-KR')}P`}
+          </p>
+        </Card>
 
-      {/* 내역 */}
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xs font-black text-jam-ink/40 uppercase tracking-wider px-1">최근 내역</h2>
+        {/* 내역 */}
+        <div className="flex flex-col gap-[var(--spacing-16)]">
+          <h2 className="text-[10px] uppercase text-text/40 px-1">{d.points.historyTitle}</h2>
 
-        {loading && (
-          <div className="py-10 text-center text-jam-ink/40 text-sm font-bold">불러오는 중…</div>
-        )}
+          {loading && (
+            <div className="py-[var(--spacing-40)] text-center text-text/40 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.points.loading}</div>
+          )}
 
-        {!loading && error && (
-          <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] py-8 px-5 text-center">
-            <p className="text-jam-ink/70 text-sm font-bold mb-3">내역을 불러오지 못했어요.</p>
-            <button
-              onClick={() => load(null, false)}
-              className="px-4 py-2 rounded-xl bg-jam-ink text-white text-sm font-black active:scale-95 transition-transform"
-            >
-              다시 시도
-            </button>
-          </div>
-        )}
+          {!loading && error && (
+            <Card className="text-center py-[var(--spacing-32)]">
+              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70 mb-[var(--spacing-16)]">{d.points.loadError}</p>
+              <button
+                onClick={() => load(null, false)}
+                className="inline-flex items-center justify-center min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-surface text-text text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
+              >
+                {d.points.retry}
+              </button>
+            </Card>
+          )}
 
-        {!loading && !error && items.length === 0 && (
-          <div className="bg-white border-[3px] border-dashed border-jam-ink/40 rounded-2xl py-8 px-5 text-center">
-            <p className="text-jam-ink/70 text-sm font-bold">아직 쌓인 포인트가 없어요.</p>
-            <p className="text-jam-ink/40 text-xs mt-1 font-semibold">활동을 동기화하면 배지와 함께 포인트를 받을 수 있어요.</p>
-          </div>
-        )}
+          {!loading && !error && items.length === 0 && (
+            <Card className="text-center py-[var(--spacing-32)]">
+              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.points.emptyTitle}</p>
+              <p className="text-[11px] text-text-inverse/40 mt-1">{d.points.emptyBody}</p>
+            </Card>
+          )}
 
-        {!loading && !error && items.length > 0 && (
-          <div className="bg-white border-[3px] border-jam-ink rounded-2xl shadow-[3px_3px_0_0_#161616] divide-y-[2px] divide-jam-ink/10 overflow-hidden">
-            {items.map((it) => {
-              const positive = it.amount > 0
-              const inner = (
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-jam-ink truncate">{it.title}</p>
-                    {it.note && <p className="text-xs text-jam-ink/50 font-semibold truncate">{it.note}</p>}
-                    <p className="text-[11px] text-jam-ink/40 font-semibold mt-0.5">{formatDate(it.created_at)}</p>
+          {!loading && !error && items.length > 0 && (
+            <Card className="p-0 overflow-hidden">
+              {items.map((it) => {
+                const positive = it.amount > 0
+                const inner = (
+                  <div className="flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-16)]">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{it.title}</p>
+                      {it.note && <p className="text-[11px] text-text-inverse/50 truncate">{it.note}</p>}
+                      <p className="text-[11px] text-text-inverse/40 mt-0.5">{formatDate(it.created_at)}</p>
+                    </div>
+                    <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] shrink-0 ${positive ? '' : 'text-text-inverse/60'}`}>
+                      {formatAmount(it.amount)}
+                    </span>
+                    {it.href && <ChevronRightIcon className="w-4 h-4 text-text-inverse/30 shrink-0" />}
                   </div>
-                  <span className={`text-sm font-black shrink-0 ${positive ? 'text-jam-ink' : 'text-[#FF4500]'}`}>
-                    {formatAmount(it.amount)}
-                  </span>
-                  {it.href && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="w-4 h-4 text-jam-ink/30 shrink-0">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  )}
-                </div>
-              )
-              return it.href ? (
-                <Link key={it.id} href={it.href} className="block active:bg-jam-ink/5 transition-colors">{inner}</Link>
-              ) : (
-                <div key={it.id}>{inner}</div>
-              )
-            })}
-          </div>
-        )}
+                )
+                return it.href ? (
+                  <Link key={it.id} href={it.href} className="block shadow-[inset_0_-1px_0_0_var(--color-border-inverse)] last:shadow-none active:opacity-70 transition-opacity">{inner}</Link>
+                ) : (
+                  <div key={it.id} className="shadow-[inset_0_-1px_0_0_var(--color-border-inverse)] last:shadow-none">{inner}</div>
+                )
+              })}
+            </Card>
+          )}
 
-        {!loading && !error && cursor && (
-          <button
-            onClick={() => load(cursor, true)}
-            disabled={loadingMore}
-            className="mx-auto mt-1 px-5 py-2 rounded-xl border-[2px] border-jam-ink bg-white text-sm font-black active:scale-95 transition-transform disabled:opacity-50"
-          >
-            {loadingMore ? '불러오는 중…' : '더 보기'}
-          </button>
-        )}
+          {!loading && !error && cursor && (
+            <button
+              onClick={() => load(cursor, true)}
+              disabled={loadingMore}
+              className="mx-auto mt-1 min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100 disabled:opacity-50"
+            >
+              {loadingMore ? d.points.loadingMore : d.points.loadMore}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -2,6 +2,9 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { ItemBookRow, FactionRow } from '@/types/database'
+import Card from '@/components/ui/Card'
+import { BookIcon } from '@/components/ui/icons'
+import { d } from '@/lib/i18n'
 
 type ItemBookWithFaction = ItemBookRow & {
   faction: Pick<FactionRow, 'id' | 'name' | 'image_url'> | null
@@ -120,98 +123,65 @@ export default async function ItemBooksPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-jam-teal">
+    <div className="flex flex-col min-h-full bg-surface text-text">
       {/* 헤더 */}
-      <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-5 max-w-2xl mx-auto w-full">
-        <p className="text-jam-ink/60 text-sm font-bold">컬렉션</p>
-        <h1 className="text-4xl font-black text-jam-ink leading-tight">아이템북</h1>
-        <p className="mt-2 text-jam-ink/60 text-sm font-semibold leading-relaxed">
-          아이템 배지를 모아 아이템북을 완성해보세요
+      <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-24)]">
+        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.itembooks.eyebrow}</p>
+        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.itembooks.title}</h1>
+        <p className="mt-2 text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+          {d.itembooks.subtitle}
         </p>
       </div>
 
-      {/* 크림 패널 */}
-      <div className="flex-1 bg-jam-cream rounded-t-[2rem] border-t-[3px] border-jam-ink px-5 py-6">
-        <div className="max-w-2xl mx-auto w-full">
-          {cards.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <span className="text-5xl mb-4">📕</span>
-              <p className="text-jam-ink/70 font-bold">아직 발견한 아이템북이 없어요.</p>
-              <p className="text-jam-ink/40 text-xs mt-1 font-semibold">
-                아이템 배지를 모아봐요!
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4">
-              {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted }) => {
-                const pct =
-                  totalBadgeCount > 0
-                    ? Math.round((slottedCount / totalBadgeCount) * 100)
-                    : 0
-                return (
-                  <Link
-                    key={book.id}
-                    href={`/itembooks/${book.id}`}
-                    className={[
-                      'flex flex-col rounded-2xl border-[3px] p-3 gap-2.5 transition-all active:shadow-none active:translate-x-[3px] active:translate-y-[3px]',
-                      isCompleted
-                        ? 'bg-jam-lime border-jam-ink shadow-[3px_3px_0_0_#161616]'
-                        : 'bg-white border-jam-ink shadow-[3px_3px_0_0_#161616]',
-                    ].join(' ')}
-                  >
+      <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)]">
+        {cards.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-[var(--spacing-40)] text-center">
+            <p className="text-text/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.itembooks.emptyTitle}</p>
+            <p className="text-text/40 text-[11px] mt-1">{d.itembooks.emptyBody}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
+            {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted }) => {
+              const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
+              return (
+                <Link key={book.id} href={`/itembooks/${book.id}`}>
+                  <Card className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
                     {/* 북 이미지 */}
-                    <div className="relative w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center bg-jam-cream">
+                    <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                       {book.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={book.image_url}
-                          alt={book.name}
-                          className="w-full h-full object-contain p-1.5"
-                        />
+                        <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1.5" />
                       ) : (
-                        <span className="text-4xl">📖</span>
+                        <BookIcon className="w-8 h-8 text-text-inverse/40" />
                       )}
                       {isCompleted && (
-                        <span className="absolute top-1.5 right-1.5 bg-jam-ink text-white text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-white">
-                          완성
+                        <span className="absolute top-1.5 right-1.5 text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+                          {d.itembooks.completed}
                         </span>
                       )}
                     </div>
 
                     {/* 이름 + 세계관 */}
                     <div className="min-w-0">
-                      <h2 className="text-sm font-black text-jam-ink leading-tight line-clamp-2">
-                        {book.name}
-                      </h2>
+                      <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
                       {book.faction && (
-                        <p className="text-[11px] text-jam-ink/50 font-bold mt-0.5 truncate">
-                          {book.faction.name}
-                        </p>
+                        <p className="text-[11px] text-text-inverse/50 mt-0.5 truncate">{book.faction.name}</p>
                       )}
                     </div>
 
                     {/* 진행도 */}
-                    <div className="mt-auto">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 rounded-full bg-jam-ink/10 overflow-hidden border border-jam-ink/20">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              isCompleted ? 'bg-jam-ink' : 'bg-jam-teal'
-                            }`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <span className="text-[11px] text-jam-ink/70 font-black tabular-nums shrink-0">
-                          {slottedCount}/{totalBadgeCount}
-                        </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+                        <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${pct}%` }} />
                       </div>
+                      <span className="text-[11px] text-text-inverse/60 tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
                     </div>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-        </div>
+                  </Card>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

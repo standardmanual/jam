@@ -3,15 +3,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import TopNav from '@/components/ui/TopNav'
+import { UserIcon } from '@/components/ui/icons'
+import { d } from '@/lib/i18n'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 
 function validateFormat(value: string): string | null {
-  if (value.length === 0) return '아이디를 입력해 주세요'
-  if (value.length > 30) return '30자 이하로 입력해 주세요'
-  if (!/^[a-z0-9._]+$/.test(value)) return '영문, 숫자, ., _ 만 사용할 수 있어요'
-  if (value.startsWith('.') || value.endsWith('.')) return '점(.)으로 시작하거나 끝날 수 없어요'
-  if (value.includes('..')) return '점(.)을 연속으로 사용할 수 없어요'
+  if (value.length === 0) return d.onboarding.errorEmpty
+  if (value.length > 30) return d.onboarding.errorTooLong
+  if (!/^[a-z0-9._]+$/.test(value)) return d.onboarding.errorFormat
+  if (value.startsWith('.') || value.endsWith('.')) return d.onboarding.errorDot
+  if (value.includes('..')) return d.onboarding.errorDoubleDot
   return null
 }
 
@@ -69,11 +72,11 @@ export default function ProfileEditPage() {
 
     const allowed = ['image/jpeg', 'image/png', 'image/webp']
     if (!allowed.includes(file.type)) {
-      setUploadError('JPEG, PNG, WebP 파일만 업로드할 수 있어요')
+      setUploadError(d.profileEdit.fileTypeError)
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      setUploadError('파일 크기가 5MB를 초과해요')
+      setUploadError(d.profileEdit.fileSizeError)
       return
     }
 
@@ -90,10 +93,10 @@ export default function ProfileEditPage() {
       if (json.avatar_url) {
         setAvatarUrl(json.avatar_url)
       } else {
-        setUploadError('업로드에 실패했어요. 다시 시도해 주세요.')
+        setUploadError(d.profileEdit.uploadError)
       }
     } catch {
-      setUploadError('네트워크 오류가 발생했어요.')
+      setUploadError(d.onboarding.networkError)
     } finally {
       setUploading(false)
       // 같은 파일 재선택 가능하도록 초기화
@@ -134,10 +137,10 @@ export default function ProfileEditPage() {
         const json = await res.json() as { available: boolean }
         if (json.available) {
           setCheckStatus('available')
-          setCheckMessage('사용 가능한 아이디예요 ✓')
+          setCheckMessage(d.onboarding.available)
         } else {
           setCheckStatus('taken')
-          setCheckMessage('이미 사용 중인 아이디예요')
+          setCheckMessage(d.onboarding.taken)
         }
       } catch {
         setCheckStatus('idle')
@@ -148,11 +151,6 @@ export default function ProfileEditPage() {
 
   // username이 변경됐는지 확인
   const usernameChanged = usernameInput !== (currentUsername ?? '') && usernameInput !== ''
-  const usernameValid =
-    !usernameChanged ||
-    checkStatus === 'available' ||
-    checkStatus === 'same' ||
-    usernameInput === currentUsername
 
   const canSave = !saving && !uploading && usernameChanged && (checkStatus === 'available')
 
@@ -171,135 +169,114 @@ export default function ProfileEditPage() {
         router.push('/profile')
       } else if (json.error === 'DUPLICATE') {
         setCheckStatus('taken')
-        setCheckMessage('이미 사용 중인 아이디예요')
+        setCheckMessage(d.onboarding.taken)
       } else {
-        setSaveError('저장에 실패했어요. 다시 시도해 주세요.')
+        setSaveError(d.profileEdit.saveError)
       }
     } catch {
-      setSaveError('네트워크 오류가 발생했어요.')
+      setSaveError(d.onboarding.networkError)
     } finally {
       setSaving(false)
     }
   }
 
-  const inputBorder =
-    checkStatus === 'available'
-      ? 'border-jam-lime'
-      : checkStatus === 'taken' || checkStatus === 'invalid'
-        ? 'border-red-500'
-        : 'border-jam-ink/30'
-
-  const msgColor =
-    checkStatus === 'available' ? 'text-jam-lime' : 'text-red-400'
+  // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
+  const inputBorderClass = checkStatus === 'invalid' || checkStatus === 'taken'
+    ? 'shadow-[inset_0_0_0_2px_var(--color-border)]'
+    : 'shadow-[inset_0_0_0_1px_var(--color-border)]'
 
   if (loading) {
     return (
-      <div className="min-h-full bg-jam-ink flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+      <div className="min-h-full bg-surface text-text flex items-center justify-center">
+        <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-full bg-jam-ink text-white px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-10 flex flex-col gap-8">
+    <div className="min-h-full bg-surface text-text flex flex-col">
+      <TopNav title={d.profileEdit.title} />
 
-      {/* 헤더 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 active:scale-95 transition-transform"
-          aria-label="뒤로"
-        >
-          ←
-        </button>
-        <h1 className="font-black text-xl">프로필 편집</h1>
-      </div>
-
-      {/* 프로필 사진 */}
-      <div className="flex flex-col items-center gap-3">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="relative active:scale-95 transition-transform"
-          disabled={uploading}
-          aria-label="프로필 사진 변경"
-        >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt="프로필"
-              className="w-24 h-24 rounded-3xl object-cover border-[3px] border-white/20"
-            />
-          ) : (
-            <div className="w-24 h-24 rounded-3xl bg-white/10 border-[3px] border-white/20 flex items-center justify-center text-4xl">
-              👤
-            </div>
+      <div className="flex-1 flex flex-col px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] gap-[var(--spacing-32)]">
+        {/* 프로필 사진 */}
+        <div className="flex flex-col items-center gap-[var(--spacing-16)]">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="relative active:scale-95 transition-transform duration-100"
+            disabled={uploading}
+            aria-label={d.profileEdit.changePhotoAlt}
+          >
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt={d.onboarding.avatarAlt} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
+            ) : (
+              <div className="w-24 h-24 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center">
+                <UserIcon className="w-10 h-10 text-text/50" />
+              </div>
+            )}
+            {uploading && (
+              <div className="absolute inset-0 rounded-[var(--radius-cards)] bg-surface/70 flex items-center justify-center">
+                <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </button>
+          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.profileEdit.changePhoto}</p>
+          {uploadError && (
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{uploadError}</p>
           )}
-          {uploading && (
-            <div className="absolute inset-0 rounded-3xl bg-black/50 flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-            </div>
-          )}
-          <div className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-jam-lime border-[2px] border-jam-ink flex items-center justify-center text-jam-ink text-xs font-black">
-            ✎
-          </div>
-        </button>
-        <p className="text-white/50 text-sm font-semibold">탭하여 사진 변경</p>
-        {uploadError && (
-          <p className="text-red-400 text-sm font-semibold text-center">{uploadError}</p>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-      </div>
-
-      {/* 아이디 편집 */}
-      <div className="flex flex-col gap-2">
-        <label className="text-white/70 text-sm font-black">아이디</label>
-        <div className={`flex items-center w-full bg-white/10 border-[2px] ${inputBorder} rounded-xl px-4 py-3 transition-colors`}>
-          <span className="text-white/60 font-semibold mr-1">@</span>
           <input
-            type="text"
-            value={usernameInput}
-            onChange={handleUsernameChange}
-            placeholder={currentUsername ?? 'username'}
-            maxLength={30}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            className="flex-1 bg-transparent text-white font-semibold placeholder:text-white/30 focus:outline-none"
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleFileChange}
           />
-          {checkStatus === 'checking' && (
-            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin ml-2 shrink-0" />
+        </div>
+
+        {/* 아이디 편집 */}
+        <div className="flex flex-col gap-2">
+          <label className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/70">{d.profileEdit.usernameLabel}</label>
+          <div className={`flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}`}>
+            <span className="text-text/60 mr-1">@</span>
+            <input
+              type="text"
+              value={usernameInput}
+              onChange={handleUsernameChange}
+              placeholder={currentUsername ?? d.onboarding.usernamePlaceholder}
+              maxLength={30}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
+            />
+            {checkStatus === 'checking' && (
+              <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
+            )}
+          </div>
+          {checkMessage && (
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70">{checkMessage}</p>
           )}
         </div>
-        {checkMessage && (
-          <p className={`text-sm font-semibold px-1 ${msgColor}`}>{checkMessage}</p>
-        )}
-      </div>
 
-      {/* 저장 버튼 */}
-      <div className="flex flex-col gap-3 mt-auto">
-        {saveError && (
-          <p className="text-red-400 text-sm font-semibold text-center">{saveError}</p>
-        )}
-        <button
-          onClick={handleSave}
-          disabled={!canSave}
-          className="w-full bg-jam-lime text-jam-ink font-black py-4 rounded-2xl border-[3px] border-jam-ink shadow-[4px_4px_0_0_#161616] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-lg"
-        >
-          {saving ? '저장 중...' : '저장'}
-        </button>
-        <button
-          onClick={() => router.back()}
-          className="w-full text-white/50 font-semibold py-3 text-sm active:text-white/80 transition-colors"
-        >
-          취소
-        </button>
+        {/* 저장 버튼 */}
+        <div className="flex flex-col gap-[var(--spacing-16)] mt-auto">
+          {saveError && (
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{saveError}</p>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={!canSave}
+            className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
+          >
+            {saving ? d.profileEdit.saving : d.profileEdit.saveButton}
+          </button>
+          <button
+            onClick={() => router.back()}
+            className="w-full min-h-11 text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:opacity-70 transition-opacity"
+          >
+            {d.profileEdit.cancelButton}
+          </button>
+        </div>
       </div>
     </div>
   )

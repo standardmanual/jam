@@ -383,6 +383,134 @@ export const ko = {
     statusNoParticipants: '아직 참가자가 없어요',
     statusMeSuffix: ' (나)',
   },
+
+  /** 로그인 */
+  auth: {
+    wordmark: 'JAM!',
+    slogan: '움직이면 얻는다. 피지털 배지 컬렉션.',
+    googleLogin: '구글로 시작하기',
+    errorFailed: '로그인에 실패했어요. 다시 시도해주세요.',
+    errorGeneric: '오류가 발생했어요. 잠시 후 다시 시도해주세요.',
+    terms: '계속하면 JAM!의 이용약관 및 개인정보처리방침에 동의하는 것으로 간주됩니다.',
+  },
+
+  /** 온보딩(아이디 설정) */
+  onboarding: {
+    avatarAlt: '프로필',
+    title: 'JAM! 아이디를\n만들어 주세요',
+    subtitle: '아이디는 나중에 변경할 수 있어요',
+    usernamePlaceholder: 'username',
+    submitButton: '생성하기',
+    submitting: '저장 중',
+    errorEmpty: '아이디를 입력해 주세요',
+    errorTooLong: '30자 이하로 입력해 주세요',
+    errorFormat: '영문, 숫자, ., _ 만 사용할 수 있어요',
+    errorDot: '점(.)으로 시작하거나 끝날 수 없어요',
+    errorDoubleDot: '점(.)을 연속으로 사용할 수 없어요',
+    available: '사용 가능한 아이디예요',
+    taken: '이미 사용 중인 아이디예요',
+    genericError: '오류가 발생했어요. 다시 시도해 주세요.',
+    networkError: '네트워크 오류가 발생했어요.',
+  },
+
+  /** 프로필 편집 */
+  profileEdit: {
+    title: '프로필 편집',
+    changePhoto: '탭하여 사진 변경',
+    changePhotoAlt: '프로필 사진 변경',
+    fileTypeError: 'JPEG, PNG, WebP 파일만 업로드할 수 있어요',
+    fileSizeError: '파일 크기가 5MB를 초과해요',
+    uploadError: '업로드에 실패했어요. 다시 시도해 주세요.',
+    usernameLabel: '아이디',
+    saveButton: '저장',
+    saving: '저장 중',
+    cancelButton: '취소',
+    saveError: '저장에 실패했어요. 다시 시도해 주세요.',
+  },
+
+  /** 잼 포인트 내역 */
+  points: {
+    title: '잼 포인트',
+    balanceLabel: '현재 잔액',
+    historyTitle: '최근 내역',
+    loading: '불러오는 중',
+    loadError: '내역을 불러오지 못했어요.',
+    retry: '다시 시도',
+    emptyTitle: '아직 쌓인 포인트가 없어요.',
+    emptyBody: '활동을 동기화하면 배지와 함께 포인트를 받을 수 있어요.',
+    loadMore: '더 보기',
+    loadingMore: '불러오는 중',
+  },
+
+  /** 유저 검색 결과 */
+  search: {
+    title: '유저 검색',
+    promptTitle: '아이디 또는 이메일로 유저를 검색해보세요',
+    promptBody: '두 글자 이상 입력해주세요',
+    emptyTitle: '검색 결과가 없어요',
+    emptyBody: '다른 아이디나 이메일로 다시 검색해보세요',
+    resultCount: '{count}명의 유저',
+  },
+
+  /** 팔로워/팔로잉 목록 */
+  social: {
+    followersCount: '팔로워 {count}명',
+    followingCount: '팔로잉 {count}명',
+    emptyFollowers: '팔로워가 없어요',
+    emptyFollowing: '아직 팔로우한 사람이 없어요',
+    followButton: '팔로우',
+    followingButton: '팔로잉',
+  },
+
+  /** 아이템북 목록/상세 */
+  itembooks: {
+    eyebrow: '컬렉션',
+    title: '아이템북',
+    subtitle: '아이템 배지를 모아 아이템북을 완성해보세요',
+    emptyTitle: '아직 발견한 아이템북이 없어요.',
+    emptyBody: '아이템 배지를 모아봐요!',
+    userEyebrowPrefix: '님이 발견한 아이템북',
+    completed: '완성',
+    backToDetail: '배지 상세',
+    backToList: '아이템북 목록',
+    slotHint: '보유한 아이템 배지를 슬롯에 장착해 아이템북을 완성해요',
+    noBadgesTitle: '아직 이 아이템북에 등록된 배지가 없어요.',
+    poiHint: 'POI 배지는 해당 장소를 지나가면 자동으로 채워져요',
+    poiEarned: '획득',
+    poiNotEarned: '미획득',
+    completedTitle: '아이템북 완성!',
+    completedBody: '모든 아이템 배지를 슬롯에 장착했어요',
+    unknownBadge: '???',
+    slotLoginRequired: '로그인이 필요해요.',
+    slotFailed: '슬롯에 실패했어요.',
+    unslotFailed: '슬롯 해제에 실패했어요.',
+    networkError: '네트워크 오류가 발생했어요.',
+    unslotButton: '슬롯 해제',
+    slotButton: '슬롯',
+    processing: '처리 중',
+    ownedPrefix: '보유 ',
+  },
+
+  /** 아이템 조합 */
+  combine: {
+    eyebrow: '아이템 합성',
+    title: '조합',
+    selectedCount: '선택한 아이템 ({count}/{max})',
+    combineButton: '합성하기',
+    hintsTitle: '힌트',
+    hintUnknown: '???',
+    recipesTitle: '공개 레시피',
+    recipeLine: '재료 {count}개 → 결과 배지 · 성공률 {pct}%',
+    myItemsTitle: '내 아이템',
+    emptyInventory: '인벤토리가 비어 있어요.',
+    successResult: '{names} 획득!',
+    selectRangeError: '아이템 2~10개를 선택해주세요.',
+    itemsNotFound: '아이템을 찾을 수 없어요.',
+    recipeFail: '조합에 실패했어요. 아이템이 소각됐습니다.',
+    consolationPoints: ' (위로 잼 포인트 +{points})',
+    genericError: '오류가 발생했어요.',
+    genericFail: '조합 실패',
+  },
 } as const
 
 export type Dictionary = typeof ko
