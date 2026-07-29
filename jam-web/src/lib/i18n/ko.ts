@@ -170,6 +170,61 @@ export const ko = {
     backToToday: '투데이로',
     noBody: '본문이 없습니다',
   },
+
+  /** 배지 목록/상세 화면 */
+  badges: {
+    listTitle: '나의 배지',
+    tabActivity: '액티비티',
+    tabItem: '아이템',
+    tabItembook: '아이템북',
+
+    emptyActivityTitle: '아직 획득한 배지가 없어요',
+    emptyActivityBody: 'Strava를 연동하고 활동하면 배지를 획득할 수 있어요',
+    emptyItemTitle: '아직 아이템 배지가 없어요',
+    emptyItemBody: '활동을 완료하면 확률로 아이템 배지가 드랍됩니다',
+    emptyItembookTitle: '아직 아이템북이 없어요',
+    emptyItembookBody: '관리자가 아이템북을 등록하면 이 곳에 표시됩니다',
+
+    expiringSoon: '곧 만료',
+    itembookCompleted: '완성',
+
+    // 상세 페이지
+    pointRewardEarned: '이 배지는 {points} 포인트를 함께 드렸어요',
+    pointRewardPending: '이 배지를 획득하면 {points} 포인트를 함께 드려요',
+
+    prerequisiteTitle: '선행 배지 필요',
+    prerequisiteBody: '아래 배지 중 하나를 먼저 획득해야 이 배지를 받을 수 있어요.',
+    prerequisiteOwned: '보유',
+
+    conditionTitle: '획득 조건',
+    conditionPoiBody: '연결된 장소(POI)를 지나가는 활동을 기록하면 자동으로 획득돼요. 방문할 때마다 이력이 쌓여요.',
+
+    earnHistoryTitle: '획득 이력',
+    earnHistoryCount: '총 {count}회',
+    earnHistoryUnknownPlace: '알 수 없는 장소',
+
+    earnInfoTitle: '획득 정보',
+    earnedAt: '획득 일시',
+    triggerActivity: '트리거 활동',
+    triggerDistance: '활동 거리',
+    triggerDistanceValue: '{km} km',
+    triggerDate: '활동 일자',
+    viewOnStrava: 'Strava에서 보기',
+
+    connectedLocationTitle: '연결 위치',
+    viewOnMap: '{name} 지도에서 보기',
+
+    shareCardButton: '공유 카드 만들기',
+    shareCardTitle: '공유 카드',
+    shareCardAlt: '공유 카드 미리보기',
+    shareCardClose: '닫기',
+    shareCardShare: '공유 / 저장',
+    shareCardGenerateFailed: '카드 생성에 실패했습니다',
+    physicalPatchButton: '실물 패치 보기',
+
+    notEarnedTitle: '아직 획득하지 못한 배지예요',
+    notEarnedBody: '조건을 달성하면 자동으로 획득됩니다',
+  },
 } as const
 
 export type Dictionary = typeof ko
