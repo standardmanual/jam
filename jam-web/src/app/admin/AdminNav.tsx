@@ -76,24 +76,26 @@ export function AdminNav({ userEmail }: { userEmail: string | null }) {
           </button>
 
           {open && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-[#e5e7eb] rounded-2xl shadow-xl overflow-hidden py-2">
-              {NAV_ITEMS.map((item) => {
-                const active = isActive(pathname, item)
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={[
-                      'flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors',
-                      active ? 'text-[#111111] bg-[#f5f5f5]' : 'text-[#374151] hover:text-[#111111] hover:bg-[#f8f9fa]',
-                    ].join(' ')}
-                  >
-                    <span>{item.icon}</span>
-                    {item.label}
-                  </Link>
-                )
-              })}
-              <div className="border-t border-[#e5e7eb] mt-2 pt-2 px-4">
+            <div className="absolute right-0 mt-2 w-56 max-h-[calc(100vh-5rem)] bg-white border border-[#e5e7eb] rounded-2xl shadow-xl flex flex-col overflow-hidden">
+              <div className="overflow-y-auto py-2">
+                {NAV_ITEMS.map((item) => {
+                  const active = isActive(pathname, item)
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={[
+                        'flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors',
+                        active ? 'text-[#111111] bg-[#f5f5f5]' : 'text-[#374151] hover:text-[#111111] hover:bg-[#f8f9fa]',
+                      ].join(' ')}
+                    >
+                      <span>{item.icon}</span>
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </div>
+              <div className="shrink-0 border-t border-[#e5e7eb] pt-2 pb-2 px-4">
                 <p className="text-xs text-[#898989] truncate mb-1">{userEmail}</p>
                 <Link
                   href="/"
