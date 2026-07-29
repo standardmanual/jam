@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPublishedArticleCard } from '@/lib/today/cards'
 import LocalDate from '@/components/LocalDate'
+import { d } from '@/lib/i18n'
+import { NewspaperIcon } from '@/components/ui/icons'
 
 type Props = { params: Promise<{ cardId: string }> }
 
@@ -23,40 +25,41 @@ export default async function TodayArticlePage({ params }: Props) {
     .filter(Boolean)
 
   return (
-    <div className="min-h-full bg-jam-cream pb-16">
+    <div className="min-h-full bg-surface text-text pb-[var(--spacing-40)]">
       {card.cover_image_url && (
-        <div className="w-full aspect-[16/10] bg-jam-ink/5 overflow-hidden border-b-[3px] border-jam-ink">
+        <div className="w-full aspect-[16/10] overflow-hidden shadow-[inset_0_-1px_0_0_var(--color-border)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={card.cover_image_url} alt={card.title} className="w-full h-full object-cover" />
         </div>
       )}
 
-      <article className="px-5 pt-6">
-        <Link href="/" className="text-xs font-black text-jam-ink/50 underline">
-          ← 투데이로
+      <article className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">
+        <Link href="/" className="block text-[11px] text-text/50 underline underline-offset-2">
+          &larr; {d.todayCard.backToToday}
         </Link>
 
-        <span className="inline-block mt-4 text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded-full border-2 border-jam-ink bg-jam-ink text-jam-cream">
-          기사
+        <span className="inline-flex items-center gap-1 mt-[var(--spacing-16)] text-[10px] uppercase px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70">
+          <NewspaperIcon className="w-3 h-3" />
+          {d.todayCard.editorialArticle}
         </span>
 
-        <h1 className="text-3xl font-black text-jam-ink leading-tight mt-3">{card.title}</h1>
+        <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mt-[var(--spacing-16)]">{card.title}</h1>
         {card.subtitle && (
-          <p className="text-base text-jam-ink/60 font-bold mt-2 leading-snug">{card.subtitle}</p>
+          <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text/60 mt-2">{card.subtitle}</p>
         )}
-        <p className="text-xs text-jam-ink/40 font-semibold mt-3">
+        <p className="text-[11px] text-text/40 mt-[var(--spacing-16)]">
           <LocalDate iso={card.starts_at} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
         </p>
 
-        <div className="mt-6 flex flex-col gap-4">
+        <div className="mt-[var(--spacing-24)] flex flex-col gap-[var(--spacing-16)]">
           {paragraphs.length > 0 ? (
             paragraphs.map((p, i) => (
-              <p key={i} className="text-[15px] leading-relaxed text-jam-ink/90 font-medium whitespace-pre-line">
+              <p key={i} className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text/90 whitespace-pre-line">
                 {p}
               </p>
             ))
           ) : (
-            <p className="text-jam-ink/40 font-semibold">본문이 없습니다.</p>
+            <p className="text-text/40">{d.todayCard.noBody}</p>
           )}
         </div>
       </article>
