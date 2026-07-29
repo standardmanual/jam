@@ -39,3 +39,16 @@
 - [검증] `rm -rf .next` 후 `npx tsc --noEmit` — 에러 0건 (이전 에러는 iCloud 동기화로 생긴 `.next/types/* 2.ts` 중복 파일이 원인, 코드와 무관, .next 삭제로 해소)
 - [검증] `npm run build` — 전체 라우트 정상 빌드
 - **Design_Phase01 (Phase 1) 완료.** 남은 항목(Phase 2): 투데이/배지/인벤토리·드랍·미션 리뉴얼, state_color_palette 어드민화, 배지/드랍/아이템북 화면에서 이미 바뀐 Button/Card 룩 정식 리뉴얼
+
+## 2026-07-29 — 메인세션: 투데이(홈) 화면 리뉴얼 (Phase 2 착수)
+- [완료] `(main)/page.tsx` — 헤더/Strava 카드/최근 배지 그리드/바로가기를 Card·바이너리 토큰으로 전면 교체, RarityBadge 재사용
+- [완료] `(main)/TodayCardStack.tsx` — 5개 layout_type(large_thumbnail/badge_gallery/shortcut/banner/other) 전부 재작성. template_type 식별을 컬러 칩 대신 아이콘+무색 pill로 변경(바이너리 원칙 준수)
+- [발견/수정] BannerCard가 cover 이미지 없을 때도 검정 스크림 그라디언트를 그려서 회색 얼룩처럼 보이는 버그 → cover 없으면 OtherCard로 폴백하도록 수정
+- [완료] `UserSearchBar.tsx`, `SyncButton.tsx` — Button 컴포넌트 + 토큰 재작성, 토스트 메시지 이모지 제거(`{count}개` i18n 보간)
+- [완료] `components/ui/Toast.tsx` — ✓/✕/ℹ 유니코드 기호 대신 SVG 아이콘(Check/Close/Info)로 교체, jam-* 색상 제거
+- [완료] `components/ui/Badge.tsx`(RarityBadge) — 마이페이지와 동일 원칙으로 배경 워시 대신 텍스트/보더 색상 방식으로 변경 (공용 컴포넌트라 배지 목록/상세 등 다른 화면에도 스필오버 — Phase 2에서 그 화면들 정식 리뉴얼할 때 참고)
+- [완료] `today/[cardId]/page.tsx` — 기사 페이지 리뉴얼 + 뒤로가기 링크/칩 겹침 레이아웃 버그 수정(`block` 추가)
+- [완료] `components/ui/icons.tsx`에 HourglassIcon/PinIcon/FlaskIcon/NewspaperIcon/SearchIcon/CheckIcon/InfoIcon 추가
+- [완료] `i18n/ko.ts`에 `today`/`todayCard` 네임스페이스 추가
+- [검증] 임시 목데이터 라우트로 홈 화면 5종 카드 + 기사 페이지 스크린샷 검증 후 라우트/proxy.ts 원복. `tsc --noEmit` 0건, `npm run build` 성공. 커밋 d03fae2, push 완료.
+- 다음 순서: 배지 목록/상세 리뉴얼 (RarityBadge 스필오버 이미 반영되어 있으니 레이아웃/토큰 교체 위주)
