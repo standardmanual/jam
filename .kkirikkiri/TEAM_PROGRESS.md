@@ -1,42 +1,41 @@
-# 진행 상황 (Phase 16)
+# 진행 상황 (Design_Phase01)
 
-## 2026-07-27 — 메인세션: 최종 완료
-- dev1/dev2 diff 전량 리뷰 완료(스펙 일치, user_activity_badges 무변경 확인)
-- eslint 신규 에러 4건(멀티라인 eslint-disable-next-line 위치 문제) 메인세션이 직접 수정
-- tsc/eslint/next build 전부 통과, 실 DB 스모크테스트(반복발급 3건 + 동일활동 재처리 23505 차단) 확인
-- 커밋 2f898f8(기능) + 2ec7167(SERVICE_OPERATIONS 문서), push 완료
-- Vercel 배포 jam-ez0qhjnvc Ready, jam-rose.vercel.app alias 연결 확인
+## 2026-07-29 — 메인세션: 팀 구성 + 공유 메모리 초기화
+- kkirikkiri-design-phase01 팀 구성 완료, 태스크 배분 시작
 
-## 2026-07-27 — 메인세션: 팀 준비 완료
-- DB 마이그레이션 052/053 유저가 직접 실행, service_role 키로 적용 확인 완료(user_poi_badge_earns 테이블 조회 성공, badges.type='poi' insert 성공).
-- 이제 dev1(데이터/백엔드) 서브에이전트 실행 예정.
-- [dev1] 작업 시작 — Step B/E 담당(types/database.ts, badge-engine, BadgeForm condPoiId 제거, strava/sync.ts, itembook/checker.ts, badges/[id]/page.tsx).
-- [dev1] 완료. 수정 파일:
-  - `src/types/database.ts` — BadgeType에 'poi' 추가, BadgeCondition.poi_id 제거, UserPoiBadgeEarnRow 신설, Database.Tables에 user_poi_badge_earns 추가
-  - `src/lib/badge-engine/index.ts` — evaluateConditionDetailed의 poi_id 죽은 분기 제거 + PROGRESSION_MODIFIERS에서 'poi_id' 제거
-  - `src/app/admin/badges/BadgeForm.tsx` — condPoiId state/입력필드/조건빌더 라인 제거 (그 외 무변경)
-  - `src/app/admin/badges/page.tsx` — 조건 칩 `if (c.poi_id)` 1줄만 제거(타입 제거로 인한 tsc 에러 해소용. Dev2 페이지네이션 작업과 충돌 없음)
-  - `src/lib/strava/sync.ts` — POI 매칭 결과 선수집 → linked_badge_id 일괄 조회(badgeById, N+1 방지) → type==='poi'면 user_poi_badge_earns에 매번 insert(보유체크 없음, 23505만 무시), 그 외는 기존 user_activity_badges 경로 그대로
-  - `src/lib/itembook/checker.ts` — badges 조회 `.in('type',['item','poi'])`, poi 배지는 user_poi_badge_earns distinct 존재 여부로 채움 카운트(중복 미가산), total/slotted 합산 골격 유지
-  - `src/app/(main)/badges/[id]/page.tsx` — poi 타입은 user_poi_badge_earns + poi 조인 earned_at desc 전체 조회 → "획득 이력" 리스트 렌더링, hasEarned 도입(그 외 타입 기존 UI 무변경)
-  - tsc: 수정 파일 관련 에러 0 (테스트 파일 describe/it, .next/types 중복 정의는 기존 이슈)
-  - user_activity_badges 스키마/기존 쿼리 무변경 확인
-- [dev2] 작업 시작 — Step C/D 담당(admin poi search API, badges poi-links API, BadgeForm poi UI, badges API condition_json null, badges 목록 페이지네이션, itembooks 상세 poi 배지 표시).
-- [dev2] 완료. 생성 파일:
-  - `src/app/api/admin/poi/search/route.ts` — GET ?query=, getAdminUser 인증, poi 테이블 name ILIKE 검색 최대 20건(id,name,category,lat,lng,radius_meters,linked_badge_id). PostgREST 필터 깨뜨리는 문자(`,()%_*\`) 제거 후 질의.
-  - `src/app/api/admin/badges/[id]/poi-links/route.ts` — GET(이 배지에 연결된 poi 전체), PUT({poi_ids})로 통째 교체(제거분 linked_badge_id=null → 새 목록 linked_badge_id=badgeId, 2단계 UPDATE).
-  수정 파일:
-  - `src/app/admin/badges/BadgeForm.tsx` — BADGE_TYPES에 'poi' 추가, type==='poi'면 조건 빌더 섹션 숨김 + "연결된 POI" 섹션(검색/추가/제거, 다른 배지 연결 경고) 노출, isEdit이면 GET poi-links로 초기값 로드, 저장 시 배지 저장 후 PUT poi-links 호출 후 router.push, poi 타입은 condition_json null 전송.
-  - `src/app/api/admin/badges/route.ts`, `[id]/route.ts` — type==='poi'면 condition_json 강제 null.
-  - `src/app/admin/badges/page.tsx` — 서버사이드 필터/정렬 + count:'exact' + range(30개/페이지), 하단 Pagination(basePath="/admin/badges") 추가.
-  - `src/app/admin/poi/Pagination.tsx` — 재사용을 위해 optional `basePath`(기본 '/admin/poi') prop만 추가. POI 화면 동작 무변경.
-  - `src/app/admin/badges/BadgesFilterBar.tsx` — 타입 필터에 POI 옵션 추가, 필터 변경 시 page 파라미터 초기화.
-  - `src/app/(main)/itembooks/[id]/page.tsx` — 소속 배지 조회 `.in('type',['item','poi'])`, item은 기존 SlotGrid 그대로, poi는 user_poi_badge_earns 획득 여부만 표시하는 별도 섹션 추가. 진행도 total/slotted에 poi 배지 반영(checker.ts 판정과 일치).
-  - tsc: 수정/생성 파일 관련 에러 0(테스트 파일 describe/it, .next/types 중복 정의는 기존 이슈). eslint도 clean.
-  - dev1 담당 파일(types/database.ts, badge-engine, strava/sync.ts, itembook/checker.ts, badges/[id]/page.tsx) 및 user_activity_badges 무변경.
-- [test] 작업 시작 — POI 배지 반복 획득 로직 + 아이템북 poi 완성 판정 로직 순수함수 유닛테스트 작성(jam-web/scripts/test-poi-badge-repeat.js, test-itembook-poi-completion.js, node:assert 기반).
-- [test] 완료. 신규 파일 2개(둘 다 node:assert 기반, jest/vitest 미설치 확인 후 순수 Node 스크립트로 작성 — 기존 conditions.test.ts의 describe/it 패턴은 실행 불가 죽은 코드라 반복하지 않음):
-  - `jam-web/scripts/test-poi-badge-repeat.js` — user_poi_badge_earns UNIQUE(user_id, badge_id, poi_id, triggered_by_strava_id) 제약을 인메모리 mock으로 재현. 5개 시나리오(다른 POI 반복 발급, 같은 POI 다른 활동ID 반복 발급, 동일 활동 재동기화 idempotency, 반복+idempotency 동시 검증, 유저간 독립성) 총 11개 assert 통과.
-  - `jam-web/scripts/test-itembook-poi-completion.js` — checker.ts의 total/slotted 카운팅(item=슬롯 수, poi=distinct badge_id 보유 여부)을 순수 함수로 재현. 5개 시나리오(아이템만 채움 미완성, POI 획득 시 완성, POI 단독 북, POI 3회 중복 획득해도 완성 판정 미가산, 기완성 북 재포함 안됨) 총 7개 assert 통과.
-  - 실행 확인: `cd jam-web && node scripts/test-poi-badge-repeat.js && node scripts/test-itembook-poi-completion.js` — 둘 다 정상 종료, 각각 "PASS — 총 N개 검증 케이스 통과" 로그 출력.
-  - `src/lib/*` 등 기존 소스 파일은 무변경.
+## 2026-07-29 — dev-tokens: 태스크 1·2 시작
+- PRD 4종 + SuperHi Plus 원본 레퍼런스 정독, 기존 globals.css / (main)/TabBar.tsx / ui/Button.tsx / ui/Card.tsx 조사
+
+## 2026-07-29 — dev-tokens: 태스크 1·2 완료
+- [완료] `src/app/globals.css` — Pretendard CDN import(최상단), SuperHi Plus 브랜드/시맨틱 컬러 + 라디우스 토큰(@theme), 타이포/스페이싱/elevation 토큰(:root), body Pretendard weight 400 강제. 기존 jam-* 토큰은 전부 보존.
+- [완료] `src/components/ui/TopNav.tsx` 신설
+- [완료] `src/components/ui/TabBar.tsx` 신설 (라우팅 로직 원본 그대로, 스타일만 교체). 기존 `(main)/TabBar.tsx`는 손대지 않음 — 교체는 dev-integration 담당.
+- [완료] `src/components/ui/Card.tsx` / `Button.tsx` 새 스펙으로 교체 (레거시 props 하위호환 유지)
+- [검증] `npx tsc --noEmit` — 신규/수정 파일 관련 에러 0건 (기존부터 있던 `src/lib/points/__tests__/*` @types/jest 누락 에러만 잔존, 이번 작업과 무관)
+- [검증] dev 서버(3000) 기동 후 컴파일된 CSS 확인 — `--color-main`, `--color-surface-inverse`, `--radius-cards`, Pretendard @import, `.bg-surface-inverse` / `.text-text-inverse` / `.text-text-inverse\/40` 유틸리티 정상 생성 확인
+- dev 서버는 켜둔 상태로 인계 (preview name: `jam-web`, port 3000)
+
+## 2026-07-29 — dev-integration: 태스크 3·4 시작
+- TEAM_FINDINGS 인계 노트 + PRD 4종 + globals.css / TopNav / TabBar / Card / Button / ProfileClient / FeedSection 정독
+
+## 2026-07-29 — dev-integration: 태스크 3·4 완료
+- [완료] `src/lib/i18n/ko.ts` 신설 — namespace 5종(common/nav/profile/tabs/feed), `{변수}` 보간 패턴
+- [완료] `src/lib/i18n/index.ts` 신설 — `dictionaries` / `getDictionary()` / 단축 참조 `d` / 보간 헬퍼 `t()`
+- [완료] `src/components/ui/icons.tsx` 신설 — 이모지 대체 SVG 라인 아이콘 15종(stroke 1.5, currentColor)
+- [완료] `src/app/(main)/layout.tsx` — TabBar import를 `@/components/ui/TabBar`로 교체 (기존 `(main)/TabBar.tsx` 파일은 삭제하지 않고 보존)
+- [완료] `src/components/ui/TabBar.tsx` — 탭 라벨을 `d.nav.*`로 이관 (로직 무변경)
+- [완료] `src/components/ui/TopNav.tsx` — `showBack?: boolean`(기본 true) 옵셔널 prop 추가, aria-label i18n 이관
+- [완료] `src/app/(main)/profile/ProfileClient.tsx` 전면 교체 — TopNav/Card/Button + i18n, 이모지 전부 SVG 교체, 네오브루탈 제거
+- [완료] `src/app/(main)/FeedSection.tsx` 전면 교체 — ProfileClient 전용 컴포넌트라 프로필 화면 범위에 포함 (이모지 6종 + 빈상태 + 마지막파편 아이콘 SVG화, DetailSheet 포함)
+- [검증] `npx tsc --noEmit` — `__tests__` 제외 시 에러 0건
+- [검증] `npm run build` — Compiled successfully (3.5s), 전체 라우트 빌드 성공
+- [미검증] 브라우저 스크린샷 — /profile 접근 시 미로그인이라 /login으로 리다이렉트. 로그인 세션 있는 메인세션이 수행 필요
+
+## 2026-07-29 — 메인세션: 브라우저 검증 + 수정 + 최종 완료
+- `src/app/designpreviewtemp/profile/page.tsx` 임시 라우트 생성(목데이터로 ProfileClient 직접 렌더) + `src/proxy.ts` publicPaths에 일시 추가 → 모바일 뷰포트(430px) 스크린샷 검증 → 작업 완료 후 라우트/proxy.ts 변경 전부 원복(삭제)
+- [발견/수정] `src/lib/i18n/ko.ts`의 `feed.title`이 영문 "Feed"로 방치되어 있던 것을 "최근 활동"으로 수정
+- [발견/수정] 배지 그리드 희귀도 타일 배경(`bg-jam-teal/20` 등 반투명 워시)이 코발트 배경 위에서 텍스트(코발트색)와 뒤섞여 거의 안 보이는 버그 발견 → 타일 배경을 항상 아이스(`bg-surface-inverse`) 고정, 희귀도 색은 하단 라벨 pill의 텍스트/보더 색으로만 적용하도록 `ProfileClient.tsx` 수정. 색상 값 자체(jam-teal/purple/yellow)는 변경 없음 — 적용 방식만 수정
+- [검증] 수정 후 재스크린샷 — 뱃지 6종(common/rare/legendary/mythic) 전부 가독성 확보 확인
+- [검증] `rm -rf .next` 후 `npx tsc --noEmit` — 에러 0건 (이전 에러는 iCloud 동기화로 생긴 `.next/types/* 2.ts` 중복 파일이 원인, 코드와 무관, .next 삭제로 해소)
+- [검증] `npm run build` — 전체 라우트 정상 빌드
+- **Design_Phase01 (Phase 1) 완료.** 남은 항목(Phase 2): 투데이/배지/인벤토리·드랍·미션 리뉴얼, state_color_palette 어드민화, 배지/드랍/아이템북 화면에서 이미 바뀐 Button/Card 룩 정식 리뉴얼

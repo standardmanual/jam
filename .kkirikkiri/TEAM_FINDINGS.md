@@ -1,60 +1,123 @@
-# 발견 사항 & 공유 자료
+# 발견 사항 & 공유 자료 (Design_Phase01)
 
-## 2026-07-23 — 메인세션: 코드베이스 공통 패턴 (이전 phase10 팀에서 확인, 이번에도 유효)
+## 2026-07-29 — 메인세션: 기존 코드 조사 결과 요약 (PRD 작성 시 조사한 내용, 재활용)
 
-- **인증 패턴**: `const supabase = await createClient(); const { data:{ user } } = await supabase.auth.getUser();` → user 없으면 401 (참고: `src/app/api/combine/route.ts`)
-- **service role**: `createServiceClient()` (동기 함수, await 불필요) — `src/lib/supabase/server.ts`에 `createClient`/`createServiceClient` 둘 다 존재. `award_points()` RPC 호출은 반드시 service role 클라이언트로.
-- **supabase select 결과 타입 캐스팅 컨벤션**: `src/app/admin/users/page.tsx` L6-12처럼 `as Pick<UserRow, '...'>[]` 형태로 명시적 캐스팅할 것. 캐스팅 없이 `.not()/.or()` 등을 체이닝하면 `data`가 `never[]`로 추론되어 tsc 에러 남 (이전 세션에서 `users/search/route.ts`가 이 문제로 에러 발생한 사례 있음 — points 관련 API route 작성 시 처음부터 캐스팅 적용해서 같은 실수 반복하지 말 것).
-- **PostgREST `.or()` 필터 이스케이프 주의**: 유저 입력을 필터 문자열에 보간할 때 콤마/괄호 처리 확인 필요(포인트 시스템에서는 자유텍스트 검색이 적으므로 영향 적지만, 어드민 유저 검색 재사용 시 주의).
-- **npm install 상태**: 세션 시작 시 `jam-web/node_modules`가 없을 수 있음 — tsc 실행 전 `npm install` 먼저 시도(이전에 12초 내 정상 설치됨, 환경 문제 아니었음).
-- **마이그레이션 번호**: 현재 최신은 044. 이번 작업은 045부터 사용.
+- 바텀탭바: `src/app/(main)/TabBar.tsx` — 6탭(투데이/배지/드랍/미션/인벤토리/프로필), `bg-jam-cream border-t-[3px] border-jam-ink`, 활성탭 `bg-jam-lime` pill. 다른 유저 프로필 보기·`?from=badges` 특수 케이스 로직 있음 — 절대 건드리지 말 것.
+- 상단 네비: 공통 컴포넌트 없음. 각 페이지가 `router.back()` + `<h1 className="font-black text-xl">` 패턴을 반복 (예: `src/app/(main)/points/page.tsx`, `src/app/(main)/profile/edit/page.tsx`).
+- 네오브루탈 카드 패턴: `border-[3px] border-jam-ink shadow-[3px_3px_0_0_#161616]` 형태가 ~30개 파일에 복사됨.
+- 색상 토큰: `src/app/globals.css`의 `@theme` 블록에 정의 (Tailwind v4, `tailwind.config.*` 없음). `color-scheme: dark` 고정.
+- i18n: 기존에 전혀 없음 (하드코딩 한글 문자열).
+- 대상 파일: `src/app/(main)/profile/ProfileClient.tsx` (프로필/마이페이지 메인 컴포넌트, ~484줄)
 
-## 2026-07-24 — 메인세션: phase13-mission 시작 메모
-- 마이그레이션 번호는 phase12에서 045 사용됨 — phase13-lead는 실제 파일 목록(`ls jam-web/supabase/migrations/`)으로 최신 번호 재확인 후 다음 번호 사용할 것 (여기 기록된 044/045는 참고용, 신뢰 금지)
-- Phase13 관련 checker.ts/rewards.ts/missions API 경로: `jam-web/src/lib/missions/checker.ts`, `jam-web/src/lib/missions/rewards.ts`(신규), `jam-web/src/app/api/missions/[id]/join/route.ts`, `jam-web/src/app/api/missions/[id]/status/route.ts`(신규), `jam-web/src/app/(main)/missions/[id]/MissionDetailClient.tsx`, `jam-web/src/app/admin/missions/MissionList.tsx`, `jam-web/src/app/api/admin/missions/route.ts`, `jam-web/src/lib/activity-feed/index.ts`
+---
+
+## 2026-07-29 — dev-tokens → dev-integration 인계 노트
+
+### 1. 토큰 (`src/app/globals.css`)
+
+컴포넌트에서는 **시맨틱 변수**를 쓰세요 (라이트 테마 확장 대비). Tailwind 유틸 이름이 그대로 생깁니다.
+
+| 유틸 | 의미 (현재 매핑) |
+|------|------|
+| `bg-surface` / `text-text` | 코발트 배경 + 그 위 아이스 텍스트 |
+| `bg-surface-inverse` / `text-text-inverse` | 아이스 배경 + 그 위 코발트 텍스트 |
+| `var(--color-border)` | 코발트 배경 위 1px inset border 색(=아이스) |
+| `var(--color-border-inverse)` | 아이스 배경 위 1px inset border 색(=코발트) |
+
+- 원색 유틸도 있음: `bg-main`(#0033e5) / `bg-sub`(#f0f7ff) / `cobalt-mist` / `pitch`. **cobalt-mist는 텍스트 금지**(WCAG 미달).
+- 투명도 변형 정상 동작 확인: `text-text-inverse/40` 등.
+- elevation은 항상 `shadow-[inset_0_0_0_1px_var(--color-border-inverse)]` 형태의 arbitrary inset box-shadow로. 드롭섀도 금지.
+- 라디우스: `rounded-[var(--radius-cards)]`(16) / `--radius-tags`(50) / `--radius-inputs`(2) / `--radius-buttons`(16) / `--radius-nav-buttons`(50) / `--radius-pill-buttons`(72). `rounded-cards` 같은 축약 유틸도 생성됨.
+- 타이포/스페이싱은 **@theme이 아니라 :root**에 있음 → arbitrary value로 참조:
+  `text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]`, `p-[var(--spacing-24)]`.
+  (이유: `--spacing-8` 등을 @theme에 넣으면 Tailwind 기본 스페이싱 스케일 `p-8`을 덮어써 기존 화면이 전부 깨짐 — 절대 옮기지 말 것.)
+- 사이즈 스케일: 16/18/24/32/42/56/85px = body-sm/body/subheading/heading-sm/heading/heading-lg/display.
+- Pretendard는 `body`에 강제 적용됨(weight 400). `layout.tsx`의 Geist 폰트 변수는 남아있지만 `font-sans` 사용처가 0건이라 실제로 적용되지 않음. **`font-bold`/`font-black` 같은 클래스를 새로 쓰지 마세요.**
+- 기존 `jam-*` 토큰은 전부 보존(다른 화면이 참조 중). teal/purple/yellow/lime은 Phase 2 상태 팔레트 이관 대상이라 값 재조정 금지.
+
+### 2. 신규/교체 컴포넌트 props
+
+**`src/components/ui/TopNav.tsx`** (client)
+```ts
+{ title: string; onBack?: () => void; backHref?: string; rightSlot?: React.ReactNode }
+```
+- `backHref` 있으면 `<Link>`, 없으면 `onBack ?? router.back()`. sticky + `env(safe-area-inset-top)` 처리 포함, 하단 1px inset border.
+- `rightSlot`은 슬롯 내부에서 44×44pt를 직접 보장할 것(TopNav가 강제하지 않음).
+
+**`src/components/ui/TabBar.tsx`** (client) — props는 기존과 동일 `{ username: string | null }`
+- 라우팅/활성탭 판별 로직은 `(main)/TabBar.tsx`와 **100% 동일**하게 복사됨(`?u=` 다른 유저 케이스, `/inventory?from=badges` 케이스 포함).
+- **아직 아무도 이 컴포넌트를 import하지 않음.** 기존 `(main)/layout.tsx`는 여전히 `(main)/TabBar.tsx`를 씁니다. 교체(re-export 또는 import 경로 변경)는 dev-integration이 화면 통합 시점에 하세요. 교체하면 6개 탭 전 화면의 탭바 룩이 동시에 바뀝니다.
+- 로직 수정이 필요해지면 두 파일을 반드시 함께 맞출 것(중복 존재).
+
+**`src/components/ui/Card.tsx`** (server/client 겸용, default export, forwardRef)
+```ts
+{ children, className?, ...divProps, glow?: boolean /* @deprecated: 무시됨 */ }
+```
+- 아이스 배경 + 코발트 텍스트, radius 16px, padding 24px, 1px inset border(코발트). 섀도우 없음.
+
+**`src/components/ui/Button.tsx`** (default export, forwardRef)
+```ts
+{ variant?: 'primary'|'outline'|'arrow' (+레거시 'secondary'|'ghost'|'danger'),
+  surface?: 'main'|'sub',   // 이 버튼이 "놓인 배경". 기본 'main'(코발트 배경 위)
+  loading?: boolean, fullWidth?: boolean, size?: 'sm'|'md'|'lg' /* @deprecated */ }
+```
+- `surface='main'`(기본, 코발트 배경 위): primary = 아이스 채움 + 코발트 텍스트 / outline = 1px 아이스 보더 + 아이스 텍스트 / arrow = 아이스 텍스트.
+- `surface='sub'`(아이스 배경 위): primary = 코발트 채움 + 아이스 텍스트 / outline = 1px 코발트 보더 + 코발트 텍스트.
+- primary는 pill 72px, outline은 pill 50px, arrow는 `→` 접두 + 배경 없음 + radius 16px + padding 24px.
+- 전 variant `min-h-11`(44pt) + `active:scale-95` 피드백, weight 400 고정.
+
+### 3. 주의사항 / 리스크
+
+- **레거시 화면 룩이 같이 바뀝니다.** `ui/Button`은 drops/BadgeDetailSheet·DropsClient·badges/ShareCardModal에서, `ui/Card`는 badges/BadgesClient·badges/[id]·itembooks/[id]에서 이미 사용 중. 새 스펙으로 교체했으므로 이 화면들도 코발트/아이스로 보이게 됩니다(타입 에러는 없음 — 레거시 props를 하위호환으로 받아줌). Phase 2에서 정식 리뉴얼 대상이라 의도적으로 허용했지만, 메인세션 스크린샷 검증 시 이 화면들도 한 번 확인해주세요.
+- 레거시 `variant="danger"`는 현재 outline으로 렌더됩니다 — 파괴적 액션 시각 구분은 문구/배치로 처리하거나 Phase 2에서 별도 규칙을 정해야 합니다.
+- `npx tsc --noEmit`은 `src/lib/points/__tests__/*`에서 @types/jest 누락 에러가 **원래부터** 납니다. 이번 작업과 무관하니 그 에러만 필터링해서 보세요.
+- dev 서버(port 3000)는 켜둔 상태입니다. `preview_start` name = `jam-web`.
+
+---
+
+## 2026-07-29 — dev-integration → 메인세션 인계 노트
+
+### 1. i18n 구조
+
+`src/lib/i18n/ko.ts` — namespace 5종. `src/lib/i18n/index.ts`에서 `d`(= ko 딕셔너리 단축 참조)와 `t(template, vars)` 보간 헬퍼를 export.
+
+| namespace | 범위 |
+|---|---|
+| `common` | close / detail / loadMore / back / countItems("{count}개") |
+| `nav` | 바텀 탭바 6개 라벨 |
+| `profile` | 헤더·버튼·Strava·빈상태·아이템북 카드 문구 전부 |
+| `tabs` | 통계바 4탭 (뱃지/아이템북/팔로워/팔로잉) |
+| `feed` | 필터탭·이벤트라벨·희귀도라벨·상세시트 Row 라벨 |
+
+사용법: `d.profile.editButton` 직접 참조, 보간이 필요할 때만 `t(d.profile.pointBalance, { count })`.
+
+### 2. 범위에 대한 판단 (검토 필요)
+
+- **`(main)/FeedSection.tsx`도 함께 리뉴얼했습니다.** grep 결과 이 컴포넌트를 import하는 곳은 `ProfileClient.tsx` 단 한 곳이라 실질적으로 프로필 화면의 일부입니다. 그대로 두면 프로필 화면에 이모지(🏅📦🎁🎯🎉❌📭🧩)와 네오브루탈 카드가 절반 남아 PROJECT_SPEC의 "화면 하나를 절반만 바꾸지 마" 조항을 위반합니다. `DetailSheet`도 같은 파일이라 함께 교체했습니다(BottomSheet 공통화는 Phase 3이므로 **구조는 그대로 두고 토큰/아이콘만** 교체).
+- **`TopNav`에 `showBack?: boolean`(기본 true) 옵셔널 prop을 추가**했습니다. 본인 프로필은 탭바로 직접 진입하는 루트 화면이라 되돌아갈 곳 없는 chevron이 뜨는 게 UX 퇴행이어서, `showBack={!isOwnProfile}`로 처리했습니다. 기본값이 true라 기존 호출부 영향 없음.
+- **`(main)/TabBar.tsx`는 삭제하지 않고 그대로 뒀습니다.** 이제 어디서도 import되지 않는 데드 파일입니다(layout.tsx가 `@/components/ui/TabBar`를 씀). 정리 시점은 메인세션이 판단하세요.
+
+### 3. 스크린샷 검증 시 특히 봐야 할 것
+
+1. **통계바 4칸 분할선** — `Card`의 24px 패딩을 `p-0 overflow-hidden`으로 죽이고 칸마다 `inset 1px 0 0 0` 세로 보더를 넣었습니다. 첫 칸엔 보더 없음. 라운드 코너에서 보더가 잘리는지 확인.
+2. **배지 그리드의 희귀도 배경** — `bg-white`/`bg-jam-teal/20`/`bg-jam-purple/20`/`bg-jam-yellow/30` 매핑을 **지시대로 그대로 유지**했습니다. 코발트 배경 위에서 common(흰색)과 아이스 카드가 미묘하게 다른 흰색으로 보일 수 있음 — Phase 2 상태 팔레트 작업 때 정리 대상.
+3. **Strava 브랜드 컬러 `#FC4C02` 제거** — "제3의 컬러 금지" 조항 때문에 주황색 점·텍스트·버튼을 전부 코발트/아이스로 바꿨습니다. Strava 브랜드 가이드상 문제 소지가 있다면 되돌릴지 판단 필요.
+4. **`DotmHex8` 로더는 손대지 않았습니다** — `colorPreset="grad-fire"`가 그라데이션이라 스펙 위반 소지가 있지만 공용 애니메이션 컴포넌트라 Phase 2로 미룹니다. 탭 로딩 중에만 보입니다.
+5. **탭바 교체로 6개 탭 전 화면의 하단바가 동시에 바뀝니다** — 아직 리뉴얼 안 된 투데이/배지/드랍/미션/인벤토리 화면에서 원색 배경 + 아이스 탭바 조합이 어떻게 보이는지 한 번씩 확인.
+6. **`min-h-full` + sticky TopNav** — 스크롤 컨테이너는 `(main)/layout.tsx`의 `<main class="overflow-y-auto">`입니다. 스크롤 시 TopNav가 제대로 붙어있는지, safe-area 패딩이 이중으로 들어가지 않는지 확인.
+7. 로그인 세션이 필요해 dev-integration은 브라우저 검증을 못 했습니다(미로그인 시 /login 리다이렉트). **탭 전환(해시)·팔로우 토글·로그아웃·편집 이동은 코드상 원본 그대로지만 실제 클릭 확인 필요.**
+
+### 4. 알려진 lint 경고 (이번 작업과 무관, 원본에도 있던 것)
+
+`ProfileClient.tsx`의 `window.location.hash = tab`(react-hooks/immutability)과 `<a href="/api/strava/auth">`(@next/next/no-html-link-for-pages)는 **HEAD 커밋에도 동일하게 존재**합니다. 기능 로직 보존 지시에 따라 그대로 뒀습니다. 빌드는 통과합니다.
 
 ---
 
 # DEAD_ENDS (시도했으나 실패한 접근)
 
-(phase13-mission 작업에서 실패한 접근이 나오면 여기에: 시도 → 실패 이유 → 근거 형식으로 기록)
-
-## 2026-07-26 — phase15-lead: DDL 직접 실행 전부 실패 (재시도 금지)
-- **Management API** (`POST https://api.supabase.com/v1/projects/{ref}/database/query`, Bearer=service_role JWT) → **401 `{"message":"JWT failed verification"}`**. 이 API는 Supabase 개인 액세스 토큰(PAT, `sbp_...`)이 필요한데 .env.local엔 없음.
-- **SQL-exec RPC** (`exec_sql`/`execute_sql`/`exec`/`sql`/`run_sql`) → 전부 **404 PGRST202** (그런 함수 없음). PostgREST엔 DDL 실행 RPC 미존재.
-- **pg 직접 연결** → `node_modules/pg` 미설치 + DB 비밀번호/커넥션스트링/pooler 리전 정보 전무. service_role는 JWT(PostgREST/GoTrue용)일 뿐 postgres role 비밀번호가 아니라 TCP 직결 불가.
-- **결론: DDL(CREATE TABLE)은 이 세션에서 실행 불가.** `supabase/migrations/048_today_cards.sql`을 정확히 작성해두고, **유저가 Supabase 대시보드 SQL Editor에 붙여넣어 실행해야 함.** 테이블 생성 후엔 `.from('today_cards').insert()`(PostgREST)로 샘플 20개 삽입 가능 → 시드 실행 스크립트도 준비해둠(`/tmp` node 스크립트 + `supabase/seed_phase15_today_cards_20.sql`).
-- 확인: `GET /rest/v1/today_cards` → 404 PGRST205 (테이블 아직 없음).
-
----
-
-## 2026-07-26 — 메인세션: phase15-today 사전 정보
-- DB 직접 접근: jam-web/.env.local에 NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 있음(gitignore됨). TLS는 `security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain > /tmp/system-ca.pem` 후 NODE_EXTRA_CA_CERTS로 우회.
-- 프로젝트 ref: ceehnkzdbecxwzxrhhns (URL: https://ceehnkzdbecxwzxrhhns.supabase.co)
-- supabase-js service_role로는 PostgREST CRUD(INSERT/UPDATE/SELECT)만 가능, DDL(CREATE TABLE)은 불가 — DDL 실행 방법은 phase15-lead가 직접 조사 필요(Supabase Management API 등). 안 되면 SQL 파일만 준비하고 메인세션에 보고.
-- 마이그레이션 최신 번호는 047(047_reallow_pickup_own_drop.sql)까지 사용됨 — 다음은 048, 단 실물 ls로 재확인 필수(이 프로젝트 중복번호 전례 많음: 012, 044/045, 045/046 등).
-- 홈 화면 구조/DB 스키마 조사 결과는 Phase15_01/02_PRD.md에 이미 반영됨 — today_cards 없음, 활동로그 원본 테이블 없음(활동기반 자동세그먼트 불가, Phase2로 미룸).
-
----
-
-## 2026-07-25 — 메인세션: phase14-dropmenu 사전 조사 요약 (PRD 작성 시 확인됨)
-- `/drops` 화면: `src/app/(main)/drops/page.tsx` → `DropsClient.tsx`. 현재 헤더 타이틀 + 드랍/픽업 모드탭 + 카드형(비풀스크린) 지도.
-- 지도: `src/components/map/MapView.tsx` (네이버 지도, dynamic ssr:false). 마커 색: 초록(available_drops_count>0) / 회색(범위내 드랍없음) / 흐림(범위밖). `available_drops_count` 집계는 이미 source(user/system) 구분 없이 카운트 — 앰비언트 드랍도 이미 초록으로 표시되고 있음(추가 작업 불필요, 확인만).
-- 드랍 API: `POST /api/drops` (src/app/api/drops/route.ts) — 50m 검증(`isUserNearPoi`), 변경 없음.
-- 픽업 API: `POST /api/drops/[dropId]/pickup` — 50m+어뷰징 검증, `pickup_drop()` RPC. 변경 없음.
-- POI별 배지 목록: `GET /api/drops/poi/[poiId]` — 이미 배열 반환(`is_ambient` 필드 포함), 변경 없음. Step C에서 이 API를 "픽업모드일 때만"이 아니라 POI 클릭마다 항상 먼저 호출하도록 호출 시점만 바꾸면 됨.
-- 인벤토리 그리드: `src/app/(main)/inventory/page.tsx`에 3열 그리드가 인라인으로 있음 — Step A에서 `src/components/inventory/InventoryGrid.tsx`로 추출 필요(신규 컴포넌트).
-- 배지 상세: `src/app/(main)/badges/[id]/page.tsx` — 기존 페이지 스타일을 참고해 픽업용 오버레이(`BadgeDetailSheet`, 신규)를 만들되 페이지 이동이 아닌 시트/모달로.
-- DB 스키마 변경 전혀 없음 (Phase14_02_DATA_MODEL.md §1) — poi_drops가 이미 POI당 여러 행 허용.
-
----
-
-# phase13-lead 발견사항 (2026-07-24)
-
-- **tsc 베이스라인 292 에러**: 전부 기존 `__tests__/*.test.ts`가 describe/it/expect 전역을 쓰는데 러너(@types/jest 등) 미설치라서 남는 pre-existing 에러. 프로덕션 코드는 0에러. → 신규 테스트는 러너 전역 대신 `node:assert` + 자체 실행 루프로 작성해야 에러 0 유지(`checker-logic.test.ts` 참고). `npx tsx <file>`로 실행.
-- **마이그레이션 번호**: 실제 최신 045(045 두 개), 다음은 **046** 사용함.
-- **인벤토리 슬롯 테이블명**: `inventory`(id,used_slots,max_slots) + `inventory_items`(inventory_id,badge_id,obtained_by). drop/pickup.ts 패턴 재사용. 아이템배지 지급 시 used_slots+1 수동 갱신 필요.
-- **배지 지급 테이블**: activity배지=`user_activity_badges`(user_id,badge_id,triggered_by), item배지=`inventory_items`. 배지 자체 point_reward는 DB트리거가 아니라 코드에서 awardPoints 호출로 재현해야 함(badge-engine과 동일).
-- **미션 어드민은 편집 라우트 없음**: POST 생성 / DELETE만. body 통째 insert라 신규 컬럼은 필드명만 맞으면 자동 저장.
-- **피드 컴포넌트 메타 접근**: HomeFeedSection/ProfileClient는 metadata를 `Record<string,...>`로 loose 캐스팅해 읽음 → FeedEventMeta 타입 변경이 컴파일 깨지 않음. 배열 필드(awarded_badge_names)는 `Array.isArray` 가드 후 사용.
-- **ProfileClient.tsx pre-existing lint 에러 2건**(L351 window.location.hash, L651 strava `<a>`) — 내 작업과 무관, 그대로 둠.
+- `--spacing-8` 등 SuperHi 스페이싱 스케일을 `@theme`에 넣는 안 → **채택 안 함**. Tailwind v4의 `--spacing-*` 네임스페이스를 덮어써서 기존 화면의 `p-8`/`gap-4` 등이 전부 깨짐. `:root` 평범한 CSS 변수로 두고 arbitrary value로 참조하는 방식으로 확정.
+- (기존 globals.css 주석의 경고와 달리) **비-inline `@theme`에서는 `var()` 간접 참조가 정상 동작**함을 컴파일된 CSS로 확인. `--color-surface: var(--color-main)` 형태가 유틸리티까지 잘 생성됨. 문제가 됐던 건 `@theme inline` 조합뿐임.
+- 로그인 없이 `/profile`을 검증하려고 `src/app/_design-preview/profile/page.tsx`를 만들었으나 **404** → Next.js는 `_`로 시작하는 폴더를 라우팅에서 자동 제외(private folder 컨벤션). `designpreviewtemp`처럼 언더스코어 없는 이름으로 재생성해야 함.
+- `proxy.ts`의 `publicPaths`에 임시 경로를 추가하지 않으면 전역 인증 가드에 걸려 `/login`으로 리다이렉트됨 — 이 프로젝트는 `middleware.ts`가 아니라 `src/proxy.ts`(커스텀 Next.js 빌드의 네이밍)를 씀.
+- 배지 희귀도 타일을 반투명 워시(`bg-jam-teal/20` 등)로 타일 전체에 덮는 방식은 **배경이 코발트로 바뀐 새 디자인에서는 실패**함 — 타일 배경은 항상 불투명 아이스로 고정하고, 희귀도 색은 좁은 영역(라벨 pill)에만 적용해야 코발트 배경과 섞이지 않고 대비가 유지됨. 색상값 자체가 아니라 "덮는 면적"이 문제였음 — Phase 2에서 `state_color_palette` 설계 시 이 교훈 반영 필요.
+- iCloud Drive 동기화 환경(`~/Library/Mobile Documents/...`)에서 `.next/types/*.ts`에 ` 2.ts` 같은 동기화 충돌 중복 파일이 생겨 `tsc --noEmit`이 무관한 타입 에러를 뿜을 수 있음 — `.next` 삭제 후 재실행하면 해소. 코드 문제가 아니므로 당황하지 말 것.
