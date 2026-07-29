@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { getPublishedArticleCard } from '@/lib/today/cards'
 import LocalDate from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
-import { NewspaperIcon } from '@/components/ui/icons'
 
 type Props = { params: Promise<{ cardId: string }> }
 
@@ -38,8 +37,7 @@ export default async function TodayArticlePage({ params }: Props) {
           &larr; {d.todayCard.backToToday}
         </Link>
 
-        <span className="inline-flex items-center gap-1 mt-[var(--spacing-16)] text-[10px] uppercase px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70">
-          <NewspaperIcon className="w-3 h-3" />
+        <span className="inline-flex items-center mt-[var(--spacing-16)] text-[10px] uppercase px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70">
           {d.todayCard.editorialArticle}
         </span>
 
