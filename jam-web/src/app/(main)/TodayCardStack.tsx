@@ -54,7 +54,7 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
           <img src={cover} alt={card.title} className="w-full h-full object-cover" />
         </div>
       )}
-      <div className="p-[var(--spacing-16)]">
+      <div className="p-[var(--spacing-24)]">
         <div className="flex items-center gap-2 mb-2">
           <TemplateChip card={card} />
           {card.template_type === 'location_trend' && card.region_label && (
