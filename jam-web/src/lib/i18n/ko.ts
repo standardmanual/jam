@@ -224,6 +224,13 @@ export const ko = {
 
     notEarnedTitle: '아직 획득하지 못한 배지예요',
     notEarnedBody: '조건을 달성하면 자동으로 획득됩니다',
+
+    earnedTag: '획득',
+    notEarnedTag: '미획득',
+    filterActivityLabel: '액티비티',
+    filterActivityAll: '전체 액티비티',
+    filterRarityLabel: '등급',
+    filterRarityAll: '전체 등급',
   },
 
   /** 인벤토리 목록/상세, 플리마켓 */

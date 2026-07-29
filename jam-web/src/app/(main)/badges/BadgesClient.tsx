@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
+import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
+import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import TopNav from '@/components/ui/TopNav'
@@ -11,6 +12,21 @@ import { MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
 type TabKey = 'activity' | 'item' | 'itembook'
+
+const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
+const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
+const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, legendary: 2, mythic: 3 }
+const RARITY_LABELS: Record<BadgeRarity, string> = {
+  common: d.feed.rarityCommon,
+  rare: d.feed.rarityRare,
+  legendary: d.feed.rarityLegendary,
+  mythic: d.feed.rarityMythic,
+}
+
+function activitySortIndex(types: ActivityType[]): number {
+  const idx = ACTIVITY_TYPE_ORDER.indexOf(types[0])
+  return idx === -1 ? ACTIVITY_TYPE_ORDER.length : idx
+}
 
 export interface ItemBookProgress {
   bookId: string
@@ -30,7 +46,7 @@ export interface ItemBadgeCard {
 }
 
 interface BadgesClientProps {
-  badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }>
+  badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow | null }>
   itemBadges: ItemBadgeCard[]
   itemBooks: ItemBookRow[]
   itemBookProgress: ItemBookProgress[]
@@ -53,13 +69,41 @@ function EmptyState({ title, body }: { title: string; body: string }) {
 
 export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookProgress }: BadgesClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('activity')
+  const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
+  const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
   const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
 
+  const earnedCount = badges.filter((b) => b.earned).length
+
   const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: 'activity', label: d.badges.tabActivity, count: badges.length },
+    { key: 'activity', label: d.badges.tabActivity, count: earnedCount },
     { key: 'item', label: d.badges.tabItem, count: itemBadges.length },
     { key: 'itembook', label: d.badges.tabItembook, count: itemBooks.length },
   ]
+
+  // 획득한 것부터(획득 최신순), 미획득은 같은 액티비티끼리 모아 이름순 → 등급 낮은순.
+  // 화면에 별도 구간 헤더로 나누진 않고 정렬 순서로만 배치한다.
+  const sortedActivityBadges = useMemo(() => {
+    const earned = badges.filter((b) => b.earned)
+    const unearned = badges.filter((b) => !b.earned)
+
+    earned.sort((a, b) => new Date(b.earned!.earned_at).getTime() - new Date(a.earned!.earned_at).getTime())
+    unearned.sort((a, b) => {
+      const activityDiff = activitySortIndex(a.badge.activity_types) - activitySortIndex(b.badge.activity_types)
+      if (activityDiff !== 0) return activityDiff
+      const nameDiff = a.badge.name.localeCompare(b.badge.name, 'ko')
+      if (nameDiff !== 0) return nameDiff
+      return RARITY_RANK[a.badge.rarity] - RARITY_RANK[b.badge.rarity]
+    })
+
+    return [...earned, ...unearned]
+  }, [badges])
+
+  const filteredActivityBadges = sortedActivityBadges.filter(({ badge }) => {
+    if (activityFilter !== 'all' && !badge.activity_types.includes(activityFilter)) return false
+    if (rarityFilter !== 'all' && badge.rarity !== rarityFilter) return false
+    return true
+  })
 
   return (
     <div className="min-h-full bg-surface text-text">
@@ -90,24 +134,61 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
         {/* 액티비티 배지 탭 */}
         {activeTab === 'activity' && (
           badges.length > 0 ? (
-            <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-              {badges.map(({ badge }) => (
-                <Link key={badge.id} href={`/badges/${badge.id}`}>
-                  <Card className="flex flex-col items-center gap-2 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
-                    <div className="w-16 h-16 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
-                      {badge.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={badge.image_url} alt={badge.name} className="w-full h-full object-contain p-1" />
-                      ) : (
-                        <MedalIcon className="w-8 h-8 text-text-inverse/40" />
-                      )}
-                    </div>
-                    <p className="text-[11px] text-center leading-tight line-clamp-2">{badge.name}</p>
-                    <RarityBadge rarity={badge.rarity} />
-                  </Card>
-                </Link>
-              ))}
-            </div>
+            <>
+              {/* 필터 드롭다운 */}
+              <div className="flex gap-2 mb-[var(--spacing-16)]">
+                <select
+                  value={activityFilter}
+                  onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                >
+                  <option value="all">{d.badges.filterActivityAll}</option>
+                  {ACTIVITY_TYPE_ORDER.map((tp) => (
+                    <option key={tp} value={tp}>{ACTIVITY_TYPE_LABELS[tp] ?? tp}</option>
+                  ))}
+                </select>
+                <select
+                  value={rarityFilter}
+                  onChange={(e) => setRarityFilter(e.target.value as BadgeRarity | 'all')}
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                >
+                  <option value="all">{d.badges.filterRarityAll}</option>
+                  {RARITY_ORDER.map((r) => (
+                    <option key={r} value={r}>{RARITY_LABELS[r]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {filteredActivityBadges.length > 0 ? (
+                <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+                  {filteredActivityBadges.map(({ badge, earned }) => (
+                    <Link key={badge.id} href={`/badges/${badge.id}`}>
+                      <Card className={`flex flex-col items-center gap-2 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'opacity-50'}`}>
+                        <div className="w-16 h-16 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
+                          {badge.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={badge.image_url}
+                              alt={badge.name}
+                              className={`w-full h-full object-contain p-1 ${earned ? '' : 'grayscale'}`}
+                            />
+                          ) : (
+                            <MedalIcon className="w-8 h-8 text-text-inverse/40" />
+                          )}
+                        </div>
+                        <p className="text-[11px] text-center leading-tight line-clamp-2">{badge.name}</p>
+                        <RarityBadge rarity={badge.rarity} />
+                        <span className="text-[9px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/60">
+                          {earned ? d.badges.earnedTag : d.badges.notEarnedTag}
+                        </span>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState title={d.badges.emptyActivityTitle} body={d.badges.emptyActivityBody} />
+              )}
+            </>
           ) : (
             <EmptyState title={d.badges.emptyActivityTitle} body={d.badges.emptyActivityBody} />
           )
