@@ -20,10 +20,10 @@ function LoginContent() {
 
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center bg-surface text-text px-[var(--spacing-24)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-      {/* 로고 & 슬로건 */}
+      {/* 로고 */}
       <div className="text-center mb-[var(--spacing-40)]">
-        <h1 className="text-[length:var(--text-display)] leading-[var(--leading-display)] mb-[var(--spacing-16)]">{d.auth.wordmark}</h1>
-        <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text/70">{d.auth.slogan}</p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/jam-logo-white.png" alt={d.auth.wordmark} className="h-[48px] w-auto mx-auto" />
       </div>
 
       {/* 에러 메시지 */}
