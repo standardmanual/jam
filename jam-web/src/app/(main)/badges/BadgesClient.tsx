@@ -7,7 +7,6 @@ import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
-import TopNav from '@/components/ui/TopNav'
 import { MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
@@ -99,7 +98,10 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress }: Ba
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.badges.title} showBack={false} />
+      {/* 헤더 — 인벤토리/미션과 동일한 크기의 타이틀 */}
+      <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]">
+        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.badges.title}</h1>
+      </div>
 
       {/* 탭 헤더 — Tabs sliding (16-tabs-sliding.md) */}
       <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
