@@ -10,6 +10,7 @@ import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import RarityBadge from '@/components/ui/Badge'
 import {
   UserIcon,
   UsersIcon,
@@ -18,7 +19,7 @@ import {
   ActivityIcon,
   ChevronRightIcon,
 } from '@/components/ui/icons'
-import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
+import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import FeedSection, { DetailSheet } from '../FeedSection'
 
 // ─── 탭 ─────────────────────────────────────────────────────────────────────
@@ -259,38 +260,23 @@ export default function ProfileClient({
         <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
           {badgeItems.map(item => {
             const meta = item.metadata as Record<string, string>
-            /**
-             * 희귀도 상태 팔레트 — Phase 2에서 `state_color_palette` 테이블로 이관 예정.
-             * [주의] 색상값/매핑을 재조정하지 마세요(유저가 학습한 색 언어 유지).
-             * 타일 배경은 항상 아이스(surface-inverse) 고정 — 코발트 배경 위에서
-             * 반투명 희귀도 색을 타일 전체에 덮으면 코발트와 섞여 색이 죽고
-             * text-text-inverse(코발트) 글자도 함께 묻히므로, 희귀도 색은
-             * 하단 라벨 pill에만 텍스트/보더 색으로 적용한다.
-             */
-            const rarityAccent: Record<string, string> = {
-              rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
-              legendary: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
-              mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
-            }
             return (
               <button
                 key={item.id}
                 onClick={() => handleCardClick(item)}
                 className="flex flex-col items-center gap-1.5 p-[var(--spacing-8)] min-h-11 rounded-[var(--radius-cards)] bg-surface-inverse text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-95 transition-transform duration-100 cursor-pointer"
               >
-                {meta.badge_image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={meta.badge_image_url} alt={meta.badge_name} className="w-11 h-11 object-contain" />
-                ) : (
-                  <MedalIcon className="w-11 h-11 text-text-inverse/40" />
-                )}
-                <span className="text-[length:var(--text-body-sm)] leading-tight text-center truncate w-full">{meta.badge_name}</span>
-                <div className="h-6 flex items-center justify-center">
-                  {meta.rarity !== 'common' && (
-                    <span className={`text-[11px] font-bold leading-none px-2 py-1 rounded-[var(--radius-tags)] uppercase ${rarityAccent[meta.rarity] ?? 'text-text-inverse/60 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'}`}>
-                      {meta.rarity}
-                    </span>
+                <div className="w-[66px] h-[66px] flex items-center justify-center shrink-0">
+                  {meta.badge_image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={meta.badge_image_url} alt={meta.badge_name} className="w-full h-full object-contain" />
+                  ) : (
+                    <MedalIcon className="w-full h-full text-text-inverse/40" />
                   )}
+                </div>
+                <span className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{meta.badge_name}</span>
+                <div className="h-6 flex items-center justify-center">
+                  <RarityBadge rarity={meta.rarity as BadgeRarity} />
                 </div>
               </button>
             )

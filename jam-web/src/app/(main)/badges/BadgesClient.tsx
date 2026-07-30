@@ -163,20 +163,20 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
                   {filteredActivityBadges.map(({ badge, earned }) => (
                     <Link key={badge.id} href={`/badges/${badge.id}`}>
-                      <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
-                        <div className={`w-12 h-12 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden ${earned ? '' : 'opacity-40'}`}>
+                      <Card className={`flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'bg-surface-inverse/50'}`}>
+                        <div className="w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
                           {badge.image_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={badge.image_url}
                               alt={badge.name}
-                              className={`w-full h-full object-contain p-1 ${earned ? '' : 'grayscale'}`}
+                              className="w-full h-full object-contain p-1"
                             />
                           ) : (
-                            <MedalIcon className="w-6 h-6 text-text-inverse/40" />
+                            <MedalIcon className="w-9 h-9 text-text-inverse/40" />
                           )}
                         </div>
-                        <p className="text-[length:var(--text-body-sm)] leading-tight text-center truncate w-full">{badge.name}</p>
+                        <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
                         <div className="h-6 flex items-center justify-center">
                           <RarityBadge rarity={badge.rarity} />
                         </div>
@@ -202,14 +202,14 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                 return (
                   <Link key={item.itemId} href={`/inventory/${item.itemId}?from=badges`}>
                     <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
-                      <div className="w-12 h-12 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden relative">
+                      <div className="w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden relative">
                         {item.imageUrl ? (
-                          <Image src={item.imageUrl} alt={item.name} width={48} height={48} className="object-contain w-full h-full p-1" />
+                          <Image src={item.imageUrl} alt={item.name} width={72} height={72} className="object-contain w-full h-full p-1" />
                         ) : (
-                          <MedalIcon className="w-6 h-6 text-text-inverse/40" />
+                          <MedalIcon className="w-9 h-9 text-text-inverse/40" />
                         )}
                       </div>
-                      <p className="text-[length:var(--text-body-sm)] leading-tight text-center truncate w-full">{item.name}</p>
+                      <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{item.name}</p>
                       <div className="flex flex-col items-center gap-1">
                         <div className="h-6 flex items-center justify-center">
                           <RarityBadge rarity={item.rarity} />
