@@ -163,8 +163,8 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
                   {filteredActivityBadges.map(({ badge, earned }) => (
                     <Link key={badge.id} href={`/badges/${badge.id}`}>
-                      <Card className={`flex flex-col items-center gap-2 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'opacity-50'}`}>
-                        <div className="w-16 h-16 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
+                      <Card className={`flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'opacity-50'}`}>
+                        <div className="w-12 h-12 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
                           {badge.image_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -173,16 +173,13 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                               className={`w-full h-full object-contain p-1 ${earned ? '' : 'grayscale'}`}
                             />
                           ) : (
-                            <MedalIcon className="w-8 h-8 text-text-inverse/40" />
+                            <MedalIcon className="w-6 h-6 text-text-inverse/40" />
                           )}
                         </div>
-                        <p className="text-[11px] text-center leading-tight line-clamp-2 h-[2.4em]">{badge.name}</p>
-                        <div className="h-5 flex items-center justify-center">
+                        <p className="text-[11px] text-center leading-tight truncate w-full">{badge.name}</p>
+                        <div className="h-6 flex items-center justify-center">
                           <RarityBadge rarity={badge.rarity} />
                         </div>
-                        <span className="text-[9px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/60">
-                          {earned ? d.badges.earnedTag : d.badges.notEarnedTag}
-                        </span>
                       </Card>
                     </Link>
                   ))}
@@ -204,26 +201,24 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                 const expiring = isExpiringSoon(item.expiresAt)
                 return (
                   <Link key={item.itemId} href={`/inventory/${item.itemId}?from=badges`}>
-                    <Card className="flex flex-col items-center gap-2 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
-                      <div className="w-16 h-16 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden relative">
+                    <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
+                      <div className="w-12 h-12 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden relative">
                         {item.imageUrl ? (
-                          <Image src={item.imageUrl} alt={item.name} width={64} height={64} className="object-contain w-full h-full p-1" />
+                          <Image src={item.imageUrl} alt={item.name} width={48} height={48} className="object-contain w-full h-full p-1" />
                         ) : (
-                          <MedalIcon className="w-8 h-8 text-text-inverse/40" />
+                          <MedalIcon className="w-6 h-6 text-text-inverse/40" />
                         )}
                       </div>
-                      <p className="text-[11px] text-center leading-tight line-clamp-2 h-[2.4em]">{item.name}</p>
+                      <p className="text-[11px] text-center leading-tight truncate w-full">{item.name}</p>
                       <div className="flex flex-col items-center gap-1">
-                        <div className="h-5 flex items-center justify-center">
+                        <div className="h-6 flex items-center justify-center">
                           <RarityBadge rarity={item.rarity} />
                         </div>
-                        <div className="h-5 flex items-center justify-center">
-                          {expiring && (
-                            <span className="text-[9px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
-                              {d.badges.expiringSoon}
-                            </span>
-                          )}
-                        </div>
+                        {expiring && (
+                          <span className="text-[11px] font-bold leading-none whitespace-nowrap px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+                            {d.badges.expiringSoon}
+                          </span>
+                        )}
                         <span className="text-[10px] text-text-inverse/40 font-mono">
                           #{String(item.serialNumber).padStart(4, '0')}
                         </span>

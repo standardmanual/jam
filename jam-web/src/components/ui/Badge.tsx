@@ -24,7 +24,7 @@ export default function RarityBadge({ rarity, className = '' }: RarityBadgeProps
   return (
     <span
       className={[
-        'inline-flex items-center px-2.5 py-0.5 rounded-[var(--radius-tags)] text-[10px] leading-none uppercase',
+        'inline-flex items-center px-2.5 py-1 rounded-[var(--radius-tags)] text-[12px] leading-none uppercase font-bold',
         config.classes,
         className,
       ]

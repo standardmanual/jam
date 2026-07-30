@@ -161,7 +161,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
               </p>
 
               {/* 희귀도 (미발견 제외) */}
-              <div className="h-5 flex items-center justify-center">
+              <div className="h-6 flex items-center justify-center">
                 {!isUndiscovered && (
                   <RarityBadge rarity={badge.rarity as BadgeRarity} />
                 )}

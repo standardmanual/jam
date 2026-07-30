@@ -1,4 +1,5 @@
 import { HTMLAttributes, forwardRef } from 'react'
+import { twMerge } from 'tailwind-merge'
 
 /**
  * SuperHi Plus Content Card
@@ -17,14 +18,12 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={[
+        className={twMerge(
           'bg-surface-inverse text-text-inverse',
           'rounded-[var(--radius-cards)] p-[var(--spacing-24)]',
           'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]',
-          className,
-        ]
-          .filter(Boolean)
-          .join(' ')}
+          className
+        )}
         {...props}
       >
         {children}

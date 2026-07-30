@@ -276,18 +276,18 @@ export default function ProfileClient({
               <button
                 key={item.id}
                 onClick={() => handleCardClick(item)}
-                className="flex flex-col items-center gap-[var(--spacing-8)] p-[var(--spacing-8)] min-h-11 rounded-[var(--radius-cards)] bg-surface-inverse text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-95 transition-transform duration-100 cursor-pointer"
+                className="flex flex-col items-center gap-1.5 p-[var(--spacing-8)] min-h-11 rounded-[var(--radius-cards)] bg-surface-inverse text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-95 transition-transform duration-100 cursor-pointer"
               >
                 {meta.badge_image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={meta.badge_image_url} alt={meta.badge_name} className="w-12 h-12 object-contain" />
+                  <img src={meta.badge_image_url} alt={meta.badge_name} className="w-11 h-11 object-contain" />
                 ) : (
-                  <MedalIcon className="w-12 h-12 text-text-inverse/40" />
+                  <MedalIcon className="w-11 h-11 text-text-inverse/40" />
                 )}
-                <span className="text-[11px] leading-tight text-center line-clamp-2 h-[2.4em]">{meta.badge_name}</span>
-                <div className="h-5 flex items-center justify-center">
+                <span className="text-[11px] leading-tight text-center truncate w-full">{meta.badge_name}</span>
+                <div className="h-6 flex items-center justify-center">
                   {meta.rarity !== 'common' && (
-                    <span className={`text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] ${rarityAccent[meta.rarity] ?? 'text-text-inverse/60 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'}`}>
+                    <span className={`text-[11px] font-bold leading-none px-2 py-1 rounded-[var(--radius-tags)] uppercase ${rarityAccent[meta.rarity] ?? 'text-text-inverse/60 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'}`}>
                       {meta.rarity}
                     </span>
                   )}
