@@ -57,10 +57,10 @@ function CardInner({ item }: { item: InventoryGridItem }) {
           <MedalIcon className="w-8 h-8 text-text-inverse/40" />
         )}
       </div>
-      <p className="text-[11px] text-center leading-tight line-clamp-2 w-full h-[2.4em]">{item.badgeName}</p>
-      <div className="h-5 flex items-center justify-center">
+      <p className="text-[11px] text-center leading-tight truncate w-full">{item.badgeName}</p>
+      <div className="h-6 flex items-center justify-center">
         {expiring && item.expiresAt && (
-          <p className="text-[10px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+          <p className="text-[11px] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
             <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
           </p>
         )}
