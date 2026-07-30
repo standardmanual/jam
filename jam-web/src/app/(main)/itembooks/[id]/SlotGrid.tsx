@@ -31,9 +31,11 @@ interface SlotGridProps {
   badgeSlots: BadgeSlot[]
   /** 다른 유저의 아이템북을 보는 중이면 true — 슬롯/해제 버튼을 숨기고 조회만 가능하게 함 */
   readOnly?: boolean
+  /** 배지 상세(/badges/[id])로 이동할 때 붙일 쿼리스트링. 예: `?u=username` */
+  badgeLinkQuery?: string
 }
 
-export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: SlotGridProps) {
+export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, badgeLinkQuery = '' }: SlotGridProps) {
   const router = useRouter()
   // 현재 처리 중인 배지 id (버튼 disabled 용)
   const [pendingBadgeId, setPendingBadgeId] = useState<string | null>(null)
@@ -126,11 +128,26 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
             ? `${d.itembooks.ownedPrefix}${inventoryItem.serial_prefix ?? '#'}${inventoryItem.serial_number}`
             : ''
 
+          // 이미 발견한(실제 이름/이미지가 노출되는) 배지만 상세화면으로 이동 가능
+          // — 미발견(???) 배지는 스포일러 방지를 위해 클릭해도 이동하지 않는다.
+          const isNavigable = !isUndiscovered
+
           return (
             <div
               key={badge.id}
+              role={isNavigable ? 'button' : undefined}
+              tabIndex={isNavigable ? 0 : undefined}
+              onClick={isNavigable ? () => router.push(`/badges/${badge.id}${badgeLinkQuery}`) : undefined}
+              onKeyDown={
+                isNavigable
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') router.push(`/badges/${badge.id}${badgeLinkQuery}`)
+                    }
+                  : undefined
+              }
               className={[
                 'flex flex-col items-center gap-2 p-[var(--spacing-8)] rounded-[var(--radius-cards)] transition-all',
+                isNavigable ? 'cursor-pointer active:scale-95' : '',
                 isSlotted
                   ? 'shadow-[inset_0_0_0_1px_var(--color-border)]'
                   : isSlottable
@@ -171,7 +188,10 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
               {isSlotted && !readOnly && (
                 <button
                   type="button"
-                  onClick={() => handleUnslot(badge.id, slot!.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleUnslot(badge.id, slot!.id)
+                  }}
                   disabled={pending}
                   className="text-[11px] text-text/50 underline underline-offset-2 active:text-text disabled:opacity-50"
                 >
@@ -186,7 +206,10 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
                   </p>
                   <button
                     type="button"
-                    onClick={() => handleSlot(badge.id, inventoryItem!.id)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleSlot(badge.id, inventoryItem!.id)
+                    }}
                     disabled={pending}
                     className="w-full text-text text-xs py-1.5 rounded-[var(--radius-pill-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] transition-all disabled:opacity-60"
                   >
