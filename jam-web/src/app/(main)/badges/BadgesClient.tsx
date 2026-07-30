@@ -164,7 +164,7 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                   {filteredActivityBadges.map(({ badge, earned }) => (
                     <Link key={badge.id} href={`/badges/${badge.id}`}>
                       <Card className={`flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'bg-surface-inverse/50'}`}>
-                        <div className={`w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden ${earned ? '' : 'opacity-40'}`}>
+                        <div className={`w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden ${earned ? '' : 'grayscale opacity-40'}`}>
                           {badge.image_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
