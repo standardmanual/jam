@@ -6,6 +6,8 @@ import type { PointHistoryItem } from '@/app/api/points/route'
 import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import { ChevronRightIcon } from '@/components/ui/icons'
+import { useDigitPopIn } from '@/components/transitions-pages'
+import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'
 
 function formatDate(iso: string): string {
@@ -26,6 +28,10 @@ export default function PointsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(false)
+
+  // 잔액 — 갱신될 때마다 자릿수 단위로 팝인 (Number pop-in, 02)
+  const balanceText = balance === null ? null : `${balance.toLocaleString('ko-KR')}P`
+  const balanceRef = useDigitPopIn<HTMLSpanElement>(balanceText)
 
   const load = useCallback(async (nextCursor: string | null, append: boolean) => {
     if (append) setLoadingMore(true)
@@ -75,8 +81,13 @@ export default function PointsPage() {
         {/* 잔액 카드 */}
         <Card className="text-center py-[var(--spacing-32)]">
           <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.points.balanceLabel}</p>
-          <p className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">
-            {balance === null ? '—' : `${balance.toLocaleString('ko-KR')}P`}
+          <p
+            className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]"
+            aria-label={balanceText ?? undefined}
+          >
+            {/* 자릿수 span은 훅이 명령형으로 생성한다 — 스크린리더에는 위 aria-label로 전달 */}
+            {balance === null && <span aria-hidden="true">—</span>}
+            <span ref={balanceRef} className="t-digit-group" aria-hidden="true" />
           </p>
         </Card>
 

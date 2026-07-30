@@ -6,6 +6,7 @@ import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity 
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
+import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
 import { MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
@@ -49,6 +50,15 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   )
 }
 
+function tabLabel(label: string, count: number) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {label}
+      {count > 0 && <span className="text-[10px] tabular-nums opacity-70">{count}</span>}
+    </span>
+  )
+}
+
 export default function BadgesClient({ badges, itemBooks, itemBookProgress }: BadgesClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('activity')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
@@ -57,9 +67,10 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress }: Ba
 
   const earnedCount = badges.filter((b) => b.earned).length
 
-  const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: 'activity', label: d.badges.tabActivity, count: earnedCount },
-    { key: 'itembook', label: d.badges.tabItembook, count: itemBooks.length },
+  // 슬라이딩 탭 — 라벨 옆에 보유/전체 카운트를 함께 노출
+  const tabs: SlidingTabItem<TabKey>[] = [
+    { key: 'activity', label: tabLabel(d.badges.tabActivity, earnedCount), ariaLabel: d.badges.tabActivity },
+    { key: 'itembook', label: tabLabel(d.badges.tabItembook, itemBooks.length), ariaLabel: d.badges.tabItembook },
   ]
 
   // 획득한 것부터(획득 최신순), 미획득은 같은 액티비티끼리 모아 이름순 → 등급 낮은순.
@@ -90,25 +101,14 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress }: Ba
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.badges.listTitle} showBack={false} />
 
-      {/* 탭 헤더 */}
-      <div className="flex px-[var(--spacing-16)] gap-2 py-[var(--spacing-16)] overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={[
-              'px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] min-h-11 transition-colors duration-100 flex items-center gap-1.5 whitespace-nowrap',
-              activeTab === tab.key
-                ? 'bg-surface-inverse text-text-inverse'
-                : 'text-text/60 shadow-[inset_0_0_0_1px_var(--color-border)]',
-            ].join(' ')}
-          >
-            {tab.label}
-            {tab.count > 0 && (
-              <span className="text-[10px] tabular-nums opacity-70">{tab.count}</span>
-            )}
-          </button>
-        ))}
+      {/* 탭 헤더 — Tabs sliding (16-tabs-sliding.md) */}
+      <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
+        <SlidingTabs
+          items={tabs}
+          value={activeTab}
+          onChange={setActiveTab}
+          aria-label={d.badges.listTitle}
+        />
       </div>
 
       <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)]">

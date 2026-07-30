@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useCallback, useState, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { DotmHex8 } from '@/components/ui/dotm-hex-8'
 import { formatRelativeTime } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import RarityBadge from '@/components/ui/Badge'
+import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
+import PopInNumber from '@/components/ui/PopInNumber'
+import SwapText from '@/components/ui/SwapText'
 import {
   UserIcon,
   UsersIcon,
@@ -115,6 +117,10 @@ export default function ProfileClient({
   const fetchedRef = useRef<Set<TabKey>>(new Set())
 
   const [selectedItem, setSelectedItem] = useState<ActivityFeedRow | null>(null)
+  // 상세 시트는 Panel reveal 닫힘 트랜지션 동안 DOM에 남아 있어야 한다.
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const closeSheet = useCallback(() => setSheetOpen(false), [])
+  const handleSheetClosed = useCallback(() => setSelectedItem(null), [])
 
   // ── 팔로우 (프로필 헤더) ───────────────────────────────────────────────────
   const [following, setFollowing] = useState(isFollowing)
@@ -229,29 +235,14 @@ export default function ProfileClient({
       if (meta.mission_id) { router.push(`/missions/${meta.mission_id}`); return }
     }
     setSelectedItem(item)
+    setSheetOpen(true)
   }
 
   // ── 탭 콘텐츠 렌더 ────────────────────────────────────────────────────────
 
+  // 로딩 표시는 Skeleton loader and reveal(14-skeleton-reveal.md)이 담당하므로
+  // 여기서는 실제 콘텐츠만 그린다.
   const renderTabContent = () => {
-    if (tabLoading) {
-      return (
-        <div className="flex items-center justify-center py-16">
-          <DotmHex8
-            size={89}
-            dotSize={14}
-            speed={1.35}
-            pattern="full"
-            colorPreset="grad-fire"
-            animated
-            opacityBase={0.12}
-            opacityMid={0.42}
-            opacityPeak={1}
-          />
-        </div>
-      )
-    }
-
     if (activeTab === 'badge') {
       if (badgeItems.length === 0) {
         return <EmptyState icon={<MedalIcon className="w-8 h-8" />} message={d.profile.emptyBadges} />
@@ -374,7 +365,8 @@ export default function ProfileClient({
                 onClick={() => handleListFollow(u.id)}
                 className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
               >
-                {listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton}
+                {/* Text states swap (04-text-states-swap.md) */}
+                <SwapText value={listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton} />
               </Button>
             )}
           </div>
@@ -389,6 +381,25 @@ export default function ProfileClient({
     followers: followerCnt,
     following: followingCount,
   }
+
+  // 통계바 = 슬라이딩 탭. 라벨은 "숫자 + 이름" 2줄 구성이라 ReactNode로 넘긴다.
+  // 팔로워 수는 팔로우/언팔로우 즉시 바뀌므로 Number pop-in(02-number-pop-in.md)을 건다.
+  const statTabs: SlidingTabItem<TabKey>[] = TABS.map((tab) => ({
+    key: tab.key,
+    ariaLabel: tab.label,
+    label: (
+      <span className="flex flex-col items-center justify-center gap-1">
+        <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums">
+          {tab.key === 'followers' ? (
+            <PopInNumber value={statCounts.followers} />
+          ) : (
+            statCounts[tab.key]
+          )}
+        </span>
+        <span className="text-[11px] leading-none opacity-70">{tab.label}</span>
+      </span>
+    ),
+  }))
 
   return (
     <div className="min-h-full bg-surface text-text">
@@ -446,42 +457,53 @@ export default function ProfileClient({
               onClick={handleFollow}
               className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
             >
-              {following ? d.profile.followingButton : d.profile.followButton}
+              {/* Text states swap (04-text-states-swap.md) */}
+              <SwapText value={following ? d.profile.followingButton : d.profile.followButton} />
             </Button>
           )}
         </Card>
 
-        {/* 통계 바 — Card 내부를 1px inset border로 4칸 분할 */}
-        <Card className="p-0 overflow-hidden flex">
-          {TABS.map((tab, i) => {
-            const isActive = isTabView && activeTab === tab.key
-            return (
-              <button
-                key={tab.key}
-                onClick={() => handleTabClick(tab.key)}
-                aria-pressed={isActive}
-                className={[
-                  'flex-1 flex flex-col items-center justify-center gap-1 min-h-11 py-[var(--spacing-16)]',
-                  'transition-colors duration-100 cursor-pointer',
-                  i > 0 ? 'shadow-[inset_1px_0_0_0_var(--color-border-inverse)]' : '',
-                  isActive ? 'bg-surface text-text' : 'text-text-inverse',
-                ].filter(Boolean).join(' ')}
-              >
-                <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums">
-                  {statCounts[tab.key]}
-                </span>
-                <span className={`text-[11px] leading-none ${isActive ? 'text-text/80' : 'text-text-inverse/60'}`}>
-                  {tab.label}
-                </span>
-              </button>
-            )
-          })}
+        {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
+            기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
+            pill을 숨긴다. */}
+        <Card className="p-0 overflow-hidden">
+          <SlidingTabs
+            items={statTabs}
+            value={isTabView ? activeTab : ('' as TabKey)}
+            onChange={handleTabClick}
+            variant="onCard"
+            size="xl"
+            shape="card"
+            outlined={false}
+            aria-label={d.profile.title}
+          />
         </Card>
 
-        {/* 탭 콘텐츠 — 탭뷰일 때만 */}
+        {/* 탭 콘텐츠 — 탭뷰일 때만.
+            로딩은 Skeleton loader and reveal(14-skeleton-reveal.md)로 처리한다.
+            콘텐츠 높이가 가변이라 `.jam-skel-flow` 변형을 써서 콘텐츠는 흐름에 두고
+            스켈레톤만 위에 겹친다. */}
         {isTabView && (
           <section>
-            {renderTabContent()}
+            <div
+              className={['t-skel', 'jam-skel-flow', tabLoading ? '' : 'is-revealed'].filter(Boolean).join(' ')}
+              style={{ '--jam-skel-min-h': '280px' } as CSSProperties}
+            >
+              <div
+                className="t-skel-skeleton is-pulsing grid grid-cols-3 gap-[var(--spacing-8)] content-start"
+                aria-hidden="true"
+              >
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-[136px] rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] bg-surface-inverse/15"
+                  />
+                ))}
+              </div>
+              <div className="t-skel-content" aria-busy={tabLoading}>
+                {tabLoading ? null : renderTabContent()}
+              </div>
+            </div>
           </section>
         )}
 
@@ -533,7 +555,15 @@ export default function ProfileClient({
       </div>
 
       {/* 상세 시트 */}
-      {selectedItem && <DetailSheet item={selectedItem} onClose={() => setSelectedItem(null)} badgeLinkQuery={`?u=${username}`} />}
+      {selectedItem && (
+        <DetailSheet
+          item={selectedItem}
+          open={sheetOpen}
+          onClose={closeSheet}
+          onClosed={handleSheetClosed}
+          badgeLinkQuery={`?u=${username}`}
+        />
+      )}
     </div>
   )
 }

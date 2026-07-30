@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
 import { CloseIcon } from './icons'
+import { cssDurationMs } from '@/lib/motion'
 
 interface BottomSheetProps {
   open: boolean
@@ -29,11 +30,34 @@ export default function BottomSheet({
   const draggingRef = useRef(false)
   const startYRef = useRef(0)
 
+  // Panel reveal(07-panel-reveal.md) — 열림/닫힘 동안 DOM에 남아 있어야 하므로
+  // "열린 상태(shown)"와 "닫힘 트랜지션 잔류(lingering)"를 분리한다.
+  //  · 열 때: 먼저 닫힌 상태로 마운트 → 다음 프레임에 data-open=true (트랜지션 발화)
+  //  · 닫을 때: data-open=false → --panel-close-dur 후 언마운트
+  const [shown, setShown] = useState(false)
+  const [lingering, setLingering] = useState(false)
+
   useEffect(() => {
     if (!open) setDragY(0)
   }, [open])
 
-  if (!open) return null
+  useEffect(() => {
+    if (open) {
+      const raf = requestAnimationFrame(() => {
+        setLingering(true)
+        setShown(true)
+      })
+      return () => cancelAnimationFrame(raf)
+    }
+    const raf = requestAnimationFrame(() => setShown(false))
+    const timer = setTimeout(() => setLingering(false), cssDurationMs('--panel-close-dur', 350))
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(timer)
+    }
+  }, [open])
+
+  if (!open && !lingering) return null
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     draggingRef.current = true
@@ -59,8 +83,19 @@ export default function BottomSheet({
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 430, margin: '0 auto' }}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-surface/60" onClick={onClose} />
+      <div className="absolute inset-0 bg-surface/60 t-panel-backdrop" data-open={shown} onClick={onClose} />
 
+      {/*
+        Panel reveal 래퍼.
+        시트 본체는 드래그-닫기용 inline transform을 쓰기 때문에, 트랜지션용
+        transform과 충돌하지 않도록 한 겹 감싼다. --panel-translate-y를 100%로
+        두어 시트 자기 높이만큼 아래에서 올라오게 한다.
+      */}
+      <div
+        className="relative flex flex-col min-h-0 t-panel-slide"
+        data-open={shown}
+        style={{ '--panel-translate-y': '100%' } as CSSProperties}
+      >
       {/* Sheet */}
       <div
         className={[
@@ -105,6 +140,7 @@ export default function BottomSheet({
         <div className="overflow-y-auto flex-1">{children}</div>
 
         <div className="shrink-0 pb-[env(safe-area-inset-bottom,1rem)]" />
+      </div>
       </div>
     </div>
   )
