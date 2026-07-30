@@ -284,12 +284,14 @@ export default function ProfileClient({
                 ) : (
                   <MedalIcon className="w-12 h-12 text-text-inverse/40" />
                 )}
-                <span className="text-[11px] leading-tight text-center line-clamp-2">{meta.badge_name}</span>
-                {meta.rarity !== 'common' && (
-                  <span className={`text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] ${rarityAccent[meta.rarity] ?? 'text-text-inverse/60 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'}`}>
-                    {meta.rarity}
-                  </span>
-                )}
+                <span className="text-[11px] leading-tight text-center line-clamp-2 h-[2.4em]">{meta.badge_name}</span>
+                <div className="h-5 flex items-center justify-center">
+                  {meta.rarity !== 'common' && (
+                    <span className={`text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] ${rarityAccent[meta.rarity] ?? 'text-text-inverse/60 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'}`}>
+                      {meta.rarity}
+                    </span>
+                  )}
+                </div>
               </button>
             )
           })}
