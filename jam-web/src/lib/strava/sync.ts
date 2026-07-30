@@ -7,7 +7,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
-import { getActivities, getActivityStreams, refreshStravaToken } from '@/lib/strava/api'
+import { getActivities, getActivityById, getAthleteProfile, getActivityStreams, refreshStravaToken } from '@/lib/strava/api'
 import { evaluateBadges } from '@/lib/badge-engine/index'
 import { tryItemDrop } from '@/lib/drop-engine/index'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
@@ -139,6 +139,20 @@ export async function syncStravaActivities(
       ? `, ids: ${rawActivities.map((a) => `${a.id}@${a.start_date}`).join(', ')}`
       : '')
   )
+
+  // TEMP DEBUG — 특정 활동이 왜 안 보이는지 원인 조사용. 조사 끝나면 제거할 것.
+  try {
+    const [athlete, targetActivity] = await Promise.all([
+      getAthleteProfile(accessToken),
+      getActivityById(19529880923, accessToken),
+    ])
+    console.info(
+      `[TEMP DEBUG] athlete_id(DB): ${connection.strava_athlete_id}, athlete_id(API): ${athlete.id}, target activity:`,
+      JSON.stringify(targetActivity)
+    )
+  } catch (debugErr) {
+    console.info('[TEMP DEBUG] 조회 실패:', debugErr instanceof Error ? debugErr.message : String(debugErr))
+  }
 
   // 5. NormalizedActivity로 변환
   const activities: NormalizedActivity[] = rawActivities.map(normalizeActivity)

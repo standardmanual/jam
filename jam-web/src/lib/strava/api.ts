@@ -70,6 +70,27 @@ export async function getActivities(
 }
 
 // =========================================
+// 단일 활동 조회 (진단용)
+// =========================================
+export async function getActivityById(
+  activityId: number | string,
+  accessToken: string
+): Promise<StravaSummaryActivity | { error: string; status: number }> {
+  const res = await fetch(`${STRAVA_API_BASE}/activities/${activityId}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    signal: AbortSignal.timeout(STRAVA_FETCH_TIMEOUT_MS),
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    return { error: body, status: res.status }
+  }
+  return res.json() as Promise<StravaSummaryActivity>
+}
+
+// =========================================
 // 토큰 갱신
 // =========================================
 /**
