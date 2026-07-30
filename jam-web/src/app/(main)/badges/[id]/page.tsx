@@ -282,7 +282,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
     return (
       <div className="min-h-full bg-surface text-text">
-        <TopNav title={badgeRow.name} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
+        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
 
         <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
           {/* 배지 이미지 */}
@@ -421,7 +421,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={badgeRow.name} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
+      <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
         {/* 배지 이미지 (대형) */}

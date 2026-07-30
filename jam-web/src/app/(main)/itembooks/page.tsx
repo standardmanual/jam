@@ -126,7 +126,6 @@ export default async function ItemBooksPage() {
     <div className="flex flex-col min-h-full bg-surface text-text">
       {/* 헤더 */}
       <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-24)]">
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.itembooks.eyebrow}</p>
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.itembooks.title}</h1>
         <p className="mt-2 text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
           {d.itembooks.subtitle}

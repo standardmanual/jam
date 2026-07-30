@@ -52,7 +52,6 @@ export default async function InventoryPage() {
       <div className="mb-[var(--spacing-24)]">
         <div className="flex items-start justify-between mb-[var(--spacing-16)]">
           <div>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.inventory.eyebrow}</p>
             <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.inventory.title}</h1>
           </div>
           <Link

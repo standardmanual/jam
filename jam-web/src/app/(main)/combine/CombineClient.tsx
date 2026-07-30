@@ -116,7 +116,6 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
     <div className="flex flex-col min-h-full bg-surface text-text">
       {/* 헤더 */}
       <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-24)]">
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.combine.eyebrow}</p>
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.combine.title}</h1>
       </div>
 
