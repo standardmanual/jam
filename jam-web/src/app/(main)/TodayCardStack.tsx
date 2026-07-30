@@ -141,9 +141,9 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
       <img src={cover} alt={card.title} className="absolute inset-0 w-full h-full object-cover" />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-24)] pt-10 pb-[var(--spacing-24)]">
-        <span className="inline-flex items-center text-[12px] font-bold uppercase text-white/80 mb-1">
-          {templateLabel[card.template_type]}
-        </span>
+        <div className="mb-2">
+          <TemplateChip card={card} />
+        </div>
         <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-white">{card.title}</h3>
         {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-white/80 mt-1">{card.subtitle}</p>}
       </div>
