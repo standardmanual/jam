@@ -99,7 +99,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress }: Ba
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.badges.listTitle} showBack={false} />
+      <TopNav title={d.badges.title} showBack={false} />
 
       {/* 탭 헤더 — Tabs sliding (16-tabs-sliding.md) */}
       <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
@@ -107,7 +107,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress }: Ba
           items={tabs}
           value={activeTab}
           onChange={setActiveTab}
-          aria-label={d.badges.listTitle}
+          aria-label={d.badges.title}
         />
       </div>
 

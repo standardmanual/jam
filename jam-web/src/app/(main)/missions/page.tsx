@@ -42,7 +42,6 @@ export default async function MissionsPage() {
   return (
     <div className="flex flex-col min-h-full px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-32)] bg-surface text-text">
       <div className="mb-[var(--spacing-24)]">
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.missions.eyebrow}</p>
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.missions.title}</h1>
       </div>
 

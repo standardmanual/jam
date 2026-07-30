@@ -403,7 +403,7 @@ export default function ProfileClient({
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.profile.title} showBack={!isOwnProfile} />
+      <TopNav title="" showBack={!isOwnProfile} />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
         {/* 프로필 헤더 */}

@@ -176,7 +176,7 @@ export const ko = {
 
   /** 배지 목록/상세 화면 */
   badges: {
-    listTitle: '나의 배지',
+    title: '배지',
     tabActivity: '액티비티',
     tabItem: '아이템',
     tabItembook: '아이템북',
@@ -356,8 +356,8 @@ export const ko = {
     rewardBadgeCount: '배지 {count}개',
     rewardPoints: '{points}P',
 
-    backToList: '미션 목록',
-    backToDetail: '미션 상세',
+    backToList: '뒤로',
+    backToDetail: '미션',
     goalDistance: '달성 거리',
     goalActivityCount: '활동 횟수',
     goalPoiVisit: 'POI 방문',
@@ -481,7 +481,7 @@ export const ko = {
     userEyebrowPrefix: '님이 발견한 아이템북',
     completed: '완성',
     backToDetail: '배지 상세',
-    backToList: '아이템북 목록',
+    backToList: '뒤로',
     slotHint: '보유한 아이템 배지를 슬롯에 장착해 아이템북을 완성해요',
     noBadgesTitle: '아직 이 아이템북에 등록된 배지가 없어요.',
     poiHint: 'POI 배지는 해당 장소를 지나가면 자동으로 채워져요',
