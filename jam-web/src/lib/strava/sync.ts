@@ -91,6 +91,7 @@ async function recordProcessedActivities(
     start_date: a.startDate,
     jam_activity_type: a.jamActivityType,
     distance_km: a.distanceKm,
+    normalized: a,
     processed_via: processedVia,
   }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
