@@ -132,6 +132,14 @@ export async function syncStravaActivities(
 
   const rawActivities = await getActivities(accessToken, afterTimestamp)
 
+  // 진단 로그 — Strava가 실제로 몇 건을 반환했는지, 커서가 뭐였는지 확인용
+  console.info(
+    `[syncStravaActivities] userId: ${userId}, afterTimestamp: ${afterTimestamp} (${afterTimestamp ? new Date(afterTimestamp * 1000).toISOString() : 'none'}), raw활동 수: ${rawActivities.length}` +
+    (rawActivities.length > 0
+      ? `, ids: ${rawActivities.map((a) => `${a.id}@${a.start_date}`).join(', ')}`
+      : '')
+  )
+
   // 5. NormalizedActivity로 변환
   const activities: NormalizedActivity[] = rawActivities.map(normalizeActivity)
 
