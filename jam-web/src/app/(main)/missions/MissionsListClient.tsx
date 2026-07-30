@@ -80,7 +80,6 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('newest')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
   const [typeFilter, setTypeFilter] = useState<MissionType | 'all'>('all')
-  const [filterOpen, setFilterOpen] = useState(false)
 
   const activeFilterCount = (activityFilter !== 'all' ? 1 : 0) + (typeFilter !== 'all' ? 1 : 0)
 
@@ -115,130 +114,49 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
     tab === 'joined' ? d.missions.emptyJoined :
     d.missions.emptyEnded
 
-  function resetFilters() {
-    setActivityFilter('all')
-    setTypeFilter('all')
-  }
-
   return (
     <>
-      {/*
-        필터 패널은 Accordion expand(21-accordion.md)로 높이를 애니메이션한다.
-        `.t-acc`가 헤더(필터 버튼)와 패널을 함께 감싸야 data-open 셀렉터가
-        패널까지 닿는다. 패딩은 `.t-acc-panel-inner` 안쪽(Card)에만 두고
-        `.t-acc-panel`에는 절대 넣지 않는다 — 0fr 트랙에 패딩이 남으면
-        패널이 완전히 닫히지 않는다.
-      */}
-      <div className="t-acc" data-open={filterOpen}>
-        {/* 탭 + 필터 버튼 */}
-        <div className="flex items-center gap-2 mb-[var(--spacing-16)]">
-          {/* Tabs sliding (16-tabs-sliding.md) */}
-          <div className="flex-1 min-w-0">
-            <SlidingTabs
-              items={TABS}
-              value={tab}
-              onChange={setTab}
-              shape="card"
-              aria-label={d.missions.filterButton}
-            />
-          </div>
-          <button
-            onClick={() => setFilterOpen((v) => !v)}
-            aria-expanded={filterOpen}
-            className={`shrink-0 flex items-center gap-1.5 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[11px] transition-colors duration-100 ${
-              filterOpen || activeFilterCount > 0 ? 'bg-surface-inverse text-text-inverse' : 'text-text'
-            }`}
-          >
-            {d.missions.filterButton}
-            {activeFilterCount > 0 && (
-              <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center shadow-[inset_0_0_0_1px_currentColor]">
-                {activeFilterCount}
-              </span>
-            )}
-            <span className="t-acc-chevron">
-              <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
-                <path d="M4 6.5L8 10.5L12 6.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-          </button>
-        </div>
+      {/* Tabs sliding (16-tabs-sliding.md) */}
+      <div className="mb-[var(--spacing-16)]">
+        <SlidingTabs
+          items={TABS}
+          value={tab}
+          onChange={setTab}
+          aria-label={d.missions.filterButton}
+        />
+      </div>
 
-        {/* 필터 패널 */}
-        <div className="t-acc-panel">
-          <div className="t-acc-panel-inner">
-        <Card className="mb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-16)]">
-          <div>
-            <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.sortLabel}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {SORT_OPTIONS.map((s) => (
-                <button
-                  key={s.key}
-                  onClick={() => setSortKey(s.key)}
-                  className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
-                    sortKey === s.key ? 'bg-surface text-text' : 'text-text-inverse'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.activityTypeLabel}</p>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => setActivityFilter('all')}
-                className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
-                  activityFilter === 'all' ? 'bg-surface text-text' : 'text-text-inverse'
-                }`}
-              >
-                {d.missions.activityTypeAll}
-              </button>
-              {ACTIVITY_TYPES.map((tp) => (
-                <button
-                  key={tp}
-                  onClick={() => setActivityFilter(tp)}
-                  className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
-                    activityFilter === tp ? 'bg-surface text-text' : 'text-text-inverse'
-                  }`}
-                >
-                  {ACTIVITY_TYPE_LABELS[tp] ?? tp}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.missionTypeLabel}</p>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => setTypeFilter('all')}
-                className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
-                  typeFilter === 'all' ? 'bg-surface text-text' : 'text-text-inverse'
-                }`}
-              >
-                {d.missions.missionTypeAll}
-              </button>
-              {MISSION_TYPES.map((tp) => (
-                <button
-                  key={tp}
-                  onClick={() => setTypeFilter(tp)}
-                  className={`px-[var(--spacing-16)] py-2 rounded-[var(--radius-nav-buttons)] text-[11px] min-h-11 shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ${
-                    typeFilter === tp ? 'bg-surface text-text' : 'text-text-inverse'
-                  }`}
-                >
-                  {MISSION_TYPE_LABELS[tp]}
-                </button>
-              ))}
-            </div>
-          </div>
-          {activeFilterCount > 0 && (
-            <button onClick={resetFilters} className="self-start text-[11px] text-text-inverse/50 underline underline-offset-2">
-              {d.missions.filterReset}
-            </button>
-          )}
-        </Card>
-          </div>
-        </div>
+      {/* 필터 드롭다운 — 배지 탭과 동일한 방식 */}
+      <div className="flex gap-2 mb-[var(--spacing-16)]">
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as SortKey)}
+          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+        >
+          {SORT_OPTIONS.map((s) => (
+            <option key={s.key} value={s.key}>{s.label}</option>
+          ))}
+        </select>
+        <select
+          value={activityFilter}
+          onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
+          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+        >
+          <option value="all">{d.missions.activityTypeAll}</option>
+          {ACTIVITY_TYPES.map((tp) => (
+            <option key={tp} value={tp}>{ACTIVITY_TYPE_LABELS[tp] ?? tp}</option>
+          ))}
+        </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as MissionType | 'all')}
+          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+        >
+          <option value="all">{d.missions.missionTypeAll}</option>
+          {MISSION_TYPES.map((tp) => (
+            <option key={tp} value={tp}>{MISSION_TYPE_LABELS[tp]}</option>
+          ))}
+        </select>
       </div>
 
       {list.length === 0 ? (
