@@ -66,7 +66,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={item.badge.name} backHref="/inventory" />
+      <TopNav title={d.common.back} backHref="/inventory" />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
         {/* 배지 이미지 */}
