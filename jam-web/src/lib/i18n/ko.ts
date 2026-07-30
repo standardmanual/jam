@@ -18,6 +18,7 @@ export const ko = {
     back: '뒤로',
     countItems: '{count}개',
     networkError: '네트워크 오류가 발생했습니다',
+    footerCopyright: '© 2026 Standard Manual All Rights Reserved.',
   },
 
   /** 바텀 탭바(글로벌 네비게이션) 라벨 */
@@ -117,7 +118,6 @@ export const ko = {
   /** 투데이(홈) 화면 */
   today: {
     greeting: '안녕하세요',
-    wordmark: 'JAM!',
 
     // Strava 상태 카드
     stravaLabel: 'Strava',
