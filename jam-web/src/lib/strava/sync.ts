@@ -1,13 +1,15 @@
 /**
  * Strava 활동 동기화 핵심 로직
  * - strava_connections에서 토큰 조회 및 갱신
- * - last_synced_at 이후 활동만 가져오기
+ * - last_synced_at 이후 활동만 가져오기 (색인 지연 대비 overlap 포함)
+ * - strava_activities로 멱등 처리 (이미 처리된 활동은 재처리하지 않음)
  * - 배지 엔진 호출
  * - last_synced_at 업데이트
  */
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
-import { getActivities, getActivityById, getAthleteProfile, getActivityStreams, refreshStravaToken } from '@/lib/strava/api'
+import { getActivities, getActivityStreams, refreshStravaToken } from '@/lib/strava/api'
 import { evaluateBadges } from '@/lib/badge-engine/index'
 import { tryItemDrop } from '@/lib/drop-engine/index'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
@@ -15,12 +17,19 @@ import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { checkMissions } from '@/lib/missions/checker'
 import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
-import type { StravaConnectionRow, BadgeType, PoiRow } from '@/types/database'
+import type { StravaConnectionRow, BadgeType, PoiRow, StravaActivityRow } from '@/types/database'
 
 /** 싱크 1회당 아이템 드랍을 시도할 최대 활동 수 (최신순). 백필 시 드랍 폭주·타임아웃 방지 */
 const MAX_DROP_ACTIVITIES_PER_SYNC = 3
 /** 싱크 1회당 POI 매칭(Streams API)을 수행할 최대 활동 수 (최신순). Strava rate limit·타임아웃 방지 */
 const MAX_POI_MATCH_ACTIVITIES_PER_SYNC = 10
+/**
+ * 커서 overlap — Strava/Garmin 쪽 색인 지연으로 활동이 직전 동기화 시점엔 목록에
+ * 안 잡혔다가 뒤늦게 나타나는 경우를 대비해, 매번 이만큼 앞선 시각부터 다시 조회한다.
+ * strava_activities 멱등 처리 덕분에 겹치는 구간을 다시 훑어도 중복 보상은 없다.
+ * 이 overlap보다 더 큰 지연은 별도 정합성 점검(reconcile.ts)이 처리한다.
+ */
+export const SYNC_OVERLAP_SECONDS = 15 * 60
 
 /**
  * StravaSummaryActivity → NormalizedActivity 변환
@@ -43,6 +52,229 @@ function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity 
       ? (activity.end_latlng as [number, number])
       : null,
     weatherTempC: activity.average_temp ?? null,
+  }
+}
+
+/** 이미 처리된(strava_activities에 기록된) strava_id 집합 조회 */
+export async function getProcessedStravaIds(
+  supabase: SupabaseClient,
+  userId: string,
+  stravaIds: number[]
+): Promise<Set<number>> {
+  if (stravaIds.length === 0) return new Set()
+  const { data, error } = await supabase
+    .from('strava_activities')
+    .select('strava_id')
+    .eq('user_id', userId)
+    .in('strava_id', stravaIds)
+
+  if (error) {
+    // 테이블이 아직 없거나(마이그레이션 미적용) 오류 시 — 안전하게 "미처리"로 간주해
+    // 기존 동작(매번 처리)으로 폴백한다. 멱등 보장이 깨지는 대신 완전 중단은 피함.
+    console.error('[getProcessedStravaIds] 조회 오류 — 미처리로 폴백:', error)
+    return new Set()
+  }
+  return new Set((data as { strava_id: number }[]).map((r) => r.strava_id))
+}
+
+/** 처리 완료된 활동들을 strava_activities에 기록 (멱등 처리 기준 데이터) */
+async function recordProcessedActivities(
+  supabase: SupabaseClient,
+  userId: string,
+  activities: NormalizedActivity[],
+  processedVia: StravaActivityRow['processed_via']
+): Promise<void> {
+  if (activities.length === 0) return
+  const rows = activities.map((a) => ({
+    user_id: userId,
+    strava_id: a.stravaId,
+    start_date: a.startDate,
+    jam_activity_type: a.jamActivityType,
+    distance_km: a.distanceKm,
+    processed_via: processedVia,
+  }))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase.from('strava_activities').upsert(rows as any, { onConflict: 'user_id,strava_id' })
+  if (error) {
+    console.error('[recordProcessedActivities] 기록 오류:', error)
+  }
+}
+
+/**
+ * 이번에 새로 확인된 활동들을 배지·드랍·미션 엔진에 넣고, 처리 완료 후 strava_activities에 기록한다.
+ * syncStravaActivities(정기 동기화)와 reconcileStravaActivities(정합성 점검)가 공유하는 핵심 처리부.
+ */
+export async function processFetchedActivities(
+  supabase: SupabaseClient,
+  userId: string,
+  accessToken: string,
+  rawActivities: StravaSummaryActivity[],
+  isFirstSync: boolean,
+  processedVia: StravaActivityRow['processed_via'] = 'sync'
+): Promise<{ badges: number; itemBooksCompleted: number; missionsCompleted: number }> {
+  if (rawActivities.length === 0) {
+    return { badges: 0, itemBooksCompleted: 0, missionsCompleted: 0 }
+  }
+
+  const activities: NormalizedActivity[] = rawActivities.map(normalizeActivity)
+
+  // POI 매칭 — 각 활동의 GPS 경로를 Streams API로 조회 후 POI 반경 교차 검증
+  //   백필 시 Strava API 폭주 방지: 최신 활동 N개만 매칭.
+  const poiMatchTargets = [...rawActivities]
+    .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+    .slice(0, MAX_POI_MATCH_ACTIVITIES_PER_SYNC)
+  const routesByActivity = await Promise.all(
+    poiMatchTargets.map(async (rawActivity) => ({
+      rawActivity,
+      route: await getActivityStreams(rawActivity.id, accessToken),
+    }))
+  )
+  let poiBadgesEarned = 0
+
+  const poiMatchResults: { rawActivity: StravaSummaryActivity; matchedPois: PoiRow[] }[] = []
+  for (const { rawActivity, route } of routesByActivity) {
+    if (!route) continue // 실내 활동 또는 경로 데이터 없음 — 건너뜀
+    const matchedPois = await matchPoisForActivity(route, supabase)
+    if (matchedPois.length > 0) poiMatchResults.push({ rawActivity, matchedPois })
+  }
+
+  const linkedBadgeIds = Array.from(
+    new Set(
+      poiMatchResults.flatMap(({ matchedPois }) =>
+        matchedPois.map((poi) => poi.linked_badge_id).filter((id): id is string => Boolean(id))
+      )
+    )
+  )
+  const badgeById = new Map<string, { id: string; type: BadgeType }>()
+  if (linkedBadgeIds.length > 0) {
+    const { data: linkedBadgesRaw, error: linkedBadgeError } = await supabase
+      .from('badges')
+      .select('id, type')
+      .in('id', linkedBadgeIds)
+    if (linkedBadgeError) {
+      console.error('[processFetchedActivities] POI 연결 배지 조회 오류:', linkedBadgeError)
+    }
+    for (const badge of (linkedBadgesRaw ?? []) as { id: string; type: BadgeType }[]) {
+      badgeById.set(badge.id, badge)
+    }
+  }
+
+  // 배지 타입별 발급
+  //   - poi 타입: user_poi_badge_earns에 매번 새 행(반복 획득). 보유 여부 체크 없음.
+  //   - 그 외(레거시 activity): 기존 user_activity_badges 경로 그대로(1인 1회)
+  for (const { rawActivity, matchedPois } of poiMatchResults) {
+    const normalized = activities.find((a) => a.stravaId === rawActivity.id)
+
+    for (const poi of matchedPois) {
+      if (!poi.linked_badge_id) continue
+      const badge = badgeById.get(poi.linked_badge_id)
+      if (!badge) continue
+
+      if (badge.type === 'poi') {
+        const earnPayload = {
+          user_id: userId,
+          badge_id: badge.id,
+          poi_id: poi.id,
+          triggered_by_strava_id: rawActivity.id,
+          triggered_by_activity_name: rawActivity.name,
+          triggered_by_distance_km: normalized?.distanceKm ?? null,
+          triggered_by_activity_date: rawActivity.start_date,
+        }
+        const { error: earnError } = await supabase
+          .from('user_poi_badge_earns')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .insert(earnPayload as any)
+
+        if (earnError) {
+          if (earnError.code !== '23505') {
+            console.error(`[processFetchedActivities] POI 배지 이력 기록 오류 (poi_id: ${poi.id}):`, earnError)
+          }
+          continue
+        }
+
+        poiBadgesEarned++
+        console.info(`[processFetchedActivities] POI 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}`)
+        continue
+      }
+
+      // 레거시 호환 — activity 타입 배지에 linked_badge_id가 붙어있는 과거 데이터
+      const { data: existing } = await supabase
+        .from('user_activity_badges')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('badge_id', poi.linked_badge_id)
+        .maybeSingle()
+
+      if (existing) continue
+
+      const legacyEarnPayload = {
+        user_id: userId,
+        badge_id: poi.linked_badge_id,
+        triggered_by: 'poi_match',
+        triggered_by_poi_id: poi.id,
+      }
+      const { error: insertError } = await supabase
+        .from('user_activity_badges')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert(legacyEarnPayload as any)
+
+      if (insertError) {
+        if (insertError.code === '23505') continue
+        console.error(`[processFetchedActivities] POI 배지 발급 오류 (poi_id: ${poi.id}):`, insertError)
+        continue
+      }
+
+      poiBadgesEarned++
+      console.info(`[processFetchedActivities] POI 배지 발급 — userId: ${userId}, poi: ${poi.name}, badge_id: ${poi.linked_badge_id}`)
+    }
+  }
+
+  // Phase 18: 차량 속도 필터 적용 — 어뷰징 정책에서 임계값 조회
+  let vehicleSpeedFilterKmh = 60
+  const { data: abusingPolicy } = await supabase
+    .from('abusing_policy')
+    .select('vehicle_speed_filter_kmh')
+    .limit(1)
+    .single()
+  if (abusingPolicy && (abusingPolicy as { vehicle_speed_filter_kmh?: number }).vehicle_speed_filter_kmh) {
+    vehicleSpeedFilterKmh = (abusingPolicy as { vehicle_speed_filter_kmh: number }).vehicle_speed_filter_kmh
+  }
+  const activitiesFiltered = activities.filter((a) => a.averageSpeedKmh <= vehicleSpeedFilterKmh)
+
+  // 활동별 아이템 드랍 시도
+  //   - 첫 싱크(백필): "10초 첫 보상" — 최신 활동 1건만 드랍
+  //   - 일반 싱크: 최신 활동 최대 3건까지 드랍
+  const dropTargets = [...activitiesFiltered]
+    .filter((a) => a.jamActivityType)
+    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+    .slice(0, isFirstSync ? 1 : MAX_DROP_ACTIVITIES_PER_SYNC)
+  for (const activity of dropTargets) {
+    await tryItemDrop(userId, activity, activitiesFiltered)
+  }
+
+  // 일반 배지 엔진 호출 (speed-filtered 활동만)
+  const badgesEarned = activitiesFiltered.length > 0 ? await evaluateBadges(userId, activitiesFiltered) : 0
+
+  // 아이템북 완성 체크 + reward_badge 발급
+  const { completedIds, rewardBadgesIssued } = await checkItemBookCompletion(userId)
+  if (completedIds.length > 0) {
+    console.info(`[processFetchedActivities] 아이템북 완성 — userId: ${userId}, 완성 수: ${completedIds.length}, 보상 배지: ${rewardBadgesIssued}`)
+  }
+
+  // Phase 16: 다이나믹 미션 달성 체크
+  const { completedMissionIds } = await checkMissions(userId, activitiesFiltered)
+  if (completedMissionIds.length > 0) {
+    console.info(`[processFetchedActivities] 미션 달성 — userId: ${userId}, 수: ${completedMissionIds.length}`)
+  }
+
+  // 멱등 처리 기준 데이터 기록 — 이번에 "새로" 확인된 활동 전체(가져온 원본 기준)를 처리 완료로 표시.
+  // 성공적으로 여기까지 도달한 경우에만 기록하므로, 중간에 실패하면 다음 시도에서 자연스럽게 재처리된다.
+  await recordProcessedActivities(supabase, userId, activities, processedVia)
+
+  return {
+    badges: badgesEarned + poiBadgesEarned + rewardBadgesIssued,
+    itemBooksCompleted: completedIds.length,
+    missionsCompleted: completedMissionIds.length,
   }
 }
 
@@ -99,9 +331,9 @@ export async function syncStravaActivities(
     }
   }
 
-  // 4. last_synced_at 이후 활동만 조회
+  // 4. last_synced_at - overlap 이후 활동만 조회 (색인 지연 대비 — 상단 SYNC_OVERLAP_SECONDS 주석 참고)
   const afterTimestamp = connection.last_synced_at
-    ? Math.floor(new Date(connection.last_synced_at).getTime() / 1000)
+    ? Math.max(0, Math.floor(new Date(connection.last_synced_at).getTime() / 1000) - SYNC_OVERLAP_SECONDS)
     : undefined
 
   // 4-1. 동시 싱크 잠금 (낙관적 잠금) — 처리 시작 전에 last_synced_at을 선점 갱신한다.
@@ -130,205 +362,33 @@ export async function syncStravaActivities(
     .maybeSingle()
   const isFirstSync = !(userRow as { initial_sync_done?: boolean } | null)?.initial_sync_done
 
-  const rawActivities = await getActivities(accessToken, afterTimestamp)
+  const fetchedActivities = await getActivities(accessToken, afterTimestamp)
 
-  // 진단 로그 — Strava가 실제로 몇 건을 반환했는지, 커서가 뭐였는지 확인용
+  // 5. 멱등 처리 — overlap으로 다시 잡힌 것 중 이미 처리된 활동은 제외
+  const processedIds = await getProcessedStravaIds(supabase, userId, fetchedActivities.map((a) => a.id))
+  const rawActivities = fetchedActivities.filter((a) => !processedIds.has(a.id))
+
   console.info(
-    `[syncStravaActivities] userId: ${userId}, afterTimestamp: ${afterTimestamp} (${afterTimestamp ? new Date(afterTimestamp * 1000).toISOString() : 'none'}), raw활동 수: ${rawActivities.length}` +
-    (rawActivities.length > 0
-      ? `, ids: ${rawActivities.map((a) => `${a.id}@${a.start_date}`).join(', ')}`
-      : '')
+    `[syncStravaActivities] userId: ${userId}, afterTimestamp: ${afterTimestamp ?? 'none'}, ` +
+    `Strava 반환: ${fetchedActivities.length}건, 신규(미처리): ${rawActivities.length}건`
   )
 
-  // TEMP DEBUG — 특정 활동이 왜 안 보이는지 원인 조사용. 조사 끝나면 제거할 것.
-  try {
-    const [athlete, targetActivity] = await Promise.all([
-      getAthleteProfile(accessToken),
-      getActivityById(19529880923, accessToken),
-    ])
-    console.info(
-      `[TEMP DEBUG] athlete_id(DB): ${connection.strava_athlete_id}, athlete_id(API): ${athlete.id}, target activity:`,
-      JSON.stringify(targetActivity)
-    )
-  } catch (debugErr) {
-    console.info('[TEMP DEBUG] 조회 실패:', debugErr instanceof Error ? debugErr.message : String(debugErr))
-  }
-
-  // 5. NormalizedActivity로 변환
-  const activities: NormalizedActivity[] = rawActivities.map(normalizeActivity)
-
-  // 6. POI 매칭 — 각 활동의 GPS 경로를 Streams API로 조회 후 POI 반경 교차 검증
-  //    백필 시 Strava API 폭주 방지: 최신 활동 N개만 매칭.
-  //    Streams 조회(외부 API, 네트워크 지연의 주 원인)는 병렬로 먼저 가져오고,
-  //    배지 발급(DB 쓰기)은 순서 보장을 위해 순차 처리한다.
-  const poiMatchTargets = [...rawActivities]
-    .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
-    .slice(0, MAX_POI_MATCH_ACTIVITIES_PER_SYNC)
-  const routesByActivity = await Promise.all(
-    poiMatchTargets.map(async (rawActivity) => ({
-      rawActivity,
-      route: await getActivityStreams(rawActivity.id, accessToken),
-    }))
-  )
-  let poiBadgesEarned = 0
-
-  // 6-1. 활동별 POI 매칭 결과를 먼저 모은다 (연결 배지 사전 조회를 위해)
-  const poiMatchResults: { rawActivity: StravaSummaryActivity; matchedPois: PoiRow[] }[] = []
-  for (const { rawActivity, route } of routesByActivity) {
-    if (!route) {
-      // 실내 활동 또는 경로 데이터 없음 — 건너뜀
-      continue
-    }
-    const matchedPois = await matchPoisForActivity(route, supabase)
-    if (matchedPois.length > 0) poiMatchResults.push({ rawActivity, matchedPois })
-  }
-
-  // 6-2. 매칭된 POI들의 linked_badge_id를 한 번에 조회 (N+1 방지)
-  const linkedBadgeIds = Array.from(
-    new Set(
-      poiMatchResults.flatMap(({ matchedPois }) =>
-        matchedPois
-          .map((poi) => poi.linked_badge_id)
-          .filter((id): id is string => Boolean(id))
-      )
-    )
-  )
-  const badgeById = new Map<string, { id: string; type: BadgeType }>()
-  if (linkedBadgeIds.length > 0) {
-    const { data: linkedBadgesRaw, error: linkedBadgeError } = await supabase
-      .from('badges')
-      .select('id, type')
-      .in('id', linkedBadgeIds)
-    if (linkedBadgeError) {
-      console.error('[syncStravaActivities] POI 연결 배지 조회 오류:', linkedBadgeError)
-    }
-    for (const badge of (linkedBadgesRaw ?? []) as { id: string; type: BadgeType }[]) {
-      badgeById.set(badge.id, badge)
-    }
-  }
-
-  // 6-3. 배지 타입별 발급
-  //      - poi 타입: user_poi_badge_earns에 매번 새 행(반복 획득). 보유 여부 체크 없음.
-  //      - 그 외(레거시 activity): 기존 user_activity_badges 경로 그대로(1인 1회)
-  for (const { rawActivity, matchedPois } of poiMatchResults) {
-    const normalized = activities.find((a) => a.stravaId === rawActivity.id)
-
-    for (const poi of matchedPois) {
-      if (!poi.linked_badge_id) continue
-      const badge = badgeById.get(poi.linked_badge_id)
-      if (!badge) continue
-
-      if (badge.type === 'poi') {
-        const earnPayload = {
-          user_id: userId,
-          badge_id: badge.id,
-          poi_id: poi.id,
-          triggered_by_strava_id: rawActivity.id,
-          triggered_by_activity_name: rawActivity.name,
-          triggered_by_distance_km: normalized?.distanceKm ?? null,
-          triggered_by_activity_date: rawActivity.start_date,
-        }
-        const { error: earnError } = await supabase
-          .from('user_poi_badge_earns')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .insert(earnPayload as any)
-
-        if (earnError) {
-          // 23505 = 동일 활동 재처리(웹훅 재전송/수동 재싱크) — 무시하고 계속
-          if (earnError.code !== '23505') {
-            console.error(`[syncStravaActivities] POI 배지 이력 기록 오류 (poi_id: ${poi.id}):`, earnError)
-          }
-          continue
-        }
-
-        poiBadgesEarned++
-        console.info(`[syncStravaActivities] POI 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}`)
-        continue
-      }
-
-      // 레거시 호환 — activity 타입 배지에 linked_badge_id가 붙어있는 과거 데이터
-      // 이미 해당 배지를 보유하고 있는지 확인 (중복 발급 방지)
-      const { data: existing } = await supabase
-        .from('user_activity_badges')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('badge_id', poi.linked_badge_id)
-        .maybeSingle()
-
-      if (existing) continue
-
-      // POI 배지 발급
-      const legacyEarnPayload = {
-        user_id: userId,
-        badge_id: poi.linked_badge_id,
-        triggered_by: 'poi_match',
-        triggered_by_poi_id: poi.id,
-      }
-      const { error: insertError } = await supabase
-        .from('user_activity_badges')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .insert(legacyEarnPayload as any)
-
-      if (insertError) {
-        if (insertError.code === '23505') continue // 중복 — 무시
-        console.error(`[syncStravaActivities] POI 배지 발급 오류 (poi_id: ${poi.id}):`, insertError)
-        continue
-      }
-
-      poiBadgesEarned++
-      console.info(`[syncStravaActivities] POI 배지 발급 — userId: ${userId}, poi: ${poi.name}, badge_id: ${poi.linked_badge_id}`)
-    }
-  }
-
-  // 7. Phase 18: 차량 속도 필터 적용 — 어뷰징 정책에서 임계값 조회
-  let vehicleSpeedFilterKmh = 60
-  const { data: abusingPolicy } = await supabase
-    .from('abusing_policy')
-    .select('vehicle_speed_filter_kmh')
-    .limit(1)
-    .single()
-  if (abusingPolicy && (abusingPolicy as { vehicle_speed_filter_kmh?: number }).vehicle_speed_filter_kmh) {
-    vehicleSpeedFilterKmh = (abusingPolicy as { vehicle_speed_filter_kmh: number }).vehicle_speed_filter_kmh
-  }
-  const activitiesFiltered = activities.filter(
-    (a) => a.averageSpeedKmh <= vehicleSpeedFilterKmh
+  const { badges, itemBooksCompleted, missionsCompleted } = await processFetchedActivities(
+    supabase,
+    userId,
+    accessToken,
+    rawActivities,
+    isFirstSync,
+    'sync'
   )
 
-  // 8. 활동별 아이템 드랍 시도 (조건 평가에 speed-filtered 활동 목록 전달)
-  //    - 첫 싱크(백필): "10초 첫 보상" — 최신 활동 1건만 드랍 (과거 이력 전체에 드랍 폭주 방지)
-  //    - 일반 싱크: 최신 활동 최대 3건까지 드랍
-  const dropTargets = [...activitiesFiltered]
-    .filter((a) => a.jamActivityType)
-    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-    .slice(0, isFirstSync ? 1 : MAX_DROP_ACTIVITIES_PER_SYNC)
-  for (const activity of dropTargets) {
-    await tryItemDrop(userId, activity, activitiesFiltered)
-  }
-
-  // 9. 일반 배지 엔진 호출 (speed-filtered 활동만)
-  const badgesEarned = activitiesFiltered.length > 0
-    ? await evaluateBadges(userId, activitiesFiltered)
-    : 0
-
-  // 10. 아이템북 완성 체크 + reward_badge 발급
-  const { completedIds, rewardBadgesIssued } = await checkItemBookCompletion(userId)
-  if (completedIds.length > 0) {
-    console.info(`[syncStravaActivities] 아이템북 완성 — userId: ${userId}, 완성 수: ${completedIds.length}, 보상 배지: ${rewardBadgesIssued}`)
-  }
-
-  // 11. Phase 16: 다이나믹 미션 달성 체크
-  const { completedMissionIds } = await checkMissions(userId, activitiesFiltered)
-  if (completedMissionIds.length > 0) {
-    console.info(`[syncStravaActivities] 미션 달성 — userId: ${userId}, 수: ${completedMissionIds.length}`)
-  }
-
-  // 10. last_synced_at은 4-1 잠금 단계에서 이미 선점 갱신됨 (여기서 재갱신하면
-  //     처리 중 업로드된 활동이 다음 싱크에서 누락되는 갭이 생기므로 하지 않는다)
+  // last_synced_at은 4-1 잠금 단계에서 이미 선점 갱신됨 (여기서 재갱신하면
+  // 처리 중 업로드된 활동이 다음 싱크에서 누락되는 갭이 생기므로 하지 않는다)
 
   return {
-    synced: activities.length,
-    badges: badgesEarned + poiBadgesEarned + rewardBadgesIssued,
-    itemBooksCompleted: completedIds.length,
-    missionsCompleted: completedMissionIds.length,
+    synced: rawActivities.length,
+    badges,
+    itemBooksCompleted,
+    missionsCompleted,
   }
 }

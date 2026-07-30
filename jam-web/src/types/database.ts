@@ -47,6 +47,19 @@ export interface StravaConnectionRow {
   updated_at: string
 }
 
+/** 동기화 완료된 Strava 활동 — 멱등 처리·정합성 점검(reconcile)의 기준 데이터 */
+export interface StravaActivityRow {
+  id: string
+  user_id: string
+  strava_id: number
+  start_date: string
+  jam_activity_type: string | null
+  distance_km: number | null
+  processed_at: string
+  processed_via: 'sync' | 'reconcile' | 'manual_backfill'
+  created_at: string
+}
+
 export interface BadgeRow {
   id: string
   name: string
@@ -668,6 +681,16 @@ export interface Database {
           updated_at?: string
         }
         Update: Partial<Omit<StravaConnectionRow, 'id'>>
+        Relationships: []
+      }
+      strava_activities: {
+        Row: StravaActivityRow
+        Insert: Omit<StravaActivityRow, 'id' | 'processed_at' | 'created_at'> & {
+          id?: string
+          processed_at?: string
+          created_at?: string
+        }
+        Update: Partial<Omit<StravaActivityRow, 'id'>>
         Relationships: []
       }
       badges: {
