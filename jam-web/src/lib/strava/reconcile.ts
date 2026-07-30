@@ -14,10 +14,18 @@ import type { StravaConnectionRow } from '@/types/database'
 
 /** 정합성 점검 시 되짚어볼 기간 (일) */
 export const RECONCILE_LOOKBACK_DAYS = 7
+/**
+ * 1회 점검당 자동으로 소급 처리할 최대 활동 수.
+ * 정상적인 색인 지연이라면 누락은 한두 건 수준이어야 한다. 이보다 많이 잡히면
+ * (예: strava_activities에 아직 한 번도 기록된 적 없는 유저 — 마이그레이션 직후 등)
+ * 실제 누락이 아니라 "이미 처리된 옛 활동을 전부 미처리로 오인식"한 상황일 가능성이 높아
+ * 자동 처리를 건너뛰고 사람 확인을 거치게 한다. (2026-07-30 중복 드랍 인시던트로 추가)
+ */
+export const MAX_AUTO_RECOVER_PER_RUN = 3
 
 export async function reconcileStravaActivities(
   userId: string
-): Promise<{ recovered: number; badges: number }> {
+): Promise<{ recovered: number; badges: number; skippedTooMany?: number }> {
   const supabase = createServiceClient()
 
   const { data: connectionRaw, error: connError } = await supabase
@@ -61,6 +69,14 @@ export async function reconcileStravaActivities(
 
   if (missing.length === 0) {
     return { recovered: 0, badges: 0 }
+  }
+
+  if (missing.length > MAX_AUTO_RECOVER_PER_RUN) {
+    console.warn(
+      `[reconcileStravaActivities] userId: ${userId}, 누락 ${missing.length}건 — 정상 지연 범위(${MAX_AUTO_RECOVER_PER_RUN}) 초과로 자동 처리 스킵. ` +
+      `ids: ${missing.map((a) => `${a.id}@${a.start_date}`).join(', ')}`
+    )
+    return { recovered: 0, badges: 0, skippedTooMany: missing.length }
   }
 
   console.info(
