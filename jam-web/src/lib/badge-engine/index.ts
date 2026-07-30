@@ -9,6 +9,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
+import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, UserActivityBadgeRow } from '@/types/database'
 
@@ -40,6 +41,139 @@ export type BadgeMissedInfo = {
 
 // ── 조건 평가 (상세 이유 포함) ────────────────────────────────────────────
 
+/** 한 활동 안에서 동시에 충족해야 하는 필드 — "합산"이 아니라 "그 활동 자체가" 조건을 만족해야 함 */
+const PER_ACTIVITY_KEYS = [
+  'distance_km', 'elevation_gain_m', 'duration_minutes', 'min_speed_kmh',
+  'temperature_min_c', 'temperature_max_c', 'weekend_duration_hours',
+] as const
+
+function inTimeRange(activity: NormalizedActivity, range: { start: string; end: string }): boolean {
+  const toMin = (hhmm: string) => {
+    const [h, m] = hhmm.split(':').map(Number)
+    return h * 60 + m
+  }
+  const local = activity.startDateLocal ?? activity.startDate
+  const t = toMin(local.slice(11, 16))
+  const s = toMin(range.start)
+  const e = toMin(range.end)
+  return s > e ? (t >= s || t <= e) : (t >= s && t <= e)
+}
+
+/** 활동 하나가 PER_ACTIVITY_KEYS + (weekly_count 없을 때의) time_range를 전부 만족하는지 */
+function matchesPerActivityCondition(condition: BadgeCondition, a: NormalizedActivity): boolean {
+  if (condition.distance_km !== undefined && a.distanceKm < condition.distance_km) return false
+  if (condition.elevation_gain_m !== undefined && a.elevationGainM < condition.elevation_gain_m) return false
+  if (condition.duration_minutes !== undefined && a.movingTimeSec / 60 < condition.duration_minutes) return false
+  if (condition.min_speed_kmh !== undefined && a.averageSpeedKmh < condition.min_speed_kmh) return false
+  if (condition.temperature_min_c !== undefined) {
+    if (a.weatherTempC == null || a.weatherTempC < condition.temperature_min_c) return false
+  }
+  if (condition.temperature_max_c !== undefined) {
+    if (a.weatherTempC == null || a.weatherTempC > condition.temperature_max_c) return false
+  }
+  if (condition.weekend_duration_hours !== undefined) {
+    const day = new Date(a.startDate).getDay()
+    const isWeekend = day === 0 || day === 6
+    if (!isWeekend || a.movingTimeSec / 3600 < condition.weekend_duration_hours) return false
+  }
+  if (condition.time_range !== undefined && condition.weekly_count === undefined) {
+    if (!inTimeRange(a, condition.time_range)) return false
+  }
+  return true
+}
+
+function describePerActivity(condition: BadgeCondition, a: NormalizedActivity): { actual: string[]; required: string[] } {
+  const actual: string[] = []
+  const required: string[] = []
+  if (condition.distance_km !== undefined) {
+    actual.push(`거리: ${Math.round(a.distanceKm * 10) / 10}km`)
+    required.push(`거리: ${condition.distance_km}km`)
+  }
+  if (condition.elevation_gain_m !== undefined) {
+    actual.push(`고도: ${Math.round(a.elevationGainM)}m`)
+    required.push(`고도: ${condition.elevation_gain_m}m`)
+  }
+  if (condition.duration_minutes !== undefined) {
+    actual.push(`이동시간: ${Math.round(a.movingTimeSec / 60)}분`)
+    required.push(`이동시간: ${condition.duration_minutes}분`)
+  }
+  if (condition.min_speed_kmh !== undefined) {
+    actual.push(`속도: ${a.averageSpeedKmh}km/h`)
+    required.push(`속도: ${condition.min_speed_kmh}km/h`)
+  }
+  if (condition.temperature_min_c !== undefined) {
+    actual.push(`기온: ${a.weatherTempC}°C`)
+    required.push(`기온: ≥${condition.temperature_min_c}°C`)
+  }
+  if (condition.temperature_max_c !== undefined) {
+    actual.push(`기온: ${a.weatherTempC}°C`)
+    required.push(`기온: ≤${condition.temperature_max_c}°C`)
+  }
+  if (condition.weekend_duration_hours !== undefined) {
+    actual.push(`주말활동시간: ${(a.movingTimeSec / 3600).toFixed(1)}시간`)
+    required.push(`주말활동시간: ${condition.weekend_duration_hours}시간`)
+  }
+  if (condition.time_range !== undefined && condition.weekly_count === undefined) {
+    const local = a.startDateLocal ?? a.startDate
+    actual.push(`활동시각: ${local.slice(11, 16)}`)
+    required.push(`시간대: ${condition.time_range.start}~${condition.time_range.end}`)
+  }
+  return { actual, required }
+}
+
+/** 필드가 하나뿐인 단순 케이스의 구체적인 실패 사유 (여러 필드 동시충족 케이스는 상위에서 별도 처리) */
+function singleFieldFailure(
+  condition: BadgeCondition,
+  key: typeof PER_ACTIVITY_KEYS[number] | 'time_range',
+  filtered: NormalizedActivity[]
+): EvalConditionResult {
+  switch (key) {
+    case 'distance_km': {
+      const best = Math.max(...filtered.map((a) => a.distanceKm), 0)
+      return { pass: false, reason: '거리 부족', actual: `${Math.round(best * 10) / 10}km`, required: `${condition.distance_km}km` }
+    }
+    case 'elevation_gain_m': {
+      const best = Math.max(...filtered.map((a) => a.elevationGainM), 0)
+      return { pass: false, reason: '고도 상승 부족', actual: `${Math.round(best)}m`, required: `${condition.elevation_gain_m}m` }
+    }
+    case 'duration_minutes': {
+      const best = Math.max(...filtered.map((a) => a.movingTimeSec / 60), 0)
+      return { pass: false, reason: '이동 시간 부족', actual: `${Math.round(best)}분`, required: `${condition.duration_minutes}분` }
+    }
+    case 'min_speed_kmh': {
+      const best = Math.max(...filtered.map((a) => a.averageSpeedKmh), 0)
+      return { pass: false, reason: '속도 부족', actual: `${best}km/h`, required: `${condition.min_speed_kmh}km/h` }
+    }
+    case 'temperature_min_c': {
+      const temps = filtered.map((a) => a.weatherTempC).filter((t): t is number => t != null)
+      if (temps.length === 0) {
+        return { pass: false, reason: '날씨 데이터 없음 (Strava 미제공)', actual: '-', required: `≥${condition.temperature_min_c}°C` }
+      }
+      const maxTemp = Math.max(...temps)
+      return { pass: false, reason: '기온 부족 (폭염 조건 미달)', actual: `${maxTemp}°C`, required: `≥${condition.temperature_min_c}°C` }
+    }
+    case 'temperature_max_c': {
+      const temps = filtered.map((a) => a.weatherTempC).filter((t): t is number => t != null)
+      if (temps.length === 0) {
+        return { pass: false, reason: '날씨 데이터 없음 (Strava 미제공)', actual: '-', required: `≤${condition.temperature_max_c}°C` }
+      }
+      const minTemp = Math.min(...temps)
+      return { pass: false, reason: '기온 초과 (한파 조건 미달)', actual: `${minTemp}°C`, required: `≤${condition.temperature_max_c}°C` }
+    }
+    case 'weekend_duration_hours': {
+      const best = Math.max(
+        ...filtered.filter((a) => { const d = new Date(a.startDate).getDay(); return d === 0 || d === 6 }).map((a) => a.movingTimeSec / 3600),
+        0
+      )
+      return { pass: false, reason: '주말 활동 시간 부족', actual: `${best.toFixed(1)}시간`, required: `${condition.weekend_duration_hours}시간` }
+    }
+    case 'time_range': {
+      const { start, end } = condition.time_range!
+      return { pass: false, reason: '활동 시간대 불일치', actual: '-', required: `${start}~${end}` }
+    }
+  }
+}
+
 export function evaluateConditionDetailed(
   condition: BadgeCondition,
   activities: NormalizedActivity[]
@@ -56,13 +190,36 @@ export function evaluateConditionDetailed(
   const actualParts: string[] = []
   const requiredParts: string[] = []
 
-  if (condition.distance_km !== undefined) {
-    const totalKm = Math.round(filtered.reduce((sum, a) => sum + a.distanceKm, 0) * 10) / 10
-    if (totalKm < condition.distance_km) {
-      return { pass: false, reason: '거리 부족', actual: `${totalKm}km`, required: `${condition.distance_km}km` }
+  // ── 단일 활동 동시 충족 조건 — "그 활동 하나"가 모든 필드를 함께 만족해야 함.
+  //    필드별로 따로 최댓값을 찾아 합치면(예: 빠른 활동의 속도 + 긴 활동의 시간을 조합)
+  //    실제로는 어느 활동도 조건을 만족 못 했는데 통과하는 버그가 생긴다.
+  const relevantPerActivityKeys = [
+    ...PER_ACTIVITY_KEYS.filter((k) => condition[k] !== undefined),
+    ...(condition.time_range !== undefined && condition.weekly_count === undefined ? ['time_range' as const] : []),
+  ]
+  if (relevantPerActivityKeys.length > 0) {
+    const qualifying = filtered.find((a) => matchesPerActivityCondition(condition, a))
+    if (!qualifying) {
+      // 필드가 하나뿐이면 기존처럼 구체적인 사유를 준다. 여러 필드가 겹치면
+      // "동시 충족"이 핵심이므로 필드별 개별 최고 기록은 참고용으로만 보여준다.
+      if (relevantPerActivityKeys.length === 1) {
+        return singleFieldFailure(condition, relevantPerActivityKeys[0], filtered)
+      }
+      const bestByField: string[] = []
+      if (condition.distance_km !== undefined) bestByField.push(`거리 최고: ${Math.max(...filtered.map((a) => a.distanceKm), 0)}km`)
+      if (condition.elevation_gain_m !== undefined) bestByField.push(`고도 최고: ${Math.max(...filtered.map((a) => a.elevationGainM), 0)}m`)
+      if (condition.duration_minutes !== undefined) bestByField.push(`시간 최고: ${Math.round(Math.max(...filtered.map((a) => a.movingTimeSec / 60), 0))}분`)
+      if (condition.min_speed_kmh !== undefined) bestByField.push(`속도 최고: ${Math.max(...filtered.map((a) => a.averageSpeedKmh), 0)}km/h`)
+      return {
+        pass: false,
+        reason: '동시 충족 활동 없음 (개별 최고 기록은 있으나 한 활동에서 함께 달성 못함)',
+        actual: bestByField.length > 0 ? bestByField.join(', ') : '-',
+        required: '모든 조건을 만족하는 활동 1건',
+      }
     }
-    actualParts.push(`거리: ${totalKm}km`)
-    requiredParts.push(`거리: ${condition.distance_km}km`)
+    const { actual, required } = describePerActivity(condition, qualifying)
+    actualParts.push(...actual)
+    requiredParts.push(...required)
   }
 
   if (condition.total_count !== undefined) {
@@ -73,24 +230,6 @@ export function evaluateConditionDetailed(
     requiredParts.push(`횟수: ${condition.total_count}회`)
   }
 
-  if (condition.elevation_gain_m !== undefined) {
-    const totalElev = Math.round(filtered.reduce((sum, a) => sum + a.elevationGainM, 0))
-    if (totalElev < condition.elevation_gain_m) {
-      return { pass: false, reason: '고도 상승 부족', actual: `${totalElev}m`, required: `${condition.elevation_gain_m}m` }
-    }
-    actualParts.push(`고도: ${totalElev}m`)
-    requiredParts.push(`고도: ${condition.elevation_gain_m}m`)
-  }
-
-  if (condition.min_speed_kmh !== undefined) {
-    const maxSpeed = Math.max(...filtered.map((a) => a.averageSpeedKmh), 0)
-    if (maxSpeed < condition.min_speed_kmh) {
-      return { pass: false, reason: '속도 부족', actual: `${maxSpeed}km/h`, required: `${condition.min_speed_kmh}km/h` }
-    }
-    actualParts.push(`속도: ${maxSpeed}km/h`)
-    requiredParts.push(`속도: ${condition.min_speed_kmh}km/h`)
-  }
-
   if (condition.streak_days !== undefined) {
     const streak = calcMaxStreak(filtered)
     if (streak < condition.streak_days) {
@@ -98,29 +237,6 @@ export function evaluateConditionDetailed(
     }
     actualParts.push(`연속일수: ${streak}일`)
     requiredParts.push(`연속일수: ${condition.streak_days}일`)
-  }
-
-  if (condition.duration_minutes !== undefined) {
-    const best = Math.max(...filtered.map((a) => a.movingTimeSec / 60), 0)
-    if (best < condition.duration_minutes) {
-      return { pass: false, reason: '이동 시간 부족', actual: `${Math.round(best)}분`, required: `${condition.duration_minutes}분` }
-    }
-    actualParts.push(`이동시간: ${Math.round(best)}분`)
-    requiredParts.push(`이동시간: ${condition.duration_minutes}분`)
-  }
-
-  if (condition.weekend_duration_hours !== undefined) {
-    const best = Math.max(
-      ...filtered
-        .filter((a) => { const d = new Date(a.startDate).getDay(); return d === 0 || d === 6 })
-        .map((a) => a.movingTimeSec / 3600),
-      0
-    )
-    if (best < condition.weekend_duration_hours) {
-      return { pass: false, reason: '주말 활동 시간 부족', actual: `${best.toFixed(1)}시간`, required: `${condition.weekend_duration_hours}시간` }
-    }
-    actualParts.push(`주말활동시간: ${best.toFixed(1)}시간`)
-    requiredParts.push(`주말활동시간: ${condition.weekend_duration_hours}시간`)
   }
 
   if (condition.weekly_count !== undefined) {
@@ -194,61 +310,6 @@ export function evaluateConditionDetailed(
     requiredParts.push(`계절활동: ${condition.season_count}회`)
   }
 
-  if (condition.temperature_min_c !== undefined) {
-    const temps = filtered.map((a) => a.weatherTempC).filter((t): t is number => t != null)
-    if (temps.length === 0) {
-      return { pass: false, reason: '날씨 데이터 없음 (Strava 미제공)', actual: '-', required: `≥${condition.temperature_min_c}°C` }
-    }
-    const maxTemp = Math.max(...temps)
-    if (maxTemp < condition.temperature_min_c) {
-      return { pass: false, reason: '기온 부족 (폭염 조건 미달)', actual: `${maxTemp}°C`, required: `≥${condition.temperature_min_c}°C` }
-    }
-    actualParts.push(`최고기온: ${maxTemp}°C`)
-    requiredParts.push(`최고기온: ≥${condition.temperature_min_c}°C`)
-  }
-
-  if (condition.temperature_max_c !== undefined) {
-    const temps = filtered.map((a) => a.weatherTempC).filter((t): t is number => t != null)
-    if (temps.length === 0) {
-      return { pass: false, reason: '날씨 데이터 없음 (Strava 미제공)', actual: '-', required: `≤${condition.temperature_max_c}°C` }
-    }
-    const minTemp = Math.min(...temps)
-    if (minTemp > condition.temperature_max_c) {
-      return { pass: false, reason: '기온 초과 (한파 조건 미달)', actual: `${minTemp}°C`, required: `≤${condition.temperature_max_c}°C` }
-    }
-    actualParts.push(`최저기온: ${minTemp}°C`)
-    requiredParts.push(`최저기온: ≤${condition.temperature_max_c}°C`)
-  }
-
-  if (condition.time_range !== undefined && condition.weekly_count === undefined) {
-    // weekly_count와 함께 쓰이는 경우 weekly_count 블록에서 통합 처리됨.
-    // 단독으로만 쓰일 때: 이력 전반에서 해당 시간대 활동이 1건이라도 있으면 통과.
-    const { start, end } = condition.time_range
-    const toMinutes = (hhmm: string): number => {
-      const [h, m] = hhmm.split(':').map(Number)
-      return h * 60 + m
-    }
-    const startMin = toMinutes(start)
-    const endMin = toMinutes(end)
-    const crossesMidnight = startMin > endMin
-
-    const matchedActivity = filtered.find((a) => {
-      const local = a.startDateLocal ?? a.startDate
-      const timePart = local.slice(11, 16) // "HH:MM"
-      const actMin = toMinutes(timePart)
-      return crossesMidnight
-        ? actMin >= startMin || actMin <= endMin
-        : actMin >= startMin && actMin <= endMin
-    })
-
-    if (!matchedActivity) {
-      return { pass: false, reason: '활동 시간대 불일치', actual: '-', required: `${start}~${end}` }
-    }
-    const matchedTime = (matchedActivity.startDateLocal ?? matchedActivity.startDate).slice(11, 16)
-    actualParts.push(`활동시각: ${matchedTime}`)
-    requiredParts.push(`시간대: ${start}~${end}`)
-  }
-
   return {
     pass: true,
     reason: '조건 충족',
@@ -284,6 +345,12 @@ export async function evaluateBadgesDetailed(
   const { dryRun = false, triggeredBy = 'strava_sync', silent = false, overrideFirstSync } = options ?? {}
 
   const supabase = createServiceClient()
+
+  // 조건 평가는 "이번 배치"가 아니라 실제 이력 전체를 기준으로 한다.
+  // (weekly_count/streak_days/monthly_km/season_count 같은 누적 조건이 배치 크기에
+  //  좌우되지 않도록 — strava_activities에 아직 없는 이번 배치는 별도로 합쳐준다)
+  const history = await getActivityHistory(supabase, userId)
+  const evalActivities = mergeActivityHistory(history, activities)
 
   // initial_sync_done 조회 — 첫 싱크 게이트 판단용
   const { data: userRowRaw } = await supabase
@@ -373,7 +440,7 @@ export async function evaluateBadgesDetailed(
         }
       }
 
-      const evalResult = evaluateConditionDetailed(badge.condition_json as BadgeCondition ?? {}, activities)
+      const evalResult = evaluateConditionDetailed(badge.condition_json as BadgeCondition ?? {}, evalActivities)
       if (evalResult.pass) {
         eligible.push({ badge, evalResult })
       } else {
@@ -473,8 +540,9 @@ export async function evaluateBadgesDetailed(
 
     if (!dryRun) {
       const triggerActivity = condition.activity_type
-        ? activities.find((a) => a.jamActivityType === condition.activity_type)
-        : activities[0]
+        ? (evalActivities.find((a) => a.jamActivityType === condition.activity_type && matchesPerActivityCondition(condition, a))
+          ?? evalActivities.find((a) => a.jamActivityType === condition.activity_type))
+        : evalActivities[0]
 
       // 어드민 전용 — 발급 근거(조건/실측값/트리거 활동) 스냅샷. 일반 유저 화면에는 노출 안 함
       const conditionSnapshot: BadgeConditionSnapshot = {

@@ -47,7 +47,7 @@ export interface StravaConnectionRow {
   updated_at: string
 }
 
-/** 동기화 완료된 Strava 활동 — 멱등 처리·정합성 점검(reconcile)의 기준 데이터 */
+/** 동기화 완료된 Strava 활동 — 멱등 처리·정합성 점검(reconcile)·누적 조건 평가의 기준 데이터 */
 export interface StravaActivityRow {
   id: string
   user_id: string
@@ -55,6 +55,9 @@ export interface StravaActivityRow {
   start_date: string
   jam_activity_type: string | null
   distance_km: number | null
+  /** NormalizedActivity 전체 스냅샷 — 배지/미션 누적 조건 평가에 사용 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  normalized: any
   processed_at: string
   processed_via: 'sync' | 'reconcile' | 'manual_backfill'
   created_at: string

@@ -6,6 +6,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { grantMissionRewards } from '@/lib/missions/rewards'
+import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { MissionRow, MissionCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 
@@ -38,16 +39,24 @@ export async function checkMissions(
 
   const completedSet = new Set((completedRaw ?? []).map((r: { mission_id: string }) => r.mission_id))
 
-  // 3. 유저가 참가 중인 미션
+  // 3. 유저가 참가 중인 미션 (참가 시각도 함께 — distance/activity_count 진행도는
+  //    "참가한 시점 이후" 활동만 집계해야 하므로)
   const { data: participationsRaw } = await supabase
     .from('user_mission_participations')
-    .select('mission_id')
+    .select('mission_id, joined_at')
     .eq('user_id', userId)
 
-  const participationSet = new Set((participationsRaw ?? []).map((r: { mission_id: string }) => r.mission_id))
+  const participations = (participationsRaw ?? []) as { mission_id: string; joined_at: string }[]
+  const participationSet = new Set(participations.map((r) => r.mission_id))
+  const joinedAtByMission = new Map(participations.map((r) => [r.mission_id, r.joined_at]))
 
   const pendingMissions = missions.filter((m) => !completedSet.has(m.id))
   const completedMissionIds: string[] = []
+
+  // distance/activity_count는 "이번 배치"가 아니라 실제 이력 전체로 판정해야
+  // 매번 조금씩 동기화되는 정상적인 사용 패턴에서도 누적 조건이 제대로 채워진다.
+  const history = await getActivityHistory(supabase, userId)
+  const fullHistory = mergeActivityHistory(history, activities)
 
   // 4. poi_visit / item_collect 판정에 필요한 유저 보유 현황을 미리 조회.
   //    (활동 배치만으로는 판단 불가 — DB 조회 필요. 참가 미션이 하나라도
@@ -62,7 +71,15 @@ export async function checkMissions(
     const isParticipating = participationSet.has(mission.id)
     if (!isParticipating) continue
 
-    const { progressValue, achieved } = evaluateMission(mission, activities, ownership, isParticipating)
+    // distance/activity_count는 참가 시점 이후 전체 이력, 그 외(poi_visit/item_collect)는
+    // 보유 현황 기반이라 activities 자체는 안 쓰이므로 배치를 그대로 넘겨도 무방.
+    const joinedAt = joinedAtByMission.get(mission.id)
+    const missionActivities =
+      mission.mission_type === 'distance' || mission.mission_type === 'activity_count'
+        ? (joinedAt ? fullHistory.filter((a) => a.startDate >= joinedAt) : fullHistory)
+        : activities
+
+    const { progressValue, achieved } = evaluateMission(mission, missionActivities, ownership, isParticipating)
 
     // progress_value 업데이트
     if (progressValue > 0) {
