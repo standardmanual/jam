@@ -60,6 +60,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           .select('id, badge_id, serial_number, serial_prefix, slotted_in')
           .eq('inventory_id', inventoryId)
           .in('badge_id', badgeIds)
+          .is('dropped_at', null)
       : Promise.resolve({ data: [] }),
     supabase
       .from('user_item_book_slots')

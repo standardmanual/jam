@@ -25,25 +25,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: invItemRaw, error: invErr } = await (supabase as any)
     .from('inventory_items')
-    .select('id, badge_id, inventory_id, slotted_in')
+    .select('id, badge_id, inventory_id, slotted_in, dropped_at')
     .eq('id', inventory_item_id)
     .single()
-  const invItem = invItemRaw as { id: string; badge_id: string; inventory_id: string; slotted_in: string | null } | null
+  const invItem = invItemRaw as {
+    id: string
+    badge_id: string
+    inventory_id: string
+    slotted_in: string | null
+    dropped_at: string | null
+  } | null
 
   if (invErr || !invItem) return NextResponse.json({ error: '인벤토리 아이템을 찾을 수 없습니다.' }, { status: 404 })
 
   // 소유자 확인: inventory.user_id === 현재 유저
   const { data: invRaw } = await supabase
     .from('inventory')
-    .select('user_id')
+    .select('id, user_id, used_slots')
     .eq('id', invItem.inventory_id)
     .single()
-  const inv = invRaw as { user_id: string } | null
+  const inv = invRaw as { id: string; user_id: string; used_slots: number } | null
   if (!inv || inv.user_id !== user.id) {
     return NextResponse.json({ error: '본인의 아이템만 슬롯에 넣을 수 있습니다.' }, { status: 403 })
   }
 
   if (invItem.slotted_in) return NextResponse.json({ error: '이미 슬롯에 장착된 아이템입니다.' }, { status: 409 })
+  // 이미 드랍(다른 유저에게 넘김)된 아이템은 더 이상 내 소유가 아니므로 슬롯 불가
+  if (invItem.dropped_at) return NextResponse.json({ error: '이미 드랍된 아이템입니다.' }, { status: 409 })
 
   // 2) 아이템이 이 아이템북 소속인지 확인 (badges.item_book_id)
   const { data: badgeRaw, error: badgeErr } = await supabase
@@ -79,6 +87,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ slotted_in: slot.id })
     .eq('id', inventory_item_id)
+
+  // 4-1) 아이템북에 들어간 아이템은 인벤토리 칸을 더 이상 차지하지 않음 — 칸 반환
+  await supabase
+    .from('inventory')
+    // @ts-expect-error Supabase 타입 추론 제한 우회
+    .update({ used_slots: Math.max(0, inv.used_slots - 1) })
+    .eq('id', inv.id)
 
   // 5) 완성 체크: 이 아이템북에 필요한 배지 수 vs 현재 슬롯 수
   const [{ count: totalBadges }, { count: slottedCount }] = await Promise.all([
@@ -132,6 +147,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   if (slotErr || !slot) return NextResponse.json({ error: '슬롯을 찾을 수 없습니다.' }, { status: 404 })
 
+  // 해제하면 아이템이 인벤토리로 돌아와 칸을 다시 소비함 — 꽉 찬 상태면 해제 불가
+  const { data: invRaw } = await supabase
+    .from('inventory')
+    .select('id, used_slots, max_slots')
+    .eq('user_id', user.id)
+    .single()
+  const inv = invRaw as { id: string; used_slots: number; max_slots: number } | null
+  if (!inv) return NextResponse.json({ error: '인벤토리를 찾을 수 없습니다.' }, { status: 404 })
+  if (inv.used_slots >= inv.max_slots) {
+    return NextResponse.json(
+      { error: '인벤토리가 꽉 차 해제할 수 없어요. 인벤토리를 늘려보세요.' },
+      { status: 409 }
+    )
+  }
+
   // inventory_items.slotted_in = NULL
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any)
@@ -142,6 +172,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   // slot row 삭제
   const { error: delErr } = await supabase.from('user_item_book_slots').delete().eq('id', slot_id)
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+
+  // 인벤토리 칸 다시 소비 (완성 기록 user_item_book_completions는 그대로 유지 — 물리적 상태만 변경)
+  await supabase
+    .from('inventory')
+    // @ts-expect-error Supabase 타입 추론 제한 우회
+    .update({ used_slots: inv.used_slots + 1 })
+    .eq('id', inv.id)
 
   // DELETE에서 itemBookId 사용이 없어도 파라미터는 유지 (라우트 일관성)
   void itemBookId
