@@ -239,7 +239,12 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           </div>
         ) : (
           badges.length > 0 && (
-            <SlotGrid itemBookId={id} badgeSlots={badgeSlots} readOnly={!isOwnBook} />
+            <SlotGrid
+              itemBookId={id}
+              badgeSlots={badgeSlots}
+              readOnly={!isOwnBook}
+              badgeLinkQuery={!isOwnBook && subjectUsername ? `?u=${subjectUsername}` : ''}
+            />
           )
         )}
 

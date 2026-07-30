@@ -65,6 +65,19 @@ const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
 }
 
 /**
+ * item_dropped는 두 가지 출처를 하나의 이벤트 타입으로 공유한다:
+ * - 활동 연동(Strava) 후 드랍엔진이 지급한 경우 → faction_name이 항상 채워짐 → "아이템 획득"
+ * - POI에 아이템배지를 직접 드랍한 경우(레거시 poi_drops 동기화) → faction_name 없음 → "아이템 드랍"
+ */
+function eventLabel(item: ActivityFeedRow): string {
+  if (item.event_type === 'item_dropped') {
+    const meta = item.metadata as Record<string, unknown>
+    return meta.faction_name ? d.feed.eventItemEarned : d.feed.eventItemDropped
+  }
+  return EVENT_LABEL[item.event_type]
+}
+
+/**
  * 희귀도 상태 팔레트 — Phase 2에서 `state_color_palette` 테이블로 이관 예정.
  * [주의] 색상값을 재조정하지 마세요(유저가 학습한 색 언어 유지).
  */
@@ -127,7 +140,7 @@ export function DetailSheet({ item, onClose, badgeLinkQuery }: { item: ActivityF
             </div>
           )}
         </div>
-        <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mb-1">{EVENT_LABEL[item.event_type]}</p>
+        <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mb-1">{eventLabel(item)}</p>
         <h2 className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text-inverse mb-[var(--spacing-16)]">{title}</h2>
         {rarity && RARITY_COLOR[rarity] && (
           <div className="flex justify-center mb-[var(--spacing-16)]">
@@ -205,7 +218,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 truncate">{EVENT_LABEL[item.event_type]}</p>
+        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 truncate">{eventLabel(item)}</p>
         <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse truncate">{title}</p>
         {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 truncate">{sub}</p>}
         <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">

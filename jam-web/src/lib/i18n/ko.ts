@@ -82,6 +82,9 @@ export const ko = {
 
     // 이벤트 라벨
     eventBadgeEarned: '배지 획득',
+    // 활동 연동 후 배지엔진을 통해 지급된 경우("아이템 획득")와 POI에 직접 드랍된 경우("아이템 드랍")는
+    // 같은 item_dropped 이벤트지만 출처가 다르므로 문구를 분리해서 표기한다 (FeedSection.tsx의 eventLabel 참고)
+    eventItemEarned: '아이템 획득',
     eventItemDropped: '아이템 드랍',
     eventItemPickedUp: '아이템 픽업',
     eventMissionJoined: '미션 참가',
