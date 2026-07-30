@@ -1,54 +1,86 @@
-# 진행 상황 (Design_Phase01)
+# 진행 상황 (transitions-apply)
 
-## 2026-07-29 — 메인세션: 팀 구성 + 공유 메모리 초기화
-- kkirikkiri-design-phase01 팀 구성 완료, 태스크 배분 시작
+## 2026-07-30 — 메인세션: 팀 구성 + 공유 메모리 초기화
+- kkirikkiri-transitions-apply 팀 구성 완료, dev-shared / dev-pages 두 팀원에게 태스크 배분 시작
 
-## 2026-07-29 — dev-tokens: 태스크 1·2 시작
-- PRD 4종 + SuperHi Plus 원본 레퍼런스 정독, 기존 globals.css / (main)/TabBar.tsx / ui/Button.tsx / ui/Card.tsx 조사
+## 2026-07-30 — dev-pages: 작업 시작
+- 담당 8개 파일 착수. `globals.css`에 motion 토큰이 아직 없어(확인함) **globals.css는 건드리지 않고**
+  `jam-web/src/components/transitions-pages.css`를 신설하여 필요한 `:root` 토큰 + 트랜지션 CSS를 자체 보유.
+  값은 스킬 `_root.css`와 완전히 동일하므로 dev-shared가 globals.css에 토큰을 넣어도 충돌 없음.
 
-## 2026-07-29 — dev-tokens: 태스크 1·2 완료
-- [완료] `src/app/globals.css` — Pretendard CDN import(최상단), SuperHi Plus 브랜드/시맨틱 컬러 + 라디우스 토큰(@theme), 타이포/스페이싱/elevation 토큰(:root), body Pretendard weight 400 강제. 기존 jam-* 토큰은 전부 보존.
-- [완료] `src/components/ui/TopNav.tsx` 신설
-- [완료] `src/components/ui/TabBar.tsx` 신설 (라우팅 로직 원본 그대로, 스타일만 교체). 기존 `(main)/TabBar.tsx`는 손대지 않음 — 교체는 dev-integration 담당.
-- [완료] `src/components/ui/Card.tsx` / `Button.tsx` 새 스펙으로 교체 (레거시 props 하위호환 유지)
-- [검증] `npx tsc --noEmit` — 신규/수정 파일 관련 에러 0건 (기존부터 있던 `src/lib/points/__tests__/*` @types/jest 누락 에러만 잔존, 이번 작업과 무관)
-- [검증] dev 서버(3000) 기동 후 컴파일된 CSS 확인 — `--color-main`, `--color-surface-inverse`, `--radius-cards`, Pretendard @import, `.bg-surface-inverse` / `.text-text-inverse` / `.text-text-inverse\/40` 유틸리티 정상 생성 확인
-- dev 서버는 켜둔 상태로 인계 (preview name: `jam-web`, port 3000)
+## 2026-07-30 — dev-pages: 완료
+- 담당 8개 파일(FollowButton, points, onboarding, profile/edit, DropsClient, MissionDetailClient, CombineClient, InventoryItemHistorySheet) 전부 완료. tsc/build/lint 통과.
 
-## 2026-07-29 — dev-integration: 태스크 3·4 시작
-- TEAM_FINDINGS 인계 노트 + PRD 4종 + globals.css / TopNav / TabBar / Card / Button / ProfileClient / FeedSection 정독
+## 2026-07-30 — dev-shared: 완료
+- 담당 전체(globals.css 토큰, BottomSheet, Toast, TabBar, 신규 SlidingTabs/PopInNumber/SwapText, BadgesClient, MissionsListClient+Accordion, FeedSection+DetailSheet, ProfileClient) 완료.
 
-## 2026-07-29 — dev-integration: 태스크 3·4 완료
-- [완료] `src/lib/i18n/ko.ts` 신설 — namespace 5종(common/nav/profile/tabs/feed), `{변수}` 보간 패턴
-- [완료] `src/lib/i18n/index.ts` 신설 — `dictionaries` / `getDictionary()` / 단축 참조 `d` / 보간 헬퍼 `t()`
-- [완료] `src/components/ui/icons.tsx` 신설 — 이모지 대체 SVG 라인 아이콘 15종(stroke 1.5, currentColor)
-- [완료] `src/app/(main)/layout.tsx` — TabBar import를 `@/components/ui/TabBar`로 교체 (기존 `(main)/TabBar.tsx` 파일은 삭제하지 않고 보존)
-- [완료] `src/components/ui/TabBar.tsx` — 탭 라벨을 `d.nav.*`로 이관 (로직 무변경)
-- [완료] `src/components/ui/TopNav.tsx` — `showBack?: boolean`(기본 true) 옵셔널 prop 추가, aria-label i18n 이관
-- [완료] `src/app/(main)/profile/ProfileClient.tsx` 전면 교체 — TopNav/Card/Button + i18n, 이모지 전부 SVG 교체, 네오브루탈 제거
-- [완료] `src/app/(main)/FeedSection.tsx` 전면 교체 — ProfileClient 전용 컴포넌트라 프로필 화면 범위에 포함 (이모지 6종 + 빈상태 + 마지막파편 아이콘 SVG화, DetailSheet 포함)
-- [검증] `npx tsc --noEmit` — `__tests__` 제외 시 에러 0건
-- [검증] `npm run build` — Compiled successfully (3.5s), 전체 라우트 빌드 성공
-- [미검증] 브라우저 스크린샷 — /profile 접근 시 미로그인이라 /login으로 리다이렉트. 로그인 세션 있는 메인세션이 수행 필요
+## 2026-07-30 — 메인세션(팀장): 통합 + 최종 검증
+- `transitions-pages.css`와 `transitions.css`의 중복 정의(:root 토큰, .t-text-swap, .t-digit-*, .t-panel-slide, .t-skel-*)를 확인 후 `transitions-pages.css`에서 제거. Error state shake / Success check / InventoryItemHistorySheet용 스켈레톤 로컬 확장만 남김.
+- 전체 `npx tsc --noEmit` 0건, `npx next build` 성공, 관련 디렉토리 전체 ESLint 실행 — 남은 6건 전부 git diff로 대조해 기존 코드(우리 변경 전부터 있던) 이슈임을 확인, 신규 에러 없음.
+- 브라우저로 로그인 화면 렌더 확인(콘솔 에러 없음, CSS 정상 적용). (main) 인증 필요 화면은 실제 로그인 세션이 없어 시각적으로 직접 확인하지 못함 — 사용자 확인 필요.
+- 결과: 감사에서 발견한 항목 전부(해당없음 제외) 적용 완료, 공유 컴포넌트(BottomSheet/Toast/TabBar/SlidingTabs/PopInNumber/SwapText) 구축 완료. 커밋은 보류 — 사용자 확인 대기.
 
-## 2026-07-29 — 메인세션: 브라우저 검증 + 수정 + 최종 완료
-- `src/app/designpreviewtemp/profile/page.tsx` 임시 라우트 생성(목데이터로 ProfileClient 직접 렌더) + `src/proxy.ts` publicPaths에 일시 추가 → 모바일 뷰포트(430px) 스크린샷 검증 → 작업 완료 후 라우트/proxy.ts 변경 전부 원복(삭제)
-- [발견/수정] `src/lib/i18n/ko.ts`의 `feed.title`이 영문 "Feed"로 방치되어 있던 것을 "최근 활동"으로 수정
-- [발견/수정] 배지 그리드 희귀도 타일 배경(`bg-jam-teal/20` 등 반투명 워시)이 코발트 배경 위에서 텍스트(코발트색)와 뒤섞여 거의 안 보이는 버그 발견 → 타일 배경을 항상 아이스(`bg-surface-inverse`) 고정, 희귀도 색은 하단 라벨 pill의 텍스트/보더 색으로만 적용하도록 `ProfileClient.tsx` 수정. 색상 값 자체(jam-teal/purple/yellow)는 변경 없음 — 적용 방식만 수정
-- [검증] 수정 후 재스크린샷 — 뱃지 6종(common/rare/legendary/mythic) 전부 가독성 확보 확인
-- [검증] `rm -rf .next` 후 `npx tsc --noEmit` — 에러 0건 (이전 에러는 iCloud 동기화로 생긴 `.next/types/* 2.ts` 중복 파일이 원인, 코드와 무관, .next 삭제로 해소)
-- [검증] `npm run build` — 전체 라우트 정상 빌드
-- **Design_Phase01 (Phase 1) 완료.** 남은 항목(Phase 2): 투데이/배지/인벤토리·드랍·미션 리뉴얼, state_color_palette 어드민화, 배지/드랍/아이템북 화면에서 이미 바뀐 Button/Card 룩 정식 리뉴얼
+## 2026-07-30 — dev-pages: 담당 8개 파일 완료
+- 신규 파일 2개
+  - `jam-web/src/components/transitions-pages.css` — 04/02/07/12/10/14 스니펫 verbatim + 필요한 `:root` 토큰
+  - `jam-web/src/components/transitions-pages.ts` — React 오케스트레이션 훅
+    (`useTextSwap` / `useDigitPopIn` / `useRevealOnMount` / `useErrorShake` / `useSkeletonReveal`)
+- 적용 완료
+  1. `[username]/FollowButton.tsx` — Text states swap
+  2. `points/page.tsx` — Number pop-in
+  3. `onboarding/page.tsx` — Text states swap + Error state shake
+  4. `profile/edit/page.tsx` — Text states swap + Error state shake
+  5. `drops/DropsClient.tsx` — Panel reveal + Text states swap
+  6. `missions/[id]/MissionDetailClient.tsx` — Text states swap + Panel reveal
+  7. `combine/CombineClient.tsx` — Success check (path 길이 getTotalLength 실측 주입)
+  8. `inventory/[itemId]/InventoryItemHistorySheet.tsx` — Skeleton loader and reveal
+- 검증: `npx tsc --noEmit` 통과(기존 `__tests__` 타입 노이즈 제외), `npx next build` 성공.
+  ESLint 신규 에러 0건(DropsClient 2건 / InventoryItemHistorySheet 1건은 HEAD 기준으로도 동일하게
+  발생하던 기존 `react-hooks/set-state-in-effect` 에러).
+- **globals.css는 건드리지 않았습니다.** dev-shared 작업과 파일 충돌 없음.
 
-## 2026-07-29 — 메인세션: 투데이(홈) 화면 리뉴얼 (Phase 2 착수)
-- [완료] `(main)/page.tsx` — 헤더/Strava 카드/최근 배지 그리드/바로가기를 Card·바이너리 토큰으로 전면 교체, RarityBadge 재사용
-- [완료] `(main)/TodayCardStack.tsx` — 5개 layout_type(large_thumbnail/badge_gallery/shortcut/banner/other) 전부 재작성. template_type 식별을 컬러 칩 대신 아이콘+무색 pill로 변경(바이너리 원칙 준수)
-- [발견/수정] BannerCard가 cover 이미지 없을 때도 검정 스크림 그라디언트를 그려서 회색 얼룩처럼 보이는 버그 → cover 없으면 OtherCard로 폴백하도록 수정
-- [완료] `UserSearchBar.tsx`, `SyncButton.tsx` — Button 컴포넌트 + 토큰 재작성, 토스트 메시지 이모지 제거(`{count}개` i18n 보간)
-- [완료] `components/ui/Toast.tsx` — ✓/✕/ℹ 유니코드 기호 대신 SVG 아이콘(Check/Close/Info)로 교체, jam-* 색상 제거
-- [완료] `components/ui/Badge.tsx`(RarityBadge) — 마이페이지와 동일 원칙으로 배경 워시 대신 텍스트/보더 색상 방식으로 변경 (공용 컴포넌트라 배지 목록/상세 등 다른 화면에도 스필오버 — Phase 2에서 그 화면들 정식 리뉴얼할 때 참고)
-- [완료] `today/[cardId]/page.tsx` — 기사 페이지 리뉴얼 + 뒤로가기 링크/칩 겹침 레이아웃 버그 수정(`block` 추가)
-- [완료] `components/ui/icons.tsx`에 HourglassIcon/PinIcon/FlaskIcon/NewspaperIcon/SearchIcon/CheckIcon/InfoIcon 추가
-- [완료] `i18n/ko.ts`에 `today`/`todayCard` 네임스페이스 추가
-- [검증] 임시 목데이터 라우트로 홈 화면 5종 카드 + 기사 페이지 스크린샷 검증 후 라우트/proxy.ts 원복. `tsc --noEmit` 0건, `npm run build` 성공. 커밋 d03fae2, push 완료.
-- 다음 순서: 배지 목록/상세 리뉴얼 (RarityBadge 스필오버 이미 반영되어 있으니 레이아웃/토큰 교체 위주)
+## 2026-07-30 — dev-shared: 담당 전 범위 완료
+
+### 신규 파일
+- `jam-web/src/components/transitions.css` — 스킬 참고문서 6종 스니펫 **verbatim** 복사
+  (07 Panel reveal / 22 Toast / 03 Notification badge / 16 Tabs sliding / 21 Accordion /
+  02 Number pop-in / 04 Text states swap / 14 Skeleton reveal)
+  + 파일 하단 "프로젝트 확장" 섹션에만 JAM! 토큰(44px 터치영역·radius·코발트/아이스)에
+  맞춘 크기/색/앵커 오버라이드. 원본 스니펫과 `prefers-reduced-motion` 가드는 무수정.
+- `jam-web/src/lib/motion.ts` — `cssDurationMs()` / `prefersReducedMotion()`.
+  duration을 JS에 하드코딩하지 않고 항상 `:root` 토큰에서 읽습니다.
+- `jam-web/src/components/ui/SlidingTabs.tsx` — **공유 슬라이딩 탭**(16-tabs-sliding.md).
+  props: `items / value / onChange / variant(onSurface|onCard) / size(md|lg|xl) /
+  shape(pill|card) / block / outlined`. 첫 페인트·리사이즈·웹폰트 로드 시에는
+  `transition:none → reflow 강제 → 복원`으로 스냅시켜 pill이 translateX(0)에서
+  날아 들어오는 버그를 차단했습니다. 활성 탭이 없으면 pill을 배치하지 않습니다.
+- `jam-web/src/components/ui/PopInNumber.tsx` — Number pop-in 리플레이 래퍼.
+- `jam-web/src/components/ui/SwapText.tsx` — Text states swap 3단계 오케스트레이션 래퍼.
+
+### 수정 파일 / 적용 트랜지션
+1. `src/app/globals.css` — `_root.css` **모션 토큰 :root 블록 전체** 설치(중복 없음) +
+   `transitions.css` import.
+2. `src/components/ui/BottomSheet.tsx` — **Panel reveal**. 드래그용 inline transform과
+   충돌하지 않도록 `.t-panel-slide` 래퍼를 한 겹 추가(`--panel-translate-y: 100%`),
+   백드롭 페이드, 닫힘 트랜지션 동안 언마운트 지연.
+3. `src/components/ui/Toast.tsx` — **Toast open/close**. `ToastRow` 분리, 마운트 다음
+   프레임에 `.is-open` 부착, dismiss는 `closing` 플래그 후 `--toast-close`만큼 잔류.
+4. `src/components/ui/TabBar.tsx` — **Notification badge**. 활성 점을 조건부 렌더링에서
+   상시 마운트 + `data-open` 토글로 변경(`.jam-tabbar-dot`으로 하단 중앙 앵커).
+5. `src/app/(main)/badges/BadgesClient.tsx` — 탭 헤더(액티비티/아이템북) → **SlidingTabs**.
+6. `src/app/(main)/missions/MissionsListClient.tsx` — 탭(진행중/참여중/종료) → **SlidingTabs**,
+   필터 패널 → **Accordion expand**(grid-rows 0fr↔1fr, 패딩은 `.t-acc-panel-inner` 안쪽에만,
+   필터 버튼에 chevron flip + `aria-expanded`).
+7. `src/app/(main)/FeedSection.tsx` — 필터탭 → **SlidingTabs**, `DetailSheet` → **Panel reveal**.
+   DetailSheet가 `open`/`onClosed` props를 받도록 시그니처 변경(닫힘 트랜지션 후 언마운트).
+8. `src/app/(main)/profile/ProfileClient.tsx` — 통계바 → **SlidingTabs**(size=xl, onCard),
+   팔로워 수 → **Number pop-in**, 헤더/리스트 팔로우 버튼 라벨 → **Text states swap**,
+   탭 로딩 스피너(DotmHex8) → **Skeleton loader and reveal**(`.jam-skel-flow` 변형),
+   DetailSheet 호출부도 새 시그니처로 갱신.
+
+### 검증
+- `npx tsc --noEmit` — 담당 파일 에러 0건
+  (남은 에러는 기존 `__tests__` 타입 노이즈와 dev-pages의 `InventoryItemHistorySheet.tsx` 2건).
+- ESLint — 담당 파일 신규 에러 0건. `BottomSheet.tsx:41,107` / `ProfileClient.tsx:533` 및
+  186행 미사용 disable은 모두 HEAD 기준으로도 동일하게 나던 기존 항목.
+- `npx next build`는 다른 세션의 빌드가 점유 중이라 스킵. 커밋은 하지 않았습니다.

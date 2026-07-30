@@ -126,9 +126,15 @@ export default function TabBar({ username }: TabBarProps) {
             >
               {tab.icon}
             </span>
-            {active && (
-              <span className="absolute bottom-2.5 w-1 h-1 rounded-full bg-text-inverse" aria-hidden="true" />
-            )}
+            {/*
+              활성탭 점 — transitions.dev `03-notification-badge.md`.
+              조건부 렌더링을 없애고 항상 마운트한 뒤 data-open만 토글해야
+              팝인/팝아웃 트랜지션이 발화한다. 앵커는 원본(우상단) 대신
+              `.jam-tabbar-dot`으로 트리거 하단 중앙으로 옮겼다.
+            */}
+            <span className="t-badge jam-tabbar-dot" data-open={active} aria-hidden="true">
+              <span className="t-badge-dot w-1 h-1 rounded-full bg-text-inverse" />
+            </span>
           </Link>
         )
       })}

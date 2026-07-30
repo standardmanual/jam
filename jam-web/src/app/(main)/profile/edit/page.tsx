@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import TopNav from '@/components/ui/TopNav'
 import { UserIcon } from '@/components/ui/icons'
+import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
+import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
@@ -181,9 +183,16 @@ export default function ProfileEditPage() {
   }
 
   // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
-  const inputBorderClass = checkStatus === 'invalid' || checkStatus === 'taken'
+  const hasError = checkStatus === 'invalid' || checkStatus === 'taken'
+  const inputBorderClass = hasError
     ? 'shadow-[inset_0_0_0_2px_var(--color-border)]'
     : 'shadow-[inset_0_0_0_1px_var(--color-border)]'
+
+  // 중복확인 상태 메시지 — 즉시 전환 대신 Text states swap (04)
+  const { ref: messageRef, initialText: initialMessage } = useTextSwap<HTMLParagraphElement>(checkMessage)
+  // 유효하지 않거나 이미 사용 중인 아이디 — Error state shake (12).
+  // `.is-error`는 선언적으로, `.is-shaking`은 훅이 명령형으로 재생한다.
+  const inputShakeRef = useErrorShake<HTMLDivElement>(hasError ? checkStatus : null)
 
   if (loading) {
     return (
@@ -234,9 +243,12 @@ export default function ProfileEditPage() {
         </div>
 
         {/* 아이디 편집 */}
-        <div className="flex flex-col gap-2">
+        <div className={`t-input-wrap flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
           <label className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/70">{d.profileEdit.usernameLabel}</label>
-          <div className={`flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}`}>
+          <div
+            ref={inputShakeRef}
+            className={`t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
+          >
             <span className="text-text/60 mr-1">@</span>
             <input
               type="text"
@@ -253,9 +265,15 @@ export default function ProfileEditPage() {
               <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
             )}
           </div>
-          {checkMessage && (
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70">{checkMessage}</p>
-          )}
+          {/* 메시지는 항상 마운트한 채 텍스트만 교체한다(빈 문자열 = 숨김).
+              min-h-6로 자리를 잡아 스왑 중 레이아웃이 흔들리지 않게 한다. */}
+          <p
+            ref={messageRef}
+            aria-live="polite"
+            className="t-text-swap min-h-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70"
+          >
+            {initialMessage}
+          </p>
         </div>
 
         {/* 저장 버튼 */}

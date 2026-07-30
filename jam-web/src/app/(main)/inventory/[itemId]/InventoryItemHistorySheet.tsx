@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import type { HistoryEvent } from '@/app/api/inventory/items/[itemId]/history/route'
 import { ChevronRightIcon, PinIcon } from '@/components/ui/icons'
 import BottomSheet from '@/components/ui/BottomSheet'
+import { useSkeletonReveal } from '@/components/transitions-pages'
+import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'
 
 interface Props {
@@ -38,12 +40,13 @@ function formatTs(iso: string): string {
 export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props) {
   const [open, setOpen] = useState(false)
   const [events, setEvents] = useState<HistoryEvent[] | null>(null)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // 로딩 스피너 대신 타임라인 모양 스켈레톤 → 도착 시 cross-fade (Skeleton reveal, 14)
+  const skelRef = useSkeletonReveal<HTMLDivElement>(events !== null)
 
   useEffect(() => {
     if (!open || events !== null) return
-    setLoading(true)
     setError(null)
     fetch(`/api/inventory/items/${itemId}/history`)
       .then((r) => r.json())
@@ -52,7 +55,6 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
         else setError(d.inventory.historyError)
       })
       .catch(() => setError(d.inventory.historyError))
-      .finally(() => setLoading(false))
   }, [open, itemId, events])
 
   const obtainLabel =
@@ -82,36 +84,49 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
         closeLabel={d.common.close}
       >
         <div className="px-[var(--spacing-24)] py-[var(--spacing-16)]">
-          {loading && (
-            <div className="flex justify-center py-[var(--spacing-32)]">
-              <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-
-          {error && (
+          {error ? (
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center py-[var(--spacing-32)]">{error}</p>
-          )}
+          ) : (
+            <div
+              ref={skelRef}
+              className="t-skel"
+              /* 두 레이어가 absolute로 겹치는 동안에는 래퍼가 높이를 갖지 못하므로
+                 스켈레톤 높이만큼 자리를 잡아둔다. `.is-settled`에서 해제된다. */
+              style={{ ['--skel-min-h' as string]: '150px' }}
+            >
+              <div className="t-skel-skeleton is-pulsing" aria-hidden="true">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex flex-col gap-1 mb-[var(--spacing-16)]">
+                    <div className="h-3 w-28 rounded-[var(--radius-inputs)] bg-text-inverse/15" />
+                    <div className="h-4 w-3/5 rounded-[var(--radius-inputs)] bg-text-inverse/15" />
+                  </div>
+                ))}
+              </div>
 
-          {events && events.length === 0 && (
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/40 text-center py-[var(--spacing-32)]">{d.inventory.historyEmpty}</p>
-          )}
+              <div className="t-skel-content">
+                {events && events.length === 0 && (
+                  <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/40 text-center py-[var(--spacing-32)]">{d.inventory.historyEmpty}</p>
+                )}
 
-          {events && events.length > 0 && (
-            <ol className="flex flex-col gap-[var(--spacing-16)]">
-              {events.map((ev, i) => (
-                <li key={i} className="flex flex-col gap-0.5">
-                  <span className="text-[11px] text-text-inverse/40 font-mono">{formatTs(ev.timestamp)}</span>
-                  <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                    {ev.username ?? d.inventory.historyUnknownUser} · {eventLabel(ev)}
-                  </p>
-                  {ev.poi_name && (
-                    <p className="text-[11px] text-text-inverse/50 inline-flex items-center gap-1">
-                      <PinIcon className="w-3 h-3" />{ev.poi_name}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ol>
+                {events && events.length > 0 && (
+                  <ol className="flex flex-col gap-[var(--spacing-16)]">
+                    {events.map((ev, i) => (
+                      <li key={i} className="flex flex-col gap-0.5">
+                        <span className="text-[11px] text-text-inverse/40 font-mono">{formatTs(ev.timestamp)}</span>
+                        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+                          {ev.username ?? d.inventory.historyUnknownUser} · {eventLabel(ev)}
+                        </p>
+                        {ev.poi_name && (
+                          <p className="text-[11px] text-text-inverse/50 inline-flex items-center gap-1">
+                            <PinIcon className="w-3 h-3" />{ev.poi_name}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </BottomSheet>

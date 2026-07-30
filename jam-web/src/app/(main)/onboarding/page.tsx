@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { UserIcon } from '@/components/ui/icons'
+import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
+import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
@@ -120,9 +122,16 @@ export default function OnboardingPage() {
   }
 
   // 바이너리 컬러 원칙상 에러를 색으로 표현하지 않는다 — 보더 두께로만 상태를 구분하고 실제 안내는 메시지 텍스트로 전달
-  const inputBorderClass = status === 'invalid' || status === 'taken'
+  const hasError = status === 'invalid' || status === 'taken'
+  const inputBorderClass = hasError
     ? 'shadow-[inset_0_0_0_2px_var(--color-border-inverse)]'
     : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'
+
+  // 중복확인 상태 메시지 — 즉시 전환 대신 Text states swap (04)
+  const { ref: messageRef, initialText: initialMessage } = useTextSwap<HTMLParagraphElement>(message)
+  // 유효하지 않거나 이미 사용 중인 아이디 — Error state shake (12).
+  // `.is-error`는 선언적으로, `.is-shaking`은 훅이 명령형으로 재생한다.
+  const inputShakeRef = useErrorShake<HTMLDivElement>(hasError ? status : null)
 
   return (
     <div className="min-h-full bg-surface text-text flex flex-col items-center justify-center px-[var(--spacing-24)] py-[var(--spacing-48)]">
@@ -147,8 +156,11 @@ export default function OnboardingPage() {
         </div>
 
         {/* 입력 영역 */}
-        <div className="w-full flex flex-col gap-2">
-          <div className={`flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}`}>
+        <div className={`t-input-wrap w-full flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
+          <div
+            ref={inputShakeRef}
+            className={`t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
+          >
             <span className="text-text/60 mr-1">@</span>
             <input
               type="text"
@@ -166,9 +178,15 @@ export default function OnboardingPage() {
             )}
           </div>
 
-          {message && (
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70">{message}</p>
-          )}
+          {/* 메시지는 항상 마운트한 채 텍스트만 교체한다(빈 문자열 = 숨김).
+              min-h-6로 자리를 잡아 스왑 중 레이아웃이 흔들리지 않게 한다. */}
+          <p
+            ref={messageRef}
+            aria-live="polite"
+            className="t-text-swap min-h-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70"
+          >
+            {initialMessage}
+          </p>
         </div>
 
         {/* 생성하기 버튼 */}

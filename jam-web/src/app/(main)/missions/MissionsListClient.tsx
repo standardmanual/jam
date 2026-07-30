@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { ActivityType, MissionCondition, MissionRow, MissionType } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import Card from '@/components/ui/Card'
+import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import { d, t } from '@/lib/i18n'
 
 export interface MissionListItem extends MissionRow {
@@ -60,7 +61,7 @@ function rewardSummary(m: MissionRow): string {
   return parts.length > 0 ? parts.join(' + ') : d.missions.rewardNone
 }
 
-const TABS: { key: Tab; label: string }[] = [
+const TABS: SlidingTabItem<Tab>[] = [
   { key: 'ongoing', label: d.missions.tabOngoing },
   { key: 'joined', label: d.missions.tabJoined },
   { key: 'ended', label: d.missions.tabEnded },
@@ -121,38 +122,50 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
 
   return (
     <>
-      {/* 탭 + 필터 버튼 */}
-      <div className="flex items-center gap-2 mb-[var(--spacing-16)]">
-        <div className="flex gap-1 flex-1 p-1 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)]">
-          {TABS.map((tItem) => (
-            <button
-              key={tItem.key}
-              onClick={() => setTab(tItem.key)}
-              className={`flex-1 min-h-11 rounded-[var(--radius-buttons)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] transition-colors duration-100 ${
-                tab === tItem.key ? 'bg-surface-inverse text-text-inverse' : 'text-text/60'
-              }`}
-            >
-              {tItem.label}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => setFilterOpen((v) => !v)}
-          className={`shrink-0 flex items-center gap-1.5 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[11px] transition-colors duration-100 ${
-            filterOpen || activeFilterCount > 0 ? 'bg-surface-inverse text-text-inverse' : 'text-text'
-          }`}
-        >
-          {d.missions.filterButton}
-          {activeFilterCount > 0 && (
-            <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center shadow-[inset_0_0_0_1px_currentColor]">
-              {activeFilterCount}
+      {/*
+        필터 패널은 Accordion expand(21-accordion.md)로 높이를 애니메이션한다.
+        `.t-acc`가 헤더(필터 버튼)와 패널을 함께 감싸야 data-open 셀렉터가
+        패널까지 닿는다. 패딩은 `.t-acc-panel-inner` 안쪽(Card)에만 두고
+        `.t-acc-panel`에는 절대 넣지 않는다 — 0fr 트랙에 패딩이 남으면
+        패널이 완전히 닫히지 않는다.
+      */}
+      <div className="t-acc" data-open={filterOpen}>
+        {/* 탭 + 필터 버튼 */}
+        <div className="flex items-center gap-2 mb-[var(--spacing-16)]">
+          {/* Tabs sliding (16-tabs-sliding.md) */}
+          <div className="flex-1 min-w-0">
+            <SlidingTabs
+              items={TABS}
+              value={tab}
+              onChange={setTab}
+              shape="card"
+              aria-label={d.missions.filterButton}
+            />
+          </div>
+          <button
+            onClick={() => setFilterOpen((v) => !v)}
+            aria-expanded={filterOpen}
+            className={`shrink-0 flex items-center gap-1.5 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[11px] transition-colors duration-100 ${
+              filterOpen || activeFilterCount > 0 ? 'bg-surface-inverse text-text-inverse' : 'text-text'
+            }`}
+          >
+            {d.missions.filterButton}
+            {activeFilterCount > 0 && (
+              <span className="w-4 h-4 rounded-full text-[10px] flex items-center justify-center shadow-[inset_0_0_0_1px_currentColor]">
+                {activeFilterCount}
+              </span>
+            )}
+            <span className="t-acc-chevron">
+              <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
+                <path d="M4 6.5L8 10.5L12 6.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </span>
-          )}
-        </button>
-      </div>
+          </button>
+        </div>
 
-      {/* 필터 패널 */}
-      {filterOpen && (
+        {/* 필터 패널 */}
+        <div className="t-acc-panel">
+          <div className="t-acc-panel-inner">
         <Card className="mb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-16)]">
           <div>
             <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.sortLabel}</p>
@@ -224,7 +237,9 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
             </button>
           )}
         </Card>
-      )}
+          </div>
+        </div>
+      </div>
 
       {list.length === 0 ? (
         <div className="flex-1 flex items-center justify-center py-[var(--spacing-40)]">

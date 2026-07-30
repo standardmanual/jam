@@ -2,10 +2,16 @@
 
 import { useState } from 'react'
 import Button from '@/components/ui/Button'
+import { useTextSwap } from '@/components/transitions-pages'
+import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'
 
 export function FollowButton({ targetUserId, initialFollowing }: { targetUserId: string; initialFollowing: boolean }) {
   const [following, setFollowing] = useState(initialFollowing)
+
+  // 팔로우/팔로잉 라벨 — 즉시 전환 대신 Text states swap (04)
+  const label = following ? d.social.followingButton : d.social.followButton
+  const { ref: labelRef, initialText } = useTextSwap<HTMLSpanElement>(label)
 
   const toggle = async () => {
     if (following) {
@@ -29,7 +35,7 @@ export function FollowButton({ targetUserId, initialFollowing }: { targetUserId:
       onClick={toggle}
       className="shrink-0"
     >
-      {following ? d.social.followingButton : d.social.followButton}
+      <span ref={labelRef} className="t-text-swap">{initialText}</span>
     </Button>
   )
 }

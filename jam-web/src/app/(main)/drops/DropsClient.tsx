@@ -8,6 +8,8 @@ import { CloseIcon, MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import BadgeDetailSheet, { PickupDrop } from './BadgeDetailSheet'
 import type { PoiMarker } from '@/components/map/MapView'
+import { useTextSwap, useRevealOnMount } from '@/components/transitions-pages'
+import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 
 const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false })
@@ -56,6 +58,18 @@ export default function DropsClient() {
   // 픽업 플로우
   const [selectedDrop, setSelectedDrop] = useState<PickupDrop | null>(null)
   const [pickingUp, setPickingUp] = useState(false)
+
+  // ── 트랜지션 (조기 return보다 위에서 훅을 호출해야 순서가 고정된다) ──
+  const isPickupState = (poiDrops?.length ?? 0) > 0
+  // POI 바텀시트 헤더 타이틀 — "확인 중..." ↔ 픽업/드랍 문구 (Text states swap, 04)
+  const sheetTitle = poiLoading
+    ? `${d.drops.checking}...`
+    : isPickupState
+      ? d.drops.pickupItemsTitle
+      : d.drops.thisPlaceTitle
+  const { ref: sheetTitleRef, initialText: initialSheetTitle } = useTextSwap<HTMLSpanElement>(sheetTitle)
+  // POI 바텀시트 진입 — Panel reveal (07). 마운트 다음 프레임에 data-open을 뒤집는다.
+  const poiSheetRef = useRevealOnMount<HTMLDivElement>(selectedPoi !== null)
 
   // 위치 획득
   useEffect(() => {
@@ -270,8 +284,6 @@ export default function DropsClient() {
     badgeRarity: it.badge_rarity,
   }))
 
-  const isPickupState = (poiDrops?.length ?? 0) > 0
-
   return (
     <div className="fixed inset-0 bg-surface overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
       {/* 지도 — 풀스크린(노치·홈 인디케이터 영역까지 꽉 채움) */}
@@ -305,14 +317,20 @@ export default function DropsClient() {
 
       {/* POI 바텀시트 — 상태 분기 */}
       {selectedPoi && (
-        <div className="absolute inset-x-0 bottom-0 z-20 px-[var(--spacing-16)] pb-[var(--spacing-16)]">
+        <div
+          ref={poiSheetRef}
+          className="t-panel-slide absolute inset-x-0 bottom-0 z-20 px-[var(--spacing-16)] pb-[var(--spacing-16)]"
+          data-open="false"
+          /* 시트 자체 높이만큼만 이동해도 완전한 열림으로 읽히도록 travel을 조정 */
+          style={{ ['--panel-translate-y' as string]: '48px' }}
+        >
           <div className="bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] overflow-hidden">
             {/* 헤더 */}
             <div className="flex items-center justify-between px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
               <div className="min-w-0">
                 <p className="text-[11px] text-text-inverse/50 mb-0.5 truncate">{selectedPoi.name}</p>
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                  {poiLoading ? `${d.drops.checking}...` : isPickupState ? d.drops.pickupItemsTitle : d.drops.thisPlaceTitle}
+                  <span ref={sheetTitleRef} className="t-text-swap">{initialSheetTitle}</span>
                 </p>
               </div>
               <button onClick={closeSheet} aria-label={d.common.close} className="w-11 h-11 -mr-2 flex items-center justify-center text-text-inverse/50 active:scale-90 transition-transform duration-100 shrink-0">

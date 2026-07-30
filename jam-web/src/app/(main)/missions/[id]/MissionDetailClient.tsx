@@ -8,6 +8,8 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
 import type { MissionRow, MissionCondition } from '@/types/database'
+import { useTextSwap, useRevealOnMount } from '@/components/transitions-pages'
+import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 
 export interface RewardBadgeInfo {
@@ -71,6 +73,12 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
   const isAchievementType = mission.mission_type === 'poi_visit' || mission.mission_type === 'item_collect'
   const achieved = isCompleted || progressValue >= 1
 
+  // 달성/미달성 배지 텍스트 — 즉시 전환 대신 Text states swap (04)
+  const achievedLabel = achieved ? d.missions.achieved : d.missions.notAchieved
+  const { ref: achievedRef, initialText: initialAchievedLabel } = useTextSwap<HTMLSpanElement>(achievedLabel)
+  // 참가 확인 카드 — Panel reveal (07). 마운트 다음 프레임에 data-open을 뒤집는다.
+  const confirmPanelRef = useRevealOnMount<HTMLDivElement>(confirming)
+
   async function handleJoin() {
     setLoading(true)
     try {
@@ -131,11 +139,12 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
               <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.myProgressTitle}</p>
               <div className="flex items-center justify-between">
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{goal.label}</p>
-                {achieved ? (
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-[var(--spacing-16)] py-1.5 rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">{d.missions.achieved}</span>
-                ) : (
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/40 px-[var(--spacing-16)] py-1.5 rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">{d.missions.notAchieved}</span>
-                )}
+                {/* 달성/미달성은 하나의 배지를 유지한 채 텍스트만 스왑한다(04) */}
+                <span
+                  className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-[var(--spacing-16)] py-1.5 rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] transition-colors${achieved ? '' : ' text-text-inverse/40'}`}
+                >
+                  <span ref={achievedRef} className="t-text-swap">{initialAchievedLabel}</span>
+                </span>
               </div>
             </Card>
           ) : (
@@ -201,17 +210,26 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
             (모바일/PWA에서 연속 confirm() 호출이 브라우저에 의해 조용히 차단되는 문제 회피) */}
         {isActive && !isCompleted && !participating && (
           confirming ? (
-            <Card>
-              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center mb-[var(--spacing-16)]">{d.missions.joinConfirmBody}</p>
-              <div className="flex gap-2">
-                <Button fullWidth variant="outline" surface="sub" onClick={() => setConfirming(false)} disabled={loading}>
-                  {d.drops.cancel}
-                </Button>
-                <Button fullWidth surface="sub" loading={loading} onClick={handleJoin}>
-                  {d.missions.joinConfirmButton}
-                </Button>
-              </div>
-            </Card>
+            /* 참가 확인 카드 — Panel reveal (07). 카드 높이의 절반 정도만 이동해도
+               블러 + 페이드가 함께 걸려 완전한 열림으로 읽힌다. */
+            <div
+              ref={confirmPanelRef}
+              className="t-panel-slide"
+              data-open="false"
+              style={{ ['--panel-translate-y' as string]: '32px' }}
+            >
+              <Card>
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center mb-[var(--spacing-16)]">{d.missions.joinConfirmBody}</p>
+                <div className="flex gap-2">
+                  <Button fullWidth variant="outline" surface="sub" onClick={() => setConfirming(false)} disabled={loading}>
+                    {d.drops.cancel}
+                  </Button>
+                  <Button fullWidth surface="sub" loading={loading} onClick={handleJoin}>
+                    {d.missions.joinConfirmButton}
+                  </Button>
+                </div>
+              </Card>
+            </div>
           ) : (
             <>
               <Button fullWidth onClick={() => setConfirming(true)}>

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
 import Card from '@/components/ui/Card'
 import { MedalIcon } from '@/components/ui/icons'
+import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRow, CombinationRecipeRow, InventoryItemRow } from '@/types/database'
 
@@ -38,6 +39,27 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
   const [result, setResult] = useState<{ success: boolean; names?: string[]; reason?: string } | null>(null)
   const { toast } = useToast()
   const router = useRouter()
+
+  // 조합 성공 배너 — Success check (10).
+  // stroke-dasharray는 플레이스홀더가 아니라 실제 path의 getTotalLength()로 주입한다.
+  const checkRef = useRef<HTMLSpanElement | null>(null)
+  useEffect(() => {
+    if (!result?.success) return
+    const wrapper = checkRef.current
+    if (!wrapper) return
+
+    const path = wrapper.querySelector('path')
+    if (path) {
+      const len = Math.ceil(path.getTotalLength()) // 서브픽셀 흔들림 흡수를 위해 올림
+      path.style.strokeDasharray = String(len)
+      path.style.strokeDashoffset = String(len)
+    }
+
+    // 이미 보이는 상태에서 다시 성공했을 때도 처음부터 재생되도록 리셋 → 리플로우 → 재생
+    wrapper.setAttribute('data-state', 'out')
+    void wrapper.offsetWidth // 리플로우 강제
+    wrapper.setAttribute('data-state', 'in')
+  }, [result])
 
   function toggleItem(itemId: string) {
     setSelected((prev) => {
@@ -101,7 +123,24 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       {/* 결과 알림 */}
       {result && (
         <Card className="mx-[var(--spacing-16)] mb-[var(--spacing-16)] text-center">
-          {result.success ? t(d.combine.successResult, { names: (result.names ?? []).join(', ') }) : result.reason}
+          {result.success ? (
+            <div className="flex flex-col items-center gap-[var(--spacing-16)]">
+              <span ref={checkRef} className="t-success-check" data-state="out" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" className="w-10 h-10">
+                  <path
+                    d="M4 12.5 L9.5 18 L20 6.5"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <p>{t(d.combine.successResult, { names: (result.names ?? []).join(', ') })}</p>
+            </div>
+          ) : (
+            result.reason
+          )}
         </Card>
       )}
 

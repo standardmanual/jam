@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 import { formatRelativeTime } from '@/lib/utils'
+import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import {
   MedalIcon,
   PackageIcon,
@@ -24,7 +26,7 @@ const PAGE_SIZE = 20
 
 type FilterTab = 'all' | 'badge' | 'mission' | 'activity_badge'
 
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
+const FILTER_TABS: SlidingTabItem<FilterTab>[] = [
   { key: 'all', label: d.feed.filterAll },
   { key: 'badge', label: d.feed.filterItem },
   { key: 'mission', label: d.feed.filterMission },
@@ -108,8 +110,43 @@ function Row({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function DetailSheet({ item, onClose, badgeLinkQuery }: { item: ActivityFeedRow; onClose: () => void; badgeLinkQuery: string }) {
+/**
+ * 피드 상세 바텀시트.
+ *
+ * Panel reveal(07-panel-reveal.md) 적용 — 닫힘 트랜지션을 보여주려면 닫는
+ * 즉시 언마운트하면 안 되므로, 부모는 `open`만 false로 바꾸고 `onClosed`
+ * 콜백이 올 때 실제로 언마운트한다.
+ */
+export function DetailSheet({
+  item,
+  open,
+  onClose,
+  onClosed,
+  badgeLinkQuery,
+}: {
+  item: ActivityFeedRow
+  open: boolean
+  onClose: () => void
+  onClosed: () => void
+  badgeLinkQuery: string
+}) {
   const router = useRouter()
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      // 닫힌 상태로 한 프레임 마운트한 뒤 data-open을 올려야 트랜지션이 발화한다.
+      const raf = requestAnimationFrame(() => setShown(true))
+      return () => cancelAnimationFrame(raf)
+    }
+    const raf = requestAnimationFrame(() => setShown(false))
+    const timer = setTimeout(onClosed, cssDurationMs('--panel-close-dur', 350))
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(timer)
+    }
+  }, [open, onClosed])
+
   const meta = item.metadata as Record<string, string | number | null>
   const rarity = meta.rarity ? String(meta.rarity) : null
   const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
@@ -120,8 +157,18 @@ export function DetailSheet({ item, onClose, badgeLinkQuery }: { item: ActivityF
 
   return (
     <>
-      <div className="fixed inset-0 bg-surface/60 z-40" onClick={onClose} />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50 bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] shadow-[inset_0_1px_0_0_var(--color-border-inverse)] px-[var(--spacing-24)] pt-[var(--spacing-16)] pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]">
+      <div className="fixed inset-0 bg-surface/60 z-40 t-panel-backdrop" data-open={shown} onClick={onClose} />
+      {/*
+        Panel reveal 래퍼. 시트 본체가 `-translate-x-1/2`로 가운데 정렬돼 있으면
+        `.t-panel-slide`의 transform과 충돌하므로, 가운데 정렬은 flex 래퍼가
+        맡고 시트 본체는 transform을 트랜지션에 온전히 넘긴다.
+      */}
+      <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center pointer-events-none">
+      <div
+        className="t-panel-slide relative w-full max-w-[430px] bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] shadow-[inset_0_1px_0_0_var(--color-border-inverse)] px-[var(--spacing-24)] pt-[var(--spacing-16)] pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
+        data-open={shown}
+        style={{ '--panel-translate-y': '100%' } as CSSProperties}
+      >
         <button
           onClick={onClose}
           aria-label={d.common.close}
@@ -182,6 +229,7 @@ export function DetailSheet({ item, onClose, badgeLinkQuery }: { item: ActivityF
             {d.common.close}
           </Button>
         )}
+      </div>
       </div>
     </>
   )
@@ -252,7 +300,13 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [selectedItem, setSelectedItem] = useState<ActivityFeedRow | null>(null)
+  // 상세 시트는 닫힘 트랜지션(Panel reveal) 동안 DOM에 남아야 하므로
+  // "열림 여부"와 "마운트 여부(selectedItem)"를 분리한다.
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
+  const closeSheet = useCallback(() => setSheetOpen(false), [])
+  const handleSheetClosed = useCallback(() => setSelectedItem(null), [])
 
   const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
   const visible = filtered.slice(0, visibleCount)
@@ -269,6 +323,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
       if (meta.mission_id) { router.push(`/missions/${meta.mission_id}`); return }
     }
     setSelectedItem(item)
+    setSheetOpen(true)
   }
 
   return (
@@ -279,23 +334,14 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
           {t(d.common.countItems, { count: filtered.length })}
         </span>
       </div>
-      <div className="flex gap-[var(--spacing-8)] mb-[var(--spacing-16)]">
-        {FILTER_TABS.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => handleFilterChange(key)}
-            aria-pressed={activeFilter === key}
-            className={[
-              'flex-1 min-h-11 px-2 rounded-[var(--radius-nav-buttons)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]',
-              'transition-transform duration-100 active:scale-95 cursor-pointer',
-              activeFilter === key
-                ? 'bg-surface-inverse text-text-inverse'
-                : 'text-text shadow-[inset_0_0_0_1px_var(--color-border)]',
-            ].join(' ')}
-          >
-            {label}
-          </button>
-        ))}
+      {/* 필터 탭 — Tabs sliding (16-tabs-sliding.md) */}
+      <div className="mb-[var(--spacing-16)]">
+        <SlidingTabs
+          items={FILTER_TABS}
+          value={activeFilter}
+          onChange={handleFilterChange}
+          aria-label={title}
+        />
       </div>
       {filtered.length === 0 ? (
         <Card className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-40)]">
@@ -322,7 +368,15 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
           )}
         </>
       )}
-      {selectedItem && <DetailSheet item={selectedItem} onClose={() => setSelectedItem(null)} badgeLinkQuery={badgeLinkQuery} />}
+      {selectedItem && (
+        <DetailSheet
+          item={selectedItem}
+          open={sheetOpen}
+          onClose={closeSheet}
+          onClosed={handleSheetClosed}
+          badgeLinkQuery={badgeLinkQuery}
+        />
+      )}
     </section>
   )
 }
