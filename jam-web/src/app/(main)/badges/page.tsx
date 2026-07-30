@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
-import BadgesClient, { ItemBookProgress, ItemBadgeCard } from './BadgesClient'
+import BadgesClient, { ItemBookProgress } from './BadgesClient'
 
 export default async function BadgesPage() {
   const supabase = await createClient()
@@ -70,16 +70,6 @@ export default async function BadgesPage() {
     (item) => item.dropped_at === null && item.badge && !item.badge.deleted_at
   )
 
-  const itemBadges: ItemBadgeCard[] = rawItems.map((item) => ({
-    itemId: item.id,
-    badgeId: item.badge_id,
-    serialNumber: item.serial_number,
-    expiresAt: item.expires_at,
-    name: item.badge.name,
-    imageUrl: item.badge.image_url,
-    rarity: item.badge.rarity,
-  }))
-
   // 보유한 아이템 배지에 연결된 아이템북만 표시
   const ownedBadgeIds = [...new Set(rawItems.map((i) => i.badge_id))]
 
@@ -130,7 +120,6 @@ export default async function BadgesPage() {
   return (
     <BadgesClient
       badges={badges}
-      itemBadges={itemBadges}
       itemBooks={books}
       itemBookProgress={itemBookProgress}
     />

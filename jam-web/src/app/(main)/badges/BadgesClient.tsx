@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import RarityBadge from '@/components/ui/Badge'
@@ -11,7 +10,7 @@ import TopNav from '@/components/ui/TopNav'
 import { MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
-type TabKey = 'activity' | 'item' | 'itembook'
+type TabKey = 'activity' | 'itembook'
 
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
@@ -35,27 +34,10 @@ export interface ItemBookProgress {
   completed: boolean
 }
 
-export interface ItemBadgeCard {
-  itemId: string
-  badgeId: string
-  serialNumber: number
-  expiresAt: string | null
-  name: string
-  imageUrl: string | null
-  rarity: BadgeRarity
-}
-
 interface BadgesClientProps {
   badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow | null }>
-  itemBadges: ItemBadgeCard[]
   itemBooks: ItemBookRow[]
   itemBookProgress: ItemBookProgress[]
-}
-
-function isExpiringSoon(expiresAt: string | null): boolean {
-  if (!expiresAt) return false
-  const diff = new Date(expiresAt).getTime() - Date.now()
-  return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
@@ -67,7 +49,7 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   )
 }
 
-export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookProgress }: BadgesClientProps) {
+export default function BadgesClient({ badges, itemBooks, itemBookProgress }: BadgesClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('activity')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
   const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
@@ -77,7 +59,6 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
     { key: 'activity', label: d.badges.tabActivity, count: earnedCount },
-    { key: 'item', label: d.badges.tabItem, count: itemBadges.length },
     { key: 'itembook', label: d.badges.tabItembook, count: itemBooks.length },
   ]
 
@@ -190,46 +171,6 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
             </>
           ) : (
             <EmptyState title={d.badges.emptyActivityTitle} body={d.badges.emptyActivityBody} />
-          )
-        )}
-
-        {/* 아이템 배지 탭 */}
-        {activeTab === 'item' && (
-          itemBadges.length > 0 ? (
-            <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-              {itemBadges.map((item) => {
-                const expiring = isExpiringSoon(item.expiresAt)
-                return (
-                  <Link key={item.itemId} href={`/inventory/${item.itemId}?from=badges`}>
-                    <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
-                      <div className="w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden relative">
-                        {item.imageUrl ? (
-                          <Image src={item.imageUrl} alt={item.name} width={72} height={72} className="object-contain w-full h-full p-1" />
-                        ) : (
-                          <MedalIcon className="w-9 h-9 text-text-inverse/40" />
-                        )}
-                      </div>
-                      <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{item.name}</p>
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="h-6 flex items-center justify-center">
-                          <RarityBadge rarity={item.rarity} />
-                        </div>
-                        {expiring && (
-                          <span className="text-[11px] font-bold leading-none whitespace-nowrap px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
-                            {d.badges.expiringSoon}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-text-inverse/40 font-mono">
-                          #{String(item.serialNumber).padStart(4, '0')}
-                        </span>
-                      </div>
-                    </Card>
-                  </Link>
-                )
-              })}
-            </div>
-          ) : (
-            <EmptyState title={d.badges.emptyItemTitle} body={d.badges.emptyItemBody} />
           )
         )}
 

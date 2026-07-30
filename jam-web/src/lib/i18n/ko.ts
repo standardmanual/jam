@@ -63,7 +63,7 @@ export const ko = {
 
   /** 프로필 통계바 탭 */
   tabs: {
-    badge: '뱃지',
+    badge: '배지',
     itembooks: '아이템북',
     followers: '팔로워',
     following: '팔로잉',
