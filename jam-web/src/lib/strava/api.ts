@@ -70,7 +70,7 @@ export async function getActivities(
 }
 
 // =========================================
-// 단일 활동 조회 (진단용)
+// 단일 활동 조회 (소급 백필·진단용)
 // =========================================
 export async function getActivityById(
   activityId: number | string,
