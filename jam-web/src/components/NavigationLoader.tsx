@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { DotmHex8 } from '@/components/ui/dotm-hex-8'
+import WanderingEyesLoader from '@/components/ui/WanderingEyesLoader'
 
-const MIN_VISIBLE_MS = 400  // flash 방지 — 최소 이 시간만큼은 표시
+const SHOW_DELAY_MS = 1000 // 이 시간 안에 탐색이 끝나면 로더를 아예 띄우지 않는다
+const MIN_VISIBLE_MS = 400  // flash 방지 — 일단 뜬 뒤엔 최소 이 시간만큼은 표시
 const FADE_OUT_MS   = 200  // 페이드아웃 duration
 const MAX_VISIBLE_MS = 8000 // 오류 등으로 탐색이 멈혔을 때 강제 숨김
 
-type Phase = 'hidden' | 'showing' | 'fading'
+// 'pending' — 탐색은 시작됐지만 아직 SHOW_DELAY_MS가 지나지 않아 화면엔 아무것도 안 보이는 상태
+type Phase = 'hidden' | 'pending' | 'showing' | 'fading'
 
 function Inner() {
   const pathname = usePathname()
@@ -27,9 +29,18 @@ function Inner() {
     timerRef.current = setTimeout(() => setPhase('hidden'), FADE_OUT_MS)
   }, [])
 
-  // 라우트 전환 완료 → 최소 표시 시간을 채운 뒤 페이드아웃
+  // 라우트 전환 완료
   useEffect(() => {
     if (phase === 'hidden') return
+
+    if (phase === 'pending') {
+      // SHOW_DELAY_MS가 지나기 전에 탐색이 끝남 — 로더를 한 번도 보여주지 않고 종료
+      clearTimer()
+      timerRef.current = setTimeout(() => setPhase('hidden'), 0)
+      return clearTimer
+    }
+
+    // 이미 보이는 중이었다면 최소 표시 시간을 채운 뒤 페이드아웃
     clearTimer()
     const elapsed = Date.now() - showTimeRef.current
     const delay = Math.max(0, MIN_VISIBLE_MS - elapsed)
@@ -38,7 +49,7 @@ function Inner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams])
 
-  // 앱 내부 링크 클릭 감지 → 즉시 표시
+  // 앱 내부 링크 클릭 감지 → SHOW_DELAY_MS 후에도 탐색 중이면 그때 표시
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const anchor = (e.target as Element).closest('a[href]')
@@ -53,10 +64,13 @@ function Inner() {
       ) return
 
       clearTimer()
-      showTimeRef.current = Date.now()
-      setPhase('showing')
-      // 안전장치: 8초 후 강제 숨김
-      timerRef.current = setTimeout(fadeOut, MAX_VISIBLE_MS)
+      setPhase('pending')
+      timerRef.current = setTimeout(() => {
+        showTimeRef.current = Date.now()
+        setPhase('showing')
+        // 안전장치: 표시된 뒤 8초가 더 지나면 강제 숨김
+        timerRef.current = setTimeout(fadeOut, MAX_VISIBLE_MS)
+      }, SHOW_DELAY_MS)
     }
 
     document.addEventListener('click', handleClick, true)
@@ -66,7 +80,7 @@ function Inner() {
     }
   }, [fadeOut])
 
-  if (phase === 'hidden') return null
+  if (phase === 'hidden' || phase === 'pending') return null
 
   return (
     <div
@@ -76,17 +90,7 @@ function Inner() {
         transition: phase === 'fading' ? `opacity ${FADE_OUT_MS}ms ease-out` : 'opacity 80ms ease-in',
       }}
     >
-      <DotmHex8
-        size={89}
-        dotSize={14}
-        speed={1.35}
-        pattern="full"
-        colorPreset="grad-fire"
-        animated
-        opacityBase={0.12}
-        opacityMid={0.42}
-        opacityPeak={1}
-      />
+      <WanderingEyesLoader duration="2s" eyeColor="#f8fafc" pupilColor="#0f172a" />
     </div>
   )
 }

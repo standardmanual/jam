@@ -86,6 +86,12 @@ export default function SlidingTabs<K extends string = string>({
   const tabRefs = useRef(new Map<K, HTMLButtonElement>())
   // 첫 페인트에서는 애니메이션 없이 스냅시켜야 합니다.
   const hasPositionedRef = useRef(false)
+  // 리사이즈 이펙트가 매 렌더의 최신 value를 읽기 위한 ref.
+  // (아래 useEffect의 deps에서 value를 빼기 위함 — 이유는 해당 useEffect 주석 참고)
+  const valueRef = useRef(value)
+  useLayoutEffect(() => {
+    valueRef.current = value
+  })
 
   // 16-tabs-sliding.md의 moveTo()를 React ref 기반으로 옮긴 것.
   // 활성 탭이 없으면(value가 items에 없는 경우) 배치하지 않고 false를 돌려준다 —
@@ -116,11 +122,17 @@ export default function SlidingTabs<K extends string = string>({
   }, [value, moveTo])
 
   // 리사이즈 / 폰트 로드 / 컨테이너 폭 변화 — 항상 무애니메이션으로 재배치.
+  //
+  // 주의: deps에 `value`를 넣지 않는다. ResizeObserver.observe()는 호출 직후
+  // 반드시 한 번 콜백을 발화하는 스펙 동작이 있어서, `value`가 바뀔 때마다
+  // 이 이펙트가 재실행되어 observer를 다시 만들면 매 탭 전환 직후 무애니메이션
+  // 재배치가 곧바로 따라붙어 방금 트리거된 트윈을 캔슬해버린다(순간이동처럼 보임).
+  // 그래서 이 이펙트는 마운트 시 한 번만 구독하고, 최신 value는 ref로 읽는다.
   useEffect(() => {
     const bar = barRef.current
     if (!bar) return
 
-    const reposition = () => moveTo(value, false)
+    const reposition = () => moveTo(valueRef.current, false)
 
     const observer = new ResizeObserver(reposition)
     observer.observe(bar)
@@ -134,7 +146,7 @@ export default function SlidingTabs<K extends string = string>({
       observer.disconnect()
       window.removeEventListener('resize', reposition)
     }
-  }, [value, moveTo])
+  }, [moveTo])
 
   return (
     <div
