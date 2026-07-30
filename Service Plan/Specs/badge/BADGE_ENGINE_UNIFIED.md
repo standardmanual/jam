@@ -66,7 +66,8 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 | `activity_type` | 활동을 해당 타입으로 필터링 |
 | `distance_km` / `elevation_gain_m` | **누적 합계** ≥ 조건값 |
 | `total_count` | 필터된 활동 건수 ≥ 조건값 |
-| `min_speed_kmh` / `duration_minutes` | **단일 활동 최고값** ≥ 조건값 |
+| `min_speed_kmh` / `duration_minutes` | **단일 활동 최고값** ≥ 조건값 (min_speed_kmh는 cycling 등 속도 단위) |
+| `max_pace_sec_per_km` | **단일 활동 최고 페이스** ≤ 조건값 — 값이 작을수록 빠름(km/h와 부등호 반대). running 등 페이스 단위 종목에 사용 |
 | `streak_days` | 최장 연속 활동일 ≥ 조건값 |
 | `weekly_count` | 한 주 내 활동 횟수 최대값 — `time_range` 동반 시 **시간대 내 활동만 카운트** (엄격 평가) |
 | `weekend_duration_hours` | 주말(토·일) 활동 이동시간 최대값(시간) ≥ 조건값 |
@@ -92,10 +93,10 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 단일 조건 배지는 `activity_type:조건타입` 트랙으로 묶여 동일 트랙 내 최고값 1개만 발급.
 
 ```
-트랙 키 예시: 'walking:distance_km', 'running:min_speed_kmh', 'cycling:elevation_gain_m'
+트랙 키 예시: 'walking:distance_km', 'running:max_pace_sec_per_km', 'cycling:min_speed_kmh', 'cycling:elevation_gain_m'
 ```
 
-복합 조건 배지(time_range+weekly_count, min_speed+duration 등)는 트랙 제외 → 각각 독립 발급.
+복합 조건 배지(time_range+weekly_count, max_pace_sec_per_km+duration 등)는 트랙 제외 → 각각 독립 발급.
 
 ### 2.6 홍수 방지 (flood cap)
 

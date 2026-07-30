@@ -11,6 +11,7 @@ import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
 import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
+import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
 import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, UserActivityBadgeRow } from '@/types/database'
 
 const RARITY_TIER: Record<string, number> = { common: 1, rare: 2, legendary: 3, mythic: 4 }
@@ -43,7 +44,7 @@ export type BadgeMissedInfo = {
 
 /** 한 활동 안에서 동시에 충족해야 하는 필드 — "합산"이 아니라 "그 활동 자체가" 조건을 만족해야 함 */
 const PER_ACTIVITY_KEYS = [
-  'distance_km', 'elevation_gain_m', 'duration_minutes', 'min_speed_kmh',
+  'distance_km', 'elevation_gain_m', 'duration_minutes', 'min_speed_kmh', 'max_pace_sec_per_km',
   'temperature_min_c', 'temperature_max_c', 'weekend_duration_hours',
 ] as const
 
@@ -65,6 +66,7 @@ function matchesPerActivityCondition(condition: BadgeCondition, a: NormalizedAct
   if (condition.elevation_gain_m !== undefined && a.elevationGainM < condition.elevation_gain_m) return false
   if (condition.duration_minutes !== undefined && a.movingTimeSec / 60 < condition.duration_minutes) return false
   if (condition.min_speed_kmh !== undefined && a.averageSpeedKmh < condition.min_speed_kmh) return false
+  if (condition.max_pace_sec_per_km !== undefined && kmhToPaceSecPerKm(a.averageSpeedKmh) > condition.max_pace_sec_per_km) return false
   if (condition.temperature_min_c !== undefined) {
     if (a.weatherTempC == null || a.weatherTempC < condition.temperature_min_c) return false
   }
@@ -100,6 +102,10 @@ function describePerActivity(condition: BadgeCondition, a: NormalizedActivity): 
   if (condition.min_speed_kmh !== undefined) {
     actual.push(`속도: ${a.averageSpeedKmh}km/h`)
     required.push(`속도: ${condition.min_speed_kmh}km/h`)
+  }
+  if (condition.max_pace_sec_per_km !== undefined) {
+    actual.push(`페이스: ${formatPaceSecPerKm(kmhToPaceSecPerKm(a.averageSpeedKmh))}`)
+    required.push(`페이스: ${formatPaceSecPerKm(condition.max_pace_sec_per_km)}`)
   }
   if (condition.temperature_min_c !== undefined) {
     actual.push(`기온: ${a.weatherTempC}°C`)
@@ -143,6 +149,11 @@ function singleFieldFailure(
     case 'min_speed_kmh': {
       const best = Math.max(...filtered.map((a) => a.averageSpeedKmh), 0)
       return { pass: false, reason: '속도 부족', actual: `${best}km/h`, required: `${condition.min_speed_kmh}km/h` }
+    }
+    case 'max_pace_sec_per_km': {
+      const paces = filtered.map((a) => kmhToPaceSecPerKm(a.averageSpeedKmh))
+      const best = paces.length > 0 ? Math.min(...paces) : Infinity
+      return { pass: false, reason: '페이스 부족', actual: formatPaceSecPerKm(best), required: formatPaceSecPerKm(condition.max_pace_sec_per_km!) }
     }
     case 'temperature_min_c': {
       const temps = filtered.map((a) => a.weatherTempC).filter((t): t is number => t != null)
@@ -210,6 +221,10 @@ export function evaluateConditionDetailed(
       if (condition.elevation_gain_m !== undefined) bestByField.push(`고도 최고: ${Math.max(...filtered.map((a) => a.elevationGainM), 0)}m`)
       if (condition.duration_minutes !== undefined) bestByField.push(`시간 최고: ${Math.round(Math.max(...filtered.map((a) => a.movingTimeSec / 60), 0))}분`)
       if (condition.min_speed_kmh !== undefined) bestByField.push(`속도 최고: ${Math.max(...filtered.map((a) => a.averageSpeedKmh), 0)}km/h`)
+      if (condition.max_pace_sec_per_km !== undefined) {
+        const paces = filtered.map((a) => kmhToPaceSecPerKm(a.averageSpeedKmh))
+        bestByField.push(`페이스 최고: ${formatPaceSecPerKm(paces.length > 0 ? Math.min(...paces) : Infinity)}`)
+      }
       return {
         pass: false,
         reason: '동시 충족 활동 없음 (개별 최고 기록은 있으나 한 활동에서 함께 달성 못함)',
@@ -659,7 +674,7 @@ function calcMaxStreak(activities: NormalizedActivity[]): number {
 
 // ── 진행 트랙 키 추출 ────────────────────────────────────────────────────
 const PROGRESSION_MODIFIERS = [
-  'elevation_gain_m', 'min_speed_kmh', 'streak_days', 'duration_minutes',
+  'elevation_gain_m', 'min_speed_kmh', 'max_pace_sec_per_km', 'streak_days', 'duration_minutes',
   'weekend_duration_hours', 'monthly_km', 'weekly_count', 'season_count',
   'month', 'season', 'temperature_min_c', 'temperature_max_c', 'time_range',
 ] as const

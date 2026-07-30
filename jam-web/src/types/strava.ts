@@ -217,3 +217,21 @@ export function metersPerSecToKmH(mps: number): number {
 export function metersToKm(meters: number): number {
   return Math.round(meters / 10) / 100
 }
+
+/**
+ * km/h → 페이스(초/km) 변환. 러닝/트레일러닝/걷기는 속도가 아닌 페이스로 배지 조건을 표현한다.
+ * 속도와 방향이 반대(값이 작을수록 빠름)이므로 배지 조건 비교 시 부등호도 반대로 적용해야 한다.
+ */
+export function kmhToPaceSecPerKm(kmh: number): number {
+  return kmh > 0 ? Math.round(3600 / kmh) : Infinity
+}
+
+/**
+ * 페이스(초/km) → "m:ss/km" 문자열 (예: 330 → "5:30/km")
+ */
+export function formatPaceSecPerKm(sec: number): string {
+  if (!Number.isFinite(sec)) return '-'
+  const m = Math.floor(sec / 60)
+  const s = Math.round(sec % 60)
+  return `${m}:${s.toString().padStart(2, '0')}/km`
+}
