@@ -50,11 +50,15 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   if (!inventory) return { success: false, reason: 'items_not_found', pointsAwarded: 0, streak: 0 }
 
   // 2. 해당 아이템들이 실제로 이 유저 소유인지 확인
+  // 아이템북에 슬롯됐거나 이미 드랍된 아이템은 재료로 쓸 수 없음(둘 다 걸리면 조회에서
+  // 빠져 아래 items.length 불일치로 자연스럽게 items_not_found 처리됨)
   const { data: itemsRaw } = await supabase
     .from('inventory_items')
     .select('id, badge_id')
     .eq('inventory_id', inventory.id)
     .in('id', itemIds)
+    .is('slotted_in', null)
+    .is('dropped_at', null)
 
   const items = (itemsRaw ?? []) as Pick<InventoryItemRow, 'id' | 'badge_id'>[]
   if (items.length !== itemIds.length) {

@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
   // 인벤토리 아이템 소유권 + 드랍 가능 상태 확인
   const { data: invRaw, error: invError } = await service
     .from('inventory')
-    .select('id')
+    .select('id, used_slots')
     .eq('user_id', user.id)
     .single()
 
@@ -217,11 +217,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '인벤토리 없음' }, { status: 404 })
   }
 
-  const inventoryId = (invRaw as { id: string }).id
+  const inventoryId = (invRaw as { id: string; used_slots: number }).id
+  const currentUsedSlots = (invRaw as { id: string; used_slots: number }).used_slots
 
   const { data: itemRaw, error: itemError } = await service
     .from('inventory_items')
-    .select('id, badge_id, dropped_at')
+    .select('id, badge_id, dropped_at, slotted_in')
     .eq('id', inventory_item_id)
     .eq('inventory_id', inventoryId)
     .single()
@@ -230,10 +231,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '아이템 없음 또는 소유 아님' }, { status: 404 })
   }
 
-  const item = itemRaw as Pick<InventoryItemRow, 'id' | 'badge_id' | 'dropped_at'>
+  const item = itemRaw as Pick<InventoryItemRow, 'id' | 'badge_id' | 'dropped_at'> & { slotted_in: string | null }
 
   if (item.dropped_at !== null) {
     return NextResponse.json({ error: '이미 드랍된 아이템' }, { status: 409 })
+  }
+
+  // 아이템북에 슬롯된 아이템은 인벤토리에서 이미 빠져나간 상태이므로 드랍 불가
+  if (item.slotted_in !== null) {
+    return NextResponse.json({ error: '아이템북에 장착된 아이템은 드랍할 수 없습니다.' }, { status: 409 })
   }
 
   // poi_drops INSERT
@@ -260,6 +266,13 @@ export async function POST(req: NextRequest) {
     // @ts-expect-error supabase-js update 파라미터 타입 추론 문제
     .update({ dropped_at: new Date().toISOString(), drop_id: dropId })
     .eq('id', inventory_item_id)
+
+  // 드랍한 아이템은 더 이상 내 인벤토리에 없으므로 칸 반환
+  await service
+    .from('inventory')
+    // @ts-expect-error supabase-js update 파라미터 타입 추론 문제
+    .update({ used_slots: Math.max(0, currentUsedSlots - 1) })
+    .eq('id', inventoryId)
 
   return NextResponse.json({ drop_id: dropId })
 }
