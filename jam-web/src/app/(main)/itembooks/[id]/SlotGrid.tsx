@@ -156,7 +156,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false }: S
               </div>
 
               {/* 이름 */}
-              <p className="text-[11px] leading-tight text-center line-clamp-2 w-full text-text">
+              <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 w-full text-text">
                 {isUndiscovered ? d.itembooks.unknownBadge : badge.name}
               </p>
 

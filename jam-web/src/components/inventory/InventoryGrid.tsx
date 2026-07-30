@@ -57,7 +57,7 @@ function CardInner({ item }: { item: InventoryGridItem }) {
           <MedalIcon className="w-8 h-8 text-text-inverse/40" />
         )}
       </div>
-      <p className="text-[11px] text-center leading-tight truncate w-full">{item.badgeName}</p>
+      <p className="text-[length:var(--text-body-sm)] leading-tight text-center truncate w-full">{item.badgeName}</p>
       <div className="h-6 flex items-center justify-center">
         {expiring && item.expiresAt && (
           <p className="text-[11px] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">

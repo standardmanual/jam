@@ -11,8 +11,9 @@ interface RarityBadgeProps {
  * 배경 전체를 칠하지 않고 텍스트/보더 색으로만 표현 — 어느 배경(코발트/아이스) 위에
  * 놓여도 색이 죽지 않고, 바이너리 원칙(제3의 컬러는 상태 팔레트만 예외)을 지킵니다.
  */
-const rarityConfig: Record<BadgeRarity, { label: string; classes: string } | null> = {
-  common: null,
+const rarityConfig: Record<BadgeRarity, { label: string; classes: string }> = {
+  // 코발트/아이스 어느 배경 위에 놓여도 안전하도록 currentColor 기반(제3의 컬러 아님) — 주변 텍스트 색을 그대로 물려받는다.
+  common: { label: 'Common', classes: 'text-current/60 shadow-[inset_0_0_0_1px_currentColor]' },
   rare: { label: 'Rare', classes: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]' },
   legendary: { label: 'Legend', classes: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]' },
   mythic: { label: 'Mythic', classes: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]' },
@@ -20,7 +21,6 @@ const rarityConfig: Record<BadgeRarity, { label: string; classes: string } | nul
 
 export default function RarityBadge({ rarity, className = '' }: RarityBadgeProps) {
   const config = rarityConfig[rarity]
-  if (!config) return null
   return (
     <span
       className={[
