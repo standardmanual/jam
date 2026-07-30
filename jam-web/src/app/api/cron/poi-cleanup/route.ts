@@ -1,6 +1,6 @@
 /**
  * GET /api/cron/poi-cleanup
- * 매일 자정 실행: 만료된 POI 드랍 아이템 자동 소각
+ * 매일 00:00(UTC) 실행: 만료된 POI 드랍 아이템 자동 소각
  * Vercel Cron: "0 0 * * *"
  */
 import { NextRequest, NextResponse } from 'next/server'

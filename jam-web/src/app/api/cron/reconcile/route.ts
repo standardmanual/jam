@@ -2,7 +2,7 @@
  * Vercel Cron 정합성 점검(reconcile) 엔드포인트
  * GET /api/cron/reconcile
  *
- * vercel.json에서 매일 04:00 UTC (13:00 KST) 자동 호출.
+ * vercel.json에서 매일 12:00 UTC (21:00 KST) 자동 호출.
  * 최근 RECONCILE_LOOKBACK_DAYS일치 Strava 활동을 다시 조회해,
  * 동기화 커서(overlap)로도 못 잡은 누락 활동을 소급 처리한다.
  * Authorization: Bearer {CRON_SECRET} 헤더 필요
