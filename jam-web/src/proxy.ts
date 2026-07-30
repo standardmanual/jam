@@ -45,7 +45,8 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 공개 경로 (인증 불필요)
-  const publicPaths = ['/login', '/auth/callback', '/forbidden']
+  // TEMP: /api/debug — 소급 백필 1회성 작업용 임시 우회. 작업 끝나면 제거할 것.
+  const publicPaths = ['/login', '/auth/callback', '/forbidden', '/api/debug']
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublicPath) {
