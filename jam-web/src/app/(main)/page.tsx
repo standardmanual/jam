@@ -54,7 +54,8 @@ export default async function HomePage() {
       {/* 헤더 */}
       <div>
         <div className="flex items-center justify-between mb-[var(--spacing-16)]">
-          <span className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{d.today.wordmark}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/jam-logo-white.png" alt="JAM!" className="h-[30px] w-auto" />
         </div>
         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.today.greeting}</p>
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] mt-0.5">

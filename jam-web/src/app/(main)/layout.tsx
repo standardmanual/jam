@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ToastProvider } from '@/components/ui/Toast'
 import TabBar from '@/components/ui/TabBar'
+import Footer from '@/components/ui/Footer'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -28,6 +29,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정 */}
         <main className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))]">
           {children}
+          <Footer />
         </main>
 
         {/* 하단 탭 바 */}
