@@ -6,3 +6,5 @@ skills-lock.json
 **/* 2.ts
 **/* 2.sql
 .env*
+# Supabase personal access token 하드코딩됨 — 절대 커밋 금지
+.mcp.json
