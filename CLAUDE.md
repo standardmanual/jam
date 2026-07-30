@@ -1,8 +1,30 @@
 # JAM! 프로젝트 Claude 운영 규칙
 
-**항상 한국어로 대화할 것.** 대화 응답뿐 아니라 커밋 메시지, 작업 진행 상황 설명,
-빌드/배포 상태 요약, 코드 주석 등 사용자에게 보여지는 모든 출력물에 예외 없이 적용한다.
+## 절대 규칙 (모든 작업에서 예외 없이 적용)
+
+### 1. 항상 한국어로 출력할 것
+대화 응답, 커밋 메시지, 작업 진행 상황 설명, 빌드/배포 상태 요약, 코드 주석 등
+사용자에게 보여지는 모든 출력물에 예외 없이 적용한다.
 영어 문구를 그대로 노출하지 말고 반드시 한국어로 번역/서술한다.
+(예외: 코드 식별자·라이브러리명·API명 등 고유명사는 원문 유지)
+
+### 2. 서비스 로직 변경 시 운영 문서 업데이트
+세션이 완료되거나 새로운 기능 추가·로직 변경 등 서비스 변경이 발생하면
+전체 서비스 기능정책 문서를 업데이트한다. → 아래 "문서 자동 업데이트 규칙" 참고
+
+### 3. 주요 개발 완료 후 즉시 commit + push
+작업이 완료되면 사용자가 별도로 요청하지 않아도 자동으로:
+`git add` → `git commit` (한국어 메시지) → `git push origin main`
+
+### 4. 로컬과 git을 항상 동일하게 유지
+- 작업 후 `git status`를 확인하여 untracked·modified 파일이 없도록 처리
+- .gitignore에 새 항목 추가 금지 (보안 예외: 토큰/시크릿 파일은 gitignore 허용)
+
+### 5. 글로벌 스킬과 프로젝트 스킬을 항상 동일하게 유지
+`~/.claude/skills/`(글로벌)와 `.claude/skills/`(프로젝트) 스킬 목록을 항상 동일하게 유지한다.
+- 새 스킬 설치 시 양쪽 모두 복사 후 commit + push
+
+---
 
 ## 문서 자동 업데이트 규칙 (상시)
 
@@ -21,12 +43,12 @@
 
 ### 실행 방법
 
-1. 변경된 로직을 파악하여 `PRD/SERVICE_OPERATIONS.md` 내용을 갱신한다.
+1. 변경된 로직을 파악하여 `Service Plan/PRD/SERVICE_OPERATIONS.md` 내용을 갱신한다.
 2. **기존 파일을 수정하지 않는다.** 새 파일로 생성한다.
-3. 파일명 형식: `PRD/SERVICE_OPERATIONS_YYYYMMDD_HHMM.md`
-   - 예: `PRD/SERVICE_OPERATIONS_20260715_1430.md`
+3. 파일명 형식: `Service Plan/PRD/SERVICE_OPERATIONS_YYYYMMDD_HHMM.md`
+   - 예: `Service Plan/PRD/SERVICE_OPERATIONS_20260715_1430.md`
    - 날짜·시간은 커밋 시점 기준 (KST)
-4. 내용은 `PRD/SERVICE_OPERATIONS.md` 기반으로 변경된 섹션만 업데이트한다.
+4. 내용은 최신 `SERVICE_OPERATIONS_*.md` 파일 기반으로 변경된 섹션만 업데이트한다.
 5. 문서 첫 줄 아래에 **변경 이력** 항목을 추가한다:
 
 ```markdown
