@@ -102,13 +102,18 @@ export default function InventoryGrid({
           </button>
         )
       })}
-      {/* 빈 슬롯 placeholder */}
+      {/* 빈 슬롯 placeholder — 배지 탭 카드와 동일한 구조(이미지 박스 + 이름 줄 + 하단 줄)로
+          맞춰서, 채워진 칸과 빈 칸의 세로 크기가 항상 똑같이 보이도록 한다 */}
       {Array.from({ length: emptySlots }).map((_, i) => (
         <div
           key={`empty-${i}`}
-          className="flex items-center justify-center rounded-[var(--radius-cards)] aspect-square shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30"
+          className="flex flex-col items-center rounded-[var(--radius-cards)] p-[var(--spacing-8)] gap-2 shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30"
         >
-          <span className="text-text text-xl">+</span>
+          <div className="w-full aspect-square rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
+            <span className="text-text text-xl">+</span>
+          </div>
+          <p className="text-[length:var(--text-body-sm)] leading-tight text-center truncate w-full">&nbsp;</p>
+          <div className="h-6" />
         </div>
       ))}
     </div>
