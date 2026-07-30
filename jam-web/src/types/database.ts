@@ -550,8 +550,10 @@ export interface BadgeCondition {
   streak_days?: number
   /** 고도 상승 (m) */
   elevation_gain_m?: number
-  /** 최소 속도 (km/h) */
+  /** 최소 속도 (km/h) — cycling 등에서 사용. 러닝/트레일러닝/걷기는 max_pace_sec_per_km(페이스) 사용 */
   min_speed_kmh?: number
+  /** 최대 페이스 (초/km) — 값이 작을수록 빠름. 러닝 계열 속도 조건은 이 필드로 표현 */
+  max_pace_sec_per_km?: number
   /** 단일 활동 최소 이동 시간 (분) */
   duration_minutes?: number
   /** 주말 활동 최소 이동 시간 (시간) */

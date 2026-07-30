@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import type { BadgeRow, BadgeCondition, FactionRow } from '@/types/database'
 import BadgesFilterBar from './BadgesFilterBar'
 import Pagination from '../poi/Pagination'
+import { formatPaceSecPerKm } from '@/types/strava'
 
 const PAGE_SIZE = 30
 
@@ -47,6 +48,7 @@ function deriveBadgeCategory(cond: BadgeCondition | null): BadgeCategory {
 
   const difficultyAttrs = [
     cond.min_speed_kmh,
+    cond.max_pace_sec_per_km,
     cond.distance_km,
     cond.elevation_gain_m,
     cond.duration_minutes,
@@ -71,6 +73,7 @@ function conditionSummary(c: BadgeCondition | null): string[] {
   if (c.streak_days !== undefined) chips.push(`${c.streak_days}일 연속`)
   if (c.elevation_gain_m !== undefined) chips.push(`고도 ${c.elevation_gain_m}m`)
   if (c.min_speed_kmh !== undefined) chips.push(`${c.min_speed_kmh}km/h+`)
+  if (c.max_pace_sec_per_km !== undefined) chips.push(`${formatPaceSecPerKm(c.max_pace_sec_per_km)} 이내`)
   if (c.duration_minutes !== undefined) chips.push(`${c.duration_minutes}분+`)
   if (c.weekend_duration_hours !== undefined) chips.push(`주말 ${c.weekend_duration_hours}h`)
   if (c.weekly_count !== undefined) chips.push(`주 ${c.weekly_count}회`)

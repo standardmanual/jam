@@ -11,6 +11,7 @@ import PoiMapButton from './PoiMapButton'
 import LocalDate from '@/components/LocalDate'
 import InventoryItemHistorySheet from '../../inventory/[itemId]/InventoryItemHistorySheet'
 import { d, t } from '@/lib/i18n'
+import { formatPaceSecPerKm } from '@/types/strava'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
@@ -74,6 +75,9 @@ function formatConditionText(condition: BadgeCondition | null): string {
   if (condition.min_speed_kmh !== undefined) {
     parts.push(`단일 ${actType} 활동의 평균 속도 ${condition.min_speed_kmh}km/h 이상`)
   }
+  if (condition.max_pace_sec_per_km !== undefined) {
+    parts.push(`단일 ${actType} 활동의 평균 페이스 ${formatPaceSecPerKm(condition.max_pace_sec_per_km)} 이내`)
+  }
   if (condition.duration_minutes !== undefined) {
     parts.push(`단일 ${actType} 활동 ${condition.duration_minutes}분 이상 이동`)
   }
@@ -110,6 +114,7 @@ function formatConditionText(condition: BadgeCondition | null): string {
   // 서로 다른 활동에서 각각 달성해도 인정되는 속성 조건이 2개 이상이면 안내 추가
   const perActivityAttrs = [
     condition.min_speed_kmh,
+    condition.max_pace_sec_per_km,
     condition.duration_minutes,
     condition.elevation_gain_m,
     condition.temperature_min_c,

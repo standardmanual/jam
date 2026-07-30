@@ -3,6 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
+import { formatPaceSecPerKm } from '@/types/strava'
+
+/** "5:30" 같은 mm:ss 페이스 입력을 초(sec/km)로 변환. 형식이 어긋나면 null */
+function parsePaceToSec(input: string): number | null {
+  const match = input.trim().match(/^(\d+):([0-5]?\d)$/)
+  if (!match) return null
+  const min = parseInt(match[1], 10)
+  const sec = parseInt(match[2], 10)
+  return min * 60 + sec
+}
 
 const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'trail_running', 'hiking', 'walking']
 const BADGE_TYPES: BadgeType[] = ['activity', 'item', 'poi']
@@ -51,6 +61,9 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [condTotalCount, setCondTotalCount] = useState<string>(initCond.total_count?.toString() ?? '')
   const [condElevationM, setCondElevationM] = useState<string>(initCond.elevation_gain_m?.toString() ?? '')
   const [condMinSpeedKmh, setCondMinSpeedKmh] = useState<string>(initCond.min_speed_kmh?.toString() ?? '')
+  const [condMaxPace, setCondMaxPace] = useState<string>(
+    initCond.max_pace_sec_per_km !== undefined ? formatPaceSecPerKm(initCond.max_pace_sec_per_km).replace('/km', '') : ''
+  )
   const [condStreakDays, setCondStreakDays] = useState<string>(initCond.streak_days?.toString() ?? '')
   const [condActivityType, setCondActivityType] = useState<string>(initCond.activity_type ?? '')
   const [condDurationMinutes, setCondDurationMinutes] = useState<string>(initCond.duration_minutes?.toString() ?? '')
@@ -145,6 +158,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     if (condTotalCount) cond.total_count = parseInt(condTotalCount, 10)
     if (condElevationM) cond.elevation_gain_m = parseFloat(condElevationM)
     if (condMinSpeedKmh) cond.min_speed_kmh = parseFloat(condMinSpeedKmh)
+    if (condMaxPace) {
+      const paceSec = parsePaceToSec(condMaxPace)
+      if (paceSec !== null) cond.max_pace_sec_per_km = paceSec
+    }
     if (condStreakDays) cond.streak_days = parseInt(condStreakDays, 10)
     if (condActivityType) cond.activity_type = condActivityType as ActivityType
     if (condDurationMinutes) cond.duration_minutes = parseInt(condDurationMinutes, 10)
@@ -520,6 +537,16 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                 onChange={(e) => setCondMinSpeedKmh(e.target.value)}
                 className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
                 placeholder="예: 25"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-[#6b7280]">최대 페이스 (mm:ss/km, 러닝 계열용)</span>
+              <input
+                type="text"
+                value={condMaxPace}
+                onChange={(e) => setCondMaxPace(e.target.value)}
+                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                placeholder="예: 5:30 (값이 작을수록 빠름)"
               />
             </label>
             <label className="flex flex-col gap-1.5">
