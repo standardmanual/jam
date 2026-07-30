@@ -232,8 +232,21 @@ export async function GET(
     currentObtainedBy = dropperObtainedBy
   }
 
-  // 최신순 정렬
-  events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  // 픽업으로 획득한 경우, obtained(획득) 기록과 picked_up(픽업) 기록이 같은 순간의
+  // 동일 행위를 서로 다른 테이블(inventory_items vs poi_drops)에서 각각 가져와 중복 표시한다.
+  // 장소 정보까지 담은 picked_up 기록만 남기고 obtained 기록은 제거한다.
+  const dedupedEvents = events.filter((e) => {
+    if (e.type !== 'obtained' || e.obtained_by !== 'pickup') return true
+    return !events.some(
+      (o) =>
+        o.type === 'picked_up' &&
+        o.user_id === e.user_id &&
+        timeDiffSec(o.timestamp, e.timestamp) < TIMESTAMP_TOLERANCE_SEC
+    )
+  })
 
-  return NextResponse.json({ events })
+  // 최신순 정렬
+  dedupedEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+  return NextResponse.json({ events: dedupedEvents })
 }
