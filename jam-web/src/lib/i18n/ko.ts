@@ -397,7 +397,6 @@ export const ko = {
   /** 로그인 */
   auth: {
     wordmark: 'JAM!',
-    slogan: '움직이면 얻는다. 피지털 배지 컬렉션.',
     googleLogin: '구글로 시작하기',
     errorFailed: '로그인에 실패했어요. 다시 시도해주세요.',
     errorGeneric: '오류가 발생했어요. 잠시 후 다시 시도해주세요.',
