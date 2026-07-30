@@ -43,10 +43,10 @@
 
 ### 실행 방법
 
-1. 변경된 로직을 파악하여 `Service Plan/기능 명세/SERVICE_OPERATIONS.md` 내용을 갱신한다.
+1. 변경된 로직을 파악하여 `Service Plan/Specs/SERVICE_OPERATIONS.md` 내용을 갱신한다.
 2. **기존 파일을 수정하지 않는다.** 새 파일로 생성한다.
-3. 파일명 형식: `Service Plan/기능 명세/SERVICE_OPERATIONS_YYYYMMDD_HHMM.md`
-   - 예: `Service Plan/기능 명세/SERVICE_OPERATIONS_20260715_1430.md`
+3. 파일명 형식: `Service Plan/Specs/SERVICE_OPERATIONS_YYYYMMDD_HHMM.md`
+   - 예: `Service Plan/Specs/SERVICE_OPERATIONS_20260715_1430.md`
    - 날짜·시간은 커밋 시점 기준 (KST)
 4. 내용은 최신 `SERVICE_OPERATIONS_*.md` 파일 기반으로 변경된 섹션만 업데이트한다.
 5. 문서 첫 줄 아래에 **변경 이력** 항목을 추가한다:
