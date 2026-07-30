@@ -176,8 +176,10 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                             <MedalIcon className="w-8 h-8 text-text-inverse/40" />
                           )}
                         </div>
-                        <p className="text-[11px] text-center leading-tight line-clamp-2">{badge.name}</p>
-                        <RarityBadge rarity={badge.rarity} />
+                        <p className="text-[11px] text-center leading-tight line-clamp-2 h-[2.4em]">{badge.name}</p>
+                        <div className="h-5 flex items-center justify-center">
+                          <RarityBadge rarity={badge.rarity} />
+                        </div>
                         <span className="text-[9px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/60">
                           {earned ? d.badges.earnedTag : d.badges.notEarnedTag}
                         </span>
@@ -210,14 +212,18 @@ export default function BadgesClient({ badges, itemBadges, itemBooks, itemBookPr
                           <MedalIcon className="w-8 h-8 text-text-inverse/40" />
                         )}
                       </div>
-                      <p className="text-[11px] text-center leading-tight line-clamp-2">{item.name}</p>
+                      <p className="text-[11px] text-center leading-tight line-clamp-2 h-[2.4em]">{item.name}</p>
                       <div className="flex flex-col items-center gap-1">
-                        <RarityBadge rarity={item.rarity} />
-                        {expiring && (
-                          <span className="text-[9px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
-                            {d.badges.expiringSoon}
-                          </span>
-                        )}
+                        <div className="h-5 flex items-center justify-center">
+                          <RarityBadge rarity={item.rarity} />
+                        </div>
+                        <div className="h-5 flex items-center justify-center">
+                          {expiring && (
+                            <span className="text-[9px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+                              {d.badges.expiringSoon}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-text-inverse/40 font-mono">
                           #{String(item.serialNumber).padStart(4, '0')}
                         </span>
