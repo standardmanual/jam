@@ -1,7 +1,7 @@
 /**
  * GET /api/cron/wandering
- * 매일 03:00 실행: expires_at이 지난 떠돌이 신화 아이템을 새 POI로 이동
- * Vercel Cron: "0 3 * * *"
+ * 매일 06:00(UTC) 실행: expires_at이 지난 떠돌이 신화 아이템을 새 POI로 이동
+ * Vercel Cron: "0 6 * * *"
  * (주석이 실제 vercel.json 스케줄과 어긋나 있던 것 정정 — Hobby 플랜 cron 제한 조사 중 발견)
  */
 import { NextRequest, NextResponse } from 'next/server'

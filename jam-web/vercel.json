@@ -1,24 +1,20 @@
 {
   "crons": [
     {
-      "path": "/api/cron/sync",
-      "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/reconcile",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/wandering",
-      "schedule": "0 3 * * *"
-    },
-    {
       "path": "/api/cron/poi-cleanup",
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/wandering",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/reconcile",
+      "schedule": "0 12 * * *"
+    },
+    {
       "path": "/api/cron/ambient-drop-monitor",
-      "schedule": "0 5 * * *"
+      "schedule": "0 18 * * *"
     }
   ]
 }
