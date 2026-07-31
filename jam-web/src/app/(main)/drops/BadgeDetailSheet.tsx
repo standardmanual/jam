@@ -38,25 +38,14 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
     : 'common')
 
   return (
-    <BottomSheet
-      open
-      onClose={onCancel}
-      detent="full"
-      showCloseButton={false}
-      footer={
-        // 세로로 쌓지 않고 한 행에 나란히 배치 — 버튼 2개 세로 스택보다
-        // 차지하는 높이가 작아 탭바에 가려질 여지가 더 줄어든다.
-        <div className="flex gap-[var(--spacing-16)]">
-          <Button fullWidth variant="outline" surface="sub" onClick={onCancel} disabled={pickingUp}>
-            {d.drops.cancel}
-          </Button>
-          <Button fullWidth surface="sub" loading={pickingUp} onClick={onPickup}>
-            {d.drops.pickupButton}
-          </Button>
-        </div>
-      }
-    >
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-24)] min-h-full">
+    <BottomSheet open onClose={onCancel} detent="full" showCloseButton={false}>
+      <div
+        className="px-[var(--spacing-16)] pt-[var(--spacing-8)] flex flex-col gap-[var(--spacing-24)] min-h-full"
+        /* footer를 따로 분리하지 않고 한 페이지(스크롤 영역)로 구성.
+           맨 아래 버튼까지 탭바(safe-area+16px+64px) 높이만큼 여백을 둬서,
+           화면이 작아 다 안 보이면 스크롤해서 버튼을 볼 수 있게 한다. */
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)' }}
+      >
         {/* 닫기 */}
         <button
           onClick={onCancel}
@@ -91,6 +80,18 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
             {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
         </Card>
+
+        {/* 액션 버튼 — 콘텐츠와 같은 스크롤 영역 안, 페이지 맨 끝에 위치.
+            부모의 padding-bottom(탭바 높이만큼)이 이미 확보돼 있어
+            스크롤 끝까지 내리면 탭바 위에서 항상 보이고 눌린다. */}
+        <div className="mt-auto flex gap-[var(--spacing-16)]">
+          <Button fullWidth variant="outline" surface="sub" onClick={onCancel} disabled={pickingUp}>
+            {d.drops.cancel}
+          </Button>
+          <Button fullWidth surface="sub" loading={pickingUp} onClick={onPickup}>
+            {d.drops.pickupButton}
+          </Button>
+        </div>
       </div>
     </BottomSheet>
   )
