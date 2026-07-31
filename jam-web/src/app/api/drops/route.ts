@@ -12,6 +12,12 @@ import type { PoiRow, InventoryItemRow } from '@/types/database'
 
 const NAVER_RADIUS_M = 500  // T2 네이버 POI는 넓게 표시 (지도 탐색용)
 
+// poi 테이블은 2,000행을 넘고 계속 늘어나는데, `.select('*')`로 전체를 가져오면
+// Supabase/PostgREST 기본 max-rows(1,000행) 제한에 걸려 뒤쪽에 삽입된 행이
+// 응답에서 통째로 잘려나갈 수 있다(matcher.ts에서 같은 원인으로 산 POI 누락 확인됨).
+// bbox로 미리 좁혀서 가져오면 결과 행 수가 작아 재발하지 않는다.
+const BB_MARGIN_DEG = 0.01 // 위도 기준 약 1.11km — NAVER_RADIUS_M(500m) 커버 + 여유
+
 // 캐시가 만료된 카테고리만 네이버로 검색해 DB에 신규 저장. 반환값은 저장 실패한 fallback POI 목록.
 async function searchAndPersistCategories(
   service: ReturnType<typeof createServiceClient>,
@@ -87,8 +93,14 @@ export async function GET(req: NextRequest) {
 
   const service = createServiceClient()
 
-  // T1: DB POI 전체 로드
-  const { data: poisRaw } = await service.from('poi').select('*')
+  // T1: DB POI 로드 — bbox로 좁혀서 가져옴(전체 select는 max-rows 제한에 걸림, 위 주석 참고)
+  const { data: poisRaw } = await service
+    .from('poi')
+    .select('*')
+    .gte('latitude', lat - BB_MARGIN_DEG)
+    .lte('latitude', lat + BB_MARGIN_DEG)
+    .gte('longitude', lng - BB_MARGIN_DEG)
+    .lte('longitude', lng + BB_MARGIN_DEG)
   const allDbPois = (poisRaw ?? []) as PoiRow[]
   const naverIdMap = new Map(allDbPois.filter((p) => p.naver_id).map((p) => [p.naver_id!, p.id]))
   const gridKey = computeGridKey(lat, lng)
@@ -107,7 +119,13 @@ export async function GET(req: NextRequest) {
 
   // 레벨 1 결과가 지역 내 부족하면 레벨 2(편의점·마트/카페·음식점)까지 보조 검색
   const level1Categories = new Set(LEVEL_1_CATEGORIES.map((c) => c.category))
-  const { data: poisAfterLevel1 } = await service.from('poi').select('*')
+  const { data: poisAfterLevel1 } = await service
+    .from('poi')
+    .select('*')
+    .gte('latitude', lat - BB_MARGIN_DEG)
+    .lte('latitude', lat + BB_MARGIN_DEG)
+    .gte('longitude', lng - BB_MARGIN_DEG)
+    .lte('longitude', lng + BB_MARGIN_DEG)
   const level1NearbyCount = ((poisAfterLevel1 ?? []) as PoiRow[]).filter(
     (p) => level1Categories.has(p.category) && haversineDistance(lat, lng, p.latitude, p.longitude) <= NAVER_RADIUS_M
   ).length
@@ -119,8 +137,14 @@ export async function GET(req: NextRequest) {
     fallbackPois = [...fallbackPois, ...level2Fallback]
   }
 
-  // 최신 DB POI 재조회 → 반경 이내 필터
-  const { data: poisRaw2 } = await service.from('poi').select('*')
+  // 최신 DB POI 재조회(bbox로 좁혀서) → 반경 이내 필터
+  const { data: poisRaw2 } = await service
+    .from('poi')
+    .select('*')
+    .gte('latitude', lat - BB_MARGIN_DEG)
+    .lte('latitude', lat + BB_MARGIN_DEG)
+    .gte('longitude', lng - BB_MARGIN_DEG)
+    .lte('longitude', lng + BB_MARGIN_DEG)
   const allDbPois2 = (poisRaw2 ?? []) as PoiRow[]
   const nearbyDbPois2 = allDbPois2.filter(
     (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= NAVER_RADIUS_M
