@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
-import BadgesClient, { ItemBookProgress } from './BadgesClient'
+import BadgesClient, { ItemBookProgress, PoiBadgeItem } from './BadgesClient'
 
 export default async function BadgesPage() {
   const supabase = await createClient()
@@ -11,7 +11,14 @@ export default async function BadgesPage() {
 
   if (!user) redirect('/login')
 
-  const [{ data: earnedBadges }, { data: allActivityBadges }, { data: inventoryData }] = await Promise.all([
+  const [
+    { data: earnedBadges },
+    { data: allActivityBadges },
+    { data: inventoryData },
+    { data: allPoiBadges },
+    { data: poiEarns },
+    { data: poiCategories },
+  ] = await Promise.all([
     supabase
       .from('user_activity_badges')
       .select('*, badge:badges(*)')
@@ -30,6 +37,12 @@ export default async function BadgesPage() {
       .select('id, inventory_items(id, badge_id, serial_number, expires_at, dropped_at, badge:badges(id, name, image_url, rarity, deleted_at))')
       .eq('user_id', user.id)
       .maybeSingle(),
+    // 장소(POI) 배지 — 산/지하철 등 방문해서 획득하는 배지. 획득 여부와 무관하게 전체 노출.
+    supabase.from('badges').select('*').eq('type', 'poi').is('deleted_at', null),
+    // poi 배지는 반복 획득이 가능해 이력이 여러 행일 수 있음 — 배지별 개수/최근 획득일로 집계
+    supabase.from('user_poi_badge_earns').select('badge_id, earned_at').eq('user_id', user.id),
+    // poi_categories는 RLS가 service role 전용이라 일반 유저 클라이언트로는 못 읽는다
+    createServiceClient().from('poi_categories').select('slug, label'),
   ])
 
   // 소프트 삭제된 배지(badges.deleted_at)는 서비스 화면에서 숨긴다 — 발급 이력 자체는 DB에 남지만
@@ -117,11 +130,59 @@ export default async function BadgesPage() {
     }
   }
 
+  // ─── 장소(POI) 배지 — 카테고리(산/대중교통 등)별로 그룹핑하기 위해 연결된
+  // POI의 category를 조회. 배지 1개에 POI 여러 개가 연결될 수 있어 첫 번째
+  // 값만 대표로 사용한다(같은 배지에 연결된 POI들은 보통 같은 카테고리).
+  const poiBadgeRows = (allPoiBadges ?? []) as BadgeRow[]
+  const poiBadgeIds = poiBadgeRows.map((b) => b.id)
+
+  const categoryByBadge = new Map<string, string>()
+  if (poiBadgeIds.length > 0) {
+    const { data: linkedPois } = await supabase
+      .from('poi')
+      .select('linked_badge_id, category')
+      .in('linked_badge_id', poiBadgeIds)
+    for (const row of (linkedPois ?? []) as { linked_badge_id: string; category: string }[]) {
+      if (!categoryByBadge.has(row.linked_badge_id)) {
+        categoryByBadge.set(row.linked_badge_id, row.category)
+      }
+    }
+  }
+
+  const categoryLabelBySlug = new Map(
+    ((poiCategories ?? []) as { slug: string; label: string }[]).map((c) => [c.slug, c.label])
+  )
+
+  // 배지별 획득 이력 집계 — 반복 획득 지원(개수 + 가장 최근 획득일)
+  const poiEarnAgg = new Map<string, { count: number; latestEarnedAt: string }>()
+  for (const row of (poiEarns ?? []) as { badge_id: string; earned_at: string }[]) {
+    const prev = poiEarnAgg.get(row.badge_id)
+    if (!prev) {
+      poiEarnAgg.set(row.badge_id, { count: 1, latestEarnedAt: row.earned_at })
+    } else {
+      prev.count += 1
+      if (row.earned_at > prev.latestEarnedAt) prev.latestEarnedAt = row.earned_at
+    }
+  }
+
+  const poiBadges: PoiBadgeItem[] = poiBadgeRows.map((badge) => {
+    const category = categoryByBadge.get(badge.id) ?? 'other'
+    const earn = poiEarnAgg.get(badge.id) ?? null
+    return {
+      badge,
+      category,
+      categoryLabel: categoryLabelBySlug.get(category) ?? category,
+      earnCount: earn?.count ?? 0,
+      latestEarnedAt: earn?.latestEarnedAt ?? null,
+    }
+  })
+
   return (
     <BadgesClient
       badges={badges}
       itemBooks={books}
       itemBookProgress={itemBookProgress}
+      poiBadges={poiBadges}
     />
   )
 }

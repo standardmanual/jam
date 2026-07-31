@@ -126,7 +126,21 @@ export default function ProfileClient({
   const [following, setFollowing] = useState(isFollowing)
   const [followerCnt, setFollowerCnt] = useState(followerCount)
 
-  const badgeItems = feedItems.filter((f) => f.event_type === 'badge_earned')
+  // poi 타입 배지는 반복 획득이 가능해 badge_id가 중복된 이벤트가 들어올 수 있다
+  // (서버에서 최초 획득분만 기록하도록 이미 막아뒀지만, 갤러리는 항상 "고유 배지"만
+  // 보여줘야 하므로 렌더 단에서도 badge_id 기준으로 한 번 더 방어적으로 중복 제거한다).
+  const badgeItems = (() => {
+    const seen = new Set<string>()
+    const result: typeof feedItems = []
+    for (const item of feedItems) {
+      if (item.event_type !== 'badge_earned') continue
+      const badgeId = (item.metadata as Record<string, string>).badge_id
+      if (seen.has(badgeId)) continue
+      seen.add(badgeId)
+      result.push(item)
+    }
+    return result
+  })()
 
   // ── 탭뷰 여부 ─────────────────────────────────────────────────────────────
   // 본인 프로필: 해시 없으면 기본뷰(Strava+Feed), 유효 해시 있으면 탭콘텐츠

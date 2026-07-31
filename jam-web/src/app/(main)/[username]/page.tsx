@@ -71,7 +71,6 @@ export default async function UserProfilePage({ params }: Props) {
 
   const followerCount = followerCountResult.count ?? 0
   const followingCount = followingCountResult.count ?? 0
-  const badgeCount = badgeCountResult.count ?? 0
   const isFollowing = !!isFollowingResult.data
 
   // ─── 프로필 / Strava / 피드 (대상 유저 기준) ──────────────────────────
@@ -123,6 +122,7 @@ export default async function UserProfilePage({ params }: Props) {
     pickupsResult,
     completionsResult,
     participationsResult,
+    poiBadgeEarnsResult,
   ] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any)
@@ -175,6 +175,16 @@ export default async function UserProfilePage({ params }: Props) {
       .eq('user_id', subjectId)
       .order('joined_at', { ascending: false })
       .limit(50),
+
+    // poi 타입 배지는 방문할 때마다 반복 획득되는 이력 테이블 — 오래된 것부터
+    // 가져와서 아래에서 배지별 첫 등장(최초 획득 시각)만 남긴다.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)
+      .from('user_poi_badge_earns')
+      .select('badge_id, earned_at, badges(id, name, image_url, rarity, deleted_at)')
+      .eq('user_id', subjectId)
+      .order('earned_at', { ascending: true })
+      .limit(2000),
   ])
 
   // 기록 시점 스냅샷(이름·이미지·등급)을 최신 배지 정보로 리프레시 — 피드가 항상
@@ -233,6 +243,29 @@ export default async function UserProfilePage({ params }: Props) {
     if (!m) continue
     legacyItems.push(makeFeedItem(`legacy_join_${row.mission_id}`, 'mission_joined', row.joined_at, { mission_id: row.mission_id, mission_title: m.title }))
   }
+
+  // poi 배지 — 반복 획득 이력 중 배지별 "최초 획득"만 프로필 배지 갤러리에 노출.
+  // (오래된 것부터 정렬해서 가져왔으므로, 배지당 처음 만나는 행이 최초 획득)
+  const poiBadgeFirstEarn = new Map<string, { earned_at: string; badges: unknown }>()
+  for (const row of poiBadgeEarnsResult.data ?? []) {
+    if (!poiBadgeFirstEarn.has(row.badge_id)) {
+      poiBadgeFirstEarn.set(row.badge_id, row)
+    }
+  }
+  for (const [badgeId, row] of poiBadgeFirstEarn) {
+    // 이미 실시간 피드 이벤트로 기록된 배지(신규 로직 적용 이후 최초 획득분)는 중복 방지
+    if (feedBadgeIds.has(badgeId)) continue
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string; deleted_at: string | null } | null
+    if (!b || b.deleted_at) continue
+    legacyItems.push(makeFeedItem(`legacy_poibadge_${badgeId}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }))
+  }
+
+  // "배지" 통계 수 = 활동 배지 보유 수 + POI 배지 고유 종류 수(반복 획득은 1개로 카운트)
+  const poiBadgeCount = Array.from(poiBadgeFirstEarn.values()).filter((row) => {
+    const b = row.badges as { deleted_at: string | null } | null
+    return b && !b.deleted_at
+  }).length
+  const badgeCount = (badgeCountResult.count ?? 0) + poiBadgeCount
 
   const allItems = [...feedItems, ...legacyItems]
   allItems.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime())
