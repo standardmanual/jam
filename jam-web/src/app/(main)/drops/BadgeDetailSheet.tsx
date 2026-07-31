@@ -75,8 +75,10 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
           </p>
         </Card>
 
-        {/* 액션 버튼 */}
-        <div className="mt-auto flex flex-col gap-[var(--spacing-16)]">
+        {/* 액션 버튼 — 스크롤 영역 안에서 하단에 sticky로 고정.
+            내용이 짧으면 mt-auto처럼 바로 아래에 붙고, 내용이 길어 넘치면
+            스크롤해도 항상 화면 맨 아래에 붙어 있어 잘려 보이지 않는다. */}
+        <div className="mt-auto sticky bottom-0 -mx-[var(--spacing-16)] px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[env(safe-area-inset-bottom,1rem)] bg-surface-inverse flex flex-col gap-[var(--spacing-16)]">
           <Button fullWidth surface="sub" loading={pickingUp} onClick={onPickup}>
             {d.drops.pickupButton}
           </Button>

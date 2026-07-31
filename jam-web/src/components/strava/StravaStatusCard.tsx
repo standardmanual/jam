@@ -12,10 +12,10 @@ export default function StravaStatusCard({ connection }: StravaStatusCardProps) 
       <div className="rounded-2xl bg-[#FC4C02]/10 border border-[#FC4C02]/30 p-4">
         <div className="flex items-center gap-3 mb-3">
           <span className="w-2 h-2 rounded-full bg-white/30" />
-          <span className="font-semibold text-sm text-white/70">Strava 미연결</span>
+          <span className="font-semibold text-sm text-white/70">Strava 연동 안 됨</span>
         </div>
         <p className="text-white/50 text-sm mb-4">
-          Strava를 연결하면 활동 기반 배지를 자동으로 획득할 수 있어요.
+          Strava를 연동하면 활동 기반 배지를 자동으로 획득할 수 있어요.
         </p>
         <Link
           href="/api/strava/auth"
@@ -32,7 +32,7 @@ export default function StravaStatusCard({ connection }: StravaStatusCardProps) 
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#FC4C02]" />
-          <span className="font-semibold text-sm text-[#FC4C02]">Strava 연결됨</span>
+          <span className="font-semibold text-sm text-[#FC4C02]">Strava 연동됨</span>
         </div>
       </div>
       {connection.last_synced_at ? (
@@ -40,7 +40,7 @@ export default function StravaStatusCard({ connection }: StravaStatusCardProps) 
           마지막 동기화: <LocalDate iso={connection.last_synced_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
         </p>
       ) : (
-        <p className="text-white/40 text-xs">아직 동기화된 데이터가 없습니다</p>
+        <p className="text-white/40 text-xs">아직 동기화된 데이터가 없어요</p>
       )}
     </div>
   )
