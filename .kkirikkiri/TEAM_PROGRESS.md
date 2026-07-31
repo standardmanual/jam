@@ -1,86 +1,63 @@
-# 진행 상황 (transitions-apply)
+# 진행 상황 (development-phase17)
 
-## 2026-07-30 — 메인세션: 팀 구성 + 공유 메모리 초기화
-- kkirikkiri-transitions-apply 팀 구성 완료, dev-shared / dev-pages 두 팀원에게 태스크 배분 시작
+## 2026-07-31 — 메인세션(팀장): 팀 구성 + 공유 메모리 초기화
+- kkirikkiri-development-phase17 팀 구성 완료, dev-server / dev-client / tester 3명에게 태스크 배분 시작
 
-## 2026-07-30 — dev-pages: 작업 시작
-- 담당 8개 파일 착수. `globals.css`에 motion 토큰이 아직 없어(확인함) **globals.css는 건드리지 않고**
-  `jam-web/src/components/transitions-pages.css`를 신설하여 필요한 `:root` 토큰 + 트랜지션 CSS를 자체 보유.
-  값은 스킬 `_root.css`와 완전히 동일하므로 dev-shared가 globals.css에 토큰을 넣어도 충돌 없음.
+## 2026-07-31 — dev-server: T1 시작
+- PRD(Phase17_01_PRD.md) 3-4절 및 TEAM_PLAN 확인 완료
+- 작업 대상: `jam-web/src/app/api/poi-badges/route.ts`(신규), `jam-web/src/lib/poi/badge-clustering.ts`(신규)
 
-## 2026-07-30 — dev-pages: 완료
-- 담당 8개 파일(FollowButton, points, onboarding, profile/edit, DropsClient, MissionDetailClient, CombineClient, InventoryItemHistorySheet) 전부 완료. tsc/build/lint 통과.
+## 2026-07-31 — dev-server: T1 완료
+- 구현 파일 (둘 다 신규, 기존 파일 무수정):
+  - `jam-web/src/lib/poi/badge-clustering.ts` — 순수 함수 `clusterPoiBadges` / `gridCellSizeForZoom` / `shouldCluster` / 상수 `CLUSTER_ZOOM_THRESHOLD=13`. DB·네트워크 의존 없음(테스트 가능).
+  - `jam-web/src/app/api/poi-badges/route.ts` — `GET /api/poi-badges?swLat&swLng&neLat&neLng&zoom`. `createClient()` 인증 → `createServiceClient()` 조회 패턴은 `/api/drops`와 동일.
+- 로직: bbox 내 `linked_badge_id` 있는 POI 조회 → 연결 배지 `type='poi'` + `deleted_at IS NULL` 필터 → zoom>13이면 개별 목록(+`user_poi_badge_earns` 배지 단위 earned 판정), zoom<=13이면 그리드 클러스터 `{lat,lng,count}`만 반환.
+- 검증: `npx tsc --noEmit` — 내 담당 신규 파일 관련 에러 0건. (잔여 에러는 ①기존 `__tests__` 파일들의 jest 타입 미설치(사전 존재) ②dev-client의 `/api/share-card` 삭제로 인한 `.next` 스테일 validator 타입 — 둘 다 내 작업과 무관)
+- 클러스터링 함수는 tsx로 실제 실행해 셀 크기 단조 증가(z6 5.625° > z10 0.3516° > z13 0.0439°), 서울 2건 병합/부산·제주 분리, 빈 배열·NaN 방어 동작 확인 완료.
+- **API 응답 스키마 전문은 `TEAM_FINDINGS.md`에 기록** (dev-client 연동용).
+- 커밋은 하지 않음 — dev-client 작업과 동시 진행 중이라 T6 통합 검증 시 팀장이 일괄 커밋하는 것이 안전.
 
-## 2026-07-30 — dev-shared: 완료
-- 담당 전체(globals.css 토큰, BottomSheet, Toast, TabBar, 신규 SlidingTabs/PopInNumber/SwapText, BadgesClient, MissionsListClient+Accordion, FeedSection+DetailSheet, ProfileClient) 완료.
+## 2026-07-31 — dev-client: T3 / T4 / T5 완료
 
-## 2026-07-30 — 메인세션(팀장): 통합 + 최종 검증
-- `transitions-pages.css`와 `transitions.css`의 중복 정의(:root 토큰, .t-text-swap, .t-digit-*, .t-panel-slide, .t-skel-*)를 확인 후 `transitions-pages.css`에서 제거. Error state shake / Success check / InventoryItemHistorySheet용 스켈레톤 로컬 확장만 남김.
-- 전체 `npx tsc --noEmit` 0건, `npx next build` 성공, 관련 디렉토리 전체 ESLint 실행 — 남은 6건 전부 git diff로 대조해 기존 코드(우리 변경 전부터 있던) 이슈임을 확인, 신규 에러 없음.
-- 브라우저로 로그인 화면 렌더 확인(콘솔 에러 없음, CSS 정상 적용). (main) 인증 필요 화면은 실제 로그인 세션이 없어 시각적으로 직접 확인하지 못함 — 사용자 확인 필요.
-- 결과: 감사에서 발견한 항목 전부(해당없음 제외) 적용 완료, 공유 컴포넌트(BottomSheet/Toast/TabBar/SlidingTabs/PopInNumber/SwapText) 구축 완료. 커밋은 보류 — 사용자 확인 대기.
+### 수정한 파일
+- `jam-web/src/lib/i18n/ko.ts`
+  - `nav.drops: '드랍'` → `'JAM'` (라우트 `/drops` 및 컴포넌트명은 무변경. 탭 라벨은 `TabBar.tsx`가 `d.nav.drops`를 참조하므로 이 한 줄로 반영됨)
+  - 미사용이 된 `badges.shareCard*` 6개 문구 제거
+- `jam-web/src/components/map/MapView.tsx` (대폭 개편)
+  - 드랍/픽업 마커: `markerIconHtml` → `dropMarkerIconHtml`. 20px 서클(선택 시 26px), 픽업 가능=`var(--color-main)`, 불가=그레이(#888), 범위 밖=진회색(#444)+opacity 0.5(기존 표현 유지). 내부에 하강 화살표 인라인 SVG를 네거티브 컬러(`var(--color-sub)`/흰색)로 렌더.
+  - POI 배지 마커 신규: 30px 원형 + `image_url`. 미획득은 `filter:grayscale(1)`이고 **`Event.addListener('click')` 자체를 걸지 않음**(탭 완전 비활성). 획득 시에만 클릭 → `window.location.href = '/badges/{badge_id}'`.
+  - 클러스터 마커 신규: 서버가 준 `{lat,lng,count}`를 숫자 원형 마커로 렌더(개수별 32/38/44px). 클라이언트 병합 로직 없음.
+  - `idle` 리스너 + 350ms 디바운스. `isWithin()`으로 **이전 조회 bbox(2% 바깥 마진) 안 + 줌 동일**이면 재조회 스킵. 줌이 바뀌면 항상 재조회(클러스터⇄개별 전환 보장). 언마운트 시 `Event.removeListener`로 해제.
+  - 신규 export 타입: `PoiBadgeMarker`, `PoiBadgeClusterMarker`, `MapViewport`. 기존 `PoiMarker` / `onPoiSelect` 시그니처는 무변경.
+- `jam-web/src/app/(main)/drops/DropsClient.tsx`
+  - `badgeMarkers` / `badgeClusters` state + `handleViewportChange`(→ `/api/poi-badges` 호출) 추가 후 MapView에 전달.
+  - 기존 `/api/drops` 로직·바텀시트·픽업 플로우는 **한 줄도 수정하지 않음**. 배지 조회 실패는 조용히 무시해 드랍 플로우에 영향 없음.
+- `jam-web/src/types/naver-maps.d.ts` (MapView 전용 최소 타입 선언 — 부득이 확장)
+  - `LatLng.lat()/lng()`, `LatLngBounds`(getSW/getNE), `Map.getBounds()/getZoom()`, `Event.removeListener` 추가. 기존 선언 삭제·변경 없음.
+- `jam-web/src/app/(main)/badges/[id]/page.tsx`
+  - `ShareCardModal` import 및 `{hasEarned && <ShareCardModal .../>}` 블록 제거(타입 구분 없이 전체). `hasEarned` 자체는 다른 곳에서 계속 쓰여 유지.
 
-## 2026-07-30 — dev-pages: 담당 8개 파일 완료
-- 신규 파일 2개
-  - `jam-web/src/components/transitions-pages.css` — 04/02/07/12/10/14 스니펫 verbatim + 필요한 `:root` 토큰
-  - `jam-web/src/components/transitions-pages.ts` — React 오케스트레이션 훅
-    (`useTextSwap` / `useDigitPopIn` / `useRevealOnMount` / `useErrorShake` / `useSkeletonReveal`)
-- 적용 완료
-  1. `[username]/FollowButton.tsx` — Text states swap
-  2. `points/page.tsx` — Number pop-in
-  3. `onboarding/page.tsx` — Text states swap + Error state shake
-  4. `profile/edit/page.tsx` — Text states swap + Error state shake
-  5. `drops/DropsClient.tsx` — Panel reveal + Text states swap
-  6. `missions/[id]/MissionDetailClient.tsx` — Text states swap + Panel reveal
-  7. `combine/CombineClient.tsx` — Success check (path 길이 getTotalLength 실측 주입)
-  8. `inventory/[itemId]/InventoryItemHistorySheet.tsx` — Skeleton loader and reveal
-- 검증: `npx tsc --noEmit` 통과(기존 `__tests__` 타입 노이즈 제외), `npx next build` 성공.
-  ESLint 신규 에러 0건(DropsClient 2건 / InventoryItemHistorySheet 1건은 HEAD 기준으로도 동일하게
-  발생하던 기존 `react-hooks/set-state-in-effect` 에러).
-- **globals.css는 건드리지 않았습니다.** dev-shared 작업과 파일 충돌 없음.
-
-## 2026-07-30 — dev-shared: 담당 전 범위 완료
-
-### 신규 파일
-- `jam-web/src/components/transitions.css` — 스킬 참고문서 6종 스니펫 **verbatim** 복사
-  (07 Panel reveal / 22 Toast / 03 Notification badge / 16 Tabs sliding / 21 Accordion /
-  02 Number pop-in / 04 Text states swap / 14 Skeleton reveal)
-  + 파일 하단 "프로젝트 확장" 섹션에만 JAM! 토큰(44px 터치영역·radius·코발트/아이스)에
-  맞춘 크기/색/앵커 오버라이드. 원본 스니펫과 `prefers-reduced-motion` 가드는 무수정.
-- `jam-web/src/lib/motion.ts` — `cssDurationMs()` / `prefersReducedMotion()`.
-  duration을 JS에 하드코딩하지 않고 항상 `:root` 토큰에서 읽습니다.
-- `jam-web/src/components/ui/SlidingTabs.tsx` — **공유 슬라이딩 탭**(16-tabs-sliding.md).
-  props: `items / value / onChange / variant(onSurface|onCard) / size(md|lg|xl) /
-  shape(pill|card) / block / outlined`. 첫 페인트·리사이즈·웹폰트 로드 시에는
-  `transition:none → reflow 강제 → 복원`으로 스냅시켜 pill이 translateX(0)에서
-  날아 들어오는 버그를 차단했습니다. 활성 탭이 없으면 pill을 배치하지 않습니다.
-- `jam-web/src/components/ui/PopInNumber.tsx` — Number pop-in 리플레이 래퍼.
-- `jam-web/src/components/ui/SwapText.tsx` — Text states swap 3단계 오케스트레이션 래퍼.
-
-### 수정 파일 / 적용 트랜지션
-1. `src/app/globals.css` — `_root.css` **모션 토큰 :root 블록 전체** 설치(중복 없음) +
-   `transitions.css` import.
-2. `src/components/ui/BottomSheet.tsx` — **Panel reveal**. 드래그용 inline transform과
-   충돌하지 않도록 `.t-panel-slide` 래퍼를 한 겹 추가(`--panel-translate-y: 100%`),
-   백드롭 페이드, 닫힘 트랜지션 동안 언마운트 지연.
-3. `src/components/ui/Toast.tsx` — **Toast open/close**. `ToastRow` 분리, 마운트 다음
-   프레임에 `.is-open` 부착, dismiss는 `closing` 플래그 후 `--toast-close`만큼 잔류.
-4. `src/components/ui/TabBar.tsx` — **Notification badge**. 활성 점을 조건부 렌더링에서
-   상시 마운트 + `data-open` 토글로 변경(`.jam-tabbar-dot`으로 하단 중앙 앵커).
-5. `src/app/(main)/badges/BadgesClient.tsx` — 탭 헤더(액티비티/아이템북) → **SlidingTabs**.
-6. `src/app/(main)/missions/MissionsListClient.tsx` — 탭(진행중/참여중/종료) → **SlidingTabs**,
-   필터 패널 → **Accordion expand**(grid-rows 0fr↔1fr, 패딩은 `.t-acc-panel-inner` 안쪽에만,
-   필터 버튼에 chevron flip + `aria-expanded`).
-7. `src/app/(main)/FeedSection.tsx` — 필터탭 → **SlidingTabs**, `DetailSheet` → **Panel reveal**.
-   DetailSheet가 `open`/`onClosed` props를 받도록 시그니처 변경(닫힘 트랜지션 후 언마운트).
-8. `src/app/(main)/profile/ProfileClient.tsx` — 통계바 → **SlidingTabs**(size=xl, onCard),
-   팔로워 수 → **Number pop-in**, 헤더/리스트 팔로우 버튼 라벨 → **Text states swap**,
-   탭 로딩 스피너(DotmHex8) → **Skeleton loader and reveal**(`.jam-skel-flow` 변형),
-   DetailSheet 호출부도 새 시그니처로 갱신.
+### 삭제한 파일
+- `jam-web/src/app/(main)/badges/[id]/ShareCardModal.tsx`
+- `jam-web/src/app/api/share-card/` (하위 `generate/route.tsx` 포함)
 
 ### 검증
-- `npx tsc --noEmit` — 담당 파일 에러 0건
-  (남은 에러는 기존 `__tests__` 타입 노이즈와 dev-pages의 `InventoryItemHistorySheet.tsx` 2건).
-- ESLint — 담당 파일 신규 에러 0건. `BottomSheet.tsx:41,107` / `ProfileClient.tsx:533` 및
-  186행 미사용 disable은 모두 HEAD 기준으로도 동일하게 나던 기존 항목.
-- `npx next build`는 다른 세션의 빌드가 점유 중이라 스킵. 커밋은 하지 않았습니다.
+- `npx tsc --noEmit` — 내 변경 관련 에러 0건 (잔여는 사전 존재하던 `__tests__` jest 타입 미설치뿐. dev-server가 언급한 `.next` 스테일 validator 에러는 `.next/dev/types` 삭제로 해소 확인)
+- `npx eslint` — MapView / badges[id]page / naver-maps.d.ts 에러 0건. DropsClient의 `react-hooks/set-state-in-effect` 2건은 `git stash`로 기준선 비교해 **사전 존재**임을 확인(내 변경으로 늘어난 에러 없음).
+- `grep -rn "ShareCardModal\|share-card\|shareCard" src` → 0건.
+
+### 결정/주의사항
+- `/api/poi-badges` 응답 필드는 dev-server 구현(`mode` / `pois` / `clusters` / `zoom` / `cluster_zoom_threshold`) 기준으로 연동. 클라이언트는 `pois`·`clusters`만 사용하고 `mode` 분기는 두지 않음 — 서버가 반대편 배열을 항상 빈 배열로 내려주므로 그대로 렌더해도 정확하고, 스키마 변화에 더 둔감함.
+- 커밋은 하지 않음(팀장 T6 통합 검증 시 일괄 커밋).
+
+## 2026-07-31 — tester: T2 중단 (테스트 러너 미설치 발견)
+- 프로젝트에 jest/vitest 등 어떤 테스트 러너도 설치돼 있지 않고, 기존 `__tests__` 파일들도 실행된 적 없는 상태를 확인(DEAD_ENDS 참고).
+- 유저 확인 결과 "테스트 생략하고 바로 통합"으로 결정 → 태스크 삭제, 통합 검증(T6)으로 진행.
+
+## 2026-07-31 — 메인세션(팀장): T6 통합 검증 완료
+- `npx tsc --noEmit`: Phase17 관련 파일(poi-badges, badge-clustering, MapView, DropsClient, badges/[id]/page, naver-maps.d.ts) 에러 0건 확인(grep으로 전체 293줄 에러 중 무관함 재확인). 잔여 에러는 전부 기존 `__tests__` jest 타입 미설치 문제.
+- `npx eslint` (Phase17 변경 파일 대상): DropsClient.tsx의 `react-hooks/set-state-in-effect` 2건은 `git show HEAD:...`로 원본 대조해 **변경 전부터 존재**함을 재확인(회귀 아님).
+- 코드 리뷰: `poi-badges/route.ts`, `badge-clustering.ts`, `MapView.tsx`, `DropsClient.tsx` diff 직접 읽고 PRD 요구사항 대조 완료 — 요구사항과 일치.
+- `git status`로 변경 파일 전체 확인, 계획에 없던 추가 변경 없음.
+- `Service Plan/Specs/SERVICE_OPERATIONS_20260731_1200.md` 신규 생성(프로젝트 문서화 규칙).
+- 커밋 + push 진행.

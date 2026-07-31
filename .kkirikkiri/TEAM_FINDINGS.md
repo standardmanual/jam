@@ -1,80 +1,84 @@
-# 발견 사항 & 공유 자료 (transitions-apply)
+# 발견 사항 & 공유 자료 (development-phase17)
 
-## 2026-07-30 — 메인세션: transitions-dev 감사 결과 요약 (관리자 제외, jam-web/src/app/(main), (auth) 스코프)
+## 2026-07-31 — 메인세션(팀장): 기존 코드 조사 요약
 
-전체 감사 리포트는 이전 대화 턴에서 Explore 서브에이전트가 작성. 핵심 파일/라인:
+- 드랍 지도: `jam-web/src/app/(main)/drops/DropsClient.tsx` + `jam-web/src/components/map/MapView.tsx`. 현재 `/api/drops?lat=&lng=`로 사용자 위치 반경(500m) 기반 조회, 뷰포트 기반 아님.
+- 드랍/픽업 마커: `MapView.tsx`의 `markerIconHtml()` — 현재 색상 원(초록/회색/진회색), 20px 리디자인 필요.
+- POI 배지: `badges.type='poi'`, `poi.linked_badge_id`(POI→배지 FK, `poi_tier`, `radius_meters` 등 컬럼 이미 존재), 획득 이력은 `user_poi_badge_earns` 테이블(user_id, badge_id, poi_id, earned_at).
+- 배지 상세화면: `jam-web/src/app/(main)/badges/[id]/page.tsx` — activity/item/poi 3타입 이미 한 화면 공유. `ShareCardModal`은 574번째 줄 부근 `hasEarned && <ShareCardModal .../>` 로 노출 중. `ShareCardModal.tsx`, `/api/share-card`는 이 화면에서만 쓰여 제거해도 다른 화면 영향 없음(코드 조사로 확인 완료).
+- 네이버 지도 SDK: `window.naver.maps`, `naver.maps.Map`, `naver.maps.Marker`, `naver.maps.Event.addListener(marker, 'click', ...)` 패턴 사용 중. 뷰포트 변경 감지는 `naver.maps.Event.addListener(map, 'idle', ...)`로 추가하면 됨(네이버 지도 API 표준 이벤트).
+- PRD 원문: `Service Plan/History/Phase17_01_PRD.md` (섹션 3-1~3-7이 기능요구사항, 섹션 6이 완료기준 체크리스트).
 
-- `src/components/ui/BottomSheet.tsx:60-75` — 공유 바텀시트, 진입 애니메이션 없음 → Panel reveal
-- `src/components/ui/Toast.tsx:57-72` — 전역 토스트, 등장/소멸 애니메이션 없음 → Toast open/close
-- `src/components/ui/TabBar.tsx:141-143` — 활성탭 점 표시자 즉시 팝 → Notification badge
-- `src/app/(main)/badges/BadgesClient.tsx:104-119`, `src/app/(main)/missions/MissionsListClient.tsx:139-152`, `src/app/(main)/FeedSection.tsx:243-258`, `src/app/(main)/profile/ProfileClient.tsx:339-362` — 탭 배경색 즉시 전환 → Tabs sliding (신규 공유 컴포넌트로)
-- `src/app/(main)/[username]/FollowButton.tsx:9-30`, `ProfileClient.tsx:206-219,394-406` — 팔로우/팔로잉 라벨 즉시 전환 → Text states swap
-- `src/app/(main)/points/page.tsx:79-83`, `ProfileClient.tsx:339-350` — 숫자 즉시 갱신 → Number pop-in
-- `src/app/(main)/onboarding/page.tsx:100-149`, `src/app/(main)/profile/edit/page.tsx:225-244` — 닉네임 중복확인 메시지 → Text states swap + Error state shake
-- `src/app/(main)/drops/DropsClient.tsx:262-346` — 커스텀 POI 바텀시트, 진입 애니메이션 없음 → Panel reveal / 헤더 타이틀 → Text states swap
-- `src/app/(main)/missions/MissionsListClient.tsx:169-227` — 필터 패널 즉시 표시/숨김 → Accordion expand
-- `src/app/(main)/missions/[id]/MissionDetailClient.tsx:181,277-293` — 달성뱃지 텍스트 스왑, 참가확인 카드 → Panel reveal
-- `src/app/(main)/FeedSection.tsx:130-172` — DetailSheet(커스텀 오버레이) → Panel reveal
-- `src/app/(main)/combine/CombineClient.tsx:99-103` — 조합 성공 배너 → Success check
-- `src/app/(main)/profile/ProfileClient.tsx:246-260` — 탭 로딩 스피너 → Skeleton loader and reveal
-- `src/app/(main)/inventory/[itemId]/InventoryItemHistorySheet.tsx:88-90` — 로딩 스피너 → Skeleton loader and reveal
+---
 
-해당없음(적용 대상 아님, 스킵): 체크박스/토글 UI 없음, 커스텀 드롭다운 없음(네이티브 select만), 좋아요/하트 버튼 없음, 툴팁 UI 없음, +버튼→메뉴 모핑 대상 없음.
+## 2026-07-31 — dev-server: `/api/poi-badges` 최종 API 응답 스키마 (dev-client 연동용)
 
-## 2026-07-30 — dev-pages: 적용 중 알아낸 것들 (dev-shared도 참고 요망)
+### 요청
 
-### 1. 이 프로젝트는 컴포넌트에서 일반(non-module) CSS를 직접 import 할 수 있다
-`src/lib/dotmatrix-core.tsx`가 이미 `import '@/components/dotmatrix-loader.css'`를 하고 있고,
-Next 16 App Router에서 정상 동작한다. 즉 CSS Modules로 클래스명을 해싱하지 않아도 되고,
-`t-*` / `is-*` / `data-state` 같은 **문서화된 훅 이름을 그대로 쓸 수 있다.**
-(CSS Modules를 쓰면 `:root { --… }`가 "not pure" 에러가 나므로 오히려 불리하다.)
+```
+GET /api/poi-badges?swLat={number}&swLng={number}&neLat={number}&neLng={number}&zoom={number}
+```
 
-### 2. React Compiler 린트 규칙이 매우 엄격하다 — 명령형 오케스트레이션은 ref로만
-`react-hooks/set-state-in-effect`, `react-hooks/refs`, `react-hooks/immutability`가 켜져 있다.
-- `useEffect` 안에서 `setState()`를 직접 호출하면 에러 → **DOM 클래스/속성을 직접 토글**하면 통과.
-- `useState`로 잡은 노드를 mutate 하면 `immutability` 에러 → **`useRef`로 잡은 노드는 통과.**
-- 렌더 중 `useRef(x).current`를 읽으면 에러 → 초기값 고정은 `const [v] = useState(x)`로.
-결론: 스킬의 바닐라 스니펫을 React로 옮길 때 상태를 만들지 말고 ref + DOM 조작으로 유지하는 편이
-린트도 통과하고 문서와도 더 가깝다.
+- 5개 파라미터 모두 필수. 하나라도 숫자가 아니면 `400 { error }`.
+- 미인증 시 `401 { error: '인증 필요' }` (세션 쿠키 기반, 클라이언트에서 `fetch`만 하면 됨).
+- 남서/북동 위도가 뒤집혀 들어와도 자동 정규화. 날짜변경선 wrap(swLng > neLng)도 처리.
 
-### 3. 조건부 렌더 패널의 Panel reveal은 "다음 프레임에 data-open 뒤집기"가 필요하다
-`{open && <Panel/>}` 구조는 마운트 프레임에 이미 `data-open="true"`면 트랜지션이 재생되지 않는다.
-JSX에는 항상 `data-open="false"`를 렌더하고, effect에서 `setAttribute('false')` → 리플로우 →
-`requestAnimationFrame`으로 `'true'`를 넣는다. `useRevealOnMount`(transitions-pages.ts)에 구현돼 있으니
-BottomSheet/DetailSheet에도 그대로 재사용 가능.
+### 응답 (200) — 개별 모드 / 클러스터 모드 공통 봉투
 
-### 4. Text states swap을 React에서 쓸 때의 함정
-JSX에 `{text}`를 그대로 렌더하면 React가 커밋 단계에서 textContent를 즉시 바꿔버려 exit 단계가 사라진다.
-**JSX에는 최초 텍스트만(상수) 렌더하고 이후 교체는 전부 DOM 직접 조작**으로 처리해야 한다.
-SSR/하이드레이션도 이 방식이 안전하다. `useTextSwap`이 이 처리를 담고 있다.
+```ts
+{
+  mode: 'individual' | 'cluster',   // zoom > 13 → 'individual', zoom <= 13 → 'cluster'
+  zoom: number,                     // 서버가 파싱한 줌 (에코백)
+  cluster_zoom_threshold: 13,       // 클러스터 전환 기준 (하드코딩 대신 이 값 사용 권장)
+  pois: PoiBadgeItem[],             // cluster 모드에서는 항상 []
+  clusters: PoiBadgeCluster[],      // individual 모드에서는 항상 []
+}
+```
 
-### 5. Skeleton reveal의 레이아웃 붕괴
-문서 스니펫은 skeleton/content 두 레이어를 모두 `position:absolute`로 깔기 때문에 래퍼가 높이를 갖지 못한다.
-로딩 중에는 `--skel-min-h`로 자리를 잡아두고, cross-fade가 끝나면 `.is-settled`로 콘텐츠를 일반 흐름에
-되돌리는 프로젝트 로컬 규칙을 `transitions-pages.css` 하단에 추가해 뒀다.
-(ProfileClient 탭 로딩 스켈레톤에도 같은 문제가 생길 것이므로 재사용 권장.)
+**두 배열은 항상 존재한다** (없을 때 `[]`). `undefined` 방어 코드 불필요.
 
-### 6. 바이너리 컬러 원칙과 Error state shake
-이 프로젝트는 에러를 색으로 표현하지 않고 inset box-shadow 두께로만 구분한다. 그래서 스니펫의
-`border-color` 트윈은 실질적으로 무의미하고, **핵심은 `.is-shaking` 흔들림**이다.
-또 `.t-error-msg`는 쓰지 않았다 — 닉네임 메시지는 에러 전용이 아니라 "사용 가능"도 같이 표시하기 때문에
-Text states swap으로 처리하는 편이 맞다.
+```ts
+interface PoiBadgeItem {
+  poi_id: string
+  badge_id: string      // 탭 시 이동 경로: /badges/{badge_id}
+  name: string
+  latitude: number
+  longitude: number
+  image_url: string | null   // badges.image_url (null 가능 → 플레이스홀더 필요)
+  earned: boolean            // true=원본 컬러+탭 가능, false=그레이+탭 비활성
+}
 
-## 2026-07-30 — dev-shared
+interface PoiBadgeCluster {
+  lat: number    // 셀 내 POI 좌표 평균(무게중심), 소수 6자리
+  lng: number
+  count: number  // 마커에 표시할 숫자
+}
+```
 
-- **공유 컴포넌트가 3종 준비됨.** 앞으로 같은 패턴이 필요하면 새로 만들지 말고 재사용하세요.
-  - `@/components/ui/SlidingTabs` — 세그먼트 컨트롤/필터 탭 전부
-  - `@/components/ui/SwapText` — 라벨/상태 문구가 제자리에서 바뀌는 곳
-  - `@/components/ui/PopInNumber` — 숫자가 갱신되는 곳
-  - `@/lib/motion` 의 `cssDurationMs()` — JS에서 duration이 필요할 때 (하드코딩 금지)
-- **`transitions.css` ↔ `transitions-pages.css` 중복.** 두 파일이 `.t-text-swap` /
-  `.t-panel-slide` / `.t-digit-*` / `.t-skel-*`와 `:root` 토큰을 각각 정의합니다.
-  값은 둘 다 스킬 원본이라 동작 차이는 없지만, 스킬의 "중복 설치 금지" 규칙상
-  정리 대상입니다. 정식 위치는 `globals.css`(:root 토큰) + `components/transitions.css`
-  (스니펫)이며, `transitions-pages.css`는 여기에 없는 것(Error state shake / Success check)만
-  남기고 나머지는 걷어내는 게 좋습니다. **메인세션 통합 시 판단 필요.**
-- `DetailSheet`(FeedSection) 시그니처가 `{ item, open, onClose, onClosed, badgeLinkQuery }`로
-  바뀌었습니다. 닫힘 트랜지션을 보여주려면 부모가 `open`만 내리고 `onClosed`에서 언마운트합니다.
-- `.t-skel` 원본은 두 레이어 모두 absolute라 래퍼 높이가 0이 됩니다. dev-shared는
-  `.jam-skel-flow`(콘텐츠는 흐름 유지 + `--jam-skel-min-h`), dev-pages는 `.is-settled`로
-  각각 우회했습니다. 통합 시 한쪽으로 통일 권장.
+### 동작 규칙 (dev-client가 알아야 할 것)
+
+- **대상 POI**: `poi.linked_badge_id`가 있고 연결 배지가 `type='poi'` + `deleted_at IS NULL` 인 것만. 드랍/픽업용 카페 POI(`/api/drops`)와 완전히 별개 집합이므로 마커를 겹쳐 그려도 중복 없음.
+- **거리 제한 없음** — 뷰포트 안이면 무조건 반환(PRD 확정사항).
+- **`earned` 판정**: 로그인 유저의 `user_poi_badge_earns`에 해당 `badge_id` 행이 1건이라도 있으면 true (POI 단위 아님, **배지 단위**). 같은 배지가 여러 POI에 연결돼 있으면 전부 획득 상태로 보인다.
+- **클러스터 모드에서는 개별 좌표·배지 id가 일절 내려가지 않는다.** 클러스터 마커는 탭 동작 없음(또는 줌인 정도)으로 구현할 것.
+- 뷰포트당 최대 2000건(`MAX_POIS`)까지만 조회 — 그 이상은 잘린다.
+
+### 순수 함수 (tester 참고)
+
+`jam-web/src/lib/poi/badge-clustering.ts`:
+
+- `clusterPoiBadges(pois: {latitude:number; longitude:number}[], zoom: number): {lat:number;lng:number;count:number}[]`
+- `gridCellSizeForZoom(zoom: number): number` — `360 / 2^zoom` 을 `[0.01, 45]`로 클램프. zoom 13 → 0.0439°(≈4.9km), 10 → 0.3516°, 6 → 5.625°. 줌이 작을수록 셀이 커짐(단조 증가) 보장.
+- `shouldCluster(zoom): boolean` — `zoom <= 13`
+- `CLUSTER_ZOOM_THRESHOLD = 13`
+- 특성: 좌표가 NaN/Infinity면 무시, 빈 배열이면 `[]`, 정렬은 count 내림차순 → lat 내림차순 → lng 오름차순으로 결정적(deterministic). DB/네트워크 의존 전혀 없음.
+
+---
+
+# DEAD_ENDS (시도했으나 실패한 접근)
+
+## 2026-07-31 — tester: 클러스터링 단위테스트 실행 불가
+- 시도: `badge-clustering.ts` 단위테스트를 이 프로젝트의 기존 테스트 러너로 실행하려 함
+- 결과: `package.json`에 jest/vitest 등 어떤 테스트 러너도 devDependencies에 없고, `node_modules/.bin`에도 없음. 기존 `src/lib/**/__tests__/*.test.ts` 파일들(badge-engine, drop-engine, missions, points 등)도 `describe/it/expect` 문법으로 작성돼 있지만 실행할 방법이 없는 상태 — Phase 17과 무관한 기존 프로젝트 상태.
+- 근거: `jam-web/package.json` scripts에 `test` 없음, `npx --no-install jest/vitest --version` 실패.
+- 처리: 유저 확인 후 이번 Phase 17에서는 단위테스트를 생략하고 통합 검증으로 진행하기로 결정. 테스트 러너 도입은 별도 사안.

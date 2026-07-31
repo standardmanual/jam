@@ -25,7 +25,7 @@ export const ko = {
   nav: {
     today: '투데이',
     badges: '배지',
-    drops: '드랍',
+    drops: 'JAM',
     missions: '미션',
     inventory: '인벤토리',
     profile: '프로필',
@@ -217,12 +217,6 @@ export const ko = {
     connectedLocationTitle: '연결 위치',
     viewOnMap: '{name} 지도에서 보기',
 
-    shareCardButton: '공유 카드 만들기',
-    shareCardTitle: '공유 카드',
-    shareCardAlt: '공유 카드 미리보기',
-    shareCardClose: '닫기',
-    shareCardShare: '공유 / 저장',
-    shareCardGenerateFailed: '카드 생성에 실패했습니다',
     physicalPatchButton: '실물 패치 보기',
 
     notEarnedTitle: '아직 획득하지 못한 배지예요',

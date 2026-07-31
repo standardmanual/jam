@@ -7,7 +7,12 @@ import { useToast } from '@/components/ui/Toast'
 import { CloseIcon, MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import BadgeDetailSheet, { PickupDrop } from './BadgeDetailSheet'
-import type { PoiMarker } from '@/components/map/MapView'
+import type {
+  PoiMarker,
+  PoiBadgeMarker,
+  PoiBadgeClusterMarker,
+  MapViewport,
+} from '@/components/map/MapView'
 import { useTextSwap, useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
@@ -42,6 +47,10 @@ export default function DropsClient() {
 
   const [pois, setPois] = useState<NearbyPoi[]>([])
   const [poisLoading, setPoisLoading] = useState(false)
+
+  // ── Phase 17: 뷰포트 기반 POI 방문 배지 (드랍/픽업과 완전 별개 파이프라인) ──
+  const [badgeMarkers, setBadgeMarkers] = useState<PoiBadgeMarker[]>([])
+  const [badgeClusters, setBadgeClusters] = useState<PoiBadgeClusterMarker[]>([])
 
   // 선택된 POI + 그 POI의 드랍 목록 (null = 아직 로딩)
   const [selectedPoi, setSelectedPoi] = useState<NearbyPoi | null>(null)
@@ -108,6 +117,27 @@ export default function DropsClient() {
   useEffect(() => {
     loadNearbyPois()
   }, [loadNearbyPois])
+
+  // 뷰포트 변경 → POI 배지 재조회.
+  // MapView가 디바운스 + "이전 조회 범위를 벗어났을 때만" 필터링해서 호출한다.
+  const handleViewportChange = useCallback(async (viewport: MapViewport) => {
+    const params = new URLSearchParams({
+      swLat: String(viewport.swLat),
+      swLng: String(viewport.swLng),
+      neLat: String(viewport.neLat),
+      neLng: String(viewport.neLng),
+      zoom: String(viewport.zoom),
+    })
+    try {
+      const res = await fetch(`/api/poi-badges?${params.toString()}`)
+      if (!res.ok) return
+      const json = await res.json()
+      setBadgeMarkers((json.pois ?? []) as PoiBadgeMarker[])
+      setBadgeClusters((json.clusters ?? []) as PoiBadgeClusterMarker[])
+    } catch {
+      /* 배지 마커 조회 실패는 드랍/픽업 플로우에 영향을 주지 않으므로 조용히 무시 */
+    }
+  }, [])
 
   // 바텀시트 닫기 + 상태 초기화
   const closeSheet = useCallback(() => {
@@ -294,6 +324,9 @@ export default function DropsClient() {
           pois={poiMarkers}
           onPoiSelect={handlePoiSelect}
           selectedPoiId={selectedPoi?.id}
+          badgeMarkers={badgeMarkers}
+          badgeClusters={badgeClusters}
+          onViewportChange={handleViewportChange}
         />
       </div>
 
