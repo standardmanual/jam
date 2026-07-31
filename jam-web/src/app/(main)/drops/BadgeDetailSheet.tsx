@@ -38,8 +38,23 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
     : 'common')
 
   return (
-    <BottomSheet open onClose={onCancel} detent="full" showCloseButton={false}>
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)] min-h-full">
+    <BottomSheet
+      open
+      onClose={onCancel}
+      detent="full"
+      showCloseButton={false}
+      footer={
+        <div className="flex flex-col gap-[var(--spacing-16)]">
+          <Button fullWidth surface="sub" loading={pickingUp} onClick={onPickup}>
+            {d.drops.pickupButton}
+          </Button>
+          <Button fullWidth variant="outline" surface="sub" onClick={onCancel} disabled={pickingUp}>
+            {d.drops.cancel}
+          </Button>
+        </div>
+      }
+    >
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-24)] min-h-full">
         {/* 닫기 */}
         <button
           onClick={onCancel}
@@ -74,18 +89,6 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
             {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
         </Card>
-
-        {/* 액션 버튼 — 스크롤 영역 안에서 하단에 sticky로 고정.
-            내용이 짧으면 mt-auto처럼 바로 아래에 붙고, 내용이 길어 넘치면
-            스크롤해도 항상 화면 맨 아래에 붙어 있어 잘려 보이지 않는다. */}
-        <div className="mt-auto sticky bottom-0 -mx-[var(--spacing-16)] px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[env(safe-area-inset-bottom,1rem)] bg-surface-inverse flex flex-col gap-[var(--spacing-16)]">
-          <Button fullWidth surface="sub" loading={pickingUp} onClick={onPickup}>
-            {d.drops.pickupButton}
-          </Button>
-          <Button fullWidth variant="outline" surface="sub" onClick={onCancel} disabled={pickingUp}>
-            {d.drops.cancel}
-          </Button>
-        </div>
       </div>
     </BottomSheet>
   )

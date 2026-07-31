@@ -13,6 +13,16 @@ interface BottomSheetProps {
   detent?: 'compact' | 'full'
   showCloseButton?: boolean
   closeLabel?: string
+  /**
+   * 스크롤 영역 밖, 시트 맨 아래에 항상 고정으로 보여줄 콘텐츠(주로 액션 버튼).
+   *
+   * `position: sticky`로 스크롤 영역 안에 붙이는 방식은 시도했으나 WebKit이
+   * flex 컨테이너 안의 sticky를 안정적으로 지원하지 않아(자식이 flex item일 때
+   * 레이아웃이 깨지는 알려진 버그) 콘텐츠가 겹쳐 보이거나 잘리는 문제가 있었다.
+   * 대신 footer를 스크롤 영역과 완전히 분리된 형제 요소(shrink-0)로 두면
+   * 순수 flexbox 레이아웃만으로 항상 화면에 보장되어 더 견고하다.
+   */
+  footer?: ReactNode
 }
 
 const DRAG_CLOSE_THRESHOLD = 120
@@ -25,6 +35,7 @@ export default function BottomSheet({
   detent = 'compact',
   showCloseButton = true,
   closeLabel = '닫기',
+  footer,
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
@@ -145,7 +156,15 @@ export default function BottomSheet({
 
         <div className="overflow-y-auto flex-1">{children}</div>
 
-        <div className="shrink-0 pb-[env(safe-area-inset-bottom,1rem)]" />
+        {footer ? (
+          /* 스크롤 영역과 분리된 형제 요소 — flex-1인 위 스크롤 영역이 알아서
+             줄어들기 때문에 콘텐츠 길이와 무관하게 항상 화면에 보인다. */
+          <div className="shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[env(safe-area-inset-bottom,1rem)] shadow-[inset_0_1px_0_0_var(--color-border-inverse)]">
+            {footer}
+          </div>
+        ) : (
+          <div className="shrink-0 pb-[env(safe-area-inset-bottom,1rem)]" />
+        )}
       </div>
       </div>
     </div>
