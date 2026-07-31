@@ -15,9 +15,10 @@ import { tryItemDrop } from '@/lib/drop-engine/index'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { checkMissions } from '@/lib/missions/checker'
+import { recordFeedEvent } from '@/lib/activity-feed'
 import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
-import type { StravaConnectionRow, BadgeType, PoiRow, StravaActivityRow } from '@/types/database'
+import type { StravaConnectionRow, BadgeType, BadgeRarity, PoiRow, StravaActivityRow } from '@/types/database'
 
 /** 싱크 1회당 아이템 드랍을 시도할 최대 활동 수 (최신순). 백필 시 드랍 폭주·타임아웃 방지 */
 const MAX_DROP_ACTIVITIES_PER_SYNC = 3
@@ -146,16 +147,17 @@ export async function processFetchedActivities(
       )
     )
   )
-  const badgeById = new Map<string, { id: string; type: BadgeType }>()
+  type LinkedBadge = { id: string; type: BadgeType; name: string; image_url: string | null; rarity: BadgeRarity }
+  const badgeById = new Map<string, LinkedBadge>()
   if (linkedBadgeIds.length > 0) {
     const { data: linkedBadgesRaw, error: linkedBadgeError } = await supabase
       .from('badges')
-      .select('id, type')
+      .select('id, type, name, image_url, rarity')
       .in('id', linkedBadgeIds)
     if (linkedBadgeError) {
       console.error('[processFetchedActivities] POI 연결 배지 조회 오류:', linkedBadgeError)
     }
-    for (const badge of (linkedBadgesRaw ?? []) as { id: string; type: BadgeType }[]) {
+    for (const badge of (linkedBadgesRaw ?? []) as LinkedBadge[]) {
       badgeById.set(badge.id, badge)
     }
   }
@@ -172,6 +174,19 @@ export async function processFetchedActivities(
       if (!badge) continue
 
       if (badge.type === 'poi') {
+        // 이 유저가 이 배지를 이전에 한 번이라도 획득한 적 있는지 먼저 확인 —
+        // poi 배지는 방문할 때마다 반복 획득되지만, 프로필 배지 갤러리/피드에는
+        // "고유 배지" 개념으로 최초 획득 시점 1건만 노출해야 하므로 최초 획득
+        // 여부를 판별해 그때만 피드 이벤트를 남긴다(반복 방문은 피드에 안 쌓임).
+        const { data: priorEarn } = await supabase
+          .from('user_poi_badge_earns')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('badge_id', badge.id)
+          .limit(1)
+          .maybeSingle()
+        const isFirstEarn = !priorEarn
+
         const earnPayload = {
           user_id: userId,
           badge_id: badge.id,
@@ -195,6 +210,15 @@ export async function processFetchedActivities(
 
         poiBadgesEarned++
         console.info(`[processFetchedActivities] POI 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}`)
+
+        if (isFirstEarn) {
+          await recordFeedEvent(userId, 'badge_earned', {
+            badge_id: badge.id,
+            badge_name: badge.name,
+            badge_image_url: badge.image_url ?? '',
+            rarity: badge.rarity,
+          })
+        }
         continue
       }
 

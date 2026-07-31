@@ -179,12 +179,15 @@ export const ko = {
     title: '배지',
     tabActivity: '액티비티',
     tabItem: '아이템',
+    tabPoi: '장소',
     tabItembook: '아이템북',
 
     emptyActivityTitle: '아직 획득한 배지가 없어요',
     emptyActivityBody: 'Strava를 연동하고 활동하면 배지를 획득할 수 있어요',
     emptyItemTitle: '아직 아이템 배지가 없어요',
     emptyItemBody: '활동을 완료하면 확률로 아이템 배지가 드랍돼요',
+    emptyPoiTitle: '아직 등록된 장소 배지가 없어요',
+    emptyPoiBody: '산, 지하철역 등을 지나는 활동을 기록하면 배지를 획득할 수 있어요',
     emptyItembookTitle: '아직 아이템북이 없어요',
     emptyItembookBody: '관리자가 아이템북을 등록하면 이 곳에 표시돼요',
 

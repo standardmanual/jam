@@ -10,7 +10,7 @@ import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import { MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
-type TabKey = 'activity' | 'itembook'
+type TabKey = 'activity' | 'poi' | 'itembook'
 
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
@@ -27,6 +27,19 @@ function activitySortIndex(types: ActivityType[]): number {
   return idx === -1 ? ACTIVITY_TYPE_ORDER.length : idx
 }
 
+/** 장소(POI) 배지 — 산/지하철 등 방문해서 획득하는 배지. 반복 획득 가능. */
+export interface PoiBadgeItem {
+  badge: BadgeRow
+  /** 연결된 POI의 category slug (예: mountain, transit) */
+  category: string
+  /** 어드민이 관리하는 카테고리 한글 라벨 (예: 산, 대중교통) */
+  categoryLabel: string
+  /** 획득 횟수 — 0이면 미획득 */
+  earnCount: number
+  /** 가장 최근 획득 시각 — 미획득이면 null */
+  latestEarnedAt: string | null
+}
+
 export interface ItemBookProgress {
   bookId: string
   owned: number
@@ -38,6 +51,7 @@ interface BadgesClientProps {
   badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow | null }>
   itemBooks: ItemBookRow[]
   itemBookProgress: ItemBookProgress[]
+  poiBadges: PoiBadgeItem[]
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
@@ -58,19 +72,44 @@ function tabLabel(label: string, count: number) {
   )
 }
 
-export default function BadgesClient({ badges, itemBooks, itemBookProgress }: BadgesClientProps) {
+export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiBadges }: BadgesClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('activity')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
   const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
   const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
 
   const earnedCount = badges.filter((b) => b.earned).length
+  const poiEarnedCount = poiBadges.filter((p) => p.earnCount > 0).length
 
   // 슬라이딩 탭 — 라벨 옆에 보유/전체 카운트를 함께 노출
   const tabs: SlidingTabItem<TabKey>[] = [
     { key: 'activity', label: tabLabel(d.badges.tabActivity, earnedCount), ariaLabel: d.badges.tabActivity },
+    { key: 'poi', label: tabLabel(d.badges.tabPoi, poiEarnedCount), ariaLabel: d.badges.tabPoi },
     { key: 'itembook', label: tabLabel(d.badges.tabItembook, itemBooks.length), ariaLabel: d.badges.tabItembook },
   ]
+
+  // 카테고리(산/대중교통 등)별로 묶고, 카테고리 안에서는 획득한 것부터(최근 획득순),
+  // 미획득은 이름순으로 정렬. 카테고리 그룹 자체는 라벨 가나다순으로 배치한다.
+  const groupedPoiBadges = useMemo(() => {
+    const byCategory = new Map<string, PoiBadgeItem[]>()
+    for (const item of poiBadges) {
+      const list = byCategory.get(item.category) ?? []
+      list.push(item)
+      byCategory.set(item.category, list)
+    }
+    for (const list of byCategory.values()) {
+      list.sort((a, b) => {
+        if (a.earnCount > 0 && b.earnCount > 0) {
+          return new Date(b.latestEarnedAt!).getTime() - new Date(a.latestEarnedAt!).getTime()
+        }
+        if (a.earnCount > 0 !== b.earnCount > 0) return a.earnCount > 0 ? -1 : 1
+        return a.badge.name.localeCompare(b.badge.name, 'ko')
+      })
+    }
+    return Array.from(byCategory.entries()).sort(([, a], [, b]) =>
+      a[0].categoryLabel.localeCompare(b[0].categoryLabel, 'ko')
+    )
+  }, [poiBadges])
 
   // 획득한 것부터(획득 최신순), 미획득은 같은 액티비티끼리 모아 이름순 → 등급 낮은순.
   // 화면에 별도 구간 헤더로 나누진 않고 정렬 순서로만 배치한다.
@@ -173,6 +212,54 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress }: Ba
             </>
           ) : (
             <EmptyState title={d.badges.emptyActivityTitle} body={d.badges.emptyActivityBody} />
+          )
+        )}
+
+        {/* 장소(POI) 배지 탭 */}
+        {activeTab === 'poi' && (
+          poiBadges.length > 0 ? (
+            <div className="flex flex-col gap-[var(--spacing-24)]">
+              {groupedPoiBadges.map(([category, items]) => (
+                <div key={category}>
+                  <h2 className="text-[10px] uppercase text-text-inverse/40 mb-[var(--spacing-8)]">
+                    {items[0].categoryLabel}
+                  </h2>
+                  <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+                    {items.map(({ badge, earnCount }) => {
+                      const earned = earnCount > 0
+                      return (
+                        <Link key={badge.id} href={`/badges/${badge.id}`}>
+                          <Card className={`flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'bg-surface-inverse/50'}`}>
+                            <div className={`w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden ${earned ? '' : 'grayscale opacity-40'}`}>
+                              {badge.image_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={badge.image_url}
+                                  alt={badge.name}
+                                  className="w-full h-full object-contain p-1"
+                                />
+                              ) : (
+                                <MedalIcon className="w-9 h-9 text-text-inverse/40" />
+                              )}
+                            </div>
+                            <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
+                            <div className="h-6 flex items-center justify-center gap-1">
+                              <RarityBadge rarity={badge.rarity} />
+                              {/* 반복 획득 배지는 몇 번 획득했는지 표시 — 상세 획득 이력은 배지 상세화면에서 */}
+                              {earned && earnCount > 1 && (
+                                <span className="text-[10px] tabular-nums text-text-inverse/50">×{earnCount}</span>
+                              )}
+                            </div>
+                          </Card>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title={d.badges.emptyPoiTitle} body={d.badges.emptyPoiBody} />
           )
         )}
 
