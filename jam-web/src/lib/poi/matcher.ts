@@ -128,7 +128,13 @@ export function isRouteNearPoi(
 
 /**
  * 활동 경로와 매칭되는 POI 목록 반환
- * poi 테이블 전체를 로드한 뒤 isRouteNearPoi로 필터링
+ * 경로 바운딩 박스를 DB 쿼리 조건(.gte/.lte)으로 직접 필터링해 가져온 뒤 isRouteNearPoi로 정밀 검증
+ *
+ * poi 테이블은 2,000행을 넘고 계속 늘어나는데, 예전처럼 `.select('*')`로
+ * 전체를 가져오면 Supabase/PostgREST 기본 max-rows(1,000행) 제한에 걸려
+ * 뒤쪽에 삽입된 행(예: 대량 등록된 산 POI)이 응답에서 통째로 잘려나갈 수
+ * 있었다 — 결과적으로 반경 계산까지 가보지도 못하고 후보에서 누락됨.
+ * DB 쿼리에서 바로 bbox로 좁혀 가져오면 결과 행 수가 작아 이 문제가 재발하지 않는다.
  *
  * @param route GPS 경로 좌표 배열 [[lat, lng], ...]
  * @param supabase Supabase service client (RLS 우회)
@@ -140,18 +146,7 @@ export async function matchPoisForActivity(
 ): Promise<PoiRow[]> {
   if (route.length === 0) return []
 
-  const { data: poisRaw, error } = await supabase
-    .from('poi')
-    .select('*')
-
-  if (error) {
-    console.error('[matchPoisForActivity] POI 목록 조회 오류:', error)
-    return []
-  }
-
-  const pois = (poisRaw ?? []) as PoiRow[]
-
-  // 경로 전체 바운딩 박스 계산 → 범위 밖 POI 즉시 제거
+  // 경로 전체 바운딩 박스 계산
   let routeLatMin = Infinity, routeLatMax = -Infinity
   let routeLngMin = Infinity, routeLngMax = -Infinity
   for (const [lat, lng] of route) {
@@ -161,13 +156,21 @@ export async function matchPoisForActivity(
     if (lng > routeLngMax) routeLngMax = lng
   }
   const BB_MARGIN = 0.001 // ~111m 버퍼
-  const candidatePois = pois.filter(
-    (poi) =>
-      poi.latitude >= routeLatMin - BB_MARGIN &&
-      poi.latitude <= routeLatMax + BB_MARGIN &&
-      poi.longitude >= routeLngMin - BB_MARGIN &&
-      poi.longitude <= routeLngMax + BB_MARGIN
-  )
+
+  const { data: poisRaw, error } = await supabase
+    .from('poi')
+    .select('*')
+    .gte('latitude', routeLatMin - BB_MARGIN)
+    .lte('latitude', routeLatMax + BB_MARGIN)
+    .gte('longitude', routeLngMin - BB_MARGIN)
+    .lte('longitude', routeLngMax + BB_MARGIN)
+
+  if (error) {
+    console.error('[matchPoisForActivity] POI 목록 조회 오류:', error)
+    return []
+  }
+
+  const candidatePois = (poisRaw ?? []) as PoiRow[]
 
   return candidatePois.filter((poi) =>
     isRouteNearPoi(route, poi.latitude, poi.longitude, poi.radius_meters)
