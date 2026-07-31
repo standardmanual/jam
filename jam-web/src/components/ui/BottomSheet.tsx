@@ -100,7 +100,13 @@ export default function BottomSheet({
       <div
         className={[
           'relative bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] flex flex-col',
-          detent === 'full' ? 'h-[92vh]' : 'max-h-[75vh]',
+          /* dvh(동적 뷰포트 높이) 사용 — iOS Safari는 vh를 주소창이 숨겨진
+             상태의 레이아웃 뷰포트 기준으로 계산해서, 주소창이 보이는 상태로
+             열리면 시트 하단과 실제 화면 하단 사이에 틈이 생겨 그 틈으로
+             플로팅 탭바(z-40)나 뒷배경이 노출된다(이 시트 자체는 z-50이라
+             탭바보다 위에 있어야 정상). dvh는 실제 보이는 뷰포트 기준이라
+             이 틈이 생기지 않는다. */
+          detent === 'full' ? 'h-[92dvh]' : 'max-h-[75dvh]',
         ].join(' ')}
         style={{
           transform: `translateY(${dragY}px)`,
