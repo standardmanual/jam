@@ -158,8 +158,16 @@ export default function BottomSheet({
 
         {footer ? (
           /* 스크롤 영역과 분리된 형제 요소 — flex-1인 위 스크롤 영역이 알아서
-             줄어들기 때문에 콘텐츠 길이와 무관하게 항상 화면에 보인다. */
-          <div className="shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[env(safe-area-inset-bottom,1rem)] shadow-[inset_0_1px_0_0_var(--color-border-inverse)]">
+             줄어들기 때문에 콘텐츠 길이와 무관하게 항상 화면에 보인다.
+             dvh 기반 높이 계산이 실기기(iOS Safari)에서 주소창/툴바 상태에 따라
+             기대한 만큼 정확히 맞아떨어지지 않는 경우가 있어(z-index만으로는
+             보장 안 됨), padding-bottom에 플로팅 탭바(safe-area+16px+64px)
+             높이 + 여유 12px을 명시적으로 더해 실측 기준으로 항상 탭바 위에
+             오도록 강제한다. */
+          <div
+            className="shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] shadow-[inset_0_1px_0_0_var(--color-border-inverse)]"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)' }}
+          >
             {footer}
           </div>
         ) : (

@@ -44,12 +44,14 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
       detent="full"
       showCloseButton={false}
       footer={
-        <div className="flex flex-col gap-[var(--spacing-16)]">
-          <Button fullWidth surface="sub" loading={pickingUp} onClick={onPickup}>
-            {d.drops.pickupButton}
-          </Button>
+        // 세로로 쌓지 않고 한 행에 나란히 배치 — 버튼 2개 세로 스택보다
+        // 차지하는 높이가 작아 탭바에 가려질 여지가 더 줄어든다.
+        <div className="flex gap-[var(--spacing-16)]">
           <Button fullWidth variant="outline" surface="sub" onClick={onCancel} disabled={pickingUp}>
             {d.drops.cancel}
+          </Button>
+          <Button fullWidth surface="sub" loading={pickingUp} onClick={onPickup}>
+            {d.drops.pickupButton}
           </Button>
         </div>
       }
