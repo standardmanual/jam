@@ -13,6 +13,7 @@
 | [02_DATA_MODEL.md](./02_DATA_MODEL.md) | 데이터 구조, 엔티티 상세, 관계도 | DB 설계할 때 / 새 기능 추가할 때 |
 | [03_PHASES.md](./03_PHASES.md) | Phase별 기능, 체크리스트, 시작 프롬프트 | 개발 순서 정할 때 / 다음 Phase 시작할 때 |
 | [04_PROJECT_SPEC.md](./04_PROJECT_SPEC.md) | 기술 스택, 절대 금지 목록, 환경변수 | AI에게 코드 시킬 때마다 함께 공유 |
+| [UX_WRITING_GUIDELINE.md](./UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 (토스 스타일 기반 JAM! 전용 라이팅 가이드) | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
 
 ### Phase별 추가 문서
 
