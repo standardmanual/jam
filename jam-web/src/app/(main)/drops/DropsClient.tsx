@@ -352,16 +352,21 @@ export default function DropsClient() {
       {selectedPoi && (
         <div
           ref={poiSheetRef}
-          className="t-panel-slide absolute inset-x-0 bottom-0 z-20 px-[var(--spacing-16)] pb-[var(--spacing-16)]"
+          className="t-panel-slide absolute inset-x-0 bottom-0 z-20 px-[var(--spacing-16)]"
           data-open="false"
           /* 시트 자체 높이만큼만 이동해도 완전한 열림으로 읽히도록 travel을 조정 */
-          style={{ ['--panel-translate-y' as string]: '48px' }}
+          /* 플로팅 탭바(z-40, bottom: safe-area+16px, h-16)에 하단이 가려지지
+             않도록 탭바 상단(+ 여유 12px)만큼 padding-bottom을 확보한다 */
+          style={{
+            ['--panel-translate-y' as string]: '48px',
+            paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)',
+          }}
         >
           <div className="bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] overflow-hidden">
             {/* 헤더 */}
             <div className="flex items-center justify-between px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
               <div className="min-w-0">
-                <p className="text-[11px] text-text-inverse/50 mb-0.5 truncate">{selectedPoi.name}</p>
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold text-text-inverse/70 mb-0.5 truncate">{selectedPoi.name}</p>
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
                   <span ref={sheetTitleRef} className="t-text-swap">{initialSheetTitle}</span>
                 </p>
