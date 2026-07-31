@@ -104,30 +104,33 @@ function dotIconHtml(color: string, size: number, opacity: number): string {
 }
 
 /**
- * 드랍/픽업 POI 마커 서클 크기 배율. 기존 20px/26px(선택 시) 기준 130%.
+ * 드랍/픽업 POI 마커 서클 크기 배율. 기존 20px/26px(선택 시) 기준 130%에서
+ * 다시 120% 확대(1.3 × 1.2 = 1.56배).
  */
-const DROP_MARKER_SCALE = 1.3
+const DROP_MARKER_SCALE = 1.3 * 1.2
+
+// 배지 아이콘(흰색) — badge-fill.svg / badge-line.svg 그대로 사용
+const BADGE_FILL_PATH =
+  '<path fill-rule="evenodd" clip-rule="evenodd" d="M20.0006 6.22251C20.619 6.57985 21 7.23993 21 7.95424V16.0457C21 16.76 20.619 17.4201 20.0006 17.7774L13.0006 21.8219C12.3815 22.1796 11.6185 22.1796 10.9994 21.8219L3.99944 17.7774C3.38095 17.4201 3 16.76 3 16.0457V7.95424C3 7.23993 3.38096 6.57985 3.99945 6.2225L10.9994 2.17806C11.6185 1.82037 12.3815 1.82037 13.0006 2.17806L20.0006 6.22251ZM15.5 12C15.5 13.933 13.933 15.5 12 15.5C10.067 15.5 8.5 13.933 8.5 12C8.5 10.067 10.067 8.49996 12 8.49996C13.933 8.49996 15.5 10.067 15.5 12Z"/>'
+const BADGE_LINE_PATH =
+  '<path fill-rule="evenodd" clip-rule="evenodd" d="M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79082 9.79086 7.99996 12 7.99996C14.2091 7.99996 16 9.79082 16 12ZM14.5 12C14.5 13.3807 13.3807 14.5 12 14.5C10.6193 14.5 9.5 13.3807 9.5 12C9.5 10.6193 10.6193 9.49996 12 9.49996C13.3807 9.49996 14.5 10.6193 14.5 12Z"/>' +
+  '<path fill-rule="evenodd" clip-rule="evenodd" d="M13.0006 2.17806C12.3815 1.82037 11.6185 1.82037 10.9994 2.17806L3.99945 6.22251C3.38096 6.57986 3 7.23993 3 7.95424V16.0457C3 16.76 3.38095 17.4201 3.99944 17.7774L10.9994 21.8219C11.6185 22.1796 12.3815 22.1796 13.0006 21.8219L20.0006 17.7774C20.619 17.4201 21 16.76 21 16.0457V7.95424C21 7.23993 20.619 6.57986 20.0006 6.22251L13.0006 2.17806ZM19.2501 7.5213L12.2501 3.47686C12.0954 3.38743 11.9046 3.38743 11.7499 3.47686L4.74986 7.5213C4.59524 7.61064 4.5 7.77566 4.5 7.95424V16.0457C4.5 16.2243 4.59524 16.3893 4.74986 16.4786L11.7499 20.5231C11.9046 20.6125 12.0954 20.6125 12.2501 20.5231L19.2501 16.4786C19.4048 16.3893 19.5 16.2243 19.5 16.0457V7.95424C19.5 7.77566 19.4048 7.61064 19.2501 7.5213Z"/>'
 
 /**
- * 드랍/픽업 POI 마커 — 서클 + 내부 네거티브 컬러 메달(배지) 아이콘.
- * "드랍/픽업 행위"가 아니라 "여기에 배지가 있다/없다"를 표현하도록 화살표 대신
- * 배지 상세화면 등에서 이미 쓰이는 MedalIcon과 동일한 모양을 사용한다.
- * 픽업 가능 배지 있음 = 메인 포인트 컬러, 없음 = 그레이.
- * 드랍 범위 밖은 기존과 동일하게 진회색 + 반투명으로 표현한다.
+ * 드랍/픽업 POI 마커 — 서클 + 내부 흰색 배지 아이콘.
+ * 픽업 가능한 드랍 있음 = 메인 포인트 컬러 배경 + badge-fill 아이콘,
+ * 없음 = 그레이 배경 + badge-line 아이콘. 드랍 범위 밖은 기존과 동일하게
+ * 진회색 + 반투명으로 표현한다.
  */
 function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: number }): string {
   const { hasDrops, inRange, size } = opts
   const bg = hasDrops ? 'var(--color-main)' : inRange ? '#888888' : '#444444'
-  // 배경과 대비되는 네거티브 컬러 (코발트/그레이 모두 밝은 아이스가 대비 확보)
-  const fg = hasDrops ? 'var(--color-sub)' : '#ffffff'
   const opacity = inRange ? 1 : 0.5
   const icon = size * 0.6
+  const path = hasDrops ? BADGE_FILL_PATH : BADGE_LINE_PATH
 
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};opacity:${opacity};border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">` +
-    `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="none" stroke="${fg}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
-    `<path d="M12 3.5l2.2 4.4 4.9.7-3.55 3.45.84 4.85L12 14.6l-4.39 2.3.84-4.85L4.9 8.6l4.9-.7L12 3.5z"/>` +
-    `<path d="M8.5 16.5L7 21.5l5-2.4 5 2.4-1.5-5"/>` +
-    `</svg></div>`
+    `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="#ffffff" aria-hidden="true">${path}</svg></div>`
 }
 
 /**
