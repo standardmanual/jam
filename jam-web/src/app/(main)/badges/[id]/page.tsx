@@ -53,7 +53,7 @@ function timeSlotLabel(start: string): string {
 
 function formatConditionText(condition: BadgeCondition | null): string {
   if (!condition || Object.keys(condition).length === 0) {
-    return '관리자에 의해 특별 발급되는 배지입니다.'
+    return '관리자가 직접 발급하는 배지예요.'
   }
 
   const actType = condition.activity_type ? ACTIVITY_LABELS[condition.activity_type] : '활동'
@@ -107,7 +107,7 @@ function formatConditionText(condition: BadgeCondition | null): string {
     parts.push(`${slot ? `${slot} 시간대(${start}~${end})` : `${start}~${end} 시간대`}에 ${actType} 활동`)
   }
   if (parts.length === 0) {
-    return '관리자에 의해 특별 발급되는 배지입니다.'
+    return '관리자가 직접 발급하는 배지예요.'
   }
 
   // 서로 다른 활동에서 각각 달성해도 인정되는 속성 조건이 2개 이상이면 안내 추가
@@ -123,7 +123,7 @@ function formatConditionText(condition: BadgeCondition | null): string {
     ? ' (각 조건은 서로 다른 활동에서 달성해도 인정돼요)'
     : ''
 
-  return parts.join(', ') + '하면 획득할 수 있습니다.' + crossAttrNote
+  return parts.join(', ') + '하면 획득할 수 있어요.' + crossAttrNote
 }
 
 interface BadgeDetailPageProps {
