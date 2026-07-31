@@ -88,23 +88,21 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
     { key: 'itembook', label: tabLabel(d.badges.tabItembook, itemBooks.length), ariaLabel: d.badges.tabItembook },
   ]
 
-  // 카테고리(산/대중교통 등)별로 묶고, 카테고리 안에서는 획득한 것부터(최근 획득순),
-  // 미획득은 이름순으로 정렬. 카테고리 그룹 자체는 라벨 가나다순으로 배치한다.
+  // 획득한 것만 보여준다 — 미획득 배지는 노출하지 않음(전국 산/지하철역 배지가
+  // 워낙 많아 미획득까지 보여주면 도감이 아니라 노이즈가 됨). 반복 발급 횟수는
+  // 여기서 세지 않고 배지 상세화면의 발급 이력에서 확인.
+  // 카테고리(산/대중교통 등)별로 묶고, 카테고리 안에서는 최근 획득순으로 정렬.
+  // 카테고리 그룹 자체는 라벨 가나다순으로 배치한다.
   const groupedPoiBadges = useMemo(() => {
+    const earnedPoiBadges = poiBadges.filter((p) => p.earnCount > 0)
     const byCategory = new Map<string, PoiBadgeItem[]>()
-    for (const item of poiBadges) {
+    for (const item of earnedPoiBadges) {
       const list = byCategory.get(item.category) ?? []
       list.push(item)
       byCategory.set(item.category, list)
     }
     for (const list of byCategory.values()) {
-      list.sort((a, b) => {
-        if (a.earnCount > 0 && b.earnCount > 0) {
-          return new Date(b.latestEarnedAt!).getTime() - new Date(a.latestEarnedAt!).getTime()
-        }
-        if (a.earnCount > 0 !== b.earnCount > 0) return a.earnCount > 0 ? -1 : 1
-        return a.badge.name.localeCompare(b.badge.name, 'ko')
-      })
+      list.sort((a, b) => new Date(b.latestEarnedAt!).getTime() - new Date(a.latestEarnedAt!).getTime())
     }
     return Array.from(byCategory.entries()).sort(([, a], [, b]) =>
       a[0].categoryLabel.localeCompare(b[0].categoryLabel, 'ko')
@@ -215,9 +213,9 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
           )
         )}
 
-        {/* 장소(POI) 배지 탭 */}
+        {/* 장소(POI) 배지 탭 — 획득한 배지만 노출. 반복 발급 이력은 배지 상세화면에서 확인 */}
         {activeTab === 'poi' && (
-          poiBadges.length > 0 ? (
+          poiEarnedCount > 0 ? (
             <div className="flex flex-col gap-[var(--spacing-24)]">
               {groupedPoiBadges.map(([category, items]) => (
                 <div key={category}>
@@ -225,35 +223,28 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                     {items[0].categoryLabel}
                   </h2>
                   <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-                    {items.map(({ badge, earnCount }) => {
-                      const earned = earnCount > 0
-                      return (
-                        <Link key={badge.id} href={`/badges/${badge.id}`}>
-                          <Card className={`flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'bg-surface-inverse/50'}`}>
-                            <div className={`w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden ${earned ? '' : 'grayscale opacity-40'}`}>
-                              {badge.image_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={badge.image_url}
-                                  alt={badge.name}
-                                  className="w-full h-full object-contain p-1"
-                                />
-                              ) : (
-                                <MedalIcon className="w-9 h-9 text-text-inverse/40" />
-                              )}
-                            </div>
-                            <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
-                            <div className="h-6 flex items-center justify-center gap-1">
-                              <RarityBadge rarity={badge.rarity} />
-                              {/* 반복 획득 배지는 몇 번 획득했는지 표시 — 상세 획득 이력은 배지 상세화면에서 */}
-                              {earned && earnCount > 1 && (
-                                <span className="text-[10px] tabular-nums text-text-inverse/50">×{earnCount}</span>
-                              )}
-                            </div>
-                          </Card>
-                        </Link>
-                      )
-                    })}
+                    {items.map(({ badge }) => (
+                      <Link key={badge.id} href={`/badges/${badge.id}`}>
+                        <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
+                          <div className="w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
+                            {badge.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={badge.image_url}
+                                alt={badge.name}
+                                className="w-full h-full object-contain p-1"
+                              />
+                            ) : (
+                              <MedalIcon className="w-9 h-9 text-text-inverse/40" />
+                            )}
+                          </div>
+                          <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
+                          <div className="h-6 flex items-center justify-center">
+                            <RarityBadge rarity={badge.rarity} />
+                          </div>
+                        </Card>
+                      </Link>
+                    ))}
                   </div>
                 </div>
               ))}
