@@ -17,7 +17,7 @@ export const ko = {
     loadMore: '더 불러오기',
     back: '뒤로',
     countItems: '{count}개',
-    networkError: '네트워크 오류가 발생했습니다',
+    networkError: '네트워크 오류가 발생했어요',
     footerCopyright: '© 2026 Standard Manual All Rights Reserved.',
   },
 
@@ -171,7 +171,7 @@ export const ko = {
     dropAlert: '드랍',
     editorialArticle: '기사',
     backToToday: '투데이로',
-    noBody: '본문이 없습니다',
+    noBody: '본문이 없어요',
   },
 
   /** 배지 목록/상세 화면 */
@@ -184,9 +184,9 @@ export const ko = {
     emptyActivityTitle: '아직 획득한 배지가 없어요',
     emptyActivityBody: 'Strava를 연동하고 활동하면 배지를 획득할 수 있어요',
     emptyItemTitle: '아직 아이템 배지가 없어요',
-    emptyItemBody: '활동을 완료하면 확률로 아이템 배지가 드랍됩니다',
+    emptyItemBody: '활동을 완료하면 확률로 아이템 배지가 드랍돼요',
     emptyItembookTitle: '아직 아이템북이 없어요',
-    emptyItembookBody: '관리자가 아이템북을 등록하면 이 곳에 표시됩니다',
+    emptyItembookBody: '관리자가 아이템북을 등록하면 이 곳에 표시돼요',
 
     expiringSoon: '곧 만료',
     itembookCompleted: '완성',
@@ -220,7 +220,7 @@ export const ko = {
     physicalPatchButton: '실물 패치 보기',
 
     notEarnedTitle: '아직 획득하지 못한 배지예요',
-    notEarnedBody: '조건을 달성하면 자동으로 획득됩니다',
+    notEarnedBody: '조건을 달성하면 자동으로 획득돼요',
 
     earnedTag: '획득',
     notEarnedTag: '미획득',
@@ -250,15 +250,15 @@ export const ko = {
     expiresNone: '없음',
     expiringSuffix: ' 만료',
     rarity: '희귀도',
-    noDescription: '설명이 없습니다',
+    noDescription: '설명이 없어요',
     belongsToItembook: '속한 아이템북',
     expiringSoonTitle: '만료 임박',
-    expiringSoonBody: '7일 이내에 이 아이템이 만료됩니다',
+    expiringSoonBody: '7일 이내에 이 아이템이 만료돼요',
 
     historyTitle: '획득 이력',
     historyLoading: '불러오는 중',
-    historyError: '이력을 불러올 수 없습니다',
-    historyEmpty: '이력이 없습니다',
+    historyError: '이력을 불러올 수 없어요',
+    historyEmpty: '이력이 없어요',
     historyUnknownUser: '알 수 없는 유저',
     obtainByDrop: '활동 드랍',
     obtainByDropEvent: '이벤트 드랍',
@@ -268,7 +268,7 @@ export const ko = {
     eventPickedUp: 'POI 픽업',
 
     fleaMarketComingTitle: '플리마켓 오픈 준비 중',
-    fleaMarketComingBody1: '서울 DAU {count} 달성 시 오픈됩니다',
+    fleaMarketComingBody1: '서울 DAU {count} 달성하면 열려요',
     fleaMarketComingBody2: '플리마켓에서 다른 러너들과 아이템 배지를 교환할 수 있어요',
     fleaMarketConditionLabel: '오픈 조건',
     fleaMarketConditionStatus: '달성 전',
@@ -295,7 +295,7 @@ export const ko = {
     foundNearby: '이 근처에서 발견됨',
     droppedBy: '{name}이(가) 드랍',
     anonymous: '익명',
-    confirmDrop: "'{name}'을(를)\n여기에 드랍하시겠습니까?",
+    confirmDrop: "'{name}'을(를)\n여기에 드랍할까요?",
     cancel: '취소',
     dropButton: '드랍하기',
     dropSuccess: '드랍 완료',
@@ -394,7 +394,7 @@ export const ko = {
     googleLogin: '구글로 시작하기',
     errorFailed: '로그인에 실패했어요. 다시 시도해주세요.',
     errorGeneric: '오류가 발생했어요. 잠시 후 다시 시도해주세요.',
-    terms: '계속하면 JAM!의 이용약관 및 개인정보처리방침에 동의하는 것으로 간주됩니다.',
+    terms: '계속하면 JAM!의 이용약관 및 개인정보처리방침에 동의하는 것으로 간주돼요.',
   },
 
   /** 온보딩(아이디 설정) */
@@ -431,9 +431,9 @@ export const ko = {
     saveError: '저장에 실패했어요. 다시 시도해 주세요.',
   },
 
-  /** 잼 포인트 내역 */
+  /** JAM 포인트 내역 */
   points: {
-    title: '잼 포인트',
+    title: 'JAM 포인트',
     balanceLabel: '현재 잔액',
     historyTitle: '최근 내역',
     loading: '불러오는 중',
@@ -509,8 +509,8 @@ export const ko = {
     successResult: '{names} 획득!',
     selectRangeError: '아이템 2~10개를 선택해주세요.',
     itemsNotFound: '아이템을 찾을 수 없어요.',
-    recipeFail: '조합에 실패했어요. 아이템이 소각됐습니다.',
-    consolationPoints: ' (위로 잼 포인트 +{points})',
+    recipeFail: '조합에 실패했어요. 아이템이 소각됐어요.',
+    consolationPoints: ' (위로 JAM 포인트 +{points})',
     genericError: '오류가 발생했어요.',
     genericFail: '조합 실패',
   },
