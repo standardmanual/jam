@@ -5,8 +5,8 @@ import type { InventoryRow } from '@/types/database'
 
 /**
  * 유저 전체 초기화 (시뮬레이터 반복 테스트용)
- * 유지: users 계정, strava_connections 행(토큰·연동 상태)
- * 삭제: 활동·배지·아이템·미션·피드·POI드랍·팔로우·드랍상태·아이템북완성 전체
+ * 유지: users 계정, strava_connections 행(토큰·연동 상태), 팔로잉/팔로워 관계
+ * 삭제: 활동·배지·아이템·미션·피드·POI드랍·드랍상태·아이템북완성 전체
  * 초기화: initial_sync_done=false + strava last_synced_at=NULL
  *         → 다음 싱크가 "최초 연동"처럼 과거 이력 전체를 다시 불러온다 (연동은 유지)
  */
@@ -49,6 +49,24 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     deletedItemCount = count ?? 0
   }
 
+  // ── 1.5단계: 이 유저가 드랍한 POI를 "타인이" 주워서 보유 중인 inventory_items도 선삭제
+  // (poi_drops 삭제 시 inventory_items.drop_id FK가 NO ACTION이라 남아있으면 위반됨)
+  const { data: droppedRows, error: droppedError } = await supabase
+    .from('poi_drops')
+    .select('id')
+    .eq('dropper_user_id', userId)
+
+  if (droppedError) return NextResponse.json({ error: droppedError.message }, { status: 500 })
+
+  const droppedIds = (droppedRows ?? []).map((row) => (row as { id: string }).id)
+  if (droppedIds.length > 0) {
+    const { error: foreignItemErr } = await supabase
+      .from('inventory_items')
+      .delete()
+      .in('drop_id', droppedIds)
+    if (foreignItemErr) return NextResponse.json({ error: foreignItemErr.message }, { status: 500 })
+  }
+
   // ── 2단계: 병렬 삭제 (inventory_items 제거 후 poi_drops 삭제 안전) ─────────
   const [
     { count: deletedBadgeCount, error: e1 },
@@ -57,8 +75,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     { error: e4 },
     { error: e5 },
     { error: e6 },
-    { error: e7 },
-    { error: e8 },
   ] = await Promise.all([
     // 배지 기록
     supabase.from('user_activity_badges').delete({ count: 'exact' }).eq('user_id', userId),
@@ -73,13 +89,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     supabase.from('user_mission_completions').delete().eq('user_id', userId),
     // 미션 참여 기록
     supabase.from('user_mission_participations').delete().eq('user_id', userId),
-    // 이 유저가 팔로우한 관계
-    supabase.from('user_follows').delete().eq('follower_id', userId),
-    // 이 유저를 팔로우한 관계
-    supabase.from('user_follows').delete().eq('following_id', userId),
   ])
 
-  const parallelError = e1 ?? e2 ?? e3 ?? e4 ?? e5 ?? e6 ?? e7 ?? e8
+  const parallelError = e1 ?? e2 ?? e3 ?? e4 ?? e5 ?? e6
   if (parallelError) return NextResponse.json({ error: parallelError.message }, { status: 500 })
 
   // ── 3단계: 드랍엔진 v2 상태 + 아이템북 완성 기록 삭제 ─────────
