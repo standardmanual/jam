@@ -72,10 +72,14 @@ function tabLabel(label: string, count: number) {
   )
 }
 
+type PoiSortOrder = 'latest' | 'name'
+
 export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiBadges }: BadgesClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('activity')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
   const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
+  const [poiCategoryFilter, setPoiCategoryFilter] = useState<string>('all')
+  const [poiSortOrder, setPoiSortOrder] = useState<PoiSortOrder>('latest')
   const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
 
   const earnedCount = badges.filter((b) => b.earned).length
@@ -91,23 +95,31 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
   // 획득한 것만 보여준다 — 미획득 배지는 노출하지 않음(전국 산/지하철역 배지가
   // 워낙 많아 미획득까지 보여주면 도감이 아니라 노이즈가 됨). 반복 발급 횟수는
   // 여기서 세지 않고 배지 상세화면의 발급 이력에서 확인.
-  // 카테고리(산/대중교통 등)별로 묶고, 카테고리 안에서는 최근 획득순으로 정렬.
-  // 카테고리 그룹 자체는 라벨 가나다순으로 배치한다.
-  const groupedPoiBadges = useMemo(() => {
-    const earnedPoiBadges = poiBadges.filter((p) => p.earnCount > 0)
-    const byCategory = new Map<string, PoiBadgeItem[]>()
+  const earnedPoiBadges = useMemo(() => poiBadges.filter((p) => p.earnCount > 0), [poiBadges])
+
+  // 카테고리 드롭다운 옵션 — 실제로 획득한 배지에 존재하는 카테고리만, 라벨 가나다순
+  const poiCategoryOptions = useMemo(() => {
+    const seen = new Map<string, string>()
     for (const item of earnedPoiBadges) {
-      const list = byCategory.get(item.category) ?? []
-      list.push(item)
-      byCategory.set(item.category, list)
+      if (!seen.has(item.category)) seen.set(item.category, item.categoryLabel)
     }
-    for (const list of byCategory.values()) {
-      list.sort((a, b) => new Date(b.latestEarnedAt!).getTime() - new Date(a.latestEarnedAt!).getTime())
-    }
-    return Array.from(byCategory.entries()).sort(([, a], [, b]) =>
-      a[0].categoryLabel.localeCompare(b[0].categoryLabel, 'ko')
+    return Array.from(seen.entries()).sort(([, a], [, b]) => a.localeCompare(b, 'ko'))
+  }, [earnedPoiBadges])
+
+  // 액티비티 배지 탭과 동일한 패턴 — 드롭다운 2개(카테고리, 정렬)로 필터링한
+  // 평평한 그리드. 최신순은 가장 최근에 획득한 것부터, 이름순은 가나다순.
+  const filteredPoiBadges = useMemo(() => {
+    const filtered = earnedPoiBadges.filter(
+      (item) => poiCategoryFilter === 'all' || item.category === poiCategoryFilter
     )
-  }, [poiBadges])
+    const sorted = [...filtered]
+    if (poiSortOrder === 'latest') {
+      sorted.sort((a, b) => new Date(b.latestEarnedAt!).getTime() - new Date(a.latestEarnedAt!).getTime())
+    } else {
+      sorted.sort((a, b) => a.badge.name.localeCompare(b.badge.name, 'ko'))
+    }
+    return sorted
+  }, [earnedPoiBadges, poiCategoryFilter, poiSortOrder])
 
   // 획득한 것부터(획득 최신순), 미획득은 같은 액티비티끼리 모아 이름순 → 등급 낮은순.
   // 화면에 별도 구간 헤더로 나누진 않고 정렬 순서로만 배치한다.
@@ -215,40 +227,59 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
 
         {/* 장소(POI) 배지 탭 — 획득한 배지만 노출. 반복 발급 이력은 배지 상세화면에서 확인 */}
         {activeTab === 'poi' && (
-          poiEarnedCount > 0 ? (
-            <div className="flex flex-col gap-[var(--spacing-24)]">
-              {groupedPoiBadges.map(([category, items]) => (
-                <div key={category}>
-                  <h2 className="text-[10px] uppercase text-text-inverse/40 mb-[var(--spacing-8)]">
-                    {items[0].categoryLabel}
-                  </h2>
-                  <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-                    {items.map(({ badge }) => (
-                      <Link key={badge.id} href={`/badges/${badge.id}`}>
-                        <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
-                          <div className="w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
-                            {badge.image_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={badge.image_url}
-                                alt={badge.name}
-                                className="w-full h-full object-contain p-1"
-                              />
-                            ) : (
-                              <MedalIcon className="w-9 h-9 text-text-inverse/40" />
-                            )}
-                          </div>
-                          <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
-                          <div className="h-6 flex items-center justify-center">
-                            <RarityBadge rarity={badge.rarity} />
-                          </div>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
+          earnedPoiBadges.length > 0 ? (
+            <>
+              {/* 필터 드롭다운 — 액티비티 탭과 동일한 패턴 */}
+              <div className="flex gap-2 mb-[var(--spacing-16)]">
+                <select
+                  value={poiCategoryFilter}
+                  onChange={(e) => setPoiCategoryFilter(e.target.value)}
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                >
+                  <option value="all">{d.badges.filterPoiCategoryAll}</option>
+                  {poiCategoryOptions.map(([slug, label]) => (
+                    <option key={slug} value={slug}>{label}</option>
+                  ))}
+                </select>
+                <select
+                  value={poiSortOrder}
+                  onChange={(e) => setPoiSortOrder(e.target.value as PoiSortOrder)}
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                >
+                  <option value="latest">{d.badges.sortPoiLatest}</option>
+                  <option value="name">{d.badges.sortPoiName}</option>
+                </select>
+              </div>
+
+              {filteredPoiBadges.length > 0 ? (
+                <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+                  {filteredPoiBadges.map(({ badge }) => (
+                    <Link key={badge.id} href={`/badges/${badge.id}`}>
+                      <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
+                        <div className="w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
+                          {badge.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={badge.image_url}
+                              alt={badge.name}
+                              className="w-full h-full object-contain p-1"
+                            />
+                          ) : (
+                            <MedalIcon className="w-9 h-9 text-text-inverse/40" />
+                          )}
+                        </div>
+                        <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
+                        <div className="h-6 flex items-center justify-center">
+                          <RarityBadge rarity={badge.rarity} />
+                        </div>
+                      </Card>
+                    </Link>
+                  ))}
                 </div>
-              ))}
-            </div>
+              ) : (
+                <EmptyState title={d.badges.emptyPoiTitle} body={d.badges.emptyPoiBody} />
+              )}
+            </>
           ) : (
             <EmptyState title={d.badges.emptyPoiTitle} body={d.badges.emptyPoiBody} />
           )

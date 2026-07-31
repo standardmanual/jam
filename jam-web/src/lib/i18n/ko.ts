@@ -231,6 +231,9 @@ export const ko = {
     filterActivityAll: '전체 액티비티',
     filterRarityLabel: '등급',
     filterRarityAll: '전체 등급',
+    filterPoiCategoryAll: '전체',
+    sortPoiLatest: '최신순',
+    sortPoiName: '이름순',
   },
 
   /** 인벤토리 목록/상세, 플리마켓 */
