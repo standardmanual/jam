@@ -104,7 +104,14 @@ function dotIconHtml(color: string, size: number, opacity: number): string {
 }
 
 /**
- * 드랍/픽업 POI 마커 — 20px 서클 + 내부 네거티브 컬러 하강 화살표 아이콘.
+ * 드랍/픽업 POI 마커 서클 크기 배율. 기존 20px/26px(선택 시) 기준 130%.
+ */
+const DROP_MARKER_SCALE = 1.3
+
+/**
+ * 드랍/픽업 POI 마커 — 서클 + 내부 네거티브 컬러 메달(배지) 아이콘.
+ * "드랍/픽업 행위"가 아니라 "여기에 배지가 있다/없다"를 표현하도록 화살표 대신
+ * 배지 상세화면 등에서 이미 쓰이는 MedalIcon과 동일한 모양을 사용한다.
  * 픽업 가능 배지 있음 = 메인 포인트 컬러, 없음 = 그레이.
  * 드랍 범위 밖은 기존과 동일하게 진회색 + 반투명으로 표현한다.
  */
@@ -114,11 +121,12 @@ function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: n
   // 배경과 대비되는 네거티브 컬러 (코발트/그레이 모두 밝은 아이스가 대비 확보)
   const fg = hasDrops ? 'var(--color-sub)' : '#ffffff'
   const opacity = inRange ? 1 : 0.5
-  const icon = size * 0.55
+  const icon = size * 0.6
 
   return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};opacity:${opacity};border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">` +
-    `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="none" stroke="${fg}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
-    `<path d="M12 4v12"/><path d="M6 13l6 6 6-6"/>` +
+    `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="none" stroke="${fg}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
+    `<path d="M12 3.5l2.2 4.4 4.9.7-3.55 3.45.84 4.85L12 14.6l-4.39 2.3.84-4.85L4.9 8.6l4.9-.7L12 3.5z"/>` +
+    `<path d="M8.5 16.5L7 21.5l5-2.4 5 2.4-1.5-5"/>` +
     `</svg></div>`
 }
 
@@ -286,7 +294,7 @@ export default function MapView({
 
       // inDropRange=undefined(구버전 호환)이면 true로 간주
       const inRange = poi.inDropRange !== false
-      const size = isSelected ? 26 : 20
+      const size = Math.round((isSelected ? 26 : 20) * DROP_MARKER_SCALE)
 
       const marker = new naver.maps.Marker({
         position: new naver.maps.LatLng(poi.latitude, poi.longitude),
