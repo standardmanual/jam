@@ -37,13 +37,52 @@ export function haversineDistance(
   return EARTH_RADIUS_M * c
 }
 
+/**
+ * 점(p)과 선분(a-b) 사이의 최단 거리(미터)
+ * 위경도를 poi 위치 기준 등장방형(equirectangular) 평면에 투영해 계산 —
+ * 반경 수십~수백 미터 스케일에서는 오차가 무시할 수준
+ */
+function pointToSegmentDistanceMeters(
+  pLat: number,
+  pLng: number,
+  aLat: number,
+  aLng: number,
+  bLat: number,
+  bLng: number
+): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+  const cosLat0 = Math.cos(toRad(pLat))
+  const toXY = (lat: number, lng: number): [number, number] => [
+    toRad(lng) * cosLat0 * EARTH_RADIUS_M,
+    toRad(lat) * EARTH_RADIUS_M,
+  ]
+
+  const [px, py] = toXY(pLat, pLng)
+  const [ax, ay] = toXY(aLat, aLng)
+  const [bx, by] = toXY(bLat, bLng)
+
+  const dx = bx - ax
+  const dy = by - ay
+  if (dx === 0 && dy === 0) {
+    return Math.hypot(px - ax, py - ay)
+  }
+
+  let t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
+  t = Math.max(0, Math.min(1, t))
+  const cx = ax + t * dx
+  const cy = ay + t * dy
+  return Math.hypot(px - cx, py - cy)
+}
+
 // =========================================
 // 경로 ↔ POI 교차 검증
 // =========================================
 
 /**
  * 활동 경로가 POI 반경 내를 통과하는지 확인
- * route의 어느 한 점이라도 POI 반경 내에 있으면 true 반환
+ * route의 점 자체가 반경 내에 있거나, 인접한 두 점을 잇는 선분이 반경을
+ * 스쳐 지나가면 true 반환 (다운샘플링 등으로 포인트 간격이 벌어져 실제
+ * 이동 경로는 반경을 통과했는데 기록된 점만으로는 놓치는 경우 보완)
  *
  * @param route GPS 경로 좌표 배열 [[lat, lng], ...]
  * @param poiLat POI 위도
@@ -71,6 +110,15 @@ export function isRouteNearPoi(
       }
     }
   }
+
+  for (let i = 0; i < route.length - 1; i++) {
+    const [aLat, aLng] = route[i]
+    const [bLat, bLng] = route[i + 1]
+    if (pointToSegmentDistanceMeters(poiLat, poiLng, aLat, aLng, bLat, bLng) <= radiusMeters) {
+      return true
+    }
+  }
+
   return false
 }
 
