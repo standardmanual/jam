@@ -3,6 +3,14 @@
 declare namespace naver.maps {
   class LatLng {
     constructor(lat: number, lng: number)
+    lat(): number
+    lng(): number
+  }
+
+  /** 지도 뷰포트의 남서/북동 좌표 (map.getBounds() 반환값) */
+  class LatLngBounds {
+    getSW(): LatLng
+    getNE(): LatLng
   }
 
   class Point {
@@ -21,6 +29,8 @@ declare namespace naver.maps {
 
   class Map {
     constructor(el: HTMLElement, options: MapOptions)
+    getBounds(): LatLngBounds
+    getZoom(): number
   }
 
   interface MarkerIcon {
@@ -56,8 +66,14 @@ declare namespace naver.maps {
     constructor(options: CircleOptions)
   }
 
+  /** addListener가 반환하는 리스너 핸들 (removeListener에 그대로 넘긴다) */
+  interface MapEventListener {
+    readonly __naverEventListener?: never
+  }
+
   namespace Event {
-    function addListener(target: unknown, eventName: string, handler: () => void): void
+    function addListener(target: unknown, eventName: string, handler: () => void): MapEventListener
+    function removeListener(listener: MapEventListener): void
   }
 }
 

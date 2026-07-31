@@ -6,7 +6,6 @@ import Card from '@/components/ui/Card'
 import TopNav from '@/components/ui/TopNav'
 import { MedalIcon, BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import Link from 'next/link'
-import ShareCardModal from './ShareCardModal'
 import PoiMapButton from './PoiMapButton'
 import LocalDate from '@/components/LocalDate'
 import InventoryItemHistorySheet from '../../inventory/[itemId]/InventoryItemHistorySheet'
@@ -570,9 +569,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 액션 버튼들 */}
         <div className="flex flex-col gap-[var(--spacing-16)]">
-          {hasEarned && (
-            <ShareCardModal badgeId={badgeRow.id} badgeName={badgeRow.name} />
-          )}
           {badgeRow.patch_available && (
             <a
               href="#"
