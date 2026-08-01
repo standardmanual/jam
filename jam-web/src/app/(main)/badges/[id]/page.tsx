@@ -588,6 +588,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             <p className="text-[11px] text-text-inverse/40 mt-1">{d.badges.notEarnedBody}</p>
           </Card>
         )}
+
+        {/* POI 배지 안전 안내 — 반경 50m 동선 조건 + 무리한 접근 자제 요청 */}
+        {badgeRow.type === 'poi' && (
+          <p className="text-center text-[11px] leading-[var(--leading-body-sm)] text-text-inverse/40 px-[var(--spacing-16)]">
+            {d.badges.poiSafetyNotice}
+          </p>
+        )}
       </div>
     </div>
   )
