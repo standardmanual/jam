@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { findCumulativeConditionError } from '@/lib/admin/badge-validation'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -9,6 +10,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const body = await req.json()
   const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight, valid_from, valid_until, point_reward } = body
+
+  const cumulativeError = findCumulativeConditionError(type, condition_json ?? null)
+  if (cumulativeError) {
+    return NextResponse.json({ error: cumulativeError }, { status: 400 })
+  }
 
   const supabase = createServiceClient()
   const { data, error } = await supabase

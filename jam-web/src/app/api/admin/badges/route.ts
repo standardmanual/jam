@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { findCumulativeConditionError } from '@/lib/admin/badge-validation'
 
 export async function GET() {
   const admin = await getAdminUser()
@@ -21,6 +22,11 @@ export async function POST(req: NextRequest) {
 
   if (!name || !description || !type || !rarity || !image_url) {
     return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 })
+  }
+
+  const cumulativeError = findCumulativeConditionError(type, condition_json ?? null)
+  if (cumulativeError) {
+    return NextResponse.json({ error: cumulativeError }, { status: 400 })
   }
 
   const supabase = createServiceClient()

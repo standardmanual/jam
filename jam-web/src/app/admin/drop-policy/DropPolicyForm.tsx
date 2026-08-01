@@ -80,7 +80,15 @@ export default function DropPolicyForm({ initial }: { initial: DropPolicy }) {
     parseFloat(values.adjacent_weight || '0') +
     parseFloat(values.explore_weight || '0')
 
+  const raritySumInvalid = Math.abs(raritySum - 1) > 0.001
+  const bucketSumInvalid = bucketSum > 1.001
+  const hasValidationError = raritySumInvalid || bucketSumInvalid
+
   const handleSave = async () => {
+    if (hasValidationError) {
+      setMessage({ type: 'error', text: 'rarity 합/세계관 버킷 합을 먼저 맞춰주세요.' })
+      return
+    }
     setSaving(true)
     setMessage(null)
     try {
@@ -131,17 +139,17 @@ export default function DropPolicyForm({ initial }: { initial: DropPolicy }) {
       <div className="flex items-center gap-4">
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || hasValidationError}
           className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] transition-colors text-sm disabled:opacity-50"
         >
           {saving ? '저장 중…' : '저장'}
         </button>
         <div className="text-xs space-x-4">
-          <span className={Math.abs(raritySum - 1) > 0.001 ? 'text-red-600' : 'text-[#898989]'}>
-            rarity 합: {raritySum.toFixed(3)} {Math.abs(raritySum - 1) > 0.001 && '(1이어야 함)'}
+          <span className={raritySumInvalid ? 'text-red-600' : 'text-[#898989]'}>
+            rarity 합: {raritySum.toFixed(3)} {raritySumInvalid && '(1이어야 함)'}
           </span>
-          <span className={bucketSum > 1.001 ? 'text-red-600' : 'text-[#898989]'}>
-            세계관 버킷 합: {bucketSum.toFixed(3)} {bucketSum > 1.001 && '(1 이하여야 함)'}
+          <span className={bucketSumInvalid ? 'text-red-600' : 'text-[#898989]'}>
+            세계관 버킷 합: {bucketSum.toFixed(3)} {bucketSumInvalid && '(1 이하여야 함)'}
           </span>
         </div>
       </div>

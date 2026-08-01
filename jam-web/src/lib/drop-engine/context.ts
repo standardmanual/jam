@@ -11,11 +11,14 @@ import type { NormalizedActivity } from '@/types/strava'
 import { MYSTERY_FACTION_ID, RESOLUTION_FACTION_ID } from './constants'
 
 // 019_seed_worldview.sql 고정 UUID
-const RANGER = '7a91727e-e2e1-b7f7-45f0-899ce04716bd' // 아스팔트 레인저
-const GOURMET = 'defa02b9-c4b6-af0d-dc99-c43c278a78d8' // 낭만 미식가
-const GANG = '73f0f601-2382-900c-8ca2-5cc7c93ed95d' // 숲속의 갱단
-const BEAT = 'e33307bb-5191-5ad5-58e0-053b40cb09f0' // 비트 마에스트로
-const SHUTTER = '672acbec-74d3-f36c-28e9-42563dda8e13' // 셔터 마피아
+export const RANGER = '7a91727e-e2e1-b7f7-45f0-899ce04716bd' // 아스팔트 레인저
+export const GOURMET = 'defa02b9-c4b6-af0d-dc99-c43c278a78d8' // 낭만 미식가
+export const GANG = '73f0f601-2382-900c-8ca2-5cc7c93ed95d' // 숲속의 갱단
+export const BEAT = 'e33307bb-5191-5ad5-58e0-053b40cb09f0' // 비트 마에스트로
+export const SHUTTER = '672acbec-74d3-f36c-28e9-42563dda8e13' // 셔터 마피아
+
+/** 부팅 검증용 — 이 파일에서 실제로 참조하는 하드코딩 faction UUID 전체 */
+export const CONTEXT_FACTION_IDS = [RANGER, GOURMET, GANG, BEAT, SHUTTER]
 
 // 임계값 (엔진 상수 — 세밀 튜닝이 필요해지면 drop_policy로 승격)
 const COLD_MAX_C = -10

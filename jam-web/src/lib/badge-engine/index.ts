@@ -9,6 +9,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
+import { logEngineDecision } from '@/lib/engine-log'
 import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
@@ -493,47 +494,16 @@ export async function evaluateBadgesDetailed(
 
   const toIssueList = [...trackWinners.values(), ...standalones]
 
-  // ── 2.5단계: 배지 홍수 방지 (30일 내 activity_type당 최대 3개) ──────────
-  const MAX_PER_ACTIVITY_30D = 3
-  const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-
-  const recentByActivity = new Map<string, number>()
-  for (const owned of ownedBadges ?? []) {
-    if ((owned.earned_at ?? '') >= cutoff30d) {
-      const badge = allBadges.find((b) => b.id === owned.badge_id)
-      const actType = (badge?.condition_json as BadgeCondition | null)?.activity_type ?? 'all'
-      recentByActivity.set(actType, (recentByActivity.get(actType) ?? 0) + 1)
-    }
-  }
-
-  const RARITY_PRIORITY: Record<string, number> = { mythic: 4, legendary: 3, rare: 2, common: 1 }
-  toIssueList.sort(
-    (a, b) =>
-      (RARITY_PRIORITY[b.badge.rarity.toLowerCase()] ?? 0) -
-      (RARITY_PRIORITY[a.badge.rarity.toLowerCase()] ?? 0)
-  )
-
-  const finalIssueList: typeof toIssueList = []
-  for (const c of toIssueList) {
-    const actType = (c.condition.activity_type ?? 'all') as string
-    const recentCount = recentByActivity.get(actType) ?? 0
-    const pendingCount = finalIssueList.filter((x) => (x.condition.activity_type ?? 'all') === actType).length
-    if (recentCount + pendingCount < MAX_PER_ACTIVITY_30D) {
-      finalIssueList.push(c)
-    } else {
-      missed.push({
-        id: c.badge.id,
-        name: c.badge.name,
-        reason: `배지 홍수 방지 (${actType}: 30일 내 ${MAX_PER_ACTIVITY_30D}개 상한)`,
-        actual: String(recentCount + pendingCount),
-        required: String(MAX_PER_ACTIVITY_30D),
-      })
-    }
-  }
+  // 성과·루틴 배지(type='activity')는 전부 명시적 수치 조건으로 검증되므로
+  // 홍수 방지 캡을 두지 않는다 — 조건 충족 시 항상 발급을 보장한다.
+  // (과거엔 30일 내 activity_type당 최대 3개 캡이 있었으나, 온보딩 첫 싱크에서
+  //  common 배지 여러 개가 동시에 발급되며 자기들끼리 캡을 소진해 이후 정당한
+  //  발급까지 막는 문제가 있어 제거함. 아이템/드랍 배지는 drop-engine의
+  //  확률·섀도우밴·일일 하향 로직이 별도로 어뷰징을 방지한다.)
 
   // ── 2.8단계: 첫 싱크 게이트 — initial_sync_done=false이면 Common만 발급 ──
-  const gatedIssueList: typeof finalIssueList = []
-  for (const c of finalIssueList) {
+  const gatedIssueList: typeof toIssueList = []
+  for (const c of toIssueList) {
     if (isFirstSync && c.badge.rarity !== 'common') {
       missed.push({
         id: c.badge.id,
@@ -605,7 +575,14 @@ export async function evaluateBadgesDetailed(
       // (배지 발급 성공을 전제로 지급. 0이면 awardPoints가 스킵.)
       const pointReward = toIssue.point_reward ?? 0
       if (pointReward > 0) {
-        await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: toIssue.id })
+        const pointResult = await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: toIssue.id })
+        if (!pointResult) {
+          await logEngineDecision('badge', 'point_award_failed', userId, {
+            badgeId: toIssue.id,
+            badgeName: toIssue.name,
+            pointReward,
+          })
+        }
       }
 
       if (!silent) {
@@ -624,6 +601,11 @@ export async function evaluateBadgesDetailed(
   if (!dryRun && !overrideFirstSync && !userInitialSyncDone) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('users') as any).update({ initial_sync_done: true }).eq('id', userId)
+  }
+
+  // 판정 과정 기록 — dryRun(시뮬레이션)에서는 소음 방지를 위해 기록하지 않음
+  if (!dryRun) {
+    await logEngineDecision('badge', 'sync_result', userId, { triggeredBy, isFirstSync, earned, missed })
   }
 
   return { earned, missed }
