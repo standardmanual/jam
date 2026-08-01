@@ -31,6 +31,8 @@ declare namespace naver.maps {
     constructor(el: HTMLElement, options: MapOptions)
     getBounds(): LatLngBounds
     getZoom(): number
+    /** 지정 좌표를 중심으로 애니메이션과 함께 이동 + 줌 변경 */
+    morph(center: LatLng, zoom?: number): void
   }
 
   interface MarkerIcon {
