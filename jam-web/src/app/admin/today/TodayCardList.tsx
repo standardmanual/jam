@@ -89,9 +89,17 @@ const emptyForm = {
   is_active: true,
 }
 
+// ISO(UTC) 문자열을 datetime-local input이 요구하는 "YYYY-MM-DDTHH:mm" 로컬 형식으로 변환
+function toLocalInputValue(iso: string) {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export default function TodayCardList({ cards, badges, missions, itemBooks }: Props) {
   const [form, setForm] = useState(emptyForm)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [badgeQuery, setBadgeQuery] = useState('')
@@ -117,6 +125,39 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
         ? f.exposure_tags.filter((x) => x !== value)
         : [...f.exposure_tags, value],
     }))
+  }
+
+  function handleEdit(card: TodayCardRow) {
+    setForm({
+      template_type: card.template_type,
+      layout_type: card.layout_type,
+      title: card.title,
+      subtitle: card.subtitle ?? '',
+      cover_image_url: card.cover_image_url ?? '',
+      badge_ids: card.badge_ids ?? [],
+      mission_id: card.mission_id ?? '',
+      item_book_id: card.item_book_id ?? '',
+      region_label: card.region_label ?? '',
+      body_markdown: card.body_markdown ?? '',
+      target_href: card.target_href ?? '',
+      exposure_tags: card.exposure_tags ?? ['all'],
+      starts_at: toLocalInputValue(card.starts_at),
+      ends_at: toLocalInputValue(card.ends_at),
+      sort_order: card.sort_order,
+      is_active: card.is_active,
+    })
+    setEditingId(card.id)
+    setBadgeQuery('')
+    setError('')
+    setShowForm(true)
+  }
+
+  function handleCancel() {
+    setForm(emptyForm)
+    setEditingId(null)
+    setBadgeQuery('')
+    setError('')
+    setShowForm(false)
   }
 
   async function handleSave() {
@@ -147,8 +188,8 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
       is_active: form.is_active,
     }
 
-    const res = await fetch('/api/admin/today', {
-      method: 'POST',
+    const res = await fetch(editingId ? `/api/admin/today/${editingId}` : '/api/admin/today', {
+      method: editingId ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
@@ -160,6 +201,7 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
     }
     setForm(emptyForm)
     setBadgeQuery('')
+    setEditingId(null)
     setShowForm(false)
     router.refresh()
   }
@@ -186,7 +228,7 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
   return (
     <div className="space-y-6">
       <button
-        onClick={() => setShowForm((v) => !v)}
+        onClick={() => (showForm ? handleCancel() : setShowForm(true))}
         className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
       >
         {showForm ? '취소' : '+ 콘텐츠 추가'}
@@ -194,7 +236,7 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
 
       {showForm && (
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 space-y-4">
-          <h2 className="font-bold">새 투데이 카드</h2>
+          <h2 className="font-bold">{editingId ? '투데이 카드 수정' : '새 투데이 카드'}</h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -364,10 +406,18 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
 
           {error && <p className="text-red-600 text-xs">{error}</p>}
 
-          <button onClick={handleSave} disabled={saving}
-            className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm">
-            {saving ? '저장 중...' : '저장'}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={handleSave} disabled={saving}
+              className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm">
+              {saving ? '저장 중...' : editingId ? '수정 저장' : '저장'}
+            </button>
+            {editingId && (
+              <button onClick={handleCancel}
+                className="text-[#6b7280] font-bold px-4 py-2 rounded-xl hover:bg-[#f8f9fa] transition-colors text-sm">
+                취소
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -409,6 +459,9 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
                     <span className={`text-xs px-2 py-0.5 rounded-full ${statusCls}`}>{status}</span>
                   </td>
                   <td className="px-5 py-3 whitespace-nowrap">
+                    <button onClick={() => handleEdit(c)} className="text-[#6b7280] hover:text-[#111111] text-xs mr-3">
+                      수정
+                    </button>
                     <button onClick={() => handleToggleActive(c)} className="text-[#6b7280] hover:text-[#111111] text-xs mr-3">
                       {c.is_active ? '비활성화' : '활성화'}
                     </button>
