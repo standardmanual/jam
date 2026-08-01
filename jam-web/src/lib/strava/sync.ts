@@ -391,11 +391,21 @@ export async function syncStravaActivities(
 
   // 5. 멱등 처리 — overlap으로 다시 잡힌 것 중 이미 처리된 활동은 제외
   const processedIds = await getProcessedStravaIds(supabase, userId, fetchedActivities.map((a) => a.id))
-  const rawActivities = fetchedActivities.filter((a) => !processedIds.has(a.id))
+  let rawActivities = fetchedActivities.filter((a) => !processedIds.has(a.id))
+
+  // 첫 싱크(신규 연동)는 과거 이력 전체를 소급 처리하지 않고 최신 활동 1건만 반영한다.
+  // (배지 평가가 과거 이력 전체를 한 번에 넣으면 온보딩 순간 여러 등급이 동시에
+  //  터져 나오는 등 성장 경험이 왜곡되는 문제가 있었음 — 드랍엔진은 이미 1건 제한 중)
+  if (isFirstSync && rawActivities.length > 1) {
+    rawActivities = [...rawActivities]
+      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+      .slice(0, 1)
+  }
 
   console.info(
     `[syncStravaActivities] userId: ${userId}, afterTimestamp: ${afterTimestamp ?? 'none'}, ` +
-    `Strava 반환: ${fetchedActivities.length}건, 신규(미처리): ${rawActivities.length}건`
+    `Strava 반환: ${fetchedActivities.length}건, 신규(미처리): ${rawActivities.length}건` +
+    `${isFirstSync ? ' (첫 싱크 — 최신 1건 제한)' : ''}`
   )
 
   const { badges, itemBooksCompleted, missionsCompleted } = await processFetchedActivities(

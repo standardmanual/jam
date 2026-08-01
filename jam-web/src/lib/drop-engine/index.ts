@@ -37,7 +37,8 @@ import {
   type RarityContext,
   type BookCandidate,
 } from './layers'
-import { matchContextFactions } from './context'
+import { matchContextFactions, CONTEXT_FACTION_IDS } from './context'
+import { logEngineDecision } from '@/lib/engine-log'
 
 import {
   MYSTERY_FACTION_ID,
@@ -56,7 +57,7 @@ export { MYSTERY_FACTION_ID, RESOLUTION_FACTION_ID }
  * 드랍엔진은 활동 1건(또는 이번 싱크 배치)만으로 조건을 평가한다.
  * 누적/기간 집계 필드를 가진 배지는 단일 활동 시점 평가가 불가능하므로 드랍 제외.
  */
-const CUMULATIVE_CONDITION_FIELDS: (keyof BadgeCondition)[] = [
+export const CUMULATIVE_CONDITION_FIELDS: (keyof BadgeCondition)[] = [
   'monthly_km',
   'season_count',
   'weekly_count',
@@ -75,6 +76,39 @@ export function isDroppableForActivity(
   if (!cond || Object.keys(cond).length === 0) return true
   if (hasCumulativeCondition(cond)) return false
   return checkCondition(cond, activities)
+}
+
+// ────────────────────────────────────────────────────────────
+// 하드코딩 faction UUID 검증 (constants.ts / context.ts)
+// ────────────────────────────────────────────────────────────
+
+/** 검증 통과 후 프로세스 생존 기간 동안 재검증을 건너뛰기 위한 캐시 */
+let factionConstantsValidated = false
+
+/**
+ * DB 리셋·재시드 등으로 하드코딩된 faction UUID가 실제 factions 테이블과
+ * 어긋나면(예: 019_seed_worldview.sql이 다른 UUID로 재적용됨) 온보딩 필터·맥락
+ * 오버라이드가 조용히 빈 배열로 폴백해 의도한 동작이 깨진다. 이미 조회한
+ * factions 목록을 재사용해 추가 쿼리 없이 존재 여부만 확인한다.
+ */
+async function validateFactionConstants(factionIds: Set<string>): Promise<void> {
+  if (factionConstantsValidated) return
+
+  const expected = new Set([
+    MYSTERY_FACTION_ID,
+    RESOLUTION_FACTION_ID,
+    ...Object.values(ONBOARDING_FACTION_BY_ACTIVITY),
+    ...CONTEXT_FACTION_IDS,
+  ])
+  const missing = [...expected].filter((id) => !factionIds.has(id))
+
+  if (missing.length > 0) {
+    console.error(`[drop-engine] 하드코딩 faction UUID가 factions 테이블에 없음: ${missing.join(', ')}`)
+    await logEngineDecision('drop', 'faction_constant_missing', null, { missing })
+    return // 다음 호출에서 재검증 (DB가 아직 정정되지 않았을 수 있으므로 캐시하지 않음)
+  }
+
+  factionConstantsValidated = true
 }
 
 // ────────────────────────────────────────────────────────────
@@ -173,6 +207,8 @@ async function fetchDropStructure(
   const factionNames = new Map(
     (((factionsRaw ?? []) as { id: string; name: string }[])).map((f) => [f.id, f.name])
   )
+
+  void validateFactionConstants(new Set(factionNames.keys()))
 
   return {
     factionOfBook,
@@ -398,7 +434,14 @@ async function insertDrop(
   // (아이템배지도 badges 테이블이므로 point_reward를 가질 수 있음. 0이면 스킵.)
   const pointReward = picked.point_reward ?? 0
   if (pointReward > 0) {
-    await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: picked.id })
+    const pointResult = await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: picked.id })
+    if (!pointResult) {
+      await logEngineDecision('drop', 'point_award_failed', userId, {
+        badgeId: picked.id,
+        badgeName: picked.name,
+        pointReward,
+      })
+    }
   }
 
   await recordFeedEvent(userId, 'item_dropped', {
@@ -464,6 +507,9 @@ export async function tryItemDrop(
     // 슬롯 사전 체크 — "최소 1개"의 유일한 예외
     if (usedSlots >= structure.inventory.max_slots) {
       console.info(`[tryItemDrop] 슬롯 초과 — 드랍 취소 (userId: ${userId}, ${usedSlots}/${structure.inventory.max_slots})`)
+      await logEngineDecision('drop', 'drop_attempt', userId, {
+        attempt: i, outcome: 'slot_full', usedSlots, maxSlots: structure.inventory.max_slots,
+      })
       break
     }
 
@@ -475,7 +521,12 @@ export async function tryItemDrop(
     }
     const rolled = rollRarityV2(policy, ctx, rand)
     const capped = await applyShadowBanCap(userId, rolled)
-    if (!capped) continue
+    if (!capped) {
+      await logEngineDecision('drop', 'drop_attempt', userId, {
+        attempt: i, outcome: 'shadow_ban_blocked', rolledRarity: rolled,
+      })
+      continue
+    }
 
     // 맥락 오버라이드 발동 판정 — 복귀는 항상, 그 외는 context_override_rate 확률
     const contextActive =
@@ -484,7 +535,12 @@ export async function tryItemDrop(
 
     // Layer 2·3: 세계관 → 아이템북 → 배지
     const result = selectBadge(policy, structure, state, capped, contextFactionIds, rand)
-    if (!result) continue
+    if (!result) {
+      await logEngineDecision('drop', 'drop_attempt', userId, {
+        attempt: i, outcome: 'no_candidate', rolledRarity: rolled, cappedRarity: capped, contextActive,
+      })
+      continue
+    }
 
     const inserted = await insertDrop(
       structure.inventory.id,
@@ -493,7 +549,28 @@ export async function tryItemDrop(
       structure.factionNames.get(result.factionId) ?? '',
       result.isLastPiece
     )
-    if (!inserted) break
+    if (!inserted) {
+      await logEngineDecision('drop', 'drop_attempt', userId, {
+        attempt: i, outcome: 'insert_failed', badgeId: result.badge.id, rolledRarity: rolled, cappedRarity: capped,
+      })
+      break
+    }
+
+    await logEngineDecision('drop', 'drop_attempt', userId, {
+      attempt: i,
+      outcome: 'issued',
+      badgeId: result.badge.id,
+      badgeName: result.badge.name,
+      rarity: result.badge.rarity,
+      rolledRarity: rolled,
+      cappedRarity: capped,
+      factionId: result.factionId,
+      bookId: result.bookId,
+      isLastPiece: result.isLastPiece,
+      contextActive,
+      isComeback: comeback && i === 0,
+      pityCounters: state.last_piece_pity,
+    })
 
     usedSlots += 1
 

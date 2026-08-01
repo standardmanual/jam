@@ -18,6 +18,12 @@ const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'trail_running', '
 const BADGE_TYPES: BadgeType[] = ['activity', 'item', 'poi']
 const RARITIES: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
 
+/** drop-engine의 CUMULATIVE_CONDITION_FIELDS와 동일 — 아이템 배지엔 이 필드들을 설정할 수 없다
+ *  (설정하면 hasCumulativeCondition()이 항상 true가 되어 영원히 드랍 후보에서 제외됨) */
+const CUMULATIVE_CONDITION_KEYS: (keyof BadgeCondition)[] = [
+  'monthly_km', 'season_count', 'weekly_count', 'streak_days', 'total_count',
+]
+
 /** 배지에 연결할 수 있는 POI(이미 DB에 등록된 것) */
 interface LinkablePoi {
   id: string
@@ -95,6 +101,32 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  // ── 아이템 배지: 같은 북+희귀도 내 drop_weight 상대 확률 미리보기 ──────
+  const [siblingWeightSum, setSiblingWeightSum] = useState<number | null>(null)
+  useEffect(() => {
+    if (type !== 'item' || !itemBookId) {
+      setSiblingWeightSum(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/badges')
+        const data = await res.json()
+        if (!res.ok || cancelled) return
+        type BadgeListRow = { id: string; type: string; item_book_id: string | null; rarity: string; drop_weight: number | null; deleted_at: string | null }
+        const siblings = ((data.badges ?? []) as BadgeListRow[]).filter(
+          (b) => b.type === 'item' && b.item_book_id === itemBookId && b.rarity === rarity && !b.deleted_at && b.id !== (badge?.id ?? '')
+        )
+        const sum = siblings.reduce((s, b) => s + (b.drop_weight ?? 1.0), 0)
+        if (!cancelled) setSiblingWeightSum(sum)
+      } catch {
+        if (!cancelled) setSiblingWeightSum(null)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [type, itemBookId, rarity, badge?.id])
 
   // ── POI 배지 전용: 연결된 POI 목록 ──────────────────────────────
   const [linkedPois, setLinkedPois] = useState<LinkablePoi[]>([])
@@ -190,6 +222,12 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
   const validateCondition = (cond: BadgeCondition | null): string | null => {
     if (!cond) return null
+    if (type === 'item') {
+      const offending = CUMULATIVE_CONDITION_KEYS.filter((k) => cond[k] !== undefined)
+      if (offending.length > 0) {
+        return `아이템 배지에는 누적조건(${offending.join(', ')})을 설정할 수 없습니다. 이 조건이 있으면 드랍 후보에서 영구 제외됩니다.`
+      }
+    }
     // 계절 조건은 season_count 와 짝을 이뤄야 함
     if (cond.season && cond.season !== 'all' && !cond.season_count) {
       return '계절(season)을 설정하면 계절 활동 횟수(season_count)도 입력해야 합니다.'
@@ -396,6 +434,20 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                 onChange={(e) => setDropWeight(e.target.value)}
                 className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
               />
+              {itemBookId && siblingWeightSum !== null && (
+                (() => {
+                  const own = parseFloat(dropWeight) || 0
+                  const total = siblingWeightSum + own
+                  const pct = total > 0 ? Math.round((own / total) * 1000) / 10 : 0
+                  return (
+                    <span className="text-xs text-[#898989]">
+                      같은 아이템북·희귀도 내 다른 배지 {siblingWeightSum > 0 ? `(가중치 합 ${siblingWeightSum.toFixed(1)})` : ''}
+                      {' '}대비 이 배지가 뽑힐 상대 확률 약 <strong className="text-[#374151]">{pct}%</strong>
+                      {siblingWeightSum === 0 && ' (이 조합의 첫 배지)'}
+                    </span>
+                  )
+                })()
+              )}
             </label>
 
           </>
