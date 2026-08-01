@@ -133,12 +133,22 @@ function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: n
     `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="#ffffff" aria-hidden="true">${path}</svg></div>`
 }
 
+/** 개별 방문 배지 마커의 지름(px) — 드랍/픽업 POI 서클보다 작게 둬서 위쪽에 얹는다 */
+const BADGE_MARKER_SIZE = 22
 /**
- * POI 배지 마커 — 지름 30px 원형 배지 이미지.
+ * 방문 배지 마커를 POI 서클 위로 띄우는 수직 오프셋(px).
+ * 드랍/픽업 서클 반경(기본 20px 기준 20*1.56/2≈16px) + 여유 간격(4px).
+ */
+const BADGE_MARKER_LIFT = 20
+
+/**
+ * POI 배지 마커 — 지름 22px 원형 배지 이미지.
+ * 드랍/픽업 POI 서클과 같은 좌표에 겹쳐 그려지면 서클을 완전히 가리므로,
+ * anchor를 아래로 내려 서클 위쪽에 작게 얹히도록 배치한다(서클과 배지 둘 다 노출).
  * 미획득은 그레이스케일 필터로 표시한다(클릭 리스너 자체를 걸지 않아 탭 비활성).
  */
 function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: string): string {
-  const size = 30
+  const size = BADGE_MARKER_SIZE
   const filter = earned ? 'none' : 'grayscale(1)'
   const opacity = earned ? 1 : 0.7
   const safeName = escapeHtml(name)
@@ -339,7 +349,8 @@ export default function MapView({
       badgeMarkersRef.current.push(marker)
     })
 
-    // 줌 13 초과 — 개별 배지 마커
+    // 줌 13 초과 — 개별 배지 마커. 드랍/픽업 POI 서클과 같은 좌표를 공유하므로
+    // anchor.y를 키워 서클 위쪽에 작게 얹는다(서클을 가리지 않고 함께 노출).
     badgeMarkers.forEach((badge) => {
       const marker = new naver.maps.Marker({
         position: new naver.maps.LatLng(badge.latitude, badge.longitude),
@@ -347,7 +358,7 @@ export default function MapView({
         title: badge.name,
         icon: {
           content: badgeMarkerIconHtml(badge.image_url, badge.earned, badge.name),
-          anchor: new naver.maps.Point(15, 15),
+          anchor: new naver.maps.Point(BADGE_MARKER_SIZE / 2, BADGE_MARKER_SIZE / 2 + BADGE_MARKER_LIFT),
         },
         zIndex: badge.earned ? 8 : 7,
       })
