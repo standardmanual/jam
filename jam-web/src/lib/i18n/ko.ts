@@ -219,6 +219,7 @@ export const ko = {
 
     connectedLocationTitle: '연결 위치',
     viewOnMap: '{name} 지도에서 보기',
+    viewOnMapButton: '지도에서 보기',
 
     physicalPatchButton: '실물 패치 보기',
 
