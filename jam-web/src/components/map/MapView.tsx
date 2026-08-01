@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { CLUSTER_ZOOM_THRESHOLD } from '@/lib/poi/badge-clustering'
 
 export interface PoiMarker {
   id: string
@@ -334,11 +335,13 @@ export default function MapView({
     badgeMarkersRef.current.forEach((m) => m.setMap(null))
     badgeMarkersRef.current = []
 
-    // 줌 13 이하 — 서버가 집계한 클러스터를 그대로 렌더링
+    // 줌 13 이하 — 서버가 집계한 클러스터를 그대로 렌더링.
+    // 클릭 시 해당 좌표를 중심으로 이동 + 개별 마커가 보이는 줌으로 확대한다.
     badgeClusters.forEach((cluster) => {
       const size = cluster.count >= 100 ? 44 : cluster.count >= 10 ? 38 : 32
+      const clusterCenter = new naver.maps.LatLng(cluster.lat, cluster.lng)
       const marker = new naver.maps.Marker({
-        position: new naver.maps.LatLng(cluster.lat, cluster.lng),
+        position: clusterCenter,
         map,
         icon: {
           content: clusterMarkerIconHtml(cluster.count),
@@ -346,6 +349,11 @@ export default function MapView({
         },
         zIndex: 6,
       })
+
+      naver.maps.Event.addListener(marker, 'click', () => {
+        map.morph(clusterCenter, CLUSTER_ZOOM_THRESHOLD + 1)
+      })
+
       badgeMarkersRef.current.push(marker)
     })
 
