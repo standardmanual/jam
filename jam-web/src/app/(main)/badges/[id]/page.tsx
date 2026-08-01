@@ -478,13 +478,15 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </Card>
         )}
 
-        {/* 획득 조건 */}
-        <Card>
-          <h2 className="text-[10px] uppercase text-text-inverse/40 mb-2">{d.badges.conditionTitle}</h2>
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
-            {badgeRow.type === 'poi' ? d.badges.conditionPoiBody : formatConditionText(badgeRow.condition_json)}
-          </p>
-        </Card>
+        {/* 획득 조건 — POI 배지는 하단 안전 안내 문구로 대체하므로 표시하지 않는다 */}
+        {badgeRow.type !== 'poi' && (
+          <Card>
+            <h2 className="text-[10px] uppercase text-text-inverse/40 mb-2">{d.badges.conditionTitle}</h2>
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
+              {formatConditionText(badgeRow.condition_json)}
+            </p>
+          </Card>
+        )}
 
         {/* 획득 이력 (poi 타입 — 반복 획득) */}
         {badgeRow.type === 'poi' && poiEarns.length > 0 && (
@@ -558,14 +560,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </Card>
         )}
 
-        {/* POI 위치 보기 */}
-        {poi && (
-          <Card>
-            <h2 className="text-[10px] uppercase text-text-inverse/40 mb-[var(--spacing-16)]">{d.badges.connectedLocationTitle}</h2>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70 mb-[var(--spacing-16)]">{poi.name}</p>
-            <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />
-          </Card>
-        )}
+        {/* POI 위치 보기 — 박스 없이 버튼만 노출 */}
+        {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
 
         {/* 액션 버튼들 */}
         <div className="flex flex-col gap-[var(--spacing-16)]">
@@ -591,7 +587,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* POI 배지 안전 안내 — 반경 50m 동선 조건 + 무리한 접근 자제 요청 */}
         {badgeRow.type === 'poi' && (
-          <p className="text-center text-[11px] leading-[var(--leading-body-sm)] text-text-inverse/40 px-[var(--spacing-16)]">
+          <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/50 px-[var(--spacing-16)]">
             {d.badges.poiSafetyNotice}
           </p>
         )}
