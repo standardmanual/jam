@@ -104,10 +104,10 @@ function dotIconHtml(color: string, size: number, opacity: number): string {
 }
 
 /**
- * 드랍/픽업 POI 마커 서클 크기 배율. 기존 20px/26px(선택 시) 기준 130%에서
- * 다시 120% 확대(1.3 × 1.2 = 1.56배).
+ * 드랍/픽업 POI 마커 서클 크기 배율. 기본 20px 기준 24px(1.2배)로,
+ * 방문 배지 마커(BADGE_MARKER_SIZE)와 크기를 맞춘다.
  */
-const DROP_MARKER_SCALE = 1.3 * 1.2
+const DROP_MARKER_SCALE = 1.2
 
 // 배지 아이콘(흰색) — badge-fill.svg / badge-line.svg 그대로 사용
 const BADGE_FILL_PATH =
@@ -133,16 +133,16 @@ function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: n
     `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="#ffffff" aria-hidden="true">${path}</svg></div>`
 }
 
-/** 개별 방문 배지 마커의 지름(px) — 드랍/픽업 POI 서클보다 작게 둬서 위쪽에 얹는다 */
-const BADGE_MARKER_SIZE = 22
+/** 개별 방문 배지 마커의 지름(px) — 드랍/픽업 POI 서클(기본 24px)과 동일하게 맞춘다 */
+const BADGE_MARKER_SIZE = 24
 /**
  * 방문 배지 마커를 POI 서클 위로 띄우는 수직 오프셋(px).
- * 드랍/픽업 서클 반경(기본 20px 기준 20*1.56/2≈16px) + 여유 간격(4px).
+ * 드랍/픽업 서클 반경(기본 24px 기준 12px) + 여유 간격(4px).
  */
-const BADGE_MARKER_LIFT = 20
+const BADGE_MARKER_LIFT = 16
 
 /**
- * POI 배지 마커 — 지름 22px 원형 배지 이미지.
+ * POI 배지 마커 — 지름 24px 원형 배지 이미지.
  * 드랍/픽업 POI 서클과 같은 좌표에 겹쳐 그려지면 서클을 완전히 가리므로,
  * anchor를 아래로 내려 서클 위쪽에 작게 얹히도록 배치한다(서클과 배지 둘 다 노출).
  * 미획득은 그레이스케일 필터로 표시한다(클릭 리스너 자체를 걸지 않아 탭 비활성).
