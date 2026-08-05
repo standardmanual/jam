@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import Button from '@/components/ui/button'
+import Button from '@/components/ui/Button'
 import { SearchIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 

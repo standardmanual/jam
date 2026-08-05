@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { ToastProvider } from '@/components/ui/toast'
-import TabBar from '@/components/ui/tabbar'
-import Footer from '@/components/ui/footer'
+import { ToastProvider } from '@/components/ui/Toast'
+import TabBar from '@/components/ui/TabBar'
+import Footer from '@/components/ui/Footer'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()

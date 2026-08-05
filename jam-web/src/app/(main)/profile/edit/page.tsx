@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import TopNav from '@/components/ui/topnav'
+import TopNav from '@/components/ui/TopNav'
 import { UserIcon } from '@/components/ui/icons'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'

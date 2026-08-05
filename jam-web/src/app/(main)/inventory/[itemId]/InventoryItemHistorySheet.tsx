@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { HistoryEvent } from '@/app/api/inventory/items/[itemId]/history/route'
 import { ChevronRightIcon, PinIcon } from '@/components/ui/icons'
-import BottomSheet from '@/components/ui/bottomsheet'
+import BottomSheet from '@/components/ui/BottomSheet'
 import { useSkeletonReveal } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'

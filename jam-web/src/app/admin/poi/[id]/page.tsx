@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/shadcn-button'
 import { PoiDetail } from '@/components/admin/poi/PoiDetail'
 import PoiForm from '../PoiForm'
 import type { PoiRow, PoiCategoryRow } from '@/types/database'

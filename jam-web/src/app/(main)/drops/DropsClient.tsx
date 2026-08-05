@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import Button from '@/components/ui/button'
-import { useToast } from '@/components/ui/toast'
+import Button from '@/components/ui/Button'
+import { useToast } from '@/components/ui/Toast'
 import { CloseIcon, MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import BadgeDetailSheet, { PickupDrop } from './BadgeDetailSheet'

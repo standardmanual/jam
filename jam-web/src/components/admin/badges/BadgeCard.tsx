@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/shadcn-button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
 
 const RARITY_BADGE_COLOR: Record<string, string> = {
