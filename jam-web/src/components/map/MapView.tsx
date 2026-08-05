@@ -141,9 +141,14 @@ const BADGE_MARKER_SIZE = 24
  * 드랍/픽업 서클 반경(기본 24px 기준 12px) + 여유 간격(4px).
  */
 const BADGE_MARKER_LIFT = 16
+/**
+ * 마커 콘텐츠 전체(서클+이름 라벨) 너비(px). 서클은 이 너비 안에서 가운데 정렬되므로
+ * anchor.x는 항상 이 값의 절반 — 라벨 길이가 서클보다 넓어져도 서클 중심 좌표는 그대로 유지된다.
+ */
+const BADGE_MARKER_CONTENT_WIDTH = 72
 
 /**
- * POI 배지 마커 — 지름 24px 원형 배지 이미지.
+ * POI 배지 마커 — 지름 24px 원형 배지 이미지 + 아래에 POI 이름 라벨.
  * 드랍/픽업 POI 서클과 같은 좌표에 겹쳐 그려지면 서클을 완전히 가리므로,
  * anchor를 아래로 내려 서클 위쪽에 작게 얹히도록 배치한다(서클과 배지 둘 다 노출).
  * 미획득은 그레이스케일 필터로 표시한다(클릭 리스너 자체를 걸지 않아 탭 비활성).
@@ -157,7 +162,10 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
     ? `<img src="${escapeHtml(imageUrl)}" alt="${safeName}" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;" />`
     : `<span style="font-size:13px;line-height:1;color:#666;">?</span>`
 
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;background:#ffffff;border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;filter:${filter};opacity:${opacity};">${inner}</div>`
+  const circle = `<div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;background:#ffffff;border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;filter:${filter};opacity:${opacity};">${inner}</div>`
+  const label = `<div style="margin-top:2px;max-width:100%;padding:1px 6px;border-radius:8px;background:rgba(0,0,0,0.65);color:#ffffff;font-size:10px;line-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
+
+  return `<div style="width:${BADGE_MARKER_CONTENT_WIDTH}px;display:flex;flex-direction:column;align-items:center;">${circle}${label}</div>`
 }
 
 /** 클러스터 마커 — 숫자를 표기한 원형 마커 (개수에 따라 크기 가변) */
@@ -366,7 +374,7 @@ export default function MapView({
         title: badge.name,
         icon: {
           content: badgeMarkerIconHtml(badge.image_url, badge.earned, badge.name),
-          anchor: new naver.maps.Point(BADGE_MARKER_SIZE / 2, BADGE_MARKER_SIZE / 2 + BADGE_MARKER_LIFT),
+          anchor: new naver.maps.Point(BADGE_MARKER_CONTENT_WIDTH / 2, BADGE_MARKER_SIZE / 2 + BADGE_MARKER_LIFT),
         },
         zIndex: badge.earned ? 8 : 7,
       })
