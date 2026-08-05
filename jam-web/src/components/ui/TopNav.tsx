@@ -29,7 +29,9 @@ export interface TopNavProps {
   showBack?: boolean
 }
 
-const TOUCH = 'w-11 h-11 shrink-0 flex items-center justify-center'
+// 터치 영역은 44×44pt를 유지하되, 아이콘을 오른쪽(제목 쪽)으로 붙여 아이콘 자체의
+// 좌우 여백이 아이콘-제목 사이 공백으로 잡아먹히지 않게 한다.
+const TOUCH = 'w-11 h-11 shrink-0 flex items-center justify-end'
 const PRESS = 'transition-transform duration-100 active:scale-90'
 
 function ChevronLeft() {
@@ -57,24 +59,28 @@ export default function TopNav({ title, onBack, backHref, rightSlot, showBack = 
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <div className="flex items-center gap-2 px-4 h-14">
-        {!showBack ? null : backHref ? (
-          <Link href={backHref} aria-label={d.common.back} className={backClass}>
-            <ChevronLeft />
-          </Link>
-        ) : (
-          <button
-            type="button"
-            aria-label={d.common.back}
-            onClick={onBack ?? (() => router.back())}
-            className={backClass}
-          >
-            <ChevronLeft />
-          </button>
-        )}
+        {/* 뒤로가기 chevron과 제목 사이 간격만 별도로 좁힌다(gap-1) —
+            우측 슬롯과의 간격(위 gap-2)에는 영향 없음 */}
+        <div className="flex-1 min-w-0 flex items-center gap-1">
+          {!showBack ? null : backHref ? (
+            <Link href={backHref} aria-label={d.common.back} className={backClass}>
+              <ChevronLeft />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              aria-label={d.common.back}
+              onClick={onBack ?? (() => router.back())}
+              className={backClass}
+            >
+              <ChevronLeft />
+            </button>
+          )}
 
-        <h1 className="flex-1 min-w-0 truncate text-[length:var(--text-body)] leading-[var(--leading-body)] font-normal">
-          {title}
-        </h1>
+          <h1 className="min-w-0 truncate text-[length:var(--text-body)] leading-[var(--leading-body)] font-normal">
+            {title}
+          </h1>
+        </div>
 
         <div className={rightSlot ? 'shrink-0 flex items-center justify-end min-w-11' : 'w-11 shrink-0'}>
           {rightSlot}
