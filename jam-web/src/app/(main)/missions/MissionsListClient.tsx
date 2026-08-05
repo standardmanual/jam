@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { ActivityType, MissionCondition, MissionRow, MissionType } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
-import Card from '@/components/ui/Card'
-import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
+import Card from '@/components/ui/card'
+import SlidingTabs, { type SlidingTabItem } from '@/components/ui/slidingtabs'
 import { d, t } from '@/lib/i18n'
 
 export interface MissionListItem extends MissionRow {
