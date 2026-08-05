@@ -1,6 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { ItemBookDetail } from '@/components/admin/itembooks/ItemBookDetail'
 import ItemBookForm from '../ItemBookForm'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
 
@@ -27,30 +29,55 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
   const slottedBadges = (slottedRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
   const availableBadges = (availableRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
 
-  // 필수 액티비티/완성 보상 배지는 전체 목록을 가져오지 않고, 이미 지정된 값이 있을 때만
-  // 콤보박스 초기 라벨용으로 그 배지 하나씩만 콕 집어서 조회한다.
   const labelIds = [book.required_activity_badge_id, book.reward_badge_id].filter((v): v is string => !!v)
   const { data: labelBadgesRaw } = labelIds.length > 0
     ? await supabase.from('badges').select('id, name').in('id', labelIds)
     : { data: [] as Pick<BadgeRow, 'id' | 'name'>[] }
   const labelBadgeMap = new Map(((labelBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]).map((b) => [b.id, b.name]))
 
+  const factionLabel = factions.find(f => f.id === book.faction_id)?.name
+
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <Link href="/admin/itembooks" className="text-[#6b7280] hover:text-[#111111] text-sm transition-colors">
-          ← 아이템북 목록
+    <div className="space-y-8 p-4 md:p-8">
+      {/* 뒤로가기 + 제목 */}
+      <div className="space-y-3">
+        <Link href="/admin/itembooks">
+          <Button variant="ghost" className="h-auto p-0 text-sm">
+            ← 아이템북 목록
+          </Button>
         </Link>
-        <h1 className="text-2xl font-bold mt-2">아이템북 수정</h1>
+        <h1 className="text-2xl font-bold md:text-3xl">아이템북 수정</h1>
       </div>
-      <ItemBookForm
-        book={book}
-        factions={factions}
-        slottedBadges={slottedBadges}
-        availableBadges={availableBadges}
-        requiredActivityBadgeLabel={book.required_activity_badge_id ? labelBadgeMap.get(book.required_activity_badge_id) : undefined}
-        rewardBadgeLabel={book.reward_badge_id ? labelBadgeMap.get(book.reward_badge_id) : undefined}
+
+      {/* ItemBook 상세 정보 (읽기 전용) */}
+      <ItemBookDetail
+        itemBook={book}
+        requiredActivityBadgeName={
+          book.required_activity_badge_id
+            ? labelBadgeMap.get(book.required_activity_badge_id)
+            : undefined
+        }
+        rewardBadgeName={
+          book.reward_badge_id
+            ? labelBadgeMap.get(book.reward_badge_id)
+            : undefined
+        }
+        factionName={factionLabel}
+        itemBadgeCount={slottedBadges.length}
       />
+
+      {/* 편집 폼 */}
+      <div className="border-t pt-8">
+        <h2 className="text-xl font-bold mb-6">편집</h2>
+        <ItemBookForm
+          book={book}
+          factions={factions}
+          slottedBadges={slottedBadges}
+          availableBadges={availableBadges}
+          requiredActivityBadgeLabel={book.required_activity_badge_id ? labelBadgeMap.get(book.required_activity_badge_id) : undefined}
+          rewardBadgeLabel={book.reward_badge_id ? labelBadgeMap.get(book.reward_badge_id) : undefined}
+        />
+      </div>
     </div>
   )
 }

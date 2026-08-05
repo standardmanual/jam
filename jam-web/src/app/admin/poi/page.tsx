@@ -1,6 +1,9 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { Suspense } from 'react'
+import { Button } from '@/components/ui/button'
 import type { PoiRow, BadgeRow, PoiCategoryRow } from '@/types/database'
+import { PoiList } from '@/components/admin/poi/PoiList'
 import PoiFilters from './PoiFilters'
 import Pagination from './Pagination'
 
@@ -36,8 +39,6 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
 
   const pois = (poisRaw ?? []) as PoiRow[]
 
-  // 전체 배지를 불러오지 않고, 이 페이지에 보이는 POI들이 실제로 연결한 배지 id만
-  // targeted 조회 — 배지 총 개수(수천 개)와 무관하게 항상 정확하다.
   const linkedBadgeIds = [...new Set(pois.map((p) => p.linked_badge_id).filter((id): id is string => !!id))]
   const { data: badgesRaw } = linkedBadgeIds.length > 0
     ? await supabase.from('badges').select('id, name').in('id', linkedBadgeIds)
@@ -49,72 +50,38 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">POI 관리</h1>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/poi/categories"
-            className="bg-white border border-[#e5e7eb] text-[#374151] font-medium px-4 py-2 rounded-xl hover:bg-[#f3f4f6] transition-colors text-sm"
-          >
-            카테고리 관리
+    <div className="space-y-6 p-4 md:p-8">
+      {/* 헤더 */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <h1 className="text-2xl font-bold md:text-3xl">POI 관리</h1>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link href="/admin/poi/categories">
+            <Button variant="outline" className="w-full sm:w-auto">
+              카테고리 관리
+            </Button>
           </Link>
-          <Link
-            href="/admin/poi/new"
-            className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
-          >
-            + POI 등록
+          <Link href="/admin/poi/new">
+            <Button className="w-full sm:w-auto">
+              + POI 등록
+            </Button>
           </Link>
         </div>
       </div>
 
-      <PoiFilters categories={categories} />
+      {/* 필터 */}
+      <Suspense>
+        <PoiFilters categories={categories} />
+      </Suspense>
 
-      <p className="text-[#6b7280] text-xs mb-3">총 {count ?? 0}개</p>
-
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
-              <th className="px-5 py-3 font-medium">이름</th>
-              <th className="px-5 py-3 font-medium">카테고리</th>
-              <th className="px-5 py-3 font-medium">위도 / 경도</th>
-              <th className="px-5 py-3 font-medium">반경</th>
-              <th className="px-5 py-3 font-medium">연결 배지</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pois.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-5 py-10 text-center text-[#898989]">
-                  등록된 POI가 없습니다.
-                </td>
-              </tr>
-            )}
-            {pois.map((poi) => (
-              <tr key={poi.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] transition-colors">
-                <td className="px-5 py-3">
-                  <Link
-                    href={`/admin/poi/${poi.id}`}
-                    className="font-medium hover:text-[#111111] transition-colors"
-                  >
-                    {poi.name}
-                  </Link>
-                </td>
-                <td className="px-5 py-3 text-[#374151]">{categoryLabelMap.get(poi.category) ?? poi.category}</td>
-                <td className="px-5 py-3 text-[#374151] font-mono text-xs">
-                  {poi.latitude.toFixed(4)}, {poi.longitude.toFixed(4)}
-                </td>
-                <td className="px-5 py-3 text-[#374151]">{poi.radius_meters}m</td>
-                <td className="px-5 py-3 text-[#374151]">
-                  {poi.linked_badge_id ? badgeMap.get(poi.linked_badge_id) ?? poi.linked_badge_id : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* 카운트 */}
+      <div className="text-sm text-muted-foreground">
+        총 {count ?? 0}개
       </div>
 
+      {/* 목록 */}
+      <PoiList pois={pois} badgeMap={badgeMap} categoryLabelMap={categoryLabelMap} />
+
+      {/* 페이지네이션 */}
       <Pagination page={page} totalPages={totalPages} searchParams={params} />
     </div>
   )
