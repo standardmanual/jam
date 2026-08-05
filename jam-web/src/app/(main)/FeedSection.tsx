@@ -28,9 +28,9 @@ type FilterTab = 'all' | 'badge' | 'mission' | 'activity_badge'
 
 const FILTER_TABS: SlidingTabItem<FilterTab>[] = [
   { key: 'all', label: d.feed.filterAll },
+  { key: 'activity_badge', label: d.feed.filterActivityBadge },
   { key: 'badge', label: d.feed.filterItem },
   { key: 'mission', label: d.feed.filterMission },
-  { key: 'activity_badge', label: d.feed.filterActivityBadge },
 ]
 
 const BADGE_EVENTS = new Set<ActivityFeedEventType>(['badge_earned', 'item_dropped', 'item_picked_up'])
