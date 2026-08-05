@@ -23,12 +23,6 @@ type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
 export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
   const { u, from, itemId } = await searchParams
-  // 아이템배지 상세(/inventory/[itemId])에서 들어온 경우 뒤로가기도 그 화면으로,
-  // 배지 메뉴의 아이템북 탭에서 들어온 경우 뒤로가기도 그 탭이 활성인 화면으로
-  const backHref =
-    from === 'badge' && itemId ? `/inventory/${itemId}` :
-    from === 'badges' ? '/badges#itembook' :
-    null
   const supabase = await createClient()
   const {
     data: { user },
@@ -53,6 +47,15 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     }
   }
   const isOwnBook = subjectId === user.id
+
+  // 아이템배지 상세(/inventory/[itemId])에서 들어온 경우 뒤로가기도 그 화면으로,
+  // 배지 메뉴의 아이템북 탭에서 들어온 경우 뒤로가기도 그 탭이 활성인 화면으로,
+  // 프로필의 아이템북 탭(?u=)에서 들어온 경우 뒤로가기도 그 프로필의 탭이 활성인 화면으로
+  const backHref =
+    from === 'badge' && itemId ? `/inventory/${itemId}` :
+    from === 'badges' ? '/badges#itembook' :
+    subjectUsername ? `/${subjectUsername}#itembooks` :
+    null
 
   // 1) 아이템북 + 세계관
   const { data: bookRaw } = await supabase
@@ -177,7 +180,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     <div className="flex flex-col min-h-full bg-surface text-text">
       <TopNav
         title={from === 'badge' && itemId ? d.itembooks.backToDetail : d.itembooks.backToList}
-        backHref={backHref ?? (isOwnBook ? '/itembooks' : `/${subjectUsername}#itembooks`)}
+        backHref={backHref ?? '/itembooks'}
       />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-16)]">
