@@ -108,3 +108,26 @@
   7. Lighthouse Mobile 점수 ≥ 80 확인
 - **다음:** 즉시 반응형 + 회귀 테스트 시작, 문제 보고
 
+---
+
+## 2026-08-05 20:00 — 🚨 [메인 세션] 긴급 프로덕션 장애 발견 및 수정 완료
+
+- **상태:** ✅ 수정 완료, 커밋 4ea53ec push됨
+- **발견 경로:** 사용자가 Vercel 배포 로그를 공유 — 전체 서비스 빌드 실패
+- **원인:** shadcn/ui 설치가 macOS 대소문자 미구분 파일시스템에서 기존 Button/Card 등
+  13개 서비스 컴포넌트를 덮어씀 + import 경로 50개 파일이 소문자로 오염
+  (자세한 내용은 TEAM_FINDINGS.md "🚨 긴급 수정" 섹션 참고)
+- **조치:**
+  1. Button.tsx, Card.tsx 원본 복원
+  2. 실제 디스크 파일명 대소문자 강제 복구 (13개 컴포넌트)
+  3. 서비스 전역 50개 파일 import 경로 복원
+  4. shadcn Button/Card/Badge를 `shadcn-*.tsx`로 분리, 어드민만 참조
+  5. 로컬 `npm run build` 성공 확인 후 push
+- **팀원 전원에게 알림:** 앞으로 shadcn 컴포넌트 추가 설치 시 반드시
+  TEAM_FINDINGS.md의 "🚨 긴급 수정" 섹션 규칙을 따를 것. 특히:
+  - 기존 파일과 이름이 대소문자만 다르게 겹치는 shadcn 컴포넌트는 설치 직후
+    `shadcn-이름.tsx`로 즉시 rename
+  - 작업 완료 후 `npm run build`(dev 아님)로 반드시 검증
+- **다음:** 각 팀원은 현재 작업 계속 진행. 단, git push 전에는 반드시
+  `npm run build` 통과 확인할 것.
+
