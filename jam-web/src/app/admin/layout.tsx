@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, unstable_rethrow } from 'next/navigation'
 import { Inter } from 'next/font/google'
-import { AdminNav } from './AdminNav'
+import { AdminNav } from '@/components/admin/AdminNav'
+import { AdminSidebar } from '@/components/admin/AdminSidebar'
 
 // 어드민 전용 서체 — Cal Sans는 공개 웹폰트가 아니라 디자인 시스템이 권장하는
 // 대체 조합(Inter 600 + 네거티브 트래킹)을 그대로 사용한다.
@@ -30,13 +31,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div
-      className={`${inter.variable} min-h-screen bg-white text-[#111111] flex flex-col`}
-      style={{ fontFamily: 'var(--font-admin-inter), Inter, sans-serif', colorScheme: 'light' }}
+      className={`${inter.variable} min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col`}
+      style={{ fontFamily: 'var(--font-admin-inter), Inter, sans-serif' }}
     >
+      {/* 모바일 네비게이션 (헤더 + 드로어) */}
       <AdminNav userEmail={userEmail} />
 
-      {/* 메인 영역 */}
-      <main className="flex-1 min-w-0 overflow-y-auto">
+      {/* 데스크탑 사이드바 */}
+      <AdminSidebar userEmail={userEmail} />
+
+      {/* 메인 콘텐츠 영역 */}
+      {/* md 이상: 사이드바만큼 왼쪽 여백 */}
+      {/* md 미만: 헤더 아래에 콘텐츠 */}
+      <main className="flex-1 min-w-0 overflow-y-auto md:ml-64">
         {children}
       </main>
     </div>
