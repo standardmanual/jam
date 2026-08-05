@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
@@ -11,6 +11,7 @@ import { MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
 type TabKey = 'activity' | 'poi' | 'itembook'
+const VALID_TABS = new Set<string>(['activity', 'poi', 'itembook'])
 
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
@@ -81,6 +82,12 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
   const [poiCategoryFilter, setPoiCategoryFilter] = useState<string>('all')
   const [poiSortOrder, setPoiSortOrder] = useState<PoiSortOrder>('latest')
   const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
+
+  // 아이템북 상세화면에서 뒤로가기로 돌아왔을 때(#itembook) 해당 탭이 활성 상태로 보이도록 동기화
+  useEffect(() => {
+    const hash = window.location.hash.slice(1)
+    if (VALID_TABS.has(hash)) setActiveTab(hash as TabKey)
+  }, [])
 
   const earnedCount = badges.filter((b) => b.earned).length
   const poiEarnedCount = poiBadges.filter((p) => p.earnCount > 0).length
@@ -293,7 +300,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false }
                 const pct = Math.round((progress.owned / progress.total) * 100)
                 return (
-                  <Link key={book.id} href={`/itembooks/${book.id}`}>
+                  <Link key={book.id} href={`/itembooks/${book.id}?from=badges`}>
                     <Card className="active:scale-[0.98] transition-transform duration-100">
                       <div className="flex gap-[var(--spacing-16)] mb-[var(--spacing-16)]">
                         {book.image_url && (
