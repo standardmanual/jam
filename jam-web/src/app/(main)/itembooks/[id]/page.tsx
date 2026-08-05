@@ -23,8 +23,12 @@ type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
 export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
   const { u, from, itemId } = await searchParams
-  // 아이템배지 상세(/inventory/[itemId])에서 들어온 경우 뒤로가기도 그 화면으로
-  const backHref = from === 'badge' && itemId ? `/inventory/${itemId}` : null
+  // 아이템배지 상세(/inventory/[itemId])에서 들어온 경우 뒤로가기도 그 화면으로,
+  // 배지 메뉴의 아이템북 탭에서 들어온 경우 뒤로가기도 그 탭이 활성인 화면으로
+  const backHref =
+    from === 'badge' && itemId ? `/inventory/${itemId}` :
+    from === 'badges' ? '/badges#itembook' :
+    null
   const supabase = await createClient()
   const {
     data: { user },
@@ -172,7 +176,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   return (
     <div className="flex flex-col min-h-full bg-surface text-text">
       <TopNav
-        title={backHref ? d.itembooks.backToDetail : d.itembooks.backToList}
+        title={from === 'badge' && itemId ? d.itembooks.backToDetail : d.itembooks.backToList}
         backHref={backHref ?? (isOwnBook ? '/itembooks' : `/${subjectUsername}#itembooks`)}
       />
 
