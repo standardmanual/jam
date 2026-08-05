@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/shadcn-button'
 import { ItemBookDetail } from '@/components/admin/itembooks/ItemBookDetail'
 import ItemBookForm from '../ItemBookForm'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'

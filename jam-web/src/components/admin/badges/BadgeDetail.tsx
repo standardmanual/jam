@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/shadcn-button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'

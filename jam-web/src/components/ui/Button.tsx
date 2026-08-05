@@ -1,56 +1,131 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import { ButtonHTMLAttributes, forwardRef } from 'react'
 
-import { cn } from "@/lib/utils"
+/**
+ * SuperHi Plus Button
+ *
+ * variant
+ * - `primary` : pill 72px(--radius-pill-buttons), 채움 버튼
+ * - `outline` : pill 50px(--radius-nav-buttons), 1px border만
+ * - `arrow`   : 화살표(→) 접두 텍스트 버튼. 배경/보더 없음, radius 16px, padding 24px
+ *
+ * surface = "이 버튼이 놓인 배경"
+ * - `main`(기본, 코발트 배경 위): primary는 아이스 채움 + 코발트 텍스트,
+ *   outline은 1px 아이스 보더 + 아이스 텍스트
+ * - `sub`(아이스 배경 위): primary는 코발트 채움 + 아이스 텍스트,
+ *   outline은 1px 코발트 보더 + 코발트 텍스트
+ *
+ * 규칙: weight 400 단일, 최소 44×44pt 터치 영역, active: 스케일 축소 피드백,
+ * 드롭섀도/그라데이션 금지(보더는 inset box-shadow로만).
+ */
+export type ButtonVariant =
+  | 'primary'
+  | 'outline'
+  | 'arrow'
+  /** @deprecated 레거시 네오브루탈 variant — outline으로 렌더됩니다. */
+  | 'secondary'
+  /** @deprecated 레거시 네오브루탈 variant — outline으로 렌더됩니다. */
+  | 'ghost'
+  /** @deprecated 레거시 네오브루탈 variant — outline으로 렌더됩니다. */
+  | 'danger'
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
+export type ButtonSurface = 'main' | 'sub'
+export type ButtonSize = 'sm' | 'md' | 'lg'
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant
+  surface?: ButtonSurface
+  loading?: boolean
+  fullWidth?: boolean
+  /** @deprecated 크기 위계는 타이포 스케일로 표현합니다. 패딩만 미세 조정됩니다. */
+  size?: ButtonSize
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+type ResolvedVariant = 'primary' | 'outline' | 'arrow'
+
+const legacyVariantMap: Record<string, ResolvedVariant> = {
+  secondary: 'outline',
+  ghost: 'outline',
+  danger: 'outline',
+}
+
+/** surface별 색상 클래스 — 바이너리 반전만 사용(제3의 컬러 금지) */
+const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
+  main: {
+    primary: 'bg-surface-inverse text-text-inverse',
+    outline: 'text-text shadow-[inset_0_0_0_1px_var(--color-border)]',
+    arrow: 'text-text',
+  },
+  sub: {
+    primary: 'bg-surface text-text',
+    outline: 'text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)]',
+    arrow: 'text-text-inverse',
+  },
+}
+
+const shapeClasses: Record<ResolvedVariant, string> = {
+  primary:
+    'rounded-[var(--radius-pill-buttons)] px-[var(--spacing-32)] py-[14px] text-[length:var(--text-body)] leading-[var(--leading-body)]',
+  outline:
+    'rounded-[var(--radius-nav-buttons)] px-[var(--spacing-24)] py-[14px] text-[length:var(--text-body)] leading-[var(--leading-body)]',
+  arrow:
+    'rounded-[var(--radius-buttons)] px-[var(--spacing-24)] py-[var(--spacing-24)] text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]',
+}
+
+const sizePadding: Record<ButtonSize, string> = {
+  sm: 'px-[var(--spacing-16)] py-[10px] text-[length:var(--text-body-sm)]',
+  md: '',
+  lg: 'py-[18px]',
+}
+
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      variant = 'primary',
+      surface = 'main',
+      size = 'md',
+      loading = false,
+      fullWidth = false,
+      disabled,
+      className = '',
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const resolved: ResolvedVariant =
+      variant === 'primary' || variant === 'outline' || variant === 'arrow'
+        ? variant
+        : legacyVariantMap[variant] ?? 'outline'
+    const isDisabled = disabled || loading
+
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+      <button
         ref={ref}
+        disabled={isDisabled}
+        className={[
+          // 최소 44×44pt 터치 영역 + weight 400 고정
+          'inline-flex items-center justify-center gap-2 min-h-11 font-normal',
+          'transition-transform duration-100',
+          shapeClasses[resolved],
+          colorClasses[surface][resolved],
+          sizePadding[size],
+          fullWidth ? 'w-full' : '',
+          isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer active:scale-95',
+          className,
+        ]
+          .filter(Boolean)
+          .join(' ')}
         {...props}
-      />
+      >
+        {loading && (
+          <span className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" />
+        )}
+        {resolved === 'arrow' && <span aria-hidden="true">&rarr;</span>}
+        {children}
+      </button>
     )
   }
 )
-Button.displayName = "Button"
 
-export { Button, buttonVariants }
+Button.displayName = 'Button'
+export default Button

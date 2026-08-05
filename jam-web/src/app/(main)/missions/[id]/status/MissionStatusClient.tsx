@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import TopNav from '@/components/ui/topnav'
-import Card from '@/components/ui/card'
+import TopNav from '@/components/ui/TopNav'
+import Card from '@/components/ui/Card'
 import { UserIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 

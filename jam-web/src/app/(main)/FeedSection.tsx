@@ -6,9 +6,9 @@ import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
-import Card from '@/components/ui/card'
-import Button from '@/components/ui/button'
-import SlidingTabs, { type SlidingTabItem } from '@/components/ui/slidingtabs'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
+import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import {
   MedalIcon,
   PackageIcon,

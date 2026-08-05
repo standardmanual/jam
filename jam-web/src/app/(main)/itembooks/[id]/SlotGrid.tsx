@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import RarityBadge from '@/components/ui/badge'
+import RarityBadge from '@/components/ui/Badge'
 import { MedalIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'

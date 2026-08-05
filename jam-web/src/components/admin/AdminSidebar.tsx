@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LogOut } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/shadcn-button'
 
 const NAV_ITEMS = [
   { href: '/admin', label: '대시보드', icon: '📊', exact: true },

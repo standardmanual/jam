@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useToast } from '@/components/ui/toast'
-import Card from '@/components/ui/card'
+import { useToast } from '@/components/ui/Toast'
+import Card from '@/components/ui/Card'
 import { MedalIcon } from '@/components/ui/icons'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'

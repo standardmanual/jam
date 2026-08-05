@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/shadcn-button'
 import type { PoiRow, BadgeRow, PoiCategoryRow } from '@/types/database'
 import { PoiList } from '@/components/admin/poi/PoiList'
 import PoiFilters from './PoiFilters'
