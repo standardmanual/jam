@@ -243,19 +243,39 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         ? itemInventory != null
         : Boolean(earned)
 
-  // 선행 배지 보유 여부 계산
+  // 선행 배지 정보 조회
   const prereqs = badgeRow.condition_json?.prerequisite_badge_names ?? []
-  let prereqStatus: { name: string; owned: boolean }[] = []
+  let prereqStatus: {
+    id: string
+    name: string
+    image_url: string | null
+    description: string | null
+    rarity: string
+    owned: boolean
+  }[] = []
   if (prereqs.length > 0) {
     const ownedBadgeIds = new Set((ownedBadgesRaw ?? []).map((b: { badge_id: string }) => b.badge_id))
     const { data: prereqBadgesRaw } = await supabase
       .from('badges')
-      .select('id, name')
+      .select('id, name, image_url, description, rarity')
       .in('name', prereqs)
-    const prereqBadges = (prereqBadgesRaw ?? []) as { id: string; name: string }[]
+    const prereqBadges = (prereqBadgesRaw ?? []) as {
+      id: string
+      name: string
+      image_url: string | null
+      description: string | null
+      rarity: string
+    }[]
     prereqStatus = prereqs.map((name) => {
       const match = prereqBadges.find((b) => b.name === name)
-      return { name, owned: match ? ownedBadgeIds.has(match.id) : false }
+      return {
+        id: match?.id ?? '',
+        name,
+        image_url: match?.image_url ?? null,
+        description: match?.description ?? null,
+        rarity: match?.rarity ?? 'common',
+        owned: match ? ownedBadgeIds.has(match.id) : false,
+      }
     })
   }
 
@@ -461,19 +481,52 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 선행 배지 조건 (prerequisite) */}
         {prereqStatus.length > 0 && (
-          <Card>
-            <h2 className="text-[10px] uppercase text-text-inverse/40 mb-[var(--spacing-16)]">{d.badges.prerequisiteTitle}</h2>
-            <p className="text-[11px] text-text-inverse/50 mb-[var(--spacing-16)]">{d.badges.prerequisiteBody}</p>
-            <div className="flex flex-col gap-2">
-              {prereqStatus.map((p) => (
-                <div key={p.name} className="flex items-center gap-2">
-                  <span className={`w-3 h-3 rounded-full shrink-0 ${p.owned ? 'bg-text-inverse' : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'}`} />
-                  <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] ${p.owned ? '' : 'text-text-inverse/50'}`}>
-                    {p.name}
-                  </span>
-                  {p.owned && <span className="text-[11px] text-text-inverse/50 ml-auto">{d.badges.prerequisiteOwned}</span>}
-                </div>
-              ))}
+          <Card className="p-0 overflow-hidden">
+            <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
+              <p className="text-[10px] uppercase text-text-inverse/50">{d.badges.prerequisiteTitle}</p>
+            </div>
+            <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
+              <p className="text-[11px] text-text-inverse/60 mb-[var(--spacing-16)]">{d.badges.prerequisiteBody}</p>
+              <div className="flex flex-col gap-[var(--spacing-16)]">
+                {prereqStatus.map((p) => (
+                  <Link key={p.id} href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}>
+                    <div className="flex items-center gap-[var(--spacing-12)] rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] p-[var(--spacing-12)] active:scale-[0.98] transition-transform duration-100">
+                      {/* 배지 이미지 */}
+                      <div
+                        className={[
+                          'w-12 h-12 rounded-[var(--radius-cards)] bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0 overflow-hidden',
+                          !p.owned ? 'grayscale opacity-50' : '',
+                        ].join(' ')}
+                      >
+                        {p.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.image_url} alt={p.name} className="w-full h-full object-contain p-2" />
+                        ) : (
+                          <MedalIcon className="w-5 h-5 text-text-inverse/40" />
+                        )}
+                      </div>
+
+                      {/* 배지 정보 */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-medium truncate">
+                          {p.name}
+                        </h3>
+                        <p className="text-[11px] text-text-inverse/60 line-clamp-2 mt-0.5">
+                          {p.description || '선행 배지'}
+                        </p>
+                      </div>
+
+                      {/* 링크 표시 */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {p.owned && (
+                          <span className="text-[10px] text-text-inverse/40 font-medium">획득함</span>
+                        )}
+                        <ChevronRightIcon className="w-4 h-4 text-text-inverse/30" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           </Card>
         )}
