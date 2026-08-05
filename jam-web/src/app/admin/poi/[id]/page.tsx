@@ -1,6 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { PoiDetail } from '@/components/admin/poi/PoiDetail'
 import PoiForm from '../PoiForm'
 import type { PoiRow, PoiCategoryRow } from '@/types/database'
 
@@ -16,26 +18,43 @@ export default async function EditPoiPage({ params }: { params: Promise<{ id: st
 
   const poi = poiRaw as PoiRow
 
-  // 연결 배지는 전체 목록을 가져오지 않고, 이미 연결돼 있을 때만 그 배지 하나만 조회
   let linkedBadgeLabel: string | undefined
   if (poi.linked_badge_id) {
     const { data: badgeRaw } = await supabase.from('badges').select('name').eq('id', poi.linked_badge_id).maybeSingle()
     linkedBadgeLabel = (badgeRaw as { name: string } | null)?.name
   }
 
+  const categories = (categoriesRaw ?? []) as PoiCategoryRow[]
+  const categoryLabel = categories.find(c => c.slug === poi.category)?.label
+
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <Link href="/admin/poi" className="text-[#6b7280] hover:text-[#111111] text-sm transition-colors">
-          ← POI 목록
+    <div className="space-y-8 p-4 md:p-8">
+      {/* 뒤로가기 + 제목 */}
+      <div className="space-y-3">
+        <Link href="/admin/poi">
+          <Button variant="ghost" className="h-auto p-0 text-sm">
+            ← POI 목록
+          </Button>
         </Link>
-        <h1 className="text-2xl font-bold mt-2">POI 수정</h1>
+        <h1 className="text-2xl font-bold md:text-3xl">POI 수정</h1>
       </div>
-      <PoiForm
+
+      {/* POI 상세 정보 (읽기 전용) */}
+      <PoiDetail
         poi={poi}
-        linkedBadgeLabel={linkedBadgeLabel}
-        categories={(categoriesRaw ?? []) as PoiCategoryRow[]}
+        linkedBadgeName={linkedBadgeLabel}
+        categoryLabel={categoryLabel}
       />
+
+      {/* 편집 폼 */}
+      <div className="border-t pt-8">
+        <h2 className="text-xl font-bold mb-6">편집</h2>
+        <PoiForm
+          poi={poi}
+          linkedBadgeLabel={linkedBadgeLabel}
+          categories={categories}
+        />
+      </div>
     </div>
   )
 }
