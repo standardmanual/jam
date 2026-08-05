@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Card from '@/components/ui/Card'
+import Card from '@/components/ui/card'
 import { d, t } from '@/lib/i18n'
 
 export default function FleaMarketPage() {

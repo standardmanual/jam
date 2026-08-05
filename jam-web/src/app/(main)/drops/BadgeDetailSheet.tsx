@@ -1,9 +1,9 @@
 'use client'
 
-import Button from '@/components/ui/Button'
-import Card from '@/components/ui/Card'
-import BottomSheet from '@/components/ui/BottomSheet'
-import RarityBadge from '@/components/ui/Badge'
+import Button from '@/components/ui/button'
+import Card from '@/components/ui/card'
+import BottomSheet from '@/components/ui/bottomsheet'
+import RarityBadge from '@/components/ui/badge'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'

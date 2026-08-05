@@ -7,8 +7,8 @@ import type {
   InventoryItemRow,
   UserItemBookSlotRow,
 } from '@/types/database'
-import Card from '@/components/ui/Card'
-import TopNav from '@/components/ui/TopNav'
+import Card from '@/components/ui/card'
+import TopNav from '@/components/ui/topnav'
 import { BookIcon, PinIcon } from '@/components/ui/icons'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import { d } from '@/lib/i18n'

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { ItemBookRow, FactionRow } from '@/types/database'
-import Card from '@/components/ui/Card'
+import Card from '@/components/ui/card'
 import { BookIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 

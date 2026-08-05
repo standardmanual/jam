@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useToast } from '@/components/ui/Toast'
+import { useToast } from '@/components/ui/toast'
 import { useRouter } from 'next/navigation'
-import Button from '@/components/ui/Button'
+import Button from '@/components/ui/button'
 import { d, t } from '@/lib/i18n'
 
 export default function SyncButton() {

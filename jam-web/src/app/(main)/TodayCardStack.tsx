@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { ComponentType, SVGProps } from 'react'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
-import Card from '@/components/ui/Card'
+import Card from '@/components/ui/card'
 import { d } from '@/lib/i18n'
 import {
   MedalIcon,
