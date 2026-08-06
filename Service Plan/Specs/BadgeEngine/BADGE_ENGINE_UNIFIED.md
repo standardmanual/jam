@@ -307,7 +307,16 @@ mythic은 앰비언트 드랍 대상에서 완전히 제외 — 신화 등급의
 4. 레어리티 추첨 → 해당 등급 type='item' 배지 랜덤 선택 → poi_drops INSERT
 ```
 
-### 3.13 POI 배지 타입(`type='poi'`) — 실데이터 일괄 생성 (2026-07-27)
+### 3.13 유저 드랍/픽업 운영 정책 (PRD 04_PROJECT_SPEC.md에서 이관, 2026-08-06)
+
+> 4카테고리 문서 체계 재정리 시, `Specs/PRD/04_PROJECT_SPEC.md`의 "핵심 비즈니스 규칙"에 있던 드랍/픽업 판정 로직 4개 항목을 이 문서로 이관했다.
+
+- **드랍/픽업은 Supabase RPC로 처리**: 원자 트랜잭션 필요 — API Route에서 직접 두 테이블 업데이트 금지.
+- **자기 드랍 픽업 허용**: 2026-07-10 정책 변경. `dropper_user_id` = 현재 유저 필터링 로직 제거.
+- **T2 POI 드랍 반경**: 500m (T1과 동일). `DROP_RADIUS_METERS` 상수로 관리.
+- **일련번호 형식**: `serial_prefix`(4자리 대문자) + `serial_number`(6자리 zero-pad). 예: `ABCD000042`. (§3.5의 일련번호 무작위화는 이 형식 위에서 채번 순서만 난수화하는 것으로, 형식 자체는 유지된다.)
+
+### 3.14 POI 배지 타입(`type='poi'`) — 실데이터 일괄 생성 (2026-07-27)
 
 Phase 16에서 스키마만 추가됐던 `type='poi'` 배지에 실제 데이터를 채웠다. `poi_categories`의 `transit`(대중교통, 973개), `mountain`(산, 847개) 카테고리 POI 전체(총 1,820개)에 대해 **POI 1개 = 배지 1개**로 1:1 생성했다.
 
@@ -348,7 +357,7 @@ Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md ← 이 문서. 발급·드랍 로직 
 Specs/Content/ACTIVITY_BADGES.md          액티비티배지 115종 전체 목록·조건·설명
 Specs/Content/ITEMBOOKS.xlsx              아이템배지 ~900종 목록 + '세계관 인접' 시트
 Specs/Content/COMBINE_RECIPES.md          조합 레시피 목록
-Specs/Content/FACTIONS.md                 세계관 컨텐츠 (스텁)
+Specs/Content/FACTIONS.md                 세계관 10종 개요·아이템북 매핑·인접 그래프
 Specs/Content/POI.md                      장소 컨텐츠 (스텁)
 
 [코드]

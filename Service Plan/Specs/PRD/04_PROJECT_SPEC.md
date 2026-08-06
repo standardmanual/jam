@@ -143,10 +143,8 @@ vercel --prod
 4. **어뷰징 방지 (섀도우밴)**: 의심 유저 플래그 시 UI는 정상이지만 고가치 드랍률 0% 처리 (Phase 3 이후)
 5. **배지 양도 불가**: UserActivityBadge는 생성/삭제만 가능, 소유자 변경 API 노출 금지
 6. **실물 패치 구매 조건**: 해당 배지 보유 확인 후 D2C 스토어 URL 활성화 (미보유 시 잠금 상태)
-7. **드랍/픽업은 Supabase RPC로 처리**: 원자 트랜잭션 필요 — API Route에서 직접 두 테이블 업데이트 금지
-8. **자기 드랍 픽업 허용**: 2026-07-10 정책 변경. dropper_user_id = 현재 유저 필터링 로직 제거
-9. **T2 POI 드랍 반경**: 500m (T1과 동일). DROP_RADIUS_METERS 상수로 관리
-10. **일련번호 형식**: serial_prefix(4자리 대문자) + serial_number(6자리 zero-pad). 예: `ABCD000042`
+
+> 드랍/픽업 트랜잭션 처리, 자기 드랍 픽업 허용, T2 POI 드랍 반경, 일련번호 형식 등 **배지·드랍 엔진의 판정 로직·정책**은 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md)로 이관됨 (2026-08-06, 4카테고리 문서 체계 재정리).
 
 ---
 

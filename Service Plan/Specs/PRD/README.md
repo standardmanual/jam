@@ -1,7 +1,8 @@
-# JAM! 유저 모바일 웹 — 디자인 문서
+# JAM! PRD 문서 안내
 
-> Show Me The PRD로 생성됨 (2026-07-09)
-> 기반 서비스: JAM! (Join And Move!) v2.2
+> 이 폴더는 4카테고리 문서 체계(① PRD ② 티켓 ③ 컨텐츠 ④ 배지엔진) 중 **① PRD**에
+> 해당한다. 기능·스펙·플로우 정의를 다루며, "현재 기준 최신 스펙"이 원칙이다.
+> 실행 계획·작업 이력은 [History/Migration/Ticket/](../../History/Migration/Ticket/)을 참고할 것.
 
 ---
 
@@ -11,60 +12,49 @@
 |------|------|----------|
 | [01_PRD.md](./01_PRD.md) | 뭘 만드는지, 누가 쓰는지, 핵심 기능 목록 | 프로젝트 시작 전 / 방향 확인할 때 |
 | [02_DATA_MODEL.md](./02_DATA_MODEL.md) | 데이터 구조, 엔티티 상세, 관계도 | DB 설계할 때 / 새 기능 추가할 때 |
-| [03_PHASES.md](./03_PHASES.md) | Phase별 기능, 체크리스트, 시작 프롬프트 | 개발 순서 정할 때 / 다음 Phase 시작할 때 |
+| [03_PHASES.md](./03_PHASES.md) | Phase 로드맵 요약 (상세는 이력 자료로 분리됨) | 개발 진행 상태를 대략 확인할 때 |
 | [04_PROJECT_SPEC.md](./04_PROJECT_SPEC.md) | 기술 스택, 절대 금지 목록, 환경변수 | AI에게 코드 시킬 때마다 함께 공유 |
-| [UX_WRITING_GUIDELINE.md](../UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 (토스 스타일 기반 JAM! 전용 라이팅 가이드) | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
+| [../UX_WRITING_GUIDELINE.md](../UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
 
-### Phase별 추가 문서 (과거 이력 — `History/` 폴더로 이동됨)
+> ⚠️ **위 4개 문서는 2026-07-09~10 초기 작성 이후 내용이 갱신되지 않았다.**
+> Phase 1~7 + 어드민 완료 시점 기준으로 작성돼 있어, 이후 구현된 드랍엔진 v2·
+> 세계관·조합 시스템·POI 배지 타입 등 최신 기능이 반영되어 있지 않다. 최신 상태
+> 반영은 별도 작업으로 예정. **현재 서비스 상태를 정확히 파악하려면 아래
+> "최신 스펙은 여기서 확인" 섹션을 먼저 참고할 것.**
 
-| Phase | 주제 | 문서 |
-|-------|------|------|
-| 7 | — | `History/Phase7_01~04` |
-| 8 | — | `History/Phase8_01~04` |
-| 9 | 구글 로그인 온보딩 (username + 프로필 이미지) | `History/Phase9_01~04` |
-| 10 | 유저 검색 (홈 검색창 → 결과 페이지 → 프로필) | `History/Phase10_01~04` |
-| 11 | 배지 체계 업그레이드 — 드랍엔진 v2 (3레이어·세계관 모멘텀·어드민 설정) | `History/Phase11_01~04` |
-| 12 | 잼 포인트 시스템 | `History/Phase12_01~04` |
-| 13 | 미션 참가 확정(참가필수·취소불가) + 미션 상황(랭킹/달성 현황) | `History/Phase13_01~04` |
-| 16 | POI 배지 타입 추가 — 반복 획득, 어드민 검색 연결, 아이템북 POI 배지 구성 | `History/Phase16_01~04` |
+### 주제별 PRD 세트 (하위 폴더)
+
+| 폴더 | 주제 |
+|------|------|
+| [AdminUI/](./AdminUI/) | 어드민 UI 리디자인 (기존 `05_ADMIN_PRD.md` → `AdminUI/ADMIN_PRD.md`로 이동, 기능 기준 문서로 유지) |
+| [PointSystem/](./PointSystem/) | 포인트 시스템 |
+
+새 주제별 PRD 세트 생성 시 `Specs/PRD/{주제}/` 하위 폴더로 구분한다 (파일명 접두어 사용 안 함).
+
+### 과거 Phase별 문서 (이력)
+
+| 자료 | 내용 |
+|------|------|
+| [History/PHASES_ROADMAP_ARCHIVE.md](../../History/PHASES_ROADMAP_ARCHIVE.md) | (구)`03_PHASES.md` + (구)`04_PHASES_NEXT.md` 전문 — Phase 1~18 상세 실행계획, 시작 프롬프트 |
+| `History/Phase7~17_01~04` 등 | 각 Phase 시점의 4종 PRD 문서 스냅샷 |
+
+---
+
+## 최신 스펙은 여기서 확인
+
+이 폴더의 4개 핵심 문서가 갱신되기 전까지, 현재 서비스 상태는 아래 문서들이 더 정확하다.
+
+| 영역 | 문서 |
+|------|------|
+| 배지·드랍 엔진 로직 (드랍엔진 v2, 세계관 모멘텀, 앰비언트 드랍 등) | [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) |
+| 액티비티배지·아이템북·아이템배지·세계관·POI 컨텐츠 | [Specs/Content/](../Content/) |
+| 실제 개발 작업 이력 (신규 개선사항은 여기부터 확인) | [History/Migration/Ticket/](../../History/Migration/Ticket/) |
 
 ---
 
 ## 한 줄 요약
 
-**Strava 연동 → 과거 운동 데이터 소급 분석 → 배지 자동 발급 → 인스타 공유 카드 생성 → 실물 패치 구매 자격**
-
----
-
-## Phase 1 바로 시작하기
-
-[03_PHASES.md](./03_PHASES.md)의 **"Phase 1 시작 프롬프트"** 섹션을 참고하세요.
-
-아래 파일 3개를 AI에게 공유하고 프롬프트를 붙여넣으면 됩니다:
-- `@Specs/PRD/01_PRD.md`
-- `@Specs/PRD/02_DATA_MODEL.md`
-- `@Specs/PRD/04_PROJECT_SPEC.md`
-
----
-
-## 미결 사항 종합 ([NEEDS CLARIFICATION])
-
-### 비즈니스 결정 필요
-- [ ] D2C 쇼핑몰은 별도 URL인지, JAM! 앱 내에 있는지?
-- [ ] 배지 공유 카드의 디자인 시스템 / 브랜드 가이드 확정 여부
-- [ ] 커뮤니티 피드의 기본 컨텐츠 — 나만 보이는지, 팔로우 기반인지, 전체 공개인지
-
-### 기술 결정 필요
-- [ ] Strava API rate limit 처리 정책 (과거 5년치 소급 시)
-- [ ] PWA 설치 프롬프트 노출 시점
-- [ ] 공유 카드: Satori(서버 사이드) vs html2canvas(클라이언트 사이드)
-- [ ] 배지 이미지 에셋 저장: Supabase Storage vs Vercel public
-
-### 데이터 정의 필요
-- [ ] 배지 발급 조건 스펙 (condition_json 구조 상세 정의)
-- [ ] 아이템 배지 드랍 확률 테이블
-- [ ] 이기종 데이터 중복 방지 알고리즘 (Strava + Garmin 동일 활동)
-- [ ] 실물 패치 구매 연결 방식 (외부 쇼핑몰 redirect vs 앱 내 결제)
+**Strava 연동 → 배지 자동 발급 → 아이템 드랍/픽업 → 세계관 컬렉션 → 인스타 공유 카드 생성 → 실물 패치 구매 자격**
 
 ---
 
@@ -77,7 +67,9 @@
 | 배포 | Vercel |
 | 인증 | Supabase Auth + Google OAuth |
 | 스타일 | Tailwind CSS 4 |
-| 지도 (Phase 2) | Kakao Map API |
+| 지도 | Google Maps JavaScript API (Phase 7~) |
+
+상세는 [04_PROJECT_SPEC.md](./04_PROJECT_SPEC.md) 참고.
 
 ---
 
@@ -86,3 +78,13 @@
 1. **Tracker-less**: 자체 GPS 트래킹 UI 절대 만들지 말 것
 2. **10초 첫 보상**: 마찰 제로 온보딩
 3. **자립 운영**: 외부 자본 없이 지속 가능한 구조
+
+---
+
+## 미결 사항 종합 ([NEEDS CLARIFICATION])
+
+각 문서 하단의 `[NEEDS CLARIFICATION]` 섹션 참고. 대표 항목:
+
+- [ ] D2C 쇼핑몰은 별도 URL인지, JAM! 앱 내에 있는지?
+- [ ] 배지 발급 조건 스펙(`condition_json`) 최신 버전 위치
+- [ ] 아이템 배지 드랍 확률 테이블 — [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md)와 이 문서 간 정합성 확인 필요

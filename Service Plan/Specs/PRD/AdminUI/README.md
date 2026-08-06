@@ -1,7 +1,7 @@
 # JAM! 어드민 UI 리디자인 — 문서 가이드
 
 > **작성일:** 2026-08-05  
-> **이전 버전:** `05_ADMIN_PRD.md` (기존 어드민 기능 명세)
+> **이전 버전:** `ADMIN_PRD.md` (기존 어드민 기능 명세)
 
 ---
 
@@ -86,7 +86,7 @@
 
 | 기존 문서 | 새 문서 | 관계 |
 |----------|--------|------|
-| `05_ADMIN_PRD.md` | `ADMIN_UI_REDESIGN_20260805.md` | **강화**: 기능 유지 + UI 리디자인 추가 |
+| `ADMIN_PRD.md` | `ADMIN_UI_REDESIGN_20260805.md` | **강화**: 기능 유지 + UI 리디자인 추가 |
 | (없음) | `ADMIN_UI_DATA_MODEL_20260805.md` | **신규**: UI 개발에 필요한 데이터 구조 |
 | (없음) | `ADMIN_UI_PHASES_20260805.md` | **신규**: 개발 일정 계획 |
 | (없음) | `ADMIN_UI_PROJECT_SPEC_20260805.md` | **신규**: 코드 작성 규칙 |
@@ -202,7 +202,7 @@ className="grid grid-cols-1 md:grid-cols-2"  // 모바일: 1열, 데스크탑: 2
   - → "다음 단계" → ADMIN_UI_PHASES_20260805.md의 Phase 1
 
 - **ADMIN_UI_DATA_MODEL_20260805.md**
-  - → "API 엔드포인트" → 기존 05_ADMIN_PRD.md의 API 스펙 참고
+  - → "API 엔드포인트" → 기존 ADMIN_PRD.md의 API 스펙 참고
   - → "[NEEDS CLARIFICATION]" → 의견 필요
 
 - **ADMIN_UI_PHASES_20260805.md**
