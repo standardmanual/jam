@@ -43,9 +43,9 @@ Strava를 연동한 이후 새로운 활동이 동기화될 때마다 배지가 
 ```
 이 PRD를 읽고 JAM! 모바일 웹의 Phase 1을 구현해주세요.
 
-@PRD/01_PRD.md
-@PRD/02_DATA_MODEL.md
-@PRD/04_PROJECT_SPEC.md
+@Specs/PRD/01_PRD.md
+@Specs/PRD/02_DATA_MODEL.md
+@Specs/PRD/04_PROJECT_SPEC.md
 
 Phase 1 범위:
 - 구글 소셜 로그인 (Supabase Auth)

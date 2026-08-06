@@ -343,10 +343,13 @@ Phase 16에서 스키마만 추가됐던 `type='poi'` 배지에 실제 데이터
 ## 5. 운영 문서·코드 맵
 
 ```
-[운영 문서 3종 — 단일 진실 원천]
-PRD/badge/BADGE_ENGINE_UNIFIED.md         ← 이 문서. 발급·드랍 로직 전체
-PRD/badge/액티비티배지 레시피.md            액티비티배지 115종 전체 목록·조건·설명
-PRD/badge/아이템북 레시피.xlsx             아이템배지 ~900종 목록 + '세계관 인접' 시트
+[운영 문서 — 단일 진실 원천]
+Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md ← 이 문서. 발급·드랍 로직 전체
+Specs/Content/ACTIVITY_BADGES.md          액티비티배지 115종 전체 목록·조건·설명
+Specs/Content/ITEMBOOKS.xlsx              아이템배지 ~900종 목록 + '세계관 인접' 시트
+Specs/Content/COMBINE_RECIPES.md          조합 레시피 목록
+Specs/Content/FACTIONS.md                 세계관 컨텐츠 (스텁)
+Specs/Content/POI.md                      장소 컨텐츠 (스텁)
 
 [코드]
 src/lib/badge-engine/index.ts             액티비티배지 엔진 (구현)
