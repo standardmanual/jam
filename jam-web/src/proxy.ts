@@ -45,7 +45,9 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 공개 경로 (인증 불필요)
-  const publicPaths = ['/login', '/auth/callback', '/forbidden']
+  // '/dev'는 마커 줌 크기 테스트 등 임시 검증 페이지 전용 — 목업 데이터만 사용하며
+  // 검증 완료 후 라우트와 함께 제거 예정 (Ticket 20260806_006 참고)
+  const publicPaths = ['/login', '/auth/callback', '/forbidden', '/dev']
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublicPath) {
