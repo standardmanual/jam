@@ -87,16 +87,6 @@ export default async function InventoryPage() {
           emptySlots={Math.min(remainingSlots, Math.max(0, 6 - items.length))}
         />
       )}
-
-      {/* 플리마켓 */}
-      <div className="fixed bottom-24" style={{ right: 'max(calc((100vw - 430px) / 2 + 1rem), 1rem)' }}>
-        <Link
-          href="/inventory/flea-market"
-          className="inline-flex items-center min-h-11 rounded-[var(--radius-pill-buttons)] px-[var(--spacing-24)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface-inverse text-text-inverse active:scale-95 transition-transform duration-100"
-        >
-          {d.inventory.fleaMarketButton}
-        </Link>
-      </div>
     </div>
   )
 }
