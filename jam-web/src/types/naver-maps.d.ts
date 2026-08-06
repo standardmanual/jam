@@ -51,6 +51,7 @@ declare namespace naver.maps {
   class Marker {
     constructor(options: MarkerOptions)
     setMap(map: Map | null): void
+    setPosition(position: LatLng): void
   }
 
   interface CircleOptions {
@@ -66,6 +67,7 @@ declare namespace naver.maps {
 
   class Circle {
     constructor(options: CircleOptions)
+    setCenter(center: LatLng): void
   }
 
   /** addListener가 반환하는 리스너 핸들 (removeListener에 그대로 넘긴다) */
