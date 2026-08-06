@@ -13,7 +13,7 @@
 - 배지 이미지 자동 생성(재사용 프레임워크): `scripts/badge-image-gen/` — Figma 디자인 기반으로
   DB row(역명 등)마다 텍스트를 바꿔 배지 이미지를 대량 생성. 새 디자인은 `configs/*.config.js`
   하나만 추가하면 재사용됨. 사용법은 `scripts/badge-image-gen/README.md` 참고.
-  (지하철역 POI 배지 973개 최초 적용 이력: `History/Migration/Ticket/20260806_005_*`)
+  (적용 이력: 지하철역 973개 `20260806_005_*`, 산 847개 + autoGrow 옵션 추가 `20260806_006_*`)
 - 어드민 관리 화면: `jam-web/src/app/admin/poi/`
 
 ## 티어 구조 (기존 티켓 참고)
