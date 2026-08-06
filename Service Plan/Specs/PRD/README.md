@@ -13,20 +13,20 @@
 | [02_DATA_MODEL.md](./02_DATA_MODEL.md) | 데이터 구조, 엔티티 상세, 관계도 | DB 설계할 때 / 새 기능 추가할 때 |
 | [03_PHASES.md](./03_PHASES.md) | Phase별 기능, 체크리스트, 시작 프롬프트 | 개발 순서 정할 때 / 다음 Phase 시작할 때 |
 | [04_PROJECT_SPEC.md](./04_PROJECT_SPEC.md) | 기술 스택, 절대 금지 목록, 환경변수 | AI에게 코드 시킬 때마다 함께 공유 |
-| [UX_WRITING_GUIDELINE.md](./UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 (토스 스타일 기반 JAM! 전용 라이팅 가이드) | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
+| [UX_WRITING_GUIDELINE.md](../UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 (토스 스타일 기반 JAM! 전용 라이팅 가이드) | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
 
-### Phase별 추가 문서
+### Phase별 추가 문서 (과거 이력 — `History/` 폴더로 이동됨)
 
 | Phase | 주제 | 문서 |
 |-------|------|------|
-| 7 | — | Phase7_01~04 |
-| 8 | — | Phase8_01~04 |
-| 9 | 구글 로그인 온보딩 (username + 프로필 이미지) | Phase9_01~04 |
-| 10 | 유저 검색 (홈 검색창 → 결과 페이지 → 프로필) | [Phase10_01_PRD.md](./Phase10_01_PRD.md), [Phase10_02_DATA_MODEL.md](./Phase10_02_DATA_MODEL.md), [Phase10_03_PHASES.md](./Phase10_03_PHASES.md), [Phase10_04_PROJECT_SPEC.md](./Phase10_04_PROJECT_SPEC.md) |
-| 11 | 배지 체계 업그레이드 — 드랍엔진 v2 (3레이어·세계관 모멘텀·어드민 설정) | [Phase11_01_PRD.md](./Phase11_01_PRD.md), [Phase11_02_DATA_MODEL.md](./Phase11_02_DATA_MODEL.md), [Phase11_03_PHASES.md](./Phase11_03_PHASES.md), [Phase11_04_PROJECT_SPEC.md](./Phase11_04_PROJECT_SPEC.md) |
-| 12 | 잼 포인트 시스템 | [Phase12_01_PRD.md](./Phase12_01_PRD.md), [Phase12_02_DATA_MODEL.md](./Phase12_02_DATA_MODEL.md), [Phase12_03_PHASES.md](./Phase12_03_PHASES.md), [Phase12_04_PROJECT_SPEC.md](./Phase12_04_PROJECT_SPEC.md) |
-| 13 | 미션 참가 확정(참가필수·취소불가) + 미션 상황(랭킹/달성 현황) | [Phase13_01_PRD.md](./Phase13_01_PRD.md), [Phase13_02_DATA_MODEL.md](./Phase13_02_DATA_MODEL.md), [Phase13_03_PHASES.md](./Phase13_03_PHASES.md), [Phase13_04_PROJECT_SPEC.md](./Phase13_04_PROJECT_SPEC.md) |
-| 16 | POI 배지 타입 추가 — 반복 획득, 어드민 검색 연결, 아이템북 POI 배지 구성 | [Phase16_01_PRD.md](./Phase16_01_PRD.md), [Phase16_02_DATA_MODEL.md](./Phase16_02_DATA_MODEL.md), [Phase16_03_PHASES.md](./Phase16_03_PHASES.md), [Phase16_04_PROJECT_SPEC.md](./Phase16_04_PROJECT_SPEC.md) |
+| 7 | — | `History/Phase7_01~04` |
+| 8 | — | `History/Phase8_01~04` |
+| 9 | 구글 로그인 온보딩 (username + 프로필 이미지) | `History/Phase9_01~04` |
+| 10 | 유저 검색 (홈 검색창 → 결과 페이지 → 프로필) | `History/Phase10_01~04` |
+| 11 | 배지 체계 업그레이드 — 드랍엔진 v2 (3레이어·세계관 모멘텀·어드민 설정) | `History/Phase11_01~04` |
+| 12 | 잼 포인트 시스템 | `History/Phase12_01~04` |
+| 13 | 미션 참가 확정(참가필수·취소불가) + 미션 상황(랭킹/달성 현황) | `History/Phase13_01~04` |
+| 16 | POI 배지 타입 추가 — 반복 획득, 어드민 검색 연결, 아이템북 POI 배지 구성 | `History/Phase16_01~04` |
 
 ---
 
@@ -41,9 +41,9 @@
 [03_PHASES.md](./03_PHASES.md)의 **"Phase 1 시작 프롬프트"** 섹션을 참고하세요.
 
 아래 파일 3개를 AI에게 공유하고 프롬프트를 붙여넣으면 됩니다:
-- `@PRD/01_PRD.md`
-- `@PRD/02_DATA_MODEL.md`
-- `@PRD/04_PROJECT_SPEC.md`
+- `@Specs/PRD/01_PRD.md`
+- `@Specs/PRD/02_DATA_MODEL.md`
+- `@Specs/PRD/04_PROJECT_SPEC.md`
 
 ---
 
