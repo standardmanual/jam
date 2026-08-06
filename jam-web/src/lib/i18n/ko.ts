@@ -239,7 +239,7 @@ export const ko = {
     sortPoiName: '이름순',
   },
 
-  /** 인벤토리 목록/상세, 플리마켓 */
+  /** 인벤토리 목록/상세 */
   inventory: {
     eyebrow: '내 아이템',
     title: '인벤토리',
@@ -247,7 +247,6 @@ export const ko = {
     slotsRemaining: '{count}개 슬롯 남음',
     emptyTitle: '아직 아이템이 없어요',
     emptyBody: '활동을 완료하면 아이템 배지가 드랍돼요',
-    fleaMarketButton: '플리마켓',
 
     backToInventory: '인벤토리',
     infoSectionTitle: '아이템 정보',
@@ -276,12 +275,6 @@ export const ko = {
     eventDropped: 'POI 드랍',
     eventPickedUp: 'POI 픽업',
 
-    fleaMarketComingTitle: '플리마켓 오픈 준비 중',
-    fleaMarketComingBody1: '서울 DAU {count} 달성하면 열려요',
-    fleaMarketComingBody2: '플리마켓에서 다른 러너들과 아이템 배지를 교환할 수 있어요',
-    fleaMarketConditionLabel: '오픈 조건',
-    fleaMarketConditionStatus: '달성 전',
-    fleaMarketConditionTarget: '서울 DAU 30,000명 달성',
     backToInventoryLong: '인벤토리로 돌아가기',
   },
 
