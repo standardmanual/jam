@@ -3,6 +3,7 @@ import { redirect, unstable_rethrow } from 'next/navigation'
 import { Inter } from 'next/font/google'
 import { AdminNav } from '@/components/admin/AdminNav'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
+import { AdminBodyThemeFix } from '@/components/admin/AdminBodyThemeFix'
 
 // 어드민 전용 서체 — Cal Sans는 공개 웹폰트가 아니라 디자인 시스템이 권장하는
 // 대체 조합(Inter 600 + 네거티브 트래킹)을 그대로 사용한다.
@@ -34,6 +35,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       className={`${inter.variable} min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col`}
       style={{ fontFamily: 'var(--font-admin-inter), Inter, sans-serif' }}
     >
+      <AdminBodyThemeFix />
+
       {/* 모바일 네비게이션 (헤더 + 드로어) */}
       <AdminNav userEmail={userEmail} />
 
