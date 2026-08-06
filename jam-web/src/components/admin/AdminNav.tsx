@@ -11,62 +11,13 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { AdminHeader } from './AdminHeader'
-
-type NavItem = { href: string; label: string; icon: string; exact?: boolean }
-type NavGroup = { id: string; label: string; items: NavItem[] }
-
-const DASHBOARD_ITEM: NavItem = { href: '/admin', label: '대시보드', icon: '📊', exact: true }
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    id: 'content',
-    label: '콘텐츠 관리',
-    items: [
-      { href: '/admin/badges', label: '배지 관리', icon: '🏅' },
-      { href: '/admin/poi', label: 'POI 관리', icon: '📍' },
-      { href: '/admin/itembooks', label: '아이템북', icon: '📖' },
-      { href: '/admin/factions', label: '세계관', icon: '🌍' },
-      { href: '/admin/recipes', label: '조합 레시피', icon: '⚗️' },
-      { href: '/admin/today', label: '투데이 콘텐츠', icon: '📰' },
-    ],
-  },
-  {
-    id: 'policy',
-    label: '정책 및 밸런스',
-    items: [
-      { href: '/admin/drop-policy', label: '드랍 정책', icon: '🎲' },
-      { href: '/admin/ambient-drop-policy', label: '앰비언트 드랍', icon: '🗺️' },
-      { href: '/admin/combine-policy', label: '조합 정책', icon: '🧪' },
-      { href: '/admin/missions', label: '미션 관리', icon: '🎯' },
-      { href: '/admin/points', label: '포인트 관리', icon: '💎' },
-    ],
-  },
-  {
-    id: 'ops',
-    label: '운영 도구',
-    items: [
-      { href: '/admin/simulator', label: '시뮬레이터', icon: '🎮' },
-      { href: '/admin/users', label: '유저 조회', icon: '👥' },
-      { href: '/admin/abusing', label: '어뷰징 관리', icon: '🚨' },
-    ],
-  },
-  {
-    id: 'design',
-    label: '디자인',
-    items: [{ href: '/admin/theme', label: '테마 컬러', icon: '🎨' }],
-  },
-]
-
-const ALL_ITEMS = [DASHBOARD_ITEM, ...NAV_GROUPS.flatMap((g) => g.items)]
-
-function isActive(pathname: string, item: NavItem) {
-  if (item.exact) return pathname === item.href
-  return pathname.startsWith(item.href)
-}
-
-function activeGroupId(pathname: string) {
-  return NAV_GROUPS.find((group) => group.items.some((item) => isActive(pathname, item)))?.id
-}
+import {
+  ALL_NAV_ITEMS,
+  DASHBOARD_ITEM,
+  NAV_GROUPS,
+  activeNavGroupId,
+  isNavItemActive,
+} from './adminNavItems'
 
 interface AdminNavProps {
   userEmail: string | null
@@ -81,7 +32,7 @@ interface AdminNavProps {
  *
  * 드로어 메뉴 구현:
  * - Sheet 컴포넌트 (shadcn/ui)
- * - 메뉴 항목이 많아 성격별로 그룹핑 + 아코디언으로 접고 펼침
+ * - 메뉴 항목이 많아 성격별로 그룹핑 + 아코디언으로 접고 펼침 (adminNavItems 공유)
  * - 현재 활성 항목이 속한 그룹은 기본으로 펼쳐짐
  * - 드로어 내부 스크롤 (헤더/현재 페이지 제외 nav 영역만 overflow-y-auto)
  * - 메뉴 아이템 클릭 시 자동 닫기
@@ -90,8 +41,8 @@ export function AdminNav({ userEmail }: AdminNavProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
-  const current = ALL_ITEMS.find((item) => isActive(pathname, item)) ?? DASHBOARD_ITEM
-  const defaultOpenGroup = activeGroupId(pathname)
+  const current = ALL_NAV_ITEMS.find((item) => isNavItemActive(pathname, item)) ?? DASHBOARD_ITEM
+  const defaultOpenGroup = activeNavGroupId(pathname)
 
   const handleMenuClose = () => {
     setOpen(false)
@@ -130,7 +81,7 @@ export function AdminNav({ userEmail }: AdminNavProps) {
               onClick={handleMenuClose}
               className={[
                 'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors mb-2',
-                isActive(pathname, DASHBOARD_ITEM)
+                isNavItemActive(pathname, DASHBOARD_ITEM)
                   ? 'bg-neutral-100 dark:bg-slate-800 text-slate-900 dark:text-white'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50',
               ].join(' ')}
@@ -150,7 +101,7 @@ export function AdminNav({ userEmail }: AdminNavProps) {
                   </AccordionTrigger>
                   <AccordionContent className="pb-1 space-y-1">
                     {group.items.map((item) => {
-                      const active = isActive(pathname, item)
+                      const active = isNavItemActive(pathname, item)
                       return (
                         <Link
                           key={item.href}
