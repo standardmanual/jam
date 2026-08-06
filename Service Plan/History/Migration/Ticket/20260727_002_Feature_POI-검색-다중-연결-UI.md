@@ -1,8 +1,8 @@
 ---
-id: 20260812_002
+id: 20260727_002
 category: Feature
 status: CLOSED
-created: 2026-08-12
+created: 2026-07-27
 closed: 2026-08-12
 ---
 
