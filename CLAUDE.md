@@ -58,7 +58,7 @@
 - 기존 기능의 정책·플로우 변경
 
 **실행 방법:**
-1. `Service Plan/Specs/PRD/` 하위에서 관련 문서 확인 (`01_PRD.md`, `02_DATA_MODEL.md`, `03_PHASES.md`, `04_PROJECT_SPEC.md`, `05_ADMIN_PRD.md` 또는 주제별 하위 폴더)
+1. `Service Plan/Specs/PRD/` 하위에서 관련 문서 확인 (`01_PRD.md`, `02_DATA_MODEL.md`, `03_PHASES.md`, `04_PROJECT_SPEC.md` 또는 주제별 하위 폴더 — 예: 어드민 관련은 `PRD/AdminUI/`)
 2. 새로운 기능 영역이면 `PRD/{주제}/` 하위 폴더를 신설한다 (예: `PRD/AdminUI/`, `PRD/PointSystem/`). 파일명에 날짜·Phase 접두어를 붙이지 않고 폴더로 구분한다.
 3. 기존 파일을 직접 수정한다 (SERVICE_OPERATIONS처럼 신규 파일로 쌓지 않음 — PRD는 "현재 기준 최신 스펙"이 원칙).
 4. 문서 내 상호 링크(`[01_PRD.md](...)`, `@Specs/PRD/...`)를 경로 변경 시 함께 갱신한다.
