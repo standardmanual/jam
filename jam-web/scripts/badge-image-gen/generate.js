@@ -100,27 +100,34 @@ function splitIntoTwoLines(text) {
 }
 
 /**
- * 텍스트가 지정 폭을 넘으면 autoShrink 옵션에 따라 폰트 크기를 줄인다 (근사치 — CJK 정사각형 글자폭 가정).
- * minFontSize까지 줄여도 한 줄에 안 들어가는 이름(예: 27자짜리 극단적 이상치)은 자동으로
- * 2줄 중앙정렬로 전환한다.
+ * 텍스트 폭에 맞춰 폰트 크기를 정한다 (근사치 — CJK 정사각형 글자폭 가정).
+ * - autoShrink: 폭을 넘치면 minFontSize까지 줄인다. 그래도 한 줄에 안 들어가는 이름
+ *   (예: 27자짜리 극단적 이상치)은 자동으로 2줄 중앙정렬로 전환한다.
+ * - autoGrow: 반대로 텍스트가 짧아 여백이 많이 남으면(예: 2~3자 산 이름) maxFontSize까지
+ *   확대한다. autoShrink와 같은 "폭 대비 이상적 크기" 계산식을 공유하므로 둘 다 켜두면
+ *   길이에 따라 자연스럽게 확대/축소가 이어진다.
  */
 function resolveLabelLines(text, config) {
-  const { fontSize, width, autoShrink, minFontSize } = config.text
-  if (!autoShrink) return { lines: [text], fontSize }
+  const { fontSize, width, autoShrink, autoGrow, minFontSize, maxFontSize } = config.text
+  if (!autoShrink && !autoGrow) return { lines: [text], fontSize }
 
   const min = minFontSize ?? 16
+  const max = autoGrow ? maxFontSize ?? fontSize : fontSize
   const HARD_FLOOR = 10
 
-  if (fitsOneLine(text, fontSize, width)) return { lines: [text], fontSize }
+  // 폭 대비 이상적인 폰트 크기 — 텍스트가 짧을수록 커지고(autoGrow 켠 경우 max까지),
+  // 길수록 작아진다(autoShrink 켠 경우 min까지).
+  const ideal = Math.floor((width / text.length) * 0.98)
+  const singleLineFontSize = Math.max(min, Math.min(max, ideal))
 
-  const shrunk = Math.max(min, Math.floor((width / text.length) * 0.98))
-  if (fitsOneLine(text, shrunk, width)) return { lines: [text], fontSize: Math.min(fontSize, shrunk) }
+  if (fitsOneLine(text, singleLineFontSize, width)) return { lines: [text], fontSize: singleLineFontSize }
+  if (!autoShrink) return { lines: [text], fontSize: singleLineFontSize }
   if (fitsOneLine(text, min, width)) return { lines: [text], fontSize: min }
 
   // 한 줄로는 minFontSize에서도 안 들어감 → 2줄 중앙정렬
   const { line1, line2 } = splitIntoTwoLines(text)
   const longerLen = Math.max(line1.length, line2.length)
-  const twoLineFont = Math.max(HARD_FLOOR, Math.min(fontSize, Math.floor((width / longerLen) * 0.98)))
+  const twoLineFont = Math.max(HARD_FLOOR, Math.min(max, Math.floor((width / longerLen) * 0.98)))
   return { lines: [line1, line2], fontSize: twoLineFont }
 }
 
