@@ -9,7 +9,11 @@
 - 드랍/픽업 연동: `jam-web/supabase/migrations/004_phase7_user_drops.sql`
 - 어뷰징 방지(POI 차단): `jam-web/supabase/migrations/010_abusing_policy.sql`
 - 산 POI 일괄 등록: `scripts/import-mountains-poi.js` (산림청 공공데이터 연동)
-- 지하철/기차역 POI 일괄 등록: 관련 스크립트 확인 필요
+- 지하철/기차역 POI 일괄 등록: `scripts/insert-stations-poi.js`
+- 배지 이미지 자동 생성(재사용 프레임워크): `scripts/badge-image-gen/` — Figma 디자인 기반으로
+  DB row(역명 등)마다 텍스트를 바꿔 배지 이미지를 대량 생성. 새 디자인은 `configs/*.config.js`
+  하나만 추가하면 재사용됨. 사용법은 `scripts/badge-image-gen/README.md` 참고.
+  (지하철역 POI 배지 973개 최초 적용 이력: `History/Migration/Ticket/20260806_005_*`)
 - 어드민 관리 화면: `jam-web/src/app/admin/poi/`
 
 ## 티어 구조 (기존 티켓 참고)
