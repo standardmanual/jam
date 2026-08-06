@@ -215,6 +215,10 @@ export default function MapView({
   const mapInstanceRef = useRef<naver.maps.Map | null>(null)
   const markersRef = useRef<naver.maps.Marker[]>([])
   const badgeMarkersRef = useRef<naver.maps.Marker[]>([])
+  // 현재 위치 마커/정확도 서클 — "현재 위치로 이동" 버튼을 누르면 이 위치도 함께 갱신한다
+  const userMarkerRef = useRef<naver.maps.Marker | null>(null)
+  const userCircleRef = useRef<naver.maps.Circle | null>(null)
+  const [locating, setLocating] = useState(false)
 
   // 줌 레벨(마커 크기 배율 계산용). 초기 줌(17)과 동일한 값으로 시작한다.
   const [zoom, setZoom] = useState(17)
@@ -254,7 +258,7 @@ export default function MapView({
       })
       mapInstanceRef.current = map
 
-      new naver.maps.Marker({
+      userMarkerRef.current = new naver.maps.Marker({
         position: new naver.maps.LatLng(userLat, userLng),
         map,
         icon: {
@@ -265,7 +269,7 @@ export default function MapView({
         title: '현재 위치',
       })
 
-      new naver.maps.Circle({
+      userCircleRef.current = new naver.maps.Circle({
         map,
         center: new naver.maps.LatLng(userLat, userLng),
         radius: 500,
@@ -425,7 +429,47 @@ export default function MapView({
     })
   }, [badgeMarkers, badgeClusters, zoomScale])
 
-  return <div ref={mapRef} className="w-full h-full" />
+  // "현재 위치로 이동" 버튼 — 지도 회전 없이 위치만 재조회해 중심 이동 + 파란 점/서클 갱신
+  const handleLocateClick = () => {
+    if (!navigator.geolocation || locating) return
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false)
+        const map = mapInstanceRef.current
+        const naver = window.naver
+        if (!map || !naver?.maps) return
+        const latlng = new naver.maps.LatLng(pos.coords.latitude, pos.coords.longitude)
+        map.morph(latlng, map.getZoom())
+        userMarkerRef.current?.setPosition(latlng)
+        userCircleRef.current?.setCenter(latlng)
+      },
+      () => setLocating(false)
+    )
+  }
+
+  return (
+    <div className="relative w-full h-full">
+      <div ref={mapRef} className="w-full h-full" />
+      <button
+        type="button"
+        onClick={handleLocateClick}
+        aria-label="현재 위치로 이동"
+        disabled={locating}
+        className="absolute right-4 z-10 w-11 h-11 rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25)] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-60"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="7" stroke="#555555" strokeWidth="2" />
+          <circle cx="12" cy="12" r="2" fill="#4285F4" />
+          <line x1="12" y1="1" x2="12" y2="4" stroke="#555555" strokeWidth="2" strokeLinecap="round" />
+          <line x1="12" y1="20" x2="12" y2="23" stroke="#555555" strokeWidth="2" strokeLinecap="round" />
+          <line x1="1" y1="12" x2="4" y2="12" stroke="#555555" strokeWidth="2" strokeLinecap="round" />
+          <line x1="20" y1="12" x2="23" y2="12" stroke="#555555" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  )
 }
 
 /**
