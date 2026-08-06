@@ -10,17 +10,18 @@
 
 | 문서 | 내용 | 언제 읽나 |
 |------|------|----------|
-| [01_PRD.md](./01_PRD.md) | 뭘 만드는지, 누가 쓰는지, 핵심 기능 목록 | 프로젝트 시작 전 / 방향 확인할 때 |
+| [01_PRD.md](./01_PRD.md) | 뭘 만드는지, 누가 쓰는지, 핵심 기능 목록(구현 상태 표시) | 프로젝트 시작 전 / 방향 확인할 때 |
 | [02_DATA_MODEL.md](./02_DATA_MODEL.md) | 데이터 구조, 엔티티 상세, 관계도 | DB 설계할 때 / 새 기능 추가할 때 |
-| [03_PHASES.md](./03_PHASES.md) | Phase 로드맵 요약 (상세는 이력 자료로 분리됨) | 개발 진행 상태를 대략 확인할 때 |
+| [03_PHASES.md](./03_PHASES.md) | 실제 개발 이력(티켓 기준 시간순) + 현재 상태 요약 | 지금까지 뭐가 만들어졌는지 훑어볼 때 |
 | [04_PROJECT_SPEC.md](./04_PROJECT_SPEC.md) | 기술 스택, 절대 금지 목록, 환경변수 | AI에게 코드 시킬 때마다 함께 공유 |
 | [../UX_WRITING_GUIDELINE.md](../UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
 
-> ⚠️ **위 4개 문서는 2026-07-09~10 초기 작성 이후 내용이 갱신되지 않았다.**
-> Phase 1~7 + 어드민 완료 시점 기준으로 작성돼 있어, 이후 구현된 드랍엔진 v2·
-> 세계관·조합 시스템·POI 배지 타입 등 최신 기능이 반영되어 있지 않다. 최신 상태
-> 반영은 별도 작업으로 예정. **현재 서비스 상태를 정확히 파악하려면 아래
-> "최신 스펙은 여기서 확인" 섹션을 먼저 참고할 것.**
+> **2026-08-06 전면 갱신 완료**: 위 4개 문서를 `jam-web/src/app` 라우트 전체,
+> `supabase/migrations/` 001~074 전수, 프로젝트 설정을 코드와 대조해 현재 상태
+> 기준으로 재작성했다. 세계관·조합·미션·포인트·팔로우·어뷰징·드랍엔진v2·CMS 등
+> 신규 도메인, 지도/POI 소스의 Google→네이버 전환, 도메인 전환(j-a-m.app) 등을
+> 모두 반영. 갱신 시점 이후 변경분은 각 문서가 다시 낡을 수 있으므로, 신규
+> 개선사항 작업 전에는 항상 [History/Migration/Ticket/](../../History/Migration/Ticket/) 최신 티켓을 먼저 확인할 것.
 
 ### 주제별 PRD 세트 (하위 폴더)
 
@@ -31,30 +32,28 @@
 
 새 주제별 PRD 세트 생성 시 `Specs/PRD/{주제}/` 하위 폴더로 구분한다 (파일명 접두어 사용 안 함).
 
-### 과거 Phase별 문서 (이력)
+### 과거 이력 자료
 
 | 자료 | 내용 |
 |------|------|
-| [History/PHASES_ROADMAP_ARCHIVE.md](../../History/PHASES_ROADMAP_ARCHIVE.md) | (구)`03_PHASES.md` + (구)`04_PHASES_NEXT.md` 전문 — Phase 1~18 상세 실행계획, 시작 프롬프트 |
+| [History/PHASES_ROADMAP_ARCHIVE.md](../../History/PHASES_ROADMAP_ARCHIVE.md) | 2026-07-09~10 작성된 원래 Phase 계획 원문 (실행 안 됨, 참고용) |
 | `History/Phase7~17_01~04` 등 | 각 Phase 시점의 4종 PRD 문서 스냅샷 |
 
 ---
 
-## 최신 스펙은 여기서 확인
-
-이 폴더의 4개 핵심 문서가 갱신되기 전까지, 현재 서비스 상태는 아래 문서들이 더 정확하다.
+## 최신 스펙 교차 참고
 
 | 영역 | 문서 |
 |------|------|
-| 배지·드랍 엔진 로직 (드랍엔진 v2, 세계관 모멘텀, 앰비언트 드랍 등) | [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) |
-| 액티비티배지·아이템북·아이템배지·세계관·POI 컨텐츠 | [Specs/Content/](../Content/) |
-| 실제 개발 작업 이력 (신규 개선사항은 여기부터 확인) | [History/Migration/Ticket/](../../History/Migration/Ticket/) |
+| 배지·드랍 엔진 판정 로직 (드랍엔진 v2, 세계관 모멘텀, 앰비언트 드랍 등) | [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) |
+| 액티비티배지·아이템북·아이템배지·세계관·POI 컨텐츠 목록 | [Specs/Content/](../Content/) |
+| 실제 개발 작업 이력 원본 | [History/Migration/Ticket/](../../History/Migration/Ticket/) |
 
 ---
 
 ## 한 줄 요약
 
-**Strava 연동 → 배지 자동 발급 → 아이템 드랍/픽업 → 세계관 컬렉션 → 인스타 공유 카드 생성 → 실물 패치 구매 자격**
+**Strava 연동 → 배지 자동 발급 → 지도에서 아이템 드랍/픽업 → 세계관 아이템북 컬렉션 → 조합·미션·포인트로 순환 → (예정) 실물 패치 구매 자격**
 
 ---
 
@@ -62,12 +61,12 @@
 
 | 영역 | 선택 |
 |------|------|
-| 프레임워크 | Next.js 15 (App Router) |
+| 프레임워크 | Next.js 16 (App Router), React 19 |
 | DB/백엔드 | Supabase (PostgreSQL) |
-| 배포 | Vercel |
-| 인증 | Supabase Auth + Google OAuth |
-| 스타일 | Tailwind CSS 4 |
-| 지도 | Google Maps JavaScript API (Phase 7~) |
+| 배포 | Vercel (Cron 4건) |
+| 인증 | Supabase Auth + Google OAuth (어드민은 이중 인증) |
+| 스타일 | Tailwind CSS 4 + Radix UI |
+| 지도 / POI 자동수집 | **네이버 지도(NCP Maps.js) / 네이버 지역검색 오픈API** |
 
 상세는 [04_PROJECT_SPEC.md](./04_PROJECT_SPEC.md) 참고.
 
@@ -85,6 +84,7 @@
 
 각 문서 하단의 `[NEEDS CLARIFICATION]` 섹션 참고. 대표 항목:
 
-- [ ] D2C 쇼핑몰은 별도 URL인지, JAM! 앱 내에 있는지?
-- [ ] 배지 발급 조건 스펙(`condition_json`) 최신 버전 위치
-- [ ] 아이템 배지 드랍 확률 테이블 — [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md)와 이 문서 간 정합성 확인 필요
+- [ ] D2C 쇼핑몰 연결 방식 및 착수 일정 — 여전히 미구현
+- [ ] P2P 플리마켓(`/inventory/flea-market`) 실거래 착수 일정 — 현재 placeholder만 존재
+- [ ] 푸시 알림 도입 계획 — PWA 인프라 자체 여부 확인 필요
+- [ ] 테스트 러너(jest/vitest) 미설치 상태를 계속 유지할지 — `__tests__` 폴더는 다수 존재
