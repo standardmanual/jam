@@ -32,10 +32,13 @@ module.exports = {
     color: '#FFFFFF',
     fontWeight: 700,
     align: 'center',
-    // 산 이름은 대부분 2~5자로 짧아 거의 축소가 필요 없지만, 향후 긴 이름 대비 안전장치로 유지
-    // (subway-poi-badge와 동일 로직 — minFontSize에서도 안 들어가면 2줄 중앙정렬로 자동 전환)
+    // 산 이름은 대부분 2~5자로 짧아 Figma 기본 크기(36)로는 여백이 많이 남아 작아 보임 →
+    // 짧을수록 확대(최대 150% = 54)하고, 혹시 긴 이름이면 축소(최소 18)하도록 양방향 스케일링.
+    // 그래도 minFontSize에서 안 들어가면 2줄 중앙정렬로 자동 전환 (subway-poi-badge와 동일 엔진 로직)
     autoShrink: true,
     minFontSize: 18,
+    autoGrow: true,
+    maxFontSize: 54,
   },
 
   font: {
