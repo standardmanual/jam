@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CLUSTER_ZOOM_THRESHOLD } from '@/lib/poi/badge-clustering'
 
 export interface PoiMarker {
@@ -134,27 +134,41 @@ function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: n
     `<svg viewBox="0 0 24 24" width="${icon}" height="${icon}" fill="#ffffff" aria-hidden="true">${path}</svg></div>`
 }
 
-/** 개별 방문 배지 마커의 지름(px) — 드랍/픽업 POI 서클(기본 24px)과 동일하게 맞춘다 */
+/** 개별 방문 배지 마커의 기준 지름(px) — 드랍/픽업 POI 서클(기본 24px)과 동일하게 맞춘다 */
 const BADGE_MARKER_SIZE = 24
 /**
- * 방문 배지 마커를 POI 서클 위로 띄우는 수직 오프셋(px).
+ * 방문 배지 마커를 POI 서클 위로 띄우는 기준 수직 오프셋(px).
  * 드랍/픽업 서클 반경(기본 24px 기준 12px) + 여유 간격(4px).
  */
 const BADGE_MARKER_LIFT = 16
 /**
- * 마커 콘텐츠 전체(서클+이름 라벨) 너비(px). 서클은 이 너비 안에서 가운데 정렬되므로
+ * 마커 콘텐츠 전체(서클+이름 라벨) 기준 너비(px). 서클은 이 너비 안에서 가운데 정렬되므로
  * anchor.x는 항상 이 값의 절반 — 라벨 길이가 서클보다 넓어져도 서클 중심 좌표는 그대로 유지된다.
  */
 const BADGE_MARKER_CONTENT_WIDTH = 72
 
 /**
- * POI 배지 마커 — 지름 24px 원형 배지 이미지 + 아래에 POI 이름 라벨.
+ * 줌 레벨별 POI/배지 서클 크기 배율.
+ * 최초 진입 줌(17)을 포함한 기본 구간(16~18)이 130% — 기존 크기가 배지 디자인이
+ * 안 보일 정도로 작다는 피드백에 따른 확대. 줌아웃(≤15)하면 100%로 되돌리고,
+ * 줌인(≥19)하면 160%까지 한 단계 더 키운다. 계단식(3단계)으로 끊는 이유는 naver 지도
+ * 마커가 HTML을 매 렌더마다 다시 그리는 구조라, 줌 조작 중 프레임마다 값이 바뀌는
+ * 연속(선형) 스케일을 적용하면 깜빡임/버벅임이 발생하기 때문 — zoom_changed 핸들러의
+ * 디바운스와 함께 단계 전환 빈도를 최소화한다.
+ */
+function getZoomScaleMultiplier(zoom: number): number {
+  if (zoom >= 19) return 1.6
+  if (zoom >= 16) return 1.3
+  return 1.0
+}
+
+/**
+ * POI 배지 마커 — 원형 배지 이미지 + 아래에 POI 이름 라벨.
  * 드랍/픽업 POI 서클과 같은 좌표에 겹쳐 그려지면 서클을 완전히 가리므로,
  * anchor를 아래로 내려 서클 위쪽에 작게 얹히도록 배치한다(서클과 배지 둘 다 노출).
  * 미획득은 그레이스케일 필터로 표시한다(클릭 리스너 자체를 걸지 않아 탭 비활성).
  */
-function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: string): string {
-  const size = BADGE_MARKER_SIZE
+function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: string, size: number): string {
   const filter = earned ? 'none' : 'grayscale(1)'
   const opacity = earned ? 1 : 0.7
   const safeName = escapeHtml(name)
@@ -197,6 +211,11 @@ export default function MapView({
   const mapInstanceRef = useRef<naver.maps.Map | null>(null)
   const markersRef = useRef<naver.maps.Marker[]>([])
   const badgeMarkersRef = useRef<naver.maps.Marker[]>([])
+
+  // 줌 레벨(마커 크기 배율 계산용). 초기 줌(17)과 동일한 값으로 시작한다.
+  const [zoom, setZoom] = useState(17)
+  const zoomDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const zoomScale = getZoomScaleMultiplier(zoom)
 
   // idle 디바운스 타이머 + 마지막으로 조회한 뷰포트(범위 밖으로 나갔을 때만 재조회)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -280,6 +299,14 @@ export default function MapView({
         debounceRef.current = setTimeout(emitViewport, VIEWPORT_DEBOUNCE_MS)
       })
 
+      // 줌 변경 시 마커 크기 배율 갱신. 핀치/휠 연속 입력 중 매 프레임 리렌더를
+      // 막기 위해 idle과 별개로 짧게 디바운스한다(단계 전환 자체가 3단계뿐이라
+      // 값이 실제로 바뀔 때만 setZoom이 리렌더를 유발한다).
+      const zoomListener = naver.maps.Event.addListener(map, 'zoom_changed', () => {
+        if (zoomDebounceRef.current) clearTimeout(zoomDebounceRef.current)
+        zoomDebounceRef.current = setTimeout(() => setZoom(map.getZoom()), 120)
+      })
+
       // 초기 1회 즉시 조회. 지도 초기화 직후 bounds가 아직 없을 수 있는데,
       // 그 경우엔 lastViewport가 비어 있으므로 첫 idle에서 자연히 조회된다.
       try {
@@ -290,12 +317,14 @@ export default function MapView({
 
       cleanupRef.current = () => {
         naver.maps.Event.removeListener(idleListener)
+        naver.maps.Event.removeListener(zoomListener)
       }
     }).catch(console.error)
 
     return () => {
       cancelled = true
       if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (zoomDebounceRef.current) clearTimeout(zoomDebounceRef.current)
       cleanupRef.current?.()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -316,7 +345,7 @@ export default function MapView({
 
       // inDropRange=undefined(구버전 호환)이면 true로 간주
       const inRange = poi.inDropRange !== false
-      const size = Math.round((isSelected ? 26 : 20) * DROP_MARKER_SCALE)
+      const size = Math.round((isSelected ? 26 : 20) * DROP_MARKER_SCALE * zoomScale)
 
       const marker = new naver.maps.Marker({
         position: new naver.maps.LatLng(poi.latitude, poi.longitude),
@@ -332,7 +361,7 @@ export default function MapView({
       naver.maps.Event.addListener(marker, 'click', () => onPoiSelect(poi.id))
       markersRef.current.push(marker)
     })
-  }, [pois, selectedPoiId, onPoiSelect])
+  }, [pois, selectedPoiId, onPoiSelect, zoomScale])
 
   // POI 배지 마커 / 클러스터 마커 업데이트
   useEffect(() => {
@@ -367,14 +396,16 @@ export default function MapView({
 
     // 줌 13 초과 — 개별 배지 마커. 드랍/픽업 POI 서클과 같은 좌표를 공유하므로
     // anchor.y를 키워 서클 위쪽에 작게 얹는다(서클을 가리지 않고 함께 노출).
+    const badgeSize = Math.round(BADGE_MARKER_SIZE * zoomScale)
+    const badgeLift = Math.round(BADGE_MARKER_LIFT * zoomScale)
     badgeMarkers.forEach((badge) => {
       const marker = new naver.maps.Marker({
         position: new naver.maps.LatLng(badge.latitude, badge.longitude),
         map,
         title: badge.name,
         icon: {
-          content: badgeMarkerIconHtml(badge.image_url, badge.earned, badge.name),
-          anchor: new naver.maps.Point(BADGE_MARKER_CONTENT_WIDTH / 2, BADGE_MARKER_SIZE / 2 + BADGE_MARKER_LIFT),
+          content: badgeMarkerIconHtml(badge.image_url, badge.earned, badge.name, badgeSize),
+          anchor: new naver.maps.Point(BADGE_MARKER_CONTENT_WIDTH / 2, badgeSize / 2 + badgeLift),
         },
         zIndex: badge.earned ? 8 : 7,
       })
@@ -388,7 +419,7 @@ export default function MapView({
 
       badgeMarkersRef.current.push(marker)
     })
-  }, [badgeMarkers, badgeClusters])
+  }, [badgeMarkers, badgeClusters, zoomScale])
 
   return <div ref={mapRef} className="w-full h-full" />
 }
