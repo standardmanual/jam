@@ -2,259 +2,284 @@
 
 > 이 문서는 앱에서 다루는 핵심 데이터의 구조를 정의합니다.
 > 개발자가 아니어도 이해할 수 있는 "개념적 ERD"입니다.
+>
+> **2026-08-06 갱신**: `jam-web/supabase/migrations/` 001~074 전수 대조로 현재 DB 상태 기준
+> 재작성. 원안(2026-07-09) 대비 세계관·조합·미션·포인트·팔로우·어뷰징·드랍엔진v2·CMS 등
+> 12개 도메인이 신규 추가됐고, 기존 12개 테이블 중 다수가 구조적으로 변경됨.
 
 ---
 
-## 전체 구조
+## 전체 구조 (도메인별)
 
 ```
-[User] 유저 계정
-  ├── 1:1 ──> [StravaConnection] Strava 연동 정보
-  ├── 1:N ──> [UserActivityBadge] 획득한 액티비티 배지
-  └── 1:1 ──> [Inventory] 인벤토리
-                └── N:M ──> [ItemBadge] 소유 아이템 배지
+[유저/인증]     users ─1:1─ strava_connections
+                 └─1:N─ strava_activities (동기화 원본 활동 기록)
 
-[Badge] 배지 마스터 데이터 (어드민이 등록)
-  ├── type: "activity" | "item"
-  └── [ItemBook] 아이템북 레시피
-        ├── 1개의 ActivityBadge 조건
-        └── N개의 ItemBadge 조건
+[배지]          badges (activity/item/poi) ──faction_id──> factions
+                 ├─1:N─ user_activity_badges   (활동/아이템 배지, 평생 1회)
+                 └─1:N─ user_poi_badge_earns   (POI 배지, 반복 획득 가능)
 
-[POI] 전국 인증 포인트
-  └── 연결된 Badge (POI 방문 시 발급되는 배지)
+[인벤토리]      users ─1:1─ inventory ─1:N─ inventory_items ──badge_id──> badges
+                                              └─ slotted_in ──> item_books (슬롯 장착)
 
-[Trade] 플리마켓 거래 (Phase 3+, 데이터 구조만 예약)
+[아이템북]      item_books ──faction_id──> factions
+                 ├─1:N─ user_item_book_slots        (슬롯별 장착 현황)
+                 └─1:N─ user_item_book_completions   (완성 기록)
+
+[세계관]        factions ─N:M(인접)─ factions (faction_adjacency, 드랍 모멘텀용)
+
+[POI/드랍]      poi ──category──> poi_categories
+                 ├─1:N─ poi_drops (source: user | system)
+                 └─연결─ badges (linked_badge_id)
+                users ─1:1─ user_drop_state (드랍 모멘텀/피티 상태)
+                drop_policy / ambient_drop_policy (싱글톤 파라미터)
+
+[조합]          combination_recipes (재료 2~10개 → 결과 배지)
+                combine_policy (싱글톤) / user_combine_state (유저별 피티)
+
+[미션]          missions ─1:N─ user_mission_participations (참가+진행도)
+                          └─1:N─ user_mission_completions   (완료 기록)
+
+[포인트]        users ─1:1─ point_wallets ─1:N─ point_transactions (append-only 원장)
+                point_treasury (전체 발행/회수 싱글톤 장부)
+
+[소셜]          users ─N:M(팔로우)─ users (user_follows)
+                user_activity_feed (배지/드랍/미션 이벤트 통합 피드)
+
+[어뷰징]        abusing_policy(싱글톤) / user_shadow_bans / poi_blocks / abusing_logs
+
+[CMS/기타]      today_cards (홈 에디토리얼) / theme_presets (어드민 컬러 테마)
+                wandering_mythic_state (떠돌이 신화 아이템)
+                engine_decision_log (배지·드랍 엔진 판정 로그)
 ```
 
 ---
 
-## 엔티티 상세
+## 1. 유저 / 인증
 
-### User (유저 계정)
-Strava를 쓰는 활동가. 구글 로그인으로 가입.
+### users
+Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에서 username 설정.
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 (자동 생성) | uuid-123 | O |
-| email | 구글 계정 이메일 | sihyun@example.com | O |
-| display_name | 닉네임 | 라이더시현 | O |
-| avatar_url | 프로필 이미지 URL | https://... | X |
-| region | 활동 지역 (시/도) | 서울특별시 | O |
-| activity_types | 활동 종목 (복수 선택) | ["cycling", "hiking"] | O |
-| created_at | 가입일 (자동) | 2026-07-09 | O |
+| 필드 | 설명 |
+|------|------|
+| id | Supabase auth.users FK |
+| email | 구글 계정 이메일 |
+| username | 고유 닉네임 (`^[a-z0-9._]+$`, nullable — 온보딩 완료 전 null) |
+| avatar_url | 프로필 이미지 |
+| region | 활동 지역 |
+| activity_types[] | 활동 종목 복수 선택 |
+| last_location_lat/lng/at | 최근 위치 (GPS 조작 감지용) |
+| initial_sync_done | 첫 Strava 동기화 시 common 등급만 발급하는 게이트 완료 여부 |
 
-**activity_types 허용값**: `cycling` (자전거), `running` (달리기), `hiking` (등산), `walking` (걷기)
+> 원안의 `display_name`은 `username`으로 rename됨.
 
----
+### strava_connections
+원안과 거의 동일. `access_token`/`refresh_token` 암호화 저장, `backfill_completed` 유지.
 
-### StravaConnection (Strava 연동 정보)
-유저와 Strava 계정을 연결하는 브릿지. OAuth 토큰 저장.
-
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-456 | O |
-| user_id | 연결된 유저 ID | uuid-123 | O |
-| strava_athlete_id | Strava 내부 운동선수 ID | 12345678 | O |
-| access_token | API 호출용 토큰 (암호화 저장) | ya29... | O |
-| refresh_token | 토큰 갱신용 (암호화 저장) | 1//0g... | O |
-| token_expires_at | 액세스 토큰 만료 시각 | 2026-07-09T15:00:00Z | O |
-| last_synced_at | 마지막 동기화 시각 | 2026-07-09T22:30:00Z | X |
-| backfill_completed | 과거 데이터 소급 분석 완료 여부 | true | O |
-
-**보안 주의**: access_token, refresh_token은 DB에 암호화 저장. .env에서 암호화 키 관리.
+### strava_activities (신규)
+동기화 원본 활동 기록. `strava_id`, `jam_activity_type`, `distance_km`, `normalized`(정규화된 활동 JSON), `processed_via`(sync/reconcile/manual_backfill). UNIQUE(user_id, strava_id)로 중복 동기화 방지 — 이기종 데이터 중복 이슈의 실제 해결책.
 
 ---
 
-### Badge (배지 마스터)
-어드민이 등록하는 배지 원본 데이터. 유저가 획득하면 UserActivityBadge 또는 Inventory에 복사됨.
+## 2. 배지
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-789 | O |
-| name | 배지 이름 | 한강 라이더 | O |
-| description | 배지 설명 | 한강 자전거길 50km 완주 | O |
-| type | 배지 종류 | activity / item | O |
-| rarity | 희귀도 | common / rare / legendary / mythic | O |
-| image_url | 배지 이미지 (3D 그래픽) | https://... | O |
-| condition_json | 발급 조건 (JSON) | {"distance_km": 50, "route": "hangang"} | O (액티비티) |
-| activity_types | 해당 활동 종목 | ["cycling"] | O |
-| patch_available | 실물 패치 구매 가능 여부 | true | O |
-| patch_price_krw | 패치 가격 (원) | 7000 | X |
-| created_at | 등록일 | 2026-07-09 | O |
+### badges
+| 필드 | 설명 |
+|------|------|
+| type | `activity` / `item` / **`poi`**(신규 — POI 통과 시 반복 발급) |
+| rarity | common / rare / legendary / mythic |
+| faction_id | 소속 세계관 (아이템 배지) |
+| item_book_id | 소속 아이템북 (구조 역전 — 아이템북이 배지 목록을 갖는 게 아니라 배지가 소속 아이템북을 가짐) |
+| drop_weight / drop_condition_json | 드랍엔진 판정용 |
+| is_wandering | 떠돌이 신화 아이템 여부 |
+| valid_from / valid_until | 노출 기간 |
+| point_reward | 발급 시 지급 포인트 |
+| deleted_at | 소프트 삭제 |
 
----
+### user_activity_badges
+활동/아이템 배지 발급 기록. 평생 1회(UNIQUE user_id+badge_id). POI/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.
 
-### UserActivityBadge (유저가 획득한 액티비티 배지)
-조건 달성 시 자동 발급. 영구 귀속. 양도 불가.
-
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-abc | O |
-| user_id | 유저 ID | uuid-123 | O |
-| badge_id | 배지 ID | uuid-789 | O |
-| earned_at | 획득 시각 | 2026-07-09T22:35:00Z | O |
-| triggered_by | 트리거 유형 | strava_sync | X |
-| triggered_by_poi_id | POI 인증 발급 시 연결된 POI ID | uuid-jkl | X |
-| triggered_by_strava_id | 발급 트리거 Strava 활동 ID | 12345678 | X |
-| triggered_by_activity_name | 트리거 활동 이름 | 한강 라이딩 | X |
-| triggered_by_distance_km | 트리거 활동 거리 (km) | 42.5 | X |
-| triggered_by_activity_date | 트리거 활동 시작일 (ISO 8601) | 2026-07-09T06:30:00Z | X |
-| share_card_url | 생성된 인스타 공유 카드 URL | https://... | X |
+### user_poi_badge_earns (신규)
+POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, badge_id, poi_id, strava_id)로 동일 통과분 중복 방지.
 
 ---
 
-### Inventory (인벤토리)
-유저당 1개. 아이템 배지를 담는 가방. 최대 50슬롯.
+## 3. 인벤토리
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-def | O |
-| user_id | 유저 ID (1:1) | uuid-123 | O |
-| max_slots | 최대 슬롯 수 | 50 | O |
-| used_slots | 현재 사용 슬롯 | 12 | O |
+### inventory / inventory_items
+원안 구조 유지(50슬롯). `inventory_items`에 추가된 것:
+- `serial_number`: SERIAL(순차) → **BEFORE INSERT 트리거로 1~999,999 난수 부여**로 변경(발급 순서 역산 방지). 앰비언트 드랍 픽업분은 50,001~999,999 별도 범위.
+- `slotted_in`: 아이템북 슬롯에 장착된 경우 참조 (장착 중엔 인벤토리 칸 미차감)
+- `dropped_at` / `drop_id`: 드랍 후 소프트 삭제 추적
 
 ---
 
-### InventoryItem (인벤토리 내 아이템 배지)
-유저 인벤토리에 실제로 들어있는 아이템 배지.
+## 4. 아이템북
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-ghi | O |
-| inventory_id | 인벤토리 ID | uuid-def | O |
-| badge_id | 아이템 배지 ID | uuid-789 | O |
-| serial_number | 서비스 전역 고유 순번 (자동 증가) | 42 | O |
-| serial_prefix | 4자리 랜덤 대문자 알파벳 | ABCD | O |
-| obtained_at | 획득 시각 | 2026-07-09T22:40:00Z | O |
-| obtained_by | 획득 방법 | drop / drop_event / system_event / pickup | O |
-| expires_at | 만료 시각 (30일 후 자동 소멸) | 2026-08-09 | X |
-| dropped_at | 드랍한 시각 (드랍 후 소프트 삭제) | 2026-07-10T10:00:00Z | X |
-| drop_id | 연결된 poi_drops ID | uuid-xyz | X |
+### item_books
+`faction_id`로 세계관 연동, `story_text`, `is_active`, `drop_condition_json` 보유. **`required_item_badge_ids` 컬럼은 삭제됨** — 완성 조건은 이제 `badges.item_book_id`(배지→북 소속)로 역방향 관리.
 
-**일련번호 형식**: `serial_prefix` + `serial_number` (6자리 zero-padded) → 예: `ABCD000042`
+### user_item_book_slots / user_item_book_completions (신규)
+- `user_item_book_slots`: 인벤토리 아이템을 슬롯에 장착한 기록 (UNIQUE user+book+badge)
+- `user_item_book_completions`: 완성 기록 (PK user_id+item_book_id)
 
 ---
 
-### POI (전국 인증 포인트)
-T1(어드민 등록) + T2(OSM 자동 수집) 두 종류. GPS 좌표와 반경으로 정의.
+## 5. 세계관 (faction) — 신규 도메인
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-jkl | O |
-| name | POI 이름 | 한라산 백록담 | O |
-| latitude | 위도 | 33.3617 | O |
-| longitude | 경도 | 126.5292 | O |
-| radius_meters | 인증 반경 (기본 50m) | 50 | O |
-| category | 카테고리 | mountain / bike_route / trail / park / other | O |
-| linked_badge_id | 방문 시 발급되는 배지 ID | uuid-789 | X |
-| poi_tier | 1=어드민 등록, 2=OSM 자동 수집 | 1 | O |
-| osm_id | OSM node ID (T2 POI 중복 방지) | node/12345678 | X |
+### factions
+10개 세계관. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/FACTIONS.md](../Content/FACTIONS.md) 참고.
 
-**poi_tier 정의**:
-- **T1**: 어드민 패널에서 수동 등록. 특정 배지와 연결 가능.
-- **T2**: OpenStreetMap Overpass API에서 자동 수집 (편의점 CU/GS25/세븐일레븐, 카페 스타벅스/이디야 등). 첫 유저 방문 시 DB 자동 저장. `linked_badge_id` 없음.
+### faction_adjacency
+세계관 간 인접 그래프 (PK: faction_id + adjacent_faction_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.2 참고.
 
 ---
 
-### ItemBook (아이템북 레시피)
-액티비티 배지 + 아이템 배지 조합으로 완성되는 컬렉션.
+## 6. POI / 드랍
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-mno | O |
-| name | 아이템북 이름 | 겨울 등반러 컬렉션 | O |
-| description | 설명 | 영하 5도에 해발 1000m를 오른 자만이 | O |
-| image_url | 아이템북 커버 이미지 URL | https://... | X |
-| required_activity_badge_id | 필요한 액티비티 배지 | uuid-789 | O |
-| required_item_badge_ids | 필요한 아이템 배지 목록 (JSON 배열) | ["uuid-aaa","uuid-bbb"] | O |
-| reward_badge_id | 완성 시 발급되는 특별 배지 | uuid-zzz | X |
+### poi
+| 필드 | 설명 |
+|------|------|
+| category | ENUM → **TEXT + `poi_categories` FK로 전환** (ENUM 자체는 DROP됨) |
+| poi_tier | 1=어드민 등록(T1), 2=자동 수집(T2) |
+| osm_id | (구) OpenStreetMap 연동 흔적, 현재 신규 수집은 미사용 |
+| naver_id | **현재 T2 자동 수집 소스** — 네이버 지역검색 오픈API 연동 키 |
 
----
+> **T2 POI 데이터 소스가 OpenStreetMap → 네이버 지역검색 오픈API로 전환됨** (2026-07-22). 지도 렌더링도 Google Maps → 네이버 지도(NCP Maps.js)로 전환.
 
----
+### poi_categories (신규, ENUM 대체)
+`slug`(PK), `label`, `pipeline_linked`, `tier`, `keywords[]` — 드랍/픽업 파이프라인과 자동 검색 연동 메타를 코드 하드코딩에서 DB로 이전.
 
-### PoiDrop (유저 드랍 아이템 — Phase 7)
-유저가 POI에 드랍한 아이템. 픽업되거나 만료되기 전까지 유지.
+### poi_search_cache (신규)
+네이버 지역검색 API 캐시. `grid_key`+`category` PK, TTL 관리.
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-qrs | O |
-| dropper_user_id | 드랍한 유저 ID | uuid-123 | O |
-| poi_id | 드랍된 POI ID | uuid-jkl | O |
-| badge_id | 드랍된 아이템 배지 ID | uuid-789 | O |
-| dropped_at | 드랍 시각 | 2026-07-10T10:00:00Z | O |
-| picked_up_by | 픽업한 유저 ID (픽업 후 기록) | uuid-456 | X |
-| picked_up_at | 픽업 시각 | 2026-07-10T15:00:00Z | X |
-| is_available | 픽업 가능 여부 | true | O |
+### poi_drops
+| 필드 | 설명 |
+|------|------|
+| source | **`user`**(유저 드랍) / **`system`**(앰비언트 드랍, 신규) |
+| expires_at | user 드랍은 30일 만료, system 드랍은 만료 없음(NULL) |
+| dropper_user_id | system 드랍은 nullable |
 
----
+픽업은 `pickup_drop()` RPC로 원자 트랜잭션 처리.
 
-### DropEvent (어드민 드랍 이벤트 — Phase 6)
-어드민이 특정 위치에 이벤트성으로 아이템을 드랍.
+### drop_events / drop_claims / drop_probability (레거시 추정)
+어드민 주도 드랍 이벤트용 초기 테이블. 034(드랍엔진 v2) 이후 `drop_policy`가 사실상 후속 확장판 — 실사용 여부는 코드 확인 필요.
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-tuv | O |
-| name | 이벤트 이름 | 한강 라이딩 이벤트 | O |
-| badge_id | 드랍할 배지 ID | uuid-789 | O |
-| latitude / longitude | 이벤트 중심 좌표 | 37.5326, 126.9904 | O |
-| radius_meters | 픽업 가능 반경 | 500 | O |
-| total_quantity | 총 드랍 수량 | 100 | O |
-| claimed_quantity | 지금까지 픽업된 수량 | 37 | O |
-| starts_at / ends_at | 이벤트 시작/종료 | ISO 8601 | O |
-| is_active | 이벤트 활성화 여부 | true | O |
+### user_drop_state / drop_policy (신규 — 드랍엔진 v2)
+유저별 드랍 모멘텀 상태(연속 common 카운터, 마지막 조각 피티, 일일 드랍 수)와 엔진 전체 파라미터(레어리티 확률, 모멘텀/인접/탐험 가중치). 상세 로직은 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3 참고.
+
+### ambient_drop_policy (신규)
+유저 행동과 무관하게 시스템이 POI에 상시 배치하는 "앰비언트 드랍" 정책(레어리티 분포, POI당 최대 활성 수).
 
 ---
 
-### DropProbability (아이템 드랍 확률 테이블)
-활동 완료 후 아이템 배지가 드랍될 확률. 어드민이 조정 가능.
+## 7. 조합 (combine) — 신규 도메인
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-wxy | O |
-| rarity | 희귀도 | common / rare / legendary / mythic / none | O |
-| probability | 확률 (0.0 ~ 1.0) | 0.40 | O |
-| updated_at | 마지막 수정 시각 | 2026-07-10 | O |
+### combination_recipes
+`ingredient_badge_ids[]`(2~3개 → **2~10개로 확장**), `result_badge_id`(nullable — 배지 삭제돼도 레시피 보존), `success_rate`, `hint_text`, `is_public`, `required_activity_badge_id`(소모되지 않는 필수 보유 조건).
+
+### combine_policy / user_combine_state (신규)
+세계관 다양성 티어별 확률 정책(싱글톤) + 유저별 연속 실패 피티 카운터.
+
+> 조합 시스템은 v1(2026-07 초 계획) → v2(2026-07-27 재설계, "정석 레시피/재료 정확 매칭")로 갈아엎어짐. 현재 상세는 [Specs/Content/COMBINE_RECIPES.md](../Content/COMBINE_RECIPES.md) 참고.
 
 ---
 
-### Trade (거래 — Phase 13 예약)
-현재는 데이터 구조만 정의. UI는 Phase 3에서 메뉴만 노출, 실제 기능은 Phase 4+.
+## 8. 미션 — 신규 도메인
 
-| 필드 | 설명 | 예시 | 필수 |
-|------|------|------|------|
-| id | 고유 식별자 | uuid-pqr | O |
-| sender_id | 거래 제안자 유저 ID | uuid-123 | O |
-| receiver_id | 거래 수신자 유저 ID | uuid-456 | O |
-| offer_item_id | 제안하는 아이템 | uuid-ghi | O |
-| request_item_id | 원하는 아이템 | uuid-stu | O |
-| status | 거래 상태 | pending / accepted / rejected / expired | O |
-| created_at | 제안 시각 | 2026-07-09 | O |
+### missions
+`mission_type`(distance/poi_visit/activity_count/item_collect), `condition_json`, `reward_type`(nullable — 배지+포인트 동시 구성 가능), `reward_badge_ids[]`(복수 배지 보상), `reward_points`, `starts_at/ends_at`, `max_completions`, `status_display_type`(ranking/achievement), `visible_rank_count`.
+
+### user_mission_participations / user_mission_completions
+참가(진행도 추적)와 완료를 별도 테이블로 관리. "참가 필수·취소 불가" 정책 — 참가자만 완료 보상 대상.
+
+---
+
+## 9. 포인트 (JAM 포인트) — 신규 도메인
+
+### point_wallets
+유저당 1개. `balance`는 원장(point_transactions)에서 파생된 캐시값 — 직접 UPDATE 금지.
+
+### point_transactions
+append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `admin_grant` / `admin_deduct` / `combine_pity_reward`.
+
+### point_treasury
+전체 발행/회수 총량 싱글톤 장부 — 어드민에서 유통량·월렛합·원장합 정합성 검사에 사용.
+
+> 잔액 변경은 전부 `award_points()` RPC(SECURITY DEFINER, service_role 전용)로만 원자 처리.
+
+---
+
+## 10. 소셜
+
+### user_follows (신규)
+`follower_id`/`following_id`, UNIQUE + 자기 팔로우 방지 CHECK.
+
+### user_activity_feed (신규)
+배지 획득·아이템 드랍·픽업·미션 참가/완료 이벤트를 통합한 피드. `event_type` ENUM, `metadata JSONB`.
+
+---
+
+## 11. 어뷰징/정책 (신규)
+
+| 테이블 | 역할 |
+|---|---|
+| abusing_policy | 싱글톤. 섀도우밴 등급별 드랍률 배율, GPS 최대 속도, POI 재방문 차단시간, 차량 탑승 속도 필터 |
+| user_shadow_bans | soft/hard 밴 등급 + 만료시각 |
+| poi_blocks | 유저×POI 단위 72시간 재방문 차단 |
+| abusing_logs | GPS 조작 감지 등 이벤트 로그 |
+
+---
+
+## 12. CMS / 운영 (신규)
+
+| 테이블 | 역할 |
+|---|---|
+| today_cards | 홈 "투데이" 에디토리얼 카드. 템플릿 7종, 노출 기간·태그·레이아웃 관리 |
+| theme_presets | 어드민 컬러 테마 프리셋(활성 1개만 유지) |
+| wandering_mythic_state | 떠돌이 신화 아이템의 현재 POI/보유자/만료(72h)/포획 횟수 |
+| engine_decision_log | 배지·드랍 엔진의 판정 사후 추적 로그 (RLS 적용) |
+
+---
+
+## 원안(2026-07-09) 12개 테이블 대비 변경 요약
+
+| 원안 | 현재 |
+|---|---|
+| User | `users` — `display_name`→`username`, GPS/온보딩 컬럼 추가 |
+| StravaConnection | `strava_connections` — 거의 원형 유지 |
+| Badge | `badges` — faction/point/soft-delete 등 대폭 확장, `type`에 `poi` 추가 |
+| UserActivityBadge | `user_activity_badges` — 트리거 메타·발급 스냅샷 추가 |
+| Inventory | `inventory` — 거의 원형 |
+| InventoryItem | `inventory_items` — 일련번호 랜덤화, 슬롯 참조 추가 |
+| POI | `poi` — category ENUM→FK 전환, OSM→네이버 데이터 소스 전환 |
+| ItemBook | `item_books` — `required_item_badge_ids` 삭제, 소유 관계 역전(badges → item_book_id) |
+| PoiDrop | `poi_drops` — `source`(user/system) 분기로 앰비언트 드랍 흡수 |
+| DropEvent | `drop_events` — 스키마 변경 없이 잔존 (실사용 여부 별도 확인 필요) |
+| DropProbability | `drop_probability` — 잔존하나 `drop_policy`가 사실상 후속 확장판 |
+| Trade | `trades` — 스키마 변경 없이 잔존. **`inventory/flea-market` 화면은 "coming soon" placeholder로, 실제 거래 기능 미구현** (2026-08-06 코드 확인) |
 
 ---
 
 ## 왜 이 구조인가
 
-**배지 이원화 (ActivityBadge vs ItemBadge)**
-- JAM! 핵심 게임 설계 원칙. 액티비티 배지는 영구 귀속(정체성), 아이템 배지는 거래 가능(경제).
-- 동일 테이블에 type 컬럼으로 구분하면 나중에 거래 로직에서 실수 가능 → 분리 설계.
+**배지 이원화 (ActivityBadge vs ItemBadge) + POI 배지 분리**
+- 액티비티 배지는 영구 귀속(정체성), 아이템 배지는 거래 가능(경제), POI 배지는 반복 획득(방문 인증) — 세 가지 획득 패턴이 근본적으로 달라 발급 테이블을 분리 유지.
 
-**Inventory를 별도 테이블로**
-- 슬롯 제한(50개) 관리와 유료 확장 로직을 나중에 추가할 때 인벤토리 테이블만 수정하면 됨.
+**아이템북 소유 관계 역전**
+- 원안은 `item_books.required_item_badge_ids`(북이 배지 목록을 가짐)였으나, 세계관 연동과 슬롯 장착 UX가 추가되며 `badges.item_book_id`(배지가 소속 북을 가짐) 구조로 역전. 배지 하나가 정확히 하나의 북에만 속하는 현재 컨텐츠 구조(세계관 10개 = 아이템북 10개, 각 90종)와 더 잘 맞음.
 
-**StravaConnection 분리**
-- Garmin, Apple Health 등 추가 연동 시 같은 패턴으로 `GarminConnection` 테이블 추가만 하면 됨.
-- 토큰을 User 테이블에 섞으면 나중에 분리하기 어려움.
+**포인트를 append-only 원장으로**
+- `point_wallets.balance`는 캐시일 뿐, 실제 진실은 `point_transactions`. 정합성 검증(어드민 `points` 화면의 유통량 대사)과 감사 추적을 위해 잔액을 직접 UPDATE하지 않고 RPC로만 변경.
 
-**POI를 별도 테이블로**
-- 전국 963개 봉우리, 133개 걷기 코스, 4대강 자전거길 등 수천 개 POI 관리 필요.
-- 어드민 도구에서 CSV 일괄 업로드 가능하도록 독립 테이블 필요.
+**드랍엔진 상태를 유저별 테이블로 분리 (user_drop_state)**
+- 모멘텀·피티 로직이 이전 드랍 결과에 의존하므로, 매 판정마다 히스토리 전체를 조회하는 대신 상태를 캐시해 원자적으로 갱신.
 
 ---
 
 ## [NEEDS CLARIFICATION]
 
-- [ ] condition_json 의 배지 발급 조건 스펙 (거리 기준, 날씨 조건, 특수 조건 목록) 정의 필요
-- [ ] 아이템 배지 드랍 확률 테이블 — 어드민이 조작 가능해야 하는지?
-- [ ] 이기종 데이터 중복 인식 방지: 같은 활동이 Strava와 Garmin 모두에 있을 때 중복 배지 방지 로직
-- [ ] 실물 패치 구매 연결 방식 — 외부 쇼핑몰 URL redirect인지, 앱 내 결제인지
+- [ ] `drop_events`/`drop_claims`/`drop_probability`(어드민 주도 이벤트형 드랍)가 `drop_policy`(드랍엔진 v2) 도입 후에도 실제 코드에서 호출되는지 — 레거시 여부 확인 필요
+- [ ] `trades` 테이블 + `inventory/flea-market` 화면의 실제 개발 착수 시점 — 현재는 완전 미구현 상태
+- [ ] `SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` 환경변수가 `.env.local`에는 있으나 코드에서 미사용 — 신규 Supabase 키 체계 마이그레이션 계획이 있는지
+- [ ] `poi_categories.pipeline_linked`/`tier`/`keywords[]`의 정확한 운영 기준 문서화 필요 (현재는 코드/DB에만 존재)
