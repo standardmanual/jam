@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
+import ImageUploadField from '@/components/admin/ImageUploadField'
 
 interface ItemBookFormProps {
   book?: ItemBookRow
@@ -138,19 +139,12 @@ export default function ItemBookForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">이미지 URL</span>
-        <input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
-          placeholder="https://..."
-        />
-        {imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="미리보기" className="w-16 h-16 rounded-xl object-cover mt-1" />
-        )}
-      </label>
+      <ImageUploadField
+        value={imageUrl}
+        onChange={setImageUrl}
+        folder="itembooks"
+        label="이미지 URL"
+      />
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-[#374151]">설명 *</span>

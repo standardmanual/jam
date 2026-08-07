@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
+import ImageUploadField from '@/components/admin/ImageUploadField'
 
 /** "5:30" 같은 mm:ss 페이스 입력을 초(sec/km)로 변환. 형식이 어긋나면 null */
 function parsePaceToSec(input: string): number | null {
@@ -466,33 +467,15 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           <span className="text-xs text-[#898989]">이 배지가 발급될 때 함께 지급되는 잼 포인트. 0이면 없음. 발급 시점 값으로 1회 지급되며, 이후 값을 바꿔도 이미 지급된 포인트는 소급 변경되지 않습니다.</span>
         </label>
 
-        <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-sm text-[#374151]">이미지 URL *</span>
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 shrink-0 rounded-xl bg-white border border-[#e5e7eb] flex items-center justify-center overflow-hidden">
-              {imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imageUrl}
-                  alt="미리보기"
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-              ) : (
-                <span className="text-[#898989] text-xs">—</span>
-              )}
-            </div>
-            <input
-              required
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
-              placeholder="https://... 또는 /badges/001.png"
-            />
-          </div>
-        </label>
+        <div className="col-span-2">
+          <ImageUploadField
+            value={imageUrl}
+            onChange={setImageUrl}
+            folder="badges"
+            required
+            label="이미지 URL"
+          />
+        </div>
       </div>
 
       {/* 활동 종류 */}
