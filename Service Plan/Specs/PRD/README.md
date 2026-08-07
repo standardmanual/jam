@@ -77,14 +77,3 @@
 1. **Tracker-less**: 자체 GPS 트래킹 UI 절대 만들지 말 것
 2. **10초 첫 보상**: 마찰 제로 온보딩
 3. **자립 운영**: 외부 자본 없이 지속 가능한 구조
-
----
-
-## 미결 사항 종합 ([NEEDS CLARIFICATION])
-
-각 문서 하단의 `[NEEDS CLARIFICATION]` 섹션 참고. 대표 항목:
-
-- [ ] D2C 쇼핑몰 연결 방식 및 착수 일정 — 여전히 미구현
-- [ ] P2P 플리마켓(`/inventory/flea-market`) 실거래 착수 일정 — 현재 placeholder만 존재
-- [ ] 푸시 알림 도입 계획 — PWA 인프라 자체 여부 확인 필요
-- [ ] 테스트 러너(jest/vitest) 미설치 상태를 계속 유지할지 — `__tests__` 폴더는 다수 존재
