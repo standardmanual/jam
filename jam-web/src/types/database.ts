@@ -545,6 +545,11 @@ export interface BadgeCondition {
    * 크로스-어트리뷰트 진행 게이트 구현에 사용.
    */
   prerequisite_badge_names?: string[]
+  /**
+   * POI UUID — badge-engine 내 직접 평가 불가.
+   * GPS 경로 매칭(matchPoisForActivity) 파이프라인에서만 발급 처리됨.
+   */
+  poi_id?: string
 }
 
 // =========================================
