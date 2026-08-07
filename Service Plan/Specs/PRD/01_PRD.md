@@ -165,7 +165,7 @@ users / theme / today / simulator(GPX 업로드 배지발급 시뮬레이션) / 
 - **과거 데이터 소급 분석** — 이유: 연동 시점 이후 활동만 인정. `reconcile` Cron은 누락 보정 목적으로 별개
 - **Garmin 연동** — 미착수. Strava 단일 소스 유지 중
 - **Apple Health 연동** — 이유: 웹 앱에서 직접 접근 불가. 별도 네이티브 앱 필요
-- **인앱 결제** — 이유: D2C는 외부 쇼핑몰(별도 URL)로 연결 예정 (현재 미구현)
+- **D2C 실물 패치 외부 URL 연결** — 이유: D2C 쇼핑몰은 앱 내 구현 예정으로 결정됨 (2026-08-07 확정). 현재 배지 조건 필드(`patch_available`)만 존재, 구매 플로우 미구현
 - **P2P 실시간 채팅** — 이유: 거래 알림은 앱 내 알림으로만 (거래 자체도 아직 미구현)
 
 ## 6-1. 완료된 구현 내역 (2026-08-06 기준)
@@ -191,11 +191,11 @@ users / theme / today / simulator(GPX 업로드 배지발급 시뮬레이션) / 
 
 ---
 
-## 7. [NEEDS CLARIFICATION]
+## 7. 의사결정 기록 (2026-08-07 확정)
 
-- [ ] D2C 쇼핑몰은 별도 URL인지, JAM! 앱 내에 있는지 — 여전히 미정
-- [ ] 플리마켓(P2P 거래) 실제 착수 일정
-- [ ] 푸시 알림 도입 계획 — PWA manifest/Service Worker 자체가 아직 없는 것으로 보임 (확인 필요)
-- [ ] 배지 발급 조건(`condition_json`) 전체 스펙 문서 위치 — 현재 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md)가 로직 설명은 담고 있으나 조건 필드 전체 목록의 단일 출처 확인 필요
-- [ ] 커뮤니티 피드가 "전체 공개"인지 "팔로우 기반"인지 — `user_activity_feed`가 본인/타인 프로필 양쪽에서 쓰이는 정확한 공개 범위 규칙 확인 필요
-- [ ] 신화 아이템 떠돌이 속성의 유저 대면 UI 완성도
+- [x] **D2C 쇼핑몰 위치**: **앱 내 구현 예정** (별도 URL 방식 폐기). Section 6의 "외부 URL 연결" 항목 삭제 반영. 현재 배지 조건 필드(`patch_available`)만 존재, 구매 플로우는 미구현으로 유지.
+- [ ] **플리마켓(P2P 거래) 착수 일정**: **미정** — 착수 전까지 `/inventory/flea-market`은 "coming soon" 유지
+- [ ] **푸시 알림 도입**: **미정** — PWA manifest/Service Worker 자체 미구현. 착수 일정 미확정
+- [x] **배지 발급 조건 단일 출처**: **[`BadgeEngine/CONDITION_JSON_SPEC.md`](../BadgeEngine/CONDITION_JSON_SPEC.md) 신규 생성** (2026-08-07). 모든 `condition_json` 필드 타입·의미·평가 방식 명세.
+- [ ] **커뮤니티 피드 공개 범위**: **공개/비공개/팔로우 공개/전체공개 체계 수립 예정** — 현재 `user_activity_feed`는 본인·타인 프로필 양쪽에서 쓰이나 공개 범위 정책이 미확정. 체계 수립 후 PRD 별도 섹션으로 분리 예정.
+- [ ] **신화 아이템 떠돌이 속성 UI 완성도**: **추가 설명 필요** — DB 스키마(`wandering_mythic_state`) + Cron(`/api/cron/wandering`)은 존재하나 유저 대면 UI 구현 범위 미확인. 추가 컨텍스트 확보 후 처리.
