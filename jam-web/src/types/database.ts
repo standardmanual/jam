@@ -7,7 +7,6 @@
  */
 
 export type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
-export type DropRarity = 'common' | 'rare' | 'legendary' | 'mythic' | 'none'
 export type BadgeType = 'activity' | 'item' | 'poi'
 export type BadgeRarity = 'common' | 'rare' | 'legendary' | 'mythic'
 // poi_categories 테이블에서 어드민이 자유롭게 생성/삭제/수정 가능한 슬러그 — 고정 유니언이 아닌 string
@@ -218,40 +217,6 @@ export interface PoiCategoryRow {
   /** 네이버 지역검색에 쓸 키워드 목록 (pipeline_linked=true일 때만 의미 있음) */
   keywords: string[]
   created_at: string
-}
-
-// =========================================
-// Phase 6: 드랍/픽업 시스템 Row 타입
-// =========================================
-
-export interface DropEventRow {
-  id: string
-  name: string
-  badge_id: string
-  latitude: number
-  longitude: number
-  radius_meters: number
-  total_quantity: number
-  claimed_quantity: number
-  starts_at: string
-  ends_at: string | null
-  is_active: boolean
-  created_at: string
-}
-
-export interface DropClaimRow {
-  id: string
-  drop_event_id: string
-  user_id: string
-  claimed_at: string
-  strava_activity_id: string | null
-}
-
-export interface DropProbabilityRow {
-  id: string
-  rarity: DropRarity
-  probability: number
-  updated_at: string
 }
 
 export interface TradeRow {
@@ -764,34 +729,6 @@ export interface Database {
           updated_at?: string
         }
         Update: Partial<Omit<TradeRow, 'id'>>
-        Relationships: []
-      }
-      drop_events: {
-        Row: DropEventRow
-        Insert: Omit<DropEventRow, 'id' | 'claimed_quantity' | 'created_at'> & {
-          id?: string
-          claimed_quantity?: number
-          created_at?: string
-        }
-        Update: Partial<Omit<DropEventRow, 'id'>>
-        Relationships: []
-      }
-      drop_claims: {
-        Row: DropClaimRow
-        Insert: Omit<DropClaimRow, 'id' | 'claimed_at'> & {
-          id?: string
-          claimed_at?: string
-        }
-        Update: Partial<Omit<DropClaimRow, 'id'>>
-        Relationships: []
-      }
-      drop_probability: {
-        Row: DropProbabilityRow
-        Insert: Omit<DropProbabilityRow, 'id' | 'updated_at'> & {
-          id?: string
-          updated_at?: string
-        }
-        Update: Partial<Omit<DropProbabilityRow, 'id'>>
         Relationships: []
       }
       poi_drops: {

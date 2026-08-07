@@ -194,6 +194,11 @@ export function evaluateConditionDetailed(
     return { pass: false, reason: '조건 없음', actual: '-', required: '-' }
   }
 
+  // poi_id는 GPS 경로 매칭 파이프라인(matchPoisForActivity)에서만 발급 — 엔진 내 평가 불가
+  if (condition.poi_id !== undefined) {
+    return { pass: false, reason: 'GPS 경로 매칭으로 별도 발급', actual: '-', required: 'POI 반경 내 경유' }
+  }
+
   const filtered = condition.activity_type
     ? activities.filter((a) => a.jamActivityType === condition.activity_type)
     : activities

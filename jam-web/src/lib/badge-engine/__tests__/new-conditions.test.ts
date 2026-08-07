@@ -80,42 +80,42 @@ describe('monthly_km (단독, month 없음)', () => {
   })
 })
 
-// ── time_range + weekly_count (복합 AND, 이력 전반 독립 평가) ──────────────
+// ── time_range + weekly_count (엄격 평가) ──────────────────────────────────
 // 레시피: {"activity_type":"walking","time_range":{"start":"05:00","end":"08:00"},"weekly_count":2}
-// 두 조건을 독립적으로 AND 평가한다:
-//   - time_range: 활동 중 하나라도 05:00~08:00 사이에 시작
-//   - weekly_count: 어느 한 주에 최소 2회 활동
-// (같은 활동이 두 조건을 동시에 만족할 필요는 없음 — "이력 전반 독립 평가")
+// time_range가 weekly_count와 함께 쓰이면 "해당 시간대 활동만 주간 집계"하는 엄격 평가 적용.
+//   - 같은 주에 05:00~08:00 사이 활동이 2회 이상이어야 pass
+//   - 시간대 밖 활동은 weekly_count 집계에서 제외됨
+// (BADGE_ENGINE_UNIFIED.md §2.3 — "time_range 동반 시 시간대 내 활동만 카운트 (엄격 평가)")
 
-describe('time_range + weekly_count (독립 AND)', () => {
-  it('시간대 조건과 주간 횟수 조건을 모두 만족하면 pass', () => {
+describe('time_range + weekly_count (엄격 평가)', () => {
+  it('같은 주에 시간대 내 활동이 2회면 pass', () => {
     const cond: BadgeCondition = {
       activity_type: 'walking',
       time_range: { start: '05:00', end: '08:00' },
       weekly_count: 2,
     }
-    // 2026-07-20(월), 07-21(화) 같은 주 2회 + 하나는 새벽 시간대
+    // 2026-07-20(월) 06:00, 07-21(화) 07:00 — 같은 주, 모두 05:00~08:00 범위
     const acts = [
       makeActivity({ startDate: '2026-07-20T06:00:00Z', startDateLocal: '2026-07-20T06:00:00' }),
-      makeActivity({ startDate: '2026-07-21T15:00:00Z', startDateLocal: '2026-07-21T15:00:00' }),
+      makeActivity({ startDate: '2026-07-21T07:00:00Z', startDateLocal: '2026-07-21T07:00:00' }),
     ]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
 
-  it('주간 횟수는 충족하나 시간대 불일치면 fail', () => {
+  it('같은 주 2회지만 모두 시간대 밖이면 fail (시간대 필터 후 집계 0회)', () => {
     const cond: BadgeCondition = {
       activity_type: 'walking',
       time_range: { start: '05:00', end: '08:00' },
       weekly_count: 2,
     }
+    // 두 활동 모두 15:00~16:00 — 시간대 필터 후 집계 0회 → 주간 횟수 부족
     const acts = [
       makeActivity({ startDate: '2026-07-20T15:00:00Z', startDateLocal: '2026-07-20T15:00:00' }),
       makeActivity({ startDate: '2026-07-21T16:00:00Z', startDateLocal: '2026-07-21T16:00:00' }),
     ]
     const result = evaluateConditionDetailed(cond, acts)
     expect(result.pass).toBe(false)
-    // weekly_count는 통과, time_range에서 실패
-    expect(result.reason).toContain('시간대 불일치')
+    expect(result.reason).toContain('주간 활동 횟수 부족')
   })
 
   it('시간대는 맞으나 같은 주 2회 미달이면 fail', () => {

@@ -19,7 +19,7 @@
 | 스타일링 | Tailwind CSS 4 | + Radix UI(accordion/checkbox/dialog/select/slot/tabs), `class-variance-authority`, `tailwind-merge`, `lucide-react` |
 | 지도 | **네이버 지도 (NCP Maps.js)** | ⚠️ 원안은 Google Maps JS API였으나 2026-07-22 전환됨. `src/components/map/MapView.tsx` |
 | POI 소스 (T2) | **네이버 지역검색 오픈API** | ⚠️ 원안은 OpenStreetMap Overpass API였으나 2026-07-22 전환됨. 캐시는 `poi_search_cache` 테이블(TTL) |
-| 이미지 합성 | `@vercel/og` | 공유 카드/OG 이미지 생성 |
+| 테스트 | **vitest** v4.1.10 + `@vitejs/plugin-react` | `npm test` (run) / `npm run test:watch` (watch). node:assert 기반 파일(`today`, `missions` __tests__)은 `npx tsx`로 직접 실행 |
 | Strava 연동 | Strava OAuth 2.0 + Activities API | rate limit: 200/15분, 2000/일. `strava_activities` 테이블에 정규화 원본 저장 |
 
 ---
@@ -140,10 +140,13 @@ npx tsc --noEmit
 # 빌드 확인 (배포 전 필수)
 npm run build
 
-# 단위 테스트 — ⚠️ jest/vitest 등 테스트 러너 미설치, package.json에 test 스크립트 없음
-# badge-engine, drop-engine, missions, points, today 등에 __tests__ 폴더는 존재하고
-# describe/it/expect로 러너 무관하게 작성돼 있으나(테스트 파일 상단 주석에 명시),
-# 실제로 실행하려면 jest 또는 vitest를 먼저 설치해야 함. 신규 테스트 작성 시 이 관례 유지.
+# 단위 테스트 (vitest)
+npm test            # 전체 1회 실행
+npm run test:watch  # 변경 감지 watch 모드
+
+# node:assert 기반 파일 (today, missions __tests__) — vitest 제외, 직접 실행
+npx tsx src/lib/today/__tests__/today-logic.test.ts
+npx tsx src/lib/missions/__tests__/checker-logic.test.ts
 
 # Supabase 로컬 개발 (선택)
 npx supabase start
@@ -173,7 +176,7 @@ vercel --prod
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL | |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 공개 키 | |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase 서버 전용 키 (클라이언트 노출 금지) | |
-| `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` | `.env.local`에 존재하나 코드 미사용 | 신규 Supabase 키 체계 대비용으로 추정 — [NEEDS CLARIFICATION] |
+| `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` | Supabase 신규 키 체계 | `src/` 코드 미참조이나 **사용중** (Supabase 인프라/대시보드 레벨) — `.env.local`에 유지 |
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | Strava 앱 OAuth 키 | |
 | `ENCRYPTION_KEY` | Strava 토큰 암호화 키 (hex) | `openssl rand -hex 32` |
 | `ADMIN_EMAILS` | `/admin/*` 접근 허용 이메일 화이트리스트 (쉼표 구분) | `proxy.ts` |
@@ -184,7 +187,7 @@ vercel --prod
 | `NEXT_PUBLIC_NAVER_MAP_STYLE_ID` | 네이버 지도 커스텀 스타일 ID | |
 | `NAVER_LOCAL_SEARCH_CLIENT_ID` / `NAVER_LOCAL_SEARCH_CLIENT_SECRET` | 네이버 지역검색 오픈API (T2 POI 소스) | |
 | `NEXT_PUBLIC_BASE_URL` | 서비스 도메인 URL | **`https://j-a-m.app`** (2026-08-06부로 `jam-rose.app`에서 전환) |
-| `FOREST_SERVICE_KEY` | `.env.local`에 존재하나 `src/` 코드 미사용 | Supabase Edge Function 전용 추정 — [NEEDS CLARIFICATION] |
+| `FOREST_SERVICE_KEY` | 산림청 API 키 | `src/` 미참조이나 **사용중** (Edge Function 또는 외부 파이프라인) — `.env.local`에 유지 |
 
 > ⚠️ **삭제된 변수**: `STRAVA_REDIRECT_URI`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — 각각 도메인 전환(2026-08-06), 지도 전환(2026-07-22)으로 더 이상 사용 안 함. 과거 문서에 남아있다면 착오.
 >
@@ -205,10 +208,10 @@ vercel --prod
 
 ---
 
-## [NEEDS CLARIFICATION]
+## 의사결정 기록 (2026-08-07 확정)
 
-- [ ] `SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY`, `FOREST_SERVICE_KEY` — 코드에서 미사용인데 `.env.local`에 존재하는 이유 확인 필요 (사용 예정 vs 정리 대상)
-- [ ] 테스트 러너(jest/vitest) 미설치 상태를 계속 유지할지, 도입할지 — `__tests__` 폴더가 계속 늘고 있는데 실행 수단이 없음
-- [ ] 기존 `jam-rose.app` 도메인의 Supabase Auth redirect URL 정리 시점 (현재 `j-a-m.app`과 병존 중)
-- [ ] PWA 설치 프롬프트 노출 시점 — 첫 방문 즉시인지, 배지 1개 획득 후인지
-- [ ] 공유 카드 이미지 — 현재 `@vercel/og` 사용 확인됨. Satori/html2canvas 검토 이력과의 관계 정리 필요
+- [x] **`SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY`, `FOREST_SERVICE_KEY`** — **사용중 유지**. `src/` 코드에서 직접 참조하지 않지만 인프라/Edge Function 레벨에서 사용 중. `.env.local`·Vercel 환경변수에서 제거하지 말 것.
+- [x] **테스트 러너** — **vitest 도입** (2026-08-07). `npm test` / `npm run test:watch` 사용. 8개 파일 103개 테스트 전부 통과 확인. `today`·`missions`의 `node:assert` 기반 파일은 vitest 제외, `npx tsx`로 직접 실행.
+- [x] **`jam-rose.app` Auth redirect URL** — **당분간 유지**. `j-a-m.app`과 병존 상태 유지. 정리 시점은 별도 결정.
+- [x] **PWA 설치 프롬프트** — **제거** (코드 자체가 미구현 상태였음 — 제거할 코드 없음 확인).
+- [x] **공유 카드 이미지 (`@vercel/og`)** — **기능 제거, 관련 리소스 삭제** (2026-08-07). `src/` 코드에서 미사용 상태였으며 `package.json` 의존성(`@vercel/og`) 제거 완료. 기술 스택 항목 삭제 반영.
