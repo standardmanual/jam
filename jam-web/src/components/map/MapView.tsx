@@ -179,9 +179,8 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
     : `<span style="font-size:13px;line-height:1;color:#666;">?</span>`
 
   const circle = `<div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;background:#ffffff;border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;filter:${filter};opacity:${opacity};">${inner}</div>`
-  // 라벨 텍스트는 서클과 달리 줌 배율(zoomScale)을 적용하지 않는다 — 기존 10px의 200%(20px)로
-  // 고정 크기 확대. 줌인/줌아웃해도 크기가 바뀌지 않는다.
-  const label = `<div style="margin-top:2px;max-width:100%;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.65);color:#ffffff;font-size:20px;line-height:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
+  // 라벨 텍스트 — 줌 배율과 무관하게 고정 크기(14px, 70%)로 유지. 말줄임 없이 전체 텍스트 표시
+  const label = `<div style="margin-top:2px;max-width:100%;padding:2px 6px;border-radius:8px;background:rgba(0,0,0,0.65);color:#ffffff;font-size:14px;line-height:18px;white-space:nowrap;overflow:visible;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
 
   return `<div style="width:${BADGE_MARKER_CONTENT_WIDTH}px;display:flex;flex-direction:column;align-items:center;">${circle}${label}</div>`
 }
