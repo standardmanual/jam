@@ -1,16 +1,7 @@
 'use client'
 
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { useCallback } from 'react'
-
-const ACTIVITY_OPTIONS = [
-  { value: 'all', label: '전체 종목' },
-  { value: 'walking', label: '걷기' },
-  { value: 'running', label: '러닝' },
-  { value: 'cycling', label: '사이클' },
-  { value: 'hiking', label: '등산' },
-  { value: 'trail_running', label: '트레일' },
-]
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useState } from 'react'
 
 const TYPE_OPTIONS = [
   { value: 'all', label: '전체 타입' },
@@ -29,102 +20,114 @@ const RARITY_OPTIONS = [
 
 const SORT_OPTIONS = [
   { value: 'created_desc', label: '최신순' },
-  { value: 'name_asc', label: '이름 오름차순 (가→하)' },
-  { value: 'name_desc', label: '이름 내림차순 (하→가)' },
+  { value: 'created_asc', label: '오래된 순' },
+  { value: 'name_asc', label: '이름 (가나다)' },
+  { value: 'name_desc', label: '이름 (역순)' },
 ]
 
 const SELECT_CLASS =
-  'bg-white border border-[#e5e7eb] rounded-lg px-3 py-1.5 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50 cursor-pointer'
+  'bg-white border border-[#e5e7eb] rounded-xl px-4 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50 cursor-pointer'
 
-export default function BadgesFilterBar({ total, filtered }: { total: number; filtered: number }) {
+export default function BadgesFilterBar() {
   const router = useRouter()
-  const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '')
 
   const update = useCallback(
-    (key: string, value: string) => {
+    (updates: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString())
-      if (value === 'all' || value === 'created_desc') {
-        params.delete(key)
-      } else {
-        params.set(key, value)
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === 'all' || value === 'created_desc') {
+          params.delete(key)
+        } else {
+          params.set(key, value)
+        }
       }
-      // 필터/정렬이 바뀌면 항상 1페이지부터
       params.delete('page')
-      router.push(`${pathname}?${params.toString()}`)
+      router.push(`/admin/badges?${params.toString()}`)
     },
-    [router, pathname, searchParams]
+    [router, searchParams]
   )
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    update({ q: searchInput.trim() || null })
+  }
+
   const hasFilter =
-    searchParams.has('activityType') ||
+    searchParams.has('q') ||
     searchParams.has('type') ||
     searchParams.has('rarity')
 
   return (
-    <div className="flex flex-wrap items-center gap-3 mb-4">
-      <select
-        className={SELECT_CLASS}
-        value={searchParams.get('activityType') ?? 'all'}
-        onChange={(e) => update('activityType', e.target.value)}
-      >
-        {ACTIVITY_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value} className="bg-white">
-            {o.label}
-          </option>
-        ))}
-      </select>
-
-      <select
-        className={SELECT_CLASS}
-        value={searchParams.get('type') ?? 'all'}
-        onChange={(e) => update('type', e.target.value)}
-      >
-        {TYPE_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value} className="bg-white">
-            {o.label}
-          </option>
-        ))}
-      </select>
-
-      <select
-        className={SELECT_CLASS}
-        value={searchParams.get('rarity') ?? 'all'}
-        onChange={(e) => update('rarity', e.target.value)}
-      >
-        {RARITY_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value} className="bg-white">
-            {o.label}
-          </option>
-        ))}
-      </select>
-
-      <div className="h-5 w-px bg-[#f3f4f6]" />
-
-      <select
-        className={SELECT_CLASS}
-        value={searchParams.get('sort') ?? 'created_desc'}
-        onChange={(e) => update('sort', e.target.value)}
-      >
-        {SORT_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value} className="bg-white">
-            {o.label}
-          </option>
-        ))}
-      </select>
-
-      {hasFilter && (
+    <div className="flex flex-col gap-3">
+      {/* 검색창 */}
+      <form onSubmit={handleSearch} className="flex gap-2">
+        <input
+          type="text"
+          placeholder="배지 이름, 설명으로 검색..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+        />
         <button
-          onClick={() => router.push(pathname)}
-          className="text-xs text-[#6b7280] hover:text-[#374151] transition-colors underline underline-offset-2"
+          type="submit"
+          className="px-4 py-2 bg-[#111111] text-white text-sm rounded-xl hover:bg-[#374151] transition-colors"
         >
-          필터 초기화
+          검색
         </button>
-      )}
+      </form>
 
-      <span className="ml-auto text-xs text-[#898989]">
-        {hasFilter ? `${filtered} / ${total}개` : `${total}개`}
-      </span>
+      {/* 필터 + 정렬 */}
+      <div className="flex flex-wrap items-center gap-3">
+        <select
+          className={SELECT_CLASS}
+          value={searchParams.get('type') ?? 'all'}
+          onChange={(e) => update({ type: e.target.value })}
+        >
+          {TYPE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value} className="bg-white">
+              {o.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className={SELECT_CLASS}
+          value={searchParams.get('rarity') ?? 'all'}
+          onChange={(e) => update({ rarity: e.target.value })}
+        >
+          {RARITY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value} className="bg-white">
+              {o.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className={SELECT_CLASS}
+          value={searchParams.get('sort') ?? 'created_desc'}
+          onChange={(e) => update({ sort: e.target.value })}
+        >
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value} className="bg-white">
+              {o.label}
+            </option>
+          ))}
+        </select>
+
+        {hasFilter && (
+          <button
+            onClick={() => {
+              setSearchInput('')
+              router.push('/admin/badges')
+            }}
+            className="text-xs text-[#6b7280] hover:text-[#374151] transition-colors underline underline-offset-2"
+          >
+            필터 초기화
+          </button>
+        )}
+      </div>
     </div>
   )
 }
