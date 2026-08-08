@@ -1,9 +1,9 @@
-# 액티비티 배지 레시피 v3
+# 액티비티 배지 레시피 v4
 
-> 소스: `supabase/migrations/033_reseed_activity_badges_v3.sql`  
-> 기존 100개 (5종목 × 5속성 × 4등급) + 신규 15개 = **총 115개**  
-> 최종 업데이트: 2026-07-20  
-> ⚠️ **문서 전용 업데이트 (2026-07-20)** — ①속성값 현실화, ②신규 배지 15개 추가(카테고리 1 고난이도·카테고리 2 복합속성·카테고리 3 리텐션). DB·SQL 미적용. 서비스 반영 시 마이그레이션 별도 작성 필요.
+> 소스: `supabase/migrations/033_reseed_activity_badges_v3.sql`(115종) + `supabase/migrations/076_walking_badges_v4.sql`(걷기 신규 32종)  
+> 기존 115개(5종목 × 5속성 × 4등급 + 카테고리 1~3 신규 15개) + 걷기 신규 32개(D01~D11 + 트로피 매트릭스 21종) = **총 147개**  
+> 최종 업데이트: 2026-08-08  
+> ⚠️ **2026-08-08 업데이트** — 걷기(walking) 전용 "축1 게이트"(진짜 걷기 판정, badge-engine 레벨) + 빈도 조건 하루 1회 상한 도입, 걷기 신규 배지 32종(D01~D11 누적일수 체크포인트 + 트로피 매트릭스 21종) 추가. 신규 조건 필드 `day_of_week`/`active_days_count`/`season_count_all`, `month`의 배열 확장. 기존 W1~W8은 이름·설명·조건값 변경 없음(축1 게이트 + 하루 1회 상한만 새로 적용). 상세 배경·튜닝 파라미터: `Service Plan/History/Operations/SERVICE_OPERATIONS_20260808_1500.md`.
 
 ---
 
@@ -136,6 +136,60 @@
 | Mythic | 주 5회 | 점심 매일 산책. 화이트 룸은 낮과 밤 모두를 아는 자에게 열립니다. |
 
 선행 배지 (Rare 이상): `동네 산책러` OR `루틴의 수호자`
+
+---
+
+> ⚠️ **걷기(walking) 전 배지 공통 — 축1 게이트 (2026-08-08 신규)**: W1~W8 및 아래 D/T 시리즈 전부, 조건 평가 전에 활동이 "진짜 걷기"인지 사전 필터를 통과해야 한다 — 최소 거리 ≥ 0.5km, 최소 이동시간 ≥ 10분, 평균속도 2.0~8.0km/h (badge-engine 코드 레벨, `condition_json`에는 명시되지 않음). 또한 `weekly_count`/`day_of_week`+`total_count` 조합은 하루 최대 1회만 카운트된다. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` §2.10.
+
+#### D01~D11 — 누적 걷기 일수 체크포인트 | 속성: 누적 활동일수 | 조건: `active_days_count` (독립 배지, 성장티어 그룹 없음)
+
+축1 게이트를 통과한 걷기 활동의 **누적 고유 일수**(연속 아님 — 하루 빠져도 다시 이어서 셈) 체크포인트. 11개 전부 이름·조건이 다른 독립 배지이며 서로 진행 트랙으로 묶이지 않는다.
+
+| ID | 이름 | 등급 | active_days_count | 배지 설명 |
+|----|------|------|-------------------|----------|
+| D01 | 첫 발자국 | Common | 3 | 걸은 날이 3일 쌓였어요. 분실물 센터 999에도 아직 등록 안 될 만큼 작은 시작입니다. |
+| D02 | 일주일의 증인 | Common | 7 | 걸은 날 누적 7일. 무명(無名)의 트럭이 슬슬 당신 동선을 외울 때입니다. |
+| D03 | 이주의 리듬 | Common | 14 | 걸은 날 누적 14일. 플레이리스트 하나를 다 외울 만큼의 시간입니다. |
+| D04 | 한 달의 산책자 | Common | 30 | 걸은 날 누적 30일. 그루터기 살롱에 당신 이름이 조용히 오릅니다. |
+| D05 | 두 달째 걷는 사람 | Rare | 60 | 걸은 날 누적 60일. 카본 앨리 단골들도 이 정도 꾸준함엔 지갑을 접습니다. |
+| D06 | 백일의 걸음 | Rare | 100 | 걸은 날 누적 100일. 매직 아워 25시를 백 번은 놓쳤어도 걸음은 놓치지 않았습니다. |
+| D07 | 반년의 동행 | Rare | 180 | 걸은 날 누적 180일. 오아시스 자판기 없이도 이만큼 버텼습니다. |
+| D08 | 일 년의 발자취 | Legendary | 365 | 걸은 날 누적 365일. 블랙 트랙의 기록에 1년치 걸음이 새겨집니다. |
+| D09 | 오백일의 산책자 | Legendary | 500 | 걸은 날 누적 500일. 섬데이의 결계는 이미 당신에게 의미를 잃었습니다. |
+| D10 | 칠백일의 순례자 | Mythic | 700 | 걸은 날 누적 700일. 러너스 하이 근처에도 안 가고 이 경지에 닿았습니다. |
+| D11 | 천일의 방랑자 | Mythic | 1000 | 걸은 날 누적 1000일. 화이트 룸이 마침내 문을 엽니다 — 천일의 방랑자에게. |
+
+선행 배지: 없음 (전부 독립 발급)
+
+---
+
+#### 트로피 매트릭스 — 조건 전문 공개형 걷기 배지 21종 (독립 배지, 성장티어 그룹 없음) *(T19·T21은 설계 단계에서 정합성 문제로 제외 확정 — 결번)*
+
+| ID | 이름 | 등급 | 조건 | 배지 설명 |
+|----|------|------|------|----------|
+| T01 | 숫자의 노예 | Common | `total_count:100000` | 누적 10만 번 걷기. 분실물 센터 999도 이 정도 숫자는 처음 접수합니다. |
+| T02 | 그냥 좀 걸었을 뿐 | Common | `total_count:1000` | 누적 1,000번 걷기. 편의점 불빛 아래서만 몇 번을 지나쳤을지 모릅니다. |
+| T03 | 만보왕 | Rare | `total_count:10000` | 누적 10,000번 걷기. 그루터기 살롱에서도 이 정도면 알아봅니다. |
+| T04 | 걸음의 구도자 | Legendary | `total_count:30000` | 누적 30,000번 걷기. 블랙 트랙이 이 걸음의 무게를 인정합니다. |
+| T05 | 주말의 신도 | Legendary | `day_of_week:sunday, total_count:1000` | 일요일마다 걷기, 누적 1,000회. 매직 아워 25시조차 매주 당신을 기다립니다. |
+| T06 | 월요병 극복자 | Rare | `day_of_week:monday, total_count:500` | 월요일마다 걷기, 누적 500회. 카본 앨리도 월요일은 조용한데, 당신은 아닙니다. |
+| T07 | 불금은 없다 | Common | `day_of_week:friday, total_count:100` | 금요일마다 걷기, 누적 100회. 180 BPM 대신 당신의 발소리가 금요일의 비트입니다. |
+| T08 | 평일의 성실함 | Mythic | `day_of_week:[mon,tue,wed,thu,fri]` 각각 `total_count:300` (5개 독립 카운터 동시조건) | 월요일부터 금요일까지 각각 누적 300회 걷기. 화이트 룸이 이 성실함 앞에 문을 엽니다. |
+| T09 | 일요일 새벽의 수도승 | Common | `day_of_week:sunday, time_range:05:00-08:00, total_count:300` | 일요일 새벽 5~8시 걷기, 누적 300회. 섬데이의 결계도 이 시간엔 아직 잠들어 있습니다. |
+| T10 | 불타는 금요일 밤 산책 | Rare | `day_of_week:friday, time_range:22:00-05:00, total_count:50` | 금요일 밤 10시~새벽 5시 걷기, 누적 50회. 오아시스 자판기 불빛만이 유일한 동행입니다. |
+| T11 | 월요일 점심의 도피 | Rare | `day_of_week:monday, time_range:12:00-14:00, total_count:200` | 월요일 낮 12~2시 걷기, 누적 200회. 무명(無名) 트럭이라도 있었으면 완벽했을 도피입니다. |
+| T12 | 폭염 속의 걸음 | Rare | `temperature_min_c:33, total_count:5` | 기온 33도 이상에서 걷기 5회. 아스팔트 레인저들이 반색할 인터벌 트레이닝 날씨입니다. |
+| T13 | 영하 15도의 산책자 | Legendary | `temperature_max_c:-15, total_count:3` | 기온 영하 15도 이하에서 걷기 3회. 그루터기 살롱의 다람쥐들도 이 추위엔 굴 밖을 안 나옵니다. |
+| T14 | 그냥 좀 더웠음 | Common | `temperature_min_c:30, total_count:100` | 기온 30도 이상에서 걷기 누적 100회. 전해질 캔디 하나 없이 버틴 여름입니다. |
+| T15 | 사계절의 발걸음 | Legendary | `season_count_all:10` (4계절 각각 독립 카운터) | 봄·여름·가을·겨울 각 10회씩 걷기. 종이 지도 한 장으로 사계절을 다 돌은 셈입니다. |
+| T16 | 봄에만 걷는 사람 | Rare | `season:spring, season_count:200` | 봄철에만 누적 200회 걷기. 노을 헌터들이 봄에만 문을 여는 이유를 알 것 같습니다. |
+| T17 | 겨울잠 안 자는 사람 | Common | `season:winter, season_count:100` | 겨울철에 누적 100회 걷기. 초경량 패딩 하나면 카본 앨리 사람들도 인정할 겨울입니다. |
+| T18 | 1월의 다짐 | Common | `month:1, monthly_km:100` | 1월 한 달 100km 걷기. 내일의 러너가 되지 않으려는 첫 번째 저항입니다. |
+| T20 | 장마철의 의지 | Legendary | `month:[6,7], monthly_km:150` | 장마철(6~7월) 한 달 150km 걷기. 빗소리마저 180 BPM처럼 들리는 한 달이었을 겁니다. |
+| T22 | 하루종일 걸었다 | Rare | `duration_minutes:300` (단일 활동) | 단일 활동 300분 이상 걷기. 러너스 하이는 몰라도, 그 근처까지는 가봤을 시간입니다. |
+| T23 | 그냥 나갔다 옴 | Legendary | `distance_km:0.6` (단일 활동) | 단일 활동 0.6km 걷기. 낡은 물건 줍듯 우연히 주운 배지, 이유는 아무도 모릅니다. |
+
+선행 배지: 없음 (전부 독립 발급). T01~T04·T23은 W1과 트랙 키(`walking:total_count`, `walking:distance_km`)가 겹쳐 보이지만, `prerequisite_badge_names`가 없는 배지는 진행 트랙 병합에서 제외되도록 엔진을 수정해서 독립 발급이 보장된다(버그 수정 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` §2.10).
 
 ---
 
@@ -587,6 +641,13 @@
 | `activity_type` + `min_speed_kmh` + `elevation_gain_m` | ❌ 트랙 제외 | 복합 조건 (C7 산악 라이더) |
 | `activity_type` + `temperature_max_c` + `duration_minutes` | ❌ 트랙 제외 | 복합 조건 (H7 혹한 장정) |
 | `activity_type` + `elevation_gain_m` + `temperature_max_c` | ❌ 트랙 제외 | 복합 조건 (T7 알파인 트레일러) |
+| `activity_type` + `active_days_count` | 트랙 대상이나 `prerequisite_badge_names` 없어 병합 안 됨 | 독립 배지 (D01~D11, 2026-08-08 신규) |
+| `activity_type` + `total_count` | 트랙 대상이나 `prerequisite_badge_names` 없어 병합 안 됨 | 독립 배지 (걷기 T01~T04, T23 — W1과 트랙 키 겹침에도 불구하고 병합 안 됨. 2026-08-08 버그 수정) |
+| `activity_type` + `day_of_week`(단일) + `total_count` | ❌ 트랙 제외 | 복합 조건 (T05~T07, T09~T11, 2026-08-08 신규) |
+| `activity_type` + `day_of_week`(배열) + `total_count` | ❌ 트랙 제외, 요일별 독립 카운터 특수모드 | 복합 조건 (T08, 2026-08-08 신규) |
+| `activity_type` + `temperature_min_c`/`max_c` + `total_count` | ❌ 트랙 제외 | 복합 조건 (T12~T14, 2026-08-08 신규 — 온도조건으로 카운팅 대상 선필터) |
+| `activity_type` + `season_count_all` | ❌ 트랙 제외 | 계절별 독립 카운터 (T15, 2026-08-08 신규) |
+| `activity_type` + `month`(배열) + `monthly_km` | ✅ 트랙 | 단일 조건, month가 여러 달을 OR로 묶음 (T20 장마철, 2026-08-08 신규) |
 
 ### prerequisite_badge_names 동작
 
@@ -639,6 +700,27 @@
 
 // 주말 달리기 — 주말 파이터 Common
 {"activity_type":"running","weekend_duration_hours":0.5}
+
+// 누적 활동일수 — D01 첫 발자국 (2026-08-08 신규 필드, 독립 배지)
+{"activity_type":"walking","active_days_count":3}
+
+// 요일 단일값 + 누적 횟수 — T06 월요병 극복자 (복합 — 트랙 제외, 하루 1회 상한 적용)
+{"activity_type":"walking","day_of_week":"monday","total_count":500}
+
+// 요일 배열 + 누적 횟수 — T08 평일의 성실함 (요일별 독립 카운터 특수모드)
+{"activity_type":"walking","day_of_week":["monday","tuesday","wednesday","thursday","friday"],"total_count":300}
+
+// 요일 + 시간대 + 누적 횟수 — T10 불타는 금요일 밤 산책
+{"activity_type":"walking","day_of_week":"friday","time_range":{"start":"22:00","end":"05:00"},"total_count":50}
+
+// 온도 + 누적 횟수 — T12 폭염 속의 걸음 (2026-08-08 버그 수정 — 온도조건으로 카운팅 대상 선필터)
+{"activity_type":"walking","temperature_min_c":33,"total_count":5}
+
+// 계절별 독립 카운터 — T15 사계절의 발걸음 (2026-08-08 신규 필드)
+{"activity_type":"walking","season_count_all":10}
+
+// 월 배열 + 월간거리 — T20 장마철의 의지 (2026-08-08 month 배열 확장)
+{"activity_type":"walking","month":[6,7],"monthly_km":150}
 ```
 
 ### 카테고리 2 복합 배지 평가 주의
@@ -695,7 +777,8 @@
 
 | 파일 | 역할 |
 |------|------|
-| `supabase/migrations/033_reseed_activity_badges_v3.sql` | DB 데이터 소스 (단일 진실 원천) |
+| `supabase/migrations/033_reseed_activity_badges_v3.sql` | DB 데이터 소스 — 기존 115종 (단일 진실 원천) |
+| `supabase/migrations/076_walking_badges_v4.sql` | DB 데이터 소스 — 걷기 신규 32종 (D01~D11 + 트로피 매트릭스, 2026-08-08) |
 | `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` | 엔진 전체 로직 (발급 흐름·게이트·드랍 엔진) |
 | `src/lib/badge-engine/index.ts` | 발급 엔진 구현 |
 | `src/lib/drop-engine/index.ts` | 드랍 엔진 구현 |

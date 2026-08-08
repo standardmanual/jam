@@ -68,10 +68,14 @@ export function isIntenseActivity(policy: DropPolicy, activity: NormalizedActivi
   )
 }
 
-/** 2개째 보너스 드랍 여부 */
-export function rollBonusDrop(policy: DropPolicy, intense: boolean, rand: Rand): boolean {
+/**
+ * 2개째 보너스 드랍 여부.
+ * @param activityWeight - activity_type별 드랍 기여 가중치 (기본 1.0). 확정 1개 드랍에는
+ *   영향 없고 이 보너스 드랍 확률에만 곱해진다 (예: 걷기 0.4 → 보너스 확률 40%로 감쇠).
+ */
+export function rollBonusDrop(policy: DropPolicy, intense: boolean, rand: Rand, activityWeight = 1.0): boolean {
   const rate = intense ? policy.bonus_drop_rate_intense : policy.bonus_drop_rate
-  return rand() < rate
+  return rand() < rate * activityWeight
 }
 
 /** 복귀 판정: 직전 활동으로부터 gap일 이상 공백 */

@@ -1,8 +1,8 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-07-21  
+> 최종 업데이트: 2026-08-08 (걷기 배지 v4 — 축1 게이트·하루 1회 상한·신규 조건 필드·드랍엔진 종목 가중치. §2.10, §3.15 참고)  
 > **배지 운영 문서 4종 체계** — 이 문서(로직) + [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md)(조건 필드 전체 스펙) + `액티비티배지 레시피.md`(액티비티배지 전체 목록) + `아이템북 레시피.xlsx`(아이템배지 전체 목록 + 세계관 인접)  
-> DB 시드: `supabase/migrations/033_reseed_activity_badges_v3.sql` (액티비티배지 115종)
+> DB 시드: `supabase/migrations/033_reseed_activity_badges_v3.sql` (액티비티배지 115종) + `supabase/migrations/076_walking_badges_v4.sql` (걷기 신규 32종, 2026-08-08)
 
 ---
 
@@ -18,7 +18,7 @@ Strava 싱크
 
 | 구분 | ① 액티비티배지 엔진 | ② 아이템배지 드랍 엔진 v2 |
 |------|--------------------|--------------------------|
-| 대상 | `type='activity'` (115종: 5종목 체계) | `type='item'` (~900종: 10세계관 × 10아이템북) |
+| 대상 | `type='activity'` (147종: 기존 5종목 체계 115종 + 걷기 v4 신규 32종) | `type='item'` (~900종: 10세계관 × 10아이템북) |
 | 성격 | **성취의 증명** — 조건 달성 = 발급 (결정론) | **수집의 재미** — 활동당 최소 1개, 내용은 변동 (확률론) |
 | 평가 기준 | 유저 **전체 활동 이력** 누적 평가 | **단일 활동**(이번 싱크 배치) 기준 |
 | 저장 | `user_activity_badges` | `inventory_items` (일련번호 무작위) |
@@ -76,6 +76,10 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 | `temperature_min_c` / `temperature_max_c` | Strava average_temp ≥/≤ 조건값 (폭염/혹한) — 날씨 데이터 없으면 fail |
 | `time_range` | startDateLocal의 HH:MM이 {start,end} 범위 내 (자정 걸침 지원) |
 | `poi_id` | ⚠️ 엔진 내 평가 불가 — GPS 경로 매칭(matchPoisForActivity)으로 별도 발급 |
+| `day_of_week` (2026-08-08 신규) | 단일값: `time_range`처럼 AND 필터. 배열+`total_count` 동시 지정 시 "요일별 독립 카운터" 특수모드(배열의 각 요일이 각각 `total_count` 충족 필요) — 현재 T08 전용 |
+| `active_days_count` (2026-08-08 신규) | 축1 게이트 통과 활동의 `(startDateLocal ?? startDate).slice(0,10)` 고유 날짜 `Set` 크기 ≥ 조건값 (연속 아님) |
+| `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 활동 횟수가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
+| `month` (2026-08-08 확장) | 기존 `number`에서 `number | number[]`로 확장 — 배열이면 여러 달을 OR로 묶어 `monthly_km`와 결합(예: 장마철 6~7월) |
 | `prerequisite_badge_names` | Step 3 C-1에서 처리 (OR 매칭) |
 
 ### 2.4 성장 티어 정책
@@ -123,8 +127,33 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 
 ### 2.9 배지 구성
 
-5종목(걷기·러닝·사이클·등산·트레일) × 속성 그룹 × 4등급 = **115종 (v3.1)**.  
-전체 목록·조건값·설명: **`액티비티배지 레시피.md`** (단일 진실 원천). DB 시드: `033_reseed_activity_badges_v3.sql`.
+5종목(걷기·러닝·사이클·등산·트레일) × 속성 그룹 × 4등급 = 115종 (v3.1) + 걷기 신규 32종(v4, §2.10) = **총 147종**.  
+전체 목록·조건값·설명: **`액티비티배지 레시피.md`(`Specs/Content/ACTIVITY_BADGES.md`)** (단일 진실 원천). DB 시드: `033_reseed_activity_badges_v3.sql` + `076_walking_badges_v4.sql`.
+
+### 2.10 걷기 배지 v4 — 축1 게이트 + 하루 1회 상한 + 신규 배지 32종 (2026-08-08)
+
+> 배경·튜닝 파라미터 상세: `Service Plan/History/Operations/SERVICE_OPERATIONS_20260808_1500.md`
+
+**축1 게이트** — 걷기(`activity_type='walking'`) 조건 평가 전 사전 필터. `evaluateConditionDetailed`가 `filtered`를 구성하는 시점에 `condition.activity_type==='walking'`인 경우에만 적용되며, 걷기가 아닌 종목에는 영향 없음.
+
+```ts
+export const WALKING_GATE_MIN_DISTANCE_KM = 0.5   // 최소 거리(km)
+export const WALKING_GATE_MIN_DURATION_MIN = 10    // 최소 이동시간(분)
+export const WALKING_GATE_MIN_SPEED_KMH = 2.0      // 평균속도 하한(km/h)
+export const WALKING_GATE_MAX_SPEED_KMH = 8.0      // 평균속도 상한(km/h) — 러닝과 구분
+export function passesWalkingGate(a: NormalizedActivity): boolean
+```
+
+⚠️ 4개 상수는 초안값이며 튜닝 대상. `active_days_count`는 이 게이트를 통과한 `filtered` 목록 기준으로 계산되므로 "게이트 통과일의 고유일수"가 자동 보장된다.
+
+**하루 1회 상한** (`dedupeOnePerDay`, 걷기 전용) — `weekly_count`(W3 소급 적용, 조건값 불변) / `day_of_week`(단일)+`total_count`(T05~T07, T09~T11) / `day_of_week`(배열)+`total_count`(T08, 요일별 서브풀 각각) 에 적용. `streak_days`(W4)는 기존 `calcMaxStreak`가 `uniqueDates`로 이미 압축 계산해 변경 불필요. 순수 `total_count`만 있는 경우(T01~T04, T12~T14, T22, T23)는 상한 미적용(예: T01 "누적 10만 번"에 상한을 걸면 영구 미달성이 되는 설계 모순).
+
+**신규 배지 32종**: D01~D11(누적 활동일수 체크포인트, `active_days_count`) + 트로피 매트릭스 21종(T01~T18, T20, T22, T23 — T19·T21은 제외 확정). 전체 목록: `Specs/Content/ACTIVITY_BADGES.md` 걷기 섹션. 전부 `prerequisite_badge_names` 없는 독립 배지(성장 티어 dedup·진행 트랙 병합 대상 아님).
+
+**버그 수정 2건** (걷기 v4 구현 중 발견, 다른 종목에도 적용됨):
+
+1. **`getProgressionKey` 크로스 배지 충돌**: 기존 로직이 `prerequisite_badge_names` 유무와 무관하게 `activity_type`+조건타입(`distance_km`/`total_count` 등)이 같으면 이름이 다른 배지끼리도 진행 트랙으로 병합해버렸다. T01~T04(전부 `walking:total_count` 트랙 키 충돌)와 T23(`walking:distance_km`가 W1과 충돌)이 이 문제로 조용히 발급 누락될 뻔했음(missed 배열에도 안 잡히고 후보에서 그냥 사라짐). **수정**: `prerequisite_badge_names`가 없거나 빈 배열이면 `getProgressionKey`가 즉시 `null`을 반환해 병합하지 않도록 가드 추가. 기존 W1~W8 및 타 종목 배지는 종목당 bare-metric 트랙이 원래 1개씩만 존재해 영향 없음(확인 완료).
+2. **`temperature_min_c`/`max_c` + `total_count` 조합 누수**: 기존 `matchesPerActivityCondition`/`relevantPerActivityKeys`가 온도 조건을 항상 "단일 활동 매칭"으로만 취급해, T12~T14(온도조건+`total_count`, 예: "33도 이상 5회")에서 `total_count`가 온도와 무관하게 채워질 수 있었다(온도 만족 활동 1건 + 나머지는 아무 걷기나 채우면 통과). **수정**: `total_count`와 온도 조건이 함께 있으면 `filtered`를 온도 조건 만족 활동으로 먼저 좁히고 `relevantPerActivityKeys`에서 제외 — `time_range`+`total_count`(T09~T11)가 이미 쓰던 패턴과 동일하게 맞춤.
 
 ---
 
@@ -328,6 +357,16 @@ Phase 16에서 스키마만 추가됐던 `type='poi'` 배지에 실제 데이터
 - **반복 획득**: 기존 설계대로 `user_poi_badge_earns`에 매 통과마다 새 행 적재 (평생 1회 제약 없음).
 - **재현용 SQL**: `supabase/seed_poi_badges_20260727.sql` (INSERT/UPDATE 전량 기록, service_role 키로 직접 실행됨).
 
+### 3.15 종목별 드랍 가중치 — 걷기 계수 0.4 (2026-08-08)
+
+> 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `Service Plan/History/Operations/SERVICE_OPERATIONS_20260808_1500.md`.
+
+`jam-web/src/lib/drop-engine/constants.ts`에 `ACTIVITY_TYPE_DROP_WEIGHT`(walking: 0.4) + `DEFAULT_ACTIVITY_DROP_WEIGHT`(그 외 1.0) 추가. `getActivityDropWeight(act)`는 걷기이면서 축1 게이트(§2.10)를 통과한 활동에만 0.4를 반환.
+
+- **확정 1개 드랍(§3.1)에는 가중치 미적용** — "활동 1건 = 최소 1개 확정" 원칙은 걷기에도 그대로 유지. 가중치는 `rollBonusDrop(policy, intense, rand, activityWeight=1.0)`의 4번째 파라미터로만 적용되어 **보너스(2번째) 드랍 확률**만 낮춘다. `dropCount = 1 + (rollBonusDrop(...) ? 1 : 0)`에서 `1`은 가중치 무관.
+- `activityWeight` 기본값 1.0으로 기존 호출부(걷기 외 종목) 하위호환 유지.
+- **DB 스키마 변경 수반**: `user_drop_state.common_streak`(rare+ pity 카운터, §3.6)가 걷기 활동으로 인해 0.4 같은 소수 단위로 증가하게 되어, 기존 INTEGER 컬럼에서는 매 upsert마다 반올림(0.4→0)되어 걷기의 pity 기여가 사라지는 문제가 있었다. `076_walking_badges_v4.sql`과 별도로 `077_common_streak_numeric.sql`에서 `NUMERIC(8,2)`로 확장(TS 타입 `number`는 변경 불필요).
+
 ---
 
 ## 4. 두 엔진의 게이미피케이션 역할 분담
@@ -368,4 +407,6 @@ src/lib/abusing/                          섀도우밴 정책 (공용)
 src/lib/ambient-drop/index.ts             앰비언트(시스템) POI 드랍 엔진 — §3.12
 supabase/migrations/033_reseed_activity_badges_v3.sql   액티비티배지 시드
 supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 스키마 — §3.12
+supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
+supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
 ```

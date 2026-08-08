@@ -19,3 +19,14 @@ export const ONBOARDING_FACTION_BY_ACTIVITY: Record<string, string> = {
 }
 
 export const ONBOARDING_DROP_COUNT = 3
+
+/**
+ * activity_type별 드랍 기여 가중치 (BADGE_ENGINE_UNIFIED.md §3.1).
+ * "확정 1개 드랍"에는 영향 없음 — 보너스 드랍 확률과 rare+ pity(common_streak)
+ * 진행 기여도에만 곱해진다. 걷기는 MET(운동강도)가 낮아 0.4로 낮춰 적용.
+ * 축1 게이트(진짜 걷기 판정)를 통과한 걷기 활동에만 적용되고, 다른 종목은 1.0(영향 없음).
+ */
+export const ACTIVITY_TYPE_DROP_WEIGHT: Record<string, number> = {
+  walking: 0.4,
+}
+export const DEFAULT_ACTIVITY_DROP_WEIGHT = 1.0
