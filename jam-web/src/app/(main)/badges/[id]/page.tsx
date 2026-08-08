@@ -39,6 +39,31 @@ const MONTH_LABELS: Record<number, string> = {
   7: '7월', 8: '8월', 9: '9월', 10: '10월', 11: '11월', 12: '12월',
 }
 
+const DAY_OF_WEEK_LABELS: Record<string, string> = {
+  sunday: '일요일',
+  monday: '월요일',
+  tuesday: '화요일',
+  wednesday: '수요일',
+  thursday: '목요일',
+  friday: '금요일',
+  saturday: '토요일',
+}
+
+// 배열이 정확히 월~금(순서 무관)이면 "평일"로 요약
+function dayOfWeekArrayLabel(days: string[]): string {
+  const weekdaySet = new Set(['monday', 'tuesday', 'wednesday', 'thursday', 'friday'])
+  if (days.length === 5 && days.every((d) => weekdaySet.has(d))) return '월~금'
+  return days.map((d) => DAY_OF_WEEK_LABELS[d] ?? d).join(', ')
+}
+
+// 단일 월 또는 월 배열(예: 장마철 6~7월)을 사람이 읽기 쉬운 라벨로 변환
+function monthLabel(month: number | number[]): string {
+  if (Array.isArray(month)) {
+    return month.map((m) => MONTH_LABELS[m] ?? `${m}월`).join('·')
+  }
+  return MONTH_LABELS[month] ?? `${month}월`
+}
+
 // "HH:MM" 시작 시간을 사람이 읽기 쉬운 시간대 이름으로 변환
 function timeSlotLabel(start: string): string {
   const [h] = start.split(':').map(Number)
@@ -62,8 +87,25 @@ function formatConditionText(condition: BadgeCondition | null): string {
   if (condition.distance_km !== undefined) {
     parts.push(`${actType}으로 누적 ${condition.distance_km}km 이상 달성`)
   }
-  if (condition.total_count !== undefined) {
+  // day_of_week: 배열 + total_count 동시 지정이면 "요일별 독립 카운터" 모드이므로
+  // 일반 total_count 문구 대신 합쳐진 문구 하나로 표현하고, 아래 total_count 블록은 건너뛴다.
+  const dayOfWeekHandlesTotalCount = Array.isArray(condition.day_of_week) && condition.total_count !== undefined
+  if (condition.day_of_week !== undefined) {
+    if (Array.isArray(condition.day_of_week)) {
+      if (dayOfWeekHandlesTotalCount) {
+        parts.push(`${dayOfWeekArrayLabel(condition.day_of_week)} 각 요일마다 ${actType} ${condition.total_count}회씩 완료`)
+      } else {
+        parts.push(`${dayOfWeekArrayLabel(condition.day_of_week)}에 ${actType} 활동`)
+      }
+    } else {
+      parts.push(`매주 ${DAY_OF_WEEK_LABELS[condition.day_of_week] ?? condition.day_of_week}에 ${actType} 활동`)
+    }
+  }
+  if (condition.total_count !== undefined && !dayOfWeekHandlesTotalCount) {
     parts.push(`${actType} ${condition.total_count}회 이상 완료`)
+  }
+  if (condition.active_days_count !== undefined) {
+    parts.push(`${actType}로 누적 ${condition.active_days_count}일 이상 활동`)
   }
   if (condition.streak_days !== undefined) {
     parts.push(`${condition.streak_days}일 연속으로 활동 완료`)
@@ -87,13 +129,16 @@ function formatConditionText(condition: BadgeCondition | null): string {
     parts.push(`한 주에 ${actType} ${condition.weekly_count}회 이상 완료`)
   }
   if (condition.monthly_km !== undefined) {
-    const monthLabel = condition.month ? `${MONTH_LABELS[condition.month] ?? `${condition.month}월`} 한 달간` : '한 달간'
-    parts.push(`${monthLabel} ${actType}으로 ${condition.monthly_km}km 이상 달성`)
+    const label = condition.month ? `${monthLabel(condition.month)} 한 달간` : '한 달간'
+    parts.push(`${label} ${actType}으로 ${condition.monthly_km}km 이상 달성`)
   } else if (condition.month !== undefined) {
-    parts.push(`${MONTH_LABELS[condition.month] ?? `${condition.month}월`}에 ${actType} 활동 완료`)
+    parts.push(`${monthLabel(condition.month)}에 ${actType} 활동 완료`)
   }
   if (condition.season_count !== undefined && condition.season) {
     parts.push(`${SEASON_LABELS[condition.season] ?? condition.season}에 ${actType} ${condition.season_count}회 이상 완료`)
+  }
+  if (condition.season_count_all !== undefined) {
+    parts.push(`봄·여름·가을·겨울 각 계절 ${actType} ${condition.season_count_all}회 이상 완료`)
   }
   if (condition.temperature_min_c !== undefined) {
     parts.push(`활동 중 기온이 ${condition.temperature_min_c}°C 이상인 조건에서 ${actType} 완료`)

@@ -23,7 +23,7 @@ import type {
 import type { NormalizedActivity } from '@/types/strava'
 import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
-import { checkCondition } from '@/lib/badge-engine/index'
+import { checkCondition, passesWalkingGate } from '@/lib/badge-engine/index'
 import { getDropPolicy, type DropPolicy } from './policy'
 import {
   rollRarityV2,
@@ -45,6 +45,8 @@ import {
   RESOLUTION_FACTION_ID,
   ONBOARDING_FACTION_BY_ACTIVITY,
   ONBOARDING_DROP_COUNT,
+  ACTIVITY_TYPE_DROP_WEIGHT,
+  DEFAULT_ACTIVITY_DROP_WEIGHT,
 } from './constants'
 
 export { MYSTERY_FACTION_ID, RESOLUTION_FACTION_ID }
@@ -76,6 +78,17 @@ export function isDroppableForActivity(
   if (!cond || Object.keys(cond).length === 0) return true
   if (hasCumulativeCondition(cond)) return false
   return checkCondition(cond, activities)
+}
+
+/**
+ * 이번 드랍의 기준 활동에 적용할 activity_type 가중치.
+ * 걷기는 축1 게이트(진짜 걷기 판정)를 통과했을 때만 감쇠 계수를 적용한다.
+ * 확정 1개 드랍에는 영향 없음 — 보너스 드랍 확률·rare+ pity 진행 기여도에만 사용.
+ */
+export function getActivityDropWeight(activity: NormalizedActivity | null): number {
+  if (!activity || activity.jamActivityType !== 'walking') return DEFAULT_ACTIVITY_DROP_WEIGHT
+  if (!passesWalkingGate(activity)) return DEFAULT_ACTIVITY_DROP_WEIGHT
+  return ACTIVITY_TYPE_DROP_WEIGHT.walking ?? DEFAULT_ACTIVITY_DROP_WEIGHT
 }
 
 // ────────────────────────────────────────────────────────────
@@ -475,6 +488,8 @@ export async function tryItemDrop(
 ): Promise<void> {
   const act: NormalizedActivity | null = typeof activity === 'object' ? activity : null
   const activityStartDate = act?.startDate ?? new Date().toISOString()
+  // 걷기(축1 게이트 통과)는 0.4 — 확정 1개 드랍엔 영향 없이 보너스 드랍 확률·pity 진행에만 반영
+  const activityWeight = getActivityDropWeight(act)
 
   const [policy, state] = await Promise.all([getDropPolicy(), getDropState(userId)])
   const structure = await fetchDropStructure(userId, state.last_drop_faction_id, activities)
@@ -499,8 +514,8 @@ export async function tryItemDrop(
   // 맥락 오버라이드 매칭 (복귀는 발동률 무시하고 항상 적용)
   const contextMatch = matchContextFactions(act, comeback)
 
-  // Layer 1: 드랍 개수 — 1개 확정 + 보너스
-  const dropCount = 1 + (rollBonusDrop(policy, intense, rand) ? 1 : 0)
+  // Layer 1: 드랍 개수 — 1개 확정(activity_type 가중치 미적용) + 보너스(가중치 적용)
+  const dropCount = 1 + (rollBonusDrop(policy, intense, rand, activityWeight) ? 1 : 0)
   let usedSlots = structure.inventory.used_slots
 
   for (let i = 0; i < dropCount; i++) {
@@ -582,7 +597,8 @@ export async function tryItemDrop(
     state.last_drop_faction_id = result.factionId
     state.last_drop_book_id = result.bookId
     if (result.badge.rarity === 'common') {
-      state.common_streak += 1
+      // rare+ pity 진행 기여도에 activity_type 가중치 반영 (걷기는 0.4만큼만 전진)
+      state.common_streak += activityWeight
     } else {
       state.common_streak = 0
     }

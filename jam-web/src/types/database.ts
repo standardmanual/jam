@@ -8,6 +8,7 @@
 
 export type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
 export type BadgeType = 'activity' | 'item' | 'poi'
+export type DayOfWeek = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'
 export type BadgeRarity = 'common' | 'rare' | 'legendary' | 'mythic'
 // poi_categories 테이블에서 어드민이 자유롭게 생성/삭제/수정 가능한 슬러그 — 고정 유니언이 아닌 string
 export type PoiCategory = string
@@ -525,20 +526,31 @@ export interface BadgeCondition {
   weekend_duration_hours?: number
   /** 같은 주 내 최소 활동 횟수 */
   weekly_count?: number
-  /** 특정 월 (1-12) */
-  month?: number
+  /** 특정 월 (1-12). 배열이면 "그중 한 달"(월별 monthly_km는 개별 월 기준 최대값으로 평가 — 합산 아님) */
+  month?: number | number[]
   /** 특정 월 내 최소 누적 거리 (km) */
   monthly_km?: number
   /** 특정 계절 내 활동 횟수 */
   season_count?: number
   /** 계절 구분: spring(3-5월) | summer(6-8월) | fall(9-11월) | winter(12-2월) | all */
   season?: 'spring' | 'summer' | 'fall' | 'winter' | 'all'
+  /** 사계절 전부 각각 이 횟수 이상 — 4개 독립 카운터(봄/여름/가을/겨울)가 모두 충족해야 함 */
+  season_count_all?: number
   /** 최저 기온 조건 — 활동 중 기온이 이 값 이상이어야 함 (폭염 배지) */
   temperature_min_c?: number
   /** 최고 기온 조건 — 활동 중 기온이 이 값 이하이어야 함 (한파 배지) */
   temperature_max_c?: number
   /** 활동 시작 시간대 조건 { start: "HH:MM", end: "HH:MM" } */
   time_range?: { start: string; end: string }
+  /**
+   * 활동 시작 요일 조건 (활동의 startDateLocal 기준).
+   * - 단일 값: time_range와 동일하게 AND 결합되는 필터 (예: day_of_week:'sunday' + total_count:1000)
+   * - 배열 + total_count 동시 지정: "요일별 독립 카운터" 모드 — 배열의 각 요일이 각각
+   *   독립적으로 total_count를 만족해야 함 (예: 평일 5일 각각 300회, W08 "평일의 성실함")
+   */
+  day_of_week?: DayOfWeek | DayOfWeek[]
+  /** 걷기(축1 게이트 통과) 활동의 누적 고유 활동일수 — COUNT(DISTINCT date), 연속 아님 */
+  active_days_count?: number
   /**
    * 선행 배지 이름 목록 — Rare 이상 배지에 적용.
    * 나열된 이름 중 하나라도 보유하고 있어야 이 배지가 발급 가능해진다.

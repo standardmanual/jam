@@ -1,63 +1,50 @@
-# 진행 상황 (development-phase17)
+# 진행 상황 (walking-badges-v4)
 
-## 2026-07-31 — 메인세션(팀장): 팀 구성 + 공유 메모리 초기화
-- kkirikkiri-development-phase17 팀 구성 완료, dev-server / dev-client / tester 3명에게 태스크 배분 시작
+## 2026-08-08 — 메인세션(팀장): 팀 구성 + 공유 메모리 초기화
+- kkirikkiri-development-walking-badges-v4 팀 구성 완료
+- dev-core부터 순차 실행 시작
 
-## 2026-07-31 — dev-server: T1 시작
-- PRD(Phase17_01_PRD.md) 3-4절 및 TEAM_PLAN 확인 완료
-- 작업 대상: `jam-web/src/app/api/poi-badges/route.ts`(신규), `jam-web/src/lib/poi/badge-clustering.ts`(신규)
+## 2026-08-08 — dev-core: 작업 시작
+- 기존 코드 파악 착수 (badge-engine/index.ts, database.ts, drop-engine)
 
-## 2026-07-31 — dev-server: T1 완료
-- 구현 파일 (둘 다 신규, 기존 파일 무수정):
-  - `jam-web/src/lib/poi/badge-clustering.ts` — 순수 함수 `clusterPoiBadges` / `gridCellSizeForZoom` / `shouldCluster` / 상수 `CLUSTER_ZOOM_THRESHOLD=13`. DB·네트워크 의존 없음(테스트 가능).
-  - `jam-web/src/app/api/poi-badges/route.ts` — `GET /api/poi-badges?swLat&swLng&neLat&neLng&zoom`. `createClient()` 인증 → `createServiceClient()` 조회 패턴은 `/api/drops`와 동일.
-- 로직: bbox 내 `linked_badge_id` 있는 POI 조회 → 연결 배지 `type='poi'` + `deleted_at IS NULL` 필터 → zoom>13이면 개별 목록(+`user_poi_badge_earns` 배지 단위 earned 판정), zoom<=13이면 그리드 클러스터 `{lat,lng,count}`만 반환.
-- 검증: `npx tsc --noEmit` — 내 담당 신규 파일 관련 에러 0건. (잔여 에러는 ①기존 `__tests__` 파일들의 jest 타입 미설치(사전 존재) ②dev-client의 `/api/share-card` 삭제로 인한 `.next` 스테일 validator 타입 — 둘 다 내 작업과 무관)
-- 클러스터링 함수는 tsx로 실제 실행해 셀 크기 단조 증가(z6 5.625° > z10 0.3516° > z13 0.0439°), 서울 2건 병합/부산·제주 분리, 빈 배열·NaN 방어 동작 확인 완료.
-- **API 응답 스키마 전문은 `TEAM_FINDINGS.md`에 기록** (dev-client 연동용).
-- 커밋은 하지 않음 — dev-client 작업과 동시 진행 중이라 T6 통합 검증 시 팀장이 일괄 커밋하는 것이 안전.
+## 2026-08-08 — dev-core: 작업 완료
+- 마이그레이션: `jam-web/supabase/migrations/076_walking_badges_v4.sql` (D01~D11 + 트로피매트릭스 32개 INSERT), `jam-web/supabase/migrations/077_common_streak_numeric.sql` (common_streak INTEGER→NUMERIC(8,2), 걷기 0.4 가중치 소수 누적 대응)
+- 수정 파일: `jam-web/src/types/database.ts`(BadgeCondition 필드 추가), `jam-web/src/lib/badge-engine/index.ts`(축1 게이트+day_of_week+active_days_count+season_count_all+하루상한+진행트랙버그수정), `jam-web/src/lib/drop-engine/constants.ts`(ACTIVITY_TYPE_DROP_WEIGHT), `jam-web/src/lib/drop-engine/layers.ts`(rollBonusDrop 가중치 파라미터), `jam-web/src/lib/drop-engine/index.ts`(getActivityDropWeight, tryItemDrop 적용)
+- 새 조건 필드: `day_of_week`(단일/배열 두 모드), `active_days_count`, `season_count_all`, `month`를 배열도 허용하도록 확장
+- 절충: T15는 새 필드 `season_count_all`로, T08은 `day_of_week` 배열+total_count 특수모드로 구현 (all_of 같은 범용 배열 구조는 채택 안 함 — 상세 이유 TEAM_FINDINGS.md)
+- 버그 2건 발견·수정: (1) getProgressionKey가 prerequisite 없는 배지도 트랙 병합해서 T01~T04/T23이 조용히 누락되는 문제 → prerequisite_badge_names 없으면 병합 안 하도록 가드 추가. (2) temperature_min_c/max_c + total_count 조합(T12~T14)이 온도 조건과 무관하게 total_count를 채울 수 있던 문제 → 카운팅 대상을 온도조건으로 먼저 필터링하도록 수정. 둘 다 TEAM_FINDINGS.md에 상세 기록, tester가 반드시 회귀 테스트 필요.
+- 마이그레이션 076의 실제 INSERT 개수는 32개(D 11 + T 21) — 원 기획 "31개(20개 트로피)" 표기와 불일치, 실제 확정 배지 목록 기준으로 전부 반영함(TEAM_FINDINGS.md 참고)
+- tsc --noEmit / eslint 모두 확인, 기존 대비 신규 에러 없음 (pre-existing 테스트 타입정의 에러는 무관)
+- git commit/push 안 함 (팀장 검토 대기)
 
-## 2026-07-31 — dev-client: T3 / T4 / T5 완료
+## 2026-08-08 — docs-writer: 작업 시작
+- TEAM_PLAN.md / TEAM_FINDINGS.md 확인 완료
+- `PRD/` 경로가 실제로는 존재하지 않음을 확인 — 2026-07-30 커밋(`b936641`)에서 `Service Plan/` 4카테고리 체계로 이미 이동됨. 실제 문서 경로로 대체해 작업 진행(상세: TEAM_FINDINGS.md).
 
-### 수정한 파일
-- `jam-web/src/lib/i18n/ko.ts`
-  - `nav.drops: '드랍'` → `'JAM'` (라우트 `/drops` 및 컴포넌트명은 무변경. 탭 라벨은 `TabBar.tsx`가 `d.nav.drops`를 참조하므로 이 한 줄로 반영됨)
-  - 미사용이 된 `badges.shareCard*` 6개 문구 제거
-- `jam-web/src/components/map/MapView.tsx` (대폭 개편)
-  - 드랍/픽업 마커: `markerIconHtml` → `dropMarkerIconHtml`. 20px 서클(선택 시 26px), 픽업 가능=`var(--color-main)`, 불가=그레이(#888), 범위 밖=진회색(#444)+opacity 0.5(기존 표현 유지). 내부에 하강 화살표 인라인 SVG를 네거티브 컬러(`var(--color-sub)`/흰색)로 렌더.
-  - POI 배지 마커 신규: 30px 원형 + `image_url`. 미획득은 `filter:grayscale(1)`이고 **`Event.addListener('click')` 자체를 걸지 않음**(탭 완전 비활성). 획득 시에만 클릭 → `window.location.href = '/badges/{badge_id}'`.
-  - 클러스터 마커 신규: 서버가 준 `{lat,lng,count}`를 숫자 원형 마커로 렌더(개수별 32/38/44px). 클라이언트 병합 로직 없음.
-  - `idle` 리스너 + 350ms 디바운스. `isWithin()`으로 **이전 조회 bbox(2% 바깥 마진) 안 + 줌 동일**이면 재조회 스킵. 줌이 바뀌면 항상 재조회(클러스터⇄개별 전환 보장). 언마운트 시 `Event.removeListener`로 해제.
-  - 신규 export 타입: `PoiBadgeMarker`, `PoiBadgeClusterMarker`, `MapViewport`. 기존 `PoiMarker` / `onPoiSelect` 시그니처는 무변경.
-- `jam-web/src/app/(main)/drops/DropsClient.tsx`
-  - `badgeMarkers` / `badgeClusters` state + `handleViewportChange`(→ `/api/poi-badges` 호출) 추가 후 MapView에 전달.
-  - 기존 `/api/drops` 로직·바텀시트·픽업 플로우는 **한 줄도 수정하지 않음**. 배지 조회 실패는 조용히 무시해 드랍 플로우에 영향 없음.
-- `jam-web/src/types/naver-maps.d.ts` (MapView 전용 최소 타입 선언 — 부득이 확장)
-  - `LatLng.lat()/lng()`, `LatLngBounds`(getSW/getNE), `Map.getBounds()/getZoom()`, `Event.removeListener` 추가. 기존 선언 삭제·변경 없음.
-- `jam-web/src/app/(main)/badges/[id]/page.tsx`
-  - `ShareCardModal` import 및 `{hasEarned && <ShareCardModal .../>}` 블록 제거(타입 구분 없이 전체). `hasEarned` 자체는 다른 곳에서 계속 쓰여 유지.
+## 2026-08-08 — docs-writer: 작업 완료
+- 신규 생성: `Service Plan/History/Operations/SERVICE_OPERATIONS_20260808_1500.md` (이전 버전: `SERVICE_OPERATIONS_20260801_1153.md`) — 축1 게이트, 하루상한, 신규 조건 필드, 배지 32종, 드랍엔진 걷기 계수, 버그 수정 2건 전체 반영.
+- 신규 생성: `Service Plan/History/Migration/Ticket/20260808_001_Content_걷기배지체계-v4-전면개편.md` — 기존 티켓 형식(YAML frontmatter + 배경/요구사항/구현계획/완료기록) 준수.
+- 직접 수정: `Service Plan/Specs/Content/ACTIVITY_BADGES.md` — 헤더(115→147종, v3→v4), W8 뒤에 D01~D11 표 + 트로피 매트릭스 21종 표 신규 섹션 추가, 엔진 연동 규칙 트랙 분류 표에 신규 패턴 8행 추가, condition_json 예시 6개 추가, 관련 파일 표에 마이그레이션 076 추가. 기존 W1~W8 내용은 그대로 보존.
+- 직접 수정: `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` — 헤더 최종 업데이트일·배지 수(115→147) 갱신, §2.3 조건 평가 필드 표에 day_of_week/active_days_count/season_count_all/month 확장 4행 추가, §2.9 배지 구성 갱신 + §2.10 신규(축1 게이트·하루상한·신규배지32종·버그수정2건 전체 서술), §3.14 뒤 §3.15 신규(드랍엔진 걷기 계수 0.4 + common_streak 스키마 변경), 운영 문서·코드 맵에 마이그레이션 076/077 추가.
+- git commit/push 안 함 (팀장 검토 대기, 절대 하지 마 규칙 준수)
+- TEAM_PLAN.md / TEAM_FINDINGS.md 확인 완료
+- badges/[id]/page.tsx formatConditionText() 신규 필드 대응 착수
+- 어드민 배지 목록 화면 검증 착수
 
-### 삭제한 파일
-- `jam-web/src/app/(main)/badges/[id]/ShareCardModal.tsx`
-- `jam-web/src/app/api/share-card/` (하위 `generate/route.tsx` 포함)
+## 2026-08-08 — dev-assist: 작업 완료
+- `jam-web/src/app/(main)/badges/[id]/page.tsx`: `formatConditionText()`에 `day_of_week`(단일/배열 두 모드), `active_days_count`, `season_count_all` 조건 텍스트 추가. 부수적으로 `month`가 `number|number[]`로 확장되면서 기존 `MONTH_LABELS[condition.month]` 인덱싱이 타입에러(TS2538)가 나던 것을 `monthLabel()` 헬퍼로 수정(배열이면 "6월·7월" 형태로 join).
+- 어드민 배지 목록(`jam-web/src/app/admin/badges/page.tsx`, `BadgeList.tsx`, `BadgeCard.tsx`, `BadgesTable.tsx`) 읽기 전용 검증: 타입 에러 없음, 신규 배지 32종도 기존 페이지네이션(50개/페이지)·카드/테이블 렌더링 구조 그대로 문제없이 표시됨. `BadgesTable.tsx`의 `conditionSummary()`는 day_of_week/active_days_count/season_count_all을 칩으로 별도 표시하지 않음(깨지진 않지만 조건 요약이 불완전) — 필요시 별도 티켓으로 보강 권장.
+- `cd jam-web && npx tsc --noEmit`: src 신규 에러 0건(기존 __tests__ jest 타입정의 에러, .next 캐시 아티팩트 에러는 pre-existing·무관 확인).
+- git commit/push 안 함 (팀장 검토 대기)
 
-### 검증
-- `npx tsc --noEmit` — 내 변경 관련 에러 0건 (잔여는 사전 존재하던 `__tests__` jest 타입 미설치뿐. dev-server가 언급한 `.next` 스테일 validator 에러는 `.next/dev/types` 삭제로 해소 확인)
-- `npx eslint` — MapView / badges[id]page / naver-maps.d.ts 에러 0건. DropsClient의 `react-hooks/set-state-in-effect` 2건은 `git stash`로 기준선 비교해 **사전 존재**임을 확인(내 변경으로 늘어난 에러 없음).
-- `grep -rn "ShareCardModal\|share-card\|shareCard" src` → 0건.
+## 2026-08-08 — tester: 작업 시작
+- TEAM_PLAN.md / TEAM_FINDINGS.md 전문 확인 완료
+- 기존 conditions.test.ts / new-conditions.test.ts 스타일 파악 후 신규 테스트 파일 작성 착수
 
-### 결정/주의사항
-- `/api/poi-badges` 응답 필드는 dev-server 구현(`mode` / `pois` / `clusters` / `zoom` / `cluster_zoom_threshold`) 기준으로 연동. 클라이언트는 `pois`·`clusters`만 사용하고 `mode` 분기는 두지 않음 — 서버가 반대편 배열을 항상 빈 배열로 내려주므로 그대로 렌더해도 정확하고, 스키마 변화에 더 둔감함.
-- 커밋은 하지 않음(팀장 T6 통합 검증 시 일괄 커밋).
-
-## 2026-07-31 — tester: T2 중단 (테스트 러너 미설치 발견)
-- 프로젝트에 jest/vitest 등 어떤 테스트 러너도 설치돼 있지 않고, 기존 `__tests__` 파일들도 실행된 적 없는 상태를 확인(DEAD_ENDS 참고).
-- 유저 확인 결과 "테스트 생략하고 바로 통합"으로 결정 → 태스크 삭제, 통합 검증(T6)으로 진행.
-
-## 2026-07-31 — 메인세션(팀장): T6 통합 검증 완료
-- `npx tsc --noEmit`: Phase17 관련 파일(poi-badges, badge-clustering, MapView, DropsClient, badges/[id]/page, naver-maps.d.ts) 에러 0건 확인(grep으로 전체 293줄 에러 중 무관함 재확인). 잔여 에러는 전부 기존 `__tests__` jest 타입 미설치 문제.
-- `npx eslint` (Phase17 변경 파일 대상): DropsClient.tsx의 `react-hooks/set-state-in-effect` 2건은 `git show HEAD:...`로 원본 대조해 **변경 전부터 존재**함을 재확인(회귀 아님).
-- 코드 리뷰: `poi-badges/route.ts`, `badge-clustering.ts`, `MapView.tsx`, `DropsClient.tsx` diff 직접 읽고 PRD 요구사항 대조 완료 — 요구사항과 일치.
-- `git status`로 변경 파일 전체 확인, 계획에 없던 추가 변경 없음.
-- `Service Plan/Specs/SERVICE_OPERATIONS_20260731_1200.md` 신규 생성(프로젝트 문서화 규칙).
-- 커밋 + push 진행.
+## 2026-08-08 — tester: 작업 완료
+- 신규 생성: `jam-web/src/lib/badge-engine/__tests__/walking-badges-v4.test.ts` (31 테스트, 전부 통과)
+- 커버리지: passesWalkingGate 경계값 8건, active_days_count(하루중복/축1게이트배제) 4건, day_of_week 단일값 3건, day_of_week배열+total_count(T08 요일별 독립카운터+하루상한) 3건, season_count_all(T15) 2건, weekly_count 하루1회상한(W3) 2건, getProgressionKey 크로스배지 충돌 회귀(T01~T04, T23 vs W1) 2건, temperature_min_c+total_count 누수 회귀(T12) 2건, rollBonusDrop activityWeight(드랍엔진) 4건
+- getProgressionKey는 badge-engine/index.ts 내부 비공개 함수라 evaluateBadgesDetailed()를 통해 간접 검증 — createServiceClient/getActivityHistory/activity-feed/points/engine-log를 vi.mock으로 모킹(dryRun:true 경로만 사용)
+- 실행 확인: `npx vitest run src/lib/badge-engine/__tests__/walking-badges-v4.test.ts` 31 passed. 회귀 검증 겸 `src/lib/badge-engine/__tests__ src/lib/drop-engine/__tests__` 전체 재실행 — 6 files / 110 tests 모두 통과, 기존 테스트에 영향 없음 확인
+- 구현 버그 추가 발견 없음 — dev-core가 기록한 버그 2건 모두 이미 수정된 상태로 테스트 통과 확인(회귀 아님, 수정 검증)
+- badge-engine/drop-engine 실제 로직 코드는 수정하지 않음. git commit/push 안 함

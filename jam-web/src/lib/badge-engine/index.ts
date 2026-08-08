@@ -13,9 +13,60 @@ import { logEngineDecision } from '@/lib/engine-log'
 import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
-import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, UserActivityBadgeRow } from '@/types/database'
+import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, DayOfWeek, UserActivityBadgeRow } from '@/types/database'
 
 const RARITY_TIER: Record<string, number> = { common: 1, rare: 2, legendary: 3, mythic: 4 }
+
+// ── 축1 게이트 (걷기 전용 "진짜 걷기" 판정) ────────────────────────────────
+// 걷기(activity_type='walking') 활동이 이 네 값을 모두 통과해야 어떤 걷기 배지
+// 조건 평가에도 포함된다. 미통과 시 그 활동은 걷기 배지 평가에서 완전 배제.
+// 다른 종목에는 영향 없음. 값은 튜닝 대상이라 상수로 분리해 한 곳에 모아둔다.
+export const WALKING_GATE_MIN_DISTANCE_KM = 0.5
+export const WALKING_GATE_MIN_DURATION_MIN = 10
+export const WALKING_GATE_MIN_SPEED_KMH = 2.0
+export const WALKING_GATE_MAX_SPEED_KMH = 8.0
+
+/** 걷기 활동이 축1 게이트를 통과하는지. 걷기가 아니면 항상 true(영향 없음). */
+export function passesWalkingGate(a: NormalizedActivity): boolean {
+  if (a.jamActivityType !== 'walking') return true
+  if (a.distanceKm < WALKING_GATE_MIN_DISTANCE_KM) return false
+  if (a.movingTimeSec / 60 < WALKING_GATE_MIN_DURATION_MIN) return false
+  if (a.averageSpeedKmh < WALKING_GATE_MIN_SPEED_KMH || a.averageSpeedKmh > WALKING_GATE_MAX_SPEED_KMH) return false
+  return true
+}
+
+const DAY_INDEX: Record<DayOfWeek, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+}
+const DAY_LABEL_KO: Record<DayOfWeek, string> = {
+  sunday: '일', monday: '월', tuesday: '화', wednesday: '수', thursday: '목', friday: '금', saturday: '토',
+}
+
+/** 활동의 (로컬 기준) 요일이 지정한 day_of_week와 일치하는지 */
+function matchesDayOfWeek(a: NormalizedActivity, day: DayOfWeek): boolean {
+  const dateOnly = (a.startDateLocal ?? a.startDate).slice(0, 10)
+  return new Date(`${dateOnly}T00:00:00Z`).getUTCDay() === DAY_INDEX[day]
+}
+
+/** 같은 날짜(로컬 기준)의 활동을 1건으로 압축 — 걷기 빈도 조건 하루 1회 상한용 */
+function dedupeOnePerDay(activities: NormalizedActivity[]): NormalizedActivity[] {
+  const seen = new Set<string>()
+  const result: NormalizedActivity[] = []
+  for (const a of activities) {
+    const key = (a.startDateLocal ?? a.startDate).slice(0, 10)
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(a)
+  }
+  return result
+}
+
+const SEASON_MONTHS: Record<'spring' | 'summer' | 'fall' | 'winter', number[]> = {
+  spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11], winter: [12, 1, 2],
+}
+const SEASON_LABEL_KO: Record<'spring' | 'summer' | 'fall' | 'winter', string> = {
+  spring: '봄', summer: '여름', fall: '가을', winter: '겨울',
+}
 
 // ── 공개 타입 ────────────────────────────────────────────────────────────
 
@@ -199,20 +250,123 @@ export function evaluateConditionDetailed(
     return { pass: false, reason: 'GPS 경로 매칭으로 별도 발급', actual: '-', required: 'POI 반경 내 경유' }
   }
 
-  const filtered = condition.activity_type
-    ? activities.filter((a) => a.jamActivityType === condition.activity_type)
+  // 걷기(walking)는 축1 게이트(진짜 걷기 판정)를 통과한 활동만 조건 평가에 포함한다.
+  // 미통과 활동은 distance_km/duration_minutes/weekly_count/streak_days/active_days_count/
+  // total_count 등 어떤 걷기 조건 평가에도 존재하지 않는 것으로 취급된다.
+  let filtered = condition.activity_type
+    ? activities.filter(
+        (a) => a.jamActivityType === condition.activity_type && (condition.activity_type !== 'walking' || passesWalkingGate(a))
+      )
     : activities
+
+  // day_of_week 단일 값 — time_range와 동일하게 AND 결합되는 필터 (예: T05~T07, T09~T11)
+  if (condition.day_of_week !== undefined && !Array.isArray(condition.day_of_week)) {
+    filtered = filtered.filter((a) => matchesDayOfWeek(a, condition.day_of_week as DayOfWeek))
+  }
+
+  // time_range + total_count 조합(T09~T11) — "그 시간대의 활동만" 카운팅 대상으로 좁힌다.
+  // (time_range + weekly_count 조합은 아래 weekly_count 블록에서 별도 처리)
+  if (condition.time_range !== undefined && condition.total_count !== undefined) {
+    filtered = filtered.filter((a) => inTimeRange(a, condition.time_range!))
+  }
+
+  // temperature_min_c/max_c + total_count 조합(T12~T14) — "그 기온 조건을 만족한 활동"만
+  // 카운팅 대상으로 좁힌다. (total_count 없이 온도만 있으면 기존처럼 "단일 활동 1건" 매칭 —
+  // 아래 relevantPerActivityKeys 단일활동 블록에서 처리)
+  if (condition.total_count !== undefined && (condition.temperature_min_c !== undefined || condition.temperature_max_c !== undefined)) {
+    filtered = filtered.filter((a) => {
+      if (condition.temperature_min_c !== undefined && (a.weatherTempC == null || a.weatherTempC < condition.temperature_min_c)) return false
+      if (condition.temperature_max_c !== undefined && (a.weatherTempC == null || a.weatherTempC > condition.temperature_max_c)) return false
+      return true
+    })
+  }
+
+  // 걷기 빈도 조건(day_of_week 단일값 + total_count) 하루 1회 상한 — 같은 날 여러 번 걸어도 1회만 카운트
+  if (
+    condition.activity_type === 'walking' &&
+    condition.day_of_week !== undefined &&
+    !Array.isArray(condition.day_of_week) &&
+    condition.total_count !== undefined
+  ) {
+    filtered = dedupeOnePerDay(filtered)
+  }
 
   // 통과한 필드의 실측값도 남겨서(어드민이 나중에 "왜 발급됐는지" 확인 가능하도록) 누적한다
   const actualParts: string[] = []
   const requiredParts: string[] = []
 
+  // ── day_of_week 배열 + total_count 동시 지정 — 요일별 독립 카운터 모드 (예: T08 "평일의 성실함")
+  //    배열의 각 요일이 각각 독립적으로 total_count를 만족해야 함 (5개 별도 카운터, 전부 충족)
+  if (Array.isArray(condition.day_of_week) && condition.total_count !== undefined) {
+    const perDay = condition.day_of_week.map((day) => {
+      let pool = activities.filter(
+        (a) =>
+          a.jamActivityType === condition.activity_type &&
+          (condition.activity_type !== 'walking' || passesWalkingGate(a)) &&
+          matchesDayOfWeek(a, day)
+      )
+      if (condition.activity_type === 'walking') pool = dedupeOnePerDay(pool)
+      return { day, count: pool.length }
+    })
+    const failing = perDay.filter((r) => r.count < condition.total_count!)
+    if (failing.length > 0) {
+      return {
+        pass: false,
+        reason: '요일별 누적 횟수 부족',
+        actual: perDay.map((r) => `${DAY_LABEL_KO[r.day]}: ${r.count}회`).join(', '),
+        required: `요일별 각 ${condition.total_count}회`,
+      }
+    }
+    actualParts.push(perDay.map((r) => `${DAY_LABEL_KO[r.day]}: ${r.count}회`).join(', '))
+    requiredParts.push(`요일별 각 ${condition.total_count}회`)
+  }
+  const totalCountHandledByDayOfWeek = Array.isArray(condition.day_of_week) && condition.total_count !== undefined
+
+  // ── 사계절 각각 독립 카운터 (T15 "사계절의 발걸음")
+  if (condition.season_count_all !== undefined) {
+    const seasons: Array<'spring' | 'summer' | 'fall' | 'winter'> = ['spring', 'summer', 'fall', 'winter']
+    const perSeason = seasons.map((s) => ({
+      season: s,
+      count: filtered.filter((a) => SEASON_MONTHS[s].includes(new Date(a.startDate).getMonth() + 1)).length,
+    }))
+    const failing = perSeason.filter((r) => r.count < condition.season_count_all!)
+    if (failing.length > 0) {
+      return {
+        pass: false,
+        reason: '계절별 활동 횟수 부족',
+        actual: perSeason.map((r) => `${SEASON_LABEL_KO[r.season]}: ${r.count}회`).join(', '),
+        required: `계절별 각 ${condition.season_count_all}회`,
+      }
+    }
+    actualParts.push(perSeason.map((r) => `${SEASON_LABEL_KO[r.season]}: ${r.count}회`).join(', '))
+    requiredParts.push(`계절별 각 ${condition.season_count_all}회`)
+  }
+
+  // ── active_days_count — 걷기(축1 게이트 통과) 누적 고유 활동일수. COUNT(DISTINCT date), 연속 아님.
+  if (condition.active_days_count !== undefined) {
+    const uniqueDays = new Set(filtered.map((a) => (a.startDateLocal ?? a.startDate).slice(0, 10))).size
+    if (uniqueDays < condition.active_days_count) {
+      return { pass: false, reason: '누적 활동일수 부족', actual: `${uniqueDays}일`, required: `${condition.active_days_count}일` }
+    }
+    actualParts.push(`누적일수: ${uniqueDays}일`)
+    requiredParts.push(`누적일수: ${condition.active_days_count}일`)
+  }
+
   // ── 단일 활동 동시 충족 조건 — "그 활동 하나"가 모든 필드를 함께 만족해야 함.
   //    필드별로 따로 최댓값을 찾아 합치면(예: 빠른 활동의 속도 + 긴 활동의 시간을 조합)
   //    실제로는 어느 활동도 조건을 만족 못 했는데 통과하는 버그가 생긴다.
   const relevantPerActivityKeys = [
-    ...PER_ACTIVITY_KEYS.filter((k) => condition[k] !== undefined),
-    ...(condition.time_range !== undefined && condition.weekly_count === undefined ? ['time_range' as const] : []),
+    ...PER_ACTIVITY_KEYS.filter((k) => {
+      if (condition[k] === undefined) return false
+      // temperature_min_c/max_c + total_count는 위에서 이미 "카운팅 대상 필터"로 처리됨 —
+      // 여기서 또 "단일 활동 매칭"으로 취급하면 total_count가 기온과 무관한 전체 걷기
+      // 횟수로 잘못 평가된다 (T12~T14 어뷰징 방지 위해 반드시 분리 처리)
+      if (condition.total_count !== undefined && (k === 'temperature_min_c' || k === 'temperature_max_c')) return false
+      return true
+    }),
+    ...(condition.time_range !== undefined && condition.weekly_count === undefined && condition.total_count === undefined
+      ? ['time_range' as const]
+      : []),
   ]
   if (relevantPerActivityKeys.length > 0) {
     const qualifying = filtered.find((a) => matchesPerActivityCondition(condition, a))
@@ -243,7 +397,7 @@ export function evaluateConditionDetailed(
     requiredParts.push(...required)
   }
 
-  if (condition.total_count !== undefined) {
+  if (condition.total_count !== undefined && !totalCountHandledByDayOfWeek) {
     if (filtered.length < condition.total_count) {
       return { pass: false, reason: '활동 횟수 부족', actual: `${filtered.length}회`, required: `${condition.total_count}회` }
     }
@@ -274,6 +428,8 @@ export function evaluateConditionDetailed(
         return cross ? t >= startMin || t <= endMin : t >= startMin && t <= endMin
       })
     }
+    // 걷기 빈도 조건 하루 1회 상한 — 같은 날 여러 번 걸어도 주간 집계엔 1회만 반영 (W3/W4에도 소급 적용)
+    if (condition.activity_type === 'walking') weeklyPool = dedupeOnePerDay(weeklyPool)
     const weekCounts = new Map<string, number>()
     for (const a of weeklyPool) {
       const key = getMondayKey(new Date(a.startDate))
@@ -290,7 +446,10 @@ export function evaluateConditionDetailed(
   if (condition.month !== undefined || condition.monthly_km !== undefined) {
     let monthFiltered = filtered
     if (condition.month !== undefined) {
-      monthFiltered = filtered.filter((a) => new Date(a.startDate).getMonth() + 1 === condition.month)
+      // 배열이면 "그중 한 달" — monthly_km는 아래에서 연-월별로 묶어 최댓값을 취하므로
+      // 여러 달을 합산하지 않고 개별 월 단위로 평가된다 (예: T20 장마철 6~7월 중 한 달 150km)
+      const months = Array.isArray(condition.month) ? condition.month : [condition.month]
+      monthFiltered = filtered.filter((a) => months.includes(new Date(a.startDate).getMonth() + 1))
     }
     if (condition.monthly_km !== undefined) {
       const monthKm = new Map<string, number>()
@@ -314,17 +473,14 @@ export function evaluateConditionDetailed(
     if (!condition.season) {
       return { pass: false, reason: '계절 조건 미구현 (season 필드 없음)', actual: '-', required: `${condition.season_count}회` }
     }
-    const SEASON_MONTHS: Record<string, number[]> = {
-      spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11], winter: [12, 1, 2],
-    }
     const seasonFiltered = condition.season === 'all'
       ? filtered
       : filtered.filter((a) => {
           const m = new Date(a.startDate).getMonth() + 1
-          return (SEASON_MONTHS[condition.season!] ?? []).includes(m)
+          return (SEASON_MONTHS[condition.season as 'spring' | 'summer' | 'fall' | 'winter'] ?? []).includes(m)
         })
     if (seasonFiltered.length < condition.season_count) {
-      const label = condition.season === 'all' ? '전체' : ({ spring: '봄', summer: '여름', fall: '가을', winter: '겨울' }[condition.season] ?? condition.season)
+      const label = condition.season === 'all' ? '전체' : (SEASON_LABEL_KO[condition.season as 'spring' | 'summer' | 'fall' | 'winter'] ?? condition.season)
       return { pass: false, reason: `${label} 활동 횟수 부족`, actual: `${seasonFiltered.length}회`, required: `${condition.season_count}회` }
     }
     actualParts.push(`계절활동: ${seasonFiltered.length}회`)
@@ -664,9 +820,19 @@ const PROGRESSION_MODIFIERS = [
   'elevation_gain_m', 'min_speed_kmh', 'max_pace_sec_per_km', 'streak_days', 'duration_minutes',
   'weekend_duration_hours', 'monthly_km', 'weekly_count', 'season_count',
   'month', 'season', 'temperature_min_c', 'temperature_max_c', 'time_range',
+  'day_of_week', 'active_days_count', 'season_count_all',
 ] as const
 
 function getProgressionKey(condition: BadgeCondition): { key: string; value: number } | null {
+  // 진행 트랙 병합(동일 트랙 내 최고값 1개만 발급)은 원래 prerequisite_badge_names로
+  // 명시적으로 체인된 배지 가족(예: W1 동네 산책러 rare~mythic 티어)을 위한 장치다.
+  // prerequisite가 없는 조건까지 여기서 병합해버리면, 이름이 다르고 서로 무관한
+  // "완전 독립" 배지들이 우연히 같은 activity_type+distance_km(혹은 total_count)
+  // 조합을 쓸 때 서로 충돌해 값이 낮은 쪽이 조용히 발급 누락된다.
+  // (트로피 매트릭스 T01~T04는 전부 activity_type:walking + total_count만 사용하는
+  //  이름이 다른 독립 배지라 이 가드가 없으면 셋이 사라진다 — TEAM_FINDINGS.md 참고)
+  if (!condition.prerequisite_badge_names || condition.prerequisite_badge_names.length === 0) return null
+
   const hasModifier = PROGRESSION_MODIFIERS.some(
     (m) => (condition as Record<string, unknown>)[m] !== undefined
   )
