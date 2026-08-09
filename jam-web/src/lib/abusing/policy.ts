@@ -16,6 +16,7 @@ export interface AbusingPolicy {
   gps_max_speed_kmh: number
   poi_block_hours: number
   vehicle_speed_filter_kmh: number
+  gps_daily_distance_cap_km: number
 }
 
 const DEFAULT_POLICY: AbusingPolicy = {
@@ -30,6 +31,7 @@ const DEFAULT_POLICY: AbusingPolicy = {
   gps_max_speed_kmh: 300,
   poi_block_hours: 72,
   vehicle_speed_filter_kmh: 60,
+  gps_daily_distance_cap_km: 3000,
 }
 
 export async function getAbusingPolicy(): Promise<AbusingPolicy> {

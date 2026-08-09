@@ -70,12 +70,18 @@ export async function POST(
   // GPS 조작 감지
   const gpsCheck = await checkAndUpdateLocation(user.id, user_lat, user_lng, policy)
   if (gpsCheck.detected) {
+    const detail =
+      gpsCheck.reason === 'daily_distance'
+        ? `일일 누적 이동거리 초과 (${gpsCheck.dailyDistanceKm}km/일)`
+        : `속도 ${gpsCheck.speedKmh}km/h`
     await Promise.all([
-      applyBan(user.id, 'soft', `GPS 조작 의심 (속도 ${gpsCheck.speedKmh}km/h)`, 'system'),
-      blockPoiForUser(user.id, drop.poi_id, policy, `gps_spoof_detected (${gpsCheck.speedKmh}km/h)`),
+      applyBan(user.id, 'soft', `GPS 조작 의심 (${detail})`, 'system'),
+      blockPoiForUser(user.id, drop.poi_id, policy, `gps_spoof_detected (${detail})`),
       logAbusingEvent(user.id, 'gps_spoof_detected', {
         poi_id: drop.poi_id,
+        reason: gpsCheck.reason,
         speed_kmh: gpsCheck.speedKmh,
+        daily_distance_km: gpsCheck.dailyDistanceKm,
         lat: user_lat,
         lng: user_lng,
       }),
