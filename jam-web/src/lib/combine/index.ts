@@ -109,14 +109,29 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   }
 
   // 5. 원본 아이템 소각 — 성공/실패 무관 항상 소각
-  const { error: deleteError } = await supabase
+  // .select()로 실제 삭제된 행을 반환받아 개수를 검증한다: 동일 재료로 조합 API를
+  // 동시에 2회 호출하면 둘 다 2번의 소유권 확인(위 2단계)은 통과할 수 있지만,
+  // DELETE 자체는 Postgres가 행 단위로 원자 처리하므로 먼저 커밋된 요청만
+  // itemIds 전체를 지우고 뒤늦은 요청은 이미 삭제된 행이라 0개(또는 일부)만 지운다.
+  // 개수가 요청한 itemIds와 다르면 레이스로 판단해 보상 지급 없이 중단한다.
+  const { data: deletedRows, error: deleteError } = await supabase
     .from('inventory_items')
     .delete()
     .in('id', itemIds)
     .eq('inventory_id', inventory.id)
+    .select('id')
 
   if (deleteError) {
     console.error('[combineItems] 아이템 소각 오류:', deleteError)
+    return { success: false, reason: 'items_not_found', pointsAwarded: 0, streak: 0 }
+  }
+
+  if (!deletedRows || deletedRows.length !== itemIds.length) {
+    console.error('[combineItems] 소각된 행 수 불일치 — 동시 조합 시도로 판단, 처리 중단', {
+      expected: itemIds.length,
+      actual: deletedRows?.length ?? 0,
+      userId,
+    })
     return { success: false, reason: 'items_not_found', pointsAwarded: 0, streak: 0 }
   }
 

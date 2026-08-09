@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { fetchNearbyNaverPoisForCategories } from '@/lib/poi/naver'
 import { loadPipelineCategories } from '@/lib/poi/categories'
+import { requireAdmin } from '@/lib/admin/auth'
 
 // GET /api/drops/debug?lat=&lng=
-// 인증 없이 단계별 진단 결과 반환 (개발/운영 디버그용)
+// 어드민 전용 단계별 진단 결과 반환 (개발/운영 디버그용).
+// 과거 인증 없이 열려있어 DB 스키마·외부 API 호출 결과가 그대로 노출됐음 — 어드민 인증으로 차단.
 
 export async function GET(req: NextRequest) {
+  const authError = await requireAdmin()
+  if (authError) return authError
+
   const { searchParams } = new URL(req.url)
   const lat = parseFloat(searchParams.get('lat') ?? '')
   const lng = parseFloat(searchParams.get('lng') ?? '')
