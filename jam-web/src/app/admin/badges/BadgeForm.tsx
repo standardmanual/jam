@@ -835,7 +835,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                 <p className="text-sm text-[#898989]">아직 연결된 POI가 없습니다. 위에서 검색해 추가하세요.</p>
               </div>
             ) : (
-              <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-hidden">
+              <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">

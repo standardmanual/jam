@@ -3,6 +3,8 @@ import { redirect, unstable_rethrow } from 'next/navigation'
 import { Inter } from 'next/font/google'
 import { AdminNav } from '@/components/admin/AdminNav'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
+import { AdminSidebarProvider } from '@/components/admin/AdminSidebarContext'
+import { AdminMain } from '@/components/admin/AdminMain'
 import { AdminBodyThemeFix } from '@/components/admin/AdminBodyThemeFix'
 
 // 어드민 전용 서체 — Cal Sans는 공개 웹폰트가 아니라 디자인 시스템이 권장하는
@@ -37,18 +39,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     >
       <AdminBodyThemeFix />
 
-      {/* 모바일 네비게이션 (헤더 + 드로어) */}
-      <AdminNav userEmail={userEmail} />
+      <AdminSidebarProvider>
+        {/* 모바일 네비게이션 (헤더 + 드로어) */}
+        <AdminNav userEmail={userEmail} />
 
-      {/* 데스크탑 사이드바 */}
-      <AdminSidebar userEmail={userEmail} />
+        {/* 데스크탑 사이드바 (접기/펼치기 가능) */}
+        <AdminSidebar userEmail={userEmail} />
 
-      {/* 메인 콘텐츠 영역 */}
-      {/* md 이상: 사이드바만큼 왼쪽 여백 */}
-      {/* md 미만: 헤더 아래에 콘텐츠 */}
-      <main className="flex-1 min-w-0 overflow-y-auto md:ml-64">
-        {children}
-      </main>
+        {/* 메인 콘텐츠 영역 — md 이상: 사이드바 접힘 상태에 맞춰 왼쪽 여백 조정 / md 미만: 헤더 아래에 콘텐츠 */}
+        <AdminMain>{children}</AdminMain>
+      </AdminSidebarProvider>
     </div>
   )
 }

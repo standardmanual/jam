@@ -53,7 +53,7 @@ export default async function AdminPointsPage() {
       <div>
         <h2 className="text-lg font-bold mb-1">최근 고액 지급/회수</h2>
         <p className="text-[#6b7280] text-xs mb-3">기준액({fmt(s.highValueThreshold)}P) 이상 원장 최근 20건 (사후 감사)</p>
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
@@ -114,7 +114,7 @@ function RankingTable({
   return (
     <div>
       <h2 className="text-lg font-bold mb-3">{title}</h2>
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
         <table className="w-full text-sm">
           <tbody>
             {rows.length === 0 && (
