@@ -32,7 +32,7 @@ export default async function AdminFactionsPage() {
         </Link>
       </div>
 
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
+      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-xs uppercase tracking-wider">

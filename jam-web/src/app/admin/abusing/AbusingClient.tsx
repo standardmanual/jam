@@ -300,7 +300,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
           </div>
 
           {/* 밴 목록 */}
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
@@ -348,7 +348,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
 
       {/* POI 블록 탭 */}
       {tab === 'poi-blocks' && (
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden">
+        <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
