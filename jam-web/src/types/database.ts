@@ -47,7 +47,7 @@ export interface StravaConnectionRow {
   updated_at: string
 }
 
-/** 동기화 완료된 Strava 활동 — 멱등 처리·정합성 점검(reconcile)·누적 조건 평가의 기준 데이터 */
+/** 동기화 완료된 Strava 활동 — 멱등 처리·누적 조건 평가의 기준 데이터 */
 export interface StravaActivityRow {
   id: string
   user_id: string
@@ -59,6 +59,7 @@ export interface StravaActivityRow {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   normalized: any
   processed_at: string
+  /** 'reconcile'은 2026-08-10 정합성 점검 크론 제거 이전 과거 데이터에만 존재 — 신규 기록 없음 */
   processed_via: 'sync' | 'reconcile' | 'manual_backfill'
   created_at: string
 }

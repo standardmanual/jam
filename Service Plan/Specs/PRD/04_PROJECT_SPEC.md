@@ -88,8 +88,9 @@ jam-web/
 |------|------------|------|
 | `/api/cron/poi-cleanup` | 매일 00:00 | 만료된 유저 드랍 소각(30일 만료) |
 | `/api/cron/wandering` | 매일 06:00 | 만료된 떠돌이 신화 아이템 재배치(72h 사이클) |
-| `/api/cron/reconcile` | 매일 12:00 | Strava 활동 소급 재점검(누락/중복 보정) |
 | `/api/cron/ambient-drop-monitor` | 매일 18:00 | 앰비언트 드랍 목표 수량 보충 배치 |
+
+> **2026-08-10 제거**: `/api/cron/reconcile`(Strava 활동 소급 재점검, 매일 12:00)은 API 호출량 절감을 위해 완전히 삭제됐다. 이 크론이 완충하던 "동기화 실패 시 커서(`last_synced_at`)가 잘못 전진해 이후 재시도까지 과거 활동을 영영 놓치는" 문제는 근본 수정으로 대체했다 — `syncStravaActivities` 처리 중 예외 발생 시 `last_synced_at`을 롤백하고, OAuth 콜백의 즉시 동기화 호출도 fire-and-forget에서 `await`로 변경(서버리스 강제 종료로 처리가 끊기는 것 방지). 상세: [History/Migration/Ticket/20260810_002](../../History/Migration/Ticket/20260810_002_Service_reconcile-크론-제거-및-동기화-커서-롤백.md).
 
 모든 Cron 라우트는 `Authorization: Bearer {CRON_SECRET}` 검증. (Vercel Hobby 플랜은 일 1회 초과 빈도의 Cron을 배포 시점에 거부하므로 빈도 변경 시 주의 — [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.12 참고)
 
@@ -100,7 +101,7 @@ jam-web/
 > AI에게 코드를 시킬 때 이 목록을 반드시 함께 공유하세요.
 
 - **자체 GPS 트래킹 UI 만들지 마** — "운동 시작" 버튼, 실시간 지도, 거리 카운터 전부 금지. JAM! 핵심 철학 위반 (드랍/픽업 지도는 위치 조회용이지 트래킹 UI가 아님 — 혼동 금지)
-- **과거 데이터 소급 분석하지 마** — Strava 연동 시점 이후 활동만 처리. 단, `reconcile` Cron의 소급 재점검은 "이미 동기화된 활동의 누락 보정" 목적이지 신규 소급 분석이 아님
+- **과거 데이터 소급 분석하지 마** — Strava 연동 시점 이후 활동만 처리 (단, 첫 싱크 자체는 연동 시점까지의 누적 이력을 최신 1건 기준으로 평가하는 것이 정책이므로 별개)
 - **API 키나 비밀번호를 코드에 직접 쓰지 마** — 반드시 `.env.local` 환경변수 사용
 - **Strava access_token을 평문으로 DB에 저장하지 마** — `ENCRYPTION_KEY`로 암호화 필수
 - **기존 DB 스키마를 임의로 변경하지 마** — 마이그레이션 파일 작성 후 리뷰 요청 (현재 074까지 진행, 번호 이어서 작성)

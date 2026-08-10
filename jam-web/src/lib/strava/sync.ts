@@ -28,7 +28,6 @@ const MAX_POI_MATCH_ACTIVITIES_PER_SYNC = 10
  * 커서 overlap — Strava/Garmin 쪽 색인 지연으로 활동이 직전 동기화 시점엔 목록에
  * 안 잡혔다가 뒤늦게 나타나는 경우를 대비해, 매번 이만큼 앞선 시각부터 다시 조회한다.
  * strava_activities 멱등 처리 덕분에 겹치는 구간을 다시 훑어도 중복 보상은 없다.
- * 이 overlap보다 더 큰 지연은 별도 정합성 점검(reconcile.ts)이 처리한다.
  */
 export const SYNC_OVERLAP_SECONDS = 15 * 60
 
@@ -104,7 +103,6 @@ async function recordProcessedActivities(
 
 /**
  * 이번에 새로 확인된 활동들을 배지·드랍·미션 엔진에 넣고, 처리 완료 후 strava_activities에 기록한다.
- * syncStravaActivities(정기 동기화)와 reconcileStravaActivities(정합성 점검)가 공유하는 핵심 처리부.
  */
 export async function processFetchedActivities(
   supabase: SupabaseClient,
@@ -387,43 +385,61 @@ export async function syncStravaActivities(
     .maybeSingle()
   const isFirstSync = !(userRow as { initial_sync_done?: boolean } | null)?.initial_sync_done
 
-  const fetchedActivities = await getActivities(accessToken, afterTimestamp)
+  // 4-3. 실제 조회·처리는 여기서부터 — 잠금은 이미 선점됐으므로, 이 구간에서
+  // 예외가 나면(Strava API 오류, 서버리스 강제 종료 등) last_synced_at을 잠금 이전
+  // 값으로 되돌린다. 되돌리지 않으면 커서만 앞으로 밀린 채 아무것도 처리되지 않은
+  // 상태로 남아, 다음 재시도부터 그보다 오래된 활동(가입 전 이력 등)을 영영 조회
+  // 대상에서 놓치게 된다 (2026-08-10 신규 유저 미발급 인시던트의 원인).
+  try {
+    const fetchedActivities = await getActivities(accessToken, afterTimestamp)
 
-  // 5. 멱등 처리 — overlap으로 다시 잡힌 것 중 이미 처리된 활동은 제외
-  const processedIds = await getProcessedStravaIds(supabase, userId, fetchedActivities.map((a) => a.id))
-  let rawActivities = fetchedActivities.filter((a) => !processedIds.has(a.id))
+    // 5. 멱등 처리 — overlap으로 다시 잡힌 것 중 이미 처리된 활동은 제외
+    const processedIds = await getProcessedStravaIds(supabase, userId, fetchedActivities.map((a) => a.id))
+    let rawActivities = fetchedActivities.filter((a) => !processedIds.has(a.id))
 
-  // 첫 싱크(신규 연동)는 과거 이력 전체를 소급 처리하지 않고 최신 활동 1건만 반영한다.
-  // (배지 평가가 과거 이력 전체를 한 번에 넣으면 온보딩 순간 여러 등급이 동시에
-  //  터져 나오는 등 성장 경험이 왜곡되는 문제가 있었음 — 드랍엔진은 이미 1건 제한 중)
-  if (isFirstSync && rawActivities.length > 1) {
-    rawActivities = [...rawActivities]
-      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
-      .slice(0, 1)
-  }
+    // 첫 싱크(신규 연동)는 과거 이력 전체를 소급 처리하지 않고 최신 활동 1건만 반영한다.
+    // (배지 평가가 과거 이력 전체를 한 번에 넣으면 온보딩 순간 여러 등급이 동시에
+    //  터져 나오는 등 성장 경험이 왜곡되는 문제가 있었음 — 드랍엔진은 이미 1건 제한 중)
+    if (isFirstSync && rawActivities.length > 1) {
+      rawActivities = [...rawActivities]
+        .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+        .slice(0, 1)
+    }
 
-  console.info(
-    `[syncStravaActivities] userId: ${userId}, afterTimestamp: ${afterTimestamp ?? 'none'}, ` +
-    `Strava 반환: ${fetchedActivities.length}건, 신규(미처리): ${rawActivities.length}건` +
-    `${isFirstSync ? ' (첫 싱크 — 최신 1건 제한)' : ''}`
-  )
+    console.info(
+      `[syncStravaActivities] userId: ${userId}, afterTimestamp: ${afterTimestamp ?? 'none'}, ` +
+      `Strava 반환: ${fetchedActivities.length}건, 신규(미처리): ${rawActivities.length}건` +
+      `${isFirstSync ? ' (첫 싱크 — 최신 1건 제한)' : ''}`
+    )
 
-  const { badges, itemBooksCompleted, missionsCompleted } = await processFetchedActivities(
-    supabase,
-    userId,
-    accessToken,
-    rawActivities,
-    isFirstSync,
-    'sync'
-  )
+    const { badges, itemBooksCompleted, missionsCompleted } = await processFetchedActivities(
+      supabase,
+      userId,
+      accessToken,
+      rawActivities,
+      isFirstSync,
+      'sync'
+    )
 
-  // last_synced_at은 4-1 잠금 단계에서 이미 선점 갱신됨 (여기서 재갱신하면
-  // 처리 중 업로드된 활동이 다음 싱크에서 누락되는 갭이 생기므로 하지 않는다)
+    // last_synced_at은 4-1 잠금 단계에서 이미 선점 갱신됨 (여기서 재갱신하면
+    // 처리 중 업로드된 활동이 다음 싱크에서 누락되는 갭이 생기므로 하지 않는다)
 
-  return {
-    synced: rawActivities.length,
-    badges,
-    itemBooksCompleted,
-    missionsCompleted,
+    return {
+      synced: rawActivities.length,
+      badges,
+      itemBooksCompleted,
+      missionsCompleted,
+    }
+  } catch (err) {
+    console.error(`[syncStravaActivities] 처리 중 오류 — last_synced_at 롤백 (userId: ${userId}):`, err)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: rollbackError } = await (supabase.from('strava_connections') as any)
+      .update({ last_synced_at: connection.last_synced_at })
+      .eq('user_id', userId)
+      .eq('last_synced_at', lockNow) // 그 사이 다른 요청이 갱신했다면 덮어쓰지 않음
+    if (rollbackError) {
+      console.error(`[syncStravaActivities] 롤백 실패 (userId: ${userId}):`, rollbackError)
+    }
+    throw err
   }
 }
