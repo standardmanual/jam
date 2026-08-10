@@ -421,7 +421,8 @@ async function insertDrop(
   userId: string,
   picked: DropBadge,
   factionName: string,
-  isLastPiece: boolean
+  isLastPiece: boolean,
+  activityStartDate?: string
 ): Promise<boolean> {
   const supabase = createServiceClient()
   const expiresAt = picked.valid_until ?? null
@@ -468,7 +469,7 @@ async function insertDrop(
     poi_name: '',
     faction_name: factionName,
     is_last_piece: isLastPiece,
-  })
+  }, activityStartDate)
   return true
 }
 
@@ -562,7 +563,8 @@ export async function tryItemDrop(
       userId,
       result.badge,
       structure.factionNames.get(result.factionId) ?? '',
-      result.isLastPiece
+      result.isLastPiece,
+      activityStartDate
     )
     if (!inserted) {
       await logEngineDecision('drop', 'drop_attempt', userId, {

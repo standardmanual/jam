@@ -56,7 +56,8 @@ export interface FeedEventMeta {
 export async function recordFeedEvent<T extends FeedEventType>(
   userId: string,
   eventType: T,
-  metadata: FeedEventMeta[T]
+  metadata: FeedEventMeta[T],
+  eventAt?: string
 ): Promise<void> {
   try {
     const supabase = createServiceClient()
@@ -65,6 +66,7 @@ export async function recordFeedEvent<T extends FeedEventType>(
       user_id: userId,
       event_type: eventType,
       metadata,
+      ...(eventAt ? { event_at: eventAt } : {}),
     })
   } catch (e) {
     console.error('[activity-feed] 피드 기록 실패:', e)

@@ -215,7 +215,7 @@ export async function processFetchedActivities(
             badge_name: badge.name,
             badge_image_url: badge.image_url ?? '',
             rarity: badge.rarity,
-          })
+          }, rawActivity.start_date)
         }
         continue
       }
