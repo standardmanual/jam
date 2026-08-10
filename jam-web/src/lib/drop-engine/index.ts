@@ -488,7 +488,7 @@ export async function tryItemDrop(
   activities: NormalizedActivity[] = []
 ): Promise<void> {
   const act: NormalizedActivity | null = typeof activity === 'object' ? activity : null
-  const activityStartDate = act?.startDate ?? new Date().toISOString()
+  const activityStartDate = act?.startDateLocal ?? act?.startDate ?? new Date().toISOString()
   // 걷기(축1 게이트 통과)는 0.4 — 확정 1개 드랍엔 영향 없이 보너스 드랍 확률·pity 진행에만 반영
   const activityWeight = getActivityDropWeight(act)
 
