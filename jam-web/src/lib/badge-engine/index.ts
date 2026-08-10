@@ -126,7 +126,7 @@ function matchesPerActivityCondition(condition: BadgeCondition, a: NormalizedAct
     if (a.weatherTempC == null || a.weatherTempC > condition.temperature_max_c) return false
   }
   if (condition.weekend_duration_hours !== undefined) {
-    const day = new Date(a.startDate).getDay()
+    const day = new Date(a.startDateLocal ?? a.startDate).getDay()
     const isWeekend = day === 0 || day === 6
     if (!isWeekend || a.movingTimeSec / 3600 < condition.weekend_duration_hours) return false
   }
@@ -225,7 +225,7 @@ function singleFieldFailure(
     }
     case 'weekend_duration_hours': {
       const best = Math.max(
-        ...filtered.filter((a) => { const d = new Date(a.startDate).getDay(); return d === 0 || d === 6 }).map((a) => a.movingTimeSec / 3600),
+        ...filtered.filter((a) => { const d = new Date(a.startDateLocal ?? a.startDate).getDay(); return d === 0 || d === 6 }).map((a) => a.movingTimeSec / 3600),
         0
       )
       return { pass: false, reason: '주말 활동 시간 부족', actual: `${best.toFixed(1)}시간`, required: `${condition.weekend_duration_hours}시간` }
@@ -327,7 +327,7 @@ export function evaluateConditionDetailed(
     const seasons: Array<'spring' | 'summer' | 'fall' | 'winter'> = ['spring', 'summer', 'fall', 'winter']
     const perSeason = seasons.map((s) => ({
       season: s,
-      count: filtered.filter((a) => SEASON_MONTHS[s].includes(new Date(a.startDate).getMonth() + 1)).length,
+      count: filtered.filter((a) => SEASON_MONTHS[s].includes(new Date(a.startDateLocal ?? a.startDate).getMonth() + 1)).length,
     }))
     const failing = perSeason.filter((r) => r.count < condition.season_count_all!)
     if (failing.length > 0) {
@@ -432,7 +432,7 @@ export function evaluateConditionDetailed(
     if (condition.activity_type === 'walking') weeklyPool = dedupeOnePerDay(weeklyPool)
     const weekCounts = new Map<string, number>()
     for (const a of weeklyPool) {
-      const key = getMondayKey(new Date(a.startDate))
+      const key = getMondayKey(new Date(a.startDateLocal ?? a.startDate))
       weekCounts.set(key, (weekCounts.get(key) ?? 0) + 1)
     }
     const maxWeek = weekCounts.size > 0 ? Math.max(...weekCounts.values()) : 0
@@ -449,12 +449,12 @@ export function evaluateConditionDetailed(
       // 배열이면 "그중 한 달" — monthly_km는 아래에서 연-월별로 묶어 최댓값을 취하므로
       // 여러 달을 합산하지 않고 개별 월 단위로 평가된다 (예: T20 장마철 6~7월 중 한 달 150km)
       const months = Array.isArray(condition.month) ? condition.month : [condition.month]
-      monthFiltered = filtered.filter((a) => months.includes(new Date(a.startDate).getMonth() + 1))
+      monthFiltered = filtered.filter((a) => months.includes(new Date(a.startDateLocal ?? a.startDate).getMonth() + 1))
     }
     if (condition.monthly_km !== undefined) {
       const monthKm = new Map<string, number>()
       for (const a of monthFiltered) {
-        const d = new Date(a.startDate)
+        const d = new Date(a.startDateLocal ?? a.startDate)
         const key = `${d.getFullYear()}-${d.getMonth() + 1}`
         monthKm.set(key, (monthKm.get(key) ?? 0) + a.distanceKm)
       }
@@ -476,7 +476,7 @@ export function evaluateConditionDetailed(
     const seasonFiltered = condition.season === 'all'
       ? filtered
       : filtered.filter((a) => {
-          const m = new Date(a.startDate).getMonth() + 1
+          const m = new Date(a.startDateLocal ?? a.startDate).getMonth() + 1
           return (SEASON_MONTHS[condition.season as 'spring' | 'summer' | 'fall' | 'winter'] ?? []).includes(m)
         })
     if (seasonFiltered.length < condition.season_count) {
@@ -719,7 +719,7 @@ export async function evaluateBadgesDetailed(
           triggered_by_strava_id: triggerActivity?.stravaId ?? null,
           triggered_by_activity_name: triggerActivity?.name ?? null,
           triggered_by_distance_km: triggerActivity?.distanceKm ?? null,
-          triggered_by_activity_date: triggerActivity?.startDate ?? null,
+          triggered_by_activity_date: triggerActivity?.startDateLocal ?? triggerActivity?.startDate ?? null,
           condition_snapshot: conditionSnapshot,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any)
@@ -753,7 +753,7 @@ export async function evaluateBadgesDetailed(
           badge_image_url: toIssue.image_url ?? '',
           rarity: toIssue.rarity,
           ...(pointReward > 0 ? { point_reward: pointReward } : {}),
-        }, triggerActivity?.startDate ?? undefined)
+        }, triggerActivity?.startDateLocal ?? triggerActivity?.startDate ?? undefined)
       }
     }
   }
@@ -797,7 +797,7 @@ function getMondayKey(date: Date): string {
 
 function calcMaxStreak(activities: NormalizedActivity[]): number {
   if (activities.length === 0) return 0
-  const dates = activities.map((a) => new Date(a.startDate).toISOString().slice(0, 10)).sort()
+  const dates = activities.map((a) => (a.startDateLocal ?? a.startDate).slice(0, 10)).sort()
   const uniqueDates = [...new Set(dates)]
   let maxStreak = 1
   let currentStreak = 1

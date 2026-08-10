@@ -192,7 +192,7 @@ export async function processFetchedActivities(
           triggered_by_strava_id: rawActivity.id,
           triggered_by_activity_name: rawActivity.name,
           triggered_by_distance_km: normalized?.distanceKm ?? null,
-          triggered_by_activity_date: rawActivity.start_date,
+          triggered_by_activity_date: rawActivity.start_date_local ?? rawActivity.start_date,
         }
         const { error: earnError } = await supabase
           .from('user_poi_badge_earns')
