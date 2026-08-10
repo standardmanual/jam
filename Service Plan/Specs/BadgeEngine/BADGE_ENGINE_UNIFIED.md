@@ -1,6 +1,6 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-08-08 (걷기 배지 v4 — 축1 게이트·하루 1회 상한·신규 조건 필드·드랍엔진 종목 가중치. §2.10, §3.15 참고)  
+> 최종 업데이트: 2026-08-10 (Strava 수동 입력(manual) 활동 동기화 제외 — §1 공통 정책 참고)  
 > **배지 운영 문서 4종 체계** — 이 문서(로직) + [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md)(조건 필드 전체 스펙) + `액티비티배지 레시피.md`(액티비티배지 전체 목록) + `아이템북 레시피.xlsx`(아이템배지 전체 목록 + 세계관 인접)  
 > DB 시드: `supabase/migrations/033_reseed_activity_badges_v3.sql` (액티비티배지 115종) + `supabase/migrations/076_walking_badges_v4.sql` (걷기 신규 32종, 2026-08-08)
 
@@ -29,6 +29,7 @@ Strava 싱크
 - 첫 싱크 게이트: `users.initial_sync_done=false`인 첫 싱크는 고가치 발급 제한 (액티비티=Rare+ 차단, 아이템=첫 드랍 확정이되 rarity 정책 적용)
 - 섀도우밴: 밴 레벨에 따라 고가치(rarity) 발급 차단 — `src/lib/abusing/`
 - 피드 이벤트: 발급 시 `recordFeedEvent` ('badge_earned' / 'item_dropped')
+- **수동 입력 활동 제외 (2026-08-10 추가)**: Strava `manual=true`(GPS/파일 없이 유저가 거리·시간을 직접 타이핑한 기록)인 활동은 `getActivities()`(`src/lib/strava/api.ts`) 반환 단계에서 완전히 걸러낸다 — 두 엔진 평가 대상에 아예 들어오지 않으며 `strava_activities`에도 기록되지 않는다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터는 상세 API 추가 호출이 필요해(목록 API 미포함) 현재는 미구현 — [History/Migration/Ticket/20260810_001](../../History/Migration/Ticket/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
 
 ---
 
