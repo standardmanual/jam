@@ -63,10 +63,15 @@ export async function getActivities(
     params.set('after', String(after))
   }
 
-  return stravaFetch<StravaSummaryActivity[]>(
+  const activities = await stravaFetch<StravaSummaryActivity[]>(
     `${STRAVA_API_BASE}/athlete/activities?${params.toString()}`,
     accessToken
   )
+
+  // 수동 입력 활동(GPS/파일 없이 유저가 거리·시간을 직접 타이핑한 기록) 제외.
+  // strava_activities에도 기록하지 않고 애초에 동기화 단계에서 걸러 배지·드랍
+  // 평가 대상에서 완전히 배제한다 (조작 방지 — 어뷰징 정책의 일부).
+  return activities.filter((a) => !a.manual)
 }
 
 // =========================================
