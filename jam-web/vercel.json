@@ -9,10 +9,6 @@
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/cron/reconcile",
-      "schedule": "0 12 * * *"
-    },
-    {
       "path": "/api/cron/ambient-drop-monitor",
       "schedule": "0 18 * * *"
     }

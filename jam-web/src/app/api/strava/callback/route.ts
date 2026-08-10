@@ -86,10 +86,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${baseUrl}/profile?strava=error&reason=db_error`)
     }
 
-    // 4. 연동 즉시 동기화 트리거 (백그라운드 — 실패해도 연동 성공으로 처리)
-    syncStravaActivities(userId).catch((err) => {
+    // 4. 연동 즉시 동기화 — 반드시 await한다. 서버리스 함수는 응답을 반환하면
+    //    직후 인스턴스가 종료될 수 있어, await 없는 백그라운드 호출은 처리 도중
+    //    끊길 위험이 있다(신규 유저 첫 배지 미발급 인시던트 원인 — 2026-08-10).
+    //    동기화 자체가 실패해도 연동은 이미 완료된 상태이므로 리다이렉트는 그대로 진행한다.
+    try {
+      await syncStravaActivities(userId)
+    } catch (err) {
       console.error('[JAM! Strava] 즉시 동기화 실패 (연동은 성공):', err)
-    })
+    }
 
     return NextResponse.redirect(`${baseUrl}/profile?strava=connected`)
   } catch (err) {
