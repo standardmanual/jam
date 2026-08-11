@@ -1,7 +1,16 @@
 'use client'
 
 import { useId, useMemo, type CSSProperties } from 'react'
-import './wandering-eyes.css'
+
+const STATIC_CSS = `
+.wandering-eyes { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.wandering-eyes-eye { position: relative; width: 48px; height: 48px; border-radius: 9999px; background-color: var(--eye-color, #f8fafc); overflow: hidden; flex-shrink: 0; animation: wandering-eyes-blink var(--duration, 2s) ease-in-out infinite; }
+.wandering-eyes-eye:nth-child(2) { animation-delay: -60ms; }
+.wandering-eyes-pupil { position: absolute; inset: 0; margin: auto; width: 68%; height: 68%; border-radius: 9999px; background-color: var(--pupil-color, #0f172a); animation: wandering-eyes-move var(--duration, 2s) ease-in-out infinite; }
+@keyframes wandering-eyes-move { 0%, 100% { transform: translate(0, 0); } 15% { transform: translate(-38%, -22%); } 30% { transform: translate(36%, -18%); } 45% { transform: translate(30%, 0); } 60% { transform: translate(34%, 20%); } 75% { transform: translate(-32%, 18%); } 88% { transform: translate(-30%, -6%); } }
+@keyframes wandering-eyes-blink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(0.06); } 97% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .wandering-eyes-eye, .wandering-eyes-pupil { animation: none; } }
+`
 
 interface WanderingEyesLoaderProps {
   className?: string
@@ -70,7 +79,7 @@ export default function WanderingEyesLoader({
       role="status"
       aria-label="로딩 중"
     >
-      <style>{keyframesCss}</style>
+      <style>{STATIC_CSS + keyframesCss}</style>
       <span className="wandering-eyes-eye">
         <span className="wandering-eyes-pupil" style={{ animationName: animName }} />
       </span>
