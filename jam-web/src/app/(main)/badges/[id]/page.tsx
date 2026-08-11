@@ -7,6 +7,7 @@ import TopNav from '@/components/ui/TopNav'
 import { MedalIcon, BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import Link from 'next/link'
 import PoiMapButton from './PoiMapButton'
+import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
 import InventoryItemHistorySheet from '../../inventory/[itemId]/InventoryItemHistorySheet'
 import { d, t } from '@/lib/i18n'
@@ -602,14 +603,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                     <span className="text-[11px] text-text-inverse/50 truncate">{e.triggered_by_activity_name}</span>
                   )}
                   {e.triggered_by_strava_id && (
-                    <a
-                      href={`https://www.strava.com/activities/${e.triggered_by_strava_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="self-start text-[11px] text-text-inverse/70 underline underline-offset-2"
-                    >
-                      {d.badges.viewOnStrava} ↗
-                    </a>
+                    <StravaLink stravaId={e.triggered_by_strava_id} />
                   )}
                 </li>
               ))}
@@ -649,14 +643,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 </div>
               )}
               {earned.triggered_by_strava_id && (
-                <a
-                  href={`https://www.strava.com/activities/${earned.triggered_by_strava_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 inline-flex items-center justify-center w-full min-h-11 rounded-[var(--radius-nav-buttons)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-95 transition-transform duration-100"
-                >
-                  {d.badges.viewOnStrava} ↗
-                </a>
+                <div className="mt-1">
+                  <StravaLink stravaId={earned.triggered_by_strava_id} />
+                </div>
               )}
             </div>
           </Card>
