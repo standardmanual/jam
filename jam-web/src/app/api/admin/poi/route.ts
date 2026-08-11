@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 
 export async function GET() {
   const admin = await getAdminUser()
@@ -24,7 +25,14 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
-  const insertPayload = { name, latitude, longitude, radius_meters, category, linked_badge_id: linked_badge_id ?? null }
+  const insertPayload = {
+    name,
+    latitude,
+    longitude,
+    radius_meters: resolvePoiRadiusMeters(category, radius_meters),
+    category,
+    linked_badge_id: linked_badge_id ?? null,
+  }
   const poiQuery = supabase.from('poi')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiRow와 일치
   const insertQuery = poiQuery.insert(insertPayload)

@@ -5,6 +5,7 @@ import { fetchNearbyNaverPoisForCategories, type NaverPlace } from '@/lib/poi/na
 import { reverseGeocodeToRegionName } from '@/lib/poi/reverse-geocode'
 import { loadPipelineCategories, LEVEL_2_FALLBACK_THRESHOLD, type PoiCategoryConfig } from '@/lib/poi/categories'
 import { computeGridKey, shouldSearch, markSearched } from '@/lib/poi/search-cache'
+import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import type { PoiRow, InventoryItemRow } from '@/types/database'
 
 // GET /api/drops?lat=&lng=  — T1(DB) + T2(네이버 지역검색, 카테고리 레벨 기반) 통합
@@ -60,7 +61,7 @@ async function searchAndPersistCategories(
     name: p.name,
     latitude: p.latitude,
     longitude: p.longitude,
-    radius_meters: 500,
+    radius_meters: resolvePoiRadiusMeters(p.category, NAVER_RADIUS_M),
     category: p.category,
     naver_id: p.naverId,
     poi_tier: 2,
