@@ -1,9 +1,17 @@
 /**
- * JAM! DB 스키마 기반 TypeScript 타입 정의
+ * JAM! DB 스키마 기반 TypeScript 타입 정의 (손으로 씀 — 도메인 주석이 값어치라 유지)
  * 기반: PRD/02_DATA_MODEL.md + supabase/migrations/001_initial_schema.sql
  *
- * 주의: supabase gen types typescript 명령으로 자동 생성 가능하나
- * Supabase 프로젝트 연결 전이므로 수동 정의
+ * `database.generated.ts`가 운영 DB에서 자동 생성된 실제 스키마다. 새 컬럼을
+ * 추가하거나 기존 컬럼을 바꿀 때는 `npm run db:types`로 그 파일을 재생성한
+ * 뒤 이 파일의 해당 Row 인터페이스를 맞춰서 갱신할 것 — 둘이 어긋나도 지금은
+ * 자동으로 걸러지지 않으니(하단 참고) 사람이 직접 대조해야 한다.
+ *
+ * 알려진 한계: 이 파일의 Row 타입들은 하단에서 Supabase 클라이언트 제네릭
+ * (`createServerClient<Database>`)에 연결돼 있어 원래는 `.from(table)` 호출마다
+ * 타입 체크가 걸리지만, 코드베이스 전반에 `(supabase as any)` 캐스팅이 많이
+ * 남아 있어(2026-08-11 기준 51개 파일) 이 보호가 실질적으로 우회되는 곳이
+ * 많다 — 전수 제거는 별도 작업으로 필요.
  */
 
 export type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
@@ -28,6 +36,13 @@ export interface UserRow {
   activity_types: ActivityType[]
   /** 첫 Strava 싱크 완료 여부 — false이면 배지 엔진이 Common만 발급 */
   initial_sync_done: boolean
+  /** GPS 조작 감지(checkAndUpdateLocation)가 유지하는 마지막 픽업/드랍 위치 — 감지 여부와 무관하게 매번 갱신 */
+  last_location_lat: number | null
+  last_location_lng: number | null
+  last_location_at: string | null
+  /** 당일(UTC) 누적 이동거리 — gps_daily_distance_date와 다른 날짜면 0으로 리셋해 사용 */
+  gps_daily_distance_km: number | null
+  gps_daily_distance_date: string | null
   created_at: string
   updated_at: string
 }
