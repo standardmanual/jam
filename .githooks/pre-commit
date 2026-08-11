@@ -1,0 +1,30 @@
+#!/bin/bash
+# review 브랜치(claude/jamwork-*)에서 티켓 status를 CLOSED로 커밋하는 것을 차단한다.
+#
+# 배경: jam-developer(트레일메이커)가 조사/구현을 마친 뒤 스스로 티켓을 CLOSED로 마킹하는
+# 프로세스 이탈이 프롬프트 규칙만으로는 3회 반복됐다 (티켓 009, 010, 011). CLOSED 처리는
+# 사용자 승인 후 오케스트레이터(베이스캠프)가 main 브랜치에서만 하도록 설계돼 있으므로,
+# 프롬프트가 아니라 git 레벨에서 기계적으로 막는다.
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
+
+case "$branch" in
+  claude/jamwork-*)
+    blocked=0
+    # 파일명에 공백이 있을 수 있으므로(예: "Service Plan/...") NUL 구분으로 안전하게 순회한다.
+    while IFS= read -r -d '' f; do
+      if git diff --cached -- "$f" | grep -qE '^\+status: CLOSED\b'; then
+        echo "차단(pre-commit): review 브랜치 '${branch}'에서는 티켓 status를 CLOSED로 커밋할 수 없습니다." >&2
+        echo "  파일: $f" >&2
+        echo "  CLOSED 처리는 사용자 승인 후 오케스트레이터가 main 브랜치에서 직접 합니다." >&2
+        echo "  완료 기록 내용은 남기되 status는 OPEN/IN_PROGRESS로 두고 closed: 필드는 비워두세요." >&2
+        blocked=1
+      fi
+    done < <(git diff --cached --name-only -z --diff-filter=ACM -- "Service Plan/History/Migration/Ticket/*.md")
+    if [ "$blocked" -eq 1 ]; then
+      exit 1
+    fi
+    ;;
+esac
+
+exit 0

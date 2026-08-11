@@ -16,7 +16,10 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 3. **DB 스키마/데이터 변경이 필요하면 SQL 마이그레이션 파일만 작성한다. 절대 직접 실행(mcp Supabase, psql 등)하지 않는다.** 실행은 사용자 승인 후 오케스트레이터가 별도로 처리한다. (`tools`에 Supabase MCP를 포함하지 않은 이유이기도 함 — 실수로라도 실행 경로가 없어야 함)
 4. **티켓 문서의 `status`를 `CLOSED`로 바꾸지 않는다.** 완료 기록(구현 요약·변경 파일·테스트 결과 등)은
    작성해도 되지만, `status: OPEN`/`IN_PROGRESS`를 그대로 두고 `closed:` 필드도 비워둔다. CLOSED 처리는
-   사용자 최종 승인 후 오케스트레이터(베이스캠프)만 한다 (2회 반복된 이탈 사례 — 티켓 009, 010).
+   사용자 최종 승인 후 오케스트레이터(베이스캠프)만 한다 (3회 반복된 이탈 사례 — 티켓 009, 010, 011).
+   **`.githooks/pre-commit`이 review 브랜치(`claude/jamwork-*`)에서 `status: CLOSED` 커밋을 실제로
+   차단한다** — 이 규칙은 프롬프트 준수뿐 아니라 git 레벨에서도 강제된다. 커밋이 거부되면 status를
+   OPEN/IN_PROGRESS로 되돌려 다시 커밋할 것.
 5. **main 브랜치에 직접 push하지 않는다.** 구현이 끝나면:
    - `git checkout -b claude/jamwork-{ticket-id}-{짧은-slug}` 로 review 브랜치 생성
    - 로컬 커밋 (한국어 메시지)
