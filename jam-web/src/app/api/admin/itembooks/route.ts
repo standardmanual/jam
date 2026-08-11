@@ -24,21 +24,20 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
-  const { data, error } = await supabase
-    .from('item_books')
-    .insert({
-      name,
-      description,
-      image_url: image_url ?? null,
-      required_activity_badge_id,
-      reward_badge_id: reward_badge_id ?? null,
-      faction_id: faction_id ?? null,
-      story_text: story_text ?? null,
-      is_active: is_active ?? true,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any)
-    .select()
-    .single()
+  const insertPayload = {
+    name,
+    description,
+    image_url: image_url ?? null,
+    required_activity_badge_id,
+    reward_badge_id: reward_badge_id ?? null,
+    faction_id: faction_id ?? null,
+    story_text: story_text ?? null,
+    is_active: is_active ?? true,
+  }
+  const itemBooksQuery = supabase.from('item_books')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 ItemBooksRow와 일치
+  const insertQuery = itemBooksQuery.insert(insertPayload)
+  const { data, error } = await insertQuery.select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ itemBook: data }, { status: 201 })

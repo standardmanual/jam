@@ -101,8 +101,9 @@ export async function POST(req: NextRequest) {
       badgesEarned.push({ id: badge.id, name: badge.name, rarity: badge.rarity, reason: `POI 통과: ${poi.name}` })
       earnedBadgeIds.add(badge.id)
       if (!dryRun) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await supabase.from('user_activity_badges').insert({ user_id: userId, badge_id: badge.id, triggered_by: 'admin_simulate' } as any)
+        const userActivityBadgesQuery = supabase.from('user_activity_badges')
+        // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgesRow와 일치
+        await userActivityBadgesQuery.insert({ user_id: userId, badge_id: badge.id, triggered_by: 'admin_simulate' })
       }
     }
   }
@@ -134,11 +135,10 @@ export async function POST(req: NextRequest) {
 
       if (!dryRun && inventory) {
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: insertedItem } = await (supabase.from('inventory_items') as any)
-          .insert({ inventory_id: inventory.id, badge_id: picked.id, obtained_by: 'drop', expires_at: expiresAt })
-          .select('id')
-          .single()
+        const inventoryItemsQuery = supabase.from('inventory_items')
+        // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemsRow와 일치
+        const insertQuery = inventoryItemsQuery.insert({ inventory_id: inventory.id, badge_id: picked.id, obtained_by: 'drop', expires_at: expiresAt })
+        const { data: insertedItem } = await insertQuery.select('id').single()
 
         if (insertedItem) {
           droppedInventoryItemId = (insertedItem as { id: string }).id

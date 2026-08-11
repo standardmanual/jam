@@ -8,6 +8,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
+import { logEngineDecision } from '@/lib/engine-log'
 import type { MissionRow } from '@/types/database'
 
 export interface MissionRewardResult {
@@ -74,8 +75,8 @@ export async function grantMissionRewards(
         if (ownedActivityBadgeIds.has(badge.id)) continue // 이미 보유 → skip
         const { error } = await supabase
           .from('user_activity_badges')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .insert({ user_id: userId, badge_id: badge.id, triggered_by: `mission_reward:${mission.id}` } as any)
+          // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgeRow와 일치
+          .insert({ user_id: userId, badge_id: badge.id, triggered_by: `mission_reward:${mission.id}` })
         if (error) {
           if (error.code === '23505') continue
           console.error(`[grantMissionRewards] 활동배지 지급 오류 (badge: ${badge.id}):`, error)
@@ -85,13 +86,17 @@ export async function grantMissionRewards(
         granted = true
       } else {
         // item 배지 → inventory
-        if (!inventory) continue // 인벤토리 없음
+        if (!inventory) {
+          // 정상 가입이면 인벤토리는 항상 있어야 함(20260811_001 인시던트 참고) — 조용히 넘어가지 않고 기록
+          await logEngineDecision('drop', 'drop_attempt', userId, { outcome: 'no_inventory', source: 'mission_reward', badgeId: badge.id })
+          continue
+        }
         if (ownedInventoryBadgeIds.has(badge.id)) continue // 이미 보유 → skip
         if (inventory.used_slots >= inventory.max_slots) continue // 슬롯 부족 → skip
         const { error } = await supabase
           .from('inventory_items')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .insert({ inventory_id: inventory.id, badge_id: badge.id, obtained_by: 'system_event' } as any)
+          // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemRow와 일치
+          .insert({ inventory_id: inventory.id, badge_id: badge.id, obtained_by: 'system_event' })
         if (error) {
           console.error(`[grantMissionRewards] 아이템배지 지급 오류 (badge: ${badge.id}):`, error)
           continue

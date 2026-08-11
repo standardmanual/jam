@@ -649,6 +649,77 @@ export interface ThemePresetRow {
   created_at: string
 }
 
+/**
+ * 2026-08-11 발견: 아래 6개 테이블은 실제 운영 DB엔 있었지만 이 파일에 타입이
+ * 한 번도 등록된 적이 없었음 — 그래서 관련 코드 전체가 `(supabase as any)`로
+ * 타입 체크를 우회하고 있었음(as any 전수 정리 작업에서 발견, DEV_PROCESS_GUARDRAILS.md
+ * 패턴 3 참고). `database.generated.ts` 기준으로 채움.
+ */
+export interface AbusingLogRow {
+  id: string
+  user_id: string
+  event_type: string
+  detail: Record<string, unknown> | null
+  created_at: string
+}
+
+/** 어뷰징 정책 설정 (싱글톤 id=1) — src/lib/abusing/policy.ts의 AbusingPolicy와 필드 일치 */
+export interface AbusingPolicyRow {
+  id: number
+  soft_common_rate: number
+  soft_rare_rate: number
+  soft_legendary_rate: number
+  soft_mythic_rate: number
+  hard_common_rate: number
+  hard_rare_rate: number
+  hard_legendary_rate: number
+  hard_mythic_rate: number
+  gps_max_speed_kmh: number
+  poi_block_hours: number
+  vehicle_speed_filter_kmh: number
+  gps_daily_distance_cap_km: number
+  updated_at: string
+}
+
+/** GPS 조작 감지 후 72시간 POI 드랍/픽업 차단 — src/lib/abusing/poi-block.ts */
+export interface PoiBlockRow {
+  id: string
+  user_id: string
+  poi_id: string
+  blocked_until: string
+  reason: string
+  created_at: string
+}
+
+/** 네이버 지역검색 결과 캐시(카테고리×그리드 단위 TTL) — src/lib/poi/search-cache.ts */
+export interface PoiSearchCacheRow {
+  grid_key: string
+  category: string
+  had_results: boolean
+  searched_at: string
+}
+
+/** 어뷰징 섀도우밴 — src/lib/abusing/shadow-ban.ts */
+export interface UserShadowBanRow {
+  id: string
+  user_id: string
+  ban_level: string
+  reason: string
+  created_by: string
+  expires_at: string | null
+  created_at: string
+}
+
+/** 배지·드랍 엔진 판정 구조화 로그 — src/lib/engine-log/index.ts */
+export interface EngineDecisionLogRow {
+  id: string
+  user_id: string | null
+  engine: string
+  event: string
+  payload: Record<string, unknown>
+  created_at: string
+}
+
 /** award_points() RPC 인자 */
 export interface AwardPointsArgs {
   p_user_id: string
@@ -897,12 +968,58 @@ export interface Database {
         Update: Partial<Omit<TodayCardRow, 'id'>>
         Relationships: []
       }
+      abusing_logs: {
+        Row: AbusingLogRow
+        Insert: Omit<AbusingLogRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<AbusingLogRow, 'id'>>
+        Relationships: []
+      }
+      abusing_policy: {
+        Row: AbusingPolicyRow
+        Insert: Partial<AbusingPolicyRow> & { id: number }
+        Update: Partial<Omit<AbusingPolicyRow, 'id'>>
+        Relationships: []
+      }
+      poi_blocks: {
+        Row: PoiBlockRow
+        Insert: Omit<PoiBlockRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<PoiBlockRow, 'id'>>
+        Relationships: []
+      }
+      poi_search_cache: {
+        Row: PoiSearchCacheRow
+        Insert: PoiSearchCacheRow
+        Update: Partial<PoiSearchCacheRow>
+        Relationships: []
+      }
+      user_shadow_bans: {
+        Row: UserShadowBanRow
+        Insert: Omit<UserShadowBanRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<UserShadowBanRow, 'id'>>
+        Relationships: []
+      }
+      engine_decision_log: {
+        Row: EngineDecisionLogRow
+        Insert: Omit<EngineDecisionLogRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<EngineDecisionLogRow, 'id'>>
+        Relationships: []
+      }
+      theme_presets: {
+        Row: ThemePresetRow
+        Insert: Omit<ThemePresetRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<ThemePresetRow, 'id'>>
+        Relationships: []
+      }
     }
     Views: Record<never, never>
     Functions: {
       award_points: {
         Args: AwardPointsArgs
         Returns: PointTransactionRow
+      }
+      activate_theme_preset: {
+        Args: { p_preset_id: string }
+        Returns: void
       }
     }
     Enums: {

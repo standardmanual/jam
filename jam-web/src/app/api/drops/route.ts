@@ -65,8 +65,9 @@ async function searchAndPersistCategories(
     naver_id: p.naverId,
     poi_tier: 2,
   }))
-  const { data: inserted, error: insertError } = await (service as any)
-    .from('poi')
+  const poiInsertQuery = service.from('poi')
+  const { data: inserted, error: insertError } = await poiInsertQuery
+    // @ts-expect-error Supabase insert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiRow와 일치
     .insert(inserts)
     .select('id, naver_id')
 
@@ -181,15 +182,15 @@ export async function GET(req: NextRequest) {
   // 드랍 카운트: DB POI에만 조회
   const dbPoiIds = nearbyDbPois2.map((p) => p.id).filter(Boolean)
   if (dbPoiIds.length > 0) {
-    const { data: dropsRaw } = await (service as any)
+    const { data: dropsRaw } = await service
       .from('poi_drops')
       .select('poi_id')
       .in('poi_id', dbPoiIds)
       .eq('is_available', true)
 
     const dropCountByPoi: Record<string, number> = {}
-    for (const d of dropsRaw ?? []) {
-      const pid = (d as any).poi_id
+    for (const d of (dropsRaw ?? []) as { poi_id: string }[]) {
+      const pid = d.poi_id
       dropCountByPoi[pid] = (dropCountByPoi[pid] ?? 0) + 1
     }
     for (const poi of allPois) {
@@ -267,14 +268,15 @@ export async function POST(req: NextRequest) {
   }
 
   // poi_drops INSERT
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: dropRaw, error: dropError } = await (service as any)
-    .from('poi_drops')
-    .insert({
-      dropper_user_id: user.id,
-      poi_id,
-      badge_id: item.badge_id,
-    })
+  const poiDropsInsertQuery = service.from('poi_drops')
+  const poiDropPayload = {
+    dropper_user_id: user.id,
+    poi_id,
+    badge_id: item.badge_id,
+  }
+  const { data: dropRaw, error: dropError } = await poiDropsInsertQuery
+    // @ts-expect-error Supabase insert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiDropRow와 일치
+    .insert(poiDropPayload)
     .select('id')
     .single()
 

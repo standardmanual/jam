@@ -21,13 +21,10 @@ export async function logEngineDecision(
 ): Promise<void> {
   try {
     const supabase = createServiceClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('engine_decision_log').insert({
-      user_id: userId,
-      engine,
-      event,
-      payload,
-    })
+    const table = supabase.from('engine_decision_log')
+    const row = { user_id: userId, engine, event, payload }
+    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 engine_decision_log 스키마와 일치
+    await table.insert(row)
   } catch (e) {
     console.error('[engine-log] 기록 실패:', e)
   }

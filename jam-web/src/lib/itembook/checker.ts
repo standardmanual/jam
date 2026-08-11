@@ -143,13 +143,10 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   console.info(`[checkItemBookCompletion] 완성된 아이템북 — userId: ${userId}, ids: ${completedIds.join(', ')}`)
 
   // 6. 완성 기록 upsert
-  await supabase
-    .from('user_item_book_completions')
-    .upsert(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      completedIds.map((id) => ({ user_id: userId, item_book_id: id })) as any,
-      { onConflict: 'user_id,item_book_id', ignoreDuplicates: true }
-    )
+  const completionRows = completedIds.map((id) => ({ user_id: userId, item_book_id: id }))
+  const completionsTable = supabase.from('user_item_book_completions')
+  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 user_item_book_completions 스키마와 일치
+  await completionsTable.upsert(completionRows, { onConflict: 'user_id,item_book_id', ignoreDuplicates: true })
 
   // 7. reward_badge_id 발급
   let rewardBadgesIssued = 0
@@ -174,14 +171,14 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
 
     if (existing) continue
 
-    const { error: insertError } = await supabase
-      .from('user_activity_badges')
-      .insert({
-        user_id: userId,
-        badge_id: book.reward_badge_id,
-        triggered_by: `itembook_complete:${book.id}`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any)
+    const rewardBadgePayload = {
+      user_id: userId,
+      badge_id: book.reward_badge_id,
+      triggered_by: `itembook_complete:${book.id}`,
+    }
+    const activityBadgesTable = supabase.from('user_activity_badges')
+    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgeRow와 일치
+    const { error: insertError } = await activityBadgesTable.insert(rewardBadgePayload)
 
     if (insertError) {
       if (insertError.code === '23505') continue

@@ -94,8 +94,9 @@ async function recordProcessedActivities(
     normalized: a,
     processed_via: processedVia,
   }))
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await supabase.from('strava_activities').upsert(rows as any, { onConflict: 'user_id,strava_id' })
+  const { error } = await supabase
+    .from('strava_activities')
+    .upsert(rows, { onConflict: 'user_id,strava_id' })
   if (error) {
     console.error('[recordProcessedActivities] 기록 오류:', error)
   }
@@ -196,8 +197,7 @@ export async function processFetchedActivities(
         }
         const { error: earnError } = await supabase
           .from('user_poi_badge_earns')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .insert(earnPayload as any)
+          .insert(earnPayload)
 
         if (earnError) {
           if (earnError.code !== '23505') {
@@ -238,8 +238,7 @@ export async function processFetchedActivities(
       }
       const { error: insertError } = await supabase
         .from('user_activity_badges')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .insert(legacyEarnPayload as any)
+        .insert(legacyEarnPayload)
 
       if (insertError) {
         if (insertError.code === '23505') continue
@@ -432,8 +431,9 @@ export async function syncStravaActivities(
     }
   } catch (err) {
     console.error(`[syncStravaActivities] 처리 중 오류 — last_synced_at 롤백 (userId: ${userId}):`, err)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: rollbackError } = await (supabase.from('strava_connections') as any)
+    const { error: rollbackError } = await supabase
+      .from('strava_connections')
+      // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 StravaConnectionRow와 일치
       .update({ last_synced_at: connection.last_synced_at })
       .eq('user_id', userId)
       .eq('last_synced_at', lockNow) // 그 사이 다른 요청이 갱신했다면 덮어쓰지 않음

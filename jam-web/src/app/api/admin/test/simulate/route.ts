@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
     .from('badges')
     .select('id, name, condition_json, activity_types')
     .eq('type', 'activity')
+    .overrideTypes<Array<{ id: string; name: string; condition_json: unknown; activity_types: string[] }>, { merge: false }>()
 
   if (badgesError) {
     return NextResponse.json({ error: '배지 조회 오류' }, { status: 500 })
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
   // 조건 매칭
   const matchedBadges: Array<{ id: string; name: string }> = []
 
-  for (const badge of (allBadges ?? []) as any[]) {
+  for (const badge of allBadges ?? []) {
     const cond = badge.condition_json as {
       activity_type?: string
       min_distance_km?: number
@@ -77,14 +78,10 @@ export async function POST(request: NextRequest) {
 
     if (existing) continue
 
-    const { error: insertError } = await supabase
-      .from('user_activity_badges')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .insert({
-        user_id: userId,
-        badge_id: badge.id,
-        triggered_by: 'admin_test',
-      } as any)
+    const simulateBadgePayload = { user_id: userId, badge_id: badge.id, triggered_by: 'admin_test' }
+    const activityBadgesTable = supabase.from('user_activity_badges')
+    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgeRow와 일치
+    const { error: insertError } = await activityBadgesTable.insert(simulateBadgePayload)
 
     if (insertError) {
       if (insertError.code === '23505') continue // 중복 무시
@@ -109,25 +106,26 @@ export async function POST(request: NextRequest) {
 
   if (inventoryBefore) {
     // 드랍 후 새로 추가된 inventory_items 확인
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: newItem } = await (supabase as any)
+    const { data: newItem } = await supabase
       .from('inventory_items')
       .select('badge_id, obtained_at')
-      .eq('inventory_id', (inventoryBefore as any).id)
+      // @ts-expect-error inventoryBefore.id — 이 파일 상단의 badges overrideTypes와 얽혀 이후 체인 전체가 never로 새는 TS 특이 케이스(개발용 시뮬레이터 엔드포인트라 as any 대신 정확히 이 지점만 억제)
+      .eq('inventory_id', inventoryBefore.id)
       .eq('obtained_by', 'drop')
       .order('obtained_at', { ascending: false })
       .limit(1)
       .maybeSingle()
 
     if (newItem) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: badgeInfo } = await (supabase as any)
+      const { data: badgeInfo } = await supabase
         .from('badges')
         .select('name')
-        .eq('id', (newItem as any).badge_id)
+        // @ts-expect-error 위와 동일한 TS 특이 케이스
+        .eq('id', newItem.badge_id)
         .maybeSingle()
 
-      droppedItemName = (badgeInfo as any)?.name ?? null
+      // @ts-expect-error 위와 동일한 TS 특이 케이스
+      droppedItemName = badgeInfo?.name ?? null
     }
   }
 

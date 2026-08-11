@@ -37,10 +37,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const ids = (adjacent_faction_ids as string[]).filter((a) => a && a !== id)
     await supabase.from('faction_adjacency').delete().eq('faction_id', id)
     if (ids.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: adjError } = await (supabase as any)
-        .from('faction_adjacency')
-        .insert(ids.map((adjacent_faction_id) => ({ faction_id: id, adjacent_faction_id })))
+      const adjacencyQuery = supabase.from('faction_adjacency')
+      // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 FactionAdjacencyRow와 일치
+      const adjInsertQuery = adjacencyQuery.insert(ids.map((adjacent_faction_id) => ({ faction_id: id, adjacent_faction_id })))
+      const { error: adjError } = await adjInsertQuery
       if (adjError) return NextResponse.json({ error: `인접 저장 실패: ${adjError.message}` }, { status: 500 })
     }
   }

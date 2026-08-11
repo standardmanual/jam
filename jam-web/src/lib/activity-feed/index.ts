@@ -61,13 +61,15 @@ export async function recordFeedEvent<T extends FeedEventType>(
 ): Promise<void> {
   try {
     const supabase = createServiceClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('user_activity_feed').insert({
+    const q = supabase.from('user_activity_feed')
+    const payload = {
       user_id: userId,
       event_type: eventType,
       metadata,
       ...(eventAt ? { event_at: eventAt } : {}),
-    })
+    }
+    // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityFeedRow와 일치
+    await q.insert(payload)
   } catch (e) {
     console.error('[activity-feed] 피드 기록 실패:', e)
   }

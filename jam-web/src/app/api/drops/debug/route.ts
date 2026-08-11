@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   // 1. DB poi 테이블 컬럼 확인 (naver_id 있는지)
   const service = createServiceClient()
-  const { data: samplePoi, error: poiError } = await (service as any)
+  const { data: samplePoi, error: poiError } = await service
     .from('poi')
     .select('id, name, naver_id, poi_tier')
     .limit(3)
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
   result.naver_pois = naverPois.slice(0, 10)
 
   // 3. DB의 T2 POI 수
-  const { count: t2Count } = await (service as any)
+  const { count: t2Count } = await service
     .from('poi')
     .select('*', { count: 'exact', head: true })
     .eq('poi_tier', 2)

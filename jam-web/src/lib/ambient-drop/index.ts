@@ -128,16 +128,16 @@ export async function replenishAmbientDrops(policy: AmbientDropPolicy): Promise<
     return { eligiblePoiCount, targetTotal, currentActive, spawned: 0, reason: 'no_candidates' }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('poi_drops').insert(
-    inserts.map((row) => ({
-      poi_id: row.poi_id,
-      badge_id: row.badge_id,
-      source: row.source,
-      dropper_user_id: null,
-      expires_at: null,
-    }))
-  )
+  const q = supabase.from('poi_drops')
+  const payload = inserts.map((row) => ({
+    poi_id: row.poi_id,
+    badge_id: row.badge_id,
+    source: row.source,
+    dropper_user_id: null,
+    expires_at: null,
+  }))
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiDropsRow와 일치
+  const { error } = await q.insert(payload)
 
   if (error) {
     console.error('[ambient-drop] 보충 삽입 오류:', error)

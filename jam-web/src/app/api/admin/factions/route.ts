@@ -27,20 +27,19 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
-  const { data, error } = await supabase
-    .from('factions')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert({
-      name,
-      tagline: tagline ?? null,
-      description: description ?? null,
-      image_url: image_url ?? null,
-      drop_weight: drop_weight ?? 1.0,
-      is_active: is_active ?? true,
-      sort_order: sort_order ?? 0,
-    } as any)
-    .select()
-    .single()
+  const insertPayload = {
+    name,
+    tagline: tagline ?? null,
+    description: description ?? null,
+    image_url: image_url ?? null,
+    drop_weight: drop_weight ?? 1.0,
+    is_active: is_active ?? true,
+    sort_order: sort_order ?? 0,
+  }
+  const factionsQuery = supabase.from('factions')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 FactionsRow와 일치
+  const insertQuery = factionsQuery.insert(insertPayload)
+  const { data, error } = await insertQuery.select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ faction: data }, { status: 201 })

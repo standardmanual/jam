@@ -710,19 +710,19 @@ export async function evaluateBadgesDetailed(
           : null,
       }
 
-      const { error: insertError } = await supabase
-        .from('user_activity_badges')
-        .insert({
-          user_id: userId,
-          badge_id: toIssue.id,
-          triggered_by: triggeredBy,
-          triggered_by_strava_id: triggerActivity?.stravaId ?? null,
-          triggered_by_activity_name: triggerActivity?.name ?? null,
-          triggered_by_distance_km: triggerActivity?.distanceKm ?? null,
-          triggered_by_activity_date: triggerActivity?.startDateLocal ?? triggerActivity?.startDate ?? null,
-          condition_snapshot: conditionSnapshot,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any)
+      const activityBadgesTable = supabase.from('user_activity_badges')
+      const activityBadgeInsertPayload = {
+        user_id: userId,
+        badge_id: toIssue.id,
+        triggered_by: triggeredBy,
+        triggered_by_strava_id: triggerActivity?.stravaId ?? null,
+        triggered_by_activity_name: triggerActivity?.name ?? null,
+        triggered_by_distance_km: triggerActivity?.distanceKm ?? null,
+        triggered_by_activity_date: triggerActivity?.startDateLocal ?? triggerActivity?.startDate ?? null,
+        condition_snapshot: conditionSnapshot,
+      }
+      // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgeRow와 일치
+      const { error: insertError } = await activityBadgesTable.insert(activityBadgeInsertPayload)
 
       if (insertError) {
         if (insertError.code === '23505') continue
@@ -754,8 +754,9 @@ export async function evaluateBadgesDetailed(
 
   // 첫 싱크 완료 플래그 세팅 (dryRun·시뮬레이터 모드에서는 갱신 안 함)
   if (!dryRun && !overrideFirstSync && !userInitialSyncDone) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('users') as any).update({ initial_sync_done: true }).eq('id', userId)
+    const usersTable = supabase.from('users')
+    // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
+    await usersTable.update({ initial_sync_done: true }).eq('id', userId)
   }
 
   // 판정 과정 기록 — dryRun(시뮬레이션)에서는 소음 방지를 위해 기록하지 않음

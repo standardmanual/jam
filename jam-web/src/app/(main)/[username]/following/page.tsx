@@ -22,8 +22,7 @@ export default async function FollowingPage({ params }: Props) {
   const service = createServiceClient()
 
   // username → userId
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: targetRaw } = await (service as any)
+  const { data: targetRaw } = await service
     .from('users')
     .select('id, username')
     .eq('username', username.toLowerCase())
@@ -32,8 +31,7 @@ export default async function FollowingPage({ params }: Props) {
   const target = targetRaw as { id: string; username: string }
 
   // 팔로잉 목록 (target이 팔로우하는 사람들)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: followsRaw } = await (service as any)
+  const { data: followsRaw } = await service
     .from('user_follows')
     .select('following_id, created_at')
     .eq('follower_id', target.id)
@@ -45,8 +43,7 @@ export default async function FollowingPage({ params }: Props) {
 
   const usersMap: Record<string, { id: string; username: string | null; avatar_url: string | null }> = {}
   if (followingIds.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: usersRaw } = await (service as any)
+    const { data: usersRaw } = await service
       .from('users')
       .select('id, username, avatar_url')
       .in('id', followingIds)
@@ -56,8 +53,7 @@ export default async function FollowingPage({ params }: Props) {
   }
 
   // 내가 팔로우 중인 사람들
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: myFollowsRaw } = await (service as any)
+  const { data: myFollowsRaw } = await service
     .from('user_follows')
     .select('following_id')
     .eq('follower_id', user.id)

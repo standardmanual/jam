@@ -68,6 +68,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   // ── 2단계: 병렬 삭제 (inventory_items 제거 후 poi_drops 삭제 안전) ─────────
+  const poiDropsQuery = supabase.from('poi_drops')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiDropsRow와 일치
+  const poiDropsResetQuery = poiDropsQuery.update({ picked_up_by: null, picked_up_at: null, is_available: true }).eq('picked_up_by', userId)
   const [
     { count: deletedBadgeCount, error: e1 },
     { error: e2 },
@@ -83,8 +86,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     // 이 유저가 드랍한 POI 배지 행 삭제
     supabase.from('poi_drops').delete().eq('dropper_user_id', userId),
     // 이 유저가 픽업한 POI 배지 → 픽업 정보 초기화 (행은 유지)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).from('poi_drops').update({ picked_up_by: null, picked_up_at: null, is_available: true }).eq('picked_up_by', userId),
+    poiDropsResetQuery,
     // 미션 완료 기록
     supabase.from('user_mission_completions').delete().eq('user_id', userId),
     // 미션 참여 기록
@@ -105,12 +107,14 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   // ── 4단계: 싱크 이력 초기화 (연동 자체는 유지) ─────────
   // initial_sync_done=false + last_synced_at=NULL → 다음 싱크가 최초 연동처럼 전체 이력 재수집
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('users') as any).update({ initial_sync_done: false }).eq('id', userId)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: stravaError } = await (supabase.from('strava_connections') as any)
-    .update({ last_synced_at: null, backfill_completed: false })
-    .eq('user_id', userId)
+  const usersQuery = supabase.from('users')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UsersRow와 일치
+  const usersUpdateQuery = usersQuery.update({ initial_sync_done: false }).eq('id', userId)
+  await usersUpdateQuery
+  const stravaConnectionsQuery = supabase.from('strava_connections')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 StravaConnectionsRow와 일치
+  const stravaUpdateQuery = stravaConnectionsQuery.update({ last_synced_at: null, backfill_completed: false }).eq('user_id', userId)
+  const { error: stravaError } = await stravaUpdateQuery
   if (stravaError) return NextResponse.json({ error: stravaError.message }, { status: 500 })
 
   console.info(

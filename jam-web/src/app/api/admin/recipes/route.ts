@@ -25,8 +25,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('combination_recipes')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert(body as any)
+    .insert(body)
     .select()
     .single()
 

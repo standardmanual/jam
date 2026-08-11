@@ -10,8 +10,7 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
 export async function getActiveThemeColors(): Promise<{ mainColor: string; subColor: string }> {
   try {
     const supabase = createServiceClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from('theme_presets')
       .select('main_color, sub_color')
       .eq('is_active', true)
