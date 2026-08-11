@@ -581,34 +581,54 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </Card>
         )}
 
-        {/* 획득 이력 (poi 타입 — 반복 획득) */}
+        {/* 획득 이력 (poi 타입 — 반복 획득). 방문 1건 = 액티비티 배지 "획득 정보"와 동일한 디자인의 독립 카드 */}
         {badgeRow.type === 'poi' && poiEarns.length > 0 && (
-          <Card>
-            <div className="flex items-baseline justify-between mb-[var(--spacing-16)]">
-              <h2 className="text-[10px] uppercase text-text-inverse/50">{d.badges.earnHistoryTitle}</h2>
+          <>
+            <div className="flex items-baseline justify-between px-1">
+              <h2 className="text-[10px] uppercase text-text-inverse/40">{d.badges.earnHistoryTitle}</h2>
               <span className="text-[11px] text-text-inverse/60">{t(d.badges.earnHistoryCount, { count: poiEarns.length })}</span>
             </div>
-            <ul className="flex flex-col gap-2">
-              {poiEarns.map((e) => (
-                <li key={e.id} className="rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] px-[var(--spacing-16)] py-2 flex flex-col gap-1">
-                  <div className="flex justify-between items-center gap-2">
-                    <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">
-                      {e.poi?.name ?? d.badges.earnHistoryUnknownPlace}
-                    </span>
-                    <span className="text-[11px] text-text-inverse/60 shrink-0">
-                      <LocalDate iso={e.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
-                    </span>
+            {poiEarns.map((e) => (
+              <Card key={e.id}>
+                <h3 className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)] truncate">
+                  {e.poi?.name ?? d.badges.earnHistoryUnknownPlace}
+                </h3>
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.earnedAt}</span>
+                    <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]"><LocalDate iso={e.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} /></span>
                   </div>
                   {e.triggered_by_activity_name && (
-                    <span className="text-[11px] text-text-inverse/50 truncate">{e.triggered_by_activity_name}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.triggerActivity}</span>
+                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate max-w-[180px] text-right">
+                        {e.triggered_by_activity_name}
+                      </span>
+                    </div>
+                  )}
+                  {e.triggered_by_distance_km && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.triggerDistance}</span>
+                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}</span>
+                    </div>
+                  )}
+                  {e.triggered_by_activity_date && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.triggerDate}</span>
+                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+                        <LocalDate iso={e.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
+                      </span>
+                    </div>
                   )}
                   {e.triggered_by_strava_id && (
-                    <StravaLink stravaId={e.triggered_by_strava_id} />
+                    <div className="mt-1">
+                      <StravaLink stravaId={e.triggered_by_strava_id} />
+                    </div>
                   )}
-                </li>
-              ))}
-            </ul>
-          </Card>
+                </div>
+              </Card>
+            ))}
+          </>
         )}
 
         {/* 획득 정보 */}
