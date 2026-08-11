@@ -32,6 +32,9 @@
 ### 4. 로컬과 git을 항상 동일하게 유지
 - 작업 후 `git status`를 확인하여 untracked·modified 파일이 없도록 처리
 - .gitignore에 새 항목 추가 금지 (보안 예외: 토큰/시크릿 파일은 gitignore 허용)
+- 이 저장소는 `.githooks/`(버전 관리됨)를 git hooks 경로로 쓴다. 새로 클론한 환경에서는
+  최초 1회 `git config core.hooksPath .githooks`로 활성화해야 훅이 동작한다
+  (`.git/hooks/`는 git이 관리하지 않아 클론 시 비어있기 때문).
 
 ### 5. 글로벌 스킬과 프로젝트 스킬을 항상 동일하게 유지
 `~/.claude/skills/`(글로벌)와 `.claude/skills/`(프로젝트) 스킬 목록을 항상 동일하게 유지한다.
