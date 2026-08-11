@@ -93,17 +93,16 @@ export async function checkAndUpdateLocation(
   //  그 좌표가 영원히 기준점으로 남아 이후 모든 정상 시도까지 계속 오탐나는
   //  자가-고착 버그가 있었음 — 매번 최신 좌표로 갱신해 다음 판정은 항상
   //  "방금 요청"을 기준으로 하도록 함.)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('users')
-    .update({
-      last_location_lat: lat,
-      last_location_lng: lng,
-      last_location_at: new Date(now).toISOString(),
-      gps_daily_distance_km: dailyDistanceKm,
-      gps_daily_distance_date: todayStr,
-    })
-    .eq('id', userId)
+  const locationUpdate: Partial<LocationFields> = {
+    last_location_lat: lat,
+    last_location_lng: lng,
+    last_location_at: new Date(now).toISOString(),
+    gps_daily_distance_km: dailyDistanceKm,
+    gps_daily_distance_date: todayStr,
+  }
+  const usersTable = supabase.from('users')
+  // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
+  await usersTable.update(locationUpdate).eq('id', userId)
 
   return result
 }

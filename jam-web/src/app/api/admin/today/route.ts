@@ -24,10 +24,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const supabase = createServiceClient()
 
+  const insertPayload = { ...body, created_by: admin?.id ?? null }
   const { data, error } = await supabase
     .from('today_cards')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert({ ...body, created_by: admin?.id ?? null } as any)
+    .insert(insertPayload)
     .select()
     .single()
 

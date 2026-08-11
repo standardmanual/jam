@@ -54,12 +54,10 @@ export async function POST(req: NextRequest) {
     tier: pipeline_linked ? tier : null,
     keywords: pipeline_linked ? keywords : [],
   }
-  const { data, error } = await supabase
-    .from('poi_categories')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert(insertPayload as any)
-    .select()
-    .single()
+  const poiCategoriesQuery = supabase.from('poi_categories')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiCategoriesRow와 일치
+  const insertQuery = poiCategoriesQuery.insert(insertPayload)
+  const { data, error } = await insertQuery.select().single()
 
   if (error) {
     const message = error.code === '23505' ? '이미 존재하는 slug입니다.' : error.message

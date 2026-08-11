@@ -31,8 +31,7 @@ export default async function UserItemBooksPage({ params }: Props) {
 
   const service = createServiceClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: targetRaw } = await (service as any)
+  const { data: targetRaw } = await service
     .from('users')
     .select('id, username')
     .eq('username', username.toLowerCase())
@@ -42,8 +41,7 @@ export default async function UserItemBooksPage({ params }: Props) {
   const target = targetRaw as { id: string; username: string }
 
   // 대상 유저 인벤토리
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: inventoryRaw } = await (service as any)
+  const { data: inventoryRaw } = await service
     .from('inventory')
     .select('id')
     .eq('user_id', target.id)
@@ -53,8 +51,7 @@ export default async function UserItemBooksPage({ params }: Props) {
   let cards: BookCard[] = []
 
   if (inventory) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: invItemsRaw } = await (service as any)
+    const { data: invItemsRaw } = await service
       .from('inventory_items')
       .select('badge_id, badge:badges(item_book_id, type)')
       .eq('inventory_id', inventory.id)
@@ -82,28 +79,23 @@ export default async function UserItemBooksPage({ params }: Props) {
         { data: bookBadgesRaw },
         { data: slotsRaw },
         { data: completionsRaw },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ] = await Promise.all([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (service as any)
+        service
           .from('item_books')
           .select('*, faction:factions(id, name, image_url)')
           .in('id', bookIds)
           .eq('is_active', true),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (service as any)
+        service
           .from('badges')
           .select('id, item_book_id')
           .in('item_book_id', bookIds)
           .eq('type', 'item'),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (service as any)
+        service
           .from('user_item_book_slots')
           .select('item_book_id')
           .eq('user_id', target.id)
           .in('item_book_id', bookIds),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (service as any)
+        service
           .from('user_item_book_completions')
           .select('item_book_id')
           .eq('user_id', target.id)

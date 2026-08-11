@@ -8,29 +8,20 @@ import type { BadgeRarity } from '@/types/database'
 
 export type BanLevel = 'none' | 'soft' | 'hard'
 
-export interface ShadowBanRow {
-  id: string
-  user_id: string
-  ban_level: BanLevel
-  reason: string
-  expires_at: string | null
-  created_at: string
-  created_by: string
-}
-
 /** 유저의 현재 밴 레벨 반환 (만료된 밴은 none) */
 export async function getUserBanLevel(userId: string): Promise<BanLevel> {
   try {
     const supabase = createServiceClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from('user_shadow_bans')
       .select('ban_level, expires_at')
       .eq('user_id', userId)
       .maybeSingle()
 
     if (!data) return 'none'
+    // @ts-expect-error try/catch + 명시적 Promise 반환 타입 조합에서 supabase-js 추론이 무너지는 TS 특이 케이스(jam-web/src/lib/abusing/poi-block.ts와 동일 패턴) — data는 UserShadowBanRow의 ban_level/expires_at 컬럼을 가짐
     if (data.expires_at && new Date(data.expires_at) < new Date()) return 'none'
+    // @ts-expect-error 위와 동일한 TS 추론 특이 케이스
     return data.ban_level as BanLevel
   } catch {
     return 'none'
@@ -67,16 +58,16 @@ export async function applyBan(
 ): Promise<void> {
   if (level === 'none') return
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('user_shadow_bans')
-    .upsert({
-      user_id: userId,
-      ban_level: level,
-      reason,
-      created_by: createdBy,
-      expires_at: expiresAt?.toISOString() ?? null,
-    }, { onConflict: 'user_id' })
+  const table = supabase.from('user_shadow_bans')
+  const payload = {
+    user_id: userId,
+    ban_level: level,
+    reason,
+    created_by: createdBy,
+    expires_at: expiresAt?.toISOString() ?? null,
+  }
+  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserShadowBanRow와 일치
+  await table.upsert(payload, { onConflict: 'user_id' })
 
   await logAbusingEvent(userId, `${level}_ban_applied`, { reason, created_by: createdBy })
 }
@@ -84,8 +75,7 @@ export async function applyBan(
 /** 섀도우밴 해제 */
 export async function removeBan(userId: string): Promise<void> {
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from('user_shadow_bans').delete().eq('user_id', userId)
+  await supabase.from('user_shadow_bans').delete().eq('user_id', userId)
 }
 
 /** 어뷰징 이벤트 로그 기록 */
@@ -96,12 +86,10 @@ export async function logAbusingEvent(
 ): Promise<void> {
   try {
     const supabase = createServiceClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('abusing_logs').insert({
-      user_id: userId,
-      event_type: eventType,
-      detail: detail ?? null,
-    })
+    const logsTable = supabase.from('abusing_logs')
+    const payload = { user_id: userId, event_type: eventType, detail: detail ?? null }
+    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 AbusingLogRow와 일치
+    await logsTable.insert(payload)
   } catch {
     // 로그 실패는 무시
   }

@@ -424,10 +424,10 @@ async function getDropState(userId: string): Promise<UserDropStateRow> {
 
 async function saveDropState(state: UserDropStateRow): Promise<void> {
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('user_drop_state')
-    .upsert({ ...state, updated_at: new Date().toISOString() })
+  const table = supabase.from('user_drop_state')
+  const payload = { ...state, updated_at: new Date().toISOString() }
+  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserDropStateRow와 일치
+  await table.upsert(payload)
 }
 
 /** 섀도우밴을 rarity 상한으로 적용: 차단된 rarity는 common으로 강등, common도 차단이면 null */
@@ -454,15 +454,16 @@ async function insertDrop(
   const supabase = createServiceClient()
   const expiresAt = picked.valid_until ?? null
 
-  const { data: insertedRaw, error: insertError } = await supabase
-    .from('inventory_items')
-    .insert({
-      inventory_id: inventoryId,
-      badge_id: picked.id,
-      obtained_by: 'drop',
-      expires_at: expiresAt,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any)
+  const inventoryItemsTable = supabase.from('inventory_items')
+  const insertPayload = {
+    inventory_id: inventoryId,
+    badge_id: picked.id,
+    obtained_by: 'drop',
+    expires_at: expiresAt,
+  }
+  const { data: insertedRaw, error: insertError } = await inventoryItemsTable
+    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemRow와 일치
+    .insert(insertPayload)
     .select('id')
     .single()
   if (insertError) {

@@ -16,7 +16,7 @@ export async function GET(
   const service = createServiceClient()
 
   // poi_drops + badges 조인 (users 조인은 FK 중복으로 별도 조회)
-  const { data, error } = await (service as any)
+  const { data, error } = await service
     .from('poi_drops')
     .select(`id, badge_id, dropped_at, dropper_user_id, source, badges ( name, rarity, image_url )`)
     .eq('poi_id', poiId)
@@ -30,11 +30,11 @@ export async function GET(
 
   // dropper username 별도 조회 (앰비언트 드랍은 dropper_user_id가 null이라 자연히 제외됨)
   const dropperIds = [...new Set((data ?? []).map((d: any) => d.dropper_user_id as string | null).filter(Boolean))]
-  const { data: usersData } = dropperIds.length > 0
-    ? await (service as any).from('users').select('id, username').in('id', dropperIds)
-    : { data: [] }
+  const usersData: { id: string; username: string }[] = dropperIds.length > 0
+    ? ((await service.from('users').select('id, username').in('id', dropperIds)).data ?? [])
+    : []
   const nameById: Record<string, string> = {}
-  for (const u of usersData ?? []) nameById[u.id] = u.username
+  for (const u of usersData) nameById[u.id] = u.username
 
   const drops = (data ?? []).map((d: any) => ({
     id: d.id,

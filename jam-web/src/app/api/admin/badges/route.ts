@@ -48,12 +48,10 @@ export async function POST(req: NextRequest) {
     valid_until: valid_until ?? null,
     point_reward: Math.max(0, Math.trunc(Number(point_reward) || 0)),
   }
-  const { data, error } = await supabase
-    .from('badges')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert(insertPayload as any)
-    .select()
-    .single()
+  const badgesQuery = supabase.from('badges')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 BadgesRow와 일치
+  const insertQuery = badgesQuery.insert(insertPayload)
+  const { data, error } = await insertQuery.select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ badge: data }, { status: 201 })

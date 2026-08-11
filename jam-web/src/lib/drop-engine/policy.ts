@@ -56,8 +56,7 @@ export async function getDropPolicy(): Promise<DropPolicy> {
 
 export async function updateDropPolicy(patch: Partial<DropPolicy>): Promise<void> {
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('drop_policy')
-    .upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
+  const table = supabase.from('drop_policy')
+  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 DropPolicyRow와 일치
+  await table.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
 }

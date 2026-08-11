@@ -200,15 +200,15 @@ async function grantBadge(
   inventoryId: string,
   badgeId: string
 ): Promise<{ id: string; name: string; rarity: string } | null> {
-  const { error: insertError } = await supabase
-    .from('inventory_items')
-    .insert({
-      inventory_id: inventoryId,
-      badge_id: badgeId,
-      obtained_by: 'system_event',
-      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any)
+  const q = supabase.from('inventory_items')
+  const payload = {
+    inventory_id: inventoryId,
+    badge_id: badgeId,
+    obtained_by: 'system_event',
+    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  }
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemsRow와 일치
+  const { error: insertError } = await q.insert(payload)
 
   if (insertError) {
     console.error('[combineItems] 결과 아이템 추가 오류:', insertError)
@@ -229,10 +229,9 @@ async function getStreak(supabase: ReturnType<typeof createServiceClient>, userI
 }
 
 async function resetStreak(supabase: ReturnType<typeof createServiceClient>, userId: string): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('user_combine_state')
-    .upsert({ user_id: userId, consecutive_fail_count: 0, updated_at: new Date().toISOString() })
+  const q = supabase.from('user_combine_state')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserCombineStateRow와 일치
+  await q.upsert({ user_id: userId, consecutive_fail_count: 0, updated_at: new Date().toISOString() })
 }
 
 /** 실패 처리: 스트릭 +1 저장 후, 임계치 이상이면 계단식 포인트 지급(독립 상한). */
@@ -244,10 +243,9 @@ async function recordFailure(
   const prevStreak = await getStreak(supabase, userId)
   const streak = prevStreak + 1
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('user_combine_state')
-    .upsert({ user_id: userId, consecutive_fail_count: streak, updated_at: new Date().toISOString() })
+  const q = supabase.from('user_combine_state')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserCombineStateRow와 일치
+  await q.upsert({ user_id: userId, consecutive_fail_count: streak, updated_at: new Date().toISOString() })
 
   let pointsAwarded = 0
   if (streak >= policy.pity_points_start_streak) {

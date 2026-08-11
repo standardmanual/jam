@@ -8,8 +8,7 @@ import type { AbusingPolicy } from './policy'
 export async function isPoiBlocked(userId: string, poiId: string): Promise<boolean> {
   try {
     const supabase = createServiceClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from('poi_blocks')
       .select('blocked_until')
       .eq('user_id', userId)
@@ -17,6 +16,7 @@ export async function isPoiBlocked(userId: string, poiId: string): Promise<boole
       .maybeSingle()
 
     if (!data) return false
+    // @ts-expect-error try/catch + 명시적 Promise<boolean> 반환 타입 조합에서 supabase-js 추론이 무너지는 TS 특이 케이스(격리 재현 확인) — data는 PoiBlockRow의 blocked_until 컬럼을 가짐
     return new Date(data.blocked_until) > new Date()
   } catch {
     return false
@@ -33,15 +33,14 @@ export async function blockPoiForUser(
   const supabase = createServiceClient()
   const blockedUntil = new Date(Date.now() + policy.poi_block_hours * 3_600_000).toISOString()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('poi_blocks')
-    .upsert({ user_id: userId, poi_id: poiId, blocked_until: blockedUntil, reason }, { onConflict: 'user_id,poi_id' })
+  const table = supabase.from('poi_blocks')
+  const payload = { user_id: userId, poi_id: poiId, blocked_until: blockedUntil, reason }
+  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiBlockRow와 일치
+  await table.upsert(payload, { onConflict: 'user_id,poi_id' })
 }
 
 /** POI 블록 해제 (어드민) */
 export async function unblockPoi(userId: string, poiId: string): Promise<void> {
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from('poi_blocks').delete().eq('user_id', userId).eq('poi_id', poiId)
+  await supabase.from('poi_blocks').delete().eq('user_id', userId).eq('poi_id', poiId)
 }

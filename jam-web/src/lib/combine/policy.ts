@@ -49,10 +49,9 @@ export async function getCombinePolicy(): Promise<CombinePolicy> {
 
 export async function updateCombinePolicy(patch: Partial<CombinePolicy>): Promise<void> {
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('combine_policy')
-    .upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
+  const q = supabase.from('combine_policy')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CombinePolicyRow와 일치
+  await q.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
 }
 
 /** 재료 개수 + 서로 다른 소재 세계관 수로 티어 결정. 요건 미충족 시 하위 티어로 강등. */

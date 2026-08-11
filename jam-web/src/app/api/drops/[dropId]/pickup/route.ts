@@ -103,12 +103,13 @@ export async function POST(
   const inventoryId = (invRaw as { id: string }).id
 
   // RPC로 원자 트랜잭션 실행
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: rpcResult, error: rpcError } = await (service as any).rpc('pickup_drop', {
+  const rpcArgs = {
     p_drop_id: dropId,
     p_picker_id: user.id,
     p_inventory_id: inventoryId,
-  })
+  }
+  // @ts-expect-error 'pickup_drop' RPC 함수가 src/types/database.ts의 Functions에 미등록 — 실제 존재하는 DB 함수(별도 티켓으로 타입 등록 필요)
+  const { data: rpcResult, error: rpcError } = await service.rpc('pickup_drop', rpcArgs)
 
   if (rpcError) {
     console.error('[pickup] RPC 오류:', rpcError)

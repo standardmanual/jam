@@ -39,8 +39,7 @@ export async function getAmbientDropPolicy(): Promise<AmbientDropPolicy> {
 
 export async function updateAmbientDropPolicy(patch: Partial<AmbientDropPolicy>): Promise<void> {
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('ambient_drop_policy')
-    .upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
+  const q = supabase.from('ambient_drop_policy')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 AmbientDropPolicyRow와 일치
+  await q.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
 }

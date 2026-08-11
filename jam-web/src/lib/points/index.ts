@@ -41,8 +41,8 @@ export async function awardPoints(
   if (amount === 0) return null
 
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc('award_points', {
+  // @ts-expect-error Supabase rpc() 인자 타입 매칭 제한(옵셔널 필드가 섞인 RPC에서 발생하는 라이브러리 특이 케이스) 우회 — 실제 인자는 award_points() RPC 시그니처와 일치
+  const { data, error } = await supabase.rpc('award_points', {
     p_user_id: userId,
     p_amount: amount,
     p_reason: reason,

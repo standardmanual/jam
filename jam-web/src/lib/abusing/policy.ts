@@ -37,10 +37,9 @@ const DEFAULT_POLICY: AbusingPolicy = {
 export async function getAbusingPolicy(): Promise<AbusingPolicy> {
   try {
     const supabase = createServiceClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any).from('abusing_policy').select('*').eq('id', 1).single()
+    const { data } = await supabase.from('abusing_policy').select('*').eq('id', 1).single()
     if (!data) return DEFAULT_POLICY
-    return data as AbusingPolicy
+    return data
   } catch {
     return DEFAULT_POLICY
   }
@@ -48,8 +47,8 @@ export async function getAbusingPolicy(): Promise<AbusingPolicy> {
 
 export async function updateAbusingPolicy(patch: Partial<AbusingPolicy>): Promise<void> {
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('abusing_policy')
-    .upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
+  const table = supabase.from('abusing_policy')
+  const payload = { id: 1, ...patch, updated_at: new Date().toISOString() }
+  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 AbusingPolicyRow와 일치
+  await table.upsert(payload)
 }

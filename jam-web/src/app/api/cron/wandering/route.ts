@@ -65,16 +65,15 @@ export async function GET(req: NextRequest) {
     const newPoi = pois[Math.floor(Math.random() * pois.length)]
     const newExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
-      .from('wandering_mythic_state')
-      .update({
-        current_poi_id: newPoi.id,
-        holder_user_id: null,
-        placed_at: now,
-        expires_at: newExpiresAt,
-      })
-      .eq('id', state.id)
+    const wanderingStateQuery = supabase.from('wandering_mythic_state')
+    const wanderingUpdatePayload = {
+      current_poi_id: newPoi.id,
+      holder_user_id: null,
+      placed_at: now,
+      expires_at: newExpiresAt,
+    }
+    // @ts-expect-error Supabase update 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 WanderingMythicStateRow와 일치
+    await wanderingStateQuery.update(wanderingUpdatePayload).eq('id', state.id)
 
     moved++
     console.info(`[wandering] 아이템 이동 — badge: ${state.badge_id} → poi: ${newPoi.id}`)

@@ -8,8 +8,7 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from('poi_blocks')
     .select('*, user:user_id(id, email, username), poi:poi_id(id, name)')
     .gt('blocked_until', new Date().toISOString())

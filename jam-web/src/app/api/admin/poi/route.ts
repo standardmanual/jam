@@ -24,12 +24,11 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
-  const { data, error } = await supabase
-    .from('poi')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert({ name, latitude, longitude, radius_meters, category, linked_badge_id: linked_badge_id ?? null } as any)
-    .select()
-    .single()
+  const insertPayload = { name, latitude, longitude, radius_meters, category, linked_badge_id: linked_badge_id ?? null }
+  const poiQuery = supabase.from('poi')
+  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiRow와 일치
+  const insertQuery = poiQuery.insert(insertPayload)
+  const { data, error } = await insertQuery.select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ poi: data }, { status: 201 })
