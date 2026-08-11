@@ -67,7 +67,7 @@ Service Plan/History/Migration/Ticket/20260812_002_Infra_jam-developer-티켓-CL
 ### 배포 정보
 - 배포일: 2026-08-12
 - 환경: 로컬 git 설정 + 저장소 파일 (서비스 코드 아님, 이번 로컬 환경엔 즉시 적용됨)
-- 커밋: (git commit 직후 갱신)
+- 커밋: `37fbbd4`
 
 ### 주요 의사결정 / 핵심 메모
 - push 자체(main 직접 push)를 막는 pre-push 훅은 추가하지 않음 — 이건 실제로 위반된 적이
