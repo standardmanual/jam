@@ -12,6 +12,7 @@ export type EngineDecisionEvent =
   | 'drop_attempt'
   | 'point_award_failed'
   | 'faction_constant_missing'
+  | 'drop_state_last_activity_mismatch'
 
 export async function logEngineDecision(
   engine: 'badge' | 'drop' | 'points',

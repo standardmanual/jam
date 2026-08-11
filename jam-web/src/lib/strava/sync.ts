@@ -16,6 +16,7 @@ import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { checkMissions } from '@/lib/missions/checker'
 import { recordFeedEvent } from '@/lib/activity-feed'
+import { logEngineDecision } from '@/lib/engine-log'
 import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
 import type { StravaConnectionRow, BadgeType, BadgeRarity, PoiRow, StravaActivityRow } from '@/types/database'
@@ -266,12 +267,67 @@ export async function processFetchedActivities(
   // 활동별 아이템 드랍 시도
   //   - 첫 싱크(백필): "10초 첫 보상" — 최신 활동 1건만 드랍
   //   - 일반 싱크: 최신 활동 최대 3건까지 드랍
+  //   - 드랍 대상 "선정"은 최신순(내림차순)으로 상위 N건을 고르되, 실제 tryItemDrop
+  //     "처리 순서"는 그 N건을 다시 오래된 순(오름차순)으로 뒤집어서 진행한다.
+  //     tryItemDrop은 매 호출마다 user_drop_state를 읽고 갱신해 마지막 호출의 결과가
+  //     최종 저장되는데, 내림차순 그대로 처리하면 배치 중 가장 오래된 활동이 맨 나중에
+  //     처리되어 last_activity_at/daily_drop_date/last_drop_faction_id가 실제 최신
+  //     활동이 아니라 배치 내 가장 오래된 활동 기준으로 저장되는 순서 역전 버그가 있었다
+  //     (2026-08-11 점검 티켓 20260811_009). 다음 싱크의 복귀(comeback) 판정·일일 카운터가
+  //     실제보다 더 오래 쉰 것처럼 잘못 계산될 수 있었다.
   const dropTargets = [...activitiesFiltered]
     .filter((a) => a.jamActivityType)
-    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+    .sort((a, b) => {
+      const diff = new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      // start_date가 동일한 활동(초 단위까지 같은 케이스)이 섞이면 정렬 결과가
+      // 실행마다 달라질 수 있어(Array.sort는 동일 키 순서를 보장하지 않는 엔진도 있음),
+      // stravaId를 보조 키로 둬 정렬을 결정론적으로 고정한다.
+      return diff !== 0 ? diff : b.stravaId - a.stravaId
+    })
     .slice(0, isFirstSync ? 1 : MAX_DROP_ACTIVITIES_PER_SYNC)
+    .reverse()
   for (const activity of dropTargets) {
-    await tryItemDrop(userId, activity, activitiesFiltered)
+    try {
+      await tryItemDrop(userId, activity, activitiesFiltered)
+    } catch (err) {
+      // 배치 중 한 건의 드랍 시도가 실패해도 나머지 활동 처리를 막지 않는다 —
+      // 실패는 로깅만 하고 다음 활동으로 계속 진행한다.
+      console.error(
+        `[processFetchedActivities] tryItemDrop 실패 — userId: ${userId}, stravaId: ${activity.stravaId}:`,
+        err
+      )
+    }
+  }
+
+  // 가드 — 배치 처리 후 저장된 user_drop_state.last_activity_at이 이번 배치에서
+  // 실제로 가장 최신인 활동(dropTargets 마지막 원소, 오름차순 처리이므로 최신)과
+  // 일치하는지 확인한다. 불일치하면 처리 순서 역전 회귀나 최신 활동의 드랍 실패(위
+  // try/catch로 흡수된 경우) 등을 의미하므로 경고 로그를 남긴다(흐름은 막지 않음).
+  if (dropTargets.length > 0) {
+    const latestTarget = dropTargets[dropTargets.length - 1]
+    const expectedLastActivityAt = latestTarget.startDateLocal ?? latestTarget.startDate
+    const { data: dropStateRow, error: dropStateError } = await supabase
+      .from('user_drop_state')
+      .select('last_activity_at')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (dropStateError) {
+      console.error('[processFetchedActivities] 드랍 상태 검증 조회 오류:', dropStateError)
+    } else {
+      const savedLastActivityAt =
+        (dropStateRow as { last_activity_at: string | null } | null)?.last_activity_at ?? null
+      if (savedLastActivityAt !== expectedLastActivityAt) {
+        console.warn(
+          `[processFetchedActivities] last_activity_at 불일치 — userId: ${userId}, ` +
+          `expected: ${expectedLastActivityAt}, saved: ${savedLastActivityAt}`
+        )
+        await logEngineDecision('drop', 'drop_state_last_activity_mismatch', userId, {
+          expectedLastActivityAt,
+          savedLastActivityAt,
+          dropTargetsCount: dropTargets.length,
+        })
+      }
+    }
   }
 
   // 일반 배지 엔진 호출 (speed-filtered 활동만)
