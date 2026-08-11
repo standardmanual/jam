@@ -13,6 +13,12 @@ const MIN_DISTANCE_KM = 0.15 // 실내 GPS 오차 범위(수십~100m대) 감안�
 import { createServiceClient } from '@/lib/supabase/server'
 import { haversineDistance } from '@/lib/poi/proximity'
 import type { AbusingPolicy } from './policy'
+import type { UserRow } from '@/types/database'
+
+type LocationFields = Pick<
+  UserRow,
+  'last_location_lat' | 'last_location_lng' | 'last_location_at' | 'gps_daily_distance_km' | 'gps_daily_distance_date'
+>
 
 export interface GpsSpoofResult {
   detected: boolean
@@ -34,12 +40,11 @@ export async function checkAndUpdateLocation(
   const supabase = createServiceClient()
 
   // 마지막 위치 + 오늘의 누적 이동거리 조회
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: userRow } = await (supabase as any)
+  const { data: userRow } = await supabase
     .from('users')
     .select('last_location_lat, last_location_lng, last_location_at, gps_daily_distance_km, gps_daily_distance_date')
     .eq('id', userId)
-    .single()
+    .single<LocationFields>()
 
   const now = Date.now()
   const todayStr = new Date(now).toISOString().slice(0, 10) // UTC 날짜 기준 (충분한 근사치)
