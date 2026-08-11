@@ -7,8 +7,7 @@ export default async function ProfilePage() {
   if (!user) redirect('/login')
 
   const service = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (service as any)
+    const { data } = await service
     .from('users')
     .select('username')
     .eq('id', user.id)

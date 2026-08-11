@@ -4,8 +4,7 @@ import ThemeManager from './ThemeManager'
 
 export default async function AdminThemePage() {
   const supabase = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase as any)
+    const { data } = await supabase
     .from('theme_presets')
     .select('*')
     .order('created_at', { ascending: false })

@@ -35,8 +35,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   let subjectId = user.id
   let subjectUsername: string | null = null
   if (u) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: subjectRaw } = await (service as any)
+        const { data: subjectRaw } = await service
       .from('users')
       .select('id, username')
       .eq('username', u.toLowerCase())
@@ -80,8 +79,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   const poiBadgeIds = poiBadges.map((b) => b.id)
 
   // 3) 대상 유저 인벤토리 id
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: inventoryRaw } = await (service as any)
+    const { data: inventoryRaw } = await service
     .from('inventory')
     .select('id')
     .eq('user_id', subjectId)
@@ -91,8 +89,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   // 4~7) 인벤 아이템 / 슬롯 / 완성 / POI 배지 획득 이력 병렬 조회 (대상 유저 기준)
   const [invRes, slotsRes, completionRes, poiEarnsRes] = await Promise.all([
     inventory && badgeIds.length > 0
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ? (service as any)
+            ? service
           .from('inventory_items')
           .select('id, badge_id, serial_number, serial_prefix, slotted_in, obtained_at')
           .eq('inventory_id', inventory.id)
@@ -100,14 +97,12 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           .is('dropped_at', null)
           .order('obtained_at', { ascending: true })
       : Promise.resolve({ data: [] as InventoryItemRow[] }),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any)
+        service
       .from('user_item_book_slots')
       .select('id, badge_id, slotted_at')
       .eq('user_id', subjectId)
       .eq('item_book_id', id),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any)
+        service
       .from('user_item_book_completions')
       .select('item_book_id')
       .eq('user_id', subjectId)
@@ -115,8 +110,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       .maybeSingle(),
     // POI 배지는 슬롯팅 없이 "1회 이상 획득했는가"로만 판정한다
     poiBadgeIds.length > 0
-      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (service as any)
+      ?         service
           .from('user_poi_badge_earns')
           .select('badge_id')
           .eq('user_id', subjectId)

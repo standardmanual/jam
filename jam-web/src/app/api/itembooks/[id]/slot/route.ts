@@ -22,8 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // 1) inventory_item 조회 → badge_id 확인
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: invItemRaw, error: invErr } = await (supabase as any)
+  const { data: invItemRaw, error: invErr } = await supabase
     .from('inventory_items')
     .select('id, badge_id, inventory_id, slotted_in, dropped_at')
     .eq('id', inventory_item_id)
@@ -67,15 +66,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // 3) user_item_book_slots INSERT
+  const slotPayload = {
+    user_id: user.id,
+    item_book_id: itemBookId,
+    badge_id: invItem.badge_id,
+    inventory_item_id,
+  }
   const { data: slot, error: slotErr } = await supabase
     .from('user_item_book_slots')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert({
-      user_id: user.id,
-      item_book_id: itemBookId,
-      badge_id: invItem.badge_id,
-      inventory_item_id,
-    } as any)
+    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserItemBookSlotRow와 일치
+    .insert(slotPayload)
     .select()
     .single()
 
@@ -107,13 +107,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (totalBadges && slottedCount && slottedCount >= totalBadges) {
     // 아이템북 완성! — 이미 완성된 경우 무시 (upsert + ignoreDuplicates)
-    await supabase
-      .from('user_item_book_completions')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .upsert({ user_id: user.id, item_book_id: itemBookId } as any, {
-        onConflict: 'user_id,item_book_id',
-        ignoreDuplicates: true,
-      })
+    const completionsTable = supabase.from('user_item_book_completions')
+    // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 user_item_book_completions 스키마와 일치
+    await completionsTable.upsert({ user_id: user.id, item_book_id: itemBookId }, {
+      onConflict: 'user_id,item_book_id',
+      ignoreDuplicates: true,
+    })
   }
 
   return NextResponse.json({ slot }, { status: 201 })
@@ -136,14 +135,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!slot_id) return NextResponse.json({ error: 'slot_id가 필요합니다.' }, { status: 400 })
 
   // slot 조회
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: slotRaw, error: slotErr } = await (supabase as any)
+  const { data: slot, error: slotErr } = await supabase
     .from('user_item_book_slots')
     .select('id, inventory_item_id, user_id')
     .eq('id', slot_id)
     .eq('user_id', user.id)
     .single()
-  const slot = slotRaw as { id: string; inventory_item_id: string; user_id: string } | null
 
   if (slotErr || !slot) return NextResponse.json({ error: '슬롯을 찾을 수 없습니다.' }, { status: 404 })
 
@@ -163,11 +160,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   // inventory_items.slotted_in = NULL
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
-    .from('inventory_items')
-    .update({ slotted_in: null })
-    .eq('id', slot.inventory_item_id)
+  const invItemsTable = supabase.from('inventory_items')
+  // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemRow와 일치
+  await invItemsTable.update({ slotted_in: null }).eq('id', slot.inventory_item_id)
 
   // slot row 삭제
   const { error: delErr } = await supabase.from('user_item_book_slots').delete().eq('id', slot_id)

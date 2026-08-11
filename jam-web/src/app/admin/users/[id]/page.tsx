@@ -46,8 +46,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
   if (!userRaw) notFound()
   const user = userRaw as UserRow
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: badgeHistoryRaw } = await (service as any)
+    const { data: badgeHistoryRaw } = await service
     .from('user_activity_badges')
     .select('id, earned_at, triggered_by, triggered_by_activity_name, condition_snapshot, badges(id, name, rarity)')
     .eq('user_id', id)

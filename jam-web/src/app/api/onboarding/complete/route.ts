@@ -45,11 +45,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'DUPLICATE' }, { status: 409 })
   }
 
-  // username 저장 (Supabase 타입 추론 한계로 as any 사용)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (serviceClient.from('users') as any)
-    .update({ username })
-    .eq('id', user.id)
+  const usersTable = serviceClient.from('users')
+  // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
+  const { error } = await usersTable.update({ username }).eq('id', user.id)
 
   if (error) {
     console.error('[onboarding/complete] update 오류:', error.message)

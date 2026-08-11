@@ -12,15 +12,14 @@ export default async function AbusingPage() {
 
   const supabase = createServiceClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [policy, { data: bans }, { data: poiBlocks }] = await Promise.all([
+    const [policy, { data: bans }, { data: poiBlocks }] = await Promise.all([
     getAbusingPolicy(),
-    (supabase as any)
+    supabase
       .from('user_shadow_bans')
       .select('*, user:user_id(id, email, username)')
       .order('created_at', { ascending: false })
       .limit(200),
-    (supabase as any)
+    supabase
       .from('poi_blocks')
       .select('*, user:user_id(id, email, username), poi:poi_id(id, name)')
       .gt('blocked_until', new Date().toISOString())

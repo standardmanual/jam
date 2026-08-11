@@ -65,21 +65,18 @@ export async function GET(request: NextRequest) {
 
     // 3. DB upsert (service client — RLS 우회)
     const supabase = createServiceClient()
-    const { error: upsertError } = await supabase
-      .from('strava_connections')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .upsert(
-        {
-          user_id: userId,
-          strava_athlete_id: tokenData.athlete.id,
-          access_token: encryptedAccessToken,
-          refresh_token: encryptedRefreshToken,
-          token_expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
-          backfill_completed: true, // 소급 없음 — 연동 즉시 완료로 표시
-          last_synced_at: null,
-        } as any,
-        { onConflict: 'strava_athlete_id' }
-      )
+    const stravaConnectionPayload = {
+      user_id: userId,
+      strava_athlete_id: tokenData.athlete.id,
+      access_token: encryptedAccessToken,
+      refresh_token: encryptedRefreshToken,
+      token_expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
+      backfill_completed: true, // 소급 없음 — 연동 즉시 완료로 표시
+      last_synced_at: null,
+    }
+    const connectionsTable = supabase.from('strava_connections')
+    // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 StravaConnectionRow와 일치
+    const { error: upsertError } = await connectionsTable.upsert(stravaConnectionPayload, { onConflict: 'strava_athlete_id' })
 
     if (upsertError) {
       console.error('[JAM! Strava] strava_connections upsert 오류:', upsertError)

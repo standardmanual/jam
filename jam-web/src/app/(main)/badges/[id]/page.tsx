@@ -192,8 +192,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   let subjectId = user.id
   let subjectUsername: string | null = null
   if (u) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: subjectRaw } = await (service as any)
+        const { data: subjectRaw } = await service
       .from('users')
       .select('id, username')
       .eq('username', u.toLowerCase())
@@ -207,15 +206,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   const [{ data: badge }, { data: earnedRow }, { data: ownedBadgesRaw }] = await Promise.all([
     supabase.from('badges').select('*').eq('id', id).single(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any)
+        service
       .from('user_activity_badges')
       .select('*, poi:triggered_by_poi_id(id, name, latitude, longitude)')
       .eq('user_id', subjectId)
       .eq('badge_id', id)
       .maybeSingle(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).from('user_activity_badges').select('badge_id').eq('user_id', subjectId),
+        service.from('user_activity_badges').select('badge_id').eq('user_id', subjectId),
   ])
 
   if (!badge) notFound()
@@ -226,8 +223,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // Phase 16: poi 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
   let poiEarns: (UserPoiBadgeEarnRow & { poi: PoiRow | null })[] = []
   if (badgeRow.type === 'poi') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: poiEarnsRaw } = await (service as any)
+        const { data: poiEarnsRaw } = await service
       .from('user_poi_badge_earns')
       .select('*, poi:poi_id(id, name, latitude, longitude)')
       .eq('user_id', subjectId)
@@ -250,15 +246,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   let itemInventory: ItemInventoryInfo | null = null
   let itemBook: ItemBookRow | null = null
   if (badgeRow.type === 'item') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: subjectInventory } = await (service as any)
+        const { data: subjectInventory } = await service
       .from('inventory')
       .select('id')
       .eq('user_id', subjectId)
       .maybeSingle()
     if (subjectInventory) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: itemRaw } = await (service as any)
+            const { data: itemRaw } = await service
         .from('inventory_items')
         .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by')
         .eq('inventory_id', (subjectInventory as { id: string }).id)

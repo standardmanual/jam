@@ -11,8 +11,7 @@ export async function GET(
   const { username } = await params
   const service = createServiceClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: targetRaw } = await (service as any)
+  const { data: targetRaw } = await service
     .from('users')
     .select('id')
     .eq('username', username.toLowerCase())
@@ -21,8 +20,7 @@ export async function GET(
   if (!targetRaw) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
   const userId = (targetRaw as { id: string }).id
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: inventoryRaw } = await (service as any)
+  const { data: inventoryRaw } = await service
     .from('inventory')
     .select('id')
     .eq('user_id', userId)
@@ -31,8 +29,7 @@ export async function GET(
 
   if (!inventory) return NextResponse.json({ books: [] })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: invItemsRaw } = await (service as any)
+  const { data: invItemsRaw } = await service
     .from('inventory_items')
     .select('badge_id, badge:badges(item_book_id, type)')
     .eq('inventory_id', inventory.id)
@@ -58,18 +55,14 @@ export async function GET(
     { data: slotsRaw },
     { data: completionsRaw },
   ] = await Promise.all([
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any)
+      service
       .from('item_books')
       .select('id, name, image_url, faction:factions(name)')
       .in('id', bookIds)
       .eq('is_active', true),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item'),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).from('user_item_book_slots').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).from('user_item_book_completions').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
+      service.from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item'),
+      service.from('user_item_book_slots').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
+      service.from('user_item_book_completions').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
   ])
 
   const totalByBook = new Map<string, number>()

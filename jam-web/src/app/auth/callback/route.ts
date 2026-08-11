@@ -45,8 +45,7 @@ export async function GET(request: NextRequest) {
     !existingProfile?.avatar_url ||
     existingProfile.avatar_url.includes('googleusercontent')
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const upsertData: any = {
+  const upsertData: { id: string; email: string; avatar_url?: string } = {
     id: user.id,
     email: user.email!,
   }
@@ -54,10 +53,9 @@ export async function GET(request: NextRequest) {
     upsertData.avatar_url = googleAvatarUrl
   }
 
-  await serviceClient
-    .from('users')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .upsert(upsertData as any, { onConflict: 'id' })
+  const usersTable = serviceClient.from('users')
+  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
+  await usersTable.upsert(upsertData, { onConflict: 'id' })
 
   // username 존재 여부 확인 → 온보딩 필요 여부 판단
   const needsOnboarding = !existingProfile?.username

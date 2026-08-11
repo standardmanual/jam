@@ -27,8 +27,8 @@ export async function POST(_req: Request, { params }: Params) {
 
   const { error } = await service
     .from('user_mission_participations')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .insert({ user_id: user.id, mission_id: missionId } as any)
+    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserMissionParticipationRow와 일치
+    .insert({ user_id: user.id, mission_id: missionId })
 
   if (error) {
     if (error.code === '23505') {
