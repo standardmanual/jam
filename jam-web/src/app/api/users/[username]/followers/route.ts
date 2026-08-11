@@ -21,7 +21,7 @@ export async function GET(
 
   // username → userId
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: targetRaw } = await (service as any)
+  const { data: targetRaw } = await service
     .from('users')
     .select('id')
     .eq('username', username.toLowerCase())

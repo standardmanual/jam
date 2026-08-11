@@ -15,8 +15,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   }
 
   const service = createServiceClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profileRaw } = await (service as any)
+    const { data: profileRaw } = await service
     .from('users')
     .select('username')
     .eq('id', user.id)

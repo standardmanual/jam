@@ -62,10 +62,9 @@ export async function POST(request: NextRequest) {
   } = serviceClient.storage.from('avatars').getPublicUrl(path)
 
   // users 테이블 avatar_url 업데이트
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: updateError } = await (serviceClient.from('users') as any)
-    .update({ avatar_url: publicUrl })
-    .eq('id', user.id)
+  const usersTable = serviceClient.from('users')
+  // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
+  const { error: updateError } = await usersTable.update({ avatar_url: publicUrl }).eq('id', user.id)
 
   if (updateError) {
     console.error('[profile/avatar] DB 업데이트 오류:', updateError.message)
