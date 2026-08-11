@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -11,10 +12,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { name, latitude, longitude, radius_meters, category, linked_badge_id } = body
 
   const supabase = createServiceClient()
+  const updatePayload = {
+    name,
+    latitude,
+    longitude,
+    radius_meters: resolvePoiRadiusMeters(category, radius_meters),
+    category,
+    linked_badge_id,
+  }
   const { data, error } = await supabase
     .from('poi')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
-    .update({ name, latitude, longitude, radius_meters, category, linked_badge_id })
+    // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiRow와 일치
+    .update(updatePayload)
     .eq('id', id)
     .select()
     .single()
