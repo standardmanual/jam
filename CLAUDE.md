@@ -36,6 +36,28 @@
 ### 5. 글로벌 스킬과 프로젝트 스킬을 항상 동일하게 유지
 `~/.claude/skills/`(글로벌)와 `.claude/skills/`(프로젝트) 스킬 목록을 항상 동일하게 유지한다.
 - 새 스킬 설치 시 양쪽 모두 복사 후 commit + push
+- 예외: `.claude/agents/`의 JAM! 전용 서브에이전트(`jam-developer` 등)처럼 프로젝트 경로·티켓
+  체계에 종속적인 리소스는 글로벌 미러링 대상이 아니다.
+
+### 6. DB(SQL) 변경은 직접 실행하고 배포까지 확인할 것
+DB 스키마/데이터 변경이 필요하면 SQL을 사용자에게 대신 실행해달라고 요청하지 말고,
+`jam-web/.env.local`의 `SUPABASE_SERVICE_ROLE_KEY`로 직접 Supabase에 접속해 실행한다.
+배포(Vercel)도 `git push` 후 `vercel ls`/`vercel inspect <url>`로 최신 배포가 Ready 상태이고
+alias가 그 배포를 가리키는지 직접 확인한 뒤 보고한다 — "push했으니 알아서 배포됐겠지"라고
+가정하지 않는다.
+
+- **SQL 파일은 직접 실행하더라도 반드시 남긴다**: `jam-web/supabase/migrations/0XX_설명.sql`
+  (스키마 변경) 또는 `seed_*.sql`(1회성 데이터)로 저장해 git에 커밋 — "직접 실행"이
+  "파일 생략"을 의미하지 않는다.
+- **위험도 인식**: service_role 키는 RLS를 우회하는 전체 DB 권한이다. 진단/버그수정 범위를
+  벗어난 대량 삭제·프로덕션 데이터 대량 변경 전에는 반드시 사용자 확인을 받는다.
+- **샌드박스 TLS 이슈**: Node.js 기본 CA 스토어로 HTTPS 요청 시
+  `unable to get local issuer certificate` 에러가 날 수 있다 (curl은 정상). 해결:
+  `security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain > /tmp/system-ca.pem`
+  후 `NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem`로 실행 (`vercel` CLI도 동일).
+- **예외**: `/jam-work` 워크플로우의 `jam-developer` 서브에이전트에는 이 권한을 위임하지
+  않는다. SQL 파일 작성까지만 하고, 실행은 사용자 승인 후 오케스트레이터(메인 세션)가
+  이 규칙에 따라 처리한다.
 
 ---
 
@@ -61,6 +83,21 @@
 
 > `Service Plan/Specs/` 루트의 `UX_WRITING_GUIDELINE.md`처럼 4개 카테고리에 속하지
 > 않는 횡단 참조 문서는 루트에 유지한다.
+
+### 새 세션 시작 시 읽기 순서
+
+새 세션이 시작되거나 서비스 전체를 파악해야 할 때, 코드부터 탐색하지 않는다.
+전체 코드 탐색은 토큰 낭비가 크고, 아래 문서에 서비스 로직·정책·데이터 모델이
+이미 정리되어 있다. 다음 순서로 읽어 컨텍스트를 확보한 뒤에만 코드(`jam-web/src/`)로 넘어간다:
+
+1. `History/Migration/Ticket/`의 관련 최신 티켓 (유사 작업 여부·의사결정 확인)
+2. `Specs/PRD/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, 주제별 하위 폴더 `PRD/{주제}/`)
+3. `Specs/Content/` (배지·아이템·세계관·POI 관련 시)
+4. `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직 관련 시)
+5. 위 문서에서 찾지 못한 경우에만 코드 탐색
+
+과거 `SERVICE_OPERATIONS_*.md`는 폐기되어 `History/Operations/`에 아카이브로만 존재한다 —
+더 이상 "최신 문서"로 참조하지 않는다.
 
 ---
 
