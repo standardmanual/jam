@@ -272,6 +272,12 @@ tryItemDrop(userId, activity):
   7. 인벤토리 삽입(슬롯 체크) + state 갱신 + 피드 이벤트
 ```
 
+> **불변식(2026-08-11, 티켓 20260811_009)**: `tryItemDrop`은 호출마다 `user_drop_state`를
+> 새로 읽고 다시 저장하므로, 한 번의 싱크 배치에 활동 여러 건을 넘길 때는 반드시
+> **시간순(오래된 → 최신)** 으로 처리해야 한다. 역순(최신 → 오래된)으로 처리하면 배치의
+> 마지막 호출(=배치 내 가장 오래된 활동) 결과가 최종 저장돼 `last_activity_at`/
+> `daily_drop_date`/`last_drop_world_id`가 실제 최신 활동을 반영하지 못한다.
+
 ### 3.8 유지되는 v1 로직
 
 활성 아이템북 필터(`item_books.is_active`), 유효기간(valid_from/until), `isDroppableForActivity`(monthly_km 등 누적조건 배지 드랍 제외 가드), 인벤토리 슬롯, 섀도우밴, 피드 이벤트.
