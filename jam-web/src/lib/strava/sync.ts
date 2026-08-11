@@ -266,10 +266,19 @@ export async function processFetchedActivities(
   // 활동별 아이템 드랍 시도
   //   - 첫 싱크(백필): "10초 첫 보상" — 최신 활동 1건만 드랍
   //   - 일반 싱크: 최신 활동 최대 3건까지 드랍
+  //   - 드랍 대상 "선정"은 최신순(내림차순)으로 상위 N건을 고르되, 실제 tryItemDrop
+  //     "처리 순서"는 그 N건을 다시 오래된 순(오름차순)으로 뒤집어서 진행한다.
+  //     tryItemDrop은 매 호출마다 user_drop_state를 읽고 갱신해 마지막 호출의 결과가
+  //     최종 저장되는데, 내림차순 그대로 처리하면 배치 중 가장 오래된 활동이 맨 나중에
+  //     처리되어 last_activity_at/daily_drop_date/last_drop_faction_id가 실제 최신
+  //     활동이 아니라 배치 내 가장 오래된 활동 기준으로 저장되는 순서 역전 버그가 있었다
+  //     (2026-08-11 점검 티켓 20260811_009). 다음 싱크의 복귀(comeback) 판정·일일 카운터가
+  //     실제보다 더 오래 쉰 것처럼 잘못 계산될 수 있었다.
   const dropTargets = [...activitiesFiltered]
     .filter((a) => a.jamActivityType)
     .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
     .slice(0, isFirstSync ? 1 : MAX_DROP_ACTIVITIES_PER_SYNC)
+    .reverse()
   for (const activity of dropTargets) {
     await tryItemDrop(userId, activity, activitiesFiltered)
   }
