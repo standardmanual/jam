@@ -601,6 +601,16 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                   {e.triggered_by_activity_name && (
                     <span className="text-[11px] text-text-inverse/50 truncate">{e.triggered_by_activity_name}</span>
                   )}
+                  {e.triggered_by_strava_id && (
+                    <a
+                      href={`https://www.strava.com/activities/${e.triggered_by_strava_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="self-start text-[11px] text-text-inverse/70 underline underline-offset-2"
+                    >
+                      {d.badges.viewOnStrava} ↗
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
