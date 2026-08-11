@@ -734,16 +734,10 @@ export async function evaluateBadgesDetailed(
 
       // 잼 포인트 지급 — 배지에 point_reward가 붙어 있으면 발급 직후 1회 지급.
       // (배지 발급 성공을 전제로 지급. 0이면 awardPoints가 스킵.)
+      // 실패 시 로깅은 awardPoints() 내부에서 일괄 처리한다(호출부에서 중복 기록 안 함).
       const pointReward = toIssue.point_reward ?? 0
       if (pointReward > 0) {
-        const pointResult = await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: toIssue.id })
-        if (!pointResult) {
-          await logEngineDecision('badge', 'point_award_failed', userId, {
-            badgeId: toIssue.id,
-            badgeName: toIssue.name,
-            pointReward,
-          })
-        }
+        await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: toIssue.id })
       }
 
       if (!silent) {

@@ -149,6 +149,30 @@ interface DropStructure {
   inventory: Pick<InventoryRow, 'id' | 'used_slots' | 'max_slots'> | null
 }
 
+/**
+ * PostgREST 기본 max-rows(보통 1,000행) 제한을 넘는 테이블을 안전하게 전체 조회.
+ * `.select('*')` 등 단일 호출은 결과가 조용히 잘려나가도 에러가 안 나므로
+ * (2026-07-31 POI/산 배지 대량 누락 인시던트의 원인) range 기반으로 끝까지 순회한다.
+ * 아이템배지(type='item')는 이 글 작성 시점 기준 활성 아이템북 안에서만도 900개에
+ * 근접해 있어(전체는 3,600개), 컨텐츠가 조금만 늘어도 이 문제가 재발할 수 있었다.
+ */
+async function fetchAllRows<T>(
+  queryFn: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  pageSize = 1000
+): Promise<{ data: T[]; error: { message: string } | null }> {
+  const all: T[] = []
+  let from = 0
+  for (;;) {
+    const { data, error } = await queryFn(from, from + pageSize - 1)
+    if (error) return { data: all, error }
+    const rows = data ?? []
+    all.push(...rows)
+    if (rows.length < pageSize) break
+    from += pageSize
+  }
+  return { data: all, error: null }
+}
+
 async function fetchDropStructure(
   userId: string,
   lastFactionId: string | null,
@@ -172,12 +196,15 @@ async function fetchDropStructure(
   const activeBookIds = [...factionOfBook.keys()]
 
   const [{ data: badgesRaw, error: badgesError }, adjacencyRes, ownedRes] = await Promise.all([
-    supabase
-      .from('badges')
-      .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json, item_book_id, point_reward')
-      .eq('type', 'item')
-      .is('deleted_at', null)
-      .in('item_book_id', activeBookIds),
+    fetchAllRows<DropBadge>((from, to) =>
+      supabase
+        .from('badges')
+        .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json, item_book_id, point_reward')
+        .eq('type', 'item')
+        .is('deleted_at', null)
+        .in('item_book_id', activeBookIds)
+        .range(from, to)
+    ),
     lastFactionId
       ? createServiceClient().from('faction_adjacency').select('adjacent_faction_id').eq('faction_id', lastFactionId)
       : Promise.resolve({ data: [] }),
@@ -446,16 +473,10 @@ async function insertDrop(
 
   // 잼 포인트 지급 — 아이템배지에 point_reward가 붙어 있으면 획득 직후 1회 지급.
   // (아이템배지도 badges 테이블이므로 point_reward를 가질 수 있음. 0이면 스킵.)
+  // 실패 시 로깅은 awardPoints() 내부에서 일괄 처리한다(호출부에서 중복 기록 안 함).
   const pointReward = picked.point_reward ?? 0
   if (pointReward > 0) {
-    const pointResult = await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: picked.id })
-    if (!pointResult) {
-      await logEngineDecision('drop', 'point_award_failed', userId, {
-        badgeId: picked.id,
-        badgeName: picked.name,
-        pointReward,
-      })
-    }
+    await awardPoints(userId, pointReward, 'badge_point_reward', { sourceBadgeId: picked.id })
   }
 
   await recordFeedEvent(userId, 'item_dropped', {
@@ -495,8 +516,16 @@ export async function tryItemDrop(
   const [policy, state] = await Promise.all([getDropPolicy(), getDropState(userId)])
   const structure = await fetchDropStructure(userId, state.last_drop_faction_id, activities)
   if (!structure || !structure.inventory) {
-    if (!structure) console.info('[tryItemDrop] 드랍 구조 없음 (활성 북/배지 없음)')
-    else console.error(`[tryItemDrop] 인벤토리 없음 (userId: ${userId})`)
+    if (!structure) {
+      console.info('[tryItemDrop] 드랍 구조 없음 (활성 북/배지 없음)')
+      await logEngineDecision('drop', 'drop_attempt', userId, { outcome: 'no_drop_structure' })
+    } else {
+      console.error(`[tryItemDrop] 인벤토리 없음 (userId: ${userId})`)
+      // 2026-08-11 인시던트(20260811_001) 재발 감지용 — 이 분기가 조용히 지나가면서
+      // 원인(handle_new_user 트리거 드리프트)을 몇 주간 못 찾았음. 인벤토리는
+      // 정상 가입이면 항상 존재해야 하므로, 이 로그가 쌓이면 즉시 이상 신호다.
+      await logEngineDecision('drop', 'drop_attempt', userId, { outcome: 'no_inventory' })
+    }
     return
   }
   const rand = Math.random

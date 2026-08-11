@@ -14,7 +14,7 @@ export type EngineDecisionEvent =
   | 'faction_constant_missing'
 
 export async function logEngineDecision(
-  engine: 'badge' | 'drop',
+  engine: 'badge' | 'drop' | 'points',
   event: EngineDecisionEvent,
   userId: string | null,
   payload: Record<string, unknown>

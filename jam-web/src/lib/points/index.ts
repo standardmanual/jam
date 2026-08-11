@@ -6,6 +6,7 @@
  * 직접 INSERT/UPDATE를 흩어놓지 않는다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { logEngineDecision } from '@/lib/engine-log'
 import type { PointReason, PointTransactionRow } from '@/types/database'
 
 export interface AwardPointsOptions {
@@ -21,8 +22,10 @@ export interface AwardPointsOptions {
  * - amount === 0 이면 아무것도 하지 않고 null 반환(빈 원장 행 방지).
  *   배지/미션의 point_reward/reward_points가 0인 경우가 이에 해당.
  * - amount > 0 적립, amount < 0 차감.
- * - 실패 시 예외를 던지지 않고 null 반환 + 에러 로그(호출부가 배지 발급 등
- *   본 흐름을 계속 이어갈 수 있도록 — 지급 실패는 수동 재처리 대상).
+ * - 실패 시 예외를 던지지 않고 null 반환 + 에러 로그 + engine_decision_log 기록
+ *   (호출부가 배지 발급 등 본 흐름을 계속 이어갈 수 있도록 — 지급 실패는 수동
+ *   재처리 대상). 호출부 6곳(배지·드랍·미션·조합·어드민)이 각자 실패를 감지해
+ *   기록할 필요 없이 이 함수 한 곳에서 전부 커버한다.
  */
 export async function awardPoints(
   userId: string,
@@ -54,6 +57,13 @@ export async function awardPoints(
       `[points] awardPoints 실패 — userId: ${userId}, amount: ${amount}, reason: ${reason}:`,
       error
     )
+    await logEngineDecision('points', 'point_award_failed', userId, {
+      amount,
+      reason,
+      sourceBadgeId: options.sourceBadgeId ?? null,
+      sourceMissionId: options.sourceMissionId ?? null,
+      dbError: error.message ?? String(error),
+    })
     return null
   }
 

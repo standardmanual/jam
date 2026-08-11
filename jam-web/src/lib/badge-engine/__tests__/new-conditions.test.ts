@@ -61,8 +61,8 @@ describe('monthly_km (단독, month 없음)', () => {
   it('여러 달에 걸쳐 있으면 각 달을 독립 집계 — 합산으로 조건 충족 불가', () => {
     const cond: BadgeCondition = { activity_type: 'walking', monthly_km: 50 }
     const acts = [
-      makeActivity({ distanceKm: 30, startDate: '2026-06-15T09:00:00Z' }),
-      makeActivity({ distanceKm: 30, startDate: '2026-07-15T09:00:00Z' }),
+      makeActivity({ distanceKm: 30, startDate: '2026-06-15T09:00:00Z', startDateLocal: '2026-06-15T09:00:00' }),
+      makeActivity({ distanceKm: 30, startDate: '2026-07-15T09:00:00Z', startDateLocal: '2026-07-15T09:00:00' }),
     ]
     // 6월 30km, 7월 30km — 어느 달도 50 미달 → fail
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(false)
@@ -142,14 +142,14 @@ describe('weekend_duration_hours', () => {
   it('주말 활동의 이동 시간이 조건 이상이면 pass', () => {
     const cond: BadgeCondition = { weekend_duration_hours: 0.5 }
     // 2026-07-18 = 토요일, 40분(0.66시간)
-    const acts = [makeActivity({ startDate: '2026-07-18T09:00:00Z', movingTimeSec: 2400 })]
+    const acts = [makeActivity({ startDate: '2026-07-18T09:00:00Z', startDateLocal: '2026-07-18T09:00:00', movingTimeSec: 2400 })]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
 
   it('평일 활동만 있으면 fail (주말 활동 없음)', () => {
     const cond: BadgeCondition = { weekend_duration_hours: 0.5 }
     // 2026-07-20 = 월요일
-    const acts = [makeActivity({ startDate: '2026-07-20T09:00:00Z', movingTimeSec: 7200 })]
+    const acts = [makeActivity({ startDate: '2026-07-20T09:00:00Z', startDateLocal: '2026-07-20T09:00:00', movingTimeSec: 7200 })]
     const result = evaluateConditionDetailed(cond, acts)
     expect(result.pass).toBe(false)
     expect(result.reason).toContain('주말 활동 시간 부족')
@@ -158,7 +158,7 @@ describe('weekend_duration_hours', () => {
   it('주말 활동이 있으나 시간이 부족하면 fail', () => {
     const cond: BadgeCondition = { weekend_duration_hours: 2 }
     // 2026-07-19 = 일요일, 30분
-    const acts = [makeActivity({ startDate: '2026-07-19T09:00:00Z', movingTimeSec: 1800 })]
+    const acts = [makeActivity({ startDate: '2026-07-19T09:00:00Z', startDateLocal: '2026-07-19T09:00:00', movingTimeSec: 1800 })]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(false)
   })
 })
@@ -170,9 +170,9 @@ describe('season + season_count', () => {
   it('해당 계절 활동 횟수가 조건 이상이면 pass', () => {
     const cond: BadgeCondition = { season: 'summer', season_count: 3 }
     const acts = [
-      makeActivity({ startDate: '2026-06-10T09:00:00Z' }),
-      makeActivity({ startDate: '2026-07-10T09:00:00Z' }),
-      makeActivity({ startDate: '2026-08-10T09:00:00Z' }),
+      makeActivity({ startDate: '2026-06-10T09:00:00Z', startDateLocal: '2026-06-10T09:00:00' }),
+      makeActivity({ startDate: '2026-07-10T09:00:00Z', startDateLocal: '2026-07-10T09:00:00' }),
+      makeActivity({ startDate: '2026-08-10T09:00:00Z', startDateLocal: '2026-08-10T09:00:00' }),
     ]
     expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
   })
@@ -180,9 +180,9 @@ describe('season + season_count', () => {
   it('다른 계절 활동은 카운트에서 제외 → fail', () => {
     const cond: BadgeCondition = { season: 'summer', season_count: 3 }
     const acts = [
-      makeActivity({ startDate: '2026-07-10T09:00:00Z' }), // 여름
-      makeActivity({ startDate: '2026-03-10T09:00:00Z' }), // 봄
-      makeActivity({ startDate: '2026-11-10T09:00:00Z' }), // 가을
+      makeActivity({ startDate: '2026-07-10T09:00:00Z', startDateLocal: '2026-07-10T09:00:00' }), // 여름
+      makeActivity({ startDate: '2026-03-10T09:00:00Z', startDateLocal: '2026-03-10T09:00:00' }), // 봄
+      makeActivity({ startDate: '2026-11-10T09:00:00Z', startDateLocal: '2026-11-10T09:00:00' }), // 가을
     ]
     const result = evaluateConditionDetailed(cond, acts)
     expect(result.pass).toBe(false)
