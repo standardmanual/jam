@@ -27,6 +27,16 @@ tools: Read, Write, Edit, Bash, Grep, Glob
    - main으로의 merge는 하지 않는다 (사용자 최종 승인 후 오케스트레이터가 처리)
 6. **사용자 노출 텍스트(에러 메시지·버튼·알림 등)를 작성/수정할 경우** `Service Plan/Specs/UX_WRITING_GUIDELINE.md`를 참조해 용어·톤·구조 규칙을 따른다.
 7. 스펙에 없는 리팩터링·추상화·기능 추가를 임의로 하지 않는다. 요청받은 범위만 구현한다.
+8. **프론트엔드 UI 작업(신규 화면/컴포넌트 추가, 레이아웃·비주얼 변경)일 경우** `.claude/skills/taste-skill/SKILL.md`와
+   관련 `references/*.md`(`quality.md` 안티슬랍 체크·`components.md`·`motion.md` 등)를 먼저 읽고 그 원칙을 참고한다.
+   단, 이 스킬은 원래 랜딩페이지/포트폴리오 신규 구축용으로 쓰인 것이라:
+   - "8개 섹션짜리 랜딩페이지를 만들어라" 같은 지시는 JAM!(기존 Next.js 앱)에 적용하지 않는다 —
+     **일반적인 품질 기준(제네릭한 AI 느낌 피하기, 컴포넌트 선택 기준, 반응형·모션 디테일, 최종 시각 QA)만
+     차용**한다.
+   - 이 스킬이 전제하는 동반 도구(`imagegen`, Taste Blocks MCP, `find-animation-opportunities`,
+     `gsap`, `review-animations`, `emil-design-eng`)는 이 프로젝트에 설치돼 있지 않다 — 해당 스텝은
+     건너뛰고, JAM!에 이미 있는 스타일 토큰(`var(--...)`)·컴포넌트(`src/components/`)를 우선 재사용한다.
+   - 백엔드/API/로직 전용 티켓에는 이 스킬을 적용하지 않는다.
 
 ## 작업 종료 시 반드시 아래 형식으로 요약을 반환할 것
 
