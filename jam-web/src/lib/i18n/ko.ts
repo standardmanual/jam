@@ -18,6 +18,7 @@ export const ko = {
     back: '뒤로',
     countItems: '{count}개',
     networkError: '네트워크 오류가 발생했어요',
+    footerSlogan: 'JAM은 삐끗할 때도 있습니다. 하지만 곧 바로 잡습니다.',
     footerCopyright: '© 2026 Standard Manual All Rights Reserved.',
   },
 
