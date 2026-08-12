@@ -88,5 +88,25 @@ Service Plan/History/Migration/Ticket/20260812_003_Infra_taste-skill-설치-및-
   후속 티켓에서 재검토 가능.
 
 ### 잔여 이슈
-- 실사용 검증 전 (다음 프론트엔드 관련 `/jam-work` 티켓에서 확인)
+- ~~실사용 검증 전 (다음 프론트엔드 관련 `/jam-work` 티켓에서 확인)~~ → 설치 직후 제거로 해당 없음
 - 저장소의 다른 변형 스킬들은 필요 시 별도 요청으로 추가
+
+---
+## 제거 기록 (2026-08-12)
+
+설치 직후, 실사용 검증 전에 사용자가 제거를 요청함 (구체적 사유는 제공되지 않음).
+
+### 제거 내용
+- `.claude/skills/taste-skill/`(프로젝트), `~/.claude/skills/taste-skill/`(글로벌) 전체 삭제
+- `jam-developer.md`의 규칙 8번(taste-skill 연동 조건부 규칙) 삭제 — 나머지 규칙 번호는
+  원래대로 1~7 유지(8번을 마지막에 추가했던 것이므로 재번호 매김 불필요)
+
+### 변경된 파일
+```
+.claude/skills/taste-skill/ (삭제, 프로젝트+글로벌)
+.claude/agents/jam-developer.md (규칙 8번 삭제)
+Service Plan/History/Migration/Ticket/20260812_003_..._taste-skill-설치-및-jam-developer-프론트엔드-연동.md (이 섹션 추가)
+```
+
+### 커밋
+(git commit 직후 갱신)
