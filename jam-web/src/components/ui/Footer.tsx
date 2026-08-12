@@ -11,10 +11,13 @@ export default function Footer() {
   if (pathname === '/') return null
 
   return (
-    <footer className="flex items-center justify-center gap-1.5 py-[var(--spacing-24)] px-[var(--spacing-16)]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/jam-logo-white.png" alt="JAM!" className="h-3 w-auto" />
-      <span className="text-[11px] leading-none text-text">{d.common.footerCopyright}</span>
+    <footer className="flex flex-col items-center justify-center gap-1.5 py-[var(--spacing-24)] px-[var(--spacing-16)]">
+      <span className="text-[11px] leading-none text-text text-center">{d.common.footerSlogan}</span>
+      <div className="flex items-center justify-center gap-1.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/jam-logo-white.png" alt="JAM!" className="h-3 w-auto" />
+        <span className="text-[11px] leading-none text-text">{d.common.footerCopyright}</span>
+      </div>
     </footer>
   )
 }
