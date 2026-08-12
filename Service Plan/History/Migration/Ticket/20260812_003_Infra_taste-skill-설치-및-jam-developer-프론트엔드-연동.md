@@ -109,4 +109,4 @@ Service Plan/History/Migration/Ticket/20260812_003_..._taste-skill-설치-및-ja
 ```
 
 ### 커밋
-(git commit 직후 갱신)
+`e3db4d9`
