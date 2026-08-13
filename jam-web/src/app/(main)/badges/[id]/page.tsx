@@ -77,7 +77,10 @@ function timeSlotLabel(start: string): string {
   return '심야'
 }
 
-function formatConditionText(condition: BadgeCondition | null): string {
+function formatConditionText(condition: BadgeCondition | null, badgeName: string): string {
+  if (condition?.mission_reward) {
+    return `'${badgeName}' 미션을 완료하면 받을 수 있는 배지예요.`
+  }
   if (!condition || Object.keys(condition).length === 0) {
     return '관리자가 직접 발급하는 배지예요.'
   }
@@ -571,15 +574,15 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </Card>
         )}
 
-        {/* 획득 조건 — POI 배지는 하단 안전 안내 문구로 대체하므로 표시하지 않는다 */}
-        {badgeRow.type !== 'poi' && (
-          <Card>
-            <h2 className="text-[10px] uppercase text-text-inverse/40 mb-2">{d.badges.conditionTitle}</h2>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
-              {formatConditionText(badgeRow.condition_json)}
-            </p>
-          </Card>
-        )}
+        {/* 획득 조건 — item 배지는 상단 early return에서 별도 UI로 처리, 이 시점 type은 activity | poi */}
+        <Card>
+          <h2 className="text-[10px] uppercase text-text-inverse/40 mb-2">{d.badges.conditionTitle}</h2>
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
+            {badgeRow.type === 'poi'
+              ? '이 장소를 경유하는 활동이 기록되면 획득돼요.'
+              : formatConditionText(badgeRow.condition_json, badgeRow.name)}
+          </p>
+        </Card>
 
         {/* 획득 이력 (poi 타입 — 반복 획득). 방문 1건 = 액티비티 배지 "획득 정보"와 동일한 디자인의 독립 카드 */}
         {badgeRow.type === 'poi' && poiEarns.length > 0 && (
