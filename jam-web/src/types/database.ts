@@ -594,6 +594,8 @@ export interface BadgeCondition {
    * GPS 경로 매칭(matchPoisForActivity) 파이프라인에서만 발급 처리됨.
    */
   poi_id?: string
+  /** 미션 완료 시에만 지급되는 배지 — 일반 배지 엔진 동기화 대상 아님 */
+  mission_reward?: boolean
 }
 
 // =========================================
