@@ -24,8 +24,14 @@ const ENGINE_DELEGATED_MISSION_TYPES: ReadonlySet<MissionType> = new Set([
 
 /**
  * "상시 미션" 판정 — ends_at이 null이면 시작 시각만 지났으면 항상 활성 (종료 없음).
- * checkMissions의 활성 미션 조회 SQL(`.or('ends_at.is.null,ends_at.gte.now')`)과 동일한
- * 규칙을 순수 함수로 노출 — 어드민/유저 화면의 활성 판정과도 같은 의미로 맞춘다 (티켓 20260813_001).
+ * checkMissions의 활성 미션 조회 SQL(`activeMissionsQueryFilter` 참고)과 동일한 규칙을
+ * 순수 함수로 노출 — 어드민/유저 화면의 활성 판정과도 같은 의미로 맞춘다 (티켓 20260813_001).
+ *
+ * DB 쿼리는 PostgREST `.or()` 문자열이라 이 함수 자체를 쿼리로 실행할 수는 없다(Supabase는
+ * JS 함수를 SQL로 변환하지 못함). 대신 `activeMissionsQueryFilter()`가 동일한 `starts_at <= now`
+ * / `ends_at IS NULL OR ends_at >= now` 경계값을 문자열로 생성해 checkMissions에서 그대로
+ * 쓰도록 해, 두 판정이 같은 기준에서 파생되도록 묶는다(아래 checker-logic.test.ts의
+ * "쿼리 필터 ↔ isMissionActive 일치" 케이스로 회귀 방지).
  */
 export function isMissionActive(
   mission: Pick<MissionRow, 'starts_at' | 'ends_at'>,
@@ -34,6 +40,19 @@ export function isMissionActive(
   if (new Date(mission.starts_at) > now) return false
   if (mission.ends_at === null) return true
   return new Date(mission.ends_at) >= now
+}
+
+/**
+ * checkMissions가 활성 미션을 조회할 때 쓰는 PostgREST 필터를 isMissionActive와 같은 기준
+ * (starts_at <= now, ends_at IS NULL OR ends_at >= now)으로 생성한다. 쿼리 문자열 자체를
+ * isMissionActive 안에서 파생시킬 순 없으므로(순수 함수 vs SQL), 기준값(now)과 경계 조건을
+ * 이 함수 하나로 모아 두 곳(쿼리·순수 판정)이 서로 다른 기준으로 갈라지지 않게 한다.
+ */
+export function activeMissionsQueryFilter(now: string): { startsAtLte: string; endsAtOrExpr: string } {
+  return {
+    startsAtLte: now,
+    endsAtOrExpr: `ends_at.is.null,ends_at.gte.${now}`,
+  }
 }
 
 export interface MissionCheckResult {
@@ -47,12 +66,14 @@ export async function checkMissions(
   const supabase = createServiceClient()
   const now = new Date().toISOString()
 
-  // 1. 현재 활성 미션 조회 — ends_at이 NULL이면 "상시 미션"(종료일 없음)이라 항상 포함
+  // 1. 현재 활성 미션 조회 — ends_at이 NULL이면 "상시 미션"(종료일 없음)이라 항상 포함.
+  //    isMissionActive와 동일한 기준을 activeMissionsQueryFilter에서 함께 생성해 사용한다.
+  const activeFilter = activeMissionsQueryFilter(now)
   const { data: missionsRaw } = await supabase
     .from('missions')
     .select('*')
-    .lte('starts_at', now)
-    .or(`ends_at.is.null,ends_at.gte.${now}`)
+    .lte('starts_at', activeFilter.startsAtLte)
+    .or(activeFilter.endsAtOrExpr)
 
   const missions = (missionsRaw ?? []) as MissionRow[]
   if (missions.length === 0) return { completedMissionIds: [] }
@@ -192,6 +213,13 @@ export function evaluateMission(
   const target = getTarget(mission.mission_type, condition)
   // streak_days/duration_minutes/elevation_gain_m — 배지엔진 evaluateConditionDetailed를 그대로
   // 재사용해 판정한다 (걷기 축1 게이트 등 배지 조건 평가와 100% 동일한 판정 보장).
+  // 주의: evaluateConditionDetailed 자체는 "참가 시점 이후"를 모른다 — 넘겨받은 activities
+  // 배열만으로 판정하는 순수 함수라 참가 이전 활동이 섞여 들어오면 그대로 반영된다. "참가 시점
+  // 이후만" 보장하는 건 이 함수의 호출자(checkMissions)가 joinedAt으로 activities를 미리
+  // 필터링해서 넘기기 때문 — 실제로 ENGINE_DELEGATED_MISSION_TYPES는 checkMissions에서
+  // fullHistory.filter((a) => a.startDate >= joinedAt)를 거친 배열만 받는다(distance/
+  // activity_count와 동일 취급). evaluateMission을 다른 곳에서 재사용할 땐 activities를
+  // 반드시 참가 시점 이후로 걸러서 넘겨야 한다.
   const achieved = ENGINE_DELEGATED_MISSION_TYPES.has(mission.mission_type)
     ? evaluateConditionDetailed(condition as BadgeCondition, activities).pass
     : progressValue >= target
