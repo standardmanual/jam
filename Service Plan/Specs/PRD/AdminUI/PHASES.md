@@ -54,7 +54,7 @@
   - name (텍스트)
   - description (텍스트에어리어)
   - type (드롭다운: activity / item)
-  - rarity (드롭다운: common / rare / legendary / mythic)
+  - rarity (드롭다운: common / rare / legend / mythic)
   - image_url (URL 입력)
   - activity_types (멀티 체크박스)
   - patch_available (토글)

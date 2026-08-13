@@ -19,11 +19,11 @@ interface SectionDef {
 const SECTIONS: SectionDef[] = [
   {
     title: '레어리티 분포',
-    description: 'common + rare + legendary 합은 반드시 1이어야 합니다. mythic은 앰비언트 드랍 대상에서 제외됩니다 (신화 등급은 액티비티 성취·떠돌이 아이템 전용).',
+    description: 'common + rare + legend 합은 반드시 1이어야 합니다. mythic은 앰비언트 드랍 대상에서 제외됩니다 (신화 등급은 액티비티 성취·떠돌이 아이템 전용).',
     fields: [
       { key: 'rarity_common', label: 'Common 확률', step: '0.01' },
       { key: 'rarity_rare', label: 'Rare 확률', step: '0.01' },
-      { key: 'rarity_legendary', label: 'Legendary 확률', step: '0.01' },
+      { key: 'rarity_legend', label: 'Legend 확률', step: '0.01' },
     ],
   },
   {
@@ -59,7 +59,7 @@ export default function AmbientDropPolicyForm({ initial }: { initial: AmbientDro
   const raritySum =
     parseFloat(values.rarity_common || '0') +
     parseFloat(values.rarity_rare || '0') +
-    parseFloat(values.rarity_legendary || '0')
+    parseFloat(values.rarity_legend || '0')
 
   const handleSave = async () => {
     setSaving(true)

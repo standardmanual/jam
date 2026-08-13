@@ -8,14 +8,14 @@ import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
 const RARITY_BADGE_COLOR: Record<string, string> = {
   common: 'bg-gray-200 text-gray-800',
   rare: 'bg-blue-200 text-blue-800',
-  legendary: 'bg-violet-200 text-violet-800',
+  legend: 'bg-violet-200 text-violet-800',
   mythic: 'bg-amber-200 text-amber-800',
 }
 
 const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: 'Common',
   rare: 'Rare',
-  legendary: 'Legend',
+  legend: 'Legend',
   mythic: 'Mythic',
 }
 

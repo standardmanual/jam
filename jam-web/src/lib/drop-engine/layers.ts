@@ -24,11 +24,11 @@ export interface RarityContext {
  * rarity 추첨. 우선순위: 복귀/pity(rare+ 확정) → 일일 하향 → 주간 첫 활동(rare+ 2배) → 기본 분포.
  */
 export function rollRarityV2(policy: DropPolicy, ctx: RarityContext, rand: Rand): BadgeRarity {
-  const { rarity_common: c, rarity_rare: r, rarity_legendary: l, rarity_mythic: m } = policy
+  const { rarity_common: c, rarity_rare: r, rarity_legend: l, rarity_mythic: m } = policy
 
   // rare+ 확정: 복귀 또는 pity — common 제외 후 r/l/m 비율 유지
   if (ctx.isComeback || ctx.commonStreak >= policy.rare_pity_threshold) {
-    return pickFromWeights([['rare', r], ['legendary', l], ['mythic', m]], rand)
+    return pickFromWeights([['rare', r], ['legend', l], ['mythic', m]], rand)
   }
 
   // 일일 하향: 당일 N번째 활동부터 common 확률 상향
@@ -37,7 +37,7 @@ export function rollRarityV2(policy: DropPolicy, ctx: RarityContext, rand: Rand)
     const rest = 1 - cc
     const rlm = r + l + m
     return pickFromWeights(
-      [['common', cc], ['rare', rest * (r / rlm)], ['legendary', rest * (l / rlm)], ['mythic', rest * (m / rlm)]],
+      [['common', cc], ['rare', rest * (r / rlm)], ['legend', rest * (l / rlm)], ['mythic', rest * (m / rlm)]],
       rand
     )
   }
@@ -50,14 +50,14 @@ export function rollRarityV2(policy: DropPolicy, ctx: RarityContext, rand: Rand)
       [
         ['common', 1 - rarePlus],
         ['rare', rarePlus * (r / rlm)],
-        ['legendary', rarePlus * (l / rlm)],
+        ['legend', rarePlus * (l / rlm)],
         ['mythic', rarePlus * (m / rlm)],
       ],
       rand
     )
   }
 
-  return pickFromWeights([['common', c], ['rare', r], ['legendary', l], ['mythic', m]], rand)
+  return pickFromWeights([['common', c], ['rare', r], ['legend', l], ['mythic', m]], rand)
 }
 
 /** 고강도 활동 판정 — 보너스 드랍 확률 상향 대상 */
@@ -112,7 +112,7 @@ export interface FactionPickInput {
   lastDropFactionId: string | null
   /** lastDropFactionId의 인접 세계관 id 목록 */
   adjacentFactionIds: string[]
-  /** 미스터리 헌터 faction id — legendary+ 전용 */
+  /** 미스터리 헌터 faction id — legend+ 전용 */
   mysteryFactionId: string | null
   rarity: BadgeRarity
   /** 맥락 오버라이드 후보 (없으면 빈 배열) — 발동 여부는 호출부에서 rand로 결정 후 전달 */
@@ -121,20 +121,20 @@ export interface FactionPickInput {
 
 /**
  * 세계관 선택.
- * 1) 미스터리 스파이스: legendary+ 드랍이면 mystery_spice_rate 확률로 미스터리 헌터
+ * 1) 미스터리 스파이스: legend+ 드랍이면 mystery_spice_rate 확률로 미스터리 헌터
  * 2) 맥락 오버라이드: contextFactionIds 있으면 그중 랜덤 (호출부에서 발동률 판정 완료 상태)
  * 3) 모멘텀 50 / 인접 25 / 탐험 15(+오버라이드 미발동분은 모멘텀 흡수)
- * 미스터리 헌터는 rarity < legendary이면 모든 버킷에서 제외.
+ * 미스터리 헌터는 rarity < legend이면 모든 버킷에서 제외.
  */
 export function pickFaction(policy: DropPolicy, input: FactionPickInput, rand: Rand): string | null {
-  const isHighRarity = input.rarity === 'legendary' || input.rarity === 'mythic'
+  const isHighRarity = input.rarity === 'legend' || input.rarity === 'mythic'
   const mystery = input.mysteryFactionId
 
   // 후보에서 미스터리 분리
   const pool = input.candidateFactionIds.filter((id) => id !== mystery)
   const mysteryAvailable = mystery !== null && input.candidateFactionIds.includes(mystery)
 
-  // 1) 미스터리 스파이스 (legendary+ 전용)
+  // 1) 미스터리 스파이스 (legend+ 전용)
   if (isHighRarity && mysteryAvailable && rand() < policy.mystery_spice_rate) {
     return mystery
   }
@@ -220,7 +220,7 @@ export function pickFromWeights<T extends string>(entries: Array<[T, number]>, r
 
 /** rarity 폴백 순서: 추첨 rarity → 인접 낮은 쪽 → 인접 높은 쪽 */
 export function rarityFallbackOrder(rarity: BadgeRarity): BadgeRarity[] {
-  const order: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
+  const order: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
   const idx = order.indexOf(rarity)
   const result: BadgeRarity[] = [rarity]
   for (let step = 1; step < order.length; step++) {

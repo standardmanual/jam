@@ -10,11 +10,11 @@ import type { NormalizedActivity } from '@/types/strava'
 const RARITY_THRESHOLDS = [
   { rarity: 'common' as const, threshold: 0.40 },
   { rarity: 'rare' as const, threshold: 0.65 },
-  { rarity: 'legendary' as const, threshold: 0.75 },
+  { rarity: 'legend' as const, threshold: 0.75 },
   { rarity: 'mythic' as const, threshold: 0.80 },
 ]
 
-function rollRarity(): 'common' | 'rare' | 'legendary' | 'mythic' | null {
+function rollRarity(): 'common' | 'rare' | 'legend' | 'mythic' | null {
   const roll = Math.random()
   for (const { rarity, threshold } of RARITY_THRESHOLDS) {
     if (roll < threshold) return rarity

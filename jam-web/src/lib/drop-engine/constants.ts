@@ -3,7 +3,7 @@
  * 이름이 아닌 id로 식별한다 (이름 변경에 취약하지 않게).
  */
 
-/** 미스터리 헌터 — legendary+ 전용 전역 스파이스 */
+/** 미스터리 헌터 — legend+ 전용 전역 스파이스 */
 export const MYSTERY_FACTION_ID = '24d7af8e-a4ef-8798-a7f1-f1f2d6c9d582'
 
 /** 작심삼일 클럽 — 신규 유저 온보딩 + 복귀 서사 */

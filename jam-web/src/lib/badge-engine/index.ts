@@ -15,7 +15,7 @@ import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
 import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, DayOfWeek, UserActivityBadgeRow } from '@/types/database'
 
-const RARITY_TIER: Record<string, number> = { common: 1, rare: 2, legendary: 3, mythic: 4 }
+const RARITY_TIER: Record<string, number> = { common: 1, rare: 2, legend: 3, mythic: 4 }
 
 // ── 축1 게이트 (걷기 전용 "진짜 걷기" 판정) ────────────────────────────────
 // 걷기(activity_type='walking') 활동이 이 네 값을 모두 통과해야 어떤 걷기 배지

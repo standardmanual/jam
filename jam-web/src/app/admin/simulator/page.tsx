@@ -124,12 +124,12 @@ function formatDuration(minutes: number): string {
 const rarityColors: Record<string, string> = {
   common: 'text-[#374151]',
   rare: 'text-blue-600',
-  legendary: 'text-violet-600',
+  legend: 'text-violet-600',
   mythic: 'text-amber-600',
 }
 
 const RARITY_LABEL: Record<string, string> = {
-  common: 'Common', rare: 'Rare', legendary: 'Legend', mythic: 'Mythic',
+  common: 'Common', rare: 'Rare', legend: 'Legend', mythic: 'Mythic',
 }
 
 export default function SimulatorPage() {
