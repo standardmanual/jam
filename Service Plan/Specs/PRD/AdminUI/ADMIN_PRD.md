@@ -77,7 +77,7 @@
 | name | 텍스트 | O |
 | description | 텍스트 에어리어 | O |
 | type | 드롭다운 (activity / item) | O |
-| rarity | 드롭다운 (common / rare / legendary / mythic) | O |
+| rarity | 드롭다운 (common / rare / legend / mythic) | O |
 | image_url | URL 입력 | O |
 | activity_types | 복수 체크박스 (cycling / running / hiking / walking) | O |
 | patch_available | 토글 | O |
@@ -168,7 +168,7 @@ GPX 파일:  hangang_ride.gpx
 
 ■ 배지 발급 (3개)
   ✅ 한강 라이더 (rare) — 조건: 거리 30km 이상
-  ✅ 스피드 킹 (legendary) — 조건: 평균 속도 25km/h 이상
+  ✅ 스피드 킹 (legend) — 조건: 평균 속도 25km/h 이상
   ✅ 30일 연속 라이더 (mythic) — 조건: 연속 30일 (기존 활동 포함)
 
 ■ POI 매칭 (경로 내 통과 POI)

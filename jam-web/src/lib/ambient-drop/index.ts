@@ -13,13 +13,13 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { AmbientDropPolicy } from './policy'
 import type { BadgeRarity } from '@/types/database'
 
-type EligibleBadge = { id: string; rarity: 'common' | 'rare' | 'legendary' }
+type EligibleBadge = { id: string; rarity: 'common' | 'rare' | 'legend' }
 
-function pickRarity(policy: AmbientDropPolicy): 'common' | 'rare' | 'legendary' {
+function pickRarity(policy: AmbientDropPolicy): 'common' | 'rare' | 'legend' {
   const roll = Math.random()
   if (roll < policy.rarity_common) return 'common'
   if (roll < policy.rarity_common + policy.rarity_rare) return 'rare'
-  return 'legendary'
+  return 'legend'
 }
 
 function pickRandom<T>(arr: T[]): T | null {
@@ -79,12 +79,12 @@ export async function replenishAmbientDrops(policy: AmbientDropPolicy): Promise<
     .select('id, rarity, valid_from, valid_until')
     .eq('type', 'item')
     .is('deleted_at', null)
-    .in('rarity', ['common', 'rare', 'legendary'])
+    .in('rarity', ['common', 'rare', 'legend'])
 
-  const badgesByRarity: Record<'common' | 'rare' | 'legendary', EligibleBadge[]> = {
+  const badgesByRarity: Record<'common' | 'rare' | 'legend', EligibleBadge[]> = {
     common: [],
     rare: [],
-    legendary: [],
+    legend: [],
   }
   for (const b of (badgeRows ?? []) as {
     id: string
@@ -94,7 +94,7 @@ export async function replenishAmbientDrops(policy: AmbientDropPolicy): Promise<
   }[]) {
     if (b.valid_from && b.valid_from > now) continue
     if (b.valid_until && b.valid_until < now) continue
-    if (b.rarity === 'common' || b.rarity === 'rare' || b.rarity === 'legendary') {
+    if (b.rarity === 'common' || b.rarity === 'rare' || b.rarity === 'legend') {
       badgesByRarity[b.rarity].push({ id: b.id, rarity: b.rarity })
     }
   }

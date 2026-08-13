@@ -36,7 +36,7 @@ interface InventoryGridProps {
  */
 const rarityAccent: Record<string, string> = {
   rare: 'shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
-  legendary: 'shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
+  legend: 'shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
   mythic: 'shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
 }
 

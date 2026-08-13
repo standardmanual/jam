@@ -17,7 +17,7 @@ interface ItemBookFormProps {
 }
 
 const RARITY_LABEL: Record<string, string> = {
-  common: 'Common', rare: 'Rare', legendary: 'Legend', mythic: 'Mythic',
+  common: 'Common', rare: 'Rare', legend: 'Legend', mythic: 'Mythic',
 }
 
 export default function ItemBookForm({

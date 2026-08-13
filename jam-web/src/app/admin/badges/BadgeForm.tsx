@@ -17,7 +17,7 @@ function parsePaceToSec(input: string): number | null {
 
 const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'trail_running', 'hiking', 'walking']
 const BADGE_TYPES: BadgeType[] = ['activity', 'item', 'poi']
-const RARITIES: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
+const RARITIES: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
 
 /** drop-engine의 CUMULATIVE_CONDITION_FIELDS와 동일 — 아이템 배지엔 이 필드들을 설정할 수 없다
  *  (설정하면 hasCumulativeCondition()이 항상 true가 되어 영원히 드랍 후보에서 제외됨) */

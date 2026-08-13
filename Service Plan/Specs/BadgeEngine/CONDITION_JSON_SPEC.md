@@ -77,7 +77,7 @@
 
 | 필드 | 타입 | 평가 방식 |
 |------|------|-----------|
-| `prerequisite_badge_names` | `string[]` | **OR 매칭** — 유저가 나열된 배지명 중 하나 이상 보유 시 통과. Rare/Legendary/Mythic 전용 (Common은 불필요) |
+| `prerequisite_badge_names` | `string[]` | **OR 매칭** — 유저가 나열된 배지명 중 하나 이상 보유 시 통과. Rare/Legend/Mythic 전용 (Common은 불필요) |
 
 ### 2.9 POI 필드 (badge-engine 외 처리)
 

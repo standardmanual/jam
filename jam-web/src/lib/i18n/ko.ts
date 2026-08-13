@@ -96,7 +96,7 @@ export const ko = {
     // 희귀도 라벨 (색상 매핑은 상태 팔레트 — Phase 2에서 DB 이관)
     rarityCommon: 'Common',
     rarityRare: 'Rare',
-    rarityLegendary: 'Legend',
+    rarityLegend: 'Legend',
     rarityMythic: 'Mythic',
 
     // 카드 보조 문구

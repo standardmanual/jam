@@ -28,7 +28,7 @@ interface BadgeDetailSheetProps {
   onCancel: () => void
 }
 
-const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
+const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
 
 // 기존 /badges/[id] 페이지의 상세 레이아웃을 오버레이(시트) 형태로 재사용.
 // 페이지 이동이 아니라 /drops 위에 겹쳐 뜨므로 지도 상태가 보존된다.
