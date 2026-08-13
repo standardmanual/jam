@@ -24,9 +24,16 @@ interface AchievementEntry {
   achievedAt: string | null
 }
 
+interface IndividualStatus {
+  progressValue: number
+  achieved: boolean
+  achievedAt: string | null
+}
+
 type StatusResponse =
   | { type: 'ranking'; entries: RankingEntry[]; me: RankingEntry | null; totalParticipants: number }
   | { type: 'achievement'; entries: AchievementEntry[]; me: AchievementEntry | null; totalParticipants: number }
+  | { type: 'individual'; me: IndividualStatus }
 
 interface Props {
   missionId: string
@@ -84,8 +91,10 @@ export default function MissionStatusClient({ missionId, missionTitle, displayTy
         <p className="text-[10px] uppercase text-text/50 mb-1">{d.missions.statusEyebrow}</p>
         <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-1">{missionTitle}</h1>
         <p className="text-[11px] text-text/50 mb-[var(--spacing-24)]">
-          {displayType === 'achievement' ? d.missions.statusAchievementLabel : d.missions.statusRankingLabel}
-          {data ? ` · ${t(d.missions.statusParticipants, { count: data.totalParticipants })}` : ''}
+          {displayType === 'individual'
+            ? d.missions.statusIndividualLabel
+            : displayType === 'achievement' ? d.missions.statusAchievementLabel : d.missions.statusRankingLabel}
+          {data && data.type !== 'individual' ? ` · ${t(d.missions.statusParticipants, { count: data.totalParticipants })}` : ''}
         </p>
 
         {loading && <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.missions.statusLoading}</p>}
@@ -123,6 +132,26 @@ export default function MissionStatusClient({ missionId, missionTitle, displayTy
               <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.missions.statusNoParticipants}</p>
             )}
           </div>
+        )}
+
+        {/* 개인형 — 다른 참가자 없이 본인 진행상황/달성여부만 표시 */}
+        {data?.type === 'individual' && (
+          <Card>
+            <div className="flex items-center justify-between">
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
+                {d.missions.myProgressTitle}
+              </span>
+              {data.me.achieved ? (
+                <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
+                  {d.missions.achieved}
+                </span>
+              ) : (
+                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70 shrink-0">
+                  {data.me.progressValue.toFixed(data.me.progressValue % 1 === 0 ? 0 : 1)}
+                </span>
+              )}
+            </div>
+          </Card>
         )}
       </div>
     </div>

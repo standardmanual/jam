@@ -790,7 +790,8 @@ function getMondayKey(date: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
-function calcMaxStreak(activities: NormalizedActivity[]): number {
+/** 활동 목록에서 가장 긴 "연속 일수"를 계산. 미션 엔진(streak_days 타입)에서도 재사용. */
+export function calcMaxStreak(activities: NormalizedActivity[]): number {
   if (activities.length === 0) return 0
   const dates = activities.map((a) => (a.startDateLocal ?? a.startDate).slice(0, 10)).sort()
   const uniqueDates = [...new Set(dates)]

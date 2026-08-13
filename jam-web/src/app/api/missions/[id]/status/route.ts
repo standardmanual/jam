@@ -22,6 +22,12 @@ interface AchievementEntry {
   achievedAt: string | null
 }
 
+interface IndividualStatus {
+  progressValue: number
+  achieved: boolean
+  achievedAt: string | null
+}
+
 // GET /api/missions/[id]/status — 미션 상황(랭킹형/달성형). 참가자 전용(미참가 403).
 export async function GET(_req: Request, { params }: Params) {
   const { id: missionId } = await params
@@ -50,6 +56,19 @@ export async function GET(_req: Request, { params }: Params) {
 
   if (!myParticipation) {
     return NextResponse.json({ error: '참가한 유저만 미션 상황을 볼 수 있어요.' }, { status: 403 })
+  }
+
+  // 개인형 — 티켓 20260813_001: 다른 참가자 조회 없이 본인 진행상황/달성여부만 반환
+  if (missionRaw.status_display_type === 'individual') {
+    const [{ data: myParticipationFull }, { data: myCompletion }] = await Promise.all([
+      service.from('user_mission_participations').select('progress_value').eq('mission_id', missionId).eq('user_id', user.id).maybeSingle(),
+      service.from('user_mission_completions').select('completed_at').eq('mission_id', missionId).eq('user_id', user.id).maybeSingle(),
+    ])
+    const progressValue = (myParticipationFull as { progress_value: number } | null)?.progress_value ?? 0
+    const achievedAt = (myCompletion as { completed_at: string } | null)?.completed_at ?? null
+
+    const individual: IndividualStatus = { progressValue, achieved: achievedAt !== null, achievedAt }
+    return NextResponse.json({ type: 'individual', me: individual })
   }
 
   // 전체 참가자 + 완료자 조회

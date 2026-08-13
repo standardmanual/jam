@@ -36,12 +36,19 @@ function missionGoalText(type: string, condition: MissionCondition): { label: st
       return { label: d.missions.goalPoiVisit, unit: '곳', target: 1 }
     case 'item_collect':
       return { label: d.missions.goalItemCollect, unit: '개', target: 1 }
+    case 'streak_days':
+      return { label: d.missions.goalStreakDays, unit: '일', target: condition.streak_days ?? 0 }
+    case 'duration_minutes':
+      return { label: d.missions.goalDurationMinutes, unit: '분', target: condition.duration_minutes ?? 0 }
+    case 'elevation_gain_m':
+      return { label: d.missions.goalElevationGainM, unit: 'm', target: condition.elevation_gain_m ?? 0 }
     default:
       return { label: d.missions.goalDefault, unit: '', target: 0 }
   }
 }
 
-function timeLeft(endsAt: string): string {
+function timeLeft(endsAt: string | null): string {
+  if (endsAt === null) return d.missions.tagPermanent
   const diff = new Date(endsAt).getTime() - Date.now()
   if (diff <= 0) return d.missions.tagEnded
   const h = Math.floor(diff / 3_600_000)
@@ -68,7 +75,8 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
   const condition = mission.condition_json as MissionCondition
   const goal = missionGoalText(mission.mission_type, condition)
   const progressPct = goal.target > 0 ? Math.min(100, (progressValue / goal.target) * 100) : 0
-  const isActive = new Date(mission.starts_at) <= new Date() && new Date(mission.ends_at) > new Date()
+  // ends_at이 null이면 상시 미션 — 시작만 지났으면 항상 진행중
+  const isActive = new Date(mission.starts_at) <= new Date() && (mission.ends_at === null || new Date(mission.ends_at) > new Date())
   // 달성형(poi_visit/item_collect) — 진행 바 대신 달성/미달성 배지로 표시
   const isAchievementType = mission.mission_type === 'poi_visit' || mission.mission_type === 'item_collect'
   const achieved = isCompleted || progressValue >= 1
