@@ -4,3 +4,7 @@
 -- 데이터 UPDATE는 불필요하다.
 
 ALTER TYPE badge_rarity RENAME VALUE 'legendary' TO 'legend';
+
+-- 실행 후 검증 쿼리 (아래를 별도로 실행해 enum 값이 'legend'로 변경됐는지 확인)
+-- SELECT enum_range(NULL::badge_rarity);
+-- 기대 결과: {common,rare,legend,mythic}

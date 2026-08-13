@@ -63,8 +63,9 @@ closed:
 
 ### 주의사항
 
-- `database.generated.ts`는 Supabase 타입 자동생성 파일이므로, SQL 마이그레이션 적용 후 `supabase gen types` 재실행 또는 수동 패치
+- `database.generated.ts`는 Supabase 타입 자동생성 파일이므로, SQL 마이그레이션 적용 후 `supabase gen types` 재실행 필요. 재실행 시 수동 패치 내용과 일치하는지 확인한다
 - 과거 티켓 문서(`Ticket/` 폴더)는 역사적 기록이므로 변경하지 않는다
+- 서비스플랜 v3.0~v3.2도 'Legendary' 표기가 잔존하나, **의도적으로 미변경** — 과거 버전 파일이므로 역사적 기록으로 보존. `grep`으로 전수 검색 시 발견되더라도 수정 불필요
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
