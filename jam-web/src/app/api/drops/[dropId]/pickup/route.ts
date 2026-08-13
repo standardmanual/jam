@@ -74,8 +74,12 @@ export async function POST(
       gpsCheck.reason === 'daily_distance'
         ? `일일 누적 이동거리 초과 (${gpsCheck.dailyDistanceKm}km/일)`
         : `속도 ${gpsCheck.speedKmh}km/h`
+    // 소프트밴은 POI 블록과 동일한 기간(poi_block_hours)만 유지한다.
+    // 만료시간 없이 적용하면 오탐이어도 관리자가 수동 해제할 때까지 legendary/mythic
+    // 드랍률이 영구히 0으로 묶이는 문제가 있었다 (20260813_002 티켓).
+    const banExpiresAt = new Date(Date.now() + policy.poi_block_hours * 3_600_000)
     await Promise.all([
-      applyBan(user.id, 'soft', `GPS 조작 의심 (${detail})`, 'system'),
+      applyBan(user.id, 'soft', `GPS 조작 의심 (${detail})`, 'system', banExpiresAt),
       blockPoiForUser(user.id, drop.poi_id, policy, `gps_spoof_detected (${detail})`),
       logAbusingEvent(user.id, 'gps_spoof_detected', {
         poi_id: drop.poi_id,

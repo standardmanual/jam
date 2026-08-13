@@ -8,8 +8,15 @@
  * 이동거리가 몇 십m에 불과해도 시간이 1~2초면 계산상 속도가 수백km/h로
  * 튀어 오탐(false positive)이 난다. MIN_DISTANCE_KM 미만이면 애초에 "이동"으로
  * 보지 않고 검사를 건너뛴다 — 실제 텔레포트(수백m~수km 순간이동)만 잡아낸다.
+ *
+ * 최소 경과시간 가드: 앱 재실행 등으로 GPS를 다시 수신하는 순간, 실내·고층
+ * 밀집 지역에서는 좌표 자체가 150m 이상 튀는 경우가 흔하다. 이때 직전 기록과
+ * 현재 요청 사이 시간이 짧으면(수 초 이내) MIN_DISTANCE_KM 가드를 넘는 거리라도
+ * "거리/시간"이 비현실적인 속도로 계산돼 오탐이 난다. MIN_ELAPSED_SECONDS 미만
+ * 간격이면 GPS 재수신 노이즈로 보고 속도/누적거리 판정을 건너뛴다.
  */
 const MIN_DISTANCE_KM = 0.15 // 실내 GPS 오차 범위(수십~100m대) 감안한 최소 이동거리
+const MIN_ELAPSED_SECONDS = 5 // GPS 재수신 시 좌표 튐을 감안한 최소 경과시간
 import { createServiceClient } from '@/lib/supabase/server'
 import { haversineDistance } from '@/lib/poi/proximity'
 import type { AbusingPolicy } from './policy'
@@ -65,10 +72,11 @@ export async function checkAndUpdateLocation(
       lat,
       lng
     )
-    const elapsedHours = (now - new Date(userRow.last_location_at).getTime()) / 3_600_000
+    const elapsedMs = now - new Date(userRow.last_location_at).getTime()
+    const elapsedHours = elapsedMs / 3_600_000
     const speedKmh = elapsedHours > 0 ? distKm / elapsedHours : 0
 
-    if (distKm >= MIN_DISTANCE_KM) {
+    if (distKm >= MIN_DISTANCE_KM && elapsedMs >= MIN_ELAPSED_SECONDS * 1000) {
       if (speedKmh > policy.gps_max_speed_kmh) {
         result = { detected: true, speedKmh: Math.round(speedKmh), reason: 'speed' }
       }
