@@ -11,7 +11,7 @@
  * 실행: `npx tsx src/lib/missions/__tests__/checker-logic.test.ts` (테스트 러너 불필요 — node assert 사용)
  */
 import assert from 'node:assert'
-import { evaluateMission, isMissionActive, type OwnershipContext } from '../checker'
+import { evaluateMission, isMissionActive, activeMissionsQueryFilter, type OwnershipContext } from '../checker'
 import type { MissionRow, MissionCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 
@@ -152,6 +152,45 @@ const cases: Array<[string, () => void]> = [
   ['isMissionActive: ends_at이 과거면 비활성(일반 미션과 동일)', () => {
     const now = new Date('2026-08-13T00:00:00Z')
     assert.strictEqual(isMissionActive({ starts_at: '2026-01-01T00:00:00Z', ends_at: '2026-01-31T00:00:00Z' }, now), false)
+  }],
+
+  // ── checkMissions 쿼리 필터 ↔ isMissionActive 기준 일치 (티켓 20260813_001 후속) ──
+  // activeMissionsQueryFilter가 만드는 PostgREST 필터(starts_at <= now, ends_at IS NULL OR
+  // ends_at >= now)를 그대로 흉내 낸 술어와 isMissionActive의 결과가 대표 케이스 전부에서
+  // 일치하는지 검증한다 — 둘 중 하나만 기준이 바뀌면 이 테스트가 깨진다.
+  ['activeMissionsQueryFilter ↔ isMissionActive: 대표 케이스 전부 동일한 활성 판정', () => {
+    const now = new Date('2026-08-13T00:00:00Z')
+    const nowIso = now.toISOString()
+    const filter = activeMissionsQueryFilter(nowIso)
+    assert.strictEqual(filter.startsAtLte, nowIso)
+    assert.strictEqual(filter.endsAtOrExpr, `ends_at.is.null,ends_at.gte.${nowIso}`)
+
+    // PostgREST `.lte('starts_at', X).or('ends_at.is.null,ends_at.gte.X')`와 동일한 의미로
+    // filter 문자열을 해석하는 술어 — 실제 쿼리를 대체하진 않지만 문자열 파싱으로 필터의
+    // 경계 조건(<=, IS NULL, >=)이 isMissionActive와 같은 기준인지 대조한다.
+    function matchesQueryFilter(mission: { starts_at: string; ends_at: string | null }): boolean {
+      const startsOk = new Date(mission.starts_at) <= now
+      const endsOk = filter.endsAtOrExpr === `ends_at.is.null,ends_at.gte.${nowIso}`
+        ? mission.ends_at === null || new Date(mission.ends_at) >= now
+        : false
+      return startsOk && endsOk
+    }
+
+    const rows: { starts_at: string; ends_at: string | null }[] = [
+      { starts_at: '2026-01-01T00:00:00Z', ends_at: null }, // 상시 미션
+      { starts_at: '2099-01-01T00:00:00Z', ends_at: null }, // 시작 전
+      { starts_at: '2026-01-01T00:00:00Z', ends_at: '2026-01-31T00:00:00Z' }, // 종료됨
+      { starts_at: '2026-01-01T00:00:00Z', ends_at: '2026-12-31T00:00:00Z' }, // 진행 중
+      { starts_at: '2026-01-01T00:00:00Z', ends_at: nowIso }, // 경계값(정확히 now)
+    ]
+
+    for (const row of rows) {
+      assert.strictEqual(
+        matchesQueryFilter(row),
+        isMissionActive(row, now),
+        `불일치: starts_at=${row.starts_at}, ends_at=${row.ends_at}`
+      )
+    }
   }],
 ]
 
