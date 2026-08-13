@@ -303,15 +303,24 @@ export interface UserCombineStateRow {
 // Phase 16: 다이나믹 미션
 // =========================================
 
-export type MissionType = 'distance' | 'poi_visit' | 'activity_count' | 'item_collect'
+export type MissionType =
+  | 'distance'
+  | 'poi_visit'
+  | 'activity_count'
+  | 'item_collect'
+  /** 티켓 20260813_001: 배지엔진 evaluateConditionDetailed 재사용 타입 — BadgeCondition과 동일 필드 어휘 */
+  | 'streak_days'
+  | 'duration_minutes'
+  | 'elevation_gain_m'
 export type MissionRewardType = 'badge' | 'points' | 'item_badge'
 /** Phase13: 미션 상황 표시 방식 — 랭킹형(등수) / 달성형(완료 여부) */
-export type MissionStatusDisplayType = 'ranking' | 'achievement'
+/** individual: 개인형 — 다른 참가자 조회 없이 본인 진행상황/달성여부만 반환 (티켓 20260813_001) */
+export type MissionStatusDisplayType = 'ranking' | 'achievement' | 'individual'
 
 export interface MissionCondition {
   /** distance 타입: 목표 거리 km */
   distance_km?: number
-  /** distance/activity_count 타입: 활동 종류 필터 */
+  /** distance/activity_count/streak_days/duration_minutes/elevation_gain_m 타입: 활동 종류 필터 */
   activity_type?: ActivityType
   /** poi_visit 타입: 목표 POI ID */
   poi_id?: string
@@ -319,6 +328,12 @@ export interface MissionCondition {
   count?: number
   /** item_collect 타입: 수집 목표 배지 ID */
   badge_id?: string
+  /** streak_days 타입: 목표 연속 활동 일수 — badge-engine BadgeCondition.streak_days 재사용 */
+  streak_days?: number
+  /** duration_minutes 타입: 단일 활동 최소 이동 시간(분) — badge-engine BadgeCondition.duration_minutes 재사용 */
+  duration_minutes?: number
+  /** elevation_gain_m 타입: 단일 활동 최소 고도 상승(m) — badge-engine BadgeCondition.elevation_gain_m 재사용 */
+  elevation_gain_m?: number
 }
 
 export interface MissionRow {
@@ -339,7 +354,8 @@ export interface MissionRow {
   /** Phase13: 상위 N명 노출 (null = 전체) */
   visible_rank_count: number | null
   starts_at: string
-  ends_at: string
+  /** NULL = 상시 미션(종료일 없음) — 티켓 20260813_001 */
+  ends_at: string | null
   max_completions: number | null
   created_at: string
 }
