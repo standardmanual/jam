@@ -34,7 +34,7 @@ describe('Layer 1 — rollRarityV2', () => {
   it('기본 분포: roll이 common 구간이면 common', () => {
     expect(rollRarityV2(P, baseCtx, seq(0.3))).toBe('common') // 0.3 < 0.6
     expect(rollRarityV2(P, baseCtx, seq(0.7))).toBe('rare') // 0.6~0.88
-    expect(rollRarityV2(P, baseCtx, seq(0.9))).toBe('legendary') // 0.88~0.97
+    expect(rollRarityV2(P, baseCtx, seq(0.9))).toBe('legend') // 0.88~0.97
     expect(rollRarityV2(P, baseCtx, seq(0.99))).toBe('mythic')
   })
 
@@ -126,9 +126,9 @@ describe('Layer 2 — pickFaction', () => {
     }
   })
 
-  it('legendary 드랍은 mystery_spice_rate(15%) 확률로 미스터리 헌터', () => {
-    expect(pickFaction(P, { ...base, rarity: 'legendary' }, seq(0.1))).toBe(MYSTERY)
-    expect(pickFaction(P, { ...base, rarity: 'legendary' }, seq(0.2, 0.3))).toBe('a') // 스파이스 미발동 → 모멘텀
+  it('legend 드랍은 mystery_spice_rate(15%) 확률로 미스터리 헌터', () => {
+    expect(pickFaction(P, { ...base, rarity: 'legend' }, seq(0.1))).toBe(MYSTERY)
+    expect(pickFaction(P, { ...base, rarity: 'legend' }, seq(0.2, 0.3))).toBe('a') // 스파이스 미발동 → 모멘텀
   })
 
   it('맥락 오버라이드 후보가 있으면 최우선', () => {
@@ -175,8 +175,8 @@ describe('Layer 3 — pickBook', () => {
 
 describe('rarityFallbackOrder', () => {
   it('추첨 rarity → 낮은 쪽 → 높은 쪽 순', () => {
-    expect(rarityFallbackOrder('rare')).toEqual(['rare', 'common', 'legendary', 'mythic'])
-    expect(rarityFallbackOrder('mythic')).toEqual(['mythic', 'legendary', 'rare', 'common'])
-    expect(rarityFallbackOrder('common')).toEqual(['common', 'rare', 'legendary', 'mythic'])
+    expect(rarityFallbackOrder('rare')).toEqual(['rare', 'common', 'legend', 'mythic'])
+    expect(rarityFallbackOrder('mythic')).toEqual(['mythic', 'legend', 'rare', 'common'])
+    expect(rarityFallbackOrder('common')).toEqual(['common', 'rare', 'legend', 'mythic'])
   })
 })

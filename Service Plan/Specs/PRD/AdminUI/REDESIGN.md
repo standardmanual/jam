@@ -255,7 +255,7 @@
 
 [배지 발급 (3개)]
 ✅ 한강 라이더 (rare)
-✅ 스피드 킹 (legendary)
+✅ 스피드 킹 (legend)
 ✅ 30일 연속 라이더 (mythic)
 
 [POI 매칭]
@@ -667,7 +667,7 @@ export default function AdminLayout({ children }) {
 |--------|-------|--------|
 | Common | Green-100 | Green-900 |
 | Rare | Blue-100 | Blue-900 |
-| Legendary | Purple-100 | Purple-900 |
+| Legend | Purple-100 | Purple-900 |
 | Mythic | Amber-100 | Amber-900 |
 
 ---

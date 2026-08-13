@@ -10,7 +10,7 @@ import { formatPaceSecPerKm } from '@/types/strava'
 const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: 'Common',
   rare: 'Rare',
-  legendary: 'Legend',
+  legend: 'Legend',
   mythic: 'Mythic',
 }
 

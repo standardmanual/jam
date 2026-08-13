@@ -14,7 +14,7 @@ const RARITY_OPTIONS = [
   { value: 'all', label: '전체 등급' },
   { value: 'common', label: 'Common' },
   { value: 'rare', label: 'Rare' },
-  { value: 'legendary', label: 'Legendary' },
+  { value: 'legend', label: 'Legend' },
   { value: 'mythic', label: 'Mythic' },
 ]
 

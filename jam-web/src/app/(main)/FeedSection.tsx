@@ -85,13 +85,13 @@ function eventLabel(item: ActivityFeedRow): string {
  */
 const RARITY_COLOR: Record<string, string> = {
   rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
-  legendary: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
+  legend: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
   mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
 }
 const RARITY_LABEL: Record<string, string> = {
   common: d.feed.rarityCommon,
   rare: d.feed.rarityRare,
-  legendary: d.feed.rarityLegendary,
+  legend: d.feed.rarityLegend,
   mythic: d.feed.rarityMythic,
 }
 

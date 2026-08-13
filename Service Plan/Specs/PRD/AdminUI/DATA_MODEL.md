@@ -138,7 +138,7 @@ type BadgeListItem = {
   id: string;
   name: string;
   type: 'activity' | 'item';
-  rarity: 'common' | 'rare' | 'legendary' | 'mythic';
+  rarity: 'common' | 'rare' | 'legend' | 'mythic';
   hasCondition: boolean;      // condition_json이 비어있지 않은지
   patchAvailable: boolean;    // patch_available
   imageUrl: string;           // 썸네일
@@ -148,7 +148,7 @@ type BadgeListItem = {
 
 **필터 기준:**
 - `type`: activity / item
-- `rarity`: common / rare / legendary / mythic
+- `rarity`: common / rare / legend / mythic
 - `searchTerm`: name 검색
 
 ### 3-2. 배지 상세 화면 (읽기 모드)
@@ -336,7 +336,7 @@ const BadgeSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
   type: z.enum(['activity', 'item']),
-  rarity: z.enum(['common', 'rare', 'legendary', 'mythic']),
+  rarity: z.enum(['common', 'rare', 'legend', 'mythic']),
   imageUrl: z.string().url(),
   activityTypes: z.array(z.string()).min(1),
   patchAvailable: z.boolean(),

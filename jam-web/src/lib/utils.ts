@@ -45,7 +45,7 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
 export const BADGE_RARITY_LABELS: Record<string, string> = {
   common: 'Common',
   rare: 'Rare',
-  legendary: 'Legend',
+  legend: 'Legend',
   mythic: 'Mythic',
 }
 
@@ -55,7 +55,7 @@ export const BADGE_RARITY_LABELS: Record<string, string> = {
 export const BADGE_RARITY_COLORS: Record<string, string> = {
   common: 'text-gray-400',
   rare: 'text-blue-400',
-  legendary: 'text-purple-400',
+  legend: 'text-purple-400',
   mythic: 'text-yellow-400',
 }
 

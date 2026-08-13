@@ -7,11 +7,11 @@ import { createServiceClient } from '@/lib/supabase/server'
 export interface AbusingPolicy {
   soft_common_rate: number
   soft_rare_rate: number
-  soft_legendary_rate: number
+  soft_legend_rate: number
   soft_mythic_rate: number
   hard_common_rate: number
   hard_rare_rate: number
-  hard_legendary_rate: number
+  hard_legend_rate: number
   hard_mythic_rate: number
   gps_max_speed_kmh: number
   poi_block_hours: number
@@ -22,11 +22,11 @@ export interface AbusingPolicy {
 const DEFAULT_POLICY: AbusingPolicy = {
   soft_common_rate: 1.0,
   soft_rare_rate: 1.0,
-  soft_legendary_rate: 0.0,
+  soft_legend_rate: 0.0,
   soft_mythic_rate: 0.0,
   hard_common_rate: 1.0,
   hard_rare_rate: 0.0,
-  hard_legendary_rate: 0.0,
+  hard_legend_rate: 0.0,
   hard_mythic_rate: 0.0,
   gps_max_speed_kmh: 300,
   poi_block_hours: 72,
