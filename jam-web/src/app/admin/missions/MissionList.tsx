@@ -16,10 +16,14 @@ interface Props {
   badges: BadgeOption[]
 }
 
-const missionTypes = ['distance', 'poi_visit', 'activity_count', 'item_collect'] as const
+const missionTypes = [
+  'distance', 'poi_visit', 'activity_count', 'item_collect',
+  'streak_days', 'duration_minutes', 'elevation_gain_m',
+] as const
 const statusDisplayTypes = [
   { value: 'ranking', label: '랭킹형 (등수/진행값)' },
   { value: 'achievement', label: '달성형 (완료 여부)' },
+  { value: 'individual', label: '개인형 (본인 진행상황만)' },
 ] as const
 
 const emptyForm = {
@@ -33,6 +37,7 @@ const emptyForm = {
   visible_rank_count: '' as string, // 빈값 = 전체 공개
   starts_at: '',
   ends_at: '',
+  is_permanent: false, // 상시 미션(종료일 없음)
   max_completions: '',
 }
 
@@ -40,6 +45,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [conditionError, setConditionError] = useState('')
   const [badgeQuery, setBadgeQuery] = useState('')
   const router = useRouter()
@@ -62,6 +68,42 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
     }))
   }
 
+  // datetime-local input은 `YYYY-MM-DDTHH:mm` 형식을 요구 — ISO 문자열에서 초/타임존 부분 제거
+  function toDatetimeLocalValue(iso: string): string {
+    const d = new Date(iso)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
+  function startEdit(m: MissionRow) {
+    setForm({
+      title: m.title,
+      description: m.description ?? '',
+      mission_type: m.mission_type,
+      condition_json: JSON.stringify(m.condition_json),
+      reward_badge_ids: m.reward_badge_ids ?? [],
+      reward_points: m.reward_points ?? 0,
+      status_display_type: m.status_display_type,
+      visible_rank_count: m.visible_rank_count != null ? String(m.visible_rank_count) : '',
+      starts_at: toDatetimeLocalValue(m.starts_at),
+      ends_at: m.ends_at ? toDatetimeLocalValue(m.ends_at) : '',
+      is_permanent: m.ends_at === null,
+      max_completions: m.max_completions != null ? String(m.max_completions) : '',
+    })
+    setEditingId(m.id)
+    setConditionError('')
+    setBadgeQuery('')
+    setShowForm(true)
+  }
+
+  function cancelForm() {
+    setForm(emptyForm)
+    setEditingId(null)
+    setBadgeQuery('')
+    setConditionError('')
+    setShowForm(false)
+  }
+
   async function handleSave() {
     try {
       JSON.parse(form.condition_json)
@@ -82,19 +124,18 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
       status_display_type: form.status_display_type,
       visible_rank_count: form.visible_rank_count ? Number(form.visible_rank_count) : null,
       starts_at: new Date(form.starts_at).toISOString(),
-      ends_at: new Date(form.ends_at).toISOString(),
+      // 상시 미션(종료일 없음) — ends_at null
+      ends_at: form.is_permanent ? null : new Date(form.ends_at).toISOString(),
       max_completions: form.max_completions ? Number(form.max_completions) : null,
     }
 
-    await fetch('/api/admin/missions', {
-      method: 'POST',
+    await fetch(editingId ? `/api/admin/missions/${editingId}` : '/api/admin/missions', {
+      method: editingId ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
     setSaving(false)
-    setForm(emptyForm)
-    setBadgeQuery('')
-    setShowForm(false)
+    cancelForm()
     router.refresh()
   }
 
@@ -109,7 +150,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
   return (
     <div className="space-y-6">
       <button
-        onClick={() => setShowForm((v) => !v)}
+        onClick={() => (showForm ? cancelForm() : setShowForm(true))}
         className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
       >
         {showForm ? '취소' : '+ 미션 생성'}
@@ -117,7 +158,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
 
       {showForm && (
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 space-y-4">
-          <h2 className="font-bold">새 미션</h2>
+          <h2 className="font-bold">{editingId ? '미션 수정' : '새 미션'}</h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -220,8 +261,14 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
             </div>
             <div>
               <label className="text-xs text-[#6b7280] mb-1 block">종료 일시</label>
-              <input type="datetime-local" value={form.ends_at} onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm" />
+              <input type="datetime-local" value={form.ends_at} disabled={form.is_permanent}
+                onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))}
+                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm disabled:bg-[#f3f4f6] disabled:text-[#898989]" />
+              <label className="flex items-center gap-1.5 mt-1.5 text-xs text-[#6b7280]">
+                <input type="checkbox" checked={form.is_permanent}
+                  onChange={(e) => setForm((f) => ({ ...f, is_permanent: e.target.checked }))} />
+                상시 미션 (종료일 없음)
+              </label>
             </div>
 
             <div>
@@ -256,8 +303,9 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
               <tr><td colSpan={6} className="px-5 py-10 text-center text-[#898989]">미션 없음</td></tr>
             )}
             {missions.map((m) => {
-              const isActive = new Date(m.starts_at) <= now && new Date(m.ends_at) >= now
-              const isEnded = new Date(m.ends_at) < now
+              // ends_at이 null이면 상시 미션 — 시작만 지났으면 항상 진행 중, 종료 없음
+              const isEnded = m.ends_at !== null && new Date(m.ends_at) < now
+              const isActive = new Date(m.starts_at) <= now && !isEnded
               const count = completionCounts.get(m.id) ?? 0
               return (
                 <tr key={m.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
@@ -265,7 +313,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
                   <td className="px-5 py-3 text-[#374151]">{m.mission_type}</td>
                   <td className="px-5 py-3 text-[#6b7280] text-xs">
                     {new Date(m.starts_at).toLocaleDateString('ko-KR')} ~<br />
-                    {new Date(m.ends_at).toLocaleDateString('ko-KR')}
+                    {m.ends_at ? new Date(m.ends_at).toLocaleDateString('ko-KR') : '상시'}
                   </td>
                   <td className="px-5 py-3 text-[#374151]">
                     {count}{m.max_completions ? `/${m.max_completions}` : ''}명
@@ -276,7 +324,10 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    <button onClick={() => handleDelete(m.id)} className="text-red-600 hover:text-red-700 text-xs">삭제</button>
+                    <div className="flex gap-2">
+                      <button onClick={() => startEdit(m)} className="text-[#111111] hover:opacity-70 text-xs">수정</button>
+                      <button onClick={() => handleDelete(m.id)} className="text-red-600 hover:text-red-700 text-xs">삭제</button>
+                    </div>
                   </td>
                 </tr>
               )

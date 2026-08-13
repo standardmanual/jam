@@ -28,10 +28,16 @@ const MISSION_TYPE_LABELS: Record<MissionType, string> = {
   activity_count: d.missions.missionTypeActivityCount,
   poi_visit: d.missions.missionTypePoiVisit,
   item_collect: d.missions.missionTypeItemCollect,
+  streak_days: d.missions.missionTypeStreakDays,
+  duration_minutes: d.missions.missionTypeDurationMinutes,
+  elevation_gain_m: d.missions.missionTypeElevationGainM,
 }
 
 const ACTIVITY_TYPES: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
-const MISSION_TYPES: MissionType[] = ['distance', 'activity_count', 'poi_visit', 'item_collect']
+const MISSION_TYPES: MissionType[] = [
+  'distance', 'activity_count', 'poi_visit', 'item_collect',
+  'streak_days', 'duration_minutes', 'elevation_gain_m',
+]
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'newest', label: d.missions.sortNewest },
@@ -43,7 +49,8 @@ function isNewMission(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() <= NEW_MISSION_WINDOW_MS
 }
 
-function timeLeft(endsAt: string): string {
+function timeLeft(endsAt: string | null): string {
+  if (endsAt === null) return d.missions.tagPermanent
   const diff = new Date(endsAt).getTime() - Date.now()
   if (diff <= 0) return d.missions.tagEnded
   const h = Math.floor(diff / 3_600_000)
@@ -99,7 +106,9 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
     })
 
     if (sortKey === 'ending_soon') {
-      result = [...result].sort((a, b) => new Date(a.ends_at).getTime() - new Date(b.ends_at).getTime())
+      // 상시 미션(ends_at null)은 종료가 없으므로 항상 맨 뒤로
+      const endsAtMs = (m: MissionListItem) => (m.ends_at === null ? Infinity : new Date(m.ends_at).getTime())
+      result = [...result].sort((a, b) => endsAtMs(a) - endsAtMs(b))
     } else if (sortKey === 'newest') {
       result = [...result].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     } else if (sortKey === 'oldest') {
@@ -185,7 +194,9 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-[11px] text-text-inverse/50">
-                        {tab === 'ended' ? d.missions.tagEnded : `${timeLeft(m.ends_at)} ${d.missions.timeLeftSuffix}`}
+                        {tab === 'ended'
+                          ? d.missions.tagEnded
+                          : m.ends_at === null ? d.missions.tagPermanent : `${timeLeft(m.ends_at)} ${d.missions.timeLeftSuffix}`}
                       </p>
                       {m.max_completions && (
                         <p className="text-[11px] text-text-inverse/50 mt-0.5">
