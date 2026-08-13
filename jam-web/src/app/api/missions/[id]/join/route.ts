@@ -18,10 +18,11 @@ export async function POST(_req: Request, { params }: Params) {
     .from('missions')
     .select('id, title, ends_at')
     .eq('id', missionId)
-    .single() as { data: { id: string; title: string; ends_at: string } | null }
+    .single() as { data: { id: string; title: string; ends_at: string | null } | null }
 
   if (!mission) return NextResponse.json({ error: '미션을 찾을 수 없어요.' }, { status: 404 })
-  if (new Date(mission.ends_at) < new Date()) {
+  // ends_at이 null이면 상시 미션(종료 없음) — 종료 체크 건너뜀
+  if (mission.ends_at !== null && new Date(mission.ends_at) < new Date()) {
     return NextResponse.json({ error: '이미 종료된 미션이에요.' }, { status: 400 })
   }
 

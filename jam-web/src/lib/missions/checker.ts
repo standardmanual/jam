@@ -7,8 +7,34 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { grantMissionRewards } from '@/lib/missions/rewards'
 import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
-import type { MissionRow, MissionCondition } from '@/types/database'
+import { evaluateConditionDetailed, calcMaxStreak, passesWalkingGate } from '@/lib/badge-engine'
+import type { MissionRow, MissionCondition, MissionType, BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
+
+/**
+ * 티켓 20260813_001: 배지엔진 evaluateConditionDetailed를 재사용해 판정하는 미션 타입.
+ * condition_json은 BadgeCondition과 동일한 필드 어휘(activity_type + streak_days/
+ * duration_minutes/elevation_gain_m)를 그대로 사용한다.
+ */
+const ENGINE_DELEGATED_MISSION_TYPES: ReadonlySet<MissionType> = new Set([
+  'streak_days',
+  'duration_minutes',
+  'elevation_gain_m',
+])
+
+/**
+ * "상시 미션" 판정 — ends_at이 null이면 시작 시각만 지났으면 항상 활성 (종료 없음).
+ * checkMissions의 활성 미션 조회 SQL(`.or('ends_at.is.null,ends_at.gte.now')`)과 동일한
+ * 규칙을 순수 함수로 노출 — 어드민/유저 화면의 활성 판정과도 같은 의미로 맞춘다 (티켓 20260813_001).
+ */
+export function isMissionActive(
+  mission: Pick<MissionRow, 'starts_at' | 'ends_at'>,
+  now: Date = new Date()
+): boolean {
+  if (new Date(mission.starts_at) > now) return false
+  if (mission.ends_at === null) return true
+  return new Date(mission.ends_at) >= now
+}
 
 export interface MissionCheckResult {
   completedMissionIds: string[]
@@ -21,12 +47,12 @@ export async function checkMissions(
   const supabase = createServiceClient()
   const now = new Date().toISOString()
 
-  // 1. 현재 활성 미션 조회
+  // 1. 현재 활성 미션 조회 — ends_at이 NULL이면 "상시 미션"(종료일 없음)이라 항상 포함
   const { data: missionsRaw } = await supabase
     .from('missions')
     .select('*')
     .lte('starts_at', now)
-    .gte('ends_at', now)
+    .or(`ends_at.is.null,ends_at.gte.${now}`)
 
   const missions = (missionsRaw ?? []) as MissionRow[]
   if (missions.length === 0) return { completedMissionIds: [] }
@@ -71,13 +97,14 @@ export async function checkMissions(
     const isParticipating = participationSet.has(mission.id)
     if (!isParticipating) continue
 
-    // distance/activity_count는 참가 시점 이후 전체 이력, 그 외(poi_visit/item_collect)는
-    // 보유 현황 기반이라 activities 자체는 안 쓰이므로 배치를 그대로 넘겨도 무방.
+    // distance/activity_count/streak_days/duration_minutes/elevation_gain_m은 참가 시점 이후
+    // 전체 이력으로 판정해야 한다(연속일수·단일활동 최고기록 모두 배치 하나로는 정확히 계산 불가).
+    // 그 외(poi_visit/item_collect)는 보유 현황 기반이라 activities 자체는 안 쓰이므로
+    // 배치를 그대로 넘겨도 무방.
     const joinedAt = joinedAtByMission.get(mission.id)
-    const missionActivities =
-      mission.mission_type === 'distance' || mission.mission_type === 'activity_count'
-        ? (joinedAt ? fullHistory.filter((a) => a.startDate >= joinedAt) : fullHistory)
-        : activities
+    const missionActivities = ENGINE_DELEGATED_MISSION_TYPES.has(mission.mission_type) || mission.mission_type === 'distance' || mission.mission_type === 'activity_count'
+      ? (joinedAt ? fullHistory.filter((a) => a.startDate >= joinedAt) : fullHistory)
+      : activities
 
     const { progressValue, achieved } = evaluateMission(mission, missionActivities, ownership, isParticipating)
 
@@ -163,7 +190,12 @@ export function evaluateMission(
   const condition = mission.condition_json as MissionCondition
   const progressValue = calculateProgress(mission.mission_type, condition, activities, ownership)
   const target = getTarget(mission.mission_type, condition)
-  return { isParticipating: true, progressValue, target, achieved: progressValue >= target }
+  // streak_days/duration_minutes/elevation_gain_m — 배지엔진 evaluateConditionDetailed를 그대로
+  // 재사용해 판정한다 (걷기 축1 게이트 등 배지 조건 평가와 100% 동일한 판정 보장).
+  const achieved = ENGINE_DELEGATED_MISSION_TYPES.has(mission.mission_type)
+    ? evaluateConditionDetailed(condition as BadgeCondition, activities).pass
+    : progressValue >= target
+  return { isParticipating: true, progressValue, target, achieved }
 }
 
 /**
@@ -210,6 +242,10 @@ function getTarget(missionType: string, condition: MissionCondition): number {
     // poi_visit / item_collect 은 달성형(0/1) — 목표치 항상 1
     case 'poi_visit': return 1
     case 'item_collect': return 1
+    // 티켓 20260813_001 — 배지엔진 BadgeCondition과 동일 필드 어휘 재사용
+    case 'streak_days': return condition.streak_days ?? 0
+    case 'duration_minutes': return condition.duration_minutes ?? 0
+    case 'elevation_gain_m': return condition.elevation_gain_m ?? 0
     default: return 0
   }
 }
@@ -235,6 +271,20 @@ function calculateProgress(
     case 'item_collect':
       // 대상 배지를 보유하면 1, 아니면 0
       return condition.badge_id && ownership.ownedBadgeIds.has(condition.badge_id) ? 1 : 0
+    // 티켓 20260813_001 — 진행바 표시용 수치. 걷기는 배지엔진과 동일하게 축1 게이트(진짜 걷기
+    // 판정)를 통과한 활동만 집계한다 (evaluateConditionDetailed 내부 필터링과 동일 로직 재사용).
+    case 'streak_days': {
+      const gated = condition.activity_type === 'walking' ? filtered.filter(passesWalkingGate) : filtered
+      return calcMaxStreak(gated)
+    }
+    case 'duration_minutes': {
+      const gated = condition.activity_type === 'walking' ? filtered.filter(passesWalkingGate) : filtered
+      return gated.length > 0 ? Math.max(...gated.map((a) => a.movingTimeSec / 60)) : 0
+    }
+    case 'elevation_gain_m': {
+      const gated = condition.activity_type === 'walking' ? filtered.filter(passesWalkingGate) : filtered
+      return gated.length > 0 ? Math.max(...gated.map((a) => a.elevationGainM)) : 0
+    }
     default:
       return 0
   }

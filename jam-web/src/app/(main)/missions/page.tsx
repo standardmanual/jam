@@ -13,8 +13,9 @@ export default async function MissionsPage() {
   const service = createServiceClient()
   const now = new Date().toISOString()
 
+  // ends_at이 NULL이면 상시 미션(종료일 없음) — 항상 진행중 탭에 포함
   const [{ data: ongoingRaw }, { data: completionsRaw }, { data: participationsRaw }] = await Promise.all([
-    service.from('missions').select('*').gte('ends_at', now).order('ends_at', { ascending: true }),
+    service.from('missions').select('*').or(`ends_at.is.null,ends_at.gte.${now}`).order('ends_at', { ascending: true }),
     service.from('user_mission_completions').select('mission_id, completed_at').eq('user_id', user.id),
     service.from('user_mission_participations').select('mission_id, progress_value').eq('user_id', user.id),
   ])
