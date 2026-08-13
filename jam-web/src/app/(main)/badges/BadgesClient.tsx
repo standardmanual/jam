@@ -14,12 +14,12 @@ type TabKey = 'activity' | 'poi' | 'itembook'
 const VALID_TABS = new Set<string>(['activity', 'poi', 'itembook'])
 
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
-const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legendary', 'mythic']
-const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, legendary: 2, mythic: 3 }
+const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
+const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, legend: 2, mythic: 3 }
 const RARITY_LABELS: Record<BadgeRarity, string> = {
   common: d.feed.rarityCommon,
   rare: d.feed.rarityRare,
-  legendary: d.feed.rarityLegendary,
+  legend: d.feed.rarityLegend,
   mythic: d.feed.rarityMythic,
 }
 

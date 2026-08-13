@@ -10,7 +10,7 @@ export type AmbientDropPolicy = Omit<AmbientDropPolicyRow, 'id' | 'updated_at'>
 export const DEFAULT_AMBIENT_DROP_POLICY: AmbientDropPolicy = {
   rarity_common: 0.86,
   rarity_rare: 0.12,
-  rarity_legendary: 0.02,
+  rarity_legend: 0.02,
   target_coverage_ratio: 0.15,
   min_target_total: 20,
   max_target_total: 2000,

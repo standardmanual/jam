@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest) {
   const merged = { ...(await getAmbientDropPolicy()), ...patch }
 
   // rarity 분포 합 = 1 검증 (mythic 없음, ±0.001 허용)
-  const raritySum = merged.rarity_common + merged.rarity_rare + merged.rarity_legendary
+  const raritySum = merged.rarity_common + merged.rarity_rare + merged.rarity_legend
   if (Math.abs(raritySum - 1) > 0.001) {
     return NextResponse.json(
       { error: `rarity 분포 합이 1이어야 합니다. (현재 ${raritySum.toFixed(3)})` },

@@ -87,7 +87,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | 필드 | 설명 |
 |------|------|
 | type | `activity` / `item` / **`poi`**(신규 — POI 통과 시 반복 발급) |
-| rarity | common / rare / legendary / mythic |
+| rarity | common / rare / legend / mythic |
 | faction_id | 소속 세계관 (아이템 배지) |
 | item_book_id | 소속 아이템북 (구조 역전 — 아이템북이 배지 목록을 갖는 게 아니라 배지가 소속 아이템북을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |

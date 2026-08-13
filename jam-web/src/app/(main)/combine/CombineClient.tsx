@@ -27,7 +27,7 @@ interface Props {
 const rarityRing: Record<string, string> = {
   common: '',
   rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
-  legendary: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
+  legend: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
   mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
 }
 
