@@ -1,9 +1,9 @@
 ---
 id: 20260813_003
 category: Infra
-status: OPEN
+status: CLOSED
 created: 2026-08-13
-closed:
+closed: 2026-08-13
 ---
 
 # [Infra] 배지 등급 'Legendary' → 'Legend' 전면 변경
@@ -68,33 +68,95 @@ closed:
 - 서비스플랜 v3.0~v3.2도 'Legendary' 표기가 잔존하나, **의도적으로 미변경** — 과거 버전 파일이므로 역사적 기록으로 보존. `grep`으로 전수 검색 시 발견되더라도 수정 불필요
 
 ---
-## 완료 기록 *(작업 완료 후 작성)*
+## 완료 기록
 
 ### 구현 내용 요약
 
+`badge_rarity` enum 값 `legendary` → `legend` 전면 변경. DB·소스코드·문서 전 레이어 일관 반영.
+
+- DB: `ALTER TYPE badge_rarity RENAME VALUE 'legendary' TO 'legend'` — 기존 데이터 행 UPDATE 없이 자동 반영
+- 소스코드 34개 파일: `legendary/Legendary/LEGENDARY` → `legend/Legend/LEGEND` 전수 치환
+- Service Plan 문서 10개 + 서비스플랜 v3.4 신규 생성
+- UX_WRITING_GUIDELINE.md 고정 용어 표에 배지 희귀도 등급명 항목 추가
+
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/083_rename_legendary_to_legend.sql (신규)
+jam-web/src/types/database.ts
+jam-web/src/types/database.generated.ts
+jam-web/src/lib/drop-engine/constants.ts
+jam-web/src/lib/drop-engine/layers.ts
+jam-web/src/lib/drop-engine/policy.ts
+jam-web/src/lib/drop-engine/__tests__/layers.test.ts
+jam-web/src/lib/badge-engine/index.ts
+jam-web/src/lib/badge-engine/__tests__/walking-badges-v4.test.ts
+jam-web/src/lib/ambient-drop/index.ts
+jam-web/src/lib/ambient-drop/policy.ts
+jam-web/src/lib/abusing/policy.ts
+jam-web/src/lib/i18n/ko.ts
+jam-web/src/lib/utils.ts
+jam-web/src/app/(main)/FeedSection.tsx
+jam-web/src/app/(main)/badges/BadgesClient.tsx
+jam-web/src/app/(main)/combine/CombineClient.tsx
+jam-web/src/app/(main)/drops/BadgeDetailSheet.tsx
+jam-web/src/app/admin/abusing/AbusingClient.tsx
+jam-web/src/app/admin/ambient-drop-policy/AmbientDropPolicyForm.tsx
+jam-web/src/app/admin/badges/BadgeForm.tsx
+jam-web/src/app/admin/badges/BadgesFilterBar.tsx
+jam-web/src/app/admin/drop-policy/DropPolicyForm.tsx
+jam-web/src/app/admin/itembooks/ItemBookForm.tsx
+jam-web/src/app/admin/simulator/page.tsx
+jam-web/src/app/admin/users/[id]/page.tsx
+jam-web/src/app/api/admin/ambient-drop-policy/route.ts
+jam-web/src/app/api/admin/drop-policy/route.ts
+jam-web/src/app/api/admin/simulate/route.ts
+jam-web/src/app/api/drops/[dropId]/pickup/route.ts
+jam-web/src/components/admin/badges/BadgeCard.tsx
+jam-web/src/components/admin/badges/BadgeDetail.tsx
+jam-web/src/components/admin/badges/BadgesTable.tsx
+jam-web/src/components/inventory/InventoryGrid.tsx
+jam-web/src/components/ui/Badge.tsx
+Service Plan/Specs/Content/ACTIVITY_BADGES.md
+Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md
+Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
+Service Plan/Specs/Content/COMBINE_RECIPES.md
+Service Plan/Specs/Content/FACTIONS.md
+Service Plan/Specs/PRD/02_DATA_MODEL.md
+Service Plan/Specs/PRD/AdminUI/ADMIN_PRD.md
+Service Plan/Specs/PRD/AdminUI/DATA_MODEL.md
+Service Plan/Specs/PRD/AdminUI/PHASES.md
+Service Plan/Specs/PRD/AdminUI/REDESIGN.md
+Service Plan/Specs/UX_WRITING_GUIDELINE.md
+Service Plan/Business/서비스플랜/02 JAM! 서비스 플랜 v3.4 (2026-08-13).md (신규)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npm test`: 10개 파일, 136개 테스트 전체 통과
+- [x] `tsc --noEmit`: legend 관련 신규 타입 에러 없음
+- [x] 소스 내 잔여 `legendary` 참조 0개 (`grep` 확인)
+- [x] DB 검증: `SELECT enum_range(NULL::badge_rarity)` → `{common,rare,legend,mythic}` 확인
 
-### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
+### UX Writing 검증
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·방문 인증·JAM 포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- [x] 용어 일관성: 이번 변경으로 UX_WRITING_GUIDELINE.md에 `Common / Rare / Legend / Mythic` 고정 용어 등재 완료
+- [x] 톤앤매너: 배지 등급명은 고유명사(브랜드 시스템 용어)로 해요체·마침표 규칙 적용 대상 아님
+- [x] 에러 메시지: 해당 없음
+- [x] 문장 규칙: 해당 없음
+- [x] 표기 규칙: 해당 없음
 
 ### 배포 정보
-- 배포일:
+- 배포일: 2026-08-13
 - 환경: production
-- 커밋:
+- 커밋(구현): c2f89dc
+- 커밋(개선 제안 반영): 9c070b9
+- merge 커밋: 9f958f0
 
 ### 주요 의사결정 / 핵심 메모
 
+- **PostgreSQL enum rename 방식 채택**: `ALTER TYPE ... RENAME VALUE`(PostgreSQL 10+)로 기존 데이터 행 UPDATE 없이 안전하게 처리. 대안(새 enum 생성 후 컬럼 교체)은 불필요하게 복잡해 미채택
+- **과거 서비스플랜(v3.0~v3.2) 미변경**: 역사적 기록 보존 목적. `grep`으로 잔존 Legendary 발견 시 수정 불필요 — 의도적 보존
+- **database.generated.ts 수동 패치**: DB 마이그레이션 실행 후 `supabase gen types` 재실행 시 자동 동기화됨. 현재 수동 패치 내용과 일치하는지 재실행 후 확인 권장
+
 ### 잔여 이슈
--
+- `database.generated.ts`: 향후 `supabase gen types` 재실행 시 자동 재생성됨 — 별도 조치 불필요, 자동 동기화로 해결
