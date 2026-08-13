@@ -158,6 +158,23 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 
 ---
 
+### 2.11 종목별 대표 배지 미션 게이팅 (✅ 구현됨 — 2026-08-13)
+
+> 티켓: `History/Migration/Ticket/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`
+
+종목별로 "운동 목표 달성감이 가장 큰" 대표 배지 1종씩(5개 트리) — 걷기 `동네 산책러`, 러닝 `첫 숨결`, 사이클 `언덕의 도전자`, 등산 `첫 고도`, 트레일러닝 `야생의 주자` — 는 Rare 이상에서 기존 크로스게이트(`prerequisite_badge_names`에 같은 종목 다른 속성 배지 2개 OR)를 쓰지 않고, **미션 완료로만 얻는 전용 배지 1개**를 선행조건으로 요구한다. 나머지 142개 배지는 기존 크로스게이트 그대로 유지.
+
+**구조**:
+1. 미션보상배지 15종(`badges`, `type='activity'`, `condition_json = NULL`) — 이름은 `{배지명} 레벨업` / `레벨업 Hard` / `레벨업 Ultra`(Rare/Legendary/Mythic 대응). `condition_json`이 없어 일반 활동 동기화로는 절대 발급되지 않고, 미션 완료(`grantMissionRewards`)로만 지급된다. `evaluateConditionDetailed`는 빈 조건을 항상 `pass:false`로 처리하므로(§2.3) 이중 발급 경로가 구조적으로 차단됨.
+2. 미션 15종(`missions`) — `mission_type`은 `streak_days`(걷기)/`duration_minutes`(러닝·사이클·등산, 단일 활동 기준)/`elevation_gain_m`(트레일, 단일 활동 기준). `ends_at = NULL`(상시), `status_display_type = 'individual'`(본인 진행상황만 노출, 다른 참가자 비공개), `max_completions = NULL`(선착순 아님), `reward_points = 0`.
+3. 대상 배지 5종 × Rare/Legendary/Mythic의 `condition_json.prerequisite_badge_names`를 기존 OR 배열 대신 해당 미션보상배지명 1개만 담은 배열로 교체 — 엔진 스펙상 배열 원소가 1개면 사실상 AND(그 이름의 배지를 보유해야만 통과)로 동작한다(`CONDITION_JSON_SPEC.md`).
+
+**미션 엔진 확장**: 기존 미션 엔진(`mission_type`: distance/poi_visit/activity_count/item_collect)은 이 정책이 요구하는 연속일수·단일세션 지속시간·등반고도를 계산할 수 없었다. 새 계산 로직을 만드는 대신, `jam-web/src/lib/missions/checker.ts`가 이 3개 신규 타입에 대해 배지엔진의 `evaluateConditionDetailed`를 그대로 호출해 판정한다(§2.3 조건 어휘 재사용 — `activity_type`+`streak_days`/`duration_minutes`/`elevation_gain_m`). "미션 참가 시점 이후" 제약은 `evaluateConditionDetailed` 자체가 아니라 `checkMissions`가 `joinedAt` 기준으로 활동 이력을 미리 필터링해서 넘기는 호출자 책임이다.
+
+**기존 발급 건 처리**: 정책 도입 시점에 5개 트리 Rare 이상을 이미 보유 중이던 유저 3명(5건)이 있었으며, 소급 회수(삭제)하기로 결정 — `jam-web/supabase/seed_revoke_pre_mission_badges_20260813.sql`(사용자 직접 실행).
+
+---
+
 ## 3. 아이템배지 드랍 엔진 v2 (✅ 구현됨 — 3레이어)
 
 > v1(활동당 80% 확률, 전체 풀 완전 랜덤)을 대체. 2026-07-21 구현 완료 (마이그레이션 034 + `src/lib/drop-engine/`).  
