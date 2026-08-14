@@ -15,6 +15,20 @@ const TAG_COLORS = [
   'var(--color-tag-5)', 'var(--color-tag-6)', 'var(--color-tag-7)', 'var(--color-tag-8)',
 ];
 
+/* DS-018: faction → color mapping.
+   Stub values — finalize once FACTIONS.md is confirmed.
+   Unknown faction names fall back to colorIndex=0 (--color-tag-1). */
+const FACTION_COLORS = {
+  fire:    'var(--color-tag-1)',   /* red-orange */
+  water:   'var(--color-tag-4)',   /* teal/green */
+  nature:  'var(--color-tag-6)',   /* lime */
+  shadow:  'var(--color-tag-7)',   /* charcoal */
+  light:   'var(--color-tag-3)',   /* amber */
+  storm:   'var(--color-tag-5)',   /* magenta */
+  earth:   'var(--color-tag-2)',   /* brown */
+  void:    'var(--color-tag-8)',   /* sienna */
+};
+
 /**
  * ShapeTag — colored shape container for text labels or badge thumbnails.
  * shape: 'rect' | 'pill' | 'circle' | 'dome' | 'triangle' | 'flag' | 'hex'
@@ -28,13 +42,16 @@ export function ShapeTag({
   shape = 'rect',
   colorIndex = 0,
   color,
+  faction,
   surface = 'dark',
   children,
   style = {},
   className = '',
 }) {
   const s = SHAPES[shape] ?? SHAPES.rect;
-  const bg = color ?? TAG_COLORS[colorIndex % TAG_COLORS.length];
+  const bg = color
+    ?? (faction ? (FACTION_COLORS[faction] ?? TAG_COLORS[0]) : null)
+    ?? TAG_COLORS[colorIndex % TAG_COLORS.length];
   const textColor = surface === 'dark' ? 'var(--color-text)' : 'var(--color-text-inverse)';
 
   return (

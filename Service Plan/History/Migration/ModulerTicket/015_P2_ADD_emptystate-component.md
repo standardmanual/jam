@@ -1,6 +1,6 @@
 ---
 id: DS-015
-status: OPEN
+status: CLOSED
 severity: P2
 type: ADD
 category: Component / UX
@@ -77,3 +77,13 @@ export function EmptyState({
 - [ ] `var(--layout-*)` 토큰으로 여백 처리
 - [ ] `.d.ts` 파일 동반
 - [ ] `feedback.card.html` 데모에 3가지 변형 예시 (아이콘 있음, 없음, action 있음)
+
+## 완료 기록
+
+- **구현 내용**: `components/feedback/EmptyState.jsx` + `EmptyState.d.ts` 신규 생성
+- **변경 파일**: `components/feedback/EmptyState.jsx`, `components/feedback/EmptyState.d.ts`
+- **주요 의사결정**:
+  - `role="status"` 유지 (동적 상태 변화 시 AT 알림 목적)
+  - `icon` prop에 `null` 전달 시 아이콘 숨김, `undefined` 시 기본 SVG 표시 (스텁 empty-box 아이콘)
+  - `action` prop에 `{ label, onClick }` 전달 시 Button 컴포넌트 렌더링
+- **배포**: 2026-08-14, design-system-staging/v2

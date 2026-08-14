@@ -34,6 +34,57 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 * **모바일 뷰포트** — UI 키트 프레임은 430×932로, 코드베이스 자체의 `max-w-[430px] mx-auto` 모바일 컨테이너(`jam-web/src/app/(main)/layout.tsx`)와 일치합니다. 데스크톱에서는 동일한 방식으로 배경 중앙에 렌더링됩니다.
 * **모션** — `tokens/motion.css`의 지속 시간/이징(durations/easings)은 JAM!의 프로덕션 `globals.css`에서 실행되는 동일한 마이크로 인터랙션 시스템인 [transitions.dev](https://transitions.dev/detail.html?doc=installation)에서 1:1로 복사되었습니다.
 
+## 폰트 설정 (Font Setup)
+
+DS v2는 Noto Sans KR을 기본 서체로 사용한다. CDN `@import` 대신 환경에 맞는 방식으로 로드해야 한다.
+
+### Next.js (권장)
+
+```jsx
+// app/layout.tsx
+import { Noto_Sans_KR } from 'next/font/google'
+
+const notoSansKR = Noto_Sans_KR({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '900'],
+  variable: '--font-noto-sans-kr',
+})
+
+export default function RootLayout({ children }) {
+  return (
+    <html className={notoSansKR.variable}>
+      <body>{children}</body>
+    </html>
+  )
+}
+```
+
+`tokens/fonts.css`의 `--font-family-base: 'Noto Sans KR', sans-serif`가 자동으로 연결된다.
+
+### Vite / CRA
+
+```html
+<!-- index.html <head> -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;900&display=swap" rel="stylesheet">
+```
+
+### 자체 호스팅 (Self-hosting)
+
+Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`로 직접 정의한다:
+
+```css
+@font-face {
+  font-family: 'Noto Sans KR';
+  font-weight: 300 900;
+  font-display: swap;
+  src: url('/fonts/NotoSansKR-Variable.woff2') format('woff2');
+}
+```
+
+> 모든 환경에서 weight 300/400/500/600/900이 포함되어야 `--font-weight-*` 토큰이 올바르게 렌더링된다.
+
 ## 색인 (Index)
 
 * `styles.css` — 루트 스타일시트, `tokens/`의 모든 항목을 가져옴(import)
@@ -41,9 +92,9 @@ JAM!의 톤앤매너 (`UX_WRITING_GUIDELINE.md`에서 가져옴): 시스템이 �
 * `assets/logo/` — JAM! 워드마크, 블랙 + 화이트
 * `components/buttons/` — Button, IconButton
 * `components/cards/` — Card, RarityBadge, ShapeTag, BadgeFrame
-* `components/navigation/` — TopNav, TabBar (JAM! 자체 TabBar.tsx에서 1:1 재현)
-* `components/feedback/` — Toast, ModalToast, WanderingEyesLoader
-* `components/forms/` — Input
+* `components/navigation/` — TopNav, TabBar (JAM! 자체 TabBar.tsx에서 1:1 재현), BottomSheet, SlidingTabs, Accordion
+* `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState
+* `components/forms/` — Input, Textarea, Select, Checkbox
 * `guidelines/` — 파운데이션 스펙 카드 (색상, 타이포그래피, 간격, 반경, 엘리베이션, 로고, 아이콘)
 * `ui_kits/jam-app/` — 인터랙티브 5개 화면 클릭스루: Today / Badges / Drops / Inventory / Profile
 * `SKILL.md` — Claude Code / 기타 에이전트용 포터블 스킬 파일

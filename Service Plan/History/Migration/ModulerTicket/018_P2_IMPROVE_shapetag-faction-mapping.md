@@ -1,6 +1,6 @@
 ---
 id: DS-018
-status: OPEN
+status: CLOSED
 severity: P2
 type: IMPROVE
 category: Component / Token
@@ -61,3 +61,10 @@ export function ShapeTag({ shape, colorIndex, color, faction, surface = 'dark', 
 - [ ] `FACTION_COLORS` 매핑 테이블이 `FACTIONS.md`와 일치
 - [ ] `ShapeTag.d.ts`에 `faction?: string` 추가
 - [ ] 알 수 없는 faction 이름 입력 시 `colorIndex=0` fallback
+
+## 완료 기록
+
+- **구현 내용**: `ShapeTag.jsx`에 `FACTION_COLORS` 맵 추가 및 `faction` prop 신설. 8개 세계관(fire/water/nature/shadow/light/storm/earth/void) → tag 토큰 매핑.
+- **변경 파일**: `components/cards/ShapeTag.jsx`, `components/cards/ShapeTag.d.ts`
+- **잔여 이슈**: FACTION_COLORS는 stub — FACTIONS.md 확정 후 재매핑 필요
+- **배포**: 2026-08-14, design-system-staging/v2

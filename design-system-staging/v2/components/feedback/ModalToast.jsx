@@ -29,7 +29,12 @@ const ICONS = {
  *   - CDN icon replaced with inline SVG
  *   - deprecated --color-surface-card → --color-surface
  */
-export function ModalToast({ message, type = 'success', open = true, onDismiss }) {
+/**
+ * iconSlot — optional ReactNode that replaces the default type icon circle.
+ * Use to pass a BadgeFrame or any custom element into the icon position.
+ * Accessibility (aria attributes, alt text) for iconSlot content is the caller's responsibility.
+ */
+export function ModalToast({ message, type = 'success', open = true, onDismiss, iconSlot }) {
   const dismissRef = useRef(null);
   const labelId = React.useId ? React.useId() : 'modal-toast-label';
 
@@ -82,14 +87,19 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss }
           textAlign: 'center',
         }}
       >
-        <div style={{
-          width: 56, height: 56, borderRadius: '50%',
-          background: 'var(--color-primary)',
-          color: 'var(--color-text-on-primary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {ICONS[type]}
-        </div>
+        {iconSlot
+          ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>{iconSlot}</div>
+          : (
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%',
+              background: 'var(--color-primary)',
+              color: 'var(--color-text-on-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {ICONS[type]}
+            </div>
+          )
+        }
         <p id={labelId} style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>
           {message}
         </p>

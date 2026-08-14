@@ -8,7 +8,10 @@ import React, { useMemo } from 'react';
  * 두 눈은 같은 경로를 공유해 "같은 곳을 보는" 느낌을 유지한다.
  */
 
-const STATIC_CSS = `.wandering-eyes{display:flex;align-items:center;justify-content:center;gap:12px}.wandering-eyes-eye{position:relative;width:48px;height:48px;border-radius:9999px;background-color:var(--eye-color,#f8fafc);overflow:hidden;flex-shrink:0;animation:wandering-eyes-blink var(--duration,2s) ease-in-out infinite}.wandering-eyes-eye:nth-child(2){animation-delay:-60ms}.wandering-eyes-pupil{position:absolute;inset:0;margin:auto;width:68%;height:68%;border-radius:9999px;background-color:var(--pupil-color,#0f172a);animation:wandering-eyes-move var(--duration,2s) ease-in-out infinite}@keyframes wandering-eyes-blink{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(0.06)}97%{transform:scaleY(1)}}@media(prefers-reduced-motion:reduce){.wandering-eyes-eye,.wandering-eyes-pupil{animation:none}}`;
+/* DS-023: CSS fallbacks updated from hardcoded hex (#f8fafc/#0f172a) to DS v2 tokens.
+   var(--eye-color) is always set by the wrapper div's inline style; the inner fallback
+   fires only if someone uses the class outside the component. */
+const STATIC_CSS = `.wandering-eyes{display:flex;align-items:center;justify-content:center;gap:12px}.wandering-eyes-eye{position:relative;width:48px;height:48px;border-radius:9999px;background-color:var(--eye-color,var(--color-bg-inverse));overflow:hidden;flex-shrink:0;animation:wandering-eyes-blink var(--duration,2s) ease-in-out infinite}.wandering-eyes-eye:nth-child(2){animation-delay:-60ms}.wandering-eyes-pupil{position:absolute;inset:0;margin:auto;width:68%;height:68%;border-radius:9999px;background-color:var(--pupil-color,var(--color-text-inverse));animation:wandering-eyes-move var(--duration,2s) ease-in-out infinite}@keyframes wandering-eyes-blink{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(0.06)}97%{transform:scaleY(1)}}@media(prefers-reduced-motion:reduce){.wandering-eyes-eye,.wandering-eyes-pupil{animation:none}}`;
 
 // 눈동자 이동 키프레임의 중간 정지 지점(%) — 깜빡임 키프레임과 리듬을 맞춘 값 (소스 동일)
 const MOVE_STOPS = [15, 30, 45, 60, 75, 88];
@@ -21,7 +24,7 @@ function randomOffset(maxPercent) {
 
 let _uid = 0;
 
-export function WanderingEyesLoader({ duration = '2s', eyeColor = '#f8fafc', pupilColor = '#0f172a', style = {} }) {
+export function WanderingEyesLoader({ duration = '2s', eyeColor = 'var(--color-bg-inverse)', pupilColor = 'var(--color-text-inverse)', style = {} }) {
   const animName = useMemo(() => `wem-${++_uid}`, []);
   const keyframesCss = useMemo(() => {
     const start = randomOffset(34);
