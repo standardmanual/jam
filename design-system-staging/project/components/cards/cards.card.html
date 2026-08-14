@@ -1,0 +1,97 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Cards" subtitle="3 card patterns with token annotations" -->
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<div id="root" style="padding:24px;background:var(--color-bg)"></div>
+<script type="text/babel">
+const { Card, ShapeTag } = window.JAMShopifyDesignSystem_f8de83;
+const NS = 'font-family:var(--font-family-base)';
+
+function Token({ label }) {
+  return <span style={{ display:'inline-block', padding:'2px 8px', borderRadius:4, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', fontSize:10, color:'var(--color-text-secondary)', fontFamily:'monospace' }}>{label}</span>;
+}
+function PatternLabel({ letter, name }) {
+  return <div style={{ marginBottom:8, fontSize:11, fontWeight:600, color:'var(--color-text-secondary)', fontFamily:'var(--font-family-base)' }}>Pattern {letter} — {name}</div>;
+}
+function TokenRow({ tokens }) {
+  return <div style={{ marginTop:8, display:'flex', gap:4, flexWrap:'wrap' }}>{tokens.map(t => <Token key={t} label={t} />)}</div>;
+}
+
+/* Pattern A — Photo Tile: image grid cell with tag pill overlay */
+function PhotoTileCard({ tag, tone }) {
+  return (
+    <div style={{ position:'relative', width:140, height:140, borderRadius:'var(--radius-card)', overflow:'hidden', background:tone }}>
+      <div style={{ position:'absolute', left:'var(--spacing-8)', bottom:'var(--spacing-8)' }}>
+        <ShapeTag shape="pill" colorIndex={1} style={{ minHeight:24, padding:'3px 10px', fontSize:10 }}>{tag}</ShapeTag>
+      </div>
+    </div>
+  );
+}
+
+/* Pattern B — Content Card: header image area, body with text and action tag */
+function ContentCard({ name }) {
+  return (
+    <Card tone="white" padding={0} style={{ width:170, overflow:'hidden' }}>
+      <div style={{ height:90, background:'var(--color-surface-tint)', display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--spacing-12)' }}>
+        <span style={{ fontSize:18, fontWeight:700 }}>{name}</span>
+      </div>
+      <div style={{ display:'flex', gap:4, padding:'var(--spacing-8) var(--spacing-8) 0' }}>
+        {[0,1,2].map(i => <div key={i} style={{ flex:1, aspectRatio:'1', borderRadius:'var(--radius-subtle)', background:'rgba(0,0,0,0.06)', border:'1px solid var(--color-border)' }} />)}
+      </div>
+      <div style={{ display:'flex', alignItems:'center', gap:6, padding:'var(--spacing-8)', fontSize:11, color:'var(--color-text-secondary)', fontFamily:'var(--font-family-base)' }}>
+        <ShapeTag shape="pill" colorIndex={4} style={{ minHeight:20, padding:'2px 8px', fontSize:10 }}>–10%</ShapeTag>
+        <span>할인 적용됨</span>
+      </div>
+    </Card>
+  );
+}
+
+/* Pattern C — Category Card: label + thumbnail duo */
+function CategoryCard({ label, tone }) {
+  return (
+    <div style={{ width:140, borderRadius:'var(--radius-card)', background:tone, padding:'var(--spacing-12)', display:'flex', flexDirection:'column', gap:'var(--spacing-16)' }}>
+      <span style={{ fontSize:13, fontWeight:700, fontFamily:'var(--font-family-base)', color:'#111' }}>{label}</span>
+      <div style={{ display:'flex', gap:'var(--spacing-8)' }}>
+        <div style={{ flex:1, aspectRatio:'1', borderRadius:'var(--radius-subtle)', background:'rgba(255,255,255,0.55)' }} />
+        <div style={{ flex:1, aspectRatio:'1', borderRadius:'var(--radius-subtle)', background:'rgba(255,255,255,0.55)' }} />
+      </div>
+    </div>
+  );
+}
+
+function Demo() {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:24, fontFamily:'var(--font-family-base)' }}>
+      <div>
+        <PatternLabel letter="A" name="Photo Tile" />
+        <div style={{ display:'flex', gap:'var(--spacing-12)' }}>
+          <PhotoTileCard tag="FITNESS" tone="var(--color-tag-3)" />
+          <PhotoTileCard tag="TREND" tone="var(--color-tag-5)" />
+          <PhotoTileCard tag="BEAUTY" tone="var(--color-tag-6)" />
+        </div>
+        <TokenRow tokens={['--radius-card','--spacing-8','--color-tag-*','ShapeTag pill']} />
+      </div>
+      <div>
+        <PatternLabel letter="B" name="Content Card" />
+        <div style={{ display:'flex', gap:'var(--spacing-12)' }}>
+          <ContentCard name="U BEAUTY" />
+          <ContentCard name="OGEE" />
+        </div>
+        <TokenRow tokens={['Card(tone=white)','--radius-card','--spacing-8','--color-surface-tint','--color-border']} />
+      </div>
+      <div>
+        <PatternLabel letter="C" name="Category Card" />
+        <div style={{ display:'flex', gap:'var(--spacing-12)' }}>
+          <CategoryCard label="뷰티" tone="var(--color-tag-6)" />
+          <CategoryCard label="홈" tone="var(--color-secondary)" />
+          <CategoryCard label="피트니스" tone="var(--color-tag-3)" />
+        </div>
+        <TokenRow tokens={['--radius-card','--spacing-12','--spacing-16','--color-tag-*']} />
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>

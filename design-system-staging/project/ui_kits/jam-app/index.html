@@ -1,0 +1,58 @@
+<!-- @dsCard group="JAM! App" viewport="430x932" name="JAM! Mobile App" subtitle="Today / Badges / Drops / Inventory / Profile — interactive click-through" -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>body{display:flex;justify-content:center;background:#eee;margin:0}</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<clipPath id="badge-circle" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.5" /></clipPath>
+<clipPath id="badge-pinch" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V0.36 L0.5,0.5 L1,0.64 V1 H0 V0.64 L0.5,0.5 L0,0.36 Z" /></clipPath>
+<clipPath id="badge-notch" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V0.4 L0.92,0.5 L1,0.6 V1 H0 V0.6 L0.08,0.5 L0,0.4 Z" /></clipPath>
+<clipPath id="badge-scallop" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V0.32 C0.92,0.4 0.92,0.6 1,0.68 V1 H0 V0.68 C0.08,0.6 0.08,0.4 0,0.32 Z" /></clipPath>
+<clipPath id="badge-corner" clipPathUnits="objectBoundingBox"><path d="M0.1,0 H0.9 L1,0.1 V0.9 L0.9,1 H0.1 L0,0.9 V0.1 Z" /></clipPath>
+<clipPath id="badge-tabs" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V0.9 L0.9,1 H0.1 L0,0.9 Z" /></clipPath>
+<clipPath id="badge-capsule" clipPathUnits="objectBoundingBox"><path d="M0.3,0 H0.7 A0.3,0.5 0 0 1 0.7,1 H0.3 A0.3,0.5 0 0 1 0.3,0 Z" /></clipPath>
+</defs>
+</svg>
+<div id="root" style="width:430px;height:932px;overflow:hidden;position:relative;background:#fff;box-shadow:0 0 0 1px #ddd"></div>
+<script src="../../_ds_bundle.js"></script>
+<script src="mockData.js"></script>
+<script type="text/babel" src="TodayScreen.jsx"></script>
+<script type="text/babel" src="BadgesScreen.jsx"></script>
+<script type="text/babel" src="BadgeDetailScreen.jsx"></script>
+<script type="text/babel" src="DropsScreen.jsx"></script>
+<script type="text/babel" src="InventoryScreen.jsx"></script>
+<script type="text/babel" src="ProfileScreen.jsx"></script>
+<script type="text/babel">
+const { Button, IconButton } = window.JAMShopifyDesignSystem_f8de83;
+function App(){
+  const [tab, setTab] = React.useState('today');
+  const [selectedBadge, setSelectedBadge] = React.useState(null);
+  const { TabBar } = window.JAMShopifyDesignSystem_f8de83;
+  const openDetail = (b) => { setSelectedBadge(b); setTab('badgeDetail'); };
+  const screens = {
+    today: <TodayScreen onOpenBadge={openDetail} />,
+    badges: <BadgesScreen onBack={() => setTab('today')} onOpenDetail={openDetail} />,
+    badgeDetail: <BadgeDetailScreen badge={selectedBadge} onBack={() => setTab('badges')} />,
+    drops: <DropsScreen onBack={() => setTab('today')} />,
+    inventory: <InventoryScreen onBack={() => setTab('today')} />,
+    profile: <ProfileScreen />,
+  };
+  return (
+    <div style={{height:'100%',overflowY:'auto',position:'relative'}}>
+      {screens[tab] || screens.today}
+      <TabBar active={tab === 'badgeDetail' ? 'badges' : tab} onChange={(k) => setTab(k)} />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
