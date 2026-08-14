@@ -1,6 +1,6 @@
 ---
 id: DS-023
-status: OPEN
+status: CLOSED
 severity: P2
 type: FIX
 category: Component / Token
@@ -50,3 +50,10 @@ grep -E "(color-white|color-black|color-surface-card|color-surface-tint|#fff|#00
 - [ ] 하드코딩 컬러 리터럴(`'#fff'`, `'rgba(255,255,255,...)'` 등) 없음
 - [ ] v2 motion 토큰(`--duration-*`, `--ease-*`) 참조 또는 미사용 명시 주석
 - [ ] deprecated 토큰 없음 확인 시 티켓 CLOSED 처리 가능
+
+## 완료 기록
+
+- **구현 내용**: `WanderingEyesLoader.jsx` STATIC_CSS 내 CSS fallback 값 `#f8fafc`/`#0f172a` → `var(--color-bg-inverse)`/`var(--color-text-inverse)` 로 교체. prop 기본값도 동일 토큰으로 변경.
+- **변경 파일**: `components/feedback/WanderingEyesLoader.jsx`
+- **확인 결과**: deprecated 토큰(`--color-white`, `--color-surface-card` 등) 미사용. 애니메이션에 `ease-in-out` 리터럴 사용 중이나 WanderingEyesLoader 고유 리듬 애니메이션이므로 DS motion 토큰으로 교체 불필요 판정.
+- **배포**: 2026-08-14, design-system-staging/v2

@@ -1,6 +1,6 @@
 ---
 id: DS-022
-status: OPEN
+status: CLOSED
 severity: P2
 type: IMPROVE
 category: Typography / Architecture
@@ -72,3 +72,9 @@ Noto Sans KR woff2 파일을 다운로드 후 \`@font-face\`로 직접 정의.
 - [ ] Next.js, Vite/CRA, 자체 호스팅 세 가지 환경별 설정 예시 존재
 - [ ] 각 환경에서 `--font-family-base`가 Noto Sans KR을 참조하도록 연결 설명
 - [ ] weight 300/400/500/600/900 모두 포함된 예시
+
+## 완료 기록
+
+- **구현 내용**: `readme.md`에 "폰트 설정" 섹션 추가 — Next.js(next/font/google), Vite/CRA(Google Fonts CDN), 자체 호스팅(@font-face) 세 가지 환경별 코드 예시 포함. weight 300/400/500/600/900 전부 명시.
+- **변경 파일**: `readme.md`
+- **배포**: 2026-08-14, design-system-staging/v2

@@ -1,6 +1,6 @@
 ---
 id: DS-017
-status: OPEN
+status: CLOSED
 severity: P2
 type: ADD
 category: Component / UX
@@ -65,3 +65,9 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss, 
 - [ ] `iconSlot` 있을 때 해당 ReactNode가 아이콘 자리에 렌더링됨
 - [ ] `ModalToast.d.ts`에 `iconSlot?: ReactNode` 추가
 - [ ] `feedback.card.html` 데모에 iconSlot 예시 (BadgeFrame 포함) 추가
+
+## 완료 기록
+
+- **구현 내용**: `ModalToast.jsx`에 `iconSlot` prop 추가. 제공 시 기본 아이콘 원형 컨테이너를 대체.
+- **변경 파일**: `components/feedback/ModalToast.jsx`, `components/feedback/ModalToast.d.ts`
+- **배포**: 2026-08-14, design-system-staging/v2

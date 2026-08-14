@@ -1,6 +1,6 @@
 ---
 id: DS-016
-status: OPEN
+status: CLOSED
 severity: P2
 type: IMPROVE
 category: Component / Architecture
@@ -46,3 +46,11 @@ category: Component / Architecture
 - [ ] CSS `clip-path` 속성으로 동일한 모양 재현
 - [ ] Chrome, Safari, Firefox에서 시각적 결과 동일
 - [ ] 렌더링 성능 측정: compositing layer 활성화 확인 (DevTools > Layers)
+
+## 완료 기록
+
+- **구현 내용**: 확인 결과 `BadgeFrame.jsx`는 이미 `clipPath: pathD ? \`path('${pathD}')\` : undefined` 형태로 CSS inline `clip-path` 구현 완료 상태였음. SVG `<clipPath>` 요소 없음 — 마이그레이션 대상 아님.
+- **변경 파일**: 없음 (기 구현 확인)
+- **주요 의사결정**: pre-existing correct implementation으로 판정, 별도 수정 없이 CLOSED 처리.
+- **잔여 이슈**: `clip-path: path()` Safari 지원 제한 — 곡선 경로 사용 시 `polygon()` 폴백 고려 필요 (미완)
+- **배포**: 2026-08-14

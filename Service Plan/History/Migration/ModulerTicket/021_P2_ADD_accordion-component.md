@@ -1,6 +1,6 @@
 ---
 id: DS-021
-status: OPEN
+status: CLOSED
 severity: P2
 type: ADD
 category: Component / UX / Accessibility
@@ -89,3 +89,15 @@ export function Accordion({ items }) {
 - [ ] 열기/닫기 애니메이션 `--ease-smooth-out` 사용
 - [ ] 키보드: Enter/Space로 토글, Tab으로 다음 항목 이동
 - [ ] `.d.ts` 파일 동반
+
+## 완료 기록
+
+- **구현 내용**: `components/navigation/Accordion.jsx` + `Accordion.d.ts` 신규 생성.
+- **변경 파일**: `components/navigation/Accordion.jsx`, `components/navigation/Accordion.d.ts`
+- **주요 의사결정**:
+  - `hidden` attribute 대신 `maxHeight` 트릭으로 CSS transition 활성화 (`hidden`은 transition 불가).
+  - 단일 열기 패턴(single-open accordion) 채택 — 다중 열기보다 모바일 UX에 적합.
+  - `maxHeight` 값을 `scrollHeight`로 동적 계산 — 컨텐츠 높이와 무관하게 동작.
+  - `aria-expanded`, `aria-controls`, `role="region"`, `aria-labelledby` WAI-ARIA 완전 적용.
+  - chevron 아이콘 rotate 180° 에니메이션 `--ease-smooth-out` 적용.
+- **배포**: 2026-08-14, design-system-staging/v2

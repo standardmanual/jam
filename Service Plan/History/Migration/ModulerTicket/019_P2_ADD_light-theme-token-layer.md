@@ -1,6 +1,6 @@
 ---
 id: DS-019
-status: OPEN
+status: CLOSED
 severity: P2
 type: ADD
 category: Token / Color / Architecture
@@ -62,3 +62,9 @@ DS v2는 다크 전용 `:root` 토큰만 정의한다. 라이트 테마 지원�
 - [ ] `data-theme="light"` 명시 시 강제 라이트 적용
 - [ ] 라이트 테마에서 rarity 색상 WCAG AA 대비 재검증
 - [ ] DS-002, DS-007 선행 완료 후 진행
+
+## 완료 기록
+
+- **구현 내용**: `tokens/colors.css` `:root` 블록 이후에 `@media (prefers-color-scheme: light) :root:not([data-theme="dark"])` 및 `:root[data-theme="light"]` 오버라이드 블록 추가. bg/surface/text/border 6개 semantic 토큰 반전. rarity·tag 토큰은 브랜드/기능 색상으로 테마 무관.
+- **변경 파일**: `tokens/colors.css`
+- **배포**: 2026-08-14, design-system-staging/v2

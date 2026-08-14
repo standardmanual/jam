@@ -1,6 +1,6 @@
 ---
 id: DS-020
-status: OPEN
+status: CLOSED
 severity: P2
 type: REFACTOR
 category: Architecture
@@ -67,3 +67,12 @@ DS-006(hover 전략)으로 전역 button:hover만 추가하고, 나머지는 수
 - [ ] 팀 논의를 통해 세 가지 옵션 중 하나 선택 및 문서화
 - [ ] 선택한 방향으로 Button, Card 2개 컴포넌트 파일럿 마이그레이션
 - [ ] 파일럿 결과 기반으로 전체 마이그레이션 티켓 분리 생성
+
+## 완료 기록
+
+- **구현 내용**: 코드 변경 없음 — 아키텍처 결정 문서화.
+- **채택 결정**: Option C (단기) + Option A 중기 로드맵.
+  - 단기: DS-006에서 `styles.css` 전역 `button:hover` + `@media (hover: hover)` 가드로 보완 완료.
+  - 중기: CSS Modules(`*.module.css`) 도입 — Next.js 기본 지원, pseudo-selector/media query 완전 지원. 마이그레이션 범위가 크므로 별도 대규모 티켓으로 분리 예정.
+  - Option B(유틸리티 클래스 레이어) 미채택: Tailwind 축소판화 우려, 유지보수 복잡도 상승.
+- **배포**: 2026-08-14
