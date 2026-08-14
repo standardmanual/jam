@@ -153,7 +153,8 @@ export default function TabBar({ username }: TabBarProps) {
             aria-current={active ? 'page' : undefined}
             className="relative flex-1 flex items-center justify-center h-full min-w-11 transition-transform duration-100 active:scale-90"
           >
-            <span className={active ? 'text-text-inverse' : 'text-text-inverse/35'}>
+            {/* DS v2: 활성=--color-primary(레드), 비활성=--color-icon-inactive(다크 그레이) */}
+            <span style={{ color: active ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
               {active ? tab.iconFill : tab.iconLine}
             </span>
             {/*
@@ -163,7 +164,7 @@ export default function TabBar({ username }: TabBarProps) {
               `.jam-tabbar-dot`으로 트리거 하단 중앙으로 옮겼다.
             */}
             <span className="t-badge jam-tabbar-dot" data-open={active} aria-hidden="true">
-              <span className="t-badge-dot w-1 h-1 rounded-full bg-text-inverse" />
+              <span className="t-badge-dot w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
             </span>
           </Link>
         )

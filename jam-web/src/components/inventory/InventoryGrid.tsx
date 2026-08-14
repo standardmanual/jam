@@ -34,10 +34,11 @@ interface InventoryGridProps {
  * [주의] 색상값/매핑을 재조정하지 마세요(유저가 학습한 색 언어 유지).
  * 타일 배경은 항상 아이스 고정 — 코발트 배경 위 반투명 워시는 텍스트와 섞여 대비가 깨진다.
  */
+// DS v2 희귀도 링 — --color-rarity-* 토큰 기반 ([의사결정 A])
 const rarityAccent: Record<string, string> = {
-  rare: 'shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
-  legend: 'shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
-  mythic: 'shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
+  rare:   'shadow-[inset_0_0_0_1px_var(--color-rarity-rare)]',
+  legend: 'shadow-[inset_0_0_0_1px_var(--color-rarity-legend)]',
+  mythic: 'shadow-[inset_0_0_0_1px_var(--color-rarity-mythic)]',
 }
 
 function isExpiringSoon(expiresAt: string | null | undefined): boolean {
