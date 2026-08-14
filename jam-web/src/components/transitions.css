@@ -147,9 +147,11 @@
   z-index: 1;
   transition: color var(--tabs-dur) var(--tabs-ease);
 }
-.t-tab:not([aria-selected="true"]):hover,
 .t-tab[aria-selected="true"] {
   color: var(--tabs-text-active);
+}
+.t-tab:not([aria-selected="true"]):hover {
+  color: var(--tabs-text-hover, var(--tabs-text-active));
 }
 
 /* The pill: width + transform are written inline by JS so

@@ -212,7 +212,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     supabase.from('badges').select('*').eq('id', id).single(),
         service
       .from('user_activity_badges')
-      .select('*, poi:triggered_by_poi_id(id, name, latitude, longitude)')
+      .select('*, poi:triggered_by_poi_id(id, name, latitude, longitude, radius_meters)')
       .eq('user_id', subjectId)
       .eq('badge_id', id)
       .maybeSingle(),
@@ -229,7 +229,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   if (badgeRow.type === 'poi') {
         const { data: poiEarnsRaw } = await service
       .from('user_poi_badge_earns')
-      .select('*, poi:poi_id(id, name, latitude, longitude)')
+      .select('*, poi:poi_id(id, name, latitude, longitude, radius_meters)')
       .eq('user_id', subjectId)
       .eq('badge_id', id)
       .order('earned_at', { ascending: false })
@@ -323,7 +323,16 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   }
 
   // triggered_by_poi_id join 결과(활동 배지) 또는 최근 POI 획득 이력의 POI
-  const poi: PoiRow | null = earned?.poi ?? poiEarns[0]?.poi ?? null
+  // 미획득 POI 배지는 이력이 없으므로 linked_badge_id로 직접 조회
+  let poi: PoiRow | null = earned?.poi ?? poiEarns[0]?.poi ?? null
+  if (!poi && badgeRow.type === 'poi') {
+    const { data: linkedPoi } = await supabase
+      .from('poi')
+      .select('id, name, latitude, longitude, radius_meters')
+      .eq('linked_badge_id', id)
+      .maybeSingle()
+    poi = linkedPoi as PoiRow | null
+  }
 
   // 아이템배지는 activity/poi 배지와 조건 구조가 완전히 달라 인벤토리 상세(/inventory/[itemId])와
   // 동일한 화면 구성(일련번호/획득방법/획득일/만료일 카드)으로 보여준다. 소유 여부에 따라
@@ -699,10 +708,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </Card>
         )}
 
-        {/* POI 배지 안전 안내 — 반경 50m 동선 조건 + 무리한 접근 자제 요청 */}
+        {/* POI 배지 안전 안내 — 실제 POI 반경 + 무리한 접근 자제 요청 */}
         {badgeRow.type === 'poi' && (
           <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/50 px-[var(--spacing-16)]">
-            {d.badges.poiSafetyNotice}
+            {t(d.badges.poiSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
           </p>
         )}
       </div>
