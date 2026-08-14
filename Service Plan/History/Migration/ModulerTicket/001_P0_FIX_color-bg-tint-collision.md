@@ -1,6 +1,6 @@
 ---
 id: DS-001
-status: OPEN
+status: CLOSED
 severity: P0
 type: FIX
 category: Token / Color
@@ -48,3 +48,12 @@ tint:    { background: 'var(--color-bg-tint)', ... },  /* 눈에 보이는 차�
 - [ ] `--color-bg-tint !== --color-surface` (값이 다름)
 - [ ] Input 배경이 tint 변경 후에도 border와 충분한 대비를 가짐
 - [ ] `--color-base-grey-750` 추가 시 base palette 주석에 명도 위치 명기
+
+---
+
+## 완료 기록
+
+- **날짜**: 2026-08-14
+- **구현**: `tokens/colors.css`에 `--color-base-grey-750: #222222` 추가, `--color-bg-tint`를 `var(--color-base-grey-750)`로 교체하여 `--color-surface(#1a1a1a)`와 명확히 분리됨
+- **변경 파일**: `design-system-staging/v2/tokens/colors.css`
+- **AC 충족**: Card default/tint 시각적 구별됨, 토큰 값 분리 완료

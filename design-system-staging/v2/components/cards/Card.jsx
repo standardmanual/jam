@@ -13,6 +13,8 @@ import React from 'react';
  *   - ...rest spread added for className, data-*, aria-* passthrough
  */
 export function Card({ tone = 'default', children, className = '', style = {}, onClick, ...rest }) {
+  const interactive = Boolean(onClick);
+
   const backgrounds = {
     default: {
       background: 'var(--color-surface)',
@@ -35,9 +37,18 @@ export function Card({ tone = 'default', children, className = '', style = {}, o
     <div
       className={className}
       onClick={onClick}
+      role={rest.role ?? (interactive ? 'button' : undefined)}
+      tabIndex={interactive ? 0 : undefined}
+      onKeyDown={interactive ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.(e);
+        }
+      } : undefined}
       style={{
         borderRadius: 'var(--radius-card)',
         padding: 'var(--layout-card-padding)',
+        cursor: interactive ? 'pointer' : undefined,
         ...backgrounds[tone] ?? backgrounds.default,
         ...style,
       }}
