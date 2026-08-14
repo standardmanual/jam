@@ -7,10 +7,10 @@ export default async function AdminCombinePolicyPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">조합 정책</h1>
+        <h1 className="text-2xl font-bold">믹스 정책</h1>
         <p className="text-[#6b7280] text-sm mt-1">
-          정석 레시피(조합 레시피 메뉴)에 매칭되지 않는 임의 조합의 확률·피티 파라미터.
-          저장 즉시 다음 조합부터 적용됩니다.
+          정석 레시피(믹스 레시피 메뉴)에 매칭되지 않는 임의 믹스의 확률·피티 파라미터.
+          저장 즉시 다음 믹스부터 적용됩니다.
         </p>
       </div>
       <CombinePolicyForm initial={policy} />

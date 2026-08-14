@@ -12,16 +12,16 @@ export default function StravaStatusCard({ connection }: StravaStatusCardProps) 
       <div className="rounded-2xl bg-[#FC4C02]/10 border border-[#FC4C02]/30 p-4">
         <div className="flex items-center gap-3 mb-3">
           <span className="w-2 h-2 rounded-full bg-white/30" />
-          <span className="font-semibold text-sm text-white/70">Strava 연동 안 됨</span>
+          <span className="font-semibold text-sm text-white/70">Strava 동기화 안 됨</span>
         </div>
         <p className="text-white/50 text-sm mb-4">
-          Strava를 연동하면 활동 기반 배지를 자동으로 획득할 수 있어요.
+          Strava를 동기화하면 활동 기반 배지를 자동으로 겟할 수 있어요.
         </p>
         <Link
           href="/api/strava/auth"
           className="inline-block bg-[#FC4C02] text-white font-bold px-5 py-2.5 rounded-xl text-sm"
         >
-          Strava 연동하기
+          Strava 동기화하기
         </Link>
       </div>
     )
@@ -32,7 +32,7 @@ export default function StravaStatusCard({ connection }: StravaStatusCardProps) 
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#FC4C02]" />
-          <span className="font-semibold text-sm text-[#FC4C02]">Strava 연동됨</span>
+          <span className="font-semibold text-sm text-[#FC4C02]">Strava 동기화됨</span>
         </div>
       </div>
       {connection.last_synced_at ? (

@@ -11,7 +11,7 @@ const REASON_KIND: Record<PointTransactionRow['reason'], string> = {
   mission_point_reward: '미션 보상',
   admin_grant: '운영자 지급',
   admin_deduct: '운영자 회수',
-  combine_pity_reward: '조합 위로 보상',
+  combine_pity_reward: '믹스 위로 보상',
 }
 
 export interface AdminUserPointHistoryItem {
