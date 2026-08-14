@@ -1,0 +1,19 @@
+/* JAM! DS v2 — border-radius scale.
+ * Monotonic 4-step scale: xs < sm < card < pill.
+ *
+ * v2 changes:
+ *   - --radius-card: 10px → 16px  (was non-monotonic: card < md)
+ *   - --radius-md removed          (caused card < md confusion)
+ *   - --radius-button alias removed (was unused, mismatched actual button value)
+ *   - Backward-compat aliases kept: --radius-subtle, --radius-input
+ */
+:root {
+  --radius-xs: 4px;       /* hairline — dividers, inner thumbnails */
+  --radius-sm: 8px;       /* inputs, small chips */
+  --radius-card: 16px;    /* card surfaces — v2: raised from 10px for monotonic scale */
+  --radius-pill: 9999px;  /* buttons, tags — full capsule */
+
+  /* Backward-compat aliases */
+  --radius-subtle: var(--radius-xs);
+  --radius-input: var(--radius-sm);
+}
