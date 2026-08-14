@@ -227,7 +227,7 @@ export const ko = {
     notEarnedTitle: '아직 겟하지 못한 배지예요',
     notEarnedBody: '조건을 달성하면 자동으로 겟돼요',
 
-    poiSafetyNotice: '이 배지는 표시된 위치 반경 50m 안을 스쳐 지나가기만 해도 찾아내요. 위험한 곳까지 굳이 들어갈 필요 없어요. 접근이 까다로운 곳이라면 알려주세요. 도와드릴게요.',
+    poiSafetyNotice: '이 배지는 표시된 위치 반경 {radius}m 안을 스쳐 지나가기만 해도 찾아내요. 위험한 곳까지 굳이 들어갈 필요 없어요. 접근이 까다로운 곳이라면 알려주세요. 도와드릴게요.',
 
     earnedTag: '겟',
     notEarnedTag: '미겟',

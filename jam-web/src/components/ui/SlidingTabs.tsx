@@ -57,6 +57,7 @@ const PALETTE: Record<'onSurface' | 'onCard', CSSProperties> = {
     '--tabs-pill-bg': 'var(--color-surface-inverse)',
     '--tabs-text-muted': 'rgba(255, 255, 255, 0.45)',
     '--tabs-text-active': 'var(--color-text-inverse)',
+    '--tabs-text-hover': 'rgba(255, 255, 255, 0.85)',
   } as CSSProperties,
   // DS v2: 라이트 카드(surface-inverse = white) 위 — 활성 pill은 primary(레드), 활성 라벨은 white
   onCard: {
@@ -65,6 +66,7 @@ const PALETTE: Record<'onSurface' | 'onCard', CSSProperties> = {
     '--tabs-pill-bg': 'var(--color-primary)',
     '--tabs-text-muted': 'rgba(0, 0, 0, 0.4)',
     '--tabs-text-active': '#ffffff',
+    '--tabs-text-hover': 'rgba(0, 0, 0, 0.7)',
   } as CSSProperties,
 }
 
