@@ -1,0 +1,24 @@
+<!-- @dsCard group="Foundations" viewport="700x520" name="Do's & Don'ts" subtitle="System-wide guardrails" -->
+<link rel="stylesheet" href="../styles.css">
+<div style="padding:24px;font-family:var(--font-family-base);color:var(--color-text);display:flex;flex-direction:column;gap:20px;max-width:640px">
+<div>
+<h3 style="margin:0 0 10px;font-size:16px;font-weight:600;color:var(--color-rarity-rare)">Do</h3>
+<ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6;color:var(--color-text)">
+<li>Keep the black canvas (<code>--color-bg</code>) — depth comes from borders and grey card surfaces, not shadows.</li>
+<li>Use the red-orange primary (<code>--color-primary</code>) as the one dominant accent; brown is secondary only.</li>
+<li>Reserve full-pill radius for buttons and tags; keep cards and inputs at the moderate 8–10px scale.</li>
+<li>Use weight 600 + tight tracking only on H1/H2; keep body copy at weight 400, normal tracking.</li>
+<li>Build spacing from the 4px base scale (4/8/12/16/24/32/48/64).</li>
+</ul>
+</div>
+<div>
+<h3 style="margin:0 0 10px;font-size:16px;font-weight:600;color:var(--color-rarity-mythic)">Don't</h3>
+<ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6;color:var(--color-text)">
+<li>Don't introduce colors outside the palette in <code>tokens/colors.css</code> without documenting why (see the amber/mythic-pink precedent in readme.md).</li>
+<li>Don't switch any surface to a light/white background — this system is dark-only.</li>
+<li>Don't apply the bold-display weight/tracking rules to running text — they're for hero numerals only.</li>
+<li>Don't mix pill radius onto cards or inputs — it reads as a button and steals the buttons' visual signature.</li>
+<li>Don't add box-shadows — elevation was intentionally removed when the system went black-background.</li>
+</ul>
+</div>
+</div>
