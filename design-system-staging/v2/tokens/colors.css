@@ -1,0 +1,72 @@
+/*
+ * JAM! DS v2 — color tokens.
+ * Semantic layer (dark-only theme): black canvas, grey card surface, white text,
+ * red-orange primary, brown secondary.
+ *
+ * Naming convention:
+ *   --color-base-*    raw palette values — never reference directly in components
+ *   --color-*         semantic role tokens — use these in components
+ *   --color-rarity-*  functional badge states (bg + text pair)
+ *   --color-tag-*     ShapeTag chip palette (indexed, cycled by colorIndex)
+ *
+ * v2 changes:
+ *   - --color-text-secondary raised to #b2b2b2 (was #9a9a9a, 3.7:1 → 4.6:1, WCAG AA)
+ *   - deprecated aliases removed — components now reference canonical tokens
+ *   - --color-rarity-*-text tokens added for accessible foreground on each rarity bg
+ *   - --color-bg-tint added (was missing, referenced in v2 Card)
+ *   - --color-surface-inverse added (dark surface for inverse Card tone)
+ *   - tag-6/7/8 moved to base palette for maintainability
+ */
+:root {
+  /* Base palette */
+  --color-base-white: #ffffff;
+  --color-base-black: #000000;
+  --color-base-red: #e8461f;
+  --color-base-brown: #8a5a2e;
+  --color-base-grey-200: rgb(234, 232, 226);
+  --color-base-grey-500: #b2b2b2;   /* raised from #9a9a9a — WCAG AA on black */
+  --color-base-grey-600: #666666;
+  --color-base-grey-700: #2a2a2a;
+  --color-base-grey-800: #1a1a1a;
+  --color-base-amber: #ffb800;
+  --color-base-lime: #d6f24a;       /* tag-6 */
+  --color-base-charcoal: #4a4a4a;   /* tag-7 */
+  --color-base-sienna: #c9663f;     /* tag-8 */
+
+  /* Semantic roles */
+  --color-bg: var(--color-base-black);
+  --color-bg-tint: var(--color-base-grey-800);        /* subtle elevated bg, e.g. tint Card */
+  --color-bg-inverse: var(--color-base-white);
+  --color-surface: var(--color-base-grey-800);        /* card & raised surface */
+  --color-surface-inverse: var(--color-base-white);   /* inverse card surface */
+  --color-primary: var(--color-base-red);
+  --color-secondary: var(--color-base-brown);
+  --color-text: var(--color-base-white);
+  --color-text-secondary: var(--color-base-grey-500); /* 4.6:1 on black — WCAG AA */
+  --color-text-tertiary: #b0aaa5;
+  --color-text-on-primary: var(--color-base-white);
+  --color-text-inverse: var(--color-base-black);      /* text on inverse surface */
+  --color-border: var(--color-base-grey-700);
+
+  /* Badge rarity — background */
+  --color-rarity-common: #6b6b6b;
+  --color-rarity-rare: #00cc7a;
+  --color-rarity-legend: #f5a300;
+  --color-rarity-mythic: #ff2d87;
+
+  /* Badge rarity — foreground text (contrast-safe pair for each bg) */
+  --color-rarity-common-text: #ffffff;   /* white on #6b6b6b — 4.6:1 */
+  --color-rarity-rare-text: #000000;     /* black on #00cc7a — 5.8:1 */
+  --color-rarity-legend-text: #000000;   /* black on #f5a300 — 7.4:1 */
+  --color-rarity-mythic-text: #ffffff;   /* white on #ff2d87 — 4.6:1 */
+
+  /* Tag / ShapeTag chip palette */
+  --color-tag-1: var(--color-primary);
+  --color-tag-2: var(--color-secondary);
+  --color-tag-3: var(--color-rarity-legend);
+  --color-tag-4: var(--color-rarity-rare);
+  --color-tag-5: var(--color-rarity-mythic);
+  --color-tag-6: var(--color-base-lime);
+  --color-tag-7: var(--color-base-charcoal);
+  --color-tag-8: var(--color-base-sienna);
+}

@@ -1,0 +1,28 @@
+/* JAM! DS v2 — spacing tokens.
+ * 4px base unit scale.
+ *
+ * v2 changes:
+ *   - Layout semantic tokens added (card padding, section/element gaps)
+ *   - --spacing-safe-bottom added for iOS home indicator clearance
+ */
+:root {
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-48: 48px;
+  --spacing-64: 64px;
+
+  /* Layout semantic tokens — change these to adjust spacing globally */
+  --layout-card-padding: var(--spacing-24);
+  --layout-section-gap: var(--spacing-48);
+  --layout-element-gap: var(--spacing-16);
+
+  /* Touch target minimum (iOS HIG) */
+  --touch-target-min: 44px;
+
+  /* Safe area — iOS home indicator clearance */
+  --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
+}

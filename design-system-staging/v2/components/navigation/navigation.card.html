@@ -1,0 +1,15 @@
+<!-- @dsCard group="Components" viewport="700x220" name="Navigation" subtitle="Top nav + floating tab bar" -->
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="../../_ds_bundle.js"></script>
+<div id="root" style="background:var(--color-bg);height:200px;position:relative;overflow:hidden;border-radius:16px;border:1px solid var(--color-border)"></div>
+<script type="text/babel">
+const { TopNav, TabBar } = window.JAMShopifyDesignSystem_f8de83;
+function Demo(){
+  const [tab, setTab] = React.useState('today');
+  return (<div style={{height:'100%'}}><TopNav title="배지" /><TabBar active={tab} onChange={setTab} /></div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>

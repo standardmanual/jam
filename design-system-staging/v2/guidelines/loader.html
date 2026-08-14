@@ -1,0 +1,71 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Loader" subtitle="WanderingEyesLoader + NavigationLoader 시간 정책" -->
+<link rel="stylesheet" href="../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<div id="root" style="padding:24px;background:var(--color-bg)"></div>
+<script type="text/babel">
+const { useMemo, useState } = React;
+
+const STATIC_CSS = `.wandering-eyes{display:flex;align-items:center;justify-content:center;gap:12px}.wandering-eyes-eye{position:relative;width:48px;height:48px;border-radius:9999px;background-color:var(--eye-color,#f8fafc);overflow:hidden;flex-shrink:0;animation:wandering-eyes-blink var(--duration,2s) ease-in-out infinite}.wandering-eyes-eye:nth-child(2){animation-delay:-60ms}.wandering-eyes-pupil{position:absolute;inset:0;margin:auto;width:68%;height:68%;border-radius:9999px;background-color:var(--pupil-color,#0f172a);animation:wandering-eyes-move var(--duration,2s) ease-in-out infinite}@keyframes wandering-eyes-blink{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(0.06)}97%{transform:scaleY(1)}}@media(prefers-reduced-motion:reduce){.wandering-eyes-eye,.wandering-eyes-pupil{animation:none}}`;
+const MOVE_STOPS = [15,30,45,60,75,88];
+function randomOffset(m){const a=Math.random()*Math.PI*2,r=m*(0.55+Math.random()*0.45);return{x:Math.round(Math.cos(a)*r*100)/100,y:Math.round(Math.sin(a)*r*100)/100}}
+let _uid=0;
+function WanderingEyesLoader({duration='2s',eyeColor='#f8fafc',pupilColor='#0f172a',style={}}){
+  const animName=useMemo(()=>`wem-${++_uid}`,[]);
+  const css=useMemo(()=>{const s=randomOffset(34),stops=MOVE_STOPS.map(stop=>({stop,...randomOffset(38)})),body=stops.map(({stop,x,y})=>`${stop}%{transform:translate(${x}%,${y}%)}`).join(' ');return `@keyframes ${animName}{0%,100%{transform:translate(${s.x}%,${s.y}%)} ${body}}`},[animName]);
+  return <div className="wandering-eyes" style={{'--duration':duration,'--eye-color':eyeColor,'--pupil-color':pupilColor,...style}} role="status" aria-label="로딩 중"><style>{STATIC_CSS+css}</style><span className="wandering-eyes-eye"><span className="wandering-eyes-pupil" style={{animationName:animName}}/></span><span className="wandering-eyes-eye"><span className="wandering-eyes-pupil" style={{animationName:animName}}/></span></div>;
+}
+
+const POLICY = [
+  ['SHOW_DELAY', '1000ms', '클릭 후 이 시간 이내 탐색 완료 시 로더를 아예 표시하지 않음'],
+  ['MIN_VISIBLE', '400ms', '일단 표시된 뒤 최소 유지 시간 — flash 방지'],
+  ['FADE_OUT', '200ms', '숨길 때 opacity ease-out transition 길이'],
+  ['MAX_VISIBLE', '8000ms', '오류/무응답 시 강제 숨김 안전장치'],
+  ['duration', '2s', '눈동자 한 사이클(이동 + 깜빡임) 길이'],
+];
+
+function Demo(){
+  const ff='font-family:var(--font-family-base)';
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:24}}>
+      <div style={{display:'flex',gap:32,alignItems:'center'}}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+          <WanderingEyesLoader eyeColor="#f8fafc" pupilColor="#111111" />
+          <span style={{fontSize:10,color:'var(--color-text-secondary)',fontFamily:'var(--font-family-base)'}}>라이트 (기본)</span>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+          <WanderingEyesLoader eyeColor="var(--color-primary)" pupilColor="#ffffff" />
+          <span style={{fontSize:10,color:'var(--color-text-secondary)',fontFamily:'var(--font-family-base)'}}>Primary accent</span>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+          <WanderingEyesLoader eyeColor="var(--color-rarity-mythic)" pupilColor="#ffffff" duration="1.2s" />
+          <span style={{fontSize:10,color:'var(--color-text-secondary)',fontFamily:'var(--font-family-base)'}}>Fast (1.2s)</span>
+        </div>
+      </div>
+      <div>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--color-text-secondary)',fontFamily:'var(--font-family-base)',marginBottom:8}}>NavigationLoader 시간 정책 — jam-web/src/components/NavigationLoader.tsx</div>
+        <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'var(--font-family-base)',fontSize:12}}>
+          <thead>
+            <tr style={{borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
+              <th style={{textAlign:'left',padding:'4px 12px 4px 0',color:'var(--color-text-secondary)',fontWeight:600,width:120}}>상수</th>
+              <th style={{textAlign:'left',padding:'4px 12px',color:'var(--color-text-secondary)',fontWeight:600,width:80}}>값</th>
+              <th style={{textAlign:'left',padding:'4px 0',color:'var(--color-text-secondary)',fontWeight:600}}>역할</th>
+            </tr>
+          </thead>
+          <tbody>
+            {POLICY.map(([k,v,desc])=>(
+              <tr key={k} style={{borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                <td style={{padding:'6px 12px 6px 0',fontFamily:'monospace',color:'var(--color-primary)',fontSize:11}}>{k}</td>
+                <td style={{padding:'6px 12px',color:'var(--color-text)',fontWeight:600}}>{v}</td>
+                <td style={{padding:'6px 0',color:'var(--color-text-tertiary)'}}>{desc}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>

@@ -1,0 +1,17 @@
+/*
+ * JAM! DS v2 — font loading.
+ *
+ * v2 change: Google Fonts CDN removed.
+ *   - CDN @latest introduces FOUT, network dependency, and CSP risks.
+ *   - In Next.js (App Router): use next/font/google — handles self-hosting automatically.
+ *   - Otherwise: self-host woff2 files via @font-face with font-display: swap.
+ *
+ * The font stack in --font-family-base (typography.css) falls back to system-ui
+ * so the design system renders without Noto Sans KR in environments where
+ * the font hasn't been loaded by the consuming app.
+ *
+ * Example next/font usage (in layout.tsx):
+ *   import { Noto_Sans_KR } from 'next/font/google'
+ *   const noto = Noto_Sans_KR({ subsets: ['latin'], weight: ['300','400','500','700','900'] })
+ *   <html className={noto.className}>
+ */
