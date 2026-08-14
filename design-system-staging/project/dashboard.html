@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JAM! 디자인시스템 대시보드</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font-family-base); background: var(--color-bg); color: var(--color-text); }
+
+    .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+    /* 사이드바 */
+    .sidebar {
+      background: var(--color-surface);
+      border-right: 1px solid var(--color-border);
+      position: sticky; top: 0; max-height: 100vh; overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 18px 16px 14px;
+      font-size: 16px; font-weight: 400;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .sidebar-group { padding: 12px 0 0; }
+    .sidebar-group-label {
+      padding: 0 16px 6px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      color: var(--color-text-secondary); text-transform: uppercase;
+    }
+    .sidebar-nav { list-style: none; margin: 0; padding: 0 0 12px; }
+    .sidebar-nav a {
+      display: block; padding: 8px 16px;
+      color: var(--color-text-secondary); text-decoration: none; font-size: 13px;
+      border-left: 2px solid transparent; cursor: pointer; transition: all 0.15s;
+    }
+    .sidebar-nav a:hover { color: var(--color-text); background: rgba(255,255,255,0.04); }
+    .sidebar-nav a.active { color: var(--color-primary); border-left-color: var(--color-primary); background: rgba(232,70,31,0.08); }
+
+    /* 메인 */
+    .main { padding: 40px 48px; overflow-y: auto; }
+    .section { display: none; }
+    .section.active { display: block; animation: fadein 0.2s ease; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    h2 { font-size: 26px; font-weight: 300; margin: 0 0 8px; }
+    .section-subtitle { color: var(--color-text-secondary); font-size: 14px; margin: 0 0 32px; }
+    h3 { font-size: 15px; font-weight: 600; margin: 32px 0 12px; color: var(--color-text); letter-spacing: 0.02em; }
+    hr { border: none; border-top: 1px solid var(--color-border); margin: 32px 0; }
+
+    /* 컴포넌트 블록 */
+    .comp { margin: 0 0 32px; }
+    .comp-header { margin-bottom: 10px; }
+    .comp-name { font-size: 14px; font-weight: 700; color: var(--color-text); }
+    .comp-desc { font-size: 13px; color: var(--color-text-secondary); margin: 4px 0 0; line-height: 1.6; }
+    .comp-code {
+      background: rgba(0,0,0,0.4); border: 1px solid var(--color-border);
+      padding: 12px 16px; border-radius: 6px;
+      font-family: 'Monaco','Menlo',monospace; font-size: 12px; color: #a0ff7c;
+      margin: 10px 0; overflow-x: auto; line-height: 1.6; white-space: pre;
+    }
+    .comp-preview {
+      border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden;
+      margin-top: 10px;
+    }
+    .comp-preview iframe { display: block; width: 100%; border: none; }
+
+    /* 토큰 테이블 */
+    .token-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .token-table th { text-align: left; padding: 8px 12px; color: var(--color-text-secondary); font-weight: 600; border-bottom: 1px solid var(--color-border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .token-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+    .token-name { font-family: monospace; font-size: 12px; color: var(--color-primary); }
+    .token-value { font-family: monospace; font-size: 12px; color: var(--color-text-secondary); }
+    .color-dot { width: 20px; height: 20px; border-radius: 4px; display: inline-block; border: 1px solid rgba(255,255,255,0.1); }
+
+    /* 개요 카드 */
+    .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
+    .overview-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 20px; }
+    .overview-card h4 { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--color-primary); }
+    .overview-card p { margin: 0; font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+
+    /* UI 스크린 */
+    .screen-frame { width: 430px; height: 900px; border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; }
+    .screen-frame iframe { width: 100%; height: 100%; border: none; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">JAM! Design System</div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">시작하기</div>
+      <ul class="sidebar-nav">
+        <li><a class="nav-link active" data-section="overview">📋 개요</a></li>
+        <li><a class="nav-link" data-section="dosddonts">✅ Do's &amp; Don'ts</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">브랜드</div>
+      <ul class="sidebar-nav">
+        <li><a class="nav-link" data-section="logo">🔤 로고</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">컬러</div>
+      <ul class="sidebar-nav">
+        <li><a class="nav-link" data-section="colors-primary">🎨 Primary &amp; Secondary</a></li>
+        <li><a class="nav-link" data-section="colors-rarity">💎 Rarity</a></li>
+        <li><a class="nav-link" data-section="colors-neutral">⬛ Neutrals</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">타이포그래피</div>
+      <ul class="sidebar-nav">
+        <li><a class="nav-link" data-section="type-headings">Aa 헤딩 스케일</a></li>
+        <li><a class="nav-link" data-section="type-body">Aa 본문 &amp; 캡션</a></li>
+        <li><a class="nav-link" data-section="type-bold">Aa Bold Display</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">간격 &amp; 반경</div>
+      <ul class="sidebar-nav">
+        <li><a class="nav-link" data-section="spacing">↔ 간격 스케일</a></li>
+        <li><a class="nav-link" data-section="radius">⬜ 반경 스케일</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">쉐이프</div>
+      <ul class="sidebar-nav">
+        <li><a class="nav-link" data-section="badge-frames">🏅 뱃지 프레임</a></li>
+        <li><a class="nav-link" data-section="shapes">🏷 ShapeTag &amp; RarityBadge</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">컴포넌트</div>
+      <ul class="sidebar-nav">
+        <li><a class="nav-link" data-section="buttons">🔘 Buttons</a></li>
+        <li><a class="nav-link" data-section="cards">📦 Cards</a></li>
+        <li><a class="nav-link" data-section="forms">📝 Forms</a></li>
+        <li><a class="nav-link" data-section="navigation">🧭 Navigation</a></li>
+        <li><a class="nav-link" data-section="feedback">💬 Feedback &amp; Loader</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">UI 화면</div>
+      <ul class="sidebar-nav">
+        <li><a class="nav-link" data-section="screens">📱 앱 화면</a></li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ── 개요 ── -->
+    <section id="overview" class="section active">
+      <h2>JAM! 디자인 시스템</h2>
+      <p class="section-subtitle">JAM! 한국 러닝 게이미피케이션 앱을 위한 비주얼 디자인 시스템</p>
+
+      <div class="overview-grid">
+        <div class="overview-card">
+          <h4>팔레트</h4>
+          <p>블랙 캔버스, 화이트 텍스트, 그레이 카드 표면(#1a1a1a), 레드-오렌지 액센트(#e8461f), 브라운 보조(#8a5a2e). 다크 전용 시스템.</p>
+        </div>
+        <div class="overview-card">
+          <h4>타이포그래피</h4>
+          <p>Noto Sans KR. 헤딩 라이트 웨이트(300–400), 히어로 대형 디스플레이 크기, H1/H2 좁은 음수 자간.</p>
+        </div>
+        <div class="overview-card">
+          <h4>반경 규칙</h4>
+          <p>버튼·태그 = 완전 필(9999px) 전용. 카드·인풋 = 8–12px 중간 단계. 필 반경을 카드에 섞지 않는다.</p>
+        </div>
+        <div class="overview-card">
+          <h4>간격</h4>
+          <p>4px 기본 단위 배수: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64px</p>
+        </div>
+        <div class="overview-card">
+          <h4>엘리베이션</h4>
+          <p>박스 섀도 없음. 블랙 배경에서 깊이감은 테두리와 회색 카드 표면으로만 표현.</p>
+        </div>
+        <div class="overview-card">
+          <h4>고정 용어</h4>
+          <p>획득(earn) · 드랍(drop) · 픽업(pickup) · 방문(visit) · 포인트 · 인벤토리 · 아이템북</p>
+        </div>
+      </div>
+
+      <h3>토큰 색인</h3>
+      <table class="token-table">
+        <thead><tr><th>파일</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td class="token-name">tokens/colors.css</td><td>색상 토큰 (base · semantic · rarity · tag)</td></tr>
+          <tr><td class="token-name">tokens/typography.css</td><td>타입 스케일, 웨이트, 자간, 행간</td></tr>
+          <tr><td class="token-name">tokens/spacing.css</td><td>간격 토큰 (4px 배수)</td></tr>
+          <tr><td class="token-name">tokens/radius.css</td><td>반경 스케일 (xs·sm·md·card·pill)</td></tr>
+          <tr><td class="token-name">tokens/motion.css</td><td>duration · easing (transitions.dev 1:1 복사)</td></tr>
+          <tr><td class="token-name">tokens/fonts.css</td><td>Noto Sans KR Google Fonts import</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── Do's & Don'ts ── -->
+    <section id="dosddonts" class="section">
+      <h2>Do's &amp; Don'ts</h2>
+      <p class="section-subtitle">시스템 전반에 적용되는 핵심 규칙</p>
+      <div class="comp-preview"><iframe src="guidelines/dos-donts.html" height="520"></iframe></div>
+    </section>
+
+    <!-- ── 로고 ── -->
+    <section id="logo" class="section">
+      <h2>로고</h2>
+      <p class="section-subtitle">화이트 배경 위 블랙, 블랙 배경 위 화이트 — 두 가지 버전만 사용</p>
+      <div class="comp-preview"><iframe src="guidelines/logo.html" height="180"></iframe></div>
+    </section>
+
+    <!-- ── 컬러: Primary ── -->
+    <section id="colors-primary" class="section">
+      <h2>Primary &amp; Secondary</h2>
+      <p class="section-subtitle">하나의 지배적인 레드-오렌지 액센트 + 브라운 보조 컬러</p>
+      <div class="comp-preview"><iframe src="guidelines/colors-primary.html" height="140"></iframe></div>
+
+      <h3>토큰</h3>
+      <table class="token-table">
+        <thead><tr><th>토큰</th><th>값</th><th>용도</th></tr></thead>
+        <tbody>
+          <tr><td class="token-name">--color-primary</td><td class="token-value">#e8461f <span class="color-dot" style="background:#e8461f"></span></td><td>주 액센트 — CTA 버튼, 활성 상태, 강조</td></tr>
+          <tr><td class="token-name">--color-secondary</td><td class="token-value">#8a5a2e <span class="color-dot" style="background:#8a5a2e"></span></td><td>보조 액센트 — 아이템북, 세컨더리 레이블</td></tr>
+          <tr><td class="token-name">--color-text-on-primary</td><td class="token-value">#ffffff</td><td>Primary 위 텍스트</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 컬러: Rarity ── -->
+    <section id="colors-rarity" class="section">
+      <h2>Badge Rarity 컬러</h2>
+      <p class="section-subtitle">4단계 고정 팔레트 — 사용자가 학습한 색상 언어이므로 절대 재매핑 금지</p>
+      <div class="comp-preview"><iframe src="guidelines/colors-rarity.html" height="140"></iframe></div>
+
+      <h3>토큰</h3>
+      <table class="token-table">
+        <thead><tr><th>토큰</th><th>값</th><th>등급</th></tr></thead>
+        <tbody>
+          <tr><td class="token-name">--color-rarity-common</td><td class="token-value">#6b6b6b <span class="color-dot" style="background:#6b6b6b"></span></td><td>Common</td></tr>
+          <tr><td class="token-name">--color-rarity-rare</td><td class="token-value">#00cc7a <span class="color-dot" style="background:#00cc7a"></span></td><td>Rare</td></tr>
+          <tr><td class="token-name">--color-rarity-legend</td><td class="token-value">#f5a300 <span class="color-dot" style="background:#f5a300"></span></td><td>Legend</td></tr>
+          <tr><td class="token-name">--color-rarity-mythic</td><td class="token-value">#ff2d87 <span class="color-dot" style="background:#ff2d87"></span></td><td>Mythic</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 컬러: Neutral ── -->
+    <section id="colors-neutral" class="section">
+      <h2>Neutrals</h2>
+      <p class="section-subtitle">배경, 서피스, 테두리, 텍스트 — 밝은 순서</p>
+      <div class="comp-preview"><iframe src="guidelines/colors-neutral.html" height="140"></iframe></div>
+
+      <h3>토큰</h3>
+      <table class="token-table">
+        <thead><tr><th>토큰</th><th>값</th><th>역할</th></tr></thead>
+        <tbody>
+          <tr><td class="token-name">--color-bg</td><td class="token-value">#000000 <span class="color-dot" style="background:#000000"></span></td><td>전체 배경</td></tr>
+          <tr><td class="token-name">--color-surface</td><td class="token-value">#1a1a1a <span class="color-dot" style="background:#1a1a1a"></span></td><td>카드·레이즈드 서피스</td></tr>
+          <tr><td class="token-name">--color-border</td><td class="token-value">#2a2a2a <span class="color-dot" style="background:#2a2a2a"></span></td><td>테두리, 구분선</td></tr>
+          <tr><td class="token-name">--color-text</td><td class="token-value">#ffffff</td><td>기본 텍스트</td></tr>
+          <tr><td class="token-name">--color-text-secondary</td><td class="token-value">#9a9a9a</td><td>보조 텍스트</td></tr>
+          <tr><td class="token-name">--color-text-tertiary</td><td class="token-value">#b0aaa5</td><td>뮤트 헬퍼 텍스트</td></tr>
+        </tbody>
+      </table>
+
+      <h3>ShapeTag 칩 팔레트</h3>
+      <table class="token-table">
+        <thead><tr><th>토큰</th><th>값</th></tr></thead>
+        <tbody>
+          <tr><td class="token-name">--color-tag-1</td><td class="token-value">#e8461f (Primary) <span class="color-dot" style="background:#e8461f"></span></td></tr>
+          <tr><td class="token-name">--color-tag-2</td><td class="token-value">#8a5a2e (Secondary) <span class="color-dot" style="background:#8a5a2e"></span></td></tr>
+          <tr><td class="token-name">--color-tag-3</td><td class="token-value">#f5a300 <span class="color-dot" style="background:#f5a300"></span></td></tr>
+          <tr><td class="token-name">--color-tag-4</td><td class="token-value">#00cc7a <span class="color-dot" style="background:#00cc7a"></span></td></tr>
+          <tr><td class="token-name">--color-tag-5</td><td class="token-value">#ff2d87 <span class="color-dot" style="background:#ff2d87"></span></td></tr>
+          <tr><td class="token-name">--color-tag-6</td><td class="token-value">#d6f24a <span class="color-dot" style="background:#d6f24a"></span></td></tr>
+          <tr><td class="token-name">--color-tag-7</td><td class="token-value">#4a4a4a <span class="color-dot" style="background:#4a4a4a"></span></td></tr>
+          <tr><td class="token-name">--color-tag-8</td><td class="token-value">#c9663f <span class="color-dot" style="background:#c9663f"></span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 타이포: 헤딩 ── -->
+    <section id="type-headings" class="section">
+      <h2>헤딩 스케일</h2>
+      <p class="section-subtitle">Noto Sans KR — Display부터 H4까지</p>
+      <div class="comp-preview"><iframe src="guidelines/type-headings.html" height="300"></iframe></div>
+      <h3>토큰</h3>
+      <table class="token-table">
+        <thead><tr><th>단계</th><th>크기</th><th>웨이트</th><th>자간</th></tr></thead>
+        <tbody>
+          <tr><td>Display</td><td class="token-value">96px</td><td class="token-value">300</td><td class="token-value">-2.4px</td></tr>
+          <tr><td>H1</td><td class="token-value">56px</td><td class="token-value">600</td><td class="token-value">-1.4px</td></tr>
+          <tr><td>H2</td><td class="token-value">44px</td><td class="token-value">600</td><td class="token-value">-1.1px</td></tr>
+          <tr><td>H3</td><td class="token-value">28px</td><td class="token-value">500</td><td class="token-value">-0.28px</td></tr>
+          <tr><td>H4</td><td class="token-value">24px</td><td class="token-value">500</td><td class="token-value">-0.24px</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 타이포: Body ── -->
+    <section id="type-body" class="section">
+      <h2>본문 &amp; 캡션</h2>
+      <p class="section-subtitle">Body L / Body / Small / Caption 스케일</p>
+      <div class="comp-preview"><iframe src="guidelines/type-body.html" height="160"></iframe></div>
+      <h3>토큰</h3>
+      <table class="token-table">
+        <thead><tr><th>단계</th><th>크기</th><th>행간</th></tr></thead>
+        <tbody>
+          <tr><td>Body L</td><td class="token-value">20px</td><td class="token-value">1.4</td></tr>
+          <tr><td>Body</td><td class="token-value">16px</td><td class="token-value">1.5</td></tr>
+          <tr><td>Small</td><td class="token-value">14px</td><td class="token-value">1.43</td></tr>
+          <tr><td>Caption</td><td class="token-value">12px</td><td class="token-value">1.4</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 타이포: Bold Display ── -->
+    <section id="type-bold" class="section">
+      <h2>Bold Display</h2>
+      <p class="section-subtitle">웨이트 900, 촘촘한 자간 — 히어로 숫자·큰 콜아웃 전용. 본문에는 절대 사용 금지.</p>
+      <div class="comp-preview"><iframe src="guidelines/type-bold.html" height="220"></iframe></div>
+      <h3>토큰</h3>
+      <table class="token-table">
+        <thead><tr><th>단계</th><th>크기</th><th>웨이트</th><th>자간</th></tr></thead>
+        <tbody>
+          <tr><td>Bold Display</td><td class="token-value">72px</td><td class="token-value">900</td><td class="token-value">-2px</td></tr>
+          <tr><td>Bold LG</td><td class="token-value">40px</td><td class="token-value">900</td><td class="token-value">-2px</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 간격 ── -->
+    <section id="spacing" class="section">
+      <h2>간격 스케일</h2>
+      <p class="section-subtitle">4px 기본 단위 — iOS HIG 최소 터치 타겟 44px</p>
+      <div class="comp-preview"><iframe src="guidelines/spacing-scale.html" height="140"></iframe></div>
+      <h3>토큰</h3>
+      <table class="token-table">
+        <thead><tr><th>토큰</th><th>값</th></tr></thead>
+        <tbody>
+          <tr><td class="token-name">--spacing-4</td><td class="token-value">4px</td></tr>
+          <tr><td class="token-name">--spacing-8</td><td class="token-value">8px</td></tr>
+          <tr><td class="token-name">--spacing-12</td><td class="token-value">12px</td></tr>
+          <tr><td class="token-name">--spacing-16</td><td class="token-value">16px</td></tr>
+          <tr><td class="token-name">--spacing-24</td><td class="token-value">24px</td></tr>
+          <tr><td class="token-name">--spacing-32</td><td class="token-value">32px</td></tr>
+          <tr><td class="token-name">--spacing-48</td><td class="token-value">48px</td></tr>
+          <tr><td class="token-name">--spacing-64</td><td class="token-value">64px</td></tr>
+          <tr><td class="token-name">--touch-target-min</td><td class="token-value">44px</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 반경 ── -->
+    <section id="radius" class="section">
+      <h2>반경 스케일</h2>
+      <p class="section-subtitle">카드·인풋 = 중간 단계 / 버튼·태그 = 완전 필(9999px) 전용</p>
+      <div class="comp-preview"><iframe src="guidelines/radius-scale.html" height="160"></iframe></div>
+      <h3>토큰</h3>
+      <table class="token-table">
+        <thead><tr><th>토큰</th><th>값</th><th>사용처</th></tr></thead>
+        <tbody>
+          <tr><td class="token-name">--radius-xs (subtle)</td><td class="token-value">4px</td><td>헤어라인 라운드, 분리선, 내부 썸네일</td></tr>
+          <tr><td class="token-name">--radius-sm (input)</td><td class="token-value">8px</td><td>인풋, 소형 칩</td></tr>
+          <tr><td class="token-name">--radius-md (button)</td><td class="token-value">12px</td><td>중간 서피스, 내부 카드</td></tr>
+          <tr><td class="token-name">--radius-card</td><td class="token-value">10px</td><td>표준 카드 서피스</td></tr>
+          <tr><td class="token-name">--radius-pill</td><td class="token-value">9999px</td><td>버튼, 태그 — 완전 캡슐</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 뱃지 프레임 ── -->
+    <section id="badge-frames" class="section">
+      <h2>뱃지 프레임</h2>
+      <p class="section-subtitle">배지 이미지 컨테이너용 7가지 클립 쉐이프 (BadgeFrame 컴포넌트)</p>
+      <div class="comp-preview"><iframe src="guidelines/badge-frames.html" height="280"></iframe></div>
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">BadgeFrame</div>
+          <div class="comp-desc">shape: circle · ticket-v · ticket-h · scallop · corner-cut · tab-notch · dumbbell. 배지 이미지/아이콘을 children으로 전달.</div>
+        </div>
+        <div class="comp-code">&lt;BadgeFrame shape="scallop" width={200} height={200} color="var(--color-primary)"&gt;
+  &lt;img src="/badge.png" /&gt;
+&lt;/BadgeFrame&gt;</div>
+      </div>
+    </section>
+
+    <!-- ── ShapeTag & RarityBadge ── -->
+    <section id="shapes" class="section">
+      <h2>ShapeTag &amp; RarityBadge</h2>
+      <p class="section-subtitle">카테고리 태그 칩과 배지 희귀도 표시</p>
+      <div class="comp-preview"><iframe src="guidelines/shapes.html" height="340"></iframe></div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">ShapeTag</div>
+          <div class="comp-desc">7가지 쉐이프 × 8색 태그 팔레트, colorIndex로 순환. 텍스트 레이블 칩 또는 배지 썸네일 박스 두 용도로 사용.</div>
+        </div>
+        <div class="comp-code">&lt;ShapeTag shape="hex" colorIndex={3}&gt;SPA AT HOME&lt;/ShapeTag&gt;
+&lt;ShapeTag shape="triangle" colorIndex={1} style={{ width: 64, height: 64 }}&gt;
+  &lt;img src="/medal.svg" /&gt;
+&lt;/ShapeTag&gt;</div>
+        <p style="font-size:12px;color:var(--color-text-tertiary);margin:6px 0 0;">쉐이프: rect · pill · circle · dome · triangle · flag · hex</p>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">RarityBadge</div>
+          <div class="comp-desc">배지 희귀도 필 레이블. 4색 매핑 고정 — 사용자가 학습한 색상 언어이므로 재매핑 금지.</div>
+        </div>
+        <div class="comp-code">&lt;RarityBadge rarity="legend" /&gt;</div>
+        <p style="font-size:12px;color:var(--color-text-tertiary);margin:6px 0 0;">rarity: common · rare · legend · mythic</p>
+      </div>
+    </section>
+
+    <!-- ── Buttons ── -->
+    <section id="buttons" class="section">
+      <h2>Buttons</h2>
+      <p class="section-subtitle">테두리 없는 필 쉐이프 버튼 — 모든 버튼은 보더리스</p>
+      <div class="comp-preview"><iframe src="components/buttons/buttons.card.html" height="300"></iframe></div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Button</div>
+          <div class="comp-desc">3가지 variant(primary filled · secondary soft-fill · ghost text-only) × 2가지 surface(light · dark). 최소 터치 타겟 44px.</div>
+        </div>
+        <div class="comp-code">&lt;Button variant="primary"&gt;드랍하러 가기&lt;/Button&gt;
+&lt;Button variant="secondary"&gt;취소&lt;/Button&gt;
+&lt;Button variant="ghost"&gt;더보기 →&lt;/Button&gt;
+&lt;Button variant="primary" surface="dark"&gt;화이트 버튼&lt;/Button&gt;
+&lt;Button variant="primary" fullWidth&gt;전체 너비&lt;/Button&gt;
+&lt;Button variant="primary" disabled&gt;비활성&lt;/Button&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">IconButton</div>
+          <div class="comp-desc">44×44 원형 아이콘 전용 버튼. icon은 Lucide 아이콘 이름(CDN 로드).</div>
+        </div>
+        <div class="comp-code">&lt;IconButton icon="chevron-left" label="뒤로" onClick={goBack} /&gt;</div>
+      </div>
+    </section>
+
+    <!-- ── Cards ── -->
+    <section id="cards" class="section">
+      <h2>Cards</h2>
+      <p class="section-subtitle">콘텐츠 그룹핑을 위한 범용 서피스 컨테이너</p>
+      <div class="comp-preview"><iframe src="components/cards/cards.card.html" height="400"></iframe></div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Card</div>
+          <div class="comp-desc">배지 타일, 바로가기 타일, 드랍 카드에 사용하는 범용 컨테이너.</div>
+        </div>
+        <div class="comp-code">&lt;Card tone="tint" padding={24}&gt;
+  &lt;h3&gt;배지를 받았어요&lt;/h3&gt;
+&lt;/Card&gt;
+&lt;!-- tone: white(기본) | tint | inverse(블랙 풀블리드) --&gt;</div>
+      </div>
+    </section>
+
+    <!-- ── Forms ── -->
+    <section id="forms" class="section">
+      <h2>Forms</h2>
+      <p class="section-subtitle">텍스트 필드 — 검색, 사용자명 입력</p>
+      <div class="comp-preview"><iframe src="components/forms/forms.card.html" height="200"></iframe></div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Input</div>
+          <div class="comp-desc">단일 라인 텍스트 필드. 미묘한 회색 테두리, 중간 반경 8px(필 버튼 옆에서 눌리지 않도록). 최소 높이 44px.</div>
+        </div>
+        <div class="comp-code">&lt;Input
+  placeholder="유저 검색"
+  value={q}
+  onChange={(e) =&gt; setQ(e.target.value)}
+/&gt;</div>
+      </div>
+    </section>
+
+    <!-- ── Navigation ── -->
+    <section id="navigation" class="section">
+      <h2>Navigation</h2>
+      <p class="section-subtitle">TabBar와 TopNav — JAM! 코드베이스에서 1:1 재현</p>
+      <div class="comp-preview"><iframe src="components/navigation/navigation.card.html" height="400"></iframe></div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">TabBar</div>
+          <div class="comp-desc">플로팅 필 하단 내비게이션. 아이콘 전용, 선택 시 채운 아이콘 + 작은 점 표시기. 6개 탭: 투데이·배지·드랍·미션·인벤토리·프로필.</div>
+        </div>
+        <div class="comp-code">&lt;TabBar active="today" onChange={setTab} /&gt;
+&lt;!-- active: today | badges | drops | missions | inventory | profile --&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">TopNav</div>
+          <div class="comp-desc">서브 페이지(배지 상세, 드랍, 인벤토리 아이템) 전용 스티키 탑바. 루트 화면(Today)에는 사용 안 함.</div>
+        </div>
+        <div class="comp-code">&lt;TopNav title="배지" onBack={() =&gt; router.back()} /&gt;
+&lt;TopNav title="설정" showBack={false} rightSlot={&lt;IconButton icon="x" /&gt;} /&gt;</div>
+      </div>
+    </section>
+
+    <!-- ── Feedback ── -->
+    <section id="feedback" class="section">
+      <h2>Feedback &amp; Loader</h2>
+      <p class="section-subtitle">토스트, 모달 토스트, WanderingEyes 로더</p>
+      <div class="comp-preview"><iframe src="components/feedback/feedback.card.html" height="400"></iframe></div>
+
+      <h3>Loader 시간 정책</h3>
+      <div class="comp-preview"><iframe src="guidelines/loader.html" height="360"></iframe></div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Toast</div>
+          <div class="comp-desc">하단 고정 일시적 메시지. 다크 필 쉐이프. type: success · error · info. 자동 해제는 호출부에서 처리.</div>
+        </div>
+        <div class="comp-code">&lt;Toast
+  message="배지를 받았어요"
+  type="success"
+  open={show}
+  onDismiss={() =&gt; setShow(false)}
+/&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">ModalToast</div>
+          <div class="comp-desc">배경 + 가운데 정렬 카드의 강조 모달. 뱃지 획득, 미션 완료 등 임팩트 순간에 사용. 단순 상태는 Toast 사용.</div>
+        </div>
+        <div class="comp-code">&lt;ModalToast
+  message="배지를 받았어요"
+  type="success"
+  open={show}
+  onDismiss={() =&gt; setShow(false)}
+/&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">WanderingEyesLoader</div>
+          <div class="comp-desc">눈동자가 돌아다니다가 주기적으로 깜빡이는 로더. JAM! 코드베이스 NavigationLoader와 함께 사용. eyeColor · pupilColor · duration 커스터마이즈 가능.</div>
+        </div>
+        <div class="comp-code">&lt;WanderingEyesLoader
+  eyeColor="var(--color-primary)"
+  pupilColor="#ffffff"
+  duration="2s"
+/&gt;</div>
+      </div>
+    </section>
+
+    <!-- ── UI 화면 ── -->
+    <section id="screens" class="section">
+      <h2>앱 UI 화면</h2>
+      <p class="section-subtitle">Today · 배지 · 드랍 · 인벤토리 · 프로필 — 하단 탭바로 전환</p>
+      <div class="screen-frame">
+        <iframe src="ui_kits/jam-app/index.html"></iframe>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      const id = link.dataset.section;
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      link.classList.add('active');
+      document.getElementById(id).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
