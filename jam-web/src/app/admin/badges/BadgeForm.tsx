@@ -444,7 +444,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                     <span className="text-xs text-[#898989]">
                       같은 아이템북·희귀도 내 다른 배지 {siblingWeightSum > 0 ? `(가중치 합 ${siblingWeightSum.toFixed(1)})` : ''}
                       {' '}대비 이 배지가 뽑힐 상대 확률 약 <strong className="text-[#374151]">{pct}%</strong>
-                      {siblingWeightSum === 0 && ' (이 조합의 첫 배지)'}
+                      {siblingWeightSum === 0 && ' (이 믹스의 첫 배지)'}
                     </span>
                   )
                 })()

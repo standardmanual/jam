@@ -93,7 +93,7 @@ export default function CombinePolicyForm({ initial }: { initial: CombinePolicy 
       if (!res.ok) {
         setMessage({ type: 'error', text: json.error ?? '저장 실패' })
       } else {
-        setMessage({ type: 'ok', text: '저장되었습니다. 다음 조합부터 즉시 적용됩니다.' })
+        setMessage({ type: 'ok', text: '저장되었습니다. 다음 믹스부터 즉시 적용됩니다.' })
       }
     } catch {
       setMessage({ type: 'error', text: '네트워크 오류' })

@@ -12,7 +12,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/poi', label: 'POI 관리', icon: '📍' },
       { href: '/admin/itembooks', label: '아이템북', icon: '📖' },
       { href: '/admin/factions', label: '세계관', icon: '🌍' },
-      { href: '/admin/recipes', label: '조합 레시피', icon: '⚗️' },
+      { href: '/admin/recipes', label: '믹스 레시피', icon: '⚗️' },
       { href: '/admin/today', label: '투데이 콘텐츠', icon: '📰' },
     ],
   },
@@ -22,7 +22,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/drop-policy', label: '드랍 정책', icon: '🎲' },
       { href: '/admin/ambient-drop-policy', label: '앰비언트 드랍', icon: '🗺️' },
-      { href: '/admin/combine-policy', label: '조합 정책', icon: '🧪' },
+      { href: '/admin/combine-policy', label: '믹스 정책', icon: '🧪' },
       { href: '/admin/missions', label: '미션 관리', icon: '🎯' },
       { href: '/admin/points', label: '포인트 관리', icon: '💎' },
     ],

@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (invError || !invRaw) {
-    return NextResponse.json({ error: '인벤토리 없음' }, { status: 404 })
+    return NextResponse.json({ error: '인벤 없음' }, { status: 404 })
   }
 
   const inventoryId = (invRaw as { id: string; used_slots: number }).id

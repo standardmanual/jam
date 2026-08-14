@@ -28,7 +28,7 @@ export const ko = {
     badges: '배지',
     drops: 'JAM',
     missions: '미션',
-    inventory: '인벤토리',
+    inventory: '인벤',
     profile: '프로필',
   },
 
@@ -46,14 +46,14 @@ export const ko = {
     followingButton: '팔로잉',
     logoutButton: '로그아웃',
 
-    // Strava 연동
-    stravaTitle: 'Strava 연동',
-    stravaConnected: '연동됨',
-    stravaDisconnected: '연동 안됨',
-    stravaConnectButton: 'Strava 연동',
+    // Strava 동기화
+    stravaTitle: 'Strava 동기화',
+    stravaConnected: '동기화됨',
+    stravaDisconnected: '동기화 안됨',
+    stravaConnectButton: 'Strava 동기화',
 
     // 빈 상태
-    emptyBadges: '아직 획득한 배지가 없어요',
+    emptyBadges: '아직 겟한 배지가 없어요',
     emptyItembooks: '아직 발견한 아이템북이 없어요',
     emptyFollowers: '아직 팔로워가 없어요',
     emptyFollowing: '아직 팔로잉이 없어요',
@@ -83,10 +83,10 @@ export const ko = {
     filterActivityBadge: '배지',
 
     // 이벤트 라벨
-    eventBadgeEarned: '배지 획득',
-    // 활동 연동 후 배지엔진을 통해 지급된 경우("아이템 획득")와 POI에 직접 드랍된 경우("아이템 드랍")는
+    eventBadgeEarned: '배지 겟',
+    // 활동 Strava 동기화 후 배지엔진을 통해 지급된 경우("아이템 겟")와 POI에 직접 드랍된 경우("아이템 드랍")는
     // 같은 item_dropped 이벤트지만 출처가 다르므로 문구를 분리해서 표기한다 (FeedSection.tsx의 eventLabel 참고)
-    eventItemEarned: '아이템 획득',
+    eventItemEarned: '아이템 겟',
     eventItemDropped: '아이템 드랍',
     eventItemPickedUp: '아이템 픽업',
     eventMissionJoined: '미션 참가',
@@ -120,15 +120,15 @@ export const ko = {
   today: {
     greeting: '안녕하세요',
 
-    // Strava 상태 카드
+    // Strava 동기화 상태 카드
     stravaLabel: 'Strava',
-    stravaNotConnectedTitle: 'Strava 미연동',
-    stravaNotConnectedBody: '연동하면 활동 기반 배지를 자동 획득해요',
-    stravaConnectButton: '지금 연동하기',
+    stravaNotConnectedTitle: 'Strava 미동기화',
+    stravaNotConnectedBody: 'Strava 동기화하면 활동 기반 배지를 자동 겟해요',
+    stravaConnectButton: '지금 동기화하기',
     syncButton: '동기화',
     syncDone: '동기화 완료',
     syncFailed: '동기화 실패. 잠시 후 다시 시도해주세요',
-    syncBadgeDone: '배지 {count}개 획득',
+    syncBadgeDone: '배지 {count}개 겟',
     syncMissionDone: '미션 {count}개 달성',
     syncItembookDone: '아이템북 {count}개 완성',
 
@@ -147,19 +147,19 @@ export const ko = {
     // 최근 배지
     recentBadgesTitle: '최근 배지',
     recentBadgesViewAll: '더보기',
-    recentBadgesEmptyTitle: '아직 획득한 배지가 없어요',
-    recentBadgesEmptyBody: 'Strava 연동 후 활동하면 배지가 생겨요',
+    recentBadgesEmptyTitle: '아직 겟한 배지가 없어요',
+    recentBadgesEmptyBody: 'Strava 동기화 후 활동하면 배지가 생겨요',
 
     // 바로가기
     shortcutsTitle: '바로가기',
     shortcutMissionTitle: '미션',
     shortcutMissionBody: '달성하고 보상 받기',
-    shortcutInventoryTitle: '인벤토리',
+    shortcutInventoryTitle: '인벤',
     shortcutInventoryBody: '아이템 관리',
     shortcutDropsTitle: '드랍',
     shortcutDropsBody: '장소에서 드랍·픽업',
-    shortcutCombineTitle: '조합',
-    shortcutCombineBody: '아이템 합성하기',
+    shortcutCombineTitle: '믹스',
+    shortcutCombineBody: '아이템 믹스하기',
   },
 
   /** 투데이 카드 스택 콘텐츠 유형 (template_type) 라벨 — 색상 구분 없이 아이콘+라벨로만 식별 */
@@ -183,12 +183,12 @@ export const ko = {
     tabPoi: '장소',
     tabItembook: '아이템북',
 
-    emptyActivityTitle: '아직 획득한 배지가 없어요',
-    emptyActivityBody: 'Strava를 연동하고 활동하면 배지를 획득할 수 있어요',
+    emptyActivityTitle: '아직 겟한 배지가 없어요',
+    emptyActivityBody: 'Strava를 동기화하고 활동하면 배지를 겟할 수 있어요',
     emptyItemTitle: '아직 아이템 배지가 없어요',
     emptyItemBody: '활동을 완료하면 확률로 아이템 배지가 드랍돼요',
-    emptyPoiTitle: '아직 획득한 장소 배지가 없어요',
-    emptyPoiBody: '산, 지하철역 등을 지나는 활동을 기록하면 배지를 획득할 수 있어요',
+    emptyPoiTitle: '아직 겟한 장소 배지가 없어요',
+    emptyPoiBody: '산, 지하철역 등을 지나는 활동을 기록하면 배지를 겟할 수 있어요',
     emptyItembookTitle: '아직 아이템북이 없어요',
     emptyItembookBody: '관리자가 아이템북을 등록하면 이 곳에 표시돼요',
 
@@ -197,21 +197,21 @@ export const ko = {
 
     // 상세 페이지
     pointRewardEarned: '이 배지는 {points} 포인트를 함께 드렸어요',
-    pointRewardPending: '이 배지를 획득하면 {points} 포인트를 함께 드려요',
+    pointRewardPending: '이 배지를 겟하면 {points} 포인트를 함께 드려요',
 
     prerequisiteTitle: '선행 배지 필요',
-    prerequisiteBody: '아래 배지 중 하나를 먼저 획득해야 이 배지를 받을 수 있어요.',
+    prerequisiteBody: '아래 배지 중 하나를 먼저 겟해야 이 배지를 받을 수 있어요.',
     prerequisiteOwned: '보유',
 
-    conditionTitle: '획득 조건',
-    conditionPoiBody: '연결된 장소(POI)를 지나가는 활동을 기록하면 자동으로 획득돼요. 방문할 때마다 이력이 쌓여요.',
+    conditionTitle: '겟 조건',
+    conditionPoiBody: '연결된 장소(POI)를 지나가는 활동을 기록하면 자동으로 겟돼요. 체크인할 때마다 이력이 쌓여요.',
 
-    earnHistoryTitle: '획득 이력',
+    earnHistoryTitle: '겟 이력',
     earnHistoryCount: '총 {count}회',
     earnHistoryUnknownPlace: '알 수 없는 장소',
 
-    earnInfoTitle: '획득 정보',
-    earnedAt: '획득 일시',
+    earnInfoTitle: '겟 정보',
+    earnedAt: '겟 일시',
     triggerActivity: '트리거 활동',
     triggerDistance: '활동 거리',
     triggerDistanceValue: '{km} km',
@@ -224,13 +224,13 @@ export const ko = {
 
     physicalPatchButton: '실물 패치 보기',
 
-    notEarnedTitle: '아직 획득하지 못한 배지예요',
-    notEarnedBody: '조건을 달성하면 자동으로 획득돼요',
+    notEarnedTitle: '아직 겟하지 못한 배지예요',
+    notEarnedBody: '조건을 달성하면 자동으로 겟돼요',
 
     poiSafetyNotice: '이 배지는 표시된 위치 반경 50m 안을 스쳐 지나가기만 해도 찾아내요. 위험한 곳까지 굳이 들어갈 필요 없어요. 접근이 까다로운 곳이라면 알려주세요. 도와드릴게요.',
 
-    earnedTag: '획득',
-    notEarnedTag: '미획득',
+    earnedTag: '겟',
+    notEarnedTag: '미겟',
     filterActivityLabel: '액티비티',
     filterActivityAll: '전체 액티비티',
     filterRarityLabel: '등급',
@@ -240,21 +240,21 @@ export const ko = {
     sortPoiName: '이름순',
   },
 
-  /** 인벤토리 목록/상세 */
+  /** 인벤 목록/상세 */
   inventory: {
     eyebrow: '내 아이템',
-    title: '인벤토리',
-    combineButton: '조합',
+    title: '인벤',
+    combineButton: '믹스',
     slotsRemaining: '{count}개 슬롯 남음',
     emptyTitle: '아직 아이템이 없어요',
     emptyBody: '활동을 완료하면 아이템 배지가 드랍돼요',
 
-    backToInventory: '인벤토리',
+    backToInventory: '인벤',
     infoSectionTitle: '아이템 정보',
     descSectionTitle: '이 아이템 정보',
     serialNumber: '일련번호',
-    obtainMethod: '획득 방법',
-    obtainedAt: '획득일',
+    obtainMethod: '겟 방법',
+    obtainedAt: '겟일',
     expiresAt: '만료일',
     expiresNone: '없음',
     expiringSuffix: ' 만료',
@@ -264,7 +264,7 @@ export const ko = {
     expiringSoonTitle: '만료 임박',
     expiringSoonBody: '7일 이내에 이 아이템이 만료돼요',
 
-    historyTitle: '획득 이력',
+    historyTitle: '겟 이력',
     historyLoading: '불러오는 중',
     historyError: '이력을 불러올 수 없어요',
     historyEmpty: '이력이 없어요',
@@ -276,7 +276,7 @@ export const ko = {
     eventDropped: 'POI 드랍',
     eventPickedUp: 'POI 픽업',
 
-    backToInventoryLong: '인벤토리로 돌아가기',
+    backToInventoryLong: '인벤으로 돌아가기',
   },
 
   /** 드랍/픽업 (지도) */
@@ -287,7 +287,7 @@ export const ko = {
     locating: '위치 확인 중',
     loadPoiFailed: 'POI 로드 실패',
     loadDropsFailed: '드랍 목록 로드 실패',
-    loadInventoryFailed: '인벤토리 로드 실패',
+    loadInventoryFailed: '인벤 로드 실패',
     outOfRange: '{name}까지 {distance}m — 50m 이내로 이동하면 드랍/픽업할 수 있어요',
     exploring: '주변 탐색 중',
     noNearbyPlaces: '주변 500m에 드랍/픽업 가능한 장소가 없어요',
@@ -307,10 +307,10 @@ export const ko = {
     dropHereButton: '여기에 드랍하기',
     dropNoItems: '드랍할 아이템이 없어요',
     pickupButton: '픽업하기',
-    pickupSuccess: '픽업 완료! 인벤토리를 확인해보세요',
+    pickupSuccess: '픽업 완료! 인벤을 확인해보세요',
     pickupFailed: '픽업 실패',
     pickupAlreadyDone: '이미 픽업된 아이템이에요',
-    pickupInventoryFull: '인벤토리가 꽉 찼어요',
+    pickupInventoryFull: '인벤이 꽉 찼어요',
     droppedAtPlace: '이 장소에 드랍됨',
     droppedAtPlaceBody: '{place}에 놓여 있는 아이템이에요',
     back: '뒤로',
@@ -321,7 +321,7 @@ export const ko = {
     eyebrow: '단기 목표',
     title: '미션',
     tabOngoing: '진행중',
-    tabJoined: '참여중',
+    tabJoined: '참가중',
     tabEnded: '종료',
     filterButton: '필터',
     filterReset: '필터 초기화',
@@ -335,15 +335,15 @@ export const ko = {
     missionTypeAll: '전체',
     missionTypeDistance: '거리',
     missionTypeActivityCount: '횟수',
-    missionTypePoiVisit: '장소 방문',
+    missionTypePoiVisit: '장소 체크인',
     missionTypeItemCollect: '아이템 픽업',
     missionTypeStreakDays: '연속 일수',
     missionTypeDurationMinutes: '단일 활동 시간',
     missionTypeElevationGainM: '단일 활동 고도',
     emptyFiltered: '조건에 맞는 미션이 없어요',
     emptyOngoing: '진행 중인 미션이 없어요',
-    emptyJoined: '참여 중인 미션이 없어요',
-    emptyEnded: '종료된 참여 미션이 없어요',
+    emptyJoined: '참가 중인 미션이 없어요',
+    emptyEnded: '종료된 참가 미션이 없어요',
     tagNew: 'NEW',
     tagDone: '완료',
     tagJoined: '참가중',
@@ -361,7 +361,7 @@ export const ko = {
     backToDetail: '미션',
     goalDistance: '달성 거리',
     goalActivityCount: '활동 횟수',
-    goalPoiVisit: 'POI 방문',
+    goalPoiVisit: 'POI 체크인',
     goalItemCollect: '아이템 픽업',
     goalStreakDays: '연속 활동 일수',
     goalDurationMinutes: '단일 활동 시간',
@@ -452,7 +452,7 @@ export const ko = {
     loadError: '내역을 불러오지 못했어요.',
     retry: '다시 시도',
     emptyTitle: '아직 쌓인 포인트가 없어요.',
-    emptyBody: '활동을 동기화하면 배지와 함께 포인트를 받을 수 있어요.',
+    emptyBody: 'Strava를 동기화하면 배지와 함께 포인트를 받을 수 있어요.',
     loadMore: '더 보기',
     loadingMore: '불러오는 중',
   },
@@ -491,8 +491,8 @@ export const ko = {
     slotHint: '보유한 아이템 배지를 슬롯에 장착해 아이템북을 완성해요',
     noBadgesTitle: '아직 이 아이템북에 등록된 배지가 없어요.',
     poiHint: 'POI 배지는 해당 장소를 지나가면 자동으로 채워져요',
-    poiEarned: '획득',
-    poiNotEarned: '미획득',
+    poiEarned: '겟',
+    poiNotEarned: '미겟',
     completedTitle: '아이템북 완성!',
     completedBody: '모든 아이템 배지를 슬롯에 장착했어요',
     unknownBadge: '???',
@@ -506,25 +506,25 @@ export const ko = {
     ownedPrefix: '보유 ',
   },
 
-  /** 아이템 조합 */
+  /** 아이템 믹스 */
   combine: {
-    eyebrow: '아이템 합성',
-    title: '조합',
+    eyebrow: '아이템 믹스',
+    title: '믹스',
     selectedCount: '선택한 아이템 ({count}/{max})',
-    combineButton: '합성하기',
+    combineButton: '믹스하기',
     hintsTitle: '힌트',
     hintUnknown: '???',
     recipesTitle: '공개 레시피',
     recipeLine: '재료 {count}개 → 결과 배지 · 성공률 {pct}%',
     myItemsTitle: '내 아이템',
-    emptyInventory: '인벤토리가 비어 있어요.',
-    successResult: '{names} 획득!',
+    emptyInventory: '인벤이 비어 있어요.',
+    successResult: '{names} 겟!',
     selectRangeError: '아이템 2~10개를 선택해주세요.',
     itemsNotFound: '아이템을 찾을 수 없어요.',
-    recipeFail: '조합에 실패했어요. 아이템이 소각됐어요.',
+    recipeFail: '믹스에 실패했어요. 아이템이 소각됐어요.',
     consolationPoints: ' (위로 JAM 포인트 +{points})',
     genericError: '오류가 발생했어요.',
-    genericFail: '조합 실패',
+    genericFail: '믹스 실패',
   },
 } as const
 

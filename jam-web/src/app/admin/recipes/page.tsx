@@ -40,8 +40,8 @@ export default async function AdminRecipesPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">조합 레시피</h1>
-          <p className="text-[#6b7280] text-sm mt-1">아이템 조합 공식 관리</p>
+          <h1 className="text-2xl font-bold">믹스 레시피</h1>
+          <p className="text-[#6b7280] text-sm mt-1">아이템 믹스 공식 관리</p>
         </div>
       </div>
       <RecipeList recipes={recipes} badges={badges} />

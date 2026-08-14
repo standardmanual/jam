@@ -172,7 +172,7 @@ function formatConditionText(condition: BadgeCondition | null, badgeName: string
     ? ' (각 조건은 서로 다른 활동에서 달성해도 인정돼요)'
     : ''
 
-  return parts.join(', ') + '하면 획득할 수 있어요.' + crossAttrNote
+  return parts.join(', ') + '하면 겟할 수 있어요.' + crossAttrNote
 }
 
 interface BadgeDetailPageProps {
@@ -562,7 +562,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                       {/* 링크 표시 */}
                       <div className="flex items-center gap-1 shrink-0">
                         {p.owned && (
-                          <span className="text-[10px] text-text-inverse/40 font-medium">획득함</span>
+                          <span className="text-[10px] text-text-inverse/40 font-medium">겟</span>
                         )}
                         <ChevronRightIcon className="w-4 h-4 text-text-inverse/30" />
                       </div>
@@ -579,7 +579,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           <h2 className="text-[10px] uppercase text-text-inverse/40 mb-2">{d.badges.conditionTitle}</h2>
           <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
             {badgeRow.type === 'poi'
-              ? '이 장소를 경유하는 활동이 기록되면 획득돼요.'
+              ? '이 장소를 경유하는 활동이 기록되면 겟돼요.'
               : formatConditionText(badgeRow.condition_json, badgeRow.name)}
           </p>
         </Card>
