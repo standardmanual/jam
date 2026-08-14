@@ -49,6 +49,10 @@
   --color-text-on-primary: var(--color-base-white);
   --color-text-inverse: var(--color-base-black);      /* text on inverse surface */
   --color-border: var(--color-base-grey-700);
+  /* DS-024: TabBar inactive icon — #2a2a2a on white pill bg (nearest to #333333) */
+  --color-icon-inactive: var(--color-base-grey-700);
+  /* DS-025: Modal/sheet backdrop */
+  --color-overlay: rgba(0, 0, 0, 0.6);
 
   /* Badge rarity — background */
   --color-rarity-common: #6b6b6b;
