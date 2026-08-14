@@ -37,7 +37,7 @@ const TemplateIcon: Record<TodayCardTemplateType, ComponentType<SVGProps<SVGSVGE
 
 function TemplateChip({ card }: { card: TodayCardWithHref }) {
   return (
-    <span className="inline-flex items-center text-[12px] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text">
+    <span className="inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text">
       {templateLabel[card.template_type]}
     </span>
   )
@@ -58,14 +58,14 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
         <div className="flex items-center gap-2 mb-2">
           <TemplateChip card={card} />
           {card.template_type === 'location_trend' && card.region_label && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-text-inverse/60">
+            <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] text-text-inverse/60">
               <PinIcon className="w-3 h-3" />{card.region_label}
             </span>
           )}
         </div>
         <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
         {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
-        <p className="text-[11px] text-text-inverse/40 mt-3">
+        <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-3">
           {card.template_type === 'editorial_article' ? d.today.cardReadArticle : d.today.cardReadMore} &rarr;
         </p>
       </div>
@@ -80,7 +80,7 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
       <div className="flex items-center gap-2 mb-2">
         <TemplateChip card={card} />
         {card.region_label && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-text-inverse/60">
+          <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] text-text-inverse/60">
             <PinIcon className="w-3 h-3" />{card.region_label}
           </span>
         )}
@@ -100,12 +100,12 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
                   <MedalIcon className="w-6 h-6 text-text-inverse/40" />
                 )}
               </div>
-              <span className="text-[10px] text-text-inverse/70 text-center leading-tight line-clamp-2">{b.name}</span>
+              <span className="text-[length:var(--text-caption)] text-text-inverse/70 text-center leading-tight line-clamp-2">{b.name}</span>
             </div>
           ))}
         </div>
       )}
-      <p className="text-[11px] text-text-inverse/40 mt-3">{d.today.cardViewAll} &rarr;</p>
+      <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-3">{d.today.cardViewAll} &rarr;</p>
     </Card>
   )
 }
@@ -120,7 +120,7 @@ function ShortcutCard({ card }: { card: TodayCardWithHref }) {
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{card.title}</h3>
-        {card.subtitle && <p className="text-[11px] text-text-inverse/60 truncate">{card.subtitle}</p>}
+        {card.subtitle && <p className="text-[length:var(--text-caption)] text-text-inverse/60 truncate">{card.subtitle}</p>}
       </div>
       <span className="text-text-inverse/30 shrink-0" aria-hidden="true">&rsaquo;</span>
     </Card>
@@ -158,7 +158,7 @@ function OtherCard({ card }: { card: TodayCardWithHref }) {
       <div className="mb-2"><TemplateChip card={card} /></div>
       <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
-      <p className="text-[11px] text-text-inverse/40 mt-3">{d.today.cardReadMore} &rarr;</p>
+      <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-3">{d.today.cardReadMore} &rarr;</p>
     </Card>
   )
 }
@@ -175,7 +175,7 @@ export default function TodayCardStack({ cards }: { cards: TodayCardWithHref[] }
     <section>
       <div className="flex items-center justify-between mb-[var(--spacing-16)]">
         <h2 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{d.today.cardStackTitle}</h2>
-        <span className="text-[11px] text-text-inverse/40">{d.today.cardStackSubtitle}</span>
+        <span className="text-[length:var(--text-caption)] text-text-inverse/40">{d.today.cardStackSubtitle}</span>
       </div>
 
       <div className="flex flex-col gap-[var(--spacing-16)]">

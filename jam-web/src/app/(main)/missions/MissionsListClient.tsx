@@ -76,7 +76,7 @@ const TABS: SlidingTabItem<Tab>[] = [
 
 function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+    <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
       {children}
     </span>
   )
@@ -189,27 +189,27 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
                         {!started && <Tag>{d.missions.tagUpcoming}</Tag>}
                       </div>
                       {m.description && (
-                        <p className="text-text-inverse/60 text-[11px]">{m.description}</p>
+                        <p className="text-text-inverse/60 text-[length:var(--text-caption)]">{m.description}</p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[11px] text-text-inverse/50">
+                      <p className="text-[length:var(--text-caption)] text-text-inverse/50">
                         {tab === 'ended'
                           ? d.missions.tagEnded
                           : m.ends_at === null ? d.missions.tagPermanent : `${timeLeft(m.ends_at)} ${d.missions.timeLeftSuffix}`}
                       </p>
                       {m.max_completions && (
-                        <p className="text-[11px] text-text-inverse/50 mt-0.5">
+                        <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-0.5">
                           {t(d.missions.limitedSlots, { count: m.max_completions.toLocaleString() })}
                         </p>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-text-inverse/50">
+                    <span className="text-[length:var(--text-caption)] text-text-inverse/50">
                       {d.missions.rewardLabel}: {rewardSummary(m)}
                     </span>
-                    <span className="text-[10px] uppercase text-text-inverse/30">{m.mission_type}</span>
+                    <span className="text-[length:var(--text-caption)] uppercase text-text-inverse/30">{m.mission_type}</span>
                   </div>
                 </Card>
               </Link>

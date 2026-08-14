@@ -95,16 +95,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         {!hasQuery ? (
           <Card className="text-center py-[var(--spacing-32)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.promptTitle}</p>
-            <p className="text-[11px] text-text-inverse/40 mt-1">{d.search.promptBody}</p>
+            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.search.promptBody}</p>
           </Card>
         ) : results.length === 0 ? (
           <Card className="text-center py-[var(--spacing-32)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.emptyTitle}</p>
-            <p className="text-[11px] text-text-inverse/40 mt-1">{d.search.emptyBody}</p>
+            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.search.emptyBody}</p>
           </Card>
         ) : (
           <section className="flex flex-col gap-[var(--spacing-16)]">
-            <p className="text-text/50 text-[11px]">{t(d.search.resultCount, { count: results.length })}</p>
+            <p className="text-text/50 text-[length:var(--text-caption)]">{t(d.search.resultCount, { count: results.length })}</p>
             {results.map((u) => (
               <Link key={u.id} href={`/${u.username}`}>
                 <Card className="flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
@@ -121,13 +121,13 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                     <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{u.username}</p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {u.region && (
-                        <span className="text-[11px] text-text-inverse/60">{u.region}</span>
+                        <span className="text-[length:var(--text-caption)] text-text-inverse/60">{u.region}</span>
                       )}
                       {u.region && u.activity_types && u.activity_types.length > 0 && (
-                        <span className="text-text-inverse/30 text-[11px]">·</span>
+                        <span className="text-text-inverse/30 text-[length:var(--text-caption)]">·</span>
                       )}
                       {u.activity_types && u.activity_types.length > 0 && (
-                        <span className="text-[11px] text-text-inverse/50 truncate">
+                        <span className="text-[length:var(--text-caption)] text-text-inverse/50 truncate">
                           {u.activity_types.map((a) => ACTIVITY_TYPE_LABELS[a] ?? a).join(', ')}
                         </span>
                       )}

@@ -61,7 +61,7 @@ function CardInner({ item }: { item: InventoryGridItem }) {
       <p className="text-[length:var(--text-body-sm)] leading-tight text-center truncate w-full">{item.badgeName}</p>
       <div className="h-6 flex items-center justify-center">
         {expiring && item.expiresAt && (
-          <p className="text-[11px] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+          <p className="text-[length:var(--text-caption)] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
             <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
           </p>
         )}

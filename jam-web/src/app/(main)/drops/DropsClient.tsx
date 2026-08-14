@@ -333,7 +333,7 @@ export default function DropsClient() {
       {poisLoading && (
         <div className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] py-2 flex items-center gap-2">
           <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin text-text-inverse" />
-          <span className="text-[11px] text-text-inverse">{d.drops.exploring}</span>
+          <span className="text-[length:var(--text-caption)] text-text-inverse">{d.drops.exploring}</span>
         </div>
       )}
 
@@ -400,7 +400,7 @@ export default function DropsClient() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{drop.badge_name}</p>
-                        <p className="text-[11px] text-text-inverse/40 mt-0.5">
+                        <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-0.5">
                           {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
                         </p>
                       </div>
