@@ -336,7 +336,7 @@ export const ko = {
     missionTypeDistance: '거리',
     missionTypeActivityCount: '횟수',
     missionTypePoiVisit: '장소 방문',
-    missionTypeItemCollect: '아이템 수집',
+    missionTypeItemCollect: '아이템 픽업',
     missionTypeStreakDays: '연속 일수',
     missionTypeDurationMinutes: '단일 활동 시간',
     missionTypeElevationGainM: '단일 활동 고도',
@@ -362,7 +362,7 @@ export const ko = {
     goalDistance: '달성 거리',
     goalActivityCount: '활동 횟수',
     goalPoiVisit: 'POI 방문',
-    goalItemCollect: '아이템 수집',
+    goalItemCollect: '아이템 픽업',
     goalStreakDays: '연속 활동 일수',
     goalDurationMinutes: '단일 활동 시간',
     goalElevationGainM: '단일 활동 고도 상승',
@@ -406,6 +406,7 @@ export const ko = {
     errorFailed: '로그인에 실패했어요. 다시 시도해주세요.',
     errorGeneric: '오류가 발생했어요. 잠시 후 다시 시도해주세요.',
     terms: '계속하면 JAM!의 이용약관 및 개인정보처리방침에 동의하는 것으로 간주돼요.',
+    devLogin: '테스트 로그인 (개발 전용)',
   },
 
   /** 온보딩(아이디 설정) */
