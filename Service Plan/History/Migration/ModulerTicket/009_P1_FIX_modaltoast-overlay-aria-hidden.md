@@ -1,6 +1,6 @@
 ---
 id: DS-009
-status: OPEN
+status: CLOSED
 severity: P1
 type: FIX
 category: Accessibility / Component
@@ -65,3 +65,10 @@ WCAG 2.1 SC 1.3.1, 4.1.2 관련.
 - [ ] Tab 포커스가 dialog 내부에만 머묾 (기존 focus trap과 조합)
 - [ ] dialog `role="dialog"` `aria-modal="true"` `aria-labelledby` 유지
 - [ ] overlay 클릭 dismiss 기능 유지
+
+---
+## 완료 기록
+- **날짜**: 2026-08-14
+- **구현**: `ModalToast.jsx`에 `useEffect` 내 body sibling inert + aria-hidden 토글 추가. 모달 open 시 dialog 외부 모든 sibling에 `inert`와 `aria-hidden="true"` 적용, close 시 복원.
+- **변경 파일**: `design-system-staging/v2/components/feedback/ModalToast.jsx`
+- **채택 방식**: body sibling inert 방식 (Option B) — overlay aria-hidden 구조 분리 불필요

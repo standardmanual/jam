@@ -23,12 +23,16 @@ const ICON_PATHS = {
 };
 
 export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'light', ...rest }) {
+  if (process.env.NODE_ENV !== 'production' && !label) {
+    console.warn('[DS] IconButton: `label` prop이 없습니다. 스크린리더 사용자가 이 버튼의 역할을 알 수 없습니다.');
+  }
+
   const color = surface === 'dark' ? 'var(--color-bg-inverse)' : 'var(--color-text)';
   const path = ICON_PATHS[icon] ?? ICON_PATHS['chevron-left'];
 
   return (
     <button
-      aria-label={label}
+      aria-label={label || undefined}
       onClick={onClick}
       style={{
         width: 44, height: 44,

@@ -43,8 +43,9 @@
   --color-primary: var(--color-base-red);
   --color-secondary: var(--color-base-brown);
   --color-text: var(--color-base-white);
+  /* Text: 2-tier system — primary (#fff) and secondary (#b2b2b2, 4.6:1 WCAG AA).
+     Tertiary removed (DS-011 — no component used it; add back with a real use case). */
   --color-text-secondary: var(--color-base-grey-500); /* 4.6:1 on black — WCAG AA */
-  --color-text-tertiary: #b0aaa5;
   --color-text-on-primary: var(--color-base-white);
   --color-text-inverse: var(--color-base-black);      /* text on inverse surface */
   --color-border: var(--color-base-grey-700);

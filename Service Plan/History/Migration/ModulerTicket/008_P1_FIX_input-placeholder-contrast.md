@@ -1,6 +1,6 @@
 ---
 id: DS-008
-status: OPEN
+status: CLOSED
 severity: P1
 type: FIX
 category: Accessibility / Token / Color
@@ -53,3 +53,9 @@ category: Accessibility / Token / Color
 - [ ] `opacity: 1` 명시 (Firefox 대응)
 - [ ] 다크 배경(`--color-bg-tint`) 위에서 placeholder 대비 4.5:1 이상 확인
 - [ ] Input, Textarea(추가 예정) 모두 동일 스타일 적용
+
+---
+## 완료 기록
+- **날짜**: 2026-08-14
+- **구현**: `styles.css`에 전역 `::placeholder` 규칙 추가. `color: var(--color-text-secondary)` + `opacity: 1` (Firefox 기본값 override).
+- **변경 파일**: `design-system-staging/v2/styles.css`

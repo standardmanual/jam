@@ -1,6 +1,6 @@
 ---
 id: DS-012
-status: OPEN
+status: CLOSED
 severity: P1
 type: IMPROVE
 category: Accessibility / Component
@@ -56,3 +56,9 @@ export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'l
 - [ ] `aria-label={label || undefined}` 방어 처리
 - [ ] `label=""` (빈 문자열)도 경고 대상
 - [ ] 프로덕션 빌드(`NODE_ENV=production`)에서는 경고 없음
+
+---
+## 완료 기록
+- **날짜**: 2026-08-14
+- **구현**: `IconButton.jsx`에 개발환경 console.warn 추가 (`label` falsy 시). `aria-label={label || undefined}` 빈 문자열 방어 처리.
+- **변경 파일**: `design-system-staging/v2/components/buttons/IconButton.jsx`

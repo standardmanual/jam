@@ -11,14 +11,14 @@ import React from 'react';
  *   - deprecated --color-surface-tint → --color-surface, --color-white → --color-bg-inverse
  */
 
+/* DS-010: @keyframes ds-spin lives in styles.css — no per-instance <style> injection. */
 function Spinner() {
   return (
     <svg
       viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
       strokeLinecap="round" width={16} height={16} aria-hidden="true"
-      style={{ animation: `spin 0.8s linear infinite` }}
+      style={{ animation: 'ds-spin 0.8s linear infinite' }}
     >
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <path d="M12 2a10 10 0 0 1 10 10" />
     </svg>
   );

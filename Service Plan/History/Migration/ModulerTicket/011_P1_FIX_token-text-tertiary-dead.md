@@ -1,6 +1,6 @@
 ---
 id: DS-011
-status: OPEN
+status: CLOSED
 severity: P1
 type: FIX
 category: Token / Color
@@ -47,3 +47,9 @@ dead token 제거. tertiary 사용처가 생기면 그때 추가한다. "혹시 
 - [ ] `--color-text-tertiary` 제거 또는 최소 1개 이상 컴포넌트에 실제 적용
 - [ ] 제거 시 서비스 코드(`jam-web/src/`)에서 참조 없음 확인
 - [ ] `colors.css` 주석에 텍스트 색상 2단계 체계(`--color-text`, `--color-text-secondary`) 명시
+
+---
+## 완료 기록
+- **날짜**: 2026-08-14
+- **구현**: `--color-text-tertiary: #b0aaa5` 제거. jam-web/src 전체 참조 없음 확인. colors.css 주석에 2단계 텍스트 체계(--color-text / --color-text-secondary) 명시.
+- **변경 파일**: `design-system-staging/v2/tokens/colors.css`

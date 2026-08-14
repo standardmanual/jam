@@ -1,6 +1,6 @@
 ---
 id: DS-010
-status: OPEN
+status: CLOSED
 severity: P1
 type: REFACTOR
 category: Component / Architecture
@@ -70,3 +70,9 @@ function Spinner() {
 - [ ] loading Button 3개 동시 렌더링 시 DOM에 `@keyframes spin` `<style>` 태그가 1개만 존재 (또는 0개 — styles.css에서 처리)
 - [ ] Spinner 애니메이션이 정상 작동
 - [ ] `styles.css` 없이 Button을 사용할 경우 경고 또는 문서화
+
+---
+## 완료 기록
+- **날짜**: 2026-08-14
+- **구현**: `Button.jsx` Spinner에서 `<style>` 태그 제거. `animation: 'ds-spin 0.8s linear infinite'`로 변경. `@keyframes ds-spin` + `@keyframes ds-shimmer` (DS-013용)을 `styles.css`에 통합.
+- **변경 파일**: `styles.css`, `components/buttons/Button.jsx`

@@ -5,7 +5,9 @@
  * v2 changes:
  *   - --leading-bold-display: 0.95 → 1.0 (was clipping Korean descenders)
  *   - --weight-bold-lg: 900 added (was missing, completing the bold set)
- *   - tracking tokens consolidated to 3 roles and actually applied
+ *   - DS-014: tracking unified to per-scale tokens only — --tracking-heading removed
+ *     (it was unused and conflicted with --tracking-h3/h4). Use each scale's own
+ *     --tracking-* token. Exception: --tracking-label stays (role-based, size-independent).
  */
 :root {
   --font-family-base: "Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -30,7 +32,7 @@
   --text-bold-display: 72px;  --leading-bold-display: 1.0;  --weight-bold-display: 900;  --tracking-bold-display: -2px;
   --text-bold-lg: 40px;       --leading-bold-lg: 1.05;      --weight-bold-lg: 900;        --tracking-bold-lg: -1px;
 
-  /* Tracking roles (3 consolidated from 6) */
-  --tracking-heading: -0.8px;   /* h3/h4 level */
-  --tracking-label: 0.4px;      /* uppercase labels, badge text */
+  /* Tracking: use each scale's own --tracking-hN / --tracking-bold-* token.
+     --tracking-label is the only role-based exception (uppercase, size-independent). */
+  --tracking-label: 0.4px;      /* uppercase labels, badge text (ShapeTag, RarityBadge) */
 }
