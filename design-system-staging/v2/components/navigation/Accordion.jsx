@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 
 /* DS-021: Accordion — collapsible disclosure items with WAI-ARIA and keyboard nav.
    Pattern: single-open accordion (closing current item re-opens nothing).
@@ -11,8 +11,8 @@ const CHEVRON = (
 );
 
 function AccordionItem({ item, index, isOpen, onToggle, headerId, panelId }) {
-  const panelRef = useRef(null);
-
+  /* grid-template-rows: 0fr → 1fr avoids layout thrash from maxHeight animation.
+     Inner div needs min-height:0 to collapse properly in the 0fr state. */
   return (
     <div style={{ borderBottom: '1px solid var(--color-border)' }}>
       <button
@@ -39,18 +39,19 @@ function AccordionItem({ item, index, isOpen, onToggle, headerId, panelId }) {
         </span>
       </button>
       <div
-        ref={panelRef}
         id={panelId}
         role="region"
         aria-labelledby={headerId}
         style={{
-          maxHeight: isOpen ? `${panelRef.current?.scrollHeight ?? 9999}px` : '0px',
-          overflow: 'hidden',
-          transition: 'max-height var(--duration-fast) var(--ease-smooth-out)',
+          display: 'grid',
+          gridTemplateRows: isOpen ? '1fr' : '0fr',
+          transition: 'grid-template-rows var(--duration-fast) var(--ease-smooth-out)',
         }}
       >
-        <div style={{ padding: '0 var(--layout-element-gap) var(--layout-element-gap)' }}>
-          {item.content}
+        <div style={{ minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '0 var(--layout-element-gap) var(--layout-element-gap)' }}>
+            {item.content}
+          </div>
         </div>
       </div>
     </div>
