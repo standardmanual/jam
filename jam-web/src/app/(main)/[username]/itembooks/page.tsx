@@ -156,7 +156,7 @@ export default async function UserItemBooksPage({ params }: Props) {
                         <BookIcon className="w-8 h-8 text-text-inverse/40" />
                       )}
                       {isCompleted && (
-                        <span className="absolute top-1.5 right-1.5 text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+                        <span className="absolute top-1.5 right-1.5 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
                           {d.itembooks.completed}
                         </span>
                       )}
@@ -164,14 +164,14 @@ export default async function UserItemBooksPage({ params }: Props) {
                     <div className="min-w-0">
                       <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
                       {book.faction && (
-                        <p className="text-[11px] text-text-inverse/50 mt-0.5 truncate">{book.faction.name}</p>
+                        <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-0.5 truncate">{book.faction.name}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                         <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="text-[11px] text-text-inverse/60 tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
+                      <span className="text-[length:var(--text-caption)] text-text-inverse/60 tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
                     </div>
                   </Card>
                 </Link>

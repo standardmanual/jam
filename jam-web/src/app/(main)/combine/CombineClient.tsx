@@ -146,7 +146,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
 
       {/* 선택 슬롯 */}
       <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)]">
-        <p className="text-[11px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">
+        <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">
           {t(d.combine.selectedCount, { count: selected.length, max: MAX_SELECT })}
         </p>
         <div className="grid grid-cols-5 gap-[var(--spacing-8)] mb-[var(--spacing-16)]">
@@ -192,7 +192,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       {/* 힌트 */}
       {hints.length > 0 && (
         <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
-          <p className="text-[10px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.hintsTitle}</p>
+          <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.hintsTitle}</p>
           <div className="flex flex-col gap-[var(--spacing-8)]">
             {hints.map((h, i) => (
               <Card key={i}>
@@ -206,7 +206,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       {/* 공개 레시피 */}
       {publicRecipes.length > 0 && (
         <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
-          <p className="text-[10px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.recipesTitle}</p>
+          <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.recipesTitle}</p>
           <div className="flex flex-col gap-[var(--spacing-8)]">
             {publicRecipes.map((r) => (
               <Card key={r.id} className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">
@@ -222,7 +222,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
 
       {/* 인벤토리 */}
       <div className="flex-1 px-[var(--spacing-16)] py-[var(--spacing-24)] shadow-[inset_0_1px_0_0_var(--color-border)]">
-        <p className="text-[10px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.myItemsTitle}</p>
+        <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.myItemsTitle}</p>
         {items.length === 0 ? (
           <p className="text-text/50 text-center py-[var(--spacing-32)]">{d.combine.emptyInventory}</p>
         ) : (
@@ -246,7 +246,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
                   ) : (
                     <MedalIcon className="w-6 h-6 text-text/40" />
                   )}
-                  <p className="text-[10px] text-text text-center leading-tight line-clamp-2">{item.badge.name}</p>
+                  <p className="text-[length:var(--text-caption)] text-text text-center leading-tight line-clamp-2">{item.badge.name}</p>
                 </button>
               )
             })}

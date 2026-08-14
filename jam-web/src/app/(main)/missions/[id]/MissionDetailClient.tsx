@@ -59,7 +59,7 @@ function timeLeft(endsAt: string | null): string {
 
 function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)]">
+    <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)]">
       {children}
     </span>
   )
@@ -114,7 +114,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
           {isCompleted && <Tag>{d.missions.tagDone}</Tag>}
           {!isCompleted && participating && <Tag>{d.missions.tagJoined}</Tag>}
           {!isActive && !isCompleted && <Tag>{d.missions.tagUpcoming}</Tag>}
-          <span className="text-[11px] text-text/50">{timeLeft(mission.ends_at)}</span>
+          <span className="text-[length:var(--text-caption)] text-text/50">{timeLeft(mission.ends_at)}</span>
         </div>
 
         <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2">{mission.title}</h1>
@@ -124,16 +124,16 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
 
         {/* 달성 조건 */}
         <Card className="mb-[var(--spacing-16)]">
-          <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.conditionTitle}</p>
+          <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.conditionTitle}</p>
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-[11px] text-text-inverse/50 mb-0.5">{goal.label}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50 mb-0.5">{goal.label}</p>
               <p className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">
                 {goal.target}{goal.unit}
               </p>
             </div>
             {condition.activity_type && (
-              <span className="text-[11px] capitalize px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+              <span className="text-[length:var(--text-caption)] capitalize px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                 {condition.activity_type}
               </span>
             )}
@@ -144,7 +144,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
         {(participating || isCompleted) && goal.target > 0 && (
           isAchievementType ? (
             <Card className="mb-[var(--spacing-16)]">
-              <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.myProgressTitle}</p>
+              <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.myProgressTitle}</p>
               <div className="flex items-center justify-between">
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{goal.label}</p>
                 {/* 달성/미달성은 하나의 배지를 유지한 채 텍스트만 스왑한다(04) */}
@@ -157,7 +157,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
             </Card>
           ) : (
             <Card className="mb-[var(--spacing-16)]">
-              <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.myProgressTitle}</p>
+              <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.myProgressTitle}</p>
               <div className="flex items-end justify-between mb-2">
                 <p className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">
                   {isCompleted ? goal.target : progressValue.toFixed(mission.mission_type === 'distance' ? 1 : 0)}
@@ -168,7 +168,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
               <div className="h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                 <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${isCompleted ? 100 : progressPct}%` }} />
               </div>
-              <p className="text-[11px] text-text-inverse/50 mt-1 text-right">
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-1 text-right">
                 {isCompleted ? d.missions.progressDone : t(d.missions.progressPct, { pct: Math.round(progressPct) })}
               </p>
             </Card>
@@ -177,7 +177,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
 
         {/* 보상 */}
         <Card className="mb-[var(--spacing-24)]">
-          <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.rewardSectionTitle}</p>
+          <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-2">{d.missions.rewardSectionTitle}</p>
           {rewardBadges.length === 0 && !mission.reward_points ? (
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/40">{d.missions.rewardNone}</p>
           ) : (
@@ -185,7 +185,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
               {rewardBadges.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {rewardBadges.map((b) => (
-                    <span key={b.id} className="flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+                    <span key={b.id} className="flex items-center gap-1.5 text-[length:var(--text-caption)] px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                       {b.image_url && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={b.image_url} alt="" className="w-4 h-4 object-contain" />
@@ -201,7 +201,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
             </div>
           )}
           {mission.max_completions && (
-            <p className="text-[11px] text-text-inverse/50 mt-1">{t(d.missions.limitedSlots, { count: mission.max_completions.toLocaleString() })}</p>
+            <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-1">{t(d.missions.limitedSlots, { count: mission.max_completions.toLocaleString() })}</p>
           )}
         </Card>
 
@@ -243,7 +243,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
               <Button fullWidth onClick={() => setConfirming(true)}>
                 {d.missions.joinButton}
               </Button>
-              <p className="text-[11px] text-text/50 text-center mt-2">{d.missions.joinNote}</p>
+              <p className="text-[length:var(--text-caption)] text-text/50 text-center mt-2">{d.missions.joinNote}</p>
             </>
           )
         )}

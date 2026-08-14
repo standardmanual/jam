@@ -59,7 +59,7 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   return (
     <Card className="text-center py-[var(--spacing-32)]">
       <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{title}</p>
-      <p className="text-[11px] text-text-inverse/40 mt-1">{body}</p>
+      <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{body}</p>
     </Card>
   )
 }
@@ -68,7 +68,7 @@ function tabLabel(label: string, count: number) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {label}
-      {count > 0 && <span className="text-[10px] tabular-nums opacity-70">{count}</span>}
+      {count > 0 && <span className="text-[length:var(--text-caption)] tabular-nums opacity-70">{count}</span>}
     </span>
   )
 }
@@ -313,7 +313,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                           <div className="flex items-start justify-between">
                             <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{book.name}</h3>
                             {progress.completed ? (
-                              <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ml-2 shrink-0">
+                              <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ml-2 shrink-0">
                                 {d.badges.itembookCompleted}
                               </span>
                             ) : (
@@ -327,7 +327,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                         <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                           <div className="h-full bg-surface transition-all duration-500" style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-[11px] text-text-inverse/50 tabular-nums shrink-0">
+                        <span className="text-[length:var(--text-caption)] text-text-inverse/50 tabular-nums shrink-0">
                           {progress.owned} / {progress.total}
                         </span>
                       </div>

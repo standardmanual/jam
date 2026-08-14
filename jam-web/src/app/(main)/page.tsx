@@ -71,7 +71,7 @@ export default async function HomePage() {
               <ActivityIcon className="w-5 h-5 text-text-inverse" />
               <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.today.stravaLabel}</span>
               {stravaConnection.last_synced_at && (
-                <span className="text-[11px] text-text-inverse/50">
+                <span className="text-[length:var(--text-caption)] text-text-inverse/50">
                   <LocalDate iso={stravaConnection.last_synced_at} options={{ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
                 </span>
               )}
@@ -124,7 +124,7 @@ export default async function HomePage() {
                     <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{badge.name}</p>
                     <div className="flex items-center justify-between mt-1">
                       <RarityBadge rarity={badge.rarity} />
-                      <p className="text-[10px] text-text-inverse/50"><LocalDate iso={earned.earned_at} options={{ month: 'long', day: 'numeric' }} /></p>
+                      <p className="text-[length:var(--text-caption)] text-text-inverse/50"><LocalDate iso={earned.earned_at} options={{ month: 'long', day: 'numeric' }} /></p>
                     </div>
                   </div>
                 </Card>
@@ -134,7 +134,7 @@ export default async function HomePage() {
         ) : (
           <Card className="text-center py-[var(--spacing-32)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.today.recentBadgesEmptyTitle}</p>
-            <p className="text-[11px] text-text-inverse/40 mt-1">{d.today.recentBadgesEmptyBody}</p>
+            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.today.recentBadgesEmptyBody}</p>
           </Card>
         )}
       </section>
@@ -146,25 +146,25 @@ export default async function HomePage() {
           <Link href="/missions">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutMissionTitle}</p>
-              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutMissionBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutMissionBody}</p>
             </Card>
           </Link>
           <Link href="/inventory">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutInventoryTitle}</p>
-              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutInventoryBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutInventoryBody}</p>
             </Card>
           </Link>
           <Link href="/drops">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutDropsTitle}</p>
-              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutDropsBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutDropsBody}</p>
             </Card>
           </Link>
           <Link href="/combine">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutCombineTitle}</p>
-              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutCombineBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutCombineBody}</p>
             </Card>
           </Link>
         </div>
