@@ -37,10 +37,20 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss }
     if (!open) return;
     const prev = document.activeElement;
     dismissRef.current?.focus();
+
+    /* DS-009: Hide document behind the dialog from assistive technology.
+       Siblings of document.body's modal container get inert so screen readers
+       cannot escape the dialog (supplements aria-modal for older AT). */
+    const siblings = Array.from(document.body.children).filter(
+      (el) => !el.contains(dismissRef.current?.closest('[role="dialog"]'))
+    );
+    siblings.forEach((el) => { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); });
+
     const onKey = (e) => { if (e.key === 'Escape') onDismiss?.(); };
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
+      siblings.forEach((el) => { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); });
       prev?.focus();
     };
   }, [open, onDismiss]);

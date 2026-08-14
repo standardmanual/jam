@@ -1,6 +1,6 @@
 ---
 id: DS-013
-status: OPEN
+status: CLOSED
 severity: P1
 type: ADD
 category: Component / State / UX
@@ -67,3 +67,10 @@ export function Skeleton({ width = '100%', height = 16, borderRadius, className 
 - [ ] `aria-hidden="true"` 적용
 - [ ] `width`, `height`, `borderRadius` prop으로 다양한 형태 표현 가능
 - [ ] `feedback.card.html`에 카드형, 텍스트형 Skeleton 예시 추가
+
+---
+## 완료 기록
+- **날짜**: 2026-08-14
+- **구현**: `Skeleton.jsx` + `Skeleton.d.ts` 신규 추가. `aria-hidden="true"`, width/height/borderRadius prop, shimmer overlay(`ds-shimmer` keyframe from styles.css). @keyframes를 styles.css에 통합(DS-010과 동시).
+- **추가 파일**: `components/feedback/Skeleton.jsx`, `Skeleton.d.ts`
+- **잔여**: `feedback.card.html` 데모 업데이트 미진행

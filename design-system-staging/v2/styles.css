@@ -31,3 +31,31 @@ button:active:not(:disabled),
   transform: scale(var(--scale-press));
   transition: transform var(--duration-micro) var(--ease-out);
 }
+
+/* DS-006: Hover feedback for interactive elements — pointer devices only.
+   @media (hover: hover) guard prevents stuck hover on touch devices. */
+@media (hover: hover) {
+  button:hover:not(:disabled),
+  [role="button"]:hover {
+    opacity: 0.82;
+    transition: opacity var(--duration-micro) ease;
+  }
+}
+
+/* DS-008: Placeholder color — WCAG AA on dark background.
+   opacity:1 overrides Firefox's default 0.54 multiplier. */
+::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 1;
+}
+
+/* DS-010: Spinner keyframe — single global definition, no per-instance <style> injection.
+   DS-013: Shimmer keyframe — used by Skeleton component. */
+@keyframes ds-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ds-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}

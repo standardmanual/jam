@@ -1,6 +1,6 @@
 ---
 id: DS-006
-status: OPEN
+status: CLOSED
 severity: P1
 type: ADD
 category: State / UX / Architecture
@@ -64,3 +64,10 @@ P1 수준에서는 Option A로 빠르게 해결하고, P2에서 Option B로 세�
 - [ ] 터치 기기(`@media (hover: none)`)에서 hover 효과가 발생하지 않음
 - [ ] active (press) 효과와 hover 효과가 충돌하지 않음
 - [ ] Card `onClick` 있는 경우 hover 효과 적용됨
+
+---
+## 완료 기록
+- **날짜**: 2026-08-14
+- **구현**: `styles.css`에 `@media (hover: hover)` 가드 내 전역 opacity:0.82 hover 레이어 추가. `button:hover:not(:disabled)` + `[role="button"]:hover` 선택자. 터치 기기 stuck hover 방지.
+- **변경 파일**: `design-system-staging/v2/styles.css`
+- **채택 옵션**: Option A (전역 opacity) — 컴포넌트별 변경 없이 모든 인터랙티브 요소에 자동 적용

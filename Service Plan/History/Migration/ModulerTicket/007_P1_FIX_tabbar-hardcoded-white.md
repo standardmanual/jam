@@ -1,6 +1,6 @@
 ---
 id: DS-007
-status: OPEN
+status: CLOSED
 severity: P1
 type: FIX
 category: Token / Color / Component
@@ -57,3 +57,10 @@ Option A가 단순하고 즉시 해결 가능. Option B는 의미를 더 명확�
 - [ ] `var(--color-bg-inverse)` 또는 semantic 토큰 참조
 - [ ] 시각적 결과는 이전과 동일 (흰색 배경 유지)
 - [ ] 토큰을 변경하면 TabBar 배경이 자동으로 반영됨
+
+---
+## 완료 기록
+- **날짜**: 2026-08-14
+- **구현**: TabBar.jsx 배경 `'#ffffff'` → `var(--color-bg-inverse)` 교체. 시각 결과 동일, 테마 연동 구조로 전환.
+- **변경 파일**: `design-system-staging/v2/components/navigation/TabBar.jsx`
+- **채택 옵션**: Option A (--color-bg-inverse) — 단순, 즉시 해결

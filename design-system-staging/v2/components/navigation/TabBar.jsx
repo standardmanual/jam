@@ -54,7 +54,7 @@ export function TabBar({ active = 'today', onChange }) {
       bottom: 'calc(var(--spacing-16) + var(--spacing-safe-bottom))',
       width: 'calc(100% - 32px)', maxWidth: 398, height: 64,
       borderRadius: 'var(--radius-pill)',
-      background: '#ffffff',
+      background: 'var(--color-bg-inverse)',
       boxShadow: 'inset 0 0 0 1px var(--color-border)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 4px', zIndex: 40,

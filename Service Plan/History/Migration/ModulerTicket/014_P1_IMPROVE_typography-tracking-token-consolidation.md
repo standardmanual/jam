@@ -1,6 +1,6 @@
 ---
 id: DS-014
-status: OPEN
+status: CLOSED
 severity: P1
 type: IMPROVE
 category: Token / Typography
@@ -58,3 +58,10 @@ category: Token / Typography
 - [ ] tracking 토큰의 사용 계층이 단일화됨 (개별 or 역할, 혼재 없음)
 - [ ] `typography.css` 주석에 "어느 토큰을 써야 하는가" 가이드 명시
 - [ ] 모든 컴포넌트가 결정된 단일 계층의 토큰만 참조
+
+---
+## 완료 기록
+- **날짜**: 2026-08-14
+- **구현**: `--tracking-heading: -0.8px` 제거(어떤 컴포넌트에서도 미참조 확인). per-scale 토큰(`--tracking-h1~h4`, `--tracking-bold-*`)만 유지. `--tracking-label` 예외 유지(역할 기반, 사이즈 독립적). typography.css 주석에 사용 가이드 명시.
+- **변경 파일**: `design-system-staging/v2/tokens/typography.css`
+- **채택 옵션**: Option A (per-scale 중심)
