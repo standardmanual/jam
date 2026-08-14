@@ -92,67 +92,67 @@
     <div class="sidebar-group">
       <div class="sidebar-group-label">Getting Started</div>
       <ul class="sidebar-nav">
-        <li><a class="nav-link active" data-section="overview">Overview</a></li>
-        <li><a class="nav-link" data-section="dosddonts">Do's &amp; Don'ts</a></li>
+        <li><a class="nav-link active" href="#overview" data-section="overview">Overview</a></li>
+        <li><a class="nav-link" href="#dosddonts" data-section="dosddonts">Do's &amp; Don'ts</a></li>
       </ul>
     </div>
 
     <div class="sidebar-group">
       <div class="sidebar-group-label">Brand</div>
       <ul class="sidebar-nav">
-        <li><a class="nav-link" data-section="logo">Logo</a></li>
+        <li><a class="nav-link" href="#logo" data-section="logo">Logo</a></li>
       </ul>
     </div>
 
     <div class="sidebar-group">
       <div class="sidebar-group-label">Color</div>
       <ul class="sidebar-nav">
-        <li><a class="nav-link" data-section="colors-primary">Primary &amp; Secondary</a></li>
-        <li><a class="nav-link" data-section="colors-rarity">Rarity</a></li>
-        <li><a class="nav-link" data-section="colors-neutral">Neutrals</a></li>
+        <li><a class="nav-link" href="#colors-primary" data-section="colors-primary">Primary &amp; Secondary</a></li>
+        <li><a class="nav-link" href="#colors-rarity" data-section="colors-rarity">Rarity</a></li>
+        <li><a class="nav-link" href="#colors-neutral" data-section="colors-neutral">Neutrals</a></li>
       </ul>
     </div>
 
     <div class="sidebar-group">
       <div class="sidebar-group-label">Typography</div>
       <ul class="sidebar-nav">
-        <li><a class="nav-link" data-section="type-headings">Aa Heading Scale</a></li>
-        <li><a class="nav-link" data-section="type-body">Aa Body &amp; Caption</a></li>
-        <li><a class="nav-link" data-section="type-bold">Aa Bold Display</a></li>
+        <li><a class="nav-link" href="#type-headings" data-section="type-headings">Aa Heading Scale</a></li>
+        <li><a class="nav-link" href="#type-body" data-section="type-body">Aa Body &amp; Caption</a></li>
+        <li><a class="nav-link" href="#type-bold" data-section="type-bold">Aa Bold Display</a></li>
       </ul>
     </div>
 
     <div class="sidebar-group">
       <div class="sidebar-group-label">Spacing &amp; Radius</div>
       <ul class="sidebar-nav">
-        <li><a class="nav-link" data-section="spacing">Spacing Scale</a></li>
-        <li><a class="nav-link" data-section="radius">Border Radius</a></li>
+        <li><a class="nav-link" href="#spacing" data-section="spacing">Spacing Scale</a></li>
+        <li><a class="nav-link" href="#radius" data-section="radius">Border Radius</a></li>
       </ul>
     </div>
 
     <div class="sidebar-group">
       <div class="sidebar-group-label">Shapes</div>
       <ul class="sidebar-nav">
-        <li><a class="nav-link" data-section="badge-frames">Badge Frames</a></li>
-        <li><a class="nav-link" data-section="shapes">ShapeTag &amp; RarityBadge</a></li>
+        <li><a class="nav-link" href="#badge-frames" data-section="badge-frames">Badge Frames</a></li>
+        <li><a class="nav-link" href="#shapes" data-section="shapes">ShapeTag &amp; RarityBadge</a></li>
       </ul>
     </div>
 
     <div class="sidebar-group">
       <div class="sidebar-group-label">Components</div>
       <ul class="sidebar-nav">
-        <li><a class="nav-link" data-section="buttons">Buttons</a></li>
-        <li><a class="nav-link" data-section="cards">Cards</a></li>
-        <li><a class="nav-link" data-section="forms">Forms</a></li>
-        <li><a class="nav-link" data-section="navigation">Navigation</a></li>
-        <li><a class="nav-link" data-section="feedback">Feedback &amp; Loader</a></li>
+        <li><a class="nav-link" href="#buttons" data-section="buttons">Buttons</a></li>
+        <li><a class="nav-link" href="#cards" data-section="cards">Cards</a></li>
+        <li><a class="nav-link" href="#forms" data-section="forms">Forms</a></li>
+        <li><a class="nav-link" href="#navigation" data-section="navigation">Navigation</a></li>
+        <li><a class="nav-link" href="#feedback" data-section="feedback">Feedback &amp; Loader</a></li>
       </ul>
     </div>
 
     <div class="sidebar-group">
       <div class="sidebar-group-label">Screens</div>
       <ul class="sidebar-nav">
-        <li><a class="nav-link" data-section="screens">App Screens</a></li>
+        <li><a class="nav-link" href="#screens" data-section="screens">App Screens</a></li>
       </ul>
     </div>
   </aside>
@@ -573,15 +573,27 @@
 </div>
 
 <script>
+  function navigate(id) {
+    if (!id || !document.getElementById(id)) id = 'overview';
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const link = document.querySelector(`.nav-link[data-section="${id}"]`);
+    if (link) link.classList.add('active');
+  }
+
   document.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', () => {
-      const id = link.dataset.section;
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      link.classList.add('active');
-      document.getElementById(id).classList.add('active');
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      location.hash = link.dataset.section;
     });
   });
+
+  window.addEventListener('hashchange', () => {
+    navigate(location.hash.slice(1));
+  });
+
+  navigate(location.hash ? location.hash.slice(1) : 'overview');
 </script>
 </body>
 </html>
