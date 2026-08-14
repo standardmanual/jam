@@ -7,9 +7,9 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: var(--font-family-base); background: var(--color-bg); color: var(--color-text); }
+    body { margin: 0; font-family: var(--font-family-base); font-size: 15px; background: var(--color-bg); color: var(--color-text); }
 
-    .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+    .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
 
     /* 사이드바 */
     .sidebar {
@@ -18,45 +18,45 @@
       position: sticky; top: 0; max-height: 100vh; overflow-y: auto;
     }
     .sidebar-logo {
-      padding: 18px 16px 14px;
-      font-size: 16px; font-weight: 400;
+      padding: 20px 18px 16px;
+      font-size: 17px; font-weight: 400;
       border-bottom: 1px solid var(--color-border);
     }
-    .sidebar-group { padding: 12px 0 0; }
+    .sidebar-group { padding: 14px 0 0; }
     .sidebar-group-label {
-      padding: 0 16px 6px;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      padding: 0 18px 7px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
       color: var(--color-text-secondary); text-transform: uppercase;
     }
     .sidebar-nav { list-style: none; margin: 0; padding: 0 0 12px; }
     .sidebar-nav a {
-      display: block; padding: 8px 16px;
-      color: var(--color-text-secondary); text-decoration: none; font-size: 13px;
+      display: block; padding: 9px 18px;
+      color: var(--color-text-secondary); text-decoration: none; font-size: 14px;
       border-left: 2px solid transparent; cursor: pointer; transition: all 0.15s;
     }
     .sidebar-nav a:hover { color: var(--color-text); background: rgba(255,255,255,0.04); }
     .sidebar-nav a.active { color: var(--color-primary); border-left-color: var(--color-primary); background: rgba(232,70,31,0.08); }
 
     /* 메인 */
-    .main { padding: 40px 48px; overflow-y: auto; }
+    .main { padding: 44px 52px; overflow-y: auto; }
     .section { display: none; }
     .section.active { display: block; animation: fadein 0.2s ease; }
     @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
-    h2 { font-size: 26px; font-weight: 300; margin: 0 0 8px; }
-    .section-subtitle { color: var(--color-text-secondary); font-size: 14px; margin: 0 0 32px; }
-    h3 { font-size: 15px; font-weight: 600; margin: 32px 0 12px; color: var(--color-text); letter-spacing: 0.02em; }
+    h2 { font-size: 30px; font-weight: 300; margin: 0 0 10px; }
+    .section-subtitle { color: var(--color-text-secondary); font-size: 15px; margin: 0 0 32px; }
+    h3 { font-size: 17px; font-weight: 600; margin: 36px 0 14px; color: var(--color-text); letter-spacing: 0.02em; }
     hr { border: none; border-top: 1px solid var(--color-border); margin: 32px 0; }
 
     /* 컴포넌트 블록 */
     .comp { margin: 0 0 32px; }
     .comp-header { margin-bottom: 10px; }
-    .comp-name { font-size: 14px; font-weight: 700; color: var(--color-text); }
-    .comp-desc { font-size: 13px; color: var(--color-text-secondary); margin: 4px 0 0; line-height: 1.6; }
+    .comp-name { font-size: 15px; font-weight: 700; color: var(--color-text); }
+    .comp-desc { font-size: 14px; color: var(--color-text-secondary); margin: 4px 0 0; line-height: 1.6; }
     .comp-code {
       background: rgba(0,0,0,0.4); border: 1px solid var(--color-border);
-      padding: 12px 16px; border-radius: 6px;
-      font-family: 'Monaco','Menlo',monospace; font-size: 12px; color: #a0ff7c;
+      padding: 14px 18px; border-radius: 6px;
+      font-family: 'Monaco','Menlo',monospace; font-size: 13px; color: #a0ff7c;
       margin: 10px 0; overflow-x: auto; line-height: 1.6; white-space: pre;
     }
     .comp-preview {
@@ -66,18 +66,18 @@
     .comp-preview iframe { display: block; width: 100%; border: none; }
 
     /* 토큰 테이블 */
-    .token-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .token-table th { text-align: left; padding: 8px 12px; color: var(--color-text-secondary); font-weight: 600; border-bottom: 1px solid var(--color-border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
-    .token-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
-    .token-name { font-family: monospace; font-size: 12px; color: var(--color-primary); }
-    .token-value { font-family: monospace; font-size: 12px; color: var(--color-text-secondary); }
+    .token-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .token-table th { text-align: left; padding: 9px 14px; color: var(--color-text-secondary); font-weight: 600; border-bottom: 1px solid var(--color-border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .token-table td { padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+    .token-name { font-family: monospace; font-size: 13px; color: var(--color-primary); }
+    .token-value { font-family: monospace; font-size: 13px; color: var(--color-text-secondary); }
     .color-dot { width: 20px; height: 20px; border-radius: 4px; display: inline-block; border: 1px solid rgba(255,255,255,0.1); }
 
     /* 개요 카드 */
     .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
     .overview-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 20px; }
-    .overview-card h4 { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--color-primary); }
-    .overview-card p { margin: 0; font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+    .overview-card h4 { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--color-primary); }
+    .overview-card p { margin: 0; font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; }
 
     /* UI 스크린 */
     .screen-frame { width: 430px; height: 900px; border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; }
