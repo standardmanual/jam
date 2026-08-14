@@ -80,7 +80,7 @@ export default function PointsPage() {
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
         {/* 잔액 카드 */}
         <Card className="text-center py-[var(--spacing-32)]">
-          <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.points.balanceLabel}</p>
+          <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-2">{d.points.balanceLabel}</p>
           <p
             className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]"
             aria-label={balanceText ?? undefined}
@@ -93,7 +93,7 @@ export default function PointsPage() {
 
         {/* 내역 */}
         <div className="flex flex-col gap-[var(--spacing-16)]">
-          <h2 className="text-[10px] uppercase text-text/40 px-1">{d.points.historyTitle}</h2>
+          <h2 className="text-[length:var(--text-caption)] uppercase text-text/40 px-1">{d.points.historyTitle}</h2>
 
           {loading && (
             <div className="py-[var(--spacing-40)] text-center text-text/40 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.points.loading}</div>
@@ -114,7 +114,7 @@ export default function PointsPage() {
           {!loading && !error && items.length === 0 && (
             <Card className="text-center py-[var(--spacing-32)]">
               <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.points.emptyTitle}</p>
-              <p className="text-[11px] text-text-inverse/40 mt-1">{d.points.emptyBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.points.emptyBody}</p>
             </Card>
           )}
 
@@ -126,8 +126,8 @@ export default function PointsPage() {
                   <div className="flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-16)]">
                     <div className="flex-1 min-w-0">
                       <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{it.title}</p>
-                      {it.note && <p className="text-[11px] text-text-inverse/50 truncate">{it.note}</p>}
-                      <p className="text-[11px] text-text-inverse/40 mt-0.5">{formatDate(it.created_at)}</p>
+                      {it.note && <p className="text-[length:var(--text-caption)] text-text-inverse/50 truncate">{it.note}</p>}
+                      <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-0.5">{formatDate(it.created_at)}</p>
                     </div>
                     <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] shrink-0 ${positive ? '' : 'text-text-inverse/60'}`}>
                       {formatAmount(it.amount)}

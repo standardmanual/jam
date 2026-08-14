@@ -375,9 +375,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             <div className="flex items-center gap-2">
               <RarityBadge rarity={badgeRow.rarity} />
               {serial ? (
-                <span className="text-text/40 text-[11px] font-mono">{serial}</span>
+                <span className="text-text/40 text-[length:var(--text-caption)] font-mono">{serial}</span>
               ) : (
-                <span className="text-[10px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/50">
+                <span className="text-[length:var(--text-caption)] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/50">
                   {d.badges.notEarnedTag}
                 </span>
               )}
@@ -387,7 +387,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           {/* 정보 카드 */}
           <Card className="p-0 overflow-hidden mb-[var(--spacing-16)]">
             <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-              <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.infoSectionTitle}</p>
+              <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.inventory.infoSectionTitle}</p>
             </div>
             <div>
               <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
@@ -439,7 +439,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           {/* 배지 설명 */}
           <Card className="p-0 overflow-hidden">
             <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-              <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.descSectionTitle}</p>
+              <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.inventory.descSectionTitle}</p>
             </div>
             <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
               <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
@@ -463,7 +463,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.belongsToItembook}</p>
+                  <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.inventory.belongsToItembook}</p>
                   <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{itemBook.name}</p>
                 </div>
                 <ChevronRightIcon className="w-4 h-4 text-text-inverse/30 shrink-0" />
@@ -474,7 +474,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           {expiring && (
             <Card className="mt-[var(--spacing-16)]">
               <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.inventory.expiringSoonTitle}</p>
-              <p className="text-[11px] text-text-inverse/60 mt-0.5">{d.inventory.expiringSoonBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/60 mt-0.5">{d.inventory.expiringSoonBody}</p>
             </Card>
           )}
 
@@ -482,7 +482,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           {!hasEarned && (
             <Card className="mt-[var(--spacing-16)] text-center py-[var(--spacing-16)]">
               <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.notEarnedTitle}</p>
-              <p className="text-[11px] text-text-inverse/40 mt-1">{d.badges.notEarnedBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.badges.notEarnedBody}</p>
             </Card>
           )}
         </div>
@@ -535,10 +535,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {prereqStatus.length > 0 && (
           <Card className="p-0 overflow-hidden">
             <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-              <p className="text-[10px] uppercase text-text-inverse/50">{d.badges.prerequisiteTitle}</p>
+              <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.badges.prerequisiteTitle}</p>
             </div>
             <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
-              <p className="text-[11px] text-text-inverse/60 mb-[var(--spacing-16)]">{d.badges.prerequisiteBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/60 mb-[var(--spacing-16)]">{d.badges.prerequisiteBody}</p>
               <div className="flex flex-col gap-[var(--spacing-16)]">
                 {prereqStatus.map((p) => (
                   <Link key={p.id} href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}>
@@ -563,7 +563,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                         <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-medium truncate">
                           {p.name}
                         </h3>
-                        <p className="text-[11px] text-text-inverse/60 line-clamp-2 mt-0.5">
+                        <p className="text-[length:var(--text-caption)] text-text-inverse/60 line-clamp-2 mt-0.5">
                           {p.description || '선행 배지'}
                         </p>
                       </div>
@@ -571,7 +571,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                       {/* 링크 표시 */}
                       <div className="flex items-center gap-1 shrink-0">
                         {p.owned && (
-                          <span className="text-[10px] text-text-inverse/40 font-medium">겟</span>
+                          <span className="text-[length:var(--text-caption)] text-text-inverse/40 font-medium">겟</span>
                         )}
                         <ChevronRightIcon className="w-4 h-4 text-text-inverse/30" />
                       </div>
@@ -585,7 +585,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 획득 조건 — item 배지는 상단 early return에서 별도 UI로 처리, 이 시점 type은 activity | poi */}
         <Card>
-          <h2 className="text-[10px] uppercase text-text-inverse/40 mb-2">{d.badges.conditionTitle}</h2>
+          <h2 className="text-[length:var(--text-caption)] uppercase text-text-inverse/40 mb-2">{d.badges.conditionTitle}</h2>
           <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
             {badgeRow.type === 'poi'
               ? '이 장소를 경유하는 활동이 기록되면 겟돼요.'
@@ -597,12 +597,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {badgeRow.type === 'poi' && poiEarns.length > 0 && (
           <>
             <div className="flex items-baseline justify-between px-1">
-              <h2 className="text-[10px] uppercase text-text-inverse/40">{d.badges.earnHistoryTitle}</h2>
-              <span className="text-[11px] text-text-inverse/60">{t(d.badges.earnHistoryCount, { count: poiEarns.length })}</span>
+              <h2 className="text-[length:var(--text-caption)] uppercase text-text-inverse/40">{d.badges.earnHistoryTitle}</h2>
+              <span className="text-[length:var(--text-caption)] text-text-inverse/60">{t(d.badges.earnHistoryCount, { count: poiEarns.length })}</span>
             </div>
             {poiEarns.map((e) => (
               <Card key={e.id}>
-                <h3 className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)] truncate">
+                <h3 className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-[var(--spacing-16)] truncate">
                   {e.poi?.name ?? d.badges.earnHistoryUnknownPlace}
                 </h3>
                 <div className="flex flex-col gap-2">
@@ -646,7 +646,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* 획득 정보 */}
         {earned && (
           <Card>
-            <h2 className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.badges.earnInfoTitle}</h2>
+            <h2 className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.badges.earnInfoTitle}</h2>
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.earnedAt}</span>
@@ -704,7 +704,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {!hasEarned && (
           <Card className="text-center py-[var(--spacing-16)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.notEarnedTitle}</p>
-            <p className="text-[11px] text-text-inverse/40 mt-1">{d.badges.notEarnedBody}</p>
+            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.badges.notEarnedBody}</p>
           </Card>
         )}
 

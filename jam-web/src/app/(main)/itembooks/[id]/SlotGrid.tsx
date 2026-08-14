@@ -193,7 +193,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
                     handleUnslot(badge.id, slot!.id)
                   }}
                   disabled={pending}
-                  className="text-[11px] text-text/50 underline underline-offset-2 active:text-text disabled:opacity-50"
+                  className="text-[length:var(--text-caption)] text-text/50 underline underline-offset-2 active:text-text disabled:opacity-50"
                 >
                   {pending ? d.itembooks.processing : d.itembooks.unslotButton}
                 </button>
@@ -201,7 +201,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
 
               {isSlottable && !readOnly && (
                 <div className="flex flex-col items-center gap-1 w-full">
-                  <p className="text-[10px] text-text/50 tabular-nums">
+                  <p className="text-[length:var(--text-caption)] text-text/50 tabular-nums">
                     {serialLabel}
                   </p>
                   <button

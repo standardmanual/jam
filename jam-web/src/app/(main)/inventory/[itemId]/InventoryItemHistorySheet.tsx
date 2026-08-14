@@ -112,12 +112,12 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
                   <ol className="flex flex-col gap-[var(--spacing-16)]">
                     {events.map((ev, i) => (
                       <li key={i} className="flex flex-col gap-0.5">
-                        <span className="text-[11px] text-text-inverse/40 font-mono">{formatTs(ev.timestamp)}</span>
+                        <span className="text-[length:var(--text-caption)] text-text-inverse/40 font-mono">{formatTs(ev.timestamp)}</span>
                         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
                           {ev.username ?? d.inventory.historyUnknownUser} · {eventLabel(ev)}
                         </p>
                         {ev.poi_name && (
-                          <p className="text-[11px] text-text-inverse/50 inline-flex items-center gap-1">
+                          <p className="text-[length:var(--text-caption)] text-text-inverse/50 inline-flex items-center gap-1">
                             <PinIcon className="w-3 h-3" />{ev.poi_name}
                           </p>
                         )}

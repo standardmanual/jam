@@ -69,16 +69,16 @@ export default async function InventoryPage() {
               style={{ width: `${Math.min(100, (usedSlots / maxSlots) * 100)}%` }}
             />
           </div>
-          <span className="text-[11px] text-text/60 shrink-0">{usedSlots}/{maxSlots}</span>
+          <span className="text-[length:var(--text-caption)] text-text/60 shrink-0">{usedSlots}/{maxSlots}</span>
         </div>
-        <p className="mt-1 text-[11px] text-text/50">{t(d.inventory.slotsRemaining, { count: remainingSlots })}</p>
+        <p className="mt-1 text-[length:var(--text-caption)] text-text/50">{t(d.inventory.slotsRemaining, { count: remainingSlots })}</p>
       </div>
 
       {/* 아이템 그리드 */}
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-[var(--spacing-40)] text-center">
           <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.inventory.emptyTitle}</p>
-          <p className="text-[11px] text-text/40 mt-1">{d.inventory.emptyBody}</p>
+          <p className="text-[length:var(--text-caption)] text-text/40 mt-1">{d.inventory.emptyBody}</p>
         </div>
       ) : (
         <InventoryGrid

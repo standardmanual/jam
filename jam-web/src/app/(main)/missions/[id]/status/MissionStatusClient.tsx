@@ -88,9 +88,9 @@ export default function MissionStatusClient({ missionId, missionTitle, displayTy
       <TopNav title={d.missions.backToDetail} />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
-        <p className="text-[10px] uppercase text-text/50 mb-1">{d.missions.statusEyebrow}</p>
+        <p className="text-[length:var(--text-caption)] uppercase text-text/50 mb-1">{d.missions.statusEyebrow}</p>
         <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-1">{missionTitle}</h1>
-        <p className="text-[11px] text-text/50 mb-[var(--spacing-24)]">
+        <p className="text-[length:var(--text-caption)] text-text/50 mb-[var(--spacing-24)]">
           {displayType === 'individual'
             ? d.missions.statusIndividualLabel
             : displayType === 'achievement' ? d.missions.statusAchievementLabel : d.missions.statusRankingLabel}
@@ -107,7 +107,7 @@ export default function MissionStatusClient({ missionId, missionTitle, displayTy
             ))}
             {data.me && !data.entries.some((e) => e.userId === data.me!.userId) && (
               <>
-                <p className="text-[10px] text-text/40 text-center my-1">{d.missions.statusMeRanking}</p>
+                <p className="text-[length:var(--text-caption)] text-text/40 text-center my-1">{d.missions.statusMeRanking}</p>
                 <RankingRow e={data.me} highlight />
               </>
             )}
@@ -124,7 +124,7 @@ export default function MissionStatusClient({ missionId, missionTitle, displayTy
             ))}
             {data.me && !data.entries.some((e) => e.userId === data.me!.userId) && (
               <>
-                <p className="text-[10px] text-text/40 text-center my-1">{d.missions.statusMeAchievement}</p>
+                <p className="text-[length:var(--text-caption)] text-text/40 text-center my-1">{d.missions.statusMeAchievement}</p>
                 <AchievementRow e={data.me} highlight />
               </>
             )}
@@ -142,7 +142,7 @@ export default function MissionStatusClient({ missionId, missionTitle, displayTy
                 {d.missions.myProgressTitle}
               </span>
               {data.me.achieved ? (
-                <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
+                <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
                   {d.missions.achieved}
                 </span>
               ) : (
@@ -166,7 +166,7 @@ function RankingRow({ e, highlight }: { e: RankingEntry; highlight: boolean }) {
         <Avatar url={e.avatarUrl} />
         <span className="flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{e.username}{highlight ? d.missions.statusMeSuffix : ''}</span>
         {e.isCompleted ? (
-          <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">{d.missions.tagDone}</span>
+          <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">{d.missions.tagDone}</span>
         ) : (
           <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70 shrink-0">{e.progressValue.toFixed(e.progressValue % 1 === 0 ? 0 : 1)}</span>
         )}
@@ -182,9 +182,9 @@ function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: bool
         <Avatar url={e.avatarUrl} />
         <span className="flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{e.username}{highlight ? d.missions.statusMeSuffix : ''}</span>
         {e.achieved ? (
-          <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">{d.missions.achieved}</span>
+          <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">{d.missions.achieved}</span>
         ) : (
-          <span className="text-[10px] leading-none text-text-inverse/40 px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">{d.missions.notAchieved}</span>
+          <span className="text-[length:var(--text-caption)] leading-none text-text-inverse/40 px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">{d.missions.notAchieved}</span>
         )}
       </div>
     </Card>

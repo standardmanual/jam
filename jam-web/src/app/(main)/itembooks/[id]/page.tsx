@@ -194,13 +194,13 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{book.name}</h1>
               {isCompleted && (
-                <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)]">
+                <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)]">
                   {d.itembooks.completed}
                 </span>
               )}
             </div>
             {book.faction && (
-              <p className="text-text/70 text-[11px] mb-1">{book.faction.name}</p>
+              <p className="text-text/70 text-[length:var(--text-caption)] mb-1">{book.faction.name}</p>
             )}
             <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
               {book.description}
@@ -210,7 +210,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
         {/* 스토리 */}
         {book.story_text && (
-          <p className="text-text/60 text-[11px] leading-relaxed italic mb-[var(--spacing-16)] whitespace-pre-line">
+          <p className="text-text/60 text-[length:var(--text-caption)] leading-relaxed italic mb-[var(--spacing-16)] whitespace-pre-line">
             {book.story_text}
           </p>
         )}
@@ -220,14 +220,14 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)]">
             <div className="h-full bg-text rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
           </div>
-          <span className="text-[11px] text-text/60 tabular-nums">{slottedCount} / {totalBadgeCount}</span>
+          <span className="text-[length:var(--text-caption)] text-text/60 tabular-nums">{slottedCount} / {totalBadgeCount}</span>
         </div>
       </div>
 
       {/* 슬롯 그리드 */}
       <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)]">
         {badges.length > 0 && (
-          <p className="text-[11px] text-text/50 mb-[var(--spacing-16)] text-center">
+          <p className="text-[length:var(--text-caption)] text-text/50 mb-[var(--spacing-16)] text-center">
             {d.itembooks.slotHint}
           </p>
         )}
@@ -252,7 +252,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         {/* POI 배지 — 슬롯팅 없이 방문(획득) 여부만 표시 */}
         {poiBadges.length > 0 && (
           <div className={badges.length > 0 ? 'mt-[var(--spacing-24)]' : ''}>
-            <p className="text-[11px] text-text/50 mb-[var(--spacing-16)] text-center">
+            <p className="text-[length:var(--text-caption)] text-text/50 mb-[var(--spacing-16)] text-center">
               {d.itembooks.poiHint}
             </p>
             <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
@@ -268,8 +268,8 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                         <PinIcon className="w-6 h-6 text-text-inverse/30" />
                       )}
                     </div>
-                    <p className="text-[11px] leading-tight">{poiBadge.name}</p>
-                    <span className="text-[10px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/60">
+                    <p className="text-[length:var(--text-caption)] leading-tight">{poiBadge.name}</p>
+                    <span className="text-[length:var(--text-caption)] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/60">
                       {earned ? d.itembooks.poiEarned : d.itembooks.poiNotEarned}
                     </span>
                   </Card>

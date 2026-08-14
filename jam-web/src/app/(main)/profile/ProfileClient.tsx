@@ -318,7 +318,7 @@ export default function ProfileClient({
                     <BookIcon className="w-10 h-10 text-text-inverse/40" />
                   )}
                   {book.isCompleted && (
-                    <span className="absolute top-1.5 right-1.5 bg-surface text-text text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)]">
+                    <span className="absolute top-1.5 right-1.5 bg-surface text-text text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)]">
                       {d.profile.itembookCompleted}
                     </span>
                   )}
@@ -326,14 +326,14 @@ export default function ProfileClient({
                 <div className="min-w-0">
                   <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
                   {book.faction && (
-                    <p className="text-[11px] text-text-inverse/60 truncate">{book.faction.name}</p>
+                    <p className="text-[length:var(--text-caption)] text-text-inverse/60 truncate">{book.faction.name}</p>
                   )}
                 </div>
                 <div className="mt-auto flex items-center gap-[var(--spacing-8)]">
                   <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                     <div className="h-full bg-surface transition-all" style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="text-[11px] text-text-inverse/60 tabular-nums shrink-0">
+                  <span className="text-[length:var(--text-caption)] text-text-inverse/60 tabular-nums shrink-0">
                     {t(d.profile.itembookProgress, { done: book.slottedCount, total: book.totalBadgeCount })}
                   </span>
                 </div>
@@ -410,7 +410,7 @@ export default function ProfileClient({
             statCounts[tab.key]
           )}
         </span>
-        <span className="text-[11px] leading-none opacity-70">{tab.label}</span>
+        <span className="text-[length:var(--text-caption)] leading-none opacity-70">{tab.label}</span>
       </span>
     ),
   }))
