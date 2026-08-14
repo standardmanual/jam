@@ -45,13 +45,15 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 공개 경로 (인증 불필요)
-  const publicPaths = ['/login', '/auth/callback', '/forbidden']
+  const publicPaths = ['/login', '/auth/callback', '/forbidden', '/api/dev-login']
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublicPath) {
-    // 미인증 유저 → /login 리다이렉트
+    // STAGING_MODE: 미인증 유저를 /login 대신 /api/dev-login으로 자동 진입
+    // (staging 환경에서는 로그인 화면 없이 테스트 계정으로 바로 진입)
+    const isStagingMode = process.env.STAGING_MODE === 'true'
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = isStagingMode ? '/api/dev-login' : '/login'
     return NextResponse.redirect(url)
   }
 
