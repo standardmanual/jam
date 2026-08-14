@@ -75,7 +75,7 @@ export function TabBar({ active = 'today', onChange }) {
               cursor: 'pointer',
             }}
           >
-            <span style={{ color: isActive ? 'var(--color-primary)' : 'rgba(0,0,0,0.35)' }}>
+            <span style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
               <svg viewBox="0 0 24 24" fill="none" width={24} height={24}>
                 {isActive ? ic.fill : ic.line}
               </svg>

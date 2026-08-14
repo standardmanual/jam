@@ -67,7 +67,7 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss, 
       onClick={onDismiss}
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.6)',
+        background: 'var(--color-overlay)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 60,
       }}

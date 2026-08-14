@@ -55,7 +55,7 @@ export function BottomSheet({ open, onDismiss, title, children }) {
       onClick={onDismiss}
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.6)',
+        background: 'var(--color-overlay)',
         zIndex: 50,
         display: 'flex', alignItems: 'flex-end',
       }}
