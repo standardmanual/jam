@@ -59,6 +59,18 @@ function LoginContent() {
           </svg>
           {d.auth.googleLogin}
         </button>
+
+        {/* 로컬 개발 전용 — 프로덕션/프리뷰 빌드에서는 NODE_ENV가 'development'가 아니므로 렌더링 안 됨 */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            onClick={() => {
+              window.location.href = '/api/dev-login'
+            }}
+            className="w-full mt-[var(--spacing-16)] flex items-center justify-center gap-3 border border-text/30 text-text rounded-[var(--radius-pill-buttons)] min-h-11 py-[14px] px-[var(--spacing-24)] text-[length:var(--text-body)] leading-[var(--leading-body)] active:scale-95 transition-transform duration-100"
+          >
+            {d.auth.devLogin}
+          </button>
+        )}
       </div>
 
       <p className="mt-[var(--spacing-32)] text-text/60 text-[11px] text-center">
