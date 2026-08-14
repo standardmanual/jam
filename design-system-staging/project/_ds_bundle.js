@@ -603,7 +603,7 @@ function Input({
     style: {
       width: '100%',
       height: 44,
-      borderRadius: 'var(--radius-input)',
+      borderRadius: 'var(--radius-md)',
       border: '1px solid var(--color-border)',
       padding: '0 20px',
       fontSize: 16,
