@@ -35,7 +35,7 @@ export function ShapeTag({
 }) {
   const s = SHAPES[shape] ?? SHAPES.rect;
   const bg = color ?? TAG_COLORS[colorIndex % TAG_COLORS.length];
-  const textColor = surface === 'dark' ? '#fff' : '#111';
+  const textColor = surface === 'dark' ? 'var(--color-text)' : 'var(--color-text-inverse)';
 
   return (
     <div

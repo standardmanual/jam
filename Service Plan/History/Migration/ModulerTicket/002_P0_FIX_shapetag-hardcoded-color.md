@@ -1,6 +1,6 @@
 ---
 id: DS-002
-status: OPEN
+status: CLOSED
 severity: P0
 type: FIX
 category: Token / Color / Component
@@ -51,3 +51,12 @@ const textColor = surface === 'dark'
 - [ ] `surface="dark"` → `var(--color-text)` 참조
 - [ ] `surface="light"` → `var(--color-text-inverse)` 참조
 - [ ] DS 전체에서 리터럴 컬러 사용 컴포넌트가 0개
+
+---
+
+## 완료 기록
+
+- **날짜**: 2026-08-14
+- **구현**: `ShapeTag.jsx`의 `textColor` 리터럴 `'#fff'`/`'#111'`을 `var(--color-text)` / `var(--color-text-inverse)` semantic token으로 교체
+- **변경 파일**: `design-system-staging/v2/components/cards/ShapeTag.jsx`
+- **AC 충족**: DS 전체 리터럴 컬러 사용 컴포넌트 0개

@@ -1,6 +1,6 @@
 ---
 id: DS-004
-status: OPEN
+status: CLOSED
 severity: P0
 type: ADD
 category: Component / UX
@@ -57,3 +57,15 @@ components/forms/
 - [ ] `state="error"` 시 border 색상 변경 및 `aria-invalid` 적용
 - [ ] 모든 컴포넌트 44px 이상 터치 타겟 확보
 - [ ] `disabled` 상태 `opacity: 0.4` + `cursor: not-allowed`
+
+---
+
+## 완료 기록
+
+- **날짜**: 2026-08-14
+- **구현**: `Textarea.jsx`, `Select.jsx`, `Checkbox.jsx` 신규 구현. 모두 Input과 동일한 설계 원칙 — state prop, aria 속성, `...rest` spread, `.d.ts` 동반
+  - Textarea: `resize:vertical`, `minHeight:88px`
+  - Select: `appearance:none` + inline chevron SVG, iOS Safari 한계 주석 문서화
+  - Checkbox: 숨김 native input + 커스텀 시각 레이어, 44×44 터치 타겟
+- **추가 파일**: `Textarea.jsx/.d.ts`, `Select.jsx/.d.ts`, `Checkbox.jsx/.d.ts`
+- **잔여 이슈**: `forms.card.html` 데모 업데이트 미진행 (P1 작업으로 별도 처리 가능)

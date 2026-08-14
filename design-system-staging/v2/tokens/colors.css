@@ -27,6 +27,7 @@
   --color-base-grey-500: #b2b2b2;   /* raised from #9a9a9a — WCAG AA on black */
   --color-base-grey-600: #666666;
   --color-base-grey-700: #2a2a2a;
+  --color-base-grey-750: #222222;   /* between grey-700 and grey-800 — tint elevation */
   --color-base-grey-800: #1a1a1a;
   --color-base-amber: #ffb800;
   --color-base-lime: #d6f24a;       /* tag-6 */
@@ -35,7 +36,7 @@
 
   /* Semantic roles */
   --color-bg: var(--color-base-black);
-  --color-bg-tint: var(--color-base-grey-800);        /* subtle elevated bg, e.g. tint Card */
+  --color-bg-tint: var(--color-base-grey-750);        /* subtle elevated bg, e.g. tint Card — distinct from --color-surface */
   --color-bg-inverse: var(--color-base-white);
   --color-surface: var(--color-base-grey-800);        /* card & raised surface */
   --color-surface-inverse: var(--color-base-white);   /* inverse card surface */

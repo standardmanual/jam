@@ -1,6 +1,6 @@
 ---
 id: DS-003
-status: OPEN
+status: CLOSED
 severity: P0
 type: FIX
 category: Accessibility / Component
@@ -75,3 +75,12 @@ export function Card({ tone = 'default', children, className = '', style = {}, o
 - [ ] `onClick` 있는 Card: Tab으로 포커스 이동, Enter/Space로 클릭 작동
 - [ ] focus-visible 스타일이 Card에 표시됨 (전역 `*:focus-visible` 이미 적용됨)
 - [ ] 소비자가 `role`을 override할 수 있음
+
+---
+
+## 완료 기록
+
+- **날짜**: 2026-08-14
+- **구현**: `Card.jsx`에 `interactive` 플래그 추가. `onClick` 존재 시 `role="button"`, `tabIndex={0}`, `onKeyDown(Enter/Space)`, `cursor: pointer` 자동 적용. 소비자가 `role` override 가능하도록 `rest.role ?? ...` 패턴 적용
+- **변경 파일**: `design-system-staging/v2/components/cards/Card.jsx`
+- **AC 충족**: 정적 Card 변경 없음, 인터랙티브 Card 키보드 완전 지원

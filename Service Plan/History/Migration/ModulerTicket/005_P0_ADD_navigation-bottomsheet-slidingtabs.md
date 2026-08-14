@@ -1,6 +1,6 @@
 ---
 id: DS-005
-status: OPEN
+status: CLOSED
 severity: P0
 type: ADD
 category: Component / UX / Accessibility
@@ -55,3 +55,14 @@ components/navigation/
 - [ ] `SlidingTabs.jsx`: 탭 수가 화면 너비 초과 시 가로 스크롤 가능
 - [ ] 각 컴포넌트 `.d.ts` 파일 동반
 - [ ] `navigation.card.html` 데모에 두 컴포넌트 예시 추가
+
+---
+
+## 완료 기록
+
+- **날짜**: 2026-08-14
+- **구현**: `BottomSheet.jsx`, `SlidingTabs.jsx` 신규 구현
+  - BottomSheet: `role="dialog"`, `aria-modal`, focus trap, Escape 닫힘, `--ease-bounce` slide-up, iOS safe-area `padding-bottom`, 스와이프 제스처 제외(touch 복잡도 → 향후 이터레이션)
+  - SlidingTabs: `role="tablist"`, `aria-selected`, ArrowLeft/Right 키보드 탐색, CSS scroll-snap, 가로 스크롤 가능
+- **추가 파일**: `BottomSheet.jsx/.d.ts`, `SlidingTabs.jsx/.d.ts`
+- **잔여 이슈**: `navigation.card.html` 데모 업데이트 미진행 (P1 작업으로 별도 처리 가능)
