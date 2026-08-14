@@ -141,7 +141,8 @@ CROSS JOIN (
   WHERE type = 'item'
   ORDER BY created_at
   LIMIT 3
-) b;
+) b
+ON CONFLICT DO NOTHING;
 
 -- 인벤토리 used_slots 동기화
 UPDATE public.inventory
