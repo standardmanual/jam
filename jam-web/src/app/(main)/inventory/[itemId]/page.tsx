@@ -81,14 +81,14 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
           <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center mb-2">{item.badge.name}</h1>
           <div className="flex items-center gap-2">
             <RarityBadge rarity={item.badge.rarity} />
-            <span className="text-text/40 text-[11px] font-mono">{serial}</span>
+            <span className="text-text/40 text-[length:var(--text-caption)] font-mono">{serial}</span>
           </div>
         </div>
 
         {/* 정보 카드 */}
         <Card className="p-0 overflow-hidden mb-[var(--spacing-16)]">
           <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-            <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.infoSectionTitle}</p>
+            <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.inventory.infoSectionTitle}</p>
           </div>
           <div>
             <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
@@ -117,7 +117,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
         {/* 배지 설명 */}
         <Card className="p-0 overflow-hidden">
           <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-            <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.descSectionTitle}</p>
+            <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.inventory.descSectionTitle}</p>
           </div>
           <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
@@ -141,7 +141,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.belongsToItembook}</p>
+                <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.inventory.belongsToItembook}</p>
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{itemBook.name}</p>
               </div>
               <ChevronRightIcon className="w-4 h-4 text-text-inverse/30 shrink-0" />
@@ -152,7 +152,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
         {expiring && (
           <Card className="mt-[var(--spacing-16)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.inventory.expiringSoonTitle}</p>
-            <p className="text-[11px] text-text-inverse/60 mt-0.5">{d.inventory.expiringSoonBody}</p>
+            <p className="text-[length:var(--text-caption)] text-text-inverse/60 mt-0.5">{d.inventory.expiringSoonBody}</p>
           </Card>
         )}
       </div>

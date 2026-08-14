@@ -136,7 +136,7 @@ export default async function ItemBooksPage() {
         {cards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-[var(--spacing-40)] text-center">
             <p className="text-text/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.itembooks.emptyTitle}</p>
-            <p className="text-text/40 text-[11px] mt-1">{d.itembooks.emptyBody}</p>
+            <p className="text-text/40 text-[length:var(--text-caption)] mt-1">{d.itembooks.emptyBody}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
@@ -154,7 +154,7 @@ export default async function ItemBooksPage() {
                         <BookIcon className="w-8 h-8 text-text-inverse/40" />
                       )}
                       {isCompleted && (
-                        <span className="absolute top-1.5 right-1.5 text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+                        <span className="absolute top-1.5 right-1.5 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
                           {d.itembooks.completed}
                         </span>
                       )}
@@ -164,7 +164,7 @@ export default async function ItemBooksPage() {
                     <div className="min-w-0">
                       <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
                       {book.faction && (
-                        <p className="text-[11px] text-text-inverse/50 mt-0.5 truncate">{book.faction.name}</p>
+                        <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-0.5 truncate">{book.faction.name}</p>
                       )}
                     </div>
 
@@ -173,7 +173,7 @@ export default async function ItemBooksPage() {
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                         <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="text-[11px] text-text-inverse/60 tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
+                      <span className="text-[length:var(--text-caption)] text-text-inverse/60 tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
                     </div>
                   </Card>
                 </Link>

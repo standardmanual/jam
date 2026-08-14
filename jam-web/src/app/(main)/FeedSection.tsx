@@ -271,10 +271,10 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
         {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 truncate">{sub}</p>}
         <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
           {rarity && RARITY_COLOR[rarity] && (
-            <span className={`inline-block text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
+            <span className={`inline-block text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
           )}
           {isLastPiece && (
-            <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+            <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
               <PuzzleIcon className="w-3 h-3" />
               {d.feed.lastPiece}
             </span>

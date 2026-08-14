@@ -72,11 +72,11 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
 
         {/* 드랍 컨텍스트 */}
         <Card>
-          <h2 className="text-[10px] uppercase text-text-inverse/40 mb-2">{d.badges.connectedLocationTitle}</h2>
+          <h2 className="text-[length:var(--text-caption)] uppercase text-text-inverse/40 mb-2">{d.badges.connectedLocationTitle}</h2>
           <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
             {poiName}
           </p>
-          <p className="text-[11px] text-text-inverse/50 mt-1">
+          <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-1">
             {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
         </Card>
