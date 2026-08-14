@@ -142,6 +142,7 @@
         <li><a class="nav-link" href="#cards" data-section="cards">Cards</a></li>
         <li><a class="nav-link" href="#forms" data-section="forms">Forms</a></li>
         <li><a class="nav-link" href="#navigation" data-section="navigation">Navigation</a></li>
+        <li><a class="nav-link" href="#overlay" data-section="overlay">Overlay</a></li>
         <li><a class="nav-link" href="#feedback" data-section="feedback">Feedback &amp; Loader</a></li>
       </ul>
     </div>
@@ -255,11 +256,14 @@
         <thead><tr><th>Token</th><th>Value</th><th>Role</th></tr></thead>
         <tbody>
           <tr><td class="token-name">--color-text</td><td class="token-value"><span class="color-dot" style="background:#ffffff"></span> #ffffff</td><td>기본 텍스트</td></tr>
-          <tr><td class="token-name">--color-text-tertiary</td><td class="token-value"><span class="color-dot" style="background:#b0aaa5"></span> #b0aaa5</td><td>뮤트 헬퍼 텍스트</td></tr>
-          <tr><td class="token-name">--color-text-secondary</td><td class="token-value"><span class="color-dot" style="background:#9a9a9a"></span> #9a9a9a</td><td>보조 텍스트</td></tr>
+          <tr><td class="token-name">--color-text-secondary</td><td class="token-value"><span class="color-dot" style="background:#9a9a9a"></span> #9a9a9a</td><td>보조·뮤트 텍스트</td></tr>
+          <tr><td class="token-name">--color-text-inverse</td><td class="token-value"><span class="color-dot" style="background:#000000;border-color:#555"></span> #000000</td><td>반전 배경 위 텍스트</td></tr>
+          <tr><td class="token-name">--color-icon-inactive</td><td class="token-value"><span class="color-dot" style="background:#2a2a2a"></span> #2a2a2a</td><td>비활성 아이콘 (DS-024)</td></tr>
           <tr><td class="token-name">--color-border</td><td class="token-value"><span class="color-dot" style="background:#2a2a2a"></span> #2a2a2a</td><td>테두리, 구분선</td></tr>
           <tr><td class="token-name">--color-surface</td><td class="token-value"><span class="color-dot" style="background:#1a1a1a"></span> #1a1a1a</td><td>카드·레이즈드 서피스</td></tr>
-          <tr><td class="token-name">--color-bg</td><td class="token-value"><span class="color-dot" style="background:#000000"></span> #000000</td><td>전체 배경</td></tr>
+          <tr><td class="token-name">--color-bg</td><td class="token-value"><span class="color-dot" style="background:#000000;border-color:#555"></span> #000000</td><td>전체 배경</td></tr>
+          <tr><td class="token-name">--color-bg-inverse</td><td class="token-value"><span class="color-dot" style="background:#f8fafc"></span> #f8fafc</td><td>반전 배경 (WanderingEyesLoader 흰자 등)</td></tr>
+          <tr><td class="token-name">--color-overlay</td><td class="token-value">rgba(0,0,0,0.6)</td><td>모달·바텀시트 배경 딤 (DS-025)</td></tr>
         </tbody>
       </table>
 
@@ -400,7 +404,7 @@
 &lt;ShapeTag shape="triangle" colorIndex={1} style={{ width: 64, height: 64 }}&gt;
   &lt;img src="/medal.svg" /&gt;
 &lt;/ShapeTag&gt;</div>
-        <p style="font-size:12px;color:var(--color-text-tertiary);margin:6px 0 0;">쉐이프: rect · pill · circle · dome · triangle · flag · hex</p>
+        <p style="font-size:12px;color:var(--color-text-secondary);margin:6px 0 0;">쉐이프: rect · pill · circle · dome · triangle · flag · hex</p>
       </div>
 
       <div class="comp">
@@ -409,7 +413,7 @@
           <div class="comp-desc">배지 희귀도 필 레이블. 4색 매핑 고정 — 사용자가 학습한 색상 언어이므로 재매핑 금지.</div>
         </div>
         <div class="comp-code">&lt;RarityBadge rarity="legend" /&gt;</div>
-        <p style="font-size:12px;color:var(--color-text-tertiary);margin:6px 0 0;">rarity: common · rare · legend · mythic</p>
+        <p style="font-size:12px;color:var(--color-text-secondary);margin:6px 0 0;">rarity: common · rare · legend · mythic</p>
       </div>
     </section>
 
@@ -510,6 +514,47 @@ aspect-ratio: 1      /* 내부 카드 1:1 정사각형 */
   onChange={(e) =&gt; setQ(e.target.value)}
 /&gt;</div>
       </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Textarea</div>
+          <div class="comp-desc">멀티라인 텍스트 입력. Input과 동일한 스타일 체계. rows prop으로 초기 높이 조정, resize-y 허용.</div>
+        </div>
+        <div class="comp-code">&lt;Textarea
+  placeholder="리뷰를 남겨주세요"
+  rows={4}
+  value={text}
+  onChange={(e) =&gt; setText(e.target.value)}
+/&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Select</div>
+          <div class="comp-desc">네이티브 select 래퍼. 커스텀 드롭다운 화살표, Input과 동일 스타일. options 배열 또는 children으로 전달.</div>
+        </div>
+        <div class="comp-code">&lt;Select
+  value={sort}
+  onChange={(e) =&gt; setSort(e.target.value)}
+  options={[
+    { value: 'recent', label: '최신순' },
+    { value: 'name', label: '이름순' },
+  ]}
+/&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Checkbox</div>
+          <div class="comp-desc">커스텀 체크박스. checked/onChange 제어형. 레이블은 children으로 전달. 포커스·액티브 상태 내장.</div>
+        </div>
+        <div class="comp-code">&lt;Checkbox
+  checked={agreed}
+  onChange={(e) =&gt; setAgreed(e.target.checked)}
+&gt;
+  이용약관에 동의합니다
+&lt;/Checkbox&gt;</div>
+      </div>
     </section>
 
     <!-- ── Navigation ── -->
@@ -534,6 +579,70 @@ aspect-ratio: 1      /* 내부 카드 1:1 정사각형 */
         </div>
         <div class="comp-code">&lt;TopNav title="배지" onBack={() =&gt; router.back()} /&gt;
 &lt;TopNav title="설정" showBack={false} rightSlot={&lt;IconButton icon="x" /&gt;} /&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">SlidingTabs</div>
+          <div class="comp-desc">슬라이딩 언더라인 탭. 카테고리·필터 전환용. 항목이 넘치면 가로 스크롤. activeIndex로 제어.</div>
+        </div>
+        <div class="comp-code">&lt;SlidingTabs
+  tabs={['전체', '달리기', '등산', '자전거']}
+  activeIndex={tab}
+  onChange={setTab}
+/&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Accordion</div>
+          <div class="comp-desc">단일 열림(single-open) 아코디언. WAI-ARIA 패턴(aria-expanded, aria-controls, role="region") 준수. grid-template-rows 애니메이션으로 레이아웃 쓰래싱 없음.</div>
+        </div>
+        <div class="comp-code">&lt;Accordion items={[
+  { title: '획득 조건', content: '10km 달리기 완료 시 자동 획득됩니다.' },
+  { title: '희귀도', content: 'Rare — 전체 유저의 12%가 보유.' },
+  { title: '관련 배지', content: '마라톤 마스터, 새벽 러너' },
+]} /&gt;</div>
+      </div>
+    </section>
+
+    <!-- ── Overlay ── -->
+    <section id="overlay" class="section">
+      <h2>Overlay</h2>
+      <p class="section-subtitle">Modal and bottom sheet — focus-trapped dialogs with WAI-ARIA</p>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">ModalToast</div>
+          <div class="comp-desc">중앙 정렬 강조 모달. 배지 획득·미션 완료 등 임팩트 순간에 사용. role="dialog" aria-modal. iconSlot prop으로 BadgeFrame 삽입 가능. 오버레이 배경: <code>var(--color-overlay)</code>.</div>
+        </div>
+        <div class="comp-code">&lt;ModalToast
+  message="배지를 획득했어요"
+  type="success"
+  open={show}
+  onDismiss={() =&gt; setShow(false)}
+/&gt;
+&lt;!-- iconSlot으로 커스텀 아이콘 삽입 --&gt;
+&lt;ModalToast
+  message="드랍 성공"
+  open={show}
+  onDismiss={() =&gt; setShow(false)}
+  iconSlot={&lt;BadgeFrame shape="circle" width={80} height={80}&gt;&lt;img src="/badge.png" /&gt;&lt;/BadgeFrame&gt;}
+/&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">BottomSheet</div>
+          <div class="comp-desc">슬라이드업 오버레이 패널. 컨텍스트 옵션·필터·추가 정보 표시용. Escape 해제, 포커스 트랩, 스와이프 투 디스미스는 향후 추가 예정. 오버레이 배경: <code>var(--color-overlay)</code>.</div>
+        </div>
+        <div class="comp-code">&lt;BottomSheet
+  open={open}
+  onDismiss={() =&gt; setOpen(false)}
+  title="필터"
+&gt;
+  &lt;FilterOptions /&gt;
+&lt;/BottomSheet&gt;</div>
       </div>
     </section>
 
@@ -561,14 +670,23 @@ aspect-ratio: 1      /* 내부 카드 1:1 정사각형 */
 
       <div class="comp">
         <div class="comp-header">
-          <div class="comp-name">ModalToast</div>
-          <div class="comp-desc">배경 + 가운데 정렬 카드의 강조 모달. 뱃지 획득, 미션 완료 등 임팩트 순간에 사용. 단순 상태는 Toast 사용.</div>
+          <div class="comp-name">Skeleton</div>
+          <div class="comp-desc">콘텐츠 로딩 대기 플레이스홀더. <code>ds-shimmer</code> 애니메이션으로 shimmer 효과. width·height·borderRadius로 형태 조정. <code>prefers-reduced-motion</code> 전역 규칙으로 자동 비활성화.</div>
         </div>
-        <div class="comp-code">&lt;ModalToast
-  message="배지를 받았어요"
-  type="success"
-  open={show}
-  onDismiss={() =&gt; setShow(false)}
+        <div class="comp-code">&lt;Skeleton width="100%" height={20} borderRadius={4} style={{ marginBottom: 8 }} /&gt;
+&lt;Skeleton width="60%" height={20} borderRadius={4} /&gt;</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">EmptyState</div>
+          <div class="comp-desc">빈 상태 표시 컴포넌트. icon(선택), title, description, action 슬롯. 검색 결과 없음·첫 방문·에러 등 다양한 empty 상태에 사용.</div>
+        </div>
+        <div class="comp-code">&lt;EmptyState
+  icon="map-pin"
+  title="아직 방문한 장소가 없어요"
+  description="첫 장소를 방문하고 배지를 획득해보세요"
+  action={&lt;Button variant="primary"&gt;지도 열기&lt;/Button&gt;}
 /&gt;</div>
       </div>
 
