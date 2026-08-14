@@ -80,13 +80,13 @@ function eventLabel(item: ActivityFeedRow): string {
 }
 
 /**
- * 희귀도 상태 팔레트 — Phase 2에서 `state_color_palette` 테이블로 이관 예정.
- * [주의] 색상값을 재조정하지 마세요(유저가 학습한 색 언어 유지).
+ * DS v2 희귀도 링 팔레트 — --color-rarity-* 토큰 기반.
+ * [의사결정 A] Rare=초록, Legend=황금, Mythic=핑크 (Common은 별도 표시 없음)
  */
 const RARITY_COLOR: Record<string, string> = {
-  rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
-  legend: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
-  mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
+  rare:   'text-[var(--color-rarity-rare)]   shadow-[inset_0_0_0_1px_var(--color-rarity-rare)]',
+  legend: 'text-[var(--color-rarity-legend)] shadow-[inset_0_0_0_1px_var(--color-rarity-legend)]',
+  mythic: 'text-[var(--color-rarity-mythic)] shadow-[inset_0_0_0_1px_var(--color-rarity-mythic)]',
 }
 const RARITY_LABEL: Record<string, string> = {
   common: d.feed.rarityCommon,
