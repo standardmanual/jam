@@ -453,18 +453,47 @@
     <!-- ── Cards ── -->
     <section id="cards" class="section">
       <h2>Cards</h2>
-      <p class="section-subtitle">General-purpose surface container for content grouping</p>
-      <div class="comp-preview"><iframe src="components/cards/cards.card.html" height="400"></iframe></div>
+      <p class="section-subtitle">3 structural patterns — color not prescribed, applies any token</p>
+      <div class="comp-preview"><iframe src="components/cards/cards.card.html" height="780"></iframe></div>
 
       <div class="comp">
         <div class="comp-header">
-          <div class="comp-name">Card</div>
-          <div class="comp-desc">배지 타일, 바로가기 타일, 드랍 카드에 사용하는 범용 컨테이너.</div>
+          <div class="comp-name">Pattern A — Photo Tile</div>
+          <div class="comp-desc">이미지 그리드 셀. 오버레이 태그 포함. 컬러는 상위 컨텍스트가 지정한다.</div>
         </div>
-        <div class="comp-code">&lt;Card tone="tint" padding={24}&gt;
-  &lt;h3&gt;배지를 받았어요&lt;/h3&gt;
-&lt;/Card&gt;
-&lt;!-- tone: white(기본) | tint | inverse(블랙 풀블리드) --&gt;</div>
+        <div class="comp-code">/* 구조 토큰 */
+--radius-card   /* 외부 컨테이너 */
+--spacing-8     /* 태그 오프셋 */
+ShapeTag pill   /* 오버레이 레이블 */</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Pattern B — Content Card</div>
+          <div class="comp-desc">헤더 이미지 영역 + 썸네일 그리드 + 액션 태그. <code>Card(tone=white)</code> 기반.</div>
+        </div>
+        <div class="comp-code">/* 구조 토큰 */
+Card tone="white"   /* 기본 서피스 */
+--radius-card       /* 외부 */
+--radius-xs         /* 썸네일 */
+--spacing-8         /* 내부 패딩 */
+ShapeTag pill       /* 액션 레이블 */</div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-header">
+          <div class="comp-name">Pattern C — Category Card</div>
+          <div class="comp-desc">텍스트 상단 + 내부 카드 하단. 전체 높이 = 내부 카드 영역 × 3 비율 (flex 2:1). 내부 카드 수 3종: C-1(1개) · C-2(2개) · C-3(3개).</div>
+        </div>
+        <div class="comp-code">/* 구조 비율 */
+flex: 2   /* 텍스트 영역 — 전체의 2/3 */
+flex: 1   /* 내부 카드 영역 — 전체의 1/3 */
+/* → 전체 height : 내부 카드 height = 3 : 1 */
+
+/* 구조 토큰 */
+--radius-card   /* 외부 컨테이너 */
+--radius-xs     /* 내부 카드 */
+--spacing-12    /* 패딩 */</div>
       </div>
     </section>
 
