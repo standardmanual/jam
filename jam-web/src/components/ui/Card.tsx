@@ -2,11 +2,12 @@ import { HTMLAttributes, forwardRef } from 'react'
 import { twMerge } from 'tailwind-merge'
 
 /**
- * SuperHi Plus Content Card
+ * DS v2 Content Card — inverse surface (라이트 카드, 다크 배경 위 사용)
  *
- * - 배경: --color-surface-inverse (아이스) / 텍스트: --color-text-inverse (코발트)
+ * - 배경: --color-surface-inverse (#ffffff) / 텍스트: --color-text-inverse (#000)
  * - radius 16px (--radius-cards), padding 24px (--spacing-24)
- * - elevation: 1px inset border(--color-main)만. 드롭섀도/블러/그라데이션 금지.
+ * - elevation: 1px inset border(--color-border-inverse)만. 드롭섀도/블러/그라데이션 금지.
+ * - 다크 배경(--color-bg = black) 위에서 라이트 카드를 유지하는 DS v2 "inverse" 패턴.
  */
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   /** @deprecated 네오브루탈 시절 오프셋 섀도우 플래그. 아무 효과 없음(섀도우 금지). */

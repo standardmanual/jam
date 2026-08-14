@@ -50,21 +50,21 @@ export interface SlidingTabsProps<K extends string = string> {
 }
 
 const PALETTE: Record<'onSurface' | 'onCard', CSSProperties> = {
-  // 코발트(--color-main) 배경 위 — 활성 pill은 아이스
+  // DS v2: 다크(검정) 배경 위 — 활성 pill은 흰색, 활성 라벨은 검정
   onSurface: {
-    '--tabs-bar-bg': 'color-mix(in srgb, var(--color-sub) 12%, transparent)',
+    '--tabs-bar-bg': 'rgba(255, 255, 255, 0.1)',
     '--tabs-bar-border': 'var(--color-border)',
-    '--tabs-pill-bg': 'var(--color-sub)',
-    '--tabs-text-muted': 'color-mix(in srgb, var(--color-sub) 60%, transparent)',
-    '--tabs-text-active': 'var(--color-main)',
+    '--tabs-pill-bg': 'var(--color-surface-inverse)',
+    '--tabs-text-muted': 'rgba(255, 255, 255, 0.45)',
+    '--tabs-text-active': 'var(--color-text-inverse)',
   } as CSSProperties,
-  // 아이스(--color-sub) 카드 위 — 활성 pill은 코발트
+  // DS v2: 라이트 카드(surface-inverse = white) 위 — 활성 pill은 primary(레드), 활성 라벨은 white
   onCard: {
-    '--tabs-bar-bg': 'color-mix(in srgb, var(--color-main) 8%, transparent)',
+    '--tabs-bar-bg': 'rgba(0, 0, 0, 0.06)',
     '--tabs-bar-border': 'var(--color-border-inverse)',
-    '--tabs-pill-bg': 'var(--color-main)',
-    '--tabs-text-muted': 'color-mix(in srgb, var(--color-main) 60%, transparent)',
-    '--tabs-text-active': 'var(--color-sub)',
+    '--tabs-pill-bg': 'var(--color-primary)',
+    '--tabs-text-muted': 'rgba(0, 0, 0, 0.4)',
+    '--tabs-text-active': '#ffffff',
   } as CSSProperties,
 }
 

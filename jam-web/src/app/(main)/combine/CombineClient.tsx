@@ -24,11 +24,12 @@ interface Props {
   publicRecipes: CombinationRecipeRow[]
 }
 
+// DS v2 희귀도 링 — --color-rarity-* 토큰 기반 ([의사결정 A])
 const rarityRing: Record<string, string> = {
   common: '',
-  rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
-  legend: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
-  mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
+  rare:   'text-[var(--color-rarity-rare)]   shadow-[inset_0_0_0_1px_var(--color-rarity-rare)]',
+  legend: 'text-[var(--color-rarity-legend)] shadow-[inset_0_0_0_1px_var(--color-rarity-legend)]',
+  mythic: 'text-[var(--color-rarity-mythic)] shadow-[inset_0_0_0_1px_var(--color-rarity-mythic)]',
 }
 
 const MAX_SELECT = 10

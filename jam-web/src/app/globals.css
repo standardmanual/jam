@@ -4,29 +4,31 @@
 @import "../components/transitions.css";
 
 /*
- * html/body 기본 배경. 오버스크롤·세이프에어리어 바깥·max-w 컨테이너 좌우 여백에서
- * 검은/흰 배경이 드러나지 않도록 앱 전체 배경(SuperHi Plus 코발트)과 동일하게 고정한다.
- * --color-main은 아래 @theme 블록에서 정의되지만 CSS 커스텀 프로퍼티는 선언 순서가 아닌
- * 캐스케이드로 해석되므로 순서와 무관하게 정상 동작한다.
+ * DS v2 — 시맨틱 컬러 토큰 (블랙 캔버스 / 화이트 / 레드-오렌지)
+ * 어드민 테마 시스템 호환을 위해 --color-main / --color-sub 는 @theme에 유지.
+ * layout.tsx에서 런타임에 덮어씌우는 인라인 스타일도 유지.
  */
 :root {
-  --background: var(--color-main);
-  --foreground: var(--color-sub);
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
 }
 
 /*
- * 직접 값을 넣는 @theme 블록 — Tailwind v4에서 @theme inline +
- * var() 간접 참조 조합은 이 프로젝트 환경에서 유틸리티 클래스
- * (bg-jam-*, text-jam-* 등)를 생성하지 못하는 것을 확인했습니다.
- * 그래서 jam-* 팔레트는 리터럴 값으로 직접 정의합니다.
+ * @theme — Tailwind v4 유틸리티 생성용.
+ * DS v2 시맨틱 토큰이 Tailwind 클래스(bg-surface, text-text 등)로 사용 가능하도록 정의.
  *
- * [주의] jam-* 팔레트는 삭제하지 않습니다.
- * - jam-teal / jam-purple / jam-yellow / jam-lime : 배지 희귀도·카테고리
- *   상태 팔레트로 Phase 2에서 `state_color_palette` 테이블로 이관 예정.
- *   값을 재조정하지 마세요(유저가 학습한 색 언어 유지).
- * - 나머지(ink/cream/orange/pink)는 아직 리뉴얼되지 않은 화면들이 참조 중.
+ * [유지] --color-main / --color-sub:
+ *   어드민 테마 프리셋 시스템(layout.tsx 런타임 주입)이 이 변수를 참조함. 삭제 금지.
+ *
+ * [유지] jam-* 팔레트:
+ *   로그인·온보딩 등 일부 화면이 참조 중. 향후 리뉴얼 시 제거.
  */
 @theme {
+  /* SuperHi Plus 레거시 브랜드 컬러 — 어드민 테마 주입 대상. 컴포넌트 직접 참조 금지 */
+  --color-main: #0033e5;
+  --color-sub: #f0f7ff;
+
+  /* jam-* 팔레트 — 레거시 참조 화면 대응. Phase 3에서 제거 예정 */
   --color-jam-ink: #161616;
   --color-jam-orange: #ff6b3d;
   --color-jam-lime: #c6ff3a;
@@ -36,44 +38,28 @@
   --color-jam-yellow: #ffc93c;
   --color-jam-cream: #fff8ee;
 
-  /* ---------------------------------------------------------------
-   * SuperHi Plus — 브랜드 바이너리 컬러 (어드민 가변)
-   * 역할 기반 이름만 사용합니다. 값 자체를 가리키는 이름
-   * (cobalt/ice 등)은 컴포넌트에서 참조하지 마세요.
-   * Phase 3에서 theme_presets(is_active=true) 값을 서버에서 조회해
-   * :root { --color-main / --color-sub } 인라인 주입으로 덮어씁니다.
-   * --------------------------------------------------------------- */
-  --color-main: #0033e5; /* Cobalt Voltage — 메인 서피스/버튼/헤딩 */
-  --color-sub: #f0f7ff; /* Ice White — 카운터 서피스/텍스트 반전 */
+  /* DS v2 시맨틱 — Tailwind 유틸리티(bg-surface, text-text 등)가 이 토큰을 참조 */
+  --color-surface: #1a1a1a;           /* 카드·raised surface (DS v2 grey-800) */
+  --color-surface-inverse: #ffffff;   /* 반전 surface — 라이트 카드 */
+  --color-text: #ffffff;              /* 다크 배경 위 기본 텍스트 */
+  --color-text-secondary: #b2b2b2;    /* 보조 텍스트 (4.6:1 WCAG AA) */
+  --color-text-inverse: #000000;      /* 라이트 surface 위 텍스트 */
+  --color-border: #2a2a2a;            /* 다크 배경 위 구분선 */
+  --color-border-inverse: rgba(0, 0, 0, 0.12); /* 라이트 surface 위 구분선 */
 
-  /* Cobalt Mist — 보조 필/톤 전용.
-   * [금지] 텍스트 색상으로 사용하지 마세요.
-   * Ice White 위 대비 3.6:1로 WCAG AA(4.5:1) 미달입니다. */
-  --color-cobalt-mist: #527ceb;
+  /* DS v2 반경 스케일 (Tailwind rounded-* 유틸리티 생성) */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-card: 16px;
+  --radius-pill: 9999px;
 
-  /* Pitch — 라이트 패널 내부의 SVG 아이콘/장식 fill 전용 */
-  --color-pitch: #000000;
-
-  /* ---------------------------------------------------------------
-   * 시맨틱 컬러 (라이트 테마 확장 대비)
-   * 컴포넌트는 가능하면 아래 시맨틱 변수를 참조합니다.
-   * 지금은 다크(코발트 배경 / 아이스 텍스트) 값에 매핑되어 있고,
-   * 라이트 테마를 추가할 땐 이 매핑만 뒤집으면 됩니다.
-   * --------------------------------------------------------------- */
-  --color-surface: var(--color-main); /* 기본 배경 (코발트) */
-  --color-surface-inverse: var(--color-sub); /* 반전 배경 (아이스) — 카드/탭바 */
-  --color-text: var(--color-sub); /* 기본 배경 위 텍스트 */
-  --color-text-inverse: var(--color-main); /* 반전 배경 위 텍스트 */
-  --color-border: var(--color-sub); /* 기본 배경 위 1px inset border */
-  --color-border-inverse: var(--color-main); /* 반전 배경 위 1px inset border */
-
-  /* Border Radius — 지정된 값만 사용 */
-  --radius-tags: 50px;
+  /* 하위 호환 반경 별칭 — 기존 컴포넌트에서 var()로 참조 중 */
+  --radius-tags: 9999px;
   --radius-cards: 16px;
-  --radius-inputs: 2px;
-  --radius-buttons: 16px;
-  --radius-nav-buttons: 50px;
-  --radius-pill-buttons: 72px;
+  --radius-inputs: 8px;
+  --radius-buttons: 9999px;
+  --radius-nav-buttons: 9999px;
+  --radius-pill-buttons: 9999px;
 }
 
 @theme inline {
@@ -84,54 +70,76 @@
 }
 
 /*
- * 타이포 스케일 / 스페이싱 / elevation 토큰.
- * @theme이 아니라 :root에 두는 이유 — Tailwind v4의 --spacing-* 네임스페이스에
- * 넣으면 기본 스페이싱 스케일(p-8 = 2rem 등)을 덮어써 기존 화면이 전부 깨집니다.
- * 컴포넌트에서는 arbitrary value로 참조하세요.
- *   예) text-[length:var(--text-subheading)] / p-[var(--spacing-24)]
+ * DS v2 :root 토큰 — Tailwind @theme 외부에 두는 이유:
+ *   --spacing-* 네임스페이스를 피해야 Tailwind 기본 스페이싱 스케일이 깨지지 않음.
+ *   컴포넌트에서 arbitrary value로 참조:
+ *     p-[var(--layout-card-padding)] / text-[length:var(--text-body)]
  */
 :root {
-  /* Typography — Pretendard weight 400 단일. bold/light/italic 금지.
-   * 위계는 오직 크기와 컬러 대비로만 표현합니다. */
+  /* ── DS v2 기본 팔레트 ────────────────────────────────────── */
+  --color-bg: #000000;
+  --color-bg-tint: #222222;
+  --color-bg-inverse: #ffffff;
+  --color-primary: #e8461f;           /* 레드-오렌지 — 버튼·활성 강조 */
+  --color-secondary: #8a5a2e;
+  --color-icon-inactive: #2a2a2a;     /* TabBar 비활성 아이콘 (흰 pill 위) */
+  --color-overlay: rgba(0, 0, 0, 0.6);
+
+  /* ── 배지 희귀도 ─────────────────────────────────────────── */
+  --color-rarity-common: #6b6b6b;
+  --color-rarity-common-text: #ffffff;
+  --color-rarity-rare: #00cc7a;
+  --color-rarity-rare-text: #000000;
+  --color-rarity-legend: #f5a300;
+  --color-rarity-legend-text: #000000;
+  --color-rarity-mythic: #ff2d87;
+  --color-rarity-mythic-text: #ffffff;
+
+  /* ── 폰트 ───────────────────────────────────────────────── */
+  /* [의사결정 C] Pretendard 유지 — DS v2 폰트(Noto Sans KR) 교체 없음 */
   --font-family-base: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-  --font-weight-regular: 400;
 
-  --text-body-sm: 16px;
-  --leading-body-sm: 1.5;
-  --text-body: 18px;
-  --leading-body: 1.33;
-  --text-subheading: 24px;
-  --leading-subheading: 1.25;
-  --text-heading-sm: 32px;
-  --leading-heading-sm: 1.2;
-  --text-heading: 42px;
-  --leading-heading: 1.14;
-  --text-heading-lg: 56px;
-  --leading-heading-lg: 1.13;
-  --text-display: 85px;
-  --leading-display: 1.14;
+  /* ── 타이포그래피 스케일 (DS v2 기반, 기존 참조명 호환 유지) ── */
+  --text-body-sm: 16px;     --leading-body-sm: 1.5;
+  --text-body: 16px;        --leading-body: 1.5;
+  --text-small: 14px;       --leading-small: 1.43;
+  --text-caption: 12px;     --leading-caption: 1.4;
+  --text-subheading: 24px;  --leading-subheading: 1.3;
+  --text-heading-sm: 28px;  --leading-heading-sm: 1.2;
+  --text-heading: 44px;     --leading-heading: 1.1;
+  --text-heading-lg: 56px;  --leading-heading-lg: 1.08;
+  --text-display: 96px;     --leading-display: 1.08;
+  --text-bold-display: 72px; --leading-bold-display: 1.0;
+  --text-bold-lg: 40px;      --leading-bold-lg: 1.05;
 
-  /* Spacing — base 8px */
+  /* 트래킹 */
+  --tracking-label: 0.4px;
+
+  /* ── 스페이싱 (DS v2 4px base) ───────────────────────────── */
+  --spacing-4: 4px;
   --spacing-8: 8px;
+  --spacing-12: 12px;
   --spacing-16: 16px;
   --spacing-24: 24px;
   --spacing-32: 32px;
   --spacing-40: 40px;
   --spacing-48: 48px;
+  --spacing-64: 64px;
   --spacing-96: 96px;
 
-  /* Layout */
-  --layout-card-padding: 24px;
-  --layout-section-gap: 64px;
-  --layout-element-gap: 16px;
+  /* ── 레이아웃 시맨틱 ─────────────────────────────────────── */
+  --layout-card-padding: var(--spacing-24);
+  --layout-section-gap: var(--spacing-48);
+  --layout-element-gap: var(--spacing-16);
 
-  /* Elevation — 오직 1px inset border만. offset/blur/gradient 금지. */
-  --shadow-subtle: inset 0 0 0 1px var(--color-main);
-  --shadow-subtle-2: inset 0 0 0 1px var(--color-sub);
-
-  /* iOS HIG 최소 터치 영역 */
+  /* ── 터치 영역 / 세이프에어리어 ─────────────────────────── */
   --touch-target-min: 44px;
+  --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* ── elevation — 1px inset border만 (드롭섀도 금지) ──────── */
+  --shadow-subtle: inset 0 0 0 1px var(--color-border);
+  --shadow-subtle-2: inset 0 0 0 1px var(--color-border-inverse);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -297,9 +305,9 @@
   /* Tabs sliding */
   --tabs-dur: 300ms;
   --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --tabs-text-muted: rgba(15, 15, 15, 0.8);
-  --tabs-text-active: #0f0f0f;
-  --tabs-bar-bg: #f1f1f1;
+  --tabs-text-muted: rgba(255, 255, 255, 0.45);
+  --tabs-text-active: #000000;
+  --tabs-bar-bg: rgba(255, 255, 255, 0.1);
   --tabs-pill-bg: #ffffff;
   /* Tooltip open/close */
   --tt-in-dur: 150ms;
@@ -308,8 +316,8 @@
   --tt-delay: 80ms;
   --tt-in-ease: ease-out;
   --tt-out-ease: ease-out;
-  --tt-bg: #ffffff;
-  --tt-fg: #2f2f2f;
+  --tt-bg: #1a1a1a;
+  --tt-fg: #ffffff;
   /* Texts reveal */
   --stagger-dur: 500ms;
   --stagger-distance: 12px;
@@ -386,14 +394,13 @@
 }
 
 html {
-  background: var(--background);
+  background: var(--color-bg);
   color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: var(--font-family-base);
-  font-weight: var(--font-weight-regular);
   -webkit-tap-highlight-color: transparent;
 }
