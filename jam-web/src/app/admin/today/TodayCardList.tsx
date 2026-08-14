@@ -264,7 +264,7 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
             <div className="col-span-2">
               <label className={labelCls}>제목</label>
               <input type="text" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                className={inputCls} placeholder="핫한 성수동에서 발견된 레전드 배지 5" />
+                className={inputCls} placeholder="핫한 성수동에서 발견된 Legend 배지 5" />
             </div>
             <div className="col-span-2">
               <label className={labelCls}>부제 (선택)</label>
