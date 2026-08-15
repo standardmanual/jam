@@ -5,10 +5,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
-import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
-import { MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { ChevronRightIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
 type TabKey = 'activity' | 'poi' | 'itembook'
@@ -202,27 +202,14 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
               {filteredActivityBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
                   {filteredActivityBadges.map(({ badge, earned }) => (
-                    <Link key={badge.id} href={`/badges/${badge.id}`}>
-                      <Card className={`flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'bg-surface-inverse/50'}`}>
-                        <div className={`w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden ${earned ? '' : 'grayscale opacity-40'}`}>
-                          {badge.image_url ? (
-                            <Image
-                              src={badge.image_url}
-                              alt={badge.name}
-                              width={72}
-                              height={72}
-                              className="w-full h-full object-contain p-1"
-                            />
-                          ) : (
-                            <MedalIcon className="w-9 h-9 text-text-inverse/40" />
-                          )}
-                        </div>
-                        <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
-                        <div className="h-6 flex items-center justify-center">
-                          <RarityBadge rarity={badge.rarity} />
-                        </div>
-                      </Card>
-                    </Link>
+                    <BadgeGridCard
+                      key={badge.id}
+                      href={`/badges/${badge.id}`}
+                      name={badge.name}
+                      imageUrl={badge.image_url}
+                      rarity={badge.rarity}
+                      earned={!!earned}
+                    />
                   ))}
                 </div>
               ) : (
@@ -263,27 +250,13 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
               {filteredPoiBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
                   {filteredPoiBadges.map(({ badge }) => (
-                    <Link key={badge.id} href={`/badges/${badge.id}`}>
-                      <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
-                        <div className="w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
-                          {badge.image_url ? (
-                            <Image
-                              src={badge.image_url}
-                              alt={badge.name}
-                              width={72}
-                              height={72}
-                              className="w-full h-full object-contain p-1"
-                            />
-                          ) : (
-                            <MedalIcon className="w-9 h-9 text-text-inverse/40" />
-                          )}
-                        </div>
-                        <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
-                        <div className="h-6 flex items-center justify-center">
-                          <RarityBadge rarity={badge.rarity} />
-                        </div>
-                      </Card>
-                    </Link>
+                    <BadgeGridCard
+                      key={badge.id}
+                      href={`/badges/${badge.id}`}
+                      name={badge.name}
+                      imageUrl={badge.image_url}
+                      rarity={badge.rarity}
+                    />
                   ))}
                 </div>
               ) : (
