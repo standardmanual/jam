@@ -2,10 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import type { ActivityType, MissionCondition, MissionRow, MissionType } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
-import Card from '@/components/ui/Card'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import { d, t } from '@/lib/i18n'
 
@@ -23,6 +21,17 @@ type Tab = 'ongoing' | 'joined' | 'ended'
 type SortKey = 'newest' | 'oldest' | 'ending_soon'
 
 const NEW_MISSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7일 이내 생성 = 신규
+
+// Figma mission-item-1 색상 토큰
+const C_THUMBNAIL_BG = '#1A1A1A'
+const C_THUMBNAIL_RADIUS = '12px'
+const C_STATUS_BADGE_BG = '#1A1A1A'
+const C_STATUS_BADGE_BORDER = '#2A2A2A'
+const C_STATUS_BADGE_TEXT = '#B2B2B2'
+const C_NEW_BADGE_BG = '#E8461F'
+const C_TITLE = '#FFFFFF'
+const C_META_TEXT = '#B2B2B2'
+const C_REWARD = '#E8461F'
 
 const MISSION_TYPE_LABELS: Record<MissionType, string> = {
   distance: d.missions.missionTypeDistance,
@@ -50,16 +59,6 @@ function isNewMission(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() <= NEW_MISSION_WINDOW_MS
 }
 
-function timeLeft(endsAt: string | null): string {
-  if (endsAt === null) return d.missions.tagPermanent
-  const diff = new Date(endsAt).getTime() - Date.now()
-  if (diff <= 0) return d.missions.tagEnded
-  const h = Math.floor(diff / 3_600_000)
-  const m = Math.floor((diff % 3_600_000) / 60_000)
-  if (h >= 24) return `${Math.floor(h / 24)}일 ${h % 24}시간`
-  return `${h}시간 ${m}분`
-}
-
 // Phase13: 보상은 배지 복수 + 포인트 조합 — 목록에서는 간단히 요약
 function rewardSummary(m: MissionRow): string {
   const parts: string[] = []
@@ -75,20 +74,62 @@ const TABS: SlidingTabItem<Tab>[] = [
   { key: 'ended', label: d.missions.tabEnded },
 ]
 
-function Tag({ children }: { children: React.ReactNode }) {
+// Figma mission-item-1: badge/new
+function NewBadge() {
   return (
-    <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
+    <span
+      style={{
+        background: C_NEW_BADGE_BG,
+        color: '#FFFFFF',
+        fontSize: '10px',
+        fontWeight: 700,
+        lineHeight: 1,
+        padding: '3px 6px',
+        borderRadius: '999px',
+      }}
+    >
+      {d.missions.tagNew}
+    </span>
+  )
+}
+
+// Figma mission-item-1: badge/status
+function StatusBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        background: C_STATUS_BADGE_BG,
+        color: C_STATUS_BADGE_TEXT,
+        fontSize: '10px',
+        lineHeight: 1,
+        padding: '3px 6px',
+        borderRadius: '999px',
+        border: `1px solid ${C_STATUS_BADGE_BORDER}`,
+      }}
+    >
       {children}
     </span>
   )
 }
 
-function NewChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-[var(--color-primary)] text-white font-medium">
-      {children}
-    </span>
-  )
+// 기간 텍스트 — ended 탭이면 tagEnded, 상시면 tagPermanent, 그 외 N일 N시간 남음
+function periodText(m: MissionListItem, tab: Tab): string {
+  if (tab === 'ended') return d.missions.tagEnded
+  if (m.ends_at === null) return d.missions.tagPermanent
+  const diff = new Date(m.ends_at).getTime() - Date.now()
+  if (diff <= 0) return d.missions.tagEnded
+  const h = Math.floor(diff / 3_600_000)
+  if (h >= 24) return `${Math.floor(h / 24)}일 ${h % 24}시간 ${d.missions.timeLeftSuffix}`
+  const mins = Math.floor((diff % 3_600_000) / 60_000)
+  return `${h}시간 ${mins}분 ${d.missions.timeLeftSuffix}`
+}
+
+// 상태 뱃지 텍스트 — 없으면 null (노출 안 함)
+function statusLabel(m: MissionListItem, started: boolean): string | null {
+  if (m.done) return d.missions.tagDone
+  if (m.joined) return d.missions.tagJoined
+  if (!started) return d.missions.tagUpcoming
+  return null
 }
 
 export default function MissionsListClient({ ongoing, ended }: Props) {
@@ -182,57 +223,90 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
           <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{emptyText}</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-[var(--spacing-16)]">
+        <div className="flex flex-col">
           {list.map((m) => {
             const started = new Date(m.starts_at) <= new Date()
+            const newMission = isNewMission(m.created_at)
+            const sLabel = statusLabel(m, started)
+            const period = periodText(m, tab)
+            const reward = rewardSummary(m)
             return (
-              <Link key={m.id} href={`/missions/${m.id}`}>
-                <Card className={`active:scale-[0.98] transition-transform duration-100 overflow-hidden ${!started ? 'opacity-60' : ''}`}>
-                  <div className="relative aspect-video -mx-6 -mt-6 mb-4 w-[calc(100%+3rem)] overflow-hidden rounded-t-[var(--radius-cards)] bg-[var(--color-bg-tint)]">
-                    {m.image_url && (
-                      <Image
+              <Link key={m.id} href={`/missions/${m.id}`} className="active:opacity-70 transition-opacity duration-100">
+                {/* Figma mission-item-1 카드 */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    padding: '8px 0',
+                    gap: '16px',
+                    opacity: !started ? 0.6 : 1,
+                  }}
+                >
+                  {/* thumbnail */}
+                  <div
+                    style={{
+                      width: '90px',
+                      height: '90px',
+                      minWidth: '90px',
+                      background: C_THUMBNAIL_BG,
+                      borderRadius: C_THUMBNAIL_RADIUS,
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {m.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
                         src={m.image_url}
-                        alt={`${m.title} 썸네일`}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 640px) 100vw, 640px"
+                        alt={m.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
+                    ) : (
+                      <span style={{ display: 'block', width: '32px', height: '32px', background: '#FFFFFF', borderRadius: '4px', opacity: 0.2 }} />
                     )}
                   </div>
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{m.title}</h3>
-                        {isNewMission(m.created_at) && tab !== 'ended' && <NewChip>{d.missions.tagNew}</NewChip>}
-                        {m.ends_at === null && tab !== 'ended' && <Tag>{d.missions.tagPermanent}</Tag>}
-                        {m.done && <Tag>{d.missions.tagDone}</Tag>}
-                        {!m.done && m.joined && <Tag>{d.missions.tagJoined}</Tag>}
-                        {!started && tab !== 'ended' && <Tag>{d.missions.tagUpcoming}</Tag>}
-                      </div>
-                      {m.description && (
-                        <p className="text-text-inverse/60 text-[length:var(--text-caption)]">{m.description}</p>
-                      )}
+
+                  {/* text-area */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+                    {/* meta-row */}
+                    <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'center' }}>
+                      {newMission && <NewBadge />}
+                      {sLabel && <StatusBadge>{sLabel}</StatusBadge>}
+                      <span style={{ fontSize: '11px', color: C_META_TEXT, lineHeight: 1 }}>{period}</span>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[length:var(--text-caption)] text-text-inverse/50">
-                        {tab === 'ended'
-                          ? d.missions.tagEnded
-                          : m.ends_at === null ? d.missions.tagPermanent : `${timeLeft(m.ends_at)} ${d.missions.timeLeftSuffix}`}
+
+                    {/* title */}
+                    <h3 style={{ fontSize: '16px', fontWeight: 700, color: C_TITLE, margin: 0, lineHeight: '1.25' }}>
+                      {m.title}
+                    </h3>
+
+                    {/* desc */}
+                    {m.description && (
+                      <p
+                        style={{
+                          fontSize: '12px',
+                          lineHeight: '17px',
+                          color: C_META_TEXT,
+                          margin: 0,
+                          overflow: 'hidden',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                        }}
+                      >
+                        {m.description}
                       </p>
-                      {m.max_completions && (
-                        <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-0.5">
-                          {t(d.missions.limitedSlots, { count: m.max_completions.toLocaleString() })}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[length:var(--text-caption)] text-text-inverse/50">
-                      {d.missions.rewardLabel}: {rewardSummary(m)}
+                    )}
+
+                    {/* reward */}
+                    <span style={{ fontSize: '11px', color: C_REWARD, lineHeight: 1 }}>
+                      {reward}
                     </span>
-                    <span className="text-[length:var(--text-caption)] text-text-inverse/30">{MISSION_TYPE_LABELS[m.mission_type] ?? m.mission_type}</span>
                   </div>
-                </Card>
+                </div>
               </Link>
             )
           })}
