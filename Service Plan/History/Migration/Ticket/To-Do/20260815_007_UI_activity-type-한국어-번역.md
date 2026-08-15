@@ -1,9 +1,9 @@
 ---
 id: 20260815_007
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-15
-closed:
+closed: 2026-08-15
 ---
 
 # [UI] 미션 상세 activity_type 한국어 번역 미적용
