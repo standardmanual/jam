@@ -191,7 +191,7 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{m.title}</h3>
-                        {isNewMission(m.created_at) && <NewChip>{d.missions.tagNew}</NewChip>}
+                        {isNewMission(m.created_at) && tab !== 'ended' && <NewChip>{d.missions.tagNew}</NewChip>}
                         {m.ends_at === null && tab !== 'ended' && <Tag>{d.missions.tagPermanent}</Tag>}
                         {m.done && <Tag>{d.missions.tagDone}</Tag>}
                         {!m.done && m.joined && <Tag>{d.missions.tagJoined}</Tag>}
