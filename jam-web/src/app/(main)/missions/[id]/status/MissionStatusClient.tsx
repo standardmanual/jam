@@ -108,10 +108,10 @@ function formatProgress(value: number) {
   return value.toFixed(value % 1 === 0 ? 0 : 1)
 }
 
-/** 순위 기반 프로그레스 바 그라디언트 — 상위일수록 밝은 그린 */
+/** 순위 기반 프로그레스 바 그라디언트 — 상위일수록 밝은 그린, 최소 15% 밝기 유지 */
 function getRankGradient(rank: number): string {
-  // 4위: #00B259 → #1AD973, 5위: #00A64D → #1ACC66, 이하 점점 어두워짐
-  const factor = Math.max(0, 1 - (rank - 4) * 0.08)
+  // factor 최솟값 0.15 → 참가자가 많아도 시각 구분 유지
+  const factor = Math.max(0.15, 1 - (rank - 4) * 0.05)
   const fromG = Math.round(0x59 + factor * (0xB2 - 0x59))
   const toG = Math.round(0x73 + factor * (0xD9 - 0x73))
   return `linear-gradient(90deg, rgb(0,${fromG},0), rgb(26,${toG},0))`
@@ -309,13 +309,15 @@ function RankingListRow({
 
       {/* 행 하단: 6px 프로그레스 바, padding-left 32px, 배경 #1E1E1E, border-radius 3px */}
       <div style={{ paddingLeft: 32, paddingRight: 16, paddingBottom: 8 }}>
-        <div style={{ height: 6, backgroundColor: '#1E1E1E', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ height: 6, backgroundColor: '#1E1E1E', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
           <div style={{
-            height: '100%',
-            width: `${(fillRatio * 100).toFixed(1)}%`,
+            position: 'absolute',
+            inset: 0,
             background: gradient,
             borderRadius: 3,
-            transition: 'width 0.4s ease',
+            transform: `scaleX(${fillRatio})`,
+            transformOrigin: 'left',
+            transition: 'transform 0.4s ease',
           }} />
         </div>
       </div>
@@ -392,7 +394,7 @@ function MyRankCard({
           </div>
           {/* 서브텍스트: "[진행값] 달성", 11px, #B2B2B2 */}
           <div style={{ fontSize: 11, color: '#B2B2B2', marginTop: 1 }}>
-            {formatProgress(me.progressValue)} 달성
+            {formatProgress(me.progressValue)} {d.missions.achieved}
           </div>
         </div>
 
@@ -409,13 +411,15 @@ function MyRankCard({
 
       {/* 프로그레스 바: bg #1A3A2A, fill linear-gradient(90deg, #00CC66, #33E580) */}
       <div style={{ paddingLeft: 28, paddingTop: 6 }}>
-        <div style={{ height: 6, backgroundColor: '#1A3A2A', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ height: 6, backgroundColor: '#1A3A2A', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
           <div style={{
-            height: '100%',
-            width: `${(fillRatio * 100).toFixed(1)}%`,
+            position: 'absolute',
+            inset: 0,
             background: 'linear-gradient(90deg, #00CC66, #33E580)',
             borderRadius: 3,
-            transition: 'width 0.4s ease',
+            transform: `scaleX(${fillRatio})`,
+            transformOrigin: 'left',
+            transition: 'transform 0.4s ease',
           }} />
         </div>
       </div>
@@ -491,11 +495,7 @@ export default function MissionStatusClient({
   }, [missionId])
 
   const isMeInEntries = (userId: string) =>
-    data?.type === 'ranking'
-      ? data.me?.userId === userId
-      : data?.type === 'achievement'
-        ? data.me?.userId === userId
-        : false
+    data?.type !== 'individual' && data?.me?.userId === userId
 
   return (
     <div className="min-h-full bg-surface text-text">
@@ -540,7 +540,7 @@ export default function MissionStatusClient({
               </span>
               {goalLabel && (
                 <span style={{ fontSize: 13, color: '#B2B2B2' }}>
-                  미션: {goalLabel}
+                  {t(d.missions.statusMissionGoal, { goal: goalLabel })}
                 </span>
               )}
             </div>
@@ -569,7 +569,7 @@ export default function MissionStatusClient({
                   gap: 8,
                   padding: '0 16px 8px',
                 }}>
-                  <span style={{ fontSize: 13, color: '#B2B2B2', flexShrink: 0 }}>전체 순위</span>
+                  <span style={{ fontSize: 13, color: '#B2B2B2', flexShrink: 0 }}>{d.missions.statusAllRanks}</span>
                   <div style={{ flex: 1, height: 1, backgroundColor: '#2A2A2A' }} />
                 </div>
 
@@ -579,7 +579,7 @@ export default function MissionStatusClient({
                       key={entry.userId}
                       entry={entry}
                       maxProgress={maxProgress}
-                      isMe={me?.userId === entry.userId}
+                      isMe={isMeInEntries(entry.userId)}
                     />
                   ))}
                 </div>
