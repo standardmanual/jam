@@ -62,13 +62,14 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
   }
 
   const expiring = isExpiringSoon(item.expires_at)
+  const serial = `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`
 
   return (
     <div className="min-h-full bg-[var(--color-bg)] text-text">
       <TopNav title={d.common.back} backHref="/inventory" />
 
       {/* hero-section */}
-      <div className="flex flex-col items-center gap-4 pt-[32px] px-6">
+      <div className="flex flex-col items-center gap-4 pt-[32px] pb-[32px] px-6">
         <div className="w-[200px] h-[200px] rounded-full bg-white overflow-hidden flex items-center justify-center">
           {item.badge.image_url ? (
             <Image
@@ -96,6 +97,15 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
 
       {/* info-section */}
       <div className="flex flex-col gap-1 p-6">
+        {/* serial + 획득방법 서브카드 */}
+        <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[20px] overflow-hidden mb-1">
+          <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
+            <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.serialNumber}</span>
+            <span className="text-[14px] text-text font-mono tracking-widest">{serial}</span>
+          </div>
+          <InventoryItemHistorySheet itemId={itemId} obtainedBy={item.obtained_by} />
+        </div>
+
         {/* 메인 정보 카드 */}
         <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[20px] overflow-hidden">
           <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
