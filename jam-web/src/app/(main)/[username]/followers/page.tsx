@@ -6,7 +6,7 @@ import { FollowButton } from '../FollowButton'
 import ListRowCard from '@/components/ui/ListRowCard'
 import TopNav from '@/components/ui/TopNav'
 import { UserIcon } from '@/components/ui/icons'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -68,7 +68,7 @@ export default async function FollowersPage({ params }: Props) {
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={t(d.social.followersCount, { count: followerList.length })} backHref={`/${username}`} />
+      <TopNav title={username} backHref={`/${username}`} />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-16)]">
         {followerList.length === 0 ? (
