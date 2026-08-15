@@ -7,7 +7,6 @@ import type {
   InventoryItemRow,
   UserItemBookSlotRow,
 } from '@/types/database'
-import Card from '@/components/ui/Card'
 import TopNav from '@/components/ui/TopNav'
 import { BookIcon, PinIcon } from '@/components/ui/icons'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
@@ -20,6 +19,12 @@ interface Props {
 
 type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
 
+const PAGE_BG = '#000000'
+const CARD_BG = '#1A1A1A'
+const THUMB_BG = '#333333'
+const TEXT_SECONDARY = '#B2B2B2'
+const PROGRESS_FILL = '#E8461F'
+
 export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
   const { u, from, itemId } = await searchParams
@@ -30,12 +35,11 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   if (!user) redirect('/login')
 
   // ?u=username — 다른 유저의 프로필에서 진입한 경우 그 유저 기준으로 슬롯 현황을 보여준다.
-  // inventory/user_item_book_slots 등은 RLS로 본인 행만 조회 가능해서 service client 필요.
   const service = createServiceClient()
   let subjectId = user.id
   let subjectUsername: string | null = null
   if (u) {
-        const { data: subjectRaw } = await service
+    const { data: subjectRaw } = await service
       .from('users')
       .select('id, username')
       .eq('username', u.toLowerCase())
@@ -47,9 +51,6 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   }
   const isOwnBook = subjectId === user.id
 
-  // 아이템배지 상세(/inventory/[itemId])에서 들어온 경우 뒤로가기도 그 화면으로,
-  // 배지 메뉴의 아이템북 탭에서 들어온 경우 뒤로가기도 그 탭이 활성인 화면으로,
-  // 프로필의 아이템북 탭(?u=)에서 들어온 경우 뒤로가기도 그 프로필의 탭이 활성인 화면으로
   const backHref =
     from === 'badge' && itemId ? `/inventory/${itemId}` :
     from === 'badges' ? '/badges#itembook' :
@@ -65,7 +66,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   if (!bookRaw) notFound()
   const book = bookRaw as unknown as ItemBookWithFaction
 
-  // 2) 이 북에 속한 배지 — 아이템(슬롯팅) + POI(획득 여부만)
+  // 2) 배지 (아이템 + POI)
   const { data: badgesRaw } = await supabase
     .from('badges')
     .select('*')
@@ -78,18 +79,18 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   const badgeIds = badges.map((b) => b.id)
   const poiBadgeIds = poiBadges.map((b) => b.id)
 
-  // 3) 대상 유저 인벤토리 id
-    const { data: inventoryRaw } = await service
+  // 3) 인벤토리
+  const { data: inventoryRaw } = await service
     .from('inventory')
     .select('id')
     .eq('user_id', subjectId)
     .single()
   const inventory = inventoryRaw as { id: string } | null
 
-  // 4~7) 인벤 아이템 / 슬롯 / 완성 / POI 배지 획득 이력 병렬 조회 (대상 유저 기준)
+  // 4~7) 병렬 조회
   const [invRes, slotsRes, completionRes, poiEarnsRes] = await Promise.all([
     inventory && badgeIds.length > 0
-            ? service
+      ? service
           .from('inventory_items')
           .select('id, badge_id, serial_number, serial_prefix, slotted_in, obtained_at')
           .eq('inventory_id', inventory.id)
@@ -97,20 +98,19 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           .is('dropped_at', null)
           .order('obtained_at', { ascending: true })
       : Promise.resolve({ data: [] as InventoryItemRow[] }),
-        service
+    service
       .from('user_item_book_slots')
       .select('id, badge_id, slotted_at')
       .eq('user_id', subjectId)
       .eq('item_book_id', id),
-        service
+    service
       .from('user_item_book_completions')
       .select('item_book_id')
       .eq('user_id', subjectId)
       .eq('item_book_id', id)
       .maybeSingle(),
-    // POI 배지는 슬롯팅 없이 "1회 이상 획득했는가"로만 판정한다
     poiBadgeIds.length > 0
-      ?         service
+      ? service
           .from('user_poi_badge_earns')
           .select('badge_id')
           .eq('user_id', subjectId)
@@ -127,7 +127,6 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     'id' | 'badge_id' | 'slotted_at'
   >[]
 
-  // 슬롯 조합
   const slotsMap = new Map(slots.map((s) => [s.badge_id, s]))
   const inventoryMap = new Map<
     string,
@@ -157,7 +156,6 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     }
   })
 
-  // 획득한 POI 배지 id 집합(반복 획득해도 1개로만 카운트)
   const earnedPoiBadgeIds = new Set(
     ((poiEarnsRes.data ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
   )
@@ -171,124 +169,198 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
 
   return (
-    <div className="flex flex-col min-h-full bg-surface text-text">
+    <div className="flex flex-col min-h-full" style={{ background: PAGE_BG, color: '#FFFFFF' }}>
       <TopNav
-        title={from === 'badge' && itemId ? d.itembooks.backToDetail : d.itembooks.backToList}
+        title={book.name}
         backHref={backHref ?? '/itembooks'}
+        headerStyle={{ background: PAGE_BG, color: '#FFFFFF' }}
       />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-16)]">
-        {/* 북 정보 */}
-        <div className="flex gap-[var(--spacing-16)] items-start mb-[var(--spacing-16)]">
-          {book.image_url ? (
-            <div className="w-20 h-20 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1" />
-            </div>
-          ) : (
-            <div className="w-20 h-20 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0 flex items-center justify-center">
-              <BookIcon className="w-8 h-8 text-text/40" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0 pt-1">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{book.name}</h1>
-              {isCompleted && (
-                <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)]">
-                  {d.itembooks.completed}
-                </span>
-              )}
-            </div>
-            {book.faction && (
-              <p className="text-text/70 text-[11px] mb-1">{book.faction.name}</p>
+      {/* 스크롤 컨테이너 — 외부: padding 16 / gap 12 */}
+      <div className="flex-1 flex flex-col px-4 pt-4 pb-10 gap-3">
+
+        {/* 헤더 카드: 이미지 + 팩션 + 타이틀 + 설명 — 세로 중앙 정렬 */}
+        <div className="flex flex-col items-center px-6 py-8 gap-4">
+          {/* 원형 대표 이미지 200×200 */}
+          <div
+            className="w-[200px] h-[200px] rounded-full overflow-hidden flex items-center justify-center shrink-0"
+            style={{ background: '#FFFFFF' }}
+          >
+            {book.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={book.image_url}
+                alt={book.name}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <BookIcon className="w-16 h-16" style={{ color: '#AAAAAA' }} />
             )}
-            <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+          </div>
+
+          {/* 팩션(세계관) 레이블 */}
+          {book.faction && (
+            <p
+              className="text-center"
+              style={{ color: TEXT_SECONDARY, fontSize: '12px', lineHeight: '1.4' }}
+            >
+              {book.faction.name}
+            </p>
+          )}
+
+          {/* 컬렉션 타이틀 */}
+          <h1
+            className="text-center font-bold"
+            style={{ color: '#FFFFFF', fontSize: '36px', lineHeight: '1.2' }}
+          >
+            {book.name}
+          </h1>
+
+          {/* 설명 */}
+          {book.description && (
+            <p
+              className="text-center"
+              style={{ color: TEXT_SECONDARY, fontSize: '13px', lineHeight: '1.4' }}
+            >
               {book.description}
             </p>
-          </div>
+          )}
         </div>
 
-        {/* 스토리 */}
+        {/* 진행도 바 */}
+        <div
+          className="relative rounded-full overflow-hidden"
+          style={{ height: '8px', background: '#FFFFFF' }}
+        >
+          <div
+            className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+            style={{ width: `${pct}%`, background: PROGRESS_FILL }}
+          />
+        </div>
+
+        {/* 완성 카운트 */}
+        <p style={{ color: TEXT_SECONDARY, fontSize: '13px', lineHeight: '1.2' }}>
+          {slottedCount}/{totalBadgeCount} 완성
+        </p>
+
+        {/* 스토리 텍스트 */}
         {book.story_text && (
-          <p className="text-text/60 text-[11px] leading-relaxed italic mb-[var(--spacing-16)] whitespace-pre-line">
+          <p
+            style={{
+              color: '#666666',
+              fontSize: '12px',
+              lineHeight: '1.6',
+              fontStyle: 'italic',
+              whiteSpace: 'pre-line',
+            }}
+          >
             {book.story_text}
           </p>
         )}
 
-        {/* 진행도 */}
-        <div className="flex items-center gap-[var(--spacing-16)]">
-          <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)]">
-            <div className="h-full bg-text rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-          </div>
-          <span className="text-[11px] text-text/60 tabular-nums">{slottedCount} / {totalBadgeCount}</span>
-        </div>
-      </div>
-
-      {/* 슬롯 그리드 */}
-      <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)]">
-        {badges.length > 0 && (
-          <p className="text-[11px] text-text/50 mb-[var(--spacing-16)] text-center">
-            {d.itembooks.slotHint}
-          </p>
-        )}
-
-        {totalBadgeCount === 0 ? (
-          <div className="flex flex-col items-center justify-center py-[var(--spacing-32)] text-center">
-            <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+        {/* 배지 없음 상태 */}
+        {totalBadgeCount === 0 && (
+          <div className="flex items-center justify-center py-10">
+            <p style={{ color: '#666666', fontSize: '14px' }}>
               {d.itembooks.noBadgesTitle}
             </p>
           </div>
-        ) : (
-          badges.length > 0 && (
+        )}
+
+        {/* 아이템배지 슬롯 섹션 */}
+        {badges.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <p
+              className="font-bold"
+              style={{ color: '#FFFFFF', fontSize: '16px', lineHeight: '1.2' }}
+            >
+              {d.itembooks.slotsTitle}
+            </p>
             <SlotGrid
               itemBookId={id}
               badgeSlots={badgeSlots}
               readOnly={!isOwnBook}
               badgeLinkQuery={!isOwnBook && subjectUsername ? `?u=${subjectUsername}` : ''}
             />
-          )
+          </div>
         )}
 
-        {/* POI 배지 — 슬롯팅 없이 방문(획득) 여부만 표시 */}
+        {/* POI 배지 섹션 */}
         {poiBadges.length > 0 && (
-          <div className={badges.length > 0 ? 'mt-[var(--spacing-24)]' : ''}>
-            <p className="text-[11px] text-text/50 mb-[var(--spacing-16)] text-center">
+          <div className={badges.length > 0 ? 'mt-4 flex flex-col gap-3' : 'flex flex-col gap-3'}>
+            <p
+              className="font-bold"
+              style={{ color: '#FFFFFF', fontSize: '16px', lineHeight: '1.2' }}
+            >
+              {d.itembooks.poiSectionTitle}
+            </p>
+            <p style={{ color: '#666666', fontSize: '12px', textAlign: 'center' }}>
               {d.itembooks.poiHint}
             </p>
-            <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+            <div className="grid grid-cols-3 gap-2">
               {poiBadges.map((poiBadge) => {
                 const earned = earnedPoiBadgeIds.has(poiBadge.id)
                 return (
-                  <Card key={poiBadge.id} className={`flex flex-col items-center text-center gap-1 p-[var(--spacing-8)] ${earned ? '' : 'opacity-50'}`}>
-                    <div className="w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
+                  <div
+                    key={poiBadge.id}
+                    className={`flex flex-col items-center p-3 rounded-2xl gap-2 ${earned ? '' : 'opacity-40'}`}
+                    style={{ background: CARD_BG }}
+                  >
+                    <div
+                      className="w-[90px] h-[90px] rounded-2xl overflow-hidden flex items-center justify-center"
+                      style={{ background: THUMB_BG }}
+                    >
                       {poiBadge.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={poiBadge.image_url} alt={poiBadge.name} className={`w-full h-full object-contain ${earned ? '' : 'grayscale'}`} />
+                        <img
+                          src={poiBadge.image_url}
+                          alt={poiBadge.name}
+                          className={`w-full h-full object-contain ${earned ? '' : 'grayscale'}`}
+                        />
                       ) : (
-                        <PinIcon className="w-6 h-6 text-text-inverse/30" />
+                        <PinIcon className="w-8 h-8" style={{ color: '#555555' }} />
                       )}
                     </div>
-                    <p className="text-[11px] leading-tight">{poiBadge.name}</p>
-                    <span className="text-[10px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/60">
+                    <p
+                      className="text-center line-clamp-2 w-full"
+                      style={{ color: '#FFFFFF', fontSize: '12px', lineHeight: '1.3' }}
+                    >
+                      {poiBadge.name}
+                    </p>
+                    <span
+                      className="inline-flex items-center px-2 py-1 rounded-full font-bold uppercase"
+                      style={{
+                        background: earned ? '#00CC7A' : '#333333',
+                        color: earned ? '#000000' : '#999999',
+                        fontSize: '10px',
+                        letterSpacing: '0.02em',
+                      }}
+                    >
                       {earned ? d.itembooks.poiEarned : d.itembooks.poiNotEarned}
                     </span>
-                  </Card>
+                  </div>
                 )
               })}
             </div>
           </div>
         )}
 
-        {/* 완성 카드 */}
+        {/* 완성 배너 */}
         {isCompleted && (
-          <Card className="mt-[var(--spacing-24)] text-center">
-            <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] mb-1">
+          <div
+            className="mt-4 rounded-2xl p-6 text-center"
+            style={{ background: CARD_BG }}
+          >
+            <p
+              className="font-bold mb-2"
+              style={{ color: '#FFFFFF', fontSize: '18px' }}
+            >
               {d.itembooks.completedTitle}
             </p>
-            <p className="text-text-inverse/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+            <p style={{ color: TEXT_SECONDARY, fontSize: '14px' }}>
               {d.itembooks.completedBody}
             </p>
-          </Card>
+          </div>
         )}
       </div>
     </div>
