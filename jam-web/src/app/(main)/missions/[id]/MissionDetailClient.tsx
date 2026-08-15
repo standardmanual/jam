@@ -119,9 +119,9 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
           <span className="text-[length:var(--text-caption)] text-text/50">{timeLeft(mission.ends_at)}</span>
         </div>
 
-        {/* 썸네일 이미지 — image_url 있을 때만 표시, 16:9 비율 */}
-        {mission.image_url && (
-          <div className="relative w-full aspect-video rounded-[var(--radius-cards)] overflow-hidden mb-[var(--spacing-24)]">
+        {/* 썸네일 — image_url 없으면 그레이 플레이스홀더 */}
+        <div className="relative w-full aspect-video rounded-[var(--radius-cards)] overflow-hidden mb-[var(--spacing-24)] bg-[var(--color-bg-tint)]">
+          {mission.image_url && (
             <Image
               src={mission.image_url}
               alt={`${mission.title} 썸네일`}
@@ -130,8 +130,8 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
               sizes="(max-width: 640px) 100vw, 640px"
               priority
             />
-          </div>
-        )}
+          )}
+        </div>
 
         <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2">{mission.title}</h1>
         {mission.description && (
