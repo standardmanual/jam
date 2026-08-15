@@ -357,6 +357,8 @@ export interface MissionRow {
   /** NULL = 상시 미션(종료일 없음) — 티켓 20260813_001 */
   ends_at: string | null
   max_completions: number | null
+  /** 티켓 20260815_003: 미션 카드 썸네일 이미지 URL. null이면 이미지 없음. */
+  image_url: string | null
   created_at: string
 }
 

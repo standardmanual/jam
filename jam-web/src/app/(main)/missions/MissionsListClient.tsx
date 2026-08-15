@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import type { ActivityType, MissionCondition, MissionRow, MissionType } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import Card from '@/components/ui/Card'
@@ -186,7 +187,18 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
             const started = new Date(m.starts_at) <= new Date()
             return (
               <Link key={m.id} href={`/missions/${m.id}`}>
-                <Card className={`active:scale-[0.98] transition-transform duration-100 ${!started ? 'opacity-60' : ''}`}>
+                <Card className={`active:scale-[0.98] transition-transform duration-100 overflow-hidden ${!started ? 'opacity-60' : ''}`}>
+                  {m.image_url && (
+                    <div className="relative aspect-video -mx-6 -mt-6 mb-4 w-[calc(100%+3rem)] overflow-hidden rounded-t-[var(--radius-cards)]">
+                      <Image
+                        src={m.image_url}
+                        alt={`${m.title} 썸네일`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 100vw, 640px"
+                      />
+                    </div>
+                  )}
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
