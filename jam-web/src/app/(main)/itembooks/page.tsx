@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { ItemBookRow, FactionRow } from '@/types/database'
 import Card from '@/components/ui/Card'
 import { BookIcon } from '@/components/ui/icons'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 
 type ItemBookWithFaction = ItemBookRow & {
   faction: Pick<FactionRow, 'id' | 'name' | 'image_url'> | null
@@ -140,8 +140,12 @@ export default async function ItemBooksPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
-            {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted }) => {
+            {cards.map(({ book, totalBadgeCount, discoveredBadgeCount, slottedCount, isCompleted }) => {
               const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
+              const showCompleted = isCompleted || (totalBadgeCount > 0 && discoveredBadgeCount === totalBadgeCount)
+              const discoveredLabel = totalBadgeCount > 0
+                ? t(d.itembooks.discoveredCount, { discovered: discoveredBadgeCount, total: totalBadgeCount })
+                : t(d.itembooks.discoveredCountSimple, { count: discoveredBadgeCount })
               return (
                 <Link key={book.id} href={`/itembooks/${book.id}`}>
                   <Card className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
@@ -153,19 +157,20 @@ export default async function ItemBooksPage() {
                       ) : (
                         <BookIcon className="w-8 h-8 text-text-inverse/40" />
                       )}
-                      {isCompleted && (
-                        <span className="absolute top-1.5 right-1.5 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+                      {showCompleted && (
+                        <span className="absolute top-1.5 right-1.5 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-[var(--color-rarity-legend)] text-[var(--color-rarity-legend-text)] font-medium">
                           {d.itembooks.completed}
                         </span>
                       )}
                     </div>
 
-                    {/* 이름 + 세계관 */}
+                    {/* 이름 + 세계관 + 발견 수 */}
                     <div className="min-w-0">
                       <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
                       {book.faction && (
                         <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-0.5 truncate">{book.faction.name}</p>
                       )}
+                      <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] mt-0.5 tabular-nums">{discoveredLabel}</p>
                     </div>
 
                     {/* 진행도 */}
