@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import RarityBadge from '@/components/ui/Badge'
 import { MedalIcon } from '@/components/ui/icons'
@@ -158,10 +159,11 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
               {/* 배지 이미지 */}
               <div className="w-16 h-16 rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
                 {badge.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={badge.image_url}
                     alt={isUndiscovered ? d.itembooks.unknownBadge : badge.name}
+                    width={64}
+                    height={64}
                     className={[
                       'w-full h-full object-contain p-1',
                       isUndiscovered ? 'grayscale' : '',

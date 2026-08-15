@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { UserIcon } from '@/components/ui/icons'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
@@ -140,8 +141,7 @@ export default function OnboardingPage() {
         {/* 프로필 이미지 */}
         <div className="flex flex-col items-center gap-[var(--spacing-16)]">
           {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt={d.onboarding.avatarAlt} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
+            <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
           ) : (
             <div className="w-24 h-24 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center">
               <UserIcon className="w-10 h-10 text-text/50" />

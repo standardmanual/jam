@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { ItemBookRow, FactionRow } from '@/types/database'
 import Card from '@/components/ui/Card'
@@ -150,8 +151,7 @@ export default async function UserItemBooksPage({ params }: Props) {
                   <Card className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
                     <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                       {book.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1.5" />
+                        <Image src={book.image_url} alt={book.name} fill className="object-contain p-1.5" />
                       ) : (
                         <BookIcon className="w-8 h-8 text-text-inverse/40" />
                       )}

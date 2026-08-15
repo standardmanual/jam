@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/shadcn-button'
 import {
   Table,
@@ -128,10 +129,11 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
                 <TableCell>
                   <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
                     {badge.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={badge.image_url}
                         alt={badge.name}
+                        width={40}
+                        height={40}
                         className="w-full h-full object-contain"
                       />
                     ) : (

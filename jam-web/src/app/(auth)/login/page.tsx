@@ -1,6 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Suspense } from 'react'
 import { d } from '@/lib/i18n'
@@ -22,8 +23,7 @@ function LoginContent() {
     <main className="min-h-dvh flex flex-col items-center justify-center bg-surface text-text px-[var(--spacing-24)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* 로고 */}
       <div className="text-center mb-[var(--spacing-40)]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/jam-logo-white.png" alt={d.auth.wordmark} className="h-[48px] w-auto mx-auto" />
+        <Image src="/jam-logo-white.png" alt={d.auth.wordmark} width={2238} height={925} className="h-[48px] w-auto mx-auto" priority />
       </div>
 
       {/* 에러 메시지 */}
