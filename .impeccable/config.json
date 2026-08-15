@@ -1,0 +1,44 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.36, 0.64, 1)",
+        "createdAt": "2026-08-14T07:00:39.131Z",
+        "reason": "JAM! DS v2 의도적 bounce easing — 배지 획득·팝업 등장 등 게임적 성취 피드백 모션용 토큰. 서비스 감성에 부합하는 설계 선택."
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "var(--ease-bounce)",
+        "createdAt": "2026-08-14T07:45:35.958Z",
+        "reason": "DS-005 ticket spec explicitly requires --ease-bounce for BottomSheet slide-up; mobile spring entrance is intentional"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 3.85, 0.64, 1)",
+        "createdAt": "2026-08-14T13:05:54.538Z",
+        "reason": "DS v2 motion token: intentional strong spring for avatar hover-out return and badge bounce"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.45, 0.64, 1)",
+        "createdAt": "2026-08-14T13:05:57.415Z",
+        "reason": "DS v2 motion token: intentional mild spring for digit pop-in animation"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.35, 0.64, 1)",
+        "createdAt": "2026-08-14T13:06:06.567Z",
+        "reason": "DS v2 motion token: intentional mild spring for success check bob animation"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.25, 0.64, 1)",
+        "createdAt": "2026-08-14T13:06:06.640Z",
+        "reason": "DS v2 motion token: intentional mild spring for plus-to-menu morph animation"
+      }
+    ]
+  }
+}

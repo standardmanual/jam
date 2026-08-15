@@ -56,7 +56,7 @@ const legacyVariantMap: Record<string, ResolvedVariant> = {
 const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
   main: {
     primary: 'text-text-inverse',      // bg는 inline style(흰색)로 주입
-    outline: 'text-text shadow-[inset_0_0_0_1px_rgba(255,255,255,0.3)]',
+    outline: 'text-text shadow-[inset_0_0_0_1px_var(--color-border-light)]',
     arrow: 'text-text',
   },
   sub: {

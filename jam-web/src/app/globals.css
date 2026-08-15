@@ -84,6 +84,7 @@
   --color-secondary: #8a5a2e;
   --color-icon-inactive: #2a2a2a;     /* TabBar 비활성 아이콘 (흰 pill 위) */
   --color-overlay: rgba(0, 0, 0, 0.6);
+  --color-border-light: rgba(255, 255, 255, 0.3); /* 다크 배경 위 아웃라인 버튼·보더 */
 
   /* ── 배지 희귀도 ─────────────────────────────────────────── */
   --color-rarity-common: #6b6b6b;
