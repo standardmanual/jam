@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import RarityBadge from '@/components/ui/Badge'
@@ -205,10 +206,11 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                       <Card className={`flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'bg-surface-inverse/50'}`}>
                         <div className={`w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden ${earned ? '' : 'grayscale opacity-40'}`}>
                           {badge.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <Image
                               src={badge.image_url}
                               alt={badge.name}
+                              width={72}
+                              height={72}
                               className="w-full h-full object-contain p-1"
                             />
                           ) : (
@@ -265,10 +267,11 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                       <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
                         <div className="w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
                           {badge.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <Image
                               src={badge.image_url}
                               alt={badge.name}
+                              width={72}
+                              height={72}
                               className="w-full h-full object-contain p-1"
                             />
                           ) : (
@@ -305,8 +308,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                       <div className="flex gap-[var(--spacing-16)] mb-[var(--spacing-16)]">
                         {book.image_url && (
                           <div className="w-14 h-14 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1" />
+                              <Image src={book.image_url} alt={book.name} width={56} height={56} className="w-full h-full object-contain p-1" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">

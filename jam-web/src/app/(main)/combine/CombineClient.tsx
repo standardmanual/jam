@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useToast } from '@/components/ui/Toast'
 import Card from '@/components/ui/Card'
 import { MedalIcon } from '@/components/ui/icons'
@@ -166,8 +167,9 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
               >
                 {item ? (
                   item.badge.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.badge.image_url} alt={item.badge.name} className="w-3/4 h-3/4 object-contain" />
+                    <div className="relative w-3/4 aspect-square">
+                      <Image src={item.badge.image_url} alt={item.badge.name} fill className="object-contain" />
+                    </div>
                   ) : (
                     <MedalIcon className="w-5 h-5 text-text/40" />
                   )
@@ -241,8 +243,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
                   ].join(' ')}
                 >
                   {item.badge.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.badge.image_url} alt={item.badge.name} className="w-14 h-14 object-contain" />
+                    <Image src={item.badge.image_url} alt={item.badge.name} width={56} height={56} className="w-14 h-14 object-contain" />
                   ) : (
                     <MedalIcon className="w-6 h-6 text-text/40" />
                   )}

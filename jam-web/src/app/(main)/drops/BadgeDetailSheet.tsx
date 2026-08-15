@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import BottomSheet from '@/components/ui/BottomSheet'
@@ -58,8 +59,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
         <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
           <div className="w-44 h-44 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center overflow-hidden">
             {drop.badge_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={drop.badge_image_url} alt={drop.badge_name} className="w-full h-full object-contain p-[var(--spacing-16)]" />
+              <Image src={drop.badge_image_url} alt={drop.badge_name} width={176} height={176} className="w-full h-full object-contain p-[var(--spacing-16)]" />
             ) : (
               <MedalIcon className="w-16 h-16 text-text-inverse/40" />
             )}

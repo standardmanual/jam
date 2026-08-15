@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
@@ -109,8 +110,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               <Link key={u.id} href={`/${u.username}`}>
                 <Card className="flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
                   {u.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={u.avatar_url} alt={u.username} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+                    <Image src={u.avatar_url} alt={u.username} width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
                   ) : (
                     <div className="w-12 h-12 rounded-full shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0 flex items-center justify-center">
                       <UserIcon className="w-5 h-5 text-text-inverse/50" />

@@ -184,7 +184,7 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
               value={searchParams.get('item_book_id') ?? 'all'}
               onChange={(e) => update({ item_book_id: e.target.value })}
             >
-              <option value="all" className="bg-white">전체 아이템북</option>
+              <option value="all" className="bg-white">전체 컬렉션</option>
               {filteredItemBooks.map((b) => (
                 <option key={b.id} value={b.id} className="bg-white">
                   {b.name}

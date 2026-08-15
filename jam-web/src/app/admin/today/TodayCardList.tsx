@@ -19,7 +19,7 @@ const templates: { value: TodayCardTemplateType; label: string }[] = [
   { value: 'badge_spotlight', label: '배지 소개 (badge_spotlight)' },
   { value: 'progress_nudge', label: '진행 알림 (progress_nudge)' },
   { value: 'mission_spotlight', label: '미션 소개 (mission_spotlight)' },
-  { value: 'itembook_milestone', label: '아이템북 소식 (itembook_milestone)' },
+  { value: 'itembook_milestone', label: '컬렉션 소식 (itembook_milestone)' },
   { value: 'location_trend', label: '지역 트렌드 (location_trend)' },
   { value: 'drop_alert', label: '드랍 유도 (drop_alert)' },
   { value: 'editorial_article', label: '에디토리얼 기사 (editorial_article)' },
@@ -325,7 +325,7 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
 
           {fields.itemBook && (
             <div>
-              <label className={labelCls}>아이템북 선택</label>
+              <label className={labelCls}>컬렉션 선택</label>
               <select value={form.item_book_id} onChange={(e) => setForm((f) => ({ ...f, item_book_id: e.target.value }))}
                 className={inputCls}>
                 <option value="" className="bg-white">— 없음 —</option>

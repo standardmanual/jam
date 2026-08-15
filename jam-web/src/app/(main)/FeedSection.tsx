@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
@@ -179,8 +180,7 @@ export function DetailSheet({
         <div className="w-10 h-1 bg-surface/20 rounded-full mx-auto mb-[var(--spacing-24)]" />
         <div className="flex justify-center mb-[var(--spacing-16)]">
           {badgeImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={badgeImage} alt={title} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+            <Image src={badgeImage} alt={title} width={112} height={112} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
           ) : (
             <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center">
               <EventIcon type={item.event_type} className="w-12 h-12" />
@@ -258,8 +258,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
       className="w-full text-left bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] min-h-11 active:scale-[0.98] transition-transform duration-100 cursor-pointer"
     >
       {badgeImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={badgeImage} alt={title} className="w-11 h-11 rounded-[var(--radius-cards)] object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+        <Image src={badgeImage} alt={title} width={44} height={44} className="w-11 h-11 rounded-[var(--radius-cards)] object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
       ) : (
         <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center shrink-0">
           <EventIcon type={item.event_type} className="w-5 h-5" />

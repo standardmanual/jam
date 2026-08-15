@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import type { ComponentType, SVGProps } from 'react'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
@@ -49,9 +50,8 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
   return (
     <Card className="p-0 overflow-hidden active:scale-[0.98] transition-transform duration-100">
       {cover && (
-        <div className="w-full aspect-[16/9] overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={cover} alt={card.title} className="w-full h-full object-cover" />
+        <div className="relative w-full aspect-[16/9] overflow-hidden">
+          <Image src={cover} alt={card.title} fill className="object-cover" />
         </div>
       )}
       <div className="p-[var(--spacing-24)]">
@@ -94,8 +94,7 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
             <div key={b.id} className="flex flex-col items-center gap-1 shrink-0 w-16">
               <div className="w-16 h-16 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden flex items-center justify-center">
                 {b.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.image_url} alt={b.name} className="w-full h-full object-cover" />
+                  <Image src={b.image_url} alt={b.name} width={64} height={64} className="w-full h-full object-cover" />
                 ) : (
                   <MedalIcon className="w-6 h-6 text-text-inverse/40" />
                 )}
@@ -137,8 +136,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
 
   return (
     <article className="relative rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={cover} alt={card.title} className="absolute inset-0 w-full h-full object-cover" />
+      <Image src={cover} alt={card.title} fill className="object-cover" />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-24)] pt-10 pb-[var(--spacing-24)]">
         <div className="mb-2">
