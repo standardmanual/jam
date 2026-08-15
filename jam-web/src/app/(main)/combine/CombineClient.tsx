@@ -161,7 +161,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
                   'aspect-square rounded-[var(--radius-cards)] flex items-center justify-center transition-all',
                   item
                     ? `shadow-[inset_0_0_0_1px_var(--color-border)] cursor-pointer ${rarityRing[item.badge.rarity] ?? ''}`
-                    : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30',
+                    : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-40',
                 ].join(' ')}
                 onClick={() => itemId && toggleItem(itemId)}
               >
@@ -174,12 +174,19 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
                     <MedalIcon className="w-5 h-5 text-text/40" />
                   )
                 ) : (
-                  <span className="text-text/25 text-xl">+</span>
+                  <span className="text-[length:var(--text-body)] leading-none text-[var(--color-text-secondary)] select-none">+</span>
                 )}
               </div>
             )
           })}
         </div>
+
+        {/* 온보딩 안내 — 슬롯이 모두 비었을 때만 표시 */}
+        {selected.length === 0 && (
+          <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)] text-center mb-[var(--spacing-16)]">
+            {d.combine.slotOnboarding}
+          </p>
+        )}
 
         <button
           onClick={handleCombine}
