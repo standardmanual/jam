@@ -246,6 +246,7 @@ export const ko = {
     title: '인벤',
     combineButton: '믹스하기',
     slotsRemaining: '{count}개 슬롯 남음',
+    slotsDetail: '{used} / {max} 슬롯 사용중 · {remaining}개 남음',
     emptyTitle: '아직 아이템이 없어요',
     emptyBody: '활동을 완료하면 아이템 배지가 드랍돼요',
 
@@ -486,6 +487,8 @@ export const ko = {
     emptyBody: '아이템 배지를 모아봐요!',
     userEyebrowPrefix: '님이 발견한 아이템북',
     completed: '완성',
+    discoveredCount: '{discovered} / {total}',
+    discoveredCountSimple: '{count}개 발견',
     backToDetail: '배지 상세',
     backToList: '뒤로',
     slotHint: '보유한 아이템 배지를 슬롯에 장착해 아이템북을 완성해요',
