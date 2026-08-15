@@ -132,8 +132,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
             <Card className="mt-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
               {itemBook.image_url ? (
                 <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={itemBook.image_url} alt={itemBook.name} className="w-full h-full object-contain p-1" />
+                  <Image src={itemBook.image_url} alt={itemBook.name} width={44} height={44} className="w-full h-full object-contain p-1" />
                 </div>
               ) : (
                 <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">

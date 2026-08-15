@@ -49,7 +49,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     title: 'Layer 3 — 완성 페이싱',
-    description: '아이템북 가중치 = drop_weight × (1 − 수집률 × 감쇠) × 페널티',
+    description: '컬렉션 가중치 = drop_weight × (1 − 수집률 × 감쇠) × 페널티',
     fields: [
       { key: 'completion_decay', label: '완성도 감쇠 계수', step: '0.01' },
       { key: 'completed_book_weight', label: '완성 북 잔류 가중치', step: '0.01' },

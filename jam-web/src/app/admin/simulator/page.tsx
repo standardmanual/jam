@@ -496,10 +496,10 @@ export default function SimulatorPage() {
               {/* 아이템북 완성 */}
               <div>
                 <p className="text-[#6b7280] text-xs font-medium uppercase tracking-wider mb-2">
-                  아이템북 완성 ({result.itemBooksCompleted.length}개)
+                  컬렉션 완성 ({result.itemBooksCompleted.length}개)
                 </p>
                 {result.itemBooksCompleted.length === 0 ? (
-                  <p className="text-[#898989] text-xs">완성된 아이템북 없음</p>
+                  <p className="text-[#898989] text-xs">완성된 컬렉션 없음</p>
                 ) : (
                   <div className="space-y-1.5">
                     {result.itemBooksCompleted.map((book, i) => (

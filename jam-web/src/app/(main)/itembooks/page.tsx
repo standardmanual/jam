@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { ItemBookRow, FactionRow } from '@/types/database'
@@ -152,8 +153,7 @@ export default async function ItemBooksPage() {
                     {/* 북 이미지 */}
                     <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                       {book.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1.5" />
+                        <Image src={book.image_url} alt={book.name} fill className="object-contain p-1.5" />
                       ) : (
                         <BookIcon className="w-8 h-8 text-text-inverse/40" />
                       )}

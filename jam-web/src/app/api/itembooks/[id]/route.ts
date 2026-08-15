@@ -24,7 +24,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     .eq('id', id)
     .eq('is_active', true)
     .single()
-  if (!bookRaw) return NextResponse.json({ error: '아이템북을 찾을 수 없습니다.' }, { status: 404 })
+  if (!bookRaw) return NextResponse.json({ error: '컬렉션을 찾을 수 없습니다.' }, { status: 404 })
   const book = bookRaw as ItemBookRow
 
   // 2) 팩션 + 3) 이 북에 속한 아이템 배지 병렬
