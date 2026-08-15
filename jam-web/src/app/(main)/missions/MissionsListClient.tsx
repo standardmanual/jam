@@ -209,7 +209,7 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
                     <span className="text-[length:var(--text-caption)] text-text-inverse/50">
                       {d.missions.rewardLabel}: {rewardSummary(m)}
                     </span>
-                    <span className="text-[length:var(--text-caption)] uppercase text-text-inverse/30">{m.mission_type}</span>
+                    <span className="text-[length:var(--text-caption)] text-text-inverse/30">{MISSION_TYPE_LABELS[m.mission_type] ?? m.mission_type}</span>
                   </div>
                 </Card>
               </Link>
