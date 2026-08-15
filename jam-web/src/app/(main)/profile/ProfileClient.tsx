@@ -10,7 +10,7 @@ import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import RarityBadge from '@/components/ui/Badge'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import PopInNumber from '@/components/ui/PopInNumber'
 import SwapText from '@/components/ui/SwapText'
@@ -267,23 +267,13 @@ export default function ProfileClient({
           {badgeItems.map(item => {
             const meta = item.metadata as Record<string, string>
             return (
-              <button
+              <BadgeGridCard
                 key={item.id}
                 onClick={() => handleCardClick(item)}
-                className="flex flex-col items-center gap-1.5 p-[var(--spacing-8)] min-h-11 rounded-[var(--radius-cards)] bg-surface-inverse text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-95 transition-transform duration-100 cursor-pointer"
-              >
-                <div className="w-[66px] h-[66px] flex items-center justify-center shrink-0">
-                  {meta.badge_image_url ? (
-                    <Image src={meta.badge_image_url} alt={meta.badge_name} width={66} height={66} className="w-full h-full object-contain" />
-                  ) : (
-                    <MedalIcon className="w-full h-full text-text-inverse/40" />
-                  )}
-                </div>
-                <span className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{meta.badge_name}</span>
-                <div className="h-6 flex items-center justify-center">
-                  <RarityBadge rarity={meta.rarity as BadgeRarity} />
-                </div>
-              </button>
+                name={meta.badge_name}
+                imageUrl={meta.badge_image_url ?? null}
+                rarity={meta.rarity as BadgeRarity}
+              />
             )
           })}
         </div>
