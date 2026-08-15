@@ -244,7 +244,7 @@ export const ko = {
   inventory: {
     eyebrow: '내 아이템',
     title: '인벤',
-    combineButton: '믹스',
+    combineButton: '믹스하기',
     slotsRemaining: '{count}개 슬롯 남음',
     emptyTitle: '아직 아이템이 없어요',
     emptyBody: '활동을 완료하면 아이템 배지가 드랍돼요',
