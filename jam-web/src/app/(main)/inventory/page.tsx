@@ -68,7 +68,7 @@ export default async function InventoryPage() {
             style={{ width: `${Math.min(100, (usedSlots / maxSlots) * 100)}%` }}
           />
         </div>
-        <p className="mt-1 text-[length:var(--text-caption)] text-[var(--color-text-secondary)]">
+        <p className="mt-1 text-[length:var(--text-small)] text-[var(--color-text-secondary)]">
           {t(d.inventory.slotsDetail, { used: usedSlots, max: maxSlots, remaining: remainingSlots })}
         </p>
       </div>
