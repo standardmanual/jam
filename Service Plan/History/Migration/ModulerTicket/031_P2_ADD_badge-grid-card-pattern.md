@@ -81,4 +81,4 @@ category: Component / Pattern
 
 - 날짜: 2026-08-15
 - 환경: staging 브랜치
-- 커밋: (아래 commit 후 기입)
+- 커밋: `8004684`
