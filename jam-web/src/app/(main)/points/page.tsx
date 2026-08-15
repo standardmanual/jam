@@ -75,7 +75,7 @@ export default function PointsPage() {
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.points.title} />
+      <TopNav title={d.common.back} />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
         {/* 잔액 카드 */}
