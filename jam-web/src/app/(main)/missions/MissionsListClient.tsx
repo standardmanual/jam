@@ -82,6 +82,14 @@ function Tag({ children }: { children: React.ReactNode }) {
   )
 }
 
+function NewChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-[var(--color-primary)] text-white font-medium">
+      {children}
+    </span>
+  )
+}
+
 export default function MissionsListClient({ ongoing, ended }: Props) {
   const [tab, setTab] = useState<Tab>('ongoing')
   const [sortKey, setSortKey] = useState<SortKey>('newest')
@@ -183,7 +191,8 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{m.title}</h3>
-                        {isNewMission(m.created_at) && <Tag>{d.missions.tagNew}</Tag>}
+                        {isNewMission(m.created_at) && <NewChip>{d.missions.tagNew}</NewChip>}
+                        {m.ends_at === null && tab !== 'ended' && <Tag>{d.missions.tagPermanent}</Tag>}
                         {m.done && <Tag>{d.missions.tagDone}</Tag>}
                         {!m.done && m.joined && <Tag>{d.missions.tagJoined}</Tag>}
                         {!started && <Tag>{d.missions.tagUpcoming}</Tag>}

@@ -62,16 +62,15 @@ export default async function InventoryPage() {
           </Link>
         </div>
         {/* 슬롯 프로그레스 */}
-        <div className="flex items-center gap-[var(--spacing-16)]">
-          <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)]">
-            <div
-              className="h-full bg-text rounded-full transition-all"
-              style={{ width: `${Math.min(100, (usedSlots / maxSlots) * 100)}%` }}
-            />
-          </div>
-          <span className="text-[length:var(--text-caption)] text-text/60 shrink-0">{usedSlots}/{maxSlots}</span>
+        <div className="h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)]">
+          <div
+            className="h-full bg-text rounded-full transition-all"
+            style={{ width: `${Math.min(100, (usedSlots / maxSlots) * 100)}%` }}
+          />
         </div>
-        <p className="mt-1 text-[length:var(--text-caption)] text-text/50">{t(d.inventory.slotsRemaining, { count: remainingSlots })}</p>
+        <p className="mt-1 text-[length:var(--text-caption)] text-[var(--color-text-secondary)]">
+          {t(d.inventory.slotsDetail, { used: usedSlots, max: maxSlots, remaining: remainingSlots })}
+        </p>
       </div>
 
       {/* 아이템 그리드 */}
