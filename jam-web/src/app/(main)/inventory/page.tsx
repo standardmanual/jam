@@ -36,7 +36,7 @@ export default async function InventoryPage() {
   const items: InventoryItemWithBadge[] = (inventory?.inventory_items ?? []).filter(
     (item) => item.dropped_at === null && item.slotted_in === null && item.badge && !item.badge.deleted_at
   )
-  const remainingSlots = maxSlots - usedSlots
+  const remainingSlots = Math.max(0, maxSlots - usedSlots)
 
   const gridItems: InventoryGridItem[] = items.map((item) => ({
     id: item.id,
