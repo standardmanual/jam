@@ -150,6 +150,22 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
 
       <div className="flex flex-col px-6 pt-8 pb-10 gap-6">
 
+        {/* 대표 이미지 — 1:1 정사각형 */}
+        <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface border border-border flex items-center justify-center">
+          {mission.image_url ? (
+            <Image
+              src={mission.image_url}
+              alt={`${mission.title} 썸네일`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, 640px"
+              priority
+            />
+          ) : (
+            <span className="text-[length:var(--text-body-sm)] text-text-secondary">이미지 영역</span>
+          )}
+        </div>
+
         {/* 히어로 섹션 */}
         <div className="flex flex-col items-center gap-4">
           {/* 미션 상태 칩 */}
