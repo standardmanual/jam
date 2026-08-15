@@ -348,7 +348,7 @@ export const ko = {
     tagNew: 'NEW',
     tagDone: '완료',
     tagJoined: '참가중',
-    tagUpcoming: '예정',
+    tagUpcoming: '시작전',
     tagEnded: '종료됨',
     tagPermanent: '상시',
     timeLeftSuffix: '남음',
@@ -446,7 +446,6 @@ export const ko = {
 
   /** JAM 포인트 내역 */
   points: {
-    title: 'JAM 포인트',
     balanceLabel: '현재 잔액',
     historyTitle: '최근 내역',
     loading: '불러오는 중',
@@ -460,7 +459,6 @@ export const ko = {
 
   /** 유저 검색 결과 */
   search: {
-    title: '유저 검색',
     promptTitle: '아이디 또는 이메일로 유저를 검색해보세요',
     promptBody: '두 글자 이상 입력해주세요',
     emptyTitle: '검색 결과가 없어요',

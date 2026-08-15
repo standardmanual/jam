@@ -52,7 +52,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
           onClick={onCancel}
           className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
         >
-          &larr; {d.drops.back}
+          &larr; {d.common.back}
         </button>
 
         {/* 배지 이미지 (대형) */}
