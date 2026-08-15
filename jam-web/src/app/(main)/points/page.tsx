@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import Link from 'next/link'
 import type { PointHistoryItem } from '@/app/api/points/route'
 import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
-import { ChevronRightIcon } from '@/components/ui/icons'
+import ListRowCard from '@/components/ui/ListRowCard'
+import { ChevronRightIcon, CoinIcon } from '@/components/ui/icons'
 import { useDigitPopIn } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'
@@ -119,29 +119,37 @@ export default function PointsPage() {
           )}
 
           {!loading && !error && items.length > 0 && (
-            <Card className="p-0 overflow-hidden">
+            <div className="flex flex-col gap-[var(--spacing-8)]">
               {items.map((it) => {
                 const positive = it.amount > 0
-                const inner = (
-                  <div className="flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-16)]">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{it.title}</p>
-                      {it.note && <p className="text-[length:var(--text-caption)] text-text-inverse/50 truncate">{it.note}</p>}
-                      <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-0.5">{formatDate(it.created_at)}</p>
-                    </div>
-                    <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] shrink-0 ${positive ? '' : 'text-text-inverse/60'}`}>
-                      {formatAmount(it.amount)}
-                    </span>
-                    {it.href && <ChevronRightIcon className="w-4 h-4 text-text-inverse/30 shrink-0" />}
-                  </div>
-                )
-                return it.href ? (
-                  <Link key={it.id} href={it.href} className="block shadow-[inset_0_-1px_0_0_var(--color-border-inverse)] last:shadow-none active:opacity-70 transition-opacity">{inner}</Link>
-                ) : (
-                  <div key={it.id} className="shadow-[inset_0_-1px_0_0_var(--color-border-inverse)] last:shadow-none">{inner}</div>
+                return (
+                  <ListRowCard
+                    key={it.id}
+                    href={it.href ?? undefined}
+                    icon={
+                      <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0">
+                        <CoinIcon className="w-5 h-5 text-text/60" />
+                      </div>
+                    }
+                    title={it.title}
+                    subtitle={
+                      <div className="flex flex-col">
+                        {it.note && <span className="text-[length:var(--text-caption)] text-text/50 truncate">{it.note}</span>}
+                        <span className="text-[length:var(--text-caption)] text-text/40">{formatDate(it.created_at)}</span>
+                      </div>
+                    }
+                    trailing={
+                      <div className="flex items-center gap-[var(--spacing-8)]">
+                        <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] ${positive ? 'text-[#8A5A2E]' : 'text-text/60'}`}>
+                          {formatAmount(it.amount)}
+                        </span>
+                        {it.href && <ChevronRightIcon className="w-4 h-4 text-text/30" />}
+                      </div>
+                    }
+                  />
                 )
               })}
-            </Card>
+            </div>
           )}
 
           {!loading && !error && cursor && (

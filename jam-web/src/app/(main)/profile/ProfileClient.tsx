@@ -11,6 +11,7 @@ import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import PopInNumber from '@/components/ui/PopInNumber'
 import SwapText from '@/components/ui/SwapText'
@@ -346,32 +347,33 @@ export default function ProfileClient({
     return (
       <div className="flex flex-col gap-[var(--spacing-8)]">
         {listData.map(u => (
-          <div
+          <ListRowCard
             key={u.id}
-            className="flex items-center gap-[var(--spacing-16)] bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] p-[var(--spacing-16)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]"
-          >
-            <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0 min-h-11">
-              {u.avatar_url ? (
-                <Image src={u.avatar_url} alt={u.username ?? ''} width={44} height={44} className="w-11 h-11 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+            href={`/${u.username}`}
+            icon={
+              u.avatar_url ? (
+                <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
               ) : (
-                <div className="w-11 h-11 rounded-full bg-surface text-text flex items-center justify-center shrink-0">
-                  <UserIcon className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-text/60" />
                 </div>
-              )}
-              <span className="text-[length:var(--text-body)] leading-[var(--leading-body)] truncate">{u.username}</span>
-            </Link>
-            {u.id !== currentUserId && (
-              <Button
-                surface="sub"
-                variant={listFollowStates[u.id] ? 'outline' : 'primary'}
-                onClick={() => handleListFollow(u.id)}
-                className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
-              >
-                {/* Text states swap (04-text-states-swap.md) */}
-                <SwapText value={listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton} />
-              </Button>
-            )}
-          </div>
+              )
+            }
+            title={u.username ?? ''}
+            trailing={
+              u.id !== currentUserId ? (
+                <Button
+                  surface="sub"
+                  variant={listFollowStates[u.id] ? 'outline' : 'primary'}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleListFollow(u.id) }}
+                  className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
+                >
+                  {/* Text states swap (04-text-states-swap.md) */}
+                  <SwapText value={listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton} />
+                </Button>
+              ) : undefined
+            }
+          />
         ))}
       </div>
     )

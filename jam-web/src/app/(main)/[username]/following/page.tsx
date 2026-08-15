@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { FollowButton } from '../FollowButton'
-import Card from '@/components/ui/Card'
+import ListRowCard from '@/components/ui/ListRowCard'
 import TopNav from '@/components/ui/TopNav'
 import { UserIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
@@ -77,21 +77,21 @@ export default async function FollowingPage({ params }: Props) {
           </div>
         ) : (
           followingList.map((u) => (
-            <Card key={u.id} className="flex items-center gap-[var(--spacing-16)]">
-              <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0">
+            <ListRowCard
+              key={u.id}
+              trailing={u.id !== user.id ? <FollowButton targetUserId={u.id} initialFollowing={u.isFollowing} /> : undefined}
+            >
+              <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0 active:opacity-70 transition-opacity">
                 {u.avatar_url ? (
-                  <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+                  <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border)]" />
                 ) : (
-                  <div className="w-10 h-10 rounded-full shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">
-                    <UserIcon className="w-4 h-4 text-text-inverse/50" />
+                  <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0">
+                    <UserIcon className="w-4 h-4 text-text/50" />
                   </div>
                 )}
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{u.username}</span>
+                <span className="text-[length:var(--text-body)] leading-[var(--leading-body)] truncate">{u.username}</span>
               </Link>
-              {u.id !== user.id && (
-                <FollowButton targetUserId={u.id} initialFollowing={u.isFollowing} />
-              )}
-            </Card>
+            </ListRowCard>
           ))
         )}
       </div>
