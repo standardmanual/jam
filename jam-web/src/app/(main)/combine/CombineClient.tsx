@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useToast } from '@/components/ui/Toast'
 import Card from '@/components/ui/Card'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import { MedalIcon } from '@/components/ui/icons'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
@@ -25,12 +26,12 @@ interface Props {
   publicRecipes: CombinationRecipeRow[]
 }
 
-// DS v2 희귀도 링 — --color-rarity-* 토큰 기반 ([의사결정 A])
+// DS v2 희귀도 링 — 5-슬롯 미리보기 영역 전용
 const rarityRing: Record<string, string> = {
   common: '',
-  rare:   'text-[var(--color-rarity-rare)]   shadow-[inset_0_0_0_1px_var(--color-rarity-rare)]',
-  legend: 'text-[var(--color-rarity-legend)] shadow-[inset_0_0_0_1px_var(--color-rarity-legend)]',
-  mythic: 'text-[var(--color-rarity-mythic)] shadow-[inset_0_0_0_1px_var(--color-rarity-mythic)]',
+  rare:   'shadow-[inset_0_0_0_1px_var(--color-rarity-rare)]',
+  legend: 'shadow-[inset_0_0_0_1px_var(--color-rarity-legend)]',
+  mythic: 'shadow-[inset_0_0_0_1px_var(--color-rarity-mythic)]',
 }
 
 const MAX_SELECT = 10
@@ -239,23 +240,15 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
             {items.map((item) => {
               const isSelected = selected.includes(item.id)
               return (
-                <button
+                <BadgeGridCard
                   key={item.id}
                   onClick={() => toggleItem(item.id)}
-                  className={[
-                    'flex flex-col items-center gap-1.5 p-[var(--spacing-8)] rounded-[var(--radius-cards)] transition-all active:scale-95',
-                    isSelected
-                      ? `shadow-[inset_0_0_0_1px_var(--color-border)] ${rarityRing[item.badge.rarity] ?? ''}`
-                      : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-60',
-                  ].join(' ')}
-                >
-                  {item.badge.image_url ? (
-                    <Image src={item.badge.image_url} alt={item.badge.name} width={56} height={56} className="w-14 h-14 object-contain" />
-                  ) : (
-                    <MedalIcon className="w-6 h-6 text-text/40" />
-                  )}
-                  <p className="text-[length:var(--text-caption)] text-text text-center leading-tight line-clamp-2">{item.badge.name}</p>
-                </button>
+                  name={item.badge.name}
+                  imageUrl={item.badge.image_url}
+                  rarity={item.badge.rarity as import('@/types/database').BadgeRarity}
+                  selected={isSelected}
+                  className={isSelected ? '' : 'opacity-60'}
+                />
               )
             })}
           </div>

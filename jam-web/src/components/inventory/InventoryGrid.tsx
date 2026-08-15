@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import LocalDate from '@/components/LocalDate'
-import { MedalIcon } from '@/components/ui/icons'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import { d } from '@/lib/i18n'
 
 // 인벤토리 그리드 카드에 필요한 정규화된 아이템 형태.
@@ -34,40 +33,10 @@ interface InventoryGridProps {
  * [주의] 색상값/매핑을 재조정하지 마세요(유저가 학습한 색 언어 유지).
  * 타일 배경은 항상 아이스 고정 — 코발트 배경 위 반투명 워시는 텍스트와 섞여 대비가 깨진다.
  */
-// DS v2 희귀도 링 — --color-rarity-* 토큰 기반 ([의사결정 A])
-const rarityAccent: Record<string, string> = {
-  rare:   'shadow-[inset_0_0_0_1px_var(--color-rarity-rare)]',
-  legend: 'shadow-[inset_0_0_0_1px_var(--color-rarity-legend)]',
-  mythic: 'shadow-[inset_0_0_0_1px_var(--color-rarity-mythic)]',
-}
-
 function isExpiringSoon(expiresAt: string | null | undefined): boolean {
   if (!expiresAt) return false
   const diff = new Date(expiresAt).getTime() - Date.now()
   return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
-}
-
-function CardInner({ item }: { item: InventoryGridItem }) {
-  const expiring = isExpiringSoon(item.expiresAt)
-  return (
-    <>
-      <div className="w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
-        {item.badgeImageUrl ? (
-          <Image src={item.badgeImageUrl} alt={item.badgeName} width={80} height={80} className="object-contain w-full h-full p-1" />
-        ) : (
-          <MedalIcon className="w-8 h-8 text-text-inverse/40" />
-        )}
-      </div>
-      <p className="text-[length:var(--text-body-sm)] leading-tight text-center truncate w-full">{item.badgeName}</p>
-      <div className="h-6 flex items-center justify-center">
-        {expiring && item.expiresAt && (
-          <p className="text-[length:var(--text-caption)] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-text-inverse/70">
-            <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
-          </p>
-        )}
-      </div>
-    </>
-  )
 }
 
 export default function InventoryGrid({
@@ -80,41 +49,54 @@ export default function InventoryGrid({
   return (
     <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
       {items.map((item) => {
-        const accent = rarityAccent[item.badgeRarity] ?? 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'
-        const base = `flex flex-col items-center bg-surface-inverse text-text-inverse ${accent} rounded-[var(--radius-cards)] p-[var(--spacing-8)] gap-2 active:scale-95 transition-transform duration-100`
+        const expiring = isExpiringSoon(item.expiresAt)
+        const expiryNode = expiring && item.expiresAt ? (
+          <p className="text-[length:var(--text-caption)] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70 text-center">
+            <LocalDate iso={item.expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
+          </p>
+        ) : null
 
         if (mode === 'navigate') {
           return (
-            <Link key={item.id} href={`/inventory/${item.id}`} className={base}>
-              <CardInner item={item} />
-            </Link>
+            <BadgeGridCard
+              key={item.id}
+              href={`/inventory/${item.id}`}
+              name={item.badgeName}
+              imageUrl={item.badgeImageUrl}
+              rarity={item.badgeRarity as import('@/types/database').BadgeRarity}
+            >
+              {expiryNode}
+            </BadgeGridCard>
           )
         }
 
-        const selected = selectedItemId === item.id
+        const isSelected = selectedItemId === item.id
         return (
-          <button
+          <BadgeGridCard
             key={item.id}
-            type="button"
             onClick={() => onSelect?.(item)}
-            className={`${base} text-left ${selected ? 'shadow-[inset_0_0_0_2px_var(--color-border-inverse)]' : ''}`}
+            name={item.badgeName}
+            imageUrl={item.badgeImageUrl}
+            rarity={item.badgeRarity as import('@/types/database').BadgeRarity}
+            selected={isSelected}
           >
-            <CardInner item={item} />
-          </button>
+            {expiryNode}
+          </BadgeGridCard>
         )
       })}
-      {/* 빈 슬롯 placeholder — 배지 탭 카드와 동일한 구조(이미지 박스 + 이름 줄 + 하단 줄)로
-          맞춰서, 채워진 칸과 빈 칸의 세로 크기가 항상 똑같이 보이도록 한다 */}
+      {/* 빈 슬롯 placeholder — BadgeGridCard와 동일한 구조로 맞춰 행 높이를 일치시킨다 */}
       {Array.from({ length: emptySlots }).map((_, i) => (
         <div
           key={`empty-${i}`}
-          className="flex flex-col items-center rounded-[var(--radius-cards)] p-[var(--spacing-8)] gap-2 shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30"
+          className="flex flex-col items-center bg-surface rounded-[var(--radius-card)] p-[var(--spacing-12)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30"
         >
-          <div className="w-full aspect-square rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
+          <div className="w-[90px] h-[90px] rounded-[var(--radius-card)] flex items-center justify-center bg-white/10">
             <span className="text-text text-xl">+</span>
           </div>
-          <p className="text-[length:var(--text-body-sm)] leading-tight text-center truncate w-full">&nbsp;</p>
-          <div className="h-6" />
+          <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
+            <p className="text-[11px] font-bold text-text text-center truncate w-full leading-tight">&nbsp;</p>
+            <div className="h-6" />
+          </div>
         </div>
       ))}
     </div>
