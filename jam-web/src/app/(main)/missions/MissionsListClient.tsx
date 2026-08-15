@@ -188,8 +188,8 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
             return (
               <Link key={m.id} href={`/missions/${m.id}`}>
                 <Card className={`active:scale-[0.98] transition-transform duration-100 overflow-hidden ${!started ? 'opacity-60' : ''}`}>
-                  {m.image_url && (
-                    <div className="relative aspect-video -mx-6 -mt-6 mb-4 w-[calc(100%+3rem)] overflow-hidden rounded-t-[var(--radius-cards)]">
+                  <div className="relative aspect-video -mx-6 -mt-6 mb-4 w-[calc(100%+3rem)] overflow-hidden rounded-t-[var(--radius-cards)] bg-[var(--color-bg-tint)]">
+                    {m.image_url && (
                       <Image
                         src={m.image_url}
                         alt={`${m.title} 썸네일`}
@@ -197,8 +197,8 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
                         className="object-cover"
                         sizes="(max-width: 640px) 100vw, 640px"
                       />
-                    </div>
-                  )}
+                    )}
+                  </div>
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
