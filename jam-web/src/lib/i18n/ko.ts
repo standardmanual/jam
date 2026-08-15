@@ -514,6 +514,7 @@ export const ko = {
     eyebrow: '아이템 믹스',
     title: '믹스',
     selectedCount: '선택한 아이템 ({count}/{max})',
+    slotOnboarding: '인벤토리에서 아이템을 골라 믹스해 보세요',
     combineButton: '믹스하기',
     hintsTitle: '힌트',
     hintUnknown: '???',
