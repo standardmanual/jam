@@ -74,4 +74,4 @@ category: Component / Pattern
 
 - 날짜: 2026-08-15
 - 환경: staging 브랜치
-- 커밋: (이하 참조)
+- 커밋: `9f729a4`

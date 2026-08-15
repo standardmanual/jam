@@ -11,6 +11,7 @@ import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import PopInNumber from '@/components/ui/PopInNumber'
@@ -288,48 +289,17 @@ export default function ProfileClient({
       }
       return (
         <div className="grid grid-cols-2 gap-[var(--spacing-8)]">
-          {itembooksData.map(book => {
-            const pct = book.totalBadgeCount > 0 ? Math.round((book.slottedCount / book.totalBadgeCount) * 100) : 0
-            return (
-              <Link
-                key={book.id}
-                href={`/itembooks/${book.id}?u=${username}`}
-                className={[
-                  'flex flex-col rounded-[var(--radius-cards)] p-[var(--spacing-16)] gap-[var(--spacing-8)]',
-                  'bg-surface-inverse text-text-inverse',
-                  'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]',
-                  'transition-transform duration-100 active:scale-[0.98]',
-                ].join(' ')}
-              >
-                <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                  {book.image_url ? (
-                    <Image src={book.image_url} alt={book.name} fill className="object-contain p-1.5" />
-                  ) : (
-                    <BookIcon className="w-10 h-10 text-text-inverse/40" />
-                  )}
-                  {book.isCompleted && (
-                    <span className="absolute top-1.5 right-1.5 bg-surface text-text text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)]">
-                      {d.profile.itembookCompleted}
-                    </span>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
-                  {book.faction && (
-                    <p className="text-[length:var(--text-caption)] text-text-inverse/60 truncate">{book.faction.name}</p>
-                  )}
-                </div>
-                <div className="mt-auto flex items-center gap-[var(--spacing-8)]">
-                  <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                    <div className="h-full bg-surface transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="text-[length:var(--text-caption)] text-text-inverse/60 tabular-nums shrink-0">
-                    {t(d.profile.itembookProgress, { done: book.slottedCount, total: book.totalBadgeCount })}
-                  </span>
-                </div>
-              </Link>
-            )
-          })}
+          {itembooksData.map(book => (
+            <CollectionGridCard
+              key={book.id}
+              href={`/itembooks/${book.id}?u=${username}`}
+              name={book.name}
+              imageUrl={book.image_url ?? null}
+              collected={book.slottedCount}
+              total={book.totalBadgeCount}
+              completed={book.isCompleted}
+            />
+          ))}
         </div>
       )
     }
