@@ -487,7 +487,7 @@ export const ko = {
     emptyBody: '아이템 배지를 모아봐요!',
     userEyebrowPrefix: '님이 발견한 아이템북',
     completed: '완성',
-    discoveredCount: '{discovered} / {total}',
+    discoveredCount: '{discovered} / {total} 발견',
     discoveredCountSimple: '{count}개 발견',
     backToDetail: '배지 상세',
     backToList: '뒤로',

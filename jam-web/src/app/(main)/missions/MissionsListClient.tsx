@@ -195,7 +195,7 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
                         {m.ends_at === null && tab !== 'ended' && <Tag>{d.missions.tagPermanent}</Tag>}
                         {m.done && <Tag>{d.missions.tagDone}</Tag>}
                         {!m.done && m.joined && <Tag>{d.missions.tagJoined}</Tag>}
-                        {!started && <Tag>{d.missions.tagUpcoming}</Tag>}
+                        {!started && tab !== 'ended' && <Tag>{d.missions.tagUpcoming}</Tag>}
                       </div>
                       {m.description && (
                         <p className="text-text-inverse/60 text-[length:var(--text-caption)]">{m.description}</p>
