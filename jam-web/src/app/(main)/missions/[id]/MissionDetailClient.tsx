@@ -76,7 +76,7 @@ function InfoCard({ children, className = '' }: { children: React.ReactNode; cla
   )
 }
 
-/* ── 미션 타입 / 상태 칩 ── */
+/* ── 미션 상태 칩 ── */
 function StatusChip({ isCompleted, participating }: { isCompleted: boolean; participating: boolean }) {
   if (isCompleted) {
     return (
@@ -168,16 +168,8 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
 
         {/* 히어로 섹션 */}
         <div className="flex flex-col items-center gap-4">
-          {/* 미션명 위 칩 행: 미션 타입 + 상태 */}
-          <div className="flex items-center gap-1.5">
-            <span
-              className="inline-flex items-center px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
-              style={{ background: 'var(--color-primary)', color: '#fff' }}
-            >
-              참가형
-            </span>
-            <StatusChip isCompleted={isCompleted} participating={participating} />
-          </div>
+          {/* 미션 상태 칩 */}
+          <StatusChip isCompleted={isCompleted} participating={participating} />
 
           {/* 제목 + 설명 */}
           <div className="flex flex-col items-center gap-2 text-center">
@@ -189,7 +181,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
             )}
           </div>
 
-          {/* 기간 표시 */}
+          {/* 기간 표시 — 참가 전에만 */}
           {!isCompleted && !participating && (
             <span className="text-[length:var(--text-caption)] text-text-secondary">
               {timeLeft(mission.ends_at)}
@@ -224,7 +216,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
             <SectionLabel>{d.missions.myProgressTitle}</SectionLabel>
 
             {isAchievementType ? (
-              /* 달성형 — 달성/미달성 배지 */
+              /* 달성형 */
               <div className="flex items-center justify-between">
                 <p className="text-[14px] leading-[1.43] text-text-secondary">{goal.label}</p>
                 <span className={`text-[14px] font-bold px-3 py-1 rounded-[var(--radius-pill)] border border-border ${achieved ? 'text-text' : 'text-text-secondary'}`}>
@@ -244,22 +236,22 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                 </div>
                 <div className="h-2 rounded-[var(--radius-pill)] overflow-hidden bg-border">
                   <div
-                    className="h-full rounded-[var(--radius-pill)] transition-all duration-400"
+                    className="h-full rounded-[var(--radius-pill)] transition-all duration-[400ms]"
                     style={{ width: `${isCompleted ? 100 : progressPct}%`, background: 'var(--color-primary)' }}
                   />
                 </div>
-                <div className="flex gap-1.5 pt-1">
+                <div className="flex gap-1.5 pt-1 flex-wrap">
                   {Array.from({ length: goal.target }).map((_, i) => {
-                    const done = i < (isCompleted ? goal.target : Math.floor(progressValue))
+                    const done  = i < (isCompleted ? goal.target : Math.floor(progressValue))
                     const today = !done && i === Math.floor(progressValue) && !isCompleted
                     return (
                       <div
                         key={i}
                         className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 border"
                         style={{
-                          background:   done  ? 'var(--color-primary)' : 'transparent',
-                          borderColor:  done  ? 'var(--color-primary)' : today ? 'var(--color-primary)' : 'var(--color-border)',
-                          color:        done  ? '#fff' : today ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                          background:  done  ? 'var(--color-primary)' : 'transparent',
+                          borderColor: done  ? 'var(--color-primary)' : today ? 'var(--color-primary)' : 'var(--color-border)',
+                          color:       done  ? '#fff' : today ? 'var(--color-primary)' : 'var(--color-text-secondary)',
                         }}
                       >
                         {i + 1}
@@ -269,7 +261,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                 </div>
               </div>
             ) : (
-              /* 그 외 — 수치 + 프로그레스 바 */
+              /* 수치 + 프로그레스 바 */
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[14px] leading-[1.43] text-text-secondary">
@@ -281,7 +273,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                 </div>
                 <div className="h-2 rounded-[var(--radius-pill)] overflow-hidden bg-border">
                   <div
-                    className="h-full rounded-[var(--radius-pill)] transition-all duration-400"
+                    className="h-full rounded-[var(--radius-pill)] transition-all duration-[400ms]"
                     style={{ width: `${isCompleted ? 100 : progressPct}%`, background: 'var(--color-primary)' }}
                   />
                 </div>
@@ -299,7 +291,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
               {rewardBadges.map((badge, idx) => (
                 <div key={badge.id}>
                   {idx > 0 && <div className="h-px bg-border my-4" />}
-                  {/* 배지 보상 행: BadgeFrame(circle) + 텍스트 컬럼 */}
+                  {/* 배지 보상 행: BadgeFrame(circle) + RarityBadge + 텍스트 */}
                   <div className="flex items-center gap-4">
                     <div
                       className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
@@ -311,16 +303,16 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                         <span className="text-2xl">🏅</span>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1 flex-1">
+                    <div className="flex flex-col gap-1 flex-1 min-w-0">
                       <RarityChip rarity={badge.rarity} />
-                      <p className="text-[16px] font-bold leading-[1.2] text-text">{badge.name}</p>
+                      <p className="text-[16px] font-bold leading-[1.2] text-text truncate">{badge.name}</p>
                       <p className="text-[13px] leading-[1.3] text-text-secondary">미션 완료 시 획득</p>
                     </div>
                   </div>
                 </div>
               ))}
 
-              {/* 포인트 보상 행: 이미지 없음, 텍스트만 */}
+              {/* 포인트 보상 행: 이미지 없음 — 텍스트만 */}
               {mission.reward_points ? (
                 <div>
                   {rewardBadges.length > 0 && <div className="h-px bg-border my-4" />}
@@ -359,25 +351,25 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
 
         {/* ── CTA 버튼 ── */}
         {isCompleted ? (
-          /* 완료 */
+          /* 완료 → 종료 (disabled) */
           <button
             disabled
-            className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-default opacity-100"
+            className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-default"
             style={{ background: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
           >
             종료
           </button>
         ) : participating ? (
-          /* 참가 중 */
+          /* 참가 중 (disabled) */
           <button
             disabled
-            className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-default opacity-100"
+            className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-default"
             style={{ background: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
           >
             {d.missions.tagJoined}
           </button>
         ) : isActive ? (
-          /* 참가 전 */
+          /* 참가 전 → 참가하기 */
           confirming ? (
             <div
               ref={confirmPanelRef}
@@ -403,7 +395,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setConfirming(true)}
-                className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] transition-opacity active:scale-95 transition-transform duration-100"
+                className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-pointer active:scale-95 transition-transform duration-100"
                 style={{ background: '#fff', color: '#000' }}
               >
                 참가하기
