@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { CloseIcon, MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
@@ -392,8 +393,7 @@ export default function DropsClient() {
                     >
                       <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center">
                         {drop.badge_image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={drop.badge_image_url} alt={drop.badge_name} className="w-full h-full object-contain p-0.5" />
+                          <Image src={drop.badge_image_url} alt={drop.badge_name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
                         ) : (
                           <MedalIcon className="w-5 h-5 text-text-inverse/40" />
                         )}
@@ -415,8 +415,7 @@ export default function DropsClient() {
                   <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
                     <div className="w-20 h-20 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden flex items-center justify-center">
                       {pendingDropItem.badgeImageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={pendingDropItem.badgeImageUrl} alt={pendingDropItem.badgeName} className="w-full h-full object-contain p-1" />
+                        <Image src={pendingDropItem.badgeImageUrl} alt={pendingDropItem.badgeName} width={80} height={80} className="w-full h-full object-contain p-1" />
                       ) : (
                         <MedalIcon className="w-8 h-8 text-text-inverse/40" />
                       )}

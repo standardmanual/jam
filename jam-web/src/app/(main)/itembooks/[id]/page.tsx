@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
   BadgeRow,
@@ -182,8 +183,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         <div className="flex gap-[var(--spacing-16)] items-start mb-[var(--spacing-16)]">
           {book.image_url ? (
             <div className="w-20 h-20 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1" />
+              <Image src={book.image_url} alt={book.name} width={80} height={80} className="w-full h-full object-contain p-1" />
             </div>
           ) : (
             <div className="w-20 h-20 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0 flex items-center justify-center">
@@ -260,10 +260,9 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                 const earned = earnedPoiBadgeIds.has(poiBadge.id)
                 return (
                   <Card key={poiBadge.id} className={`flex flex-col items-center text-center gap-1 p-[var(--spacing-8)] ${earned ? '' : 'opacity-50'}`}>
-                    <div className="w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
+                    <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
                       {poiBadge.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={poiBadge.image_url} alt={poiBadge.name} className={`w-full h-full object-contain ${earned ? '' : 'grayscale'}`} />
+                        <Image src={poiBadge.image_url} alt={poiBadge.name} fill className={`object-contain ${earned ? '' : 'grayscale'}`} />
                       ) : (
                         <PinIcon className="w-6 h-6 text-text-inverse/30" />
                       )}

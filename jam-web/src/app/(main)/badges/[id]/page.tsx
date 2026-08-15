@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ActivityType, BadgeCondition, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
@@ -365,8 +366,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               ].join(' ')}
             >
               {badgeRow.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={badgeRow.image_url} alt={badgeRow.name} className="object-contain w-full h-full p-3" />
+                <Image src={badgeRow.image_url} alt={badgeRow.name} width={128} height={128} className="object-contain w-full h-full p-3" />
               ) : (
                 <MedalIcon className="w-12 h-12 text-text-inverse/40" />
               )}
@@ -454,8 +454,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               <Card className="mt-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
                 {itemBook.image_url ? (
                   <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={itemBook.image_url} alt={itemBook.name} className="w-full h-full object-contain p-1" />
+                    <Image src={itemBook.image_url} alt={itemBook.name} width={44} height={44} className="w-full h-full object-contain p-1" />
                   </div>
                 ) : (
                   <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">
@@ -504,8 +503,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             ].join(' ')}
           >
             {badgeRow.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={badgeRow.image_url} alt={badgeRow.name} className="w-full h-full object-contain p-[var(--spacing-16)]" />
+              <Image src={badgeRow.image_url} alt={badgeRow.name} width={176} height={176} className="w-full h-full object-contain p-[var(--spacing-16)]" />
             ) : (
               <MedalIcon className="w-16 h-16 text-text-inverse/40" />
             )}
@@ -551,8 +549,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                         ].join(' ')}
                       >
                         {p.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.image_url} alt={p.name} className="w-full h-full object-contain p-2" />
+                          <Image src={p.image_url} alt={p.name} width={48} height={48} className="w-full h-full object-contain p-2" />
                         ) : (
                           <MedalIcon className="w-5 h-5 text-text-inverse/40" />
                         )}

@@ -24,7 +24,7 @@ export function ItemBookList({
         <div className="grid grid-cols-1 gap-3">
           {itemBooks.length === 0 ? (
             <div className="rounded-lg border border-border bg-muted/50 py-10 text-center">
-              <p className="text-sm text-muted-foreground">등록된 아이템북이 없습니다.</p>
+              <p className="text-sm text-muted-foreground">등록된 컬렉션이 없습니다.</p>
             </div>
           ) : (
             itemBooks.map((book) => (

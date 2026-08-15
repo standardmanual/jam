@@ -3,6 +3,7 @@
 import { useCallback, useState, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
@@ -273,8 +274,7 @@ export default function ProfileClient({
               >
                 <div className="w-[66px] h-[66px] flex items-center justify-center shrink-0">
                   {meta.badge_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={meta.badge_image_url} alt={meta.badge_name} className="w-full h-full object-contain" />
+                    <Image src={meta.badge_image_url} alt={meta.badge_name} width={66} height={66} className="w-full h-full object-contain" />
                   ) : (
                     <MedalIcon className="w-full h-full text-text-inverse/40" />
                   )}
@@ -312,8 +312,7 @@ export default function ProfileClient({
               >
                 <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                   {book.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1.5" />
+                    <Image src={book.image_url} alt={book.name} fill className="object-contain p-1.5" />
                   ) : (
                     <BookIcon className="w-10 h-10 text-text-inverse/40" />
                   )}
@@ -363,8 +362,7 @@ export default function ProfileClient({
           >
             <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0 min-h-11">
               {u.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={u.avatar_url} alt={u.username ?? ''} className="w-11 h-11 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+                <Image src={u.avatar_url} alt={u.username ?? ''} width={44} height={44} className="w-11 h-11 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
               ) : (
                 <div className="w-11 h-11 rounded-full bg-surface text-text flex items-center justify-center shrink-0">
                   <UserIcon className="w-5 h-5" />
@@ -423,10 +421,11 @@ export default function ProfileClient({
         {/* 프로필 헤더 */}
         <Card className="flex items-center gap-[var(--spacing-16)]">
           {profile?.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={profile.avatar_url}
               alt={d.profile.avatarAlt}
+              width={64}
+              height={64}
               className="w-16 h-16 rounded-[var(--radius-cards)] object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]"
             />
           ) : (

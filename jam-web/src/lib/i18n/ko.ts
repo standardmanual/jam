@@ -54,7 +54,7 @@ export const ko = {
 
     // 빈 상태
     emptyBadges: '아직 겟한 배지가 없어요',
-    emptyItembooks: '아직 발견한 아이템북이 없어요',
+    emptyItembooks: '아직 발견한 컬렉션이 없어요',
     emptyFollowers: '아직 팔로워가 없어요',
     emptyFollowing: '아직 팔로잉이 없어요',
 
@@ -66,7 +66,7 @@ export const ko = {
   /** 프로필 통계바 탭 */
   tabs: {
     badge: '배지',
-    itembooks: '아이템북',
+    itembooks: '컬렉션',
     followers: '팔로워',
     following: '팔로잉',
   },
@@ -130,7 +130,7 @@ export const ko = {
     syncFailed: '동기화 실패. 잠시 후 다시 시도해주세요',
     syncBadgeDone: '배지 {count}개 겟',
     syncMissionDone: '미션 {count}개 달성',
-    syncItembookDone: '아이템북 {count}개 완성',
+    syncItembookDone: '컬렉션 {count}개 완성',
 
     // 유저 검색
     searchPlaceholder: '아이디 또는 이메일로 유저 검색',
@@ -167,7 +167,7 @@ export const ko = {
     badgeSpotlight: '배지 소개',
     progressNudge: '진행 알림',
     missionSpotlight: '미션',
-    itembookMilestone: '아이템북',
+    itembookMilestone: '컬렉션',
     locationTrend: '지역 트렌드',
     dropAlert: '드랍',
     editorialArticle: '기사',
@@ -181,7 +181,7 @@ export const ko = {
     tabActivity: '액티비티',
     tabItem: '아이템',
     tabPoi: '장소',
-    tabItembook: '아이템북',
+    tabItembook: '컬렉션',
 
     emptyActivityTitle: '아직 겟한 배지가 없어요',
     emptyActivityBody: 'Strava를 동기화하고 활동하면 배지를 겟할 수 있어요',
@@ -189,8 +189,8 @@ export const ko = {
     emptyItemBody: '활동을 완료하면 확률로 아이템 배지가 드랍돼요',
     emptyPoiTitle: '아직 겟한 장소 배지가 없어요',
     emptyPoiBody: '산, 지하철역 등을 지나는 활동을 기록하면 배지를 겟할 수 있어요',
-    emptyItembookTitle: '아직 아이템북이 없어요',
-    emptyItembookBody: '관리자가 아이템북을 등록하면 이 곳에 표시돼요',
+    emptyItembookTitle: '아직 컬렉션이 없어요',
+    emptyItembookBody: '관리자가 컬렉션을 등록하면 이 곳에 표시돼요',
 
     expiringSoon: '곧 만료',
     itembookCompleted: '완성',
@@ -261,7 +261,7 @@ export const ko = {
     expiringSuffix: ' 만료',
     rarity: '희귀도',
     noDescription: '설명이 없어요',
-    belongsToItembook: '속한 아이템북',
+    belongsToItembook: '속한 컬렉션',
     expiringSoonTitle: '만료 임박',
     expiringSoonBody: '7일 이내에 이 아이템이 만료돼요',
 
@@ -481,22 +481,22 @@ export const ko = {
   /** 아이템북 목록/상세 */
   itembooks: {
     eyebrow: '컬렉션',
-    title: '아이템북',
-    subtitle: '아이템 배지를 모아 아이템북을 완성해보세요',
-    emptyTitle: '아직 발견한 아이템북이 없어요.',
+    title: '컬렉션',
+    subtitle: '아이템 배지를 모아 컬렉션을 완성해보세요',
+    emptyTitle: '아직 발견한 컬렉션이 없어요.',
     emptyBody: '아이템 배지를 모아봐요!',
-    userEyebrowPrefix: '님이 발견한 아이템북',
+    userEyebrowPrefix: '님이 발견한 컬렉션',
     completed: '완성',
     discoveredCount: '{discovered} / {total} 발견',
     discoveredCountSimple: '{count}개 발견',
     backToDetail: '배지 상세',
     backToList: '뒤로',
-    slotHint: '보유한 아이템 배지를 슬롯에 장착해 아이템북을 완성해요',
-    noBadgesTitle: '아직 이 아이템북에 등록된 배지가 없어요.',
+    slotHint: '보유한 아이템 배지를 슬롯에 장착해 컬렉션을 완성해요',
+    noBadgesTitle: '아직 이 컬렉션에 등록된 배지가 없어요.',
     poiHint: 'POI 배지는 해당 장소를 지나가면 자동으로 채워져요',
     poiEarned: '겟',
     poiNotEarned: '미겟',
-    completedTitle: '아이템북 완성!',
+    completedTitle: '컬렉션 완성!',
     completedBody: '모든 아이템 배지를 슬롯에 장착했어요',
     unknownBadge: '???',
     slotLoginRequired: '로그인이 필요해요.',

@@ -408,7 +408,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
         {/* 소속 아이템북 */}
         <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-sm text-[#374151]">소속 아이템북</span>
+          <span className="text-sm text-[#374151]">소속 컬렉션</span>
           <select
             value={itemBookId}
             onChange={(e) => setItemBookId(e.target.value)}
@@ -442,7 +442,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                   const pct = total > 0 ? Math.round((own / total) * 1000) / 10 : 0
                   return (
                     <span className="text-xs text-[#898989]">
-                      같은 아이템북·희귀도 내 다른 배지 {siblingWeightSum > 0 ? `(가중치 합 ${siblingWeightSum.toFixed(1)})` : ''}
+                      같은 컬렉션·희귀도 내 다른 배지 {siblingWeightSum > 0 ? `(가중치 합 ${siblingWeightSum.toFixed(1)})` : ''}
                       {' '}대비 이 배지가 뽑힐 상대 확률 약 <strong className="text-[#374151]">{pct}%</strong>
                       {siblingWeightSum === 0 && ' (이 믹스의 첫 배지)'}
                     </span>

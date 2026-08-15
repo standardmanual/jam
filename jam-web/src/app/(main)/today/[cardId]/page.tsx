@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { getPublishedArticleCard } from '@/lib/today/cards'
 import LocalDate from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
@@ -26,9 +27,8 @@ export default async function TodayArticlePage({ params }: Props) {
   return (
     <div className="min-h-full bg-surface text-text pb-[var(--spacing-40)]">
       {card.cover_image_url && (
-        <div className="w-full aspect-[16/10] overflow-hidden shadow-[inset_0_-1px_0_0_var(--color-border)]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={card.cover_image_url} alt={card.title} className="w-full h-full object-cover" />
+        <div className="relative w-full aspect-[16/10] overflow-hidden shadow-[inset_0_-1px_0_0_var(--color-border)]">
+          <Image src={card.cover_image_url} alt={card.title} fill className="object-cover" />
         </div>
       )}
 

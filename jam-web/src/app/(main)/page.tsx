@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/types/database'
@@ -54,8 +55,7 @@ export default async function HomePage() {
       {/* 헤더 */}
       <div>
         <div className="flex items-center justify-between mb-[var(--spacing-16)]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/jam-logo-white.png" alt="JAM!" className="h-[30px] w-auto" />
+          <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[30px] w-auto" priority />
         </div>
         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.today.greeting}</p>
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] mt-0.5">
@@ -114,8 +114,7 @@ export default async function HomePage() {
                 <Card className="aspect-square flex flex-col justify-between active:scale-[0.98] transition-transform duration-100">
                   <div className="flex-1 flex items-center justify-center">
                     {badge.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={badge.image_url} alt={badge.name} className="w-20 h-20 object-contain" />
+                      <Image src={badge.image_url} alt={badge.name} width={80} height={80} className="w-20 h-20 object-contain" />
                     ) : (
                       <MedalIcon className="w-14 h-14 text-text-inverse/40" />
                     )}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useToast } from '@/components/ui/Toast'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -188,8 +189,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                   {rewardBadges.map((b) => (
                     <span key={b.id} className="flex items-center gap-1.5 text-[length:var(--text-caption)] px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                       {b.image_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={b.image_url} alt={`${b.name} 배지`} className="w-4 h-4 object-contain" />
+                        <Image src={b.image_url} alt={`${b.name} 배지`} width={16} height={16} className="w-4 h-4 object-contain" />
                       )}
                       {b.name}
                     </span>
