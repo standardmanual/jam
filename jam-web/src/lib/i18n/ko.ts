@@ -391,6 +391,8 @@ export const ko = {
     statusRankingLabel: '랭킹',
     statusIndividualLabel: '나의 현황',
     statusParticipants: '참가자 {count}명',
+    statusMissionGoal: '미션: {goal}',
+    statusAllRanks: '전체 순위',
     statusLoading: '불러오는 중',
     statusLoadError: '불러오지 못했어요',
     statusMeRanking: '— 내 순위 —',
