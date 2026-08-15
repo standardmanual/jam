@@ -168,16 +168,8 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
 
         {/* 히어로 섹션 */}
         <div className="flex flex-col items-center gap-4">
-          {/* 미션명 위 칩 행: 미션 타입 + 상태 */}
-          <div className="flex items-center gap-1.5">
-            <span
-              className="inline-flex items-center px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
-              style={{ background: 'var(--color-primary)', color: '#fff' }}
-            >
-              참가형
-            </span>
-            <StatusChip isCompleted={isCompleted} participating={participating} />
-          </div>
+          {/* 미션 상태 칩 */}
+          <StatusChip isCompleted={isCompleted} participating={participating} />
 
           {/* 제목 + 설명 */}
           <div className="flex flex-col items-center gap-2 text-center">
