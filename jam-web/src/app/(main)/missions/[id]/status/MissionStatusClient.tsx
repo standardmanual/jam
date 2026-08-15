@@ -44,6 +44,7 @@ interface Props {
 
 function Avatar({ url }: { url: string | null }) {
   if (url) {
+    // 아바타 이미지 — 주변 텍스트가 식별자 역할을 하므로 alt 의도적 빈값
     return <Image src={url} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover shrink-0" />
   }
   return (

@@ -62,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (badgeErr || !badge) return NextResponse.json({ error: '배지를 찾을 수 없습니다.' }, { status: 404 })
   if (badge.item_book_id !== itemBookId) {
-    return NextResponse.json({ error: '이 배지는 해당 컬렉션에 속하지 않습니다.' }, { status: 400 })
+    return NextResponse.json({ error: '이 배지는 해당 컬렉션에 속하지 않아요.' }, { status: 400 })
   }
 
   // 3) user_item_book_slots INSERT
