@@ -1,14 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import Card from '@/components/ui/Card'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
-import { ChevronRightIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
 type TabKey = 'activity' | 'poi' | 'itembook'
@@ -268,46 +266,22 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
           )
         )}
 
-        {/* 아이템북 탭 */}
+        {/* 컬렉션 탭 */}
         {activeTab === 'itembook' && (
           itemBooks.length > 0 ? (
-            <div className="flex flex-col gap-[var(--spacing-16)]">
+            <div className="grid grid-cols-2 gap-[var(--spacing-8)]">
               {itemBooks.map((book) => {
                 const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false }
-                const pct = Math.round((progress.owned / progress.total) * 100)
                 return (
-                  <Link key={book.id} href={`/itembooks/${book.id}?from=badges`}>
-                    <Card className="active:scale-[0.98] transition-transform duration-100">
-                      <div className="flex gap-[var(--spacing-16)] mb-[var(--spacing-16)]">
-                        {book.image_url && (
-                          <div className="w-14 h-14 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
-                              <Image src={book.image_url} alt={book.name} width={56} height={56} className="w-full h-full object-contain p-1" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{book.name}</h3>
-                            {progress.completed ? (
-                              <span className="text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ml-2 shrink-0">
-                                {d.badges.itembookCompleted}
-                              </span>
-                            ) : (
-                              <ChevronRightIcon className="w-4 h-4 text-text-inverse/30 shrink-0 ml-2 mt-0.5" />
-                            )}
-                          </div>
-                          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-0.5 line-clamp-2">{book.description}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-[var(--spacing-16)]">
-                        <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                          <div className="h-full bg-surface transition-all duration-500" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-[length:var(--text-caption)] text-text-inverse/50 tabular-nums shrink-0">
-                          {progress.owned} / {progress.total}
-                        </span>
-                      </div>
-                    </Card>
-                  </Link>
+                  <CollectionGridCard
+                    key={book.id}
+                    href={`/itembooks/${book.id}?from=badges`}
+                    name={book.name}
+                    imageUrl={book.image_url ?? null}
+                    collected={progress.owned}
+                    total={progress.total}
+                    completed={progress.completed}
+                  />
                 )
               })}
             </div>
