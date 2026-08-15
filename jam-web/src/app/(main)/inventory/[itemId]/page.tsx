@@ -3,8 +3,8 @@ import { redirect, notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import RarityBadge from '@/components/ui/Badge'
-import Card from '@/components/ui/Card'
 import TopNav from '@/components/ui/TopNav'
+import ListRowCard from '@/components/ui/ListRowCard'
 import { MedalIcon, BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { InventoryItemRow, BadgeRow, ItemBookRow } from '@/types/database'
 import LocalDate from '@/components/LocalDate'
@@ -62,97 +62,105 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
   }
 
   const expiring = isExpiringSoon(item.expires_at)
-  const serial = `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`
 
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full bg-[var(--color-bg)] text-text">
       <TopNav title={d.common.back} backHref="/inventory" />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
-        {/* 배지 이미지 */}
-        <div className="flex flex-col items-center mb-[var(--spacing-24)]">
-          <div className="w-32 h-32 rounded-[var(--radius-cards)] overflow-hidden bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center mb-[var(--spacing-16)]">
-            {item.badge.image_url ? (
-              <Image src={item.badge.image_url} alt={item.badge.name} width={128} height={128} className="object-contain w-full h-full p-3" />
-            ) : (
-              <MedalIcon className="w-12 h-12 text-text-inverse/40" />
-            )}
+      {/* hero-section */}
+      <div className="flex flex-col items-center gap-4 pt-[32px] px-6">
+        <div className="w-[200px] h-[200px] rounded-full bg-white overflow-hidden flex items-center justify-center">
+          {item.badge.image_url ? (
+            <Image
+              src={item.badge.image_url}
+              alt={item.badge.name}
+              width={200}
+              height={200}
+              className="object-contain w-full h-full p-[var(--spacing-16)]"
+            />
+          ) : (
+            <MedalIcon className="w-20 h-20 text-black/20" />
+          )}
+        </div>
+        <RarityBadge rarity={item.badge.rarity} />
+        <Link
+          href={`/badges/${item.badge.id}`}
+          className="text-[12px] text-[var(--color-text-secondary)] text-center"
+        >
+          배지 상세
+        </Link>
+        <h1 className="text-[36px] font-bold text-text text-center leading-tight">{item.badge.name}</h1>
+      </div>
+
+      <hr className="border-0 border-t border-[var(--color-border)]" />
+
+      {/* info-section */}
+      <div className="flex flex-col gap-1 p-6">
+        {/* 메인 정보 카드 */}
+        <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[20px] overflow-hidden">
+          <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
+            <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.obtainedAt}</span>
+            <span className="text-[14px] text-text">
+              <LocalDate iso={item.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
+            </span>
           </div>
-          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center mb-2">{item.badge.name}</h1>
-          <div className="flex items-center gap-2">
+          <hr className="border-0 border-t border-[var(--color-border)]" />
+          <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
+            <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.expiresAt}</span>
+            <span className="text-[14px] text-text">
+              {item.expires_at ? (
+                <LocalDate iso={item.expires_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
+              ) : (
+                d.inventory.expiresNone
+              )}
+            </span>
+          </div>
+          <hr className="border-0 border-t border-[var(--color-border)]" />
+          <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
+            <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.rarity}</span>
             <RarityBadge rarity={item.badge.rarity} />
-            <span className="text-text/40 text-[length:var(--text-caption)] font-mono">{serial}</span>
           </div>
         </div>
+      </div>
 
-        {/* 정보 카드 */}
-        <Card className="p-0 overflow-hidden mb-[var(--spacing-16)]">
-          <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-            <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.inventory.infoSectionTitle}</p>
-          </div>
-          <div>
-            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.serialNumber}</span>
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-mono tracking-widest">{serial}</span>
-            </div>
-            <InventoryItemHistorySheet itemId={itemId} obtainedBy={item.obtained_by} />
-            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.obtainedAt}</span>
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]"><LocalDate iso={item.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} /></span>
-            </div>
-            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.expiresAt}</span>
-              <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] ${expiring ? '' : item.expires_at ? '' : 'text-text-inverse/40'}`}>
-                {item.expires_at ? <LocalDate iso={item.expires_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} /> : d.inventory.expiresNone}
-                {expiring && ` · ${d.inventory.expiringSoonTitle}`}
-              </span>
-            </div>
-            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.rarity}</span>
-              <RarityBadge rarity={item.badge.rarity} />
-            </div>
-          </div>
-        </Card>
+      <hr className="border-0 border-t border-[var(--color-border)]" />
 
-        {/* 배지 설명 */}
-        <Card className="p-0 overflow-hidden">
-          <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-            <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.inventory.descSectionTitle}</p>
-          </div>
-          <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
-              {item.badge.description || d.inventory.noDescription}
-            </p>
-          </div>
-        </Card>
+      {/* desc-section */}
+      <div className="flex flex-col gap-4 px-6 pt-6 pb-[40px]">
+        <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider">{d.inventory.descSectionTitle}</p>
+        <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[20px] p-6">
+          <p className="text-[13px] text-[var(--color-text-secondary)] text-center leading-[1.6]">
+            {item.badge.description || d.inventory.noDescription}
+          </p>
+        </div>
 
         {/* 연결된 아이템북 */}
         {itemBook && (
-          <Link href={`/itembooks/${itemBook.id}?from=badge&itemId=${itemId}`}>
-            <Card className="mt-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
-              {itemBook.image_url ? (
-                <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
+          <ListRowCard
+            href={`/itembooks/${itemBook.id}?from=badge&itemId=${itemId}`}
+            icon={
+              itemBook.image_url ? (
+                <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0">
                   <Image src={itemBook.image_url} alt={itemBook.name} width={44} height={44} className="w-full h-full object-contain p-1" />
                 </div>
               ) : (
-                <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">
-                  <BookIcon className="w-5 h-5 text-text-inverse/50" />
+                <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center shrink-0">
+                  <BookIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50">{d.inventory.belongsToItembook}</p>
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{itemBook.name}</p>
-              </div>
-              <ChevronRightIcon className="w-4 h-4 text-text-inverse/30 shrink-0" />
-            </Card>
-          </Link>
+              )
+            }
+            title={itemBook.name}
+            subtitle={d.inventory.belongsToItembook}
+            trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
+          />
         )}
 
+        {/* 만료 임박 안내 */}
         {expiring && (
-          <Card className="mt-[var(--spacing-16)]">
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.inventory.expiringSoonTitle}</p>
-            <p className="text-[length:var(--text-caption)] text-text-inverse/60 mt-0.5">{d.inventory.expiringSoonBody}</p>
-          </Card>
+          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+            <p className="text-[15px] text-text">{d.inventory.expiringSoonTitle}</p>
+            <p className="text-[13px] text-[var(--color-text-secondary)] mt-0.5">{d.inventory.expiringSoonBody}</p>
+          </div>
         )}
       </div>
     </div>
