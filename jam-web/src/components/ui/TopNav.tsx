@@ -27,6 +27,8 @@ export interface TopNavProps {
    * 되돌아갈 곳이 없는 chevron이 뜨지 않게 합니다.
    */
   showBack?: boolean
+  /** header 엘리먼트에 적용할 인라인 스타일. bg/color 오버라이드에 사용. */
+  headerStyle?: React.CSSProperties
 }
 
 // 터치 영역은 44×44pt를 유지하되, 아이콘을 오른쪽(제목 쪽)으로 붙여 아이콘 자체의
@@ -48,7 +50,7 @@ function ChevronLeft() {
   )
 }
 
-export default function TopNav({ title, onBack, backHref, rightSlot, showBack = true }: TopNavProps) {
+export default function TopNav({ title, onBack, backHref, rightSlot, showBack = true, headerStyle }: TopNavProps) {
   const router = useRouter()
 
   const backClass = [TOUCH, PRESS, 'rounded-[var(--radius-nav-buttons)] -ml-2'].join(' ')
@@ -56,7 +58,7 @@ export default function TopNav({ title, onBack, backHref, rightSlot, showBack = 
   return (
     <header
       className="sticky top-0 z-30 bg-surface text-text"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      style={{ paddingTop: 'env(safe-area-inset-top)', ...headerStyle }}
     >
       <div className="flex items-center gap-2 px-4 h-14">
         {/* 뒤로가기 chevron과 제목 사이 간격만 별도로 좁힌다(gap-1) —
