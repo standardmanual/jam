@@ -55,7 +55,7 @@ export default async function HomePage() {
       {/* 헤더 */}
       <div>
         <div className="flex items-center justify-between mb-[var(--spacing-16)]">
-          <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[30px] w-auto" />
+          <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[30px] w-auto" priority />
         </div>
         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.today.greeting}</p>
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] mt-0.5">
