@@ -8,6 +8,7 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
 import type { MissionRow, MissionCondition } from '@/types/database'
+import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { useTextSwap, useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
@@ -133,8 +134,8 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
               </p>
             </div>
             {condition.activity_type && (
-              <span className="text-[length:var(--text-caption)] capitalize px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                {condition.activity_type}
+              <span className="text-[length:var(--text-caption)] px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+                {ACTIVITY_TYPE_LABELS[condition.activity_type] ?? condition.activity_type}
               </span>
             )}
           </div>
@@ -188,7 +189,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                     <span key={b.id} className="flex items-center gap-1.5 text-[length:var(--text-caption)] px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                       {b.image_url && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={b.image_url} alt="" className="w-4 h-4 object-contain" />
+                        <img src={b.image_url} alt={`${b.name} 배지`} className="w-4 h-4 object-contain" />
                       )}
                       {b.name}
                     </span>
