@@ -26,6 +26,11 @@ export const Success: Story = {
   args: { message: '배지를 획득했어요!', type: 'success', open: true },
 };
 
+export const CustomDismissLabel: Story = {
+  name: '커스텀 dismissLabel',
+  args: { message: '미션을 완료했어요!', type: 'success', open: true, dismissLabel: '완료했어요' },
+};
+
 export const Error: Story = {
   args: { message: '오류가 발생했어요. 다시 시도해 보세요.', type: 'error', open: true },
 };

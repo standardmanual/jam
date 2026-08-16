@@ -42,7 +42,7 @@ export const OnCard: Story = {
       display: 'flex', flexDirection: 'column', gap: 12, width: 240,
     }}>
       <RarityBadge rarity="mythic" />
-      <p style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 700, color: 'var(--color-text)' }}>전설의 배지</p>
+      <p style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 700, color: 'var(--color-text)' }}>Legend 배지</p>
       <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>100km 완주 달성</p>
     </div>
   ),

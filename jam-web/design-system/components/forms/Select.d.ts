@@ -13,6 +13,7 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
   id?: string;
   name?: string;
   'aria-label'?: string;
+  'aria-describedby'?: string;
   /** Visual validation state */
   state?: 'default' | 'error' | 'success';
   disabled?: boolean;

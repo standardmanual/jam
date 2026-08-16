@@ -50,6 +50,55 @@ export const Password: Story = {
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };
 
+export const WithLabel: Story = {
+  name: 'label 연결 패턴 (htmlFor + id)',
+  render: () => (
+    <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label htmlFor="nickname-input" style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
+        닉네임
+      </label>
+      <Input id="nickname-input" placeholder="닉네임을 입력하세요" />
+    </div>
+  ),
+};
+
+export const WithLabelAndError: Story = {
+  name: 'label + 오류 메시지 연결 (aria-describedby)',
+  render: () => (
+    <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label htmlFor="email-input" style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
+        이메일
+      </label>
+      <Input
+        id="email-input"
+        value="invalid@"
+        state="error"
+        aria-describedby="email-error"
+        onChange={() => {}}
+      />
+      <p id="email-error" role="alert" style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-rarity-mythic)' }}>
+        올바른 이메일 형식이 아니에요.
+      </p>
+    </div>
+  ),
+};
+
+export const InverseSurface: Story = {
+  name: 'inverse surface (검색바)',
+  render: () => (
+    <div style={{ padding: 20, background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
+      <div style={{ width: 320 }}>
+        <Input
+          surface="inverse"
+          placeholder="사용자 이름 검색"
+          aria-label="사용자 검색"
+          type="search"
+        />
+      </div>
+    </div>
+  ),
+};
+
 export const Interactive: Story = {
   name: '인터랙티브 (입력 가능)',
   render: () => {
