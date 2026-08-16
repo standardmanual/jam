@@ -15,6 +15,7 @@ export interface MissionListItem extends MissionRow {
 interface Props {
   ongoing: MissionListItem[] // 종료되지 않은 미션 전체 (시작 전 포함)
   ended: MissionListItem[] // 종료된 미션 중 내가 참여했던 것만
+  rewardBadgeNames: Record<string, string> // badge_id → 배지 이름 맵
 }
 
 type Tab = 'ongoing' | 'joined' | 'ended'
@@ -59,11 +60,14 @@ function isNewMission(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() <= NEW_MISSION_WINDOW_MS
 }
 
-// Phase13: 보상은 배지 복수 + 포인트 조합 — 목록에서는 간단히 요약
-function rewardSummary(m: MissionRow): string {
+// Phase13: 보상은 배지 복수 + 포인트 조합 — 배지는 "배지명 배지" 형식으로 표시
+function rewardSummary(m: MissionRow, badgeNames: Record<string, string>): string {
   const parts: string[] = []
-  const badgeCount = m.reward_badge_ids?.length ?? 0
-  if (badgeCount > 0) parts.push(t(d.missions.rewardBadgeCount, { count: badgeCount }))
+  const ids = m.reward_badge_ids ?? []
+  for (const id of ids) {
+    const name = badgeNames[id]
+    parts.push(name ? `${name} 배지` : t(d.missions.rewardBadgeCount, { count: 1 }))
+  }
   if (m.reward_points) parts.push(t(d.missions.rewardPoints, { points: m.reward_points }))
   return parts.length > 0 ? parts.join(' + ') : d.missions.rewardNone
 }
@@ -112,6 +116,25 @@ function StatusBadge({ children }: { children: React.ReactNode }) {
   )
 }
 
+// 참가중 태그 — 강조 스타일
+function JoinedBadge() {
+  return (
+    <span
+      style={{
+        background: C_REWARD,
+        color: '#FFFFFF',
+        fontSize: '10px',
+        fontWeight: 700,
+        lineHeight: 1,
+        padding: '3px 6px',
+        borderRadius: '999px',
+      }}
+    >
+      {d.missions.tagJoined}
+    </span>
+  )
+}
+
 // 기간 텍스트 — ended 탭이면 tagEnded, 상시면 tagPermanent, 그 외 N일 N시간 남음
 function periodText(m: MissionListItem, tab: Tab): string {
   if (tab === 'ended') return d.missions.tagEnded
@@ -132,7 +155,7 @@ function statusLabel(m: MissionListItem, started: boolean): string | null {
   return null
 }
 
-export default function MissionsListClient({ ongoing, ended }: Props) {
+export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }: Props) {
   const [tab, setTab] = useState<Tab>('ongoing')
   const [sortKey, setSortKey] = useState<SortKey>('newest')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
@@ -174,23 +197,30 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
     d.missions.emptyEnded
 
   return (
-    <>
-      {/* Tabs sliding (16-tabs-sliding.md) */}
-      <div className="mb-[var(--spacing-16)]">
+    <div className="min-h-full bg-surface text-text">
+      {/* 헤더 — 배지 메뉴와 동일한 구조 */}
+      <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]">
+        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.missions.title}</h1>
+      </div>
+
+      {/* 탭 헤더 — 배지 메뉴와 동일한 구조 */}
+      <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
         <SlidingTabs
           items={TABS}
           value={tab}
           onChange={setTab}
-          aria-label={d.missions.filterButton}
+          outlined={false}
+          aria-label={d.missions.title}
         />
       </div>
 
-      {/* 필터 드롭다운 — 배지 탭과 동일한 방식 */}
+      <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)]">
+      {/* 필터 드롭다운 — 배지 탭과 동일한 스타일 */}
       <div className="flex gap-2 mb-[var(--spacing-16)]">
         <select
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
-          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
         >
           {SORT_OPTIONS.map((s) => (
             <option key={s.key} value={s.key}>{s.label}</option>
@@ -199,7 +229,7 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
         <select
           value={activityFilter}
           onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
-          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
         >
           <option value="all">{d.missions.activityTypeAll}</option>
           {ACTIVITY_TYPES.map((tp) => (
@@ -209,7 +239,7 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as MissionType | 'all')}
-          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
         >
           <option value="all">{d.missions.missionTypeAll}</option>
           {MISSION_TYPES.map((tp) => (
@@ -223,13 +253,13 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
           <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{emptyText}</p>
         </div>
       ) : (
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-[var(--spacing-8)]">
           {list.map((m) => {
             const started = new Date(m.starts_at) <= new Date()
             const newMission = isNewMission(m.created_at)
             const sLabel = statusLabel(m, started)
             const period = periodText(m, tab)
-            const reward = rewardSummary(m)
+            const reward = rewardSummary(m, rewardBadgeNames)
             return (
               <Link key={m.id} href={`/missions/${m.id}`} className="active:opacity-70 transition-opacity duration-100">
                 {/* Figma mission-item-1 카드 */}
@@ -238,7 +268,7 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
                     display: 'flex',
                     flexDirection: 'row',
                     alignItems: 'flex-start',
-                    padding: '8px 0',
+                    padding: '12px 0',
                     gap: '16px',
                     opacity: !started ? 0.6 : 1,
                   }}
@@ -274,7 +304,11 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
                     {/* meta-row */}
                     <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'center' }}>
                       {newMission && <NewBadge />}
-                      {sLabel && <StatusBadge>{sLabel}</StatusBadge>}
+                      {m.joined && !m.done ? (
+                        <JoinedBadge />
+                      ) : sLabel ? (
+                        <StatusBadge>{sLabel}</StatusBadge>
+                      ) : null}
                       <span style={{ fontSize: '11px', color: C_META_TEXT, lineHeight: 1 }}>{period}</span>
                     </div>
 
@@ -312,6 +346,7 @@ export default function MissionsListClient({ ongoing, ended }: Props) {
           })}
         </div>
       )}
-    </>
+      </div>
+    </div>
   )
 }
