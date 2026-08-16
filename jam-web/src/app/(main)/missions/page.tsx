@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { MissionRow, UserMissionCompletionRow, UserMissionParticipationRow } from '@/types/database'
 import MissionsListClient, { type MissionListItem } from './MissionsListClient'
-import { d } from '@/lib/i18n'
 
 export default async function MissionsPage() {
   const supabase = await createClient()
@@ -34,6 +33,15 @@ export default async function MissionsPage() {
     : { data: [] }
   const endedMissions = (endedRaw ?? []) as MissionRow[]
 
+  // 보상 배지 이름 일괄 fetch — 목록에서 "배지명 배지" 형식으로 표시하기 위해
+  const allMissions = [...ongoingMissions, ...endedMissions]
+  const allRewardBadgeIds = [...new Set(allMissions.flatMap((m) => m.reward_badge_ids ?? []))]
+  let rewardBadgeNames: Record<string, string> = {}
+  if (allRewardBadgeIds.length > 0) {
+    const { data: badgeRows } = await service.from('badges').select('id, name').in('id', allRewardBadgeIds)
+    rewardBadgeNames = Object.fromEntries(((badgeRows ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name]))
+  }
+
   const toItem = (m: MissionRow): MissionListItem => ({
     ...m,
     joined: participationSet.has(m.id),
@@ -41,15 +49,10 @@ export default async function MissionsPage() {
   })
 
   return (
-    <div className="flex flex-col min-h-full px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-32)] bg-surface text-text">
-      <div className="mb-[var(--spacing-24)]">
-        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.missions.title}</h1>
-      </div>
-
-      <MissionsListClient
-        ongoing={ongoingMissions.map(toItem)}
-        ended={endedMissions.map(toItem)}
-      />
-    </div>
+    <MissionsListClient
+      ongoing={ongoingMissions.map(toItem)}
+      ended={endedMissions.map(toItem)}
+      rewardBadgeNames={rewardBadgeNames}
+    />
   )
 }

@@ -10,6 +10,8 @@ const RARITY_CONFIG = {
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
  *
+ * 레이아웃 (위→아래): 썸네일(투명 배경) → 등급 pill → 이름
+ *
  * 상태:
  *   earned: false  → 썸네일 흑백+반투명 (미획득)
  *   undiscovered   → ??? 표시 + 흑백 (아이템북 미발견)
@@ -45,9 +47,7 @@ export function BadgeGridCard({
     borderRadius: 'var(--radius-card)',
     padding: 'var(--spacing-12)',
     overflow: 'hidden',
-    boxShadow: selected
-      ? 'inset 0 0 0 2px var(--color-text)'
-      : 'inset 0 0 0 1px var(--color-border)',
+    boxShadow: selected ? 'inset 0 0 0 2px var(--color-text)' : undefined,
     cursor: interactive ? 'pointer' : undefined,
     transition: interactive ? 'transform 100ms' : undefined,
     textDecoration: 'none',
@@ -63,7 +63,7 @@ export function BadgeGridCard({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'rgba(255,255,255,0.10)',
+    background: 'transparent',
     filter: dimmed ? 'grayscale(1)' : undefined,
     opacity: dimmed ? 0.4 : 1,
     flexShrink: 0,
@@ -100,17 +100,17 @@ export function BadgeGridCard({
         )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4)', paddingTop: 'var(--spacing-8)', width: '100%' }}>
+        <div style={{ minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {!undiscovered && <span style={rarityPillStyle}>{rc.label}</span>}
+        </div>
         <p style={{
-          fontSize: 11, fontWeight: 700, color: 'var(--color-text)',
+          fontSize: 13, fontWeight: 700, color: 'var(--color-text)',
           textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis',
           whiteSpace: 'nowrap', width: '100%', lineHeight: 1.3,
           fontFamily: 'var(--font-family-base)',
         }}>
           {undiscovered ? '???' : name}
         </p>
-        <div style={{ minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {!undiscovered && <span style={rarityPillStyle}>{rc.label}</span>}
-        </div>
       </div>
       {children && <div style={{ width: '100%', marginTop: 'var(--spacing-4)' }}>{children}</div>}
     </>

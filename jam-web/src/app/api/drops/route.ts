@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (invError || !invRaw) {
-    return NextResponse.json({ error: '인벤 없음' }, { status: 404 })
+    return NextResponse.json({ error: '인벤토리 없음' }, { status: 404 })
   }
 
   const inventoryId = (invRaw as { id: string; used_slots: number }).id
@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
 
   // 아이템북에 슬롯된 아이템은 인벤토리에서 이미 빠져나간 상태이므로 드랍 불가
   if (item.slotted_in !== null) {
-    return NextResponse.json({ error: '아이템북에 장착된 아이템은 드랍할 수 없습니다.' }, { status: 409 })
+    return NextResponse.json({ error: '컬렉션에 장착된 아이템은 드랍할 수 없어요.' }, { status: 409 })
   }
 
   // poi_drops INSERT

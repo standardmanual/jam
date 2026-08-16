@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { CloseIcon, MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
@@ -35,6 +36,25 @@ interface InventoryItem {
   badge_rarity: string
   badge_image_url: string | null
 }
+
+// ===== 유틸 =====
+
+/** 두 좌표 간 거리(미터)를 Haversine 공식으로 계산 */
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000 // 지구 반지름(m)
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// ===== 상수 =====
+
+/** 드랍 API 재조회 임계값 (미터). 이 거리 미만 이동은 갱신 무시 */
+const DROP_RELOAD_THRESHOLD_METERS = 20
 
 // ===== 컴포넌트 =====
 
@@ -80,16 +100,32 @@ export default function DropsClient() {
   // POI 바텀시트 진입 — Panel reveal (07). 마운트 다음 프레임에 data-open을 뒤집는다.
   const poiSheetRef = useRevealOnMount<HTMLDivElement>(selectedPoi !== null)
 
-  // 위치 획득
+  // 위치 획득 (실시간 갱신)
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocError(d.drops.locationUnsupported)
       return
     }
-    navigator.geolocation.getCurrentPosition(
+
+    // 이전 좌표를 클로저 내 지역 변수로 관리. ref보다 단순하고
+    // watch 콜백 실행 중에만 필요한 값이므로 state 불필요.
+    let prevLat: number | null = null
+    let prevLng: number | null = null
+
+    const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setUserLat(pos.coords.latitude)
-        setUserLng(pos.coords.longitude)
+        const { latitude, longitude } = pos.coords
+
+        // 이전 위치 대비 이동 거리가 임계값 미만이면 상태 갱신·API 호출 스킵
+        if (prevLat !== null && prevLng !== null) {
+          const moved = haversineMeters(prevLat, prevLng, latitude, longitude)
+          if (moved < DROP_RELOAD_THRESHOLD_METERS) return
+        }
+
+        prevLat = latitude
+        prevLng = longitude
+        setUserLat(latitude)
+        setUserLng(longitude)
       },
       () => setLocError(d.drops.locationDenied)
       // enableHighAccuracy는 넣지 않는다 — 실내에서는 GPS 위성 신호가
@@ -97,6 +133,11 @@ export default function DropsClient() {
       // 값이 나올 수 있음(실측: 동일 장소에서 예전엔 문제없다가 이 옵션을
       // 추가한 뒤 오탐 발생). 기본 동작(정밀도 낮지만 안정적)으로 되돌림.
     )
+
+    // 컴포넌트 언마운트 시 위치 감시 해제 (배터리·리소스 정리)
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+    }
   }, [])
 
   // 근처 POI 로드
@@ -333,7 +374,7 @@ export default function DropsClient() {
       {poisLoading && (
         <div className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] py-2 flex items-center gap-2">
           <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin text-text-inverse" />
-          <span className="text-[11px] text-text-inverse">{d.drops.exploring}</span>
+          <span className="text-[length:var(--text-caption)] text-text-inverse">{d.drops.exploring}</span>
         </div>
       )}
 
@@ -392,15 +433,14 @@ export default function DropsClient() {
                     >
                       <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center">
                         {drop.badge_image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={drop.badge_image_url} alt={drop.badge_name} className="w-full h-full object-contain p-0.5" />
+                          <Image src={drop.badge_image_url} alt={drop.badge_name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
                         ) : (
                           <MedalIcon className="w-5 h-5 text-text-inverse/40" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{drop.badge_name}</p>
-                        <p className="text-[11px] text-text-inverse/40 mt-0.5">
+                        <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-0.5">
                           {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
                         </p>
                       </div>
@@ -415,8 +455,7 @@ export default function DropsClient() {
                   <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
                     <div className="w-20 h-20 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden flex items-center justify-center">
                       {pendingDropItem.badgeImageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={pendingDropItem.badgeImageUrl} alt={pendingDropItem.badgeName} className="w-full h-full object-contain p-1" />
+                        <Image src={pendingDropItem.badgeImageUrl} alt={pendingDropItem.badgeName} width={80} height={80} className="w-full h-full object-contain p-1" />
                       ) : (
                         <MedalIcon className="w-8 h-8 text-text-inverse/40" />
                       )}

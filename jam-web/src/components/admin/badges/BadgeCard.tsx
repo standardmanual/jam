@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/shadcn-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
@@ -40,10 +41,11 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
           {/* 배지 이미지 */}
           <div className="w-12 h-12 md:w-14 md:h-14 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
             {badge.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={badge.image_url}
                 alt={badge.name}
+                width={48}
+                height={48}
                 className="w-full h-full object-contain"
               />
             ) : (

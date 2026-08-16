@@ -1,15 +1,18 @@
 import { notFound, redirect } from 'next/navigation'
+import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { ActivityType, BadgeCondition, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
+import { ActivityType, BadgeCondition, BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
-import Card from '@/components/ui/Card'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
+import ListRowCard from '@/components/ui/ListRowCard'
 import { MedalIcon, BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import Link from 'next/link'
 import PoiMapButton from './PoiMapButton'
+import PoiEarnHistory from './PoiEarnHistory'
 import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
-import InventoryItemHistorySheet from '../../inventory/[itemId]/InventoryItemHistorySheet'
+import ItemEarnHistory from './ItemEarnHistory'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
 
@@ -50,7 +53,7 @@ const DAY_OF_WEEK_LABELS: Record<string, string> = {
   saturday: '토요일',
 }
 
-// 배열이 정확히 월~금(순서 무관)이면 "평일"로 요약
+// 배열이 정확히 월~금(순서 무관)이면 "월~금"으로 요약
 function dayOfWeekArrayLabel(days: string[]): string {
   const weekdaySet = new Set(['monday', 'tuesday', 'wednesday', 'thursday', 'friday'])
   if (days.length === 5 && days.every((d) => weekdaySet.has(d))) return '월~금'
@@ -172,7 +175,7 @@ function formatConditionText(condition: BadgeCondition | null, badgeName: string
     ? ' (각 조건은 서로 다른 활동에서 달성해도 인정돼요)'
     : ''
 
-  return parts.join(', ') + '하면 겟할 수 있어요.' + crossAttrNote
+  return parts.join(', ') + '하면 획득할 수 있어요.' + crossAttrNote
 }
 
 interface BadgeDetailPageProps {
@@ -212,7 +215,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     supabase.from('badges').select('*').eq('id', id).single(),
         service
       .from('user_activity_badges')
-      .select('*, poi:triggered_by_poi_id(id, name, latitude, longitude)')
+      .select('*, poi:triggered_by_poi_id(id, name, latitude, longitude, radius_meters)')
       .eq('user_id', subjectId)
       .eq('badge_id', id)
       .maybeSingle(),
@@ -229,7 +232,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   if (badgeRow.type === 'poi') {
         const { data: poiEarnsRaw } = await service
       .from('user_poi_badge_earns')
-      .select('*, poi:poi_id(id, name, latitude, longitude)')
+      .select('*, poi:poi_id(id, name, latitude, longitude, radius_meters)')
       .eq('user_id', subjectId)
       .eq('badge_id', id)
       .order('earned_at', { ascending: false })
@@ -246,8 +249,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     obtained_at: string
     expires_at: string | null
     obtained_by: string
+    dropped_at: string | null
   }
-  let itemInventory: ItemInventoryInfo | null = null
+  let allItemInventory: ItemInventoryInfo[] = []
   let itemBook: ItemBookRow | null = null
   if (badgeRow.type === 'item') {
         const { data: subjectInventory } = await service
@@ -256,16 +260,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       .eq('user_id', subjectId)
       .maybeSingle()
     if (subjectInventory) {
-            const { data: itemRaw } = await service
+            const { data: itemsRaw } = await service
         .from('inventory_items')
-        .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by')
+        .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by, dropped_at')
         .eq('inventory_id', (subjectInventory as { id: string }).id)
         .eq('badge_id', id)
-        .is('dropped_at', null)
         .order('obtained_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      itemInventory = itemRaw as ItemInventoryInfo | null
+      allItemInventory = (itemsRaw ?? []) as ItemInventoryInfo[]
     }
 
     if (badgeRow.item_book_id) {
@@ -278,12 +279,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     }
   }
 
-  // 획득 여부 — poi 타입은 이력 1건 이상, item 타입은 인벤토리 소유 여부, 그 외는 기존 단건 조회 결과
+  // 획득 여부 — poi 타입은 이력 1건 이상, item 타입은 드랍되지 않은 아이템 보유 여부, 그 외는 기존 단건 조회 결과
   const hasEarned =
     badgeRow.type === 'poi'
       ? poiEarns.length > 0
       : badgeRow.type === 'item'
-        ? itemInventory != null
+        ? allItemInventory.some(item => !item.dropped_at)
         : Boolean(earned)
 
   // 선행 배지 정보 조회
@@ -323,344 +324,309 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   }
 
   // triggered_by_poi_id join 결과(활동 배지) 또는 최근 POI 획득 이력의 POI
-  const poi: PoiRow | null = earned?.poi ?? poiEarns[0]?.poi ?? null
+  // 미획득 POI 배지는 이력이 없으므로 linked_badge_id로 직접 조회
+  let poi: PoiRow | null = earned?.poi ?? poiEarns[0]?.poi ?? null
+  if (!poi && badgeRow.type === 'poi') {
+    const { data: linkedPoi } = await supabase
+      .from('poi')
+      .select('id, name, latitude, longitude, radius_meters')
+      .eq('linked_badge_id', id)
+      .maybeSingle()
+    poi = linkedPoi as PoiRow | null
+  }
 
-  // 아이템배지는 activity/poi 배지와 조건 구조가 완전히 달라 인벤토리 상세(/inventory/[itemId])와
-  // 동일한 화면 구성(일련번호/획득방법/획득일/만료일 카드)으로 보여준다. 소유 여부에 따라
-  // 값만 채워지거나 비어 보이도록(—) 하고, 레이아웃 자체는 항상 동일하게 유지한다.
+  // ========== 변형 2: 아이템 배지 ==========
   if (badgeRow.type === 'item') {
-    const OBTAIN_LABELS: Record<string, string> = {
-      drop: d.inventory.obtainByDrop,
-      drop_event: d.inventory.obtainByDropEvent,
-      pickup: d.inventory.obtainByPickup,
-      system: d.inventory.obtainBySystem,
-      system_event: d.inventory.obtainBySystem,
-    }
-    const expiresAt = itemInventory?.expires_at ?? null
+    const activeItem = allItemInventory.find(item => !item.dropped_at) ?? null
+    const expiresAt = activeItem?.expires_at ?? null
     const expiring = isExpiringSoon(expiresAt)
-    const serial = itemInventory
-      ? `${itemInventory.serial_prefix ?? '????'}${String(itemInventory.serial_number).padStart(6, '0')}`
-      : null
 
     return (
-      <div className="min-h-full bg-surface text-text">
+      <div className="min-h-full bg-[var(--color-bg)] text-text">
         <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
 
-        <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
-          {/* 배지 이미지 */}
-          <div className="flex flex-col items-center mb-[var(--spacing-24)]">
+        {/* hero-section */}
+        <div className="px-6 pt-[40px] pb-[32px]">
+          <div className="w-full aspect-square flex flex-col items-center justify-center gap-4 p-6">
             <div
               className={[
-                'w-32 h-32 rounded-[var(--radius-cards)] overflow-hidden bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center mb-[var(--spacing-16)]',
+                'w-[55%] aspect-square rounded-full bg-white overflow-hidden flex items-center justify-center',
                 !hasEarned ? 'grayscale opacity-50' : '',
               ].join(' ')}
             >
               {badgeRow.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={badgeRow.image_url} alt={badgeRow.name} className="object-contain w-full h-full p-3" />
+                <Image
+                  src={badgeRow.image_url}
+                  alt={badgeRow.name}
+                  width={200}
+                  height={200}
+                  className="object-contain w-full h-full p-[var(--spacing-16)]"
+                />
               ) : (
-                <MedalIcon className="w-12 h-12 text-text-inverse/40" />
+                <MedalIcon className="w-20 h-20 text-black/20" />
               )}
             </div>
-            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center mb-2">{badgeRow.name}</h1>
-            <div className="flex items-center gap-2">
-              <RarityBadge rarity={badgeRow.rarity} />
-              {serial ? (
-                <span className="text-text/40 text-[11px] font-mono">{serial}</span>
-              ) : (
-                <span className="text-[10px] leading-none px-1.5 py-0.5 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/50">
-                  {d.badges.notEarnedTag}
-                </span>
-              )}
-            </div>
+            <h1 className="text-[36px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+            <RarityBadge rarity={badgeRow.rarity} />
           </div>
+          {badgeRow.description && (
+            <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5]">{badgeRow.description}</p>
+          )}
+        </div>
 
-          {/* 정보 카드 */}
-          <Card className="p-0 overflow-hidden mb-[var(--spacing-16)]">
-            <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-              <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.infoSectionTitle}</p>
-            </div>
-            <div>
-              <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.serialNumber}</span>
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-mono tracking-widest">{serial ?? '—'}</span>
+        {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링 */}
+        {(isOwnBadge || !hasEarned) && (
+          <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+            {isOwnBadge && allItemInventory.length > 0 && (
+              <ItemEarnHistory items={allItemInventory.map(item => ({
+                id: item.id,
+                serial: `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`,
+                obtained_at: item.obtained_at,
+                expires_at: item.expires_at,
+              }))} />
+            )}
+
+            {!hasEarned && (
+              <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
+                <p className="text-[15px] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
+                <p className="text-[13px] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
               </div>
-              {itemInventory && isOwnBadge ? (
-                <InventoryItemHistorySheet itemId={itemInventory.id} obtainedBy={itemInventory.obtained_by} />
+            )}
+          </div>
+        )}
+
+        {/* desc-section — 컬렉션 링크 또는 만료 임박 안내가 있을 때만 렌더링 */}
+        {(itemBook || expiring) && (
+          <div className="flex flex-col gap-4 px-6 pt-[32px] pb-[40px]">
+            {/* 속한 컬렉션 링크 */}
+            {itemBook && (
+              <ListRowCard
+                href={`/itembooks/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
+                icon={
+                  itemBook.image_url ? (
+                    <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0">
+                      <Image src={itemBook.image_url} alt={itemBook.name} width={44} height={44} className="w-full h-full object-contain p-1" />
+                    </div>
+                  ) : (
+                    <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center shrink-0">
+                      <BookIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                    </div>
+                  )
+                }
+                title={itemBook.name}
+                trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
+              />
+            )}
+
+            {/* 만료 임박 안내 */}
+            {expiring && (
+              <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+                <p className="text-[15px] text-text">{d.inventory.expiringSoonTitle}</p>
+                <p className="text-[13px] text-[var(--color-text-secondary)] mt-0.5">{d.inventory.expiringSoonBody}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ========== 변형 3: POI 배지 ==========
+  if (badgeRow.type === 'poi') {
+    return (
+      <div className="min-h-full bg-[var(--color-bg)] text-text">
+        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
+
+        {/* hero-section */}
+        <div className="px-6 pt-[40px] pb-[32px]">
+          <div className="w-full aspect-square flex flex-col items-center justify-center gap-4 p-6">
+            <div
+              className={[
+                'w-[55%] aspect-square rounded-full bg-white overflow-hidden flex items-center justify-center',
+                !hasEarned ? 'grayscale opacity-50' : '',
+              ].join(' ')}
+            >
+              {badgeRow.image_url ? (
+                <Image
+                  src={badgeRow.image_url}
+                  alt={badgeRow.name}
+                  width={200}
+                  height={200}
+                  className="object-contain w-full h-full p-[var(--spacing-16)]"
+                />
               ) : (
-                <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.obtainMethod}</span>
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                    {itemInventory ? (OBTAIN_LABELS[itemInventory.obtained_by] ?? d.inventory.obtainBySystem) : '—'}
-                  </span>
-                </div>
+                <MedalIcon className="w-20 h-20 text-black/20" />
               )}
-              <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.obtainedAt}</span>
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                  {itemInventory ? (
-                    <LocalDate iso={itemInventory.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
-                  ) : (
-                    '—'
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.expiresAt}</span>
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                  {itemInventory ? (
-                    expiresAt ? (
-                      <LocalDate iso={expiresAt} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
-                    ) : (
-                      d.inventory.expiresNone
-                    )
-                  ) : (
-                    '—'
-                  )}
-                  {expiring && ` · ${d.inventory.expiringSoonTitle}`}
-                </span>
-              </div>
-              <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.rarity}</span>
-                <RarityBadge rarity={badgeRow.rarity} />
-              </div>
             </div>
-          </Card>
+            <h1 className="text-[36px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+            <RarityBadge rarity={badgeRow.rarity} />
+          </div>
+          {badgeRow.description && (
+            <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5]">{badgeRow.description}</p>
+          )}
+        </div>
 
-          {/* 배지 설명 */}
-          <Card className="p-0 overflow-hidden">
-            <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-              <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.descSectionTitle}</p>
-            </div>
-            <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
-              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
-                {badgeRow.description || d.inventory.noDescription}
-              </p>
-            </div>
-          </Card>
+        {/* info-section */}
+        <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+          {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
+          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
+            <p className="text-[15px] font-bold text-text">{d.badges.conditionTitle}</p>
+            <p className="text-[14px] text-[var(--color-text-secondary)] leading-[1.6]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
+          </div>
+          <PoiEarnHistory poiEarns={poiEarns.map((e) => ({
+            id: e.id,
+            earned_at: e.earned_at,
+            triggered_by_activity_name: e.triggered_by_activity_name ?? null,
+            triggered_by_distance_km: e.triggered_by_distance_km ?? null,
+            triggered_by_activity_date: e.triggered_by_activity_date ?? null,
+            triggered_by_strava_id: e.triggered_by_strava_id ?? null,
+          }))} />
+        </div>
 
-          {/* 연결된 아이템북 */}
-          {itemBook && (
-            <Link href={`/itembooks/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}>
-              <Card className="mt-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
-                {itemBook.image_url ? (
-                  <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={itemBook.image_url} alt={itemBook.name} className="w-full h-full object-contain p-1" />
-                  </div>
-                ) : (
-                  <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">
-                    <BookIcon className="w-5 h-5 text-text-inverse/50" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] uppercase text-text-inverse/50">{d.inventory.belongsToItembook}</p>
-                  <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{itemBook.name}</p>
-                </div>
-                <ChevronRightIcon className="w-4 h-4 text-text-inverse/30 shrink-0" />
-              </Card>
-            </Link>
+        {/* action-section */}
+        <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[40px]">
+          {badgeRow.patch_available && (
+            <a
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-14 w-full rounded-full border border-white/30 text-[16px] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+            >
+              {d.badges.physicalPatchButton} ↗
+            </a>
           )}
 
-          {expiring && (
-            <Card className="mt-[var(--spacing-16)]">
-              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.inventory.expiringSoonTitle}</p>
-              <p className="text-[11px] text-text-inverse/60 mt-0.5">{d.inventory.expiringSoonBody}</p>
-            </Card>
-          )}
-
-          {/* 미보유 안내 */}
           {!hasEarned && (
-            <Card className="mt-[var(--spacing-16)] text-center py-[var(--spacing-16)]">
-              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.notEarnedTitle}</p>
-              <p className="text-[11px] text-text-inverse/40 mt-1">{d.badges.notEarnedBody}</p>
-            </Card>
+            <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
+              <p className="text-[15px] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
+              <p className="text-[13px] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
+            </div>
           )}
+
+          <p className="text-center text-[15px] text-[var(--color-text-secondary)] leading-[1.5] px-4">
+            {t(d.badges.poiSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
+          </p>
         </div>
       </div>
     )
   }
 
+  // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
-    <div className="min-h-full bg-surface text-text">
+    <div className="min-h-full bg-[var(--color-bg)] text-text">
       <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
-        {/* 배지 이미지 (대형) */}
-        <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
+      {/* hero-section */}
+      <div className="px-6 pt-[40px] pb-[32px]">
+        <div className="w-full aspect-square flex flex-col items-center justify-center gap-4 p-6">
           <div
             className={[
-              'w-44 h-44 rounded-[var(--radius-cards)] bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center overflow-hidden',
+              'w-[55%] aspect-square rounded-full bg-white overflow-hidden flex items-center justify-center',
               !hasEarned ? 'grayscale opacity-50' : '',
             ].join(' ')}
           >
             {badgeRow.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={badgeRow.image_url} alt={badgeRow.name} className="w-full h-full object-contain p-[var(--spacing-16)]" />
+              <Image
+                src={badgeRow.image_url}
+                alt={badgeRow.name}
+                width={200}
+                height={200}
+                className="object-contain w-full h-full p-[var(--spacing-16)]"
+              />
             ) : (
-              <MedalIcon className="w-16 h-16 text-text-inverse/40" />
+              <MedalIcon className="w-20 h-20 text-black/20" />
             )}
           </div>
+          <h1 className="text-[36px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+          <RarityBadge rarity={badgeRow.rarity} />
+        </div>
+        {badgeRow.description && (
+          <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5]">{badgeRow.description}</p>
+        )}
+      </div>
 
-          <div className="text-center">
-            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2">{badgeRow.name}</h1>
-            <RarityBadge rarity={badgeRow.rarity} />
-          </div>
+      {/* info-section */}
+      <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+        {/* 획득 조건 다크 카드 */}
+        <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
+          <p className="text-[15px] font-bold text-text">{d.badges.conditionTitle}</p>
+          <p className="text-[14px] text-[var(--color-text-secondary)] leading-[1.6]">
+            {formatConditionText(badgeRow.condition_json, badgeRow.name)}
+          </p>
         </div>
 
-        {/* 배지 설명 */}
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/70 px-1">{badgeRow.description}</p>
+        {/* 선행 배지 조건 */}
+        {prereqStatus.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <p className="text-[15px] font-bold text-text">{d.badges.prerequisiteTitle}</p>
+            <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+              {prereqStatus.map((p) => (
+                <BadgeGridCard
+                  key={p.id}
+                  name={p.name}
+                  imageUrl={p.image_url}
+                  rarity={p.rarity as BadgeRarity}
+                  href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
+                  undiscovered={!p.owned}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
-        {/* 잼 포인트 안내 — 이 배지에 포인트가 붙어 있을 때만 */}
+        {/* 포인트 보상 */}
         {badgeRow.point_reward > 0 && (
-          <Card>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+            <p className="text-[15px] text-text">
               {hasEarned
                 ? t(d.badges.pointRewardEarned, { points: badgeRow.point_reward.toLocaleString('ko-KR') })
                 : t(d.badges.pointRewardPending, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
             </p>
-          </Card>
+          </div>
+        )}
+      </div>
+
+      {/* action-section */}
+      <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[40px]">
+        {/* 실물 패치 버튼 */}
+        {badgeRow.patch_available && (
+          <a
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-14 w-full rounded-full border border-white/30 text-[16px] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+          >
+            {d.badges.physicalPatchButton} ↗
+          </a>
         )}
 
-        {/* 선행 배지 조건 (prerequisite) */}
-        {prereqStatus.length > 0 && (
-          <Card className="p-0 overflow-hidden">
-            <div className="px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
-              <p className="text-[10px] uppercase text-text-inverse/50">{d.badges.prerequisiteTitle}</p>
-            </div>
-            <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
-              <p className="text-[11px] text-text-inverse/60 mb-[var(--spacing-16)]">{d.badges.prerequisiteBody}</p>
-              <div className="flex flex-col gap-[var(--spacing-16)]">
-                {prereqStatus.map((p) => (
-                  <Link key={p.id} href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}>
-                    <div className="flex items-center gap-[var(--spacing-12)] rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] p-[var(--spacing-12)] active:scale-[0.98] transition-transform duration-100">
-                      {/* 배지 이미지 */}
-                      <div
-                        className={[
-                          'w-12 h-12 rounded-[var(--radius-cards)] bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0 overflow-hidden',
-                          !p.owned ? 'grayscale opacity-50' : '',
-                        ].join(' ')}
-                      >
-                        {p.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.image_url} alt={p.name} className="w-full h-full object-contain p-2" />
-                        ) : (
-                          <MedalIcon className="w-5 h-5 text-text-inverse/40" />
-                        )}
-                      </div>
-
-                      {/* 배지 정보 */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-medium truncate">
-                          {p.name}
-                        </h3>
-                        <p className="text-[11px] text-text-inverse/60 line-clamp-2 mt-0.5">
-                          {p.description || '선행 배지'}
-                        </p>
-                      </div>
-
-                      {/* 링크 표시 */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        {p.owned && (
-                          <span className="text-[10px] text-text-inverse/40 font-medium">겟</span>
-                        )}
-                        <ChevronRightIcon className="w-4 h-4 text-text-inverse/30" />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* 획득 조건 — item 배지는 상단 early return에서 별도 UI로 처리, 이 시점 type은 activity | poi */}
-        <Card>
-          <h2 className="text-[10px] uppercase text-text-inverse/40 mb-2">{d.badges.conditionTitle}</h2>
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
-            {badgeRow.type === 'poi'
-              ? '이 장소를 경유하는 활동이 기록되면 겟돼요.'
-              : formatConditionText(badgeRow.condition_json, badgeRow.name)}
-          </p>
-        </Card>
-
-        {/* 획득 이력 (poi 타입 — 반복 획득). 방문 1건 = 액티비티 배지 "획득 정보"와 동일한 디자인의 독립 카드 */}
-        {badgeRow.type === 'poi' && poiEarns.length > 0 && (
-          <>
-            <div className="flex items-baseline justify-between px-1">
-              <h2 className="text-[10px] uppercase text-text-inverse/40">{d.badges.earnHistoryTitle}</h2>
-              <span className="text-[11px] text-text-inverse/60">{t(d.badges.earnHistoryCount, { count: poiEarns.length })}</span>
-            </div>
-            {poiEarns.map((e) => (
-              <Card key={e.id}>
-                <h3 className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)] truncate">
-                  {e.poi?.name ?? d.badges.earnHistoryUnknownPlace}
-                </h3>
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.earnedAt}</span>
-                    <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]"><LocalDate iso={e.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} /></span>
-                  </div>
-                  {e.triggered_by_activity_name && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.triggerActivity}</span>
-                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate max-w-[180px] text-right">
-                        {e.triggered_by_activity_name}
-                      </span>
-                    </div>
-                  )}
-                  {e.triggered_by_distance_km && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.triggerDistance}</span>
-                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}</span>
-                    </div>
-                  )}
-                  {e.triggered_by_activity_date && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.triggerDate}</span>
-                      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                        <LocalDate iso={e.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
-                      </span>
-                    </div>
-                  )}
-                  {e.triggered_by_strava_id && (
-                    <div className="mt-1">
-                      <StravaLink stravaId={e.triggered_by_strava_id} />
-                    </div>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </>
-        )}
-
-        {/* 획득 정보 */}
+        {/* 획득 정보 (획득한 경우) */}
         {earned && (
-          <Card>
-            <h2 className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.badges.earnInfoTitle}</h2>
-            <div className="flex flex-col gap-2">
+          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+            <p className="text-[15px] font-bold text-text mb-4">{d.badges.earnInfoTitle}</p>
+            <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.earnedAt}</span>
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]"><LocalDate iso={earned.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} /></span>
+                <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
+                <span className="text-[14px] text-text">
+                  <LocalDate iso={earned.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
+                </span>
               </div>
               {earned.triggered_by_activity_name && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.triggerActivity}</span>
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate max-w-[180px] text-right">
-                    {earned.triggered_by_activity_name}
-                  </span>
+                  <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerActivity}</span>
+                  <span className="text-[14px] text-text truncate max-w-[180px] text-right">{earned.triggered_by_activity_name}</span>
                 </div>
               )}
               {earned.triggered_by_distance_km && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.triggerDistance}</span>
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}</span>
+                  <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDistance}</span>
+                  <span className="text-[14px] text-text">{t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}</span>
                 </div>
               )}
               {earned.triggered_by_activity_date && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.triggerDate}</span>
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+                  <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDate}</span>
+                  <span className="text-[14px] text-text">
                     <LocalDate iso={earned.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
                   </span>
                 </div>
@@ -671,39 +637,15 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 </div>
               )}
             </div>
-          </Card>
+          </div>
         )}
-
-        {/* POI 위치 보기 — 박스 없이 버튼만 노출 */}
-        {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
-
-        {/* 액션 버튼들 */}
-        <div className="flex flex-col gap-[var(--spacing-16)]">
-          {badgeRow.patch_available && (
-            <a
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center w-full min-h-11 rounded-[var(--radius-nav-buttons)] text-[length:var(--text-body)] leading-[var(--leading-body)] shadow-[inset_0_0_0_1px_var(--color-border)] active:scale-95 transition-transform duration-100"
-            >
-              {d.badges.physicalPatchButton} ↗
-            </a>
-          )}
-        </div>
 
         {/* 미획득 안내 */}
         {!hasEarned && (
-          <Card className="text-center py-[var(--spacing-16)]">
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.badges.notEarnedTitle}</p>
-            <p className="text-[11px] text-text-inverse/40 mt-1">{d.badges.notEarnedBody}</p>
-          </Card>
-        )}
-
-        {/* POI 배지 안전 안내 — 반경 50m 동선 조건 + 무리한 접근 자제 요청 */}
-        {badgeRow.type === 'poi' && (
-          <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/50 px-[var(--spacing-16)]">
-            {d.badges.poiSafetyNotice}
-          </p>
+          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
+            <p className="text-[15px] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
+            <p className="text-[13px] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
+          </div>
         )}
       </div>
     </div>

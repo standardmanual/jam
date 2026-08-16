@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { MissionRow } from '@/types/database'
+import ImageUploadField from '@/components/admin/ImageUploadField'
 
 interface BadgeOption {
   id: string
@@ -39,6 +40,7 @@ const emptyForm = {
   ends_at: '',
   is_permanent: false, // 상시 미션(종료일 없음)
   max_completions: '',
+  image_url: '',
 }
 
 export default function MissionList({ missions, completionCounts, badges }: Props) {
@@ -89,6 +91,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
       ends_at: m.ends_at ? toDatetimeLocalValue(m.ends_at) : '',
       is_permanent: m.ends_at === null,
       max_completions: m.max_completions != null ? String(m.max_completions) : '',
+      image_url: m.image_url ?? '',
     })
     setEditingId(m.id)
     setConditionError('')
@@ -127,6 +130,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
       // 상시 미션(종료일 없음) — ends_at null
       ends_at: form.is_permanent ? null : new Date(form.ends_at).toISOString(),
       max_completions: form.max_completions ? Number(form.max_completions) : null,
+      image_url: form.image_url || null,
     }
 
     await fetch(editingId ? `/api/admin/missions/${editingId}` : '/api/admin/missions', {
@@ -275,6 +279,15 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
               <label className="text-xs text-[#6b7280] mb-1 block">선착순 인원 (빈칸=무제한)</label>
               <input type="number" value={form.max_completions} onChange={(e) => setForm((f) => ({ ...f, max_completions: e.target.value }))}
                 className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm" placeholder="무제한" />
+            </div>
+
+            <div className="col-span-2">
+              <ImageUploadField
+                label="썸네일 이미지 (선택)"
+                value={form.image_url}
+                onChange={(url) => setForm((f) => ({ ...f, image_url: url }))}
+                folder="mission-images"
+              />
             </div>
           </div>
 

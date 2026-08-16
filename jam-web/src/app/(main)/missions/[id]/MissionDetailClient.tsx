@@ -3,12 +3,15 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useToast } from '@/components/ui/Toast'
-import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
-import type { MissionRow, MissionCondition } from '@/types/database'
-import { useTextSwap, useRevealOnMount } from '@/components/transitions-pages'
+import RarityBadge from '@/components/ui/Badge'
+import ListRowCard from '@/components/ui/ListRowCard'
+import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
+import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
+import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 
@@ -16,6 +19,7 @@ export interface RewardBadgeInfo {
   id: string
   name: string
   image_url: string | null
+  rarity: BadgeRarity
 }
 
 interface Props {
@@ -26,24 +30,17 @@ interface Props {
   rewardBadges: RewardBadgeInfo[]
 }
 
+
 function missionGoalText(type: string, condition: MissionCondition): { label: string; unit: string; target: number } {
   switch (type) {
-    case 'distance':
-      return { label: d.missions.goalDistance, unit: 'km', target: condition.distance_km ?? 0 }
-    case 'activity_count':
-      return { label: d.missions.goalActivityCount, unit: '회', target: condition.count ?? 0 }
-    case 'poi_visit':
-      return { label: d.missions.goalPoiVisit, unit: '곳', target: 1 }
-    case 'item_collect':
-      return { label: d.missions.goalItemCollect, unit: '개', target: 1 }
-    case 'streak_days':
-      return { label: d.missions.goalStreakDays, unit: '일', target: condition.streak_days ?? 0 }
-    case 'duration_minutes':
-      return { label: d.missions.goalDurationMinutes, unit: '분', target: condition.duration_minutes ?? 0 }
-    case 'elevation_gain_m':
-      return { label: d.missions.goalElevationGainM, unit: 'm', target: condition.elevation_gain_m ?? 0 }
-    default:
-      return { label: d.missions.goalDefault, unit: '', target: 0 }
+    case 'distance':          return { label: d.missions.goalDistance,        unit: 'km', target: condition.distance_km ?? 0 }
+    case 'activity_count':    return { label: d.missions.goalActivityCount,    unit: '회', target: condition.count ?? 0 }
+    case 'poi_visit':         return { label: d.missions.goalPoiVisit,         unit: '곳', target: 1 }
+    case 'item_collect':      return { label: d.missions.goalItemCollect,      unit: '개', target: 1 }
+    case 'streak_days':       return { label: d.missions.goalStreakDays,       unit: '일', target: condition.streak_days ?? 0 }
+    case 'duration_minutes':  return { label: d.missions.goalDurationMinutes,  unit: '분', target: condition.duration_minutes ?? 0 }
+    case 'elevation_gain_m':  return { label: d.missions.goalElevationGainM,  unit: 'm',  target: condition.elevation_gain_m ?? 0 }
+    default:                  return { label: d.missions.goalDefault,          unit: '',   target: 0 }
   }
 }
 
@@ -57,13 +54,45 @@ function timeLeft(endsAt: string | null): string {
   return `${h}시간 ${m}분 ${d.missions.timeLeftSuffix}`
 }
 
-function Tag({ children }: { children: React.ReactNode }) {
+/* ── 섹션 레이블 — 배지 상세 '획득 조건'과 동일한 토큰 ── */
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)]">
+    <p className="text-[15px] font-bold text-text">
       {children}
-    </span>
+    </p>
   )
 }
+
+/* ── 다크 인포 카드 ── */
+function InfoCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-surface border border-border rounded-[var(--radius-cards)] p-6 flex flex-col gap-4 ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+/* ── 미션 상태 칩 ── */
+function StatusChip({ isCompleted, participating }: { isCompleted: boolean; participating: boolean }) {
+  if (isCompleted) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
+        style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--color-text-secondary)' }}>
+        {d.missions.tagDone}
+      </span>
+    )
+  }
+  if (participating) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
+        style={{ background: 'rgba(232,70,31,0.15)', color: 'var(--color-primary)' }}>
+        {d.missions.tagJoined}
+      </span>
+    )
+  }
+  return null
+}
+
 
 export default function MissionDetailClient({ mission, isParticipating, isCompleted, progressValue, rewardBadges }: Props) {
   const [participating, setParticipating] = useState(isParticipating)
@@ -75,16 +104,11 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
   const condition = mission.condition_json as MissionCondition
   const goal = missionGoalText(mission.mission_type, condition)
   const progressPct = goal.target > 0 ? Math.min(100, (progressValue / goal.target) * 100) : 0
-  // ends_at이 null이면 상시 미션 — 시작만 지났으면 항상 진행중
   const isActive = new Date(mission.starts_at) <= new Date() && (mission.ends_at === null || new Date(mission.ends_at) > new Date())
-  // 달성형(poi_visit/item_collect) — 진행 바 대신 달성/미달성 배지로 표시
   const isAchievementType = mission.mission_type === 'poi_visit' || mission.mission_type === 'item_collect'
+  const isStreakType = mission.mission_type === 'streak_days'
   const achieved = isCompleted || progressValue >= 1
 
-  // 달성/미달성 배지 텍스트 — 즉시 전환 대신 Text states swap (04)
-  const achievedLabel = achieved ? d.missions.achieved : d.missions.notAchieved
-  const { ref: achievedRef, initialText: initialAchievedLabel } = useTextSwap<HTMLSpanElement>(achievedLabel)
-  // 참가 확인 카드 — Panel reveal (07). 마운트 다음 프레임에 data-open을 뒤집는다.
   const confirmPanelRef = useRevealOnMount<HTMLDivElement>(confirming)
 
   async function handleJoin() {
@@ -105,154 +129,262 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
   }
 
   return (
-    <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.missions.backToList} backHref="/missions" />
+    <div className="min-h-full bg-[var(--color-bg)] text-text">
+      <TopNav title={d.missions.backToDetail} backHref="/missions" />
 
-      <div className="flex flex-col px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
-        {/* 상태 태그 */}
-        <div className="flex items-center gap-2 mb-[var(--spacing-16)] flex-wrap">
-          {isCompleted && <Tag>{d.missions.tagDone}</Tag>}
-          {!isCompleted && participating && <Tag>{d.missions.tagJoined}</Tag>}
-          {!isActive && !isCompleted && <Tag>{d.missions.tagUpcoming}</Tag>}
-          <span className="text-[11px] text-text/50">{timeLeft(mission.ends_at)}</span>
+      <div className="flex flex-col px-6 pt-8 pb-10 gap-6">
+
+        {/* 대표 이미지 — 1:1 정사각형 */}
+        <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface border border-border flex items-center justify-center">
+          {mission.image_url ? (
+            <Image
+              src={mission.image_url}
+              alt={`${mission.title} 썸네일`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, 640px"
+              priority
+            />
+          ) : (
+            <span className="text-[length:var(--text-body-sm)] text-text-secondary">이미지 영역</span>
+          )}
         </div>
 
-        <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2">{mission.title}</h1>
-        {mission.description && (
-          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] mb-[var(--spacing-24)]">{mission.description}</p>
-        )}
+        {/* 히어로 섹션 */}
+        <div className="flex flex-col items-center gap-4">
+          {/* 미션 상태 칩 */}
+          <StatusChip isCompleted={isCompleted} participating={participating} />
 
-        {/* 달성 조건 */}
-        <Card className="mb-[var(--spacing-16)]">
-          <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.conditionTitle}</p>
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-[11px] text-text-inverse/50 mb-0.5">{goal.label}</p>
-              <p className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">
-                {goal.target}{goal.unit}
-              </p>
-            </div>
-            {condition.activity_type && (
-              <span className="text-[11px] capitalize px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                {condition.activity_type}
-              </span>
+          {/* 제목 + 설명 */}
+          <div className="flex flex-col items-center gap-2 text-center">
+            <h1 className="text-[36px] font-bold leading-[1.2] tracking-[-0.5px] text-text text-balance">
+              {mission.title}
+            </h1>
+            {mission.description && (
+              <p className="text-[15px] leading-[1.47] text-text-secondary">{mission.description}</p>
             )}
           </div>
-        </Card>
 
-        {/* 진행 상황 */}
+          {/* 기간 표시 — 참가 전에만 */}
+          {!isCompleted && !participating && (
+            <span className="text-[length:var(--text-caption)] text-text-secondary">
+              {timeLeft(mission.ends_at)}
+            </span>
+          )}
+        </div>
+
+        {/* ── 달성 조건 카드 ── */}
+        <InfoCard>
+          <SectionLabel>{d.missions.conditionTitle}</SectionLabel>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-text">
+              <span className="text-[var(--color-primary)] text-base leading-[1.2] flex-shrink-0 mt-px">•</span>
+              <span>{goal.label} {goal.target}{goal.unit} 달성</span>
+            </div>
+            {condition.activity_type && (
+              <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-text">
+                <span className="text-[var(--color-primary)] text-base leading-[1.2] flex-shrink-0 mt-px">•</span>
+                <span>활동 종류: {ACTIVITY_TYPE_LABELS[condition.activity_type] ?? condition.activity_type}</span>
+              </div>
+            )}
+            <div className="flex items-start gap-2 text-[14px] leading-[1.43] text-text-secondary">
+              <span className="text-base leading-[1.2] flex-shrink-0 mt-px opacity-50">•</span>
+              <span>미션 참가 후 언제든지 조건을 충족하면 자동 완료</span>
+            </div>
+          </div>
+        </InfoCard>
+
+        {/* ── 진행상황 카드 ── */}
         {(participating || isCompleted) && goal.target > 0 && (
-          isAchievementType ? (
-            <Card className="mb-[var(--spacing-16)]">
-              <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.myProgressTitle}</p>
+          <InfoCard>
+            <SectionLabel>{d.missions.myProgressTitle}</SectionLabel>
+
+            {isAchievementType ? (
+              /* 달성형 */
               <div className="flex items-center justify-between">
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{goal.label}</p>
-                {/* 달성/미달성은 하나의 배지를 유지한 채 텍스트만 스왑한다(04) */}
-                <span
-                  className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-[var(--spacing-16)] py-1.5 rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] transition-colors${achieved ? '' : ' text-text-inverse/40'}`}
-                >
-                  <span ref={achievedRef} className="t-text-swap">{initialAchievedLabel}</span>
+                <p className="text-[14px] leading-[1.43] text-text-secondary">{goal.label}</p>
+                <span className={`text-[14px] font-bold px-3 py-1 rounded-[var(--radius-pill)] border border-border ${achieved ? 'text-text' : 'text-text-secondary'}`}>
+                  {achieved ? d.missions.achieved : d.missions.notAchieved}
                 </span>
               </div>
-            </Card>
-          ) : (
-            <Card className="mb-[var(--spacing-16)]">
-              <p className="text-[10px] uppercase text-text-inverse/50 mb-[var(--spacing-16)]">{d.missions.myProgressTitle}</p>
-              <div className="flex items-end justify-between mb-2">
-                <p className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">
-                  {isCompleted ? goal.target : progressValue.toFixed(mission.mission_type === 'distance' ? 1 : 0)}
-                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50 ml-1">{goal.unit}</span>
-                </p>
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">/ {goal.target}{goal.unit}</p>
+            ) : isStreakType ? (
+              /* streak_days — 프로그레스 바 + 일수 도트 */
+              <div className="flex flex-col gap-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[14px] leading-[1.43] text-text-secondary">
+                    {goal.target}일 중 {isCompleted ? goal.target : Math.floor(progressValue)}일
+                  </span>
+                  <span className="text-[14px] font-bold text-text tabular-nums">
+                    {isCompleted ? '100' : Math.round(progressPct)}%
+                  </span>
+                </div>
+                <div className="h-2 rounded-[var(--radius-pill)] overflow-hidden bg-border">
+                  <div
+                    className="h-full rounded-[var(--radius-pill)] transition-all duration-[400ms]"
+                    style={{ width: `${isCompleted ? 100 : progressPct}%`, background: 'var(--color-primary)' }}
+                  />
+                </div>
+                <div className="flex gap-1.5 pt-1 flex-wrap">
+                  {Array.from({ length: goal.target }).map((_, i) => {
+                    const done  = i < (isCompleted ? goal.target : Math.floor(progressValue))
+                    const today = !done && i === Math.floor(progressValue) && !isCompleted
+                    return (
+                      <div
+                        key={i}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 border"
+                        style={{
+                          background:  done  ? 'var(--color-primary)' : 'transparent',
+                          borderColor: done  ? 'var(--color-primary)' : today ? 'var(--color-primary)' : 'var(--color-border)',
+                          color:       done  ? '#fff' : today ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                        }}
+                      >
+                        {i + 1}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-              <div className="h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${isCompleted ? 100 : progressPct}%` }} />
+            ) : (
+              /* 수치 + 프로그레스 바 */
+              <div className="flex flex-col gap-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[22px] font-bold text-text tabular-nums leading-none">
+                    {isCompleted ? goal.target : (mission.mission_type === 'distance' ? progressValue.toFixed(1) : Math.floor(progressValue))}{goal.unit}
+                    <span className="text-[16px] font-normal text-text-secondary mx-1">/</span>
+                    {goal.target}{goal.unit}
+                  </span>
+                  <span className="text-[14px] font-bold text-text tabular-nums">
+                    {isCompleted ? '100' : Math.round(progressPct)}%
+                  </span>
+                </div>
+                <div className="h-2 rounded-[var(--radius-pill)] overflow-hidden bg-border">
+                  <div
+                    className="h-full rounded-[var(--radius-pill)] transition-all duration-[400ms]"
+                    style={{ width: `${isCompleted ? 100 : progressPct}%`, background: 'var(--color-primary)' }}
+                  />
+                </div>
               </div>
-              <p className="text-[11px] text-text-inverse/50 mt-1 text-right">
-                {isCompleted ? d.missions.progressDone : t(d.missions.progressPct, { pct: Math.round(progressPct) })}
-              </p>
-            </Card>
-          )
+            )}
+          </InfoCard>
         )}
 
-        {/* 보상 */}
-        <Card className="mb-[var(--spacing-24)]">
-          <p className="text-[10px] uppercase text-text-inverse/50 mb-2">{d.missions.rewardSectionTitle}</p>
-          {rewardBadges.length === 0 && !mission.reward_points ? (
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/40">{d.missions.rewardNone}</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {rewardBadges.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {rewardBadges.map((b) => (
-                    <span key={b.id} className="flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                      {b.image_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={b.image_url} alt="" className="w-4 h-4 object-contain" />
+        {/* ── 보상 카드 ── */}
+        {(rewardBadges.length > 0 || mission.reward_points) && (
+          <InfoCard>
+            <SectionLabel>{d.missions.rewardSectionTitle}</SectionLabel>
+
+            <div className="flex flex-col gap-3">
+              {rewardBadges.map((badge) => (
+                <Link key={badge.id} href={`/badges/${badge.id}`} className="active:opacity-70 transition-opacity duration-100">
+                  {/* 배지 보상 행: 카드형 이미지 + MODULAR RarityBadge + 텍스트 */}
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-16 h-16 rounded-[var(--radius-md)] flex items-center justify-center flex-shrink-0 overflow-hidden border border-border"
+                      style={{ background: 'transparent' }}
+                    >
+                      {badge.image_url ? (
+                        <Image src={badge.image_url} alt={badge.name} width={52} height={52} className="w-[52px] h-[52px] object-contain" />
+                      ) : (
+                        <span className="text-2xl">🏅</span>
                       )}
-                      {b.name}
-                    </span>
-                  ))}
-                </div>
-              )}
+                    </div>
+                    <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
+                      <RarityBadge rarity={badge.rarity} />
+                      <p className="text-[16px] font-bold leading-[1.2] text-text truncate">{badge.name}</p>
+                      <p className="text-[13px] leading-[1.3] text-text-secondary">미션 완료 시 획득</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+
+              {/* 포인트 보상 행: ListRowCard + 서클 'P' 아이콘 */}
               {mission.reward_points ? (
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{t(d.missions.rewardPointsLine, { points: mission.reward_points })}</p>
+                <ListRowCard
+                  icon={
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'var(--color-primary)' }}>
+                      <span className="text-[15px] font-bold" style={{ color: '#fff' }}>P</span>
+                    </div>
+                  }
+                  title={t(d.missions.rewardPointsLine, { points: mission.reward_points })}
+                  subtitle="미션 완료 즉시 지급"
+                />
               ) : null}
             </div>
-          )}
-          {mission.max_completions && (
-            <p className="text-[11px] text-text-inverse/50 mt-1">{t(d.missions.limitedSlots, { count: mission.max_completions.toLocaleString() })}</p>
-          )}
-        </Card>
 
-        {/* 미션 상황 — 참가자만 노출 */}
+            {mission.max_completions && (
+              <p className="text-[length:var(--text-caption)] text-text-secondary">
+                {t(d.missions.limitedSlots, { count: mission.max_completions.toLocaleString() })}
+              </p>
+            )}
+          </InfoCard>
+        )}
+
+        {/* 미션 상황 보기 — 참가자만 */}
         {(participating || isCompleted) && (
-          <Link href={`/missions/${mission.id}/status`} className="mb-[var(--spacing-16)]">
-            <Card className="text-center active:scale-[0.98] transition-transform duration-100">
+          <Link href={`/missions/${mission.id}/status`}>
+            <div className="bg-surface border border-border rounded-[var(--radius-cards)] p-4 text-center text-[length:var(--text-body-sm)] text-text-secondary active:scale-[0.98] transition-transform duration-100">
               {d.missions.statusViewButton}
-            </Card>
+            </div>
           </Link>
         )}
 
-        {/* 참가 버튼 — 참가 취소는 불가(Phase13). 네이티브 confirm() 대신 인앱 확인 UI 사용
-            (모바일/PWA에서 연속 confirm() 호출이 브라우저에 의해 조용히 차단되는 문제 회피) */}
-        {isActive && !isCompleted && !participating && (
+        {/* ── CTA 버튼 ── */}
+        {isCompleted ? (
+          /* 완료 → 종료 (disabled) */
+          <button
+            disabled
+            className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-default"
+            style={{ background: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+          >
+            종료
+          </button>
+        ) : participating ? (
+          /* 참가 중 (disabled) */
+          <button
+            disabled
+            className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-default"
+            style={{ background: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+          >
+            {d.missions.tagJoined}
+          </button>
+        ) : isActive ? (
+          /* 참가 전 → 참가하기 */
           confirming ? (
-            /* 참가 확인 카드 — Panel reveal (07). 카드 높이의 절반 정도만 이동해도
-               블러 + 페이드가 함께 걸려 완전한 열림으로 읽힌다. */
             <div
               ref={confirmPanelRef}
               className="t-panel-slide"
               data-open="false"
               style={{ ['--panel-translate-y' as string]: '32px' }}
             >
-              <Card>
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center mb-[var(--spacing-16)]">{d.missions.joinConfirmBody}</p>
+              <div className="bg-surface border border-border rounded-[var(--radius-cards)] p-6">
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-secondary text-center mb-4">
+                  {d.missions.joinConfirmBody}
+                </p>
                 <div className="flex gap-2">
-                  <Button fullWidth variant="outline" surface="sub" onClick={() => setConfirming(false)} disabled={loading}>
+                  <Button fullWidth variant="outline" onClick={() => setConfirming(false)} disabled={loading}>
                     {d.drops.cancel}
                   </Button>
-                  <Button fullWidth surface="sub" loading={loading} onClick={handleJoin}>
+                  <Button fullWidth loading={loading} onClick={handleJoin}>
                     {d.missions.joinConfirmButton}
                   </Button>
                 </div>
-              </Card>
+              </div>
             </div>
           ) : (
-            <>
-              <Button fullWidth onClick={() => setConfirming(true)}>
-                {d.missions.joinButton}
-              </Button>
-              <p className="text-[11px] text-text/50 text-center mt-2">{d.missions.joinNote}</p>
-            </>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setConfirming(true)}
+                className="w-full min-h-[56px] rounded-[var(--radius-pill)] text-[16px] font-bold leading-[1.5] cursor-pointer active:scale-95 transition-transform duration-100"
+                style={{ background: '#fff', color: '#000' }}
+              >
+                참가하기
+              </button>
+              <p className="text-[length:var(--text-caption)] text-text-secondary text-center">{d.missions.joinNote}</p>
+            </div>
           )
-        )}
+        ) : null}
 
-        {isCompleted && (
-          <Card className="text-center">
-            {d.missions.completedBanner}
-          </Card>
-        )}
       </div>
     </div>
   )

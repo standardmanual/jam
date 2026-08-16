@@ -121,10 +121,12 @@ export default function TabBar({ username }: TabBarProps) {
     return !username || u.toLowerCase() !== username.toLowerCase()
   })()
 
-  // 아이템배지 상세(/inventory/[itemId])는 배지 메뉴·인벤토리 메뉴 양쪽에서 진입 가능한
-  // 공용 라우트라 URL만으로는 출처를 구분할 수 없음 — 배지 메뉴에서 들어오면 링크에
-  // ?from=badges를 붙여 "배지" 탭을 계속 활성 상태로 유지
-  const fromBadges = pathname.startsWith('/inventory') && searchParams.get('from') === 'badges'
+  // 배지 메뉴에서 파생된 페이지는 "배지" 탭 활성 유지:
+  //   - /inventory/[itemId]?from=badges (아이템배지 상세)
+  //   - /itembooks/[id]?from=badges (컬렉션 상세)
+  const fromBadges =
+    (pathname.startsWith('/inventory') || pathname.startsWith('/itembooks')) &&
+    searchParams.get('from') === 'badges'
 
   const tabs = baseTabs.map((tab) =>
     tab.href === '/profile' ? { ...tab, href: profileHref } : tab
@@ -153,7 +155,8 @@ export default function TabBar({ username }: TabBarProps) {
             aria-current={active ? 'page' : undefined}
             className="relative flex-1 flex items-center justify-center h-full min-w-11 transition-transform duration-100 active:scale-90"
           >
-            <span className={active ? 'text-text-inverse' : 'text-text-inverse/35'}>
+            {/* DS v2: 활성=--color-primary(레드), 비활성=--color-icon-inactive(다크 그레이) */}
+            <span style={{ color: active ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
               {active ? tab.iconFill : tab.iconLine}
             </span>
             {/*
@@ -163,7 +166,7 @@ export default function TabBar({ username }: TabBarProps) {
               `.jam-tabbar-dot`으로 트리거 하단 중앙으로 옮겼다.
             */}
             <span className="t-badge jam-tabbar-dot" data-open={active} aria-hidden="true">
-              <span className="t-badge-dot w-1 h-1 rounded-full bg-text-inverse" />
+              <span className="t-badge-dot w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
             </span>
           </Link>
         )

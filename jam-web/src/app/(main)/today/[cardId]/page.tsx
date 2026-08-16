@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { getPublishedArticleCard } from '@/lib/today/cards'
 import LocalDate from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
@@ -26,18 +27,17 @@ export default async function TodayArticlePage({ params }: Props) {
   return (
     <div className="min-h-full bg-surface text-text pb-[var(--spacing-40)]">
       {card.cover_image_url && (
-        <div className="w-full aspect-[16/10] overflow-hidden shadow-[inset_0_-1px_0_0_var(--color-border)]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={card.cover_image_url} alt={card.title} className="w-full h-full object-cover" />
+        <div className="relative w-full aspect-[16/10] overflow-hidden shadow-[inset_0_-1px_0_0_var(--color-border)]">
+          <Image src={card.cover_image_url} alt={card.title} fill className="object-cover" />
         </div>
       )}
 
       <article className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">
-        <Link href="/" className="block text-[11px] text-text/50 underline underline-offset-2">
+        <Link href="/" className="block text-[length:var(--text-caption)] text-text/50 underline underline-offset-2">
           &larr; {d.todayCard.backToToday}
         </Link>
 
-        <span className="inline-flex items-center mt-[var(--spacing-16)] text-[12px] font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface-inverse text-text-inverse">
+        <span className="inline-flex items-center mt-[var(--spacing-16)] text-[length:var(--text-caption)] font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface-inverse text-text-inverse">
           {d.todayCard.editorialArticle}
         </span>
 
@@ -45,7 +45,7 @@ export default async function TodayArticlePage({ params }: Props) {
         {card.subtitle && (
           <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text/60 mt-2">{card.subtitle}</p>
         )}
-        <p className="text-[11px] text-text/40 mt-[var(--spacing-16)]">
+        <p className="text-[length:var(--text-caption)] text-text/40 mt-[var(--spacing-16)]">
           <LocalDate iso={card.starts_at} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
         </p>
 

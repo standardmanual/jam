@@ -28,10 +28,10 @@ export default async function AdminItemBooksPage() {
     <div className="space-y-6 p-4 md:p-8">
       {/* 헤더 */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-bold md:text-3xl">아이템북 관리</h1>
+        <h1 className="text-2xl font-bold md:text-3xl">컬렉션 관리</h1>
         <Link href="/admin/itembooks/new">
           <Button className="w-full md:w-auto">
-            + 아이템북 등록
+            + 컬렉션 등록
           </Button>
         </Link>
       </div>

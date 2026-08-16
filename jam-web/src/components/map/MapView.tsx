@@ -125,7 +125,7 @@ const BADGE_LINE_PATH =
  */
 function dropMarkerIconHtml(opts: { hasDrops: boolean; inRange: boolean; size: number }): string {
   const { hasDrops, inRange, size } = opts
-  const bg = hasDrops ? 'var(--color-main)' : inRange ? '#888888' : '#444444'
+  const bg = hasDrops ? 'var(--color-primary)' : inRange ? '#888888' : '#444444'
   const opacity = inRange ? 1 : 0.5
   const icon = size * 0.6
   const path = hasDrops ? BADGE_FILL_PATH : BADGE_LINE_PATH
@@ -189,7 +189,7 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
 function clusterMarkerIconHtml(count: number): string {
   const size = count >= 100 ? 44 : count >= 10 ? 38 : 32
   const label = count > 999 ? '999+' : String(count)
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--color-main);border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;color:var(--color-sub);font-size:12px;font-weight:600;line-height:1;">${label}</div>`
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--color-primary);border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;color:#ffffff;font-size:12px;font-weight:600;line-height:1;">${label}</div>`
 }
 
 function escapeHtml(value: string): string {

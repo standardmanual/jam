@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "JAM! Dev Server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:webpack"],
+      "port": 3000
+    },
+    {
+      "name": "Storybook",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "storybook"],
+      "port": 6006
+    }
+  ]
+}

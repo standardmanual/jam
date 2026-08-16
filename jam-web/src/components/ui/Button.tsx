@@ -48,18 +48,27 @@ const legacyVariantMap: Record<string, ResolvedVariant> = {
   danger: 'outline',
 }
 
-/** surface별 색상 클래스 — 바이너리 반전만 사용(제3의 컬러 금지) */
+/**
+ * DS v2 surface별 색상 클래스.
+ * - main (다크 배경 위): primary=흰 채움/검정 텍스트, outline=흰 반투명 border/흰 텍스트
+ * - sub (라이트 surface 위): primary=레드 채움/흰 텍스트, outline=다크 border/검정 텍스트
+ */
 const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
   main: {
-    primary: 'bg-surface-inverse text-text-inverse',
-    outline: 'text-text shadow-[inset_0_0_0_1px_var(--color-border)]',
+    primary: 'text-text-inverse',      // bg는 inline style(흰색)로 주입
+    outline: 'text-text shadow-[inset_0_0_0_1px_var(--color-border-light)]',
     arrow: 'text-text',
   },
   sub: {
-    primary: 'bg-surface text-text',
+    primary: 'text-white',             // bg는 inline style(레드)로 주입
     outline: 'text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)]',
     arrow: 'text-text-inverse',
   },
+}
+
+const primaryBgMap: Record<ButtonSurface, string> = {
+  main: 'var(--color-surface-inverse)',  // 다크 배경 위 primary = 흰 pill
+  sub:  'var(--color-primary)',          // 라이트 배경 위 primary = 레드 pill
 }
 
 const shapeClasses: Record<ResolvedVariant, string> = {
@@ -98,6 +107,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         : legacyVariantMap[variant] ?? 'outline'
     const isDisabled = disabled || loading
 
+    const isPrimary = resolved === 'primary'
+
     return (
       <button
         ref={ref}
@@ -115,6 +126,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ]
           .filter(Boolean)
           .join(' ')}
+        style={isPrimary ? { backgroundColor: primaryBgMap[surface] } : undefined}
         {...props}
       >
         {loading && (

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 import ImageUploadField from '@/components/admin/ImageUploadField'
@@ -129,7 +130,7 @@ export default function ItemBookForm({
       )}
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">아이템북 이름 *</span>
+        <span className="text-sm text-[#374151]">컬렉션 이름 *</span>
         <input
           required
           value={name}
@@ -154,7 +155,7 @@ export default function ItemBookForm({
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 resize-none"
-          placeholder="아이템북 설명을 입력하세요"
+          placeholder="컬렉션 설명을 입력하세요"
         />
       </label>
 
@@ -231,8 +232,7 @@ export default function ItemBookForm({
             {slottedBadges.map((b) => (
               <div key={b.id} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5">
                 {b.image_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.image_url} alt={b.name} className="w-8 h-8 rounded-lg object-contain" />
+                  <Image src={b.image_url} alt={b.name} width={32} height={32} className="w-8 h-8 rounded-lg object-contain" />
                 )}
                 <span className="text-sm flex-1">{b.name}</span>
                 <span className="text-xs text-[#6b7280]">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
@@ -263,7 +263,7 @@ export default function ItemBookForm({
           disabled={loading}
           className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
         >
-          {loading ? '저장 중...' : isEdit ? '수정 저장' : '아이템북 등록'}
+          {loading ? '저장 중...' : isEdit ? '수정 저장' : '컬렉션 등록'}
         </button>
         <button
           type="button"
@@ -286,7 +286,7 @@ export default function ItemBookForm({
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold mb-2">아이템북 삭제</h3>
+            <h3 className="text-lg font-bold mb-2">컬렉션 삭제</h3>
             <p className="text-[#6b7280] text-sm mb-5">
               &apos;{book?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
             </p>
@@ -332,8 +332,7 @@ export default function ItemBookForm({
                     className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#f8f9fa] transition-colors text-sm"
                   >
                     {b.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={b.image_url} alt={b.name} className="w-8 h-8 rounded-lg object-contain" />
+                      <Image src={b.image_url} alt={b.name} width={32} height={32} className="w-8 h-8 rounded-lg object-contain" />
                     )}
                     <span>{b.name}</span>
                     <span className="text-[#6b7280] text-xs ml-auto">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>

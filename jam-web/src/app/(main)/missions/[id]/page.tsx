@@ -29,9 +29,9 @@ export default async function MissionDetailPage({ params }: Props) {
   // 보상 배지 정보 조회 (표시용)
   const rewardBadgeIds = mission.reward_badge_ids ?? []
   const { data: rewardBadgesRaw } = rewardBadgeIds.length > 0
-    ? await service.from('badges').select('id, name, image_url').in('id', rewardBadgeIds)
+    ? await service.from('badges').select('id, name, image_url, rarity').in('id', rewardBadgeIds)
     : { data: [] }
-  const rewardBadges = (rewardBadgesRaw ?? []) as { id: string; name: string; image_url: string | null }[]
+  const rewardBadges = (rewardBadgesRaw ?? []) as { id: string; name: string; image_url: string | null; rarity: import('@/types/database').BadgeRarity }[]
 
   return (
     <MissionDetailClient

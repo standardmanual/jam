@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useToast } from '@/components/ui/Toast'
 import Card from '@/components/ui/Card'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import { MedalIcon } from '@/components/ui/icons'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
@@ -24,11 +26,12 @@ interface Props {
   publicRecipes: CombinationRecipeRow[]
 }
 
+// DS v2 희귀도 링 — 5-슬롯 미리보기 영역 전용
 const rarityRing: Record<string, string> = {
   common: '',
-  rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
-  legend: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
-  mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
+  rare:   'shadow-[inset_0_0_0_1px_var(--color-rarity-rare)]',
+  legend: 'shadow-[inset_0_0_0_1px_var(--color-rarity-legend)]',
+  mythic: 'shadow-[inset_0_0_0_1px_var(--color-rarity-mythic)]',
 }
 
 const MAX_SELECT = 10
@@ -145,7 +148,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
 
       {/* 선택 슬롯 */}
       <div className="px-[var(--spacing-16)] pb-[var(--spacing-24)]">
-        <p className="text-[11px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">
+        <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">
           {t(d.combine.selectedCount, { count: selected.length, max: MAX_SELECT })}
         </p>
         <div className="grid grid-cols-5 gap-[var(--spacing-8)] mb-[var(--spacing-16)]">
@@ -159,24 +162,32 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
                   'aspect-square rounded-[var(--radius-cards)] flex items-center justify-center transition-all',
                   item
                     ? `shadow-[inset_0_0_0_1px_var(--color-border)] cursor-pointer ${rarityRing[item.badge.rarity] ?? ''}`
-                    : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-30',
+                    : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-40',
                 ].join(' ')}
                 onClick={() => itemId && toggleItem(itemId)}
               >
                 {item ? (
                   item.badge.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.badge.image_url} alt={item.badge.name} className="w-3/4 h-3/4 object-contain" />
+                    <div className="relative w-3/4 aspect-square">
+                      <Image src={item.badge.image_url} alt={item.badge.name} fill className="object-contain" />
+                    </div>
                   ) : (
                     <MedalIcon className="w-5 h-5 text-text/40" />
                   )
                 ) : (
-                  <span className="text-text/25 text-xl">+</span>
+                  <span className="text-[length:var(--text-body)] leading-none text-[var(--color-text-secondary)] select-none">+</span>
                 )}
               </div>
             )
           })}
         </div>
+
+        {/* 온보딩 안내 — 슬롯이 모두 비었을 때만 표시 */}
+        {selected.length === 0 && (
+          <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)] text-center mb-[var(--spacing-16)]">
+            {d.combine.slotOnboarding}
+          </p>
+        )}
 
         <button
           onClick={handleCombine}
@@ -191,7 +202,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       {/* 힌트 */}
       {hints.length > 0 && (
         <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
-          <p className="text-[10px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.hintsTitle}</p>
+          <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.hintsTitle}</p>
           <div className="flex flex-col gap-[var(--spacing-8)]">
             {hints.map((h, i) => (
               <Card key={i}>
@@ -205,7 +216,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       {/* 공개 레시피 */}
       {publicRecipes.length > 0 && (
         <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
-          <p className="text-[10px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.recipesTitle}</p>
+          <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.recipesTitle}</p>
           <div className="flex flex-col gap-[var(--spacing-8)]">
             {publicRecipes.map((r) => (
               <Card key={r.id} className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">
@@ -221,7 +232,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
 
       {/* 인벤토리 */}
       <div className="flex-1 px-[var(--spacing-16)] py-[var(--spacing-24)] shadow-[inset_0_1px_0_0_var(--color-border)]">
-        <p className="text-[10px] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.myItemsTitle}</p>
+        <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.myItemsTitle}</p>
         {items.length === 0 ? (
           <p className="text-text/50 text-center py-[var(--spacing-32)]">{d.combine.emptyInventory}</p>
         ) : (
@@ -229,24 +240,15 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
             {items.map((item) => {
               const isSelected = selected.includes(item.id)
               return (
-                <button
+                <BadgeGridCard
                   key={item.id}
                   onClick={() => toggleItem(item.id)}
-                  className={[
-                    'flex flex-col items-center gap-1.5 p-[var(--spacing-8)] rounded-[var(--radius-cards)] transition-all active:scale-95',
-                    isSelected
-                      ? `shadow-[inset_0_0_0_1px_var(--color-border)] ${rarityRing[item.badge.rarity] ?? ''}`
-                      : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-60',
-                  ].join(' ')}
-                >
-                  {item.badge.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.badge.image_url} alt={item.badge.name} className="w-14 h-14 object-contain" />
-                  ) : (
-                    <MedalIcon className="w-6 h-6 text-text/40" />
-                  )}
-                  <p className="text-[10px] text-text text-center leading-tight line-clamp-2">{item.badge.name}</p>
-                </button>
+                  name={item.badge.name}
+                  imageUrl={item.badge.image_url}
+                  rarity={item.badge.rarity as import('@/types/database').BadgeRarity}
+                  selected={isSelected}
+                  className={isSelected ? '' : 'opacity-60'}
+                />
               )
             })}
           </div>

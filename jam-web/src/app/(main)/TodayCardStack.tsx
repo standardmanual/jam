@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import type { ComponentType, SVGProps } from 'react'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
@@ -37,7 +38,7 @@ const TemplateIcon: Record<TodayCardTemplateType, ComponentType<SVGProps<SVGSVGE
 
 function TemplateChip({ card }: { card: TodayCardWithHref }) {
   return (
-    <span className="inline-flex items-center text-[12px] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text">
+    <span className="inline-flex items-center text-[length:var(--text-caption)] leading-none font-bold uppercase px-2.5 py-1.5 rounded-[var(--radius-tags)] bg-surface text-text">
       {templateLabel[card.template_type]}
     </span>
   )
@@ -49,23 +50,22 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
   return (
     <Card className="p-0 overflow-hidden active:scale-[0.98] transition-transform duration-100">
       {cover && (
-        <div className="w-full aspect-[16/9] overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={cover} alt={card.title} className="w-full h-full object-cover" />
+        <div className="relative w-full aspect-[16/9] overflow-hidden">
+          <Image src={cover} alt={card.title} fill className="object-cover" />
         </div>
       )}
       <div className="p-[var(--spacing-24)]">
         <div className="flex items-center gap-2 mb-2">
           <TemplateChip card={card} />
           {card.template_type === 'location_trend' && card.region_label && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-text-inverse/60">
+            <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] text-text-inverse/60">
               <PinIcon className="w-3 h-3" />{card.region_label}
             </span>
           )}
         </div>
         <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
         {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
-        <p className="text-[11px] text-text-inverse/40 mt-3">
+        <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-3">
           {card.template_type === 'editorial_article' ? d.today.cardReadArticle : d.today.cardReadMore} &rarr;
         </p>
       </div>
@@ -80,7 +80,7 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
       <div className="flex items-center gap-2 mb-2">
         <TemplateChip card={card} />
         {card.region_label && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-text-inverse/60">
+          <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] text-text-inverse/60">
             <PinIcon className="w-3 h-3" />{card.region_label}
           </span>
         )}
@@ -94,18 +94,17 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
             <div key={b.id} className="flex flex-col items-center gap-1 shrink-0 w-16">
               <div className="w-16 h-16 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden flex items-center justify-center">
                 {b.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.image_url} alt={b.name} className="w-full h-full object-cover" />
+                  <Image src={b.image_url} alt={b.name} width={64} height={64} className="w-full h-full object-cover" />
                 ) : (
                   <MedalIcon className="w-6 h-6 text-text-inverse/40" />
                 )}
               </div>
-              <span className="text-[10px] text-text-inverse/70 text-center leading-tight line-clamp-2">{b.name}</span>
+              <span className="text-[length:var(--text-caption)] text-text-inverse/70 text-center leading-tight line-clamp-2">{b.name}</span>
             </div>
           ))}
         </div>
       )}
-      <p className="text-[11px] text-text-inverse/40 mt-3">{d.today.cardViewAll} &rarr;</p>
+      <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-3">{d.today.cardViewAll} &rarr;</p>
     </Card>
   )
 }
@@ -120,7 +119,7 @@ function ShortcutCard({ card }: { card: TodayCardWithHref }) {
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{card.title}</h3>
-        {card.subtitle && <p className="text-[11px] text-text-inverse/60 truncate">{card.subtitle}</p>}
+        {card.subtitle && <p className="text-[length:var(--text-caption)] text-text-inverse/60 truncate">{card.subtitle}</p>}
       </div>
       <span className="text-text-inverse/30 shrink-0" aria-hidden="true">&rsaquo;</span>
     </Card>
@@ -137,8 +136,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
 
   return (
     <article className="relative rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={cover} alt={card.title} className="absolute inset-0 w-full h-full object-cover" />
+      <Image src={cover} alt={card.title} fill className="object-cover" />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-24)] pt-10 pb-[var(--spacing-24)]">
         <div className="mb-2">
@@ -158,7 +156,7 @@ function OtherCard({ card }: { card: TodayCardWithHref }) {
       <div className="mb-2"><TemplateChip card={card} /></div>
       <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
-      <p className="text-[11px] text-text-inverse/40 mt-3">{d.today.cardReadMore} &rarr;</p>
+      <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-3">{d.today.cardReadMore} &rarr;</p>
     </Card>
   )
 }
@@ -175,7 +173,7 @@ export default function TodayCardStack({ cards }: { cards: TodayCardWithHref[] }
     <section>
       <div className="flex items-center justify-between mb-[var(--spacing-16)]">
         <h2 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{d.today.cardStackTitle}</h2>
-        <span className="text-[11px] text-text-inverse/40">{d.today.cardStackSubtitle}</span>
+        <span className="text-[length:var(--text-caption)] text-text-inverse/40">{d.today.cardStackSubtitle}</span>
       </div>
 
       <div className="flex flex-col gap-[var(--spacing-16)]">

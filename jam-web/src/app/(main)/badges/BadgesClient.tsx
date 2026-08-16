@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
-import RarityBadge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
-import { MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
+import { RARITY_LABEL } from '@/lib/rarity'
 
 type TabKey = 'activity' | 'poi' | 'itembook'
 const VALID_TABS = new Set<string>(['activity', 'poi', 'itembook'])
@@ -16,12 +16,6 @@ const VALID_TABS = new Set<string>(['activity', 'poi', 'itembook'])
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
 const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, legend: 2, mythic: 3 }
-const RARITY_LABELS: Record<BadgeRarity, string> = {
-  common: d.feed.rarityCommon,
-  rare: d.feed.rarityRare,
-  legend: d.feed.rarityLegend,
-  mythic: d.feed.rarityMythic,
-}
 
 function activitySortIndex(types: ActivityType[]): number {
   const idx = ACTIVITY_TYPE_ORDER.indexOf(types[0])
@@ -46,6 +40,7 @@ export interface ItemBookProgress {
   owned: number
   total: number
   completed: boolean
+  rarity: BadgeRarity
 }
 
 interface BadgesClientProps {
@@ -59,7 +54,7 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   return (
     <Card className="text-center py-[var(--spacing-32)]">
       <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{title}</p>
-      <p className="text-[11px] text-text-inverse/40 mt-1">{body}</p>
+      <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{body}</p>
     </Card>
   )
 }
@@ -68,7 +63,7 @@ function tabLabel(label: string, count: number) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {label}
-      {count > 0 && <span className="text-[10px] tabular-nums opacity-70">{count}</span>}
+      {count > 0 && <span className="text-[length:var(--text-body-sm)] tabular-nums font-bold text-[color:var(--color-primary)]">{count}</span>}
     </span>
   )
 }
@@ -76,18 +71,33 @@ function tabLabel(label: string, count: number) {
 type PoiSortOrder = 'latest' | 'name'
 
 export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiBadges }: BadgesClientProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>('activity')
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.slice(1)
+      if (VALID_TABS.has(hash)) return hash as TabKey
+    }
+    return 'activity'
+  })
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
   const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
   const [poiCategoryFilter, setPoiCategoryFilter] = useState<string>('all')
   const [poiSortOrder, setPoiSortOrder] = useState<PoiSortOrder>('latest')
   const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
 
-  // 아이템북 상세화면에서 뒤로가기로 돌아왔을 때(#itembook) 해당 탭이 활성 상태로 보이도록 동기화
+  // 브라우저 뒤로/앞으로 탐색 시 hash 변화를 탭에 반영
   useEffect(() => {
-    const hash = window.location.hash.slice(1)
-    if (VALID_TABS.has(hash)) setActiveTab(hash as TabKey)
+    const onPopState = () => {
+      const hash = window.location.hash.slice(1)
+      if (VALID_TABS.has(hash)) setActiveTab(hash as TabKey)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
   }, [])
+
+  const handleTabChange = (key: TabKey) => {
+    setActiveTab(key)
+    window.history.replaceState(null, '', `#${key}`)
+  }
 
   const earnedCount = badges.filter((b) => b.earned).length
   const poiEarnedCount = poiBadges.filter((p) => p.earnCount > 0).length
@@ -164,7 +174,8 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
         <SlidingTabs
           items={tabs}
           value={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
+          outlined={false}
           aria-label={d.badges.title}
         />
       </div>
@@ -179,7 +190,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 <select
                   value={activityFilter}
                   onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
                   <option value="all">{d.badges.filterActivityAll}</option>
                   {ACTIVITY_TYPE_ORDER.map((tp) => (
@@ -189,11 +200,11 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 <select
                   value={rarityFilter}
                   onChange={(e) => setRarityFilter(e.target.value as BadgeRarity | 'all')}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
                   <option value="all">{d.badges.filterRarityAll}</option>
                   {RARITY_ORDER.map((r) => (
-                    <option key={r} value={r}>{RARITY_LABELS[r]}</option>
+                    <option key={r} value={r}>{RARITY_LABEL[r]}</option>
                   ))}
                 </select>
               </div>
@@ -201,26 +212,14 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
               {filteredActivityBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
                   {filteredActivityBadges.map(({ badge, earned }) => (
-                    <Link key={badge.id} href={`/badges/${badge.id}`}>
-                      <Card className={`flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100 ${earned ? '' : 'bg-surface-inverse/50'}`}>
-                        <div className={`w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden ${earned ? '' : 'grayscale opacity-40'}`}>
-                          {badge.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={badge.image_url}
-                              alt={badge.name}
-                              className="w-full h-full object-contain p-1"
-                            />
-                          ) : (
-                            <MedalIcon className="w-9 h-9 text-text-inverse/40" />
-                          )}
-                        </div>
-                        <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
-                        <div className="h-6 flex items-center justify-center">
-                          <RarityBadge rarity={badge.rarity} />
-                        </div>
-                      </Card>
-                    </Link>
+                    <BadgeGridCard
+                      key={badge.id}
+                      href={`/badges/${badge.id}`}
+                      name={badge.name}
+                      imageUrl={badge.image_url}
+                      rarity={badge.rarity}
+                      earned={!!earned}
+                    />
                   ))}
                 </div>
               ) : (
@@ -241,7 +240,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 <select
                   value={poiCategoryFilter}
                   onChange={(e) => setPoiCategoryFilter(e.target.value)}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
                   <option value="all">{d.badges.filterPoiCategoryAll}</option>
                   {poiCategoryOptions.map(([slug, label]) => (
@@ -251,7 +250,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 <select
                   value={poiSortOrder}
                   onChange={(e) => setPoiSortOrder(e.target.value as PoiSortOrder)}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
                   <option value="latest">{d.badges.sortPoiLatest}</option>
                   <option value="name">{d.badges.sortPoiName}</option>
@@ -261,26 +260,13 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
               {filteredPoiBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
                   {filteredPoiBadges.map(({ badge }) => (
-                    <Link key={badge.id} href={`/badges/${badge.id}`}>
-                      <Card className="flex flex-col items-center gap-1 p-[var(--spacing-8)] active:scale-95 transition-transform duration-100">
-                        <div className="w-[72px] h-[72px] rounded-[var(--radius-cards)] flex items-center justify-center overflow-hidden">
-                          {badge.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={badge.image_url}
-                              alt={badge.name}
-                              className="w-full h-full object-contain p-1"
-                            />
-                          ) : (
-                            <MedalIcon className="w-9 h-9 text-text-inverse/40" />
-                          )}
-                        </div>
-                        <p className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{badge.name}</p>
-                        <div className="h-6 flex items-center justify-center">
-                          <RarityBadge rarity={badge.rarity} />
-                        </div>
-                      </Card>
-                    </Link>
+                    <BadgeGridCard
+                      key={badge.id}
+                      href={`/badges/${badge.id}`}
+                      name={badge.name}
+                      imageUrl={badge.image_url}
+                      rarity={badge.rarity}
+                    />
                   ))}
                 </div>
               ) : (
@@ -292,47 +278,23 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
           )
         )}
 
-        {/* 아이템북 탭 */}
+        {/* 컬렉션 탭 */}
         {activeTab === 'itembook' && (
           itemBooks.length > 0 ? (
-            <div className="flex flex-col gap-[var(--spacing-16)]">
+            <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
               {itemBooks.map((book) => {
-                const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false }
-                const pct = Math.round((progress.owned / progress.total) * 100)
+                const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false, rarity: 'common' as BadgeRarity }
                 return (
-                  <Link key={book.id} href={`/itembooks/${book.id}?from=badges`}>
-                    <Card className="active:scale-[0.98] transition-transform duration-100">
-                      <div className="flex gap-[var(--spacing-16)] mb-[var(--spacing-16)]">
-                        {book.image_url && (
-                          <div className="w-14 h-14 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{book.name}</h3>
-                            {progress.completed ? (
-                              <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] ml-2 shrink-0">
-                                {d.badges.itembookCompleted}
-                              </span>
-                            ) : (
-                              <ChevronRightIcon className="w-4 h-4 text-text-inverse/30 shrink-0 ml-2 mt-0.5" />
-                            )}
-                          </div>
-                          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-0.5 line-clamp-2">{book.description}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-[var(--spacing-16)]">
-                        <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                          <div className="h-full bg-surface transition-all duration-500" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-[11px] text-text-inverse/50 tabular-nums shrink-0">
-                          {progress.owned} / {progress.total}
-                        </span>
-                      </div>
-                    </Card>
-                  </Link>
+                  <CollectionGridCard
+                    key={book.id}
+                    href={`/itembooks/${book.id}?from=badges`}
+                    name={book.name}
+                    imageUrl={book.image_url ?? null}
+                    collected={progress.owned}
+                    total={progress.total}
+                    completed={progress.completed}
+                    rarity={progress.rarity}
+                  />
                 )
               })}
             </div>

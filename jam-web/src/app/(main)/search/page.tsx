@@ -1,12 +1,13 @@
-import Link from 'next/link'
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import UserSearchBar from '../UserSearchBar'
 import Card from '@/components/ui/Card'
+import ListRowCard from '@/components/ui/ListRowCard'
 import TopNav from '@/components/ui/TopNav'
-import { UserIcon } from '@/components/ui/icons'
+import { UserIcon, ChevronRightIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 
 interface SearchPageProps {
@@ -85,7 +86,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.search.title} />
+      <TopNav title={d.common.back} />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
         {/* 재검색 */}
@@ -95,49 +96,42 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         {!hasQuery ? (
           <Card className="text-center py-[var(--spacing-32)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.promptTitle}</p>
-            <p className="text-[11px] text-text-inverse/40 mt-1">{d.search.promptBody}</p>
+            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.search.promptBody}</p>
           </Card>
         ) : results.length === 0 ? (
           <Card className="text-center py-[var(--spacing-32)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.emptyTitle}</p>
-            <p className="text-[11px] text-text-inverse/40 mt-1">{d.search.emptyBody}</p>
+            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.search.emptyBody}</p>
           </Card>
         ) : (
-          <section className="flex flex-col gap-[var(--spacing-16)]">
-            <p className="text-text/50 text-[11px]">{t(d.search.resultCount, { count: results.length })}</p>
-            {results.map((u) => (
-              <Link key={u.id} href={`/${u.username}`}>
-                <Card className="flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
-                  {u.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={u.avatar_url} alt={u.username} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0 flex items-center justify-center">
-                      <UserIcon className="w-5 h-5 text-text-inverse/50" />
-                    </div>
-                  )}
-
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{u.username}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      {u.region && (
-                        <span className="text-[11px] text-text-inverse/60">{u.region}</span>
-                      )}
-                      {u.region && u.activity_types && u.activity_types.length > 0 && (
-                        <span className="text-text-inverse/30 text-[11px]">·</span>
-                      )}
-                      {u.activity_types && u.activity_types.length > 0 && (
-                        <span className="text-[11px] text-text-inverse/50 truncate">
-                          {u.activity_types.map((a) => ACTIVITY_TYPE_LABELS[a] ?? a).join(', ')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <span className="shrink-0 text-text-inverse/40">&rarr;</span>
-                </Card>
-              </Link>
-            ))}
+          <section className="flex flex-col gap-[var(--spacing-8)]">
+            <p className="text-text/50 text-[length:var(--text-caption)] px-1">{t(d.search.resultCount, { count: results.length })}</p>
+            {results.map((u) => {
+              const subtitle = [
+                u.region,
+                u.activity_types?.length ? u.activity_types.map((a) => ACTIVITY_TYPE_LABELS[a] ?? a).join(', ') : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+              return (
+                <ListRowCard
+                  key={u.id}
+                  href={`/${u.username}`}
+                  icon={
+                    u.avatar_url ? (
+                      <Image src={u.avatar_url} alt={u.username} width={40} height={40} className="w-10 h-10 rounded-full object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
+                        <UserIcon className="w-5 h-5 text-text/50" />
+                      </div>
+                    )
+                  }
+                  title={u.username}
+                  subtitle={subtitle || undefined}
+                  trailing={<ChevronRightIcon className="w-4 h-4 text-text/40" />}
+                />
+              )
+            })}
           </section>
         )}
       </div>

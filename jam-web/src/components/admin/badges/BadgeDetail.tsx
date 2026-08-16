@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { Button } from '@/components/ui/shadcn-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -90,13 +91,13 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
             <CardTitle className="text-sm">배지 이미지</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="w-full aspect-square rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
+            <div className="relative w-full aspect-square rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
               {badge.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={badge.image_url}
                   alt={badge.name}
-                  className="w-full h-full object-contain"
+                  fill
+                  className="object-contain"
                 />
               ) : (
                 <span className="text-gray-400">이미지 없음</span>

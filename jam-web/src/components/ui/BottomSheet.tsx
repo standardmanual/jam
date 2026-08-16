@@ -23,6 +23,8 @@ interface BottomSheetProps {
    * 순수 flexbox 레이아웃만으로 항상 화면에 보장되어 더 견고하다.
    */
   footer?: ReactNode
+  /** true면 다크 배경(--color-bg) + 다크 토큰 적용 */
+  dark?: boolean
 }
 
 const DRAG_CLOSE_THRESHOLD = 120
@@ -36,6 +38,7 @@ export default function BottomSheet({
   showCloseButton = true,
   closeLabel = '닫기',
   footer,
+  dark = false,
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
@@ -110,7 +113,8 @@ export default function BottomSheet({
       {/* Sheet */}
       <div
         className={[
-          'relative bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] flex flex-col',
+          'relative rounded-t-[var(--radius-cards)] flex flex-col',
+          dark ? 'bg-[var(--color-bg)] text-text' : 'bg-surface-inverse text-text-inverse',
           /* dvh(동적 뷰포트 높이) 사용 — iOS Safari는 vh를 주소창이 숨겨진
              상태의 레이아웃 뷰포트 기준으로 계산해서, 주소창이 보이는 상태로
              열리면 시트 하단과 실제 화면 하단 사이에 틈이 생겨 그 틈으로
@@ -132,11 +136,11 @@ export default function BottomSheet({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         >
-          <div className="w-10 h-1 rounded-full shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+          <div className={`w-10 h-1 rounded-full ${dark ? 'shadow-[inset_0_0_0_1px_var(--color-border)]' : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'}`} />
         </div>
 
         {hasHeader && (
-          <div className="flex items-center justify-between px-[var(--spacing-24)] pb-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)] shrink-0">
+          <div className="flex items-center justify-between px-[var(--spacing-24)] pb-[var(--spacing-16)] shrink-0">
             {title ? (
               <h2 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{title}</h2>
             ) : (
@@ -146,7 +150,7 @@ export default function BottomSheet({
               <button
                 onClick={onClose}
                 aria-label={closeLabel}
-                className="w-11 h-11 -mr-2 flex items-center justify-center text-text-inverse/60 active:scale-90 transition-transform duration-100"
+                className={`w-11 h-11 -mr-2 flex items-center justify-center active:scale-90 transition-transform duration-100 ${dark ? 'text-text/60' : 'text-text-inverse/60'}`}
               >
                 <CloseIcon className="w-5 h-5" />
               </button>
@@ -165,7 +169,7 @@ export default function BottomSheet({
              높이 + 여유 12px을 명시적으로 더해 실측 기준으로 항상 탭바 위에
              오도록 강제한다. */
           <div
-            className="shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] shadow-[inset_0_1px_0_0_var(--color-border-inverse)]"
+            className={`shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] ${dark ? 'shadow-[inset_0_1px_0_0_var(--color-border)]' : 'shadow-[inset_0_1px_0_0_var(--color-border-inverse)]'}`}
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)' }}
           >
             {footer}

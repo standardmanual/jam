@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
+import { RARITY_LABEL, RARITY_COLOR } from '@/lib/rarity'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import {
   MedalIcon,
@@ -79,21 +82,6 @@ function eventLabel(item: ActivityFeedRow): string {
   return EVENT_LABEL[item.event_type]
 }
 
-/**
- * 희귀도 상태 팔레트 — Phase 2에서 `state_color_palette` 테이블로 이관 예정.
- * [주의] 색상값을 재조정하지 마세요(유저가 학습한 색 언어 유지).
- */
-const RARITY_COLOR: Record<string, string> = {
-  rare: 'text-jam-teal shadow-[inset_0_0_0_1px_var(--color-jam-teal)]',
-  legend: 'text-jam-purple shadow-[inset_0_0_0_1px_var(--color-jam-purple)]',
-  mythic: 'text-jam-yellow shadow-[inset_0_0_0_1px_var(--color-jam-yellow)]',
-}
-const RARITY_LABEL: Record<string, string> = {
-  common: d.feed.rarityCommon,
-  rare: d.feed.rarityRare,
-  legend: d.feed.rarityLegend,
-  mythic: d.feed.rarityMythic,
-}
 
 function formatFullDate(iso: string) {
   return new Date(iso).toLocaleDateString('ko-KR', {
@@ -179,8 +167,7 @@ export function DetailSheet({
         <div className="w-10 h-1 bg-surface/20 rounded-full mx-auto mb-[var(--spacing-24)]" />
         <div className="flex justify-center mb-[var(--spacing-16)]">
           {badgeImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={badgeImage} alt={title} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+            <Image src={badgeImage} alt={title} width={112} height={112} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
           ) : (
             <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center">
               <EventIcon type={item.event_type} className="w-12 h-12" />
@@ -191,7 +178,7 @@ export function DetailSheet({
         <h2 className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text-inverse mb-[var(--spacing-16)]">{title}</h2>
         {rarity && RARITY_COLOR[rarity] && (
           <div className="flex justify-center mb-[var(--spacing-16)]">
-            <span className={`text-[length:var(--text-body-sm)] px-[var(--spacing-16)] py-1 rounded-[var(--radius-tags)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
+            <span className={`text-[length:var(--text-body-sm)] px-[var(--spacing-16)] py-1 rounded-[var(--radius-tags)] font-bold uppercase tracking-[var(--tracking-label)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
           </div>
         )}
         <div className="rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] px-[var(--spacing-16)] py-[var(--spacing-8)] mb-[var(--spacing-24)]">
@@ -253,39 +240,39 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
   const isLastPiece = item.event_type === 'item_dropped' && meta.is_last_piece === true
 
   return (
-    <button
+    <ListRowCard
       onClick={onClick}
-      className="w-full text-left bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] min-h-11 active:scale-[0.98] transition-transform duration-100 cursor-pointer"
-    >
-      {badgeImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={badgeImage} alt={title} className="w-11 h-11 rounded-[var(--radius-cards)] object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
-      ) : (
-        <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center shrink-0">
-          <EventIcon type={item.event_type} className="w-5 h-5" />
+      icon={
+        badgeImage ? (
+          <Image src={badgeImage} alt={title} width={40} height={40} className="w-10 h-10 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
+        ) : (
+          <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
+            <EventIcon type={item.event_type} className="w-5 h-5 text-text" />
+          </div>
+        )
+      }
+      trailing={
+        <div className="flex flex-col items-end gap-1">
+          <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{formatRelativeTime(item.event_at)}</span>
+          <ChevronRightIcon className="w-4 h-4 text-text/40" />
         </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 truncate">{eventLabel(item)}</p>
-        <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text-inverse truncate">{title}</p>
-        {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 truncate">{sub}</p>}
-        <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
-          {rarity && RARITY_COLOR[rarity] && (
-            <span className={`inline-block text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
-          )}
-          {isLastPiece && (
-            <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
-              <PuzzleIcon className="w-3 h-3" />
-              {d.feed.lastPiece}
-            </span>
-          )}
-        </span>
-      </div>
-      <div className="flex flex-col items-end gap-1 shrink-0">
-        <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{formatRelativeTime(item.event_at)}</span>
-        <ChevronRightIcon className="w-4 h-4 text-text-inverse/40" />
-      </div>
-    </button>
+      }
+    >
+      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{eventLabel(item)}</p>
+      <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">{title}</p>
+      {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{sub}</p>}
+      <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
+        {rarity && RARITY_COLOR[rarity] && (
+          <span className={`inline-block text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] font-bold uppercase tracking-[var(--tracking-label)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
+        )}
+        {isLastPiece && (
+          <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+            <PuzzleIcon className="w-3 h-3" />
+            {d.feed.lastPiece}
+          </span>
+        )}
+      </span>
+    </ListRowCard>
   )
 }
 
@@ -340,6 +327,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
           items={FILTER_TABS}
           value={activeFilter}
           onChange={handleFilterChange}
+          outlined={false}
           aria-label={title}
         />
       </div>
