@@ -507,9 +507,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* info-section */}
         <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
-          <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider">획득 방법</p>
-          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
-            <p className="text-[15px] text-[var(--color-text-secondary)] leading-[1.6]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
+          {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
+          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
+            <p className="text-[15px] font-bold text-text">{d.badges.conditionTitle}</p>
+            <p className="text-[14px] text-[var(--color-text-secondary)] leading-[1.6]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
           </div>
 
           {/* POI 획득 이력 */}
@@ -567,8 +568,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* action-section */}
         <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[40px]">
-          {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
-
           {badgeRow.patch_available && (
             <a
               href="#"
