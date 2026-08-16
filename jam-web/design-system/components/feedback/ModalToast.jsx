@@ -34,7 +34,7 @@ const ICONS = {
  * Use to pass a BadgeFrame or any custom element into the icon position.
  * Accessibility (aria attributes, alt text) for iconSlot content is the caller's responsibility.
  */
-export function ModalToast({ message, type = 'success', open = true, onDismiss, iconSlot }) {
+export function ModalToast({ message, type = 'success', open = true, onDismiss, iconSlot, dismissLabel = '닫기' }) {
   const dismissRef = useRef(null);
   const labelId = React.useId ? React.useId() : 'modal-toast-label';
 
@@ -114,7 +114,7 @@ export function ModalToast({ message, type = 'success', open = true, onDismiss, 
             fontFamily: 'var(--font-family-base)',
           }}
         >
-          확인
+          {dismissLabel}
         </button>
       </div>
     </div>

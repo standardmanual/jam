@@ -52,6 +52,43 @@ export const ManyTabs: Story = {
   },
 };
 
+export const WithTabPanel: Story = {
+  name: 'tabpanel 연결 패턴 (aria-controls ↔ role="tabpanel")',
+  render: () => {
+    const [active, setActive] = useState('all');
+    const TABS = [
+      { key: 'all', label: '전체' },
+      { key: 'running', label: '러닝' },
+      { key: 'cycling', label: '사이클링' },
+    ];
+    const CONTENT: Record<string, string> = {
+      all: '모든 활동 목록이 표시됩니다.',
+      running: '러닝 활동만 표시됩니다.',
+      cycling: '사이클링 활동만 표시됩니다.',
+    };
+    return (
+      <div style={{ width: 360 }}>
+        <SlidingTabs
+          tabs={TABS.map((t) => ({ ...t, 'aria-controls': `panel-${t.key}` }))}
+          active={active}
+          onChange={setActive}
+        />
+        {TABS.map((t) => (
+          <div
+            key={t.key}
+            id={`panel-${t.key}`}
+            role="tabpanel"
+            hidden={active !== t.key}
+            style={{ padding: '16px 4px', color: 'var(--color-text-secondary)', fontSize: 'var(--text-small)' }}
+          >
+            {CONTENT[t.key]}
+          </div>
+        ))}
+      </div>
+    );
+  },
+};
+
 export const TwoTabs: Story = {
   name: '2개 탭',
   render: () => {

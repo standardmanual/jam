@@ -30,6 +30,7 @@ export function Select({
   id,
   name,
   'aria-label': ariaLabel,
+  'aria-describedby': ariaDescribedby,
   state = 'default',
   disabled = false,
   style = {},
@@ -50,6 +51,7 @@ export function Select({
         onChange={onChange}
         disabled={disabled}
         aria-label={ariaLabel}
+        aria-describedby={ariaDescribedby}
         aria-invalid={state === 'error' ? true : undefined}
         style={{
           width: '100%',

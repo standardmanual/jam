@@ -50,6 +50,18 @@ export const Tall: Story = {
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };
 
+export const WithLabel: Story = {
+  name: 'label 연결 패턴 (htmlFor + id)',
+  render: () => (
+    <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label htmlFor="activity-memo" style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
+        활동 소감
+      </label>
+      <Textarea id="activity-memo" placeholder="오늘의 활동을 기록해 보세요" aria-label="활동 소감" />
+    </div>
+  ),
+};
+
 export const Interactive: Story = {
   name: '인터랙티브 (글자 수 표시)',
   render: () => {

@@ -20,10 +20,13 @@ export function Input({
   'aria-describedby': ariaDescribedby,
   state = 'default',
   disabled = false,
+  surface = 'default',
   ...rest
 }) {
+  const isInverse = surface === 'inverse';
+
   const borderByState = {
-    default: '1px solid var(--color-border)',
+    default: `1px solid ${isInverse ? 'rgba(255,255,255,0.2)' : 'var(--color-border)'}`,
     error: '2px solid var(--color-rarity-mythic)',
     success: '2px solid var(--color-rarity-rare)',
   };
@@ -49,8 +52,8 @@ export function Input({
         fontSize: 'var(--text-body)',
         lineHeight: 'var(--leading-body)',
         fontFamily: 'var(--font-family-base)',
-        color: 'var(--color-text)',
-        background: 'var(--color-bg-tint)',
+        color: isInverse ? 'var(--color-bg)' : 'var(--color-text)',
+        background: isInverse ? 'var(--color-bg-inverse)' : 'var(--color-bg-tint)',
         boxSizing: 'border-box',
         opacity: disabled ? 0.4 : 1,
         cursor: disabled ? 'not-allowed' : 'text',

@@ -47,42 +47,43 @@ export function Checkbox({
         ...style,
       }}
     >
-      {/* Native input — visually hidden but in a11y tree */}
-      <input
-        id={id}
-        name={name}
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        disabled={disabled}
-        aria-invalid={state === 'error' ? true : undefined}
-        style={{
-          position: 'absolute',
-          width: 1, height: 1,
-          padding: 0, margin: -1,
-          overflow: 'hidden',
-          clip: 'rect(0,0,0,0)',
-          whiteSpace: 'nowrap',
-          border: 0,
-        }}
-        {...rest}
-      />
-      {/* Custom visual indicator */}
-      <span
-        aria-hidden="true"
-        style={{
-          flexShrink: 0,
-          width: 20, height: 20,
-          borderRadius: 'var(--radius-input)',
-          border: borderByState[state] ?? borderByState.default,
-          background: checked ? 'var(--color-primary)' : 'var(--color-bg-tint)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--color-text-on-primary)',
-          transition: 'background var(--duration-quick) var(--ease-smooth-out)',
-          boxSizing: 'border-box',
-        }}
-      >
-        {checked && <CheckIcon />}
+      {/* Native input + custom visual — overlapping for correct focus ring position */}
+      <span style={{ position: 'relative', flexShrink: 0, width: 20, height: 20 }}>
+        <input
+          id={id}
+          name={name}
+          type="checkbox"
+          checked={checked}
+          onChange={onChange}
+          disabled={disabled}
+          aria-invalid={state === 'error' ? true : undefined}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%', height: '100%',
+            opacity: 0,
+            margin: 0, padding: 0,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            zIndex: 1,
+          }}
+          {...rest}
+        />
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 'var(--radius-input)',
+            border: borderByState[state] ?? borderByState.default,
+            background: checked ? 'var(--color-primary)' : 'var(--color-bg-tint)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--color-text-on-primary)',
+            transition: 'background var(--duration-quick) var(--ease-smooth-out)',
+            boxSizing: 'border-box',
+          }}
+        >
+          {checked && <CheckIcon />}
+        </span>
       </span>
       {label && (
         <span style={{ fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>

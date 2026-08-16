@@ -23,7 +23,7 @@ const ICON_PATHS = {
 };
 
 export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'light', ...rest }) {
-  if (process.env.NODE_ENV !== 'production' && !label) {
+  if (!label) {
     console.warn('[DS] IconButton: `label` prop이 없습니다. 스크린리더 사용자가 이 버튼의 역할을 알 수 없습니다.');
   }
 
