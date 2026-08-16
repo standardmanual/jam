@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Toast } from './Toast';
 import { Button } from '../buttons/Button';
 
+// 20260816_012: 인셋 보더 제거(기존 --color-border 참조는 라이트 토스트에 부적절했던 오류이기도 함)
 const meta: Meta<typeof Toast> = {
   title: 'MODULAR/Feedback/Toast',
   component: Toast,

@@ -405,7 +405,8 @@ export default function DropsClient() {
         >
           <div className="bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] overflow-hidden">
             {/* 헤더 */}
-            <div className="flex items-center justify-between px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]">
+            {/* 20260816_012: hr 대체용 하단 구분선 제거 */}
+            <div className="flex items-center justify-between px-[var(--spacing-16)] py-[var(--spacing-16)]">
               <div className="min-w-0">
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold text-text-inverse/70 mb-0.5 truncate">{selectedPoi.name}</p>
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
@@ -429,9 +430,9 @@ export default function DropsClient() {
                     <button
                       key={drop.id}
                       onClick={() => setSelectedDrop(drop)}
-                      className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-[0.98] transition-transform duration-100 text-left"
+                      className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-black/[0.04] active:scale-[0.98] transition-transform duration-100 text-left"
                     >
-                      <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center">
+                      <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden bg-black/[0.04] flex items-center justify-center">
                         {drop.badge_image_url ? (
                           <Image src={drop.badge_image_url} alt={drop.badge_name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
                         ) : (
@@ -453,7 +454,7 @@ export default function DropsClient() {
                 pendingDropItem ? (
                   /* 인앱 확인 UI (네이티브 confirm 대체) */
                   <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-                    <div className="w-20 h-20 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center">
                       {pendingDropItem.badgeImageUrl ? (
                         <Image src={pendingDropItem.badgeImageUrl} alt={pendingDropItem.badgeName} width={80} height={80} className="w-full h-full object-contain p-1" />
                       ) : (

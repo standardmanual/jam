@@ -10,6 +10,8 @@ const ACTIVITY_TABS = [
   { key: 'hiking', label: '하이킹' },
 ];
 
+// 20260816_012: 보더/구분선 감사 결과 이 컴포넌트는 이미 보더 없음(border: 'none') — 변경 불필요.
+// 프로덕션 SlidingTabs.tsx의 outlined 변형(별도 API)에서 보더를 제거하고 --color-surface-elevated로 대체함.
 const meta: Meta<typeof SlidingTabs> = {
   title: 'MODULAR/Navigation/SlidingTabs',
   component: SlidingTabs,

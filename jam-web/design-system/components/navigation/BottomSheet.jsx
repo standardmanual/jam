@@ -70,8 +70,8 @@ export function BottomSheet({ open, onDismiss, title, children }) {
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          background: 'var(--color-surface)',
-          borderTop: '1px solid var(--color-border)',
+          // 20260816_012: 보더 제거 — 오버레이 위에서도 구분되도록 --color-surface-elevated 사용
+          background: 'var(--color-surface-elevated)',
           borderRadius: 'var(--radius-card) var(--radius-card) 0 0',
           padding: 'var(--layout-card-padding)',
           paddingBottom: 'calc(var(--layout-card-padding) + var(--spacing-safe-bottom))',

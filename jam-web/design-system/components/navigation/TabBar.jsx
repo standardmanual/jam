@@ -54,8 +54,8 @@ export function TabBar({ active = 'today', onChange }) {
       bottom: 'calc(var(--spacing-16) + var(--spacing-safe-bottom))',
       width: 'calc(100% - 32px)', maxWidth: 398, height: 64,
       borderRadius: 'var(--radius-pill)',
+      // 20260816_012: 보더 제거 — 흰 필이 다크 배경 위에서 대비만으로 충분히 구분됨
       background: 'var(--color-bg-inverse)',
-      boxShadow: 'inset 0 0 0 1px var(--color-border)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 4px', zIndex: 40,
     }}>

@@ -16,8 +16,10 @@ export interface ListRowCardProps {
   className?: string
 }
 
+// 20260816_012: 보더 제거 — 페이지 캔버스도 bg-surface라 구분이 사라지므로
+// 한 단계 밝은 bg-surface-elevated로 대체한다.
 const BASE =
-  'flex items-center gap-[var(--spacing-16)] bg-surface shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-[var(--spacing-16)]'
+  'flex items-center gap-[var(--spacing-16)] bg-surface-elevated rounded-[var(--radius-cards)] p-[var(--spacing-16)]'
 
 export default function ListRowCard({
   icon,

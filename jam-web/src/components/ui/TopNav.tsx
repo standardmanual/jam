@@ -8,8 +8,9 @@ import { d } from '@/lib/i18n'
 /**
  * SuperHi Plus 상단 네비게이션 (iOS HIG Navigation Bar 패턴)
  *
- * - 배경: 페이지와 동일한 --color-surface (별도 표면 분리 없음) / 텍스트: --color-text
- * - elevation: 하단 1px inset border만 (드롭섀도 금지)
+ * - 배경: 기본값 --color-bg. 페이지 캔버스가 --color-surface인 화면은 `headerStyle`로
+ *   덮어써 맞춘다(예: headerStyle={{ background: 'var(--color-surface)' }}) / 텍스트: --color-text
+ * - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문 배경톤 차이만으로 구분
  * - 뒤로가기: backHref가 있으면 <Link>, 없으면 onBack ?? router.back()
  * - 터치 영역: chevron / rightSlot 모두 최소 44×44pt
  */
