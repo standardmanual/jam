@@ -14,24 +14,22 @@ export type ItemEarnEntry = {
   expires_at: string | null
 }
 
-function ItemCardContent({ entry, inverse }: { entry: ItemEarnEntry; inverse?: boolean }) {
-  const label = inverse ? 'text-[14px] text-black/50' : 'text-[14px] text-[var(--color-text-secondary)]'
-  const value = inverse ? 'text-[14px] text-text-inverse' : 'text-[14px] text-text'
+function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center">
-        <span className={label}>{d.inventory.serialNumber}</span>
-        <span className={`${value} font-mono tracking-widest`}>{entry.serial}</span>
+        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.serialNumber}</span>
+        <span className="text-[14px] text-text font-mono tracking-widest">{entry.serial}</span>
       </div>
       <div className="flex justify-between items-center">
-        <span className={label}>{d.inventory.obtainedAt}</span>
-        <span className={value}>
+        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.obtainedAt}</span>
+        <span className="text-[14px] text-text">
           <LocalDate iso={entry.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
         </span>
       </div>
       <div className="flex justify-between items-center">
-        <span className={label}>{d.inventory.expiresAt}</span>
-        <span className={value}>
+        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.expiresAt}</span>
+        <span className="text-[14px] text-text">
           {entry.expires_at
             ? <LocalDate iso={entry.expires_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
             : d.inventory.expiresNone}
@@ -76,7 +74,11 @@ export default function ItemEarnHistory({ items }: { items: ItemEarnEntry[] }) {
       {/* 이력 상세 바텀시트 */}
       <BottomSheet open={openIdx !== null} onClose={() => setOpenIdx(null)}>
         <div className="px-6 pt-2 pb-8">
-          {openIdx !== null && <ItemCardContent entry={items[openIdx]} inverse />}
+          {openIdx !== null && (
+            <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+              <ItemCardContent entry={items[openIdx]} />
+            </div>
+          )}
         </div>
       </BottomSheet>
     </div>
