@@ -567,7 +567,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                   imageUrl={p.image_url}
                   rarity={p.rarity as BadgeRarity}
                   href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
-                  undiscovered={!p.owned}
+                  earned={p.owned}
                 />
               ))}
             </div>
