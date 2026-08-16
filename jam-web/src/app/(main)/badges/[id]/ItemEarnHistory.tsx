@@ -72,12 +72,10 @@ export default function ItemEarnHistory({ items }: { items: ItemEarnEntry[] }) {
       ))}
 
       {/* 이력 상세 바텀시트 */}
-      <BottomSheet open={openIdx !== null} onClose={() => setOpenIdx(null)}>
+      <BottomSheet open={openIdx !== null} onClose={() => setOpenIdx(null)} dark>
         <div className="px-6 pt-2 pb-8">
           {openIdx !== null && (
-            <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
-              <ItemCardContent entry={items[openIdx]} />
-            </div>
+            <ItemCardContent entry={items[openIdx]} />
           )}
         </div>
       </BottomSheet>
