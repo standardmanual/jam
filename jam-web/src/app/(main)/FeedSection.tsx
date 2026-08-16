@@ -7,6 +7,7 @@ import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
+import { RARITY_LABEL, RARITY_COLOR } from '@/lib/rarity'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import ListRowCard from '@/components/ui/ListRowCard'
@@ -81,22 +82,6 @@ function eventLabel(item: ActivityFeedRow): string {
   return EVENT_LABEL[item.event_type]
 }
 
-/**
- * DS v2 희귀도 배경색 팔레트 — --color-rarity-* / --color-rarity-*-text 토큰 기반.
- * [의사결정 B] 보더 타입 → 배경색 타입으로 변경. Common도 토큰으로 표시.
- */
-const RARITY_COLOR: Record<string, string> = {
-  common: 'bg-[var(--color-rarity-common)] text-[var(--color-rarity-common-text)]',
-  rare:   'bg-[var(--color-rarity-rare)]   text-[var(--color-rarity-rare-text)]',
-  legend: 'bg-[var(--color-rarity-legend)] text-[var(--color-rarity-legend-text)]',
-  mythic: 'bg-[var(--color-rarity-mythic)] text-[var(--color-rarity-mythic-text)]',
-}
-const RARITY_LABEL: Record<string, string> = {
-  common: d.feed.rarityCommon,
-  rare: d.feed.rarityRare,
-  legend: d.feed.rarityLegend,
-  mythic: d.feed.rarityMythic,
-}
 
 function formatFullDate(iso: string) {
   return new Date(iso).toLocaleDateString('ko-KR', {
@@ -193,7 +178,7 @@ export function DetailSheet({
         <h2 className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text-inverse mb-[var(--spacing-16)]">{title}</h2>
         {rarity && RARITY_COLOR[rarity] && (
           <div className="flex justify-center mb-[var(--spacing-16)]">
-            <span className={`text-[length:var(--text-body-sm)] px-[var(--spacing-16)] py-1 rounded-[var(--radius-tags)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
+            <span className={`text-[length:var(--text-body-sm)] px-[var(--spacing-16)] py-1 rounded-[var(--radius-tags)] font-bold uppercase tracking-[var(--tracking-label)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
           </div>
         )}
         <div className="rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] px-[var(--spacing-16)] py-[var(--spacing-8)] mb-[var(--spacing-24)]">
@@ -278,7 +263,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
       {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{sub}</p>}
       <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
         {rarity && RARITY_COLOR[rarity] && (
-          <span className={`inline-block text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
+          <span className={`inline-block text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] font-bold uppercase tracking-[var(--tracking-label)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
         )}
         {isLastPiece && (
           <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">

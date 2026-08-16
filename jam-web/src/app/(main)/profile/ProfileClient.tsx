@@ -213,30 +213,50 @@ export default function ProfileClient({
     const current = listFollowStates[targetId] ?? false
     setListFollowStates(prev => ({ ...prev, [targetId]: !current }))
     if (current) {
-      await fetch(`/api/follows/${targetId}`, { method: 'DELETE' })
+      try {
+        await fetch(`/api/follows/${targetId}`, { method: 'DELETE' })
+      } catch {
+        setListFollowStates(prev => ({ ...prev, [targetId]: current }))
+      }
     } else {
-      await fetch('/api/follows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_user_id: targetId }),
-      })
+      try {
+        await fetch('/api/follows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_user_id: targetId }),
+        })
+      } catch {
+        setListFollowStates(prev => ({ ...prev, [targetId]: current }))
+      }
     }
   }
 
   // ── 헤더 팔로우 토글 ───────────────────────────────────────────────────────
   const handleFollow = async () => {
+    const prev = following
+    const prevCnt = followerCnt
     if (following) {
       setFollowing(false)
       setFollowerCnt(c => c - 1)
-      await fetch(`/api/follows/${targetUserId}`, { method: 'DELETE' })
+      try {
+        await fetch(`/api/follows/${targetUserId}`, { method: 'DELETE' })
+      } catch {
+        setFollowing(prev)
+        setFollowerCnt(prevCnt)
+      }
     } else {
       setFollowing(true)
       setFollowerCnt(c => c + 1)
-      await fetch('/api/follows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_user_id: targetUserId }),
-      })
+      try {
+        await fetch('/api/follows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_user_id: targetUserId }),
+        })
+      } catch {
+        setFollowing(prev)
+        setFollowerCnt(prevCnt)
+      }
     }
   }
 
