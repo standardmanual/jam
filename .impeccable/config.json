@@ -38,6 +38,12 @@
         "value": "cubic-bezier(0.34, 1.25, 0.64, 1)",
         "createdAt": "2026-08-14T13:06:06.640Z",
         "reason": "DS v2 motion token: intentional mild spring for plus-to-menu morph animation"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.96, 0.64, 1)",
+        "createdAt": "2026-08-16T01:55:36.067Z",
+        "reason": "MODULAR --ease-bounce 토큰과 동일한 값. --like-pop-ease는 좋아요 버튼 팝 연출에 사용되는 의도적 탄성 이징 — 게이미피케이션 앱의 보상 피드백 연출로 MODULAR Motion 시스템에 bounce 토큰으로 공식 정의됨."
       }
     ]
   }
