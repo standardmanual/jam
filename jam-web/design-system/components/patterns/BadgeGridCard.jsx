@@ -10,6 +10,8 @@ const RARITY_CONFIG = {
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
  *
+ * 레이아웃 (위→아래): 썸네일(투명 배경) → 등급 pill → 이름
+ *
  * 상태:
  *   earned: false  → 썸네일 흑백+반투명 (미획득)
  *   undiscovered   → ??? 표시 + 흑백 (아이템북 미발견)
