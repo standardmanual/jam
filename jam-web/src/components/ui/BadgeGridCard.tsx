@@ -27,7 +27,7 @@ export interface BadgeGridCardProps {
 }
 
 const BASE =
-  'flex flex-col items-center bg-surface rounded-[var(--radius-card)] p-[var(--spacing-12)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)]'
+  'flex flex-col items-center bg-surface rounded-[var(--radius-card)] p-[var(--spacing-12)] overflow-hidden'
 
 export default function BadgeGridCard({
   name,
@@ -78,7 +78,7 @@ export default function BadgeGridCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
-        <p className="text-[11px] font-bold text-text text-center truncate w-full leading-tight">
+        <p className="text-[13px] font-bold text-text text-center truncate w-full leading-tight">
           {undiscovered ? '???' : name}
         </p>
         <div className="h-6 flex items-center justify-center">

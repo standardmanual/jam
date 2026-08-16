@@ -67,7 +67,7 @@ function tabLabel(label: string, count: number) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {label}
-      {count > 0 && <span className="text-[length:var(--text-caption)] tabular-nums opacity-70">{count}</span>}
+      {count > 0 && <span className="text-[length:var(--text-body-sm)] tabular-nums font-bold text-[color:var(--color-primary)]">{count}</span>}
     </span>
   )
 }
@@ -164,6 +164,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
           items={tabs}
           value={activeTab}
           onChange={setActiveTab}
+          outlined={false}
           aria-label={d.badges.title}
         />
       </div>
@@ -178,7 +179,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 <select
                   value={activityFilter}
                   onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
                   <option value="all">{d.badges.filterActivityAll}</option>
                   {ACTIVITY_TYPE_ORDER.map((tp) => (
@@ -188,7 +189,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 <select
                   value={rarityFilter}
                   onChange={(e) => setRarityFilter(e.target.value as BadgeRarity | 'all')}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
                   <option value="all">{d.badges.filterRarityAll}</option>
                   {RARITY_ORDER.map((r) => (
@@ -228,7 +229,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 <select
                   value={poiCategoryFilter}
                   onChange={(e) => setPoiCategoryFilter(e.target.value)}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
                   <option value="all">{d.badges.filterPoiCategoryAll}</option>
                   {poiCategoryOptions.map(([slug, label]) => (
@@ -238,7 +239,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 <select
                   value={poiSortOrder}
                   onChange={(e) => setPoiSortOrder(e.target.value as PoiSortOrder)}
-                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface text-text"
+                  className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
                   <option value="latest">{d.badges.sortPoiLatest}</option>
                   <option value="name">{d.badges.sortPoiName}</option>
