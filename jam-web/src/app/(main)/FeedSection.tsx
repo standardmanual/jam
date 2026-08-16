@@ -82,13 +82,14 @@ function eventLabel(item: ActivityFeedRow): string {
 }
 
 /**
- * DS v2 희귀도 링 팔레트 — --color-rarity-* 토큰 기반.
- * [의사결정 A] Rare=초록, Legend=황금, Mythic=핑크 (Common은 별도 표시 없음)
+ * DS v2 희귀도 배경색 팔레트 — --color-rarity-* / --color-rarity-*-text 토큰 기반.
+ * [의사결정 B] 보더 타입 → 배경색 타입으로 변경. Common도 토큰으로 표시.
  */
 const RARITY_COLOR: Record<string, string> = {
-  rare:   'text-[var(--color-rarity-rare)]   shadow-[inset_0_0_0_1px_var(--color-rarity-rare)]',
-  legend: 'text-[var(--color-rarity-legend)] shadow-[inset_0_0_0_1px_var(--color-rarity-legend)]',
-  mythic: 'text-[var(--color-rarity-mythic)] shadow-[inset_0_0_0_1px_var(--color-rarity-mythic)]',
+  common: 'bg-[var(--color-rarity-common)] text-[var(--color-rarity-common-text)]',
+  rare:   'bg-[var(--color-rarity-rare)]   text-[var(--color-rarity-rare-text)]',
+  legend: 'bg-[var(--color-rarity-legend)] text-[var(--color-rarity-legend-text)]',
+  mythic: 'bg-[var(--color-rarity-mythic)] text-[var(--color-rarity-mythic-text)]',
 }
 const RARITY_LABEL: Record<string, string> = {
   common: d.feed.rarityCommon,
@@ -341,6 +342,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
           items={FILTER_TABS}
           value={activeFilter}
           onChange={handleFilterChange}
+          outlined={false}
           aria-label={title}
         />
       </div>
