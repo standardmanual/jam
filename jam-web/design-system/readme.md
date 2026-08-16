@@ -85,6 +85,12 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 
 > 모든 환경에서 weight 300/400/500/600/900이 포함되어야 `--font-weight-*` 토큰이 올바르게 렌더링된다.
 
+## 컴포넌트 탐색 (Component Browser)
+
+**1순위 — Storybook** (로컬: `http://localhost:6006`): 인터랙티브 controls, 접근성 검사, 핫 리로딩을 제공하며 가장 최신 컴포넌트 목록을 반영한다. 컴포넌트를 확인하거나 스토리를 작성할 때는 항상 Storybook을 기준으로 삼는다.
+
+**레거시 — `dashboard.html`**: Storybook 도입 전 사용하던 뷰어. 현재는 `guidelines/` 가이드라인 섹션(색상·타이포·스페이싱·로고·Do's & Don'ts 등 브랜드 참조 문서)을 확인하는 용도로만 유효하다. 컴포넌트 목록은 최신 상태가 아니므로 컴포넌트 탐색에는 사용하지 않는다.
+
 ## 색인 (Index)
 
 * `styles.css` — 루트 스타일시트, `tokens/`의 모든 항목을 가져옴(import)
@@ -95,6 +101,8 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 * `components/navigation/` — TopNav, TabBar (JAM! 자체 TabBar.tsx에서 1:1 재현), BottomSheet, SlidingTabs, Accordion
 * `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState
 * `components/forms/` — Input, Textarea, Select, Checkbox
-* `guidelines/` — 파운데이션 스펙 카드 (색상, 타이포그래피, 간격, 반경, 엘리베이션, 로고, 아이콘)
+* `components/patterns/` — BadgeGridCard, ListRowCard, CollectionGridCard (서비스 공통 UI 패턴)
+* `guidelines/` — 파운데이션 스펙 카드 (색상, 타이포그래피, 간격, 반경, 엘리베이션, 로고, 아이콘) — 브랜드 참조용으로 유지
+* `dashboard.html` — **레거시** 뷰어. 가이드라인 섹션 전용. 컴포넌트 탐색은 Storybook 사용
 * `ui_kits/jam-app/` — 인터랙티브 5개 화면 클릭스루: Today / Badges / Drops / Inventory / Profile
 * `SKILL.md` — Claude Code / 기타 에이전트용 포터블 스킬 파일
