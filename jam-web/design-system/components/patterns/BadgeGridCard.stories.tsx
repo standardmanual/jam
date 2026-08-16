@@ -5,7 +5,7 @@ import { BadgeGridCard } from './BadgeGridCard';
 const meta: Meta<typeof BadgeGridCard> = {
   title: 'MODULAR/Patterns/BadgeGridCard',
   component: BadgeGridCard,
-  parameters: { layout: 'centered' },
+  parameters: { layout: 'centered', docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 등급 pill → 이름' } } },
   argTypes: {
     rarity: { control: 'select', options: ['common', 'rare', 'legend', 'mythic'] },
     earned: { control: 'boolean' },
