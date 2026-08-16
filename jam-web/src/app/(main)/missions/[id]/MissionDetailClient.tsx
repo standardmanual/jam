@@ -129,7 +129,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
   }
 
   return (
-    <div className="min-h-full bg-[var(--color-bg)] text-text">
+    <div className="min-h-full bg-surface text-text">
       <TopNav title={d.missions.backToDetail} backHref="/missions" />
 
       <div className="flex flex-col px-6 pt-8 pb-10 gap-6">

@@ -342,7 +342,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     const expiring = isExpiringSoon(expiresAt)
 
     return (
-      <div className="min-h-full bg-[var(--color-bg)] text-text">
+      <div className="min-h-full bg-surface text-text">
         <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
 
         {/* hero-section */}
@@ -434,7 +434,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 3: POI 배지 ==========
   if (badgeRow.type === 'poi') {
     return (
-      <div className="min-h-full bg-[var(--color-bg)] text-text">
+      <div className="min-h-full bg-surface text-text">
         <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
 
         {/* hero-section */}
@@ -513,7 +513,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
-    <div className="min-h-full bg-[var(--color-bg)] text-text">
+    <div className="min-h-full bg-surface text-text">
       <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
 
       {/* hero-section */}
@@ -567,7 +567,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                   imageUrl={p.image_url}
                   rarity={p.rarity as BadgeRarity}
                   href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
-                  undiscovered={!p.owned}
+                  earned={p.owned}
                 />
               ))}
             </div>
