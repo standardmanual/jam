@@ -31,7 +31,7 @@ export const ErrorState: Story = {
 
 export const SuccessState: Story = {
   name: '성공 상태 (체크됨)',
-  args: { label: '인증되었습니다', checked: true, state: 'success', id: 'cb-success', onChange: () => {} },
+  args: { label: '인증됐어요', checked: true, state: 'success', id: 'cb-success', onChange: () => {} },
 };
 
 export const Disabled: Story = {

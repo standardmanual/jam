@@ -69,7 +69,7 @@ export const WithContent: Story = {
             오늘의 미션
           </p>
           <p style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-body)' }}>
-            5km 달리기를 완료하면 배지를 획득합니다.
+            5km 달리기를 완료하면 배지를 획득해요.
           </p>
           <p style={{ margin: 0, fontSize: 'var(--text-caption)', color: 'var(--color-primary)' }}>진행 중 • 3.2 / 5.0 km</p>
         </div>

@@ -24,7 +24,7 @@ export const NoBack: Story = {
 export const WithRightSlot: Story = {
   name: '우측 슬롯',
   args: {
-    title: '배지 상세',
+    title: '배지',
     showBack: true,
     rightSlot: <IconButton icon="search" label="검색" />,
   },
@@ -33,7 +33,7 @@ export const WithRightSlot: Story = {
 export const WithMultipleRight: Story = {
   name: '우측 슬롯 (복수)',
   args: {
-    title: '인벤토리',
+    title: '인벤',
     showBack: true,
     rightSlot: (
       <div style={{ display: 'flex', gap: 0 }}>

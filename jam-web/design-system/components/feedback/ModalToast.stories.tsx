@@ -23,22 +23,22 @@ export default meta;
 type Story = StoryObj<typeof ModalToast>;
 
 export const Success: Story = {
-  args: { message: '배지를 획득했습니다!', type: 'success', open: true },
+  args: { message: '배지를 획득했어요!', type: 'success', open: true },
 };
 
 export const Error: Story = {
-  args: { message: '오류가 발생했습니다. 다시 시도해 주세요.', type: 'error', open: true },
+  args: { message: '오류가 발생했어요. 다시 시도해 보세요.', type: 'error', open: true },
 };
 
 export const Info: Story = {
-  args: { message: '새로운 미션이 추가되었습니다.', type: 'info', open: true },
+  args: { message: '새로운 미션이 추가됐어요.', type: 'info', open: true },
 };
 
 export const WithBadgeFrame: Story = {
   name: 'BadgeFrame 슬롯 (배지 획득 연출)',
   args: {
     open: true,
-    message: '새로운 배지를 획득했습니다!\n전설의 러너',
+    message: '새로운 배지를 획득했어요!\n전설의 러너',
     iconSlot: (
       <BadgeFrame shape="circle" width={96} height={96} color="var(--color-primary)">
         <StarIcon />
@@ -51,7 +51,7 @@ export const WithMythicBadge: Story = {
   name: 'Mythic 배지 획득 연출',
   args: {
     open: true,
-    message: '신화 등급 배지를 획득했습니다!\n100km 완주',
+    message: '신화 등급 배지를 획득했어요!\n100km 완주',
     iconSlot: (
       <BadgeFrame shape="scallop" width={96} height={96} color="var(--color-rarity-mythic)">
         <StarIcon />
@@ -75,7 +75,7 @@ export const Interactive: Story = {
         </div>
         <ModalToast
           open={open}
-          message="작업이 완료되었습니다."
+          message="완료됐어요."
           type={type}
           onDismiss={() => setOpen(false)}
         />

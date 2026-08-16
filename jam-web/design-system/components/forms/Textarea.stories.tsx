@@ -22,7 +22,7 @@ export const Default: Story = {
 
 export const WithValue: Story = {
   name: '값 입력된 상태',
-  args: { value: '오늘 한강 공원에서 10km 달렸습니다. 날씨가 좋아서 기분도 좋네요!', 'aria-label': '활동 기록', onChange: () => {} },
+  args: { value: '오늘 한강 공원에서 10km 달렸어요. 날씨가 좋아서 기분도 좋네요!', 'aria-label': '활동 기록', onChange: () => {} },
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };
 
@@ -34,13 +34,13 @@ export const ErrorState: Story = {
 
 export const SuccessState: Story = {
   name: '성공 상태',
-  args: { value: '내용이 저장되었습니다.', state: 'success', 'aria-label': '내용', onChange: () => {} },
+  args: { value: '저장됐어요.', state: 'success', 'aria-label': '내용', onChange: () => {} },
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };
 
 export const Disabled: Story = {
   name: '비활성화',
-  args: { value: '수정할 수 없는 내용입니다.', disabled: true, 'aria-label': '비활성 텍스트', onChange: () => {} },
+  args: { value: '수정할 수 없는 내용이에요.', disabled: true, 'aria-label': '비활성 텍스트', onChange: () => {} },
   decorators: [(Story) => <div style={{ width: 320 }}><Story /></div>],
 };
 
