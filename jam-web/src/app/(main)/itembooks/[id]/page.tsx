@@ -180,7 +180,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       <div className="flex-1 flex flex-col px-4 pt-4 pb-10 gap-3">
 
         {/* 대표 이미지 — 미션 상세와 동일한 카드 형식 */}
-        <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden border border-border flex items-center justify-center">
+        <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
           {book.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
