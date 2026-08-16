@@ -252,10 +252,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
         )
       }
       trailing={
-        <div className="flex flex-col items-end gap-1">
-          <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{formatRelativeTime(item.event_at)}</span>
-          <ChevronRightIcon className="w-4 h-4 text-text/40" />
-        </div>
+        <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{formatRelativeTime(item.event_at)}</span>
       }
     >
       <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{eventLabel(item)}</p>
