@@ -372,55 +372,59 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           )}
         </div>
 
-        {/* info-section */}
-        <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
-          {isOwnBadge && allItemInventory.length > 0 && (
-            <ItemEarnHistory items={allItemInventory.map(item => ({
-              id: item.id,
-              serial: `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`,
-              obtained_at: item.obtained_at,
-              expires_at: item.expires_at,
-            }))} />
-          )}
+        {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링 */}
+        {(isOwnBadge || !hasEarned) && (
+          <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+            {isOwnBadge && allItemInventory.length > 0 && (
+              <ItemEarnHistory items={allItemInventory.map(item => ({
+                id: item.id,
+                serial: `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`,
+                obtained_at: item.obtained_at,
+                expires_at: item.expires_at,
+              }))} />
+            )}
 
-          {!hasEarned && (
-            <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
-              <p className="text-[15px] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
-              <p className="text-[13px] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
-            </div>
-          )}
-        </div>
+            {!hasEarned && (
+              <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
+                <p className="text-[15px] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
+                <p className="text-[13px] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* desc-section */}
-        <div className="flex flex-col gap-4 px-6 pt-6 pb-[40px]">
-          {/* 속한 컬렉션 링크 */}
-          {itemBook && (
-            <ListRowCard
-              href={`/itembooks/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
-              icon={
-                itemBook.image_url ? (
-                  <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0">
-                    <Image src={itemBook.image_url} alt={itemBook.name} width={44} height={44} className="w-full h-full object-contain p-1" />
-                  </div>
-                ) : (
-                  <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center shrink-0">
-                    <BookIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
-                  </div>
-                )
-              }
-              title={itemBook.name}
-              trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
-            />
-          )}
+        {/* desc-section — 컬렉션 링크 또는 만료 임박 안내가 있을 때만 렌더링 */}
+        {(itemBook || expiring) && (
+          <div className="flex flex-col gap-4 px-6 pt-[32px] pb-[40px]">
+            {/* 속한 컬렉션 링크 */}
+            {itemBook && (
+              <ListRowCard
+                href={`/itembooks/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
+                icon={
+                  itemBook.image_url ? (
+                    <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0">
+                      <Image src={itemBook.image_url} alt={itemBook.name} width={44} height={44} className="w-full h-full object-contain p-1" />
+                    </div>
+                  ) : (
+                    <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center shrink-0">
+                      <BookIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                    </div>
+                  )
+                }
+                title={itemBook.name}
+                trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
+              />
+            )}
 
-          {/* 만료 임박 안내 */}
-          {expiring && (
-            <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
-              <p className="text-[15px] text-text">{d.inventory.expiringSoonTitle}</p>
-              <p className="text-[13px] text-[var(--color-text-secondary)] mt-0.5">{d.inventory.expiringSoonBody}</p>
-            </div>
-          )}
-        </div>
+            {/* 만료 임박 안내 */}
+            {expiring && (
+              <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+                <p className="text-[15px] text-text">{d.inventory.expiringSoonTitle}</p>
+                <p className="text-[13px] text-[var(--color-text-secondary)] mt-0.5">{d.inventory.expiringSoonBody}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     )
   }
