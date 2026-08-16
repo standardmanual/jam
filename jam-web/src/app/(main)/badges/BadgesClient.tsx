@@ -76,18 +76,33 @@ function tabLabel(label: string, count: number) {
 type PoiSortOrder = 'latest' | 'name'
 
 export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiBadges }: BadgesClientProps) {
-  const [activeTab, setActiveTab] = useState<TabKey>('activity')
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.slice(1)
+      if (VALID_TABS.has(hash)) return hash as TabKey
+    }
+    return 'activity'
+  })
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
   const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
   const [poiCategoryFilter, setPoiCategoryFilter] = useState<string>('all')
   const [poiSortOrder, setPoiSortOrder] = useState<PoiSortOrder>('latest')
   const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
 
-  // 아이템북 상세화면에서 뒤로가기로 돌아왔을 때(#itembook) 해당 탭이 활성 상태로 보이도록 동기화
+  // 브라우저 뒤로/앞으로 탐색 시 hash 변화를 탭에 반영
   useEffect(() => {
-    const hash = window.location.hash.slice(1)
-    if (VALID_TABS.has(hash)) setActiveTab(hash as TabKey)
+    const onPopState = () => {
+      const hash = window.location.hash.slice(1)
+      if (VALID_TABS.has(hash)) setActiveTab(hash as TabKey)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
   }, [])
+
+  const handleTabChange = (key: TabKey) => {
+    setActiveTab(key)
+    window.history.replaceState(null, '', `#${key}`)
+  }
 
   const earnedCount = badges.filter((b) => b.earned).length
   const poiEarnedCount = poiBadges.filter((p) => p.earnCount > 0).length
@@ -164,7 +179,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
         <SlidingTabs
           items={tabs}
           value={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           outlined={false}
           aria-label={d.badges.title}
         />
