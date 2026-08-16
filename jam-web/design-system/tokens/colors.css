@@ -53,6 +53,9 @@
   --color-icon-inactive: var(--color-base-grey-700);
   /* DS-025: Modal/sheet backdrop */
   --color-overlay: rgba(0, 0, 0, 0.6);
+  /* Border variants */
+  --color-border-light: rgba(255, 255, 255, 0.3);  /* dark canvas 위 아웃라인 버튼·보더 */
+  --color-border-inverse: rgba(0, 0, 0, 0.12);     /* light surface 위 구분선 (항상 고정값) */
 
   /* Badge rarity — background */
   --color-rarity-common: #6b6b6b;

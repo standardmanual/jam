@@ -365,11 +365,11 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             </div>
             <div className="flex flex-col items-center gap-2 pt-4">
               <RarityBadge rarity={badgeRow.rarity} />
-              <h1 className="text-[28px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+              <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badgeRow.name}</h1>
             </div>
           </div>
           {badgeRow.description && (
-            <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5] mt-6">{badgeRow.description}</p>
+            <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badgeRow.description}</p>
           )}
         </div>
 
@@ -387,8 +387,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
             {!hasEarned && (
               <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
-                <p className="text-[15px] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
-                <p className="text-[13px] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
+                <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
+                <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
               </div>
             )}
           </div>
@@ -420,8 +420,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             {/* 만료 임박 안내 */}
             {expiring && (
               <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
-                <p className="text-[15px] text-text">{d.inventory.expiringSoonTitle}</p>
-                <p className="text-[13px] text-[var(--color-text-secondary)] mt-0.5">{d.inventory.expiringSoonBody}</p>
+                <p className="text-[length:var(--text-body)] text-text">{d.inventory.expiringSoonTitle}</p>
+                <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] mt-0.5">{d.inventory.expiringSoonBody}</p>
               </div>
             )}
           </div>
@@ -456,11 +456,11 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             </div>
             <div className="flex flex-col items-center gap-2 pt-4">
               <RarityBadge rarity={badgeRow.rarity} />
-              <h1 className="text-[28px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+              <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badgeRow.name}</h1>
             </div>
           </div>
           {badgeRow.description && (
-            <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5] mt-6">{badgeRow.description}</p>
+            <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badgeRow.description}</p>
           )}
         </div>
 
@@ -468,8 +468,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
           <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
-            <p className="text-[15px] font-bold text-text">{d.badges.conditionTitle}</p>
-            <p className="text-[14px] text-[var(--color-text-secondary)] leading-[1.6]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
+            <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
+            <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
           </div>
           <PoiEarnHistory poiEarns={poiEarns.map((e) => ({
             id: e.id,
@@ -488,7 +488,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               href="#"
               target="_blank"
               rel="noopener noreferrer"
-              className="h-14 w-full rounded-full border border-white/30 text-[16px] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+              className="h-14 w-full rounded-full border border-[color:var(--color-border-light)] text-[length:var(--text-body)] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
             >
               {d.badges.physicalPatchButton} ↗
             </a>
@@ -496,12 +496,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
           {!hasEarned && (
             <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
-              <p className="text-[15px] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
-              <p className="text-[13px] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
+              <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
+              <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
             </div>
           )}
 
-          <p className="text-center text-[15px] text-[var(--color-text-secondary)] leading-[1.5] px-4">
+          <p className="text-center text-[length:var(--text-body)] text-[var(--color-text-secondary)] leading-[var(--leading-body)] px-4">
             {t(d.badges.poiSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
           </p>
         </div>
@@ -534,11 +534,11 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </div>
           <div className="flex flex-col items-center gap-2 pt-4">
             <RarityBadge rarity={badgeRow.rarity} />
-            <h1 className="text-[28px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+            <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badgeRow.name}</h1>
           </div>
         </div>
         {badgeRow.description && (
-          <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5] mt-6">{badgeRow.description}</p>
+          <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badgeRow.description}</p>
         )}
       </div>
 
@@ -546,8 +546,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
         {/* 획득 조건 다크 카드 */}
         <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
-          <p className="text-[15px] font-bold text-text">{d.badges.conditionTitle}</p>
-          <p className="text-[14px] text-[var(--color-text-secondary)] leading-[1.6]">
+          <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
+          <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">
             {formatConditionText(badgeRow.condition_json, badgeRow.name)}
           </p>
         </div>
@@ -555,7 +555,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* 선행 배지 조건 */}
         {prereqStatus.length > 0 && (
           <div className="flex flex-col gap-3">
-            <p className="text-[15px] font-bold text-text">{d.badges.prerequisiteTitle}</p>
+            <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.prerequisiteTitle}</p>
             <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
               {prereqStatus.map((p) => (
                 <BadgeGridCard
@@ -574,7 +574,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* 포인트 보상 */}
         {badgeRow.point_reward > 0 && (
           <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
-            <p className="text-[15px] text-text">
+            <p className="text-[length:var(--text-body)] text-text">
               {hasEarned
                 ? t(d.badges.pointRewardEarned, { points: badgeRow.point_reward.toLocaleString('ko-KR') })
                 : t(d.badges.pointRewardPending, { points: badgeRow.point_reward.toLocaleString('ko-KR') })}
@@ -591,7 +591,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             href="#"
             target="_blank"
             rel="noopener noreferrer"
-            className="h-14 w-full rounded-full border border-white/30 text-[16px] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+            className="h-14 w-full rounded-full border border-[color:var(--color-border-light)] text-[length:var(--text-body)] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
           >
             {d.badges.physicalPatchButton} ↗
           </a>
@@ -600,30 +600,30 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* 획득 정보 (획득한 경우) */}
         {earned && (
           <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
-            <p className="text-[15px] font-bold text-text mb-4">{d.badges.earnInfoTitle}</p>
+            <p className="text-[length:var(--text-body)] font-bold text-text mb-4">{d.badges.earnInfoTitle}</p>
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
-                <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
-                <span className="text-[14px] text-text">
+                <span className="text-[length:var(--text-small)] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
+                <span className="text-[length:var(--text-small)] text-text">
                   <LocalDate iso={earned.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
                 </span>
               </div>
               {earned.triggered_by_activity_name && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerActivity}</span>
-                  <span className="text-[14px] text-text truncate max-w-[180px] text-right">{earned.triggered_by_activity_name}</span>
+                  <span className="text-[length:var(--text-small)] text-[var(--color-text-secondary)]">{d.badges.triggerActivity}</span>
+                  <span className="text-[length:var(--text-small)] text-text truncate max-w-[180px] text-right">{earned.triggered_by_activity_name}</span>
                 </div>
               )}
               {earned.triggered_by_distance_km && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDistance}</span>
-                  <span className="text-[14px] text-text">{t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}</span>
+                  <span className="text-[length:var(--text-small)] text-[var(--color-text-secondary)]">{d.badges.triggerDistance}</span>
+                  <span className="text-[length:var(--text-small)] text-text">{t(d.badges.triggerDistanceValue, { km: earned.triggered_by_distance_km })}</span>
                 </div>
               )}
               {earned.triggered_by_activity_date && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDate}</span>
-                  <span className="text-[14px] text-text">
+                  <span className="text-[length:var(--text-small)] text-[var(--color-text-secondary)]">{d.badges.triggerDate}</span>
+                  <span className="text-[length:var(--text-small)] text-text">
                     <LocalDate iso={earned.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
                   </span>
                 </div>
@@ -640,8 +640,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* 미획득 안내 */}
         {!hasEarned && (
           <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
-            <p className="text-[15px] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
-            <p className="text-[13px] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
+            <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
+            <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
           </div>
         )}
       </div>
