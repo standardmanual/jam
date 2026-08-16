@@ -8,6 +8,7 @@ import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import { d } from '@/lib/i18n'
+import { RARITY_LABEL } from '@/lib/rarity'
 
 type TabKey = 'activity' | 'poi' | 'itembook'
 const VALID_TABS = new Set<string>(['activity', 'poi', 'itembook'])
@@ -15,12 +16,6 @@ const VALID_TABS = new Set<string>(['activity', 'poi', 'itembook'])
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
 const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, legend: 2, mythic: 3 }
-const RARITY_LABELS: Record<BadgeRarity, string> = {
-  common: d.feed.rarityCommon,
-  rare: d.feed.rarityRare,
-  legend: d.feed.rarityLegend,
-  mythic: d.feed.rarityMythic,
-}
 
 function activitySortIndex(types: ActivityType[]): number {
   const idx = ACTIVITY_TYPE_ORDER.indexOf(types[0])
@@ -209,7 +204,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 >
                   <option value="all">{d.badges.filterRarityAll}</option>
                   {RARITY_ORDER.map((r) => (
-                    <option key={r} value={r}>{RARITY_LABELS[r]}</option>
+                    <option key={r} value={r}>{RARITY_LABEL[r]}</option>
                   ))}
                 </select>
               </div>
