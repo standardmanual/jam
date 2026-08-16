@@ -19,8 +19,8 @@ interface Props {
 
 type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
 
-const PAGE_BG = '#000000'
-const CARD_BG = '#1A1A1A'
+const PAGE_BG = 'var(--color-surface)'
+const CARD_BG = '#000000'
 const THUMB_BG = '#333333'
 const TEXT_SECONDARY = '#B2B2B2'
 const PROGRESS_FILL = '#E8461F'
