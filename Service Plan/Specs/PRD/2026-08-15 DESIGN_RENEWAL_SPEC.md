@@ -48,7 +48,7 @@
 
 7. **터치 타겟 44pt** — 모든 인터랙티브 요소(버튼, 탭, 카드 내 CTA)의 최소 터치 영역은 44×44pt.
 
-8. **그림자는 inset border만** — 드롭섀도(`box-shadow: 0 N px`) 사용 금지. `var(--shadow-subtle)` (inset 1px border)만 허용.
+8. **엘리베이션은 배경톤 차이로 표현** — 드롭섀도(`box-shadow: 0 N px`) 사용 금지. 보더/inset border도 원칙적으로 사용하지 않는다(20260816_012 이후). 카드·버튼의 경계는 `--color-surface-elevated` 등 배경톤 차이로만 표현한다. 보더가 컴포넌트 정체성인 경우(예: outline 버튼)는 배경 채움 등 대체 표현으로 전환한다. 입력창 포커스 링 등 기능적 보더만 예외로 허용.
 
 9. **UX Writing 선검증** — 사용자에게 노출되는 모든 문자열은 코드 작성 전 `UX_WRITING_GUIDELINE.md` 검증.
 10. 정의 되지 않은 것은 위의 기준으로 처리하고 이문서내용으로 처리 되지 못하는 경우 현재 스테이징에 구현된 상태를 유지하는 것으로 한다.
@@ -89,6 +89,7 @@
 |---|---|---|
 | 캔버스 배경 | `--color-bg` | #000000 |
 | 카드/raised surface | `--color-surface` | #1a1a1a |
+| 카드·버튼 elevation(보더 대체, 20260816_012) | `--color-surface-elevated` | #1f1f1f |
 | 배경 틴트 | `--color-bg-tint` | #222222 |
 | 기본 텍스트 | `--color-text` | #ffffff |
 | 보조 텍스트 | `--color-text-secondary` | #b2b2b2 |
