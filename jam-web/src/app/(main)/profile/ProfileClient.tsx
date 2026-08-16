@@ -363,7 +363,7 @@ export default function ProfileClient({
     ariaLabel: tab.label,
     label: (
       <span className="flex flex-col items-center justify-center gap-1">
-        <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums">
+        <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums text-[color:var(--color-primary)]">
           {tab.key === 'followers' ? (
             <PopInNumber value={statCounts.followers} />
           ) : (
