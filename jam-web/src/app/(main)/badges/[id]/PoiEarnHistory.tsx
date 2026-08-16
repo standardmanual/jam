@@ -17,31 +17,33 @@ export type PoiEarnItem = {
   triggered_by_strava_id: number | null
 }
 
-function EarnCardContent({ e }: { e: PoiEarnItem }) {
+function EarnCardContent({ e, inverse }: { e: PoiEarnItem; inverse?: boolean }) {
+  const label = inverse ? 'text-[14px] text-black/50' : 'text-[14px] text-[var(--color-text-secondary)]'
+  const value = inverse ? 'text-[14px] text-text-inverse' : 'text-[14px] text-text'
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
-        <span className="text-[14px] text-text">
+        <span className={label}>{d.badges.earnedAt}</span>
+        <span className={value}>
           <LocalDate iso={e.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
         </span>
       </div>
       {e.triggered_by_activity_name && (
         <div className="flex justify-between items-center">
-          <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerActivity}</span>
-          <span className="text-[14px] text-text truncate max-w-[180px] text-right">{e.triggered_by_activity_name}</span>
+          <span className={label}>{d.badges.triggerActivity}</span>
+          <span className={`${value} truncate max-w-[180px] text-right`}>{e.triggered_by_activity_name}</span>
         </div>
       )}
       {e.triggered_by_distance_km && (
         <div className="flex justify-between items-center">
-          <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDistance}</span>
-          <span className="text-[14px] text-text">{t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}</span>
+          <span className={label}>{d.badges.triggerDistance}</span>
+          <span className={value}>{t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}</span>
         </div>
       )}
       {e.triggered_by_activity_date && (
         <div className="flex justify-between items-center">
-          <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDate}</span>
-          <span className="text-[14px] text-text">
+          <span className={label}>{d.badges.triggerDate}</span>
+          <span className={value}>
             <LocalDate iso={e.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
           </span>
         </div>
@@ -90,7 +92,7 @@ export default function PoiEarnHistory({ poiEarns }: { poiEarns: PoiEarnItem[] }
       {/* 이력 상세 바텀시트 */}
       <BottomSheet open={openIdx !== null} onClose={() => setOpenIdx(null)}>
         <div className="px-6 pt-2 pb-8">
-          {openIdx !== null && <EarnCardContent e={poiEarns[openIdx]} />}
+          {openIdx !== null && <EarnCardContent e={poiEarns[openIdx]} inverse />}
         </div>
       </BottomSheet>
     </div>
