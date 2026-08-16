@@ -1,8 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { ActivityType, BadgeCondition, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
+import { ActivityType, BadgeCondition, BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
 import RarityBadge from '@/components/ui/Badge'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
 import { MedalIcon, BookIcon, ChevronRightIcon } from '@/components/ui/icons'
@@ -626,12 +627,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         )}
       </div>
 
-      <hr className="border-0 border-t border-[var(--color-border)]" />
-
       {/* info-section */}
       <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
-        <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider">획득 조건</p>
-
         {/* 획득 조건 다크 카드 */}
         <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
           <p className="text-[15px] font-bold text-text">{d.badges.conditionTitle}</p>
@@ -642,37 +639,18 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 선행 배지 조건 */}
         {prereqStatus.length > 0 && (
-          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 flex flex-col gap-4">
-            <div>
-              <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider mb-2">{d.badges.prerequisiteTitle}</p>
-              <p className="text-[13px] text-[var(--color-text-secondary)]">{d.badges.prerequisiteBody}</p>
-            </div>
-            <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
+            <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider">{d.badges.prerequisiteTitle}</p>
+            <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
               {prereqStatus.map((p) => (
-                <Link key={p.id} href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}>
-                  <div className="flex items-center gap-3 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] p-3 active:scale-[0.98] transition-transform duration-100">
-                    <div
-                      className={[
-                        'w-12 h-12 rounded-full bg-white overflow-hidden flex items-center justify-center shrink-0',
-                        !p.owned ? 'grayscale opacity-50' : '',
-                      ].join(' ')}
-                    >
-                      {p.image_url ? (
-                        <Image src={p.image_url} alt={p.name} width={48} height={48} className="w-full h-full object-contain p-2" />
-                      ) : (
-                        <MedalIcon className="w-5 h-5 text-black/20" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium text-text truncate">{p.name}</p>
-                      <p className="text-[13px] text-[var(--color-text-secondary)] line-clamp-2 mt-0.5">{p.description || '선행 배지'}</p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {p.owned && <span className="text-[13px] text-[var(--color-text-secondary)]">획득</span>}
-                      <ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />
-                    </div>
-                  </div>
-                </Link>
+                <BadgeGridCard
+                  key={p.id}
+                  name={p.name}
+                  imageUrl={p.image_url}
+                  rarity={p.rarity as BadgeRarity}
+                  href={`/badges/${p.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
+                  undiscovered={!p.owned}
+                />
               ))}
             </div>
           </div>
@@ -689,8 +667,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </div>
         )}
       </div>
-
-      <hr className="border-0 border-t border-[var(--color-border)]" />
 
       {/* action-section */}
       <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[40px]">
