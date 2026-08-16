@@ -26,7 +26,7 @@ export const ButtonShape: Story = {
 };
 
 export const CardLoading: Story = {
-  name: '카드 로딩 (조합)',
+  name: '카드 로딩 (복합 레이아웃)',
   render: () => (
     <div style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: 'var(--color-bg-tint)', borderRadius: 'var(--radius-card)' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
