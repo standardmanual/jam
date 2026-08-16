@@ -65,7 +65,7 @@ const PALETTE: Record<'onSurface' | 'onCard', CSSProperties> = {
     '--tabs-bar-border': 'var(--color-border-inverse)',
     '--tabs-pill-bg': 'var(--color-primary)',
     '--tabs-text-muted': 'rgba(0, 0, 0, 0.4)',
-    '--tabs-text-active': 'var(--color-bg-inverse)',
+    '--tabs-text-active': '#FFFFFF',
     '--tabs-text-hover': 'rgba(0, 0, 0, 0.7)',
   } as CSSProperties,
 }
