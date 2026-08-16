@@ -130,7 +130,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.missions.backToDetail} backHref="/missions" />
+      <TopNav title={d.missions.backToDetail} backHref="/missions" headerStyle={{ background: 'var(--color-surface)' }} />
 
       <div className="flex flex-col px-6 pt-8 pb-10 gap-6">
 

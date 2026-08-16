@@ -343,27 +343,33 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
     return (
       <div className="min-h-full bg-surface text-text">
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
+        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={{ background: 'var(--color-surface)' }} />
 
         {/* hero-section */}
         <div className="px-6 pt-[40px] pb-[32px]">
-          <div className="w-full flex flex-col items-center justify-center gap-4 py-6">
-            {badgeRow.image_url ? (
-              <Image
-                src={badgeRow.image_url}
-                alt={badgeRow.name}
-                width={200}
-                height={200}
-                className={['object-contain w-[55%]', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
-              />
-            ) : (
-              <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
-            )}
-            <h1 className="text-[36px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
-            <RarityBadge rarity={badgeRow.rarity} />
+          <div className="w-full aspect-square rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex flex-col p-6">
+            <div className="flex-1 flex items-center justify-center">
+              {badgeRow.image_url ? (
+                <div className="w-[200px] h-[200px] flex items-center justify-center">
+                  <Image
+                    src={badgeRow.image_url}
+                    alt={badgeRow.name}
+                    width={200}
+                    height={200}
+                    className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
+                  />
+                </div>
+              ) : (
+                <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
+              )}
+            </div>
+            <div className="flex flex-col items-center gap-2 pt-4">
+              <RarityBadge rarity={badgeRow.rarity} />
+              <h1 className="text-[28px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+            </div>
           </div>
           {badgeRow.description && (
-            <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5]">{badgeRow.description}</p>
+            <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5] mt-6">{badgeRow.description}</p>
           )}
         </div>
 
@@ -428,27 +434,33 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   if (badgeRow.type === 'poi') {
     return (
       <div className="min-h-full bg-surface text-text">
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
+        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={{ background: 'var(--color-surface)' }} />
 
         {/* hero-section */}
         <div className="px-6 pt-[40px] pb-[32px]">
-          <div className="w-full flex flex-col items-center justify-center gap-4 py-6">
-            {badgeRow.image_url ? (
-              <Image
-                src={badgeRow.image_url}
-                alt={badgeRow.name}
-                width={200}
-                height={200}
-                className={['object-contain w-[55%]', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
-              />
-            ) : (
-              <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
-            )}
-            <h1 className="text-[36px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
-            <RarityBadge rarity={badgeRow.rarity} />
+          <div className="w-full aspect-square rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex flex-col p-6">
+            <div className="flex-1 flex items-center justify-center">
+              {badgeRow.image_url ? (
+                <div className="w-[200px] h-[200px] flex items-center justify-center">
+                  <Image
+                    src={badgeRow.image_url}
+                    alt={badgeRow.name}
+                    width={200}
+                    height={200}
+                    className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
+                  />
+                </div>
+              ) : (
+                <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
+              )}
+            </div>
+            <div className="flex flex-col items-center gap-2 pt-4">
+              <RarityBadge rarity={badgeRow.rarity} />
+              <h1 className="text-[28px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+            </div>
           </div>
           {badgeRow.description && (
-            <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5]">{badgeRow.description}</p>
+            <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5] mt-6">{badgeRow.description}</p>
           )}
         </div>
 
@@ -504,23 +516,29 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
       {/* hero-section */}
       <div className="px-6 pt-[40px] pb-[32px]">
-        <div className="w-full flex flex-col items-center justify-center gap-4 py-6">
-          {badgeRow.image_url ? (
-            <Image
-              src={badgeRow.image_url}
-              alt={badgeRow.name}
-              width={200}
-              height={200}
-              className={['object-contain w-[55%]', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
-            />
-          ) : (
-            <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
-          )}
-          <h1 className="text-[36px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
-          <RarityBadge rarity={badgeRow.rarity} />
+        <div className="w-full aspect-square rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex flex-col p-6">
+          <div className="flex-1 flex items-center justify-center">
+            {badgeRow.image_url ? (
+              <div className="w-[200px] h-[200px] flex items-center justify-center">
+                <Image
+                  src={badgeRow.image_url}
+                  alt={badgeRow.name}
+                  width={200}
+                  height={200}
+                  className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
+                />
+              </div>
+            ) : (
+              <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
+            )}
+          </div>
+          <div className="flex flex-col items-center gap-2 pt-4">
+            <RarityBadge rarity={badgeRow.rarity} />
+            <h1 className="text-[28px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+          </div>
         </div>
         {badgeRow.description && (
-          <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5]">{badgeRow.description}</p>
+          <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5] mt-6">{badgeRow.description}</p>
         )}
       </div>
 
