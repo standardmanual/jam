@@ -5,17 +5,18 @@ import { ButtonHTMLAttributes, forwardRef } from 'react'
  *
  * variant
  * - `primary` : pill 72px(--radius-pill-buttons), 채움 버튼
- * - `outline` : pill 50px(--radius-nav-buttons), 1px border만
+ * - `outline` : pill 50px(--radius-nav-buttons), 보더 없는 저강조 채움 버튼(20260816_012)
  * - `arrow`   : 화살표(→) 접두 텍스트 버튼. 배경/보더 없음, radius 16px, padding 24px
  *
  * surface = "이 버튼이 놓인 배경"
- * - `main`(기본, 코발트 배경 위): primary는 아이스 채움 + 코발트 텍스트,
- *   outline은 1px 아이스 보더 + 아이스 텍스트
- * - `sub`(아이스 배경 위): primary는 코발트 채움 + 아이스 텍스트,
- *   outline은 1px 코발트 보더 + 코발트 텍스트
+ * - `main`(기본, 다크 배경 위): primary는 흰색 채움 + 검정 텍스트,
+ *   outline은 --color-surface-elevated 채움 + 흰 텍스트(20260816_012 — 보더 대신 배경톤)
+ * - `sub`(라이트 배경 위): primary는 레드 채움 + 흰 텍스트,
+ *   outline은 4% 블랙 틴트 채움 + 검정 텍스트(20260816_012 — 보더 대신 배경톤)
  *
  * 규칙: weight 400 단일, 최소 44×44pt 터치 영역, active: 스케일 축소 피드백,
- * 드롭섀도/그라데이션 금지(보더는 inset box-shadow로만).
+ * 드롭섀도/그라데이션 금지. 보더는 명시적 요구가 있는 경우를 제외하고 사용하지 않는다
+ * (20260816_012 — MODULAR readme.md "보더 미사용" 원칙에 맞춤).
  */
 export type ButtonVariant =
   | 'primary'
@@ -49,19 +50,19 @@ const legacyVariantMap: Record<string, ResolvedVariant> = {
 }
 
 /**
- * DS v2 surface별 색상 클래스.
- * - main (다크 배경 위): primary=흰 채움/검정 텍스트, outline=흰 반투명 border/흰 텍스트
- * - sub (라이트 surface 위): primary=레드 채움/흰 텍스트, outline=다크 border/검정 텍스트
+ * DS v2 surface별 색상 클래스 (20260816_012: outline 보더 제거 → 배경톤 채움으로 대체).
+ * - main (다크 배경 위): primary=흰 채움/검정 텍스트, outline=--color-surface-elevated 채움/흰 텍스트
+ * - sub (라이트 surface 위): primary=레드 채움/흰 텍스트, outline=4% 블랙 틴트 채움/검정 텍스트
  */
 const colorClasses: Record<ButtonSurface, Record<ResolvedVariant, string>> = {
   main: {
     primary: 'text-text-inverse',      // bg는 inline style(흰색)로 주입
-    outline: 'text-text shadow-[inset_0_0_0_1px_var(--color-border-light)]',
+    outline: 'text-text bg-surface-elevated',
     arrow: 'text-text',
   },
   sub: {
     primary: 'text-white',             // bg는 inline style(레드)로 주입
-    outline: 'text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)]',
+    outline: 'text-text-inverse bg-black/[0.04]',
     arrow: 'text-text-inverse',
   },
 }

@@ -45,7 +45,7 @@ export const AllTones: Story = {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320 }}>
       <Card tone="default">
         <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>default</p>
-        <p style={{ margin: '4px 0 0', color: 'var(--color-text)' }}>배경: --color-surface</p>
+        <p style={{ margin: '4px 0 0', color: 'var(--color-text)' }}>배경: --color-surface-elevated (20260816_012 — 보더 제거로 대체)</p>
       </Card>
       <Card tone="tint">
         <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>tint</p>

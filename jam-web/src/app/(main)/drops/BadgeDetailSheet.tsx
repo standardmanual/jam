@@ -57,7 +57,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
 
         {/* 배지 이미지 (대형) */}
         <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-          <div className="w-44 h-44 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center overflow-hidden">
+          <div className="w-44 h-44 rounded-[var(--radius-cards)] bg-black/[0.04] flex items-center justify-center overflow-hidden">
             {drop.badge_image_url ? (
               <Image src={drop.badge_image_url} alt={drop.badge_name} width={176} height={176} className="w-full h-full object-contain p-[var(--spacing-16)]" />
             ) : (

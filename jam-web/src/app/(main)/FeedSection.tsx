@@ -153,7 +153,7 @@ export function DetailSheet({
       */}
       <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center pointer-events-none">
       <div
-        className="t-panel-slide relative w-full max-w-[430px] bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] shadow-[inset_0_1px_0_0_var(--color-border-inverse)] px-[var(--spacing-24)] pt-[var(--spacing-16)] pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
+        className="t-panel-slide relative w-full max-w-[430px] bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] px-[var(--spacing-24)] pt-[var(--spacing-16)] pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
         data-open={shown}
         style={{ '--panel-translate-y': '100%' } as CSSProperties}
       >
@@ -167,7 +167,7 @@ export function DetailSheet({
         <div className="w-10 h-1 bg-surface/20 rounded-full mx-auto mb-[var(--spacing-24)]" />
         <div className="flex justify-center mb-[var(--spacing-16)]">
           {badgeImage ? (
-            <Image src={badgeImage} alt={title} width={112} height={112} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+            <Image src={badgeImage} alt={title} width={112} height={112} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover" />
           ) : (
             <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center">
               <EventIcon type={item.event_type} className="w-12 h-12" />
@@ -181,7 +181,8 @@ export function DetailSheet({
             <span className={`text-[length:var(--text-body-sm)] px-[var(--spacing-16)] py-1 rounded-[var(--radius-tags)] font-bold uppercase tracking-[var(--tracking-label)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
           </div>
         )}
-        <div className="rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] px-[var(--spacing-16)] py-[var(--spacing-8)] mb-[var(--spacing-24)]">
+        {/* 20260816_012: 보더 제거 — 흰 시트 위 정보 그룹이라 4% 블랙 틴트로 구분 */}
+        <div className="rounded-[var(--radius-cards)] bg-black/[0.04] px-[var(--spacing-16)] py-[var(--spacing-8)] mb-[var(--spacing-24)]">
           {(item.event_type === 'item_dropped' || item.event_type === 'item_picked_up') && meta.poi_name && (
             <Row label={d.feed.rowPlace} value={String(meta.poi_name)} />
           )}
@@ -244,7 +245,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
       onClick={onClick}
       icon={
         badgeImage ? (
-          <Image src={badgeImage} alt={title} width={40} height={40} className="w-10 h-10 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
+          <Image src={badgeImage} alt={title} width={40} height={40} className="w-10 h-10 rounded-[var(--radius-cards)] object-cover" />
         ) : (
           <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
             <EventIcon type={item.event_type} className="w-5 h-5 text-text" />

@@ -119,7 +119,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                   href={`/${u.username}`}
                   icon={
                     u.avatar_url ? (
-                      <Image src={u.avatar_url} alt={u.username} width={40} height={40} className="w-10 h-10 rounded-full object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
+                      <Image src={u.avatar_url} alt={u.username} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
                         <UserIcon className="w-5 h-5 text-text/50" />
