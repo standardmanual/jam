@@ -83,7 +83,7 @@ export default async function FollowersPage({ params }: Props) {
             >
               <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0 active:opacity-70 transition-opacity">
                 {u.avatar_url ? (
-                  <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border)]" />
+                  <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center shrink-0">
                     <UserIcon className="w-4 h-4 text-text/50" />

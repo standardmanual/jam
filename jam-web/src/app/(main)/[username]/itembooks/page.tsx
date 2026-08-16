@@ -149,7 +149,7 @@ export default async function UserItemBooksPage({ params }: Props) {
               return (
                 <Link key={book.id} href={`/itembooks/${book.id}`}>
                   <Card className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
-                    <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+                    <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center bg-black/[0.04]">
                       {book.image_url ? (
                         <Image src={book.image_url} alt={book.name} fill className="object-contain p-1.5" />
                       ) : (
@@ -168,7 +168,7 @@ export default async function UserItemBooksPage({ params }: Props) {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+                      <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-black/[0.08]">
                         <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>

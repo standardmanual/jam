@@ -6,6 +6,7 @@ import React from 'react';
  *   - h1 font-size: --text-body (16px) → --text-h4 (24px) — semantic/visual alignment
  *   - CDN icon replaced with inline SVG chevron-left
  *   - Uses IconButton-compatible inline SVG approach (no import needed here)
+ *   - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문 배경톤 차이만으로 구분
  */
 export function TopNav({ title = '', showBack = true, onBack, rightSlot = null }) {
   return (
@@ -13,7 +14,6 @@ export function TopNav({ title = '', showBack = true, onBack, rightSlot = null }
       position: 'sticky', top: 0,
       background: 'var(--color-bg)',
       zIndex: 30,
-      borderBottom: '1px solid var(--color-border)',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 4,

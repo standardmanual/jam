@@ -26,8 +26,8 @@ const NEW_MISSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 7일 이내 생성 = �
 // Figma mission-item-1 색상 토큰
 const C_THUMBNAIL_BG = '#1A1A1A'
 const C_THUMBNAIL_RADIUS = '12px'
-const C_STATUS_BADGE_BG = '#1A1A1A'
-const C_STATUS_BADGE_BORDER = '#2A2A2A'
+// 20260816_012: 보더 제거 — 페이지 캔버스(bg-surface)와 같은 색이라 배경톤을 한 단계 올림
+const C_STATUS_BADGE_BG = 'var(--color-surface-elevated)'
 const C_STATUS_BADGE_TEXT = '#B2B2B2'
 const C_NEW_BADGE_BG = '#E8461F'
 const C_TITLE = '#FFFFFF'
@@ -108,7 +108,6 @@ function StatusBadge({ children }: { children: React.ReactNode }) {
         lineHeight: 1,
         padding: '3px 6px',
         borderRadius: '999px',
-        border: `1px solid ${C_STATUS_BADGE_BORDER}`,
       }}
     >
       {children}

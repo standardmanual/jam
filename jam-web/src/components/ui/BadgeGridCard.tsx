@@ -46,7 +46,8 @@ export default function BadgeGridCard({
   const containerCls = [
     BASE,
     isInteractive && 'active:scale-95 transition-transform duration-100',
-    selected && 'shadow-[inset_0_0_0_2px_var(--color-text)]',
+    // 20260816_012: selected 표시를 2px 보더 대신 배경톤 채움으로 대체 (기능적 의미 유지)
+    selected && 'bg-[var(--color-primary)]/15',
     className,
   ]
     .filter(Boolean)

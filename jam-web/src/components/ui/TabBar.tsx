@@ -10,7 +10,8 @@ import { d } from '@/lib/i18n'
  * 라우팅/활성탭 판별 로직은 기존 `src/app/(main)/TabBar.tsx`와 100% 동일합니다.
  * (다른 유저 프로필 보기 `?u=` 케이스, `/inventory/[itemId]?from=badges` 케이스 포함)
  * 시각 스타일은 최신 iOS 인스타그램/앱스토어의 플로팅 캡슐 탭바를 참고해
- * 아이콘 전용(라벨 없음) + 1px inset border(드롭섀도 없음)로 구성했습니다.
+ * 아이콘 전용(라벨 없음)으로 구성했습니다. 흰 필 자체가 다크 페이지 위에서 대비가
+ * 충분해 보더/드롭섀도 없이 렌더링합니다(20260816_012).
  * 로직을 수정할 일이 생기면 두 파일을 반드시 함께 맞추세요.
  */
 interface TabBarProps {
@@ -142,7 +143,7 @@ export default function TabBar({ username }: TabBarProps) {
 
   return (
     <nav
-      className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[398px] h-16 rounded-[var(--radius-pill-buttons)] bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-between px-1 z-40"
+      className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[398px] h-16 rounded-[var(--radius-pill-buttons)] bg-surface-inverse flex items-center justify-between px-1 z-40"
       style={{ bottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
     >
       {tabs.map((tab) => {

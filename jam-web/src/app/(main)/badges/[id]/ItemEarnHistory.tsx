@@ -54,7 +54,7 @@ export default function ItemEarnHistory({ items }: { items: ItemEarnEntry[] }) {
       </div>
 
       {/* 최신(첫 번째) 이력 — 카드 형식 */}
-      <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+      <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
         <ItemCardContent entry={first} />
       </div>
 

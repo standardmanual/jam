@@ -81,7 +81,8 @@ export const Undiscovered: Story = {
 };
 
 export const Selected: Story = {
-  name: '선택됨 (강조 링)',
+  // 20260816_012: 2px 보더 링 → 배경톤 채움(rgba primary 15%)으로 대체
+  name: '선택됨 (배경톤 강조)',
   args: {
     name: '선택된 배지',
     imageUrl: SAMPLE_IMAGE,

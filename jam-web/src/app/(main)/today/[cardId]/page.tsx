@@ -26,8 +26,9 @@ export default async function TodayArticlePage({ params }: Props) {
 
   return (
     <div className="min-h-full bg-surface text-text pb-[var(--spacing-40)]">
+      {/* 20260816_012: hr 대체용 하단 구분선 제거 — 이미지 경계 자체로 구분됨 */}
       {card.cover_image_url && (
-        <div className="relative w-full aspect-[16/10] overflow-hidden shadow-[inset_0_-1px_0_0_var(--color-border)]">
+        <div className="relative w-full aspect-[16/10] overflow-hidden">
           <Image src={card.cover_image_url} alt={card.title} fill className="object-cover" />
         </div>
       )}

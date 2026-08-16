@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { TabBar } from './TabBar';
 import type { TabKey } from './TabBar';
 
+// 20260816_012: 흰 필 보더 제거 — 다크 배경 위 색 대비만으로 구분됨
 const meta: Meta<typeof TabBar> = {
   title: 'MODULAR/Navigation/TabBar',
   component: TabBar,
