@@ -128,6 +128,9 @@ export default function ProfileClient({
   // ── 팔로우 (프로필 헤더) ───────────────────────────────────────────────────
   const [following, setFollowing] = useState(isFollowing)
   const [followerCnt, setFollowerCnt] = useState(followerCount)
+  const [followLoading, setFollowLoading] = useState(false)
+  // 목록 내 팔로우: 요청 중인 userId Set으로 경쟁 조건 방지
+  const [listFollowingSet, setListFollowingSet] = useState<Set<string>>(new Set())
 
   // poi 타입 배지는 반복 획득이 가능해 badge_id가 중복된 이벤트가 들어올 수 있다
   // (서버에서 최초 획득분만 기록하도록 이미 막아뒀지만, 갤러리는 항상 "고유 배지"만
@@ -210,52 +213,62 @@ export default function ProfileClient({
 
   // ── 리스트 내 팔로우 토글 ──────────────────────────────────────────────────
   const handleListFollow = async (targetId: string) => {
+    if (listFollowingSet.has(targetId)) return
     const current = listFollowStates[targetId] ?? false
     setListFollowStates(prev => ({ ...prev, [targetId]: !current }))
-    if (current) {
-      try {
-        await fetch(`/api/follows/${targetId}`, { method: 'DELETE' })
-      } catch {
-        setListFollowStates(prev => ({ ...prev, [targetId]: current }))
-      }
-    } else {
-      try {
-        await fetch('/api/follows', {
+    setListFollowingSet(prev => new Set(prev).add(targetId))
+    try {
+      let res: Response
+      if (current) {
+        res = await fetch(`/api/follows/${targetId}`, { method: 'DELETE' })
+      } else {
+        res = await fetch('/api/follows', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ target_user_id: targetId }),
         })
-      } catch {
-        setListFollowStates(prev => ({ ...prev, [targetId]: current }))
       }
+      if (!res.ok) throw new Error(res.statusText)
+    } catch {
+      setListFollowStates(prev => ({ ...prev, [targetId]: current }))
+    } finally {
+      setListFollowingSet(prev => { const next = new Set(prev); next.delete(targetId); return next })
     }
   }
 
   // ── 헤더 팔로우 토글 ───────────────────────────────────────────────────────
   const handleFollow = async () => {
+    if (followLoading) return
     const prev = following
     const prevCnt = followerCnt
+    setFollowLoading(true)
     if (following) {
       setFollowing(false)
       setFollowerCnt(c => c - 1)
       try {
-        await fetch(`/api/follows/${targetUserId}`, { method: 'DELETE' })
+        const res = await fetch(`/api/follows/${targetUserId}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error(res.statusText)
       } catch {
         setFollowing(prev)
         setFollowerCnt(prevCnt)
+      } finally {
+        setFollowLoading(false)
       }
     } else {
       setFollowing(true)
       setFollowerCnt(c => c + 1)
       try {
-        await fetch('/api/follows', {
+        const res = await fetch('/api/follows', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ target_user_id: targetUserId }),
         })
+        if (!res.ok) throw new Error(res.statusText)
       } catch {
         setFollowing(prev)
         setFollowerCnt(prevCnt)
+      } finally {
+        setFollowLoading(false)
       }
     }
   }
@@ -450,6 +463,7 @@ export default function ProfileClient({
               surface="sub"
               variant={following ? 'outline' : 'primary'}
               onClick={handleFollow}
+              disabled={followLoading}
               className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
             >
               {/* Text states swap (04-text-states-swap.md) */}
