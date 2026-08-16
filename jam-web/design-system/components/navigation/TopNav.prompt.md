@@ -11,7 +11,7 @@ Sticky top bar for sub-pages (badges detail, drops, inventory item). Root screen
 
 | 진입 패턴 | title | backHref |
 |---|---|---|
-| 목록 → 상세, 경로 고정 | 목록 화면명 ("미션", "인벤") | 있음 (목록 URL) |
+| 목록 → 상세, 경로 고정 | 목록 화면명 ("미션", "인벤토리") | 있음 (목록 URL) |
 | 프로필 → 하위 화면 | 유저명 (username) | 있음 (`/{username}`) |
 | 다양한 경로로 진입 가능 | `d.common.back` ("뒤로") | 없음 (router.back) |
 | 탭바 루트 화면 | 없음 | showBack=false |

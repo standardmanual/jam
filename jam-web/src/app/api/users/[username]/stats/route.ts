@@ -58,7 +58,7 @@ export async function GET(
       .from('user_activity_badges')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', targetId),
-    // 아이템북 디스커버리용 인벤 배지 목록
+    // 아이템북 디스커버리용 인벤토리 배지 목록
     inventoryId
       ? service.from('inventory_items').select('badge_id').eq('inventory_id', inventoryId)
       : Promise.resolve({ data: [] }),

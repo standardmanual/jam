@@ -61,7 +61,7 @@ export function ResetUserButton({ userId, userName }: { userId: string; userName
                 <h3 className="text-lg font-bold mb-2">유저 컨텐츠 초기화</h3>
                 <p className="text-[#6b7280] text-sm mb-2">
                   &apos;{userName}&apos;님이 보유한 <strong className="text-[#111111]">모든 액티비티 배지</strong>와{' '}
-                  <strong className="text-[#111111]">인벤 아이템</strong>을 삭제하고 슬롯을 리셋합니다.
+                  <strong className="text-[#111111]">인벤토리 아이템</strong>을 삭제하고 슬롯을 리셋합니다.
                 </p>
                 <p className="text-red-500 text-xs mb-5">
                   이 작업은 되돌릴 수 없습니다. 계정 정보와 Strava 동기화는 유지됩니다.

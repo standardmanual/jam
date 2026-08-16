@@ -33,7 +33,7 @@ export const WithRightSlot: Story = {
 export const WithMultipleRight: Story = {
   name: '우측 슬롯 (복수)',
   args: {
-    title: '인벤',
+    title: '인벤토리',
     showBack: true,
     rightSlot: (
       <div style={{ display: 'flex', gap: 0 }}>

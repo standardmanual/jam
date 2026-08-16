@@ -154,7 +154,7 @@ Input과 동일한 패턴. 동일한 WARN 적용.
 | 터치 타겟 (flex 1, height 64, 6등분) | ✅ (~66px) |
 
 **WARN:**
-- **컴포넌트 소스의 `tabs` 상수에 `'인벤토리'` 하드코딩** → UX Writing 가이드라인 위반 (`인벤` 이어야 함). `aria-label="인벤토리"`, visible label 없음이지만 스크린리더에 "인벤토리"로 읽힘
+- ~~**컴포넌트 소스의 `tabs` 상수에 `'인벤토리'` 하드코딩**~~ → 2026-08-16 정책 변경으로 `'인벤토리'`가 올바른 표기로 확정. 기존 WARN 해소됨.
 - `<nav>`에 `aria-label` 없음 → 페이지에 nav가 여러 개일 때 구분 어려움
 
 **카테고리:** MODULAR 문제 (UX Writing 위반 + nav label)
@@ -278,7 +278,7 @@ Input과 동일한 패턴. 동일한 WARN 적용.
 | Checkbox | ⚠️ WARN | 포커스 링 시각 노출 불확실 |
 | BottomSheet | ✅ PASS | — (title 없을 때 a11y name 없음) |
 | SlidingTabs | ⚠️ WARN | tabpanel 연결 예시 없음 |
-| TabBar | ⚠️ WARN | `인벤토리` 하드코딩 (UX Writing) |
+| TabBar | ✅ PASS | ~~`인벤토리` 하드코딩~~ — 2026-08-16 정책 변경으로 해소 |
 | Accordion | ✅ PASS | — (Arrow키 이동 미구현 권고) |
 | TopNav | ✅ PASS | — (heading 계층 소비자 책임) |
 | Toast | ⚠️ WARN | 키보드 dismiss 불가 |
@@ -296,7 +296,7 @@ Input과 동일한 패턴. 동일한 WARN 적용.
 
 | 우선순위 | 컴포넌트 | 문제 | 권고 수정 |
 |----------|----------|------|-----------|
-| 높음 | TabBar | `tabs` 상수의 `'인벤토리'` → `'인벤'` 필요 | 소스 수정 |
+| ~~높음~~ | ~~TabBar~~ | ~~`tabs` 상수의 `'인벤토리'` → `'인벤'` 필요~~ — 2026-08-16 정책 변경으로 해소 | — |
 | 높음 | ModalToast | dismiss 버튼 `"확인"` → `dismissLabel` prop 추가 | 소스 수정 |
 | 높음 | Toast | `onClick`에만 dismiss → `onKeyDown` 추가 또는 닫기 `<button>` 추가 | 소스 수정 |
 | 높음 | IconButton | `label` 미제공 시 접근 가능한 이름 없음 → TypeScript에서 required 처리 | 소스 수정 |
@@ -321,7 +321,7 @@ Input과 동일한 패턴. 동일한 WARN 적용.
 
 아래 수정은 기존 서비스 동작에 영향을 주지 않는 **최소한의 MODULAR 소스 수정**이다.
 
-1. **TabBar** — `tabs` 상수의 `'인벤토리'` → `'인벤'` (1줄 수정)
+1. ~~**TabBar** — `tabs` 상수의 `'인벤토리'` → `'인벤'` (1줄 수정)~~ — 2026-08-16 정책 변경으로 `'인벤토리'`가 올바른 표기로 확정. 수정 불요.
 2. **ModalToast** — `dismissLabel` prop 추가, 기본값 `'닫기'` (UX Writing 준수)
 3. **Toast** — 닫기 `<button>` 추가 또는 `onKeyDown` 핸들러 추가
 4. **IconButton** — `label` prop을 TypeScript에서 `required`로 선언

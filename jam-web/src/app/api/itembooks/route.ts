@@ -10,7 +10,7 @@ import type {
   UserItemBookCompletionRow,
 } from '@/types/database'
 
-// GET /api/itembooks — 유저가 디스커버리한(인벤에 아이템 배지를 보유한) 아이템북 목록
+// GET /api/itembooks — 유저가 디스커버리한(인벤토리에 아이템 배지를 보유한) 아이템북 목록
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -25,7 +25,7 @@ export async function GET() {
   if (!invRaw) return NextResponse.json({ itemBooks: [] })
   const inventoryId = (invRaw as Pick<InventoryRow, 'id'>).id
 
-  // 2) 인벤 아이템 → 고유 badge_id 목록 (슬롯 여부 관계없이 전부)
+  // 2) 인벤토리 아이템 → 고유 badge_id 목록 (슬롯 여부 관계없이 전부)
   const { data: invItemsRaw } = await supabase
     .from('inventory_items')
     .select('badge_id')

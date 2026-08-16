@@ -24,7 +24,7 @@ const FAQ_ITEMS = [
     title: '배지를 믹스할 수 있나요?',
     content: (
       <p style={{ margin: 0, color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-body)' }}>
-        아이템 배지를 믹스하면 새로운 희귀 배지를 만들 수 있어요. 인벤에서 믹스해 보세요.
+        아이템 배지를 믹스하면 새로운 희귀 배지를 만들 수 있어요. 인벤토리에서 믹스해 보세요.
       </p>
     ),
   },
