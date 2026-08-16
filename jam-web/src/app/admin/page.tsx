@@ -27,7 +27,7 @@ export default async function AdminDashboardPage() {
   const stats = [
     { label: '배지', value: badgeCount ?? 0, href: '/admin/badges', icon: '🏅' },
     { label: 'POI', value: poiCount ?? 0, href: '/admin/poi', icon: '📍' },
-    { label: '아이템북', value: itemBookCount ?? 0, href: '/admin/itembooks', icon: '📖' },
+    { label: '컬렉션', value: itemBookCount ?? 0, href: '/admin/itembooks', icon: '📖' },
     { label: '유저', value: userCount ?? 0, href: '/admin/users', icon: '👥' },
   ]
 
@@ -35,7 +35,7 @@ export default async function AdminDashboardPage() {
   const shortcuts = [
     { label: '배지 등록', href: '/admin/badges/new', icon: '➕' },
     { label: 'POI 등록', href: '/admin/poi/new', icon: '📌' },
-    { label: '아이템북 등록', href: '/admin/itembooks/new', icon: '📝' },
+    { label: '컬렉션 등록', href: '/admin/itembooks/new', icon: '📝' },
     { label: '시뮬레이터 실행', href: '/admin/simulator', icon: '🎮' },
   ]
 

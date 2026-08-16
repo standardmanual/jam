@@ -10,7 +10,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/badges', label: '배지 관리', icon: '🏅' },
       { href: '/admin/poi', label: 'POI 관리', icon: '📍' },
-      { href: '/admin/itembooks', label: '아이템북', icon: '📖' },
+      { href: '/admin/itembooks', label: '컬렉션', icon: '📖' },
       { href: '/admin/factions', label: '세계관', icon: '🌍' },
       { href: '/admin/recipes', label: '믹스 레시피', icon: '⚗️' },
       { href: '/admin/today', label: '투데이 콘텐츠', icon: '📰' },

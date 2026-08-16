@@ -40,7 +40,7 @@ export default async function AdminFactionsPage() {
               <th className="text-left px-5 py-3">태그라인</th>
               <th className="text-center px-5 py-3">드랍 가중치</th>
               <th className="text-center px-5 py-3">배지 수</th>
-              <th className="text-center px-5 py-3">아이템북 수</th>
+              <th className="text-center px-5 py-3">컬렉션 수</th>
               <th className="text-center px-5 py-3">정렬</th>
               <th className="text-center px-5 py-3">상태</th>
               <th className="px-5 py-3"></th>

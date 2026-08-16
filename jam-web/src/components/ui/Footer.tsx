@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 import { d } from '@/lib/i18n'
 
 /**
@@ -11,12 +12,11 @@ export default function Footer() {
   if (pathname === '/') return null
 
   return (
-    <footer className="flex flex-col items-center justify-center gap-1.5 py-[var(--spacing-24)] px-[var(--spacing-16)]">
-      <span className="text-[11px] leading-none text-text text-center">{d.common.footerSlogan}</span>
+    <footer className="flex flex-col items-center justify-center gap-1.5 py-[var(--spacing-24)] px-[var(--spacing-16)] bg-transparent">
+      <span className="text-[length:var(--text-caption)] leading-none text-text text-center">{d.common.footerSlogan}</span>
       <div className="flex items-center justify-center gap-1.5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/jam-logo-white.png" alt="JAM!" className="h-3 w-auto" />
-        <span className="text-[11px] leading-none text-text">{d.common.footerCopyright}</span>
+        <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-3 w-auto" />
+        <span className="text-[length:var(--text-caption)] leading-none text-text">{d.common.footerCopyright}</span>
       </div>
     </footer>
   )

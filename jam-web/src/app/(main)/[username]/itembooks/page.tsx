@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { ItemBookRow, FactionRow } from '@/types/database'
 import Card from '@/components/ui/Card'
@@ -150,13 +151,12 @@ export default async function UserItemBooksPage({ params }: Props) {
                   <Card className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
                     <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                       {book.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1.5" />
+                        <Image src={book.image_url} alt={book.name} fill className="object-contain p-1.5" />
                       ) : (
                         <BookIcon className="w-8 h-8 text-text-inverse/40" />
                       )}
                       {isCompleted && (
-                        <span className="absolute top-1.5 right-1.5 text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
+                        <span className="absolute top-1.5 right-1.5 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
                           {d.itembooks.completed}
                         </span>
                       )}
@@ -164,14 +164,14 @@ export default async function UserItemBooksPage({ params }: Props) {
                     <div className="min-w-0">
                       <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
                       {book.faction && (
-                        <p className="text-[11px] text-text-inverse/50 mt-0.5 truncate">{book.faction.name}</p>
+                        <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-0.5 truncate">{book.faction.name}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                         <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="text-[11px] text-text-inverse/60 tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
+                      <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
                     </div>
                   </Card>
                 </Link>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Suspense } from 'react'
 import { d } from '@/lib/i18n'
@@ -22,8 +23,7 @@ function LoginContent() {
     <main className="min-h-dvh flex flex-col items-center justify-center bg-surface text-text px-[var(--spacing-24)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* 로고 */}
       <div className="text-center mb-[var(--spacing-40)]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/jam-logo-white.png" alt={d.auth.wordmark} className="h-[48px] w-auto mx-auto" />
+        <Image src="/jam-logo-white.png" alt={d.auth.wordmark} width={2238} height={925} className="h-[48px] w-auto mx-auto" priority />
       </div>
 
       {/* 에러 메시지 */}
@@ -59,6 +59,18 @@ function LoginContent() {
           </svg>
           {d.auth.googleLogin}
         </button>
+
+        {/* 로컬 개발 전용 — 프로덕션/프리뷰 빌드에서는 NODE_ENV가 'development'가 아니므로 렌더링 안 됨 */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            onClick={() => {
+              window.location.href = '/api/dev-login'
+            }}
+            className="w-full mt-[var(--spacing-16)] flex items-center justify-center gap-3 border border-text/30 text-text rounded-[var(--radius-pill-buttons)] min-h-11 py-[14px] px-[var(--spacing-24)] text-[length:var(--text-body)] leading-[var(--leading-body)] active:scale-95 transition-transform duration-100"
+          >
+            {d.auth.devLogin}
+          </button>
+        )}
       </div>
 
       <p className="mt-[var(--spacing-32)] text-text/60 text-[11px] text-center">

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/types/database'
@@ -54,8 +55,7 @@ export default async function HomePage() {
       {/* 헤더 */}
       <div>
         <div className="flex items-center justify-between mb-[var(--spacing-16)]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/jam-logo-white.png" alt="JAM!" className="h-[30px] w-auto" />
+          <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[30px] w-auto" priority />
         </div>
         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.today.greeting}</p>
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] mt-0.5">
@@ -71,7 +71,7 @@ export default async function HomePage() {
               <ActivityIcon className="w-5 h-5 text-text-inverse" />
               <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.today.stravaLabel}</span>
               {stravaConnection.last_synced_at && (
-                <span className="text-[11px] text-text-inverse/50">
+                <span className="text-[length:var(--text-caption)] text-text-inverse/50">
                   <LocalDate iso={stravaConnection.last_synced_at} options={{ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
                 </span>
               )}
@@ -114,8 +114,7 @@ export default async function HomePage() {
                 <Card className="aspect-square flex flex-col justify-between active:scale-[0.98] transition-transform duration-100">
                   <div className="flex-1 flex items-center justify-center">
                     {badge.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={badge.image_url} alt={badge.name} className="w-20 h-20 object-contain" />
+                      <Image src={badge.image_url} alt={badge.name} width={80} height={80} className="w-20 h-20 object-contain" />
                     ) : (
                       <MedalIcon className="w-14 h-14 text-text-inverse/40" />
                     )}
@@ -124,7 +123,7 @@ export default async function HomePage() {
                     <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{badge.name}</p>
                     <div className="flex items-center justify-between mt-1">
                       <RarityBadge rarity={badge.rarity} />
-                      <p className="text-[10px] text-text-inverse/50"><LocalDate iso={earned.earned_at} options={{ month: 'long', day: 'numeric' }} /></p>
+                      <p className="text-[length:var(--text-caption)] text-text-inverse/50"><LocalDate iso={earned.earned_at} options={{ month: 'long', day: 'numeric' }} /></p>
                     </div>
                   </div>
                 </Card>
@@ -134,7 +133,7 @@ export default async function HomePage() {
         ) : (
           <Card className="text-center py-[var(--spacing-32)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.today.recentBadgesEmptyTitle}</p>
-            <p className="text-[11px] text-text-inverse/40 mt-1">{d.today.recentBadgesEmptyBody}</p>
+            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.today.recentBadgesEmptyBody}</p>
           </Card>
         )}
       </section>
@@ -146,25 +145,25 @@ export default async function HomePage() {
           <Link href="/missions">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutMissionTitle}</p>
-              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutMissionBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutMissionBody}</p>
             </Card>
           </Link>
           <Link href="/inventory">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutInventoryTitle}</p>
-              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutInventoryBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutInventoryBody}</p>
             </Card>
           </Link>
           <Link href="/drops">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutDropsTitle}</p>
-              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutDropsBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutDropsBody}</p>
             </Card>
           </Link>
           <Link href="/combine">
             <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutCombineTitle}</p>
-              <p className="text-[11px] text-text-inverse/50">{d.today.shortcutCombineBody}</p>
+              <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutCombineBody}</p>
             </Card>
           </Link>
         </div>

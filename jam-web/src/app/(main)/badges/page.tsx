@@ -105,7 +105,7 @@ export default async function BadgesPage() {
       const [{ data: booksRaw }, { data: bookBadgesRaw }, { data: slotsRaw }, { data: completionsRaw }] =
         await Promise.all([
           supabase.from('item_books').select('*').in('id', bookIds),
-          supabase.from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item'),
+          supabase.from('badges').select('id, item_book_id, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').order('created_at', { ascending: true }),
           supabase.from('user_item_book_slots').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
           supabase.from('user_item_book_completions').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
         ])
@@ -113,9 +113,12 @@ export default async function BadgesPage() {
       books = (booksRaw ?? []) as ItemBookRow[]
 
       const totalByBook = new Map<string, number>()
-      for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
+      const rarityByBook = new Map<string, BadgeRarity>()
+      for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string; rarity: BadgeRarity; created_at: string }[]) {
         if (!b.item_book_id) continue
         totalByBook.set(b.item_book_id, (totalByBook.get(b.item_book_id) ?? 0) + 1)
+        // created_at ASC 정렬이므로 처음 만나는 항목이 최초 등록 배지
+        if (!rarityByBook.has(b.item_book_id)) rarityByBook.set(b.item_book_id, b.rarity)
       }
       const slottedByBook = new Map<string, number>()
       for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
@@ -127,7 +130,7 @@ export default async function BadgesPage() {
         const total = totalByBook.get(book.id) ?? 0
         const owned = slottedByBook.get(book.id) ?? 0
         const completed = completedSet.has(book.id) || (total > 0 && owned >= total)
-        return { bookId: book.id, owned, total, completed }
+        return { bookId: book.id, owned, total, completed, rarity: rarityByBook.get(book.id) ?? 'common' }
       })
     }
   }

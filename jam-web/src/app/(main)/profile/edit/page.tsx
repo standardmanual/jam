@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import TopNav from '@/components/ui/TopNav'
 import { UserIcon } from '@/components/ui/icons'
@@ -204,7 +205,7 @@ export default function ProfileEditPage() {
 
   return (
     <div className="min-h-full bg-surface text-text flex flex-col">
-      <TopNav title={d.profileEdit.title} />
+      <TopNav title={d.profile.title} />
 
       <div className="flex-1 flex flex-col px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] gap-[var(--spacing-32)]">
         {/* 프로필 사진 */}
@@ -216,8 +217,7 @@ export default function ProfileEditPage() {
             aria-label={d.profileEdit.changePhotoAlt}
           >
             {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt={d.onboarding.avatarAlt} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
+              <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
             ) : (
               <div className="w-24 h-24 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center">
                 <UserIcon className="w-10 h-10 text-text/50" />

@@ -3,13 +3,16 @@
 import { useCallback, useState, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
-import RarityBadge from '@/components/ui/Badge'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import CollectionGridCard from '@/components/ui/CollectionGridCard'
+import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import PopInNumber from '@/components/ui/PopInNumber'
 import SwapText from '@/components/ui/SwapText'
@@ -125,6 +128,9 @@ export default function ProfileClient({
   // ── 팔로우 (프로필 헤더) ───────────────────────────────────────────────────
   const [following, setFollowing] = useState(isFollowing)
   const [followerCnt, setFollowerCnt] = useState(followerCount)
+  const [followLoading, setFollowLoading] = useState(false)
+  // 목록 내 팔로우: 요청 중인 userId Set으로 경쟁 조건 방지
+  const [listFollowingSet, setListFollowingSet] = useState<Set<string>>(new Set())
 
   // poi 타입 배지는 반복 획득이 가능해 badge_id가 중복된 이벤트가 들어올 수 있다
   // (서버에서 최초 획득분만 기록하도록 이미 막아뒀지만, 갤러리는 항상 "고유 배지"만
@@ -207,33 +213,63 @@ export default function ProfileClient({
 
   // ── 리스트 내 팔로우 토글 ──────────────────────────────────────────────────
   const handleListFollow = async (targetId: string) => {
+    if (listFollowingSet.has(targetId)) return
     const current = listFollowStates[targetId] ?? false
     setListFollowStates(prev => ({ ...prev, [targetId]: !current }))
-    if (current) {
-      await fetch(`/api/follows/${targetId}`, { method: 'DELETE' })
-    } else {
-      await fetch('/api/follows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_user_id: targetId }),
-      })
+    setListFollowingSet(prev => new Set(prev).add(targetId))
+    try {
+      let res: Response
+      if (current) {
+        res = await fetch(`/api/follows/${targetId}`, { method: 'DELETE' })
+      } else {
+        res = await fetch('/api/follows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_user_id: targetId }),
+        })
+      }
+      if (!res.ok) throw new Error(res.statusText)
+    } catch {
+      setListFollowStates(prev => ({ ...prev, [targetId]: current }))
+    } finally {
+      setListFollowingSet(prev => { const next = new Set(prev); next.delete(targetId); return next })
     }
   }
 
   // ── 헤더 팔로우 토글 ───────────────────────────────────────────────────────
   const handleFollow = async () => {
+    if (followLoading) return
+    const prev = following
+    const prevCnt = followerCnt
+    setFollowLoading(true)
     if (following) {
       setFollowing(false)
       setFollowerCnt(c => c - 1)
-      await fetch(`/api/follows/${targetUserId}`, { method: 'DELETE' })
+      try {
+        const res = await fetch(`/api/follows/${targetUserId}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error(res.statusText)
+      } catch {
+        setFollowing(prev)
+        setFollowerCnt(prevCnt)
+      } finally {
+        setFollowLoading(false)
+      }
     } else {
       setFollowing(true)
       setFollowerCnt(c => c + 1)
-      await fetch('/api/follows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_user_id: targetUserId }),
-      })
+      try {
+        const res = await fetch('/api/follows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_user_id: targetUserId }),
+        })
+        if (!res.ok) throw new Error(res.statusText)
+      } catch {
+        setFollowing(prev)
+        setFollowerCnt(prevCnt)
+      } finally {
+        setFollowLoading(false)
+      }
     }
   }
 
@@ -266,24 +302,13 @@ export default function ProfileClient({
           {badgeItems.map(item => {
             const meta = item.metadata as Record<string, string>
             return (
-              <button
+              <BadgeGridCard
                 key={item.id}
                 onClick={() => handleCardClick(item)}
-                className="flex flex-col items-center gap-1.5 p-[var(--spacing-8)] min-h-11 rounded-[var(--radius-cards)] bg-surface-inverse text-text-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)] active:scale-95 transition-transform duration-100 cursor-pointer"
-              >
-                <div className="w-[66px] h-[66px] flex items-center justify-center shrink-0">
-                  {meta.badge_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={meta.badge_image_url} alt={meta.badge_name} className="w-full h-full object-contain" />
-                  ) : (
-                    <MedalIcon className="w-full h-full text-text-inverse/40" />
-                  )}
-                </div>
-                <span className="text-[length:var(--text-body-sm)] leading-tight text-center line-clamp-2 h-10 w-full">{meta.badge_name}</span>
-                <div className="h-6 flex items-center justify-center">
-                  <RarityBadge rarity={meta.rarity as BadgeRarity} />
-                </div>
-              </button>
+                name={meta.badge_name}
+                imageUrl={meta.badge_image_url ?? null}
+                rarity={meta.rarity as BadgeRarity}
+              />
             )
           })}
         </div>
@@ -297,49 +322,17 @@ export default function ProfileClient({
       }
       return (
         <div className="grid grid-cols-2 gap-[var(--spacing-8)]">
-          {itembooksData.map(book => {
-            const pct = book.totalBadgeCount > 0 ? Math.round((book.slottedCount / book.totalBadgeCount) * 100) : 0
-            return (
-              <Link
-                key={book.id}
-                href={`/itembooks/${book.id}?u=${username}`}
-                className={[
-                  'flex flex-col rounded-[var(--radius-cards)] p-[var(--spacing-16)] gap-[var(--spacing-8)]',
-                  'bg-surface-inverse text-text-inverse',
-                  'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]',
-                  'transition-transform duration-100 active:scale-[0.98]',
-                ].join(' ')}
-              >
-                <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                  {book.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={book.image_url} alt={book.name} className="w-full h-full object-contain p-1.5" />
-                  ) : (
-                    <BookIcon className="w-10 h-10 text-text-inverse/40" />
-                  )}
-                  {book.isCompleted && (
-                    <span className="absolute top-1.5 right-1.5 bg-surface text-text text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)]">
-                      {d.profile.itembookCompleted}
-                    </span>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
-                  {book.faction && (
-                    <p className="text-[11px] text-text-inverse/60 truncate">{book.faction.name}</p>
-                  )}
-                </div>
-                <div className="mt-auto flex items-center gap-[var(--spacing-8)]">
-                  <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
-                    <div className="h-full bg-surface transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="text-[11px] text-text-inverse/60 tabular-nums shrink-0">
-                    {t(d.profile.itembookProgress, { done: book.slottedCount, total: book.totalBadgeCount })}
-                  </span>
-                </div>
-              </Link>
-            )
-          })}
+          {itembooksData.map(book => (
+            <CollectionGridCard
+              key={book.id}
+              href={`/itembooks/${book.id}?u=${username}`}
+              name={book.name}
+              imageUrl={book.image_url ?? null}
+              collected={book.slottedCount}
+              total={book.totalBadgeCount}
+              completed={book.isCompleted}
+            />
+          ))}
         </div>
       )
     }
@@ -357,33 +350,33 @@ export default function ProfileClient({
     return (
       <div className="flex flex-col gap-[var(--spacing-8)]">
         {listData.map(u => (
-          <div
+          <ListRowCard
             key={u.id}
-            className="flex items-center gap-[var(--spacing-16)] bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] p-[var(--spacing-16)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]"
-          >
-            <Link href={`/${u.username}`} className="flex items-center gap-[var(--spacing-16)] flex-1 min-w-0 min-h-11">
-              {u.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={u.avatar_url} alt={u.username ?? ''} className="w-11 h-11 rounded-full object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]" />
+            href={`/${u.username}`}
+            icon={
+              u.avatar_url ? (
+                <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
               ) : (
-                <div className="w-11 h-11 rounded-full bg-surface text-text flex items-center justify-center shrink-0">
-                  <UserIcon className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
+                  <UserIcon className="w-5 h-5 text-text/60" />
                 </div>
-              )}
-              <span className="text-[length:var(--text-body)] leading-[var(--leading-body)] truncate">{u.username}</span>
-            </Link>
-            {u.id !== currentUserId && (
-              <Button
-                surface="sub"
-                variant={listFollowStates[u.id] ? 'outline' : 'primary'}
-                onClick={() => handleListFollow(u.id)}
-                className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
-              >
-                {/* Text states swap (04-text-states-swap.md) */}
-                <SwapText value={listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton} />
-              </Button>
-            )}
-          </div>
+              )
+            }
+            title={u.username ?? ''}
+            trailing={
+              u.id !== currentUserId ? (
+                <Button
+                  surface="sub"
+                  variant={listFollowStates[u.id] ? 'outline' : 'primary'}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleListFollow(u.id) }}
+                  className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
+                >
+                  {/* Text states swap (04-text-states-swap.md) */}
+                  <SwapText value={listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton} />
+                </Button>
+              ) : undefined
+            }
+          />
         ))}
       </div>
     )
@@ -403,14 +396,14 @@ export default function ProfileClient({
     ariaLabel: tab.label,
     label: (
       <span className="flex flex-col items-center justify-center gap-1">
-        <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums">
+        <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums text-[color:var(--color-primary)]">
           {tab.key === 'followers' ? (
             <PopInNumber value={statCounts.followers} />
           ) : (
             statCounts[tab.key]
           )}
         </span>
-        <span className="text-[11px] leading-none opacity-70">{tab.label}</span>
+        <span className="text-[length:var(--text-caption)] leading-none opacity-70">{tab.label}</span>
       </span>
     ),
   }))
@@ -423,10 +416,11 @@ export default function ProfileClient({
         {/* 프로필 헤더 */}
         <Card className="flex items-center gap-[var(--spacing-16)]">
           {profile?.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={profile.avatar_url}
               alt={d.profile.avatarAlt}
+              width={64}
+              height={64}
               className="w-16 h-16 rounded-[var(--radius-cards)] object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]"
             />
           ) : (
@@ -469,6 +463,7 @@ export default function ProfileClient({
               surface="sub"
               variant={following ? 'outline' : 'primary'}
               onClick={handleFollow}
+              disabled={followLoading}
               className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
             >
               {/* Text states swap (04-text-states-swap.md) */}

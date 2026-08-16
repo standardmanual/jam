@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import { UserIcon } from '@/components/ui/icons'
@@ -39,9 +39,419 @@ interface Props {
   missionId: string
   missionTitle: string
   displayType: string
+  goalLabel?: string
 }
 
-function Avatar({ url }: { url: string | null }) {
+// ────────────────────────────────────────────────────────────────
+// 포디엄 설정값 (1위, 2위, 3위) — Figma 스펙 06_미션 상황 기준
+// ────────────────────────────────────────────────────────────────
+const PODIUM_CONFIG = [
+  {
+    rank: 1,
+    barHeight: 130,
+    barBg: '#0D3320',
+    barBorder: '#56C985',
+    avatarSize: 60,
+    avatarBg: '#0D2A1A',
+    avatarBorder: '#56C985',
+    rankColor: '#56C985',
+    rankFontSize: 22,
+    valueColor: '#56C985',
+    barNumFontSize: 26,
+    barNumColor: '#FFF',
+    usernameFontSize: 12,
+    usernameBold: true,
+    progressFontSize: 10,
+  },
+  {
+    rank: 2,
+    barHeight: 90,
+    barBg: '#1A3A2A',
+    barBorder: '#4CAF7D',
+    avatarSize: 48,
+    avatarBg: '#2A3A2A',
+    avatarBorder: '#4CAF7D',
+    rankColor: '#4CAF7D',
+    rankFontSize: 18,
+    valueColor: '#4CAF7D',
+    barNumFontSize: 20,
+    barNumColor: '#A8E6C3',
+    usernameFontSize: 11,
+    usernameBold: false,
+    progressFontSize: 10,
+  },
+  {
+    rank: 3,
+    barHeight: 60,
+    barBg: '#1E2E1E',
+    barBorder: '#5A7A5A',
+    avatarSize: 48,
+    avatarBg: '#2A2E2A',
+    avatarBorder: '#5A7A5A',
+    rankColor: '#8AAA8A',
+    rankFontSize: 18,
+    valueColor: '#8AAA8A',
+    barNumFontSize: 20,
+    barNumColor: '#8AAA8A',
+    usernameFontSize: 11,
+    usernameBold: false,
+    progressFontSize: 10,
+  },
+] as const
+
+type PodiumConfig = typeof PODIUM_CONFIG[number]
+
+// ────────────────────────────────────────────────────────────────
+// 유틸
+// ────────────────────────────────────────────────────────────────
+function formatProgress(value: number) {
+  return value.toFixed(value % 1 === 0 ? 0 : 1)
+}
+
+/** 순위 기반 프로그레스 바 그라디언트 — 상위일수록 밝은 그린, 최소 15% 밝기 유지 */
+function getRankGradient(rank: number): string {
+  // factor 최솟값 0.15 → 참가자가 많아도 시각 구분 유지
+  const factor = Math.max(0.15, 1 - (rank - 4) * 0.05)
+  const fromG = Math.round(0x59 + factor * (0xB2 - 0x59))
+  const toG = Math.round(0x73 + factor * (0xD9 - 0x73))
+  return `linear-gradient(90deg, rgb(0,${fromG},0), rgb(26,${toG},0))`
+}
+
+// ────────────────────────────────────────────────────────────────
+// 서브 컴포넌트
+// ────────────────────────────────────────────────────────────────
+
+/** 포디엄 아바타 원 */
+function PodiumAvatar({
+  url,
+  size,
+  bg,
+  border,
+}: {
+  url: string | null
+  size: number
+  bg: string
+  border: string
+}) {
+  const baseStyle: CSSProperties = {
+    width: size,
+    height: size,
+    borderRadius: '50%',
+    backgroundColor: bg,
+    border: `2px solid ${border}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
+  }
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="" style={{ ...baseStyle, objectFit: 'cover' }} />
+  }
+  const iconSize = Math.round(size * 0.4)
+  return (
+    <div style={baseStyle}>
+      <UserIcon className="text-[#666]" style={{ width: iconSize, height: iconSize }} />
+    </div>
+  )
+}
+
+/** 포디엄 단일 열 (2위-1위-3위 순으로 렌더) */
+function PodiumColumn({
+  entry,
+  cfg,
+}: {
+  entry: RankingEntry | undefined
+  cfg: PodiumConfig
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, gap: 4 }}>
+      {/* 포디엄 바 상단: 순위 번호 */}
+      <span style={{
+        fontSize: cfg.rankFontSize,
+        fontWeight: 'bold',
+        color: cfg.rankColor,
+        lineHeight: 1,
+      }}>
+        {cfg.rank}
+      </span>
+
+      {/* 아바타 (원형) */}
+      <PodiumAvatar
+        url={entry?.avatarUrl ?? null}
+        size={cfg.avatarSize}
+        bg={cfg.avatarBg}
+        border={cfg.avatarBorder}
+      />
+
+      {/* 유저명 */}
+      <span style={{
+        fontSize: cfg.usernameFontSize,
+        fontWeight: cfg.usernameBold ? 'bold' : 'normal',
+        color: '#FFF',
+        textAlign: 'center',
+        maxWidth: 80,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}>
+        {entry ? entry.username : '—'}
+      </span>
+
+      {/* 진행값 텍스트 */}
+      <span style={{
+        fontSize: cfg.progressFontSize,
+        fontWeight: 'bold',
+        color: cfg.valueColor,
+      }}>
+        {entry ? formatProgress(entry.progressValue) : ''}
+      </span>
+
+      {/* 포디엄 바 */}
+      <div style={{
+        width: '100%',
+        height: cfg.barHeight,
+        backgroundColor: cfg.barBg,
+        border: `1px solid ${cfg.barBorder}`,
+        borderRadius: '10px 10px 0 0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        {entry && (
+          <span style={{
+            fontSize: cfg.barNumFontSize,
+            fontWeight: 'bold',
+            color: cfg.barNumColor,
+          }}>
+            {cfg.rank}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** 4위~ 순위 행 */
+function RankingListRow({
+  entry,
+  maxProgress,
+  isMe,
+}: {
+  entry: RankingEntry
+  maxProgress: number
+  isMe: boolean
+}) {
+  const fillRatio = maxProgress > 0 ? Math.min(1, entry.progressValue / maxProgress) : 0
+  const gradient = getRankGradient(entry.rank)
+
+  return (
+    <div>
+      {/* 행 본문 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
+        {/* 순위 번호: 14px bold, #B2B2B2, 20px 고정폭 */}
+        <span style={{
+          fontSize: 14,
+          fontWeight: 'bold',
+          color: isMe ? '#56C985' : '#B2B2B2',
+          width: 20,
+          textAlign: 'center',
+          flexShrink: 0,
+        }}>
+          {entry.rank}
+        </span>
+
+        {/* 아바타: 36px circle, bg #2A2A2A, border 1px #3A5A3A */}
+        <div style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          backgroundColor: '#2A2A2A',
+          border: '1px solid #3A5A3A',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}>
+          {entry.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={entry.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <UserIcon className="w-[18px] h-[18px] text-[#666]" />
+          )}
+        </div>
+
+        {/* 유저명: 14px, #FFF, flex-grow */}
+        <span style={{
+          flex: 1,
+          fontSize: 14,
+          fontWeight: isMe ? 'bold' : 'normal',
+          color: '#FFF',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {entry.username}
+        </span>
+
+        {/* 진행값: 14px bold, #FFF */}
+        <span style={{
+          fontSize: 14,
+          fontWeight: 'bold',
+          color: isMe ? '#56C985' : '#FFF',
+          flexShrink: 0,
+        }}>
+          {formatProgress(entry.progressValue)}
+        </span>
+      </div>
+
+      {/* 행 하단: 6px 프로그레스 바, padding-left 32px, 배경 #1E1E1E, border-radius 3px */}
+      <div style={{ paddingLeft: 32, paddingRight: 16, paddingBottom: 8 }}>
+        <div style={{ height: 6, backgroundColor: '#1E1E1E', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: gradient,
+            borderRadius: 3,
+            transform: `scaleX(${fillRatio})`,
+            transformOrigin: 'left',
+            transition: 'transform 0.4s ease',
+          }} />
+        </div>
+      </div>
+
+      {/* 행 구분선: 1px solid #1E1E1E */}
+      <div style={{ height: 1, backgroundColor: '#1E1E1E', marginLeft: 32 }} />
+    </div>
+  )
+}
+
+/** 나의 순위 카드 (항상 하단 고정) — Figma 스펙: 목록 내 포함 여부 무관 중복 노출 */
+function MyRankCard({
+  me,
+  maxProgress,
+}: {
+  me: RankingEntry
+  maxProgress: number
+}) {
+  const fillRatio = maxProgress > 0 ? Math.min(1, me.progressValue / maxProgress) : 0
+
+  return (
+    <div style={{
+      margin: '0 16px',
+      backgroundColor: '#0D2A1A',
+      border: '1px solid #2E7D52',
+      borderRadius: 12,
+      padding: 8,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* 순위: 14px bold, #56C985 */}
+        <span style={{
+          fontSize: 14,
+          fontWeight: 'bold',
+          color: '#56C985',
+          width: 20,
+          textAlign: 'center',
+          flexShrink: 0,
+        }}>
+          {me.rank}
+        </span>
+
+        {/* 아바타: 36px, bg #1A3A2A */}
+        <div style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          backgroundColor: '#1A3A2A',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}>
+          {me.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={me.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <UserIcon className="w-[18px] h-[18px] text-[#56C985]" />
+          )}
+        </div>
+
+        {/* 유저명 + 서브텍스트 */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* 유저명: 14px bold, #FFF */}
+          <div style={{
+            fontSize: 14,
+            fontWeight: 'bold',
+            color: '#FFF',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {me.username}
+          </div>
+          {/* 서브텍스트: "[진행값] 달성", 11px, #B2B2B2 */}
+          <div style={{ fontSize: 11, color: '#B2B2B2', marginTop: 1 }}>
+            {formatProgress(me.progressValue)} {d.missions.achieved}
+          </div>
+        </div>
+
+        {/* 진행값: 14px bold, #56C985 */}
+        <span style={{
+          fontSize: 14,
+          fontWeight: 'bold',
+          color: '#56C985',
+          flexShrink: 0,
+        }}>
+          {formatProgress(me.progressValue)}
+        </span>
+      </div>
+
+      {/* 프로그레스 바: bg #1A3A2A, fill linear-gradient(90deg, #00CC66, #33E580) */}
+      <div style={{ paddingLeft: 28, paddingTop: 6 }}>
+        <div style={{ height: 6, backgroundColor: '#1A3A2A', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, #00CC66, #33E580)',
+            borderRadius: 3,
+            transform: `scaleX(${fillRatio})`,
+            transformOrigin: 'left',
+            transition: 'transform 0.4s ease',
+          }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** 달성형 행 */
+function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
+  return (
+    <Card className={highlight ? '' : 'opacity-90'}>
+      <div className="flex items-center gap-[var(--spacing-16)]">
+        <SimpleAvatar url={e.avatarUrl} />
+        <span className="flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">
+          {e.username}{highlight ? d.missions.statusMeSuffix : ''}
+        </span>
+        {e.achieved ? (
+          <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
+            {d.missions.achieved}
+          </span>
+        ) : (
+          <span className="text-[10px] leading-none text-text-inverse/40 px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
+            {d.missions.notAchieved}
+          </span>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+/** 기존 소형 아바타 (달성형·개인형용) */
+function SimpleAvatar({ url }: { url: string | null }) {
   if (url) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
@@ -53,7 +463,15 @@ function Avatar({ url }: { url: string | null }) {
   )
 }
 
-export default function MissionStatusClient({ missionId, missionTitle, displayType }: Props) {
+// ────────────────────────────────────────────────────────────────
+// 메인 컴포넌트
+// ────────────────────────────────────────────────────────────────
+export default function MissionStatusClient({
+  missionId,
+  missionTitle: _missionTitle,
+  displayType: _displayType,
+  goalLabel,
+}: Props) {
   const [data, setData] = useState<StatusResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,65 +495,142 @@ export default function MissionStatusClient({ missionId, missionTitle, displayTy
   }, [missionId])
 
   const isMeInEntries = (userId: string) =>
-    data?.type === 'ranking'
-      ? data.me?.userId === userId
-      : data?.type === 'achievement'
-        ? data.me?.userId === userId
-        : false
+    data?.type !== 'individual' && data?.me?.userId === userId
 
   return (
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.missions.backToDetail} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
-        <p className="text-[10px] uppercase text-text/50 mb-1">{d.missions.statusEyebrow}</p>
-        <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-1">{missionTitle}</h1>
-        <p className="text-[11px] text-text/50 mb-[var(--spacing-24)]">
-          {displayType === 'individual'
-            ? d.missions.statusIndividualLabel
-            : displayType === 'achievement' ? d.missions.statusAchievementLabel : d.missions.statusRankingLabel}
-          {data && data.type !== 'individual' ? ` · ${t(d.missions.statusParticipants, { count: data.totalParticipants })}` : ''}
+      {/* 로딩 / 오류 */}
+      {loading && (
+        <p className="px-4 pt-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/50">
+          {d.missions.statusLoading}
         </p>
+      )}
+      {error && (
+        <p className="px-4 pt-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">
+          {error}
+        </p>
+      )}
 
-        {loading && <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.missions.statusLoading}</p>}
-        {error && <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{error}</p>}
+      {/* ── 랭킹 타입 ── */}
+      {data?.type === 'ranking' && (() => {
+        const entries = data.entries
+        const me = data.me
+        const maxProgress = entries[0]?.progressValue ?? me?.progressValue ?? 1
+        // 포디엄 배열: 2위(좌) - 1위(중앙, 최장바) - 3위(우)
+        const top3 = [
+          { cfg: PODIUM_CONFIG[1], entry: entries.find(e => e.rank === 2) },
+          { cfg: PODIUM_CONFIG[0], entry: entries.find(e => e.rank === 1) },
+          { cfg: PODIUM_CONFIG[2], entry: entries.find(e => e.rank === 3) },
+        ]
+        const rest = entries.filter(e => e.rank >= 4)
 
-        {data?.type === 'ranking' && (
-          <div className="flex flex-col gap-2">
-            {data.entries.map((e) => (
-              <RankingRow key={e.userId} e={e} highlight={isMeInEntries(e.userId)} />
-            ))}
-            {data.me && !data.entries.some((e) => e.userId === data.me!.userId) && (
-              <>
-                <p className="text-[10px] text-text/40 text-center my-1">{d.missions.statusMeRanking}</p>
-                <RankingRow e={data.me} highlight />
-              </>
+        return (
+          <div>
+            {/* 헤더 정보 바: 좌="랭킹 · 참가자 N명", 우="미션: [목표값]" */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 16px 8px',
+            }}>
+              <span style={{ fontSize: 13, color: '#B2B2B2' }}>
+                {d.missions.statusRankingLabel} · {t(d.missions.statusParticipants, { count: data.totalParticipants })}
+              </span>
+              {goalLabel && (
+                <span style={{ fontSize: 13, color: '#B2B2B2' }}>
+                  {t(d.missions.statusMissionGoal, { goal: goalLabel })}
+                </span>
+              )}
+            </div>
+
+            {/* TOP 3 포디엄 — 3명 미만이면 빈 슬롯 "—" 처리 */}
+            {entries.length > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                padding: '16px 16px 0',
+                gap: 8,
+              }}>
+                {top3.map(({ cfg, entry }) => (
+                  <PodiumColumn key={cfg.rank} cfg={cfg} entry={entry} />
+                ))}
+              </div>
             )}
-            {data.entries.length === 0 && !data.me && (
-              <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.missions.statusNoParticipants}</p>
+
+            {/* 전체 순위 목록 (4위~) */}
+            {rest.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                {/* 섹션 헤더: "전체 순위" 13px #B2B2B2 + separator #2A2A2A */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '0 16px 8px',
+                }}>
+                  <span style={{ fontSize: 13, color: '#B2B2B2', flexShrink: 0 }}>{d.missions.statusAllRanks}</span>
+                  <div style={{ flex: 1, height: 1, backgroundColor: '#2A2A2A' }} />
+                </div>
+
+                <div style={{ paddingBottom: 8 }}>
+                  {rest.map(entry => (
+                    <RankingListRow
+                      key={entry.userId}
+                      entry={entry}
+                      maxProgress={maxProgress}
+                      isMe={isMeInEntries(entry.userId)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 나의 순위 카드 — 항상 하단 고정 */}
+            {me && (
+              <div style={{ padding: '16px 0 40px' }}>
+                <MyRankCard me={me} maxProgress={maxProgress} />
+              </div>
+            )}
+
+            {/* 빈 상태: entries.length === 0 && me === null */}
+            {entries.length === 0 && !me && (
+              <p className="px-4 py-6 text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+                {d.missions.statusNoParticipants}
+              </p>
             )}
           </div>
-        )}
+        )
+      })()}
 
-        {data?.type === 'achievement' && (
-          <div className="flex flex-col gap-2">
-            {data.entries.map((e) => (
-              <AchievementRow key={e.userId} e={e} highlight={isMeInEntries(e.userId)} />
-            ))}
-            {data.me && !data.entries.some((e) => e.userId === data.me!.userId) && (
-              <>
-                <p className="text-[10px] text-text/40 text-center my-1">{d.missions.statusMeAchievement}</p>
-                <AchievementRow e={data.me} highlight />
-              </>
-            )}
-            {data.entries.length === 0 && !data.me && (
-              <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.missions.statusNoParticipants}</p>
-            )}
-          </div>
-        )}
+      {/* ── 달성형 타입 ── */}
+      {data?.type === 'achievement' && (
+        <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-32)] flex flex-col gap-2">
+          <p className="text-[11px] text-text/50 mb-2">
+            {d.missions.statusAchievementLabel}
+            {` · ${t(d.missions.statusParticipants, { count: data.totalParticipants })}`}
+          </p>
+          {data.entries.map(e => (
+            <AchievementRow key={e.userId} e={e} highlight={isMeInEntries(e.userId)} />
+          ))}
+          {data.me && !data.entries.some(e => e.userId === data.me!.userId) && (
+            <>
+              <p className="text-[10px] text-text/40 text-center my-1">{d.missions.statusMeAchievement}</p>
+              <AchievementRow e={data.me} highlight />
+            </>
+          )}
+          {data.entries.length === 0 && !data.me && (
+            <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+              {d.missions.statusNoParticipants}
+            </p>
+          )}
+        </div>
+      )}
 
-        {/* 개인형 — 다른 참가자 없이 본인 진행상황/달성여부만 표시 */}
-        {data?.type === 'individual' && (
+      {/* ── 개인형 타입 ── */}
+      {data?.type === 'individual' && (
+        <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
+          <p className="text-[11px] text-text/50 mb-[var(--spacing-16)]">{d.missions.statusIndividualLabel}</p>
           <Card>
             <div className="flex items-center justify-between">
               <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
@@ -152,41 +647,8 @@ export default function MissionStatusClient({ missionId, missionTitle, displayTy
               )}
             </div>
           </Card>
-        )}
-      </div>
+        </div>
+      )}
     </div>
-  )
-}
-
-function RankingRow({ e, highlight }: { e: RankingEntry; highlight: boolean }) {
-  return (
-    <Card className={highlight ? '' : 'opacity-90'}>
-      <div className="flex items-center gap-[var(--spacing-16)]">
-        <span className="text-[length:var(--text-body)] leading-[var(--leading-body)] w-7 text-center shrink-0">{e.rank}</span>
-        <Avatar url={e.avatarUrl} />
-        <span className="flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{e.username}{highlight ? d.missions.statusMeSuffix : ''}</span>
-        {e.isCompleted ? (
-          <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">{d.missions.tagDone}</span>
-        ) : (
-          <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70 shrink-0">{e.progressValue.toFixed(e.progressValue % 1 === 0 ? 0 : 1)}</span>
-        )}
-      </div>
-    </Card>
-  )
-}
-
-function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
-  return (
-    <Card className={highlight ? '' : 'opacity-90'}>
-      <div className="flex items-center gap-[var(--spacing-16)]">
-        <Avatar url={e.avatarUrl} />
-        <span className="flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{e.username}{highlight ? d.missions.statusMeSuffix : ''}</span>
-        {e.achieved ? (
-          <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">{d.missions.achieved}</span>
-        ) : (
-          <span className="text-[10px] leading-none text-text-inverse/40 px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">{d.missions.notAchieved}</span>
-        )}
-      </div>
-    </Card>
   )
 }
