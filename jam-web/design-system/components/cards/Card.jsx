@@ -11,25 +11,26 @@ import React from 'react';
  *   - padding prop removed — uses --layout-card-padding token for global consistency
  *   - radius prop removed — always --radius-card (consumers override via style if needed)
  *   - ...rest spread added for className, data-*, aria-* passthrough
+ *
+ * 20260816_012: 보더 제거 — readme.md "보더 미사용" 원칙에 맞춰 프로덕션과 동기화.
+ *   'default' 배경은 --color-surface-elevated로 한 단계 올려 보더 없이도
+ *   페이지 캔버스(--color-surface)와 구분되게 했다.
  */
 export function Card({ tone = 'default', children, className = '', style = {}, onClick, ...rest }) {
   const interactive = Boolean(onClick);
 
   const backgrounds = {
     default: {
-      background: 'var(--color-surface)',
+      background: 'var(--color-surface-elevated)',
       color: 'var(--color-text)',
-      border: '1px solid var(--color-border)',
     },
     tint: {
       background: 'var(--color-bg-tint)',
       color: 'var(--color-text)',
-      border: '1px solid var(--color-border)',
     },
     inverse: {
       background: 'var(--color-surface-inverse)',
       color: 'var(--color-text-inverse)',
-      border: 'none',
     },
   };
 

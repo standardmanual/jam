@@ -141,9 +141,9 @@ export default function OnboardingPage() {
         {/* 프로필 이미지 */}
         <div className="flex flex-col items-center gap-[var(--spacing-16)]">
           {avatarUrl ? (
-            <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
+            <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover" />
           ) : (
-            <div className="w-24 h-24 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center">
+            <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center">
               <UserIcon className="w-10 h-10 text-text/50" />
             </div>
           )}

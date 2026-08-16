@@ -92,7 +92,8 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
         <div className="flex gap-[var(--spacing-16)] mt-[var(--spacing-16)] overflow-x-auto pb-1">
           {card.resolved_badges.map((b) => (
             <div key={b.id} className="flex flex-col items-center gap-1 shrink-0 w-16">
-              <div className="w-16 h-16 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden flex items-center justify-center">
+              {/* 20260816_012: 보더 제거 — 흰 카드 위 썸네일이라 4% 블랙 틴트로 구분 */}
+              <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center">
                 {b.image_url ? (
                   <Image src={b.image_url} alt={b.name} width={64} height={64} className="w-full h-full object-cover" />
                 ) : (
@@ -114,7 +115,7 @@ function ShortcutCard({ card }: { card: TodayCardWithHref }) {
   const Icon = TemplateIcon[card.template_type]
   return (
     <Card className="p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
-      <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">
+      <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-black/[0.04] flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-text-inverse/60" />
       </div>
       <div className="flex-1 min-w-0">
@@ -135,7 +136,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
   }
 
   return (
-    <article className="relative rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
+    <article className="relative rounded-[var(--radius-cards)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
       <Image src={cover} alt={card.title} fill className="object-cover" />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-24)] pt-10 pb-[var(--spacing-24)]">

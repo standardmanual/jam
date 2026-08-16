@@ -43,11 +43,11 @@ export function BadgeGridCard({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    background: 'var(--color-surface)',
+    background: selected ? 'rgba(232, 70, 31, 0.15)' : 'var(--color-surface)',
     borderRadius: 'var(--radius-card)',
     padding: 'var(--spacing-12)',
     overflow: 'hidden',
-    boxShadow: selected ? 'inset 0 0 0 2px var(--color-text)' : undefined,
+    // 20260816_012: selected 표시를 2px 보더 대신 배경톤 채움으로 대체 (기능적 의미 유지)
     cursor: interactive ? 'pointer' : undefined,
     transition: interactive ? 'transform 100ms' : undefined,
     textDecoration: 'none',

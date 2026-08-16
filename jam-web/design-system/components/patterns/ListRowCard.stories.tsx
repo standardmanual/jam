@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React, { useState } from 'react';
 import { ListRowCard } from './ListRowCard';
 
+// 20260816_012: 1px 인셋 보더 제거 — 배경을 --color-surface-elevated로 올려 구분
 const meta: Meta<typeof ListRowCard> = {
   title: 'MODULAR/Patterns/ListRowCard',
   component: ListRowCard,

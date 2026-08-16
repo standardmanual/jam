@@ -68,7 +68,7 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
       {/* 획득 방법 행 */}
       <button
         onClick={() => setOpen(true)}
-        className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] w-full text-left shadow-[inset_0_-1px_0_0_var(--color-border-inverse)] active:opacity-70 transition-opacity"
+        className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] w-full text-left active:opacity-70 transition-opacity"
       >
         <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/50">{d.inventory.obtainMethod}</span>
         <span className="flex items-center gap-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">

@@ -108,7 +108,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
   return (
     <div>
       {error && (
-        <div className="mb-3 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] px-3 py-2 text-xs text-text/70">
+        <div className="mb-3 rounded-[var(--radius-cards)] bg-surface-elevated px-3 py-2 text-xs text-text/70">
           {error}
         </div>
       )}

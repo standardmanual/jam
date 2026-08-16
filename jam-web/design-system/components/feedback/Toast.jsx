@@ -45,7 +45,7 @@ export function Toast({ message, type = 'info', open = true, onDismiss }) {
         padding: '10px 12px 10px 20px', borderRadius: 'var(--radius-pill)',
         background: 'var(--color-bg-inverse)', color: 'var(--color-text-inverse)',
         fontSize: 'var(--text-small)',
-        boxShadow: 'inset 0 0 0 1px var(--color-border)',
+        // 20260816_012: 보더 제거 — 흰 토스트가 다크 배경 위에서 대비만으로 충분히 구분됨
         transform: visible ? 'translateY(0)' : 'translateY(8px)',
         opacity: visible ? 1 : 0,
         transition: 'transform var(--duration-fast) var(--ease-smooth-out), opacity var(--duration-fast) ease',
