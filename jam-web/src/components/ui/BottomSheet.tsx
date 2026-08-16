@@ -140,7 +140,7 @@ export default function BottomSheet({
         </div>
 
         {hasHeader && (
-          <div className={`flex items-center justify-between px-[var(--spacing-24)] pb-[var(--spacing-16)] shrink-0 ${dark ? 'shadow-[inset_0_-1px_0_0_var(--color-border)]' : 'shadow-[inset_0_-1px_0_0_var(--color-border-inverse)]'}`}>
+          <div className="flex items-center justify-between px-[var(--spacing-24)] pb-[var(--spacing-16)] shrink-0">
             {title ? (
               <h2 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{title}</h2>
             ) : (
