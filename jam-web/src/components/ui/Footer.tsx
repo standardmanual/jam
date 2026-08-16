@@ -12,7 +12,7 @@ export default function Footer() {
   if (pathname === '/') return null
 
   return (
-    <footer className="flex flex-col items-center justify-center gap-1.5 py-[var(--spacing-24)] px-[var(--spacing-16)]">
+    <footer className="flex flex-col items-center justify-center gap-1.5 py-[var(--spacing-24)] px-[var(--spacing-16)] bg-surface">
       <span className="text-[length:var(--text-caption)] leading-none text-text text-center">{d.common.footerSlogan}</span>
       <div className="flex items-center justify-center gap-1.5">
         <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-3 w-auto" />
