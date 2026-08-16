@@ -9,6 +9,7 @@ import ListRowCard from '@/components/ui/ListRowCard'
 import { MedalIcon, BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import Link from 'next/link'
 import PoiMapButton from './PoiMapButton'
+import PoiEarnHistory from './PoiEarnHistory'
 import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
 import InventoryItemHistorySheet from '../../inventory/[itemId]/InventoryItemHistorySheet'
@@ -503,8 +504,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           )}
         </div>
 
-        <hr className="border-0 border-t border-[var(--color-border)]" />
-
         {/* info-section */}
         <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
@@ -512,59 +511,15 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             <p className="text-[15px] font-bold text-text">{d.badges.conditionTitle}</p>
             <p className="text-[14px] text-[var(--color-text-secondary)] leading-[1.6]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
           </div>
-
-          {/* POI 획득 이력 */}
-          {poiEarns.length > 0 && (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-baseline justify-between">
-                <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider">{d.badges.earnHistoryTitle}</p>
-                <span className="text-[13px] text-[var(--color-text-secondary)]">{t(d.badges.earnHistoryCount, { count: poiEarns.length })}</span>
-              </div>
-              {poiEarns.map((e) => (
-                <div key={e.id} className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
-                  <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider mb-4 truncate">
-                    {e.poi?.name ?? d.badges.earnHistoryUnknownPlace}
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
-                      <span className="text-[14px] text-text">
-                        <LocalDate iso={e.earned_at} options={{ year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
-                      </span>
-                    </div>
-                    {e.triggered_by_activity_name && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerActivity}</span>
-                        <span className="text-[14px] text-text truncate max-w-[180px] text-right">{e.triggered_by_activity_name}</span>
-                      </div>
-                    )}
-                    {e.triggered_by_distance_km && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDistance}</span>
-                        <span className="text-[14px] text-text">{t(d.badges.triggerDistanceValue, { km: e.triggered_by_distance_km })}</span>
-                      </div>
-                    )}
-                    {e.triggered_by_activity_date && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.triggerDate}</span>
-                        <span className="text-[14px] text-text">
-                          <LocalDate iso={e.triggered_by_activity_date} options={{ year: 'numeric', month: 'long', day: 'numeric' }} />
-                        </span>
-                      </div>
-                    )}
-                    {e.triggered_by_strava_id && (
-                      <div className="mt-1">
-                        <StravaLink stravaId={e.triggered_by_strava_id} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <PoiEarnHistory poiEarns={poiEarns.map((e) => ({
+            id: e.id,
+            earned_at: e.earned_at,
+            triggered_by_activity_name: e.triggered_by_activity_name ?? null,
+            triggered_by_distance_km: e.triggered_by_distance_km ?? null,
+            triggered_by_activity_date: e.triggered_by_activity_date ?? null,
+            triggered_by_strava_id: e.triggered_by_strava_id ?? null,
+          }))} />
         </div>
-
-        <hr className="border-0 border-t border-[var(--color-border)]" />
 
         {/* action-section */}
         <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[40px]">
@@ -639,7 +594,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* 선행 배지 조건 */}
         {prereqStatus.length > 0 && (
           <div className="flex flex-col gap-3">
-            <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider">{d.badges.prerequisiteTitle}</p>
+            <p className="text-[15px] font-bold text-text">{d.badges.prerequisiteTitle}</p>
             <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
               {prereqStatus.map((p) => (
                 <BadgeGridCard
@@ -684,7 +639,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* 획득 정보 (획득한 경우) */}
         {earned && (
           <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
-            <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider mb-4">{d.badges.earnInfoTitle}</p>
+            <p className="text-[15px] font-bold text-text mb-4">{d.badges.earnInfoTitle}</p>
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
                 <span className="text-[14px] text-[var(--color-text-secondary)]">{d.badges.earnedAt}</span>
