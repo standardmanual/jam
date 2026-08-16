@@ -3,6 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { BookIcon } from '@/components/ui/icons'
+import RarityBadge from '@/components/ui/Badge'
+import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
 
 export interface CollectionGridCardProps {
@@ -14,6 +16,8 @@ export interface CollectionGridCardProps {
   total: number
   /** 완성 배지 표시 여부 */
   completed?: boolean
+  /** 최초 등록 아이템배지 기준 컬렉션 등급 */
+  rarity?: BadgeRarity
   href?: string
   onClick?: () => void
   className?: string
@@ -29,6 +33,7 @@ export default function CollectionGridCard({
   collected,
   total,
   completed = false,
+  rarity,
   href,
   onClick,
   className = '',
@@ -39,35 +44,46 @@ export default function CollectionGridCard({
 
   const content = (
     <>
-      {/* 썸네일 — 흰 배경 정사각형 */}
-      <div className="relative w-full aspect-square bg-white rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
+      {/* 썸네일 — 투명 배경 정사각형 */}
+      <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
         {imageUrl ? (
           <Image src={imageUrl} alt={name} fill className="object-contain p-1.5" sizes="50vw" />
         ) : (
-          <BookIcon className="w-10 h-10 text-black/20" />
+          <BookIcon className="w-10 h-10 text-text/20" />
         )}
-        {completed && (
-          <span className="absolute top-2 left-2 bg-[#E8461F] text-white text-[10px] leading-none px-2 py-1 rounded-full">
-            완성
-          </span>
+        {/* 태그 행: 등급(선택) + 완성 */}
+        {(rarity || completed) && (
+          <div className="absolute top-2 left-2 flex items-center gap-1">
+            {rarity && (
+              <RarityBadge
+                rarity={rarity}
+                className="text-[length:var(--text-caption)] px-2 py-0.5"
+              />
+            )}
+            {completed && (
+              <span className="bg-[#E8461F] text-white text-[length:var(--text-caption)] leading-none px-2 py-0.5 rounded-full font-bold">
+                완성
+              </span>
+            )}
+          </div>
         )}
       </div>
 
       {/* 타이틀 */}
       <p className="text-[15px] font-bold text-text leading-[18px] truncate">{name}</p>
 
-      {/* 진행 바 */}
-      <div className="h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
-        <div
-          className="h-full rounded-full bg-[#E8461F] transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
+      {/* 진행 바 + 카운트 한 행 */}
+      <div className="flex items-center gap-[var(--spacing-8)]">
+        <div className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-[#E8461F] transition-all duration-500"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] leading-none tabular-nums shrink-0">
+          {collected}/{total}
+        </span>
       </div>
-
-      {/* 슬롯 카운트 */}
-      <p className="text-[11px] text-[var(--color-text-secondary)] leading-none tabular-nums">
-        {collected}/{total}
-      </p>
 
       {children}
     </>

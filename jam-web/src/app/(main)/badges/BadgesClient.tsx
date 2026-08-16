@@ -45,6 +45,7 @@ export interface ItemBookProgress {
   owned: number
   total: number
   completed: boolean
+  rarity: BadgeRarity
 }
 
 interface BadgesClientProps {
@@ -270,9 +271,9 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
         {/* 컬렉션 탭 */}
         {activeTab === 'itembook' && (
           itemBooks.length > 0 ? (
-            <div className="grid grid-cols-2 gap-[var(--spacing-8)]">
+            <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
               {itemBooks.map((book) => {
-                const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false }
+                const progress = progressMap.get(book.id) ?? { owned: 0, total: 1, completed: false, rarity: 'common' as BadgeRarity }
                 return (
                   <CollectionGridCard
                     key={book.id}
@@ -282,6 +283,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                     collected={progress.owned}
                     total={progress.total}
                     completed={progress.completed}
+                    rarity={progress.rarity}
                   />
                 )
               })}
