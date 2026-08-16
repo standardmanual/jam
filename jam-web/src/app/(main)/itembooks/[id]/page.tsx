@@ -239,7 +239,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         </div>
 
         {/* 완성 카운트 */}
-        <p style={{ color: TEXT_SECONDARY, fontSize: '13px', lineHeight: '1.2' }}>
+        <p style={{ color: 'var(--color-primary)', fontSize: '13px', lineHeight: '1.2', fontWeight: 700 }}>
           {slottedCount}/{totalBadgeCount} 완성
         </p>
 

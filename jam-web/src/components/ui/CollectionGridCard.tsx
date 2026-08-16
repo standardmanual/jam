@@ -80,7 +80,7 @@ export default function CollectionGridCard({
             style={{ width: `${pct}%` }}
           />
         </div>
-        <span className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] leading-none tabular-nums shrink-0">
+        <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold leading-none tabular-nums shrink-0">
           {collected}/{total}
         </span>
       </div>

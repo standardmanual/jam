@@ -171,7 +171,7 @@ export default async function UserItemBooksPage({ params }: Props) {
                       <div className="flex-1 h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
                         <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="text-[length:var(--text-caption)] text-text-inverse/60 tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
+                      <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
                     </div>
                   </Card>
                 </Link>
