@@ -35,4 +35,16 @@
   /* Tracking: use each scale's own --tracking-hN / --tracking-bold-* token.
      --tracking-label is the only role-based exception (uppercase, size-independent). */
   --tracking-label: 0.4px;      /* uppercase labels, badge text (ShapeTag, RarityBadge) */
+
+  /* Service-layer aliases — component code uses these names (mapped to canonical scale above).
+     Added to keep globals.css and DS tokens in sync. */
+  --text-heading-sm: var(--text-h3);         /* 28px — card/section headings */
+  --leading-heading-sm: var(--leading-h3);   /* 1.2 */
+
+  /* Extended scale: sizes not covered by the canonical h1–h4 / body / small / caption ladder */
+  --text-micro: 11px;      /* pill button labels inside compact grid cards */
+  --leading-micro: 1;      /* matches leading-none — tight capsule button */
+
+  /* Extended leading: for long-form reading text wider than body copy */
+  --leading-loose: 1.6;    /* condition / description blocks with multi-line content */
 }
