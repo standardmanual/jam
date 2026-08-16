@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
+import type { InventoryItemRow } from '@/types/database'
 
 export default async function InventoryItemPage({ params }: { params: Promise<{ itemId: string }> }) {
   const { itemId } = await params
@@ -7,12 +8,13 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: itemData } = await supabase
+  const { data: itemRaw } = await supabase
     .from('inventory_items')
     .select('badge_id, inventory_id')
     .eq('id', itemId)
     .single()
-  if (!itemData) notFound()
+  if (!itemRaw) notFound()
+  const itemData = itemRaw as Pick<InventoryItemRow, 'badge_id' | 'inventory_id'>
 
   const { data: inventoryCheck } = await supabase
     .from('inventory')
