@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { BottomSheet } from './BottomSheet';
 import { Button } from '../buttons/Button';
 
+// 20260816_012: 패널 상단 1px 보더 제거 — --color-surface-elevated 배경으로 대체 (드래그 핸들은 기존부터 채움 방식)
 const meta: Meta<typeof BottomSheet> = {
   title: 'MODULAR/Navigation/BottomSheet',
   component: BottomSheet,

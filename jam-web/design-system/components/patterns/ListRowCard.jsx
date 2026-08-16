@@ -32,8 +32,8 @@ export function ListRowCard({
     display: 'flex',
     alignItems: 'center',
     gap: 'var(--spacing-16)',
-    background: 'var(--color-surface)',
-    boxShadow: 'inset 0 0 0 1px var(--color-border)',
+    // 20260816_012: 보더 제거 — 페이지 캔버스도 --color-surface라 구분이 사라지므로 한 단계 밝은 톤으로 대체
+    background: 'var(--color-surface-elevated)',
     borderRadius: 'var(--radius-card)',
     padding: 'var(--spacing-16)',
     cursor: interactive ? 'pointer' : undefined,

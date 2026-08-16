@@ -153,7 +153,7 @@ export default function PointsPage() {
             <button
               onClick={() => load(cursor, true)}
               disabled={loadingMore}
-              className="mx-auto mt-1 min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-nav-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100 disabled:opacity-50"
+              className="mx-auto mt-1 min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-nav-buttons)] bg-surface-elevated text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100 disabled:opacity-50"
             >
               {loadingMore ? d.points.loadingMore : d.points.loadMore}
             </button>

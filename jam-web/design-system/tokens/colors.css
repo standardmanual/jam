@@ -23,6 +23,7 @@
   --color-base-black: #000000;
   --color-base-red: #e8461f;
   --color-base-brown: #8a5a2e;
+  --color-base-grey-100: rgb(245, 244, 240);  /* 20260816_012: 라이트 엘리베이션 레벨 — white와 grey-200 사이 */
   --color-base-grey-200: rgb(234, 232, 226);
   --color-base-grey-500: #b2b2b2;   /* raised from #9a9a9a — WCAG AA on black */
   --color-base-grey-600: #666666;
@@ -39,6 +40,11 @@
   --color-bg-tint: var(--color-base-grey-750);        /* subtle elevated bg, e.g. tint Card — distinct from --color-surface */
   --color-bg-inverse: var(--color-base-white);
   --color-surface: var(--color-base-grey-800);        /* card & raised surface */
+  /* 20260816_012: 보더 제거로 사라진 카드/버튼 구분을 배경톤으로 대체하는 신규 엘리베이션 레벨.
+     프로덕션 (main) 페이지 캔버스 대부분이 --color-bg가 아니라 --color-surface를 그대로 깔고
+     있어(bg-surface), 카드가 그 위에서 "떠 보이려면" --color-surface보다 밝아야 한다.
+     --color-bg-tint(#222222)와는 별개 토큰 — 재정의 아님. 프로덕션 src/app/globals.css와 동일 값. */
+  --color-surface-elevated: #1f1f1f;
   --color-surface-inverse: var(--color-base-white);   /* inverse card surface */
   --color-primary: var(--color-base-red);
   --color-secondary: var(--color-base-brown);
@@ -90,6 +96,8 @@
     --color-bg: var(--color-base-white);
     --color-bg-tint: var(--color-base-grey-200);
     --color-surface: var(--color-base-grey-200);
+    /* 20260816_012: 라이트에서도 카드가 캔버스(--color-surface)보다 밝아야 떠 보인다 */
+    --color-surface-elevated: var(--color-base-grey-100);
     --color-text: var(--color-base-black);
     --color-text-secondary: var(--color-base-grey-600);
     --color-border: rgba(0, 0, 0, 0.12);
@@ -100,6 +108,7 @@
   --color-bg: var(--color-base-white);
   --color-bg-tint: var(--color-base-grey-200);
   --color-surface: var(--color-base-grey-200);
+  --color-surface-elevated: var(--color-base-grey-100);
   --color-text: var(--color-base-black);
   --color-text-secondary: var(--color-base-grey-600);
   --color-border: rgba(0, 0, 0, 0.12);

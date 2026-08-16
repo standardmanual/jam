@@ -262,13 +262,12 @@ function RankingListRow({
           {entry.rank}
         </span>
 
-        {/* 아바타: 36px circle, bg #2A2A2A, border 1px #3A5A3A */}
+        {/* 20260816_012: 아바타 보더 제거 — bg는 --color-border 토큰(#2a2a2a와 동일값) 재사용 */}
         <div style={{
           width: 36,
           height: 36,
           borderRadius: '50%',
-          backgroundColor: '#2A2A2A',
-          border: '1px solid #3A5A3A',
+          backgroundColor: 'var(--color-border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -307,9 +306,9 @@ function RankingListRow({
         </span>
       </div>
 
-      {/* 행 하단: 6px 프로그레스 바, padding-left 32px, 배경 #1E1E1E, border-radius 3px */}
+      {/* 행 하단: 6px 프로그레스 바, padding-left 32px, 배경 --color-surface-elevated, border-radius 3px */}
       <div style={{ paddingLeft: 32, paddingRight: 16, paddingBottom: 8 }}>
-        <div style={{ height: 6, backgroundColor: '#1E1E1E', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ height: 6, backgroundColor: 'var(--color-surface-elevated)', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
           <div style={{
             position: 'absolute',
             inset: 0,
@@ -321,9 +320,7 @@ function RankingListRow({
           }} />
         </div>
       </div>
-
-      {/* 행 구분선: 1px solid #1E1E1E */}
-      <div style={{ height: 1, backgroundColor: '#1E1E1E', marginLeft: 32 }} />
+      {/* 20260816_012: hr 대체용 행 구분선 제거 — 행 간 padding만으로 구분 */}
     </div>
   )
 }
@@ -339,10 +336,10 @@ function MyRankCard({
   const fillRatio = maxProgress > 0 ? Math.min(1, me.progressValue / maxProgress) : 0
 
   return (
+    // 20260816_012: 보더 제거 — "내 순위" 강조는 그린 틴트 배경만으로 충분히 구분됨
     <div style={{
       margin: '0 16px',
       backgroundColor: '#0D2A1A',
-      border: '1px solid #2E7D52',
       borderRadius: 12,
       padding: 8,
     }}>
@@ -437,11 +434,11 @@ function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: bool
           {e.username}{highlight ? d.missions.statusMeSuffix : ''}
         </span>
         {e.achieved ? (
-          <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
+          <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-black/[0.06] shrink-0">
             {d.missions.achieved}
           </span>
         ) : (
-          <span className="text-[10px] leading-none text-text-inverse/40 px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
+          <span className="text-[10px] leading-none text-text-inverse/40 px-2 py-1 rounded-[var(--radius-tags)] bg-black/[0.04] shrink-0">
             {d.missions.notAchieved}
           </span>
         )}
@@ -457,7 +454,7 @@ function SimpleAvatar({ url }: { url: string | null }) {
     return <img src={url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
   }
   return (
-    <div className="w-8 h-8 rounded-full shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center shrink-0">
+    <div className="w-8 h-8 rounded-full bg-black/[0.04] flex items-center justify-center shrink-0">
       <UserIcon className="w-4 h-4 text-text-inverse/50" />
     </div>
   )
@@ -562,15 +559,9 @@ export default function MissionStatusClient({
             {/* 전체 순위 목록 (4위~) */}
             {rest.length > 0 && (
               <div style={{ marginTop: 16 }}>
-                {/* 섹션 헤더: "전체 순위" 13px #B2B2B2 + separator #2A2A2A */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '0 16px 8px',
-                }}>
-                  <span style={{ fontSize: 13, color: '#B2B2B2', flexShrink: 0 }}>{d.missions.statusAllRanks}</span>
-                  <div style={{ flex: 1, height: 1, backgroundColor: '#2A2A2A' }} />
+                {/* 섹션 헤더: "전체 순위" 13px #B2B2B2 (20260816_012: hr 대체용 구분선 제거 — 다른 섹션 라벨과 통일) */}
+                <div style={{ padding: '0 16px 8px' }}>
+                  <span style={{ fontSize: 13, color: '#B2B2B2' }}>{d.missions.statusAllRanks}</span>
                 </div>
 
                 <div style={{ paddingBottom: 8 }}>
@@ -637,7 +628,7 @@ export default function MissionStatusClient({
                 {d.missions.myProgressTitle}
               </span>
               {data.me.achieved ? (
-                <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] shrink-0">
+                <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-black/[0.06] shrink-0">
                   {d.missions.achieved}
                 </span>
               ) : (

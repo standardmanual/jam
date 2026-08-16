@@ -40,6 +40,12 @@
 
   /* DS v2 시맨틱 — Tailwind 유틸리티(bg-surface, text-text 등)가 이 토큰을 참조 */
   --color-surface: #1a1a1a;           /* 카드·raised surface (DS v2 grey-800) */
+  /* 20260816_012: 보더 제거로 사라진 카드/버튼 구분을 배경톤으로 대체하는 신규 엘리베이션 레벨.
+     대부분의 (main) 페이지 캔버스는 --color-bg(#000)가 아니라 --color-surface(#1a1a1a)를
+     bg-surface로 깔고 있어(page wrapper 전수 확인), 카드가 그 위에서 "떠 보이려면"
+     --color-surface보다 밝아야 한다. #000000~#222222 범위 안에서 --color-surface(#1a1a1a)
+     보다 살짝 밝게 잡았다 — --color-bg-tint(#222222)와는 별개 토큰(재정의 아님). */
+  --color-surface-elevated: #1f1f1f;
   --color-surface-inverse: #ffffff;   /* 반전 surface — 라이트 카드 */
   --color-text: #ffffff;              /* 다크 배경 위 기본 텍스트 */
   --color-text-secondary: #b2b2b2;    /* 보조 텍스트 (4.6:1 WCAG AA) */
