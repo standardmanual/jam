@@ -12,7 +12,7 @@ import PoiMapButton from './PoiMapButton'
 import PoiEarnHistory from './PoiEarnHistory'
 import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
-import InventoryItemHistorySheet from '../../inventory/[itemId]/InventoryItemHistorySheet'
+import ItemEarnHistory from './ItemEarnHistory'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
 
@@ -249,8 +249,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     obtained_at: string
     expires_at: string | null
     obtained_by: string
+    dropped_at: string | null
   }
-  let itemInventory: ItemInventoryInfo | null = null
+  let allItemInventory: ItemInventoryInfo[] = []
   let itemBook: ItemBookRow | null = null
   if (badgeRow.type === 'item') {
         const { data: subjectInventory } = await service
@@ -259,16 +260,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       .eq('user_id', subjectId)
       .maybeSingle()
     if (subjectInventory) {
-            const { data: itemRaw } = await service
+            const { data: itemsRaw } = await service
         .from('inventory_items')
-        .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by')
+        .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by, dropped_at')
         .eq('inventory_id', (subjectInventory as { id: string }).id)
         .eq('badge_id', id)
-        .is('dropped_at', null)
         .order('obtained_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      itemInventory = itemRaw as ItemInventoryInfo | null
+      allItemInventory = (itemsRaw ?? []) as ItemInventoryInfo[]
     }
 
     if (badgeRow.item_book_id) {
@@ -281,12 +279,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     }
   }
 
-  // 획득 여부 — poi 타입은 이력 1건 이상, item 타입은 인벤토리 소유 여부, 그 외는 기존 단건 조회 결과
+  // 획득 여부 — poi 타입은 이력 1건 이상, item 타입은 드랍되지 않은 아이템 보유 여부, 그 외는 기존 단건 조회 결과
   const hasEarned =
     badgeRow.type === 'poi'
       ? poiEarns.length > 0
       : badgeRow.type === 'item'
-        ? itemInventory != null
+        ? allItemInventory.some(item => !item.dropped_at)
         : Boolean(earned)
 
   // 선행 배지 정보 조회
@@ -339,18 +337,16 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   // ========== 변형 2: 아이템 배지 ==========
   if (badgeRow.type === 'item') {
-    const expiresAt = itemInventory?.expires_at ?? null
+    const activeItem = allItemInventory.find(item => !item.dropped_at) ?? null
+    const expiresAt = activeItem?.expires_at ?? null
     const expiring = isExpiringSoon(expiresAt)
-    const serial = itemInventory
-      ? `${itemInventory.serial_prefix ?? '????'}${String(itemInventory.serial_number).padStart(6, '0')}`
-      : null
 
     return (
       <div className="min-h-full bg-[var(--color-bg)] text-text">
         <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
 
         {/* hero-section */}
-        <div className="flex flex-col items-center gap-4 pt-[32px] px-6">
+        <div className="flex flex-col items-center gap-6 pt-[40px] px-6 pb-[32px]">
           <div
             className={[
               'w-[200px] h-[200px] rounded-full bg-white overflow-hidden flex items-center justify-center',
@@ -369,76 +365,35 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               <MedalIcon className="w-20 h-20 text-black/20" />
             )}
           </div>
-          <RarityBadge rarity={badgeRow.rarity} />
           <h1 className="text-[36px] font-bold text-text text-center leading-tight">{badgeRow.name}</h1>
+          <RarityBadge rarity={badgeRow.rarity} />
+          {badgeRow.description && (
+            <p className="text-[15px] text-[var(--color-text-secondary)] text-center leading-[1.5]">{badgeRow.description}</p>
+          )}
         </div>
 
-        <hr className="border-0 border-t border-[var(--color-border)]" />
-
         {/* info-section */}
-        <div className="flex flex-col gap-1 p-6">
-          {/* 메인 정보 카드 */}
-          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[20px] overflow-hidden">
-            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
-              <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.obtainedAt}</span>
-              <span className="text-[14px] text-text">
-                {itemInventory ? (
-                  <LocalDate iso={itemInventory.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
-                ) : (
-                  '—'
-                )}
-              </span>
-            </div>
-            <hr className="border-0 border-t border-[var(--color-border)]" />
-            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
-              <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.expiresAt}</span>
-              <span className="text-[14px] text-text">
-                {itemInventory
-                  ? expiresAt
-                    ? <LocalDate iso={expiresAt} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
-                    : d.inventory.expiresNone
-                  : '—'}
-              </span>
-            </div>
-            <hr className="border-0 border-t border-[var(--color-border)]" />
-            <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)]">
-              <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.rarity}</span>
-              <RarityBadge rarity={badgeRow.rarity} />
-            </div>
-          </div>
-
-          {/* 일련번호 + 획득 방법 서브카드 (보유 중이고 본인인 경우만) */}
-          {hasEarned && isOwnBadge && itemInventory && (
-            <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[20px] overflow-hidden">
-              <div className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] shadow-[inset_0_-1px_0_var(--color-border)]">
-                <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.serialNumber}</span>
-                <span className="text-[14px] text-text font-mono tracking-widest">{serial}</span>
-              </div>
-              <InventoryItemHistorySheet itemId={itemInventory.id} obtainedBy={itemInventory.obtained_by} />
-            </div>
+        <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+          {isOwnBadge && allItemInventory.length > 0 && (
+            <ItemEarnHistory items={allItemInventory.map(item => ({
+              id: item.id,
+              serial: `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`,
+              obtained_at: item.obtained_at,
+              expires_at: item.expires_at,
+            }))} />
           )}
 
-          {/* 미보유 안내 */}
           {!hasEarned && (
-            <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[20px] p-6 text-center">
+            <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
               <p className="text-[15px] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
               <p className="text-[13px] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
             </div>
           )}
         </div>
 
-        <hr className="border-0 border-t border-[var(--color-border)]" />
-
         {/* desc-section */}
         <div className="flex flex-col gap-4 px-6 pt-6 pb-[40px]">
-          <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider">{d.inventory.descSectionTitle}</p>
-          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[20px] p-6">
-            <p className="text-[13px] text-[var(--color-text-secondary)] text-center leading-[1.6]">
-              {badgeRow.description || d.inventory.noDescription}
-            </p>
-          </div>
-
-          {/* 아이템북 링크 */}
+          {/* 속한 컬렉션 링크 */}
           {itemBook && (
             <ListRowCard
               href={`/itembooks/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
@@ -454,7 +409,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 )
               }
               title={itemBook.name}
-              subtitle={d.inventory.belongsToItembook}
               trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
             />
           )}
