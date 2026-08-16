@@ -173,7 +173,7 @@ function formatConditionText(condition: BadgeCondition | null, badgeName: string
     ? ' (각 조건은 서로 다른 활동에서 달성해도 인정돼요)'
     : ''
 
-  return parts.join(', ') + '하면 겟할 수 있어요.' + crossAttrNote
+  return parts.join(', ') + '하면 획득할 수 있어요.' + crossAttrNote
 }
 
 interface BadgeDetailPageProps {
@@ -508,7 +508,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
           <p className="text-[11px] font-bold uppercase text-[var(--color-text-secondary)] tracking-wider">획득 방법</p>
           <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
-            <p className="text-[15px] text-[var(--color-text-secondary)] leading-[1.6]">이 장소를 경유하는 활동이 기록되면 겟돼요.</p>
+            <p className="text-[15px] text-[var(--color-text-secondary)] leading-[1.6]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
           </div>
 
           {/* POI 획득 이력 */}
@@ -668,7 +668,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                       <p className="text-[13px] text-[var(--color-text-secondary)] line-clamp-2 mt-0.5">{p.description || '선행 배지'}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {p.owned && <span className="text-[13px] text-[var(--color-text-secondary)]">겟</span>}
+                      {p.owned && <span className="text-[13px] text-[var(--color-text-secondary)]">획득</span>}
                       <ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />
                     </div>
                   </div>

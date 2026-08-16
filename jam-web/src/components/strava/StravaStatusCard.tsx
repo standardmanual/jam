@@ -15,7 +15,7 @@ export default function StravaStatusCard({ connection }: StravaStatusCardProps) 
           <span className="font-semibold text-sm text-white/70">Strava 동기화 안 됨</span>
         </div>
         <p className="text-white/50 text-sm mb-4">
-          Strava를 동기화하면 활동 기반 배지를 자동으로 겟할 수 있어요.
+          Strava를 동기화하면 활동 기반 배지를 자동으로 획득할 수 있어요.
         </p>
         <Link
           href="/api/strava/auth"
