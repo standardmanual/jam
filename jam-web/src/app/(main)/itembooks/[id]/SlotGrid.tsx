@@ -140,7 +140,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(badge.id, slot!.id) }}
                   disabled={pending}
-                  className="px-3 py-1 text-[11px] leading-none rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-primary)] text-white transition-all disabled:opacity-40"
+                  className="block mx-auto px-3 py-1 text-[11px] leading-none rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-primary)] text-white transition-all disabled:opacity-40"
                 >
                   {pending ? '…' : d.itembooks.unslotButton}
                 </button>
@@ -152,7 +152,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSlot(badge.id, inventoryItem!.id) }}
                   disabled={pending}
-                  className="px-3 py-1 text-[11px] leading-none rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-primary)] text-white transition-all disabled:opacity-40"
+                  className="block mx-auto px-3 py-1 text-[11px] leading-none rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-primary)] text-white transition-all disabled:opacity-40"
                 >
                   {pending ? '…' : d.itembooks.slotButton}
                 </button>
