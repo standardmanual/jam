@@ -13,7 +13,16 @@
   --radius-card: 16px;    /* card surfaces — v2: raised from 10px for monotonic scale */
   --radius-pill: 9999px;  /* buttons, tags — full capsule */
 
-  /* Backward-compat aliases */
+  /* Backward-compat aliases — existing names kept for gradual migration */
   --radius-subtle: var(--radius-xs);
   --radius-input: var(--radius-sm);
+
+  /* Service-layer aliases — globals.css @theme에서 Tailwind 유틸리티로 노출되며,
+     컴포넌트에서 var()로 직접 참조. DS 토큰과 동기화 목적으로 여기에도 기록. */
+  --radius-cards: var(--radius-card);       /* rounded-[var(--radius-cards)] */
+  --radius-tags: var(--radius-pill);        /* ShapeTag, RarityBadge chip */
+  --radius-inputs: var(--radius-sm);        /* input field */
+  --radius-buttons: var(--radius-pill);     /* primary/secondary button */
+  --radius-nav-buttons: var(--radius-pill); /* TabBar nav pill */
+  --radius-pill-buttons: var(--radius-pill);/* slot/unslot pill button */
 }
