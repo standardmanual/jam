@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import Button from '@/components/ui/Button'
 import { d } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 
@@ -136,40 +137,36 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
             >
               {/* 슬롯 해제 버튼 */}
               {isSlotted && !readOnly && (
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  fullWidth
+                  loading={pending}
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
                     handleUnslot(badge.id, slot!.id)
                   }}
-                  disabled={pending}
-                  className="w-full text-[11px] text-text/50 underline underline-offset-2 active:text-text disabled:opacity-50 text-center"
                 >
-                  {pending ? d.itembooks.processing : d.itembooks.unslotButton}
-                </button>
+                  {d.itembooks.unslotButton}
+                </Button>
               )}
 
               {/* 슬롯 장착 버튼 */}
               {isSlottable && !readOnly && (
-                <div
-                  className="flex flex-col items-center gap-1 w-full"
-                  onClick={(e) => e.stopPropagation()}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  fullWidth
+                  loading={pending}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleSlot(badge.id, inventoryItem!.id)
+                  }}
                 >
-                  <p className="text-[10px] text-text/50 tabular-nums">{serialLabel}</p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleSlot(badge.id, inventoryItem!.id)
-                    }}
-                    disabled={pending}
-                    className="w-full text-text text-xs py-1.5 rounded-[var(--radius-pill-buttons)] shadow-[inset_0_0_0_1px_var(--color-border)] transition-all disabled:opacity-60"
-                  >
-                    {pending ? d.itembooks.processing : d.itembooks.slotButton}
-                  </button>
-                </div>
+                  {d.itembooks.slotButton}
+                </Button>
               )}
             </BadgeGridCard>
           )
