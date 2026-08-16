@@ -179,69 +179,50 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       {/* 스크롤 컨테이너 — 외부: padding 16 / gap 12 */}
       <div className="flex-1 flex flex-col px-4 pt-4 pb-10 gap-3">
 
-        {/* 헤더 카드: 이미지 + 팩션 + 타이틀 + 설명 — 세로 중앙 정렬 */}
-        <div className="flex flex-col items-center px-6 py-8 gap-4">
-          {/* 원형 대표 이미지 200×200 */}
-          <div
-            className="w-[200px] h-[200px] rounded-full overflow-hidden flex items-center justify-center shrink-0"
-            style={{ background: '#FFFFFF' }}
-          >
-            {book.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={book.image_url}
-                alt={book.name}
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <BookIcon className="w-16 h-16" style={{ color: '#AAAAAA' }} />
-            )}
-          </div>
-
-          {/* 팩션(세계관) 레이블 */}
-          {book.faction && (
-            <p
-              className="text-center"
-              style={{ color: TEXT_SECONDARY, fontSize: '12px', lineHeight: '1.4' }}
-            >
-              {book.faction.name}
-            </p>
+        {/* 대표 이미지 — 미션 상세와 동일한 카드 형식 */}
+        <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden border border-border flex items-center justify-center">
+          {book.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={book.image_url}
+              alt={book.name}
+              className="w-full h-full object-contain"
+            />
+          ) : (
+            <BookIcon className="w-16 h-16" style={{ color: '#AAAAAA' }} />
           )}
+        </div>
 
-          {/* 컬렉션 타이틀 */}
+        {/* 히어로 섹션 */}
+        <div className="flex flex-col items-center gap-3 text-center">
           <h1
-            className="text-center font-bold"
+            className="font-bold"
             style={{ color: '#FFFFFF', fontSize: '36px', lineHeight: '1.2' }}
           >
             {book.name}
           </h1>
-
-          {/* 설명 */}
           {book.description && (
-            <p
-              className="text-center"
-              style={{ color: TEXT_SECONDARY, fontSize: '13px', lineHeight: '1.4' }}
-            >
+            <p style={{ color: TEXT_SECONDARY, fontSize: '13px', lineHeight: '1.4' }}>
               {book.description}
             </p>
           )}
         </div>
 
-        {/* 진행도 바 */}
-        <div
-          className="relative rounded-full overflow-hidden"
-          style={{ height: '8px', background: '#FFFFFF' }}
-        >
+        {/* 진행도 바 + 카운트 인라인 */}
+        <div className="flex items-center gap-3">
           <div
-            className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, background: PROGRESS_FILL }}
-          />
+            className="flex-1 relative rounded-full overflow-hidden"
+            style={{ height: '8px', background: '#FFFFFF' }}
+          >
+            <div
+              className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+              style={{ width: `${pct}%`, background: PROGRESS_FILL }}
+            />
+          </div>
+          <span style={{ color: 'var(--color-primary)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+            {slottedCount}/{totalBadgeCount}
+          </span>
         </div>
-
-        {/* 완성 카운트 */}
-        <p style={{ color: 'var(--color-primary)', fontSize: '13px', lineHeight: '1.2', fontWeight: 700 }}>
-          {slottedCount}/{totalBadgeCount} 완성
-        </p>
 
         {/* 스토리 텍스트 */}
         {book.story_text && (
@@ -270,12 +251,6 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         {/* 아이템배지 슬롯 섹션 */}
         {badges.length > 0 && (
           <div className="flex flex-col gap-3">
-            <p
-              className="font-bold"
-              style={{ color: '#FFFFFF', fontSize: '16px', lineHeight: '1.2' }}
-            >
-              {d.itembooks.slotsTitle}
-            </p>
             <SlotGrid
               itemBookId={id}
               badgeSlots={badgeSlots}
