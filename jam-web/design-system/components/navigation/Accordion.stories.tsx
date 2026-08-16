@@ -7,7 +7,7 @@ const FAQ_ITEMS = [
     title: '배지는 어떻게 획득하나요?',
     content: (
       <p style={{ margin: 0, color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-body)' }}>
-        스트라바 활동을 동기화하면 미션 달성 시 자동으로 배지가 지급됩니다.
+        Strava 활동을 동기화하면 미션을 달성할 때 배지를 획득해요.
       </p>
     ),
   },
@@ -15,16 +15,16 @@ const FAQ_ITEMS = [
     title: '드랍 확률이란 무엇인가요?',
     content: (
       <p style={{ margin: 0, color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-body)' }}>
-        드랍은 미션 완료 시 랜덤으로 지급되는 아이템 배지입니다. 활동 강도에 따라 드랍률이 달라집니다.
+        드랍은 미션 완료 시 확률로 떨어지는 아이템 배지예요. 활동 강도에 따라 드랍률이 달라져요.
       </p>
     ),
     defaultOpen: true,
   },
   {
-    title: '배지를 조합할 수 있나요?',
+    title: '배지를 믹스할 수 있나요?',
     content: (
       <p style={{ margin: 0, color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-body)' }}>
-        아이템 배지를 조합하면 새로운 희귀 배지를 만들 수 있습니다. 인벤토리에서 조합을 시도해 보세요.
+        아이템 배지를 믹스하면 새로운 희귀 배지를 만들 수 있어요. 인벤에서 믹스해 보세요.
       </p>
     ),
   },

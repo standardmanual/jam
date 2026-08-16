@@ -16,21 +16,21 @@ export default meta;
 type Story = StoryObj<typeof Toast>;
 
 export const Success: Story = {
-  args: { message: '배지를 획득했습니다!', type: 'success', open: true },
+  args: { message: '배지를 획득했어요!', type: 'success', open: true },
 };
 
 export const Error: Story = {
-  args: { message: '동기화에 실패했습니다. 다시 시도해 주세요.', type: 'error', open: true },
+  args: { message: 'Strava 동기화가 끊겼어요. 다시 동기화해 보세요.', type: 'error', open: true },
 };
 
 export const Info: Story = {
-  args: { message: '오늘의 미션이 업데이트되었습니다.', type: 'info', open: true },
+  args: { message: '오늘의 미션이 업데이트됐어요.', type: 'info', open: true },
 };
 
 export const LongMessage: Story = {
   name: '긴 메시지',
   args: {
-    message: '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해 주세요.',
+    message: '네트워크 연결이 불안정해요. 잠시 후 다시 시도해 보세요.',
     type: 'error',
     open: true,
   },
@@ -42,9 +42,9 @@ export const Interactive: Story = {
     const [open, setOpen] = useState(true);
     const [type, setType] = useState<'success' | 'error' | 'info'>('success');
     const messages: Record<string, string> = {
-      success: '배지를 획득했습니다!',
-      error: '오류가 발생했습니다.',
-      info: '새 미션이 추가되었습니다.',
+      success: '배지를 획득했어요!',
+      error: '오류가 발생했어요.',
+      info: '새 미션이 추가됐어요.',
     };
     const show = (t: 'success' | 'error' | 'info') => { setType(t); setOpen(true); };
     return (

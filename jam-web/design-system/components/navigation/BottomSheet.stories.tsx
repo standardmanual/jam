@@ -20,9 +20,9 @@ export const Open: Story = {
     children: (
       <div>
         <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 16px', lineHeight: 'var(--leading-body)' }}>
-          바텀 시트 본문 내용입니다. 확인을 눌러 닫을 수 있습니다.
+          바텀 시트 본문 내용입니다.
         </p>
-        <Button variant="primary">확인</Button>
+        <Button variant="primary">닫기</Button>
       </div>
     ),
   },
@@ -42,11 +42,11 @@ export const WithActions: Story = {
   name: '액션 버튼 포함',
   args: {
     open: true,
-    title: '삭제하시겠습니까?',
+    title: '정말 삭제할까요?',
     children: (
       <div>
         <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 20px', lineHeight: 'var(--leading-body)' }}>
-          이 작업은 되돌릴 수 없습니다.
+          이 작업은 되돌릴 수 없어요.
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="ghost">취소</Button>
@@ -67,13 +67,13 @@ export const Interactive: Story = {
         minHeight: 400, display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <Button variant="primary" onClick={() => setOpen(true)}>바텀 시트 열기</Button>
-        <BottomSheet open={open} onDismiss={() => setOpen(false)} title="확인이 필요합니다">
+        <BottomSheet open={open} onDismiss={() => setOpen(false)} title="확인이 필요해요">
           <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 20px', lineHeight: 'var(--leading-body)' }}>
-            오버레이 클릭 또는 Escape 키로 닫을 수 있습니다.
+            배경을 누르거나 Escape 키를 누르면 닫혀요.
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="ghost" onClick={() => setOpen(false)}>취소</Button>
-            <Button variant="primary" onClick={() => setOpen(false)}>확인</Button>
+            <Button variant="primary" onClick={() => setOpen(false)}>닫기</Button>
           </div>
         </BottomSheet>
       </div>
