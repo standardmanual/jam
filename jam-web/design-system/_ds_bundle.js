@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"JAMShopifyDesignSystem_f8de83","components":[{"name":"Button","sourcePath":"components/buttons/Button.jsx"},{"name":"IconButton","sourcePath":"components/buttons/IconButton.jsx"},{"name":"BadgeFrame","sourcePath":"components/cards/BadgeFrame.jsx"},{"name":"Card","sourcePath":"components/cards/Card.jsx"},{"name":"RarityBadge","sourcePath":"components/cards/RarityBadge.jsx"},{"name":"ShapeTag","sourcePath":"components/cards/ShapeTag.jsx"},{"name":"ModalToast","sourcePath":"components/feedback/ModalToast.jsx"},{"name":"Toast","sourcePath":"components/feedback/Toast.jsx"},{"name":"WanderingEyesLoader","sourcePath":"components/feedback/WanderingEyesLoader.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"TabBar","sourcePath":"components/navigation/TabBar.jsx"},{"name":"TopNav","sourcePath":"components/navigation/TopNav.jsx"}],"sourceHashes":{"components/buttons/Button.jsx":"63e5e5f9acd6","components/buttons/IconButton.jsx":"142903a91acf","components/cards/BadgeFrame.jsx":"6680417a03e7","components/cards/Card.jsx":"a7e8219f1404","components/cards/RarityBadge.jsx":"47815e8d7e6e","components/cards/ShapeTag.jsx":"3ae601d3651b","components/feedback/ModalToast.jsx":"a90a886d2126","components/feedback/Toast.jsx":"f1b18e6c2ecf","components/feedback/WanderingEyesLoader.jsx":"eb488d2dadad","components/forms/Input.jsx":"0b61eb8b3914","components/navigation/TabBar.jsx":"d045e86e76cc","components/navigation/TopNav.jsx":"1cab9f8810fa","ui_kits/jam-app/BadgeDetailScreen.jsx":"d647643d4402","ui_kits/jam-app/BadgesScreen.jsx":"5c8157161251","ui_kits/jam-app/DropsScreen.jsx":"50a16e3df62f","ui_kits/jam-app/InventoryScreen.jsx":"0eca6e8e3906","ui_kits/jam-app/ProfileScreen.jsx":"6fec33125e44","ui_kits/jam-app/TodayScreen.jsx":"366d112e5777","ui_kits/jam-app/mockData.js":"c0bfeb81777d"},"inlinedExternals":[],"unexposedExports":[]} */
+/* @ds-bundle: {"format":4,"namespace":"JAMShopifyDesignSystem_f8de83","components":[{"name":"Button","sourcePath":"components/buttons/Button.jsx"},{"name":"IconButton","sourcePath":"components/buttons/IconButton.jsx"},{"name":"BadgeFrame","sourcePath":"components/cards/BadgeFrame.jsx"},{"name":"Card","sourcePath":"components/cards/Card.jsx"},{"name":"RarityBadge","sourcePath":"components/cards/RarityBadge.jsx"},{"name":"ShapeTag","sourcePath":"components/cards/ShapeTag.jsx"},{"name":"ModalToast","sourcePath":"components/feedback/ModalToast.jsx"},{"name":"Toast","sourcePath":"components/feedback/Toast.jsx"},{"name":"WanderingEyesLoader","sourcePath":"components/feedback/WanderingEyesLoader.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"TabBar","sourcePath":"components/navigation/TabBar.jsx"},{"name":"TopNav","sourcePath":"components/navigation/TopNav.jsx"},{"name":"BadgeGridCard","sourcePath":"components/patterns/BadgeGridCard.jsx"},{"name":"ListRowCard","sourcePath":"components/patterns/ListRowCard.jsx"},{"name":"CollectionGridCard","sourcePath":"components/patterns/CollectionGridCard.jsx"}],"sourceHashes":{"components/buttons/Button.jsx":"63e5e5f9acd6","components/buttons/IconButton.jsx":"142903a91acf","components/cards/BadgeFrame.jsx":"6680417a03e7","components/cards/Card.jsx":"a7e8219f1404","components/cards/RarityBadge.jsx":"47815e8d7e6e","components/cards/ShapeTag.jsx":"3ae601d3651b","components/feedback/ModalToast.jsx":"a90a886d2126","components/feedback/Toast.jsx":"f1b18e6c2ecf","components/feedback/WanderingEyesLoader.jsx":"eb488d2dadad","components/forms/Input.jsx":"0b61eb8b3914","components/navigation/TabBar.jsx":"d045e86e76cc","components/navigation/TopNav.jsx":"1cab9f8810fa","ui_kits/jam-app/BadgeDetailScreen.jsx":"d647643d4402","ui_kits/jam-app/BadgesScreen.jsx":"5c8157161251","ui_kits/jam-app/DropsScreen.jsx":"50a16e3df62f","ui_kits/jam-app/InventoryScreen.jsx":"0eca6e8e3906","ui_kits/jam-app/ProfileScreen.jsx":"6fec33125e44","ui_kits/jam-app/TodayScreen.jsx":"366d112e5777","ui_kits/jam-app/mockData.js":"c0bfeb81777d","components/patterns/BadgeGridCard.jsx":"a1b2c3d4e5f6","components/patterns/ListRowCard.jsx":"b2c3d4e5f6a1","components/patterns/CollectionGridCard.jsx":"c3d4e5f6a1b2"},"inlinedExternals":[],"unexposedExports":[]} */
 
 (() => {
 
@@ -1692,5 +1692,161 @@ __ds_ns.Input = __ds_scope.Input;
 __ds_ns.TabBar = __ds_scope.TabBar;
 
 __ds_ns.TopNav = __ds_scope.TopNav;
+
+// components/patterns/BadgeGridCard.jsx
+try { (() => {
+const __RARITY_CONFIG = {
+  common: { label: 'Common', bg: 'var(--color-rarity-common)', text: 'var(--color-rarity-common-text)' },
+  rare:   { label: 'Rare',   bg: 'var(--color-rarity-rare)',   text: 'var(--color-rarity-rare-text)'   },
+  legend: { label: 'Legend', bg: 'var(--color-rarity-legend)', text: 'var(--color-rarity-legend-text)' },
+  mythic: { label: 'Mythic', bg: 'var(--color-rarity-mythic)', text: 'var(--color-rarity-mythic-text)' },
+};
+
+function BadgeGridCard({
+  name, imageUrl, rarity = 'common', href, onClick,
+  earned = true, undiscovered = false, selected = false,
+  className = '', style = {}, children,
+}) {
+  const rc = __RARITY_CONFIG[rarity] ?? __RARITY_CONFIG.common;
+  const dimmed = !earned || undiscovered;
+  const interactive = !!(href || onClick);
+
+  const containerStyle = {
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    background: 'var(--color-surface)', borderRadius: 'var(--radius-card)',
+    padding: 'var(--spacing-12)', overflow: 'hidden',
+    boxShadow: selected ? 'inset 0 0 0 2px var(--color-text)' : 'inset 0 0 0 1px var(--color-border)',
+    cursor: interactive ? 'pointer' : undefined,
+    transition: interactive ? 'transform 100ms' : undefined,
+    textDecoration: 'none', color: 'inherit', ...style,
+  };
+  const thumbnailStyle = {
+    width: 90, height: 90, borderRadius: 'var(--radius-card)', overflow: 'hidden',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(255,255,255,0.10)', filter: dimmed ? 'grayscale(1)' : undefined,
+    opacity: dimmed ? 0.4 : 1, flexShrink: 0,
+  };
+  const rarityPillStyle = {
+    display: 'inline-flex', alignItems: 'center', padding: '3px 10px',
+    borderRadius: 'var(--radius-pill)', fontSize: 'var(--text-caption)',
+    fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
+    background: rc.bg, color: rc.text, lineHeight: 1.4,
+  };
+
+  const PlaceholderIcon = () => React.createElement('svg', { width: 40, height: 40, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.5', style: { color: 'var(--color-text)', opacity: 0.3 } },
+    React.createElement('circle', { cx: 12, cy: 8, r: 5 }),
+    React.createElement('path', { d: 'M3 20c0-4 4-7 9-7s9 3 9 7' })
+  );
+
+  const content = React.createElement(React.Fragment, null,
+    React.createElement('div', { style: thumbnailStyle },
+      imageUrl
+        ? React.createElement('img', { src: imageUrl, alt: undiscovered ? '???' : name, style: { width: '100%', height: '100%', objectFit: 'contain', padding: 4 } })
+        : React.createElement(PlaceholderIcon)
+    ),
+    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4)', paddingTop: 'var(--spacing-8)', width: '100%' } },
+      React.createElement('p', { style: { fontSize: 11, fontWeight: 700, color: 'var(--color-text)', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', lineHeight: 1.3, fontFamily: 'var(--font-family-base)', margin: 0 } },
+        undiscovered ? '???' : name
+      ),
+      React.createElement('div', { style: { minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+        !undiscovered && React.createElement('span', { style: rarityPillStyle }, rc.label)
+      )
+    ),
+    children && React.createElement('div', { style: { width: '100%', marginTop: 'var(--spacing-4)' } }, children)
+  );
+
+  if (href) return React.createElement('a', { href, className, style: containerStyle }, content);
+  if (onClick) return React.createElement('button', { type: 'button', onClick, className, style: containerStyle }, content);
+  return React.createElement('div', { className, style: containerStyle }, content);
+}
+__ds_scope.BadgeGridCard = BadgeGridCard;
+})(); } catch(e) { __ds_ns.__errors.push({ component: 'BadgeGridCard', error: e }); }
+
+// components/patterns/ListRowCard.jsx
+try { (() => {
+function ListRowCard({
+  icon, title, subtitle, trailing, children,
+  href, onClick, className = '', style = {},
+}) {
+  const interactive = !!(href || onClick);
+  const containerStyle = {
+    display: 'flex', alignItems: 'center', gap: 'var(--spacing-16)',
+    background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)',
+    borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)',
+    cursor: interactive ? 'pointer' : undefined, transition: interactive ? 'transform 100ms' : undefined,
+    textDecoration: 'none', color: 'inherit', width: '100%', textAlign: 'left', boxSizing: 'border-box', ...style,
+  };
+
+  const textArea = children
+    ? React.createElement('div', { style: { flex: 1, minWidth: 0 } }, children)
+    : React.createElement('div', { style: { flex: 1, minWidth: 0 } },
+        title !== undefined && React.createElement('p', { style: { fontSize: 'var(--text-body)', lineHeight: 'var(--leading-body)', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-family-base)', margin: 0 } }, title),
+        subtitle !== undefined && (
+          typeof subtitle === 'string'
+            ? React.createElement('p', { style: { fontSize: 'var(--text-small)', lineHeight: 'var(--leading-small)', color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2, fontFamily: 'var(--font-family-base)', marginBottom: 0 } }, subtitle)
+            : React.createElement('div', { style: { marginTop: 2 } }, subtitle)
+        )
+      );
+
+  const content = React.createElement(React.Fragment, null,
+    icon && React.createElement('div', { style: { flexShrink: 0 } }, icon),
+    textArea,
+    trailing !== undefined && React.createElement('div', { style: { flexShrink: 0, display: 'flex', alignItems: 'center' } }, trailing)
+  );
+
+  if (href) return React.createElement('a', { href, className, style: containerStyle }, content);
+  if (onClick) return React.createElement('button', { type: 'button', onClick, className, style: containerStyle }, content);
+  return React.createElement('div', { className, style: containerStyle }, content);
+}
+__ds_scope.ListRowCard = ListRowCard;
+})(); } catch(e) { __ds_ns.__errors.push({ component: 'ListRowCard', error: e }); }
+
+// components/patterns/CollectionGridCard.jsx
+try { (() => {
+function CollectionGridCard({
+  name, imageUrl, collected, total, completed = false,
+  href, onClick, className = '', style = {}, children,
+}) {
+  const pct = total > 0 ? Math.round((collected / total) * 100) : 0;
+  const interactive = !!(href || onClick);
+  const containerStyle = {
+    display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)',
+    textDecoration: 'none', color: 'inherit',
+    cursor: interactive ? 'pointer' : undefined,
+    transition: interactive ? 'transform 100ms' : undefined, ...style,
+  };
+
+  const PlaceholderIcon = () => React.createElement('svg', { width: 40, height: 40, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.5', style: { color: '#000', opacity: 0.2 } },
+    React.createElement('rect', { x: 3, y: 3, width: 18, height: 18, rx: 2 }),
+    React.createElement('path', { d: 'M3 9h18M9 21V9' })
+  );
+
+  const content = React.createElement(React.Fragment, null,
+    React.createElement('div', { style: { position: 'relative', width: '100%', aspectRatio: '1', background: '#ffffff', borderRadius: 'var(--radius-card)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+      imageUrl
+        ? React.createElement('img', { src: imageUrl, alt: name, style: { width: '100%', height: '100%', objectFit: 'contain', padding: 6 } })
+        : React.createElement(PlaceholderIcon),
+      completed && React.createElement('span', { style: { position: 'absolute', top: 8, left: 8, background: 'var(--color-primary)', color: '#fff', fontSize: 10, lineHeight: 1, padding: '4px 8px', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-family-base)', fontWeight: 600 } }, '완성')
+    ),
+    React.createElement('p', { style: { fontSize: 15, fontWeight: 700, color: 'var(--color-text)', lineHeight: '18px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-family-base)', margin: 0 } }, name),
+    React.createElement('div', { style: { height: 6, width: '100%', borderRadius: 'var(--radius-pill)', background: 'rgba(255,255,255,0.20)', overflow: 'hidden' } },
+      React.createElement('div', { style: { height: '100%', width: '100%', borderRadius: 'var(--radius-pill)', background: 'var(--color-primary)', transform: `scaleX(${pct / 100})`, transformOrigin: 'left', transition: 'transform 500ms ease' } })
+    ),
+    React.createElement('p', { style: { fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-family-base)', margin: 0 } }, `${collected}/${total}`),
+    children
+  );
+
+  if (href) return React.createElement('a', { href, className, style: containerStyle }, content);
+  if (onClick) return React.createElement('button', { type: 'button', onClick, className, style: containerStyle }, content);
+  return React.createElement('div', { className, style: containerStyle }, content);
+}
+__ds_scope.CollectionGridCard = CollectionGridCard;
+})(); } catch(e) { __ds_ns.__errors.push({ component: 'CollectionGridCard', error: e }); }
+
+__ds_ns.BadgeGridCard = __ds_scope.BadgeGridCard;
+
+__ds_ns.ListRowCard = __ds_scope.ListRowCard;
+
+__ds_ns.CollectionGridCard = __ds_scope.CollectionGridCard;
 
 })();
