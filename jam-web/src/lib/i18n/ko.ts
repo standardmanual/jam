@@ -199,7 +199,7 @@ export const ko = {
     pointRewardEarned: '이 배지는 {points} 포인트를 함께 드렸어요',
     pointRewardPending: '이 배지를 획득하면 {points} 포인트를 함께 드려요',
 
-    prerequisiteTitle: '선행 배지 필요',
+    prerequisiteTitle: '선행 배지',
     prerequisiteBody: '아래 배지 중 하나를 먼저 획득해야 이 배지를 받을 수 있어요.',
     prerequisiteOwned: '보유',
 
