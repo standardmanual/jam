@@ -8,10 +8,11 @@ const __dirname = path.dirname(__filename);
 
 const config: StorybookConfig = {
   stories: [
-    // 서비스 stories (기존)
+    // 서비스 stories (src/stories/ 기본 예제 디렉토리 제외)
     '../src/**/*.mdx',
     '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
-    // MODULAR design-system stories (파일 생성 후 자동 인식)
+    '!../src/stories/**',
+    // MODULAR design-system stories
     '../design-system/**/*.stories.@(js|jsx|mjs|ts|tsx)',
     '../design-system/**/*.mdx',
   ],
