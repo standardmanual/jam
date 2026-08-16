@@ -172,7 +172,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     <div className="flex flex-col min-h-full" style={{ background: PAGE_BG, color: '#FFFFFF' }}>
       <TopNav
         title={book.name}
-        backHref={backHref ?? '/itembooks'}
+        backHref={backHref ?? '/badges#itembook'}
         headerStyle={{ background: PAGE_BG, color: '#FFFFFF' }}
       />
 
