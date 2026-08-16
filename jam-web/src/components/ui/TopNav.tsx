@@ -57,7 +57,7 @@ export default function TopNav({ title, onBack, backHref, rightSlot, showBack = 
 
   return (
     <header
-      className="sticky top-0 z-30 bg-surface text-text"
+      className="sticky top-0 z-30 bg-[var(--color-bg)] text-text"
       style={{ paddingTop: 'env(safe-area-inset-top)', ...headerStyle }}
     >
       <div className="flex items-center gap-2 px-4 h-14">
