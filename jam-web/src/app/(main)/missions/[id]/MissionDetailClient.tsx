@@ -7,6 +7,8 @@ import Image from 'next/image'
 import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
+import RarityBadge from '@/components/ui/Badge'
+import ListRowCard from '@/components/ui/ListRowCard'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { useRevealOnMount } from '@/components/transitions-pages'
@@ -28,12 +30,6 @@ interface Props {
   rewardBadges: RewardBadgeInfo[]
 }
 
-const RARITY_META: Record<BadgeRarity, { bg: string; text: string; label: string }> = {
-  common: { bg: 'var(--color-rarity-common)', text: '#fff',  label: 'COMMON' },
-  rare:   { bg: 'var(--color-rarity-rare)',   text: '#000',  label: 'RARE' },
-  legend: { bg: 'var(--color-rarity-legend)', text: '#000',  label: 'LEGEND' },
-  mythic: { bg: 'var(--color-rarity-mythic)', text: '#fff',  label: 'MYTHIC' },
-}
 
 function missionGoalText(type: string, condition: MissionCondition): { label: string; unit: string; target: number } {
   switch (type) {
@@ -58,10 +54,10 @@ function timeLeft(endsAt: string | null): string {
   return `${h}시간 ${m}분 ${d.missions.timeLeftSuffix}`
 }
 
-/* ── 섹션 레이블 (11px uppercase) ── */
+/* ── 섹션 레이블 — 배지 상세 '획득 조건'과 동일한 토큰 ── */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] font-bold uppercase tracking-[0.04em] text-text-secondary leading-none">
+    <p className="text-[15px] font-bold text-text">
       {children}
     </p>
   )
@@ -97,18 +93,6 @@ function StatusChip({ isCompleted, participating }: { isCompleted: boolean; part
   return null
 }
 
-/* ── 희귀도 칩 ── */
-function RarityChip({ rarity }: { rarity: BadgeRarity }) {
-  const meta = RARITY_META[rarity]
-  return (
-    <span
-      className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] text-[11px] font-bold tracking-[0.04em] uppercase leading-none"
-      style={{ background: meta.bg, color: meta.text }}
-    >
-      {meta.label}
-    </span>
-  )
-}
 
 export default function MissionDetailClient({ mission, isParticipating, isCompleted, progressValue, rewardBadges }: Props) {
   const [participating, setParticipating] = useState(isParticipating)
@@ -264,8 +248,10 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
               /* 수치 + 프로그레스 바 */
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[14px] leading-[1.43] text-text-secondary">
-                    {isCompleted ? goal.target : (mission.mission_type === 'distance' ? progressValue.toFixed(1) : Math.floor(progressValue))}{goal.unit} / {goal.target}{goal.unit}
+                  <span className="text-[22px] font-bold text-text tabular-nums leading-none">
+                    {isCompleted ? goal.target : (mission.mission_type === 'distance' ? progressValue.toFixed(1) : Math.floor(progressValue))}{goal.unit}
+                    <span className="text-[16px] font-normal text-text-secondary mx-1">/</span>
+                    {goal.target}{goal.unit}
                   </span>
                   <span className="text-[14px] font-bold text-text tabular-nums">
                     {isCompleted ? '100' : Math.round(progressPct)}%
@@ -287,11 +273,10 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
           <InfoCard>
             <SectionLabel>{d.missions.rewardSectionTitle}</SectionLabel>
 
-            <div className="flex flex-col">
-              {rewardBadges.map((badge, idx) => (
-                <div key={badge.id}>
-                  {idx > 0 && <div className="h-px bg-border my-4" />}
-                  {/* 배지 보상 행: BadgeFrame(circle) + RarityBadge + 텍스트 */}
+            <div className="flex flex-col gap-3">
+              {rewardBadges.map((badge) => (
+                <Link key={badge.id} href={`/badges/${badge.id}`} className="active:opacity-70 transition-opacity duration-100">
+                  {/* 배지 보상 행: 서클 이미지 + MODULAR RarityBadge + 텍스트 */}
                   <div className="flex items-center gap-4">
                     <div
                       className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
@@ -303,32 +288,27 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                         <span className="text-2xl">🏅</span>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1 flex-1 min-w-0">
-                      <RarityChip rarity={badge.rarity} />
+                    <div className="flex flex-col items-start gap-1 flex-1 min-w-0">
+                      <RarityBadge rarity={badge.rarity} />
                       <p className="text-[16px] font-bold leading-[1.2] text-text truncate">{badge.name}</p>
                       <p className="text-[13px] leading-[1.3] text-text-secondary">미션 완료 시 획득</p>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
 
-              {/* 포인트 보상 행: 이미지 없음 — 텍스트만 */}
+              {/* 포인트 보상 행: ListRowCard + 서클 'P' 아이콘 */}
               {mission.reward_points ? (
-                <div>
-                  {rewardBadges.length > 0 && <div className="h-px bg-border my-4" />}
-                  <div className="flex flex-col gap-1">
-                    <span
-                      className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] text-[11px] font-bold tracking-[0.04em] uppercase leading-none w-fit"
-                      style={{ background: 'rgba(255,255,255,0.10)', color: 'var(--color-text-secondary)' }}
-                    >
-                      POINT
-                    </span>
-                    <p className="text-[16px] font-bold leading-[1.2] text-text">
-                      {t(d.missions.rewardPointsLine, { points: mission.reward_points })}
-                    </p>
-                    <p className="text-[13px] leading-[1.3] text-text-secondary">미션 완료 즉시 지급</p>
-                  </div>
-                </div>
+                <ListRowCard
+                  icon={
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'var(--color-primary)' }}>
+                      <span className="text-[15px] font-bold" style={{ color: '#fff' }}>P</span>
+                    </div>
+                  }
+                  title={t(d.missions.rewardPointsLine, { points: mission.reward_points })}
+                  subtitle="미션 완료 즉시 지급"
+                />
               ) : null}
             </div>
 
