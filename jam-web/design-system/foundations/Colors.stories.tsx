@@ -112,6 +112,7 @@ function ColorsPage() {
         <Swatch token="--color-bg-tint" desc="미세하게 올라온 배경 — tint Card 등" />
         <Swatch token="--color-bg-inverse" desc="반전 배경 (라이트 surface)" />
         <Swatch token="--color-surface" desc="카드·raised surface" />
+        <Swatch token="--color-surface-elevated" desc="20260816_012 — 보더 제거 카드/버튼 배경(--color-surface보다 한 단계 밝음)" />
         <Swatch token="--color-surface-inverse" desc="반전 카드 surface" />
       </Section>
 

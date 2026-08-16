@@ -136,7 +136,8 @@ export default function BottomSheet({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         >
-          <div className={`w-10 h-1 rounded-full ${dark ? 'shadow-[inset_0_0_0_1px_var(--color-border)]' : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'}`} />
+          {/* 20260816_012: 보더로 그린 속 빈 핸들 → 실제 채워진 바로 교체 */}
+          <div className={`w-10 h-1 rounded-full ${dark ? 'bg-white/20' : 'bg-black/20'}`} />
         </div>
 
         {hasHeader && (
@@ -169,7 +170,8 @@ export default function BottomSheet({
              높이 + 여유 12px을 명시적으로 더해 실측 기준으로 항상 탭바 위에
              오도록 강제한다. */
           <div
-            className={`shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] ${dark ? 'shadow-[inset_0_1px_0_0_var(--color-border)]' : 'shadow-[inset_0_1px_0_0_var(--color-border-inverse)]'}`}
+            // 20260816_012: 상단 1px 구분선(hr 대체) 제거 → 스크롤 영역과 다른 배경톤으로 구분
+            className={`shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] ${dark ? 'bg-surface-elevated' : 'bg-black/[0.04]'}`}
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)' }}
           >
             {footer}

@@ -412,10 +412,9 @@
 .t-tabs[data-shape="card"] .t-tabs-pill {
   border-radius: var(--radius-cards);
 }
-/* 바 배경 대신 1px inset border만 쓰는 변형 (앱 elevation 규칙) */
+/* 반투명 바 배경 대신 엘리베이션 배경톤을 쓰는 변형 (20260816_012 — 보더 제거) */
 .t-tabs.jam-tabs-outlined {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--tabs-bar-border, var(--color-border));
+  background: var(--color-surface-elevated);
 }
 
 /* TabBar 활성 점 — 트리거 하단 중앙에 앵커 (원본은 우상단 앵커) */

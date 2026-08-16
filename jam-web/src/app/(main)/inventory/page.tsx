@@ -56,13 +56,13 @@ export default async function InventoryPage() {
           </div>
           <Link
             href="/combine"
-            className="mt-1 inline-flex items-center justify-center min-h-11 rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] shadow-[inset_0_0_0_1px_var(--color-border)] active:scale-95 transition-transform duration-100"
+            className="mt-1 inline-flex items-center justify-center min-h-11 rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface-elevated active:scale-95 transition-transform duration-100"
           >
             {d.inventory.combineButton}
           </Link>
         </div>
         {/* 슬롯 프로그레스 */}
-        <div className="h-1.5 rounded-full overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)]">
+        <div className="h-1.5 rounded-full overflow-hidden bg-border">
           <div
             className="h-full bg-text rounded-full transition-all"
             style={{ width: `${Math.min(100, (usedSlots / maxSlots) * 100)}%` }}

@@ -25,7 +25,7 @@ export default function UserSearchBar({ defaultValue = '' }: UserSearchBarProps)
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex items-center gap-2 p-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-surface-inverse shadow-[inset_0_0_0_1px_var(--color-border-inverse)]"
+      className="flex items-center gap-2 p-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-surface-inverse"
     >
       <SearchIcon className="w-5 h-5 shrink-0 ml-2 text-text-inverse/40" />
       <input

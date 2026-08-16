@@ -347,7 +347,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* hero-section */}
         <div className="px-6 pt-[40px] pb-[32px]">
-          <div className="w-full aspect-square rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex flex-col p-6">
+          <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6">
             <div className="flex-1 flex items-center justify-center">
               {badgeRow.image_url ? (
                 <div className="w-[200px] h-[200px] flex items-center justify-center">
@@ -386,7 +386,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             )}
 
             {!hasEarned && (
-              <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
+              <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 text-center">
                 <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
                 <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
               </div>
@@ -403,11 +403,11 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 href={`/itembooks/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
                 icon={
                   itemBook.image_url ? (
-                    <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shadow-[inset_0_0_0_1px_var(--color-border)] shrink-0">
+                    <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shrink-0">
                       <Image src={itemBook.image_url} alt={itemBook.name} width={44} height={44} className="w-full h-full object-contain p-1" />
                     </div>
                   ) : (
-                    <div className="w-11 h-11 rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex items-center justify-center shrink-0">
+                    <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center shrink-0">
                       <BookIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
                     </div>
                   )
@@ -419,7 +419,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
             {/* 만료 임박 안내 */}
             {expiring && (
-              <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+              <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
                 <p className="text-[length:var(--text-body)] text-text">{d.inventory.expiringSoonTitle}</p>
                 <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] mt-0.5">{d.inventory.expiringSoonBody}</p>
               </div>
@@ -438,7 +438,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* hero-section */}
         <div className="px-6 pt-[40px] pb-[32px]">
-          <div className="w-full aspect-square rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex flex-col p-6">
+          <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6">
             <div className="flex-1 flex items-center justify-center">
               {badgeRow.image_url ? (
                 <div className="w-[200px] h-[200px] flex items-center justify-center">
@@ -467,7 +467,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* info-section */}
         <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
-          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
+          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
             <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
             <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
           </div>
@@ -488,14 +488,14 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               href="#"
               target="_blank"
               rel="noopener noreferrer"
-              className="h-14 w-full rounded-full border border-[color:var(--color-border-light)] text-[length:var(--text-body)] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+              className="h-14 w-full rounded-full bg-surface-elevated text-[length:var(--text-body)] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
             >
               {d.badges.physicalPatchButton} ↗
             </a>
           )}
 
           {!hasEarned && (
-            <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
+            <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 text-center">
               <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
               <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
             </div>
@@ -516,7 +516,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
       {/* hero-section */}
       <div className="px-6 pt-[40px] pb-[32px]">
-        <div className="w-full aspect-square rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] flex flex-col p-6">
+        <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6">
           <div className="flex-1 flex items-center justify-center">
             {badgeRow.image_url ? (
               <div className="w-[200px] h-[200px] flex items-center justify-center">
@@ -545,7 +545,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       {/* info-section */}
       <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
         {/* 획득 조건 다크 카드 */}
-        <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
+        <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
           <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
           <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">
             {formatConditionText(badgeRow.condition_json, badgeRow.name)}
@@ -573,7 +573,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 포인트 보상 */}
         {badgeRow.point_reward > 0 && (
-          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
             <p className="text-[length:var(--text-body)] text-text">
               {hasEarned
                 ? t(d.badges.pointRewardEarned, { points: badgeRow.point_reward.toLocaleString('ko-KR') })
@@ -591,7 +591,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             href="#"
             target="_blank"
             rel="noopener noreferrer"
-            className="h-14 w-full rounded-full border border-[color:var(--color-border-light)] text-[length:var(--text-body)] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
+            className="h-14 w-full rounded-full bg-surface-elevated text-[length:var(--text-body)] text-text inline-flex items-center justify-center active:scale-95 transition-transform duration-100"
           >
             {d.badges.physicalPatchButton} ↗
           </a>
@@ -599,7 +599,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 획득 정보 (획득한 경우) */}
         {earned && (
-          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6">
+          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
             <p className="text-[length:var(--text-body)] font-bold text-text mb-4">{d.badges.earnInfoTitle}</p>
             <div className="flex flex-col gap-3">
               <div className="flex justify-between items-center">
@@ -639,7 +639,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* 미획득 안내 */}
         {!hasEarned && (
-          <div className="bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] rounded-[var(--radius-cards)] p-6 text-center">
+          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 text-center">
             <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{d.badges.notEarnedTitle}</p>
             <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{d.badges.notEarnedBody}</p>
           </div>

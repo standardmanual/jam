@@ -355,7 +355,7 @@ export default function ProfileClient({
             href={`/${u.username}`}
             icon={
               u.avatar_url ? (
-                <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover shadow-[inset_0_0_0_1px_var(--color-border)]" />
+                <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
                   <UserIcon className="w-5 h-5 text-text/60" />
@@ -421,7 +421,7 @@ export default function ProfileClient({
               alt={d.profile.avatarAlt}
               width={64}
               height={64}
-              className="w-16 h-16 rounded-[var(--radius-cards)] object-cover shrink-0 shadow-[inset_0_0_0_1px_var(--color-border-inverse)]"
+              className="w-16 h-16 rounded-[var(--radius-cards)] object-cover shrink-0"
             />
           ) : (
             <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center shrink-0">
@@ -505,7 +505,7 @@ export default function ProfileClient({
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-[136px] rounded-[var(--radius-cards)] shadow-[inset_0_0_0_1px_var(--color-border)] bg-surface-inverse/15"
+                    className="h-[136px] rounded-[var(--radius-cards)] bg-surface-inverse/15"
                   />
                 ))}
               </div>

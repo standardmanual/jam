@@ -159,10 +159,11 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
               <div
                 key={i}
                 className={[
-                  'aspect-square rounded-[var(--radius-cards)] flex items-center justify-center transition-all',
+                  // 20260816_012: 슬롯 경계는 배경톤으로, 희귀도 링(rarityRing)은 기능적 정보라 유지
+                  'aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center transition-all',
                   item
-                    ? `shadow-[inset_0_0_0_1px_var(--color-border)] cursor-pointer ${rarityRing[item.badge.rarity] ?? ''}`
-                    : 'shadow-[inset_0_0_0_1px_var(--color-border)] opacity-40',
+                    ? `cursor-pointer ${rarityRing[item.badge.rarity] ?? ''}`
+                    : 'opacity-40',
                 ].join(' ')}
                 onClick={() => itemId && toggleItem(itemId)}
               >
@@ -231,7 +232,8 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       )}
 
       {/* 인벤토리 */}
-      <div className="flex-1 px-[var(--spacing-16)] py-[var(--spacing-24)] shadow-[inset_0_1px_0_0_var(--color-border)]">
+      {/* 20260816_012: hr 대체용 상단 구분선 제거 — 여백과 섹션 제목만으로 구분 */}
+      <div className="flex-1 px-[var(--spacing-16)] py-[var(--spacing-24)]">
         <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.myItemsTitle}</p>
         {items.length === 0 ? (
           <p className="text-text/50 text-center py-[var(--spacing-32)]">{d.combine.emptyInventory}</p>
