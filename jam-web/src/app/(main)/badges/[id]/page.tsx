@@ -512,7 +512,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} />
+      <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={{ background: 'var(--color-surface)' }} />
 
       {/* hero-section */}
       <div className="px-6 pt-[40px] pb-[32px]">
