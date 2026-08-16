@@ -14,22 +14,24 @@ export type ItemEarnEntry = {
   expires_at: string | null
 }
 
-function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
+function ItemCardContent({ entry, inverse }: { entry: ItemEarnEntry; inverse?: boolean }) {
+  const label = inverse ? 'text-[14px] text-black/50' : 'text-[14px] text-[var(--color-text-secondary)]'
+  const value = inverse ? 'text-[14px] text-text-inverse' : 'text-[14px] text-text'
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.serialNumber}</span>
-        <span className="text-[14px] text-text font-mono tracking-widest">{entry.serial}</span>
+        <span className={label}>{d.inventory.serialNumber}</span>
+        <span className={`${value} font-mono tracking-widest`}>{entry.serial}</span>
       </div>
       <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.obtainedAt}</span>
-        <span className="text-[14px] text-text">
+        <span className={label}>{d.inventory.obtainedAt}</span>
+        <span className={value}>
           <LocalDate iso={entry.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
         </span>
       </div>
       <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.expiresAt}</span>
-        <span className="text-[14px] text-text">
+        <span className={label}>{d.inventory.expiresAt}</span>
+        <span className={value}>
           {entry.expires_at
             ? <LocalDate iso={entry.expires_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
             : d.inventory.expiresNone}
@@ -74,7 +76,7 @@ export default function ItemEarnHistory({ items }: { items: ItemEarnEntry[] }) {
       {/* 이력 상세 바텀시트 */}
       <BottomSheet open={openIdx !== null} onClose={() => setOpenIdx(null)}>
         <div className="px-6 pt-2 pb-8">
-          {openIdx !== null && <ItemCardContent entry={items[openIdx]} />}
+          {openIdx !== null && <ItemCardContent entry={items[openIdx]} inverse />}
         </div>
       </BottomSheet>
     </div>
