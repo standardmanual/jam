@@ -27,6 +27,12 @@ tools: Read, Write, Edit, Bash, Grep, Glob
    - main으로의 merge는 하지 않는다 (사용자 최종 승인 후 오케스트레이터가 처리)
 6. **사용자 노출 텍스트(에러 메시지·버튼·알림 등)를 작성/수정할 경우** `Service Plan/Specs/UX_WRITING_GUIDELINE.md`를 참조해 용어·톤·구조 규칙을 따른다.
 7. 스펙에 없는 리팩터링·추상화·기능 추가를 임의로 하지 않는다. 요청받은 범위만 구현한다.
+8. **UI를 만들기 전에 MODULAR을 먼저 탐색한다.** 프롬프트에 "UI 재사용 판정"이 포함돼 있으면
+   그 결정을 그대로 따른다(임의로 신규 컴포넌트를 만들지 않는다). 판정이 없는데 UI 작업이 필요하면
+   `jam-web/design-system/_ds_manifest.json` → `readme.md` 색인 → `**/*.stories.*` 순으로 검색해
+   기존 컴포넌트를 먼저 찾는다. `design-system/components/**`를 수정했다면 대응 `*.stories.*`를
+   **반드시 함께 작성/수정한다** (pre-commit 훅이 확인한다).
+   예외: `jam-web/src/app/admin/`은 MODULAR 적용 대상이 아니다.
 
 ## 작업 종료 시 반드시 아래 형식으로 요약을 반환할 것
 

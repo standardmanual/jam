@@ -27,4 +27,49 @@ case "$branch" in
     ;;
 esac
 
+# ─────────────────────────────────────────────────────────────────────────────
+# MODULAR 컴포넌트를 고쳤는데 Storybook Story를 빠뜨렸는지 확인한다 (경고 단계).
+#
+# 배경: Storybook은 MODULAR의 실행 가능한 카탈로그이며, Claude Code가 UI 작업 전 가장 먼저
+# 탐색하는 입구다. 컴포넌트만 바뀌고 Story가 낡으면 카탈로그가 진실을 반영하지 못하고,
+# 그 시점부터 "탐색 → 재사용" 선순환이 조용히 깨진다.
+#
+# 지금은 경고만 한다(커밋은 통과). 기존 컴포넌트-스토리 대응이 완전해지면 아래 EXIT_ON_MISSING을
+# 1로 바꿔 차단으로 전환한다.
+EXIT_ON_MISSING=0
+
+changed_components=$(git diff --cached --name-only --diff-filter=ACM \
+  -- 'jam-web/design-system/components/*.jsx' | grep -v '\.stories\.' || true)
+
+if [ -n "$changed_components" ]; then
+  staged_stories=$(git diff --cached --name-only --diff-filter=ACM | grep '\.stories\.' || true)
+  missing=""
+  while IFS= read -r comp; do
+    [ -z "$comp" ] && continue
+    name=$(basename "$comp" .jsx)
+    # 같은 이름의 스토리가 이번 커밋에 포함됐는지 확인
+    if ! echo "$staged_stories" | grep -q "/${name}\.stories\."; then
+      # 저장소에 스토리 파일 자체가 없는 경우도 함께 알린다
+      if find jam-web -name "${name}.stories.*" -not -path "*/node_modules/*" 2>/dev/null | grep -q .; then
+        missing="${missing}  - ${name}: Story 파일은 있으나 이번 커밋에 함께 수정되지 않았습니다\n"
+      else
+        missing="${missing}  - ${name}: Story 파일이 아예 없습니다\n"
+      fi
+    fi
+  done <<< "$changed_components"
+
+  if [ -n "$missing" ]; then
+    echo "" >&2
+    echo "⚠️  경고(pre-commit): MODULAR 컴포넌트를 변경했는데 Storybook Story가 함께 갱신되지 않았습니다." >&2
+    printf "%b" "$missing" >&2
+    echo "  Storybook은 UI 재사용 탐색의 기준이므로 컴포넌트와 Story는 함께 유지해야 합니다." >&2
+    echo "  (현재는 경고만 하고 커밋은 진행합니다)" >&2
+    echo "" >&2
+    if [ "$EXIT_ON_MISSING" -eq 1 ]; then
+      echo "차단: Story를 작성한 뒤 다시 커밋하세요." >&2
+      exit 1
+    fi
+  fi
+fi
+
 exit 0
