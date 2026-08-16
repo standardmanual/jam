@@ -309,7 +309,11 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       ) : sLabel ? (
                         <StatusBadge>{sLabel}</StatusBadge>
                       ) : null}
-                      <span style={{ fontSize: '11px', color: C_META_TEXT, lineHeight: 1 }}>{period}</span>
+                      {period === d.missions.tagPermanent || period === d.missions.tagEnded ? (
+                        <StatusBadge>{period}</StatusBadge>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: C_META_TEXT, lineHeight: 1 }}>{period}</span>
+                      )}
                     </div>
 
                     {/* title */}

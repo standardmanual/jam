@@ -276,14 +276,14 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
             <div className="flex flex-col gap-3">
               {rewardBadges.map((badge) => (
                 <Link key={badge.id} href={`/badges/${badge.id}`} className="active:opacity-70 transition-opacity duration-100">
-                  {/* 배지 보상 행: 서클 이미지 + MODULAR RarityBadge + 텍스트 */}
+                  {/* 배지 보상 행: 카드형 이미지 + MODULAR RarityBadge + 텍스트 */}
                   <div className="flex items-center gap-4">
                     <div
-                      className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
-                      style={{ background: 'var(--color-primary)' }}
+                      className="w-16 h-16 rounded-[var(--radius-md)] flex items-center justify-center flex-shrink-0 overflow-hidden border border-border"
+                      style={{ background: 'transparent' }}
                     >
                       {badge.image_url ? (
-                        <Image src={badge.image_url} alt={badge.name} width={40} height={40} className="w-8 h-8 object-contain" />
+                        <Image src={badge.image_url} alt={badge.name} width={52} height={52} className="w-[52px] h-[52px] object-contain" />
                       ) : (
                         <span className="text-2xl">🏅</span>
                       )}
