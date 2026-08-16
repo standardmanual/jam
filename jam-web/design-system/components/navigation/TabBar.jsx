@@ -42,7 +42,7 @@ const tabs = [
   { key: 'badges',    label: '배지' },
   { key: 'drops',     label: '드랍' },
   { key: 'missions',  label: '미션' },
-  { key: 'inventory', label: '인벤' },
+  { key: 'inventory', label: '인벤토리' },
   { key: 'profile',   label: '프로필' },
 ];
 

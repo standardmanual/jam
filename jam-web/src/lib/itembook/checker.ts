@@ -186,7 +186,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
       continue
     }
 
-    // 인벤토리 used_slots 업데이트 (보상 배지는 activity badge이므로 인벤 대상 아님)
+    // 인벤토리 used_slots 업데이트 (보상 배지는 activity badge이므로 인벤토리 대상 아님)
     void inventory // 보상 배지는 user_activity_badges에만 저장
 
     rewardBadgesIssued++

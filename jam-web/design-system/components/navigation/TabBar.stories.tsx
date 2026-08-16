@@ -46,7 +46,7 @@ export const Missions: Story = {
 };
 
 export const Inventory: Story = {
-  name: '인벤 활성',
+  name: '인벤토리 활성',
   args: { active: 'inventory' },
   decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
 };

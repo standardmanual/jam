@@ -52,7 +52,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     .single()
   const inventoryId = invRaw ? (invRaw as Pick<InventoryRow, 'id'>).id : null
 
-  // 5) 인벤 아이템(슬롯 포함/미포함) + 6) 유저 슬롯 + 7) 완성 여부 병렬
+  // 5) 인벤토리 아이템(슬롯 포함/미포함) + 6) 유저 슬롯 + 7) 완성 여부 병렬
   const [invItemsRes, slotsRes, compRes] = await Promise.all([
     inventoryId && badgeIds.length > 0
       ? supabase
@@ -104,7 +104,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         ? { id: ref.id, serial_number: ref.serial_number, serial_prefix: ref.serial_prefix }
         : null
     } else {
-      // 슬롯 안 된(slotted_in IS NULL) 인벤 아이템 중 첫 번째
+      // 슬롯 안 된(slotted_in IS NULL) 인벤토리 아이템 중 첫 번째
       const owned = invItems.find((i) => i.badge_id === badge.id && i.slotted_in === null)
       invItem = owned
         ? { id: owned.id, serial_number: owned.serial_number, serial_prefix: owned.serial_prefix }

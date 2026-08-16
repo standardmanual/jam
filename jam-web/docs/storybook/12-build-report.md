@@ -134,24 +134,23 @@ Storybook 전용 래퍼 컴포넌트 또는 복제 컴포넌트가 없다. 스�
 
 ## 4. UX Writing
 
-### 4.1 FAIL: `TabBar.jsx` — `'인벤토리'` 하드코딩
+### 4.1 ~~FAIL~~: `TabBar.jsx` — `'인벤토리'` 하드코딩 → **2026-08-16 정책 변경으로 해소**
+
+> **[2026-08-16 업데이트]** UX Writing 가이드라인 정책 변경으로 공식 표기가 `'인벤토리'`로 확정됨. 당시 FAIL로 기록된 `'인벤토리'` 하드코딩은 이제 올바른 표기이며, 반대로 `'인벤'`이 금칙어로 전환됨. 이 항목은 해소 완료로 처리.
 
 **위치:** `design-system/components/navigation/TabBar.jsx:45`
 
 ```js
-{ key: 'inventory', label: '인벤토리' },
+{ key: 'inventory', label: '인벤토리' },  // 2026-08-16 기준 올바른 표기
 ```
 
-**문제:** UX Writing 가이드라인 금칙어. 공식 표기는 `'인벤'`. 이 레이블이 `aria-label`로 노출되어 스크린리더가 "인벤토리"를 읽는다. UX Writing 위반 + 접근성 이중 문제.
+~~**문제:** UX Writing 가이드라인 금칙어. 공식 표기는 `'인벤'`. 이 레이블이 `aria-label`로 노출되어 스크린리더가 "인벤토리"를 읽는다. UX Writing 위반 + 접근성 이중 문제.~~
 
-**수정 방법:**
+~~**수정 방법:**~~
 
-```js
-// TabBar.jsx:45
-{ key: 'inventory', label: '인벤' },
-```
+~~`{ key: 'inventory', label: '인벤' },`~~
 
-변경 범위: 1줄. 서비스(`src/`)는 자체 TabBar 구현을 사용하므로 영향 없음.
+~~변경 범위: 1줄. 서비스(`src/`)는 자체 TabBar 구현을 사용하므로 영향 없음.~~
 
 ---
 
@@ -217,7 +216,7 @@ args: { label: '동의합니다', ... }
 | Select | `aria-describedby` 없음 |
 | Checkbox | 1px 숨김 input 포커스 링 노출 불확실 |
 | SlidingTabs | tabpanel 연결 예시 없음 |
-| TabBar | `인벤토리` 하드코딩 (§4.1 FAIL과 동일) |
+| TabBar | ~~`인벤토리` 하드코딩 (§4.1 FAIL)~~ — 2026-08-16 정책 변경으로 해소 |
 | Toast | 키보드 dismiss 불가 |
 | ModalToast | dismiss 버튼 `"확인"` (§4.3 WARN과 동일) |
 | IconButton | label 미제공 시 접근 가능한 이름 없음 |
@@ -276,7 +275,7 @@ export const [스토리명]: Story = { ... };
 
 | # | 파일 | 이슈 | 상태 |
 |---|------|------|------|
-| F-1 | `TabBar.jsx:45` | `'인벤토리'` → `'인벤'` | ✅ 수정 완료 |
+| F-1 | `TabBar.jsx:45` | ~~`'인벤토리'` → `'인벤'`~~ → 2026-08-16 정책 변경: `'인벤토리'`가 올바른 표기로 확정. 되돌림 | ✅ 해소 (정책 변경) |
 | F-2 | `Skeleton.stories.tsx:29` | `'카드 로딩 (조합)'` → `'카드 로딩 (복합 레이아웃)'` | ✅ 수정 완료 |
 
 ---

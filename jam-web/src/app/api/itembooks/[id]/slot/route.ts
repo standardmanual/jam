@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     dropped_at: string | null
   } | null
 
-  if (invErr || !invItem) return NextResponse.json({ error: '인벤 아이템을 찾을 수 없습니다.' }, { status: 404 })
+  if (invErr || !invItem) return NextResponse.json({ error: '인벤토리 아이템을 찾을 수 없습니다.' }, { status: 404 })
 
   // 소유자 확인: inventory.user_id === 현재 유저
   const { data: invRaw } = await supabase
@@ -151,10 +151,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     .eq('user_id', user.id)
     .single()
   const inv = invRaw as { id: string; used_slots: number; max_slots: number } | null
-  if (!inv) return NextResponse.json({ error: '인벤을 찾을 수 없습니다.' }, { status: 404 })
+  if (!inv) return NextResponse.json({ error: '인벤토리를 찾을 수 없습니다.' }, { status: 404 })
   if (inv.used_slots >= inv.max_slots) {
     return NextResponse.json(
-      { error: '인벤이 꽉 차 해제할 수 없어요. 인벤을 늘려보세요.' },
+      { error: '인벤토리가 꽉 차 해제할 수 없어요. 인벤토리를 늘려보세요.' },
       { status: 409 }
     )
   }
