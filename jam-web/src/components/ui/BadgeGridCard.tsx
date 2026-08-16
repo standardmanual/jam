@@ -56,7 +56,7 @@ export default function BadgeGridCard({
 
   const thumbnailCls = [
     'w-[90px] h-[90px] rounded-[var(--radius-card)] overflow-hidden',
-    'flex items-center justify-center bg-white/10',
+    'flex items-center justify-center',
     thumbDimmed && 'grayscale opacity-40',
   ]
     .filter(Boolean)
@@ -78,12 +78,12 @@ export default function BadgeGridCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
-        <p className="text-[13px] font-bold text-text text-center truncate w-full leading-tight">
-          {undiscovered ? '???' : name}
-        </p>
         <div className="h-6 flex items-center justify-center">
           {!undiscovered && <RarityBadge rarity={rarity} />}
         </div>
+        <p className="text-[13px] font-bold text-text text-center truncate w-full leading-tight">
+          {undiscovered ? '???' : name}
+        </p>
       </div>
       {children && <div className="w-full mt-[var(--spacing-4)]">{children}</div>}
     </>
