@@ -5,7 +5,7 @@ import type { PointHistoryItem } from '@/app/api/points/route'
 import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import ListRowCard from '@/components/ui/ListRowCard'
-import { ChevronRightIcon, CoinIcon } from '@/components/ui/icons'
+import { CoinIcon } from '@/components/ui/icons'
 import { useDigitPopIn } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'
@@ -139,12 +139,9 @@ export default function PointsPage() {
                       </div>
                     }
                     trailing={
-                      <div className="flex items-center gap-[var(--spacing-8)]">
-                        <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] ${positive ? 'text-[#8A5A2E]' : 'text-text/60'}`}>
-                          {formatAmount(it.amount)}
-                        </span>
-                        {it.href && <ChevronRightIcon className="w-4 h-4 text-text/30" />}
-                      </div>
+                      <span className={`text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold ${positive ? 'text-[color:var(--color-primary)]' : 'text-text/50'}`}>
+                        {formatAmount(it.amount)}
+                      </span>
                     }
                   />
                 )
