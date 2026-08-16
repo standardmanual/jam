@@ -135,7 +135,8 @@ export function CollectionGridCard({
         </div>
         <span style={{
           fontSize: 'var(--text-caption)',
-          color: 'var(--color-text-secondary)',
+          color: 'var(--color-primary)',
+          fontWeight: 700,
           lineHeight: 1,
           fontVariantNumeric: 'tabular-nums',
           fontFamily: 'var(--font-family-base)',
