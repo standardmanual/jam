@@ -34,6 +34,9 @@ export function FollowButton({ targetUserId, initialFollowing }: { targetUserId:
       size="sm"
       onClick={toggle}
       className="shrink-0"
+      // ListRowCard(--color-surface-elevated) 위라 outline 기본 채움(라이트 전용 4% 블랙 틴트)이
+      // 안 보임 — 다크 카드에서도 항상 구분되는 그레이 토큰으로 오버라이드 (2026-08-17)
+      style={following ? { backgroundColor: 'var(--color-chip-gray)', color: 'var(--color-text)' } : undefined}
     >
       <span ref={labelRef} className="t-text-swap">{initialText}</span>
     </Button>
