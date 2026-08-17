@@ -391,22 +391,31 @@ export default function ProfileClient({
 
   // 통계바 = 슬라이딩 탭. 라벨은 "숫자 + 이름" 2줄 구성이라 ReactNode로 넘긴다.
   // 팔로워 수는 팔로우/언팔로우 즉시 바뀌므로 Number pop-in(02-number-pop-in.md)을 건다.
-  const statTabs: SlidingTabItem<TabKey>[] = TABS.map((tab) => ({
-    key: tab.key,
-    ariaLabel: tab.label,
-    label: (
-      <span className="flex flex-col items-center justify-center gap-1">
-        <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums text-[color:var(--color-primary)]">
-          {tab.key === 'followers' ? (
-            <PopInNumber value={statCounts.followers} />
-          ) : (
-            statCounts[tab.key]
-          )}
+  // 숫자 색은 활성 탭일 때 --tabs-text-active(흰색)로 바꿔야 한다 — 활성 pill 배경이
+  // --color-primary라 고정 색이면 활성 탭에서 글자가 배경에 묻혀 안 보임(2026-08-17 수정).
+  const statTabs: SlidingTabItem<TabKey>[] = TABS.map((tab) => {
+    const isActive = isTabView && activeTab === tab.key
+    return {
+      key: tab.key,
+      ariaLabel: tab.label,
+      label: (
+        <span className="flex flex-col items-center justify-center gap-1">
+          <span
+            className={`text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums ${
+              isActive ? 'text-[color:var(--tabs-text-active)]' : 'text-[color:var(--color-primary)]'
+            }`}
+          >
+            {tab.key === 'followers' ? (
+              <PopInNumber value={statCounts.followers} />
+            ) : (
+              statCounts[tab.key]
+            )}
+          </span>
+          <span className="text-[length:var(--text-caption)] leading-none font-bold opacity-70">{tab.label}</span>
         </span>
-        <span className="text-[length:var(--text-caption)] leading-none opacity-70">{tab.label}</span>
-      </span>
-    ),
-  }))
+      ),
+    }
+  })
 
   return (
     <div className="min-h-full bg-surface text-text">
