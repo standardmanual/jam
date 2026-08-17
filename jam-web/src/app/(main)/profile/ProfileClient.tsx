@@ -370,6 +370,9 @@ export default function ProfileClient({
                   variant={listFollowStates[u.id] ? 'outline' : 'primary'}
                   onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleListFollow(u.id) }}
                   className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
+                  // ListRowCard(--color-surface-elevated) 위라 outline 기본 채움(라이트 전용 4% 블랙 틴트)이
+                  // 안 보임 — 다크 카드에서도 항상 구분되는 그레이 토큰으로 오버라이드 (2026-08-17)
+                  style={listFollowStates[u.id] ? { backgroundColor: 'var(--color-chip-gray)', color: 'var(--color-text)' } : undefined}
                 >
                   {/* Text states swap (04-text-states-swap.md) */}
                   <SwapText value={listFollowStates[u.id] ? d.profile.followingButton : d.profile.followButton} />
