@@ -91,6 +91,10 @@
   --color-icon-inactive: #2a2a2a;     /* TabBar 비활성 아이콘 (흰 pill 위) */
   --color-overlay: rgba(0, 0, 0, 0.6);
   --color-border-light: rgba(255, 255, 255, 0.3); /* 다크 배경 위 아웃라인 버튼·보더 */
+  /* 다크 카드(예: ListRowCard의 --color-surface-elevated) 위에 놓여도 항상 구분되는
+     저강조 그레이 필 배경. 절대값이 아닌 흰색 오버레이라 부모 카드 톤이 뭐든 항상
+     밝게 도드라진다 (팔로우 버튼 등 outline 버튼 배경, 20260817). */
+  --color-chip-gray: rgba(255, 255, 255, 0.12);
 
   /* ── 배지 희귀도 ─────────────────────────────────────────── */
   --color-rarity-common: #6b6b6b;
