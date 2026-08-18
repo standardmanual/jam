@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight, valid_from, valid_until, point_reward } = body
+  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id } = body
 
   if (!name || !description || !type || !rarity || !image_url) {
     return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 })
@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
     valid_from: valid_from ?? null,
     valid_until: valid_until ?? null,
     point_reward: Math.max(0, Math.trunc(Number(point_reward) || 0)),
+    background_color: background_color ?? null,
+    background_shader_id: background_shader_id ?? null,
   }
   const badgesQuery = supabase.from('badges')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 BadgesRow와 일치
