@@ -102,6 +102,10 @@ export interface BadgeRow {
   /** 소프트 삭제 시각. NULL 아니면 신규 발급/드랍/노출 대상에서 제외 — 기존 보유자 이력은 유지됨 */
   deleted_at: string | null
   created_at: string
+  /** 배지 상세화면 배경 테마 컬러값 (20260818_002 선행 구조 — 아직 UI에서 미사용, no-op) */
+  background_color: string | null
+  /** 배지 상세화면 배경 쉐이더 식별자 (20260818_002 선행 구조 — 쉐이더 스택 미정, 아직 UI에서 미사용) */
+  background_shader_id: string | null
 }
 
 export interface UserActivityBadgeRow {

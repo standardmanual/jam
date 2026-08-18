@@ -95,6 +95,8 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | valid_from / valid_until | 노출 기간 |
 | point_reward | 발급 시 지급 포인트 |
 | deleted_at | 소프트 삭제 |
+| background_color | 배지 상세화면 배경 테마 컬러(nullable). NULL이면 기본 배경 유지. 어드민에서 이미지 업로드 시 평균 컬러 자동 프리필 + 수동 오버라이드 가능(20260818_003). TopNav·히어로카드·고정 배경 레이어에 실제 렌더링됨 |
+| background_shader_id | 배지 상세화면 배경 쉐이더 식별자(nullable). 어드민에 선택 UI는 있으나(20260818_003, placeholder 목록) **렌더링에는 미연결** — 값이 있어도 무시됨. 쉐이더 기술 스택(CSS vs WebGL) 확정 후 별도 티켓에서 연결 예정 |
 
 ### user_activity_badges
 활동/아이템 배지 발급 기록. 평생 1회(UNIQUE user_id+badge_id). POI/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.

@@ -9,7 +9,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight, valid_from, valid_until, point_reward } = body
+  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id } = body
 
   const cumulativeError = findCumulativeConditionError(type, condition_json ?? null)
   if (cumulativeError) {
@@ -37,6 +37,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       valid_from: valid_from ?? null,
       valid_until: valid_until ?? null,
       point_reward: Math.max(0, Math.trunc(Number(point_reward) || 0)),
+      background_color: background_color ?? null,
+      background_shader_id: background_shader_id ?? null,
     })
     .eq('id', id)
     .select()

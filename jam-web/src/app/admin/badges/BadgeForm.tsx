@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
 import ImageUploadField from '@/components/admin/ImageUploadField'
+import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
+
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
 
 /** "5:30" 같은 mm:ss 페이스 입력을 초(sec/km)로 변환. 형식이 어긋나면 null */
 function parsePaceToSec(input: string): number | null {
@@ -61,6 +64,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [pointReward, setPointReward] = useState<string>(
     badge?.point_reward?.toString() ?? '0'
   )
+  // 배경 테마 (20260818_003) — background_color: 배경색(피커+hex, 이미지 업로드 시 평균 컬러
+  // 자동 프리필). background_shader_id: 임시 선택 드롭다운(값만 저장, 상세화면 렌더링 미연결)
+  const [backgroundColor, setBackgroundColor] = useState<string>(badge?.background_color ?? '')
+  const [backgroundShaderId, setBackgroundShaderId] = useState<string>(badge?.background_shader_id ?? '')
 
   // condition_json builder state
   const initCond = (badge?.condition_json as BadgeCondition) ?? EMPTY_CONDITION
@@ -253,11 +260,24 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     e.preventDefault()
     setError(null)
 
+    // 이미지는 파일 업로드로만 등록하므로(20260818_002) 브라우저 기본 required 검증이 적용되지
+    // 않는다 — 여기서 직접 확인한다.
+    if (!imageUrl) {
+      setError('배지 이미지를 업로드해주세요. 파일 선택 버튼으로 이미지를 등록할 수 있어요.')
+      return
+    }
+
     // POI 배지는 활동 조건을 쓰지 않는다 — 조건 빌더 값이 남아 있어도 무시
     const conditionJson = type === 'poi' ? null : buildConditionJson()
     const condError = validateCondition(conditionJson)
     if (condError) {
       setError(condError)
+      return
+    }
+
+    const trimmedBackgroundColor = backgroundColor.trim()
+    if (trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
+      setError('배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해주세요.')
       return
     }
 
@@ -279,6 +299,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       valid_from: validFrom ? new Date(validFrom).toISOString() : null,
       valid_until: validUntil ? new Date(validUntil).toISOString() : null,
       point_reward: Math.max(0, parseInt(pointReward, 10) || 0),
+      background_color: trimmedBackgroundColor || null,
+      background_shader_id: backgroundShaderId || null,
     }
 
     try {
@@ -471,10 +493,65 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           <ImageUploadField
             value={imageUrl}
             onChange={setImageUrl}
+            onAverageColor={(color) => { if (color) setBackgroundColor(color) }}
             folder="badges"
             required
-            label="이미지 URL"
+            label="배지 이미지"
+            allowManualUrl={false}
           />
+        </div>
+
+        {/* 배경색 (20260818_003) — 이미지 업로드 시 평균 컬러로 자동 프리필, 수동 오버라이드 가능 */}
+        <div className="col-span-2 flex flex-col gap-1.5">
+          <span className="text-sm text-[#374151]">배경색</span>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={HEX_COLOR_PATTERN.test(backgroundColor) ? backgroundColor : '#1a1a1a'}
+              onChange={(e) => setBackgroundColor(e.target.value)}
+              aria-label="배경색 색상 피커"
+              className="w-11 h-11 shrink-0 rounded-xl border border-[#e5e7eb] bg-white p-1 cursor-pointer"
+            />
+            <div
+              aria-hidden="true"
+              className="w-11 h-11 shrink-0 rounded-xl border border-dashed border-[#e5e7eb]"
+              style={{ backgroundColor: backgroundColor || 'transparent' }}
+            />
+            <input
+              type="text"
+              value={backgroundColor}
+              onChange={(e) => setBackgroundColor(e.target.value)}
+              className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-sm font-mono"
+              placeholder="#1a1a1a (미지정 시 기본 배경 유지)"
+            />
+            {backgroundColor && (
+              <button
+                type="button"
+                onClick={() => setBackgroundColor('')}
+                className="shrink-0 text-xs text-[#898989] hover:text-[#374151] px-2 py-2.5"
+              >
+                지우기
+              </button>
+            )}
+          </div>
+          <span className="text-xs text-[#898989]">
+            배지 이미지를 업로드하면 평균 색상이 자동으로 채워져요. 색상 피커나 직접 입력으로 바꿀 수 있고, 비워두면 기본 배경을 사용해요.
+          </span>
+        </div>
+
+        {/* 배경 쉐이더 임시 선택 (20260818_003) — 값만 저장, 상세화면 렌더링 미연결 */}
+        <div className="col-span-2 flex flex-col gap-1.5">
+          <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
+          <select
+            value={backgroundShaderId}
+            onChange={(e) => setBackgroundShaderId(e.target.value)}
+            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 max-w-xs"
+          >
+            {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value} className="bg-white">{opt.label}</option>
+            ))}
+          </select>
+          <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
         </div>
       </div>
 
