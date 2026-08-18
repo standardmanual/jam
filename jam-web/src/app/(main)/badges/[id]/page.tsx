@@ -4,7 +4,6 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ActivityType, BadgeCondition, BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
-import Footer from '@/components/ui/Footer'
 import ListRowCard from '@/components/ui/ListRowCard'
 import { BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import Link from 'next/link'
@@ -233,6 +232,18 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // 향후 배경테마 기능이 이 값을 채우면 TopNav에도 자동 반영되도록 주입 지점만 미리 마련한다.
   const topNavStyle: React.CSSProperties = { background: 'var(--color-surface)', ...getBadgeBackgroundStyle(badgeRow) }
 
+  // 뷰포트 전체(헤더 아래~본문~푸터)를 덮는 고정 배경 레이어 — [20260818_002 스코프 수정]
+  // (main)/layout.tsx의 main(비-positioned, bg-surface 불투명)보다 위, TopNav(sticky, z-30)보다는
+  // 아래 z-index로 배치해 배경이 자동으로 비쳐 보이게 한다. TopNav headerStyle과 동일한
+  // getBadgeBackgroundStyle(badgeRow) 값을 공급받아 두 지점이 항상 같은 값을 쓰도록 배선한다.
+  // 지금은 no-op(빈 스타일)이라 렌더링 결과는 기존과 동일하다.
+  const badgeBackgroundLayer = (
+    <div
+      aria-hidden="true"
+      style={{ position: 'fixed', inset: 0, zIndex: 0, ...getBadgeBackgroundStyle(badgeRow) }}
+    />
+  )
+
   // Phase 16: poi 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
   let poiEarns: (UserPoiBadgeEarnRow & { poi: PoiRow | null })[] = []
   if (badgeRow.type === 'poi') {
@@ -349,6 +360,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
     return (
       <div className="min-h-full bg-surface text-text">
+        {badgeBackgroundLayer}
         <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
@@ -406,8 +418,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             )}
           </div>
         )}
-
-        <Footer />
       </div>
     )
   }
@@ -416,6 +426,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   if (badgeRow.type === 'poi') {
     return (
       <div className="min-h-full bg-surface text-text">
+        {badgeBackgroundLayer}
         <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
@@ -461,8 +472,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             {t(d.badges.poiSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
           </p>
         </div>
-
-        <Footer />
       </div>
     )
   }
@@ -470,6 +479,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
     <div className="min-h-full bg-surface text-text">
+      {badgeBackgroundLayer}
       <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
 
       <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
@@ -577,8 +587,6 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </div>
         )}
       </div>
-
-      <Footer />
     </div>
   )
 }
