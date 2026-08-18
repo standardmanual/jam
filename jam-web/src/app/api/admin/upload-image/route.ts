@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { computeAverageColorHex } from '@/lib/imageAverageColor'
 
 const BUCKET = 'images'
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
@@ -25,6 +26,12 @@ export async function POST(req: NextRequest) {
   const ext = file.name.split('.').pop() ?? 'bin'
   const filename = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
 
+  // 평균 컬러 추출(20260818_003, 배지 배경색 자동 프리필용) — 계산 실패해도 업로드 자체는
+  // 계속 진행한다. file.arrayBuffer()는 Blob을 소비하지 않으므로 이후 upload에도 file을
+  // 그대로 사용할 수 있다.
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const averageColor = await computeAverageColorHex(buffer)
+
   const supabase = createServiceClient()
   const { error } = await supabase.storage
     .from(BUCKET)
@@ -35,5 +42,5 @@ export async function POST(req: NextRequest) {
   }
 
   const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(filename)
-  return NextResponse.json({ url: publicUrl })
+  return NextResponse.json({ url: publicUrl, averageColor })
 }
