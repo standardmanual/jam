@@ -253,6 +253,13 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     e.preventDefault()
     setError(null)
 
+    // 이미지는 파일 업로드로만 등록하므로(20260818_002) 브라우저 기본 required 검증이 적용되지
+    // 않는다 — 여기서 직접 확인한다.
+    if (!imageUrl) {
+      setError('배지 이미지를 업로드해주세요. 파일 선택 버튼으로 이미지를 등록할 수 있어요.')
+      return
+    }
+
     // POI 배지는 활동 조건을 쓰지 않는다 — 조건 빌더 값이 남아 있어도 무시
     const conditionJson = type === 'poi' ? null : buildConditionJson()
     const condError = validateCondition(conditionJson)
@@ -473,7 +480,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             onChange={setImageUrl}
             folder="badges"
             required
-            label="이미지 URL"
+            label="배지 이미지"
+            allowManualUrl={false}
           />
         </div>
       </div>
