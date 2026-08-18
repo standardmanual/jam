@@ -78,7 +78,7 @@
 | description | 텍스트 에어리어 | O |
 | type | 드롭다운 (activity / item) | O |
 | rarity | 드롭다운 (common / rare / legend / mythic) | O |
-| image_url | URL 입력 | O |
+| image_url | 파일 업로드 (Supabase Storage 저장, URL 직접 입력 불가) | O |
 | activity_types | 복수 체크박스 (cycling / running / hiking / walking) | O |
 | patch_available | 토글 | O |
 | patch_price_krw | 숫자 입력 (patch_available=true 시 활성) | X |
@@ -285,7 +285,6 @@ Response: {
 ## 8. 안 만드는 것
 
 - **실시간 대시보드** (DAU, MAU 통계) — 별도 분석 도구(Amplitude 등)로 대체
-- **이미지 업로드** — 배지 이미지는 외부 URL 입력. Supabase Storage 업로드는 미포함
 - **배지 일괄 CSV 업로드** — 초기에는 폼 등록으로 충분
 - **알림 발송** — 어드민에서 푸시·이메일 직접 발송 기능 미포함
 
@@ -295,4 +294,3 @@ Response: {
 
 - [ ] ADMIN_EMAILS 목록에 들어갈 이메일 주소 확인 필요
 - [ ] 시뮬레이터 Apply 모드 실행 시 "실제 유저에게 배지 발급됨" 경고 확인 UX 필요 여부
-- [ ] 배지 이미지 URL — 현재 외부 URL 입력 방식으로 충분한지, 또는 Supabase Storage 업로드 추가할지
