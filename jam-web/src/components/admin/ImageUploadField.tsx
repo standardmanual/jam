@@ -8,6 +8,12 @@ interface ImageUploadFieldProps {
   folder?: string
   required?: boolean
   label?: string
+  /**
+   * URL 직접 입력란 노출 여부. 기본 true.
+   * false면 파일 업로드로만 이미지를 등록한다 (20260818_002 — 배지 이미지 Storage 이전).
+   * 기존에 외부 URL로 등록된 값은 미리보기에 그대로 표시된다.
+   */
+  allowManualUrl?: boolean
 }
 
 export default function ImageUploadField({
@@ -16,6 +22,7 @@ export default function ImageUploadField({
   folder = 'misc',
   required = false,
   label = '이미지',
+  allowManualUrl = true,
 }: ImageUploadFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -67,24 +74,29 @@ export default function ImageUploadField({
           )}
         </div>
 
-        {/* URL 직접 입력 */}
-        <input
-          type="url"
-          required={required}
-          value={value}
-          onChange={(e) => { setUploadError(null); onChange(e.target.value) }}
-          className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-sm"
-          placeholder="https://... 또는 /badges/001.png"
-        />
+        {/* URL 직접 입력 — allowManualUrl이 false면 파일 업로드로만 등록 (20260818_002) */}
+        {allowManualUrl && (
+          <input
+            type="url"
+            required={required}
+            value={value}
+            onChange={(e) => { setUploadError(null); onChange(e.target.value) }}
+            className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-sm"
+            placeholder="https://... 또는 /badges/001.png"
+          />
+        )}
 
         {/* 파일 선택 버튼 */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="shrink-0 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-sm text-[#374151] hover:bg-[#f3f4f6] disabled:opacity-50 transition-colors whitespace-nowrap"
+          className={[
+            'shrink-0 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-sm text-[#374151] hover:bg-[#f3f4f6] disabled:opacity-50 transition-colors whitespace-nowrap',
+            allowManualUrl ? '' : 'flex-1',
+          ].join(' ')}
         >
-          {uploading ? '업로드 중...' : '파일 선택'}
+          {uploading ? '업로드 중...' : value ? '다른 파일로 교체' : '파일 선택'}
         </button>
 
         <input

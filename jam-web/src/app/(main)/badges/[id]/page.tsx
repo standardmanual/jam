@@ -2,19 +2,21 @@ import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ActivityType, BadgeCondition, BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
-import RarityBadge from '@/components/ui/Badge'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
+import Footer from '@/components/ui/Footer'
 import ListRowCard from '@/components/ui/ListRowCard'
-import { MedalIcon, BookIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import Link from 'next/link'
 import PoiMapButton from './PoiMapButton'
 import PoiEarnHistory from './PoiEarnHistory'
 import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
 import ItemEarnHistory from './ItemEarnHistory'
+import BadgeHeroSection from './BadgeHeroSection'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
+import { getBadgeBackgroundStyle } from '@/lib/badgeBackgroundTheme'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
@@ -227,6 +229,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   const badgeRow = badge as BadgeRow
   const earned = earnedRow as (UserActivityBadgeRow & { poi: PoiRow | null }) | null
 
+  // 배경 테마 프리미티브 — 현재는 no-op(항상 빈 스타일)이라 아래 headerStyle은 기존과 동일하게 유지된다.
+  // 향후 배경테마 기능이 이 값을 채우면 TopNav에도 자동 반영되도록 주입 지점만 미리 마련한다.
+  const topNavStyle: React.CSSProperties = { background: 'var(--color-surface)', ...getBadgeBackgroundStyle(badgeRow) }
+
   // Phase 16: poi 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
   let poiEarns: (UserPoiBadgeEarnRow & { poi: PoiRow | null })[] = []
   if (badgeRow.type === 'poi') {
@@ -343,35 +349,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
     return (
       <div className="min-h-full bg-surface text-text">
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={{ background: 'var(--color-surface)' }} />
+        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
 
-        {/* hero-section */}
-        <div className="px-6 pt-[40px] pb-[32px]">
-          <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6">
-            <div className="flex-1 flex items-center justify-center">
-              {badgeRow.image_url ? (
-                <div className="w-[200px] h-[200px] flex items-center justify-center">
-                  <Image
-                    src={badgeRow.image_url}
-                    alt={badgeRow.name}
-                    width={200}
-                    height={200}
-                    className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
-                  />
-                </div>
-              ) : (
-                <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
-              )}
-            </div>
-            <div className="flex flex-col items-center gap-2 pt-4">
-              <RarityBadge rarity={badgeRow.rarity} />
-              <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badgeRow.name}</h1>
-            </div>
-          </div>
-          {badgeRow.description && (
-            <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badgeRow.description}</p>
-          )}
-        </div>
+        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
         {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링 */}
         {(isOwnBadge || !hasEarned) && (
@@ -426,6 +406,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             )}
           </div>
         )}
+
+        <Footer />
       </div>
     )
   }
@@ -434,35 +416,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   if (badgeRow.type === 'poi') {
     return (
       <div className="min-h-full bg-surface text-text">
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={{ background: 'var(--color-surface)' }} />
+        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
 
-        {/* hero-section */}
-        <div className="px-6 pt-[40px] pb-[32px]">
-          <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6">
-            <div className="flex-1 flex items-center justify-center">
-              {badgeRow.image_url ? (
-                <div className="w-[200px] h-[200px] flex items-center justify-center">
-                  <Image
-                    src={badgeRow.image_url}
-                    alt={badgeRow.name}
-                    width={200}
-                    height={200}
-                    className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
-                  />
-                </div>
-              ) : (
-                <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
-              )}
-            </div>
-            <div className="flex flex-col items-center gap-2 pt-4">
-              <RarityBadge rarity={badgeRow.rarity} />
-              <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badgeRow.name}</h1>
-            </div>
-          </div>
-          {badgeRow.description && (
-            <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badgeRow.description}</p>
-          )}
-        </div>
+        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
         {/* info-section */}
         <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
@@ -505,6 +461,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             {t(d.badges.poiSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
           </p>
         </div>
+
+        <Footer />
       </div>
     )
   }
@@ -512,35 +470,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={{ background: 'var(--color-surface)' }} />
+      <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
 
-      {/* hero-section */}
-      <div className="px-6 pt-[40px] pb-[32px]">
-        <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6">
-          <div className="flex-1 flex items-center justify-center">
-            {badgeRow.image_url ? (
-              <div className="w-[200px] h-[200px] flex items-center justify-center">
-                <Image
-                  src={badgeRow.image_url}
-                  alt={badgeRow.name}
-                  width={200}
-                  height={200}
-                  className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
-                />
-              </div>
-            ) : (
-              <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
-            )}
-          </div>
-          <div className="flex flex-col items-center gap-2 pt-4">
-            <RarityBadge rarity={badgeRow.rarity} />
-            <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badgeRow.name}</h1>
-          </div>
-        </div>
-        {badgeRow.description && (
-          <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badgeRow.description}</p>
-        )}
-      </div>
+      <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
       {/* info-section */}
       <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
@@ -645,6 +577,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
   )
 }
