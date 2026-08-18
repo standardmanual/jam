@@ -122,10 +122,14 @@ export default function ItemBookForm({
     }
   }
 
+  // 배경색·쉐이더가 둘 다 비어있으면 일괄 적용 시 하위 배지의 기존 커스터마이징을
+  // 전부 빈 값으로 덮어쓰게 되므로 버튼을 비활성화한다.
+  const hasBackgroundValue = backgroundColor.trim() !== '' || backgroundShaderId !== ''
+
   // 저장된 컬렉션에서만 가능 — 클릭 시 폼의 현재 값을 먼저 저장해(항상 최신 값 기준으로 적용)
   // 실제 하위 배지 수를 조회한 뒤 확인 다이얼로그를 띄운다.
   const handleBulkApplyClick = async () => {
-    if (!isEdit) return
+    if (!isEdit || !hasBackgroundValue) return
     setError(null)
 
     const validationError = validate()
@@ -338,15 +342,17 @@ export default function ItemBookForm({
           <button
             type="button"
             onClick={handleBulkApplyClick}
-            disabled={!isEdit || bulkApplyLoading || loading}
+            disabled={!isEdit || !hasBackgroundValue || bulkApplyLoading || loading}
             className="bg-white border border-[#e5e7eb] text-[#374151] text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-[#f8f9fa] disabled:opacity-50 transition-colors"
           >
             {bulkApplyLoading ? '처리 중...' : '하위 배지에 일괄 적용'}
           </button>
           <p className="text-xs text-[#898989] mt-2">
-            {isEdit
-              ? '버튼을 누르면 지금 이 값이 먼저 저장되고, 이 컬렉션에 속한 배지들에 즉시 복사돼요. 이후 컬렉션 색상을 바꿔도 이미 적용된 배지에는 자동 반영되지 않아요. 다시 이 버튼을 눌러야 해요.'
-              : '컬렉션을 먼저 등록해야 하위 배지에 일괄 적용할 수 있어요.'}
+            {!isEdit
+              ? '컬렉션을 먼저 등록해야 하위 배지에 일괄 적용할 수 있어요.'
+              : !hasBackgroundValue
+                ? '배경색 또는 쉐이더를 먼저 지정해야 일괄 적용할 수 있어요.'
+                : '버튼을 누르면 지금 이 값이 먼저 저장되고, 이 컬렉션에 속한 배지들에 즉시 복사돼요. 이후 컬렉션 색상을 바꿔도 이미 적용된 배지에는 자동 반영되지 않아요. 다시 이 버튼을 눌러야 해요.'}
           </p>
         </div>
       </div>
