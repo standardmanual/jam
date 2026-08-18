@@ -212,6 +212,9 @@ export interface ItemBookRow {
   is_active: boolean
   drop_condition_json: Record<string, unknown> | null
   created_at: string
+  /** 20260818_004 — "하위 배지에 일괄 적용" 원본 값. 컬렉션 자체에는 렌더링되지 않는다. */
+  background_color: string | null
+  background_shader_id: string | null
 }
 
 export interface PoiRow {
@@ -410,6 +413,9 @@ export interface FactionRow {
   sort_order: number
   drop_condition_json: Record<string, unknown> | null
   created_at: string
+  /** 20260818_004 — "하위 배지에 일괄 적용" 원본 값. 세계관 자체에는 렌더링되지 않는다. */
+  background_color: string | null
+  background_shader_id: string | null
 }
 
 export interface FactionAdjacencyRow {

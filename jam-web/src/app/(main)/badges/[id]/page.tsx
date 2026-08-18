@@ -238,10 +238,25 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // getBadgeBackgroundStyle(badgeRow) 값을 공급받아 두 지점이 항상 같은 값을 쓰도록 배선한다.
   // pointerEvents: 'none' — 순수 시각 배경 레이어이므로 클릭/탭 이벤트를 가로채지 않고 아래
   // 콘텐츠(링크·버튼)로 그대로 통과시킨다. (게이트 리뷰에서 발견된 클릭 차단 회귀 수정)
+  // [20260818_004 버그 수정] inset:0은 뷰포트 전체 폭을 덮어 (main)/layout.tsx의
+  // max-w-[430px] mx-auto 앱 컬럼(TopNav와 동일 폭) 바깥(데스크톱 검은 여백)까지 배경색이
+  // 새어나갔다. left:50% + translateX(-50%) + maxWidth:430px로 앱 컬럼과 동일한 폭·중앙정렬로
+  // 제한하되, fixed 특성(스크롤에 안 끌려감)은 그대로 유지한다.
   const badgeBackgroundLayer = (
     <div
       aria-hidden="true"
-      style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', ...getBadgeBackgroundStyle(badgeRow) }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        bottom: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: '430px',
+        zIndex: 0,
+        pointerEvents: 'none',
+        ...getBadgeBackgroundStyle(badgeRow),
+      }}
     />
   )
 
