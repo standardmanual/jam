@@ -237,10 +237,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // 아래 z-index로 배치해 배경이 자동으로 비쳐 보이게 한다. TopNav headerStyle과 동일한
   // getBadgeBackgroundStyle(badgeRow) 값을 공급받아 두 지점이 항상 같은 값을 쓰도록 배선한다.
   // 지금은 no-op(빈 스타일)이라 렌더링 결과는 기존과 동일하다.
+  // pointerEvents: 'none' — 순수 시각 배경 레이어이므로 클릭/탭 이벤트를 가로채지 않고 아래
+  // 콘텐츠(링크·버튼)로 그대로 통과시킨다. (게이트 리뷰에서 발견된 클릭 차단 회귀 수정)
   const badgeBackgroundLayer = (
     <div
       aria-hidden="true"
-      style={{ position: 'fixed', inset: 0, zIndex: 0, ...getBadgeBackgroundStyle(badgeRow) }}
+      style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', ...getBadgeBackgroundStyle(badgeRow) }}
     />
   )
 
