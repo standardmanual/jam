@@ -14,6 +14,11 @@ interface ImageUploadFieldProps {
    * 기존에 외부 URL로 등록된 값은 미리보기에 그대로 표시된다.
    */
   allowManualUrl?: boolean
+  /**
+   * 업로드 성공 시 서버가 계산한 평균 컬러(hex, 실패 시 null)를 전달받는 콜백.
+   * (20260818_003 — 배지 배경색 자동 프리필용) 지정하지 않으면 아무 동작도 하지 않는다.
+   */
+  onAverageColor?: (color: string | null) => void
 }
 
 export default function ImageUploadField({
@@ -23,6 +28,7 @@ export default function ImageUploadField({
   required = false,
   label = '이미지',
   allowManualUrl = true,
+  onAverageColor,
 }: ImageUploadFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -44,6 +50,7 @@ export default function ImageUploadField({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '업로드 실패')
       onChange(data.url)
+      onAverageColor?.(data.averageColor ?? null)
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : '업로드 중 오류가 발생했습니다.')
     } finally {

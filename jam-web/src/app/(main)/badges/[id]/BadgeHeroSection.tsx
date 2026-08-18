@@ -20,7 +20,11 @@ export default function BadgeHeroSection({ badge, hasEarned }: BadgeHeroSectionP
   const backgroundStyle = getBadgeBackgroundStyle(badge)
 
   return (
-    <div className="px-6 pt-[40px] pb-[32px]">
+    // relative z-10 — 배지 상세화면의 고정 배경 레이어(z-index:0, 20260818_002/003)보다 항상
+    // 위에서 그려지도록 승격. 승격하지 않으면 non-positioned 콘텐츠가 positioned 배경 레이어보다
+    // 페인트 순서상 아래로 가려진다([20260818_002] 잔여 이슈, [20260818_003]에서 실색상 적용과
+    // 함께 수정).
+    <div className="relative z-10 px-6 pt-[40px] pb-[32px]">
       <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6" style={backgroundStyle}>
         <div className="flex-1 flex items-center justify-center">
           {badge.image_url ? (
