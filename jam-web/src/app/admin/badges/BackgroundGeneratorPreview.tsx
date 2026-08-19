@@ -14,13 +14,16 @@ import {
   type FilterId,
   type Mode,
 } from '@/app/spike/background-generator/types'
-import BadgeHeroSection from '@/app/(main)/badges/[id]/BadgeHeroSection'
 import { getBadgeBackgroundStyle } from '@/lib/badgeBackgroundTheme'
 import BackgroundColorField from '@/components/admin/BackgroundColorField'
+import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
 import { bakePreviewToBlob } from './bakePreviewToBlob'
 import type { BadgeRarity } from '@/types/database'
 
 export type BackgroundMode = 'color' | 'generator'
+
+/** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
+const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
 
 /** 제너레이터의 이미지 입력 소스 — 새로 업로드하거나 이미 등록된 배지 이미지를 재사용 (20260819_008) */
 type ImageSource = 'upload' | 'existing'
@@ -184,8 +187,26 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
       background_image_url: null,
     })
 
+    // 제너레이터 모드에서 배경 레이어에 실제로 그려질 노드 (20260819_011)
+    const savedBackgroundVisible = mode === 'generator' && !image && Boolean(initialBackgroundImageUrl)
+    const liveNode: ReactNode =
+      mode !== 'generator'
+        ? null
+        : filterSource
+          ? previewNode
+          : savedBackgroundVisible
+            ? // eslint-disable-next-line @next/next/no-img-element
+              <img src={initialBackgroundImageUrl ?? ''} alt="저장된 배경" />
+            : null
+
+    // 배경 레이어에 실제로 무언가 그려지는 상태인지 — 실제 화면에서 배경이 있는 배지와 동일하게
+    // TopNav·Hero 카드를 투명 처리할지 결정한다. 아무것도 없으면 배경 없는 배지와 똑같이 보인다.
+    const themed = mode === 'color' ? Boolean(backgroundColor) : Boolean(filterSource) || savedBackgroundVisible
+
+    // 2단 배치에서 설정 영역이 눌리지 않도록, 넓은 화면(xl↑)에서는 이 섹션만 폼 기본 폭
+    // (max-w-2xl)을 넘어 어드민 본문 가용 폭까지 넓힌다(사이드바 16rem + 여백 감안).
     return (
-      <div className="border border-dashed border-[#9333ea]/40 rounded-2xl p-5 space-y-5 bg-[#fdf4ff]">
+      <div className="border border-dashed border-[#9333ea]/40 rounded-2xl p-5 space-y-5 bg-[#fdf4ff] xl:w-[calc(100vw-22rem)] xl:max-w-[1040px]">
         <div className="flex flex-col gap-1">
           <p className="text-xs font-semibold text-[#9333ea]">배경 테마</p>
           <p className="text-xs text-[#6b7280]">
@@ -194,6 +215,10 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
           </p>
         </div>
 
+        {/* PC는 좌측 설정 / 우측 미리보기 2단, 모바일은 위 미리보기 / 아래 설정 (20260819_011) —
+            DOM 순서는 [설정, 미리보기]로 두고 모바일에서만 flex-col-reverse로 뒤집는다. */}
+        <div className="flex flex-col-reverse gap-5 xl:flex-row xl:items-start">
+          <div className="flex-1 min-w-0 space-y-5">
         {/* 단색/제너레이터 배타 선택 (20260819_008) */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-4">
@@ -223,25 +248,6 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
             배경값은 지워져요.
           </p>
         </div>
-
-        {/* 실제 배지 배경 레이어 + hero 구조를 재사용한 라이브 미리보기 */}
-        <div className="relative mx-auto w-full max-w-[430px] rounded-2xl overflow-hidden border border-[#e5e7eb]">
-          <div aria-hidden="true" className="absolute inset-0" style={backgroundLayerStyle} ref={previewLayerRef}>
-            {mode === 'generator' && (previewNode ?? (!image && initialBackgroundImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={initialBackgroundImageUrl} alt="저장된 배경" className="w-full h-full object-cover" />
-            ) : null))}
-          </div>
-          <div className="relative z-10">
-            <BadgeHeroSection badge={previewBadge} hasEarned />
-          </div>
-        </div>
-        {mode === 'generator' && !image && initialBackgroundImageUrl && (
-          <p className="text-xs text-[#9ca3af] -mt-3">
-            이미 저장된 배경 이미지예요. 원본 설정은 다시 불러올 수 없어요 — 아래에서 이미지를 새로
-            고르면 지금 보이는 배경이 교체돼요.
-          </p>
-        )}
 
         {mode === 'color' ? (
           <BackgroundColorField
@@ -367,6 +373,29 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
             )}
           </>
         )}
+          </div>
+
+          {/* 실제 배지 상세화면과 동일한 구조(TopNav → Hero → 본문 → Footer) 미리보기 */}
+          <div className="xl:shrink-0 overflow-x-auto">
+            <BadgeDetailPreviewFrame
+              badge={previewBadge}
+              themed={themed}
+              backgroundLayerStyle={backgroundLayerStyle}
+              backgroundLayerRef={previewLayerRef}
+              liveNode={liveNode}
+              conditionText={PREVIEW_CONDITION_TEXT}
+            />
+            <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
+              실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
+            </p>
+            {savedBackgroundVisible && (
+              <p className="text-xs text-[#9ca3af] mt-1 max-w-[430px]">
+                이미 저장된 배경 이미지예요. 원본 설정은 다시 불러올 수 없어요 — 이미지를 새로 고르면
+                지금 보이는 배경이 교체돼요.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
