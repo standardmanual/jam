@@ -106,7 +106,6 @@ export default function BackgroundGeneratorSpikePage() {
                   image={image}
                   params={patternParams}
                   onChange={setPatternParams}
-                  previewSize={PREVIEW_SIZE}
                   onFlattenedChange={setFilterSource}
                 />
               ) : (
