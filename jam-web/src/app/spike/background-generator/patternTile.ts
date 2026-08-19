@@ -32,19 +32,18 @@ export function buildTileCanvas(
   const ctx = canvas.getContext('2d')
   if (!ctx || image.naturalWidth === 0) return canvas
 
-  // 열 사이 간격(colGap)은 셀 가로폭을, 행 사이 간격(rowGap)은 셀 세로폭을 줄여 여백을 만든다
+  // 열 사이 간격(colGap)은 셀 가로폭을, 행 사이 간격(rowGap)은 셀 세로폭을 줄여 여백을 만든다.
+  // 주의: drawW는 오직 cellW(→ colGap)에서만, drawH는 오직 cellH(→ rowGap)에서만 파생돼야 두 슬라이더가
+  // 서로 독립적으로 동작한다. 과거에는 image.naturalWidth/naturalHeight 비율을 유지하며 cellW/cellH
+  // 박스에 맞춰 넣는(letterbox fit) 방식을 썼는데, 그 경우 두 축 중 더 좁은 쪽(min)이 실제 그려지는
+  // 크기를 "동시에" 결정해버려 — 예를 들어 rowGap만 늘려도 cellH가 좁아지며 세로 축이 fit을 제한하게
+  // 되면 그 비율을 유지하기 위해 drawW까지 함께 줄어들었다(20260819_004에서 발견한 버그의 원인).
+  // 두 슬라이더 독립성을 보장하기 위해 종횡비를 보존하지 않고 각 축을 셀 크기에 그대로 맞춘다.
   const cellW = Math.max(1, tilePitchX - colGap)
   const cellH = Math.max(1, tilePitchY - rowGap)
-  const aspect = image.naturalWidth / image.naturalHeight
 
-  let drawW = cellW
-  let drawH = cellW / aspect
-  if (drawH > cellH) {
-    drawH = cellH
-    drawW = cellH * aspect
-  }
-  drawW *= imageScale
-  drawH *= imageScale
+  const drawW = cellW * imageScale
+  const drawH = cellH * imageScale
 
   const drawCell = (centerX: number, centerY: number, flipX: boolean, flipY: boolean) => {
     ctx.save()
