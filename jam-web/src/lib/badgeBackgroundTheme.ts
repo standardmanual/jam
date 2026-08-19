@@ -1,14 +1,25 @@
 import type { CSSProperties } from 'react'
-import type { BadgeRow } from '@/types/database'
 
 /**
- * 배경 테마 계산에 필요한 배지 필드만 — 상세화면·획득 알림 모달 등 호출부는 이 최소 shape만
- * 맞추면 된다. `background_video_url`(20260819_012)은 optional이라 영상을 다루지 않는 기존
- * 호출부(어드민 미리보기 등)는 그대로 둬도 된다.
+ * 배경 테마 계산에 필요한 최소 필드 shape — 구조적 타입이라 이 4개 필드 이름만 맞으면 어떤 row든
+ * (배지·컬렉션·세계관 등) 그대로 재사용할 수 있다. 특정 엔티티(`BadgeRow` 등)에서 `Pick`하지
+ * 않는 이유는, `Pick`으로 만들면 타입이 그 엔티티에 종속된 것처럼 보여 호출부가 늘어날수록
+ * 이름과 실제 쓰임(범용)이 어긋나기 때문이다 (20260819_014 — `item_books`도 이 계산기를
+ * 재사용하며 일반화).
+ *
+ * `background_video_url`(20260819_012)은 optional이라 영상을 다루지 않는 기존 호출부(어드민
+ * 미리보기 등)는 그대로 둬도 된다.
  */
-export type BadgeBackgroundThemeSource =
-  Pick<BadgeRow, 'background_color' | 'background_shader_id' | 'background_image_url'> &
-  Partial<Pick<BadgeRow, 'background_video_url'>>
+export interface BackgroundThemeSource {
+  background_color: string | null
+  background_shader_id: string | null
+  background_image_url: string | null
+  background_video_url?: string | null
+}
+
+/** @deprecated `BackgroundThemeSource`를 쓴다. badge 전용이 아닌 범용 이름으로 정리(20260819_014).
+ *  기존 호출부 회귀를 막기 위해 별칭으로 유지한다. */
+export type BadgeBackgroundThemeSource = BackgroundThemeSource
 
 /**
  * 배지 상세화면과 향후 획득 알림 중앙 모달이 공유하는 배경 테마 스타일 계산기.
@@ -23,7 +34,7 @@ export type BadgeBackgroundThemeSource =
  *   항목)이라 이번 범위에서는 값이 있어도 항상 무시한다 — 어드민에서 선택·저장은 되지만
  *   렌더링에는 관여하지 않는다. 스택이 확정되면 이 함수 내부만 확장하면 된다(호출부 변경 불필요).
  */
-export function getBadgeBackgroundStyle(badge: BadgeBackgroundThemeSource): CSSProperties {
+export function getBadgeBackgroundStyle(badge: BackgroundThemeSource): CSSProperties {
   if (badge.background_image_url) {
     // [20260819_011] 이 스타일은 이제 앱 컬럼 폭(430px) 고정 배경 레이어 "한 곳"에만 적용된다.
     // 저장된 이미지는 SERVICE_WIDTH(430px) 기준으로 구운 정사각형이고, 적용 대상 레이어는
@@ -55,7 +66,7 @@ export function getBadgeBackgroundStyle(badge: BadgeBackgroundThemeSource): CSSP
  * background_image_url이 항상 함께 채워지므로 실무상 판정 결과가 달라지지는 않지만, 방어적으로
  * 영상만 남은 데이터에서도 투명 처리가 유지되도록 한다.
  */
-export function hasBadgeBackgroundTheme(badge: BadgeBackgroundThemeSource): boolean {
+export function hasBadgeBackgroundTheme(badge: BackgroundThemeSource): boolean {
   return Boolean(badge.background_image_url || badge.background_video_url || badge.background_color)
 }
 
@@ -71,7 +82,7 @@ export function hasBadgeBackgroundTheme(badge: BadgeBackgroundThemeSource): bool
  * 로드 실패 폴백, `prefers-reduced-motion: reduce`(영상만 CSS로 숨김), 영상 높이(3타일)를
  * 넘어서는 초장신 뷰포트까지 모두 정지 이미지가 받아준다.
  */
-export function getBadgeBackgroundVideoUrl(badge: BadgeBackgroundThemeSource): string | null {
+export function getBadgeBackgroundVideoUrl(badge: BackgroundThemeSource): string | null {
   return badge.background_video_url ?? null
 }
 
