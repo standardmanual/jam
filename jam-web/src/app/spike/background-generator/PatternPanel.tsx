@@ -68,11 +68,17 @@ export default function PatternPanel({ image, params, onChange, previewSize, onF
         </label>
 
         <label className={rowClass}>
-          오프셋 (행 간격 / 열 간격)
+          오프셋 — 행 사이 간격
           <span className="flex items-center gap-2 flex-1">
             <input type="range" min={0} max={60} step={1} value={params.rowGap} className={rangeClass}
               onChange={(e) => update({ rowGap: +e.target.value })} />
             <span className={numClass}>{params.rowGap}</span>
+          </span>
+        </label>
+
+        <label className={rowClass}>
+          오프셋 — 열 사이 간격
+          <span className="flex items-center gap-2 flex-1">
             <input type="range" min={0} max={60} step={1} value={params.colGap} className={rangeClass}
               onChange={(e) => update({ colGap: +e.target.value })} />
             <span className={numClass}>{params.colGap}</span>
