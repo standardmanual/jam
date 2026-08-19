@@ -1,8 +1,9 @@
 ---
 id: 20260819_002
 category: Admin
-status: OPEN
+status: CLOSED
 created: 2026-08-19
+closed: 2026-08-19
 ---
 
 # [Admin] 배경 제너레이터 스파이크 — 애니메이션 모드 kaleidoscope로 교체
@@ -121,9 +122,9 @@ jam-web/src/app/spike/background-generator/types.ts (수정 — AnimationParams�
       필요 없는 `/spike` 라우트라 가능했으나, 본 확인은 자동화 스크립트로 대체)
 
 ### 배포 정보
-- 배포일: 미배포 (review 브랜치 push까지만 진행, main 머지·프로덕션 배포는 사용자 승인 후 처리)
+- 배포일: 2026-08-19
 - 환경: staging 전용 (production 배포 금지)
-- 커밋: review 브랜치 `claude/jamwork-20260819_002-kaleidoscope`에 커밋 (해시는 push 로그 참조)
+- 커밋: staging에 머지 완료 (원 리뷰 브랜치 `claude/jamwork-20260819_002-kaleidoscope`)
 
 ### 주요 의사결정 / 핵심 메모
 - liquify는 요구사항과 무관한 오판이었다는 사용자 확인에 따라 코드에서 완전히 제거했다(자료로도
