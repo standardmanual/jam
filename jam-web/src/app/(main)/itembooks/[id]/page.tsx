@@ -13,6 +13,7 @@ import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import ItemBookHeroSection from './ItemBookHeroSection'
 import { d } from '@/lib/i18n'
 import { getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
+import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -193,23 +194,9 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       }}
     >
       {backgroundVideoUrl && (
-        <video
-          className="badge-background-video"
+        <BadgeBackgroundVideoTiles
           src={backgroundVideoUrl}
-          poster={book.background_image_url ?? undefined}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: 'auto',
-            pointerEvents: 'none',
-          }}
+          poster={book.background_image_url}
         />
       )}
     </div>
