@@ -7,7 +7,15 @@ import { formatPaceSecPerKm } from '@/types/strava'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
-import BackgroundGeneratorPreview, { type BackgroundMode, type BackgroundGeneratorPreviewHandle } from './BackgroundGeneratorPreview'
+import BackgroundGeneratorPreview, {
+  type BackgroundMode,
+  type BackgroundGeneratorPreviewHandle,
+  type BackgroundGeneratorLivePreviewState,
+} from './BackgroundGeneratorPreview'
+import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
+
+/** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
+const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
 
 /** "5:30" 같은 mm:ss 페이스 입력을 초(sec/km)로 변환. 형식이 어긋나면 null */
 function parsePaceToSec(input: string): number | null {
@@ -574,19 +582,40 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
         </div>
 
-        {/* 배경 테마 — 단색/제너레이터 배타 선택 + 실제 저장 연동 (20260819_007, 20260819_008) */}
+        {/* 배경 테마 — 단색/제너레이터 배타 선택 + 실제 저장 연동 (20260819_007, 20260819_008,
+            20260819_013에서 공용 컴포넌트로 분리) */}
         <div className="col-span-2">
           <BackgroundGeneratorPreview
             ref={backgroundGeneratorRef}
-            name={name}
-            description={description}
-            rarity={rarity}
-            imageUrl={imageUrl}
             backgroundColor={backgroundColor}
             onBackgroundColorChange={setBackgroundColor}
             mode={backgroundMode}
             onModeChange={setBackgroundMode}
             initialBackgroundImageUrl={badge?.background_image_url ?? null}
+            existingImageOption={{ label: '등록된 배지 이미지 사용', imageUrl }}
+            renderPreview={({ themed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
+              <>
+                <BadgeDetailPreviewFrame
+                  badge={{
+                    image_url: imageUrl || null,
+                    name: name || '(배지 이름 미입력)',
+                    rarity,
+                    description,
+                    background_color: backgroundMode === 'color' ? backgroundColor || null : null,
+                    background_shader_id: null,
+                    background_image_url: null,
+                  }}
+                  themed={themed}
+                  backgroundLayerStyle={backgroundLayerStyle}
+                  backgroundLayerRef={backgroundLayerRef}
+                  liveNode={liveNode}
+                  conditionText={PREVIEW_CONDITION_TEXT}
+                />
+                <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
+                  실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
+                </p>
+              </>
+            )}
           />
         </div>
       </div>

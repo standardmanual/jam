@@ -223,6 +223,10 @@ export interface ItemBookRow {
   /** 20260818_004 — "하위 배지에 일괄 적용" 원본 값. 컬렉션 자체에는 렌더링되지 않는다. */
   background_color: string | null
   background_shader_id: string | null
+  /** 20260819_013 — 배경 제너레이터 결과(정적 이미지). 하위 배지 일괄 적용 원본 값. */
+  background_image_url: string | null
+  /** 20260819_013 — 배경 제너레이터 애니메이션 결과(반복 재생 MP4). background_image_url은 poster로 함께 채워진다. */
+  background_video_url: string | null
 }
 
 export interface PoiRow {
@@ -424,6 +428,10 @@ export interface FactionRow {
   /** 20260818_004 — "하위 배지에 일괄 적용" 원본 값. 세계관 자체에는 렌더링되지 않는다. */
   background_color: string | null
   background_shader_id: string | null
+  /** 20260819_013 — 배경 제너레이터 결과(정적 이미지). 하위 배지 일괄 적용 원본 값. */
+  background_image_url: string | null
+  /** 20260819_013 — 배경 제너레이터 애니메이션 결과(반복 재생 MP4). background_image_url은 poster로 함께 채워진다. */
+  background_video_url: string | null
 }
 
 export interface FactionAdjacencyRow {
