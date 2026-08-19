@@ -14,13 +14,21 @@ import {
   type FilterId,
   type Mode,
 } from '@/app/spike/background-generator/types'
-import BadgeHeroSection from '@/app/(main)/badges/[id]/BadgeHeroSection'
 import { getBadgeBackgroundStyle } from '@/lib/badgeBackgroundTheme'
 import BackgroundColorField from '@/components/admin/BackgroundColorField'
+import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
 import { bakePreviewToBlob } from './bakePreviewToBlob'
+import {
+  BACKGROUND_VIDEO_FPS,
+  bakeBackgroundVideo,
+  isBackgroundVideoBakeSupported,
+} from './bakeBackgroundVideo'
 import type { BadgeRarity } from '@/types/database'
 
 export type BackgroundMode = 'color' | 'generator'
+
+/** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
+const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
 
 /** 제너레이터의 이미지 입력 소스 — 새로 업로드하거나 이미 등록된 배지 이미지를 재사용 (20260819_008) */
 type ImageSource = 'upload' | 'existing'
@@ -41,13 +49,24 @@ interface BackgroundGeneratorPreviewProps {
   initialBackgroundImageUrl: string | null
 }
 
+/** `bake()` 결과 — 정지 이미지는 항상, 반복 영상은 애니메이션 모드에서만 만들어진다 (20260819_012) */
+export interface BakedBackgroundResult {
+  /** 배경 정지 PNG. 애니메이션 모드에서는 영상의 poster/폴백으로 쓰인다 */
+  poster: Blob
+  /** 반복 재생 MP4. 정적 패턴 모드에서는 null */
+  video: Blob | null
+}
+
 export interface BackgroundGeneratorPreviewHandle {
   /**
-   * 현재 미리보기를 PNG Blob으로 구워 반환한다. 이번 세션에 이미지를 하나도 고르지 않았으면(즉
+   * 현재 미리보기를 저장 가능한 파일로 굽는다. 이번 세션에 이미지를 하나도 고르지 않았으면(즉
    * 새로 구울 게 없으면) null을 반환한다 — 호출부(BadgeForm)가 이 경우 기존 저장값을 그대로
    * 유지할지(수정) 또는 아예 없음으로 둘지(신규) 판단한다.
+   *
+   * - 정적 패턴 모드: PNG 1장만 굽는다(기존 동작 그대로).
+   * - 애니메이션 모드: 반복 재생 MP4 + 첫 프레임 poster PNG를 함께 굽는다 (20260819_012).
    */
-  bakeToBlob(): Promise<Blob | null>
+  bake(): Promise<BakedBackgroundResult | null>
 }
 
 /**
@@ -81,6 +100,12 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
     const [filterId, setFilterId] = useState<FilterId>('none')
     const [filterSource, setFilterSource] = useState<string | null>(null)
     const [previewNode, setPreviewNode] = useState<ReactNode>(null)
+
+    // 영상 굽기 진행 상태 (20260819_012) — 인코딩은 수 초가 걸리므로 진행 상황을 노출한다.
+    // baking=true인 동안에는 스냅샷 간격을 출력 프레임레이트에 맞춰 낮추고, 사용자가 일시정지를
+    // 눌러뒀더라도 엔진을 계속 돌린다.
+    const [baking, setBaking] = useState(false)
+    const [bakeStatus, setBakeStatus] = useState<string | null>(null)
 
     const previewLayerRef = useRef<HTMLDivElement>(null)
 
@@ -156,9 +181,34 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
     }
 
     useImperativeHandle(ref, () => ({
-      async bakeToBlob() {
+      async bake() {
         if (!image || !previewLayerRef.current) return null
-        return bakePreviewToBlob(previewLayerRef.current, SERVICE_WIDTH)
+        const container = previewLayerRef.current
+
+        // 정적 패턴 모드는 기존과 동일하게 PNG 1장만 굽는다
+        if (patternMode !== 'animation') {
+          return { poster: await bakePreviewToBlob(container, SERVICE_WIDTH), video: null }
+        }
+
+        if (!isBackgroundVideoBakeSupported()) {
+          throw new Error('이 브라우저에서는 배경 영상을 만들 수 없습니다. Chrome 또는 Edge 최신 버전에서 저장해주세요.')
+        }
+
+        setBaking(true)
+        setBakeStatus('배경 영상을 준비하고 있어요…')
+        try {
+          // baking 상태가 실제 렌더링(스냅샷 간격 단축 + 강제 재생)에 반영되고 파이프라인이
+          // 새 간격으로 안정될 때까지 잠깐 기다린 뒤 캡처를 시작한다
+          await new Promise((resolve) => window.setTimeout(resolve, 500))
+          const baked = await bakeBackgroundVideo(container, SERVICE_WIDTH, (phase, done, total) => {
+            const percent = Math.round((done / total) * 100)
+            setBakeStatus(phase === 'capture' ? `배경 영상 촬영 중… ${percent}%` : `배경 영상 압축 중… ${percent}%`)
+          })
+          return { poster: baked.poster, video: baked.video }
+        } finally {
+          setBaking(false)
+          setBakeStatus(null)
+        }
       },
     }))
 
@@ -184,8 +234,26 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
       background_image_url: null,
     })
 
+    // 제너레이터 모드에서 배경 레이어에 실제로 그려질 노드 (20260819_011)
+    const savedBackgroundVisible = mode === 'generator' && !image && Boolean(initialBackgroundImageUrl)
+    const liveNode: ReactNode =
+      mode !== 'generator'
+        ? null
+        : filterSource
+          ? previewNode
+          : savedBackgroundVisible
+            ? // eslint-disable-next-line @next/next/no-img-element
+              <img src={initialBackgroundImageUrl ?? ''} alt="저장된 배경" />
+            : null
+
+    // 배경 레이어에 실제로 무언가 그려지는 상태인지 — 실제 화면에서 배경이 있는 배지와 동일하게
+    // TopNav·Hero 카드를 투명 처리할지 결정한다. 아무것도 없으면 배경 없는 배지와 똑같이 보인다.
+    const themed = mode === 'color' ? Boolean(backgroundColor) : Boolean(filterSource) || savedBackgroundVisible
+
+    // 2단 배치에서 설정 영역이 눌리지 않도록, 넓은 화면(xl↑)에서는 이 섹션만 폼 기본 폭
+    // (max-w-2xl)을 넘어 어드민 본문 가용 폭까지 넓힌다(사이드바 16rem + 여백 감안).
     return (
-      <div className="border border-dashed border-[#9333ea]/40 rounded-2xl p-5 space-y-5 bg-[#fdf4ff]">
+      <div className="border border-dashed border-[#9333ea]/40 rounded-2xl p-5 space-y-5 bg-[#fdf4ff] xl:w-[calc(100vw-22rem)] xl:max-w-[1040px]">
         <div className="flex flex-col gap-1">
           <p className="text-xs font-semibold text-[#9333ea]">배경 테마</p>
           <p className="text-xs text-[#6b7280]">
@@ -194,6 +262,10 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
           </p>
         </div>
 
+        {/* PC는 좌측 설정 / 우측 미리보기 2단, 모바일은 위 미리보기 / 아래 설정 (20260819_011) —
+            DOM 순서는 [설정, 미리보기]로 두고 모바일에서만 flex-col-reverse로 뒤집는다. */}
+        <div className="flex flex-col-reverse gap-5 xl:flex-row xl:items-start">
+          <div className="flex-1 min-w-0 space-y-5">
         {/* 단색/제너레이터 배타 선택 (20260819_008) */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-4">
@@ -223,25 +295,6 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
             배경값은 지워져요.
           </p>
         </div>
-
-        {/* 실제 배지 배경 레이어 + hero 구조를 재사용한 라이브 미리보기 */}
-        <div className="relative mx-auto w-full max-w-[430px] rounded-2xl overflow-hidden border border-[#e5e7eb]">
-          <div aria-hidden="true" className="absolute inset-0" style={backgroundLayerStyle} ref={previewLayerRef}>
-            {mode === 'generator' && (previewNode ?? (!image && initialBackgroundImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={initialBackgroundImageUrl} alt="저장된 배경" className="w-full h-full object-cover" />
-            ) : null))}
-          </div>
-          <div className="relative z-10">
-            <BadgeHeroSection badge={previewBadge} hasEarned />
-          </div>
-        </div>
-        {mode === 'generator' && !image && initialBackgroundImageUrl && (
-          <p className="text-xs text-[#9ca3af] -mt-3">
-            이미 저장된 배경 이미지예요. 원본 설정은 다시 불러올 수 없어요 — 아래에서 이미지를 새로
-            고르면 지금 보이는 배경이 교체돼요.
-          </p>
-        )}
 
         {mode === 'color' ? (
           <BackgroundColorField
@@ -327,6 +380,10 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
                       filterActive={filterId !== 'none'}
                       alwaysSnapshot
                       hidePreviewBox
+                      // 영상을 굽는 동안에는 출력 프레임레이트에 맞춰 스냅샷을 뽑아야 끊기지 않는
+                      // 영상이 나온다. 평소에는 기존 스로틀링 값(400ms)을 그대로 쓴다 (20260819_012)
+                      snapshotIntervalMs={baking ? Math.round(1000 / BACKGROUND_VIDEO_FPS) : 400}
+                      forcePlay={baking}
                     />
                   )}
                 </div>
@@ -367,6 +424,41 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
             )}
           </>
         )}
+          </div>
+
+          {/* 실제 배지 상세화면과 동일한 구조(TopNav → Hero → 본문 → Footer) 미리보기 */}
+          <div className="xl:shrink-0 overflow-x-auto">
+            <BadgeDetailPreviewFrame
+              badge={previewBadge}
+              themed={themed}
+              backgroundLayerStyle={backgroundLayerStyle}
+              backgroundLayerRef={previewLayerRef}
+              liveNode={liveNode}
+              conditionText={PREVIEW_CONDITION_TEXT}
+            />
+            {/* 영상 굽기 진행 상태 (20260819_012) — 캡처 4초 + 인코딩까지 수 초가 걸린다 */}
+            {bakeStatus && (
+              <p className="text-xs font-medium text-[#9333ea] mt-2 max-w-[430px]" role="status">
+                {bakeStatus} 저장이 끝날 때까지 이 화면을 닫지 마세요.
+              </p>
+            )}
+            <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
+              실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
+            </p>
+            {mode === 'generator' && patternMode === 'animation' && image && (
+              <p className="text-xs text-[#9ca3af] mt-1 max-w-[430px]">
+                애니메이션 모드는 저장할 때 2초짜리 반복 영상으로 구워져요. 일시정지 버튼은 미리보기
+                조작용이라 저장 결과에는 영향을 주지 않아요.
+              </p>
+            )}
+            {savedBackgroundVisible && (
+              <p className="text-xs text-[#9ca3af] mt-1 max-w-[430px]">
+                이미 저장된 배경 이미지예요. 원본 설정은 다시 불러올 수 없어요 — 이미지를 새로 고르면
+                지금 보이는 배경이 교체돼요.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
