@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, tagline, description, image_url, drop_weight, is_active, sort_order, background_color, background_shader_id } = body
+  const {
+    name, tagline, description, image_url, drop_weight, is_active, sort_order,
+    background_color, background_shader_id, background_image_url, background_video_url,
+  } = body
 
   if (!name) {
     return NextResponse.json({ error: '이름은 필수입니다.' }, { status: 400 })
@@ -37,6 +40,8 @@ export async function POST(req: NextRequest) {
     sort_order: sort_order ?? 0,
     background_color: background_color ?? null,
     background_shader_id: background_shader_id ?? null,
+    background_image_url: background_image_url ?? null,
+    background_video_url: background_video_url ?? null,
   }
   const factionsQuery = supabase.from('factions')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 FactionsRow와 일치
