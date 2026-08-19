@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import ImageUploader from '@/app/spike/background-generator/ImageUploader'
 import PatternPanel from '@/app/spike/background-generator/PatternPanel'
 import AnimationPanel from '@/app/spike/background-generator/AnimationPanel'
@@ -16,29 +16,43 @@ import {
 } from '@/app/spike/background-generator/types'
 import { getBadgeBackgroundStyle } from '@/lib/badgeBackgroundTheme'
 import BackgroundColorField from '@/components/admin/BackgroundColorField'
-import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
 import { bakePreviewToBlob } from './bakePreviewToBlob'
 import {
   BACKGROUND_VIDEO_FPS,
   bakeBackgroundVideo,
   isBackgroundVideoBakeSupported,
 } from './bakeBackgroundVideo'
-import type { BadgeRarity } from '@/types/database'
 
 export type BackgroundMode = 'color' | 'generator'
 
-/** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
-const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
-
-/** 제너레이터의 이미지 입력 소스 — 새로 업로드하거나 이미 등록된 배지 이미지를 재사용 (20260819_008) */
+/** 제너레이터의 이미지 입력 소스 — 새로 업로드하거나 이미 등록된 이미지를 재사용 (20260819_008) */
 type ImageSource = 'upload' | 'existing'
 
-interface BackgroundGeneratorPreviewProps {
-  name: string
-  description: string
-  rarity: BadgeRarity
-  /** 배지 본체 이미지 URL(이미 폼에 로드돼 있음) — "등록된 배지 이미지 사용" 소스로 재사용 */
+/**
+ * "새 이미지 업로드" 외에 "기존 이미지 재사용" 라디오 옵션을 추가로 노출하려면 전달한다.
+ * 배지처럼 편집 중인 항목 자체에 대표 이미지가 있는 엔티티만 넘긴다 — 컬렉션/세계관은 대표
+ * 이미지 개념이 없으므로 이 prop을 생략하면 "새 이미지 업로드" 하나만 보인다 (20260819_013).
+ */
+export interface BackgroundGeneratorExistingImageOption {
+  /** 라디오 버튼 라벨. 예: "등록된 배지 이미지 사용" */
+  label: string
+  /** 재사용할 이미지 URL. 비어 있으면 라디오는 비활성 상태로 노출된다(선택 불가). */
   imageUrl: string
+}
+
+/** 라이브 미리보기 상태 — 호출부가 실제 화면 맥락(배지 상세/컬렉션/세계관)에 맞는 프레임을 그릴 때 쓴다 */
+export interface BackgroundGeneratorLivePreviewState {
+  /** 배경 레이어에 실제로 무언가 그려지는 상태인지 — 배경 있는 화면처럼 주변 UI를 투명 처리할지 결정 */
+  themed: boolean
+  /** 배경 레이어에 적용할 스타일(단색/이미지 모드) */
+  backgroundLayerStyle: CSSProperties
+  /** 저장(bake) 대상이 되는 배경 레이어 DOM 참조 — 호출부가 프레임 루트에 그대로 연결해야 한다 */
+  backgroundLayerRef: RefObject<HTMLDivElement | null>
+  /** 제너레이터 라이브 합성 노드(필터 캔버스 또는 평면화 img). 없으면 배경 레이어는 비어 있다 */
+  liveNode: ReactNode
+}
+
+interface BackgroundGeneratorPreviewProps {
   backgroundColor: string
   onBackgroundColorChange: (value: string) => void
   mode: BackgroundMode
@@ -47,6 +61,11 @@ interface BackgroundGeneratorPreviewProps {
    *  불가능하지만, 이번 세션에 새 이미지를 고르기 전까지는 저장된 결과를 미리보기에 그대로
    *  보여준다 — 폼을 열자마자 배경이 사라진 것처럼 보이지 않게 하기 위함. */
   initialBackgroundImageUrl: string | null
+  /** "기존 이미지 재사용" 옵션. 생략하면 "새 이미지 업로드"만 노출한다 (20260819_013) */
+  existingImageOption?: BackgroundGeneratorExistingImageOption
+  /** 라이브 미리보기를 실제 화면 맥락에 맞게 그리는 렌더 함수. 호출부(BadgeForm 등)가 자신의
+   *  상세화면과 동일한 구조로 프레임을 그린다 — 이 컴포넌트는 어떤 화면을 흉내 내는지 모른다. */
+  renderPreview: (state: BackgroundGeneratorLivePreviewState) => ReactNode
 }
 
 /** `bake()` 결과 — 정지 이미지는 항상, 반복 영상은 애니메이션 모드에서만 만들어진다 (20260819_012) */
@@ -70,23 +89,27 @@ export interface BackgroundGeneratorPreviewHandle {
 }
 
 /**
- * 배경 제너레이터 — BadgeForm 통합 저작 UI + 라이브 미리보기 + 실제 저장 연동 (티켓 20260819_007,
- * 20260819_008).
+ * 배경 제너레이터 — 패턴/애니메이션/Paper 필터 저작 UI + 라이브 미리보기 공용 컴포넌트
+ * (티켓 20260819_007, 20260819_008, 20260819_013).
  *
  * - 스파이크(`/spike/background-generator`, 티켓 20260819_001~006)에서 검증된 패턴/애니메이션/
  *   Paper 필터 파이프라인을 그대로 재사용한다(알고리즘 재작성 없음).
  * - "단색"/"제너레이터"는 상호 배타적 라디오 선택이다(20260819_008). 어느 쪽을 선택했는지는 상위
- *   (`BadgeForm`)가 소유한 상태로 끌어올려져 있다 — 저장 시 배경색 검증·payload 구성을 그대로
- *   담당하기 위함이다. 이 컴포넌트는 모드에 따라 "단색" 필드 또는 제너레이터 컨트롤 중 하나만
- *   보여주고, 라이브 미리보기도 선택된 모드의 결과만 반영한다.
- * - "저장"은 이 컴포넌트가 직접 하지 않는다. `ref.bakeToBlob()`으로 현재 합성 결과를 PNG Blob으로
- *   구워 반환하기만 하고, 실제 업로드(API 재사용)·payload 구성·저장 요청은 `BadgeForm.handleSubmit`
+ *   컴포넌트가 소유한 상태로 끌어올려져 있다 — 저장 시 배경색 검증·payload 구성을 그대로 담당하기
+ *   위함이다. 이 컴포넌트는 모드에 따라 "단색" 필드 또는 제너레이터 컨트롤 중 하나만 보여주고,
+ *   라이브 미리보기도 선택된 모드의 결과만 반영한다.
+ * - "저장"은 이 컴포넌트가 직접 하지 않는다. `ref.bake()`로 현재 합성 결과를 Blob으로 구워
+ *   반환하기만 하고, 실제 업로드(API 재사용)·payload 구성·저장 요청은 호출부(BadgeForm 등)
  *   책임이다.
+ * - **badge 전용 결합 없음 (20260819_013)**: 편집 대상이 배지인지 컬렉션인지 세계관인지 이
+ *   컴포넌트는 모른다. "무엇을 편집 중인가"에 따라 달라지는 부분(대표 이미지 재사용 옵션 노출
+ *   여부, 실제 상세화면과 같은 구조의 미리보기 프레임)은 각각 `existingImageOption` prop과
+ *   `renderPreview` 렌더 함수로 호출부에 위임한다.
  * - admin 화면이므로 MODULAR 디자인 시스템 적용 대상이 아니다(기존 정책).
  */
 const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, BackgroundGeneratorPreviewProps>(
   function BackgroundGeneratorPreview(
-    { name, description, rarity, imageUrl, backgroundColor, onBackgroundColorChange, mode, onModeChange, initialBackgroundImageUrl },
+    { backgroundColor, onBackgroundColorChange, mode, onModeChange, initialBackgroundImageUrl, existingImageOption, renderPreview },
     ref
   ) {
     const [imageSource, setImageSource] = useState<ImageSource>('upload')
@@ -110,6 +133,8 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
     const previewLayerRef = useRef<HTMLDivElement>(null)
 
     const isGif = file?.type === 'image/gif'
+
+    const existingImageUrl = existingImageOption?.imageUrl ?? ''
 
     // 순수 계산으로 objectURL을 도출한다 (상태/이펙트 불필요) — 해제만 별도 이펙트에서 처리
     const objectUrl = useMemo(() => (imageSource === 'upload' && file ? URL.createObjectURL(file) : null), [imageSource, file])
@@ -138,30 +163,30 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
       }
     }, [objectUrl])
 
-    // 소스 ② 등록된 배지 이미지 재사용 — Storage 원격 URL이라 이후 캔버스 합성 결과를
+    // 소스 ② 기존 이미지 재사용 — Storage 원격 URL이라 이후 캔버스 합성 결과를
     // toDataURL/toBlob으로 읽을 수 있도록 crossOrigin='anonymous'로 로드한다 (20260819_008)
     useEffect(() => {
       if (imageSource !== 'existing') return
-      if (!imageUrl) {
+      if (!existingImageUrl) {
         setImage(null)
         return
       }
       let cancelled = false
       setFilterSource(null)
       setPreviewNode(null)
-      loadImageFromUrl(imageUrl, { crossOrigin: 'anonymous' })
+      loadImageFromUrl(existingImageUrl, { crossOrigin: 'anonymous' })
         .then((img) => {
           if (cancelled) return
           setImage(img)
           setLoadError(null)
         })
         .catch(() => {
-          if (!cancelled) setLoadError('등록된 배지 이미지를 불러오지 못했습니다.')
+          if (!cancelled) setLoadError('등록된 이미지를 불러오지 못했습니다.')
         })
       return () => {
         cancelled = true
       }
-    }, [imageSource, imageUrl])
+    }, [imageSource, existingImageUrl])
 
     // 이미지를 새로 고르면 이전 합성 결과가 남아 보이지 않도록 초기화(이벤트 핸들러에서 직접 처리
     // — 이펙트 내 setState 캐스케이드를 피하기 위함)
@@ -212,22 +237,8 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
       },
     }))
 
-    // 라이브 미리보기 — 선택된 모드의 결과만 반영한다(상호 배타적). "제너레이터" 모드에서 이번
-    // 세션에 새 이미지를 고르지 않았으면(image === null) 기존에 저장된 배경 이미지를 그대로
-    // 보여준다(재편집은 안 되지만 "저장된 게 사라진 것처럼" 보이지는 않게).
-    const previewBadge = {
-      image_url: imageUrl || null,
-      name: name || '(배지 이름 미입력)',
-      rarity,
-      description,
-      background_color: mode === 'color' ? backgroundColor || null : null,
-      background_shader_id: null,
-      background_image_url: null,
-    }
-
-    // 실제 배지 상세화면의 고정 배경 레이어(badges/[id]/page.tsx의 badgeBackgroundLayer)와 동일한
-    // 계산기를 재사용 — "단색" 모드일 때만 배경색을 기저로 깔고, "제너레이터" 모드에서는 그 위에
-    // 합성 결과 노드를 얹는다.
+    // 실제 화면의 고정 배경 레이어와 동일한 계산기를 재사용 — "단색" 모드일 때만 배경색을 기저로
+    // 깔고, "제너레이터" 모드에서는 그 위에 합성 결과 노드를 얹는다.
     const backgroundLayerStyle = getBadgeBackgroundStyle({
       background_color: mode === 'color' ? backgroundColor || null : null,
       background_shader_id: null,
@@ -246,8 +257,8 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
               <img src={initialBackgroundImageUrl ?? ''} alt="저장된 배경" />
             : null
 
-    // 배경 레이어에 실제로 무언가 그려지는 상태인지 — 실제 화면에서 배경이 있는 배지와 동일하게
-    // TopNav·Hero 카드를 투명 처리할지 결정한다. 아무것도 없으면 배경 없는 배지와 똑같이 보인다.
+    // 배경 레이어에 실제로 무언가 그려지는 상태인지 — 실제 화면에서 배경이 있는 화면과 동일하게
+    // 주변 UI를 투명 처리할지 결정한다. 아무것도 없으면 배경 없는 화면과 똑같이 보인다.
     const themed = mode === 'color' ? Boolean(backgroundColor) : Boolean(filterSource) || savedBackgroundVisible
 
     // 2단 배치에서 설정 영역이 눌리지 않도록, 넓은 화면(xl↑)에서는 이 섹션만 폼 기본 폭
@@ -300,43 +311,45 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
           <BackgroundColorField
             value={backgroundColor}
             onChange={onBackgroundColorChange}
-            helperText="배지 이미지를 업로드하면 평균 색상이 자동으로 채워져요. 색상 피커나 직접 입력으로 바꿀 수 있고, 비워두면 기본 배경을 사용해요."
+            helperText="이미지를 업로드하면 평균 색상이 자동으로 채워져요. 색상 피커나 직접 입력으로 바꿀 수 있고, 비워두면 기본 배경을 사용해요."
           />
         ) : (
           <>
-            {/* 이미지 소스 선택 (20260819_008) */}
+            {/* 이미지 소스 선택 (20260819_008) — existingImageOption이 없으면 업로드만 노출 (20260819_013) */}
             <div className="flex flex-col gap-2 border-t border-[#e5e7eb] pt-4">
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-1.5 text-xs text-[#374151] cursor-pointer">
-                  <input
-                    type="radio"
-                    name="background-image-source"
-                    checked={imageSource === 'upload'}
-                    onChange={() => handleImageSourceChange('upload')}
-                    className="accent-[#111111]"
-                  />
-                  새 이미지 업로드
-                </label>
-                <label className={['flex items-center gap-1.5 text-xs cursor-pointer', imageUrl ? 'text-[#374151]' : 'text-[#c4c4c4] cursor-not-allowed'].join(' ')}>
-                  <input
-                    type="radio"
-                    name="background-image-source"
-                    checked={imageSource === 'existing'}
-                    onChange={() => handleImageSourceChange('existing')}
-                    disabled={!imageUrl}
-                    className="accent-[#111111]"
-                  />
-                  등록된 배지 이미지 사용
-                </label>
-              </div>
+              {existingImageOption && (
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 text-xs text-[#374151] cursor-pointer">
+                    <input
+                      type="radio"
+                      name="background-image-source"
+                      checked={imageSource === 'upload'}
+                      onChange={() => handleImageSourceChange('upload')}
+                      className="accent-[#111111]"
+                    />
+                    새 이미지 업로드
+                  </label>
+                  <label className={['flex items-center gap-1.5 text-xs cursor-pointer', existingImageUrl ? 'text-[#374151]' : 'text-[#c4c4c4] cursor-not-allowed'].join(' ')}>
+                    <input
+                      type="radio"
+                      name="background-image-source"
+                      checked={imageSource === 'existing'}
+                      onChange={() => handleImageSourceChange('existing')}
+                      disabled={!existingImageUrl}
+                      className="accent-[#111111]"
+                    />
+                    {existingImageOption.label}
+                  </label>
+                </div>
+              )}
 
               {imageSource === 'upload' ? (
                 <ImageUploader onFileSelected={handleFileSelected} fileName={file?.name ?? null} isGif={isGif} />
               ) : (
                 <p className="text-xs text-[#6b7280]">
-                  {imageUrl
-                    ? '위에서 등록한 배지 이미지를 배경 소스로 그대로 사용해요.'
-                    : '배지 이미지를 먼저 업로드해야 사용할 수 있어요.'}
+                  {existingImageUrl
+                    ? '위에서 등록한 이미지를 배경 소스로 그대로 사용해요.'
+                    : '이미지를 먼저 업로드해야 사용할 수 있어요.'}
                 </p>
               )}
             </div>
@@ -426,25 +439,15 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
         )}
           </div>
 
-          {/* 실제 배지 상세화면과 동일한 구조(TopNav → Hero → 본문 → Footer) 미리보기 */}
+          {/* 호출부가 실제 화면과 동일한 구조로 그리는 미리보기 프레임 (20260819_013) */}
           <div className="xl:shrink-0 overflow-x-auto">
-            <BadgeDetailPreviewFrame
-              badge={previewBadge}
-              themed={themed}
-              backgroundLayerStyle={backgroundLayerStyle}
-              backgroundLayerRef={previewLayerRef}
-              liveNode={liveNode}
-              conditionText={PREVIEW_CONDITION_TEXT}
-            />
+            {renderPreview({ themed, backgroundLayerStyle, backgroundLayerRef: previewLayerRef, liveNode })}
             {/* 영상 굽기 진행 상태 (20260819_012) — 캡처 4초 + 인코딩까지 수 초가 걸린다 */}
             {bakeStatus && (
               <p className="text-xs font-medium text-[#9333ea] mt-2 max-w-[430px]" role="status">
                 {bakeStatus} 저장이 끝날 때까지 이 화면을 닫지 마세요.
               </p>
             )}
-            <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
-              실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
-            </p>
             {mode === 'generator' && patternMode === 'animation' && image && (
               <p className="text-xs text-[#9ca3af] mt-1 max-w-[430px]">
                 애니메이션 모드는 저장할 때 2초짜리 반복 영상으로 구워져요. 일시정지 버튼은 미리보기
