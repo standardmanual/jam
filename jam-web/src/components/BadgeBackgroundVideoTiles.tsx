@@ -19,19 +19,29 @@ import { useEffect, useRef, useState } from 'react'
  * 비율을 유지한 채 정상 문서 흐름으로 세로 스택된다 — 픽셀 단위로 top 오프셋을 직접 계산할
  * 필요가 없다.
  *
- * ## 타일 수 계산
- * 이 페이지들은 `(main)/layout.tsx`의 `<main class="overflow-y-auto">`가 실제 스크롤
- * 컨테이너이고(문서 자체는 스크롤하지 않는 앱 셸 구조), 배경이 실질적으로 덮어야 하는 높이도
- * 이 컨테이너의 콘텐츠 높이(`scrollHeight`)다. 가장 가까운 `overflow-y: auto|scroll` 조상을
- * 찾아 그 값을 기준으로 타일 수를 계산하고, 못 찾으면 `document.documentElement`로 폴백한다.
+ * ## 타일 수 계산 — [20260819_017 게이트 리뷰 FAIL 수정]
+ * 1차 구현은 타일 개수를 스크롤 컨테이너의 `scrollHeight`(페이지 전체 콘텐츠 길이, 보통 수천
+ * px)로 계산했다. 하지만 이 컴포넌트가 그려지는 배경 레이어 자신은 `position:fixed, top:0,
+ * bottom:0, overflow:hidden`이라 **항상 뷰포트 높이에 고정**되고 그 이상은 영구히 잘려 절대
+ * 보이지 않는다 — 페이지를 스크롤해도 이 레이어 자체는 움직이지 않는(viewport-relative) 요소이기
+ * 때문이다. 즉 콘텐츠가 아무리 길어도 실제로 보이는 영역은 뷰포트 높이뿐인데, scrollHeight
+ * 기준으로 계산하면 앞쪽 1~2장만 화면에 보이는데도 최대 `maxTiles`개의 `<video>`를 동시
+ * 생성·autoPlay·디코딩하는 리소스 낭비가 발생한다.
+ * 그래서 기준을 "배경 레이어 자신의 실제 렌더 높이"로 바꿨다 — 이 컴포넌트의 루트 div는 배경
+ * 레이어(`overflow:hidden`인 부모)의 자식이므로, 그 부모의 `clientHeight`(= 뷰포트 높이)를
+ * 기준으로 타일 수를 계산한다. 부모를 못 찾는 예외적인 경우에만 `window.innerHeight`로 폴백한다.
  * 초기 렌더(측정 전)에는 `minTiles`(기본 2)로 시작해 레이아웃 시프트를 최소화하고, 마운트 후
- * 측정해 필요한 만큼 늘린다. 콘텐츠가 폭·이미지 로딩 등으로 높이가 바뀔 수 있어 스크롤
- * 컨테이너 리사이즈(ResizeObserver)와 콘텐츠 변경(MutationObserver, 디바운스)에도 재계산한다.
+ * 측정해 필요한 만큼 늘린다. 뷰포트/레이어 크기가 바뀔 수 있어 레이어 자신에 대한
+ * ResizeObserver와 `window`의 `resize`/`orientationchange` 이벤트에서 재계산한다 — 콘텐츠
+ * 스크롤 길이나 DOM 변경(MutationObserver)은 배경 레이어의 렌더 높이와 무관하므로 더 이상
+ * 감시하지 않는다.
  *
  * ## 상한
- * `<video>`를 여러 개 동시 재생하면 디코딩 비용이 늘어나므로 `maxTiles`(기본 10)로 상한을
- * 둔다. 그 이상 필요한 초장신 페이지는 상한을 넘는 구간만 기존처럼 CSS 배경(정지 이미지 반복)
- * 폴백으로 남는다 — 배경 레이어에 이미 poster용 정적 이미지가 깔려 있으므로 자연스럽다.
+ * 뷰포트 높이는 기기별로 달라도 보통 수백~2000px 이내라 필요한 타일 수는 대략 2~4장 수준이다.
+ * `<video>`를 여러 개 동시 재생하면 디코딩 비용이 늘어나므로 `maxTiles`(기본 4)로 상한을
+ * 둔다 — 초대형 태블릿·초장신 뷰포트 등 예외적으로 더 필요한 경우에만 상한을 넘는 구간이
+ * 기존처럼 CSS 배경(정지 이미지 반복) 폴백으로 남는다 — 배경 레이어에 이미 poster용 정적
+ * 이미지가 깔려 있으므로 자연스럽다.
  */
 
 interface BadgeBackgroundVideoTilesProps {
@@ -46,22 +56,12 @@ interface BadgeBackgroundVideoTilesProps {
   maxTiles?: number
 }
 
-function findScrollContainer(el: HTMLElement): HTMLElement {
-  let node: HTMLElement | null = el.parentElement
-  while (node && node !== document.body) {
-    const overflowY = getComputedStyle(node).overflowY
-    if (overflowY === 'auto' || overflowY === 'scroll') return node
-    node = node.parentElement
-  }
-  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement
-}
-
 export default function BadgeBackgroundVideoTiles({
   src,
   poster,
   aspectRatio = '1 / 2',
   minTiles = 2,
-  maxTiles = 10,
+  maxTiles = 4,
 }: BadgeBackgroundVideoTilesProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [tileCount, setTileCount] = useState(minTiles)
@@ -70,7 +70,11 @@ export default function BadgeBackgroundVideoTiles({
     const el = containerRef.current
     if (!el) return
 
-    const scrollContainer = findScrollContainer(el)
+    // 배경 레이어(position:fixed, top:0, bottom:0, overflow:hidden)는 항상 뷰포트 높이만큼만
+    // 그려지고 그 이상은 영구히 잘려 보이지 않는다. 이 컴포넌트의 루트는 그 레이어의 직계
+    // 자식이므로 부모의 clientHeight가 곧 "실제로 덮어야 하는 높이"다. 부모를 못 찾는 예외적인
+    // 경우에만 window.innerHeight로 폴백한다.
+    const layer = el.parentElement
 
     let raf = 0
     function recalc() {
@@ -82,8 +86,8 @@ export default function BadgeBackgroundVideoTiles({
       const ratio = w > 0 ? h / w : 2
       const tileHeight = width * ratio
       if (tileHeight <= 0) return
-      const contentHeight = scrollContainer.scrollHeight
-      const needed = Math.min(maxTiles, Math.max(minTiles, Math.ceil(contentHeight / tileHeight)))
+      const layerHeight = layer?.clientHeight || window.innerHeight
+      const needed = Math.min(maxTiles, Math.max(minTiles, Math.ceil(layerHeight / tileHeight)))
       setTileCount((prev) => (prev === needed ? prev : needed))
     }
 
@@ -95,21 +99,17 @@ export default function BadgeBackgroundVideoTiles({
     scheduleRecalc()
 
     const resizeObserver = new ResizeObserver(scheduleRecalc)
-    resizeObserver.observe(scrollContainer)
     resizeObserver.observe(el)
-
-    const mutationObserver = new MutationObserver(scheduleRecalc)
-    mutationObserver.observe(scrollContainer, { childList: true, subtree: true })
+    if (layer) resizeObserver.observe(layer)
 
     window.addEventListener('resize', scheduleRecalc)
-    window.addEventListener('load', scheduleRecalc)
+    window.addEventListener('orientationchange', scheduleRecalc)
 
     return () => {
       if (raf) cancelAnimationFrame(raf)
       resizeObserver.disconnect()
-      mutationObserver.disconnect()
       window.removeEventListener('resize', scheduleRecalc)
-      window.removeEventListener('load', scheduleRecalc)
+      window.removeEventListener('orientationchange', scheduleRecalc)
     }
   }, [aspectRatio, minTiles, maxTiles])
 
