@@ -12,8 +12,12 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'im
  * 유저단은 <video>로 재생만 하므로 iOS Safari 호환이 필수 — H.264 MP4만 허용한다.
  */
 const ALLOWED_VIDEO_TYPES = ['video/mp4']
-/** 영상 용량 상한. 어드민이 굽는 결과는 수백 KB 수준이지만 인코딩 편차를 감안해 여유를 둔다 */
-const MAX_VIDEO_SIZE = 20 * 1024 * 1024 // 20MB
+/**
+ * 영상 용량 상한. Storage 'images' 버킷의 file_size_limit(5MB)과 반드시 같아야 한다 —
+ * 더 크게 잡으면 API는 통과시키고 Storage가 거부해 안내 문구와 실제 동작이 어긋난다.
+ * 어드민이 굽는 결과는 실측 최대 473KB라 5MB로 충분하다. (migrations/090 참조)
+ */
+const MAX_VIDEO_SIZE = MAX_SIZE // 5MB
 
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser()
@@ -34,7 +38,7 @@ export async function POST(req: NextRequest) {
   }
   if (isVideo) {
     if (file.size > MAX_VIDEO_SIZE) {
-      return NextResponse.json({ error: '영상 파일 크기는 20MB 이하여야 합니다.' }, { status: 400 })
+      return NextResponse.json({ error: '영상 파일 크기는 5MB 이하여야 합니다.' }, { status: 400 })
     }
   } else if (file.size > MAX_SIZE) {
     return NextResponse.json({ error: '파일 크기는 5MB 이하여야 합니다.' }, { status: 400 })
