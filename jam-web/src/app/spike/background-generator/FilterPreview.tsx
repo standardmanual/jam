@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   FlutedGlass,
   ImageDithering,
@@ -16,13 +16,24 @@ interface FilterPreviewProps {
   source: string | null
   size: number
   label?: string
+  /**
+   * true면 이 컴포넌트 자체의 미리보기 박스(체크보드 배경 div)를 렌더링하지 않는다. 필터별
+   * 파라미터 슬라이더는 그대로 노출된다. 대신 `onPreviewNodeChange`로 현재 합성 결과 노드를
+   * 그대로 콜백에 전달한다 — 호출부가 다른 위치(실제 배지 배경 레이어)에 동일한 노드를 그릴 수
+   * 있게 하기 위함. 기본값 false로 스파이크 페이지의 기존 동작은 그대로 유지된다.
+   * 티켓 20260819_007 — BadgeForm 통합, 미리보기를 하나로 합치기 위해 도입.
+   */
+  hidePreviewBox?: boolean
+  /** hidePreviewBox=true일 때, 현재 렌더링돼야 할 미리보기 노드(필터 미적용 img 또는 Paper 셰이더
+   *  엘리먼트)가 바뀔 때마다 호출된다. 렌더링 로직 자체는 아래 기존 분기와 완전히 동일하다. */
+  onPreviewNodeChange?: (node: ReactNode) => void
 }
 
 const controlLabelClass = 'flex items-center justify-between gap-2 text-xs text-[#6b7280]'
 const rangeClass = 'flex-1 accent-[#111111]'
 const selectClass = 'bg-white border border-[#e5e7eb] rounded-lg px-2 py-1 text-xs text-[#111111]'
 
-export default function FilterPreview({ filterId, source, size, label }: FilterPreviewProps) {
+export default function FilterPreview({ filterId, source, size, label, hidePreviewBox = false, onPreviewNodeChange }: FilterPreviewProps) {
   // 필터별 파라미터 상태 — Paper Shaders 실제 prop명을 그대로 노출해 검증한다 (20260819_001 스파이크)
   const [flutedGlass, setFlutedGlass] = useState({
     size: 0.5,
@@ -60,31 +71,42 @@ export default function FilterPreview({ filterId, source, size, label }: FilterP
     count: 12,
   })
 
+  // 필터/소스/크기/필터별 파라미터에 따른 실제 미리보기 노드 — hidePreviewBox 여부와 무관하게
+  // 완전히 동일한 렌더링 로직이다(분기 로직을 다시 작성하지 않고 그대로 재사용).
+  const previewNode: ReactNode = !source ? (
+    <span className="text-xs text-[#9ca3af]">이미지 없음</span>
+  ) : filterId === 'none' ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={source} alt="필터 없음 미리보기" className="w-full h-full object-cover" />
+  ) : filterId === 'fluted-glass' ? (
+    <FlutedGlass image={source} width={size} height={size} {...flutedGlass} />
+  ) : filterId === 'image-dithering' ? (
+    <ImageDithering image={source} width={size} height={size} {...imageDithering} />
+  ) : filterId === 'halftone-dots' ? (
+    <HalftoneDots image={source} width={size} height={size} {...halftoneDots} />
+  ) : filterId === 'halftone-cmyk' ? (
+    <HalftoneCmyk image={source} width={size} height={size} {...halftoneCmyk} />
+  ) : (
+    <LensDistortion image={source} width={size} height={size} {...lensDistortion} />
+  )
+
+  useEffect(() => {
+    onPreviewNodeChange?.(previewNode)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterId, source, size, flutedGlass, imageDithering, halftoneDots, halftoneCmyk, lensDistortion])
+
   return (
     <div className="flex flex-col gap-2">
       {label && <p className="text-xs font-medium text-[#374151]">{label}</p>}
 
-      <div
-        className="rounded-xl border border-[#e5e7eb] bg-[repeating-conic-gradient(#f3f4f6_0%_25%,#ffffff_0%_50%)] bg-[length:16px_16px] overflow-hidden flex items-center justify-center"
-        style={{ width: size, height: size }}
-      >
-        {!source ? (
-          <span className="text-xs text-[#9ca3af]">이미지 없음</span>
-        ) : filterId === 'none' ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={source} alt="필터 없음 미리보기" className="w-full h-full object-cover" />
-        ) : filterId === 'fluted-glass' ? (
-          <FlutedGlass image={source} width={size} height={size} {...flutedGlass} />
-        ) : filterId === 'image-dithering' ? (
-          <ImageDithering image={source} width={size} height={size} {...imageDithering} />
-        ) : filterId === 'halftone-dots' ? (
-          <HalftoneDots image={source} width={size} height={size} {...halftoneDots} />
-        ) : filterId === 'halftone-cmyk' ? (
-          <HalftoneCmyk image={source} width={size} height={size} {...halftoneCmyk} />
-        ) : (
-          <LensDistortion image={source} width={size} height={size} {...lensDistortion} />
-        )}
-      </div>
+      {!hidePreviewBox && (
+        <div
+          className="rounded-xl border border-[#e5e7eb] bg-[repeating-conic-gradient(#f3f4f6_0%_25%,#ffffff_0%_50%)] bg-[length:16px_16px] overflow-hidden flex items-center justify-center"
+          style={{ width: size, height: size }}
+        >
+          {previewNode}
+        </div>
+      )}
 
       {/* 필터별 파라미터 — prop명을 그대로 라벨로 노출 */}
       {filterId === 'fluted-glass' && (
