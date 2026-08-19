@@ -11,6 +11,9 @@ import { getAdminUser } from '@/lib/admin/auth'
  *       되지 않음)
  * 자동 fallback이 아니라 버튼을 누른 순간의 값만 반영 — 이후 세계관 값이 바뀌어도 다시 이 API를
  * 호출하기 전까지는 하위 값이 그대로 유지된다. 항상 덮어쓴다(사용자 확정 방침, 예외 없음).
+ *
+ * 3단 UPDATE는 단일 plpgsql 함수(apply_faction_background_cascade, 마이그레이션 092)로 묶여
+ * 하나의 함수 호출(=암묵적 트랜잭션)로 all-or-nothing이 보장된다 (20260819_016).
  */
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -19,65 +22,52 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params
   const supabase = createServiceClient()
 
-  const { data: faction, error: factionError } = await supabase
-    .from('factions')
-    .select('background_color, background_shader_id, background_image_url, background_video_url')
-    .eq('id', id)
-    .single()
-  if (factionError || !faction) {
-    return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
-  }
+  // @ts-expect-error Supabase rpc() 인자 타입 매칭 제한(단일 필수 인자 RPC에서 발생하는 라이브러리 특이 케이스) 우회 — 실제 인자는 apply_faction_background_cascade(p_faction_id uuid)와 일치
+  const { data, error } = await supabase.rpc('apply_faction_background_cascade', { p_faction_id: id })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const { background_color, background_shader_id, background_image_url, background_video_url } = faction as {
-    background_color: string | null
-    background_shader_id: string | null
-    background_image_url: string | null
-    background_video_url: string | null
-  }
-  const backgroundFields = { background_color, background_shader_id, background_image_url, background_video_url }
-
-  // (a) 세계관 직속 배지
-  const directBadgesQuery = supabase.from('badges')
-  // @ts-expect-error Supabase update 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 BadgesRow와 일치
-  const directBadgesUpdate = directBadgesQuery.update(backgroundFields)
-  const { data: directBadgesData, error: directBadgesError } = await directBadgesUpdate
-    .eq('faction_id', id)
-    .is('deleted_at', null)
-    .select('id')
-  if (directBadgesError) return NextResponse.json({ error: directBadgesError.message }, { status: 500 })
-
-  // (b) 세계관 소속 컬렉션
-  const itemBooksQuery = supabase.from('item_books')
-  // @ts-expect-error Supabase update 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 ItemBooksRow와 일치
-  const itemBooksUpdate = itemBooksQuery.update(backgroundFields)
-  const { data: itemBooksData, error: itemBooksError } = await itemBooksUpdate
-    .eq('faction_id', id)
-    .select('id')
-  if (itemBooksError) return NextResponse.json({ error: itemBooksError.message }, { status: 500 })
-
-  const itemBookIds = ((itemBooksData ?? []) as { id: string }[]).map((row) => row.id)
-
-  // (c) 그 컬렉션들에 속한 아이템배지
-  let itemBookBadgesCount = 0
-  if (itemBookIds.length > 0) {
-    const itemBookBadgesQuery = supabase.from('badges')
-    // @ts-expect-error Supabase update 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 BadgesRow와 일치
-    const itemBookBadgesUpdate = itemBookBadgesQuery.update(backgroundFields)
-    const { data: itemBookBadgesData, error: itemBookBadgesError } = await itemBookBadgesUpdate
-      .in('item_book_id', itemBookIds)
-      .is('deleted_at', null)
-      .select('id')
-    if (itemBookBadgesError) return NextResponse.json({ error: itemBookBadgesError.message }, { status: 500 })
-    itemBookBadgesCount = (itemBookBadgesData ?? []).length
-  }
-
-  const directBadges = (directBadgesData ?? []).length
-  const itemBooks = itemBookIds.length
+  const row = (Array.isArray(data) ? data[0] : data) as {
+    direct_badges: number
+    item_books: number
+    item_book_badges: number
+  } | undefined
+  if (!row) return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
 
   return NextResponse.json({
-    directBadges,
-    itemBooks,
-    itemBookBadges: itemBookBadgesCount,
-    appliedCount: directBadges + itemBooks + itemBookBadgesCount,
+    directBadges: row.direct_badges,
+    itemBooks: row.item_books,
+    itemBookBadges: row.item_book_badges,
+    appliedCount: row.direct_badges + row.item_books + row.item_book_badges,
+  })
+}
+
+/**
+ * 일괄 적용 확인 다이얼로그용 건수 미리보기 (20260819_016). UPDATE 없이 apply와 동일한 3단
+ * 조건으로 COUNT만 계산하는 count_faction_background_cascade(마이그레이션 092)를 호출한다 —
+ * 전체 배지/컬렉션 목록을 클라이언트로 내려보내지 않는다. 실제 적용 시점과 시간차가 있을 수
+ * 있어(동시 편집 등) 최종 진실값은 항상 POST 응답의 결과 배너다.
+ */
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { id } = await params
+  const supabase = createServiceClient()
+
+  // @ts-expect-error Supabase rpc() 인자 타입 매칭 제한(단일 필수 인자 RPC에서 발생하는 라이브러리 특이 케이스) 우회 — 실제 인자는 count_faction_background_cascade(p_faction_id uuid)와 일치
+  const { data, error } = await supabase.rpc('count_faction_background_cascade', { p_faction_id: id })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const row = (Array.isArray(data) ? data[0] : data) as {
+    direct_badges: number
+    item_books: number
+    item_book_badges: number
+  } | undefined
+  if (!row) return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
+
+  return NextResponse.json({
+    directBadges: row.direct_badges,
+    itemBooks: row.item_books,
+    itemBookBadges: row.item_book_badges,
   })
 }

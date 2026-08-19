@@ -207,28 +207,16 @@ export default function FactionForm({ faction }: FactionFormProps) {
     try {
       await persist()
 
-      const [badgesRes, itemBooksRes] = await Promise.all([
-        fetch('/api/admin/badges'),
-        fetch('/api/admin/itembooks'),
-      ])
-      const badgesData = await badgesRes.json()
-      if (!badgesRes.ok) throw new Error(badgesData.error ?? '배지 목록 조회 실패')
-      const itemBooksData = await itemBooksRes.json()
-      if (!itemBooksRes.ok) throw new Error(itemBooksData.error ?? '컬렉션 목록 조회 실패')
-
-      type BadgeListRow = { faction_id: string | null; item_book_id: string | null; deleted_at: string | null }
-      type ItemBookListRow = { id: string; faction_id: string | null }
-
-      const badges = (badgesData.badges ?? []) as BadgeListRow[]
-      const itemBookIds = ((itemBooksData.itemBooks ?? []) as ItemBookListRow[])
-        .filter((b) => b.faction_id === faction!.id)
-        .map((b) => b.id)
-      const itemBookIdSet = new Set(itemBookIds)
+      // 서버에서 3단 조건과 동일한 WHERE로 COUNT만 계산하는 미리보기 경로 — 전체 배지/컬렉션
+      // 목록을 fetch하지 않는다 (20260819_016)
+      const res = await fetch(`/api/admin/factions/${faction!.id}/apply-background`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? '하위 건수 조회 실패')
 
       setBulkApplyCount({
-        directBadges: badges.filter((b) => b.faction_id === faction!.id && !b.deleted_at).length,
-        itemBooks: itemBookIds.length,
-        itemBookBadges: badges.filter((b) => b.item_book_id && itemBookIdSet.has(b.item_book_id) && !b.deleted_at).length,
+        directBadges: data.directBadges,
+        itemBooks: data.itemBooks,
+        itemBookBadges: data.itemBookBadges,
       })
       setShowBulkApplyConfirm(true)
     } catch (err) {
