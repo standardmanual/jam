@@ -107,8 +107,13 @@ export interface BadgeRow {
   /** 배지 상세화면 배경 쉐이더 식별자 (20260818_002 선행 구조 — 쉐이더 스택 미정, 아직 UI에서 미사용) */
   background_shader_id: string | null
   /** 배경 제너레이터로 합성 후 구운(bake) 정적 PNG의 Storage URL. background_color와 상호
-   *  배타적이며, 있으면 렌더링 시 우선한다(20260819_008) */
+   *  배타적이며, 있으면 렌더링 시 우선한다(20260819_008).
+   *  애니메이션 모드(background_video_url)일 때도 poster/폴백 정지 이미지로 함께 채워진다
+   *  (20260819_012) */
   background_image_url: string | null
+  /** 배경 제너레이터 애니메이션 모드 결과를 구운 반복 재생 MP4(H.264)의 Storage URL.
+   *  값이 있으면 background_image_url은 그 영상의 poster/폴백으로 쓰인다(20260819_012) */
+  background_video_url: string | null
 }
 
 export interface UserActivityBadgeRow {

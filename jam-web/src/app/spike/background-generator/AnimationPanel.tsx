@@ -24,6 +24,18 @@ interface AnimationPanelProps {
    * 정상 동작한다. 티켓 20260819_007 — 실제 배지 배경 레이어 미리보기 하나로 합치기 위해 도입.
    */
   hidePreviewBox?: boolean
+  /**
+   * 스냅샷 캡처 간격(ms). 기본 400ms는 실시간 미리보기용 스로틀링 값이라, 이 상태 그대로 영상을
+   * 구우면 초당 2.5장짜리 뚝뚝 끊기는 영상이 나온다. 영상을 굽는 동안만 호출부가 출력
+   * 프레임레이트에 맞춰 이 값을 낮춘다 (20260819_012).
+   */
+  snapshotIntervalMs?: number
+  /**
+   * true면 사용자가 "일시정지"를 눌러둔 상태여도 엔진을 계속 돌린다. 영상 굽기는 실시간 캡처라
+   * 엔진이 멈춰 있으면 정지 화면만 녹화된다 — 일시정지 버튼은 미리보기 조작용으로만 남기고
+   * 결과물에는 영향을 주지 않는다는 결정(20260819_012)을 지키기 위한 장치.
+   */
+  forcePlay?: boolean
 }
 
 const rowClass = 'flex items-center justify-between gap-3 text-sm text-[#374151]'
@@ -39,6 +51,8 @@ export default function AnimationPanel({
   filterActive,
   alwaysSnapshot = false,
   hidePreviewBox = false,
+  snapshotIntervalMs = 400,
+  forcePlay = false,
 }: AnimationPanelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<KaleidoscopeEngine | null>(null)
@@ -54,7 +68,7 @@ export default function AnimationPanel({
 
     const engine = new KaleidoscopeEngine(canvas, image, params)
     engineRef.current = engine
-    if (playing) engine.start()
+    if (playing || forcePlay) engine.start()
 
     return () => {
       engine.dispose()
@@ -69,9 +83,9 @@ export default function AnimationPanel({
   }, [params])
 
   useEffect(() => {
-    if (playing) engineRef.current?.start()
+    if (playing || forcePlay) engineRef.current?.start()
     else engineRef.current?.stop()
-  }, [playing])
+  }, [playing, forcePlay])
 
   // 필터가 선택된 동안만 스로틀링된 스냅샷을 캡처해서 Paper 필터로 흘려보낸다
   // (매 프레임 texImage2D 재업로드는 비용이 크므로 400ms 간격으로 제한 — 검증 항목)
@@ -81,10 +95,10 @@ export default function AnimationPanel({
     if (!canvas) return
     const id = window.setInterval(() => {
       onSnapshotChange(canvas.toDataURL())
-    }, 400)
+    }, snapshotIntervalMs)
     return () => window.clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterActive, alwaysSnapshot])
+  }, [filterActive, alwaysSnapshot, snapshotIntervalMs])
 
   const update = (patch: Partial<AnimationParams>) => onChange({ ...params, ...patch })
 
