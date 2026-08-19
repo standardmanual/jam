@@ -7,16 +7,14 @@ export interface PatternParams {
   gridX: number
   /** Y축 그리드 반복 수 */
   gridY: number
-  /** 가로 오프셋 (px) */
-  offsetX: number
-  /** 세로 오프셋 (px) */
-  offsetY: number
+  /** 오프셋 — 행 사이 간격 (px, 세로 방향 여백) */
+  rowGap: number
+  /** 오프셋 — 열 사이 간격 (px, 가로 방향 여백) */
+  colGap: number
   /** 대칭반복(mirror) — 격자를 2x2로 뒤집어 이어붙인다 */
   mirror: boolean
   /** 이미지 크기 배율 */
   imageScale: number
-  /** 타일 간 간격 (px) */
-  gap: number
   /** 행 스태거(벽돌쌓기) — 홀수 행을 가로로 절반 밀어서 배치 */
   rowStagger: boolean
   /** 열 스태거(벽돌쌓기) — 홀수 열을 세로로 절반 밀어서 배치 */
@@ -28,11 +26,10 @@ export interface PatternParams {
 export const DEFAULT_PATTERN_PARAMS: PatternParams = {
   gridX: 4,
   gridY: 4,
-  offsetX: 0,
-  offsetY: 0,
+  rowGap: 0,
+  colGap: 0,
   mirror: false,
   imageScale: 1,
-  gap: 0,
   rowStagger: false,
   colStagger: false,
   rotation: 0,
