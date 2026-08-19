@@ -1,0 +1,79 @@
+import { BookIcon } from '@/components/ui/icons'
+
+const TEXT_SECONDARY = '#B2B2B2'
+const PROGRESS_FILL = '#E8461F'
+
+export interface ItemBookHeroSectionBook {
+  name: string
+  description: string
+  image_url: string | null
+}
+
+interface ItemBookHeroSectionProps {
+  book: ItemBookHeroSectionBook
+  /** 슬롯팅 완료 개수 */
+  slottedCount: number
+  /** 전체 배지 개수 (0이면 진행도 바가 0%로 표시됨) */
+  totalBadgeCount: number
+}
+
+/**
+ * 컬렉션 상세화면의 대표 이미지 + 이름/설명 + 진행도 바 — [20260819_014]
+ *
+ * `/itembooks/[id]/page.tsx`(실제 서비스 화면)에서 분리해 어드민 배경 프리뷰 프레임
+ * (`ItemBookDetailPreviewFrame.tsx`)이 동일 컴포넌트를 재사용하도록 한다. 배지 상세화면의
+ * `BadgeHeroSection` 패턴과 동일한 이유 — 저작 화면 미리보기가 실제 화면과 마크업이 달라지는
+ * 사고를 반복하지 않기 위함(티켓 20260819_011에서 확정한 원칙).
+ */
+export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCount }: ItemBookHeroSectionProps) {
+  const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
+
+  return (
+    <>
+      {/* 대표 이미지 — 미션 상세와 동일한 카드 형식 */}
+      <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
+        {book.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={book.image_url}
+            alt={book.name}
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <BookIcon className="w-16 h-16" style={{ color: '#AAAAAA' }} />
+        )}
+      </div>
+
+      {/* 히어로 섹션 */}
+      <div className="flex flex-col items-center gap-3 text-center">
+        <h1
+          className="font-bold"
+          style={{ color: '#FFFFFF', fontSize: '36px', lineHeight: '1.2' }}
+        >
+          {book.name}
+        </h1>
+        {book.description && (
+          <p style={{ color: TEXT_SECONDARY, fontSize: '13px', lineHeight: '1.4' }}>
+            {book.description}
+          </p>
+        )}
+      </div>
+
+      {/* 진행도 바 + 카운트 인라인 */}
+      <div className="flex items-center gap-3">
+        <div
+          className="flex-1 relative rounded-full overflow-hidden"
+          style={{ height: '8px', background: '#FFFFFF' }}
+        >
+          <div
+            className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+            style={{ width: `${pct}%`, background: PROGRESS_FILL }}
+          />
+        </div>
+        <span style={{ color: 'var(--color-primary)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+          {slottedCount}/{totalBadgeCount}
+        </span>
+      </div>
+    </>
+  )
+}

@@ -8,9 +8,11 @@ import type {
   UserItemBookSlotRow,
 } from '@/types/database'
 import TopNav from '@/components/ui/TopNav'
-import { BookIcon, PinIcon } from '@/components/ui/icons'
+import { PinIcon } from '@/components/ui/icons'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
+import ItemBookHeroSection from './ItemBookHeroSection'
 import { d } from '@/lib/i18n'
+import { getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -23,7 +25,6 @@ const PAGE_BG = 'var(--color-surface)'
 const CARD_BG = '#000000'
 const THUMB_BG = '#333333'
 const TEXT_SECONDARY = '#B2B2B2'
-const PROGRESS_FILL = '#E8461F'
 
 export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
@@ -165,64 +166,72 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   const isCompleted =
     completionRes.data != null ||
     (totalBadgeCount > 0 && slottedCount >= totalBadgeCount)
-  const pct =
-    totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
+
+  // [20260819_014] 배지 상세화면(20260819_011)과 동일한 원칙 — 배경은 이 고정 레이어 한 곳에서만
+  // 그린다. 배경이 있는 컬렉션에서는 TopNav·본문을 투명하게 두어 아래 레이어가 그대로 비쳐 보이게
+  // 하고, 없으면 기존 PAGE_BG를 그대로 유지한다(회귀 방지).
+  const themedBackground = hasBadgeBackgroundTheme(book)
+  const pageBg = themedBackground ? 'transparent' : PAGE_BG
+  const topNavStyle: React.CSSProperties = { background: pageBg, color: '#FFFFFF' }
+  const themedTextStyle: React.CSSProperties = getBadgeThemedTextStyle(themedBackground)
+  const backgroundVideoUrl = getBadgeBackgroundVideoUrl(book)
+  const backgroundLayer = (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'fixed',
+        top: 0,
+        bottom: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: '430px',
+        zIndex: 0,
+        pointerEvents: 'none',
+        overflow: 'hidden',
+        ...getBadgeBackgroundStyle(book),
+      }}
+    >
+      {backgroundVideoUrl && (
+        <video
+          className="badge-background-video"
+          src={backgroundVideoUrl}
+          poster={book.background_image_url ?? undefined}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: 'auto',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+    </div>
+  )
 
   return (
-    <div className="flex flex-col min-h-full" style={{ background: PAGE_BG, color: '#FFFFFF' }}>
+    <div className="flex flex-col min-h-full" style={{ background: pageBg, color: '#FFFFFF', ...themedTextStyle }}>
+      {backgroundLayer}
       <TopNav
         title={book.name}
         backHref={backHref ?? '/badges#itembook'}
-        headerStyle={{ background: PAGE_BG, color: '#FFFFFF' }}
+        headerStyle={topNavStyle}
       />
 
       {/* 스크롤 컨테이너 — 외부: padding 16 / gap 12 */}
-      <div className="flex-1 flex flex-col px-4 pt-4 pb-10 gap-3">
+      <div className="relative z-10 flex-1 flex flex-col px-4 pt-4 pb-10 gap-3">
 
-        {/* 대표 이미지 — 미션 상세와 동일한 카드 형식 */}
-        <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
-          {book.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={book.image_url}
-              alt={book.name}
-              className="w-full h-full object-contain"
-            />
-          ) : (
-            <BookIcon className="w-16 h-16" style={{ color: '#AAAAAA' }} />
-          )}
-        </div>
-
-        {/* 히어로 섹션 */}
-        <div className="flex flex-col items-center gap-3 text-center">
-          <h1
-            className="font-bold"
-            style={{ color: '#FFFFFF', fontSize: '36px', lineHeight: '1.2' }}
-          >
-            {book.name}
-          </h1>
-          {book.description && (
-            <p style={{ color: TEXT_SECONDARY, fontSize: '13px', lineHeight: '1.4' }}>
-              {book.description}
-            </p>
-          )}
-        </div>
-
-        {/* 진행도 바 + 카운트 인라인 */}
-        <div className="flex items-center gap-3">
-          <div
-            className="flex-1 relative rounded-full overflow-hidden"
-            style={{ height: '8px', background: '#FFFFFF' }}
-          >
-            <div
-              className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
-              style={{ width: `${pct}%`, background: PROGRESS_FILL }}
-            />
-          </div>
-          <span style={{ color: 'var(--color-primary)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-            {slottedCount}/{totalBadgeCount}
-          </span>
-        </div>
+        <ItemBookHeroSection
+          book={{ name: book.name, description: book.description, image_url: book.image_url }}
+          slottedCount={slottedCount}
+          totalBadgeCount={totalBadgeCount}
+        />
 
         {/* 스토리 텍스트 */}
         {book.story_text && (
