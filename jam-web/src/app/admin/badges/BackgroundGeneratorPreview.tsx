@@ -66,6 +66,11 @@ interface BackgroundGeneratorPreviewProps {
   /** 라이브 미리보기를 실제 화면 맥락에 맞게 그리는 렌더 함수. 호출부(BadgeForm 등)가 자신의
    *  상세화면과 동일한 구조로 프레임을 그린다 — 이 컴포넌트는 어떤 화면을 흉내 내는지 모른다. */
   renderPreview: (state: BackgroundGeneratorLivePreviewState) => ReactNode
+  /** 배경 레이어에 실제로 무언가 그려지는 상태(themed)가 바뀔 때마다 호출된다. 호출부가 저장 전
+   *  단계에서도 "지금 배경값이 있는가"를 알아야 할 때(예: 컬렉션의 "하위 배지에 일괄 적용" 버튼
+   *  활성화 조건) 사용한다 — 옵션이라 넘기지 않는 기존 호출부(BadgeForm)는 영향 없음
+   *  (20260819_014). */
+  onThemedChange?: (themed: boolean) => void
 }
 
 /** `bake()` 결과 — 정지 이미지는 항상, 반복 영상은 애니메이션 모드에서만 만들어진다 (20260819_012) */
@@ -109,7 +114,7 @@ export interface BackgroundGeneratorPreviewHandle {
  */
 const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, BackgroundGeneratorPreviewProps>(
   function BackgroundGeneratorPreview(
-    { backgroundColor, onBackgroundColorChange, mode, onModeChange, initialBackgroundImageUrl, existingImageOption, renderPreview },
+    { backgroundColor, onBackgroundColorChange, mode, onModeChange, initialBackgroundImageUrl, existingImageOption, renderPreview, onThemedChange },
     ref
   ) {
     const [imageSource, setImageSource] = useState<ImageSource>('upload')
@@ -260,6 +265,11 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
     // 배경 레이어에 실제로 무언가 그려지는 상태인지 — 실제 화면에서 배경이 있는 화면과 동일하게
     // 주변 UI를 투명 처리할지 결정한다. 아무것도 없으면 배경 없는 화면과 똑같이 보인다.
     const themed = mode === 'color' ? Boolean(backgroundColor) : Boolean(filterSource) || savedBackgroundVisible
+
+    // 호출부가 저장 전에도 "지금 배경값이 있는가"를 알아야 하는 경우를 위한 알림 (20260819_014)
+    useEffect(() => {
+      onThemedChange?.(themed)
+    }, [themed, onThemedChange])
 
     // 2단 배치에서 설정 영역이 눌리지 않도록, 넓은 화면(xl↑)에서는 이 섹션만 폼 기본 폭
     // (max-w-2xl)을 넘어 어드민 본문 가용 폭까지 넓힌다(사이드바 16rem + 여백 감안).
