@@ -39,17 +39,15 @@ export const DEFAULT_PATTERN_PARAMS: PatternParams = {
 }
 
 export interface AnimationParams {
-  brushSize: number
-  brushDensity: number
-  opacity: number
+  /** 슬라이스(타일) 수 — 원본(kaleidoscope.js) numTilesInput 범위 그대로: 2~25 */
+  numTiles: number
+  /** 애니메이션 속도 — 원본 speedInput 범위 그대로: 1~15 */
   speed: number
 }
 
 export const DEFAULT_ANIMATION_PARAMS: AnimationParams = {
-  brushSize: 120,
-  brushDensity: 8,
-  opacity: 60,
-  speed: 12,
+  numTiles: 5,
+  speed: 3,
 }
 
 export type FilterId =
