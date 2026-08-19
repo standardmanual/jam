@@ -47,6 +47,20 @@ interface BadgeFormProps {
 
 const EMPTY_CONDITION: BadgeCondition = {}
 
+/**
+ * 구운 배경 파일(정지 PNG / 반복 MP4)을 기존 업로드 API로 올리고 public URL을 돌려준다.
+ * 이미지와 영상이 같은 경로를 쓰므로 한 곳으로 모았다 (20260819_012).
+ */
+async function uploadBackgroundFile(blob: Blob, filename: string, mimeType: string, errorMessage: string): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', new File([blob], filename, { type: mimeType }))
+  formData.append('folder', 'badges/backgrounds')
+  const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error ?? errorMessage)
+  return data.url as string
+}
+
 export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps) {
   const router = useRouter()
   const isEdit = !!badge
@@ -290,27 +304,39 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     setLoading(true)
 
     try {
-      // 배경 테마 — "단색"/"제너레이터"는 상호 배타적이라 저장 시 선택하지 않은 쪽은 항상 null로
-      // 정리한다(20260819_008). 제너레이터 모드에서 이번 세션에 새 이미지를 고르지 않았으면(즉
-      // bakeToBlob()이 null을 반환하면) 기존에 저장돼 있던 배경 이미지를 그대로 유지한다 — 그냥
-      // 폼을 열었다 닫기만 해도 저장된 배경이 사라지는 걸 막기 위함.
+      // 배경 테마 — 3모드(단색 / 정적 제너레이터 / 애니메이션 제너레이터)는 상호 배타적이라 저장
+      // 시 선택하지 않은 쪽은 항상 null로 정리한다(20260819_008, 20260819_012). 제너레이터
+      // 모드에서 이번 세션에 새 이미지를 고르지 않았으면(즉 bake()가 null을 반환하면) 기존에
+      // 저장돼 있던 배경 이미지·영상을 그대로 유지한다 — 그냥 폼을 열었다 닫기만 해도 저장된
+      // 배경이 사라지는 걸 막기 위함.
       let finalBackgroundColor: string | null = null
       let finalBackgroundImageUrl: string | null = null
+      let finalBackgroundVideoUrl: string | null = null
 
       if (backgroundMode === 'color') {
         finalBackgroundColor = trimmedBackgroundColor || null
       } else {
-        const blob = await backgroundGeneratorRef.current?.bakeToBlob()
-        if (blob) {
-          const bakeFormData = new FormData()
-          bakeFormData.append('file', new File([blob], `background-${Date.now()}.png`, { type: 'image/png' }))
-          bakeFormData.append('folder', 'badges/backgrounds')
-          const bakeRes = await fetch('/api/admin/upload-image', { method: 'POST', body: bakeFormData })
-          const bakeData = await bakeRes.json()
-          if (!bakeRes.ok) throw new Error(bakeData.error ?? '배경 이미지를 업로드하지 못했습니다.')
-          finalBackgroundImageUrl = bakeData.url as string
+        const baked = await backgroundGeneratorRef.current?.bake()
+        if (baked) {
+          // poster(정지 PNG)는 두 모드 공통. 애니메이션 모드에서는 <video poster>·영상 로드 실패
+          // 폴백·prefers-reduced-motion 대체 이미지로 계속 쓰이므로 영상과 항상 짝으로 올린다.
+          finalBackgroundImageUrl = await uploadBackgroundFile(
+            baked.poster,
+            `background-${Date.now()}.png`,
+            'image/png',
+            '배경 이미지를 업로드하지 못했습니다.'
+          )
+          if (baked.video) {
+            finalBackgroundVideoUrl = await uploadBackgroundFile(
+              baked.video,
+              `background-${Date.now()}.mp4`,
+              'video/mp4',
+              '배경 영상을 업로드하지 못했습니다.'
+            )
+          }
         } else {
           finalBackgroundImageUrl = badge?.background_image_url ?? null
+          finalBackgroundVideoUrl = badge?.background_video_url ?? null
         }
       }
 
@@ -333,6 +359,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         background_color: finalBackgroundColor,
         background_shader_id: backgroundShaderId || null,
         background_image_url: finalBackgroundImageUrl,
+        background_video_url: finalBackgroundVideoUrl,
       }
 
       const res = await fetch(

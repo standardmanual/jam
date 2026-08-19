@@ -1,8 +1,14 @@
 import type { CSSProperties } from 'react'
 import type { BadgeRow } from '@/types/database'
 
-/** 배경 테마 계산에 필요한 배지 필드만 — 상세화면·획득 알림 모달 등 호출부는 이 최소 shape만 맞추면 된다 */
-export type BadgeBackgroundThemeSource = Pick<BadgeRow, 'background_color' | 'background_shader_id' | 'background_image_url'>
+/**
+ * 배경 테마 계산에 필요한 배지 필드만 — 상세화면·획득 알림 모달 등 호출부는 이 최소 shape만
+ * 맞추면 된다. `background_video_url`(20260819_012)은 optional이라 영상을 다루지 않는 기존
+ * 호출부(어드민 미리보기 등)는 그대로 둬도 된다.
+ */
+export type BadgeBackgroundThemeSource =
+  Pick<BadgeRow, 'background_color' | 'background_shader_id' | 'background_image_url'> &
+  Partial<Pick<BadgeRow, 'background_video_url'>>
 
 /**
  * 배지 상세화면과 향후 획득 알림 중앙 모달이 공유하는 배경 테마 스타일 계산기.
@@ -44,9 +50,29 @@ export function getBadgeBackgroundStyle(badge: BadgeBackgroundThemeSource): CSSP
  * 배경 테마(배경 이미지 또는 배경색)가 지정된 배지인지 판정한다. — [20260819_011]
  * 배경이 있으면 상세화면의 TopNav·Hero 카드는 고정 배경 레이어를 가리지 않도록 투명해지고,
  * 없으면 기존 그대로(--color-surface / bg-surface-elevated) 유지된다.
+ *
+ * [20260819_012] 영상 배경(background_video_url)도 배경 테마로 친다. 저장 시 poster용
+ * background_image_url이 항상 함께 채워지므로 실무상 판정 결과가 달라지지는 않지만, 방어적으로
+ * 영상만 남은 데이터에서도 투명 처리가 유지되도록 한다.
  */
 export function hasBadgeBackgroundTheme(badge: BadgeBackgroundThemeSource): boolean {
-  return Boolean(badge.background_image_url || badge.background_color)
+  return Boolean(badge.background_image_url || badge.background_video_url || badge.background_color)
+}
+
+/**
+ * 배경 레이어에서 실제로 재생할 반복 영상 URL. — [20260819_012]
+ *
+ * `getBadgeBackgroundStyle`은 CSS만 반환하는 순수 함수라 `<video>` 엘리먼트를 만들 수 없다.
+ * 호출부가 늘어나지 않도록(배경은 티켓 20260819_011에서 확정한 단일 레이어 한 곳에서만 그린다)
+ * "영상을 틀어야 하는가"의 판단만 이 함수로 한 곳에 모으고, 엘리먼트 생성은 그 단일 레이어가
+ * 담당한다.
+ *
+ * 영상이 있어도 CSS 배경 이미지(poster)는 그대로 깔아 둔다 — 영상 로드 전 첫 페인트,
+ * 로드 실패 폴백, `prefers-reduced-motion: reduce`(영상만 CSS로 숨김), 영상 높이(3타일)를
+ * 넘어서는 초장신 뷰포트까지 모두 정지 이미지가 받아준다.
+ */
+export function getBadgeBackgroundVideoUrl(badge: BadgeBackgroundThemeSource): string | null {
+  return badge.background_video_url ?? null
 }
 
 /**
