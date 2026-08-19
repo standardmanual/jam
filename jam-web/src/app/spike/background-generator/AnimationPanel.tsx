@@ -12,6 +12,18 @@ interface AnimationPanelProps {
   /** 필터 미리보기용 스냅샷 — 필터가 선택된 동안만 주기적으로 캡처한다 (성능 검증용) */
   onSnapshotChange: (dataUrl: string) => void
   filterActive: boolean
+  /**
+   * true면 filterActive와 무관하게 항상 스냅샷을 캡처한다(400ms 간격, 기존 로직 그대로).
+   * 기본값 false로 스파이크 페이지의 기존 동작(필터 선택 중에만 캡처)은 그대로 유지된다.
+   * 티켓 20260819_007 — BadgeForm 통합 미리보기는 필터 미선택 상태에서도 합성 결과가 필요해서 도입.
+   */
+  alwaysSnapshot?: boolean
+  /**
+   * true면 이 패널 자체의 캔버스를 화면에 노출하지 않는다(컨트롤만 노출). 캔버스는 여전히
+   * DOM에 마운트된 채로 엔진이 그대로 그린다 — hidden이어도 rAF·캔버스 드로잉·toDataURL은
+   * 정상 동작한다. 티켓 20260819_007 — 실제 배지 배경 레이어 미리보기 하나로 합치기 위해 도입.
+   */
+  hidePreviewBox?: boolean
 }
 
 const rowClass = 'flex items-center justify-between gap-3 text-sm text-[#374151]'
@@ -25,6 +37,8 @@ export default function AnimationPanel({
   previewSize,
   onSnapshotChange,
   filterActive,
+  alwaysSnapshot = false,
+  hidePreviewBox = false,
 }: AnimationPanelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<KaleidoscopeEngine | null>(null)
@@ -62,7 +76,7 @@ export default function AnimationPanel({
   // 필터가 선택된 동안만 스로틀링된 스냅샷을 캡처해서 Paper 필터로 흘려보낸다
   // (매 프레임 texImage2D 재업로드는 비용이 크므로 400ms 간격으로 제한 — 검증 항목)
   useEffect(() => {
-    if (!filterActive) return
+    if (!filterActive && !alwaysSnapshot) return
     const canvas = canvasRef.current
     if (!canvas) return
     const id = window.setInterval(() => {
@@ -70,7 +84,7 @@ export default function AnimationPanel({
     }, 400)
     return () => window.clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterActive])
+  }, [filterActive, alwaysSnapshot])
 
   const update = (patch: Partial<AnimationParams>) => onChange({ ...params, ...patch })
 
@@ -78,8 +92,8 @@ export default function AnimationPanel({
     <div className="flex gap-6">
       <canvas
         ref={canvasRef}
-        className="shrink-0 rounded-xl border border-[#e5e7eb]"
-        style={{ width: previewSize, height: previewSize }}
+        className={hidePreviewBox ? 'hidden' : 'shrink-0 rounded-xl border border-[#e5e7eb]'}
+        style={hidePreviewBox ? undefined : { width: previewSize, height: previewSize }}
       />
 
       <div className="flex-1 flex flex-col gap-3 min-w-[260px]">
