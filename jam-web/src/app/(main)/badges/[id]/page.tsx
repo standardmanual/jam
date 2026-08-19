@@ -13,9 +13,10 @@ import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
 import ItemEarnHistory from './ItemEarnHistory'
 import BadgeHeroSection from './BadgeHeroSection'
+import BadgeConditionCard from './BadgeConditionCard'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
-import { getBadgeBackgroundStyle } from '@/lib/badgeBackgroundTheme'
+import { getBadgeBackgroundStyle, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
@@ -228,14 +229,19 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   const badgeRow = badge as BadgeRow
   const earned = earnedRow as (UserActivityBadgeRow & { poi: PoiRow | null }) | null
 
-  // 배경 테마 프리미티브 — background_color가 있으면 TopNav 배경에도 동일하게 반영된다
-  // (20260818_003). 없으면 기존과 동일하게 --color-surface를 유지한다.
-  const topNavStyle: React.CSSProperties = { background: 'var(--color-surface)', ...getBadgeBackgroundStyle(badgeRow) }
+  // [20260819_011] 배경은 아래 고정 배경 레이어 한 곳에서만 그린다. TopNav에 배경을 한 번 더
+  // 주입하면(20260818_003 동작) 헤더 박스와 레이어 박스의 비율이 달라 같은 이미지가 서로 다른
+  // 배율로 잘려 경계에 이음매가 보였다. 배경이 있는 배지에서는 TopNav를 투명하게 두어 아래
+  // 고정 레이어가 그대로 비쳐 보이게 하고, 배경이 없으면 기존과 동일하게 --color-surface를
+  // 유지한다(회귀 방지).
+  const themedBackground = hasBadgeBackgroundTheme(badgeRow)
+  const topNavStyle: React.CSSProperties = { background: themedBackground ? 'transparent' : 'var(--color-surface)' }
 
   // 뷰포트 전체(헤더 아래~본문~푸터)를 덮는 고정 배경 레이어 — [20260818_002 스코프 수정]
   // (main)/layout.tsx의 main(비-positioned, bg-surface 불투명)보다 위, TopNav(sticky, z-30)보다는
-  // 아래 z-index로 배치해 배경이 자동으로 비쳐 보이게 한다. TopNav headerStyle과 동일한
-  // getBadgeBackgroundStyle(badgeRow) 값을 공급받아 두 지점이 항상 같은 값을 쓰도록 배선한다.
+  // 아래 z-index로 배치해 배경이 자동으로 비쳐 보이게 한다.
+  // [20260819_011] 배경을 실제로 그리는 유일한 지점이다 — TopNav와 Hero 카드는 배경을 그리지
+  // 않고 투명 처리만 하므로, 같은 이미지가 서로 다른 배율로 여러 번 잘려 이음매가 생기지 않는다.
   // pointerEvents: 'none' — 순수 시각 배경 레이어이므로 클릭/탭 이벤트를 가로채지 않고 아래
   // 콘텐츠(링크·버튼)로 그대로 통과시킨다. (게이트 리뷰에서 발견된 클릭 차단 회귀 수정)
   // [20260818_004 버그 수정] inset:0은 뷰포트 전체 폭을 덮어 (main)/layout.tsx의
@@ -265,9 +271,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // 내부, 아래 info/action-section div에 개별 적용) — [20260818_003, 20260818_002 잔여 이슈 수정].
   // 실제 배경색/배경 이미지가 채워진 상태에서 흰 텍스트 가독성을 보정하기 위한 최소한의 텍스트
   // 그림자. 둘 다 없으면 기존과 동일(그림자 없음)하다. (20260819_008 — background_image_url 추가)
-  const themedTextStyle: React.CSSProperties = badgeRow.background_color || badgeRow.background_image_url
-    ? { textShadow: '0 1px 2px rgba(0,0,0,0.65), 0 1px 10px rgba(0,0,0,0.4)' }
-    : {}
+  const themedTextStyle: React.CSSProperties = getBadgeThemedTextStyle(themedBackground)
 
   // Phase 16: poi 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
   let poiEarns: (UserPoiBadgeEarnRow & { poi: PoiRow | null })[] = []
@@ -459,10 +463,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* info-section */}
         <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
-          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
-            <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
-            <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
-          </div>
+          <BadgeConditionCard text="이 장소를 경유하는 활동이 기록되면 획득돼요." />
           <PoiEarnHistory poiEarns={poiEarns.map((e) => ({
             id: e.id,
             earned_at: e.earned_at,
@@ -512,12 +513,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       {/* info-section */}
       <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
         {/* 획득 조건 다크 카드 */}
-        <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
-          <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
-          <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">
-            {formatConditionText(badgeRow.condition_json, badgeRow.name)}
-          </p>
-        </div>
+        <BadgeConditionCard text={formatConditionText(badgeRow.condition_json, badgeRow.name)} />
 
         {/* 선행 배지 조건 */}
         {prereqStatus.length > 0 && (

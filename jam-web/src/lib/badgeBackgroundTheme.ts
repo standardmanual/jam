@@ -19,15 +19,41 @@ export type BadgeBackgroundThemeSource = Pick<BadgeRow, 'background_color' | 'ba
  */
 export function getBadgeBackgroundStyle(badge: BadgeBackgroundThemeSource): CSSProperties {
   if (badge.background_image_url) {
-    // 이미 SERVICE_WIDTH(430px) 기준 앱 컬럼 폭에 맞춰 합성·저장된 정사각 이미지 — 호출부(고정
-    // 배경 레이어/Hero 카드)마다 실제 박스 크기·비율이 달라 cover로 잘림 없이 채운다.
+    // [20260819_011] 이 스타일은 이제 앱 컬럼 폭(430px) 고정 배경 레이어 "한 곳"에만 적용된다.
+    // 저장된 이미지는 SERVICE_WIDTH(430px) 기준으로 구운 정사각형이고, 적용 대상 레이어는
+    // 430px × 뷰포트 높이(세로로 2배 이상 긴 박스)라 크기 지정 방식을 다시 정했다(실제 렌더링
+    // 3안 비교):
+    // - `cover`: 세로를 채우느라 2배 이상 확대되고 좌우가 잘려 저작할 때 본 패턴 밀도와 달라진다.
+    // - `100% 100%`: 잘리진 않지만 세로로만 2배 이상 늘어나 원이 타원이 되는 등 형태가 망가진다.
+    // - `100% auto` + repeat(채택): 가로를 저작 폭 그대로(1:1) 두고 세로로 반복시킨다. 저작한
+    //   크기·비율이 그대로 유지되고, 제너레이터 자체가 타일 반복 패턴을 굽는 도구라 반복이
+    //   본래 의도에도 맞는다.
+    // 어드민 미리보기도 같은 폭·비율 프레임에 동일한 규칙으로 그려 화면이 서로 어긋나지 않는다.
     return {
       backgroundImage: `url(${badge.background_image_url})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
+      backgroundSize: '100% auto',
+      backgroundPosition: 'top center',
+      backgroundRepeat: 'repeat',
     }
   }
   if (!badge.background_color) return {}
   return { backgroundColor: badge.background_color }
+}
+
+/**
+ * 배경 테마(배경 이미지 또는 배경색)가 지정된 배지인지 판정한다. — [20260819_011]
+ * 배경이 있으면 상세화면의 TopNav·Hero 카드는 고정 배경 레이어를 가리지 않도록 투명해지고,
+ * 없으면 기존 그대로(--color-surface / bg-surface-elevated) 유지된다.
+ */
+export function hasBadgeBackgroundTheme(badge: BadgeBackgroundThemeSource): boolean {
+  return Boolean(badge.background_image_url || badge.background_color)
+}
+
+/**
+ * 배경 위 흰 텍스트 가독성 보정용 텍스트 그림자. — [20260819_011에서 공통화]
+ * 상세화면과 어드민 미리보기가 같은 값을 쓰도록 한 곳에서 계산한다. 배경이 없으면 빈 스타일이라
+ * 기존 화면과 동일하다.
+ */
+export function getBadgeThemedTextStyle(themed: boolean): CSSProperties {
+  return themed ? { textShadow: '0 1px 2px rgba(0,0,0,0.65), 0 1px 10px rgba(0,0,0,0.4)' } : {}
 }
