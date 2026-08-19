@@ -45,7 +45,9 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 공개 경로 (인증 불필요)
-  const publicPaths = ['/login', '/auth/callback', '/forbidden', '/api/dev-login']
+  // '/spike'는 검증용 스파이크 프로토타입 전용 경로 — 로그인 없이 접근 가능해야 한다
+  // (20260819_001, staging 전용, main 머지 대상 아님)
+  const publicPaths = ['/login', '/auth/callback', '/forbidden', '/api/dev-login', '/spike']
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublicPath) {
