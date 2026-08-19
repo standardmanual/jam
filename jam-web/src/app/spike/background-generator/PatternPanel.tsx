@@ -17,14 +17,17 @@ const rangeClass = 'flex-1 accent-[#111111]'
 const numClass = 'w-10 text-right text-xs text-[#6b7280]'
 
 export default function PatternPanel({ image, params, onChange, previewSize, onFlattenedChange }: PatternPanelProps) {
-  const tilePitchX = previewSize / Math.max(1, params.gridX)
-  const tilePitchY = previewSize / Math.max(1, params.gridY)
+  // "XY 그리드 수"가 정하는 기준 셀 크기 — buildTileCanvas 내부에서 imageScale과 곱해져 이미지가
+  // 그려지는 크기(drawW/drawH)를 결정한다. 실제 반복 주기(타일 피치)는 여기에 rowGap/colGap이
+  // 더해져 늘어나므로 이 값 자체가 곧 타일 피치는 아니다 (20260819_005).
+  const baseCellW = previewSize / Math.max(1, params.gridX)
+  const baseCellH = previewSize / Math.max(1, params.gridY)
 
   // 타일 재굽기(mirror/오프셋/rotation/scale/stagger 반영) — 그리드 수가 바뀌어도 다시 굽는다
   const tileCanvas = useMemo(
-    () => buildTileCanvas(image, tilePitchX, tilePitchY, params),
+    () => buildTileCanvas(image, baseCellW, baseCellH, params),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [image, tilePitchX, tilePitchY, params.mirror, params.rowGap, params.colGap, params.rotation, params.imageScale, params.rowStagger, params.colStagger]
+    [image, baseCellW, baseCellH, params.mirror, params.rowGap, params.colGap, params.rotation, params.imageScale, params.rowStagger, params.colStagger]
   )
 
   // 렌더링 중 순수 계산으로 CSS 배경 스타일을 도출한다 (상태/이펙트 불필요)
