@@ -7,6 +7,7 @@ import { formatPaceSecPerKm } from '@/types/strava'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import BackgroundColorField, { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
+import BackgroundGeneratorPreview from './BackgroundGeneratorPreview'
 
 /** "5:30" 같은 mm:ss 페이스 입력을 초(sec/km)로 변환. 형식이 어긋나면 null */
 function parsePaceToSec(input: string): number | null {
@@ -522,6 +523,17 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             ))}
           </select>
           <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
+        </div>
+
+        {/* 배경 제너레이터 — 저작 UI + 라이브 미리보기 전용 (20260819_007). 저장 흐름과 분리돼 있음 */}
+        <div className="col-span-2">
+          <BackgroundGeneratorPreview
+            name={name}
+            description={description}
+            rarity={rarity}
+            imageUrl={imageUrl}
+            backgroundColor={backgroundColor}
+          />
         </div>
       </div>
 

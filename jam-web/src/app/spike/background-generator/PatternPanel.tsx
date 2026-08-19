@@ -9,6 +9,13 @@ interface PatternPanelProps {
   params: PatternParams
   onChange: (params: PatternParams) => void
   onFlattenedChange: (dataUrl: string) => void
+  /**
+   * true면 이 패널 자체의 미리보기 박스를 렌더링하지 않는다(컨트롤만 노출). 계산(useMemo/
+   * onFlattenedChange)은 박스 렌더링 여부와 무관하게 그대로 동작한다 — 티켓 20260819_007,
+   * BadgeForm 통합에서 실제 배지 배경 레이어 미리보기 하나로 합치기 위해 도입.
+   * 기본값 false로 스파이크 페이지(`/spike/background-generator`)의 기존 동작은 그대로 유지된다.
+   */
+  hidePreviewBox?: boolean
 }
 
 const rowClass = 'flex items-center justify-between gap-3 text-sm text-[#374151]'
@@ -23,7 +30,7 @@ const numClass = 'w-10 text-right text-xs text-[#6b7280]'
  * 표시 크기도 SERVICE_WIDTH와 동일하게 맞춰서, 여기서 보이는 결과가 실제 배지 상세화면에
  * 적용됐을 때와 같은 절대 px 스케일이 되도록 한다.
  */
-export default function PatternPanel({ image, params, onChange, onFlattenedChange }: PatternPanelProps) {
+export default function PatternPanel({ image, params, onChange, onFlattenedChange, hidePreviewBox = false }: PatternPanelProps) {
   // 타일 재굽기(mirror/오프셋/rotation/이미지 크기/stagger 반영) — 이미지 크기는 절대 px 값이라
   // 프리뷰 박스 크기와 무관하게 항상 동일한 결과를 낸다.
   const tileCanvas = useMemo(
@@ -60,10 +67,12 @@ export default function PatternPanel({ image, params, onChange, onFlattenedChang
 
   return (
     <div className="flex gap-6">
-      <div
-        className="shrink-0 rounded-xl border border-[#e5e7eb] overflow-hidden"
-        style={{ width: SERVICE_WIDTH, height: SERVICE_WIDTH, ...style }}
-      />
+      {!hidePreviewBox && (
+        <div
+          className="shrink-0 rounded-xl border border-[#e5e7eb] overflow-hidden"
+          style={{ width: SERVICE_WIDTH, height: SERVICE_WIDTH, ...style }}
+        />
+      )}
 
       <div className="flex-1 flex flex-col gap-3 min-w-[260px]">
         <label className={rowClass}>
