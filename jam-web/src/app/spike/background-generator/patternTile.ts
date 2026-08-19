@@ -1,12 +1,13 @@
 /**
  * 패턴 모드 타일 합성 유틸 (20260819_001 스파이크, 20260819_003에서 오프셋 재정의,
- * 20260819_005에서 간격↔이미지 크기 독립성 원칙으로 재수정).
+ * 20260819_005에서 간격↔이미지 크기 독립성 원칙으로 재수정, 20260819_006에서 그리드 수 제거·
+ * 실제 서비스 폭(SERVICE_WIDTH=430) 기준 절대 px 재구성).
  *
- * 6종 옵션 중 "그리드 수"만 순수 CSS(background-size)로 라이브 적용하고, 나머지("오프셋" —
- * 행간격/열간격, "대칭반복", "이미지 크기", "Row/Column stagger", "회전")는 반복 가능한 최소
- * 단위(repeat unit)를 캔버스에 한 번 구운 뒤 그 타일을 `background-repeat: repeat`로 반복시킨다.
- * — CSS의 background-repeat만으로는 한 레이어 안에서 행마다 다른 가로 오프셋을 줄 수 없어(벽돌쌓기),
- *   반복 단위 자체를 2칸 폭/높이로 구워 넣는 방식을 택했다. (완료 기록에 기술적 판단으로 기록)
+ * "오프셋"(행 사이 간격·열 사이 간격), "대칭반복", "이미지 크기", "Row/Column stagger", "회전"
+ * 5종 옵션은 반복 가능한 최소 단위(repeat unit)를 캔버스에 한 번 구운 뒤 그 타일을
+ * `background-repeat: repeat`로 반복시킨다. — CSS의 background-repeat만으로는 한 레이어 안에서
+ * 행마다 다른 가로 오프셋을 줄 수 없어(벽돌쌓기), 반복 단위 자체를 2칸 폭/높이로 구워 넣는
+ * 방식을 택했다. (완료 기록에 기술적 판단으로 기록)
  *
  * "오프셋"(행 사이 간격·열 사이 간격)의 원칙(20260819_005): **간격을 조정해도 이미지 자체의
  * 그려지는 크기는 절대 바뀌지 않는다.** 간격은 이미지와 이미지 사이에 여백을 추가/제거하는
@@ -16,26 +17,27 @@
  * (20260819_004는 반대로 "간격만큼 셀을 줄이고 그 줄어든 셀에 이미지를 다시 스케일"하는
  * 방식이었는데, 이 경우 간격을 늘릴수록 이미지 자체가 작아지는 근본적인 버그가 있었다.)
  *
- * `flattenPattern`은 동일한 타일을 미리보기 박스 크기만큼 반복해서 한 장의 평면 이미지로 만든다.
- * Paper 필터(@paper-design/shaders-react)는 image prop 하나만 받으므로, CSS 미리보기와 동일한
- * 결과물을 필터에 그대로 흘려보내기 위해 사용한다.
+ * "그리드 수" 폐지(20260819_006): 이미지 크기(`params.imageSize`)는 더 이상 "그리드 수가 정하는
+ * 기준 셀 크기 × 배율"로 파생되지 않고, 실제 서비스 폭(SERVICE_WIDTH) 기준 절대 px 값을 그대로
+ * 그려지는 크기(drawW/drawH)로 사용한다. 반복 개수는 별도 상태 없이 피치(pitchX/Y)와
+ * SERVICE_WIDTH로부터 자연 파생되는 값일 뿐이다. 이미지+간격의 합이 SERVICE_WIDTH를 넘어가는
+ * 것을 막는 clamp는 의도적으로 두지 않는다 — 넘치면 타일/캔버스 경계에서 잘리는 게 정상 동작이다.
+ *
+ * `flattenPattern`은 동일한 타일을 지정된 출력 크기(호출부에서 SERVICE_WIDTH 기준으로 지정)만큼
+ * 반복해서 한 장의 평면 이미지로 만든다. Paper 필터(@paper-design/shaders-react)는 image prop
+ * 하나만 받으므로, 실제 서비스 렌더링과 동일한 결과물을 필터에 그대로 흘려보내기 위해 사용한다.
  */
 import type { PatternParams } from './types'
 
-export function buildTileCanvas(
-  image: HTMLImageElement,
-  baseCellW: number,
-  baseCellH: number,
-  params: PatternParams
-): HTMLCanvasElement {
-  const { mirror, rowGap, colGap, rotation, imageScale, rowStagger, colStagger } = params
+export function buildTileCanvas(image: HTMLImageElement, params: PatternParams): HTMLCanvasElement {
+  const { mirror, rowGap, colGap, rotation, imageSize, rowStagger, colStagger } = params
   const unitCols = (mirror ? 2 : 1) * (colStagger ? 2 : 1)
   const unitRows = (mirror ? 2 : 1) * (rowStagger ? 2 : 1)
 
-  // 이미지가 그려지는 크기(drawW/drawH)는 오직 "그리드 수가 정하는 기준 셀 크기(baseCellW/H) ×
-  // 이미지 크기 조절(imageScale)"에서만 파생된다. rowGap/colGap은 이 계산에 절대 관여하지 않는다.
-  const drawW = baseCellW * imageScale
-  const drawH = baseCellH * imageScale
+  // 이미지가 그려지는 크기(drawW/drawH)는 params.imageSize(절대 px)를 그대로 사용한다. 그리드 수
+  // 개념이 없으므로 rowGap/colGap은 물론 이 값의 산출에도 관여하지 않는다(20260819_006).
+  const drawW = imageSize
+  const drawH = imageSize
 
   // 간격은 셀을 줄이는 대신 반복 주기(타일 피치)를 늘리는 방식으로 만든다: 열 방향 피치 =
   // 이미지 가로 크기 + colGap, 행 방향 피치 = 이미지 세로 크기 + rowGap. 두 슬라이더가 서로
