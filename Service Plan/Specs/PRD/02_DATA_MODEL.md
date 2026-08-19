@@ -124,7 +124,10 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 
 `background_color`/`background_shader_id`(20260818_004, 컬렉션 상세 배경 테마용) 외에
 `background_image_url`/`background_video_url`(nullable, 20260819_013) 보유 — badges 테이블과 동일 패턴.
-소속 배지 전체에 일괄 적용하는 캐스케이드 로직·컬렉션 상세화면 렌더링 연결은 후속 티켓(014) 범위.
+`/itembooks/[id]` 상세화면에 배지 상세와 동일한 단일 고정 배경 레이어로 렌더링됨(이미지 우선,
+영상 지원, 20260819_014). 어드민 "일괄 적용" 버튼으로 컬렉션 자신의 배경값(4필드 스냅샷)을
+소속 배지(`item_book_id` 일치, 소프트 삭제 제외) 전체에 1회성으로 복사 — 실시간 fallback 아니며
+항상 덮어씀.
 
 ### user_item_book_slots / user_item_book_completions (신규)
 - `user_item_book_slots`: 인벤토리 아이템을 슬롯에 장착한 기록 (UNIQUE user+book+badge)
