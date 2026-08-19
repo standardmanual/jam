@@ -1,8 +1,9 @@
 ---
 id: 20260819_007
 category: Admin
-status: OPEN
+status: CLOSED
 created: 2026-08-19
+closed: 2026-08-19
 ---
 
 # [Admin] 배경 제너레이터 — BadgeForm 통합 (저작 UI + 실제 배지 배경 라이브 미리보기)
@@ -139,9 +140,11 @@ jam-web/src/app/spike/background-generator/FilterPreview.tsx
   - 검증 스크립트/이미지는 스크래치패드에만 저장, 저장소에는 커밋하지 않음(임시 파일 정리 완료)
 
 ### 배포 정보
-- 배포일: (아직 미배포 — 사용자 승인 후 오케스트레이터가 staging에 push/배포)
-- 환경: staging 전용 (production 배포 금지 — 저장/굽기 미구현 상태이므로 더더욱 프로덕션 부적합)
-- 커밋: (아직 커밋 전)
+- 배포일: 2026-08-19
+- 환경: staging → main(production) 승격 (사용자 명시 승인, 저장/굽기 미구현이라 DB 쓰기 위험 없음
+  — 어드민이 production DB를 직접 사용 중이라 곧바로 production 반영 진행)
+- 커밋: staging에 머지 완료 (원 리뷰 브랜치 `claude/jamwork-20260819_007-bg-generator-badgeform`),
+  main 승격은 `/jam-ship`으로 진행
 
 ### 주요 의사결정 / 핵심 메모
 - "미리보기를 하나로 통합" 요구사항을 만족시키기 위해, 스파이크 3개 컴포넌트에 React 상태
