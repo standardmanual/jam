@@ -258,6 +258,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   //   유지된다 — 티켓 20260819_011의 `backgroundSize: '100% auto'` + 세로 repeat와 같은 그림이다.
   // - prefers-reduced-motion: reduce 대응은 globals.css의 .badge-background-video 규칙에서
   //   display:none으로 처리한다(그 경우 아래 CSS 배경 poster가 그대로 보인다).
+  //   같은 이유로 display:block도 인라인이 아니라 그 클래스에 둔다.
   // - pointerEvents:'none'은 레이어와 영상 양쪽에 유지한다(클릭 차단 회귀 방지).
   const badgeBackgroundVideoUrl = getBadgeBackgroundVideoUrl(badgeRow)
   const badgeBackgroundLayer = (
@@ -287,13 +288,14 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           loop
           playsInline
           preload="auto"
+          // display는 인라인이 아니라 .badge-background-video 클래스에 둔다 — 인라인 style은
+          // 스타일시트를 항상 이기므로 여기에 두면 prefers-reduced-motion 규칙이 먹지 않는다.
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
             height: 'auto',
-            display: 'block',
             pointerEvents: 'none',
           }}
         />
