@@ -263,9 +263,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // 본문 콘텐츠(hero/info/action-section, Footer)는 위 고정 배경 레이어(z-index:0, positioned)보다
   // 페인트 순서상 앞서도록 각 섹션에 relative z-10을 부여한다(BadgeHeroSection·Footer 컴포넌트
   // 내부, 아래 info/action-section div에 개별 적용) — [20260818_003, 20260818_002 잔여 이슈 수정].
-  // 실제 배경색이 채워진 상태에서 흰 텍스트 가독성을 보정하기 위한 최소한의 텍스트 그림자.
-  // background_color가 없으면 기존과 동일(그림자 없음)하다.
-  const themedTextStyle: React.CSSProperties = badgeRow.background_color
+  // 실제 배경색/배경 이미지가 채워진 상태에서 흰 텍스트 가독성을 보정하기 위한 최소한의 텍스트
+  // 그림자. 둘 다 없으면 기존과 동일(그림자 없음)하다. (20260819_008 — background_image_url 추가)
+  const themedTextStyle: React.CSSProperties = badgeRow.background_color || badgeRow.background_image_url
     ? { textShadow: '0 1px 2px rgba(0,0,0,0.65), 0 1px 10px rgba(0,0,0,0.4)' }
     : {}
 

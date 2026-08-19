@@ -73,21 +73,26 @@ export default function FilterPreview({ filterId, source, size, label, hidePrevi
 
   // 필터/소스/크기/필터별 파라미터에 따른 실제 미리보기 노드 — hidePreviewBox 여부와 무관하게
   // 완전히 동일한 렌더링 로직이다(분기 로직을 다시 작성하지 않고 그대로 재사용).
+  // preserveDrawingBuffer: true — 기본값(false)이면 브라우저가 컴포지팅 직후 WebGL 드로잉 버퍼를
+  // 비워서, 저장 시점에 이 캔버스를 `toBlob()`으로 구우면(20260819_008 bakePreviewToBlob) 빈/이전
+  // 프레임이 나올 수 있다. 필터별 시각 결과·성능에는 영향 없음(그리기 방식 자체는 동일).
+  const webGlContextAttributes = { preserveDrawingBuffer: true } as const
+
   const previewNode: ReactNode = !source ? (
     <span className="text-xs text-[#9ca3af]">이미지 없음</span>
   ) : filterId === 'none' ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={source} alt="필터 없음 미리보기" className="w-full h-full object-cover" />
   ) : filterId === 'fluted-glass' ? (
-    <FlutedGlass image={source} width={size} height={size} {...flutedGlass} />
+    <FlutedGlass image={source} width={size} height={size} webGlContextAttributes={webGlContextAttributes} {...flutedGlass} />
   ) : filterId === 'image-dithering' ? (
-    <ImageDithering image={source} width={size} height={size} {...imageDithering} />
+    <ImageDithering image={source} width={size} height={size} webGlContextAttributes={webGlContextAttributes} {...imageDithering} />
   ) : filterId === 'halftone-dots' ? (
-    <HalftoneDots image={source} width={size} height={size} {...halftoneDots} />
+    <HalftoneDots image={source} width={size} height={size} webGlContextAttributes={webGlContextAttributes} {...halftoneDots} />
   ) : filterId === 'halftone-cmyk' ? (
-    <HalftoneCmyk image={source} width={size} height={size} {...halftoneCmyk} />
+    <HalftoneCmyk image={source} width={size} height={size} webGlContextAttributes={webGlContextAttributes} {...halftoneCmyk} />
   ) : (
-    <LensDistortion image={source} width={size} height={size} {...lensDistortion} />
+    <LensDistortion image={source} width={size} height={size} webGlContextAttributes={webGlContextAttributes} {...lensDistortion} />
   )
 
   useEffect(() => {

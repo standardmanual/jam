@@ -398,6 +398,7 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     created_at: '2026-01-01T00:00:00Z',
     background_color: null,
     background_shader_id: null,
+    background_image_url: null,
     ...overrides,
   }
 }
