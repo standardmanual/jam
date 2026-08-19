@@ -1,11 +1,14 @@
 /**
- * 패턴 모드 타일 합성 유틸 (20260819_001 스파이크).
+ * 패턴 모드 타일 합성 유틸 (20260819_001 스파이크, 20260819_003에서 오프셋 재정의).
  *
- * 7종 옵션 중 "그리드 수"와 "오프셋"은 순수 CSS(background-size/background-position)로 라이브
- * 적용하고, 나머지("대칭반복", "이미지 크기", "Gap", "Row/Column stagger", "회전")는 반복 가능한
- * 최소 단위(repeat unit)를 캔버스에 한 번 구운 뒤 그 타일을 `background-repeat: repeat`로 반복시킨다.
+ * 6종 옵션 중 "그리드 수"만 순수 CSS(background-size)로 라이브 적용하고, 나머지("오프셋" —
+ * 행간격/열간격, "대칭반복", "이미지 크기", "Row/Column stagger", "회전")는 반복 가능한 최소
+ * 단위(repeat unit)를 캔버스에 한 번 구운 뒤 그 타일을 `background-repeat: repeat`로 반복시킨다.
  * — CSS의 background-repeat만으로는 한 레이어 안에서 행마다 다른 가로 오프셋을 줄 수 없어(벽돌쌓기),
  *   반복 단위 자체를 2칸 폭/높이로 구워 넣는 방식을 택했다. (완료 기록에 기술적 판단으로 기록)
+ *   "오프셋"(행 사이 간격·열 사이 간격)도 타일을 밀어내는 대신 이 그룹에 편입해, 셀 안에서
+ *   이미지가 그려지는 크기를 줄여 여백을 만드는 방식으로 굽는다 — 이전에 별도 CSS
+ *   background-position으로 타일 전체를 라이브 이동시키던 방식은 제거했다.
  *
  * `flattenPattern`은 동일한 타일을 미리보기 박스 크기만큼 반복해서 한 장의 평면 이미지로 만든다.
  * Paper 필터(@paper-design/shaders-react)는 image prop 하나만 받으므로, CSS 미리보기와 동일한
@@ -19,7 +22,7 @@ export function buildTileCanvas(
   tilePitchY: number,
   params: PatternParams
 ): HTMLCanvasElement {
-  const { mirror, gap, rotation, imageScale, rowStagger, colStagger } = params
+  const { mirror, rowGap, colGap, rotation, imageScale, rowStagger, colStagger } = params
   const unitCols = (mirror ? 2 : 1) * (colStagger ? 2 : 1)
   const unitRows = (mirror ? 2 : 1) * (rowStagger ? 2 : 1)
 
@@ -29,8 +32,9 @@ export function buildTileCanvas(
   const ctx = canvas.getContext('2d')
   if (!ctx || image.naturalWidth === 0) return canvas
 
-  const cellW = Math.max(1, tilePitchX - gap)
-  const cellH = Math.max(1, tilePitchY - gap)
+  // 열 사이 간격(colGap)은 셀 가로폭을, 행 사이 간격(rowGap)은 셀 세로폭을 줄여 여백을 만든다
+  const cellW = Math.max(1, tilePitchX - colGap)
+  const cellH = Math.max(1, tilePitchY - rowGap)
   const aspect = image.naturalWidth / image.naturalHeight
 
   let drawW = cellW
@@ -74,13 +78,7 @@ export function buildTileCanvas(
   return canvas
 }
 
-export function flattenPattern(
-  tileCanvas: HTMLCanvasElement,
-  outWidth: number,
-  outHeight: number,
-  offsetX: number,
-  offsetY: number
-): HTMLCanvasElement {
+export function flattenPattern(tileCanvas: HTMLCanvasElement, outWidth: number, outHeight: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.round(outWidth))
   canvas.height = Math.max(1, Math.round(outHeight))
@@ -89,11 +87,9 @@ export function flattenPattern(
 
   const tw = tileCanvas.width
   const th = tileCanvas.height
-  const offX = ((offsetX % tw) + tw) % tw
-  const offY = ((offsetY % th) + th) % th
 
-  for (let y = offY - th; y < canvas.height; y += th) {
-    for (let x = offX - tw; x < canvas.width; x += tw) {
+  for (let y = 0; y < canvas.height; y += th) {
+    for (let x = 0; x < canvas.width; x += tw) {
       ctx.drawImage(tileCanvas, x, y)
     }
   }
