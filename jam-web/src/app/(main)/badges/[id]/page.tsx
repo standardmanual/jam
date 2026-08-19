@@ -16,7 +16,7 @@ import BadgeHeroSection from './BadgeHeroSection'
 import BadgeConditionCard from './BadgeConditionCard'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
-import { getBadgeBackgroundStyle, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
+import { getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
@@ -248,6 +248,18 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // max-w-[430px] mx-auto 앱 컬럼(TopNav와 동일 폭) 바깥(데스크톱 검은 여백)까지 배경색이
   // 새어나갔다. left:50% + translateX(-50%) + maxWidth:430px로 앱 컬럼과 동일한 폭·중앙정렬로
   // 제한하되, fixed 특성(스크롤에 안 끌려감)은 그대로 유지한다.
+  // [20260819_012] 애니메이션 배경은 어드민에서 구운 반복 MP4를 이 레이어 안에서 재생한다.
+  // - 유저단에는 WebGL을 로드하지 않는다는 전체 설계 원칙 유지 — <video>로 재생만 한다.
+  // - iOS 자동재생 4종 세트(autoPlay·muted·loop·playsInline)는 하나라도 빠지면 재생되지 않는다.
+  // - poster에는 같은 시점에 구운 정지 PNG를 쓴다. CSS 배경 이미지(getBadgeBackgroundStyle)도
+  //   그대로 유지되므로 영상 로드 전/실패 시, 그리고 영상 높이(2타일=860px)를 넘어서는 아래쪽
+  //   까지 같은 정지 이미지가 이어져 보인다(860 = 430 × 2라 타일 경계가 정확히 맞는다).
+  // - 영상은 430×860(정사각 타일 2장)으로 구워져 있어 width:100% + height:auto만으로 원본 비율이
+  //   유지된다 — 티켓 20260819_011의 `backgroundSize: '100% auto'` + 세로 repeat와 같은 그림이다.
+  // - prefers-reduced-motion: reduce 대응은 globals.css의 .badge-background-video 규칙에서
+  //   display:none으로 처리한다(그 경우 아래 CSS 배경 poster가 그대로 보인다).
+  // - pointerEvents:'none'은 레이어와 영상 양쪽에 유지한다(클릭 차단 회귀 방지).
+  const badgeBackgroundVideoUrl = getBadgeBackgroundVideoUrl(badgeRow)
   const badgeBackgroundLayer = (
     <div
       aria-hidden="true"
@@ -261,9 +273,32 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         maxWidth: '430px',
         zIndex: 0,
         pointerEvents: 'none',
+        overflow: 'hidden',
         ...getBadgeBackgroundStyle(badgeRow),
       }}
-    />
+    >
+      {badgeBackgroundVideoUrl && (
+        <video
+          className="badge-background-video"
+          src={badgeBackgroundVideoUrl}
+          poster={badgeRow.background_image_url ?? undefined}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: 'auto',
+            display: 'block',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+    </div>
   )
 
   // 본문 콘텐츠(hero/info/action-section, Footer)는 위 고정 배경 레이어(z-index:0, positioned)보다
