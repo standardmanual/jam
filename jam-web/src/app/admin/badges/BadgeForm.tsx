@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
 import ImageUploadField from '@/components/admin/ImageUploadField'
-import BackgroundColorField, { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
+import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
-import BackgroundGeneratorPreview from './BackgroundGeneratorPreview'
+import BackgroundGeneratorPreview, { type BackgroundMode, type BackgroundGeneratorPreviewHandle } from './BackgroundGeneratorPreview'
 
 /** "5:30" 같은 mm:ss 페이스 입력을 초(sec/km)로 변환. 형식이 어긋나면 null */
 function parsePaceToSec(input: string): number | null {
@@ -68,6 +68,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   // 자동 프리필). background_shader_id: 임시 선택 드롭다운(값만 저장, 상세화면 렌더링 미연결)
   const [backgroundColor, setBackgroundColor] = useState<string>(badge?.background_color ?? '')
   const [backgroundShaderId, setBackgroundShaderId] = useState<string>(badge?.background_shader_id ?? '')
+  // "단색"/"제너레이터" 상호 배타 선택 (20260819_008) — 기존에 저장된 배경 제너레이터 이미지가
+  // 있으면 제너레이터 모드로 시작, 없으면 단색 모드로 시작한다.
+  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>(badge?.background_image_url ? 'generator' : 'color')
+  const backgroundGeneratorRef = useRef<BackgroundGeneratorPreviewHandle>(null)
 
   // condition_json builder state
   const initCond = (badge?.condition_json as BadgeCondition) ?? EMPTY_CONDITION
@@ -275,35 +279,62 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       return
     }
 
+    // 배경색 형식 검증은 "단색" 모드에서 실제로 저장될 값일 때만 한다 — "제너레이터" 모드에서는
+    // 이 필드가 화면에서 숨겨져 있어(잔여 입력값이어도) 저장에 쓰이지 않는다.
     const trimmedBackgroundColor = backgroundColor.trim()
-    if (trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
+    if (backgroundMode === 'color' && trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
       setError('배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해주세요.')
       return
     }
 
     setLoading(true)
 
-    const body = {
-      name,
-      description,
-      type,
-      rarity,
-      image_url: imageUrl,
-      activity_types: activityTypes,
-      patch_available: patchAvailable,
-      patch_price_krw: patchAvailable && patchPriceKrw ? parseInt(patchPriceKrw, 10) : null,
-      condition_json: conditionJson,
-      faction_id: factionId || null,
-      item_book_id: itemBookId || null,
-      drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
-      valid_from: validFrom ? new Date(validFrom).toISOString() : null,
-      valid_until: validUntil ? new Date(validUntil).toISOString() : null,
-      point_reward: Math.max(0, parseInt(pointReward, 10) || 0),
-      background_color: trimmedBackgroundColor || null,
-      background_shader_id: backgroundShaderId || null,
-    }
-
     try {
+      // 배경 테마 — "단색"/"제너레이터"는 상호 배타적이라 저장 시 선택하지 않은 쪽은 항상 null로
+      // 정리한다(20260819_008). 제너레이터 모드에서 이번 세션에 새 이미지를 고르지 않았으면(즉
+      // bakeToBlob()이 null을 반환하면) 기존에 저장돼 있던 배경 이미지를 그대로 유지한다 — 그냥
+      // 폼을 열었다 닫기만 해도 저장된 배경이 사라지는 걸 막기 위함.
+      let finalBackgroundColor: string | null = null
+      let finalBackgroundImageUrl: string | null = null
+
+      if (backgroundMode === 'color') {
+        finalBackgroundColor = trimmedBackgroundColor || null
+      } else {
+        const blob = await backgroundGeneratorRef.current?.bakeToBlob()
+        if (blob) {
+          const bakeFormData = new FormData()
+          bakeFormData.append('file', new File([blob], `background-${Date.now()}.png`, { type: 'image/png' }))
+          bakeFormData.append('folder', 'badges/backgrounds')
+          const bakeRes = await fetch('/api/admin/upload-image', { method: 'POST', body: bakeFormData })
+          const bakeData = await bakeRes.json()
+          if (!bakeRes.ok) throw new Error(bakeData.error ?? '배경 이미지를 업로드하지 못했습니다.')
+          finalBackgroundImageUrl = bakeData.url as string
+        } else {
+          finalBackgroundImageUrl = badge?.background_image_url ?? null
+        }
+      }
+
+      const body = {
+        name,
+        description,
+        type,
+        rarity,
+        image_url: imageUrl,
+        activity_types: activityTypes,
+        patch_available: patchAvailable,
+        patch_price_krw: patchAvailable && patchPriceKrw ? parseInt(patchPriceKrw, 10) : null,
+        condition_json: conditionJson,
+        faction_id: factionId || null,
+        item_book_id: itemBookId || null,
+        drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
+        valid_from: validFrom ? new Date(validFrom).toISOString() : null,
+        valid_until: validUntil ? new Date(validUntil).toISOString() : null,
+        point_reward: Math.max(0, parseInt(pointReward, 10) || 0),
+        background_color: finalBackgroundColor,
+        background_shader_id: backgroundShaderId || null,
+        background_image_url: finalBackgroundImageUrl,
+      }
+
       const res = await fetch(
         isEdit ? `/api/admin/badges/${badge.id}` : '/api/admin/badges',
         {
@@ -501,15 +532,6 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           />
         </div>
 
-        {/* 배경색 (20260818_003) — 이미지 업로드 시 평균 컬러로 자동 프리필, 수동 오버라이드 가능 */}
-        <div className="col-span-2">
-          <BackgroundColorField
-            value={backgroundColor}
-            onChange={setBackgroundColor}
-            helperText="배지 이미지를 업로드하면 평균 색상이 자동으로 채워져요. 색상 피커나 직접 입력으로 바꿀 수 있고, 비워두면 기본 배경을 사용해요."
-          />
-        </div>
-
         {/* 배경 쉐이더 임시 선택 (20260818_003) — 값만 저장, 상세화면 렌더링 미연결 */}
         <div className="col-span-2 flex flex-col gap-1.5">
           <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
@@ -525,14 +547,19 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
         </div>
 
-        {/* 배경 제너레이터 — 저작 UI + 라이브 미리보기 전용 (20260819_007). 저장 흐름과 분리돼 있음 */}
+        {/* 배경 테마 — 단색/제너레이터 배타 선택 + 실제 저장 연동 (20260819_007, 20260819_008) */}
         <div className="col-span-2">
           <BackgroundGeneratorPreview
+            ref={backgroundGeneratorRef}
             name={name}
             description={description}
             rarity={rarity}
             imageUrl={imageUrl}
             backgroundColor={backgroundColor}
+            onBackgroundColorChange={setBackgroundColor}
+            mode={backgroundMode}
+            onModeChange={setBackgroundMode}
+            initialBackgroundImageUrl={badge?.background_image_url ?? null}
           />
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react'
 import ImageUploader from '@/app/spike/background-generator/ImageUploader'
 import PatternPanel from '@/app/spike/background-generator/PatternPanel'
 import AnimationPanel from '@/app/spike/background-generator/AnimationPanel'
@@ -16,204 +16,360 @@ import {
 } from '@/app/spike/background-generator/types'
 import BadgeHeroSection from '@/app/(main)/badges/[id]/BadgeHeroSection'
 import { getBadgeBackgroundStyle } from '@/lib/badgeBackgroundTheme'
+import BackgroundColorField from '@/components/admin/BackgroundColorField'
+import { bakePreviewToBlob } from './bakePreviewToBlob'
 import type { BadgeRarity } from '@/types/database'
+
+export type BackgroundMode = 'color' | 'generator'
+
+/** 제너레이터의 이미지 입력 소스 — 새로 업로드하거나 이미 등록된 배지 이미지를 재사용 (20260819_008) */
+type ImageSource = 'upload' | 'existing'
 
 interface BackgroundGeneratorPreviewProps {
   name: string
   description: string
   rarity: BadgeRarity
+  /** 배지 본체 이미지 URL(이미 폼에 로드돼 있음) — "등록된 배지 이미지 사용" 소스로 재사용 */
   imageUrl: string
   backgroundColor: string
+  onBackgroundColorChange: (value: string) => void
+  mode: BackgroundMode
+  onModeChange: (mode: BackgroundMode) => void
+  /** 이미 저장된 배경 제너레이터 결과(수정 모드). 원시 설정값은 저장하지 않으므로 재편집은
+   *  불가능하지만, 이번 세션에 새 이미지를 고르기 전까지는 저장된 결과를 미리보기에 그대로
+   *  보여준다 — 폼을 열자마자 배경이 사라진 것처럼 보이지 않게 하기 위함. */
+  initialBackgroundImageUrl: string | null
+}
+
+export interface BackgroundGeneratorPreviewHandle {
+  /**
+   * 현재 미리보기를 PNG Blob으로 구워 반환한다. 이번 세션에 이미지를 하나도 고르지 않았으면(즉
+   * 새로 구울 게 없으면) null을 반환한다 — 호출부(BadgeForm)가 이 경우 기존 저장값을 그대로
+   * 유지할지(수정) 또는 아예 없음으로 둘지(신규) 판단한다.
+   */
+  bakeToBlob(): Promise<Blob | null>
 }
 
 /**
- * 배경 제너레이터 — BadgeForm 통합 저작 UI + 라이브 미리보기 (티켓 20260819_007).
+ * 배경 제너레이터 — BadgeForm 통합 저작 UI + 라이브 미리보기 + 실제 저장 연동 (티켓 20260819_007,
+ * 20260819_008).
  *
  * - 스파이크(`/spike/background-generator`, 티켓 20260819_001~006)에서 검증된 패턴/애니메이션/
- *   Paper 필터 파이프라인을 그대로 재사용한다(알고리즘 재작성 없음: `patternTile.ts`,
- *   `kaleidoscope/engine.ts`, `FilterPreview.tsx`의 필터별 파라미터/렌더링 분기 전부 동일).
- *   PatternPanel/AnimationPanel/FilterPreview는 원래 각자 자기 프리뷰 박스를 갖고 있었는데, 이
- *   화면에서는 `hidePreviewBox`로 그 박스들을 숨기고(컨트롤만 노출) 실제 배지 배경화면과 동일한
- *   레이아웃(BadgeHeroSection + 430px 배경 레이어) 위에 최종 합성 결과 하나만 렌더링한다.
- * - 애니메이션 모드는 스파이크에서 필터가 선택된 동안만 스냅샷을 캡처했지만(성능 검증용,
- *   20260819_002), 이 화면은 필터 미선택 상태에서도 "패턴/애니메이션 결과"를 하나로 통합해
- *   보여줘야 하므로 `alwaysSnapshot`으로 항상 400ms 간격 캡처한다.
- * - 저장 버튼 없음 — 미리보기 전용. 이 컴포넌트의 상태는 BadgeForm의 저장(submit) payload와
- *   전혀 연결되지 않는다. 최종 결과를 굽거나(bake) Storage에 저장하는 것은 이번 범위 밖(후속
- *   티켓)이다.
+ *   Paper 필터 파이프라인을 그대로 재사용한다(알고리즘 재작성 없음).
+ * - "단색"/"제너레이터"는 상호 배타적 라디오 선택이다(20260819_008). 어느 쪽을 선택했는지는 상위
+ *   (`BadgeForm`)가 소유한 상태로 끌어올려져 있다 — 저장 시 배경색 검증·payload 구성을 그대로
+ *   담당하기 위함이다. 이 컴포넌트는 모드에 따라 "단색" 필드 또는 제너레이터 컨트롤 중 하나만
+ *   보여주고, 라이브 미리보기도 선택된 모드의 결과만 반영한다.
+ * - "저장"은 이 컴포넌트가 직접 하지 않는다. `ref.bakeToBlob()`으로 현재 합성 결과를 PNG Blob으로
+ *   구워 반환하기만 하고, 실제 업로드(API 재사용)·payload 구성·저장 요청은 `BadgeForm.handleSubmit`
+ *   책임이다.
  * - admin 화면이므로 MODULAR 디자인 시스템 적용 대상이 아니다(기존 정책).
  */
-export default function BackgroundGeneratorPreview({
-  name,
-  description,
-  rarity,
-  imageUrl,
-  backgroundColor,
-}: BackgroundGeneratorPreviewProps) {
-  const [file, setFile] = useState<File | null>(null)
-  const [image, setImage] = useState<HTMLImageElement | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, BackgroundGeneratorPreviewProps>(
+  function BackgroundGeneratorPreview(
+    { name, description, rarity, imageUrl, backgroundColor, onBackgroundColorChange, mode, onModeChange, initialBackgroundImageUrl },
+    ref
+  ) {
+    const [imageSource, setImageSource] = useState<ImageSource>('upload')
+    const [file, setFile] = useState<File | null>(null)
+    const [image, setImage] = useState<HTMLImageElement | null>(null)
+    const [loadError, setLoadError] = useState<string | null>(null)
 
-  const [mode, setMode] = useState<Mode>('pattern')
-  const [patternParams, setPatternParams] = useState(DEFAULT_PATTERN_PARAMS)
-  const [animationParams, setAnimationParams] = useState(DEFAULT_ANIMATION_PARAMS)
-  const [filterId, setFilterId] = useState<FilterId>('none')
-  const [filterSource, setFilterSource] = useState<string | null>(null)
-  const [previewNode, setPreviewNode] = useState<ReactNode>(null)
+    const [patternMode, setPatternMode] = useState<Mode>('pattern')
+    const [patternParams, setPatternParams] = useState(DEFAULT_PATTERN_PARAMS)
+    const [animationParams, setAnimationParams] = useState(DEFAULT_ANIMATION_PARAMS)
+    const [filterId, setFilterId] = useState<FilterId>('none')
+    const [filterSource, setFilterSource] = useState<string | null>(null)
+    const [previewNode, setPreviewNode] = useState<ReactNode>(null)
 
-  const isGif = file?.type === 'image/gif'
+    const previewLayerRef = useRef<HTMLDivElement>(null)
 
-  // 순수 계산으로 objectURL을 도출한다 (상태/이펙트 불필요) — 해제만 별도 이펙트에서 처리
-  const objectUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
+    const isGif = file?.type === 'image/gif'
 
-  useEffect(() => {
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    // 순수 계산으로 objectURL을 도출한다 (상태/이펙트 불필요) — 해제만 별도 이펙트에서 처리
+    const objectUrl = useMemo(() => (imageSource === 'upload' && file ? URL.createObjectURL(file) : null), [imageSource, file])
+
+    useEffect(() => {
+      return () => {
+        if (objectUrl) URL.revokeObjectURL(objectUrl)
+      }
+    }, [objectUrl])
+
+    // 소스 ① 새 이미지 업로드 — 동일 출처 objectURL이라 CORS 이슈 없음
+    useEffect(() => {
+      if (!objectUrl) return
+      let cancelled = false
+      loadImageFromUrl(objectUrl)
+        .then((img) => {
+          if (cancelled) return
+          setImage(img)
+          setLoadError(null)
+        })
+        .catch(() => {
+          if (!cancelled) setLoadError('이미지를 불러오지 못했습니다. 다른 파일로 시도해주세요.')
+        })
+      return () => {
+        cancelled = true
+      }
+    }, [objectUrl])
+
+    // 소스 ② 등록된 배지 이미지 재사용 — Storage 원격 URL이라 이후 캔버스 합성 결과를
+    // toDataURL/toBlob으로 읽을 수 있도록 crossOrigin='anonymous'로 로드한다 (20260819_008)
+    useEffect(() => {
+      if (imageSource !== 'existing') return
+      if (!imageUrl) {
+        setImage(null)
+        return
+      }
+      let cancelled = false
+      setFilterSource(null)
+      setPreviewNode(null)
+      loadImageFromUrl(imageUrl, { crossOrigin: 'anonymous' })
+        .then((img) => {
+          if (cancelled) return
+          setImage(img)
+          setLoadError(null)
+        })
+        .catch(() => {
+          if (!cancelled) setLoadError('등록된 배지 이미지를 불러오지 못했습니다.')
+        })
+      return () => {
+        cancelled = true
+      }
+    }, [imageSource, imageUrl])
+
+    // 이미지를 새로 고르면 이전 합성 결과가 남아 보이지 않도록 초기화(이벤트 핸들러에서 직접 처리
+    // — 이펙트 내 setState 캐스케이드를 피하기 위함)
+    const handleFileSelected = (f: File) => {
+      setFile(f)
+      setFilterSource(null)
+      setPreviewNode(null)
     }
-  }, [objectUrl])
 
-  useEffect(() => {
-    if (!objectUrl) return
-    let cancelled = false
-    loadImageFromUrl(objectUrl)
-      .then((img) => {
-        if (cancelled) return
-        setImage(img)
-        setLoadError(null)
-      })
-      .catch(() => {
-        if (!cancelled) setLoadError('이미지를 불러오지 못했습니다. 다른 파일로 시도해주세요.')
-      })
-    return () => {
-      cancelled = true
+    const handleImageSourceChange = (source: ImageSource) => {
+      setImageSource(source)
+      setFile(null)
+      setImage(null)
+      setFilterSource(null)
+      setPreviewNode(null)
+      setLoadError(null)
     }
-  }, [objectUrl])
 
-  // 이미지를 새로 고르면 이전 합성 결과가 남아 보이지 않도록 초기화(이벤트 핸들러에서 직접 처리
-  // — 이펙트 내 setState 캐스케이드를 피하기 위함)
-  const handleFileSelected = (f: File) => {
-    setFile(f)
-    setFilterSource(null)
-    setPreviewNode(null)
-  }
+    useImperativeHandle(ref, () => ({
+      async bakeToBlob() {
+        if (!image || !previewLayerRef.current) return null
+        return bakePreviewToBlob(previewLayerRef.current, SERVICE_WIDTH)
+      },
+    }))
 
-  const previewBadge = {
-    image_url: imageUrl || null,
-    name: name || '(배지 이름 미입력)',
-    rarity,
-    description,
-    background_color: backgroundColor || null,
-    background_shader_id: null,
-  }
+    // 라이브 미리보기 — 선택된 모드의 결과만 반영한다(상호 배타적). "제너레이터" 모드에서 이번
+    // 세션에 새 이미지를 고르지 않았으면(image === null) 기존에 저장된 배경 이미지를 그대로
+    // 보여준다(재편집은 안 되지만 "저장된 게 사라진 것처럼" 보이지는 않게).
+    const previewBadge = {
+      image_url: imageUrl || null,
+      name: name || '(배지 이름 미입력)',
+      rarity,
+      description,
+      background_color: mode === 'color' ? backgroundColor || null : null,
+      background_shader_id: null,
+      background_image_url: null,
+    }
 
-  // 실제 배지 상세화면의 고정 배경 레이어(badges/[id]/page.tsx의 badgeBackgroundLayer)와 동일한
-  // 계산기를 재사용 — 배경색만 반영하는 현재 로직 그대로, 새 합성 결과는 그 위에 얹는다.
-  const backgroundLayerStyle = getBadgeBackgroundStyle({
-    background_color: backgroundColor || null,
-    background_shader_id: null,
-  })
+    // 실제 배지 상세화면의 고정 배경 레이어(badges/[id]/page.tsx의 badgeBackgroundLayer)와 동일한
+    // 계산기를 재사용 — "단색" 모드일 때만 배경색을 기저로 깔고, "제너레이터" 모드에서는 그 위에
+    // 합성 결과 노드를 얹는다.
+    const backgroundLayerStyle = getBadgeBackgroundStyle({
+      background_color: mode === 'color' ? backgroundColor || null : null,
+      background_shader_id: null,
+      background_image_url: null,
+    })
 
-  return (
-    <div className="border border-dashed border-[#9333ea]/40 rounded-2xl p-5 space-y-5 bg-[#fdf4ff]">
-      <div className="flex flex-col gap-1">
-        <p className="text-xs font-semibold text-[#9333ea]">배경 제너레이터 — 저작 미리보기 전용 (저장되지 않음)</p>
-        <p className="text-xs text-[#6b7280]">
-          이미지를 업로드해 패턴 또는 애니메이션 배경을 만들고 Paper 필터를 적용해볼 수 있어요. 여기서
-          조정한 값은 저장되지 않고 배지 등록/수정에도 반영되지 않아요. (티켓 20260819_007 — 저작 UI +
-          라이브 미리보기까지만 구현, 굽기·저장은 후속 티켓에서 다룹니다.)
-        </p>
-      </div>
-
-      <ImageUploader onFileSelected={handleFileSelected} fileName={file?.name ?? null} isGif={isGif} />
-      {loadError && <p className="text-xs text-red-600">{loadError}</p>}
-
-      {/* 실제 배지 배경 레이어 + hero 구조를 재사용한 라이브 미리보기 — 패턴/애니메이션/필터가
-          분리되지 않은 단일 미리보기 화면 */}
-      <div className="relative mx-auto w-full max-w-[430px] rounded-2xl overflow-hidden border border-[#e5e7eb]">
-        <div aria-hidden="true" className="absolute inset-0" style={backgroundLayerStyle}>
-          {previewNode}
+    return (
+      <div className="border border-dashed border-[#9333ea]/40 rounded-2xl p-5 space-y-5 bg-[#fdf4ff]">
+        <div className="flex flex-col gap-1">
+          <p className="text-xs font-semibold text-[#9333ea]">배경 테마</p>
+          <p className="text-xs text-[#6b7280]">
+            단색을 지정하거나, 이미지를 패턴/애니메이션으로 합성하고 Paper 필터를 적용한 배경을
+            만들 수 있어요. 저장 시 선택하지 않은 쪽 값은 지워져요.
+          </p>
         </div>
-        <div className="relative z-10">
-          <BadgeHeroSection badge={previewBadge} hasEarned />
-        </div>
-      </div>
 
-      {image && (
-        <>
-          <div className="flex flex-col gap-4 border-t border-[#e5e7eb] pt-4">
-            <div className="flex items-center gap-2">
-              {(['pattern', 'animation'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  className={[
-                    'rounded-lg px-4 py-2 text-sm transition-colors',
-                    mode === m ? 'bg-[#111111] text-white' : 'bg-white border border-[#e5e7eb] text-[#374151] hover:bg-[#f3f4f6]',
-                  ].join(' ')}
-                >
-                  {m === 'pattern' ? '패턴 모드' : '애니메이션 모드'}
-                </button>
-              ))}
-              <span className="text-xs text-[#9ca3af]">패턴/애니메이션은 배타적으로 선택됩니다.</span>
+        {/* 단색/제너레이터 배타 선택 (20260819_008) */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-1.5 text-sm text-[#374151] cursor-pointer">
+              <input
+                type="radio"
+                name="background-mode"
+                checked={mode === 'color'}
+                onChange={() => onModeChange('color')}
+                className="accent-[#111111]"
+              />
+              단색
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-[#374151] cursor-pointer">
+              <input
+                type="radio"
+                name="background-mode"
+                checked={mode === 'generator'}
+                onChange={() => onModeChange('generator')}
+                className="accent-[#111111]"
+              />
+              제너레이터
+            </label>
+          </div>
+          <p className="text-xs text-[#9ca3af]">
+            단색과 제너레이터는 동시에 사용할 수 없어요. 다른 모드로 전환한 뒤 저장하면 지금 모드의
+            배경값은 지워져요.
+          </p>
+        </div>
+
+        {/* 실제 배지 배경 레이어 + hero 구조를 재사용한 라이브 미리보기 */}
+        <div className="relative mx-auto w-full max-w-[430px] rounded-2xl overflow-hidden border border-[#e5e7eb]">
+          <div aria-hidden="true" className="absolute inset-0" style={backgroundLayerStyle} ref={previewLayerRef}>
+            {mode === 'generator' && (previewNode ?? (!image && initialBackgroundImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={initialBackgroundImageUrl} alt="저장된 배경" className="w-full h-full object-cover" />
+            ) : null))}
+          </div>
+          <div className="relative z-10">
+            <BadgeHeroSection badge={previewBadge} hasEarned />
+          </div>
+        </div>
+        {mode === 'generator' && !image && initialBackgroundImageUrl && (
+          <p className="text-xs text-[#9ca3af] -mt-3">
+            이미 저장된 배경 이미지예요. 원본 설정은 다시 불러올 수 없어요 — 아래에서 이미지를 새로
+            고르면 지금 보이는 배경이 교체돼요.
+          </p>
+        )}
+
+        {mode === 'color' ? (
+          <BackgroundColorField
+            value={backgroundColor}
+            onChange={onBackgroundColorChange}
+            helperText="배지 이미지를 업로드하면 평균 색상이 자동으로 채워져요. 색상 피커나 직접 입력으로 바꿀 수 있고, 비워두면 기본 배경을 사용해요."
+          />
+        ) : (
+          <>
+            {/* 이미지 소스 선택 (20260819_008) */}
+            <div className="flex flex-col gap-2 border-t border-[#e5e7eb] pt-4">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 text-xs text-[#374151] cursor-pointer">
+                  <input
+                    type="radio"
+                    name="background-image-source"
+                    checked={imageSource === 'upload'}
+                    onChange={() => handleImageSourceChange('upload')}
+                    className="accent-[#111111]"
+                  />
+                  새 이미지 업로드
+                </label>
+                <label className={['flex items-center gap-1.5 text-xs cursor-pointer', imageUrl ? 'text-[#374151]' : 'text-[#c4c4c4] cursor-not-allowed'].join(' ')}>
+                  <input
+                    type="radio"
+                    name="background-image-source"
+                    checked={imageSource === 'existing'}
+                    onChange={() => handleImageSourceChange('existing')}
+                    disabled={!imageUrl}
+                    className="accent-[#111111]"
+                  />
+                  등록된 배지 이미지 사용
+                </label>
+              </div>
+
+              {imageSource === 'upload' ? (
+                <ImageUploader onFileSelected={handleFileSelected} fileName={file?.name ?? null} isGif={isGif} />
+              ) : (
+                <p className="text-xs text-[#6b7280]">
+                  {imageUrl
+                    ? '위에서 등록한 배지 이미지를 배경 소스로 그대로 사용해요.'
+                    : '배지 이미지를 먼저 업로드해야 사용할 수 있어요.'}
+                </p>
+              )}
             </div>
+            {loadError && <p className="text-xs text-red-600">{loadError}</p>}
 
-            {mode === 'pattern' ? (
-              <PatternPanel
-                image={image}
-                params={patternParams}
-                onChange={setPatternParams}
-                onFlattenedChange={setFilterSource}
-                hidePreviewBox
-              />
-            ) : (
-              <AnimationPanel
-                image={image}
-                params={animationParams}
-                onChange={setAnimationParams}
-                previewSize={SERVICE_WIDTH}
-                onSnapshotChange={setFilterSource}
-                filterActive={filterId !== 'none'}
-                alwaysSnapshot
-                hidePreviewBox
-              />
+            {image && (
+              <>
+                <div className="flex flex-col gap-4 border-t border-[#e5e7eb] pt-4">
+                  <div className="flex items-center gap-2">
+                    {(['pattern', 'animation'] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setPatternMode(m)}
+                        className={[
+                          'rounded-lg px-4 py-2 text-sm transition-colors',
+                          patternMode === m ? 'bg-[#111111] text-white' : 'bg-white border border-[#e5e7eb] text-[#374151] hover:bg-[#f3f4f6]',
+                        ].join(' ')}
+                      >
+                        {m === 'pattern' ? '패턴 모드' : '애니메이션 모드'}
+                      </button>
+                    ))}
+                    <span className="text-xs text-[#9ca3af]">패턴/애니메이션은 배타적으로 선택됩니다.</span>
+                  </div>
+
+                  {patternMode === 'pattern' ? (
+                    <PatternPanel
+                      image={image}
+                      params={patternParams}
+                      onChange={setPatternParams}
+                      onFlattenedChange={setFilterSource}
+                      hidePreviewBox
+                    />
+                  ) : (
+                    <AnimationPanel
+                      image={image}
+                      params={animationParams}
+                      onChange={setAnimationParams}
+                      previewSize={SERVICE_WIDTH}
+                      onSnapshotChange={setFilterSource}
+                      filterActive={filterId !== 'none'}
+                      alwaysSnapshot
+                      hidePreviewBox
+                    />
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3 border-t border-[#e5e7eb] pt-4">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm font-medium text-[#374151]">Paper 필터 (1개 선택)</p>
+                    <p className="text-xs text-[#9ca3af]">
+                      패턴/애니메이션 결과 위에 적용됩니다. 위 미리보기에 곧바로 반영돼요.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {(Object.keys(FILTER_LABELS) as FilterId[]).map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setFilterId(id)}
+                        className={[
+                          'rounded-lg px-3 py-1.5 text-xs transition-colors',
+                          filterId === id ? 'bg-[#111111] text-white' : 'bg-white border border-[#e5e7eb] text-[#374151] hover:bg-[#f3f4f6]',
+                        ].join(' ')}
+                      >
+                        {FILTER_LABELS[id]}
+                      </button>
+                    ))}
+                  </div>
+
+                  <FilterPreview
+                    filterId={filterId}
+                    source={filterSource}
+                    size={SERVICE_WIDTH}
+                    hidePreviewBox
+                    onPreviewNodeChange={setPreviewNode}
+                  />
+                </div>
+              </>
             )}
-          </div>
+          </>
+        )}
+      </div>
+    )
+  }
+)
 
-          <div className="flex flex-col gap-3 border-t border-[#e5e7eb] pt-4">
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-medium text-[#374151]">Paper 필터 (1개 선택)</p>
-              <p className="text-xs text-[#9ca3af]">
-                패턴/애니메이션 결과 위에 적용됩니다. 위 미리보기에 곧바로 반영돼요.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(FILTER_LABELS) as FilterId[]).map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setFilterId(id)}
-                  className={[
-                    'rounded-lg px-3 py-1.5 text-xs transition-colors',
-                    filterId === id ? 'bg-[#111111] text-white' : 'bg-white border border-[#e5e7eb] text-[#374151] hover:bg-[#f3f4f6]',
-                  ].join(' ')}
-                >
-                  {FILTER_LABELS[id]}
-                </button>
-              ))}
-            </div>
-
-            <FilterPreview
-              filterId={filterId}
-              source={filterSource}
-              size={SERVICE_WIDTH}
-              hidePreviewBox
-              onPreviewNodeChange={setPreviewNode}
-            />
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
+export default BackgroundGeneratorPreview
