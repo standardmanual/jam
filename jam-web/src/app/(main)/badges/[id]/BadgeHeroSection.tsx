@@ -10,7 +10,7 @@ import { getBadgeBackgroundStyle } from '@/lib/badgeBackgroundTheme'
  * MODULAR 신규 컴포넌트 아님 — [20260816_006] 선례에 따라 서비스 전용 div+Tailwind 유지.
  */
 interface BadgeHeroSectionProps {
-  badge: Pick<BadgeRow, 'image_url' | 'name' | 'rarity' | 'description' | 'background_color' | 'background_shader_id'>
+  badge: Pick<BadgeRow, 'image_url' | 'name' | 'rarity' | 'description' | 'background_color' | 'background_shader_id' | 'background_image_url'>
   hasEarned: boolean
 }
 
