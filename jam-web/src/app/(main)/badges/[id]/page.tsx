@@ -17,6 +17,7 @@ import BadgeConditionCard from './BadgeConditionCard'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
 import { getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
+import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
@@ -252,10 +253,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // - 유저단에는 WebGL을 로드하지 않는다는 전체 설계 원칙 유지 — <video>로 재생만 한다.
   // - iOS 자동재생 4종 세트(autoPlay·muted·loop·playsInline)는 하나라도 빠지면 재생되지 않는다.
   // - poster에는 같은 시점에 구운 정지 PNG를 쓴다. CSS 배경 이미지(getBadgeBackgroundStyle)도
-  //   그대로 유지되므로 영상 로드 전/실패 시, 그리고 영상 높이(2타일=860px)를 넘어서는 아래쪽
-  //   까지 같은 정지 이미지가 이어져 보인다(860 = 430 × 2라 타일 경계가 정확히 맞는다).
-  // - 영상은 430×860(정사각 타일 2장)으로 구워져 있어 width:100% + height:auto만으로 원본 비율이
-  //   유지된다 — 티켓 20260819_011의 `backgroundSize: '100% auto'` + 세로 repeat와 같은 그림이다.
+  //   그대로 유지되므로 영상 로드 전/실패 시, 그리고 타일 상한을 넘는 초장신 페이지 최하단까지
+  //   같은 정지 이미지가 이어져 보인다.
+  // - [20260819_017 버그 수정] 영상은 430×860(정사각 타일 2장)으로 구워져 있는데 <video>는
+  //   background-repeat처럼 타일링할 수 없어, 예전에는 <video> 하나만 얹어 레이어 상단 860px
+  //   까지만 애니메이션이 보이고 그보다 긴 페이지의 아래쪽은 정지 이미지가 그대로 노출됐다.
+  //   BadgeBackgroundVideoTiles가 같은 영상을 세로로 필요한 만큼(콘텐츠 실제 높이 기준, 상한
+  //   있음) 반복 배치해 페이지 전체를 덮는다.
   // - prefers-reduced-motion: reduce 대응은 globals.css의 .badge-background-video 규칙에서
   //   display:none으로 처리한다(그 경우 아래 CSS 배경 poster가 그대로 보인다).
   //   같은 이유로 display:block도 인라인이 아니라 그 클래스에 둔다.
@@ -279,25 +283,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       }}
     >
       {badgeBackgroundVideoUrl && (
-        <video
-          className="badge-background-video"
+        <BadgeBackgroundVideoTiles
           src={badgeBackgroundVideoUrl}
-          poster={badgeRow.background_image_url ?? undefined}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          // display는 인라인이 아니라 .badge-background-video 클래스에 둔다 — 인라인 style은
-          // 스타일시트를 항상 이기므로 여기에 두면 prefers-reduced-motion 규칙이 먹지 않는다.
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: 'auto',
-            pointerEvents: 'none',
-          }}
+          poster={badgeRow.background_image_url}
         />
       )}
     </div>
