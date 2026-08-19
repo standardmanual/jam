@@ -19,13 +19,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { name, tagline, description, image_url, drop_weight, is_active, sort_order, adjacent_faction_ids, background_color, background_shader_id } = body
+  const {
+    name, tagline, description, image_url, drop_weight, is_active, sort_order, adjacent_faction_ids,
+    background_color, background_shader_id, background_image_url, background_video_url,
+  } = body
 
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('factions')
     // @ts-expect-error Supabase 타입 추론 제한 우회
-    .update({ name, tagline, description, image_url, drop_weight, is_active, sort_order, background_color: background_color ?? null, background_shader_id: background_shader_id ?? null })
+    .update({
+      name, tagline, description, image_url, drop_weight, is_active, sort_order,
+      background_color: background_color ?? null,
+      background_shader_id: background_shader_id ?? null,
+      background_image_url: background_image_url ?? null,
+      background_video_url: background_video_url ?? null,
+    })
     .eq('id', id)
     .select()
     .single()
