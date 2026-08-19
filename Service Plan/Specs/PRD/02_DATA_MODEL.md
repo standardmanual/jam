@@ -122,6 +122,10 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 ### item_books
 `faction_id`로 세계관 연동, `story_text`, `is_active`, `drop_condition_json` 보유. **`required_item_badge_ids` 컬럼은 삭제됨** — 완성 조건은 이제 `badges.item_book_id`(배지→북 소속)로 역방향 관리.
 
+`background_color`/`background_shader_id`(20260818_004, 컬렉션 상세 배경 테마용) 외에
+`background_image_url`/`background_video_url`(nullable, 20260819_013) 보유 — badges 테이블과 동일 패턴.
+소속 배지 전체에 일괄 적용하는 캐스케이드 로직·컬렉션 상세화면 렌더링 연결은 후속 티켓(014) 범위.
+
 ### user_item_book_slots / user_item_book_completions (신규)
 - `user_item_book_slots`: 인벤토리 아이템을 슬롯에 장착한 기록 (UNIQUE user+book+badge)
 - `user_item_book_completions`: 완성 기록 (PK user_id+item_book_id)
@@ -132,6 +136,11 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 
 ### factions
 10개 세계관. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/FACTIONS.md](../Content/FACTIONS.md) 참고.
+
+`background_color`/`background_shader_id`(20260818_004) 외에 `background_image_url`/`background_video_url`
+(nullable, 20260819_013) 보유. 세계관 자체는 서비스 공개 상세 페이지가 없어 이 값이 직접 렌더링되지는
+않음 — 소속 컬렉션·배지 전체로 캐스케이드 일괄 적용하기 위한 마스터 값 저장용. 캐스케이드 로직은
+후속 티켓(015) 범위.
 
 ### faction_adjacency
 세계관 간 인접 그래프 (PK: faction_id + adjacent_faction_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.2 참고.
