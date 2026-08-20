@@ -1,8 +1,9 @@
 ---
 id: 20260820_012
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-20
+closed: 2026-08-20
 ---
 
 # [UI] BottomSheet·DropsClient·FeedSection·InventoryItemHistorySheet 다크 표면 전환 + IconButton·EmptyState 잔여분 완료
@@ -130,9 +131,9 @@ jam-web/src/lib/i18n/ko.ts (EmptyState description 3건 추가)
 - [x] 문장 규칙: 해요체, description은 기존 이웃 문구(011에서 확립된 패턴)와 동일하게 마침표 생략
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만 진행)
-- 환경: staging (병합 전)
-- 커밋: (아래 push한 브랜치의 커밋 로그 참고)
+- 배포일: 2026-08-20
+- 환경: staging
+- 커밋: 5ef4970 (review 브랜치), staging 머지 완료. 프로덕션 미배포 — 사용자 승인 대기
 
 ### 주요 의사결정 / 핵심 메모
 - **BottomSheet.tsx의 `dark` 토글 prop을 제거하고 항상 다크로 렌더링하도록 단순화했다.** 티켓이 "이 컴포넌트를
