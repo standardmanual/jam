@@ -5,6 +5,8 @@ import Link from 'next/link'
 import type { ActivityType, MissionCondition, MissionRow, MissionType } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
+import { TargetIcon } from '@/components/ui/icons'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d, t } from '@/lib/i18n'
 
 export interface MissionListItem extends MissionRow {
@@ -194,6 +196,11 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
     tab === 'ongoing' ? d.missions.emptyOngoing :
     tab === 'joined' ? d.missions.emptyJoined :
     d.missions.emptyEnded
+  const emptyBody =
+    activeFilterCount > 0 ? d.missions.emptyFilteredBody :
+    tab === 'ongoing' ? d.missions.emptyOngoingBody :
+    tab === 'joined' ? d.missions.emptyJoinedBody :
+    d.missions.emptyEndedBody
 
   return (
     <div className="min-h-full bg-surface text-text">
@@ -248,9 +255,11 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
       </div>
 
       {list.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center py-[var(--spacing-40)]">
-          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{emptyText}</p>
-        </div>
+        <EmptyState
+          icon={<TargetIcon className="w-8 h-8" />}
+          title={emptyText}
+          description={emptyBody}
+        />
       ) : (
         <div className="flex flex-col gap-[var(--spacing-8)]">
           {list.map((m) => {

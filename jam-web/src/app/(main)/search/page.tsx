@@ -4,10 +4,10 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import UserSearchBar from '../UserSearchBar'
-import { Card } from '@ds/components/cards/Card'
 import ListRowCard from '@/components/ui/ListRowCard'
 import TopNav from '@/components/ui/TopNav'
-import { UserIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { UserIcon, ChevronRightIcon, SearchIcon } from '@/components/ui/icons'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d, t } from '@/lib/i18n'
 
 interface SearchPageProps {
@@ -94,15 +94,17 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
         {/* 결과 */}
         {!hasQuery ? (
-          <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.promptTitle}</p>
-            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.search.promptBody}</p>
-          </Card>
+          <EmptyState
+            icon={<SearchIcon className="w-8 h-8" />}
+            title={d.search.promptTitle}
+            description={d.search.promptBody}
+          />
         ) : results.length === 0 ? (
-          <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.emptyTitle}</p>
-            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.search.emptyBody}</p>
-          </Card>
+          <EmptyState
+            icon={<SearchIcon className="w-8 h-8" />}
+            title={d.search.emptyTitle}
+            description={d.search.emptyBody}
+          />
         ) : (
           <section className="flex flex-col gap-[var(--spacing-8)]">
             <p className="text-text/50 text-[length:var(--text-caption)] px-1">{t(d.search.resultCount, { count: results.length })}</p>
