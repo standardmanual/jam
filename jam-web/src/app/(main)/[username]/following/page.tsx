@@ -71,7 +71,7 @@ export default async function FollowingPage({ params }: Props) {
     <div className="min-h-full bg-surface text-text">
       <TopNav title={username} backHref={`/${username}`} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-16)]">
+      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-16)]">
         {followingList.length === 0 ? (
           <EmptyState
             icon={<UsersIcon className="w-8 h-8" />}
