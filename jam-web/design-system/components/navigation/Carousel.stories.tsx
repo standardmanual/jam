@@ -53,6 +53,9 @@ function DemoCard({ name, badges, isActive }: { name: string; badges: number; is
   );
 }
 
+// 데모 카드는 배지 수(1/0/3/0/5)로 높이가 제각각이다 — Carousel 컨테이너가
+// `alignItems:'flex-end'`(하단 고정)이므로 모든 카드의 하단이 같은 기준선에서
+// 시작하고, 배지가 많은 카드(예: 5개인 'e')는 위쪽으로만 늘어난다.
 export const CenterFocusInfiniteLoop: Story = {
   name: '센터 포커스 · 무한 루프',
   render: () => {
