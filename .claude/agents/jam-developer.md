@@ -33,6 +33,14 @@ tools: Read, Write, Edit, Bash, Grep, Glob
    기존 컴포넌트를 먼저 찾는다. `design-system/components/**`를 수정했다면 대응 `*.stories.*`를
    **반드시 함께 작성/수정한다** (pre-commit 훅이 확인한다).
    예외: `jam-web/src/app/admin/`은 MODULAR 적용 대상이 아니다.
+9. **"구글 로그인이 필요해서 실제 화면을 확인할 수 없다"고 가정하지 않는다.**
+   `jam-stage.vercel.app`(Vercel staging 프로젝트, `STAGING_MODE=true`)은 미인증 요청을
+   `/api/dev-login`으로 자동 리다이렉트해 고정 테스트 계정으로 즉시 로그인시킨다 — 구글
+   로그인 없이 실제 화면 확인이 가능하다(로컬 `next dev`도 `NODE_ENV=development`에서 동일하게
+   동작). 단, 이 브랜치가 아직 staging에 병합되지 않은 상태라면 review 브랜치의 변경사항은
+   `jam-stage.vercel.app`에 반영돼 있지 않다 — 그 경우엔 "staging 병합 후 확인 필요"라고
+   정확히 남기고, "로그인 제약으로 확인 불가"라고 잘못 일반화하지 않는다. 프로덕션(`j-a-m.app`)만
+   `STAGING_MODE`가 없어 실제로 구글 로그인 없이는 접근 불가하다.
 
 ## 예외 신호 — 이상 상황을 발견하면 반드시 보고한다
 
