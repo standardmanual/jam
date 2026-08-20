@@ -330,7 +330,7 @@ export default function ProfileClient({
           {itembooksData.map(book => (
             <CollectionGridCard
               key={book.id}
-              href={`/itembooks/${book.id}?u=${username}`}
+              href={`/collections/${book.id}?u=${username}`}
               name={book.name}
               imageUrl={book.image_url ?? null}
               collected={book.slottedCount}
