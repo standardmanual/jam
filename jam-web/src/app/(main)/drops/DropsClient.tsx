@@ -5,7 +5,9 @@ import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
-import { CloseIcon, MedalIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { MedalIcon, ChevronRightIcon, PackageIcon } from '@/components/ui/icons'
+import { IconButton } from '@ds/components/buttons/IconButton'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import BadgeDetailSheet, { PickupDrop } from './BadgeDetailSheet'
 import type {
@@ -403,19 +405,17 @@ export default function DropsClient() {
             paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)',
           }}
         >
-          <div className="bg-surface-inverse text-text-inverse rounded-[var(--radius-cards)] overflow-hidden">
+          <div className="bg-surface text-text rounded-[var(--radius-cards)] overflow-hidden">
             {/* 헤더 */}
             {/* 20260816_012: hr 대체용 하단 구분선 제거 */}
             <div className="flex items-center justify-between px-[var(--spacing-16)] py-[var(--spacing-16)]">
               <div className="min-w-0">
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold text-text-inverse/70 mb-0.5 truncate">{selectedPoi.name}</p>
+                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold text-text/70 mb-0.5 truncate">{selectedPoi.name}</p>
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
                   <span ref={sheetTitleRef} className="t-text-swap">{initialSheetTitle}</span>
                 </p>
               </div>
-              <button onClick={closeSheet} aria-label={d.common.close} className="w-11 h-11 -mr-2 flex items-center justify-center text-text-inverse/50 active:scale-90 transition-transform duration-100 shrink-0">
-                <CloseIcon className="w-5 h-5" />
-              </button>
+              <IconButton icon="close" label={d.common.close} onClick={closeSheet} />
             </div>
 
             <div className="max-h-[55vh] overflow-y-auto p-[var(--spacing-16)]">
@@ -430,22 +430,22 @@ export default function DropsClient() {
                     <button
                       key={drop.id}
                       onClick={() => setSelectedDrop(drop)}
-                      className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-black/[0.04] active:scale-[0.98] transition-transform duration-100 text-left"
+                      className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left"
                     >
-                      <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden bg-black/[0.04] flex items-center justify-center">
+                      <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden bg-white/[0.06] flex items-center justify-center">
                         {drop.badge_image_url ? (
                           <Image src={drop.badge_image_url} alt={drop.badge_name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
                         ) : (
-                          <MedalIcon className="w-5 h-5 text-text-inverse/40" />
+                          <MedalIcon className="w-5 h-5 text-text/40" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{drop.badge_name}</p>
-                        <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-0.5">
+                        <p className="text-[length:var(--text-caption)] text-text/40 mt-0.5">
                           {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
                         </p>
                       </div>
-                      <ChevronRightIcon className="w-5 h-5 text-text-inverse/40 shrink-0" />
+                      <ChevronRightIcon className="w-5 h-5 text-text/40 shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -454,21 +454,21 @@ export default function DropsClient() {
                 pendingDropItem ? (
                   /* 인앱 확인 UI (네이티브 confirm 대체) */
                   <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-                    <div className="w-20 h-20 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-[var(--radius-cards)] bg-white/[0.04] overflow-hidden flex items-center justify-center">
                       {pendingDropItem.badgeImageUrl ? (
                         <Image src={pendingDropItem.badgeImageUrl} alt={pendingDropItem.badgeName} width={80} height={80} className="w-full h-full object-contain p-1" />
                       ) : (
-                        <MedalIcon className="w-8 h-8 text-text-inverse/40" />
+                        <MedalIcon className="w-8 h-8 text-text/40" />
                       )}
                     </div>
                     <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-pre-line">
                       {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
                     </p>
                     <div className="flex gap-2 w-full">
-                      <Button fullWidth variant="outline" surface="sub" onClick={() => setPendingDropItem(null)} disabled={dropping}>
+                      <Button fullWidth variant="outline" surface="main" onClick={() => setPendingDropItem(null)} disabled={dropping}>
                         {d.drops.cancel}
                       </Button>
-                      <Button fullWidth surface="sub" loading={dropping} onClick={executeDrop}>
+                      <Button fullWidth surface="main" loading={dropping} onClick={executeDrop}>
                         {d.drops.dropButton}
                       </Button>
                     </div>
@@ -478,15 +478,24 @@ export default function DropsClient() {
                     <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : dropGridItems.length === 0 ? (
-                  <p className="text-center text-text-inverse/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] py-[var(--spacing-32)]">{d.drops.dropNoItems}</p>
+                  <EmptyState
+                    icon={<MedalIcon className="w-8 h-8" />}
+                    title={d.drops.dropNoItems}
+                    description={d.drops.dropNoItemsBody}
+                  />
                 ) : (
                   <InventoryGrid items={dropGridItems} mode="select" onSelect={(item) => setPendingDropItem(item)} />
                 )
               ) : (
                 /* ===== 드랍: 안내 + [드랍] 버튼 ===== */
                 <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-                  <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 text-center">{d.drops.dropEmptyTitle}</p>
-                  <Button fullWidth surface="sub" onClick={openInventory}>
+                  <EmptyState
+                    icon={<PackageIcon className="w-8 h-8" />}
+                    title={d.drops.dropEmptyTitle}
+                    description={d.drops.dropEmptyBody}
+                    style={{ padding: 0 }}
+                  />
+                  <Button fullWidth surface="main" onClick={openInventory}>
                     {d.drops.dropHereButton}
                   </Button>
                 </div>
