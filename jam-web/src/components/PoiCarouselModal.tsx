@@ -130,23 +130,18 @@ export default function PoiCarouselModal({
   }, [toast])
 
   // 공개된 카드 목록이 바뀔 때(최초 진입 + 윈도잉 확장 시)마다, 아직 캐시에
-  // 없는 POI의 드랍 목록을 채운다. tier2(네이버 fallback, DB 미저장 POI)는
-  // poi_drops와 연결될 수 없으므로 API를 부르지 않고 캐시를 빈 배열로 즉시
-  // 채운다 — 스킵만 하면 dropsCache가 영원히 undefined로 남아 카드가 무한
-  // 로딩 스피너에 갇히는 버그가 있었다(20260820_023).
+  // 없는 POI의 드랍 목록을 채운다. tier1/tier2 구분 없이 항상 API를 호출한다
+  // — tier2(네이버 자동수집) POI도 백그라운드에서 poi 테이블에 정식 저장되고
+  // 나면 실제 UUID를 가지므로 poi_drops가 정상적으로 연결될 수 있다("DB
+  // 미저장이라 연결 불가"는 잘못된 전제였다, 20260820_024). 이전에 tier2를
+  // 무조건 스킵/빈 배열 처리했더니 실제로 드랍된 아이템이 tier2 POI에서는
+  // 전혀 보이지 않는 회귀가 발생했다.
   useEffect(() => {
     for (const poi of visiblePois) {
       if (dropsCache[poi.id] !== undefined || fetchingRef.current.has(poi.id)) continue
-      if (poi.poi_tier === 2) {
-        // effect 본문에서 setState를 동기 호출하지 않도록 마이크로태스크로 지연.
-        // 같은 틱 내, 페인트 이전에 실행되어 체감 타이밍 차이는 없음 —
-        // react-hooks/set-state-in-effect 정리 목적의 순수 리팩터링.
-        const id = poi.id
-        Promise.resolve().then(() => setDropsCache((prev) => (prev[id] !== undefined ? prev : { ...prev, [id]: [] })))
-        continue
-      }
-      // fetchPoiDrops 내부가 첫 await 전에 setLoadingIds를 동기 호출해 같은
-      // 문제가 발생 — 위와 동일하게 마이크로태스크로 지연시켜 회피.
+      // fetchPoiDrops 내부가 첫 await 전에 setLoadingIds를 동기 호출해
+      // react-hooks/set-state-in-effect에 걸리므로 마이크로태스크로 지연.
+      // 같은 틱 내, 페인트 이전에 실행되어 체감 타이밍 차이는 없음.
       Promise.resolve().then(() => fetchPoiDrops(poi.id))
     }
   }, [visiblePois, dropsCache, fetchPoiDrops])
