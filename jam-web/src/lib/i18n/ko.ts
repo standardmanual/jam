@@ -54,9 +54,13 @@ export const ko = {
 
     // 빈 상태
     emptyBadges: '아직 획득한 배지가 없어요',
+    emptyBadgesBody: 'Strava를 동기화하고 활동하면 배지를 획득할 수 있어요',
     emptyItembooks: '아직 발견한 컬렉션이 없어요',
+    emptyItembooksBody: '아이템 배지를 모아 컬렉션을 발견해보세요',
     emptyFollowers: '아직 팔로워가 없어요',
+    emptyFollowersBody: '활동을 공유하면 팔로워가 늘어나요',
     emptyFollowing: '아직 팔로잉이 없어요',
+    emptyFollowingBody: '관심있는 유저를 팔로우해보세요',
 
     // 아이템북 카드
     itembookCompleted: '완성',
@@ -75,6 +79,7 @@ export const ko = {
   feed: {
     title: '최근 활동',
     emptyTitle: '아직 기록이 없어요',
+    emptyBody: '활동하면 여기에 기록이 쌓여요',
 
     // 필터 탭
     filterAll: '전체',
@@ -269,6 +274,7 @@ export const ko = {
     historyLoading: '불러오는 중',
     historyError: '이력을 불러올 수 없어요',
     historyEmpty: '이력이 없어요',
+    historyEmptyBody: '아직 이 아이템에 대한 기록이 없어요',
     historyUnknownUser: '알 수 없는 유저',
     obtainByDrop: '활동 드랍',
     obtainByDropEvent: '이벤트 드랍',
@@ -305,8 +311,10 @@ export const ko = {
     dropSuccess: '드랍 완료',
     dropFailed: '드랍 실패',
     dropEmptyTitle: '아직 아이템이 없어요',
+    dropEmptyBody: '여기에 아이템을 드랍하면 다른 사람이 발견할 수 있어요',
     dropHereButton: '여기에 드랍하기',
     dropNoItems: '드랍할 아이템이 없어요',
+    dropNoItemsBody: '인벤토리에 아이템이 생기면 여기서 드랍할 수 있어요',
     pickupButton: '픽업하기',
     pickupSuccess: '픽업 완료! 인벤토리를 확인해보세요',
     pickupFailed: '픽업 실패',
@@ -342,9 +350,13 @@ export const ko = {
     missionTypeDurationMinutes: '단일 활동 시간',
     missionTypeElevationGainM: '단일 활동 고도',
     emptyFiltered: '조건에 맞는 미션이 없어요',
+    emptyFilteredBody: '다른 조건으로 다시 찾아보세요',
     emptyOngoing: '진행 중인 미션이 없어요',
+    emptyOngoingBody: '새로운 미션이 곧 열릴 예정이에요',
     emptyJoined: '참가 중인 미션이 없어요',
+    emptyJoinedBody: '관심있는 미션에 참가해보세요',
     emptyEnded: '종료된 참가 미션이 없어요',
+    emptyEndedBody: '참가한 미션이 끝나면 여기에 표시돼요',
     tagNew: 'NEW',
     tagDone: '완료',
     tagJoined: '참가중',
@@ -399,6 +411,7 @@ export const ko = {
     statusMeRanking: '— 내 순위 —',
     statusMeAchievement: '— 나 —',
     statusNoParticipants: '아직 참가자가 없어요',
+    statusNoParticipantsBody: '가장 먼저 도전해보세요',
     statusMeSuffix: ' (나)',
   },
 
@@ -473,7 +486,9 @@ export const ko = {
     followersCount: '팔로워 {count}명',
     followingCount: '팔로잉 {count}명',
     emptyFollowers: '팔로워가 없어요',
+    emptyFollowersBody: '누군가 팔로우하면 여기에 표시돼요',
     emptyFollowing: '아직 팔로우한 사람이 없어요',
+    emptyFollowingBody: '유저가 팔로우를 시작하면 여기에 표시돼요',
     followButton: '팔로우',
     followingButton: '팔로잉',
   },
@@ -494,6 +509,7 @@ export const ko = {
     slotHint: '보유한 아이템 배지를 슬롯에 장착해 컬렉션을 완성해요',
     slotsTitle: '아이템배지 슬롯',
     noBadgesTitle: '아직 이 컬렉션에 등록된 배지가 없어요.',
+    noBadgesBody: '관리자가 배지를 등록하면 여기에 표시돼요',
     poiSectionTitle: '장소 배지',
     poiHint: 'POI 배지는 해당 장소를 지나가면 자동으로 채워져요',
     poiEarned: '획득',
@@ -524,6 +540,7 @@ export const ko = {
     recipeLine: '재료 {count}개 → 결과 배지 · 성공률 {pct}%',
     myItemsTitle: '내 아이템',
     emptyInventory: '인벤토리가 비어 있어요.',
+    emptyInventoryBody: '활동을 완료하면 믹스할 아이템이 드랍돼요',
     successResult: '{names} 획득!',
     selectRangeError: '아이템 2~10개를 선택해주세요.',
     itemsNotFound: '아이템을 찾을 수 없어요.',

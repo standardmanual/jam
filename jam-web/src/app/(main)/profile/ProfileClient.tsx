@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
@@ -59,19 +60,10 @@ interface ItemBookItem {
   totalBadgeCount: number
   slottedCount: number
   isCompleted: boolean
+  rarity: BadgeRarity
 }
 
 // ─── 공통 조각 ───────────────────────────────────────────────────────────────
-
-/** 빈 상태 — 아이콘(SVG) + 안내 문구 */
-function EmptyState({ icon, message }: { icon: ReactNode; message: string }) {
-  return (
-    <Card className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-40)]">
-      <span className="text-text-inverse/40">{icon}</span>
-      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{message}</p>
-    </Card>
-  )
-}
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 
@@ -295,7 +287,13 @@ export default function ProfileClient({
   const renderTabContent = () => {
     if (activeTab === 'badge') {
       if (badgeItems.length === 0) {
-        return <EmptyState icon={<MedalIcon className="w-8 h-8" />} message={d.profile.emptyBadges} />
+        return (
+          <EmptyState
+            icon={<MedalIcon className="w-8 h-8" />}
+            title={d.profile.emptyBadges}
+            description={d.profile.emptyBadgesBody}
+          />
+        )
       }
       return (
         <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
@@ -318,7 +316,13 @@ export default function ProfileClient({
     if (activeTab === 'itembooks') {
       if (itembooksData === null) return null
       if (itembooksData.length === 0) {
-        return <EmptyState icon={<BookIcon className="w-8 h-8" />} message={d.profile.emptyItembooks} />
+        return (
+          <EmptyState
+            icon={<BookIcon className="w-8 h-8" />}
+            title={d.profile.emptyItembooks}
+            description={d.profile.emptyItembooksBody}
+          />
+        )
       }
       return (
         <div className="grid grid-cols-2 gap-[var(--spacing-8)]">
@@ -331,6 +335,7 @@ export default function ProfileClient({
               collected={book.slottedCount}
               total={book.totalBadgeCount}
               completed={book.isCompleted}
+              rarity={book.rarity}
             />
           ))}
         </div>
@@ -343,7 +348,8 @@ export default function ProfileClient({
       return (
         <EmptyState
           icon={<UsersIcon className="w-8 h-8" />}
-          message={activeTab === 'followers' ? d.profile.emptyFollowers : d.profile.emptyFollowing}
+          title={activeTab === 'followers' ? d.profile.emptyFollowers : d.profile.emptyFollowing}
+          description={activeTab === 'followers' ? d.profile.emptyFollowersBody : d.profile.emptyFollowingBody}
         />
       )
     }
@@ -422,11 +428,15 @@ export default function ProfileClient({
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title="" showBack={!isOwnProfile} />
+      {!isOwnProfile && <TopNav title="" showBack />}
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+      <div
+        className={`px-[var(--spacing-16)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)] ${
+          isOwnProfile ? 'pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]' : 'pt-0'
+        }`}
+      >
         {/* 프로필 헤더 */}
-        <Card className="flex items-center gap-[var(--spacing-16)]">
+        <Card tone="inverse" className="flex items-center gap-[var(--spacing-16)]">
           {profile?.avatar_url ? (
             <Image
               src={profile.avatar_url}
@@ -487,7 +497,7 @@ export default function ProfileClient({
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
             pill을 숨긴다. */}
-        <Card className="p-0 overflow-hidden">
+        <Card tone="inverse" className="overflow-hidden" style={{ padding: 0 }}>
           <SlidingTabs
             items={statTabs}
             value={isTabView ? activeTab : ('' as TabKey)}
@@ -530,7 +540,7 @@ export default function ProfileClient({
 
         {/* Strava 연동 — 본인 + 기본뷰(해시 없음)일 때 */}
         {isOwnProfile && !isTabView && (
-          <Card>
+          <Card tone="inverse">
             <h2 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-[var(--spacing-16)]">
               {d.profile.stravaTitle}
             </h2>

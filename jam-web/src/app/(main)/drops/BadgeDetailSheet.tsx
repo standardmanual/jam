@@ -2,9 +2,9 @@
 
 import Image from 'next/image'
 import Button from '@/components/ui/Button'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import BottomSheet from '@/components/ui/BottomSheet'
-import RarityBadge from '@/components/ui/Badge'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'
@@ -50,7 +50,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
         {/* 닫기 */}
         <button
           onClick={onCancel}
-          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
+          className="self-start inline-flex items-center min-h-11 -ml-2 px-2 text-text/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
         >
           &larr; {d.common.back}
         </button>
@@ -61,22 +61,22 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
             {drop.badge_image_url ? (
               <Image src={drop.badge_image_url} alt={drop.badge_name} width={176} height={176} className="w-full h-full object-contain p-[var(--spacing-16)]" />
             ) : (
-              <MedalIcon className="w-16 h-16 text-text-inverse/40" />
+              <MedalIcon className="w-16 h-16 text-text/40" />
             )}
           </div>
           <div className="text-center">
-            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2 text-text-inverse">{drop.badge_name}</h1>
+            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-2 text-text">{drop.badge_name}</h1>
             <RarityBadge rarity={rarity} />
           </div>
         </div>
 
         {/* 드랍 컨텍스트 */}
         <Card>
-          <h2 className="text-[length:var(--text-caption)] uppercase text-text-inverse/40 mb-2">{d.badges.connectedLocationTitle}</h2>
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
+          <h2 className="text-[length:var(--text-caption)] uppercase text-text/40 mb-2">{d.badges.connectedLocationTitle}</h2>
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/80">
             {poiName}
           </p>
-          <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-1">
+          <p className="text-[length:var(--text-caption)] text-text/50 mt-1">
             {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
         </Card>
@@ -85,10 +85,10 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
             부모의 padding-bottom(탭바 높이만큼)이 이미 확보돼 있어
             스크롤 끝까지 내리면 탭바 위에서 항상 보이고 눌린다. */}
         <div className="mt-auto flex gap-[var(--spacing-16)]">
-          <Button fullWidth variant="outline" surface="sub" onClick={onCancel} disabled={pickingUp}>
+          <Button fullWidth variant="outline" surface="main" onClick={onCancel} disabled={pickingUp}>
             {d.drops.cancel}
           </Button>
-          <Button fullWidth surface="sub" loading={pickingUp} onClick={onPickup}>
+          <Button fullWidth surface="main" loading={pickingUp} onClick={onPickup}>
             {d.drops.pickupButton}
           </Button>
         </div>

@@ -1,0 +1,6 @@
+{
+  "projectId": "fd735d58-25c2-4347-95ed-d15ee2b36124",
+  "pkg": "jam-web/design-system",
+  "uploadMethod": "manual",
+  "note": "jam-web/design-system/ is already maintained in the design-sync upload format (see .design-sync/NOTES.md). Content was uploaded as-is rather than through the package-build.mjs/storybook converter pipeline."
+}

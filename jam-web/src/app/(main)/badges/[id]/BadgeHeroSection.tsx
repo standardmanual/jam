@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import RarityBadge from '@/components/ui/Badge'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRow } from '@/types/database'
 import { hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
@@ -33,7 +33,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground }:
     // 위에서 그려지도록 승격. 승격하지 않으면 non-positioned 콘텐츠가 positioned 배경 레이어보다
     // 페인트 순서상 아래로 가려진다([20260818_002] 잔여 이슈, [20260818_003]에서 실색상 적용과
     // 함께 수정).
-    <div className="relative z-10 px-6 pt-[40px] pb-[32px]">
+    <div className="relative z-10 px-6 pt-0 pb-[32px]">
       <div className={['w-full aspect-square rounded-[var(--radius-cards)] flex flex-col p-6', themed ? 'bg-transparent' : 'bg-surface-elevated'].join(' ')}>
         <div className="flex-1 flex items-center justify-center">
           {badge.image_url ? (

@@ -3,7 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { BookIcon } from '@/components/ui/icons'
-import RarityBadge from '@/components/ui/Badge'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
 
@@ -54,14 +55,9 @@ export default function CollectionGridCard({
         {/* 태그 행: 등급(선택) + 완성 */}
         {(rarity || completed) && (
           <div className="absolute top-2 left-2 flex items-center gap-1">
-            {rarity && (
-              <RarityBadge
-                rarity={rarity}
-                className="text-[length:var(--text-caption)] px-2 py-0.5"
-              />
-            )}
+            {rarity && <RarityBadge rarity={rarity} />}
             {completed && (
-              <span className="bg-[#E8461F] text-white text-[length:var(--text-caption)] leading-none px-2 py-0.5 rounded-full font-bold">
+              <span className="bg-[color:var(--color-primary)] text-white text-[length:var(--text-caption)] leading-none px-2 py-0.5 rounded-full font-bold">
                 완성
               </span>
             )}
@@ -74,12 +70,7 @@ export default function CollectionGridCard({
 
       {/* 진행 바 + 카운트 한 행 */}
       <div className="flex items-center gap-[var(--spacing-8)]">
-        <div className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-[#E8461F] transition-all duration-500"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <ProgressBar percent={pct} height={6} />
         <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold leading-none tabular-nums shrink-0">
           {collected}/{total}
         </span>

@@ -8,7 +8,8 @@ import type {
   UserItemBookSlotRow,
 } from '@/types/database'
 import TopNav from '@/components/ui/TopNav'
-import { PinIcon } from '@/components/ui/icons'
+import { PinIcon, BookIcon } from '@/components/ui/icons'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import ItemBookHeroSection from './ItemBookHeroSection'
 import { d } from '@/lib/i18n'
@@ -212,7 +213,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       />
 
       {/* 스크롤 컨테이너 — 외부: padding 16 / gap 12 */}
-      <div className="relative z-10 flex-1 flex flex-col px-4 pt-4 pb-10 gap-3">
+      <div className="relative z-10 flex-1 flex flex-col px-4 pt-0 pb-10 gap-3">
 
         <ItemBookHeroSection
           book={{ name: book.name, description: book.description, image_url: book.image_url }}
@@ -237,11 +238,11 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
         {/* 배지 없음 상태 */}
         {totalBadgeCount === 0 && (
-          <div className="flex items-center justify-center py-10">
-            <p style={{ color: '#666666', fontSize: '14px' }}>
-              {d.itembooks.noBadgesTitle}
-            </p>
-          </div>
+          <EmptyState
+            icon={<BookIcon className="w-8 h-8" />}
+            title={d.itembooks.noBadgesTitle}
+            description={d.itembooks.noBadgesBody}
+          />
         )}
 
         {/* 아이템배지 슬롯 섹션 */}

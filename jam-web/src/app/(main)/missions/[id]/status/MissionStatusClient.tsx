@@ -2,9 +2,11 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import TopNav from '@/components/ui/TopNav'
-import Card from '@/components/ui/Card'
-import { UserIcon } from '@/components/ui/icons'
+import { Card } from '@ds/components/cards/Card'
+import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 
 interface RankingEntry {
   userId: string
@@ -307,18 +309,16 @@ function RankingListRow({
       </div>
 
       {/* 행 하단: 6px 프로그레스 바, padding-left 32px, 배경 --color-surface-elevated, border-radius 3px */}
+      {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
       <div style={{ paddingLeft: 32, paddingRight: 16, paddingBottom: 8 }}>
-        <div style={{ height: 6, backgroundColor: 'var(--color-surface-elevated)', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: gradient,
-            borderRadius: 3,
-            transform: `scaleX(${fillRatio})`,
-            transformOrigin: 'left',
-            transition: 'transform 0.4s ease',
-          }} />
-        </div>
+        <ProgressBar
+          percent={fillRatio * 100}
+          labelType="none"
+          height={6}
+          color={gradient}
+          trackColor="var(--color-surface-elevated)"
+          radius="3px"
+        />
       </div>
       {/* 20260816_012: hr 대체용 행 구분선 제거 — 행 간 padding만으로 구분 */}
     </div>
@@ -407,18 +407,16 @@ function MyRankCard({
       </div>
 
       {/* 프로그레스 바: bg #1A3A2A, fill linear-gradient(90deg, #00CC66, #33E580) */}
+      {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
       <div style={{ paddingLeft: 28, paddingTop: 6 }}>
-        <div style={{ height: 6, backgroundColor: '#1A3A2A', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'linear-gradient(90deg, #00CC66, #33E580)',
-            borderRadius: 3,
-            transform: `scaleX(${fillRatio})`,
-            transformOrigin: 'left',
-            transition: 'transform 0.4s ease',
-          }} />
-        </div>
+        <ProgressBar
+          percent={fillRatio * 100}
+          labelType="none"
+          height={6}
+          color="linear-gradient(90deg, #00CC66, #33E580)"
+          trackColor="#1A3A2A"
+          radius="3px"
+        />
       </div>
     </div>
   )
@@ -427,7 +425,7 @@ function MyRankCard({
 /** 달성형 행 */
 function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (
-    <Card className={highlight ? '' : 'opacity-90'}>
+    <Card tone="inverse" className={highlight ? '' : 'opacity-90'}>
       <div className="flex items-center gap-[var(--spacing-16)]">
         <SimpleAvatar url={e.avatarUrl} />
         <span className="flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">
@@ -500,12 +498,12 @@ export default function MissionStatusClient({
 
       {/* 로딩 / 오류 */}
       {loading && (
-        <p className="px-4 pt-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/50">
+        <p className="px-4 pt-0 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/50">
           {d.missions.statusLoading}
         </p>
       )}
       {error && (
-        <p className="px-4 pt-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">
+        <p className="px-4 pt-0 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">
           {error}
         </p>
       )}
@@ -530,7 +528,7 @@ export default function MissionStatusClient({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: '12px 16px 8px',
+              padding: '0px 16px 8px',
             }}>
               <span style={{ fontSize: 13, color: '#B2B2B2' }}>
                 {d.missions.statusRankingLabel} · {t(d.missions.statusParticipants, { count: data.totalParticipants })}
@@ -586,9 +584,11 @@ export default function MissionStatusClient({
 
             {/* 빈 상태: entries.length === 0 && me === null */}
             {entries.length === 0 && !me && (
-              <p className="px-4 py-6 text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                {d.missions.statusNoParticipants}
-              </p>
+              <EmptyState
+                icon={<UsersIcon className="w-8 h-8" />}
+                title={d.missions.statusNoParticipants}
+                description={d.missions.statusNoParticipantsBody}
+              />
             )}
           </div>
         )
@@ -596,7 +596,7 @@ export default function MissionStatusClient({
 
       {/* ── 달성형 타입 ── */}
       {data?.type === 'achievement' && (
-        <div className="px-[var(--spacing-16)] pt-[var(--spacing-16)] pb-[var(--spacing-32)] flex flex-col gap-2">
+        <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)] flex flex-col gap-2">
           <p className="text-[11px] text-text/50 mb-2">
             {d.missions.statusAchievementLabel}
             {` · ${t(d.missions.statusParticipants, { count: data.totalParticipants })}`}
@@ -611,18 +611,20 @@ export default function MissionStatusClient({
             </>
           )}
           {data.entries.length === 0 && !data.me && (
-            <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-              {d.missions.statusNoParticipants}
-            </p>
+            <EmptyState
+              icon={<UsersIcon className="w-8 h-8" />}
+              title={d.missions.statusNoParticipants}
+              description={d.missions.statusNoParticipantsBody}
+            />
           )}
         </div>
       )}
 
       {/* ── 개인형 타입 ── */}
       {data?.type === 'individual' && (
-        <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
+        <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
           <p className="text-[11px] text-text/50 mb-[var(--spacing-16)]">{d.missions.statusIndividualLabel}</p>
-          <Card>
+          <Card tone="inverse">
             <div className="flex items-center justify-between">
               <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
                 {d.missions.myProgressTitle}

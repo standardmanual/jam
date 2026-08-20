@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
-import Card from '@/components/ui/Card'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
+import { MedalIcon, PinIcon, BookIcon } from '@/components/ui/icons'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
 import { RARITY_LABEL } from '@/lib/rarity'
 
@@ -50,14 +51,6 @@ interface BadgesClientProps {
   poiBadges: PoiBadgeItem[]
 }
 
-function EmptyState({ title, body }: { title: string; body: string }) {
-  return (
-    <Card className="text-center py-[var(--spacing-32)]">
-      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{title}</p>
-      <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{body}</p>
-    </Card>
-  )
-}
 
 function tabLabel(label: string, count: number) {
   return (
@@ -223,11 +216,11 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                   ))}
                 </div>
               ) : (
-                <EmptyState title={d.badges.emptyActivityTitle} body={d.badges.emptyActivityBody} />
+                <EmptyState icon={<MedalIcon className="w-8 h-8" />} title={d.badges.emptyActivityTitle} description={d.badges.emptyActivityBody} />
               )}
             </>
           ) : (
-            <EmptyState title={d.badges.emptyActivityTitle} body={d.badges.emptyActivityBody} />
+            <EmptyState icon={<MedalIcon className="w-8 h-8" />} title={d.badges.emptyActivityTitle} description={d.badges.emptyActivityBody} />
           )
         )}
 
@@ -270,11 +263,11 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                   ))}
                 </div>
               ) : (
-                <EmptyState title={d.badges.emptyPoiTitle} body={d.badges.emptyPoiBody} />
+                <EmptyState icon={<PinIcon className="w-8 h-8" />} title={d.badges.emptyPoiTitle} description={d.badges.emptyPoiBody} />
               )}
             </>
           ) : (
-            <EmptyState title={d.badges.emptyPoiTitle} body={d.badges.emptyPoiBody} />
+            <EmptyState icon={<PinIcon className="w-8 h-8" />} title={d.badges.emptyPoiTitle} description={d.badges.emptyPoiBody} />
           )
         )}
 
@@ -299,7 +292,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
               })}
             </div>
           ) : (
-            <EmptyState title={d.badges.emptyItembookTitle} body={d.badges.emptyItembookBody} />
+            <EmptyState icon={<BookIcon className="w-8 h-8" />} title={d.badges.emptyItembookTitle} description={d.badges.emptyItembookBody} />
           )
         )}
       </div>

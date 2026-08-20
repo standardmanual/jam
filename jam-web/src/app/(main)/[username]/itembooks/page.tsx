@@ -2,9 +2,11 @@ import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { ItemBookRow, FactionRow } from '@/types/database'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import TopNav from '@/components/ui/TopNav'
 import { BookIcon } from '@/components/ui/icons'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
 import Link from 'next/link'
 
@@ -137,18 +139,20 @@ export default async function UserItemBooksPage({ params }: Props) {
     <div className="flex flex-col min-h-full bg-surface text-text">
       <TopNav title={`${d.itembooks.title} · ${target.username}`} backHref={`/${username}`} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
+      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
         {cards.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-[var(--spacing-40)] text-center">
-            <p className="text-text/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.itembooks.emptyTitle}</p>
-          </div>
+          <EmptyState
+            icon={<BookIcon className="w-8 h-8" />}
+            title={d.itembooks.emptyTitle}
+            description={d.itembooks.emptyBody}
+          />
         ) : (
           <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
             {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted }) => {
               const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
               return (
                 <Link key={book.id} href={`/itembooks/${book.id}`}>
-                  <Card className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
+                  <Card tone="inverse" className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
                     <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center bg-black/[0.04]">
                       {book.image_url ? (
                         <Image src={book.image_url} alt={book.name} fill className="object-contain p-1.5" />
@@ -168,9 +172,7 @@ export default async function UserItemBooksPage({ params }: Props) {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-black/[0.08]">
-                        <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${pct}%` }} />
-                      </div>
+                      <ProgressBar percent={pct} height={6} />
                       <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
                     </div>
                   </Card>

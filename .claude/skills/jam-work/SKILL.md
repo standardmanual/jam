@@ -20,7 +20,7 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 | 유형 | 대상 | 추가 절차 | 티켓 카테고리 |
 |---|---|---|---|
 | `ui` | 서비스 화면·기능 | **0.5단계 탐색·재사용 판정 필수** | UI / Feature |
-| `ds` | MODULAR 디자인 시스템 | 0.5단계 + Story 동반 확인 | UI |
+| `ds` | MODULAR 디자인 시스템 | 0.5단계 + Story 동반 확인 + **1.6단계(모듈러-서비스 연결 범위 표기) 필수** | UI |
 | `bug` | 버그 수정 | 회귀 재현 경로 집중 | Service / Feature |
 | `engine` | 배지·드랍 엔진 | ④ 엔진 문서 대조 (확률·정책) | BadgeEngine |
 | `db` | DB 스키마·마이그레이션 | **SQL 파일 작성만, 실행은 5단계** | Infra |
@@ -62,6 +62,29 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 이 단계를 건너뛰면 jam-developer가 이미 있는 컴포넌트를 다시 만든다.
 
+### 1.6 모듈러-서비스 연결 범위 표기 (`ds` 유형만, 위임하지 않음)
+
+**용어 정의** — "모듈러"는 `jam-web/design-system/`의 **소스코드**를 가리킨다. Storybook은
+그 소스코드를 브라우저에서 훑어보기 위한 뷰어일 뿐 별도 실체가 아니다.
+
+**스토리북 배포는 이미 자동화돼 있다** — `jam-web/package.json`의 `build` 스크립트가
+staging 브랜치 기준 `storybook build && cp -r storybook-static public/storybook && next build`로
+구성돼 있어, 4단계에서 review 브랜치를 staging에 머지하고 `git push origin staging`하는
+순간 Vercel이 staging을 재빌드하면서 스토리북도 함께 다시 구워져 배포된다. **별도의 "스토리북
+배포" 단계를 추가할 필요가 없다** (main/프로덕션 빌드 스크립트는 `next build`만 실행 —
+스토리북은 의도적으로 프로덕션에 나가지 않는다).
+
+**단, 모듈러 변경이 실제 서비스 화면에 자동으로 반영되는 것은 아니다** — 2026-08-20 기준
+서비스 코드(`jam-web/src/`)는 `design-system/` 토큰(`@import` 없음)도 컴포넌트(`@ds/*` alias
+설정만 있고 실제 import 0건)도 가져다 쓰지 않는다. 즉 지금은 두 코드베이스가 값만
+수동으로 맞춰둔 별개 상태다. 이 연결 작업(토큰 `@import` 전환, 서비스 컴포넌트를 `@ds/*` import로
+교체) 자체가 착수되면 이 문단은 갱신해야 한다.
+
+`ds` 유형 티켓은 완료 기록에 다음을 명시한다:
+- 이번 변경이 **스토리북 카탈로그에만** 반영되는지, 위 연결 작업 완료 이후라 **실제
+  서비스(staging/프로덕션) 화면에도** 영향을 주는지
+- 후자라면 어떤 서비스 호출부가 영향받는지
+
 ## 2. Workflow 호출
 
 `docs`·`research` 유형은 이 단계를 건너뛰고 오케스트레이터가 직접 수행한다.
@@ -78,9 +101,10 @@ export const meta = {
 const VERDICT = {
   type: 'object',
   properties: {
-    verdict: { enum: ['PASS', 'FAIL'] },
+    verdict: { enum: ['PASS', 'WARN', 'FAIL'] },
     reasons: { type: 'array', items: { type: 'string' } },
     checked: { type: 'array', items: { type: 'string' } },
+    sideFindings: { type: 'array', items: { type: 'string' } },
   },
   required: ['verdict', 'reasons'],
 }
@@ -103,8 +127,9 @@ const gate = await agent(
 
 let progressive = null
 // 라이트 유형(content·copy·admin·infra)은 개선 리뷰를 생략한다.
+// WARN도 "동작은 한다"이므로 개선 리뷰는 진행한다 (사용자 알림은 3단계에서).
 const FULL = ['ui', 'ds', 'bug', 'engine', 'db', 'api']
-if (gate.verdict === 'PASS' && FULL.includes(workType)) {
+if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && FULL.includes(workType)) {
   phase('개선 리뷰')
   progressive = await agent(
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
@@ -120,12 +145,32 @@ return { devResult, gate, progressive }
 - `ticketPath`·`userRequest`·`workType`·`reuseDecision`은 0~1.5단계 값으로 채운다.
 - `retryReason`은 최초 실행 시 비우고, 재시도 시에만 이전 FAIL 사유를 넣는다.
 
-## 3. 결과 보고
+## 3. 결과 보고 — 예외 신호 처리를 포함한다
+
+### 3.0 구현 단계 예외 처리 (Workflow 결과 수신 직후, 판정 보고 전)
+
+1. **HALT 알림 확인**: devResult에서 `alerts`를 파싱한다. `[HALT]`가 포함된 항목이 있으면
+   게이트 리뷰 결과와 무관하게 **즉시 사용자에게 HALT 내용을 보고**하고 다음 행동을 묻는다.
+2. **confidence 확인**: devResult에서 `confidence: low`이면 사용자에게
+   "개발자가 구현에 낮은 확신을 표명했습니다 — 리뷰 진행 전에 확인하시겠습니까?"라고 알린다.
+3. **INFO/WARN 알림**: 사용자 보고 시 별도 섹션으로 요약한다 (판정과 분리).
+
+### 3.1 판정별 후속
 
 - **FAIL**: `gate.reasons`를 그대로 보고하고 재시도 여부를 **사용자에게 묻는다.** 임의 재시도 금지.
   승인받아 재시도할 때는 **FAIL 사유를 `retryReason`에 넣어** 다시 호출한다 (같은 실수 반복 방지).
+  **동일 티켓에서 FAIL이 2회 연속 발생하면**, 재시도 전에 "워크플로우 규칙이나 티켓 스펙 자체에
+  문제가 있을 수 있습니다 — 규칙을 검토할까요?"라고 먼저 묻는다 (정책 갱신 피드백 루프).
+- **WARN**: WARN 사유를 사용자에게 알리되, 개선 리뷰는 정상 진행한다.
+  사용자가 WARN 사유에 대해 추가 조치를 원하면 그때 처리한다.
 - **PASS**: 구현 요약 + PASS 근거 + 개선 제안/문서 갱신 제안을 한 번에 요약하고,
   **머지 승인 여부를 명시적으로 묻는다.**
+
+### 3.2 범위 밖 발견물 처리
+
+gate 또는 progressive의 `sideFindings`가 비어있지 않으면:
+- 사용자 보고 시 "범위 밖 발견물" 섹션으로 별도 요약한다
+- 사용자 승인 후 `spawn_task`로 각 발견물을 별도 작업 칩으로 분리한다
 
 ## 4. 승인 후 처리 — 베이스캠프 모자를 쓴다 (위임하지 않음)
 
