@@ -59,7 +59,7 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: '/:username((?!admin$|api$)[^/]+)/itembooks/:path*',
+        source: '/:username((?!admin/|api/)[^/]+)/itembooks/:path*',
         destination: '/:username/collections/:path*',
         permanent: true,
       },
