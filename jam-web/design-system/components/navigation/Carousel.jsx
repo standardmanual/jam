@@ -18,10 +18,15 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 
  *
  * 슬라이드 폭은 컨테이너의 100%가 아니라 `SLIDE_WIDTH_PERCENT`(peek 레이아웃)로
  * 좁혀, 중앙 카드 좌우로 다음/이전 카드가 부분적으로 보이게 한다(20260820_020).
- * 컨테이너 좌우에 동일한 비율의 padding + scroll-padding을 둬서 첫/마지막
- * 실제 카드도 정확히 중앙까지 스크롤될 수 있게 여백을 만든다. 활성 카드
- * 판정·프로그램적 스크롤 이동은 슬라이드 폭을 고정값으로 가정하지 않고,
- * 실제 렌더된 슬라이드 DOM 요소의 offsetLeft/offsetWidth를 기준으로 계산한다.
+ * 컨테이너에는 padding을 주지 않는다 — flex-basis 퍼센트는 부모의 콘텐츠 박스
+ * 기준으로 해석되므로, padding으로 콘텐츠 박스를 줄인 상태에서 슬라이드에 다시
+ * 퍼센트 flex-basis를 적용하면 두 퍼센트가 곱연산되어 의도한 폭보다 훨씬 좁아진다
+ * (예: 좌우 10% padding + 80% flex-basis → 실제 64%). 대신 `scroll-padding`만
+ * 좌우에 둬서 첫/마지막 실제 카드가 중앙까지 스크롤되도록 하고(무한 루프 클론
+ * 슬라이드가 그 여백 역할도 겸한다), 단일 아이템일 때는 `justifyContent:'center'`로
+ * 중앙 배치한다. 활성 카드 판정·프로그램적 스크롤 이동은 슬라이드 폭을 고정값으로
+ * 가정하지 않고, 실제 렌더된 슬라이드 DOM 요소의 offsetLeft/offsetWidth를 기준으로
+ * 계산한다.
  */
 const SLIDE_WIDTH_PERCENT = 80; // MODULAR peek 레이아웃 — 78~85% 권장 범위 내
 const SLIDE_INSET_PERCENT = (100 - SLIDE_WIDTH_PERCENT) / 2;
@@ -169,6 +174,13 @@ export function Carousel({
       style={{
         display: 'flex',
         alignItems: 'flex-end',
+        // 아이템이 1개뿐이라 스크롤할 필요가 없을 때만(overflow 없음) 중앙에
+        // 배치한다. 아이템이 여러 개면 overflow가 생기는데, 이 경우
+        // justifyContent:'center'를 쓰면 브라우저가 flex 라인 전체를 중앙
+        // 정렬하면서 콘텐츠 앞부분을 음수 offsetLeft로 밀어내(scrollLeft는
+        // 0 이하로 갈 수 없으므로) 도달 불가능한 영역이 생긴다 — 반드시
+        // flex-start를 유지하고 중앙 정렬은 scroll-padding + scrollToPos로만 한다.
+        justifyContent: n <= 1 ? 'center' : 'flex-start',
         overflowX: n > 0 ? 'auto' : 'hidden',
         overflowY: 'hidden',
         scrollSnapType: 'x mandatory',
@@ -176,13 +188,11 @@ export function Carousel({
         outline: 'none',
         width: '100%',
         gap: 'var(--spacing-16)',
-        // peek 레이아웃: 좌우에 동일한 여백을 둬서 첫/마지막 실제 카드도
-        // 중앙까지 스크롤될 수 있는 공간을 만든다(scroll-padding과 함께).
-        paddingLeft: `${SLIDE_INSET_PERCENT}%`,
-        paddingRight: `${SLIDE_INSET_PERCENT}%`,
+        // peek 레이아웃: 컨테이너에는 padding을 주지 않는다(위 주석 참조 — flex-basis
+        // 퍼센트와 곱연산되는 것을 피하기 위함). 첫/마지막 실제 카드 중앙 정렬은
+        // scroll-padding과 무한 루프 클론 슬라이드(앞뒤 여백 역할)로 처리한다.
         scrollPaddingLeft: `${SLIDE_INSET_PERCENT}%`,
         scrollPaddingRight: `${SLIDE_INSET_PERCENT}%`,
-        boxSizing: 'border-box',
         ...style,
       }}
     >
