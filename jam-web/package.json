@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:webpack": "next dev --webpack",
-    "build": "next build",
+    "build": "storybook build -o public/storybook && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
