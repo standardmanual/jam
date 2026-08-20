@@ -48,7 +48,11 @@ function TemplateChip({ card }: { card: TodayCardWithHref }) {
 function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
   const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
   return (
-    <Card tone="inverse" className="p-0 overflow-hidden active:scale-[0.98] transition-transform duration-100">
+    <Card
+      tone="inverse"
+      className="overflow-hidden active:scale-[0.98] transition-transform duration-100"
+      style={{ padding: 0 }}
+    >
       {cover && (
         <div className="relative w-full aspect-[16/9] overflow-hidden">
           <Image src={cover} alt={card.title} fill className="object-cover" />
