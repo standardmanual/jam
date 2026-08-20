@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import type { ActivityType, MissionCondition, MissionRow, MissionType } from '@/types/database'
+import type { ActivityType, MissionCondition, MissionRow } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import { TargetIcon } from '@/components/ui/icons'
@@ -36,21 +36,7 @@ const C_TITLE = '#FFFFFF'
 const C_META_TEXT = '#B2B2B2'
 const C_REWARD = '#E8461F'
 
-const MISSION_TYPE_LABELS: Record<MissionType, string> = {
-  distance: d.missions.missionTypeDistance,
-  activity_count: d.missions.missionTypeActivityCount,
-  poi_visit: d.missions.missionTypePoiVisit,
-  item_collect: d.missions.missionTypeItemCollect,
-  streak_days: d.missions.missionTypeStreakDays,
-  duration_minutes: d.missions.missionTypeDurationMinutes,
-  elevation_gain_m: d.missions.missionTypeElevationGainM,
-}
-
 const ACTIVITY_TYPES: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
-const MISSION_TYPES: MissionType[] = [
-  'distance', 'activity_count', 'poi_visit', 'item_collect',
-  'streak_days', 'duration_minutes', 'elevation_gain_m',
-]
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'newest', label: d.missions.sortNewest },
@@ -160,9 +146,8 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
   const [tab, setTab] = useState<Tab>('ongoing')
   const [sortKey, setSortKey] = useState<SortKey>('newest')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
-  const [typeFilter, setTypeFilter] = useState<MissionType | 'all'>('all')
 
-  const activeFilterCount = (activityFilter !== 'all' ? 1 : 0) + (typeFilter !== 'all' ? 1 : 0)
+  const activeFilterCount = activityFilter !== 'all' ? 1 : 0
 
   const baseList =
     tab === 'ongoing' ? ongoing :
@@ -172,7 +157,6 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
   const list = useMemo(() => {
     let result = baseList.filter((m) => {
       const condition = m.condition_json as MissionCondition
-      if (typeFilter !== 'all' && m.mission_type !== typeFilter) return false
       if (activityFilter !== 'all' && condition.activity_type && condition.activity_type !== activityFilter) return false
       // 활동종류 필터가 걸려있는데 미션 자체에 activity_type 조건이 없으면(종목 무관 미션) 제외
       if (activityFilter !== 'all' && !condition.activity_type) return false
@@ -189,7 +173,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
       result = [...result].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     }
     return result
-  }, [baseList, sortKey, activityFilter, typeFilter])
+  }, [baseList, sortKey, activityFilter])
 
   const emptyText =
     activeFilterCount > 0 ? d.missions.emptyFiltered :
@@ -240,16 +224,6 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
           <option value="all">{d.missions.activityTypeAll}</option>
           {ACTIVITY_TYPES.map((tp) => (
             <option key={tp} value={tp}>{ACTIVITY_TYPE_LABELS[tp] ?? tp}</option>
-          ))}
-        </select>
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as MissionType | 'all')}
-          className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
-        >
-          <option value="all">{d.missions.missionTypeAll}</option>
-          {MISSION_TYPES.map((tp) => (
-            <option key={tp} value={tp}>{MISSION_TYPE_LABELS[tp]}</option>
           ))}
         </select>
       </div>
