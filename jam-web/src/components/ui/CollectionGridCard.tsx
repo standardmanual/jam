@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { BookIcon } from '@/components/ui/icons'
-import RarityBadge from '@/components/ui/Badge'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
@@ -55,14 +55,9 @@ export default function CollectionGridCard({
         {/* 태그 행: 등급(선택) + 완성 */}
         {(rarity || completed) && (
           <div className="absolute top-2 left-2 flex items-center gap-1">
-            {rarity && (
-              <RarityBadge
-                rarity={rarity}
-                className="text-[length:var(--text-caption)] px-2 py-0.5"
-              />
-            )}
+            {rarity && <RarityBadge rarity={rarity} />}
             {completed && (
-              <span className="bg-[#E8461F] text-white text-[length:var(--text-caption)] leading-none px-2 py-0.5 rounded-full font-bold">
+              <span className="bg-[color:var(--color-primary)] text-white text-[length:var(--text-caption)] leading-none px-2 py-0.5 rounded-full font-bold">
                 완성
               </span>
             )}
