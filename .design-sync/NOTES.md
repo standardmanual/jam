@@ -21,14 +21,29 @@
 - `_ds_sync.json`(검증 앵커)은 쓰지 않았다 — 정식 grading을 거치지 않은 수동 업로드이므로
   다음 재동기화가 앵커 없이 전체를 재검증하는 것이 정직한 선택이다.
 
+## 2026-08-20 — 후속 수정: CDN 의존 제거
+
+업로드 직후 사용자가 "클로드 디자인에서 컴포넌트 프리뷰 카드가 흰 배경으로 보인다"고
+확인해줬다. 원인은 카드 HTML이 React/ReactDOM/Babel을 `https://unpkg.com` CDN에서
+로드하도록 되어 있었기 때문 — claude.ai/design 런타임이 외부 스크립트를 차단하는
+샌드박스라 아예 로드되지 않았고, `styles.css`가 정의하는 `--color-bg`(검정) 대신
+브라우저 기본 흰 배경이 노출된 것으로 보인다.
+
+**조치**: `react@18.3.1`/`react-dom@18.3.1`(production.min) + `@babel/standalone@7.29.0`를
+`design-system/_vendor/`에 다운로드해 커밋하고, 아래 9개 파일의 `<script src="https://unpkg.com/...">`를
+로컬 `_vendor/` 경로로 교체해 재업로드했다:
+`components/{buttons/buttons,cards/cards,feedback/feedback,forms/forms,navigation/navigation,patterns/patterns}.card.html`,
+`guidelines/{shapes,loader,badge-frames}.html`.
+
+컴포넌트/가이드라인을 추가할 때 새 `.card.html`을 만든다면 **CDN이 아니라 `_vendor/`를
+참조**해야 한다 (예: `components/<group>/`에서는 `../../_vendor/react.production.min.js`,
+`guidelines/`에서는 `../_vendor/react.production.min.js`).
+
 ## Re-sync risks (다음 실행이 주의해야 할 것)
 
-- **카드 HTML이 React/ReactDOM/Babel을 `unpkg.com` CDN에서 로드한다**
-  (`components/**/*.card.html` 상단 `<script src="https://unpkg.com/...">`).
-  claude.ai/design 런타임이 외부 CDN을 차단하는 샌드박스라면 프리뷰 카드가 빈 화면으로
-  뜰 수 있다. 실제 프로젝트에서 카드가 렌더링되는지 확인이 필요하고, 안 되면 React를
-  `_vendor/`로 번들링해 로컬 서빙하도록 카드 HTML을 고쳐야 한다 (design-sync 컨버터의
-  표준 방식).
+- 위 CDN→`_vendor/` 전환을 다음 정식 storybook 컨버터 재동기화가 덮어쓰지 않도록 주의.
+  정식 컨버터로 넘어가면 `_vendor/`를 표준 방식으로 번들링하므로 이 수동 패치는
+  자연히 대체되지만, 그 전까지는 새 `.card.html`을 CDN 참조로 만들지 않는다.
 - `_ds_bundle.js`/컴포넌트 소스가 실제 `jam-web/src/` 구현과 완전히 동기화된 상태인지는
   검증하지 않았다 (README 기준 TabBar 등 일부만 "1:1 재현"이라고 명시). 컴포넌트 추가/변경
   시 `jam-web/CLAUDE.md`의 "MODULAR 먼저 탐색" 규칙에 따라 `design-system/`이 최신 상태로
