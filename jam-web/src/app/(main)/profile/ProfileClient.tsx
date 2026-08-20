@@ -411,7 +411,7 @@ export default function ProfileClient({
       label: (
         <span className="flex flex-col items-center justify-center gap-1">
           <span
-            className={`text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums ${
+            className={`text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold tabular-nums ${
               isActive ? 'text-[color:var(--tabs-text-active)]' : 'text-[color:var(--color-primary)]'
             }`}
           >
