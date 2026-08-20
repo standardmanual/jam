@@ -1,9 +1,9 @@
 ---
 id: 20260820_008
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-20
-closed:
+closed: 2026-08-20
 ---
 
 # [UI] 모듈러 전환 A그룹 — RarityBadge · WanderingEyesLoader · CollectionGridCard 잔여분
@@ -130,9 +130,9 @@ jam-web/src/components/ui/WanderingEyesLoader.tsx (삭제 — orphan)
 - 해당 없음 (텍스트 변경 없음, 스타일/import 전환만)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-20
+- 환경: staging
+- 커밋: 브랜치 병합 (staging), 프로덕션 미배포 — 사용자 승인 대기
 
 ### 주요 의사결정 / 핵심 메모
 - RarityBadge를 재사용하는 6개 호출처 모두 동일 방식으로 전환. CollectionGridCard의
