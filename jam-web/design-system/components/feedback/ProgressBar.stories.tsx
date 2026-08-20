@@ -36,6 +36,20 @@ export const WithFraction: Story = {
   render: (args) => <div style={{ width: 280 }}><ProgressBar {...args} /></div>,
 };
 
+/** ④radius 오버라이드 — 3px(임의값), 순위 그라데이션 (MissionStatusClient 랭킹 바 실측값) */
+export const RadiusOverride: Story = {
+  name: 'radius 오버라이드',
+  args: {
+    percent: 78,
+    labelType: 'none',
+    height: 6,
+    color: 'linear-gradient(90deg, #00CC66, #33E580)',
+    trackColor: 'var(--color-surface-elevated)',
+    radius: '3px',
+  },
+  render: (args) => <div style={{ width: 280 }}><ProgressBar {...args} /></div>,
+};
+
 export const AllVariants: Story = {
   name: '전체 변형',
   render: () => (
@@ -64,13 +78,14 @@ export const RealServiceContext: Story = {
       </div>
       {/* ItemBookHeroSection — 컬렉션 슬롯 3/10 */}
       <ProgressBar current={3} total={10} labelType="fraction" />
-      {/* MissionStatusClient — 랭킹 바, 색상 오버라이드(그라데이션) 예시 */}
+      {/* MissionStatusClient — 랭킹 바, 색상 오버라이드(그라데이션) + radius 3px 예시 */}
       <ProgressBar
         percent={78}
         labelType="none"
         height={6}
         color="linear-gradient(90deg, #00CC66, #33E580)"
         trackColor="var(--color-surface-elevated)"
+        radius="3px"
       />
     </div>
   ),
