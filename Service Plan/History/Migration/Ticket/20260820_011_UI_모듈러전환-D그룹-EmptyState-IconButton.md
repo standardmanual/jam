@@ -1,8 +1,9 @@
 ---
 id: 20260820_011
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-20
+closed: 2026-08-20
 ---
 
 # [UI] 모듈러 전환 D그룹 — EmptyState 전면 전환 + IconButton 효과 통일
@@ -109,9 +110,15 @@ jam-web/src/app/(main)/badges/BadgesClient.tsx
       이번 티켓 범위 밖이라 통일하지 않음), description은 기존 이웃 문구와 동일하게 마침표 생략
 
 ### 배포 정보
-- 배포일:
+- 배포일: 2026-08-20
 - 환경: staging
-- 커밋:
+- 커밋: c4a22d8 (review 브랜치), staging 머지 완료. 프로덕션 미배포 — 사용자 승인 대기
+
+### 후속 처리
+- IconButton 4곳 + EmptyState 잔여 2곳(DropsClient/InventoryItemHistorySheet)은 사용자 결정에
+  따라 **서비스 화면(BottomSheet·DropsClient·FeedSection·InventoryItemHistorySheet)을 다크
+  표면으로 전환**하는 방식으로 해결하기로 함(MapView.tsx는 지도 위 버튼이라 예외 제외).
+  후속 티켓 20260820_012에서 진행.
 
 ### 주요 의사결정 / 핵심 메모
 - **Card tone="inverse" 안의 EmptyState는 Card 래퍼를 제거하고 페이지 캔버스(어두운 배경) 위에
