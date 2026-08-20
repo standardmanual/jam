@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -9,6 +9,7 @@ import { formatRelativeTime } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
@@ -62,16 +63,6 @@ interface ItemBookItem {
 }
 
 // ─── 공통 조각 ───────────────────────────────────────────────────────────────
-
-/** 빈 상태 — 아이콘(SVG) + 안내 문구 */
-function EmptyState({ icon, message }: { icon: ReactNode; message: string }) {
-  return (
-    <Card tone="inverse" className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-40)]">
-      <span className="text-text-inverse/40">{icon}</span>
-      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{message}</p>
-    </Card>
-  )
-}
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 
@@ -295,7 +286,13 @@ export default function ProfileClient({
   const renderTabContent = () => {
     if (activeTab === 'badge') {
       if (badgeItems.length === 0) {
-        return <EmptyState icon={<MedalIcon className="w-8 h-8" />} message={d.profile.emptyBadges} />
+        return (
+          <EmptyState
+            icon={<MedalIcon className="w-8 h-8" />}
+            title={d.profile.emptyBadges}
+            description={d.profile.emptyBadgesBody}
+          />
+        )
       }
       return (
         <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
@@ -318,7 +315,13 @@ export default function ProfileClient({
     if (activeTab === 'itembooks') {
       if (itembooksData === null) return null
       if (itembooksData.length === 0) {
-        return <EmptyState icon={<BookIcon className="w-8 h-8" />} message={d.profile.emptyItembooks} />
+        return (
+          <EmptyState
+            icon={<BookIcon className="w-8 h-8" />}
+            title={d.profile.emptyItembooks}
+            description={d.profile.emptyItembooksBody}
+          />
+        )
       }
       return (
         <div className="grid grid-cols-2 gap-[var(--spacing-8)]">
@@ -343,7 +346,8 @@ export default function ProfileClient({
       return (
         <EmptyState
           icon={<UsersIcon className="w-8 h-8" />}
-          message={activeTab === 'followers' ? d.profile.emptyFollowers : d.profile.emptyFollowing}
+          title={activeTab === 'followers' ? d.profile.emptyFollowers : d.profile.emptyFollowing}
+          description={activeTab === 'followers' ? d.profile.emptyFollowersBody : d.profile.emptyFollowingBody}
         />
       )
     }

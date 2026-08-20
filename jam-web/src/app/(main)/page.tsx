@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/types/database'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { Card } from '@ds/components/cards/Card'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import SyncButton from './SyncButton'
 import LocalDate from '@/components/LocalDate'
 import UserSearchBar from './UserSearchBar'
@@ -131,10 +132,11 @@ export default async function HomePage() {
             ))}
           </div>
         ) : (
-          <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.today.recentBadgesEmptyTitle}</p>
-            <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.today.recentBadgesEmptyBody}</p>
-          </Card>
+          <EmptyState
+            icon={<MedalIcon className="w-8 h-8" />}
+            title={d.today.recentBadgesEmptyTitle}
+            description={d.today.recentBadgesEmptyBody}
+          />
         )}
       </section>
 
