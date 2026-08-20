@@ -464,11 +464,13 @@ export default function ProfileClient({
             )}
           </div>
 
-          <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] truncate">
-            {profile?.username ?? d.profile.anonymous}
-          </p>
-
-          <div className="flex-1" />
+          {/* flex-1 min-w-0 래핑 — 없으면 flex 기본값(min-width:auto)에서 truncate가
+              동작하지 않아 긴 아이디(최대 30자)가 우측 요소를 밀어낼 수 있음 (게이트 리뷰 지적) */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] truncate">
+              {profile?.username ?? d.profile.anonymous}
+            </p>
+          </div>
 
           {isOwnProfile ? (
             pointBalance !== null && (
