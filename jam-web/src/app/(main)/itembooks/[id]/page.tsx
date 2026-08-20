@@ -213,7 +213,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       />
 
       {/* 스크롤 컨테이너 — 외부: padding 16 / gap 12 */}
-      <div className="relative z-10 flex-1 flex flex-col px-4 pt-4 pb-10 gap-3">
+      <div className="relative z-10 flex-1 flex flex-col px-4 pt-0 pb-10 gap-3">
 
         <ItemBookHeroSection
           book={{ name: book.name, description: book.description, image_url: book.image_url }}
