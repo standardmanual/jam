@@ -83,7 +83,7 @@ export default function PointsPage() {
         <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
           <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-2">{d.points.balanceLabel}</p>
           <p
-            className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]"
+            className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] font-bold text-[color:var(--color-primary)]"
             aria-label={balanceText ?? undefined}
           >
             {/* 자릿수 span은 훅이 명령형으로 생성한다 — 스크린리더에는 위 aria-label로 전달 */}
