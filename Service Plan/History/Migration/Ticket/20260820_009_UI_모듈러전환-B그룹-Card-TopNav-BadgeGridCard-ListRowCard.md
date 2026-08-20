@@ -1,9 +1,9 @@
 ---
 id: 20260820_009
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-20
-closed:
+closed: 2026-08-20
 ---
 
 # [UI] 모듈러 전환 B그룹 — Card · TopNav · BadgeGridCard · ListRowCard
@@ -150,9 +150,9 @@ jam-web/src/app/(main)/[username]/itembooks/page.tsx
 - 해당 없음 (텍스트 변경 없음, 스타일/구조 전환만)
 
 ### 배포 정보
-- 배포일:
+- 배포일: 2026-08-20
 - 환경: staging
-- 커밋: (본 브랜치 push 예정, 프로덕션 미배포 — 사용자 승인 대기)
+- 커밋: 브랜치 병합 (staging), 프로덕션 미배포 — 사용자 승인 대기
 
 ### 주요 의사결정 / 핵심 메모
 
