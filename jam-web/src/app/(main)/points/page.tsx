@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { PointHistoryItem } from '@/app/api/points/route'
 import TopNav from '@/components/ui/TopNav'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import ListRowCard from '@/components/ui/ListRowCard'
 import { CoinIcon } from '@/components/ui/icons'
 import { useDigitPopIn } from '@/components/transitions-pages'
@@ -77,9 +78,9 @@ export default function PointsPage() {
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.common.back} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
         {/* 잔액 카드 */}
-        <Card className="text-center py-[var(--spacing-32)]">
+        <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
           <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-2">{d.points.balanceLabel}</p>
           <p
             className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]"
@@ -100,7 +101,7 @@ export default function PointsPage() {
           )}
 
           {!loading && error && (
-            <Card className="text-center py-[var(--spacing-32)]">
+            <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
               <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70 mb-[var(--spacing-16)]">{d.points.loadError}</p>
               <button
                 onClick={() => load(null, false)}
@@ -112,10 +113,11 @@ export default function PointsPage() {
           )}
 
           {!loading && !error && items.length === 0 && (
-            <Card className="text-center py-[var(--spacing-32)]">
-              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.points.emptyTitle}</p>
-              <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.points.emptyBody}</p>
-            </Card>
+            <EmptyState
+              icon={<CoinIcon className="w-8 h-8" />}
+              title={d.points.emptyTitle}
+              description={d.points.emptyBody}
+            />
           )}
 
           {!loading && !error && items.length > 0 && (

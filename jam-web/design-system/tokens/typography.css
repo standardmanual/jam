@@ -1,8 +1,10 @@
 /*
  * JAM! DS v2 — typography tokens.
- * Noto Sans KR — multi-weight (300/400/500/600/900).
+ * Pretendard Variable — 서비스(globals.css) 정본 값과 실연결 (20260820_003).
  *
  * v2 changes:
+ *   - 20260820_003: --font-family-base — Noto Sans KR → Pretendard Variable.
+ *     서비스가 실제 사용 중인 값을 정본으로 채택 (모듈러가 서비스를 따라감).
  *   - --leading-bold-display: 0.95 → 1.0 (was clipping Korean descenders)
  *   - --weight-bold-lg: 900 added (was missing, completing the bold set)
  *   - DS-014: tracking unified to per-scale tokens only — --tracking-heading removed
@@ -10,7 +12,10 @@
  *     --tracking-* token. Exception: --tracking-label stays (role-based, size-independent).
  */
 :root {
-  --font-family-base: "Noto Sans KR", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* 20260820_003: 서비스(globals.css) 값을 정본으로 통일 — Pretendard Variable.
+     이전 값(Noto Sans KR)은 서비스와 충돌해 실연결(@import) 시 값이 덮어써졌음. */
+  --font-family-base: "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, system-ui, Roboto, sans-serif;
 
   /* Display — hero moments only */
   --text-display: 96px;    --leading-display: 1.08;   --tracking-display: -2.4px;  --weight-display: 300;

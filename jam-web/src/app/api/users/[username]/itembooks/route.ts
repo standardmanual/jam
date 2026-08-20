@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
+import type { BadgeRarity } from '@/types/database'
 
 export async function GET(
   _request: Request,
@@ -60,14 +61,17 @@ export async function GET(
       .select('id, name, image_url, faction:factions(name)')
       .in('id', bookIds)
       .eq('is_active', true),
-      service.from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item'),
+      service.from('badges').select('id, item_book_id, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').order('created_at', { ascending: true }),
       service.from('user_item_book_slots').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
       service.from('user_item_book_completions').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
   ])
 
   const totalByBook = new Map<string, number>()
-  for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
+  const rarityByBook = new Map<string, BadgeRarity>()
+  for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string; rarity: BadgeRarity; created_at: string }[]) {
     totalByBook.set(b.item_book_id, (totalByBook.get(b.item_book_id) ?? 0) + 1)
+    // created_at ASC 정렬이므로 처음 만나는 항목이 최초 등록 배지
+    if (!rarityByBook.has(b.item_book_id)) rarityByBook.set(b.item_book_id, b.rarity)
   }
   const slottedByBook = new Map<string, number>()
   for (const s of (slotsRaw ?? []) as { item_book_id: string }[]) {
@@ -85,6 +89,7 @@ export async function GET(
       totalBadgeCount: totalByBook.get(book.id) ?? 0,
       slottedCount: slottedByBook.get(book.id) ?? 0,
       isCompleted: completedSet.has(book.id),
+      rarity: rarityByBook.get(book.id) ?? 'common',
     }))
     .sort((a, b) => {
       if (a.isCompleted !== b.isCompleted) return a.isCompleted ? -1 : 1

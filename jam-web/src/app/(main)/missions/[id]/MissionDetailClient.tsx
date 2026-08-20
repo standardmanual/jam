@@ -7,13 +7,14 @@ import Image from 'next/image'
 import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
-import RarityBadge from '@/components/ui/Badge'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import ListRowCard from '@/components/ui/ListRowCard'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 
 export interface RewardBadgeInfo {
   id: string
@@ -132,7 +133,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.missions.backToDetail} backHref="/missions" headerStyle={{ background: 'var(--color-surface)' }} />
 
-      <div className="flex flex-col px-6 pt-8 pb-10 gap-6">
+      <div className="flex flex-col px-6 pt-0 pb-10 gap-6">
 
         {/* 대표 이미지 — 1:1 정사각형 */}
         <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface-elevated flex items-center justify-center">
@@ -218,12 +219,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
-                <div className="h-2 rounded-[var(--radius-pill)] overflow-hidden bg-border">
-                  <div
-                    className="h-full rounded-[var(--radius-pill)] transition-all duration-[400ms]"
-                    style={{ width: `${isCompleted ? 100 : progressPct}%`, background: 'var(--color-primary)' }}
-                  />
-                </div>
+                <ProgressBar percent={isCompleted ? 100 : progressPct} />
                 <div className="flex gap-1.5 pt-1 flex-wrap">
                   {Array.from({ length: goal.target }).map((_, i) => {
                     const done  = i < (isCompleted ? goal.target : Math.floor(progressValue))
@@ -258,12 +254,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
-                <div className="h-2 rounded-[var(--radius-pill)] overflow-hidden bg-border">
-                  <div
-                    className="h-full rounded-[var(--radius-pill)] transition-all duration-[400ms]"
-                    style={{ width: `${isCompleted ? 100 : progressPct}%`, background: 'var(--color-primary)' }}
-                  />
-                </div>
+                <ProgressBar percent={isCompleted ? 100 : progressPct} />
               </div>
             )}
           </InfoCard>
@@ -279,7 +270,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                 <Link key={badge.id} href={`/badges/${badge.id}`} className="active:opacity-70 transition-opacity duration-100">
                   {/* 배지 보상 행: 카드형 이미지 + MODULAR RarityBadge + 텍스트 */}
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-[var(--radius-md)] bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {badge.image_url ? (
                         <Image src={badge.image_url} alt={badge.name} width={52} height={52} className="w-[52px] h-[52px] object-contain" />
                       ) : (
