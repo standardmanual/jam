@@ -1,0 +1,36 @@
+/*
+ * JAM! DS v2 — color tokens (light theme override, DS-019).
+ * 20260820_003: `colors.css`(다크/기본)에서 분리한 라이트 오버라이드 전용 파일.
+ * 반드시 `colors.css` 뒤에 로드해야 한다 (base palette --color-base-* 참조).
+ *
+ * 서비스(globals.css)는 이 파일을 import하지 않는다 — 서비스는 다크 전용 고정
+ * (`color-scheme: dark`). 스토리북(`design-system/styles.css`)만 계속 이 파일을 함께
+ * import해 라이트/다크 토글 기능을 유지한다.
+ *
+ * Rarity and tag tokens are intentionally unchanged — they are functional/brand
+ * colors that must remain consistent across themes.
+ * Prerequisite: DS-002 (ShapeTag uses --color-text/--color-text-inverse),
+ *               DS-007 (TabBar uses --color-bg-inverse).
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-bg: var(--color-base-white);
+    --color-bg-tint: var(--color-base-grey-200);
+    --color-surface: var(--color-base-grey-200);
+    /* 20260816_012: 라이트에서도 카드가 캔버스(--color-surface)보다 밝아야 떠 보인다 */
+    --color-surface-elevated: var(--color-base-grey-100);
+    --color-text: var(--color-base-black);
+    --color-text-secondary: var(--color-base-grey-600);
+    --color-border: rgba(0, 0, 0, 0.12);
+  }
+}
+
+:root[data-theme="light"] {
+  --color-bg: var(--color-base-white);
+  --color-bg-tint: var(--color-base-grey-200);
+  --color-surface: var(--color-base-grey-200);
+  --color-surface-elevated: var(--color-base-grey-100);
+  --color-text: var(--color-base-black);
+  --color-text-secondary: var(--color-base-grey-600);
+  --color-border: rgba(0, 0, 0, 0.12);
+}
