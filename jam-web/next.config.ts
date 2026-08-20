@@ -47,6 +47,24 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // 20260821_002: "아이템북" → "컬렉션" 공개 URL 전환. 기존에 공유된 /itembooks 링크를
+  // 보호하기 위해 301(permanent) 리다이렉트를 유지한다. 관리자 화면(/admin/itembooks)과
+  // API 라우트(/api/itembooks, /api/users/[username]/itembooks)는 이번 전환 대상이 아니므로
+  // 두 번째 규칙에서 :username이 admin/api를 매칭하지 않도록 음의 전방탐색으로 제외한다.
+  async redirects() {
+    return [
+      {
+        source: '/itembooks/:path*',
+        destination: '/collections/:path*',
+        permanent: true,
+      },
+      {
+        source: '/:username((?!admin$|api$)[^/]+)/itembooks/:path*',
+        destination: '/:username/collections/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
