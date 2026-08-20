@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/types/database'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import SyncButton from './SyncButton'
 import LocalDate from '@/components/LocalDate'
 import UserSearchBar from './UserSearchBar'
@@ -65,7 +65,7 @@ export default async function HomePage() {
 
       {/* Strava 상태 */}
       {stravaConnection ? (
-        <Card>
+        <Card tone="inverse">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ActivityIcon className="w-5 h-5 text-text-inverse" />
@@ -80,7 +80,7 @@ export default async function HomePage() {
           </div>
         </Card>
       ) : (
-        <Card>
+        <Card tone="inverse">
           <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-1">{d.today.stravaNotConnectedTitle}</p>
           <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mb-[var(--spacing-16)]">{d.today.stravaNotConnectedBody}</p>
           <Link
@@ -111,7 +111,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
             {badgeWithEarned.map(({ badge, earned }) => (
               <Link key={earned.id} href={`/badges/${badge.id}`}>
-                <Card className="aspect-square flex flex-col justify-between active:scale-[0.98] transition-transform duration-100">
+                <Card tone="inverse" className="aspect-square flex flex-col justify-between active:scale-[0.98] transition-transform duration-100">
                   <div className="flex-1 flex items-center justify-center">
                     {badge.image_url ? (
                       <Image src={badge.image_url} alt={badge.name} width={80} height={80} className="w-20 h-20 object-contain" />
@@ -131,7 +131,7 @@ export default async function HomePage() {
             ))}
           </div>
         ) : (
-          <Card className="text-center py-[var(--spacing-32)]">
+          <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.today.recentBadgesEmptyTitle}</p>
             <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.today.recentBadgesEmptyBody}</p>
           </Card>
@@ -143,25 +143,25 @@ export default async function HomePage() {
         <h2 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] mb-[var(--spacing-16)]">{d.today.shortcutsTitle}</h2>
         <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
           <Link href="/missions">
-            <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
+            <Card tone="inverse" className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutMissionTitle}</p>
               <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutMissionBody}</p>
             </Card>
           </Link>
           <Link href="/inventory">
-            <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
+            <Card tone="inverse" className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutInventoryTitle}</p>
               <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutInventoryBody}</p>
             </Card>
           </Link>
           <Link href="/drops">
-            <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
+            <Card tone="inverse" className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutDropsTitle}</p>
               <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutDropsBody}</p>
             </Card>
           </Link>
           <Link href="/combine">
-            <Card className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
+            <Card tone="inverse" className="flex flex-col gap-2 active:scale-[0.98] transition-transform duration-100">
               <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold">{d.today.shortcutCombineTitle}</p>
               <p className="text-[length:var(--text-caption)] text-text-inverse/50">{d.today.shortcutCombineBody}</p>
             </Card>
