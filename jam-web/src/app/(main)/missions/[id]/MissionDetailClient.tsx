@@ -14,6 +14,7 @@ import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 
 export interface RewardBadgeInfo {
   id: string
@@ -218,12 +219,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
-                <div className="h-2 rounded-[var(--radius-pill)] overflow-hidden bg-border">
-                  <div
-                    className="h-full rounded-[var(--radius-pill)] transition-all duration-[400ms]"
-                    style={{ width: `${isCompleted ? 100 : progressPct}%`, background: 'var(--color-primary)' }}
-                  />
-                </div>
+                <ProgressBar percent={isCompleted ? 100 : progressPct} />
                 <div className="flex gap-1.5 pt-1 flex-wrap">
                   {Array.from({ length: goal.target }).map((_, i) => {
                     const done  = i < (isCompleted ? goal.target : Math.floor(progressValue))
@@ -258,12 +254,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                     {isCompleted ? '100' : Math.round(progressPct)}%
                   </span>
                 </div>
-                <div className="h-2 rounded-[var(--radius-pill)] overflow-hidden bg-border">
-                  <div
-                    className="h-full rounded-[var(--radius-pill)] transition-all duration-[400ms]"
-                    style={{ width: `${isCompleted ? 100 : progressPct}%`, background: 'var(--color-primary)' }}
-                  />
-                </div>
+                <ProgressBar percent={isCompleted ? 100 : progressPct} />
               </div>
             )}
           </InfoCard>
