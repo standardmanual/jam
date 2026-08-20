@@ -491,7 +491,7 @@ export default function ProfileClient({
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
             pill을 숨긴다. */}
-        <Card tone="inverse" className="p-0 overflow-hidden">
+        <Card tone="inverse" className="overflow-hidden" style={{ padding: 0 }}>
           <SlidingTabs
             items={statTabs}
             value={isTabView ? activeTab : ('' as TabKey)}
