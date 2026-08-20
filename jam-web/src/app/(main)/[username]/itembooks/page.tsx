@@ -5,6 +5,7 @@ import type { ItemBookRow, FactionRow } from '@/types/database'
 import Card from '@/components/ui/Card'
 import TopNav from '@/components/ui/TopNav'
 import { BookIcon } from '@/components/ui/icons'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { d } from '@/lib/i18n'
 import Link from 'next/link'
 
@@ -168,9 +169,7 @@ export default async function UserItemBooksPage({ params }: Props) {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-black/[0.08]">
-                        <div className="h-full bg-text-inverse rounded-full transition-all" style={{ width: `${pct}%` }} />
-                      </div>
+                      <ProgressBar percent={pct} height={6} />
                       <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold tabular-nums shrink-0">{slottedCount}/{totalBadgeCount}</span>
                     </div>
                   </Card>
