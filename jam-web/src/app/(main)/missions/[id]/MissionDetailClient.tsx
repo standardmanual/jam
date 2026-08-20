@@ -279,7 +279,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
                 <Link key={badge.id} href={`/badges/${badge.id}`} className="active:opacity-70 transition-opacity duration-100">
                   {/* 배지 보상 행: 카드형 이미지 + MODULAR RarityBadge + 텍스트 */}
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-[var(--radius-md)] bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-border flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {badge.image_url ? (
                         <Image src={badge.image_url} alt={badge.name} width={52} height={52} className="w-[52px] h-[52px] object-contain" />
                       ) : (
