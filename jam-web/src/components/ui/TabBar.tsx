@@ -124,9 +124,9 @@ export default function TabBar({ username }: TabBarProps) {
 
   // 배지 메뉴에서 파생된 페이지는 "배지" 탭 활성 유지:
   //   - /inventory/[itemId]?from=badges (아이템배지 상세)
-  //   - /itembooks/[id]?from=badges (컬렉션 상세)
+  //   - /collections/[id]?from=badges (컬렉션 상세)
   const fromBadges =
-    (pathname.startsWith('/inventory') || pathname.startsWith('/itembooks')) &&
+    (pathname.startsWith('/inventory') || pathname.startsWith('/collections')) &&
     searchParams.get('from') === 'badges'
 
   const tabs = baseTabs.map((tab) =>

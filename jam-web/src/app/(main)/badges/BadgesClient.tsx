@@ -280,7 +280,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 return (
                   <CollectionGridCard
                     key={book.id}
-                    href={`/itembooks/${book.id}?from=badges`}
+                    href={`/collections/${book.id}?from=badges`}
                     name={book.name}
                     imageUrl={book.image_url ?? null}
                     collected={progress.owned}

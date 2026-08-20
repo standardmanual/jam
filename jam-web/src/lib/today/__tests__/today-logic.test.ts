@@ -90,9 +90,9 @@ check('resolveTargetHref: mission_spotlight → /missions/{id}', () => {
   const card = makeCard({ template_type: 'mission_spotlight', mission_id: 'm1' })
   assert.equal(resolveTargetHref(card), '/missions/m1')
 })
-check('resolveTargetHref: itembook_milestone → /itembooks/{id}', () => {
+check('resolveTargetHref: itembook_milestone → /collections/{id}', () => {
   const card = makeCard({ template_type: 'itembook_milestone', item_book_id: 'i1' })
-  assert.equal(resolveTargetHref(card), '/itembooks/i1')
+  assert.equal(resolveTargetHref(card), '/collections/i1')
 })
 check('resolveTargetHref: drop_alert → /drops', () => {
   const card = makeCard({ template_type: 'drop_alert' })

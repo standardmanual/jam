@@ -41,7 +41,7 @@ export function resolveTargetHref(card: TodayCardRow): string {
     case 'mission_spotlight':
       return card.mission_id ? `/missions/${card.mission_id}` : '/missions'
     case 'itembook_milestone':
-      return card.item_book_id ? `/itembooks/${card.item_book_id}` : '/itembooks'
+      return card.item_book_id ? `/collections/${card.item_book_id}` : '/collections'
     case 'drop_alert':
       return '/drops'
     default:
