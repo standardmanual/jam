@@ -426,9 +426,13 @@ export default function ProfileClient({
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title="" showBack={!isOwnProfile} />
+      {!isOwnProfile && <TopNav title="" showBack />}
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+      <div
+        className={`px-[var(--spacing-16)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)] ${
+          isOwnProfile ? 'pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]' : 'pt-0'
+        }`}
+      >
         {/* 프로필 헤더 */}
         <Card tone="inverse" className="flex items-center gap-[var(--spacing-16)]">
           {profile?.avatar_url ? (

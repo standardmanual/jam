@@ -133,7 +133,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.missions.backToDetail} backHref="/missions" headerStyle={{ background: 'var(--color-surface)' }} />
 
-      <div className="flex flex-col px-6 pt-8 pb-10 gap-6">
+      <div className="flex flex-col px-6 pt-0 pb-10 gap-6">
 
         {/* 대표 이미지 — 1:1 정사각형 */}
         <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface-elevated flex items-center justify-center">
