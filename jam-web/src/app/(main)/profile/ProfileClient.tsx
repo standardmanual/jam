@@ -436,59 +436,63 @@ export default function ProfileClient({
           isOwnProfile ? 'pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]' : 'pt-0'
         }`}
       >
-        {/* 프로필 헤더 — Card 배경 제거, 컨텐츠는 페이지 패딩 폭까지 확장 (20260820_019) */}
+        {/* 프로필 헤더 — Card 배경 제거, 컨텐츠는 페이지 패딩 폭까지 확장 (20260820_019).
+            아바타 확대·편집 버튼 축소·아이디 전체노출·포인트를 아이디 아래로 이동 (20260820_021) */}
         <div className="flex items-center gap-[var(--spacing-16)]">
           <div className="relative shrink-0">
             {profile?.avatar_url ? (
               <Image
                 src={profile.avatar_url}
                 alt={d.profile.avatarAlt}
-                width={64}
-                height={64}
-                className="w-16 h-16 rounded-[var(--radius-cards)] object-cover"
+                width={96}
+                height={96}
+                className="w-24 h-24 rounded-[var(--radius-cards)] object-cover"
               />
             ) : (
-              <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
-                <UserIcon className="w-7 h-7" />
+              <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
+                <UserIcon className="w-10 h-10" />
               </div>
             )}
-            {/* 편집 버튼 — 아바타 우측 상단 오버레이 원형 아이콘 버튼, 44px 터치타겟 */}
+            {/* 편집 버튼 — 아바타 우측 상단 오버레이 원형 아이콘 버튼.
+                44px 터치타겟 권장 크기의 절반(22px)으로 축소 요청(20260820_021) —
+                접근성 가이드 최소 터치타겟보다 작아짐을 인지하고 반영. */}
             {isOwnProfile && (
               <button
                 onClick={() => router.push('/profile/edit')}
                 aria-label={d.profile.editButton}
-                className="absolute -top-2 -right-2 w-11 h-11 rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-text flex items-center justify-center active:scale-95 transition-transform duration-100"
+                className="absolute -top-2 -right-2 w-[22px] h-[22px] rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-text flex items-center justify-center active:scale-95 transition-transform duration-100"
               >
-                <PencilIcon className="w-4 h-4" />
+                <PencilIcon className="w-2.5 h-2.5" />
               </button>
             )}
           </div>
 
-          {/* flex-1 min-w-0 래핑 — 없으면 flex 기본값(min-width:auto)에서 truncate가
-              동작하지 않아 긴 아이디(최대 30자)가 우측 요소를 밀어낼 수 있음 (게이트 리뷰 지적) */}
-          <div className="flex-1 min-w-0">
-            <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] truncate">
+          {/* 아이디는 더 이상 truncate하지 않는다 — 줄바꿈을 허용해 전체 노출(20260820_021) */}
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
+            <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] break-words">
               {profile?.username ?? d.profile.anonymous}
             </p>
-          </div>
 
-          {isOwnProfile ? (
-            pointBalance !== null && (
+            {/* 포인트 — 아이디 아래로 이동, 크기는 기존(--text-heading 44px)의 약 절반인
+                --text-subheading(24px)으로 축소(20260820_021) */}
+            {isOwnProfile && pointBalance !== null && (
               <button
                 onClick={() => router.push('/points')}
                 aria-label={d.profile.pointsAriaLabel}
-                className="shrink-0 -mr-2 px-2 inline-flex items-center gap-1 min-h-11 rounded-[var(--radius-nav-buttons)] active:scale-95 transition-transform duration-100 cursor-pointer"
+                className="self-start -ml-2 px-2 inline-flex items-center gap-1 min-h-11 rounded-[var(--radius-nav-buttons)] active:scale-95 transition-transform duration-100 cursor-pointer"
               >
-                <span className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] font-bold text-[color:var(--color-primary)] tabular-nums">
+                <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold text-[color:var(--color-primary)] tabular-nums">
                   {pointBalance.toLocaleString('ko-KR')}
                 </span>
-                <span className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] font-bold text-[color:var(--color-primary)]">
+                <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold text-[color:var(--color-primary)]">
                   {d.profile.pointBadgeLabel}
                 </span>
-                <ChevronRightIcon className="w-5 h-5 text-text/40" />
+                <ChevronRightIcon className="w-4 h-4 text-text/40" />
               </button>
-            )
-          ) : (
+            )}
+          </div>
+
+          {!isOwnProfile && (
             <Button
               surface="sub"
               variant={following ? 'outline' : 'primary'}
