@@ -41,6 +41,17 @@ export interface MapViewport {
   zoom: number
 }
 
+/**
+ * 지도 초기화 완료 후 부모에게 전달되는 명령형 핸들.
+ * `next/dynamic`으로 지연 로드되는 컴포넌트는 `ref`를 그대로 전달받지 못하므로
+ * (LoadableComponent가 forwardRef로 감싸져 있지 않음) ref 대신 `onMapReady`
+ * 콜백으로 핸들을 넘긴다.
+ */
+export interface MapViewHandle {
+  /** 지정 좌표로 지도 중심을 이동한다(줌 유지). POI 캐러셀 카드 전환 시 사용 */
+  focusPoi: (lat: number, lng: number) => void
+}
+
 interface MapViewProps {
   userLat: number
   userLng: number
@@ -56,6 +67,8 @@ interface MapViewProps {
    * 범위 안에서의 이동은 호출하지 않아 API 호출량을 최소화한다.
    */
   onViewportChange?: (viewport: MapViewport) => void
+  /** 지도(naver.maps.Map) 초기화가 끝나면 1회 호출되어 명령형 핸들을 전달한다 */
+  onMapReady?: (handle: MapViewHandle) => void
 }
 
 // 전역 콜백 이름 (네이버 지도 script src에 callback= 으로 전달)
@@ -209,6 +222,7 @@ export default function MapView({
   badgeMarkers = [],
   badgeClusters = [],
   onViewportChange,
+  onMapReady,
 }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<naver.maps.Map | null>(null)
@@ -232,6 +246,12 @@ export default function MapView({
   useEffect(() => {
     onViewportChangeRef.current = onViewportChange
   }, [onViewportChange])
+  // onMapReady도 최신 콜백을 ref로 참조 — 지도는 최초 1회만 초기화되므로
+  // 이 콜백이 리렌더마다 바뀌어도 재초기화를 유발하지 않는다.
+  const onMapReadyRef = useRef(onMapReady)
+  useEffect(() => {
+    onMapReadyRef.current = onMapReady
+  }, [onMapReady])
   // 언마운트 시 idle 리스너 해제용
   const cleanupRef = useRef<(() => void) | null>(null)
 
@@ -256,6 +276,16 @@ export default function MapView({
         ...(styleId ? { customStyleId: styleId } : {}),
       })
       mapInstanceRef.current = map
+
+      // 명령형 핸들 전달 — POI 캐러셀이 map.morph()로 카드 전환 시 포커싱하는 데 사용
+      onMapReadyRef.current?.({
+        focusPoi: (lat: number, lng: number) => {
+          const m = mapInstanceRef.current
+          const nv = window.naver
+          if (!m || !nv?.maps) return
+          m.morph(new nv.maps.LatLng(lat, lng), m.getZoom())
+        },
+      })
 
       userMarkerRef.current = new naver.maps.Marker({
         position: new naver.maps.LatLng(userLat, userLng),
