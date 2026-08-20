@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import TopNav from '@/components/ui/TopNav'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import { UserIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
@@ -424,7 +424,7 @@ function MyRankCard({
 /** 달성형 행 */
 function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (
-    <Card className={highlight ? '' : 'opacity-90'}>
+    <Card tone="inverse" className={highlight ? '' : 'opacity-90'}>
       <div className="flex items-center gap-[var(--spacing-16)]">
         <SimpleAvatar url={e.avatarUrl} />
         <span className="flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">
@@ -619,7 +619,7 @@ export default function MissionStatusClient({
       {data?.type === 'individual' && (
         <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
           <p className="text-[11px] text-text/50 mb-[var(--spacing-16)]">{d.missions.statusIndividualLabel}</p>
-          <Card>
+          <Card tone="inverse">
             <div className="flex items-center justify-between">
               <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
                 {d.missions.myProgressTitle}

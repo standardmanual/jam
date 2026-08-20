@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Button from '@/components/ui/Button'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { MedalIcon } from '@/components/ui/icons'
@@ -71,7 +71,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
         </div>
 
         {/* 드랍 컨텍스트 */}
-        <Card>
+        <Card tone="inverse">
           <h2 className="text-[length:var(--text-caption)] uppercase text-text-inverse/40 mb-2">{d.badges.connectedLocationTitle}</h2>
           <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/80">
             {poiName}

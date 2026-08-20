@@ -53,3 +53,24 @@ export const NoBackNoTitle: Story = {
   name: '빈 상태',
   args: { title: '', showBack: false },
 };
+
+export const ServiceTitleSize: Story = {
+  name: '서비스 타이틀 크기 (16px, 일반체)',
+  args: {
+    title: '배지',
+    showBack: true,
+    titleSize: 'var(--text-body)',
+    titleWeight: 'var(--weight-body)',
+    titleLineHeight: 'var(--leading-body)',
+    titleTracking: 'normal',
+  },
+};
+
+export const HeaderStyleOverride: Story = {
+  name: '헤더 배경 오버라이드',
+  args: {
+    title: '아이템북',
+    showBack: true,
+    style: { background: 'var(--color-surface)' },
+  },
+};
