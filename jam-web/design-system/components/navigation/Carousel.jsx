@@ -18,6 +18,10 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 
  *
  * 슬라이드 폭은 컨테이너의 100%가 아니라 `SLIDE_WIDTH_PERCENT`(peek 레이아웃)로
  * 좁혀, 중앙 카드 좌우로 다음/이전 카드가 부분적으로 보이게 한다(20260820_020).
+ * peek로 실제 보이는 폭(px) = 컨테이너폭 × (100-SLIDE_WIDTH_PERCENT)/200 - gap.
+ * 20260820_022: 부모(PoiCarouselModal)가 좌우 padding을 없앤 뒤에도 80%는 이 계산상
+ * 실측 20px 안팎으로 옆 카드가 거의 보이지 않아(사용자 리포트 "옆카드 잘림") 72%로
+ * 좁혀 실측 peek을 35~44px(iPhone 표준~최대 폭 기준)로 넓혔다.
  * 컨테이너에는 padding을 주지 않는다 — flex-basis 퍼센트는 부모의 콘텐츠 박스
  * 기준으로 해석되므로, padding으로 콘텐츠 박스를 줄인 상태에서 슬라이드에 다시
  * 퍼센트 flex-basis를 적용하면 두 퍼센트가 곱연산되어 의도한 폭보다 훨씬 좁아진다
@@ -28,7 +32,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 
  * 가정하지 않고, 실제 렌더된 슬라이드 DOM 요소의 offsetLeft/offsetWidth를 기준으로
  * 계산한다.
  */
-const SLIDE_WIDTH_PERCENT = 80; // MODULAR peek 레이아웃 — 78~85% 권장 범위 내
+const SLIDE_WIDTH_PERCENT = 72; // 20260820_022: 여백 없는 풀블리드 레이아웃에서 peek이 잘리지 않도록 축소(기존 80%)
 const SLIDE_INSET_PERCENT = (100 - SLIDE_WIDTH_PERCENT) / 2;
 
 export function Carousel({

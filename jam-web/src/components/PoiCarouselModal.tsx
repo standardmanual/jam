@@ -262,15 +262,26 @@ export default function PoiCarouselModal({
       {/* 배경 오버레이 — 탭하면 닫힘 */}
       <div ref={backdropRef} className="absolute inset-0 bg-surface/70 t-panel-backdrop" data-open="false" onClick={onClose} />
 
-      {/* 센터 정렬 레이어 — 빈 영역은 pointer-events:none으로 배경 탭 닫기를 살려둔다 */}
-      <div className="relative h-full flex flex-col items-center justify-center px-[var(--spacing-16)] pointer-events-none">
+      {/*
+        20260820_022: 화면 세로 중앙(justify-center) → TabBar 바로 위 고정(justify-end)으로
+        변경. 이 기능 개발 이전 바텀시트와 동일한 하단 위치다. paddingBottom은 TabBar
+        (bottom: safe-area+16px, height 64px) 위 12px 여백을 더한 값 — BottomSheet.tsx/
+        BadgeDetailSheet.tsx의 footer 패딩과 동일한 관례를 따른다. justify-end라 컨텐츠
+        (드랍된 배지 수)가 많아질수록 패널이 아래는 고정된 채 위쪽으로만 늘어난다.
+        좌우 padding은 제거 — 캐러셀이 화면 폭 전체를 써서 옆 카드(peek)가 화면 끝까지
+        잘리지 않고 보이게 한다(빈 영역은 pointer-events:none으로 배경 탭 닫기를 살려둔다).
+      */}
+      <div
+        className="relative h-full flex flex-col justify-end pointer-events-none"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)' }}
+      >
         <div
           ref={panelRef}
           className="t-panel-slide w-full pointer-events-auto"
           data-open="false"
           style={{ ['--panel-translate-y' as string]: '24px' }}
         >
-          <div className="flex justify-end mb-[var(--spacing-8)]">
+          <div className="flex justify-end mb-[var(--spacing-8)] px-[var(--spacing-16)]">
             <IconButton icon="close" label={d.common.close} onClick={onClose} surface="dark" />
           </div>
 
