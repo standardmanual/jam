@@ -1,7 +1,7 @@
 import { BookIcon } from '@/components/ui/icons'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 
 const TEXT_SECONDARY = '#B2B2B2'
-const PROGRESS_FILL = '#E8461F'
 
 export interface ItemBookHeroSectionBook {
   name: string
@@ -61,15 +61,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
 
       {/* 진행도 바 + 카운트 인라인 */}
       <div className="flex items-center gap-3">
-        <div
-          className="flex-1 relative rounded-full overflow-hidden"
-          style={{ height: '8px', background: '#FFFFFF' }}
-        >
-          <div
-            className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, background: PROGRESS_FILL }}
-          />
-        </div>
+        <ProgressBar percent={pct} />
         <span style={{ color: 'var(--color-primary)', fontSize: '13px', lineHeight: '1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
           {slottedCount}/{totalBadgeCount}
         </span>
