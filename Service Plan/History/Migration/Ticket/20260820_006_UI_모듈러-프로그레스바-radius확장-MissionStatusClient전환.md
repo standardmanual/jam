@@ -1,9 +1,9 @@
 ---
 id: 20260820_006
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-20
-closed:
+closed: 2026-08-20
 ---
 
 # [UI] ProgressBar에 radius override 추가 + MissionStatusClient 마저 전환
@@ -83,9 +83,9 @@ src/app/(main)/missions/[id]/status/MissionStatusClient.tsx
 - 해당 없음 (순수 리팩터링, 노출 텍스트 변경 없음)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-20
+- 환경: staging
+- 커밋: 브랜치 병합 (staging), 프로덕션 미배포 — 사용자 승인 대기
 
 ### 주요 의사결정 / 핵심 메모
 - 애니메이션 방식이 `transform: scaleX()`(GPU 합성, transform-origin: left)에서
