@@ -151,7 +151,7 @@ export default async function UserItemBooksPage({ params }: Props) {
             {cards.map(({ book, totalBadgeCount, slottedCount, isCompleted }) => {
               const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
               return (
-                <Link key={book.id} href={`/itembooks/${book.id}`}>
+                <Link key={book.id} href={`/collections/${book.id}`}>
                   <Card tone="inverse" className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
                     <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center bg-black/[0.04]">
                       {book.image_url ? (
