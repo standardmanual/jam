@@ -131,12 +131,23 @@ export default function PoiCarouselModal({
 
   // 공개된 카드 목록이 바뀔 때(최초 진입 + 윈도잉 확장 시)마다, 아직 캐시에
   // 없는 POI의 드랍 목록을 채운다. tier2(네이버 fallback, DB 미저장 POI)는
-  // poi_drops와 연결될 수 없어 스킵한다.
+  // poi_drops와 연결될 수 없으므로 API를 부르지 않고 캐시를 빈 배열로 즉시
+  // 채운다 — 스킵만 하면 dropsCache가 영원히 undefined로 남아 카드가 무한
+  // 로딩 스피너에 갇히는 버그가 있었다(20260820_023).
   useEffect(() => {
     for (const poi of visiblePois) {
-      if (poi.poi_tier === 2) continue
       if (dropsCache[poi.id] !== undefined || fetchingRef.current.has(poi.id)) continue
-      fetchPoiDrops(poi.id)
+      if (poi.poi_tier === 2) {
+        // effect 본문에서 setState를 동기 호출하지 않도록 마이크로태스크로 지연.
+        // 같은 틱 내, 페인트 이전에 실행되어 체감 타이밍 차이는 없음 —
+        // react-hooks/set-state-in-effect 정리 목적의 순수 리팩터링.
+        const id = poi.id
+        Promise.resolve().then(() => setDropsCache((prev) => (prev[id] !== undefined ? prev : { ...prev, [id]: [] })))
+        continue
+      }
+      // fetchPoiDrops 내부가 첫 await 전에 setLoadingIds를 동기 호출해 같은
+      // 문제가 발생 — 위와 동일하게 마이크로태스크로 지연시켜 회피.
+      Promise.resolve().then(() => fetchPoiDrops(poi.id))
     }
   }, [visiblePois, dropsCache, fetchPoiDrops])
 
@@ -281,10 +292,8 @@ export default function PoiCarouselModal({
           data-open="false"
           style={{ ['--panel-translate-y' as string]: '24px' }}
         >
-          <div className="flex justify-end mb-[var(--spacing-8)] px-[var(--spacing-16)]">
-            <IconButton icon="close" label={d.common.close} onClick={onClose} surface="dark" />
-          </div>
-
+          {/* 20260820_023: 닫기 버튼을 캐러셀 위 별도 행이 아니라 각 카드 안쪽
+              우측 상단으로 이동(사용자 요청) — PoiCard에 onClose로 전달 */}
           <Carousel
             items={visiblePois}
             activeIndex={activeIndex}
@@ -307,6 +316,7 @@ export default function PoiCarouselModal({
                 onCancelPending={isActive ? () => setPendingDropItem(null) : undefined}
                 onConfirmDrop={isActive ? executeDrop : undefined}
                 onSelectDrop={isActive ? setSelectedDrop : undefined}
+                onClose={onClose}
               />
             )}
           />
@@ -343,6 +353,7 @@ interface PoiCardProps {
   onCancelPending?: () => void
   onConfirmDrop?: () => void
   onSelectDrop?: (drop: PickupDrop) => void
+  onClose: () => void
 }
 
 function PoiCard({
@@ -360,6 +371,7 @@ function PoiCard({
   onCancelPending,
   onConfirmDrop,
   onSelectDrop,
+  onClose,
 }: PoiCardProps) {
   const isPickupState = (drops?.length ?? 0) > 0
 
@@ -379,10 +391,14 @@ function PoiCard({
           'transform var(--duration-medium) var(--ease-smooth-out), opacity var(--duration-medium) var(--ease-smooth-out)',
       }}
     >
-      {/* 헤더 */}
-      <div className="min-w-0">
-        <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold text-text truncate">{poi.name}</p>
-        <p className="text-[length:var(--text-caption)] text-text/50 mt-0.5">{poi.distance_meters}m</p>
+      {/* 헤더 — 닫기 버튼을 카드 안쪽 우측 상단에 배치(20260820_023, 사용자 요청).
+          모든 카드가 동일한 onClose를 받아 어느 카드에서 눌러도 전체 모달이 닫힌다. */}
+      <div className="flex items-start justify-between gap-[var(--spacing-8)]">
+        <div className="min-w-0">
+          <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold text-text truncate">{poi.name}</p>
+          <p className="text-[length:var(--text-caption)] text-text/50 mt-0.5">{poi.distance_meters}m</p>
+        </div>
+        <IconButton icon="close" label={d.common.close} onClick={onClose} surface="dark" className="shrink-0 -mt-2 -mr-2" />
       </div>
 
       {/* 본문 — 세로 높이는 콘텐츠(드랍된 배지 수)만큼 자연스럽게 자란다.
