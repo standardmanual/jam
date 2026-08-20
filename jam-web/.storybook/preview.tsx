@@ -9,9 +9,12 @@ import '../design-system/styles.css'
 import '../src/app/globals.css'
 
 // JAM! 서비스는 항상 다크 테마.
-// MODULAR colors.css에 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --color-bg: white } }
+// MODULAR colors.light.css(20260820_003로 colors.css에서 분리)에
+// @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --color-bg: white } }
 // 규칙이 있어서, data-theme 미설정 + 시스템 라이트 모드 시 토큰이 반전됨.
 // data-theme="dark"를 미리 설정해 이 미디어 쿼리를 무력화한다.
+// 서비스(globals.css)는 colors.light.css를 아예 import하지 않으므로 이 무력화가 필요 없지만,
+// 스토리북은 design-system/styles.css를 통해 colors.light.css를 계속 로드한다.
 if (typeof document !== 'undefined') {
   document.documentElement.setAttribute('data-theme', 'dark');
 }
