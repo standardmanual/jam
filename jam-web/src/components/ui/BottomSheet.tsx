@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
-import { CloseIcon } from './icons'
+import { IconButton } from '@ds/components/buttons/IconButton'
 import { cssDurationMs } from '@/lib/motion'
 
 interface BottomSheetProps {
@@ -23,8 +23,6 @@ interface BottomSheetProps {
    * 순수 flexbox 레이아웃만으로 항상 화면에 보장되어 더 견고하다.
    */
   footer?: ReactNode
-  /** true면 다크 배경(--color-bg) + 다크 토큰 적용 */
-  dark?: boolean
 }
 
 const DRAG_CLOSE_THRESHOLD = 120
@@ -38,7 +36,6 @@ export default function BottomSheet({
   showCloseButton = true,
   closeLabel = '닫기',
   footer,
-  dark = false,
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
@@ -114,7 +111,7 @@ export default function BottomSheet({
       <div
         className={[
           'relative rounded-t-[var(--radius-cards)] flex flex-col',
-          dark ? 'bg-[var(--color-bg)] text-text' : 'bg-surface-inverse text-text-inverse',
+          'bg-[var(--color-surface)] text-text',
           /* dvh(동적 뷰포트 높이) 사용 — iOS Safari는 vh를 주소창이 숨겨진
              상태의 레이아웃 뷰포트 기준으로 계산해서, 주소창이 보이는 상태로
              열리면 시트 하단과 실제 화면 하단 사이에 틈이 생겨 그 틈으로
@@ -137,7 +134,7 @@ export default function BottomSheet({
           onPointerCancel={handlePointerUp}
         >
           {/* 20260816_012: 보더로 그린 속 빈 핸들 → 실제 채워진 바로 교체 */}
-          <div className={`w-10 h-1 rounded-full ${dark ? 'bg-white/20' : 'bg-black/20'}`} />
+          <div className="w-10 h-1 rounded-full bg-white/20" />
         </div>
 
         {hasHeader && (
@@ -147,15 +144,7 @@ export default function BottomSheet({
             ) : (
               <span />
             )}
-            {showCloseButton && (
-              <button
-                onClick={onClose}
-                aria-label={closeLabel}
-                className={`w-11 h-11 -mr-2 flex items-center justify-center active:scale-90 transition-transform duration-100 ${dark ? 'text-text/60' : 'text-text-inverse/60'}`}
-              >
-                <CloseIcon className="w-5 h-5" />
-              </button>
-            )}
+            {showCloseButton && <IconButton icon="close" label={closeLabel} onClick={onClose} />}
           </div>
         )}
 
@@ -171,7 +160,7 @@ export default function BottomSheet({
              오도록 강제한다. */
           <div
             // 20260816_012: 상단 1px 구분선(hr 대체) 제거 → 스크롤 영역과 다른 배경톤으로 구분
-            className={`shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] ${dark ? 'bg-surface-elevated' : 'bg-black/[0.04]'}`}
+            className="shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] bg-surface-elevated"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)' }}
           >
             {footer}
