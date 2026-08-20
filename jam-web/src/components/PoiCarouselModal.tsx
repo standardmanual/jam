@@ -78,20 +78,22 @@ export default function PoiCarouselModal({
 
   // 다른 POI 마커를 눌러 캐러셀을 다시 연 경우에만 리셋한다. 드랍/픽업 후
   // 카운트 갱신으로 `pois` 참조가 바뀌는 것만으로는 리셋하지 않는다(내비게이션
-  // 위치가 요동치는 것을 방지).
-  useEffect(() => {
+  // 위치가 요동치는 것을 방지). react.dev가 안내하는 "prop 변경 시 렌더 중
+  // state 조정" 패턴 — effect 없이 렌더 중 조건부로 setState한다
+  // (react-hooks/set-state-in-effect 정리 목적의 순수 리팩터링, 동작 동일).
+  const [prevInitialPoiId, setPrevInitialPoiId] = useState(initialPoiId)
+  if (initialPoiId !== prevInitialPoiId) {
+    setPrevInitialPoiId(initialPoiId)
     setActiveIndex(0)
     setVisibleCount(Math.min(INITIAL_WINDOW_SIZE, orderedPois.length))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPoiId])
+  }
 
   // 활성 카드가 공개된 윈도우 끝에 다다르면 3개씩 더 공개한다. 전체가 공개된
   // 뒤부터는 Carousel 자체의 모듈로 인덱싱으로 전체 목록을 무한 순환한다.
-  useEffect(() => {
-    if (activeIndex >= visibleCount - 1 && visibleCount < orderedPois.length) {
-      setVisibleCount((v) => Math.min(v + WINDOW_STEP, orderedPois.length))
-    }
-  }, [activeIndex, visibleCount, orderedPois.length])
+  // 위와 동일한 이유로 effect 대신 렌더 중 조건부 setState로 정리.
+  if (activeIndex >= visibleCount - 1 && visibleCount < orderedPois.length) {
+    setVisibleCount(Math.min(visibleCount + WINDOW_STEP, orderedPois.length))
+  }
 
   const visiblePois = useMemo(() => orderedPois.slice(0, visibleCount), [orderedPois, visibleCount])
   const activePoi = visiblePois[activeIndex] ?? null
@@ -145,12 +147,16 @@ export default function PoiCarouselModal({
   const [pendingDropItem, setPendingDropItem] = useState<InventoryGridItem | null>(null)
   const [dropping, setDropping] = useState(false)
 
-  // 카드가 바뀌면 이전 카드에서 진행 중이던 드랍 플로우를 초기화한다
-  useEffect(() => {
+  // 카드가 바뀌면 이전 카드에서 진행 중이던 드랍 플로우를 초기화한다.
+  // react.dev의 "prop 변경 시 렌더 중 state 조정" 패턴 — effect 없이 렌더 중
+  // 조건부로 setState (react-hooks/set-state-in-effect 정리, 동작 동일).
+  const [prevActivePoiIdForDropFlow, setPrevActivePoiIdForDropFlow] = useState(activePoi?.id)
+  if (activePoi?.id !== prevActivePoiIdForDropFlow) {
+    setPrevActivePoiIdForDropFlow(activePoi?.id)
     setShowInventory(false)
     setInventoryItems([])
     setPendingDropItem(null)
-  }, [activePoi?.id])
+  }
 
   async function openInventory() {
     setShowInventory(true)

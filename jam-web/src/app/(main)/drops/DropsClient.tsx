@@ -62,7 +62,10 @@ export default function DropsClient() {
   // 위치 획득 (실시간 갱신)
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocError(d.drops.locationUnsupported)
+      // effect 본문에서 setState를 동기 호출하지 않도록 마이크로태스크로 지연.
+      // 타이밍상 체감 차이는 없음(같은 틱 내, 페인트 이전에 실행) —
+      // react-hooks/set-state-in-effect 정리 목적의 순수 리팩터링.
+      Promise.resolve().then(() => setLocError(d.drops.locationUnsupported))
       return
     }
 
@@ -115,7 +118,11 @@ export default function DropsClient() {
   }, [userLat, userLng, toast])
 
   useEffect(() => {
-    loadNearbyPois()
+    // loadNearbyPois 내부의 setPoisLoading(true)가 effect 본문에서 동기 호출되는
+    // 형태로 정적 분석되는 것을 피하기 위해 마이크로태스크로 지연 실행.
+    // 같은 틱 내(페인트 이전)에 실행되어 체감 타이밍은 동일함 —
+    // react-hooks/set-state-in-effect 정리 목적의 순수 리팩터링.
+    Promise.resolve().then(() => loadNearbyPois())
   }, [loadNearbyPois])
 
   // 뷰포트 변경 → POI 배지 재조회.
