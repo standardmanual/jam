@@ -12,6 +12,27 @@
 const REVERSE_GEOCODE_URL = 'https://maps.apigw.ntruss.com/map-reversegeocode/v2/gc'
 const FETCH_TIMEOUT_MS = 5_000
 
+// 20260820_022: /api/drops가 매 요청마다 이 함수를 동기 호출해 네이버 역지오코딩 API를
+// 불필요하게 반복 호출하던 것이 로딩 지연의 원인 중 하나였다 — 좌표를 약 100m 격자로
+// 반올림한 키로 결과를 캐시한다(행정동 경계는 사실상 불변이라 TTL을 길게 잡아도 안전).
+// 모듈 스코프 Map이라 서버리스 함수가 warm 상태로 재사용되는 동안에만 유효하지만, 같은
+// 지역을 반복 조회하는 흔한 패턴(사용자가 한 자리에 머무는 경우)에서는 충분히 효과적이다.
+const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24시간
+const FAILURE_CACHE_TTL_MS = 60 * 1000 // 실패는 짧게만 캐시해 일시 장애 시 빠르게 재시도
+
+interface RegionCacheEntry {
+  value: string | null
+  expiresAt: number
+}
+
+const regionCache = new Map<string, RegionCacheEntry>()
+
+// search-cache.ts의 computeGridKey와 동일한 정밀도(약 100m 격자)
+function regionCacheKey(lat: number, lng: number): string {
+  const round = (n: number) => (Math.round(n * 1000) / 1000).toFixed(3)
+  return `${round(lat)}_${round(lng)}`
+}
+
 interface NcpRegionArea {
   name: string
 }
@@ -35,6 +56,10 @@ export async function reverseGeocodeToRegionName(lat: number, lng: number): Prom
   const clientSecret = process.env.NCP_MAP_CLIENT_SECRET
   if (!clientId || !clientSecret) return null
 
+  const cacheKey = regionCacheKey(lat, lng)
+  const cached = regionCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) return cached.value
+
   try {
     // legalcode(법정동)·admcode(행정동) 둘 다 요청 — 지역에 따라 한쪽이 비어있을 수 있어 area3가
     // 채워진 첫 결과를 사용
@@ -46,16 +71,25 @@ export async function reverseGeocodeToRegionName(lat: number, lng: number): Prom
       },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      regionCache.set(cacheKey, { value: null, expiresAt: Date.now() + FAILURE_CACHE_TTL_MS })
+      return null
+    }
 
     const json = (await res.json()) as NcpReverseGeocodeResponse
     const result = (json.results ?? []).find((r) => r.region.area3?.name) ?? json.results?.[0]
-    if (!result) return null
+    if (!result) {
+      regionCache.set(cacheKey, { value: null, expiresAt: Date.now() + FAILURE_CACHE_TTL_MS })
+      return null
+    }
 
     const { area2, area3 } = result.region
     const parts = [area2?.name, area3?.name].filter(Boolean)
-    return parts.length > 0 ? parts.join(' ') : null
+    const regionName = parts.length > 0 ? parts.join(' ') : null
+    regionCache.set(cacheKey, { value: regionName, expiresAt: Date.now() + SUCCESS_CACHE_TTL_MS })
+    return regionName
   } catch {
+    regionCache.set(cacheKey, { value: null, expiresAt: Date.now() + FAILURE_CACHE_TTL_MS })
     return null
   }
 }

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi, haversineDistance, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import { fetchNearbyNaverPoisForCategories, type NaverPlace } from '@/lib/poi/naver'
@@ -19,7 +19,8 @@ const NAVER_RADIUS_M = 500  // T2 네이버 POI는 넓게 표시 (지도 탐색�
 // bbox로 미리 좁혀서 가져오면 결과 행 수가 작아 재발하지 않는다.
 const BB_MARGIN_DEG = 0.01 // 위도 기준 약 1.11km — NAVER_RADIUS_M(500m) 커버 + 여유
 
-// 캐시가 만료된 카테고리만 네이버로 검색해 DB에 신규 저장. 반환값은 저장 실패한 fallback POI 목록.
+// 캐시가 만료된 카테고리만 네이버로 검색해 DB에 신규 저장. 반환값은 저장 실패한 fallback POI 목록
+// (20260820_022 이후로는 백그라운드에서만 호출되어 이 반환값은 로깅 목적 외로는 쓰이지 않는다).
 async function searchAndPersistCategories(
   service: ReturnType<typeof createServiceClient>,
   lat: number,
@@ -80,6 +81,47 @@ async function searchAndPersistCategories(
   return newPois.filter((p) => !insertedIds.has(p.naverId))
 }
 
+// 20260820_022: 역지오코딩 + 네이버 지역검색(캐시 미스 시 최대 13초+)은 응답을 블로킹하지
+// 않는다 — 요청 시점에 DB에 이미 있는 POI만 즉시 응답하고, 캐시 미스분(신규/만료 카테고리)은
+// `after()`로 응답 전송 후 백그라운드에서 검색·저장한다. 새로 채워진 T2 POI는 다음 요청부터
+// 반영된다(캐시가 따뜻해진 지역은 이 백그라운드 작업 자체가 스킵되어 사실상 즉시 응답).
+// T1/T2 병합 로직·레벨2 폴백 판정 순서는 기존과 동일하게 유지 — 실행 시점만 응답 이후로 옮겼다.
+async function refreshPoisInBackground(
+  service: ReturnType<typeof createServiceClient>,
+  lat: number,
+  lng: number,
+  gridKey: string,
+  naverIdMap: Map<string, string>
+): Promise<void> {
+  try {
+    const regionName = await reverseGeocodeToRegionName(lat, lng)
+    const { level1: LEVEL_1_CATEGORIES, level2: LEVEL_2_CATEGORIES } = await loadPipelineCategories(service)
+
+    await searchAndPersistCategories(service, lat, lng, gridKey, LEVEL_1_CATEGORIES, naverIdMap, regionName)
+
+    // 레벨 1 결과가 지역 내 부족하면 레벨 2까지 보조 검색 — 방금 저장된 레벨1 결과를
+    // 반영해 판단해야 하므로 최신 DB 상태를 다시 조회한다(백그라운드라 응답 지연과 무관).
+    const level1Categories = new Set(LEVEL_1_CATEGORIES.map((c) => c.category))
+    const { data: poisAfterLevel1 } = await service
+      .from('poi')
+      .select('*')
+      .gte('latitude', lat - BB_MARGIN_DEG)
+      .lte('latitude', lat + BB_MARGIN_DEG)
+      .gte('longitude', lng - BB_MARGIN_DEG)
+      .lte('longitude', lng + BB_MARGIN_DEG)
+    const level1NearbyCount = ((poisAfterLevel1 ?? []) as PoiRow[]).filter(
+      (p) => level1Categories.has(p.category) && haversineDistance(lat, lng, p.latitude, p.longitude) <= NAVER_RADIUS_M
+    ).length
+
+    if (level1NearbyCount < LEVEL_2_FALLBACK_THRESHOLD) {
+      await searchAndPersistCategories(service, lat, lng, gridKey, LEVEL_2_CATEGORIES, naverIdMap, regionName)
+    }
+  } catch {
+    // 백그라운드 갱신 실패는 사용자 응답에 영향 없음 — poi_search_cache TTL에 따라 다음
+    // 요청(들) 중 하나에서 자연스럽게 재시도된다.
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const lat = parseFloat(searchParams.get('lat') ?? '')
@@ -95,7 +137,10 @@ export async function GET(req: NextRequest) {
 
   const service = createServiceClient()
 
-  // T1: DB POI 로드 — bbox로 좁혀서 가져옴(전체 select는 max-rows 제한에 걸림, 위 주석 참고)
+  // T1: DB POI 로드 — bbox로 좁혀서 가져옴(전체 select는 max-rows 제한에 걸림, 위 주석 참고).
+  // 20260820_022 이전에는 이 쿼리를 동일 bbox로 3번(T1 최초 + 레벨1 이후 + 레벨2 이후)
+  // 반복했다 — 네이버 검색을 백그라운드로 옮기면서(아래 참고) 응답 경로에서는 이 1회 조회만
+  // 필요해졌다.
   const { data: poisRaw } = await service
     .from('poi')
     .select('*')
@@ -107,81 +152,30 @@ export async function GET(req: NextRequest) {
   const naverIdMap = new Map(allDbPois.filter((p) => p.naver_id).map((p) => [p.naver_id!, p.id]))
   const gridKey = computeGridKey(lat, lng)
 
-  // 네이버 지역검색 API는 좌표/반경 파라미터가 없어 순수 키워드("카페")만 넘기면 전국
-  // 무작위 결과가 나온다 — 역지오코딩한 "구 동" 문자열을 키워드 앞에 붙여 검색 범위를 좁힌다.
-  const regionName = await reverseGeocodeToRegionName(lat, lng)
-
-  // 파이프라인 연동 카테고리(어드민 /admin/poi/categories에서 관리)를 티어별로 로드
-  const { level1: LEVEL_1_CATEGORIES, level2: LEVEL_2_CATEGORIES } = await loadPipelineCategories(service)
-
-  // 레벨 1 카테고리는 항상 검색(캐시 만료분만)
-  let fallbackPois = await searchAndPersistCategories(
-    service, lat, lng, gridKey, LEVEL_1_CATEGORIES, naverIdMap, regionName
-  )
-
-  // 레벨 1 결과가 지역 내 부족하면 레벨 2(편의점·마트/카페·음식점)까지 보조 검색
-  const level1Categories = new Set(LEVEL_1_CATEGORIES.map((c) => c.category))
-  const { data: poisAfterLevel1 } = await service
-    .from('poi')
-    .select('*')
-    .gte('latitude', lat - BB_MARGIN_DEG)
-    .lte('latitude', lat + BB_MARGIN_DEG)
-    .gte('longitude', lng - BB_MARGIN_DEG)
-    .lte('longitude', lng + BB_MARGIN_DEG)
-  const level1NearbyCount = ((poisAfterLevel1 ?? []) as PoiRow[]).filter(
-    (p) => level1Categories.has(p.category) && haversineDistance(lat, lng, p.latitude, p.longitude) <= NAVER_RADIUS_M
-  ).length
-
-  if (level1NearbyCount < LEVEL_2_FALLBACK_THRESHOLD) {
-    const level2Fallback = await searchAndPersistCategories(
-      service, lat, lng, gridKey, LEVEL_2_CATEGORIES, naverIdMap, regionName
-    )
-    fallbackPois = [...fallbackPois, ...level2Fallback]
-  }
-
-  // 최신 DB POI 재조회(bbox로 좁혀서) → 반경 이내 필터
-  const { data: poisRaw2 } = await service
-    .from('poi')
-    .select('*')
-    .gte('latitude', lat - BB_MARGIN_DEG)
-    .lte('latitude', lat + BB_MARGIN_DEG)
-    .gte('longitude', lng - BB_MARGIN_DEG)
-    .lte('longitude', lng + BB_MARGIN_DEG)
-  const allDbPois2 = (poisRaw2 ?? []) as PoiRow[]
-  const nearbyDbPois2 = allDbPois2.filter(
+  const nearbyDbPois = allDbPois.filter(
     (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= NAVER_RADIUS_M
   )
 
-  // 저장 실패한 네이버 POI는 fallback으로 포함 (지도 표시용, 드랍 불가)
-  const fallbackPoisMapped = fallbackPois.map((p) => ({
-    id: p.naverId,
-    naver_id: p.naverId,
+  const allPois = nearbyDbPois.map((p) => ({
+    id: p.id,
+    naver_id: p.naver_id,
     name: p.name,
     latitude: p.latitude,
     longitude: p.longitude,
-    poi_tier: 2,
+    poi_tier: p.poi_tier ?? 1,
     distance_meters: Math.round(haversineDistance(lat, lng, p.latitude, p.longitude)),
-    in_drop_range: false,
+    in_drop_range: haversineDistance(lat, lng, p.latitude, p.longitude) <= DROP_RADIUS_METERS,
     available_drops_count: 0,
   }))
 
-  const allPois = [
-    ...nearbyDbPois2.map((p) => ({
-      id: p.id,
-      naver_id: p.naver_id,
-      name: p.name,
-      latitude: p.latitude,
-      longitude: p.longitude,
-      poi_tier: p.poi_tier ?? 1,
-      distance_meters: Math.round(haversineDistance(lat, lng, p.latitude, p.longitude)),
-      in_drop_range: haversineDistance(lat, lng, p.latitude, p.longitude) <= DROP_RADIUS_METERS,
-      available_drops_count: 0,
-    })),
-    ...fallbackPoisMapped,
-  ]
+  // 역지오코딩 + 네이버 지역검색(카테고리 캐시 미스 시 최대 13초+)은 응답을 블로킹하지 않고
+  // 응답 전송 후 백그라운드에서 수행한다(refreshPoisInBackground 주석 참고) — 새로 검색·저장된
+  // T2 POI는 이번 응답이 아니라 다음 요청부터 반영된다. 캐시가 따뜻한(이미 검색된) 지역은
+  // shouldSearch()가 즉시 false를 반환해 이 작업 자체가 사실상 no-op으로 끝난다.
+  after(() => refreshPoisInBackground(service, lat, lng, gridKey, naverIdMap))
 
   // 드랍 카운트: DB POI에만 조회
-  const dbPoiIds = nearbyDbPois2.map((p) => p.id).filter(Boolean)
+  const dbPoiIds = nearbyDbPois.map((p) => p.id).filter(Boolean)
   if (dbPoiIds.length > 0) {
     const { data: dropsRaw } = await service
       .from('poi_drops')
