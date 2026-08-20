@@ -236,3 +236,13 @@ export function InfoIcon(props: IconProps) {
     </Svg>
   )
 }
+
+/** 편집(연필) — 프로필 헤더 아바타 오버레이 편집 버튼 전용 (20260820_019) */
+export function PencilIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M15.5 4.5l4 4L8 20H4v-4L15.5 4.5z" />
+      <path d="M13.5 6.5l4 4" />
+    </Svg>
+  )
+}
