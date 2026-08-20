@@ -78,9 +78,10 @@ export const meta = {
 const VERDICT = {
   type: 'object',
   properties: {
-    verdict: { enum: ['PASS', 'FAIL'] },
+    verdict: { enum: ['PASS', 'WARN', 'FAIL'] },
     reasons: { type: 'array', items: { type: 'string' } },
     checked: { type: 'array', items: { type: 'string' } },
+    sideFindings: { type: 'array', items: { type: 'string' } },
   },
   required: ['verdict', 'reasons'],
 }
@@ -103,8 +104,9 @@ const gate = await agent(
 
 let progressive = null
 // 라이트 유형(content·copy·admin·infra)은 개선 리뷰를 생략한다.
+// WARN도 "동작은 한다"이므로 개선 리뷰는 진행한다 (사용자 알림은 3단계에서).
 const FULL = ['ui', 'ds', 'bug', 'engine', 'db', 'api']
-if (gate.verdict === 'PASS' && FULL.includes(workType)) {
+if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && FULL.includes(workType)) {
   phase('개선 리뷰')
   progressive = await agent(
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
@@ -120,12 +122,32 @@ return { devResult, gate, progressive }
 - `ticketPath`·`userRequest`·`workType`·`reuseDecision`은 0~1.5단계 값으로 채운다.
 - `retryReason`은 최초 실행 시 비우고, 재시도 시에만 이전 FAIL 사유를 넣는다.
 
-## 3. 결과 보고
+## 3. 결과 보고 — 예외 신호 처리를 포함한다
+
+### 3.0 구현 단계 예외 처리 (Workflow 결과 수신 직후, 판정 보고 전)
+
+1. **HALT 알림 확인**: devResult에서 `alerts`를 파싱한다. `[HALT]`가 포함된 항목이 있으면
+   게이트 리뷰 결과와 무관하게 **즉시 사용자에게 HALT 내용을 보고**하고 다음 행동을 묻는다.
+2. **confidence 확인**: devResult에서 `confidence: low`이면 사용자에게
+   "개발자가 구현에 낮은 확신을 표명했습니다 — 리뷰 진행 전에 확인하시겠습니까?"라고 알린다.
+3. **INFO/WARN 알림**: 사용자 보고 시 별도 섹션으로 요약한다 (판정과 분리).
+
+### 3.1 판정별 후속
 
 - **FAIL**: `gate.reasons`를 그대로 보고하고 재시도 여부를 **사용자에게 묻는다.** 임의 재시도 금지.
   승인받아 재시도할 때는 **FAIL 사유를 `retryReason`에 넣어** 다시 호출한다 (같은 실수 반복 방지).
+  **동일 티켓에서 FAIL이 2회 연속 발생하면**, 재시도 전에 "워크플로우 규칙이나 티켓 스펙 자체에
+  문제가 있을 수 있습니다 — 규칙을 검토할까요?"라고 먼저 묻는다 (정책 갱신 피드백 루프).
+- **WARN**: WARN 사유를 사용자에게 알리되, 개선 리뷰는 정상 진행한다.
+  사용자가 WARN 사유에 대해 추가 조치를 원하면 그때 처리한다.
 - **PASS**: 구현 요약 + PASS 근거 + 개선 제안/문서 갱신 제안을 한 번에 요약하고,
   **머지 승인 여부를 명시적으로 묻는다.**
+
+### 3.2 범위 밖 발견물 처리
+
+gate 또는 progressive의 `sideFindings`가 비어있지 않으면:
+- 사용자 보고 시 "범위 밖 발견물" 섹션으로 별도 요약한다
+- 사용자 승인 후 `spawn_task`로 각 발견물을 별도 작업 칩으로 분리한다
 
 ## 4. 승인 후 처리 — 베이스캠프 모자를 쓴다 (위임하지 않음)
 
