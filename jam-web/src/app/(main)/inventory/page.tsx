@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { InventoryRow, InventoryItemRow, BadgeRow } from '@/types/database'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { PackageIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 
 type InventoryItemWithBadge = InventoryItemRow & {
@@ -75,10 +77,11 @@ export default async function InventoryPage() {
 
       {/* 아이템 그리드 */}
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-[var(--spacing-40)] text-center">
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.inventory.emptyTitle}</p>
-          <p className="text-[length:var(--text-caption)] text-text/40 mt-1">{d.inventory.emptyBody}</p>
-        </div>
+        <EmptyState
+          icon={<PackageIcon className="w-8 h-8" />}
+          title={d.inventory.emptyTitle}
+          description={d.inventory.emptyBody}
+        />
       ) : (
         <InventoryGrid
           items={gridItems}

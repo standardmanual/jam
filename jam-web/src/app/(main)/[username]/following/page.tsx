@@ -5,7 +5,8 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { FollowButton } from '../FollowButton'
 import ListRowCard from '@/components/ui/ListRowCard'
 import TopNav from '@/components/ui/TopNav'
-import { UserIcon } from '@/components/ui/icons'
+import { UserIcon, UsersIcon } from '@/components/ui/icons'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
 
 interface Props {
@@ -72,9 +73,11 @@ export default async function FollowingPage({ params }: Props) {
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-16)]">
         {followingList.length === 0 ? (
-          <div className="text-center py-[var(--spacing-40)]">
-            <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.social.emptyFollowing}</p>
-          </div>
+          <EmptyState
+            icon={<UsersIcon className="w-8 h-8" />}
+            title={d.social.emptyFollowing}
+            description={d.social.emptyFollowingBody}
+          />
         ) : (
           followingList.map((u) => (
             <ListRowCard

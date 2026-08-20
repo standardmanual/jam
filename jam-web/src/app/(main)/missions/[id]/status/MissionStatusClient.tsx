@@ -3,9 +3,10 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
-import { UserIcon } from '@/components/ui/icons'
+import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 
 interface RankingEntry {
   userId: string
@@ -583,9 +584,11 @@ export default function MissionStatusClient({
 
             {/* 빈 상태: entries.length === 0 && me === null */}
             {entries.length === 0 && !me && (
-              <p className="px-4 py-6 text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                {d.missions.statusNoParticipants}
-              </p>
+              <EmptyState
+                icon={<UsersIcon className="w-8 h-8" />}
+                title={d.missions.statusNoParticipants}
+                description={d.missions.statusNoParticipantsBody}
+              />
             )}
           </div>
         )
@@ -608,9 +611,11 @@ export default function MissionStatusClient({
             </>
           )}
           {data.entries.length === 0 && !data.me && (
-            <p className="text-text/50 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-              {d.missions.statusNoParticipants}
-            </p>
+            <EmptyState
+              icon={<UsersIcon className="w-8 h-8" />}
+              title={d.missions.statusNoParticipants}
+              description={d.missions.statusNoParticipantsBody}
+            />
           )}
         </div>
       )}
