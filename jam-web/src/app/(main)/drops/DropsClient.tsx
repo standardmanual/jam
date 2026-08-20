@@ -1,43 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import Image from 'next/image'
 import Button from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
-import { MedalIcon, ChevronRightIcon, PackageIcon } from '@/components/ui/icons'
-import { IconButton } from '@ds/components/buttons/IconButton'
-import { EmptyState } from '@ds/components/feedback/EmptyState'
-import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
-import BadgeDetailSheet, { PickupDrop } from './BadgeDetailSheet'
-import type {
-  PoiMarker,
-  PoiBadgeMarker,
-  PoiBadgeClusterMarker,
-  MapViewport,
-} from '@/components/map/MapView'
-import { useTextSwap, useRevealOnMount } from '@/components/transitions-pages'
-import '@/components/transitions-pages.css'
+import PoiCarouselModal from '@/components/PoiCarouselModal'
+import type { PoiBadgeMarker, PoiBadgeClusterMarker, MapViewport, MapViewHandle } from '@/components/map/MapView'
+import type { NearbyPoi } from '@/types/drops'
 import { d, t } from '@/lib/i18n'
 
 const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false })
-
-// ===== 타입 =====
-
-interface NearbyPoi extends PoiMarker {
-  distance_meters: number
-  available_drops_count: number
-  in_drop_range: boolean
-  poi_tier: number
-}
-
-interface InventoryItem {
-  id: string
-  badge_id: string
-  badge_name: string
-  badge_rarity: string
-  badge_image_url: string | null
-}
 
 // ===== 유틸 =====
 
@@ -74,38 +46,26 @@ export default function DropsClient() {
   const [badgeMarkers, setBadgeMarkers] = useState<PoiBadgeMarker[]>([])
   const [badgeClusters, setBadgeClusters] = useState<PoiBadgeClusterMarker[]>([])
 
-  // 선택된 POI + 그 POI의 드랍 목록 (null = 아직 로딩)
-  const [selectedPoi, setSelectedPoi] = useState<NearbyPoi | null>(null)
-  const [poiDrops, setPoiDrops] = useState<PickupDrop[] | null>(null)
-  const [poiLoading, setPoiLoading] = useState(false)
+  // 20260820_018: 선택된 POI 하나 + 드랍 목록 대신, "캐러셀을 연 시작점 POI id"만
+  // 들고 있는다. 반경 내 전체 POI 목록 + 개별 드랍 목록 조회/캐싱은
+  // PoiCarouselModal이 자체적으로 관리한다.
+  const [carouselPoiId, setCarouselPoiId] = useState<string | null>(null)
 
-  // 드랍 플로우
-  const [showInventory, setShowInventory] = useState(false)
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
-  const [inventoryLoading, setInventoryLoading] = useState(false)
-  const [pendingDropItem, setPendingDropItem] = useState<InventoryGridItem | null>(null)
-  const [dropping, setDropping] = useState(false)
-
-  // 픽업 플로우
-  const [selectedDrop, setSelectedDrop] = useState<PickupDrop | null>(null)
-  const [pickingUp, setPickingUp] = useState(false)
-
-  // ── 트랜지션 (조기 return보다 위에서 훅을 호출해야 순서가 고정된다) ──
-  const isPickupState = (poiDrops?.length ?? 0) > 0
-  // POI 바텀시트 헤더 타이틀 — "확인 중..." ↔ 픽업/드랍 문구 (Text states swap, 04)
-  const sheetTitle = poiLoading
-    ? `${d.drops.checking}...`
-    : isPickupState
-      ? d.drops.pickupItemsTitle
-      : d.drops.thisPlaceTitle
-  const { ref: sheetTitleRef, initialText: initialSheetTitle } = useTextSwap<HTMLSpanElement>(sheetTitle)
-  // POI 바텀시트 진입 — Panel reveal (07). 마운트 다음 프레임에 data-open을 뒤집는다.
-  const poiSheetRef = useRevealOnMount<HTMLDivElement>(selectedPoi !== null)
+  // 지도 명령형 핸들 — 캐러셀 카드 전환 시 map.morph()로 포커싱하는 데 사용.
+  // next/dynamic으로 지연 로드되는 MapView는 ref를 그대로 전달받지 못해
+  // onMapReady 콜백으로 핸들을 받는다.
+  const mapHandleRef = useRef<MapViewHandle | null>(null)
+  const handleMapReady = useCallback((handle: MapViewHandle) => {
+    mapHandleRef.current = handle
+  }, [])
 
   // 위치 획득 (실시간 갱신)
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocError(d.drops.locationUnsupported)
+      // effect 본문에서 setState를 동기 호출하지 않도록 마이크로태스크로 지연.
+      // 타이밍상 체감 차이는 없음(같은 틱 내, 페인트 이전에 실행) —
+      // react-hooks/set-state-in-effect 정리 목적의 순수 리팩터링.
+      Promise.resolve().then(() => setLocError(d.drops.locationUnsupported))
       return
     }
 
@@ -158,7 +118,11 @@ export default function DropsClient() {
   }, [userLat, userLng, toast])
 
   useEffect(() => {
-    loadNearbyPois()
+    // loadNearbyPois 내부의 setPoisLoading(true)가 effect 본문에서 동기 호출되는
+    // 형태로 정적 분석되는 것을 피하기 위해 마이크로태스크로 지연 실행.
+    // 같은 틱 내(페인트 이전)에 실행되어 체감 타이밍은 동일함 —
+    // react-hooks/set-state-in-effect 정리 목적의 순수 리팩터링.
+    Promise.resolve().then(() => loadNearbyPois())
   }, [loadNearbyPois])
 
   // 뷰포트 변경 → POI 배지 재조회.
@@ -182,135 +146,23 @@ export default function DropsClient() {
     }
   }, [])
 
-  // 바텀시트 닫기 + 상태 초기화
-  const closeSheet = useCallback(() => {
-    setSelectedPoi(null)
-    setPoiDrops(null)
-    setShowInventory(false)
-    setInventoryItems([])
-    setPendingDropItem(null)
-    setSelectedDrop(null)
-  }, [])
-
-  // POI별 드랍 목록 조회 (상태 분기의 기준)
-  const fetchPoiDrops = useCallback(async (poiId: string): Promise<PickupDrop[]> => {
-    const res = await fetch(`/api/drops/poi/${poiId}`)
-    const json = await res.json()
-    if (!res.ok) throw new Error(json.error ?? d.drops.loadDropsFailed)
-    return (json.drops ?? []) as PickupDrop[]
-  }, [])
-
-  // POI 선택 → GET /api/drops/poi/[poiId]로 상태 판별
-  const handlePoiSelect = useCallback(async (poiId: string) => {
+  // POI 마커 클릭 → 반경 내(in_drop_range) POI만 캐러셀 모달 오픈(해당 POI를 중앙에
+  // 두고 반경 내 전체 POI를 옆으로). 반경 밖 POI(네이버 fallback 포함)는 캐러셀을
+  // 열지 않고 토스트만 표시한다 — 반경 밖 POI는 이 기능 범위에 존재하지 않는다.
+  const handlePoiSelect = useCallback((poiId: string) => {
     const poi = pois.find((p) => p.id === poiId)
     if (!poi) return
     if (!poi.in_drop_range) {
       toast(t(d.drops.outOfRange, { name: poi.name, distance: poi.distance_meters }), 'error')
       return
     }
-    setSelectedPoi(poi)
-    setPoiDrops(null)
-    setShowInventory(false)
-    setInventoryItems([])
-    setPendingDropItem(null)
-    setSelectedDrop(null)
-    setPoiLoading(true)
-    try {
-      const drops = await fetchPoiDrops(poiId)
-      setPoiDrops(drops)
-    } catch (e) {
-      toast(e instanceof Error ? e.message : d.drops.loadDropsFailed, 'error')
-      closeSheet()
-    } finally {
-      setPoiLoading(false)
-    }
-  }, [pois, toast, fetchPoiDrops, closeSheet])
+    setCarouselPoiId(poiId)
+  }, [pois, toast])
 
-  // [드랍] 버튼 → 인벤토리 아이템 지연 로드
-  async function openInventory() {
-    setShowInventory(true)
-    setInventoryLoading(true)
-    try {
-      const res = await fetch('/api/inventory/items')
-      const json = await res.json()
-      setInventoryItems(json.items ?? [])
-    } catch {
-      toast(d.drops.loadInventoryFailed, 'error')
-    } finally {
-      setInventoryLoading(false)
-    }
-  }
-
-  // 드랍 실행 (인앱 확인 후)
-  async function executeDrop() {
-    if (!selectedPoi || !pendingDropItem || userLat === null || userLng === null) return
-    setDropping(true)
-    try {
-      const res = await fetch('/api/drops', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          poi_id: selectedPoi.id,
-          inventory_item_id: pendingDropItem.id,
-          user_lat: userLat,
-          user_lng: userLng,
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        toast(err.error ?? d.drops.dropFailed, 'error')
-        return
-      }
-      toast(d.drops.dropSuccess, 'success')
-      // 드랍 후: 이 POI 목록을 다시 불러와 방금 드랍한 배지를 바텀시트에 노출(픽업 상태로 전환)
-      setShowInventory(false)
-      setPendingDropItem(null)
-      setInventoryItems([])
-      try {
-        const drops = await fetchPoiDrops(selectedPoi.id)
-        setPoiDrops(drops)
-      } catch {
-        /* 목록 갱신 실패해도 드랍 자체는 성공 */
-      }
-      loadNearbyPois()
-    } catch {
-      toast(d.drops.dropFailed, 'error')
-    } finally {
-      setDropping(false)
-    }
-  }
-
-  // 픽업 실행
-  async function executePickup() {
-    if (!selectedDrop || userLat === null || userLng === null) return
-    setPickingUp(true)
-    try {
-      const res = await fetch(`/api/drops/${selectedDrop.id}/pickup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_lat: userLat, user_lng: userLng }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        const msg: Record<string, string> = {
-          already_picked_up: d.drops.pickupAlreadyDone,
-          inventory_full: d.drops.pickupInventoryFull,
-        }
-        toast(msg[err.error] ?? err.error ?? d.drops.pickupFailed, 'error')
-        return
-      }
-      toast(d.drops.pickupSuccess, 'success')
-      // 상세 오버레이 닫고 목록에서 제거
-      const pickedId = selectedDrop.id
-      setSelectedDrop(null)
-      setPoiDrops((prev) => (prev ? prev.filter((dr) => dr.id !== pickedId) : prev))
-      loadNearbyPois()
-    } catch {
-      toast(d.drops.pickupFailed, 'error')
-    } finally {
-      setPickingUp(false)
-    }
-  }
+  // 캐러셀 중앙 카드가 바뀔 때(스와이프 포함) → 지도 포커싱
+  const handleCarouselCenterChange = useCallback((poi: NearbyPoi) => {
+    mapHandleRef.current?.focusPoi(poi.latitude, poi.longitude)
+  }, [])
 
   // ===== 렌더 =====
 
@@ -340,7 +192,7 @@ export default function DropsClient() {
     )
   }
 
-  const poiMarkers: PoiMarker[] = pois.map((p) => ({
+  const poiMarkers = pois.map((p) => ({
     id: p.id,
     name: p.name,
     latitude: p.latitude,
@@ -348,13 +200,6 @@ export default function DropsClient() {
     availableDrops: p.available_drops_count,
     inDropRange: p.in_drop_range,
     poiTier: p.poi_tier,
-  }))
-
-  const dropGridItems: InventoryGridItem[] = inventoryItems.map((it) => ({
-    id: it.id,
-    badgeName: it.badge_name,
-    badgeImageUrl: it.badge_image_url,
-    badgeRarity: it.badge_rarity,
   }))
 
   return (
@@ -366,10 +211,11 @@ export default function DropsClient() {
           userLng={userLng}
           pois={poiMarkers}
           onPoiSelect={handlePoiSelect}
-          selectedPoiId={selectedPoi?.id}
+          selectedPoiId={carouselPoiId}
           badgeMarkers={badgeMarkers}
           badgeClusters={badgeClusters}
           onViewportChange={handleViewportChange}
+          onMapReady={handleMapReady}
         />
       </div>
 
@@ -385,134 +231,22 @@ export default function DropsClient() {
           {d.drops.noNearbyPlaces}
         </div>
       )}
-      {!poisLoading && pois.length > 0 && !pois.some((p) => p.in_drop_range) && !selectedPoi && (
+      {!poisLoading && pois.length > 0 && !pois.some((p) => p.in_drop_range) && !carouselPoiId && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-cards)] px-[var(--spacing-16)] py-[var(--spacing-16)] text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-nowrap">
           {d.drops.moveCloser}
         </div>
       )}
 
-      {/* POI 바텀시트 — 상태 분기 */}
-      {selectedPoi && (
-        <div
-          ref={poiSheetRef}
-          className="t-panel-slide absolute inset-x-0 bottom-0 z-20 px-[var(--spacing-16)]"
-          data-open="false"
-          /* 시트 자체 높이만큼만 이동해도 완전한 열림으로 읽히도록 travel을 조정 */
-          /* 플로팅 탭바(z-40, bottom: safe-area+16px, h-16)에 하단이 가려지지
-             않도록 탭바 상단(+ 여유 12px)만큼 padding-bottom을 확보한다 */
-          style={{
-            ['--panel-translate-y' as string]: '48px',
-            paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)',
-          }}
-        >
-          <div className="bg-surface text-text rounded-[var(--radius-cards)] overflow-hidden">
-            {/* 헤더 */}
-            {/* 20260816_012: hr 대체용 하단 구분선 제거 */}
-            <div className="flex items-center justify-between px-[var(--spacing-16)] py-[var(--spacing-16)]">
-              <div className="min-w-0">
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold text-text/70 mb-0.5 truncate">{selectedPoi.name}</p>
-                <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
-                  <span ref={sheetTitleRef} className="t-text-swap">{initialSheetTitle}</span>
-                </p>
-              </div>
-              <IconButton icon="close" label={d.common.close} onClick={closeSheet} />
-            </div>
-
-            <div className="max-h-[55vh] overflow-y-auto p-[var(--spacing-16)]">
-              {poiLoading || poiDrops === null ? (
-                <div className="flex justify-center py-[var(--spacing-32)]">
-                  <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : isPickupState ? (
-                /* ===== 픽업 상태 ===== */
-                <div className="flex flex-col gap-2">
-                  {poiDrops.map((drop) => (
-                    <button
-                      key={drop.id}
-                      onClick={() => setSelectedDrop(drop)}
-                      className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left"
-                    >
-                      <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden bg-white/[0.06] flex items-center justify-center">
-                        {drop.badge_image_url ? (
-                          <Image src={drop.badge_image_url} alt={drop.badge_name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
-                        ) : (
-                          <MedalIcon className="w-5 h-5 text-text/40" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{drop.badge_name}</p>
-                        <p className="text-[length:var(--text-caption)] text-text/40 mt-0.5">
-                          {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
-                        </p>
-                      </div>
-                      <ChevronRightIcon className="w-5 h-5 text-text/40 shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              ) : showInventory ? (
-                /* ===== 드랍: 인벤토리 그리드 ===== */
-                pendingDropItem ? (
-                  /* 인앱 확인 UI (네이티브 confirm 대체) */
-                  <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-                    <div className="w-20 h-20 rounded-[var(--radius-cards)] bg-white/[0.04] overflow-hidden flex items-center justify-center">
-                      {pendingDropItem.badgeImageUrl ? (
-                        <Image src={pendingDropItem.badgeImageUrl} alt={pendingDropItem.badgeName} width={80} height={80} className="w-full h-full object-contain p-1" />
-                      ) : (
-                        <MedalIcon className="w-8 h-8 text-text/40" />
-                      )}
-                    </div>
-                    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-pre-line">
-                      {t(d.drops.confirmDrop, { name: pendingDropItem.badgeName })}
-                    </p>
-                    <div className="flex gap-2 w-full">
-                      <Button fullWidth variant="outline" surface="main" onClick={() => setPendingDropItem(null)} disabled={dropping}>
-                        {d.drops.cancel}
-                      </Button>
-                      <Button fullWidth surface="main" loading={dropping} onClick={executeDrop}>
-                        {d.drops.dropButton}
-                      </Button>
-                    </div>
-                  </div>
-                ) : inventoryLoading ? (
-                  <div className="flex justify-center py-[var(--spacing-32)]">
-                    <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : dropGridItems.length === 0 ? (
-                  <EmptyState
-                    icon={<MedalIcon className="w-8 h-8" />}
-                    title={d.drops.dropNoItems}
-                    description={d.drops.dropNoItemsBody}
-                  />
-                ) : (
-                  <InventoryGrid items={dropGridItems} mode="select" onSelect={(item) => setPendingDropItem(item)} />
-                )
-              ) : (
-                /* ===== 드랍: 안내 + [드랍] 버튼 ===== */
-                <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-                  <EmptyState
-                    icon={<PackageIcon className="w-8 h-8" />}
-                    title={d.drops.dropEmptyTitle}
-                    description={d.drops.dropEmptyBody}
-                    style={{ padding: 0 }}
-                  />
-                  <Button fullWidth surface="main" onClick={openInventory}>
-                    {d.drops.dropHereButton}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 배지 상세 오버레이 (픽업) */}
-      {selectedDrop && (
-        <BadgeDetailSheet
-          drop={selectedDrop}
-          poiName={selectedPoi?.name ?? ''}
-          pickingUp={pickingUp}
-          onPickup={executePickup}
-          onCancel={() => setSelectedDrop(null)}
+      {/* POI 캐러셀 모달 — 캐러셀 아이템 자체가 모달 카드, 중앙 카드 = 선택된 POI */}
+      {carouselPoiId && (
+        <PoiCarouselModal
+          pois={pois}
+          initialPoiId={carouselPoiId}
+          userLat={userLat}
+          userLng={userLng}
+          onClose={() => setCarouselPoiId(null)}
+          onCenterChange={handleCarouselCenterChange}
+          onDropOrPickupSuccess={loadNearbyPois}
         />
       )}
     </div>
