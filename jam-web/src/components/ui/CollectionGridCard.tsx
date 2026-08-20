@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { BookIcon } from '@/components/ui/icons'
 import RarityBadge from '@/components/ui/Badge'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
 
@@ -74,12 +75,7 @@ export default function CollectionGridCard({
 
       {/* 진행 바 + 카운트 한 행 */}
       <div className="flex items-center gap-[var(--spacing-8)]">
-        <div className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-[#E8461F] transition-all duration-500"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <ProgressBar percent={pct} height={6} />
         <span className="text-[length:var(--text-caption)] text-[color:var(--color-primary)] font-bold leading-none tabular-nums shrink-0">
           {collected}/{total}
         </span>
