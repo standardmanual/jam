@@ -61,10 +61,13 @@ export default function PoiCarouselModal({
 }: PoiCarouselModalProps) {
   const { toast } = useToast()
 
-  // 거리순 정렬 후, 클릭해서 연 POI가 맨 앞(=캐러셀 index 0, 중앙)에 오도록
-  // 순환 회전한다. 이후 가까운 순으로 이어진다.
+  // 이 캐러셀은 반경 내(드랍/픽업 가능) POI만 다룬다 — 반경 밖 POI는 이 기능
+  // 범위에 존재하지 않는다(마커 클릭 단계에서 이미 걸러지지만, 반경 내 다른
+  // 마커를 눌러 목록이 갱신될 때도 안전하게 다시 걸러낸다). 거리순 정렬 후,
+  // 클릭해서 연 POI가 맨 앞(=캐러셀 index 0, 중앙)에 오도록 순환 회전한다.
   const orderedPois = useMemo(() => {
-    const sorted = [...pois].sort((a, b) => a.distance_meters - b.distance_meters)
+    const inRange = pois.filter((p) => p.in_drop_range)
+    const sorted = [...inRange].sort((a, b) => a.distance_meters - b.distance_meters)
     const startIdx = sorted.findIndex((p) => p.id === initialPoiId)
     if (startIdx <= 0) return sorted
     return [...sorted.slice(startIdx), ...sorted.slice(0, startIdx)]
@@ -341,9 +344,6 @@ function PoiCard({
   onConfirmDrop,
   onSelectDrop,
 }: PoiCardProps) {
-  // poi_tier===2는 네이버 fallback POI(DB 미저장) — 항상 in_drop_range=false로
-  // 내려오지만(서버 로직), 의도를 명확히 하기 위해 별도로도 체크한다.
-  const isFallback = poi.poi_tier === 2
   const isPickupState = (drops?.length ?? 0) > 0
 
   return (
@@ -369,13 +369,10 @@ function PoiCard({
       </div>
 
       {/* 본문 — 세로 높이는 콘텐츠(드랍된 배지 수)만큼 자연스럽게 자란다.
-          카드 상단이 항상 같은 기준선(캐러셀 컨테이너 top)에서 시작하므로
-          배지가 많을수록 카드가 아래로만 길어진다(하단 정렬). */}
-      {isFallback || !poi.in_drop_range ? (
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">
-          {t(d.drops.outOfRange, { name: poi.name, distance: poi.distance_meters })}
-        </p>
-      ) : loading || drops === undefined ? (
+          카드 하단이 항상 같은 기준선(캐러셀 컨테이너 bottom)에서 시작하므로
+          배지가 많을수록 카드가 위로만 길어진다(하단 정렬). 이 캐러셀에는
+          반경 내(in_drop_range) POI만 들어오므로 반경 밖 안내는 없다. */}
+      {loading || drops === undefined ? (
         <div className="flex justify-center py-[var(--spacing-24)]">
           <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
         </div>

@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/Toast'
 import PoiCarouselModal from '@/components/PoiCarouselModal'
 import type { PoiBadgeMarker, PoiBadgeClusterMarker, MapViewport, MapViewHandle } from '@/components/map/MapView'
 import type { NearbyPoi } from '@/types/drops'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 
 const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false })
 
@@ -139,10 +139,18 @@ export default function DropsClient() {
     }
   }, [])
 
-  // POI 마커 클릭 → 캐러셀 모달 오픈(해당 POI를 중앙에 두고 반경 내 전체 POI를 옆으로)
+  // POI 마커 클릭 → 반경 내(in_drop_range) POI만 캐러셀 모달 오픈(해당 POI를 중앙에
+  // 두고 반경 내 전체 POI를 옆으로). 반경 밖 POI(네이버 fallback 포함)는 캐러셀을
+  // 열지 않고 토스트만 표시한다 — 반경 밖 POI는 이 기능 범위에 존재하지 않는다.
   const handlePoiSelect = useCallback((poiId: string) => {
+    const poi = pois.find((p) => p.id === poiId)
+    if (!poi) return
+    if (!poi.in_drop_range) {
+      toast(t(d.drops.outOfRange, { name: poi.name, distance: poi.distance_meters }), 'error')
+      return
+    }
     setCarouselPoiId(poiId)
-  }, [])
+  }, [pois, toast])
 
   // 캐러셀 중앙 카드가 바뀔 때(스와이프 포함) → 지도 포커싱
   const handleCarouselCenterChange = useCallback((poi: NearbyPoi) => {

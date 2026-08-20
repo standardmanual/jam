@@ -12,9 +12,9 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 
  * 클론 슬라이드에 안착하면 애니메이션 없이(behavior:'auto') 대응하는 실제
  * 슬라이드 위치로 순간 이동시켜 끊김 없이 이어지는 것처럼 보이게 한다.
  *
- * 카드 높이는 슬라이드마다 다를 수 있다 — 컨테이너를 `alignItems:'flex-start'`로
- * 두어 모든 카드의 상단이 같은 기준선에서 시작하고, 콘텐츠가 많은 카드는
- * 아래로만 자라도록 한다(JAM! POI 캐러셀 카드의 "하단 정렬" 요구사항).
+ * 카드 높이는 슬라이드마다 다를 수 있다 — 컨테이너를 `alignItems:'flex-end'`로
+ * 두어 모든 카드의 하단이 같은 기준선에서 시작하고, 콘텐츠가 많은 카드는
+ * 위로만 자라도록 한다(JAM! POI 캐러셀 카드의 "하단 정렬" 요구사항).
  */
 export function Carousel({
   items,
@@ -132,7 +132,7 @@ export function Carousel({
       className={['ds-carousel', className].filter(Boolean).join(' ')}
       style={{
         display: 'flex',
-        alignItems: 'flex-start',
+        alignItems: 'flex-end',
         overflowX: n > 0 ? 'auto' : 'hidden',
         overflowY: 'hidden',
         scrollSnapType: 'x mandatory',
