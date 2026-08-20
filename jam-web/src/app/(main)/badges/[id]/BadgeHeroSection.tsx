@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import RarityBadge from '@/components/ui/Badge'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRow } from '@/types/database'
 import { hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
