@@ -6,7 +6,8 @@ import Image from 'next/image'
 import { useToast } from '@/components/ui/Toast'
 import { Card } from '@ds/components/cards/Card'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
-import { MedalIcon } from '@/components/ui/icons'
+import { MedalIcon, PackageIcon } from '@/components/ui/icons'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRow, CombinationRecipeRow, InventoryItemRow } from '@/types/database'
@@ -236,7 +237,11 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       <div className="flex-1 px-[var(--spacing-16)] py-[var(--spacing-24)]">
         <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.myItemsTitle}</p>
         {items.length === 0 ? (
-          <p className="text-text/50 text-center py-[var(--spacing-32)]">{d.combine.emptyInventory}</p>
+          <EmptyState
+            icon={<PackageIcon className="w-8 h-8" />}
+            title={d.combine.emptyInventory}
+            description={d.combine.emptyInventoryBody}
+          />
         ) : (
           <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
             {items.map((item) => {
