@@ -21,8 +21,10 @@ const DEMO_ITEMS = [
   { id: 'e', name: '교보문고 강남점', badges: 5 },
 ];
 
-// 20260820_020: Carousel이 슬라이드 폭(peek 레이아웃, 80%)과 카드 사이 gap을
-// 직접 관리하므로, 데모 카드는 슬라이드 폭을 그대로 채운다(고정 width/margin 제거).
+// 20260820_020: Carousel이 슬라이드 폭(peek 레이아웃)과 카드 사이 gap을 직접
+// 관리하므로, 데모 카드는 슬라이드 폭을 그대로 채운다(고정 width/margin 제거).
+// 20260820_022: peek 레이아웃 비율을 80% → 72%로 좁혀 옆 카드가 잘리지 않고
+// 실측 35px 이상 보이도록 조정(Carousel.jsx SLIDE_WIDTH_PERCENT 주석 참고).
 function DemoCard({ name, badges, isActive }: { name: string; badges: number; isActive: boolean }) {
   return (
     <Card
