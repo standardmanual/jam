@@ -3,7 +3,7 @@ import Image from 'next/image'
 import type { ComponentType, SVGProps } from 'react'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import { d } from '@/lib/i18n'
 import {
   MedalIcon,
@@ -48,7 +48,7 @@ function TemplateChip({ card }: { card: TodayCardWithHref }) {
 function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
   const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
   return (
-    <Card className="p-0 overflow-hidden active:scale-[0.98] transition-transform duration-100">
+    <Card tone="inverse" className="p-0 overflow-hidden active:scale-[0.98] transition-transform duration-100">
       {cover && (
         <div className="relative w-full aspect-[16/9] overflow-hidden">
           <Image src={cover} alt={card.title} fill className="object-cover" />
@@ -76,7 +76,7 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
 /** 배지목록형 — 배지 여러 개를 가로 갤러리로 나열 */
 function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
   return (
-    <Card className="active:scale-[0.98] transition-transform duration-100">
+    <Card tone="inverse" className="active:scale-[0.98] transition-transform duration-100">
       <div className="flex items-center gap-2 mb-2">
         <TemplateChip card={card} />
         {card.region_label && (
@@ -114,7 +114,7 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
 function ShortcutCard({ card }: { card: TodayCardWithHref }) {
   const Icon = TemplateIcon[card.template_type]
   return (
-    <Card className="p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
+    <Card tone="inverse" className="p-[var(--spacing-16)] flex items-center gap-[var(--spacing-16)] active:scale-[0.98] transition-transform duration-100">
       <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-black/[0.04] flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-text-inverse/60" />
       </div>
@@ -153,7 +153,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
 /** 기타 — 위 4종에 안 맞는 콘텐츠를 위한 기본형(이미지 없는 담백한 카드) */
 function OtherCard({ card }: { card: TodayCardWithHref }) {
   return (
-    <Card className="active:scale-[0.98] transition-transform duration-100">
+    <Card tone="inverse" className="active:scale-[0.98] transition-transform duration-100">
       <div className="mb-2"><TemplateChip card={card} /></div>
       <h3 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{card.title}</h3>
       {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}

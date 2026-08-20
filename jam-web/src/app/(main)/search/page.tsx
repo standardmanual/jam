@@ -4,7 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import UserSearchBar from '../UserSearchBar'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import ListRowCard from '@/components/ui/ListRowCard'
 import TopNav from '@/components/ui/TopNav'
 import { UserIcon, ChevronRightIcon } from '@/components/ui/icons'
@@ -94,12 +94,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
         {/* 결과 */}
         {!hasQuery ? (
-          <Card className="text-center py-[var(--spacing-32)]">
+          <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.promptTitle}</p>
             <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.search.promptBody}</p>
           </Card>
         ) : results.length === 0 ? (
-          <Card className="text-center py-[var(--spacing-32)]">
+          <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{d.search.emptyTitle}</p>
             <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{d.search.emptyBody}</p>
           </Card>
