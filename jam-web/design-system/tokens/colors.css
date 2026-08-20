@@ -1,7 +1,11 @@
 /*
- * JAM! DS v2 — color tokens.
- * Default theme: dark (black canvas). Light theme override via DS-019.
+ * JAM! DS v2 — color tokens (dark / default theme).
  * Semantic layer: black canvas, grey card surface, white text, red-orange primary, brown secondary.
+ *
+ * 20260820_003: 라이트 테마 오버라이드는 `colors.light.css`로 분리했다. 서비스(globals.css)는
+ * 다크 전용 고정(`color-scheme: dark`)이라 이 파일만 import한다 — 라이트 오버라이드가 서비스에
+ * 섞여 들어가지 않게 하기 위함. 스토리북(`design-system/styles.css`)은 계속 두 파일을 함께
+ * import해 라이트/다크 토글 기능을 유지한다.
  *
  * Naming convention:
  *   --color-base-*    raw palette values — never reference directly in components
@@ -84,32 +88,4 @@
   --color-tag-6: var(--color-base-lime);
   --color-tag-7: var(--color-base-charcoal);
   --color-tag-8: var(--color-base-sienna);
-}
-
-/* DS-019: Light theme override.
-   Rarity and tag tokens are intentionally unchanged — they are functional/brand
-   colors that must remain consistent across themes.
-   Prerequisite: DS-002 (ShapeTag uses --color-text/--color-text-inverse),
-                 DS-007 (TabBar uses --color-bg-inverse). */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --color-bg: var(--color-base-white);
-    --color-bg-tint: var(--color-base-grey-200);
-    --color-surface: var(--color-base-grey-200);
-    /* 20260816_012: 라이트에서도 카드가 캔버스(--color-surface)보다 밝아야 떠 보인다 */
-    --color-surface-elevated: var(--color-base-grey-100);
-    --color-text: var(--color-base-black);
-    --color-text-secondary: var(--color-base-grey-600);
-    --color-border: rgba(0, 0, 0, 0.12);
-  }
-}
-
-:root[data-theme="light"] {
-  --color-bg: var(--color-base-white);
-  --color-bg-tint: var(--color-base-grey-200);
-  --color-surface: var(--color-base-grey-200);
-  --color-surface-elevated: var(--color-base-grey-100);
-  --color-text: var(--color-base-black);
-  --color-text-secondary: var(--color-base-grey-600);
-  --color-border: rgba(0, 0, 0, 0.12);
 }
