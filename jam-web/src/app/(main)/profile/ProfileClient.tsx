@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
@@ -24,6 +24,7 @@ import {
   BookIcon,
   ActivityIcon,
   ChevronRightIcon,
+  PencilIcon,
 } from '@/components/ui/icons'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import FeedSection, { DetailSheet } from '../FeedSection'
@@ -435,51 +436,56 @@ export default function ProfileClient({
           isOwnProfile ? 'pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]' : 'pt-0'
         }`}
       >
-        {/* 프로필 헤더 */}
-        <Card tone="inverse" className="flex items-center gap-[var(--spacing-16)]">
-          {profile?.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt={d.profile.avatarAlt}
-              width={64}
-              height={64}
-              className="w-16 h-16 rounded-[var(--radius-cards)] object-cover shrink-0"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center shrink-0">
-              <UserIcon className="w-7 h-7" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] truncate">
-              {profile?.username ?? d.profile.anonymous}
-            </p>
-            {isOwnProfile && (
-              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 truncate">
-                {profile?.email}
-              </p>
+        {/* 프로필 헤더 — Card 배경 제거, 컨텐츠는 페이지 패딩 폭까지 확장 (20260820_019) */}
+        <div className="flex items-center gap-[var(--spacing-16)]">
+          <div className="relative shrink-0">
+            {profile?.avatar_url ? (
+              <Image
+                src={profile.avatar_url}
+                alt={d.profile.avatarAlt}
+                width={64}
+                height={64}
+                className="w-16 h-16 rounded-[var(--radius-cards)] object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
+                <UserIcon className="w-7 h-7" />
+              </div>
             )}
-            {/* 잼 포인트 잔액 — 본인 프로필에서만, 이메일 바로 아래 노출 */}
-            {isOwnProfile && pointBalance !== null && (
+            {/* 편집 버튼 — 아바타 우측 상단 오버레이 원형 아이콘 버튼, 44px 터치타겟 */}
+            {isOwnProfile && (
               <button
-                onClick={() => router.push('/points')}
-                aria-label={d.profile.pointsAriaLabel}
-                className="mt-1 -ml-2 px-2 inline-flex items-center gap-1.5 min-h-11 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse rounded-[var(--radius-nav-buttons)] active:scale-95 transition-transform duration-100 cursor-pointer"
+                onClick={() => router.push('/profile/edit')}
+                aria-label={d.profile.editButton}
+                className="absolute -top-2 -right-2 w-11 h-11 rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-text flex items-center justify-center active:scale-95 transition-transform duration-100"
               >
-                {t(d.profile.pointBalance, { count: pointBalance.toLocaleString('ko-KR') })}
-                <ChevronRightIcon className="w-4 h-4 text-text-inverse/40" />
+                <PencilIcon className="w-4 h-4" />
               </button>
             )}
           </div>
+
+          <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] truncate">
+            {profile?.username ?? d.profile.anonymous}
+          </p>
+
+          <div className="flex-1" />
+
           {isOwnProfile ? (
-            <Button
-              surface="sub"
-              variant="outline"
-              onClick={() => router.push('/profile/edit')}
-              className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
-            >
-              {d.profile.editButton}
-            </Button>
+            pointBalance !== null && (
+              <button
+                onClick={() => router.push('/points')}
+                aria-label={d.profile.pointsAriaLabel}
+                className="shrink-0 -mr-2 px-2 inline-flex items-center gap-1 min-h-11 rounded-[var(--radius-nav-buttons)] active:scale-95 transition-transform duration-100 cursor-pointer"
+              >
+                <span className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] font-bold text-[color:var(--color-primary)] tabular-nums">
+                  {pointBalance.toLocaleString('ko-KR')}
+                </span>
+                <span className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] font-bold text-[color:var(--color-primary)]">
+                  {d.profile.pointBadgeLabel}
+                </span>
+                <ChevronRightIcon className="w-5 h-5 text-text/40" />
+              </button>
+            )
           ) : (
             <Button
               surface="sub"
@@ -492,7 +498,7 @@ export default function ProfileClient({
               <SwapText value={following ? d.profile.followingButton : d.profile.followButton} />
             </Button>
           )}
-        </Card>
+        </div>
 
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
