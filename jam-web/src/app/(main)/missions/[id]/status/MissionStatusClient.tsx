@@ -5,6 +5,7 @@ import TopNav from '@/components/ui/TopNav'
 import Card from '@/components/ui/Card'
 import { UserIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
+import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 
 interface RankingEntry {
   userId: string
@@ -307,18 +308,16 @@ function RankingListRow({
       </div>
 
       {/* 행 하단: 6px 프로그레스 바, padding-left 32px, 배경 --color-surface-elevated, border-radius 3px */}
+      {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
       <div style={{ paddingLeft: 32, paddingRight: 16, paddingBottom: 8 }}>
-        <div style={{ height: 6, backgroundColor: 'var(--color-surface-elevated)', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: gradient,
-            borderRadius: 3,
-            transform: `scaleX(${fillRatio})`,
-            transformOrigin: 'left',
-            transition: 'transform 0.4s ease',
-          }} />
-        </div>
+        <ProgressBar
+          percent={fillRatio * 100}
+          labelType="none"
+          height={6}
+          color={gradient}
+          trackColor="var(--color-surface-elevated)"
+          radius="3px"
+        />
       </div>
       {/* 20260816_012: hr 대체용 행 구분선 제거 — 행 간 padding만으로 구분 */}
     </div>
@@ -407,18 +406,16 @@ function MyRankCard({
       </div>
 
       {/* 프로그레스 바: bg #1A3A2A, fill linear-gradient(90deg, #00CC66, #33E580) */}
+      {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
       <div style={{ paddingLeft: 28, paddingTop: 6 }}>
-        <div style={{ height: 6, backgroundColor: '#1A3A2A', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'linear-gradient(90deg, #00CC66, #33E580)',
-            borderRadius: 3,
-            transform: `scaleX(${fillRatio})`,
-            transformOrigin: 'left',
-            transition: 'transform 0.4s ease',
-          }} />
-        </div>
+        <ProgressBar
+          percent={fillRatio * 100}
+          labelType="none"
+          height={6}
+          color="linear-gradient(90deg, #00CC66, #33E580)"
+          trackColor="#1A3A2A"
+          radius="3px"
+        />
       </div>
     </div>
   )

@@ -9,7 +9,8 @@ import React from 'react';
  * 올바르게 참조하고 있어 이를 캐노니컬 스펙으로 삼는다:
  *   - 트랙: var(--color-border)
  *   - 필: var(--color-primary) 기본값 (color prop으로 오버라이드 — 순위 그라데이션 등 예외 대응)
- *   - radius: var(--radius-pill)
+ *   - radius: var(--radius-pill) 기본값 (radius prop으로 오버라이드 — MissionStatusClient의
+ *     3px 임의값 등 예외 대응. [20260820_006])
  *   - height: 기본 8px (실사용 최빈값 — MissionDetailClient/ItemBookHeroSection 등 6곳 중 4곳)
  */
 export function ProgressBar({
@@ -21,6 +22,7 @@ export function ProgressBar({
   height = 8,
   color = 'var(--color-primary)',
   trackColor = 'var(--color-border)',
+  radius = 'var(--radius-pill)',
   className = '',
 }) {
   const computedPercent =
@@ -64,7 +66,7 @@ export function ProgressBar({
         flex: 1,
         position: 'relative',
         height,
-        borderRadius: 'var(--radius-pill)',
+        borderRadius: radius,
         overflow: 'hidden',
         background: trackColor,
       }}
@@ -76,7 +78,7 @@ export function ProgressBar({
           left: 0,
           width: `${clampedPercent}%`,
           height: '100%',
-          borderRadius: 'var(--radius-pill)',
+          borderRadius: radius,
           background: color,
           transition: 'width var(--duration-slow) var(--ease-smooth-out)',
         }}
