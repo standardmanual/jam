@@ -8,7 +8,7 @@ import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
 import { RARITY_LABEL, RARITY_COLOR } from '@/lib/rarity'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import Button from '@/components/ui/Button'
 import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -330,7 +330,7 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
         />
       </div>
       {filtered.length === 0 ? (
-        <Card className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-40)]">
+        <Card tone="inverse" className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-40)]">
           <InboxIcon className="w-8 h-8 text-text-inverse/40" />
           <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.feed.emptyTitle}</p>
         </Card>

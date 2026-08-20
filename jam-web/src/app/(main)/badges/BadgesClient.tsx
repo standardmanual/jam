@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -52,7 +52,7 @@ interface BadgesClientProps {
 
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <Card className="text-center py-[var(--spacing-32)]">
+    <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
       <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{title}</p>
       <p className="text-[length:var(--text-caption)] text-text-inverse/40 mt-1">{body}</p>
     </Card>

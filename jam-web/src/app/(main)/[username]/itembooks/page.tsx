@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { ItemBookRow, FactionRow } from '@/types/database'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import TopNav from '@/components/ui/TopNav'
 import { BookIcon } from '@/components/ui/icons'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
@@ -149,7 +149,7 @@ export default async function UserItemBooksPage({ params }: Props) {
               const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
               return (
                 <Link key={book.id} href={`/itembooks/${book.id}`}>
-                  <Card className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
+                  <Card tone="inverse" className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
                     <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center bg-black/[0.04]">
                       {book.image_url ? (
                         <Image src={book.image_url} alt={book.name} fill className="object-contain p-1.5" />

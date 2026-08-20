@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
@@ -66,7 +66,7 @@ interface ItemBookItem {
 /** 빈 상태 — 아이콘(SVG) + 안내 문구 */
 function EmptyState({ icon, message }: { icon: ReactNode; message: string }) {
   return (
-    <Card className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-40)]">
+    <Card tone="inverse" className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-40)]">
       <span className="text-text-inverse/40">{icon}</span>
       <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{message}</p>
     </Card>
@@ -426,7 +426,7 @@ export default function ProfileClient({
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
         {/* 프로필 헤더 */}
-        <Card className="flex items-center gap-[var(--spacing-16)]">
+        <Card tone="inverse" className="flex items-center gap-[var(--spacing-16)]">
           {profile?.avatar_url ? (
             <Image
               src={profile.avatar_url}
@@ -487,7 +487,7 @@ export default function ProfileClient({
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
             pill을 숨긴다. */}
-        <Card className="p-0 overflow-hidden">
+        <Card tone="inverse" className="p-0 overflow-hidden">
           <SlidingTabs
             items={statTabs}
             value={isTabView ? activeTab : ('' as TabKey)}
@@ -530,7 +530,7 @@ export default function ProfileClient({
 
         {/* Strava 연동 — 본인 + 기본뷰(해시 없음)일 때 */}
         {isOwnProfile && !isTabView && (
-          <Card>
+          <Card tone="inverse">
             <h2 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-[var(--spacing-16)]">
               {d.profile.stravaTitle}
             </h2>
