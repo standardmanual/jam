@@ -9,6 +9,7 @@ import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
 import { RARITY_LABEL, RARITY_COLOR } from '@/lib/rarity'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { IconButton } from '@ds/components/buttons/IconButton'
 import Button from '@/components/ui/Button'
 import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -21,7 +22,6 @@ import {
   XCircleIcon,
   PuzzleIcon,
   InboxIcon,
-  CloseIcon,
   ChevronRightIcon,
 } from '@/components/ui/icons'
 
@@ -92,8 +92,8 @@ function formatFullDate(iso: string) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 py-[var(--spacing-8)]">
-      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{label}</span>
-      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse text-right max-w-[60%]">{value}</span>
+      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{label}</span>
+      <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text text-right max-w-[60%]">{value}</span>
     </div>
   )
 }
@@ -153,36 +153,32 @@ export function DetailSheet({
       */}
       <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center pointer-events-none">
       <div
-        className="t-panel-slide relative w-full max-w-[430px] bg-surface-inverse text-text-inverse rounded-t-[var(--radius-cards)] px-[var(--spacing-24)] pt-[var(--spacing-16)] pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
+        className="t-panel-slide relative w-full max-w-[430px] bg-surface text-text rounded-t-[var(--radius-cards)] px-[var(--spacing-24)] pt-[var(--spacing-16)] pb-[calc(env(safe-area-inset-bottom)+var(--spacing-32))]"
         data-open={shown}
         style={{ '--panel-translate-y': '100%' } as CSSProperties}
       >
-        <button
-          onClick={onClose}
-          aria-label={d.common.close}
-          className="absolute top-[var(--spacing-8)] right-[var(--spacing-16)] w-11 h-11 rounded-[var(--radius-nav-buttons)] flex items-center justify-center text-text-inverse active:scale-90 transition-transform duration-100"
-        >
-          <CloseIcon className="w-5 h-5" />
-        </button>
-        <div className="w-10 h-1 bg-surface/20 rounded-full mx-auto mb-[var(--spacing-24)]" />
+        <div className="absolute top-[var(--spacing-8)] right-[var(--spacing-8)]">
+          <IconButton icon="close" label={d.common.close} onClick={onClose} />
+        </div>
+        <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-[var(--spacing-24)]" />
         <div className="flex justify-center mb-[var(--spacing-16)]">
           {badgeImage ? (
             <Image src={badgeImage} alt={title} width={112} height={112} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover" />
           ) : (
-            <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center">
+            <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
               <EventIcon type={item.event_type} className="w-12 h-12" />
             </div>
           )}
         </div>
-        <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mb-1">{eventLabel(item)}</p>
-        <h2 className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text-inverse mb-[var(--spacing-16)]">{title}</h2>
+        <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 mb-1">{eventLabel(item)}</p>
+        <h2 className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text mb-[var(--spacing-16)]">{title}</h2>
         {rarity && RARITY_COLOR[rarity] && (
           <div className="flex justify-center mb-[var(--spacing-16)]">
             <span className={`text-[length:var(--text-body-sm)] px-[var(--spacing-16)] py-1 rounded-[var(--radius-tags)] font-bold uppercase tracking-[var(--tracking-label)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
           </div>
         )}
-        {/* 20260816_012: 보더 제거 — 흰 시트 위 정보 그룹이라 4% 블랙 틴트로 구분 */}
-        <div className="rounded-[var(--radius-cards)] bg-black/[0.04] px-[var(--spacing-16)] py-[var(--spacing-8)] mb-[var(--spacing-24)]">
+        {/* 20260816_012: 보더 제거 — 티켓 20260820_012: 다크 시트 전환으로 4% 화이트 틴트로 구분 */}
+        <div className="rounded-[var(--radius-cards)] bg-white/[0.04] px-[var(--spacing-16)] py-[var(--spacing-8)] mb-[var(--spacing-24)]">
           {(item.event_type === 'item_dropped' || item.event_type === 'item_picked_up') && meta.poi_name && (
             <Row label={d.feed.rowPlace} value={String(meta.poi_name)} />
           )}
@@ -205,7 +201,7 @@ export function DetailSheet({
         </div>
         {isBadgeEvent ? (
           <Button
-            surface="sub"
+            surface="main"
             variant="primary"
             fullWidth
             onClick={() => router.push(`/badges/${meta.badge_id}${badgeLinkQuery}`)}
@@ -213,7 +209,7 @@ export function DetailSheet({
             {d.common.detail}
           </Button>
         ) : (
-          <Button surface="sub" variant="primary" fullWidth onClick={onClose}>
+          <Button surface="main" variant="primary" fullWidth onClick={onClose}>
             {d.common.close}
           </Button>
         )}
