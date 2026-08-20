@@ -18,6 +18,8 @@ export interface ProgressBarProps {
   color?: string;
   /** 트랙(배경) 색상. 기본 var(--color-border) */
   trackColor?: string;
+  /** 바/트랙 모서리 radius(CSS 단위 문자열). 기본 var(--radius-pill) */
+  radius?: string;
   className?: string;
 }
 
