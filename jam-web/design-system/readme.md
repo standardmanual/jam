@@ -98,7 +98,7 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 * `assets/logo/` — JAM! 워드마크, 블랙 + 화이트
 * `components/buttons/` — Button, IconButton
 * `components/cards/` — Card, RarityBadge, ShapeTag, BadgeFrame
-* `components/navigation/` — TopNav, TabBar (JAM! 자체 TabBar.tsx에서 1:1 재현), BottomSheet, SlidingTabs, Accordion
+* `components/navigation/` — TopNav, TabBar (JAM! 자체 TabBar.tsx에서 1:1 재현), BottomSheet, SlidingTabs, Accordion, Carousel(센터 포커스·무한 루프 카드 캐러셀)
 * `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState, ProgressBar
 * `components/forms/` — Input, Textarea, Select, Checkbox
 * `components/patterns/` — BadgeGridCard, ListRowCard, CollectionGridCard (서비스 공통 UI 패턴)
