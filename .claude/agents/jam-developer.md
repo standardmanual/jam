@@ -21,7 +21,11 @@ tools: Read, Write, Edit, Bash, Grep, Glob
    차단한다** — 이 규칙은 프롬프트 준수뿐 아니라 git 레벨에서도 강제된다. 커밋이 거부되면 status를
    OPEN/IN_PROGRESS로 되돌려 다시 커밋할 것.
 5. **main 브랜치에 직접 push하지 않는다.** 구현이 끝나면:
-   - `git checkout -b claude/jamwork-{ticket-id}-{짧은-slug}` 로 review 브랜치 생성
+   - **review 브랜치는 반드시 `origin/staging`을 기점으로 분기한다**:
+     `git fetch origin staging && git checkout -b claude/jamwork-{ticket-id}-{짧은-slug} origin/staging`
+     (`git checkout -b`만 쓰지 않는다 — 그 순간 로컬에 체크아웃돼 있던 브랜치가 다른 진행 중
+     티켓의 미승인 커밋일 수 있고, 그러면 이 브랜치가 그 커밋을 조상으로 물고 들어간다. 실제
+     티켓 20260820_019가 018의 미승인 커밋을 조상에 포함한 사고가 이 경로로 발생했다.)
    - 로컬 커밋 (한국어 메시지)
    - `git push -u origin claude/jamwork-{ticket-id}-{짧은-slug}` 까지만 수행
    - main으로의 merge는 하지 않는다 (사용자 최종 승인 후 오케스트레이터가 처리)
