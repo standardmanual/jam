@@ -60,6 +60,7 @@ interface ItemBookItem {
   totalBadgeCount: number
   slottedCount: number
   isCompleted: boolean
+  rarity: BadgeRarity
 }
 
 // ─── 공통 조각 ───────────────────────────────────────────────────────────────
@@ -334,6 +335,7 @@ export default function ProfileClient({
               collected={book.slottedCount}
               total={book.totalBadgeCount}
               completed={book.isCompleted}
+              rarity={book.rarity}
             />
           ))}
         </div>
@@ -430,7 +432,7 @@ export default function ProfileClient({
 
       <div
         className={`px-[var(--spacing-16)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)] ${
-          isOwnProfile ? 'pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]' : 'pt-[var(--spacing-24)]'
+          isOwnProfile ? 'pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]' : 'pt-0'
         }`}
       >
         {/* 프로필 헤더 */}

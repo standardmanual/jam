@@ -139,7 +139,7 @@ export default async function UserItemBooksPage({ params }: Props) {
     <div className="flex flex-col min-h-full bg-surface text-text">
       <TopNav title={`${d.itembooks.title} · ${target.username}`} backHref={`/${username}`} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)]">
+      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
         {cards.length === 0 ? (
           <EmptyState
             icon={<BookIcon className="w-8 h-8" />}

@@ -78,7 +78,7 @@ export default function PointsPage() {
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.common.back} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
         {/* 잔액 카드 */}
         <Card tone="inverse" className="text-center py-[var(--spacing-32)]">
           <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-2">{d.points.balanceLabel}</p>

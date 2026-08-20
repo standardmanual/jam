@@ -88,7 +88,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.common.back} />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
+      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
         {/* 재검색 */}
         <UserSearchBar defaultValue={q ?? ''} />
 
