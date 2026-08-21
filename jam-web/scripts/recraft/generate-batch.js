@@ -45,7 +45,7 @@ async function main() {
 
   const configPath = path.join(collectionDir, 'recraft_batch_config.json')
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
-  const { style_id, model, size, negative_prompt, no_text, items } = config
+  const { style_id, style, model, size, negative_prompt, no_text, items } = config
 
   let totalCredits = 0
   for (const item of items) {
@@ -57,6 +57,7 @@ async function main() {
         prompt: item.prompt,
         model,
         style_id,
+        style,
         size,
         n: 1,
         negative_prompt,
