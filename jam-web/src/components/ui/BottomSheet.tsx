@@ -23,6 +23,12 @@ interface BottomSheetProps {
    * 순수 flexbox 레이아웃만으로 항상 화면에 보장되어 더 견고하다.
    */
   footer?: ReactNode
+  /**
+   * `detent="full"` 전용 — 화면 최상단에서 남길 여백(px). 지정하면 기본 `92dvh` 대신
+   * `calc(100dvh - {topGapPx}px)`를 써서 TopNav를 살짝만(예: 20px) 남기고 화면 전체(탭바 포함)를
+   * 덮는 시트를 만든다(배지 공유 미리보기처럼 이미지를 최대한 크게 보여줘야 하는 화면용).
+   */
+  topGapPx?: number
 }
 
 const DRAG_CLOSE_THRESHOLD = 120
@@ -36,6 +42,7 @@ export default function BottomSheet({
   showCloseButton = true,
   closeLabel = '닫기',
   footer,
+  topGapPx,
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
@@ -118,11 +125,12 @@ export default function BottomSheet({
              플로팅 탭바(z-40)나 뒷배경이 노출된다(이 시트 자체는 z-50이라
              탭바보다 위에 있어야 정상). dvh는 실제 보이는 뷰포트 기준이라
              이 틈이 생기지 않는다. */
-          detent === 'full' ? 'h-[92dvh]' : 'max-h-[75dvh]',
+          topGapPx === undefined ? (detent === 'full' ? 'h-[92dvh]' : 'max-h-[75dvh]') : '',
         ].join(' ')}
         style={{
           transform: `translateY(${dragY}px)`,
           transition: draggingRef.current ? 'none' : 'transform 200ms ease-out',
+          ...(topGapPx !== undefined ? { height: `calc(100dvh - ${topGapPx}px)` } : {}),
         }}
       >
         {/* Handle */}
