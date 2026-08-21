@@ -230,7 +230,6 @@ export const ko = {
     physicalPatchButton: '실물 패치 보기',
 
     shareButtonLabel: '공유',
-    sharePreviewTitle: '공유 이미지 미리보기',
 
     notEarnedTitle: '아직 획득하지 못한 배지예요',
     notEarnedBody: '조건을 달성하면 자동으로 획득돼요',

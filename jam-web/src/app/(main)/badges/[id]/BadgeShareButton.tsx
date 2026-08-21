@@ -31,7 +31,7 @@ export default function BadgeShareButton({ imageUrl, badgeName }: BadgeShareButt
     <>
       <IconButton icon="share" label={d.badges.shareButtonLabel} onClick={() => setOpen(true)} />
 
-      <BottomSheet open={open} onClose={() => setOpen(false)} detent="full" title={d.badges.sharePreviewTitle}>
+      <BottomSheet open={open} onClose={() => setOpen(false)} detent="full">
         <div className="px-[var(--spacing-24)] pt-[var(--spacing-8)] pb-[var(--spacing-32)] flex flex-col items-center">
           {/*
             체크보드 미리보기 프레임 — 투명 PNG의 투명 영역을 시각화한다.
