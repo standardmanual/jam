@@ -10,6 +10,16 @@ import React from 'react';
  *   - label default '' removed — label is now required to prevent empty aria-label
  *   - deprecated --color-white → --color-bg-inverse
  *   - press feedback via global CSS button:active (styles.css), JS handlers removed
+ *
+ * v3 changes (20260821_004):
+ *   - `disabled` prop added. This is a *soft* disable, not the native HTML `disabled`
+ *     attribute: the button stays visually dimmed and `aria-disabled="true"` is set for
+ *     assistive tech, but the native `disabled` attribute is never applied, so `onClick`
+ *     keeps firing. This lets a caller show an explanatory popover/tooltip on click of a
+ *     "disabled" action (e.g. "아직 획득하지 못한 배지예요") — a real HTML `disabled` button
+ *     cannot receive click/focus events at all, which would make that pattern impossible.
+ *     If a consumer needs a hard, non-interactive disabled button, pass native `disabled`
+ *     via `...rest` is intentionally NOT supported here; use `disabled` for the soft variant.
  */
 
 const ICON_PATHS = {
@@ -31,7 +41,7 @@ const ICON_PATHS = {
   'share':         <path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h120v80H240v400h480v-400H600v-80h120q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm200-240v-447l-64 64-56-57 160-160 160 160-56 57-64-64v447h-80Z" fill="currentColor" stroke="none" transform="scale(0.025) translate(0, 960)" />,
 };
 
-export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'light', ...rest }) {
+export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'light', disabled = false, ...rest }) {
   if (!label) {
     console.warn('[DS] IconButton: `label` prop이 없습니다. 스크린리더 사용자가 이 버튼의 역할을 알 수 없습니다.');
   }
@@ -42,13 +52,15 @@ export function IconButton({ icon = 'chevron-left', label, onClick, surface = 'l
   return (
     <button
       aria-label={label || undefined}
+      aria-disabled={disabled || undefined}
       onClick={onClick}
       style={{
         width: 44, height: 44,
         borderRadius: 'var(--radius-pill)',
         border: 'none', background: 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', color,
+        cursor: disabled ? 'not-allowed' : 'pointer', color,
+        opacity: disabled ? 0.35 : 1,
       }}
       {...rest}
     >

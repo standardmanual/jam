@@ -12,6 +12,7 @@
  * 응답:
  *   200 { distanceKm: number, paceSecPerKm: number | null, elapsedTimeSec: number | null }
  *   401 { error: 'unauthorized' }               — 로그인 필요
+ *   403 { error: 'forbidden' }                    — 본인 배지가 아닌 데이터를 조회하려 함
  *   404 { error: 'badge_not_found' }             — 배지 없음
  *   400 { error: 'not_activity_or_poi' }         — item 배지에 잘못 호출한 경우
  *   404 { error: 'not_earned' }                  — 조회 대상 유저가 아직 획득하지 않음
@@ -52,7 +53,11 @@ export async function GET(
 
   const service = createServiceClient()
 
-  // ?u=username — page.tsx와 동일하게, 다른 유저의 배지 상세에서 진입한 경우 그 유저 기준으로 조회
+  // ?u=username — page.tsx와 동일하게, 다른 유저의 배지 상세에서 진입한 경우 그 유저 기준으로 조회.
+  // 단, 배지 공유는 본인 배지에서만 가능하다(20260821_004 재작업) — u가 로그인 유저 본인이
+  // 아닌 다른 유저를 가리키면 즉시 거부한다. 클라이언트는 타인 배지에서 공유 버튼 자체를
+  // 숨기지만, 이 API를 직접 호출하면 그 숨김을 우회해 타인의 스트라바 페이스/시간 데이터를
+  // 조회할 수 있으므로(이전 게이트 리뷰에서 지적된 사이드 파인딩) 서버에서도 반드시 검증한다.
   let subjectId = user.id
   if (usernameParam) {
     const { data: subjectRaw } = await service
@@ -63,6 +68,9 @@ export async function GET(
     if (subjectRaw) {
       subjectId = (subjectRaw as { id: string }).id
     }
+  }
+  if (subjectId !== user.id) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
   const { data: badgeRaw } = await supabase.from('badges').select('*').eq('id', id).single()

@@ -39,6 +39,11 @@ export const AllIcons: Story = {
   ),
 };
 
+export const Disabled: Story = {
+  name: '비활성(소프트) — 클릭은 계속 동작',
+  args: { icon: 'share', label: '공유', disabled: true, onClick: () => alert('disabled여도 onClick은 호출됩니다 — 팝오버 안내 등에 사용') },
+};
+
 export const DarkSurface: Story = {
   name: 'Dark Surface',
   render: () => (
