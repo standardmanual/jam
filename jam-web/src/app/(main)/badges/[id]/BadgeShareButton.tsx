@@ -241,6 +241,8 @@ export default function BadgeShareButton({
         onClose={() => setOpen(false)}
         detent="full"
         topGapPx={20}
+        showCloseButton={false}
+        contentScrollable={false}
         footerBottomInset="safe-area"
         footer={
           state.kind === 'ready' ? (
@@ -269,7 +271,19 @@ export default function BadgeShareButton({
           >
             {state.kind === 'ready' ? (
               // eslint-disable-next-line @next/next/no-img-element -- 클라이언트에서 즉석 생성한 blob: URL, next/image 최적화 대상 아님
-              <img src={state.blobUrl} alt={badgeName} className="w-full h-full object-contain" />
+              <img
+                src={state.blobUrl}
+                alt={badgeName}
+                className="w-full h-full object-contain"
+                /*
+                  실제 저장/공유되는 파일은 원본 그대로 두고, 미리보기 화면에서만 130% 확대한다.
+                  캔버스 자체에 위/아래 여백(스토리 템플릿 특성상 배지+텍스트 블록 주위로 넓은
+                  여백)이 있어 그대로 보여주면 작아 보인다 — 확대해서 프레임 밖으로 여백이
+                  잘려나가더라도 배지 이미지~마지막 텍스트까지는 더 크게 보이는 쪽을 택했다
+                  (2026-08-21 사용자 피드백). 프레임의 overflow-hidden이 잘라내는 역할을 한다.
+                */
+                style={{ transform: 'scale(1.3)' }}
+              />
             ) : state.kind === 'loading' ? (
               <WanderingEyesLoader />
             ) : (
