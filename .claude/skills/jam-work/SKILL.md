@@ -175,6 +175,11 @@ gate 또는 progressive의 `sideFindings`가 비어있지 않으면:
 ## 4. 승인 후 처리 — 베이스캠프 모자를 쓴다 (위임하지 않음)
 
 1. review 브랜치(`claude/jamwork-*`)를 **staging에 머지**하고 `git push origin staging`
+   - **머지 전에 반드시 오염 여부를 확인한다**:
+     `git fetch origin staging && git merge-base --is-ancestor origin/staging claude/jamwork-{ticket-id}-{slug}`
+     종료 코드가 0이 아니면(= review 브랜치가 최신 `origin/staging` 위에서 분기하지 않음) 머지를
+     멈추고 사용자에게 경위를 보고한다 — 다른 진행 중 티켓의 미승인 커밋을 조상으로 물고 들어왔을
+     가능성이 있다 (jam-developer.md 5번, 티켓 20260820_019 사고 참고).
 2. progressive-reviewer가 제안한 문서 갱신을 `/jam-docs` 규칙에 맞게 반영
 3. 티켓을 `status: CLOSED`로 변경하고 완료 기록 작성
 4. jam-developer가 SQL 마이그레이션 파일을 남겼다면 **이 시점에** 사용자 승인 하에 직접 실행
