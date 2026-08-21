@@ -14,6 +14,7 @@ import LocalDate from '@/components/LocalDate'
 import ItemEarnHistory from './ItemEarnHistory'
 import BadgeHeroSection from './BadgeHeroSection'
 import BadgeConditionCard from './BadgeConditionCard'
+import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
 import { getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
@@ -415,7 +416,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     return (
       <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
         {badgeBackgroundLayer}
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
+        <TopNav
+          title={d.common.back}
+          backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
+          headerStyle={topNavStyle}
+          rightSlot={<BadgeShareButton imageUrl={badgeRow.image_url} badgeName={badgeRow.name} />}
+        />
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
@@ -481,7 +487,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     return (
       <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
         {badgeBackgroundLayer}
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
+        <TopNav
+          title={d.common.back}
+          backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
+          headerStyle={topNavStyle}
+          rightSlot={<BadgeShareButton imageUrl={badgeRow.image_url} badgeName={badgeRow.name} />}
+        />
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
@@ -531,7 +542,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   return (
     <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
       {badgeBackgroundLayer}
-      <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
+      <TopNav
+        title={d.common.back}
+        backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
+        headerStyle={topNavStyle}
+        rightSlot={<BadgeShareButton imageUrl={badgeRow.image_url} badgeName={badgeRow.name} />}
+      />
 
       <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
