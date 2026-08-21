@@ -1,0 +1,104 @@
+{
+  "collection_id": "04-03",
+  "items": [
+    {
+      "filename": "04-03_1_이슬맺힌렌즈닦이.png",
+      "name": "이슬 맺힌 렌즈 닦이",
+      "ids": [
+        "d3c3074f-8bc4-4a14-b2d6-579e95169990",
+        "6da1433f-11b2-43f1-b5e3-a23464a2d733",
+        "007c319e-96c7-453c-86c5-abea8a9ead74",
+        "5ef24403-4d84-41d5-a2fb-30f8becc9d2c"
+      ],
+      "slug": "dewy_lens_cloth"
+    },
+    {
+      "filename": "04-03_2_물기먹은모자.png",
+      "name": "물기 먹은 모자",
+      "ids": [
+        "f0f7a87f-dfb3-4d32-817c-29005a9fc869",
+        "c7f73d2b-ebdc-4018-ae2e-340decffedb9",
+        "9190ee76-7b48-4a48-8a2d-90ba30c4dd65",
+        "744d293d-fda7-44ea-895c-beb9db3b8828"
+      ],
+      "slug": "soaked_cap"
+    },
+    {
+      "filename": "04-03_3_김서림방지제.png",
+      "name": "김서림 방지제",
+      "ids": [
+        "ca2cf1dc-fde7-4c15-89a5-dbf01ca2d7b5",
+        "24862421-11eb-4031-9f56-d67fa48eab58",
+        "721b80bb-14f6-4fa0-937e-23c8846d7da4",
+        "4735d41d-7958-477b-a838-37c7a01edcfe"
+      ],
+      "slug": "antifog_spray"
+    },
+    {
+      "filename": "04-03_4_새벽이슬의조각.png",
+      "name": "새벽이슬의 조각",
+      "ids": [
+        "15447298-d09d-4ed7-a563-3233a97699e3",
+        "11a708ab-821f-41a1-a171-d3352a79a7f3",
+        "d29cf138-f146-45ab-a40f-5313d4bb81dc",
+        "a074f9af-bbc1-4cfc-8c3b-c88925322bc6"
+      ],
+      "slug": "dawn_dew_drop"
+    },
+    {
+      "filename": "04-03_5_방수카메라케이스.png",
+      "name": "방수 카메라 케이스",
+      "ids": [
+        "a7e2e782-87b1-4ce6-ba3b-6916f69240dc",
+        "cdafe62e-8e46-4280-954c-eaea02fbc9a8",
+        "56269ec6-d57e-4443-a7c2-e414961120fe",
+        "0e5b1f97-f557-4530-8e84-887e4d4758f6"
+      ],
+      "slug": "waterproof_camera_case"
+    },
+    {
+      "filename": "04-03_6_모기향잿가루.png",
+      "name": "모기향 잿가루",
+      "ids": [
+        "0ea1487b-6303-469d-93a5-fea00a312239",
+        "64851409-3f73-4bef-9c20-549ebd1c7eae",
+        "b9932268-36fb-4647-86f6-f9e5f23a8458",
+        "b2d5d093-008d-4e80-b114-34bea5ee2d32"
+      ],
+      "slug": "mosquito_coil_ash"
+    },
+    {
+      "filename": "04-03_7_헤드랜턴건전지.png",
+      "name": "헤드랜턴 건전지",
+      "ids": [
+        "8d1aba75-845e-4cb1-b412-9ee3735e41e9",
+        "27513301-f864-462b-8838-a675076bdde6",
+        "be4f51ab-9d25-4f59-bf34-908c703726e7",
+        "6af7c56f-cbe1-4505-88be-339460d61863"
+      ],
+      "slug": "headlamp_battery"
+    },
+    {
+      "filename": "04-03_8_젖은나뭇가지.png",
+      "name": "젖은 나뭇가지",
+      "ids": [
+        "96d58da8-4464-4415-9e05-c82979111684",
+        "984f42ad-f467-4aae-864a-22681b4a2c21",
+        "42a307fe-7136-4d3e-a49b-9b76382573f0",
+        "be5a72a5-970e-48c7-acfa-dd78566049f7"
+      ],
+      "slug": "wet_branch"
+    },
+    {
+      "filename": "04-03_9_몽환의필터.png",
+      "name": "몽환의 필터",
+      "ids": [
+        "252cfb94-d397-4bea-925c-e5a2c335321d",
+        "249f4d1e-7f82-4ba6-9576-b053860d7cb2",
+        "e4d93e7f-a8f7-47e5-8608-794ff74c6cb2",
+        "8b307d01-155f-4fe6-afea-b99fdcf80342"
+      ],
+      "slug": "dreamy_haze_filter"
+    }
+  ]
+}

@@ -56,7 +56,10 @@ async function main() {
       continue
     }
 
-    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(storagePath)
+    const { data: { publicUrl: rawPublicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(storagePath)
+    // 같은 storagePath로 upsert 재업로드 시 Vercel Image Optimization(/_next/image) 엣지 캐시가
+    // URL 기준으로 예전 콘텐츠를 계속 서빙하는 문제(최대 4시간)를 막기 위해 버전 쿼리스트링을 붙인다.
+    const publicUrl = `${rawPublicUrl}?v=${Date.now()}`
 
     const { error: updateError } = await supabase
       .from('badges')

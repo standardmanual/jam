@@ -1,0 +1,45 @@
+{
+  "model": "recraftv3",
+  "size": "1024x1024",
+  "no_text": true,
+  "negative_prompt": "text, lettering, words, letters, typography, circular badge frame, round frame, shield frame, symmetrical mandala frame, goggles, mask, ski mask, skull, face covering, smooth gradient, soft airbrush gradient, drop shadow, photographic texture, realistic photo, 3D render, glossy plastic sheen, chrome reflection, cute face, eyes on object, anthropomorphic character, mascot, detailed human face, helmet, motorcycle helmet, numbers, numerals, digits, printed digits, watermark, signature, extra logos, blurry, low quality, cropped, low contrast, black background, dark background, gray background, vignette",
+  "items": [
+    {
+      "filename": "02-07_1_녹아내린신발밑창.png",
+      "prompt": "A single sneaker with its rubber sole completely melted into gooey cheese-like strands, dripping onto black asphalt — the one and only central subject, large and unmistakable. FULL-COLOR illustration, NOT black-and-white: bold black outline, shoe body filled cream/ivory, melted rubber and asphalt filled deep red and amber orange, small steel-blue accents, one shading step, aged grain texture, no gradient, no photo texture. Background must be solid bright pure white edge to edge — NOT black, NOT dark, no vignette. Freeform asymmetric outer silhouette of heat-shimmer waves and sun-ray motifs, not a circle frame. No text, no numbers. No helmet, no goggles, no mask. No cute faces, no eyes on objects, no anthropomorphism, no watermark. Keep bottom 15% clear for logo."
+    },
+    {
+      "filename": "02-07_2_끓어오르는물통.png",
+      "prompt": "A small sports water bottle with its cap open, visibly boiling water bubbling inside and steam swirls rising out the top — this boiling bottle is the one and only central subject, drawn large and unmistakable. Illustrated as a vintage motorcycle patch badge: bold black ink outline, flat color with one shading step, aged grain texture, no gradient, no shadow, no photo texture. Background: solid pure white, absolutely no dark vignette, no black corners. Freeform asymmetric outer silhouette decorated with heat-shimmer waves and sun-ray motifs, not a circle or shield frame. Palette: cream, deep red, steel blue, amber orange accents on white. No text, no lettering, no numbers or digits anywhere. No helmet, no goggles, no mask. No cute faces, no eyes on objects, no anthropomorphism, no watermark. Keep bottom 15% clear for a logo overlay."
+    },
+    {
+      "filename": "02-07_3_화상입은팔토시.png",
+      "prompt": "A bare forearm only (no hand, no face, no full body) wrapped in a cooling arm sleeve that looks scorched and steaming like a hot bandage, damp sweat drips along it — this scorched arm sleeve is the one and only central subject, drawn large and unmistakable. Illustrated as a vintage motorcycle patch badge: bold black ink outline, flat color with one shading step, aged grain texture, no gradient, no shadow, no photo texture. Background: solid pure white, absolutely no dark vignette, no black corners. Freeform asymmetric outer silhouette decorated with heat-shimmer waves and sun-ray motifs, not a circle or shield frame. Palette: cream, deep red, steel blue, amber orange accents on white. No text, no lettering, no numbers or digits anywhere. No helmet, no goggles, no mask. No cute faces, no eyes on objects, no anthropomorphism, no watermark. Keep bottom 15% clear for a logo overlay."
+    },
+    {
+      "filename": "02-07_4_증발해버린땀방울.png",
+      "prompt": "Three separate jagged white salt crystal chunks resting on a small patch of bare skin (skin patch only, no full body, no face) — these salt crystal chunks are the one and only central subject, drawn large and unmistakable. Illustrated as a vintage motorcycle patch badge: bold black ink outline, flat color with one shading step, aged grain texture, no gradient, no shadow, no photo texture. Background: solid pure white, absolutely no dark vignette, no black corners. Freeform asymmetric outer silhouette decorated with heat-shimmer waves and sun-ray motifs, not a circle or shield frame. Palette: cream, deep red, steel blue, amber orange accents on white. No text, no lettering, no numbers or digits anywhere. No helmet, no goggles, no mask. No cute faces, no eyes on objects, no anthropomorphism, no watermark. Keep bottom 15% clear for a logo overlay."
+    },
+    {
+      "filename": "02-07_5_변형된플라스틱캡.png",
+      "prompt": "A plastic bottle cap warped and drooping out of shape from heat, melted and sagging, resting on a patch of shimmering black asphalt — this melted cap is the one and only central subject, drawn large and unmistakable. Illustrated as a vintage motorcycle patch badge: bold black ink outline, flat color with one shading step, aged grain texture, no gradient, no shadow, no photo texture. Background: solid pure white, absolutely no dark vignette, no black corners. Freeform asymmetric outer silhouette decorated with heat-shimmer waves and sun-ray motifs, not a circle or shield frame. Palette: cream, deep red, steel blue, amber orange accents on white. No text, no lettering, no numbers or digits anywhere. No helmet, no goggles, no mask. No cute faces, no eyes on objects, no anthropomorphism, no watermark. Keep bottom 15% clear for a logo overlay."
+    },
+    {
+      "filename": "02-07_6_뜨거운아스팔트조각.png",
+      "prompt": "Three chunky black asphalt pebbles with visible heat-shimmer waves rising off them — these black asphalt chunks are the one and only central subject, drawn large and unmistakable. Illustrated as a vintage motorcycle patch badge: bold black ink outline, flat color with one shading step, aged grain texture, no gradient, no shadow, no photo texture. Background: solid pure white, absolutely no dark vignette, no black corners. Freeform asymmetric outer silhouette decorated with heat-shimmer waves and sun-ray motifs, not a circle or shield frame. Palette: cream, deep red, steel blue, amber orange accents on white. No text, no lettering, no numbers or digits anywhere. No helmet, no goggles, no mask. No cute faces, no eyes on objects, no anthropomorphism, no watermark. Keep bottom 15% clear for a logo overlay."
+    },
+    {
+      "filename": "02-07_7_바짝마른목캔디.png",
+      "prompt": "A bone-dry, cracked throat lozenge on a stick, partly entering a simple stylized mouth opening with visible lips only (no full face, no eyes, no nose) — this dry lozenge is the one and only central subject, drawn large and unmistakable. Illustrated as a vintage motorcycle patch badge: bold black ink outline, flat color with one shading step, aged grain texture, no gradient, no shadow, no photo texture. Background: solid pure white, absolutely no dark vignette, no black corners. Freeform asymmetric outer silhouette decorated with heat-shimmer waves and sun-ray motifs, not a circle or shield frame. Palette: cream, deep red, steel blue, amber orange accents on white. No text, no lettering, no numbers or digits anywhere. No helmet, no goggles, no mask. No cute faces, no eyes on objects, no anthropomorphism, no watermark. Keep bottom 15% clear for a logo overlay."
+    },
+    {
+      "filename": "02-07_8_아지랑이의환영.png",
+      "prompt": "A wavy, hazy, indistinct heat-mirage silhouette of a woman in a modest bikini standing beside palm trees near a shimmering oasis pool, everything soft and distorted like heat shimmer, no sharp facial detail, tasteful and non-explicit — this mirage scene is the one and only central subject, drawn large and unmistakable. Illustrated as a vintage motorcycle patch badge: bold black ink outline, flat color with one shading step, aged grain texture, no gradient, no shadow, no photo texture. Background: solid pure white, absolutely no dark vignette, no black corners. Freeform asymmetric outer silhouette decorated with heat-shimmer waves and sun-ray motifs, not a circle or shield frame. Palette: cream, deep red, steel blue, amber orange accents on white. No text, no lettering, no numbers or digits anywhere. No helmet, no goggles, no mask. No cute faces, no eyes on objects, no anthropomorphism, no watermark. Keep bottom 15% clear for a logo overlay."
+    },
+    {
+      "filename": "02-07_9_자외선차단제빈통.png",
+      "prompt": "A completely squeezed-out, flattened tube of sunblock lotion, its cap askew and the tube crumpled from being wrung dry — this empty sunblock tube is the one and only central subject, drawn large and unmistakable. Illustrated as a vintage motorcycle patch badge: bold black ink outline, flat color with one shading step, aged grain texture, no gradient, no shadow, no photo texture. Background: solid pure white, absolutely no dark vignette, no black corners. Freeform asymmetric outer silhouette decorated with heat-shimmer waves and sun-ray motifs, not a circle or shield frame. Palette: cream, deep red, steel blue, amber orange accents on white. No text, no lettering, no numbers or digits anywhere. No helmet, no goggles, no mask. No cute faces, no eyes on objects, no anthropomorphism, no watermark. Keep bottom 15% clear for a logo overlay."
+    }
+  ],
+  "style": "digital_illustration"
+}
