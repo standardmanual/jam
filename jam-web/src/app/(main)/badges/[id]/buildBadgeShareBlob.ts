@@ -8,10 +8,14 @@
  * 오프스크린 `<canvas>` 하나에 drawImage/fillText로 직접 그린 뒤, 같은 `canvasToBlob()` 유틸로
  * PNG를 뽑는다(패턴 확장. 완료 기록의 "주요 의사결정" 참고).
  *
- * 좌표는 PRD(`Service Plan/Specs/PRD/BadgeShare/PRD.md` 6장)가 명시한 캔버스 크기(1080×1920)·
- * 배지 이미지 영역(483×483, contain)·로고 크기(174×72)·라벨/값 폰트 크기(~20px/~51px)를
- * 그대로 따르되, 세부 상하 여백은 피그마 노드 좌표를 직접 조회할 수 없어 균형 잡힌 값으로
- * 새로 잡았다 — 실제 피그마 시안과 픽셀 단위로 다를 수 있어 시각 QA가 필요하다(잔여 이슈 참고).
+ * 좌표는 Figma MCP(`get_metadata`/`get_design_context`, 파일 `UXcBEgFagmO5ARwH5F0mMW`)로 노드
+ * `1:55`(share01, 활동/POI 공용)·`1:60`(share02, 아이템 전용)의 절대 좌표를 직접 조회해 그대로
+ * 옮겼다(2026-08-21 재작업 — 이전 버전은 Figma MCP 접근 없이 재설계한 근사값이었음):
+ *   - share01: 배지 483×483 @ y=477, 이후 63px 간격 flex-column으로 거리/페이스/시간
+ *     텍스트 블록(각 높이 85.5636) + 로고. 각 블록 안에서 값(51px)이 위, 라벨(20px)이 값 시작
+ *     지점에서 61.56px 아래.
+ *   - share02: 배지 @ y=651, 63px 간격 뒤 로고(텍스트 없음).
+ *   - 로고 174.2336×72, 가로 중앙 정렬(피그마 x=453.38 ≈ (1080-174.2336)/2).
  */
 import { loadImageFromUrl } from '@/app/spike/background-generator/loadImage'
 import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
@@ -19,13 +23,20 @@ import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
 const CANVAS_WIDTH = 1080
 const CANVAS_HEIGHT = 1920
 const BADGE_BOX = 483
-const BADGE_BOX_Y = 300
-const LOGO_WIDTH = 174
+/** Figma 노드 1:55(텍스트 있음)의 배지 y, 1:60(텍스트 없음)의 배지 y — 서로 다르다(피그마 그대로) */
+const BADGE_Y_WITH_STATS = 477
+const BADGE_Y_NO_STATS = 651
+/** share 프레임의 flex-column gap (badge→distance→pace→time→logo 사이 전부 동일) */
+const BLOCK_GAP = 63
+/** distance/pace/time 각 프레임의 높이(Figma frame height) */
+const ROW_BLOCK_HEIGHT = 85.5636
+/** 라벨 텍스트 시작 y가 값 텍스트 시작 y보다 아래로 내려간 오프셋(Figma "mt-61.56") */
+const LABEL_OFFSET_Y = 61.56
+const LOGO_WIDTH = 174.2336
 const LOGO_HEIGHT = 72
-const LOGO_BOTTOM_MARGIN = 68
+const VALUE_FONT_SIZE = 50.858
+const LABEL_FONT_SIZE = 19.824
 const FONT_FAMILY = "'Inter', 'Arial', sans-serif"
-const TEXT_BLOCK_START_Y = BADGE_BOX_Y + BADGE_BOX + 150
-const TEXT_ROW_HEIGHT = 150
 
 export interface BadgeShareStats {
   /** user_activity_badges/user_poi_badge_earns의 triggered_by_distance_km — DB에 이미 저장돼 재조회 불필요 */
@@ -72,8 +83,8 @@ async function waitForFonts(): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) return
   try {
     await Promise.all([
-      document.fonts.load(`700 51px ${FONT_FAMILY}`),
-      document.fonts.load(`700 20px ${FONT_FAMILY}`),
+      document.fonts.load(`700 ${Math.ceil(VALUE_FONT_SIZE)}px ${FONT_FAMILY}`),
+      document.fonts.load(`700 ${Math.ceil(LABEL_FONT_SIZE)}px ${FONT_FAMILY}`),
     ])
     await document.fonts.ready
   } catch {
@@ -111,11 +122,15 @@ export async function buildBadgeShareBlob(data: BadgeShareTemplateData): Promise
   ])
 
   const badgeBoxX = (CANVAS_WIDTH - BADGE_BOX) / 2
-  drawContain(ctx, badgeImg, badgeBoxX, BADGE_BOX_Y, BADGE_BOX)
+  const badgeY = data.stats ? BADGE_Y_WITH_STATS : BADGE_Y_NO_STATS
+  drawContain(ctx, badgeImg, badgeBoxX, badgeY, BADGE_BOX)
+
+  let contentBottomY = badgeY + BADGE_BOX
 
   if (data.stats) {
     ctx.fillStyle = '#FFFFFF'
     ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
 
     const rows: [string, string][] = [
       ['DISTANCE', formatDistance(data.stats.distanceKm)],
@@ -123,18 +138,20 @@ export async function buildBadgeShareBlob(data: BadgeShareTemplateData): Promise
       ['TIME', formatElapsed(data.stats.elapsedTimeSec)],
     ]
 
-    let y = TEXT_BLOCK_START_Y
+    // Figma: 값이 위, 라벨이 값 시작점에서 LABEL_OFFSET_Y만큼 아래 — 블록마다 BLOCK_GAP 간격
+    let blockY = contentBottomY + BLOCK_GAP
     for (const [label, value] of rows) {
-      ctx.font = `700 20px ${FONT_FAMILY}`
-      ctx.fillText(label, CANVAS_WIDTH / 2, y)
-      ctx.font = `700 51px ${FONT_FAMILY}`
-      ctx.fillText(value, CANVAS_WIDTH / 2, y + 55)
-      y += TEXT_ROW_HEIGHT
+      ctx.font = `700 ${VALUE_FONT_SIZE}px ${FONT_FAMILY}`
+      ctx.fillText(value, CANVAS_WIDTH / 2, blockY)
+      ctx.font = `700 ${LABEL_FONT_SIZE}px ${FONT_FAMILY}`
+      ctx.fillText(label, CANVAS_WIDTH / 2, blockY + LABEL_OFFSET_Y)
+      blockY += ROW_BLOCK_HEIGHT + BLOCK_GAP
     }
+    contentBottomY = blockY - BLOCK_GAP
   }
 
   const logoX = (CANVAS_WIDTH - LOGO_WIDTH) / 2
-  const logoY = CANVAS_HEIGHT - LOGO_HEIGHT - LOGO_BOTTOM_MARGIN
+  const logoY = contentBottomY + BLOCK_GAP
   ctx.drawImage(logoImg, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT)
 
   return canvasToBlob(canvas)
