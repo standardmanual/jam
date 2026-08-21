@@ -6,6 +6,7 @@ import { Button } from '@ds/components/buttons/Button'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { MedalIcon } from '@/components/ui/icons'
+import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { buildBadgeShareBlob, type BadgeShareStats } from './buildBadgeShareBlob'
 import { d } from '@/lib/i18n'
 import type { BadgeType } from '@/types/database'
@@ -111,6 +112,12 @@ export default function BadgeShareButton({
     document.addEventListener('mousedown', onOutsideClick)
     return () => document.removeEventListener('mousedown', onOutsideClick)
   }, [popoverOpen])
+
+  // 시트가 열려 있는 동안 플로팅 탭바를 물리적으로 숨긴다(닫히면 정리 함수가 자동 복원)
+  useEffect(() => {
+    if (!open) return
+    return pushTabBarHidden()
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -234,6 +241,7 @@ export default function BadgeShareButton({
         onClose={() => setOpen(false)}
         detent="full"
         topGapPx={20}
+        footerBottomInset="safe-area"
         footer={
           state.kind === 'ready' ? (
             <Button surface="dark" fullWidth onClick={() => handleAction(state.blob)}>
@@ -242,13 +250,14 @@ export default function BadgeShareButton({
           ) : undefined
         }
       >
-        <div className="h-full flex flex-col items-center gap-4 px-[var(--spacing-24)] pt-[var(--spacing-8)]">
+        <div className="h-full flex flex-col min-h-0 px-[var(--spacing-16)]">
           {/*
             체크보드 미리보기 프레임 — 투명 PNG의 투명 영역을 시각화한다.
             다크 서피스 톤에 맞춰 라이트톤 체크보드(spike/background-generator/FilterPreview.tsx)보다
             대비를 낮춘 흰색 저투명도 2톤 조합으로 재조정했다(20260821_003 결정 유지).
-            aspect-square가 아니라 flex-1로 남은 세로 공간을 전부 채운다 — 실제 이미지는 1080×1920
-            세로 비율이라, 정사각형으로 눌러두면 실제보다 작게 보였다(2026-08-21 재작업).
+            aspect-square가 아니라 flex-1로 시트 헤더~푸터 사이 세로 공간을 남김없이 전부 채운다
+            (상하 여백 없음 — 2026-08-21 재작업: "미리보기 영역을 최대한 위/아래로 확대" 피드백 반영).
+            실제 이미지는 1080×1920 세로 비율이라, 정사각형으로 눌러두면 실제보다 작게 보였다.
           */}
           <div
             className="relative w-full flex-1 min-h-0 rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center"
@@ -260,11 +269,7 @@ export default function BadgeShareButton({
           >
             {state.kind === 'ready' ? (
               // eslint-disable-next-line @next/next/no-img-element -- 클라이언트에서 즉석 생성한 blob: URL, next/image 최적화 대상 아님
-              <img
-                src={state.blobUrl}
-                alt={badgeName}
-                className="w-full h-full object-contain p-[var(--spacing-16)]"
-              />
+              <img src={state.blobUrl} alt={badgeName} className="w-full h-full object-contain" />
             ) : state.kind === 'loading' ? (
               <WanderingEyesLoader />
             ) : (
@@ -273,7 +278,7 @@ export default function BadgeShareButton({
           </div>
 
           {state.kind === 'error' && (
-            <div className="shrink-0 pb-[var(--spacing-16)] text-center">
+            <div className="shrink-0 py-[var(--spacing-16)] text-center">
               <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{errorCopy(state.reason).title}</p>
               <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{errorCopy(state.reason).body}</p>
             </div>
