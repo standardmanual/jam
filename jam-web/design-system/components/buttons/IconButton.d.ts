@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes } from 'react';
 
 export type IconButtonIcon =
   | 'chevron-left' | 'chevron-right'
-  | 'close' | 'check' | 'info' | 'search' | 'menu';
+  | 'close' | 'check' | 'info' | 'search' | 'menu' | 'share';
 
 export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: IconButtonIcon;
