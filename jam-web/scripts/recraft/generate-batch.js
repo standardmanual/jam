@@ -17,6 +17,7 @@
  */
 const fs = require('fs')
 const path = require('path')
+const sharp = require('sharp')
 
 function loadEnv() {
   const envPath = path.join(__dirname, '..', '..', '.env.local')
@@ -72,7 +73,10 @@ async function main() {
 
     const data = await res.json()
     const b64 = data.data[0].b64_json
-    fs.writeFileSync(path.join(collectionDir, item.filename), Buffer.from(b64, 'base64'))
+    // Recraft는 b64_json에 WebP를 담아 보내는 경우가 있어(포토샵 등에서 .png로 못 엶),
+    // 항상 실제 PNG로 재인코딩해서 저장한다.
+    const pngBuf = await sharp(Buffer.from(b64, 'base64')).png().toBuffer()
+    fs.writeFileSync(path.join(collectionDir, item.filename), pngBuf)
     const credits = data.data[0].credits ?? 0
     totalCredits += credits
     console.log(`완료 (credits: ${credits})`)
