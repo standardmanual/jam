@@ -22,7 +22,7 @@
 [인벤토리]      users ─1:1─ inventory ─1:N─ inventory_items ──badge_id──> badges
                                               └─ slotted_in ──> item_books (슬롯 장착)
 
-[아이템북]      item_books ──faction_id──> factions
+[컬렉션]        item_books ──faction_id──> factions
                  ├─1:N─ user_item_book_slots        (슬롯별 장착 현황)
                  └─1:N─ user_item_book_completions   (완성 기록)
 
@@ -89,7 +89,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | type | `activity` / `item` / **`poi`**(신규 — POI 통과 시 반복 발급) |
 | rarity | common / rare / legend / mythic |
 | faction_id | 소속 세계관 (아이템 배지) |
-| item_book_id | 소속 아이템북 (구조 역전 — 아이템북이 배지 목록을 갖는 게 아니라 배지가 소속 아이템북을 가짐) |
+| item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |
 | is_wandering | 떠돌이 신화 아이템 여부 |
 | valid_from / valid_until | 노출 기간 |
@@ -112,19 +112,19 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 ### inventory / inventory_items
 원안 구조 유지(50슬롯). `inventory_items`에 추가된 것:
 - `serial_number`: SERIAL(순차) → **BEFORE INSERT 트리거로 1~999,999 난수 부여**로 변경(발급 순서 역산 방지). 앰비언트 드랍 픽업분은 50,001~999,999 별도 범위.
-- `slotted_in`: 아이템북 슬롯에 장착된 경우 참조 (장착 중엔 인벤토리 칸 미차감)
+- `slotted_in`: 컬렉션 슬롯에 장착된 경우 참조 (장착 중엔 인벤토리 칸 미차감)
 - `dropped_at` / `drop_id`: 드랍 후 소프트 삭제 추적
 
 ---
 
-## 4. 아이템북
+## 4. 컬렉션
 
 ### item_books
 `faction_id`로 세계관 연동, `story_text`, `is_active`, `drop_condition_json` 보유. **`required_item_badge_ids` 컬럼은 삭제됨** — 완성 조건은 이제 `badges.item_book_id`(배지→북 소속)로 역방향 관리.
 
 `background_color`/`background_shader_id`(20260818_004, 컬렉션 상세 배경 테마용) 외에
 `background_image_url`/`background_video_url`(nullable, 20260819_013) 보유 — badges 테이블과 동일 패턴.
-`/itembooks/[id]` 상세화면에 배지 상세와 동일한 단일 고정 배경 레이어로 렌더링됨(이미지 우선,
+`/collections/[id]` 상세화면에 배지 상세와 동일한 단일 고정 배경 레이어로 렌더링됨(이미지 우선,
 영상 지원, 20260819_014). 어드민 "일괄 적용" 버튼으로 컬렉션 자신의 배경값(4필드 스냅샷)을
 소속 배지(`item_book_id` 일치, 소프트 삭제 제외) 전체에 1회성으로 복사 — 실시간 fallback 아니며
 항상 덮어씀.
@@ -281,8 +281,8 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 **배지 이원화 (ActivityBadge vs ItemBadge) + POI 배지 분리**
 - 액티비티 배지는 영구 귀속(정체성), 아이템 배지는 거래 가능(경제), POI 배지는 반복 획득(방문 인증) — 세 가지 획득 패턴이 근본적으로 달라 발급 테이블을 분리 유지.
 
-**아이템북 소유 관계 역전**
-- 원안은 `item_books.required_item_badge_ids`(북이 배지 목록을 가짐)였으나, 세계관 연동과 슬롯 장착 UX가 추가되며 `badges.item_book_id`(배지가 소속 북을 가짐) 구조로 역전. 배지 하나가 정확히 하나의 북에만 속하는 현재 컨텐츠 구조(세계관 10개 = 아이템북 10개, 각 90종)와 더 잘 맞음.
+**컬렉션 소유 관계 역전**
+- 원안은 `item_books.required_item_badge_ids`(북이 배지 목록을 가짐)였으나, 세계관 연동과 슬롯 장착 UX가 추가되며 `badges.item_book_id`(배지가 소속 북을 가짐) 구조로 역전. 배지 하나가 정확히 하나의 북에만 속하는 현재 컨텐츠 구조(세계관 10개 = 컬렉션 10개, 각 90종)와 더 잘 맞음.
 
 **포인트를 append-only 원장으로**
 - `point_wallets.balance`는 캐시일 뿐, 실제 진실은 `point_transactions`. 정합성 검증(어드민 `points` 화면의 유통량 대사)과 감사 추적을 위해 잔액을 직접 UPDATE하지 않고 RPC로만 변경.

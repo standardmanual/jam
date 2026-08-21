@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode, Ref } from 'react'
 import TopNav from '@/components/ui/TopNav'
 import ItemBookHeroSection, {
   type ItemBookHeroSectionBook,
-} from '@/app/(main)/itembooks/[id]/ItemBookHeroSection'
+} from '@/app/(main)/collections/[id]/ItemBookHeroSection'
 import { getBadgeThemedTextStyle } from '@/lib/badgeBackgroundTheme'
 import { SERVICE_WIDTH } from '@/app/spike/background-generator/types'
 import { d } from '@/lib/i18n'

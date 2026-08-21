@@ -446,7 +446,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             {/* 속한 컬렉션 링크 */}
             {itemBook && (
               <ListRowCard
-                href={`/itembooks/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
+                href={`/collections/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
                 icon={
                   itemBook.image_url ? (
                     <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shrink-0">

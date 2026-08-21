@@ -11,8 +11,8 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
 import { RARITY_LABEL } from '@/lib/rarity'
 
-type TabKey = 'activity' | 'poi' | 'itembook'
-const VALID_TABS = new Set<string>(['activity', 'poi', 'itembook'])
+type TabKey = 'activity' | 'poi' | 'collection'
+const VALID_TABS = new Set<string>(['activity', 'poi', 'collection'])
 
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
@@ -99,7 +99,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
   const tabs: SlidingTabItem<TabKey>[] = [
     { key: 'activity', label: tabLabel(d.badges.tabActivity, earnedCount), ariaLabel: d.badges.tabActivity },
     { key: 'poi', label: tabLabel(d.badges.tabPoi, poiEarnedCount), ariaLabel: d.badges.tabPoi },
-    { key: 'itembook', label: tabLabel(d.badges.tabItembook, itemBooks.length), ariaLabel: d.badges.tabItembook },
+    { key: 'collection', label: tabLabel(d.badges.tabItembook, itemBooks.length), ariaLabel: d.badges.tabItembook },
   ]
 
   // 획득한 것만 보여준다 — 미획득 배지는 노출하지 않음(전국 산/지하철역 배지가
@@ -272,7 +272,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
         )}
 
         {/* 컬렉션 탭 */}
-        {activeTab === 'itembook' && (
+        {activeTab === 'collection' && (
           itemBooks.length > 0 ? (
             <div className="grid grid-cols-2 gap-[var(--spacing-16)]">
               {itemBooks.map((book) => {
@@ -280,7 +280,7 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
                 return (
                   <CollectionGridCard
                     key={book.id}
-                    href={`/itembooks/${book.id}?from=badges`}
+                    href={`/collections/${book.id}?from=badges`}
                     name={book.name}
                     imageUrl={book.image_url ?? null}
                     collected={progress.owned}

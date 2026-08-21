@@ -31,14 +31,14 @@ import FeedSection, { DetailSheet } from '../FeedSection'
 
 // ─── 탭 ─────────────────────────────────────────────────────────────────────
 
-type TabKey = 'badge' | 'itembooks' | 'followers' | 'following'
+type TabKey = 'badge' | 'collections' | 'followers' | 'following'
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'badge', label: d.tabs.badge },
-  { key: 'itembooks', label: d.tabs.itembooks },
+  { key: 'collections', label: d.tabs.itembooks },
   { key: 'followers', label: d.tabs.followers },
   { key: 'following', label: d.tabs.following },
 ]
-const VALID_TABS = new Set<string>(['badge', 'itembooks', 'followers', 'following'])
+const VALID_TABS = new Set<string>(['badge', 'collections', 'followers', 'following'])
 
 // ─── 피드 (본인 Feed 섹션용 UI는 ../FeedSection 공용 컴포넌트로 이전됨) ──────
 
@@ -173,7 +173,7 @@ export default function ProfileClient({
             for (const u of users) next[u.id] = u.isFollowing
             return next
           })
-        } else if (tab === 'itembooks') {
+        } else if (tab === 'collections') {
           const res = await fetch(`/api/users/${username}/itembooks`)
           const json = await res.json()
           setItembooksData(json.books ?? [])
@@ -314,7 +314,7 @@ export default function ProfileClient({
       )
     }
 
-    if (activeTab === 'itembooks') {
+    if (activeTab === 'collections') {
       if (itembooksData === null) return null
       if (itembooksData.length === 0) {
         return (
@@ -330,7 +330,7 @@ export default function ProfileClient({
           {itembooksData.map(book => (
             <CollectionGridCard
               key={book.id}
-              href={`/itembooks/${book.id}?u=${username}`}
+              href={`/collections/${book.id}?u=${username}`}
               name={book.name}
               imageUrl={book.image_url ?? null}
               collected={book.slottedCount}
@@ -394,7 +394,7 @@ export default function ProfileClient({
 
   const statCounts: Record<TabKey, number> = {
     badge: badgeCount,
-    itembooks: itemBookCount,
+    collections: itemBookCount,
     followers: followerCnt,
     following: followingCount,
   }
