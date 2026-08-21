@@ -22,7 +22,7 @@
 [인벤토리]      users ─1:1─ inventory ─1:N─ inventory_items ──badge_id──> badges
                                               └─ slotted_in ──> item_books (슬롯 장착)
 
-[아이템북]      item_books ──faction_id──> factions
+[컬렉션]        item_books ──faction_id──> factions
                  ├─1:N─ user_item_book_slots        (슬롯별 장착 현황)
                  └─1:N─ user_item_book_completions   (완성 기록)
 
@@ -89,12 +89,15 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | type | `activity` / `item` / **`poi`**(신규 — POI 통과 시 반복 발급) |
 | rarity | common / rare / legend / mythic |
 | faction_id | 소속 세계관 (아이템 배지) |
-| item_book_id | 소속 아이템북 (구조 역전 — 아이템북이 배지 목록을 갖는 게 아니라 배지가 소속 아이템북을 가짐) |
+| item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |
 | is_wandering | 떠돌이 신화 아이템 여부 |
 | valid_from / valid_until | 노출 기간 |
 | point_reward | 발급 시 지급 포인트 |
 | deleted_at | 소프트 삭제 |
+| background_color | 배지 상세화면 배경 테마 컬러(nullable). `background_image_url`이 없을 때만 렌더링에 쓰임. 어드민에서 이미지 업로드 시 평균 컬러 자동 프리필 + 수동 오버라이드 가능(20260818_003). TopNav·히어로카드·고정 배경 레이어에 실제 렌더링됨 |
+| background_shader_id | 배지 상세화면 배경 쉐이더 식별자(nullable). 어드민에 선택 UI는 있으나(20260818_003, placeholder 목록) **렌더링에는 미연결** — 값이 있어도 무시됨. `background_image_url` 도입(20260819_008) 이후 이 컬럼을 통한 실시간 쉐이더 렌더링 경로는 채택되지 않음 — 사실상 레거시 |
+| background_image_url | 배경 제너레이터(패턴/애니메이션 + Paper 셰이더 필터 합성)로 만든 배경을 어드민에서 static PNG로 구워(bake) Storage에 올린 뒤 저장하는 URL(nullable, 20260819_008). **`background_color`보다 우선 렌더링**됨(`getBadgeBackgroundStyle`) — 값이 있으면 이 이미지를, 없으면 `background_color`로 폴백. `background_color`와 상호 배타적으로 쓰임(어드민에서 저장 시 반대쪽을 null로 정리, DB 제약 아님). 원시 설정값(이미지·패턴/애니메이션 파라미터·필터 종류)은 저장하지 않음 — 재편집 가능한 설정이 아니라 완성된 이미지 1장 |
 
 ### user_activity_badges
 활동/아이템 배지 발급 기록. 평생 1회(UNIQUE user_id+badge_id). POI/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.
@@ -109,15 +112,22 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 ### inventory / inventory_items
 원안 구조 유지(50슬롯). `inventory_items`에 추가된 것:
 - `serial_number`: SERIAL(순차) → **BEFORE INSERT 트리거로 1~999,999 난수 부여**로 변경(발급 순서 역산 방지). 앰비언트 드랍 픽업분은 50,001~999,999 별도 범위.
-- `slotted_in`: 아이템북 슬롯에 장착된 경우 참조 (장착 중엔 인벤토리 칸 미차감)
+- `slotted_in`: 컬렉션 슬롯에 장착된 경우 참조 (장착 중엔 인벤토리 칸 미차감)
 - `dropped_at` / `drop_id`: 드랍 후 소프트 삭제 추적
 
 ---
 
-## 4. 아이템북
+## 4. 컬렉션
 
 ### item_books
 `faction_id`로 세계관 연동, `story_text`, `is_active`, `drop_condition_json` 보유. **`required_item_badge_ids` 컬럼은 삭제됨** — 완성 조건은 이제 `badges.item_book_id`(배지→북 소속)로 역방향 관리.
+
+`background_color`/`background_shader_id`(20260818_004, 컬렉션 상세 배경 테마용) 외에
+`background_image_url`/`background_video_url`(nullable, 20260819_013) 보유 — badges 테이블과 동일 패턴.
+`/collections/[id]` 상세화면에 배지 상세와 동일한 단일 고정 배경 레이어로 렌더링됨(이미지 우선,
+영상 지원, 20260819_014). 어드민 "일괄 적용" 버튼으로 컬렉션 자신의 배경값(4필드 스냅샷)을
+소속 배지(`item_book_id` 일치, 소프트 삭제 제외) 전체에 1회성으로 복사 — 실시간 fallback 아니며
+항상 덮어씀.
 
 ### user_item_book_slots / user_item_book_completions (신규)
 - `user_item_book_slots`: 인벤토리 아이템을 슬롯에 장착한 기록 (UNIQUE user+book+badge)
@@ -129,6 +139,11 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 
 ### factions
 10개 세계관. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/FACTIONS.md](../Content/FACTIONS.md) 참고.
+
+`background_color`/`background_shader_id`(20260818_004) 외에 `background_image_url`/`background_video_url`
+(nullable, 20260819_013) 보유. 세계관 자체는 서비스 공개 상세 페이지가 없어 이 값이 직접 렌더링되지는
+않음 — 소속 컬렉션·배지 전체로 캐스케이드 일괄 적용하기 위한 마스터 값 저장용. 캐스케이드 로직은
+후속 티켓(015) 범위.
 
 ### faction_adjacency
 세계관 간 인접 그래프 (PK: faction_id + adjacent_faction_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.2 참고.
@@ -266,8 +281,8 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 **배지 이원화 (ActivityBadge vs ItemBadge) + POI 배지 분리**
 - 액티비티 배지는 영구 귀속(정체성), 아이템 배지는 거래 가능(경제), POI 배지는 반복 획득(방문 인증) — 세 가지 획득 패턴이 근본적으로 달라 발급 테이블을 분리 유지.
 
-**아이템북 소유 관계 역전**
-- 원안은 `item_books.required_item_badge_ids`(북이 배지 목록을 가짐)였으나, 세계관 연동과 슬롯 장착 UX가 추가되며 `badges.item_book_id`(배지가 소속 북을 가짐) 구조로 역전. 배지 하나가 정확히 하나의 북에만 속하는 현재 컨텐츠 구조(세계관 10개 = 아이템북 10개, 각 90종)와 더 잘 맞음.
+**컬렉션 소유 관계 역전**
+- 원안은 `item_books.required_item_badge_ids`(북이 배지 목록을 가짐)였으나, 세계관 연동과 슬롯 장착 UX가 추가되며 `badges.item_book_id`(배지가 소속 북을 가짐) 구조로 역전. 배지 하나가 정확히 하나의 북에만 속하는 현재 컨텐츠 구조(세계관 10개 = 컬렉션 10개, 각 90종)와 더 잘 맞음.
 
 **포인트를 append-only 원장으로**
 - `point_wallets.balance`는 캐시일 뿐, 실제 진실은 `point_transactions`. 정합성 검증(어드민 `points` 화면의 유통량 대사)과 감사 추적을 위해 잔액을 직접 UPDATE하지 않고 RPC로만 변경.

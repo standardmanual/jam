@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useToast } from '@/components/ui/Toast'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
-import { MedalIcon } from '@/components/ui/icons'
+import { MedalIcon, PackageIcon } from '@/components/ui/icons'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRow, CombinationRecipeRow, InventoryItemRow } from '@/types/database'
@@ -124,7 +125,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
 
       {/* 결과 알림 */}
       {result && (
-        <Card className="mx-[var(--spacing-16)] mb-[var(--spacing-16)] text-center">
+        <Card tone="inverse" className="mx-[var(--spacing-16)] mb-[var(--spacing-16)] text-center">
           {result.success ? (
             <div className="flex flex-col items-center gap-[var(--spacing-16)]">
               <span ref={checkRef} className="t-success-check" data-state="out" aria-hidden="true">
@@ -206,7 +207,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
           <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.hintsTitle}</p>
           <div className="flex flex-col gap-[var(--spacing-8)]">
             {hints.map((h, i) => (
-              <Card key={i}>
+              <Card tone="inverse" key={i}>
                 <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">{h.hint_text ?? d.combine.hintUnknown}</p>
               </Card>
             ))}
@@ -220,7 +221,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
           <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.recipesTitle}</p>
           <div className="flex flex-col gap-[var(--spacing-8)]">
             {publicRecipes.map((r) => (
-              <Card key={r.id} className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">
+              <Card tone="inverse" key={r.id} className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">
                 {t(d.combine.recipeLine, {
                   count: r.ingredient_badge_ids.length,
                   pct: Math.round(r.success_rate * 100),
@@ -236,7 +237,11 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       <div className="flex-1 px-[var(--spacing-16)] py-[var(--spacing-24)]">
         <p className="text-[length:var(--text-caption)] text-text/50 uppercase tracking-widest mb-[var(--spacing-16)]">{d.combine.myItemsTitle}</p>
         {items.length === 0 ? (
-          <p className="text-text/50 text-center py-[var(--spacing-32)]">{d.combine.emptyInventory}</p>
+          <EmptyState
+            icon={<PackageIcon className="w-8 h-8" />}
+            title={d.combine.emptyInventory}
+            description={d.combine.emptyInventoryBody}
+          />
         ) : (
           <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
             {items.map((item) => {

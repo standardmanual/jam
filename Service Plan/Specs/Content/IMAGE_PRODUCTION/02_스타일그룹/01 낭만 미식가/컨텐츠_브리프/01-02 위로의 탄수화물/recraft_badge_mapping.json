@@ -1,0 +1,104 @@
+{
+  "collection_id": "01-02",
+  "items": [
+    {
+      "filename": "01-02_1_라면면발_logo.png",
+      "name": "꼬들한 라면 면발",
+      "ids": [
+        "b61a50af-236f-4e30-abfb-90b536a85818",
+        "4aef0082-c51a-4cad-b300-a3c5ecb5a892",
+        "c6ab70c8-9916-4634-b7d9-85ec74e0c2cd",
+        "ffe7a141-9d5b-483a-9b49-76d5d6335de0"
+      ],
+      "slug": "ramyeon_noodles"
+    },
+    {
+      "filename": "01-02_2_옆구리터진김밥_logo.png",
+      "name": "옆구리 터진 김밥",
+      "ids": [
+        "0f386a08-0891-4faf-8368-bb80e79c50a7",
+        "51dbccd8-e01c-414c-8de2-7bf960d7a60f",
+        "f9675e2c-ee73-446a-bcc6-94e729b32058",
+        "38ef0751-e011-4c60-a1ec-d1c230f2af89"
+      ],
+      "slug": "gimbap"
+    },
+    {
+      "filename": "01-02_3_오징어튀김_logo.png",
+      "name": "바삭한 오징어튀김",
+      "ids": [
+        "65da4997-983d-458d-a18a-668043505a49",
+        "a0b2b32f-8928-4d34-802f-a2a05f21529d",
+        "4f8f9dfc-f58d-428d-8172-1f793c6121be",
+        "4e6eafd7-d69e-4545-b987-ff42b8fa7ef2"
+      ],
+      "slug": "fried_squid"
+    },
+    {
+      "filename": "01-02_4_볶음밥_logo.png",
+      "name": "기름진 볶음밥",
+      "ids": [
+        "205d8192-9965-46ea-bf18-7afb9314bfbf",
+        "459f8276-f0d0-45da-9d94-c6ee289cd478",
+        "e7ee0fdf-a8a1-46cb-95c0-07f8759e1f3b",
+        "43810170-641d-4d14-ac0f-48457241ace9"
+      ],
+      "slug": "fried_rice"
+    },
+    {
+      "filename": "01-02_5_마요네즈젓가락_logo.png",
+      "name": "마요네즈 묻은 젓가락",
+      "ids": [
+        "a485bc9c-f759-4972-a017-261c4ba1c5ca",
+        "7c12daf0-f8bc-45bf-9458-de421d64beb3",
+        "1557f041-619d-40f9-b936-92e14fd9eb84",
+        "15889446-21ae-44f1-a51e-ed642de5b55b"
+      ],
+      "slug": "mayo_chopsticks"
+    },
+    {
+      "filename": "01-02_6_단무지_logo.png",
+      "name": "단무지 한 조각",
+      "ids": [
+        "73e46bb4-2cb4-4d13-bd74-93201b5fd8db",
+        "93ee702a-880f-4bfc-8852-6145ad19d44f",
+        "a877dc88-5701-4db1-808a-649a48907925",
+        "47e0e5ef-575b-439d-8dc0-129d9e39b7bd"
+      ],
+      "slug": "danmuji"
+    },
+    {
+      "filename": "01-02_7_짜장소스_logo.png",
+      "name": "식어버린 짜장 소스",
+      "ids": [
+        "5d1c2796-4f9d-4fcb-9ea7-8fd46acef430",
+        "70513b44-d888-4af0-90d1-95f7b82241a5",
+        "5341f267-7829-401f-a322-823027c170e3",
+        "436b16a8-05f9-4f46-bce8-e4a7fdc9866c"
+      ],
+      "slug": "jjajang_sauce"
+    },
+    {
+      "filename": "01-02_8_군만두간장팩_logo.png",
+      "name": "군만두 간장 팩",
+      "ids": [
+        "67a50e45-1de4-4899-aa3c-77c989f543c0",
+        "87f519fa-611d-4dbc-baa5-1bb1d88939dc",
+        "f44bd6fc-7d54-4c65-a4df-3a02f3ee9ff2",
+        "9185f6ba-a5e5-491c-9caf-1740a3281dda"
+      ],
+      "slug": "soy_sauce_packet"
+    },
+    {
+      "filename": "01-02_9_배달영수증_logo.png",
+      "name": "구겨진 배달 영수증",
+      "ids": [
+        "90625e2b-47f6-4075-9b78-9e959be80266",
+        "07bf6d4d-4720-41cb-bca1-90ae99b4621c",
+        "7f6bf4cb-a425-4ea9-9cca-1361890de5c1",
+        "c3b7293f-ee4b-4d51-9a40-95981c136bde"
+      ],
+      "slug": "delivery_receipt"
+    }
+  ]
+}

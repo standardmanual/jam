@@ -46,14 +46,14 @@
 | 영역 | 문서 |
 |------|------|
 | 배지·드랍 엔진 판정 로직 (드랍엔진 v2, 세계관 모멘텀, 앰비언트 드랍 등) | [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) |
-| 액티비티배지·아이템북·아이템배지·세계관·POI 컨텐츠 목록 | [Specs/Content/](../Content/) |
+| 액티비티배지·컬렉션·아이템배지·세계관·POI 컨텐츠 목록 | [Specs/Content/](../Content/) |
 | 실제 개발 작업 이력 원본 | [History/Migration/Ticket/](../../History/Migration/Ticket/) |
 
 ---
 
 ## 한 줄 요약
 
-**Strava 연동 → 배지 자동 발급 → 지도에서 아이템 드랍/픽업 → 세계관 아이템북 컬렉션 → 조합·미션·포인트로 순환 → (예정) 실물 패치 구매 자격**
+**Strava 연동 → 배지 자동 발급 → 지도에서 아이템 드랍/픽업 → 세계관별 컬렉션 완성 → 조합·미션·포인트로 순환 → (예정) 실물 패치 구매 자격**
 
 ---
 

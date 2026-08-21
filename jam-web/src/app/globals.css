@@ -4,6 +4,18 @@
 @import "../components/transitions.css";
 
 /*
+ * 20260820_003 — 모듈러-서비스 토큰 실연결 (1단계).
+ * 라이트 오버라이드(colors.light.css)는 제외 — 서비스는 다크 전용 고정(color-scheme: dark).
+ * 이름이 일치하는 토큰(68개)은 아래 하드코딩 블록에서 제거하고 이 import로 대체했다.
+ * 서비스 전용 토큰(레거시 브랜드·transitions.dev 모션 등 227개)은 그대로 globals.css에 유지.
+ */
+@import "../../design-system/tokens/colors.css";
+@import "../../design-system/tokens/typography.css";
+@import "../../design-system/tokens/spacing.css";
+@import "../../design-system/tokens/radius.css";
+@import "../../design-system/tokens/motion.css";
+
+/*
  * DS v2 — 시맨틱 컬러 토큰 (블랙 캔버스 / 화이트 / 레드-오렌지)
  * 어드민 테마 시스템 호환을 위해 --color-main / --color-sub 는 @theme에 유지.
  * layout.tsx에서 런타임에 덮어씌우는 인라인 스타일도 유지.
@@ -37,35 +49,38 @@
   --color-jam-purple: #8b6cf6;
   --color-jam-yellow: #ffc93c;
   --color-jam-cream: #fff8ee;
+}
 
-  /* DS v2 시맨틱 — Tailwind 유틸리티(bg-surface, text-text 등)가 이 토큰을 참조 */
-  --color-surface: #1a1a1a;           /* 카드·raised surface (DS v2 grey-800) */
-  /* 20260816_012: 보더 제거로 사라진 카드/버튼 구분을 배경톤으로 대체하는 신규 엘리베이션 레벨.
-     대부분의 (main) 페이지 캔버스는 --color-bg(#000)가 아니라 --color-surface(#1a1a1a)를
-     bg-surface로 깔고 있어(page wrapper 전수 확인), 카드가 그 위에서 "떠 보이려면"
-     --color-surface보다 밝아야 한다. #000000~#222222 범위 안에서 --color-surface(#1a1a1a)
-     보다 살짝 밝게 잡았다 — --color-bg-tint(#222222)와는 별개 토큰(재정의 아님). */
-  --color-surface-elevated: #1f1f1f;
-  --color-surface-inverse: #ffffff;   /* 반전 surface — 라이트 카드 */
-  --color-text: #ffffff;              /* 다크 배경 위 기본 텍스트 */
-  --color-text-secondary: #b2b2b2;    /* 보조 텍스트 (4.6:1 WCAG AA) */
-  --color-text-inverse: #000000;      /* 라이트 surface 위 텍스트 */
-  --color-border: #2a2a2a;            /* 다크 배경 위 구분선 */
-  --color-border-inverse: rgba(0, 0, 0, 0.12); /* 라이트 surface 위 구분선 */
+/*
+ * 20260820_003 — Tailwind 유틸리티(bg-surface, text-text, rounded-card 등) 생성용 이름은
+ * @theme 블록 안에 있어야 하지만, 실제 값은 위에서 import한 design-system/tokens/colors.css·
+ * radius.css의 :root 선언을 그대로 참조한다(`inline`이라 별도 :root 재선언 없이 var() 참조만
+ * 유틸리티 출력에 인라인됨 — 값 중복도, 자기참조 순환도 없음).
+ */
+@theme inline {
+  /* DS v2 시맨틱 컬러 — 카드·raised surface (DS v2 grey-800) 등 */
+  --color-surface: var(--color-surface);
+  --color-surface-elevated: var(--color-surface-elevated);
+  --color-surface-inverse: var(--color-surface-inverse);
+  --color-text: var(--color-text);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-inverse: var(--color-text-inverse);
+  --color-border: var(--color-border);
+  --color-border-inverse: var(--color-border-inverse);
 
   /* DS v2 반경 스케일 (Tailwind rounded-* 유틸리티 생성) */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-card: 16px;
-  --radius-pill: 9999px;
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-card: var(--radius-card);
+  --radius-pill: var(--radius-pill);
 
   /* 하위 호환 반경 별칭 — 기존 컴포넌트에서 var()로 참조 중 */
-  --radius-tags: 9999px;
-  --radius-cards: 16px;
-  --radius-inputs: 8px;
-  --radius-buttons: 9999px;
-  --radius-nav-buttons: 9999px;
-  --radius-pill-buttons: 9999px;
+  --radius-tags: var(--radius-tags);
+  --radius-cards: var(--radius-cards);
+  --radius-inputs: var(--radius-inputs);
+  --radius-buttons: var(--radius-buttons);
+  --radius-nav-buttons: var(--radius-nav-buttons);
+  --radius-pill-buttons: var(--radius-pill-buttons);
 }
 
 @theme inline {
@@ -82,71 +97,26 @@
  *     p-[var(--layout-card-padding)] / text-[length:var(--text-body)]
  */
 :root {
-  /* ── DS v2 기본 팔레트 ────────────────────────────────────── */
-  --color-bg: #000000;
-  --color-bg-tint: #222222;
-  --color-bg-inverse: #ffffff;
-  --color-primary: #e8461f;           /* 레드-오렌지 — 버튼·활성 강조 */
-  --color-secondary: #8a5a2e;
-  --color-icon-inactive: #2a2a2a;     /* TabBar 비활성 아이콘 (흰 pill 위) */
-  --color-overlay: rgba(0, 0, 0, 0.6);
-  --color-border-light: rgba(255, 255, 255, 0.3); /* 다크 배경 위 아웃라인 버튼·보더 */
+  /* ── DS v2 기본 팔레트 (서비스 전용 — 모듈러 colors.css와 이름이 겹치지 않는 토큰만) ── */
+  /* 20260820_003: --color-bg/-bg-tint/-bg-inverse/-primary/-secondary/-icon-inactive/
+     -overlay/-border-light/-rarity-* 는 design-system/tokens/colors.css import로 대체됨
+     (이름·값 완전 일치 — 68개 그룹). 값은 위 import에서 그대로 공급된다. */
   /* 다크 카드(예: ListRowCard의 --color-surface-elevated) 위에 놓여도 항상 구분되는
      저강조 그레이 필 배경. 절대값이 아닌 흰색 오버레이라 부모 카드 톤이 뭐든 항상
      밝게 도드라진다 (팔로우 버튼 등 outline 버튼 배경, 20260817). */
   --color-chip-gray: rgba(255, 255, 255, 0.12);
 
-  /* ── 배지 희귀도 ─────────────────────────────────────────── */
-  --color-rarity-common: #6b6b6b;
-  --color-rarity-common-text: #ffffff;
-  --color-rarity-rare: #00cc7a;
-  --color-rarity-rare-text: #000000;
-  --color-rarity-legend: #f5a300;
-  --color-rarity-legend-text: #000000;
-  --color-rarity-mythic: #ff2d87;
-  --color-rarity-mythic-text: #ffffff;
-
-  /* ── 폰트 ───────────────────────────────────────────────── */
-  /* [의사결정 C] Pretendard 유지 — DS v2 폰트(Noto Sans KR) 교체 없음 */
-  --font-family-base: "Pretendard Variable", Pretendard, -apple-system,
-    BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-
-  /* ── 타이포그래피 스케일 (DS v2 기반, 기존 참조명 호환 유지) ── */
+  /* ── 타이포그래피 스케일 (서비스 전용 이름만 — text-body/-small/-caption/-display/
+     -bold-display/-bold-lg/-heading-sm, tracking-label 은 typography.css import로 대체) ── */
   --text-body-sm: 16px;     --leading-body-sm: 1.5;
-  --text-body: 16px;        --leading-body: 1.5;
-  --text-small: 14px;       --leading-small: 1.43;
-  --text-caption: 12px;     --leading-caption: 1.4;
   --text-subheading: 24px;  --leading-subheading: 1.3;
-  --text-heading-sm: 28px;  --leading-heading-sm: 1.2;
   --text-heading: 44px;     --leading-heading: 1.1;
   --text-heading-lg: 56px;  --leading-heading-lg: 1.08;
-  --text-display: 96px;     --leading-display: 1.08;
-  --text-bold-display: 72px; --leading-bold-display: 1.0;
-  --text-bold-lg: 40px;      --leading-bold-lg: 1.05;
 
-  /* 트래킹 */
-  --tracking-label: 0.4px;
-
-  /* ── 스페이싱 (DS v2 4px base) ───────────────────────────── */
-  --spacing-4: 4px;
-  --spacing-8: 8px;
-  --spacing-12: 12px;
-  --spacing-16: 16px;
-  --spacing-24: 24px;
-  --spacing-32: 32px;
+  /* ── 스페이싱 (서비스 전용 확장 — 4~64px 8종·layout-*·touch-target-min·
+     spacing-safe-bottom 은 spacing.css import로 대체) ── */
   --spacing-40: 40px;
-  --spacing-48: 48px;
-  --spacing-64: 64px;
   --spacing-96: 96px;
-
-  /* ── 레이아웃 시맨틱 ─────────────────────────────────────── */
-  --layout-card-padding: var(--spacing-24);
-  --layout-section-gap: var(--spacing-48);
-  --layout-element-gap: var(--spacing-16);
-
-  /* ── 터치 영역 / 세이프에어리어 ─────────────────────────── */
-  --touch-target-min: 44px;
-  --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
 
   /* ── elevation — 1px inset border만 (드롭섀도 금지) ──────── */
   --shadow-subtle: inset 0 0 0 1px var(--color-border);
@@ -167,19 +137,14 @@
      its own; `transitions refine` maps hardcoded values back to
      these tokens. */
   /* Durations */
+  /* 20260820_003: --duration-micro/-quick/-fast/-medium/-slow 는 motion.css import로 대체
+     (이름·값 완전 일치 — 68개 그룹). --duration-stagger/-very-slow 는 서비스 전용이라 유지. */
   --duration-stagger: 40ms;  /* per-item stagger offset */
-  --duration-micro: 80ms;  /* tooltip/path delay, shake segment, large stagger */
-  --duration-quick: 150ms;  /* modal/dropdown close, text swap, tooltip appear */
-  --duration-fast: 250ms;  /* icon swap, dropdown/modal open, tabs sliding, page slide */
-  --duration-medium: 350ms;  /* panel close, toast close */
-  --duration-slow: 400ms;  /* panel open, skeleton content reveal, input clear */
   --duration-very-slow: 500ms;  /* emphasis moments, badge appear, text reveal, success check */
   /* Easings */
-  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);  /* modal/dropdown/panel open + close, page slide, resize, position change */
+  /* 20260820_003: --ease-smooth-out/-out/-linear/-bounce 는 motion.css import로 대체
+     (이름·값 완전 일치 — 68개 그룹). --ease-in-out/-bounce-strong 은 서비스 전용이라 유지. */
   --ease-in-out: ease-in-out;  /* icon swap, text swap, text reveal, skeleton reveal */
-  --ease-out: ease-out;  /* tooltip open / close */
-  --ease-linear: linear;  /* shimmer, skeleton pulse, spinner */
-  --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);  /* badge pop open */
   --ease-bounce-strong: cubic-bezier(0.34, 3.85, 0.64, 1);  /* bouncy hover-out (avatar return) */
   /* Distances */
   --distance-micro: 4px;  /* text swap */
@@ -414,4 +379,25 @@ body {
   color: var(--color-text);
   font-family: var(--font-family-base);
   -webkit-tap-highlight-color: transparent;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────────
+ * 배지 상세화면 배경 반복 영상 (20260819_012)
+ *
+ * 접근성: 사용자가 시스템에서 "동작 줄이기"를 켜두면 배경 영상을 재생하지 않는다.
+ * 영상만 숨기면 같은 레이어에 깔려 있는 CSS 배경 이미지(어드민이 영상과 함께 구운 poster
+ * 정지 PNG)가 그대로 보이므로, 화면 구성은 그대로 유지된 채 움직임만 사라진다.
+ *
+ * `display: block`을 여기(클래스)에 두는 이유: 엘리먼트 인라인 style에 두면 인라인이 항상
+ * 스타일시트를 이기기 때문에 아래 reduce 규칙이 전혀 먹지 않는다(시각 검증에서 실제로 확인됨).
+ * 두 규칙의 명시도가 같으므로 나중에 오는 미디어쿼리 쪽이 적용된다.
+ * ────────────────────────────────────────────────────────────────────────────── */
+.badge-background-video {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-background-video {
+    display: none;
+  }
 }

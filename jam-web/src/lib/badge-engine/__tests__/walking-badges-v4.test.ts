@@ -396,6 +396,10 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     point_reward: 0,
     deleted_at: null,
     created_at: '2026-01-01T00:00:00Z',
+    background_color: null,
+    background_shader_id: null,
+    background_image_url: null,
+    background_video_url: null,
     ...overrides,
   }
 }

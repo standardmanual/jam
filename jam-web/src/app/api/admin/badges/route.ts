@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight, valid_from, valid_until, point_reward } = body
+  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url } = body
 
   if (!name || !description || !type || !rarity || !image_url) {
     return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 })
@@ -47,6 +47,13 @@ export async function POST(req: NextRequest) {
     valid_from: valid_from ?? null,
     valid_until: valid_until ?? null,
     point_reward: Math.max(0, Math.trunc(Number(point_reward) || 0)),
+    background_color: background_color ?? null,
+    background_shader_id: background_shader_id ?? null,
+    // 배경 3모드(단색 / 정적 제너레이터 / 애니메이션 제너레이터)는 상호 배타적이라 선택하지 않은
+    // 쪽은 항상 null로 정리된다 — 정리 책임은 저작 화면(BadgeForm)에 있고, 여기서는 넘어온 값을
+    // 그대로 반영한다(20260819_012).
+    background_image_url: background_image_url ?? null,
+    background_video_url: background_video_url ?? null,
   }
   const badgesQuery = supabase.from('badges')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 BadgesRow와 일치

@@ -34,7 +34,7 @@ jam-web/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/login/
-│   │   ├── (main)/             # badges, combine, drops, inventory, itembooks,
+│   │   ├── (main)/             # badges, collections, combine, drops, inventory,
 │   │   │                       # missions, onboarding, points, profile, search,
 │   │   │                       # today, [username] 등
 │   │   ├── admin/               # abusing, ambient-drop-policy, badges, combine-policy,
@@ -112,7 +112,7 @@ jam-web/
 - **목업/하드코딩 데이터로 완성이라고 하지 마** — 실제 Strava 계정 연동 테스트 필수
 - **package.json 의존성 버전을 임의로 변경하지 마** — 보안 패치 외 버전 고정. 특히 Next.js는 16 메이저 버전 고정 — 임의 업/다운그레이드 금지
 - **Strava rate limit 초과하지 마** — 200/15분, 2000/일 제한. 배치 처리 시 딜레이 추가
-- **인벤토리 슬롯 체크 없이 아이템 추가하지 마** — 50슬롯 초과 방지 로직 항상 포함 (단, `slotted_in`으로 아이템북에 장착된 아이템은 슬롯 차감에서 제외)
+- **인벤토리 슬롯 체크 없이 아이템 추가하지 마** — 50슬롯 초과 방지 로직 항상 포함 (단, `slotted_in`으로 컬렉션에 장착된 아이템은 슬롯 차감에서 제외)
 - **네이버 지역검색 API 캐시 없이 반복 호출하지 마** — `poi_search_cache` TTL 정책 우회 금지 (구 OSM 규칙 "브랜드 조건 AND 체이닝 금지"는 데이터소스 전환으로 더 이상 적용 대상 아님)
 - **poi_drops 테이블에 ON CONFLICT (osm_id) 부분 인덱스로 upsert하지 마** — UNIQUE constraint만 ON CONFLICT 대상 가능 (osm_id는 레거시 컬럼, 신규 로직은 naver_id 기준)
 - **point_wallets.balance를 직접 UPDATE하지 마** — 반드시 `award_points()` RPC 경유. 원장(point_transactions)과의 정합성이 깨지면 어드민 대사 화면에서 즉시 드러남

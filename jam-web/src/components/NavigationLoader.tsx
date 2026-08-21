@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import WanderingEyesLoader from '@/components/ui/WanderingEyesLoader'
+import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
 
 const SHOW_DELAY_MS = 1000 // 이 시간 안에 탐색이 끝나면 로더를 아예 띄우지 않는다
 const MIN_VISIBLE_MS = 400  // flash 방지 — 일단 뜬 뒤엔 최소 이 시간만큼은 표시

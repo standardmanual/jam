@@ -102,6 +102,18 @@ export interface BadgeRow {
   /** 소프트 삭제 시각. NULL 아니면 신규 발급/드랍/노출 대상에서 제외 — 기존 보유자 이력은 유지됨 */
   deleted_at: string | null
   created_at: string
+  /** 배지 상세화면 배경 테마 컬러값 (20260818_002 선행 구조). background_image_url과 상호 배타적 */
+  background_color: string | null
+  /** 배지 상세화면 배경 쉐이더 식별자 (20260818_002 선행 구조 — 쉐이더 스택 미정, 아직 UI에서 미사용) */
+  background_shader_id: string | null
+  /** 배경 제너레이터로 합성 후 구운(bake) 정적 PNG의 Storage URL. background_color와 상호
+   *  배타적이며, 있으면 렌더링 시 우선한다(20260819_008).
+   *  애니메이션 모드(background_video_url)일 때도 poster/폴백 정지 이미지로 함께 채워진다
+   *  (20260819_012) */
+  background_image_url: string | null
+  /** 배경 제너레이터 애니메이션 모드 결과를 구운 반복 재생 MP4(H.264)의 Storage URL.
+   *  값이 있으면 background_image_url은 그 영상의 poster/폴백으로 쓰인다(20260819_012) */
+  background_video_url: string | null
 }
 
 export interface UserActivityBadgeRow {
@@ -208,6 +220,13 @@ export interface ItemBookRow {
   is_active: boolean
   drop_condition_json: Record<string, unknown> | null
   created_at: string
+  /** 20260818_004 — "하위 배지에 일괄 적용" 원본 값. 컬렉션 자체에는 렌더링되지 않는다. */
+  background_color: string | null
+  background_shader_id: string | null
+  /** 20260819_013 — 배경 제너레이터 결과(정적 이미지). 하위 배지 일괄 적용 원본 값. */
+  background_image_url: string | null
+  /** 20260819_013 — 배경 제너레이터 애니메이션 결과(반복 재생 MP4). background_image_url은 poster로 함께 채워진다. */
+  background_video_url: string | null
 }
 
 export interface PoiRow {
@@ -406,6 +425,13 @@ export interface FactionRow {
   sort_order: number
   drop_condition_json: Record<string, unknown> | null
   created_at: string
+  /** 20260818_004 — "하위 배지에 일괄 적용" 원본 값. 세계관 자체에는 렌더링되지 않는다. */
+  background_color: string | null
+  background_shader_id: string | null
+  /** 20260819_013 — 배경 제너레이터 결과(정적 이미지). 하위 배지 일괄 적용 원본 값. */
+  background_image_url: string | null
+  /** 20260819_013 — 배경 제너레이터 애니메이션 결과(반복 재생 MP4). background_image_url은 poster로 함께 채워진다. */
+  background_video_url: string | null
 }
 
 export interface FactionAdjacencyRow {

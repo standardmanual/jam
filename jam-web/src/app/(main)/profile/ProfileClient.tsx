@@ -1,14 +1,15 @@
 'use client'
 
-import { useCallback, useState, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime } from '@/lib/utils'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
-import Card from '@/components/ui/Card'
+import { Card } from '@ds/components/cards/Card'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
 import Button from '@/components/ui/Button'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
@@ -23,20 +24,21 @@ import {
   BookIcon,
   ActivityIcon,
   ChevronRightIcon,
+  PencilIcon,
 } from '@/components/ui/icons'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import FeedSection, { DetailSheet } from '../FeedSection'
 
 // ─── 탭 ─────────────────────────────────────────────────────────────────────
 
-type TabKey = 'badge' | 'itembooks' | 'followers' | 'following'
+type TabKey = 'badge' | 'collections' | 'followers' | 'following'
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'badge', label: d.tabs.badge },
-  { key: 'itembooks', label: d.tabs.itembooks },
+  { key: 'collections', label: d.tabs.itembooks },
   { key: 'followers', label: d.tabs.followers },
   { key: 'following', label: d.tabs.following },
 ]
-const VALID_TABS = new Set<string>(['badge', 'itembooks', 'followers', 'following'])
+const VALID_TABS = new Set<string>(['badge', 'collections', 'followers', 'following'])
 
 // ─── 피드 (본인 Feed 섹션용 UI는 ../FeedSection 공용 컴포넌트로 이전됨) ──────
 
@@ -59,19 +61,10 @@ interface ItemBookItem {
   totalBadgeCount: number
   slottedCount: number
   isCompleted: boolean
+  rarity: BadgeRarity
 }
 
 // ─── 공통 조각 ───────────────────────────────────────────────────────────────
-
-/** 빈 상태 — 아이콘(SVG) + 안내 문구 */
-function EmptyState({ icon, message }: { icon: ReactNode; message: string }) {
-  return (
-    <Card className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-40)]">
-      <span className="text-text-inverse/40">{icon}</span>
-      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{message}</p>
-    </Card>
-  )
-}
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 
@@ -180,7 +173,7 @@ export default function ProfileClient({
             for (const u of users) next[u.id] = u.isFollowing
             return next
           })
-        } else if (tab === 'itembooks') {
+        } else if (tab === 'collections') {
           const res = await fetch(`/api/users/${username}/itembooks`)
           const json = await res.json()
           setItembooksData(json.books ?? [])
@@ -295,7 +288,13 @@ export default function ProfileClient({
   const renderTabContent = () => {
     if (activeTab === 'badge') {
       if (badgeItems.length === 0) {
-        return <EmptyState icon={<MedalIcon className="w-8 h-8" />} message={d.profile.emptyBadges} />
+        return (
+          <EmptyState
+            icon={<MedalIcon className="w-8 h-8" />}
+            title={d.profile.emptyBadges}
+            description={d.profile.emptyBadgesBody}
+          />
+        )
       }
       return (
         <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
@@ -315,22 +314,29 @@ export default function ProfileClient({
       )
     }
 
-    if (activeTab === 'itembooks') {
+    if (activeTab === 'collections') {
       if (itembooksData === null) return null
       if (itembooksData.length === 0) {
-        return <EmptyState icon={<BookIcon className="w-8 h-8" />} message={d.profile.emptyItembooks} />
+        return (
+          <EmptyState
+            icon={<BookIcon className="w-8 h-8" />}
+            title={d.profile.emptyItembooks}
+            description={d.profile.emptyItembooksBody}
+          />
+        )
       }
       return (
         <div className="grid grid-cols-2 gap-[var(--spacing-8)]">
           {itembooksData.map(book => (
             <CollectionGridCard
               key={book.id}
-              href={`/itembooks/${book.id}?u=${username}`}
+              href={`/collections/${book.id}?u=${username}`}
               name={book.name}
               imageUrl={book.image_url ?? null}
               collected={book.slottedCount}
               total={book.totalBadgeCount}
               completed={book.isCompleted}
+              rarity={book.rarity}
             />
           ))}
         </div>
@@ -343,7 +349,8 @@ export default function ProfileClient({
       return (
         <EmptyState
           icon={<UsersIcon className="w-8 h-8" />}
-          message={activeTab === 'followers' ? d.profile.emptyFollowers : d.profile.emptyFollowing}
+          title={activeTab === 'followers' ? d.profile.emptyFollowers : d.profile.emptyFollowing}
+          description={activeTab === 'followers' ? d.profile.emptyFollowersBody : d.profile.emptyFollowingBody}
         />
       )
     }
@@ -387,7 +394,7 @@ export default function ProfileClient({
 
   const statCounts: Record<TabKey, number> = {
     badge: badgeCount,
-    itembooks: itemBookCount,
+    collections: itemBookCount,
     followers: followerCnt,
     following: followingCount,
   }
@@ -404,7 +411,7 @@ export default function ProfileClient({
       label: (
         <span className="flex flex-col items-center justify-center gap-1">
           <span
-            className={`text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] tabular-nums ${
+            className={`text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold tabular-nums ${
               isActive ? 'text-[color:var(--tabs-text-active)]' : 'text-[color:var(--color-primary)]'
             }`}
           >
@@ -422,55 +429,70 @@ export default function ProfileClient({
 
   return (
     <div className="min-h-full bg-surface text-text">
-      <TopNav title="" showBack={!isOwnProfile} />
+      {!isOwnProfile && <TopNav title="" showBack />}
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
-        {/* 프로필 헤더 */}
-        <Card className="flex items-center gap-[var(--spacing-16)]">
-          {profile?.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt={d.profile.avatarAlt}
-              width={64}
-              height={64}
-              className="w-16 h-16 rounded-[var(--radius-cards)] object-cover shrink-0"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-surface text-text flex items-center justify-center shrink-0">
-              <UserIcon className="w-7 h-7" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] truncate">
+      <div
+        className={`px-[var(--spacing-16)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)] ${
+          isOwnProfile ? 'pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]' : 'pt-0'
+        }`}
+      >
+        {/* 프로필 헤더 — Card 배경 제거, 컨텐츠는 페이지 패딩 폭까지 확장 (20260820_019).
+            아바타 확대·편집 버튼 축소·아이디 전체노출·포인트를 아이디 아래로 이동 (20260820_021) */}
+        <div className="flex items-center gap-[var(--spacing-16)]">
+          <div className="relative shrink-0">
+            {profile?.avatar_url ? (
+              <Image
+                src={profile.avatar_url}
+                alt={d.profile.avatarAlt}
+                width={96}
+                height={96}
+                className="w-24 h-24 rounded-[var(--radius-cards)] object-cover"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
+                <UserIcon className="w-10 h-10" />
+              </div>
+            )}
+            {/* 편집 버튼 — 아바타 우측 상단 오버레이 원형 아이콘 버튼.
+                44px 터치타겟 권장 크기의 절반(22px)으로 축소 요청(20260820_021) —
+                접근성 가이드 최소 터치타겟보다 작아짐을 인지하고 반영. */}
+            {isOwnProfile && (
+              <button
+                onClick={() => router.push('/profile/edit')}
+                aria-label={d.profile.editButton}
+                className="absolute -top-2 -right-2 w-[22px] h-[22px] rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-text flex items-center justify-center active:scale-95 transition-transform duration-100"
+              >
+                <PencilIcon className="w-2.5 h-2.5" />
+              </button>
+            )}
+          </div>
+
+          {/* 아이디는 더 이상 truncate하지 않는다 — 줄바꿈을 허용해 전체 노출(20260820_021) */}
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
+            <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] break-words">
               {profile?.username ?? d.profile.anonymous}
             </p>
-            {isOwnProfile && (
-              <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 truncate">
-                {profile?.email}
-              </p>
-            )}
-            {/* 잼 포인트 잔액 — 본인 프로필에서만, 이메일 바로 아래 노출 */}
+
+            {/* 포인트 — 아이디 아래로 이동, 크기는 기존(--text-heading 44px)의 약 절반인
+                --text-subheading(24px)으로 축소(20260820_021) */}
             {isOwnProfile && pointBalance !== null && (
               <button
                 onClick={() => router.push('/points')}
                 aria-label={d.profile.pointsAriaLabel}
-                className="mt-1 -ml-2 px-2 inline-flex items-center gap-1.5 min-h-11 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse rounded-[var(--radius-nav-buttons)] active:scale-95 transition-transform duration-100 cursor-pointer"
+                className="self-start -ml-2 px-2 inline-flex items-center gap-1 min-h-11 rounded-[var(--radius-nav-buttons)] active:scale-95 transition-transform duration-100 cursor-pointer"
               >
-                {t(d.profile.pointBalance, { count: pointBalance.toLocaleString('ko-KR') })}
-                <ChevronRightIcon className="w-4 h-4 text-text-inverse/40" />
+                <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold text-[color:var(--color-primary)] tabular-nums">
+                  {pointBalance.toLocaleString('ko-KR')}
+                </span>
+                <span className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold text-[color:var(--color-primary)]">
+                  {d.profile.pointBadgeLabel}
+                </span>
+                <ChevronRightIcon className="w-4 h-4 text-text/40" />
               </button>
             )}
           </div>
-          {isOwnProfile ? (
-            <Button
-              surface="sub"
-              variant="outline"
-              onClick={() => router.push('/profile/edit')}
-              className="shrink-0 px-[var(--spacing-16)] py-2 text-[length:var(--text-body-sm)]"
-            >
-              {d.profile.editButton}
-            </Button>
-          ) : (
+
+          {!isOwnProfile && (
             <Button
               surface="sub"
               variant={following ? 'outline' : 'primary'}
@@ -482,12 +504,12 @@ export default function ProfileClient({
               <SwapText value={following ? d.profile.followingButton : d.profile.followButton} />
             </Button>
           )}
-        </Card>
+        </div>
 
         {/* 통계 바 — Tabs sliding (16-tabs-sliding.md).
             기본뷰(해시 없음)에서는 선택된 탭이 없어야 하므로 value에 빈 값을 넘겨
             pill을 숨긴다. */}
-        <Card className="p-0 overflow-hidden">
+        <Card tone="inverse" className="overflow-hidden" style={{ padding: 0 }}>
           <SlidingTabs
             items={statTabs}
             value={isTabView ? activeTab : ('' as TabKey)}
@@ -530,7 +552,7 @@ export default function ProfileClient({
 
         {/* Strava 연동 — 본인 + 기본뷰(해시 없음)일 때 */}
         {isOwnProfile && !isTabView && (
-          <Card>
+          <Card tone="inverse">
             <h2 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-[var(--spacing-16)]">
               {d.profile.stravaTitle}
             </h2>

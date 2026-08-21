@@ -2,19 +2,22 @@ import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ActivityType, BadgeCondition, BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
-import RarityBadge from '@/components/ui/Badge'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
-import { MedalIcon, BookIcon, ChevronRightIcon } from '@/components/ui/icons'
+import { BookIcon, ChevronRightIcon } from '@/components/ui/icons'
 import Link from 'next/link'
 import PoiMapButton from './PoiMapButton'
 import PoiEarnHistory from './PoiEarnHistory'
 import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
 import ItemEarnHistory from './ItemEarnHistory'
+import BadgeHeroSection from './BadgeHeroSection'
+import BadgeConditionCard from './BadgeConditionCard'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
+import { getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
+import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
@@ -227,6 +230,74 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   const badgeRow = badge as BadgeRow
   const earned = earnedRow as (UserActivityBadgeRow & { poi: PoiRow | null }) | null
 
+  // [20260819_011] 배경은 아래 고정 배경 레이어 한 곳에서만 그린다. TopNav에 배경을 한 번 더
+  // 주입하면(20260818_003 동작) 헤더 박스와 레이어 박스의 비율이 달라 같은 이미지가 서로 다른
+  // 배율로 잘려 경계에 이음매가 보였다. 배경이 있는 배지에서는 TopNav를 투명하게 두어 아래
+  // 고정 레이어가 그대로 비쳐 보이게 하고, 배경이 없으면 기존과 동일하게 --color-surface를
+  // 유지한다(회귀 방지).
+  const themedBackground = hasBadgeBackgroundTheme(badgeRow)
+  const topNavStyle: React.CSSProperties = { background: themedBackground ? 'transparent' : 'var(--color-surface)' }
+
+  // 뷰포트 전체(헤더 아래~본문~푸터)를 덮는 고정 배경 레이어 — [20260818_002 스코프 수정]
+  // (main)/layout.tsx의 main(비-positioned, bg-surface 불투명)보다 위, TopNav(sticky, z-30)보다는
+  // 아래 z-index로 배치해 배경이 자동으로 비쳐 보이게 한다.
+  // [20260819_011] 배경을 실제로 그리는 유일한 지점이다 — TopNav와 Hero 카드는 배경을 그리지
+  // 않고 투명 처리만 하므로, 같은 이미지가 서로 다른 배율로 여러 번 잘려 이음매가 생기지 않는다.
+  // pointerEvents: 'none' — 순수 시각 배경 레이어이므로 클릭/탭 이벤트를 가로채지 않고 아래
+  // 콘텐츠(링크·버튼)로 그대로 통과시킨다. (게이트 리뷰에서 발견된 클릭 차단 회귀 수정)
+  // [20260818_004 버그 수정] inset:0은 뷰포트 전체 폭을 덮어 (main)/layout.tsx의
+  // max-w-[430px] mx-auto 앱 컬럼(TopNav와 동일 폭) 바깥(데스크톱 검은 여백)까지 배경색이
+  // 새어나갔다. left:50% + translateX(-50%) + maxWidth:430px로 앱 컬럼과 동일한 폭·중앙정렬로
+  // 제한하되, fixed 특성(스크롤에 안 끌려감)은 그대로 유지한다.
+  // [20260819_012] 애니메이션 배경은 어드민에서 구운 반복 MP4를 이 레이어 안에서 재생한다.
+  // - 유저단에는 WebGL을 로드하지 않는다는 전체 설계 원칙 유지 — <video>로 재생만 한다.
+  // - iOS 자동재생 4종 세트(autoPlay·muted·loop·playsInline)는 하나라도 빠지면 재생되지 않는다.
+  // - poster에는 같은 시점에 구운 정지 PNG를 쓴다. CSS 배경 이미지(getBadgeBackgroundStyle)도
+  //   그대로 유지되므로 영상 로드 전/실패 시, 그리고 타일 상한을 넘는 초장신 페이지 최하단까지
+  //   같은 정지 이미지가 이어져 보인다.
+  // - [20260819_017 버그 수정] 영상은 430×860(정사각 타일 2장)으로 구워져 있는데 <video>는
+  //   background-repeat처럼 타일링할 수 없어, 예전에는 <video> 하나만 얹어 레이어 상단 860px
+  //   까지만 애니메이션이 보이고 그보다 긴 페이지의 아래쪽은 정지 이미지가 그대로 노출됐다.
+  //   BadgeBackgroundVideoTiles가 같은 영상을 세로로 필요한 만큼(콘텐츠 실제 높이 기준, 상한
+  //   있음) 반복 배치해 페이지 전체를 덮는다.
+  // - prefers-reduced-motion: reduce 대응은 globals.css의 .badge-background-video 규칙에서
+  //   display:none으로 처리한다(그 경우 아래 CSS 배경 poster가 그대로 보인다).
+  //   같은 이유로 display:block도 인라인이 아니라 그 클래스에 둔다.
+  // - pointerEvents:'none'은 레이어와 영상 양쪽에 유지한다(클릭 차단 회귀 방지).
+  const badgeBackgroundVideoUrl = getBadgeBackgroundVideoUrl(badgeRow)
+  const badgeBackgroundLayer = (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'fixed',
+        top: 0,
+        bottom: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: '430px',
+        zIndex: 0,
+        pointerEvents: 'none',
+        overflow: 'hidden',
+        ...getBadgeBackgroundStyle(badgeRow),
+      }}
+    >
+      {badgeBackgroundVideoUrl && (
+        <BadgeBackgroundVideoTiles
+          src={badgeBackgroundVideoUrl}
+          poster={badgeRow.background_image_url}
+        />
+      )}
+    </div>
+  )
+
+  // 본문 콘텐츠(hero/info/action-section, Footer)는 위 고정 배경 레이어(z-index:0, positioned)보다
+  // 페인트 순서상 앞서도록 각 섹션에 relative z-10을 부여한다(BadgeHeroSection·Footer 컴포넌트
+  // 내부, 아래 info/action-section div에 개별 적용) — [20260818_003, 20260818_002 잔여 이슈 수정].
+  // 실제 배경색/배경 이미지가 채워진 상태에서 흰 텍스트 가독성을 보정하기 위한 최소한의 텍스트
+  // 그림자. 둘 다 없으면 기존과 동일(그림자 없음)하다. (20260819_008 — background_image_url 추가)
+  const themedTextStyle: React.CSSProperties = getBadgeThemedTextStyle(themedBackground)
+
   // Phase 16: poi 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
   let poiEarns: (UserPoiBadgeEarnRow & { poi: PoiRow | null })[] = []
   if (badgeRow.type === 'poi') {
@@ -342,40 +413,15 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     const expiring = isExpiringSoon(expiresAt)
 
     return (
-      <div className="min-h-full bg-surface text-text">
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={{ background: 'var(--color-surface)' }} />
+      <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
+        {badgeBackgroundLayer}
+        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
 
-        {/* hero-section */}
-        <div className="px-6 pt-[40px] pb-[32px]">
-          <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6">
-            <div className="flex-1 flex items-center justify-center">
-              {badgeRow.image_url ? (
-                <div className="w-[200px] h-[200px] flex items-center justify-center">
-                  <Image
-                    src={badgeRow.image_url}
-                    alt={badgeRow.name}
-                    width={200}
-                    height={200}
-                    className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
-                  />
-                </div>
-              ) : (
-                <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
-              )}
-            </div>
-            <div className="flex flex-col items-center gap-2 pt-4">
-              <RarityBadge rarity={badgeRow.rarity} />
-              <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badgeRow.name}</h1>
-            </div>
-          </div>
-          {badgeRow.description && (
-            <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badgeRow.description}</p>
-          )}
-        </div>
+        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
         {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링 */}
         {(isOwnBadge || !hasEarned) && (
-          <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+          <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
             {isOwnBadge && allItemInventory.length > 0 && (
               <ItemEarnHistory items={allItemInventory.map(item => ({
                 id: item.id,
@@ -396,11 +442,11 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         {/* desc-section — 컬렉션 링크 또는 만료 임박 안내가 있을 때만 렌더링 */}
         {(itemBook || expiring) && (
-          <div className="flex flex-col gap-4 px-6 pt-[32px] pb-[40px]">
+          <div className="relative z-10 flex flex-col gap-4 px-6 pt-[32px] pb-[40px]">
             {/* 속한 컬렉션 링크 */}
             {itemBook && (
               <ListRowCard
-                href={`/itembooks/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
+                href={`/collections/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
                 icon={
                   itemBook.image_url ? (
                     <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shrink-0">
@@ -433,44 +479,16 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // ========== 변형 3: POI 배지 ==========
   if (badgeRow.type === 'poi') {
     return (
-      <div className="min-h-full bg-surface text-text">
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={{ background: 'var(--color-surface)' }} />
+      <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
+        {badgeBackgroundLayer}
+        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
 
-        {/* hero-section */}
-        <div className="px-6 pt-[40px] pb-[32px]">
-          <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6">
-            <div className="flex-1 flex items-center justify-center">
-              {badgeRow.image_url ? (
-                <div className="w-[200px] h-[200px] flex items-center justify-center">
-                  <Image
-                    src={badgeRow.image_url}
-                    alt={badgeRow.name}
-                    width={200}
-                    height={200}
-                    className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
-                  />
-                </div>
-              ) : (
-                <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
-              )}
-            </div>
-            <div className="flex flex-col items-center gap-2 pt-4">
-              <RarityBadge rarity={badgeRow.rarity} />
-              <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badgeRow.name}</h1>
-            </div>
-          </div>
-          {badgeRow.description && (
-            <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badgeRow.description}</p>
-          )}
-        </div>
+        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
         {/* info-section */}
-        <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+        <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
-          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
-            <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
-            <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">이 장소를 경유하는 활동이 기록되면 획득돼요.</p>
-          </div>
+          <BadgeConditionCard text="이 장소를 경유하는 활동이 기록되면 획득돼요." />
           <PoiEarnHistory poiEarns={poiEarns.map((e) => ({
             id: e.id,
             earned_at: e.earned_at,
@@ -482,7 +500,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         </div>
 
         {/* action-section */}
-        <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[40px]">
+        <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[40px]">
           {badgeRow.patch_available && (
             <a
               href="#"
@@ -511,46 +529,16 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   // ========== 변형 1: 액티비티 배지 (catch-all) ==========
   return (
-    <div className="min-h-full bg-surface text-text">
-      <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={{ background: 'var(--color-surface)' }} />
+    <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
+      {badgeBackgroundLayer}
+      <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
 
-      {/* hero-section */}
-      <div className="px-6 pt-[40px] pb-[32px]">
-        <div className="w-full aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex flex-col p-6">
-          <div className="flex-1 flex items-center justify-center">
-            {badgeRow.image_url ? (
-              <div className="w-[200px] h-[200px] flex items-center justify-center">
-                <Image
-                  src={badgeRow.image_url}
-                  alt={badgeRow.name}
-                  width={200}
-                  height={200}
-                  className={['object-contain w-full h-full', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')}
-                />
-              </div>
-            ) : (
-              <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
-            )}
-          </div>
-          <div className="flex flex-col items-center gap-2 pt-4">
-            <RarityBadge rarity={badgeRow.rarity} />
-            <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badgeRow.name}</h1>
-          </div>
-        </div>
-        {badgeRow.description && (
-          <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badgeRow.description}</p>
-        )}
-      </div>
+      <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
       {/* info-section */}
-      <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+      <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
         {/* 획득 조건 다크 카드 */}
-        <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
-          <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
-          <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">
-            {formatConditionText(badgeRow.condition_json, badgeRow.name)}
-          </p>
-        </div>
+        <BadgeConditionCard text={formatConditionText(badgeRow.condition_json, badgeRow.name)} />
 
         {/* 선행 배지 조건 */}
         {prereqStatus.length > 0 && (
@@ -584,7 +572,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       </div>
 
       {/* action-section */}
-      <div className="flex flex-col gap-4 pt-[32px] px-6 pb-[40px]">
+      <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[40px]">
         {/* 실물 패치 버튼 */}
         {badgeRow.patch_available && (
           <a

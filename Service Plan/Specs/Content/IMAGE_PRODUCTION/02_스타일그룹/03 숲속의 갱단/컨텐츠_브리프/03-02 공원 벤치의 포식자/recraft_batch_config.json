@@ -1,0 +1,45 @@
+{
+  "style_id": "c4567617-d2d9-4093-8697-c0adfc2afba8",
+  "model": "recraftv3",
+  "size": "1024x1024",
+  "no_text": true,
+  "negative_prompt": "text, numbers, letters, typography, watermark, signature, circular badge frame, round frame, shield frame, symmetrical mandala frame, smooth gradient, soft airbrush gradient, drop shadow, photographic texture, realistic photo, 3D render, glossy plastic sheen, chrome reflection, human figure, human face, human hand, human body, person figure, dark background, black background, extra logos, blurry, low quality, cropped, low contrast",
+  "items": [
+    {
+      "filename": "03-02_1_부스러진새우깡.png",
+      "prompt": "Ghibli-inspired flat illustration style, even-width soft rounded ink outline, mostly flat color with one gentle shading step for subtle volume, no gradient, no drop shadow, low lighting contrast, soft hand-drawn medium texture, plain solid white background, freeform silhouette that traces the object's own shape, no circular or shield badge frame, no text or numbers anywhere. Centered, large and unmistakably recognizable: a small scattered pile of crumbled shrimp-flavored cracker chips (Korean saeukkang-style curved ridged chips) in a pale apricot / peach-tan color, broken pieces and crumbs spread loosely on the ground. The entire subject must be fully contained within the square canvas with a small clear margin on all sides — nothing cropped, cut off, or extending past the edge, and not zoomed in past the point where any part leaves the frame."
+    },
+    {
+      "filename": "03-02_2_쪼아먹은샌드위치.png",
+      "prompt": "Ghibli-inspired flat illustration style, even-width soft rounded ink outline, mostly flat color with one gentle shading step for subtle volume, no gradient, no drop shadow, low lighting contrast, soft hand-drawn medium texture, plain solid white background, freeform silhouette that traces the object's own shape, no circular or shield badge frame, no text or numbers anywhere. Centered, large and unmistakably recognizable: a sandwich with its two bread slices still intact but precisely pecked open in a few spots, the ham and cheese filling missing from exactly those small peck-shaped gaps while the rest of the sandwich stays whole. The entire subject must be fully contained within the square canvas with a small clear margin on all sides — nothing cropped, cut off, or extending past the edge, and not zoomed in past the point where any part leaves the frame."
+    },
+    {
+      "filename": "03-02_3_비둘기의회색깃털.png",
+      "prompt": "Ghibli-inspired flat illustration style, even-width soft rounded ink outline, mostly flat color with one gentle shading step for subtle volume, no gradient, no drop shadow, low lighting contrast, soft hand-drawn medium texture, plain solid white background, freeform silhouette that traces the object's own shape, no circular or shield badge frame, no text or numbers anywhere. Centered, large and unmistakably recognizable: a single large pigeon wing feather, entirely in muted dove-gray and slate-gray tones with no red, pink, or warm colors anywhere, the feather's vane and central pale quill clearly detailed. The entire subject must be fully contained within the square canvas with a small clear margin on all sides — nothing cropped, cut off, or extending past the edge, and not zoomed in past the point where any part leaves the frame. This is a still-life object illustration, not a character — no eyes, no face, no anthropomorphism."
+    },
+    {
+      "filename": "03-02_4_참새의작은발자국.png",
+      "prompt": "Ghibli-inspired flat illustration style, soft rounded ink outline, flat color with gentle shading, no gradient, no drop shadow, plain solid white background, freeform silhouette, no badge frame, no text. Centered, large: a small cluster of tiny three-toed bird claw footprint marks stamped on a patch of pale sandy ground, next to a few scattered golden flaky croissant crumb pieces resting on the same sandy patch. No table, no tray, no pan, no plate, no hands, no feet, no legs, no human body, no character, no face, no eyes anywhere. Just footprint marks and crumbs on a small patch of ground. Entire subject fully contained within the square canvas with margin, nothing cropped."
+    },
+    {
+      "filename": "03-02_5_공원벤치나뭇조각.png",
+      "prompt": "Flat vector icon illustration, clean bold outline, flat color, no gradient, no shadow, plain white background. A single straight rectangular wooden plank (like a ruler or bench slat), light tan wood grain texture, lying flat, with several small round dark peck-mark holes dotted along its surface. Absolutely no character, no creature, no face, no eyes, no hair, no legs — this is purely an inanimate plank of wood, like a simple icon graphic. Entire image fully contained within the square canvas with margin, nothing cropped."
+    },
+    {
+      "filename": "03-02_6_쏟아진팝콘.png",
+      "prompt": "Ghibli-inspired flat illustration style, even-width soft rounded ink outline, mostly flat color with one gentle shading step for subtle volume, no gradient, no drop shadow, low lighting contrast, soft hand-drawn medium texture, plain solid white background, freeform silhouette that traces the object's own shape, no circular or shield badge frame, no text or numbers anywhere. Centered, large and unmistakably recognizable: a tipped-over red-and-white striped popcorn box with a pile of fluffy popcorn kernels in a warm butter-yellow / cream color (not green) spilling out and scattered around it. The entire subject must be fully contained within the square canvas with a small clear margin on all sides — nothing cropped, cut off, or extending past the edge, and not zoomed in past the point where any part leaves the frame. This is a still-life object illustration, not a character — no eyes, no face, no anthropomorphism."
+    },
+    {
+      "filename": "03-02_7_빼앗긴감자튀김.png",
+      "prompt": "Ghibli-inspired flat illustration style, even soft rounded ink outline, flat color with one gentle shading step, no gradient, no drop shadow, soft hand-drawn texture, plain solid white background, freeform silhouette, no badge frame, no text. Centered, large: a small red paper french fry container, partly toppled, with crispy french fries scattered loosely around and spilling out of it. The fries must be colored solid mustard-yellow / golden-yellow like fried potato — absolutely not green, not olive, not vegetable-colored. A plain food object, not a creature, no eyes, no face. Entire subject fully contained within the square canvas with margin, nothing cropped."
+    },
+    {
+      "filename": "03-02_8_주인잃은돗자리조각.png",
+      "prompt": "Ghibli-inspired flat illustration style, even-width soft rounded ink outline, mostly flat color with one gentle shading step for subtle volume, no gradient, no drop shadow, low lighting contrast, soft hand-drawn medium texture, plain solid white background, freeform silhouette that traces the object's own shape, no circular or shield badge frame, no text or numbers anywhere. Centered, large and unmistakably recognizable: a torn corner piece of a checkered picnic mat/blanket, its woven fabric texture and frayed torn edge clearly visible, lying crumpled. The entire subject must be fully contained within the square canvas with a small clear margin on all sides — nothing cropped, cut off, or extending past the edge, and not zoomed in past the point where any part leaves the frame."
+    },
+    {
+      "filename": "03-02_9_승리의날갯짓.png",
+      "prompt": "Ghibli-inspired flat illustration style, even-width soft rounded ink outline, mostly flat color with one gentle shading step for subtle volume, no gradient, no drop shadow, low lighting contrast, soft hand-drawn medium texture, plain solid white background, freeform silhouette that traces the object's own shape, no circular or shield badge frame, no text or numbers anywhere. Centered, large and unmistakably recognizable: a dynamic burst of a bird's wing flapping upward in triumph, a few loose gray feathers swirling off it and curved motion-lines trailing behind, capturing a cheeky triumphant takeoff. The entire subject must be fully contained within the square canvas with a small clear margin on all sides — nothing cropped, cut off, or extending past the edge, and not zoomed in past the point where any part leaves the frame."
+    }
+  ]
+}
