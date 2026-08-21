@@ -37,6 +37,14 @@ interface BottomSheetProps {
    * footer 하단이 정확히 맞도록 한다.
    */
   footerBottomInset?: 'tabbar' | 'safe-area'
+  /**
+   * 기본값 `true`는 콘텐츠 영역에 `overflow-y-auto`를 둔다. `false`로 두면
+   * `overflow-hidden`으로 바뀐다 — 스크롤할 내용이 원래 없는 화면(예: 이미지 한 장짜리
+   * 미리보기)에서 사용자가 실수로 살짝 드래그했을 때 iOS Safari가 그 제스처를 스크롤로
+   * 인식해 동적 툴바를 접었다 펴며 `dvh` 기반 시트 높이가 스크롤할 때마다 커졌다 작아졌다
+   * 하는 문제를 막는다.
+   */
+  contentScrollable?: boolean
 }
 
 const DRAG_CLOSE_THRESHOLD = 120
@@ -52,6 +60,7 @@ export default function BottomSheet({
   footer,
   topGapPx,
   footerBottomInset = 'tabbar',
+  contentScrollable = true,
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
@@ -83,6 +92,18 @@ export default function BottomSheet({
       clearTimeout(timer)
     }
   }, [open])
+
+  // 시트가 화면에 떠 있는 동안 배경(main 스크롤 컨테이너)의 스크롤을 잠근다 — 배경이 스크롤되며
+  // iOS Safari 동적 툴바가 접혔다 펴지면 dvh 기반 시트 높이가 함께 흔들리는 문제를 막는다.
+  useEffect(() => {
+    if (!lingering) return
+    const scroller = document.querySelector<HTMLElement>('main')
+    const prevOverflow = scroller?.style.overflow
+    if (scroller) scroller.style.overflow = 'hidden'
+    return () => {
+      if (scroller) scroller.style.overflow = prevOverflow ?? ''
+    }
+  }, [lingering])
 
   if (!open && !lingering) return null
 
@@ -165,7 +186,9 @@ export default function BottomSheet({
           </div>
         )}
 
-        <div className="overflow-y-auto flex-1">{children}</div>
+        <div className={contentScrollable ? 'overflow-y-auto flex-1' : 'overflow-hidden overscroll-none flex-1'}>
+          {children}
+        </div>
 
         {footer ? (
           /* 스크롤 영역과 분리된 형제 요소 — flex-1인 위 스크롤 영역이 알아서
