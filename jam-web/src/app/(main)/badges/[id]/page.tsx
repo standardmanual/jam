@@ -420,7 +420,16 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
           headerStyle={topNavStyle}
-          rightSlot={<BadgeShareButton imageUrl={badgeRow.image_url} badgeName={badgeRow.name} />}
+          rightSlot={
+            <BadgeShareButton
+              badgeId={id}
+              badgeType="item"
+              imageUrl={badgeRow.image_url}
+              badgeName={badgeRow.name}
+              hasEarned={hasEarned}
+              subjectUsername={subjectUsername ?? undefined}
+            />
+          }
         />
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
@@ -491,7 +500,16 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           title={d.common.back}
           backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
           headerStyle={topNavStyle}
-          rightSlot={<BadgeShareButton imageUrl={badgeRow.image_url} badgeName={badgeRow.name} />}
+          rightSlot={
+            <BadgeShareButton
+              badgeId={id}
+              badgeType="poi"
+              imageUrl={badgeRow.image_url}
+              badgeName={badgeRow.name}
+              hasEarned={hasEarned}
+              subjectUsername={subjectUsername ?? undefined}
+            />
+          }
         />
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
@@ -546,7 +564,16 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         title={d.common.back}
         backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
         headerStyle={topNavStyle}
-        rightSlot={<BadgeShareButton imageUrl={badgeRow.image_url} badgeName={badgeRow.name} />}
+        rightSlot={
+          <BadgeShareButton
+            badgeId={id}
+            badgeType="activity"
+            imageUrl={badgeRow.image_url}
+            badgeName={badgeRow.name}
+            hasEarned={hasEarned}
+            subjectUsername={subjectUsername ?? undefined}
+          />
+        }
       />
 
       <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
