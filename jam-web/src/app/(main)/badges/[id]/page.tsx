@@ -14,6 +14,7 @@ import LocalDate from '@/components/LocalDate'
 import ItemEarnHistory from './ItemEarnHistory'
 import BadgeHeroSection from './BadgeHeroSection'
 import BadgeConditionCard from './BadgeConditionCard'
+import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
 import { getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
@@ -214,7 +215,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   }
   const isOwnBadge = subjectId === user.id
 
-  const [{ data: badge }, { data: earnedRow }, { data: ownedBadgesRaw }] = await Promise.all([
+  const [{ data: badge }, { data: earnedRow }, { data: ownedBadgesRaw }, { data: stravaConnectionRaw }] = await Promise.all([
     supabase.from('badges').select('*').eq('id', id).single(),
         service
       .from('user_activity_badges')
@@ -223,7 +224,11 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       .eq('badge_id', id)
       .maybeSingle(),
         service.from('user_activity_badges').select('badge_id').eq('user_id', subjectId),
+    // 공유 버튼 사전 비활성화 판정용 — 배지 소유자(subjectId)가 스트라바에 연동돼 있는지
+    // 미리 조회한다(20260821_004 재작업: 클릭 후가 아니라 클릭 전에 판별해야 함).
+    service.from('strava_connections').select('user_id').eq('user_id', subjectId).maybeSingle(),
   ])
+  const stravaConnected = Boolean(stravaConnectionRaw)
 
   if (!badge) notFound()
 
@@ -415,7 +420,24 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     return (
       <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
         {badgeBackgroundLayer}
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
+        <TopNav
+          title={d.common.back}
+          backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
+          headerStyle={topNavStyle}
+          rightSlot={
+            isOwnBadge && (
+              <BadgeShareButton
+                badgeId={id}
+                badgeType="item"
+                imageUrl={badgeRow.image_url}
+                badgeName={badgeRow.name}
+                hasEarned={hasEarned}
+                stravaConnected={stravaConnected}
+                subjectUsername={subjectUsername ?? undefined}
+              />
+            )
+          }
+        />
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
@@ -481,7 +503,24 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     return (
       <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
         {badgeBackgroundLayer}
-        <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
+        <TopNav
+          title={d.common.back}
+          backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
+          headerStyle={topNavStyle}
+          rightSlot={
+            isOwnBadge && (
+              <BadgeShareButton
+                badgeId={id}
+                badgeType="poi"
+                imageUrl={badgeRow.image_url}
+                badgeName={badgeRow.name}
+                hasEarned={hasEarned}
+                stravaConnected={stravaConnected}
+                subjectUsername={subjectUsername ?? undefined}
+              />
+            )
+          }
+        />
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 
@@ -531,7 +570,24 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   return (
     <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
       {badgeBackgroundLayer}
-      <TopNav title={d.common.back} backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined} headerStyle={topNavStyle} />
+      <TopNav
+        title={d.common.back}
+        backHref={!isOwnBadge && subjectUsername ? `/${subjectUsername}` : undefined}
+        headerStyle={topNavStyle}
+        rightSlot={
+          isOwnBadge && (
+            <BadgeShareButton
+              badgeId={id}
+              badgeType="activity"
+              imageUrl={badgeRow.image_url}
+              badgeName={badgeRow.name}
+              hasEarned={hasEarned}
+              stravaConnected={stravaConnected}
+              subjectUsername={subjectUsername ?? undefined}
+            />
+          )
+        }
+      />
 
       <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
 

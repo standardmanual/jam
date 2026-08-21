@@ -229,6 +229,18 @@ export const ko = {
 
     physicalPatchButton: '실물 패치 보기',
 
+    shareButtonLabel: '공유',
+    shareActionShare: '공유하기',
+    shareActionDownload: '저장하기',
+    shareErrorStravaDisconnectedTitle: 'Strava 동기화가 끊겼어요',
+    shareErrorStravaDisconnectedBody: '페이스·시간 데이터를 다시 가져오려면 Strava를 다시 동기화해야 해요',
+    shareErrorNoTriggerTitle: '이 배지는 공유 이미지를 만들 수 없어요',
+    shareErrorNoTriggerBody: '연결된 Strava 활동 기록이 없어 거리·페이스 정보를 채울 수 없어요',
+    shareErrorFetchFailedTitle: '지금은 이미지를 만들 수 없어요',
+    shareErrorFetchFailedBody: '잠시 후 다시 시도해주세요',
+    shareErrorUnknownTitle: '이미지를 만들지 못했어요',
+    shareErrorUnknownBody: '잠시 후 다시 시도해주세요',
+
     notEarnedTitle: '아직 획득하지 못한 배지예요',
     notEarnedBody: '조건을 달성하면 자동으로 획득돼요',
 
