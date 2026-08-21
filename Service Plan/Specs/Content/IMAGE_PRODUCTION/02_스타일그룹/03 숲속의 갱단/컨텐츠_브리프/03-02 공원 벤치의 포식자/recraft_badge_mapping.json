@@ -1,0 +1,104 @@
+{
+  "collection_id": "03-02",
+  "items": [
+    {
+      "filename": "03-02_1_부스러진새우깡.png",
+      "name": "부스러진 새우깡",
+      "ids": [
+        "4cbd1eb3-719e-4c6c-8a92-1606e3fc918f",
+        "c6ac51aa-0968-4bf4-bd68-48b5bd4585f0",
+        "f27219cb-9653-4598-9d98-8a8185bd99c9",
+        "552c95f7-ed1d-4ad3-ae00-00683c31e6a3"
+      ],
+      "slug": "crushed_shrimp_chips"
+    },
+    {
+      "filename": "03-02_2_쪼아먹은샌드위치.png",
+      "name": "쪼아먹은 샌드위치",
+      "ids": [
+        "834c58cb-0f2e-440c-b441-73f607a65ad2",
+        "15361008-d64c-4cc1-a838-a7fca92a307c",
+        "22482675-e61f-4c54-94f8-70a9de1e44a0",
+        "e7c51d51-b068-4393-9dc4-eb819715b421"
+      ],
+      "slug": "pecked_sandwich"
+    },
+    {
+      "filename": "03-02_3_비둘기의회색깃털.png",
+      "name": "비둘기의 회색 깃털",
+      "ids": [
+        "7744bbb6-0100-4b75-b38c-06a16a77b28f",
+        "e5b1b3ae-b30a-49d0-aafd-afd6e1720b95",
+        "3200fad6-bd6e-42b2-a233-8af349798a41",
+        "713abf80-1d68-441d-9315-a42f1322b98b"
+      ],
+      "slug": "pigeon_gray_feather"
+    },
+    {
+      "filename": "03-02_4_참새의작은발자국.png",
+      "name": "참새의 작은 발자국",
+      "ids": [
+        "66914636-6c3e-48df-a981-cb7e578dd58d",
+        "95f75a3f-f238-4c93-9896-01e34011a8ca",
+        "473d4f01-39f1-4e13-bcbe-7420c4c0a7e5",
+        "b89acb5c-6ef9-4cde-82da-01c736748a4d"
+      ],
+      "slug": "sparrow_footprint"
+    },
+    {
+      "filename": "03-02_5_공원벤치나뭇조각.png",
+      "name": "공원 벤치 나뭇조각",
+      "ids": [
+        "9a561df9-4ca5-43f1-b519-5175aacf5a05",
+        "3aed385a-c33f-4307-b76b-ea7c0cdf26d6",
+        "cd0aeaad-90c7-4bc4-8114-cbabee49a370",
+        "1f4c694f-2ab5-41d2-87cf-05b8f2f307dd"
+      ],
+      "slug": "bench_wood_scrap"
+    },
+    {
+      "filename": "03-02_6_쏟아진팝콘.png",
+      "name": "쏟아진 팝콘",
+      "ids": [
+        "2b5aa4ff-9a14-436d-a961-c51f6291573d",
+        "d93ca9d5-375c-4972-af6e-7e649ccc732b",
+        "ff6a4cde-981d-4b46-9c1b-bfa25f5eca2b",
+        "c58925c4-e82c-4c3f-96be-3b7d6f5b8ea4"
+      ],
+      "slug": "spilled_popcorn"
+    },
+    {
+      "filename": "03-02_7_빼앗긴감자튀김.png",
+      "name": "빼앗긴 감자튀김",
+      "ids": [
+        "0f28f048-d7fa-4cf0-b1a8-e9d8b67ac332",
+        "71c8f549-4a1f-44f0-89f9-bd6f287f100e",
+        "87b61226-c9b0-41f0-a759-2167e7388cc4",
+        "ab877728-c388-4d5c-ab6d-3943320f753c"
+      ],
+      "slug": "stolen_fries"
+    },
+    {
+      "filename": "03-02_8_주인잃은돗자리조각.png",
+      "name": "주인 잃은 돗자리 조각",
+      "ids": [
+        "d080f592-550b-4fe9-84d3-f43df64341fd",
+        "18df3d24-e406-47fb-bf09-d617ae342217",
+        "13cca7ee-d441-4ab4-9c0a-41618788f536",
+        "4a42fe1f-054a-4415-843b-12a136b07c42"
+      ],
+      "slug": "abandoned_picnic_mat"
+    },
+    {
+      "filename": "03-02_9_승리의날갯짓.png",
+      "name": "승리의 날갯짓",
+      "ids": [
+        "11fdb81d-8f83-4a2d-8afa-42b8ce40bea2",
+        "c7e8a8a2-53b2-4d3a-b603-3fe259d9a22d",
+        "481cea68-0530-4e5b-9427-e1ccabe7e56c",
+        "2054db42-dc23-49a7-bdea-ac20b31d1c11"
+      ],
+      "slug": "victorious_wingflap"
+    }
+  ]
+}
