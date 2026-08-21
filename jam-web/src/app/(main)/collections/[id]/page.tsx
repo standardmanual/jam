@@ -56,8 +56,8 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
   const backHref =
     from === 'badge' && itemId ? `/inventory/${itemId}` :
-    from === 'badges' ? '/badges#itembook' :
-    subjectUsername ? `/${subjectUsername}#itembooks` :
+    from === 'badges' ? '/badges#collection' :
+    subjectUsername ? `/${subjectUsername}#collections` :
     null
 
   // 1) 아이템북 + 세계관
@@ -208,7 +208,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       {backgroundLayer}
       <TopNav
         title={book.name}
-        backHref={backHref ?? '/badges#itembook'}
+        backHref={backHref ?? '/badges#collection'}
         headerStyle={topNavStyle}
       />
 
