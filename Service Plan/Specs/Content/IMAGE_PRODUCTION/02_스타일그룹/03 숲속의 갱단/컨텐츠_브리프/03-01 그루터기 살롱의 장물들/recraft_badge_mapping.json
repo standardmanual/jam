@@ -2,7 +2,7 @@
   "collection_id": "03-01",
   "items": [
     {
-      "filename": "03-01_1_훔쳐간핫도그소시지_logo.png",
+      "filename": "03-01_1_훔쳐간핫도그소시지.png",
       "name": "훔쳐간 핫도그 소시지",
       "ids": [
         "eef99a08-1b86-4d3a-90ea-36e2634acdb7",
@@ -13,7 +13,7 @@
       "slug": "stolen_hotdog"
     },
     {
-      "filename": "03-01_2_고양이의젤리발자국_logo.png",
+      "filename": "03-01_2_고양이의젤리발자국.png",
       "name": "고양이의 젤리 발자국",
       "ids": [
         "959df34e-c8bd-4264-9f06-8d54680bceed",
@@ -24,7 +24,7 @@
       "slug": "cat_jelly_pawprint"
     },
     {
-      "filename": "03-01_3_반짝이는도토리_logo.png",
+      "filename": "03-01_3_반짝이는도토리.png",
       "name": "반짝이는 도토리",
       "ids": [
         "f80708fc-a5eb-441f-86d2-77aa93b27884",
@@ -35,7 +35,7 @@
       "slug": "sparkling_acorn"
     },
     {
-      "filename": "03-01_4_새가쪼아먹은사과_logo.png",
+      "filename": "03-01_4_새가쪼아먹은사과.png",
       "name": "새가 쪼아먹은 사과",
       "ids": [
         "2a3f6f52-bc5c-4d71-8bff-53c216177287",
@@ -46,7 +46,7 @@
       "slug": "bird_pecked_apple"
     },
     {
-      "filename": "03-01_5_찢어진에너지바봉지_logo.png",
+      "filename": "03-01_5_찢어진에너지바봉지.png",
       "name": "찢어진 에너지 바 봉지",
       "ids": [
         "5e78ceec-c81b-4721-9cb9-8b647c312353",
@@ -57,7 +57,7 @@
       "slug": "torn_energybar_wrapper"
     },
     {
-      "filename": "03-01_6_다람쥐의숨겨둔호두_logo.png",
+      "filename": "03-01_6_다람쥐의숨겨둔호두.png",
       "name": "다람쥐의 숨겨둔 호두",
       "ids": [
         "0d4dc246-b517-4989-80b5-9e1ac518feb1",
@@ -68,7 +68,7 @@
       "slug": "squirrel_hidden_walnut"
     },
     {
-      "filename": "03-01_7_길고양이의털뭉치_logo.png",
+      "filename": "03-01_7_길고양이의털뭉치.png",
       "name": "길고양이의 털뭉치",
       "ids": [
         "b1eeb40e-9120-4470-b6d4-3060a59771d3",
@@ -79,7 +79,7 @@
       "slug": "stray_cat_furball"
     },
     {
-      "filename": "03-01_8_빼앗긴츄르껍질_logo.png",
+      "filename": "03-01_8_빼앗긴츄르껍질.png",
       "name": "빼앗긴 츄르 껍질",
       "ids": [
         "4b5cd6eb-611d-4b07-9691-324805f84830",
@@ -90,7 +90,7 @@
       "slug": "stolen_churu_wrapper"
     },
     {
-      "filename": "03-01_9_부러진까치의깃털_logo.png",
+      "filename": "03-01_9_부러진까치의깃털.png",
       "name": "부러진 까치의 깃털",
       "ids": [
         "f0d74a2d-aee8-4600-a814-69ca00ec60f6",
