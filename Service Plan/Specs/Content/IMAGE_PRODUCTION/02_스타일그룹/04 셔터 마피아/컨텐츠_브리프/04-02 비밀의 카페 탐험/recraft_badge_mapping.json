@@ -1,0 +1,104 @@
+{
+  "collection_id": "04-02",
+  "items": [
+    {
+      "filename": "04-02_1_녹아버린아포가토.png",
+      "name": "녹아버린 아포가토",
+      "ids": [
+        "a3a1988c-704f-49c3-9aa2-f7aca30d501a",
+        "d08c4e2e-86d8-4cf1-ae84-fd77520bb707",
+        "9a14b44c-5aa3-4c77-9463-e05be1b30dc5",
+        "ed0cbe57-7e22-4300-9b27-57275ec0b6d5"
+      ],
+      "slug": "melted_affogato"
+    },
+    {
+      "filename": "04-02_2_예쁜카페냅킨.png",
+      "name": "예쁜 카페 냅킨",
+      "ids": [
+        "4de25f51-2621-4fd3-adaa-eb6cc48563e1",
+        "94b8ba92-f511-4371-b006-fac9078645d6",
+        "3ecffa30-e362-43b3-bee1-f49ff7453b13",
+        "95588e6b-7d5c-4457-bcc1-63c7e937587e"
+      ],
+      "slug": "pretty_cafe_napkin"
+    },
+    {
+      "filename": "04-02_3_스탬프쿠폰.png",
+      "name": "스탬프 쿠폰",
+      "ids": [
+        "fe0afe5f-82a9-484b-92eb-65fe32e94e90",
+        "155b176f-04a3-468b-bb95-5f6eef3db166",
+        "a3ffcb2d-facc-4cd5-b20d-3cf54216da7a",
+        "00a2680b-668d-425b-938f-9a710effdb23"
+      ],
+      "slug": "stamp_coupon"
+    },
+    {
+      "filename": "04-02_4_에스프레소잔파편.png",
+      "name": "에스프레소 잔 파편",
+      "ids": [
+        "0fee36e9-3a84-4f27-9581-2cb92280d0f0",
+        "f7d26ccf-4d1e-4104-b9e5-4ed2e3b35b91",
+        "06ad01b9-f214-4915-a655-cde34c04cea4",
+        "5b6d1e31-a1fa-49a1-be53-b359b928790a"
+      ],
+      "slug": "broken_espresso_cup"
+    },
+    {
+      "filename": "04-02_5_원두찌꺼기.png",
+      "name": "원두 찌꺼기",
+      "ids": [
+        "cdc9f0de-355b-476d-9ba2-4143724be62f",
+        "f67bae1b-61d8-45d0-9370-241caa4447ba",
+        "e0049709-53ef-49af-b357-41ffc5222c3c",
+        "db3a9245-c3f5-409e-99f4-aa474b3e99fe"
+      ],
+      "slug": "coffee_grounds"
+    },
+    {
+      "filename": "04-02_6_카페진동벨.png",
+      "name": "카페 진동벨",
+      "ids": [
+        "e4e15a7f-aa81-4b1c-b866-e762085dcbcf",
+        "48239c40-de4d-4cfc-bae6-d180d9324db0",
+        "81056ede-e736-49a0-9caa-c0b02b9b1e1d",
+        "c01ab5e1-26c9-4ce0-a8b7-deff165fc0d8"
+      ],
+      "slug": "cafe_pager"
+    },
+    {
+      "filename": "04-02_7_시럽묻은빨대.png",
+      "name": "시럽 묻은 빨대",
+      "ids": [
+        "68bb6312-6225-402f-afd1-61fdf91b2a23",
+        "4bc0d2e4-c836-4692-b3b9-2f3057da3dd7",
+        "dc5f6324-dd61-4267-b703-73d6cabb8bfe",
+        "87dc4ea9-a89d-4687-8786-0c44b56bfd7c"
+      ],
+      "slug": "syrup_straw"
+    },
+    {
+      "filename": "04-02_8_디저트포크.png",
+      "name": "디저트 포크",
+      "ids": [
+        "42b3683c-52f4-40ef-8525-6a58e2d60aaa",
+        "81157374-6fb7-435a-9b4b-54b20b3ef7f9",
+        "8b3d7898-668d-4f2f-af6d-3a2dc8a0db33",
+        "7180cc61-7203-4d72-89a0-a98dad7243c8"
+      ],
+      "slug": "dessert_fork"
+    },
+    {
+      "filename": "04-02_9_포토존입장권.png",
+      "name": "포토존 입장권",
+      "ids": [
+        "89e938af-9d96-4277-8b4d-93445f817460",
+        "7a239bc3-c51c-456a-8a73-2dc345f9e19c",
+        "ce7cfded-caf8-46f1-85f7-8f237e2cf3da",
+        "5f608602-eef8-43cb-b5d3-f1aab31299c1"
+      ],
+      "slug": "photozone_ticket"
+    }
+  ]
+}
