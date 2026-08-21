@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { d } from '@/lib/i18n'
+import { useTabBarHidden } from '@/lib/uiOverlay'
 
 /**
  * SuperHi Plus 바텀 탭바 (iOS 26 스타일 플로팅 캡슐, iOS HIG Tab Bar 패턴)
@@ -114,6 +115,7 @@ export default function TabBar({ username }: TabBarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const profileHref = username ? `/${username}` : '/profile'
+  const hidden = useTabBarHidden()
 
   // 배지/아이템북 상세를 다른 유저의 프로필 맥락(?u=)에서 보고 있으면 "내" 탭으로 취급하지 않음
   const viewingOtherUser = (() => {
@@ -140,6 +142,10 @@ export default function TabBar({ username }: TabBarProps) {
     if (fromBadges) return href === '/badges'
     return pathname.startsWith(href)
   }
+
+  // 배지 공유 미리보기 같은 전체화면 오버레이가 열려 있는 동안은 물리적으로 렌더링하지 않는다
+  // (z-index로 덮기만 하면 iOS Safari 동적 툴바 상태에 따라 살짝 비쳐 보이는 경우가 있었음).
+  if (hidden) return null
 
   return (
     <nav

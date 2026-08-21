@@ -29,6 +29,14 @@ interface BottomSheetProps {
    * 덮는 시트를 만든다(배지 공유 미리보기처럼 이미지를 최대한 크게 보여줘야 하는 화면용).
    */
   topGapPx?: number
+  /**
+   * footer의 아래쪽 여백 기준. 기본값 `'tabbar'`는 화면에 여전히 떠 있는 플로팅 탭바
+   * (safe-area+16px+64px+여유 12px)를 가리지 않도록 그 위에 여백을 둔다. 호출부가
+   * `pushTabBarHidden`(`@/lib/uiOverlay`)으로 탭바를 물리적으로 숨기는 화면이라면
+   * `'safe-area'`를 지정 — 탭바가 있던 자리까지 footer를 내려서 탭바의 원래 위치와
+   * footer 하단이 정확히 맞도록 한다.
+   */
+  footerBottomInset?: 'tabbar' | 'safe-area'
 }
 
 const DRAG_CLOSE_THRESHOLD = 120
@@ -43,6 +51,7 @@ export default function BottomSheet({
   closeLabel = '닫기',
   footer,
   topGapPx,
+  footerBottomInset = 'tabbar',
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
@@ -161,15 +170,20 @@ export default function BottomSheet({
         {footer ? (
           /* 스크롤 영역과 분리된 형제 요소 — flex-1인 위 스크롤 영역이 알아서
              줄어들기 때문에 콘텐츠 길이와 무관하게 항상 화면에 보인다.
-             dvh 기반 높이 계산이 실기기(iOS Safari)에서 주소창/툴바 상태에 따라
-             기대한 만큼 정확히 맞아떨어지지 않는 경우가 있어(z-index만으로는
-             보장 안 됨), padding-bottom에 플로팅 탭바(safe-area+16px+64px)
-             높이 + 여유 12px을 명시적으로 더해 실측 기준으로 항상 탭바 위에
-             오도록 강제한다. */
+             footerBottomInset='tabbar'(기본값): 플로팅 탭바(safe-area+16px+64px) 높이 + 여유
+             12px을 padding-bottom에 더해 탭바를 가리지 않게 한다.
+             footerBottomInset='safe-area': 탭바를 `pushTabBarHidden`으로 물리적으로 숨기는
+             화면 전용 — 탭바의 원래 위치(safe-area+16px)까지 그대로 내려서 footer 하단이
+             탭바가 있던 자리와 정확히 맞도록 한다. */
           <div
             // 20260816_012: 상단 1px 구분선(hr 대체) 제거 → 스크롤 영역과 다른 배경톤으로 구분
             className="shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] bg-surface-elevated"
-            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)' }}
+            style={{
+              paddingBottom:
+                footerBottomInset === 'safe-area'
+                  ? 'calc(env(safe-area-inset-bottom) + 16px)'
+                  : 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)',
+            }}
           >
             {footer}
           </div>
