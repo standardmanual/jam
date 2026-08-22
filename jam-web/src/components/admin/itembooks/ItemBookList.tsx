@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { ItemBookCard } from './ItemBookCard'
 import { ItemBookTable } from './ItemBookTable'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { ItemBookRow } from '@/types/database'
 
 interface ItemBookListProps {
@@ -45,30 +46,30 @@ export function ItemBookList({
     <>
       {/* 필터 바 */}
       <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={selectedFactionId}
-          onChange={(e) => setSelectedFactionId(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-foreground/50"
-          aria-label="세계관 필터"
-        >
-          <option value="all">전체 세계관</option>
-          {Array.from(factionMap.entries()).map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-        </select>
+        <Select value={selectedFactionId} onValueChange={setSelectedFactionId}>
+          <SelectTrigger className="w-auto min-w-[10rem]" aria-label="세계관 필터">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체 세계관</SelectItem>
+            {Array.from(factionMap.entries()).map(([id, name]) => (
+              <SelectItem key={id} value={id}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <select
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-          className="rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-foreground/50"
-          aria-label="이름 정렬"
-        >
-          <option value="default">최근 등록순</option>
-          <option value="name-asc">이름 ↑ (오름차순)</option>
-          <option value="name-desc">이름 ↓ (내림차순)</option>
-        </select>
+        <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+          <SelectTrigger className="w-auto min-w-[10rem]" aria-label="이름 정렬">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">최근 등록순</SelectItem>
+            <SelectItem value="name-asc">이름 ↑ (오름차순)</SelectItem>
+            <SelectItem value="name-desc">이름 ↓ (내림차순)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* 모바일: 카드 그리드 */}
