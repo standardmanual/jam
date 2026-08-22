@@ -9,6 +9,7 @@ interface ItemBookTableProps {
   badgeMap: Map<string, string>
   factionMap: Map<string, string>
   itemBadgeCountMap: Map<string, number>
+  emptyMessage?: string
 }
 
 export function ItemBookTable({
@@ -16,11 +17,12 @@ export function ItemBookTable({
   badgeMap,
   factionMap,
   itemBadgeCountMap,
+  emptyMessage = '등록된 컬렉션이 없습니다.',
 }: ItemBookTableProps) {
   if (itemBooks.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-muted/50 py-10 text-center">
-        <p className="text-sm text-muted-foreground">등록된 컬렉션이 없습니다.</p>
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       </div>
     )
   }
