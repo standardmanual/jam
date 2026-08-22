@@ -22,6 +22,10 @@
 - .gitignore에 새 항목 추가 금지 (보안 예외: 토큰/시크릿 파일은 허용)
 - 이 저장소는 `.githooks/`를 hooks 경로로 쓴다. 새로 클론한 환경에서는 최초 1회
   `git config core.hooksPath .githooks` 실행 필요
+- 작업 폴더는 항상 아이클라우드 밖(`~/Desktop/JAM!`)에 둔다. git 저장소를 아이클라우드
+  안에 두면 동기화 충돌로 `.git` 내부가 손상된다 (2026-08-22 실제 사고 이력).
+  `.mcp.json`·`.vercel`·`jam-web/.env.local`만 아이클라우드의 `JAM-secrets` 폴더에 두고
+  심볼릭 링크로 연결한다. 여러 PC 간 이어서 작업하거나 작업을 마무리할 때는 `/jam-sync` 사용
 
 ### 5. DB 변경은 직접 실행하고 배포까지 확인할 것
 DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요청하지 말고, `jam-web/.env.local`의
@@ -50,6 +54,7 @@ DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요�
 | `/jam-design` | MODULAR 디자인 시스템·Storybook 탐색 및 재사용 판단 |
 | `/jam-img` | 배지 이미지 제작 파이프라인 (Recraft 생성→로고합성→배경제거→DB반영, 단계별 사용자 확인) |
 | `/jam-ship` | staging 검증 → 프로덕션 배포 |
+| `/jam-sync` | 로컬 ↔ GitHub 동기화 (PC 간 이어서 작업할 때, 작업 마무리할 때) |
 
 ---
 
