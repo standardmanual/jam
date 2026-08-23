@@ -98,6 +98,36 @@ async function fetchEarnedBadgeDetails(
 }
 
 /**
+ * 응답에 **상세를 실어 내려보내는** 배지 카드 수 상한 (20260823_008).
+ * 상한을 서버 한 곳에만 두어 스파이크·서비스·타입 문서로 규칙이 갈라지지 않게 한다.
+ * 넘치는 만큼은 상세 없이 개수(earnedBadgesMore)로만 전달한다 —
+ * 장기 미접속 후 싱크로 배지를 대량 획득해도 description 포함 페이로드가 커지지 않는다.
+ */
+export const EARNED_BADGE_DETAIL_LIMIT = 10
+
+/** 획득 연출용 응답 조각. `/api/strava/sync`와 최근 획득 조회 API가 같은 계약을 쓴다. */
+export interface EarnedBadgePayload {
+  /** 획득 순서대로 최대 EARNED_BADGE_DETAIL_LIMIT건 */
+  earnedBadges: EarnedBadgeSummary[]
+  /** 상세를 싣지 못한 잔여 개수. 0이면 "전체 보기" 카드가 뜨지 않는다 */
+  earnedBadgesMore: number
+}
+
+/**
+ * 발급된 배지 id 목록 → 획득 연출용 응답 조각.
+ * 상세 조회는 전체를 한 번에 하고(소프트 삭제 제외·중복 제거가 여기서 끝난다),
+ * **응답에 싣는 단계에서만** 상한으로 자른다 — 잔여 개수가 정확해진다.
+ */
+export async function buildEarnedBadgePayload(
+  supabase: SupabaseClient,
+  badgeIds: string[]
+): Promise<EarnedBadgePayload> {
+  const all = await fetchEarnedBadgeDetails(supabase, badgeIds)
+  const earnedBadges = all.slice(0, EARNED_BADGE_DETAIL_LIMIT)
+  return { earnedBadges, earnedBadgesMore: all.length - earnedBadges.length }
+}
+
+/**
  * StravaSummaryActivity → NormalizedActivity 변환
  */
 function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity {
@@ -443,7 +473,9 @@ export async function processFetchedActivities(
 /**
  * 특정 유저의 Strava 활동을 동기화하고 배지를 평가합니다.
  * @returns synced: 동기화된 활동 수, badges: 신규 발급된 배지 수,
- *          earnedBadges: 이번에 획득한 배지 상세(획득 순서. 없으면 빈 배열 — 필드는 항상 존재)
+ *          earnedBadges: 이번에 획득한 배지 상세(획득 순서. 최대 EARNED_BADGE_DETAIL_LIMIT건.
+ *          없으면 빈 배열 — 필드는 항상 존재),
+ *          earnedBadgesMore: 상한을 넘겨 상세를 싣지 못한 잔여 개수
  */
 export async function syncStravaActivities(
   userId: string
@@ -453,6 +485,7 @@ export async function syncStravaActivities(
   itemBooksCompleted: number
   missionsCompleted: number
   earnedBadges: EarnedBadgeSummary[]
+  earnedBadgesMore: number
 }> {
   const supabase = createServiceClient()
 
@@ -520,7 +553,7 @@ export async function syncStravaActivities(
   const { data: lockRows, error: lockError } = await lockQuery.select('user_id')
   if (lockError || !lockRows || lockRows.length === 0) {
     console.info(`[syncStravaActivities] 동시 싱크 감지 — 건너뜀 (userId: ${userId})`)
-    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [] }
+    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [], earnedBadgesMore: 0 }
   }
 
   // 4-2. 첫 싱크 여부 (초기화 직후·신규 연동) — 드랍 1회 제한에 사용
@@ -568,7 +601,8 @@ export async function syncStravaActivities(
     )
 
     // 획득 배지 상세는 엔진 4경로를 각각 개조하는 대신, 수집된 id로 여기서 1회만 조회한다.
-    const earnedBadges = await fetchEarnedBadgeDetails(supabase, earnedBadgeIds)
+    // 카드 상한(10장)도 여기서 적용한다 — 클라이언트는 받은 배열을 그대로 그린다.
+    const { earnedBadges, earnedBadgesMore } = await buildEarnedBadgePayload(supabase, earnedBadgeIds)
 
     // last_synced_at은 4-1 잠금 단계에서 이미 선점 갱신됨 (여기서 재갱신하면
     // 처리 중 업로드된 활동이 다음 싱크에서 누락되는 갭이 생기므로 하지 않는다)
@@ -579,6 +613,7 @@ export async function syncStravaActivities(
       itemBooksCompleted,
       missionsCompleted,
       earnedBadges,
+      earnedBadgesMore,
     }
   } catch (err) {
     console.error(`[syncStravaActivities] 처리 중 오류 — last_synced_at 롤백 (userId: ${userId}):`, err)

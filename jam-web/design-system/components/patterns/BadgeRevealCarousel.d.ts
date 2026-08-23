@@ -21,8 +21,9 @@ export interface BadgeRevealCarouselProps {
    */
   open: boolean;
   /**
-   * 노출할 배지 목록(획득 순서 그대로).
-   * 10장을 넘기면 호출부에서 10장으로 자르고 나머지 개수를 moreCount로 넘긴다.
+   * 노출할 배지 목록(획득 순서 그대로) — **서버가 상한(10장)까지 잘라 내려준다**.
+   * 호출부는 받은 배열을 그대로 넘기고, 잘려나간 잔여 개수를 moreCount로 넘긴다.
+   * (상한 상수는 서버 `src/lib/strava/sync.ts`의 EARNED_BADGE_DETAIL_LIMIT 한 곳에만 있다)
    */
   items?: BadgeRevealItem[];
   /** 마지막 "전체 보기" 카드에 표시할 잔여 개수. 0이면 카드 미표시 */
@@ -45,7 +46,11 @@ export interface BadgeRevealCarouselProps {
    * 서비스는 i18n 사전(`d`)에서 주입해 쓴다.
    */
   moreMessage?: string | ((count: number) => string);
-  /** dialog·carousel aria-label */
+  /**
+   * dialog·carousel aria-label.
+   * 중앙 카드의 등급·이름·설명은 오버레이 안 라이브 리전이 따로 읽는다 —
+   * "열렸다 + 몇 개 획득" 안내는 호출부가 별도 라이브 리전으로 처리한다.
+   */
   ariaLabel?: string;
   className?: string;
   style?: CSSProperties;

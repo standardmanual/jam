@@ -93,7 +93,9 @@ export async function GET(request: NextRequest) {
       console.error('[JAM! Strava] 즉시 동기화 실패 (연동은 성공):', err)
     }
 
-    return NextResponse.redirect(`${baseUrl}/profile?strava=connected`)
+    // reveal=1 — 도착 화면에서 최근 획득 배지를 되읽어 획득 연출을 띄우는 플래그.
+    // 여기서 배지 상세를 응답에 실을 수 없어(리다이렉트) 플래그만 넘긴다 (20260823_008).
+    return NextResponse.redirect(`${baseUrl}/profile?strava=connected&reveal=1`)
   } catch (err) {
     console.error('[JAM! Strava] 콜백 처리 오류:', err)
     return NextResponse.redirect(`${baseUrl}/profile?strava=error&reason=server_error`)

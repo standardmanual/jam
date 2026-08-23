@@ -244,3 +244,46 @@ export const ReopenResetRegression: Story = {
     });
   },
 };
+
+/* ──────────────────── 중앙 카드 텍스트 공지 (20260823_008) ──────────────────── */
+
+/**
+ * 오버레이가 열리면 초기 포커스가 닫기 버튼으로 가서, 스크린리더는 dialog의 ariaLabel만 읽고
+ * 배지 이름·설명·등급은 읽지 않았다. 화살표·스와이프로 중앙 카드가 바뀔 때도 공지가 없었다.
+ *
+ * 해결: 오버레이 안에 상시 마운트된 라이브 리전이 중앙 카드의 등급·이름·설명을 읽고,
+ * 카드 안쪽 텍스트는 aria-hidden으로 접어 같은 내용이 두 번 들리지 않게 한다.
+ * (오버레이가 "열렸다 + 몇 개 획득"은 서비스 호출부의 별도 라이브 리전이 담당한다 —
+ *  라이브 리전은 마운트 시점의 초기 내용을 읽지 않기 때문)
+ */
+export const CenterCardAnnouncement: Story = {
+  name: '접근성 — 중앙 카드 텍스트 라이브 리전',
+  args: { open: true, items: makeItems(3), moreCount: 4 },
+  play: async ({ canvasElement, step }) => {
+    const liveText = () =>
+      canvasElement.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent?.trim() ?? '';
+
+    await step('중앙 카드의 등급·이름·설명을 읽는다', async () => {
+      await waitFor(() => expect(liveText()).toContain('한강 러너 1'));
+      expect(liveText()).toContain('Common');
+      expect(liveText()).toContain('한강을 따라 10km');
+    });
+
+    await step('배지 카드 안쪽 텍스트는 aria-hidden으로 접혀 중복 낭독되지 않는다', async () => {
+      // 중앙 카드 래퍼는 aria-hidden="false", 그 안의 BadgeCard 본문은 aria-hidden="true"
+      const center = canvasElement.querySelector('[role="dialog"] [aria-hidden="false"]');
+      expect(center?.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    await step('카드가 바뀌면 라이브 리전 내용도 바뀐다', async () => {
+      await userEvent.keyboard('{ArrowRight}');
+      await waitFor(() => expect(liveText()).toContain('한강 러너 2'));
+    });
+
+    await step('마지막 카드로 넘어가면 잔여 개수 문구를 읽는다', async () => {
+      await userEvent.keyboard('{ArrowLeft}');
+      await userEvent.keyboard('{ArrowLeft}');
+      await waitFor(() => expect(liveText()).toContain('4개를 더 획득'));
+    });
+  },
+};
