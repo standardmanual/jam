@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import React, { useEffect, useState } from 'react';
 import { BadgeRevealCarousel } from './BadgeRevealCarousel';
 import type { BadgeRevealItem } from './BadgeRevealCarousel';
 
@@ -11,13 +10,12 @@ const meta: Meta<typeof BadgeRevealCarousel> = {
     docs: {
       description: {
         component:
-          '배지 획득 연출용 3D 코버플로우 캐러셀. 빈 카드 5장 고속 회전(spinning) → 실제 배지 노출(revealed) 2단계. ' +
+          '배지 획득 연출용 3D 코버플로우 캐러셀. 배지 드랍 엔진의 최종 결과가 나온 뒤에만 열리며, 열리면 곧바로 실제 배지 카드다. ' +
           '중앙 카드 344px, 이웃 카드는 화면 밖 잘림 허용. 좌우 스와이프·ArrowLeft/Right로 순환한다.',
       },
     },
   },
   argTypes: {
-    phase: { control: 'inline-radio', options: ['spinning', 'revealed'] },
     moreCount: { control: { type: 'number', min: 0 } },
     cardWidth: { control: { type: 'number', min: 200, max: 430 } },
   },
@@ -45,34 +43,33 @@ function makeItems(count: number, override?: Partial<BadgeRevealItem>): BadgeRev
 
 export const Empty: Story = {
   name: '0개 — 캐러셀 미노출',
-  args: { open: true, phase: 'revealed', items: [] },
+  args: { open: true, items: [] },
 };
 
 export const Single: Story = {
   name: '1개 — 이웃 없음·플리킹 비활성',
-  args: { open: true, phase: 'revealed', items: makeItems(1) },
+  args: { open: true, items: makeItems(1) },
 };
 
 export const Two: Story = {
   name: '2개 — 왼쪽 없음, 오른쪽에만 1장',
-  args: { open: true, phase: 'revealed', items: makeItems(2) },
+  args: { open: true, items: makeItems(2) },
 };
 
 export const Three: Story = {
   name: '3개 — 좌우 1장씩 peek',
-  args: { open: true, phase: 'revealed', items: makeItems(3) },
+  args: { open: true, items: makeItems(3) },
 };
 
 export const Five: Story = {
   name: '5개',
-  args: { open: true, phase: 'revealed', items: makeItems(5) },
+  args: { open: true, items: makeItems(5) },
 };
 
 export const TwentyWithMoreCard: Story = {
   name: '20개 — 10장 + 전체 보기 카드',
   args: {
     open: true,
-    phase: 'revealed',
     items: makeItems(10),
     moreCount: 10,
   },
@@ -82,7 +79,6 @@ export const CustomMoreMessage: Story = {
   name: '전체 보기 문구 주입 (moreMessage)',
   args: {
     open: true,
-    phase: 'revealed',
     items: makeItems(10),
     moreCount: 7,
     // 서비스는 i18n 사전(d)에서 문구를 주입한다 — 컴포넌트에 하드코딩하지 않는다.
@@ -91,41 +87,15 @@ export const CustomMoreMessage: Story = {
   },
 };
 
-export const Spinning: Story = {
-  name: '스핀 중 — 빈 카드 5장',
-  args: { open: true, phase: 'spinning', items: [] },
-};
-
-/**
- * 스핀 → 노출 전환. 서비스 호출부의 `max(2초, API 응답)` 규칙을 3초 응답으로 재현한다.
- * (응답 지연을 0.5·3·8초로 바꿔가며 보려면 스파이크 페이지 `/spike/badge-reveal` 사용)
- */
-function SpinToRevealDemo({ responseMs = 3000, ...args }: React.ComponentProps<typeof BadgeRevealCarousel> & { responseMs?: number }) {
-  const [phase, setPhase] = useState<'spinning' | 'revealed'>('spinning');
-  useEffect(() => {
-    // max(2초, API 응답) — 응답이 먼저 와도 2초는 채우고 멈춘다.
-    const timer = setTimeout(() => setPhase('revealed'), Math.max(2000, responseMs));
-    return () => clearTimeout(timer);
-  }, [responseMs]);
-  return <BadgeRevealCarousel {...args} phase={phase} />;
-}
-
-export const SpinToReveal: Story = {
-  name: '스핀 → 노출 전환 (3초 응답)',
-  render: (args) => <SpinToRevealDemo {...args} />,
-  args: { open: true, items: makeItems(3) },
-};
-
 export const NoImage: Story = {
   name: '엣지 — 이미지 없음',
-  args: { open: true, phase: 'revealed', items: makeItems(3, { imageUrl: '' }) },
+  args: { open: true, items: makeItems(3, { imageUrl: '' }) },
 };
 
 export const LongDescription: Story = {
   name: '엣지 — 설명 아주 김 (3줄 클램프)',
   args: {
     open: true,
-    phase: 'revealed',
     items: makeItems(3, {
       description:
         '한강 자전거길 전 구간을 완주하고, 같은 주에 러닝과 라이딩을 각각 3회 이상 기록하면 획득할 수 있어요. ' +
@@ -138,12 +108,29 @@ export const LongName: Story = {
   name: '엣지 — 이름 아주 김',
   args: {
     open: true,
-    phase: 'revealed',
     items: makeItems(3, { name: '한강 자전거길 전 구간 완주 기념 특별 배지 시즌 2' }),
   },
 };
 
 export const MythicOnly: Story = {
   name: '엣지 — mythic만',
-  args: { open: true, phase: 'revealed', items: makeItems(3, { rarity: 'mythic' }) },
+  args: { open: true, items: makeItems(3, { rarity: 'mythic' }) },
+};
+
+/**
+ * 20260824_001 회귀 확인용 — 이름 2행 + 설명 3행이 동시에 걸리는 최악 조합.
+ * 텍스트가 `flexShrink: 0`이고 이미지가 `maxHeight: 46%`로 먼저 양보하므로
+ * 이름 2행째·설명 3행째가 잘리지 않아야 한다.
+ */
+export const LongNameAndDescription: Story = {
+  name: '엣지 — 이름 2행 + 설명 3행 (텍스트 잘림 회귀)',
+  args: {
+    open: true,
+    items: makeItems(3, {
+      name: '한강 자전거길 전 구간 완주 기념 특별 배지 시즌 2',
+      description:
+        '한강 자전거길 전 구간을 완주하고, 같은 주에 러닝과 라이딩을 각각 3회 이상 기록하면 획득할 수 있어요. ' +
+        '누적 거리 200km를 넘기면 다음 단계 배지로 이어집니다. 시즌이 끝나기 전에 도전해 보세요.',
+    }),
+  },
 };
