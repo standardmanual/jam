@@ -7,18 +7,15 @@ import { IconButton } from '../buttons/IconButton.jsx';
  *
  * 역할
  *   동기화 등으로 새로 획득한 배지를 전체 화면 오버레이 위에서 한 장씩 보여준다.
- *   "돌아가는 빈 카드 → 실제 배지 공개" 2단계 연출을 하나의 컴포넌트로 묶는다.
+ *   배지 드랍 엔진의 **최종 결과가 나온 뒤에만** 열린다 — 열리면 곧바로 실제 배지 카드다.
+ *   (20260824_001: 응답을 기다리는 "빈 카드 스핀" 단계는 폐기했다. 대기 표현은 호출부
+ *    버튼의 loading 스피너가 담당한다.)
  *
  * 슬롯 (카드 1장 세로 구성)
  *   배지 이미지 → 등급 pill(RarityBadge) → 이름 → 설명(3줄 클램프)
  *   이미지가 없으면 실루엣 SVG 폴백을 그린다.
  *
- * 상태 (phase)
- *   'spinning'  — 빈 카드 5장이 고속 회전. 입력(스와이프·키보드·클릭) 전부 비활성.
- *                 회전 간격이 카드 이동 시간보다 짧아도 스텝이 씹히지 않도록 입력 락을 두지 않는다.
- *   'revealed'  — 실제 배지 N장 노출. 좌우 무한 순환.
- *
- * 개수별 규칙 (revealed)
+ * 개수별 규칙
  *   0장  — 아무것도 렌더하지 않는다(캐러셀 미노출). 호출부가 애초에 열지 않는 것이 정상 경로.
  *   1장  — 이웃 카드 없음, 플리킹 비활성.
  *   2장  — 왼쪽 없음, 오른쪽에만 1장. rel 정규화를 "양수 우선"으로 접어 왼쪽에 붙지 않게 한다.
@@ -33,8 +30,8 @@ import { IconButton } from '../buttons/IconButton.jsx';
  *
  * 접근성
  *   role="dialog" / aria-modal / Escape 닫기 / 포커스 트랩(BottomSheet·ModalToast와 동일 패턴).
- *   prefers-reduced-motion이면 3D 틸트(rotateY·translateZ)와 고속 스핀을 제거하고
- *   단순 페이드로 대체한다(디자인 시스템은 서비스 코드를 import할 수 없어 동일 로직을 내부 구현).
+ *   prefers-reduced-motion이면 3D 틸트(rotateY·translateZ)를 제거하고 단순 페이드로
+ *   대체한다(디자인 시스템은 서비스 코드를 import할 수 없어 동일 로직을 내부 구현).
  *
  * 레이아웃 메모
  *   중앙 카드 폭 기본 344px = 서비스 컬럼(430px)의 80%. 이웃 카드는 화면 밖으로 잘려도 된다.
@@ -43,13 +40,7 @@ import { IconButton } from '../buttons/IconButton.jsx';
  *   터치 타겟이 뒤틀린다.
  */
 
-/** 스핀 단계에 쓰는 빈 카드 수 (배지 개수와 무관하게 항상 5장) */
-const SPIN_CARD_COUNT = 5;
-/** 스핀 1스텝 간격 */
-const SPIN_STEP_MS = 200;
-/** 스핀 1스텝 이동 시간 — 간격보다 짧게 둬야 스텝이 밀리지 않는다 */
-const SPIN_MOVE_MS = 180;
-/** 노출 단계에서 카드 1칸 이동 시간 */
+/** 카드 1칸 이동 시간 */
 const STEP_MOVE_MS = 340;
 /** 플리킹 판정 — 거리(px) / 속도(px·ms). 서비스 BottomSheet 드래그 임계값의 수평 버전 */
 const DRAG_DISTANCE_THRESHOLD = 120;
@@ -109,7 +100,6 @@ function relativeOffset(index, active, count) {
 
 export function BadgeRevealCarousel({
   open,
-  phase = 'revealed',
   items = [],
   moreCount = 0,
   onMoreClick,
@@ -134,45 +124,39 @@ export function BadgeRevealCarousel({
 
   const [dragX, setDragX] = useState(0);
 
-  const spinning = phase === 'spinning';
   const height = cardHeight ?? Math.round(cardWidth * 1.34);
 
-  /** 렌더할 카드 목록 — 스핀 단계에서는 배지 개수 규칙을 전부 무시하고 빈 카드 5장 */
+  /** 렌더할 카드 목록 — 배지 N장 + (잔여가 있으면) 전체 보기 카드 1장 */
   const cards = useMemo(() => {
-    if (spinning) {
-      return Array.from({ length: SPIN_CARD_COUNT }, (_, i) => ({ key: `spin-${i}`, kind: 'placeholder' }));
-    }
     const list = items.map((item, i) => ({ key: `badge-${item.id ?? i}`, kind: 'badge', item }));
     if (moreCount > 0) list.push({ key: 'more', kind: 'more' });
     return list;
-  }, [spinning, items, moreCount]);
+  }, [items, moreCount]);
 
   const count = cards.length;
-  const canFlick = !spinning && count > 1;
+  const canFlick = count > 1;
 
   /* 활성 카드 위치.
-     단계(phase)나 카드 수가 바뀌면 항상 첫 카드가 중앙으로 돌아와야 하는데, 이를 이펙트에서
-     setState로 되돌리면 렌더가 연쇄된다. 대신 위치를 "어떤 구성에서 정한 값인지"(token)와
-     함께 들고 다니며, 구성이 달라지면 저장값을 무시하고 0으로 파생시킨다.
-     중앙(rel=0)의 변환값은 단계와 무관하게 동일하므로 스핀→노출 전환에서도 "중앙 카드 자리"는
-     그대로 유지되고 내용만 교체된다(화면 전체 크로스페이드 없음). */
-  const navToken = `${phase}:${count}`;
+     중앙 카드는 두 상황에서 첫 카드(0번)로 돌아와야 한다.
+       (1) 카드 수가 바뀔 때 — 열린 채로 목록이 교체되어도 인덱스가 범위를 벗어나지 않게.
+       (2) 오버레이가 새로 열릴 때 — 카드 수가 직전과 같아도 "획득 순서 그대로 첫 배지부터".
+     (1)은 위치를 "어떤 구성에서 정한 값인지"(token)와 함께 들고 다니다가 구성이 달라지면
+     저장값을 무시하고 0으로 파생시켜 처리한다(이펙트 없이 렌더 중 파생). */
+  const navToken = count;
   const [nav, setNav] = useState({ token: navToken, index: 0 });
-  const active = nav.token === navToken ? nav.index : 0;
 
-  /* 고속 스핀 — 입력 락 없이 간격마다 한 칸씩 전진시킨다.
-     (원본 Framer 소스처럼 이동 시간 기반 입력 락을 두면 간격이 락보다 짧을 때 스텝이 씹힌다)
-     모션 축소 설정이면 회전시키지 않고 정지 상태로 둔다(단순 페이드로 대체). */
-  useEffect(() => {
-    if (!open || !spinning || reduced) return;
-    const timer = setInterval(() => {
-      setNav((prev) => ({
-        token: navToken,
-        index: ((prev.token === navToken ? prev.index : 0) + 1) % SPIN_CARD_COUNT,
-      }));
-    }, SPIN_STEP_MS);
-    return () => clearInterval(timer);
-  }, [open, spinning, reduced, navToken]);
+  /* (2) 재오픈 리셋. token만으로는 카드 수가 같은 재오픈(1개 → 1개, 3개 → 3개)에서 직전
+     인덱스가 그대로 살아난다 — 20260824_001에서 스핀을 제거하기 전에는 phase 전환이 token을
+     갈아치우며 우연히 이 역할을 겸하고 있었다. 이펙트에서 setState하면 렌더가 한 번 더
+     커밋되므로, React 공식 "렌더 중 상태 조정" 패턴으로 open 변화를 직접 감지한다.
+     https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes */
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) setNav({ token: navToken, index: 0 });
+  }
+
+  const active = nav.token === navToken ? nav.index : 0;
 
   const step = useCallback(
     (dir) => {
@@ -372,7 +356,6 @@ export function BadgeRevealCarousel({
               ` rotateY(${-rel * NEIGHBOR_ROTATE_DEG}deg)` +
               ` scale(${isCenter ? 1 : NEIGHBOR_SCALE})`;
 
-          const moveMs = spinning ? SPIN_MOVE_MS : STEP_MOVE_MS;
           // 드래그 중(dragX !== 0)에는 손가락을 그대로 따라와야 하므로 이동 트랜지션을 끈다.
           // 모션 축소 설정이면 이동 자체를 애니메이션하지 않고 페이드만 남긴다.
           const noTransformTransition = dragX !== 0 || reduced;
@@ -388,14 +371,13 @@ export function BadgeRevealCarousel({
                 zIndex: 10 - distance,
                 pointerEvents: isCenter ? 'auto' : 'none',
                 transition: [
-                  noTransformTransition ? null : `transform ${moveMs}ms var(--ease-smooth-out)`,
-                  `opacity ${reduced ? 200 : moveMs}ms var(--ease-out)`,
+                  noTransformTransition ? null : `transform ${STEP_MOVE_MS}ms var(--ease-smooth-out)`,
+                  `opacity ${reduced ? 200 : STEP_MOVE_MS}ms var(--ease-out)`,
                 ]
                   .filter(Boolean)
                   .join(', '),
               }}
             >
-              {kind === 'placeholder' && <PlaceholderCard reduced={reduced} />}
               {kind === 'badge' && <BadgeCard item={item} />}
               {kind === 'more' && (
                 <MoreCard count={moreCount} label={moreLabel} message={moreMessage} onClick={onMoreClick} />
@@ -423,62 +405,12 @@ export function BadgeRevealCarousel({
           from { opacity: 0; }
           to   { opacity: 1; }
         }
-        @keyframes ds-badge-reveal-pulse {
-          0%, 100% { opacity: 0.35; }
-          50%      { opacity: 0.6; }
-        }
       `}</style>
     </div>
   );
 }
 
-/** 스핀 단계의 빈 카드 — 이미지·텍스트 없이 배지 자리만 암시한다. */
-function PlaceholderCard({ reduced }) {
-  const bar = (width) => (
-    <div
-      style={{
-        width,
-        height: 12,
-        borderRadius: 'var(--radius-pill)',
-        background: 'var(--color-border)',
-      }}
-    />
-  );
-  return (
-    <div
-      aria-hidden="true"
-      style={{
-        width: '100%',
-        height: '100%',
-        boxSizing: 'border-box',
-        padding: 'var(--spacing-24)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 'var(--spacing-16)',
-        opacity: 0.7,
-        // 모션 축소 시에는 회전 대신 아주 느린 페이드만 남긴다.
-        animation: reduced ? 'ds-badge-reveal-pulse 1600ms ease-in-out infinite' : undefined,
-      }}
-    >
-      <div
-        style={{
-          width: '46%',
-          aspectRatio: '1 / 1',
-          borderRadius: '50%',
-          background: 'var(--color-border)',
-          marginBottom: 'var(--spacing-8)',
-        }}
-      />
-      {bar('34%')}
-      {bar('62%')}
-      {bar('78%')}
-    </div>
-  );
-}
-
-/** 노출 단계의 배지 카드 — 이미지 → 등급 pill → 이름 → 설명(3줄) */
+/** 배지 카드 — 이미지 → 등급 pill → 이름 → 설명(3줄) */
 function BadgeCard({ item }) {
   const imageUrl = item?.imageUrl;
   return (
