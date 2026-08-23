@@ -21,6 +21,15 @@ const TYPE_LABEL: Record<string, string> = {
   poi: 'POI',
 }
 
+/** "YYYY.MM.DD" 형식으로 날짜 포맷 */
+function formatYmd(iso: string): string {
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}.${m}.${day}`
+}
+
 const SEASON_SHORT: Record<string, string> = {
   spring: '봄',
   summer: '여름',
@@ -78,7 +87,14 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
           >
             ← 뒤로
           </Button>
-          <h1 className="text-3xl font-bold">{badge.name}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">{badge.name}</h1>
+            {badge.deleted_at && (
+              <span className="inline-flex items-center px-2.5 py-1 bg-red-50 border border-red-200 rounded-full text-red-600 text-xs font-semibold whitespace-nowrap">
+                비활성화됨 · {formatYmd(badge.deleted_at)} 회수
+              </span>
+            )}
+          </div>
           <p className="text-gray-600 mt-2">{badge.description}</p>
         </div>
       </div>
