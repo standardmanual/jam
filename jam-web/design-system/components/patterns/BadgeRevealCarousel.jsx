@@ -137,11 +137,25 @@ export function BadgeRevealCarousel({
   const canFlick = count > 1;
 
   /* 활성 카드 위치.
-     카드 수가 바뀌면 항상 첫 카드가 중앙으로 돌아와야 하는데, 이를 이펙트에서 setState로
-     되돌리면 렌더가 연쇄된다. 대신 위치를 "어떤 구성에서 정한 값인지"(token)와 함께 들고
-     다니며, 구성이 달라지면 저장값을 무시하고 0으로 파생시킨다. */
+     중앙 카드는 두 상황에서 첫 카드(0번)로 돌아와야 한다.
+       (1) 카드 수가 바뀔 때 — 열린 채로 목록이 교체되어도 인덱스가 범위를 벗어나지 않게.
+       (2) 오버레이가 새로 열릴 때 — 카드 수가 직전과 같아도 "획득 순서 그대로 첫 배지부터".
+     (1)은 위치를 "어떤 구성에서 정한 값인지"(token)와 함께 들고 다니다가 구성이 달라지면
+     저장값을 무시하고 0으로 파생시켜 처리한다(이펙트 없이 렌더 중 파생). */
   const navToken = count;
   const [nav, setNav] = useState({ token: navToken, index: 0 });
+
+  /* (2) 재오픈 리셋. token만으로는 카드 수가 같은 재오픈(1개 → 1개, 3개 → 3개)에서 직전
+     인덱스가 그대로 살아난다 — 20260824_001에서 스핀을 제거하기 전에는 phase 전환이 token을
+     갈아치우며 우연히 이 역할을 겸하고 있었다. 이펙트에서 setState하면 렌더가 한 번 더
+     커밋되므로, React 공식 "렌더 중 상태 조정" 패턴으로 open 변화를 직접 감지한다.
+     https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes */
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) setNav({ token: navToken, index: 0 });
+  }
+
   const active = nav.token === navToken ? nav.index : 0;
 
   const step = useCallback(

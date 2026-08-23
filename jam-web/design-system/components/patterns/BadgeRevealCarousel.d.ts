@@ -16,6 +16,8 @@ export interface BadgeRevealCarouselProps {
    * 오버레이 표시 여부.
    * 배지 드랍 엔진의 최종 결과가 나온 뒤에만 true로 올린다 — 열리면 곧바로 실제 배지 카드다.
    * 결과를 기다리는 동안의 대기 표현은 호출부 버튼의 loading 스피너가 담당한다.
+   * false → true로 바뀔 때마다 중앙 카드는 항상 첫 배지(0번)로 돌아온다 — 직전 노출에서
+   * 스와이프한 위치가 남지 않는다.
    */
   open: boolean;
   /**

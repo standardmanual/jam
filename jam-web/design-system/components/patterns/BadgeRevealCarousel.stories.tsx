@@ -1,4 +1,6 @@
+import { useMemo, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { expect, userEvent, waitFor } from 'storybook/test';
 import { BadgeRevealCarousel } from './BadgeRevealCarousel';
 import type { BadgeRevealItem } from './BadgeRevealCarousel';
 
@@ -132,5 +134,113 @@ export const LongNameAndDescription: Story = {
         '한강 자전거길 전 구간을 완주하고, 같은 주에 러닝과 라이딩을 각각 3회 이상 기록하면 획득할 수 있어요. ' +
         '누적 거리 200km를 넘기면 다음 단계 배지로 이어집니다. 시즌이 끝나기 전에 도전해 보세요.',
     }),
+  },
+};
+
+/* ────────────────────────── 재오픈 리셋 회귀 (20260824_001) ────────────────────────── */
+
+const REOPEN_POOL = makeItems(20);
+
+/** 중앙 카드(= aria-hidden="false"인 카드)의 배지 이름. 이웃 카드는 aria-hidden="true"다. */
+function centerBadgeName(root: HTMLElement): string {
+  const center = root.querySelector('[role="dialog"] [aria-hidden="false"]');
+  return center?.querySelectorAll('p')[0]?.textContent?.trim() ?? '';
+}
+
+/**
+ * 재오픈 리셋을 실측하는 하네스.
+ * 툴바는 `zIndex: 100`으로 오버레이(zIndex 60) 위에 띄운다 — 캐러셀이 열린 상태에서도
+ * 카드 수를 바꿔 눌러 "열린 채 목록 교체" 경로까지 검증하기 위해서다.
+ */
+function ReopenResetHarness() {
+  const [open, setOpen] = useState(false);
+  const [count, setCount] = useState(3);
+  const items = useMemo(() => REOPEN_POOL.slice(0, count), [count]);
+
+  return (
+    <div>
+      <div style={{ position: 'relative', zIndex: 100, padding: 24, display: 'flex', gap: 8 }}>
+        {[3, 20, 1].map((n) => (
+          <button
+            key={n}
+            type="button"
+            data-testid={`open-${n}`}
+            onClick={() => {
+              setCount(n);
+              setOpen(true);
+            }}
+            style={{
+              padding: '10px 16px',
+              borderRadius: 'var(--radius-pill)',
+              border: 'none',
+              background: 'var(--color-primary)',
+              color: 'var(--color-text-on-primary)',
+              fontFamily: 'var(--font-family-base)',
+              fontSize: 'var(--text-small)',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {`${n}개 열기`}
+          </button>
+        ))}
+      </div>
+
+      <BadgeRevealCarousel open={open} items={items} onClose={() => setOpen(false)} />
+    </div>
+  );
+}
+
+/**
+ * 20260824_001 게이트 리뷰 회귀 확인용 — **재오픈 시 중앙 카드가 항상 첫 배지로 리셋**된다.
+ *
+ * 스핀(phase)을 제거하기 전에는 phase 전환이 navToken을 갈아치우며 우연히 리셋 역할을 겸했다.
+ * 스핀 제거 후 token이 `count`뿐이라, 카드 수가 같은 재오픈(3개 → 닫기 → 3개)에서 직전에
+ * 스와이프한 카드가 그대로 남는 회귀가 났다. 아래 play가 그 경로를 자동으로 재현·검증한다.
+ */
+export const ReopenResetRegression: Story = {
+  name: '회귀 — 재오픈 시 첫 카드로 리셋',
+  args: { open: false, items: [] },
+  render: () => <ReopenResetHarness />,
+  play: async ({ canvasElement, step }) => {
+    const center = () => centerBadgeName(canvasElement);
+    const dialogCount = () => canvasElement.querySelectorAll('[role="dialog"]').length;
+
+    await step('3개로 열면 첫 카드가 중앙', async () => {
+      await userEvent.click(canvasElement.querySelector('[data-testid="open-3"]')!);
+      await waitFor(() => expect(center()).toBe('한강 러너 1'));
+    });
+
+    await step('ArrowRight로 2번 카드로 이동', async () => {
+      await userEvent.keyboard('{ArrowRight}');
+      await waitFor(() => expect(center()).toBe('한강 러너 2'));
+    });
+
+    await step('Escape로 닫기', async () => {
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => expect(dialogCount()).toBe(0));
+    });
+
+    await step('같은 카드 수(3개)로 다시 열면 첫 카드로 리셋 — 이번 회귀의 핵심', async () => {
+      await userEvent.click(canvasElement.querySelector('[data-testid="open-3"]')!);
+      await waitFor(() => expect(center()).toBe('한강 러너 1'));
+    });
+
+    await step('열린 채 카드 수를 20개로 바꿔도 첫 카드로 리셋 (navToken 경로)', async () => {
+      await userEvent.keyboard('{ArrowRight}');
+      await waitFor(() => expect(center()).toBe('한강 러너 2'));
+      await userEvent.click(canvasElement.querySelector('[data-testid="open-20"]')!);
+      await waitFor(() => expect(center()).toBe('한강 러너 1'));
+    });
+
+    await step('20개 → 닫기 → 1개 재오픈도 첫 카드', async () => {
+      await userEvent.keyboard('{ArrowRight}');
+      await userEvent.keyboard('{ArrowRight}');
+      await waitFor(() => expect(center()).toBe('한강 러너 3'));
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => expect(dialogCount()).toBe(0));
+      await userEvent.click(canvasElement.querySelector('[data-testid="open-1"]')!);
+      await waitFor(() => expect(center()).toBe('한강 러너 1'));
+    });
   },
 };
