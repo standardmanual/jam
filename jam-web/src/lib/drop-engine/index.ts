@@ -503,12 +503,17 @@ async function insertDrop(
  * 활동 1건당 아이템 드랍 (v2 3레이어).
  * @param activity - 이번 드랍의 기준 활동 (맥락·강도 판단). 문자열(activityType)은 레거시 호환
  * @param activities - 이번 싱크 배치 전체 (condition_json 평가용)
+ * @returns 이번 호출에서 실제로 드랍된 배지 id 목록 (드랍 순서 유지, 없으면 빈 배열).
+ *          20260823_007 — 동기화 응답에 획득 배지 상세를 실어보내기 위해 추가.
+ *          호출부의 순차 처리 불변식(user_drop_state 읽기/쓰기)은 그대로다 — 병렬화 금지.
  */
 export async function tryItemDrop(
   userId: string,
   activity?: NormalizedActivity | string,
   activities: NormalizedActivity[] = []
-): Promise<void> {
+): Promise<string[]> {
+  /** 이번 호출에서 드랍된 배지 id (드랍 순서) */
+  const droppedBadgeIds: string[] = []
   const act: NormalizedActivity | null = typeof activity === 'object' ? activity : null
   const activityStartDate = act?.startDateLocal ?? act?.startDate ?? new Date().toISOString()
   // 걷기(축1 게이트 통과)는 0.4 — 확정 1개 드랍엔 영향 없이 보너스 드랍 확률·pity 진행에만 반영
@@ -527,7 +532,7 @@ export async function tryItemDrop(
       // 정상 가입이면 항상 존재해야 하므로, 이 로그가 쌓이면 즉시 이상 신호다.
       await logEngineDecision('drop', 'drop_attempt', userId, { outcome: 'no_inventory' })
     }
-    return
+    return droppedBadgeIds
   }
   const rand = Math.random
 
@@ -620,6 +625,7 @@ export async function tryItemDrop(
     })
 
     usedSlots += 1
+    droppedBadgeIds.push(result.badge.id)
 
     // 상태·구조 갱신 (다음 드랍/다음 싱크에 반영)
     updateLastPiecePity(structure, state, result.factionId, result.badge.id)
@@ -655,4 +661,6 @@ export async function tryItemDrop(
 
   state.last_activity_at = activityStartDate
   await saveDropState(state)
+
+  return droppedBadgeIds
 }

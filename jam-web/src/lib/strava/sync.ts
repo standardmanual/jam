@@ -33,6 +33,71 @@ const MAX_POI_MATCH_ACTIVITIES_PER_SYNC = 10
 export const SYNC_OVERLAP_SECONDS = 15 * 60
 
 /**
+ * 동기화 응답에 실어보내는 "이번에 획득한 배지" 요약 (20260823_007).
+ * 획득 연출(BadgeRevealCarousel)이 카드 한 장을 그리는 데 필요한 최소 필드만 담는다.
+ */
+export interface EarnedBadgeSummary {
+  id: string
+  name: string
+  description: string
+  /** badges.image_url이 null이면 빈 문자열 — 기존 페이로드 관례와 동일 */
+  imageUrl: string
+  rarity: BadgeRarity
+  type: BadgeType
+}
+
+/**
+ * 이번 싱크에서 발급된 배지 id 목록으로 badges 테이블을 1회 조회해 상세를 채운다.
+ *
+ * - PostgREST는 `.in()` 결과 순서를 보장하지 않으므로 **id 수집 순서(=획득 순서)로 다시 정렬**한다.
+ * - 소프트 삭제된 배지(deleted_at IS NOT NULL)는 제외한다.
+ */
+async function fetchEarnedBadgeDetails(
+  supabase: SupabaseClient,
+  badgeIds: string[]
+): Promise<EarnedBadgeSummary[]> {
+  if (badgeIds.length === 0) return []
+
+  // 같은 배지가 두 경로에서 중복 수집될 여지를 차단 (최초 획득 순서 유지)
+  const orderedIds = Array.from(new Set(badgeIds))
+
+  const { data, error } = await supabase
+    .from('badges')
+    .select('id, name, description, image_url, rarity, type')
+    .in('id', orderedIds)
+    .is('deleted_at', null)
+
+  if (error) {
+    // 상세 조회 실패가 동기화 자체를 막지는 않는다 — 연출만 생략된다.
+    console.error('[fetchEarnedBadgeDetails] 획득 배지 상세 조회 오류:', error)
+    return []
+  }
+
+  type EarnedBadgeRow = {
+    id: string
+    name: string
+    description: string | null
+    image_url: string | null
+    rarity: BadgeRarity
+    type: BadgeType
+  }
+  const byId = new Map<string, EarnedBadgeRow>()
+  for (const row of (data ?? []) as EarnedBadgeRow[]) byId.set(row.id, row)
+
+  return orderedIds
+    .map((id) => byId.get(id))
+    .filter((row): row is EarnedBadgeRow => Boolean(row))
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description ?? '',
+      imageUrl: row.image_url ?? '',
+      rarity: row.rarity,
+      type: row.type,
+    }))
+}
+
+/**
  * StravaSummaryActivity → NormalizedActivity 변환
  */
 function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity {
@@ -113,10 +178,20 @@ export async function processFetchedActivities(
   rawActivities: StravaSummaryActivity[],
   isFirstSync: boolean,
   processedVia: StravaActivityRow['processed_via'] = 'sync'
-): Promise<{ badges: number; itemBooksCompleted: number; missionsCompleted: number }> {
+): Promise<{
+  badges: number
+  itemBooksCompleted: number
+  missionsCompleted: number
+  /** 이번 처리에서 발급된 배지 id — 획득 순서(POI → 아이템 드랍 → 액티비티 → 컬렉션·미션 보상) */
+  earnedBadgeIds: string[]
+}> {
   if (rawActivities.length === 0) {
-    return { badges: 0, itemBooksCompleted: 0, missionsCompleted: 0 }
+    return { badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadgeIds: [] }
   }
+
+  // 획득 연출용 — 발급된 배지 id를 발급 순서대로 모은다 (엔진 내부 로직은 건드리지 않고
+  // 각 경로가 돌려주는 id만 이어 붙인다).
+  const earnedBadgeIds: string[] = []
 
   const activities: NormalizedActivity[] = rawActivities.map(normalizeActivity)
 
@@ -208,6 +283,7 @@ export async function processFetchedActivities(
         }
 
         poiBadgesEarned++
+        earnedBadgeIds.push(badge.id)
         console.info(`[processFetchedActivities] POI 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}`)
 
         if (isFirstEarn) {
@@ -248,6 +324,7 @@ export async function processFetchedActivities(
       }
 
       poiBadgesEarned++
+      earnedBadgeIds.push(poi.linked_badge_id)
       console.info(`[processFetchedActivities] POI 배지 발급 — userId: ${userId}, poi: ${poi.name}, badge_id: ${poi.linked_badge_id}`)
     }
   }
@@ -288,7 +365,9 @@ export async function processFetchedActivities(
     .reverse()
   for (const activity of dropTargets) {
     try {
-      await tryItemDrop(userId, activity, activitiesFiltered)
+      // 순차 처리 유지 필수 — tryItemDrop이 user_drop_state를 읽고 쓰므로 병렬화하면 안 된다.
+      // (반환값이 생겼다고 Promise.all로 바꾸지 말 것 — 위 주석의 순서 역전 버그가 재발한다)
+      earnedBadgeIds.push(...(await tryItemDrop(userId, activity, activitiesFiltered)))
     } catch (err) {
       // 배치 중 한 건의 드랍 시도가 실패해도 나머지 활동 처리를 막지 않는다 —
       // 실패는 로깅만 하고 다음 활동으로 계속 진행한다.
@@ -331,16 +410,20 @@ export async function processFetchedActivities(
   }
 
   // 일반 배지 엔진 호출 (speed-filtered 활동만)
-  const badgesEarned = activitiesFiltered.length > 0 ? await evaluateBadges(userId, activitiesFiltered) : 0
+  const activityBadgeIds = activitiesFiltered.length > 0 ? await evaluateBadges(userId, activitiesFiltered) : []
+  const badgesEarned = activityBadgeIds.length
+  earnedBadgeIds.push(...activityBadgeIds)
 
   // 아이템북 완성 체크 + reward_badge 발급
-  const { completedIds, rewardBadgesIssued } = await checkItemBookCompletion(userId)
+  const { completedIds, rewardBadgesIssued, rewardBadgeIds } = await checkItemBookCompletion(userId)
+  earnedBadgeIds.push(...rewardBadgeIds)
   if (completedIds.length > 0) {
     console.info(`[processFetchedActivities] 아이템북 완성 — userId: ${userId}, 완성 수: ${completedIds.length}, 보상 배지: ${rewardBadgesIssued}`)
   }
 
   // Phase 16: 다이나믹 미션 달성 체크
-  const { completedMissionIds } = await checkMissions(userId, activitiesFiltered)
+  const { completedMissionIds, awardedBadgeIds } = await checkMissions(userId, activitiesFiltered)
+  earnedBadgeIds.push(...awardedBadgeIds)
   if (completedMissionIds.length > 0) {
     console.info(`[processFetchedActivities] 미션 달성 — userId: ${userId}, 수: ${completedMissionIds.length}`)
   }
@@ -353,16 +436,24 @@ export async function processFetchedActivities(
     badges: badgesEarned + poiBadgesEarned + rewardBadgesIssued,
     itemBooksCompleted: completedIds.length,
     missionsCompleted: completedMissionIds.length,
+    earnedBadgeIds,
   }
 }
 
 /**
  * 특정 유저의 Strava 활동을 동기화하고 배지를 평가합니다.
- * @returns synced: 동기화된 활동 수, badges: 신규 발급된 배지 수
+ * @returns synced: 동기화된 활동 수, badges: 신규 발급된 배지 수,
+ *          earnedBadges: 이번에 획득한 배지 상세(획득 순서. 없으면 빈 배열 — 필드는 항상 존재)
  */
 export async function syncStravaActivities(
   userId: string
-): Promise<{ synced: number; badges: number; itemBooksCompleted: number; missionsCompleted: number }> {
+): Promise<{
+  synced: number
+  badges: number
+  itemBooksCompleted: number
+  missionsCompleted: number
+  earnedBadges: EarnedBadgeSummary[]
+}> {
   const supabase = createServiceClient()
 
   // 1. strava_connections 조회
@@ -429,7 +520,7 @@ export async function syncStravaActivities(
   const { data: lockRows, error: lockError } = await lockQuery.select('user_id')
   if (lockError || !lockRows || lockRows.length === 0) {
     console.info(`[syncStravaActivities] 동시 싱크 감지 — 건너뜀 (userId: ${userId})`)
-    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0 }
+    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [] }
   }
 
   // 4-2. 첫 싱크 여부 (초기화 직후·신규 연동) — 드랍 1회 제한에 사용
@@ -467,7 +558,7 @@ export async function syncStravaActivities(
       `${isFirstSync ? ' (첫 싱크 — 최신 1건 제한)' : ''}`
     )
 
-    const { badges, itemBooksCompleted, missionsCompleted } = await processFetchedActivities(
+    const { badges, itemBooksCompleted, missionsCompleted, earnedBadgeIds } = await processFetchedActivities(
       supabase,
       userId,
       accessToken,
@@ -475,6 +566,9 @@ export async function syncStravaActivities(
       isFirstSync,
       'sync'
     )
+
+    // 획득 배지 상세는 엔진 4경로를 각각 개조하는 대신, 수집된 id로 여기서 1회만 조회한다.
+    const earnedBadges = await fetchEarnedBadgeDetails(supabase, earnedBadgeIds)
 
     // last_synced_at은 4-1 잠금 단계에서 이미 선점 갱신됨 (여기서 재갱신하면
     // 처리 중 업로드된 활동이 다음 싱크에서 누락되는 갭이 생기므로 하지 않는다)
@@ -484,6 +578,7 @@ export async function syncStravaActivities(
       badges,
       itemBooksCompleted,
       missionsCompleted,
+      earnedBadges,
     }
   } catch (err) {
     console.error(`[syncStravaActivities] 처리 중 오류 — last_synced_at 롤백 (userId: ${userId}):`, err)

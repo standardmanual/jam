@@ -25,15 +25,16 @@ const dropState = vi.hoisted(() => ({ current: null as string | null }))
 vi.mock('@/lib/drop-engine/index', () => ({
   tryItemDrop: vi.fn(async (_userId: string, activity: { startDateLocal?: string; startDate: string }) => {
     dropState.current = activity.startDateLocal ?? activity.startDate
+    return []
   }),
 }))
-vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: vi.fn(async () => 0) }))
+vi.mock('@/lib/badge-engine/index', () => ({ evaluateBadges: vi.fn(async () => []) }))
 vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn(async () => []) }))
 vi.mock('@/lib/itembook/checker', () => ({
-  checkItemBookCompletion: vi.fn(async () => ({ completedIds: [], rewardBadgesIssued: 0 })),
+  checkItemBookCompletion: vi.fn(async () => ({ completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] })),
 }))
 vi.mock('@/lib/missions/checker', () => ({
-  checkMissions: vi.fn(async () => ({ completedMissionIds: [] })),
+  checkMissions: vi.fn(async () => ({ completedMissionIds: [], awardedBadgeIds: [] })),
 }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
 vi.mock('@/lib/strava/api', () => ({

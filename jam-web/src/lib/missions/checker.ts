@@ -57,6 +57,11 @@ export function activeMissionsQueryFilter(now: string): { startsAtLte: string; e
 
 export interface MissionCheckResult {
   completedMissionIds: string[]
+  /**
+   * 이번 호출에서 미션 보상으로 발급된 배지 id 목록 (발급 순서).
+   * 20260823_007 — 동기화 응답에 획득 배지 상세를 실어보내기 위해 추가.
+   */
+  awardedBadgeIds: string[]
 }
 
 export async function checkMissions(
@@ -76,7 +81,7 @@ export async function checkMissions(
     .or(activeFilter.endsAtOrExpr)
 
   const missions = (missionsRaw ?? []) as MissionRow[]
-  if (missions.length === 0) return { completedMissionIds: [] }
+  if (missions.length === 0) return { completedMissionIds: [], awardedBadgeIds: [] }
 
   // 2. 유저가 이미 완료한 미션
   const { data: completedRaw } = await supabase
@@ -99,6 +104,7 @@ export async function checkMissions(
 
   const pendingMissions = missions.filter((m) => !completedSet.has(m.id))
   const completedMissionIds: string[] = []
+  const awardedBadgeIds: string[] = []
 
   // distance/activity_count는 "이번 배치"가 아니라 실제 이력 전체로 판정해야
   // 매번 조금씩 동기화되는 정상적인 사용 패턴에서도 누적 조건이 제대로 채워진다.
@@ -165,6 +171,7 @@ export async function checkMissions(
 
     // 보상 지급 (Phase13) — 설정된 배지 전부(타입별 분기·중복 스킵) + 배지 포인트 + 미션 포인트
     const reward = await grantMissionRewards(userId, mission)
+    awardedBadgeIds.push(...reward.awardedBadgeIds)
 
     await recordFeedEvent(userId, 'mission_completed', {
       mission_id: mission.id,
@@ -177,7 +184,7 @@ export async function checkMissions(
     })
   }
 
-  return { completedMissionIds }
+  return { completedMissionIds, awardedBadgeIds }
 }
 
 export interface OwnershipContext {
