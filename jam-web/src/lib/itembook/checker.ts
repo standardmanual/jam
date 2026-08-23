@@ -17,6 +17,12 @@ import type { ItemBookRow, InventoryRow, BadgeType } from '@/types/database'
 export interface ItemBookCompletionResult {
   completedIds: string[]
   rewardBadgesIssued: number
+  /**
+   * 이번 호출에서 실제로 발급된 보상 배지 id 목록 (발급 순서).
+   * 20260823_007 — 동기화 응답에 획득 배지 상세를 실어보내기 위해 추가.
+   * rewardBadgesIssued는 기존 소비처가 있어 그대로 둔다(= rewardBadgeIds.length).
+   */
+  rewardBadgeIds: string[]
 }
 
 /**
@@ -36,7 +42,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
 
   if (itemBooksError || !itemBooks || itemBooks.length === 0) {
     if (itemBooksError) console.error('[checkItemBookCompletion] item_books 조회 오류:', itemBooksError)
-    return { completedIds: [], rewardBadgesIssued: 0 }
+    return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
   }
 
   const bookIds = itemBooks.map((b) => b.id)
@@ -73,7 +79,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
 
   if (slotsError) {
     console.error('[checkItemBookCompletion] user_item_book_slots 조회 오류:', slotsError)
-    return { completedIds: [], rewardBadgesIssued: 0 }
+    return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
   }
 
   const slotCountByBook = new Map<string, number>()
@@ -93,7 +99,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
 
     if (poiEarnsError) {
       console.error('[checkItemBookCompletion] user_poi_badge_earns 조회 오류:', poiEarnsError)
-      return { completedIds: [], rewardBadgesIssued: 0 }
+      return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
     }
 
     const earnedPoiBadgeIds = new Set(
@@ -137,7 +143,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   }
 
   if (completedIds.length === 0) {
-    return { completedIds: [], rewardBadgesIssued: 0 }
+    return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
   }
 
   console.info(`[checkItemBookCompletion] 완성된 아이템북 — userId: ${userId}, ids: ${completedIds.join(', ')}`)
@@ -149,7 +155,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   await completionsTable.upsert(completionRows, { onConflict: 'user_id,item_book_id', ignoreDuplicates: true })
 
   // 7. reward_badge_id 발급
-  let rewardBadgesIssued = 0
+  const rewardBadgeIds: string[] = []
 
   // 유저 인벤토리
   const { data: inventoryRaw } = await supabase
@@ -189,9 +195,9 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     // 인벤토리 used_slots 업데이트 (보상 배지는 activity badge이므로 인벤토리 대상 아님)
     void inventory // 보상 배지는 user_activity_badges에만 저장
 
-    rewardBadgesIssued++
+    rewardBadgeIds.push(book.reward_badge_id)
     console.info(`[checkItemBookCompletion] 보상 배지 발급 완료 — userId: ${userId}, book: ${book.name}, reward_badge_id: ${book.reward_badge_id}`)
   }
 
-  return { completedIds, rewardBadgesIssued }
+  return { completedIds, rewardBadgesIssued: rewardBadgeIds.length, rewardBadgeIds }
 }

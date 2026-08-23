@@ -767,17 +767,23 @@ export async function evaluateBadgesDetailed(
   return { earned, missed }
 }
 
-// backward-compat wrapper (Strava 동기화에서 사용)
+/**
+ * Strava 동기화용 래퍼 — 이번 호출에서 새로 발급된 액티비티배지 id 목록을 발급 순서대로 반환한다.
+ *
+ * 20260823_007: 기존에는 발급 개수(number)만 반환했으나, 동기화 응답에 획득 배지 상세
+ * (이름·설명·이미지)를 실어보내기 위해 id 목록으로 확장했다. 개수가 필요한 호출부는
+ * `.length`를 쓰면 된다.
+ */
 export async function evaluateBadges(
   userId: string,
   activities: NormalizedActivity[]
-): Promise<number> {
+): Promise<string[]> {
   const { earned } = await evaluateBadgesDetailed(userId, activities, {
     dryRun: false,
     triggeredBy: 'strava_sync',
     silent: false,
   })
-  return earned.length
+  return earned.map((b) => b.id)
 }
 
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────

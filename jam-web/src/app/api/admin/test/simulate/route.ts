@@ -93,7 +93,8 @@ export async function POST(request: NextRequest) {
   }
 
   // 드랍 엔진 호출 — 반환 전에 드랍된 아이템 이름을 알기 위해 직접 조회
-  // tryItemDrop은 void를 반환하므로, 호출 전후로 inventory_items를 비교
+  // (tryItemDrop은 20260823_007부터 드랍된 badge_id[]를 반환하지만, 이 시뮬레이터는
+  //  아이템 "이름"과 시리얼이 필요해 기존대로 호출 전후 inventory_items를 비교한다)
   const { data: inventoryBefore } = await supabase
     .from('inventory')
     .select('id, used_slots')
