@@ -89,3 +89,16 @@
   --color-tag-7: var(--color-base-charcoal);
   --color-tag-8: var(--color-base-sienna);
 }
+
+/*
+ * 20260823_003: prefers-contrast: more — TabBar 비활성 아이콘의 대비를 최고치로
+ * 끌어올린다(Apple HIG §12 vibrancy). 아이콘은 항상 흰 필(반투명 --color-chrome-bg-inverse)
+ * 위에 얹히므로 테마와 무관하게 --color-text-inverse(흰 배경 위 최대 대비, 검정)를 쓴다
+ * — --color-text(테마별 캔버스 텍스트색)를 쓰면 다크 테마에서 흰색이 되어 흰 필 위에서
+ * 오히려 안 보이는 실수가 된다.
+ */
+@media (prefers-contrast: more) {
+  :root {
+    --color-icon-inactive: var(--color-text-inverse);
+  }
+}
