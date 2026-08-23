@@ -272,7 +272,7 @@ CREATE TABLE user_drop_state (
 ### 3.7 엔진 의사코드
 
 ```
-tryItemDrop(userId, activity):
+tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260823_007)
   state = user_drop_state 조회/초기화
   1. 드랍 개수: 기본 1개 확정 + 보너스 15% (60분+/고고도면 30%)로 2개째
   2. rarity 추첨 (개당):
@@ -287,6 +287,7 @@ tryItemDrop(userId, activity):
      완성 북은 ×0.3 잔류 / 마지막 조각 pity 도달 북 있으면 그 배지 확정
   6. 배지 선택: 미보유 우선, rarity 폴백 / 일련번호 난수 부여
   7. 인벤토리 삽입(슬롯 체크) + state 갱신 + 피드 이벤트
+  8. 드랍된 badge_id 목록 반환 (획득 연출용 — 20260823_007)
 ```
 
 > **불변식(2026-08-11, 티켓 20260811_009)**: `tryItemDrop`은 호출마다 `user_drop_state`를
@@ -294,6 +295,35 @@ tryItemDrop(userId, activity):
 > **시간순(오래된 → 최신)** 으로 처리해야 한다. 역순(최신 → 오래된)으로 처리하면 배치의
 > 마지막 호출(=배치 내 가장 오래된 활동) 결과가 최종 저장돼 `last_activity_at`/
 > `daily_drop_date`/`last_drop_world_id`가 실제 최신 활동을 반영하지 못한다.
+>
+> **⚠️ 반환값이 생겼다고 병렬화하면 이 불변식이 깨진다(2026-08-23, 티켓 20260823_007).**
+> `tryItemDrop`이 `void`에서 `string[]`으로 바뀌면서 "결과를 모아야 하니 `Promise.all`로
+> 한꺼번에" 라는 유혹이 생기지만, 병렬 호출은 각자 같은 `user_drop_state`를 읽고 서로를
+> 덮어써 위 불변식을 정면으로 위반한다. **반드시 `for` 루프 안에서 순차 `await`** 해야 하며,
+> 이 제약은 `src/lib/strava/sync.ts` 호출부에도 주석으로 남겨두었다.
+
+### 3.7.1 획득 배지 상세 응답 (2026-08-23, 티켓 20260823_007)
+
+배지 획득 연출(3D 캐러셀)을 위해 **엔진 4경로가 발급한 `badge_id`를 수집**하고,
+`syncStravaActivities()` 종료 직전에 `badges` 테이블을 **1회** 조회해
+`/api/strava/sync` 응답에 `earnedBadges[]`로 실어 보낸다.
+
+| 경로 | 시그니처 변경 |
+|---|---|
+| 액티비티배지 | `evaluateBadges()` `number` → `string[]` |
+| 아이템배지 | `tryItemDrop()` `void` → `string[]` |
+| POI 배지 | `sync.ts`에서 발급분 수집 |
+| 컬렉션·미션 보상 | `ItemBookCompletionResult.rewardBadgeIds` / `MissionCheckResult.awardedBadgeIds` |
+
+응답 형태: `{ id, name, description, imageUrl, rarity, type }[]`
+— 소프트 삭제(`deleted_at`) 배지 제외, `image_url` null은 `''`, 0개면 빈 배열.
+**PostgREST는 `.in()` 조회 순서를 보장하지 않으므로 수집 순서대로 재정렬**한다(획득 순서 보존).
+
+> **주의 — `badges` 카운터와 `earnedBadges.length`는 서로 다른 집합이다.**
+> 기존 `badges` 카운터(`badgesEarned + poiBadgesEarned + rewardBadgesIssued`)에는
+> **아이템 드랍 배지와 미션 보상 배지가 포함되지 않는다.** 반면 `earnedBadges`에는 들어간다.
+> 반대로 중복 id 제거와 소프트 삭제 제외로 `earnedBadges`가 더 짧아질 수도 있다.
+> 두 값을 같은 의미로 쓰면 안 된다.
 
 ### 3.8 유지되는 v1 로직
 
