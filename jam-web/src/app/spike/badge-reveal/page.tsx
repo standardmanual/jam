@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { EARNED_BADGE_DETAIL_LIMIT } from '@/lib/strava/sync'
 import BadgeRevealSpikeClient, { type SpikeBadge } from './BadgeRevealSpikeClient'
 
 /**
@@ -11,6 +12,9 @@ import BadgeRevealSpikeClient, { type SpikeBadge } from './BadgeRevealSpikeClien
  *   이 페이지는 `badges` 테이블 **조회 전용**이며 어떤 테이블에도 쓰지 않는다.
  * - RLS를 그대로 통과하는 세션 클라이언트로만 조회한다(service_role 사용 안 함).
  *   세션이 없으면 조회 결과가 비므로 화면에서 예시 데이터로 대체한다.
+ * - 카드 상한(10장)은 **서버 상수 하나**(`EARNED_BADGE_DETAIL_LIMIT`)에서만 나온다.
+ *   하네스도 실제 응답 계약(`earnedBadges` + `earnedBadgesMore`)을 그대로 흉내내도록
+ *   이 값을 프롭으로 내려준다 (20260823_008 — 스파이크 자체 MAX_CARDS 상수 제거).
  */
 export const dynamic = 'force-dynamic'
 
@@ -40,5 +44,5 @@ export default async function BadgeRevealSpikePage() {
     rarity: b.rarity,
   }))
 
-  return <BadgeRevealSpikeClient badges={badges} />
+  return <BadgeRevealSpikeClient badges={badges} detailLimit={EARNED_BADGE_DETAIL_LIMIT} />
 }

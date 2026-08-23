@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
 import { Button } from '@ds/components/buttons/Button'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 
 /**
  * 배지 획득 3D 캐러셀 스파이크 하네스 (20260823_007 → 20260824_001 갱신).
@@ -16,6 +16,11 @@ import { d } from '@/lib/i18n'
  *
  * 🔴 이 화면은 배지를 발급하지 않는다. 서버에서 `badges`를 조회해 받은 데이터를
  *    화면에서 조합만 하며, 어떤 쓰기 요청도 보내지 않는다.
+ *
+ * 카드 상한(10장)은 하네스가 자체 상수로 들고 있지 않다(20260823_008). 실제 서비스에서
+ * 상한을 자르는 주체가 서버(`/api/strava/sync`)이므로, 여기서도 서버 상수를
+ * `detailLimit` 프롭으로 받아 응답 계약(`earnedBadges` + `earnedBadgesMore`)을 그대로
+ * 흉내낸다 — 상한 규칙이 스파이크·서비스·타입 문서로 갈라지지 않게 하기 위함이다.
  */
 
 export type SpikeBadge = {
@@ -25,9 +30,6 @@ export type SpikeBadge = {
   imageUrl: string
   rarity: 'common' | 'rare' | 'legend' | 'mythic'
 }
-
-/** 캐러셀에 한 번에 보여줄 최대 카드 수 — 넘치면 "전체 보기" 카드로 접는다 */
-const MAX_CARDS = 10
 
 const DELAY_OPTIONS = [
   { label: '0.5초', ms: 500 },
@@ -75,6 +77,15 @@ async function simulateSyncWait(delayMs: number): Promise<{ responseMs: number }
   return { responseMs: Date.now() - startedAt }
 }
 
+/**
+ * 서버가 응답을 만들 때 하는 일(상세 상한 자르기 + 잔여 개수 계산)을 그대로 흉내낸다.
+ * 실제로는 `/api/strava/sync`가 `buildEarnedBadgePayload()`로 처리한다.
+ */
+function buildSpikeResponse(badges: SpikeBadge[], detailLimit: number) {
+  const earnedBadges = badges.slice(0, detailLimit)
+  return { earnedBadges, earnedBadgesMore: badges.length - earnedBadges.length }
+}
+
 function applyEdge(badges: SpikeBadge[], edge: EdgeKey): SpikeBadge[] {
   switch (edge) {
     case 'no-image':
@@ -90,7 +101,14 @@ function applyEdge(badges: SpikeBadge[], edge: EdgeKey): SpikeBadge[] {
   }
 }
 
-export default function BadgeRevealSpikeClient({ badges }: { badges: SpikeBadge[] }) {
+export default function BadgeRevealSpikeClient({
+  badges,
+  detailLimit,
+}: {
+  badges: SpikeBadge[]
+  /** 서버 상수 EARNED_BADGE_DETAIL_LIMIT — 상한은 서버 한 곳에서만 정한다 */
+  detailLimit: number
+}) {
   const pool = badges.length > 0 ? badges : SAMPLE_BADGES
   const usingSample = badges.length === 0
 
@@ -123,18 +141,20 @@ export default function BadgeRevealSpikeClient({ badges }: { badges: SpikeBadge[
     setPendingCount(null)
 
     const picked = applyEdge(pool.slice(0, count), edge)
+    // 서버가 잘라 내려준 응답 — 클라이언트는 받은 배열을 그대로 그린다.
+    const { earnedBadges, earnedBadgesMore } = buildSpikeResponse(picked, detailLimit)
 
-    if (picked.length === 0) {
+    if (earnedBadges.length === 0) {
       setLog(`획득 배지 0개 — 캐러셀을 열지 않았어요 (응답 ${responseMs}ms)`)
       return
     }
 
-    setItems(picked.slice(0, MAX_CARDS))
-    setMoreCount(Math.max(0, picked.length - MAX_CARDS))
+    setItems(earnedBadges)
+    setMoreCount(earnedBadgesMore)
     setOpen(true)
     setLog(
-      `노출 — 카드 ${Math.min(picked.length, MAX_CARDS)}장` +
-        `${picked.length > MAX_CARDS ? ` + 전체 보기(${picked.length - MAX_CARDS})` : ''}` +
+      `노출 — 카드 ${earnedBadges.length}장` +
+        `${earnedBadgesMore > 0 ? ` + 전체 보기(${earnedBadgesMore})` : ''}` +
         ` / 응답 ${responseMs}ms`
     )
   }
@@ -223,9 +243,12 @@ export default function BadgeRevealSpikeClient({ badges }: { badges: SpikeBadge[
         open={open}
         items={items}
         moreCount={moreCount}
-        onMoreClick={() => setLog('전체 보기 클릭 — 실제 이동은 호출부(후속 티켓) 책임이에요')}
+        onMoreClick={() => setLog('마지막 카드 CTA 클릭 — 실제 이동은 서비스 호출부가 처리해요')}
         onClose={close}
+        ariaLabel={d.badgeReveal.ariaLabel}
         closeLabel={d.common.close}
+        moreLabel={d.badgeReveal.moreLabel}
+        moreMessage={(n: number) => t(d.badgeReveal.moreMessage, { count: n })}
       />
     </div>
   )

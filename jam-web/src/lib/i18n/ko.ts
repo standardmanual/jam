@@ -133,9 +133,6 @@ export const ko = {
     syncButton: '동기화',
     syncDone: '동기화 완료',
     syncFailed: '동기화 실패. 잠시 후 다시 시도해주세요',
-    syncBadgeDone: '배지 {count}개 획득',
-    syncMissionDone: '미션 {count}개 달성',
-    syncItembookDone: '컬렉션 {count}개 완성',
 
     // 유저 검색
     searchPlaceholder: '아이디 또는 이메일로 유저 검색',
@@ -165,6 +162,22 @@ export const ko = {
     shortcutDropsBody: '장소에서 드랍·픽업',
     shortcutCombineTitle: '믹스',
     shortcutCombineBody: '아이템 믹스하기',
+  },
+
+  /**
+   * 배지 획득 연출 오버레이 — 스트라바 동기화 직후.
+   * 컴포넌트(patterns/BadgeRevealCarousel)에 기본 한국어 문구가 있지만, 주입을 빠뜨려도
+   * 화면이 정상으로 보여 누락을 놓치기 쉬우므로 노출 문구는 전부 여기서 주입한다.
+   */
+  badgeReveal: {
+    /** 오버레이 자체의 이름 (스크린리더) */
+    ariaLabel: '획득한 배지',
+    /** 상세를 다 싣지 못했을 때 마지막 카드 본문 */
+    moreMessage: '배지 {count}개를 더 획득했어요',
+    /** 마지막 카드 CTA — 프로필로 이동 */
+    moreLabel: '배지 전부 보기',
+    /** 오버레이가 열릴 때 스크린리더에 알리는 획득 개수 */
+    opened: '배지 {count}개를 획득했어요',
   },
 
   /** 투데이 카드 스택 콘텐츠 유형 (template_type) 라벨 — 색상 구분 없이 아이콘+라벨로만 식별 */
