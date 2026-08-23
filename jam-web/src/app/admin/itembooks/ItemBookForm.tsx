@@ -8,6 +8,15 @@ import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
+import { Switch } from '@/components/ui/switch'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from '@/components/ui/alert-dialog'
 import BackgroundGeneratorPreview, {
   type BackgroundMode,
   type BackgroundGeneratorPreviewHandle,
@@ -85,6 +94,14 @@ export default function ItemBookForm({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showBadgeModal, setShowBadgeModal] = useState(false)
   const [badgeSearch, setBadgeSearch] = useState('')
+
+  // ── 켜짐 → 꺼짐 전환 확인 (20260823_004) ──────────────────────────
+  // 저장 전 임시 상태이므로, 확인 모달을 취소하면 API 호출 없이 로컬 isActive를 그대로 둔다
+  // (Switch를 끄는 순간에는 아직 isActive를 false로 바꾸지 않고, "계속"을 눌러야만 확정한다).
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false)
+  const [deactivationImpactLoading, setDeactivationImpactLoading] = useState(false)
+  const [deactivationImpact, setDeactivationImpact] = useState<{ badgeCount: number; holderUserCount: number } | null>(null)
+  const [deactivationImpactFailed, setDeactivationImpactFailed] = useState(false)
 
   // ── 하위 배지 일괄 적용 ──────────────────────────────────────────
   const [bulkApplyLoading, setBulkApplyLoading] = useState(false)
@@ -277,6 +294,45 @@ export default function ItemBookForm({
     if (res.ok) router.refresh()
   }
 
+  /** Switch 토글 핸들러. 꺼짐 → 켜짐은 확인 없이 즉시 반영, 켜짐 → 꺼짐은 영향 범위를 조회한
+   *  뒤 확인 모달을 띄운다 — 모달에서 "계속"을 눌러야만 isActive가 false로 확정된다. */
+  const handleActiveToggle = async (checked: boolean) => {
+    if (checked) {
+      setIsActive(true)
+      return
+    }
+    if (!isEdit) {
+      // 신규 등록 화면은 아직 소속 배지가 있을 수 없으므로 확인 없이 그대로 반영.
+      setIsActive(false)
+      return
+    }
+
+    setDeactivationImpact(null)
+    setDeactivationImpactFailed(false)
+    setShowDeactivateConfirm(true)
+    setDeactivationImpactLoading(true)
+    try {
+      const res = await fetch(`/api/admin/itembooks/${book!.id}/deactivation-impact`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? '영향 범위 조회 실패')
+      setDeactivationImpact({ badgeCount: data.badgeCount, holderUserCount: data.holderUserCount })
+    } catch {
+      setDeactivationImpactFailed(true)
+    } finally {
+      setDeactivationImpactLoading(false)
+    }
+  }
+
+  const handleDeactivateConfirm = () => {
+    setIsActive(false)
+    setShowDeactivateConfirm(false)
+  }
+
+  const handleDeactivateCancel = () => {
+    // Switch는 애초에 false로 바뀐 적이 없으므로(확정은 "계속" 클릭 시에만) 별도 되돌림 불필요.
+    setShowDeactivateConfirm(false)
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-w-xl">
       {error && (
@@ -364,12 +420,7 @@ export default function ItemBookForm({
       </label>
 
       <label className="flex items-center gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={isActive}
-          onChange={(e) => setIsActive(e.target.checked)}
-          className="accent-[#111111]"
-        />
+        <Switch checked={isActive} onCheckedChange={handleActiveToggle} />
         <span className="text-sm">활성화</span>
       </label>
 
@@ -568,6 +619,39 @@ export default function ItemBookForm({
           </div>
         </div>
       )}
+
+      {/* 컬렉션 비활성화 확인 — 켜짐 → 꺼짐 전환 시 소속 배지 연쇄 회수 경고 (20260823_004) */}
+      <AlertDialog open={showDeactivateConfirm} onOpenChange={(open) => { if (!open) handleDeactivateCancel() }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>컬렉션 비활성화</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deactivationImpactLoading && '영향 범위를 확인하는 중이에요...'}
+              {!deactivationImpactLoading && deactivationImpactFailed &&
+                '영향 범위를 확인할 수 없습니다 — 신중히 진행하세요.'}
+              {!deactivationImpactLoading && !deactivationImpactFailed && deactivationImpact &&
+                `이 컬렉션을 비활성화하면 소속 아이템배지 ${deactivationImpact.badgeCount}개가 함께 비활성화되고, 이미 획득한 유저 ${deactivationImpact.holderUserCount}명에게서 회수됩니다. 계속하시겠습니까?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <button
+              type="button"
+              onClick={handleDeactivateConfirm}
+              disabled={deactivationImpactLoading}
+              className="flex-1 bg-[#111111] text-white font-bold py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+            >
+              계속
+            </button>
+            <button
+              type="button"
+              onClick={handleDeactivateCancel}
+              className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors"
+            >
+              취소
+            </button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 배지 선택 모달 */}
       {showBadgeModal && (
