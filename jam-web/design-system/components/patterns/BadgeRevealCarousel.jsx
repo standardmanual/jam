@@ -30,6 +30,12 @@ import { IconButton } from '../buttons/IconButton.jsx';
  *
  * 접근성
  *   role="dialog" / aria-modal / Escape 닫기 / 포커스 트랩(BottomSheet·ModalToast와 동일 패턴).
+ *   중앙 카드의 텍스트(등급·이름·설명)는 **오버레이 안에 상시 마운트된 라이브 리전**이
+ *   대신 읽는다(20260823_008). 카드 DOM은 3D 변환·순환으로 노드가 옮겨다녀 그 자체를
+ *   라이브 리전으로 쓸 수 없기 때문이다. 대신 카드 안쪽 텍스트는 aria-hidden으로 접어
+ *   같은 내용이 두 번 읽히지 않게 한다("전체 보기" 버튼은 그대로 초점 이동 대상이다).
+ *   ※ 오버레이가 "열렸다"는 사실과 획득 개수 안내는 호출부(서비스 래퍼)가 별도 라이브
+ *   리전으로 알린다 — 라이브 리전은 마운트 시점의 초기 내용을 읽지 않기 때문이다.
  *   prefers-reduced-motion이면 3D 틸트(rotateY·translateZ)를 제거하고 단순 페이드로
  *   대체한다(디자인 시스템은 서비스 코드를 import할 수 없어 동일 로직을 내부 구현).
  *
@@ -58,6 +64,24 @@ const NEIGHBOR_DEPTH_PX = 130;
 const NEIGHBOR_SCALE = 0.84;
 /** 이웃 카드 투명도 */
 const NEIGHBOR_OPACITY = 0.68;
+
+/** 화면에는 보이지 않고 보조기술만 읽는 영역 */
+const SR_ONLY_STYLE = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  margin: -1,
+  padding: 0,
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+  border: 0,
+};
+
+/** moreMessage prop은 문자열 또는 (잔여 개수) => 문자열 */
+function resolveMoreMessage(message, count) {
+  return typeof message === 'function' ? message(count) : message;
+}
 
 const FALLBACK_ICON = (
   <svg
@@ -222,6 +246,8 @@ export function BadgeRevealCarousel({
      (ref 읽기) 오히려 규칙 위반이므로 그대로 둔다 — 뒤쪽(zIndex 낮음·축소·반투명)으로
      지나가 시각적 부담이 크지 않다. */
   const layout = cards.map((card, i) => ({ ...card, rel: relativeOffset(i, active, count) }));
+  /** 중앙 카드 — 아래 라이브 리전이 이 카드의 텍스트를 읽는다 */
+  const center = layout.find((card) => card.rel === 0);
 
   function handlePointerDown(e) {
     if (!canFlick) return;
@@ -322,6 +348,19 @@ export function BadgeRevealCarousel({
         ...style,
       }}
     >
+      {/* 중앙 카드 텍스트 공지.
+          화살표·스와이프로 중앙 카드가 바뀌면 이 노드의 내용만 교체되므로 스크린리더가
+          변경을 읽는다. 카드 DOM은 순환하며 노드가 옮겨다녀 라이브 리전으로 쓸 수 없다. */}
+      <div aria-live="polite" aria-atomic="true" style={SR_ONLY_STYLE}>
+        {center?.kind === 'badge' && (
+          <>
+            <RarityBadge rarity={center.item?.rarity ?? 'common'} />{' '}
+            {center.item?.name}. {center.item?.description}
+          </>
+        )}
+        {center?.kind === 'more' && resolveMoreMessage(moreMessage, moreCount)}
+      </div>
+
       {/* 스테이지 — 3D 원근의 기준. 카드는 이 안에서만 변환된다. */}
       <div
         ref={stageRef}
@@ -415,6 +454,8 @@ function BadgeCard({ item }) {
   const imageUrl = item?.imageUrl;
   return (
     <div
+      /* 같은 내용을 캐러셀의 라이브 리전이 읽는다 — 여기까지 읽히면 두 번 들린다 */
+      aria-hidden="true"
       style={{
         width: '100%',
         height: '100%',
@@ -510,7 +551,7 @@ function BadgeCard({ item }) {
  */
 function MoreCard({ count, label, message, onClick }) {
   // 문구는 서비스가 i18n 사전에서 주입할 수 있어야 하므로 prop으로 받는다(20260823_007 개선 리뷰 5번).
-  const text = typeof message === 'function' ? message(count) : message;
+  const text = resolveMoreMessage(message, count);
   return (
     <div
       style={{
@@ -549,7 +590,8 @@ function MoreCard({ count, label, message, onClick }) {
         </svg>
       </div>
 
-      <p style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>
+      {/* 문구는 캐러셀의 라이브 리전이 읽는다(중복 낭독 방지). 버튼은 그대로 접근 대상이다. */}
+      <p aria-hidden="true" style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>
         {text}
       </p>
 

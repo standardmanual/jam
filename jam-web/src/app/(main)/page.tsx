@@ -77,7 +77,7 @@ export default async function HomePage() {
                 </span>
               )}
             </div>
-            <SyncButton />
+            <SyncButton username={userProfile?.username ?? null} />
           </div>
         </Card>
       ) : (

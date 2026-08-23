@@ -4,29 +4,52 @@ import { useState } from 'react'
 import { useToast } from '@/components/ui/Toast'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
-import { d, t } from '@/lib/i18n'
+import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
+import { d } from '@/lib/i18n'
 
-export default function SyncButton() {
+interface SyncResponse {
+  synced: number
+  badges: number
+  itemBooksCompleted: number
+  missionsCompleted: number
+  /** 서버가 10건까지 잘라 내려준 획득 배지 상세 (20260823_008) */
+  earnedBadges?: RevealBadge[]
+  /** 상세를 싣지 못한 잔여 개수 */
+  earnedBadgesMore?: number
+}
+
+export default function SyncButton({ username }: { username: string | null }) {
   const [loading, setLoading] = useState(false)
+  const [revealOpen, setRevealOpen] = useState(false)
+  const [earnedBadges, setEarnedBadges] = useState<RevealBadge[]>([])
+  const [earnedBadgesMore, setEarnedBadgesMore] = useState(0)
   const { toast } = useToast()
   const router = useRouter()
+
+  // "배지 전부 보기" 이동 경로 — 탭바 프로필 링크(TabBar.tsx의 profileHref)와 같은 값
+  const profileHref = username ? `/${username}` : '/profile'
 
   async function handleSync() {
     setLoading(true)
     try {
       const res = await fetch('/api/strava/sync', { method: 'POST' })
       if (res.ok) {
-        const data: { synced: number; badges: number; itemBooksCompleted: number; missionsCompleted: number } = await res.json()
-        if (data.itemBooksCompleted > 0) {
-          toast(t(d.today.syncItembookDone, { count: data.itemBooksCompleted }), 'success')
-        } else if (data.missionsCompleted > 0) {
-          toast(t(d.today.syncMissionDone, { count: data.missionsCompleted }), 'success')
-        } else if (data.badges > 0) {
-          toast(t(d.today.syncBadgeDone, { count: data.badges }), 'success')
+        const data: SyncResponse = await res.json()
+        const badges = data.earnedBadges ?? []
+        /* 노출 판단은 earnedBadges.length 단일 기준이다.
+           badges 카운터에는 아이템 드랍 배지·미션 보상 배지가 빠져 있어, 그 값을 쓰면
+           아이템배지만 드랍된 날 배지를 받고도 연출이 뜨지 않는다 (20260823_008 확정). */
+        if (badges.length > 0) {
+          setEarnedBadges(badges)
+          setEarnedBadgesMore(data.earnedBadgesMore ?? 0)
+          setRevealOpen(true)
+          // router.refresh()는 오버레이를 닫을 때로 미룬다 —
+          // 연출이 떠 있는 동안 뒤 페이지가 리렌더되지 않도록.
         } else {
+          // 배지 0개면 연출이 없으므로 기존 완료 토스트를 유지한다(무반응 방지).
           toast(d.today.syncDone, 'success')
+          router.refresh()
         }
-        router.refresh()
       } else {
         toast(d.today.syncFailed, 'error')
       }
@@ -37,15 +60,30 @@ export default function SyncButton() {
     }
   }
 
+  function handleRevealClose() {
+    setRevealOpen(false)
+    router.refresh()
+  }
+
   return (
-    <Button
-      variant="outline"
-      surface="sub"
-      size="sm"
-      onClick={handleSync}
-      loading={loading}
-    >
-      {d.today.syncButton}
-    </Button>
+    <>
+      <Button
+        variant="outline"
+        surface="sub"
+        size="sm"
+        onClick={handleSync}
+        loading={loading}
+      >
+        {d.today.syncButton}
+      </Button>
+
+      <BadgeRevealOverlay
+        open={revealOpen}
+        items={earnedBadges}
+        moreCount={earnedBadgesMore}
+        profileHref={profileHref}
+        onClose={handleRevealClose}
+      />
+    </>
   )
 }
