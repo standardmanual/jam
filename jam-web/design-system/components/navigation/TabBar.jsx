@@ -1,5 +1,16 @@
 import React from 'react';
 
+/*
+ * 20260823_003: 재질(반투명 크롬) — 불투명 흰 필(--color-bg-inverse) 대신
+ * --color-chrome-bg(TopNav 공용 토큰)로 교체해 blur를 준다. WanderingEyesLoader와 동일한
+ * 패턴(모듈 스코프 STATIC_CSS + 인라인 <style> 주입)으로 prefers-reduced-transparency
+ * 가드를 짝지어 둔다. 서비스 `src/components/ui/TabBar.tsx`(별도 Tailwind 구현, 미연결)는
+ * 여기와 동일한 토큰(--blur-chrome, --color-chrome-bg)을 참조하는 `.jam-tabbar-chrome`
+ * 클래스를 transitions.css에 별도로 두어 값이 갈리지 않게 맞췄다 — 두 파일을 함께 봐야 함.
+ * 비활성 아이콘 대비 재보정(--color-icon-inactive)은 tokens/colors.css 참조.
+ */
+const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg)}}`;
+
 /**
  * TabBar — floating pill bottom navigation.
  * 6 tabs: today / badges / drops / missions / inventory / profile.
@@ -48,14 +59,15 @@ const tabs = [
 
 export function TabBar({ active = 'today', onChange }) {
   return (
-    <nav style={{
+    <>
+    <style>{STATIC_CSS}</style>
+    <nav className="ds-tabbar-chrome" style={{
       position: 'fixed', left: '50%', transform: 'translateX(-50%)',
       /* v2: safe-area-inset-bottom prevents overlap with iPhone home indicator */
       bottom: 'calc(var(--spacing-16) + var(--spacing-safe-bottom))',
       width: 'calc(100% - 32px)', maxWidth: 398, height: 64,
       borderRadius: 'var(--radius-pill)',
-      // 20260816_012: 보더 제거 — 흰 필이 다크 배경 위에서 대비만으로 충분히 구분됨
-      background: 'var(--color-bg-inverse)',
+      // 20260816_012: 보더 제거 — 재질(반투명 크롬)이 다크 배경 위에서 blur로 구분됨
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 4px', zIndex: 40,
     }}>
@@ -91,5 +103,6 @@ export function TabBar({ active = 'today', onChange }) {
         );
       })}
     </nav>
+    </>
   );
 }

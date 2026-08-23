@@ -1,0 +1,17 @@
+/*
+ * JAM! DS v2 — material tokens (재질: 반투명 + blur, Apple HIG materials 원칙).
+ *
+ * 20260823_003: TopNav·TabBar 같은 "떠 있는 크롬"에 반투명+blur 재질감을 부여하기
+ * 위해 도입. 다크(기본)/라이트 값 분리는 colors.css/colors.light.css 패턴을 그대로
+ * 따른다 — 라이트 오버라이드는 `materials.light.css`로 분리했다. 서비스
+ * (src/app/globals.css)는 다크 전용 고정(color-scheme: dark)이라 이 파일만 import한다.
+ *
+ * --blur-chrome : TopNav/TabBar처럼 상시 노출되는 구조적 크롬 — 무거운(진한) blur.
+ * --blur-scrim  : BottomSheet 등 모달 백드롭(스크림) — 대비 목적이라 가벼운 blur.
+ * --color-chrome-bg : TopNav/TabBar 공용 반투명 배경(캔버스 톤 기반).
+ */
+:root {
+  --blur-chrome: 20px;
+  --blur-scrim: 8px;
+  --color-chrome-bg: rgba(0, 0, 0, 0.72);
+}
