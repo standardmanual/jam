@@ -26,6 +26,15 @@ const TYPE_LABEL: Record<string, string> = {
   poi: 'POI',
 }
 
+/** "YYYY.MM.DD" 형식으로 날짜 포맷 */
+function formatYmd(iso: string): string {
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}.${m}.${day}`
+}
+
 interface BadgeCardProps {
   badge: BadgeRow
 }
@@ -66,6 +75,11 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
               >
                 {RARITY_LABEL[badge.rarity as BadgeRarity] || badge.rarity}
               </span>
+              {badge.deleted_at && (
+                <span className="inline-block px-2 py-1 text-xs font-semibold bg-red-50 border border-red-200 text-red-600 rounded-full whitespace-nowrap">
+                  비활성화됨 · {formatYmd(badge.deleted_at)} 회수
+                </span>
+              )}
             </div>
           </div>
         </div>
