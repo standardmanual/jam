@@ -59,8 +59,14 @@
   --color-text-on-primary: var(--color-base-white);
   --color-text-inverse: var(--color-base-black);      /* text on inverse surface */
   --color-border: var(--color-base-grey-700);
-  /* DS-024: TabBar inactive icon — #2a2a2a on white pill bg (nearest to #333333) */
-  --color-icon-inactive: var(--color-base-grey-700);
+  /* DS-024: TabBar inactive icon.
+   * 20260823_003: 기존 값(#2a2a2a, grey-700)은 TabBar가 불투명 흰 필이던 시절
+   * "white pill bg" 전제로 계산된 값 — 재질(반투명 크롬, --color-chrome-bg) 도입으로
+   * TabBar 배경이 다크 톤 반투명으로 바뀌면서 grey-700은 배경에 거의 묻혀 대비가
+   * 무너진다. grey-500(#b2b2b2, 4.6:1 on black)으로 재보정. 라이트 테마는
+   * colors.light.css에서 원래 값(grey-700)으로 되돌린다 — 라이트 크롬은 여전히
+   * 밝은 톤이라 어두운 아이콘이 맞다. */
+  --color-icon-inactive: var(--color-base-grey-500);
   /* DS-025: Modal/sheet backdrop */
   --color-overlay: rgba(0, 0, 0, 0.6);
   /* Border variants */
@@ -88,4 +94,15 @@
   --color-tag-6: var(--color-base-lime);
   --color-tag-7: var(--color-base-charcoal);
   --color-tag-8: var(--color-base-sienna);
+}
+
+/*
+ * 20260823_003: prefers-contrast: more — 재질(반투명) 표면 위에 얹히는 flat gray
+ * 아이콘의 대비를 최고치로 끌어올린다(Apple HIG §12 vibrancy). --color-text는 테마별
+ * 최대 대비 색(다크=흰색/라이트=검정)이라 어느 테마에서도 안전하다.
+ */
+@media (prefers-contrast: more) {
+  :root {
+    --color-icon-inactive: var(--color-text);
+  }
 }

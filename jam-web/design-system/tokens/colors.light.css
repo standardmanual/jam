@@ -9,8 +9,9 @@
  *
  * Rarity and tag tokens are intentionally unchanged — they are functional/brand
  * colors that must remain consistent across themes.
- * Prerequisite: DS-002 (ShapeTag uses --color-text/--color-text-inverse),
- *               DS-007 (TabBar uses --color-bg-inverse).
+ * Prerequisite: DS-002 (ShapeTag uses --color-text/--color-text-inverse).
+ * DS-007(TabBar --color-bg-inverse) 참조는 20260823_003에서 재질(--color-chrome-bg)로
+ * 교체되며 더 이상 유효하지 않음 — 삭제.
  */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
@@ -22,6 +23,9 @@
     --color-text: var(--color-base-black);
     --color-text-secondary: var(--color-base-grey-600);
     --color-border: rgba(0, 0, 0, 0.12);
+    /* 20260823_003: 라이트 크롬(--color-chrome-bg, materials.light.css)은 밝은 톤이라
+       colors.css의 다크 재보정(grey-500)이 아니라 원래 어두운 아이콘(grey-700)이 맞다. */
+    --color-icon-inactive: var(--color-base-grey-700);
   }
 }
 
@@ -33,4 +37,17 @@
   --color-text: var(--color-base-black);
   --color-text-secondary: var(--color-base-grey-600);
   --color-border: rgba(0, 0, 0, 0.12);
+  --color-icon-inactive: var(--color-base-grey-700);
+}
+
+/* 20260823_003: 라이트 + prefers-contrast: more 조합 — colors.css의 전역 규칙보다
+   :root[data-theme] / :not() 선택자 특이도가 높아 이 파일이 항상 이긴다(의도된 동작,
+   colors.css 상단 주석 참조). 라이트에서도 최대 대비 색(검정)으로 승격한다. */
+@media (prefers-contrast: more) {
+  :root:not([data-theme="dark"]) {
+    --color-icon-inactive: var(--color-text);
+  }
+  :root[data-theme="light"] {
+    --color-icon-inactive: var(--color-text);
+  }
 }

@@ -178,7 +178,9 @@ export default function BottomSheet({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 430, margin: '0 auto' }}>
-      {/* Backdrop */}
+      {/* Backdrop — 20260823_003: 재질(가벼운 blur) + prefers-reduced-transparency 가드는
+          .t-panel-backdrop(transitions.css)에 공용으로 정의(FeedSection·PoiCarouselModal과
+          공유). 시트 본체(아래 bg-[var(--color-surface)])는 계속 불투명 유지. */}
       <div className="absolute inset-0 bg-surface/60 t-panel-backdrop" data-open={shown} onClick={onClose} />
 
       {/*

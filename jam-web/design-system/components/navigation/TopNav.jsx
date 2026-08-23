@@ -1,5 +1,16 @@
 import React from 'react';
 
+/*
+ * 20260823_003: 재질(반투명 크롬) — 콘텐츠가 아래로 스크롤되어 지나가는 상단 크롬이라
+ * 재질 적용 효과가 가장 크다. WanderingEyesLoader와 동일한 패턴(모듈 스코프 STATIC_CSS +
+ * 인라인 <style> 주입)으로 prefers-reduced-transparency 가드를 짝지어 둔다 — 인라인
+ * style에 두면 header의 `style` prop(헤더 배경 오버라이드용)이 항상 이 규칙을 이기므로
+ * 클래스 기반으로 분리했다(badge-background-video 케이스와 동일 이유).
+ * headerStyle로 background를 직접 지정하는 화면(예: --color-surface)은 인라인 style이
+ * 클래스보다 우선하므로 그대로 오버라이드된다 — 재질 규칙과 충돌하지 않는다.
+ */
+const STATIC_CSS = `.ds-topnav-chrome{background:var(--color-chrome-bg);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-topnav-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg)}}`;
+
 /**
  * TopNav — sticky top bar with back button, title, optional right slot.
  * v2 changes:
@@ -27,9 +38,10 @@ export function TopNav({
   style = {},
 }) {
   return (
-    <header style={{
+    <>
+    <style>{STATIC_CSS}</style>
+    <header className="ds-topnav-chrome" style={{
       position: 'sticky', top: 0,
-      background: 'var(--color-bg)',
       paddingTop: 'env(safe-area-inset-top)',
       zIndex: 30,
       ...style,
@@ -71,5 +83,6 @@ export function TopNav({
         </div>
       </div>
     </header>
+    </>
   );
 }
