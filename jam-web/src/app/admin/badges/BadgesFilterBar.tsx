@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const TYPE_OPTIONS = [
   { value: 'all', label: '전체 타입' },
@@ -16,6 +17,12 @@ const RARITY_OPTIONS = [
   { value: 'rare', label: 'Rare' },
   { value: 'legend', label: 'Legend' },
   { value: 'mythic', label: 'Mythic' },
+]
+
+const STATUS_OPTIONS = [
+  { value: 'active', label: '활성' },
+  { value: 'inactive', label: '비활성' },
+  { value: 'all', label: '전체' },
 ]
 
 const SORT_OPTIONS = [
@@ -53,6 +60,7 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
 
   const currentType = searchParams.get('type') ?? 'all'
   const currentFactionId = searchParams.get('faction_id') ?? 'all'
+  const currentStatus = searchParams.get('status') ?? 'active'
 
   const update = useCallback(
     (updates: Record<string, string | null>) => {
@@ -86,10 +94,23 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
     update({ q: searchInput.trim() || null })
   }
 
+  const handleStatusChange = (value: string) => {
+    // 기본값은 'active' — update()는 'all'을 삭제 대상으로 보므로 별도 처리
+    const params = new URLSearchParams(searchParams.toString())
+    if (value === 'active') {
+      params.delete('status')
+    } else {
+      params.set('status', value)
+    }
+    params.delete('page')
+    router.push(`/admin/badges?${params.toString()}`)
+  }
+
   const hasFilter =
     searchParams.has('q') ||
     searchParams.has('type') ||
     searchParams.has('rarity') ||
+    searchParams.has('status') ||
     SUB_FILTER_KEYS.some((k) => searchParams.has(k))
 
   // 선택된 세계관 기준으로 아이템북 필터링
@@ -219,6 +240,20 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
             </option>
           ))}
         </select>
+
+        {/* 상태 (활성/비활성/전체) */}
+        <Select value={currentStatus} onValueChange={handleStatusChange}>
+          <SelectTrigger className="w-auto min-w-[7rem]" aria-label="상태 필터">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {hasFilter && (
           <button

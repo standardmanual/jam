@@ -54,6 +54,15 @@ const DAY_OF_WEEK_SHORT: Record<string, string> = {
 
 const WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
 
+/** "YYYY.MM.DD" 형식으로 날짜 포맷 */
+function formatYmd(iso: string): string {
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}.${m}.${day}`
+}
+
 function dayOfWeekChip(days: string | string[]): string {
   if (typeof days === 'string') return `매주 ${DAY_OF_WEEK_SHORT[days] ?? days}`
   if (
@@ -106,6 +115,7 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
           <TableRow className="bg-gray-50">
             <TableHead className="w-12">이미지</TableHead>
             <TableHead>이름</TableHead>
+            <TableHead>상태</TableHead>
             <TableHead>타입</TableHead>
             <TableHead>희귀도</TableHead>
             <TableHead>세계관</TableHead>
@@ -118,7 +128,7 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
         <TableBody>
           {badges.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+              <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                 등록된 배지가 없습니다.
               </TableCell>
             </TableRow>
@@ -144,6 +154,17 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
 
                 {/* 이름 */}
                 <TableCell className="font-medium">{badge.name}</TableCell>
+
+                {/* 상태 */}
+                <TableCell className="text-sm">
+                  {badge.deleted_at ? (
+                    <span className="inline-flex items-center px-2 py-1 bg-red-50 border border-red-200 rounded-full text-red-600 text-xs font-semibold whitespace-nowrap">
+                      비활성화됨 · {formatYmd(badge.deleted_at)} 회수
+                    </span>
+                  ) : (
+                    <span className="text-gray-500 text-xs">활성</span>
+                  )}
+                </TableCell>
 
                 {/* 타입 */}
                 <TableCell className="text-sm">

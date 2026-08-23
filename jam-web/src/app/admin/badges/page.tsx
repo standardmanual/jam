@@ -22,6 +22,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   const filterPoiCategory = params.poi_category
   const filterFactionId = params.faction_id
   const filterItemBookId = params.item_book_id
+  const status = params.status === 'inactive' || params.status === 'all' ? params.status : 'active'
   const sortBy = params.sort ?? 'created_desc'
   const q = params.q?.trim() ?? ''
 
@@ -42,7 +43,10 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   let query = supabase
     .from('badges')
     .select('*', { count: 'exact' })
-    .is('deleted_at', null)
+
+  if (status === 'active') query = query.is('deleted_at', null)
+  else if (status === 'inactive') query = query.not('deleted_at', 'is', null)
+  // status === 'all' → 필터 없음
 
   if (filterType) query = query.eq('type', filterType)
   if (filterRarity) query = query.eq('rarity', filterRarity)
@@ -92,7 +96,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   const itemBooks = (itemBooksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name' | 'faction_id'>[]
   const poiCategories = (poiCategoriesRaw ?? []) as Pick<PoiCategoryRow, 'slug' | 'label'>[]
 
-  const hasFilter = !!(q || filterType || filterRarity || filterActivityType || filterPoiCategory || filterFactionId || filterItemBookId)
+  const hasFilter = !!(q || filterType || filterRarity || filterActivityType || filterPoiCategory || filterFactionId || filterItemBookId || status !== 'active')
 
   return (
     <div className="p-4 md:p-8 space-y-6">
