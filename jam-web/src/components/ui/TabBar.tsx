@@ -2,8 +2,59 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { d } from '@/lib/i18n'
 import { useTabBarHidden } from '@/lib/uiOverlay'
+import { cssDurationMs } from '@/lib/motion'
+
+/**
+ * 활성탭 점(`t-badge[data-open]`)은 CSS `@keyframes t-badge-slide-in`으로 팝인한다.
+ * 탭 연타처럼 짧은 간격으로 data-open이 여러 번 뒤집히면 매번 keyframe이 시작점부터
+ * 재생돼 이전 진행이 끊긴다(원본 keyframe은 수정 불가 — transitions.css 상단 규칙).
+ * 이미 재생 중인 애니메이션 구간에는 다음 값 적용을 미뤄, 재생이 끝난 뒤 마지막
+ * 값만 반영되도록 한다.
+ */
+function useDebouncedBadgeOpen(active: boolean): boolean {
+  const [applied, setApplied] = useState(active)
+  const appliedRef = useRef(active)
+  const animatingUntilRef = useRef(0)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (appliedRef.current === active) return
+
+    function apply() {
+      appliedRef.current = active
+      setApplied(active)
+      animatingUntilRef.current = Date.now() + cssDurationMs('--badge-slide-dur', 260)
+    }
+
+    if (timerRef.current) clearTimeout(timerRef.current)
+
+    const remaining = animatingUntilRef.current - Date.now()
+    if (remaining > 0) {
+      timerRef.current = setTimeout(apply, remaining)
+    } else {
+      apply()
+    }
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [active])
+
+  return applied
+}
+
+/** 탭 활성 점 — data-open을 바로 반영하지 않고 위 debounce를 거친다. */
+function TabActiveDot({ active }: { active: boolean }) {
+  const dotOpen = useDebouncedBadgeOpen(active)
+  return (
+    <span className="t-badge jam-tabbar-dot" data-open={dotOpen} aria-hidden="true">
+      <span className="t-badge-dot w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
+    </span>
+  )
+}
 
 /**
  * SuperHi Plus 바텀 탭바 (iOS 26 스타일 플로팅 캡슐, iOS HIG Tab Bar 패턴)
@@ -170,11 +221,10 @@ export default function TabBar({ username }: TabBarProps) {
               활성탭 점 — transitions.dev `03-notification-badge.md`.
               조건부 렌더링을 없애고 항상 마운트한 뒤 data-open만 토글해야
               팝인/팝아웃 트랜지션이 발화한다. 앵커는 원본(우상단) 대신
-              `.jam-tabbar-dot`으로 트리거 하단 중앙으로 옮겼다.
+              `.jam-tabbar-dot`으로 트리거 하단 중앙으로 옮겼다. 값 적용은
+              `TabActiveDot`이 debounce한다(탭 연타 시 keyframe 강제 재시작 방지).
             */}
-            <span className="t-badge jam-tabbar-dot" data-open={active} aria-hidden="true">
-              <span className="t-badge-dot w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
-            </span>
+            <TabActiveDot active={active} />
           </Link>
         )
       })}
