@@ -491,15 +491,23 @@ function BadgeCard({ item }) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        // 이미지가 maxHeight에 걸려 슬랙이 남을 때 위로 쏠리지 않도록 세로 중앙 정렬
+        justifyContent: 'center',
         gap: 'var(--spacing-12)',
         // 카드 자리는 그대로 두고 내용만 채워지는 짧은 페이드 (전체 화면 크로스페이드 아님)
         animation: 'ds-badge-reveal-in 220ms var(--ease-out) both',
       }}
     >
+      {/* 이미지 — 남는 공간을 차지하되 카드 높이의 46%를 넘지 않는다.
+          텍스트(등급·이름·설명)는 flexShrink:0이라 절대 눌리지 않고, 이미지가 먼저 양보한다.
+          20260824: 이름 2행 + 설명 3행일 때 마지막 행이 잘리던 문제 수정 —
+          원인은 텍스트 요소들이 기본 flex-shrink:1이라 이미지에 밀려 높이가 깎이면서
+          -webkit-box의 overflow:hidden에 잘려나간 것이었다. */}
       <div
         style={{
           flex: '1 1 auto',
           minHeight: 0,
+          maxHeight: '46%',
           width: '100%',
           display: 'flex',
           alignItems: 'center',
@@ -517,12 +525,15 @@ function BadgeCard({ item }) {
         )}
       </div>
 
-      <RarityBadge rarity={item?.rarity ?? 'common'} />
+      <div style={{ flexShrink: 0 }}>
+        <RarityBadge rarity={item?.rarity ?? 'common'} />
+      </div>
 
       <p
         style={{
           margin: 0,
           width: '100%',
+          flexShrink: 0,
           textAlign: 'center',
           fontSize: 'var(--text-h4)',
           fontWeight: 700,
@@ -542,6 +553,7 @@ function BadgeCard({ item }) {
         style={{
           margin: 0,
           width: '100%',
+          flexShrink: 0,
           textAlign: 'center',
           fontSize: 'var(--text-small)',
           lineHeight: 'var(--leading-small)',
