@@ -62,7 +62,10 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 이 단계를 건너뛰면 jam-developer가 이미 있는 컴포넌트를 다시 만든다.
 
-### 1.6 모듈러-서비스 연결 범위 표기 (`ds` 유형만, 위임하지 않음)
+### 1.6 모듈러-서비스 연결 범위 표기 (`ds` 유형 필수, 위임하지 않음)
+
+> `ui` 유형이라도 `design-system/`을 건드리면 이 절을 함께 적용한다
+> (예: 서비스 화면용 신규 MODULAR 패턴을 등록하는 티켓).
 
 **용어 정의** — "모듈러"는 `jam-web/design-system/`의 **소스코드**를 가리킨다. Storybook은
 그 소스코드를 브라우저에서 훑어보기 위한 뷰어일 뿐 별도 실체가 아니다.
@@ -74,16 +77,39 @@ staging 브랜치 기준 `storybook build && cp -r storybook-static public/story
 배포" 단계를 추가할 필요가 없다** (main/프로덕션 빌드 스크립트는 `next build`만 실행 —
 스토리북은 의도적으로 프로덕션에 나가지 않는다).
 
-**단, 모듈러 변경이 실제 서비스 화면에 자동으로 반영되는 것은 아니다** — 2026-08-20 기준
-서비스 코드(`jam-web/src/`)는 `design-system/` 토큰(`@import` 없음)도 컴포넌트(`@ds/*` alias
-설정만 있고 실제 import 0건)도 가져다 쓰지 않는다. 즉 지금은 두 코드베이스가 값만
-수동으로 맞춰둔 별개 상태다. 이 연결 작업(토큰 `@import` 전환, 서비스 컴포넌트를 `@ds/*` import로
-교체) 자체가 착수되면 이 문단은 갱신해야 한다.
+**모듈러 변경은 실제 서비스 화면에도 반영된다** *(2026-08-23 실측 기준 — 2026-08-20까지는
+"미연결"이었으나 이후 연결 작업이 진행됐다)*. 다만 컴포넌트마다 상태가 달라 **세 부류를
+구분해야 한다.**
+
+- **토큰 — 서비스에 즉시 반영.**
+  `src/app/globals.css`가 `design-system/tokens/` 6종(colors·typography·spacing·radius·
+  motion·materials)을 직접 `@import`한다. 토큰을 고치면 서비스 화면이 바로 따라온다.
+  (`colors.light.css`만 의도적으로 제외 — 서비스는 다크 전용)
+
+- **연결된 컴포넌트 9종 — 서비스에 즉시 반영.**
+  서비스 27개 파일이 `@ds/*`를 **47건** import한다. 실사용 목록:
+  `Button` · `IconButton` · `Card` · `RarityBadge` · `EmptyState` · `ProgressBar` ·
+  `WanderingEyesLoader` · `Carousel` · `TopNav`
+
+- **병존 구현 8종 — 스토리북에만 반영. ⚠️ 양쪽을 함께 고쳐야 한다.**
+  `TabBar` · `BottomSheet` · `Toast` · `SlidingTabs` · `BadgeGridCard` ·
+  `CollectionGridCard` · `ListRowCard` · `Skeleton`
+  → `src/components/ui/`에 동명의 서비스 구현이 따로 있고 값만 수동으로 맞춰둔 상태다.
+  DS만 고치면 서비스는 따라오지 않는다. 서비스 구현이 DS보다 기능이 많은 경우도 있으므로
+  (`BottomSheet`의 드래그-투-클로즈, `Skeleton`의 cross-fade reveal) 단순 스왑도 위험하다.
+
+- **미도입 8종 — 스토리북 전용.**
+  `Checkbox` · `Input` · `Select` · `Textarea` · `ModalToast` · `ShapeTag` · `BadgeFrame` · `Accordion`
+  → 서비스에 대응 개념이 없다. 티켓 20260820_010에서 "유지/보류"로 확정됐으므로 **새로
+  도입하려면 별도 판단이 필요하다** (임의로 서비스에 끌어다 쓰지 말 것).
 
 `ds` 유형 티켓은 완료 기록에 다음을 명시한다:
-- 이번 변경이 **스토리북 카탈로그에만** 반영되는지, 위 연결 작업 완료 이후라 **실제
-  서비스(staging/프로덕션) 화면에도** 영향을 주는지
-- 후자라면 어떤 서비스 호출부가 영향받는지
+- 이번 변경이 위 네 부류 중 어디에 해당하는지 (토큰 / 연결된 컴포넌트 / 병존 구현 / 미도입)
+- 서비스에 반영된다면 어떤 호출부가 영향받는지
+- **병존 구현을 고쳤다면 `src/components/ui/`의 대응 파일도 함께 고쳤는지**
+
+> 이 목록은 연결 작업이 진행될수록 바뀐다. 정확한 현황이 필요하면 실측할 것:
+> `grep -rho "@ds/components/[a-zA-Z]*/[A-Za-z]*" src/ | sort -u`
 
 ## 2. Workflow 호출
 
