@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeRow, BadgeCondition, BadgeRarity, FactionRow } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
 
@@ -122,7 +123,7 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
             <TableHead>활동</TableHead>
             <TableHead>조건</TableHead>
             <TableHead>패치</TableHead>
-            <TableHead className="w-24">액션</TableHead>
+            <TableHead className="w-40">액션</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -226,11 +227,14 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
 
                 {/* 액션 */}
                 <TableCell>
-                  <Link href={`/admin/badges/${badge.id}`}>
-                    <Button variant="outline" size="sm" className="h-8">
-                      상세보기
-                    </Button>
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <BadgeActiveToggleButton badgeId={badge.id} isActive={!badge.deleted_at} />
+                    <Link href={`/admin/badges/${badge.id}`}>
+                      <Button variant="outline" size="sm" className="h-8">
+                        상세보기
+                      </Button>
+                    </Link>
+                  </div>
                 </TableCell>
               </TableRow>
             ))

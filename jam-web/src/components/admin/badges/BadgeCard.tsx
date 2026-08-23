@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/shadcn-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
+import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
 
 const RARITY_BADGE_COLOR: Record<string, string> = {
@@ -114,8 +115,9 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
       </CardContent>
 
       {/* 액션 버튼 */}
-      <div className="px-4 py-3 border-t">
-        <Link href={`/admin/badges/${badge.id}`} className="w-full">
+      <div className="px-4 py-3 border-t flex gap-2">
+        <BadgeActiveToggleButton badgeId={badge.id} isActive={!badge.deleted_at} className="h-11 md:h-10" />
+        <Link href={`/admin/badges/${badge.id}`} className="flex-1">
           <Button variant="default" className="w-full h-11 md:h-10">
             상세보기
           </Button>

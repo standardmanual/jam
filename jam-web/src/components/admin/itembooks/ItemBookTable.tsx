@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ItemBookActiveToggleButton } from './ItemBookActiveToggleButton'
 import type { ItemBookRow } from '@/types/database'
 
 interface ItemBookTableProps {
@@ -37,6 +38,7 @@ export function ItemBookTable({
             <TableHead className="font-semibold">필수 액티비티 배지</TableHead>
             <TableHead className="font-semibold">아이템 배지 수</TableHead>
             <TableHead className="font-semibold">보상 배지</TableHead>
+            <TableHead className="font-semibold text-right">관리</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -68,6 +70,9 @@ export function ItemBookTable({
                 {book.reward_badge_id
                   ? badgeMap.get(book.reward_badge_id) ?? '—'
                   : '—'}
+              </TableCell>
+              <TableCell className="text-right">
+                <ItemBookActiveToggleButton itemBookId={book.id} isActive={book.is_active} />
               </TableCell>
             </TableRow>
           ))}

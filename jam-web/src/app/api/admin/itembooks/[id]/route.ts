@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { cascadeDeactivateItemBookBadges } from '@/lib/admin/itembook-deactivation'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -23,23 +24,61 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // 컬렉션 비활성화 → 소속 아이템배지 연쇄 소프트삭제 (20260823_004). 물리적 삭제가 아니라
-  // badges.deleted_at만 세팅 — 이미 발급된 유저의 이력(inventory_items/user_activity_badges/
-  // user_poi_badge_earns)은 FK 그대로 보존되고, 유저 노출 화면에서만 제외된다
-  // (badges/[id]/route.ts DELETE 핸들러와 동일한 소프트삭제 원칙). `deleted_at IS NULL` 조건 덕에
-  // 이 쿼리는 멱등이다 — 이미 비활성 상태인 컬렉션을 다시 저장(재시도)해도 안전하게 재실행된다.
+  // 컬렉션 비활성화 → 소속 아이템배지 연쇄 소프트삭제 (20260823_004). PATCH(즉시 토글)와
+  // 공유하는 캐스케이드 함수 — cascadeDeactivateItemBookBadges 주석 참조.
   if (nextIsActive === false) {
-    const { error: badgesError } = await supabase
-      .from('badges')
-      // @ts-expect-error Supabase 타입 추론 제한 우회
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('item_book_id', id)
-      .is('deleted_at', null)
+    const { error: badgesError } = await cascadeDeactivateItemBookBadges(supabase, id)
 
     if (badgesError) {
       return NextResponse.json(
         {
-          error: `컬렉션은 비활성화됐지만 소속 배지 회수에 실패했습니다: ${badgesError.message}. 다시 저장을 시도해주세요.`,
+          error: `컬렉션은 비활성화됐지만 소속 배지 회수에 실패했습니다: ${badgesError}. 다시 저장을 시도해주세요.`,
+        },
+        { status: 500 }
+      )
+    }
+  }
+
+  return NextResponse.json({ itemBook: data })
+}
+
+/**
+ * 목록/상세 화면의 즉시 토글용 — 폼의 전체 저장 PUT과 별개(20260823_006).
+ * body: { is_active: boolean }. is_active 컬럼만 갱신한다.
+ * true→false(비활성화)는 PUT과 동일하게 소속 배지를 연쇄 소프트삭제한다.
+ * false→true(재활성화)는 is_active만 갱신, 배지는 건드리지 않는다(기존 설계 결정 유지).
+ */
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { id } = await params
+  const body = await req.json()
+  const { is_active } = body as { is_active?: boolean }
+
+  if (typeof is_active !== 'boolean') {
+    return NextResponse.json({ error: 'is_active는 boolean이어야 합니다.' }, { status: 400 })
+  }
+
+  const supabase = createServiceClient()
+
+  const { data, error } = await supabase
+    .from('item_books')
+    // @ts-expect-error Supabase 타입 추론 제한 우회
+    .update({ is_active })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (is_active === false) {
+    const { error: badgesError } = await cascadeDeactivateItemBookBadges(supabase, id)
+
+    if (badgesError) {
+      return NextResponse.json(
+        {
+          error: `컬렉션은 비활성화됐지만 소속 배지 회수에 실패했습니다: ${badgesError}. 다시 시도해주세요.`,
         },
         { status: 500 }
       )

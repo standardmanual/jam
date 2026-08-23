@@ -73,3 +73,34 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
+
+/**
+ * 목록/상세 화면의 즉시 토글용(20260823_006). body: { active: boolean }.
+ * active: false → deleted_at = now() (기존 DELETE 핸들러와 동일 동작 — DELETE는 그대로 두고
+ * BadgeForm.tsx의 기존 삭제 흐름이 계속 사용한다).
+ * active: true → deleted_at = null (신규 — 지금까지 배지를 되살리는 API가 없었음).
+ */
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { id } = await params
+  const body = await req.json()
+  const { active } = body as { active?: boolean }
+
+  if (typeof active !== 'boolean') {
+    return NextResponse.json({ error: 'active는 boolean이어야 합니다.' }, { status: 400 })
+  }
+
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('badges')
+    // @ts-expect-error Supabase 타입 추론 제한 우회
+    .update({ deleted_at: active ? null : new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ badge: data })
+}

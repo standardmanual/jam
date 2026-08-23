@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/shadcn-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
 
@@ -246,6 +247,11 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
 
       {/* 액션 버튼 */}
       <div className="flex flex-col md:flex-row gap-3 pt-4">
+        <BadgeActiveToggleButton
+          badgeId={badge.id}
+          isActive={!badge.deleted_at}
+          className="h-11 md:h-10"
+        />
         <Button variant="default" onClick={() => router.push(`/admin/badges/${badge.id}/edit`)} className="h-11 md:h-10">
           수정
         </Button>
