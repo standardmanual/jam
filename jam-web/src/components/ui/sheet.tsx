@@ -19,12 +19,11 @@ const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
-  // forceMount — BottomSheet가 쓰는 t-panel-backdrop과 동일 패턴으로 통일. Radix Presence는
-  // keyframe(animationName)만 감지하므로 순수 transition 기반인 t-panel-backdrop에서는
-  // forceMount 없이 present=false가 되는 즉시 DOM이 사라져 트랜지션이 재생되지 않는다.
   <SheetPrimitive.Overlay
-    forceMount
-    className={cn("fixed inset-0 z-50 bg-black/80 t-panel-backdrop", className)}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
     {...props}
     ref={ref}
   />
@@ -32,14 +31,16 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-white text-neutral-900 p-6 shadow-lg t-panel-slide",
+  "fixed z-50 gap-4 bg-white text-neutral-900 p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b",
-        bottom: "inset-x-0 bottom-0 border-t",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm jam-panel-slide-x",
-        right: "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm jam-panel-slide-x",
+        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        bottom:
+          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+        right:
+          "inset-y-0 right-0 h-full w-3/4  border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
       },
     },
     defaultVariants: {
@@ -48,15 +49,6 @@ const sheetVariants = cva(
   }
 )
 
-/** 방향별 `--panel-translate-x`/`--panel-translate-y` — t-panel-slide(원본, Y축)와
- *  jam-panel-slide-x(프로젝트 확장, X축)에서 읽는 값. */
-const sheetTranslate: Record<NonNullable<VariantProps<typeof sheetVariants>['side']>, React.CSSProperties> = {
-  top: { '--panel-translate-y': '-100%' } as React.CSSProperties,
-  bottom: { '--panel-translate-y': '100%' } as React.CSSProperties,
-  left: { '--panel-translate-x': '-100%' } as React.CSSProperties,
-  right: { '--panel-translate-x': '100%' } as React.CSSProperties,
-}
-
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
     VariantProps<typeof sheetVariants> {}
@@ -64,17 +56,12 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, style, children, ...props }, ref) => (
-  <SheetPortal forceMount>
+>(({ side = "right", className, children, ...props }, ref) => (
+  <SheetPortal>
     <SheetOverlay />
-    {/* t-panel-slide/jam-panel-slide-x(transitions.css) — BottomSheet와 동일한 패널
-        모션 패턴. keyframe이 아니라 transition이므로 열림 도중 닫힘 등 상태 반전 시
-        현재 값에서 자연스럽게 이어진다. */}
     <SheetPrimitive.Content
       ref={ref}
-      forceMount
       className={cn(sheetVariants({ side }), className)}
-      style={{ ...sheetTranslate[side ?? 'right'], ...style }}
       {...props}
     >
       {children}
