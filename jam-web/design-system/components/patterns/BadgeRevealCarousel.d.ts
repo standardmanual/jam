@@ -37,6 +37,12 @@ export interface BadgeRevealCarouselProps {
   closeLabel?: string;
   /** "전체 보기" CTA 라벨 */
   moreLabel?: string;
+  /**
+   * "전체 보기" 카드 본문 문구. 문자열이면 그대로, 함수면 잔여 개수를 받아 문자열을 만든다.
+   * 기본값 `(n) => \`배지 ${n}개를 더 획득했어요\``.
+   * 서비스는 i18n 사전(`d`)에서 주입해 쓴다.
+   */
+  moreMessage?: string | ((count: number) => string);
   /** dialog·carousel aria-label */
   ariaLabel?: string;
   className?: string;
