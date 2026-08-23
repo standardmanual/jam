@@ -1,14 +1,5 @@
 {
-  "enabledPlugins": {
-    "impeccable@impeccable": true
-  },
   "permissions": {
-    "deny": [
-      "Bash(git push --force*)",
-      "Bash(git push -f *)",
-      "Bash(xargs rm *)",
-      "Bash(rm -rf /*)"
-    ],
     "allow": [
       "Bash(git status*)",
       "Bash(git add *)",
@@ -60,6 +51,25 @@
       "Bash(curl -sI *)",
       "Bash(curl -s http://localhost:*)",
       "WebSearch"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(xargs rm *)",
+      "Bash(rm -rf /*)"
     ]
+  },
+  "enabledPlugins": {
+    "impeccable@impeccable": true,
+    "figma@claude-plugins-official": true,
+    "vercel@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    }
   }
 }
