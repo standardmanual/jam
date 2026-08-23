@@ -18,12 +18,13 @@ const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
+  // forceMount — Radix Presence의 keyframe 기반 언마운트 감지를 우회한다. data-state는
+  // forceMount 여부와 무관하게 항상 실제 open/closed를 반영하므로, t-panel-backdrop이
+  // 그 값을 그대로 읽어 트랜지션한다(transitions.css 프로젝트 확장 섹션).
   <DialogPrimitive.Overlay
     ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
+    forceMount
+    className={cn("fixed inset-0 z-50 bg-black/80 t-panel-backdrop", className)}
     {...props}
   />
 ))
@@ -33,12 +34,20 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
-  <DialogPortal>
+  // Portal 자체도 Radix Presence로 감싸여 있어(react-dialog 내부), forceMount를
+  // Overlay/Content에만 주면 Portal 레벨에서 먼저 즉시 언마운트될 수 있다.
+  // 루트에도 forceMount를 둬 하위 Presence가 실제 트랜지션 종료를 기다리게 한다.
+  <DialogPortal forceMount>
     <DialogOverlay />
+    {/* t-dialog-panel(transitions.css 프로젝트 확장) — 원본 t-panel-slide는 슬라이드
+        패널 전용(Y축 이동)이라 중앙 모달에는 맞지 않아, scale+opacity 변형을 새로 뒀다.
+        keyframe 대신 transition이라 애니메이션 도중 상태가 뒤집혀도(열림 중 닫힘 등)
+        현재 값에서 이어진다. */}
     <DialogPrimitive.Content
       ref={ref}
+      forceMount
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-neutral-200 bg-white text-neutral-900 p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg gap-4 border border-neutral-200 bg-white text-neutral-900 p-6 shadow-lg sm:rounded-lg t-dialog-panel",
         className
       )}
       {...props}
