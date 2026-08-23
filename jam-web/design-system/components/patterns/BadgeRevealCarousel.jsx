@@ -118,6 +118,7 @@ export function BadgeRevealCarousel({
   cardHeight,
   closeLabel = '닫기',
   moreLabel = '전체 보기',
+  moreMessage = (n) => `배지 ${n}개를 더 획득했어요`,
   ariaLabel = '획득한 배지',
   className = '',
   style = {},
@@ -128,6 +129,8 @@ export function BadgeRevealCarousel({
   const dragStartRef = useRef(0);
   const draggingRef = useRef(false);
   const velocitySamplesRef = useRef([]);
+  /** document 레벨 화살표 핸들러가 참조하는 최신 핸들러 (아래 Escape 이펙트에서 사용) */
+  const arrowHandlerRef = useRef(null);
 
   const [dragX, setDragX] = useState(0);
 
@@ -182,7 +185,7 @@ export function BadgeRevealCarousel({
     [canFlick, count, navToken]
   );
 
-  /* Escape 닫기 + 포커스 트랩 (BottomSheet·ModalToast와 동일 패턴) */
+  /* Escape 닫기 + 화살표 전환 + 포커스 트랩 (BottomSheet·ModalToast와 동일 패턴) */
   useEffect(() => {
     if (!open) return;
     const prevFocused = typeof document !== 'undefined' ? document.activeElement : null;
@@ -191,6 +194,14 @@ export function BadgeRevealCarousel({
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose?.();
+        return;
+      }
+      // 20260823_007: 화살표 전환은 스테이지가 아니라 document에서 받는다. 오버레이가 열리면
+      // 초기 포커스가 닫기 버튼으로 가는데, 스테이지에 onKeyDown을 걸어두면 Tab으로 스테이지에
+      // 포커스를 옮기기 전까지 좌우 키가 먹지 않았다(개선 리뷰 3번). 스테이지 핸들러는 제거해
+      // 중복 step 호출이 생기지 않게 한다.
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        arrowHandlerRef.current?.(e);
         return;
       }
       if (e.key !== 'Tab') return;
@@ -281,6 +292,12 @@ export function BadgeRevealCarousel({
     }
   }
 
+  /* 화살표 핸들러를 ref에 최신 상태로 보관 — 위 document 리스너가 매 렌더 재구독하지 않도록.
+     (handleKeyDown 선언 이후에 두어야 no-use-before-declare에 걸리지 않는다) */
+  useEffect(() => {
+    arrowHandlerRef.current = handleKeyDown;
+  });
+
   if (!open) return null;
   // 배지 0개 — 캐러셀을 노출하지 않는다.
   if (count === 0) return null;
@@ -328,7 +345,8 @@ export function BadgeRevealCarousel({
         aria-roledescription="carousel"
         aria-label={ariaLabel}
         tabIndex={canFlick ? 0 : -1}
-        onKeyDown={handleKeyDown}
+        /* onKeyDown은 여기 두지 않는다 — 화살표는 document 리스너가 처리한다(위 이펙트 참조).
+           양쪽에 걸면 스테이지 포커스 상태에서 이벤트가 버블링돼 step이 두 번 호출된다. */
         onPointerDown={canFlick ? handlePointerDown : undefined}
         onPointerMove={canFlick ? handlePointerMove : undefined}
         onPointerUp={canFlick ? handlePointerUp : undefined}
@@ -380,7 +398,7 @@ export function BadgeRevealCarousel({
               {kind === 'placeholder' && <PlaceholderCard reduced={reduced} />}
               {kind === 'badge' && <BadgeCard item={item} />}
               {kind === 'more' && (
-                <MoreCard count={moreCount} label={moreLabel} onClick={onMoreClick} />
+                <MoreCard count={moreCount} label={moreLabel} message={moreMessage} onClick={onMoreClick} />
               )}
             </div>
           );
@@ -546,7 +564,9 @@ function BadgeCard({ item }) {
  * 시각 구성(중앙 정렬 / 원형 아이콘 / 메시지 / pill CTA)은 feedback/ModalToast를 참조했지만,
  * ModalToast는 도입 보류 컴포넌트(20260820_010)라 import하지 않고 카드 안에 직접 구현한다.
  */
-function MoreCard({ count, label, onClick }) {
+function MoreCard({ count, label, message, onClick }) {
+  // 문구는 서비스가 i18n 사전에서 주입할 수 있어야 하므로 prop으로 받는다(20260823_007 개선 리뷰 5번).
+  const text = typeof message === 'function' ? message(count) : message;
   return (
     <div
       style={{
@@ -586,7 +606,7 @@ function MoreCard({ count, label, onClick }) {
       </div>
 
       <p style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>
-        {`배지 ${count}개를 더 획득했어요`}
+        {text}
       </p>
 
       <button

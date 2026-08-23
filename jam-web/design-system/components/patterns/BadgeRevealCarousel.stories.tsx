@@ -78,6 +78,19 @@ export const TwentyWithMoreCard: Story = {
   },
 };
 
+export const CustomMoreMessage: Story = {
+  name: '전체 보기 문구 주입 (moreMessage)',
+  args: {
+    open: true,
+    phase: 'revealed',
+    items: makeItems(10),
+    moreCount: 7,
+    // 서비스는 i18n 사전(d)에서 문구를 주입한다 — 컴포넌트에 하드코딩하지 않는다.
+    moreMessage: (n: number) => `아직 ${n}개가 더 남았어요`,
+    moreLabel: '배지함에서 보기',
+  },
+};
+
 export const Spinning: Story = {
   name: '스핀 중 — 빈 카드 5장',
   args: { open: true, phase: 'spinning', items: [] },
