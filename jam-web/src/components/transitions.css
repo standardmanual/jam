@@ -442,12 +442,13 @@
   left: calc(50% - 2px);
 }
 
-/* 20260823_003: 재질(반투명 크롬) — TabBar 배경. 캐노니컬 스펙
+/* 20260823_003: 재질(반투명 흰 필) — TabBar 배경. 캐노니컬 스펙
  * (design-system/components/navigation/TabBar.jsx)과 동일한 토큰(--blur-chrome,
- * --color-chrome-bg)을 참조 — 서비스 TabBar.tsx는 별도 Tailwind 구현이라 값이
- * 갈리지 않도록 여기서 직접 맞춘다. 이전 불투명 흰 필(bg-surface-inverse)을 대체. */
+ * --color-chrome-bg-inverse)을 참조 — 서비스 TabBar.tsx는 별도 Tailwind 구현이라 값이
+ * 갈리지 않도록 여기서 직접 맞춘다. 기존 흰 필(bg-surface-inverse)의 색은 그대로 두고
+ * 알파+blur만 추가한 것 — TopNav는 이번 범위에서 제외(기존 불투명 크롬 유지). */
 .jam-tabbar-chrome {
-  background: var(--color-chrome-bg);
+  background: var(--color-chrome-bg-inverse);
   backdrop-filter: blur(var(--blur-chrome)) saturate(180%);
   -webkit-backdrop-filter: blur(var(--blur-chrome)) saturate(180%);
 }
@@ -455,7 +456,7 @@
   .jam-tabbar-chrome {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: var(--color-bg);
+    background: var(--color-bg-inverse);
   }
 }
 

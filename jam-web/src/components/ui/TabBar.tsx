@@ -200,8 +200,8 @@ export default function TabBar({ username }: TabBarProps) {
 
   return (
     <nav
-      // 20260823_003: 재질(반투명 크롬) — bg-surface-inverse(불투명 흰 필) → jam-tabbar-chrome
-      // (transitions.css, --color-chrome-bg/--blur-chrome 참조 — DS TabBar.jsx와 값 공유)
+      // 20260823_003: 재질(반투명 흰 필) — bg-surface-inverse(불투명) → jam-tabbar-chrome
+      // (transitions.css, --color-chrome-bg-inverse/--blur-chrome 참조 — DS TabBar.jsx와 값 공유)
       className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[398px] h-16 rounded-[var(--radius-pill-buttons)] jam-tabbar-chrome flex items-center justify-between px-1 z-40"
       style={{ bottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
     >

@@ -6,7 +6,6 @@
 @import "tokens/radius.css";
 @import "tokens/motion.css";
 @import "tokens/materials.css";
-@import "tokens/materials.light.css";
 
 html { background: var(--color-bg); }
 body {

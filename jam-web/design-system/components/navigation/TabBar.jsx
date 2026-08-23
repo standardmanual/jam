@@ -1,15 +1,15 @@
 import React from 'react';
 
 /*
- * 20260823_003: 재질(반투명 크롬) — 불투명 흰 필(--color-bg-inverse) 대신
- * --color-chrome-bg(TopNav 공용 토큰)로 교체해 blur를 준다. WanderingEyesLoader와 동일한
- * 패턴(모듈 스코프 STATIC_CSS + 인라인 <style> 주입)으로 prefers-reduced-transparency
- * 가드를 짝지어 둔다. 서비스 `src/components/ui/TabBar.tsx`(별도 Tailwind 구현, 미연결)는
- * 여기와 동일한 토큰(--blur-chrome, --color-chrome-bg)을 참조하는 `.jam-tabbar-chrome`
- * 클래스를 transitions.css에 별도로 두어 값이 갈리지 않게 맞췄다 — 두 파일을 함께 봐야 함.
+ * 20260823_003: 재질(반투명 흰 필) — 기존 불투명 흰 필(--color-bg-inverse)의 색은
+ * 그대로 두고 알파+blur만 추가한다(--color-chrome-bg-inverse). TopNav는 이번 범위에서
+ * 제외(기존 불투명 크롬 유지). 서비스 `src/components/ui/TabBar.tsx`(별도 Tailwind
+ * 구현, 미연결)는 여기와 동일한 토큰(--blur-chrome, --color-chrome-bg-inverse)을
+ * 참조하는 `.jam-tabbar-chrome` 클래스를 transitions.css에 별도로 두어 값이 갈리지
+ * 않게 맞췄다 — 두 파일을 함께 봐야 함.
  * 비활성 아이콘 대비 재보정(--color-icon-inactive)은 tokens/colors.css 참조.
  */
-const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg)}}`;
+const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg-inverse);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg-inverse)}}`;
 
 /**
  * TabBar — floating pill bottom navigation.
