@@ -48,6 +48,21 @@ interface BottomSheetProps {
 }
 
 const DRAG_CLOSE_THRESHOLD = 120
+/** 릴리즈 순간 하향 속도(px/ms)가 이 값을 넘으면 거리와 무관하게 닫는다(플릭 제스처). */
+const DRAG_CLOSE_VELOCITY = 0.5
+/** 릴리즈 속도 계산에 쓸 포인터 샘플을 이 시간(ms) 이내로만 유지한다. */
+const VELOCITY_SAMPLE_WINDOW_MS = 100
+
+/** 드래그 중인 시트 요소의 현재 translateY(px)를 계산한다 — 스프링백 트랜지션이
+ *  아직 진행 중일 때 재드래그를 시작해도 현재 화면상 위치에서 자연스럽게 이어지도록 한다. */
+function getCurrentTranslateY(el: HTMLElement): number {
+  const transform = window.getComputedStyle(el).transform
+  if (!transform || transform === 'none') return 0
+  const match = transform.match(/matrix\(([^)]+)\)/)
+  if (!match) return 0
+  const parts = match[1].split(',').map((v) => parseFloat(v.trim()))
+  return parts.length >= 6 && Number.isFinite(parts[5]) ? parts[5] : 0
+}
 
 export default function BottomSheet({
   open,
@@ -65,6 +80,12 @@ export default function BottomSheet({
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
   const startYRef = useRef(0)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  /** 드래그 시작 시점의 기준 translateY — 진행 중인 스프링백 트랜지션 위에서 재드래그해도
+   *  현재 위치부터 이어지도록 한다(고정 200ms 트랜지션이 끝나기 전 재드래그 시 점프 방지). */
+  const dragBaseRef = useRef(0)
+  /** 릴리즈 속도 계산용 최근 포인터 샘플(timestamp, clientY). */
+  const velocitySamplesRef = useRef<{ t: number; y: number }[]>([])
 
   // Panel reveal(07-panel-reveal.md) — 열림/닫힘 동안 DOM에 남아 있어야 하므로
   // "열린 상태(shown)"와 "닫힘 트랜지션 잔류(lingering)"를 분리한다.
@@ -74,7 +95,11 @@ export default function BottomSheet({
   const [lingering, setLingering] = useState(false)
 
   useEffect(() => {
-    if (!open) setDragY(0)
+    if (!open) {
+      setDragY(0)
+      dragBaseRef.current = 0
+      velocitySamplesRef.current = []
+    }
   }, [open])
 
   useEffect(() => {
@@ -110,20 +135,43 @@ export default function BottomSheet({
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     draggingRef.current = true
     startYRef.current = e.clientY
+    // 스프링백 트랜지션이 아직 진행 중일 수 있으므로, 화면에 실제로 보이는 현재
+    // translateY를 읽어 그 지점부터 드래그가 이어지게 한다(고정 duration 트랜지션 중
+    // 재드래그 시 점프 방지).
+    dragBaseRef.current = sheetRef.current ? Math.max(0, getCurrentTranslateY(sheetRef.current)) : 0
+    setDragY(dragBaseRef.current)
+    velocitySamplesRef.current = [{ t: e.timeStamp, y: e.clientY }]
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     if (!draggingRef.current) return
     const delta = e.clientY - startYRef.current
-    if (delta > 0) setDragY(delta)
+    setDragY(Math.max(0, dragBaseRef.current + delta))
+
+    velocitySamplesRef.current.push({ t: e.timeStamp, y: e.clientY })
+    const cutoff = e.timeStamp - VELOCITY_SAMPLE_WINDOW_MS
+    velocitySamplesRef.current = velocitySamplesRef.current.filter((s) => s.t >= cutoff)
   }
 
   function handlePointerUp() {
     if (!draggingRef.current) return
     draggingRef.current = false
-    if (dragY > DRAG_CLOSE_THRESHOLD) onClose()
+
+    // 릴리즈 속도(px/ms) — 짧고 빠른 하향 플릭이면 거리(dragY)와 무관하게 닫는다.
+    const samples = velocitySamplesRef.current
+    let velocity = 0
+    if (samples.length >= 2) {
+      const first = samples[0]
+      const last = samples[samples.length - 1]
+      const dt = last.t - first.t
+      if (dt > 0) velocity = (last.y - first.y) / dt
+    }
+
+    if (dragY > DRAG_CLOSE_THRESHOLD || velocity > DRAG_CLOSE_VELOCITY) onClose()
     setDragY(0)
+    dragBaseRef.current = 0
+    velocitySamplesRef.current = []
   }
 
   const hasHeader = Boolean(title) || showCloseButton
@@ -146,6 +194,7 @@ export default function BottomSheet({
       >
       {/* Sheet */}
       <div
+        ref={sheetRef}
         className={[
           'relative rounded-t-[var(--radius-cards)] flex flex-col',
           'bg-[var(--color-surface)] text-text',
