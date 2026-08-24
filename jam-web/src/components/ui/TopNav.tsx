@@ -8,6 +8,7 @@ import { TopNav as DsTopNav } from '@ds/components/navigation/TopNav'
 import { useTopNavData } from '@/lib/topNavData'
 import SyncButton from '@/components/SyncButton'
 import Button from '@/components/ui/Button'
+import NotificationBell from '@/components/ui/NotificationBell'
 import { UserIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 
@@ -30,6 +31,11 @@ import { d } from '@/lib/i18n'
  * - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문 배경톤 차이만으로 구분
  * - 뒤로가기: backHref가 있으면 router.push(backHref), 없으면 onBack ?? router.back()
  * - 터치 영역: chevron / rightSlot 모두 최소 44×44pt
+ *
+ * 20260824_021: 알림 종 주입 — 우측 슬롯 합성(`rightSlot = <>{호출부 값}{알림 종}</>`).
+ * 종을 **뒤에** 붙여야 아바타 바로 왼쪽에 온다. 노출 범위는 화면 목록을 하드코딩하지 않고
+ * **"back chevron이 없는 루트 화면"**(`logo` 또는 `showBack={false}`)이라는 규칙으로 판정한다 —
+ * 호출부를 손대지 않아도 되고, 나중에 루트 화면이 늘어나도 알아서 따라온다(PRD §6-4).
  *
  * 20260824_010: 전 페이지 3분할 확장 — 이 래퍼가 로그인 유저 컨텍스트(`useTopNavData`,
  * `(main)/layout.tsx`가 주입)를 읽어 중앙 슬롯(스트라바 동기화 버튼)과 우측 아바타
@@ -66,6 +72,18 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
 
   const handleBack = backHref ? () => router.push(backHref) : (onBack ?? (() => router.back()))
   const profileHref = username ? `/${username}` : '/profile'
+
+  // 루트 화면 판정 — back chevron이 없으면 루트다(로고 모드이거나 showBack=false).
+  // 타인 프로필은 back+닉네임 타이틀이라 자동으로 제외되고, TopNav 자체가 없는 /drops도 마찬가지다.
+  const isRootScreen = logo || !showBack
+  const composedRightSlot = isRootScreen ? (
+    <>
+      {rightSlot}
+      <NotificationBell />
+    </>
+  ) : (
+    rightSlot
+  )
 
   const logoSlot = logo ? (
     <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[26px] w-auto" priority />
@@ -110,7 +128,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
       title={title}
       showBack={logo ? false : showBack}
       onBack={handleBack}
-      rightSlot={rightSlot}
+      rightSlot={composedRightSlot}
       logoSlot={logoSlot}
       centerSlot={centerSlot}
       avatarSlot={avatarSlot}
