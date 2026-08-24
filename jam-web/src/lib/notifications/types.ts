@@ -61,8 +61,22 @@ export interface NotificationPayloadMap {
   first_badge: { badge_id: string }
   /** 11 컬렉션 완성 가능 — "완성할 수 있는데 아직 안 넣은" 시점 */
   collection_completable: { item_book_id: string; book_name: string }
-  /** 13 픽업됨 — 받는 사람은 **드랍한 사람**이다 */
-  drop_picked_up: { badge_id: string; badge_name: string; poi_id: string | null }
+  /**
+   * 13 픽업됨 — 받는 사람은 **드랍한 사람**이다.
+   *
+   * `actor_ids`·`badge_ids`는 `appendKeys`로 누적한다(중복 제거). 얕은 병합으로 두면
+   * 6시간 창의 픽업 3건이 **마지막 배지 하나만** 남기고, `actor_count`도 인원이 아니라
+   * 병합 횟수가 되어 "예린님 외 2명"이라는 거짓말이 된다 (DATA_MODEL §4-1).
+   */
+  drop_picked_up: {
+    /** 픽업한 사람들. 중복 제거 후 길이가 곧 `actor_count`(고유 인원)다 */
+    actor_ids: string[]
+    /** 픽업된 배지들. 개수 렌더는 이 배열의 길이를 쓴다 */
+    badge_ids: string[]
+    /** 병합 시 최신 값으로 덮어써진다 — **`badge_ids.length === 1`일 때만** 렌더에 쓴다 */
+    badge_name: string
+    poi_id: string | null
+  }
   /** 20 미션 진행도 마일스톤 — 50%·80% 돌파, 구간당 1회 */
   mission_milestone: {
     mission_id: string
@@ -79,8 +93,11 @@ export interface NotificationPayloadMap {
     reward_badge_count: number
     reward_points: number
   }
-  /** 26 팔로우 — actor_user_id·actor_count로 충분 */
-  followed: Record<string, never>
+  /**
+   * 26 팔로우 — `actor_ids`를 누적해 "2명까지 이름 나열 → 3명+ 외 N명"(PRD §3 L2)을 만든다.
+   * `actor_user_id` 1개(최신)만으로는 두 번째 이름을 알 수 없다.
+   */
+  followed: { actor_ids: string[] }
   /** 27 맞팔 성립 */
   mutual_follow: Record<string, never>
   /** 40 Strava 끊김 */

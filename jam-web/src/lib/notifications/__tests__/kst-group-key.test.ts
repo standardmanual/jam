@@ -6,6 +6,7 @@
  * **KST 09:00에 날짜가 바뀌어** 아침에 받은 포인트와 저녁에 받은 포인트가 다른 묶음이
  * 된다. 티켓 20260824_006에서 event_at을 로컬 벽시계로 오해석한 전례가 있다.
  */
+import { vi } from 'vitest'
 import { kstDateString, kstHour, kstSixHourBlock } from '../kst'
 import { scopedGroupKey, syncGroupKey, dailyGroupKey, sixHourGroupKey } from '../groupKey'
 import { bumpsBadgeFor, NON_BUMPING_NOTIFICATION_TYPES } from '../types'
@@ -28,6 +29,21 @@ describe('kstDateString — KST 기준 날짜', () => {
     expect(kstDateString('2026-08-31T14:59:59Z')).toBe('2026-08-31')
     expect(kstDateString('2026-08-31T15:00:00Z')).toBe('2026-09-01')
     expect(kstDateString('2026-12-31T15:00:00Z')).toBe('2027-01-01')
+  })
+
+  it('Invalid Date는 NaN-NaN-NaN 대신 현재 시각으로 대체하고 로그를 남긴다', () => {
+    // 가드가 없으면 'NaN-NaN-NaN'이 poi_views.viewed_on(DATE)에 실려 DB 파싱 에러가 되고,
+    // group_key에 섞이면 영영 합쳐지지 않는 묶음이 만들어진다.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const today = kstDateString(new Date())
+      expect(kstDateString('이건 날짜가 아니다')).toBe(today)
+      expect(kstDateString(new Date('nope'))).toBe(today)
+      expect(kstDateString(Number.NaN)).toBe(today)
+      expect(errorSpy).toHaveBeenCalled()
+    } finally {
+      errorSpy.mockRestore()
+    }
   })
 
   it('Date·문자열·epoch 어느 입력이든 같은 결과', () => {

@@ -689,6 +689,8 @@ export async function tryItemDrop(
         count: droppedInventoryItemIds.length,
         ...(act ? { activity_id: act.stravaId } : {}),
       },
+      // 배열 필드는 append로 누적 (DATA_MODEL §6). 개수는 inventory_item_ids 길이로 렌더한다
+      appendKeys: ['inventory_item_ids'],
     })
   }
 

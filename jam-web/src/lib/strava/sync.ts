@@ -186,6 +186,11 @@ async function notifyActivityBadgesEarned(
         count: normal.length,
         ...(groupActivityId !== null ? { activity_id: groupActivityId } : {}),
       },
+      // 배열 필드는 append로 누적한다 (DATA_MODEL §6). 얕은 병합이면 같은 대표 활동으로
+      // 묶인 뒤 발급된 배지가 직전 목록을 통째로 덮어쓴다.
+      // 행위자가 없는 소식이라 actor_ids는 쓰지 않는다 — 개수는 badge_ids 길이로 렌더한다
+      // (payload.count는 "이번 이벤트분"이라 병합 후에는 신뢰하면 안 된다).
+      appendKeys: ['badge_ids'],
     })
   }
 }
@@ -450,6 +455,8 @@ export async function processFetchedActivities(
         count: earn.badgeIds.length,
         activity_id: activityId,
       },
+      // 배열 필드는 append로 누적 (DATA_MODEL §6). 개수는 badge_ids 길이로 렌더한다
+      appendKeys: ['badge_ids', 'poi_names'],
     })
   }
 

@@ -857,6 +857,11 @@ export interface CreateNotificationArgs {
   p_mode?: 'merge' | 'once'
   /** 병합 시 숫자로 더할 payload 키 (예: points_earned의 amount) */
   p_sum_keys?: string[] | null
+  /**
+   * 병합 시 배열로 이어붙이고 **중복 제거**할 payload 키.
+   * actor_ids를 넣으면 actor_count가 병합 횟수가 아니라 고유 인원으로 갱신된다 (DATA_MODEL §4-1)
+   */
+  p_append_keys?: string[] | null
 }
 
 /** award_points() RPC 인자 */

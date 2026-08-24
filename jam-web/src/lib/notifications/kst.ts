@@ -18,13 +18,29 @@
 /** KST = UTC+09:00 (서머타임 없음) */
 export const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 
-function toDate(at: Date | string | number): Date {
-  return at instanceof Date ? at : new Date(at)
+/**
+ * 입력을 Date로 정규화한다.
+ *
+ * **Invalid Date 가드가 필요한 이유** — 파싱에 실패한 Date는 모든 게터가 `NaN`이라
+ * `kstDateString()`이 `NaN-NaN-NaN`을 만든다. 그 문자열이 `poi_views.viewed_on`(DATE)에
+ * 그대로 실려 DB 파싱 에러가 되거나, `group_key`에 섞여 영영 합쳐지지 않는 묶음을 만든다.
+ *
+ * 던지지 않고 현재 시각으로 대체한다 — 키 빌더는 `createNotification()`의 인자 위치에서
+ * 평가되므로(호출부의 try 바깥) 여기서 예외를 던지면 배지 발급·픽업 같은 본 흐름이
+ * 500으로 무너진다. 소식 하나가 엉뚱한 묶음에 붙는 편이 낫다. 대신 로그는 반드시 남긴다.
+ */
+export function toValidDate(at: Date | string | number): Date {
+  const d = at instanceof Date ? at : new Date(at)
+  if (Number.isNaN(d.getTime())) {
+    console.error(`[notifications] KST 계산: 유효하지 않은 시각 — ${String(at)}. 현재 시각으로 대체한다`)
+    return new Date()
+  }
+  return d
 }
 
 /** 입력 시각을 KST 벽시계로 옮긴 Date (UTC 게터로 읽어야 KST 값이 나온다) */
 function shiftToKst(at: Date | string | number): Date {
-  return new Date(toDate(at).getTime() + KST_OFFSET_MS)
+  return new Date(toValidDate(at).getTime() + KST_OFFSET_MS)
 }
 
 function pad2(n: number): string {

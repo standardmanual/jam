@@ -74,10 +74,32 @@ describe('createNotification — RPC 인자', () => {
   })
 
   it('닉네임을 payload에 넣지 않고 actor_user_id로만 사람을 가리킨다', async () => {
-    await createNotification({ userId: 'u-1', type: 'followed', actorUserId: 'u-2' })
+    await createNotification({
+      userId: 'u-1',
+      type: 'followed',
+      actorUserId: 'u-2',
+      payload: { actor_ids: ['u-2'] },
+      appendKeys: ['actor_ids'],
+    })
     const args = lastRpcArgs()
     expect(args.p_actor_user_id).toBe('u-2')
-    expect(args.p_payload).toEqual({})
+    // 닉네임이 아니라 id만 담는다 (렌더 시점에 조인)
+    expect(args.p_payload).toEqual({ actor_ids: ['u-2'] })
+  })
+
+  it('appendKeys를 p_append_keys로 넘긴다 — 생략하면 null', async () => {
+    await createNotification({
+      userId: 'u-1',
+      type: 'drop_picked_up',
+      actorUserId: 'u-2',
+      groupKey: 'drop_picked_up:2026-08-25-H0',
+      payload: { actor_ids: ['u-2'], badge_ids: ['b-1'], badge_name: '배지', poi_id: 'p-1' },
+      appendKeys: ['actor_ids', 'badge_ids'],
+    })
+    expect(lastRpcArgs().p_append_keys).toEqual(['actor_ids', 'badge_ids'])
+
+    await createNotification({ userId: 'u-1', type: 'mission_completed' })
+    expect(lastRpcArgs().p_append_keys).toBeNull()
   })
 })
 
@@ -130,5 +152,251 @@ describe('recordPoiView — KST 날짜로 하루 1행', () => {
     expect(row.poi_id).toBe('poi-1')
     expect(row.user_id).toBe('u-1')
     expect(options).toEqual({ onConflict: 'poi_id,user_id,viewed_on', ignoreDuplicates: true })
+  })
+})
+
+
+/**
+ * 묶음 병합 시맨틱 — `create_notification()`(096)을 TS로 모사한 테스트.
+ *
+ * 실제 병합은 SQL에서 일어나므로 **이 모사가 SQL과 어긋날 수 있다.** SQL 자체의 검증은
+ * `supabase/tests/096_notifications_merge.test.sql`이 담당한다(마이그레이션 적용 후 1회 실행).
+ * 여기서 잡으려는 것은 **호출부가 규칙대로 인자를 넘기는지**다 — appendKeys를 빠뜨리거나
+ * payload를 배열이 아닌 스칼라로 넘기면 아래 기대값이 무너진다.
+ */
+type FakeRow = {
+  user_id: string
+  type: string
+  actor_user_id: string | null
+  actor_count: number
+  group_key: string | null
+  payload: Record<string, unknown>
+  bumps_badge: boolean
+}
+
+function asArray(value: unknown): unknown[] {
+  if (value === undefined || value === null) return []
+  return Array.isArray(value) ? value : [value]
+}
+
+/** 096의 jsonb_merge_sum() 모사 — 얕은 덮어쓰기 + 숫자 합산 + 배열 누적(중복 제거) */
+function mergePayload(
+  oldPayload: Record<string, unknown>,
+  newPayload: Record<string, unknown>,
+  sumKeys: string[] | null,
+  appendKeys: string[] | null
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...oldPayload, ...newPayload }
+
+  for (const key of sumKeys ?? []) {
+    if (key in oldPayload && key in newPayload) {
+      merged[key] = Number(oldPayload[key]) + Number(newPayload[key])
+    }
+  }
+
+  for (const key of appendKeys ?? []) {
+    const before = asArray(oldPayload[key])
+    const incoming = asArray(newPayload[key])
+    if (before.length === 0 && incoming.length === 0) continue
+
+    const seen = new Set<string>()
+    const out: unknown[] = []
+    for (const value of [...before, ...incoming]) {
+      const id = JSON.stringify(value)
+      if (seen.has(id)) continue
+      seen.add(id)
+      out.push(value)
+    }
+    merged[key] = out
+  }
+
+  return merged
+}
+
+/** 096의 create_notification() 모사 — group_key 단위 UPSERT + actor_count 재계산 */
+function makeFakeDb() {
+  const rows = new Map<string, FakeRow>()
+
+  function actorCountOf(payload: Record<string, unknown>, fallback: number): number {
+    const ids = payload.actor_ids
+    if (Array.isArray(ids)) return Math.max(ids.length, 1)
+    return fallback
+  }
+
+  function call(args: Record<string, unknown>): FakeRow {
+    const userId = args.p_user_id as string
+    const groupKey = args.p_group_key as string | null
+    const incoming = (args.p_payload ?? {}) as Record<string, unknown>
+    const sumKeys = (args.p_sum_keys ?? null) as string[] | null
+    const appendKeys = (args.p_append_keys ?? null) as string[] | null
+    const actorUserId = (args.p_actor_user_id ?? null) as string | null
+
+    const normalized = mergePayload({}, incoming, null, appendKeys)
+    const fresh: FakeRow = {
+      user_id: userId,
+      type: args.p_type as string,
+      actor_user_id: actorUserId,
+      actor_count: actorCountOf(normalized, 1),
+      group_key: groupKey,
+      payload: normalized,
+      bumps_badge: args.p_bumps_badge as boolean,
+    }
+
+    if (groupKey === null) return fresh
+
+    const mapKey = `${userId}|${groupKey}`
+    const existing = rows.get(mapKey)
+    if (!existing) {
+      rows.set(mapKey, fresh)
+      return fresh
+    }
+
+    if (args.p_mode === 'once') return existing
+
+    const payload = mergePayload(existing.payload, incoming, sumKeys, appendKeys)
+    const updated: FakeRow = {
+      ...existing,
+      payload,
+      actor_user_id: actorUserId ?? existing.actor_user_id,
+      actor_count: actorCountOf(
+        payload,
+        actorUserId !== null ? existing.actor_count + 1 : existing.actor_count
+      ),
+    }
+    rows.set(mapKey, updated)
+    return updated
+  }
+
+  return { call, rows }
+}
+
+describe('묶음 병합 — actor_count는 병합 횟수가 아니라 고유 인원이다', () => {
+  let db: ReturnType<typeof makeFakeDb>
+  let last: FakeRow
+
+  beforeEach(() => {
+    db = makeFakeDb()
+    rpcMock.mockReset()
+    rpcMock.mockImplementation((_fn: string, args: Record<string, unknown>) => {
+      last = db.call(args)
+      return Promise.resolve({ data: last, error: null })
+    })
+  })
+
+  /** #13 픽업됨 — 실제 라우트가 넘기는 인자와 같은 모양 */
+  async function pickup(dropperId: string, pickerId: string, badgeId: string, badgeName: string) {
+    await createNotification({
+      userId: dropperId,
+      type: 'drop_picked_up',
+      actorUserId: pickerId,
+      groupKey: 'drop_picked_up:2026-08-25-H0',
+      payload: { actor_ids: [pickerId], badge_ids: [badgeId], badge_name: badgeName, poi_id: 'poi-1' },
+      appendKeys: ['actor_ids', 'badge_ids'],
+    })
+  }
+
+  it('#13 — 한 사람이 6시간 창에서 3건을 픽업해도 인원은 1명이다', async () => {
+    await pickup('owner', 'picker-a', 'badge-1', '배지1')
+    await pickup('owner', 'picker-a', 'badge-2', '배지2')
+    await pickup('owner', 'picker-a', 'badge-3', '배지3')
+
+    // 병합 횟수를 세면 3 → "예린님 외 2명"이라는 거짓말이 된다
+    expect(last.actor_count).toBe(1)
+    expect(last.payload.actor_ids).toEqual(['picker-a'])
+  })
+
+  it('#13 — badge_ids가 6시간 창에서 누적된다 (얕은 병합이면 마지막 1개만 남는다)', async () => {
+    await pickup('owner', 'picker-a', 'badge-1', '배지1')
+    await pickup('owner', 'picker-a', 'badge-2', '배지2')
+    await pickup('owner', 'picker-a', 'badge-3', '배지3')
+
+    expect(last.payload.badge_ids).toEqual(['badge-1', 'badge-2', 'badge-3'])
+    // 얕은 병합 대상은 최신 값 — badge_ids가 1개일 때만 렌더에 쓴다
+    expect(last.payload.badge_name).toBe('배지3')
+  })
+
+  it('#13 — 서로 다른 사람이 픽업하면 인원이 늘고, 같은 배지 id는 중복 제거된다', async () => {
+    await pickup('owner', 'picker-a', 'badge-1', '배지1')
+    await pickup('owner', 'picker-b', 'badge-1', '배지1')
+
+    expect(last.actor_count).toBe(2)
+    expect(last.payload.actor_ids).toEqual(['picker-a', 'picker-b'])
+    expect(last.payload.badge_ids).toEqual(['badge-1'])
+    // 대표 아바타는 가장 최근 행위자
+    expect(last.actor_user_id).toBe('picker-b')
+  })
+
+  it('#26 — 언팔 후 재팔로우가 인원을 부풀리지 않는다', async () => {
+    const follow = (actorId: string) =>
+      createNotification({
+        userId: 'target',
+        type: 'followed',
+        actorUserId: actorId,
+        groupKey: 'followed:2026-08-25',
+        payload: { actor_ids: [actorId] },
+        appendKeys: ['actor_ids'],
+      })
+
+    await follow('u-a')
+    await follow('u-a')
+    expect(last.actor_count).toBe(1)
+
+    await follow('u-b')
+    expect(last.actor_count).toBe(2)
+    expect(last.payload.actor_ids).toEqual(['u-a', 'u-b'])
+  })
+
+  it('행위자가 없는 묶음(#1 활동배지)은 actor_ids를 쓰지 않고 actor_count도 늘지 않는다', async () => {
+    const earn = (ids: string[]) =>
+      createNotification({
+        userId: 'u-1',
+        type: 'badge_earned',
+        groupKey: 'badge_earned:sync:42',
+        payload: { badge_ids: ids, count: ids.length },
+        appendKeys: ['badge_ids'],
+      })
+
+    await earn(['b-1', 'b-2'])
+    await earn(['b-3'])
+
+    expect(last.actor_count).toBe(1)
+    expect(last.payload.actor_ids).toBeUndefined()
+    // 개수는 payload.count가 아니라 배열 길이로 렌더한다 (count는 이번 이벤트분)
+    expect(last.payload.badge_ids).toEqual(['b-1', 'b-2', 'b-3'])
+  })
+
+  it('appendKeys를 빠뜨리면 배열이 통째로 덮어써진다 — 왜 필요한지에 대한 대조군', async () => {
+    await createNotification({
+      userId: 'owner',
+      type: 'drop_picked_up',
+      actorUserId: 'picker-a',
+      groupKey: 'drop_picked_up:2026-08-25-H0',
+      payload: { actor_ids: ['picker-a'], badge_ids: ['badge-1'], badge_name: '배지1', poi_id: 'p' },
+    })
+    await createNotification({
+      userId: 'owner',
+      type: 'drop_picked_up',
+      actorUserId: 'picker-b',
+      groupKey: 'drop_picked_up:2026-08-25-H0',
+      payload: { actor_ids: ['picker-b'], badge_ids: ['badge-2'], badge_name: '배지2', poi_id: 'p' },
+    })
+
+    expect(last.payload.badge_ids).toEqual(['badge-2'])
+    expect(last.payload.actor_ids).toEqual(['picker-b'])
+  })
+
+  it('sumKeys는 그대로 동작한다 (#5 포인트 하루 합계)', async () => {
+    const earn = (amount: number) =>
+      createNotification({
+        userId: 'u-1',
+        type: 'points_earned',
+        groupKey: 'points_earned:2026-08-25',
+        payload: { amount, reason: 'badge_point_reward' },
+        sumKeys: ['amount'],
+      })
+
+    await earn(250)
+    await earn(300)
+    expect(last.payload.amount).toBe(550)
   })
 })
