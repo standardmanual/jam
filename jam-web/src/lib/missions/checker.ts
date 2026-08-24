@@ -5,6 +5,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
+import { createNotification, scopedGroupKey } from '@/lib/notifications'
 import { grantMissionRewards } from '@/lib/missions/rewards'
 import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
 import { evaluateConditionDetailed, calcMaxStreak, passesWalkingGate } from '@/lib/badge-engine'
@@ -133,7 +134,7 @@ export async function checkMissions(
       ? (joinedAt ? fullHistory.filter((a) => a.startDate >= joinedAt) : fullHistory)
       : activities
 
-    const { progressValue, achieved } = evaluateMission(mission, missionActivities, ownership, isParticipating)
+    const { progressValue, target, achieved } = evaluateMission(mission, missionActivities, ownership, isParticipating)
 
     // progress_value 업데이트
     if (progressValue > 0) {
@@ -142,7 +143,10 @@ export async function checkMissions(
       await table.update({ progress_value: progressValue }).eq('user_id', userId).eq('mission_id', mission.id)
     }
 
-    if (!achieved) continue
+    if (!achieved) {
+      await notifyMissionMilestone(userId, mission, progressValue, target)
+      continue
+    }
 
     // 선착순 체크
     if (mission.max_completions !== null) {
@@ -182,9 +186,76 @@ export async function checkMissions(
       final_progress_value: progressValue,
       target_value: getTarget(mission.mission_type, mission.condition_json as MissionCondition),
     })
+
+    // 소식 #22(미션 완료 + 보상) — 티켓 20260824_019
+    // 완료와 보상을 **한 건으로 합친다.** 따로 보내면 같은 사건이 두 줄로 보인다.
+    // L1(압축 금지)이라 group_key는 두지 않는다.
+    await createNotification({
+      userId,
+      type: 'mission_completed',
+      payload: {
+        mission_id: mission.id,
+        mission_title: mission.title,
+        reward_badge_count: reward.awardedBadgeIds.length,
+        reward_points: reward.totalAwardedPoints,
+      },
+    })
   }
 
   return { completedMissionIds, awardedBadgeIds }
+}
+
+/**
+ * 미션 타입별 진행도 단위 — 소식 #20의 문구 슬롯("52/100km")에 쓴다.
+ * 달성형(poi_visit/item_collect)은 진행률 개념이 없어 빈 문자열.
+ */
+const MISSION_PROGRESS_UNIT: Record<MissionType, string> = {
+  distance: 'km',
+  activity_count: '회',
+  poi_visit: '',
+  item_collect: '',
+  streak_days: '일',
+  duration_minutes: '분',
+  elevation_gain_m: 'm',
+}
+
+/**
+ * 소식 #20(미션 진행도 마일스톤) — 티켓 20260824_019
+ *
+ * 50%·80% 돌파 시 **구간당 1회만.** 중복 발송은 `group_key`
+ * `mission_milestone:{mission_id}:{50|80}` + `mode:'once'`로 막는다.
+ * (동기화할 때마다 이 지점을 지나므로 merge로 두면 매번 dot이 다시 켜진다)
+ *
+ * 달성형(poi_visit/item_collect)은 목표가 0/1이라 "절반을 넘었어요"가 성립하지 않으므로
+ * 제외한다. 한 번에 두 구간을 넘긴 경우(0 → 85%)에는 **높은 쪽 한 건만** 만든다.
+ */
+async function notifyMissionMilestone(
+  userId: string,
+  mission: MissionRow,
+  progressValue: number,
+  target: number
+): Promise<void> {
+  const unit = MISSION_PROGRESS_UNIT[mission.mission_type] ?? ''
+  if (unit === '' || target <= 0 || progressValue <= 0) return
+
+  const ratio = progressValue / target
+  const milestone: 50 | 80 | null = ratio >= 0.8 ? 80 : ratio >= 0.5 ? 50 : null
+  if (milestone === null) return
+
+  await createNotification({
+    userId,
+    type: 'mission_milestone',
+    groupKey: scopedGroupKey('mission_milestone', mission.id, milestone),
+    mode: 'once',
+    payload: {
+      mission_id: mission.id,
+      mission_title: mission.title,
+      current: progressValue,
+      target,
+      unit,
+      milestone,
+    },
+  })
 }
 
 export interface OwnershipContext {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi } from '@/lib/poi/proximity'
 import { recordFeedEvent } from '@/lib/activity-feed'
+import { createNotification, sixHourGroupKey } from '@/lib/notifications'
 import type { PoiRow, PoiDropRow } from '@/types/database'
 import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
@@ -149,6 +150,30 @@ export async function POST(
       dropper_user_id: drop.dropper_user_id,
       poi_drop_id: dropId,
     })
+
+    // 소식 #13(픽업됨) — 티켓 20260824_019
+    // **드랍한 사람에게 간다.** 픽업한 사람이 아니다(픽업은 본인이 방금 한 행동).
+    // dropper_user_id가 null이면 앰비언트(시스템) 드랍이라 받을 사람이 없다.
+    if (drop.dropper_user_id && drop.dropper_user_id !== user.id) {
+      await createNotification({
+        userId: drop.dropper_user_id,
+        type: 'drop_picked_up',
+        actorUserId: user.id,
+        // 6시간 묶음 — "시현님의 드랍 아이템 배지 3개가 픽업됐어요"
+        groupKey: sixHourGroupKey('drop_picked_up'),
+        payload: {
+          actor_ids: [user.id],
+          badge_ids: [b.id],
+          badge_name: b.name,
+          poi_id: drop.poi_id,
+        },
+        // actor_ids·badge_ids는 이어붙이고 중복을 제거한다 (DATA_MODEL §4-1).
+        //   · badge_ids를 얕은 병합으로 두면 6시간 창의 직전 픽업 배지가 덮어써진다
+        //   · actor_ids를 세야 actor_count가 "병합 횟수"가 아니라 "고유 인원"이 된다 —
+        //     한 사람이 내 드랍 3건을 픽업해도 1명이어야 "예린님 외 2명"이 안 나온다
+        appendKeys: ['actor_ids', 'badge_ids'],
+      })
+    }
   }
 
   return NextResponse.json({ inventory_item_id: result.inventory_item_id })

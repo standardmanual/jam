@@ -116,7 +116,17 @@ export async function grantMissionRewards(
         // 배지 자체 포인트 지급 (badge-engine/drop-engine과 동일하게 코드에서 명시적 재현)
         const pr = badge.point_reward ?? 0
         if (pr > 0) {
-          await awardPoints(userId, pr, 'badge_point_reward', { sourceBadgeId: badge.id })
+          // sourceMissionId를 함께 넘기는 이유 두 가지 (티켓 20260824_019 3차)
+          //  ① 소식 #5(포인트 적립)의 트리거가 「badge_point_reward 중 **미션 보상 경유가
+          //     아닌 것**」이다(PRD §3 ①). #22(미션 완료)가 이미 "배지 1개와 500P"로 보상을
+          //     전부 서술하므로, 미션 경유분이 #5로도 가면 한 사건이 두 줄이 되고 #5의
+          //     하루 합계 금액까지 부풀려진다. notifyPointChange()가 이 값으로 걸러낸다.
+          //  ② 원장(point_transactions)에서 이 지급의 미션 귀속이 살아난다.
+          //     reason은 badge_point_reward 그대로라 /points·어드민의 표시 분기는 바뀌지 않는다.
+          await awardPoints(userId, pr, 'badge_point_reward', {
+            sourceBadgeId: badge.id,
+            sourceMissionId: mission.id,
+          })
           totalAwardedPoints += pr
         }
       }

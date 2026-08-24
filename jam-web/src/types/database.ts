@@ -43,6 +43,11 @@ export interface UserRow {
   /** 당일(UTC) 누적 이동거리 — gps_daily_distance_date와 다른 날짜면 0으로 리셋해 사용 */
   gps_daily_distance_km: number | null
   gps_daily_distance_date: string | null
+  /**
+   * 알림함을 마지막으로 연 시각 (마이그레이션 096). 개별 read 플래그 대신 이 한 점으로
+   * "어디까지 봤나"를 판정한다. NULL이면 모든 소식이 안 읽음.
+   */
+  notifications_seen_at: string | null
   created_at: string
   updated_at: string
 }
@@ -766,6 +771,99 @@ export interface EngineDecisionLogRow {
   created_at: string
 }
 
+// =========================================
+// 알림(소식) — 마이그레이션 096 / 티켓 20260824_019
+// Specs/PRD/Notification/PRD.md · DATA_MODEL.md
+// =========================================
+
+/** notification_type ENUM 28종 (PRD §3의 28종과 1:1) */
+export type NotificationType =
+  // ① 보상 획득 (6) — bumps_badge=false 대상
+  | 'badge_earned'
+  | 'rare_badge_earned'
+  | 'item_badge_earned'
+  | 'poi_badge_earned'
+  | 'points_earned'
+  | 'first_badge'
+  // ② 컬렉션 (3)
+  | 'collection_slottable'
+  | 'collection_near_complete'
+  | 'collection_completable'
+  // ③ 내 드랍 (2)
+  | 'drop_picked_up'
+  | 'drop_spot_active'
+  // ④ 미션 (5)
+  | 'mission_milestone'
+  | 'mission_deadline'
+  | 'mission_completed'
+  | 'mission_rank_up'
+  | 'mission_ended'
+  // ⑤ 소셜(나에게) (2)
+  | 'followed'
+  | 'mutual_follow'
+  // ⑥ 소셜(팔로잉 활동) (4)
+  | 'following_rare_badge'
+  | 'following_collection_complete'
+  | 'following_mission_complete'
+  | 'following_nearby_drop'
+  // ⑦ 발견 (1)
+  | 'nearby_drops'
+  // ⑧ 계정·시스템 (5)
+  | 'strava_disconnected'
+  | 'sync_stalled'
+  | 'inventory_full'
+  | 'admin_points_changed'
+  | 'announcement'
+
+export interface NotificationRow {
+  id: string
+  /** 받는 사람. 행위자가 아니다 */
+  user_id: string
+  type: NotificationType
+  /** 아바타 탭 대상. 팔로우·픽업됨·팔로잉 활동에만 존재 */
+  actor_user_id: string | null
+  /** 묶음 인원 — "예린님 외 3명"의 N */
+  actor_count: number
+  /** 묶음 병합 키. NULL이면 묶지 않는 소식(항상 새 행) */
+  group_key: string | null
+  /** 문구 슬롯 + 착지점 계산 재료. 닉네임은 넣지 않는다(actor_user_id로 조인) */
+  payload: Record<string, unknown>
+  /** dot을 켜는가. ① 보상 획득 6종만 false */
+  bumps_badge: boolean
+  created_at: string
+  /** 정렬·dot 판정의 기준. created_at이 아니다 */
+  updated_at: string
+}
+
+/** 소식 #18("내 드랍 지점 활성") 계측용 — POI 열람 기록 */
+export interface PoiViewRow {
+  id: string
+  poi_id: string
+  user_id: string
+  /** KST 기준 날짜 (YYYY-MM-DD) */
+  viewed_on: string
+  viewed_at: string
+}
+
+/** create_notification() RPC 인자 — src/lib/notifications/index.ts */
+export interface CreateNotificationArgs {
+  p_user_id: string
+  p_type: NotificationType
+  p_payload?: Record<string, unknown>
+  p_bumps_badge?: boolean
+  p_actor_user_id?: string | null
+  p_group_key?: string | null
+  /** 'merge'(기본): 같은 group_key면 병합 / 'once': 이미 있으면 아무것도 하지 않음 */
+  p_mode?: 'merge' | 'once'
+  /** 병합 시 숫자로 더할 payload 키 (예: points_earned의 amount) */
+  p_sum_keys?: string[] | null
+  /**
+   * 병합 시 배열로 이어붙이고 **중복 제거**할 payload 키.
+   * actor_ids를 넣으면 actor_count가 병합 횟수가 아니라 고유 인원으로 갱신된다 (DATA_MODEL §4-1)
+   */
+  p_append_keys?: string[] | null
+}
+
 /** award_points() RPC 인자 */
 export interface AwardPointsArgs {
   p_user_id: string
@@ -1050,6 +1148,23 @@ export interface Database {
         Update: Partial<Omit<ThemePresetRow, 'id'>>
         Relationships: []
       }
+      notifications: {
+        Row: NotificationRow
+        Insert: Omit<NotificationRow, 'id' | 'actor_count' | 'created_at' | 'updated_at'> & {
+          id?: string
+          actor_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<Omit<NotificationRow, 'id'>>
+        Relationships: []
+      }
+      poi_views: {
+        Row: PoiViewRow
+        Insert: Omit<PoiViewRow, 'id' | 'viewed_at'> & { id?: string; viewed_at?: string }
+        Update: Partial<Omit<PoiViewRow, 'id'>>
+        Relationships: []
+      }
     }
     Views: Record<never, never>
     Functions: {
@@ -1061,11 +1176,16 @@ export interface Database {
         Args: { p_preset_id: string }
         Returns: void
       }
+      create_notification: {
+        Args: CreateNotificationArgs
+        Returns: NotificationRow
+      }
     }
     Enums: {
       badge_type: BadgeType
       badge_rarity: BadgeRarity
       trade_status: TradeStatus
+      notification_type: NotificationType
     }
   }
 }
