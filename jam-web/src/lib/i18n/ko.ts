@@ -52,6 +52,12 @@ export const ko = {
     stravaDisconnected: '동기화 안됨',
     stravaConnectButton: 'Strava 동기화',
 
+    // Strava 콜백 도착 피드백 토스트 (20260824_008) — 배지 연출이 뜨지 않는 경우
+    // (배지 0개 성공 / 실패)에 연동 결과를 알려준다
+    stravaConnectSuccessToast: 'Strava 동기화를 완료했어요. 앞으로 활동하면 배지를 자동 획득해요',
+    stravaConnectCancelledToast: 'Strava 동기화를 취소했어요. 다시 시도하려면 동기화 버튼을 눌러주세요',
+    stravaConnectFailedToast: 'Strava 동기화에 실패했어요. 네트워크가 불안정했거나 일시적인 오류일 수 있어요. 잠시 후 다시 시도해주세요',
+
     // 빈 상태
     emptyBadges: '아직 획득한 배지가 없어요',
     emptyBadgesBody: 'Strava를 동기화하고 활동하면 배지를 획득할 수 있어요',
