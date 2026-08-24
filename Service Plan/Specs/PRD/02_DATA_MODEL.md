@@ -29,10 +29,10 @@
 [세계관]        factions ─N:M(인접)─ factions (faction_adjacency, 드랍 모멘텀용)
 
 [POI/드랍]      poi ──category──> poi_categories
-                 ├─1:N─ poi_drops (source: user | system)
+                 ├─1:N─ poi_drops (유저 드랍)
                  └─연결─ badges (linked_badge_id)
                 users ─1:1─ user_drop_state (드랍 모멘텀/피티 상태)
-                drop_policy / ambient_drop_policy (싱글톤 파라미터)
+                drop_policy (싱글톤 파라미터)
 
 [조합]          combination_recipes (재료 2~10개 → 결과 배지)
                 combine_policy (싱글톤) / user_combine_state (유저별 피티)
@@ -109,7 +109,7 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 
 ### inventory / inventory_items
 원안 구조 유지(50슬롯). `inventory_items`에 추가된 것:
-- `serial_number`: SERIAL(순차) → **BEFORE INSERT 트리거로 1~999,999 난수 부여**로 변경(발급 순서 역산 방지). 앰비언트 드랍 픽업분은 50,001~999,999 별도 범위.
+- `serial_number`: SERIAL(순차) → **BEFORE INSERT 트리거로 1~999,999 난수 부여**로 변경(발급 순서 역산 방지). (앰비언트 드랍 픽업분만 50,001~999,999로 제한하는 분기가 `assign_random_serial()`에 남아 있으나, 앰비언트 제거 후 항상 거짓이라 실제로는 전 범위를 쓴다 — [20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md))
 - `slotted_in`: 컬렉션 슬롯에 장착된 경우 참조 (장착 중엔 인벤토리 칸 미차감)
 - `dropped_at` / `drop_id`: 드랍 후 소프트 삭제 추적
 
@@ -185,11 +185,16 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 ### poi_drops
 | 필드 | 설명 |
 |------|------|
-| source | **`user`**(유저 드랍) / **`system`**(앰비언트 드랍, 신규) |
-| expires_at | user 드랍은 30일 만료, system 드랍은 만료 없음(NULL) |
-| dropper_user_id | system 드랍은 nullable |
+| source | **레거시 — 전 행 `'user'`.** 앰비언트(시스템) 드랍이 있던 시절의 구분자. 기능 제거 후에도 컬럼은 유지한다([20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md)) |
+| expires_at | 유저 드랍은 30일 만료. (구 system 드랍은 NULL이었음 — nullable 유지) |
+| dropper_user_id | nullable 유지 (구 system 드랍이 NULL이었기 때문) |
 
 픽업은 `pickup_drop()` RPC로 원자 트랜잭션 처리.
+
+> **`source` 컬럼을 지우지 않은 이유** — `assign_random_serial()` 트리거(마이그레이션 044)가
+> 이 컬럼을 조회하고, `poi_drops_source_consistency` CHECK가 유저 드랍의
+> `dropper_user_id`·`expires_at` NOT NULL을 보장한다. 컬럼 제거는 픽업(핵심 유저 경로) 전체를
+> 다시 검증해야 하는 변경인 반면, 전 행이 `'user'`이고 DEFAULT도 `'user'`라 남겨도 실해가 없다.
 
 ### drop_events / drop_claims / drop_probability (레거시 추정)
 어드민 주도 드랍 이벤트용 초기 테이블. 034(드랍엔진 v2) 이후 `drop_policy`가 사실상 후속 확장판 — 실사용 여부는 코드 확인 필요.
@@ -197,8 +202,9 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 ### user_drop_state / drop_policy (신규 — 드랍엔진 v2)
 유저별 드랍 모멘텀 상태(연속 common 카운터, 마지막 조각 피티, 일일 드랍 수)와 엔진 전체 파라미터(레어리티 확률, 모멘텀/인접/탐험 가중치). 상세 로직은 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3 참고.
 
-### ambient_drop_policy (신규)
-유저 행동과 무관하게 시스템이 POI에 상시 배치하는 "앰비언트 드랍" 정책(레어리티 분포, POI당 최대 활성 수).
+### ~~ambient_drop_policy~~ (삭제됨 — 2026-08-25)
+앰비언트(시스템) 드랍 정책 싱글톤. 기능 전면 제거로 테이블 DROP
+([20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md), 마이그레이션 100).
 
 ---
 
@@ -282,7 +288,7 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 | InventoryItem | `inventory_items` — 일련번호 랜덤화, 슬롯 참조 추가 |
 | POI | `poi` — category ENUM→FK 전환, OSM→네이버 데이터 소스 전환 |
 | ItemBook | `item_books` — `required_item_badge_ids` 삭제, 소유 관계 역전(badges → item_book_id) |
-| PoiDrop | `poi_drops` — `source`(user/system) 분기로 앰비언트 드랍 흡수 |
+| PoiDrop | `poi_drops` — `source` 컬럼 잔존(레거시, 전 행 `user`). 앰비언트 드랍 제거로 유저 드랍 전용 |
 | DropEvent | `drop_events` — 스키마 변경 없이 잔존 (실사용 여부 별도 확인 필요) |
 | DropProbability | `drop_probability` — 잔존하나 `drop_policy`가 사실상 후속 확장판 |
 | Trade | `trades` — 스키마 변경 없이 잔존. **`inventory/flea-market` 화면은 "coming soon" placeholder로, 실제 거래 기능 미구현** (2026-08-06 코드 확인) |

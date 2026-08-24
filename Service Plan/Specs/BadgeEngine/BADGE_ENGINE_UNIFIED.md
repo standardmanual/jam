@@ -359,36 +359,32 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 
 ---
 
-### 3.12 앰비언트(시스템) POI 드랍 — 상시 자동 배치 (✅ 구현됨 — 2026-07-23)
+### 3.12 ~~앰비언트(시스템) POI 드랍~~ — **제거됨 (2026-08-25)**
 
-> §3의 드랍엔진 v2는 **활동 트리거** 기반이다. 이와 별개로, 유저 행동과 무관하게 시스템이 주기적으로 POI에 아이템배지를 직접 배치해두는 **앰비언트 드랍**을 추가했다. "우연히 발견하는" 경험이 목적이며, 별도 정책·별도 크론으로 운영된다.
-> 구현 파일: `src/lib/ambient-drop/index.ts`(엔진) / `src/lib/ambient-drop/policy.ts`(정책) / `src/app/api/cron/ambient-drop-monitor/route.ts`(크론) / 마이그레이션 044.
+> **이 판정은 더 이상 존재하지 않는다.** 유저 행동과 무관하게 시스템이 POI에 아이템배지를
+> 상시 배치하던 앰비언트 드랍은 2026-08-25에 전면 제거됐다 —
+> 티켓 [20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md).
+> 현재 `poi_drops`에 들어가는 행은 **유저 드랍뿐**이다(§3.13).
 
-**드랍엔진 v2와의 관계**: 두 시스템은 완전히 독립적이다. 앰비언트 드랍은 `poi_drops.source='system'`으로 구분되며, 기존 `poi_drops`(유저 주도 드랍)와 같은 테이블·같은 픽업 경로(GPS 반경 50m 검증, 섀도우밴 정책)를 공유하되 배치 로직·정책·레어리티 분포는 별개다. 세계관/컬렉션 서사 가중치(§3.2~3.3)는 적용하지 않음 — 레어리티 등급 내에서 `type='item'` 배지 중 균등 랜덤.
+**⚠️ 미완성이라 제거한 것이 아니다.** `poi_drops`에 `source='system'` 행이 0건인 것이 발견의
+계기였으나, 원인은 **미들웨어가 `/api/cron/*`를 307로 가로채 cron 자체가 실행되지 않았던 것**이다
+([20260825_003](../../History/Migration/Ticket/20260825_003_bug_미들웨어가-cron-요청을-차단.md)에서
+수정, 프로덕션에서 307 → 401 전환으로 확정). 정책은 튜닝돼 있었고 어드민 화면도 있었다.
+**관측과 무관하게 쓰지 않기로 한 제품 결정이다.**
 
-**레어리티 분포** (`ambient_drop_policy`, mythic 제외):
+**제거된 것**: `src/lib/ambient-drop/`(엔진·정책) · `/api/cron/ambient-drop-monitor`(크론) ·
+`/admin/ambient-drop-policy`(어드민) · `ambient_drop_policy` 테이블(마이그레이션 100에서 DROP).
 
-| 등급 | 기본값 |
-|------|--------|
-| common | 86% |
-| rare | 12% |
-| legend | 2% |
+**남긴 것과 그 이유**:
+- `poi_drops.source` 컬럼 — **레거시, 전 행 `'user'`**. `assign_random_serial()` 트리거(044)와
+  `poi_drops_source_consistency` CHECK가 이 컬럼을 참조하고 있어, 제거하면 픽업(핵심 유저 경로)
+  전체를 다시 검증해야 한다. 남겨도 실해가 없어 유지했다.
+- `assign_random_serial()`의 50,001~999,999 분기 — 위 컬럼을 읽는 분기. 앰비언트 드랍이 생성되지
+  않으므로 **항상 거짓**이며, 실제 채번은 1~999,999 전 범위를 쓴다.
 
-mythic은 앰비언트 드랍 대상에서 완전히 제외 — 신화 등급의 희소성은 액티비티 성취(§3.1~3.4) 전용으로 유지한다. 액티비티 드랍엔진(60/28/9/3)보다 common 편중이 훨씬 강한 이유: 노력 없는 발견이 노력 기반 보상의 기대값을 넘지 않도록 하기 위함.
-
-**목표 수량**: `target_total = clamp(활성 POI 수 × coverage_ratio(기본 0.15), min(20), max(2000))` — POI 풀 규모에 비례해 자동 스케일, 고정 상수 없음.
-
-**만료 없음**: 유저 주도 드랍(`source='user'`)은 기존대로 30일 만료가 있지만, 앰비언트 드랍은 `expires_at=NULL`이며 DB CHECK로 강제된다. `poi-cleanup` 크론은 `expires_at IS NULL` 행을 자연히 건너뛴다.
-
-**일련번호**: 앰비언트 드랍을 픽업해 발급되는 일련번호는 **50,001~999,999** 범위로 제한(`assign_random_serial()` 트리거가 `drop_id → poi_drops.source`로 판별). 다른 모든 획득 경로는 기존 1~999,999 전체 범위 그대로.
-
-**보충 크론** (`/api/cron/ambient-drop-monitor`, 매일 05:00 — Hobby 플랜은 하루 1회보다 잦은 cron을 배포 시점에 거부해 매시간에서 하향):
-```
-1. 활성 POI 수 → target_total 계산
-2. 활성 시스템 드랍 수 카운트 → 부족분 산출 (replenish_batch_size로 상한, 기본 30)
-3. POI 선정: max_active_per_poi(기본 1) 미만 + 활성 드랍 0개 POI 우선 (분산 배치)
-4. 레어리티 추첨 → 해당 등급 type='item' 배지 랜덤 선택 → poi_drops INSERT
-```
+**복원이 필요하다면** 마이그레이션 044를 되돌리고 이 티켓의 역순으로 코드를 복구하면 된다.
+마지막 운영 정책값: common 86% / rare 12% / legend 2%, 커버리지 0.15, min 20 / max 2000,
+POI당 최대 1개, 보충 배치 30개 (최종 수정 2026-07-23).
 
 ### 3.13 유저 드랍/픽업 운영 정책 (PRD 04_PROJECT_SPEC.md에서 이관, 2026-08-06)
 
@@ -482,9 +478,9 @@ src/lib/badge-engine/index.ts             액티비티배지 엔진 (구현)
 src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현 — v2는 §3 설계)
 src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출)
 src/lib/abusing/                          섀도우밴 정책 (공용)
-src/lib/ambient-drop/index.ts             앰비언트(시스템) POI 드랍 엔진 — §3.12
 supabase/migrations/033_reseed_activity_badges_v3.sql   액티비티배지 시드
-supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 스키마 — §3.12
+supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 스키마 (기능 제거됨 — §3.12)
+supabase/migrations/100_remove_ambient_drop.sql         앰비언트 드랍 제거 — §3.12
 supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
 supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
 ```

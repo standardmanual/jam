@@ -335,7 +335,6 @@ export const ko = {
     checking: '확인 중',
     pickupItemsTitle: '픽업할 아이템',
     thisPlaceTitle: '이 장소',
-    foundNearby: '이 근처에서 발견됨',
     droppedBy: '{name}이(가) 드랍',
     anonymous: '익명',
     confirmDrop: "'{name}'을(를)\n여기에 드랍할까요?",
