@@ -3,7 +3,7 @@
  *
  * 활동 트리거 없이, 시스템이 주기적으로(크론) POI에 아이템배지를 직접 놓아둔다.
  * 유저-간 드랍(poi_drops.source='user')과 같은 테이블을 쓰되 source='system'으로 구분.
- * - 레어리티: common 위주, mythic 없음 (신화 등급은 액티비티 성취·떠돌이 아이템 전용 유지)
+ * - 레어리티: common 위주, mythic 없음 (신화 등급은 액티비티 성취 전용 유지)
  * - 만료 없음 (poi_drops.expires_at = NULL, DB CHECK로 강제)
  * - 일련번호: 픽업 시 assign_random_serial() 트리거가 50,001~999,999로 제한 (마이그레이션 044)
  *
