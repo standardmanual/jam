@@ -1,5 +1,5 @@
 /**
- * ⑥ 팔로우한 사람의 활동 — #29·#30·#31·#32 (티켓 20260825_002)
+ * ⑥ 팔로우한 사람의 활동 — #29·#30·#31 (티켓 20260825_002)
  * 스펙: PRD §3 ⑥, §4-2, §9
  *
  * ## 왜 배치인가
@@ -10,8 +10,8 @@
  *
  * ## 상한 2건의 선별 기준 — 희귀도 단독 (PRD §9)
  *
- * 친밀도 지표가 아직 없어 **희귀도만** 쓴다. 다만 #30·#31·#32는 희귀도 축이 없으므로
- * "얻기 어려운 순"으로 고정 우선순위를 준다(컬렉션 완성 > 미션 완료 > 근처 드랍).
+ * 친밀도 지표가 아직 없어 **희귀도만** 쓴다. 다만 #30·#31은 희귀도 축이 없으므로
+ * "얻기 어려운 순"으로 고정 우선순위를 준다(컬렉션 완성 > 미션 완료).
  * 동순위는 최근 이벤트 우선. 친밀도 지표가 생기면 PRD §9에 따라 재검토한다.
  */
 import { scopedGroupKey } from '@/lib/notifications/groupKey'
@@ -32,7 +32,6 @@ const FOLLOWING_PRIORITY = {
   legend: 1,
   collection: 2,
   mission: 3,
-  drop: 4,
 } as const
 
 export type FollowingCandidate =
@@ -65,15 +64,6 @@ export type FollowingCandidate =
       missionTitle: string
       /** 같은 미션을 완료한 팔로잉 전원 (묶음 — "예린님 외 2명") */
       actorIds: string[]
-    }
-  | {
-      kind: 'drop'
-      recipientId: string
-      actorId: string
-      at: string
-      priority: number
-      poiId: string
-      region: string
     }
 
 /**
@@ -132,15 +122,6 @@ function toDraft(c: FollowingCandidate, today: string): NotificationDraft {
         mode: 'once',
         appendKeys: ['actor_ids'],
       }
-    case 'drop':
-      return {
-        userId: c.recipientId,
-        type: 'following_nearby_drop',
-        actorUserId: c.actorId,
-        payload: { poi_id: c.poiId, region: c.region },
-        groupKey: scopedGroupKey('following_nearby_drop', today),
-        mode: 'once',
-      }
   }
 }
 
@@ -167,7 +148,7 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<Notificat
   }
 
   // 지난 24시간 이벤트만 조회한다(배지 전체를 훑고 거르는 것보다 훨씬 싸다)
-  const [activityBadges, invItems, bookCompletions, missionCompletions, userDrops] = await Promise.all([
+  const [activityBadges, invItems, bookCompletions, missionCompletions] = await Promise.all([
     fetchAllRows<{ user_id: string; badge_id: string; earned_at: string }>(
       'user_activity_badges(24h)',
       (from, to) =>
@@ -203,17 +184,6 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<Notificat
           .from('user_mission_completions')
           .select('user_id, mission_id, completed_at')
           .gte('completed_at', since)
-          .range(from, to)
-    ),
-    fetchAllRows<{ dropper_user_id: string | null; poi_id: string; dropped_at: string }>(
-      'poi_drops(24h, user)',
-      (from, to) =>
-        supabase
-          .from('poi_drops')
-          .select('dropper_user_id, poi_id, dropped_at')
-          .eq('source', 'user')
-          .gte('dropped_at', since)
-          .not('dropper_user_id', 'is', null)
           .range(from, to)
     ),
   ])
@@ -337,36 +307,6 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<Notificat
         missionTitle: titleById.get(entry.missionId) ?? '',
         actorIds: [...new Set(sorted.map((a) => a.id))],
       })
-    }
-  }
-
-  // ── #32 팔로잉 근처 드랍 — users.region 문자열 일치 ────────────────────────
-  if (userDrops.length > 0) {
-    const users = await fetchAllRows<{ id: string; region: string | null }>('users(region)', (from, to) =>
-      supabase.from('users').select('id, region').range(from, to)
-    )
-    const regionOf = new Map(users.map((u) => [u.id, (u.region ?? '').trim()]))
-
-    for (const drop of userDrops) {
-      const actorId = drop.dropper_user_id
-      if (!actorId) continue
-      const actorRegion = regionOf.get(actorId) ?? ''
-      // region이 비어 있으면 매칭하지 않는다. 빈 문자열끼리 "일치"로 보면 지역을 설정하지
-      // 않은 유저 전원이 서로의 드랍 소식을 받게 된다(users.region 기본값이 '')
-      if (actorRegion === '') continue
-      for (const recipientId of followersOf.get(actorId) ?? []) {
-        if (recipientId === actorId) continue
-        if ((regionOf.get(recipientId) ?? '') !== actorRegion) continue
-        candidates.push({
-          kind: 'drop',
-          recipientId,
-          actorId,
-          at: drop.dropped_at,
-          priority: FOLLOWING_PRIORITY.drop,
-          poiId: drop.poi_id,
-          region: actorRegion,
-        })
-      }
     }
   }
 

@@ -122,8 +122,7 @@ describe('bumps_badge 파생 — ① 보상 획득 6종만 false', () => {
     'mission_milestone', 'mission_deadline', 'mission_completed', 'mission_rank_up', 'mission_ended',
     'followed', 'mutual_follow',
     'following_rare_badge', 'following_collection_complete',
-    'following_mission_complete', 'following_nearby_drop',
-    'nearby_drops',
+    'following_mission_complete',
     'strava_disconnected', 'sync_stalled', 'inventory_full',
     'admin_points_changed', 'announcement',
   ]
@@ -133,12 +132,12 @@ describe('bumps_badge 파생 — ① 보상 획득 6종만 false', () => {
     expect(NON_BUMPING_NOTIFICATION_TYPES.size).toBe(6)
   })
 
-  it('나머지 22종은 dot을 켠다', () => {
+  it('나머지 20종은 dot을 켠다', () => {
     for (const type of OTHER_TYPES) expect(bumpsBadgeFor(type)).toBe(true)
   })
 
-  it('28종 전부를 빠짐없이 분류한다', () => {
-    expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(28)
-    expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(28)
+  it('26종 전부를 빠짐없이 분류한다', () => {
+    expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(26)
+    expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(26)
   })
 })
