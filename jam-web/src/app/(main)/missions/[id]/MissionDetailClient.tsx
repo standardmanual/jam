@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
@@ -135,20 +136,20 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
 
       <div className="flex flex-col px-6 pt-0 pb-10 gap-6">
 
-        {/* 대표 이미지 — 1:1 정사각형 */}
+        {/* 대표 이미지 — 1:1 정사각형.
+            image_url은 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다. next/image에
+            직접 넘기면 미등록 호스트 하나로 미션 상세 화면 전체가 500이 된다 (20260824_005).
+            폴백은 이미지가 아예 없을 때와 동일한 자리표시 문구 — 카드 배경(bg-surface-elevated)이
+            남아 레이아웃이 무너지지 않는다. */}
         <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface-elevated flex items-center justify-center">
-          {mission.image_url ? (
-            <Image
-              src={mission.image_url}
-              alt={`${mission.title} 썸네일`}
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 100vw, 640px"
-              priority
-            />
-          ) : (
-            <span className="text-[length:var(--text-body-sm)] text-text-secondary">이미지 영역</span>
-          )}
+          <SafeImage
+            src={mission.image_url}
+            alt={`${mission.title} 썸네일`}
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, 640px"
+            priority
+            fallback={<span className="text-[length:var(--text-body-sm)] text-text-secondary">이미지 영역</span>}
+          />
         </div>
 
         {/* 히어로 섹션 */}
