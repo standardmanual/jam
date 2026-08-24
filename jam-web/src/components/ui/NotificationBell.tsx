@@ -44,7 +44,11 @@ export default function NotificationBell() {
           ? `${d.notifications.bellLabel}, ${d.notifications.unreadDotLabel}`
           : d.notifications.bellLabel
       }
-      className="w-11 h-11 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
+      // -mr-1: 종↔프로필 간격을 동기화↔종과 같은 12px로 맞춘다.
+      // DS TopNav는 헤더 바깥 gap:8, 우측 영역 안쪽도 gap:8인데 44px 터치박스 안의
+      // 36px 서클이 양옆 4px 여백을 만들어, 좌측은 8+4=12px인데 우측은 4+8+4=16px이 된다.
+      // 안쪽 gap을 4px 상쇄해 균일하게 맞춘다(DS 수정 없이 서비스 쪽에서 해결).
+      className="w-11 h-11 -mr-1 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
     >
       {/* 프로필 아바타와 동일한 형태 — 44×44 터치영역 안에 36px 서클, 그 안에 16px 아이콘.
           .t-badge의 기준 박스는 서클 자신이다(44px 터치영역을 기준으로 잡으면 점이
