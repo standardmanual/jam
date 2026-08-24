@@ -633,7 +633,7 @@ export const ko = {
     // ── ① 보상 획득 ──
     msgBadgeEarned: '오늘 활동으로 {badgeCount}를 획득했어요',
     /** 앞에 등급 라벨(Common/Rare/Legend/Mythic)이 고정 텍스트로 붙는다 */
-    msgRareBadgeEarned: "배지 '{badgeName}'{을/를} 획득했어요",
+    msgRareBadgeEarned: "{rarity} 배지 '{badgeName}'{을/를} 획득했어요",
     msgItemBadgeEarned: '활동 중에 {itemCount}가 떨어졌어요',
     msgPoiBadgeEarned: '{poiName}에서 체크인 배지를 획득했어요',
     msgPointsEarned: '오늘 획득한 배지로 {points}를 획득했어요',
@@ -667,7 +667,7 @@ export const ko = {
     msgMutualFollow: '{actor}님과 서로 팔로우하게 됐어요',
 
     // ── ⑥ 소셜 — 팔로우한 사람의 활동 ──
-    /** 뒤에 등급 라벨 + msgRareBadgeEarned가 이어 붙는다 */
+    /** 뒤에 msgRareBadgeEarned가 이어 붙는다 (등급 라벨은 그 안의 {rarity} 슬롯) */
     msgFollowingActorPrefix: '{actor}님이 ',
     msgFollowingCollectionComplete: "{actor}님이 '{bookName}'{을/를} 다 모았어요",
     msgFollowingMissionCompleteOne: "{actor}님이 '{missionTitle}'{을/를} 완료했어요",

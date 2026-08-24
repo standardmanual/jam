@@ -242,13 +242,18 @@ export default function NotificationsClient({
   const [cursor, setCursor] = useState<string | null>(initialCursor)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(false)
-  const { clearNotificationDot } = useTopNavData()
+  const { clearNotificationDot, restoreNotificationDot } = useTopNavData()
 
   // 진입 시 전체 읽음 처리 — UPDATE 1회. 구분선용 스냅샷은 서버가 이미 잡아 보냈다.
   // **조회에 실패했으면 읽음 처리하지 않는다** — 보여주지도 못한 소식을 읽음으로 만들면
   // 버블만 꺼지고 유저는 무엇이 새 소식이었는지 영영 알 수 없다.
   useEffect(() => {
-    if (initialFailed) return
+    if (initialFailed) {
+      // 종을 누른 순간 낙관적으로 껐던 버블을 되돌린다. 보여주지도 못한 소식을
+      // 읽음 처리한 것처럼 두면 유저는 새 소식이 있었다는 사실조차 모른다.
+      restoreNotificationDot()
+      return
+    }
     let active = true
     ;(async () => {
       try {
@@ -261,7 +266,7 @@ export default function NotificationsClient({
     return () => {
       active = false
     }
-  }, [clearNotificationDot, initialFailed])
+  }, [clearNotificationDot, restoreNotificationDot, initialFailed])
 
   const loadMore = useCallback(async () => {
     if (!cursor) return

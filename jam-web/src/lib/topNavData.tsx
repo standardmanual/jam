@@ -34,6 +34,16 @@ export interface TopNavContextValue extends TopNavData {
    * 서버가 내려준 초기값만으로는 "종을 눌러 다 읽었는데 버블이 남아 있는" 상태가 된다.
    */
   clearNotificationDot: () => void
+  /**
+   * 버블을 서버가 내려준 값으로 되돌린다.
+   *
+   * 종을 누른 순간 낙관적으로 껐는데(clearNotificationDot) 알림함 조회가 실패하면,
+   * 보여주지도 못한 소식이 읽음 처리된 것처럼 보인다. 서버 seen_at은 그대로라
+   * 다음 하드 로드에서 자가 복구되지만, 클라이언트 내비게이션에서는
+   * `serverDot !== value.hasUnreadNotifications` 조건이 성립하지 않아
+   * (양쪽 다 true로 안 바뀜) 버블이 계속 꺼진 채 남는다. 실패 지점이 직접 되돌린다.
+   */
+  restoreNotificationDot: () => void
 }
 
 const defaultValue: TopNavContextValue = {
@@ -42,6 +52,7 @@ const defaultValue: TopNavContextValue = {
   stravaConnected: false,
   hasUnreadNotifications: false,
   clearNotificationDot: () => {},
+  restoreNotificationDot: () => {},
 }
 
 const TopNavDataContext = createContext<TopNavContextValue>(defaultValue)
@@ -58,6 +69,10 @@ export function TopNavDataProvider({ value, children }: { value: TopNavData; chi
   }
 
   const clearNotificationDot = useCallback(() => setDot(false), [])
+  const restoreNotificationDot = useCallback(
+    () => setDot(value.hasUnreadNotifications),
+    [value.hasUnreadNotifications]
+  )
 
   const ctx = useMemo<TopNavContextValue>(
     () => ({
@@ -66,8 +81,16 @@ export function TopNavDataProvider({ value, children }: { value: TopNavData; chi
       stravaConnected: value.stravaConnected,
       hasUnreadNotifications: dot,
       clearNotificationDot,
+      restoreNotificationDot,
     }),
-    [value.username, value.avatarUrl, value.stravaConnected, dot, clearNotificationDot]
+    [
+      value.username,
+      value.avatarUrl,
+      value.stravaConnected,
+      dot,
+      clearNotificationDot,
+      restoreNotificationDot,
+    ]
   )
 
   return <TopNavDataContext.Provider value={ctx}>{children}</TopNavDataContext.Provider>
