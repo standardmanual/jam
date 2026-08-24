@@ -49,7 +49,6 @@
 [어뷰징]        abusing_policy(싱글톤) / user_shadow_bans / poi_blocks / abusing_logs
 
 [CMS/기타]      today_cards (홈 에디토리얼) / theme_presets (어드민 컬러 테마)
-                wandering_mythic_state (떠돌이 신화 아이템)
                 engine_decision_log (배지·드랍 엔진 판정 로그)
 ```
 
@@ -91,7 +90,6 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | faction_id | 소속 세계관 (아이템 배지) |
 | item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |
-| is_wandering | 떠돌이 신화 아이템 여부 |
 | valid_from / valid_until | 노출 기간 |
 | point_reward | 발급 시 지급 포인트 |
 | deleted_at | 소프트 삭제 |
@@ -252,7 +250,6 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 |---|---|
 | today_cards | 홈 "투데이" 에디토리얼 카드. 템플릿 7종, 노출 기간·태그·레이아웃 관리 |
 | theme_presets | 어드민 컬러 테마 프리셋(활성 1개만 유지) |
-| wandering_mythic_state | 떠돌이 신화 아이템의 현재 POI/보유자/만료(72h)/포획 횟수 |
 | engine_decision_log | 배지·드랍 엔진의 판정 사후 추적 로그 (RLS 적용) |
 
 ---
@@ -299,4 +296,4 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 - [x] `SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY` 환경변수가 `.env.local`에는 있으나 코드에서 미사용 — **마이그레이션 미착수, 당장 불필요** (2026-08-07 코드 확인). `src/` 전체에서 두 키를 참조하는 코드 없음. 현재 클라이언트 초기화(`lib/supabase/server.ts`, `client.ts`)는 기존 JWT 키 체계(`NEXT_PUBLIC_SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY`)로만 작동. `.env.local`의 `sb_publishable_*`/`sb_secret_*` 값은 미사용 환경변수로만 남아 있으며 서비스에 영향 없음. Supabase가 JWT 키를 deprecated할 경우 클라이언트 라이브러리 업그레이드와 함께 마이그레이션 필요.
 - [ ] `poi_categories.pipeline_linked`/`tier`/`keywords[]`의 정확한 운영 기준 문서화 필요 (현재는 코드/DB에만 존재)
 - [ ] `user_activity_feed`의 공개 범위 정책 — 공개/비공개/팔로우 공개/전체공개 4단계 체계 **수립 예정** (2026-08-07). 현재 본인·타인 프로필 양쪽에서 동일 테이블을 사용하나 RLS·쿼리 레벨의 공개 범위 필터링이 미정의. 체계 확정 시 이 섹션 + [01_PRD.md](01_PRD.md) 동시 업데이트 필요.
-- [ ] `wandering_mythic_state`의 유저 대면 UI 완성도 — DB 스키마·Cron(`/api/cron/wandering`)은 구현됐으나 인벤토리·배지 상세·별도 화면 중 어느 지점에서 노출할지 **추가 설명 대기** (2026-08-07)
+- [x] `wandering_mythic_state`의 유저 대면 UI 완성도 — **기능 전면 제거로 해소** (2026-08-24, 티켓 [20260824_017](../../History/Migration/Ticket/20260824_017_Infra_떠돌이신화-기능-전면제거.md)). 프로덕션 실사용 0건(배지·상태행·획득·인벤토리 전부)이 확인되어 UI를 구현하는 대신 `wandering_mythic_state` 테이블과 `badges.is_wandering` 컬럼, `/api/cron/wandering`을 제거했다.

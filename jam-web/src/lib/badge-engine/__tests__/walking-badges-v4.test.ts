@@ -386,7 +386,6 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     activity_types: ['walking'],
     patch_available: false,
     patch_price_krw: null,
-    is_wandering: false,
     faction_id: null,
     item_book_id: null,
     drop_weight: 0,
