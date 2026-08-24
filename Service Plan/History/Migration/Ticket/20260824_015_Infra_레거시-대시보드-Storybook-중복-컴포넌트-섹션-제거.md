@@ -77,13 +77,23 @@ closed: 2026-08-24
 ## 완료 기록
 
 ### 구현 내용 요약
-위 계획대로 진행. 사이드바 링크 14개 ↔ section id 14개가 정확히 1:1 매칭되는 것을
-grep으로 검증했다(끊긴 참조 없음). `_ds_manifest.json`은 JSON 파싱 검증까지 통과.
+위 계획대로 진행. 사이드바 링크 ↔ section id가 정확히 1:1 매칭되는 것을 grep/diff로
+검증했다(끊긴 참조 없음). `_ds_manifest.json`은 JSON 파싱 검증까지 통과.
+
+**추가 작업(사용자 요청 "마저 정리")**: 잔여 이슈로 남겨뒀던 `guidelines/shapes.html`도
+계획 문서의 KEEP 조건(ShapeTag/RarityBadge 스토리 커버리지)이 충족된 상태를 재확인하고
+제거했다. `shapes.html`이 `_ds_bundle.js`를 참조하는 마지막 파일이었으므로, 제거 후
+`_ds_bundle.js`를 참조하는 파일이 전혀 없음을 확인하고 함께 삭제했다(계획 문서의
+"dashboard.html 및 card.html 파일이 제거될 때 함께 제거" 조건 충족). `dashboard.html`의
+"Shapes" 그룹에서 "ShapeTag & RarityBadge" 서브섹션만 제거하고 "Badge Frames"는
+그대로 유지(비컴포넌트 참조 문서, 계획 문서상 영구 유지 대상).
 
 ### 변경된 파일
 ```
 jam-web/design-system/dashboard.html
 jam-web/design-system/_ds_manifest.json
+jam-web/design-system/_ds_bundle.js (삭제)
+jam-web/design-system/guidelines/shapes.html (삭제)
 jam-web/design-system/components/buttons/buttons.card.html (삭제)
 jam-web/design-system/components/cards/cards.card.html (삭제)
 jam-web/design-system/components/feedback/feedback.card.html (삭제)
@@ -123,5 +133,5 @@ jam-web/design-system/components/patterns/patterns.card.html (삭제)
   중 이관 자체는 별도의 더 큰 작업이라 이번 티켓 범위 밖으로 판단.
 
 ### 잔여 이슈
-- `guidelines/shapes.html` 제거 여부는 후속 검토 대상(조건은 충족됨).
-- 가이드라인 섹션의 Storybook MDX 이관(계획 문서 상 남은 단계)은 착수하지 않음.
+- 가이드라인 섹션의 Storybook MDX 이관(계획 문서 상 남은 단계)은 착수하지 않음 —
+  이번 범위는 Storybook과 중복되는 컴포넌트 카탈로그 정리까지.
