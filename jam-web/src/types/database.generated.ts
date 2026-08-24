@@ -157,7 +157,6 @@ export type Database = {
           faction_id: string | null
           id: string
           image_url: string | null
-          is_wandering: boolean
           item_book_id: string | null
           name: string
           patch_available: boolean
@@ -179,7 +178,6 @@ export type Database = {
           faction_id?: string | null
           id?: string
           image_url?: string | null
-          is_wandering?: boolean
           item_book_id?: string | null
           name: string
           patch_available?: boolean
@@ -201,7 +199,6 @@ export type Database = {
           faction_id?: string | null
           id?: string
           image_url?: string | null
-          is_wandering?: boolean
           item_book_id?: string | null
           name?: string
           patch_available?: boolean
@@ -1878,58 +1875,6 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
-      }
-      wandering_mythic_state: {
-        Row: {
-          badge_id: string
-          current_poi_id: string | null
-          expires_at: string
-          holder_user_id: string | null
-          id: string
-          placed_at: string
-          times_caught: number
-        }
-        Insert: {
-          badge_id: string
-          current_poi_id?: string | null
-          expires_at?: string
-          holder_user_id?: string | null
-          id?: string
-          placed_at?: string
-          times_caught?: number
-        }
-        Update: {
-          badge_id?: string
-          current_poi_id?: string | null
-          expires_at?: string
-          holder_user_id?: string | null
-          id?: string
-          placed_at?: string
-          times_caught?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "wandering_mythic_state_badge_id_fkey"
-            columns: ["badge_id"]
-            isOneToOne: true
-            referencedRelation: "badges"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wandering_mythic_state_current_poi_id_fkey"
-            columns: ["current_poi_id"]
-            isOneToOne: false
-            referencedRelation: "poi"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wandering_mythic_state_holder_user_id_fkey"
-            columns: ["holder_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {

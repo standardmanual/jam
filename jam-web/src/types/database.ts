@@ -90,7 +90,6 @@ export interface BadgeRow {
   activity_types: ActivityType[]
   patch_available: boolean
   patch_price_krw: number | null
-  is_wandering: boolean
   faction_id: string | null
   item_book_id: string | null
   drop_weight: number
@@ -394,20 +393,6 @@ export interface UserMissionCompletionRow {
   user_id: string
   mission_id: string
   completed_at: string
-}
-
-// =========================================
-// Phase 17: 떠돌이 신화 아이템
-// =========================================
-
-export interface WanderingMythicStateRow {
-  id: string
-  badge_id: string
-  current_poi_id: string | null
-  holder_user_id: string | null
-  placed_at: string
-  expires_at: string
-  times_caught: number
 }
 
 // =========================================
@@ -949,12 +934,6 @@ export interface Database {
         Row: UserMissionParticipationRow
         Insert: Omit<UserMissionParticipationRow, 'id' | 'joined_at' | 'progress_value'> & { id?: string; joined_at?: string; progress_value?: number }
         Update: Partial<Omit<UserMissionParticipationRow, 'id'>>
-        Relationships: []
-      }
-      wandering_mythic_state: {
-        Row: WanderingMythicStateRow
-        Insert: Omit<WanderingMythicStateRow, 'id'> & { id?: string }
-        Update: Partial<Omit<WanderingMythicStateRow, 'id'>>
         Relationships: []
       }
       user_activity_feed: {
