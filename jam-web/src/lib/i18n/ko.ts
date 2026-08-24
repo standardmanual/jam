@@ -503,6 +503,21 @@ export const ko = {
     emptyBody: 'Strava를 동기화하면 배지와 함께 포인트를 받을 수 있어요.',
     loadMore: '더 보기',
     loadingMore: '불러오는 중',
+
+    /**
+     * 어드민 포인트 변동 사유 — **유저 노출용** 라벨 (20260824_021 2차).
+     *
+     * `points/reasons.ts`의 `ADMIN_REASONS` 라벨은 어드민 원장 전용이라
+     * 「이벤트·프로모션 **지급**」·「어뷰징 적발 **회수**」처럼 UX 가이드 §1-3이
+     * 유저 노출 화면에서 금지한 용어가 그대로 들어 있다. 소식 #44 본문을
+     * "들어왔어요/빠져나갔어요"로 고친 취지가 괄호에서 무너지므로 매핑을 분리한다.
+     * (`other`는 유저에게 알려줄 정보가 없어 라벨 자체를 두지 않는다 — 괄호째 뺀다)
+     */
+    reasonCsCompensation: '불편 보상',
+    reasonErrorCorrection: '오류 정정',
+    reasonEventPromotion: '이벤트·프로모션',
+    reasonAbuseReclaim: '이용 정책 위반',
+    reasonRetroactiveAdjustment: '과거 활동 반영',
   },
 
   /** 유저 검색 결과 */
@@ -558,6 +573,118 @@ export const ko = {
     slotButton: '추가',
     processing: '처리 중',
     ownedPrefix: '보유 ',
+  },
+
+  /**
+   * 알림(소식)함 — 20260824_021
+   * 문구 규칙: Specs/PRD/Notification/PRD.md §3(28종 표) · §5(강조 규칙)
+   *
+   * `{슬롯}`은 payload에서 채워지는 변수이며 **렌더러가 자동으로 볼드 처리**한다.
+   * 고정 텍스트는 일반체, 컬러 강조는 쓰지 않는다. 소식마다 강조 지점을 따로 정의하지 않는다.
+   *
+   * `{을/를}`·`{이/가}` 같은 조사 마커는 **바로 앞 슬롯 값의 받침**에 따라 렌더러가
+   * 치환하며 볼드가 아니다(조사는 변수가 아니라 문법이다).
+   */
+  notifications: {
+    title: '알림',
+    bellLabel: '알림',
+    unreadDotLabel: '새 소식이 있어요',
+    /**
+     * 진입 직전 seen_at 스냅샷 기준으로 그리는 구분선.
+     * 선은 **새 소식과 이전 소식의 실제 경계**에 놓인다(위쪽이 새 소식) — 목록 맨 위에
+     * 두면 나눌 대상이 없어 헤더가 되고, 정작 경계에는 라벨이 없어진다(iOS Mail·Slack 방식).
+     */
+    newDivider: '여기까지 새 소식 {count}개',
+    sectionToday: '오늘',
+    sectionWeek: '이번 주',
+    sectionMonth: '이번 달',
+    sectionEarlier: '이전',
+    emptyTitle: '아직 도착한 소식이 없어요',
+    emptyBody: '배지를 획득하거나 누군가 내 드랍을 픽업하면 여기에 쌓여요',
+    loadError: '소식을 불러오지 못했어요. 잠시 후 다시 시도해주세요',
+    /** 첫 페이지 조회 자체가 실패했을 때 — "소식 0건"과 반드시 구분해서 보여준다 */
+    errorTitle: '소식을 불러오지 못했어요',
+    errorBody: '연결 상태를 확인하고 다시 시도해주세요',
+    retry: '다시 시도',
+    loadingMore: '불러오는 중',
+    /** ⑧ 계정·시스템 경고 아이콘의 스크린리더 라벨 */
+    warningLabel: '확인이 필요해요',
+    /** 2단 타겟 행의 아바타 링크 — 이미지뿐이라 접근 가능한 이름이 없다 */
+    avatarLinkLabel: '{name}님 프로필',
+    /** 아직 화면이 모르는 type(신규 소식 추가 후 배포 시차)이 들어왔을 때의 안전망 */
+    unknown: '새로운 소식이 도착했어요',
+
+    // ── 슬롯 값 조각 (payload에서 만들어 볼드로 들어간다) ──
+    slotBadgeCount: '배지 {count}개',
+    slotItemBadgeCount: '아이템 배지 {count}개',
+    slotCount: '{count}개',
+    slotPeopleCount: '{count}명',
+    slotPlaceMore: '{name} 외 {count}곳',
+    slotPoints: '{amount} JAM 포인트',
+    slotRank: '{rank}위',
+    slotDaysOrdinal: '{days}일째',
+    slotFirstBadge: '첫 배지',
+    slotProgress: '{current}/{target}{unit}',
+    slotDay1: '하루',
+    slotDay2: '이틀',
+    slotDay3: '사흘',
+    slotDayN: '{days}일',
+
+    // ── ① 보상 획득 ──
+    msgBadgeEarned: '오늘 활동으로 {badgeCount}를 획득했어요',
+    /** 앞에 등급 라벨(Common/Rare/Legend/Mythic)이 고정 텍스트로 붙는다 */
+    msgRareBadgeEarned: "{rarity} 배지 '{badgeName}'{을/를} 획득했어요",
+    msgItemBadgeEarned: '활동 중에 {itemCount}가 떨어졌어요',
+    msgPoiBadgeEarned: '{poiName}에서 체크인 배지를 획득했어요',
+    msgPointsEarned: '오늘 획득한 배지로 {points}를 획득했어요',
+    msgFirstBadge: '{firstBadge}가 도착했어요',
+
+    // ── ② 컬렉션 ──
+    msgCollectionSlottable: "'{bookName}'에 넣을 수 있는 아이템 배지가 {count} 있어요",
+    msgCollectionNearComplete: "'{bookName}', 한 칸만 남았어요",
+    msgCollectionCompletable: "'{bookName}'{을/를} 다 모았어요. 컬렉션에 추가해보세요",
+
+    // ── ③ 내가 드랍한 아이템 배지 ──
+    msgDropPickedUpOne: "{actor}님이 '{badgeName}'{을/를} 픽업했어요",
+    msgDropPickedUpMany: '{me}님의 드랍 {itemCount}가 픽업됐어요',
+    msgDropSpotActive: '{me}님이 드랍한 자리에 {visitors}이 다녀갔어요',
+
+    // ── ④ 미션 ──
+    msgMissionMilestone50: "'{missionTitle}', 절반을 넘었어요 ({progress})",
+    msgMissionMilestone80: "'{missionTitle}', 80%를 넘었어요 ({progress})",
+    msgMissionDeadline: "'{missionTitle}'{이/가} {days} 뒤 끝나요. {remaining} 남았어요",
+    msgMissionCompleted: "'{missionTitle}'{을/를} 완료했어요. 배지 {badgeCount}와 {points}를 획득했어요",
+    msgMissionCompletedBadgeOnly: "'{missionTitle}'{을/를} 완료했어요. 배지 {badgeCount}를 획득했어요",
+    msgMissionCompletedPointsOnly: "'{missionTitle}'{을/를} 완료했어요. {points}를 획득했어요",
+    msgMissionCompletedNoReward: "'{missionTitle}'{을/를} 완료했어요",
+    msgMissionRankUp: "'{missionTitle}'에서 {rank}로 올라섰어요",
+    msgMissionEnded: "'{missionTitle}'{이/가} 끝났어요. 결과를 확인해보세요",
+
+    // ── ⑤ 소셜 — 나에게 ──
+    msgFollowedOne: '{actor}님이 {me}님을 팔로우해요',
+    msgFollowedTwo: '{actor}님과 {actor2}님이 {me}님을 팔로우해요',
+    msgFollowedMany: '{actor}님 외 {others}이 {me}님을 팔로우해요',
+    msgMutualFollow: '{actor}님과 서로 팔로우하게 됐어요',
+
+    // ── ⑥ 소셜 — 팔로우한 사람의 활동 ──
+    /** 뒤에 msgRareBadgeEarned가 이어 붙는다 (등급 라벨은 그 안의 {rarity} 슬롯) */
+    msgFollowingActorPrefix: '{actor}님이 ',
+    msgFollowingCollectionComplete: "{actor}님이 '{bookName}'{을/를} 다 모았어요",
+    msgFollowingMissionCompleteOne: "{actor}님이 '{missionTitle}'{을/를} 완료했어요",
+    msgFollowingMissionCompleteMany: "{actor}님 외 {others}이 '{missionTitle}'{을/를} 완료했어요",
+    msgFollowingNearbyDrop: '{actor}님이 {me}님 활동 지역에 아이템 배지를 드랍했어요',
+
+    // ── ⑦ 발견 ──
+    msgNearbyDrops: '{me}님 활동 지역에 {itemCount}가 새로 떨어졌어요',
+
+    // ── ⑧ 계정·시스템 (경고 스타일 — 렌더 시점에 현재 상태로 재평가) ──
+    msgStravaDisconnected: 'Strava 동기화가 끊겼어요. 다시 동기화해야 배지를 획득할 수 있어요',
+    msgSyncStalled: '{days} 활동을 못 불러오고 있어요. Strava 동기화가 끊겼을 수 있어요',
+    msgInventoryFull: '인벤토리가 꽉 찼어요. {maxSlots}까지만 보관할 수 있어서 픽업이 안 될 수 있어요',
+    msgPointsIn: '{points}가 들어왔어요 ({reason})',
+    msgPointsInNoReason: '{points}가 들어왔어요',
+    msgPointsOut: '{points}가 빠져나갔어요 ({reason})',
+    msgPointsOutNoReason: '{points}가 빠져나갔어요',
   },
 
   /** 아이템 믹스 */

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
@@ -30,12 +30,33 @@ interface SlotGridProps {
   badgeSlots: BadgeSlot[]
   readOnly?: boolean
   badgeLinkQuery?: string
+  /**
+   * 장착 모드 — `/collections/[id]?slot=1`로 진입했을 때 켜진다 (20260824_021).
+   *
+   * 소식 #11("다 모았어요. 컬렉션에 추가해보세요")은 **완성할 수 있는데 아직 안 넣은**
+   * 시점의 소식이라, 단순 이동이 아니라 장착 액션까지 이어져야 제 값을 한다. 슬롯 그리드로
+   * 스크롤하고 아직 넣지 않은 칸을 짚어준다.
+   */
+  slotMode?: boolean
 }
 
-export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, badgeLinkQuery = '' }: SlotGridProps) {
+export default function SlotGrid({
+  itemBookId,
+  badgeSlots,
+  readOnly = false,
+  badgeLinkQuery = '',
+  slotMode = false,
+}: SlotGridProps) {
   const router = useRouter()
   const [pendingBadgeId, setPendingBadgeId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const gridRef = useRef<HTMLDivElement | null>(null)
+
+  // 장착 모드로 진입하면 슬롯 그리드가 화면에 들어오게 한다(스토리 텍스트가 길어 스크롤이 필요)
+  useEffect(() => {
+    if (!slotMode || readOnly) return
+    gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [slotMode, readOnly])
 
   async function getToken(): Promise<string | null> {
     const supabase = createClient()
@@ -106,7 +127,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
   }
 
   return (
-    <div>
+    <div ref={gridRef}>
       {error && (
         <div className="mb-3 rounded-[var(--radius-cards)] bg-surface-elevated px-3 py-2 text-xs text-text/70">
           {error}
@@ -133,6 +154,7 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
               href={!isUndiscovered ? `/badges/${badge.id}${badgeLinkQuery}` : undefined}
               earned={isSlotted}
               undiscovered={isUndiscovered}
+              highlighted={slotMode && !readOnly && isSlottable}
               className={isUndiscovered ? 'opacity-30' : ''}
             >
               {/* 슬롯 해제 버튼 */}

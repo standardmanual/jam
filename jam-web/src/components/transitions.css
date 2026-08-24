@@ -442,6 +442,14 @@
   left: calc(50% - 2px);
 }
 
+/* TopNav 알림 종 버블 — 24px 종 글리프의 우상단 **바깥**에 앵커 (20260824_021).
+   기준 박스는 아이콘(24×24)이며, 벨 외곽선이 x≈21까지 차지하므로 8px 점이 스트로크를
+   덮지 않으려면 박스 밖으로 밀어내야 한다. 원본(-6/-8)보다 조금 당겨 종에 붙여 둔다. */
+.t-badge.jam-bell-dot {
+  top: -2px;
+  right: -6px;
+}
+
 /* 20260823_003: 재질(반투명 흰 필) — TabBar 배경. 캐노니컬 스펙
  * (design-system/components/navigation/TabBar.jsx)과 동일한 토큰(--blur-chrome,
  * --color-chrome-bg-inverse)을 참조 — 서비스 TabBar.tsx는 별도 Tailwind 구현이라 값이

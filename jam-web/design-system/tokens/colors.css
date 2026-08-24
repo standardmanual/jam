@@ -63,6 +63,14 @@
   --color-icon-inactive: var(--color-base-grey-700);
   /* DS-025: Modal/sheet backdrop */
   --color-overlay: rgba(0, 0, 0, 0.6);
+  /*
+   * 20260824_021: 알림(소식) — 시맨틱 컬러 2종.
+   * base 색을 새로 만들지 않고 기존 팔레트를 재사용한다(아이콘 세트의 "제3의 컬러 도입 금지" 정신).
+   * 같은 빨강으로 두면 "소식 있음"과 "문제 있음"이 구분되지 않으므로 경고는 amber로 가른다.
+   * --color-primary가 이미 --color-base-red지만 의미가 달라 토큰을 분리해 둔다(나중에 갈라칠 수 있게).
+   */
+  --color-notification-dot: var(--color-base-red);    /* 안 읽은 소식 있음 */
+  --color-warning: var(--color-base-amber);           /* ⑧ 계정·시스템 경고 상태 */
   /* Border variants */
   --color-border-light: rgba(255, 255, 255, 0.3);  /* dark canvas 위 아웃라인 버튼·보더 */
   --color-border-inverse: rgba(0, 0, 0, 0.12);     /* light surface 위 구분선 (항상 고정값) */

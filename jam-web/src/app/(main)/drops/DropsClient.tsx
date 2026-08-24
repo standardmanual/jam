@@ -32,7 +32,14 @@ const DROP_RELOAD_THRESHOLD_METERS = 20
 
 // ===== 컴포넌트 =====
 
-export default function DropsClient() {
+/** 알림함 착지점 `/drops?poi=<id>` — 지도 카메라를 이 지점으로 옮긴다 (20260824_021) */
+export interface DropsFocusPoi {
+  id: string
+  latitude: number
+  longitude: number
+}
+
+export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocusPoi | null }) {
   const { toast } = useToast()
 
   const [locError, setLocError] = useState<string | null>(null)
@@ -55,9 +62,15 @@ export default function DropsClient() {
   // next/dynamic으로 지연 로드되는 MapView는 ref를 그대로 전달받지 못해
   // onMapReady 콜백으로 핸들을 받는다.
   const mapHandleRef = useRef<MapViewHandle | null>(null)
+  // `?poi=`로 진입한 카메라 이동은 최초 1회만 — 이후 유저가 지도를 움직인 걸 되돌리지 않는다
+  const focusedRef = useRef(false)
   const handleMapReady = useCallback((handle: MapViewHandle) => {
     mapHandleRef.current = handle
-  }, [])
+    if (focusPoi && !focusedRef.current) {
+      focusedRef.current = true
+      handle.focusPoi(focusPoi.latitude, focusPoi.longitude)
+    }
+  }, [focusPoi])
 
   // 위치 획득 (실시간 갱신)
   useEffect(() => {
@@ -157,6 +170,16 @@ export default function DropsClient() {
       return
     }
     setCarouselPoiId(poiId)
+
+    // 소식 #18("내 드랍 지점 활성") 계측 — 캐러셀이 열리는 이 지점이 곧 "POI를 열어서 확인한"
+    // 순간이다(픽업 여부와 무관). 기록 시각은 서버가 찍는다 — 기기 시계를 믿지 않는다.
+    // 같은 유저·같은 POI·같은 KST 날짜는 1행만 남으므로(UNIQUE) 중복 호출은 조용히 무시된다.
+    // 실패해도 지도 흐름을 막지 않는다.
+    void fetch('/api/poi-views', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ poi_id: poiId }),
+    }).catch(() => {})
   }, [pois, toast])
 
   // 캐러셀 중앙 카드가 바뀔 때(스와이프 포함) → 지도 포커싱

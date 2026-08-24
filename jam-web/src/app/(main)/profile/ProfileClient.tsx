@@ -429,11 +429,18 @@ export default function ProfileClient({
 
   return (
     <div className="min-h-full bg-surface text-text">
-      {!isOwnProfile && <TopNav title="" showBack />}
+      {/* 20260824_021: 본인 프로필에도 TopNav를 둔다(로고 모드) — 탭바로 직접 오는 루트
+          화면이라 알림 종이 필요하다. 타인 프로필은 back+닉네임이라 종이 붙지 않는다.
+          TopNav가 safe-area-inset-top을 이미 처리하므로 본문 상단 여백도 함께 줄인다. */}
+      {isOwnProfile ? (
+        <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+      ) : (
+        <TopNav title="" showBack />
+      )}
 
       <div
         className={`px-[var(--spacing-16)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)] ${
-          isOwnProfile ? 'pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]' : 'pt-0'
+          isOwnProfile ? 'pt-[var(--spacing-24)]' : 'pt-0'
         }`}
       >
         {/* 프로필 헤더 — Card 배경 제거, 컨텐츠는 페이지 패딩 폭까지 확장 (20260820_019).

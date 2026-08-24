@@ -18,7 +18,8 @@ import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 
 interface Props {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ u?: string; from?: string; itemId?: string }>
+  // `slot=1` — 알림함 소식 #11의 착지점(장착 모드). 20260824_021
+  searchParams: Promise<{ u?: string; from?: string; itemId?: string; slot?: string }>
 }
 
 type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
@@ -30,7 +31,8 @@ const TEXT_SECONDARY = '#B2B2B2'
 
 export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
-  const { u, from, itemId } = await searchParams
+  const { u, from, itemId, slot } = await searchParams
+  const slotMode = slot === '1'
   const supabase = await createClient()
   const {
     data: { user },
@@ -261,6 +263,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
               badgeSlots={badgeSlots}
               readOnly={!isOwnBook}
               badgeLinkQuery={!isOwnBook && subjectUsername ? `?u=${subjectUsername}` : ''}
+              slotMode={slotMode}
             />
           </div>
         )}
