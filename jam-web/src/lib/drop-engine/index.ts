@@ -13,6 +13,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
+import { createNotification, syncGroupKey } from '@/lib/notifications'
 import type {
   BadgeRarity,
   BadgeRow,
@@ -442,7 +443,12 @@ async function applyShadowBanCap(userId: string, rarity: BadgeRarity): Promise<B
   return null
 }
 
-/** 인벤토리 삽입. 성공 시 true (슬롯은 호출부에서 사전 체크) */
+/**
+ * 인벤토리 삽입. 성공 시 생성된 `inventory_items.id`, 실패 시 null (슬롯은 호출부에서 사전 체크)
+ *
+ * 20260824_019 — 반환을 boolean에서 id로 넓혔다. 소식 #3(아이템 배지 획득)의 착지점이
+ * 배지 도감이 아니라 **인벤토리 인스턴스**(`/inventory/[itemId]`)라 그 id가 필요하다.
+ */
 async function insertDrop(
   inventoryId: string,
   userId: string,
@@ -450,7 +456,7 @@ async function insertDrop(
   factionName: string,
   isLastPiece: boolean,
   activityStartDate?: string
-): Promise<boolean> {
+): Promise<string | null> {
   const supabase = createServiceClient()
   const expiresAt = picked.valid_until ?? null
 
@@ -468,7 +474,7 @@ async function insertDrop(
     .single()
   if (insertError) {
     console.error(`[tryItemDrop] inventory_items 삽입 오류 (badge_id: ${picked.id}):`, insertError)
-    return false
+    return null
   }
   const inventoryItemId = (insertedRaw as { id: string }).id
 
@@ -492,7 +498,7 @@ async function insertDrop(
     faction_name: factionName,
     is_last_piece: isLastPiece,
   }, activityStartDate)
-  return true
+  return inventoryItemId
 }
 
 // ────────────────────────────────────────────────────────────
@@ -514,6 +520,8 @@ export async function tryItemDrop(
 ): Promise<string[]> {
   /** 이번 호출에서 드랍된 배지 id (드랍 순서) */
   const droppedBadgeIds: string[] = []
+  /** 이번 호출에서 생성된 inventory_items.id (드랍 순서) — 소식 #3의 착지점 재료 */
+  const droppedInventoryItemIds: string[] = []
   const act: NormalizedActivity | null = typeof activity === 'object' ? activity : null
   // 20260824_006 — Strava startDateLocal은 로컬 벽시계에 Z를 붙인 값이라(진짜 UTC 아님)
   // timestamptz(피드 event_at)에 그대로 넣으면 최대 +9시간 미래로 오해석된다.
@@ -598,7 +606,7 @@ export async function tryItemDrop(
       continue
     }
 
-    const inserted = await insertDrop(
+    const insertedInventoryItemId = await insertDrop(
       structure.inventory.id,
       userId,
       result.badge,
@@ -606,7 +614,7 @@ export async function tryItemDrop(
       result.isLastPiece,
       activityStartDate
     )
-    if (!inserted) {
+    if (!insertedInventoryItemId) {
       await logEngineDecision('drop', 'drop_attempt', userId, {
         attempt: i, outcome: 'insert_failed', badgeId: result.badge.id, rolledRarity: rolled, cappedRarity: capped,
       })
@@ -631,6 +639,7 @@ export async function tryItemDrop(
 
     usedSlots += 1
     droppedBadgeIds.push(result.badge.id)
+    droppedInventoryItemIds.push(insertedInventoryItemId)
 
     // 상태·구조 갱신 (다음 드랍/다음 싱크에 반영)
     updateLastPiecePity(structure, state, result.factionId, result.badge.id)
@@ -666,6 +675,22 @@ export async function tryItemDrop(
 
   state.last_activity_at = activityStartDate
   await saveDropState(state)
+
+  // 소식 #3(아이템 배지 획득) — 티켓 20260824_019
+  // 묶음 단위는 "동기화 1회"(= 활동 1건)라 이 호출에서 떨어진 것 전체를 한 건으로 만든다.
+  // 활동 정보 없이 호출된 레거시·시뮬레이터 경로는 묶을 기준이 없어 group_key를 비운다.
+  if (droppedInventoryItemIds.length > 0) {
+    await createNotification({
+      userId,
+      type: 'item_badge_earned',
+      groupKey: act ? syncGroupKey('item_badge_earned', act.stravaId) : null,
+      payload: {
+        inventory_item_ids: droppedInventoryItemIds,
+        count: droppedInventoryItemIds.length,
+        ...(act ? { activity_id: act.stravaId } : {}),
+      },
+    })
+  }
 
   return droppedBadgeIds
 }

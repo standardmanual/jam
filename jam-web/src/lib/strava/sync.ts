@@ -14,8 +14,10 @@ import { evaluateBadges } from '@/lib/badge-engine/index'
 import { tryItemDrop } from '@/lib/drop-engine/index'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { checkItemBookCompletion } from '@/lib/itembook/checker'
+import { findCompletableItemBooks } from '@/lib/itembook/completable'
 import { checkMissions } from '@/lib/missions/checker'
 import { recordFeedEvent } from '@/lib/activity-feed'
+import { createNotification, syncGroupKey, dailyGroupKey, scopedGroupKey } from '@/lib/notifications'
 import { logEngineDecision } from '@/lib/engine-log'
 import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
@@ -125,6 +127,67 @@ export async function buildEarnedBadgePayload(
   const all = await fetchEarnedBadgeDetails(supabase, badgeIds)
   const earnedBadges = all.slice(0, EARNED_BADGE_DETAIL_LIMIT)
   return { earnedBadges, earnedBadgesMore: all.length - earnedBadges.length }
+}
+
+/**
+ * 소식 #1(활동배지 획득)·#2(희귀 배지 획득) 생성 — 티켓 20260824_019
+ *
+ * **#2는 #1의 묶음에서 승격 분리된다.** 같은 동기화에서 신화·전설 배지가 나오면
+ * `badge_earned` 묶음("배지 3개를 획득했어요")에 섞지 않고 배지 이름이 드러나는
+ * 별도 행으로 만든다.
+ *
+ * 묶음 단위는 "동기화 1회"다. 배지 엔진은 배치 전체를 한 번에 평가하므로 개별 활동에
+ * 귀속시킬 수 없어, 이번 배치에서 **가장 최신 활동**의 id를 묶음 키의 대표값으로 쓴다.
+ */
+async function notifyActivityBadgesEarned(
+  supabase: SupabaseClient,
+  userId: string,
+  activityBadgeIds: string[],
+  groupActivityId: number | null
+): Promise<void> {
+  if (activityBadgeIds.length === 0) return
+
+  const orderedIds = Array.from(new Set(activityBadgeIds))
+  const { data, error } = await supabase
+    .from('badges')
+    .select('id, name, rarity')
+    .in('id', orderedIds)
+    .is('deleted_at', null)
+
+  if (error) {
+    // 소식이 하나 덜 나갈 뿐 동기화 자체를 막지 않는다
+    console.error('[notifyActivityBadgesEarned] 배지 조회 오류 — 소식 생성 생략:', error)
+    return
+  }
+
+  type Row = { id: string; name: string; rarity: BadgeRarity }
+  const byId = new Map(((data ?? []) as Row[]).map((r) => [r.id, r]))
+  const rows = orderedIds.map((id) => byId.get(id)).filter((r): r is Row => Boolean(r))
+  if (rows.length === 0) return
+
+  const isRare = (r: Row) => r.rarity === 'legend' || r.rarity === 'mythic'
+
+  for (const rare of rows.filter(isRare)) {
+    await createNotification({
+      userId,
+      type: 'rare_badge_earned',
+      payload: { badge_id: rare.id, badge_name: rare.name, rarity: rare.rarity },
+    })
+  }
+
+  const normal = rows.filter((r) => !isRare(r))
+  if (normal.length > 0) {
+    await createNotification({
+      userId,
+      type: 'badge_earned',
+      groupKey: groupActivityId !== null ? syncGroupKey('badge_earned', groupActivityId) : null,
+      payload: {
+        badge_ids: normal.map((r) => r.id),
+        count: normal.length,
+        ...(groupActivityId !== null ? { activity_id: groupActivityId } : {}),
+      },
+    })
+  }
 }
 
 /**
@@ -238,6 +301,12 @@ export async function processFetchedActivities(
   )
   let poiBadgesEarned = 0
 
+  /**
+   * 소식 #4(POI 배지 획득) 재료 — 활동 1건이 묶음 단위라 활동별로 모은다.
+   * (같은 활동에서 POI를 여러 곳 지나면 "북한산 외 2곳" 한 건으로 나가야 한다)
+   */
+  const poiEarnsByActivity = new Map<number, { badgeIds: string[]; poiNames: string[] }>()
+
   const poiMatchResults: { rawActivity: StravaSummaryActivity; matchedPois: PoiRow[] }[] = []
   for (const { rawActivity, route } of routesByActivity) {
     if (!route) continue // 실내 활동 또는 경로 데이터 없음 — 건너뜀
@@ -317,6 +386,10 @@ export async function processFetchedActivities(
 
         poiBadgesEarned++
         earnedBadgeIds.push(badge.id)
+        const poiEarn = poiEarnsByActivity.get(rawActivity.id) ?? { badgeIds: [], poiNames: [] }
+        poiEarn.badgeIds.push(badge.id)
+        poiEarn.poiNames.push(poi.name)
+        poiEarnsByActivity.set(rawActivity.id, poiEarn)
         console.info(`[processFetchedActivities] POI 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}`)
 
         if (isFirstEarn) {
@@ -360,6 +433,24 @@ export async function processFetchedActivities(
       earnedBadgeIds.push(poi.linked_badge_id)
       console.info(`[processFetchedActivities] POI 배지 발급 — userId: ${userId}, poi: ${poi.name}, badge_id: ${poi.linked_badge_id}`)
     }
+  }
+
+  // 소식 #4(POI 배지 획득) — 티켓 20260824_019. 활동 1건이 묶음 단위.
+  for (const [activityId, earn] of poiEarnsByActivity) {
+    await createNotification({
+      userId,
+      type: 'poi_badge_earned',
+      groupKey: syncGroupKey('poi_badge_earned', activityId),
+      payload: {
+        // 단건 렌더용 대표값 (묶음이면 렌더러가 badge_ids·count를 쓴다)
+        badge_id: earn.badgeIds[0],
+        poi_name: earn.poiNames[0],
+        badge_ids: earn.badgeIds,
+        poi_names: earn.poiNames,
+        count: earn.badgeIds.length,
+        activity_id: activityId,
+      },
+    })
   }
 
   // Phase 18: 차량 속도 필터 적용 — 어뷰징 정책에서 임계값 조회
@@ -450,11 +541,35 @@ export async function processFetchedActivities(
   const badgesEarned = activityBadgeIds.length
   earnedBadgeIds.push(...activityBadgeIds)
 
+  // 소식 #1·#2 — 묶음 키의 대표값은 이번 배치에서 가장 최신 활동
+  // (start_date가 같은 활동이 섞여도 결정론적이도록 stravaId를 보조 키로 둔다)
+  const latestActivity = [...activities].sort((a, b) => {
+    const diff = new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    return diff !== 0 ? diff : b.stravaId - a.stravaId
+  })[0]
+  await notifyActivityBadgesEarned(supabase, userId, activityBadgeIds, latestActivity?.stravaId ?? null)
+
   // 아이템북 완성 체크 + reward_badge 발급
   const { completedIds, rewardBadgesIssued, rewardBadgeIds } = await checkItemBookCompletion(userId)
   earnedBadgeIds.push(...rewardBadgeIds)
   if (completedIds.length > 0) {
     console.info(`[processFetchedActivities] 아이템북 완성 — userId: ${userId}, 완성 수: ${completedIds.length}, 보상 배지: ${rewardBadgesIssued}`)
+  }
+
+  // 소식 #11(컬렉션 완성 가능) — 티켓 20260824_019
+  // "완성 시점"이 아니라 **"완성할 수 있는데 아직 안 넣은" 시점**의 소식이다.
+  //
+  // mode='once' + 컬렉션 단위 group_key로 컬렉션당 1회만 나간다. 이 조건은 유저가
+  // 장착할 때까지 계속 참이라, merge로 두면 동기화할 때마다 updated_at이 갱신돼
+  // dot이 매번 다시 켜진다(반복 발송 = 다크패턴, PRD §2-4).
+  for (const book of await findCompletableItemBooks(userId)) {
+    await createNotification({
+      userId,
+      type: 'collection_completable',
+      groupKey: scopedGroupKey('collection_completable', book.id),
+      mode: 'once',
+      payload: { item_book_id: book.id, book_name: book.name },
+    })
   }
 
   // Phase 16: 다이나믹 미션 달성 체크
@@ -515,7 +630,25 @@ export async function syncStravaActivities(
 
   // 3. 토큰 만료 확인 → 만료 시 갱신
   if (Date.now() >= expiresAt - 60_000) { // 1분 여유
-    const refreshed = await refreshStravaToken(refreshToken)
+    let refreshed: Awaited<ReturnType<typeof refreshStravaToken>>
+    try {
+      refreshed = await refreshStravaToken(refreshToken)
+    } catch (err) {
+      // 소식 #40(Strava 끊김) — 티켓 20260824_019
+      // 갱신 실패는 사실상 서비스 중단(배지 발급이 완전히 멈춘다)인데 현재 유저가
+      // 알 방법이 없다. 이 기능 도입의 가장 실용적인 명분이다.
+      //
+      // group_key를 KST 하루 단위로 둔다: 스펙상 #40은 "묶지 않는 소식"이지만,
+      // 연결이 끊긴 상태에서는 동기화를 누를 때마다 이 지점을 지나 같은 소식이
+      // 무한히 쌓인다. 하루 1건이면 "개별 소식"의 성격은 유지하면서 폭주만 막는다.
+      await createNotification({
+        userId,
+        type: 'strava_disconnected',
+        groupKey: dailyGroupKey('strava_disconnected'),
+        mode: 'once',
+      })
+      throw err
+    }
     accessToken = refreshed.access_token
 
     const [encAccess, encRefresh] = await Promise.all([
