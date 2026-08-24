@@ -3,18 +3,19 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BadgeRevealCarousel } from '@ds/components/patterns/BadgeRevealCarousel'
+import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { d, t } from '@/lib/i18n'
 
 /**
  * 배지 획득 연출 오버레이 — MODULAR `patterns/BadgeRevealCarousel`의 서비스 호출부 래퍼 (20260823_008).
  *
- * 진입 경로: 수동 동기화 — `SyncButton`이 `/api/strava/sync` 응답을 받은 **그 시점**에 연다.
- * 대기 표현은 이 오버레이가 아니라 `SyncButton`의 `loading` 스피너가 담당한다(20260824_001).
- *
- * 최초 Strava 연동 경로는 이 티켓에서 분리됐다 — `user_activity_feed.event_at`이 기록 시각이
- * 아니라 Strava 활동 시작 시각이라 "방금 획득"을 판정할 수 없다는 것이 게이트 리뷰에서
- * 실데이터로 확인됐다. 별도 티켓 20260824_003에서 스키마 보완과 함께 다룬다.
+ * 두 진입 경로가 공유한다.
+ *   1. 수동 동기화 — `SyncButton`이 `/api/strava/sync` 응답을 받은 **그 시점**에 연다.
+ *      대기 표현은 이 오버레이가 아니라 `SyncButton`의 `loading` 스피너다(20260824_001).
+ *   2. 최초 Strava 연동 — 콜백 리다이렉트 도착 페이지(`StravaConnectReveal`)가 최근 획득을
+ *      되읽는 동안 `loading`으로 대기 화면을 띄우고, 결과가 오면 그대로 캐러셀로 넘어간다.
+ *      이 경로에는 스피너를 걸 버튼이 없어 오버레이가 대기 표현을 맡는다 (20260824_003).
  *
  * 래퍼가 책임지는 것 (컴포넌트 자체는 건드리지 않는다)
  *   - 탭바 숨김: z-index로 덮기만 하면 iOS Safari 동적 툴바 상태에서 탭바가 비쳐 보인 이력이
@@ -37,8 +38,10 @@ export interface RevealBadge {
 }
 
 interface Props {
-  /** 캐러셀 표시 여부 */
+  /** 오버레이(대기 화면 또는 캐러셀) 표시 여부 */
   open: boolean
+  /** true면 캐러셀 대신 대기 화면(WanderingEyesLoader)을 띄운다 */
+  loading?: boolean
   /** 서버가 상한(10장)까지 잘라 내려준 배지 목록 — 받은 그대로 그린다 */
   items: RevealBadge[]
   /** 상세를 싣지 못한 잔여 개수. 0이면 "전체 보기" 카드가 뜨지 않는다 */
@@ -49,11 +52,15 @@ interface Props {
   onClose: () => void
 }
 
+/** 캐러셀 오버레이(zIndex 60)와 같은 층에 두는 대기 화면 */
+const OVERLAY_Z_INDEX = 60
+
 /** 서비스 컬럼 폭에 맞춘 오버레이 박스 — fixed + inset:0 + 좌우 auto 마진으로 가운데 정렬된다 */
 const COLUMN_STYLE = { maxWidth: 430, marginLeft: 'auto', marginRight: 'auto' } as const
 
 export default function BadgeRevealOverlay({
   open,
+  loading = false,
   items,
   moreCount = 0,
   profileHref,
@@ -82,8 +89,9 @@ export default function BadgeRevealOverlay({
      라이브 리전은 **닫혀 있을 때도 계속 마운트**돼 있어야 내용 변경이 공지된다 — 그래서 이
      컴포넌트는 항상 렌더되고 텍스트만 열림/닫힘에 따라 채우고 비운다. 상태·이펙트 없이 렌더
      중에 파생시킨다(이미 떠 있는 노드의 내용이 바뀌는 것이므로 별도 커밋이 필요 없다). */
+  const revealing = open && !loading
   const cardCount = items.length + moreCount
-  const announcement = open && cardCount > 0 ? t(d.badgeReveal.opened, { count: cardCount }) : ''
+  const announcement = revealing && cardCount > 0 ? t(d.badgeReveal.opened, { count: cardCount }) : ''
 
   function handleMoreClick() {
     onClose()
@@ -96,8 +104,27 @@ export default function BadgeRevealOverlay({
         {announcement}
       </div>
 
+      {open && loading && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            ...COLUMN_STYLE,
+            zIndex: OVERLAY_Z_INDEX,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--color-overlay)',
+          }}
+        >
+          <WanderingEyesLoader duration="2s" eyeColor="#f8fafc" pupilColor="#0f172a" />
+          <span className="sr-only">{d.badgeReveal.loading}</span>
+        </div>
+      )}
+
       <BadgeRevealCarousel
-        open={open}
+        open={revealing}
         items={items}
         moreCount={moreCount}
         onMoreClick={handleMoreClick}

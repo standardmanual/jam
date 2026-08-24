@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ToastProvider } from '@/components/ui/Toast'
 import TabBar from '@/components/ui/TabBar'
 import Footer from '@/components/ui/Footer'
+import StravaConnectReveal from '@/components/StravaConnectReveal'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -33,6 +34,11 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
         {/* 하단 탭 바 */}
         <TabBar username={username} />
+
+        {/* 최초 Strava 연동 직후(reveal=1) 획득 배지 연출.
+            콜백 리다이렉트 도착 지점이 profile 경유로 한 번 더 옮겨가므로
+            특정 페이지가 아니라 레이아웃에 둔다 (20260824_003) */}
+        <StravaConnectReveal username={username} />
       </div>
     </ToastProvider>
   )
