@@ -87,7 +87,6 @@
 | 플리마켓 (P2P 거래) | `/inventory/flea-market` 화면은 "coming soon" placeholder만 존재 | ❌ 미구현 |
 | D2C 실물 패치 연동 | 배지 조건(`patch_available`)만 존재, 실제 구매 플로우 없음 | ❌ 미구현 |
 | 푸시 알림 | Web Push 구독/발송 플로우 없음 | ❌ 미구현 |
-| 신화 아이템 떠돌이 속성 | DB 스키마(`wandering_mythic_state`) + Cron(`/api/cron/wandering`)은 존재 | ⚠️ 부분 구현 — UI 노출 여부 확인 필요 |
 
 ---
 
@@ -187,7 +186,6 @@ users / theme / today / simulator(GPX 업로드 배지발급 시뮬레이션) / 
 - ❌ **P2P 플리마켓 실거래**: `/inventory/flea-market`은 "coming soon" UI만 존재, `trades` 테이블도 001 이후 변경 없이 방치
 - ❌ **D2C 실물 패치 구매 플로우**: 배지 조건 필드만 있고 실제 구매 연결 없음
 - ❌ **푸시 알림**: Web Push 인프라 자체가 없음
-- ⚠️ **신화 아이템 떠돌이 속성**: DB·Cron은 있으나 유저 대면 UI 노출 여부 확인 필요
 
 ---
 
@@ -198,4 +196,4 @@ users / theme / today / simulator(GPX 업로드 배지발급 시뮬레이션) / 
 - [ ] **푸시 알림 도입**: **미정** — PWA manifest/Service Worker 자체 미구현. 착수 일정 미확정
 - [x] **배지 발급 조건 단일 출처**: **[`BadgeEngine/CONDITION_JSON_SPEC.md`](../BadgeEngine/CONDITION_JSON_SPEC.md) 신규 생성** (2026-08-07). 모든 `condition_json` 필드 타입·의미·평가 방식 명세.
 - [ ] **커뮤니티 피드 공개 범위**: **공개/비공개/팔로우 공개/전체공개 체계 수립 예정** — 현재 `user_activity_feed`는 본인·타인 프로필 양쪽에서 쓰이나 공개 범위 정책이 미확정. 체계 수립 후 PRD 별도 섹션으로 분리 예정.
-- [ ] **신화 아이템 떠돌이 속성 UI 완성도**: **추가 설명 필요** — DB 스키마(`wandering_mythic_state`) + Cron(`/api/cron/wandering`)은 존재하나 유저 대면 UI 구현 범위 미확인. 추가 컨텍스트 확보 후 처리.
+- [x] **신화 아이템 떠돌이 속성 UI 완성도**: **기능 전면 제거로 종결** (2026-08-24, 티켓 [20260824_017](../../History/Migration/Ticket/20260824_017_Infra_떠돌이신화-기능-전면제거.md)). 스키마·Cron만 있고 컨텐츠가 한 번도 붙지 않은 미완성 기능이었고 프로덕션 실사용 0건이 확인되어, UI를 구현하는 대신 `wandering_mythic_state` 테이블·`badges.is_wandering` 컬럼·`/api/cron/wandering`을 모두 제거했다.
