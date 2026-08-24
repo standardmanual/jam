@@ -106,6 +106,66 @@ CREATE POLICY notifications_select_own ON public.notifications
 
 ---
 
+## 2-1. `poi_views` — #18 전용 계측 (신규)
+
+#18("내 드랍 지점 활성")의 "다녀갔다"는 **누군가 그 POI를 열어서 확인한 것**으로 확정됐다
+(2026-08-24). 픽업 여부와 무관하다.
+
+현재 POI 열람을 기록하는 코드가 **전혀 없다.** `PoiCarouselModal`이 `DropsClient`에서 열리지만
+어떤 카운터도 증가하지 않는다. 그래서 테이블과 계측을 신설한다.
+
+```sql
+CREATE TABLE public.poi_views (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  poi_id     UUID NOT NULL REFERENCES public.poi(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  viewed_on  DATE NOT NULL,   -- KST 기준 날짜
+  viewed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 같은 유저가 같은 POI를 하루에 여러 번 열어도 1행만 — 볼륨 억제 + 고유 인원 집계
+CREATE UNIQUE INDEX poi_views_daily_uniq
+  ON public.poi_views (poi_id, user_id, viewed_on);
+
+-- 주간 집계 조회
+CREATE INDEX poi_views_poi_date_idx
+  ON public.poi_views (poi_id, viewed_on DESC);
+```
+
+| 필드 | 설명 |
+|---|---|
+| `viewed_on` | **KST 기준 날짜.** UTC로 두면 KST 09:00에 날짜가 바뀌어 하루 중복 억제가 어긋난다 |
+| `viewed_at` | 실제 열람 시각 (분석용) |
+
+### 볼륨 억제
+
+`(poi_id, user_id, viewed_on)` UNIQUE로 **하루 1회만 기록**한다. 기록은 `ON CONFLICT DO NOTHING`
+UPSERT라 중복 열람은 조용히 무시된다.
+
+### 집계
+
+주간 배치가 **내 드랍이 활성 상태인 POI**를 대상으로 지난 7일간 고유 열람 인원을 센다.
+본인의 열람은 제외한다 — 내가 내 드랍을 확인한 걸 "다녀갔다"고 세면 안 된다.
+
+```sql
+SELECT poi_id, count(DISTINCT user_id) AS visitors
+  FROM poi_views
+ WHERE poi_id = ANY($1)              -- 내 활성 드랍이 있는 POI
+   AND viewed_on >= $2               -- KST 기준 7일 전
+   AND user_id <> $3                 -- 본인 제외
+ GROUP BY poi_id;
+```
+
+### 범위 분할
+
+| 티켓 | 범위 |
+|---|---|
+| 019 | 테이블 + 기록 함수 |
+| 020 | `PoiCarouselModal` 열림 지점에서 기록 호출 |
+| 021 | 주간 집계 → #18 소식 생성 |
+
+---
+
 ## 3. 읽음 모델 — 타임스탬프 1개
 
 ```sql
@@ -181,6 +241,10 @@ DO UPDATE SET
 | 9 컬렉션 장착 가능 | `slottable:{item_book_id}` | 상시 (컬렉션 단위) |
 | 32·34 지역 드랍 | `drops:{YYYY-MM-DD}` | 하루 |
 | **묶지 않는 소식** | **NULL** | — |
+
+> **시간창은 전부 KST 기준으로 계산한다**(2026-08-24 확정). UTC로 두면 `points:{YYYY-MM-DD}`
+> 같은 일 단위 키가 KST 09:00에 날짜가 바뀌어, 아침에 받은 포인트와 저녁에 받은 포인트가 다른
+> 묶음이 된다. 티켓 20260824_006에서 `event_at`을 로컬 벽시계로 오해석한 전례가 있다.
 
 `group_key`가 NULL인 소식(2·7·10·11·18·20~24·27·29·30·40~45)은 UNIQUE 인덱스의 부분 조건
 (`WHERE group_key IS NOT NULL`)에서 제외되므로 항상 새 행으로 쌓인다.
@@ -262,12 +326,22 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 
 ---
 
-## 8. [NEEDS CLARIFICATION]
+## 8. 확정된 결정과 남은 질문
+
+### 2026-08-24 확정
+
+| 항목 | 확정 |
+|---|---|
+| `group_key` 시간창 기준 | **KST** (§4 참고) |
+| `poi_views.viewed_on` 기준 | **KST** — 하루 중복 억제가 UTC 기준이면 KST 09:00에 어긋난다 |
+| #18 "다녀갔다" | **POI 열람 고유 인원**, 본인 제외 (§2-1) |
+| #32 "활동 지역" 매칭 | **`users.region` 문자열 일치** |
+
+### 남은 질문
 
 - [ ] **소식 보관 정책** — 현재 무제한. 유저당 수만 건 시점에 커서 페이지네이션만으로 충분한지
       실측 후 재검토. 파티셔닝이나 보관 기간 도입 여부.
 - [ ] **`actor_user_id` 대표값 선정** — 묶음에서 "가장 최근 행위자"를 쓰기로 했으나, 인스타는
       친밀도 상위를 앞세운다. 친밀도 지표가 생기면 재검토.
-- [ ] **`group_key`의 시간창을 UTC로 계산할지 KST로 할지** — `points:{YYYY-MM-DD}` 같은 일
-      단위 키가 UTC 기준이면 KST 09:00에 날짜가 바뀐다. 티켓 20260824_006에서 `event_at`을
-      로컬 벽시계로 오해석한 전례가 있으므로 **KST 기준으로 계산**하는 것을 권장.
+- [ ] **`poi_views` 볼륨** — 하루 1회 UNIQUE로 눌렀으나 POI 수와 DAU가 늘면 재검토가 필요할 수
+      있다. 오래된 행의 보관 정책도 함께 판단.
