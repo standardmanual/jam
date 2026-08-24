@@ -17,7 +17,18 @@ type InventoryWithItems = InventoryRow & {
   inventory_items: InventoryItemWithBadge[]
 }
 
-export default async function InventoryPage() {
+/** 20260824_021: `?highlight=<id,id>` — 소식 #3(아이템 배지 획득) 묶음 착지 시 짚어줄 아이템 */
+interface Props {
+  searchParams: Promise<{ highlight?: string }>
+}
+
+export default async function InventoryPage({ searchParams }: Props) {
+  const { highlight } = await searchParams
+  const highlightItemIds = (highlight ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -92,6 +103,7 @@ export default async function InventoryPage() {
           items={gridItems}
           mode="navigate"
           emptySlots={Math.min(remainingSlots, Math.max(0, 6 - items.length))}
+          highlightItemIds={highlightItemIds}
         />
       )}
       </div>

@@ -134,6 +134,11 @@ function ColorsPage() {
         <Swatch token="--color-overlay" desc="모달·시트 백드롭" />
       </Section>
 
+      <Section title="Semantic — Status (20260824_021)">
+        <Swatch token="--color-notification-dot" desc="안 읽은 소식 있음 — TopNav 알림 종의 빨간 버블" />
+        <Swatch token="--color-warning" desc="경고 상태 — 계정·동기화·인벤토리 소식. 소식 dot과 의미가 달라 색을 가른다" />
+      </Section>
+
       <Section title="Badge Rarity (배경 + 텍스트 쌍)">
         <RarityPair bg="--color-rarity-common" fg="--color-rarity-common-text" label="COMMON" />
         <RarityPair bg="--color-rarity-rare" fg="--color-rarity-rare-text" label="RARE" />

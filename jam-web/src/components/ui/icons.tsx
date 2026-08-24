@@ -246,3 +246,38 @@ export function PencilIcon(props: IconProps) {
     </Svg>
   )
 }
+
+/**
+ * 알림 종 — TopNav 우측 알림함 진입점 (20260824_021)
+ *
+ * Material Symbols `notifications`(FILL 0 / wght 400 / opsz 24)의 **형태만** 참조하고
+ * 구현은 이 세트 규칙(stroke 1.5px, 24 viewBox, currentColor)을 따른다.
+ * - 폰트를 로드하지 않는다 — 아이콘 하나 때문에 수백 KB를 받을 이유가 없다(Apache 2.0이라 형태 참조는 자유)
+ * - Material Symbols Outlined는 겉보기와 달리 fill 기반 path라 그대로 넣으면 TabBar 등
+ *   기존 아이콘과 선 굵기·질감이 어긋난다
+ * - 안 읽은 소식 버블은 이 아이콘 안이 아니라 **바깥 엘리먼트**로 얹는다
+ *   (세트의 "제3의 컬러 도입 금지" 규칙 유지 — NotificationBell.tsx)
+ */
+export function BellIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M18 9a6 6 0 10-12 0c0 4.5-1.5 6-2.5 7h17c-1-1-2.5-2.5-2.5-7z" />
+      <path d="M10 19.5a2.2 2.2 0 004 0" />
+    </Svg>
+  )
+}
+
+/**
+ * 경고(삼각형) — 알림함 ⑧ 계정·시스템 소식 (20260824_021)
+ *
+ * 세트에 경고 아이콘이 없어 추가한다. 색은 부모가 `--color-warning`으로 지정하며,
+ * 경고 여부는 저장값이 아니라 **렌더 시점의 현재 상태**로 판정한다(PRD §6-2).
+ */
+export function AlertTriangleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 4.5L21 20H3L12 4.5z" />
+      <path d="M12 10v4.5M12 17v.01" />
+    </Svg>
+  )
+}

@@ -3,7 +3,25 @@ import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import BadgesClient, { ItemBookProgress, PoiBadgeItem } from './BadgesClient'
 
-export default async function BadgesPage() {
+/**
+ * 20260824_021: 알림함 착지용 쿼리 파라미터 2종.
+ * - `?tab=activity|poi|collection` — 소식 #1·#4의 착지 탭
+ * - `?highlight=<id,id>` — 그 소식으로 획득한 배지를 그리드에서 짚어준다
+ *
+ * 탭 상태는 원래 hash(`#activity`)로 유지되지만, 착지점은 쿼리 하나로 탭과 하이라이트를
+ * 함께 전달해야 하므로 쿼리도 초기값으로 받는다(이후 탭 전환은 기존대로 hash를 쓴다).
+ */
+interface Props {
+  searchParams: Promise<{ tab?: string; highlight?: string }>
+}
+
+export default async function BadgesPage({ searchParams }: Props) {
+  const { tab, highlight } = await searchParams
+  const highlightIds = (highlight ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -186,6 +204,8 @@ export default async function BadgesPage() {
       itemBooks={books}
       itemBookProgress={itemBookProgress}
       poiBadges={poiBadges}
+      initialTab={tab}
+      highlightIds={highlightIds}
     />
   )
 }
