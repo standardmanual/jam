@@ -26,12 +26,29 @@ export async function GET(req: NextRequest) {
   // KST 자정을 걸쳐 도는 배치가 두 날짜 키로 갈리지 않는다.
   const result = await runNotificationBatch(new Date())
 
+  // 요약에 scanned·drafts를 반드시 싣는다 — 생성 수만 보면 "정상 0건"(#24는 최근 종료
+  // 미션이 없으면 0이 맞다)과 "판정이 깨져서 0건"이 똑같아 보인다. scanned > 0인데
+  // drafts가 0인 단계가 며칠 이어지면 그 단계의 판정이 죽은 것이다.
   const summary = result.steps
-    .map((s) => `${s.step}=${s.created}${s.failed > 0 ? `/실패${s.failed}` : ''}${s.error ? '(오류)' : ''}`)
-    .join(' ')
-  console.info(
-    `[cron/notifications] 생성 ${result.created}건, 실패 ${result.failed}건, ${result.durationMs}ms — ${summary}`
-  )
+    .map(
+      (s) =>
+        `${s.step}: 생성${s.created}/시도${s.drafts}/스캔${s.scanned}/${s.durationMs}ms` +
+        `${s.failed > 0 ? ` 실패${s.failed}` : ''}${s.error ? ' 오류' : ''}`
+    )
+    .join(' | ')
+  const headline =
+    `[cron/notifications] 생성 ${result.created}건, 시도 ${result.drafts}건, ` +
+    `스캔 ${result.scanned}행, 실패 ${result.failed}건, ${result.durationMs}ms — ${summary}`
 
-  return NextResponse.json(result)
+  // 단계가 하나라도 실패하면 non-2xx로 알린다. Vercel의 cron 실패 감지는 상태 코드
+  // 기준이라 200을 주면 마이그레이션 미적용 같은 상태가 **대시보드에서 성공으로 보인다.**
+  // 11종 전부 `once` + `group_key`라 재시도가 와도 중복은 생기지 않는다.
+  const failedSteps = result.steps.filter((s) => s.error)
+  if (failedSteps.length > 0) {
+    console.error(`${headline} — 실패 단계: ${failedSteps.map((s) => s.step).join(', ')}`)
+    return NextResponse.json({ ...result, ok: false }, { status: 500 })
+  }
+
+  console.info(headline)
+  return NextResponse.json({ ...result, ok: true })
 }
