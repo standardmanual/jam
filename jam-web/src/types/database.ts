@@ -644,12 +644,18 @@ export interface ActivityFeedRow {
   event_type: ActivityFeedEventType
   /**
    * **Strava 활동 시작 시각**이다(기록 시각이 아니다). recordFeedEvent()의 4번째 인자로
-   * 활동 시작 시각이 그대로 들어간다 — 피드 정렬·표시용.
+   * 활동 시작 시각이 그대로 들어간다.
+   * 20260824_006 — 피드 정렬·표시에는 더 이상 이 컬럼을 쓰지 않는다(created_at으로 이전).
+   * 원본 데이터로서의 의미(실제로 언제 뛰었는지)만 남는다. badge_earned/item_dropped만
+   * 값이 있고(마이그레이션 094에서 strava_activities 근사 매칭으로 소급 보정), 그 외
+   * 이벤트 타입은 DEFAULT NOW()로 기록 시각과 사실상 같다.
    */
   event_at: string
   /**
-   * 행이 DB에 기록된 시각 (마이그레이션 093). "방금 획득했는가" 판정은 이 컬럼을 쓴다.
-   * 093 이전 행은 event_at 기반 근사값이다.
+   * 행이 DB에 기록된 시각 (마이그레이션 093). "방금 획득했는가" 판정과 피드 정렬·표시
+   * (20260824_006)는 모두 이 컬럼을 쓴다.
+   * 093 이전 행은 event_at 기반 근사값이다 — 그 event_at 자체가 로컬 벽시계 오해석으로
+   * 부정확했을 수 있어(20260824_006), 093 이전 행의 created_at은 여전히 부정확할 수 있다.
    */
   created_at: string
   metadata: Record<string, unknown>

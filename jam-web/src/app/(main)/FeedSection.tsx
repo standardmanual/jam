@@ -197,7 +197,9 @@ export function DetailSheet({
           {item.event_type === 'badge_earned' && typeof meta.point_reward === 'number' && meta.point_reward > 0 && (
             <Row label={d.feed.rowPoints} value={t(d.feed.pointsGained, { points: Number(meta.point_reward).toLocaleString('ko-KR') })} />
           )}
-          <Row label={d.feed.rowDate} value={formatFullDate(item.event_at)} />
+          {/* 20260824_006 — 표시 기준을 created_at(획득 시각, 항상 정확)으로 변경.
+              event_at(Strava 활동 시작 시각)은 로컬 벽시계 오해석 버그로 미래가 찍힐 수 있었다. */}
+          <Row label={d.feed.rowDate} value={formatFullDate(item.created_at)} />
         </div>
         {isBadgeEvent ? (
           <Button
@@ -249,7 +251,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
         )
       }
       trailing={
-        <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{formatRelativeTime(item.event_at)}</span>
+        <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{formatRelativeTime(item.created_at)}</span>
       }
     >
       <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{eventLabel(item)}</p>
