@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { FactionRow } from '@/types/database'
+import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
 import BackgroundGeneratorPreview, {
@@ -294,15 +295,15 @@ export default function FactionForm({ faction }: FactionFormProps) {
         />
       </label>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">이미지 URL</span>
-        <input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
-          placeholder="https://..."
-        />
-      </label>
+      {/* 세계관 이미지 — 원래 순수 자유 입력(https://... 텍스트 필드)이었다. 임의 호스트 URL이
+          DB에 들어오면 그 값을 렌더하는 화면이 통째로 500이 되는 구조라(20260824_004),
+          다른 어드민 폼과 동일하게 Storage 업로드 전용으로 바꿨다 (20260824_005). */}
+      <ImageUploadField
+        value={imageUrl}
+        onChange={setImageUrl}
+        folder="factions"
+        label="이미지"
+      />
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-[#374151]">드랍 가중치 (0.1 ~ 10.0)</span>
