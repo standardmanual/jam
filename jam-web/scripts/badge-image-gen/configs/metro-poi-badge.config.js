@@ -6,8 +6,11 @@
  * 이전 디자인(subway-poi-badge, 340x340 3중 원)을 대체한다 — 디자인·텍스트 위치·크기가 전부
  * 달라져 기존 config를 수정하지 않고 새 config로 분리했다.
  *
- * 대상: public.poi.category='transit' 중 이름이 '역'으로 끝나는 POI에 연결된 public.badges
+ * 대상: public.poi.category='train_subway'(기차/지하철) POI에 연결된 public.badges
  *       (929개, 2026-08-24 기준)
+ *
+ * 2026-08-24에 이 929개를 transit(대중교통)에서 train_subway로 분리했다([[20260824_022]]).
+ * 그 전에는 `category='transit' AND name LIKE '%역'`으로 걸러냈다.
  */
 const { fetchAllRows } = require('../lib/fetch-all-rows')
 
@@ -60,8 +63,7 @@ module.exports = {
       supabase
         .from('poi')
         .select('name, linked_badge_id')
-        .eq('category', 'transit')
-        .like('name', '%역')
+        .eq('category', 'train_subway')
         .not('linked_badge_id', 'is', null)
         .order('name')
     )
@@ -84,7 +86,6 @@ UPDATE public.badges b
 SET image_url = '{{imagePathPrefix}}/' || b.id || '.png'
 FROM public.poi p
 WHERE p.linked_badge_id = b.id
-  AND p.category = 'transit'
-  AND p.name LIKE '%역'
+  AND p.category = 'train_subway'
   AND b.deleted_at IS NULL;`,
 }

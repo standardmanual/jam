@@ -12,6 +12,9 @@
  * 지도 탐색·드랍 표시 전용 카테고리는 기존처럼 넓은 기본값(500m)을 유지한다.
  */
 export const EXACT_MATCH_RADIUS_BY_CATEGORY: Record<string, number> = {
+  // 2026-08-24에 transit(대중교통)에서 기차·지하철역만 train_subway로 분리했다.
+  // 분리된 쪽에도 같은 50m를 반드시 유지해야 위 인시던트가 재발하지 않는다.
+  train_subway: 50,
   transit: 50,
   mountain: 150,
 }
