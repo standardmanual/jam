@@ -28,6 +28,29 @@ describe('isOptimizableImageSrc', () => {
     expect(isOptimizableImageSrc('https://evil.ceehnkzdbecxwzxrhhns.supabase.co/a.png')).toBe(false)
   })
 
+  /* 게이트 리뷰(20260824_004)가 잡은 잔여 경로 — 호스트만 맞고 protocol/pathname이 어긋나면
+     next/image가 여전히 throw한다. 호스트만 검사하던 초기 구현은 여기서 true를 반환했다. */
+  it('등록 호스트라도 pathname이 다르면 최적화 대상이 아니다 (Supabase 서명 URL)', () => {
+    expect(
+      isOptimizableImageSrc('https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/sign/badges/a.png?token=x'),
+    ).toBe(false)
+    expect(isOptimizableImageSrc('https://ceehnkzdbecxwzxrhhns.supabase.co/rest/v1/badges')).toBe(false)
+    // prefix만 같고 경계가 다른 경로도 걸러야 한다
+    expect(isOptimizableImageSrc('https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/publicX/a.png')).toBe(false)
+  })
+
+  it('등록 호스트라도 http면 최적화 대상이 아니다', () => {
+    expect(
+      isOptimizableImageSrc('http://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/badges/a.png'),
+    ).toBe(false)
+  })
+
+  it('쿼리스트링이 붙어도 pathname 기준으로 판정한다', () => {
+    expect(
+      isOptimizableImageSrc('https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/a.png?v=2'),
+    ).toBe(true)
+  })
+
   it('빈 값·공백·null·undefined는 false', () => {
     expect(isOptimizableImageSrc('')).toBe(false)
     expect(isOptimizableImageSrc('   ')).toBe(false)
