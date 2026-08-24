@@ -73,7 +73,8 @@ export async function GET(
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
-  const { data: badgeRaw } = await supabase.from('badges').select('*').eq('id', id).single()
+  // 소프트 삭제된 배지(badges.deleted_at)는 존재하지 않는 배지와 동일하게 취급한다(20260824_007).
+  const { data: badgeRaw } = await supabase.from('badges').select('*').eq('id', id).is('deleted_at', null).single()
   if (!badgeRaw) {
     return NextResponse.json({ error: 'badge_not_found' }, { status: 404 })
   }

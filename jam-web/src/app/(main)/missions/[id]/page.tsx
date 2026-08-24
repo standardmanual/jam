@@ -27,9 +27,11 @@ export default async function MissionDetailPage({ params }: Props) {
   const completion = completionRaw as Pick<UserMissionCompletionRow, 'id'> | null
 
   // 보상 배지 정보 조회 (표시용)
+  // 소프트 삭제된 배지(badges.deleted_at)는 보상 카드 목록에서 제외한다(20260824_007) —
+  // 해당 배지 카드만 빠지고 나머지 보상(포인트·다른 배지)은 그대로 보인다.
   const rewardBadgeIds = mission.reward_badge_ids ?? []
   const { data: rewardBadgesRaw } = rewardBadgeIds.length > 0
-    ? await service.from('badges').select('id, name, image_url, rarity').in('id', rewardBadgeIds)
+    ? await service.from('badges').select('id, name, image_url, rarity').in('id', rewardBadgeIds).is('deleted_at', null)
     : { data: [] }
   const rewardBadges = (rewardBadgesRaw ?? []) as { id: string; name: string; image_url: string | null; rarity: import('@/types/database').BadgeRarity }[]
 

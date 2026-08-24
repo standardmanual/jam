@@ -216,7 +216,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   const isOwnBadge = subjectId === user.id
 
   const [{ data: badge }, { data: earnedRow }, { data: ownedBadgesRaw }, { data: stravaConnectionRaw }] = await Promise.all([
-    supabase.from('badges').select('*').eq('id', id).single(),
+    // 소프트 삭제된 배지(badges.deleted_at)는 직접 접근 시 존재하지 않는 배지와 동일하게 취급한다
+    // (20260824_007) — 없으면 아래 notFound()로 빠진다. 이후 이 배지에 종속된 소속 컬렉션·
+    // POI 역조회 조회는 notFound() 이후 코드라 자동으로 함께 막힌다.
+    supabase.from('badges').select('*').eq('id', id).is('deleted_at', null).single(),
         service
       .from('user_activity_badges')
       .select('*, poi:triggered_by_poi_id(id, name, latitude, longitude, radius_meters)')
@@ -375,10 +378,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   }[] = []
   if (prereqs.length > 0) {
     const ownedBadgeIds = new Set((ownedBadgesRaw ?? []).map((b: { badge_id: string }) => b.badge_id))
+    // 소프트 삭제된 선행 배지는 조회 대상에서 제외한다(20260824_007) — 필터로 매치가 안 되면
+    // 아래 map에서 해당 항목만 걸러내 목록에서 빠지고 나머지 선행 배지는 그대로 유지한다.
     const { data: prereqBadgesRaw } = await supabase
       .from('badges')
       .select('id, name, image_url, description, rarity')
       .in('name', prereqs)
+      .is('deleted_at', null)
     const prereqBadges = (prereqBadgesRaw ?? []) as {
       id: string
       name: string
@@ -386,17 +392,20 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       description: string | null
       rarity: string
     }[]
-    prereqStatus = prereqs.map((name) => {
-      const match = prereqBadges.find((b) => b.name === name)
-      return {
-        id: match?.id ?? '',
-        name,
-        image_url: match?.image_url ?? null,
-        description: match?.description ?? null,
-        rarity: match?.rarity ?? 'common',
-        owned: match ? ownedBadgeIds.has(match.id) : false,
-      }
-    })
+    prereqStatus = prereqs
+      .map((name) => {
+        const match = prereqBadges.find((b) => b.name === name)
+        if (!match) return null
+        return {
+          id: match.id,
+          name,
+          image_url: match.image_url,
+          description: match.description,
+          rarity: match.rarity,
+          owned: ownedBadgeIds.has(match.id),
+        }
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null)
   }
 
   // triggered_by_poi_id join 결과(활동 배지) 또는 최근 POI 획득 이력의 POI
