@@ -171,6 +171,39 @@ SELECT poi_id, count(DISTINCT user_id) AS visitors
 
 ---
 
+## 2-2. `mission_rank_snapshots` — #23 전용 기준선 (신규, 마이그레이션 099)
+
+소식 #23("순위 상승")은 **"상승 시만"**이 조건이다. 그런데 미션 순위는 어디에도 저장되지 않고
+`/api/missions/[id]/status`가 요청마다 계산한다(참가자 진행도 정렬). **직전 순위를 모르면
+판정 자체가 불가능하다.**
+
+기존 `notifications` 행에서 직전 순위를 읽는 방법은 성립하지 않는다 — 소식이 있어야 기준선이
+생기고 기준선이 있어야 소식이 생기므로 영원히 발화하지 않는다. 그래서 배치가 매 실행마다
+현재 순위를 남기고, 다음 실행이 그것과 비교한다.
+
+```sql
+CREATE TABLE public.mission_rank_snapshots (
+  mission_id  UUID NOT NULL REFERENCES public.missions(id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  rank        INT NOT NULL,     -- 1부터
+  captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (mission_id, user_id)
+);
+
+CREATE INDEX mission_rank_snapshots_user_idx ON public.mission_rank_snapshots (user_id);
+
+-- RLS를 켜되 정책은 두지 않는다 = service_role 전용 (poi_views·engine_decision_log와 동일)
+ALTER TABLE public.mission_rank_snapshots ENABLE ROW LEVEL SECURITY;
+```
+
+**첫 배치는 기준선만 남기고 소식을 만들지 않는다.** 오르지도 않은 유저에게 "5위로 올라섰어요"가
+나가면 거짓말이다.
+
+순위 정렬 규칙은 `src/lib/missions/ranking.ts`가 단일 진실이다 — 화면과 배치가 같은 비교 함수를
+쓰지 않으면 "5위로 올라섰어요"를 누르고 들어간 화면이 6위를 보여준다.
+
+---
+
 ## 3. 읽음 모델 — 타임스탬프 1개
 
 ```sql
@@ -244,7 +277,7 @@ create_notification(
 | 모드 | 동작 | 쓰는 곳 |
 |---|---|---|
 | `merge` (기본) | 충돌 시 `actor_count` 갱신 + payload 병합 + `updated_at = NOW()` | 묶음 소식 전반 |
-| `once` | **이미 있으면 아무것도 하지 않는다** (`updated_at`도 안 건드림) | #11·#20·#40 |
+| `once` | **이미 있으면 아무것도 하지 않는다** (`updated_at`도 안 건드림) | #11·#20·#40 + **T2 배치 13종 전부**(§4-3) |
 | — (`group_key` NULL) | 항상 새 행 | 묶지 않는 소식 |
 
 > **`once`가 왜 필요한가.** "구간당 1회"를 `group_key`만으로 막을 수 있다고 착각하기 쉬운데,
@@ -300,23 +333,58 @@ actor_count = jsonb_array_length(payload->'actor_ids')   -- 중복 제거 후
 | 5 포인트 적립 | `points_earned:{YYYY-MM-DD}` | 하루 |
 | 13 픽업됨 | `drop_picked_up:{YYYY-MM-DD-H{0..3}}` | 6시간 |
 | 26 팔로우 | `followed:{YYYY-MM-DD}` | 24시간 |
-| 31 팔로잉 미션 완료 | `following_mission_complete:{mission_id}:{YYYY-MM-DD}` | 24시간 |
-| 9 컬렉션 장착 가능 | `collection_slottable:{item_book_id}` | 상시 (컬렉션 단위) |
 | 11 컬렉션 완성 가능 | `collection_completable:{item_book_id}` + `once` | 장착 전까지 1회 |
 | 20 미션 마일스톤 | `mission_milestone:{mission_id}:{50\|80}` + `once` | 구간당 1회 |
-| 32·34 지역 드랍 | `{type}:{YYYY-MM-DD}` | 하루 |
 | 40 Strava 끊김 | `strava_disconnected:{YYYY-MM-DD}` + `once` | 하루 1회 (폭주 방지) |
+| **T2 배치 13종** | **전부 `group_key` + `once`** — §4-3 | — |
 | **묶지 않는 소식** | **NULL** | — |
 
 > **시간창은 전부 KST 기준으로 계산한다**(2026-08-24 확정). UTC로 두면 일 단위 키가 KST 09:00에
 > 날짜가 바뀌어, 아침에 받은 포인트와 저녁에 받은 포인트가 다른 묶음이 된다. 티켓 20260824_006에서
 > `event_at`을 로컬 벽시계로 오해석한 전례가 있다.
 >
-> **배치(021)는 시작 시각을 한 번 캡처해 모든 키 빌더에 넘길 것.** 빌더가 `at`을 생략하면
+> **배치(025)는 시작 시각을 한 번 캡처해 모든 키 빌더에 넘긴다.** 빌더가 `at`을 생략하면
 > 각각 `new Date()`를 평가하므로, KST 자정을 걸쳐 도는 배치가 두 날짜 키로 갈릴 수 있다.
+> `createBatchContext()`가 `startedAt`을 한 번 만들어 8개 단계 전부에 넘기는 구조로 못박았다.
 
-`group_key`가 NULL인 소식(2·7·10·11·18·20~24·27·29·30·40~45)은 UNIQUE 인덱스의 부분 조건
-(`WHERE group_key IS NOT NULL`)에서 제외되므로 항상 새 행으로 쌓인다.
+`group_key`가 NULL인 소식(2·7·22·27·44·45)은 UNIQUE 인덱스의 부분 조건
+(`WHERE group_key IS NOT NULL`)에서 제외되므로 항상 새 행으로 쌓인다. **T1 인라인 생성 소식만
+NULL을 쓴다** — 아래 §4-3 참고.
+
+### 4-3. T2 배치 소식은 전부 `group_key` + `once`다 (2026-08-25 확정 / 티켓 20260825_002)
+
+**cron은 재시도된다.** `group_key`가 NULL이면 중복 방지 수단이 DB에 전혀 없어, 배치가 매번
+SELECT로 존재를 확인해야 하고 그 확인과 INSERT 사이에 재시도가 끼면 중복이 그대로 샌다.
+그래서 T2 13종은 예외 없이 키를 갖고 `merge`가 아니라 `once`로 만든다 —
+**중복 방지를 코드가 아니라 UNIQUE 인덱스가 한다.**
+
+`merge`를 쓰지 않는 이유도 같다. 배치는 매일 도는데 `merge`는 충돌 시 막는 게 아니라
+`updated_at`을 갱신한다. 상태가 유지되는 동안 **매일 dot이 다시 켜져** 반복 발송과 같아진다
+(PRD §2-4가 금지한 다크패턴).
+
+| 소식 | `group_key` | 재발화 시점 |
+|---|---|---|
+| 9 컬렉션 장착 가능 | `collection_slottable:{item_book_id}:{최신 미장착 아이템의 획득 KST일자}` | 그 컬렉션에 넣을 **새 아이템**이 들어왔을 때 |
+| 10 완성 임박 | `collection_near_complete:{item_book_id}` | 없음 (컬렉션당 평생 1회) |
+| 18 내 드랍 지점 활성 | `drop_spot_active:{poi_id}:{KST주}` | 다음 주 |
+| 21 마감 임박 | `mission_deadline:{mission_id}:{YYYY-MM-DD}` | D-2는 하루뿐이라 사실상 미션당 1회 |
+| 23 순위 상승 | `mission_rank_up:{mission_id}:{YYYY-MM-DD}` | 다음 날 다시 올랐을 때 |
+| 24 종료 결과 | `mission_ended:{mission_id}` | 없음 (미션당 1회) |
+| 29 팔로잉 희귀 배지 | `following_rare_badge:{badge_id}:{actor_id}` | 없음 |
+| 30 팔로잉 컬렉션 완성 | `following_collection_complete:{item_book_id}:{actor_id}` | 없음 |
+| 31 팔로잉 미션 완료 | `following_mission_complete:{mission_id}:{YYYY-MM-DD}` | 다음 날 |
+| 32 팔로잉 근처 드랍 | `following_nearby_drop:{YYYY-MM-DD}` | 다음 날 |
+| 34 주변 신규 드랍 | `nearby_drops:{YYYY-MM-DD}` | 다음 날 |
+| 41 동기화 지연 | `sync_stalled:{정체 시작 KST일자}` | **다시 동기화한 뒤 또 정체됐을 때** |
+| 42 인벤토리 포화 | `inventory_full:{YYYY-MM-DD}` | 7일 뒤 (배치가 최근 발송 이력을 확인) |
+
+> **#9·#41의 키에 날짜가 아니라 "상태의 시작 시점"이 들어간 이유.** 일자 키를 쓰면 상태가
+> 유지되는 동안 매일 새 소식이 나간다. 상태가 바뀔 때만 키가 바뀌도록 만들면 `once` 하나로
+> "해소될 때까지 침묵"이 구현된다.
+>
+> **#42만 예외적으로 발송 이력 SELECT를 한다.** 인벤토리에는 "언제부터 꽉 찼는가"를 알 수 있는
+> 데이터가 없어 상태 시작 시점을 키에 넣을 수 없다. 대신 일자 키로 재시도 멱등성을 확보하고,
+> 최근 7일 내 발송 이력이 있으면 건너뛴다.
 
 ### 3계층 압축 정책
 
@@ -409,6 +477,15 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 | `poi_views.viewed_on` 기준 | **KST** — 하루 중복 억제가 UTC 기준이면 KST 09:00에 어긋난다 |
 | #18 "다녀갔다" | **POI 열람 고유 인원**, 본인 제외 (§2-1) |
 | #32 "활동 지역" 매칭 | **`users.region` 문자열 일치** |
+
+### 2026-08-25 확정 (티켓 20260825_002 — T2 배치)
+
+| 항목 | 확정 |
+|---|---|
+| T2 13종의 `group_key` | **전부 키를 갖고 `once`.** NULL이면 cron 재시도 시 중복이 새고, `merge`면 상태가 유지되는 동안 매일 dot이 다시 켜진다 (§4-3) |
+| #23 순위 기준선 | **`mission_rank_snapshots` 테이블 신설** (§2-2). 첫 배치는 기준선만 남긴다 |
+| #42 문구 vs 임계값 | **생성 조건을 잔여 0칸으로 좁힌다.** 문구가 「꽉 찼어요」라 잔여 3칸에 보내면 사실과 다르다. `INVENTORY_LOW_SLOTS_THRESHOLD`는 후보 스캔과 T3 경고 재평가에 계속 쓴다 |
+| ⑥ 하루 상한 2건의 선별 | **희귀도 단독**(PRD §9). 희귀도 축이 없는 #30·#31·#32는 "얻기 어려운 순"(컬렉션 완성 > 미션 완료 > 근처 드랍) 고정 우선순위, 동순위는 최근 이벤트 우선 |
 
 ### 남은 질문
 
