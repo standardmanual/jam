@@ -185,7 +185,9 @@ export default function TabBar({ username }: TabBarProps) {
       // 20260823_003: 재질(반투명 흰 필) — bg-surface-inverse(불투명) → jam-tabbar-chrome
       // (transitions.css, --color-chrome-bg-inverse/--blur-chrome 참조 — DS TabBar.jsx와 값 공유)
       className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[398px] h-16 rounded-[var(--radius-pill-buttons)] jam-tabbar-chrome flex items-center justify-between px-1 z-40"
-      style={{ bottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
+      // 20260824_013: 32px 더 내림(원래 16px 여백 - 32px) — safe-area가 0인 기기에서
+      // 음수로 화면 밖으로 밀리지 않도록 0px로 clamp(DS TabBar.jsx와 동일 공식).
+      style={{ bottom: 'max(0px, calc(env(safe-area-inset-bottom) + 16px - 32px))' }}
     >
       {tabs.map((tab) => {
         const active = isActive(tab.href)

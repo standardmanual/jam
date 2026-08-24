@@ -61,8 +61,10 @@ export function TabBar({ active = 'today', onChange }) {
     <style>{STATIC_CSS}</style>
     <nav className="ds-tabbar-chrome" style={{
       position: 'fixed', left: '50%', transform: 'translateX(-50%)',
-      /* v2: safe-area-inset-bottom prevents overlap with iPhone home indicator */
-      bottom: 'calc(var(--spacing-16) + var(--spacing-safe-bottom))',
+      /* v2: safe-area-inset-bottom prevents overlap with iPhone home indicator.
+         20260824_013: 32px 더 내림(원래 16px 여백 - 32px) — safe-area가 0인 기기에서
+         음수로 화면 밖으로 밀리지 않도록 0px로 clamp. */
+      bottom: 'max(0px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px))',
       width: 'calc(100% - 32px)', maxWidth: 398, height: 64,
       borderRadius: 'var(--radius-pill)',
       // 20260816_012: 보더 제거 — 재질(반투명 크롬)이 다크 배경 위에서 blur로 구분됨
