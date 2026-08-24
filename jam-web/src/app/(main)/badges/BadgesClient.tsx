@@ -6,6 +6,7 @@ import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import CollectionGridCard from '@/components/ui/CollectionGridCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
+import TopNav from '@/components/ui/TopNav'
 import { MedalIcon, PinIcon, BookIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
@@ -157,8 +158,11 @@ export default function BadgesClient({ badges, itemBooks, itemBookProgress, poiB
 
   return (
     <div className="min-h-full bg-surface text-text">
+      {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
+      <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+
       {/* 헤더 — 인벤토리/미션과 동일한 크기의 타이틀 */}
-      <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))]">
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.badges.title}</h1>
       </div>
 

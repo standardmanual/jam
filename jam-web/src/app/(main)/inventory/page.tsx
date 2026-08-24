@@ -5,6 +5,7 @@ import { InventoryRow, InventoryItemRow, BadgeRow } from '@/types/database'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import TopNav from '@/components/ui/TopNav'
 import { PackageIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 
@@ -50,7 +51,11 @@ export default async function InventoryPage() {
   }))
 
   return (
-    <div className="px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-24)] min-h-full bg-surface text-text">
+    <div className="min-h-full bg-surface text-text">
+      {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
+      <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-24)]">
       {/* 헤더 */}
       <div className="mb-[var(--spacing-24)]">
         <div className="flex items-start justify-between mb-[var(--spacing-16)]">
@@ -89,6 +94,7 @@ export default async function InventoryPage() {
           emptySlots={Math.min(remainingSlots, Math.max(0, 6 - items.length))}
         />
       )}
+      </div>
     </div>
   )
 }
