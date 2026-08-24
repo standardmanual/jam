@@ -2,7 +2,7 @@
  * 알림(소식) 문구 렌더러 + 착지점 계산 + 시간 구간 + ⑧ 경고 재평가
  * 티켓 20260824_021
  *
- * PRD §3의 28종 표가 이 코드의 명세라, 표의 **예시 문구를 그대로 단언**한다.
+ * PRD §3의 26종 표가 이 코드의 명세라, 표의 **예시 문구를 그대로 단언**한다.
  * 문구가 바뀌면 테스트가 먼저 깨져야 한다.
  */
 import type { NotificationType } from '@/types/database'
@@ -106,7 +106,7 @@ describe('① 보상 획득', () => {
 
   it('#2 희귀 배지 — 등급 라벨도 payload 슬롯이므로 볼드다', () => {
     // rarity는 payload에서 오는 값이다. 템플릿에 합쳐 고정 텍스트로 두면
-    // 28종 중 이 2종만 §5 "슬롯=볼드" 규칙의 예외가 된다(20260825 정정).
+    // 26종 중 이 2종만 §5 "슬롯=볼드" 규칙의 예외가 된다(20260825 정정).
     const v = view('rare_badge_earned', {
       badge_id: 'b1',
       badge_name: '별을 삼킨 바퀴',
@@ -234,7 +234,7 @@ describe('④ 미션', () => {
   })
 })
 
-describe('⑤⑥⑦ 소셜·발견', () => {
+describe('⑤⑥ 소셜', () => {
   it('#26 팔로우 — 1명 / 2명 나열 / 3명+ 축약', () => {
     expect(text(view('followed', { actor_ids: ['a1'] }, { actor: ACTOR }))).toBe(
       '예린님이 시현님을 팔로우해요'
@@ -273,7 +273,7 @@ describe('⑤⑥⑦ 소셜·발견', () => {
     ).toBe("예린님이 '잃어버린 시간'을 다 모았어요")
   })
 
-  it('#31 팔로잉 미션 완료 / #32 근처 드랍 / #34 주변 신규 드랍', () => {
+  it('#31 팔로잉 미션 완료', () => {
     expect(
       text(
         view(
@@ -283,12 +283,6 @@ describe('⑤⑥⑦ 소셜·발견', () => {
         )
       )
     ).toBe("예린님 외 2명이 '한강 100km'를 완료했어요")
-    expect(
-      text(view('following_nearby_drop', { poi_id: 'p1', region: '서울' }, { actor: ACTOR }))
-    ).toBe('예린님이 시현님 활동 지역에 아이템 배지를 드랍했어요')
-    expect(text(view('nearby_drops', { count: 5, region: '서울' }))).toBe(
-      '시현님 활동 지역에 아이템 배지 5개가 새로 떨어졌어요'
-    )
   })
 })
 
@@ -383,11 +377,8 @@ describe('착지점 — type + payload로 런타임 계산 (PRD §3)', () => {
     )
   })
 
-  it('#18·#32는 지도 카메라 이동(`/drops?poi=`)', () => {
+  it('#18은 지도 카메라 이동(`/drops?poi=`)', () => {
     expect(notificationTarget(view('drop_spot_active', { poi_id: 'p1' })).href).toBe('/drops?poi=p1')
-    expect(
-      notificationTarget(view('following_nearby_drop', { poi_id: 'p1' }, { actor: ACTOR })).href
-    ).toBe('/drops?poi=p1')
   })
 
   it('2단 타겟 — 아바타는 사람, 본문은 대상', () => {

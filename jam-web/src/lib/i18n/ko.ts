@@ -577,7 +577,7 @@ export const ko = {
 
   /**
    * 알림(소식)함 — 20260824_021
-   * 문구 규칙: Specs/PRD/Notification/PRD.md §3(28종 표) · §5(강조 규칙)
+   * 문구 규칙: Specs/PRD/Notification/PRD.md §3(26종 표) · §5(강조 규칙)
    *
    * `{슬롯}`은 payload에서 채워지는 변수이며 **렌더러가 자동으로 볼드 처리**한다.
    * 고정 텍스트는 일반체, 컬러 강조는 쓰지 않는다. 소식마다 강조 지점을 따로 정의하지 않는다.
@@ -672,10 +672,6 @@ export const ko = {
     msgFollowingCollectionComplete: "{actor}님이 '{bookName}'{을/를} 다 모았어요",
     msgFollowingMissionCompleteOne: "{actor}님이 '{missionTitle}'{을/를} 완료했어요",
     msgFollowingMissionCompleteMany: "{actor}님 외 {others}이 '{missionTitle}'{을/를} 완료했어요",
-    msgFollowingNearbyDrop: '{actor}님이 {me}님 활동 지역에 아이템 배지를 드랍했어요',
-
-    // ── ⑦ 발견 ──
-    msgNearbyDrops: '{me}님 활동 지역에 {itemCount}가 새로 떨어졌어요',
 
     // ── ⑧ 계정·시스템 (경고 스타일 — 렌더 시점에 현재 상태로 재평가) ──
     msgStravaDisconnected: 'Strava 동기화가 끊겼어요. 다시 동기화해야 배지를 획득할 수 있어요',

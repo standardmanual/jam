@@ -64,8 +64,6 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'drop_picked_up':
       return <GiftIcon className={className} />
     case 'drop_spot_active':
-    case 'following_nearby_drop':
-    case 'nearby_drops':
       return <PinIcon className={className} />
     case 'mission_milestone':
     case 'mission_deadline':
