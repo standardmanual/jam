@@ -133,6 +133,11 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     'id' | 'badge_id' | 'slotted_at'
   >[]
 
+  // 타인 열람 시 아이템배지 슬롯이 0개인 컬렉션은 상세 접근 자체를 막는다(20260824_016).
+  // 배지가 애초에 없는 컬렉션(badges.length === 0)과는 별개 조건이므로 여기서 분리 처리.
+  // 본인 열람(isOwnBook)은 예외 없이 항상 접근 가능.
+  if (!isOwnBook && slots.length === 0) notFound()
+
   const slotsMap = new Map(slots.map((s) => [s.badge_id, s]))
   const inventoryMap = new Map<
     string,

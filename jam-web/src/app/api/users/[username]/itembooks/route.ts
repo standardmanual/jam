@@ -2,7 +2,7 @@
 // 해당 유저가 발견한 아이템북 목록 + 진행도
 
 import { NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRarity } from '@/types/database'
 
 export async function GET(
@@ -11,6 +11,9 @@ export async function GET(
 ) {
   const { username } = await params
   const service = createServiceClient()
+
+  const supabase = await createClient()
+  const { data: { user: currentUser } } = await supabase.auth.getUser()
 
   const { data: targetRaw } = await service
     .from('users')
@@ -79,6 +82,8 @@ export async function GET(
   }
   const completedSet = new Set(((completionsRaw ?? []) as { item_book_id: string }[]).map(c => c.item_book_id))
 
+  const isOwnList = currentUser?.id === userId
+
   type BookRaw = { id: string; name: string; image_url: string | null; faction: { name: string } | null }
   const books = ((booksRaw ?? []) as unknown as BookRaw[])
     .map(book => ({
@@ -91,6 +96,9 @@ export async function GET(
       isCompleted: completedSet.has(book.id),
       rarity: rarityByBook.get(book.id) ?? 'common',
     }))
+    // 타인이 볼 때는 아이템배지 슬롯이 0개인 컬렉션을 숨긴다(20260824_016).
+    // 본인 열람(isOwnList)은 예외 없이 항상 노출.
+    .filter(book => isOwnList || book.slottedCount > 0)
     .sort((a, b) => {
       if (a.isCompleted !== b.isCompleted) return a.isCompleted ? -1 : 1
       return b.slottedCount - a.slottedCount
