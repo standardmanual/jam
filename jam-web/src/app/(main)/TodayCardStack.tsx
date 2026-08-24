@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import type { ComponentType, SVGProps } from 'react'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
+import SafeImage from '@/components/SafeImage'
 import { d } from '@/lib/i18n'
 import {
   MedalIcon,
@@ -53,11 +53,14 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
       className="overflow-hidden active:scale-[0.98] transition-transform duration-100"
       style={{ padding: 0 }}
     >
-      {cover && (
-        <div className="relative w-full aspect-[16/9] overflow-hidden">
-          <Image src={cover} alt={card.title} fill className="object-cover" />
-        </div>
-      )}
+      {/* 20260824_004: cover_image_url은 어드민 자유 입력이라 호스트를 알 수 없다.
+          next/image에 그대로 넘기면 미등록 호스트에서 홈 화면 전체가 죽는다 → SafeImage 경유 */}
+      <SafeImage
+        src={cover}
+        alt={card.title}
+        containerClassName="relative w-full aspect-[16/9] overflow-hidden"
+        className="object-cover"
+      />
       <div className="p-[var(--spacing-24)]">
         <div className="flex items-center gap-2 mb-2">
           <TemplateChip card={card} />
@@ -98,11 +101,14 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
             <div key={b.id} className="flex flex-col items-center gap-1 shrink-0 w-16">
               {/* 20260816_012: 보더 제거 — 흰 카드 위 썸네일이라 4% 블랙 틴트로 구분 */}
               <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center">
-                {b.image_url ? (
-                  <Image src={b.image_url} alt={b.name} width={64} height={64} className="w-full h-full object-cover" />
-                ) : (
-                  <MedalIcon className="w-6 h-6 text-text-inverse/40" />
-                )}
+                <SafeImage
+                  src={b.image_url}
+                  alt={b.name}
+                  width={64}
+                  height={64}
+                  className="w-full h-full object-cover"
+                  fallback={<MedalIcon className="w-6 h-6 text-text-inverse/40" />}
+                />
               </div>
               <span className="text-[length:var(--text-caption)] text-text-inverse/70 text-center leading-tight line-clamp-2">{b.name}</span>
             </div>
@@ -131,7 +137,16 @@ function ShortcutCard({ card }: { card: TodayCardWithHref }) {
   )
 }
 
-/** 배너형 — 4:5 비율 포스터 배너, 이미지 위 텍스트 오버레이(하단 그라디언트). 커버 이미지가 없으면 일반 카드로 대체(스크림은 사진 전제이므로 이미지 없이 쓰면 배경이 무의미하게 어두워짐). */
+/**
+ * 배너형 — 4:5 비율 포스터 배너, 이미지 위 텍스트 오버레이(하단 그라디언트).
+ * 커버 이미지가 없으면 일반 카드로 대체(스크림은 사진 전제이므로 이미지 없이 쓰면 배경이
+ * 무의미하게 어두워짐).
+ *
+ * 20260824_004: "커버가 없는 경우"와 달리 "커버는 있는데 로드에 실패한 경우"는 서버 렌더
+ * 시점에 알 수 없어 OtherCard로 대체할 수 없다(이 컴포넌트는 서버 컴포넌트다). 대신
+ * SafeImage의 fallback으로 어두운 플레이트를 깔아 스크림 전제를 유지한다 — 이게 없으면
+ * 흰 배경(bg-surface-inverse) 위에 검은 스크림과 흰 텍스트가 남아 부제 대비가 무너진다.
+ */
 function BannerCard({ card }: { card: TodayCardWithHref }) {
   const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
 
@@ -141,7 +156,13 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
 
   return (
     <article className="relative rounded-[var(--radius-cards)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
-      <Image src={cover} alt={card.title} fill className="object-cover" />
+      <SafeImage
+        src={cover}
+        alt={card.title}
+        containerClassName="absolute inset-0"
+        className="object-cover"
+        fallback={<div className="absolute inset-0 bg-black" aria-hidden="true" />}
+      />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-24)] pt-10 pb-[var(--spacing-24)]">
         <div className="mb-2">
