@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -68,15 +68,21 @@ export interface TopNavProps {
 
 export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false }: TopNavProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { username, avatarUrl, stravaConnected } = useTopNavData()
 
   const handleBack = backHref ? () => router.push(backHref) : (onBack ?? (() => router.back()))
   const profileHref = username ? `/${username}` : '/profile'
 
-  // 루트 화면 판정 — back chevron이 없으면 루트다(로고 모드이거나 showBack=false).
-  // 타인 프로필은 back+닉네임 타이틀이라 자동으로 제외되고, TopNav 자체가 없는 /drops도 마찬가지다.
+  // 알림 종 노출 판정 — 두 경우에 보인다.
+  //  1) 루트 화면: back chevron이 없으면 루트다(로고 모드이거나 showBack=false).
+  //     타인 프로필은 back+닉네임 타이틀이라 자동 제외되고, TopNav 자체가 없는 /drops도 마찬가지다.
+  //  2) 알림함 자신: back 모드지만 내비게이션 일관성을 위해 종을 유지한다(20260825 요청).
+  //     이미 알림함이므로 링크는 제자리를 가리키지만, 우측 아이콘 구성이 화면마다
+  //     달라지지 않는 편이 낫다는 판단이다.
   const isRootScreen = logo || !showBack
-  const composedRightSlot = isRootScreen ? (
+  const isNotificationsScreen = pathname === '/notifications'
+  const composedRightSlot = isRootScreen || isNotificationsScreen ? (
     <>
       {rightSlot}
       <NotificationBell />

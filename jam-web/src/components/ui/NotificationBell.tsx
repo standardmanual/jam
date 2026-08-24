@@ -14,7 +14,8 @@ import { d } from '@/lib/i18n'
  *   (PRD §2-4 게이미피케이션 윤리).
  * - 버블은 **아이콘 바깥의 별도 엘리먼트**다 — 아이콘 세트의 "제3의 컬러 도입 금지" 규칙을
  *   지키려면 색이 SVG 안으로 들어가면 안 된다.
- * - 노출 판정(루트 화면에만)은 이 컴포넌트가 아니라 서비스 `TopNav` 래퍼가 한다.
+ * - 노출 판정(루트 화면 + 알림함)은 이 컴포넌트가 아니라 서비스 `TopNav` 래퍼가 한다.
+ * - 형태는 우측 프로필 아바타와 맞춘다 — 44×44 터치영역 안에 36px 서클, 16px 아이콘.
  *
  * ## 점은 조건부 렌더가 아니라 항상 마운트한다 (2차 보강)
  *
@@ -33,23 +34,23 @@ export default function NotificationBell() {
   return (
     <Link
       href="/notifications"
-      // 낙관적 해제 — 알림함은 title 모드라 종이 없다. 여기서 끄지 않으면
-      // [종 탭] → [알림함(종 없음)] → [마운트 후 해제] → [뒤로 가면 이미 깨끗함] 순서라
-      // 원인과 결과가 같은 프레임에 보이지 않는다. 서버가 잡는 seen_at 스냅샷은
-      // page.tsx가 별도로 읽으므로 영향이 없고, 실패 시 복구는 topNavData의
-      // serverDot 동기화가 처리한다.
+      // 낙관적 해제 — 누른 프레임에 점이 scale(0)+blur로 빨려 들어가야 원인(내가 눌렀다)과
+      // 결과(버블이 꺼졌다)가 같은 프레임에 보인다. 서버가 잡는 seen_at 스냅샷은 page.tsx가
+      // 별도로 읽으므로 영향이 없고, 조회 실패 시에는 NotificationsClient가
+      // restoreNotificationDot()으로 되돌린다.
       onPointerDown={clearNotificationDot}
       aria-label={
         hasUnreadNotifications
           ? `${d.notifications.bellLabel}, ${d.notifications.unreadDotLabel}`
           : d.notifications.bellLabel
       }
-      className="relative w-11 h-11 flex items-center justify-center shrink-0 text-text active:scale-95 transition-transform duration-100"
+      className="w-11 h-11 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
     >
-      {/* .t-badge의 기준이 되는 박스 = 아이콘 자신. 44px 터치영역을 기준으로 잡으면
-          점이 터치영역 모서리로 밀려나 종에서 떨어져 보인다. */}
-      <span className="relative flex">
-        <BellIcon className="w-6 h-6" />
+      {/* 프로필 아바타와 동일한 형태 — 44×44 터치영역 안에 36px 서클, 그 안에 16px 아이콘.
+          .t-badge의 기준 박스는 서클 자신이다(44px 터치영역을 기준으로 잡으면 점이
+          모서리로 밀려나 종에서 떨어져 보인다). */}
+      <span className="relative w-9 h-9 rounded-[var(--radius-pill)] bg-surface-elevated text-text flex items-center justify-center">
+        <BellIcon className="w-4 h-4" />
         <span className="t-badge jam-bell-dot" data-open={hasUnreadNotifications} aria-hidden="true">
           <span
             className="t-badge-dot w-2 h-2 rounded-[var(--radius-pill)]"
