@@ -28,9 +28,13 @@ export const IMAGE_REMOTE_PATTERNS = [
     pathname: '/storage/v1/object/public/**',
   },
   {
-    // Google OAuth 프로필 아바타
+    // Google OAuth 프로필 아바타.
+    // 구글은 같은 아바타를 lh3/lh4/lh5/lh6 등 여러 호스트로 내려준다. auth/callback/route.ts도
+    // `includes('googleusercontent')`로 느슨하게 판정해 저장하므로, lh3만 등록해 두면 lh4가
+    // 저장되는 순간 프로필·검색·팔로워 화면이 통째로 500이 된다 (20260824_005).
+    // `*.`는 서브도메인 한 단계만 매칭한다(next/image 규칙과 동일).
     protocol: 'https' as const,
-    hostname: 'lh3.googleusercontent.com',
+    hostname: '*.googleusercontent.com',
     pathname: '/**',
   },
 ]
@@ -48,6 +52,24 @@ function matchesPathname(pattern: string, pathname: string): boolean {
     return prefix === '' ? pathname.startsWith('/') : pathname === prefix || pathname.startsWith(`${prefix}/`)
   }
   return pathname === pattern
+}
+
+/**
+ * `hostname`이 패턴에 맞는지 본다. `*.` 접두는 **서브도메인 한 단계만** 매칭한다
+ * (`*.googleusercontent.com` → `lh3.googleusercontent.com` O, `a.b.googleusercontent.com` X).
+ *
+ * next/image의 와일드카드 규칙과 같지만, 여기서도 `matchesPathname`과 동일하게
+ * **의도적으로 보수적**이다 — 덜 매칭되면 `<img>`로 내려가 최적화만 놓치고,
+ * 더 매칭되면 화면이 죽기 때문이다.
+ */
+function matchesHostname(pattern: string, hostname: string): boolean {
+  if (pattern.startsWith('*.')) {
+    const suffix = pattern.slice(1) // '.googleusercontent.com'
+    if (!hostname.endsWith(suffix)) return false
+    const label = hostname.slice(0, hostname.length - suffix.length)
+    return label.length > 0 && !label.includes('.')
+  }
+  return hostname === pattern
 }
 
 /**
@@ -71,7 +93,7 @@ export function isOptimizableImageSrc(src: string | null | undefined): boolean {
     return IMAGE_REMOTE_PATTERNS.some(
       (p) =>
         url.protocol === `${p.protocol}:` &&
-        url.hostname === p.hostname &&
+        matchesHostname(p.hostname, url.hostname) &&
         matchesPathname(p.pathname, url.pathname)
     )
   } catch {

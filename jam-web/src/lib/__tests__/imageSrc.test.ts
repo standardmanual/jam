@@ -19,6 +19,23 @@ describe('isOptimizableImageSrc', () => {
     expect(isOptimizableImageSrc('https://lh3.googleusercontent.com/a/abc')).toBe(true)
   })
 
+  /* 20260824_005 — 구글은 같은 아바타를 lh3~lh6 등 여러 호스트로 내려주고
+     auth/callback은 `includes('googleusercontent')`로 느슨하게 저장한다.
+     lh3만 등록돼 있던 초기 구현은 lh4가 저장되는 순간 프로필 화면을 죽였다. */
+  it('구글 아바타는 서브도메인이 달라도 최적화 대상 (*.googleusercontent.com)', () => {
+    expect(isOptimizableImageSrc('https://lh4.googleusercontent.com/a/abc')).toBe(true)
+    expect(isOptimizableImageSrc('https://lh5.googleusercontent.com/a/abc')).toBe(true)
+  })
+
+  it('와일드카드는 서브도메인 한 단계까지만 (보수적 판정)', () => {
+    // 최상위 도메인 자체·2단계 이상 서브도메인은 next/image의 `*.` 규칙에 걸리지 않는다
+    expect(isOptimizableImageSrc('https://googleusercontent.com/a/abc')).toBe(false)
+    expect(isOptimizableImageSrc('https://a.b.googleusercontent.com/a/abc')).toBe(false)
+    // 접미만 같고 경계가 다른 호스트(사칭)를 통과시키면 안 된다
+    expect(isOptimizableImageSrc('https://evilgoogleusercontent.com/a/abc')).toBe(false)
+    expect(isOptimizableImageSrc('https://lh3.googleusercontent.com.evil.kr/a/abc')).toBe(false)
+  })
+
   it('미등록 외부 호스트는 최적화 대상이 아니다 (실제 장애 케이스)', () => {
     expect(isOptimizableImageSrc('https://storage.heypop.kr/assets/2026/04/a.jpeg')).toBe(false)
     expect(isOptimizableImageSrc('https://cdn.news.bbsi.co.kr/news/a.jpg')).toBe(false)

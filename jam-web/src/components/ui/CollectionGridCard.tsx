@@ -1,7 +1,7 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
+import SafeImage from '@/components/SafeImage'
 import { BookIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
@@ -45,13 +45,18 @@ export default function CollectionGridCard({
 
   const content = (
     <>
-      {/* 썸네일 — 투명 배경 정사각형 */}
+      {/* 썸네일 — 투명 배경 정사각형.
+          컬렉션 이미지는 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다. next/image에
+          직접 넘기면 카드 한 장 때문에 그리드가 있는 화면 전체가 500이 된다 (20260824_005).
+          폴백은 이미지가 없을 때와 같은 BookIcon — 카드 골격과 진행도는 그대로 남는다. */}
       <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
-        {imageUrl ? (
-          <Image src={imageUrl} alt={name} fill className="object-contain p-1.5" sizes="50vw" />
-        ) : (
-          <BookIcon className="w-10 h-10 text-text/20" />
-        )}
+        <SafeImage
+          src={imageUrl}
+          alt={name}
+          className="object-contain p-1.5"
+          sizes="50vw"
+          fallback={<BookIcon className="w-10 h-10 text-text/20" />}
+        />
         {/* 태그 행: 등급(선택) + 완성 */}
         {(rarity || completed) && (
           <div className="absolute top-2 left-2 flex items-center gap-1">

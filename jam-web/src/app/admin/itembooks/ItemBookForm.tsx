@@ -356,7 +356,7 @@ export default function ItemBookForm({
         value={imageUrl}
         onChange={setImageUrl}
         folder="itembooks"
-        label="이미지 URL"
+        label="이미지"
       />
 
       <label className="flex flex-col gap-1.5">

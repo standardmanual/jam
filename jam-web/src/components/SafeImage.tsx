@@ -15,6 +15,13 @@ type SafeImageProps = {
   /** 고정 크기로 렌더할 때 지정. 생략하면 컨테이너를 채우는 fill 모드. */
   width?: number
   height?: number
+  /**
+   * fill 모드에서 실제 표시 폭 힌트. 지정하지 않으면 `next/image`가 100vw로 가정해
+   * 필요 이상으로 큰 이미지를 받는다(그리드 셀처럼 작은 칸에서 특히 손해).
+   */
+  sizes?: string
+  /** 화면 최상단에 즉시 보이는 이미지면 true — lazy 로딩을 끄고 우선 로드한다. */
+  priority?: boolean
   /** 이미지가 없거나 로드에 실패했을 때 대신 렌더할 내용 (기본: 아무것도 렌더하지 않음) */
   fallback?: ReactNode
 }
@@ -38,6 +45,8 @@ export default function SafeImage({
   containerClassName,
   width,
   height,
+  sizes,
+  priority = false,
   fallback = null,
 }: SafeImageProps) {
   const [failed, setFailed] = useState(false)
@@ -59,9 +68,9 @@ export default function SafeImage({
 
   const image = isOptimizableImageSrc(value) ? (
     hasFixedSize ? (
-      <Image src={value} alt={alt} width={width} height={height} className={className} onError={onError} ref={detectAlreadyFailed} />
+      <Image src={value} alt={alt} width={width} height={height} sizes={sizes} priority={priority} className={className} onError={onError} ref={detectAlreadyFailed} />
     ) : (
-      <Image src={value} alt={alt} fill className={className} onError={onError} ref={detectAlreadyFailed} />
+      <Image src={value} alt={alt} fill sizes={sizes} priority={priority} className={className} onError={onError} ref={detectAlreadyFailed} />
     )
   ) : (
     // eslint-disable-next-line @next/next/no-img-element -- 어드민 자유 입력 URL은 호스트를 알 수 없어 next/image에 넘길 수 없다
@@ -70,7 +79,8 @@ export default function SafeImage({
       alt={alt}
       width={hasFixedSize ? width : undefined}
       height={hasFixedSize ? height : undefined}
-      loading="lazy"
+      loading={priority ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : undefined}
       decoding="async"
       className={hasFixedSize ? className : `absolute inset-0 w-full h-full ${className ?? ''}`}
       onError={onError}

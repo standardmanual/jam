@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
-import Image from 'next/image'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import SafeImage from '@/components/SafeImage'
 import type { ItemBookRow, FactionRow } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
 import TopNav from '@/components/ui/TopNav'
@@ -154,11 +154,16 @@ export default async function UserItemBooksPage({ params }: Props) {
                 <Link key={book.id} href={`/collections/${book.id}`}>
                   <Card tone="inverse" className="flex flex-col gap-[var(--spacing-8)] active:scale-[0.98] transition-transform duration-100">
                     <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center bg-black/[0.04]">
-                      {book.image_url ? (
-                        <Image src={book.image_url} alt={book.name} fill className="object-contain p-1.5" />
-                      ) : (
-                        <BookIcon className="w-8 h-8 text-text-inverse/40" />
-                      )}
+                      {/* 컬렉션 이미지는 어드민 자유 입력이 가능했던 필드라 SafeImage로 렌더한다.
+                          next/image에 직접 넘기면 카드 한 장이 이 목록 화면 전체를 500으로 만든다
+                          (20260824_005). 폴백은 이미지가 없을 때와 같은 BookIcon. */}
+                      <SafeImage
+                        src={book.image_url}
+                        alt={book.name}
+                        className="object-contain p-1.5"
+                        sizes="50vw"
+                        fallback={<BookIcon className="w-8 h-8 text-text-inverse/40" />}
+                      />
                       {isCompleted && (
                         <span className="absolute top-1.5 right-1.5 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
                           {d.itembooks.completed}
