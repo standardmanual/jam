@@ -16,8 +16,12 @@ export async function generateMetadata({ params }: Props) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeFeedItem(id: string, event_type: ActivityFeedRow['event_type'], event_at: string, metadata: Record<string, any>): ActivityFeedRow {
-  // 피드 테이블에 실기록이 없는 레거시 항목을 화면용으로 합성한 행이다. 실제 기록 시각이
-  // 없으므로 created_at은 event_at으로 채운다 — 이 값을 읽는 화면은 없다(정렬·표시는 event_at).
+  // 피드 테이블에 실기록이 없는 레거시 항목을 화면용으로 합성한 행이다. 여기 넘어오는
+  // event_at 인자는 각 원본 테이블 자신의 기록 시각 컬럼이다(earned_at/obtained_at/
+  // dropped_at/picked_up_at/completed_at/joined_at) — Strava 활동 시각이 아니라 원래도
+  // DB 기록 시각이므로, created_at도 동일 값으로 채우는 게 정확하다.
+  // 20260824_006 — 정렬·표시 기준이 event_at에서 created_at으로 바뀌었으므로 이 값을
+  // 읽는 화면이 생겼다(FeedSection.tsx, 아래 allItems.sort).
   return { id, user_id: '', event_type, event_at, created_at: event_at, metadata }
 }
 
@@ -73,7 +77,9 @@ export default async function UserProfilePage({ params }: Props) {
   // ─── 프로필 / Strava / 피드 (대상 유저 기준) ──────────────────────────
   const [stravaResult, feedResult, invResult] = await Promise.all([
     service.from('strava_connections').select('*').eq('user_id', subjectId).maybeSingle(),
-    service.from('user_activity_feed').select('*').eq('user_id', subjectId).order('event_at', { ascending: false }).limit(150),
+    // 20260824_006 — 정렬 기준을 event_at(Strava 활동 시각, 로컬 벽시계 오해석 버그로
+    // 미래로 찍힐 수 있었다)에서 created_at(행이 DB에 기록된 시각, 항상 정확)으로 변경.
+    service.from('user_activity_feed').select('*').eq('user_id', subjectId).order('created_at', { ascending: false }).limit(150),
     service.from('inventory').select('id').eq('user_id', subjectId).maybeSingle(),
   ])
 
@@ -277,7 +283,9 @@ export default async function UserProfilePage({ params }: Props) {
   const badgeCount = (badgeCountResult.count ?? 0) + poiBadgeCount
 
   const allItems = [...feedItems, ...legacyItems]
-  allItems.sort((a, b) => new Date(b.event_at).getTime() - new Date(a.event_at).getTime())
+  // 20260824_006 — 표시·정렬 기준을 created_at으로 통일한다. event_at을 쓰면 정렬
+  // 순서와 화면에 보이는 상대시간이 서로 모순될 수 있다(표시값과 정렬 키가 달라서).
+  allItems.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   return (
     <ProfileClient

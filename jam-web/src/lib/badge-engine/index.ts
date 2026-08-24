@@ -718,7 +718,11 @@ export async function evaluateBadgesDetailed(
         triggered_by_strava_id: triggerActivity?.stravaId ?? null,
         triggered_by_activity_name: triggerActivity?.name ?? null,
         triggered_by_distance_km: triggerActivity?.distanceKm ?? null,
-        triggered_by_activity_date: triggerActivity?.startDateLocal ?? triggerActivity?.startDate ?? null,
+        // 20260824_006 — Strava startDateLocal은 로컬 벽시계에 Z를 붙인 값이라(진짜 UTC
+        // 아님) timestamptz에 그대로 넣으면 최대 +9시간 미래로 오해석된다. 이 필드는
+        // 배지 상세 화면(badges/[id]/page.tsx)에 "계기 활동일"로 사용자에게 노출되므로
+        // 반드시 진짜 UTC인 startDate만 쓴다.
+        triggered_by_activity_date: triggerActivity?.startDate ?? null,
         condition_snapshot: conditionSnapshot,
       }
       // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgeRow와 일치
@@ -741,13 +745,15 @@ export async function evaluateBadgesDetailed(
       }
 
       if (!silent) {
+        // 20260824_006 — event_at도 위와 동일한 이유로 startDate(진짜 UTC)만 쓴다.
+        // startDateLocal을 쓰면 피드 event_at이 미래로 찍힌다(프로덕션 실측 최대 +7.84h).
         await recordFeedEvent(userId, 'badge_earned', {
           badge_id: toIssue.id,
           badge_name: toIssue.name,
           badge_image_url: toIssue.image_url ?? '',
           rarity: toIssue.rarity,
           ...(pointReward > 0 ? { point_reward: pointReward } : {}),
-        }, triggerActivity?.startDateLocal ?? triggerActivity?.startDate ?? undefined)
+        }, triggerActivity?.startDate ?? undefined)
       }
     }
   }

@@ -22,9 +22,12 @@ import type { StravaSummaryActivity } from '@/types/strava'
 // 미치는 영향을 검증한다.
 const dropState = vi.hoisted(() => ({ current: null as string | null }))
 
+// 20260824_006 — 실제 tryItemDrop은 startDate(진짜 UTC)만 쓰도록 고쳤다(startDateLocal은
+// 로컬 벽시계에 Z를 붙인 값이라 timestamptz 오해석 버그의 원인이었다). 이 모킹도 동일하게
+// 맞춰야 sync.ts의 last_activity_at 불일치 가드(같은 기준으로 함께 고쳤다)와 어긋나지 않는다.
 vi.mock('@/lib/drop-engine/index', () => ({
   tryItemDrop: vi.fn(async (_userId: string, activity: { startDateLocal?: string; startDate: string }) => {
-    dropState.current = activity.startDateLocal ?? activity.startDate
+    dropState.current = activity.startDate
     return []
   }),
 }))
@@ -168,7 +171,7 @@ describe('processFetchedActivities — 드랍 처리 순서와 last_activity_at 
     )
 
     expect(result).toBeDefined()
-    expect(dropState.current).toBe(newest.start_date_local)
+    expect(dropState.current).toBe(newest.start_date)
     // 순서가 정상이면(가드 통과) 불일치 경고 로그가 남지 않는다.
     expect(logEngineDecision).not.toHaveBeenCalledWith(
       'drop',
@@ -199,6 +202,6 @@ describe('processFetchedActivities — 드랍 처리 순서와 last_activity_at 
       'sync'
     )
 
-    expect(dropState.current).toBe(newer.start_date_local)
+    expect(dropState.current).toBe(newer.start_date)
   })
 })
