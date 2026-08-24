@@ -45,9 +45,11 @@ export async function GET(req: NextRequest) {
   const badgeIds = [...new Set(page.items.filter((t) => t.source_badge_id).map((t) => t.source_badge_id as string))]
   const missionIds = [...new Set(page.items.filter((t) => t.source_mission_id).map((t) => t.source_mission_id as string))]
 
+  // 소프트 삭제된 배지(badges.deleted_at)는 이름을 노출하지 않는다(20260824_007) — 매치가
+  // 안 되면 아래 title 계산에서 REASON_KIND의 일반 사유 라벨("배지 보상")로 자동 대체된다.
   const [badgesRes, missionsRes] = await Promise.all([
     badgeIds.length > 0
-      ? service.from('badges').select('id, name').in('id', badgeIds)
+      ? service.from('badges').select('id, name').in('id', badgeIds).is('deleted_at', null)
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     missionIds.length > 0
       ? service.from('missions').select('id, title').in('id', missionIds)
