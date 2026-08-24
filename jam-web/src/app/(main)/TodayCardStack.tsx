@@ -137,7 +137,16 @@ function ShortcutCard({ card }: { card: TodayCardWithHref }) {
   )
 }
 
-/** 배너형 — 4:5 비율 포스터 배너, 이미지 위 텍스트 오버레이(하단 그라디언트). 커버 이미지가 없으면 일반 카드로 대체(스크림은 사진 전제이므로 이미지 없이 쓰면 배경이 무의미하게 어두워짐). */
+/**
+ * 배너형 — 4:5 비율 포스터 배너, 이미지 위 텍스트 오버레이(하단 그라디언트).
+ * 커버 이미지가 없으면 일반 카드로 대체(스크림은 사진 전제이므로 이미지 없이 쓰면 배경이
+ * 무의미하게 어두워짐).
+ *
+ * 20260824_004: "커버가 없는 경우"와 달리 "커버는 있는데 로드에 실패한 경우"는 서버 렌더
+ * 시점에 알 수 없어 OtherCard로 대체할 수 없다(이 컴포넌트는 서버 컴포넌트다). 대신
+ * SafeImage의 fallback으로 어두운 플레이트를 깔아 스크림 전제를 유지한다 — 이게 없으면
+ * 흰 배경(bg-surface-inverse) 위에 검은 스크림과 흰 텍스트가 남아 부제 대비가 무너진다.
+ */
 function BannerCard({ card }: { card: TodayCardWithHref }) {
   const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
 
@@ -147,7 +156,13 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
 
   return (
     <article className="relative rounded-[var(--radius-cards)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
-      <SafeImage src={cover} alt={card.title} containerClassName="absolute inset-0" className="object-cover" />
+      <SafeImage
+        src={cover}
+        alt={card.title}
+        containerClassName="absolute inset-0"
+        className="object-cover"
+        fallback={<div className="absolute inset-0 bg-black" aria-hidden="true" />}
+      />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-24)] pt-10 pb-[var(--spacing-24)]">
         <div className="mb-2">

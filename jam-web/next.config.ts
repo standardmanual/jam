@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+// 원격 이미지 허용 패턴의 단일 소스. 서비스 코드(SafeImage)가 같은 배열로 "next/image에
+// 넘겨도 되는 src인지"를 판정한다 — 두 곳을 손으로 맞추면 어긋나는 순간 화면이 500이 된다
+// (20260824_004).
+import { IMAGE_REMOTE_PATTERNS } from "./src/lib/imageSrc";
 
 // 프로젝트 루트(로컬 개발 전용 — Vercel 프로덕션에서는 outputFileTracingRoot를
 // 건드리지 않는다. 명시적으로 지정했더니 Vercel의 배포 패키징 단계가 자체
@@ -32,20 +36,8 @@ const nextConfig: NextConfig = {
     ],
   },
   images: {
-    remotePatterns: [
-      {
-        // Supabase Storage — 배지/아이템/북 이미지
-        protocol: 'https',
-        hostname: 'ceehnkzdbecxwzxrhhns.supabase.co',
-        pathname: '/storage/v1/object/public/**',
-      },
-      {
-        // Google OAuth 프로필 아바타
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-        pathname: '/**',
-      },
-    ],
+    // 패턴 정의는 src/lib/imageSrc.ts에 있다 (위 import 주석 참조)
+    remotePatterns: IMAGE_REMOTE_PATTERNS,
   },
   // 20260821_002: "아이템북" → "컬렉션" 공개 URL 전환. 기존에 공유된 /itembooks 링크를
   // 보호하기 위해 301(permanent) 리다이렉트를 유지한다. 관리자 화면(/admin/itembooks)과
