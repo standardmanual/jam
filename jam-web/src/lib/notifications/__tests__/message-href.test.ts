@@ -104,6 +104,20 @@ describe('① 보상 획득', () => {
     expect(text(v)).toBe("Mythic 배지 '별을 삼킨 바퀴'를 획득했어요")
   })
 
+  it('#2 희귀 배지 — 등급 라벨도 payload 슬롯이므로 볼드다', () => {
+    // rarity는 payload에서 오는 값이다. 템플릿에 합쳐 고정 텍스트로 두면
+    // 28종 중 이 2종만 §5 "슬롯=볼드" 규칙의 예외가 된다(20260825 정정).
+    const v = view('rare_badge_earned', {
+      badge_id: 'b1',
+      badge_name: '별을 삼킨 바퀴',
+      rarity: 'mythic',
+    })
+    const { template, vars } = buildNotificationMessage(v)
+    const tokens = tokenizeMessage(template, vars)
+    expect(tokens.find((t) => t.text === 'Mythic')?.bold).toBe(true)
+    expect(tokens.find((t) => t.text === '별을 삼킨 바퀴')?.bold).toBe(true)
+  })
+
   it('#3 아이템 배지 — 개수는 inventory_item_ids 길이', () => {
     const v = view('item_badge_earned', { inventory_item_ids: ['i1', 'i2'], count: 1 })
     expect(text(v)).toBe('활동 중에 아이템 배지 2개가 떨어졌어요')

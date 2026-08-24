@@ -215,11 +215,14 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       }
     }
     case 'rare_badge_earned': {
-      const rarity = RARITY_LABEL[str(p, 'rarity')] ?? ''
-      // 등급 라벨은 payload에서 오지만 PRD §3 예시가 고정 텍스트로 두었다 — 템플릿에 직접 합친다
+      // 등급 라벨도 payload(rarity)에서 오는 값이므로 §5 "슬롯=볼드" 규칙대로 슬롯으로 넘긴다.
+      // 템플릿에 합쳐 고정 텍스트로 두면 28종 중 이 2종만 규칙의 예외가 된다(20260825 정정).
       return {
-        template: rarity ? `${rarity} ${n.msgRareBadgeEarned}` : n.msgRareBadgeEarned,
-        vars: { badgeName: str(p, 'badge_name') },
+        template: n.msgRareBadgeEarned,
+        vars: {
+          rarity: RARITY_LABEL[str(p, 'rarity')] ?? '',
+          badgeName: str(p, 'badge_name'),
+        },
       }
     }
     case 'item_badge_earned': {
@@ -354,11 +357,13 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
 
     // ── ⑥ 소셜 — 팔로우한 사람의 활동 ──────────────────────────────────────
     case 'following_rare_badge': {
-      const rarity = RARITY_LABEL[str(p, 'rarity')] ?? ''
-      const suffix = rarity ? `${rarity} ${n.msgRareBadgeEarned}` : n.msgRareBadgeEarned
       return {
-        template: `${n.msgFollowingActorPrefix}${suffix}`,
-        vars: { actor: nameOf(view.actor), badgeName: str(p, 'badge_name') },
+        template: `${n.msgFollowingActorPrefix}${n.msgRareBadgeEarned}`,
+        vars: {
+          actor: nameOf(view.actor),
+          rarity: RARITY_LABEL[str(p, 'rarity')] ?? '',
+          badgeName: str(p, 'badge_name'),
+        },
       }
     }
     case 'following_collection_complete':

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getWallet, listTransactions } from '@/lib/points'
-import { adminReasonLabel } from '@/lib/points/reasons'
+import { userFacingReasonLabel } from '@/lib/points/reasons'
 import type { PointTransactionRow } from '@/types/database'
 
 /** 포인트 내역 화면이 렌더링할 항목 (사유 라벨 + 관련 배지/미션 링크 포함) */
@@ -70,7 +70,9 @@ export async function GET(req: NextRequest) {
       title = missionTitle.get(t.source_mission_id) ?? '미션 보상'
       href = `/missions/${t.source_mission_id}`
     } else if (t.reason === 'admin_grant' || t.reason === 'admin_deduct') {
-      title = adminReasonLabel(t.admin_reason_label)
+      // 유저 노출 화면이므로 어드민 원장 라벨(「지급」·「회수」 포함)을 쓰지 않는다 —
+      // UX_WRITING_GUIDELINE §1-3. 라벨이 없으면 기존 기본 제목을 유지한다.
+      title = userFacingReasonLabel(t.admin_reason_label) ?? title
     }
 
     return {
