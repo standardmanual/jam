@@ -74,14 +74,15 @@ jam-web/supabase/seed/update_metro-poi-badge_images.sql (신규 — 실행된 UP
       최단 3자(강남역) 모두 밴드 안에 정상 배치
 - [x] 929개 전체 생성 성공(실패 0), 전부 256×256
 - [x] Supabase UPDATE 929/929 반영 확인, 구 경로(`/badges/poi/transit/`) 잔존 0건
+- [x] 프로덕션 배포 후 이미지 URL 직접 접근 200 확인, 어드민 배지 목록에서 렌더 확인
 
 ### UX Writing 검증
 - 해당 없음 (사용자 노출 UI 문구 변경 없음 — 배지 이미지 내 텍스트는 실제 지하철역명을 그대로 표기)
 
 ### 배포 정보
 - 배포일: 2026-08-24
-- 환경: staging (프로덕션 승격은 `/jam-ship`으로 별도 처리)
-- 커밋: 7a8903b0
+- 환경: production (jam-rose.vercel.app / standard-manual/jam)
+- 커밋: 7a8903b0 (main 승격 70c51b1d)
 
 ### 주요 의사결정 / 핵심 메모
 - **기존 config를 고치지 않고 새 config로 분리**: 디자인이 전면 교체되었지만
@@ -104,6 +105,12 @@ jam-web/supabase/seed/update_metro-poi-badge_images.sql (신규 — 실행된 UP
 - **`@vercel/og` → `next/og`**: next 16 업그레이드 과정에서 `@vercel/og` 직접 의존이 빠졌고
   동일 구현이 `next/og`로 내장됐다. 두 경로를 모두 시도하는 폴백 로더로 바꿔 예전 환경에서도
   그대로 동작하게 했다.
+
+### 배포 순서 관련 주의 (다음 작업 때 반복하지 말 것)
+DB(`badges.image_url`)를 먼저 새 경로로 바꾸고 이미지 파일은 staging에만 올린 상태였던 탓에,
+**프로덕션 배포 전까지 서비스·어드민에서 배지 이미지가 전부 깨져 보였다.** Supabase는 환경별로
+분리돼 있지 않은 단일 프로덕션 DB이므로, 이미지 경로를 바꾸는 작업은
+**파일을 프로덕션에 먼저 배포하고 그 다음 UPDATE**하는 순서로 진행해야 한다.
 
 ### 잔여 이슈
 - `jam-web/public/badges/poi/transit/` 의 PNG 951개 중 **929개가 미사용 상태로 남는다**
