@@ -1,12 +1,12 @@
 /**
  * 알림(소식) 착지점 계산 — 티켓 20260824_021
- * 스펙: Specs/PRD/Notification/PRD.md §3(28종 표의 "착지점" 열) · §6-6
+ * 스펙: Specs/PRD/Notification/PRD.md §3(26종 표의 "착지점" 열) · §6-6
  *
  * ## 착지점을 저장하지 않는 이유
  *
  * `target_href`를 컬럼으로 저장하면 라우트를 바꿀 때 **과거 소식이 전부 깨진다.**
  * `type`은 안정적이고 라우트는 변하므로, 변하는 쪽을 코드에 둔다.
- * PRD §3의 28종 표가 이 함수의 명세다.
+ * PRD §3의 26종 표가 이 함수의 명세다.
  *
  * ## 2단 타겟 (아바타 탭 → 사람 / 본문 탭 → 대상)
  *
@@ -125,17 +125,6 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
       const id = typeof p.mission_id === 'string' ? p.mission_id : ''
       return single(id ? `/missions/${id}/status` : '/missions')
     }
-    case 'following_nearby_drop': {
-      const poiId = typeof p.poi_id === 'string' ? p.poi_id : ''
-      return {
-        href: poiId ? `/drops?poi=${encodeURIComponent(poiId)}` : '/drops',
-        avatarHref: actorHref,
-      }
-    }
-
-    // ── ⑦ 발견 ────────────────────────────────────────────────────────────
-    case 'nearby_drops':
-      return single('/drops')
 
     // ── ⑧ 계정·시스템 ─────────────────────────────────────────────────────
     case 'strava_disconnected':

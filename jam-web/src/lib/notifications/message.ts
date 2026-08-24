@@ -1,8 +1,8 @@
 /**
  * 알림(소식) 문구 렌더러 — 티켓 20260824_021
- * 스펙: Specs/PRD/Notification/PRD.md §3(28종 표) · §5(강조 규칙)
+ * 스펙: Specs/PRD/Notification/PRD.md §3(26종 표) · §5(강조 규칙)
  *
- * ## 규칙 하나로 28종을 일관되게
+ * ## 규칙 하나로 26종을 일관되게
  *
  * > **`payload`로 채워지는 변수 슬롯은 볼드, 고정 텍스트는 일반. 컬러 강조는 쓰지 않는다.**
  *
@@ -109,7 +109,7 @@ export function hasBatchim(text: string): boolean {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 토크나이저 — 이 함수 하나가 28종의 강조를 결정한다
+// 토크나이저 — 이 함수 하나가 26종의 강조를 결정한다
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface MessageToken {
@@ -193,7 +193,7 @@ function dayWord(days: number): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 28종 문구 — PRD §3 표가 이 함수의 명세다
+// 26종 문구 — PRD §3 표가 이 함수의 명세다
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface NotificationMessage {
@@ -216,7 +216,7 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
     }
     case 'rare_badge_earned': {
       // 등급 라벨도 payload(rarity)에서 오는 값이므로 §5 "슬롯=볼드" 규칙대로 슬롯으로 넘긴다.
-      // 템플릿에 합쳐 고정 텍스트로 두면 28종 중 이 2종만 규칙의 예외가 된다(20260825 정정).
+      // 템플릿에 합쳐 고정 텍스트로 두면 26종 중 이 2종만 규칙의 예외가 된다(20260825 정정).
       return {
         template: n.msgRareBadgeEarned,
         vars: {
@@ -389,21 +389,6 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
         },
       }
     }
-    case 'following_nearby_drop':
-      return {
-        template: n.msgFollowingNearbyDrop,
-        vars: { actor: nameOf(view.actor), me: nameOf(view.me) },
-      }
-
-    // ── ⑦ 발견 ────────────────────────────────────────────────────────────
-    case 'nearby_drops':
-      return {
-        template: n.msgNearbyDrops,
-        vars: {
-          me: nameOf(view.me),
-          itemCount: t(n.slotItemBadgeCount, { count: num(p, 'count') }),
-        },
-      }
 
     // ── ⑧ 계정·시스템 ─────────────────────────────────────────────────────
     case 'strava_disconnected':

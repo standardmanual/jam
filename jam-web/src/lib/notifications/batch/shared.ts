@@ -1,6 +1,6 @@
 /**
  * T2 배치 공통 기반 — 티켓 20260825_002
- * 스펙: Specs/PRD/Notification/PRD.md §4(T2 13종) · §4-1(스케줄) / DATA_MODEL.md §4-2
+ * 스펙: Specs/PRD/Notification/PRD.md §4(T2 11종) · §4-1(스케줄) / DATA_MODEL.md §4-2
  *
  * ## 이 파일이 강제하는 3가지
  *
@@ -96,7 +96,7 @@ export async function fetchAllRows<T>(
     const { data, error } = await queryFn(from, from + pageSize - 1)
     if (error) {
       // 부분 결과로 소식을 만들면 "일부 유저만 빠진" 상태가 되므로 던져서 단계를 통째로 중단한다.
-      // 단계 격리(runStep)가 나머지 12종을 살린다.
+      // 단계 격리(runStep)가 나머지 10종을 살린다.
       throw new Error(`[notifications-batch] ${label} 조회 실패: ${error.message}`)
     }
     const rows = data ?? []

@@ -141,10 +141,6 @@ export interface NotificationPayloadMap {
   following_collection_complete: { item_book_id: string; book_name: string }
   /** 31 팔로잉 미션 완료 — actor_ids를 누적해 "외 N명"을 만든다 */
   following_mission_complete: { mission_id: string; mission_title: string; actor_ids: string[] }
-  /** 32 팔로잉 근처 드랍 — 착지점이 지도 카메라 이동이라 poi_id가 필요하다 */
-  following_nearby_drop: { poi_id: string; region: string }
-  /** 34 주변 신규 드랍 — count는 이 소식이 유일한 근거(배열 누적이 없다) */
-  nearby_drops: { count: number; region: string }
   /** 41 동기화 지연 */
   sync_stalled: { days: number }
   /** 42 인벤토리 포화 */

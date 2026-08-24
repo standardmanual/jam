@@ -24,7 +24,6 @@ import {
   selectFollowingDrafts,
   type FollowingCandidate,
 } from '../batch/following'
-import { selectNearbyDropDrafts } from '../batch/discovery'
 import {
   INVENTORY_FULL_REMAINING_SLOTS,
   selectInventoryFullDrafts,
@@ -391,15 +390,6 @@ describe('⑥ 팔로잉 활동 — 하루 상한 2건', () => {
 
   const candidates: FollowingCandidate[] = [
     {
-      kind: 'drop',
-      recipientId: 'me',
-      actorId: 'a4',
-      at: '2026-08-25T08:00:00Z',
-      priority: 4,
-      poiId: 'poi-1',
-      region: '성동구 성수동',
-    },
-    {
       kind: 'mission',
       recipientId: 'me',
       actorId: 'a3',
@@ -448,56 +438,17 @@ describe('⑥ 팔로잉 활동 — 하루 상한 2건', () => {
     expect(drafts).toHaveLength(FOLLOWING_DAILY_CAP * 2)
   })
 
-  it('4종 모두 payload 계약을 지킨다 (상한을 풀고 전수 검사)', () => {
+  it('3종 모두 payload 계약을 지킨다 (상한을 풀고 전수 검사)', () => {
     const drafts = candidates.map((c) => selectFollowingDrafts([c], today)[0])
     expect(drafts.map((d) => d.type)).toEqual([
-      'following_nearby_drop',
       'following_mission_complete',
       'following_collection_complete',
       'following_rare_badge',
     ])
     expectContract(drafts)
     // 묶음 소식은 actor_ids가 "외 N명"의 유일한 근거다
-    expect(drafts[1].payload).toMatchObject({ actor_ids: ['a3', 'a5'] })
-    expect(notificationPlainText(viewOf(drafts[1]))).toContain('외 1명')
-  })
-})
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ⑦ #34 주변 신규 드랍
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe('#34 nearby_drops', () => {
-  const today = kstDateString(BATCH_AT)
-
-  it('지역별 신규 드랍 수를 그 지역 유저 전원에게', () => {
-    const drafts = selectNearbyDropDrafts({
-      countByRegion: new Map([['성동구 성수동', 5]]),
-      usersByRegion: new Map([['성동구 성수동', ['u1', 'u2']]]),
-      today,
-    })
-    expect(drafts).toHaveLength(2)
-    expect(drafts[0].payload).toMatchObject({ count: 5, region: '성동구 성수동' })
-    expect(drafts[0].groupKey).toBe(`nearby_drops:${today}`)
-    expectContract(drafts)
-  })
-
-  it('count가 0이면 만들지 않는다 — "0개가 새로 떨어졌어요"가 나가면 안 된다', () => {
-    const drafts = selectNearbyDropDrafts({
-      countByRegion: new Map([['성동구 성수동', 0]]),
-      usersByRegion: new Map([['성동구 성수동', ['u1']]]),
-      today,
-    })
-    expect(drafts).toHaveLength(0)
-  })
-
-  it('빈 region은 매칭하지 않는다 — users.region 기본값이 ""라 전원이 서로 묶인다', () => {
-    const drafts = selectNearbyDropDrafts({
-      countByRegion: new Map([['', 5]]),
-      usersByRegion: new Map([['', ['u1', 'u2']]]),
-      today,
-    })
-    expect(drafts).toHaveLength(0)
+    expect(drafts[0].payload).toMatchObject({ actor_ids: ['a3', 'a5'] })
+    expect(notificationPlainText(viewOf(drafts[0]))).toContain('외 1명')
   })
 })
 
