@@ -76,6 +76,11 @@ export async function POST(request: Request) {
       actorUserId: user.id,
       // 24시간 묶음 — "예린님 외 3명이 시현님을 팔로우해요"
       groupKey: dailyGroupKey('followed'),
+      payload: { actor_ids: [user.id] },
+      // 이름 2명까지 나열(PRD §3 L2)하려면 actor_user_id 1개로는 부족하다.
+      // 중복 제거된 actor_ids의 길이가 곧 actor_count(고유 인원)가 된다 — 언팔 후
+      // 재팔로우가 인원을 부풀리지 않는다.
+      appendKeys: ['actor_ids'],
     })
   }
 

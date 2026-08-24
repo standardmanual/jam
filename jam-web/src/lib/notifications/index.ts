@@ -20,13 +20,52 @@
  * 만들 수 없다. 그래서 마이그레이션 096의 `create_notification()` 함수를 호출한다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import type { NotificationRow, NotificationType } from '@/types/database'
+import type {
+  CreateNotificationArgs,
+  NotificationRow,
+  NotificationType,
+  PoiViewRow,
+} from '@/types/database'
 import { bumpsBadgeFor, type NotificationPayload } from './types'
-import { kstDateString } from './kst'
+import { kstDateString, toValidDate } from './kst'
 
 export * from './types'
 export * from './groupKey'
 export * from './kst'
+
+/**
+ * ## `@ts-expect-error` 대신 좁은 캐스팅을 쓰는 이유
+ *
+ * `src/types/database.ts`의 `XxxRow`·`XxxArgs`가 `interface`로 선언돼 있어 supabase-js의
+ * `GenericSchema` 제약(`Row: Record<string, unknown>`)을 만족하지 못한다 — 인터페이스는
+ * 암묵적 인덱스 시그니처를 얻지 못하기 때문이다. 그 결과 `SupabaseClient`의 `Schema`가
+ * `never`로 접혀 `.rpc()` 인자는 `undefined`, `.upsert()` 인자는 `never[]`로 추론된다.
+ * (리포 전역 문제이고 해소하려면 89곳의 억제 주석을 함께 걷어내야 해 이 티켓 범위 밖이다)
+ *
+ * `@ts-expect-error`로 덮으면 **원인이 해소되는 순간 그 주석 줄 자체가 컴파일 오류**가
+ * 되어 무관한 작업이 빌드를 깨뜨린다. 대신 이 두 호출부만 실제 계약으로 좁혀 둔다 —
+ * 인자는 `CreateNotificationArgs`·`PoiViewRow`로 **여전히 타입 검사를 받는다.**
+ * (메서드 형태로 호출해야 `this`가 유지되므로 함수만 떼어내지 않고 객체째 캐스팅한다)
+ */
+interface PostgrestFailure {
+  message: string
+}
+
+type CreateNotificationRpcClient = {
+  rpc: (
+    fn: 'create_notification',
+    args: CreateNotificationArgs
+  ) => PromiseLike<{ data: NotificationRow | null; error: PostgrestFailure | null }>
+}
+
+type PoiViewInsert = Omit<PoiViewRow, 'id'>
+
+type PoiViewTable = {
+  upsert: (
+    values: PoiViewInsert,
+    options: { onConflict: string; ignoreDuplicates: boolean }
+  ) => PromiseLike<{ error: PostgrestFailure | null }>
+}
 
 export interface CreateNotificationInput<T extends NotificationType> {
   /** 받는 사람 (행위자가 아니다) */
@@ -46,6 +85,17 @@ export interface CreateNotificationInput<T extends NotificationType> {
   mode?: 'merge' | 'once'
   /** 병합 시 숫자로 더할 payload 키 (예: #5 포인트 적립의 `amount` 일 합계) */
   sumKeys?: string[]
+  /**
+   * 병합 시 **배열로 이어붙이고 중복을 제거**할 payload 키.
+   *
+   * 행위자가 있는 묶음 소식은 `actor_ids`를 여기에 넣는다 — `actor_count`가
+   * 병합 횟수가 아니라 **고유 인원**(`actor_ids`의 중복 제거 후 길이)으로 갱신된다
+   * (DATA_MODEL §4-1). 한 사람이 6시간 안에 내 드랍 3건을 픽업해도 1명이어야 한다.
+   *
+   * 배열 값 필드(#13 `badge_ids` 등)도 넣어야 한다. 기본 병합은 얕은 덮어쓰기라
+   * 직전 값이 통째로 사라진다.
+   */
+  appendKeys?: string[]
 }
 
 /**
@@ -56,7 +106,7 @@ export interface CreateNotificationInput<T extends NotificationType> {
 export async function createNotification<T extends NotificationType>(
   input: CreateNotificationInput<T>
 ): Promise<NotificationRow | null> {
-  const { userId, type, payload, actorUserId, groupKey, mode = 'merge', sumKeys } = input
+  const { userId, type, payload, actorUserId, groupKey, mode = 'merge', sumKeys, appendKeys } = input
 
   if (!userId) {
     console.error(`[notifications] createNotification: userId 없음 — type: ${type}`)
@@ -64,8 +114,8 @@ export async function createNotification<T extends NotificationType>(
   }
 
   try {
-    const supabase = createServiceClient()
-    const args = {
+    const supabase = createServiceClient() as unknown as CreateNotificationRpcClient
+    const args: CreateNotificationArgs = {
       p_user_id: userId,
       p_type: type,
       p_payload: (payload ?? {}) as Record<string, unknown>,
@@ -75,8 +125,8 @@ export async function createNotification<T extends NotificationType>(
       p_group_key: groupKey ?? null,
       p_mode: mode,
       p_sum_keys: sumKeys ?? null,
+      p_append_keys: appendKeys ?? null,
     }
-    // @ts-expect-error Supabase rpc() 인자 타입 매칭 제한(옵셔널 필드가 섞인 RPC에서 발생하는 라이브러리 특이 케이스) 우회 — 실제 인자는 create_notification() RPC 시그니처와 일치
     const { data, error } = await supabase.rpc('create_notification', args)
 
     if (error) {
@@ -121,16 +171,18 @@ export async function recordPoiView(
 
   try {
     const supabase = createServiceClient()
-    const row = {
+    const row: PoiViewInsert = {
       poi_id: poiId,
       user_id: userId,
       viewed_on: kstDateString(at),
-      viewed_at: new Date(at).toISOString(),
+      // viewed_on과 같은 가드를 통과한 값이어야 한다 — Invalid Date면 toISOString()이 던진다
+      viewed_at: toValidDate(at).toISOString(),
     }
-    const { error } = await supabase
-      .from('poi_views')
-      // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiViewRow와 일치
-      .upsert(row, { onConflict: 'poi_id,user_id,viewed_on', ignoreDuplicates: true })
+    const table = supabase.from('poi_views') as unknown as PoiViewTable
+    const { error } = await table.upsert(row, {
+      onConflict: 'poi_id,user_id,viewed_on',
+      ignoreDuplicates: true,
+    })
 
     if (error) {
       console.error(`[notifications] recordPoiView 실패 — poiId: ${poiId}, userId: ${userId}:`, error)
