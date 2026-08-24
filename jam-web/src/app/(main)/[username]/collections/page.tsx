@@ -121,6 +121,8 @@ export default async function UserItemBooksPage({ params }: Props) {
         ((completionsRaw ?? []) as { item_book_id: string }[]).map((c) => c.item_book_id)
       )
 
+      const isOwnList = target.id === user.id
+
       cards = books
         .map((book) => ({
           book,
@@ -128,6 +130,9 @@ export default async function UserItemBooksPage({ params }: Props) {
           slottedCount: slottedByBook.get(book.id) ?? 0,
           isCompleted: completedSet.has(book.id),
         }))
+        // 타인이 볼 때는 아이템배지 슬롯이 0개인 컬렉션을 숨긴다(20260824_016).
+        // 본인 열람(isOwnList)은 예외 없이 항상 노출.
+        .filter((card) => isOwnList || card.slottedCount > 0)
         .sort((a, b) => {
           if (a.isCompleted !== b.isCompleted) return a.isCompleted ? -1 : 1
           return b.slottedCount - a.slottedCount
