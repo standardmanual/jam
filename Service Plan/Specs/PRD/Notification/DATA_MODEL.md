@@ -73,7 +73,7 @@ CREATE TABLE public.notifications (
 | `user_id` | **받는 사람.** 행위자가 아니다 |
 | `type` | 28종 ENUM. 문구 템플릿과 착지점 계산의 분기 키 |
 | `actor_user_id` | 아바타 탭 대상. 팔로우·픽업됨·팔로잉 활동에만 존재, 나머지는 NULL |
-| `actor_count` | 묶음 인원 — "**예린**님 외 **3명**"의 N. 기본 1 |
+| `actor_count` | 묶음 **고유 인원** — "**예린**님 외 **3명**"의 N. 기본 1. 병합 횟수가 아니라 `payload.actor_ids`의 고유 개수와 일치해야 한다 (§4-1) |
 | `group_key` | 묶음 병합 키. NULL이면 묶지 않는 소식 (§4 참고) |
 | `payload` | 문구 슬롯(배지명·미션명·수량 등) + 착지점 계산에 필요한 ID |
 | `bumps_badge` | dot을 켜는가. **①보상 획득만 FALSE** (§5 참고) |
@@ -130,6 +130,11 @@ CREATE UNIQUE INDEX poi_views_daily_uniq
 -- 주간 집계 조회
 CREATE INDEX poi_views_poi_date_idx
   ON public.poi_views (poi_id, viewed_on DESC);
+
+-- RLS를 켜되 정책은 두지 않는다 = service_role 전용.
+-- RLS를 켜지 않으면 anon 키로 전체 조회·수정이 가능하다(티켓 074 실제 인시던트).
+-- engine_decision_log와 같은 방식.
+ALTER TABLE public.poi_views ENABLE ROW LEVEL SECURITY;
 ```
 
 | 필드 | 설명 |
@@ -209,42 +214,106 @@ UPDATE가 필요하고 "어디까지 읽었나" 동기화 문제도 따라온다
 
 ## 4. 묶음(Aggregation) 모델
 
-### 병합 규칙
+### 병합 규칙 — `create_notification()` RPC
 
 새 이벤트가 기존 묶음에 붙으면 **새 행을 만들지 않고 기존 행을 갱신**한다. 인스타그램이
 "좋아요가 계속 붙어도 알림 개수는 안 늘고 카운트만 올라가는" 방식과 동일하다.
 
+**PostgREST(`supabase-js`)의 `.upsert()`로는 구현할 수 없다.** `.upsert()`는 "행 전체 교체"만
+표현할 수 있어 `actor_count = actor_count + 1` 같은 증분 갱신이나 배열 누적을 만들지 못한다.
+그래서 DB 함수를 쓴다.
+
 ```sql
-INSERT INTO notifications (user_id, type, actor_user_id, group_key, payload, bumps_badge)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (user_id, group_key) WHERE group_key IS NOT NULL
-DO UPDATE SET
-  actor_count = notifications.actor_count + 1,
-  actor_user_id = EXCLUDED.actor_user_id,   -- 가장 최근 행위자를 대표로
-  payload = notifications.payload || EXCLUDED.payload,
-  updated_at = NOW();
+create_notification(
+  p_user_id       UUID,
+  p_type          public.notification_type,
+  p_payload       JSONB   DEFAULT '{}',
+  p_bumps_badge   BOOLEAN DEFAULT TRUE,
+  p_actor_user_id UUID    DEFAULT NULL,
+  p_group_key     TEXT    DEFAULT NULL,
+  p_mode          TEXT    DEFAULT 'merge',   -- 'merge' | 'once'
+  p_sum_keys      TEXT[]  DEFAULT NULL,      -- payload에서 숫자 합산할 키
+  p_append_keys   TEXT[]  DEFAULT NULL       -- payload에서 배열 누적(중복 제거)할 키
+) RETURNS public.notifications
 ```
 
-**정렬과 dot 판정을 `updated_at` 기준으로 하는 이유가 여기 있다.** 묶음이 갱신되면 리스트
-위로 올라와야 하고, 이미 읽은 묶음에 새 이벤트가 붙으면 다시 안 읽음이 되어야 한다.
-`created_at` 기준이면 둘 다 안 된다.
+`service_role`만 EXECUTE할 수 있고, `SET search_path = public`을 붙인다(080 `award_points` 선례).
 
-### `group_key` 설계
+### 3가지 모드
+
+| 모드 | 동작 | 쓰는 곳 |
+|---|---|---|
+| `merge` (기본) | 충돌 시 `actor_count` 갱신 + payload 병합 + `updated_at = NOW()` | 묶음 소식 전반 |
+| `once` | **이미 있으면 아무것도 하지 않는다** (`updated_at`도 안 건드림) | #11·#20·#40 |
+| — (`group_key` NULL) | 항상 새 행 | 묶지 않는 소식 |
+
+> **`once`가 왜 필요한가.** "구간당 1회"를 `group_key`만으로 막을 수 있다고 착각하기 쉬운데,
+> `merge`는 충돌 시 **막는 게 아니라 `updated_at`을 갱신**한다. 그러면 동기화할 때마다 dot이
+> 다시 켜져 반복 발송과 같아진다 — PRD §2-4가 금지한 다크패턴이다. `once`는 존재 여부만
+> 확인하고 빠진다.
+
+### payload 병합 3방식
+
+| 방식 | 동작 | 예 |
+|---|---|---|
+| 기본 (얕은 덮어쓰기) | `payload \|\| EXCLUDED.payload` | 최신 값만 남으면 되는 필드 |
+| `p_sum_keys` | 숫자 필드를 더한다 | `points_earned.amount` 250 + 300 = 550 |
+| `p_append_keys` | 배열을 이어붙이고 **중복 제거** | `followed.actor_ids`, `drop_picked_up.badge_ids` |
+
+---
+
+## 4-1. `actor_count`는 고유 인원이다
+
+PRD §3의 L2 규칙("2명까지 이름 나열 → 3명+ 축약")을 구현하려면 **묶음에 속한 행위자를 2명
+이상 알아야 한다.** `actor_user_id` 1개(최신)와 카운터만으로는 만들 수 없다.
+
+그래서 행위자가 있는 묶음 소식은 `p_append_keys`로 **`payload.actor_ids` 배열을 누적**하고,
+`actor_count`를 그 배열의 **고유 개수**로 갱신한다.
+
+```
+actor_count = jsonb_array_length(payload->'actor_ids')   -- 중복 제거 후
+```
+
+**병합 횟수를 세면 안 된다.** 한 사람이 6시간 안에 내 드랍 3건을 픽업하면 병합 횟수는 3이지만
+실제 인원은 1명이다. 그대로 세면 "예린님 외 2명"이라는 거짓말이 된다.
+
+| 소식 | `append_keys` | 렌더 |
+|---|---|---|
+| 13 픽업됨 | `actor_ids`, `badge_ids` | 인원 2명까지 나열, 배지 개수는 `badge_ids` 길이 |
+| 26 팔로우 | `actor_ids` | 2명까지 나열 → 3명+ "외 N명" |
+| 31 팔로잉 미션 완료 | `actor_ids` | 동일 |
+
+행위자가 없는 묶음 소식(1·3·4·5·34 등)은 `actor_ids`가 없고 `actor_count`도 쓰지 않는다 —
+개수는 `payload`의 해당 배열 길이나 `sum_keys` 합산값으로 렌더한다.
+
+---
+
+## 4-2. `group_key` 설계
+
+모든 키는 **`{type}:{scope}`** 형태다. UNIQUE 인덱스가 `(user_id, group_key)`뿐이라
+**type이 키에 들어있지 않기 때문**이다. type을 빼면 소식 1·3·4처럼 같은 동기화를 scope로 쓰는
+종류들이 한 행으로 병합돼 payload가 서로를 덮어쓰고 착지점이 통째로 어긋난다.
 
 | 소식 | `group_key` | 시간창 |
 |---|---|---|
-| 1·3·4 배지·아이템 획득 | `sync:{strava_activity_id}` | 동기화 1회 (인스타의 "게시물 A"에 해당) |
-| 5 포인트 적립 | `points:{YYYY-MM-DD}` | 하루 |
-| 13 픽업됨 | `pickup:{YYYY-MM-DD-HH6}` | 6시간 |
-| 26 팔로우 | `follow:{YYYY-MM-DD}` | 24시간 |
-| 31 팔로잉 미션 완료 | `following_mission:{mission_id}:{YYYY-MM-DD}` | 24시간 |
-| 9 컬렉션 장착 가능 | `slottable:{item_book_id}` | 상시 (컬렉션 단위) |
-| 32·34 지역 드랍 | `drops:{YYYY-MM-DD}` | 하루 |
+| 1·3·4 배지·아이템·POI 획득 | `{type}:sync:{strava_activity_id}` | 동기화 1회 (인스타의 "게시물 A"에 해당) |
+| 5 포인트 적립 | `points_earned:{YYYY-MM-DD}` | 하루 |
+| 13 픽업됨 | `drop_picked_up:{YYYY-MM-DD-H{0..3}}` | 6시간 |
+| 26 팔로우 | `followed:{YYYY-MM-DD}` | 24시간 |
+| 31 팔로잉 미션 완료 | `following_mission_complete:{mission_id}:{YYYY-MM-DD}` | 24시간 |
+| 9 컬렉션 장착 가능 | `collection_slottable:{item_book_id}` | 상시 (컬렉션 단위) |
+| 11 컬렉션 완성 가능 | `collection_completable:{item_book_id}` + `once` | 장착 전까지 1회 |
+| 20 미션 마일스톤 | `mission_milestone:{mission_id}:{50\|80}` + `once` | 구간당 1회 |
+| 32·34 지역 드랍 | `{type}:{YYYY-MM-DD}` | 하루 |
+| 40 Strava 끊김 | `strava_disconnected:{YYYY-MM-DD}` + `once` | 하루 1회 (폭주 방지) |
 | **묶지 않는 소식** | **NULL** | — |
 
-> **시간창은 전부 KST 기준으로 계산한다**(2026-08-24 확정). UTC로 두면 `points:{YYYY-MM-DD}`
-> 같은 일 단위 키가 KST 09:00에 날짜가 바뀌어, 아침에 받은 포인트와 저녁에 받은 포인트가 다른
-> 묶음이 된다. 티켓 20260824_006에서 `event_at`을 로컬 벽시계로 오해석한 전례가 있다.
+> **시간창은 전부 KST 기준으로 계산한다**(2026-08-24 확정). UTC로 두면 일 단위 키가 KST 09:00에
+> 날짜가 바뀌어, 아침에 받은 포인트와 저녁에 받은 포인트가 다른 묶음이 된다. 티켓 20260824_006에서
+> `event_at`을 로컬 벽시계로 오해석한 전례가 있다.
+>
+> **배치(021)는 시작 시각을 한 번 캡처해 모든 키 빌더에 넘길 것.** 빌더가 `at`을 생략하면
+> 각각 `new Date()`를 평가하므로, KST 자정을 걸쳐 도는 배치가 두 날짜 키로 갈릴 수 있다.
 
 `group_key`가 NULL인 소식(2·7·10·11·18·20~24·27·29·30·40~45)은 UNIQUE 인덱스의 부분 조건
 (`WHERE group_key IS NOT NULL`)에서 제외되므로 항상 새 행으로 쌓인다.
@@ -282,24 +351,28 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 
 | type | payload 예시 |
 |---|---|
-| `badge_earned` | `{ badge_ids: [...], count: 3, activity_id }` |
+| `badge_earned` | `{ badge_ids: [...], count, activity_id }` — `badge_ids`는 append |
 | `rare_badge_earned` | `{ badge_id, badge_name, rarity }` |
-| `item_badge_earned` | `{ inventory_item_ids: [...], count: 2 }` |
-| `poi_badge_earned` | `{ badge_id, poi_name }` |
-| `points_earned` | `{ amount: 250, reason }` |
+| `item_badge_earned` | `{ inventory_item_ids: [...], count }` — 착지점이 인벤토리 인스턴스라 배지 id가 아니다 |
+| `poi_badge_earned` | `{ badge_ids: [...], poi_names: [...], count }` |
+| `points_earned` | `{ amount, reason }` — `amount`는 `sum_keys`로 합산 |
 | `collection_completable` | `{ item_book_id, book_name }` |
-| `drop_picked_up` | `{ badge_id, badge_name, poi_id }` |
-| `mission_milestone` | `{ mission_id, mission_title, current, target, unit }` |
+| `drop_picked_up` | `{ actor_ids: [...], badge_ids: [...], poi_id }` — 둘 다 append. 단건일 때만 `badge_name` |
+| `mission_milestone` | `{ mission_id, mission_title, current, target, unit, milestone: 50\|80 }` |
 | `mission_completed` | `{ mission_id, mission_title, reward_badge_count, reward_points }` |
 | `mission_rank_up` | `{ mission_id, mission_title, rank }` |
-| `followed` | `{}` (actor_user_id·actor_count로 충분) |
+| `followed` | `{ actor_ids: [...] }` — append. 2명까지 이름 나열에 필요 (§4-1) |
 | `nearby_drops` | `{ count: 5, region }` |
 | `sync_stalled` | `{ days: 3 }` |
-| `admin_points_changed` | `{ amount, direction: 'grant'\|'deduct', reason }` |
+| `admin_points_changed` | `{ amount, direction: 'grant'\|'deduct', reason }` — `reason`은 **코드**다. 렌더 시 `adminReasonLabel()`을 반드시 경유할 것 |
 | `announcement` | `{ today_card_id, title }` |
 
 닉네임은 `payload`에 **박제하지 않는다.** `actor_user_id`와 `user_id`로 조인해 렌더 시점에
 읽는다 — 유저가 닉네임을 바꾸면 과거 소식도 따라와야 한다.
+
+**배열 필드는 `p_append_keys`로 누적한다.** 얕은 덮어쓰기(`||`)로 두면 병합 시 직전 값이
+사라진다 — 예를 들어 6시간 창의 픽업 3건이 마지막 배지 하나만 남긴다. 숫자 필드는
+`p_sum_keys`로 합산한다.
 
 ---
 
