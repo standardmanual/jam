@@ -1,9 +1,9 @@
 ---
 id: 20260824_024
 category: Infra
-status: OPEN
+status: CLOSED
 created: 2026-08-24
-closed:
+closed: 2026-08-24
 ---
 
 # [Infra] 엔진 판정 로그의 `points` CHECK 제약 누락 + insert 에러 미검사 — 포인트 지급 실패가 전부 유실
@@ -190,13 +190,15 @@ jam-web/src/lib/engine-log/__tests__/log-engine-decision.test.ts         (신규
 - [x] `vitest run src/lib/engine-log` — 6/6 통과
 - [x] `tsc --noEmit` — 오류 없음 (`@ts-expect-error` 제거 후에도 통과)
 - [x] `eslint src/lib/engine-log` — 오류 없음
-- [ ] DDL 적용 후 실 DB 검증 (오케스트레이터 담당) — `pg_constraint` 재조회 + 동일 row 형태
-      service_role insert 프로브 → 확인 후 삭제
+- [x] DDL 적용 후 실 DB 검증 (오케스트레이터, 2026-08-24) — `pg_constraint` 재조회 결과
+      `CHECK (engine = ANY (ARRAY['badge'::text, 'drop'::text, 'points'::text]))`로 확장 확인.
+      `engine='points', event='point_award_failed'` 프로브 행 insert 성공(id 발급 확인) 후
+      즉시 삭제해 잔존 0건.
 
 ### 배포 정보
-- 배포일: 
-- 환경: 
-- 커밋: 
+- 배포일: 2026-08-24
+- 환경: production (jam-prod, `ceehnkzdbecxwzxrhhns`) — DDL만 직접 적용, 앱 코드는 staging 배포 대상
+- 커밋: 머지 커밋 `5614b8e4` (staging), 마이그레이션 098 적용 완료
 
 ### 주요 의사결정 / 핵심 메모
 
