@@ -131,8 +131,9 @@ export default function SlotGrid({ itemBookId, badgeSlots, readOnly = false, bad
               imageUrl={badge.image_url}
               rarity={badge.rarity as BadgeRarity}
               href={!isUndiscovered ? `/badges/${badge.id}${badgeLinkQuery}` : undefined}
+              earned={isSlotted}
               undiscovered={isUndiscovered}
-              className={isSlottable ? 'opacity-70' : isUndiscovered ? 'opacity-30' : ''}
+              className={isUndiscovered ? 'opacity-30' : ''}
             >
               {/* 슬롯 해제 버튼 */}
               {isSlotted && !readOnly && (
