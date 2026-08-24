@@ -40,3 +40,11 @@ export const Loading: Story = {
     children: '로딩 중',
   },
 };
+
+export const Small: Story = {
+  args: {
+    variant: 'secondary',
+    size: 'sm',
+    children: '동기화',
+  },
+};

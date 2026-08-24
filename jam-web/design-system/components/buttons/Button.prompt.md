@@ -7,3 +7,9 @@ Pill-shaped button in three variants — all borderless (no stroke buttons in th
 ```
 
 Use `surface="dark"` when placed on a `--color-bg-inverse` (black) section. `fullWidth` stretches to container width. Minimum touch target 44px per iOS HIG.
+
+`size="sm"` (`44px * var(--scale-compact)`, ≈31px — token in `tokens/motion.css`) is an explicit exception to the 44px rule — use it only inside a fixed-height dense context (e.g. a navigation bar) where a full 44px control would overflow the bar. Default is `size="md"` (44px).
+
+```jsx
+<Button variant="secondary" size="sm">동기화</Button>
+```

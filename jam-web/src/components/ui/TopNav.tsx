@@ -79,7 +79,8 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
     <Button
       variant="outline"
       surface="sub"
-      size="sm"
+      size="xs"
+      style={{ backgroundColor: 'var(--color-secondary)', color: 'var(--color-base-white)' }}
       onClick={() => {
         window.location.href = '/api/strava/auth'
       }}
