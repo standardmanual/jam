@@ -82,6 +82,16 @@ function Inner({ username }: { username: string | null }) {
      동기로 갱신되는 이 ref로만 취소 여부를 판정해 레이스를 없앤다. */
   const cancelledRef = useRef(false)
 
+  /* 아래 Escape 리스너(마운트 시 1회 등록, 항상 살아있음)가 "지금 취소 가능한 구간인가"를
+     판정하는 데 쓰는 ref. `phase === 'loading'`로 게이트하면 그 커밋이 지연되는 동안
+     Escape가 무시된다(위 cancelledRef 주석과 같은 레이스). 그렇다고 이 값을 이 컴포넌트
+     안의 다른 이펙트(`shouldReveal` 이펙트)의 cleanup에 묶을 수도 없다 — 그 이펙트는
+     `router.replace()`가 바꾸는 `searchParams`에 의존하므로, replace 직후 곧바로
+     재실행되면서 cleanup이 먼저 발화해 방금 세운 리스닝 상태를 즉시 꺼버린다. 그래서
+     "지금 취소 가능한가"는 이 ref 하나로만 동기 갱신하고, 리스너 자체는 컴포넌트
+     생애주기 동안 한 번만 등록한다 (20260824_008 WARN 대응). */
+  const listeningRef = useRef(false)
+
   const shouldReveal = searchParams.get('reveal') === '1'
 
   useEffect(() => {
@@ -100,6 +110,7 @@ function Inner({ username }: { username: string | null }) {
     const query = params.toString()
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
 
+    listeningRef.current = true
     setPhase('loading')
     void (async () => {
       try {
@@ -112,6 +123,7 @@ function Inner({ username }: { username: string | null }) {
         if (!res.ok) throw new Error(`recent-earned ${res.status}`)
         const data: RecentEarnedResponse = await res.json()
         if (!mountedRef.current || cancelledRef.current) return
+        listeningRef.current = false
         const badges = data.earnedBadges ?? []
         if (badges.length === 0) {
           // 획득한 배지가 없으면 캐러셀 대신 가벼운 토스트로 연동 성공을 알린다 (20260824_008).
@@ -124,6 +136,7 @@ function Inner({ username }: { username: string | null }) {
         setPhase('open')
       } catch (err) {
         console.error('[StravaConnectReveal] 최근 획득 배지 조회 실패:', err)
+        listeningRef.current = false
         if (mountedRef.current) setPhase('idle')
       }
     })()
@@ -156,18 +169,21 @@ function Inner({ username }: { username: string | null }) {
 
   /* 대기 중 Escape 탈출. 타임아웃이 상한을 보장하지만, 8초를 기다리는 대신 사용자가 즉시
      빠져나올 수단도 둔다. 진행 중인 요청은 그대로 두고 화면만 닫는다 — cancelledRef를
-     세워 뒤늦게 도착하는 응답이 화면을 다시 열지 못하게 한다. */
+     세워 뒤늦게 도착하는 응답이 화면을 다시 열지 못하게 한다.
+
+     리스너는 마운트 시 한 번만 등록한다(빈 deps) — `phase` state로 게이트하면 그 상태
+     커밋이 지연되는 구간에서 Escape가 씹힌다(위 listeningRef 주석 참고). 실제로 취소
+     가능한지는 매 keydown마다 `listeningRef.current`를 그 자리에서 읽어 판정한다. */
   useEffect(() => {
-    if (phase !== 'loading') return
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        cancelledRef.current = true
-        setPhase('idle')
-      }
+      if (e.key !== 'Escape' || !listeningRef.current) return
+      listeningRef.current = false
+      cancelledRef.current = true
+      setPhase('idle')
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [phase])
+  }, [])
 
   return (
     <BadgeRevealOverlay
