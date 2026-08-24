@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import type { ComponentType, SVGProps } from 'react'
 import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
+import SafeImage from '@/components/SafeImage'
 import { d } from '@/lib/i18n'
 import {
   MedalIcon,
@@ -53,11 +53,14 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
       className="overflow-hidden active:scale-[0.98] transition-transform duration-100"
       style={{ padding: 0 }}
     >
-      {cover && (
-        <div className="relative w-full aspect-[16/9] overflow-hidden">
-          <Image src={cover} alt={card.title} fill className="object-cover" />
-        </div>
-      )}
+      {/* 20260824_004: cover_image_url은 어드민 자유 입력이라 호스트를 알 수 없다.
+          next/image에 그대로 넘기면 미등록 호스트에서 홈 화면 전체가 죽는다 → SafeImage 경유 */}
+      <SafeImage
+        src={cover}
+        alt={card.title}
+        containerClassName="relative w-full aspect-[16/9] overflow-hidden"
+        className="object-cover"
+      />
       <div className="p-[var(--spacing-24)]">
         <div className="flex items-center gap-2 mb-2">
           <TemplateChip card={card} />
@@ -98,11 +101,14 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
             <div key={b.id} className="flex flex-col items-center gap-1 shrink-0 w-16">
               {/* 20260816_012: 보더 제거 — 흰 카드 위 썸네일이라 4% 블랙 틴트로 구분 */}
               <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center">
-                {b.image_url ? (
-                  <Image src={b.image_url} alt={b.name} width={64} height={64} className="w-full h-full object-cover" />
-                ) : (
-                  <MedalIcon className="w-6 h-6 text-text-inverse/40" />
-                )}
+                <SafeImage
+                  src={b.image_url}
+                  alt={b.name}
+                  width={64}
+                  height={64}
+                  className="w-full h-full object-cover"
+                  fallback={<MedalIcon className="w-6 h-6 text-text-inverse/40" />}
+                />
               </div>
               <span className="text-[length:var(--text-caption)] text-text-inverse/70 text-center leading-tight line-clamp-2">{b.name}</span>
             </div>
@@ -141,7 +147,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
 
   return (
     <article className="relative rounded-[var(--radius-cards)] overflow-hidden aspect-[4/5] active:scale-[0.98] transition-transform duration-100 bg-surface-inverse">
-      <Image src={cover} alt={card.title} fill className="object-cover" />
+      <SafeImage src={cover} alt={card.title} containerClassName="absolute inset-0" className="object-cover" />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-[var(--spacing-24)] pt-10 pb-[var(--spacing-24)]">
         <div className="mb-2">
