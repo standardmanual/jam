@@ -42,9 +42,11 @@ export default async function HomePage() {
 
   const userProfile = profile as UserRow | null
   const stravaConnection = stravaConn as StravaConnectionRow | null
-  const badgeWithEarned: BadgeWithEarned[] = ((recentBadges ?? []) as Array<{badge: BadgeRow} & UserActivityBadgeRow>).map(
-    (r) => ({ badge: r.badge, earned: r })
-  )
+  // 소프트 삭제된 배지(badges.deleted_at)는 "최근 획득 배지"에서 제외한다(20260824_007) —
+  // 다른 화면들과 동일하게 조인 결과를 badge.deleted_at으로 사후 필터한다.
+  const badgeWithEarned: BadgeWithEarned[] = ((recentBadges ?? []) as Array<{badge: BadgeRow} & UserActivityBadgeRow>)
+    .filter((r) => r.badge && !r.badge.deleted_at)
+    .map((r) => ({ badge: r.badge, earned: r }))
 
   const displayName = userProfile?.username ?? user.email?.split('@')[0] ?? '러너'
 

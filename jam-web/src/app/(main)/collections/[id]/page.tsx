@@ -70,11 +70,14 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   const book = bookRaw as unknown as ItemBookWithFaction
 
   // 2) 배지 (아이템 + POI)
+  // 소프트 삭제된 배지(badges.deleted_at)는 컬렉션 슬롯 목록에서 제외한다(20260824_007) —
+  // 해당 슬롯만 빠지고 나머지 슬롯·완성도 계산은 그대로 유지된다.
   const { data: badgesRaw } = await supabase
     .from('badges')
     .select('*')
     .eq('item_book_id', id)
     .in('type', ['item', 'poi'])
+    .is('deleted_at', null)
     .order('created_at', { ascending: true })
   const allBookBadges = (badgesRaw ?? []) as BadgeRow[]
   const badges = allBookBadges.filter((b) => b.type === 'item')
