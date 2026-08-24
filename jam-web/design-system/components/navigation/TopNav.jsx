@@ -14,12 +14,24 @@ import React from 'react';
  * title 타이포는 titleSize/titleWeight/titleLineHeight/titleTracking prop으로 오버라이드
  * 가능하게 확장(기본값은 ds 원래 h4 24px 유지, 서비스는 body 16px 명시 전달 — 하위 호환).
  * style prop 추가(header 배경 오버라이드용, 서비스의 headerStyle 대응).
+ *
+ * 20260824_010: 전 페이지 3분할 확장 — 좌측(로고/뒤로가기) · 중앙(동기화 버튼) · 우측
+ * (기존 rightSlot 액션 + 아바타) 슬롯 추가.
+ *   - `logoSlot`: 있으면 좌측 영역의 back+title 블록 대신 이 노드를 렌더링한다(탭 최상위
+ *     페이지의 Jam 로고 표시용). 기본값 null이면 기존 back+title 동작 그대로 유지된다.
+ *   - `centerSlot`: 좌/우 사이에 렌더링되는 중앙 고정폭 영역(스트라바 동기화 버튼용).
+ *     기본값 null이면 렌더링되지 않아 기존 2분할 레이아웃과 동일하다.
+ *   - `avatarSlot`: 우측 영역에서 기존 `rightSlot` 뒤에 이어 렌더링된다(프로필 아바타용).
+ *     기존 `rightSlot` 단독 사용처(예: 배지 상세 공유 버튼)는 그대로 두고 그 옆에 붙는다.
  */
 export function TopNav({
   title = '',
   showBack = true,
   onBack,
   rightSlot = null,
+  logoSlot = null,
+  centerSlot = null,
+  avatarSlot = null,
   titleSize = 'var(--text-h4)',
   titleWeight = 'var(--weight-h4)',
   titleLineHeight = 'var(--leading-h4)',
@@ -39,35 +51,45 @@ export function TopNav({
         padding: '0 16px', height: 56,
       }}>
         <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-          {showBack && (
-            <button
-              aria-label="뒤로"
-              onClick={onBack}
-              style={{
-                width: 44, height: 44, border: 'none', background: 'transparent',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--color-text)', flexShrink: 0,
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={24} height={24} aria-hidden="true">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
+          {logoSlot ? logoSlot : (
+            <>
+              {showBack && (
+                <button
+                  aria-label="뒤로"
+                  onClick={onBack}
+                  style={{
+                    width: 44, height: 44, border: 'none', background: 'transparent',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--color-text)', flexShrink: 0,
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" width={24} height={24} aria-hidden="true">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+              )}
+              <h1 style={{
+                margin: 0,
+                fontSize: titleSize,
+                lineHeight: titleLineHeight,
+                fontWeight: titleWeight,
+                letterSpacing: titleTracking,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                color: 'var(--color-text)',
+              }}>
+                {title}
+              </h1>
+            </>
           )}
-          <h1 style={{
-            margin: 0,
-            fontSize: titleSize,
-            lineHeight: titleLineHeight,
-            fontWeight: titleWeight,
-            letterSpacing: titleTracking,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            color: 'var(--color-text)',
-          }}>
-            {title}
-          </h1>
         </div>
-        <div style={{ minWidth: 44, display: 'flex', justifyContent: 'flex-end' }}>
+        {centerSlot && (
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            {centerSlot}
+          </div>
+        )}
+        <div style={{ minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
           {rightSlot}
+          {avatarSlot}
         </div>
       </div>
     </header>

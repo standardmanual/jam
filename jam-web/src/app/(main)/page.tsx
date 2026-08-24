@@ -6,7 +6,7 @@ import { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import SyncButton from './SyncButton'
+import TopNav from '@/components/ui/TopNav'
 import LocalDate from '@/components/LocalDate'
 import UserSearchBar from './UserSearchBar'
 import TodayCardStack from './TodayCardStack'
@@ -54,44 +54,38 @@ export default async function HomePage() {
   const todayCards = await getTodayCards(userId, userProfile?.created_at)
 
   return (
-    <div className="min-h-full bg-surface text-text px-[var(--spacing-16)] pt-[calc(env(safe-area-inset-top)+var(--spacing-24))] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
+    <div className="min-h-full bg-surface text-text">
+      {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) — 기존 자체
+          로고 헤더 블록을 대체한다 */}
+      <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
       {/* 헤더 */}
       <div>
-        <div className="flex items-center justify-between mb-[var(--spacing-16)]">
-          <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[30px] w-auto" priority />
-        </div>
         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.today.greeting}</p>
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] mt-0.5">
           {displayName}
         </h1>
       </div>
 
-      {/* Strava 상태 */}
+      {/* Strava 상태 — 동기화 버튼은 Topnavi 중앙 슬롯으로 이동(20260824_010).
+          이 카드는 이제 연동 상태를 보여주는 정보 표시로만 남는다. */}
       {stravaConnection ? (
         <Card tone="inverse">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ActivityIcon className="w-5 h-5 text-text-inverse" />
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.today.stravaLabel}</span>
-              {stravaConnection.last_synced_at && (
-                <span className="text-[length:var(--text-caption)] text-text-inverse/50">
-                  <LocalDate iso={stravaConnection.last_synced_at} options={{ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
-                </span>
-              )}
-            </div>
-            <SyncButton username={userProfile?.username ?? null} />
+          <div className="flex items-center gap-2">
+            <ActivityIcon className="w-5 h-5 text-text-inverse" />
+            <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.today.stravaLabel}</span>
+            {stravaConnection.last_synced_at && (
+              <span className="text-[length:var(--text-caption)] text-text-inverse/50">
+                <LocalDate iso={stravaConnection.last_synced_at} options={{ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
+              </span>
+            )}
           </div>
         </Card>
       ) : (
         <Card tone="inverse">
           <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-1">{d.today.stravaNotConnectedTitle}</p>
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mb-[var(--spacing-16)]">{d.today.stravaNotConnectedBody}</p>
-          <Link
-            href="/profile"
-            className="inline-flex items-center justify-center min-h-11 rounded-[var(--radius-pill-buttons)] px-[var(--spacing-32)] py-[14px] bg-surface text-text text-[length:var(--text-body)] leading-[var(--leading-body)] active:scale-95 transition-transform duration-100"
-          >
-            {d.today.stravaConnectButton} &rarr;
-          </Link>
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.today.stravaNotConnectedBody}</p>
         </Card>
       )}
 
@@ -172,6 +166,7 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+      </div>
     </div>
   )
 }

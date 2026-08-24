@@ -1,4 +1,4 @@
-export type TabKey = 'today' | 'badges' | 'drops' | 'missions' | 'inventory' | 'profile';
+export type TabKey = 'today' | 'badges' | 'drops' | 'missions' | 'inventory';
 
 export interface TabBarProps {
   active?: TabKey;

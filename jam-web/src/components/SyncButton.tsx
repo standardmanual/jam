@@ -18,6 +18,13 @@ interface SyncResponse {
   earnedBadgesMore?: number
 }
 
+/**
+ * 스트라바 수동 동기화 버튼(연동된 유저 전용) + 획득 배지 연출.
+ *
+ * 20260824_010: 홈 화면 카드 전용이었던 컴포넌트를 공용 위치(`src/components`)로 옮겨
+ * TopNav 중앙 슬롯(모든 페이지 공통)에서도 재사용한다. 동작(POST /api/strava/sync →
+ * 배지 캐러셀 또는 완료 토스트)은 변경 없음 — 호출 위치만 늘었다.
+ */
 export default function SyncButton({ username }: { username: string | null }) {
   const [loading, setLoading] = useState(false)
   const [revealOpen, setRevealOpen] = useState(false)
@@ -26,7 +33,7 @@ export default function SyncButton({ username }: { username: string | null }) {
   const { toast } = useToast()
   const router = useRouter()
 
-  // "배지 전부 보기" 이동 경로 — 탭바 프로필 링크(TabBar.tsx의 profileHref)와 같은 값
+  // "배지 전부 보기" 이동 경로 — TopNav 우측 아바타 링크(20260824_010)와 같은 값
   const profileHref = username ? `/${username}` : '/profile'
 
   async function handleSync() {
