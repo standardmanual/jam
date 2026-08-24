@@ -131,10 +131,16 @@ function RowIcon({ view }: { view: NotificationView }) {
  */
 function NotificationBody({ view }: { view: NotificationView }) {
   const tokens = notificationTokens(view)
-  // break-words — ListRowCard의 title/subtitle 경로에는 truncate가 걸려 있지만 children
-  // 경로는 무방비라, 공백 없는 긴 닉네임·배지명이 카드 밖으로 삐져나온다.
+  // 줄바꿈 — 두 속성이 각각 다른 일을 한다.
+  //  · word-break: keep-all — CSS 기본값에서 한글은 **음절 단위로 아무 데서나** 끊긴다.
+  //    ("'각성 상태의 동/공'을" 처럼) 어절 단위로 끊으려면 명시해야 한다.
+  //    BadgeRevealCarousel이 이미 쓰는 프로젝트 선례를 따른다.
+  //  · break-words(overflow-wrap: break-word) — 한 덩어리가 카드보다 길 때만 끊는다.
+  //    ListRowCard의 title/subtitle 경로에는 truncate가 있지만 children 경로는 무방비라,
+  //    공백 없는 긴 닉네임이 밖으로 삐져나오는 것을 막는 최후 수단이다.
+  //    (anywhere는 이 목적에 과해서 일반 문장까지 끊는다 — 20260825 되돌림)
   return (
-    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text break-words [overflow-wrap:anywhere]">
+    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text [word-break:keep-all] break-words">
       {tokens.map((token, i) =>
         token.bold ? (
           <strong key={i} className="font-bold">
