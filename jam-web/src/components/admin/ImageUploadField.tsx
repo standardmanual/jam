@@ -112,6 +112,21 @@ export default function ImageUploadField({
           {uploading ? '업로드 중...' : value ? '다른 파일로 교체' : '파일 선택'}
         </button>
 
+        {/* 제거 버튼 — 선택 필드에서 값을 비우는 유일한 수단.
+            20260824_005에서 allowManualUrl 기본값을 false로 뒤집으면서 URL 입력란이
+            사라졌는데, 그 입력란을 비우는 것이 이미지를 제거하는 방법이었다.
+            (게이트 리뷰 WARN 1 — 어드민 기능이 조용히 축소됐다)
+            필수 필드에서는 비우면 저장이 막히므로 노출하지 않는다. */}
+        {value && !required && !uploading && (
+          <button
+            type="button"
+            onClick={() => { setUploadError(null); onChange('') }}
+            className="shrink-0 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-sm text-[#374151] hover:bg-[#f3f4f6] transition-colors whitespace-nowrap"
+          >
+            제거
+          </button>
+        )}
+
         <input
           ref={fileInputRef}
           type="file"
