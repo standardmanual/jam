@@ -44,10 +44,15 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // 공개 경로 (인증 불필요)
+  // 공개 경로 (세션 인증 불필요)
   // '/spike'는 검증용 스파이크 프로토타입 전용 경로 — 로그인 없이 접근 가능해야 한다
   // (20260819_001, staging 전용, main 머지 대상 아님)
-  const publicPaths = ['/login', '/auth/callback', '/forbidden', '/api/dev-login', '/spike']
+  //
+  // '/api/cron'은 **세션이 아니라 CRON_SECRET Bearer 토큰으로 인증**한다(각 라우트가 자체 검사).
+  // Vercel cron 호출에는 Supabase 세션 쿠키가 없으므로, 여기서 걸러내면 요청이 라우트 핸들러에
+  // 닿지 못하고 307로 리다이렉트된다 — cron이 조용히 실행되지 않는다(20260825_003).
+  // 보안이 약해지는 게 아니라, 인증 주체가 미들웨어가 아니라 라우트라는 뜻이다.
+  const publicPaths = ['/login', '/auth/callback', '/forbidden', '/api/dev-login', '/spike', '/api/cron']
   const isPublicPath = publicPaths.some((p) => pathname.startsWith(p))
 
   if (!user && !isPublicPath) {
