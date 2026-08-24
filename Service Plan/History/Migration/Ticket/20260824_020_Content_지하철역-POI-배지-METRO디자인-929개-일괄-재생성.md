@@ -81,7 +81,7 @@ jam-web/supabase/seed/update_metro-poi-badge_images.sql (신규 — 실행된 UP
 ### 배포 정보
 - 배포일: 2026-08-24
 - 환경: staging (프로덕션 승격은 `/jam-ship`으로 별도 처리)
-- 커밋: (아래 커밋 해시)
+- 커밋: 7a8903b0
 
 ### 주요 의사결정 / 핵심 메모
 - **기존 config를 고치지 않고 새 config로 분리**: 디자인이 전면 교체되었지만
