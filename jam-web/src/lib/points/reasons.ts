@@ -9,6 +9,7 @@
  *
  * 지급·회수 어느 방향이든 같은 목록에서 고른다(방향은 금액 부호로 결정).
  */
+import { d } from '@/lib/i18n'
 
 export type AdminReasonValue =
   | 'cs_compensation'
@@ -45,6 +46,41 @@ export function isValidAdminReason(value: unknown): value is AdminReasonValue {
 export function adminReasonLabel(value: string | null | undefined): string {
   if (!value) return '—'
   return ADMIN_REASONS.find((r) => r.value === value)?.label ?? value
+}
+
+/**
+ * 사유 코드 → **유저 노출용** 라벨 (20260824_021 2차 — PRD Notification §3 ⑧).
+ *
+ * `ADMIN_REASONS`의 라벨은 어드민 원장 전용이다. 「이벤트·프로모션 **지급**」·
+ * 「어뷰징 적발 **회수**」에는 UX 가이드 §1-3이 유저 노출 화면에서 금지한 용어가
+ * 그대로 들어 있어, 소식 #44 본문을 "들어왔어요/빠져나갔어요"로 고친 취지가
+ * 괄호 안에서 무너진다. 그래서 두 맵을 분리하되 **같은 파일에 붙여 둔다** —
+ * `Record<AdminReasonValue, …>`라 새 사유를 추가하면 유저 라벨을 빠뜨린 순간
+ * 타입 에러가 난다.
+ *
+ * `null`은 "유저에게 보여줄 사유가 없음"이며 호출부는 괄호째 생략한다
+ * (`other`는 자유 입력 분류라 코드만으로는 알려줄 정보가 없다).
+ */
+const USER_FACING_REASON_LABEL: Record<AdminReasonValue, string | null> = {
+  cs_compensation: d.points.reasonCsCompensation,
+  error_correction: d.points.reasonErrorCorrection,
+  event_promotion: d.points.reasonEventPromotion,
+  abuse_reclaim: d.points.reasonAbuseReclaim,
+  retroactive_adjustment: d.points.reasonRetroactiveAdjustment,
+  other: null,
+}
+
+/**
+ * 유저 화면에 노출할 사유 라벨. 없으면 `null`(→ 호출부가 괄호를 뺀다).
+ *
+ * 모르는 코드는 **그대로 노출하지 않는다** — `adminReasonLabel()`은 감사 목적이라
+ * 원문 코드를 폴백으로 쓰지만, 유저 화면에서는 코드가 새어 나가는 것보다
+ * 사유를 생략하는 편이 낫다.
+ */
+export function userFacingReasonLabel(value: string | null | undefined): string | null {
+  if (!value) return null
+  if (!isValidAdminReason(value)) return null
+  return USER_FACING_REASON_LABEL[value]
 }
 
 /**

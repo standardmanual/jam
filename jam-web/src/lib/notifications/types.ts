@@ -109,6 +109,48 @@ export interface NotificationPayloadMap {
     /** admin_reason_label (사유 분류 코드). 없으면 null */
     reason: string | null
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 아래는 T2 배치(**025**)가 생성하는 소식들이다. 021(알림함 화면)이 **렌더링만**
+  // 담당하므로, 문구·착지점이 기대하는 키를 여기서 계약으로 못 박아 둔다.
+  // 025는 이 키 이름 그대로 payload를 채워야 한다.
+  // (배치 티켓 번호가 022 → 025인 이유: 022·023·024를 병렬 세션이 선점했다)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** 9 컬렉션 장착 가능 — count는 넣을 수 있는 아이템 배지 수 */
+  collection_slottable: { item_book_id: string; book_name: string; count: number }
+  /** 10 완성 임박 — 잔여 1칸(컬렉션당 평생 1회) */
+  collection_near_complete: { item_book_id: string; book_name: string }
+  /** 18 내 드랍 지점 활성 — visitor_count는 POI 열람 고유 인원(본인 제외) */
+  drop_spot_active: { poi_id: string; poi_name: string; visitor_count: number }
+  /** 21 마감 임박 — days는 남은 일수, remaining/unit은 남은 목표치 */
+  mission_deadline: {
+    mission_id: string
+    mission_title: string
+    days: number
+    remaining: number
+    unit: string
+  }
+  /** 23 순위 상승 (상승 시에만 생성한다 — 하락 소식은 만들지 않는다) */
+  mission_rank_up: { mission_id: string; mission_title: string; rank: number }
+  /** 24 종료 결과 */
+  mission_ended: { mission_id: string; mission_title: string }
+  /** 29 팔로잉 희귀 배지 — legend/mythic만 */
+  following_rare_badge: { badge_id: string; badge_name: string; rarity: BadgeRarity }
+  /** 30 팔로잉 컬렉션 완성 */
+  following_collection_complete: { item_book_id: string; book_name: string }
+  /** 31 팔로잉 미션 완료 — actor_ids를 누적해 "외 N명"을 만든다 */
+  following_mission_complete: { mission_id: string; mission_title: string; actor_ids: string[] }
+  /** 32 팔로잉 근처 드랍 — 착지점이 지도 카메라 이동이라 poi_id가 필요하다 */
+  following_nearby_drop: { poi_id: string; region: string }
+  /** 34 주변 신규 드랍 — count는 이 소식이 유일한 근거(배열 누적이 없다) */
+  nearby_drops: { count: number; region: string }
+  /** 41 동기화 지연 */
+  sync_stalled: { days: number }
+  /** 42 인벤토리 포화 */
+  inventory_full: { max_slots: number; used_slots: number }
+  /** 45 공지·점검 — 투데이 카드 CMS를 착지점으로 재사용한다 */
+  announcement: { today_card_id: string; title: string }
 }
 
 /** 정의된 type은 전용 payload, 그 외에는 자유 형태 */

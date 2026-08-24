@@ -166,8 +166,8 @@ SELECT poi_id, count(DISTINCT user_id) AS visitors
 | 티켓 | 범위 |
 |---|---|
 | 019 | 테이블 + 기록 함수 |
-| 020 | `PoiCarouselModal` 열림 지점에서 기록 호출 |
-| 021 | 주간 집계 → #18 소식 생성 |
+| 021 | `PoiCarouselModal` 열림 지점에서 기록 호출 (`POST /api/poi-views`) |
+| 025 | 주간 집계 → #18 소식 생성 (배치 티켓 번호 재배정: 022 → 025) |
 
 ---
 
