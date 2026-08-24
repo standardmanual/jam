@@ -144,28 +144,11 @@ const baseTabs = [
       </svg>
     ),
   },
-  {
-    href: '/profile',  // placeholder, 런타임에 username으로 교체
-    label: d.nav.profile,
-    iconFill: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-        <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" fill="currentColor" />
-        <path d="M19.5815 16.479C19.8642 16.8074 20 17.2333 20 17.6666V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19V17.6666C4 17.2333 4.13576 16.8074 4.41847 16.479C6.25235 14.3488 8.96866 13 12 13C15.0313 13 17.7477 14.3488 19.5815 16.479Z" fill="currentColor" />
-      </svg>
-    ),
-    iconLine: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-        <path fillRule="evenodd" clipRule="evenodd" d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7ZM14.5 7C14.5 8.38071 13.3807 9.5 12 9.5C10.6193 9.5 9.5 8.38071 9.5 7C9.5 5.61929 10.6193 4.5 12 4.5C13.3807 4.5 14.5 5.61929 14.5 7Z" fill="currentColor" />
-        <path fillRule="evenodd" clipRule="evenodd" d="M20 17.1666C20 16.7333 19.8642 16.3074 19.5815 15.979C17.7477 13.8488 15.0313 12.5 12 12.5C8.96866 12.5 6.25235 13.8488 4.41847 15.979C4.13576 16.3074 4 16.7333 4 17.1666V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V17.1666ZM18 19.5C18.2761 19.5 18.5 19.2761 18.5 19V17.1666C18.5 17.0384 18.4601 16.9754 18.4448 16.9576C16.8837 15.1443 14.5763 14 12 14C9.4237 14 7.11631 15.1443 5.55524 16.9576C5.53991 16.9754 5.5 17.0384 5.5 17.1666V19C5.5 19.2761 5.72386 19.5 6 19.5H18Z" fill="currentColor" />
-      </svg>
-    ),
-  },
 ]
 
 export default function TabBar({ username }: TabBarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const profileHref = username ? `/${username}` : '/profile'
   const hidden = useTabBarHidden()
 
   // 배지/아이템북 상세를 다른 유저의 프로필 맥락(?u=)에서 보고 있으면 "내" 탭으로 취급하지 않음
@@ -182,13 +165,12 @@ export default function TabBar({ username }: TabBarProps) {
     (pathname.startsWith('/inventory') || pathname.startsWith('/collections')) &&
     searchParams.get('from') === 'badges'
 
-  const tabs = baseTabs.map((tab) =>
-    tab.href === '/profile' ? { ...tab, href: profileHref } : tab
-  )
+  // 20260824_010: 프로필 탭 제거 — 프로필 진입은 TopNav 우측 아바타로 일원화됐다.
+  // baseTabs는 이제 href 치환 없이 그대로 쓴다.
+  const tabs = baseTabs
 
   function isActive(href: string) {
     if (href === '/') return pathname === '/'
-    if (href === profileHref) return pathname === profileHref || pathname === '/profile'
     if (viewingOtherUser && pathname.startsWith('/badges')) return false
     if (fromBadges) return href === '/badges'
     return pathname.startsWith(href)
