@@ -7,6 +7,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { logEngineDecision } from '@/lib/engine-log'
+import { createNotification, dailyGroupKey } from '@/lib/notifications'
 import type { PointReason, PointTransactionRow } from '@/types/database'
 
 export interface AwardPointsOptions {
@@ -67,7 +68,51 @@ export async function awardPoints(
     return null
   }
 
+  await notifyPointChange(userId, amount, reason, options)
+
   return data as PointTransactionRow
+}
+
+/**
+ * 소식 #5(포인트 적립) / #44(운영진 지급·차감) — 티켓 20260824_019
+ *
+ * 포인트 지급 경로 6곳(배지·드랍·미션·조합·어드민)이 전부 awardPoints()를 지나므로
+ * 여기 한 곳에 심으면 호출부를 손대지 않아도 된다.
+ *
+ * - #5는 `badge_point_reward` **적립만** 대상이다(PRD §3 ①). 미션·조합 포인트는
+ *   #22(미션 완료 + 보상)에 이미 합쳐져 있어 중복이 된다.
+ * - #5는 하루 단위 묶음이라 `amount`를 합산해야 한다 — `sumKeys`로 DB에서 더한다.
+ *   (KST 기준. UTC로 두면 KST 09:00에 날짜가 바뀌어 아침·저녁 포인트가 갈라진다)
+ * - #44는 되돌릴 수 없는 사건이라 압축하지 않는다(L1). `group_key`는 NULL.
+ */
+async function notifyPointChange(
+  userId: string,
+  amount: number,
+  reason: PointReason,
+  options: AwardPointsOptions
+): Promise<void> {
+  if (reason === 'badge_point_reward' && amount > 0) {
+    await createNotification({
+      userId,
+      type: 'points_earned',
+      groupKey: dailyGroupKey('points_earned'),
+      sumKeys: ['amount'],
+      payload: { amount, reason },
+    })
+    return
+  }
+
+  if (reason === 'admin_grant' || reason === 'admin_deduct') {
+    await createNotification({
+      userId,
+      type: 'admin_points_changed',
+      payload: {
+        amount: Math.abs(amount),
+        direction: reason === 'admin_grant' ? 'grant' : 'deduct',
+        reason: options.adminReasonLabel ?? null,
+      },
+    })
+  }
 }
 
 /** 유저의 현재 잔액. 지갑이 아직 없으면(포인트를 한 번도 받은 적 없으면) 0. */
