@@ -515,7 +515,12 @@ export async function tryItemDrop(
   /** 이번 호출에서 드랍된 배지 id (드랍 순서) */
   const droppedBadgeIds: string[] = []
   const act: NormalizedActivity | null = typeof activity === 'object' ? activity : null
-  const activityStartDate = act?.startDateLocal ?? act?.startDate ?? new Date().toISOString()
+  // 20260824_006 — Strava startDateLocal은 로컬 벽시계에 Z를 붙인 값이라(진짜 UTC 아님)
+  // timestamptz(피드 event_at)에 그대로 넣으면 최대 +9시간 미래로 오해석된다.
+  // 이 값은 일일 카운터·복귀 판정(activityDate/comeback/weeklyFirst/last_activity_at)에도
+  // 쓰여 daily_drop_date 등 상태 컬럼에 그대로 저장되므로, 반드시 진짜 UTC인 startDate만
+  // 쓴다(strava/sync.ts의 last_activity_at 검증 가드도 이 값 기준으로 함께 맞춰뒀다).
+  const activityStartDate = act?.startDate ?? new Date().toISOString()
   // 걷기(축1 게이트 통과)는 0.4 — 확정 1개 드랍엔 영향 없이 보너스 드랍 확률·pity 진행에만 반영
   const activityWeight = getActivityDropWeight(act)
 
