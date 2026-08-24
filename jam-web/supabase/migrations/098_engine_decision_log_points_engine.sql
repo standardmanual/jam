@@ -1,5 +1,5 @@
 -- engine_decision_log.engine CHECK 제약에 'points' 추가
--- 티켓 20260824_023 (Infra — 엔진 판정 로그 points CHECK 제약 누락)
+-- 티켓 20260824_024 (Infra — 엔진 판정 로그 points CHECK 제약 누락)
 --
 -- 073에서 만든 제약은 CHECK (engine IN ('badge', 'drop'))이라 포인트 지급 실패 로그
 -- (logEngineDecision('points', 'point_award_failed', ...))가 전량 거절돼 왔다.

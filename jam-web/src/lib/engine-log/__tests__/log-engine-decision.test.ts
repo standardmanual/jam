@@ -1,6 +1,6 @@
 /**
  * logEngineDecision() — insert 계약 + 실패 관측
- * 티켓 20260824_023
+ * 티켓 20260824_024
  *
  * 이 함수가 지켜야 할 것은 두 가지다.
  * 1. `{ user_id, engine, event, payload }` 계약대로 row를 만든다 (컬럼명이 어긋나면 전량 유실).
@@ -8,7 +8,7 @@
  *    throw하지 않고 `{ error }`를 반환하므로, error를 검사하지 않으면 try/catch는 무용지물이다
  *    (실제로 이 티켓 이전까지 `points` 로그가 CHECK 제약에 막혀 전량 무성 유실됐다).
  *
- * CHECK 제약 자체(`engine IN ('badge','drop','points')`)는 마이그레이션 097 적용 후
+ * CHECK 제약 자체(`engine IN ('badge','drop','points')`)는 마이그레이션 098 적용 후
  * 실 DB에서 확인한다 — 목킹된 클라이언트로는 검증할 수 없다.
  */
 import { vi, beforeEach, afterEach } from 'vitest'

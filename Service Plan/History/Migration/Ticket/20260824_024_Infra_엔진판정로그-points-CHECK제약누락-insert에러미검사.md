@@ -1,5 +1,5 @@
 ---
-id: 20260824_023
+id: 20260824_024
 category: Infra
 status: OPEN
 created: 2026-08-24
@@ -211,8 +211,9 @@ jam-web/src/lib/engine-log/__tests__/log-engine-decision.test.ts         (신규
   실패 관측"까지이고, 제약 통과 여부는 DDL 적용 후 실 DB 확인 항목이다. 테스트 파일 상단에 명시했다.
 
 ### 잔여 이슈
-- **티켓 ID 충돌**: staging의 `20260824_023_Content_기차지하철-POI-카테고리-분리.md`가 같은
-  ID를 쓴다. 이 문서(Infra)의 ID 재배정 여부는 오케스트레이터 판단 사항이라 임의로 바꾸지 않았다.
+- ~~**티켓 ID 충돌**~~ — 오케스트레이터가 게이트 리뷰 후 `20260824_023` → `20260824_024`로
+  재배정해 해소했다(staging의 `20260824_023_Content_기차지하철-POI-카테고리-분리.md`와 겹쳤던 것).
+  파일명·`id` 필드·본문 내 자기 참조·마이그레이션 헤더·테스트 주석을 함께 수정했다.
 - **`recordFeedEvent()`(`src/lib/activity-feed/index.ts:72`)에 동일 결함이 남아있다.**
   `await q.insert(payload)`가 반환 `error`를 검사하지 않아 피드 기록 실패가 무성으로 사라진다.
   CHECK 제약 문제는 없어 이번처럼 전량 유실은 아니지만, "삼키되 로그는 남긴다" 원칙 위반이다.
