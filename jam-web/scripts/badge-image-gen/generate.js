@@ -17,7 +17,23 @@
 const fs = require('fs')
 const path = require('path')
 const { createClient } = require('@supabase/supabase-js')
-const { ImageResponse } = require('@vercel/og')
+/**
+ * ImageResponse(satori+resvg) 로더.
+ * 프로젝트가 next 16으로 올라오면서 @vercel/og 직접 의존이 빠졌고, 동일 구현이 next/og로
+ * 내장돼 있다. 예전 환경(@vercel/og 설치됨)에서도 그대로 돌아가도록 둘 다 시도한다.
+ */
+function loadImageResponse() {
+  for (const mod of ['@vercel/og', 'next/og']) {
+    try {
+      return require(mod).ImageResponse
+    } catch (e) {
+      if (e.code !== 'MODULE_NOT_FOUND') throw e
+    }
+  }
+  throw new Error('ImageResponse를 찾을 수 없습니다 — next 또는 @vercel/og가 설치돼 있어야 합니다')
+}
+const ImageResponse = loadImageResponse()
+const { createMeasurer } = require('./lib/measure-text')
 
 function loadEnv() {
   const envPath = path.join(__dirname, '..', '..', '.env.local')
@@ -84,8 +100,24 @@ function fillTemplate(template, row) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(row[key] ?? ''))
 }
 
-function fitsOneLine(text, fontSize, width) {
-  return text.length * fontSize <= width
+/**
+ * 텍스트 폭 측정 함수를 만든다.
+ * - config.text.measure === 'font': 폰트의 실제 advance width로 정확히 계산.
+ *   한글 폰트는 글자폭이 정사각형이 아니라서(Pretendard Bold 한글 = 0.8643em) 근사치를 쓰면
+ *   디자인이 지정한 폰트 크기가 실제로는 들어가는데도 불필요하게 축소된다.
+ * - 그 외(기본): 기존 근사치 — 모든 글자를 fontSize와 같은 정사각형으로 가정.
+ */
+function makeWidthOf(config, measurer) {
+  if (config.text.measure === 'font') {
+    if (!measurer) throw new Error("text.measure='font'인데 폰트 측정기를 만들지 못했습니다")
+    return (text, fontSize) => measurer.widthEm(text) * fontSize
+  }
+  return (text, fontSize) => text.length * fontSize
+}
+
+/** 폭에 맞출 때 남겨둘 안전 여유. 실측 모드는 오차가 없어 1.0, 근사 모드는 기존값 유지 */
+function fitSafetyOf(config) {
+  return config.text.fitSafety ?? (config.text.measure === 'font' ? 1 : 0.98)
 }
 
 /** 중간 지점 근처의 공백/괄호/가운뎃점/하이픈 등 자연스러운 경계에서 2줄로 나눈다 */
@@ -107,27 +139,32 @@ function splitIntoTwoLines(text) {
  *   확대한다. autoShrink와 같은 "폭 대비 이상적 크기" 계산식을 공유하므로 둘 다 켜두면
  *   길이에 따라 자연스럽게 확대/축소가 이어진다.
  */
-function resolveLabelLines(text, config) {
+function resolveLabelLines(text, config, widthOf) {
   const { fontSize, width, autoShrink, autoGrow, minFontSize, maxFontSize } = config.text
   if (!autoShrink && !autoGrow) return { lines: [text], fontSize }
 
   const min = minFontSize ?? 16
   const max = autoGrow ? maxFontSize ?? fontSize : fontSize
   const HARD_FLOOR = 10
+  const safety = fitSafetyOf(config)
+  const fits = (t, size) => widthOf(t, size) <= width
 
   // 폭 대비 이상적인 폰트 크기 — 텍스트가 짧을수록 커지고(autoGrow 켠 경우 max까지),
   // 길수록 작아진다(autoShrink 켠 경우 min까지).
-  const ideal = Math.floor((width / text.length) * 0.98)
-  const singleLineFontSize = Math.max(min, Math.min(max, ideal))
+  const idealFor = (t) => {
+    const unitWidth = widthOf(t, 1)
+    return unitWidth > 0 ? Math.floor((width / unitWidth) * safety) : max
+  }
+  const singleLineFontSize = Math.max(min, Math.min(max, idealFor(text)))
 
-  if (fitsOneLine(text, singleLineFontSize, width)) return { lines: [text], fontSize: singleLineFontSize }
+  if (fits(text, singleLineFontSize)) return { lines: [text], fontSize: singleLineFontSize }
   if (!autoShrink) return { lines: [text], fontSize: singleLineFontSize }
-  if (fitsOneLine(text, min, width)) return { lines: [text], fontSize: min }
+  if (fits(text, min)) return { lines: [text], fontSize: min }
 
   // 한 줄로는 minFontSize에서도 안 들어감 → 2줄 중앙정렬
   const { line1, line2 } = splitIntoTwoLines(text)
-  const longerLen = Math.max(line1.length, line2.length)
-  const twoLineFont = Math.max(HARD_FLOOR, Math.min(max, Math.floor((width / longerLen) * 0.98)))
+  const longer = line1.length >= line2.length ? line1 : line2
+  const twoLineFont = Math.max(HARD_FLOOR, Math.min(max, idealFor(longer)))
   return { lines: [line1, line2], fontSize: twoLineFont }
 }
 
@@ -143,10 +180,10 @@ function resolveScale(config) {
   return config.outputSize / config.canvas.width
 }
 
-async function renderBadge(row, config, fontData, backgroundSvg) {
+async function renderBadge(row, config, fontData, backgroundSvg, widthOf) {
   const { canvas, text, background } = config
   const label = fillTemplate(text.template, row)
-  const { lines, fontSize: resolvedFontSize } = resolveLabelLines(label, config)
+  const { lines, fontSize: resolvedFontSize } = resolveLabelLines(label, config, widthOf)
   const scale = resolveScale(config)
 
   const outWidth = Math.round(canvas.width * scale)
@@ -246,6 +283,8 @@ async function main() {
 
   const fontData = await loadFont(config)
   const backgroundSvg = await loadBackground(config)
+  const measurer = config.text.measure === 'font' ? createMeasurer(fontData) : null
+  const widthOf = makeWidthOf(config, measurer)
 
   const outputDir = path.join(PROJECT_ROOT, 'public', config.outputDir)
   fs.mkdirSync(outputDir, { recursive: true })
@@ -254,7 +293,7 @@ async function main() {
   let fail = 0
   for (const row of targetRows) {
     try {
-      const png = await renderBadge(row, config, fontData, backgroundSvg)
+      const png = await renderBadge(row, config, fontData, backgroundSvg, widthOf)
       const outPath = path.join(outputDir, `${row.id}.png`)
       if (!dryRun) {
         fs.writeFileSync(outPath, png)
