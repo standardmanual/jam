@@ -1,8 +1,15 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { TopNav as DsTopNav } from '@ds/components/navigation/TopNav'
+import { useTopNavData } from '@/lib/topNavData'
+import SyncButton from '@/components/SyncButton'
+import Button from '@/components/ui/Button'
+import { UserIcon } from '@/components/ui/icons'
+import { d } from '@/lib/i18n'
 
 /**
  * SuperHi Plus 상단 네비게이션 (iOS HIG Navigation Bar 패턴)
@@ -23,14 +30,20 @@ import { TopNav as DsTopNav } from '@ds/components/navigation/TopNav'
  * - elevation: 보더/드롭섀도 없음(20260816_012) — 헤더와 본문 배경톤 차이만으로 구분
  * - 뒤로가기: backHref가 있으면 router.push(backHref), 없으면 onBack ?? router.back()
  * - 터치 영역: chevron / rightSlot 모두 최소 44×44pt
+ *
+ * 20260824_010: 전 페이지 3분할 확장 — 이 래퍼가 로그인 유저 컨텍스트(`useTopNavData`,
+ * `(main)/layout.tsx`가 주입)를 읽어 중앙 슬롯(스트라바 동기화 버튼)과 우측 아바타
+ * 슬롯을 호출부 변경 없이 자동으로 채운다("서비스 래퍼에서 기본 주입" 판정). 호출부는
+ * 필요 시 `logo` prop만 추가로 넘기면 된다(탭 최상위 목록 페이지용, 로고로 back+title
+ * 대체). `/drops`·본인 프로필처럼 TopNav 자체를 렌더링하지 않는 화면은 영향 없음.
  */
 export interface TopNavProps {
-  title: string
+  title?: string
   /** 커스텀 뒤로가기 핸들러. 미지정 시 router.back() */
   onBack?: () => void
   /** 명시적 경로가 있으면 router.push로 이동 (onBack보다 우선) */
   backHref?: string
-  /** 우측 액션 슬롯 (버튼/링크 등). 44×44pt는 슬롯 내부에서 보장할 것 */
+  /** 우측 액션 슬롯 (버튼/링크 등). 44×44pt는 슬롯 내부에서 보장할 것. 아바타보다 앞에 놓인다. */
   rightSlot?: ReactNode
   /**
    * 뒤로가기 노출 여부. 기본 true.
@@ -40,19 +53,66 @@ export interface TopNavProps {
   showBack?: boolean
   /** header 엘리먼트에 적용할 인라인 스타일. bg/color 오버라이드에 사용. */
   headerStyle?: React.CSSProperties
+  /**
+   * true면 좌측에 back+title 대신 Jam 로고를 노출한다(탭 최상위 목록 페이지 전용:
+   * 홈/배지/미션/인벤토리). title/showBack/onBack/backHref는 이때 무시된다.
+   */
+  logo?: boolean
 }
 
-export default function TopNav({ title, onBack, backHref, rightSlot, showBack = true, headerStyle }: TopNavProps) {
+export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false }: TopNavProps) {
   const router = useRouter()
+  const { username, avatarUrl, stravaConnected } = useTopNavData()
 
   const handleBack = backHref ? () => router.push(backHref) : (onBack ?? (() => router.back()))
+  const profileHref = username ? `/${username}` : '/profile'
+
+  const logoSlot = logo ? (
+    <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[26px] w-auto" priority />
+  ) : null
+
+  // 미연동 유저도 동기화 버튼을 항상 본다 — 누르면 스트라바 연결 플로우(OAuth 시작 라우트)로
+  // 이동한다. 연동 유저는 기존 SyncButton과 동일하게 수동 동기화를 트리거한다(20260824_010).
+  const centerSlot = stravaConnected ? (
+    <SyncButton username={username} />
+  ) : (
+    <Button
+      variant="outline"
+      surface="sub"
+      size="sm"
+      onClick={() => {
+        window.location.href = '/api/strava/auth'
+      }}
+    >
+      {d.today.syncButton}
+    </Button>
+  )
+
+  const avatarSlot = (
+    <Link
+      href={profileHref}
+      aria-label={d.profile.title}
+      className="w-11 h-11 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
+    >
+      {avatarUrl ? (
+        <Image src={avatarUrl} alt={d.profile.avatarAlt} width={36} height={36} className="w-9 h-9 rounded-[var(--radius-pill)] object-cover" />
+      ) : (
+        <span className="w-9 h-9 rounded-[var(--radius-pill)] bg-surface-elevated text-text flex items-center justify-center">
+          <UserIcon className="w-4 h-4" />
+        </span>
+      )}
+    </Link>
+  )
 
   return (
     <DsTopNav
       title={title}
-      showBack={showBack}
+      showBack={logo ? false : showBack}
       onBack={handleBack}
       rightSlot={rightSlot}
+      logoSlot={logoSlot}
+      centerSlot={centerSlot}
+      avatarSlot={avatarSlot}
       titleSize="var(--text-body)"
       titleWeight="var(--weight-body)"
       titleLineHeight="var(--leading-body)"

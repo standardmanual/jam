@@ -14,7 +14,7 @@ const meta: Meta<typeof TabBar> = {
   argTypes: {
     active: {
       control: 'select',
-      options: ['today', 'badges', 'drops', 'missions', 'inventory', 'profile'],
+      options: ['today', 'badges', 'drops', 'missions', 'inventory'],
     },
   },
 };
@@ -49,12 +49,6 @@ export const Missions: Story = {
 export const Inventory: Story = {
   name: '인벤토리 활성',
   args: { active: 'inventory' },
-  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
-};
-
-export const Profile: Story = {
-  name: '프로필 활성',
-  args: { active: 'profile' },
   decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
 };
 
