@@ -1,9 +1,9 @@
 ---
 id: 20260824_010
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-24
-closed:
+closed: 2026-08-24
 ---
 
 # [UI] Topnavi 전면 노출 확대 + 3분할 구성(로고/뒤로가기·동기화·프로필) + Tabbar 프로필 탭 제거
@@ -192,9 +192,9 @@ src/app/(main)/inventory/page.tsx
 - [x] `npx tsc --noEmit` 통과
 - [x] `npx eslint`(변경 파일 전체) 통과, 경고 없음
 - [x] `npm run build` 프로덕션 빌드 성공(전체 라우트 컴파일 확인)
-- [ ] staging 배포 후 실제 화면(동기화 버튼 연동/미연동 클릭, 아바타 클릭 이동, 탭바
-  5탭, 배지 상세 배경 테마 페이지에서 3분할 시각 확인) — 이 브랜치가 아직 staging에
-  병합되지 않아 `jam-stage.vercel.app`에는 반영되지 않음. 병합 후 확인 필요.
+- [x] staging 병합 완료(`b100f407`) — 실제 화면(동기화 버튼 연동/미연동 클릭, 아바타 클릭
+  이동, 탭바 5탭, 배지 상세 배경 테마 페이지에서 3분할 시각 확인)은 게이트 리뷰 WARN
+  사유로 잔여 이슈에 남겨두고 별도 확인 예정
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -207,9 +207,9 @@ src/app/(main)/inventory/page.tsx
 - [x] 표기 규칙: 해당 없음
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-24
+- 환경: staging
+- 커밋: b100f407 (머지 커밋), staging에서 프로덕션 미배포 — `/jam-ship`으로 별도 진행 필요
 
 ### 주요 의사결정 / 핵심 메모
 - `/design` 세션에서 4개 질문(좌측 영역 통일 여부, 서브페이지 적용 범위, 동기화 버튼
@@ -229,3 +229,16 @@ src/app/(main)/inventory/page.tsx
   SyncButton 스타일(surface="sub", 라이트 배경 전제)을 그대로 쓴다 — 1.5단계 판정에서
   "기존 SyncButton과 동일하게" 재사용하도록 명시했기 때문에 그대로 따랐으나, 어두운
   테마 배경 위에서 대비가 낮아 보일 가능성이 있다. staging에서 육안 확인 권장.
+- **게이트 리뷰 판정: WARN.** 스펙 일치는 코드 대조로 확인됐으나, 위 대비 이슈를
+  포함해 실제 화면 육안 확인이 staging 병합 전이라 안 됐던 상태였다(현재는 병합
+  완료, 육안 확인은 후속으로 진행).
+- 개선 리뷰 제안: 미연동 유저에게도 "동기화" 라벨이 뜨는 라벨-동작 불일치 가능성
+  (실제로는 "연결" 액션) — 문구 담당 검토 권장. 아바타 렌더링 로직이 TopNav/
+  ProfileClient/MissionDetailClient 3곳에 중복 — 재사용처 늘면 DS Avatar 컴포넌트
+  승격 검토.
+- 범위 밖 발견물 2건은 사용자 승인 하에 별도 작업으로 분리함:
+  1. 어드민 배지/아이템북 미리보기 프레임이 `TopNavDataProvider` 밖에서 렌더돼 실제
+     화면엔 없던 동기화 버튼/아바타 placeholder가 미리보기에 나타남(클릭은 막혀
+     있어 기능 오류는 없음)
+  2. `d.today.stravaConnectButton`("지금 동기화하기") i18n 키가 이번 변경으로
+     미사용 상태가 됨 — 정리 필요
