@@ -77,7 +77,8 @@ export default function SyncButton({ username }: { username: string | null }) {
       <Button
         variant="outline"
         surface="sub"
-        size="sm"
+        size="xs"
+        style={{ backgroundColor: 'var(--color-secondary)', color: 'var(--color-base-white)' }}
         onClick={handleSync}
         loading={loading}
       >

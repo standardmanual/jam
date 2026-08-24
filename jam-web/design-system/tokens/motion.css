@@ -20,4 +20,10 @@
 
   --scale-press: 0.96;
   --scale-modal: 0.96;
+
+  /* --scale-press/--scale-modal은 press 시 transform: scale() 피드백용(전환 배율)이다.
+   * --scale-compact은 성격이 다르다 — transform이 아니라 minHeight/padding 같은 절대
+   * 치수를 calc(44px * var(--scale-compact))처럼 곱해 "조밀한 컨텍스트 전용" 사이즈를
+   * 도출할 때 쓴다(예: 내비게이션 바 안의 44px 버튼 → 32px 컴팩트 버튼). 20260824_010. */
+  --scale-compact: 0.7;
 }
