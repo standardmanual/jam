@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import Image from 'next/image'
+import SafeImage from '@/components/SafeImage'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { ActivityType, BadgeCondition, BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
@@ -470,15 +470,23 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               <ListRowCard
                 href={`/collections/${itemBook.id}${!isOwnBadge && subjectUsername ? `?u=${subjectUsername}` : ''}`}
                 icon={
-                  itemBook.image_url ? (
-                    <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shrink-0">
-                      <Image src={itemBook.image_url} alt={itemBook.name} width={44} height={44} className="w-full h-full object-contain p-1" />
-                    </div>
-                  ) : (
-                    <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center shrink-0">
-                      <BookIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
-                    </div>
-                  )
+                  /* 컬렉션 이미지는 어드민 자유 입력이 가능했던 필드다. next/image에 직접 넘기면
+                     미등록 호스트 하나로 배지 상세 화면 전체가 500이 되므로 SafeImage로 렌더한다
+                     (20260824_005). 폴백은 이미지가 없을 때와 같은 BookIcon 플레이스홀더 —
+                     아이콘 자리가 비어 링크 행의 정렬이 무너지지 않는다. */
+                  <SafeImage
+                    src={itemBook.image_url}
+                    alt={itemBook.name}
+                    width={44}
+                    height={44}
+                    className="w-full h-full object-contain p-1"
+                    containerClassName="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden shrink-0"
+                    fallback={
+                      <div className="w-11 h-11 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center shrink-0">
+                        <BookIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                      </div>
+                    }
+                  />
                 }
                 title={itemBook.name}
                 trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}

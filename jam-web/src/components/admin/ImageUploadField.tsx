@@ -9,8 +9,14 @@ interface ImageUploadFieldProps {
   required?: boolean
   label?: string
   /**
-   * URL 직접 입력란 노출 여부. 기본 true.
-   * false면 파일 업로드로만 이미지를 등록한다 (20260818_002 — 배지 이미지 Storage 이전).
+   * URL 직접 입력란 노출 여부. **기본 false — 파일 업로드로만 등록한다.**
+   *
+   * 원래 기본값은 true였는데, 임의의 외부 호스트 URL이 DB에 들어오면 그 값을 렌더하는
+   * 서비스 화면이 통째로 500이 됐다(next/image의 호스트 화이트리스트, 20260824_004).
+   * 위험한 쪽이 기본값(fail-open)이었던 셈이라 20260824_005에서 뒤집었다.
+   * 자유 입력이 꼭 필요한 화면만 `allowManualUrl`을 명시적으로 켜고, 그 값을 렌더하는
+   * 쪽은 반드시 `SafeImage`를 쓴다.
+   *
    * 기존에 외부 URL로 등록된 값은 미리보기에 그대로 표시된다.
    */
   allowManualUrl?: boolean
@@ -27,7 +33,7 @@ export default function ImageUploadField({
   folder = 'misc',
   required = false,
   label = '이미지',
-  allowManualUrl = true,
+  allowManualUrl = false,
   onAverageColor,
 }: ImageUploadFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -81,7 +87,7 @@ export default function ImageUploadField({
           )}
         </div>
 
-        {/* URL 직접 입력 — allowManualUrl이 false면 파일 업로드로만 등록 (20260818_002) */}
+        {/* URL 직접 입력 — 기본값은 false다. 켜는 화면만 이 입력란이 보인다 (20260824_005) */}
         {allowManualUrl && (
           <input
             type="url"
