@@ -14,7 +14,8 @@
 --   ① p_append_keys가 배열을 이어붙이고 중복을 제거하는가
 --   ② actor_count가 병합 횟수가 아니라 **고유 인원**과 일치하는가
 --   ③ #13이 6시간 창에서 badge_ids를 누적하는가 (얕은 병합이면 마지막 하나만 남는다)
---   ④ p_sum_keys 합산 · once 모드 · 행위자 없는 묶음의 actor_count 불변
+--   ④ p_sum_keys 합산 · 행위자 없는 묶음의 actor_count 불변 ·
+--     once 모드가 기존 행을 전혀 건드리지 않는가(payload·actor_count·actor_user_id·ctid 불변)
 
 BEGIN;
 
@@ -24,7 +25,9 @@ DECLARE
   v_a     UUID;
   v_b     UUID;
   v_n     public.notifications;
-  v_prev  TIMESTAMPTZ;
+  v_prev_payload JSONB;
+  v_prev_count   INT;
+  v_prev_ctid    TID;
   v_gk_pick   TEXT := '__test__:drop_picked_up:2026-08-24-H2';
   v_gk_follow TEXT := '__test__:followed:2026-08-24';
   v_gk_points TEXT := '__test__:points_earned:2026-08-24';
@@ -168,25 +171,47 @@ BEGIN
     '④ 보상 획득 6종은 dot을 켜지 않는다';
 
   -- =====================================================================
-  -- ④-3  once 모드 — 두 번째 호출이 updated_at을 건드리지 않는다
+  -- ④-3  once 모드 — 두 번째 호출이 기존 행을 **전혀 건드리지 않는다**
   -- =====================================================================
+  -- ⚠️ `updated_at` 비교로는 이 회귀를 잡을 수 없다(2026-08-24 정정).
+  --    이 스크립트 전체가 하나의 BEGIN…ROLLBACK 안에서 돌고 PostgreSQL의 NOW()는
+  --    transaction_timestamp()라, once가 잘못 UPDATE를 수행해도 updated_at이 첫 호출과
+  --    **같은 값**으로 찍힌다(pg_sleep도 이 값을 바꾸지 못한다). 항상 참인 단언이었다.
+  --    그래서 "아무것도 하지 않았음"을 두 축으로 증명한다.
+  --      (1) 의미 축 — payload·actor_count·actor_user_id 불변
+  --      (2) 물리 축 — ctid 불변. UPDATE는 반드시 새 튜플 버전을 만들어 ctid가 바뀐다
+  --                    (HOT 갱신이어도 같은 페이지 내 새 위치를 잡는다)
   v_n := public.create_notification(
     p_user_id => v_owner, p_type => 'mission_milestone',
-    p_payload => jsonb_build_object('mission_id', 'm-1', 'milestone', 50),
+    p_payload => jsonb_build_object('mission_id', 'm-1', 'milestone', 50, 'current', 52),
     p_bumps_badge => TRUE, p_actor_user_id => NULL, p_group_key => v_gk_once,
     p_mode => 'once', p_sum_keys => NULL, p_append_keys => NULL);
-  v_prev := v_n.updated_at;
 
-  PERFORM pg_sleep(0.01);
+  v_prev_payload := v_n.payload;
+  v_prev_count   := v_n.actor_count;
+  SELECT n.ctid INTO v_prev_ctid FROM public.notifications n WHERE n.id = v_n.id;
 
+  -- 두 번째 호출은 payload·행위자·누적 키를 **전부 다르게** 준다.
+  -- merge였다면 current가 91로 덮어써지고, actor_ids가 생기며, actor_user_id가 채워진다.
   v_n := public.create_notification(
     p_user_id => v_owner, p_type => 'mission_milestone',
-    p_payload => jsonb_build_object('mission_id', 'm-1', 'milestone', 50),
-    p_bumps_badge => TRUE, p_actor_user_id => NULL, p_group_key => v_gk_once,
-    p_mode => 'once', p_sum_keys => NULL, p_append_keys => NULL);
+    p_payload => jsonb_build_object('mission_id', 'm-1', 'milestone', 50, 'current', 91,
+                                    'actor_ids', jsonb_build_array(v_a::text)),
+    p_bumps_badge => TRUE, p_actor_user_id => v_a, p_group_key => v_gk_once,
+    p_mode => 'once', p_sum_keys => NULL, p_append_keys => ARRAY['actor_ids']);
 
-  ASSERT v_n.updated_at = v_prev,
-    '④ once 모드가 updated_at을 갱신했다 — dot이 다시 켜져 반복 발송이 된다';
+  ASSERT v_n.payload = v_prev_payload,
+    format('④ once 모드가 payload를 갱신했다 — 기대 %s, 실제 %s', v_prev_payload, v_n.payload);
+  ASSERT (v_n.payload ->> 'current')::int = 52,
+    format('④ once 모드가 값을 덮어썼다 — current는 52로 남아야 한다 (실제 %s)', v_n.payload ->> 'current');
+  ASSERT v_n.payload -> 'actor_ids' IS NULL,
+    format('④ once 모드가 append를 수행했다 (실제 %s)', v_n.payload -> 'actor_ids');
+  ASSERT v_n.actor_count = v_prev_count,
+    format('④ once 모드가 actor_count를 갱신했다 — 기대 %s, 실제 %s', v_prev_count, v_n.actor_count);
+  ASSERT v_n.actor_user_id IS NULL,
+    '④ once 모드가 actor_user_id를 갱신했다';
+  ASSERT (SELECT n.ctid FROM public.notifications n WHERE n.id = v_n.id) = v_prev_ctid,
+    '④ once 모드가 UPDATE를 수행했다 — updated_at이 갱신돼 dot이 다시 켜지고 반복 발송이 된다';
 
   ASSERT (SELECT count(*) FROM public.notifications
            WHERE user_id = v_owner AND group_key = v_gk_once) = 1,
