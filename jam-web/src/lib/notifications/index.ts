@@ -60,6 +60,15 @@ type CreateNotificationRpcClient = {
 
 type PoiViewInsert = Omit<PoiViewRow, 'id'>
 
+/**
+ * 소식 생성에 쓸 Supabase 클라이언트.
+ *
+ * 025 배치는 한 번 실행에 수백~수천 건을 만드는데, 호출마다 `createServiceClient()`를
+ * 새로 만들면 그만큼 클라이언트 객체가 생성된다. 배치는 클라이언트를 한 번 만들어
+ * 주입한다(T1 인라인 호출부는 생략하면 기존과 동일하게 동작).
+ */
+export type NotificationServiceClient = ReturnType<typeof createServiceClient>
+
 type PoiViewTable = {
   upsert: (
     values: PoiViewInsert,
@@ -96,6 +105,11 @@ export interface CreateNotificationInput<T extends NotificationType> {
    * 직전 값이 통째로 사라진다.
    */
   appendKeys?: string[]
+  /**
+   * 재사용할 service_role 클라이언트. 생략하면 호출마다 새로 만든다.
+   * 025 배치처럼 한 실행에서 수백 건을 만드는 경로만 주입한다.
+   */
+  client?: NotificationServiceClient
 }
 
 /**
@@ -106,7 +120,7 @@ export interface CreateNotificationInput<T extends NotificationType> {
 export async function createNotification<T extends NotificationType>(
   input: CreateNotificationInput<T>
 ): Promise<NotificationRow | null> {
-  const { userId, type, payload, actorUserId, groupKey, mode = 'merge', sumKeys, appendKeys } = input
+  const { userId, type, payload, actorUserId, groupKey, mode = 'merge', sumKeys, appendKeys, client } = input
 
   if (!userId) {
     console.error(`[notifications] createNotification: userId 없음 — type: ${type}`)
@@ -114,7 +128,7 @@ export async function createNotification<T extends NotificationType>(
   }
 
   try {
-    const supabase = createServiceClient() as unknown as CreateNotificationRpcClient
+    const supabase = (client ?? createServiceClient()) as unknown as CreateNotificationRpcClient
     const args: CreateNotificationArgs = {
       p_user_id: userId,
       p_type: type,

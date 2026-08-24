@@ -845,6 +845,19 @@ export interface PoiViewRow {
   viewed_at: string
 }
 
+/**
+ * 미션 순위 스냅샷 (마이그레이션 099) — 소식 #23("순위 상승") 판정 기준선.
+ * 순위는 어디에도 저장되지 않고 매번 계산되므로, "상승 시만" 조건을 판정하려면
+ * 직전 배치의 순위가 필요하다. 025 배치만 읽고 쓴다.
+ */
+export interface MissionRankSnapshotRow {
+  mission_id: string
+  user_id: string
+  /** 1부터. 025 배치가 lib/missions/ranking.ts의 정렬로 계산한 값 */
+  rank: number
+  captured_at: string
+}
+
 /** create_notification() RPC 인자 — src/lib/notifications/index.ts */
 export interface CreateNotificationArgs {
   p_user_id: string
@@ -1163,6 +1176,12 @@ export interface Database {
         Row: PoiViewRow
         Insert: Omit<PoiViewRow, 'id' | 'viewed_at'> & { id?: string; viewed_at?: string }
         Update: Partial<Omit<PoiViewRow, 'id'>>
+        Relationships: []
+      }
+      mission_rank_snapshots: {
+        Row: MissionRankSnapshotRow
+        Insert: Omit<MissionRankSnapshotRow, 'captured_at'> & { captured_at?: string }
+        Update: Partial<MissionRankSnapshotRow>
         Relationships: []
       }
     }
