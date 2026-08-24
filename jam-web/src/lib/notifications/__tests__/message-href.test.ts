@@ -13,6 +13,8 @@ import {
   tokenizeMessage,
   type NotificationView,
 } from '../message'
+import { missingMessageSlots } from '../message'
+import { ADMIN_REASONS } from '@/lib/points/reasons'
 import { notificationTarget } from '../href'
 import { notificationSection } from '../section'
 import { isWarningNotification } from '../warning'
@@ -182,6 +184,16 @@ describe('④ 미션', () => {
     ).toBe("'한강 100km', 80%를 넘었어요 (82/100km)")
   })
 
+  it('#20 milestone 키가 없으면 current/target 비율에서 파생한다', () => {
+    // 없다고 50% 문구로 떨어뜨리면 80% 소식이 "절반을 넘었어요"로 나가는 실패 모드가 된다
+    expect(
+      text(view('mission_milestone', { ...mission, current: 82, target: 100, unit: 'km' }))
+    ).toBe("'한강 100km', 80%를 넘었어요 (82/100km)")
+    expect(
+      text(view('mission_milestone', { ...mission, current: 52, target: 100, unit: 'km' }))
+    ).toBe("'한강 100km', 절반을 넘었어요 (52/100km)")
+  })
+
   it('#21 마감 임박 — 2일은 "이틀"', () => {
     expect(text(view('mission_deadline', { ...mission, days: 2, remaining: 12, unit: 'km' }))).toBe(
       "'한강 100km'가 이틀 뒤 끝나요. 12km 남았어요"
@@ -279,28 +291,45 @@ describe('⑧ 계정·시스템', () => {
     )
   })
 
-  it('#44 — reason은 코드다. adminReasonLabel()을 경유해 라벨로 노출한다', () => {
+  it('#44 — reason은 코드다. 유저 노출용 라벨을 경유한다(어드민 원장 라벨과 분리)', () => {
     const grant = view('admin_points_changed', {
       amount: 500,
       direction: 'grant',
       reason: 'cs_compensation',
     })
-    expect(text(grant)).toBe('500 JAM 포인트가 들어왔어요 (CS 보상)')
+    expect(text(grant)).toBe('500 JAM 포인트가 들어왔어요 (불편 보상)')
     // 코드가 그대로 새어 나오면 가이드 위반
     expect(text(grant)).not.toContain('cs_compensation')
-
-    // 「지급」·「회수」·「차감」은 어드민 전용 용어라 유저 노출 화면에 쓸 수 없다
-    const deduct = view('admin_points_changed', {
-      amount: 200,
-      direction: 'deduct',
-      reason: 'abuse_reclaim',
-    })
-    expect(text(deduct)).toBe('200 JAM 포인트가 빠져나갔어요 (어뷰징 적발 회수)')
 
     // 사유가 없으면 '—'를 노출하지 않고 괄호째 뺀다
     expect(text(view('admin_points_changed', { amount: 300, direction: 'grant', reason: null }))).toBe(
       '300 JAM 포인트가 들어왔어요'
     )
+  })
+
+  it('#44 — 괄호 안 사유에도 「지급」·「회수」·「차감」이 새어 나오지 않는다', () => {
+    // ADMIN_REASONS의 라벨은 어드민 원장 전용이라 「어뷰징 적발 회수」·「이벤트·프로모션
+    // 지급」이 그대로 들어 있다. 본문을 "들어왔어요/빠져나갔어요"로 고친 취지가
+    // 괄호에서 무너지면 안 된다(UX 가이드 §1-3 / PRD §3 ⑧).
+    const banned = ['지급', '회수', '차감']
+    for (const reason of ADMIN_REASONS.map((r) => r.value)) {
+      for (const direction of ['grant', 'deduct']) {
+        const line = text(view('admin_points_changed', { amount: 200, direction, reason }))
+        for (const word of banned) expect(line).not.toContain(word)
+        expect(line).not.toContain(reason)
+      }
+    }
+    expect(text(view('admin_points_changed', { amount: 200, direction: 'deduct', reason: 'abuse_reclaim' })))
+      .toBe('200 JAM 포인트가 빠져나갔어요 (이용 정책 위반)')
+  })
+
+  it("#44 — 'other'와 모르는 코드는 괄호째 뺀다(유저에게 알려줄 사유가 없다)", () => {
+    expect(text(view('admin_points_changed', { amount: 100, direction: 'grant', reason: 'other' }))).toBe(
+      '100 JAM 포인트가 들어왔어요'
+    )
+    expect(
+      text(view('admin_points_changed', { amount: 100, direction: 'grant', reason: 'legacy_unknown' }))
+    ).toBe('100 JAM 포인트가 들어왔어요')
   })
 
   it('#45 공지 — 어드민이 쓴 완성 문장이라 슬롯이 아니다(줄 전체 볼드 방지)', () => {
@@ -423,5 +452,25 @@ describe('⑧ 경고 스타일 — 저장하지 않고 렌더 시점에 재평�
 
   it('보상 획득 같은 일반 소식은 경고가 될 수 없다', () => {
     expect(isWarningNotification('badge_earned', {}, {}, now)).toBe(false)
+  })
+})
+
+describe('빈 슬롯 감지 — 삼키되 로그는 남긴다 (2차 보강)', () => {
+  it('값이 채워진 슬롯은 보고하지 않는다', () => {
+    expect(
+      missingMessageSlots(view('collection_slottable', { book_name: '한강 시리즈', count: 3 }))
+    ).toEqual([])
+  })
+
+  it('생성 측이 다른 키를 채우면 버려진 슬롯 키를 알려준다', () => {
+    // 025 배치가 book_name 대신 다른 이름을 쓰면 "''에 넣을 수 있는 …"이 나간다.
+    // 화면은 그대로 두되(빈 슬롯은 버린다) 호출부가 로그를 남길 수 있어야 한다.
+    const v = view('collection_slottable', { itembook_name: '한강 시리즈', count: 3 })
+    expect(missingMessageSlots(v)).toEqual(['bookName'])
+    expect(text(v)).not.toContain('{bookName}')
+  })
+
+  it('조사 마커는 슬롯이 아니라 문법이라 보고 대상이 아니다', () => {
+    expect(missingMessageSlots(view('collection_completable', { book_name: '한강 시리즈' }))).toEqual([])
   })
 })

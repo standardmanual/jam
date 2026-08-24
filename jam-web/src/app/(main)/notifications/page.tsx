@@ -30,6 +30,7 @@ export default async function NotificationsPage() {
     <NotificationsClient
       initialItems={page.items}
       initialCursor={page.nextCursor}
+      initialFailed={page.failed}
       seenAtSnapshot={seenAt}
     />
   )

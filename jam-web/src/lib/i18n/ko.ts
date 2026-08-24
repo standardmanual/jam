@@ -503,6 +503,21 @@ export const ko = {
     emptyBody: 'Strava를 동기화하면 배지와 함께 포인트를 받을 수 있어요.',
     loadMore: '더 보기',
     loadingMore: '불러오는 중',
+
+    /**
+     * 어드민 포인트 변동 사유 — **유저 노출용** 라벨 (20260824_021 2차).
+     *
+     * `points/reasons.ts`의 `ADMIN_REASONS` 라벨은 어드민 원장 전용이라
+     * 「이벤트·프로모션 **지급**」·「어뷰징 적발 **회수**」처럼 UX 가이드 §1-3이
+     * 유저 노출 화면에서 금지한 용어가 그대로 들어 있다. 소식 #44 본문을
+     * "들어왔어요/빠져나갔어요"로 고친 취지가 괄호에서 무너지므로 매핑을 분리한다.
+     * (`other`는 유저에게 알려줄 정보가 없어 라벨 자체를 두지 않는다 — 괄호째 뺀다)
+     */
+    reasonCsCompensation: '불편 보상',
+    reasonErrorCorrection: '오류 정정',
+    reasonEventPromotion: '이벤트·프로모션',
+    reasonAbuseReclaim: '이용 정책 위반',
+    reasonRetroactiveAdjustment: '과거 활동 반영',
   },
 
   /** 유저 검색 결과 */
@@ -574,8 +589,12 @@ export const ko = {
     title: '알림',
     bellLabel: '알림',
     unreadDotLabel: '새 소식이 있어요',
-    /** 진입 직전 seen_at 스냅샷 기준으로 그리는 구분선 */
-    newDivider: '새 소식 {count}',
+    /**
+     * 진입 직전 seen_at 스냅샷 기준으로 그리는 구분선.
+     * 선은 **새 소식과 이전 소식의 실제 경계**에 놓인다(위쪽이 새 소식) — 목록 맨 위에
+     * 두면 나눌 대상이 없어 헤더가 되고, 정작 경계에는 라벨이 없어진다(iOS Mail·Slack 방식).
+     */
+    newDivider: '여기까지 새 소식 {count}개',
     sectionToday: '오늘',
     sectionWeek: '이번 주',
     sectionMonth: '이번 달',
@@ -583,10 +602,15 @@ export const ko = {
     emptyTitle: '아직 도착한 소식이 없어요',
     emptyBody: '배지를 획득하거나 누군가 내 드랍을 픽업하면 여기에 쌓여요',
     loadError: '소식을 불러오지 못했어요. 잠시 후 다시 시도해주세요',
+    /** 첫 페이지 조회 자체가 실패했을 때 — "소식 0건"과 반드시 구분해서 보여준다 */
+    errorTitle: '소식을 불러오지 못했어요',
+    errorBody: '연결 상태를 확인하고 다시 시도해주세요',
     retry: '다시 시도',
     loadingMore: '불러오는 중',
     /** ⑧ 계정·시스템 경고 아이콘의 스크린리더 라벨 */
     warningLabel: '확인이 필요해요',
+    /** 2단 타겟 행의 아바타 링크 — 이미지뿐이라 접근 가능한 이름이 없다 */
+    avatarLinkLabel: '{name}님 프로필',
     /** 아직 화면이 모르는 type(신규 소식 추가 후 배포 시차)이 들어왔을 때의 안전망 */
     unknown: '새로운 소식이 도착했어요',
 

@@ -16,7 +16,8 @@
  *    `NotificationView.actor`·`me`에 실어준다(유저가 닉네임을 바꾸면 과거 소식도 따라온다).
  * 2. **`payload.count`를 믿지 않는다.** #1·#3·#4는 `badge_ids`가 append로 누적되는데
  *    `count`는 얕은 병합이라 "이번 이벤트분"만 남는다 — 개수는 **항상 배열 길이**로 센다.
- * 3. **#44의 `reason`은 코드다.** 반드시 `adminReasonLabel()`을 경유한다.
+ * 3. **#44의 `reason`은 코드다.** 반드시 `userFacingReasonLabel()`을 경유한다
+ *    (어드민 원장 라벨과 분리된 유저 노출용 매핑 — PRD §3 ⑧).
  * 4. **조사는 볼드가 아니다.** `{을/를}` 마커를 바로 앞 슬롯 값의 받침으로 치환한다.
  *
  * 클라이언트 컴포넌트가 직접 import하므로 서버 전용 모듈(`./index`)에 의존하지 않는다.
@@ -24,7 +25,7 @@
 import type { NotificationType } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { RARITY_LABEL } from '@/lib/rarity'
-import { adminReasonLabel } from '@/lib/points/reasons'
+import { userFacingReasonLabel } from '@/lib/points/reasons'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 뷰 모델 — 서버(feed.ts)가 조인·재평가를 마친 뒤 넘기는 형태
@@ -284,12 +285,13 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
 
     // ── ④ 미션 ────────────────────────────────────────────────────────────
     case 'mission_milestone': {
-      const progress = t(n.slotProgress, {
-        current: num(p, 'current'),
-        target: num(p, 'target'),
-        unit: str(p, 'unit'),
-      })
-      const template = num(p, 'milestone') >= 80 ? n.msgMissionMilestone80 : n.msgMissionMilestone50
+      const current = num(p, 'current')
+      const target = num(p, 'target')
+      const progress = t(n.slotProgress, { current, target, unit: str(p, 'unit') })
+      // milestone 키가 없으면 current/target 비율에서 파생한다 — 없다고 그냥 50% 문구로
+      // 떨어뜨리면 80% 소식이 "절반을 넘었어요"로 나가는 조용한 실패가 된다.
+      const milestone = num(p, 'milestone') || (target > 0 ? (current / target) * 100 : 0)
+      const template = milestone >= 80 ? n.msgMissionMilestone80 : n.msgMissionMilestone50
       return { template, vars: { missionTitle: str(p, 'mission_title'), progress } }
     }
     case 'mission_deadline':
@@ -413,15 +415,16 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       }
     case 'admin_points_changed': {
       const deduct = str(p, 'direction') === 'deduct'
-      const rawReason = p.reason
       // reason은 **분류 코드**다 — 코드가 그대로 노출되면 가이드 위반이라 반드시 라벨을 경유한다.
-      // 값이 없으면 adminReasonLabel()이 '—'를 주므로 괄호 자체를 뺀 템플릿을 쓴다.
-      const hasReason = typeof rawReason === 'string' && rawReason !== ''
+      // 단 어드민 원장 라벨(`adminReasonLabel`)은 「지급」·「회수」를 담고 있어 유저 화면에
+      // 쓸 수 없다(UX 가이드 §1-3). 유저 노출용 매핑을 쓰고, 보여줄 사유가 없으면
+      // ('other'·미등록 코드·null) 괄호 자체를 뺀 템플릿을 쓴다 — PRD §3 ⑧.
+      const reason = userFacingReasonLabel(str(p, 'reason') || null)
       const template = deduct
-        ? (hasReason ? n.msgPointsOut : n.msgPointsOutNoReason)
-        : (hasReason ? n.msgPointsIn : n.msgPointsInNoReason)
+        ? (reason ? n.msgPointsOut : n.msgPointsOutNoReason)
+        : (reason ? n.msgPointsIn : n.msgPointsInNoReason)
       const vars: Record<string, string> = { points: points(num(p, 'amount')) }
-      if (hasReason) vars.reason = adminReasonLabel(rawReason as string)
+      if (reason) vars.reason = reason
       return { template, vars }
     }
     case 'announcement': {
@@ -446,4 +449,21 @@ export function notificationPlainText(view: NotificationView): string {
   return notificationTokens(view)
     .map((tk) => tk.text)
     .join('')
+}
+
+/**
+ * 값이 비어 **버려진** 슬롯 키 목록 (20260824_021 2차).
+ *
+ * `tokenizeMessage()`가 빈 슬롯을 통째로 버리는 건 유저에게 `{badgeName}`을 보이지
+ * 않기 위한 안전장치지만, 그대로 두면 025 배치가 다른 키 이름으로 payload를 채웠을 때
+ * `''에 넣을 수 있는 아이템 배지가 3개 있어요`처럼 **빈 따옴표만 남은 문장**이 나가고
+ * 아무도 모른다. 서버 경로(`hydrateNotifications`)가 이 결과를 로그로 남긴다 —
+ * 이 프로젝트의 원칙은 "삼키되 로그는 남긴다"다.
+ *
+ * 조사 마커는 슬롯이 아니므로 제외한다.
+ */
+export function missingMessageSlots(view: NotificationView): string[] {
+  const { template, vars } = buildNotificationMessage(view)
+  const keys = [...template.matchAll(/\{([^}]+)\}/g)].map((m) => m[1])
+  return keys.filter((key) => !JOSA_MARKERS[key] && (vars[key] ?? '') === '')
 }
