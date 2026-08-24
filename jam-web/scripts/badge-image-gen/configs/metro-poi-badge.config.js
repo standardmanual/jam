@@ -9,7 +9,7 @@
  * 대상: public.poi.category='train_subway'(기차/지하철) POI에 연결된 public.badges
  *       (929개, 2026-08-24 기준)
  *
- * 2026-08-24에 이 929개를 transit(대중교통)에서 train_subway로 분리했다([[20260824_022]]).
+ * 2026-08-24에 이 929개를 transit(대중교통)에서 train_subway로 분리했다([[20260824_023]]).
  * 그 전에는 `category='transit' AND name LIKE '%역'`으로 걸러냈다.
  */
 const { fetchAllRows } = require('../lib/fetch-all-rows')
