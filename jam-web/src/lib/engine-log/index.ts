@@ -9,7 +9,7 @@
  * 로그 실패가 본 흐름(배지 발급·드랍·포인트 지급)을 깨뜨려서는 안 되므로 예외를 던지지 않는다.
  * 다만 **조용히 사라지지도 않게 한다.** insert가 반환하는 `error`를 반드시 검사하고
  * `console.error`로 남긴다 — `supabase-js`는 실패해도 throw하지 않으므로 try/catch만으로는
- * 아무것도 잡히지 않는다. (실제로 티켓 20260824_023 이전까지 `points` 로그가 CHECK 제약에
+ * 아무것도 잡히지 않는다. (실제로 티켓 20260824_024 이전까지 `points` 로그가 CHECK 제약에
  * 막혀 전량 무성 유실됐다.)
  */
 import { createServiceClient } from '@/lib/supabase/server'
