@@ -299,7 +299,10 @@ export async function processFetchedActivities(
           triggered_by_strava_id: rawActivity.id,
           triggered_by_activity_name: rawActivity.name,
           triggered_by_distance_km: normalized?.distanceKm ?? null,
-          triggered_by_activity_date: rawActivity.start_date_local ?? rawActivity.start_date,
+          // 20260824_006 — start_date_local은 로컬 벽시계에 Z를 붙인 값이라(진짜 UTC 아님)
+          // 그대로 넣으면 최대 +9시간 미래로 오해석된다. 이 필드는 POI 배지 상세 화면
+          // (PoiEarnHistory)에 방문일로 노출되므로 반드시 진짜 UTC인 start_date만 쓴다.
+          triggered_by_activity_date: rawActivity.start_date,
         }
         const { error: earnError } = await supabase
           .from('user_poi_badge_earns')
@@ -414,7 +417,10 @@ export async function processFetchedActivities(
   // try/catch로 흡수된 경우) 등을 의미하므로 경고 로그를 남긴다(흐름은 막지 않음).
   if (dropTargets.length > 0) {
     const latestTarget = dropTargets[dropTargets.length - 1]
-    const expectedLastActivityAt = latestTarget.startDateLocal ?? latestTarget.startDate
+    // 20260824_006 — drop-engine의 activityStartDate가 startDate(진짜 UTC) 기준으로
+    // 바뀌었으므로, 그 값과 비교하는 이 가드도 동일한 기준으로 맞춰야 한다. 그대로
+    // startDateLocal을 쓰면 실제로는 정상인데도 매 싱크마다 불일치 경고가 계속 찍힌다.
+    const expectedLastActivityAt = latestTarget.startDate
     const { data: dropStateRow, error: dropStateError } = await supabase
       .from('user_drop_state')
       .select('last_activity_at')
