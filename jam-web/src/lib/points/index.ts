@@ -84,7 +84,7 @@ export async function awardPoints(
  *   reason만 보면 미션 완료 1건이 #5와 #22 두 줄로 보인다. #22가 이미 "배지 1개와 500P"로
  *   보상을 전부 서술하므로 미션 경유분은 여기서 제외한다 — 판별은 `sourceMissionId`로 한다.
  *   (제외하지 않으면 #5의 하루 합계 금액 자체가 미션분만큼 부풀려진다)
- * - 미션·조합 포인트(`mission_point_reward`·`crafting_*`)도 같은 이유로 #5를 만들지 않는다.
+ * - 미션·조합 포인트(`mission_point_reward`·`combine_pity_reward`)도 같은 이유로 #5를 만들지 않는다.
  * - #5는 하루 단위 묶음이라 `amount`를 합산해야 한다 — `sumKeys`로 DB에서 더한다.
  *   (KST 기준. UTC로 두면 KST 09:00에 날짜가 바뀌어 아침·저녁 포인트가 갈라진다)
  * - #44는 되돌릴 수 없는 사건이라 압축하지 않는다(L1). `group_key`는 NULL.
