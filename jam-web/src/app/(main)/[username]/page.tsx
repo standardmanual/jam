@@ -16,7 +16,9 @@ export async function generateMetadata({ params }: Props) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeFeedItem(id: string, event_type: ActivityFeedRow['event_type'], event_at: string, metadata: Record<string, any>): ActivityFeedRow {
-  return { id, user_id: '', event_type, event_at, metadata }
+  // 피드 테이블에 실기록이 없는 레거시 항목을 화면용으로 합성한 행이다. 실제 기록 시각이
+  // 없으므로 created_at은 event_at으로 채운다 — 이 값을 읽는 화면은 없다(정렬·표시는 event_at).
+  return { id, user_id: '', event_type, event_at, created_at: event_at, metadata }
 }
 
 export default async function UserProfilePage({ params }: Props) {
