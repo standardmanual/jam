@@ -642,7 +642,16 @@ export interface ActivityFeedRow {
   id: string
   user_id: string
   event_type: ActivityFeedEventType
+  /**
+   * **Strava 활동 시작 시각**이다(기록 시각이 아니다). recordFeedEvent()의 4번째 인자로
+   * 활동 시작 시각이 그대로 들어간다 — 피드 정렬·표시용.
+   */
   event_at: string
+  /**
+   * 행이 DB에 기록된 시각 (마이그레이션 093). "방금 획득했는가" 판정은 이 컬럼을 쓴다.
+   * 093 이전 행은 event_at 기반 근사값이다.
+   */
+  created_at: string
   metadata: Record<string, unknown>
 }
 
@@ -944,7 +953,7 @@ export interface Database {
       }
       user_activity_feed: {
         Row: ActivityFeedRow
-        Insert: Omit<ActivityFeedRow, 'id' | 'event_at'> & { id?: string; event_at?: string }
+        Insert: Omit<ActivityFeedRow, 'id' | 'event_at' | 'created_at'> & { id?: string; event_at?: string; created_at?: string }
         Update: Partial<Omit<ActivityFeedRow, 'id'>>
         Relationships: []
       }
