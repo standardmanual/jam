@@ -12,7 +12,7 @@ import UserSearchBar from './UserSearchBar'
 import TodayCardStack from './TodayCardStack'
 import { getTodayCards } from '@/lib/today/cards'
 import { d } from '@/lib/i18n'
-import { ActivityIcon, MedalIcon } from '@/components/ui/icons'
+import { MedalIcon } from '@/components/ui/icons'
 
 interface BadgeWithEarned {
   badge: BadgeRow
@@ -68,21 +68,10 @@ export default async function HomePage() {
         </h1>
       </div>
 
-      {/* Strava 상태 — 동기화 버튼은 Topnavi 중앙 슬롯으로 이동(20260824_010).
-          이 카드는 이제 연동 상태를 보여주는 정보 표시로만 남는다. */}
-      {stravaConnection ? (
-        <Card tone="inverse">
-          <div className="flex items-center gap-2">
-            <ActivityIcon className="w-5 h-5 text-text-inverse" />
-            <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.today.stravaLabel}</span>
-            {stravaConnection.last_synced_at && (
-              <span className="text-[length:var(--text-caption)] text-text-inverse/50">
-                <LocalDate iso={stravaConnection.last_synced_at} options={{ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }} />
-              </span>
-            )}
-          </div>
-        </Card>
-      ) : (
+      {/* Strava 미연동 안내 카드 — 최초 가입 시 노출, 연동 유도 목적으로 유지한다.
+          연동 후 카드(동기화 상태 표시)는 Topnavi 중앙 슬롯과 중복이라 제거했다
+          (20260824_012). */}
+      {!stravaConnection && (
         <Card tone="inverse">
           <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-1">{d.today.stravaNotConnectedTitle}</p>
           <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.today.stravaNotConnectedBody}</p>
