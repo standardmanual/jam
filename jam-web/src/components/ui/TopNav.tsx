@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -68,27 +68,21 @@ export interface TopNavProps {
 
 export default function TopNav({ title = '', onBack, backHref, rightSlot, showBack = true, headerStyle, logo = false }: TopNavProps) {
   const router = useRouter()
-  const pathname = usePathname()
   const { username, avatarUrl, stravaConnected } = useTopNavData()
 
   const handleBack = backHref ? () => router.push(backHref) : (onBack ?? (() => router.back()))
   const profileHref = username ? `/${username}` : '/profile'
 
-  // 알림 종 노출 판정 — 두 경우에 보인다.
-  //  1) 루트 화면: back chevron이 없으면 루트다(로고 모드이거나 showBack=false).
-  //     타인 프로필은 back+닉네임 타이틀이라 자동 제외되고, TopNav 자체가 없는 /drops도 마찬가지다.
-  //  2) 알림함 자신: back 모드지만 내비게이션 일관성을 위해 종을 유지한다(20260825 요청).
-  //     이미 알림함이므로 링크는 제자리를 가리키지만, 우측 아이콘 구성이 화면마다
-  //     달라지지 않는 편이 낫다는 판단이다.
-  const isRootScreen = logo || !showBack
-  const isNotificationsScreen = pathname === '/notifications'
-  const composedRightSlot = isRootScreen || isNotificationsScreen ? (
+  // 알림 종은 **TopNav가 렌더되는 모든 화면**에 붙는다 (20260825 확정).
+  // centerSlot(동기화)·avatarSlot(프로필)이 조건 없이 항상 렌더되므로 종만 화면마다
+  // 나타났다 사라지면 우측 구성이 들쭉날쭉해진다. 셋을 한 세트로 묶어 일관되게 둔다.
+  // 호출부가 rightSlot을 쓰는 화면(예: 배지 상세 공유 버튼)은 [공유버튼][종][아바타]가 된다.
+  // TopNav 자체를 렌더링하지 않는 /drops는 자연히 제외된다.
+  const composedRightSlot = (
     <>
       {rightSlot}
       <NotificationBell />
     </>
-  ) : (
-    rightSlot
   )
 
   const logoSlot = logo ? (
