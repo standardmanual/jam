@@ -15,10 +15,12 @@ import { scopedGroupKey } from '@/lib/notifications/groupKey'
 import {
   DAY_MS,
   fetchAllRows,
+  fetchAllRowsIn,
   kstDateOffset,
   kstWeekKey,
   type BatchContext,
   type NotificationDraft,
+  type StepOutput,
 } from './shared'
 
 /** 집계 창 — 지난 7일(KST 날짜 기준) */
@@ -71,24 +73,25 @@ export function selectDropSpotDrafts(input: DropSpotInput): NotificationDraft[] 
   return drafts
 }
 
-export async function buildDropSpotDrafts(ctx: BatchContext): Promise<NotificationDraft[]> {
+/** `scanned`는 **활성 드랍 수**다. 드랍이 있는데 초안이 0이면 열람 집계나 POI 이름 매칭이 깨진 것 */
+export async function buildDropSpotDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { supabase, startedAt } = ctx
 
   const drops = await fetchAllRows<{ dropper_user_id: string | null; poi_id: string }>(
     'poi_drops(active)',
-    (from, to) =>
+    'id',
+    () =>
       supabase
         .from('poi_drops')
         .select('dropper_user_id, poi_id')
         .eq('is_available', true)
         .not('dropper_user_id', 'is', null)
-        .range(from, to)
   )
 
   const activeDrops = drops
     .filter((d): d is { dropper_user_id: string; poi_id: string } => Boolean(d.dropper_user_id))
     .map((d) => ({ dropperUserId: d.dropper_user_id, poiId: d.poi_id }))
-  if (activeDrops.length === 0) return []
+  if (activeDrops.length === 0) return { drafts: [], scanned: 0 }
 
   const poiIds = [...new Set(activeDrops.map((d) => d.poiId))]
 
@@ -97,16 +100,11 @@ export async function buildDropSpotDrafts(ctx: BatchContext): Promise<Notificati
   const since = kstDateOffset(new Date(startedAt.getTime() - DROP_SPOT_WINDOW_DAYS * DAY_MS), 0)
 
   const [pois, views] = await Promise.all([
-    fetchAllRows<{ id: string; name: string }>('poi', (from, to) =>
-      supabase.from('poi').select('id, name').in('id', poiIds).range(from, to)
+    fetchAllRowsIn<{ id: string; name: string }, string>('poi', 'id', poiIds, (chunk) =>
+      supabase.from('poi').select('id, name').in('id', chunk)
     ),
-    fetchAllRows<{ poi_id: string; user_id: string }>('poi_views', (from, to) =>
-      supabase
-        .from('poi_views')
-        .select('poi_id, user_id')
-        .in('poi_id', poiIds)
-        .gte('viewed_on', since)
-        .range(from, to)
+    fetchAllRowsIn<{ poi_id: string; user_id: string }, string>('poi_views', 'id', poiIds, (chunk) =>
+      supabase.from('poi_views').select('poi_id, user_id').in('poi_id', chunk).gte('viewed_on', since)
     ),
   ])
 
@@ -118,10 +116,13 @@ export async function buildDropSpotDrafts(ctx: BatchContext): Promise<Notificati
     viewersByPoi.set(v.poi_id, set)
   }
 
-  return selectDropSpotDrafts({
-    activeDrops,
-    poiNames,
-    viewersByPoi,
-    weekKey: kstWeekKey(startedAt),
-  })
+  return {
+    drafts: selectDropSpotDrafts({
+      activeDrops,
+      poiNames,
+      viewersByPoi,
+      weekKey: kstWeekKey(startedAt),
+    }),
+    scanned: activeDrops.length,
+  }
 }

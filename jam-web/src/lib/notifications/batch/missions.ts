@@ -25,6 +25,7 @@ import {
   kstDateOffset,
   type BatchContext,
   type NotificationDraft,
+  type StepOutput,
 } from './shared'
 
 /** 마감 임박 고지 시점 — PRD §3 ④가 D-2로 규정 */
@@ -247,27 +248,20 @@ function loadMissionData(ctx: BatchContext): Promise<MissionData> {
 async function loadMissionDataUncached(ctx: BatchContext): Promise<MissionData> {
   const { supabase } = ctx
   const [missions, participationRows, completionRows] = await Promise.all([
-    fetchAllRows<BatchMission>('missions', (from, to) =>
+    fetchAllRows<BatchMission>('missions', 'id', () =>
       supabase
         .from('missions')
         .select('id, title, mission_type, condition_json, status_display_type, starts_at, ends_at')
-        .range(from, to)
     ),
     fetchAllRows<{ user_id: string; mission_id: string; progress_value: number }>(
       'user_mission_participations',
-      (from, to) =>
-        supabase
-          .from('user_mission_participations')
-          .select('user_id, mission_id, progress_value')
-          .range(from, to)
+      'id',
+      () => supabase.from('user_mission_participations').select('user_id, mission_id, progress_value')
     ),
     fetchAllRows<{ user_id: string; mission_id: string; completed_at: string }>(
       'user_mission_completions',
-      (from, to) =>
-        supabase
-          .from('user_mission_completions')
-          .select('user_id, mission_id, completed_at')
-          .range(from, to)
+      'id',
+      () => supabase.from('user_mission_completions').select('user_id, mission_id, completed_at')
     ),
   ])
 
@@ -282,23 +276,31 @@ async function loadMissionDataUncached(ctx: BatchContext): Promise<MissionData> 
   return { missions, participations, completedAt }
 }
 
-/** #21 + #24 — 한 번의 조회로 둘 다 만든다 */
-export async function buildMissionDrafts(ctx: BatchContext): Promise<NotificationDraft[]> {
+/**
+ * #21 + #24 — 한 번의 조회로 둘 다 만든다.
+ *
+ * `scanned`는 **미션 참가 행 수**다. 참가자가 있는데 초안이 0인 날이 이어지면 마감 D-2
+ * 계산이나 종료 판정이 깨진 것이다(참가가 0이면 0건이 정상).
+ */
+export async function buildMissionDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { missions, participations, completedAt } = await loadMissionData(ctx)
-  if (missions.length === 0) return []
+  if (missions.length === 0) return { drafts: [], scanned: 0 }
 
   const completedPairs = new Set(completedAt.keys())
 
-  return [
-    ...selectMissionDeadlineDrafts({
-      missions,
-      participations,
-      completedPairs,
-      today: ctx.today,
-      deadlineDate: kstDateOffset(ctx.startedAt, MISSION_DEADLINE_DAYS),
-    }),
-    ...selectMissionEndedDrafts({ missions, participations, startedAt: ctx.startedAt }),
-  ]
+  return {
+    drafts: [
+      ...selectMissionDeadlineDrafts({
+        missions,
+        participations,
+        completedPairs,
+        today: ctx.today,
+        deadlineDate: kstDateOffset(ctx.startedAt, MISSION_DEADLINE_DAYS),
+      }),
+      ...selectMissionEndedDrafts({ missions, participations, startedAt: ctx.startedAt }),
+    ],
+    scanned: participations.length,
+  }
 }
 
 interface RankSnapshotRow {
@@ -313,13 +315,16 @@ interface RankSnapshotRow {
  * 스냅샷 저장이 실패해도 소식은 이미 만들어진 뒤다(다음 배치가 옛 기준선으로 비교하지만
  * `once` 일자 키가 같은 날 중복을 막는다).
  */
-export async function buildMissionRankDrafts(ctx: BatchContext): Promise<NotificationDraft[]> {
+export async function buildMissionRankDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { supabase } = ctx
   const { missions, participations, completedAt } = await loadMissionData(ctx)
-  if (missions.length === 0) return []
+  if (missions.length === 0) return { drafts: [], scanned: 0 }
 
-  const snapshotRows = await fetchAllRows<RankSnapshotRow>('mission_rank_snapshots', (from, to) =>
-    supabase.from('mission_rank_snapshots').select('mission_id, user_id, rank').range(from, to)
+  // 복합 PK (mission_id, user_id) — 한쪽만으로 정렬하면 동순위 안에서 순서가 다시 흔들린다
+  const snapshotRows = await fetchAllRows<RankSnapshotRow>(
+    'mission_rank_snapshots',
+    ['mission_id', 'user_id'],
+    () => supabase.from('mission_rank_snapshots').select('mission_id, user_id, rank')
   )
   const previousRank = new Map(snapshotRows.map((r) => [`${r.mission_id}:${r.user_id}`, r.rank]))
 
@@ -343,5 +348,7 @@ export async function buildMissionRankDrafts(ctx: BatchContext): Promise<Notific
     }
   }
 
-  return drafts
+  // scanned는 **활성 랭킹 미션의 참가자 수**다. 랭킹 미션이 없으면 0이 정상이고,
+  // 참가자가 있는데 초안이 0인 상태가 이어지면 스냅샷 비교가 깨진 것이다.
+  return { drafts, scanned: snapshots.length }
 }

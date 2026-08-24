@@ -19,8 +19,10 @@ import type { BadgeRarity } from '@/types/database'
 import {
   FOLLOWING_WINDOW_MS,
   fetchAllRows,
+  fetchAllRowsIn,
   type BatchContext,
   type NotificationDraft,
+  type StepOutput,
 } from './shared'
 
 /** PRD §3 ⑥ — 이 카테고리 전체에 걸리는 하루 상한 */
@@ -129,15 +131,21 @@ function toDraft(c: FollowingCandidate, today: string): NotificationDraft {
 // DB 로더
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function buildFollowingDrafts(ctx: BatchContext): Promise<NotificationDraft[]> {
+/**
+ * `scanned`는 **지난 24시간 이벤트 행 수**다(배지·아이템·컬렉션 완성·미션 완료 합).
+ * 이벤트가 있는데 초안이 0인 상태가 이어지면 팔로우 팬아웃이나 희귀도 필터가 깨진 것이다 —
+ * 제거된 지역 소식이 정확히 이 패턴(입력은 있는데 매칭이 0)으로 무증상이었다.
+ */
+export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { supabase, startedAt, today } = ctx
   const since = new Date(startedAt.getTime() - FOLLOWING_WINDOW_MS).toISOString()
 
   const follows = await fetchAllRows<{ follower_id: string; following_id: string }>(
     'user_follows',
-    (from, to) => supabase.from('user_follows').select('follower_id, following_id').range(from, to)
+    'id',
+    () => supabase.from('user_follows').select('follower_id, following_id')
   )
-  if (follows.length === 0) return []
+  if (follows.length === 0) return { drafts: [], scanned: 0 }
 
   /** 행위자 → 그 사람을 팔로우하는 사람들 */
   const followersOf = new Map<string, string[]>()
@@ -151,69 +159,73 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<Notificat
   const [activityBadges, invItems, bookCompletions, missionCompletions] = await Promise.all([
     fetchAllRows<{ user_id: string; badge_id: string; earned_at: string }>(
       'user_activity_badges(24h)',
-      (from, to) =>
-        supabase
-          .from('user_activity_badges')
-          .select('user_id, badge_id, earned_at')
-          .gte('earned_at', since)
-          .range(from, to)
+      'id',
+      () => supabase.from('user_activity_badges').select('user_id, badge_id, earned_at').gte('earned_at', since)
     ),
     fetchAllRows<{ inventory_id: string; badge_id: string; obtained_at: string }>(
       'inventory_items(24h)',
-      (from, to) =>
+      'id',
+      () =>
         supabase
           .from('inventory_items')
           .select('inventory_id, badge_id, obtained_at')
           .gte('obtained_at', since)
           .is('dropped_at', null)
-          .range(from, to)
     ),
+    // user_item_book_completions는 복합 PK (user_id, item_book_id) — 둘 다 줘야 전순서가 잡힌다
     fetchAllRows<{ user_id: string; item_book_id: string; completed_at: string }>(
       'user_item_book_completions(24h)',
-      (from, to) =>
+      ['user_id', 'item_book_id'],
+      () =>
         supabase
           .from('user_item_book_completions')
           .select('user_id, item_book_id, completed_at')
           .gte('completed_at', since)
-          .range(from, to)
     ),
     fetchAllRows<{ user_id: string; mission_id: string; completed_at: string }>(
       'user_mission_completions(24h)',
-      (from, to) =>
+      'id',
+      () =>
         supabase
           .from('user_mission_completions')
           .select('user_id, mission_id, completed_at')
           .gte('completed_at', since)
-          .range(from, to)
     ),
   ])
 
   const candidates: FollowingCandidate[] = []
+  const scanned =
+    activityBadges.length + invItems.length + bookCompletions.length + missionCompletions.length
 
   // ── #29 팔로잉 희귀 배지 — legend/mythic만 ─────────────────────────────────
   const badgeIds = [
     ...new Set([...activityBadges.map((b) => b.badge_id), ...invItems.map((i) => i.badge_id)]),
   ]
   if (badgeIds.length > 0) {
-    const badges = await fetchAllRows<{ id: string; name: string; rarity: BadgeRarity }>(
+    // 24시간 안에 여러 사람이 대량으로 배지를 얻으면 이 목록이 커진다 → 청크 분할
+    const badges = await fetchAllRowsIn<{ id: string; name: string; rarity: BadgeRarity }, string>(
       'badges(rare)',
-      (from, to) =>
+      'id',
+      badgeIds,
+      (chunk) =>
         supabase
           .from('badges')
           .select('id, name, rarity')
-          .in('id', badgeIds)
+          .in('id', chunk)
           .in('rarity', ['legend', 'mythic'])
           .is('deleted_at', null)
-          .range(from, to)
     )
     const rareById = new Map(badges.map((b) => [b.id, b]))
 
     // 아이템 배지는 inventory → user 매핑이 필요하다
     const invIds = [...new Set(invItems.map((i) => i.inventory_id))]
     const inventories =
-      invIds.length > 0 && rareById.size > 0
-        ? await fetchAllRows<{ id: string; user_id: string }>('inventory(owner)', (from, to) =>
-            supabase.from('inventory').select('id, user_id').in('id', invIds).range(from, to)
+      rareById.size > 0
+        ? await fetchAllRowsIn<{ id: string; user_id: string }, string>(
+            'inventory(owner)',
+            'id',
+            invIds,
+            (chunk) => supabase.from('inventory').select('id, user_id').in('id', chunk)
           )
         : []
     const userByInventory = new Map(inventories.map((i) => [i.id, i.user_id]))
@@ -251,8 +263,11 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<Notificat
   // ── #30 팔로잉 컬렉션 완성 ────────────────────────────────────────────────
   if (bookCompletions.length > 0) {
     const bookIds = [...new Set(bookCompletions.map((c) => c.item_book_id))]
-    const books = await fetchAllRows<{ id: string; name: string }>('item_books(complete)', (from, to) =>
-      supabase.from('item_books').select('id, name').in('id', bookIds).range(from, to)
+    const books = await fetchAllRowsIn<{ id: string; name: string }, string>(
+      'item_books(complete)',
+      'id',
+      bookIds,
+      (chunk) => supabase.from('item_books').select('id, name').in('id', chunk)
     )
     const nameById = new Map(books.map((b) => [b.id, b.name]))
     for (const c of bookCompletions) {
@@ -276,8 +291,11 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<Notificat
   // ── #31 팔로잉 미션 완료 (묶음) ───────────────────────────────────────────
   if (missionCompletions.length > 0) {
     const missionIds = [...new Set(missionCompletions.map((c) => c.mission_id))]
-    const missions = await fetchAllRows<{ id: string; title: string }>('missions(complete)', (from, to) =>
-      supabase.from('missions').select('id, title').in('id', missionIds).range(from, to)
+    const missions = await fetchAllRowsIn<{ id: string; title: string }, string>(
+      'missions(complete)',
+      'id',
+      missionIds,
+      (chunk) => supabase.from('missions').select('id, title').in('id', chunk)
     )
     const titleById = new Map(missions.map((m) => [m.id, m.title]))
 
@@ -310,5 +328,5 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<Notificat
     }
   }
 
-  return selectFollowingDrafts(candidates, today)
+  return { drafts: selectFollowingDrafts(candidates, today), scanned }
 }

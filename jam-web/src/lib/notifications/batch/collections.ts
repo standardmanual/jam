@@ -19,8 +19,10 @@ import { scopedGroupKey } from '@/lib/notifications/groupKey'
 import { kstDateString } from '@/lib/notifications/kst'
 import {
   fetchAllRows,
+  fetchAllRowsIn,
   type BatchContext,
   type NotificationDraft,
+  type StepOutput,
 } from './shared'
 
 export interface CollectionBook {
@@ -107,26 +109,30 @@ interface BookBadgeRow {
   type: string
 }
 
-/** #9·#10 — 전체 유저 스캔 */
-export async function buildCollectionDrafts(ctx: BatchContext): Promise<NotificationDraft[]> {
+/**
+ * #9·#10 — 전체 유저 스캔.
+ *
+ * `scanned`는 **보유 현황이 잡힌 유저 수**다(판정 루프의 모집단). 이 값이 계속 0보다 큰데
+ * 초안이 0이면 채움 판정이나 북↔배지 매핑이 깨진 것이다.
+ */
+export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { supabase } = ctx
 
-  const books = await fetchAllRows<CollectionBook>('item_books', (from, to) =>
-    supabase.from('item_books').select('id, name').eq('is_active', true).range(from, to)
+  const books = await fetchAllRows<CollectionBook>('item_books', 'id', () =>
+    supabase.from('item_books').select('id, name').eq('is_active', true)
   )
-  if (books.length === 0) return []
+  if (books.length === 0) return { drafts: [], scanned: 0 }
 
   const bookIds = books.map((b) => b.id)
-  const bookBadges = await fetchAllRows<BookBadgeRow>('badges(item_book)', (from, to) =>
+  const bookBadges = await fetchAllRowsIn<BookBadgeRow, string>('badges(item_book)', 'id', bookIds, (chunk) =>
     supabase
       .from('badges')
       .select('id, item_book_id, type')
-      .in('item_book_id', bookIds)
+      .in('item_book_id', chunk)
       .in('type', ['item', 'poi'])
       .is('deleted_at', null)
-      .range(from, to)
   )
-  if (bookBadges.length === 0) return []
+  if (bookBadges.length === 0) return { drafts: [], scanned: 0 }
 
   const badgeIdsByBook = new Map<string, string[]>()
   const poiBadgeIds: string[] = []
@@ -141,40 +147,38 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<Notifica
   }
 
   const [slots, poiEarns, inventories] = await Promise.all([
-    fetchAllRows<{ user_id: string; badge_id: string }>('user_item_book_slots', (from, to) =>
-      supabase
-        .from('user_item_book_slots')
-        .select('user_id, badge_id')
-        .in('item_book_id', bookIds)
-        .range(from, to)
+    fetchAllRowsIn<{ user_id: string; badge_id: string }, string>(
+      'user_item_book_slots',
+      'id',
+      bookIds,
+      (chunk) => supabase.from('user_item_book_slots').select('user_id, badge_id').in('item_book_id', chunk)
     ),
-    poiBadgeIds.length > 0
-      ? fetchAllRows<{ user_id: string; badge_id: string }>('user_poi_badge_earns', (from, to) =>
-          supabase
-            .from('user_poi_badge_earns')
-            .select('user_id, badge_id')
-            .in('badge_id', poiBadgeIds)
-            .range(from, to)
-        )
-      : Promise.resolve([]),
-    fetchAllRows<{ id: string; user_id: string }>('inventory', (from, to) =>
-      supabase.from('inventory').select('id, user_id').range(from, to)
+    fetchAllRowsIn<{ user_id: string; badge_id: string }, string>(
+      'user_poi_badge_earns',
+      'id',
+      poiBadgeIds,
+      (chunk) => supabase.from('user_poi_badge_earns').select('user_id, badge_id').in('badge_id', chunk)
+    ),
+    fetchAllRows<{ id: string; user_id: string }>('inventory', 'id', () =>
+      supabase.from('inventory').select('id, user_id')
     ),
   ])
 
   const userByInventory = new Map(inventories.map((inv) => [inv.id, inv.user_id]))
 
-  // 미장착 보유 아이템 — 드랍해서 넘긴 것(dropped_at)은 더 이상 내 소유가 아니다
-  const invItems = await fetchAllRows<{ inventory_id: string; badge_id: string; obtained_at: string }>(
-    'inventory_items',
-    (from, to) =>
-      supabase
-        .from('inventory_items')
-        .select('inventory_id, badge_id, obtained_at')
-        .in('badge_id', allBookBadgeIds)
-        .is('dropped_at', null)
-        .is('slotted_in', null)
-        .range(from, to)
+  // 미장착 보유 아이템 — 드랍해서 넘긴 것(dropped_at)은 더 이상 내 소유가 아니다.
+  // 아이템북 소속 배지 전체를 `.in()`에 싣는 자리라 **청크 분할이 필수**다
+  // (FACTIONS.md 목표치 900종이면 URL이 33KB로 Cloudflare 16KB 한계를 넘는다).
+  const invItems = await fetchAllRowsIn<
+    { inventory_id: string; badge_id: string; obtained_at: string },
+    string
+  >('inventory_items', 'id', allBookBadgeIds, (chunk) =>
+    supabase
+      .from('inventory_items')
+      .select('inventory_id, badge_id, obtained_at')
+      .in('badge_id', chunk)
+      .is('dropped_at', null)
+      .is('slotted_in', null)
   )
 
   const stateByUser = new Map<string, UserCollectionState>()
@@ -197,5 +201,8 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<Notifica
     if (!prev || it.obtained_at > prev) map.set(it.badge_id, it.obtained_at)
   }
 
-  return selectCollectionDrafts({ books, badgeIdsByBook, stateByUser })
+  return {
+    drafts: selectCollectionDrafts({ books, badgeIdsByBook, stateByUser }),
+    scanned: stateByUser.size,
+  }
 }

@@ -23,8 +23,10 @@ import {
 import {
   DAY_MS,
   fetchAllRows,
+  fetchAllRowsIn,
   type BatchContext,
   type NotificationDraft,
+  type StepOutput,
 } from './shared'
 
 /** #42 생성 조건 — 문구가 「꽉 찼어요」이므로 실제로 꽉 찬 경우에만 만든다 */
@@ -105,32 +107,38 @@ export function selectInventoryFullDrafts(input: InventoryFullInput): Notificati
   return drafts
 }
 
-export async function buildSyncStalledDrafts(ctx: BatchContext): Promise<NotificationDraft[]> {
+/** `scanned`는 **스트라바 연결 수**다. 연결이 있는데 초안이 0이면 경과일 계산이 깨진 것 */
+export async function buildSyncStalledDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { supabase, startedAt } = ctx
   const rows = await fetchAllRows<{ user_id: string; last_synced_at: string | null; created_at: string }>(
     'strava_connections',
-    (from, to) =>
-      supabase
-        .from('strava_connections')
-        .select('user_id, last_synced_at, created_at')
-        .range(from, to)
+    'id',
+    () => supabase.from('strava_connections').select('user_id, last_synced_at, created_at')
   )
-  return selectSyncStalledDrafts({
-    connections: rows.map((r) => ({
-      userId: r.user_id,
-      lastSyncedAt: r.last_synced_at,
-      createdAt: r.created_at,
-    })),
-    startedAt,
-  })
+  return {
+    drafts: selectSyncStalledDrafts({
+      connections: rows.map((r) => ({
+        userId: r.user_id,
+        lastSyncedAt: r.last_synced_at,
+        createdAt: r.created_at,
+      })),
+      startedAt,
+    }),
+    scanned: rows.length,
+  }
 }
 
-export async function buildInventoryFullDrafts(ctx: BatchContext): Promise<NotificationDraft[]> {
+/**
+ * `scanned`는 **인벤토리 수**다(전수 스캔). 잔여 칸 계산이 깨지면 여기서만 드러난다 —
+ * 후보(candidates)를 세면 필터가 깨졌을 때 scanned까지 0이 되어 "정상 0건"과 구분되지 않는다.
+ */
+export async function buildInventoryFullDrafts(ctx: BatchContext): Promise<StepOutput> {
   const { supabase, startedAt, today } = ctx
 
   const rows = await fetchAllRows<{ user_id: string; max_slots: number; used_slots: number }>(
     'inventory(slots)',
-    (from, to) => supabase.from('inventory').select('user_id, max_slots, used_slots').range(from, to)
+    'id',
+    () => supabase.from('inventory').select('user_id, max_slots, used_slots')
   )
   const inventories = rows.map((r) => ({
     userId: r.user_id,
@@ -141,24 +149,30 @@ export async function buildInventoryFullDrafts(ctx: BatchContext): Promise<Notif
   const candidates = inventories.filter(
     (inv) => inv.maxSlots > 0 && inv.maxSlots - inv.usedSlots <= INVENTORY_FULL_REMAINING_SLOTS
   )
-  if (candidates.length === 0) return []
+  if (candidates.length === 0) return { drafts: [], scanned: rows.length }
 
   const cutoff = new Date(
     startedAt.getTime() - INVENTORY_FULL_RENOTIFY_DAYS * DAY_MS
   ).toISOString()
-  const recent = await fetchAllRows<{ user_id: string }>('notifications(inventory_full)', (from, to) =>
-    supabase
-      .from('notifications')
-      .select('user_id')
-      .eq('type', 'inventory_full')
-      .in('user_id', candidates.map((c) => c.userId))
-      .gte('created_at', cutoff)
-      .range(from, to)
+  const recent = await fetchAllRowsIn<{ user_id: string }, string>(
+    'notifications(inventory_full)',
+    'id',
+    candidates.map((c) => c.userId),
+    (chunk) =>
+      supabase
+        .from('notifications')
+        .select('user_id')
+        .eq('type', 'inventory_full')
+        .in('user_id', chunk)
+        .gte('created_at', cutoff)
   )
 
-  return selectInventoryFullDrafts({
-    inventories: candidates,
-    recentlyNotified: new Set(recent.map((r) => r.user_id)),
-    today,
-  })
+  return {
+    drafts: selectInventoryFullDrafts({
+      inventories: candidates,
+      recentlyNotified: new Set(recent.map((r) => r.user_id)),
+      today,
+    }),
+    scanned: rows.length,
+  }
 }
