@@ -27,12 +27,21 @@ interface RecentEarnedResponse {
 
 type Phase = 'idle' | 'loading' | 'open'
 
+/** 되읽기 타임아웃. 넘기면 연출을 포기하고 원래 화면으로 돌아간다(갇히지 않는 것이 우선). */
+const RECENT_EARNED_TIMEOUT_MS = 8000
+
 function Inner({ username }: { username: string | null }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   const [phase, setPhase] = useState<Phase>('idle')
+  /* 비동기 콜백이 "지금도 대기 중인가"를 확인하는 용도. state를 클로저로 읽으면
+     요청 시작 시점의 값이 굳는다. */
+  const phaseRef = useRef<Phase>('idle')
+  useEffect(() => {
+    phaseRef.current = phase
+  }, [phase])
   const [items, setItems] = useState<RevealBadge[]>([])
   const [moreCount, setMoreCount] = useState(0)
 
@@ -64,10 +73,17 @@ function Inner({ username }: { username: string | null }) {
     setPhase('loading')
     void (async () => {
       try {
-        const res = await fetch('/api/badges/recent-earned')
+        /* 타임아웃 필수 — 이 구간은 오버레이가 탭바를 DOM에서 제거하고 main 스크롤을 잠근
+           상태다. 요청이 응답도 거부도 하지 않고 매달리면 사용자가 전체화면에 갇힌다.
+           (게이트 리뷰 20260824_003 WARN 2) */
+        const res = await fetch('/api/badges/recent-earned', {
+          signal: AbortSignal.timeout(RECENT_EARNED_TIMEOUT_MS),
+        })
         if (!res.ok) throw new Error(`recent-earned ${res.status}`)
         const data: RecentEarnedResponse = await res.json()
         if (!mountedRef.current) return
+        // Escape로 이미 빠져나왔으면 뒤늦은 응답으로 다시 열지 않는다
+        if (phaseRef.current !== 'loading') return
         const badges = data.earnedBadges ?? []
         if (badges.length === 0) {
           // 획득한 배지가 없으면 조용히 원래 화면만 남긴다(연결 성공 자체는 화면에 이미 반영됨).
@@ -88,6 +104,18 @@ function Inner({ username }: { username: string | null }) {
     setPhase('idle')
     router.refresh()
   }, [router])
+
+  /* 대기 중 Escape 탈출. 타임아웃이 상한을 보장하지만, 8초를 기다리는 대신 사용자가 즉시
+     빠져나올 수단도 둔다. 진행 중인 요청은 그대로 두고 화면만 닫는다 — mountedRef가
+     살아 있어도 phase가 idle이면 결과는 반영되지 않는다. */
+  useEffect(() => {
+    if (phase !== 'loading') return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPhase('idle')
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [phase])
 
   return (
     <BadgeRevealOverlay
