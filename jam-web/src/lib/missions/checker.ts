@@ -208,8 +208,11 @@ export async function checkMissions(
 /**
  * 미션 타입별 진행도 단위 — 소식 #20의 문구 슬롯("52/100km")에 쓴다.
  * 달성형(poi_visit/item_collect)은 진행률 개념이 없어 빈 문자열.
+ *
+ * 025 배치의 #21(마감 임박)도 같은 표를 쓴다 — "12km 남았어요"의 단위가 #20과 갈라지면
+ * 같은 미션이 소식마다 다른 단위로 보인다.
  */
-const MISSION_PROGRESS_UNIT: Record<MissionType, string> = {
+export const MISSION_PROGRESS_UNIT: Record<MissionType, string> = {
   distance: 'km',
   activity_count: '회',
   poi_visit: '',
@@ -341,7 +344,11 @@ async function loadOwnership(userId: string): Promise<OwnershipContext> {
   return { ownedBadgeIds, visitedPoiIds }
 }
 
-function getTarget(missionType: string, condition: MissionCondition): number {
+/**
+ * 미션 타입별 목표치. 025 배치의 #21(마감 임박)이 "남은 목표치"를 계산할 때 재사용한다 —
+ * 배치가 자체 계산을 두면 진행바(#20)와 소식(#21)의 목표치가 갈라진다.
+ */
+export function getTarget(missionType: string, condition: MissionCondition): number {
   switch (missionType) {
     case 'distance': return condition.distance_km ?? 0
     case 'activity_count': return condition.count ?? 0

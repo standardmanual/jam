@@ -776,7 +776,15 @@ export interface EngineDecisionLogRow {
 // Specs/PRD/Notification/PRD.md · DATA_MODEL.md
 // =========================================
 
-/** notification_type ENUM 28종 (PRD §3의 28종과 1:1) */
+/**
+ * notification_type — 실제로 쓰는 26종 (PRD §3의 26종과 1:1).
+ *
+ * **DB ENUM에는 28개 값이 있다.** `following_nearby_drop`·`nearby_drops`(지역 기반 소식 2종)는
+ * 2026-08-25에 스펙에서 제거됐지만, Postgres는 ENUM 값 제거가 안전하지 않아 DB에는 그대로 둔다
+ * (해당 타입 소식은 프로덕션에 0건 — DATA_MODEL §2 "예약됐으나 사용하지 않는 값" 참고).
+ * 어떤 코드도 이 2종을 만들지 않으므로 TS 타입에서는 빼고, 만에 하나 들어오면 렌더러의
+ * `default` 분기가 받는다.
+ */
 export type NotificationType =
   // ① 보상 획득 (6) — bumps_badge=false 대상
   | 'badge_earned'
@@ -801,13 +809,10 @@ export type NotificationType =
   // ⑤ 소셜(나에게) (2)
   | 'followed'
   | 'mutual_follow'
-  // ⑥ 소셜(팔로잉 활동) (4)
+  // ⑥ 소셜(팔로잉 활동) (3)
   | 'following_rare_badge'
   | 'following_collection_complete'
   | 'following_mission_complete'
-  | 'following_nearby_drop'
-  // ⑦ 발견 (1)
-  | 'nearby_drops'
   // ⑧ 계정·시스템 (5)
   | 'strava_disconnected'
   | 'sync_stalled'
@@ -843,6 +848,19 @@ export interface PoiViewRow {
   /** KST 기준 날짜 (YYYY-MM-DD) */
   viewed_on: string
   viewed_at: string
+}
+
+/**
+ * 미션 순위 스냅샷 (마이그레이션 099) — 소식 #23("순위 상승") 판정 기준선.
+ * 순위는 어디에도 저장되지 않고 매번 계산되므로, "상승 시만" 조건을 판정하려면
+ * 직전 배치의 순위가 필요하다. 025 배치만 읽고 쓴다.
+ */
+export interface MissionRankSnapshotRow {
+  mission_id: string
+  user_id: string
+  /** 1부터. 025 배치가 lib/missions/ranking.ts의 정렬로 계산한 값 */
+  rank: number
+  captured_at: string
 }
 
 /** create_notification() RPC 인자 — src/lib/notifications/index.ts */
@@ -1163,6 +1181,12 @@ export interface Database {
         Row: PoiViewRow
         Insert: Omit<PoiViewRow, 'id' | 'viewed_at'> & { id?: string; viewed_at?: string }
         Update: Partial<Omit<PoiViewRow, 'id'>>
+        Relationships: []
+      }
+      mission_rank_snapshots: {
+        Row: MissionRankSnapshotRow
+        Insert: Omit<MissionRankSnapshotRow, 'captured_at'> & { captured_at?: string }
+        Update: Partial<MissionRankSnapshotRow>
         Relationships: []
       }
     }

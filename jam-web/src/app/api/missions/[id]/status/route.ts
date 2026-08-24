@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { MissionStatusDisplayType } from '@/types/database'
+import { compareMissionRank } from '@/lib/missions/ranking'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -136,11 +137,9 @@ export async function GET(_req: Request, { params }: Params) {
         rank: 0,
       }
     })
-    .sort((a, b) => {
-      if (a.isCompleted !== b.isCompleted) return a.isCompleted ? -1 : 1
-      if (a.isCompleted && b.isCompleted) return (a.completedAt ?? '').localeCompare(b.completedAt ?? '')
-      return b.progressValue - a.progressValue
-    })
+    // 정렬 규칙은 lib/missions/ranking.ts가 단일 진실이다 — 025 배치의 소식 #23(순위 상승)이
+    // 같은 비교 함수를 써야 "5위로 올라섰어요"와 이 화면의 등수가 어긋나지 않는다.
+    .sort(compareMissionRank)
     .map((e, i) => ({ ...e, rank: i + 1 }))
 
   const entries = ranked.slice(0, limit)
