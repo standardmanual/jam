@@ -8,15 +8,23 @@
  *
  * ## 여기서 하는 일 3가지
  *
- * 1. **커서 페이지네이션** — `updated_at DESC` 기준(`created_at`이 아니다. 묶음 갱신이
- *    리스트 순서에 즉시 반영돼야 한다). `listTransactions()`(포인트 내역)와 같은 패턴.
+ * 1. **커서 페이지네이션** — `(updated_at, id) DESC` 복합 커서(`created_at`이 아니다.
+ *    묶음 갱신이 리스트 순서에 즉시 반영돼야 한다). 단일 키로 넘기면 **행이 통째로
+ *    사라진다** — 마이그레이션 096의 `updated_at`은 `NOW()`(트랜잭션 시작 시각)라
+ *    025 배치가 한 트랜잭션에서 한 유저에게 여러 소식을 만들면 값이 완전히 같은 행이
+ *    여러 개 생기고, 그 값이 페이지 경계에 걸리면 동률 행들이 다음 페이지에서 빠진다.
  * 2. **닉네임 조인** — `payload`에 박제하지 않으므로 `actor_user_id`·`user_id`로 렌더
  *    시점에 읽는다(닉네임을 바꾸면 과거 소식도 따라온다).
  * 3. **⑧ 경고 재평가** — 저장값이 아니라 지금 상태로 판정한다(warning.ts).
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { NotificationRow } from '@/types/database'
-import { idList, type NotificationActor, type NotificationView } from './message'
+import {
+  idList,
+  missingMessageSlots,
+  type NotificationActor,
+  type NotificationView,
+} from './message'
 import {
   WARNING_CANDIDATE_TYPES,
   isWarningNotification,
@@ -28,8 +36,14 @@ export const NOTIFICATIONS_PAGE_SIZE = 20
 
 export interface NotificationPage {
   items: NotificationView[]
-  /** 다음 페이지 커서(마지막 항목의 updated_at). null이면 더 없음 */
+  /** 다음 페이지 커서(`updated_at|id`). null이면 더 없음 */
   nextCursor: string | null
+  /**
+   * 조회 실패 여부. **"소식 0건"과 "못 불러옴"을 화면이 구분하려면 필요하다** —
+   * 실패를 빈 목록으로 돌려주면 유저는 "내 소식이 사라졌다"로 읽고, 지표상으로도
+   * 빈 알림함과 장애가 섞인다.
+   */
+  failed: boolean
 }
 
 interface UserBrief {
@@ -43,11 +57,41 @@ function toActor(row: UserBrief | undefined): NotificationActor | null {
   return { id: row.id, username: row.username, avatarUrl: row.avatar_url }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 복합 커서 — (updated_at, id)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CURSOR_TIMESTAMP_RE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9:.+\-Z]+$/
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** 커서 문자열 `updated_at|id` */
+function encodeCursor(row: NotificationRow): string {
+  return `${row.updated_at}|${row.id}`
+}
+
+/**
+ * 커서 파싱 + **검증**. 형식이 어긋나면 null.
+ *
+ * 검증이 형식 취향의 문제가 아닌 이유: 아래 `.or()`는 문자열이 **PostgREST 필터 문법으로
+ * 파싱**되므로, 쉼표·괄호가 섞인 값을 그대로 흘리면 다른 필터를 주입할 수 있다.
+ * 커서는 쿼리스트링(= 유저 입력)으로 들어온다.
+ */
+function parseCursor(raw: string): { at: string; id: string | null } | null {
+  const sep = raw.lastIndexOf('|')
+  const at = sep === -1 ? raw : raw.slice(0, sep)
+  const id = sep === -1 ? null : raw.slice(sep + 1)
+
+  if (!CURSOR_TIMESTAMP_RE.test(at) || Number.isNaN(new Date(at).getTime())) return null
+  if (id !== null && !UUID_RE.test(id)) return null
+  return { at, id }
+}
+
 /**
  * 소식 목록 (최신순, 커서 기반).
  *
- * 조회 실패는 예외를 던지지 않고 빈 페이지로 돌려준다 — 알림함이 비는 건 회복 가능한
- * 상태지만, 던지면 화면 전체가 500이 된다. 로그는 반드시 남긴다.
+ * 조회 실패는 예외를 던지지 않고 `failed: true`인 빈 페이지로 돌려준다 — 던지면 화면
+ * 전체가 500이 되지만, 그냥 빈 목록으로 돌려주면 "소식 0건"과 구분되지 않는다.
+ * 로그는 반드시 남긴다.
  */
 export async function listNotificationViews(
   userId: string,
@@ -60,24 +104,39 @@ export async function listNotificationViews(
     .from('notifications')
     .select('*')
     .eq('user_id', userId)
+    // 정렬 키가 곧 커서 키다. id를 타이브레이크로 두지 않으면 updated_at 동률 행의
+    // 순서가 매 쿼리마다 달라져 커서로 자를 수 없다.
     .order('updated_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit + 1)
 
-  if (cursor) query = query.lt('updated_at', cursor)
+  if (cursor) {
+    const parsed = parseCursor(cursor)
+    if (!parsed) {
+      console.warn(`[notifications] 잘못된 커서 — userId: ${userId}, cursor: ${cursor}`)
+      return { items: [], nextCursor: null, failed: true }
+    }
+    query = parsed.id
+      ? // (updated_at, id) < (커서) — 동률 구간을 id로 이어서 자른다
+        query.or(
+          `updated_at.lt."${parsed.at}",and(updated_at.eq."${parsed.at}",id.lt.${parsed.id})`
+        )
+      : query.lt('updated_at', parsed.at)
+  }
 
   const { data, error } = await query
   if (error) {
     console.error(`[notifications] 목록 조회 실패 — userId: ${userId}:`, error)
-    return { items: [], nextCursor: null }
+    return { items: [], nextCursor: null, failed: true }
   }
 
   const all = (data ?? []) as NotificationRow[]
   const hasMore = all.length > limit
   const rows = hasMore ? all.slice(0, limit) : all
-  const nextCursor = hasMore ? rows[rows.length - 1].updated_at : null
+  const nextCursor = hasMore ? encodeCursor(rows[rows.length - 1]) : null
 
   const items = await hydrateNotifications(userId, rows)
-  return { items, nextCursor }
+  return { items, nextCursor, failed: false }
 }
 
 /**
@@ -150,7 +209,7 @@ export async function hydrateNotifications(
   const now = new Date()
   const me = toActor(userById.get(userId)) ?? { id: userId, username: null, avatarUrl: null }
 
-  return rows.map((row) => ({
+  const views = rows.map((row) => ({
     id: row.id,
     type: row.type,
     payload: row.payload ?? {},
@@ -163,6 +222,17 @@ export async function hydrateNotifications(
       ? isWarningNotification(row.type, row.payload ?? {}, warningState, now)
       : false,
   }))
+
+  // 슬롯 키 불일치를 **조용히 지나가지 않는다**. 렌더러는 값이 빈 슬롯을 버려 화면이
+  // 깨지지는 않지만, 생성 측이 다른 키 이름을 채우면 `''에 넣을 수 있는 …`처럼 빈
+  // 따옴표만 남은 문장이 나간다. 유저 화면은 그대로 두고(삼킨다) 로그는 남긴다.
+  for (const view of views) {
+    for (const key of missingMessageSlots(view)) {
+      console.warn('[notifications] 빈 슬롯', { id: view.id, type: view.type, key })
+    }
+  }
+
+  return views
 }
 
 /**

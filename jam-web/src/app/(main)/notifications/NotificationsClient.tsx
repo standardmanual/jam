@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
@@ -130,8 +131,10 @@ function RowIcon({ view }: { view: NotificationView }) {
  */
 function NotificationBody({ view }: { view: NotificationView }) {
   const tokens = notificationTokens(view)
+  // break-words — ListRowCard의 title/subtitle 경로에는 truncate가 걸려 있지만 children
+  // 경로는 무방비라, 공백 없는 긴 닉네임·배지명이 카드 밖으로 삐져나온다.
   return (
-    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text">
+    <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text break-words [overflow-wrap:anywhere]">
       {tokens.map((token, i) =>
         token.bold ? (
           <strong key={i} className="font-bold">
@@ -157,10 +160,17 @@ function NotificationRow({ view }: { view: NotificationView }) {
   // 않는다 — ListRowCard가 href를 받으면 <Link>로 감싸는데 그 안에 또 링크를 넣으면
   // <a> 안의 <a>라 HTML상 무효다. icon·children 슬롯에 각각 링크를 넣는다.
   if (avatarHref) {
+    // 아바타 링크는 이미지/아이콘뿐이라 접근 가능한 이름이 없다 — 스크린리더에 "링크"로만
+    // 읽히지 않도록 대상 이름을 붙인다.
+    const actorName = view.actor?.username ?? d.profile.anonymous
     return (
       <ListRowCard
         icon={
-          <Link href={avatarHref} className="block active:scale-95 transition-transform duration-100">
+          <Link
+            href={avatarHref}
+            aria-label={t(d.notifications.avatarLinkLabel, { name: actorName })}
+            className="block active:scale-95 transition-transform duration-100"
+          >
             <RowIcon view={view} />
           </Link>
         }
@@ -192,7 +202,14 @@ function SectionHeader({ label }: { label: string }) {
   )
 }
 
-/** "새 소식 N" 구분선 — 진입 직전 seen_at 스냅샷으로만 그린다(새로고침하면 사라진다) */
+/**
+ * 새 소식 ↔ 이전 소식 **경계선** — 진입 직전 seen_at 스냅샷으로만 그린다
+ * (읽음 처리는 이미 끝났으므로 새로고침하면 사라진다).
+ *
+ * 라벨을 목록 맨 위가 아니라 **경계**에 둔다. 맨 위에 두면 위에 아무것도 없어 나누는
+ * 게 없고(사실상 헤더), 정작 "여기부터 예전 것"이라는 정보가 필요한 지점엔 라벨 없는
+ * 실선만 남는다(iOS Mail·Slack의 미읽음 구분과 같은 배치).
+ */
 function NewDivider({ count }: { count: number }) {
   return (
     <div className="flex items-center gap-[var(--spacing-8)] py-[var(--spacing-8)]">
@@ -208,11 +225,19 @@ function NewDivider({ count }: { count: number }) {
 interface Props {
   initialItems: NotificationView[]
   initialCursor: string | null
+  /** 첫 페이지 **조회 실패** 여부. "소식 0건"과 반드시 구분해서 보여준다 */
+  initialFailed: boolean
   /** 진입 **직전**의 notifications_seen_at. 이 값보다 최신이면 "새 소식"이다 */
   seenAtSnapshot: string | null
 }
 
-export default function NotificationsClient({ initialItems, initialCursor, seenAtSnapshot }: Props) {
+export default function NotificationsClient({
+  initialItems,
+  initialCursor,
+  initialFailed,
+  seenAtSnapshot,
+}: Props) {
+  const router = useRouter()
   const [items, setItems] = useState<NotificationView[]>(initialItems)
   const [cursor, setCursor] = useState<string | null>(initialCursor)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -220,7 +245,10 @@ export default function NotificationsClient({ initialItems, initialCursor, seenA
   const { clearNotificationDot } = useTopNavData()
 
   // 진입 시 전체 읽음 처리 — UPDATE 1회. 구분선용 스냅샷은 서버가 이미 잡아 보냈다.
+  // **조회에 실패했으면 읽음 처리하지 않는다** — 보여주지도 못한 소식을 읽음으로 만들면
+  // 버블만 꺼지고 유저는 무엇이 새 소식이었는지 영영 알 수 없다.
   useEffect(() => {
+    if (initialFailed) return
     let active = true
     ;(async () => {
       try {
@@ -233,7 +261,7 @@ export default function NotificationsClient({ initialItems, initialCursor, seenA
     return () => {
       active = false
     }
-  }, [clearNotificationDot])
+  }, [clearNotificationDot, initialFailed])
 
   const loadMore = useCallback(async () => {
     if (!cursor) return
@@ -243,7 +271,12 @@ export default function NotificationsClient({ initialItems, initialCursor, seenA
       const res = await fetch(`/api/notifications?cursor=${encodeURIComponent(cursor)}`)
       if (!res.ok) throw new Error('failed')
       const data = (await res.json()) as { items: NotificationView[]; nextCursor: string | null }
-      setItems((prev) => [...prev, ...data.items])
+      // id 기준 중복 제거 — 025 배치가 도는 동안 목록을 넘기면 묶음 병합으로 updated_at이
+      // 위로 튄 행이 다음 페이지에 다시 실려 같은 view.id가 두 번 들어온다(React key 중복).
+      setItems((prev) => {
+        const seen = new Set(prev.map((it) => it.id))
+        return [...prev, ...data.items.filter((it) => !seen.has(it.id))]
+      })
       setCursor(data.nextCursor)
     } catch {
       setError(true)
@@ -277,7 +310,15 @@ export default function NotificationsClient({ initialItems, initialCursor, seenA
       <TopNav title={d.notifications.title} />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-8)]">
-        {items.length === 0 ? (
+        {initialFailed ? (
+          // 조회 실패를 빈 상태로 보여주면 유저는 "내 소식이 사라졌다"로 읽는다.
+          <EmptyState
+            icon={<AlertTriangleIcon className="w-8 h-8" />}
+            title={d.notifications.errorTitle}
+            description={d.notifications.errorBody}
+            action={{ label: d.notifications.retry, onClick: () => router.refresh() }}
+          />
+        ) : items.length === 0 ? (
           <EmptyState
             icon={<BellIcon className="w-8 h-8" />}
             title={d.notifications.emptyTitle}
@@ -285,14 +326,15 @@ export default function NotificationsClient({ initialItems, initialCursor, seenA
           />
         ) : (
           <>
-            {newCount > 0 && <NewDivider count={newCount} />}
             {rows.map(({ view, header }, index) => (
               <Fragment key={view.id}>
                 {header && <SectionHeader label={header} />}
                 <NotificationRow view={view} />
-                {/* 새 소식 구간의 끝 — 안 읽은 소식은 최신순 목록의 앞쪽 연속 구간이다 */}
+                {/* 새 소식 구간의 끝 = 실제 경계. 안 읽은 소식은 최신순 목록의 앞쪽
+                    연속 구간이므로 개수만으로 위치가 정해진다. 로드된 목록이 전부
+                    새 소식이면 나눌 경계가 없으니 선도 그리지 않는다. */}
                 {newCount > 0 && index === newCount - 1 && index < rows.length - 1 && (
-                  <div className="h-px w-full bg-[color:var(--color-border)] my-[var(--spacing-8)]" />
+                  <NewDivider count={newCount} />
                 )}
               </Fragment>
             ))}

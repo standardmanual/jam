@@ -26,10 +26,10 @@ export const WARNING_CANDIDATE_TYPES: ReadonlySet<NotificationType> = new Set<No
   'admin_points_changed',
 ])
 
-/** #41 판정 기준 — 마지막 동기화 이후 이 일수 이상 지나면 "지연" (022 배치의 생성 기준과 동일) */
+/** #41 판정 기준 — 마지막 동기화 이후 이 일수 이상 지나면 "지연" (025 배치의 생성 기준과 동일) */
 export const SYNC_STALLED_DAYS = 3
 
-/** #42 판정 기준 — 잔여 슬롯이 이 값 이하면 "포화 근접" (022 배치의 생성 기준과 동일) */
+/** #42 판정 기준 — 잔여 슬롯이 이 값 이하면 "포화 근접" (025 배치의 생성 기준과 동일) */
 export const INVENTORY_LOW_SLOTS_THRESHOLD = 3
 
 const DAY_MS = 24 * 60 * 60 * 1000

@@ -18,5 +18,11 @@ export async function GET(req: NextRequest) {
   const cursor = req.nextUrl.searchParams.get('cursor')
   const page = await listNotificationViews(user.id, cursor)
 
+  // 실패를 200 + 빈 목록으로 돌려주면 화면이 "더 없음"으로 읽는다. 클라이언트가
+  // 에러 상태를 그릴 수 있도록 상태 코드로 구분한다(20260824_021 2차).
+  if (page.failed) {
+    return NextResponse.json({ error: '소식을 불러오지 못했어요' }, { status: 500 })
+  }
+
   return NextResponse.json(page)
 }
