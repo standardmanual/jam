@@ -5,16 +5,21 @@ import type { PoiCategoryRow } from '@/types/database'
 
 export default async function AdminPoiCategoriesPage() {
   const supabase = createServiceClient()
-  const [{ data: categoriesRaw }, { data: poisRaw }] = await Promise.all([
-    supabase.from('poi_categories').select('*').order('slug'),
-    supabase.from('poi').select('category'),
-  ])
-
+  const { data: categoriesRaw } = await supabase.from('poi_categories').select('*').order('slug')
   const categories = (categoriesRaw ?? []) as PoiCategoryRow[]
-  const usageCounts: Record<string, number> = {}
-  for (const row of (poisRaw ?? []) as { category: string }[]) {
-    usageCounts[row.category] = (usageCounts[row.category] ?? 0) + 1
-  }
+
+  // 카테고리별 사용량은 DB에서 직접 센다 — poi 전체를 select하면 PostgREST 기본 max-rows(1000)에
+  // 걸려 앞 1000행만 집계되고, POI가 그보다 많아진 지금은 실제와 다른 숫자가 표시된다.
+  const usageEntries = await Promise.all(
+    categories.map(async (c) => {
+      const { count } = await supabase
+        .from('poi')
+        .select('*', { count: 'exact', head: true })
+        .eq('category', c.slug)
+      return [c.slug, count ?? 0] as const
+    })
+  )
+  const usageCounts: Record<string, number> = Object.fromEntries(usageEntries)
 
   return (
     <div className="p-8">

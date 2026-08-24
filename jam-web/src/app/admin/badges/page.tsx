@@ -28,21 +28,17 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
 
   const supabase = createServiceClient()
 
-  // POI 카테고리 필터가 있으면 해당 카테고리의 POI에 연결된 배지 ID 먼저 조회
-  let poiLinkedBadgeIds: string[] | null = null
-  if (filterType === 'poi' && filterPoiCategory) {
-    const { data: poiRows } = await supabase
-      .from('pois')
-      .select('linked_badge_id')
-      .eq('category', filterPoiCategory)
-      .not('linked_badge_id', 'is', null)
-    poiLinkedBadgeIds = ((poiRows ?? []) as { linked_badge_id: string | null }[])
-      .map((r) => r.linked_badge_id as string)
-  }
+  // POI 카테고리 필터: POI 배지에는 카테고리 컬럼이 없고, 연결된 POI(poi.category)로만 분류된다.
+  // 배지 id를 먼저 모아 .in()으로 거르면 한 카테고리가 900개를 넘을 때 URL이 수십 KB가 되므로
+  // FK(poi.linked_badge_id → badges.id)를 통한 inner join으로 DB에서 직접 필터한다.
+  const filterByPoiCategory = filterType === 'poi' && !!filterPoiCategory
+  const selectClause = filterByPoiCategory
+    ? '*, poi!poi_linked_badge_id_fkey!inner(category)'
+    : '*'
 
   let query = supabase
     .from('badges')
-    .select('*', { count: 'exact' })
+    .select(selectClause, { count: 'exact' })
 
   if (status === 'active') query = query.is('deleted_at', null)
   else if (status === 'inactive') query = query.not('deleted_at', 'is', null)
@@ -55,14 +51,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   if (filterActivityType) query = query.contains('activity_types', [filterActivityType])
   if (filterFactionId) query = query.eq('faction_id', filterFactionId)
   if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
-  if (poiLinkedBadgeIds !== null) {
-    if (poiLinkedBadgeIds.length > 0) {
-      query = query.in('id', poiLinkedBadgeIds)
-    } else {
-      // 해당 카테고리 POI가 없음 — 결과 없음 처리
-      query = query.eq('id', '00000000-0000-0000-0000-000000000000')
-    }
-  }
+  if (filterByPoiCategory) query = query.eq('poi.category', filterPoiCategory)
 
   switch (sortBy) {
     case 'name_asc': query = query.order('name', { ascending: true }); break
@@ -86,7 +75,8 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
     supabase.from('poi_categories').select('slug, label').order('label'),
   ])
 
-  const badges = (badgesRaw ?? []) as BadgeRow[]
+  // 조인으로 필터한 경우 행에 poi 관계가 딸려오므로 배지 필드만 남긴다
+  const badges = ((badgesRaw ?? []) as (BadgeRow & { poi?: unknown })[]).map(({ poi: _poi, ...badge }) => badge as BadgeRow)
   const total = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const factionMap = new Map(
