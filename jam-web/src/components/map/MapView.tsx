@@ -200,9 +200,10 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
 
 /** 클러스터 마커 — 숫자를 표기한 원형 마커 (개수에 따라 크기 가변) */
 function clusterMarkerIconHtml(count: number): string {
-  const size = count >= 100 ? 44 : count >= 10 ? 38 : 32
+  const size = (count >= 100 ? 44 : count >= 10 ? 38 : 32) * 3
   const label = count > 999 ? '999+' : String(count)
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:var(--color-primary);border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;color:#ffffff;font-size:12px;font-weight:600;line-height:1;">${label}</div>`
+  const gradient = `radial-gradient(circle, color-mix(in srgb, var(--color-primary) 50%, transparent) 0%, color-mix(in srgb, var(--color-primary) 80%, transparent) 100%)`
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${gradient};display:flex;align-items:center;justify-content:center;box-sizing:border-box;color:#ffffff;font-size:12px;font-weight:600;line-height:1;">${label}</div>`
 }
 
 function escapeHtml(value: string): string {
