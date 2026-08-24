@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { getPublishedArticleCard } from '@/lib/today/cards'
+import SafeImage from '@/components/SafeImage'
 import LocalDate from '@/components/LocalDate'
 import { d } from '@/lib/i18n'
 
@@ -27,11 +27,13 @@ export default async function TodayArticlePage({ params }: Props) {
   return (
     <div className="min-h-full bg-surface text-text pb-[var(--spacing-40)]">
       {/* 20260816_012: hr 대체용 하단 구분선 제거 — 이미지 경계 자체로 구분됨 */}
-      {card.cover_image_url && (
-        <div className="relative w-full aspect-[16/10] overflow-hidden">
-          <Image src={card.cover_image_url} alt={card.title} fill className="object-cover" />
-        </div>
-      )}
+      {/* 20260824_004: 홈 카드와 같은 cover_image_url(어드민 자유 입력)이라 SafeImage 경유 */}
+      <SafeImage
+        src={card.cover_image_url}
+        alt={card.title}
+        containerClassName="relative w-full aspect-[16/10] overflow-hidden"
+        className="object-cover"
+      />
 
       <article className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">
         <Link href="/" className="block text-[length:var(--text-caption)] text-text/50 underline underline-offset-2">
