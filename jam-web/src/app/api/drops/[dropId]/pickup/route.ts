@@ -42,10 +42,12 @@ export async function POST(
   const drop = dropRaw as PoiDropRow
 
   if (!drop.is_available) {
-    return NextResponse.json({ error: '이미 픽업된 아이템' }, { status: 409 })
+    // 20260825_039: 클라이언트가 코드로 매핑하는 RPC 경로(already_picked_up)와 값을 맞춘다.
+    // 한국어 원문을 돌려주면 매핑이 빗나가 그대로 토스트에 노출된다.
+    return NextResponse.json({ error: 'already_picked_up' }, { status: 409 })
   }
 
-  // POI 조회 + 50m 검증
+  // POI 조회 + 드랍 반경(DROP_RADIUS_METERS) 검증
   const { data: poiRaw, error: poiError } = await service
     .from('poi')
     .select('*')
@@ -57,7 +59,7 @@ export async function POST(
   }
 
   if (!isUserNearPoi(user_lat, user_lng, poiRaw as PoiRow)) {
-    return NextResponse.json({ error: 'POI 반경 50m 밖' }, { status: 403 })
+    return NextResponse.json({ error: 'out_of_range' }, { status: 403 })
   }
 
   const policy = await getAbusingPolicy()

@@ -1,6 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type PointerEvent,
+  type ReactNode,
+} from 'react'
+import { createPortal } from 'react-dom'
 import { IconButton } from '@ds/components/buttons/IconButton'
 import { cssDurationMs } from '@/lib/motion'
 
@@ -53,6 +62,9 @@ const DRAG_CLOSE_VELOCITY = 0.5
 /** 릴리즈 속도 계산에 쓸 포인터 샘플을 이 시간(ms) 이내로만 유지한다. */
 const VELOCITY_SAMPLE_WINDOW_MS = 100
 
+/** 마운트 게이트 전용 — 구독할 외부 스토어가 없으므로 아무것도 하지 않는 subscribe. */
+const subscribeNoop = () => () => {}
+
 /** 드래그 중인 시트 요소의 현재 translateY(px)를 계산한다 — 스프링백 트랜지션이
  *  아직 진행 중일 때 재드래그를 시작해도 현재 화면상 위치에서 자연스럽게 이어지도록 한다. */
 function getCurrentTranslateY(el: HTMLElement): number {
@@ -94,6 +106,17 @@ export default function BottomSheet({
   const [shown, setShown] = useState(false)
   const [lingering, setLingering] = useState(false)
 
+  // 20260825_039: 시트를 document.body로 포털링하기 위한 마운트 게이트.
+  // `document`는 클라이언트에만 존재하므로 SSR·하이드레이션 렌더에서는 false를 돌려주고
+  // (아무것도 렌더하지 않음), 하이드레이션이 끝난 뒤에만 true가 되어 포털을 만든다.
+  // useEffect+setState 대신 useSyncExternalStore를 쓰는 이유는 effect 안의 동기 setState가
+  // 캐스케이딩 렌더를 만든다는 react-hooks 규칙에 걸리기 때문(uiOverlay.ts와 같은 방식).
+  const mounted = useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false
+  )
+
   useEffect(() => {
     if (!open) {
       setDragY(0)
@@ -130,6 +153,7 @@ export default function BottomSheet({
     }
   }, [lingering])
 
+  if (!mounted) return null
   if (!open && !lingering) return null
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
@@ -176,7 +200,14 @@ export default function BottomSheet({
 
   const hasHeader = Boolean(title) || showCloseButton
 
-  return (
+  /*
+    20260825_039: 시트를 호출부 자리에 그대로 렌더하면, 조상에 스태킹 컨텍스트를 만드는 요소
+    (예: 배지 상세의 `relative z-10` 섹션)가 있을 때 이 루트의 z-50이 그 컨텍스트 '내부' 값으로만
+    평가된다. 그러면 루트 컨텍스트에 z-40으로 참여하는 플로팅 탭바나, DOM상 뒤에 오는 형제
+    섹션들이 시트 위에 페인트되고(시트가 투명해 보이는 착시), 백드롭 blur도 화면 일부에만 걸린다.
+    document.body로 포털링하면 조상 스태킹 컨텍스트를 벗어나 z-50이 루트 기준으로 평가된다.
+  */
+  return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 430, margin: '0 auto' }}>
       {/* Backdrop — 20260823_003: 재질(가벼운 blur) + prefers-reduced-transparency 가드는
           .t-panel-backdrop(transitions.css)에 공용으로 정의(FeedSection·PoiCarouselModal과
@@ -266,6 +297,7 @@ export default function BottomSheet({
         )}
       </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
