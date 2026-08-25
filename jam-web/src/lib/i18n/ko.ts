@@ -364,8 +364,8 @@ export const ko = {
     tabOngoing: '진행중',
     tabJoined: '참가중',
     // 20260825_028: 상시 미션은 종료일이 없어 '종료' 조건에 영원히 안 걸린다 —
-    // 완료한 미션의 성취 이력을 볼 수 있도록 탭을 '완료/지난'으로 확장
-    tabEnded: '완료/지난',
+    // 완료한 미션의 성취 이력을 볼 수 있도록 탭 범위를 확장 (완료 + 참여했던 종료 미션)
+    tabEnded: '종료',
     filterButton: '필터',
     filterReset: '필터 초기화',
     sortLabel: '정렬',
@@ -403,7 +403,7 @@ export const ko = {
     lockedTitle: '아직 열리지 않은 미션이에요',
     lockedBody: '{badge} {rarity} 배지를 먼저 획득하면 참가할 수 있어요.',
     lockedBodyGeneric: '앞 단계 배지를 먼저 획득하면 참가할 수 있어요.',
-    joinErrorCompleted: '이미 완료한 미션이에요. 완료/지난 탭에서 다시 볼 수 있어요.',
+    joinErrorCompleted: '이미 완료한 미션이에요. 종료 탭에서 다시 볼 수 있어요.',
     joinErrorLocked: '아직 참가할 수 없는 미션이에요. {badge} {rarity} 배지를 먼저 획득하면 열려요.',
     joinErrorLockedGeneric: '아직 참가할 수 없는 미션이에요. 앞 단계 배지를 먼저 획득하면 열려요.',
     timeLeftSuffix: '남음',
