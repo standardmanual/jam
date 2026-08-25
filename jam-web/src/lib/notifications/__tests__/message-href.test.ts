@@ -192,20 +192,20 @@ describe('④ 미션', () => {
   it('#20 마일스톤 50 / 80', () => {
     expect(
       text(view('mission_milestone', { ...mission, current: 52, target: 100, unit: 'km', milestone: 50 }))
-    ).toBe("'한강 100km', 절반을 넘었어요 (52/100km)")
+    ).toBe("'한강 100km', 절반을 넘었어요")
     expect(
       text(view('mission_milestone', { ...mission, current: 82, target: 100, unit: 'km', milestone: 80 }))
-    ).toBe("'한강 100km', 80%를 넘었어요 (82/100km)")
+    ).toBe("'한강 100km', 80%를 넘었어요")
   })
 
   it('#20 milestone 키가 없으면 current/target 비율에서 파생한다', () => {
     // 없다고 50% 문구로 떨어뜨리면 80% 소식이 "절반을 넘었어요"로 나가는 실패 모드가 된다
     expect(
       text(view('mission_milestone', { ...mission, current: 82, target: 100, unit: 'km' }))
-    ).toBe("'한강 100km', 80%를 넘었어요 (82/100km)")
+    ).toBe("'한강 100km', 80%를 넘었어요")
     expect(
       text(view('mission_milestone', { ...mission, current: 52, target: 100, unit: 'km' }))
-    ).toBe("'한강 100km', 절반을 넘었어요 (52/100km)")
+    ).toBe("'한강 100km', 절반을 넘었어요")
   })
 
   it('#21 마감 임박 — 2일은 "이틀"', () => {
