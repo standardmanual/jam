@@ -453,9 +453,11 @@ export default function MissionStatusClient({
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.missions.backToDetail} />
 
-      {/* 로딩 — 다른 화면(배지 획득 연출·공유 카드 등)과 동일한 눈모양 로더 */}
+      {/* 로딩 — 다른 화면(배지 획득 연출·공유 카드 등)과 동일한 눈모양 로더.
+          라우트 전환 시 뜨는 전체화면 NavigationLoader(화면 정중앙)와 위치가 어긋나 보이지 않도록,
+          TopNav(56px)를 제외한 나머지 영역 정중앙에 배치한다. */}
       {loading && (
-        <div className="flex items-center justify-center py-[var(--spacing-32)]">
+        <div className="min-h-[calc(100dvh-56px)] flex items-center justify-center">
           <WanderingEyesLoader />
         </div>
       )}
