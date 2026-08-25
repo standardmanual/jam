@@ -47,7 +47,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         <div className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative">
           {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정 */}
           <main className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] bg-surface">
-            {children}
+            {/* sticky footer 트릭: 컨텐츠 래퍼가 스크롤 컨테이너(main)의 가시 높이 100%를
+                항상 확보해, 컨텐츠가 짧아도 Footer가 화면 중간이 아닌 항상 그 아래로 밀려나게 한다 */}
+            <div className="min-h-full">{children}</div>
             <Footer />
           </main>
 
