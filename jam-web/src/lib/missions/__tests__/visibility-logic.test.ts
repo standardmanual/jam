@@ -43,6 +43,7 @@ function ctx(options?: {
   completed?: string[]
   ownedRarity?: BadgeRarity | null
   gatedBadges?: Map<string, GatedBadgeInfo>
+  participated?: string[]
 }): MissionVisibilityContext {
   const owned = new Map<string, number>()
   if (options?.ownedRarity) owned.set('첫 숨결', RARITY_TIER[options.ownedRarity])
@@ -50,6 +51,7 @@ function ctx(options?: {
     completedMissionIds: new Set(options?.completed ?? []),
     gatedBadges: options?.gatedBadges ?? ALL_GATED_BADGES,
     ownedTierByBadgeName: owned,
+    participatedMissionIds: new Set(options?.participated ?? []),
   }
 }
 
@@ -134,6 +136,29 @@ const cases: Array<[string, () => void]> = [
   ['게이트 배지를 찾을 수 없으면 게이팅 없이 open (fail-open)', () => {
     const c = ctx({ gatedBadges: new Map() })
     assert.strictEqual(vis(MISSION_MYTHIC, c), 'open')
+  }],
+
+  ['참가 이력 있음 + 게이트 미달(원래 hidden)이면 locked로 완화된다 (티켓 20260825_029)', () => {
+    const c = ctx({ ownedRarity: null, participated: ['m-mythic'] })
+    // 참가 이력이 없으면 여전히 hidden
+    assert.strictEqual(vis(MISSION_LEGEND, c), 'locked') // 원래도 locked인 케이스는 그대로 locked
+    assert.strictEqual(vis(MISSION_MYTHIC, ctx({ ownedRarity: null })), 'hidden')
+    // 참가 이력이 있으면 hidden → locked로 완화되고, requiredBadge도 그대로 채워진다
+    const result = resolveMissionVisibility(MISSION_MYTHIC, c)
+    assert.strictEqual(result.visibility, 'locked')
+    assert.deepStrictEqual(result.requiredBadge, { name: '첫 숨결', rarity: 'legend' })
+  }],
+
+  ['참가 이력이 있어도 open/completed 판정에는 관여하지 않는다', () => {
+    const openCtx = ctx({ ownedRarity: null, participated: ['m-rare'] })
+    assert.strictEqual(vis(MISSION_RARE, openCtx), 'open')
+    const completedCtx = ctx({ completed: ['m-rare'], participated: ['m-rare'] })
+    assert.strictEqual(vis(MISSION_RARE, completedCtx), 'completed')
+  }],
+
+  ['참가 이력이 있어도 원래 locked인 판정은 그대로 locked (완화는 hidden 전용)', () => {
+    const c = ctx({ ownedRarity: null, participated: ['m-legend'] })
+    assert.strictEqual(vis(MISSION_LEGEND, c), 'locked')
   }],
 
   ['isMissionJoinable은 open일 때만 true', () => {
