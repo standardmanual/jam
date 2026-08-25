@@ -30,6 +30,7 @@ export default async function AdminMissionsPage() {
   const { data: badgesRaw } = await supabase
     .from('badges')
     .select('id, name, point_reward')
+    .is('deleted_at', null)
     .order('name')
   const badges = (badgesRaw ?? []) as { id: string; name: string; point_reward: number }[]
 
