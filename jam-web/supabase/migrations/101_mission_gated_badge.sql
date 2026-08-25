@@ -43,7 +43,10 @@ FROM (
 ) AS map(mission_title, badge_name, badge_rarity)
 JOIN badges b
   ON b.name = map.badge_name
- AND b.rarity = map.badge_rarity
+ -- badges.rarity는 enum(badge_rarity)이고 VALUES 리터럴 컬럼은 text로 확정되므로
+ -- 캐스트 없이 비교하면 `operator does not exist: badge_rarity = text`(42883)로 실패한다.
+ -- 대상이 15행뿐이라 인덱스 미사용은 무관하고, enum 타입명에 의존하지 않는 ::text 비교를 쓴다.
+ AND b.rarity::text = map.badge_rarity
  AND b.type = 'activity'
  AND b.deleted_at IS NULL
 WHERE m.title = map.mission_title;
