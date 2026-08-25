@@ -9,6 +9,7 @@ import TopNav from '@/components/ui/TopNav'
 import { UserIcon, ChevronRightIcon, SearchIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d, t } from '@/lib/i18n'
+import { excludedTestUserIds } from '@/lib/env/test-accounts'
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string }>
@@ -48,10 +49,12 @@ async function searchUsers(rawQuery: string): Promise<UserSearchResult[]> {
     .limit(30)
 
   const lowerQ = sanitized.toLowerCase()
-  const rows = (data ?? []) as Pick<
+  // 프로덕션에서는 스테이징 전용 테스트 계정을 검색 결과에서 제외한다.
+  const excludedIds = excludedTestUserIds()
+  const rows = ((data ?? []) as Pick<
     UserRow,
     'id' | 'username' | 'avatar_url' | 'region' | 'activity_types'
-  >[]
+  >[]).filter((row) => !excludedIds.includes(row.id))
 
   return rows
     .map((row) => ({
