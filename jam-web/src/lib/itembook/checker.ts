@@ -51,13 +51,33 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   //    Phase 16: poi 타입 배지도 북에 소속 가능. "보유" 판정 방식만 타입별로 다름.
   //    20260825_025: 완성 기준선(분모)은 소프트 삭제 여부와 무관하게 고정한다.
   //    삭제된 배지도 그대로 카운트해 분모·분자가 항상 같은 배지 집합을 기준으로 하게 한다.
-  const { data: badgesRaw } = await supabase
-    .from('badges')
-    .select('id, item_book_id, type')
-    .in('item_book_id', bookIds)
-    .in('type', ['item', 'poi'])
+  //
+  //    티켓 20260825_029: 활성 아이템북 전체(bookIds)를 대상으로 item+poi 타입을 함께 모으는
+  //    쿼리라 type 필터만으로는 PostgREST 기본 응답 상한(1000행) 미만이 구조적으로 보장되지
+  //    않는다(POI 배지만도 1,800건이 넘고 그중 일부가 item_book_id로 컬렉션에 소속될 수 있음
+  //    — Phase 16). 절단되면 분모(badgeCountByBook)가 실제보다 작게 잡혀 컬렉션이 실제로는
+  //    완성되지 않았는데 완성으로 오판·보상 배지가 오발급될 위험이 있다. range로 페이지를
+  //    끝까지 넘겨 전량을 가져온다.
+  const CHECKER_BADGE_PAGE_SIZE = 1000
+  type BookBadgeRow = { id: string; item_book_id: string; type: BadgeType }
+  const bookBadges: BookBadgeRow[] = []
+  for (let from = 0; ; from += CHECKER_BADGE_PAGE_SIZE) {
+    const { data: pageRaw, error } = await supabase
+      .from('badges')
+      .select('id, item_book_id, type')
+      .in('item_book_id', bookIds)
+      .in('type', ['item', 'poi'])
+      .order('id')
+      .range(from, from + CHECKER_BADGE_PAGE_SIZE - 1)
 
-  const bookBadges = (badgesRaw ?? []) as { id: string; item_book_id: string; type: BadgeType }[]
+    if (error) {
+      console.error('[checkItemBookCompletion] badges 조회 오류:', error)
+      break
+    }
+    const page = (pageRaw ?? []) as BookBadgeRow[]
+    bookBadges.push(...page)
+    if (page.length < CHECKER_BADGE_PAGE_SIZE) break
+  }
 
   const badgeCountByBook = new Map<string, number>()
   const poiBadgesByBook = new Map<string, string[]>()

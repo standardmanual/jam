@@ -100,25 +100,38 @@ export async function loadMissionVisibilityContext(
   }
 
   // ── 유저가 보유한 게이트 배지 이름의 최고 등급 ──────────────────────────
-  const { data: ownedRaw } = await supabase
-    .from('user_activity_badges')
-    .select('badge_id')
-    .eq('user_id', userId)
-  const ownedBadgeIds = [...new Set(((ownedRaw ?? []) as { badge_id: string }[]).map((r) => r.badge_id))]
+  // 티켓 20260825_029: 예전 구현은 user_activity_badges를 `.eq('user_id', userId)`로
+  // 페이지네이션 없이 전량 조회했다 — 보유 배지가 PostgREST 기본 응답 상한(1000행)을
+  // 넘는 유저는 최고 등급 배지가 잘려 ownedTier가 낮게 잡히고, 열려야 할 레벨업 미션이
+  // locked로 잠기는 방향의 오판이 난다(현재는 유저당 최대 175행이라 실동작 영향은 없었으나
+  // 구조적 결함). 쿼리 방향을 뒤집어 먼저 "게이트 배지와 같은 이름을 가진 badges 전체
+  // 등급(최대 5트리×4등급=20개 안팎)"의 id를 구하고, 그 id로 user_activity_badges를
+  // `.in('badge_id', ...)`으로 조회한다 — 유저 보유량과 무관하게 항상 게이트 배지 수(≤수십 개)
+  // 만큼만 조회하므로 절단·in() URL 길이 문제가 동시에 해소된다.
+  // 소프트삭제 필터를 걸지 않는다 — "이미 획득한 이력"은 삭제 여부와 무관하게 유효하다
+  // (20260823_004 정책, 20260825_020/021에서 확정. badge-engine도 같은 기준)
+  const { data: gatedNameVariantsRaw } = await supabase
+    .from('badges')
+    .select('id, name, rarity')
+    .in('name', gatedNames)
+
+  const gatedNameVariants = (gatedNameVariantsRaw ?? []) as { id: string; name: string; rarity: BadgeRarity }[]
+  const gatedVariantById = new Map(gatedNameVariants.map((b) => [b.id, b] as const))
+  const gatedVariantIds = gatedNameVariants.map((b) => b.id)
 
   const ownedTierByBadgeName = new Map<string, number>()
-  if (ownedBadgeIds.length > 0) {
-    // 소프트삭제 필터를 걸지 않는다 — "이미 획득한 이력"은 삭제 여부와 무관하게 유효하다
-    // (20260823_004 정책, 20260825_020/021에서 확정. badge-engine도 같은 기준)
-    const { data: ownedDefsRaw } = await supabase
-      .from('badges')
-      .select('name, rarity')
-      .in('id', ownedBadgeIds)
-      .in('name', gatedNames)
+  if (gatedVariantIds.length > 0) {
+    const { data: ownedRaw } = await supabase
+      .from('user_activity_badges')
+      .select('badge_id')
+      .eq('user_id', userId)
+      .in('badge_id', gatedVariantIds)
 
-    for (const b of (ownedDefsRaw ?? []) as { name: string; rarity: BadgeRarity }[]) {
-      const tier = RARITY_TIER[b.rarity] ?? 0
-      if (tier > (ownedTierByBadgeName.get(b.name) ?? 0)) ownedTierByBadgeName.set(b.name, tier)
+    for (const row of (ownedRaw ?? []) as { badge_id: string }[]) {
+      const variant = gatedVariantById.get(row.badge_id)
+      if (!variant) continue
+      const tier = RARITY_TIER[variant.rarity] ?? 0
+      if (tier > (ownedTierByBadgeName.get(variant.name) ?? 0)) ownedTierByBadgeName.set(variant.name, tier)
     }
   }
 

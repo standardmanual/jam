@@ -2,15 +2,38 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { findCumulativeConditionError, findUnknownConditionKeyError } from '@/lib/admin/badge-validation'
+import type { BadgeRow } from '@/types/database'
 
 export async function GET() {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const supabase = createServiceClient()
-  const { data, error } = await supabase.from('badges').select('*').order('created_at', { ascending: false }).limit(5000)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ badges: data })
+
+  // 티켓 20260825_029: 전체 배지(현재 5585건, 소프트 삭제 포함)를 `.limit(5000)`으로
+  // 조회했으나 PostgREST 서버 설정(db-max-rows, 기본 1000)은 클라이언트가 요청한 limit보다
+  // 우선한다 — 실제로는 created_at 내림차순 최신 1000건만 돌아온다. 이 엔드포인트는
+  // BadgeForm.tsx(같은 북+등급 내 drop_weight 합산 미리보기)와 ItemBookForm.tsx(일괄 배경
+  // 적용 전 대상 배지 수 미리보기)에서 응답 전체를 클라이언트에서 필터링해 쓰므로, 오래된
+  // 배지가 잘려나가면 두 미리보기 숫자가 실제보다 적게 계산되는 오판으로 이어진다.
+  // range로 페이지를 끝까지 넘겨 전량을 가져온다.
+  const PAGE_SIZE = 1000
+  const all: BadgeRow[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data: pageRaw, error } = await supabase
+      .from('badges')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(from, from + PAGE_SIZE - 1)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const page = (pageRaw ?? []) as BadgeRow[]
+    all.push(...page)
+    if (page.length < PAGE_SIZE) break
+  }
+
+  return NextResponse.json({ badges: all })
 }
 
 export async function POST(req: NextRequest) {

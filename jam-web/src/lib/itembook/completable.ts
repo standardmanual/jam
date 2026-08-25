@@ -44,17 +44,31 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
 
   // 20260825_025: 완성 기준선(분모)은 소프트 삭제 여부와 무관하게 고정한다.
   // 삭제된 배지도 그대로 북 소속 배지 집합에 포함한다.
-  const { data: badgesRaw, error: badgesError } = await supabase
-    .from('badges')
-    .select('id, item_book_id, type')
-    .in('item_book_id', bookIds)
-    .in('type', ['item', 'poi'])
+  //
+  // 티켓 20260825_029: checker.ts와 동일한 이유로(활성 아이템북 전체 × item+poi 타입 —
+  // type 필터만으로는 1000행 미만이 구조적으로 보장되지 않음) range로 페이지를 끝까지
+  // 넘겨 전량을 가져온다. 절단되면 완성 가능 판정(분모)이 실제보다 작게 잡혀 "완성 가능"
+  // 소식이 잘못된 타이밍에 나가는 오판으로 이어질 수 있다.
+  const COMPLETABLE_BADGE_PAGE_SIZE = 1000
+  type BookBadgeRow = { id: string; item_book_id: string | null; type: BadgeType }
+  const bookBadges: BookBadgeRow[] = []
+  for (let from = 0; ; from += COMPLETABLE_BADGE_PAGE_SIZE) {
+    const { data: pageRaw, error: badgesError } = await supabase
+      .from('badges')
+      .select('id, item_book_id, type')
+      .in('item_book_id', bookIds)
+      .in('type', ['item', 'poi'])
+      .order('id')
+      .range(from, from + COMPLETABLE_BADGE_PAGE_SIZE - 1)
 
-  if (badgesError) {
-    console.error('[findCompletableItemBooks] badges 조회 오류:', badgesError)
-    return []
+    if (badgesError) {
+      console.error('[findCompletableItemBooks] badges 조회 오류:', badgesError)
+      return []
+    }
+    const page = (pageRaw ?? []) as BookBadgeRow[]
+    bookBadges.push(...page)
+    if (page.length < COMPLETABLE_BADGE_PAGE_SIZE) break
   }
-  const bookBadges = (badgesRaw ?? []) as { id: string; item_book_id: string | null; type: BadgeType }[]
 
   const badgeIdsByBook = new Map<string, string[]>()
   const poiBadgeIds: string[] = []
