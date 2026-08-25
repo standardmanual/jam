@@ -1,4 +1,7 @@
 // GET /api/drops/poi/[poiId] — POI에 드랍된 픽업 가능 아이템 목록
+//
+// 20260826_002: `error` 필드는 안정적인 snake_case 코드만 담는다. DB 원문 오류(detail)는
+// 응답에 싣지 않고 서버 로그로만 남긴다 — 클라이언트가 그대로 토스트에 노출하던 경로였다.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
@@ -12,7 +15,7 @@ export async function GET(
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -26,7 +29,7 @@ export async function GET(
 
   if (error) {
     console.error('[poi drops] 조회 오류:', error.message)
-    return NextResponse.json({ error: '조회 실패', detail: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'drops_load_failed' }, { status: 500 })
   }
 
   // dropper username 별도 조회 (FK 중복으로 조인 불가)

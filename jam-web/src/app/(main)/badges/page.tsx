@@ -4,23 +4,18 @@ import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/type
 import BadgesClient, { ItemBookProgress, CheckinBadgeItem } from './BadgesClient'
 
 /**
- * 20260824_021: 알림함 착지용 쿼리 파라미터 2종.
+ * 20260824_021: 알림함 착지용 쿼리 파라미터.
  * - `?tab=activity|checkin|collection` — 소식 #1·#4의 착지 탭 (구 값 `poi`도 계속 받는다 — 20260826_004)
- * - `?highlight=<id,id>` — 그 소식으로 획득한 배지를 그리드에서 짚어준다
  *
- * 탭 상태는 원래 hash(`#activity`)로 유지되지만, 착지점은 쿼리 하나로 탭과 하이라이트를
- * 함께 전달해야 하므로 쿼리도 초기값으로 받는다(이후 탭 전환은 기존대로 hash를 쓴다).
+ * 탭 상태는 원래 hash(`#activity`)로 유지되지만, 착지점은 쿼리로도 탭을 전달해야
+ * 하므로 쿼리도 초기값으로 받는다(이후 탭 전환은 기존대로 hash를 쓴다).
  */
 interface Props {
-  searchParams: Promise<{ tab?: string; highlight?: string }>
+  searchParams: Promise<{ tab?: string }>
 }
 
 export default async function BadgesPage({ searchParams }: Props) {
-  const { tab, highlight } = await searchParams
-  const highlightIds = (highlight ?? '')
-    .split(',')
-    .map((v) => v.trim())
-    .filter(Boolean)
+  const { tab } = await searchParams
 
   const supabase = await createClient()
   const {
@@ -206,7 +201,6 @@ export default async function BadgesPage({ searchParams }: Props) {
       itemBookProgress={itemBookProgress}
       checkinBadges={checkinBadges}
       initialTab={tab}
-      highlightIds={highlightIds}
     />
   )
 }

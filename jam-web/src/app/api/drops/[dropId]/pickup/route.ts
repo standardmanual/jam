@@ -9,6 +9,10 @@ import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
 import { checkAndUpdateLocation } from '@/lib/abusing/gps-detector'
 import { applyBan, logAbusingEvent } from '@/lib/abusing/shadow-ban'
 
+// 20260826_002: 이 라우트의 `error` 필드는 **항상 안정적인 snake_case 코드**만 담는다.
+// 한국어 원문을 섞어 돌려주면 클라이언트의 코드 매핑이 빗나가 개발자용 축약 문구
+// ('드랍 없음' 등)가 그대로 토스트에 노출된다(20260825_039에서 실제로 드러난 문제).
+// 사용자 문구는 전부 src/lib/i18n/ko.ts의 drops 섹션에서 관리한다.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ dropId: string }> }
@@ -17,13 +21,13 @@ export async function POST(
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const body = await req.json()
   const { user_lat, user_lng } = body
 
   if (isNaN(user_lat) || isNaN(user_lng)) {
-    return NextResponse.json({ error: 'user_lat, user_lng 필요' }, { status: 400 })
+    return NextResponse.json({ error: 'missing_params' }, { status: 400 })
   }
 
   const service = createServiceClient()
@@ -36,14 +40,13 @@ export async function POST(
     .single()
 
   if (dropError || !dropRaw) {
-    return NextResponse.json({ error: '드랍 없음' }, { status: 404 })
+    return NextResponse.json({ error: 'drop_not_found' }, { status: 404 })
   }
 
   const drop = dropRaw as PoiDropRow
 
   if (!drop.is_available) {
     // 20260825_039: 클라이언트가 코드로 매핑하는 RPC 경로(already_picked_up)와 값을 맞춘다.
-    // 한국어 원문을 돌려주면 매핑이 빗나가 그대로 토스트에 노출된다.
     return NextResponse.json({ error: 'already_picked_up' }, { status: 409 })
   }
 
@@ -55,7 +58,7 @@ export async function POST(
     .single()
 
   if (poiError || !poiRaw) {
-    return NextResponse.json({ error: 'POI 없음' }, { status: 404 })
+    return NextResponse.json({ error: 'poi_not_found' }, { status: 404 })
   }
 
   if (!isUserNearPoi(user_lat, user_lng, poiRaw as PoiRow)) {
@@ -67,7 +70,7 @@ export async function POST(
   // POI 블록 확인 (GPS 조작 감지 후 차단된 경우)
   const blocked = await isPoiBlocked(user.id, drop.poi_id)
   if (blocked) {
-    return NextResponse.json({ error: '이 POI에서 일시적으로 이용이 제한됐어요' }, { status: 403 })
+    return NextResponse.json({ error: 'poi_blocked' }, { status: 403 })
   }
 
   // GPS 조작 감지
@@ -93,7 +96,7 @@ export async function POST(
         lng: user_lng,
       }),
     ])
-    return NextResponse.json({ error: '위치 정보를 확인할 수 없어요. 잠시 후 다시 시도해 주세요.' }, { status: 403 })
+    return NextResponse.json({ error: 'location_unverified' }, { status: 403 })
   }
 
   // 인벤토리 조회
@@ -104,7 +107,7 @@ export async function POST(
     .single()
 
   if (invError || !invRaw) {
-    return NextResponse.json({ error: '인벤토리 없음' }, { status: 404 })
+    return NextResponse.json({ error: 'inventory_not_found' }, { status: 404 })
   }
 
   const inventoryId = (invRaw as { id: string }).id
@@ -120,7 +123,7 @@ export async function POST(
 
   if (rpcError) {
     console.error('[pickup] RPC 오류:', rpcError)
-    return NextResponse.json({ error: '픽업 실패' }, { status: 500 })
+    return NextResponse.json({ error: 'pickup_failed' }, { status: 500 })
   }
 
   const result = rpcResult as { ok: boolean; error?: string; inventory_item_id?: string }
@@ -132,8 +135,9 @@ export async function POST(
       inventory_not_found: 404,
       inventory_full: 422,
     }
+    // RPC가 돌려주는 값도 snake_case 코드다. 값이 비어 있으면 일반 실패 코드로 흘린다.
     return NextResponse.json(
-      { error: result.error },
+      { error: result.error ?? 'pickup_failed' },
       { status: statusMap[result.error ?? ''] ?? 400 }
     )
   }
