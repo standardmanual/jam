@@ -116,6 +116,7 @@ async function fetchBadgesById(
     .from('badges')
     .select('id, name, image_url, rarity')
     .in('id', uniqueIds)
+    .is('deleted_at', null)
 
   const map = new Map<string, ResolvedBadge>()
   for (const b of (data ?? []) as ResolvedBadge[]) map.set(b.id, b)
