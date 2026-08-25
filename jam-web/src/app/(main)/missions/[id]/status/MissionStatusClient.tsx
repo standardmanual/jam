@@ -41,63 +41,50 @@ interface Props {
   missionId: string
   missionTitle: string
   displayType: string
-  goalLabel?: string
 }
 
 // ────────────────────────────────────────────────────────────────
-// 포디엄 설정값 (1위, 2위, 3위) — Figma 스펙 06_미션 상황 기준
+// 포디엄 설정값 (1위, 2위, 3위) — 20260825 리뉴얼: 앱 전역의 유일한 강조색인
+// --color-primary(레드) 하나로 통일. 1위만 강조, 2·3위는 중립톤으로 낮춰
+// "강조색은 하나만 쓴다"는 다른 화면들의 원칙을 그대로 따른다.
+// 폰트 크기는 모듈러 타이포 토큰 스케일(--text-h3:28 / --text-h4:24 /
+// --text-caption:12 / --text-micro:11)에 맞춘 값이다.
 // ────────────────────────────────────────────────────────────────
 const PODIUM_CONFIG = [
   {
     rank: 1,
     barHeight: 130,
-    barBg: '#0D3320',
-    barBorder: '#56C985',
+    // --color-primary(#e8461f)를 상단, 그 40% 알파 톤을 하단에 둔 세로 그라디언트.
+    // 다른 화면의 rgba(232,70,31,…) 틴트 패턴(StatusChip 등)과 동일한 베이스 컬러.
+    barGradient: 'linear-gradient(180deg, var(--color-primary), rgba(232,70,31,0.45))',
     avatarSize: 60,
-    avatarBg: '#0D2A1A',
-    avatarBorder: '#56C985',
-    rankColor: '#56C985',
-    rankFontSize: 22,
-    valueColor: '#56C985',
-    barNumFontSize: 26,
-    barNumColor: '#FFF',
-    usernameFontSize: 12,
+    avatarBg: 'rgba(232,70,31,0.15)',
+    avatarBorder: 'var(--color-primary)',
+    barNumFontSize: 'var(--text-h3)', // 28px — 가장 가까운 토큰
+    usernameFontSize: 'var(--text-caption)', // 12px
     usernameBold: true,
-    progressFontSize: 10,
   },
   {
     rank: 2,
     barHeight: 90,
-    barBg: '#1A3A2A',
-    barBorder: '#4CAF7D',
+    barGradient: 'linear-gradient(180deg, rgba(232,70,31,0.55), rgba(232,70,31,0.25))',
     avatarSize: 48,
-    avatarBg: '#2A3A2A',
-    avatarBorder: '#4CAF7D',
-    rankColor: '#4CAF7D',
-    rankFontSize: 18,
-    valueColor: '#4CAF7D',
-    barNumFontSize: 20,
-    barNumColor: '#A8E6C3',
-    usernameFontSize: 11,
+    avatarBg: 'var(--color-border)',
+    avatarBorder: null,
+    barNumFontSize: 'var(--text-h4)', // 24px
+    usernameFontSize: 'var(--text-micro)', // 11px
     usernameBold: false,
-    progressFontSize: 10,
   },
   {
     rank: 3,
     barHeight: 60,
-    barBg: '#1E2E1E',
-    barBorder: '#5A7A5A',
+    barGradient: 'linear-gradient(180deg, rgba(232,70,31,0.4), rgba(232,70,31,0.18))',
     avatarSize: 48,
-    avatarBg: '#2A2E2A',
-    avatarBorder: '#5A7A5A',
-    rankColor: '#8AAA8A',
-    rankFontSize: 18,
-    valueColor: '#8AAA8A',
-    barNumFontSize: 20,
-    barNumColor: '#8AAA8A',
-    usernameFontSize: 11,
+    avatarBg: 'var(--color-border)',
+    avatarBorder: null,
+    barNumFontSize: 'var(--text-h4)',
+    usernameFontSize: 'var(--text-micro)',
     usernameBold: false,
-    progressFontSize: 10,
   },
 ] as const
 
@@ -108,15 +95,6 @@ type PodiumConfig = typeof PODIUM_CONFIG[number]
 // ────────────────────────────────────────────────────────────────
 function formatProgress(value: number) {
   return value.toFixed(value % 1 === 0 ? 0 : 1)
-}
-
-/** 순위 기반 프로그레스 바 그라디언트 — 상위일수록 밝은 그린, 최소 15% 밝기 유지 */
-function getRankGradient(rank: number): string {
-  // factor 최솟값 0.15 → 참가자가 많아도 시각 구분 유지
-  const factor = Math.max(0.15, 1 - (rank - 4) * 0.05)
-  const fromG = Math.round(0x59 + factor * (0xB2 - 0x59))
-  const toG = Math.round(0x73 + factor * (0xD9 - 0x73))
-  return `linear-gradient(90deg, rgb(0,${fromG},0), rgb(26,${toG},0))`
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -133,14 +111,14 @@ function PodiumAvatar({
   url: string | null
   size: number
   bg: string
-  border: string
+  border: string | null
 }) {
   const baseStyle: CSSProperties = {
     width: size,
     height: size,
     borderRadius: '50%',
     backgroundColor: bg,
-    border: `2px solid ${border}`,
+    border: border ? `2px solid ${border}` : undefined,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -169,16 +147,6 @@ function PodiumColumn({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, gap: 4 }}>
-      {/* 포디엄 바 상단: 순위 번호 */}
-      <span style={{
-        fontSize: cfg.rankFontSize,
-        fontWeight: 'bold',
-        color: cfg.rankColor,
-        lineHeight: 1,
-      }}>
-        {cfg.rank}
-      </span>
-
       {/* 아바타 (원형) */}
       <PodiumAvatar
         url={entry?.avatarUrl ?? null}
@@ -201,34 +169,27 @@ function PodiumColumn({
         {entry ? entry.username : '—'}
       </span>
 
-      {/* 진행값 텍스트 */}
-      <span style={{
-        fontSize: cfg.progressFontSize,
-        fontWeight: 'bold',
-        color: cfg.valueColor,
-      }}>
-        {entry ? formatProgress(entry.progressValue) : ''}
-      </span>
-
-      {/* 포디엄 바 */}
+      {/* 포디엄 바 — 순위 번호·진행값을 바 하단에 함께 배치 */}
       <div style={{
         width: '100%',
         height: cfg.barHeight,
-        backgroundColor: cfg.barBg,
-        border: `1px solid ${cfg.barBorder}`,
+        background: cfg.barGradient,
         borderRadius: '10px 10px 0 0',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-end',
+        paddingBottom: 5,
       }}>
         {entry && (
-          <span style={{
-            fontSize: cfg.barNumFontSize,
-            fontWeight: 'bold',
-            color: cfg.barNumColor,
-          }}>
-            {cfg.rank}
-          </span>
+          <>
+            <span style={{ fontSize: cfg.barNumFontSize, fontWeight: 'bold', color: '#fff' }}>
+              {cfg.rank}
+            </span>
+            <span style={{ fontSize: 'var(--text-caption)', fontWeight: 'bold', color: '#fff' }}>
+              {formatProgress(entry.progressValue)}
+            </span>
+          </>
         )}
       </div>
     </div>
@@ -246,17 +207,18 @@ function RankingListRow({
   isMe: boolean
 }) {
   const fillRatio = maxProgress > 0 ? Math.min(1, entry.progressValue / maxProgress) : 0
-  const gradient = getRankGradient(entry.rank)
+  // 내 순위 행만 h4 토큰(24px)으로 확대 강조, 그 외에는 small 토큰(14px) 그대로
+  const emphasisFontSize = isMe ? 'var(--text-h4)' : 'var(--text-small)'
 
   return (
     <div>
       {/* 행 본문 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
-        {/* 순위 번호: 14px bold, #B2B2B2, 20px 고정폭 */}
+        {/* 순위 번호 — 내 순위는 --color-primary(레드)로 강조 */}
         <span style={{
-          fontSize: 14,
+          fontSize: emphasisFontSize,
           fontWeight: 'bold',
-          color: isMe ? '#56C985' : '#B2B2B2',
+          color: isMe ? 'var(--color-primary)' : 'var(--color-text-secondary)',
           width: 20,
           textAlign: 'center',
           flexShrink: 0,
@@ -284,12 +246,12 @@ function RankingListRow({
           )}
         </div>
 
-        {/* 유저명: 14px, #FFF, flex-grow */}
+        {/* 유저명 */}
         <span style={{
           flex: 1,
-          fontSize: 14,
+          fontSize: 'var(--text-small)',
           fontWeight: isMe ? 'bold' : 'normal',
-          color: '#FFF',
+          color: 'var(--color-text)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -297,26 +259,26 @@ function RankingListRow({
           {entry.username}
         </span>
 
-        {/* 진행값: 14px bold, #FFF */}
+        {/* 진행값 */}
         <span style={{
-          fontSize: 14,
+          fontSize: emphasisFontSize,
           fontWeight: 'bold',
-          color: isMe ? '#56C985' : '#FFF',
+          color: isMe ? 'var(--color-primary)' : 'var(--color-text)',
           flexShrink: 0,
         }}>
           {formatProgress(entry.progressValue)}
         </span>
       </div>
 
-      {/* 행 하단: 6px 프로그레스 바, padding-left 32px, 배경 --color-surface-elevated, border-radius 3px */}
+      {/* 행 하단: 6px 프로그레스 바. 강조색은 --color-primary 하나로 통일(랭킹별 그라디언트 제거) */}
       {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
       <div style={{ paddingLeft: 32, paddingRight: 16, paddingBottom: 8 }}>
         <ProgressBar
           percent={fillRatio * 100}
           labelType="none"
           height={6}
-          color={gradient}
-          trackColor="var(--color-surface-elevated)"
+          color="var(--color-primary)"
+          trackColor="var(--color-border)"
           radius="3px"
         />
       </div>
@@ -325,7 +287,12 @@ function RankingListRow({
   )
 }
 
-/** 나의 순위 카드 (항상 하단 고정) — Figma 스펙: 목록 내 포함 여부 무관 중복 노출 */
+/**
+ * 나의 순위 카드 — 20260825 리뉴얼: 목록에 항상 중복 노출하던 것에서,
+ * 내 순위가 공개 목록(visible_rank_count) 밖일 때만 예외적으로 보여주는 방식으로 변경.
+ * 목록 안에 있을 때는 RankingListRow의 isMe 강조만으로 충분하다.
+ * 색상은 MissionDetailClient의 "참가중" 칩과 동일한 레드 틴트 어휘(rgba(232,70,31,…))를 재사용.
+ */
 function MyRankCard({
   me,
   maxProgress,
@@ -336,19 +303,16 @@ function MyRankCard({
   const fillRatio = maxProgress > 0 ? Math.min(1, me.progressValue / maxProgress) : 0
 
   return (
-    // 20260816_012: 보더 제거 — "내 순위" 강조는 그린 틴트 배경만으로 충분히 구분됨
     <div style={{
-      margin: '0 16px',
-      backgroundColor: '#0D2A1A',
-      borderRadius: 12,
-      padding: 8,
+      backgroundColor: 'rgba(232,70,31,0.12)',
+      borderRadius: 'var(--radius-card)',
+      padding: 16,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {/* 순위: 14px bold, #56C985 */}
         <span style={{
-          fontSize: 14,
+          fontSize: 'var(--text-h4)',
           fontWeight: 'bold',
-          color: '#56C985',
+          color: 'var(--color-primary)',
           width: 20,
           textAlign: 'center',
           flexShrink: 0,
@@ -356,12 +320,11 @@ function MyRankCard({
           {me.rank}
         </span>
 
-        {/* 아바타: 36px, bg #1A3A2A */}
         <div style={{
           width: 36,
           height: 36,
           borderRadius: '50%',
-          backgroundColor: '#1A3A2A',
+          backgroundColor: 'rgba(232,70,31,0.2)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -372,49 +335,43 @@ function MyRankCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={me.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <UserIcon className="w-[18px] h-[18px] text-[#56C985]" />
+            <UserIcon className="w-[18px] h-[18px]" style={{ color: 'var(--color-primary)' }} />
           )}
         </div>
 
-        {/* 유저명 + 서브텍스트 */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* 유저명: 14px bold, #FFF */}
           <div style={{
-            fontSize: 14,
+            fontSize: 'var(--text-small)',
             fontWeight: 'bold',
-            color: '#FFF',
+            color: 'var(--color-text)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}>
             {me.username}
           </div>
-          {/* 서브텍스트: "[진행값] 달성", 11px, #B2B2B2 */}
-          <div style={{ fontSize: 11, color: '#B2B2B2', marginTop: 1 }}>
+          <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', marginTop: 1 }}>
             {formatProgress(me.progressValue)} {d.missions.achieved}
           </div>
         </div>
 
-        {/* 진행값: 14px bold, #56C985 */}
         <span style={{
-          fontSize: 14,
+          fontSize: 'var(--text-h4)',
           fontWeight: 'bold',
-          color: '#56C985',
+          color: 'var(--color-primary)',
           flexShrink: 0,
         }}>
           {formatProgress(me.progressValue)}
         </span>
       </div>
 
-      {/* 프로그레스 바: bg #1A3A2A, fill linear-gradient(90deg, #00CC66, #33E580) */}
-      {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
-      <div style={{ paddingLeft: 28, paddingTop: 6 }}>
+      <div style={{ paddingLeft: 28, paddingTop: 8 }}>
         <ProgressBar
           percent={fillRatio * 100}
           labelType="none"
           height={6}
-          color="linear-gradient(90deg, #00CC66, #33E580)"
-          trackColor="#1A3A2A"
+          color="var(--color-primary)"
+          trackColor="rgba(232,70,31,0.2)"
           radius="3px"
         />
       </div>
@@ -465,7 +422,6 @@ export default function MissionStatusClient({
   missionId,
   missionTitle: _missionTitle,
   displayType: _displayType,
-  goalLabel,
 }: Props) {
   const [data, setData] = useState<StatusResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -520,66 +476,48 @@ export default function MissionStatusClient({
           { cfg: PODIUM_CONFIG[2], entry: entries.find(e => e.rank === 3) },
         ]
         const rest = entries.filter(e => e.rank >= 4)
+        // 내 순위가 공개 목록(entries, visible_rank_count로 잘릴 수 있음) 안에 이미 있으면
+        // RankingListRow의 isMe 강조로 충분하다 — 목록 밖일 때만 MyRankCard를 따로 보여준다.
+        const meOutsideList = me !== null && !entries.some(e => e.userId === me.userId)
 
         return (
-          <div>
-            {/* 헤더 정보 바: 좌="랭킹 · 참가자 N명", 우="미션: [목표값]" */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '0px 16px 8px',
-            }}>
-              <span style={{ fontSize: 13, color: '#B2B2B2' }}>
-                {d.missions.statusRankingLabel} · {t(d.missions.statusParticipants, { count: data.totalParticipants })}
-              </span>
-              {goalLabel && (
-                <span style={{ fontSize: 13, color: '#B2B2B2' }}>
-                  {t(d.missions.statusMissionGoal, { goal: goalLabel })}
-                </span>
-              )}
-            </div>
-
-            {/* TOP 3 포디엄 — 3명 미만이면 빈 슬롯 "—" 처리 */}
+          <div className="flex flex-col gap-[var(--spacing-16)] px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
+            {/* TOP 3 포디엄 — InfoCard(bg-surface-elevated, radius-cards, p-6)로 다른 화면과 동일하게 카드화.
+                3명 미만이면 빈 슬롯 "—" 처리 */}
             {entries.length > 0 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-end',
-                padding: '16px 16px 0',
-                gap: 8,
-              }}>
-                {top3.map(({ cfg, entry }) => (
-                  <PodiumColumn key={cfg.rank} cfg={cfg} entry={entry} />
-                ))}
-              </div>
-            )}
-
-            {/* 전체 순위 목록 (4위~) */}
-            {rest.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                {/* 섹션 헤더: "전체 순위" 13px #B2B2B2 (20260816_012: hr 대체용 구분선 제거 — 다른 섹션 라벨과 통일) */}
-                <div style={{ padding: '0 16px 8px' }}>
-                  <span style={{ fontSize: 13, color: '#B2B2B2' }}>{d.missions.statusAllRanks}</span>
-                </div>
-
-                <div style={{ paddingBottom: 8 }}>
-                  {rest.map(entry => (
-                    <RankingListRow
-                      key={entry.userId}
-                      entry={entry}
-                      maxProgress={maxProgress}
-                      isMe={isMeInEntries(entry.userId)}
-                    />
+              <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                  {top3.map(({ cfg, entry }) => (
+                    <PodiumColumn key={cfg.rank} cfg={cfg} entry={entry} />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* 나의 순위 카드 — 항상 하단 고정 */}
-            {me && (
-              <div style={{ padding: '16px 0 40px' }}>
-                <MyRankCard me={me} maxProgress={maxProgress} />
+            {/* 전체 순위 목록 (4위~) — InfoCard + 섹션 라벨(다른 화면의 SectionLabel과 동일 톤) */}
+            {rest.length > 0 && (
+              <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+                <div className="flex items-baseline justify-between mb-2">
+                  <p className="m-0 text-[15px] font-bold text-text">{d.missions.statusAllRanks}</p>
+                  <span className="text-[length:var(--text-caption)] text-text-secondary">
+                    {t(d.missions.statusParticipants, { count: data.totalParticipants })}
+                  </span>
+                </div>
+
+                {rest.map(entry => (
+                  <RankingListRow
+                    key={entry.userId}
+                    entry={entry}
+                    maxProgress={maxProgress}
+                    isMe={isMeInEntries(entry.userId)}
+                  />
+                ))}
               </div>
+            )}
+
+            {/* 나의 순위 카드 — 목록 밖일 때만 예외적으로 노출 */}
+            {meOutsideList && me && (
+              <MyRankCard me={me} maxProgress={maxProgress} />
             )}
 
             {/* 빈 상태: entries.length === 0 && me === null */}
