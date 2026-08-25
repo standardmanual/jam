@@ -42,6 +42,7 @@ export async function GET() {
     .in('id', ownedBadgeIds)
     .eq('type', 'item')
     .not('item_book_id', 'is', null)
+    .is('deleted_at', null)
   const ownedBadges = (ownedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'item_book_id'>[]
 
   const discoveredMap = new Map<string, Set<string>>()
@@ -57,7 +58,7 @@ export async function GET() {
   const [{ data: booksRaw }, { data: allBadgesRaw }, { data: slotsRaw }, { data: compRaw }] =
     await Promise.all([
       supabase.from('item_books').select('*').in('id', bookIds),
-      supabase.from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item'),
+      supabase.from('badges').select('id, item_book_id').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null),
       supabase
         .from('user_item_book_slots')
         .select('item_book_id')

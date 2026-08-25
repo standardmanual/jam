@@ -38,7 +38,7 @@ export default async function MissionsPage() {
   const allRewardBadgeIds = [...new Set(allMissions.flatMap((m) => m.reward_badge_ids ?? []))]
   let rewardBadgeNames: Record<string, string> = {}
   if (allRewardBadgeIds.length > 0) {
-    const { data: badgeRows } = await service.from('badges').select('id, name').in('id', allRewardBadgeIds)
+    const { data: badgeRows } = await service.from('badges').select('id, name').in('id', allRewardBadgeIds).is('deleted_at', null)
     rewardBadgeNames = Object.fromEntries(((badgeRows ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name]))
   }
 

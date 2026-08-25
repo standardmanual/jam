@@ -92,7 +92,8 @@ export default async function UserItemBooksPage({ params }: Props) {
           .from('badges')
           .select('id, item_book_id')
           .in('item_book_id', bookIds)
-          .eq('type', 'item'),
+          .eq('type', 'item')
+          .is('deleted_at', null),
         service
           .from('user_item_book_slots')
           .select('item_book_id')
