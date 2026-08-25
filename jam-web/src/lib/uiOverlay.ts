@@ -44,3 +44,31 @@ export function useTabBarHidden(): boolean {
     () => false
   )
 }
+
+/**
+ * 20260826_001 — 화면 **하단**을 점유하는 오버레이(현재는 `BottomSheet`)가 떠 있는지.
+ *
+ * 토스트는 기본적으로 하단(safe-area+88px)에 뜨는데, 이 위치는 시트 footer 버튼
+ * (`footerBottomInset='tabbar'` 기준 safe+92~140px)과 거의 완전히 포개진다. 토스트 사각형은
+ * 탭-투-디스미스를 위해 `pointer-events-auto`라서, 겹친 영역을 누르면 토스트만 닫히고 아래
+ * 버튼은 눌리지 않는다. 그래서 하단 오버레이가 떠 있는 동안 토스트를 상단 앵커로 돌린다.
+ *
+ * `useTabBarHidden`과 달리 **구독(listener)을 두지 않는다.** 토스트는 뜨는 "순간"의 값만
+ * 스냅샷해서 자기 앵커를 정하고 사라질 때까지 유지한다 — 구독해서 살아 있는 토스트의 앵커를
+ * 실시간으로 바꾸면, `toast(성공)` 직후 시트를 닫는 흔한 흐름(`PoiCarouselModal.executePickup`)에서
+ * 이미 화면에 떠 있는 토스트가 상단→하단으로 순간이동한다.
+ */
+let bottomOverlayCount = 0
+
+/** 하단 오버레이가 열리는 시점에 호출. 반환된 함수를 닫히는 시점(정리 함수)에 호출한다. */
+export function pushBottomOverlay(): () => void {
+  bottomOverlayCount += 1
+  return () => {
+    bottomOverlayCount = Math.max(0, bottomOverlayCount - 1)
+  }
+}
+
+/** 렌더 중이 아니라 이벤트 핸들러에서 호출하는 명령형 getter (구독 없음). */
+export function isBottomOverlayOpen(): boolean {
+  return bottomOverlayCount > 0
+}
