@@ -215,7 +215,12 @@ async function grantBadge(
     return null
   }
 
-  const { data: badgeRaw } = await supabase.from('badges').select('id, name, rarity').eq('id', badgeId).single()
+  const { data: badgeRaw } = await supabase
+    .from('badges')
+    .select('id, name, rarity')
+    .eq('id', badgeId)
+    .is('deleted_at', null)
+    .single()
   return (badgeRaw as { id: string; name: string; rarity: string } | null) ?? null
 }
 
