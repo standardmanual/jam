@@ -61,6 +61,23 @@ function EventIcon({ type, className }: { type: ActivityFeedEventType; className
   }
 }
 
+/**
+ * 재방문 POI 배지 썸네일 모서리에 붙는 작은 카운터 배지("×N").
+ * 인터랙션 리뷰 발견 3 — 재방문 이벤트가 최초 획득과 시각적으로 완전히 동일해 텍스트를
+ * 읽기 전까지 구분이 안 된다는 지적 반영. 신규 컴포넌트를 만들지 않고 기존 하우스 스타일
+ * (ProfileClient.tsx의 아바타 모서리 버튼과 동일한 pill 배지 톤)만 재사용한다.
+ */
+function RevisitCountBadge({ count }: { count: number }) {
+  return (
+    <span
+      className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-[length:var(--text-caption)] leading-none font-bold text-text/80 flex items-center justify-center"
+      aria-hidden="true"
+    >
+      ×{count}
+    </span>
+  )
+}
+
 const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
   badge_earned: d.feed.eventBadgeEarned,
   item_dropped: d.feed.eventItemDropped,
@@ -70,28 +87,47 @@ const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
   mission_cancelled: d.feed.eventMissionCancelled,
 }
 
+/** badge_earned 이벤트가 POI 재방문(두 번째 이상 획득)인지 판별하고 표시에 필요한 값을 뽑아낸다. */
+function poiRevisitInfo(item: ActivityFeedRow): { poiName: string; visitCount: number } | null {
+  if (item.event_type !== 'badge_earned') return null
+  const meta = item.metadata as Record<string, unknown>
+  const poiName = typeof meta.poi_name === 'string' ? meta.poi_name : ''
+  const visitCount = typeof meta.visit_count === 'number' ? meta.visit_count : 0
+  if (poiName && visitCount > 1) return { poiName, visitCount }
+  return null
+}
+
 /**
  * item_dropped는 두 가지 출처를 하나의 이벤트 타입으로 공유한다:
  * - 활동 연동(Strava) 후 드랍엔진이 지급한 경우 → faction_name이 항상 채워짐 → "아이템 획득"
  * - POI에 아이템배지를 직접 드랍한 경우(레거시 poi_drops 동기화) → faction_name 없음 → "아이템 드랍"
  *
  * badge_earned는 POI 배지를 두 번째 이상 획득(재방문)했을 때 "배지 획득" 대신
- * "{poiName}을(를) {N}번째 방문했어요"를 노출한다(20260826_001). poi_name·visit_count가
- * 없으면(활동 배지 등 POI 무관 획득, 또는 최초 획득) 기존 라벨을 그대로 쓴다.
+ * "{poiName}을(를) {N}번째 방문했어요"를 노출한다(20260826_001). 이 라벨 슬롯은 원래 짧은
+ * 카테고리 태그(예: "배지 획득") 자리였는데 재방문 문구는 완전한 문장이 되므로, 문장 스타일
+ * 전체는 그대로 두고 "N번째" 숫자만 인라인으로 살짝 강조해 핵심 정보를 눈에 띄게 한다
+ * (인터랙션 리뷰 발견 4). poi_name·visit_count가 없으면(활동 배지 등 POI 무관 획득, 또는
+ * 최초 획득) 기존 라벨을 그대로 쓴다.
  */
-function eventLabel(item: ActivityFeedRow): string {
+function eventLabel(item: ActivityFeedRow): ReactNode {
   if (item.event_type === 'item_dropped') {
     const meta = item.metadata as Record<string, unknown>
     return meta.faction_name ? d.feed.eventItemEarned : d.feed.eventItemDropped
   }
-  if (item.event_type === 'badge_earned') {
-    const meta = item.metadata as Record<string, unknown>
-    const poiName = typeof meta.poi_name === 'string' ? meta.poi_name : ''
-    const visitCount = typeof meta.visit_count === 'number' ? meta.visit_count : 0
-    if (poiName && visitCount > 1) {
-      const josa = hasBatchim(poiName) ? '을' : '를'
-      return t(d.feed.eventPoiRevisited, { poiName, josa, visitCount: String(visitCount) })
-    }
+  const revisit = poiRevisitInfo(item)
+  if (revisit) {
+    const josa = hasBatchim(revisit.poiName) ? '을' : '를'
+    // "{poiName}{josa} {visitCount}번째 방문했어요" 템플릿을 {visitCount} 자리로 쪼개
+    // 숫자 부분만 <strong>으로 감싼다 — 템플릿 자체는 ko.ts 한 곳에서 계속 관리한다.
+    const [prefixTpl, suffix] = d.feed.eventPoiRevisited.split('{visitCount}')
+    const prefix = t(prefixTpl, { poiName: revisit.poiName, josa })
+    return (
+      <>
+        {prefix}
+        <strong className="font-bold text-text">{revisit.visitCount}</strong>
+        {suffix}
+      </>
+    )
   }
   return EVENT_LABEL[item.event_type]
 }
@@ -156,6 +192,7 @@ export function DetailSheet({
   const isBadgeEvent = BADGE_EVENTS.has(item.event_type) && Boolean(meta.badge_id)
   const rawBadgeNames = (item.metadata as Record<string, unknown>).awarded_badge_names
   const missionBadgeNames = Array.isArray(rawBadgeNames) ? (rawBadgeNames as string[]) : []
+  const revisit = poiRevisitInfo(item)
 
   return (
     <>
@@ -176,15 +213,18 @@ export function DetailSheet({
         </div>
         <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-[var(--spacing-24)]" />
         <div className="flex justify-center mb-[var(--spacing-16)]">
-          {badgeImage ? (
-            <Image src={badgeImage} alt={title} width={112} height={112} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover" />
-          ) : (
-            <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
-              <EventIcon type={item.event_type} className="w-12 h-12" />
-            </div>
-          )}
+          <div className="relative">
+            {badgeImage ? (
+              <Image src={badgeImage} alt={title} width={112} height={112} className="w-28 h-28 rounded-[var(--radius-cards)] object-cover" />
+            ) : (
+              <div className="w-28 h-28 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
+                <EventIcon type={item.event_type} className="w-12 h-12" />
+              </div>
+            )}
+            {revisit && <RevisitCountBadge count={revisit.visitCount} />}
+          </div>
         </div>
-        <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 mb-1">{eventLabel(item)}</p>
+        <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 mb-1 line-clamp-2">{eventLabel(item)}</p>
         <h2 className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text mb-[var(--spacing-16)]">{title}</h2>
         {rarity && RARITY_COLOR[rarity] && (
           <div className="flex justify-center mb-[var(--spacing-16)]">
@@ -251,24 +291,28 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
     return null
   })()
   const isLastPiece = item.event_type === 'item_dropped' && meta.is_last_piece === true
+  const revisit = poiRevisitInfo(item)
 
   return (
     <ListRowCard
       onClick={onClick}
       icon={
-        badgeImage ? (
-          <Image src={badgeImage} alt={title} width={40} height={40} className="w-10 h-10 rounded-[var(--radius-cards)] object-cover" />
-        ) : (
-          <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
-            <EventIcon type={item.event_type} className="w-5 h-5 text-text" />
-          </div>
-        )
+        <div className="relative">
+          {badgeImage ? (
+            <Image src={badgeImage} alt={title} width={40} height={40} className="w-10 h-10 rounded-[var(--radius-cards)] object-cover" />
+          ) : (
+            <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
+              <EventIcon type={item.event_type} className="w-5 h-5 text-text" />
+            </div>
+          )}
+          {revisit && <RevisitCountBadge count={revisit.visitCount} />}
+        </div>
       }
       trailing={
         <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{formatRelativeTime(item.created_at)}</span>
       }
     >
-      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{eventLabel(item)}</p>
+      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 line-clamp-2">{eventLabel(item)}</p>
       <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">{title}</p>
       {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{sub}</p>}
       <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
