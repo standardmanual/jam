@@ -7,6 +7,7 @@ import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
 
 interface RankingEntry {
   userId: string
@@ -452,11 +453,11 @@ export default function MissionStatusClient({
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.missions.backToDetail} />
 
-      {/* 로딩 / 오류 */}
+      {/* 로딩 — 다른 화면(배지 획득 연출·공유 카드 등)과 동일한 눈모양 로더 */}
       {loading && (
-        <p className="px-4 pt-0 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/50">
-          {d.missions.statusLoading}
-        </p>
+        <div className="flex items-center justify-center py-[var(--spacing-32)]">
+          <WanderingEyesLoader />
+        </div>
       )}
       {error && (
         <p className="px-4 pt-0 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">
@@ -532,22 +533,32 @@ export default function MissionStatusClient({
         )
       })()}
 
-      {/* ── 달성형 타입 ── */}
+      {/* ── 달성형 타입 — 랭킹형과 동일하게 InfoCard(bg-surface-elevated / radius-cards / p-6)로
+           섹션을 감싸고, 섹션 라벨 옆에 참가자 수를 병기한다 ── */}
       {data?.type === 'achievement' && (
-        <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)] flex flex-col gap-2">
-          <p className="text-[11px] text-text/50 mb-2">
-            {d.missions.statusAchievementLabel}
-            {` · ${t(d.missions.statusParticipants, { count: data.totalParticipants })}`}
-          </p>
-          {data.entries.map(e => (
-            <AchievementRow key={e.userId} e={e} highlight={isMeInEntries(e.userId)} />
-          ))}
-          {data.me && !data.entries.some(e => e.userId === data.me!.userId) && (
-            <>
-              <p className="text-[10px] text-text/40 text-center my-1">{d.missions.statusMeAchievement}</p>
-              <AchievementRow e={data.me} highlight />
-            </>
+        <div className="flex flex-col gap-[var(--spacing-16)] px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
+          {data.entries.length > 0 && (
+            <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+              <div className="flex items-baseline justify-between mb-2">
+                <p className="m-0 text-[15px] font-bold text-text">{d.missions.statusAchievementLabel}</p>
+                <span className="text-[length:var(--text-caption)] text-text-secondary">
+                  {t(d.missions.statusParticipants, { count: data.totalParticipants })}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {data.entries.map(e => (
+                  <AchievementRow key={e.userId} e={e} highlight={isMeInEntries(e.userId)} />
+                ))}
+                {data.me && !data.entries.some(e => e.userId === data.me!.userId) && (
+                  <>
+                    <p className="text-[length:var(--text-micro)] text-text-secondary text-center my-1">{d.missions.statusMeAchievement}</p>
+                    <AchievementRow e={data.me} highlight />
+                  </>
+                )}
+              </div>
+            </div>
           )}
+
           {data.entries.length === 0 && !data.me && (
             <EmptyState
               icon={<UsersIcon className="w-8 h-8" />}
@@ -558,26 +569,26 @@ export default function MissionStatusClient({
         </div>
       )}
 
-      {/* ── 개인형 타입 ── */}
+      {/* ── 개인형 타입 — 동일한 InfoCard 섹션 어휘. 참가자 수가 없어 라벨만 노출 ── */}
       {data?.type === 'individual' && (
         <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
-          <p className="text-[11px] text-text/50 mb-[var(--spacing-16)]">{d.missions.statusIndividualLabel}</p>
-          <Card tone="inverse">
+          <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
+            <p className="m-0 mb-[var(--spacing-16)] text-[15px] font-bold text-text">{d.missions.statusIndividualLabel}</p>
             <div className="flex items-center justify-between">
-              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-secondary">
                 {d.missions.myProgressTitle}
               </span>
               {data.me.achieved ? (
-                <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-black/[0.06] shrink-0">
+                <span className="text-[14px] font-bold px-3 py-1 rounded-[var(--radius-pill)] bg-white/10 text-text shrink-0">
                   {d.missions.achieved}
                 </span>
               ) : (
-                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70 shrink-0">
+                <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text shrink-0">
                   {data.me.progressValue.toFixed(data.me.progressValue % 1 === 0 ? 0 : 1)}
                 </span>
               )}
             </div>
-          </Card>
+          </div>
         </div>
       )}
     </div>
