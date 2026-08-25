@@ -23,16 +23,37 @@ function emptyBadgeContext() {
 }
 
 /**
+ * `gated_badge_id`가 있는 미션인데 조회 결과에 해당 배지가 없어 fail-open(open 처리)이
+ * 발동하는 경우를 로그로 남긴다(티켓 20260825_029). 판정 자체(open 처리)는 바꾸지 않는다 —
+ * 순수 함수(visibility.ts)의 fail-open 동작은 그대로 두고 여기서는 관측성만 추가한다.
+ */
+function warnMissingGatedBadges(
+  gatedBadgeIds: readonly string[],
+  gatedBadges: ReadonlyMap<string, GatedBadgeInfo>,
+  missions: readonly MissionVisibilityInput[],
+) {
+  const missingIds = gatedBadgeIds.filter((id) => !gatedBadges.has(id))
+  for (const badgeId of missingIds) {
+    const affectedMissionIds = missions.filter((m) => m.gated_badge_id === badgeId).map((m) => m.id)
+    console.warn(
+      `[visibility-server] gated_badge_id=${badgeId} 배지를 찾을 수 없어 fail-open(open) 처리됨. ` +
+        `영향받은 미션 id=[${affectedMissionIds.join(', ')}]`,
+    )
+  }
+}
+
+/**
  * 주어진 미션 목록을 판정하는 데 필요한 컨텍스트를 조회한다.
  *
  * @param userId 대상 유저
  * @param missions 판정 대상 미션 (gated_badge_id만 있으면 됨)
  * @param options.completedMissionIds 호출부가 이미 조회한 완료 기록이 있으면 재조회를 생략한다
+ * @param options.participatedMissionIds 호출부가 이미 조회한 참가 기록이 있으면 재조회를 생략한다
  */
 export async function loadMissionVisibilityContext(
   userId: string,
   missions: readonly MissionVisibilityInput[],
-  options?: { completedMissionIds?: ReadonlySet<string> },
+  options?: { completedMissionIds?: ReadonlySet<string>; participatedMissionIds?: ReadonlySet<string> },
 ): Promise<MissionVisibilityContext> {
   const supabase = createServiceClient()
 
@@ -46,11 +67,21 @@ export async function loadMissionVisibilityContext(
     completedMissionIds = new Set(((data ?? []) as { mission_id: string }[]).map((r) => r.mission_id))
   }
 
+  // ── 참가 이력 (hidden → locked 완화용, 티켓 20260825_029) ───────────────
+  let participatedMissionIds = options?.participatedMissionIds
+  if (!participatedMissionIds) {
+    const { data } = await supabase
+      .from('user_mission_participations')
+      .select('mission_id')
+      .eq('user_id', userId)
+    participatedMissionIds = new Set(((data ?? []) as { mission_id: string }[]).map((r) => r.mission_id))
+  }
+
   // ── 게이트 배지 정보 ────────────────────────────────────────────────────
   const gatedBadgeIds = [...new Set(missions.map((m) => m.gated_badge_id).filter((id): id is string => !!id))]
   if (gatedBadgeIds.length === 0) {
     // 게이팅이 걸린 미션이 하나도 없으면 배지 조회 자체가 불필요하다
-    return { completedMissionIds, ...emptyBadgeContext() }
+    return { completedMissionIds, participatedMissionIds, ...emptyBadgeContext() }
   }
 
   const { data: gatedRaw } = await supabase
@@ -61,10 +92,11 @@ export async function loadMissionVisibilityContext(
 
   const gatedBadges = new Map<string, GatedBadgeInfo>()
   for (const b of (gatedRaw ?? []) as GatedBadgeInfo[]) gatedBadges.set(b.id, b)
+  warnMissingGatedBadges(gatedBadgeIds, gatedBadges, missions)
 
   const gatedNames = [...new Set([...gatedBadges.values()].map((b) => b.name))]
   if (gatedNames.length === 0) {
-    return { completedMissionIds, ...emptyBadgeContext() }
+    return { completedMissionIds, participatedMissionIds, ...emptyBadgeContext() }
   }
 
   // ── 유저가 보유한 게이트 배지 이름의 최고 등급 ──────────────────────────
@@ -90,5 +122,5 @@ export async function loadMissionVisibilityContext(
     }
   }
 
-  return { completedMissionIds, gatedBadges, ownedTierByBadgeName }
+  return { completedMissionIds, participatedMissionIds, gatedBadges, ownedTierByBadgeName }
 }

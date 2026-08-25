@@ -16,6 +16,9 @@
  *     - 그 위                    → `hidden` (목록에서 완전 제외)
  *     - 미보유(ownedTier=0)는 Common 보유(1)로 취급한다 — Common 배지가 없는 신규 유저에게도
  *       첫 레벨업 미션(Rare용)은 항상 노출한다는 요구사항(티켓 §2).
+ *  4. 위 판정이 `hidden`이더라도 유저의 참가 이력(`user_mission_participations`)이 있으면
+ *     `locked`로 완화한다 — 완전 숨김 상태에서는 유저가 자기 참가 이력을 어디서도 볼 수
+ *     없기 때문이다(티켓 20260825_029). `open`/`completed`/`locked` 판정에는 관여하지 않는다.
  *
  * 완료 판정이 배지 보유보다 앞선다: 본 배지를 이미 받았더라도 완료 기록이 있으면 `completed`.
  */
@@ -52,6 +55,12 @@ export interface MissionVisibilityContext {
   gatedBadges: ReadonlyMap<string, GatedBadgeInfo>
   /** 유저가 보유한 배지 이름별 최고 등급 티어 (미보유는 키 없음) */
   ownedTierByBadgeName: ReadonlyMap<string, number>
+  /**
+   * 유저가 참가한 적 있는 미션 id (user_mission_participations 기준).
+   * `hidden` 판정을 `locked`로 완화하는 데만 쓴다 — open/completed/locked 우선순위는
+   * 그대로 유지한다(티켓 20260825_029).
+   */
+  participatedMissionIds: ReadonlySet<string>
 }
 
 export interface MissionVisibilityResult {
@@ -95,6 +104,12 @@ export function resolveMissionVisibility(
   }
 
   if (gateTier === effectiveOwnedTier + 2) {
+    return { visibility: 'locked', requiredBadge }
+  }
+
+  // hidden 대상이더라도 참가 이력이 있으면 완전 숨김 대신 locked로 완화한다 — 자기 참가
+  // 이력을 어디서도 볼 수 없게 되는 것을 막기 위함(티켓 20260825_029).
+  if (ctx.participatedMissionIds.has(mission.id)) {
     return { visibility: 'locked', requiredBadge }
   }
   return { visibility: 'hidden', requiredBadge }
