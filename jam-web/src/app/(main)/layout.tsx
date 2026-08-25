@@ -47,9 +47,14 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         <div className="min-h-dvh flex flex-col w-full max-w-[430px] mx-auto relative">
           {/* 메인 컨텐츠 — 각 페이지가 자체 원색 풀블리드 배경과 상단 브랜딩을 지정 */}
           <main className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] bg-surface">
-            {/* sticky footer 트릭: 컨텐츠 래퍼가 스크롤 컨테이너(main)의 가시 높이 100%를
-                항상 확보해, 컨텐츠가 짧아도 Footer가 화면 중간이 아닌 항상 그 아래로 밀려나게 한다 */}
-            <div className="min-h-full">{children}</div>
+            {/* sticky footer 트릭: 컨텐츠 래퍼가 뷰포트 높이(dvh)를 항상 확보해, 컨텐츠가 짧아도
+                Footer가 화면 중간이 아닌 항상 그 아래로 밀려나게 한다.
+                main은 flex-basis:0%로 크기가 정해지는 flex 아이템이라 `height` computed value가
+                'auto'로 남는다 — 자식의 `min-h-full`(퍼센트)이 여기에 기대는 percentage-of-flex-item
+                해석에 의존하는데, 실측 결과 브라우저가 이를 해석하지 않아(auto로 폴백) Footer가
+                화면 안에 그대로 남는 회귀가 있었다. 퍼센트 대신 뷰포트 절대 단위(dvh)를 써서
+                이 의존성 자체를 없앤다. */}
+            <div className="min-h-dvh">{children}</div>
             <Footer />
           </main>
 
