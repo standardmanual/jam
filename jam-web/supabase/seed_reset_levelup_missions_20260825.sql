@@ -6,12 +6,14 @@
 -- 나간 발급분이 남아 있으면 게이팅이 처음부터 열린 상태이므로, 현재 보유자가 전원 테스터·더미
 -- 계정임을 확인하고 원점에서 다시 시작하기로 했다(2026-08-25 사용자 확정).
 --
--- 삭제 대상 4종 (티켓 §5 실측치):
---   1) 미션보상배지 15종 발급분 (user_activity_badges)        약 105건
---   2) 5개 트리 본 배지 Rare/Legend/Mythic 발급분             약  37건
---   3) 레벨업 미션 15종 참가 기록 (user_mission_participations) 약  33건
---   4) 레벨업 미션 15종 완료 기록 (user_mission_completions)    약   3건
---   영향 유저 9명 (더미 계정 00000000-…-0001, …-0004 포함)
+-- 삭제 대상 4종 (2026-08-25 프로덕션 DB 실측):
+--   1) 미션보상배지 15종 발급분 (user_activity_badges)           104건
+--   2) 5개 트리 본 배지 Rare/Legend/Mythic 발급분                 37건
+--   3) 레벨업 미션 15종 참가 기록 (user_mission_participations)   33건
+--   4) 레벨업 미션 15종 완료 기록 (user_mission_completions)       3건
+--   미션보상배지 보유 유저 7명 (전원 테스터·더미 계정)
+--   ※ 실행 시점이 위 측정일보다 뒤라면 그동안의 동기화로 건수가 늘어날 수 있습니다.
+--     STEP 0에서 실제 건수를 다시 확인한 뒤 진행하세요.
 --
 -- ⚠️ 되돌릴 수 없는 삭제 SQL입니다. Claude는 플랫폼 안전 규칙상 이 파일을 직접 실행하지
 --    않습니다 — Supabase SQL 편집기 또는 본인 터미널에서 직접 실행해 주세요.
@@ -42,7 +44,7 @@
 -- -- 0-c. 레벨업 미션 15종 (기대: 15행)
 -- SELECT id, title FROM missions WHERE title LIKE '%레벨업%' ORDER BY title;
 --
--- -- 0-d. 삭제 예정 건수 (기대: 105 / 37 / 33 / 3)
+-- -- 0-d. 삭제 예정 건수 (기대: 104 / 37 / 33 / 3 — 2026-08-25 실측)
 -- SELECT
 --   (SELECT count(*) FROM user_activity_badges uab JOIN badges b ON b.id = uab.badge_id
 --      WHERE b.type='activity' AND b.name LIKE '%레벨업%')                                  AS 미션보상배지_발급분,
@@ -108,19 +110,19 @@ BEGIN
   RAISE NOTICE '대상 확정: 미션보상배지 %개 / 본 배지 %개 / 미션 %개', reward_cnt, tree_cnt, mission_cnt;
 END $$;
 
--- 1-c. 미션보상배지 15종 발급분 삭제 (기대 약 105건)
+-- 1-c. 미션보상배지 15종 발급분 삭제 (기대 104건)
 DELETE FROM user_activity_badges
 WHERE badge_id IN (SELECT id FROM _reset_reward_badge_ids);
 
--- 1-d. 5개 트리 본 배지 Rare/Legend/Mythic 발급분 삭제 (기대 약 37건)
+-- 1-d. 5개 트리 본 배지 Rare/Legend/Mythic 발급분 삭제 (기대 37건)
 DELETE FROM user_activity_badges
 WHERE badge_id IN (SELECT id FROM _reset_tree_badge_ids);
 
--- 1-e. 레벨업 미션 15종 완료 기록 삭제 (기대 약 3건)
+-- 1-e. 레벨업 미션 15종 완료 기록 삭제 (기대 3건)
 DELETE FROM user_mission_completions
 WHERE mission_id IN (SELECT id FROM _reset_mission_ids);
 
--- 1-f. 레벨업 미션 15종 참가 기록 삭제 (기대 약 33건)
+-- 1-f. 레벨업 미션 15종 참가 기록 삭제 (기대 33건)
 DELETE FROM user_mission_participations
 WHERE mission_id IN (SELECT id FROM _reset_mission_ids);
 
