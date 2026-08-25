@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserFollowRow, UserRow } from '@/types/database'
+import { excludedTestUserIds } from '@/lib/env/test-accounts'
 
 export async function GET(
   _request: Request,
@@ -40,7 +41,10 @@ export async function GET(
     .order('created_at', { ascending: false })
     .limit(100)
 
-  const follows = (followsRaw ?? []) as Pick<UserFollowRow, 'follower_id' | 'created_at'>[]
+  // 프로덕션에서는 스테이징 전용 테스트 계정을 팔로워 목록에서 제외한다.
+  const excludedIds = excludedTestUserIds()
+  const follows = ((followsRaw ?? []) as Pick<UserFollowRow, 'follower_id' | 'created_at'>[])
+    .filter((f) => !excludedIds.includes(f.follower_id))
   const userIds = follows.map((f) => f.follower_id)
 
   if (userIds.length === 0) {

@@ -8,6 +8,7 @@ import TopNav from '@/components/ui/TopNav'
 import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
+import { excludedTestUserIds } from '@/lib/env/test-accounts'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -39,7 +40,10 @@ export default async function FollowersPage({ params }: Props) {
     .order('created_at', { ascending: false })
     .limit(100)
 
-  const follows = (followsRaw ?? []) as { follower_id: string; created_at: string }[]
+  // 프로덕션에서는 스테이징 전용 테스트 계정을 팔로워 목록에서 제외한다.
+  const excludedIds = excludedTestUserIds()
+  const follows = ((followsRaw ?? []) as { follower_id: string; created_at: string }[])
+    .filter((f) => !excludedIds.includes(f.follower_id))
   const followerIds = follows.map((f) => f.follower_id)
 
   const usersMap: Record<string, { id: string; username: string | null; avatar_url: string | null }> = {}
