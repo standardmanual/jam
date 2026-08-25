@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import TopNav from '@/components/ui/TopNav'
-import { Card } from '@ds/components/cards/Card'
+import ListRowCard from '@/components/ui/ListRowCard'
 import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
@@ -381,37 +381,45 @@ function MyRankCard({
 }
 
 /** 달성형 행 */
+/**
+ * 달성형 행 — 20260825 리뉴얼: 랭킹형 `RankingListRow`와 같은 어휘(ListRowCard, 다크 아바타,
+ * 내 행만 레드 강조)로 통일. 흰 카드(Card tone="inverse")는 더 이상 쓰지 않는다.
+ */
 function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (
-    <Card tone="inverse" className={highlight ? '' : 'opacity-90'}>
-      <div className="flex items-center gap-[var(--spacing-16)]">
-        <SimpleAvatar url={e.avatarUrl} />
-        <span className="flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">
-          {e.username}{highlight ? d.missions.statusMeSuffix : ''}
-        </span>
-        {e.achieved ? (
-          <span className="text-[10px] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-black/[0.06] shrink-0">
+    <ListRowCard
+      icon={<SimpleAvatar url={e.avatarUrl} />}
+      trailing={
+        e.achieved ? (
+          <span className="text-[length:var(--text-micro)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-white/10 text-text">
             {d.missions.achieved}
           </span>
         ) : (
-          <span className="text-[10px] leading-none text-text-inverse/40 px-2 py-1 rounded-[var(--radius-tags)] bg-black/[0.04] shrink-0">
+          <span className="text-[length:var(--text-micro)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-border text-text-secondary">
             {d.missions.notAchieved}
           </span>
-        )}
-      </div>
-    </Card>
+        )
+      }
+    >
+      <p
+        className="text-[length:var(--text-small)] leading-[var(--leading-body-sm)] truncate"
+        style={{ color: highlight ? 'var(--color-primary)' : 'var(--color-text)', fontWeight: highlight ? 'bold' : 'normal' }}
+      >
+        {e.username}{highlight ? d.missions.statusMeSuffix : ''}
+      </p>
+    </ListRowCard>
   )
 }
 
-/** 기존 소형 아바타 (달성형·개인형용) */
+/** 소형 아바타 (달성형·개인형용) — 랭킹형 RankingListRow 아바타와 동일한 다크 톤 */
 function SimpleAvatar({ url }: { url: string | null }) {
   if (url) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+    return <img src={url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
   }
   return (
-    <div className="w-8 h-8 rounded-full bg-black/[0.04] flex items-center justify-center shrink-0">
-      <UserIcon className="w-4 h-4 text-text-inverse/50" />
+    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--color-border)' }}>
+      <UserIcon className="w-[18px] h-[18px] text-[#666]" />
     </div>
   )
 }
