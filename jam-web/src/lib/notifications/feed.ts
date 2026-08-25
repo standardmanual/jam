@@ -18,6 +18,7 @@
  * 3. **⑧ 경고 재평가** — 저장값이 아니라 지금 상태로 판정한다(warning.ts).
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { excludedTestUserIds } from '@/lib/env/test-accounts'
 import type { NotificationRow } from '@/types/database'
 import {
   idList,
@@ -133,9 +134,18 @@ export async function listNotificationViews(
   const all = (data ?? []) as NotificationRow[]
   const hasMore = all.length > limit
   const rows = hasMore ? all.slice(0, limit) : all
+  // 커서는 필터 전 마지막 행 기준으로 고정한다 — 아래에서 테스트 계정 행을 제외해도
+  // 다음 페이지 조회 위치는 어긋나지 않는다(티켓 20260825_030).
   const nextCursor = hasMore ? encodeCursor(rows[rows.length - 1]) : null
 
-  const items = await hydrateNotifications(userId, rows)
+  // 프로덕션에서는 스테이징 전용 테스트 계정이 행위자(actor_user_id)인 소식을 제외한다.
+  // 027과 같은 이유로 SQL not-in이 아니라 조회 후 JS 필터를 쓴다(이스케이프 리스크 회피).
+  const excludedIds = excludedTestUserIds()
+  const visibleRows = excludedIds.length
+    ? rows.filter((row) => !row.actor_user_id || !excludedIds.includes(row.actor_user_id))
+    : rows
+
+  const items = await hydrateNotifications(userId, visibleRows)
   return { items, nextCursor, failed: false }
 }
 
@@ -281,29 +291,45 @@ export async function markNotificationsSeen(userId: string): Promise<boolean> {
   return true
 }
 
+/** dot 판정 시 테스트 계정 행위자 행을 건너뛰기 위해 앞에서부터 살펴볼 행 수 */
+const LATEST_BUMPING_LOOKAHEAD = 10
+
 /**
- * dot 판정용 — `bumps_badge=true`인 **가장 최근** 소식의 `updated_at` (DATA_MODEL §3).
+ * dot 판정용 — `bumps_badge=true`인 소식 중 **테스트 계정이 행위자가 아닌 가장 최근**
+ * 소식의 `updated_at` (DATA_MODEL §3).
  *
- * EXISTS 서브쿼리 대신 최신 1건을 읽어 JS에서 비교한다. seen_at 조회와 **병렬로 돌 수
+ * EXISTS 서브쿼리 대신 최신 N건을 읽어 JS에서 비교한다. seen_at 조회와 **병렬로 돌 수
  * 있어** (main) 레이아웃에 왕복 지연을 더하지 않기 때문이다
  * (`(user_id, updated_at DESC)` 인덱스를 그대로 탄다).
+ *
+ * `limit(1)`이 아니라 `LATEST_BUMPING_LOOKAHEAD`인 이유 — 스테이징 전용 테스트 계정이
+ * 행위자인 행은 프로덕션 목록(`listNotificationViews`)에서 제외되는데, 여기서도 최신
+ * 1건만 보면 그 행이 테스트 계정 발신이어도 dot을 켜버린다. 그러면 "종에 빨간 점이
+ * 떴는데 들어가면 새 소식이 없다"는 혼란이 생긴다(티켓 20260825_030). 앞에서부터 N건을
+ * 훑어 제외 대상이 아닌 첫 행을 찾는다.
  */
 export async function latestBumpingNotificationAt(userId: string): Promise<string | null> {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('notifications')
-    .select('updated_at')
+    .select('updated_at, actor_user_id')
     .eq('user_id', userId)
     .eq('bumps_badge', true)
     .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+    .limit(LATEST_BUMPING_LOOKAHEAD)
 
   if (error) {
     console.error(`[notifications] dot 판정 실패 — userId: ${userId}:`, error)
     return null
   }
-  return (data as { updated_at: string } | null)?.updated_at ?? null
+
+  const rows = (data ?? []) as { updated_at: string; actor_user_id: string | null }[]
+  const excludedIds = excludedTestUserIds()
+  const visible = excludedIds.length
+    ? rows.find((row) => !row.actor_user_id || !excludedIds.includes(row.actor_user_id))
+    : rows[0]
+
+  return visible?.updated_at ?? null
 }
 
 /**
