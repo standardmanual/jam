@@ -17,6 +17,7 @@ import '@/components/transitions-pages.css'
 import type { NearbyPoi } from '@/types/drops'
 import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'
+import { DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 
 // 20260820_018: 드랍(지도) POI 모달 캐러셀 개편
 // 기존 하단 고정 바텀시트를 대체하는 화면 중앙 모달 — 캐러셀 아이템 자체가
@@ -233,8 +234,14 @@ export default function PoiCarouselModal({
         const msg: Record<string, string> = {
           already_picked_up: d.drops.pickupAlreadyDone,
           inventory_full: d.drops.pickupInventoryFull,
+          inventory_not_found: d.drops.pickupInventoryFull,
+          cannot_pickup_own_drop: d.drops.pickupOwnDrop,
+          out_of_range: t(d.drops.pickupOutOfRange, { m: DROP_RADIUS_METERS }),
         }
-        toast(msg[err.error] ?? err.error ?? d.drops.pickupFailed, 'error')
+        // 20260825_039: `?? err.error` 폴백을 제거했다 — 서버가 돌려주는 개발자용 축약 문구
+        // ('드랍 없음', 'POI 없음' 등)가 그대로 토스트에 노출되던 경로다. 매핑되지 않은
+        // 코드는 전부 일반 실패 문구로 흘린다.
+        toast(msg[err.error] ?? d.drops.pickupFailed, 'error')
         return
       }
       toast(d.drops.pickupSuccess, 'success')
