@@ -25,6 +25,12 @@ export function isStagingOrDevEnv(): boolean {
 export const TEST_ACCOUNT_USER_IDS: readonly string[] = [
   // dev-login이 생성하는 고정 스테이징 테스트 유저 (username: 589132427_stage)
   '00000000-0000-0000-0000-000000000001',
+  // 알림(소식) 기능 QA용으로 수동 시드된 팔로잉/팔로워 상대 계정 3종
+  // (username: jiwon.kim / minjun.park / sora.lee, 이메일 전부 @jam.local,
+  // 생성일 2026-08-15. 이 파일 도입(027) 당시 존재를 놓쳤던 계정 — 티켓 20260825_030 후속)
+  '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000004',
 ]
 
 /**
