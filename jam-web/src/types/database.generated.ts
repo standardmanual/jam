@@ -1,12 +1,3 @@
-/**
- * 운영 DB(jam-prod) 실제 스키마에서 자동 생성된 타입 — 손대지 말 것.
- * 재생성: `npm run db:types` (Supabase CLI 필요) 또는 Claude에게 재생성 요청.
- *
- * `database.ts`의 손으로 쓴 Row 인터페이스(도메인 주석 포함)와는 별개 파일이다.
- * 신규 컬럼 추가·변경 시 이 파일을 재생성해 `database.ts`와 다이제스트로 비교하면
- * 드리프트를 바로 잡아낼 수 있다 — 2026-08-11 UserRow에 5개 컬럼(GPS 위치·거리
- * 관련)이 누락돼 있던 것도 이 방식으로 발견해 수정함(20260811_002 티켓 참고).
- */
 export type Json =
   | string
   | number
@@ -19,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -60,13 +51,13 @@ export type Database = {
           gps_daily_distance_cap_km: number
           gps_max_speed_kmh: number
           hard_common_rate: number
-          hard_legend_rate: number
+          hard_legendary_rate: number
           hard_mythic_rate: number
           hard_rare_rate: number
           id: number
           poi_block_hours: number
           soft_common_rate: number
-          soft_legend_rate: number
+          soft_legendary_rate: number
           soft_mythic_rate: number
           soft_rare_rate: number
           updated_at: string
@@ -76,13 +67,13 @@ export type Database = {
           gps_daily_distance_cap_km?: number
           gps_max_speed_kmh?: number
           hard_common_rate?: number
-          hard_legend_rate?: number
+          hard_legendary_rate?: number
           hard_mythic_rate?: number
           hard_rare_rate?: number
           id?: number
           poi_block_hours?: number
           soft_common_rate?: number
-          soft_legend_rate?: number
+          soft_legendary_rate?: number
           soft_mythic_rate?: number
           soft_rare_rate?: number
           updated_at?: string
@@ -92,13 +83,13 @@ export type Database = {
           gps_daily_distance_cap_km?: number
           gps_max_speed_kmh?: number
           hard_common_rate?: number
-          hard_legend_rate?: number
+          hard_legendary_rate?: number
           hard_mythic_rate?: number
           hard_rare_rate?: number
           id?: number
           poi_block_hours?: number
           soft_common_rate?: number
-          soft_legend_rate?: number
+          soft_legendary_rate?: number
           soft_mythic_rate?: number
           soft_rare_rate?: number
           updated_at?: string
@@ -109,6 +100,10 @@ export type Database = {
       badges: {
         Row: {
           activity_types: string[]
+          background_color: string | null
+          background_image_url: string | null
+          background_shader_id: string | null
+          background_video_url: string | null
           condition_json: Json | null
           created_at: string
           deleted_at: string | null
@@ -130,6 +125,10 @@ export type Database = {
         }
         Insert: {
           activity_types?: string[]
+          background_color?: string | null
+          background_image_url?: string | null
+          background_shader_id?: string | null
+          background_video_url?: string | null
           condition_json?: Json | null
           created_at?: string
           deleted_at?: string | null
@@ -151,6 +150,10 @@ export type Database = {
         }
         Update: {
           activity_types?: string[]
+          background_color?: string | null
+          background_image_url?: string | null
+          background_shader_id?: string | null
+          background_video_url?: string | null
           condition_json?: Json | null
           created_at?: string
           deleted_at?: string | null
@@ -327,7 +330,7 @@ export type Database = {
           mystery_spice_rate: number
           rare_pity_threshold: number
           rarity_common: number
-          rarity_legend: number
+          rarity_legendary: number
           rarity_mythic: number
           rarity_rare: number
           same_book_penalty: number
@@ -353,7 +356,7 @@ export type Database = {
           mystery_spice_rate?: number
           rare_pity_threshold?: number
           rarity_common?: number
-          rarity_legend?: number
+          rarity_legendary?: number
           rarity_mythic?: number
           rarity_rare?: number
           same_book_penalty?: number
@@ -379,7 +382,7 @@ export type Database = {
           mystery_spice_rate?: number
           rare_pity_threshold?: number
           rarity_common?: number
-          rarity_legend?: number
+          rarity_legendary?: number
           rarity_mythic?: number
           rarity_rare?: number
           same_book_penalty?: number
@@ -455,6 +458,10 @@ export type Database = {
       }
       factions: {
         Row: {
+          background_color: string | null
+          background_image_url: string | null
+          background_shader_id: string | null
+          background_video_url: string | null
           created_at: string
           description: string | null
           drop_condition_json: Json | null
@@ -467,6 +474,10 @@ export type Database = {
           tagline: string | null
         }
         Insert: {
+          background_color?: string | null
+          background_image_url?: string | null
+          background_shader_id?: string | null
+          background_video_url?: string | null
           created_at?: string
           description?: string | null
           drop_condition_json?: Json | null
@@ -479,6 +490,10 @@ export type Database = {
           tagline?: string | null
         }
         Update: {
+          background_color?: string | null
+          background_image_url?: string | null
+          background_shader_id?: string | null
+          background_video_url?: string | null
           created_at?: string
           description?: string | null
           drop_condition_json?: Json | null
@@ -597,6 +612,10 @@ export type Database = {
       }
       item_books: {
         Row: {
+          background_color: string | null
+          background_image_url: string | null
+          background_shader_id: string | null
+          background_video_url: string | null
           created_at: string
           description: string
           drop_condition_json: Json | null
@@ -610,6 +629,10 @@ export type Database = {
           story_text: string | null
         }
         Insert: {
+          background_color?: string | null
+          background_image_url?: string | null
+          background_shader_id?: string | null
+          background_video_url?: string | null
           created_at?: string
           description: string
           drop_condition_json?: Json | null
@@ -623,6 +646,10 @@ export type Database = {
           story_text?: string | null
         }
         Update: {
+          background_color?: string | null
+          background_image_url?: string | null
+          background_shader_id?: string | null
+          background_video_url?: string | null
           created_at?: string
           description?: string
           drop_condition_json?: Json | null
@@ -659,13 +686,51 @@ export type Database = {
           },
         ]
       }
+      mission_rank_snapshots: {
+        Row: {
+          captured_at: string
+          mission_id: string
+          rank: number
+          user_id: string
+        }
+        Insert: {
+          captured_at?: string
+          mission_id: string
+          rank: number
+          user_id: string
+        }
+        Update: {
+          captured_at?: string
+          mission_id?: string
+          rank?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_rank_snapshots_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_rank_snapshots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       missions: {
         Row: {
           condition_json: Json
           created_at: string
           description: string | null
-          ends_at: string
+          ends_at: string | null
+          gated_badge_id: string | null
           id: string
+          image_url: string | null
           max_completions: number | null
           mission_type: string
           reward_badge_ids: string[]
@@ -681,8 +746,10 @@ export type Database = {
           condition_json: Json
           created_at?: string
           description?: string | null
-          ends_at: string
+          ends_at?: string | null
+          gated_badge_id?: string | null
           id?: string
+          image_url?: string | null
           max_completions?: number | null
           mission_type: string
           reward_badge_ids?: string[]
@@ -698,8 +765,10 @@ export type Database = {
           condition_json?: Json
           created_at?: string
           description?: string | null
-          ends_at?: string
+          ends_at?: string | null
+          gated_badge_id?: string | null
           id?: string
+          image_url?: string | null
           max_completions?: number | null
           mission_type?: string
           reward_badge_ids?: string[]
@@ -711,7 +780,69 @@ export type Database = {
           title?: string
           visible_rank_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "missions_gated_badge_id_fkey"
+            columns: ["gated_badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_count: number
+          actor_user_id: string | null
+          bumps_badge: boolean
+          created_at: string
+          group_key: string | null
+          id: string
+          payload: Json
+          type: Database["public"]["Enums"]["notification_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actor_count?: number
+          actor_user_id?: string | null
+          bumps_badge?: boolean
+          created_at?: string
+          group_key?: string | null
+          id?: string
+          payload?: Json
+          type: Database["public"]["Enums"]["notification_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actor_count?: number
+          actor_user_id?: string | null
+          bumps_badge?: boolean
+          created_at?: string
+          group_key?: string | null
+          id?: string
+          payload?: Json
+          type?: Database["public"]["Enums"]["notification_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       poi: {
         Row: {
@@ -927,6 +1058,45 @@ export type Database = {
           searched_at?: string
         }
         Relationships: []
+      }
+      poi_views: {
+        Row: {
+          id: string
+          poi_id: string
+          user_id: string
+          viewed_at: string
+          viewed_on: string
+        }
+        Insert: {
+          id?: string
+          poi_id: string
+          user_id: string
+          viewed_at?: string
+          viewed_on: string
+        }
+        Update: {
+          id?: string
+          poi_id?: string
+          user_id?: string
+          viewed_at?: string
+          viewed_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poi_views_poi_id_fkey"
+            columns: ["poi_id"]
+            isOneToOne: false
+            referencedRelation: "poi"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poi_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       point_transactions: {
         Row: {
@@ -1373,6 +1543,7 @@ export type Database = {
       }
       user_activity_feed: {
         Row: {
+          created_at: string
           event_at: string
           event_type: Database["public"]["Enums"]["feed_event_type"]
           id: string
@@ -1380,6 +1551,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          created_at?: string
           event_at?: string
           event_type: Database["public"]["Enums"]["feed_event_type"]
           id?: string
@@ -1387,6 +1559,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          created_at?: string
           event_at?: string
           event_type?: Database["public"]["Enums"]["feed_event_type"]
           id?: string
@@ -1396,6 +1569,64 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "user_activity_feed_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_checkin_badge_earns: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          id: string
+          poi_id: string
+          triggered_by_activity_date: string | null
+          triggered_by_activity_name: string | null
+          triggered_by_distance_km: number | null
+          triggered_by_strava_id: number | null
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          id?: string
+          poi_id: string
+          triggered_by_activity_date?: string | null
+          triggered_by_activity_name?: string | null
+          triggered_by_distance_km?: number | null
+          triggered_by_strava_id?: number | null
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          id?: string
+          poi_id?: string
+          triggered_by_activity_date?: string | null
+          triggered_by_activity_name?: string | null
+          triggered_by_distance_km?: number | null
+          triggered_by_strava_id?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_checkin_badge_earns_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_checkin_badge_earns_poi_id_fkey"
+            columns: ["poi_id"]
+            isOneToOne: false
+            referencedRelation: "poi"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_checkin_badge_earns_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1690,64 +1921,6 @@ export type Database = {
           },
         ]
       }
-      user_poi_badge_earns: {
-        Row: {
-          badge_id: string
-          earned_at: string
-          id: string
-          poi_id: string
-          triggered_by_activity_date: string | null
-          triggered_by_activity_name: string | null
-          triggered_by_distance_km: number | null
-          triggered_by_strava_id: number | null
-          user_id: string
-        }
-        Insert: {
-          badge_id: string
-          earned_at?: string
-          id?: string
-          poi_id: string
-          triggered_by_activity_date?: string | null
-          triggered_by_activity_name?: string | null
-          triggered_by_distance_km?: number | null
-          triggered_by_strava_id?: number | null
-          user_id: string
-        }
-        Update: {
-          badge_id?: string
-          earned_at?: string
-          id?: string
-          poi_id?: string
-          triggered_by_activity_date?: string | null
-          triggered_by_activity_name?: string | null
-          triggered_by_distance_km?: number | null
-          triggered_by_strava_id?: number | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_poi_badge_earns_badge_id_fkey"
-            columns: ["badge_id"]
-            isOneToOne: false
-            referencedRelation: "badges"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_poi_badge_earns_poi_id_fkey"
-            columns: ["poi_id"]
-            isOneToOne: false
-            referencedRelation: "poi"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_poi_badge_earns_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_shadow_bans: {
         Row: {
           ban_level: string
@@ -1799,6 +1972,7 @@ export type Database = {
           last_location_at: string | null
           last_location_lat: number | null
           last_location_lng: number | null
+          notifications_seen_at: string | null
           region: string
           updated_at: string
           username: string | null
@@ -1815,6 +1989,7 @@ export type Database = {
           last_location_at?: string | null
           last_location_lat?: number | null
           last_location_lng?: number | null
+          notifications_seen_at?: string | null
           region?: string
           updated_at?: string
           username?: string | null
@@ -1831,6 +2006,7 @@ export type Database = {
           last_location_at?: string | null
           last_location_lat?: number | null
           last_location_lng?: number | null
+          notifications_seen_at?: string | null
           region?: string
           updated_at?: string
           username?: string | null
@@ -1845,6 +2021,14 @@ export type Database = {
       activate_theme_preset: {
         Args: { p_preset_id: string }
         Returns: undefined
+      }
+      apply_faction_background_cascade: {
+        Args: { p_faction_id: string }
+        Returns: {
+          direct_badges: number
+          item_book_badges: number
+          item_books: number
+        }[]
       }
       award_points: {
         Args: {
@@ -1874,6 +2058,55 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      count_faction_background_cascade: {
+        Args: { p_faction_id: string }
+        Returns: {
+          direct_badges: number
+          item_book_badges: number
+          item_books: number
+        }[]
+      }
+      create_notification: {
+        Args: {
+          p_actor_user_id?: string
+          p_append_keys?: string[]
+          p_bumps_badge?: boolean
+          p_group_key?: string
+          p_mode?: string
+          p_payload?: Json
+          p_sum_keys?: string[]
+          p_type: Database["public"]["Enums"]["notification_type"]
+          p_user_id: string
+        }
+        Returns: {
+          actor_count: number
+          actor_user_id: string | null
+          bumps_badge: boolean
+          created_at: string
+          group_key: string | null
+          id: string
+          payload: Json
+          type: Database["public"]["Enums"]["notification_type"]
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "notifications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      jsonb_as_array: { Args: { p_value: Json }; Returns: Json }
+      jsonb_merge_sum: {
+        Args: {
+          p_append_keys?: string[]
+          p_new: Json
+          p_old: Json
+          p_sum_keys: string[]
+        }
+        Returns: Json
+      }
       pickup_drop: {
         Args: { p_drop_id: string; p_inventory_id: string; p_picker_id: string }
         Returns: Json
@@ -1881,7 +2114,7 @@ export type Database = {
     }
     Enums: {
       badge_rarity: "common" | "rare" | "legend" | "mythic"
-      badge_type: "activity" | "item" | "poi"
+      badge_type: "activity" | "item" | "checkin"
       feed_event_type:
         | "badge_earned"
         | "item_dropped"
@@ -1889,6 +2122,35 @@ export type Database = {
         | "mission_joined"
         | "mission_completed"
         | "mission_cancelled"
+      notification_type:
+        | "badge_earned"
+        | "rare_badge_earned"
+        | "item_badge_earned"
+        | "checkin_badge_earned"
+        | "points_earned"
+        | "first_badge"
+        | "collection_slottable"
+        | "collection_near_complete"
+        | "collection_completable"
+        | "drop_picked_up"
+        | "drop_spot_active"
+        | "mission_milestone"
+        | "mission_deadline"
+        | "mission_completed"
+        | "mission_rank_up"
+        | "mission_ended"
+        | "followed"
+        | "mutual_follow"
+        | "following_rare_badge"
+        | "following_collection_complete"
+        | "following_mission_complete"
+        | "following_nearby_drop"
+        | "nearby_drops"
+        | "strava_disconnected"
+        | "sync_stalled"
+        | "inventory_full"
+        | "admin_points_changed"
+        | "announcement"
       trade_status: "pending" | "accepted" | "rejected" | "expired"
     }
     CompositeTypes: {
@@ -2018,7 +2280,7 @@ export const Constants = {
   public: {
     Enums: {
       badge_rarity: ["common", "rare", "legend", "mythic"],
-      badge_type: ["activity", "item", "poi"],
+      badge_type: ["activity", "item", "checkin"],
       feed_event_type: [
         "badge_earned",
         "item_dropped",
@@ -2026,6 +2288,36 @@ export const Constants = {
         "mission_joined",
         "mission_completed",
         "mission_cancelled",
+      ],
+      notification_type: [
+        "badge_earned",
+        "rare_badge_earned",
+        "item_badge_earned",
+        "checkin_badge_earned",
+        "points_earned",
+        "first_badge",
+        "collection_slottable",
+        "collection_near_complete",
+        "collection_completable",
+        "drop_picked_up",
+        "drop_spot_active",
+        "mission_milestone",
+        "mission_deadline",
+        "mission_completed",
+        "mission_rank_up",
+        "mission_ended",
+        "followed",
+        "mutual_follow",
+        "following_rare_badge",
+        "following_collection_complete",
+        "following_mission_complete",
+        "following_nearby_drop",
+        "nearby_drops",
+        "strava_disconnected",
+        "sync_stalled",
+        "inventory_full",
+        "admin_points_changed",
+        "announcement",
       ],
       trade_status: ["pending", "accepted", "rejected", "expired"],
     },
