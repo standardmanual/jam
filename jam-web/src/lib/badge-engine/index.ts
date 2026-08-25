@@ -569,18 +569,29 @@ export async function evaluateBadgesDetailed(
 
   const ownedBadgeIds = new Set((ownedBadges ?? []).map((b) => b.badge_id))
 
-  // 선행 배지 체크용 — 보유 배지의 이름 집합
+  // 선행 배지 체크·진행 트랙 최고 티어 판정용 — 유저가 실제 보유한 배지의 이름·티어.
+  // allBadges(deleted_at IS NULL 필터 적용된 발급 후보 카탈로그)를 매개로 재확인하지 않고
+  // ownedBadgeIds를 기준으로 badges 테이블을 삭제 여부 무관하게 직접 조회한다.
+  // (소프트 삭제는 노출·신규지급만 막고 이미 획득한 이력은 유지: 20260823_004 정책,
+  //  20260825_020/021에서 확정)
   const ownedBadgeNames = new Set<string>()
-  for (const b of allBadges) {
-    if (ownedBadgeIds.has(b.id)) ownedBadgeNames.add(b.name)
-  }
-
   const highestOwnedTierByName = new Map<string, number>()
-  for (const badge of allBadges) {
-    if (ownedBadgeIds.has(badge.id)) {
-      const tier = RARITY_TIER[badge.rarity] ?? 0
-      const current = highestOwnedTierByName.get(badge.name) ?? 0
-      if (tier > current) highestOwnedTierByName.set(badge.name, tier)
+  if (ownedBadgeIds.size > 0) {
+    const { data: ownedBadgeDefsRaw, error: ownedDefsError } = await supabase
+      .from('badges')
+      .select('id, name, rarity')
+      .in('id', Array.from(ownedBadgeIds))
+
+    if (ownedDefsError) {
+      console.error('[evaluateBadgesDetailed] 보유 배지 정의 조회 오류:', ownedDefsError)
+      return { earned: [], missed: [] }
+    }
+
+    for (const b of (ownedBadgeDefsRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity'>[]) {
+      ownedBadgeNames.add(b.name)
+      const tier = RARITY_TIER[b.rarity] ?? 0
+      const current = highestOwnedTierByName.get(b.name) ?? 0
+      if (tier > current) highestOwnedTierByName.set(b.name, tier)
     }
   }
 
