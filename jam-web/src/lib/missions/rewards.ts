@@ -42,6 +42,7 @@ export async function grantMissionRewards(
       .from('badges')
       .select('id, name, type, point_reward')
       .in('id', badgeIds)
+      .is('deleted_at', null) // 티켓 20260825_016: 소프트 삭제된 배지는 미션 보상 지급 대상에서 제외(조용히 skip)
     const badges = (badgesRaw ?? []) as { id: string; name: string; type: 'activity' | 'item'; point_reward: number }[]
 
     // 유저의 기존 활동배지 보유 목록 (중복 지급 방지)
