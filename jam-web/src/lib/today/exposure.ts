@@ -123,6 +123,7 @@ async function hasIncompleteItemBook(userId: string): Promise<boolean> {
     .select('id, item_book_id')
     .in('item_book_id', candidateBookIds)
     .eq('type', 'item')
+    .is('deleted_at', null)
   const totalByBook = new Map<string, number>()
   for (const b of (badgesRaw ?? []) as { id: string; item_book_id: string | null }[]) {
     if (!b.item_book_id) continue
