@@ -8,7 +8,8 @@
     "build": "rm -rf storybook-static public/storybook && storybook build && cp -r storybook-static public/storybook && next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:node",
+    "test:node": "for f in src/lib/today/__tests__/*.test.ts src/lib/missions/__tests__/*.test.ts; do echo \"→ $f\"; tsx \"$f\" || exit 1; done",
     "test:watch": "vitest",
     "db:types": "supabase gen types typescript --project-id ceehnkzdbecxwzxrhhns > src/types/database.generated.ts",
     "storybook": "storybook dev -p 6006",
@@ -55,6 +56,7 @@
     "playwright": "latest",
     "storybook": "^10.5.8",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5",
     "vite": "latest",
     "vitest": "^4.1.10"
