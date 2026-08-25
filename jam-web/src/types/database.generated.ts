@@ -106,45 +106,6 @@ export type Database = {
         }
         Relationships: []
       }
-      ambient_drop_policy: {
-        Row: {
-          id: number
-          max_active_per_poi: number
-          max_target_total: number
-          min_target_total: number
-          rarity_common: number
-          rarity_legend: number
-          rarity_rare: number
-          replenish_batch_size: number
-          target_coverage_ratio: number
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          max_active_per_poi?: number
-          max_target_total?: number
-          min_target_total?: number
-          rarity_common?: number
-          rarity_legend?: number
-          rarity_rare?: number
-          replenish_batch_size?: number
-          target_coverage_ratio?: number
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          max_active_per_poi?: number
-          max_target_total?: number
-          min_target_total?: number
-          rarity_common?: number
-          rarity_legend?: number
-          rarity_rare?: number
-          replenish_batch_size?: number
-          target_coverage_ratio?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       badges: {
         Row: {
           activity_types: string[]

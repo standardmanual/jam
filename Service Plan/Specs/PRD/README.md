@@ -46,7 +46,7 @@
 
 | 영역 | 문서 |
 |------|------|
-| 배지·드랍 엔진 판정 로직 (드랍엔진 v2, 세계관 모멘텀, 앰비언트 드랍 등) | [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) |
+| 배지·드랍 엔진 판정 로직 (드랍엔진 v2, 세계관 모멘텀 등) | [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) |
 | 액티비티배지·컬렉션·아이템배지·세계관·POI 컨텐츠 목록 | [Specs/Content/](../Content/) |
 | 실제 개발 작업 이력 원본 | [History/Migration/Ticket/](../../History/Migration/Ticket/) |
 
