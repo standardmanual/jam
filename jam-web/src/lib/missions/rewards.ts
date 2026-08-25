@@ -42,7 +42,29 @@ export async function grantMissionRewards(
       .from('badges')
       .select('id, name, type, point_reward')
       .in('id', badgeIds)
+      .is('deleted_at', null) // 티켓 20260825_016: 소프트 삭제된 배지는 미션 보상 지급 대상에서 제외(조용히 skip)
     const badges = (badgesRaw ?? []) as { id: string; name: string; type: 'activity' | 'item'; point_reward: number }[]
+
+    // 조회된 배지가 요청보다 적으면 "삭제됨"과 "애초에 존재하지 않음"을 구분해 기록한다
+    // (20260825_017 — 삭제 배지는 .is('deleted_at', null) 필터로 조용히 걸러지므로 흔적을 남겨야 함)
+    if (badges.length < badgeIds.length) {
+      const foundIds = new Set(badges.map((b) => b.id))
+      const missingIds = badgeIds.filter((id) => !foundIds.has(id))
+      const { data: missingRaw } = await supabase
+        .from('badges')
+        .select('id, deleted_at')
+        .in('id', missingIds)
+      const missingRows = (missingRaw ?? []) as { id: string; deleted_at: string | null }[]
+      const deletedBadgeIds = missingRows.filter((r) => r.deleted_at !== null).map((r) => r.id)
+      const foundMissingIds = new Set(missingRows.map((r) => r.id))
+      const nonexistentBadgeIds = missingIds.filter((id) => !foundMissingIds.has(id))
+      await logEngineDecision('badge', 'reward_badge_skipped', userId, {
+        source: 'mission_reward',
+        missionId: mission.id,
+        deletedBadgeIds,
+        nonexistentBadgeIds,
+      })
+    }
 
     // 유저의 기존 활동배지 보유 목록 (중복 지급 방지)
     const { data: ownedRaw } = await supabase

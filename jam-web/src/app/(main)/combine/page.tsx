@@ -40,10 +40,13 @@ export default async function CombinePage() {
     const badgeIds = [...new Set(inventoryItems.map((i) => i.badge_id))]
 
     if (badgeIds.length > 0) {
+      // 소프트 삭제된 배지(badges.deleted_at)는 조합 재료 목록에서 제외한다 —
+      // badgeMap에 없으면 아래 filter(Boolean)로 해당 인벤토리 아이템만 조용히 빠진다.
       const { data: badgesRaw } = await service
         .from('badges')
         .select('id, name, image_url, rarity')
         .in('id', badgeIds)
+        .is('deleted_at', null)
 
       const badgeMap = new Map(
         ((badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>[])
