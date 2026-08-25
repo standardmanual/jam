@@ -37,6 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       .select('id, name, image_url, rarity')
       .eq('item_book_id', id)
       .eq('type', 'item')
+      .is('deleted_at', null)
       .order('created_at', { ascending: true }),
   ])
 

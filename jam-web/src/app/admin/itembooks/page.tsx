@@ -9,7 +9,7 @@ export default async function AdminItemBooksPage() {
   const [{ data: booksRaw }, { data: badgesRaw }, { data: itemBadgesRaw }, { data: factionsRaw }] = await Promise.all([
     supabase.from('item_books').select('*').order('created_at', { ascending: false }),
     supabase.from('badges').select('id, name'),
-    supabase.from('badges').select('id, item_book_id').eq('type', 'item').not('item_book_id', 'is', null),
+    supabase.from('badges').select('id, item_book_id').eq('type', 'item').not('item_book_id', 'is', null).is('deleted_at', null),
     supabase.from('factions').select('id, name'),
   ])
 
