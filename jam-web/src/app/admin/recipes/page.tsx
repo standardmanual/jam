@@ -11,9 +11,16 @@ export default async function AdminRecipesPage() {
     .order('created_at', { ascending: false })
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
 
-  // 이미 레시피에 쓰인 배지 id 전부 — 전체 배지 목록 조회가 Supabase 서버 단 Max Rows
-  // 상한에 걸려 일부만 내려와도(코드의 limit()으론 그 상한을 못 넘김), 기존 레시피가
-  // 참조하는 배지만큼은 정확히 짚어서 별도로 가져와 이름이 항상 정상 표시되도록 한다.
+  // 이미 레시피에 쓰인 배지 id 전부 — 정확히 이 id들만 골라 조회하므로 배지 전체가
+  // 몇 건이든(POI만도 1,800건이 넘는다 — (main)/badges/page.tsx 주석 참고) PostgREST
+  // 기본 응답 상한(1000행)과 무관하게 이름이 항상 정상 표시된다.
+  //
+  // 티켓 20260825_029: 이전에는 여기에 더해 type 필터 없는 배지 전체 목록도 함께 조회해
+  // badgeById에 합쳤으나(`.limit(10000)` — PostgREST 서버 설정상 그 상한을 못 넘겨 사실상
+  // 미삭제 배지 2172건 중 1000건에서 절단), RecipeList.tsx가 badges prop을 이 이름 조회
+  // 용도로만 쓰고(신규 레시피의 배지 선택은 이미 검색 기반 BadgeSearchSelect를 씀) 그
+  // 결과는 아래 usedBadgeIds 조회로 완전히 덮어써져 실질적인 효과가 없었다 — 절단 위험만
+  // 지닌 채 아무 역할도 하지 않는 조회였으므로 제거한다.
   const usedBadgeIds = [
     ...new Set(
       recipes.flatMap((r) => [
@@ -24,17 +31,10 @@ export default async function AdminRecipesPage() {
     ),
   ]
 
-  const [{ data: badgesRaw }, { data: usedBadgesRaw }] = await Promise.all([
-    supabase.from('badges').select('id, name, rarity, type').is('deleted_at', null).order('type').order('rarity').limit(10000),
-    usedBadgeIds.length > 0
-      ? supabase.from('badges').select('id, name, rarity, type').in('id', usedBadgeIds)
-      : Promise.resolve({ data: [] as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[] }),
-  ])
-
-  const badgeById = new Map<string, Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>>()
-  for (const b of (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[]) badgeById.set(b.id, b)
-  for (const b of (usedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[]) badgeById.set(b.id, b)
-  const badges = [...badgeById.values()]
+  const { data: usedBadgesRaw } = usedBadgeIds.length > 0
+    ? await supabase.from('badges').select('id, name, rarity, type').in('id', usedBadgeIds)
+    : { data: [] as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[] }
+  const badges = (usedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[]
 
   return (
     <div className="p-8">

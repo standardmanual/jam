@@ -67,6 +67,10 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
   const filteredBadges = badgeQuery.trim()
     ? badges.filter((b) => b.name.toLowerCase().includes(badgeQuery.trim().toLowerCase()))
     : badges
+  // 티켓 20260825_029: page.tsx의 절단(028)이 풀리며 badges가 최대 2172개까지 들어온다.
+  // 검색어가 없을 때 전량을 DOM에 그대로 렌더하면 렌더량이 과도해지므로 상한을 둔다.
+  const BADGE_LIST_RENDER_LIMIT = 50
+  const visibleBadges = filteredBadges.slice(0, BADGE_LIST_RENDER_LIMIT)
 
   // 게이트 배지(이 미션을 완료해야 열리는 본 배지) 선택용 — 단일 선택
   const gatedBadge = badges.find((b) => b.id === form.gated_badge_id) ?? null
@@ -252,7 +256,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
                   placeholder="배지 이름 검색..." className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm mb-2" />
                 <div className="max-h-44 overflow-y-auto border border-[#e5e7eb] rounded-xl divide-y divide-[#f3f4f6]">
                   {filteredBadges.length === 0 && <p className="text-[#898989] text-xs px-3 py-2">검색 결과 없음</p>}
-                  {filteredBadges.map((b) => {
+                  {visibleBadges.map((b) => {
                     const checked = form.reward_badge_ids.includes(b.id)
                     return (
                       <button key={b.id} onClick={() => toggleBadge(b.id)}
@@ -264,6 +268,11 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
                       </button>
                     )
                   })}
+                  {filteredBadges.length > BADGE_LIST_RENDER_LIMIT && (
+                    <p className="text-[#898989] text-xs px-3 py-2">
+                      {filteredBadges.length}개 중 {BADGE_LIST_RENDER_LIMIT}개 표시 — 검색으로 좁혀보세요
+                    </p>
+                  )}
                 </div>
               </div>
 
