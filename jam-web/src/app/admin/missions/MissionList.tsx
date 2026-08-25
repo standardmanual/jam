@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { MissionRow } from '@/types/database'
+import { MISSION_TYPES, MISSION_TYPE_LABEL, missionTypeLabel } from '@/lib/admin/badge-labels'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 
 interface BadgeOption {
@@ -22,10 +23,8 @@ interface Props {
   badges: BadgeOption[]
 }
 
-const missionTypes = [
-  'distance', 'poi_visit', 'activity_count', 'item_collect',
-  'streak_days', 'duration_minutes', 'elevation_gain_m',
-] as const
+// 유효값·라벨은 lib/admin/badge-labels.ts 한 곳에서 관리한다(20260826_004) —
+// 이 화면은 원래 한글 라벨 맵이 없어 목록·저작 폼에 원시값(`poi_visit`)이 그대로 노출됐다.
 const statusDisplayTypes = [
   { value: 'ranking', label: '랭킹형 (등수/진행값)' },
   { value: 'achievement', label: '달성형 (완료 여부)' },
@@ -201,7 +200,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
               <label className="text-xs text-[#6b7280] mb-1 block">미션 타입</label>
               <select value={form.mission_type} onChange={(e) => setForm((f) => ({ ...f, mission_type: e.target.value }))}
                 className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm">
-                {missionTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                {MISSION_TYPES.map((t) => <option key={t} value={t}>{MISSION_TYPE_LABEL[t]}</option>)}
               </select>
             </div>
 
@@ -212,7 +211,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
                 {statusDisplayTypes.map((t) => <option key={t.value} value={t.value} className="bg-white">{t.label}</option>)}
               </select>
               <p className="text-[#898989] text-xs mt-1">
-                {form.mission_type === 'poi_visit' || form.mission_type === 'item_collect' ? '추천: 달성형' : '추천: 랭킹형'}
+                {form.mission_type === 'checkin' || form.mission_type === 'item_collect' ? '추천: 달성형' : '추천: 랭킹형'}
               </p>
             </div>
 
@@ -397,7 +396,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
               return (
                 <tr key={m.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
                   <td className="px-5 py-3 font-medium">{m.title}</td>
-                  <td className="px-5 py-3 text-[#374151]">{m.mission_type}</td>
+                  <td className="px-5 py-3 text-[#374151]">{missionTypeLabel(m.mission_type)}</td>
                   <td className="px-5 py-3 text-[#6b7280] text-xs">
                     {new Date(m.starts_at).toLocaleDateString('ko-KR')} ~<br />
                     {m.ends_at ? new Date(m.ends_at).toLocaleDateString('ko-KR') : '상시'}

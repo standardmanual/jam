@@ -207,7 +207,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 2. 미션 15종(`missions`) — `mission_type`은 `streak_days`(걷기)/`duration_minutes`(러닝·사이클·등산, 단일 활동 기준)/`elevation_gain_m`(트레일, 단일 활동 기준). `ends_at = NULL`(상시), `status_display_type = 'individual'`(본인 진행상황만 노출, 다른 참가자 비공개), `max_completions = NULL`(선착순 아님), `reward_points = 0`.
 3. 대상 배지 5종 × Rare/Legend/Mythic의 `condition_json.prerequisite_badge_names`를 기존 OR 배열 대신 해당 미션보상배지명 1개만 담은 배열로 교체 — 엔진 스펙상 배열 원소가 1개면 사실상 AND(그 이름의 배지를 보유해야만 통과)로 동작한다(`CONDITION_JSON_SPEC.md`).
 
-**미션 엔진 확장**: 기존 미션 엔진(`mission_type`: distance/poi_visit/activity_count/item_collect)은 이 정책이 요구하는 연속일수·단일세션 지속시간·등반고도를 계산할 수 없었다. 새 계산 로직을 만드는 대신, `jam-web/src/lib/missions/checker.ts`가 이 3개 신규 타입에 대해 배지엔진의 `evaluateConditionDetailed`를 그대로 호출해 판정한다(§2.3 조건 어휘 재사용 — `activity_type`+`streak_days`/`duration_minutes`/`elevation_gain_m`). "미션 참가 시점 이후" 제약은 `evaluateConditionDetailed` 자체가 아니라 `checkMissions`가 `joinedAt` 기준으로 활동 이력을 미리 필터링해서 넘기는 호출자 책임이다.
+**미션 엔진 확장**: 기존 미션 엔진(`mission_type`: distance/checkin/activity_count/item_collect — `checkin`은 2026-08-26 이전 `poi_visit`)은 이 정책이 요구하는 연속일수·단일세션 지속시간·등반고도를 계산할 수 없었다. 새 계산 로직을 만드는 대신, `jam-web/src/lib/missions/checker.ts`가 이 3개 신규 타입에 대해 배지엔진의 `evaluateConditionDetailed`를 그대로 호출해 판정한다(§2.3 조건 어휘 재사용 — `activity_type`+`streak_days`/`duration_minutes`/`elevation_gain_m`). "미션 참가 시점 이후" 제약은 `evaluateConditionDetailed` 자체가 아니라 `checkMissions`가 `joinedAt` 기준으로 활동 이력을 미리 필터링해서 넘기는 호출자 책임이다.
 
 **기존 발급 건 처리**: 정책 도입 시점에 5개 트리 Rare 이상을 이미 보유 중이던 유저 3명(5건)이 있었으며, 소급 회수(삭제)하기로 결정 — `jam-web/supabase/seed_revoke_pre_mission_badges_20260813.sql`(사용자 직접 실행).
 
@@ -384,7 +384,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 |---|---|
 | 액티비티배지 | `evaluateBadges()` `number` → `string[]` |
 | 아이템배지 | `tryItemDrop()` `void` → `string[]` |
-| POI 배지 | `sync.ts`에서 발급분 수집 |
+| 체크인 배지 | `sync.ts`에서 발급분 수집 |
 | 컬렉션·미션 보상 | `ItemBookCompletionResult.rewardBadgeIds` / `MissionCheckResult.awardedBadgeIds` |
 
 응답 형태: `{ id, name, description, imageUrl, rarity, type }[]`
@@ -467,9 +467,12 @@ POI당 최대 1개, 보충 배치 30개 (최종 수정 2026-07-23).
 - **T2 POI 드랍 반경**: 500m (T1과 동일). `DROP_RADIUS_METERS` 상수로 관리.
 - **일련번호 형식**: `serial_prefix`(4자리 대문자) + `serial_number`(6자리 zero-pad). 예: `ABCD000042`. (§3.5의 일련번호 무작위화는 이 형식 위에서 채번 순서만 난수화하는 것으로, 형식 자체는 유지된다.)
 
-### 3.14 POI 배지 타입(`type='poi'`) — 실데이터 일괄 생성 (2026-07-27)
+### 3.14 체크인 배지 타입(`type='checkin'`) — 실데이터 일괄 생성 (2026-07-27)
 
-Phase 16에서 스키마만 추가됐던 `type='poi'` 배지에 실제 데이터를 채웠다. `poi_categories`의 `transit`(대중교통, 973개), `mountain`(산, 847개) 카테고리 POI 전체(총 1,820개)에 대해 **POI 1개 = 배지 1개**로 1:1 생성했다.
+> 타입 식별자는 2026-08-26(티켓 20260826_004)에 `'poi'` → `'checkin'`으로 개명됐다.
+> 아래 본문의 `type='checkin'`은 개명 후 기준이다. 지점 테이블 `poi`는 그대로다.
+
+Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데이터를 채웠다. `poi_categories`의 `transit`(대중교통, 973개), `mountain`(산, 847개) 카테고리 POI 전체(총 1,820개)에 대해 **POI 1개 = 배지 1개**로 1:1 생성했다.
 
 > 2026-08-24 기준 현황: `train_subway`(기차/지하철) 929개, `mountain`(산) 847개는 POI와 배지가
 > 1:1로 완전히 일치한다. `transit`(대중교통)에 남은 69개는 출구·노선별 중복·정류장이라 22개만
@@ -480,9 +483,10 @@ Phase 16에서 스키마만 추가됐던 `type='poi'` 배지에 실제 데이터
 - **아이콘**: 1,820개 전부 동일 아이콘 사용 — `public/badges/poi/anyway_star.png` (별 모양 "ANYWAY" 로고, 사용자 제공).
 - **등급**: 전부 `rarity='common'`.
 - **연결**: `poi.linked_badge_id`에 신규 생성된 배지 id를 1:1로 세팅 (다대일 연결 UI는 어드민 `/admin/badges/[id]/poi-links`에서 계속 지원되며, 이번 일괄 생성과는 별개로 이후 개별 POI를 재연결할 수도 있음).
-- **반복 획득**: 기존 설계대로 `user_poi_badge_earns`에 매 통과마다 새 행 적재 (평생 1회 제약 없음).
-  **[[20260826_001]]부터 재방문(2회차 이상 획득)도 피드·알림에 "{POI명}을(를) {N}번째 방문했어요"
-  문구로 노출된다** (기존에는 최초 획득만 피드에 기록되고 재방문은 알림에만 고정 문구로 떴다).
+- **반복 획득**: 기존 설계대로 `user_checkin_badge_earns`에 매 통과마다 새 행 적재 (평생 1회 제약 없음).
+  **[[20260826_001]]부터 반복 획득(2회차 이상)도 피드·알림에 노출된다** (기존에는 최초 획득만
+  피드에 기록되고 반복 획득은 알림에만 고정 문구로 떴다). 문구는 [[20260826_004]]에서
+  피드 `'체크인 했어요'` / `'{N}번째 체크인 했어요'`, 알림 `'{지점}에서 {N}번째 체크인 했어요'`로 통일됐다.
   상세 문구·N 산정 기준(badge_id 단위)·묶음 알림 합성 규칙은 `Specs/PRD/Notification/PRD.md` §3 참조.
 - **재현용 SQL**: `supabase/seed_poi_badges_20260727.sql` (INSERT/UPDATE 전량 기록, service_role 키로 직접 실행됨).
 
@@ -565,7 +569,7 @@ Specs/Content/ACTIVITY_BADGES.md          액티비티배지 115종 전체 목�
 Specs/Content/ITEMBOOKS.xlsx              아이템배지 ~900종 목록 + '세계관 인접' 시트
 Specs/Content/COMBINE_RECIPES.md          조합 레시피 목록
 Specs/Content/FACTIONS.md                 세계관 10종 개요·컬렉션 매핑·인접 그래프
-Specs/Content/POI.md                      장소 컨텐츠 (스텁)
+Specs/Content/POI.md                      지점(POI) 컨텐츠 (스텁)
 
 [코드]
 src/lib/badge-engine/index.ts             액티비티배지 엔진 (구현)

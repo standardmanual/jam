@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
 import { getActivityById, refreshStravaToken } from '@/lib/strava/api'
-import type { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
+import type { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserCheckinBadgeEarnRow } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,17 +87,17 @@ export async function GET(
   let stravaId: number | null = null
   let distanceKm: number | null = null
 
-  if (badge.type === 'poi') {
+  if (badge.type === 'checkin') {
     // 반복 획득 구조 — 최신 획득 기준으로 트리거 활동 선택
     const { data: earnRaw } = await service
-      .from('user_poi_badge_earns')
+      .from('user_checkin_badge_earns')
       .select('*')
       .eq('user_id', subjectId)
       .eq('badge_id', id)
       .order('earned_at', { ascending: false })
       .limit(1)
       .maybeSingle()
-    const earn = earnRaw as UserPoiBadgeEarnRow | null
+    const earn = earnRaw as UserCheckinBadgeEarnRow | null
     if (!earn) {
       return NextResponse.json({ error: 'not_earned' }, { status: 404 })
     }

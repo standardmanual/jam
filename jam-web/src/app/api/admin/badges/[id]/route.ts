@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       patch_available,
       patch_price_krw,
       // POI 배지는 "어느 POI를 지나갔는가"로만 판정 — 활동 조건이 섞이지 않도록 강제 null
-      condition_json: type === 'poi' ? null : condition_json,
+      condition_json: type === 'checkin' ? null : condition_json,
       faction_id: faction_id ?? null,
       item_book_id: item_book_id ?? null,
       drop_weight: drop_weight ?? 1.0,

@@ -15,7 +15,7 @@
  */
 
 export type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
-export type BadgeType = 'activity' | 'item' | 'poi'
+export type BadgeType = 'activity' | 'item' | 'checkin'
 export type DayOfWeek = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'
 export type BadgeRarity = 'common' | 'rare' | 'legend' | 'mythic'
 // poi_categories 테이블에서 어드민이 자유롭게 생성/삭제/수정 가능한 슬러그 — 고정 유니언이 아닌 string
@@ -138,11 +138,12 @@ export interface UserActivityBadgeRow {
 }
 
 /**
- * Phase 16: POI 배지 획득 이력 (반복 획득 가능)
- * user_activity_badges와 달리 UNIQUE(user_id, badge_id) 제약이 없어 방문할 때마다 행이 쌓임.
+ * Phase 16: 체크인 배지 획득 이력 (반복 획득 가능)
+ * user_activity_badges와 달리 UNIQUE(user_id, badge_id) 제약이 없어 체크인할 때마다 행이 쌓임.
  * UNIQUE(user_id, badge_id, poi_id, triggered_by_strava_id)는 동일 활동 재처리 방지용.
+ * poi_id는 지점 참조라 이름을 유지한다 (티켓 20260826_004 경계 규칙 2).
  */
-export interface UserPoiBadgeEarnRow {
+export interface UserCheckinBadgeEarnRow {
   id: string
   user_id: string
   badge_id: string
@@ -332,7 +333,7 @@ export interface UserCombineStateRow {
 
 export type MissionType =
   | 'distance'
-  | 'poi_visit'
+  | 'checkin'
   | 'activity_count'
   | 'item_collect'
   /** 티켓 20260813_001: 배지엔진 evaluateConditionDetailed 재사용 타입 — BadgeCondition과 동일 필드 어휘 */
@@ -349,7 +350,7 @@ export interface MissionCondition {
   distance_km?: number
   /** distance/activity_count/streak_days/duration_minutes/elevation_gain_m 타입: 활동 종류 필터 */
   activity_type?: ActivityType
-  /** poi_visit 타입: 목표 POI ID */
+  /** checkin 타입: 목표 지점(POI) ID — 지점 식별자라 키명은 poi_id 유지 (20260825_031 계약) */
   poi_id?: string
   /** activity_count 타입: 목표 횟수 */
   count?: number
@@ -787,7 +788,7 @@ export type NotificationType =
   | 'badge_earned'
   | 'rare_badge_earned'
   | 'item_badge_earned'
-  | 'poi_badge_earned'
+  | 'checkin_badge_earned'
   | 'points_earned'
   | 'first_badge'
   // ② 컬렉션 (3)
@@ -942,13 +943,13 @@ export interface Database {
         Update: Partial<Omit<UserActivityBadgeRow, 'id'>>
         Relationships: []
       }
-      user_poi_badge_earns: {
-        Row: UserPoiBadgeEarnRow
-        Insert: Omit<UserPoiBadgeEarnRow, 'id' | 'earned_at'> & {
+      user_checkin_badge_earns: {
+        Row: UserCheckinBadgeEarnRow
+        Insert: Omit<UserCheckinBadgeEarnRow, 'id' | 'earned_at'> & {
           id?: string
           earned_at?: string
         }
-        Update: Partial<Omit<UserPoiBadgeEarnRow, 'id'>>
+        Update: Partial<Omit<UserCheckinBadgeEarnRow, 'id'>>
         Relationships: []
       }
       inventory: {

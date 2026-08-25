@@ -271,7 +271,7 @@ function fixtures(badgeCount = 3): Record<string, Row[]> {
     item_books: [{ id: 'book-1', name: '오아시스 자판기' }],
     badges,
     user_item_book_slots: [{ id: 's1', user_id: 'u1', item_book_id: 'book-1', badge_id: badges[0].id }],
-    user_poi_badge_earns: [],
+    user_checkin_badge_earns: [],
     inventory: [{ id: 'inv-1', user_id: 'u1', max_slots: 50, used_slots: 50 }],
     inventory_items: badges.map((b, i) => ({
       id: `ii${String(i).padStart(3, '0')}`,

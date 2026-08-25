@@ -95,9 +95,11 @@ export const ko = {
 
     // 이벤트 라벨
     eventBadgeEarned: '배지 획득',
-    /** 20260826_001 — POI 배지를 두 번째 이상 획득(재방문)했을 때 eventBadgeEarned 대신 쓰는 라벨.
-     *  {josa}는 poiName 받침에 따라 '을'/'를' 중 골라 넣는다(FeedSection.tsx에서 hasBatchim으로 계산) */
-    eventPoiRevisited: '{poiName}{josa} {visitCount}번째 방문했어요',
+    /** 체크인 배지 획득(20260826_004) — 피드에서 유일하게 라벨이 아니라 문장으로 표시된다.
+     *  나머지 5개 타입은 짧은 라벨을 그대로 유지한다(사용자 확정 범위). */
+    eventCheckin: '체크인 했어요',
+    /** 같은 체크인 배지를 두 번째 이상 획득했을 때 eventCheckin 대신 쓴다 */
+    eventCheckinRepeat: '{visitCount}번째 체크인 했어요',
     // 활동 Strava 동기화 후 배지엔진을 통해 지급된 경우("아이템 획득")와 POI에 직접 드랍된 경우("아이템 드랍")는
     // 같은 item_dropped 이벤트지만 출처가 다르므로 문구를 분리해서 표기한다 (FeedSection.tsx의 eventLabel 참고)
     eventItemEarned: '아이템 획득',
@@ -119,7 +121,10 @@ export const ko = {
     rewardPoints: '+{points}P',
 
     // 상세 시트 라벨
-    rowPlace: '장소',
+    /** 드랍/픽업이 일어난 지점 — '체크인'이 아니라 지점 정보다(20260826_004 경계 규칙 3) */
+    rowPlace: '지점',
+    /** 체크인 배지 획득 이벤트에서 체크인한 지점 */
+    rowCheckinPlace: '체크인 지점',
     rowResult: '결과',
     rowRewardBadges: '보상 배지',
     rowRewardPoints: '보상 포인트',
@@ -168,7 +173,7 @@ export const ko = {
     shortcutInventoryTitle: '인벤토리',
     shortcutInventoryBody: '아이템 관리',
     shortcutDropsTitle: '드랍',
-    shortcutDropsBody: '장소에서 드랍·픽업',
+    shortcutDropsBody: '가까운 지점에서 드랍·픽업',
     shortcutCombineTitle: '믹스',
     shortcutCombineBody: '아이템 믹스하기',
   },
@@ -209,15 +214,15 @@ export const ko = {
     title: '배지',
     tabActivity: '액티비티',
     tabItem: '아이템',
-    tabPoi: '장소',
+    tabCheckin: '체크인',
     tabItembook: '컬렉션',
 
     emptyActivityTitle: '아직 획득한 배지가 없어요',
     emptyActivityBody: 'Strava를 동기화하고 활동하면 배지를 획득할 수 있어요',
     emptyItemTitle: '아직 아이템 배지가 없어요',
     emptyItemBody: '활동을 완료하면 확률로 아이템 배지가 드랍돼요',
-    emptyPoiTitle: '아직 획득한 장소 배지가 없어요',
-    emptyPoiBody: '산, 지하철역 등을 지나는 활동을 기록하면 배지를 획득할 수 있어요',
+    emptyCheckinTitle: '아직 획득한 체크인 배지가 없어요',
+    emptyCheckinBody: '산, 지하철역 같은 지점을 지나는 활동이 기록되면 자동으로 획득돼요',
     emptyItembookTitle: '아직 컬렉션이 없어요',
     emptyItembookBody: '관리자가 컬렉션을 등록하면 이 곳에 표시돼요',
 
@@ -233,11 +238,13 @@ export const ko = {
     prerequisiteOwned: '보유',
 
     conditionTitle: '획득 조건',
-    conditionPoiBody: '연결된 장소(POI)를 지나가는 활동을 기록하면 자동으로 획득돼요. 체크인할 때마다 이력이 쌓여요.',
+    /** 체크인 배지 획득 조건 — 이 한 문장이 유일한 정본이다(20260826_004).
+     *  이전에는 배지 상세·컬렉션 힌트·빈 상태에 6가지 버전이 흩어져 있었다. */
+    conditionCheckinBody: '연결된 지점을 지나는 활동이 기록되면 자동으로 획득돼요. 체크인할 때마다 이력이 쌓여요.',
 
     earnHistoryTitle: '획득 이력',
     earnHistoryCount: '총 {count}회',
-    earnHistoryUnknownPlace: '알 수 없는 장소',
+    earnHistoryUnknownPlace: '알 수 없는 지점',
 
     earnInfoTitle: '획득 정보',
     earnedAt: '획득 일시',
@@ -268,7 +275,7 @@ export const ko = {
     notEarnedTitle: '아직 획득하지 못한 배지예요',
     notEarnedBody: '조건을 달성하면 자동으로 획득돼요',
 
-    poiSafetyNotice: '이 배지는 표시된 위치 반경 {radius}m 안을 스쳐 지나가기만 해도 찾아내요. 위험한 곳까지 굳이 들어갈 필요 없어요. 접근이 까다로운 곳이라면 알려주세요. 도와드릴게요.',
+    checkinSafetyNotice: '이 배지는 표시된 위치 반경 {radius}m 안을 지나기만 해도 체크인돼요. 위험한 곳까지 굳이 들어갈 필요 없어요. 접근이 까다로운 곳이라면 알려주세요. 도와드릴게요.',
 
     earnedTag: '획득',
     notEarnedTag: '미획득',
@@ -276,9 +283,9 @@ export const ko = {
     filterActivityAll: '전체',
     filterRarityLabel: '등급',
     filterRarityAll: '전체',
-    filterPoiCategoryAll: '전체',
-    sortPoiLatest: '최신순',
-    sortPoiName: '이름순',
+    filterCheckinCategoryAll: '전체',
+    sortCheckinLatest: '최신순',
+    sortCheckinName: '이름순',
   },
 
   /** 인벤토리 목록/상세 */
@@ -314,10 +321,10 @@ export const ko = {
     historyUnknownUser: '알 수 없는 유저',
     obtainByDrop: '활동 드랍',
     obtainByDropEvent: '이벤트 드랍',
-    obtainByPickup: 'POI 픽업',
+    obtainByPickup: '지점 픽업',
     obtainBySystem: '시스템 지급',
-    eventDropped: 'POI 드랍',
-    eventPickedUp: 'POI 픽업',
+    eventDropped: '지점 드랍',
+    eventPickedUp: '지점 픽업',
 
     backToInventoryLong: '인벤토리로 돌아가기',
   },
@@ -328,16 +335,16 @@ export const ko = {
     locationDenied: '위치 권한을 허용해 주세요',
     retry: '다시 시도',
     locating: '위치 확인 중',
-    loadPoiFailed: 'POI 로드 실패',
+    loadPoiFailed: '주변 지점을 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
     loadDropsFailed: '드랍 목록 로드 실패',
     loadInventoryFailed: '인벤토리 로드 실패',
     outOfRange: '{name}까지 {distance}m — 50m 이내로 이동하면 드랍/픽업할 수 있어요',
     exploring: '주변 탐색 중',
-    noNearbyPlaces: '주변 500m에 드랍/픽업 가능한 장소가 없어요',
-    moveCloser: '장소로 50m 이내에 가면 드랍/픽업할 수 있어요',
+    noNearbyPlaces: '주변 500m에 드랍/픽업할 수 있는 지점이 없어요',
+    moveCloser: '지점에서 50m 이내로 가면 드랍/픽업할 수 있어요',
     checking: '확인 중',
     pickupItemsTitle: '픽업할 아이템',
-    thisPlaceTitle: '이 장소',
+    thisPlaceTitle: '이 지점',
     droppedBy: '{name}이(가) 드랍',
     anonymous: '익명',
     confirmDrop: "'{name}'을(를)\n여기에 드랍할까요?",
@@ -362,7 +369,7 @@ export const ko = {
     // 상수가 바뀔 때 조용히 어긋난다(실제로 서버 에러 문구가 500m를 '50m'로 잘못 적고 있었다).
     pickupOutOfRange: '조금 더 가까이 가야 해요. 드랍 지점에서 {m}m 안에 있어야 픽업할 수 있어요',
     pickupOwnDrop: '내가 드랍한 아이템이에요. 다른 러너가 픽업할 수 있게 그대로 두세요',
-    droppedAtPlace: '이 장소에 드랍됨',
+    droppedAtPlace: '이 지점에 드랍됨',
     droppedAtPlaceBody: '{place}에 놓여 있는 아이템이에요',
     back: '뒤로',
   },
@@ -388,7 +395,7 @@ export const ko = {
     missionTypeAll: '전체',
     missionTypeDistance: '거리',
     missionTypeActivityCount: '횟수',
-    missionTypePoiVisit: '장소 체크인',
+    missionTypeCheckin: '체크인',
     missionTypeItemCollect: '아이템 픽업',
     missionTypeStreakDays: '연속 일수',
     missionTypeDurationMinutes: '단일 활동 시간',
@@ -427,7 +434,7 @@ export const ko = {
     backToDetail: '미션',
     goalDistance: '달성 거리',
     goalActivityCount: '활동 횟수',
-    goalPoiVisit: 'POI 체크인',
+    goalCheckin: '체크인',
     goalItemCollect: '아이템 픽업',
     goalStreakDays: '연속 활동 일수',
     goalDurationMinutes: '단일 활동 시간',
@@ -575,10 +582,10 @@ export const ko = {
     slotsTitle: '아이템배지 슬롯',
     noBadgesTitle: '아직 이 컬렉션에 등록된 배지가 없어요.',
     noBadgesBody: '관리자가 배지를 등록하면 여기에 표시돼요',
-    poiSectionTitle: '장소 배지',
-    poiHint: 'POI 배지는 해당 장소를 지나가면 자동으로 채워져요',
-    poiEarned: '획득',
-    poiNotEarned: '미획득',
+    checkinSectionTitle: '체크인 배지',
+    checkinHint: '체크인 배지는 연결된 지점을 지나는 활동이 기록되면 자동으로 채워져요',
+    checkinEarned: '획득',
+    checkinNotEarned: '미획득',
     completedTitle: '컬렉션 완성!',
     completedBody: '모든 아이템 배지를 슬롯에 장착했어요',
     unknownBadge: '???',
@@ -651,9 +658,9 @@ export const ko = {
     /** 앞에 등급 라벨(Common/Rare/Legend/Mythic)이 고정 텍스트로 붙는다 */
     msgRareBadgeEarned: "{rarity} 배지 '{badgeName}'{을/를} 획득했어요",
     msgItemBadgeEarned: '활동 중에 {itemCount}가 떨어졌어요',
-    msgPoiBadgeEarned: '{poiName}에서 체크인 배지를 획득했어요',
-    /** 20260826_001 — 같은 POI 배지를 두 번째 이상 획득(재방문)했을 때 msgPoiBadgeEarned 대신 쓴다 */
-    msgPoiBadgeRevisited: '{poiName}{을/를} {visitCount}번째 방문했어요',
+    msgCheckinBadgeEarned: '{poiName}에서 체크인 배지를 획득했어요',
+    /** 같은 체크인 배지를 두 번째 이상 획득했을 때 msgCheckinBadgeEarned 대신 쓴다(20260826_004) */
+    msgCheckinBadgeRepeated: '{poiName}에서 {visitCount}번째 체크인 했어요',
     msgPointsEarned: '오늘 획득한 배지로 {points}를 획득했어요',
     msgFirstBadge: '{firstBadge}가 도착했어요',
 

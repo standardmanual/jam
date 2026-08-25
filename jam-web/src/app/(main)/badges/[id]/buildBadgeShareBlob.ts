@@ -1,7 +1,7 @@
 /**
  * 배지 공유용 1080×1920 투명 PNG Blob 생성 (20260821_004).
  *
- * 피그마 템플릿(활동/POI 공용 노드 `1:55`, 아이템 전용 노드 `1:60`)을 Canvas 2D API로 직접
+ * 피그마 템플릿(활동/체크인 공용 노드 `1:55`, 아이템 전용 노드 `1:60`)을 Canvas 2D API로 직접
  * 합성한다. 이 프로젝트에는 DOM 래스터라이즈 라이브러리(html2canvas 등)가 없고, 어드민의
  * `bakePreviewToBlob.ts` 기존 패턴은 "이미 렌더링된 단일 canvas/img 노드를 그대로 캡처"하는
  * 방식이라 배지 이미지 + 텍스트 3세트 + 로고를 합성해야 하는 이 화면에는 맞지 않는다 — 대신
@@ -9,7 +9,7 @@
  * PNG를 뽑는다(패턴 확장. 완료 기록의 "주요 의사결정" 참고).
  *
  * 좌표는 Figma MCP(`get_metadata`/`get_design_context`, 파일 `UXcBEgFagmO5ARwH5F0mMW`)로 노드
- * `1:55`(share01, 활동/POI 공용)·`1:60`(share02, 아이템 전용)의 절대 좌표를 직접 조회해 그대로
+ * `1:55`(share01, 활동/체크인 공용)·`1:60`(share02, 아이템 전용)의 절대 좌표를 직접 조회해 그대로
  * 옮겼다(2026-08-21 재작업 — 이전 버전은 Figma MCP 접근 없이 재설계한 근사값이었음):
  *   - share01: 배지 483×483 @ y=477, 이후 63px 간격 flex-column으로 거리/페이스/시간
  *     텍스트 블록(각 높이 85.5636) + 로고. 각 블록 안에서 값(51px)이 위, 라벨(20px)이 값 시작
@@ -39,7 +39,7 @@ const LABEL_FONT_SIZE = 19.824
 const FONT_FAMILY = "'Inter', 'Arial', sans-serif"
 
 export interface BadgeShareStats {
-  /** user_activity_badges/user_poi_badge_earns의 triggered_by_distance_km — DB에 이미 저장돼 재조회 불필요 */
+  /** user_activity_badges/user_checkin_badge_earns의 triggered_by_distance_km — DB에 이미 저장돼 재조회 불필요 */
   distanceKm: number
   /** 스트라바 moving_time으로 계산. 트리거 활동을 특정할 수 없으면 null */
   paceSecPerKm: number | null

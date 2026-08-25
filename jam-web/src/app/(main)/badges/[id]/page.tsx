@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { ActivityType, BadgeCondition, BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserPoiBadgeEarnRow } from '@/types/database'
+import { ActivityType, BadgeCondition, BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserCheckinBadgeEarnRow } from '@/types/database'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
@@ -306,16 +306,16 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // 그림자. 둘 다 없으면 기존과 동일(그림자 없음)하다. (20260819_008 — background_image_url 추가)
   const themedTextStyle: React.CSSProperties = getBadgeThemedTextStyle(themedBackground)
 
-  // Phase 16: poi 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
-  let poiEarns: (UserPoiBadgeEarnRow & { poi: PoiRow | null })[] = []
-  if (badgeRow.type === 'poi') {
-        const { data: poiEarnsRaw } = await service
-      .from('user_poi_badge_earns')
+  // Phase 16: checkin 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
+  let checkinEarns: (UserCheckinBadgeEarnRow & { poi: PoiRow | null })[] = []
+  if (badgeRow.type === 'checkin') {
+        const { data: checkinEarnsRaw } = await service
+      .from('user_checkin_badge_earns')
       .select('*, poi:poi_id(id, name, latitude, longitude, radius_meters)')
       .eq('user_id', subjectId)
       .eq('badge_id', id)
       .order('earned_at', { ascending: false })
-    poiEarns = (poiEarnsRaw ?? []) as (UserPoiBadgeEarnRow & { poi: PoiRow | null })[]
+    checkinEarns = (checkinEarnsRaw ?? []) as (UserCheckinBadgeEarnRow & { poi: PoiRow | null })[]
   }
 
   // item 타입(아이템배지)은 activity 조건이 아니라 인벤토리 소유(inventory_items)로 판정된다 —
@@ -358,10 +358,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     }
   }
 
-  // 획득 여부 — poi 타입은 이력 1건 이상, item 타입은 드랍되지 않은 아이템 보유 여부, 그 외는 기존 단건 조회 결과
+  // 획득 여부 — checkin 타입은 이력 1건 이상, item 타입은 드랍되지 않은 아이템 보유 여부, 그 외는 기존 단건 조회 결과
   const hasEarned =
-    badgeRow.type === 'poi'
-      ? poiEarns.length > 0
+    badgeRow.type === 'checkin'
+      ? checkinEarns.length > 0
       : badgeRow.type === 'item'
         ? allItemInventory.some(item => !item.dropped_at)
         : Boolean(earned)
@@ -408,10 +408,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       .filter((p): p is NonNullable<typeof p> => p !== null)
   }
 
-  // triggered_by_poi_id join 결과(활동 배지) 또는 최근 POI 획득 이력의 POI
-  // 미획득 POI 배지는 이력이 없으므로 linked_badge_id로 직접 조회
-  let poi: PoiRow | null = earned?.poi ?? poiEarns[0]?.poi ?? null
-  if (!poi && badgeRow.type === 'poi') {
+  // triggered_by_poi_id join 결과(활동 배지) 또는 최근 체크인 이력의 지점
+  // 미획득 체크인 배지는 이력이 없으므로 linked_badge_id로 직접 조회
+  let poi: PoiRow | null = earned?.poi ?? checkinEarns[0]?.poi ?? null
+  if (!poi && badgeRow.type === 'checkin') {
     const { data: linkedPoi } = await supabase
       .from('poi')
       .select('id, name, latitude, longitude, radius_meters')
@@ -515,8 +515,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     )
   }
 
-  // ========== 변형 3: POI 배지 ==========
-  if (badgeRow.type === 'poi') {
+  // ========== 변형 3: 체크인 배지 ==========
+  if (badgeRow.type === 'checkin') {
     return (
       <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
         {badgeBackgroundLayer}
@@ -528,7 +528,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             isOwnBadge && (
               <BadgeShareButton
                 badgeId={id}
-                badgeType="poi"
+                badgeType="checkin"
                 imageUrl={badgeRow.image_url}
                 badgeName={badgeRow.name}
                 hasEarned={hasEarned}
@@ -544,8 +544,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         {/* info-section */}
         <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
           {poi && <PoiMapButton lat={poi.latitude} lng={poi.longitude} poiName={poi.name} />}
-          <BadgeConditionCard text="이 장소를 경유하는 활동이 기록되면 획득돼요." />
-          <PoiEarnHistory poiEarns={poiEarns.map((e) => ({
+          {/* 획득 조건 문구는 ko.ts의 conditionCheckinBody 한 곳에서 관리한다(20260826_004) —
+              이전에는 이 하드코딩과 i18n 키가 서로 다른 내용으로 갈라져 있었다. */}
+          <BadgeConditionCard text={d.badges.conditionCheckinBody} />
+          <PoiEarnHistory poiEarns={checkinEarns.map((e) => ({
             id: e.id,
             earned_at: e.earned_at,
             triggered_by_activity_name: e.triggered_by_activity_name ?? null,
@@ -576,7 +578,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           )}
 
           <p className="text-center text-[length:var(--text-body)] text-[var(--color-text-secondary)] leading-[var(--leading-body)] px-4">
-            {t(d.badges.poiSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
+            {t(d.badges.checkinSafetyNotice, { radius: String(poi?.radius_meters ?? 50) })}
           </p>
         </div>
       </div>

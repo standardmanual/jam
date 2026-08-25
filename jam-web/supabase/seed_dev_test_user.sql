@@ -91,10 +91,10 @@ FROM (
 ON CONFLICT (user_id, badge_id) DO NOTHING;
 
 -- ────────────────────────────────────────────────────────────
--- 5. user_poi_badge_earns — POI 배지 이력 2건
---    badges.type = 'poi' + poi 테이블에 실제 POI가 있는 경우만.
+-- 5. user_checkin_badge_earns — 체크인 배지 이력 2건
+--    badges.type = 'checkin' + poi 테이블에 실제 지점이 있는 경우만.
 -- ────────────────────────────────────────────────────────────
-INSERT INTO public.user_poi_badge_earns (
+INSERT INTO public.user_checkin_badge_earns (
   user_id, badge_id, poi_id, earned_at,
   triggered_by_strava_id, triggered_by_activity_name,
   triggered_by_distance_km, triggered_by_activity_date
@@ -112,7 +112,7 @@ FROM (
   SELECT b.id AS badge_id, p.id AS poi_id, b.created_at AS badge_created_at
   FROM public.badges b
   JOIN public.poi p ON p.linked_badge_id = b.id
-  WHERE b.type = 'poi'
+  WHERE b.type = 'checkin'
   ORDER BY b.created_at
   LIMIT 2
 ) pb
@@ -164,7 +164,7 @@ COMMIT;
 -- UNION ALL
 -- SELECT 'activity_badges', COUNT(*) FROM public.user_activity_badges WHERE user_id = '00000000-0000-0000-0000-000000000001'
 -- UNION ALL
--- SELECT 'poi_badge_earns', COUNT(*) FROM public.user_poi_badge_earns WHERE user_id = '00000000-0000-0000-0000-000000000001'
+-- SELECT 'checkin_badge_earns', COUNT(*) FROM public.user_checkin_badge_earns WHERE user_id = '00000000-0000-0000-0000-000000000001'
 -- UNION ALL
 -- SELECT 'inventory_items', COUNT(*) FROM public.inventory_items WHERE inventory_id = (
 --   SELECT id FROM public.inventory WHERE user_id = '00000000-0000-0000-0000-000000000001'

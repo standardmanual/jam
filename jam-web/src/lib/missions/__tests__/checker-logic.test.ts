@@ -4,7 +4,7 @@
  * 검증 범위:
  *   - 참가 게이트: 미참가 유저는 조건을 만족해도 achieved=false (버그 수정 회귀 방지)
  *   - distance / activity_count 진행값 계산 (기존 유지)
- *   - poi_visit / item_collect 달성형(0/1) 계산 (신규)
+ *   - checkin / item_collect 달성형(0/1) 계산 (신규)
  *   - streak_days / duration_minutes / elevation_gain_m — 배지엔진 evaluateConditionDetailed
  *     재사용 판정 (티켓 20260813_001)
  *
@@ -67,16 +67,16 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(r.achieved, true)
   }],
 
-  // ── poi_visit (달성형) ───────────────────────────────────────
-  ['poi_visit: 방문 이력 있으면 달성', () => {
+  // ── checkin (달성형) ─────────────────────────────────────────
+  ['checkin: 체크인 이력 있으면 달성', () => {
     const own: OwnershipContext = { ownedBadgeIds: new Set(), visitedPoiIds: new Set(['poi-1']) }
-    const r = evaluateMission(mission('poi_visit', { poi_id: 'poi-1' }), [], own, true)
+    const r = evaluateMission(mission('checkin', { poi_id: 'poi-1' }), [], own, true)
     assert.strictEqual(r.progressValue, 1)
     assert.strictEqual(r.target, 1)
     assert.strictEqual(r.achieved, true)
   }],
-  ['poi_visit: 방문 이력 없으면 미달성', () => {
-    const r = evaluateMission(mission('poi_visit', { poi_id: 'poi-1' }), [], emptyOwnership, true)
+  ['checkin: 체크인 이력 없으면 미달성', () => {
+    const r = evaluateMission(mission('checkin', { poi_id: 'poi-1' }), [], emptyOwnership, true)
     assert.strictEqual(r.progressValue, 0)
     assert.strictEqual(r.achieved, false)
   }],

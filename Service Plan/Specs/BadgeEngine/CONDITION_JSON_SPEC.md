@@ -143,7 +143,7 @@
 // 선행 배지 (Rare 이상 필수)
 { "activity_type": "cycling", "distance_km": 500, "prerequisite_badge_names": ["라이딩 입문자"] }
 
-// POI 배지 (GPS 매칭)
+// 체크인 배지 (GPS 매칭)
 { "poi_id": "uuid-here" }
 
 // 미션 보상 배지 (메타데이터 필드, §3 — 미션 완료로만 지급, badge-engine은 항상 fail 처리)

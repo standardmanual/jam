@@ -55,11 +55,13 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
       if (ids.length === 1) return single(`/inventory/${ids[0]}`)
       return single(`/inventory${ids.length > 0 ? `?highlight=${encodeURIComponent(ids.join(','))}` : ''}`)
     }
-    case 'poi_badge_earned': {
+    case 'checkin_badge_earned': {
       const ids = idList(p, 'badge_ids')
       const primary = typeof p.badge_id === 'string' ? p.badge_id : ids[0]
-      if (ids.length <= 1) return single(primary ? `/badges/${primary}` : '/badges?tab=poi')
-      return single(`/badges?tab=poi${highlightQuery(ids)}`)
+      // 20260826_004 — 탭 식별자가 poi → checkin으로 바뀌었다. 이미 발송된 소식의
+      // `?tab=poi` 링크는 BadgesClient의 LEGACY_TAB_ALIASES가 계속 받아준다.
+      if (ids.length <= 1) return single(primary ? `/badges/${primary}` : '/badges?tab=checkin')
+      return single(`/badges?tab=checkin${highlightQuery(ids)}`)
     }
     case 'points_earned':
       return single('/points')

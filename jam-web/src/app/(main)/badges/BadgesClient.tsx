@@ -12,8 +12,24 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
 import { RARITY_LABEL } from '@/lib/rarity'
 
-type TabKey = 'activity' | 'poi' | 'collection'
-const VALID_TABS = new Set<string>(['activity', 'poi', 'collection'])
+type TabKey = 'activity' | 'checkin' | 'collection'
+const VALID_TABS = new Set<string>(['activity', 'checkin', 'collection'])
+
+/**
+ * 구 탭 식별자 → 신 식별자 (티켓 20260826_004).
+ *
+ * `?tab=poi`·`#poi`는 이미 발송된 알림 링크와 유저가 공유한 주소에 남아 있다.
+ * 브라우저 주소창에 노출·공유되는 값은 공개 URL과 동일하게 취급해 **영구 호환**한다
+ * (선례 20260821_002가 해시 식별자를 놓쳐 후속 작업이 발생했다).
+ */
+const LEGACY_TAB_ALIASES: Record<string, TabKey> = { poi: 'checkin' }
+
+/** 쿼리·해시로 들어온 값을 유효한 탭 키로 정규화한다. 모르는 값이면 null */
+function normalizeTab(raw: string | undefined | null): TabKey | null {
+  if (!raw) return null
+  if (VALID_TABS.has(raw)) return raw as TabKey
+  return LEGACY_TAB_ALIASES[raw] ?? null
+}
 
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
@@ -24,10 +40,10 @@ function activitySortIndex(types: ActivityType[]): number {
   return idx === -1 ? ACTIVITY_TYPE_ORDER.length : idx
 }
 
-/** 장소(POI) 배지 — 산/지하철 등 방문해서 획득하는 배지. 반복 획득 가능. */
-export interface PoiBadgeItem {
+/** 체크인 배지 — 산/지하철역 등 지점을 지나며 획득하는 배지. 반복 획득 가능. */
+export interface CheckinBadgeItem {
   badge: BadgeRow
-  /** 연결된 POI의 category slug (예: mountain, transit) */
+  /** 연결된 지점(POI)의 category slug (예: mountain, transit) */
   category: string
   /** 어드민이 관리하는 카테고리 한글 라벨 (예: 산, 대중교통) */
   categoryLabel: string
@@ -49,7 +65,7 @@ interface BadgesClientProps {
   badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow | null }>
   itemBooks: ItemBookRow[]
   itemBookProgress: ItemBookProgress[]
-  poiBadges: PoiBadgeItem[]
+  checkinBadges: CheckinBadgeItem[]
   /** `?tab=` — 알림함 착지 시 열어둘 탭. hash보다 우선한다 (20260824_021) */
   initialTab?: string
   /** `?highlight=` — 그 소식으로 획득한 배지 id. 그리드에서 짚어준다 (20260824_021) */
@@ -66,37 +82,38 @@ function tabLabel(label: string, count: number) {
   )
 }
 
-type PoiSortOrder = 'latest' | 'name'
+type CheckinSortOrder = 'latest' | 'name'
 
 export default function BadgesClient({
   badges,
   itemBooks,
   itemBookProgress,
-  poiBadges,
+  checkinBadges,
   initialTab,
   highlightIds = [],
 }: BadgesClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
     // 쿼리(?tab=)가 hash보다 우선한다 — 알림 착지점이 탭과 하이라이트를 함께 전달하기 때문
-    if (initialTab && VALID_TABS.has(initialTab)) return initialTab as TabKey
+    const fromQuery = normalizeTab(initialTab)
+    if (fromQuery) return fromQuery
     if (typeof window !== 'undefined') {
-      const hash = window.location.hash.slice(1)
-      if (VALID_TABS.has(hash)) return hash as TabKey
+      const fromHash = normalizeTab(window.location.hash.slice(1))
+      if (fromHash) return fromHash
     }
     return 'activity'
   })
   const highlightSet = useMemo(() => new Set(highlightIds), [highlightIds])
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
   const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
-  const [poiCategoryFilter, setPoiCategoryFilter] = useState<string>('all')
-  const [poiSortOrder, setPoiSortOrder] = useState<PoiSortOrder>('latest')
+  const [checkinCategoryFilter, setCheckinCategoryFilter] = useState<string>('all')
+  const [checkinSortOrder, setCheckinSortOrder] = useState<CheckinSortOrder>('latest')
   const progressMap = new Map(itemBookProgress.map((p) => [p.bookId, p]))
 
   // 브라우저 뒤로/앞으로 탐색 시 hash 변화를 탭에 반영
   useEffect(() => {
     const onPopState = () => {
-      const hash = window.location.hash.slice(1)
-      if (VALID_TABS.has(hash)) setActiveTab(hash as TabKey)
+      const fromHash = normalizeTab(window.location.hash.slice(1))
+      if (fromHash) setActiveTab(fromHash)
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
@@ -108,43 +125,43 @@ export default function BadgesClient({
   }
 
   const earnedCount = badges.filter((b) => b.earned).length
-  const poiEarnedCount = poiBadges.filter((p) => p.earnCount > 0).length
+  const checkinEarnedCount = checkinBadges.filter((p) => p.earnCount > 0).length
 
   // 슬라이딩 탭 — 라벨 옆에 보유/전체 카운트를 함께 노출
   const tabs: SlidingTabItem<TabKey>[] = [
     { key: 'activity', label: tabLabel(d.badges.tabActivity, earnedCount), ariaLabel: d.badges.tabActivity },
-    { key: 'poi', label: tabLabel(d.badges.tabPoi, poiEarnedCount), ariaLabel: d.badges.tabPoi },
+    { key: 'checkin', label: tabLabel(d.badges.tabCheckin, checkinEarnedCount), ariaLabel: d.badges.tabCheckin },
     { key: 'collection', label: tabLabel(d.badges.tabItembook, itemBooks.length), ariaLabel: d.badges.tabItembook },
   ]
 
   // 획득한 것만 보여준다 — 미획득 배지는 노출하지 않음(전국 산/지하철역 배지가
   // 워낙 많아 미획득까지 보여주면 도감이 아니라 노이즈가 됨). 반복 발급 횟수는
   // 여기서 세지 않고 배지 상세화면의 발급 이력에서 확인.
-  const earnedPoiBadges = useMemo(() => poiBadges.filter((p) => p.earnCount > 0), [poiBadges])
+  const earnedCheckinBadges = useMemo(() => checkinBadges.filter((p) => p.earnCount > 0), [checkinBadges])
 
   // 카테고리 드롭다운 옵션 — 실제로 획득한 배지에 존재하는 카테고리만, 라벨 가나다순
-  const poiCategoryOptions = useMemo(() => {
+  const checkinCategoryOptions = useMemo(() => {
     const seen = new Map<string, string>()
-    for (const item of earnedPoiBadges) {
+    for (const item of earnedCheckinBadges) {
       if (!seen.has(item.category)) seen.set(item.category, item.categoryLabel)
     }
     return Array.from(seen.entries()).sort(([, a], [, b]) => a.localeCompare(b, 'ko'))
-  }, [earnedPoiBadges])
+  }, [earnedCheckinBadges])
 
   // 액티비티 배지 탭과 동일한 패턴 — 드롭다운 2개(카테고리, 정렬)로 필터링한
   // 평평한 그리드. 최신순은 가장 최근에 획득한 것부터, 이름순은 가나다순.
-  const filteredPoiBadges = useMemo(() => {
-    const filtered = earnedPoiBadges.filter(
-      (item) => poiCategoryFilter === 'all' || item.category === poiCategoryFilter
+  const filteredCheckinBadges = useMemo(() => {
+    const filtered = earnedCheckinBadges.filter(
+      (item) => checkinCategoryFilter === 'all' || item.category === checkinCategoryFilter
     )
     const sorted = [...filtered]
-    if (poiSortOrder === 'latest') {
+    if (checkinSortOrder === 'latest') {
       sorted.sort((a, b) => new Date(b.latestEarnedAt!).getTime() - new Date(a.latestEarnedAt!).getTime())
     } else {
       sorted.sort((a, b) => a.badge.name.localeCompare(b.badge.name, 'ko'))
     }
     return sorted
-  }, [earnedPoiBadges, poiCategoryFilter, poiSortOrder])
+  }, [earnedCheckinBadges, checkinCategoryFilter, checkinSortOrder])
 
   // 획득한 것부터(획득 최신순), 미획득은 같은 액티비티끼리 모아 이름순 → 등급 낮은순.
   // 화면에 별도 구간 헤더로 나누진 않고 정렬 순서로만 배치한다.
@@ -243,35 +260,35 @@ export default function BadgesClient({
           )
         )}
 
-        {/* 장소(POI) 배지 탭 — 획득한 배지만 노출. 반복 발급 이력은 배지 상세화면에서 확인 */}
-        {activeTab === 'poi' && (
-          earnedPoiBadges.length > 0 ? (
+        {/* 체크인 배지 탭 — 획득한 배지만 노출. 반복 발급 이력은 배지 상세화면에서 확인 */}
+        {activeTab === 'checkin' && (
+          earnedCheckinBadges.length > 0 ? (
             <>
               {/* 필터 드롭다운 — 액티비티 탭과 동일한 패턴 */}
               <div className="flex gap-2 mb-[var(--spacing-16)]">
                 <select
-                  value={poiCategoryFilter}
-                  onChange={(e) => setPoiCategoryFilter(e.target.value)}
+                  value={checkinCategoryFilter}
+                  onChange={(e) => setCheckinCategoryFilter(e.target.value)}
                   className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
-                  <option value="all">{d.badges.filterPoiCategoryAll}</option>
-                  {poiCategoryOptions.map(([slug, label]) => (
+                  <option value="all">{d.badges.filterCheckinCategoryAll}</option>
+                  {checkinCategoryOptions.map(([slug, label]) => (
                     <option key={slug} value={slug}>{label}</option>
                   ))}
                 </select>
                 <select
-                  value={poiSortOrder}
-                  onChange={(e) => setPoiSortOrder(e.target.value as PoiSortOrder)}
+                  value={checkinSortOrder}
+                  onChange={(e) => setCheckinSortOrder(e.target.value as CheckinSortOrder)}
                   className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
-                  <option value="latest">{d.badges.sortPoiLatest}</option>
-                  <option value="name">{d.badges.sortPoiName}</option>
+                  <option value="latest">{d.badges.sortCheckinLatest}</option>
+                  <option value="name">{d.badges.sortCheckinName}</option>
                 </select>
               </div>
 
-              {filteredPoiBadges.length > 0 ? (
+              {filteredCheckinBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-                  {filteredPoiBadges.map(({ badge }) => (
+                  {filteredCheckinBadges.map(({ badge }) => (
                     <BadgeGridCard
                       key={badge.id}
                       href={`/badges/${badge.id}`}
@@ -283,11 +300,11 @@ export default function BadgesClient({
                   ))}
                 </div>
               ) : (
-                <EmptyState icon={<PinIcon className="w-8 h-8" />} title={d.badges.emptyPoiTitle} description={d.badges.emptyPoiBody} />
+                <EmptyState icon={<PinIcon className="w-8 h-8" />} title={d.badges.emptyCheckinTitle} description={d.badges.emptyCheckinBody} />
               )}
             </>
           ) : (
-            <EmptyState icon={<PinIcon className="w-8 h-8" />} title={d.badges.emptyPoiTitle} description={d.badges.emptyPoiBody} />
+            <EmptyState icon={<PinIcon className="w-8 h-8" />} title={d.badges.emptyCheckinTitle} description={d.badges.emptyCheckinBody} />
           )
         )}
 

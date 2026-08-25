@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
+import { badgeTypeLabel } from '@/lib/admin/badge-labels'
 import { formatPaceSecPerKm } from '@/types/strava'
 
 const RARITY_LABEL: Record<BadgeRarity, string> = {
@@ -14,12 +15,6 @@ const RARITY_LABEL: Record<BadgeRarity, string> = {
   rare: 'Rare',
   legend: 'Legend',
   mythic: 'Mythic',
-}
-
-const TYPE_LABEL: Record<string, string> = {
-  activity: '활동',
-  item: '아이템',
-  poi: 'POI',
 }
 
 /** "YYYY.MM.DD" 형식으로 날짜 포맷 */
@@ -132,7 +127,7 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
             <div>
               <div className="text-xs font-semibold text-gray-600 mb-1">타입</div>
               <div className="px-3 py-1.5 bg-gray-100 rounded text-sm w-fit">
-                {TYPE_LABEL[badge.type] || badge.type}
+                {badgeTypeLabel(badge.type)}
               </div>
             </div>
 

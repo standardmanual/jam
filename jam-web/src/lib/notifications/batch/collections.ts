@@ -129,7 +129,7 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
       .from('badges')
       .select('id, item_book_id, type')
       .in('item_book_id', chunk)
-      .in('type', ['item', 'poi'])
+      .in('type', ['item', 'checkin'])
       .is('deleted_at', null)
   )
   if (bookBadges.length === 0) return { drafts: [], scanned: 0 }
@@ -143,7 +143,7 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
     list.push(b.id)
     badgeIdsByBook.set(b.item_book_id, list)
     allBookBadgeIds.push(b.id)
-    if (b.type === 'poi') poiBadgeIds.push(b.id)
+    if (b.type === 'checkin') poiBadgeIds.push(b.id)
   }
 
   const [slots, poiEarns, inventories] = await Promise.all([
@@ -154,10 +154,10 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
       (chunk) => supabase.from('user_item_book_slots').select('user_id, badge_id').in('item_book_id', chunk)
     ),
     fetchAllRowsIn<{ user_id: string; badge_id: string }, string>(
-      'user_poi_badge_earns',
+      'user_checkin_badge_earns',
       'id',
       poiBadgeIds,
-      (chunk) => supabase.from('user_poi_badge_earns').select('user_id, badge_id').in('badge_id', chunk)
+      (chunk) => supabase.from('user_checkin_badge_earns').select('user_id, badge_id').in('badge_id', chunk)
     ),
     fetchAllRows<{ id: string; user_id: string }>('inventory', 'id', () =>
       supabase.from('inventory').select('id, user_id')

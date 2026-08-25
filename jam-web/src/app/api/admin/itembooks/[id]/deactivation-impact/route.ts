@@ -29,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const activityBadgeIds = badgeRows.filter((b) => b.type === 'activity').map((b) => b.id)
   const itemBadgeIds = badgeRows.filter((b) => b.type === 'item').map((b) => b.id)
-  const poiBadgeIds = badgeRows.filter((b) => b.type === 'poi').map((b) => b.id)
+  const checkinBadgeIds = badgeRows.filter((b) => b.type === 'checkin').map((b) => b.id)
 
   const holderUserIds = new Set<string>()
 
@@ -42,11 +42,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     for (const row of (data ?? []) as { user_id: string }[]) holderUserIds.add(row.user_id)
   }
 
-  if (poiBadgeIds.length > 0) {
+  if (checkinBadgeIds.length > 0) {
     const { data, error } = await supabase
-      .from('user_poi_badge_earns')
+      .from('user_checkin_badge_earns')
       .select('user_id')
-      .in('badge_id', poiBadgeIds)
+      .in('badge_id', checkinBadgeIds)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     for (const row of (data ?? []) as { user_id: string }[]) holderUserIds.add(row.user_id)
   }

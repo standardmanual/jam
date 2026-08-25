@@ -1,11 +1,11 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
-import BadgesClient, { ItemBookProgress, PoiBadgeItem } from './BadgesClient'
+import BadgesClient, { ItemBookProgress, CheckinBadgeItem } from './BadgesClient'
 
 /**
  * 20260824_021: 알림함 착지용 쿼리 파라미터 2종.
- * - `?tab=activity|poi|collection` — 소식 #1·#4의 착지 탭
+ * - `?tab=activity|checkin|collection` — 소식 #1·#4의 착지 탭 (구 값 `poi`도 계속 받는다 — 20260826_004)
  * - `?highlight=<id,id>` — 그 소식으로 획득한 배지를 그리드에서 짚어준다
  *
  * 탭 상태는 원래 hash(`#activity`)로 유지되지만, 착지점은 쿼리 하나로 탭과 하이라이트를
@@ -33,7 +33,7 @@ export default async function BadgesPage({ searchParams }: Props) {
     { data: earnedBadges },
     { data: allActivityBadges },
     { data: inventoryData },
-    { data: poiEarns },
+    { data: checkinEarns },
     { data: poiCategories },
   ] = await Promise.all([
     supabase
@@ -52,13 +52,13 @@ export default async function BadgesPage({ searchParams }: Props) {
       .select('id, inventory_items(id, badge_id, serial_number, expires_at, dropped_at, badge:badges(id, name, image_url, rarity, deleted_at))')
       .eq('user_id', user.id)
       .maybeSingle(),
-    // 장소(POI) 배지 — 반복 획득이 가능해 이력이 여러 행일 수 있음. 화면에는
+    // 체크인 배지 — 반복 획득이 가능해 이력이 여러 행일 수 있음. 화면에는
     // 획득한 것만 노출하므로, 여기서 이 유저가 실제로 획득한 배지 id만 먼저 뽑는다.
-    // (전체 poi 타입 배지는 1,800개가 넘어 select('*')로 통째로 가져오면
+    // (전체 checkin 타입 배지는 1,800개가 넘어 select('*')로 통째로 가져오면
     // PostgREST 기본 max-rows(1,000행) 제한에 걸려 뒤쪽 배지가 통째로 잘려나간다 —
     // 오늘 matcher.ts / api/drops에서 같은 원인으로 겪은 문제와 동일. 애초에
     // "획득한 것만" 보여주면 되므로 전체 조회 자체를 하지 않는 방식으로 근본 해결.)
-    supabase.from('user_poi_badge_earns').select('badge_id, earned_at').eq('user_id', user.id),
+    supabase.from('user_checkin_badge_earns').select('badge_id, earned_at').eq('user_id', user.id),
     // poi_categories는 RLS가 service role 전용이라 일반 유저 클라이언트로는 못 읽는다
     createServiceClient().from('poi_categories').select('slug, label'),
   ])
@@ -146,30 +146,30 @@ export default async function BadgesPage({ searchParams }: Props) {
     }
   }
 
-  // ─── 장소(POI) 배지 — 화면엔 획득한 것만 노출하므로, 이 유저가 실제로
-  // 획득한 배지 id만으로 badges/poi를 조회한다(전체 poi 타입 배지를 select('*')로
+  // ─── 체크인 배지 — 화면엔 획득한 것만 노출하므로, 이 유저가 실제로
+  // 획득한 배지 id만으로 badges/poi를 조회한다(전체 checkin 타입 배지를 select('*')로
   // 통째로 가져오지 않음 — 위 쿼리 주석 참고).
-  const poiEarnRows = (poiEarns ?? []) as { badge_id: string; earned_at: string }[]
+  const checkinEarnRows = (checkinEarns ?? []) as { badge_id: string; earned_at: string }[]
 
   // 배지별 획득 이력 집계 — 반복 획득 지원(개수 + 가장 최근 획득일)
-  const poiEarnAgg = new Map<string, { count: number; latestEarnedAt: string }>()
-  for (const row of poiEarnRows) {
-    const prev = poiEarnAgg.get(row.badge_id)
+  const checkinEarnAgg = new Map<string, { count: number; latestEarnedAt: string }>()
+  for (const row of checkinEarnRows) {
+    const prev = checkinEarnAgg.get(row.badge_id)
     if (!prev) {
-      poiEarnAgg.set(row.badge_id, { count: 1, latestEarnedAt: row.earned_at })
+      checkinEarnAgg.set(row.badge_id, { count: 1, latestEarnedAt: row.earned_at })
     } else {
       prev.count += 1
       if (row.earned_at > prev.latestEarnedAt) prev.latestEarnedAt = row.earned_at
     }
   }
 
-  const earnedPoiBadgeIds = Array.from(poiEarnAgg.keys())
+  const earnedCheckinBadgeIds = Array.from(checkinEarnAgg.keys())
 
-  let poiBadges: PoiBadgeItem[] = []
-  if (earnedPoiBadgeIds.length > 0) {
-    const [{ data: earnedPoiBadgeRows }, { data: linkedPois }] = await Promise.all([
-      supabase.from('badges').select('*').in('id', earnedPoiBadgeIds).eq('type', 'poi').is('deleted_at', null),
-      supabase.from('poi').select('linked_badge_id, category').in('linked_badge_id', earnedPoiBadgeIds),
+  let checkinBadges: CheckinBadgeItem[] = []
+  if (earnedCheckinBadgeIds.length > 0) {
+    const [{ data: earnedCheckinBadgeRows }, { data: linkedPois }] = await Promise.all([
+      supabase.from('badges').select('*').in('id', earnedCheckinBadgeIds).eq('type', 'checkin').is('deleted_at', null),
+      supabase.from('poi').select('linked_badge_id, category').in('linked_badge_id', earnedCheckinBadgeIds),
     ])
 
     // 카테고리(산/대중교통 등)별로 그룹핑하기 위해 연결된 POI의 category를 조회.
@@ -186,9 +186,9 @@ export default async function BadgesPage({ searchParams }: Props) {
       ((poiCategories ?? []) as { slug: string; label: string }[]).map((c) => [c.slug, c.label])
     )
 
-    poiBadges = ((earnedPoiBadgeRows ?? []) as BadgeRow[]).map((badge) => {
+    checkinBadges = ((earnedCheckinBadgeRows ?? []) as BadgeRow[]).map((badge) => {
       const category = categoryByBadge.get(badge.id) ?? 'other'
-      const earn = poiEarnAgg.get(badge.id)!
+      const earn = checkinEarnAgg.get(badge.id)!
       return {
         badge,
         category,
@@ -204,7 +204,7 @@ export default async function BadgesPage({ searchParams }: Props) {
       badges={badges}
       itemBooks={books}
       itemBookProgress={itemBookProgress}
-      poiBadges={poiBadges}
+      checkinBadges={checkinBadges}
       initialTab={tab}
       highlightIds={highlightIds}
     />

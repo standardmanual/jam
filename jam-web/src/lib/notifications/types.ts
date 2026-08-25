@@ -20,7 +20,7 @@ export const NON_BUMPING_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new
   'badge_earned',
   'rare_badge_earned',
   'item_badge_earned',
-  'poi_badge_earned',
+  'checkin_badge_earned',
   'points_earned',
   'first_badge',
 ])
@@ -47,11 +47,12 @@ export interface NotificationPayloadMap {
   /** 3 아이템 배지 획득 — 착지점이 도감이 아니라 **인벤토리 인스턴스**라 item id를 담는다 */
   item_badge_earned: { inventory_item_ids: string[]; count: number; activity_id?: number }
   /**
-   * 4 POI 배지 획득 — 단건 렌더는 badge_id/poi_name, 묶음 렌더는 배열+count.
+   * 4 체크인 배지 획득 — 단건 렌더는 badge_id/poi_name, 묶음 렌더는 배열+count.
    * `is_first_earn`/`visit_count`는 대표(badge_id/poi_name)에 대응하는 값이다(20260826_001).
    * 없으면(과거 payload) 항상 최초 획득으로 간주해 하위호환한다.
+   * `poi_name`/`poi_names`는 체크인한 **지점** 이름이라 키명을 유지한다(20260826_004 경계 규칙 2).
    */
-  poi_badge_earned: {
+  checkin_badge_earned: {
     badge_id: string
     poi_name: string
     is_first_earn?: boolean

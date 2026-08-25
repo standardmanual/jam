@@ -269,9 +269,9 @@ describe('#21 mission_deadline', () => {
     expect(drafts).toHaveLength(0)
   })
 
-  it('단위가 없는 달성형(poi_visit)은 제외한다 — "1 남았어요"는 문장이 아니다', () => {
+  it('단위가 없는 달성형(checkin)은 제외한다 — "1 남았어요"는 문장이 아니다', () => {
     const drafts = selectMissionDeadlineDrafts({
-      missions: [{ ...distanceMission, mission_type: 'poi_visit', condition_json: { poi_id: 'p' } }],
+      missions: [{ ...distanceMission, mission_type: 'checkin', condition_json: { poi_id: 'p' } }],
       participations: [{ userId: 'u1', missionId: 'm1', progressValue: 0 }],
       completedPairs: new Set(),
       today,

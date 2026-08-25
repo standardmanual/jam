@@ -51,7 +51,7 @@ JAM!의 핵심 신뢰 루프는 "활동을 하면 정확히 그에 맞는 보상
 Supabase/PostgREST는 한 번의 조회에서 기본 1,000행까지만 반환한다. `.select('*')` 등으로
 전체를 가져오려 하면 에러 없이 뒤쪽 데이터가 그냥 잘려나간다.
 
-- 실제 사례: 2026-07-31 하루에만 `poi` 테이블 관련 3곳(POI 매칭, 드랍 지도 API, 장소 배지
+- 실제 사례: 2026-07-31 하루에만 `poi` 테이블 관련 3곳(지점 매칭, 드랍 지도 API, 체크인 배지
   탭)에서 각각 독립적으로 발견·수정됨 — 대량 등록된 산 POI가 반복적으로 누락됐었음
 - 이번 감사에서 4번째 사례 발견: 드랍엔진의 아이템배지 후보 조회가 900/1,000행까지 근접해
   있었음(20260811_002에서 페이지네이션으로 구조적 수정)
@@ -132,7 +132,7 @@ Supabase/PostgREST는 한 번의 조회에서 기본 1,000행까지만 반환한
 | `inventory` / `inventory_items` | DB 트리거 `handle_new_user()`(가입 시 자동 생성), `src/lib/drop-engine/index.ts`의 `fetchDropStructure`, `pickup_drop()` RPC |
 | `badges` 테이블(조건·보상 필드) | `src/lib/badge-engine/index.ts`(activity 타입), `src/lib/drop-engine/index.ts`(item 타입), `src/lib/strava/sync.ts`(poi 타입), `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` |
 | `award_points()` RPC / `point_*` 테이블 | `src/lib/points/index.ts`(유일한 호출 경로), 호출부 6곳(배지·드랍·미션×2·조합·어드민 지급) — 새 보상 지급 지점을 추가해도 반드시 이 함수를 거치게 할 것, 직접 INSERT/UPDATE 금지 |
-| `poi` 테이블(반경·좌표) | `src/lib/poi/matcher.ts`(활동-POI 매칭), `src/app/api/drops/route.ts`(드랍 지도), `src/app/api/poi-badges/route.ts`(장소 배지 탭) — 셋 다 max-rows 대응이 되어 있어야 함(패턴 3) |
+| `poi` 테이블(반경·좌표) | `src/lib/poi/matcher.ts`(활동-POI 매칭), `src/app/api/drops/route.ts`(드랍 지도), `src/app/api/checkin-badges/route.ts`(체크인 배지 탭) — 셋 다 max-rows 대응이 되어 있어야 함(패턴 3) |
 | `engine_decision_log` 이벤트 타입 | `src/lib/engine-log/index.ts`의 `EngineDecisionEvent` 유니언 — 새 실패/판정 지점을 로깅할 땐 여기 타입부터 추가 |
 | `users` 테이블 컬럼 | `src/types/database.ts`의 `UserRow` — `database.generated.ts`(자동 생성본)와 대조해 누락 없는지 확인(`npm run db:types`로 재생성) |
 

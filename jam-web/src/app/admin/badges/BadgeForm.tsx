@@ -14,12 +14,12 @@ import BackgroundGeneratorPreview, {
 } from './BackgroundGeneratorPreview'
 import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
 import { buildConditionJsonFromFields } from './conditionFormFields'
+import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
 
 /** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
 const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
 
 const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'trail_running', 'hiking', 'walking']
-const BADGE_TYPES: BadgeType[] = ['activity', 'item', 'poi']
 const RARITIES: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
 
 /** drop-engine의 CUMULATIVE_CONDITION_FIELDS와 동일 — 아이템 배지엔 이 필드들을 설정할 수 없다
@@ -158,7 +158,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     return () => { cancelled = true }
   }, [type, itemBookId, rarity, badge?.id])
 
-  // ── POI 배지 전용: 연결된 POI 목록 ──────────────────────────────
+  // ── 체크인 배지 전용: 연결된 지점(POI) 목록 ──────────────────────
   const [linkedPois, setLinkedPois] = useState<LinkablePoi[]>([])
   const [poiQuery, setPoiQuery] = useState('')
   const [poiResults, setPoiResults] = useState<LinkablePoi[]>([])
@@ -166,9 +166,9 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [poiSearched, setPoiSearched] = useState(false)
   const poiLinksLoadedRef = useRef(false)
 
-  // 수정 모드에서 poi 타입일 때 현재 연결된 POI를 최초 1회 불러온다
+  // 수정 모드에서 checkin 타입일 때 현재 연결된 지점을 최초 1회 불러온다
   useEffect(() => {
-    if (!isEdit || !badge || type !== 'poi' || poiLinksLoadedRef.current) return
+    if (!isEdit || !badge || type !== 'checkin' || poiLinksLoadedRef.current) return
     poiLinksLoadedRef.current = true
     let cancelled = false
     ;(async () => {
@@ -283,8 +283,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       return
     }
 
-    // POI 배지는 활동 조건을 쓰지 않는다 — 조건 빌더 값이 남아 있어도 무시
-    const conditionJson = type === 'poi' ? null : buildConditionJson()
+    // 체크인 배지는 활동 조건을 쓰지 않는다 — 조건 빌더 값이 남아 있어도 무시
+    const conditionJson = type === 'checkin' ? null : buildConditionJson()
     const condError = validateCondition(conditionJson)
     if (condError) {
       setError(condError)
@@ -371,8 +371,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '저장 실패')
 
-      // POI 배지: 저장된 배지 id로 연결 POI 목록을 통째로 반영
-      if (type === 'poi') {
+      // 체크인 배지: 저장된 배지 id로 연결 지점 목록을 통째로 반영
+      if (type === 'checkin') {
         const savedBadgeId: string | undefined = data.badge?.id ?? (isEdit ? badge.id : undefined)
         if (!savedBadgeId) throw new Error('저장된 배지 ID를 확인할 수 없어 POI 연결에 실패했습니다.')
         const linkRes = await fetch(`/api/admin/badges/${savedBadgeId}/poi-links`, {
@@ -450,7 +450,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
           >
             {BADGE_TYPES.map((t) => (
-              <option key={t} value={t} className="bg-white">{t}</option>
+              <option key={t} value={t} className="bg-white">{BADGE_TYPE_LABEL[t]}</option>
             ))}
           </select>
         </label>
@@ -653,8 +653,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         )}
       </div>
 
-      {/* condition_json 빌더 (activity + item 공통 — POI 배지는 조건 대신 연결 POI로 판정) */}
-      {type !== 'poi' && (
+      {/* condition_json 빌더 (activity + item 공통 — 체크인 배지는 조건 대신 연결 지점으로 판정) */}
+      {type !== 'checkin' && (
         <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
           <p className="text-sm font-semibold text-[#374151]">
             {type === 'item' ? '드랍 조건 (condition_json)' : '발급 조건 (condition_json)'}
@@ -904,14 +904,14 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         </div>
       )}
 
-      {/* 연결된 POI (poi 타입 전용) */}
-      {type === 'poi' && (
+      {/* 연결된 지점 (checkin 타입 전용) */}
+      {type === 'checkin' && (
         <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
           <div>
             <p className="text-sm font-semibold text-[#374151]">연결된 POI</p>
             <p className="text-xs text-[#6b7280] mt-1">
-              여기에 연결한 POI 반경을 액티비티 GPS 경로가 지나가면 이 배지가 발급됩니다. 여러 개 연결할 수 있고,
-              방문할 때마다 반복 발급됩니다. 판정 반경은 각 POI에 등록된 값을 그대로 사용합니다.
+              여기에 연결한 지점 반경을 액티비티 GPS 경로가 지나가면 이 배지가 발급됩니다. 여러 개 연결할 수 있고,
+              체크인할 때마다 반복 발급됩니다. 판정 반경은 각 지점에 등록된 값을 그대로 사용합니다.
             </p>
           </div>
 
