@@ -17,7 +17,6 @@ export interface PickupDrop {
   badge_rarity: string
   badge_image_url: string | null
   dropper_name: string | null
-  is_ambient?: boolean
   dropped_at: string
 }
 
@@ -77,7 +76,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
             {poiName}
           </p>
           <p className="text-[length:var(--text-caption)] text-text/50 mt-1">
-            {drop.is_ambient ? d.drops.foundNearby : t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
+            {t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
         </Card>
 

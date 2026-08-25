@@ -194,11 +194,16 @@ export interface InventoryItemRow {
   slotted_in: string | null
 }
 
+/**
+ * 레거시 — 전 행 'user'.
+ * 앰비언트(시스템) 드랍이 있던 시절의 구분자였으나 기능이 제거됐다(티켓 20260825_004).
+ * 컬럼은 DB에 남아 있다: assign_random_serial() 트리거와 poi_drops_source_consistency
+ * CHECK가 이 컬럼을 참조하고 있어, 제거하면 픽업 경로 전체를 다시 검증해야 한다.
+ */
 export type PoiDropSource = 'user' | 'system'
 
 export interface PoiDropRow {
   id: string
-  /** source='system'(앰비언트 드랍)이면 null */
   dropper_user_id: string | null
   poi_id: string
   badge_id: string
@@ -206,9 +211,8 @@ export interface PoiDropRow {
   picked_up_by: string | null
   picked_up_at: string | null
   is_available: boolean
-  /** source='system'(앰비언트 드랍)이면 null — 만료 없음 */
   expires_at: string | null
-  /** 'user' = 유저가 인벤토리에서 드랍, 'system' = 앰비언트 자동 배치 */
+  /** 레거시 — 전 행 'user' (기본값). PoiDropSource 주석 참고 */
   source: PoiDropSource
 }
 
@@ -466,19 +470,6 @@ export interface DropPolicyRow {
   completed_book_weight: number
   same_book_penalty: number
   last_piece_pity_threshold: number
-  updated_at: string
-}
-
-export interface AmbientDropPolicyRow {
-  id: number
-  rarity_common: number
-  rarity_rare: number
-  rarity_legend: number
-  target_coverage_ratio: number
-  min_target_total: number
-  max_target_total: number
-  max_active_per_poi: number
-  replenish_batch_size: number
   updated_at: string
 }
 
@@ -1008,12 +999,6 @@ export interface Database {
           source?: PoiDropSource
         }
         Update: Partial<Omit<PoiDropRow, 'id'>>
-        Relationships: []
-      }
-      ambient_drop_policy: {
-        Row: AmbientDropPolicyRow
-        Insert: Partial<AmbientDropPolicyRow> & { id: number }
-        Update: Partial<Omit<AmbientDropPolicyRow, 'id'>>
         Relationships: []
       }
       combination_recipes: {
