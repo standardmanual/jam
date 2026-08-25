@@ -8,17 +8,13 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type CSSProperties,
 } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckIcon, CloseIcon, InfoIcon } from './icons'
 import { cssDurationMs } from '@/lib/motion'
-import { isBottomOverlayOpen } from '@/lib/uiOverlay'
+import { useBottomOverlayReserved } from '@/lib/uiOverlay'
 
 type ToastType = 'success' | 'error' | 'info'
-
-/** 토스트가 붙는 화면 모서리. 토스트가 뜨는 순간 확정되고 사라질 때까지 바뀌지 않는다. */
-type ToastAnchor = 'bottom' | 'top'
 
 interface ToastItem {
   id: string
@@ -26,7 +22,6 @@ interface ToastItem {
   type: ToastType
   /** 닫힘 트랜지션 진행 중 — DOM에는 남아 있고 `.is-open`만 떨어진 상태 */
   closing: boolean
-  anchor: ToastAnchor
 }
 
 /** 마운트 게이트 전용 — 구독할 외부 스토어가 없으므로 아무것도 하지 않는 subscribe. */
@@ -79,9 +74,13 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
-/** 상·하단 두 앵커 컨테이너가 공유하는 클래스 — 위치(top/bottom)만 style로 달리 준다. */
-const CONTAINER_CLASS =
-  'fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none'
+/**
+ * 하단 앵커의 기본 여백(px, safe-area 제외) — 플로팅 탭바(safe-area+16px, 높이 64px)와
+ * 8px 간격을 둔 값. 하단 오버레이가 더 높이 점유하면 그 값 + 8px로 대체된다.
+ */
+const DEFAULT_BOTTOM_PX = 88
+/** 토스트와 아래 오버레이 사이 최소 간격(px). */
+const OVERLAY_GAP_PX = 8
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -96,6 +95,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     () => true,
     () => false
   )
+
+  // 20260826_001: 하단을 점유하는 오버레이(바텀시트 등)가 신고한 점유 높이. 시트 하단 액션 버튼과
+  // 토스트가 기하학적으로 포개져 버튼 탭이 토스트 디스미스로 먹히던 문제를 막는다.
+  // 스냅샷이 아니라 구독인 이유: 이미 떠 있는 토스트(3초) 위로 시트가 열리는 역방향 케이스도
+  // 방어해야 한다. 하단 앵커는 그대로이고 위치만 위로 밀려 올라가므로 튀어 보이지 않는다.
+  // (오버레이 열림/닫힘은 드문 이벤트라 이 구독으로 인한 Provider 재렌더도 그만큼만 일어난다)
+  const reservedBottom = useBottomOverlayReserved()
 
   // 닫을 때 곧바로 언마운트하면 닫힘 트랜지션이 보이지 않으므로,
   // closing 플래그로 `.is-open`만 떼고 --toast-close 후에 제거한다.
@@ -116,11 +122,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback(
     (message: string, type: ToastType = 'info') => {
       const id = `${Date.now()}-${Math.random()}`
-      // 20260826_001: 앵커는 "뜨는 순간"에 확정한다. 하단 오버레이(바텀시트)가 떠 있으면
-      // 시트 footer 버튼과 겹치지 않도록 상단으로 보낸다. 구독으로 실시간 반영하지 않는 이유는
-      // uiOverlay.ts의 `isBottomOverlayOpen` 주석 참고(살아 있는 토스트의 순간이동 방지).
-      const anchor: ToastAnchor = isBottomOverlayOpen() ? 'top' : 'bottom'
-      setToasts((prev) => [...prev, { id, message, type, closing: false, anchor }])
+      setToasts((prev) => [...prev, { id, message, type, closing: false }])
       const timer = setTimeout(() => dismiss(id), 3000)
       timerMap.current.set(id, timer)
     },
@@ -140,13 +142,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     info: <InfoIcon className="w-4 h-4" />,
   }
 
-  const rows = (anchor: ToastAnchor) =>
-    toasts
-      .filter((t) => t.anchor === anchor)
-      .map((t) => (
-        <ToastRow key={t.id} item={t} icon={iconMap[t.type]} onDismiss={() => dismiss(t.id)} />
-      ))
-
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
@@ -165,30 +160,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
         컨테이너는 pointer-events-none이고 토스트가 없으면 높이 0이라, 항상 렌더돼 있어도
         아래 오버레이 조작을 막지 않는다.
+
+        위치는 하단 앵커 하나뿐이다("행동이 일어난 곳 근처에서 위로 올라온다"). 기본값은 플로팅
+        탭바 위 88px이고, 하단을 더 높이 점유하는 오버레이가 신고돼 있으면 그 위 8px로 올라간다
+        — 높이 계산은 오버레이 자신이 하므로 여기에는 footer 높이 매직 넘버가 없다.
       */}
       {mounted &&
         createPortal(
-          <>
-            {/* 상단 앵커 — 하단 오버레이가 떠 있는 동안 뜬 토스트. TopNav(safe-area-inset-top +
-                56px) 바로 아래 8px. --toast-distance를 음수로 덮어써 진입 모션이 "위에서
-                내려온다"가 되게 한다(하단 앵커의 "아래에서 올라온다"와 대칭). */}
-            <div
-              className={CONTAINER_CLASS}
-              style={
-                {
-                  top: 'calc(env(safe-area-inset-top) + 56px + 8px)',
-                  '--toast-distance': '-16px',
-                } as CSSProperties
-              }
-            >
-              {rows('top')}
-            </div>
-
-            {/* 하단 앵커(기본) — 88px은 플로팅 탭바(safe-area+16px+64px) 위 여백 */}
-            <div className={CONTAINER_CLASS} style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}>
-              {rows('bottom')}
-            </div>
-          </>,
+          <div
+            className="fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none"
+            style={{
+              bottom: `calc(env(safe-area-inset-bottom) + ${Math.max(
+                DEFAULT_BOTTOM_PX,
+                reservedBottom + OVERLAY_GAP_PX
+              )}px)`,
+            }}
+          >
+            {toasts.map((t) => (
+              <ToastRow key={t.id} item={t} icon={iconMap[t.type]} onDismiss={() => dismiss(t.id)} />
+            ))}
+          </div>,
           document.body
         )}
     </ToastContext.Provider>

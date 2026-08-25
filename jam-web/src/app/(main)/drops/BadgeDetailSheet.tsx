@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { useEffect } from 'react'
 import Button from '@/components/ui/Button'
 import { Card } from '@ds/components/cards/Card'
 import BottomSheet from '@/components/ui/BottomSheet'
@@ -8,6 +9,7 @@ import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'
+import { pushBottomOverlay } from '@/lib/uiOverlay'
 
 // 픽업 대상 배지 (DropsClient의 DropItem과 동일 형태)
 export interface PickupDrop {
@@ -30,12 +32,23 @@ interface BadgeDetailSheetProps {
 
 const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
 
+/** 스크롤 영역 아래 여백(safe-area 제외) — 플로팅 탭바(16+64) 위 12px. BottomSheet footer와 같은 관례. */
+const ACTION_BOTTOM_GAP_PX = 16 + 64 + 12
+/** 액션 버튼 높이 — Button의 min-h-11(44px). */
+const ACTION_BUTTON_HEIGHT_PX = 44
+
 // 기존 /badges/[id] 페이지의 상세 레이아웃을 오버레이(시트) 형태로 재사용.
 // 페이지 이동이 아니라 /drops 위에 겹쳐 뜨므로 지도 상태가 보존된다.
 export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, onCancel }: BadgeDetailSheetProps) {
   const rarity = (KNOWN_RARITIES.includes(drop.badge_rarity as BadgeRarity)
     ? (drop.badge_rarity as BadgeRarity)
     : 'common')
+
+  // 20260826_001: 이 시트는 BottomSheet의 footer prop을 쓰지 않고 스크롤 영역 맨 아래에 직접
+  // 픽업/취소 버튼을 놓는다. 그래서 BottomSheet가 대신 신고해줄 수 없어 여기서 "화면 하단부터
+  // 버튼 상단까지의 높이"를 직접 신고한다 — 픽업 실패 토스트가 이 버튼들과 거의 완전히 포개져
+  // 버튼 탭이 토스트 디스미스로 먹히던 문제를 막는다(Toast.tsx / uiOverlay.ts 참고).
+  useEffect(() => pushBottomOverlay(ACTION_BOTTOM_GAP_PX + ACTION_BUTTON_HEIGHT_PX), [])
 
   return (
     <BottomSheet open onClose={onCancel} detent="full" showCloseButton={false}>
@@ -44,7 +57,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
         /* footer를 따로 분리하지 않고 한 페이지(스크롤 영역)로 구성.
            맨 아래 버튼까지 탭바(safe-area+16px+64px) 높이만큼 여백을 둬서,
            화면이 작아 다 안 보이면 스크롤해서 버튼을 볼 수 있게 한다. */
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)' }}
+        style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${ACTION_BOTTOM_GAP_PX}px)` }}
       >
         {/* 닫기 */}
         <button
