@@ -49,7 +49,7 @@ export default async function MissionsPage() {
   const visibilityContext = await loadMissionVisibilityContext(
     user.id,
     ongoingMissions,
-    { completedMissionIds: new Set(completedIds) },
+    { completedMissionIds: new Set(completedIds), participatedMissionIds: participationSet },
   )
   const visibilityMap = resolveMissionVisibilityMap(ongoingMissions, visibilityContext)
 
