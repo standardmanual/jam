@@ -200,6 +200,23 @@ async function grantBadge(
   inventoryId: string,
   badgeId: string
 ): Promise<{ id: string; name: string; rarity: string } | null> {
+  // 지급 전에 배지 존재/삭제 여부를 먼저 확인한다 — INSERT를 먼저 하고 나중에
+  // deleted_at 필터로 조회하면, 결과가 소프트 삭제 상태일 때 inventory_items 행은
+  // 이미 커밋됐는데 API는 실패로 응답하는 지급-응답 불일치가 발생한다(017 게이트 리뷰
+  // FAIL 사유). 삭제된 배지면 INSERT 자체를 생략해 "지급 안 함 = 실패 응답"을 일치시킨다.
+  const { data: badgeRaw } = await supabase
+    .from('badges')
+    .select('id, name, rarity')
+    .eq('id', badgeId)
+    .is('deleted_at', null)
+    .single()
+  const badge = (badgeRaw as { id: string; name: string; rarity: string } | null) ?? null
+
+  if (!badge) {
+    console.error('[combineItems] 결과 배지가 삭제 상태라 지급을 생략함:', badgeId)
+    return null
+  }
+
   const q = supabase.from('inventory_items')
   const payload = {
     inventory_id: inventoryId,
@@ -215,13 +232,7 @@ async function grantBadge(
     return null
   }
 
-  const { data: badgeRaw } = await supabase
-    .from('badges')
-    .select('id, name, rarity')
-    .eq('id', badgeId)
-    .is('deleted_at', null)
-    .single()
-  return (badgeRaw as { id: string; name: string; rarity: string } | null) ?? null
+  return badge
 }
 
 async function getStreak(supabase: ReturnType<typeof createServiceClient>, userId: string): Promise<number> {
