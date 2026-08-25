@@ -134,6 +134,17 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 > 미션보상배지 3개가 발급되고 본 배지 Rare/Legend/Mythic 게이트가 전부 열리는** 상태였다
 > (2026-08-25 발견). 잘못 발급된 이력은 `seed_reset_levelup_missions_20260825.sql`로 회수한다.
 
+**데이터 계약 검증 계층** (2026-08-25, 티켓 20260825_029): 위 3중 방어는 084 사고의 *증상*을
+막지만, "condition_json에 런타임 데이터 계약이 없다"는 근본 원인은 별도로 다룬다.
+`MEASURABLE_CONDITION_KEYS`는 `src/lib/badge-engine/condition-schema.ts`로 이전해 DB
+CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허용 필드 목록·검증 계층 3단은
+[`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) 상단 "데이터 계약 검증" 안내, §2~§3 참조).
+요약: ① DB CHECK 제약(`badges_condition_json_known_keys`)이 허용 목록 밖의 키가 담긴
+`condition_json`의 INSERT/UPDATE를 거부(최후 방어선, 마이그레이션 포함 모든 쓰기 경로 커버) ②
+어드민 API(`findUnknownConditionKeyError`)가 저장 전에 한국어 에러로 먼저 안내 ③
+`BadgeForm.tsx`가 `mission_reward`를 조건 필드와 시각적으로 구분된 체크박스로 노출해, 폼
+라운드트립(로드→그대로 저장) 중 플래그가 조용히 유실되던 회귀도 함께 수정했다.
+
 **소프트 삭제와 보유 이력의 관계** (2026-08-25, 티켓 20260825_021): 배지 정의가 나중에
 소프트 삭제(`badges.deleted_at IS NOT NULL`)되어도, 유저가 이미 획득한 이력은 §2.5
 진행 트랙 최고 티어 판정과 위 선행 배지 게이트 판정에서 계속 유효하다. `evaluateBadgesDetailed()`는

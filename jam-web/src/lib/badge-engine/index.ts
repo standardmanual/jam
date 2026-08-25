@@ -15,6 +15,7 @@ import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
 import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, DayOfWeek, UserActivityBadgeRow } from '@/types/database'
+import { MEASURABLE_CONDITION_KEYS } from './condition-schema'
 
 const RARITY_TIER: Record<string, number> = { common: 1, rare: 2, legend: 3, mythic: 4 }
 
@@ -101,20 +102,9 @@ const PER_ACTIVITY_KEYS = [
   'temperature_min_c', 'temperature_max_c', 'weekend_duration_hours',
 ] as const
 
-/**
- * 엔진이 실제로 "수치 검사"를 수행하는 필드 목록 (티켓 20260825_028).
- *
- * 이 중 하나도 없는 조건은 어떤 검사 블록에도 걸리지 않아 `evaluateConditionDetailed`
- * 마지막 줄의 `pass: true`로 그대로 떨어진다 — 즉 "활동 1건만 있으면 무조건 발급"이 된다.
- * 실제로 마이그레이션 084가 미션보상배지 15종에 `{"mission_reward": true}`만 넣으면서
- * 미션 게이팅이 통째로 무력화된 사고가 있었다. 필터 성격 필드(activity_type·day_of_week)나
- * 엔진이 모르는 필드만 남은 조건은 발급하지 않는다.
- */
-const MEASURABLE_CONDITION_KEYS = [
-  ...PER_ACTIVITY_KEYS,
-  'total_count', 'streak_days', 'weekly_count', 'month', 'monthly_km',
-  'season_count', 'season_count_all', 'active_days_count', 'time_range',
-] as const
+// 엔진이 실제로 "수치 검사"를 수행하는 필드 목록(MEASURABLE_CONDITION_KEYS)은
+// condition-schema.ts로 이전했다(티켓 20260825_029) — DB CHECK 제약·어드민 API 검증과
+// 단일 소스를 공유하기 위함. 정의·배경 설명은 그 파일 참조.
 
 function inTimeRange(activity: NormalizedActivity, range: { start: string; end: string }): boolean {
   const toMin = (hhmm: string) => {

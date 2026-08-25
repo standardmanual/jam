@@ -13,18 +13,10 @@ import BackgroundGeneratorPreview, {
   type BackgroundGeneratorLivePreviewState,
 } from './BackgroundGeneratorPreview'
 import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
+import { buildConditionJsonFromFields } from './conditionFormFields'
 
 /** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
 const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
-
-/** "5:30" 같은 mm:ss 페이스 입력을 초(sec/km)로 변환. 형식이 어긋나면 null */
-function parsePaceToSec(input: string): number | null {
-  const match = input.trim().match(/^(\d+):([0-5]?\d)$/)
-  if (!match) return null
-  const min = parseInt(match[1], 10)
-  const sec = parseInt(match[2], 10)
-  return min * 60 + sec
-}
 
 const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'trail_running', 'hiking', 'walking']
 const BADGE_TYPES: BadgeType[] = ['activity', 'item', 'poi']
@@ -121,6 +113,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [condPrerequisiteNames, setCondPrerequisiteNames] = useState<string>(
     (initCond.prerequisite_badge_names ?? []).join(', ')
   )
+  // 메타데이터 필드 — 조건 필드와 달리 발급 판정에 관여하지 않는다(티켓 20260825_029).
+  // buildConditionJson이 이 state 없이 하드코딩된 조건 필드만 조립하던 회귀가 있었다 —
+  // 미션보상배지를 어드민에서 수정 저장하면 mission_reward 플래그가 조용히 유실됐다.
+  const [condMissionReward, setCondMissionReward] = useState<boolean>(initCond.mission_reward === true)
 
   const [factionId, setFactionId] = useState(badge?.faction_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
@@ -218,35 +214,29 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     setLinkedPois((prev) => prev.filter((p) => p.id !== poiId))
   }
 
-  const buildConditionJson = (): BadgeCondition | null => {
-    const cond: BadgeCondition = {}
-    if (condDistanceKm) cond.distance_km = parseFloat(condDistanceKm)
-    if (condTotalCount) cond.total_count = parseInt(condTotalCount, 10)
-    if (condElevationM) cond.elevation_gain_m = parseFloat(condElevationM)
-    if (condMinSpeedKmh) cond.min_speed_kmh = parseFloat(condMinSpeedKmh)
-    if (condMaxPace) {
-      const paceSec = parsePaceToSec(condMaxPace)
-      if (paceSec !== null) cond.max_pace_sec_per_km = paceSec
-    }
-    if (condStreakDays) cond.streak_days = parseInt(condStreakDays, 10)
-    if (condActivityType) cond.activity_type = condActivityType as ActivityType
-    if (condDurationMinutes) cond.duration_minutes = parseInt(condDurationMinutes, 10)
-    if (condWeekendDurationHours) cond.weekend_duration_hours = parseFloat(condWeekendDurationHours)
-    if (condWeeklyCount) cond.weekly_count = parseInt(condWeeklyCount, 10)
-    if (condMonth) cond.month = parseInt(condMonth, 10)
-    if (condMonthlyKm) cond.monthly_km = parseFloat(condMonthlyKm)
-    if (condSeasonCount) cond.season_count = parseInt(condSeasonCount, 10)
-    if (condSeason) cond.season = condSeason as BadgeCondition['season']
-    if (condTempMinC) cond.temperature_min_c = parseFloat(condTempMinC)
-    if (condTempMaxC) cond.temperature_max_c = parseFloat(condTempMaxC)
-    if (condTimeStart && condTimeEnd) cond.time_range = { start: condTimeStart, end: condTimeEnd }
-    const prereqs = condPrerequisiteNames
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-    if (prereqs.length > 0) cond.prerequisite_badge_names = prereqs
-    return Object.keys(cond).length > 0 ? cond : null
-  }
+  const buildConditionJson = (): BadgeCondition | null =>
+    buildConditionJsonFromFields({
+      distanceKm: condDistanceKm,
+      totalCount: condTotalCount,
+      elevationM: condElevationM,
+      minSpeedKmh: condMinSpeedKmh,
+      maxPace: condMaxPace,
+      streakDays: condStreakDays,
+      activityType: condActivityType,
+      durationMinutes: condDurationMinutes,
+      weekendDurationHours: condWeekendDurationHours,
+      weeklyCount: condWeeklyCount,
+      month: condMonth,
+      monthlyKm: condMonthlyKm,
+      seasonCount: condSeasonCount,
+      season: condSeason,
+      tempMinC: condTempMinC,
+      tempMaxC: condTempMaxC,
+      timeStart: condTimeStart,
+      timeEnd: condTimeEnd,
+      prerequisiteNames: condPrerequisiteNames,
+      missionReward: condMissionReward,
+    })
 
   const toggleActivityType = (t: ActivityType) => {
     setActivityTypes((prev) =>
@@ -885,6 +875,24 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
               placeholder="예: 첫 페달, 아스팔트 입문 (Rare 이상에만 설정)"
             />
             <span className="text-xs text-[#898989]">이 배지를 받으려면 나열된 배지 중 하나를 먼저 보유해야 합니다.</span>
+          </label>
+
+          {/* 메타데이터 필드 — 위 조건 필드들과 성격이 다르다(발급 판정에 관여하지 않음)는 것을
+              시각적으로도 드러내기 위해 별도 색상 박스로 구분한다 (티켓 20260825_029) */}
+          <label className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={condMissionReward}
+              onChange={(e) => setCondMissionReward(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-amber-600"
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-amber-900">미션 보상 배지 (mission_reward)</span>
+              <span className="text-xs text-amber-800/80">
+                미션 완료 시에만 지급되는 배지예요. 일반 배지 엔진 평가 대상이 아니며, 위 조건
+                필드는 이 배지의 발급 여부에 영향을 주지 않아요.
+              </span>
+            </span>
           </label>
 
           <div className="bg-[#f5f5f5] border border-[#e5e7eb] rounded-xl p-3">
