@@ -302,6 +302,81 @@ JAM!은 **모바일 전용 앱**이다.
 - 데스크탑 뷰에서는 중앙 컨테이너(max-width: 430px) 내에서만 렌더
 - 가로 스크롤 절대 금지. 넘치는 콘텐츠는 `overflow-x: hidden` 또는 수직 재배치.
 
+### z-index 레이어 체계
+
+> 신설: 2026-08-26 (티켓 20260826_003). 근거: 티켓 20260825_039·20260826_005에서
+> 이 규칙이 문서화돼 있지 않아 같은 사고가 **네 차례** 반복됐다.
+
+#### 층 정의 (2026-08-26 실측)
+
+| z | 층 | 대표 구현 |
+|---|---|---|
+| `0`~`10` | 페이지 콘텐츠·섹션 | `badges/[id]/page.tsx`의 info/action 섹션, 지도 마커(인라인 `zIndex: 3~10`) |
+| `20` | 페이지 내 국소 오버레이 | (현재 1곳) |
+| `30` | 전체화면 모달(비 시트) | `PoiCarouselModal`, 어드민 `AdminSidebar` |
+| `40` | 고정 크롬 | `TabBar`, `FeedSection` 백드롭, 어드민 `AdminHeader` |
+| `50` | 시트·다이얼로그 오버레이 | `BottomSheet`, Radix `dialog`/`sheet`/`alert-dialog`/`select`, `FeedSection` 패널, `BadgeShareButton` |
+| `60` | 최상위 피드백 | `Toast` 컨테이너, `BadgeRevealOverlay`(인라인 `OVERLAY_Z_INDEX = 60`) |
+| `9999` | 전역 라우팅 로더 | `NavigationLoader` |
+
+#### 규칙
+
+**1. 동일 z에서는 DOM 순서가 승자를 정한다.**
+따름정리: **`document.body` 포털은 항상 맨 뒤에 붙으므로 같은 z의 비포털 요소를 이긴다.**
+2026-08-25 사고가 정확히 이것이었다 — `BottomSheet`를 body로 포털링하자 같은 `z-50`이던
+토스트가 DOM 순서에서 밀려 불투명한 시트 뒤로 사라졌고, 픽업 실패 사유가 화면에 뜨지 않았다.
+
+**2. `z-index: auto`인 조상은 스태킹 컨텍스트를 만들지 않는다. 값이 있으면 만든다.**
+`position: relative`만으로는 컨텍스트가 생기지 않지만 `relative z-10`은 생긴다.
+컨텍스트 **안에서는** 자식의 z가 아무리 커도 바깥에서는 그 컨텍스트의 z로 취급된다.
+2026-08-25 사고의 발단 — `relative z-10` 섹션 안의 `z-50` 시트가 루트의 `z-40` 탭바에 가려졌다.
+
+**3. 레이어 참여자는 `document.body` 직속 포털로 만든다.**
+조상 구조에 대한 의존을 없애는 유일한 확실한 방법이다. 현재 `BottomSheet`·`Toast`가 이 방식이며,
+둘 다 body 직속이라 DOM 순서와 무관하게 `60 > 50`이 확정된다.
+포털은 SSR에서 `document`가 없으므로 마운트 게이트가 필요하다 — 이 저장소는
+`useSyncExternalStore(subscribeNoop, () => true, () => false)` 관용구를 쓴다
+(`useEffect` + `setState`는 eslint `react-hooks/set-state-in-effect`에 걸린다).
+
+**4. 화면 하단을 점유하는 오버레이는 자기 점유 높이를 신고한다.**
+`src/lib/uiOverlay.ts`의 `pushBottomOverlay(reservedBottomPx)`. 토스트가 그만큼 위로 올라가
+시트 하단 액션 버튼을 가리지 않는다. 신고값은 **상수로 추정하지 말고 DOM을 실측**한다
+(아래 5번).
+
+**5. 기하값은 추정하지 말고 실측한다.**
+20260826_005에서 값을 코드로 추정했다가 틀린 사고가 세 번 났다:
+
+| 추정 | 실제 |
+|---|---|
+| "`footer` prop 사용처가 없으니 겹칠 일 없음" | prop 없이 같은 좌표를 점유하는 시트가 있었음 |
+| 상단 앵커 `56px` = "TopNav 아래" | 그 화면(`/drops`)에는 TopNav가 없음 |
+| 버튼 높이 = `min-h-11`(44px) | `min-h`는 최소값일 뿐, 실제 52px |
+
+`min-h-*`·`py-*` 조합으로 높이를 역산하지 말고 `offsetHeight`로 재고, 변할 수 있으면
+`ResizeObserver`로 추종한다. `getBoundingClientRect`는 트랜지션 `transform`과 스크롤에
+흔들리므로 레이아웃 값이 필요하면 `offsetTop`/`offsetHeight`를 쓴다.
+
+**6. 트랜지션 중 위치를 계산에 넣는다.**
+`.t-toast`는 진입/퇴장 동안 최종 위치보다 `--toast-distance`(16px)만큼 아래에 그려진다.
+간격을 그보다 좁게 잡으면 애니메이션 250~350ms 동안 아래 요소를 덮고,
+그 사각형이 `pointer-events-auto`면 탭까지 가로챈다.
+
+#### 새 오버레이를 추가할 때 (체크리스트)
+
+- [ ] 위 표의 **기존 층에 배치**한다. 새 값을 도입해야 하면 **이 표를 함께 갱신**한다.
+- [ ] `document.body` 포털로 만들었는가? 아니면 조상에 스태킹 컨텍스트가 없음을 확인했는가?
+- [ ] 화면 하단을 점유하면 `pushBottomOverlay()`로 신고했는가?
+- [ ] 같은 z에 다른 참여자가 있는가? 있다면 DOM 순서로 갈리는 **취약한 동률**이다.
+
+#### 알려진 취약점
+
+`BadgeRevealOverlay`(인라인 `zIndex: 60`)와 `Toast`(`z-[60]`)가 **동률**이다.
+현재는 토스트가 body 포털이라 이기고, 두 화면이 상호 배타적(배지 0개면 토스트, 1개 이상이면
+오버레이)이라 실제 충돌은 없다. 다만 **DOM 순서로만 갈리는 상태**이므로 위 규칙 1에 해당한다.
+
+`PoiCarouselModal`(`z-30`)은 하단 점유(`safe+92px`)를 신고하지 않아, 시트 없이 캐러셀만 열린
+상태에서 뜨는 토스트는 여전히 카드 하단과 겹친다.
+
 ---
 
 ## 6. UX Rules
