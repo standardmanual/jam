@@ -481,6 +481,9 @@ Phase 16에서 스키마만 추가됐던 `type='poi'` 배지에 실제 데이터
 - **등급**: 전부 `rarity='common'`.
 - **연결**: `poi.linked_badge_id`에 신규 생성된 배지 id를 1:1로 세팅 (다대일 연결 UI는 어드민 `/admin/badges/[id]/poi-links`에서 계속 지원되며, 이번 일괄 생성과는 별개로 이후 개별 POI를 재연결할 수도 있음).
 - **반복 획득**: 기존 설계대로 `user_poi_badge_earns`에 매 통과마다 새 행 적재 (평생 1회 제약 없음).
+  **[[20260826_001]]부터 재방문(2회차 이상 획득)도 피드·알림에 "{POI명}을(를) {N}번째 방문했어요"
+  문구로 노출된다** (기존에는 최초 획득만 피드에 기록되고 재방문은 알림에만 고정 문구로 떴다).
+  상세 문구·N 산정 기준(badge_id 단위)·묶음 알림 합성 규칙은 `Specs/PRD/Notification/PRD.md` §3 참조.
 - **재현용 SQL**: `supabase/seed_poi_badges_20260727.sql` (INSERT/UPDATE 전량 기록, service_role 키로 직접 실행됨).
 
 **POI 매칭 반경 — 카테고리별 기준값 (2026-08-24 기준)**
