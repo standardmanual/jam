@@ -1,5 +1,5 @@
 /**
- * BadgeForm 조건 빌더 — mission_reward 라운드트립 회귀 테스트 (티켓 20260825_029)
+ * BadgeForm 조건 빌더 — mission_reward 라운드트립 회귀 테스트 (티켓 20260825_031)
  *
  * 배경: buildConditionJson(현 buildConditionJsonFromFields)이 빈 객체에서 시작해
  * 하드코딩된 필드만 조립하는데 mission_reward용 입력 state가 없었다. 그 결과 미션보상배지

@@ -1,4 +1,4 @@
--- 102: badges.condition_json 허용 필드 CHECK 제약 도입 (티켓 20260825_029)
+-- 102: badges.condition_json 허용 필드 CHECK 제약 도입 (티켓 20260825_031)
 --
 -- 배경: 마이그레이션 084_badge_condition_cleanup.sql이 배지 상세화면 표시용으로 미션보상배지
 -- 15종에 {"mission_reward": true}를 UPDATE했는데, badge-engine의 evaluateConditionDetailed가

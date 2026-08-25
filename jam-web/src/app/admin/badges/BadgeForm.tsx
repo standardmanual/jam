@@ -113,7 +113,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [condPrerequisiteNames, setCondPrerequisiteNames] = useState<string>(
     (initCond.prerequisite_badge_names ?? []).join(', ')
   )
-  // 메타데이터 필드 — 조건 필드와 달리 발급 판정에 관여하지 않는다(티켓 20260825_029).
+  // 메타데이터 필드 — 조건 필드와 달리 발급 판정에 관여하지 않는다(티켓 20260825_031).
   // buildConditionJson이 이 state 없이 하드코딩된 조건 필드만 조립하던 회귀가 있었다 —
   // 미션보상배지를 어드민에서 수정 저장하면 mission_reward 플래그가 조용히 유실됐다.
   const [condMissionReward, setCondMissionReward] = useState<boolean>(initCond.mission_reward === true)
@@ -878,7 +878,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           </label>
 
           {/* 메타데이터 필드 — 위 조건 필드들과 성격이 다르다(발급 판정에 관여하지 않음)는 것을
-              시각적으로도 드러내기 위해 별도 색상 박스로 구분한다 (티켓 20260825_029) */}
+              시각적으로도 드러내기 위해 별도 색상 박스로 구분한다 (티켓 20260825_031) */}
           <label className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 cursor-pointer">
             <input
               type="checkbox"

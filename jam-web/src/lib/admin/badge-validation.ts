@@ -18,7 +18,7 @@ export function findCumulativeConditionError(type: string, condition: BadgeCondi
  * condition_json에 badge-engine이 모르는 필드가 있으면 저장 단계에서 미리 막는다.
  * DB CHECK 제약(badges_condition_json_known_keys, 마이그레이션 102)이 최후 방어선이지만,
  * 그 위반 시 raw Postgres 에러가 그대로 어드민 사용자에게 노출되면 불친절하다 — API
- * 사전 검증으로 한국어 에러 메시지를 먼저 준다(티켓 20260825_029).
+ * 사전 검증으로 한국어 에러 메시지를 먼저 준다(티켓 20260825_031).
  *
  * 배경: 마이그레이션 084가 미션보상배지 15종에 넣은 {"mission_reward": true}처럼, 엔진이
  * 모르는 필드만 있는 조건이 "검사 스킵 → pass:true"로 새어나가 미션 없이 배지가 발급되는

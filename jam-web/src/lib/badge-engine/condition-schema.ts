@@ -1,5 +1,5 @@
 /**
- * condition_json 데이터 계약 — 허용 필드 단일 소스 (티켓 20260825_029)
+ * condition_json 데이터 계약 — 허용 필드 단일 소스 (티켓 20260825_031)
  *
  * `badges.condition_json`에 들어올 수 있는 필드를 이 파일 하나로 정의한다. DB CHECK 제약
  * (`supabase/migrations/102_condition_json_check_constraint.sql`), 어드민 API 검증
@@ -49,7 +49,7 @@ export const MEASURABLE_CONDITION_KEYS = [
  * 발급 후보 활동군을 좁히는 "필터 전용" 필드 — 그 자체만으로는 pass/fail을 만들지 않고
  * `MEASURABLE_CONDITION_KEYS` 중 최소 하나와 함께 있어야 실제로 평가된다.
  *
- * `season`은 티켓 20260825_029 원문 스펙에는 나열돼 있지 않았으나, `BadgeCondition`
+ * `season`은 티켓 20260825_031 원문 스펙에는 나열돼 있지 않았으나, `BadgeCondition`
  * 필드 목록과의 컴파일 타임 동기화 체크(하단 `AssertAllConditionKeysCovered`)에서 누락이
  * 발견돼 추가했다 — `season_count`의 짝 필드로, 단독으로는 판정에 관여하지 않아 필터
  * 전용으로 분류한다(구현 중 발견, 작업 요약의 alerts 참고).

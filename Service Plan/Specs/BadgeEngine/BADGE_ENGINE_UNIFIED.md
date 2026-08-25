@@ -134,7 +134,7 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 > 미션보상배지 3개가 발급되고 본 배지 Rare/Legend/Mythic 게이트가 전부 열리는** 상태였다
 > (2026-08-25 발견). 잘못 발급된 이력은 `seed_reset_levelup_missions_20260825.sql`로 회수한다.
 
-**데이터 계약 검증 계층** (2026-08-25, 티켓 20260825_029): 위 3중 방어는 084 사고의 *증상*을
+**데이터 계약 검증 계층** (2026-08-25, 티켓 20260825_031): 위 3중 방어는 084 사고의 *증상*을
 막지만, "condition_json에 런타임 데이터 계약이 없다"는 근본 원인은 별도로 다룬다.
 `MEASURABLE_CONDITION_KEYS`는 `src/lib/badge-engine/condition-schema.ts`로 이전해 DB
 CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허용 필드 목록·검증 계층 3단은
