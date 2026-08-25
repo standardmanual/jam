@@ -381,7 +381,7 @@ describe('⑧ 계정·시스템', () => {
 })
 
 describe('착지점 — type + payload로 런타임 계산 (PRD §3)', () => {
-  it('#1 단건은 배지 상세, 묶음은 탭 이동만(하이라이트 없음, 20260826_002)', () => {
+  it('#1 단건은 배지 상세, 묶음은 탭 이동만(하이라이트 없음, 20260826_006)', () => {
     expect(notificationTarget(view('badge_earned', { badge_ids: ['b1'] })).href).toBe('/badges/b1')
     expect(notificationTarget(view('badge_earned', { badge_ids: ['b1', 'b2'] })).href).toBe(
       '/badges?tab=activity'
@@ -397,7 +397,7 @@ describe('착지점 — type + payload로 런타임 계산 (PRD §3)', () => {
     ).toBe('/inventory')
   })
 
-  it('#4 묶음은 POI 탭 이동만(하이라이트 없음, 20260826_002)', () => {
+  it('#4 묶음은 POI 탭 이동만(하이라이트 없음, 20260826_006)', () => {
     expect(
       notificationTarget(view('poi_badge_earned', { badge_ids: ['b1', 'b2'] })).href
     ).toBe('/badges?tab=poi')

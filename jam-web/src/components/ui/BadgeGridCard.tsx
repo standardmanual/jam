@@ -24,7 +24,7 @@ export interface BadgeGridCardProps {
   /**
    * 컬렉션 슬롯 장착 모드(`/collections/[id]?slot=1`)에서 "지금 넣을 수 있는 칸"을
    * 짚어준다(`SlotGrid.tsx`). `selected`(선택 상태)와 의미가 달라 별도 prop으로 둔다.
-   * (알림함 배지/인벤토리 목록 착지 시의 최근 획득 하이라이트는 20260826_002에서 제거됨)
+   * (알림함 배지/인벤토리 목록 착지 시의 최근 획득 하이라이트는 20260826_006에서 제거됨)
    */
   highlighted?: boolean
   className?: string
