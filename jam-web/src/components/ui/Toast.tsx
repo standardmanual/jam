@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { CheckIcon, CloseIcon, InfoIcon } from './icons'
-import { cssDurationMs } from '@/lib/motion'
+import { cssDurationMs, cssLengthPx } from '@/lib/motion'
 import { useBottomOverlayReserved } from '@/lib/uiOverlay'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -79,8 +79,24 @@ const ToastContext = createContext<ToastContextValue | null>(null)
  * 8px 간격을 둔 값. 하단 오버레이가 더 높이 점유하면 그 값 + 8px로 대체된다.
  */
 const DEFAULT_BOTTOM_PX = 88
-/** 토스트와 아래 오버레이 사이 최소 간격(px). */
-const OVERLAY_GAP_PX = 8
+
+/**
+ * 토스트와 아래 오버레이 사이 최소 간격(px) = `--toast-distance`(globals.css, 16px).
+ *
+ * 진입/퇴장 트랜지션 동안 `.t-toast`는 최종 위치보다 `--toast-distance`만큼 **아래**에
+ * 그려진다(transitions.css). 간격이 그보다 작으면 애니메이션 250~350ms 동안 토스트가 아래
+ * 버튼 위를 덮고, 그 사각형은 `pointer-events-auto`라 그 사이 탭이 버튼 대신 토스트
+ * 디스미스로 먹힌다. 그래서 간격을 별도 상수로 두지 않고 같은 토큰을 그대로 읽어 쓴다.
+ * 토큰은 정적이라 한 번만 읽어 캐시한다(렌더마다 스타일 재계산하지 않도록).
+ */
+const OVERLAY_GAP_FALLBACK_PX = 16
+let cachedOverlayGapPx: number | null = null
+function overlayGapPx(): number {
+  if (cachedOverlayGapPx === null) {
+    cachedOverlayGapPx = cssLengthPx('--toast-distance', OVERLAY_GAP_FALLBACK_PX)
+  }
+  return cachedOverlayGapPx
+}
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -162,8 +178,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         아래 오버레이 조작을 막지 않는다.
 
         위치는 하단 앵커 하나뿐이다("행동이 일어난 곳 근처에서 위로 올라온다"). 기본값은 플로팅
-        탭바 위 88px이고, 하단을 더 높이 점유하는 오버레이가 신고돼 있으면 그 위 8px로 올라간다
-        — 높이 계산은 오버레이 자신이 하므로 여기에는 footer 높이 매직 넘버가 없다.
+        탭바 위 88px이고, 하단을 더 높이 점유하는 오버레이가 신고돼 있으면 그 위 --toast-distance
+        만큼 띄운다 — 높이 실측은 오버레이 자신이 하므로 여기에는 footer 높이 매직 넘버가 없다.
       */}
       {mounted &&
         createPortal(
@@ -172,7 +188,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             style={{
               bottom: `calc(env(safe-area-inset-bottom) + ${Math.max(
                 DEFAULT_BOTTOM_PX,
-                reservedBottom + OVERLAY_GAP_PX
+                reservedBottom + overlayGapPx()
               )}px)`,
             }}
           >

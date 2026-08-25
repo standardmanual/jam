@@ -18,6 +18,15 @@ export function cssDurationMs(name: string, fallback: number): number {
   return raw.endsWith('ms') ? value : value * 1000
 }
 
+/** `--toast-distance` 같은 CSS 길이 토큰을 픽셀 숫자로 읽습니다(px 단위 토큰 전용). */
+export function cssLengthPx(name: string, fallback: number): number {
+  if (typeof window === 'undefined') return fallback
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  if (!raw) return fallback
+  const value = parseFloat(raw)
+  return Number.isFinite(value) ? value : fallback
+}
+
 /** OS 수준에서 모션 축소를 요청한 사용자인지. */
 export function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined') return false
