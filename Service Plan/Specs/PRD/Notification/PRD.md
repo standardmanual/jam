@@ -92,10 +92,10 @@ Strava 동기화는 webhook이 없어 100% 수동이다. `SyncButton`이 `/api/s
 
 | # | 종류 | 예시 문구 | 트리거 | 묶음 | 착지점 |
 |---|---|---|---|---|---|
-| 1 | 활동배지 획득 | "오늘 활동으로 **배지 3개**를 획득했어요" | sync 후 발급 | 동기화 1회 단위 | 단건 `/badges/[badgeId]`<br>묶음 `/badges?tab=activity&highlight=` |
+| 1 | 활동배지 획득 | "오늘 활동으로 **배지 3개**를 획득했어요" | sync 후 발급 | 동기화 1회 단위 | 단건 `/badges/[badgeId]`<br>묶음 `/badges?tab=activity` |
 | 2 | 희귀 배지 획득 | "**Mythic** 배지 '**별을 삼킨 바퀴**'를 획득했어요" | rarity=legend/mythic | 개별 (묶음에서 승격 분리) | `/badges/[badgeId]` |
-| 3 | 아이템 배지 획득 | "활동 중에 **아이템 배지 2개**가 떨어졌어요" | 드랍엔진 발급 | 동기화 1회 단위 | 단건 `/inventory/[itemId]`<br>묶음 `/inventory?highlight=` |
-| 4 | POI 배지 획득 | "**북한산**에서 체크인 배지를 획득했어요"<br>(재방문 시) "**북한산**을 **3**번째 방문했어요" | POI 통과 (반복 획득) | 활동 단위 | 단건 `/badges/[badgeId]`<br>묶음 `/badges?tab=poi&highlight=` |
+| 3 | 아이템 배지 획득 | "활동 중에 **아이템 배지 2개**가 떨어졌어요" | 드랍엔진 발급 | 동기화 1회 단위 | 단건 `/inventory/[itemId]`<br>묶음 `/inventory` |
+| 4 | POI 배지 획득 | "**북한산**에서 체크인 배지를 획득했어요"<br>(재방문 시) "**북한산**을 **3**번째 방문했어요" | POI 통과 (반복 획득) | 활동 단위 | 단건 `/badges/[badgeId]`<br>묶음 `/badges?tab=poi` |
 | 5 | 포인트 적립 | "오늘 획득한 배지로 **250 JAM 포인트**를 획득했어요" | `badge_point_reward` **중 미션 보상 경유가 아닌 것** | 일 단위 | `/points` |
 | 7 | 첫 배지 | "**첫 배지**가 도착했어요" | `initial_sync_done` | 개별·평생 1회 | `/badges/[badgeId]` |
 
@@ -402,7 +402,6 @@ rightSlot = <>{호출부가 넘긴 값}{알림 종}</>
 
 | 파라미터 | 쓰이는 소식 |
 |---|---|
-| `?highlight=<ids>` — 배지·인벤토리 목록 하이라이트 | 1, 3, 4 |
 | `/collections/[id]` 장착 모드 진입 | 11 |
 | `/drops?poi=<id>` — 지도 카메라 이동 | 18 |
 
