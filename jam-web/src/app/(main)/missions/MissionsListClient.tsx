@@ -44,6 +44,8 @@ const C_STATUS_BADGE_BG = 'var(--color-surface-elevated)'
 // 20260825_028: 잠김 칩 전용 배경. 기본 칩 배경(#1f1f1f)은 캔버스(#1a1a1a) 대비 1.06:1이라
 // 칩 형태가 거의 보이지 않는다 — 잠김 칩만 상세 화면 완료 칩과 같은 톤으로 올린다.
 const C_LOCKED_BADGE_BG = 'rgba(255,255,255,0.08)'
+// 썸네일 자물쇠 오버레이 전용 색. 배경이 배지 아트라 밝기가 유동적이므로 흰색으로 고정한다.
+const C_LOCK_GLYPH = '#FFFFFF'
 const C_STATUS_BADGE_TEXT = '#B2B2B2'
 const C_NEW_BADGE_BG = '#E8461F'
 const C_TITLE = '#FFFFFF'
@@ -116,7 +118,10 @@ function StatusBadge({ children, locked = false }: { children: React.ReactNode; 
         borderRadius: '999px',
       }}
     >
-      {locked && <LockIcon className="w-2.5 h-2.5 shrink-0" />}
+      {/* icons.tsx의 Svg는 strokeWidth 1.5 / viewBox 24 = 24px 렌더 전제다.
+          10px로 축소하면 실효 스트로크가 0.625px, 키홀은 0.83px라 형태가 서브픽셀로 뭉개진다.
+          호출부에서 strokeWidth를 보정해 10px에서도 자물쇠로 읽히게 한다. */}
+      {locked && <LockIcon className="w-2.5 h-2.5 shrink-0" strokeWidth={2.5} />}
       {children}
     </span>
   )
@@ -355,7 +360,10 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: C_META_TEXT,
+                          // 오버레이 배경은 배지 아트를 0.4로 합성한 값이라 이미지마다 밝기가 다르다.
+                          // #B2B2B2로 두면 밝은 아트 위에서 2.17:1까지 떨어져 WCAG 1.4.11(의미 전달
+                          // 그래픽 3:1)에 미달한다 — 흰색이면 최악 배경(#767676)에서도 4.6:1이다.
+                          color: C_LOCK_GLYPH,
                         }}
                       >
                         <LockIcon className="w-6 h-6" />

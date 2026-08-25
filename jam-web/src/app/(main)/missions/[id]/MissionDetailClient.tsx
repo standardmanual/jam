@@ -88,7 +88,8 @@ function StatusChip({ isCompleted, participating, locked }: { isCompleted: boole
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
         style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--color-text-secondary)' }}>
-        <LockIcon className="w-3 h-3 shrink-0" />
+        {/* 12px 렌더라 기본 strokeWidth 1.5(=24px 전제)로는 실효 0.75px로 뭉개진다 — 호출부 보정 */}
+        <LockIcon className="w-3 h-3 shrink-0" strokeWidth={2.2} />
         {d.missions.tagLocked}
       </span>
     )
@@ -166,15 +167,15 @@ export default function MissionDetailClient({
             직접 넘기면 미등록 호스트 하나로 미션 상세 화면 전체가 500이 된다 (20260824_005).
             폴백은 이미지가 아예 없을 때와 동일한 자리표시 문구 — 카드 배경(bg-surface-elevated)이
             남아 레이아웃이 무너지지 않는다. */}
-        {/* 20260825_028: 잠김이면 목록 잠금 카드와 같은 grayscale — 목록↔상세 시각 언어를 맞춘다 */}
-        <div
-          className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface-elevated flex items-center justify-center"
-          style={locked ? { filter: 'grayscale(1)', opacity: 0.5 } : undefined}
-        >
+        {/* 20260825_028: 잠김이면 목록 잠금 카드와 같은 grayscale — 목록↔상세 시각 언어를 맞춘다.
+            필터는 컨테이너가 아니라 **이미지에만** 건다(BadgeHeroSection.tsx:46과 동일한 하우스 패턴).
+            컨테이너에 걸면 카드 표면(bg-surface-elevated)까지 흐려져 캔버스와의 경계가 사라지고,
+            SafeImage의 폴백 문구도 함께 딤돼 대비가 8.2:1 → 3.3:1로 떨어진다. */}
+        <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface-elevated flex items-center justify-center">
           <SafeImage
             src={mission.image_url}
             alt={`${mission.title} 썸네일`}
-            className="object-cover"
+            className={locked ? 'object-cover grayscale opacity-50' : 'object-cover'}
             sizes="(max-width: 640px) 100vw, 640px"
             priority
             fallback={<span className="text-[length:var(--text-body-sm)] text-text-secondary">이미지 영역</span>}
