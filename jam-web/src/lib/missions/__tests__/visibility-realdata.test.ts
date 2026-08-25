@@ -138,6 +138,7 @@ function buildContext(owned: OwnedByTree): MissionVisibilityContext {
     completedMissionIds: new Set<string>(),
     gatedBadges: GATED_BADGES,
     ownedTierByBadgeName,
+    participatedMissionIds: new Set<string>(),
   }
 }
 
