@@ -7,6 +7,7 @@ import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
+import { hasBatchim } from '@/lib/notifications/message'
 import { RARITY_LABEL, RARITY_COLOR } from '@/lib/rarity'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { IconButton } from '@ds/components/buttons/IconButton'
@@ -73,11 +74,24 @@ const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
  * item_dropped는 두 가지 출처를 하나의 이벤트 타입으로 공유한다:
  * - 활동 연동(Strava) 후 드랍엔진이 지급한 경우 → faction_name이 항상 채워짐 → "아이템 획득"
  * - POI에 아이템배지를 직접 드랍한 경우(레거시 poi_drops 동기화) → faction_name 없음 → "아이템 드랍"
+ *
+ * badge_earned는 POI 배지를 두 번째 이상 획득(재방문)했을 때 "배지 획득" 대신
+ * "{poiName}을(를) {N}번째 방문했어요"를 노출한다(20260826_001). poi_name·visit_count가
+ * 없으면(활동 배지 등 POI 무관 획득, 또는 최초 획득) 기존 라벨을 그대로 쓴다.
  */
 function eventLabel(item: ActivityFeedRow): string {
   if (item.event_type === 'item_dropped') {
     const meta = item.metadata as Record<string, unknown>
     return meta.faction_name ? d.feed.eventItemEarned : d.feed.eventItemDropped
+  }
+  if (item.event_type === 'badge_earned') {
+    const meta = item.metadata as Record<string, unknown>
+    const poiName = typeof meta.poi_name === 'string' ? meta.poi_name : ''
+    const visitCount = typeof meta.visit_count === 'number' ? meta.visit_count : 0
+    if (poiName && visitCount > 1) {
+      const josa = hasBatchim(poiName) ? '을' : '를'
+      return t(d.feed.eventPoiRevisited, { poiName, josa, visitCount: String(visitCount) })
+    }
   }
   return EVENT_LABEL[item.event_type]
 }

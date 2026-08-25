@@ -309,8 +309,13 @@ export async function processFetchedActivities(
   /**
    * 소식 #4(POI 배지 획득) 재료 — 활동 1건이 묶음 단위라 활동별로 모은다.
    * (같은 활동에서 POI를 여러 곳 지나면 "북한산 외 2곳" 한 건으로 나가야 한다)
+   * 20260826_001 — 최초 획득/재방문이 한 활동에 섞일 수 있어 그 여부(isFirstEarns)와
+   * 방문 횟수(visitCounts)도 badgeIds/poiNames와 같은 순서로 나란히 쌓는다.
    */
-  const poiEarnsByActivity = new Map<number, { badgeIds: string[]; poiNames: string[] }>()
+  const poiEarnsByActivity = new Map<
+    number,
+    { badgeIds: string[]; poiNames: string[]; isFirstEarns: boolean[]; visitCounts: number[] }
+  >()
 
   const poiMatchResults: { rawActivity: StravaSummaryActivity; matchedPois: PoiRow[] }[] = []
   for (const { rawActivity, route } of routesByActivity) {
@@ -354,18 +359,20 @@ export async function processFetchedActivities(
       if (!badge) continue
 
       if (badge.type === 'poi') {
-        // 이 유저가 이 배지를 이전에 한 번이라도 획득한 적 있는지 먼저 확인 —
-        // poi 배지는 방문할 때마다 반복 획득되지만, 프로필 배지 갤러리/피드에는
-        // "고유 배지" 개념으로 최초 획득 시점 1건만 노출해야 하므로 최초 획득
-        // 여부를 판별해 그때만 피드 이벤트를 남긴다(반복 방문은 피드에 안 쌓임).
-        const { data: priorEarn } = await supabase
+        // 이 유저가 이 배지를 이전에 몇 번 획득했는지 먼저 확인한다. poi 배지는 방문할
+        // 때마다 반복 획득되는 설계라(badge_id 단위 — 배지 상세 화면 PoiEarnHistory도
+        // 같은 기준으로 이력을 모은다), 20260826_001부터는 최초 획득이든 재방문이든
+        // 항상 피드에 남기되 "몇 번째 방문인지"를 함께 기록해 문구를 구분한다.
+        const { count: priorEarnCount, error: priorEarnError } = await supabase
           .from('user_poi_badge_earns')
-          .select('id')
+          .select('id', { count: 'exact', head: true })
           .eq('user_id', userId)
           .eq('badge_id', badge.id)
-          .limit(1)
-          .maybeSingle()
-        const isFirstEarn = !priorEarn
+        if (priorEarnError) {
+          console.error(`[processFetchedActivities] POI 배지 이전 획득 수 조회 오류 (badge_id: ${badge.id}):`, priorEarnError)
+        }
+        const visitCount = (priorEarnCount ?? 0) + 1
+        const isFirstEarn = visitCount === 1
 
         const earnPayload = {
           user_id: userId,
@@ -392,20 +399,25 @@ export async function processFetchedActivities(
 
         poiBadgesEarned++
         earnedBadgeIds.push(badge.id)
-        const poiEarn = poiEarnsByActivity.get(rawActivity.id) ?? { badgeIds: [], poiNames: [] }
+        const poiEarn = poiEarnsByActivity.get(rawActivity.id) ?? { badgeIds: [], poiNames: [], isFirstEarns: [], visitCounts: [] }
         poiEarn.badgeIds.push(badge.id)
         poiEarn.poiNames.push(poi.name)
+        poiEarn.isFirstEarns.push(isFirstEarn)
+        poiEarn.visitCounts.push(visitCount)
         poiEarnsByActivity.set(rawActivity.id, poiEarn)
-        console.info(`[processFetchedActivities] POI 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}`)
+        console.info(`[processFetchedActivities] POI 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}, visitCount: ${visitCount}`)
 
-        if (isFirstEarn) {
-          await recordFeedEvent(userId, 'badge_earned', {
-            badge_id: badge.id,
-            badge_name: badge.name,
-            badge_image_url: badge.image_url ?? '',
-            rarity: badge.rarity,
-          }, rawActivity.start_date)
-        }
+        // 20260826_001 — isFirstEarn 여부와 무관하게 항상 기록한다. 재방문은
+        // poi_name·visit_count를 함께 실어 프론트(FeedSection)가 "N번째 방문"
+        // 문구로 분기하게 한다.
+        await recordFeedEvent(userId, 'badge_earned', {
+          badge_id: badge.id,
+          badge_name: badge.name,
+          badge_image_url: badge.image_url ?? '',
+          rarity: badge.rarity,
+          poi_name: poi.name,
+          visit_count: visitCount,
+        }, rawActivity.start_date)
         continue
       }
 
@@ -442,15 +454,24 @@ export async function processFetchedActivities(
   }
 
   // 소식 #4(POI 배지 획득) — 티켓 20260824_019. 활동 1건이 묶음 단위.
+  // 20260826_001 — 한 활동에서 최초 획득과 재방문이 섞이면 최초 획득 쪽을 대표(헤드라인)로
+  // 쓴다. "새로 획득"이 "몇 번째 방문"보다 알림 가치가 크다고 판단했고(배지=신남 톤 유지),
+  // 나머지는 기존 slotPlaceMore("{name} 외 {count}곳") 패턴 그대로 뭉친다 — 알림을 2건으로
+  // 쪼개면 groupKey·appendKeys 구조를 바꿔야 해서 배보다 배꼽이 크다. 최초 획득이 하나도
+  // 없으면(전부 재방문) 첫 번째 항목을 대표로 쓴다.
   for (const [activityId, earn] of poiEarnsByActivity) {
+    const firstEarnIndex = earn.isFirstEarns.findIndex((v) => v)
+    const repIndex = firstEarnIndex >= 0 ? firstEarnIndex : 0
     await createNotification({
       userId,
       type: 'poi_badge_earned',
       groupKey: syncGroupKey('poi_badge_earned', activityId),
       payload: {
         // 단건 렌더용 대표값 (묶음이면 렌더러가 badge_ids·count를 쓴다)
-        badge_id: earn.badgeIds[0],
-        poi_name: earn.poiNames[0],
+        badge_id: earn.badgeIds[repIndex],
+        poi_name: earn.poiNames[repIndex],
+        is_first_earn: earn.isFirstEarns[repIndex],
+        visit_count: earn.visitCounts[repIndex],
         badge_ids: earn.badgeIds,
         poi_names: earn.poiNames,
         count: earn.badgeIds.length,

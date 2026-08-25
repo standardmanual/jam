@@ -95,6 +95,9 @@ export const ko = {
 
     // 이벤트 라벨
     eventBadgeEarned: '배지 획득',
+    /** 20260826_001 — POI 배지를 두 번째 이상 획득(재방문)했을 때 eventBadgeEarned 대신 쓰는 라벨.
+     *  {josa}는 poiName 받침에 따라 '을'/'를' 중 골라 넣는다(FeedSection.tsx에서 hasBatchim으로 계산) */
+    eventPoiRevisited: '{poiName}{josa} {visitCount}번째 방문했어요',
     // 활동 Strava 동기화 후 배지엔진을 통해 지급된 경우("아이템 획득")와 POI에 직접 드랍된 경우("아이템 드랍")는
     // 같은 item_dropped 이벤트지만 출처가 다르므로 문구를 분리해서 표기한다 (FeedSection.tsx의 eventLabel 참고)
     eventItemEarned: '아이템 획득',
@@ -649,6 +652,8 @@ export const ko = {
     msgRareBadgeEarned: "{rarity} 배지 '{badgeName}'{을/를} 획득했어요",
     msgItemBadgeEarned: '활동 중에 {itemCount}가 떨어졌어요',
     msgPoiBadgeEarned: '{poiName}에서 체크인 배지를 획득했어요',
+    /** 20260826_001 — 같은 POI 배지를 두 번째 이상 획득(재방문)했을 때 msgPoiBadgeEarned 대신 쓴다 */
+    msgPoiBadgeRevisited: '{poiName}{을/를} {visitCount}번째 방문했어요',
     msgPointsEarned: '오늘 획득한 배지로 {points}를 획득했어요',
     msgFirstBadge: '{firstBadge}가 도착했어요',
 

@@ -137,6 +137,38 @@ describe('① 보상 획득', () => {
     ).toBe('북한산 외 2곳에서 체크인 배지를 획득했어요')
   })
 
+  it('#4 POI 배지 재방문 — 20260826_001. is_first_earn=false + visit_count>1이면 "N번째 방문했어요"', () => {
+    expect(
+      text(
+        view('poi_badge_earned', {
+          poi_name: '서초역',
+          badge_ids: ['b1'],
+          is_first_earn: false,
+          visit_count: 3,
+        })
+      )
+    ).toBe('서초역을 3번째 방문했어요')
+  })
+
+  it('#4 POI 배지 재방문 — payload에 is_first_earn이 없는 과거 소식은 기존 "획득" 문구 유지(하위호환)', () => {
+    expect(text(view('poi_badge_earned', { poi_name: '북한산', badge_ids: ['b1'] }))).toBe(
+      '북한산에서 체크인 배지를 획득했어요'
+    )
+  })
+
+  it('#4 POI 배지 — 한 활동에서 최초 획득과 재방문이 섞이면 최초 획득 쪽을 대표로 "획득" 문구 + 외 N곳', () => {
+    expect(
+      text(
+        view('poi_badge_earned', {
+          poi_name: '관악산', // sync.ts가 최초 획득 항목을 대표로 골라 넣은 값
+          is_first_earn: true,
+          badge_ids: ['b1', 'b2'],
+          poi_names: ['서초역', '관악산'],
+        })
+      )
+    ).toBe('관악산 외 1곳에서 체크인 배지를 획득했어요')
+  })
+
   it('#5 포인트 — 1,200 JAM 포인트 표기 (1200P는 가이드 위반)', () => {
     expect(text(view('points_earned', { amount: 1200 }))).toBe(
       '오늘 획득한 배지로 1,200 JAM 포인트를 획득했어요'
