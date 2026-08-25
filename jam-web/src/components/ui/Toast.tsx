@@ -102,7 +102,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const timerMap = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
-  // 20260826_001: 컨테이너를 document.body로 포털링하기 위한 마운트 게이트(BottomSheet.tsx와 동일).
+  // 20260826_005: 컨테이너를 document.body로 포털링하기 위한 마운트 게이트(BottomSheet.tsx와 동일).
   // `document`는 클라이언트에만 있으므로 SSR·하이드레이션 렌더에서는 false를 돌려 아무것도 렌더하지
   // 않고, 하이드레이션이 끝난 뒤에만 true가 되어 포털을 만든다. useEffect+setState 대신
   // useSyncExternalStore를 쓰는 이유는 effect 안의 동기 setState가 react-hooks 규칙에 걸리기 때문.
@@ -112,7 +112,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     () => false
   )
 
-  // 20260826_001: 하단을 점유하는 오버레이(바텀시트 등)가 신고한 점유 높이. 시트 하단 액션 버튼과
+  // 20260826_005: 하단을 점유하는 오버레이(바텀시트 등)가 신고한 점유 높이. 시트 하단 액션 버튼과
   // 토스트가 기하학적으로 포개져 버튼 탭이 토스트 디스미스로 먹히던 문제를 막는다.
   // 스냅샷이 아니라 구독인 이유: 이미 떠 있는 토스트(3초) 위로 시트가 열리는 역방향 케이스도
   // 방어해야 한다. 하단 앵커는 그대로이고 위치만 위로 밀려 올라가므로 튀어 보이지 않는다.
@@ -167,7 +167,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         DOM 순서가 뒤인 오버레이가 이겨 토스트가 시트 뒤로 숨었다.
         (실제 회귀: 지도 → POI 캐러셀 → 드랍 픽업 실패 시 실패 사유가 보이지 않음)
 
-        20260826_001: 그때의 z-[60]은 "앱 셸 div가 z-index:auto라 스태킹 컨텍스트를 만들지
+        20260826_005: 그때의 z-[60]은 "앱 셸 div가 z-index:auto라 스태킹 컨텍스트를 만들지
         않는다"는, 주석에만 존재하는 불변식에 기대고 있었다 — 셸에 transform·filter·isolation·z-*를
         하나라도 붙이면 같은 버그가 조용히 재발한다. 컨테이너를 document.body로 포털링해 그 의존을
         없앤다. 이제 토스트와 BottomSheet는 **둘 다 body 직속 = 같은 루트 스태킹 컨텍스트**이므로

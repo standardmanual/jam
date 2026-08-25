@@ -51,7 +51,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
   /** 픽업/취소 버튼 행 — 하단 점유 높이를 실측하는 기준 박스. */
   const [actionsEl, setActionsEl] = useState<HTMLDivElement | null>(null)
 
-  // 20260826_001: 이 시트는 BottomSheet의 footer prop을 쓰지 않고 스크롤 영역 맨 아래에 직접
+  // 20260826_005: 이 시트는 BottomSheet의 footer prop을 쓰지 않고 스크롤 영역 맨 아래에 직접
   // 픽업/취소 버튼을 놓는다. 그래서 BottomSheet가 대신 신고해줄 수 없어 여기서 "화면 하단부터
   // 버튼 상단까지의 높이"를 직접 신고한다 — 픽업 실패 토스트가 이 버튼들과 거의 완전히 포개져
   // 버튼 탭이 토스트 디스미스로 먹히던 문제를 막는다(Toast.tsx / uiOverlay.ts 참고).

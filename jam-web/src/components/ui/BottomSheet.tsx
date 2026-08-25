@@ -99,7 +99,7 @@ export default function BottomSheet({
   const draggingRef = useRef(false)
   const startYRef = useRef(0)
   const sheetRef = useRef<HTMLDivElement>(null)
-  /** footer 박스 — 하단 점유 높이를 실측해 토스트에 신고하는 데 쓴다(20260826_001). */
+  /** footer 박스 — 하단 점유 높이를 실측해 토스트에 신고하는 데 쓴다(20260826_005). */
   const footerRef = useRef<HTMLDivElement>(null)
   /** 드래그 시작 시점의 기준 translateY — 진행 중인 스프링백 트랜지션 위에서 재드래그해도
    *  현재 위치부터 이어지도록 한다(고정 200ms 트랜지션이 끝나기 전 재드래그 시 점프 방지). */
@@ -151,7 +151,7 @@ export default function BottomSheet({
     }
   }, [open])
 
-  // 20260826_001: footer가 있는 동안 "화면 하단부터 footer 상단까지의 높이"를 전역 스토어에
+  // 20260826_005: footer가 있는 동안 "화면 하단부터 footer 상단까지의 높이"를 전역 스토어에
   // 신고해, 이 구간에 뜨는 토스트가 footer 버튼 위로 올라가게 한다. 토스트 사각형은
   // pointer-events-auto라서 겹치면 버튼 탭이 토스트 디스미스로 먹힌다(Toast.tsx 참고).
   //
