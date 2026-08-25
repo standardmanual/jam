@@ -212,68 +212,55 @@ function RankingListRow({
   const emphasisFontSize = isMe ? 'var(--text-h4)' : 'var(--text-small)'
 
   return (
-    <div>
-      {/* 행 본문 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
-        {/* 순위 번호 — 내 순위는 --color-primary(레드)로 강조 */}
-        <span style={{
-          fontSize: emphasisFontSize,
-          fontWeight: 'bold',
-          color: isMe ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-          width: 20,
-          textAlign: 'center',
-          flexShrink: 0,
-        }}>
-          {entry.rank}
-        </span>
+    <ListRowCard
+      icon={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* 순위 번호 — 내 순위는 --color-primary(레드)로 강조 */}
+          <span style={{
+            fontSize: emphasisFontSize,
+            fontWeight: 'bold',
+            color: isMe ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+            width: 20,
+            textAlign: 'center',
+          }}>
+            {entry.rank}
+          </span>
 
-        {/* 20260816_012: 아바타 보더 제거 — bg는 --color-border 토큰(#2a2a2a와 동일값) 재사용 */}
-        <div style={{
-          width: 36,
-          height: 36,
-          borderRadius: '50%',
-          backgroundColor: 'var(--color-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          flexShrink: 0,
-        }}>
-          {entry.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={entry.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <UserIcon className="w-[18px] h-[18px] text-[#666]" />
-          )}
+          {/* 20260816_012: 아바타 보더 제거 — bg는 --color-border 토큰(#2a2a2a와 동일값) 재사용 */}
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            backgroundColor: 'var(--color-border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+          }}>
+            {entry.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={entry.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <UserIcon className="w-[18px] h-[18px] text-[#666]" />
+            )}
+          </div>
         </div>
-
-        {/* 유저명 */}
-        <span style={{
-          flex: 1,
-          fontSize: 'var(--text-small)',
-          fontWeight: isMe ? 'bold' : 'normal',
-          color: 'var(--color-text)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>
-          {entry.username}
-        </span>
-
-        {/* 진행값 */}
-        <span style={{
-          fontSize: emphasisFontSize,
-          fontWeight: 'bold',
-          color: isMe ? 'var(--color-primary)' : 'var(--color-text)',
-          flexShrink: 0,
-        }}>
+      }
+      trailing={
+        <span style={{ fontSize: emphasisFontSize, fontWeight: 'bold', color: isMe ? 'var(--color-primary)' : 'var(--color-text)' }}>
           {formatProgress(entry.progressValue)}
         </span>
-      </div>
-
-      {/* 행 하단: 6px 프로그레스 바. 강조색은 --color-primary 하나로 통일(랭킹별 그라디언트 제거) */}
-      {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
-      <div style={{ paddingLeft: 32, paddingRight: 16, paddingBottom: 8 }}>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        <p
+          className="m-0 truncate"
+          style={{ fontSize: 'var(--text-small)', fontWeight: isMe ? 'bold' : 'normal', color: 'var(--color-text)' }}
+        >
+          {entry.username}
+        </p>
+        {/* 강조색은 --color-primary 하나로 통일(랭킹별 그라디언트 제거) */}
+        {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
         <ProgressBar
           percent={fillRatio * 100}
           labelType="none"
@@ -283,8 +270,7 @@ function RankingListRow({
           radius="3px"
         />
       </div>
-      {/* 20260816_012: hr 대체용 행 구분선 제거 — 행 간 padding만으로 구분 */}
-    </div>
+    </ListRowCard>
   )
 }
 
@@ -388,6 +374,9 @@ function MyRankCard({
 function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (
     <ListRowCard
+      // 프로그래스바가 없어 한 줄짜리 행이라 기본 p-16(위아래 32px 간격)은 헐렁해 보인다 —
+      // 위아래 패딩만 좁혀 목록 간격을 줄인다.
+      className="!py-[var(--spacing-8)]"
       icon={<SimpleAvatar url={e.avatarUrl} />}
       trailing={
         e.achieved ? (
@@ -555,7 +544,7 @@ export default function MissionStatusClient({
                   {t(d.missions.statusParticipants, { count: data.totalParticipants })}
                 </span>
               </div>
-              <div className="flex flex-col gap-2">
+              <div>
                 {data.entries.map(e => (
                   <AchievementRow key={e.userId} e={e} highlight={isMeInEntries(e.userId)} />
                 ))}
