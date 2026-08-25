@@ -97,7 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // 5) 완성 체크: 이 아이템북에 필요한 배지 수 vs 현재 슬롯 수
   const [{ count: totalBadges }, { count: slottedCount }] = await Promise.all([
-    supabase.from('badges').select('id', { count: 'exact', head: true }).eq('item_book_id', itemBookId),
+    supabase.from('badges').select('id', { count: 'exact', head: true }).eq('item_book_id', itemBookId).is('deleted_at', null),
     supabase
       .from('user_item_book_slots')
       .select('id', { count: 'exact', head: true })

@@ -18,7 +18,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
   ] = await Promise.all([
     supabase.from('item_books').select('*').eq('id', id).single(),
     supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
-    supabase.from('badges').select('id, name, rarity, image_url').eq('item_book_id', id).eq('type', 'item'),
+    supabase.from('badges').select('id, name, rarity, image_url').eq('item_book_id', id).eq('type', 'item').is('deleted_at', null),
     supabase.from('badges').select('id, name, rarity, image_url').is('item_book_id', null).is('deleted_at', null).eq('type', 'item').limit(10000),
   ])
 

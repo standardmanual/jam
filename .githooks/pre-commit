@@ -72,4 +72,59 @@ if [ -n "$changed_components" ]; then
   fi
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────
+# badges 테이블 조회에 deleted_at 필터가 빠졌을 가능성이 있는 신규 호출을 경고한다.
+#
+# 배경: `deleted_at IS NULL` 필터 누락 패턴이 004→005→007→009→015→016→017(x2)→020→021→022로
+# 반복됐다(Service Plan/History/Migration/Ticket/20260825_022 참고). grep만으로는
+# "select+JS 사후 필터" 같은 정상 패턴을 오탐할 수 있어(017 인수인계 중 실제 발생) 완전
+# 차단은 하지 않고, 새로 추가된 `.from('badges')` 호출부 근처(같은 diff hunk)에 `deleted_at`
+# 언급이 전혀 없을 때만 리뷰어에게 체크리스트 알림을 준다. 이력/피드성 조회처럼 의도적으로
+# 필터를 넣지 않는 경우도 있으므로 통과 여부는 사람이 판단한다(경고만, 커밋은 진행).
+badges_hits=""
+while IFS= read -r -d '' f; do
+  case "$f" in
+    *.ts|*.tsx) ;;
+    *) continue ;;
+  esac
+  # 이번 커밋에서 새로 추가된 hunk만 훑어서, +.from('badges') 라인이 있는데 같은 hunk 안에
+  # deleted_at 언급이 전혀 없는 경우만 추린다.
+  hunk=""
+  has_badges=0
+  has_deleted_at=0
+  while IFS= read -r line; do
+    case "$line" in
+      "@@ "*)
+        if [ "$has_badges" -eq 1 ] && [ "$has_deleted_at" -eq 0 ]; then
+          badges_hits="${badges_hits}  - ${f}\n"
+        fi
+        has_badges=0
+        has_deleted_at=0
+        ;;
+      "+"*)
+        case "$line" in
+          *".from('badges')"*) has_badges=1 ;;
+        esac
+        case "$line" in
+          *"deleted_at"*) has_deleted_at=1 ;;
+        esac
+        ;;
+    esac
+  done < <(git diff --cached -U0 -- "$f")
+  if [ "$has_badges" -eq 1 ] && [ "$has_deleted_at" -eq 0 ]; then
+    badges_hits="${badges_hits}  - ${f}\n"
+  fi
+done < <(git diff --cached --name-only -z --diff-filter=ACM -- 'jam-web/src/*.ts' 'jam-web/src/*.tsx' 'jam-web/src/**/*.ts' 'jam-web/src/**/*.tsx')
+
+if [ -n "$badges_hits" ]; then
+  echo "" >&2
+  echo "⚠️  경고(pre-commit): 새로 추가된 .from('badges') 호출부 근처에 deleted_at 언급이 없습니다." >&2
+  printf "%b" "$badges_hits" >&2
+  echo "  노출/카운트/지급 로직이면 .is('deleted_at', null) 필터가 필요할 수 있습니다." >&2
+  echo "  이력/피드성 조회거나 관리자 편집 화면처럼 의도적으로 필터를 넣지 않는 경우도 있으니" >&2
+  echo "  직접 판단하세요 (Service Plan/History/Migration/Ticket/20260825_022 참고)." >&2
+  echo "  (경고만 하고 커밋은 진행합니다)" >&2
+  echo "" >&2
+fi
+
 exit 0

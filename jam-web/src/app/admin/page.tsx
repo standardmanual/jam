@@ -11,7 +11,7 @@ export default async function AdminDashboardPage() {
   try {
     const supabase = createServiceClient()
     const [b, p, ib, u] = await Promise.all([
-      supabase.from('badges').select('*', { count: 'exact', head: true }),
+      supabase.from('badges').select('*', { count: 'exact', head: true }).is('deleted_at', null),
       supabase.from('poi').select('*', { count: 'exact', head: true }),
       supabase.from('item_books').select('*', { count: 'exact', head: true }),
       supabase.from('users').select('*', { count: 'exact', head: true }),
