@@ -1,9 +1,9 @@
 ---
 id: 20260825_031
 category: BadgeEngine
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-08-25
-closed:
+closed: 2026-08-25
 ---
 
 # [BadgeEngine] condition_json 데이터 계약 검증 도입
@@ -152,21 +152,44 @@ Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md                 (수정)
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성
-- [ ] 톤앤매너
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙
-- [ ] 표기 규칙
+변경된 사용자 노출 텍스트는 어드민 전용 화면(`src/app/admin/badges/`)에 한정된다: `BadgeForm.tsx`
+신규 체크박스 라벨·안내문, `findUnknownConditionKeyError`의 에러 메시지.
+
+- [x] 용어 일관성: 기존 `findCumulativeConditionError`와 동일한 기술 용어·문체를 그대로 따름
+- [x] 톤앤매너: 어드민 내부 일관성 유지(명확한 위반 없음). 단, 체크박스 안내문(해요체)과 인접한
+      기존 라벨(합니다체)의 톤이 섞여 있음 — 강제 사안 아니며, 폼 전체 톤 통일은 별도 개선
+      과제로 남김(이번 범위 밖)
+- [x] 에러 메시지: `findUnknownConditionKeyError`가 [현상]→[원인] 2단계로 구성, 기존
+      `findCumulativeConditionError`와 동일 패턴 유지
+- [x] 문장 규칙·표기 규칙: 기존 어드민 검증 메시지 스타일과 일치
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-25
+- 환경: production (staging·프로덕션 DB 공유 — DB 변경 즉시 반영, 코드는 staging 배포 후 반영)
+- 커밋: `c4538e84`(구현) → `9e46eafb`(티켓 번호 충돌 해소, 20260825_029→031 재채번) —
+  staging에 fast-forward 머지(`d2823ad8..9e46eafb`)
+- DB 마이그레이션 `102_condition_json_check_constraint.sql` — 2026-08-25 프로덕션 DB
+  (`jam-prod`, `ceehnkzdbecxwzxrhhns`) 실행 완료, 제약 생성 확인(`badges_condition_json_known_keys`)
 
 ### 주요 의사결정 / 핵심 메모
 > 트리거 대신 CHECK 제약 선택 — 서브쿼리 없이 `jsonb - text[]` 연산자만으로 구현 가능해 더 단순하고,
 > 모든 쓰기 경로(마이그레이션·어드민·직접 SQL)를 예외 없이 커버함. CI 린트는 CHECK로 이미 충족되는
 > 효과라 별도 도입하지 않음.
 
+> **티켓 번호 충돌 사고 및 해소(2026-08-25)**: 사전 준비 단계에서 "오늘 최대 028"로 판단해
+> 029로 채번했으나, 착수 시점과 완료 시점 사이 **다른 세션이 이미 20260825_029 번호로 별도
+> 작업(레벨업 미션 hidden 완화)을 선점해 staging에 머지·완료**한 상태였다(그 세션은 충돌을
+> 감지해 다음 작업을 030으로 넘어감). 본 티켓은 머지 직전 `merge-base --is-ancestor` 오염 검사에서
+> 이를 감지해 20260825_031로 재채번하고, review 브랜치를 최신 `origin/staging` 위로 정리
+> (force-push 차단으로 새 브랜치 `claude/jamwork-20260825_031-condition-json-contract`에
+> cherry-pick)한 뒤 머지했다. 겹친 파일은 `BADGE_ENGINE_UNIFIED.md` 1건뿐이었고 자동 병합 성공.
+
 ### 잔여 이슈
--
+- 게이트·개선 리뷰가 공통 지적한 범위 밖 발견물 3건을 별도 티켓으로 분리(작업은 미착수, 문서만):
+  - [20260825_032](20260825_032_BadgeEngine_어드민폼-미지원필드-저장시-유실위험.md) —
+    `day_of_week`·`active_days_count`·`poi_id`·`route`도 `mission_reward`와 동일 유형의
+    어드민 폼 유실 위험 (실측상 현재 실피해 없음)
+  - [20260825_033](20260825_033_BadgeEngine_온도조건-문서-부등호방향-오류.md) —
+    `CONDITION_JSON_SPEC.md` 온도 조건 부등호 방향 문서 오류(기존부터 있던 문제)
+  - [20260825_034](20260825_034_BadgeEngine_condition-json-spec-필드표-백필.md) —
+    같은 문서 필드 표에 `day_of_week` 등 4개 필드 누락(문서가 코드보다 오래됨)
