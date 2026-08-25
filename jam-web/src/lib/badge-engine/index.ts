@@ -103,7 +103,7 @@ const PER_ACTIVITY_KEYS = [
 ] as const
 
 // 엔진이 실제로 "수치 검사"를 수행하는 필드 목록(MEASURABLE_CONDITION_KEYS)은
-// condition-schema.ts로 이전했다(티켓 20260825_029) — DB CHECK 제약·어드민 API 검증과
+// condition-schema.ts로 이전했다(티켓 20260825_031) — DB CHECK 제약·어드민 API 검증과
 // 단일 소스를 공유하기 위함. 정의·배경 설명은 그 파일 참조.
 
 function inTimeRange(activity: NormalizedActivity, range: { start: string; end: string }): boolean {

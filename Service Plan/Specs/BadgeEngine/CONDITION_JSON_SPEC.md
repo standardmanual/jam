@@ -7,7 +7,7 @@
 이 문서는 `condition_json`에 들어올 수 있는 **모든 필드의 타입·의미·평가 방식**을 정의하는 단일 출처(source of truth)이다.  
 엔진 구현의 평가 로직은 BADGE_ENGINE_UNIFIED.md를 참조하고, 이 문서는 "어떤 필드를 쓸 수 있는가"를 명세한다.
 
-> **데이터 계약 검증** (2026-08-25, 티켓 20260825_029): 아래 필드 목록은 코드에서
+> **데이터 계약 검증** (2026-08-25, 티켓 20260825_031): 아래 필드 목록은 코드에서
 > `src/lib/badge-engine/condition-schema.ts`의 `ALL_CONDITION_KEYS`가 단일 소스다.
 > `badges.condition_json`에 이 목록 밖의 키가 들어오면 DB CHECK 제약
 > (`badges_condition_json_known_keys`, `supabase/migrations/102_condition_json_check_constraint.sql`)이
@@ -115,7 +115,7 @@
 > "알려진 조건 필드 없음 → 검사 스킵 → pass:true"로 처리해 미션 완료 없이 미션보상배지가
 > 발급되고 레벨업 게이팅이 12일간 무력화됐다. 지금은 `mission_reward`가 §2의 조건 필드와
 > 명시적으로 분리돼 있고, 이 필드만 있는 조건은 위 방어 분기로 항상 fail 처리된다. 어드민
-> `BadgeForm.tsx`도 이 필드를 조건 필드와 시각적으로 구분된 체크박스로 노출한다(티켓 20260825_029).
+> `BadgeForm.tsx`도 이 필드를 조건 필드와 시각적으로 구분된 체크박스로 노출한다(티켓 20260825_031).
 
 ---
 

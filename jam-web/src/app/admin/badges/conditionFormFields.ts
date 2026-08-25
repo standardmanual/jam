@@ -13,7 +13,7 @@ export function parsePaceToSec(input: string): number | null {
  * 조건 빌더 폼 필드 → condition_json 조립에 필요한 원시 입력값 묶음.
  * BadgeForm.tsx의 조건 빌더 state와 1:1 대응한다. 순수 로직(React 비의존)만 이 파일에
  * 두어 BadgeForm.tsx의 무거운 컴포넌트 의존성(배경 제너레이터 등) 없이 유닛테스트할 수
- * 있도록 분리했다(티켓 20260825_029).
+ * 있도록 분리했다(티켓 20260825_031).
  */
 export interface ConditionFormFields {
   distanceKm: string
@@ -45,7 +45,7 @@ export interface ConditionFormFields {
  * 빈 객체에서 시작해 값이 있는 필드만 조립하는 구조라, 새 필드를 추가하고 여기 반영을
  * 빠뜨리면 그 필드는 저장 시 조용히 유실된다 — 실제로 `missionReward`(mission_reward)가
  * 이 함수에 없어서 미션보상배지를 어드민에서 수정 저장하면 플래그가 사라지는 회귀가 있었다
- * (티켓 20260825_029). 새 조건 필드를 추가할 때는 이 함수와
+ * (티켓 20260825_031). 새 조건 필드를 추가할 때는 이 함수와
  * `src/lib/badge-engine/condition-schema.ts`의 ALL_CONDITION_KEYS를 함께 갱신할 것.
  */
 export function buildConditionJsonFromFields(fields: ConditionFormFields): BadgeCondition | null {

@@ -1,5 +1,5 @@
 /**
- * badge-validation — condition_json 데이터 계약 검증 회귀 테스트 (티켓 20260825_029)
+ * badge-validation — condition_json 데이터 계약 검증 회귀 테스트 (티켓 20260825_031)
  *
  * 배경: 마이그레이션 084_badge_condition_cleanup.sql이 표시용으로 넣은
  * `{"mission_reward": true}`가 badge-engine에서 "알려진 조건 필드 없음 → 검사 스킵 →
