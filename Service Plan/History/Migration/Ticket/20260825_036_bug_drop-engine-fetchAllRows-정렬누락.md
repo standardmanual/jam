@@ -1,5 +1,5 @@
 ---
-id: 20260825_033
+id: 20260825_036
 category: Service
 status: OPEN
 created: 2026-08-25
@@ -10,7 +10,7 @@ closed:
 
 ## 배경 / 문제 정의
 
-티켓 [20260825_031](20260825_031_bug_PostgREST-1000행상한-배지조회-절단-일괄점검.md)의
+티켓 [20260825_034](20260825_034_bug_PostgREST-1000행상한-배지조회-절단-일괄점검.md)의
 게이트 리뷰·개선 리뷰에서 발견된 범위 밖 이슈. `jam-web/src/lib/drop-engine/index.ts:160`의
 로컬 `fetchAllRows` 헬퍼는 range 페이지네이션 루프는 구현돼 있으나 `.order()`가 없다.
 
