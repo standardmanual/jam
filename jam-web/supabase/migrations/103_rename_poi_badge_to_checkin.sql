@@ -39,6 +39,9 @@
 --    (ADD VALUE만 "같은 트랜잭션에서 그 값을 쓸 수 없다"는 제약을 갖는다).
 --    값의 OID가 그대로라 기존 1,800행·5행은 **UPDATE 없이** 새 이름으로 읽힌다.
 --
+-- ♻️ 재실행 안전(멱등) — 모든 rename을 존재 확인으로 감쌌다.
+--    부분 적용 후 재시도하거나 이미 적용된 DB에 다시 돌려도 에러 없이 통과한다.
+--
 -- ↩️ 롤백 DDL (적용 후 되돌려야 할 경우 — 반드시 코드 롤백을 먼저 한다)
 --   ALTER TYPE public.badge_type RENAME VALUE 'checkin' TO 'poi';
 --   ALTER TYPE public.notification_type RENAME VALUE 'checkin_badge_earned' TO 'poi_badge_earned';
@@ -56,7 +59,16 @@ BEGIN;
 -- 1) badge_type ENUM: 'poi' → 'checkin'
 --    badges.type 1,800행이 UPDATE 없이 따라온다.
 -- ─────────────────────────────────────────────────────────────────────────────
-ALTER TYPE public.badge_type RENAME VALUE 'poi' TO 'checkin';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public' AND t.typname = 'badge_type' AND e.enumlabel = 'poi'
+  ) THEN
+    ALTER TYPE public.badge_type RENAME VALUE 'poi' TO 'checkin';
+  END IF;
+END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2) notification_type ENUM: 'poi_badge_earned' → 'checkin_badge_earned'
@@ -65,7 +77,18 @@ ALTER TYPE public.badge_type RENAME VALUE 'poi' TO 'checkin';
 --       그대로 남는다. group_key는 묶음 병합 키일 뿐 렌더에 쓰이지 않고, 과거 소식을
 --       다시 병합할 일도 없으므로 문자열 치환하지 않는다 (건드리면 UNIQUE 충돌 위험만 커진다).
 -- ─────────────────────────────────────────────────────────────────────────────
-ALTER TYPE public.notification_type RENAME VALUE 'poi_badge_earned' TO 'checkin_badge_earned';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public' AND t.typname = 'notification_type'
+      AND e.enumlabel = 'poi_badge_earned'
+  ) THEN
+    ALTER TYPE public.notification_type
+      RENAME VALUE 'poi_badge_earned' TO 'checkin_badge_earned';
+  END IF;
+END $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3) missions.mission_type: 'poi_visit' → 'checkin'
@@ -100,7 +123,12 @@ ALTER TABLE public.missions
 --    ALTER TABLE ... RENAME TO 는 인덱스·제약·정책 이름을 따라 바꾸지 않으므로 직접 정리한다.
 --    poi_id 컬럼은 지점 참조라 이름 그대로 둔다 (경계 규칙 2).
 -- ─────────────────────────────────────────────────────────────────────────────
-ALTER TABLE public.user_poi_badge_earns RENAME TO user_checkin_badge_earns;
+DO $$
+BEGIN
+  IF to_regclass('public.user_poi_badge_earns') IS NOT NULL THEN
+    ALTER TABLE public.user_poi_badge_earns RENAME TO user_checkin_badge_earns;
+  END IF;
+END $$;
 
 ALTER INDEX IF EXISTS public.idx_user_poi_badge_earns_user_badge
   RENAME TO idx_user_checkin_badge_earns_user_badge;
@@ -125,9 +153,28 @@ BEGIN
   END LOOP;
 END $$;
 
-ALTER POLICY "user_poi_badge_earns: 본인만 읽기"
-  ON public.user_checkin_badge_earns
-  RENAME TO "user_checkin_badge_earns: 본인만 읽기";
+-- 정책명을 하드코딩하지 않고 조회해서 바꾼다.
+-- (053 원본은 "user_poi_badge_earns: 본인만 읽기"지만, 이름이 조금이라도 다르면
+--  하드코딩 방식은 그 지점에서 트랜잭션 전체가 롤백된다.)
+DO $$
+DECLARE
+  pol text;
+BEGIN
+  SELECT policyname INTO pol
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = 'user_checkin_badge_earns'
+    AND policyname LIKE 'user\_poi\_badge\_earns%'
+  LIMIT 1;
+
+  IF pol IS NOT NULL THEN
+    EXECUTE format(
+      'ALTER POLICY %I ON public.user_checkin_badge_earns RENAME TO %I',
+      pol,
+      'user_checkin_badge_earns' || substring(pol from length('user_poi_badge_earns') + 1)
+    );
+  END IF;
+END $$;
 
 COMMIT;
 
