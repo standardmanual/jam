@@ -6,7 +6,7 @@ export default async function AdminFactionsPage() {
   const supabase = createServiceClient()
   const [{ data }, { data: badgesRaw }, { data: booksRaw }] = await Promise.all([
     supabase.from('factions').select('*').order('sort_order', { ascending: true }),
-    supabase.from('badges').select('faction_id').not('faction_id', 'is', null),
+    supabase.from('badges').select('faction_id').not('faction_id', 'is', null).is('deleted_at', null),
     supabase.from('item_books').select('faction_id').not('faction_id', 'is', null),
   ])
   const factions = (data ?? []) as FactionRow[]
