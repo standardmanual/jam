@@ -42,12 +42,13 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
 
   const bookIds = books.map((b) => b.id)
 
+  // 20260825_023: 완성 기준선(분모)은 소프트 삭제 여부와 무관하게 고정한다.
+  // 삭제된 배지도 그대로 북 소속 배지 집합에 포함한다.
   const { data: badgesRaw, error: badgesError } = await supabase
     .from('badges')
     .select('id, item_book_id, type')
     .in('item_book_id', bookIds)
     .in('type', ['item', 'poi'])
-    .is('deleted_at', null)
 
   if (badgesError) {
     console.error('[findCompletableItemBooks] badges 조회 오류:', badgesError)
