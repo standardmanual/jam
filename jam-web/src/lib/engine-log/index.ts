@@ -30,6 +30,7 @@ export type EngineDecisionEvent =
   | 'point_award_failed'
   | 'faction_constant_missing'
   | 'drop_state_last_activity_mismatch'
+  | 'reward_badge_skipped'
 
 /**
  * ## `@ts-expect-error` 대신 좁은 캐스팅을 쓰는 이유
