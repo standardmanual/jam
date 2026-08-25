@@ -8,7 +8,7 @@ export default async function AdminTodayPage() {
   const [{ data: cardsRaw }, { data: badgesRaw }, { data: missionsRaw }, { data: booksRaw }] =
     await Promise.all([
       supabase.from('today_cards').select('*').order('starts_at', { ascending: false }),
-      supabase.from('badges').select('id, name').order('name'),
+      supabase.from('badges').select('id, name').is('deleted_at', null).order('name'),
       supabase.from('missions').select('id, title').order('created_at', { ascending: false }),
       supabase.from('item_books').select('id, name').order('name'),
     ])
