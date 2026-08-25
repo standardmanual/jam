@@ -83,12 +83,29 @@ const USER_CASES: UserCase[] = [
     expect: { '첫 숨결': ['open', 'open', 'locked'] },
   },
   {
-    // 실유저 00000000-…-0004 — '동네 산책러' common, '첫 숨결' legend
-    label: "00000000-…-0004 (실측): '동네 산책러' common · '첫 숨결' legend",
-    owned: { '동네 산책러': 'common', '첫 숨결': 'legend' },
+    // 실유저 00000000-…-0004 — '동네 산책러' rare, '야생의 주자' common
+    label: "00000000-…-0004 (실측): '동네 산책러' rare · '야생의 주자' common",
+    owned: { '동네 산책러': 'rare', '야생의 주자': 'common' },
     expect: {
-      '동네 산책러': ['open', 'locked', 'hidden'],
+      '동네 산책러': ['open', 'open', 'locked'],
+      '야생의 주자': ['open', 'locked', 'hidden'],
+    },
+  },
+  {
+    // 실유저 00000000-…-0003 — '첫 숨결' legend, 나머지 4개 트리는 mythic
+    // (legend 등급 커버리지를 담당하는 실유저. 이전 버전은 이 조합을 0004로 잘못 라벨링했다)
+    label: "00000000-…-0003 (실측): '첫 숨결' legend · 나머지 4트리 mythic",
+    owned: {
+      '첫 숨결': 'legend',
+      '동네 산책러': 'mythic',
+      '야생의 주자': 'mythic',
+      '언덕의 도전자': 'mythic',
+      '첫 고도': 'mythic',
+    },
+    expect: {
+      // legend 보유 → Mythic 게이트(tier 3)가 ownedTier(2)+1 이내라 open
       '첫 숨결': ['open', 'open', 'open'],
+      '동네 산책러': ['open', 'open', 'open'],
     },
   },
   {
