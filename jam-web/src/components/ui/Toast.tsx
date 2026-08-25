@@ -107,8 +107,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
+      {/*
+        20260825_039: 토스트는 모달·바텀시트보다 위에 뜨는 최상위 피드백 레이어다(z-[60]).
+        이 컨테이너는 {children} 다음에 렌더돼 앱 셸과 형제(= body 직속)지만,
+        BottomSheet·Radix Dialog/Sheet 등은 document.body '맨 뒤'로 포털링되므로
+        같은 z-50에서는 DOM 순서가 뒤인 오버레이가 이겨 토스트가 시트 뒤로 숨었다.
+        (실제 회귀: 지도 → POI 캐러셀 → 드랍 픽업 실패 시 실패 사유가 보이지 않음)
+        컨테이너에 pointer-events-none이 있어 z를 올려도 아래 오버레이 조작을 막지 않으며,
+        NavigationLoader(z-[9999])보다는 아래를 유지한다.
+      */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none"
+        className="fixed left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none"
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}
       >
         {toasts.map((t) => (
