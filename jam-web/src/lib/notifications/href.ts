@@ -27,10 +27,6 @@ function profileHref(username: string | null | undefined): string | null {
   return username ? `/${username}` : null
 }
 
-function highlightQuery(ids: string[]): string {
-  return ids.length > 0 ? `&highlight=${encodeURIComponent(ids.join(','))}` : ''
-}
-
 export function notificationTarget(view: NotificationView): NotificationTarget {
   const p = view.payload
   const actorHref = profileHref(view.actor?.username)
@@ -42,7 +38,7 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
     case 'badge_earned': {
       const ids = idList(p, 'badge_ids')
       if (ids.length === 1) return single(`/badges/${ids[0]}`)
-      return single(`/badges?tab=activity${highlightQuery(ids)}`)
+      return single('/badges?tab=activity')
     }
     case 'rare_badge_earned': {
       const id = typeof p.badge_id === 'string' ? p.badge_id : ''
@@ -53,15 +49,16 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
       // "내가 받은 그 개체(시리얼)"이지 도감이 아니다.
       const ids = idList(p, 'inventory_item_ids')
       if (ids.length === 1) return single(`/inventory/${ids[0]}`)
-      return single(`/inventory${ids.length > 0 ? `?highlight=${encodeURIComponent(ids.join(','))}` : ''}`)
+      return single('/inventory')
     }
     case 'checkin_badge_earned': {
       const ids = idList(p, 'badge_ids')
       const primary = typeof p.badge_id === 'string' ? p.badge_id : ids[0]
       // 20260826_004 — 탭 식별자가 poi → checkin으로 바뀌었다. 이미 발송된 소식의
       // `?tab=poi` 링크는 BadgesClient의 LEGACY_TAB_ALIASES가 계속 받아준다.
+      // 20260826_006 — 하이라이트 기능이 제거돼 묶음도 탭 이동만 한다.
       if (ids.length <= 1) return single(primary ? `/badges/${primary}` : '/badges?tab=checkin')
-      return single(`/badges?tab=checkin${highlightQuery(ids)}`)
+      return single('/badges?tab=checkin')
     }
     case 'points_earned':
       return single('/points')

@@ -26,11 +26,6 @@ interface InventoryGridProps {
   emptySlots?: number
   /** 현재 선택된 아이템 id(select 모드 하이라이트용) */
   selectedItemId?: string | null
-  /**
-   * 알림함에서 `?highlight=`로 진입했을 때 짚어줄 아이템 id들 (20260824_021).
-   * 소식 #3(아이템 배지 획득)의 묶음 착지점이 인벤토리 목록이라 "그 중 어느 것"이 필요하다.
-   */
-  highlightItemIds?: string[]
 }
 
 /**
@@ -50,9 +45,7 @@ export default function InventoryGrid({
   onSelect,
   emptySlots = 0,
   selectedItemId = null,
-  highlightItemIds,
 }: InventoryGridProps) {
-  const highlightSet = new Set(highlightItemIds ?? [])
   return (
     <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
       {items.map((item) => {
@@ -71,7 +64,6 @@ export default function InventoryGrid({
               name={item.badgeName}
               imageUrl={item.badgeImageUrl}
               rarity={item.badgeRarity as import('@/types/database').BadgeRarity}
-              highlighted={highlightSet.has(item.id)}
             >
               {expiryNode}
             </BadgeGridCard>

@@ -40,7 +40,7 @@ export function bumpsBadgeFor(type: NotificationType): boolean {
  * 021 티켓에서 추가한다 — 정의되지 않은 type은 자유 형태 payload를 받는다.
  */
 export interface NotificationPayloadMap {
-  /** 1 활동배지 획득 — 묶음은 `/badges?tab=activity&highlight=`, 단건은 `/badges/[id]` */
+  /** 1 활동배지 획득 — 묶음은 `/badges?tab=activity`, 단건은 `/badges/[id]` */
   badge_earned: { badge_ids: string[]; count: number; activity_id?: number }
   /** 2 희귀 배지 획득 — badge_earned 묶음에서 승격 분리된 개별 소식 */
   rare_badge_earned: { badge_id: string; badge_name: string; rarity: BadgeRarity }

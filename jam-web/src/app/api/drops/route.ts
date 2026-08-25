@@ -10,6 +10,10 @@ import type { PoiRow, InventoryItemRow } from '@/types/database'
 
 // GET /api/drops?lat=&lng=  — T1(DB) + T2(네이버 지역검색, 카테고리 레벨 기반) 통합
 // POST /api/drops            — 드랍 실행
+//
+// 20260826_002: 두 핸들러의 `error` 필드는 **항상 안정적인 snake_case 코드**만 담는다.
+// 한국어 원문을 섞어 돌려주면 클라이언트가 그것을 그대로 토스트에 노출하게 된다.
+// 사용자 문구는 전부 src/lib/i18n/ko.ts의 drops 섹션에서 관리한다.
 
 const NAVER_RADIUS_M = 500  // T2 네이버 POI는 넓게 표시 (지도 탐색용)
 
@@ -128,12 +132,12 @@ export async function GET(req: NextRequest) {
   const lng = parseFloat(searchParams.get('lng') ?? '')
 
   if (isNaN(lat) || isNaN(lng)) {
-    return NextResponse.json({ error: 'lat, lng 파라미터 필요' }, { status: 400 })
+    return NextResponse.json({ error: 'missing_params' }, { status: 400 })
   }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const service = createServiceClient()
 
@@ -199,18 +203,20 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const body = await req.json()
   const { poi_id, inventory_item_id, user_lat, user_lng } = body
 
   if (!poi_id || !inventory_item_id || isNaN(user_lat) || isNaN(user_lng)) {
-    return NextResponse.json({ error: '필수 파라미터 누락' }, { status: 400 })
+    return NextResponse.json({ error: 'missing_params' }, { status: 400 })
   }
 
   const service = createServiceClient()
 
-  // POI 조회 + 50m 검증
+  // POI 조회 + 드랍 반경(DROP_RADIUS_METERS = 500m) 검증.
+  // 20260826_002 이전에는 주석·에러 문구가 '50m'라고 적혀 있었으나 상수는 처음부터
+  // 500이었다 — 사용자 문구에는 숫자를 박지 않고 상수를 t()로 주입한다.
   const { data: poiRaw, error: poiError } = await service
     .from('poi')
     .select('*')
@@ -218,12 +224,12 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (poiError || !poiRaw) {
-    return NextResponse.json({ error: 'POI 없음' }, { status: 404 })
+    return NextResponse.json({ error: 'poi_not_found' }, { status: 404 })
   }
 
   const poi = poiRaw as PoiRow
   if (!isUserNearPoi(user_lat, user_lng, poi)) {
-    return NextResponse.json({ error: 'POI 반경 50m 밖' }, { status: 403 })
+    return NextResponse.json({ error: 'out_of_range' }, { status: 403 })
   }
 
   // 인벤토리 아이템 소유권 + 드랍 가능 상태 확인
@@ -234,7 +240,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (invError || !invRaw) {
-    return NextResponse.json({ error: '인벤토리 없음' }, { status: 404 })
+    return NextResponse.json({ error: 'inventory_not_found' }, { status: 404 })
   }
 
   const inventoryId = (invRaw as { id: string; used_slots: number }).id
@@ -248,18 +254,21 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (itemError || !itemRaw) {
-    return NextResponse.json({ error: '아이템 없음 또는 소유 아님' }, { status: 404 })
+    // 존재하지 않거나 내 인벤토리 소유가 아닌 아이템 — 둘을 구분해 돌려주지 않는다
+    // (남의 아이템 id 존재 여부를 알려주는 셈이 된다).
+    return NextResponse.json({ error: 'item_not_found' }, { status: 404 })
   }
 
   const item = itemRaw as Pick<InventoryItemRow, 'id' | 'badge_id' | 'dropped_at'> & { slotted_in: string | null }
 
   if (item.dropped_at !== null) {
-    return NextResponse.json({ error: '이미 드랍된 아이템' }, { status: 409 })
+    return NextResponse.json({ error: 'already_dropped' }, { status: 409 })
   }
 
-  // 아이템북에 슬롯된 아이템은 인벤토리에서 이미 빠져나간 상태이므로 드랍 불가
+  // 컬렉션에 슬롯된 아이템은 인벤토리에서 이미 빠져나간 상태이므로 드랍 불가.
+  // 사용자 문구(d.drops.dropItemSlotted)는 ko.ts에 있다 — 여기서는 코드만 돌려준다.
   if (item.slotted_in !== null) {
-    return NextResponse.json({ error: '컬렉션에 장착된 아이템은 드랍할 수 없어요.' }, { status: 409 })
+    return NextResponse.json({ error: 'item_slotted' }, { status: 409 })
   }
 
   // poi_drops INSERT
@@ -276,7 +285,8 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (dropError || !dropRaw) {
-    return NextResponse.json({ error: '드랍 실패' }, { status: 500 })
+    console.error('[drops] poi_drops INSERT 오류:', dropError?.message)
+    return NextResponse.json({ error: 'drop_failed' }, { status: 500 })
   }
 
   const dropId = (dropRaw as { id: string }).id

@@ -336,8 +336,10 @@ export const ko = {
     retry: '다시 시도',
     locating: '위치 확인 중',
     loadPoiFailed: '주변 지점을 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
-    loadDropsFailed: '드랍 목록 로드 실패',
-    loadInventoryFailed: '인벤토리 로드 실패',
+    // 20260826_002: '드랍 목록 로드 실패'·'인벤토리 로드 실패'는 개발자용 축약 문구였다.
+    // 가이드의 [현상]→[원인/해결책] 구조 + 해요체로 다시 썼다.
+    loadDropsFailed: '드랍된 아이템을 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
+    loadInventoryFailed: '인벤토리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
     outOfRange: '{name}까지 {distance}m — 50m 이내로 이동하면 드랍/픽업할 수 있어요',
     exploring: '주변 탐색 중',
     noNearbyPlaces: '주변 500m에 드랍/픽업할 수 있는 지점이 없어요',
@@ -351,7 +353,15 @@ export const ko = {
     cancel: '취소',
     dropButton: '드랍하기',
     dropSuccess: '드랍 완료',
-    dropFailed: '드랍 실패',
+    // 20260826_002: 드랍 실패 코드별 사용자 문구. 서버(api/drops)는 snake_case 코드만
+    // 돌려주고, 이 문구들이 유일한 사용자 노출 경로다(PoiCarouselModal에서 코드로 매핑).
+    dropFailed: '지금은 드랍할 수 없어요. 잠시 후 다시 시도해 주세요',
+    // 반경은 pickupOutOfRange와 같은 이유로 DROP_RADIUS_METERS 상수를 주입한다.
+    dropOutOfRange: '조금 더 가까이 가야 해요. 지점에서 {m}m 안에 있어야 드랍할 수 있어요',
+    dropPoiNotFound: '이 지점 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
+    dropItemNotFound: '이 아이템을 찾을 수 없어요. 인벤토리를 새로고침하고 다시 시도해 주세요',
+    dropAlreadyDropped: '이미 드랍한 아이템이에요. 다른 아이템을 골라주세요',
+    dropItemSlotted: '컬렉션에 넣은 아이템은 드랍할 수 없어요. 컬렉션에서 빼고 다시 시도해 주세요',
     dropEmptyTitle: '아직 아이템이 없어요',
     dropEmptyBody: '여기에 아이템을 드랍하면 다른 사람이 발견할 수 있어요',
     dropHereButton: '여기에 드랍하기',
@@ -369,6 +379,13 @@ export const ko = {
     // 상수가 바뀔 때 조용히 어긋난다(실제로 서버 에러 문구가 500m를 '50m'로 잘못 적고 있었다).
     pickupOutOfRange: '조금 더 가까이 가야 해요. 드랍 지점에서 {m}m 안에 있어야 픽업할 수 있어요',
     pickupOwnDrop: '내가 드랍한 아이템이에요. 다른 러너가 픽업할 수 있게 그대로 두세요',
+    // 20260826_002: 서버 원문으로 남아 있던 나머지 픽업 실패 경로를 코드화하면서 옮긴 문구.
+    pickupDropNotFound: '이 아이템은 더 이상 여기에 없어요. 목록을 새로고침하고 다시 확인해 주세요',
+    pickupPoiNotFound: '이 지점 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
+    pickupPoiBlocked: '이 지점에서는 잠시 이용이 제한됐어요. 시간이 지난 뒤 다시 시도해 주세요',
+    pickupLocationUnverified: '위치 정보를 확인할 수 없어요. 잠시 후 다시 시도해 주세요',
+    // 좌표 없이 요청이 나간 경우 — 드랍·픽업 양쪽에서 함께 쓴다.
+    locationMissing: '위치를 확인하지 못했어요. 위치 권한을 허용하고 다시 시도해 주세요',
     droppedAtPlace: '이 지점에 드랍됨',
     droppedAtPlaceBody: '{place}에 놓여 있는 아이템이에요',
     back: '뒤로',
