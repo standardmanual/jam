@@ -57,6 +57,11 @@ interface BottomSheetProps {
   contentScrollable?: boolean
 }
 
+/** footer의 padding-bottom(safe-area 제외분) — `footerBottomInset='tabbar'`: 플로팅 탭바(16+64) 위 12px. */
+const FOOTER_PAD_TABBAR_PX = 16 + 64 + 12
+/** footer의 padding-bottom(safe-area 제외분) — `footerBottomInset='safe-area'`: 탭바가 있던 자리(16px). */
+const FOOTER_PAD_SAFE_AREA_PX = 16
+
 const DRAG_CLOSE_THRESHOLD = 120
 /** 릴리즈 순간 하향 속도(px/ms)가 이 값을 넘으면 거리와 무관하게 닫는다(플릭 제스처). */
 const DRAG_CLOSE_VELOCITY = 0.5
@@ -94,6 +99,8 @@ export default function BottomSheet({
   const draggingRef = useRef(false)
   const startYRef = useRef(0)
   const sheetRef = useRef<HTMLDivElement>(null)
+  /** footer 박스 — 하단 점유 높이를 실측해 토스트에 신고하는 데 쓴다(20260826_001). */
+  const footerRef = useRef<HTMLDivElement>(null)
   /** 드래그 시작 시점의 기준 translateY — 진행 중인 스프링백 트랜지션 위에서 재드래그해도
    *  현재 위치부터 이어지도록 한다(고정 200ms 트랜지션이 끝나기 전 재드래그 시 점프 방지). */
   const dragBaseRef = useRef(0)
@@ -106,6 +113,8 @@ export default function BottomSheet({
   //  · 닫을 때: data-open=false → --panel-close-dur 후 언마운트
   const [shown, setShown] = useState(false)
   const [lingering, setLingering] = useState(false)
+
+  const hasFooter = Boolean(footer)
 
   // 20260825_039: 시트를 document.body로 포털링하기 위한 마운트 게이트.
   // `document`는 클라이언트에만 존재하므로 SSR·하이드레이션 렌더에서는 false를 돌려주고
@@ -142,15 +151,24 @@ export default function BottomSheet({
     }
   }, [open])
 
-  // 20260826_001: 시트가 화면에 떠 있는 동안(닫힘 트랜지션 잔류 포함) 전역 스토어에 등록해,
-  // 이 구간에 뜨는 토스트가 하단이 아닌 상단 앵커를 고르게 한다. 시트 footer 버튼과 토스트가
-  // 기하학적으로 거의 완전히 포개져 버튼 탭이 먹히지 않는 문제를 막는다(Toast.tsx 참고).
+  // 20260826_001: footer가 있는 동안 "화면 하단부터 footer 상단까지의 높이"를 전역 스토어에
+  // 신고해, 이 구간에 뜨는 토스트가 footer 버튼 위로 올라가게 한다. 토스트 사각형은
+  // pointer-events-auto라서 겹치면 버튼 탭이 토스트 디스미스로 먹힌다(Toast.tsx 참고).
+  //
+  // 높이는 계산이 아니라 실제 DOM에서 잰다 — footer는 임의의 ReactNode라 컨텐츠 높이를 여기서
+  // 알 수 없다. offsetHeight에는 safe-area까지 포함돼 있으므로, 신고 규약(safe-area 제외)에
+  // 맞추려고 resolve된 padding-bottom에서 safe-area 몫을 되돌려 뺀다.
   // `open`이 아니라 `lingering` 기준인 이유: 닫힘 트랜지션 350ms 동안에도 시트는 여전히
-  // 화면 하단을 덮고 있다.
+  // 화면 하단을 덮고 있다. footer가 없는 시트는 하단에 눌러야 할 것이 없으므로 신고하지 않는다.
   useEffect(() => {
     if (!lingering) return
-    return pushBottomOverlay()
-  }, [lingering])
+    const el = footerRef.current
+    if (!el) return
+    const basePaddingPx = footerBottomInset === 'safe-area' ? FOOTER_PAD_SAFE_AREA_PX : FOOTER_PAD_TABBAR_PX
+    const resolvedPaddingPx = parseFloat(window.getComputedStyle(el).paddingBottom) || 0
+    const safeAreaPx = Math.max(0, resolvedPaddingPx - basePaddingPx)
+    return pushBottomOverlay(el.offsetHeight - safeAreaPx)
+  }, [lingering, footerBottomInset, hasFooter])
 
   // 시트가 화면에 떠 있는 동안 배경(main 스크롤 컨테이너)의 스크롤을 잠근다 — 배경이 스크롤되며
   // iOS Safari 동적 툴바가 접혔다 펴지면 dvh 기반 시트 높이가 함께 흔들리는 문제를 막는다.
@@ -283,7 +301,7 @@ export default function BottomSheet({
           {children}
         </div>
 
-        {footer ? (
+        {hasFooter ? (
           /* 스크롤 영역과 분리된 형제 요소 — flex-1인 위 스크롤 영역이 알아서
              줄어들기 때문에 콘텐츠 길이와 무관하게 항상 화면에 보인다.
              footerBottomInset='tabbar'(기본값): 플로팅 탭바(safe-area+16px+64px) 높이 + 여유
@@ -292,13 +310,13 @@ export default function BottomSheet({
              화면 전용 — 탭바의 원래 위치(safe-area+16px)까지 그대로 내려서 footer 하단이
              탭바가 있던 자리와 정확히 맞도록 한다. */
           <div
+            ref={footerRef}
             // 20260816_012: 상단 1px 구분선(hr 대체) 제거 → 스크롤 영역과 다른 배경톤으로 구분
             className="shrink-0 px-[var(--spacing-16)] pt-[var(--spacing-16)] bg-surface-elevated"
             style={{
-              paddingBottom:
-                footerBottomInset === 'safe-area'
-                  ? 'calc(env(safe-area-inset-bottom) + 16px)'
-                  : 'calc(env(safe-area-inset-bottom) + 16px + 64px + 12px)',
+              paddingBottom: `calc(env(safe-area-inset-bottom) + ${
+                footerBottomInset === 'safe-area' ? FOOTER_PAD_SAFE_AREA_PX : FOOTER_PAD_TABBAR_PX
+              }px)`,
             }}
           >
             {footer}
