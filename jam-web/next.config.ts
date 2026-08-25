@@ -55,6 +55,16 @@ const nextConfig: NextConfig = {
         destination: '/:username/collections/:path*',
         permanent: true,
       },
+      // 20260826_004: "POI 배지" → "체크인 배지" 전환으로 /api/poi-badges 가 이동했다.
+      // 배포 순간 이전 번들을 들고 있는 세션(지도 화면을 열어둔 탭)이 404를 받지 않도록
+      // 임시(307) 리다이렉트로 완충한다. 쿼리스트링은 Next가 자동 보존하고,
+      // fetch는 기본 redirect:'follow'라 클라이언트 수정 없이 이어진다.
+      // ⚠️ 영구 유지가 아니라 배포 창 보호용이다 — 배포 후 한 사이클 지나면 제거할 것.
+      {
+        source: '/api/poi-badges',
+        destination: '/api/checkin-badges',
+        permanent: false,
+      },
     ];
   },
 };

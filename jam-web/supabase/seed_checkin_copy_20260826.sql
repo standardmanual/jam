@@ -19,10 +19,12 @@
 
 BEGIN;
 
--- 1) 미션 제목 4건 — '방문 챌린지' → '체크인 챌린지'
---    A~D 접미사를 보존해야 하므로 문자열 치환(replace)으로 처리한다.
+-- 1) 미션 제목 4건 — '지정 스팟 방문 챌린지 A~D' → '지정 지점 체크인 챌린지 A~D'
+--    '방문'은 금칙어, '스팟'은 '지점'(고정 용어)의 X 목록에 있다. 둘 다 치환한다.
+--    A~D 접미사를 보존해야 하므로 문자열 치환(replace) 중첩으로 처리한다.
+--    ⚠️ '스팟'을 남기면 제목('지정 스팟…')과 설명('지정된 지점에…')의 표기가 갈린다.
 UPDATE public.missions
-SET title = replace(title, '방문 챌린지', '체크인 챌린지')
+SET title = replace(replace(title, '지정 스팟', '지정 지점'), '방문 챌린지', '체크인 챌린지')
 WHERE title LIKE '지정 스팟 방문 챌린지%';
 
 -- 2) 미션 설명 4건 — '지정된 장소를 방문해보세요.' → '지정된 지점에 체크인해보세요.'
@@ -39,9 +41,11 @@ WHERE subtitle = '가까운 장소에서 픽업해보세요';
 COMMIT;
 
 -- 🧪 적용 후 검증
---   SELECT title, description FROM public.missions WHERE title LIKE '지정 스팟%';
---     → '지정 스팟 체크인 챌린지 A~D' / '지정된 지점에 체크인해보세요.'
+--   SELECT title, description FROM public.missions WHERE title LIKE '지정 지점%';
+--     → '지정 지점 체크인 챌린지 A~D' / '지정된 지점에 체크인해보세요.'
 --   SELECT subtitle FROM public.today_cards WHERE subtitle LIKE '%픽업해보세요';
 --     → '가까운 지점에서 픽업해보세요'
---   SELECT count(*) FROM public.missions WHERE title LIKE '%방문%' OR description LIKE '%방문%';
+--   SELECT count(*) FROM public.missions
+--     WHERE title  LIKE '%방문%' OR description LIKE '%방문%'
+--        OR title  LIKE '%스팟%' OR description LIKE '%스팟%';
 --     → 0
