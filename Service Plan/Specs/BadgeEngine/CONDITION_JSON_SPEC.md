@@ -7,6 +7,16 @@
 이 문서는 `condition_json`에 들어올 수 있는 **모든 필드의 타입·의미·평가 방식**을 정의하는 단일 출처(source of truth)이다.  
 엔진 구현의 평가 로직은 BADGE_ENGINE_UNIFIED.md를 참조하고, 이 문서는 "어떤 필드를 쓸 수 있는가"를 명세한다.
 
+> **데이터 계약 검증** (2026-08-25, 티켓 20260825_029): 아래 필드 목록은 코드에서
+> `src/lib/badge-engine/condition-schema.ts`의 `ALL_CONDITION_KEYS`가 단일 소스다.
+> `badges.condition_json`에 이 목록 밖의 키가 들어오면 DB CHECK 제약
+> (`badges_condition_json_known_keys`, `supabase/migrations/102_condition_json_check_constraint.sql`)이
+> INSERT/UPDATE 자체를 거부하고, 어드민 API(`src/lib/admin/badge-validation.ts`의
+> `findUnknownConditionKeyError`)가 저장 전에 한국어 에러로 먼저 막는다. 마이그레이션
+> `084_badge_condition_cleanup.sql`이 이 문서에 없던 `mission_reward` 필드를 검증 없이 넣으면서
+> 미션 없이 미션보상배지가 발급되는 사고(티켓 20260825_028)로 이어진 것이 이 검증 계층의 도입
+> 배경이다. 새 필드를 추가할 때는 이 문서 + `condition-schema.ts` + CHECK 제약 배열을 함께 갱신할 것.
+
 ---
 
 ## 1. 배지 타입별 적용 범위
@@ -19,7 +29,10 @@
 
 ---
 
-## 2. 전체 필드 목록
+## 2. 조건 필드 (발급 판정에 관여)
+
+아래 필드들은 badge-engine의 `evaluateConditionDetailed`가 실제로 검사에 사용한다 — 즉 이 필드들의
+값이 배지 발급 여부(pass/fail)를 직접 좌우한다. §3의 메타데이터 필드와 구분된다.
 
 ### 2.1 활동 필터 필드
 
@@ -87,15 +100,35 @@
 
 ---
 
-## 3. 필드 조합 규칙
+## 3. 메타데이터 필드 (발급 판정에 관여하지 않음)
+
+아래 필드는 §2의 조건 필드와 성격이 다르다 — badge-engine의 수치 검사 로직에 전혀 관여하지
+않고, 표시·안내 목적으로만 쓰인다. `src/lib/badge-engine/condition-schema.ts`의
+`CONDITION_META_KEYS`로 분류된다.
+
+| 필드 | 타입 | 설명 | 평가 방식 |
+|------|------|------|-----------|
+| `mission_reward` | `boolean` | 미션 완료(`grantMissionRewards`)로만 지급되는 배지 표시용 플래그 | badge-engine 내 **항상 fail**(사유: "미션 보상 배지 — 미션 완료로만 지급") + 발급 후보 조회 단계에서 아예 제외. 배지 상세화면이 이 플래그로 "미션 보상 배지" 안내를 표시 |
+
+> ⚠️ 배경(티켓 20260825_028): 마이그레이션 `084_badge_condition_cleanup.sql`이 배지 상세화면
+> 표시용으로 미션보상배지 15종에 `{"mission_reward": true}`를 넣었는데, 당시 badge-engine은
+> "알려진 조건 필드 없음 → 검사 스킵 → pass:true"로 처리해 미션 완료 없이 미션보상배지가
+> 발급되고 레벨업 게이팅이 12일간 무력화됐다. 지금은 `mission_reward`가 §2의 조건 필드와
+> 명시적으로 분리돼 있고, 이 필드만 있는 조건은 위 방어 분기로 항상 fail 처리된다. 어드민
+> `BadgeForm.tsx`도 이 필드를 조건 필드와 시각적으로 구분된 체크박스로 노출한다(티켓 20260825_029).
+
+---
+
+## 4. 필드 조합 규칙
 
 - 같은 `condition_json` 내 모든 필드는 **AND** 조건 (모두 충족 시 발급)
 - 단일 조건(필드 1개)과 복합 조건(필드 2개+)은 "진행 트랙 중복 제거" 정책이 다르게 적용됨 → BADGE_ENGINE_UNIFIED.md § 2.5 참조
 - `poi_id`는 다른 조건 필드와 혼합 불가 (엔진 미지원)
+- `mission_reward`(§3)는 조건 필드와 함께 있어도 항상 §3의 규칙이 우선한다(무조건 fail)
 
 ---
 
-## 4. 예시
+## 5. 예시
 
 ```jsonc
 // 단순 누적 거리 (걷기 100km)
@@ -112,14 +145,18 @@
 
 // POI 배지 (GPS 매칭)
 { "poi_id": "uuid-here" }
+
+// 미션 보상 배지 (메타데이터 필드, §3 — 미션 완료로만 지급, badge-engine은 항상 fail 처리)
+{ "mission_reward": true }
 ```
 
 ---
 
-## 5. 미구현·제한 사항
+## 6. 미구현·제한 사항
 
 | 항목 | 상태 |
 |------|------|
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
+| `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조 |
 | `temperature_*` (날씨 데이터 없는 활동) | ⚠️ fail — Strava average_temp 의존 |
 | UTC vs KST 경계 | ⚠️ `streak_days`·`weekly_count`·`time_range`는 UTC 기준 — KST 자정 경계 오차 가능 |
