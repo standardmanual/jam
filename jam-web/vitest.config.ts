@@ -18,7 +18,9 @@ export default defineConfig({
       test: {
         globals: true,
         environment: 'node',
-        // node:assert + 자체 러너로 작성된 파일은 npx tsx로 직접 실행 (vitest 제외)
+        // node:assert + 자체 러너로 작성된 파일이라 vitest 러너로는 못 돈다 — 여기서 제외하되,
+        // package.json의 `test:node`가 tsx로 전부 실행하고 `npm test`가 이를 이어서 호출한다.
+        // (제외만 하고 방치하면 회귀 방어가 CI에서 빠진다 — 티켓 20260825_028)
         exclude: ['**/node_modules/**', '**/today/__tests__/**', '**/missions/__tests__/**']
       }
     }, {
