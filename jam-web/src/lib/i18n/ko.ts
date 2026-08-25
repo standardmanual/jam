@@ -349,9 +349,16 @@ export const ko = {
     dropNoItemsBody: '인벤토리에 아이템이 생기면 여기서 드랍할 수 있어요',
     pickupButton: '픽업하기',
     pickupSuccess: '픽업 완료! 인벤토리를 확인해보세요',
-    pickupFailed: '픽업 실패',
-    pickupAlreadyDone: '이미 픽업된 아이템이에요',
-    pickupInventoryFull: '인벤토리가 꽉 찼어요',
+    // 20260825_039: 바텀시트 포털화로 그동안 시트에 가려져 있던 픽업 실패 토스트가
+    // 실제로 노출되기 시작했다. 서버 원문(개발자용 축약 문구)이 새어 나가지 않도록
+    // 실패 코드를 전부 여기서 사용자 문구로 옮기고, 가이드의 [현상]→[원인/해결책] 구조로 다시 썼다.
+    pickupFailed: '지금은 픽업할 수 없어요. 잠시 후 다시 시도해 주세요',
+    pickupAlreadyDone: '이미 픽업된 아이템이에요. 다른 아이템을 찾아보세요',
+    pickupInventoryFull: '인벤토리가 꽉 찼어요. 아이템을 정리하고 다시 시도해 주세요',
+    // 반경은 DROP_RADIUS_METERS 상수를 주입한다 — 문구에 숫자를 직접 박아두면
+    // 상수가 바뀔 때 조용히 어긋난다(실제로 서버 에러 문구가 500m를 '50m'로 잘못 적고 있었다).
+    pickupOutOfRange: '조금 더 가까이 가야 해요. 드랍 지점에서 {m}m 안에 있어야 픽업할 수 있어요',
+    pickupOwnDrop: '내가 드랍한 아이템이에요. 다른 러너가 픽업할 수 있게 그대로 두세요',
     droppedAtPlace: '이 장소에 드랍됨',
     droppedAtPlaceBody: '{place}에 놓여 있는 아이템이에요',
     back: '뒤로',
