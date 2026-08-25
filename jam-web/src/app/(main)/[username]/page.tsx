@@ -102,6 +102,7 @@ export default async function UserProfilePage({ params }: Props) {
         .in('id', ownedBadgeIds)
         .eq('type', 'item')
         .not('item_book_id', 'is', null)
+        .is('deleted_at', null)
       const bookIdsForCount = [...new Set(((booksForCount ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id))]
       if (bookIdsForCount.length > 0) {
         const { count } = await service

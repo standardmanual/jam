@@ -108,6 +108,7 @@ export default async function BadgesPage({ searchParams }: Props) {
       .in('id', ownedBadgeIds)
       .eq('type', 'item')
       .not('item_book_id', 'is', null)
+      .is('deleted_at', null)
 
     const bookIds = [...new Set(((ownedBadgesWithBook ?? []) as { id: string; item_book_id: string }[]).map((b) => b.item_book_id))]
 
@@ -115,7 +116,7 @@ export default async function BadgesPage({ searchParams }: Props) {
       const [{ data: booksRaw }, { data: bookBadgesRaw }, { data: slotsRaw }, { data: completionsRaw }] =
         await Promise.all([
           supabase.from('item_books').select('*').in('id', bookIds),
-          supabase.from('badges').select('id, item_book_id, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').order('created_at', { ascending: true }),
+          supabase.from('badges').select('id, item_book_id, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
           supabase.from('user_item_book_slots').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
           supabase.from('user_item_book_completions').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
         ])

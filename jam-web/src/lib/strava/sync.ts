@@ -333,6 +333,7 @@ export async function processFetchedActivities(
       .from('badges')
       .select('id, type, name, image_url, rarity')
       .in('id', linkedBadgeIds)
+      .is('deleted_at', null)
     if (linkedBadgeError) {
       console.error('[processFetchedActivities] POI 연결 배지 조회 오류:', linkedBadgeError)
     }
