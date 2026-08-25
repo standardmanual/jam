@@ -58,76 +58,79 @@
 --      WHERE m.title LIKE '%레벨업%')                                                       AS 완료기록;
 --
 -- =====================================================================
--- STEP 1. 실제 삭제 — 아래 전체를 한 트랜잭션으로 실행합니다.
---         대상은 STEP 1-a에서 확정한 id 목록(temp table) 안으로만 한정되며,
+-- STEP 1. 실제 삭제 — 아래 DO 블록 전체를 한 번에 실행합니다(단일 문이라 원자적).
+--         대상은 1-a에서 확정한 id 배열 안으로만 한정되며,
 --         id 개수가 기대치(15/15/15)와 다르면 RAISE EXCEPTION으로 전체 롤백됩니다.
 -- =====================================================================
 
-BEGIN;
+-- ⚠️ 2026-08-25 수정 — 최초 버전은 CREATE TEMP TABLE ... ON COMMIT DROP을 썼다가
+--    `ERROR: 42P01: relation "_reset_reward_badge_ids" does not exist`로 실패했다.
+--    Supabase SQL 편집기처럼 문(statement)을 개별 autocommit으로 실행하는 환경에서는
+--    temp table이 CREATE 직후 커밋과 함께 즉시 드롭돼 다음 문이 참조할 수 없다.
+--    전체를 단일 DO 블록으로 바꿨다 — DO는 하나의 문이라 어떤 실행 환경에서도 원자적이고,
+--    중간에 RAISE EXCEPTION이 나면 그 블록의 모든 DELETE가 함께 롤백된다.
 
--- 1-a. 삭제 대상 id 확정 (이후 모든 DELETE는 이 세 테이블만 참조한다)
-CREATE TEMP TABLE _reset_reward_badge_ids ON COMMIT DROP AS
-SELECT id FROM badges
-WHERE type = 'activity' AND name IN (
-  '동네 산책러 레벨업', '동네 산책러 레벨업 Hard', '동네 산책러 레벨업 Ultra',
-  '첫 숨결 레벨업',     '첫 숨결 레벨업 Hard',     '첫 숨결 레벨업 Ultra',
-  '언덕의 도전자 레벨업','언덕의 도전자 레벨업 Hard','언덕의 도전자 레벨업 Ultra',
-  '첫 고도 레벨업',     '첫 고도 레벨업 Hard',     '첫 고도 레벨업 Ultra',
-  '야생의 주자 레벨업', '야생의 주자 레벨업 Hard', '야생의 주자 레벨업 Ultra'
-);
-
-CREATE TEMP TABLE _reset_tree_badge_ids ON COMMIT DROP AS
-SELECT id FROM badges
-WHERE type = 'activity'
-  AND name IN ('동네 산책러', '첫 숨결', '언덕의 도전자', '첫 고도', '야생의 주자')
-  AND rarity IN ('rare', 'legend', 'mythic');
-
-CREATE TEMP TABLE _reset_mission_ids ON COMMIT DROP AS
-SELECT id FROM missions
-WHERE title IN (
-  '동네 산책러 레벨업', '동네 산책러 레벨업 Hard', '동네 산책러 레벨업 Ultra',
-  '첫 숨결 레벨업',     '첫 숨결 레벨업 Hard',     '첫 숨결 레벨업 Ultra',
-  '언덕의 도전자 레벨업','언덕의 도전자 레벨업 Hard','언덕의 도전자 레벨업 Ultra',
-  '첫 고도 레벨업',     '첫 고도 레벨업 Hard',     '첫 고도 레벨업 Ultra',
-  '야생의 주자 레벨업', '야생의 주자 레벨업 Hard', '야생의 주자 레벨업 Ultra'
-);
-
--- 1-b. 안전장치 — 대상 개수가 기대치와 다르면(이름 변경·중복 등) 전체 롤백
 DO $$
 DECLARE
-  reward_cnt  INT := (SELECT count(*) FROM _reset_reward_badge_ids);
-  tree_cnt    INT := (SELECT count(*) FROM _reset_tree_badge_ids);
-  mission_cnt INT := (SELECT count(*) FROM _reset_mission_ids);
+  reward_ids  UUID[];
+  tree_ids    UUID[];
+  mission_ids UUID[];
+  d_reward INT; d_tree INT; d_comp INT; d_part INT;
 BEGIN
-  IF reward_cnt <> 15 THEN
-    RAISE EXCEPTION '미션보상배지 대상이 15개가 아닙니다 (실제 %개) — 중단', reward_cnt;
+  -- 1-a. 삭제 대상 id 확정 (이후 모든 DELETE는 이 세 배열 안으로만 한정된다)
+  SELECT array_agg(id) INTO reward_ids FROM badges
+  WHERE type = 'activity' AND name IN (
+    '동네 산책러 레벨업', '동네 산책러 레벨업 Hard', '동네 산책러 레벨업 Ultra',
+    '첫 숨결 레벨업',     '첫 숨결 레벨업 Hard',     '첫 숨결 레벨업 Ultra',
+    '언덕의 도전자 레벨업','언덕의 도전자 레벨업 Hard','언덕의 도전자 레벨업 Ultra',
+    '첫 고도 레벨업',     '첫 고도 레벨업 Hard',     '첫 고도 레벨업 Ultra',
+    '야생의 주자 레벨업', '야생의 주자 레벨업 Hard', '야생의 주자 레벨업 Ultra'
+  );
+
+  SELECT array_agg(id) INTO tree_ids FROM badges
+  WHERE type = 'activity'
+    AND name IN ('동네 산책러', '첫 숨결', '언덕의 도전자', '첫 고도', '야생의 주자')
+    AND rarity IN ('rare', 'legend', 'mythic');
+
+  SELECT array_agg(id) INTO mission_ids FROM missions
+  WHERE title IN (
+    '동네 산책러 레벨업', '동네 산책러 레벨업 Hard', '동네 산책러 레벨업 Ultra',
+    '첫 숨결 레벨업',     '첫 숨결 레벨업 Hard',     '첫 숨결 레벨업 Ultra',
+    '언덕의 도전자 레벨업','언덕의 도전자 레벨업 Hard','언덕의 도전자 레벨업 Ultra',
+    '첫 고도 레벨업',     '첫 고도 레벨업 Hard',     '첫 고도 레벨업 Ultra',
+    '야생의 주자 레벨업', '야생의 주자 레벨업 Hard', '야생의 주자 레벨업 Ultra'
+  );
+
+  -- 1-b. 안전장치 — 대상 개수가 기대치와 다르면(이름 변경·중복 등) 전체 롤백
+  IF coalesce(array_length(reward_ids, 1), 0) <> 15 THEN
+    RAISE EXCEPTION '미션보상배지 대상이 15개가 아닙니다 (실제 %개) — 중단', coalesce(array_length(reward_ids, 1), 0);
   END IF;
-  IF tree_cnt <> 15 THEN
-    RAISE EXCEPTION '본 배지 Rare/Legend/Mythic 대상이 15개가 아닙니다 (실제 %개) — 중단', tree_cnt;
+  IF coalesce(array_length(tree_ids, 1), 0) <> 15 THEN
+    RAISE EXCEPTION '본 배지 Rare/Legend/Mythic 대상이 15개가 아닙니다 (실제 %개) — 중단', coalesce(array_length(tree_ids, 1), 0);
   END IF;
-  IF mission_cnt <> 15 THEN
-    RAISE EXCEPTION '레벨업 미션 대상이 15개가 아닙니다 (실제 %개) — 중단', mission_cnt;
+  IF coalesce(array_length(mission_ids, 1), 0) <> 15 THEN
+    RAISE EXCEPTION '레벨업 미션 대상이 15개가 아닙니다 (실제 %개) — 중단', coalesce(array_length(mission_ids, 1), 0);
   END IF;
-  RAISE NOTICE '대상 확정: 미션보상배지 %개 / 본 배지 %개 / 미션 %개', reward_cnt, tree_cnt, mission_cnt;
+
+  -- 1-c. 미션보상배지 15종 발급분 삭제
+  DELETE FROM user_activity_badges WHERE badge_id = ANY(reward_ids);
+  GET DIAGNOSTICS d_reward = ROW_COUNT;
+
+  -- 1-d. 5개 트리 본 배지 Rare/Legend/Mythic 발급분 삭제 (common은 보존)
+  DELETE FROM user_activity_badges WHERE badge_id = ANY(tree_ids);
+  GET DIAGNOSTICS d_tree = ROW_COUNT;
+
+  -- 1-e. 레벨업 미션 15종 완료 기록 삭제
+  DELETE FROM user_mission_completions WHERE mission_id = ANY(mission_ids);
+  GET DIAGNOSTICS d_comp = ROW_COUNT;
+
+  -- 1-f. 레벨업 미션 15종 참가 기록 삭제
+  DELETE FROM user_mission_participations WHERE mission_id = ANY(mission_ids);
+  GET DIAGNOSTICS d_part = ROW_COUNT;
+
+  RAISE NOTICE '삭제 완료 — 미션보상배지 발급분 %건 / 본 배지 발급분 %건 / 완료기록 %건 / 참가기록 %건',
+    d_reward, d_tree, d_comp, d_part;
 END $$;
-
--- 1-c. 미션보상배지 15종 발급분 삭제 (기대 104건)
-DELETE FROM user_activity_badges
-WHERE badge_id IN (SELECT id FROM _reset_reward_badge_ids);
-
--- 1-d. 5개 트리 본 배지 Rare/Legend/Mythic 발급분 삭제 (기대 37건)
-DELETE FROM user_activity_badges
-WHERE badge_id IN (SELECT id FROM _reset_tree_badge_ids);
-
--- 1-e. 레벨업 미션 15종 완료 기록 삭제 (기대 3건)
-DELETE FROM user_mission_completions
-WHERE mission_id IN (SELECT id FROM _reset_mission_ids);
-
--- 1-f. 레벨업 미션 15종 참가 기록 삭제 (기대 33건)
-DELETE FROM user_mission_participations
-WHERE mission_id IN (SELECT id FROM _reset_mission_ids);
-
-COMMIT;
 
 -- =====================================================================
 -- STEP 2. 실행 후 확인 — 전부 0이어야 합니다.
