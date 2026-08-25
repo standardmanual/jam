@@ -386,6 +386,12 @@ export interface MissionRow {
   max_completions: number | null
   /** 티켓 20260815_003: 미션 카드 썸네일 이미지 URL. null이면 이미지 없음. */
   image_url: string | null
+  /**
+   * 티켓 20260825_028: 이 미션을 완료해야 획득 조건이 열리는 본 배지 id.
+   * null이면 게이팅 없는 일반 미션. 레벨업 미션 15종만 값을 가진다.
+   * 노출 판정(`src/lib/missions/visibility.ts`)이 이 배지의 rarity를 기준으로 판단한다.
+   */
+  gated_badge_id: string | null
   created_at: string
 }
 

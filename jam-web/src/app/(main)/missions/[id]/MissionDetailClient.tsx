@@ -12,6 +12,7 @@ import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import ListRowCard from '@/components/ui/ListRowCard'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
+import { RARITY_LABEL } from '@/lib/rarity'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
@@ -30,6 +31,10 @@ interface Props {
   isCompleted: boolean
   progressValue: number
   rewardBadges: RewardBadgeInfo[]
+  /** 20260825_028: 아직 열리지 않은 레벨업 미션 — 참가 불가 안내만 노출 */
+  locked?: boolean
+  /** 잠금 해제에 필요한 본 배지 (locked일 때만) */
+  requiredBadge?: { name: string; rarity: BadgeRarity } | null
 }
 
 
@@ -96,7 +101,15 @@ function StatusChip({ isCompleted, participating }: { isCompleted: boolean; part
 }
 
 
-export default function MissionDetailClient({ mission, isParticipating, isCompleted, progressValue, rewardBadges }: Props) {
+export default function MissionDetailClient({
+  mission,
+  isParticipating,
+  isCompleted,
+  progressValue,
+  rewardBadges,
+  locked = false,
+  requiredBadge = null,
+}: Props) {
   const [participating, setParticipating] = useState(isParticipating)
   const [loading, setLoading] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -320,7 +333,20 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
         )}
 
         {/* ── CTA 버튼 ── */}
-        {isCompleted ? (
+        {locked ? (
+          /* 20260825_028: 아직 열리지 않은 레벨업 미션 — 참가 불가 + 해제 조건 안내 */
+          <InfoCard>
+            <SectionLabel>{d.missions.lockedTitle}</SectionLabel>
+            <p className="text-[14px] leading-[1.43] text-text-secondary">
+              {requiredBadge
+                ? t(d.missions.lockedBody, {
+                    badge: requiredBadge.name,
+                    rarity: RARITY_LABEL[requiredBadge.rarity] ?? requiredBadge.rarity,
+                  })
+                : d.missions.lockedBodyGeneric}
+            </p>
+          </InfoCard>
+        ) : isCompleted ? (
           /* 완료 → 종료 (disabled) */
           <button
             disabled

@@ -9,6 +9,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { TodayCardRow } from '@/types/database'
 import { computeUserExposureTags } from './exposure'
+import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
+import { resolveMissionVisibility } from '@/lib/missions/visibility'
 
 /**
  * 카드의 이동 경로를 결정한다.
@@ -93,7 +95,10 @@ export async function getTodayCards(
     return []
   }
 
-  const cards = (data ?? []) as TodayCardRow[]
+  const allCards = (data ?? []) as TodayCardRow[]
+  // 20260825_028: 미션 소개 카드도 미션 목록과 같은 노출 규칙을 따른다 —
+  // 이미 완료했거나 아직 열리지 않은 미션은 오늘 카드로도 권하지 않는다.
+  const cards = await filterMissionSpotlightCards(userId, allCards)
   const badgesById = await fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []))
 
   return cards.map((card) => ({
@@ -101,6 +106,35 @@ export async function getTodayCards(
     resolved_href: resolveTargetHref(card),
     resolved_badges: (card.badge_ids ?? []).map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b)),
   }))
+}
+
+/**
+ * mission_spotlight 카드 중 유저에게 노출하면 안 되는 미션(완료/잠금/숨김)을 제외한다.
+ * 판정은 미션 목록·상세·참가 API와 동일한 `resolveMissionVisibility`를 쓴다 (티켓 20260825_028).
+ * mission_id가 없는 카드(/missions 목록으로 이동)는 그대로 둔다.
+ */
+async function filterMissionSpotlightCards(userId: string, cards: TodayCardRow[]): Promise<TodayCardRow[]> {
+  const missionIds = [...new Set(
+    cards
+      .filter((c) => c.template_type === 'mission_spotlight' && c.mission_id)
+      .map((c) => c.mission_id as string)
+  )]
+  if (missionIds.length === 0) return cards
+
+  const supabase = createServiceClient()
+  const { data } = await supabase.from('missions').select('id, gated_badge_id').in('id', missionIds)
+  const missions = (data ?? []) as { id: string; gated_badge_id: string | null }[]
+  if (missions.length === 0) return cards
+
+  const ctx = await loadMissionVisibilityContext(userId, missions)
+  const openMissionIds = new Set(
+    missions.filter((m) => resolveMissionVisibility(m, ctx).visibility === 'open').map((m) => m.id)
+  )
+
+  return cards.filter((c) => {
+    if (c.template_type !== 'mission_spotlight' || !c.mission_id) return true
+    return openMissionIds.has(c.mission_id)
+  })
 }
 
 /** badge_ids 배열(중복 포함 가능)을 한 번에 조회해 id → 배지정보 맵으로 반환 */
