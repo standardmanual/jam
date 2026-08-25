@@ -290,12 +290,11 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
     case 'mission_milestone': {
       const current = num(p, 'current')
       const target = num(p, 'target')
-      const progress = t(n.slotProgress, { current, target, unit: str(p, 'unit') })
       // milestone 키가 없으면 current/target 비율에서 파생한다 — 없다고 그냥 50% 문구로
       // 떨어뜨리면 80% 소식이 "절반을 넘었어요"로 나가는 조용한 실패가 된다.
       const milestone = num(p, 'milestone') || (target > 0 ? (current / target) * 100 : 0)
       const template = milestone >= 80 ? n.msgMissionMilestone80 : n.msgMissionMilestone50
-      return { template, vars: { missionTitle: str(p, 'mission_title'), progress } }
+      return { template, vars: { missionTitle: str(p, 'mission_title') } }
     }
     case 'mission_deadline':
       return {

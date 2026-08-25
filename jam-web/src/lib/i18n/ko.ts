@@ -623,7 +623,6 @@ export const ko = {
     slotRank: '{rank}위',
     slotDaysOrdinal: '{days}일째',
     slotFirstBadge: '첫 배지',
-    slotProgress: '{current}/{target}{unit}',
     slotDay1: '하루',
     slotDay2: '이틀',
     slotDay3: '사흘',
@@ -649,8 +648,8 @@ export const ko = {
     msgDropSpotActive: '{me}님이 드랍한 자리에 {visitors}이 다녀갔어요',
 
     // ── ④ 미션 ──
-    msgMissionMilestone50: "'{missionTitle}', 절반을 넘었어요 ({progress})",
-    msgMissionMilestone80: "'{missionTitle}', 80%를 넘었어요 ({progress})",
+    msgMissionMilestone50: "'{missionTitle}', 절반을 넘었어요",
+    msgMissionMilestone80: "'{missionTitle}', 80%를 넘었어요",
     msgMissionDeadline: "'{missionTitle}'{이/가} {days} 뒤 끝나요. {remaining} 남았어요",
     msgMissionCompleted: "'{missionTitle}'{을/를} 완료했어요. 배지 {badgeCount}와 {points}를 획득했어요",
     msgMissionCompletedBadgeOnly: "'{missionTitle}'{을/를} 완료했어요. 배지 {badgeCount}를 획득했어요",
