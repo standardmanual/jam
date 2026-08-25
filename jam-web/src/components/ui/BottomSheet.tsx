@@ -12,6 +12,7 @@ import {
 import { createPortal } from 'react-dom'
 import { IconButton } from '@ds/components/buttons/IconButton'
 import { cssDurationMs } from '@/lib/motion'
+import { pushBottomOverlay } from '@/lib/uiOverlay'
 
 interface BottomSheetProps {
   open: boolean
@@ -140,6 +141,16 @@ export default function BottomSheet({
       clearTimeout(timer)
     }
   }, [open])
+
+  // 20260826_001: 시트가 화면에 떠 있는 동안(닫힘 트랜지션 잔류 포함) 전역 스토어에 등록해,
+  // 이 구간에 뜨는 토스트가 하단이 아닌 상단 앵커를 고르게 한다. 시트 footer 버튼과 토스트가
+  // 기하학적으로 거의 완전히 포개져 버튼 탭이 먹히지 않는 문제를 막는다(Toast.tsx 참고).
+  // `open`이 아니라 `lingering` 기준인 이유: 닫힘 트랜지션 350ms 동안에도 시트는 여전히
+  // 화면 하단을 덮고 있다.
+  useEffect(() => {
+    if (!lingering) return
+    return pushBottomOverlay()
+  }, [lingering])
 
   // 시트가 화면에 떠 있는 동안 배경(main 스크롤 컨테이너)의 스크롤을 잠근다 — 배경이 스크롤되며
   // iOS Safari 동적 툴바가 접혔다 펴지면 dvh 기반 시트 높이가 함께 흔들리는 문제를 막는다.
