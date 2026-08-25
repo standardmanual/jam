@@ -26,7 +26,7 @@ export async function GET() {
       id,
       badge_id,
       dropped_at,
-      badges ( name, rarity, image_url )
+      badges ( name, rarity, image_url, deleted_at )
     `)
     .eq('inventory_id', inventoryId)
     .is('dropped_at', null)
@@ -35,13 +35,17 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: '조회 실패' }, { status: 500 })
 
-  const items = (data ?? []).map((d: any) => ({
-    id: d.id,
-    badge_id: d.badge_id,
-    badge_name: d.badges?.name,
-    badge_rarity: d.badges?.rarity,
-    badge_image_url: d.badges?.image_url,
-  }))
+  // 소프트 삭제된 배지(badges.deleted_at)는 드랍 선택 목록에서 제외한다 —
+  // 메인 인벤토리 목록(inventory/page.tsx)과 동일하게 조인 결과를 사후 필터한다.
+  const items = (data ?? [])
+    .filter((d: any) => d.badges && !d.badges.deleted_at)
+    .map((d: any) => ({
+      id: d.id,
+      badge_id: d.badge_id,
+      badge_name: d.badges?.name,
+      badge_rarity: d.badges?.rarity,
+      badge_image_url: d.badges?.image_url,
+    }))
 
   return NextResponse.json({ items })
 }
