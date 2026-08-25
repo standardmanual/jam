@@ -52,8 +52,6 @@ interface BadgesClientProps {
   poiBadges: PoiBadgeItem[]
   /** `?tab=` — 알림함 착지 시 열어둘 탭. hash보다 우선한다 (20260824_021) */
   initialTab?: string
-  /** `?highlight=` — 그 소식으로 획득한 배지 id. 그리드에서 짚어준다 (20260824_021) */
-  highlightIds?: string[]
 }
 
 
@@ -74,10 +72,9 @@ export default function BadgesClient({
   itemBookProgress,
   poiBadges,
   initialTab,
-  highlightIds = [],
 }: BadgesClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
-    // 쿼리(?tab=)가 hash보다 우선한다 — 알림 착지점이 탭과 하이라이트를 함께 전달하기 때문
+    // 쿼리(?tab=)가 hash보다 우선한다 — 알림 착지점이 이 쿼리로 탭을 전달하기 때문
     if (initialTab && VALID_TABS.has(initialTab)) return initialTab as TabKey
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.slice(1)
@@ -85,7 +82,6 @@ export default function BadgesClient({
     }
     return 'activity'
   })
-  const highlightSet = useMemo(() => new Set(highlightIds), [highlightIds])
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
   const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
   const [poiCategoryFilter, setPoiCategoryFilter] = useState<string>('all')
@@ -230,7 +226,6 @@ export default function BadgesClient({
                       imageUrl={badge.image_url}
                       rarity={badge.rarity}
                       earned={!!earned}
-                      highlighted={highlightSet.has(badge.id)}
                     />
                   ))}
                 </div>
@@ -278,7 +273,6 @@ export default function BadgesClient({
                       name={badge.name}
                       imageUrl={badge.image_url}
                       rarity={badge.rarity}
-                      highlighted={highlightSet.has(badge.id)}
                     />
                   ))}
                 </div>

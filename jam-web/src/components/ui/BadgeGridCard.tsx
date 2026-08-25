@@ -22,8 +22,9 @@ export interface BadgeGridCardProps {
   /** 선택 강조 링 (select 모드). */
   selected?: boolean
   /**
-   * 알림함에서 `?highlight=`로 진입했을 때 "이 배지 얘기였어요"를 표시한다 (20260824_021).
-   * `selected`(선택 상태)와 의미가 달라 별도 prop으로 둔다.
+   * 컬렉션 슬롯 장착 모드(`/collections/[id]?slot=1`)에서 "지금 넣을 수 있는 칸"을
+   * 짚어준다(`SlotGrid.tsx`). `selected`(선택 상태)와 의미가 달라 별도 prop으로 둔다.
+   * (알림함 배지/인벤토리 목록 착지 시의 최근 획득 하이라이트는 20260826_002에서 제거됨)
    */
   highlighted?: boolean
   className?: string
@@ -54,7 +55,7 @@ export default function BadgeGridCard({
     isInteractive && 'active:scale-95 transition-transform duration-100',
     // 20260816_012: selected 표시를 2px 보더 대신 배경톤 채움으로 대체 (기능적 의미 유지)
     selected && 'bg-[var(--color-primary)]/15',
-    // 알림 착지 하이라이트 — 그리드에서 한 장을 찾아내야 하므로 배경톤만으로는 약하다
+    // 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로 배경톤만으로는 약하다
     highlighted && 'shadow-[inset_0_0_0_2px_var(--color-primary)]',
     className,
   ]
