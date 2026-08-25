@@ -26,13 +26,15 @@ export default async function AdminMissionsPage() {
     completionCounts.set(c.mission_id, (completionCounts.get(c.mission_id) ?? 0) + 1)
   })
 
-  // 미션 보상으로 배지를 고를 때 "그 배지가 포인트를 포함하는지" 경고에 쓸 목록
+  // 미션 보상으로 배지를 고를 때 "그 배지가 포인트를 포함하는지" 경고에 쓸 목록.
+  // 게이트 배지(gated_badge_id) 선택에도 같은 목록을 쓴다 — 등급(rarity)이 노출 판정 기준이라 함께 조회.
+  // 소프트 삭제된 배지는 제외한다(티켓 20260825_019·026 선례).
   const { data: badgesRaw } = await supabase
     .from('badges')
-    .select('id, name, point_reward')
+    .select('id, name, point_reward, rarity')
     .is('deleted_at', null)
     .order('name')
-  const badges = (badgesRaw ?? []) as { id: string; name: string; point_reward: number }[]
+  const badges = (badgesRaw ?? []) as { id: string; name: string; point_reward: number; rarity: string }[]
 
   return (
     <div className="p-8">

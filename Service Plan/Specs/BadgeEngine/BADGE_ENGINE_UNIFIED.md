@@ -117,6 +117,23 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 | Common | ✅ 허용 | 불필요 |
 | Rare/Legend/Mythic | ❌ 차단 | 동일 종목 다른 속성 배지 1개+ (OR) |
 
+**미션 보상 배지 제외** (2026-08-25, 티켓 20260825_028): `condition_json.mission_reward = true`인
+배지는 **발급 후보 조회 단계(Step 1)에서 아예 제외**한다. 이 배지들은 미션 완료
+(`grantMissionRewards`) 경로로만 지급되며, 동기화 평가로 발급되면 위 선행 배지 게이트가 통째로
+열린다. 추가로 `evaluateConditionDetailed`에 두 개의 방어 분기를 둔다:
+
+1. `mission_reward === true` → 항상 `pass:false`(사유: "미션 보상 배지 — 미션 완료로만 지급")
+2. **수치 검사 필드(`MEASURABLE_CONDITION_KEYS`)가 하나도 없는 조건 → 항상 `pass:false`**
+   (사유: "평가 가능한 조건 없음"). 필터 성격 필드(`activity_type`·`day_of_week`)나 엔진이 모르는
+   필드만 남은 조건이 함수 마지막 줄의 `pass:true`로 새는 것을 막는다.
+
+> 배경: 마이그레이션 `084_badge_condition_cleanup.sql`(2026-08-13)이 배지 상세 화면 표시용으로
+> 미션보상배지 15종에 `{"mission_reward": true}`를 UPDATE하면서, "조건이 비어 있으면 미발급"이라는
+> 기존 가드(키 0개일 때만 동작)를 우회하게 됐다. `mission_reward`는 엔진이 모르는 필드라 어떤 검사
+> 블록에도 걸리지 않고 마지막 `pass:true`에 도달해, **해당 종목 활동을 한 번만 동기화해도 미션 없이
+> 미션보상배지 3개가 발급되고 본 배지 Rare/Legend/Mythic 게이트가 전부 열리는** 상태였다
+> (2026-08-25 발견). 잘못 발급된 이력은 `seed_reset_levelup_missions_20260825.sql`로 회수한다.
+
 **소프트 삭제와 보유 이력의 관계** (2026-08-25, 티켓 20260825_021): 배지 정의가 나중에
 소프트 삭제(`badges.deleted_at IS NOT NULL`)되어도, 유저가 이미 획득한 이력은 §2.5
 진행 트랙 최고 티어 판정과 위 선행 배지 게이트 판정에서 계속 유효하다. `evaluateBadgesDetailed()`는
@@ -174,13 +191,25 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 종목별로 "운동 목표 달성감이 가장 큰" 대표 배지 1종씩(5개 트리) — 걷기 `동네 산책러`, 러닝 `첫 숨결`, 사이클 `언덕의 도전자`, 등산 `첫 고도`, 트레일러닝 `야생의 주자` — 는 Rare 이상에서 기존 크로스게이트(`prerequisite_badge_names`에 같은 종목 다른 속성 배지 2개 OR)를 쓰지 않고, **미션 완료로만 얻는 전용 배지 1개**를 선행조건으로 요구한다. 나머지 142개 배지는 기존 크로스게이트 그대로 유지.
 
 **구조**:
-1. 미션보상배지 15종(`badges`, `type='activity'`, `condition_json = NULL`) — 이름은 `{배지명} 레벨업` / `레벨업 Hard` / `레벨업 Ultra`(Rare/Legend/Mythic 대응). `condition_json`이 없어 일반 활동 동기화로는 절대 발급되지 않고, 미션 완료(`grantMissionRewards`)로만 지급된다. `evaluateConditionDetailed`는 빈 조건을 항상 `pass:false`로 처리하므로(§2.3) 이중 발급 경로가 구조적으로 차단됨.
+1. 미션보상배지 15종(`badges`, `type='activity'`, `condition_json = {"mission_reward": true}`) — 이름은 `{배지명} 레벨업` / `레벨업 Hard` / `레벨업 Ultra`(Rare/Legend/Mythic 대응). 일반 활동 동기화로는 절대 발급되지 않고, 미션 완료(`grantMissionRewards`)로만 지급된다.
+   - ⚠️ 2026-08-13 최초 설계는 `condition_json = NULL`(빈 조건 → 항상 `pass:false`)이었으나, 마이그레이션 084가 `{"mission_reward": true}`를 넣으면서 그 가드가 무력화됐다(§2.7 "미션 보상 배지 제외" 참조). 2026-08-25(티켓 20260825_028)에 **플래그를 유지하되 엔진이 명시적으로 제외**하는 방식으로 바로잡고, 15종 전부 `{"mission_reward": true}`로 통일했다(배지 상세 화면이 이 플래그로 "미션 보상 배지"임을 표시하고 있어 NULL 통일 대신 플래그 유지를 택함).
 2. 미션 15종(`missions`) — `mission_type`은 `streak_days`(걷기)/`duration_minutes`(러닝·사이클·등산, 단일 활동 기준)/`elevation_gain_m`(트레일, 단일 활동 기준). `ends_at = NULL`(상시), `status_display_type = 'individual'`(본인 진행상황만 노출, 다른 참가자 비공개), `max_completions = NULL`(선착순 아님), `reward_points = 0`.
 3. 대상 배지 5종 × Rare/Legend/Mythic의 `condition_json.prerequisite_badge_names`를 기존 OR 배열 대신 해당 미션보상배지명 1개만 담은 배열로 교체 — 엔진 스펙상 배열 원소가 1개면 사실상 AND(그 이름의 배지를 보유해야만 통과)로 동작한다(`CONDITION_JSON_SPEC.md`).
 
 **미션 엔진 확장**: 기존 미션 엔진(`mission_type`: distance/poi_visit/activity_count/item_collect)은 이 정책이 요구하는 연속일수·단일세션 지속시간·등반고도를 계산할 수 없었다. 새 계산 로직을 만드는 대신, `jam-web/src/lib/missions/checker.ts`가 이 3개 신규 타입에 대해 배지엔진의 `evaluateConditionDetailed`를 그대로 호출해 판정한다(§2.3 조건 어휘 재사용 — `activity_type`+`streak_days`/`duration_minutes`/`elevation_gain_m`). "미션 참가 시점 이후" 제약은 `evaluateConditionDetailed` 자체가 아니라 `checkMissions`가 `joinedAt` 기준으로 활동 이력을 미리 필터링해서 넘기는 호출자 책임이다.
 
 **기존 발급 건 처리**: 정책 도입 시점에 5개 트리 Rare 이상을 이미 보유 중이던 유저 3명(5건)이 있었으며, 소급 회수(삭제)하기로 결정 — `jam-web/supabase/seed_revoke_pre_mission_badges_20260813.sql`(사용자 직접 실행).
+
+**미션 노출 규칙** (2026-08-25, 티켓 20260825_028): 레벨업 미션 15종은 서로 선행 관계가 없어 3단계가 동시에 노출·참가되던 문제가 있었다. `missions.gated_badge_id`(이 미션이 여는 본 배지 id, FK → `badges.id`)를 추가하고, 노출 판정을 `jam-web/src/lib/missions/visibility.ts`의 순수 함수 하나로 모아 목록·상세·참가 API(`POST /api/missions/[id]/join`)·오늘카드(`mission_spotlight`)가 같은 규칙을 쓰게 했다.
+
+| 상태 | 판정 | 화면 |
+|---|---|---|
+| `completed` | `user_mission_completions`에 기록 있음 (완료 판정의 **단일 기준** — "보상배지 보유" 기준은 소프트삭제 스킵 정책(§2.12)과 충돌해 쓰지 않는다) | '완료/지난' 탭으로 이동, 재참가 불가(409) |
+| `open` | 게이트 배지 등급 ≤ 유저 보유 등급 + 1 (미보유는 Common 보유로 취급 — 신규 유저에게도 첫 레벨업 미션은 노출) | 정상 노출·참가 가능 |
+| `locked` | 게이트 배지 등급 = 유저 보유 등급 + 2 | 회색 잠금 카드(상세 진입·참가 불가, "○○ Rare 배지를 획득하면 열려요") |
+| `hidden` | 그보다 위 단계 | 목록에서 완전 제외(URL 직접 진입 시에도 잠금 처리) |
+
+`gated_badge_id`가 없는 미션(기간형 30종)은 완료 여부만 판정한다. 게이트 배지를 찾을 수 없으면(삭제·오설정) 게이팅 없이 노출한다(fail-open).
 
 ### 2.12 미션 보상 배지 소프트 삭제 지급 정책 (2026-08-25, 티켓 20260825_016)
 

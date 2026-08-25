@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import type { ActivityType, MissionCondition, MissionRow } from '@/types/database'
+import type { ActivityType, BadgeRarity, MissionCondition, MissionRow } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
+import { RARITY_LABEL } from '@/lib/rarity'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
 import { TargetIcon } from '@/components/ui/icons'
@@ -13,11 +14,19 @@ import { d, t } from '@/lib/i18n'
 export interface MissionListItem extends MissionRow {
   joined: boolean
   done: boolean
+  /** 완료 시각 (user_mission_completions.completed_at). 미완료면 null */
+  completedAt: string | null
+  /** 20260825_028: 아직 열리지 않은 레벨업 미션 — 회색 잠금 카드로만 노출하고 진입/참가 불가 */
+  locked: boolean
+  /** 잠금 해제에 필요한 본 배지 (locked일 때만 값이 있음) */
+  requiredBadge: { name: string; rarity: BadgeRarity } | null
 }
 
 interface Props {
-  ongoing: MissionListItem[] // 종료되지 않은 미션 전체 (시작 전 포함)
-  ended: MissionListItem[] // 종료된 미션 중 내가 참여했던 것만
+  // 종료되지 않은 미션 중 노출 대상(open/locked)만. 완료·미해금 상위 단계는 서버에서 제외됨
+  ongoing: MissionListItem[]
+  // '완료/지난' 탭 — 내가 완료한 미션 + 내가 참여했던 종료 미션
+  ended: MissionListItem[]
   rewardBadgeNames: Record<string, string> // badge_id → 배지 이름 맵
 }
 
@@ -123,8 +132,15 @@ function JoinedBadge() {
   )
 }
 
-// 기간 텍스트 — ended 탭이면 tagEnded, 상시면 tagPermanent, 그 외 N일 N시간 남음
+// 기간 텍스트 — 완료 건은 완료일, ended 탭이면 tagEnded, 상시면 tagPermanent, 그 외 N일 N시간 남음
 function periodText(m: MissionListItem, tab: Tab): string {
+  // 20260825_028: 완료한 상시 미션은 "종료됨"이 아니라 언제 완료했는지를 보여준다
+  // (상태 뱃지가 이미 '완료'를 표시하므로 여기선 날짜만 — 날짜는 직관적인 한국어 형태로)
+  if (m.done) {
+    return m.completedAt
+      ? new Date(m.completedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+      : d.missions.tagDone
+  }
   if (tab === 'ended') return d.missions.tagEnded
   if (m.ends_at === null) return d.missions.tagPermanent
   const diff = new Date(m.ends_at).getTime() - Date.now()
@@ -138,9 +154,19 @@ function periodText(m: MissionListItem, tab: Tab): string {
 // 상태 뱃지 텍스트 — 없으면 null (노출 안 함)
 function statusLabel(m: MissionListItem, started: boolean): string | null {
   if (m.done) return d.missions.tagDone
+  if (m.locked) return d.missions.tagLocked
   if (m.joined) return d.missions.tagJoined
   if (!started) return d.missions.tagUpcoming
   return null
+}
+
+// 잠금 카드 안내 문구 — "무엇을 하면 열리는지"를 알려준다 (20260825_028)
+function lockedHintText(m: MissionListItem): string {
+  if (!m.requiredBadge) return d.missions.lockedBodyGeneric
+  return t(d.missions.lockedHint, {
+    badge: m.requiredBadge.name,
+    rarity: RARITY_LABEL[m.requiredBadge.rarity] ?? m.requiredBadge.rarity,
+  })
 }
 
 export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }: Props) {
@@ -246,8 +272,10 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
             const sLabel = statusLabel(m, started)
             const period = periodText(m, tab)
             const reward = rewardSummary(m, rewardBadgeNames)
-            return (
-              <Link key={m.id} href={`/missions/${m.id}`} className="active:opacity-70 transition-opacity duration-100">
+            // 20260825_028: 잠긴 미션은 회색 처리 + 링크로 감싸지 않아 상세 진입 자체를 막는다
+            // (미시작 미션의 opacity 0.6 선례를 그대로 사용)
+            const card = (
+              <>
                 {/* Figma mission-item-1 카드 */}
                 <div
                   style={{
@@ -256,7 +284,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                     alignItems: 'flex-start',
                     padding: '12px 0',
                     gap: '16px',
-                    opacity: !started ? 0.6 : 1,
+                    opacity: !started || m.locked ? 0.6 : 1,
                   }}
                 >
                   {/* thumbnail */}
@@ -329,8 +357,23 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                     <span style={{ fontSize: '11px', color: C_REWARD, lineHeight: 1 }}>
                       {reward}
                     </span>
+
+                    {/* 잠금 안내 — 무엇을 획득하면 열리는지 */}
+                    {m.locked && (
+                      <span style={{ fontSize: '11px', color: C_META_TEXT, lineHeight: 1.3 }}>
+                        {lockedHintText(m)}
+                      </span>
+                    )}
                   </div>
                 </div>
+              </>
+            )
+
+            return m.locked ? (
+              <div key={m.id} aria-disabled="true">{card}</div>
+            ) : (
+              <Link key={m.id} href={`/missions/${m.id}`} className="active:opacity-70 transition-opacity duration-100">
+                {card}
               </Link>
             )
           })}
