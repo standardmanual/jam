@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { MissionStatusDisplayType } from '@/types/database'
 import { compareMissionRank } from '@/lib/missions/ranking'
+import { excludedTestUserIds } from '@/lib/env/test-accounts'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -78,8 +79,12 @@ export async function GET(_req: Request, { params }: Params) {
     service.from('user_mission_completions').select('user_id, completed_at').eq('mission_id', missionId),
   ])
 
-  const participations = (participationsRaw ?? []) as { user_id: string; progress_value: number }[]
-  const completions = (completionsRaw ?? []) as { user_id: string; completed_at: string }[]
+  // 프로덕션에서는 스테이징 전용 테스트 계정을 미션 상황(랭킹/달성)에서 제외한다.
+  const excludedIds = excludedTestUserIds()
+  const participations = ((participationsRaw ?? []) as { user_id: string; progress_value: number }[])
+    .filter((p) => !excludedIds.includes(p.user_id))
+  const completions = ((completionsRaw ?? []) as { user_id: string; completed_at: string }[])
+    .filter((c) => !excludedIds.includes(c.user_id))
 
   const completionMap = new Map<string, string>()
   completions.forEach((c) => completionMap.set(c.user_id, c.completed_at))

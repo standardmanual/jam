@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
+import { excludedTestUserIds } from '@/lib/env/test-accounts'
 
 interface UserSearchResult {
   id: string
@@ -54,10 +55,12 @@ export async function GET(req: NextRequest) {
 
   // 4. 정렬: 정확 일치(lower(username) == lower(q)) 우선 → username 오름차순
   const lowerQ = sanitized.toLowerCase()
-  const rows = (data ?? []) as Pick<
+  // 프로덕션에서는 스테이징 전용 테스트 계정을 검색 결과에서 제외한다.
+  const excludedIds = excludedTestUserIds()
+  const rows = ((data ?? []) as Pick<
     UserRow,
     'id' | 'username' | 'avatar_url' | 'region' | 'activity_types'
-  >[]
+  >[]).filter((row) => !excludedIds.includes(row.id))
   const results: UserSearchResult[] = rows
     .map((row) => ({
       id: row.id,

@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { excludedTestUserIds } from '@/lib/env/test-accounts'
 
 export async function GET(
   _req: NextRequest,
@@ -29,7 +30,11 @@ export async function GET(
   }
 
   // dropper username 별도 조회 (FK 중복으로 조인 불가)
-  const dropperIds = [...new Set((data ?? []).map((d: any) => d.dropper_user_id as string | null).filter(Boolean))]
+  // 프로덕션에서는 스테이징 전용 테스트 계정을 조회 대상에서 빼 이름 대신 '익명'으로 표시한다.
+  const excludedIds = excludedTestUserIds()
+  const dropperIds = [...new Set((data ?? [])
+    .map((d: any) => d.dropper_user_id as string | null)
+    .filter((id): id is string => Boolean(id) && !excludedIds.includes(id as string)))]
   const usersData: { id: string; username: string }[] = dropperIds.length > 0
     ? ((await service.from('users').select('id, username').in('id', dropperIds)).data ?? [])
     : []
