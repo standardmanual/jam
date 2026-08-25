@@ -49,7 +49,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
 
   // 2. 북별 전체 소속 배지 수 (item + poi)
   //    Phase 16: poi 타입 배지도 북에 소속 가능. "보유" 판정 방식만 타입별로 다름.
-  //    20260825_023: 완성 기준선(분모)은 소프트 삭제 여부와 무관하게 고정한다.
+  //    20260825_025: 완성 기준선(분모)은 소프트 삭제 여부와 무관하게 고정한다.
   //    삭제된 배지도 그대로 카운트해 분모·분자가 항상 같은 배지 집합을 기준으로 하게 한다.
   const { data: badgesRaw } = await supabase
     .from('badges')
