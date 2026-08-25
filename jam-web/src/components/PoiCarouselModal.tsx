@@ -208,6 +208,8 @@ export default function PoiCarouselModal({
           already_dropped: d.drops.dropAlreadyDropped,
           item_slotted: d.drops.dropItemSlotted,
           missing_params: d.drops.locationMissing,
+          // 20260826_002 후속: 401은 재시도로 풀리지 않으므로 재로그인을 안내한다.
+          unauthorized: d.drops.sessionExpired,
         }
         toast(msg[err.error] ?? d.drops.dropFailed, 'error')
         return
@@ -260,6 +262,8 @@ export default function PoiCarouselModal({
           poi_blocked: d.drops.pickupPoiBlocked,
           location_unverified: d.drops.pickupLocationUnverified,
           missing_params: d.drops.locationMissing,
+          // 20260826_002 후속: 401은 재시도로 풀리지 않으므로 재로그인을 안내한다.
+          unauthorized: d.drops.sessionExpired,
         }
         // 20260825_039: `?? err.error` 폴백을 제거했다 — 서버가 돌려주는 개발자용 축약 문구
         // ('드랍 없음', 'POI 없음' 등)가 그대로 토스트에 노출되던 경로다. 매핑되지 않은

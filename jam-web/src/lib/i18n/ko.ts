@@ -340,10 +340,16 @@ export const ko = {
     // 가이드의 [현상]→[원인/해결책] 구조 + 해요체로 다시 썼다.
     loadDropsFailed: '드랍된 아이템을 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
     loadInventoryFailed: '인벤토리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요',
-    outOfRange: '{name}까지 {distance}m — 50m 이내로 이동하면 드랍/픽업할 수 있어요',
+    // 20260826_002 후속: unauthorized(401)가 매핑에 없어 "잠시 후 다시 시도해 주세요"로 흘렀다.
+    // 세션이 풀린 상태라 다시 시도해도 영원히 실패한다 — 해결책이 원인과 어긋나 있었다.
+    sessionExpired: '로그인이 풀렸어요. 다시 로그인하고 시도해 주세요',
+    // 20260826_002 후속: 반경을 '50m'로 하드코딩하고 있었으나 실제 DROP_RADIUS_METERS는 500이다.
+    // 바로 아래 noNearbyPlaces가 이미 '500m'라 같은 블록 안에서 값이 어긋나 있었다.
+    // 문구에 숫자를 박지 말고 상수를 주입한다({m}).
+    outOfRange: '{name}까지 {distance}m — {m}m 이내로 이동하면 드랍/픽업할 수 있어요',
     exploring: '주변 탐색 중',
-    noNearbyPlaces: '주변 500m에 드랍/픽업할 수 있는 지점이 없어요',
-    moveCloser: '지점에서 50m 이내로 가면 드랍/픽업할 수 있어요',
+    noNearbyPlaces: '주변 {m}m에 드랍/픽업할 수 있는 지점이 없어요',
+    moveCloser: '지점에서 {m}m 이내로 가면 드랍/픽업할 수 있어요',
     checking: '확인 중',
     pickupItemsTitle: '픽업할 아이템',
     thisPlaceTitle: '이 지점',

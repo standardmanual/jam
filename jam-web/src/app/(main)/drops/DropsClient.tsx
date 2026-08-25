@@ -8,6 +8,7 @@ import PoiCarouselModal from '@/components/PoiCarouselModal'
 import type { PoiBadgeMarker, PoiBadgeClusterMarker, MapViewport, MapViewHandle } from '@/components/map/MapView'
 import type { NearbyPoi } from '@/types/drops'
 import { d, t } from '@/lib/i18n'
+import { DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 
 const MapView = dynamic(() => import('@/components/map/MapView'), { ssr: false })
 
@@ -166,7 +167,7 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
     const poi = pois.find((p) => p.id === poiId)
     if (!poi) return
     if (!poi.in_drop_range) {
-      toast(t(d.drops.outOfRange, { name: poi.name, distance: poi.distance_meters }), 'error')
+      toast(t(d.drops.outOfRange, { name: poi.name, distance: poi.distance_meters, m: DROP_RADIUS_METERS }), 'error')
       return
     }
     setCarouselPoiId(poiId)
@@ -251,12 +252,12 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
 
       {!poisLoading && pois.length === 0 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-cards)] px-[var(--spacing-16)] py-[var(--spacing-16)] text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-nowrap">
-          {d.drops.noNearbyPlaces}
+          {t(d.drops.noNearbyPlaces, { m: DROP_RADIUS_METERS })}
         </div>
       )}
       {!poisLoading && pois.length > 0 && !pois.some((p) => p.in_drop_range) && !carouselPoiId && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-cards)] px-[var(--spacing-16)] py-[var(--spacing-16)] text-text-inverse/70 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center whitespace-nowrap">
-          {d.drops.moveCloser}
+          {t(d.drops.moveCloser, { m: DROP_RADIUS_METERS })}
         </div>
       )}
 
