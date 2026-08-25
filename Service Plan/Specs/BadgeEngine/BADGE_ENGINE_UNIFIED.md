@@ -173,6 +173,27 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 
 **기존 발급 건 처리**: 정책 도입 시점에 5개 트리 Rare 이상을 이미 보유 중이던 유저 3명(5건)이 있었으며, 소급 회수(삭제)하기로 결정 — `jam-web/supabase/seed_revoke_pre_mission_badges_20260813.sql`(사용자 직접 실행).
 
+### 2.12 미션 보상 배지 소프트 삭제 지급 정책 (2026-08-25, 티켓 20260825_016)
+
+`grantMissionRewards()`(`jam-web/src/lib/missions/rewards.ts`)가 `mission.reward_badge_ids`로
+보상 배지를 조회할 때, 이미 소프트 삭제(`badges.deleted_at IS NOT NULL`)된 배지는 **지급하지
+않고 조용히 스킵**한다.
+
+- **근거**: 배지는 (a) 어드민 수동 소프트삭제(오배포·컨텐츠 오류·시즌 종료 등,
+  `src/app/api/admin/badges/[id]/route.ts`), (b) 아이템북 비활성화 시 소속 배지 연쇄
+  소프트삭제(`src/lib/admin/itembook-deactivation.ts`)로 삭제될 수 있다. 미션 어드민 화면에는
+  보상 배지 선택 시 삭제 여부 체크가 없고, 배지 삭제 시에도 미션 보상 연결 경고가 없어 관리자가
+  인지 없이 "삭제된 배지가 보상으로 걸린 미션"을 만들 수 있다.
+- **범위**: 조회 쿼리(`badges` select)에 `.is('deleted_at', null)` 필터만 추가한다. 이후 지급
+  분기(활동배지 insert / 아이템배지 인벤토리 insert / `granted` 플래그)는 조회 결과에 대해서만
+  동작하므로 삭제된 배지는 자동으로 지급 루프에서 빠진다.
+- **포인트**: 스킵된 배지의 `point_reward`(배지 자체 포인트)도 지급 자체가 일어나지 않으므로
+  함께 스킵된다. `mission.reward_points`(미션 자체 포인트)는 배지 지급 여부와 무관하게 별개
+  사유(`mission_point_reward`)로 그대로 지급한다 — 영향 없음.
+- **채택하지 않은 대안**: 대체 배지 지급, 환산 포인트 지급은 새 규칙 정의가 필요해 범위가
+  커지고, 그대로 지급(삭제 배지 무시하고 발급)은 §3.7.1의 "화면마다 다르게 보임" 불일치의
+  지급판이 될 위험이 있어 배제.
+
 ---
 
 ## 3. 아이템배지 드랍 엔진 v2 (✅ 구현됨 — 3레이어)
