@@ -7,8 +7,9 @@ import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { RARITY_LABEL } from '@/lib/rarity'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
-import { TargetIcon } from '@/components/ui/icons'
+import { LockIcon, TargetIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { useToast } from '@/components/ui/Toast'
 import { d, t } from '@/lib/i18n'
 
 export interface MissionListItem extends MissionRow {
@@ -40,6 +41,9 @@ const C_THUMBNAIL_BG = '#1A1A1A'
 const C_THUMBNAIL_RADIUS = '12px'
 // 20260816_012: 보더 제거 — 페이지 캔버스(bg-surface)와 같은 색이라 배경톤을 한 단계 올림
 const C_STATUS_BADGE_BG = 'var(--color-surface-elevated)'
+// 20260825_028: 잠김 칩 전용 배경. 기본 칩 배경(#1f1f1f)은 캔버스(#1a1a1a) 대비 1.06:1이라
+// 칩 형태가 거의 보이지 않는다 — 잠김 칩만 상세 화면 완료 칩과 같은 톤으로 올린다.
+const C_LOCKED_BADGE_BG = 'rgba(255,255,255,0.08)'
 const C_STATUS_BADGE_TEXT = '#B2B2B2'
 const C_NEW_BADGE_BG = '#E8461F'
 const C_TITLE = '#FFFFFF'
@@ -96,11 +100,15 @@ function NewBadge() {
 }
 
 // Figma mission-item-1: badge/status
-function StatusBadge({ children }: { children: React.ReactNode }) {
+// locked=true면 잠금 글리프 + 배경톤을 올린 변형 (20260825_028)
+function StatusBadge({ children, locked = false }: { children: React.ReactNode; locked?: boolean }) {
   return (
     <span
       style={{
-        background: C_STATUS_BADGE_BG,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '3px',
+        background: locked ? C_LOCKED_BADGE_BG : C_STATUS_BADGE_BG,
         color: C_STATUS_BADGE_TEXT,
         fontSize: '10px',
         lineHeight: 1,
@@ -108,6 +116,7 @@ function StatusBadge({ children }: { children: React.ReactNode }) {
         borderRadius: '999px',
       }}
     >
+      {locked && <LockIcon className="w-2.5 h-2.5 shrink-0" />}
       {children}
     </span>
   )
@@ -169,7 +178,18 @@ function lockedHintText(m: MissionListItem): string {
   })
 }
 
+// 잠긴 카드를 눌렀을 때의 토스트 — 참가 API(join)가 403으로 돌려주는 문구를 그대로 쓴다.
+// 같은 차단 사유는 어디서 만나든 같은 문장이어야 한다.
+function lockedToastText(m: MissionListItem): string {
+  if (!m.requiredBadge) return d.missions.joinErrorLockedGeneric
+  return t(d.missions.joinErrorLocked, {
+    badge: m.requiredBadge.name,
+    rarity: RARITY_LABEL[m.requiredBadge.rarity] ?? m.requiredBadge.rarity,
+  })
+}
+
 export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }: Props) {
+  const { toast } = useToast()
   const [tab, setTab] = useState<Tab>('ongoing')
   const [sortKey, setSortKey] = useState<SortKey>('newest')
   const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
@@ -272,8 +292,11 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
             const sLabel = statusLabel(m, started)
             const period = periodText(m, tab)
             const reward = rewardSummary(m, rewardBadgeNames)
-            // 20260825_028: 잠긴 미션은 회색 처리 + 링크로 감싸지 않아 상세 진입 자체를 막는다
-            // (미시작 미션의 opacity 0.6 선례를 그대로 사용)
+            // 20260825_028: 잠긴 미션은 상세 진입을 막고, 눌리면 잠금 사유를 토스트로 알린다.
+            // 카드 전체 딤(0.6)은 '시작전'과 픽셀 단위로 같아져 상태 구분이 사라지고
+            // 정작 읽어야 할 잠금 힌트의 대비까지 8.21:1 → 3.78:1로 떨어뜨린다.
+            // 그래서 잠김은 썸네일에만 grayscale+딤을 적용한다 — 미획득 배지를 표현하는
+            // 하우스 패턴(BadgeGridCard·BadgeHeroSection·MapView)과 같은 방식이다.
             const card = (
               <>
                 {/* Figma mission-item-1 카드 */}
@@ -284,12 +307,13 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                     alignItems: 'flex-start',
                     padding: '12px 0',
                     gap: '16px',
-                    opacity: !started || m.locked ? 0.6 : 1,
+                    opacity: !started && !m.locked ? 0.6 : 1,
                   }}
                 >
-                  {/* thumbnail */}
+                  {/* thumbnail — 잠김이면 grayscale + 딤 + 자물쇠 오버레이 */}
                   <div
                     style={{
+                      position: 'relative',
                       width: '90px',
                       height: '90px',
                       minWidth: '90px',
@@ -301,15 +325,41 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       justifyContent: 'center',
                     }}
                   >
-                    {m.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={m.image_url}
-                        alt={m.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                      />
-                    ) : (
-                      <span style={{ display: 'block', width: '32px', height: '32px', background: '#FFFFFF', borderRadius: '4px', opacity: 0.2 }} />
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        filter: m.locked ? 'grayscale(1)' : undefined,
+                        opacity: m.locked ? 0.4 : 1,
+                      }}
+                    >
+                      {m.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={m.image_url}
+                          alt={m.title}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <span style={{ display: 'block', width: '32px', height: '32px', background: '#FFFFFF', borderRadius: '4px', opacity: 0.2 }} />
+                      )}
+                    </div>
+                    {m.locked && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: C_META_TEXT,
+                        }}
+                      >
+                        <LockIcon className="w-6 h-6" />
+                      </span>
                     )}
                   </div>
 
@@ -318,10 +368,12 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                     {/* meta-row */}
                     <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '6px 8px', alignItems: 'center' }}>
                       {newMission && <NewBadge />}
-                      {m.joined && !m.done ? (
+                      {/* 20260825_028: 잠김이 '참가중'보다 우선한다. statusLabel의 우선순위와 같은 순서 —
+                          게이팅 도입 전에 참가해 둔 미션이 잠기면 두 칩이 모순되어 보인다. */}
+                      {m.joined && !m.done && !m.locked ? (
                         <JoinedBadge />
                       ) : sLabel ? (
-                        <StatusBadge>{sLabel}</StatusBadge>
+                        <StatusBadge locked={m.locked && !m.done}>{sLabel}</StatusBadge>
                       ) : null}
                       {period === d.missions.tagPermanent || period === d.missions.tagEnded ? (
                         <StatusBadge>{period}</StatusBadge>
@@ -335,8 +387,20 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       {m.title}
                     </h3>
 
-                    {/* desc */}
-                    {m.description && (
+                    {/* desc — 잠김이면 설명 대신 잠금 힌트를 제목 바로 아래에 둔다.
+                        참가할 수 없는 미션에서 2줄짜리 설명은 실행 불가능한 정보고,
+                        보상보다 뒤에 붙은 힌트는 "받을 수 있다"를 먼저 읽히게 만든다. */}
+                    {m.locked ? (
+                      <span
+                        style={{
+                          fontSize: 'var(--text-micro)',
+                          lineHeight: 1.3,
+                          color: 'var(--color-text-secondary)',
+                        }}
+                      >
+                        {lockedHintText(m)}
+                      </span>
+                    ) : m.description ? (
                       <p
                         style={{
                           fontSize: '12px',
@@ -351,26 +415,32 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       >
                         {m.description}
                       </p>
-                    )}
+                    ) : null}
 
                     {/* reward */}
                     <span style={{ fontSize: '11px', color: C_REWARD, lineHeight: 1 }}>
                       {reward}
                     </span>
-
-                    {/* 잠금 안내 — 무엇을 획득하면 열리는지 */}
-                    {m.locked && (
-                      <span style={{ fontSize: '11px', color: C_META_TEXT, lineHeight: 1.3 }}>
-                        {lockedHintText(m)}
-                      </span>
-                    )}
                   </div>
                 </div>
               </>
             )
 
             return m.locked ? (
-              <div key={m.id} aria-disabled="true">{card}</div>
+              // 무반응은 "잠김"이 아니라 "터치가 씹혔다"로 읽힌다. 눌림 피드백을 주되
+              // 열린 카드(active:opacity-70)보다 얕게 잡아 '이동'이 아닌 '저항'으로 읽히게 한다.
+              // role 없는 div의 aria-disabled는 보조기술이 무시하므로 button으로 바꿔
+              // 포커스·상태 안내도 함께 살린다(실제 참가·진입은 여전히 불가).
+              <button
+                key={m.id}
+                type="button"
+                aria-disabled="true"
+                onClick={() => toast(lockedToastText(m), 'info')}
+                className="w-full text-left transition-transform active:scale-[0.99]"
+                style={{ transitionDuration: 'var(--duration-micro)' }}
+              >
+                {card}
+              </button>
             ) : (
               <Link key={m.id} href={`/missions/${m.id}`} className="active:opacity-70 transition-opacity duration-100">
                 {card}
