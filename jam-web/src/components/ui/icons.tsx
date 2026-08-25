@@ -281,3 +281,19 @@ export function AlertTriangleIcon(props: IconProps) {
     </Svg>
   )
 }
+
+/**
+ * 자물쇠 — 잠김 상태(선행 조건 미충족으로 참가·진입 불가) (20260825_028)
+ *
+ * 회색 처리만으로는 '시작전'과 구분되지 않아 잠금 메타포를 함께 쓴다.
+ * 미션 목록의 썸네일 오버레이와 상태 칩, 미션 상세 상태 칩이 같은 글리프를 공유한다.
+ */
+export function LockIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4.5" y="10" width="15" height="10" rx="2.5" />
+      <path d="M8 10V7a4 4 0 018 0v3" />
+      <path d="M12 14v2" />
+    </Svg>
+  )
+}

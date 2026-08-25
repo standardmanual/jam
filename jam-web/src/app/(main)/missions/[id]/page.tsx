@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { MissionRow, UserMissionParticipationRow, UserMissionCompletionRow } from '@/types/database'
+import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
+import { resolveMissionVisibility } from '@/lib/missions/visibility'
 import MissionDetailClient from './MissionDetailClient'
 
 type Props = { params: Promise<{ id: string }> }
@@ -35,6 +37,12 @@ export default async function MissionDetailPage({ params }: Props) {
     : { data: [] }
   const rewardBadges = (rewardBadgesRaw ?? []) as { id: string; name: string; image_url: string | null; rarity: import('@/types/database').BadgeRarity }[]
 
+  // 20260825_028: 목록에서 숨기더라도 URL 직접 진입은 막지 못하므로 상세에서도 같은 규칙으로
+  // 잠금 여부를 판정한다(locked·hidden 모두 참가 불가 상태로 렌더).
+  const visibilityContext = await loadMissionVisibilityContext(user.id, [mission])
+  const visibilityResult = resolveMissionVisibility(mission, visibilityContext)
+  const locked = visibilityResult.visibility === 'locked' || visibilityResult.visibility === 'hidden'
+
   return (
     <MissionDetailClient
       mission={mission}
@@ -42,6 +50,8 @@ export default async function MissionDetailPage({ params }: Props) {
       isCompleted={!!completion}
       progressValue={participation?.progress_value ?? 0}
       rewardBadges={rewardBadges}
+      locked={locked}
+      requiredBadge={visibilityResult.requiredBadge}
     />
   )
 }

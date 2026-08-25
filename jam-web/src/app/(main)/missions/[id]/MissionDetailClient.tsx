@@ -8,10 +8,12 @@ import SafeImage from '@/components/SafeImage'
 import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
+import { LockIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import ListRowCard from '@/components/ui/ListRowCard'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
+import { RARITY_LABEL } from '@/lib/rarity'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
@@ -30,6 +32,10 @@ interface Props {
   isCompleted: boolean
   progressValue: number
   rewardBadges: RewardBadgeInfo[]
+  /** 20260825_028: 아직 열리지 않은 레벨업 미션 — 참가 불가 안내만 노출 */
+  locked?: boolean
+  /** 잠금 해제에 필요한 본 배지 (locked일 때만) */
+  requiredBadge?: { name: string; rarity: BadgeRarity } | null
 }
 
 
@@ -75,7 +81,19 @@ function InfoCard({ children, className = '' }: { children: React.ReactNode; cla
 }
 
 /* ── 미션 상태 칩 ── */
-function StatusChip({ isCompleted, participating }: { isCompleted: boolean; participating: boolean }) {
+function StatusChip({ isCompleted, participating, locked }: { isCompleted: boolean; participating: boolean; locked: boolean }) {
+  // 20260825_028: 잠긴 미션은 오늘카드·딥링크로만 도달하는데, 칩이 없으면 스크롤 최하단에
+  // 가서야 상태를 알게 된다. 목록 잠금 카드와 같은 자물쇠 글리프를 첫 화면에 노출한다.
+  if (locked) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
+        style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--color-text-secondary)' }}>
+        {/* 12px 렌더라 기본 strokeWidth 1.5(=24px 전제)로는 실효 0.75px로 뭉개진다 — 호출부 보정 */}
+        <LockIcon className="w-3 h-3 shrink-0" strokeWidth={2.2} />
+        {d.missions.tagLocked}
+      </span>
+    )
+  }
   if (isCompleted) {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-[var(--radius-pill)] text-[11px] font-bold leading-none"
@@ -96,7 +114,15 @@ function StatusChip({ isCompleted, participating }: { isCompleted: boolean; part
 }
 
 
-export default function MissionDetailClient({ mission, isParticipating, isCompleted, progressValue, rewardBadges }: Props) {
+export default function MissionDetailClient({
+  mission,
+  isParticipating,
+  isCompleted,
+  progressValue,
+  rewardBadges,
+  locked = false,
+  requiredBadge = null,
+}: Props) {
   const [participating, setParticipating] = useState(isParticipating)
   const [loading, setLoading] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -141,11 +167,15 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
             직접 넘기면 미등록 호스트 하나로 미션 상세 화면 전체가 500이 된다 (20260824_005).
             폴백은 이미지가 아예 없을 때와 동일한 자리표시 문구 — 카드 배경(bg-surface-elevated)이
             남아 레이아웃이 무너지지 않는다. */}
+        {/* 20260825_028: 잠김이면 목록 잠금 카드와 같은 grayscale — 목록↔상세 시각 언어를 맞춘다.
+            필터는 컨테이너가 아니라 **이미지에만** 건다(BadgeHeroSection.tsx:46과 동일한 하우스 패턴).
+            컨테이너에 걸면 카드 표면(bg-surface-elevated)까지 흐려져 캔버스와의 경계가 사라지고,
+            SafeImage의 폴백 문구도 함께 딤돼 대비가 8.2:1 → 3.3:1로 떨어진다. */}
         <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden bg-surface-elevated flex items-center justify-center">
           <SafeImage
             src={mission.image_url}
             alt={`${mission.title} 썸네일`}
-            className="object-cover"
+            className={locked ? 'object-cover grayscale opacity-50' : 'object-cover'}
             sizes="(max-width: 640px) 100vw, 640px"
             priority
             fallback={<span className="text-[length:var(--text-body-sm)] text-text-secondary">이미지 영역</span>}
@@ -155,7 +185,7 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
         {/* 히어로 섹션 */}
         <div className="flex flex-col items-center gap-4">
           {/* 미션 상태 칩 */}
-          <StatusChip isCompleted={isCompleted} participating={participating} />
+          <StatusChip isCompleted={isCompleted} participating={participating} locked={locked} />
 
           {/* 제목 + 설명 */}
           <div className="flex flex-col items-center gap-2 text-center">
@@ -167,13 +197,28 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
             )}
           </div>
 
-          {/* 기간 표시 — 참가 전에만 */}
-          {!isCompleted && !participating && (
+          {/* 기간 표시 — 참가 전에만. 잠김이면 숨긴다(참가가 불가한데 참가를 재촉하는 잘못된 유도) */}
+          {!locked && !isCompleted && !participating && (
             <span className="text-[length:var(--text-caption)] text-text-secondary">
               {timeLeft(mission.ends_at)}
             </span>
           )}
         </div>
+
+        {/* ── 잠금 안내 — 히어로 직후. 왜 참가할 수 없는지를 먼저 읽히게 한다 (20260825_028) ── */}
+        {locked && (
+          <InfoCard>
+            <SectionLabel>{d.missions.lockedTitle}</SectionLabel>
+            <p className="text-[14px] leading-[1.43] text-text-secondary">
+              {requiredBadge
+                ? t(d.missions.lockedBody, {
+                    badge: requiredBadge.name,
+                    rarity: RARITY_LABEL[requiredBadge.rarity] ?? requiredBadge.rarity,
+                  })
+                : d.missions.lockedBodyGeneric}
+            </p>
+          </InfoCard>
+        )}
 
         {/* ── 달성 조건 카드 ── */}
         <InfoCard>
@@ -320,7 +365,8 @@ export default function MissionDetailClient({ mission, isParticipating, isComple
         )}
 
         {/* ── CTA 버튼 ── */}
-        {isCompleted ? (
+        {/* 20260825_028: 잠긴 미션은 참가 CTA를 렌더하지 않는다(해제 조건 안내는 히어로 직후) */}
+        {locked ? null : isCompleted ? (
           /* 완료 → 종료 (disabled) */
           <button
             disabled

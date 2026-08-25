@@ -101,6 +101,21 @@ const PER_ACTIVITY_KEYS = [
   'temperature_min_c', 'temperature_max_c', 'weekend_duration_hours',
 ] as const
 
+/**
+ * 엔진이 실제로 "수치 검사"를 수행하는 필드 목록 (티켓 20260825_028).
+ *
+ * 이 중 하나도 없는 조건은 어떤 검사 블록에도 걸리지 않아 `evaluateConditionDetailed`
+ * 마지막 줄의 `pass: true`로 그대로 떨어진다 — 즉 "활동 1건만 있으면 무조건 발급"이 된다.
+ * 실제로 마이그레이션 084가 미션보상배지 15종에 `{"mission_reward": true}`만 넣으면서
+ * 미션 게이팅이 통째로 무력화된 사고가 있었다. 필터 성격 필드(activity_type·day_of_week)나
+ * 엔진이 모르는 필드만 남은 조건은 발급하지 않는다.
+ */
+const MEASURABLE_CONDITION_KEYS = [
+  ...PER_ACTIVITY_KEYS,
+  'total_count', 'streak_days', 'weekly_count', 'month', 'monthly_km',
+  'season_count', 'season_count_all', 'active_days_count', 'time_range',
+] as const
+
 function inTimeRange(activity: NormalizedActivity, range: { start: string; end: string }): boolean {
   const toMin = (hhmm: string) => {
     const [h, m] = hhmm.split(':').map(Number)
@@ -246,9 +261,21 @@ export function evaluateConditionDetailed(
     return { pass: false, reason: '조건 없음', actual: '-', required: '-' }
   }
 
+  // 미션 보상 배지 — 미션 완료(grantMissionRewards) 경로로만 지급된다. 동기화 평가 대상이 아니다.
+  // (티켓 20260825_028 — 마이그레이션 084가 이 플래그를 넣으면서 미션 없이 발급되던 결함 차단)
+  if (condition.mission_reward === true) {
+    return { pass: false, reason: '미션 보상 배지 — 미션 완료로만 지급', actual: '-', required: '미션 완료' }
+  }
+
   // poi_id는 GPS 경로 매칭 파이프라인(matchPoisForActivity)에서만 발급 — 엔진 내 평가 불가
   if (condition.poi_id !== undefined) {
     return { pass: false, reason: 'GPS 경로 매칭으로 별도 발급', actual: '-', required: 'POI 반경 내 경유' }
+  }
+
+  // 수치 검사 필드가 하나도 없는 조건은 발급하지 않는다 — 알 수 없는 필드나 필터 성격 필드만
+  // 남은 조건이 아래 마지막 `pass: true`로 새는 것을 막는 방어 분기 (티켓 20260825_028)
+  if (!MEASURABLE_CONDITION_KEYS.some((k) => condition[k] !== undefined)) {
+    return { pass: false, reason: '평가 가능한 조건 없음', actual: '-', required: '-' }
   }
 
   // 걷기(walking)는 축1 게이트(진짜 걷기 판정)를 통과한 활동만 조건 평가에 포함한다.
@@ -548,7 +575,12 @@ export async function evaluateBadgesDetailed(
     .or(`valid_from.is.null,valid_from.lte.${now}`)
     .or(`valid_until.is.null,valid_until.gte.${now}`)
 
-  const allBadges = allBadgesRaw as BadgeRow[] | null
+  // 미션 보상 배지(condition_json.mission_reward = true)는 발급 후보에서 아예 제외한다.
+  // 이 배지들은 미션 완료 시 grantMissionRewards()로만 지급되며, 동기화 평가로 발급되면
+  // 본 배지 Rare/Legend/Mythic의 선행 배지 게이트(§2.7)가 통째로 열린다 (티켓 20260825_028).
+  const allBadges = (allBadgesRaw as BadgeRow[] | null)?.filter(
+    (b) => (b.condition_json as BadgeCondition | null)?.mission_reward !== true
+  ) ?? null
 
   if (badgesError || !allBadges || allBadges.length === 0) {
     if (badgesError) console.error('[evaluateBadgesDetailed] 배지 목록 조회 오류:', badgesError)
