@@ -82,6 +82,7 @@ export async function GET(
       .in('id', ownedBadgeIds)
       .eq('type', 'item')
       .not('item_book_id', 'is', null)
+      .is('deleted_at', null)
     itemBookCount = new Set(((booksRaw ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id)).size
   }
 

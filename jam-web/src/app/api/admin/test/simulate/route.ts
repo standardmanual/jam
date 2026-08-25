@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
     .from('badges')
     .select('id, name, condition_json, activity_types')
     .eq('type', 'activity')
+    .is('deleted_at', null)
     .overrideTypes<Array<{ id: string; name: string; condition_json: unknown; activity_types: string[] }>, { merge: false }>()
 
   if (badgesError) {

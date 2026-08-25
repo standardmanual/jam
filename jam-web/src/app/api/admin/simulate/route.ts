@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
 
   const poiBadgeIds = matchedPois.map((p) => p.linked_badge_id).filter(Boolean) as string[]
   const { data: poiBadgesRaw } = poiBadgeIds.length > 0
-    ? await supabase.from('badges').select('id, name, rarity').in('id', poiBadgeIds)
+    ? await supabase.from('badges').select('id, name, rarity').in('id', poiBadgeIds).is('deleted_at', null)
     : { data: [] as { id: string; name: string; rarity: string }[] }
   const poiBadgesById = new Map((poiBadgesRaw ?? []).map((b) => [b.id, b]))
 
@@ -127,6 +127,7 @@ export async function POST(req: NextRequest) {
       .select('id, name, drop_weight')
       .eq('type', 'item')
       .eq('rarity', rarity)
+      .is('deleted_at', null)
 
     const candidates = (candidatesRaw ?? []) as { id: string; name: string; drop_weight: number }[]
     if (candidates.length > 0) {
