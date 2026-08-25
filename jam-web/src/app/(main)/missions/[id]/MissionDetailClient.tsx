@@ -43,7 +43,7 @@ function missionGoalText(type: string, condition: MissionCondition): { label: st
   switch (type) {
     case 'distance':          return { label: d.missions.goalDistance,        unit: 'km', target: condition.distance_km ?? 0 }
     case 'activity_count':    return { label: d.missions.goalActivityCount,    unit: '회', target: condition.count ?? 0 }
-    case 'poi_visit':         return { label: d.missions.goalPoiVisit,         unit: '곳', target: 1 }
+    case 'checkin':           return { label: d.missions.goalCheckin,          unit: '곳', target: 1 }
     case 'item_collect':      return { label: d.missions.goalItemCollect,      unit: '개', target: 1 }
     case 'streak_days':       return { label: d.missions.goalStreakDays,       unit: '일', target: condition.streak_days ?? 0 }
     case 'duration_minutes':  return { label: d.missions.goalDurationMinutes,  unit: '분', target: condition.duration_minutes ?? 0 }
@@ -133,7 +133,7 @@ export default function MissionDetailClient({
   const goal = missionGoalText(mission.mission_type, condition)
   const progressPct = goal.target > 0 ? Math.min(100, (progressValue / goal.target) * 100) : 0
   const isActive = new Date(mission.starts_at) <= new Date() && (mission.ends_at === null || new Date(mission.ends_at) > new Date())
-  const isAchievementType = mission.mission_type === 'poi_visit' || mission.mission_type === 'item_collect'
+  const isAchievementType = mission.mission_type === 'checkin' || mission.mission_type === 'item_collect'
   const isStreakType = mission.mission_type === 'streak_days'
   const achieved = isCompleted || progressValue >= 1
 

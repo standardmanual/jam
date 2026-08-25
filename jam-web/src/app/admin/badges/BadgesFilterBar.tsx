@@ -3,12 +3,11 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
 
 const TYPE_OPTIONS = [
   { value: 'all', label: '전체 타입' },
-  { value: 'activity', label: '액티비티' },
-  { value: 'item', label: '아이템' },
-  { value: 'poi', label: 'POI' },
+  ...BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_TYPE_LABEL[t] })),
 ]
 
 const RARITY_OPTIONS = [
@@ -168,8 +167,8 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
           </select>
         )}
 
-        {/* POI 카테고리 서브 필터 */}
-        {currentType === 'poi' && (
+        {/* 지점 카테고리 서브 필터 — 체크인 배지는 연결된 지점(poi.category)으로만 분류된다 */}
+        {currentType === 'checkin' && (
           <select
             className={SELECT_CLASS}
             value={searchParams.get('poi_category') ?? 'all'}

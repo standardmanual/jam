@@ -71,21 +71,21 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   if (!bookRaw) notFound()
   const book = bookRaw as unknown as ItemBookWithFaction
 
-  // 2) 배지 (아이템 + POI)
+  // 2) 배지 (아이템 + 체크인)
   // 소프트 삭제된 배지(badges.deleted_at)는 컬렉션 슬롯 목록에서 제외한다(20260824_007) —
   // 해당 슬롯만 빠지고 나머지 슬롯·완성도 계산은 그대로 유지된다.
   const { data: badgesRaw } = await supabase
     .from('badges')
     .select('*')
     .eq('item_book_id', id)
-    .in('type', ['item', 'poi'])
+    .in('type', ['item', 'checkin'])
     .is('deleted_at', null)
     .order('created_at', { ascending: true })
   const allBookBadges = (badgesRaw ?? []) as BadgeRow[]
   const badges = allBookBadges.filter((b) => b.type === 'item')
-  const poiBadges = allBookBadges.filter((b) => b.type === 'poi')
+  const checkinBadges = allBookBadges.filter((b) => b.type === 'checkin')
   const badgeIds = badges.map((b) => b.id)
-  const poiBadgeIds = poiBadges.map((b) => b.id)
+  const checkinBadgeIds = checkinBadges.map((b) => b.id)
 
   // 3) 인벤토리
   const { data: inventoryRaw } = await service
@@ -96,7 +96,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   const inventory = inventoryRaw as { id: string } | null
 
   // 4~7) 병렬 조회
-  const [invRes, slotsRes, completionRes, poiEarnsRes] = await Promise.all([
+  const [invRes, slotsRes, completionRes, checkinEarnsRes] = await Promise.all([
     inventory && badgeIds.length > 0
       ? service
           .from('inventory_items')
@@ -117,12 +117,12 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       .eq('user_id', subjectId)
       .eq('item_book_id', id)
       .maybeSingle(),
-    poiBadgeIds.length > 0
+    checkinBadgeIds.length > 0
       ? service
-          .from('user_poi_badge_earns')
+          .from('user_checkin_badge_earns')
           .select('badge_id')
           .eq('user_id', subjectId)
-          .in('badge_id', poiBadgeIds)
+          .in('badge_id', checkinBadgeIds)
       : Promise.resolve({ data: [] as { badge_id: string }[] }),
   ])
 
@@ -169,12 +169,12 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     }
   })
 
-  const earnedPoiBadgeIds = new Set(
-    ((poiEarnsRes.data ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
+  const earnedCheckinBadgeIds = new Set(
+    ((checkinEarnsRes.data ?? []) as { badge_id: string }[]).map((e) => e.badge_id)
   )
 
-  const totalBadgeCount = badges.length + poiBadges.length
-  const slottedCount = slots.length + earnedPoiBadgeIds.size
+  const totalBadgeCount = badges.length + checkinBadges.length
+  const slottedCount = slots.length + earnedCheckinBadgeIds.size
   const isCompleted =
     completionRes.data != null ||
     (totalBadgeCount > 0 && slottedCount >= totalBadgeCount)
@@ -268,24 +268,24 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           </div>
         )}
 
-        {/* POI 배지 섹션 */}
-        {poiBadges.length > 0 && (
+        {/* 체크인 배지 섹션 */}
+        {checkinBadges.length > 0 && (
           <div className={badges.length > 0 ? 'mt-4 flex flex-col gap-3' : 'flex flex-col gap-3'}>
             <p
               className="font-bold"
               style={{ color: '#FFFFFF', fontSize: '16px', lineHeight: '1.2' }}
             >
-              {d.itembooks.poiSectionTitle}
+              {d.itembooks.checkinSectionTitle}
             </p>
             <p style={{ color: '#666666', fontSize: '12px', textAlign: 'center' }}>
-              {d.itembooks.poiHint}
+              {d.itembooks.checkinHint}
             </p>
             <div className="grid grid-cols-3 gap-2">
-              {poiBadges.map((poiBadge) => {
-                const earned = earnedPoiBadgeIds.has(poiBadge.id)
+              {checkinBadges.map((checkinBadge) => {
+                const earned = earnedCheckinBadgeIds.has(checkinBadge.id)
                 return (
                   <div
-                    key={poiBadge.id}
+                    key={checkinBadge.id}
                     className={`flex flex-col items-center p-3 rounded-2xl gap-2 ${earned ? '' : 'opacity-40'}`}
                     style={{ background: CARD_BG }}
                   >
@@ -293,11 +293,11 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                       className="w-[90px] h-[90px] rounded-2xl overflow-hidden flex items-center justify-center"
                       style={{ background: THUMB_BG }}
                     >
-                      {poiBadge.image_url ? (
+                      {checkinBadge.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={poiBadge.image_url}
-                          alt={poiBadge.name}
+                          src={checkinBadge.image_url}
+                          alt={checkinBadge.name}
                           className={`w-full h-full object-contain ${earned ? '' : 'grayscale'}`}
                         />
                       ) : (
@@ -308,7 +308,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                       className="text-center line-clamp-2 w-full"
                       style={{ color: '#FFFFFF', fontSize: '12px', lineHeight: '1.3' }}
                     >
-                      {poiBadge.name}
+                      {checkinBadge.name}
                     </p>
                     <span
                       className="inline-flex items-center px-2 py-1 rounded-full font-bold uppercase"
@@ -319,7 +319,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
                         letterSpacing: '0.02em',
                       }}
                     >
-                      {earned ? d.itembooks.poiEarned : d.itembooks.poiNotEarned}
+                      {earned ? d.itembooks.checkinEarned : d.itembooks.checkinNotEarned}
                     </span>
                   </div>
                 )

@@ -15,9 +15,9 @@
 [유저/인증]     users ─1:1─ strava_connections
                  └─1:N─ strava_activities (동기화 원본 활동 기록)
 
-[배지]          badges (activity/item/poi) ──faction_id──> factions
-                 ├─1:N─ user_activity_badges   (활동/아이템 배지, 평생 1회)
-                 └─1:N─ user_poi_badge_earns   (POI 배지, 반복 획득 가능)
+[배지]          badges (activity/item/checkin) ──faction_id──> factions
+                 ├─1:N─ user_activity_badges      (활동/아이템 배지, 평생 1회)
+                 └─1:N─ user_checkin_badge_earns  (체크인 배지, 반복 획득 가능)
 
 [인벤토리]      users ─1:1─ inventory ─1:N─ inventory_items ──badge_id──> badges
                                               └─ slotted_in ──> item_books (슬롯 장착)
@@ -98,10 +98,15 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | background_image_url | 배경 제너레이터(패턴/애니메이션 + Paper 셰이더 필터 합성)로 만든 배경을 어드민에서 static PNG로 구워(bake) Storage에 올린 뒤 저장하는 URL(nullable, 20260819_008). **`background_color`보다 우선 렌더링**됨(`getBadgeBackgroundStyle`) — 값이 있으면 이 이미지를, 없으면 `background_color`로 폴백. `background_color`와 상호 배타적으로 쓰임(어드민에서 저장 시 반대쪽을 null로 정리, DB 제약 아님). 원시 설정값(이미지·패턴/애니메이션 파라미터·필터 종류)은 저장하지 않음 — 재편집 가능한 설정이 아니라 완성된 이미지 1장 |
 
 ### user_activity_badges
-활동/아이템 배지 발급 기록. 평생 1회(UNIQUE user_id+badge_id). POI/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.
+활동/아이템 배지 발급 기록. 평생 1회(UNIQUE user_id+badge_id). 지점(POI)/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.
 
-### user_poi_badge_earns (신규)
-POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, badge_id, poi_id, strava_id)로 동일 통과분 중복 방지.
+### user_checkin_badge_earns (신규)
+체크인 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, badge_id, poi_id, strava_id)로 동일 통과분 중복 방지.
+
+> 2026-08-26(티켓 20260826_004)에 `user_poi_badge_earns`에서 개명. `poi_id` 컬럼은 지점 참조라
+> 이름을 유지한다. 같은 티켓에서 `badge_type` `'poi'` → `'checkin'`,
+> `notification_type` `'poi_badge_earned'` → `'checkin_badge_earned'`,
+> `missions.mission_type` `'poi_visit'` → `'checkin'`으로 함께 개명됐다.
 
 ---
 
@@ -223,7 +228,7 @@ POI 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, ba
 ## 8. 미션 — 신규 도메인
 
 ### missions
-`mission_type`(distance/poi_visit/activity_count/item_collect/streak_days/duration_minutes/elevation_gain_m — 뒤 3종은 2026-08-13 추가, 배지엔진의 `evaluateConditionDetailed`를 그대로 재사용해 판정), `condition_json`(뒤 3종은 badge-engine `BadgeCondition`과 동일한 필드 어휘 사용), `reward_type`(nullable — 배지+포인트 동시 구성 가능), `reward_badge_ids[]`(복수 배지 보상), `reward_points`, `starts_at/ends_at`(`ends_at`은 2026-08-13부터 nullable — NULL은 "상시 미션", 종료일 없음), `max_completions`, `status_display_type`(ranking/achievement/individual — `individual`은 2026-08-13 추가, 본인 진행상황만 반환하고 다른 참가자는 노출하지 않음), `visible_rank_count`, `image_url`(2026-08-15 추가 — 미션 카드 썸네일 URL. Supabase Storage `mission-images` 버킷 참조. NULL이면 플레이스홀더 표시), `gated_badge_id`(2026-08-25 추가, nullable FK → `badges.id` — 이 미션을 완료해야 획득 조건이 열리는 **본 배지**. 레벨업 미션 15종만 값을 가지며, 미션 노출 판정(`src/lib/missions/visibility.ts`)이 이 배지의 등급과 유저 보유 등급을 비교해 open/locked/hidden을 결정한다. 티켓 20260825_028).
+`mission_type`(distance/checkin/activity_count/item_collect/streak_days/duration_minutes/elevation_gain_m — `checkin`은 2026-08-26에 `poi_visit`에서 개명 — 뒤 3종은 2026-08-13 추가, 배지엔진의 `evaluateConditionDetailed`를 그대로 재사용해 판정), `condition_json`(뒤 3종은 badge-engine `BadgeCondition`과 동일한 필드 어휘 사용), `reward_type`(nullable — 배지+포인트 동시 구성 가능), `reward_badge_ids[]`(복수 배지 보상), `reward_points`, `starts_at/ends_at`(`ends_at`은 2026-08-13부터 nullable — NULL은 "상시 미션", 종료일 없음), `max_completions`, `status_display_type`(ranking/achievement/individual — `individual`은 2026-08-13 추가, 본인 진행상황만 반환하고 다른 참가자는 노출하지 않음), `visible_rank_count`, `image_url`(2026-08-15 추가 — 미션 카드 썸네일 URL. Supabase Storage `mission-images` 버킷 참조. NULL이면 플레이스홀더 표시), `gated_badge_id`(2026-08-25 추가, nullable FK → `badges.id` — 이 미션을 완료해야 획득 조건이 열리는 **본 배지**. 레벨업 미션 15종만 값을 가지며, 미션 노출 판정(`src/lib/missions/visibility.ts`)이 이 배지의 등급과 유저 보유 등급을 비교해 open/locked/hidden을 결정한다. 티켓 20260825_028).
 
 ### user_mission_participations / user_mission_completions
 참가(진행도 추적)와 완료를 별도 테이블로 관리. "참가 필수·취소 불가" 정책 — 참가자만 완료 보상 대상.
@@ -297,8 +302,8 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 
 ## 왜 이 구조인가
 
-**배지 이원화 (ActivityBadge vs ItemBadge) + POI 배지 분리**
-- 액티비티 배지는 영구 귀속(정체성), 아이템 배지는 거래 가능(경제), POI 배지는 반복 획득(방문 인증) — 세 가지 획득 패턴이 근본적으로 달라 발급 테이블을 분리 유지.
+**배지 이원화 (ActivityBadge vs ItemBadge) + 체크인 배지 분리**
+- 액티비티 배지는 영구 귀속(정체성), 아이템 배지는 거래 가능(경제), 체크인 배지는 반복 획득(같은 지점에 다시 체크인 가능) — 세 가지 획득 패턴이 근본적으로 달라 발급 테이블을 분리 유지.
 
 **컬렉션 소유 관계 역전**
 - 원안은 `item_books.required_item_badge_ids`(북이 배지 목록을 가짐)였으나, 세계관 연동과 슬롯 장착 UX가 추가되며 `badges.item_book_id`(배지가 소속 북을 가짐) 구조로 역전. 배지 하나가 정확히 하나의 북에만 속하는 현재 컨텐츠 구조(세계관 10개 = 컬렉션 10개, 각 90종)와 더 잘 맞음.

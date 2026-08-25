@@ -180,10 +180,10 @@ export default async function UserProfilePage({ params }: Props) {
       .order('joined_at', { ascending: false })
       .limit(50),
 
-    // poi 타입 배지는 방문할 때마다 반복 획득되는 이력 테이블 — 오래된 것부터
+    // checkin 타입 배지는 체크인할 때마다 반복 획득되는 이력 테이블 — 오래된 것부터
     // 가져와서 아래에서 배지별 첫 등장(최초 획득 시각)만 남긴다.
     service
-      .from('user_poi_badge_earns')
+      .from('user_checkin_badge_earns')
       .select('badge_id, earned_at, badges(id, name, image_url, rarity, deleted_at)')
       .eq('user_id', subjectId)
       .order('earned_at', { ascending: true })
@@ -276,7 +276,7 @@ export default async function UserProfilePage({ params }: Props) {
     legacyItems.push(makeFeedItem(`legacy_poibadge_${badgeId}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }))
   }
 
-  // "배지" 통계 수 = 활동 배지 보유 수 + POI 배지 고유 종류 수(반복 획득은 1개로 카운트)
+  // "배지" 통계 수 = 활동 배지 보유 수 + 체크인 배지 고유 종류 수(반복 획득은 1개로 카운트)
   const poiBadgeCount = Array.from(poiBadgeFirstEarn.values()).filter((row) => {
     const b = row.badges as { deleted_at: string | null } | null
     return b && !b.deleted_at

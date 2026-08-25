@@ -123,13 +123,13 @@ describe('① 보상 획득', () => {
     expect(text(v)).toBe('활동 중에 아이템 배지 2개가 떨어졌어요')
   })
 
-  it('#4 POI 배지 — 단건은 장소명, 묶음은 "외 N곳"', () => {
-    expect(text(view('poi_badge_earned', { poi_name: '북한산', badge_ids: ['b1'] }))).toBe(
+  it('#4 체크인 배지 — 단건은 지점명, 묶음은 "외 N곳"', () => {
+    expect(text(view('checkin_badge_earned', { poi_name: '북한산', badge_ids: ['b1'] }))).toBe(
       '북한산에서 체크인 배지를 획득했어요'
     )
     expect(
       text(
-        view('poi_badge_earned', {
+        view('checkin_badge_earned', {
           badge_ids: ['b1', 'b2', 'b3'],
           poi_names: ['북한산', '관악산', '도봉산'],
         })
@@ -137,29 +137,29 @@ describe('① 보상 획득', () => {
     ).toBe('북한산 외 2곳에서 체크인 배지를 획득했어요')
   })
 
-  it('#4 POI 배지 재방문 — 20260826_001. is_first_earn=false + visit_count>1이면 "N번째 방문했어요"', () => {
+  it('#4 체크인 배지 반복 획득 — is_first_earn=false + visit_count>1이면 "N번째 체크인 했어요"', () => {
     expect(
       text(
-        view('poi_badge_earned', {
+        view('checkin_badge_earned', {
           poi_name: '서초역',
           badge_ids: ['b1'],
           is_first_earn: false,
           visit_count: 3,
         })
       )
-    ).toBe('서초역을 3번째 방문했어요')
+    ).toBe('서초역에서 3번째 체크인 했어요')
   })
 
-  it('#4 POI 배지 재방문 — payload에 is_first_earn이 없는 과거 소식은 기존 "획득" 문구 유지(하위호환)', () => {
-    expect(text(view('poi_badge_earned', { poi_name: '북한산', badge_ids: ['b1'] }))).toBe(
+  it('#4 체크인 배지 반복 획득 — payload에 is_first_earn이 없는 과거 소식은 기존 "획득" 문구 유지(하위호환)', () => {
+    expect(text(view('checkin_badge_earned', { poi_name: '북한산', badge_ids: ['b1'] }))).toBe(
       '북한산에서 체크인 배지를 획득했어요'
     )
   })
 
-  it('#4 POI 배지 — 한 활동에서 최초 획득과 재방문이 섞이면 최초 획득 쪽을 대표로 "획득" 문구 + 외 N곳', () => {
+  it('#4 체크인 배지 — 한 활동에서 최초 획득과 반복 획득이 섞이면 최초 획득 쪽을 대표로 "획득" 문구 + 외 N곳', () => {
     expect(
       text(
-        view('poi_badge_earned', {
+        view('checkin_badge_earned', {
           poi_name: '관악산', // sync.ts가 최초 획득 항목을 대표로 골라 넣은 값
           is_first_earn: true,
           badge_ids: ['b1', 'b2'],
@@ -397,10 +397,10 @@ describe('착지점 — type + payload로 런타임 계산 (PRD §3)', () => {
     ).toBe('/inventory?highlight=i1%2Ci2')
   })
 
-  it('#4 묶음은 POI 탭 + highlight', () => {
+  it('#4 묶음은 체크인 탭 + highlight', () => {
     expect(
-      notificationTarget(view('poi_badge_earned', { badge_ids: ['b1', 'b2'] })).href
-    ).toBe('/badges?tab=poi&highlight=b1%2Cb2')
+      notificationTarget(view('checkin_badge_earned', { badge_ids: ['b1', 'b2'] })).href
+    ).toBe('/badges?tab=checkin&highlight=b1%2Cb2')
   })
 
   it('#11은 컬렉션 장착 모드로 보낸다', () => {

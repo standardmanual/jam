@@ -49,7 +49,7 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
   const [pois, setPois] = useState<NearbyPoi[]>([])
   const [poisLoading, setPoisLoading] = useState(false)
 
-  // ── Phase 17: 뷰포트 기반 POI 방문 배지 (드랍/픽업과 완전 별개 파이프라인) ──
+  // ── Phase 17: 뷰포트 기반 체크인 배지 (드랍/픽업과 완전 별개 파이프라인) ──
   const [badgeMarkers, setBadgeMarkers] = useState<PoiBadgeMarker[]>([])
   const [badgeClusters, setBadgeClusters] = useState<PoiBadgeClusterMarker[]>([])
 
@@ -138,7 +138,7 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
     Promise.resolve().then(() => loadNearbyPois())
   }, [loadNearbyPois])
 
-  // 뷰포트 변경 → POI 배지 재조회.
+  // 뷰포트 변경 → 체크인 배지 재조회.
   // MapView가 디바운스 + "이전 조회 범위를 벗어났을 때만" 필터링해서 호출한다.
   const handleViewportChange = useCallback(async (viewport: MapViewport) => {
     const params = new URLSearchParams({
@@ -149,7 +149,7 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
       zoom: String(viewport.zoom),
     })
     try {
-      const res = await fetch(`/api/poi-badges?${params.toString()}`)
+      const res = await fetch(`/api/checkin-badges?${params.toString()}`)
       if (!res.ok) return
       const json = await res.json()
       setBadgeMarkers((json.pois ?? []) as PoiBadgeMarker[])

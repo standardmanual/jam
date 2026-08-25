@@ -171,7 +171,7 @@ function num(payload: Record<string, unknown>, key: string): number {
 
 /**
  * boolean payload 필드. `defaultValue`는 필드가 아예 없는 과거 payload(20260826_001 이전에
- * 생성된 poi_badge_earned 소식 등)를 위한 하위호환 값이다.
+ * 생성된 checkin_badge_earned 소식 등)를 위한 하위호환 값이다.
  */
 function boolField(payload: Record<string, unknown>, key: string, defaultValue: boolean): boolean {
   const v = payload[key]
@@ -241,8 +241,8 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
         vars: { itemCount: t(n.slotItemBadgeCount, { count }) },
       }
     }
-    case 'poi_badge_earned': {
-      // 20260826_001 — 대표 POI(poi_name)는 sync.ts가 "최초 획득 우선" 규칙으로 이미
+    case 'checkin_badge_earned': {
+      // 20260826_001 — 대표 지점(poi_name)은 sync.ts가 "최초 획득 우선" 규칙으로 이미
       // 골라 넣은 값이라 names[0]이 아니라 이 값을 그대로 헤드라인에 쓴다.
       const names = [...new Set(idList(p, 'poi_names'))]
       const single = str(p, 'poi_name') || names[0] || ''
@@ -254,9 +254,9 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       const isFirstEarn = boolField(p, 'is_first_earn', true)
       const visitCount = num(p, 'visit_count')
       if (!isFirstEarn && visitCount > 1) {
-        return { template: n.msgPoiBadgeRevisited, vars: { poiName, visitCount: String(visitCount) } }
+        return { template: n.msgCheckinBadgeRepeated, vars: { poiName, visitCount: String(visitCount) } }
       }
-      return { template: n.msgPoiBadgeEarned, vars: { poiName } }
+      return { template: n.msgCheckinBadgeEarned, vars: { poiName } }
     }
     case 'points_earned':
       return { template: n.msgPointsEarned, vars: { points: points(num(p, 'amount')) } }

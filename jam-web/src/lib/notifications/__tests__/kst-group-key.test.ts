@@ -79,7 +79,7 @@ describe('group_key 빌더 — type 접두가 종류 간 충돌을 막는다', (
     const keys = [
       syncGroupKey('badge_earned', activityId),
       syncGroupKey('item_badge_earned', activityId),
-      syncGroupKey('poi_badge_earned', activityId),
+      syncGroupKey('checkin_badge_earned', activityId),
     ]
     expect(new Set(keys).size).toBe(3)
   })
@@ -111,7 +111,7 @@ describe('bumps_badge 파생 — ① 보상 획득 6종만 false', () => {
     'badge_earned',
     'rare_badge_earned',
     'item_badge_earned',
-    'poi_badge_earned',
+    'checkin_badge_earned',
     'points_earned',
     'first_badge',
   ]

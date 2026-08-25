@@ -300,7 +300,7 @@ export default function PoiCarouselModal({
             activeIndex={activeIndex}
             onActiveIndexChange={setActiveIndex}
             getItemKey={(poi: NearbyPoi) => poi.id}
-            ariaLabel="반경 내 POI 캐러셀"
+            ariaLabel="주변 지점 목록"
             renderItem={(poi: NearbyPoi, { isActive }) => (
               <PoiCard
                 poi={poi}

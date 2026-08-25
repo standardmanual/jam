@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/shadcn-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
+import { badgeTypeLabel } from '@/lib/admin/badge-labels'
 
 const RARITY_BADGE_COLOR: Record<string, string> = {
   common: 'bg-gray-200 text-gray-800',
@@ -19,12 +20,6 @@ const RARITY_LABEL: Record<BadgeRarity, string> = {
   rare: 'Rare',
   legend: 'Legend',
   mythic: 'Mythic',
-}
-
-const TYPE_LABEL: Record<string, string> = {
-  activity: '활동',
-  item: '아이템',
-  poi: 'POI',
 }
 
 /** "YYYY.MM.DD" 형식으로 날짜 포맷 */
@@ -67,7 +62,7 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
           <div className="flex flex-col justify-between flex-1">
             <div className="flex gap-2 flex-wrap">
               <span className="inline-block px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded">
-                {TYPE_LABEL[badge.type] || badge.type}
+                {badgeTypeLabel(badge.type)}
               </span>
               <span
                 className={`inline-block px-2 py-1 text-xs font-semibold rounded ${

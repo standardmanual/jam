@@ -280,7 +280,7 @@ export async function processFetchedActivities(
   badges: number
   itemBooksCompleted: number
   missionsCompleted: number
-  /** 이번 처리에서 발급된 배지 id — 획득 순서(POI → 아이템 드랍 → 액티비티 → 컬렉션·미션 보상) */
+  /** 이번 처리에서 발급된 배지 id — 획득 순서(체크인 → 아이템 드랍 → 액티비티 → 컬렉션·미션 보상) */
   earnedBadgeIds: string[]
 }> {
   if (rawActivities.length === 0) {
@@ -307,10 +307,10 @@ export async function processFetchedActivities(
   let poiBadgesEarned = 0
 
   /**
-   * 소식 #4(POI 배지 획득) 재료 — 활동 1건이 묶음 단위라 활동별로 모은다.
-   * (같은 활동에서 POI를 여러 곳 지나면 "북한산 외 2곳" 한 건으로 나가야 한다)
-   * 20260826_001 — 최초 획득/재방문이 한 활동에 섞일 수 있어 그 여부(isFirstEarns)와
-   * 방문 횟수(visitCounts)도 badgeIds/poiNames와 같은 순서로 나란히 쌓는다.
+   * 소식 #4(체크인 배지 획득) 재료 — 활동 1건이 묶음 단위라 활동별로 모은다.
+   * (같은 활동에서 지점을 여러 곳 지나면 "북한산 외 2곳" 한 건으로 나가야 한다)
+   * 20260826_001 — 최초 획득/반복 획득이 한 활동에 섞일 수 있어 그 여부(isFirstEarns)와
+   * 체크인 횟수(visitCounts)도 badgeIds/poiNames와 같은 순서로 나란히 쌓는다.
    */
   const poiEarnsByActivity = new Map<
     number,
@@ -348,7 +348,7 @@ export async function processFetchedActivities(
   }
 
   // 배지 타입별 발급
-  //   - poi 타입: user_poi_badge_earns에 매번 새 행(반복 획득). 보유 여부 체크 없음.
+  //   - checkin 타입: user_checkin_badge_earns에 매번 새 행(반복 획득). 보유 여부 체크 없음.
   //   - 그 외(레거시 activity): 기존 user_activity_badges 경로 그대로(1인 1회)
   for (const { rawActivity, matchedPois } of poiMatchResults) {
     const normalized = activities.find((a) => a.stravaId === rawActivity.id)
@@ -358,18 +358,18 @@ export async function processFetchedActivities(
       const badge = badgeById.get(poi.linked_badge_id)
       if (!badge) continue
 
-      if (badge.type === 'poi') {
-        // 이 유저가 이 배지를 이전에 몇 번 획득했는지 먼저 확인한다. poi 배지는 방문할
-        // 때마다 반복 획득되는 설계라(badge_id 단위 — 배지 상세 화면 PoiEarnHistory도
-        // 같은 기준으로 이력을 모은다), 20260826_001부터는 최초 획득이든 재방문이든
-        // 항상 피드에 남기되 "몇 번째 방문인지"를 함께 기록해 문구를 구분한다.
+      if (badge.type === 'checkin') {
+        // 이 유저가 이 배지를 이전에 몇 번 획득했는지 먼저 확인한다. 체크인 배지는
+        // 체크인할 때마다 반복 획득되는 설계라(badge_id 단위 — 배지 상세 화면 PoiEarnHistory도
+        // 같은 기준으로 이력을 모은다), 20260826_001부터는 최초 획득이든 반복 획득이든
+        // 항상 피드에 남기되 "몇 번째 체크인인지"를 함께 기록해 문구를 구분한다.
         const { count: priorEarnCount, error: priorEarnError } = await supabase
-          .from('user_poi_badge_earns')
+          .from('user_checkin_badge_earns')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', userId)
           .eq('badge_id', badge.id)
         if (priorEarnError) {
-          console.error(`[processFetchedActivities] POI 배지 이전 획득 수 조회 오류 (badge_id: ${badge.id}):`, priorEarnError)
+          console.error(`[processFetchedActivities] 체크인 배지 이전 획득 수 조회 오류 (badge_id: ${badge.id}):`, priorEarnError)
         }
         const visitCount = (priorEarnCount ?? 0) + 1
         const isFirstEarn = visitCount === 1
@@ -382,17 +382,17 @@ export async function processFetchedActivities(
           triggered_by_activity_name: rawActivity.name,
           triggered_by_distance_km: normalized?.distanceKm ?? null,
           // 20260824_006 — start_date_local은 로컬 벽시계에 Z를 붙인 값이라(진짜 UTC 아님)
-          // 그대로 넣으면 최대 +9시간 미래로 오해석된다. 이 필드는 POI 배지 상세 화면
-          // (PoiEarnHistory)에 방문일로 노출되므로 반드시 진짜 UTC인 start_date만 쓴다.
+          // 그대로 넣으면 최대 +9시간 미래로 오해석된다. 이 필드는 체크인 배지 상세 화면
+          // (PoiEarnHistory)에 체크인 일시로 노출되므로 반드시 진짜 UTC인 start_date만 쓴다.
           triggered_by_activity_date: rawActivity.start_date,
         }
         const { error: earnError } = await supabase
-          .from('user_poi_badge_earns')
+          .from('user_checkin_badge_earns')
           .insert(earnPayload)
 
         if (earnError) {
           if (earnError.code !== '23505') {
-            console.error(`[processFetchedActivities] POI 배지 이력 기록 오류 (poi_id: ${poi.id}):`, earnError)
+            console.error(`[processFetchedActivities] 체크인 배지 이력 기록 오류 (poi_id: ${poi.id}):`, earnError)
           }
           continue
         }
@@ -405,11 +405,13 @@ export async function processFetchedActivities(
         poiEarn.isFirstEarns.push(isFirstEarn)
         poiEarn.visitCounts.push(visitCount)
         poiEarnsByActivity.set(rawActivity.id, poiEarn)
-        console.info(`[processFetchedActivities] POI 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}, visitCount: ${visitCount}`)
+        console.info(`[processFetchedActivities] 체크인 배지 획득 — userId: ${userId}, poi: ${poi.name}, badge_id: ${badge.id}, visitCount: ${visitCount}`)
 
-        // 20260826_001 — isFirstEarn 여부와 무관하게 항상 기록한다. 재방문은
-        // poi_name·visit_count를 함께 실어 프론트(FeedSection)가 "N번째 방문"
-        // 문구로 분기하게 한다.
+        // 20260826_001 — isFirstEarn 여부와 무관하게 항상 기록한다. poi_name·visit_count를
+        // 함께 실어 프론트(FeedSection)가 "체크인 했어요" / "N번째 체크인 했어요"로
+        // 분기하게 한다(20260826_004).
+        // ⚠️ 체크인 배지는 별도 feed_event_type이 아니라 badge_earned + metadata로 남는다.
+        //    이 두 필드가 곧 "이 badge_earned는 체크인"이라는 유일한 표식이다.
         await recordFeedEvent(userId, 'badge_earned', {
           badge_id: badge.id,
           badge_name: badge.name,
@@ -453,19 +455,19 @@ export async function processFetchedActivities(
     }
   }
 
-  // 소식 #4(POI 배지 획득) — 티켓 20260824_019. 활동 1건이 묶음 단위.
-  // 20260826_001 — 한 활동에서 최초 획득과 재방문이 섞이면 최초 획득 쪽을 대표(헤드라인)로
-  // 쓴다. "새로 획득"이 "몇 번째 방문"보다 알림 가치가 크다고 판단했고(배지=신남 톤 유지),
+  // 소식 #4(체크인 배지 획득) — 티켓 20260824_019. 활동 1건이 묶음 단위.
+  // 20260826_001 — 한 활동에서 최초 획득과 반복 획득이 섞이면 최초 획득 쪽을 대표(헤드라인)로
+  // 쓴다. "새로 획득"이 "몇 번째 체크인"보다 알림 가치가 크다고 판단했고(배지=신남 톤 유지),
   // 나머지는 기존 slotPlaceMore("{name} 외 {count}곳") 패턴 그대로 뭉친다 — 알림을 2건으로
   // 쪼개면 groupKey·appendKeys 구조를 바꿔야 해서 배보다 배꼽이 크다. 최초 획득이 하나도
-  // 없으면(전부 재방문) 첫 번째 항목을 대표로 쓴다.
+  // 없으면(전부 반복 획득) 첫 번째 항목을 대표로 쓴다.
   for (const [activityId, earn] of poiEarnsByActivity) {
     const firstEarnIndex = earn.isFirstEarns.findIndex((v) => v)
     const repIndex = firstEarnIndex >= 0 ? firstEarnIndex : 0
     await createNotification({
       userId,
-      type: 'poi_badge_earned',
-      groupKey: syncGroupKey('poi_badge_earned', activityId),
+      type: 'checkin_badge_earned',
+      groupKey: syncGroupKey('checkin_badge_earned', activityId),
       payload: {
         // 단건 렌더용 대표값 (묶음이면 렌더러가 badge_ids·count를 쓴다)
         badge_id: earn.badgeIds[repIndex],

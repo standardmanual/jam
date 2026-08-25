@@ -57,7 +57,7 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
       .from('badges')
       .select('id, item_book_id, type')
       .in('item_book_id', bookIds)
-      .in('type', ['item', 'poi'])
+      .in('type', ['item', 'checkin'])
       .order('id')
       .range(from, from + COMPLETABLE_BADGE_PAGE_SIZE - 1)
 
@@ -79,7 +79,7 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
     list.push(b.id)
     badgeIdsByBook.set(b.item_book_id, list)
     bookIdByBadge.set(b.id, b.item_book_id)
-    if (b.type === 'poi') poiBadgeIds.push(b.id)
+    if (b.type === 'checkin') poiBadgeIds.push(b.id)
   }
   if (badgeIdsByBook.size === 0) return []
 
@@ -93,7 +93,7 @@ export async function findCompletableItemBooks(userId: string): Promise<Completa
       .in('item_book_id', bookIds),
     poiBadgeIds.length > 0
       ? supabase
-          .from('user_poi_badge_earns')
+          .from('user_checkin_badge_earns')
           .select('badge_id')
           .eq('user_id', userId)
           .in('badge_id', poiBadgeIds)

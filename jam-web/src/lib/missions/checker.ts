@@ -112,11 +112,11 @@ export async function checkMissions(
   const history = await getActivityHistory(supabase, userId)
   const fullHistory = mergeActivityHistory(history, activities)
 
-  // 4. poi_visit / item_collect 판정에 필요한 유저 보유 현황을 미리 조회.
+  // 4. checkin / item_collect 판정에 필요한 유저 보유 현황을 미리 조회.
   //    (활동 배치만으로는 판단 불가 — DB 조회 필요. 참가 미션이 하나라도
   //     이 두 타입일 때만 조회해 불필요한 쿼리를 피한다.)
   const needsOwnership = pendingMissions.some(
-    (m) => participationSet.has(m.id) && (m.mission_type === 'poi_visit' || m.mission_type === 'item_collect')
+    (m) => participationSet.has(m.id) && (m.mission_type === 'checkin' || m.mission_type === 'item_collect')
   )
   const ownership = needsOwnership ? await loadOwnership(userId) : { ownedBadgeIds: new Set<string>(), visitedPoiIds: new Set<string>() }
 
@@ -127,7 +127,7 @@ export async function checkMissions(
 
     // distance/activity_count/streak_days/duration_minutes/elevation_gain_m은 참가 시점 이후
     // 전체 이력으로 판정해야 한다(연속일수·단일활동 최고기록 모두 배치 하나로는 정확히 계산 불가).
-    // 그 외(poi_visit/item_collect)는 보유 현황 기반이라 activities 자체는 안 쓰이므로
+    // 그 외(checkin/item_collect)는 보유 현황 기반이라 activities 자체는 안 쓰이므로
     // 배치를 그대로 넘겨도 무방.
     const joinedAt = joinedAtByMission.get(mission.id)
     const missionActivities = ENGINE_DELEGATED_MISSION_TYPES.has(mission.mission_type) || mission.mission_type === 'distance' || mission.mission_type === 'activity_count'
@@ -207,7 +207,7 @@ export async function checkMissions(
 
 /**
  * 미션 타입별 진행도 단위 — 소식 #20의 문구 슬롯("52/100km")에 쓴다.
- * 달성형(poi_visit/item_collect)은 진행률 개념이 없어 빈 문자열.
+ * 달성형(checkin/item_collect)은 진행률 개념이 없어 빈 문자열.
  *
  * 025 배치의 #21(마감 임박)도 같은 표를 쓴다 — "12km 남았어요"의 단위가 #20과 갈라지면
  * 같은 미션이 소식마다 다른 단위로 보인다.
@@ -215,7 +215,7 @@ export async function checkMissions(
 export const MISSION_PROGRESS_UNIT: Record<MissionType, string> = {
   distance: 'km',
   activity_count: '회',
-  poi_visit: '',
+  checkin: '',
   item_collect: '',
   streak_days: '일',
   duration_minutes: '분',
@@ -229,7 +229,7 @@ export const MISSION_PROGRESS_UNIT: Record<MissionType, string> = {
  * `mission_milestone:{mission_id}:{50|80}` + `mode:'once'`로 막는다.
  * (동기화할 때마다 이 지점을 지나므로 merge로 두면 매번 dot이 다시 켜진다)
  *
- * 달성형(poi_visit/item_collect)은 목표가 0/1이라 "절반을 넘었어요"가 성립하지 않으므로
+ * 달성형(checkin/item_collect)은 목표가 0/1이라 "절반을 넘었어요"가 성립하지 않으므로
  * 제외한다. 한 번에 두 구간을 넘긴 경우(0 → 85%)에는 **높은 쪽 한 건만** 만든다.
  */
 async function notifyMissionMilestone(
@@ -264,7 +264,7 @@ async function notifyMissionMilestone(
 export interface OwnershipContext {
   /** 유저가 보유한 배지 id (활동배지 + 인벤토리 아이템배지) */
   ownedBadgeIds: Set<string>
-  /** 유저가 방문(POI 매칭 배지 발급)한 POI id */
+  /** 유저가 체크인(지점 매칭 배지 발급)한 지점 id */
   visitedPoiIds: Set<string>
 }
 
@@ -308,8 +308,8 @@ export function evaluateMission(
 }
 
 /**
- * poi_visit / item_collect 달성 판정에 필요한 유저 보유 현황 조회.
- * - 방문한 POI: user_activity_badges.triggered_by_poi_id (POI 배지 매칭 시스템 재사용)
+ * checkin / item_collect 달성 판정에 필요한 유저 보유 현황 조회.
+ * - 체크인한 지점: user_activity_badges.triggered_by_poi_id (지점 매칭 시스템 재사용)
  * - 보유 배지: user_activity_badges.badge_id ∪ inventory_items.badge_id
  */
 async function loadOwnership(userId: string): Promise<OwnershipContext> {
@@ -352,8 +352,8 @@ export function getTarget(missionType: string, condition: MissionCondition): num
   switch (missionType) {
     case 'distance': return condition.distance_km ?? 0
     case 'activity_count': return condition.count ?? 0
-    // poi_visit / item_collect 은 달성형(0/1) — 목표치 항상 1
-    case 'poi_visit': return 1
+    // checkin / item_collect 은 달성형(0/1) — 목표치 항상 1
+    case 'checkin': return 1
     case 'item_collect': return 1
     // 티켓 20260813_001 — 배지엔진 BadgeCondition과 동일 필드 어휘 재사용
     case 'streak_days': return condition.streak_days ?? 0
@@ -378,8 +378,8 @@ function calculateProgress(
       return filtered.reduce((sum, a) => sum + a.distanceKm, 0)
     case 'activity_count':
       return filtered.length
-    case 'poi_visit':
-      // 대상 POI를 방문(매칭 배지 발급)했으면 1, 아니면 0
+    case 'checkin':
+      // 대상 지점에 체크인(매칭 배지 발급)했으면 1, 아니면 0
       return condition.poi_id && ownership.visitedPoiIds.has(condition.poi_id) ? 1 : 0
     case 'item_collect':
       // 대상 배지를 보유하면 1, 아니면 0

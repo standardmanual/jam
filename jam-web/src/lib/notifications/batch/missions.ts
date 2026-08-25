@@ -67,7 +67,7 @@ export interface MissionDeadlineInput {
  * **`remaining`이 0 이하면 만들지 않는다**(§3-3). 목표를 이미 채웠는데 완료 처리가 아직
  * 안 된 경우 "0km 남았어요"가 그대로 나간다.
  *
- * 단위가 없는 달성형(poi_visit·item_collect)은 제외한다 — 문구가 "1 남았어요"가 되어
+ * 단위가 없는 달성형(checkin·item_collect)은 제외한다 — 문구가 "1 남았어요"가 되어
  * 의미를 잃는다. #20(마일스톤)이 같은 이유로 이미 제외하고 있다.
  */
 export function selectMissionDeadlineDrafts(input: MissionDeadlineInput): NotificationDraft[] {

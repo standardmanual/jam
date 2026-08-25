@@ -31,7 +31,7 @@
 ```sql
 CREATE TYPE notification_type AS ENUM (
   -- ① 보상 획득
-  'badge_earned', 'rare_badge_earned', 'item_badge_earned', 'poi_badge_earned',
+  'badge_earned', 'rare_badge_earned', 'item_badge_earned', 'checkin_badge_earned',
   'points_earned', 'first_badge',
   -- ② 컬렉션
   'collection_slottable', 'collection_near_complete', 'collection_completable',
@@ -431,7 +431,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 | `badge_earned` | `{ badge_ids: [...], count, activity_id }` — `badge_ids`는 append |
 | `rare_badge_earned` | `{ badge_id, badge_name, rarity }` |
 | `item_badge_earned` | `{ inventory_item_ids: [...], count }` — 착지점이 인벤토리 인스턴스라 배지 id가 아니다 |
-| `poi_badge_earned` | `{ badge_ids: [...], poi_names: [...], count }` |
+| `checkin_badge_earned` | `{ badge_ids: [...], poi_names: [...], count }` — `poi_names`는 체크인한 **지점** 이름이라 키명 유지 |
 | `points_earned` | `{ amount, reason }` — `amount`는 `sum_keys`로 합산 |
 | `collection_completable` | `{ item_book_id, book_name }` |
 | `drop_picked_up` | `{ actor_ids: [...], badge_ids: [...], poi_id }` — 둘 다 append. 단건일 때만 `badge_name` |

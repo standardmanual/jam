@@ -7,7 +7,6 @@ import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
-import { hasBatchim } from '@/lib/notifications/message'
 import { RARITY_LABEL, RARITY_COLOR } from '@/lib/rarity'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { IconButton } from '@ds/components/buttons/IconButton'
@@ -62,12 +61,12 @@ function EventIcon({ type, className }: { type: ActivityFeedEventType; className
 }
 
 /**
- * 재방문 POI 배지 썸네일 모서리에 붙는 작은 카운터 배지("×N").
- * 인터랙션 리뷰 발견 3 — 재방문 이벤트가 최초 획득과 시각적으로 완전히 동일해 텍스트를
- * 읽기 전까지 구분이 안 된다는 지적 반영. 신규 컴포넌트를 만들지 않고 기존 하우스 스타일
- * (ProfileClient.tsx의 아바타 모서리 버튼과 동일한 pill 배지 톤)만 재사용한다.
+ * 반복 체크인 배지 썸네일 모서리에 붙는 작은 카운터 배지("×N").
+ * 인터랙션 리뷰 발견 3(20260826_001) — 반복 획득 이벤트가 최초 획득과 시각적으로 완전히
+ * 동일해 텍스트를 읽기 전까지 구분이 안 된다는 지적 반영. 신규 컴포넌트를 만들지 않고 기존
+ * 하우스 스타일(ProfileClient.tsx의 아바타 모서리 버튼과 동일한 pill 배지 톤)만 재사용한다.
  */
-function RevisitCountBadge({ count }: { count: number }) {
+function CheckinCountBadge({ count }: { count: number }) {
   return (
     <span
       className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-[length:var(--text-caption)] leading-none font-bold text-text/80 flex items-center justify-center"
@@ -87,44 +86,48 @@ const EVENT_LABEL: Record<ActivityFeedEventType, string> = {
   mission_cancelled: d.feed.eventMissionCancelled,
 }
 
-/** badge_earned 이벤트가 POI 재방문(두 번째 이상 획득)인지 판별하고 표시에 필요한 값을 뽑아낸다. */
-function poiRevisitInfo(item: ActivityFeedRow): { poiName: string; visitCount: number } | null {
+/**
+ * badge_earned 이벤트가 **체크인 배지 획득**인지 판별한다(20260826_004).
+ *
+ * 체크인 배지는 별도 feed_event_type이 아니라 badge_earned + metadata로 기록된다
+ * (20260826_001에서 도입). poi_name·visit_count가 둘 다 있으면 체크인이고, 없으면
+ * 활동 배지 등 체크인과 무관한 획득이거나 20260826_001 이전에 쌓인 과거 행이다 —
+ * 후자는 기존 '배지 획득' 라벨로 그대로 둔다(하위호환).
+ */
+function checkinInfo(item: ActivityFeedRow): { poiName: string; visitCount: number } | null {
   if (item.event_type !== 'badge_earned') return null
   const meta = item.metadata as Record<string, unknown>
   const poiName = typeof meta.poi_name === 'string' ? meta.poi_name : ''
   const visitCount = typeof meta.visit_count === 'number' ? meta.visit_count : 0
-  if (poiName && visitCount > 1) return { poiName, visitCount }
+  if (poiName && visitCount >= 1) return { poiName, visitCount }
   return null
 }
 
 /**
  * item_dropped는 두 가지 출처를 하나의 이벤트 타입으로 공유한다:
  * - 활동 연동(Strava) 후 드랍엔진이 지급한 경우 → faction_name이 항상 채워짐 → "아이템 획득"
- * - POI에 아이템배지를 직접 드랍한 경우(레거시 poi_drops 동기화) → faction_name 없음 → "아이템 드랍"
+ * - 지점에 아이템배지를 직접 드랍한 경우(레거시 poi_drops 동기화) → faction_name 없음 → "아이템 드랍"
  *
- * badge_earned는 POI 배지를 두 번째 이상 획득(재방문)했을 때 "배지 획득" 대신
- * "{poiName}을(를) {N}번째 방문했어요"를 노출한다(20260826_001). 이 라벨 슬롯은 원래 짧은
- * 카테고리 태그(예: "배지 획득") 자리였는데 재방문 문구는 완전한 문장이 되므로, 문장 스타일
- * 전체는 그대로 두고 "N번째" 숫자만 인라인으로 살짝 강조해 핵심 정보를 눈에 띄게 한다
- * (인터랙션 리뷰 발견 4). poi_name·visit_count가 없으면(활동 배지 등 POI 무관 획득, 또는
- * 최초 획득) 기존 라벨을 그대로 쓴다.
+ * 체크인 배지 획득(badge_earned + poi_name·visit_count)만 짧은 라벨이 아니라 **문장**으로
+ * 표시한다(20260826_004 사용자 확정) — 첫 획득은 "체크인 했어요", 두 번째부터는
+ * "{N}번째 체크인 했어요". 나머지 5개 타입의 라벨은 건드리지 않는다. 반복 획득일 때는
+ * "N번째" 숫자만 인라인으로 강조해 핵심 정보를 눈에 띄게 한다(인터랙션 리뷰 발견 4).
  */
 function eventLabel(item: ActivityFeedRow): ReactNode {
   if (item.event_type === 'item_dropped') {
     const meta = item.metadata as Record<string, unknown>
     return meta.faction_name ? d.feed.eventItemEarned : d.feed.eventItemDropped
   }
-  const revisit = poiRevisitInfo(item)
-  if (revisit) {
-    const josa = hasBatchim(revisit.poiName) ? '을' : '를'
-    // "{poiName}{josa} {visitCount}번째 방문했어요" 템플릿을 {visitCount} 자리로 쪼개
-    // 숫자 부분만 <strong>으로 감싼다 — 템플릿 자체는 ko.ts 한 곳에서 계속 관리한다.
-    const [prefixTpl, suffix] = d.feed.eventPoiRevisited.split('{visitCount}')
-    const prefix = t(prefixTpl, { poiName: revisit.poiName, josa })
+  const checkin = checkinInfo(item)
+  if (checkin) {
+    if (checkin.visitCount <= 1) return d.feed.eventCheckin
+    // "{visitCount}번째 체크인 했어요" 템플릿을 {visitCount} 자리로 쪼개 숫자 부분만
+    // <strong>으로 감싼다 — 템플릿 자체는 ko.ts 한 곳에서 계속 관리한다.
+    const [prefix, suffix] = d.feed.eventCheckinRepeat.split('{visitCount}')
     return (
       <>
         {prefix}
-        <strong className="font-bold text-text">{revisit.visitCount}</strong>
+        <strong className="font-bold text-text">{checkin.visitCount}</strong>
         {suffix}
       </>
     )
@@ -192,7 +195,7 @@ export function DetailSheet({
   const isBadgeEvent = BADGE_EVENTS.has(item.event_type) && Boolean(meta.badge_id)
   const rawBadgeNames = (item.metadata as Record<string, unknown>).awarded_badge_names
   const missionBadgeNames = Array.isArray(rawBadgeNames) ? (rawBadgeNames as string[]) : []
-  const revisit = poiRevisitInfo(item)
+  const checkin = checkinInfo(item)
 
   return (
     <>
@@ -221,7 +224,7 @@ export function DetailSheet({
                 <EventIcon type={item.event_type} className="w-12 h-12" />
               </div>
             )}
-            {revisit && <RevisitCountBadge count={revisit.visitCount} />}
+            {checkin && checkin.visitCount > 1 && <CheckinCountBadge count={checkin.visitCount} />}
           </div>
         </div>
         <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 mb-1 line-clamp-2">{eventLabel(item)}</p>
@@ -236,6 +239,8 @@ export function DetailSheet({
           {(item.event_type === 'item_dropped' || item.event_type === 'item_picked_up') && meta.poi_name && (
             <Row label={d.feed.rowPlace} value={String(meta.poi_name)} />
           )}
+          {/* 라벨이 "체크인 했어요"로 바뀌면서 문장에서 빠진 지점명을 상세에서 보존한다(20260826_004) */}
+          {checkin && <Row label={d.feed.rowCheckinPlace} value={checkin.poiName} />}
           {item.event_type === 'mission_completed' && meta.target_value != null && Number(meta.target_value) > 0 && (
             <Row
               label={d.feed.rowResult}
@@ -291,7 +296,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
     return null
   })()
   const isLastPiece = item.event_type === 'item_dropped' && meta.is_last_piece === true
-  const revisit = poiRevisitInfo(item)
+  const checkin = checkinInfo(item)
 
   return (
     <ListRowCard
@@ -305,7 +310,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
               <EventIcon type={item.event_type} className="w-5 h-5 text-text" />
             </div>
           )}
-          {revisit && <RevisitCountBadge count={revisit.visitCount} />}
+          {checkin && checkin.visitCount > 1 && <CheckinCountBadge count={checkin.visitCount} />}
         </div>
       }
       trailing={

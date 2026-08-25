@@ -15,11 +15,17 @@ export interface FeedEventMeta {
     badge_image_url: string
     rarity: string
     point_reward?: number
-    /** POI 배지에서만 채워짐(20260826_001) — 이 배지를 준 POI 이름. 재방문 문구("N번째
-     *  방문했어요")를 렌더할 때 쓴다. 활동 배지 등 POI와 무관한 badge_earned에는 없다. */
+    /**
+     * 체크인 배지에서만 채워짐 — 체크인한 지점 이름.
+     *
+     * 체크인 배지는 별도 feed_event_type이 아니라 badge_earned로 기록된다.
+     * `poi_name` + `visit_count`가 둘 다 있으면 "이 badge_earned는 체크인"이라는 뜻이고,
+     * FeedSection이 그때만 문장형 문구("체크인 했어요")로 분기한다(20260826_004).
+     * 활동 배지 등 체크인과 무관한 badge_earned에는 없다.
+     */
     poi_name?: string
-    /** POI 배지에서만 채워짐 — 이 유저가 이 badge_id를 총 몇 번째 획득(방문)했는지.
-     *  1이면 최초 획득("배지 획득"), 2 이상이면 재방문("N번째 방문했어요"). */
+    /** 체크인 배지에서만 채워짐 — 이 유저가 이 badge_id를 총 몇 번째 획득했는지.
+     *  1이면 "체크인 했어요", 2 이상이면 "{N}번째 체크인 했어요". */
     visit_count?: number
   }
   item_dropped: {

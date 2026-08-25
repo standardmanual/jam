@@ -28,10 +28,10 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
 
   const supabase = createServiceClient()
 
-  // POI 카테고리 필터: POI 배지에는 카테고리 컬럼이 없고, 연결된 POI(poi.category)로만 분류된다.
+  // 지점 카테고리 필터: 체크인 배지에는 카테고리 컬럼이 없고, 연결된 지점(poi.category)으로만 분류된다.
   // 배지 id를 먼저 모아 .in()으로 거르면 한 카테고리가 900개를 넘을 때 URL이 수십 KB가 되므로
   // FK(poi.linked_badge_id → badges.id)를 통한 inner join으로 DB에서 직접 필터한다.
-  const filterByPoiCategory = filterType === 'poi' && !!filterPoiCategory
+  const filterByPoiCategory = filterType === 'checkin' && !!filterPoiCategory
   const selectClause = filterByPoiCategory
     ? '*, poi!poi_linked_badge_id_fkey!inner(category)'
     : '*'

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeRow, BadgeCondition, BadgeRarity, FactionRow } from '@/types/database'
+import { badgeTypeLabel } from '@/lib/admin/badge-labels'
 import { formatPaceSecPerKm } from '@/types/strava'
 
 const RARITY_COLOR: Record<string, string> = {
@@ -27,12 +28,6 @@ const RARITY_LABEL: Record<BadgeRarity, string> = {
   rare: 'Rare',
   legend: 'Legend',
   mythic: 'Mythic',
-}
-
-const TYPE_LABEL: Record<string, string> = {
-  activity: '활동',
-  item: '아이템',
-  poi: 'POI',
 }
 
 const SEASON_SHORT: Record<string, string> = {
@@ -170,7 +165,7 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
                 {/* 타입 */}
                 <TableCell className="text-sm">
                   <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
-                    {TYPE_LABEL[badge.type] || badge.type}
+                    {badgeTypeLabel(badge.type)}
                   </span>
                 </TableCell>
 

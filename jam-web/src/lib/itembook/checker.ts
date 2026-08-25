@@ -66,7 +66,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
       .from('badges')
       .select('id, item_book_id, type')
       .in('item_book_id', bookIds)
-      .in('type', ['item', 'poi'])
+      .in('type', ['item', 'checkin'])
       .order('id')
       .range(from, from + CHECKER_BADGE_PAGE_SIZE - 1)
 
@@ -84,7 +84,7 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   for (const b of bookBadges) {
     if (!b.item_book_id) continue
     badgeCountByBook.set(b.item_book_id, (badgeCountByBook.get(b.item_book_id) ?? 0) + 1)
-    if (b.type === 'poi') {
+    if (b.type === 'checkin') {
       const list = poiBadgesByBook.get(b.item_book_id) ?? []
       list.push(b.id)
       poiBadgesByBook.set(b.item_book_id, list)
@@ -108,18 +108,18 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     slotCountByBook.set(s.item_book_id, (slotCountByBook.get(s.item_book_id) ?? 0) + 1)
   }
 
-  // 3-1. Phase 16: poi 타입 배지는 슬롯팅이 아니라 "1회 이상 획득 이력 존재"로 채움 판정
+  // 3-1. Phase 16: checkin 타입 배지는 슬롯팅이 아니라 "1회 이상 획득 이력 존재"로 채움 판정
   //      (반복 획득되지만 완성 기여는 배지당 1로만 카운트)
   const allPoiBadgeIds = Array.from(poiBadgesByBook.values()).flat()
   if (allPoiBadgeIds.length > 0) {
     const { data: poiEarnsRaw, error: poiEarnsError } = await supabase
-      .from('user_poi_badge_earns')
+      .from('user_checkin_badge_earns')
       .select('badge_id')
       .eq('user_id', userId)
       .in('badge_id', allPoiBadgeIds)
 
     if (poiEarnsError) {
-      console.error('[checkItemBookCompletion] user_poi_badge_earns 조회 오류:', poiEarnsError)
+      console.error('[checkItemBookCompletion] user_checkin_badge_earns 조회 오류:', poiEarnsError)
       return { completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] }
     }
 
