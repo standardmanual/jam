@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ADMIN_REASONS, HIGH_VALUE_THRESHOLD, type AdminReasonValue } from '@/lib/points/reasons'
 import type { AdminUserPointHistoryItem } from '@/app/api/admin/points/route'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 
 interface Props {
   userId: string

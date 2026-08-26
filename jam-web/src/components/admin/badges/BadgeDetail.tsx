@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Button } from '@/components/ui/shadcn-button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/admin/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
+import { Alert, AlertDescription } from '@/components/admin/ui/alert'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'

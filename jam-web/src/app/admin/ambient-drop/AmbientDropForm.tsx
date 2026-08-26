@@ -4,9 +4,9 @@ import { useState } from 'react'
 import type { AmbientDropConfig } from '@/lib/ambient-drop/config'
 import type { AmbientDropAxisMode } from '@/types/database'
 import type { AmbientDropBatchResult } from '@/lib/ambient-drop'
-import { Switch } from '@/components/ui/switch'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/admin/ui/switch'
+import { Checkbox } from '@/components/admin/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 
 export interface AmbientDropHistoryEntry {
   id: string

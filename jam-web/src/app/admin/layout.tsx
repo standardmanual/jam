@@ -1,15 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, unstable_rethrow } from 'next/navigation'
-import { Inter } from 'next/font/google'
 import { AdminNav } from '@/components/admin/AdminNav'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { AdminSidebarProvider } from '@/components/admin/AdminSidebarContext'
 import { AdminMain } from '@/components/admin/AdminMain'
 import { AdminBodyThemeFix } from '@/components/admin/AdminBodyThemeFix'
 
-// 어드민 전용 서체 — Cal Sans는 공개 웹폰트가 아니라 디자인 시스템이 권장하는
-// 대체 조합(Inter 600 + 네거티브 트래킹)을 그대로 사용한다.
-const inter = Inter({ subsets: ['latin'], variable: '--font-admin-inter' })
+// 어드민 전용 서체 — Pretendard (globals.css 최상단에 CDN import로 전역 로드됨,
+// 서비스 본체·어드민 공용). shadcn 프리셋(b5Jgcv00m) 기본 폰트값(Inter)보다
+// 이 값이 우선한다 (20260826_012).
+const ADMIN_FONT_FAMILY =
+  "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   let userEmail: string | null = null
@@ -34,8 +35,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div
-      className={`${inter.variable} min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col`}
-      style={{ fontFamily: 'var(--font-admin-inter), Inter, sans-serif' }}
+      className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col"
+      style={{ fontFamily: ADMIN_FONT_FAMILY }}
     >
       <AdminBodyThemeFix />
 

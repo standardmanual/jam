@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { Button } from '@/components/ui/shadcn-button'
+import { Button } from '@/components/admin/ui/button'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
 import { ItemBookList } from '@/components/admin/itembooks/ItemBookList'
 import ItemBookFilters from './ItemBookFilters'
