@@ -105,6 +105,15 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 쪼갤 가능성이 높다 — 실제 착수 시 오케스트레이터가 하드코딩 발생 빈도 기준으로 세부
 티켓을 분리한다(예: 배지 관련, POI 관련, 폼 공통 컴포넌트 등).
 
+**⚠️ Radix Portal 스코프 주의 (1단계 완료 시 발견, 2026-08-26)**: shadcn 테마 실값은
+전역 `:root`가 아니라 `[data-admin-theme]` 스코프 셀렉터 안에만 존재한다(1단계에서
+`--background`/`--foreground` 이름이 서비스 DS v2와 충돌해 스코프 격리함). `dialog`·
+`sheet`·`alert-dialog`·`select` 등 Radix 프리미티브는 `document.body`에 포털 렌더링되므로
+`[data-admin-theme]` DOM 서브트리 **밖**이다. 지금(1단계 완료 시점)은 이 컴포넌트들이
+하드코딩 팔레트만 써서 무관하지만, 이 Phase에서 시맨틱 클래스(`bg-popover` 등)로 전환하는
+순간 CSS 변수가 상속되지 않아 스타일이 깨진다 — Radix Portal의 `container` prop을 admin
+스코프 노드로 지정하는 조치를 함께 해야 한다.
+
 ### 완료 기준
 - [ ] `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin src/components/admin` 결과가
       미리보기 프레임 관련 파일을 제외하고 0건
