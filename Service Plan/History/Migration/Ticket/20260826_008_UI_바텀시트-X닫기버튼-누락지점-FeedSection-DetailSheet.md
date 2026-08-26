@@ -1,9 +1,9 @@
 ---
 id: 20260826_008
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-26
-closed:
+closed: 2026-08-26
 ---
 
 # [UI] 바텀시트 X 닫기 버튼 누락 지점 — FeedSection DetailSheet
@@ -89,7 +89,8 @@ jam-web/src/app/(main)/FeedSection.tsx
 ### 배포 정보
 - 배포일: 2026-08-26
 - 환경: staging
-- 커밋: review 브랜치 `claude/jamwork-20260826_008-feedsection-x-remove` (커밋 81617386) staging 병합
+- 커밋: 36ba6326ca32a2bf325a72defd6e6d68beb88132 (staging 병합 커밋, review 브랜치
+  `claude/jamwork-20260826_008-feedsection-x-remove` 커밋 81617386 포함)
 
 ### 주요 의사결정 / 핵심 메모
 - 게이트 리뷰에서 배지 이벤트 케이스는 X 제거 후 하단 버튼이 "자세히"(닫기 아님)라 백드롭 클릭만
