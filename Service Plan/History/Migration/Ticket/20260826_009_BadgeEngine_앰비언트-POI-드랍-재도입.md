@@ -266,6 +266,24 @@ common뿐), 기능 자체는 4개 등급을 전부 지원해야 하므로 뽑힌
 `engine_decision_log`(engine='drop')에 event만 추가해 재사용 — 스키마 변경 없이(event 컬럼은
 CHECK 제약이 없음) 관측성을 확보했다.
 
+### 게이트 리뷰 대응 (1차 FAIL → 수정)
+
+1차 게이트 리뷰에서 FAIL 판정된 2건을 수정했다.
+
+1. **[핵심] 어드민 shadcn/ui 표준 위반** — `AmbientDropForm.tsx`의 "축 1 — 카테고리" 명시 모드가
+   네이티브 HTML `<select>`로 구현돼 있었다. `src/components/ui/select.tsx`의
+   `Select`/`SelectTrigger`/`SelectContent`/`SelectItem`으로 교체(`BadgesFilterBar.tsx`의 "상태"
+   필터 사용 패턴 참고). 같은 폼의 `Switch`/`Checkbox`는 원래부터 shadcn이라 이제 폼 전체가
+   일관됨.
+2. **[부차] 조용한 실패 방지 취지 위반** — `src/lib/ambient-drop/index.ts`의 `poi_drops` 배치
+   삽입(insert) 실패 분기가 실제 원인(DB insert 오류)과 무관하게 `reason:
+   'no_candidate_badges'`를 고정 기록하고 있었다. `AmbientDropSkipReason`에 `'insert_failed'`를
+   신설해 이 분기 전용으로 분리 — 후보 배지가 없어서 못 뽑은 것과 배지는 뽑았는데 DB 삽입
+   자체가 실패한 것을 `engine_decision_log`에서 구분할 수 있게 했다.
+
+수정 후 `npx tsc --noEmit`(0 에러) · `npx eslint`(변경 파일 0 에러) · `npx vitest run`(60 파일 /
+562 테스트 전부 통과, 회귀 없음) · `npm run build`(성공, 라우트 4종 확인)로 재검증했다.
+
 ### 잔여 이슈
 
 - **마이그레이션 104 미실행** — 승인 후 오케스트레이터가 실행해야 실제로 동작한다. 실행 전까지

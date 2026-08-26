@@ -25,7 +25,11 @@ import type { BadgeRarity } from '@/types/database'
 
 export type AmbientDropTrigger = 'cron' | 'manual'
 
-export type AmbientDropSkipReason = 'auto_disabled' | 'no_eligible_poi' | 'no_candidate_badges'
+export type AmbientDropSkipReason =
+  | 'auto_disabled'
+  | 'no_eligible_poi'
+  | 'no_candidate_badges'
+  | 'insert_failed'
 
 export interface AmbientDropBatchResult {
   trigger: AmbientDropTrigger
@@ -233,7 +237,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
       ...baseResult,
       eligiblePoiCount: candidatePoiIds.length,
       spawned: 0,
-      reason: 'no_candidate_badges',
+      reason: 'insert_failed',
     }
     await logResult(result, error.message)
     return result
