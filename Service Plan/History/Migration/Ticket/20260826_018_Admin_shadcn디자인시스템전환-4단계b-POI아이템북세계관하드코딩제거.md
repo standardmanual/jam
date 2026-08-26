@@ -1,8 +1,9 @@
 ---
 id: 20260826_018
 category: Admin
-status: OPEN
+status: CLOSED
 created: 2026-08-26
+closed: 2026-08-26
 ---
 
 # [Admin] shadcn 디자인시스템 전환 — 4단계b: POI·아이템북·세계관 하드코딩 제거
@@ -128,3 +129,17 @@ src/app/admin/poi src/app/admin/itembooks src/app/admin/factions` 결과
 
 `PHASES.md`의 "Phase 4 — 하드코딩 제거" 절에 4단계b 완료(리뷰 대기) 상태와 위 구현 노트
 요약을 함께 기록했다.
+
+## 승인 처리 (2026-08-26)
+
+게이트 리뷰 **PASS**. 오케스트레이터가 실제 브라우저로 `/admin/poi/new`(카테고리 드롭다운
+포함)와 `/admin/factions` 목록 화면 직접 확인 후 병합 승인.
+
+**범위 밖 발견물**: `src/app/admin/error.tsx`에 `bg-[#f3f4f6]` 하드코딩이 남아있음(4b의
+스캔 범위 밖). 4c 또는 4d 착수 시 이 파일도 포함시킬 것 — 별도 spawn_task로 분리할 정도로
+큰 이슈는 아니라 다음 하위 티켓에 흡수한다.
+
+### 배포 정보
+- 배포일: (staging 반영만 완료, 프로덕션 미배포)
+- 환경: staging
+- 커밋: `claude/jamwork-20260826_018-admin-shadcn-4b` → staging 병합
