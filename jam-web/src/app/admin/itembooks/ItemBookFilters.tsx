@@ -1,7 +1,10 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@/components/admin/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
+import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
+import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
 import type { FactionRow } from '@/types/database'
 
 interface ItemBookFiltersProps {
@@ -9,9 +12,8 @@ interface ItemBookFiltersProps {
 }
 
 /**
- * 컬렉션 목록 필터 — 세계관/정렬을 URL 파라미터로 구동한다(20260826_011 A6). 이전에는
- * `ItemBookList.tsx`가 로컬 state로 클라이언트 필터링했지만, 서버 페이지네이션으로 전환하며
- * `admin/poi/PoiFilters.tsx`와 동일한 구조로 옮겼다.
+ * 컬렉션 목록 필터(20260826_015) — shadcn 공식 Data Table Toolbar 패턴으로 재구현
+ * (배지 목록의 `BadgesFilterBar.tsx`와 동일 구조).
  */
 export default function ItemBookFilters({ factions }: ItemBookFiltersProps) {
   const router = useRouter()
@@ -30,30 +32,41 @@ export default function ItemBookFilters({ factions }: ItemBookFiltersProps) {
     router.push(`/admin/itembooks?${params.toString()}`)
   }
 
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <Select value={faction} onValueChange={(v) => updateParams({ faction: v })}>
-        <SelectTrigger className="w-auto min-w-[10rem]" aria-label="세계관 필터">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">전체 세계관</SelectItem>
-          {factions.map((f) => (
-            <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+  const hasFilter = searchParams.has('faction')
 
-      <Select value={sort} onValueChange={(v) => updateParams({ sort: v })}>
-        <SelectTrigger className="w-auto min-w-[10rem]" aria-label="이름 정렬">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="created_desc">최근 등록순</SelectItem>
-          <SelectItem value="name_asc">이름 ↑ (오름차순)</SelectItem>
-          <SelectItem value="name_desc">이름 ↓ (내림차순)</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
+  return (
+    <DataTableToolbar
+      actions={
+        <Select value={sort} onValueChange={(v) => updateParams({ sort: v })}>
+          <SelectTrigger className="h-8 w-auto min-w-[10rem]" aria-label="정렬">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="created_desc">최근 등록순</SelectItem>
+            <SelectItem value="name_asc">이름 ↑ (오름차순)</SelectItem>
+            <SelectItem value="name_desc">이름 ↓ (내림차순)</SelectItem>
+          </SelectContent>
+        </Select>
+      }
+    >
+      <DataTableFacetedFilter
+        title="세계관"
+        options={factions.map((f) => ({ value: f.id, label: f.name }))}
+        selected={faction === 'all' ? [] : [faction]}
+        onChange={(values) => updateParams({ faction: values[0] ?? 'all' })}
+      />
+
+      {hasFilter && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8"
+          onClick={() => router.push('/admin/itembooks')}
+        >
+          필터 초기화
+        </Button>
+      )}
+    </DataTableToolbar>
   )
 }
