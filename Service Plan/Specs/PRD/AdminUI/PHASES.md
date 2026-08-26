@@ -237,6 +237,44 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   수정, 아이템북 목록/등록/수정(배경 테마 카드 포함), 세계관 목록/등록/수정(인접 세계관
   토글 포함) 전 화면 스크린샷 및 콘솔 에러 0건 확인.
 
+**2026-08-27 갱신 — 4단계c 구현 완료(리뷰 대기)**: 운영 도구 5개 파일(`simulator/page.tsx`·
+`AbusingClient.tsx`·`AmbientDropForm.tsx`·`DropPolicyForm.tsx`·`CombinePolicyForm.tsx`) +
+소형 페이지 3개(`drop-policy/page.tsx`·`ambient-drop/page.tsx`·`combine-policy/page.tsx`,
+실측 128건) 전환 완료, 사용자 최종 승인 대기 중(`20260827_001`). 4d 착수 시 참고할 구현 노트:
+
+- 4a/4b 매핑 규칙을 그대로 재사용, 결정적(deterministic) 문자열 치환으로 전량 처리 가능했다
+  (파이썬 스크립트로 순서 있는 리터럴 치환 — `hover:bg-[#e5e7eb]`→`hover:bg-accent`,
+  `hover:border-[#d1d5db]`→`hover:border-foreground/30`, `bg-[#f3f4f6]`/`bg-[#f8f9fa]`/
+  `bg-[#f5f5f5]`→`bg-muted`, `bg-[#242424]`→`bg-primary/90`, `bg-[#111111]`→`bg-primary`,
+  `border-[#e5e7eb]`→`border-border`, `border-[#111111]`→`border-primary`,
+  `text-[#6b7280]`/`text-[#898989]`/`text-[#9ca3af]`→`text-muted-foreground`,
+  `text-[#374151]`/`text-[#111111]`→`text-foreground`,
+  `placeholder-[#9ca3af]`→`placeholder:text-muted-foreground`,
+  `accent-[#111111]`→`accent-primary`). 부분 문자열 치환이라 `text-[#111111]/60`처럼
+  opacity 접미사가 붙은 변형도 `text-foreground/60`으로 자동 처리됐다.
+- 4a의 `BadgeMultiSearchSelect` 특례(`text-primary` 통일)는 이번 5개 파일에서 **한 번도
+  쓰지 않았다** — "선택됨" 상태를 표시하는 모든 칩/배지/카드(유저 검색 결과 선택 항목,
+  선택된 유저 요약 카드, 시뮬레이션 결과의 "적용됨" 배지, 어뷰징 탭 활성 상태·카운트 배지)가
+  전부 토글의 반대쪽(비선택) 상태와 짝을 이루는 UI였기 때문에, 4b의 `AdjacencyEditor` 판별
+  기준("텍스트가 opacity 없는 순수 hex")에 따라 전부 `text-foreground`(+opacity 변형)로
+  일관 매핑했다 — `bg-primary/10~20 + text-foreground` 조합이 이번 티켓 범위의 표준 패턴.
+- `AbusingClient.tsx`의 위험도 상태 색상(`RateInput`의 `text-red-600`/`text-amber-600`,
+  Soft-ban/Hard-ban 섹션 헤더, GPS 조작 감지 관련 텍스트)은 hex 대괄호 표기가 아니라
+  이미 Tailwind 명명 팔레트였으므로 애초에 치환 스크립트 대상이 아니었다 — 손대지 않고
+  그대로 유지, 실브라우저 확인으로 "차단"(빨강)/"%"(호박색)/"정상"(foreground) 3단계
+  구분이 그대로 렌더링됨을 확인했다.
+- Portal `container` 연결을 `simulator/page.tsx`(활동 종류 Select)·`AbusingClient.tsx`
+  (밴 레벨 Select)·`AmbientDropForm.tsx`(카테고리 Select) 3곳에 실제로 연결했다.
+  `DropPolicyForm.tsx`/`CombinePolicyForm.tsx`는 Select/Dialog가 없어 대상 제외.
+  Playwright로 `[role="listbox"]`가 `[data-admin-theme]` 스코프 노드의 자손인지
+  `contains()` 체크해 3곳 전부 확인.
+- 검증: `npx tsc --noEmit`(0 에러) / `npm test`(60파일 562테스트 전부 통과) / `npx next
+  build`(성공) 전부 통과. 로컬 `next dev` + 임시 `ADMIN_EMAILS` 셸 환경변수 +
+  `/api/dev-login` + Playwright로 1440px 데스크탑 렌더링 확인 — 시뮬레이터(유저 검색/선택,
+  활동종류 Select, 결과 패널), 어뷰징 3개 탭(정책 설정의 위험도 슬라이더 색상, 섀도우밴
+  Select+테이블, POI 블록 테이블), 앰비언트 드랍(명시/무작위 토글, 카테고리 Select 오픈),
+  드랍 정책, 믹스 정책 전 화면 스크린샷 및 콘솔 에러 0건 확인.
+
 ### 선행 인프라 수정 (4a에서 처리, 나머지 단계의 전제조건)
 
 **1. `--color-border` 스코프 누락 (2026-08-26, 3단계 게이트 리뷰에서 발견)**: `globals.css`의
@@ -265,10 +303,10 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 
 ### 완료 기준
 - [ ] `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin src/components/admin` 결과가
-      미리보기 프레임 관련 파일을 제외하고 0건 (4a 완료 시점 기준 배지 도메인은 0건,
-      4b~4d 대상 파일은 아직 잔존 — 4d 완료 후에야 전체 0건)
-- [ ] 시각적 회귀 없음(색상·간격이 기존과 크게 다르지 않은지 스크린샷 비교) — 4a는
-      1440px 실브라우저 스크린샷 + `getComputedStyle` 대조로 확인 완료
+      미리보기 프레임 관련 파일을 제외하고 0건 (4a·4b·4c 완료 시점 기준 배지·POI·아이템북·
+      세계관·운영 도구 도메인은 0건, 4d 대상 파일은 아직 잔존 — 4d 완료 후에야 전체 0건)
+- [ ] 시각적 회귀 없음(색상·간격이 기존과 크게 다르지 않은지 스크린샷 비교) — 4a·4b·4c는
+      1440px 실브라우저 스크린샷(4c는 Playwright)으로 확인 완료
 - [x] `--color-border` 스코프 수정(+ 실제로는 `--color-primary`/`--color-secondary`도
       같은 충돌이 있어 함께 수정) + `dialog`/`alert-dialog`/`select` Portal container 추가
       — 4a에서 완료, admin 전역에 적용되는 인프라라 4b~4d는 재작업 불필요

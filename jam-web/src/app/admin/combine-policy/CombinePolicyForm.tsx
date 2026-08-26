@@ -105,20 +105,20 @@ export default function CombinePolicyForm({ initial }: { initial: CombinePolicy 
   return (
     <div className="space-y-8 max-w-3xl">
       {SECTIONS.map((section) => (
-        <section key={section.title} className="bg-white border border-[#e5e7eb] rounded-2xl p-6">
+        <section key={section.title} className="bg-white border border-border rounded-2xl p-6">
           <h2 className="font-bold mb-1">{section.title}</h2>
-          <p className="text-[#6b7280] text-xs mb-4">{section.description}</p>
+          <p className="text-muted-foreground text-xs mb-4">{section.description}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {section.fields.map((f) => (
               <label key={f.key} className="block">
-                <span className="text-[#374151] text-xs">{f.label}</span>
+                <span className="text-foreground text-xs">{f.label}</span>
                 <input
                   type="number"
                   step={f.step ?? '0.01'}
                   min="0"
                   value={values[f.key]}
                   onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  className="mt-1 w-full bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#111111]/50"
+                  className="mt-1 w-full bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
                 />
               </label>
             ))}
@@ -130,7 +130,7 @@ export default function CombinePolicyForm({ initial }: { initial: CombinePolicy 
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] transition-colors text-sm disabled:opacity-50"
+          className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
         >
           {saving ? '저장 중…' : '저장'}
         </button>

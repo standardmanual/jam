@@ -41,7 +41,7 @@ export default async function AdminAmbientDropPage() {
     <div className="p-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">앰비언트 드랍</h1>
-        <p className="text-[#6b7280] text-sm mt-1">
+        <p className="text-muted-foreground text-sm mt-1">
           시스템이 POI에 아이템배지를 직접 배치합니다. 자동 스케줄은 {scheduleLabel}에 고정되어
           있어요(변경하려면 코드 배포 필요 — Vercel Hobby 플랜 일 1회 제약). 로직:
           BadgeEngine/BADGE_ENGINE_UNIFIED.md §3.12
