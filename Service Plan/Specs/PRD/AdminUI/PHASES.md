@@ -149,26 +149,53 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 
 ## Phase 4 — 하드코딩 제거
 
+**2026-08-26 실측**: 하드코딩 hex 클래스(`text-[#...]`/`border-[#...]`/`bg-[#...]`) 총
+**824건, 39개 파일**. 화면 단위 4개 티켓으로 분리한다(파일 배정은 occurrence 수 기준
+균등 분배):
+
+- **4a**: 선행 인프라 수정(아래 2건) + 배지 도메인 — `BadgeForm.tsx`(160)·
+  `BackgroundGeneratorPreview.tsx`(28)·`BadgeMultiSearchSelect.tsx`(13)·
+  `BadgeSearchSelect.tsx`(9) ≈ 210건
+- **4b**: POI·아이템북·세계관 — `CategoryManager.tsx`(45)·`PoiForm.tsx`(38)·
+  `Pagination.tsx`(10)·`ItemBookForm.tsx`(56)·`FactionForm.tsx`(45)·
+  `AdjacencyEditor.tsx`(10)·기타 소형 파일 ≈ 209건
+- **4c**: 운영 도구 — `simulator/page.tsx`(72)·`AbusingClient.tsx`(44)·
+  `AmbientDropForm.tsx`(45)·`DropPolicyForm.tsx`(9)·`CombinePolicyForm.tsx`(7) ≈ 177건
+- **4d**: 컨텐츠 관리 잔여 + 공용 — `MissionList.tsx`(34)·`TodayCardList.tsx`(20)·
+  `RecipeList.tsx`(15)·`UserGrantForm.tsx`(34)·`AdminUserSearch.tsx`(14)·
+  `ThemeManager.tsx`(19)·`ImageUploadField.tsx`(13)·`BackgroundColorField.tsx`(9)·
+  `ResetUserButton.tsx`(9)·나머지 소형 페이지 전부 ≈ 228건
+
+각 하위 티켓은 순차 진행(4a→4b→4c→4d), 병합 후 다음 착수.
+
+### 선행 인프라 수정 (4a에서 처리, 나머지 단계의 전제조건)
+
+**1. `--color-border` 스코프 누락 (2026-08-26, 3단계 게이트 리뷰에서 발견)**: `globals.css`의
+`@theme` 블록에 `--color-border: var(--color-border)`가 있는데, 이건 DS v2(서비스 본체)가
+`design-system/tokens/colors.css`의 `:root { --color-border: ... }`를 Tailwind
+`border-border` 유틸리티로 노출하기 위한 기존(20260820_003) 매핑이다. 1단계가
+`[data-admin-theme]` 스코프 안에 shadcn 프리셋의 **원시 변수**(`--border` 등)는 넣었지만,
+이 **유틸리티 매핑 이름**(`--color-border`)을 스코프 안에서 `var(--border)`로 재정의하진
+않았다 — 그래서 어드민 스코프 안에서 `border-border` 클래스를 써도 여전히 DS v2의
+전역 `--color-border`(서비스 다크 테두리 색)로 풀린다. **`[data-admin-theme]` 블록 안에
+`--color-border: var(--border)`(및 필요하면 `--color-background`/`--color-foreground`
+등 같은 이름 충돌이 있는 다른 매핑도)를 추가로 오버라이드해야 한다.** 수정 후 반드시
+브라우저 컴포넌트 스타일로 `border-border` 클래스가 실제 stone 테마 색으로 렌더링되는지
+확인할 것(1단계가 `--background`/`--foreground`에 썼던 것과 동일한 검증 방식).
+
+**2. Radix Portal 스코프 (1단계에서 예견, 2단계에서 `sheet.tsx`만 선제 대응)**: `dialog.tsx`·
+`alert-dialog.tsx`·`select.tsx`는 아직 `container` prop이 없다 — `sheet.tsx`(2단계,
+`container?: React.ComponentProps<typeof SheetPortal>["container"]` 패턴)를 그대로 따라
+세 파일에도 동일하게 추가할 것.
+
 ### 범위
 미리보기 프레임(`BadgeDetailPreviewFrame.tsx`, `ItemBookDetailPreviewFrame.tsx` — MODULAR
 유지 대상, 제외) 뺀 전체 어드민 폼·모달·목록·상세 화면의 하드코딩 hex 클래스
 (`text-[#111111]`, `border-[#e5e7eb]`, `bg-[#f8f9fa]` 등)를 shadcn 시맨틱 토큰
 (`text-foreground`, `border-border`, `bg-muted` 등)으로 전환.
 
-범위가 사실상 `src/app/admin/`·`src/components/admin/` 전체라 화면 단위로 여러 티켓으로
-쪼갤 가능성이 높다 — 실제 착수 시 오케스트레이터가 하드코딩 발생 빈도 기준으로 세부
-티켓을 분리한다(예: 배지 관련, POI 관련, 폼 공통 컴포넌트 등).
-
-**⚠️ Radix Portal 스코프 주의 (1단계 완료 시 발견, 2026-08-26)**: shadcn 테마 실값은
-전역 `:root`가 아니라 `[data-admin-theme]` 스코프 셀렉터 안에만 존재한다(1단계에서
-`--background`/`--foreground` 이름이 서비스 DS v2와 충돌해 스코프 격리함). `dialog`·
-`sheet`·`alert-dialog`·`select` 등 Radix 프리미티브는 `document.body`에 포털 렌더링되므로
-`[data-admin-theme]` DOM 서브트리 **밖**이다. 지금(1단계 완료 시점)은 이 컴포넌트들이
-하드코딩 팔레트만 써서 무관하지만, 이 Phase에서 시맨틱 클래스(`bg-popover` 등)로 전환하는
-순간 CSS 변수가 상속되지 않아 스타일이 깨진다 — Radix Portal의 `container` prop을 admin
-스코프 노드로 지정하는 조치를 함께 해야 한다.
-
 ### 완료 기준
 - [ ] `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin src/components/admin` 결과가
       미리보기 프레임 관련 파일을 제외하고 0건
 - [ ] 시각적 회귀 없음(색상·간격이 기존과 크게 다르지 않은지 스크린샷 비교)
+- [ ] `--color-border` 스코프 수정 + `dialog`/`alert-dialog`/`select` Portal container 추가
