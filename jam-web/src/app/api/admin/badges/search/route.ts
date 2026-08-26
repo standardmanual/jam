@@ -18,6 +18,9 @@ export async function GET(req: NextRequest) {
 
   const raw = (req.nextUrl.searchParams.get('query') ?? '').trim()
   const type = req.nextUrl.searchParams.get('type') as BadgeType | null
+  // 아이템북 미배정 아이템 배지만 검색(ItemBookForm 전용). 다른 호출부는 파라미터를 안 보내므로
+  // 기존 동작(전체 대상 검색) 그대로 유지된다.
+  const unassigned = req.nextUrl.searchParams.get('unassigned') === 'true'
   // PostgREST 필터 문법(쉼표/괄호)과 LIKE 와일드카드를 깨뜨리는 문자는 제거
   const query = raw.replace(/[,()%_*\\]/g, ' ').trim()
   if (!query) return NextResponse.json({ badges: [] })
@@ -25,13 +28,16 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient()
   let q = supabase
     .from('badges')
-    .select('id, name, rarity, type')
+    // point_reward: MissionList의 "보상 배지 포인트 포함 여부" 경고에 필요. 나머지 호출부는
+    // 무시하면 그만이라 부작용 없음.
+    .select('id, name, rarity, type, point_reward')
     .is('deleted_at', null)
     .ilike('name', `%${query}%`)
     .order('name', { ascending: true })
     .limit(MAX_RESULTS)
 
   if (type) q = q.eq('type', type)
+  if (unassigned) q = q.is('item_book_id', null)
 
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

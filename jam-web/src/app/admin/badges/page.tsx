@@ -2,8 +2,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/shadcn-button'
-import type { BadgeRow, BadgeType, BadgeRarity, FactionRow, ItemBookRow, PoiCategoryRow } from '@/types/database'
-import BadgeList from '@/components/admin/badges/BadgeList'
+import type { BadgeType, BadgeRarity, FactionRow, ItemBookRow, PoiCategoryRow } from '@/types/database'
+import BadgeList, { type BadgeListRow } from '@/components/admin/badges/BadgeList'
 import BadgesFilterBar from './BadgesFilterBar'
 import Pagination from '../poi/Pagination'
 
@@ -28,13 +28,18 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
 
   const supabase = createServiceClient()
 
+  // 목록(카드/테이블)에 실제로 쓰는 컬럼만 select — condition_json 이외의 나머지 상세화면 전용
+  // 필드(drop_weight, valid_from/until, background_* 등)는 목록에 불필요하다(20260826_011 A8).
+  const BADGE_LIST_COLUMNS =
+    'id, name, description, type, rarity, image_url, condition_json, activity_types, patch_available, patch_price_krw, faction_id, deleted_at'
+
   // 지점 카테고리 필터: 체크인 배지에는 카테고리 컬럼이 없고, 연결된 지점(poi.category)으로만 분류된다.
   // 배지 id를 먼저 모아 .in()으로 거르면 한 카테고리가 900개를 넘을 때 URL이 수십 KB가 되므로
   // FK(poi.linked_badge_id → badges.id)를 통한 inner join으로 DB에서 직접 필터한다.
   const filterByPoiCategory = filterType === 'checkin' && !!filterPoiCategory
   const selectClause = filterByPoiCategory
-    ? '*, poi!poi_linked_badge_id_fkey!inner(category)'
-    : '*'
+    ? `${BADGE_LIST_COLUMNS}, poi!poi_linked_badge_id_fkey!inner(category)`
+    : BADGE_LIST_COLUMNS
 
   let query = supabase
     .from('badges')
@@ -76,7 +81,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   ])
 
   // 조인으로 필터한 경우 행에 poi 관계가 딸려오므로 배지 필드만 남긴다
-  const badges = ((badgesRaw ?? []) as (BadgeRow & { poi?: unknown })[]).map(({ poi: _poi, ...badge }) => badge as BadgeRow)
+  const badges = ((badgesRaw ?? []) as (BadgeListRow & { poi?: unknown })[]).map(({ poi: _poi, ...badge }) => badge as BadgeListRow)
   const total = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const factionMap = new Map(

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BadgeRow, CombinationRecipeRow } from '@/types/database'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
+import { RecipeTable } from './RecipeTable'
 
 interface Props {
   recipes: CombinationRecipeRow[]
@@ -34,7 +35,10 @@ export default function RecipeList({ recipes, badges }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const router = useRouter()
 
-  const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
+  // 폼에 입력할 때마다(리렌더마다) badgeMap이 새 참조로 만들어지면 아래 useCallback들의
+  // 의존성이 매번 바뀌어 RecipeTable(React.memo)의 메모이제이션이 무력화된다 — badges prop이
+  // 실제로 바뀔 때만(router.refresh 등) 재계산하도록 useMemo로 고정한다.
+  const badgeMap = useMemo(() => new Map(badges.map((b) => [b.id, b.name])), [badges])
 
   function labelOf(badge?: { name: string; type: string; rarity: string }) {
     return badge ? `${badge.name} [${badge.type}/${badge.rarity}]` : ''
@@ -57,7 +61,7 @@ export default function RecipeList({ recipes, badges }: Props) {
     setShowForm(true)
   }
 
-  function startEdit(r: CombinationRecipeRow) {
+  const startEdit = useCallback((r: CombinationRecipeRow) => {
     setEditingId(r.id)
     setForm({
       ingredient_badge_ids: [...r.ingredient_badge_ids],
@@ -73,7 +77,7 @@ export default function RecipeList({ recipes, badges }: Props) {
       requiredActivity: r.required_activity_badge_id ? (badgeMap.get(r.required_activity_badge_id) ?? '') : '',
     })
     setShowForm(true)
-  }
+  }, [badgeMap])
 
   async function handleSave() {
     const ingredients = form.ingredient_badge_ids.filter(Boolean)
@@ -104,11 +108,11 @@ export default function RecipeList({ recipes, badges }: Props) {
     router.refresh()
   }
 
-  async function handleDelete(id: string) {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm('삭제하시겠습니까?')) return
     await fetch(`/api/admin/recipes/${id}`, { method: 'DELETE' })
     router.refresh()
-  }
+  }, [router])
 
   function setIngredient(idx: number, value: string, label?: string) {
     setForm((prev) => {
@@ -267,64 +271,7 @@ export default function RecipeList({ recipes, badges }: Props) {
       )}
 
       {/* 레시피 목록 */}
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
-              <th className="px-5 py-3 font-medium">재료</th>
-              <th className="px-5 py-3 font-medium">필수 액티비티</th>
-              <th className="px-5 py-3 font-medium">결과</th>
-              <th className="px-5 py-3 font-medium">성공률</th>
-              <th className="px-5 py-3 font-medium">공개</th>
-              <th className="px-5 py-3 font-medium">힌트</th>
-              <th className="px-5 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {recipes.length === 0 && (
-              <tr><td colSpan={7} className="px-5 py-10 text-center text-[#898989]">레시피 없음</td></tr>
-            )}
-            {recipes.map((r) => (
-              <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
-                <td className="px-5 py-3 text-[#374151]">
-                  {r.ingredient_badge_ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(' + ')}
-                </td>
-                <td className="px-5 py-3 text-[#6b7280] text-xs">
-                  {r.required_activity_badge_id ? (badgeMap.get(r.required_activity_badge_id) ?? '—') : '—'}
-                </td>
-                <td className="px-5 py-3">
-                  {r.result_badge_id ? (badgeMap.get(r.result_badge_id) ?? '—') : (
-                    <span className="text-red-600 text-xs">결과 미지정</span>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-[#374151]">{Math.round(r.success_rate * 100)}%</td>
-                <td className="px-5 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${r.is_public ? 'bg-emerald-50 text-emerald-600' : 'bg-[#f3f4f6] text-[#6b7280]'}`}>
-                    {r.is_public ? '공개' : '비공개'}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-[#6b7280] text-xs max-w-[200px] truncate">{r.hint_text ?? '—'}</td>
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => startEdit(r)}
-                      className="text-[#374151] hover:text-[#111111] text-xs"
-                    >
-                      수정
-                    </button>
-                    <button
-                      onClick={() => handleDelete(r.id)}
-                      className="text-red-600 hover:text-red-700 text-xs"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <RecipeTable recipes={recipes} badgeMap={badgeMap} onEdit={startEdit} onDelete={handleDelete} />
     </div>
   )
 }

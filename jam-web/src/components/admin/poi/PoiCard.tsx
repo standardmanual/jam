@@ -3,10 +3,10 @@
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
 import { Badge } from '@/components/ui/shadcn-badge'
-import type { PoiRow } from '@/types/database'
+import type { PoiListRow } from './PoiList'
 
 interface PoiCardProps {
-  poi: PoiRow
+  poi: PoiListRow
   linkedBadgeName?: string
   categoryLabel?: string
 }

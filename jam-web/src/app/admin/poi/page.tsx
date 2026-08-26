@@ -2,12 +2,16 @@ import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Button } from '@/components/ui/shadcn-button'
-import type { PoiRow, BadgeRow, PoiCategoryRow } from '@/types/database'
-import { PoiList } from '@/components/admin/poi/PoiList'
+import type { BadgeRow, PoiCategoryRow } from '@/types/database'
+import { PoiList, type PoiListRow } from '@/components/admin/poi/PoiList'
 import PoiFilters from './PoiFilters'
 import Pagination from './Pagination'
 
 const PAGE_SIZE = 30
+
+// 목록(카드/테이블)에 실제로 쓰는 컬럼만 select — osm_id/naver_id/poi_tier/created_at 등은
+// 상세화면 전용이라 목록에는 불필요하다(20260826_011 A8).
+const POI_LIST_COLUMNS = 'id, name, latitude, longitude, radius_meters, category, linked_badge_id'
 
 interface AdminPoiPageProps {
   searchParams: Promise<Record<string, string | undefined>>
@@ -21,7 +25,7 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
 
   const supabase = createServiceClient()
 
-  let query = supabase.from('poi').select('*', { count: 'exact' })
+  let query = supabase.from('poi').select(POI_LIST_COLUMNS, { count: 'exact' })
   if (category !== 'all') query = query.eq('category', category)
 
   if (sort === 'name_asc') query = query.order('name', { ascending: true })
@@ -37,7 +41,7 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
     supabase.from('poi_categories').select('*').order('slug'),
   ])
 
-  const pois = (poisRaw ?? []) as PoiRow[]
+  const pois = (poisRaw ?? []) as PoiListRow[]
 
   const linkedBadgeIds = [...new Set(pois.map((p) => p.linked_badge_id).filter((id): id is string => !!id))]
   const { data: badgesRaw } = linkedBadgeIds.length > 0

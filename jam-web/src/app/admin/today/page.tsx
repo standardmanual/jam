@@ -2,53 +2,31 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { TodayCardRow } from '@/types/database'
 import TodayCardList from './TodayCardList'
 
-type BadgeOptionRow = { id: string; name: string }
-
-/**
- * 오늘 카드 배지 선택용 배지 전량 조회.
- *
- * 티켓 20260825_029: type 필터가 없어 미삭제 배지 2172건 전체를 대상으로 하는데,
- * PostgREST 기본 응답 상한(1000행)에 걸리면 name 오름차순 뒤쪽 배지가 통째로 잘려
- * "오늘" 카드 배지 스포트라이트에서 골라 넣지 못한다(admin/missions/page.tsx와 동일 원인,
- * 티켓 20260825_028 dce8f5fa). range로 페이지를 끝까지 넘겨 전량을 가져온다.
- */
-async function fetchAllBadgeOptions(supabase: ReturnType<typeof createServiceClient>): Promise<BadgeOptionRow[]> {
-  const PAGE_SIZE = 1000
-  const all: BadgeOptionRow[] = []
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data: pageRaw, error } = await supabase
-      .from('badges')
-      .select('id, name')
-      .is('deleted_at', null)
-      .order('name')
-      .order('id')
-      .range(from, from + PAGE_SIZE - 1)
-
-    if (error) {
-      console.error('[admin/today] 배지 목록 조회 실패:', error)
-      break
-    }
-    const page = (pageRaw ?? []) as BadgeOptionRow[]
-    all.push(...page)
-    if (page.length < PAGE_SIZE) break
-  }
-  return all
-}
+type BadgeLabelRow = { id: string; name: string; rarity: string; type: string; point_reward: number }
 
 export default async function AdminTodayPage() {
   const supabase = createServiceClient()
 
-  const [{ data: cardsRaw }, badges, { data: missionsRaw }, { data: booksRaw }] =
-    await Promise.all([
-      supabase.from('today_cards').select('*').order('starts_at', { ascending: false }),
-      fetchAllBadgeOptions(supabase),
-      supabase.from('missions').select('id, title').order('created_at', { ascending: false }),
-      supabase.from('item_books').select('id, name').order('name'),
-    ])
+  const [{ data: cardsRaw }, { data: missionsRaw }, { data: booksRaw }] = await Promise.all([
+    supabase.from('today_cards').select('*').order('starts_at', { ascending: false }),
+    supabase.from('missions').select('id, title').order('created_at', { ascending: false }),
+    supabase.from('item_books').select('id, name').order('name'),
+  ])
 
   const cards = (cardsRaw ?? []) as TodayCardRow[]
   const missions = (missionsRaw ?? []) as { id: string; title: string }[]
   const itemBooks = (booksRaw ?? []) as { id: string; name: string }[]
+
+  // 카드가 이미 참조하는 배지(badge_ids)의 표시용 라벨 조회. 이전에는 배지 2172건 전량을
+  // range-loop로 끌어온 뒤 클라이언트 필터링했지만(PostgREST 1000행 상한 방지, 티켓
+  // 20260825_029), 저작 폼의 배지 검색 UI가 /api/admin/badges/search 기반 컴포넌트로
+  // 바뀌면서(20260826_011 A1·A2) 더 이상 전량이 필요 없다 — 실제로 참조되는 id만
+  // bounded로 조회한다(admin/itembooks/page.tsx의 labelIds 패턴과 동일).
+  const referencedBadgeIds = [...new Set(cards.flatMap((c) => c.badge_ids ?? []))]
+  const { data: badgeLabelsRaw } = referencedBadgeIds.length > 0
+    ? await supabase.from('badges').select('id, name, rarity, type, point_reward').in('id', referencedBadgeIds)
+    : { data: [] as BadgeLabelRow[] }
+  const badgeLabels = (badgeLabelsRaw ?? []) as BadgeLabelRow[]
 
   return (
     <div className="p-8">
@@ -60,7 +38,7 @@ export default async function AdminTodayPage() {
           </p>
         </div>
       </div>
-      <TodayCardList cards={cards} badges={badges} missions={missions} itemBooks={itemBooks} />
+      <TodayCardList cards={cards} badgeLabels={badgeLabels} missions={missions} itemBooks={itemBooks} />
     </div>
   )
 }

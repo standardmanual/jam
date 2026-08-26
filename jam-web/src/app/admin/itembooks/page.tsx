@@ -1,42 +1,77 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { Button } from '@/components/ui/shadcn-button'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
 import { ItemBookList } from '@/components/admin/itembooks/ItemBookList'
+import ItemBookFilters from './ItemBookFilters'
+import Pagination from '../poi/Pagination'
 
-export default async function AdminItemBooksPage() {
+const PAGE_SIZE = 30
+
+interface AdminItemBooksPageProps {
+  searchParams: Promise<Record<string, string | undefined>>
+}
+
+export default async function AdminItemBooksPage({ searchParams }: AdminItemBooksPageProps) {
+  const params = await searchParams
+  const faction = params.faction ?? 'all'
+  const sort = params.sort ?? 'created_desc'
+  const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
+
   const supabase = createServiceClient()
-  const [{ data: booksRaw }, { data: itemBadgesRaw }, { data: factionsRaw }] = await Promise.all([
-    supabase.from('item_books').select('*').order('created_at', { ascending: false }),
-    supabase.from('badges').select('id, item_book_id').eq('type', 'item').not('item_book_id', 'is', null).is('deleted_at', null),
+
+  // 20260826_011 A6: 전체 로드 후 클라이언트 필터·정렬하던 것을 admin/poi/page.tsx와 동일한
+  // 구조(searchParams로 세계관/정렬/페이지 구동 + range() 서버 필터링)로 전환.
+  let query = supabase.from('item_books').select('*', { count: 'exact' })
+  if (faction !== 'all') query = query.eq('faction_id', faction)
+
+  if (sort === 'name_asc') query = query.order('name', { ascending: true })
+  else if (sort === 'name_desc') query = query.order('name', { ascending: false })
+  else query = query.order('created_at', { ascending: false })
+
+  const from = (page - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
+  query = query.range(from, to)
+
+  const [{ data: booksRaw, count }, { data: factionsRaw }] = await Promise.all([
+    query,
     supabase.from('factions').select('id, name'),
   ])
 
   const books = (booksRaw ?? []) as ItemBookRow[]
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
+  const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
+  const factionMap = new Map(factions.map((f) => [f.id, f.name]))
 
-  // 티켓 20260825_029: 이전에는 badges 테이블을 필터 없이 전량(현재 5585건) 조회해
-  // badgeMap을 만들었다 — PostgREST 기본 응답 상한(1000행)에 걸려 뒤쪽 배지는 통째로
-  // 빠지므로, book.required_activity_badge_id/reward_badge_id가 잘린 구간을 가리키면
-  // 목록 화면에 배지 이름이 빈 값으로 표시된다. badgeMap의 실제 용도는 각 북이 참조하는
-  // 두 id(필요/보상 배지)의 이름 조회뿐이므로 그 id만 모아 bounded로 조회한다
-  // (admin/itembooks/[id]/page.tsx의 labelIds 조회와 동일 패턴).
+  // 이 페이지에 보여줄 책들이 참조하는 배지(필요/보상)의 이름만 bounded로 조회 — 배지 테이블
+  // 필터 없이 전량(현재 5585건) 조회하면 PostgREST 기본 응답 상한(1000행)에 걸려 뒤쪽 배지가
+  // 통째로 빠지는 문제가 있었다(티켓 20260825_029). 페이지네이션 전환 후에는 현재 페이지의
+  // 책들만 대상으로 하므로 범위가 더 좁아진다.
   const labelIds = [
     ...new Set(
       books.flatMap((b) => [b.required_activity_badge_id, b.reward_badge_id]).filter((id): id is string => !!id)
     ),
   ]
-  const { data: badgesRaw } = labelIds.length > 0
-    ? await supabase.from('badges').select('id, name').in('id', labelIds)
-    : { data: [] as Pick<BadgeRow, 'id' | 'name'>[] }
+  const bookIds = books.map((b) => b.id)
+  const [{ data: badgesRaw }, { data: itemBadgesRaw }] = await Promise.all([
+    labelIds.length > 0
+      ? supabase.from('badges').select('id, name').in('id', labelIds)
+      : Promise.resolve({ data: [] as Pick<BadgeRow, 'id' | 'name'>[] }),
+    bookIds.length > 0
+      ? supabase.from('badges').select('id, item_book_id').eq('type', 'item').in('item_book_id', bookIds).is('deleted_at', null)
+      : Promise.resolve({ data: [] as { id: string; item_book_id: string }[] }),
+  ])
   const badges = (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
-  const factionMap = new Map(((factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]).map((f) => [f.id, f.name]))
 
   const itemBadgeCountMap = new Map<string, number>()
   for (const b of (itemBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
     if (!b.item_book_id) continue
     itemBadgeCountMap.set(b.item_book_id, (itemBadgeCountMap.get(b.item_book_id) ?? 0) + 1)
   }
+
+  const emptyMessage = faction !== 'all' ? '조건에 맞는 컬렉션이 없습니다.' : '등록된 컬렉션이 없습니다.'
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -50,13 +85,27 @@ export default async function AdminItemBooksPage() {
         </Link>
       </div>
 
+      {/* 필터 */}
+      <Suspense>
+        <ItemBookFilters factions={factions} />
+      </Suspense>
+
+      {/* 카운트 */}
+      <div className="text-sm text-muted-foreground">
+        총 {count ?? 0}개
+      </div>
+
       {/* 목록 */}
       <ItemBookList
         itemBooks={books}
         badgeMap={badgeMap}
         factionMap={factionMap}
         itemBadgeCountMap={itemBadgeCountMap}
+        emptyMessage={emptyMessage}
       />
+
+      {/* 페이지네이션 */}
+      <Pagination page={page} totalPages={totalPages} searchParams={params} basePath="/admin/itembooks" />
     </div>
   )
 }

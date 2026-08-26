@@ -14,12 +14,10 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
     { data: bookRaw },
     { data: factionsRaw },
     { data: slottedRaw },
-    { data: availableRaw },
   ] = await Promise.all([
     supabase.from('item_books').select('*').eq('id', id).single(),
     supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
     supabase.from('badges').select('id, name, rarity, image_url').eq('item_book_id', id).eq('type', 'item').is('deleted_at', null),
-    supabase.from('badges').select('id, name, rarity, image_url').is('item_book_id', null).is('deleted_at', null).eq('type', 'item').limit(10000),
   ])
 
   if (!bookRaw) notFound()
@@ -27,7 +25,6 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
   const book = bookRaw as ItemBookRow
   const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
   const slottedBadges = (slottedRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
-  const availableBadges = (availableRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
 
   const labelIds = [book.required_activity_badge_id, book.reward_badge_id].filter((v): v is string => !!v)
   const { data: labelBadgesRaw } = labelIds.length > 0
@@ -73,7 +70,6 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
           book={book}
           factions={factions}
           slottedBadges={slottedBadges}
-          availableBadges={availableBadges}
           requiredActivityBadgeLabel={book.required_activity_badge_id ? labelBadgeMap.get(book.required_activity_badge_id) : undefined}
           rewardBadgeLabel={book.reward_badge_id ? labelBadgeMap.get(book.reward_badge_id) : undefined}
         />
