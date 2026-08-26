@@ -1,27 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { MissionRow } from '@/types/database'
-import { MISSION_TYPES, MISSION_TYPE_LABEL, missionTypeLabel } from '@/lib/admin/badge-labels'
+import { MISSION_TYPES, MISSION_TYPE_LABEL } from '@/lib/admin/badge-labels'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-
-interface BadgeOption {
-  id: string
-  name: string
-  point_reward: number
-  rarity: string
-}
-
-const RARITY_LABEL: Record<string, string> = {
-  common: 'Common', rare: 'Rare', legend: 'Legend', mythic: 'Mythic',
-}
+import BadgeSearchSelect, { type BadgeSearchResult } from '@/components/admin/BadgeSearchSelect'
+import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
+import { MissionTable } from './MissionTable'
 
 interface Props {
   missions: MissionRow[]
   completionCounts: Map<string, number>
-  badges: BadgeOption[]
+  /** 이미 미션에 연결된(reward_badge_ids/gated_badge_id) 배지의 이름 등 표시용 라벨 —
+   *  전체 배지 프리로드가 아니라 실제로 참조되는 id만 bounded 조회한 결과 (20260826_011 A2).
+   *  신규로 검색해 추가하는 배지는 BadgeMultiSearchSelect/BadgeSearchSelect의 검색 결과
+   *  객체를 그대로 캐시에 얹는다. */
+  badgeLabels: BadgeSearchResult[]
+}
+
+function formatBadgeLabel(b?: BadgeSearchResult): string {
+  return b ? `${b.name} [${b.type}/${b.rarity}]` : ''
 }
 
 // 유효값·라벨은 lib/admin/badge-labels.ts 한 곳에서 관리한다(20260826_004) —
@@ -49,42 +49,39 @@ const emptyForm = {
   image_url: '',
 }
 
-export default function MissionList({ missions, completionCounts, badges }: Props) {
+export default function MissionList({ missions, completionCounts, badgeLabels }: Props) {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [conditionError, setConditionError] = useState('')
-  const [badgeQuery, setBadgeQuery] = useState('')
-  const [gatedBadgeQuery, setGatedBadgeQuery] = useState('')
+  // 배지 id → 검색 결과 객체 캐시. badgeLabels(초기 참조 배지)로 시작해 새로 검색·선택한
+  // 배지가 추가되면서 자라난다. reward_badge_ids/gated_badge_id 자체(제출 대상)와는 분리해
+  // 표시용 라벨을 못 찾아도 이미 선택된 id가 저장 시 유실되지 않는다.
+  const [badgeLabelCache, setBadgeLabelCache] = useState(
+    () => new Map(badgeLabels.map((b) => [b.id, b]))
+  )
   const router = useRouter()
 
-  // 보상 배지 다중 선택 관련 계산
-  const selectedBadges = badges.filter((b) => form.reward_badge_ids.includes(b.id))
-  const badgePointsSum = selectedBadges.reduce((sum, b) => sum + (b.point_reward ?? 0), 0)
+  const rewardBadgeChips = form.reward_badge_ids
+    .map((id) => badgeLabelCache.get(id))
+    .filter((b): b is BadgeSearchResult => !!b)
+  const badgePointsSum = rewardBadgeChips.reduce((sum, b) => sum + (b.point_reward ?? 0), 0)
   const missionPoints = Number(form.reward_points) || 0
   const totalPoints = badgePointsSum + missionPoints
-  const filteredBadges = badgeQuery.trim()
-    ? badges.filter((b) => b.name.toLowerCase().includes(badgeQuery.trim().toLowerCase()))
-    : badges
-  // 티켓 20260825_029: page.tsx의 절단(028)이 풀리며 badges가 최대 2172개까지 들어온다.
-  // 검색어가 없을 때 전량을 DOM에 그대로 렌더하면 렌더량이 과도해지므로 상한을 둔다.
-  const BADGE_LIST_RENDER_LIMIT = 50
-  const visibleBadges = filteredBadges.slice(0, BADGE_LIST_RENDER_LIMIT)
 
-  // 게이트 배지(이 미션을 완료해야 열리는 본 배지) 선택용 — 단일 선택
-  const gatedBadge = badges.find((b) => b.id === form.gated_badge_id) ?? null
-  const filteredGatedBadges = gatedBadgeQuery.trim()
-    ? badges.filter((b) => b.name.toLowerCase().includes(gatedBadgeQuery.trim().toLowerCase()))
-    : []
+  function addRewardBadge(b: BadgeSearchResult) {
+    setForm((f) => (f.reward_badge_ids.includes(b.id) ? f : { ...f, reward_badge_ids: [...f.reward_badge_ids, b.id] }))
+    setBadgeLabelCache((prev) => new Map(prev).set(b.id, b))
+  }
 
-  function toggleBadge(id: string) {
-    setForm((f) => ({
-      ...f,
-      reward_badge_ids: f.reward_badge_ids.includes(id)
-        ? f.reward_badge_ids.filter((x) => x !== id)
-        : [...f.reward_badge_ids, id],
-    }))
+  function removeRewardBadge(id: string) {
+    setForm((f) => ({ ...f, reward_badge_ids: f.reward_badge_ids.filter((x) => x !== id) }))
+  }
+
+  function setGatedBadge(id: string, badge?: BadgeSearchResult) {
+    setForm((f) => ({ ...f, gated_badge_id: id }))
+    if (badge) setBadgeLabelCache((prev) => new Map(prev).set(badge.id, badge))
   }
 
   // datetime-local input은 `YYYY-MM-DDTHH:mm` 형식을 요구 — ISO 문자열에서 초/타임존 부분 제거
@@ -94,7 +91,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
 
-  function startEdit(m: MissionRow) {
+  const startEdit = useCallback((m: MissionRow) => {
     setForm({
       title: m.title,
       description: m.description ?? '',
@@ -113,16 +110,12 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
     })
     setEditingId(m.id)
     setConditionError('')
-    setBadgeQuery('')
-    setGatedBadgeQuery('')
     setShowForm(true)
-  }
+  }, [])
 
   function cancelForm() {
     setForm(emptyForm)
     setEditingId(null)
-    setBadgeQuery('')
-    setGatedBadgeQuery('')
     setConditionError('')
     setShowForm(false)
   }
@@ -164,13 +157,11 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
     router.refresh()
   }
 
-  async function handleDelete(id: string) {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm('미션을 삭제하시겠습니까?')) return
     await fetch(`/api/admin/missions/${id}`, { method: 'DELETE' })
     router.refresh()
-  }
-
-  const now = new Date()
+  }, [router])
 
   return (
     <div className="space-y-6">
@@ -250,38 +241,12 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
 
               <div>
                 <label className="text-xs text-[#6b7280] mb-1 block">보상 배지 (복수 선택 가능)</label>
-                {selectedBadges.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {selectedBadges.map((b) => (
-                      <button key={b.id} onClick={() => toggleBadge(b.id)}
-                        className="text-xs bg-[#111111]/20 text-[#111111] border border-[#111111]/40 rounded-lg px-2 py-1 hover:bg-[#111111]/30">
-                        {b.name}{b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''} ✕
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <input type="text" value={badgeQuery} onChange={(e) => setBadgeQuery(e.target.value)}
-                  placeholder="배지 이름 검색..." className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm mb-2" />
-                <div className="max-h-44 overflow-y-auto border border-[#e5e7eb] rounded-xl divide-y divide-[#f3f4f6]">
-                  {filteredBadges.length === 0 && <p className="text-[#898989] text-xs px-3 py-2">검색 결과 없음</p>}
-                  {visibleBadges.map((b) => {
-                    const checked = form.reward_badge_ids.includes(b.id)
-                    return (
-                      <button key={b.id} onClick={() => toggleBadge(b.id)}
-                        className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-[#f8f9fa] ${checked ? 'text-[#111111]' : 'text-[#374151]'}`}>
-                        <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${checked ? 'bg-[#111111] border-[#111111] text-white' : 'border-[#e5e7eb]'}`}>
-                          {checked ? '✓' : ''}
-                        </span>
-                        {b.name}{b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''}
-                      </button>
-                    )
-                  })}
-                  {filteredBadges.length > BADGE_LIST_RENDER_LIMIT && (
-                    <p className="text-[#898989] text-xs px-3 py-2">
-                      {filteredBadges.length}개 중 {BADGE_LIST_RENDER_LIMIT}개 표시 — 검색으로 좁혀보세요
-                    </p>
-                  )}
-                </div>
+                <BadgeMultiSearchSelect
+                  selected={rewardBadgeChips}
+                  onSelect={addRewardBadge}
+                  onRemove={removeRewardBadge}
+                  placeholder="배지 이름 검색..."
+                />
               </div>
 
               {/* 총 지급 포인트 미리보기 */}
@@ -297,47 +262,16 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
               <p className="text-xs font-bold text-[#374151]">게이트 배지 (선택)</p>
               <p className="text-[#898989] text-xs">
                 이 미션을 완료해야 획득 조건이 열리는 <b>본 배지</b>를 지정합니다. 지정하면 미션 목록에서
-                &quot;본 배지 등급 = 유저 보유 등급 + 1&quot;인 단계만 참가 가능하고, 그 다음 1단계는 잠금 카드로,
+                &quot;본 배지 등급 = 유저 보유 등급 + 1&quot;인 단계만 참가 가능하고, 그 다음 1단계는 잠김 카드로,
                 그 위 단계는 숨김 처리됩니다. 비워두면 게이팅 없는 일반 미션입니다.
               </p>
-              {gatedBadge ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#111111]">
-                    {gatedBadge.name} <span className="text-[#6b7280] text-xs">({RARITY_LABEL[gatedBadge.rarity] ?? gatedBadge.rarity})</span>
-                  </span>
-                  <button
-                    onClick={() => { setForm((f) => ({ ...f, gated_badge_id: '' })); setGatedBadgeQuery('') }}
-                    className="text-xs bg-[#111111]/20 text-[#111111] border border-[#111111]/40 rounded-lg px-2 py-1 hover:bg-[#111111]/30"
-                  >
-                    해제 ✕
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    value={gatedBadgeQuery}
-                    onChange={(e) => setGatedBadgeQuery(e.target.value)}
-                    placeholder="본 배지 이름 검색..."
-                    className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm"
-                  />
-                  {gatedBadgeQuery.trim() && (
-                    <div className="max-h-44 overflow-y-auto border border-[#e5e7eb] rounded-xl divide-y divide-[#f3f4f6]">
-                      {filteredGatedBadges.length === 0 && <p className="text-[#898989] text-xs px-3 py-2">검색 결과 없음</p>}
-                      {filteredGatedBadges.map((b) => (
-                        <button
-                          key={b.id}
-                          onClick={() => { setForm((f) => ({ ...f, gated_badge_id: b.id })); setGatedBadgeQuery('') }}
-                          className="w-full text-left px-3 py-2 text-sm text-[#374151] hover:bg-[#f8f9fa] flex items-center gap-2"
-                        >
-                          {b.name}
-                          <span className="text-[#6b7280] text-xs ml-auto">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
+              <BadgeSearchSelect
+                key={editingId ?? 'new'}
+                value={form.gated_badge_id}
+                initialLabel={formatBadgeLabel(badgeLabelCache.get(form.gated_badge_id))}
+                placeholder="본 배지 이름 검색..."
+                onChange={setGatedBadge}
+              />
             </div>
 
             <div>
@@ -381,55 +315,7 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
       )}
 
       {/* 미션 목록 */}
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
-              <th className="px-5 py-3 font-medium">미션</th>
-              <th className="px-5 py-3 font-medium">타입</th>
-              <th className="px-5 py-3 font-medium">기간</th>
-              <th className="px-5 py-3 font-medium">달성</th>
-              <th className="px-5 py-3 font-medium">상태</th>
-              <th className="px-5 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {missions.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-10 text-center text-[#898989]">미션 없음</td></tr>
-            )}
-            {missions.map((m) => {
-              // ends_at이 null이면 상시 미션 — 시작만 지났으면 항상 진행 중, 종료 없음
-              const isEnded = m.ends_at !== null && new Date(m.ends_at) < now
-              const isActive = new Date(m.starts_at) <= now && !isEnded
-              const count = completionCounts.get(m.id) ?? 0
-              return (
-                <tr key={m.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
-                  <td className="px-5 py-3 font-medium">{m.title}</td>
-                  <td className="px-5 py-3 text-[#374151]">{missionTypeLabel(m.mission_type)}</td>
-                  <td className="px-5 py-3 text-[#6b7280] text-xs">
-                    {new Date(m.starts_at).toLocaleDateString('ko-KR')} ~<br />
-                    {m.ends_at ? new Date(m.ends_at).toLocaleDateString('ko-KR') : '상시'}
-                  </td>
-                  <td className="px-5 py-3 text-[#374151]">
-                    {count}{m.max_completions ? `/${m.max_completions}` : ''}명
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-[#111111]/20 text-[#111111]' : isEnded ? 'bg-[#f3f4f6] text-[#898989]' : 'bg-amber-50 text-amber-600'}`}>
-                      {isActive ? '진행 중' : isEnded ? '종료' : '예정'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex gap-2">
-                      <button onClick={() => startEdit(m)} className="text-[#111111] hover:opacity-70 text-xs">수정</button>
-                      <button onClick={() => handleDelete(m.id)} className="text-red-600 hover:text-red-700 text-xs">삭제</button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      <MissionTable missions={missions} completionCounts={completionCounts} onEdit={startEdit} onDelete={handleDelete} />
     </div>
   )
 }

@@ -24,7 +24,6 @@ export default async function NewItemBookPage() {
       <ItemBookForm
         factions={factions}
         slottedBadges={[]}
-        availableBadges={[]}
       />
     </div>
   )

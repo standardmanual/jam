@@ -1,18 +1,23 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { FactionRow } from '@/types/database'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import BackgroundGeneratorPreview, {
-  type BackgroundMode,
-  type BackgroundGeneratorPreviewHandle,
-  type BackgroundGeneratorLivePreviewState,
+import type {
+  BackgroundMode,
+  BackgroundGeneratorPreviewHandle,
+  BackgroundGeneratorLivePreviewState,
 } from '../badges/BackgroundGeneratorPreview'
 import ItemBookDetailPreviewFrame from '../itembooks/ItemBookDetailPreviewFrame'
+
+// WebGL 셰이더 5종 + mp4-muxer를 정적 import하면 FactionForm 청크에 그대로 딸려온다 — React.lazy로
+// 분리해 별도 청크로 지연 로드한다(20260826_011 A5). next/dynamic은 loadable 래퍼가 ref를 가로채
+// `ref.bake()`(배경 저장)를 깨뜨리므로 쓰지 않는다.
+const BackgroundGeneratorPreview = lazy(() => import('../badges/BackgroundGeneratorPreview'))
 
 interface FactionFormProps {
   faction?: FactionRow
@@ -353,34 +358,36 @@ export default function FactionForm({ faction }: FactionFormProps) {
           </p>
         </div>
 
-        <BackgroundGeneratorPreview
-          ref={backgroundGeneratorRef}
-          backgroundColor={backgroundColor}
-          onBackgroundColorChange={setBackgroundColor}
-          mode={backgroundMode}
-          onModeChange={setBackgroundMode}
-          initialBackgroundImageUrl={faction?.background_image_url ?? null}
-          onThemedChange={setThemed}
-          renderPreview={({ themed: previewThemed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
-            <>
-              <ItemBookDetailPreviewFrame
-                book={{
-                  name: name || '(세계관 이름 미입력)',
-                  description: '이 세계관 소속 컬렉션에 그대로 복사되는 배경을 미리 보여줘요.',
-                  image_url: imageUrl || null,
-                }}
-                themed={previewThemed}
-                backgroundLayerStyle={backgroundLayerStyle}
-                backgroundLayerRef={backgroundLayerRef}
-                liveNode={liveNode}
-              />
-              <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
-                세계관 자체 화면은 없어요. 이 배경이 그대로 복사될 소속 컬렉션 상세화면과 같은
-                구조로 보여줘요.
-              </p>
-            </>
-          )}
-        />
+        <Suspense fallback={<div className="h-64 bg-muted animate-pulse rounded" />}>
+          <BackgroundGeneratorPreview
+            ref={backgroundGeneratorRef}
+            backgroundColor={backgroundColor}
+            onBackgroundColorChange={setBackgroundColor}
+            mode={backgroundMode}
+            onModeChange={setBackgroundMode}
+            initialBackgroundImageUrl={faction?.background_image_url ?? null}
+            onThemedChange={setThemed}
+            renderPreview={({ themed: previewThemed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
+              <>
+                <ItemBookDetailPreviewFrame
+                  book={{
+                    name: name || '(세계관 이름 미입력)',
+                    description: '이 세계관 소속 컬렉션에 그대로 복사되는 배경을 미리 보여줘요.',
+                    image_url: imageUrl || null,
+                  }}
+                  themed={previewThemed}
+                  backgroundLayerStyle={backgroundLayerStyle}
+                  backgroundLayerRef={backgroundLayerRef}
+                  liveNode={liveNode}
+                />
+                <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
+                  세계관 자체 화면은 없어요. 이 배경이 그대로 복사될 소속 컬렉션 상세화면과 같은
+                  구조로 보여줘요.
+                </p>
+              </>
+            )}
+          />
+        </Suspense>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
