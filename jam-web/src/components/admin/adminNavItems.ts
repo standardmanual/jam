@@ -21,6 +21,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: '정책 및 밸런스',
     items: [
       { href: '/admin/drop-policy', label: '드랍 정책', icon: '🎲' },
+      { href: '/admin/ambient-drop', label: '앰비언트 드랍', icon: '🌫️' },
       { href: '/admin/combine-policy', label: '믹스 정책', icon: '🧪' },
       { href: '/admin/missions', label: '미션 관리', icon: '🎯' },
       { href: '/admin/points', label: '포인트 관리', icon: '💎' },

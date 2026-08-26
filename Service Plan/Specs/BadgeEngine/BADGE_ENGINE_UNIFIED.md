@@ -431,32 +431,81 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 
 ---
 
-### 3.12 ~~앰비언트(시스템) POI 드랍~~ — **제거됨 (2026-08-25)**
+### 3.12 앰비언트(시스템) POI 드랍 — 3축(카테고리/등급비율/대상컬렉션) 배치 (재도입 2026-08-26)
 
-> **이 판정은 더 이상 존재하지 않는다.** 유저 행동과 무관하게 시스템이 POI에 아이템배지를
-> 상시 배치하던 앰비언트 드랍은 2026-08-25에 전면 제거됐다 —
-> 티켓 [20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md).
-> 현재 `poi_drops`에 들어가는 행은 **유저 드랍뿐**이다(§3.13).
+> 유저 행동과 무관하게 시스템이 POI에 아이템배지를 직접 배치하는 판정. 2026-08-25에 한 차례
+> 전면 제거됐다가([20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md))
+> 2026-08-26에 재설계 재도입됐다([20260826_009](../../History/Migration/Ticket/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)).
+> 코드: `src/lib/ambient-drop/`.
 
-**⚠️ 미완성이라 제거한 것이 아니다.** `poi_drops`에 `source='system'` 행이 0건인 것이 발견의
-계기였으나, 원인은 **미들웨어가 `/api/cron/*`를 307로 가로채 cron 자체가 실행되지 않았던 것**이다
-([20260825_003](../../History/Migration/Ticket/20260825_003_bug_미들웨어가-cron-요청을-차단.md)에서
-수정, 프로덕션에서 307 → 401 전환으로 확정). 정책은 튜닝돼 있었고 어드민 화면도 있었다.
-**관측과 무관하게 쓰지 않기로 한 제품 결정이다.**
+**제거 판단 경위 (오해 방지를 위해 유지)**: 제거 당시 `poi_drops`에 `source='system'` 행이
+0건이었던 것은 기능 결함이 아니라 미들웨어가 `/api/cron/*`를 307로 가로채 cron 자체가
+실행되지 않았기 때문이었다([20260825_003](../../History/Migration/Ticket/20260825_003_bug_미들웨어가-cron-요청을-차단.md)).
+그럼에도 사용자가 관측과 무관하게 쓰지 않기로 결정했었고, 이후 드랍엔진 v2·컨텐츠·POI 체계가
+성숙한 만큼 **옛 설계(전역 커버리지 목표치 모델, `ambient_drop_policy`)를 복원하지 않고
+배치 실행형으로 새로 설계**했다.
 
-**제거된 것**: `src/lib/ambient-drop/`(엔진·정책) · `/api/cron/ambient-drop-monitor`(크론) ·
-`/admin/ambient-drop-policy`(어드민) · `ambient_drop_policy` 테이블(마이그레이션 100에서 DROP).
+**배치 모델 — 공유 오브젝트, 유저 드랍과 동일 테이블**: `poi_drops`에 `source='system'`,
+`dropper_user_id`/`expires_at`은 NULL로 INSERT한다. 여러 유저가 같은 자리를 두고 경쟁하고
+먼저 픽업한 사람이 획득하는 것은 유저 드랍과 동일 — `pickup_drop()` RPC를 그대로 재사용한다
+(§3.13). **만료 메커니즘 없음** — 상시 존재를 전제로 하며, 특정 배지를 한시적으로만 노출하고
+싶으면 `badges.valid_from`/`valid_until`을 쓴다.
 
-**남긴 것과 그 이유**:
-- `poi_drops.source` 컬럼 — **레거시, 전 행 `'user'`**. `assign_random_serial()` 트리거(044)와
-  `poi_drops_source_consistency` CHECK가 이 컬럼을 참조하고 있어, 제거하면 픽업(핵심 유저 경로)
-  전체를 다시 검증해야 한다. 남겨도 실해가 없어 유지했다.
-- `assign_random_serial()`의 50,001~999,999 분기 — 위 컬럼을 읽는 분기. 앰비언트 드랍이 생성되지
-  않으므로 **항상 거짓**이며, 실제 채번은 1~999,999 전 범위를 쓴다.
+**트리거 — 자동(cron) + 수동(어드민), 상호 배제**:
+- 자동: `/api/cron/ambient-drop`이 매일 18:00 UTC에 실행되나(Vercel Hobby 플랜 일 1회 cron
+  제약으로 시각 고정, `src/lib/ambient-drop/schedule.ts`), `ambient_drop_config.auto_enabled`가
+  꺼져 있으면 그 실행은 no-op이다.
+- 수동: 어드민 `/admin/ambient-drop`의 "지금 배포" 버튼(`POST /api/admin/ambient-drop/deploy`).
+- 상호 배제: `auto_enabled=true`일 때, 고정 스케줄 시각 전후 `exclusion_window_minutes`분
+  (어드민 설정값) 동안은 수동 배포를 거부한다(409) — 레이스 컨디션 방지 목적. 이 창 밖에서는
+  자유롭게 수동 배포 가능. 서버(API) 레벨에서 강제하고, 어드민 화면 버튼 비활성화는 UX 편의일 뿐.
 
-**복원이 필요하다면** 마이그레이션 044를 되돌리고 이 티켓의 역순으로 코드를 복구하면 된다.
-마지막 운영 정책값: common 86% / rare 12% / legend 2%, 커버리지 0.15, min 20 / max 2000,
-POI당 최대 1개, 보충 배치 30개 (최종 수정 2026-07-23).
+**배포 옵션 — 3축, 축별 명시/무작위 + 전체 무작위 메타 옵션** (`ambient_drop_config` 싱글톤):
+
+| 축 | 명시 모드 | 무작위 모드 |
+|---|---|---|
+| 카테고리 | `poi_categories`(13종) 중 하나, 또는 `category_slug=NULL`로 "전체" | 실행 시점에 카테고리 하나를 무작위로 선택 |
+| 등급(rarity) 비율 | `rarity_common/rare/legend/mythic`(합=1)로 가중 추첨 | 실행 시점에 4개 등급 비율 자체를 무작위로 생성해 그 실행 전체에 적용 |
+| 대상 컬렉션(`item_books`) | 단독 또는 멀티 선택(`collection_ids`), 빈 배열은 "전체 컬렉션" | 실행 시점에 활성 컬렉션 1개를 무작위로 선택 |
+
+`all_random=true`면 저장된 축별 모드와 무관하게 실행 시점에 3축을 전부 무작위로 취급한다
+(비파괴적 오버라이드 — 저장값은 그대로 남는다).
+
+**배치 실행 로직** (`runAmbientDropBatch`, `src/lib/ambient-drop/index.ts`):
+1. 3축을 확정한다(카테고리 슬러그, 등급 분포, 대상 컬렉션 id 목록).
+2. 대상 카테고리의 POI 전체를 조회하고, `max_active_per_poi` 미만인 POI만 후보로 남긴다.
+3. `type='item' AND deleted_at IS NULL AND item_book_id IS NOT NULL`(+ 컬렉션 필터, + 유효기간
+   `valid_from/valid_until`)로 후보 배지를 rarity별로 분류한다. **컬렉션 소속이 없는 아이템배지는
+   대상에서 제외된다** — 이 축이 "컬렉션 채우기"를 돕는 것이 목적이기 때문.
+4. `batch_size`회 반복 — 활성 드랍이 0개인 POI를 우선 골라 분산 배치하고(발견 경험 분산, 구
+   엔진과 동일 원칙), 등급 분포로 가중 추첨한 뒤 그 등급에 후보가 없으면
+   `common → rare → legend → mythic` 순서로 폴백한다(현재 카탈로그가 common뿐이라 사실상
+   발동하지 않음 — 티켓 §5).
+5. 결과를 `engine_decision_log`(`engine='drop'`, `event='ambient_batch_result'`)에 남긴다 —
+   자동/수동 모두 동일하게 기록되어 어드민 화면에서 최근 실행 이력으로 조회 가능하다.
+
+**PostgREST 1000행 상한 대응**: POI·배지 전체 스캔이 컬렉션 완성 판정 버그(티켓 20260825_029)와
+같은 클래스의 상한 문제에 걸릴 수 있어(POI 수천 건, 배지 수천 건), `fetchAllRows`로
+`.range()` 페이지네이션한다 — "전체 카테고리"/"전체 컬렉션" 모드에서 조용히 일부만 조회되는
+사고를 방지한다.
+
+**교차채널 자동 밸런싱은 범위 밖**: 유저별 컬렉션 보유 현황·아이템배지 발행 현황 등을 근거로
+앰비언트 채널과 액티비티 드랍엔진 채널의 희귀도 분포를 자동 조정하는 시스템은 만들지 않았다.
+지금은 어드민이 수동 설정한 축 값을 그대로 실행할 뿐이다(향후 계획).
+
+**살아있는 레거시(변경 없이 재사용)**:
+- `poi_drops.source` 컬럼 — `assign_random_serial()` 트리거(044)와 `poi_drops_source_consistency`
+  CHECK가 참조한다. 제거 기간(2026-08-25~26)에는 전 행이 `'user'`였다.
+- `assign_random_serial()`의 50,001~999,999 분기 — `source='system'`일 때만 발동. 재도입으로
+  다시 실제로 발동한다(제거 기간에는 항상 거짓이었음).
+- `pickup_drop()` RPC — 이번 재도입에서 한 줄도 수정하지 않았다.
+
+**구 `ambient_drop_policy`(마이그레이션 044 생성, 100에서 DROP)와의 차이**: 구 모델은 "활성 POI
+수 × 커버리지 비율 → 부족분 보충"이라는 전역 상시 커버리지 목표치 모델이었다. 신규
+`ambient_drop_config`(마이그레이션 104)는 실행마다 3축을 골라 `batch_size`개를 그때그때
+배치하는 배치 실행형이며, 커버리지 계산이 없다. 구 모델의 마지막 운영값(common 86% /
+rare 12% / legend 2%, 커버리지 0.15, POI당 최대 1개, 보충 배치 30개, 최종 수정 2026-07-23)은
+`batch_size`/`max_active_per_poi`의 초기값 후보로만 참고했다.
 
 ### 3.13 유저 드랍/픽업 운영 정책 (PRD 04_PROJECT_SPEC.md에서 이관, 2026-08-06)
 
@@ -574,11 +623,13 @@ Specs/Content/POI.md                      지점(POI) 컨텐츠 (스텁)
 [코드]
 src/lib/badge-engine/index.ts             액티비티배지 엔진 (구현)
 src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현 — v2는 §3 설계)
+src/lib/ambient-drop/                     앰비언트(시스템) POI 드랍 엔진 — §3.12
 src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출)
 src/lib/abusing/                          섀도우밴 정책 (공용)
 supabase/migrations/033_reseed_activity_badges_v3.sql   액티비티배지 시드
-supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 스키마 (기능 제거됨 — §3.12)
-supabase/migrations/100_remove_ambient_drop.sql         앰비언트 드랍 제거 — §3.12
+supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 최초 스키마 — §3.12
+supabase/migrations/100_remove_ambient_drop.sql         앰비언트 드랍 제거(2026-08-25) — §3.12
+supabase/migrations/104_ambient_drop_reintroduce.sql    앰비언트 드랍 재도입(2026-08-26) — §3.12
 supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
 supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
 ```

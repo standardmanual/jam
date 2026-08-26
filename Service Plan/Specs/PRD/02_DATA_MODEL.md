@@ -114,7 +114,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 
 ### inventory / inventory_items
 원안 구조 유지(50슬롯). `inventory_items`에 추가된 것:
-- `serial_number`: SERIAL(순차) → **BEFORE INSERT 트리거로 1~999,999 난수 부여**로 변경(발급 순서 역산 방지). (앰비언트 드랍 픽업분만 50,001~999,999로 제한하는 분기가 `assign_random_serial()`에 남아 있으나, 앰비언트 제거 후 항상 거짓이라 실제로는 전 범위를 쓴다 — [20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md))
+- `serial_number`: SERIAL(순차) → **BEFORE INSERT 트리거로 1~999,999 난수 부여**로 변경(발급 순서 역산 방지). 앰비언트 드랍 픽업분만 50,001~999,999로 제한하는 분기가 `assign_random_serial()`에 있다 — 2026-08-25~26 제거 기간에는 항상 거짓이었으나, 앰비언트 드랍이 재도입되며([20260826_009](../../History/Migration/Ticket/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)) 다시 실제로 발동한다.
 - `slotted_in`: 컬렉션 슬롯에 장착된 경우 참조 (장착 중엔 인벤토리 칸 미차감)
 - `dropped_at` / `drop_id`: 드랍 후 소프트 삭제 추적
 
@@ -190,16 +190,17 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 ### poi_drops
 | 필드 | 설명 |
 |------|------|
-| source | **레거시 — 전 행 `'user'`.** 앰비언트(시스템) 드랍이 있던 시절의 구분자. 기능 제거 후에도 컬럼은 유지한다([20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md)) |
-| expires_at | 유저 드랍은 30일 만료. (구 system 드랍은 NULL이었음 — nullable 유지) |
-| dropper_user_id | nullable 유지 (구 system 드랍이 NULL이었기 때문) |
+| source | `'user'` 또는 `'system'`. 유저 드랍/앰비언트(시스템) 드랍을 구분한다. 2026-08-25~26에 앰비언트가 한 차례 제거됐다가([20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md)) 재도입됐다([20260826_009](../../History/Migration/Ticket/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)) — 그 사이엔 전 행이 `'user'`였다 |
+| expires_at | 유저 드랍은 30일 만료. system 드랍은 NULL(만료 없음 — 상시 존재 전제, 한시 노출은 `badges.valid_from/valid_until`로 대체) |
+| dropper_user_id | 유저 드랍만 값 존재, system 드랍은 NULL |
 
 픽업은 `pickup_drop()` RPC로 원자 트랜잭션 처리.
 
-> **`source` 컬럼을 지우지 않은 이유** — `assign_random_serial()` 트리거(마이그레이션 044)가
-> 이 컬럼을 조회하고, `poi_drops_source_consistency` CHECK가 유저 드랍의
-> `dropper_user_id`·`expires_at` NOT NULL을 보장한다. 컬럼 제거는 픽업(핵심 유저 경로) 전체를
-> 다시 검증해야 하는 변경인 반면, 전 행이 `'user'`이고 DEFAULT도 `'user'`라 남겨도 실해가 없다.
+> **`source` 컬럼·`assign_random_serial()` 분기·`poi_drops_source_consistency` CHECK** — 전부
+> 마이그레이션 044(2026-07-22) 도입, 100(2026-08-25 제거 시)에도 살아남아 104(2026-08-26 재도입)에서
+> 그대로 재사용됐다. `assign_random_serial()`은 `source='system'`이면 일련번호를
+> 50,001~999,999로 제한하고, CHECK는 `source='user' → dropper_user_id·expires_at NOT NULL` /
+> `source='system' → 둘 다 NULL`을 강제한다.
 
 ### drop_events / drop_claims / drop_probability (레거시 추정)
 어드민 주도 드랍 이벤트용 초기 테이블. 034(드랍엔진 v2) 이후 `drop_policy`가 사실상 후속 확장판 — 실사용 여부는 코드 확인 필요.
@@ -207,9 +208,18 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 ### user_drop_state / drop_policy (신규 — 드랍엔진 v2)
 유저별 드랍 모멘텀 상태(연속 common 카운터, 마지막 조각 피티, 일일 드랍 수)와 엔진 전체 파라미터(레어리티 확률, 모멘텀/인접/탐험 가중치). 상세 로직은 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3 참고.
 
-### ~~ambient_drop_policy~~ (삭제됨 — 2026-08-25)
-앰비언트(시스템) 드랍 정책 싱글톤. 기능 전면 제거로 테이블 DROP
-([20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md), 마이그레이션 100).
+### ambient_drop_config (재도입 — 2026-08-26, 마이그레이션 104)
+앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 카테고리(`poi_categories` 13종 또는 전체)·
+등급비율(4종 합=1)·대상 컬렉션(`item_books` 단독/멀티/전체) 3축을 각각 명시값 또는 무작위로
+설정하고, `all_random`으로 3축을 한 번에 무작위 처리할 수 있다. `auto_enabled`(자동 스케줄
+등록 여부)·`exclusion_window_minutes`(자동 스케줄 전후 수동 배포 차단 창)로 자동(cron)/수동
+트리거의 상호 배제를 관리한다. `batch_size`/`max_active_per_poi`는 3축에 속하지 않는 실행
+파라미터. 상세 로직은 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.12 참고.
+
+> **구 `ambient_drop_policy`(마이그레이션 044, 100에서 DROP)와는 스키마가 다르다.** 구 모델은
+> "활성 POI 수 × 커버리지 비율 → 부족분 보충"이라는 전역 목표치 모델이었고, 신규 모델은
+> 실행마다 3축을 골라 `batch_size`개를 그때그때 배치하는 배치 실행형이다 — 티켓
+> [20260826_009](../../History/Migration/Ticket/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
 
 ---
 
@@ -293,7 +303,7 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 | InventoryItem | `inventory_items` — 일련번호 랜덤화, 슬롯 참조 추가 |
 | POI | `poi` — category ENUM→FK 전환, OSM→네이버 데이터 소스 전환 |
 | ItemBook | `item_books` — `required_item_badge_ids` 삭제, 소유 관계 역전(badges → item_book_id) |
-| PoiDrop | `poi_drops` — `source` 컬럼 잔존(레거시, 전 행 `user`). 앰비언트 드랍 제거로 유저 드랍 전용 |
+| PoiDrop | `poi_drops` — `source`(`'user'`/`'system'`)로 유저 드랍과 앰비언트(시스템) 드랍 구분 |
 | DropEvent | `drop_events` — 스키마 변경 없이 잔존 (실사용 여부 별도 확인 필요) |
 | DropProbability | `drop_probability` — 잔존하나 `drop_policy`가 사실상 후속 확장판 |
 | Trade | `trades` — 스키마 변경 없이 잔존. **`inventory/flea-market` 화면은 "coming soon" placeholder로, 실제 거래 기능 미구현** (2026-08-06 코드 확인) |

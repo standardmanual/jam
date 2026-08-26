@@ -43,7 +43,10 @@ OpenStreetMap → 네이버 지역검색 오픈API로 전환** (인프라 전면
 문제 수정. **POI 앰비언트(시스템) 아이템배지 드랍** 신규 도입 — 유저 행동과 무관하게
 시스템이 주기적으로 POI에 아이템을 배치. (→ **2026-08-25 전면 제거**, 티켓
 [20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md).
-미완성이 아니라 쓰지 않기로 한 제품 결정이다 — [01_PRD.md](./01_PRD.md) §6 참고) **잼 포인트 시스템 1a단계**(유저별 잔액/
+미완성이 아니라 쓰지 않기로 한 제품 결정이었다 — → **2026-08-26 재설계 재도입**, 티켓
+[20260826_009](../../History/Migration/Ticket/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
+현재 상태는 [BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.12 참고)
+**잼 포인트 시스템 1a단계**(유저별 잔액/
 `point_wallets`) 신규 구축. Vercel Hobby 플랜의 Cron 빈도 제한으로 배포 실패했던
 근본 원인 해결.
 
