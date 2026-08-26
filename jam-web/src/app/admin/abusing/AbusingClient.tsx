@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { AbusingPolicy } from '@/lib/abusing/policy'
 
 interface BanRow {
@@ -275,14 +276,15 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
               className="w-full bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] text-sm placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
             />
             <div className="flex gap-2">
-              <select
-                value={banLevel}
-                onChange={(e) => setBanLevel(e.target.value as 'soft' | 'hard')}
-                className="bg-white border border-[#e5e7eb] rounded-xl px-3 py-2.5 text-[#111111] text-sm focus:outline-none"
-              >
-                <option value="soft" className="bg-white">Soft-ban</option>
-                <option value="hard" className="bg-white">Hard-ban</option>
-              </select>
+              <Select value={banLevel} onValueChange={(v) => setBanLevel(v as 'soft' | 'hard')}>
+                <SelectTrigger className="w-auto min-w-[8rem]" aria-label="밴 레벨">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="soft">Soft-ban</SelectItem>
+                  <SelectItem value="hard">Hard-ban</SelectItem>
+                </SelectContent>
+              </Select>
               <input
                 value={banReason}
                 onChange={(e) => setBanReason(e.target.value)}

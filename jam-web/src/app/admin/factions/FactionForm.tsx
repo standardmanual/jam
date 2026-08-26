@@ -6,6 +6,7 @@ import type { FactionRow } from '@/types/database'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import BackgroundGeneratorPreview, {
   type BackgroundMode,
   type BackgroundGeneratorPreviewHandle,
@@ -16,6 +17,9 @@ import ItemBookDetailPreviewFrame from '../itembooks/ItemBookDetailPreviewFrame'
 interface FactionFormProps {
   faction?: FactionRow
 }
+
+// Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
+const NONE_VALUE = '__none__'
 
 /** 3단 캐스케이드(직속 배지 / 소속 컬렉션 / 그 컬렉션의 아이템배지) 건수 — 20260819_015 */
 interface CascadeCount {
@@ -380,15 +384,19 @@ export default function FactionForm({ faction }: FactionFormProps) {
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
-          <select
-            value={backgroundShaderId}
-            onChange={(e) => setBackgroundShaderId(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 max-w-xs"
+          <Select
+            value={backgroundShaderId || NONE_VALUE}
+            onValueChange={(v) => setBackgroundShaderId(v === NONE_VALUE ? '' : v)}
           >
-            {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-white">{opt.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="max-w-xs" aria-label="배경 쉐이더">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value || NONE_VALUE}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
         </label>
 

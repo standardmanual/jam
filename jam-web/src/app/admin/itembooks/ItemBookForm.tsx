@@ -9,6 +9,7 @@ import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -37,6 +38,9 @@ interface ItemBookFormProps {
 const RARITY_LABEL: Record<string, string> = {
   common: 'Common', rare: 'Rare', legend: 'Legend', mythic: 'Mythic',
 }
+
+// Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
+const NONE_VALUE = '__none__'
 
 /**
  * 구운 배경 파일(정지 PNG / 반복 MP4)을 기존 업로드 API로 올리고 public URL을 돌려준다.
@@ -384,16 +388,20 @@ export default function ItemBookForm({
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-[#374151]">소속 세계관</span>
-        <select
-          value={factionId}
-          onChange={(e) => setFactionId(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
+        <Select
+          value={factionId || NONE_VALUE}
+          onValueChange={(v) => setFactionId(v === NONE_VALUE ? '' : v)}
         >
-          <option value="" className="bg-white">— 없음 —</option>
-          {factions.map((f) => (
-            <option key={f.id} value={f.id} className="bg-white">{f.name}</option>
-          ))}
-        </select>
+          <SelectTrigger aria-label="소속 세계관">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+            {factions.map((f) => (
+              <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
 
       <label className="flex flex-col gap-1.5">
@@ -463,15 +471,19 @@ export default function ItemBookForm({
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
-          <select
-            value={backgroundShaderId}
-            onChange={(e) => setBackgroundShaderId(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 max-w-xs"
+          <Select
+            value={backgroundShaderId || NONE_VALUE}
+            onValueChange={(v) => setBackgroundShaderId(v === NONE_VALUE ? '' : v)}
           >
-            {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-white">{opt.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="max-w-xs" aria-label="배경 쉐이더">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value || NONE_VALUE}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
         </label>
 

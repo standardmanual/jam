@@ -7,6 +7,7 @@ import { formatPaceSecPerKm } from '@/types/strava'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import BackgroundGeneratorPreview, {
   type BackgroundMode,
   type BackgroundGeneratorPreviewHandle,
@@ -46,6 +47,9 @@ interface BadgeFormProps {
 }
 
 const EMPTY_CONDITION: BadgeCondition = {}
+
+// Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
+const NONE_VALUE = '__none__'
 
 /**
  * 구운 배경 파일(정지 PNG / 반복 MP4)을 기존 업로드 API로 올리고 public URL을 돌려준다.
@@ -443,60 +447,68 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm text-[#374151]">타입 *</span>
-          <select
-            required
-            value={type}
-            onChange={(e) => setType(e.target.value as BadgeType)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
-          >
-            {BADGE_TYPES.map((t) => (
-              <option key={t} value={t} className="bg-white">{BADGE_TYPE_LABEL[t]}</option>
-            ))}
-          </select>
+          <Select value={type} onValueChange={(v) => setType(v as BadgeType)}>
+            <SelectTrigger aria-label="타입">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BADGE_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>{BADGE_TYPE_LABEL[t]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm text-[#374151]">희귀도 *</span>
-          <select
-            required
-            value={rarity}
-            onChange={(e) => setRarity(e.target.value as BadgeRarity)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
-          >
-            {RARITIES.map((r) => (
-              <option key={r} value={r} className="bg-white">{r}</option>
-            ))}
-          </select>
+          <Select value={rarity} onValueChange={(v) => setRarity(v as BadgeRarity)}>
+            <SelectTrigger aria-label="희귀도">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RARITIES.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         {/* 세계관 선택 */}
         <label className="flex flex-col gap-1.5 col-span-2">
           <span className="text-sm text-[#374151]">소속 세계관</span>
-          <select
-            value={factionId}
-            onChange={(e) => setFactionId(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
+          <Select
+            value={factionId || NONE_VALUE}
+            onValueChange={(v) => setFactionId(v === NONE_VALUE ? '' : v)}
           >
-            <option value="" className="bg-white">— 없음 —</option>
-            {factions.map((f) => (
-              <option key={f.id} value={f.id} className="bg-white">{f.name}</option>
-            ))}
-          </select>
+            <SelectTrigger aria-label="소속 세계관">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+              {factions.map((f) => (
+                <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         {/* 소속 아이템북 */}
         <label className="flex flex-col gap-1.5 col-span-2">
           <span className="text-sm text-[#374151]">소속 컬렉션</span>
-          <select
-            value={itemBookId}
-            onChange={(e) => setItemBookId(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
+          <Select
+            value={itemBookId || NONE_VALUE}
+            onValueChange={(v) => setItemBookId(v === NONE_VALUE ? '' : v)}
           >
-            <option value="" className="bg-white">— 없음 —</option>
-            {itemBooks.map((b) => (
-              <option key={b.id} value={b.id} className="bg-white">{b.name}</option>
-            ))}
-          </select>
+            <SelectTrigger aria-label="소속 컬렉션">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+              {itemBooks.map((b) => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         {/* 아이템 배지 전용 설정 */}
@@ -560,15 +572,19 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         {/* 배경 쉐이더 임시 선택 (20260818_003) — 값만 저장, 상세화면 렌더링 미연결 */}
         <div className="col-span-2 flex flex-col gap-1.5">
           <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
-          <select
-            value={backgroundShaderId}
-            onChange={(e) => setBackgroundShaderId(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 max-w-xs"
+          <Select
+            value={backgroundShaderId || NONE_VALUE}
+            onValueChange={(v) => setBackgroundShaderId(v === NONE_VALUE ? '' : v)}
           >
-            {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-white">{opt.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="max-w-xs" aria-label="배경 쉐이더">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value || NONE_VALUE}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
         </div>
 
@@ -728,16 +744,20 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-[#6b7280]">활동 종류 (조건)</span>
-              <select
-                value={condActivityType}
-                onChange={(e) => setCondActivityType(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+              <Select
+                value={condActivityType || NONE_VALUE}
+                onValueChange={(v) => setCondActivityType(v === NONE_VALUE ? '' : v)}
               >
-                <option value="" className="bg-white">— 전체 —</option>
-                {ACTIVITY_TYPES.map((t) => (
-                  <option key={t} value={t} className="bg-white">{t}</option>
-                ))}
-              </select>
+                <SelectTrigger aria-label="활동 종류 (조건)">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_VALUE}>— 전체 —</SelectItem>
+                  {ACTIVITY_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
           </div>
 
@@ -808,18 +828,22 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             </label>
             <label className="flex flex-col gap-1.5 col-span-2">
               <span className="text-xs text-[#6b7280]">계절</span>
-              <select
-                value={condSeason}
-                onChange={(e) => setCondSeason(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+              <Select
+                value={condSeason || NONE_VALUE}
+                onValueChange={(v) => setCondSeason(v === NONE_VALUE ? '' : v)}
               >
-                <option value="" className="bg-white">— 없음 —</option>
-                <option value="spring" className="bg-white">봄 (3~5월)</option>
-                <option value="summer" className="bg-white">여름 (6~8월)</option>
-                <option value="fall" className="bg-white">가을 (9~11월)</option>
-                <option value="winter" className="bg-white">겨울 (12~2월)</option>
-                <option value="all" className="bg-white">전 계절</option>
-              </select>
+                <SelectTrigger aria-label="계절">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+                  <SelectItem value="spring">봄 (3~5월)</SelectItem>
+                  <SelectItem value="summer">여름 (6~8월)</SelectItem>
+                  <SelectItem value="fall">가을 (9~11월)</SelectItem>
+                  <SelectItem value="winter">겨울 (12~2월)</SelectItem>
+                  <SelectItem value="all">전 계절</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-[#6b7280]">최저 기온 조건 (°C 이상 · 폭염)</span>

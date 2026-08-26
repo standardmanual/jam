@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { PoiCategoryRow } from '@/types/database'
 
 interface PoiFiltersProps {
@@ -26,26 +27,28 @@ export default function PoiFilters({ categories }: PoiFiltersProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-3 mb-5">
-      <select
-        value={category}
-        onChange={(e) => updateParams({ category: e.target.value })}
-        className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2 text-[#111111] text-sm focus:outline-none focus:border-[#111111]/50"
-      >
-        <option value="all" className="bg-white">전체 카테고리</option>
-        {categories.map((c) => (
-          <option key={c.slug} value={c.slug} className="bg-white">{c.label} ({c.slug})</option>
-        ))}
-      </select>
+      <Select value={category} onValueChange={(v) => updateParams({ category: v })}>
+        <SelectTrigger className="w-auto min-w-[10rem]" aria-label="카테고리 필터">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">전체 카테고리</SelectItem>
+          {categories.map((c) => (
+            <SelectItem key={c.slug} value={c.slug}>{c.label} ({c.slug})</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      <select
-        value={sort}
-        onChange={(e) => updateParams({ sort: e.target.value })}
-        className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2 text-[#111111] text-sm focus:outline-none focus:border-[#111111]/50"
-      >
-        <option value="created_desc" className="bg-white">최근 등록순</option>
-        <option value="name_asc" className="bg-white">이름 오름차순</option>
-        <option value="name_desc" className="bg-white">이름 내림차순</option>
-      </select>
+      <Select value={sort} onValueChange={(v) => updateParams({ sort: v })}>
+        <SelectTrigger className="w-auto min-w-[10rem]" aria-label="정렬">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="created_desc">최근 등록순</SelectItem>
+          <SelectItem value="name_asc">이름 오름차순</SelectItem>
+          <SelectItem value="name_desc">이름 내림차순</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   )
 }

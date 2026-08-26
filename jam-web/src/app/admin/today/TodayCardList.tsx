@@ -2,7 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { TodayCardRow, TodayCardTemplateType, TodayCardLayoutType } from '@/types/database'
+
+// Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
+const NONE_VALUE = '__none__'
 
 interface BadgeOption { id: string; name: string }
 interface MissionOption { id: string; title: string }
@@ -241,22 +245,34 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>템플릿 타입 (콘텐츠 종류)</label>
-              <select value={form.template_type}
-                onChange={(e) => {
-                  const template_type = e.target.value as TodayCardTemplateType
+              <Select
+                value={form.template_type}
+                onValueChange={(v) => {
+                  const template_type = v as TodayCardTemplateType
                   setForm((f) => ({ ...f, template_type, layout_type: suggestedLayoutFor[template_type] }))
                 }}
-                className={inputCls}>
-                {templates.map((t) => <option key={t.value} value={t.value} className="bg-white">{t.label}</option>)}
-              </select>
+              >
+                <SelectTrigger className={inputCls} aria-label="템플릿 타입">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className={labelCls}>노출 형태 (화면에 보여줄 모양)</label>
-              <select value={form.layout_type}
-                onChange={(e) => setForm((f) => ({ ...f, layout_type: e.target.value as TodayCardLayoutType }))}
-                className={inputCls}>
-                {layoutTypes.map((t) => <option key={t.value} value={t.value} className="bg-white">{t.label}</option>)}
-              </select>
+              <Select
+                value={form.layout_type}
+                onValueChange={(v) => setForm((f) => ({ ...f, layout_type: v as TodayCardLayoutType }))}
+              >
+                <SelectTrigger className={inputCls} aria-label="노출 형태">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {layoutTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -315,22 +331,36 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
           {fields.mission && (
             <div>
               <label className={labelCls}>미션 선택{form.template_type === 'progress_nudge' ? ' (선택)' : ''}</label>
-              <select value={form.mission_id} onChange={(e) => setForm((f) => ({ ...f, mission_id: e.target.value }))}
-                className={inputCls}>
-                <option value="" className="bg-white">— 없음 —</option>
-                {missions.map((m) => <option key={m.id} value={m.id} className="bg-white">{m.title}</option>)}
-              </select>
+              <Select
+                value={form.mission_id || NONE_VALUE}
+                onValueChange={(v) => setForm((f) => ({ ...f, mission_id: v === NONE_VALUE ? '' : v }))}
+              >
+                <SelectTrigger className={inputCls} aria-label="미션 선택">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+                  {missions.map((m) => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
           {fields.itemBook && (
             <div>
               <label className={labelCls}>컬렉션 선택</label>
-              <select value={form.item_book_id} onChange={(e) => setForm((f) => ({ ...f, item_book_id: e.target.value }))}
-                className={inputCls}>
-                <option value="" className="bg-white">— 없음 —</option>
-                {itemBooks.map((b) => <option key={b.id} value={b.id} className="bg-white">{b.name}</option>)}
-              </select>
+              <Select
+                value={form.item_book_id || NONE_VALUE}
+                onValueChange={(v) => setForm((f) => ({ ...f, item_book_id: v === NONE_VALUE ? '' : v }))}
+              >
+                <SelectTrigger className={inputCls} aria-label="컬렉션 선택">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+                  {itemBooks.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
