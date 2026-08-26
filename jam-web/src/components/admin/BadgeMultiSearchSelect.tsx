@@ -94,7 +94,7 @@ export default function BadgeMultiSearchSelect({
               key={b.id}
               type="button"
               onClick={() => onRemove?.(b.id)}
-              className="text-xs bg-[#111111]/10 text-[#111111] border border-[#111111]/30 rounded-lg px-2 py-1 hover:bg-[#111111]/20 transition-colors"
+              className="text-xs bg-primary/10 text-primary border border-primary/30 rounded-lg px-2 py-1 hover:bg-primary/20 transition-colors"
             >
               {b.name}
               {b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''} ✕
@@ -110,13 +110,13 @@ export default function BadgeMultiSearchSelect({
         }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder ?? '배지 이름 검색...'}
-        className="w-full bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+        className="w-full bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
       />
       {open && query.trim() && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-[#e5e7eb] rounded-lg shadow-lg max-h-64 overflow-y-auto">
-          {loading && <p className="px-3 py-2 text-xs text-[#898989]">검색 중...</p>}
+        <div className="absolute z-20 mt-1 w-full bg-white border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto">
+          {loading && <p className="px-3 py-2 text-xs text-muted-foreground">검색 중...</p>}
           {!loading && displayResults.length === 0 && (
-            <p className="px-3 py-2 text-xs text-[#898989]">검색 결과가 없습니다.</p>
+            <p className="px-3 py-2 text-xs text-muted-foreground">검색 결과가 없습니다.</p>
           )}
           {!loading &&
             displayResults.map((b) => (
@@ -124,11 +124,11 @@ export default function BadgeMultiSearchSelect({
                 key={b.id}
                 type="button"
                 onClick={() => pick(b)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-[#f8f9fa] transition-colors"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
               >
-                {b.name} <span className="text-[#898989] text-xs">[{b.type}/{b.rarity}]</span>
+                {b.name} <span className="text-muted-foreground text-xs">[{b.type}/{b.rarity}]</span>
                 {b.point_reward > 0 && (
-                  <span className="text-[#898989] text-xs"> (+{b.point_reward}P)</span>
+                  <span className="text-muted-foreground text-xs"> (+{b.point_reward}P)</span>
                 )}
               </button>
             ))}

@@ -31,11 +31,22 @@ const AlertDialogOverlay = React.forwardRef<
 ))
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 
+interface AlertDialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content> {
+  /**
+   * Radix Portal이 렌더링될 DOM 컨테이너. 지정하지 않으면 `document.body`(기본값)로
+   * 포털된다. shadcn 어드민 테마 실값은 `[data-admin-theme]` 스코프 안에만 존재하므로
+   * (globals.css 참고), 테마 토큰에 의존하는 얼럿 다이얼로그는 이 prop으로 admin 스코프
+   * 노드를 명시해야 스타일이 정상 적용된다 (sheet.tsx와 동일 패턴, 20260826_016).
+   */
+  container?: React.ComponentProps<typeof AlertDialogPortal>["container"]
+}
+
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
+  AlertDialogContentProps
+>(({ className, container, ...props }, ref) => (
+  <AlertDialogPortal container={container}>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}

@@ -67,11 +67,22 @@ const SelectScrollDownButton = React.forwardRef<
 SelectScrollDownButton.displayName =
   SelectPrimitive.ScrollDownButton.displayName
 
+interface SelectContentProps
+  extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> {
+  /**
+   * Radix Portal이 렌더링될 DOM 컨테이너. 지정하지 않으면 `document.body`(기본값)로
+   * 포털된다. shadcn 어드민 테마 실값은 `[data-admin-theme]` 스코프 안에만 존재하므로
+   * (globals.css 참고), 테마 토큰(bg-popover 등)에 의존하는 셀렉트 드롭다운은 이 prop으로
+   * admin 스코프 노드를 명시해야 스타일이 정상 적용된다 (sheet.tsx와 동일 패턴, 20260826_016).
+   */
+  container?: React.ComponentProps<typeof SelectPrimitive.Portal>["container"]
+}
+
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
+  SelectContentProps
+>(({ className, children, position = "popper", container, ...props }, ref) => (
+  <SelectPrimitive.Portal container={container}>
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
