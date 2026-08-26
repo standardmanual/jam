@@ -1,6 +1,16 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useMemo, useState } from 'react'
+import {
+  createColumnHelper,
+  useTable,
+  type ColumnVisibilityState,
+  type SortingState,
+} from '@tanstack/react-table'
+import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
+import { DataTable } from '@/components/admin/data-table/data-table'
+import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
+import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import type { CombinationRecipeRow } from '@/types/database'
 
 interface RecipeTableProps {
@@ -10,69 +20,121 @@ interface RecipeTableProps {
   onDelete: (id: string) => void
 }
 
+const columnHelper = createColumnHelper<DataTableFeatures, CombinationRecipeRow>()
+
 /**
- * 레시피 목록 테이블 — `RecipeList.tsx`의 저작 폼과 분리된 자식 컴포넌트 (20260826_011 A3).
- * `React.memo`로 감싸 저작 폼에 입력할 때마다 목록 전체가 리렌더되는 걸 막는다.
+ * 레시피 목록 테이블(20260826_015) — `RecipeList.tsx`의 저작 폼과 분리된 자식 컴포넌트로,
+ * 3단계a 공용 Data Table 컴포넌트로 전환했다. 33건 규모라 서버 페이지네이션은 두지 않는다
+ * (사전 조사 결과). 레시피는 하드 DELETE만 있고(`is_public`은 삭제/비활성화가 아니라
+ * 재료 공개 여부) 소프트 삭제 개념이 없어 행 선택/일괄 액션은 이 화면 범위에서 제외한다
+ * (20260826_015 티켓 판단, 완료 기록 참고).
  */
 function RecipeTableInner({ recipes, badgeMap, onEdit, onDelete }: RecipeTableProps) {
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
+
+  const columns = useMemo(
+    () => columnHelper.columns([
+      columnHelper.display({
+        id: 'ingredients',
+        header: '재료',
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <span className="text-sm">
+            {row.original.ingredient_badge_ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(' + ')}
+          </span>
+        ),
+      }),
+      columnHelper.accessor('required_activity_badge_id', {
+        id: 'requiredActivity',
+        header: '필수 액티비티',
+        enableSorting: false,
+        meta: { label: '필수 액티비티' },
+        cell: ({ getValue }) => {
+          const id = getValue()
+          return <span className="text-xs text-muted-foreground">{id ? badgeMap.get(id) ?? '—' : '—'}</span>
+        },
+      }),
+      columnHelper.accessor('result_badge_id', {
+        id: 'result',
+        header: '결과',
+        enableSorting: false,
+        meta: { label: '결과' },
+        cell: ({ getValue }) => {
+          const id = getValue()
+          return id ? (
+            <span className="text-sm">{badgeMap.get(id) ?? '—'}</span>
+          ) : (
+            <span className="text-xs text-red-600">결과 미지정</span>
+          )
+        },
+      }),
+      columnHelper.accessor('success_rate', {
+        id: 'successRate',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="성공률" />,
+        meta: { label: '성공률' },
+        cell: ({ getValue }) => <span>{Math.round(getValue() * 100)}%</span>,
+      }),
+      columnHelper.accessor('is_public', {
+        id: 'isPublic',
+        header: '공개',
+        enableSorting: false,
+        meta: { label: '공개' },
+        cell: ({ getValue }) => {
+          const isPublic = getValue()
+          return (
+            <span className={`text-xs px-2 py-0.5 rounded-full ${isPublic ? 'bg-emerald-50 text-emerald-600' : 'bg-neutral-100 text-neutral-500'}`}>
+              {isPublic ? '공개' : '비공개'}
+            </span>
+          )
+        },
+      }),
+      columnHelper.accessor('hint_text', {
+        id: 'hint',
+        header: '힌트',
+        enableSorting: false,
+        meta: { label: '힌트' },
+        cell: ({ getValue }) => (
+          <span className="text-xs text-muted-foreground max-w-[200px] block truncate">{getValue() ?? '—'}</span>
+        ),
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: '',
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-3">
+            <button onClick={() => onEdit(row.original)} className="text-xs hover:opacity-70">
+              수정
+            </button>
+            <button onClick={() => onDelete(row.original.id)} className="text-xs text-red-600 hover:text-red-700">
+              삭제
+            </button>
+          </div>
+        ),
+      }),
+    ]),
+    [badgeMap, onEdit, onDelete]
+  )
+
+  const table = useTable({
+    features: dataTableFeatures,
+    data: recipes,
+    columns,
+    getRowId: (row) => row.id,
+    state: { sorting, columnVisibility },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+  })
+
   return (
-    <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
-            <th className="px-5 py-3 font-medium">재료</th>
-            <th className="px-5 py-3 font-medium">필수 액티비티</th>
-            <th className="px-5 py-3 font-medium">결과</th>
-            <th className="px-5 py-3 font-medium">성공률</th>
-            <th className="px-5 py-3 font-medium">공개</th>
-            <th className="px-5 py-3 font-medium">힌트</th>
-            <th className="px-5 py-3" />
-          </tr>
-        </thead>
-        <tbody>
-          {recipes.length === 0 && (
-            <tr><td colSpan={7} className="px-5 py-10 text-center text-[#898989]">레시피 없음</td></tr>
-          )}
-          {recipes.map((r) => (
-            <tr key={r.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
-              <td className="px-5 py-3 text-[#374151]">
-                {r.ingredient_badge_ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(' + ')}
-              </td>
-              <td className="px-5 py-3 text-[#6b7280] text-xs">
-                {r.required_activity_badge_id ? (badgeMap.get(r.required_activity_badge_id) ?? '—') : '—'}
-              </td>
-              <td className="px-5 py-3">
-                {r.result_badge_id ? (badgeMap.get(r.result_badge_id) ?? '—') : (
-                  <span className="text-red-600 text-xs">결과 미지정</span>
-                )}
-              </td>
-              <td className="px-5 py-3 text-[#374151]">{Math.round(r.success_rate * 100)}%</td>
-              <td className="px-5 py-3">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${r.is_public ? 'bg-emerald-50 text-emerald-600' : 'bg-[#f3f4f6] text-[#6b7280]'}`}>
-                  {r.is_public ? '공개' : '비공개'}
-                </span>
-              </td>
-              <td className="px-5 py-3 text-[#6b7280] text-xs max-w-[200px] truncate">{r.hint_text ?? '—'}</td>
-              <td className="px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => onEdit(r)}
-                    className="text-[#374151] hover:text-[#111111] text-xs"
-                  >
-                    수정
-                  </button>
-                  <button
-                    onClick={() => onDelete(r.id)}
-                    className="text-red-600 hover:text-red-700 text-xs"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <DataTableViewOptions table={table} />
+      </div>
+      <DataTable table={table} columnCount={columns.length} emptyMessage="레시피 없음" />
     </div>
   )
 }

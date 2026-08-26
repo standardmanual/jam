@@ -1,17 +1,12 @@
-import Link from 'next/link'
 import { getPointsSummary } from '@/lib/points/summary'
 import AdminUserSearch from './AdminUserSearch'
+import { RankingTable } from './RankingTable'
+import { HighValueTable } from './HighValueTable'
 
 export const dynamic = 'force-dynamic'
 
 function fmt(n: number): string {
   return n.toLocaleString('ko-KR')
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('ko-KR', {
-    year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
-  })
 }
 
 export default async function AdminPointsPage() {
@@ -45,45 +40,15 @@ export default async function AdminPointsPage() {
 
       {/* 발행량 순위 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <RankingTable title="배지별 발행량" rows={s.badgeRanking} href={(id) => `/admin/badges/${id}`} />
-        <RankingTable title="미션별 발행량" rows={s.missionRanking} href={() => `/admin/missions`} />
+        <RankingTable title="배지별 발행량" rows={s.badgeRanking} hrefBase="/admin/badges" linkPerItem />
+        <RankingTable title="미션별 발행량" rows={s.missionRanking} hrefBase="/admin/missions" linkPerItem={false} />
       </div>
 
       {/* 최근 고액 지급/회수 */}
       <div>
         <h2 className="text-lg font-bold mb-1">최근 고액 지급/회수</h2>
         <p className="text-[#6b7280] text-xs mb-3">기준액({fmt(s.highValueThreshold)}P) 이상 원장 최근 20건 (사후 감사)</p>
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
-                <th className="px-5 py-3 font-medium">유저</th>
-                <th className="px-5 py-3 font-medium">금액</th>
-                <th className="px-5 py-3 font-medium">사유</th>
-                <th className="px-5 py-3 font-medium">일시</th>
-              </tr>
-            </thead>
-            <tbody>
-              {s.recentHighValue.length === 0 && (
-                <tr><td colSpan={4} className="px-5 py-8 text-center text-[#898989]">해당 없음</td></tr>
-              )}
-              {s.recentHighValue.map((h) => (
-                <tr key={h.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
-                  <td className="px-5 py-3">
-                    <Link href={`/admin/users/${h.user_id}`} className="hover:text-[#111111] transition-colors">
-                      {h.username ?? h.user_id.slice(0, 8)}
-                    </Link>
-                  </td>
-                  <td className={`px-5 py-3 font-bold ${h.amount > 0 ? 'text-[#111111]' : 'text-red-600'}`}>
-                    {h.amount > 0 ? '+' : '−'}{fmt(Math.abs(h.amount))}P
-                  </td>
-                  <td className="px-5 py-3 text-[#374151]">{h.label}</td>
-                  <td className="px-5 py-3 text-[#6b7280] text-xs whitespace-nowrap">{formatDate(h.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <HighValueTable rows={s.recentHighValue} />
       </div>
 
       {/* 유저 지급/회수 */}
@@ -100,38 +65,6 @@ function SummaryCard({ label, value, accent }: { label: string; value: string; a
     <div className={`rounded-2xl border p-5 ${accent ? 'bg-[#111111]/10 border-[#111111]/30' : 'bg-white border-[#e5e7eb]'}`}>
       <p className="text-xs text-[#6b7280] mb-1">{label}</p>
       <p className={`text-xl font-bold ${accent ? 'text-[#111111]' : 'text-[#111111]'}`}>{value}</p>
-    </div>
-  )
-}
-
-function RankingTable({
-  title, rows, href,
-}: {
-  title: string
-  rows: { id: string; name: string; total: number }[]
-  href: (id: string) => string
-}) {
-  return (
-    <div>
-      <h2 className="text-lg font-bold mb-3">{title}</h2>
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <tbody>
-            {rows.length === 0 && (
-              <tr><td className="px-5 py-8 text-center text-[#898989]">발행 내역 없음</td></tr>
-            )}
-            {rows.map((r, i) => (
-              <tr key={r.id} className="border-b border-[#f3f4f6] last:border-0 hover:bg-[#f8f9fa]">
-                <td className="px-5 py-3 text-[#898989] w-8">{i + 1}</td>
-                <td className="px-5 py-3">
-                  <Link href={href(r.id)} className="hover:text-[#111111] transition-colors">{r.name}</Link>
-                </td>
-                <td className="px-5 py-3 text-right font-bold text-[#111111]">{r.total.toLocaleString('ko-KR')}P</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }
