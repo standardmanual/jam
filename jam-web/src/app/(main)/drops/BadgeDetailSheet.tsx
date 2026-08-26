@@ -118,7 +118,7 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
   }, [actionsEl, contentEl])
 
   return (
-    <BottomSheet open onClose={onCancel} detent="full" showCloseButton={false}>
+    <BottomSheet open onClose={onCancel} detent="full">
       <div
         ref={setContentEl}
         className="px-[var(--spacing-16)] pt-[var(--spacing-8)] flex flex-col gap-[var(--spacing-24)] min-h-full"

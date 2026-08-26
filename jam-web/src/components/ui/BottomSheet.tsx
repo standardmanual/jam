@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { IconButton } from '@ds/components/buttons/IconButton'
 import { cssDurationMs } from '@/lib/motion'
 import { pushBottomOverlay } from '@/lib/uiOverlay'
 
@@ -21,8 +20,6 @@ interface BottomSheetProps {
   children: ReactNode
   /** compact: 콘텐츠 높이만큼(최대 75vh) / full: 화면 대부분을 채우는 큰 디텐트 */
   detent?: 'compact' | 'full'
-  showCloseButton?: boolean
-  closeLabel?: string
   /**
    * 스크롤 영역 밖, 시트 맨 아래에 항상 고정으로 보여줄 콘텐츠(주로 액션 버튼).
    *
@@ -88,8 +85,6 @@ export default function BottomSheet({
   title,
   children,
   detent = 'compact',
-  showCloseButton = true,
-  closeLabel = '닫기',
   footer,
   topGapPx,
   footerBottomInset = 'tabbar',
@@ -227,7 +222,7 @@ export default function BottomSheet({
     velocitySamplesRef.current = []
   }
 
-  const hasHeader = Boolean(title) || showCloseButton
+  const hasHeader = Boolean(title)
 
   /*
     20260825_039: 시트를 호출부 자리에 그대로 렌더하면, 조상에 스태킹 컨텍스트를 만드는 요소
@@ -287,13 +282,8 @@ export default function BottomSheet({
         </div>
 
         {hasHeader && (
-          <div className="flex items-center justify-between px-[var(--spacing-24)] pb-[var(--spacing-16)] shrink-0">
-            {title ? (
-              <h2 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{title}</h2>
-            ) : (
-              <span />
-            )}
-            {showCloseButton && <IconButton icon="close" label={closeLabel} onClick={onClose} />}
+          <div className="px-[var(--spacing-24)] pb-[var(--spacing-16)] shrink-0">
+            <h2 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{title}</h2>
           </div>
         )}
 

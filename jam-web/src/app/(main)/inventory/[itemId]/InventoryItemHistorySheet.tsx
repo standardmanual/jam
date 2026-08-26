@@ -82,7 +82,6 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
         open={open}
         onClose={() => setOpen(false)}
         title={d.inventory.historyTitle}
-        closeLabel={d.common.close}
       >
         <div className="px-[var(--spacing-24)] py-[var(--spacing-16)]">
           {error ? (
