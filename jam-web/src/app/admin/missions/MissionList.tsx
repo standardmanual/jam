@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { MissionRow } from '@/types/database'
 import { MISSION_TYPES, MISSION_TYPE_LABEL, missionTypeLabel } from '@/lib/admin/badge-labels'
 import ImageUploadField from '@/components/admin/ImageUploadField'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface BadgeOption {
   id: string
@@ -198,18 +199,26 @@ export default function MissionList({ missions, completionCounts, badges }: Prop
 
             <div>
               <label className="text-xs text-[#6b7280] mb-1 block">미션 타입</label>
-              <select value={form.mission_type} onChange={(e) => setForm((f) => ({ ...f, mission_type: e.target.value }))}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm">
-                {MISSION_TYPES.map((t) => <option key={t} value={t}>{MISSION_TYPE_LABEL[t]}</option>)}
-              </select>
+              <Select value={form.mission_type} onValueChange={(v) => setForm((f) => ({ ...f, mission_type: v }))}>
+                <SelectTrigger className="w-full" aria-label="미션 타입">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MISSION_TYPES.map((t) => <SelectItem key={t} value={t}>{MISSION_TYPE_LABEL[t]}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
               <label className="text-xs text-[#6b7280] mb-1 block">미션 상황 표시 방식</label>
-              <select value={form.status_display_type} onChange={(e) => setForm((f) => ({ ...f, status_display_type: e.target.value }))}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm">
-                {statusDisplayTypes.map((t) => <option key={t.value} value={t.value} className="bg-white">{t.label}</option>)}
-              </select>
+              <Select value={form.status_display_type} onValueChange={(v) => setForm((f) => ({ ...f, status_display_type: v }))}>
+                <SelectTrigger className="w-full" aria-label="미션 상황 표시 방식">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusDisplayTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
               <p className="text-[#898989] text-xs mt-1">
                 {form.mission_type === 'checkin' || form.mission_type === 'item_collect' ? '추천: 달성형' : '추천: 랭킹형'}
               </p>

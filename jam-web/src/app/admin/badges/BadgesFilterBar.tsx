@@ -40,9 +40,6 @@ const ACTIVITY_TYPE_OPTIONS = [
   { value: 'walking', label: '걷기' },
 ]
 
-const SELECT_CLASS =
-  'bg-white border border-[#e5e7eb] rounded-xl px-4 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50 cursor-pointer'
-
 // 타입 변경 시 초기화할 서브 필터 파라미터
 const SUB_FILTER_KEYS = ['activity_type', 'poi_category', 'faction_id', 'item_book_id']
 
@@ -140,105 +137,121 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
       {/* 필터 + 정렬 */}
       <div className="flex flex-wrap items-center gap-3">
         {/* 타입 */}
-        <select
-          className={SELECT_CLASS}
-          value={currentType}
-          onChange={(e) => handleTypeChange(e.target.value)}
-        >
-          {TYPE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value} className="bg-white">
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Select value={currentType} onValueChange={handleTypeChange}>
+          <SelectTrigger className="w-auto min-w-[8rem]" aria-label="타입 필터">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {TYPE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* 액티비티 서브 필터 */}
         {currentType === 'activity' && (
-          <select
-            className={SELECT_CLASS}
+          <Select
             value={searchParams.get('activity_type') ?? 'all'}
-            onChange={(e) => update({ activity_type: e.target.value })}
+            onValueChange={(v) => update({ activity_type: v })}
           >
-            {ACTIVITY_TYPE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value} className="bg-white">
-                {o.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-auto min-w-[8rem]" aria-label="액티비티 필터">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ACTIVITY_TYPE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
 
         {/* 지점 카테고리 서브 필터 — 체크인 배지는 연결된 지점(poi.category)으로만 분류된다 */}
         {currentType === 'checkin' && (
-          <select
-            className={SELECT_CLASS}
+          <Select
             value={searchParams.get('poi_category') ?? 'all'}
-            onChange={(e) => update({ poi_category: e.target.value })}
+            onValueChange={(v) => update({ poi_category: v })}
           >
-            <option value="all" className="bg-white">전체 카테고리</option>
-            {poiCategories.map((c) => (
-              <option key={c.slug} value={c.slug} className="bg-white">
-                {c.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-auto min-w-[8rem]" aria-label="지점 카테고리 필터">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체 카테고리</SelectItem>
+              {poiCategories.map((c) => (
+                <SelectItem key={c.slug} value={c.slug}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
 
         {/* 아이템 서브 필터: 세계관 + 아이템북 */}
         {currentType === 'item' && (
           <>
-            <select
-              className={SELECT_CLASS}
-              value={currentFactionId}
-              onChange={(e) => handleFactionChange(e.target.value)}
-            >
-              <option value="all" className="bg-white">전체 세계관</option>
-              {factions.map((f) => (
-                <option key={f.id} value={f.id} className="bg-white">
-                  {f.name}
-                </option>
-              ))}
-            </select>
+            <Select value={currentFactionId} onValueChange={handleFactionChange}>
+              <SelectTrigger className="w-auto min-w-[8rem]" aria-label="세계관 필터">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 세계관</SelectItem>
+                {factions.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <select
-              className={SELECT_CLASS}
+            <Select
               value={searchParams.get('item_book_id') ?? 'all'}
-              onChange={(e) => update({ item_book_id: e.target.value })}
+              onValueChange={(v) => update({ item_book_id: v })}
             >
-              <option value="all" className="bg-white">전체 컬렉션</option>
-              {filteredItemBooks.map((b) => (
-                <option key={b.id} value={b.id} className="bg-white">
-                  {b.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-auto min-w-[8rem]" aria-label="컬렉션 필터">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 컬렉션</SelectItem>
+                {filteredItemBooks.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </>
         )}
 
         {/* 등급 */}
-        <select
-          className={SELECT_CLASS}
-          value={searchParams.get('rarity') ?? 'all'}
-          onChange={(e) => update({ rarity: e.target.value })}
-        >
-          {RARITY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value} className="bg-white">
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Select value={searchParams.get('rarity') ?? 'all'} onValueChange={(v) => update({ rarity: v })}>
+          <SelectTrigger className="w-auto min-w-[7rem]" aria-label="등급 필터">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {RARITY_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* 정렬 */}
-        <select
-          className={SELECT_CLASS}
-          value={searchParams.get('sort') ?? 'created_desc'}
-          onChange={(e) => update({ sort: e.target.value })}
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value} className="bg-white">
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Select value={searchParams.get('sort') ?? 'created_desc'} onValueChange={(v) => update({ sort: v })}>
+          <SelectTrigger className="w-auto min-w-[8rem]" aria-label="정렬">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* 상태 (활성/비활성/전체) */}
         <Select value={currentStatus} onValueChange={handleStatusChange}>

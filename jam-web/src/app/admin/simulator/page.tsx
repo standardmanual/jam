@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
 
@@ -343,15 +344,16 @@ export default function SimulatorPage() {
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm text-[#374151]">활동 종류</span>
-                <select
-                  value={activityType}
-                  onChange={(e) => setActivityType(e.target.value as ActivityType)}
-                  className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
-                >
-                  {(['cycling', 'running', 'trail_running', 'hiking', 'walking'] as ActivityType[]).map((t) => (
-                    <option key={t} value={t} className="bg-white">{t}</option>
-                  ))}
-                </select>
+                <Select value={activityType} onValueChange={(v) => setActivityType(v as ActivityType)}>
+                  <SelectTrigger aria-label="활동 종류">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(['cycling', 'running', 'trail_running', 'hiking', 'walking'] as ActivityType[]).map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm text-[#374151]">활동 횟수 배수</span>

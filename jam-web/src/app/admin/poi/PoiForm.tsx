@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { PoiRow, PoiCategory, PoiCategoryRow } from '@/types/database'
 import type { NaverSearchResult } from '@/lib/poi/naver'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface PoiFormProps {
   poi?: PoiRow
@@ -204,16 +205,16 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-sm text-[#374151]">카테고리 *</span>
-          <select
-            required
-            value={category}
-            onChange={(e) => setCategory(e.target.value as PoiCategory)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
-          >
-            {categories.map((c) => (
-              <option key={c.slug} value={c.slug} className="bg-white">{c.label} ({c.slug})</option>
-            ))}
-          </select>
+          <Select value={category} onValueChange={(v) => setCategory(v as PoiCategory)}>
+            <SelectTrigger aria-label="카테고리">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c.slug} value={c.slug}>{c.label} ({c.slug})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
       </div>
 

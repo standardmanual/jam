@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { PoiCategoryRow } from '@/types/database'
 
 interface CategoryManagerProps {
@@ -177,14 +178,15 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm text-[#374151]">티어</span>
-              <select
-                value={tier}
-                onChange={(e) => setTier(Number(e.target.value) as 1 | 2)}
-                className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] text-sm focus:outline-none focus:border-[#111111]/50"
-              >
-                <option value={1} className="bg-white">티어 1 — 항상 검색</option>
-                <option value={2} className="bg-white">티어 2 — 티어1 부족 시 보조 검색</option>
-              </select>
+              <Select value={String(tier)} onValueChange={(v) => setTier(Number(v) as 1 | 2)}>
+                <SelectTrigger aria-label="티어">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">티어 1 — 항상 검색</SelectItem>
+                  <SelectItem value="2">티어 2 — 티어1 부족 시 보조 검색</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5 flex-1 min-w-[220px]">
               <span className="text-sm text-[#374151]">키워드 (콤마로 구분) *</span>
@@ -253,14 +255,18 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                   <td className="px-5 py-3 whitespace-nowrap">
                     {isEditing && editState ? (
                       editState.pipelineLinked ? (
-                        <select
-                          value={editState.tier}
-                          onChange={(e) => setEditState({ ...editState, tier: Number(e.target.value) as 1 | 2 })}
-                          className="bg-white border border-[#e5e7eb] rounded-lg px-2 py-1.5 text-[#111111] text-xs focus:outline-none focus:border-[#111111]/50"
+                        <Select
+                          value={String(editState.tier)}
+                          onValueChange={(v) => setEditState({ ...editState, tier: Number(v) as 1 | 2 })}
                         >
-                          <option value={1} className="bg-white">티어 1</option>
-                          <option value={2} className="bg-white">티어 2</option>
-                        </select>
+                          <SelectTrigger className="h-auto px-2 py-1.5 text-xs" aria-label="티어">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">티어 1</SelectItem>
+                            <SelectItem value="2">티어 2</SelectItem>
+                          </SelectContent>
+                        </Select>
                       ) : (
                         <span className="text-[#898989] text-xs">—</span>
                       )

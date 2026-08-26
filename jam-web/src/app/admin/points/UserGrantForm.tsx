@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ADMIN_REASONS, HIGH_VALUE_THRESHOLD, type AdminReasonValue } from '@/lib/points/reasons'
 import type { AdminUserPointHistoryItem } from '@/app/api/admin/points/route'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Props {
   userId: string
@@ -176,15 +177,16 @@ export default function UserGrantForm({ userId, username }: Props) {
         {/* 사유 */}
         <label className="flex flex-col gap-1.5 col-span-2">
           <span className="text-xs text-[#6b7280]">사유</span>
-          <select
-            value={reasonLabel}
-            onChange={(e) => setReasonLabel(e.target.value as AdminReasonValue)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
-          >
-            {ADMIN_REASONS.map((r) => (
-              <option key={r.value} value={r.value} className="bg-white">{r.label}</option>
-            ))}
-          </select>
+          <Select value={reasonLabel} onValueChange={(v) => setReasonLabel(v as AdminReasonValue)}>
+            <SelectTrigger aria-label="사유">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ADMIN_REASONS.map((r) => (
+                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         {/* 기타 자유 입력 */}
