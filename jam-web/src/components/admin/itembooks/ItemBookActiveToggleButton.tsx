@@ -2,7 +2,7 @@
 
 import { useState, type MouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/shadcn-button'
+import { Button } from '@/components/admin/ui/button'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
-} from '@/components/ui/alert-dialog'
+} from '@/components/admin/ui/alert-dialog'
 
 interface ItemBookActiveToggleButtonProps {
   itemBookId: string

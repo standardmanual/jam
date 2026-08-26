@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Button } from '@/components/ui/shadcn-button'
+import { Button } from '@/components/admin/ui/button'
 import {
   Table,
   TableBody,
@@ -10,7 +10,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/components/admin/ui/table'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
 import type { BadgeListRow } from './BadgeList'
