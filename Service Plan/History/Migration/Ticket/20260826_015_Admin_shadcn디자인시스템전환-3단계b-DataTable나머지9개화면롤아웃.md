@@ -1,8 +1,9 @@
 ---
 id: 20260826_015
 category: Admin
-status: OPEN
+status: CLOSED
 created: 2026-08-26
+closed: 2026-08-26
 ---
 
 # [Admin] shadcn 디자인시스템 전환 — 3단계b: Data Table 나머지 9개 화면 롤아웃
@@ -150,3 +151,23 @@ Components`)이 났다 — TanStack 타입 체커로는 잡히지 않고 런타�
 
 `PHASES.md`의 "Phase 3" 절에 3단계b 완료(리뷰 대기) 상태와 화면별 적용 현황 표, 함정 노트를
 함께 기록했다.
+
+## 승인 처리 (2026-08-26)
+
+게이트 리뷰 **PASS**. 오케스트레이터가 실제 브라우저로 `/admin/points`(사이드바 하이라이트
+버그 재현 확인)와 `/admin/itembooks`(Data Table 렌더링·체크박스·정렬·필터 정상) 직접 확인 후
+병합 승인.
+
+**범위 밖 발견물(sideFindings) 처리**: 게이트가 보고한 3건 중 2건은 실제 버그로 판단해
+사용자 승인 후 별도 작업으로 분리했다(`spawn_task`):
+1. 사이드바 활성 메뉴 접두어 오매칭(`/admin/points`가 `/admin/poi`로 잘못 하이라이트) — 2단계
+   산출물의 기존 버그, 3단계b가 발견만 함
+2. `PUT /api/admin/factions/[id]` 부분 body 시 배경 미디어 필드 유실 — 기존 버그, 3단계b의
+   세계관 일괄 액션 구현 중 발견해 그 호출부만 전체 필드 스프레드로 우회, 다른 호출부는
+   여전히 취약
+3. 포인트 정합성 오류 배너는 기존 실데이터 상태라 조치 불필요(정보성)
+
+### 배포 정보
+- 배포일: (staging 반영만 완료, 프로덕션 미배포)
+- 환경: staging
+- 커밋: `claude/jamwork-20260826_015-admin-datatable-rollout` → staging 병합
