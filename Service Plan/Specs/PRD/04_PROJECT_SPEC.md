@@ -37,7 +37,7 @@ jam-web/
 │   │   ├── (main)/             # badges, collections, combine, drops, inventory,
 │   │   │                       # missions, onboarding, points, profile, search,
 │   │   │                       # today, [username] 등
-│   │   ├── admin/               # abusing, badges, combine-policy,
+│   │   ├── admin/               # abusing, ambient-drop, badges, combine-policy,
 │   │   │                       # drop-policy, factions, itembooks, missions, poi,
 │   │   │                       # points, recipes, simulator, theme, today, users
 │   │   ├── api/                 # admin, combine, cron, drops, follows, inventory,
@@ -53,6 +53,7 @@ jam-web/
 │   │   ├── strava/              # Strava API 래퍼
 │   │   ├── badge-engine/        # 액티비티배지 엔진 (+__tests__)
 │   │   ├── drop-engine/         # 드랍엔진 v2 (+__tests__)
+│   │   ├── ambient-drop/        # 앰비언트(시스템) POI 드랍 엔진 (+__tests__)
 │   │   ├── combine/             # 아이템 조합 엔진
 │   │   ├── missions/            # 미션 시스템 (+__tests__)
 │   │   ├── points/              # 포인트 시스템 (+__tests__)
@@ -90,10 +91,11 @@ jam-web/
 |------|------------|------|
 | `/api/cron/poi-cleanup` | 매일 00:00 | 만료된 유저 드랍 소각(30일 만료) |
 | `/api/cron/notifications` | 매일 09:00 | 알림(소식) T2 배치 생성 — KST 18:00 |
+| `/api/cron/ambient-drop` | 매일 18:00 | 앰비언트(시스템) POI 드랍 배치 — `ambient_drop_config.auto_enabled`가 꺼져 있으면 no-op |
 
 > **2026-08-10 제거**: `/api/cron/reconcile`(Strava 활동 소급 재점검, 매일 12:00)은 API 호출량 절감을 위해 완전히 삭제됐다. 이 크론이 완충하던 "동기화 실패 시 커서(`last_synced_at`)가 잘못 전진해 이후 재시도까지 과거 활동을 영영 놓치는" 문제는 근본 수정으로 대체했다 — `syncStravaActivities` 처리 중 예외 발생 시 `last_synced_at`을 롤백하고, OAuth 콜백의 즉시 동기화 호출도 fire-and-forget에서 `await`로 변경(서버리스 강제 종료로 처리가 끊기는 것 방지). 상세: [History/Migration/Ticket/20260810_002](../../History/Migration/Ticket/20260810_002_Service_reconcile-크론-제거-및-동기화-커서-롤백.md).
 
-> **2026-08-25 제거**: `/api/cron/ambient-drop-monitor`(앰비언트 드랍 보충, 매일 18:00)는 앰비언트(시스템) 드랍 기능이 전면 제거되면서 함께 삭제됐다. **미완성이라 지운 것이 아니다** — 정책·어드민 화면까지 갖춰져 있었고, `source='system'` 행이 0건이었던 것은 미들웨어가 `/api/cron/*`를 307로 가로채 cron이 실행되지 않았기 때문이었다([20260825_003](../../History/Migration/Ticket/20260825_003_bug_미들웨어가-cron-요청을-차단.md)에서 수정). 관측과 무관한 제품 결정이다. 상세: [History/Migration/Ticket/20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md).
+> **2026-08-25 제거 → 2026-08-26 재도입**: `/api/cron/ambient-drop-monitor`(앰비언트 드랍 보충, 매일 18:00)는 앰비언트(시스템) 드랍 기능이 전면 제거되면서 한 차례 삭제됐다. **미완성이라 지운 것이 아니었다** — 정책·어드민 화면까지 갖춰져 있었고, `source='system'` 행이 0건이었던 것은 미들웨어가 `/api/cron/*`를 307로 가로채 cron이 실행되지 않았기 때문이었다([20260825_003](../../History/Migration/Ticket/20260825_003_bug_미들웨어가-cron-요청을-차단.md)에서 수정). 관측과 무관한 제품 결정이었다(상세: [History/Migration/Ticket/20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md)). 그 뒤 드랍엔진 v2·컨텐츠·POI 체계가 성숙한 것을 반영해 **옛 커버리지 목표치 모델을 복원하지 않고 카테고리/등급비율/대상컬렉션 3축(명시 또는 무작위) 배치 모델로 재설계해 `/api/cron/ambient-drop`로 재도입**했다. 상세: [History/Migration/Ticket/20260826_009](../../History/Migration/Ticket/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
 
 > **2026-08-24 제거**: `/api/cron/wandering`(신화 아이템 재배치, 매일 06:00)은 해당 기능 자체가 전면 제거되면서 함께 삭제됐다. 스키마·Cron만 있고 컨텐츠가 한 번도 붙지 않아 프로덕션 실사용이 0건이었다. 상세: [History/Migration/Ticket/20260824_017](../../History/Migration/Ticket/20260824_017_Infra_떠돌이신화-기능-전면제거.md).
 
