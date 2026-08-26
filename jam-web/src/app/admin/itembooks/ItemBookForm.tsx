@@ -9,8 +9,8 @@ import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
-import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/admin/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
-} from '@/components/ui/alert-dialog'
+} from '@/components/admin/ui/alert-dialog'
 import type {
   BackgroundMode,
   BackgroundGeneratorPreviewHandle,

@@ -1,7 +1,7 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
-import { Badge } from '@/components/ui/shadcn-badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
+import { Badge } from '@/components/admin/ui/badge'
 import type { ItemBookRow } from '@/types/database'
 
 interface ItemBookDetailProps {
