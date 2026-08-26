@@ -73,7 +73,7 @@ jam-web/src/app/(main)/FeedSection.tsx
 
 ### 테스트 결과
 - [x] `npx tsc --noEmit` 통과 (FeedSection.tsx 관련 에러 없음)
-- [ ] 실기기/브라우저 육안 확인 (아래 검증 방법 참고, 미실행)
+- [ ] 실기기/브라우저 육안 확인 — staging 배포 후 `jam-stage.vercel.app`에서 확인 필요
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -87,12 +87,15 @@ jam-web/src/app/(main)/FeedSection.tsx
 - [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-26
+- 환경: staging
+- 커밋: review 브랜치 `claude/jamwork-20260826_008-feedsection-x-remove` (커밋 81617386) staging 병합
 
 ### 주요 의사결정 / 핵심 메모
-> 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+- 게이트 리뷰에서 배지 이벤트 케이스는 X 제거 후 하단 버튼이 "자세히"(닫기 아님)라 백드롭 클릭만
+  유일한 닫기 수단이 되는 점, 드래그 핸들 바가 실제 드래그 기능 없는 장식이라는 점이 인터랙션
+  리뷰에서 제안형으로 지적됨 — 사용자가 사용성 저하를 명시적으로 감수하기로 한 작업이라 이번
+  범위에서는 되돌리지 않고 참고용으로만 남김.
 
 ### 잔여 이슈
 -
