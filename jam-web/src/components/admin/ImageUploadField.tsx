@@ -67,13 +67,13 @@ export default function ImageUploadField({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-sm text-[#374151]">
+      <span className="text-sm text-foreground">
         {label} {required && '*'}
       </span>
 
       <div className="flex items-center gap-3">
         {/* 미리보기 */}
-        <div className="w-14 h-14 shrink-0 rounded-xl bg-white border border-[#e5e7eb] flex items-center justify-center overflow-hidden">
+        <div className="w-14 h-14 shrink-0 rounded-xl bg-white border border-border flex items-center justify-center overflow-hidden">
           {value ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -83,7 +83,7 @@ export default function ImageUploadField({
               onError={(e) => { e.currentTarget.style.display = 'none' }}
             />
           ) : (
-            <span className="text-[#898989] text-xs">—</span>
+            <span className="text-muted-foreground text-xs">—</span>
           )}
         </div>
 
@@ -94,7 +94,7 @@ export default function ImageUploadField({
             required={required}
             value={value}
             onChange={(e) => { setUploadError(null); onChange(e.target.value) }}
-            className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-sm"
+            className="flex-1 bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
             placeholder="https://... 또는 /badges/001.png"
           />
         )}
@@ -105,7 +105,7 @@ export default function ImageUploadField({
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
           className={[
-            'shrink-0 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-sm text-[#374151] hover:bg-[#f3f4f6] disabled:opacity-50 transition-colors whitespace-nowrap',
+            'shrink-0 bg-white border border-border rounded-xl px-4 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors whitespace-nowrap',
             allowManualUrl ? '' : 'flex-1',
           ].join(' ')}
         >
@@ -121,7 +121,7 @@ export default function ImageUploadField({
           <button
             type="button"
             onClick={() => { setUploadError(null); onChange('') }}
-            className="shrink-0 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-sm text-[#374151] hover:bg-[#f3f4f6] transition-colors whitespace-nowrap"
+            className="shrink-0 bg-white border border-border rounded-xl px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors whitespace-nowrap"
           >
             제거
           </button>
@@ -139,7 +139,7 @@ export default function ImageUploadField({
       {uploadError && (
         <p className="text-xs text-red-600">{uploadError}</p>
       )}
-      <p className="text-xs text-[#898989]">
+      <p className="text-xs text-muted-foreground">
         JPEG · PNG · WebP · GIF · SVG, 최대 5MB
       </p>
     </div>

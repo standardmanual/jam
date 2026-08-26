@@ -167,29 +167,29 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
     <div className="space-y-6">
       <button
         onClick={() => (showForm ? cancelForm() : setShowForm(true))}
-        className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
+        className="bg-primary text-white font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm"
       >
         {showForm ? '취소' : '+ 미션 생성'}
       </button>
 
       {showForm && (
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 space-y-4">
+        <div className="bg-white border border-border rounded-2xl p-6 space-y-4">
           <h2 className="font-bold">{editingId ? '미션 수정' : '새 미션'}</h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="text-xs text-[#6b7280] mb-1 block">미션 이름</label>
+              <label className="text-xs text-muted-foreground mb-1 block">미션 이름</label>
               <input type="text" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm" placeholder="이번 주 100km 라이딩 챌린지" />
+                className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" placeholder="이번 주 100km 라이딩 챌린지" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-[#6b7280] mb-1 block">설명 (선택)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">설명 (선택)</label>
               <input type="text" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm" />
+                className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" />
             </div>
 
             <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">미션 타입</label>
+              <label className="text-xs text-muted-foreground mb-1 block">미션 타입</label>
               <Select value={form.mission_type} onValueChange={(v) => setForm((f) => ({ ...f, mission_type: v }))}>
                 <SelectTrigger className="w-full" aria-label="미션 타입">
                   <SelectValue />
@@ -201,7 +201,7 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
             </div>
 
             <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">미션 상황 표시 방식</label>
+              <label className="text-xs text-muted-foreground mb-1 block">미션 상황 표시 방식</label>
               <Select value={form.status_display_type} onValueChange={(v) => setForm((f) => ({ ...f, status_display_type: v }))}>
                 <SelectTrigger className="w-full" aria-label="미션 상황 표시 방식">
                   <SelectValue />
@@ -210,37 +210,37 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
                   {statusDisplayTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <p className="text-[#898989] text-xs mt-1">
+              <p className="text-muted-foreground text-xs mt-1">
                 {form.mission_type === 'checkin' || form.mission_type === 'item_collect' ? '추천: 달성형' : '추천: 랭킹형'}
               </p>
             </div>
 
             <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">공개 인원 (빈칸=전체)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">공개 인원 (빈칸=전체)</label>
               <input type="number" value={form.visible_rank_count} onChange={(e) => setForm((f) => ({ ...f, visible_rank_count: e.target.value }))}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm" placeholder="상위 N명 (본인은 항상 표시)" />
+                className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" placeholder="상위 N명 (본인은 항상 표시)" />
             </div>
 
             <div className="col-span-2">
-              <label className="text-xs text-[#6b7280] mb-1 block">조건 JSON</label>
+              <label className="text-xs text-muted-foreground mb-1 block">조건 JSON</label>
               <textarea value={form.condition_json} onChange={(e) => setForm((f) => ({ ...f, condition_json: e.target.value }))}
-                rows={2} className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm font-mono" />
+                rows={2} className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm font-mono" />
               {conditionError && <p className="text-red-600 text-xs mt-1">{conditionError}</p>}
-              <p className="text-[#898989] text-xs mt-1">예: {`{"distance_km": 50, "activity_type": "cycling"}`}</p>
+              <p className="text-muted-foreground text-xs mt-1">예: {`{"distance_km": 50, "activity_type": "cycling"}`}</p>
             </div>
 
             {/* 보상 구성 — 배지 복수 선택 + 포인트 */}
-            <div className="col-span-2 border border-[#e5e7eb] rounded-2xl p-4 space-y-3">
-              <p className="text-xs font-bold text-[#374151]">보상 구성</p>
+            <div className="col-span-2 border border-border rounded-2xl p-4 space-y-3">
+              <p className="text-xs font-bold text-foreground">보상 구성</p>
 
               <div>
-                <label className="text-xs text-[#6b7280] mb-1 block">미션 포인트 (선택, 0=없음)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">미션 포인트 (선택, 0=없음)</label>
                 <input type="number" value={form.reward_points} onChange={(e) => setForm((f) => ({ ...f, reward_points: Number(e.target.value) }))}
-                  className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm" />
+                  className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" />
               </div>
 
               <div>
-                <label className="text-xs text-[#6b7280] mb-1 block">보상 배지 (복수 선택 가능)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">보상 배지 (복수 선택 가능)</label>
                 <BadgeMultiSearchSelect
                   selected={rewardBadgeChips}
                   onSelect={addRewardBadge}
@@ -258,9 +258,9 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
             </div>
 
             {/* 게이트 배지 — 이 미션을 완료해야 열리는 본 배지 (티켓 20260825_028) */}
-            <div className="col-span-2 border border-[#e5e7eb] rounded-2xl p-4 space-y-2">
-              <p className="text-xs font-bold text-[#374151]">게이트 배지 (선택)</p>
-              <p className="text-[#898989] text-xs">
+            <div className="col-span-2 border border-border rounded-2xl p-4 space-y-2">
+              <p className="text-xs font-bold text-foreground">게이트 배지 (선택)</p>
+              <p className="text-muted-foreground text-xs">
                 이 미션을 완료해야 획득 조건이 열리는 <b>본 배지</b>를 지정합니다. 지정하면 미션 목록에서
                 &quot;본 배지 등급 = 유저 보유 등급 + 1&quot;인 단계만 참가 가능하고, 그 다음 1단계는 잠김 카드로,
                 그 위 단계는 숨김 처리됩니다. 비워두면 게이팅 없는 일반 미션입니다.
@@ -275,16 +275,16 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
             </div>
 
             <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">시작 일시</label>
+              <label className="text-xs text-muted-foreground mb-1 block">시작 일시</label>
               <input type="datetime-local" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm" />
+                className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">종료 일시</label>
+              <label className="text-xs text-muted-foreground mb-1 block">종료 일시</label>
               <input type="datetime-local" value={form.ends_at} disabled={form.is_permanent}
                 onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm disabled:bg-[#f3f4f6] disabled:text-[#898989]" />
-              <label className="flex items-center gap-1.5 mt-1.5 text-xs text-[#6b7280]">
+                className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm disabled:bg-muted disabled:text-muted-foreground" />
+              <label className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
                 <input type="checkbox" checked={form.is_permanent}
                   onChange={(e) => setForm((f) => ({ ...f, is_permanent: e.target.checked }))} />
                 상시 미션 (종료일 없음)
@@ -292,9 +292,9 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
             </div>
 
             <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">선착순 인원 (빈칸=무제한)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">선착순 인원 (빈칸=무제한)</label>
               <input type="number" value={form.max_completions} onChange={(e) => setForm((f) => ({ ...f, max_completions: e.target.value }))}
-                className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm" placeholder="무제한" />
+                className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" placeholder="무제한" />
             </div>
 
             <div className="col-span-2">
@@ -308,7 +308,7 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
           </div>
 
           <button onClick={handleSave} disabled={saving}
-            className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm">
+            className="bg-primary text-white font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm">
             {saving ? '저장 중...' : '저장'}
           </button>
         </div>

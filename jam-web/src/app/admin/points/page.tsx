@@ -16,7 +16,7 @@ export default async function AdminPointsPage() {
     <div className="p-8 space-y-8">
       <div>
         <h1 className="text-2xl font-bold">포인트 관리</h1>
-        <p className="text-[#6b7280] text-sm mt-1">잼 포인트 발행 현황 · 정합성 · 유저 지급/회수</p>
+        <p className="text-muted-foreground text-sm mt-1">잼 포인트 발행 현황 · 정합성 · 유저 지급/회수</p>
       </div>
 
       {/* 정합성 경고 배너 */}
@@ -47,7 +47,7 @@ export default async function AdminPointsPage() {
       {/* 최근 고액 지급/회수 */}
       <div>
         <h2 className="text-lg font-bold mb-1">최근 고액 지급/회수</h2>
-        <p className="text-[#6b7280] text-xs mb-3">기준액({fmt(s.highValueThreshold)}P) 이상 원장 최근 20건 (사후 감사)</p>
+        <p className="text-muted-foreground text-xs mb-3">기준액({fmt(s.highValueThreshold)}P) 이상 원장 최근 20건 (사후 감사)</p>
         <HighValueTable rows={s.recentHighValue} />
       </div>
 
@@ -62,9 +62,9 @@ export default async function AdminPointsPage() {
 
 function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className={`rounded-2xl border p-5 ${accent ? 'bg-[#111111]/10 border-[#111111]/30' : 'bg-white border-[#e5e7eb]'}`}>
-      <p className="text-xs text-[#6b7280] mb-1">{label}</p>
-      <p className={`text-xl font-bold ${accent ? 'text-[#111111]' : 'text-[#111111]'}`}>{value}</p>
+    <div className={`rounded-2xl border p-5 ${accent ? 'bg-primary/10 border-primary/30' : 'bg-white border-border'}`}>
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className={`text-xl font-bold ${accent ? 'text-foreground' : 'text-foreground'}`}>{value}</p>
     </div>
   )
 }

@@ -122,12 +122,12 @@ export default function UserGrantForm({ userId, username }: Props) {
   }
 
   return (
-    <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
+    <div className="bg-white border border-border rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-bold">포인트 지급 / 회수</h3>
         <div className="text-right">
-          <p className="text-xs text-[#6b7280]">현재 잔액</p>
-          <p className="text-lg font-bold text-[#111111]">
+          <p className="text-xs text-muted-foreground">현재 잔액</p>
+          <p className="text-lg font-bold text-foreground">
             {balance === null ? '—' : `${balance.toLocaleString('ko-KR')}P`}
           </p>
         </div>
@@ -143,14 +143,14 @@ export default function UserGrantForm({ userId, username }: Props) {
           <button
             type="button"
             onClick={() => setDirection('grant')}
-            className={`flex-1 py-2 rounded-xl text-sm font-bold border transition-colors ${direction === 'grant' ? 'bg-[#111111] text-white border-[#111111]' : 'bg-white text-[#374151] border-[#e5e7eb]'}`}
+            className={`flex-1 py-2 rounded-xl text-sm font-bold border transition-colors ${direction === 'grant' ? 'bg-primary text-white border-primary' : 'bg-white text-foreground border-border'}`}
           >
             지급 (+)
           </button>
           <button
             type="button"
             onClick={() => setDirection('deduct')}
-            className={`flex-1 py-2 rounded-xl text-sm font-bold border transition-colors ${direction === 'deduct' ? 'bg-red-600 text-white border-red-300' : 'bg-white text-[#374151] border-[#e5e7eb]'}`}
+            className={`flex-1 py-2 rounded-xl text-sm font-bold border transition-colors ${direction === 'deduct' ? 'bg-red-600 text-white border-red-300' : 'bg-white text-foreground border-border'}`}
           >
             회수 (−)
           </button>
@@ -158,13 +158,13 @@ export default function UserGrantForm({ userId, username }: Props) {
 
         {/* 금액 */}
         <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-xs text-[#6b7280]">금액 (P)</span>
+          <span className="text-xs text-muted-foreground">금액 (P)</span>
           <input
             type="number"
             min="1"
             value={magnitude}
             onChange={(e) => setMagnitude(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
+            className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
             placeholder="예: 500"
           />
           {isHighValue && (
@@ -176,7 +176,7 @@ export default function UserGrantForm({ userId, username }: Props) {
 
         {/* 사유 */}
         <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-xs text-[#6b7280]">사유</span>
+          <span className="text-xs text-muted-foreground">사유</span>
           <Select value={reasonLabel} onValueChange={(v) => setReasonLabel(v as AdminReasonValue)}>
             <SelectTrigger aria-label="사유">
               <SelectValue />
@@ -192,11 +192,11 @@ export default function UserGrantForm({ userId, username }: Props) {
         {/* 기타 자유 입력 */}
         {reasonLabel === 'other' && (
           <label className="flex flex-col gap-1.5 col-span-2">
-            <span className="text-xs text-[#6b7280]">사유 내용 *</span>
+            <span className="text-xs text-muted-foreground">사유 내용 *</span>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
+              className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
               placeholder="사유를 직접 입력"
             />
           </label>
@@ -206,28 +206,28 @@ export default function UserGrantForm({ userId, username }: Props) {
       <button
         onClick={handleSubmitClick}
         disabled={submitting}
-        className="bg-[#111111] text-white font-bold px-5 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors text-sm"
+        className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm"
       >
         {submitting ? '처리 중…' : direction === 'grant' ? '지급 실행' : '회수 실행'}
       </button>
 
       {/* 최근 내역 */}
       <div>
-        <p className="text-xs text-[#6b7280] mb-2">최근 내역</p>
+        <p className="text-xs text-muted-foreground mb-2">최근 내역</p>
         {loading ? (
-          <p className="text-[#898989] text-sm py-3">불러오는 중…</p>
+          <p className="text-muted-foreground text-sm py-3">불러오는 중…</p>
         ) : items.length === 0 ? (
-          <p className="text-[#898989] text-sm py-3">내역 없음</p>
+          <p className="text-muted-foreground text-sm py-3">내역 없음</p>
         ) : (
-          <div className="divide-y divide-[#f3f4f6]">
+          <div className="divide-y divide-border">
             {items.map((it) => (
               <div key={it.id} className="flex items-center justify-between py-2">
                 <div className="min-w-0">
-                  <p className="text-sm text-[#111111] truncate">{it.title}</p>
-                  {it.note && <p className="text-xs text-[#6b7280] truncate">{it.note}</p>}
-                  <p className="text-[11px] text-[#898989]">{formatDate(it.created_at)}</p>
+                  <p className="text-sm text-foreground truncate">{it.title}</p>
+                  {it.note && <p className="text-xs text-muted-foreground truncate">{it.note}</p>}
+                  <p className="text-[11px] text-muted-foreground">{formatDate(it.created_at)}</p>
                 </div>
-                <span className={`text-sm font-bold shrink-0 ml-3 ${it.amount > 0 ? 'text-[#111111]' : 'text-red-600'}`}>
+                <span className={`text-sm font-bold shrink-0 ml-3 ${it.amount > 0 ? 'text-foreground' : 'text-red-600'}`}>
                   {it.amount > 0 ? '+' : '−'}{Math.abs(it.amount).toLocaleString('ko-KR')}P
                 </span>
               </div>
@@ -239,22 +239,22 @@ export default function UserGrantForm({ userId, username }: Props) {
       {/* 고액 확인 팝업 */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-sm w-full mx-4">
+          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">{direction === 'grant' ? '지급' : '회수'} 확인</h3>
-            <p className="text-[#374151] text-sm mb-5">
-              {username ?? '이 유저'}에게 <span className="font-bold text-[#111111]">{Math.abs(signedAmount).toLocaleString('ko-KR')}P</span>를 정말 {direction === 'grant' ? '지급' : '회수'}하시겠어요?
+            <p className="text-foreground text-sm mb-5">
+              {username ?? '이 유저'}에게 <span className="font-bold text-foreground">{Math.abs(signedAmount).toLocaleString('ko-KR')}P</span>를 정말 {direction === 'grant' ? '지급' : '회수'}하시겠어요?
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => submit(true)}
                 disabled={submitting}
-                className="flex-1 bg-[#111111] text-white font-bold py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {submitting ? '처리 중…' : '확인'}
               </button>
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors"
+                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors"
               >
                 취소
               </button>

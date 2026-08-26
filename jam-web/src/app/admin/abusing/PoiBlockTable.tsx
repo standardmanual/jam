@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   createColumnHelper,
   useTable,
@@ -56,6 +56,15 @@ export function PoiBlockTable({ poiBlocks, onRemove, onBulkRemove }: PoiBlockTab
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
   const [bulkLoading, setBulkLoading] = useState(false)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+
+  // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
+  // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
+  // 지정한다(20260827_002 게이트 리뷰에서 alert-dialog.tsx 팔레트 전환 후 미연결 시 흰
+  // 배경 위 흰 글씨로 안 보이는 회귀를 발견해 추가).
+  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
+  }, [])
 
   const columns = useMemo(
     () => columnHelper.columns([
@@ -182,7 +191,7 @@ export function PoiBlockTable({ poiBlocks, onRemove, onBulkRemove }: PoiBlockTab
           if (!open && !bulkLoading) setShowBulkConfirm(false)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>POI 블록 일괄 해제</AlertDialogTitle>
             <AlertDialogDescription>
