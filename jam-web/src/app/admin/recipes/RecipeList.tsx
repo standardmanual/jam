@@ -151,19 +151,19 @@ export default function RecipeList({ recipes, badges }: Props) {
       <div>
         <button
           onClick={() => (showForm ? setShowForm(false) : startCreate())}
-          className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
+          className="bg-primary text-white font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm"
         >
           {showForm ? '취소' : '+ 레시피 등록'}
         </button>
       </div>
 
       {showForm && (
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 space-y-4">
+        <div className="bg-white border border-border rounded-2xl p-6 space-y-4">
           <h2 className="font-bold mb-4">{editingId ? '레시피 수정' : '새 레시피'}</h2>
 
           {/* 재료 선택 */}
           <div>
-            <label className="text-xs text-[#6b7280] mb-2 block">
+            <label className="text-xs text-muted-foreground mb-2 block">
               재료 배지 (2~{MAX_INGREDIENTS}개) — 소재 세계관을 제외한 세계관에서 결과가 나옵니다
             </label>
             {form.ingredient_badge_ids.map((val, i) => (
@@ -181,7 +181,7 @@ export default function RecipeList({ recipes, badges }: Props) {
                 {form.ingredient_badge_ids.length > 2 && (
                   <button
                     onClick={() => removeIngredientSlot(i)}
-                    className="text-[#898989] hover:text-red-600 text-xs px-2"
+                    className="text-muted-foreground hover:text-red-600 text-xs px-2"
                   >
                     삭제
                   </button>
@@ -191,7 +191,7 @@ export default function RecipeList({ recipes, badges }: Props) {
             {form.ingredient_badge_ids.length < MAX_INGREDIENTS && (
               <button
                 onClick={addIngredientSlot}
-                className="text-xs text-[#6b7280] hover:text-[#111111] border border-dashed border-[#e5e7eb] rounded-lg px-3 py-1.5 mt-1"
+                className="text-xs text-muted-foreground hover:text-foreground border border-dashed border-border rounded-lg px-3 py-1.5 mt-1"
               >
                 + 재료 슬롯 추가
               </button>
@@ -200,7 +200,7 @@ export default function RecipeList({ recipes, badges }: Props) {
 
           {/* 결과 배지 */}
           <div>
-            <label className="text-xs text-[#6b7280] mb-2 block">결과 배지</label>
+            <label className="text-xs text-muted-foreground mb-2 block">결과 배지</label>
             <BadgeSearchSelect
               key={editingId ?? 'new'}
               value={form.result_badge_id}
@@ -213,7 +213,7 @@ export default function RecipeList({ recipes, badges }: Props) {
 
           {/* 필수 액티비티 배지 (소모되지 않는 보유 조건) */}
           <div>
-            <label className="text-xs text-[#6b7280] mb-2 block">
+            <label className="text-xs text-muted-foreground mb-2 block">
               필수 액티비티 배지 (선택 — 소모되지 않고 보유 여부만 검증)
             </label>
             <BadgeSearchSelect
@@ -228,7 +228,7 @@ export default function RecipeList({ recipes, badges }: Props) {
 
           {/* 성공률 */}
           <div>
-            <label className="text-xs text-[#6b7280] mb-2 block">성공률 ({Math.round(form.success_rate * 100)}%)</label>
+            <label className="text-xs text-muted-foreground mb-2 block">성공률 ({Math.round(form.success_rate * 100)}%)</label>
             <input
               type="range"
               min="0" max="1" step="0.05"
@@ -240,13 +240,13 @@ export default function RecipeList({ recipes, badges }: Props) {
 
           {/* 힌트 */}
           <div>
-            <label className="text-xs text-[#6b7280] mb-2 block">힌트 문구 (비공개 레시피용)</label>
+            <label className="text-xs text-muted-foreground mb-2 block">힌트 문구 (비공개 레시피용)</label>
             <input
               type="text"
               value={form.hint_text}
               onChange={(e) => setForm((f) => ({ ...f, hint_text: e.target.value }))}
               placeholder="예: 겨울 등반에 필요한 것들..."
-              className="w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm"
+              className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm"
             />
           </div>
 
@@ -263,7 +263,7 @@ export default function RecipeList({ recipes, badges }: Props) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
+            className="bg-primary text-white font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm"
           >
             {saving ? '저장 중...' : editingId ? '수정 저장' : '저장'}
           </button>

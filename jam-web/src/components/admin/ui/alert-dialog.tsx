@@ -5,10 +5,10 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 
-// 어드민 화면 팔레트(#111111 accent, MODULAR 미적용 - AGENTS.md 정책)에 맞춰 구현한다.
+// 어드민 화면 팔레트(shadcn 시맨틱 토큰, MODULAR 미적용 - AGENTS.md 정책)에 맞춰 구현한다.
 // 이 프로젝트의 `src/components/ui/Button.tsx`는 shadcn 표준(`buttonVariants` cva export)이
 // 아닌 MODULAR 서비스 전용 Button이라 여기서는 참조하지 않고, ItemBookForm.tsx의 기존 확인
-// 모달들과 동일한 직접 색상 클래스를 쓴다.
+// 모달들과 동일한 색상 클래스를 쓴다(20260827_002에서 하드코딩 hex → 시맨틱 토큰 전환).
 
 const AlertDialog = AlertDialogPrimitive.Root
 
@@ -51,7 +51,7 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border border-border bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className
       )}
       {...props}
@@ -88,7 +88,7 @@ const AlertDialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-bold text-[#111111]", className)}
+    className={cn("text-lg font-bold text-foreground", className)}
     {...props}
   />
 ))
@@ -100,7 +100,7 @@ const AlertDialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-[#6b7280]", className)}
+    className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ))
@@ -114,7 +114,7 @@ const AlertDialogAction = React.forwardRef<
   <AlertDialogPrimitive.Action
     ref={ref}
     className={cn(
-      "flex-1 bg-[#111111] text-white font-bold py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors",
+      "flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors",
       className
     )}
     {...props}
@@ -129,7 +129,7 @@ const AlertDialogCancel = React.forwardRef<
   <AlertDialogPrimitive.Cancel
     ref={ref}
     className={cn(
-      "flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] disabled:opacity-50 transition-colors",
+      "flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted disabled:opacity-50 transition-colors",
       className
     )}
     {...props}

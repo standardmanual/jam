@@ -7,12 +7,20 @@
 
 ## Phase 개요
 
-| Phase | 범위 | 의존성 | 티켓 유형 |
-|---|---|---|---|
-| 1. 기반 | shadcn 폴더 분리 + 프리셋 테마 + Pretendard + tabler | 없음 | `admin` |
-| 2. 레이아웃 셸 | Sidebar/Nav/Header → shadcn 공식 Sidebar 블록 | 1단계 완료 | `admin` |
-| 3. Data Table | 전체 목록 화면 행선택+일괄액션+공식 Toolbar 필터 | 1단계 완료 (2단계와 순서 무관, 2단계 이후 권장) | `admin` |
-| 4. 하드코딩 제거 | 전체 어드민 화면 hex → shadcn 시맨틱 토큰 | 1~3단계 완료 | `admin` |
+**2026-08-27 — Phase 1~4 전체 완료(어드민 UI shadcn 디자인시스템 전환 종료).** 마지막
+Phase 4(하드코딩 제거)는 a(`20260826_017`)·b(`20260826_018`)·c(`20260827_001`)·
+d(`20260827_002`, 이 문서 기준 마지막 하위 티켓) 4개로 나눠 순차 진행했고, d 완료 시점에
+`grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin src/components/admin`가 미리보기
+프레임(`BadgeDetailPreviewFrame.tsx`, `ItemBookDetailPreviewFrame.tsx`) 2개 파일만 남기고
+전량 0건임을 확인했다 — 기반(1) → 레이아웃(2) → Data Table(3) → 하드코딩 제거(4) 4개
+Phase가 전부 끝났다.
+
+| Phase | 범위 | 의존성 | 티켓 유형 | 상태 |
+|---|---|---|---|---|
+| 1. 기반 | shadcn 폴더 분리 + 프리셋 테마 + Pretendard + tabler | 없음 | `admin` | 완료 |
+| 2. 레이아웃 셸 | Sidebar/Nav/Header → shadcn 공식 Sidebar 블록 | 1단계 완료 | `admin` | 완료 |
+| 3. Data Table | 전체 목록 화면 행선택+일괄액션+공식 Toolbar 필터 | 1단계 완료 (2단계와 순서 무관, 2단계 이후 권장) | `admin` | 완료 |
+| 4. 하드코딩 제거 | 전체 어드민 화면 hex → shadcn 시맨틱 토큰 (a/b/c/d 4개 하위 티켓) | 1~3단계 완료 | `admin` | 완료 (2026-08-27) |
 
 4개 전부 `admin` 유형(라이트 파이프라인: 구현 → 게이트 리뷰, 개선 리뷰 생략, MODULAR 탐색
 생략)이며, 순차 진행한다. 다음 단계는 이전 단계가 staging에 병합된 뒤 시작한다.
@@ -275,6 +283,61 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   Select+테이블, POI 블록 테이블), 앰비언트 드랍(명시/무작위 토글, 카테고리 Select 오픈),
   드랍 정책, 믹스 정책 전 화면 스크린샷 및 콘솔 에러 0건 확인.
 
+**2026-08-27 갱신 — 4단계d 구현 완료(리뷰 대기, Phase 4 전체 마지막 하위 티켓)**: 잔여
+화면 13개 파일(`UserGrantForm.tsx`·`MissionList.tsx`·`TodayCardList.tsx`·`ThemeManager.tsx`·
+`RecipeList.tsx`·`AdminUserSearch.tsx`·`ImageUploadField.tsx`·`error.tsx`·
+`BackgroundColorField.tsx`·`ResetUserButton.tsx`·소형 페이지 5개) + shadcn 프리미티브 2개
+(`alert-dialog.tsx`·`switch.tsx`, 4a에서 인터페이스만 준비해두고 미뤄둔 팔레트 전환) 전량
+전환 완료(`20260827_002`). 실측 210건(잔여 화면) + 9건(프리미티브 2개) = 219건.
+
+- **매핑**: 4a/4b/4c와 동일한 순서 있는 리터럴 치환(파이썬 스크립트)에 더해, 이번 범위에서
+  처음 등장한 패턴 2건을 신규 판정했다 — `divide-[#f3f4f6]`(리스트 행 구분선) → `divide-border`
+  (border-[#e5e7eb]→border-border와 동일하게 "구분선" 역할이라 muted 배경이 아니라 border
+  계열로 매핑), `ring-[#111111]`(포커스 링) → `ring-primary`(border-[#111111]→border-primary
+  연장 — bg/border/ring처럼 "칠하는" 용도의 #111111은 전부 primary, text만 foreground라는
+  기존 규칙 유지). 신규 매핑 2건 모두 실브라우저로 렌더링 확인.
+- **`switch.tsx`는 매핑표 대신 shadcn 공식 Switch 원형을 그대로 복원**: 다른 파일과 달리
+  이 컴포넌트는 "어드민 전용 커스텀 팔레트"가 아니라 shadcn 표준 컴포넌트 자체이므로,
+  개별 hex→토큰 치환이 아니라 shadcn 공식 소스의 관용구를 채택했다 —
+  `data-[state=checked]:bg-[#111111]`→`data-[state=checked]:bg-primary`(매핑표와 동일),
+  `data-[state=unchecked]:bg-[#e5e7eb]`→`data-[state=unchecked]:bg-input`(매핑표에 없던
+  `bg-input` 토큰 — off 상태 트랙은 shadcn 관용구상 `border`가 아니라 전용 `input` 토큰),
+  `focus-visible:ring-[#111111]`→`focus-visible:ring-ring`(포커스 링 전용 `ring` 토큰 —
+  이 파일 한정, `ThemeManager.tsx` 등 일반 화면의 `ring-[#111111]`은 위 `ring-primary` 규칙
+  그대로). `--input`/`--ring` 둘 다 `[data-admin-theme]` 스코프에 이미 실값이 있고 DS v2
+  colors.css와 이름 충돌도 없음을 grep으로 재확인 후 적용.
+- **회귀 발견 및 즉시 수정 — `alert-dialog.tsx` 팔레트 전환이 `container` prop 미연결
+  소비자 8곳을 깨뜨림**: 로컬 브라우저로 `/admin/today`의 일괄 비활성화 확인 다이얼로그를
+  열어보니 흰 배경 위에 글씨가 전혀 보이지 않았다 — `alert-dialog.tsx`의 하드코딩 hex를
+  `text-foreground`/`bg-primary` 등 시맨틱 토큰으로 바꾸면서, 그 값이 `[data-admin-theme]`
+  스코프 안에만 존재하게 됐는데(`globals.css` 참고) Radix `AlertDialogContent`가 `container`
+  prop 없이 열리면 기본값인 `document.body`(스코프 밖)에 포털돼 `--foreground` 등이
+  전부 미정의 상태가 되고, `color`(상속 속성)가 body의 DS v2 전역 텍스트색(다크 테마
+  기본값 흰색)을 그대로 물려받아 흰 배경 위 흰 글씨로 안 보이는 회귀였다. 하드코딩 hex는
+  스코프와 무관한 리터럴이라 이 문제가 지금까지 잠복해 있었을 뿐이다. `grep`으로 전체 admin
+  에서 `alert-dialog.tsx` 소비자 9곳을 전수조사한 결과 `container`가 연결된 곳은
+  `ItemBookForm.tsx` 1곳뿐이었고, 나머지 8곳(`TodayCardTable.tsx`·`FactionsTable.tsx`·
+  `PoiBlockTable.tsx`·`BanTable.tsx`·`BadgesTable.tsx`·`BadgeActiveToggleButton.tsx`·
+  `ItemBookTable.tsx`·`ItemBookActiveToggleButton.tsx`)에 4a `BadgeForm.tsx`와 동일한
+  `document.querySelector('[data-admin-theme]')` idiom으로 `themeContainer` 상태를
+  추가해 전량 연결했다. 이 중 6곳은 4a/4b/4c 산출물(배지·아이템북·세계관 도메인)이라
+  이 티켓의 "절대 건드리면 안 되는 것" 목록에 해당하지만, 색상 클래스는 전혀 건드리지 않고
+  `container` prop 배선(3줄: `useEffect` import, `themeContainer` state, prop 연결)만
+  추가한 최소 회귀 수정이다 — `alert-dialog.tsx` 자체를 이 티켓에서 전환하는 이상 그
+  소비자 전원이 정상 동작해야 완료라고 판단했다. 수정 후 배지/아이템북/세계관/투데이
+  4개 도메인 전부 Playwright로 다이얼로그를 실제로 열어 텍스트 가시성을 재확인했다.
+- **검증**: `npx tsc --noEmit`(0 에러) / `npm test`(60파일 562테스트 전부 통과) / `npx next
+  build`(성공) 전부 통과. 로컬 `next dev` + 임시 `ADMIN_EMAILS=dev-tester@jam.local` 셸
+  환경변수 + `/api/dev-login` + Playwright로 1440px 데스크탑 렌더링 확인 — 대시보드·미션
+  (목록+생성폼)·투데이(목록+생성폼+일괄비활성화 다이얼로그)·레시피(목록+등록폼)·테마·
+  포인트(검색+지급/회수+고액확인 팝업)·유저 목록/상세·유저 초기화 확인 모달 전 화면 +
+  앰비언트 드랍 Switch 토글(on/off) + 배지·아이템북·세계관 비활성화 다이얼로그(회귀 수정
+  검증) 전부 스크린샷 및 콘솔 에러 0건 확인.
+- **최종 완료 기준 grep**: `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin
+  src/components/admin` 결과 `BadgeDetailPreviewFrame.tsx`·`ItemBookDetailPreviewFrame.tsx`
+  (MODULAR 유지 대상 미리보기 프레임) 2개 파일만 남고 **0건** — Phase 4(4a+4b+4c+4d) 전체
+  완료 기준 충족.
+
 ### 선행 인프라 수정 (4a에서 처리, 나머지 단계의 전제조건)
 
 **1. `--color-border` 스코프 누락 (2026-08-26, 3단계 게이트 리뷰에서 발견)**: `globals.css`의
@@ -302,11 +365,13 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 (`text-foreground`, `border-border`, `bg-muted` 등)으로 전환.
 
 ### 완료 기준
-- [ ] `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin src/components/admin` 결과가
-      미리보기 프레임 관련 파일을 제외하고 0건 (4a·4b·4c 완료 시점 기준 배지·POI·아이템북·
-      세계관·운영 도구 도메인은 0건, 4d 대상 파일은 아직 잔존 — 4d 완료 후에야 전체 0건)
-- [ ] 시각적 회귀 없음(색상·간격이 기존과 크게 다르지 않은지 스크린샷 비교) — 4a·4b·4c는
-      1440px 실브라우저 스크린샷(4c는 Playwright)으로 확인 완료
+- [x] `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin src/components/admin` 결과가
+      미리보기 프레임 관련 파일을 제외하고 0건 — 4d 완료(2026-08-27)로 전체 0건 달성
+      (`BadgeDetailPreviewFrame.tsx`·`ItemBookDetailPreviewFrame.tsx` 2개 파일만 잔존, 의도된 제외 대상)
+- [x] 시각적 회귀 없음(색상·간격이 기존과 크게 다르지 않은지 스크린샷 비교) — 4a·4b·4c·4d
+      전부 1440px 실브라우저(Playwright) 스크린샷으로 확인 완료. 4d에서 `alert-dialog.tsx`
+      팔레트 전환이 유발한 `container` 미연결 소비자 8곳의 흰 배경 위 흰 글씨 회귀를
+      발견해 즉시 수정(위 4d 구현 기록 참고)
 - [x] `--color-border` 스코프 수정(+ 실제로는 `--color-primary`/`--color-secondary`도
       같은 충돌이 있어 함께 수정) + `dialog`/`alert-dialog`/`select` Portal container 추가
       — 4a에서 완료, admin 전역에 적용되는 인프라라 4b~4d는 재작업 불필요

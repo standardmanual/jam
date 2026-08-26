@@ -56,7 +56,7 @@ export default async function AdminUsersPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">유저 조회</h1>
-        <p className="text-[#6b7280] text-sm">최근 100명</p>
+        <p className="text-muted-foreground text-sm">최근 100명</p>
       </div>
 
       <UsersTable rows={rows} />

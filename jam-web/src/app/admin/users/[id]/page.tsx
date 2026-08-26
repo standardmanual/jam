@@ -34,11 +34,11 @@ export default async function AdminUserDetailPage({ params }: Props) {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <Link href="/admin/users" className="text-[#6b7280] hover:text-[#111111] text-sm transition-colors">
+        <Link href="/admin/users" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 유저 목록
         </Link>
         <h1 className="text-2xl font-bold mt-2">{user.username ?? '(닉네임 없음)'}</h1>
-        <p className="text-[#6b7280] text-sm mt-1">
+        <p className="text-muted-foreground text-sm mt-1">
           {user.email} · {user.region || '지역 미설정'} · 가입 {formatDateTime(user.created_at)}
         </p>
       </div>
@@ -50,7 +50,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
 
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold">배지 획득 히스토리</h2>
-        <p className="text-[#6b7280] text-sm">총 {badgeHistory.length}개</p>
+        <p className="text-muted-foreground text-sm">총 {badgeHistory.length}개</p>
       </div>
 
       <BadgeHistoryTable rows={badgeHistory} />
