@@ -168,6 +168,42 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 
 각 하위 티켓은 순차 진행(4a→4b→4c→4d), 병합 후 다음 착수.
 
+**2026-08-26 갱신 — 4단계a 구현 완료(리뷰 대기)**: 선행 인프라 2건 + 배지 도메인 4개 파일
+(`BadgeForm.tsx`·`BackgroundGeneratorPreview.tsx`·`BadgeMultiSearchSelect.tsx`·
+`BadgeSearchSelect.tsx`, `src/app/admin/badges/new/page.tsx`의 잔여 2건 포함) 전환 완료,
+사용자 최종 승인 대기 중(`20260826_017` — 원래 016으로 생성됐으나 다른 세션의 무관한
+티켓과 번호가 겹쳐 재배정됨). 4b 착수 시 참고할 구현 노트:
+
+- **`--color-border` 스코프 버그의 실제 원인은 문서 초안 추정과 달랐다** — 브라우저
+  `getComputedStyle` 실측 결과, `globals.css` 자체의 `@theme inline` 매핑(`--color-X:
+  var(--X)`)은 background/foreground/muted/accent/primary/secondary/border 전부 올바르게
+  shadcn 원시 이름을 참조하고 있었다. 진짜 충돌은 **import된 `design-system/tokens/colors.css`
+  의 `:root`가 자신만의 값으로 `--color-primary`(`#e8461f`, DS v2 브랜드 레드)·
+  `--color-secondary`·`--color-border`를 레이어 밖(unlayered)에서 직접 선언**하고 있었고,
+  Tailwind `@theme inline` 출력은 `@layer theme` 안에 들어가 동일 특정성에서 항상 진다
+  (소스 순서 무관) — 즉 `--color-background`/`--color-foreground`/`--color-muted`/
+  `--color-accent`는 DS v2 colors.css가 아예 정의하지 않는 이름이라 충돌이 없었을 뿐,
+  이름이 겹치면 `--color-border` 외에도 같은 문제가 난다. `[data-admin-theme]` 블록 안에
+  `--color-border`/`--color-primary`/`--color-secondary` 3개를 각각 `var(--border)`/
+  `var(--primary)`/`var(--secondary)`로 재매핑해 해결(`grep -n "^\s*--color-"
+  design-system/tokens/*.css`로 전체 토큰 파일 재점검, 겹치는 이름은 이 3개뿐이었다).
+  **4b~4d 착수 전에도 이 grep으로 새로 충돌 이름이 없는지 재확인할 것** — 코드 리뷰만으로는
+  이 클래스의 버그를 못 잡는다(실제 렌더링 확인 필수).
+- Radix Portal `container` prop은 `dialog.tsx`/`alert-dialog.tsx`/`select.tsx` 3개
+  컴포넌트에 `sheet.tsx`(2단계) 패턴 그대로 추가했다. 인터페이스만 준비된 상태이며,
+  아직 `select.tsx`/`dialog.tsx`/`alert-dialog.tsx` 자체의 하드코딩 뉴트럴 팔레트
+  (`bg-white`/`text-neutral-900` 등)는 시맨틱 토큰으로 전환하지 않았다(3단계 노트에서
+  예고한 대로 "Portal 리다이렉션 이후" 단계 — 이 셋을 실제로 시맨틱 토큰화하는 시점은
+  4b~4d 중 이 컴포넌트들이 속한 화면을 다룰 때 함께 판단할 것). `BadgeForm.tsx`의 "타입"
+  Select 1곳에서 `container={themeContainer}` 연결을 실제로 검증(`document.querySelector
+  ('[data-admin-theme]')` 패턴, `sidebar.tsx`와 동일)했고, 나머지 Select 인스턴스들은
+  아직 미연결 상태다.
+- `BackgroundGeneratorPreview.tsx`의 보라색 강조(원래 `#9333ea`/`#fdf4ff`)는 stone
+  테마에 대응하는 시맨틱 슬롯이 없어 Tailwind 기본 팔레트(`purple-600`/`fuchsia-50`)로
+  치환했다 — 시각적으로는 완전히 동일(같은 hex와 정확히 일치하는 named 컬러였음), 다만
+  이 값은 shadcn 8종 시맨틱 토큰이 아니라 별도 named palette라는 점을 4b~4d에서
+  유사한 "테마 없는 강조색"을 만나면 참고할 것.
+
 ### 선행 인프라 수정 (4a에서 처리, 나머지 단계의 전제조건)
 
 **1. `--color-border` 스코프 누락 (2026-08-26, 3단계 게이트 리뷰에서 발견)**: `globals.css`의
@@ -196,6 +232,10 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 
 ### 완료 기준
 - [ ] `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin src/components/admin` 결과가
-      미리보기 프레임 관련 파일을 제외하고 0건
-- [ ] 시각적 회귀 없음(색상·간격이 기존과 크게 다르지 않은지 스크린샷 비교)
-- [ ] `--color-border` 스코프 수정 + `dialog`/`alert-dialog`/`select` Portal container 추가
+      미리보기 프레임 관련 파일을 제외하고 0건 (4a 완료 시점 기준 배지 도메인은 0건,
+      4b~4d 대상 파일은 아직 잔존 — 4d 완료 후에야 전체 0건)
+- [ ] 시각적 회귀 없음(색상·간격이 기존과 크게 다르지 않은지 스크린샷 비교) — 4a는
+      1440px 실브라우저 스크린샷 + `getComputedStyle` 대조로 확인 완료
+- [x] `--color-border` 스코프 수정(+ 실제로는 `--color-primary`/`--color-secondary`도
+      같은 충돌이 있어 함께 수정) + `dialog`/`alert-dialog`/`select` Portal container 추가
+      — 4a에서 완료, admin 전역에 적용되는 인프라라 4b~4d는 재작업 불필요

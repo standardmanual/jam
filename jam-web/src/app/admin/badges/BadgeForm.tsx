@@ -74,6 +74,15 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const router = useRouter()
   const isEdit = !!badge
 
+  // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
+  // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다(globals.css 참고). 포털 컨테이너를
+  // 그 스코프 노드로 지정해야 향후(4b~4d에서 select.tsx가 시맨틱 토큰으로 전환될 때) 테마
+  // 색이 정상 적용된다 — sidebar.tsx의 동일 패턴 재사용 (20260826_016, 인프라 1-2).
+  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
+  }, [])
+
   const [name, setName] = useState(badge?.name ?? '')
   const [description, setDescription] = useState(badge?.description ?? '')
   const [type, setType] = useState<BadgeType>(badge?.type ?? 'activity')
@@ -428,35 +437,35 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-sm text-[#374151]">배지 이름 *</span>
+          <span className="text-sm text-foreground">배지 이름 *</span>
           <input
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+            className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             placeholder="예: 한강 라이더"
           />
         </label>
 
         <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-sm text-[#374151]">설명 *</span>
+          <span className="text-sm text-foreground">설명 *</span>
           <textarea
             required
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 resize-none"
+            className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
             placeholder="배지 설명을 입력하세요"
           />
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">타입 *</span>
+          <span className="text-sm text-foreground">타입 *</span>
           <Select value={type} onValueChange={(v) => setType(v as BadgeType)}>
             <SelectTrigger aria-label="타입">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent container={themeContainer ?? undefined}>
               {BADGE_TYPES.map((t) => (
                 <SelectItem key={t} value={t}>{BADGE_TYPE_LABEL[t]}</SelectItem>
               ))}
@@ -465,7 +474,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">희귀도 *</span>
+          <span className="text-sm text-foreground">희귀도 *</span>
           <Select value={rarity} onValueChange={(v) => setRarity(v as BadgeRarity)}>
             <SelectTrigger aria-label="희귀도">
               <SelectValue />
@@ -480,7 +489,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
         {/* 세계관 선택 */}
         <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-sm text-[#374151]">소속 세계관</span>
+          <span className="text-sm text-foreground">소속 세계관</span>
           <Select
             value={factionId || NONE_VALUE}
             onValueChange={(v) => setFactionId(v === NONE_VALUE ? '' : v)}
@@ -499,7 +508,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
         {/* 소속 아이템북 */}
         <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-sm text-[#374151]">소속 컬렉션</span>
+          <span className="text-sm text-foreground">소속 컬렉션</span>
           <Select
             value={itemBookId || NONE_VALUE}
             onValueChange={(v) => setItemBookId(v === NONE_VALUE ? '' : v)}
@@ -520,7 +529,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         {type === 'item' && (
           <>
             <label className="flex flex-col gap-1.5 col-span-2">
-              <span className="text-sm text-[#374151]">드랍 가중치 (0.1 ~ 10.0)</span>
+              <span className="text-sm text-foreground">드랍 가중치 (0.1 ~ 10.0)</span>
               <input
                 type="number"
                 step="0.1"
@@ -528,7 +537,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                 max="10"
                 value={dropWeight}
                 onChange={(e) => setDropWeight(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
               />
               {itemBookId && siblingWeightSum !== null && (
                 (() => {
@@ -536,9 +545,9 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                   const total = siblingWeightSum + own
                   const pct = total > 0 ? Math.round((own / total) * 1000) / 10 : 0
                   return (
-                    <span className="text-xs text-[#898989]">
+                    <span className="text-xs text-muted-foreground">
                       같은 컬렉션·희귀도 내 다른 배지 {siblingWeightSum > 0 ? `(가중치 합 ${siblingWeightSum.toFixed(1)})` : ''}
-                      {' '}대비 이 배지가 뽑힐 상대 확률 약 <strong className="text-[#374151]">{pct}%</strong>
+                      {' '}대비 이 배지가 뽑힐 상대 확률 약 <strong className="text-foreground">{pct}%</strong>
                       {siblingWeightSum === 0 && ' (이 믹스의 첫 배지)'}
                     </span>
                   )
@@ -550,16 +559,16 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         )}
 
         <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-sm text-[#374151]">포인트 보상</span>
+          <span className="text-sm text-foreground">포인트 보상</span>
           <input
             type="number"
             min="0"
             value={pointReward}
             onChange={(e) => setPointReward(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 max-w-xs"
+            className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 max-w-xs"
             placeholder="0"
           />
-          <span className="text-xs text-[#898989]">이 배지를 획득할 때 함께 지급되는 잼 포인트. 0이면 없음. 획득 시점 값으로 1회 지급되며, 이후 값을 바꿔도 이미 지급된 포인트는 소급 변경되지 않습니다.</span>
+          <span className="text-xs text-muted-foreground">이 배지를 획득할 때 함께 지급되는 잼 포인트. 0이면 없음. 획득 시점 값으로 1회 지급되며, 이후 값을 바꿔도 이미 지급된 포인트는 소급 변경되지 않습니다.</span>
         </label>
 
         <div className="col-span-2">
@@ -576,7 +585,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
         {/* 배경 쉐이더 임시 선택 (20260818_003) — 값만 저장, 상세화면 렌더링 미연결 */}
         <div className="col-span-2 flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
+          <span className="text-sm text-foreground">배경 쉐이더 (임시)</span>
           <Select
             value={backgroundShaderId || NONE_VALUE}
             onValueChange={(v) => setBackgroundShaderId(v === NONE_VALUE ? '' : v)}
@@ -590,7 +599,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
               ))}
             </SelectContent>
           </Select>
-          <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
+          <span className="text-xs text-muted-foreground">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
         </div>
 
         {/* 배경 테마 — 단색/제너레이터 배타 선택 + 실제 저장 연동 (20260819_007, 20260819_008,
@@ -623,7 +632,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                     liveNode={liveNode}
                     conditionText={PREVIEW_CONDITION_TEXT}
                   />
-                  <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
+                  <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
                     실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
                   </p>
                 </>
@@ -635,7 +644,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
       {/* 활동 종류 */}
       <div>
-        <p className="text-sm text-[#374151] mb-2">활동 종류 *</p>
+        <p className="text-sm text-foreground mb-2">활동 종류 *</p>
         <div className="flex gap-3 flex-wrap">
           {ACTIVITY_TYPES.map((t) => (
             <label key={t} className="flex items-center gap-2 cursor-pointer">
@@ -643,7 +652,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                 type="checkbox"
                 checked={activityTypes.includes(t)}
                 onChange={() => toggleActivityType(t)}
-                className="accent-[#111111]"
+                className="accent-primary"
               />
               <span className="text-sm">{t}</span>
             </label>
@@ -658,18 +667,18 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             type="checkbox"
             checked={patchAvailable}
             onChange={(e) => setPatchAvailable(e.target.checked)}
-            className="accent-[#111111]"
+            className="accent-primary"
           />
           <span className="text-sm">패치 구매 가능</span>
         </label>
         {patchAvailable && (
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-[#374151]">패치 가격 (원)</span>
+            <span className="text-sm text-foreground">패치 가격 (원)</span>
             <input
               type="number"
               value={patchPriceKrw}
               onChange={(e) => setPatchPriceKrw(e.target.value)}
-              className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 max-w-xs"
+              className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 max-w-xs"
               placeholder="예: 9900"
             />
           </label>
@@ -678,79 +687,79 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
       {/* condition_json 빌더 (activity + item 공통 — 체크인 배지는 조건 대신 연결 지점으로 판정) */}
       {type !== 'checkin' && (
-        <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
-          <p className="text-sm font-semibold text-[#374151]">
+        <div className="border border-border rounded-2xl p-5 space-y-4">
+          <p className="text-sm font-semibold text-foreground">
             {type === 'item' ? '드랍 조건 (condition_json)' : '획득 조건 (condition_json)'}
           </p>
           {type === 'item' && (
-            <p className="text-xs text-[#6b7280]">조건을 설정하면 해당 조건을 충족한 유저에게만 이 배지가 드랍 풀에 포함됩니다. 설정하지 않으면 모든 유저에게 드랍 가능.</p>
+            <p className="text-xs text-muted-foreground">조건을 설정하면 해당 조건을 충족한 유저에게만 이 배지가 드랍 풀에 포함됩니다. 설정하지 않으면 모든 유저에게 드랍 가능.</p>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">최소 거리 (km)</span>
+              <span className="text-xs text-muted-foreground">최소 거리 (km)</span>
               <input
                 type="number"
                 step="0.1"
                 value={condDistanceKm}
                 onChange={(e) => setCondDistanceKm(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 30"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">누적 활동 횟수</span>
+              <span className="text-xs text-muted-foreground">누적 활동 횟수</span>
               <input
                 type="number"
                 value={condTotalCount}
                 onChange={(e) => setCondTotalCount(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 10"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">고도 상승 누적 (m)</span>
+              <span className="text-xs text-muted-foreground">고도 상승 누적 (m)</span>
               <input
                 type="number"
                 value={condElevationM}
                 onChange={(e) => setCondElevationM(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 500"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">최소 속도 (km/h)</span>
+              <span className="text-xs text-muted-foreground">최소 속도 (km/h)</span>
               <input
                 type="number"
                 step="0.1"
                 value={condMinSpeedKmh}
                 onChange={(e) => setCondMinSpeedKmh(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 25"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">최대 페이스 (mm:ss/km, 러닝 계열용)</span>
+              <span className="text-xs text-muted-foreground">최대 페이스 (mm:ss/km, 러닝 계열용)</span>
               <input
                 type="text"
                 value={condMaxPace}
                 onChange={(e) => setCondMaxPace(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 5:30 (값이 작을수록 빠름)"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">연속 활동 일수</span>
+              <span className="text-xs text-muted-foreground">연속 활동 일수</span>
               <input
                 type="number"
                 value={condStreakDays}
                 onChange={(e) => setCondStreakDays(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 7"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">활동 종류 (조건)</span>
+              <span className="text-xs text-muted-foreground">활동 종류 (조건)</span>
               <Select
                 value={condActivityType || NONE_VALUE}
                 onValueChange={(v) => setCondActivityType(v === NONE_VALUE ? '' : v)}
@@ -770,71 +779,71 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">단일 활동 최소 이동 시간 (분)</span>
+              <span className="text-xs text-muted-foreground">단일 활동 최소 이동 시간 (분)</span>
               <input
                 type="number"
                 value={condDurationMinutes}
                 onChange={(e) => setCondDurationMinutes(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 60"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">주말 활동 최소 이동 시간 (시간)</span>
+              <span className="text-xs text-muted-foreground">주말 활동 최소 이동 시간 (시간)</span>
               <input
                 type="number"
                 step="0.5"
                 value={condWeekendDurationHours}
                 onChange={(e) => setCondWeekendDurationHours(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 2"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">한 주 내 최소 활동 횟수</span>
+              <span className="text-xs text-muted-foreground">한 주 내 최소 활동 횟수</span>
               <input
                 type="number"
                 value={condWeeklyCount}
                 onChange={(e) => setCondWeeklyCount(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 3"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">특정 월 (1~12)</span>
+              <span className="text-xs text-muted-foreground">특정 월 (1~12)</span>
               <input
                 type="number"
                 min="1"
                 max="12"
                 value={condMonth}
                 onChange={(e) => setCondMonth(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 8"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">월 누적 거리 (km)</span>
+              <span className="text-xs text-muted-foreground">월 누적 거리 (km)</span>
               <input
                 type="number"
                 step="0.1"
                 value={condMonthlyKm}
                 onChange={(e) => setCondMonthlyKm(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 100"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">계절 활동 횟수</span>
+              <span className="text-xs text-muted-foreground">계절 활동 횟수</span>
               <input
                 type="number"
                 value={condSeasonCount}
                 onChange={(e) => setCondSeasonCount(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 5"
               />
             </label>
             <label className="flex flex-col gap-1.5 col-span-2">
-              <span className="text-xs text-[#6b7280]">계절</span>
+              <span className="text-xs text-muted-foreground">계절</span>
               <Select
                 value={condSeason || NONE_VALUE}
                 onValueChange={(v) => setCondSeason(v === NONE_VALUE ? '' : v)}
@@ -853,59 +862,59 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
               </Select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">최저 기온 조건 (°C 이상 · 폭염)</span>
+              <span className="text-xs text-muted-foreground">최저 기온 조건 (°C 이상 · 폭염)</span>
               <input
                 type="number"
                 step="0.1"
                 value={condTempMinC}
                 onChange={(e) => setCondTempMinC(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 30"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">최고 기온 조건 (°C 이하 · 한파)</span>
+              <span className="text-xs text-muted-foreground">최고 기온 조건 (°C 이하 · 한파)</span>
               <input
                 type="number"
                 step="0.1"
                 value={condTempMaxC}
                 onChange={(e) => setCondTempMaxC(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="예: 0"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">활동 시작 시간대 — 시작 (HH:MM)</span>
+              <span className="text-xs text-muted-foreground">활동 시작 시간대 — 시작 (HH:MM)</span>
               <input
                 type="time"
                 value={condTimeStart}
                 onChange={(e) => setCondTimeStart(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-[#6b7280]">활동 시작 시간대 — 종료 (HH:MM)</span>
+              <span className="text-xs text-muted-foreground">활동 시작 시간대 — 종료 (HH:MM)</span>
               <input
                 type="time"
                 value={condTimeEnd}
                 onChange={(e) => setCondTimeEnd(e.target.value)}
-                className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
               />
             </label>
           </div>
-          <p className="text-xs text-[#898989] -mt-1">
+          <p className="text-xs text-muted-foreground -mt-1">
             시간대는 자정을 넘겨 설정 가능합니다 (예: 22:00~05:00 심야). 종료 시각이 시작보다 이르면 익일로 해석됩니다.
           </p>
 
           <label className="flex flex-col gap-1.5 col-span-2">
-            <span className="text-xs text-[#6b7280]">선행 배지 이름 (쉼표 구분)</span>
+            <span className="text-xs text-muted-foreground">선행 배지 이름 (쉼표 구분)</span>
             <input
               value={condPrerequisiteNames}
               onChange={(e) => setCondPrerequisiteNames(e.target.value)}
-              className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+              className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
               placeholder="예: 첫 페달, 아스팔트 입문 (Rare 이상에만 설정)"
             />
-            <span className="text-xs text-[#898989]">이 배지를 받으려면 나열된 배지 중 하나를 먼저 보유해야 합니다.</span>
+            <span className="text-xs text-muted-foreground">이 배지를 받으려면 나열된 배지 중 하나를 먼저 보유해야 합니다.</span>
           </label>
 
           {/* 메타데이터 필드 — 위 조건 필드들과 성격이 다르다(발급 판정에 관여하지 않음)는 것을
@@ -926,9 +935,9 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             </span>
           </label>
 
-          <div className="bg-[#f5f5f5] border border-[#e5e7eb] rounded-xl p-3">
-            <p className="text-xs text-[#6b7280] mb-1.5">JSON 미리보기</p>
-            <pre className="text-xs text-[#111111]/80 font-mono overflow-x-auto">
+          <div className="bg-muted border border-border rounded-xl p-3">
+            <p className="text-xs text-muted-foreground mb-1.5">JSON 미리보기</p>
+            <pre className="text-xs text-foreground/80 font-mono overflow-x-auto">
               {condPreview ? JSON.stringify(condPreview, null, 2) : 'null (조건 없음)'}
             </pre>
           </div>
@@ -937,10 +946,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
       {/* 연결된 지점 (checkin 타입 전용) */}
       {type === 'checkin' && (
-        <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
+        <div className="border border-border rounded-2xl p-5 space-y-4">
           <div>
-            <p className="text-sm font-semibold text-[#374151]">연결된 지점</p>
-            <p className="text-xs text-[#6b7280] mt-1">
+            <p className="text-sm font-semibold text-foreground">연결된 지점</p>
+            <p className="text-xs text-muted-foreground mt-1">
               여기에 연결한 지점 반경을 액티비티 GPS 경로가 지나가면 이 배지를 획득합니다. 여러 개 연결할 수 있고,
               체크인할 때마다 반복 획득됩니다. 판정 반경은 각 지점에 등록된 값을 그대로 사용합니다.
             </p>
@@ -957,14 +966,14 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                   searchPois()
                 }
               }}
-              className="flex-1 bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+              className="flex-1 bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
               placeholder="등록된 지점 이름으로 검색 (예: 대림창고)"
             />
             <button
               type="button"
               onClick={searchPois}
               disabled={poiSearching || !poiQuery.trim()}
-              className="bg-[#111111] text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-[#242424] disabled:opacity-50 transition-colors shrink-0"
+              className="bg-primary text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
             >
               {poiSearching ? '검색 중...' : '검색'}
             </button>
@@ -972,11 +981,11 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
           {/* 검색 결과 */}
           {poiSearched && (
-            <div className="border border-[#e5e7eb] rounded-xl overflow-hidden">
+            <div className="border border-border rounded-xl overflow-hidden">
               {poiResults.length === 0 ? (
-                <p className="px-4 py-4 text-sm text-[#898989]">검색 결과가 없습니다.</p>
+                <p className="px-4 py-4 text-sm text-muted-foreground">검색 결과가 없습니다.</p>
               ) : (
-                <ul className="max-h-64 overflow-y-auto divide-y divide-[#f3f4f6]">
+                <ul className="max-h-64 overflow-y-auto divide-y divide-border">
                   {poiResults.map((poi) => {
                     const already = linkedPois.some((p) => p.id === poi.id)
                     const linkedElsewhere =
@@ -984,8 +993,8 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                     return (
                       <li key={poi.id} className="flex items-center gap-3 px-4 py-2.5">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[#111111] truncate">{poi.name}</p>
-                          <p className="text-xs text-[#6b7280]">
+                          <p className="text-sm text-foreground truncate">{poi.name}</p>
+                          <p className="text-xs text-muted-foreground">
                             {poi.category} · 반경 {poi.radius_meters}m
                             {linkedElsewhere && (
                               <span className="text-amber-600"> · 다른 배지에 연결됨 (추가 시 이 배지로 이동)</span>
@@ -996,7 +1005,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                           type="button"
                           onClick={() => addLinkedPoi(poi)}
                           disabled={already}
-                          className="text-sm px-3 py-1.5 rounded-lg border border-[#e5e7eb] text-[#374151] hover:bg-[#f3f4f6] disabled:opacity-40 disabled:hover:bg-white transition-colors shrink-0"
+                          className="text-sm px-3 py-1.5 rounded-lg border border-border text-foreground hover:bg-muted disabled:opacity-40 disabled:hover:bg-white transition-colors shrink-0"
                         >
                           {already ? '추가됨' : '추가'}
                         </button>
@@ -1010,16 +1019,16 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
           {/* 연결 목록 */}
           <div>
-            <p className="text-xs text-[#6b7280] mb-2">연결된 지점 {linkedPois.length}개</p>
+            <p className="text-xs text-muted-foreground mb-2">연결된 지점 {linkedPois.length}개</p>
             {linkedPois.length === 0 ? (
-              <div className="bg-[#f5f5f5] border border-[#e5e7eb] rounded-xl px-4 py-5 text-center">
-                <p className="text-sm text-[#898989]">아직 연결된 지점이 없습니다. 위에서 검색해 추가하세요.</p>
+              <div className="bg-muted border border-border rounded-xl px-4 py-5 text-center">
+                <p className="text-sm text-muted-foreground">아직 연결된 지점이 없습니다. 위에서 검색해 추가하세요.</p>
               </div>
             ) : (
-              <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-x-auto">
+              <div className="bg-white border border-border rounded-xl overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
+                    <tr className="border-b border-border text-muted-foreground text-left">
                       <th className="px-4 py-2.5 font-medium">이름</th>
                       <th className="px-4 py-2.5 font-medium">카테고리</th>
                       <th className="px-4 py-2.5 font-medium">반경</th>
@@ -1028,16 +1037,16 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                   </thead>
                   <tbody>
                     {linkedPois.map((poi) => (
-                      <tr key={poi.id} className="border-b border-[#f3f4f6] last:border-b-0">
-                        <td className="px-4 py-2.5 text-[#111111]">{poi.name}</td>
-                        <td className="px-4 py-2.5 text-[#374151] text-xs">{poi.category}</td>
-                        <td className="px-4 py-2.5 text-[#374151] text-xs">{poi.radius_meters}m</td>
+                      <tr key={poi.id} className="border-b border-border last:border-b-0">
+                        <td className="px-4 py-2.5 text-foreground">{poi.name}</td>
+                        <td className="px-4 py-2.5 text-foreground text-xs">{poi.category}</td>
+                        <td className="px-4 py-2.5 text-foreground text-xs">{poi.radius_meters}m</td>
                         <td className="px-4 py-2.5 text-right">
                           <button
                             type="button"
                             onClick={() => removeLinkedPoi(poi.id)}
                             aria-label={`${poi.name} 연결 해제`}
-                            className="text-[#898989] hover:text-red-600 transition-colors px-1.5"
+                            className="text-muted-foreground hover:text-red-600 transition-colors px-1.5"
                           >
                             ✕
                           </button>
@@ -1048,7 +1057,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                 </table>
               </div>
             )}
-            <p className="text-xs text-[#898989] mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               반경 수정은 POI 관리 화면에서 할 수 있습니다.
             </p>
           </div>
@@ -1056,31 +1065,31 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       )}
 
       {/* 유효 기간 (공통) */}
-      <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
-        <p className="text-sm font-semibold text-[#374151]">유효 기간</p>
-        <p className="text-xs text-[#6b7280]">
+      <div className="border border-border rounded-2xl p-5 space-y-4">
+        <p className="text-sm font-semibold text-foreground">유효 기간</p>
+        <p className="text-xs text-muted-foreground">
           {type === 'item'
             ? '설정하면 해당 기간에만 드랍되며, 획득된 배지의 만료일은 종료일로 자동 설정됩니다. 설정하지 않으면 상시 드랍 / 만료 없음.'
             : '설정하면 해당 기간에만 획득 조건이 평가됩니다. 기간 외 액티비티 싱크에서는 이 배지가 건너뛰어집니다. 설정하지 않으면 상시 평가.'}
         </p>
         <div className="grid grid-cols-2 gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-[#6b7280]">시작일 (yyyy-mm-dd)</span>
+            <span className="text-xs text-muted-foreground">시작일 (yyyy-mm-dd)</span>
             <input
               type="date"
               value={validFrom}
               onChange={(e) => setValidFrom(e.target.value)}
-              className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+              className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-[#6b7280]">종료일 (yyyy-mm-dd)</span>
+            <span className="text-xs text-muted-foreground">종료일 (yyyy-mm-dd)</span>
             <input
               type="date"
               value={validUntil}
               onChange={(e) => setValidUntil(e.target.value)}
               min={validFrom || undefined}
-              className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
+              className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
             />
           </label>
         </div>
@@ -1088,7 +1097,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           <button
             type="button"
             onClick={() => { setValidFrom(''); setValidUntil('') }}
-            className="text-xs text-[#898989] hover:text-[#374151] transition-colors"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             기간 설정 초기화
           </button>
@@ -1099,14 +1108,14 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         <button
           type="submit"
           disabled={loading}
-          className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+          className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {loading ? '저장 중...' : isEdit ? '수정 저장' : '배지 등록'}
         </button>
         <button
           type="button"
           onClick={() => router.push('/admin/badges')}
-          className="text-[#6b7280] hover:text-[#111111] px-4 py-2.5 rounded-xl hover:bg-[#f8f9fa] transition-colors"
+          className="text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl hover:bg-muted transition-colors"
         >
           취소
         </button>
@@ -1123,9 +1132,9 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-sm w-full mx-4">
+          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">배지 삭제</h3>
-            <p className="text-[#6b7280] text-sm mb-5">
+            <p className="text-muted-foreground text-sm mb-5">
               &apos;{badge?.name}&apos; 배지를 삭제합니다. 이 작업은 되돌릴 수 없습니다.
             </p>
             <div className="flex gap-3">
@@ -1138,7 +1147,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors"
+                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors"
               >
                 취소
               </button>
