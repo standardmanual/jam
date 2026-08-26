@@ -27,7 +27,7 @@ export default async function AdminFactionsPage() {
         <h1 className="text-2xl font-bold">세계관 관리</h1>
         <Link
           href="/admin/factions/new"
-          className="bg-[#111111] text-white font-bold px-5 py-2.5 rounded-xl hover:bg-[#242424] transition-colors text-sm"
+          className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm"
         >
           + 세계관 등록
         </Link>

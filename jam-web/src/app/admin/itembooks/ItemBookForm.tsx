@@ -1,6 +1,6 @@
 'use client'
 
-import { lazy, Suspense, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
@@ -71,6 +71,14 @@ export default function ItemBookForm({
 }: ItemBookFormProps) {
   const router = useRouter()
   const isEdit = !!book
+
+  // Select/AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민
+  // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
+  // 지정한다 (4단계a `BadgeForm.tsx`와 동일 패턴, 20260826_018).
+  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
+  }, [])
 
   const [name, setName] = useState(book?.name ?? '')
   const [description, setDescription] = useState(book?.description ?? '')
@@ -347,12 +355,12 @@ export default function ItemBookForm({
       )}
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">컬렉션 이름 *</span>
+        <span className="text-sm text-foreground">컬렉션 이름 *</span>
         <input
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+          className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
           placeholder="예: 서울 라이더 컬렉션"
         />
       </label>
@@ -365,30 +373,30 @@ export default function ItemBookForm({
       />
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">설명 *</span>
+        <span className="text-sm text-foreground">설명 *</span>
         <textarea
           required
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 resize-none"
+          className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
           placeholder="컬렉션 설명을 입력하세요"
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">스토리 텍스트</span>
+        <span className="text-sm text-foreground">스토리 텍스트</span>
         <textarea
           value={storyText}
           onChange={(e) => setStoryText(e.target.value)}
           rows={3}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 resize-none"
+          className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
           placeholder="세계관 스토리 또는 배경 설명"
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">소속 세계관</span>
+        <span className="text-sm text-foreground">소속 세계관</span>
         <Select
           value={factionId || NONE_VALUE}
           onValueChange={(v) => setFactionId(v === NONE_VALUE ? '' : v)}
@@ -396,7 +404,7 @@ export default function ItemBookForm({
           <SelectTrigger aria-label="소속 세계관">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent container={themeContainer ?? undefined}>
             <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
             {factions.map((f) => (
               <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
@@ -406,7 +414,7 @@ export default function ItemBookForm({
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">필수 액티비티 배지</span>
+        <span className="text-sm text-foreground">필수 액티비티 배지</span>
         <BadgeSearchSelect
           key={book?.id ?? 'new'}
           value={requiredActivityBadgeId}
@@ -418,7 +426,7 @@ export default function ItemBookForm({
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">완성 보상 배지</span>
+        <span className="text-sm text-foreground">완성 보상 배지</span>
         <BadgeSearchSelect
           key={book?.id ?? 'new'}
           value={rewardBadgeId}
@@ -434,10 +442,10 @@ export default function ItemBookForm({
       </label>
 
       {/* 배경 테마 — 컬렉션 상세화면 렌더링 + 하위 배지 일괄 적용 (20260818_004, 20260819_014) */}
-      <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
+      <div className="border border-border rounded-2xl p-5 space-y-4">
         <div>
-          <p className="text-sm font-semibold text-[#374151]">배경 테마</p>
-          <p className="text-xs text-[#6b7280] mt-1">
+          <p className="text-sm font-semibold text-foreground">배경 테마</p>
+          <p className="text-xs text-muted-foreground mt-1">
             이 설정은 이 컬렉션 상세화면과 소속된 모든 아이템배지 상세화면에 일괄 적용돼요.
           </p>
         </div>
@@ -464,7 +472,7 @@ export default function ItemBookForm({
                   backgroundLayerRef={backgroundLayerRef}
                   liveNode={liveNode}
                 />
-                <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
+                <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
                   실제 컬렉션 상세화면과 같은 구조로 보여줘요. 진행도는 예시라 실제 값과 달라요.
                 </p>
               </>
@@ -473,7 +481,7 @@ export default function ItemBookForm({
         </Suspense>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
+          <span className="text-sm text-foreground">배경 쉐이더 (임시)</span>
           <Select
             value={backgroundShaderId || NONE_VALUE}
             onValueChange={(v) => setBackgroundShaderId(v === NONE_VALUE ? '' : v)}
@@ -481,13 +489,13 @@ export default function ItemBookForm({
             <SelectTrigger className="max-w-xs" aria-label="배경 쉐이더">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent container={themeContainer ?? undefined}>
               {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value || NONE_VALUE}>{opt.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
+          <span className="text-xs text-muted-foreground">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
         </label>
 
         <div className="pt-1">
@@ -495,11 +503,11 @@ export default function ItemBookForm({
             type="button"
             onClick={handleBulkApplyClick}
             disabled={!isEdit || !hasBackgroundValue || bulkApplyLoading || loading}
-            className="bg-white border border-[#e5e7eb] text-[#374151] text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-[#f8f9fa] disabled:opacity-50 transition-colors"
+            className="bg-white border border-border text-foreground text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-muted disabled:opacity-50 transition-colors"
           >
             {bulkApplyLoading ? '처리 중...' : '하위 배지에 일괄 적용'}
           </button>
-          <p className="text-xs text-[#898989] mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             {!isEdit
               ? '컬렉션을 먼저 등록해야 하위 배지에 일괄 적용할 수 있어요.'
               : !hasBackgroundValue
@@ -517,14 +525,14 @@ export default function ItemBookForm({
 
       {/* 배지 슬롯 관리 (편집 모드만) */}
       {isEdit && (
-        <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
+        <div className="border border-border rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-[#374151]">배지 슬롯 관리</p>
-            <span className="text-xs text-[#6b7280]">{slottedBadges.length}개 배지 등록됨</span>
+            <p className="text-sm font-semibold text-foreground">배지 슬롯 관리</p>
+            <span className="text-xs text-muted-foreground">{slottedBadges.length}개 배지 등록됨</span>
           </div>
 
           {slottedBadges.length === 0 && (
-            <p className="text-[#898989] text-sm">등록된 배지가 없습니다.</p>
+            <p className="text-muted-foreground text-sm">등록된 배지가 없습니다.</p>
           )}
           <div className="space-y-2">
             {slottedBadges.map((b) => (
@@ -533,7 +541,7 @@ export default function ItemBookForm({
                   <Image src={b.image_url} alt={b.name} width={32} height={32} className="w-8 h-8 rounded-lg object-contain" />
                 )}
                 <span className="text-sm flex-1">{b.name}</span>
-                <span className="text-xs text-[#6b7280]">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
+                <span className="text-xs text-muted-foreground">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
                 <button
                   type="button"
                   onClick={() => handleUnassignBadge(b.id)}
@@ -548,7 +556,7 @@ export default function ItemBookForm({
           <button
             type="button"
             onClick={() => setShowBadgeModal(true)}
-            className="w-full border border-dashed border-[#e5e7eb] rounded-xl py-2.5 text-sm text-[#6b7280] hover:text-[#374151] hover:border-[#d1d5db] transition-colors"
+            className="w-full border border-dashed border-border rounded-xl py-2.5 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
           >
             + 배지 추가
           </button>
@@ -559,14 +567,14 @@ export default function ItemBookForm({
         <button
           type="submit"
           disabled={loading}
-          className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+          className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {loading ? '저장 중...' : isEdit ? '수정 저장' : '컬렉션 등록'}
         </button>
         <button
           type="button"
           onClick={() => router.push('/admin/itembooks')}
-          className="text-[#6b7280] hover:text-[#111111] px-4 py-2.5 rounded-xl hover:bg-[#f8f9fa] transition-colors"
+          className="text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl hover:bg-muted transition-colors"
         >
           취소
         </button>
@@ -583,9 +591,9 @@ export default function ItemBookForm({
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-sm w-full mx-4">
+          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">컬렉션 삭제</h3>
-            <p className="text-[#6b7280] text-sm mb-5">
+            <p className="text-muted-foreground text-sm mb-5">
               &apos;{book?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
             </p>
             <div className="flex gap-3">
@@ -598,7 +606,7 @@ export default function ItemBookForm({
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors"
+                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors"
               >
                 취소
               </button>
@@ -609,9 +617,9 @@ export default function ItemBookForm({
 
       {showBulkApplyConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-sm w-full mx-4">
+          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">하위 배지에 일괄 적용</h3>
-            <p className="text-[#6b7280] text-sm mb-5">
+            <p className="text-muted-foreground text-sm mb-5">
               이 컬렉션에 속한 배지 {bulkApplyCount ?? 0}개의 배경이 지금 이 값으로 즉시
               덮어써집니다. 개별 배지에서 따로 지정한 배경도 모두 이 값으로 바뀝니다. 계속할까요?
             </p>
@@ -619,14 +627,14 @@ export default function ItemBookForm({
               <button
                 onClick={handleBulkApplyConfirm}
                 disabled={bulkApplyLoading}
-                className="flex-1 bg-[#111111] text-white font-bold py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {bulkApplyLoading ? '적용 중...' : '적용 확인'}
               </button>
               <button
                 onClick={() => setShowBulkApplyConfirm(false)}
                 disabled={bulkApplyLoading}
-                className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors disabled:opacity-50"
+                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors disabled:opacity-50"
               >
                 취소
               </button>
@@ -637,7 +645,7 @@ export default function ItemBookForm({
 
       {/* 컬렉션 비활성화 확인 — 켜짐 → 꺼짐 전환 시 소속 배지 연쇄 회수 경고 (20260823_004) */}
       <AlertDialog open={showDeactivateConfirm} onOpenChange={(open) => { if (!open) handleDeactivateCancel() }}>
-        <AlertDialogContent>
+        <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>컬렉션 비활성화</AlertDialogTitle>
             <AlertDialogDescription>
@@ -653,14 +661,14 @@ export default function ItemBookForm({
               type="button"
               onClick={handleDeactivateConfirm}
               disabled={deactivationImpactLoading}
-              className="flex-1 bg-[#111111] text-white font-bold py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+              className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               계속
             </button>
             <button
               type="button"
               onClick={handleDeactivateCancel}
-              className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors"
+              className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors"
             >
               취소
             </button>
@@ -671,7 +679,7 @@ export default function ItemBookForm({
       {/* 배지 선택 모달 */}
       {showBadgeModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-md w-full mx-4">
+          <div className="bg-white border border-border rounded-2xl p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-bold mb-4">배지 추가</h3>
             <BadgeMultiSearchSelect
               typeFilter="item"
@@ -682,7 +690,7 @@ export default function ItemBookForm({
             <button
               type="button"
               onClick={() => setShowBadgeModal(false)}
-              className="mt-4 w-full bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors text-sm"
+              className="mt-4 w-full bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors text-sm"
             >
               닫기
             </button>

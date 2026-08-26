@@ -49,9 +49,9 @@ export default function AdjacencyEditor({ factionId, allFactions, initialAdjacen
   }
 
   return (
-    <section className="bg-white border border-[#e5e7eb] rounded-2xl p-6 mt-8">
+    <section className="bg-white border border-border rounded-2xl p-6 mt-8">
       <h2 className="font-bold mb-1">인접 세계관</h2>
-      <p className="text-[#6b7280] text-xs mb-4">
+      <p className="text-muted-foreground text-xs mb-4">
         드랍엔진 v2의 인접 버킷(25%) 추첨 대상. 이 세계관에서 드랍이 이어질 때 넘어갈 수 있는 이웃을
         지정합니다.
       </p>
@@ -66,8 +66,8 @@ export default function AdjacencyEditor({ factionId, allFactions, initialAdjacen
               className={[
                 'px-3 py-1.5 rounded-xl text-sm font-medium border transition-colors',
                 on
-                  ? 'bg-[#111111]/15 border-[#111111]/60 text-[#111111]'
-                  : 'bg-white border-[#e5e7eb] text-[#6b7280] hover:text-[#111111]',
+                  ? 'bg-primary/15 border-primary/60 text-foreground'
+                  : 'bg-white border-border text-muted-foreground hover:text-foreground',
               ].join(' ')}
             >
               {f.name}
@@ -79,7 +79,7 @@ export default function AdjacencyEditor({ factionId, allFactions, initialAdjacen
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-[#111111] text-white font-bold px-5 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm disabled:opacity-50"
+          className="bg-primary text-white font-bold px-5 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
         >
           {saving ? '저장 중…' : '인접 저장'}
         </button>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { PoiRow, PoiCategory, PoiCategoryRow } from '@/types/database'
 import type { NaverSearchResult } from '@/lib/poi/naver'
@@ -17,6 +17,14 @@ interface PoiFormProps {
 export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormProps) {
   const router = useRouter()
   const isEdit = !!poi
+
+  // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
+  // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
+  // 지정한다 (4단계a `BadgeForm.tsx`와 동일 패턴, 20260826_018).
+  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
+  }, [])
 
   const [name, setName] = useState(poi?.name ?? '')
   const [latitude, setLatitude] = useState<string>(poi?.latitude.toString() ?? '')
@@ -115,21 +123,21 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
       )}
 
       {!isEdit && (
-        <div className="flex flex-col gap-2 bg-white border border-[#e5e7eb] rounded-xl p-4">
-          <span className="text-sm text-[#374151]">네이버 장소 검색으로 채우기</span>
+        <div className="flex flex-col gap-2 bg-white border border-border rounded-xl p-4">
+          <span className="text-sm text-foreground">네이버 장소 검색으로 채우기</span>
           <div className="flex gap-2">
             <input
               value={naverQuery}
               onChange={(e) => setNaverQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleNaverSearch() } }}
               placeholder="예: 뚝섬 한강공원"
-              className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+              className="flex-1 bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
             <button
               type="button"
               onClick={handleNaverSearch}
               disabled={naverSearching}
-              className="bg-[#f3f4f6] text-[#111111] px-4 py-2.5 rounded-xl hover:bg-[#e5e7eb] disabled:opacity-50 transition-colors"
+              className="bg-muted text-foreground px-4 py-2.5 rounded-xl hover:bg-accent disabled:opacity-50 transition-colors"
             >
               {naverSearching ? '검색 중...' : '검색'}
             </button>
@@ -142,10 +150,10 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
                   <button
                     type="button"
                     onClick={() => handleSelectNaverResult(r)}
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#f3f4f6] transition-colors"
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors"
                   >
-                    <div className="text-[#111111] text-sm font-semibold">{r.name}</div>
-                    <div className="text-[#6b7280] text-xs">{r.address}</div>
+                    <div className="text-foreground text-sm font-semibold">{r.name}</div>
+                    <div className="text-muted-foreground text-xs">{r.address}</div>
                   </button>
                 </li>
               ))}
@@ -155,38 +163,38 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
       )}
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">POI 이름 *</span>
+        <span className="text-sm text-foreground">POI 이름 *</span>
         <input
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+          className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
           placeholder="예: 뚝섬 한강공원"
         />
       </label>
 
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">위도 *</span>
+          <span className="text-sm text-foreground">위도 *</span>
           <input
             required
             type="number"
             step="any"
             value={latitude}
             onChange={(e) => setLatitude(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+            className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             placeholder="37.5326"
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">경도 *</span>
+          <span className="text-sm text-foreground">경도 *</span>
           <input
             required
             type="number"
             step="any"
             value={longitude}
             onChange={(e) => setLongitude(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+            className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             placeholder="126.9903"
           />
         </label>
@@ -194,22 +202,22 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
 
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">반경 (미터) *</span>
+          <span className="text-sm text-foreground">반경 (미터) *</span>
           <input
             required
             type="number"
             value={radiusMeters}
             onChange={(e) => setRadiusMeters(e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
+            className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">카테고리 *</span>
+          <span className="text-sm text-foreground">카테고리 *</span>
           <Select value={category} onValueChange={(v) => setCategory(v as PoiCategory)}>
             <SelectTrigger aria-label="카테고리">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent container={themeContainer ?? undefined}>
               {categories.map((c) => (
                 <SelectItem key={c.slug} value={c.slug}>{c.label} ({c.slug})</SelectItem>
               ))}
@@ -219,7 +227,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">연결 배지</span>
+        <span className="text-sm text-foreground">연결 배지</span>
         <BadgeSearchSelect
           key={poi?.id ?? 'new'}
           value={linkedBadgeId}
@@ -233,14 +241,14 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
         <button
           type="submit"
           disabled={loading}
-          className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+          className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {loading ? '저장 중...' : isEdit ? '수정 저장' : 'POI 등록'}
         </button>
         <button
           type="button"
           onClick={() => router.push('/admin/poi')}
-          className="text-[#6b7280] hover:text-[#111111] px-4 py-2.5 rounded-xl hover:bg-[#f8f9fa] transition-colors"
+          className="text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl hover:bg-muted transition-colors"
         >
           취소
         </button>
@@ -257,9 +265,9 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-sm w-full mx-4">
+          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">POI 삭제</h3>
-            <p className="text-[#6b7280] text-sm mb-5">
+            <p className="text-muted-foreground text-sm mb-5">
               &apos;{poi?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
             </p>
             <div className="flex gap-3">
@@ -272,7 +280,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors"
+                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors"
               >
                 취소
               </button>

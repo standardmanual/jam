@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import type { PoiCategoryRow } from '@/types/database'
@@ -36,6 +36,14 @@ function toEditState(c: PoiCategoryRow): EditState {
 
 export default function CategoryManager({ categories, usageCounts }: CategoryManagerProps) {
   const router = useRouter()
+
+  // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
+  // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
+  // 지정한다 (4단계a `BadgeForm.tsx`와 동일 패턴, 20260826_018).
+  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
+  }, [])
 
   // 생성 폼 상태
   const [slug, setSlug] = useState('')
@@ -133,43 +141,43 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
 
   return (
     <div className="flex flex-col gap-6">
-      <form onSubmit={handleCreate} className="flex flex-col gap-3 bg-white border border-[#e5e7eb] rounded-2xl p-5">
+      <form onSubmit={handleCreate} className="flex flex-col gap-3 bg-white border border-border rounded-2xl p-5">
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-[#374151]">slug *</span>
+            <span className="text-sm text-foreground">slug *</span>
             <input
               required
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               placeholder="fitness_center"
-              className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 font-mono text-sm"
+              className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 font-mono text-sm"
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-[#374151]">표시 이름 *</span>
+            <span className="text-sm text-foreground">표시 이름 *</span>
             <input
               required
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="헬스장"
-              className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+              className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
           </label>
           <button
             type="submit"
             disabled={creating}
-            className="bg-[#111111] text-white font-bold px-5 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+            className="bg-primary text-white font-bold px-5 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {creating ? '생성 중...' : '카테고리 추가'}
           </button>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-[#374151]">
+        <label className="flex items-center gap-2 text-sm text-foreground">
           <input
             type="checkbox"
             checked={pipelineLinked}
             onChange={(e) => setPipelineLinked(e.target.checked)}
-            className="accent-[#111111]"
+            className="accent-primary"
           />
           드랍/픽업 자동검색 파이프라인에 연동
         </label>
@@ -177,24 +185,24 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
         {pipelineLinked && (
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-[#374151]">티어</span>
+              <span className="text-sm text-foreground">티어</span>
               <Select value={String(tier)} onValueChange={(v) => setTier(Number(v) as 1 | 2)}>
                 <SelectTrigger aria-label="티어">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent container={themeContainer ?? undefined}>
                   <SelectItem value="1">티어 1 — 항상 검색</SelectItem>
                   <SelectItem value="2">티어 2 — 티어1 부족 시 보조 검색</SelectItem>
                 </SelectContent>
               </Select>
             </label>
             <label className="flex flex-col gap-1.5 flex-1 min-w-[220px]">
-              <span className="text-sm text-[#374151]">키워드 (콤마로 구분) *</span>
+              <span className="text-sm text-foreground">키워드 (콤마로 구분) *</span>
               <input
                 value={keywordsInput}
                 onChange={(e) => setKeywordsInput(e.target.value)}
                 placeholder="헬스장, 필라테스"
-                className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-sm"
+                className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
               />
             </label>
           </div>
@@ -203,10 +211,10 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
         {error && <p className="text-red-600 text-sm">{error}</p>}
       </form>
 
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
+      <div className="bg-white border border-border rounded-2xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
+            <tr className="border-b border-border text-muted-foreground text-left">
               <th className="px-5 py-3 font-medium">slug</th>
               <th className="px-5 py-3 font-medium">표시 이름</th>
               <th className="px-5 py-3 font-medium">사용 중인 POI</th>
@@ -220,20 +228,20 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
             {categories.map((c) => {
               const isEditing = editingSlug === c.slug
               return (
-                <tr key={c.slug} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] transition-colors align-top">
-                  <td className="px-5 py-3 font-mono text-[#374151] whitespace-nowrap">{c.slug}</td>
+                <tr key={c.slug} className="border-b border-border hover:bg-muted transition-colors align-top">
+                  <td className="px-5 py-3 font-mono text-foreground whitespace-nowrap">{c.slug}</td>
                   <td className="px-5 py-3 min-w-[120px]">
                     {isEditing && editState ? (
                       <input
                         value={editState.label}
                         onChange={(e) => setEditState({ ...editState, label: e.target.value })}
-                        className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-1.5 text-[#111111] focus:outline-none focus:border-[#111111]/50 text-sm w-full"
+                        className="bg-white border border-border rounded-lg px-3 py-1.5 text-foreground focus:outline-none focus:border-primary/50 text-sm w-full"
                       />
                     ) : (
                       c.label
                     )}
                   </td>
-                  <td className="px-5 py-3 text-[#374151] whitespace-nowrap">{usageCounts[c.slug] ?? 0}개</td>
+                  <td className="px-5 py-3 text-foreground whitespace-nowrap">{usageCounts[c.slug] ?? 0}개</td>
                   <td className="px-5 py-3">
                     {isEditing && editState ? (
                       <label className="flex items-center gap-2">
@@ -241,7 +249,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                           type="checkbox"
                           checked={editState.pipelineLinked}
                           onChange={(e) => setEditState({ ...editState, pipelineLinked: e.target.checked })}
-                          className="accent-[#111111]"
+                          className="accent-primary"
                         />
                       </label>
                     ) : c.pipeline_linked ? (
@@ -249,7 +257,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                         연동중
                       </span>
                     ) : (
-                      <span className="text-xs text-[#898989]">미연동</span>
+                      <span className="text-xs text-muted-foreground">미연동</span>
                     )}
                   </td>
                   <td className="px-5 py-3 whitespace-nowrap">
@@ -262,13 +270,13 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                           <SelectTrigger className="h-auto px-2 py-1.5 text-xs" aria-label="티어">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent container={themeContainer ?? undefined}>
                             <SelectItem value="1">티어 1</SelectItem>
                             <SelectItem value="2">티어 2</SelectItem>
                           </SelectContent>
                         </Select>
                       ) : (
-                        <span className="text-[#898989] text-xs">—</span>
+                        <span className="text-muted-foreground text-xs">—</span>
                       )
                     ) : c.tier ? (
                       `티어 ${c.tier}`
@@ -283,21 +291,21 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                           value={editState.keywordsInput}
                           onChange={(e) => setEditState({ ...editState, keywordsInput: e.target.value })}
                           placeholder="키워드1, 키워드2"
-                          className="bg-white border border-[#e5e7eb] rounded-lg px-3 py-1.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-xs w-full"
+                          className="bg-white border border-border rounded-lg px-3 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-xs w-full"
                         />
                       ) : (
-                        <span className="text-[#898989] text-xs">—</span>
+                        <span className="text-muted-foreground text-xs">—</span>
                       )
                     ) : c.keywords.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {c.keywords.map((k) => (
-                          <span key={k} className="text-xs bg-[#f5f5f5] text-[#374151] rounded-full px-2 py-0.5">
+                          <span key={k} className="text-xs bg-muted text-foreground rounded-full px-2 py-0.5">
                             {k}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-[#898989] text-xs">—</span>
+                      <span className="text-muted-foreground text-xs">—</span>
                     )}
                   </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
@@ -305,20 +313,20 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                       <div className="flex gap-2 justify-end">
                         <button
                           onClick={() => handleSaveEdit(c.slug)}
-                          className="text-[#111111] hover:text-[#242424] px-2 py-1"
+                          className="text-foreground hover:text-foreground/80 px-2 py-1"
                         >
                           저장
                         </button>
                         <button
                           onClick={() => { setEditingSlug(null); setEditState(null) }}
-                          className="text-[#6b7280] hover:text-[#111111] px-2 py-1"
+                          className="text-muted-foreground hover:text-foreground px-2 py-1"
                         >
                           취소
                         </button>
                       </div>
                     ) : deletingSlug === c.slug ? (
                       <div className="flex gap-2 justify-end items-center">
-                        <span className="text-[#6b7280] text-xs">정말 삭제할까요?</span>
+                        <span className="text-muted-foreground text-xs">정말 삭제할까요?</span>
                         <button
                           onClick={() => handleDelete(c.slug)}
                           className="text-red-600 hover:text-red-700 px-2 py-1"
@@ -327,7 +335,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                         </button>
                         <button
                           onClick={() => setDeletingSlug(null)}
-                          className="text-[#6b7280] hover:text-[#111111] px-2 py-1"
+                          className="text-muted-foreground hover:text-foreground px-2 py-1"
                         >
                           취소
                         </button>
@@ -336,7 +344,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                       <div className="flex gap-2 justify-end">
                         <button
                           onClick={() => startEdit(c)}
-                          className="text-[#374151] hover:text-[#111111] px-2 py-1"
+                          className="text-foreground hover:text-foreground px-2 py-1"
                         >
                           수정
                         </button>
