@@ -1,6 +1,6 @@
 'use client'
 
-import { lazy, Suspense, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { FactionRow } from '@/types/database'
 import ImageUploadField from '@/components/admin/ImageUploadField'
@@ -51,6 +51,14 @@ async function uploadBackgroundFile(blob: Blob, filename: string, mimeType: stri
 export default function FactionForm({ faction }: FactionFormProps) {
   const router = useRouter()
   const isEdit = !!faction
+
+  // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
+  // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
+  // 지정한다 (4단계a `BadgeForm.tsx`와 동일 패턴, 20260826_018).
+  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
+  }, [])
 
   const [name, setName] = useState(faction?.name ?? '')
   const [tagline, setTagline] = useState(faction?.tagline ?? '')
@@ -273,33 +281,33 @@ export default function FactionForm({ faction }: FactionFormProps) {
       )}
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">세계관 이름 *</span>
+        <span className="text-sm text-foreground">세계관 이름 *</span>
         <input
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+          className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
           placeholder="예: 도심 라이더즈"
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">태그라인</span>
+        <span className="text-sm text-foreground">태그라인</span>
         <input
           value={tagline}
           onChange={(e) => setTagline(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+          className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
           placeholder="짧은 한 줄 설명"
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">설명</span>
+        <span className="text-sm text-foreground">설명</span>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 resize-none"
+          className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
           placeholder="세계관 상세 설명"
         />
       </label>
@@ -315,7 +323,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
       />
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">드랍 가중치 (0.1 ~ 10.0)</span>
+        <span className="text-sm text-foreground">드랍 가중치 (0.1 ~ 10.0)</span>
         <input
           type="number"
           step="0.1"
@@ -323,17 +331,17 @@ export default function FactionForm({ faction }: FactionFormProps) {
           max="10.0"
           value={dropWeight}
           onChange={(e) => setDropWeight(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
+          className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-[#374151]">정렬 순서</span>
+        <span className="text-sm text-foreground">정렬 순서</span>
         <input
           type="number"
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value)}
-          className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] focus:outline-none focus:border-[#111111]/50"
+          className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
           placeholder="0"
         />
       </label>
@@ -343,16 +351,16 @@ export default function FactionForm({ faction }: FactionFormProps) {
           type="checkbox"
           checked={isActive}
           onChange={(e) => setIsActive(e.target.checked)}
-          className="accent-[#111111]"
+          className="accent-primary"
         />
         <span className="text-sm">활성화</span>
       </label>
 
       {/* 배경 테마 — 3단 캐스케이드 일괄 적용 (20260818_004, 20260819_015) */}
-      <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
+      <div className="border border-border rounded-2xl p-5 space-y-4">
         <div>
-          <p className="text-sm font-semibold text-[#374151]">배경 테마</p>
-          <p className="text-xs text-[#6b7280] mt-1">
+          <p className="text-sm font-semibold text-foreground">배경 테마</p>
+          <p className="text-xs text-muted-foreground mt-1">
             이 세계관 자체에는 배경이 적용되지 않아요. 이 설정은 이 세계관에 속한 배지, 소속
             컬렉션, 그 컬렉션의 아이템배지 전체에 일괄 적용돼요.
           </p>
@@ -380,7 +388,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
                   backgroundLayerRef={backgroundLayerRef}
                   liveNode={liveNode}
                 />
-                <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
+                <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
                   세계관 자체 화면은 없어요. 이 배경이 그대로 복사될 소속 컬렉션 상세화면과 같은
                   구조로 보여줘요.
                 </p>
@@ -390,7 +398,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
         </Suspense>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
+          <span className="text-sm text-foreground">배경 쉐이더 (임시)</span>
           <Select
             value={backgroundShaderId || NONE_VALUE}
             onValueChange={(v) => setBackgroundShaderId(v === NONE_VALUE ? '' : v)}
@@ -398,13 +406,13 @@ export default function FactionForm({ faction }: FactionFormProps) {
             <SelectTrigger className="max-w-xs" aria-label="배경 쉐이더">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent container={themeContainer ?? undefined}>
               {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value || NONE_VALUE}>{opt.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <span className="text-xs text-[#898989]">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
+          <span className="text-xs text-muted-foreground">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
         </label>
 
         <div className="pt-1">
@@ -412,11 +420,11 @@ export default function FactionForm({ faction }: FactionFormProps) {
             type="button"
             onClick={handleBulkApplyClick}
             disabled={!isEdit || !hasBackgroundValue || bulkApplyLoading || loading}
-            className="bg-white border border-[#e5e7eb] text-[#374151] text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-[#f8f9fa] disabled:opacity-50 transition-colors"
+            className="bg-white border border-border text-foreground text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-muted disabled:opacity-50 transition-colors"
           >
             {bulkApplyLoading ? '처리 중...' : '일괄 적용'}
           </button>
-          <p className="text-xs text-[#898989] mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             {!isEdit
               ? '세계관을 먼저 등록해야 일괄 적용할 수 있어요.'
               : !hasBackgroundValue
@@ -430,14 +438,14 @@ export default function FactionForm({ faction }: FactionFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="bg-[#111111] text-white font-bold px-6 py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+          className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {loading ? '저장 중...' : isEdit ? '수정 저장' : '세계관 등록'}
         </button>
         <button
           type="button"
           onClick={() => router.push('/admin/factions')}
-          className="text-[#6b7280] hover:text-[#111111] px-4 py-2.5 rounded-xl hover:bg-[#f8f9fa] transition-colors"
+          className="text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl hover:bg-muted transition-colors"
         >
           취소
         </button>
@@ -454,9 +462,9 @@ export default function FactionForm({ faction }: FactionFormProps) {
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-sm w-full mx-4">
+          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">세계관 삭제</h3>
-            <p className="text-[#6b7280] text-sm mb-5">
+            <p className="text-muted-foreground text-sm mb-5">
               &apos;{faction?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
             </p>
             <div className="flex gap-3">
@@ -469,7 +477,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors"
+                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors"
               >
                 취소
               </button>
@@ -480,9 +488,9 @@ export default function FactionForm({ faction }: FactionFormProps) {
 
       {showBulkApplyConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-sm w-full mx-4">
+          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">일괄 적용</h3>
-            <p className="text-[#6b7280] text-sm mb-5">
+            <p className="text-muted-foreground text-sm mb-5">
               직속 배지 {bulkApplyCount?.directBadges ?? 0}개, 소속 컬렉션 {bulkApplyCount?.itemBooks ?? 0}개,
               컬렉션 아이템배지 {bulkApplyCount?.itemBookBadges ?? 0}개의 배경이 지금 이 값으로
               즉시 덮어써집니다. 개별 배지·컬렉션에서 따로 지정한 배경도 모두 이 값으로
@@ -492,14 +500,14 @@ export default function FactionForm({ faction }: FactionFormProps) {
               <button
                 onClick={handleBulkApplyConfirm}
                 disabled={bulkApplyLoading}
-                className="flex-1 bg-[#111111] text-white font-bold py-2.5 rounded-xl hover:bg-[#242424] disabled:opacity-50 transition-colors"
+                className="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {bulkApplyLoading ? '적용 중...' : '적용 확인'}
               </button>
               <button
                 onClick={() => setShowBulkApplyConfirm(false)}
                 disabled={bulkApplyLoading}
-                className="flex-1 bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors disabled:opacity-50"
+                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors disabled:opacity-50"
               >
                 취소
               </button>

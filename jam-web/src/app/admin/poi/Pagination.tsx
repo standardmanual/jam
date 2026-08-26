@@ -45,20 +45,20 @@ export default function Pagination({ page, totalPages, searchParams, basePath = 
         href={buildHref(searchParams, Math.max(1, page - 1), basePath)}
         aria-disabled={page === 1}
         className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-          page === 1 ? 'text-[#898989] pointer-events-none' : 'text-[#374151] hover:bg-[#f3f4f6]'
+          page === 1 ? 'text-muted-foreground pointer-events-none' : 'text-foreground hover:bg-muted'
         }`}
       >
         이전
       </Link>
       {pageList.map((p, i) =>
         p === 'ellipsis' ? (
-          <span key={`e${i}`} className="px-2 text-[#898989] text-sm">…</span>
+          <span key={`e${i}`} className="px-2 text-muted-foreground text-sm">…</span>
         ) : (
           <Link
             key={p}
             href={buildHref(searchParams, p, basePath)}
             className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              p === page ? 'bg-[#111111] text-white font-bold' : 'text-[#374151] hover:bg-[#f3f4f6]'
+              p === page ? 'bg-primary text-white font-bold' : 'text-foreground hover:bg-muted'
             }`}
           >
             {p}
@@ -69,7 +69,7 @@ export default function Pagination({ page, totalPages, searchParams, basePath = 
         href={buildHref(searchParams, Math.min(totalPages, page + 1), basePath)}
         aria-disabled={page === totalPages}
         className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-          page === totalPages ? 'text-[#898989] pointer-events-none' : 'text-[#374151] hover:bg-[#f3f4f6]'
+          page === totalPages ? 'text-muted-foreground pointer-events-none' : 'text-foreground hover:bg-muted'
         }`}
       >
         다음
