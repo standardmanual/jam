@@ -232,20 +232,20 @@ export default function TodayCardList({ cards, badgeLabels, missions, itemBooks 
     router.refresh()
   }, [router])
 
-  const inputCls = 'w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm'
-  const labelCls = 'text-xs text-[#6b7280] mb-1 block'
+  const inputCls = 'w-full bg-white border border-border rounded-xl px-3 py-2 text-sm'
+  const labelCls = 'text-xs text-muted-foreground mb-1 block'
 
   return (
     <div className="space-y-6">
       <button
         onClick={() => (showForm ? handleCancel() : setShowForm(true))}
-        className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm"
+        className="bg-primary text-white font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm"
       >
         {showForm ? '취소' : '+ 콘텐츠 추가'}
       </button>
 
       {showForm && (
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 space-y-4">
+        <div className="bg-white border border-border rounded-2xl p-6 space-y-4">
           <h2 className="font-bold">{editingId ? '투데이 카드 수정' : '새 투데이 카드'}</h2>
 
           <div className="grid grid-cols-2 gap-4">
@@ -302,7 +302,7 @@ export default function TodayCardList({ cards, badgeLabels, missions, itemBooks 
 
           {/* 템플릿별 참조 필드 */}
           {fields.badges && (
-            <div className="border border-[#e5e7eb] rounded-2xl p-4 space-y-2">
+            <div className="border border-border rounded-2xl p-4 space-y-2">
               <label className={labelCls}>배지 선택 (복수 가능)</label>
               <BadgeMultiSearchSelect
                 selected={selectedBadgeChips}
@@ -373,21 +373,21 @@ export default function TodayCardList({ cards, badgeLabels, missions, itemBooks 
             </div>
           )}
           {form.template_type === 'drop_alert' && (
-            <p className="text-[#898989] text-xs">이동 경로는 /drops 로 고정됩니다.</p>
+            <p className="text-muted-foreground text-xs">이동 경로는 /drops 로 고정됩니다.</p>
           )}
           {form.template_type === 'editorial_article' && (
-            <p className="text-[#898989] text-xs">이동 경로는 /today/{'{id}'} (전용 기사 페이지)로 고정됩니다.</p>
+            <p className="text-muted-foreground text-xs">이동 경로는 /today/{'{id}'} (전용 기사 페이지)로 고정됩니다.</p>
           )}
 
           {/* 노출조건 태그 */}
-          <div className="border border-[#e5e7eb] rounded-2xl p-4">
+          <div className="border border-border rounded-2xl p-4">
             <label className={labelCls}>노출조건 태그 (OR 매칭 — 하나라도 해당하면 노출)</label>
             <div className="flex flex-wrap gap-2 mt-1">
               {exposureTagOptions.map((t) => {
                 const checked = form.exposure_tags.includes(t.value)
                 return (
                   <button key={t.value} onClick={() => toggleTag(t.value)}
-                    className={`text-xs rounded-lg px-2 py-1 border ${checked ? 'bg-[#111111]/20 text-[#111111] border-[#111111]/40' : 'text-[#6b7280] border-[#e5e7eb] hover:bg-[#f8f9fa]'}`}>
+                    className={`text-xs rounded-lg px-2 py-1 border ${checked ? 'bg-primary/20 text-foreground border-primary/40' : 'text-muted-foreground border-border hover:bg-muted'}`}>
                     {t.label}
                   </button>
                 )
@@ -412,7 +412,7 @@ export default function TodayCardList({ cards, badgeLabels, missions, itemBooks 
                 className={inputCls} />
             </div>
             <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm text-[#374151]">
+              <label className="flex items-center gap-2 text-sm text-foreground">
                 <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
                 활성화
               </label>
@@ -423,12 +423,12 @@ export default function TodayCardList({ cards, badgeLabels, missions, itemBooks 
 
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving}
-              className="bg-[#111111] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#242424] transition-colors text-sm">
+              className="bg-primary text-white font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm">
               {saving ? '저장 중...' : editingId ? '수정 저장' : '저장'}
             </button>
             {editingId && (
               <button onClick={handleCancel}
-                className="text-[#6b7280] font-bold px-4 py-2 rounded-xl hover:bg-[#f8f9fa] transition-colors text-sm">
+                className="text-muted-foreground font-bold px-4 py-2 rounded-xl hover:bg-muted transition-colors text-sm">
                 취소
               </button>
             )}

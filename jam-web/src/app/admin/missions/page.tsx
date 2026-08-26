@@ -48,7 +48,7 @@ export default async function AdminMissionsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">미션 관리</h1>
-          <p className="text-[#6b7280] text-sm mt-1">다이나믹 미션 생성 및 모니터링</p>
+          <p className="text-muted-foreground text-sm mt-1">다이나믹 미션 생성 및 모니터링</p>
         </div>
       </div>
       <MissionList missions={missions} completionCounts={completionCounts} badgeLabels={badgeLabels} />

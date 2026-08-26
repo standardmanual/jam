@@ -37,30 +37,30 @@ export default function AdminUserSearch() {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') search() }}
           placeholder="유저 검색 (닉네임 또는 이메일)"
-          className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-sm"
+          className="flex-1 bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
         />
         <button
           onClick={search}
           disabled={searching}
-          className="bg-[#f3f4f6] text-[#111111] font-bold px-5 py-2.5 rounded-xl hover:bg-[#e5e7eb] disabled:opacity-50 transition-colors text-sm"
+          className="bg-muted text-foreground font-bold px-5 py-2.5 rounded-xl hover:bg-accent disabled:opacity-50 transition-colors text-sm"
         >
           {searching ? '검색 중…' : '검색'}
         </button>
       </div>
 
       {results.length > 0 && (
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl divide-y divide-[#f3f4f6]">
+        <div className="bg-white border border-border rounded-2xl divide-y divide-border">
           {results.map((u) => (
             <button
               key={u.id}
               onClick={() => { setSelected(u); setResults([]); setQ('') }}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#f8f9fa] transition-colors text-left"
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors text-left"
             >
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{u.username ?? '(닉네임 없음)'}</p>
-                <p className="text-xs text-[#6b7280] truncate">{u.email}</p>
+                <p className="text-xs text-muted-foreground truncate">{u.email}</p>
               </div>
-              <span className="text-sm font-bold text-[#111111] shrink-0 ml-3">{u.balance.toLocaleString('ko-KR')}P</span>
+              <span className="text-sm font-bold text-foreground shrink-0 ml-3">{u.balance.toLocaleString('ko-KR')}P</span>
             </button>
           ))}
         </div>
@@ -69,10 +69,10 @@ export default function AdminUserSearch() {
       {selected && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-[#374151]">
-              선택됨: <span className="font-bold text-[#111111]">{selected.username ?? selected.email}</span>
+            <p className="text-sm text-foreground">
+              선택됨: <span className="font-bold text-foreground">{selected.username ?? selected.email}</span>
             </p>
-            <button onClick={() => setSelected(null)} className="text-xs text-[#6b7280] hover:text-[#111111] transition-colors">
+            <button onClick={() => setSelected(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               선택 해제
             </button>
           </div>

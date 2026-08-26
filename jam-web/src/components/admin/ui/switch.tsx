@@ -11,9 +11,10 @@ const Switch = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SwitchPrimitives.Root
     className={cn(
-      // 어드민 화면 팔레트(#111111 accent, MODULAR 미적용 - AGENTS.md 정책)에 맞춰 shadcn 기본
-      // 테마 토큰(bg-primary 등, 이 프로젝트 globals.css에 미정의) 대신 직접 색상값을 쓴다.
-      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111111] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-[#111111] data-[state=unchecked]:bg-[#e5e7eb]",
+      // 어드민 화면 팔레트(shadcn 시맨틱 토큰, MODULAR 미적용 - AGENTS.md 정책)에 맞춘 표준
+      // shadcn Switch 패턴 — 체크 상태는 bg-primary, 트랙(미체크)은 bg-input, 포커스 링은
+      // ring-ring(20260827_002에서 하드코딩 hex → 시맨틱 토큰 전환).
+      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
       className
     )}
     {...props}

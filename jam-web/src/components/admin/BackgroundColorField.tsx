@@ -23,38 +23,38 @@ interface BackgroundColorFieldProps {
 export default function BackgroundColorField({ value, onChange, label = '배경색', helperText }: BackgroundColorFieldProps) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-sm text-[#374151]">{label}</span>
+      <span className="text-sm text-foreground">{label}</span>
       <div className="flex items-center gap-3">
         <input
           type="color"
           value={HEX_COLOR_PATTERN.test(value) ? value : '#1a1a1a'}
           onChange={(e) => onChange(e.target.value)}
           aria-label={`${label} 색상 피커`}
-          className="w-11 h-11 shrink-0 rounded-xl border border-[#e5e7eb] bg-white p-1 cursor-pointer"
+          className="w-11 h-11 shrink-0 rounded-xl border border-border bg-white p-1 cursor-pointer"
         />
         <div
           aria-hidden="true"
-          className="w-11 h-11 shrink-0 rounded-xl border border-dashed border-[#e5e7eb]"
+          className="w-11 h-11 shrink-0 rounded-xl border border-dashed border-border"
           style={{ backgroundColor: value || 'transparent' }}
         />
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 text-sm font-mono"
+          className="flex-1 bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm font-mono"
           placeholder="#1a1a1a (미지정 시 기본 배경 유지)"
         />
         {value && (
           <button
             type="button"
             onClick={() => onChange('')}
-            className="shrink-0 text-xs text-[#898989] hover:text-[#374151] px-2 py-2.5"
+            className="shrink-0 text-xs text-muted-foreground hover:text-foreground px-2 py-2.5"
           >
             지우기
           </button>
         )}
       </div>
-      <span className="text-xs text-[#898989]">{helperText}</span>
+      <span className="text-xs text-muted-foreground">{helperText}</span>
     </div>
   )
 }

@@ -14,7 +14,7 @@ export default async function AdminThemePage() {
     <div className="p-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">테마 컬러</h1>
-        <p className="text-[#6b7280] text-sm mt-1">
+        <p className="text-muted-foreground text-sm mt-1">
           서비스 전체의 메인(코발트)/서브(아이스) 컬러 프리셋을 만들고 활성화합니다.
           활성 프리셋은 즉시 전체 서비스에 반영됩니다.
         </p>

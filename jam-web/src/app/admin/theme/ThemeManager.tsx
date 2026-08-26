@@ -12,7 +12,7 @@ interface Props {
 function PreviewFrame({ mainColor, subColor }: { mainColor: string; subColor: string }) {
   return (
     <div
-      className="w-40 h-80 rounded-[2rem] shrink-0 overflow-hidden border-4 border-[#e5e7eb] flex flex-col p-3 gap-2"
+      className="w-40 h-80 rounded-[2rem] shrink-0 overflow-hidden border-4 border-border flex flex-col p-3 gap-2"
       style={{ backgroundColor: mainColor }}
     >
       <div className="h-3 w-16 rounded-full" style={{ backgroundColor: subColor, opacity: 0.4 }} />
@@ -81,46 +81,46 @@ export default function ThemeManager({ initialPresets }: Props) {
       {/* 새 프리셋 생성 */}
       <form
         onSubmit={handleCreate}
-        className="bg-white border border-[#e5e7eb] rounded-2xl p-6 flex gap-8 items-start"
+        className="bg-white border border-border rounded-2xl p-6 flex gap-8 items-start"
       >
         <PreviewFrame mainColor={mainColor} subColor={subColor} />
 
         <div className="flex-1 flex flex-col gap-4">
           <div>
-            <label className="block text-xs font-semibold text-[#6b7280] mb-1.5">프리셋 이름</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">프리셋 이름</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="예: 여름 한정 (틸/민트)"
               required
-              className="w-full border border-[#e5e7eb] rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#111111]/10"
+              className="w-full border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/10"
             />
           </div>
 
           <div className="flex gap-6">
             <div>
-              <label className="block text-xs font-semibold text-[#6b7280] mb-1.5">메인(코발트)</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">메인(코발트)</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
                   value={mainColor}
                   onChange={(e) => setMainColor(e.target.value)}
-                  className="w-10 h-10 rounded-lg border border-[#e5e7eb] cursor-pointer"
+                  className="w-10 h-10 rounded-lg border border-border cursor-pointer"
                 />
-                <span className="text-sm font-mono text-[#6b7280]">{mainColor}</span>
+                <span className="text-sm font-mono text-muted-foreground">{mainColor}</span>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#6b7280] mb-1.5">서브(아이스)</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">서브(아이스)</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
                   value={subColor}
                   onChange={(e) => setSubColor(e.target.value)}
-                  className="w-10 h-10 rounded-lg border border-[#e5e7eb] cursor-pointer"
+                  className="w-10 h-10 rounded-lg border border-border cursor-pointer"
                 />
-                <span className="text-sm font-mono text-[#6b7280]">{subColor}</span>
+                <span className="text-sm font-mono text-muted-foreground">{subColor}</span>
               </div>
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function ThemeManager({ initialPresets }: Props) {
           <button
             type="submit"
             disabled={creating}
-            className="self-start bg-[#111111] text-white font-bold px-5 py-2.5 rounded-xl hover:bg-[#242424] transition-colors text-sm disabled:opacity-50"
+            className="self-start bg-primary text-white font-bold px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm disabled:opacity-50"
           >
             {creating ? '생성 중...' : '프리셋 생성'}
           </button>
@@ -140,20 +140,20 @@ export default function ThemeManager({ initialPresets }: Props) {
       {/* 프리셋 목록 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {presets.map((p) => (
-          <div key={p.id} className="bg-white border border-[#e5e7eb] rounded-2xl p-5 flex flex-col gap-3">
+          <div key={p.id} className="bg-white border border-border rounded-2xl p-5 flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full border border-[#e5e7eb]" style={{ backgroundColor: p.main_color }} />
-              <span className="w-6 h-6 rounded-full border border-[#e5e7eb]" style={{ backgroundColor: p.sub_color }} />
+              <span className="w-6 h-6 rounded-full border border-border" style={{ backgroundColor: p.main_color }} />
+              <span className="w-6 h-6 rounded-full border border-border" style={{ backgroundColor: p.sub_color }} />
               <span className="font-semibold text-sm ml-1">{p.name}</span>
             </div>
-            <p className="text-xs font-mono text-[#898989]">{p.main_color} / {p.sub_color}</p>
+            <p className="text-xs font-mono text-muted-foreground">{p.main_color} / {p.sub_color}</p>
             {p.is_active ? (
-              <span className="self-start text-xs font-bold text-white bg-[#111111] px-3 py-1 rounded-full">활성</span>
+              <span className="self-start text-xs font-bold text-white bg-primary px-3 py-1 rounded-full">활성</span>
             ) : (
               <button
                 onClick={() => handleActivate(p.id)}
                 disabled={activatingId === p.id}
-                className="self-start text-xs font-bold px-3 py-1.5 rounded-full border border-[#e5e7eb] hover:bg-[#f8f9fa] transition-colors disabled:opacity-50"
+                className="self-start text-xs font-bold px-3 py-1.5 rounded-full border border-border hover:bg-muted transition-colors disabled:opacity-50"
               >
                 {activatingId === p.id ? '활성화 중...' : '활성화'}
               </button>
