@@ -241,7 +241,6 @@ export default function BadgeShareButton({
         onClose={() => setOpen(false)}
         detent="full"
         topGapPx={20}
-        showCloseButton={false}
         contentScrollable={false}
         footerBottomInset="safe-area"
         footer={
