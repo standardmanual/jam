@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { PoiRow, PoiCategory, PoiCategoryRow } from '@/types/database'
 import type { NaverSearchResult } from '@/lib/poi/naver'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 
 interface PoiFormProps {
   poi?: PoiRow

@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
 import type { BadgeSearchResult } from '@/components/admin/BadgeSearchSelect'
 import type { TodayCardRow, TodayCardTemplateType, TodayCardLayoutType } from '@/types/database'

@@ -1,8 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
-import { Badge } from '@/components/ui/shadcn-badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/admin/ui/card'
+import { Badge } from '@/components/admin/ui/badge'
 import type { PoiRow } from '@/types/database'
 
 const MapPreview = dynamic(() => import('./MapPreview'), {

@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion'
+} from '@/components/admin/ui/accordion'
 import {
   DASHBOARD_ITEM,
   NAV_GROUPS,
@@ -65,7 +65,7 @@ export function AdminSidebar({ userEmail: _userEmail }: AdminSidebarProps) {
           aria-label={collapsed ? '메뉴 펼치기' : '메뉴 접기'}
           title={collapsed ? '메뉴 펼치기' : '메뉴 접기'}
         >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          {collapsed ? <IconChevronRight size={18} /> : <IconChevronLeft size={18} />}
         </button>
       </div>
 

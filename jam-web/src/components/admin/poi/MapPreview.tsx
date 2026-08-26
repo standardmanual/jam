@@ -1,7 +1,7 @@
 'use client'
 
-import { Button } from '@/components/ui/shadcn-button'
-import { ExternalLink } from 'lucide-react'
+import { Button } from '@/components/admin/ui/button'
+import { IconExternalLink } from '@tabler/icons-react'
 
 interface MapPreviewProps {
   latitude: number
@@ -28,13 +28,13 @@ export default function MapPreview({ latitude, longitude, radius, name }: MapPre
       <div className="flex flex-col gap-2 w-full sm:flex-row sm:justify-center">
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
           <Button variant="outline" size="sm" className="w-full sm:w-auto">
-            <ExternalLink className="w-4 h-4 mr-2" />
+            <IconExternalLink className="w-4 h-4 mr-2" />
             Google Maps
           </Button>
         </a>
         <a href={naverMapsUrl} target="_blank" rel="noopener noreferrer">
           <Button variant="outline" size="sm" className="w-full sm:w-auto">
-            <ExternalLink className="w-4 h-4 mr-2" />
+            <IconExternalLink className="w-4 h-4 mr-2" />
             Naver Map
           </Button>
         </a>

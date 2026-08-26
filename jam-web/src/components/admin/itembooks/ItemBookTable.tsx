@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
 import { ItemBookActiveToggleButton } from './ItemBookActiveToggleButton'
 import type { ItemBookRow } from '@/types/database'
 
