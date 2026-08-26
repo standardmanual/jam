@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import type { FactionRow } from '@/types/database'
+import { FactionsTable } from './FactionsTable'
 
 export default async function AdminFactionsPage() {
   const supabase = createServiceClient()
@@ -32,61 +33,7 @@ export default async function AdminFactionsPage() {
         </Link>
       </div>
 
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-xs uppercase tracking-wider">
-              <th className="text-left px-5 py-3">이름</th>
-              <th className="text-left px-5 py-3">태그라인</th>
-              <th className="text-center px-5 py-3">드랍 가중치</th>
-              <th className="text-center px-5 py-3">배지 수</th>
-              <th className="text-center px-5 py-3">컬렉션 수</th>
-              <th className="text-center px-5 py-3">정렬</th>
-              <th className="text-center px-5 py-3">상태</th>
-              <th className="px-5 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {factions.length === 0 && (
-              <tr>
-                <td colSpan={8} className="text-center py-10 text-[#898989]">
-                  등록된 세계관이 없습니다.
-                </td>
-              </tr>
-            )}
-            {factions.map((f) => (
-              <tr key={f.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] transition-colors">
-                <td className="px-5 py-3.5 font-medium">{f.name}</td>
-                <td className="px-5 py-3.5 text-[#6b7280]">{f.tagline ?? '—'}</td>
-                <td className="px-5 py-3.5 text-center">{f.drop_weight.toFixed(1)}</td>
-                <td className="px-5 py-3.5 text-center text-[#374151]">{badgeCountMap.get(f.id) ?? 0}</td>
-                <td className="px-5 py-3.5 text-center text-[#374151]">{bookCountMap.get(f.id) ?? 0}</td>
-                <td className="px-5 py-3.5 text-center text-[#6b7280]">{f.sort_order}</td>
-                <td className="px-5 py-3.5 text-center">
-                  <span
-                    className={[
-                      'inline-block px-2.5 py-1 rounded-full text-xs font-semibold',
-                      f.is_active
-                        ? 'bg-[#111111]/10 text-[#111111]'
-                        : 'bg-white text-[#898989]',
-                    ].join(' ')}
-                  >
-                    {f.is_active ? '활성' : '비활성'}
-                  </span>
-                </td>
-                <td className="px-5 py-3.5 text-right">
-                  <Link
-                    href={`/admin/factions/${f.id}`}
-                    className="text-xs text-[#6b7280] hover:text-[#111111] transition-colors"
-                  >
-                    편집
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <FactionsTable factions={factions} badgeCountMap={badgeCountMap} bookCountMap={bookCountMap} />
     </div>
   )
 }

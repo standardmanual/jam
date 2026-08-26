@@ -3,28 +3,8 @@
 import { useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import type { AbusingPolicy } from '@/lib/abusing/policy'
-
-interface BanRow {
-  id: string
-  user_id: string
-  ban_level: 'soft' | 'hard'
-  reason: string
-  expires_at: string | null
-  created_at: string
-  created_by: string
-  user: { id: string; email: string; username: string } | null
-}
-
-interface PoiBlockRow {
-  id: string
-  user_id: string
-  poi_id: string
-  blocked_until: string
-  reason: string
-  created_at: string
-  user: { id: string; email: string; username: string } | null
-  poi: { id: string; name: string } | null
-}
+import { BanTable, type BanRow } from './BanTable'
+import { PoiBlockTable, type PoiBlockRow } from './PoiBlockTable'
 
 interface Props {
   policy: AbusingPolicy
@@ -139,6 +119,38 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
       setPoiBlocks((prev) => prev.filter((b) => !(b.user_id === userId && b.poi_id === poiId)))
       flash('ok', '블록 해제 완료')
     }
+  }
+
+  // 일괄 해제(20260826_015) — 단건 해제 API를 선택된 항목 전체에 순차 호출한다
+  // (배지 파일럿과 동일 방식). 네이티브 confirm은 `BanTable`의 AlertDialog가 대신한다.
+  const bulkRemoveBans = async (userIds: string[]) => {
+    let failCount = 0
+    for (const userId of userIds) {
+      const res = await fetch('/api/admin/abusing/bans', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+      })
+      if (res.ok) setBans((prev) => prev.filter((b) => b.user_id !== userId))
+      else failCount += 1
+    }
+    if (failCount > 0) flash('err', `${failCount}건 해제 실패`)
+    else flash('ok', '일괄 해제 완료')
+  }
+
+  const bulkRemovePoiBlocks = async (pairs: { userId: string; poiId: string }[]) => {
+    let failCount = 0
+    for (const { userId, poiId } of pairs) {
+      const res = await fetch('/api/admin/abusing/poi-blocks', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, poi_id: poiId }),
+      })
+      if (res.ok) setPoiBlocks((prev) => prev.filter((b) => !(b.user_id === userId && b.poi_id === poiId)))
+      else failCount += 1
+    }
+    if (failCount > 0) flash('err', `${failCount}건 해제 실패`)
+    else flash('ok', '일괄 해제 완료')
   }
 
   const policySet = (key: keyof AbusingPolicy, value: number) => setPolicy((p) => ({ ...p, [key]: value }))
@@ -302,93 +314,13 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
           </div>
 
           {/* 밴 목록 */}
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
-                  <th className="px-4 py-3 font-medium">유저</th>
-                  <th className="px-4 py-3 font-medium">레벨</th>
-                  <th className="px-4 py-3 font-medium">사유</th>
-                  <th className="px-4 py-3 font-medium">만료</th>
-                  <th className="px-4 py-3 font-medium">적용자</th>
-                  <th className="px-4 py-3 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {bans.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[#898989]">섀도우밴 유저 없음</td></tr>
-                )}
-                {bans.map((ban) => (
-                  <tr key={ban.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
-                    <td className="px-4 py-3">
-                      <p className="font-medium">{ban.user?.username ?? '—'}</p>
-                      <p className="text-xs text-[#6b7280]">{ban.user?.email ?? ban.user_id.slice(0, 8)}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${ban.ban_level === 'hard' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
-                        {ban.ban_level.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-[#374151] text-xs max-w-[160px] truncate">{ban.reason}</td>
-                    <td className="px-4 py-3 text-[#6b7280] text-xs">{ban.expires_at ? new Date(ban.expires_at).toLocaleDateString('ko-KR') : '영구'}</td>
-                    <td className="px-4 py-3 text-[#6b7280] text-xs">{ban.created_by}</td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => removeBan(ban.user_id)}
-                        className="text-xs text-[#6b7280] hover:text-[#111111] px-2 py-1 rounded-lg hover:bg-[#f8f9fa] transition-colors"
-                      >
-                        해제
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <BanTable bans={bans} onRemove={removeBan} onBulkRemove={bulkRemoveBans} />
         </div>
       )}
 
       {/* POI 블록 탭 */}
       {tab === 'poi-blocks' && (
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
-                <th className="px-4 py-3 font-medium">유저</th>
-                <th className="px-4 py-3 font-medium">POI</th>
-                <th className="px-4 py-3 font-medium">사유</th>
-                <th className="px-4 py-3 font-medium">차단 만료</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {poiBlocks.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-[#898989]">활성 POI 블록 없음</td></tr>
-              )}
-              {poiBlocks.map((b) => (
-                <tr key={b.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa]">
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{b.user?.username ?? '—'}</p>
-                    <p className="text-xs text-[#6b7280]">{b.user?.email ?? b.user_id.slice(0, 8)}</p>
-                  </td>
-                  <td className="px-4 py-3 text-[#374151]">{b.poi?.name ?? b.poi_id.slice(0, 8)}</td>
-                  <td className="px-4 py-3 text-[#6b7280] text-xs">{b.reason}</td>
-                  <td className="px-4 py-3 text-[#6b7280] text-xs">
-                    {new Date(b.blocked_until).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => removePoiBlock(b.user_id, b.poi_id)}
-                      className="text-xs text-[#6b7280] hover:text-[#111111] px-2 py-1 rounded-lg hover:bg-[#f8f9fa] transition-colors"
-                    >
-                      해제
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <PoiBlockTable poiBlocks={poiBlocks} onRemove={removePoiBlock} onBulkRemove={bulkRemovePoiBlocks} />
       )}
     </div>
   )
