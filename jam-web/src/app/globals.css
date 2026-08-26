@@ -211,6 +211,37 @@
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.709 0.01 56.259);
+
+  /*
+   * 20260826_016 (4단계a) — 유틸리티 매핑 이름 스코프 오버라이드.
+   *
+   * globals.css 자체 안에서는 `--color-background`/`--color-foreground`/`--color-muted`/
+   * `--color-accent` 등이 전부 `--color-X: var(--X)` 형태로 올바르게 매핑돼 있다(shadcn
+   * 원시 이름을 그대로 참조). 하지만 실제 브라우저 검증(getComputedStyle) 결과
+   * `--color-primary`가 어드민 스코프 안에서도 `#e8461f`(DS v2 브랜드 레드)로 풀리는 걸
+   * 확인했다 — design-system/tokens/colors.css(위에서 import)가 자신의 `:root`에
+   * `--color-primary: var(--color-base-red)`, `--color-secondary: var(--color-base-brown)`,
+   * `--color-border: var(--color-base-grey-700)`를 **레이어 밖(unlayered)**에서 직접
+   * 선언한다. Tailwind `@theme inline`이 만드는 `--color-X: var(--X)` 매핑은 `@layer theme`
+   * 안에 들어가는데, CSS는 동일 특정성이면 레이어 밖 규칙이 항상 레이어 안 규칙을 이긴다
+   * (소스 순서 무관) — 그래서 `border-border`/`bg-primary`(및 `text-primary` 등 --primary
+   * 파생 유틸리티 전부)가 어드민 스코프 안에서도 DS v2 값으로 새고 있었다. `--color-muted`
+   * `--color-accent`처럼 DS v2 colors.css가 아예 정의하지 않는 이름은 이 충돌이 없다
+   * (grep으로 확인, 아래 참고).
+   *
+   * [data-admin-theme]는 :root보다 특정성이 높은 속성 선택자라 여기서 세 이름을 다시
+   * `var(--border)`/`var(--primary)`/`var(--secondary)`로 매핑하면 그 우선순위 문제를
+   * 뚫고 이 스코프 안에서만 실제 stone 테마 색이 나온다.
+   *
+   * grep -n "^\s*--color-" design-system/tokens/colors.css 로 DS v2가 정의하는 전체 목록을
+   * shadcn 시맨틱 이름 집합(background, foreground, muted, accent, popover, card,
+   * destructive, ring, input, chart-N, sidebar 계열)과 대조한 결과, 겹치는 건
+   * border/primary/secondary 3개뿐이었다(2026-08-26 실측, `design-system/tokens/typography.css`·
+   * `spacing.css`·`radius.css`·`motion.css`·`materials.css`도 함께 점검 — 겹치는 이름 없음).
+   */
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────

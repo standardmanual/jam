@@ -274,10 +274,10 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
     // 2단 배치에서 설정 영역이 눌리지 않도록, 넓은 화면(xl↑)에서는 이 섹션만 폼 기본 폭
     // (max-w-2xl)을 넘어 어드민 본문 가용 폭까지 넓힌다(사이드바 16rem + 여백 감안).
     return (
-      <div className="border border-dashed border-[#9333ea]/40 rounded-2xl p-5 space-y-5 bg-[#fdf4ff] xl:w-[calc(100vw-22rem)] xl:max-w-[1040px]">
+      <div className="border border-dashed border-purple-600/40 rounded-2xl p-5 space-y-5 bg-fuchsia-50 xl:w-[calc(100vw-22rem)] xl:max-w-[1040px]">
         <div className="flex flex-col gap-1">
-          <p className="text-xs font-semibold text-[#9333ea]">배경 테마</p>
-          <p className="text-xs text-[#6b7280]">
+          <p className="text-xs font-semibold text-purple-600">배경 테마</p>
+          <p className="text-xs text-muted-foreground">
             단색을 지정하거나, 이미지를 패턴/애니메이션으로 합성하고 Paper 필터를 적용한 배경을
             만들 수 있어요. 저장 시 선택하지 않은 쪽 값은 지워져요.
           </p>
@@ -290,28 +290,28 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
         {/* 단색/제너레이터 배타 선택 (20260819_008) */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-1.5 text-sm text-[#374151] cursor-pointer">
+            <label className="flex items-center gap-1.5 text-sm text-foreground cursor-pointer">
               <input
                 type="radio"
                 name="background-mode"
                 checked={mode === 'color'}
                 onChange={() => onModeChange('color')}
-                className="accent-[#111111]"
+                className="accent-primary"
               />
               단색
             </label>
-            <label className="flex items-center gap-1.5 text-sm text-[#374151] cursor-pointer">
+            <label className="flex items-center gap-1.5 text-sm text-foreground cursor-pointer">
               <input
                 type="radio"
                 name="background-mode"
                 checked={mode === 'generator'}
                 onChange={() => onModeChange('generator')}
-                className="accent-[#111111]"
+                className="accent-primary"
               />
               제너레이터
             </label>
           </div>
-          <p className="text-xs text-[#9ca3af]">
+          <p className="text-xs text-muted-foreground">
             단색과 제너레이터는 동시에 사용할 수 없어요. 다른 모드로 전환한 뒤 저장하면 지금 모드의
             배경값은 지워져요.
           </p>
@@ -326,27 +326,27 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
         ) : (
           <>
             {/* 이미지 소스 선택 (20260819_008) — existingImageOption이 없으면 업로드만 노출 (20260819_013) */}
-            <div className="flex flex-col gap-2 border-t border-[#e5e7eb] pt-4">
+            <div className="flex flex-col gap-2 border-t border-border pt-4">
               {existingImageOption && (
                 <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-1.5 text-xs text-[#374151] cursor-pointer">
+                  <label className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
                     <input
                       type="radio"
                       name="background-image-source"
                       checked={imageSource === 'upload'}
                       onChange={() => handleImageSourceChange('upload')}
-                      className="accent-[#111111]"
+                      className="accent-primary"
                     />
                     새 이미지 업로드
                   </label>
-                  <label className={['flex items-center gap-1.5 text-xs cursor-pointer', existingImageUrl ? 'text-[#374151]' : 'text-[#c4c4c4] cursor-not-allowed'].join(' ')}>
+                  <label className={['flex items-center gap-1.5 text-xs cursor-pointer', existingImageUrl ? 'text-foreground' : 'text-muted-foreground/50 cursor-not-allowed'].join(' ')}>
                     <input
                       type="radio"
                       name="background-image-source"
                       checked={imageSource === 'existing'}
                       onChange={() => handleImageSourceChange('existing')}
                       disabled={!existingImageUrl}
-                      className="accent-[#111111]"
+                      className="accent-primary"
                     />
                     {existingImageOption.label}
                   </label>
@@ -356,7 +356,7 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
               {imageSource === 'upload' ? (
                 <ImageUploader onFileSelected={handleFileSelected} fileName={file?.name ?? null} isGif={isGif} />
               ) : (
-                <p className="text-xs text-[#6b7280]">
+                <p className="text-xs text-muted-foreground">
                   {existingImageUrl
                     ? '위에서 등록한 이미지를 배경 소스로 그대로 사용해요.'
                     : '이미지를 먼저 업로드해야 사용할 수 있어요.'}
@@ -367,7 +367,7 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
 
             {image && (
               <>
-                <div className="flex flex-col gap-4 border-t border-[#e5e7eb] pt-4">
+                <div className="flex flex-col gap-4 border-t border-border pt-4">
                   <div className="flex items-center gap-2">
                     {(['pattern', 'animation'] as const).map((m) => (
                       <button
@@ -376,13 +376,13 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
                         onClick={() => setPatternMode(m)}
                         className={[
                           'rounded-lg px-4 py-2 text-sm transition-colors',
-                          patternMode === m ? 'bg-[#111111] text-white' : 'bg-white border border-[#e5e7eb] text-[#374151] hover:bg-[#f3f4f6]',
+                          patternMode === m ? 'bg-primary text-white' : 'bg-white border border-border text-foreground hover:bg-muted',
                         ].join(' ')}
                       >
                         {m === 'pattern' ? '패턴 모드' : '애니메이션 모드'}
                       </button>
                     ))}
-                    <span className="text-xs text-[#9ca3af]">패턴/애니메이션은 배타적으로 선택됩니다.</span>
+                    <span className="text-xs text-muted-foreground">패턴/애니메이션은 배타적으로 선택됩니다.</span>
                   </div>
 
                   {patternMode === 'pattern' ? (
@@ -411,10 +411,10 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
                   )}
                 </div>
 
-                <div className="flex flex-col gap-3 border-t border-[#e5e7eb] pt-4">
+                <div className="flex flex-col gap-3 border-t border-border pt-4">
                   <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium text-[#374151]">Paper 필터 (1개 선택)</p>
-                    <p className="text-xs text-[#9ca3af]">
+                    <p className="text-sm font-medium text-foreground">Paper 필터 (1개 선택)</p>
+                    <p className="text-xs text-muted-foreground">
                       패턴/애니메이션 결과 위에 적용됩니다. 위 미리보기에 곧바로 반영돼요.
                     </p>
                   </div>
@@ -427,7 +427,7 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
                         onClick={() => setFilterId(id)}
                         className={[
                           'rounded-lg px-3 py-1.5 text-xs transition-colors',
-                          filterId === id ? 'bg-[#111111] text-white' : 'bg-white border border-[#e5e7eb] text-[#374151] hover:bg-[#f3f4f6]',
+                          filterId === id ? 'bg-primary text-white' : 'bg-white border border-border text-foreground hover:bg-muted',
                         ].join(' ')}
                       >
                         {FILTER_LABELS[id]}
@@ -454,18 +454,18 @@ const BackgroundGeneratorPreview = forwardRef<BackgroundGeneratorPreviewHandle, 
             {renderPreview({ themed, backgroundLayerStyle, backgroundLayerRef: previewLayerRef, liveNode })}
             {/* 영상 굽기 진행 상태 (20260819_012) — 캡처 4초 + 인코딩까지 수 초가 걸린다 */}
             {bakeStatus && (
-              <p className="text-xs font-medium text-[#9333ea] mt-2 max-w-[430px]" role="status">
+              <p className="text-xs font-medium text-purple-600 mt-2 max-w-[430px]" role="status">
                 {bakeStatus} 저장이 끝날 때까지 이 화면을 닫지 마세요.
               </p>
             )}
             {mode === 'generator' && patternMode === 'animation' && image && (
-              <p className="text-xs text-[#9ca3af] mt-1 max-w-[430px]">
+              <p className="text-xs text-muted-foreground mt-1 max-w-[430px]">
                 애니메이션 모드는 저장할 때 2초짜리 반복 영상으로 구워져요. 일시정지 버튼은 미리보기
                 조작용이라 저장 결과에는 영향을 주지 않아요.
               </p>
             )}
             {savedBackgroundVisible && (
-              <p className="text-xs text-[#9ca3af] mt-1 max-w-[430px]">
+              <p className="text-xs text-muted-foreground mt-1 max-w-[430px]">
                 이미 저장된 배경 이미지예요. 원본 설정은 다시 불러올 수 없어요 — 이미지를 새로 고르면
                 지금 보이는 배경이 교체돼요.
               </p>

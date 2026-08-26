@@ -105,23 +105,23 @@ export default function BadgeSearchSelect({
             setQuery('')
           }}
           placeholder={placeholder ?? '배지 이름 검색...'}
-          className="flex-1 bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
+          className="flex-1 bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
         />
         {allowClear && value && (
           <button
             type="button"
             onClick={clear}
-            className="text-[#898989] hover:text-red-600 text-xs px-1 shrink-0"
+            className="text-muted-foreground hover:text-red-600 text-xs px-1 shrink-0"
           >
             지우기
           </button>
         )}
       </div>
       {open && query.trim() && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-[#e5e7eb] rounded-lg shadow-lg max-h-64 overflow-y-auto">
-          {loading && <p className="px-3 py-2 text-xs text-[#898989]">검색 중...</p>}
+        <div className="absolute z-20 mt-1 w-full bg-white border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto">
+          {loading && <p className="px-3 py-2 text-xs text-muted-foreground">검색 중...</p>}
           {!loading && displayResults.length === 0 && (
-            <p className="px-3 py-2 text-xs text-[#898989]">검색 결과가 없습니다.</p>
+            <p className="px-3 py-2 text-xs text-muted-foreground">검색 결과가 없습니다.</p>
           )}
           {!loading &&
             displayResults.map((b) => (
@@ -129,9 +129,9 @@ export default function BadgeSearchSelect({
                 key={b.id}
                 type="button"
                 onClick={() => select(b)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-[#f8f9fa] transition-colors"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
               >
-                {b.name} <span className="text-[#898989] text-xs">[{b.type}/{b.rarity}]</span>
+                {b.name} <span className="text-muted-foreground text-xs">[{b.type}/{b.rarity}]</span>
               </button>
             ))}
         </div>
