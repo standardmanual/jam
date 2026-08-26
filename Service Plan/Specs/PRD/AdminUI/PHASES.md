@@ -1,341 +1,111 @@
-# JAM! 어드민 UI 리디자인 — Phase 분리 계획
+# JAM! 어드민 UI 디자인시스템 전환 — Phase 분리 계획
 
-> **생성일:** 2026-08-05  
-> **목표:** 기존 기능을 유지하면서 단계별로 모바일 최적화 UI 적용
+> **전면 개정:** 2026-08-26 — 2026-08-05판(모바일 CRUD 리디자인 3단계)은 폐기.
+> 배경·원칙·프리셋 값은 `REDESIGN.md` 참조. 이 문서는 실행 순서·완료 기준만 다룬다.
 
 ---
 
 ## Phase 개요
 
-| Phase | 기간 | 범위 | MVP 달성도 |
-|-------|------|------|----------|
-| **Phase 1** | 1-2주 | 배지/POI/아이템북 CRUD (모바일 최적화) | 80% |
-| **Phase 2** | 1주 | 시뮬레이터 + 유저 조회 (P1) | 100% |
-| **Phase 3** | ~1주 | 성능 최적화 + 고도화 | 100% + 추가 기능 |
+| Phase | 범위 | 의존성 | 티켓 유형 |
+|---|---|---|---|
+| 1. 기반 | shadcn 폴더 분리 + 프리셋 테마 + Pretendard + tabler | 없음 | `admin` |
+| 2. 레이아웃 셸 | Sidebar/Nav/Header → shadcn 공식 Sidebar 블록 | 1단계 완료 | `admin` |
+| 3. Data Table | 전체 목록 화면 행선택+일괄액션+공식 Toolbar 필터 | 1단계 완료 (2단계와 순서 무관, 2단계 이후 권장) | `admin` |
+| 4. 하드코딩 제거 | 전체 어드민 화면 hex → shadcn 시맨틱 토큰 | 1~3단계 완료 | `admin` |
+
+4개 전부 `admin` 유형(라이트 파이프라인: 구현 → 게이트 리뷰, 개선 리뷰 생략, MODULAR 탐색
+생략)이며, 순차 진행한다. 다음 단계는 이전 단계가 staging에 병합된 뒤 시작한다.
 
 ---
 
-## Phase 1: CRUD UI 기본 전환 (1-2주)
-
-### 목표
-**배지, POI, 아이템북의 목록/상세/수정 화면을 shadcn/ui + 모바일 반응형으로 완전 리디자인**
+## Phase 1 — 기반
 
 ### 범위
+1. **shadcn 전용 폴더 분리**: `components.json`의 `aliases.ui`를 MODULAR와 분리된 경로로
+   이전. `shadcn-button.tsx`/`shadcn-badge.tsx`/`shadcn-card.tsx` 같은 접두어 회피 파일명을
+   정리(정식 이름으로 복원 가능). 기존 12개 설치 컴포넌트(accordion, alert-dialog, alert,
+   checkbox, dialog, input, select, sheet, switch, table, tabs, textarea) 전부 이전 + 어드민
+   전역에서 import 경로 갱신.
+2. **프리셋 테마 적용**: `npx shadcn@latest apply b5Jgcv00m --only theme,font`로
+   `globals.css`(또는 이전된 위치)에 stone/maia/sky/medium radius 토큰 실제 반영.
+3. **폰트 교체**: `admin/layout.tsx`의 Inter(`next/font/google`) 제거, Pretendard로 교체
+   (이미 전역 CDN 로드돼 있음, 추가 설치 불필요).
+4. **아이콘 교체**: `@tabler/icons-react` 설치, `components.json`의 `iconLibrary: "tabler"`
+   반영, 기존 lucide-react 사용 3개 파일(`AdminSidebar.tsx`·`AdminHeader.tsx`·
+   `MapPreview.tsx`, 심볼 4개) 전량 교체. lucide-react는 어드민 전용이라 프로젝트 전체
+   영향 없음(실측: `src` 전체에서 lucide-react import 3파일뿐, 전부 admin).
 
-#### 1-1. 레이아웃 기초 (3-4일)
-- [ ] `src/app/admin/layout.tsx` 생성 (공통 레이아웃)
-- [ ] shadcn/ui 설치 (Button, Input, Select, Card, Dialog, Sheet 등)
-- [ ] 반응형 헤더 + 네비게이션 구현
-  - 모바일: 햄버거 아이콘 + 바텀 시트
-  - 데스크탑: 좌측 사이드바 고정
-- [ ] 색상 테마 설정 (다크 모드 포함)
-
-#### 1-2. 배지 CRUD (5-7일)
-**목록 화면**
-- [ ] `src/app/admin/badges/page.tsx` 리디자인
-  - 모바일: 카드 리스트 (BadgeCard 컴포넌트)
-  - 데스크탑: 테이블 (BadgesTable 컴포넌트)
-  - 검색 + 필터 (type, rarity)
-  - 페이지네이션 (한 페이지 20개)
-  - "[+ 새 배지]" 버튼
-
-**상세 화면 (읽기)**
-- [ ] `src/app/admin/badges/[id]/page.tsx` 생성
-  - 배지 이름, 설명, 이미지, 타입, 희귀도 표시
-  - 조건 JSON을 읽기 좋은 형태로 표시
-  - "[← 뒤로]" 버튼
-  - "[수정]" "[삭제]" 버튼
-
-**수정/생성 UI (모달 또는 페이지)**
-- [ ] 상세 페이지의 "[수정]" 버튼 클릭 시 폼 활성화 (선택안1: 같은 페이지 내 폼 표시)
-  - 또는 별도 페이지 `/admin/badges/[id]/edit` (선택안2)
-  - **추천:** 선택안1 (모바일에서 더 자연스러움)
-- [ ] 폼 필드:
-  - name (텍스트)
-  - description (텍스트에어리어)
-  - type (드롭다운: activity / item)
-  - rarity (드롭다운: common / rare / legend / mythic)
-  - image_url (URL 입력)
-  - activity_types (멀티 체크박스)
-  - patch_available (토글)
-  - patch_price_krw (숫자, patch_available=true일 때만 표시)
-  - condition_json (조건 빌더 - 기존 로직 재사용)
-- [ ] 유효성 검사 (클라이언트 + 서버)
-- [ ] 저장 후 목록으로 자동 이동
-
-**컴포넌트 구조**
-```
-src/components/admin/
-├── badges/
-│   ├── BadgeCard.tsx              ← 모바일 카드
-│   ├── BadgesTable.tsx            ← 데스크탑 테이블
-│   ├── BadgeDetail.tsx            ← 상세 화면 (읽기)
-│   ├── BadgeForm.tsx              ← 수정/생성 폼
-│   └── BadgeConditionBuilder.tsx  ← 조건 빌더 (기존)
-```
-
-#### 1-3. POI CRUD (5-7일)
-마찬가지로 목록 → 상세 → 수정 UI 적용
-- [ ] `src/app/admin/poi/page.tsx` (리스트 + 테이블)
-- [ ] `src/app/admin/poi/[id]/page.tsx` (상세)
-- [ ] 폼 필드: name, latitude, longitude, radius_meters, category, linked_badge_id
-- [ ] **지도 미리보기:** 데스크탑에서만 표시 (Leaflet 유지, 모바일 제외)
-
-#### 1-4. 아이템북 CRUD (5-7일)
-마찬가지로 적용
-- [ ] `src/app/admin/itembooks/page.tsx`
-- [ ] `src/app/admin/itembooks/[id]/page.tsx`
-- [ ] 폼 필드: name, description, required_activity_badge_id, required_item_badge_ids[], reward_badge_id
-
-#### 1-5. 테스트 + 배포 (2-3일)
-- [ ] 모바일 (375px, 480px) 테스트
-- [ ] 태블릿 (768px) 테스트
-- [ ] 데스크탑 (1024px, 1440px) 테스트
-- [ ] 다크 모드 테스트
-- [ ] 기존 기능 회귀 테스트 (모든 CRUD 동작 확인)
-- [ ] Vercel 배포
-
-### Phase 1 완료 기준
-- [x] shadcn/ui 설치 + 기본 컴포넌트 동작
-- [x] 배지, POI, 아이템북 목록 모두 반응형 표시
-- [x] 모바일 (375px)에서 수평 스크롤 없음
-- [x] 상세 페이지에서 수정/생성/삭제 가능
-- [x] 기존 배지 조건 빌더 정상 동작
-- [x] Lighthouse Mobile Score ≥ 80
-
-### Phase 1 아웃풋
-```
-✅ UI 리디자인 완료
-✅ 기존 기능 100% 유지
-✅ 모바일 최적화 완료 (배지/POI/아이템북)
-✅ shadcn/ui 도입 완료
-─────────────────────────────────
-남은 기능: 시뮬레이터, 유저 조회 (Phase 2)
-```
+### 완료 기준
+- [ ] `components.json` 새 `ui` alias 경로로 갱신, 12개 컴포넌트 파일 이전 완료
+- [ ] `globals.css`(또는 이전 위치)에 shadcn 표준 변수(`--primary` 등) 실제 존재
+- [ ] 어드민 화면에서 `bg-primary`/`text-foreground` 등 시맨틱 클래스가 실제로 렌더링 확인
+- [ ] Pretendard 폰트 적용 확인(브라우저 computed style)
+- [ ] tabler 아이콘 4개 심볼 정상 렌더링, lucide-react 어드민 내 잔존 0건
+- [ ] 서비스 본체(비-admin 라우트) 시각적 회귀 없음 확인 — 다크 테마·MODULAR 색상 그대로
+- [ ] `npx tsc --noEmit` / `npm test` / `npx next build` 통과
 
 ---
 
-## Phase 2: 시뮬레이터 + 유저 조회 (1주)
-
-### 목표
-**시뮬레이터 UI를 카드형 리포트로 리디자인 + 유저 조회 기능 추가**
+## Phase 2 — 레이아웃 셸
 
 ### 범위
+`AdminSidebar.tsx` / `AdminNav.tsx` / `AdminHeader.tsx` / `AdminMain.tsx` /
+`AdminSidebarContext.tsx`를 shadcn 공식 `Sidebar` 컴포넌트/블록으로 교체.
 
-#### 2-1. 시뮬레이터 UI 리디자인 (4-5일)
-- [ ] `src/app/admin/simulator/page.tsx` 리디자인
-- [ ] **입력 패널:**
-  - 대상 유저 선택 (드롭다운 + 검색)
-  - GPX 파일 업로드 (드래그 앤 드롭)
-  - 활동 종류 선택 (드롭다운)
-  - 반복 횟수 (숫자 입력)
-  - [미리보기 실행] [실제 적용] 버튼
+- 접기/펼치기 상태 유지(현재 `AdminSidebarContext`가 담당)
+- 모바일 드로어 동작(현재 `AdminNav`가 담당)
+- 인증 상태 표시(`userEmail` prop, `admin/layout.tsx`에서 전달)
+- 기존 네비게이션 항목(`adminNavItems.ts`) 그대로 유지 — 항목 자체는 안 바뀜, 렌더 방식만 교체
 
-- [ ] **결과 리포트 (카드형):**
-  - Accordion으로 섹션 접기/펼치기
-  - 배지 발급 카드
-  - POI 매칭 카드
-  - 아이템 드롭 카드
-  - 아이템북 완성 카드
-  - 미발급 배지 카드
-
-- [ ] **시각화:**
-  - 배지 이미지/이름/희귀도 표시
-  - 조건 충족 여부 (✅ / ❌)
-  - 상세 이유 텍스트
-
-#### 2-2. 유저 조회 (P1) (3-4일)
-- [ ] `src/app/admin/users/page.tsx` 생성
-  - 유저 목록 (이메일, 닉네임, 가입일, Strava 연동, 보유 배지 수)
-  - 모바일: 카드 리스트
-  - 데스크탑: 테이블
-  - 검색 필터
-
-- [ ] `src/app/admin/users/[id]/page.tsx` 생성
-  - 유저 상세 정보
-  - 보유 배지 목록 (배지 이미지 + 획득일)
-  - 인벤토리 (아이템 목록)
-  - Strava 연동 상태 (연동/미연동 + 마지막 동기화)
-
-#### 2-3. 테스트 + 배포 (2-3일)
-- [ ] 시뮬레이터 Dry Run / Apply 검증
-- [ ] 유저 조회 성능 테스트 (유저 많을 때)
-- [ ] 모바일/데스크탑 반응형 테스트
-- [ ] 배포
-
-### Phase 2 완료 기준
-- [x] 시뮬레이터 UI 카드형 리포트로 변경
-- [x] Dry Run ≠ Apply 모드 정상 동작
-- [x] 유저 목록/상세 모두 표시
-- [x] 모든 기능 모바일 반응형
-
-### Phase 2 아웃풋
-```
-✅ 어드민 전체 기능 모바일 최적화 완료
-✅ 시뮬레이터 UI 개선
-✅ 유저 관리 기능 추가
-─────────────────────────────────
-남은 작업: 성능 최적화 + 고도화 (Phase 3)
-```
+### 완료 기준
+- [ ] `npx shadcn@latest docs sidebar` 확인 후 공식 API로 구현(임의 커스텀 마크업 금지)
+- [ ] 데스크탑 접기/펼치기, 모바일 드로어 기존과 동등하게 동작
+- [ ] 로그인 이메일 표시 유지
+- [ ] 기존 5개 파일(AdminSidebar 등) 중 shadcn Sidebar로 대체되지 않는 로직(인증 등)만 최소
+      유지, 나머지는 shadcn 컴포넌트로 위임
 
 ---
 
-## Phase 3: 성능 최적화 + 고도화 (~1주)
-
-### 목표
-**어드민을 "진짜 앱"처럼 느껴지게 - 빠르고, 예쁘고, 접근성 좋게**
+## Phase 3 — Data Table 전면 도입
 
 ### 범위
+`@tanstack/react-table` 추가, 재사용 가능한 어드민 Data Table 컴포넌트 구축(행 선택
+체크박스 + 정렬 + 일괄 액션 툴바 + 공식 Toolbar 필터 패턴).
 
-#### 3-1. 성능 최적화 (2-3일)
-- [ ] **이미지 최적화:**
-  - 배지 썸네일 Lazy Loading
-  - Next.js `Image` 컴포넌트 사용
-  - WebP 포맷 지원
-  - Lighthouse LCP < 2.5s
+**전환 대상**: 배지 · POI · 아이템북 · 미션 · 투데이 · 레시피 · 유저 · 세계관(factions) ·
+포인트 · 어뷰징 — 각 화면의 현재 목록 컴포넌트(`BadgesTable.tsx`, `PoiTable.tsx`,
+`ItemBookTable.tsx`, `MissionTable.tsx`, `TodayCardTable.tsx`, `RecipeTable.tsx`,
+`users/page.tsx`, `users/[id]/page.tsx`, `factions/page.tsx`, `points/page.tsx`,
+`AbusingClient.tsx`의 각 원시 `<table>`) 전부 교체.
 
-- [ ] **번들 최적화:**
-  - 불필요한 의존성 제거
-  - 동적 import (코드 스플리팅)
-  - Tree-shaking 확인
+**사전 확인 필요**: 화면별 일괄 삭제/비활성화 백엔드 API 존재 여부. 없으면 이 Phase에서
+API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 예: 유저 목록은 일괄 삭제가
+정책상 부적절할 수 있음, 이 경우 일괄 액션 없이 선택 UI만 제공하거나 제외).
 
-- [ ] **데이터 페칭:**
-  - SWR (Stale While Revalidate) 도입
-  - 캐시 전략 최적화
-  - 무한 스크롤 vs 페이지네이션 선택
-
-#### 3-2. 디자인 고도화 (2-3일)
-- [ ] **다크 모드:**
-  - shadcn/ui 기본 다크 테마 활용
-  - 모든 페이지에서 자동 감지
-
-- [ ] **접근성 (A11y):**
-  - ARIA 라벨 추가
-  - 키보드 네비게이션 지원
-  - 색상 대비 검증
-
-- [ ] **애니메이션 (선택사항):**
-  - 페이지 전환 애니메이션
-  - 버튼 호버 상태
-  - 로딩 스피너
-
-#### 3-3. 추가 기능 (선택사항)
-- [ ] **배지 일괄 작업:**
-  - 선택한 배지들을 한꺼번에 수정 (예: 희귀도 변경)
-  - CSV 내보내기 (배지 목록)
-
-- [ ] **감사 로깅:**
-  - 누가, 언제, 뭘 수정했는지 기록
-  - 변경 이력 조회
-
-- [ ] **다국어 지원 (i18n):**
-  - 한국어/영어 지원
-  - 어드민도 영어로 사용 가능
-
-#### 3-4. 배포 + 모니터링 (1-2일)
-- [ ] 프로덕션 배포
-- [ ] Sentry 에러 모니터링 (기존)
-- [ ] Vercel Analytics 활용
-- [ ] 성능 메트릭 수집
-
-### Phase 3 완료 기준
-- [x] Lighthouse Mobile Score ≥ 90
-- [x] Lighthouse Desktop Score ≥ 95
-- [x] 다크 모드 완전 지원
-- [x] 모바일에서 터치 타겟 ≥ 44×44px
-- [x] 모든 인터랙션 부드러움 (60fps)
-
-### Phase 3 아웃풋
-```
-✅ 어드민 1.0 정식 출시
-✅ 성능 최적화 완료 (LCP < 2.5s)
-✅ 접근성 준수 (WCAG 2.1 AA)
-✅ 다크 모드 완전 지원
-─────────────────────────────────
-미래 로드맵: 실시간 협업 편집, 배지 템플릿 라이브러리 등
-```
+### 완료 기준
+- [ ] 재사용 가능한 Data Table 컴포넌트 1종(column-def 기반) 구축
+- [ ] 위 전환 대상 화면 전체가 이 컴포넌트를 사용
+- [ ] 필터 UI가 전부 공식 Toolbar 패턴(커스텀 배치 없음)
+- [ ] 행 선택 + 일괄 액션(해당 화면에 필요한 것만) 동작 확인
+- [ ] 페이지네이션 기존 서버사이드 방식과 통합(20260826_011에서 이미 서버 페이지네이션
+      전환된 화면들과 충돌 없이 결합)
 
 ---
 
-## 타임라인 및 마일스톤
+## Phase 4 — 하드코딩 제거
 
-```
-Week 1 (Aug 5-11, 2026)
-├─ Day 1-2:   shadcn/ui 설치 + 레이아웃 기초
-├─ Day 3-4:   배지 CRUD UI (목록 + 상세 + 폼)
-└─ Day 5:     POI CRUD UI 시작
+### 범위
+미리보기 프레임(`BadgeDetailPreviewFrame.tsx`, `ItemBookDetailPreviewFrame.tsx` — MODULAR
+유지 대상, 제외) 뺀 전체 어드민 폼·모달·목록·상세 화면의 하드코딩 hex 클래스
+(`text-[#111111]`, `border-[#e5e7eb]`, `bg-[#f8f9fa]` 등)를 shadcn 시맨틱 토큰
+(`text-foreground`, `border-border`, `bg-muted` 등)으로 전환.
 
-Week 2 (Aug 12-18)
-├─ Day 1-2:   POI + 아이템북 CRUD 완성
-├─ Day 3-4:   테스트 + 버그 수정
-└─ Day 5:     [Phase 1 배포] ✅
+범위가 사실상 `src/app/admin/`·`src/components/admin/` 전체라 화면 단위로 여러 티켓으로
+쪼갤 가능성이 높다 — 실제 착수 시 오케스트레이터가 하드코딩 발생 빈도 기준으로 세부
+티켓을 분리한다(예: 배지 관련, POI 관련, 폼 공통 컴포넌트 등).
 
-Week 3 (Aug 19-25)
-├─ Day 1-2:   시뮬레이터 UI 리디자인
-├─ Day 3-4:   유저 조회 기능
-└─ Day 5:     [Phase 2 배포] ✅
-
-Week 4 (Aug 26-Sep 1)
-├─ Day 1-2:   성능 최적화 + 고도화
-├─ Day 3-4:   최종 테스트 + 배포
-└─ Day 5:     [Phase 3 배포 + 정식 출시] ✅
-
-─────────────────────────────────
-예상 완료: 2026년 8월 말 (4주)
-```
-
----
-
-## 리스크 관리
-
-### 위험 요소
-| 위험 | 영향도 | 대응 방안 |
-|-----|-------|--------|
-| shadcn/ui 버그 | 높음 | 안정 버전(최신-1) 사용, 문제 시 기본 Tailwind로 폴백 |
-| 모바일 성능 저하 | 높음 | 이미지 최적화, 가상 스크롤 도입 |
-| 기존 기능 회귀 | 중간 | 자동화 테스트 + 수동 테스트 철저히 |
-| 스케줄 지연 | 낮음 | Phase 나누기로 리스크 분산 |
-
-### 완화 전략
-- **단계별 배포:** Phase마다 feedback 수집 + 조정
-- **조기 테스트:** 각 Phase 끝에 실제 사용자 테스트
-- **Rollback 계획:** 문제 발생 시 이전 버전 빠르게 복구
-
----
-
-## 의존성 및 전제조건
-
-### 필수 완료
-- [ ] shadcn/ui 설치
-- [ ] Next.js 프로젝트 세팅 확인 (TypeScript, Tailwind)
-- [ ] 기존 어드민 API 정상 동작 확인
-
-### 선택 완료
-- [ ] Storybook (UI 컴포넌트 카탈로그) — 선택사항
-- [ ] Playwright (E2E 테스트) — Phase 3에서 고려
-
----
-
-## 다음 단계
-
-**Phase 1 시작 전:**
-1. shadcn/ui 설치 완료 (터미널 명령어 제공 예정)
-2. `src/app/admin/layout.tsx` 생성
-3. 첫 번째 컴포넌트 (BadgeCard) 구현
-
-**Phase 1 진행 중:**
-- 매일 진행 상황 업데이트
-- 문제 발생 시 즉시 해결
-- 1주일마다 중간 검토
-
-**Phase 1 완료 후:**
-- 사용자 피드백 수집
-- Phase 2로 진행 또는 기간 조정
-
----
-
-**수립자:** Claude Code AI  
-**수립일:** 2026-08-05  
-**최종 검토:** [대기중]  
-**예상 정식 출시:** 2026-09-01
-
+### 완료 기준
+- [ ] `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin src/components/admin` 결과가
+      미리보기 프레임 관련 파일을 제외하고 0건
+- [ ] 시각적 회귀 없음(색상·간격이 기존과 크게 다르지 않은지 스크린샷 비교)
