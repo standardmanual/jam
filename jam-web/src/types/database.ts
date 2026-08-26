@@ -196,10 +196,12 @@ export interface InventoryItemRow {
 }
 
 /**
- * 레거시 — 전 행 'user'.
- * 앰비언트(시스템) 드랍이 있던 시절의 구분자였으나 기능이 제거됐다(티켓 20260825_004).
- * 컬럼은 DB에 남아 있다: assign_random_serial() 트리거와 poi_drops_source_consistency
- * CHECK가 이 컬럼을 참조하고 있어, 제거하면 픽업 경로 전체를 다시 검증해야 한다.
+ * 드랍 출처. 'user'=유저가 인벤토리에서 직접 드랍(30일 만료). 'system'=앰비언트(시스템)
+ * 배치(만료 없음 — 필요 시 badges.valid_from/valid_until로 대체).
+ *
+ * 2026-08-25에 앰비언트 드랍이 한 번 전면 제거됐다가(티켓 20260825_004) 2026-08-26에
+ * 재도입됐다(티켓 20260826_009, `src/lib/ambient-drop/`). 제거 기간에는 전 행이 'user'였다.
+ * assign_random_serial() 트리거와 poi_drops_source_consistency CHECK가 이 컬럼을 참조한다.
  */
 export type PoiDropSource = 'user' | 'system'
 
@@ -213,7 +215,7 @@ export interface PoiDropRow {
   picked_up_at: string | null
   is_available: boolean
   expires_at: string | null
-  /** 레거시 — 전 행 'user' (기본값). PoiDropSource 주석 참고 */
+  /** PoiDropSource 주석 참고 — 'user'/'system' 둘 다 활성 값 */
   source: PoiDropSource
 }
 
@@ -477,6 +479,41 @@ export interface DropPolicyRow {
   completed_book_weight: number
   same_book_penalty: number
   last_piece_pity_threshold: number
+  updated_at: string
+}
+
+/** 3축 모드 — 명시(explicit) 또는 무작위(random). AmbientDropConfigRow 참고 */
+export type AmbientDropAxisMode = 'explicit' | 'random'
+
+/**
+ * 앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 티켓 20260826_009로 재도입.
+ * 구 ambient_drop_policy(마이그레이션 044, 100에서 DROP)와 스키마가 다르다 — 전역 커버리지
+ * 목표치 모델이 아니라, 실행마다 카테고리/등급비율/대상컬렉션 3축을 명시 또는 무작위로
+ * 골라 batch_size개를 배치하는 배치 실행형 모델이다. 로직: `src/lib/ambient-drop/`.
+ */
+export interface AmbientDropConfigRow {
+  id: number
+  /** 자동 스케줄 등록 여부. 실제 실행 시각은 vercel.json 고정 cron(코드 상수와 동기화 필요) */
+  auto_enabled: boolean
+  /** 자동 스케줄 시각 전후 n분 — 이 구간엔 수동 배포 버튼 비활성화 (auto_enabled=false면 무시) */
+  exclusion_window_minutes: number
+  /** 메타 옵션 — true면 실행 시점에 아래 3축 모드를 전부 'random'으로 취급(비파괴적 오버라이드) */
+  all_random: boolean
+  category_mode: AmbientDropAxisMode
+  /** explicit + null = "전체 카테고리". poi_categories.slug 참조 */
+  category_slug: string | null
+  rarity_mode: AmbientDropAxisMode
+  rarity_common: number
+  rarity_rare: number
+  rarity_legend: number
+  rarity_mythic: number
+  collection_mode: AmbientDropAxisMode
+  /** explicit + 빈 배열 = "전체 컬렉션". item_books.id 참조(배열이라 DB FK 없음, 앱에서 검증) */
+  collection_ids: string[]
+  /** 실행 1회당 배치할 POI 개수 (3축에 속하지 않는 실행 파라미터) */
+  batch_size: number
+  /** POI 1곳이 동시에 보유 가능한 최대 활성 앰비언트 드랍 수 (분산 배치용) */
+  max_active_per_poi: number
   updated_at: string
 }
 
@@ -1072,6 +1109,12 @@ export interface Database {
         Row: DropPolicyRow
         Insert: Partial<DropPolicyRow> & { id: number }
         Update: Partial<Omit<DropPolicyRow, 'id'>>
+        Relationships: []
+      }
+      ambient_drop_config: {
+        Row: AmbientDropConfigRow
+        Insert: Partial<AmbientDropConfigRow> & { id: number }
+        Update: Partial<Omit<AmbientDropConfigRow, 'id'>>
         Relationships: []
       }
       user_item_book_slots: {
