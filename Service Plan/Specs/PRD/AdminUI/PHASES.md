@@ -171,7 +171,8 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 **2026-08-26 갱신 — 4단계a 구현 완료(리뷰 대기)**: 선행 인프라 2건 + 배지 도메인 4개 파일
 (`BadgeForm.tsx`·`BackgroundGeneratorPreview.tsx`·`BadgeMultiSearchSelect.tsx`·
 `BadgeSearchSelect.tsx`, `src/app/admin/badges/new/page.tsx`의 잔여 2건 포함) 전환 완료,
-사용자 최종 승인 대기 중(`20260826_016`). 4b 착수 시 참고할 구현 노트:
+사용자 최종 승인 대기 중(`20260826_017` — 원래 016으로 생성됐으나 다른 세션의 무관한
+티켓과 번호가 겹쳐 재배정됨). 4b 착수 시 참고할 구현 노트:
 
 - **`--color-border` 스코프 버그의 실제 원인은 문서 초안 추정과 달랐다** — 브라우저
   `getComputedStyle` 실측 결과, `globals.css` 자체의 `@theme inline` 매핑(`--color-X:
