@@ -29,11 +29,22 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+interface DialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  /**
+   * Radix Portal이 렌더링될 DOM 컨테이너. 지정하지 않으면 `document.body`(기본값)로
+   * 포털된다. shadcn 어드민 테마 실값은 `[data-admin-theme]` 스코프 안에만 존재하므로
+   * (globals.css 참고), 테마 토큰(bg-popover 등)에 의존하는 다이얼로그는 이 prop으로
+   * admin 스코프 노드를 명시해야 스타일이 정상 적용된다 (sheet.tsx와 동일 패턴, 20260826_016).
+   */
+  container?: React.ComponentProps<typeof DialogPortal>["container"]
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
+  DialogContentProps
+>(({ className, children, container, ...props }, ref) => (
+  <DialogPortal container={container}>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
