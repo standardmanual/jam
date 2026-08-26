@@ -78,6 +78,28 @@
 아래 범위·완료 기준은 3단계 전체(a+b 합산) 기준으로 작성돼 있다 — 화면 목록은 a/b로
 어떻게 나뉘는지 각 티켓에서 확인할 것.
 
+**2026-08-26 갱신 2 — 3단계a 구현 완료(리뷰 대기)**: 공용 Data Table 컴포넌트 구축 +
+배지 목록 파일럿 전환 구현 완료, 사용자 최종 승인 대기 중(`20260826_014`). 3단계b는
+이 티켓이 CLOSED된 뒤 새 티켓으로 시작한다. 3단계b 착수 시 참고할 구현 노트:
+
+- 공용 컴포넌트 위치: `src/components/admin/data-table/`(`features.ts`, `data-table.tsx`,
+  `data-table-column-header.tsx`, `data-table-view-options.tsx`,
+  `data-table-faceted-filter.tsx`, `data-table-toolbar.tsx`, `data-table-bulk-action-bar.tsx`).
+  `@tanstack/react-table`는 **v9**(feature 기반 opt-in, `useTable`/`createColumnHelper`/
+  `tableFeatures` API — v8과 다름, 이 문서 참고 없이 훈련 데이터 기억으로 짜면 틀린다).
+- `DataTableFacetedFilter`는 공식 예제와 달리 TanStack `column`이 아니라 `selected`/
+  `onChange` 값을 직접 받는다 — 이 프로젝트 어드민 목록이 전부 서버사이드(URL searchParams)
+  필터링이고, 필터 UI가 모바일 카드 뷰와 공용(데스크탑 전용 테이블의 `table` 인스턴스 밖에
+  위치)이기 때문. 3단계b 화면도 동일 구조면 그대로 재사용.
+- `DataTableViewOptions`(컬럼 표시 토글)·행 선택·정렬 헤더 클릭은 데스크탑 테이블
+  컴포넌트 안에서 실제 `table` 인스턴스로 구현(위 이유와 동일 — 모바일에 대응 UI가 없음).
+- Radix `Popover`/`DropdownMenu`/`Command`는 `document.body`에 포털되어
+  `[data-admin-theme]` 스코프 밖이다 — 시맨틱 토큰(`bg-popover` 등) 대신 기존 admin
+  컴포넌트들과 같은 하드코딩 뉴트럴 팔레트(`bg-white`, `text-neutral-900` 등)를 써야 한다
+  (Phase 4에서 Portal `container` 리다이렉션을 하기 전까지는 계속 이렇게 한다).
+- 배지 화면은 검색·서브 필터(액티비티/지점 카테고리/세계관+컬렉션)·정렬 드롭조합을 전부
+  유지했다(기존 기능 축소 없음) — 3단계b 화면들도 필터 기능은 축소하지 말 것.
+
 ### 범위
 `@tanstack/react-table` 추가, 재사용 가능한 어드민 Data Table 컴포넌트 구축(행 선택
 체크박스 + 정렬 + 일괄 액션 툴바 + 공식 Toolbar 필터 패턴).
