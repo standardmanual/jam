@@ -158,6 +158,27 @@
   /* ── elevation — 1px inset border만 (드롭섀도 금지) ──────── */
   --shadow-subtle: inset 0 0 0 1px var(--color-border);
   --shadow-subtle-2: inset 0 0 0 1px var(--color-border-inverse);
+}
+
+/*
+ * 20260826_012 게이트 리뷰 WARN 후속 — shadcn 프리셋(b5Jgcv00m) 실값 스코프 격리.
+ *
+ * `npx shadcn apply --only theme`가 --background/--primary 등 shadcn 표준 이름의 실제
+ * 값(oklch)을 원래 전역 :root에 심었다. 이 이름들은 shadcn 관용구로 흔히 쓰이는데,
+ * 서비스 본체(MODULAR)는 전혀 다른 토큰 이름(--color-bg, --color-text 등)을 쓰므로
+ * 지금은 충돌이 없지만, 전역에 두면 향후 서비스 코드가 실수로 bg-background/text-foreground
+ * 등을 쓸 때 조용히 흰 배경으로 새어나갈 수 있다.
+ *
+ * 그래서 실값은 어드민 루트(`admin/layout.tsx` 최상위 wrapper div의 [data-admin-theme])
+ * 안에서만 정의한다. `@theme inline`의 --color-primary: var(--primary) 같은 매핑 자체는
+ * Tailwind가 유틸리티 클래스(bg-primary 등)를 생성하려면 전역(:root)에 있어야 해서
+ * 그대로 두되(위 블록, 값 아님 — 매핑일 뿐), --primary 등 실값 대입만 여기서 스코프한다.
+ * var() 치환은 소비 시점(클래스가 실제로 붙는 요소)의 캐스케이드 환경을 따르므로,
+ * [data-admin-theme] 하위 요소에서만 bg-primary 등이 이 프리셋 색으로 렌더링되고,
+ * 그 바깥에서는 --primary가 미정의 상태(초기값)로 남아 조용히 다른 색이 새지 않는다.
+ * (같은 파일의 .dark 오버라이드가 이미 동일한 원리로 동작 중 — 새 메커니즘 아님.)
+ */
+[data-admin-theme] {
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
   --card: oklch(1 0 0);
@@ -473,7 +494,9 @@ body {
 /*
  ---break---
  */
-.dark {
+/* 20260826_012 게이트 리뷰 WARN 후속 — 위 [data-admin-theme]와 같은 이유로 스코프.
+   .dark 클래스 자체는 현재 아무 곳에서도 실제로 부여되지 않아(실측 확인) 비활성 상태다. */
+[data-admin-theme].dark {
   --background: oklch(0.147 0.004 49.25);
   --foreground: oklch(0.985 0.001 106.423);
   --card: oklch(0.216 0.006 56.043);
