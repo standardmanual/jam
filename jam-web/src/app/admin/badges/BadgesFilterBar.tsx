@@ -1,17 +1,17 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import { Button } from '@/components/admin/ui/button'
+import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
+import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
+import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
 import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
 
-const TYPE_OPTIONS = [
-  { value: 'all', label: '전체 타입' },
-  ...BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_TYPE_LABEL[t] })),
-]
+const TYPE_OPTIONS = BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_TYPE_LABEL[t] }))
 
 const RARITY_OPTIONS = [
-  { value: 'all', label: '전체 등급' },
   { value: 'common', label: 'Common' },
   { value: 'rare', label: 'Rare' },
   { value: 'legend', label: 'Legend' },
@@ -24,6 +24,10 @@ const STATUS_OPTIONS = [
   { value: 'all', label: '전체' },
 ]
 
+// 최신순/오래된순은 created_at 기준이라 데스크탑 테이블에 노출되는 컬럼이 없어 헤더 클릭으로
+// 대체할 수 없다(BadgesTable.tsx 주석 참고) — 이 드롭다운이 계속 담당한다. 이름 오름/내림차순은
+// 데스크탑에서는 "이름" 헤더 클릭으로도 가능하지만, 모바일 카드 뷰는 헤더가 없어 이 드롭다운이
+// 유일한 경로다(이번 티켓은 모바일 카드 뷰를 건드리지 않는다).
 const SORT_OPTIONS = [
   { value: 'created_desc', label: '최신순' },
   { value: 'created_asc', label: '오래된 순' },
@@ -32,7 +36,6 @@ const SORT_OPTIONS = [
 ]
 
 const ACTIVITY_TYPE_OPTIONS = [
-  { value: 'all', label: '전체 액티비티' },
   { value: 'cycling', label: '사이클링' },
   { value: 'running', label: '러닝' },
   { value: 'trail_running', label: '트레일 러닝' },
@@ -49,6 +52,13 @@ interface BadgesFilterBarProps {
   poiCategories: { slug: string; label: string }[]
 }
 
+/**
+ * 배지 목록 필터 바(20260826_014) — shadcn 공식 Data Table Toolbar 패턴으로 재구현.
+ *
+ * 데스크탑 테이블뿐 아니라 모바일 카드 뷰(BadgeList.tsx)에도 적용되는 페이지 레벨
+ * 필터라 TanStack `table` 인스턴스와 무관하게 URL(searchParams)로 서버 필터링을 직접
+ * 제어한다(`DataTableFacetedFilter`가 `column` 대신 값/콜백을 받는 이유).
+ */
 export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: BadgesFilterBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -58,48 +68,39 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
   const currentFactionId = searchParams.get('faction_id') ?? 'all'
   const currentStatus = searchParams.get('status') ?? 'active'
 
-  const update = useCallback(
-    (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString())
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null || value === 'all' || value === 'created_desc') {
-          params.delete(key)
-        } else {
-          params.set(key, value)
-        }
+  const update = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === 'all' || value === 'created_desc') {
+        params.delete(key)
+      } else {
+        params.set(key, value)
       }
-      params.delete('page')
-      router.push(`/admin/badges?${params.toString()}`)
-    },
-    [router, searchParams]
-  )
+    }
+    params.delete('page')
+    router.push(`/admin/badges?${params.toString()}`)
+  }
 
-  const handleTypeChange = (value: string) => {
+  // 검색어는 타이핑마다 즉시 서버로 보내지 않고 디바운스 후 반영한다(공식 Toolbar의 Input은
+  // 별도 검색 버튼이 없다 — 그렇다고 매 키 입력마다 라우팅하면 요청이 과도해진다).
+  useEffect(() => {
+    const current = searchParams.get('q') ?? ''
+    if (searchInput === current) return
+    const timer = setTimeout(() => update({ q: searchInput.trim() || null }), 400)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput])
+
+  const handleTypeChange = (values: string[]) => {
+    const value = values[0] ?? 'all'
     // 타입 변경 시 서브 필터 전체 초기화
     const cleared = Object.fromEntries(SUB_FILTER_KEYS.map((k) => [k, null])) as Record<string, null>
     update({ type: value, ...cleared })
   }
 
-  const handleFactionChange = (value: string) => {
+  const handleFactionChange = (values: string[]) => {
     // 세계관 변경 시 아이템북 초기화
-    update({ faction_id: value, item_book_id: null })
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    update({ q: searchInput.trim() || null })
-  }
-
-  const handleStatusChange = (value: string) => {
-    // 기본값은 'active' — update()는 'all'을 삭제 대상으로 보므로 별도 처리
-    const params = new URLSearchParams(searchParams.toString())
-    if (value === 'active') {
-      params.delete('status')
-    } else {
-      params.set('status', value)
-    }
-    params.delete('page')
-    router.push(`/admin/badges?${params.toString()}`)
+    update({ faction_id: values[0] ?? 'all', item_book_id: null })
   }
 
   const hasFilter =
@@ -111,174 +112,107 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
 
   // 선택된 세계관 기준으로 아이템북 필터링
   const filteredItemBooks =
-    currentFactionId === 'all'
-      ? itemBooks
-      : itemBooks.filter((b) => b.faction_id === currentFactionId)
+    currentFactionId === 'all' ? itemBooks : itemBooks.filter((b) => b.faction_id === currentFactionId)
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 검색창 */}
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <input
-          type="text"
-          placeholder="배지 이름, 설명으로 검색..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="flex-1 bg-white border border-[#e5e7eb] rounded-xl px-4 py-2 text-sm text-[#111111] focus:outline-none focus:border-[#111111]/50"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-[#111111] text-white text-sm rounded-xl hover:bg-[#374151] transition-colors"
-        >
-          검색
-        </button>
-      </form>
-
-      {/* 필터 + 정렬 */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* 타입 */}
-        <Select value={currentType} onValueChange={handleTypeChange}>
-          <SelectTrigger className="w-auto min-w-[8rem]" aria-label="타입 필터">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TYPE_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* 액티비티 서브 필터 */}
-        {currentType === 'activity' && (
-          <Select
-            value={searchParams.get('activity_type') ?? 'all'}
-            onValueChange={(v) => update({ activity_type: v })}
-          >
-            <SelectTrigger className="w-auto min-w-[8rem]" aria-label="액티비티 필터">
+      <DataTableToolbar
+        actions={
+          <Select value={searchParams.get('sort') ?? 'created_desc'} onValueChange={(v) => update({ sort: v })}>
+            <SelectTrigger className="h-8 w-auto min-w-[8rem]" aria-label="정렬">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {ACTIVITY_TYPE_OPTIONS.map((o) => (
+              {SORT_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        }
+      >
+        <Input
+          placeholder="배지 이름, 설명으로 검색..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          className="h-8 w-[180px] lg:w-[260px]"
+        />
+
+        <DataTableFacetedFilter
+          title="타입"
+          options={TYPE_OPTIONS}
+          selected={currentType === 'all' ? [] : [currentType]}
+          onChange={handleTypeChange}
+        />
+
+        {/* 액티비티 서브 필터 */}
+        {currentType === 'activity' && (
+          <DataTableFacetedFilter
+            title="액티비티"
+            options={ACTIVITY_TYPE_OPTIONS}
+            selected={searchParams.get('activity_type') ? [searchParams.get('activity_type') as string] : []}
+            onChange={(values) => update({ activity_type: values[0] ?? null })}
+          />
         )}
 
         {/* 지점 카테고리 서브 필터 — 체크인 배지는 연결된 지점(poi.category)으로만 분류된다 */}
         {currentType === 'checkin' && (
-          <Select
-            value={searchParams.get('poi_category') ?? 'all'}
-            onValueChange={(v) => update({ poi_category: v })}
-          >
-            <SelectTrigger className="w-auto min-w-[8rem]" aria-label="지점 카테고리 필터">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체 카테고리</SelectItem>
-              {poiCategories.map((c) => (
-                <SelectItem key={c.slug} value={c.slug}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <DataTableFacetedFilter
+            title="지점 카테고리"
+            options={poiCategories.map((c) => ({ value: c.slug, label: c.label }))}
+            selected={searchParams.get('poi_category') ? [searchParams.get('poi_category') as string] : []}
+            onChange={(values) => update({ poi_category: values[0] ?? null })}
+          />
         )}
 
         {/* 아이템 서브 필터: 세계관 + 아이템북 */}
         {currentType === 'item' && (
           <>
-            <Select value={currentFactionId} onValueChange={handleFactionChange}>
-              <SelectTrigger className="w-auto min-w-[8rem]" aria-label="세계관 필터">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 세계관</SelectItem>
-                {factions.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={searchParams.get('item_book_id') ?? 'all'}
-              onValueChange={(v) => update({ item_book_id: v })}
-            >
-              <SelectTrigger className="w-auto min-w-[8rem]" aria-label="컬렉션 필터">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 컬렉션</SelectItem>
-                {filteredItemBooks.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DataTableFacetedFilter
+              title="세계관"
+              options={factions.map((f) => ({ value: f.id, label: f.name }))}
+              selected={currentFactionId === 'all' ? [] : [currentFactionId]}
+              onChange={handleFactionChange}
+            />
+            <DataTableFacetedFilter
+              title="컬렉션"
+              options={filteredItemBooks.map((b) => ({ value: b.id, label: b.name }))}
+              selected={searchParams.get('item_book_id') ? [searchParams.get('item_book_id') as string] : []}
+              onChange={(values) => update({ item_book_id: values[0] ?? null })}
+            />
           </>
         )}
 
-        {/* 등급 */}
-        <Select value={searchParams.get('rarity') ?? 'all'} onValueChange={(v) => update({ rarity: v })}>
-          <SelectTrigger className="w-auto min-w-[7rem]" aria-label="등급 필터">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {RARITY_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <DataTableFacetedFilter
+          title="등급"
+          options={RARITY_OPTIONS}
+          selected={searchParams.get('rarity') ? [searchParams.get('rarity') as string] : []}
+          onChange={(values) => update({ rarity: values[0] ?? null })}
+        />
 
-        {/* 정렬 */}
-        <Select value={searchParams.get('sort') ?? 'created_desc'} onValueChange={(v) => update({ sort: v })}>
-          <SelectTrigger className="w-auto min-w-[8rem]" aria-label="정렬">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* 상태 (활성/비활성/전체) */}
-        <Select value={currentStatus} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-auto min-w-[7rem]" aria-label="상태 필터">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <DataTableFacetedFilter
+          title="상태"
+          options={STATUS_OPTIONS}
+          selected={[currentStatus]}
+          onChange={(values) => update({ status: values[0] ?? null })}
+        />
 
         {hasFilter && (
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8"
             onClick={() => {
               setSearchInput('')
               router.push('/admin/badges')
             }}
-            className="text-xs text-[#6b7280] hover:text-[#374151] transition-colors underline underline-offset-2"
           >
             필터 초기화
-          </button>
+          </Button>
         )}
-      </div>
+      </DataTableToolbar>
     </div>
   )
 }

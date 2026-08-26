@@ -118,8 +118,11 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
         {hasFilter && ' (필터 적용 중)'}
       </div>
 
-      {/* 목록 */}
-      <BadgeList badges={badges} factionMap={factionMap} />
+      {/* 목록 — 데스크탑 테이블(BadgesTable.tsx)이 정렬 상태를 URL과 동기화하려고
+          useSearchParams()를 쓴다(20260826_014). BadgesFilterBar와 같은 이유로 Suspense로 감싼다. */}
+      <Suspense>
+        <BadgeList badges={badges} factionMap={factionMap} />
+      </Suspense>
 
       {/* 페이지네이션 */}
       <Pagination page={page} totalPages={totalPages} searchParams={params} basePath="/admin/badges" />
