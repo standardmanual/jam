@@ -1,8 +1,9 @@
 ---
 id: 20260826_009
 category: BadgeEngine
-status: OPEN
+status: CLOSED
 created: 2026-08-26
+closed: 2026-08-26
 ---
 
 # [BadgeEngine] 앰비언트(시스템) POI 드랍 재도입 — 카테고리/등급/컬렉션 축 기반 배포
@@ -213,9 +214,13 @@ Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md
 - [x] 표기 규칙: 분(分) 단위 명시, UTC/KST 병기
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-26
+- 환경: staging
+- 커밋: ea0f5fdba85664a7741fcfd3ece51e190fbb76a5 (staging 병합 커밋, review 브랜치
+  `claude/jamwork-20260826_009-ambient-drop-reintro` 커밋 포함)
+- 마이그레이션 104: 사용자 승인 후 오케스트레이터가 실행 (실행 결과는 아래 "DDL 적용 후
+  실측 검증" 참고)
+- 프로덕션 반영은 `/jam-ship`으로 별도 진행
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
@@ -284,12 +289,20 @@ CHECK 제약이 없음) 관측성을 확보했다.
 수정 후 `npx tsc --noEmit`(0 에러) · `npx eslint`(변경 파일 0 에러) · `npx vitest run`(60 파일 /
 562 테스트 전부 통과, 회귀 없음) · `npm run build`(성공, 라우트 4종 확인)로 재검증했다.
 
+#### 마이그레이션 104 적용 완료 (2026-08-26, 사용자 승인 후 오케스트레이터 실행)
+
+| 항목 | 결과 |
+|---|---|
+| `ambient_drop_config` 싱글톤 row(id=1) | **생성됨** — 기본값 그대로(`auto_enabled=false`, common 100%, `batch_size=30` 등) |
+| `idx_poi_drops_system_available` 인덱스 | **재생성됨** (`poi_id` / `source='system' AND is_available=true`) |
+| `poi_drops.source` COMMENT | **갱신됨** — "레거시" 표기 제거, 활성 컬럼 설명으로 교체 |
+
 ### 잔여 이슈
 
-- **마이그레이션 104 미실행** — 승인 후 오케스트레이터가 실행해야 실제로 동작한다. 실행 전까지
-  `/admin/ambient-drop`은 `ambient_drop_config` 조회 실패 시 기본값(폴백)으로만 표시되고,
-  저장/배포는 테이블이 없어 실패한다.
-- **실배치 실측 미실시** — 위 테스트 결과 참고. 마이그레이션 적용 후 최소 1회 수동 배포로
-  `poi_drops` 실측 확인 필요.
+- **실배치 실측 미실시** — 마이그레이션은 적용됐으나, 어드민 화면에서 "지금 배포"를 최소 1회
+  실행해 `poi_drops`에 `source='system'` 행이 실제로 생기는지는 아직 확인 안 됨. `auto_enabled`가
+  기본값 `false`라 자동 cron도 현재는 no-op 상태 — 운영 시작 시점에 어드민에서 켜야 한다.
 - **어드민 UX Writing 톤 미세 조정 여지** — 해요체/합쇼체 혼재 상태를 기존 어드민 관례대로
   유지했다. 추후 어드민 전체 톤을 통일하는 별도 작업이 있다면 이 화면도 함께 다듬을 것.
+- **네이티브 select 잔존(범위 밖)** — 게이트 리뷰가 발견한 다른 어드민 폼(ItemBookForm 등)의
+  네이티브 `<select>` 잔존은 이 티켓 범위 밖이라 별도 작업으로 분리했다(2026-08-26).

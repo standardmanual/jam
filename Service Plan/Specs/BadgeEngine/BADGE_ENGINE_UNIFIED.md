@@ -484,6 +484,11 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 5. 결과를 `engine_decision_log`(`engine='drop'`, `event='ambient_batch_result'`)에 남긴다 —
    자동/수동 모두 동일하게 기록되어 어드민 화면에서 최근 실행 이력으로 조회 가능하다.
 
+**스킵 사유(`AmbientDropSkipReason`)**: `auto_disabled`(자동 실행 OFF로 no-op) ·
+`no_eligible_poi`(대상 카테고리에 배치 가능한 POI 없음) · `no_candidate_badges`(조건에 맞는
+후보 배지 없음) · `insert_failed`(배지는 뽑았으나 `poi_drops` INSERT 자체가 실패) —
+`engine_decision_log`에 그대로 기록되어 실행 이력에서 원인을 구분할 수 있다.
+
 **PostgREST 1000행 상한 대응**: POI·배지 전체 스캔이 컬렉션 완성 판정 버그(티켓 20260825_029)와
 같은 클래스의 상한 문제에 걸릴 수 있어(POI 수천 건, 배지 수천 건), `fetchAllRows`로
 `.range()` 페이지네이션한다 — "전체 카테고리"/"전체 컬렉션" 모드에서 조용히 일부만 조회되는
