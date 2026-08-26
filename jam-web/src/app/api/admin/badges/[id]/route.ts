@@ -3,6 +3,31 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { findCumulativeConditionError, findUnknownConditionKeyError } from '@/lib/admin/badge-validation'
 
+/**
+ * 배지 소프트 삭제(비활성화) 시, 그 배지를 가리키는 아직 안 주워진 월드 드랍을 함께
+ * 무효화한다(20260826_016). 이미 픽업된 드랍(picked_up_at IS NOT NULL)은 이력 보존을
+ * 위해 건드리지 않는다. 실패해도 배지 소프트 삭제 자체는 이미 끝난 뒤이므로 요청을
+ * 실패시키지 않고 로그만 남긴다 — 크론 안전망(api/cron/poi-cleanup)이 재시도 없이도
+ * 다음 소각 주기에 정리한다.
+ */
+async function invalidateUnclaimedDrops(
+  supabase: ReturnType<typeof createServiceClient>,
+  badgeId: string,
+  caller: string
+) {
+  const { error } = await supabase
+    .from('poi_drops')
+    // @ts-expect-error Supabase 타입 추론 제한 우회
+    .update({ is_available: false })
+    .eq('badge_id', badgeId)
+    .is('picked_up_at', null)
+    .eq('is_available', true)
+
+  if (error) {
+    console.error(`[admin badges ${caller}] 미픽업 드랍 무효화 오류:`, error.message)
+  }
+}
+
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -76,6 +101,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await invalidateUnclaimedDrops(supabase, id, 'DELETE')
+
   return NextResponse.json({ ok: true })
 }
 
@@ -107,5 +135,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // 비활성화(active: false) 방향일 때만 미픽업 드랍을 함께 무효화한다. active: true로
+  // 되살릴 때는 드랍을 자동 부활시키지 않는다 — 관리자가 명시적으로 새로 드랍해야 한다.
+  if (!active) {
+    await invalidateUnclaimedDrops(supabase, id, 'PATCH')
+  }
+
   return NextResponse.json({ badge: data })
 }
