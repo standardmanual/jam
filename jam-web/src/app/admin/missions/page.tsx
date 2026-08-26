@@ -26,35 +26,22 @@ export default async function AdminMissionsPage() {
     completionCounts.set(c.mission_id, (completionCounts.get(c.mission_id) ?? 0) + 1)
   })
 
-  // 미션 보상으로 배지를 고를 때 "그 배지가 포인트를 포함하는지" 경고에 쓸 목록.
-  // 게이트 배지(gated_badge_id) 선택에도 같은 목록을 쓴다 — 등급(rarity)이 노출 판정 기준이라 함께 조회.
-  // 소프트 삭제된 배지는 제외한다(티켓 20260825_019·026 선례).
-  // ⚠️ PostgREST 기본 응답 상한(1000행) 때문에 단발 select로는 미삭제 배지 2172건 중 1000건만
-  //    돌아온다. name 오름차순 1000행 안에는 5개 레벨업 트리 중 '동네 산책러'만 들어와
-  //    ('첫 숨결'은 1905번째) 게이트 배지·보상 배지 검색에서 나머지 4개 트리를 찾을 수 없었다.
-  //    range로 페이지를 끝까지 넘겨 전량을 가져온다 (티켓 20260825_028).
-  //    정렬에 id를 tie-break로 덧붙이는 이유: 동명 배지가 등급별로 여러 행 존재하므로
-  //    name만으로는 페이지 경계에서 순서가 흔들려 중복·누락이 생길 수 있다.
-  const BADGE_PAGE_SIZE = 1000
-  type BadgeOptionRow = { id: string; name: string; point_reward: number; rarity: string }
-  const badges: BadgeOptionRow[] = []
-  for (let from = 0; ; from += BADGE_PAGE_SIZE) {
-    const { data: pageRaw, error } = await supabase
-      .from('badges')
-      .select('id, name, point_reward, rarity')
-      .is('deleted_at', null)
-      .order('name')
-      .order('id')
-      .range(from, from + BADGE_PAGE_SIZE - 1)
-
-    if (error) {
-      console.error('[admin/missions] 배지 목록 조회 실패:', error)
-      break
-    }
-    const page = (pageRaw ?? []) as BadgeOptionRow[]
-    badges.push(...page)
-    if (page.length < BADGE_PAGE_SIZE) break
-  }
+  // 미션이 이미 참조하는 배지(reward_badge_ids/gated_badge_id)의 표시용 라벨 조회 — 이름·등급·
+  // 포인트를 보여주려면 필요하다. 이전에는 배지 2172건 전량을 range-loop로 끌어온 뒤 클라이언트
+  // 필터링했지만(PostgREST 1000행 상한 방지, 티켓 20260825_028), 저작 폼의 배지 검색 UI가
+  // /api/admin/badges/search 기반 컴포넌트로 바뀌면서(20260826_011 A1·A2) 더 이상 전량이
+  // 필요 없다 — 실제로 참조되는 id만 bounded로 조회한다(admin/itembooks/page.tsx의 labelIds
+  // 패턴과 동일).
+  type BadgeLabelRow = { id: string; name: string; point_reward: number; rarity: string; type: string }
+  const referencedBadgeIds = [
+    ...new Set(
+      missions.flatMap((m) => [...(m.reward_badge_ids ?? []), m.gated_badge_id]).filter((id): id is string => !!id)
+    ),
+  ]
+  const { data: badgeLabelsRaw } = referencedBadgeIds.length > 0
+    ? await supabase.from('badges').select('id, name, point_reward, rarity, type').in('id', referencedBadgeIds)
+    : { data: [] as BadgeLabelRow[] }
+  const badgeLabels = (badgeLabelsRaw ?? []) as BadgeLabelRow[]
 
   return (
     <div className="p-8">
@@ -64,7 +51,7 @@ export default async function AdminMissionsPage() {
           <p className="text-[#6b7280] text-sm mt-1">다이나믹 미션 생성 및 모니터링</p>
         </div>
       </div>
-      <MissionList missions={missions} completionCounts={completionCounts} badges={badges} />
+      <MissionList missions={missions} completionCounts={completionCounts} badgeLabels={badgeLabels} />
     </div>
   )
 }

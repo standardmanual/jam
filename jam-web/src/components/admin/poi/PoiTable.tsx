@@ -2,10 +2,10 @@
 
 import Link from 'next/link'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import type { PoiRow } from '@/types/database'
+import type { PoiListRow } from './PoiList'
 
 interface PoiTableProps {
-  pois: PoiRow[]
+  pois: PoiListRow[]
   badgeMap: Map<string, string>
   categoryLabelMap: Map<string, string>
 }

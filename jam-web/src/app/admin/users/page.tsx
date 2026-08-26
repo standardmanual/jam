@@ -14,39 +14,36 @@ export default async function AdminUsersPage() {
   const users = (data ?? []) as Pick<UserRow, 'id' | 'email' | 'username' | 'created_at' | 'region'>[]
   const userIds = users.map((u) => u.id)
 
+  // 보유 배지 수 집계 쿼리와 인벤토리 조회는 서로 독립적이라 병렬화한다(20260826_011 A7).
+  // 인벤토리 아이템 수 집계는 인벤토리 조회 결과(inventoryIds)에 의존하므로 그 뒤에 이어간다.
+  const [{ data: badgeRows }, { data: inventoriesRaw }] = userIds.length > 0
+    ? await Promise.all([
+        supabase.from('user_activity_badges').select('user_id').in('user_id', userIds),
+        supabase.from('inventory').select('id, user_id').in('user_id', userIds),
+      ])
+    : [{ data: [] as { user_id: string }[] }, { data: [] as Pick<InventoryRow, 'id' | 'user_id'>[] }]
+
   // 보유 배지 수 집계
   const badgeCountByUser = new Map<string, number>()
-  if (userIds.length > 0) {
-    const { data: badgeRows } = await supabase
-      .from('user_activity_badges')
-      .select('user_id')
-      .in('user_id', userIds)
-    for (const row of (badgeRows ?? []) as { user_id: string }[]) {
-      badgeCountByUser.set(row.user_id, (badgeCountByUser.get(row.user_id) ?? 0) + 1)
-    }
+  for (const row of (badgeRows ?? []) as { user_id: string }[]) {
+    badgeCountByUser.set(row.user_id, (badgeCountByUser.get(row.user_id) ?? 0) + 1)
   }
 
   // 보유 아이템 수 집계 (inventory_id → user_id 매핑 경유)
   const itemCountByUser = new Map<string, number>()
-  if (userIds.length > 0) {
-    const { data: inventoriesRaw } = await supabase
-      .from('inventory')
-      .select('id, user_id')
-      .in('user_id', userIds)
-    const inventories = (inventoriesRaw ?? []) as Pick<InventoryRow, 'id' | 'user_id'>[]
-    const inventoryIdToUserId = new Map(inventories.map((inv) => [inv.id, inv.user_id]))
-    const inventoryIds = inventories.map((inv) => inv.id)
+  const inventories = (inventoriesRaw ?? []) as Pick<InventoryRow, 'id' | 'user_id'>[]
+  const inventoryIdToUserId = new Map(inventories.map((inv) => [inv.id, inv.user_id]))
+  const inventoryIds = inventories.map((inv) => inv.id)
 
-    if (inventoryIds.length > 0) {
-      const { data: itemRows } = await supabase
-        .from('inventory_items')
-        .select('inventory_id')
-        .in('inventory_id', inventoryIds)
-      for (const row of (itemRows ?? []) as { inventory_id: string }[]) {
-        const userId = inventoryIdToUserId.get(row.inventory_id)
-        if (!userId) continue
-        itemCountByUser.set(userId, (itemCountByUser.get(userId) ?? 0) + 1)
-      }
+  if (inventoryIds.length > 0) {
+    const { data: itemRows } = await supabase
+      .from('inventory_items')
+      .select('inventory_id')
+      .in('inventory_id', inventoryIds)
+    for (const row of (itemRows ?? []) as { inventory_id: string }[]) {
+      const userId = inventoryIdToUserId.get(row.inventory_id)
+      if (!userId) continue
+      itemCountByUser.set(userId, (itemCountByUser.get(userId) ?? 0) + 1)
     }
   }
 

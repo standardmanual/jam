@@ -1,20 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
+import type { BadgeSearchResult } from '@/components/admin/BadgeSearchSelect'
 import type { TodayCardRow, TodayCardTemplateType, TodayCardLayoutType } from '@/types/database'
+import { TodayCardTable } from './TodayCardTable'
 
 // Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
 const NONE_VALUE = '__none__'
 
-interface BadgeOption { id: string; name: string }
 interface MissionOption { id: string; title: string }
 interface ItemBookOption { id: string; name: string }
 
 interface Props {
   cards: TodayCardRow[]
-  badges: BadgeOption[]
+  /** 이미 카드에 연결된(badge_ids) 배지의 표시용 라벨 — 실제로 참조되는 id만 bounded 조회한
+   *  결과다(20260826_011 A2). 신규로 검색해 추가하는 배지는 BadgeMultiSearchSelect의 검색
+   *  결과 객체를 그대로 캐시에 얹는다. */
+  badgeLabels: BadgeSearchResult[]
   missions: MissionOption[]
   itemBooks: ItemBookOption[]
 }
@@ -100,26 +105,31 @@ function toLocalInputValue(iso: string) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function TodayCardList({ cards, badges, missions, itemBooks }: Props) {
+export default function TodayCardList({ cards, badgeLabels, missions, itemBooks }: Props) {
   const [form, setForm] = useState(emptyForm)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [badgeQuery, setBadgeQuery] = useState('')
+  // 배지 id → 검색 결과 객체 캐시. badgeLabels(초기 참조 배지)로 시작해 새로 검색·선택한
+  // 배지가 추가되면서 자라난다.
+  const [badgeLabelCache, setBadgeLabelCache] = useState(
+    () => new Map(badgeLabels.map((b) => [b.id, b]))
+  )
   const router = useRouter()
 
   const fields = fieldsFor[form.template_type]
-  const selectedBadges = badges.filter((b) => form.badge_ids.includes(b.id))
-  const filteredBadges = badgeQuery.trim()
-    ? badges.filter((b) => b.name.toLowerCase().includes(badgeQuery.trim().toLowerCase()))
-    : badges
+  const selectedBadgeChips = form.badge_ids
+    .map((id) => badgeLabelCache.get(id))
+    .filter((b): b is BadgeSearchResult => !!b)
 
-  function toggleBadge(id: string) {
-    setForm((f) => ({
-      ...f,
-      badge_ids: f.badge_ids.includes(id) ? f.badge_ids.filter((x) => x !== id) : [...f.badge_ids, id],
-    }))
+  function addBadge(b: BadgeSearchResult) {
+    setForm((f) => (f.badge_ids.includes(b.id) ? f : { ...f, badge_ids: [...f.badge_ids, b.id] }))
+    setBadgeLabelCache((prev) => new Map(prev).set(b.id, b))
+  }
+
+  function removeBadge(id: string) {
+    setForm((f) => ({ ...f, badge_ids: f.badge_ids.filter((x) => x !== id) }))
   }
 
   function toggleTag(value: string) {
@@ -131,7 +141,7 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
     }))
   }
 
-  function handleEdit(card: TodayCardRow) {
+  const handleEdit = useCallback((card: TodayCardRow) => {
     setForm({
       template_type: card.template_type,
       layout_type: card.layout_type,
@@ -151,15 +161,13 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
       is_active: card.is_active,
     })
     setEditingId(card.id)
-    setBadgeQuery('')
     setError('')
     setShowForm(true)
-  }
+  }, [])
 
   function handleCancel() {
     setForm(emptyForm)
     setEditingId(null)
-    setBadgeQuery('')
     setError('')
     setShowForm(false)
   }
@@ -204,28 +212,26 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
       return
     }
     setForm(emptyForm)
-    setBadgeQuery('')
     setEditingId(null)
     setShowForm(false)
     router.refresh()
   }
 
-  async function handleToggleActive(card: TodayCardRow) {
+  const handleToggleActive = useCallback(async (card: TodayCardRow) => {
     await fetch(`/api/admin/today/${card.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !card.is_active }),
     })
     router.refresh()
-  }
+  }, [router])
 
-  async function handleDelete(id: string) {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm('카드를 삭제하시겠습니까?')) return
     await fetch(`/api/admin/today/${id}`, { method: 'DELETE' })
     router.refresh()
-  }
+  }, [router])
 
-  const now = new Date()
   const inputCls = 'w-full bg-white border border-[#e5e7eb] rounded-xl px-3 py-2 text-sm'
   const labelCls = 'text-xs text-[#6b7280] mb-1 block'
 
@@ -298,33 +304,12 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
           {fields.badges && (
             <div className="border border-[#e5e7eb] rounded-2xl p-4 space-y-2">
               <label className={labelCls}>배지 선택 (복수 가능)</label>
-              {selectedBadges.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {selectedBadges.map((b) => (
-                    <button key={b.id} onClick={() => toggleBadge(b.id)}
-                      className="text-xs bg-[#111111]/20 text-[#111111] border border-[#111111]/40 rounded-lg px-2 py-1 hover:bg-[#111111]/30">
-                      {b.name} ✕
-                    </button>
-                  ))}
-                </div>
-              )}
-              <input type="text" value={badgeQuery} onChange={(e) => setBadgeQuery(e.target.value)}
-                placeholder="배지 이름 검색..." className={inputCls} />
-              <div className="max-h-44 overflow-y-auto border border-[#e5e7eb] rounded-xl divide-y divide-[#f3f4f6]">
-                {filteredBadges.length === 0 && <p className="text-[#898989] text-xs px-3 py-2">검색 결과 없음</p>}
-                {filteredBadges.slice(0, 100).map((b) => {
-                  const checked = form.badge_ids.includes(b.id)
-                  return (
-                    <button key={b.id} onClick={() => toggleBadge(b.id)}
-                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-[#f8f9fa] ${checked ? 'text-[#111111]' : 'text-[#374151]'}`}>
-                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${checked ? 'bg-[#111111] border-[#111111] text-white' : 'border-[#e5e7eb]'}`}>
-                        {checked ? '✓' : ''}
-                      </span>
-                      {b.name}
-                    </button>
-                  )
-                })}
-              </div>
+              <BadgeMultiSearchSelect
+                selected={selectedBadgeChips}
+                onSelect={addBadge}
+                onRemove={removeBadge}
+                placeholder="배지 이름 검색..."
+              />
             </div>
           )}
 
@@ -452,57 +437,7 @@ export default function TodayCardList({ cards, badges, missions, itemBooks }: Pr
       )}
 
       {/* 카드 목록 */}
-      <div className="bg-white border border-[#e5e7eb] rounded-2xl overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
-              <th className="px-5 py-3 font-medium">제목</th>
-              <th className="px-5 py-3 font-medium">템플릿</th>
-              <th className="px-5 py-3 font-medium">노출형태</th>
-              <th className="px-5 py-3 font-medium">노출조건</th>
-              <th className="px-5 py-3 font-medium">기간</th>
-              <th className="px-5 py-3 font-medium">상태</th>
-              <th className="px-5 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {cards.length === 0 && (
-              <tr><td colSpan={7} className="px-5 py-10 text-center text-[#898989]">카드 없음</td></tr>
-            )}
-            {cards.map((c) => {
-              const started = new Date(c.starts_at) <= now
-              const ended = new Date(c.ends_at) < now
-              const live = c.is_active && started && !ended
-              const status = !c.is_active ? '비활성' : ended ? '종료' : !started ? '예약' : '노출중'
-              const statusCls = live ? 'bg-[#111111]/20 text-[#111111]' : ended || !c.is_active ? 'bg-[#f3f4f6] text-[#898989]' : 'bg-amber-50 text-amber-600'
-              return (
-                <tr key={c.id} className="border-b border-[#f3f4f6] hover:bg-[#f8f9fa] align-top">
-                  <td className="px-5 py-3 font-medium max-w-[220px]">{c.title}</td>
-                  <td className="px-5 py-3 text-[#374151] text-xs">{c.template_type}</td>
-                  <td className="px-5 py-3 text-[#374151] text-xs">{c.layout_type}</td>
-                  <td className="px-5 py-3 text-[#6b7280] text-xs max-w-[180px]">{c.exposure_tags.join(', ')}</td>
-                  <td className="px-5 py-3 text-[#6b7280] text-xs">
-                    {new Date(c.starts_at).toLocaleDateString('ko-KR')} ~<br />
-                    {new Date(c.ends_at).toLocaleDateString('ko-KR')}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusCls}`}>{status}</span>
-                  </td>
-                  <td className="px-5 py-3 whitespace-nowrap">
-                    <button onClick={() => handleEdit(c)} className="text-[#6b7280] hover:text-[#111111] text-xs mr-3">
-                      수정
-                    </button>
-                    <button onClick={() => handleToggleActive(c)} className="text-[#6b7280] hover:text-[#111111] text-xs mr-3">
-                      {c.is_active ? '비활성화' : '활성화'}
-                    </button>
-                    <button onClick={() => handleDelete(c.id)} className="text-red-600 hover:text-red-700 text-xs">삭제</button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      <TodayCardTable cards={cards} onEdit={handleEdit} onToggleActive={handleToggleActive} onDelete={handleDelete} />
     </div>
   )
 }

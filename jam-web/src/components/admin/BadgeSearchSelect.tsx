@@ -8,6 +8,9 @@ export interface BadgeSearchResult {
   name: string
   rarity: string
   type: string
+  /** MissionList 보상 배지 "포인트 포함 여부" 경고에 쓰는 필드. /api/admin/badges/search가
+   *  항상 내려주지만, 필요 없는 호출부는 무시하면 그만이다. */
+  point_reward: number
 }
 
 interface BadgeSearchSelectProps {

@@ -72,7 +72,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
       </div>
 
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold">배지 발급 히스토리</h2>
+        <h2 className="text-lg font-bold">배지 획득 히스토리</h2>
         <p className="text-[#6b7280] text-sm">총 {badgeHistory.length}개</p>
       </div>
 
@@ -82,17 +82,17 @@ export default async function AdminUserDetailPage({ params }: Props) {
             <tr className="border-b border-[#e5e7eb] text-[#6b7280] text-left">
               <th className="px-5 py-3 font-medium">배지</th>
               <th className="px-5 py-3 font-medium">등급</th>
-              <th className="px-5 py-3 font-medium">발급 경로</th>
-              <th className="px-5 py-3 font-medium">발급 근거 (실측값)</th>
+              <th className="px-5 py-3 font-medium">획득 경로</th>
+              <th className="px-5 py-3 font-medium">획득 근거 (실측값)</th>
               <th className="px-5 py-3 font-medium">트리거 활동</th>
-              <th className="px-5 py-3 font-medium">발급일시</th>
+              <th className="px-5 py-3 font-medium">획득일시</th>
             </tr>
           </thead>
           <tbody>
             {badgeHistory.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-5 py-10 text-center text-[#898989]">
-                  발급된 배지가 없습니다.
+                  획득한 배지가 없습니다.
                 </td>
               </tr>
             )}

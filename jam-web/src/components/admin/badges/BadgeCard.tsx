@@ -5,7 +5,8 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/shadcn-button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn-card'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
-import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
+import type { BadgeCondition, BadgeRarity } from '@/types/database'
+import type { BadgeListRow } from './BadgeList'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'
 
 const RARITY_BADGE_COLOR: Record<string, string> = {
@@ -32,7 +33,7 @@ function formatYmd(iso: string): string {
 }
 
 interface BadgeCardProps {
-  badge: BadgeRow
+  badge: BadgeListRow
 }
 
 export default function BadgeCard({ badge }: BadgeCardProps) {
