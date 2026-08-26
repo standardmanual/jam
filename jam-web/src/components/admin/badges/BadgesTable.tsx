@@ -12,7 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
-import type { BadgeRow, BadgeCondition, BadgeRarity, FactionRow } from '@/types/database'
+import type { BadgeCondition, BadgeRarity } from '@/types/database'
+import type { BadgeListRow } from './BadgeList'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'
 import { formatPaceSecPerKm } from '@/types/strava'
 
@@ -99,7 +100,7 @@ function conditionSummary(c: BadgeCondition | null): string[] {
 }
 
 interface BadgesTableProps {
-  badges: BadgeRow[]
+  badges: BadgeListRow[]
   factionMap?: Map<string, string>
 }
 

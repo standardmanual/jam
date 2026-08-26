@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
@@ -8,14 +8,19 @@ import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import BackgroundGeneratorPreview, {
-  type BackgroundMode,
-  type BackgroundGeneratorPreviewHandle,
-  type BackgroundGeneratorLivePreviewState,
+import type {
+  BackgroundMode,
+  BackgroundGeneratorPreviewHandle,
+  BackgroundGeneratorLivePreviewState,
 } from './BackgroundGeneratorPreview'
 import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
 import { buildConditionJsonFromFields } from './conditionFormFields'
 import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
+
+// WebGL 셰이더 5종(@paper-design/shaders-react) + mp4-muxer를 정적 import하면 BadgeForm 청크에
+// 그대로 딸려온다 — React.lazy로 분리해 별도 청크로 지연 로드한다(20260826_011 A5). next/dynamic은
+// loadable 래퍼가 ref를 가로채 `ref.bake()`(배경 저장)를 깨뜨리므로 쓰지 않는다.
+const BackgroundGeneratorPreview = lazy(() => import('./BackgroundGeneratorPreview'))
 
 /** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
 const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
@@ -179,10 +184,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       try {
         const res = await fetch(`/api/admin/badges/${badge.id}/poi-links`)
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error ?? 'POI 연결 목록 조회 실패')
+        if (!res.ok) throw new Error(data.error ?? '지점 연결 목록 조회 실패')
         if (!cancelled) setLinkedPois((data.pois ?? []) as LinkablePoi[])
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'POI 연결 목록 조회 실패')
+        if (!cancelled) setError(err instanceof Error ? err.message : '지점 연결 목록 조회 실패')
       }
     })()
     return () => {
@@ -201,11 +206,11 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
     try {
       const res = await fetch(`/api/admin/poi/search?query=${encodeURIComponent(q)}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'POI 검색 실패')
+      if (!res.ok) throw new Error(data.error ?? '지점 검색 실패')
       setPoiResults((data.pois ?? []) as LinkablePoi[])
       setPoiSearched(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'POI 검색 실패')
+      setError(err instanceof Error ? err.message : '지점 검색 실패')
     } finally {
       setPoiSearching(false)
     }
@@ -378,14 +383,14 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       // 체크인 배지: 저장된 배지 id로 연결 지점 목록을 통째로 반영
       if (type === 'checkin') {
         const savedBadgeId: string | undefined = data.badge?.id ?? (isEdit ? badge.id : undefined)
-        if (!savedBadgeId) throw new Error('저장된 배지 ID를 확인할 수 없어 POI 연결에 실패했습니다.')
+        if (!savedBadgeId) throw new Error('저장된 배지 ID를 확인할 수 없어 지점 연결에 실패했습니다.')
         const linkRes = await fetch(`/api/admin/badges/${savedBadgeId}/poi-links`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ poi_ids: linkedPois.map((p) => p.id) }),
         })
         const linkData = await linkRes.json()
-        if (!linkRes.ok) throw new Error(linkData.error ?? 'POI 연결 저장 실패')
+        if (!linkRes.ok) throw new Error(linkData.error ?? '지점 연결 저장 실패')
       }
 
       router.push('/admin/badges')
@@ -554,7 +559,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 max-w-xs"
             placeholder="0"
           />
-          <span className="text-xs text-[#898989]">이 배지가 발급될 때 함께 지급되는 잼 포인트. 0이면 없음. 발급 시점 값으로 1회 지급되며, 이후 값을 바꿔도 이미 지급된 포인트는 소급 변경되지 않습니다.</span>
+          <span className="text-xs text-[#898989]">이 배지를 획득할 때 함께 지급되는 잼 포인트. 0이면 없음. 획득 시점 값으로 1회 지급되며, 이후 값을 바꿔도 이미 지급된 포인트는 소급 변경되지 않습니다.</span>
         </label>
 
         <div className="col-span-2">
@@ -591,38 +596,40 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         {/* 배경 테마 — 단색/제너레이터 배타 선택 + 실제 저장 연동 (20260819_007, 20260819_008,
             20260819_013에서 공용 컴포넌트로 분리) */}
         <div className="col-span-2">
-          <BackgroundGeneratorPreview
-            ref={backgroundGeneratorRef}
-            backgroundColor={backgroundColor}
-            onBackgroundColorChange={setBackgroundColor}
-            mode={backgroundMode}
-            onModeChange={setBackgroundMode}
-            initialBackgroundImageUrl={badge?.background_image_url ?? null}
-            existingImageOption={{ label: '등록된 배지 이미지 사용', imageUrl }}
-            renderPreview={({ themed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
-              <>
-                <BadgeDetailPreviewFrame
-                  badge={{
-                    image_url: imageUrl || null,
-                    name: name || '(배지 이름 미입력)',
-                    rarity,
-                    description,
-                    background_color: backgroundMode === 'color' ? backgroundColor || null : null,
-                    background_shader_id: null,
-                    background_image_url: null,
-                  }}
-                  themed={themed}
-                  backgroundLayerStyle={backgroundLayerStyle}
-                  backgroundLayerRef={backgroundLayerRef}
-                  liveNode={liveNode}
-                  conditionText={PREVIEW_CONDITION_TEXT}
-                />
-                <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
-                  실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
-                </p>
-              </>
-            )}
-          />
+          <Suspense fallback={<div className="h-64 bg-muted animate-pulse rounded" />}>
+            <BackgroundGeneratorPreview
+              ref={backgroundGeneratorRef}
+              backgroundColor={backgroundColor}
+              onBackgroundColorChange={setBackgroundColor}
+              mode={backgroundMode}
+              onModeChange={setBackgroundMode}
+              initialBackgroundImageUrl={badge?.background_image_url ?? null}
+              existingImageOption={{ label: '등록된 배지 이미지 사용', imageUrl }}
+              renderPreview={({ themed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
+                <>
+                  <BadgeDetailPreviewFrame
+                    badge={{
+                      image_url: imageUrl || null,
+                      name: name || '(배지 이름 미입력)',
+                      rarity,
+                      description,
+                      background_color: backgroundMode === 'color' ? backgroundColor || null : null,
+                      background_shader_id: null,
+                      background_image_url: null,
+                    }}
+                    themed={themed}
+                    backgroundLayerStyle={backgroundLayerStyle}
+                    backgroundLayerRef={backgroundLayerRef}
+                    liveNode={liveNode}
+                    conditionText={PREVIEW_CONDITION_TEXT}
+                  />
+                  <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
+                    실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
+                  </p>
+                </>
+              )}
+            />
+          </Suspense>
         </div>
       </div>
 
@@ -673,7 +680,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       {type !== 'checkin' && (
         <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
           <p className="text-sm font-semibold text-[#374151]">
-            {type === 'item' ? '드랍 조건 (condition_json)' : '발급 조건 (condition_json)'}
+            {type === 'item' ? '드랍 조건 (condition_json)' : '획득 조건 (condition_json)'}
           </p>
           {type === 'item' && (
             <p className="text-xs text-[#6b7280]">조건을 설정하면 해당 조건을 충족한 유저에게만 이 배지가 드랍 풀에 포함됩니다. 설정하지 않으면 모든 유저에게 드랍 가능.</p>
@@ -914,7 +921,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
               <span className="text-sm font-medium text-amber-900">미션 보상 배지 (mission_reward)</span>
               <span className="text-xs text-amber-800/80">
                 미션 완료 시에만 지급되는 배지예요. 일반 배지 엔진 평가 대상이 아니며, 위 조건
-                필드는 이 배지의 발급 여부에 영향을 주지 않아요.
+                필드는 이 배지의 획득 여부에 영향을 주지 않아요.
               </span>
             </span>
           </label>
@@ -932,10 +939,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
       {type === 'checkin' && (
         <div className="border border-[#e5e7eb] rounded-2xl p-5 space-y-4">
           <div>
-            <p className="text-sm font-semibold text-[#374151]">연결된 POI</p>
+            <p className="text-sm font-semibold text-[#374151]">연결된 지점</p>
             <p className="text-xs text-[#6b7280] mt-1">
-              여기에 연결한 지점 반경을 액티비티 GPS 경로가 지나가면 이 배지가 발급됩니다. 여러 개 연결할 수 있고,
-              체크인할 때마다 반복 발급됩니다. 판정 반경은 각 지점에 등록된 값을 그대로 사용합니다.
+              여기에 연결한 지점 반경을 액티비티 GPS 경로가 지나가면 이 배지를 획득합니다. 여러 개 연결할 수 있고,
+              체크인할 때마다 반복 획득됩니다. 판정 반경은 각 지점에 등록된 값을 그대로 사용합니다.
             </p>
           </div>
 
@@ -951,7 +958,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                 }
               }}
               className="flex-1 bg-white border border-[#e5e7eb] rounded-lg px-3 py-2 text-sm text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50"
-              placeholder="등록된 POI 이름으로 검색 (예: 대림창고)"
+              placeholder="등록된 지점 이름으로 검색 (예: 대림창고)"
             />
             <button
               type="button"
@@ -1003,10 +1010,10 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
           {/* 연결 목록 */}
           <div>
-            <p className="text-xs text-[#6b7280] mb-2">연결된 POI {linkedPois.length}개</p>
+            <p className="text-xs text-[#6b7280] mb-2">연결된 지점 {linkedPois.length}개</p>
             {linkedPois.length === 0 ? (
               <div className="bg-[#f5f5f5] border border-[#e5e7eb] rounded-xl px-4 py-5 text-center">
-                <p className="text-sm text-[#898989]">아직 연결된 POI가 없습니다. 위에서 검색해 추가하세요.</p>
+                <p className="text-sm text-[#898989]">아직 연결된 지점이 없습니다. 위에서 검색해 추가하세요.</p>
               </div>
             ) : (
               <div className="bg-white border border-[#e5e7eb] rounded-xl overflow-x-auto">
@@ -1054,7 +1061,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         <p className="text-xs text-[#6b7280]">
           {type === 'item'
             ? '설정하면 해당 기간에만 드랍되며, 획득된 배지의 만료일은 종료일로 자동 설정됩니다. 설정하지 않으면 상시 드랍 / 만료 없음.'
-            : '설정하면 해당 기간에만 발급 조건이 평가됩니다. 기간 외 액티비티 싱크에서는 이 배지가 건너뛰어집니다. 설정하지 않으면 상시 평가.'}
+            : '설정하면 해당 기간에만 획득 조건이 평가됩니다. 기간 외 액티비티 싱크에서는 이 배지가 건너뛰어집니다. 설정하지 않으면 상시 평가.'}
         </p>
         <div className="grid grid-cols-2 gap-4">
           <label className="flex flex-col gap-1.5">

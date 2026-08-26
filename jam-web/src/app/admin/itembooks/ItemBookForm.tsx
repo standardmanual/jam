@@ -1,10 +1,11 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
+import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
@@ -18,18 +19,22 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
 } from '@/components/ui/alert-dialog'
-import BackgroundGeneratorPreview, {
-  type BackgroundMode,
-  type BackgroundGeneratorPreviewHandle,
-  type BackgroundGeneratorLivePreviewState,
+import type {
+  BackgroundMode,
+  BackgroundGeneratorPreviewHandle,
+  BackgroundGeneratorLivePreviewState,
 } from '../badges/BackgroundGeneratorPreview'
 import ItemBookDetailPreviewFrame from './ItemBookDetailPreviewFrame'
+
+// WebGL 셰이더 5종 + mp4-muxer를 정적 import하면 ItemBookForm 청크에 그대로 딸려온다 — React.lazy로
+// 분리해 별도 청크로 지연 로드한다(20260826_011 A5). next/dynamic은 loadable 래퍼가 ref를 가로채
+// `ref.bake()`(배경 저장)를 깨뜨리므로 쓰지 않는다.
+const BackgroundGeneratorPreview = lazy(() => import('../badges/BackgroundGeneratorPreview'))
 
 interface ItemBookFormProps {
   book?: ItemBookRow
   factions: Pick<FactionRow, 'id' | 'name'>[]
   slottedBadges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
-  availableBadges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
   /** 수정 화면 진입 시 필수 액티비티/완성 보상 배지 콤보박스에 처음 보여줄 이름 */
   requiredActivityBadgeLabel?: string
   rewardBadgeLabel?: string
@@ -61,7 +66,6 @@ export default function ItemBookForm({
   book,
   factions,
   slottedBadges,
-  availableBadges,
   requiredActivityBadgeLabel,
   rewardBadgeLabel,
 }: ItemBookFormProps) {
@@ -97,7 +101,6 @@ export default function ItemBookForm({
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showBadgeModal, setShowBadgeModal] = useState(false)
-  const [badgeSearch, setBadgeSearch] = useState('')
 
   // ── 켜짐 → 꺼짐 전환 확인 (20260823_004) ──────────────────────────
   // 저장 전 임시 상태이므로, 확인 모달을 취소하면 API 호출 없이 로컬 isActive를 그대로 둔다
@@ -276,17 +279,15 @@ export default function ItemBookForm({
     }
   }
 
+  // 클릭해도 모달을 닫지 않는다 — 계속 검색해서 여러 배지를 이어서 추가할 수 있는 멀티애드 UX
+  // (20260826_011). 배정된 배지는 unassigned=true 검색에서 자연히 빠지므로 별도 제외 처리 불필요.
   const handleAssignBadge = async (badgeId: string) => {
     const res = await fetch(`/api/admin/badges/${badgeId}/assign`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ item_book_id: book!.id }),
     })
-    if (res.ok) {
-      router.refresh()
-      setShowBadgeModal(false)
-      setBadgeSearch('')
-    }
+    if (res.ok) router.refresh()
   }
 
   const handleUnassignBadge = async (badgeId: string) => {
@@ -441,33 +442,35 @@ export default function ItemBookForm({
           </p>
         </div>
 
-        <BackgroundGeneratorPreview
-          ref={backgroundGeneratorRef}
-          backgroundColor={backgroundColor}
-          onBackgroundColorChange={setBackgroundColor}
-          mode={backgroundMode}
-          onModeChange={setBackgroundMode}
-          initialBackgroundImageUrl={book?.background_image_url ?? null}
-          onThemedChange={setThemed}
-          renderPreview={({ themed: previewThemed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
-            <>
-              <ItemBookDetailPreviewFrame
-                book={{
-                  name: name || '(컬렉션 이름 미입력)',
-                  description,
-                  image_url: imageUrl || null,
-                }}
-                themed={previewThemed}
-                backgroundLayerStyle={backgroundLayerStyle}
-                backgroundLayerRef={backgroundLayerRef}
-                liveNode={liveNode}
-              />
-              <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
-                실제 컬렉션 상세화면과 같은 구조로 보여줘요. 진행도는 예시라 실제 값과 달라요.
-              </p>
-            </>
-          )}
-        />
+        <Suspense fallback={<div className="h-64 bg-muted animate-pulse rounded" />}>
+          <BackgroundGeneratorPreview
+            ref={backgroundGeneratorRef}
+            backgroundColor={backgroundColor}
+            onBackgroundColorChange={setBackgroundColor}
+            mode={backgroundMode}
+            onModeChange={setBackgroundMode}
+            initialBackgroundImageUrl={book?.background_image_url ?? null}
+            onThemedChange={setThemed}
+            renderPreview={({ themed: previewThemed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
+              <>
+                <ItemBookDetailPreviewFrame
+                  book={{
+                    name: name || '(컬렉션 이름 미입력)',
+                    description,
+                    image_url: imageUrl || null,
+                  }}
+                  themed={previewThemed}
+                  backgroundLayerStyle={backgroundLayerStyle}
+                  backgroundLayerRef={backgroundLayerRef}
+                  liveNode={liveNode}
+                />
+                <p className="text-xs text-[#9ca3af] mt-2 max-w-[430px]">
+                  실제 컬렉션 상세화면과 같은 구조로 보여줘요. 진행도는 예시라 실제 값과 달라요.
+                </p>
+              </>
+            )}
+          />
+        </Suspense>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm text-[#374151]">배경 쉐이더 (임시)</span>
@@ -670,34 +673,15 @@ export default function ItemBookForm({
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-bold mb-4">배지 추가</h3>
-            <input
-              type="text"
-              placeholder="배지 이름 검색..."
-              value={badgeSearch}
-              onChange={(e) => setBadgeSearch(e.target.value)}
-              className="w-full bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-[#111111] placeholder-[#9ca3af] focus:outline-none focus:border-[#111111]/50 mb-4"
+            <BadgeMultiSearchSelect
+              typeFilter="item"
+              unassigned
+              placeholder="아이템 배지 이름 검색..."
+              onSelect={(b) => handleAssignBadge(b.id)}
             />
-            <div className="max-h-64 overflow-y-auto space-y-1.5">
-              {availableBadges
-                .filter((b) => b.name.toLowerCase().includes(badgeSearch.toLowerCase()))
-                .map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => handleAssignBadge(b.id)}
-                    className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#f8f9fa] transition-colors text-sm"
-                  >
-                    {b.image_url && (
-                      <Image src={b.image_url} alt={b.name} width={32} height={32} className="w-8 h-8 rounded-lg object-contain" />
-                    )}
-                    <span>{b.name}</span>
-                    <span className="text-[#6b7280] text-xs ml-auto">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
-                  </button>
-                ))}
-            </div>
             <button
               type="button"
-              onClick={() => { setShowBadgeModal(false); setBadgeSearch('') }}
+              onClick={() => setShowBadgeModal(false)}
               className="mt-4 w-full bg-white text-[#111111] py-2.5 rounded-xl hover:bg-[#f3f4f6] transition-colors text-sm"
             >
               닫기

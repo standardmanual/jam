@@ -435,13 +435,13 @@ export default function SimulatorPage() {
                 </span>
               </div>
 
-              {/* 배지 발급 */}
+              {/* 배지 획득 */}
               <div>
                 <p className="text-[#6b7280] text-xs font-medium uppercase tracking-wider mb-2">
-                  배지 발급 ({result.badgesEarned.length}개)
+                  배지 획득 ({result.badgesEarned.length}개)
                 </p>
                 {result.badgesEarned.length === 0 ? (
-                  <p className="text-[#898989] text-xs">발급 가능한 배지 없음</p>
+                  <p className="text-[#898989] text-xs">획득 가능한 배지 없음</p>
                 ) : (
                   <div className="space-y-1.5">
                     {result.badgesEarned.map((b) => (
@@ -517,11 +517,11 @@ export default function SimulatorPage() {
                 )}
               </div>
 
-              {/* 미발급 배지 */}
+              {/* 미획득 배지 */}
               {result.badgesMissed.length > 0 && (
                 <div>
                   <p className="text-[#6b7280] text-xs font-medium uppercase tracking-wider mb-2">
-                    미발급 배지 ({result.badgesMissed.length}개)
+                    미획득 배지 ({result.badgesMissed.length}개)
                   </p>
                   <div className="space-y-1.5">
                     {result.badgesMissed.map((b) => (
