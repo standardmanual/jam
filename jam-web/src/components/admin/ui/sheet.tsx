@@ -51,13 +51,21 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  /**
+   * Radix Portal이 렌더링될 DOM 컨테이너. 지정하지 않으면 `document.body`(기본값)로
+   * 포털된다. shadcn 어드민 테마 실값은 `[data-admin-theme]` 스코프 안에만 존재하므로
+   * (globals.css 참고), 테마 토큰(bg-sidebar 등)에 의존하는 시트는 이 prop으로 admin
+   * 스코프 노드를 명시해야 스타일이 정상 적용된다 (20260826_013).
+   */
+  container?: React.ComponentProps<typeof SheetPortal>["container"]
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
+>(({ side = "right", className, children, container, ...props }, ref) => (
+  <SheetPortal container={container}>
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
