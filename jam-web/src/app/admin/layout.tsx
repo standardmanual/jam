@@ -34,7 +34,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
+    // data-admin-theme: shadcn 프리셋(b5Jgcv00m) 실값(--primary 등)이 걸리는 스코프.
+    // globals.css의 [data-admin-theme] 규칙과 짝을 이룸 — 전역 :root에 두면 서비스 본체와
+    // 변수 이름이 충돌해 향후 오사용 시 조용히 새어나가므로 어드민 루트에만 한정한다
+    // (20260826_012 게이트 리뷰 WARN 후속).
     <div
+      data-admin-theme=""
       className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col"
       style={{ fontFamily: ADMIN_FONT_FAMILY }}
     >
