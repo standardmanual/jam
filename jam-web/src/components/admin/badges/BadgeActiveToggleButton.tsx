@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type MouseEvent } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/admin/ui/button'
 import {
@@ -28,6 +28,15 @@ export function BadgeActiveToggleButton({ badgeId, isActive, className }: BadgeA
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+
+  // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
+  // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
+  // 지정한다(20260827_002 게이트 리뷰에서 alert-dialog.tsx 팔레트 전환 후 미연결 시 흰
+  // 배경 위 흰 글씨로 안 보이는 회귀를 발견해 추가).
+  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
+  }, [])
 
   const toggle = async (nextActive: boolean) => {
     setLoading(true)
@@ -78,7 +87,7 @@ export function BadgeActiveToggleButton({ badgeId, isActive, className }: BadgeA
           if (!open && !loading) setShowConfirm(false)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>배지 비활성화</AlertDialogTitle>
             <AlertDialogDescription>
