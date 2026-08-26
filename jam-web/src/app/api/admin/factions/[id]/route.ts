@@ -19,21 +19,34 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const {
-    name, tagline, description, image_url, drop_weight, is_active, sort_order, adjacent_faction_ids,
-    background_color, background_shader_id, background_image_url, background_video_url,
-  } = body
+  const { adjacent_faction_ids } = body
 
   const supabase = createServiceClient()
+
+  // 부분 body 병합을 위해 기존 row를 먼저 조회한다 — body에 없는(undefined) 필드는 기존 값을
+  // 그대로 유지한다(20260827_003). 존재하지 않는 id면 update 시도 전에 404로 응답한다.
+  const { data: existing, error: fetchError } = await supabase
+    .from('factions')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (fetchError || !existing) return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
+
   const { data, error } = await supabase
     .from('factions')
     // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({
-      name, tagline, description, image_url, drop_weight, is_active, sort_order,
-      background_color: background_color ?? null,
-      background_shader_id: background_shader_id ?? null,
-      background_image_url: background_image_url ?? null,
-      background_video_url: background_video_url ?? null,
+      name: body.name !== undefined ? body.name : existing.name,
+      tagline: body.tagline !== undefined ? body.tagline : existing.tagline,
+      description: body.description !== undefined ? body.description : existing.description,
+      image_url: body.image_url !== undefined ? body.image_url : existing.image_url,
+      drop_weight: body.drop_weight !== undefined ? body.drop_weight : existing.drop_weight,
+      is_active: body.is_active !== undefined ? body.is_active : existing.is_active,
+      sort_order: body.sort_order !== undefined ? body.sort_order : existing.sort_order,
+      background_color: body.background_color !== undefined ? body.background_color : existing.background_color,
+      background_shader_id: body.background_shader_id !== undefined ? body.background_shader_id : existing.background_shader_id,
+      background_image_url: body.background_image_url !== undefined ? body.background_image_url : existing.background_image_url,
+      background_video_url: body.background_video_url !== undefined ? body.background_video_url : existing.background_video_url,
     })
     .eq('id', id)
     .select()

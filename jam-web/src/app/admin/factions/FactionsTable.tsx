@@ -39,11 +39,9 @@ const columnHelper = createColumnHelper<DataTableFeatures, FactionRow>()
  * 세계관 목록 테이블(20260826_015) — 3단계a 공용 Data Table 컴포넌트로 전환했다. 10건
  * 규모라 서버 페이지네이션은 두지 않는다(사전 조사 결과).
  *
- * 세계관은 `is_active`가 있어 일괄 비활성화가 가능하다(티켓 명시). 다만
- * `PUT /api/admin/factions/[id]`는 부분 필드만 보내면 `background_color` 등을 `null`로
- * 덮어쓰는 기존 버그가 있다(구현 중 발견, 완료 기록의 alert 참고) — 이미 서버에서 불러온
- * 전체 `FactionRow` 필드를 그대로 스프레드해 `is_active`만 덮어써 보내는 방식으로 우회한다
- * (새 PATCH 엔드포인트를 만들지 않고 기존 API 계약을 그대로 재사용, 배지 파일럿과 동일 원칙).
+ * 세계관은 `is_active`가 있어 일괄 비활성화가 가능하다(티켓 명시). `PUT /api/admin/factions/[id]`가
+ * 부분 body를 받으면 body에 없는 필드는 기존 값을 유지하도록 병합하므로(20260827_003),
+ * `{ is_active: false }`만 보내면 된다.
  */
 export function FactionsTable({ factions, badgeCountMap, bookCountMap }: FactionsTableProps) {
   const router = useRouter()
@@ -182,22 +180,9 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
         const res = await fetch(`/api/admin/factions/${faction.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          // 이미 불러온 전체 필드를 그대로 보내고 is_active만 덮어쓴다 — PUT 라우트가
-          // undefined 필드는 무시하지만 background_* 필드는 undefined일 때 null로 강제
-          // 대입하는 기존 버그가 있어(완료 기록 alert 참고), 부분 body로 호출하면 안 된다.
-          body: JSON.stringify({
-            name: faction.name,
-            tagline: faction.tagline,
-            description: faction.description,
-            image_url: faction.image_url,
-            drop_weight: faction.drop_weight,
-            is_active: false,
-            sort_order: faction.sort_order,
-            background_color: faction.background_color,
-            background_shader_id: faction.background_shader_id,
-            background_image_url: faction.background_image_url,
-            background_video_url: faction.background_video_url,
-          }),
+          // PUT 라우트가 body에 없는 필드는 기존 값을 유지하도록 병합하므로(20260827_003),
+          // is_active만 보내면 된다.
+          body: JSON.stringify({ is_active: false }),
         })
         if (!res.ok) failCount += 1
       }
