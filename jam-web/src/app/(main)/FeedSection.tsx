@@ -9,7 +9,6 @@ import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
 import { RARITY_LABEL, RARITY_COLOR } from '@/lib/rarity'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { IconButton } from '@ds/components/buttons/IconButton'
 import Button from '@/components/ui/Button'
 import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -211,9 +210,6 @@ export function DetailSheet({
         data-open={shown}
         style={{ '--panel-translate-y': '100%' } as CSSProperties}
       >
-        <div className="absolute top-[var(--spacing-8)] right-[var(--spacing-8)]">
-          <IconButton icon="close" label={d.common.close} onClick={onClose} />
-        </div>
         <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-[var(--spacing-24)]" />
         <div className="flex justify-center mb-[var(--spacing-16)]">
           <div className="relative">
