@@ -1,49 +1,38 @@
 'use client'
 
-import Link from 'next/link'
-import { IconMenu2 } from '@tabler/icons-react'
-import { Button } from '@/components/admin/ui/button'
+import { usePathname } from 'next/navigation'
+import { Separator } from '@/components/admin/ui/separator'
+import { SidebarTrigger } from '@/components/admin/ui/sidebar'
+import { ALL_NAV_ITEMS, DASHBOARD_ITEM, isNavItemActive } from './adminNavItems'
 
 interface AdminHeaderProps {
   userEmail: string | null
-  onMenuToggle: () => void
-  currentPageTitle: string
 }
 
 /**
  * AdminHeader
  *
- * 어드민 영역의 헤더 컴포넌트
- * - 모바일 (< 768px): 로고 + 햄버거 아이콘 + 타이틀
- * - 데스크탑 (≥ 768px): 숨김 (사이드바가 navigation을 담당)
+ * `SidebarInset`(admin/layout.tsx) 상단에 고정되는 헤더. shadcn 공식 `SidebarTrigger`로
+ * 데스크탑 접기/펼치기·모바일 드로어 열기를 동일한 버튼 하나로 처리한다(공식 패턴 —
+ * 데스크탑/모바일 분리 헤더를 따로 두지 않음).
  *
- * 터치 타겟 ≥ 44px (Button h-11)
+ * 현재 페이지 제목(adminNavItems 기준)과 로그인 이메일을 표시 — 기존에는 모바일에서만
+ * 보이던 정보였으나, 이제 데스크탑에서도 함께 노출된다(정보 손실 없음, 기능 유지 범위 내
+ * 자연스러운 확장).
  */
-export function AdminHeader({
-  userEmail,
-  onMenuToggle,
-  currentPageTitle,
-}: AdminHeaderProps) {
+export function AdminHeader({ userEmail }: AdminHeaderProps) {
+  const pathname = usePathname()
+  const current = ALL_NAV_ITEMS.find((item) => isNavItemActive(pathname, item)) ?? DASHBOARD_ITEM
+
   return (
-    <header className="sticky top-0 z-40 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 h-14 flex items-center px-4 md:px-0 md:hidden">
-      <button
-        onClick={onMenuToggle}
-        className="inline-flex items-center justify-center h-10 w-10 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        aria-label="메뉴 열기"
-      >
-        <IconMenu2 size={24} />
-      </button>
-
-      <div className="flex-1 px-3">
-        <h1 className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-          {currentPageTitle}
-        </h1>
-      </div>
-
+    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-950">
+      <SidebarTrigger className="-ml-1" />
+      <Separator orientation="vertical" className="h-4 bg-slate-200 dark:bg-slate-800" />
+      <h1 className="flex-1 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+        {current.label}
+      </h1>
       {userEmail && (
-        <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-          {userEmail}
-        </div>
+        <span className="truncate text-xs text-slate-500 dark:text-slate-400">{userEmail}</span>
       )}
     </header>
   )
