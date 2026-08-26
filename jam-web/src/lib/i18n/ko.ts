@@ -680,7 +680,7 @@ export const ko = {
     msgBadgeEarned: '오늘 활동으로 {badgeCount}를 획득했어요',
     /** 앞에 등급 라벨(Common/Rare/Legend/Mythic)이 고정 텍스트로 붙는다 */
     msgRareBadgeEarned: "{rarity} 배지 '{badgeName}'{을/를} 획득했어요",
-    msgItemBadgeEarned: '활동 중에 {itemCount}가 떨어졌어요',
+    msgItemBadgeEarned: '활동 중에 {itemCount}를 획득했어요',
     msgCheckinBadgeEarned: '{poiName}에서 체크인 배지를 획득했어요',
     /** 같은 체크인 배지를 두 번째 이상 획득했을 때 msgCheckinBadgeEarned 대신 쓴다(20260826_004) */
     msgCheckinBadgeRepeated: '{poiName}에서 {visitCount}번째 체크인 했어요',
