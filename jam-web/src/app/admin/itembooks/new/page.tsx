@@ -16,7 +16,7 @@ export default async function NewItemBookPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <Link href="/admin/itembooks" className="text-[#6b7280] hover:text-[#111111] text-sm transition-colors">
+        <Link href="/admin/itembooks" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← 컬렉션 목록
         </Link>
         <h1 className="text-2xl font-bold mt-2">컬렉션 등록</h1>

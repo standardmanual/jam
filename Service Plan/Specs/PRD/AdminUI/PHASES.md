@@ -204,6 +204,39 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   이 값은 shadcn 8종 시맨틱 토큰이 아니라 별도 named palette라는 점을 4b~4d에서
   유사한 "테마 없는 강조색"을 만나면 참고할 것.
 
+**2026-08-26 갱신 — 4단계b 구현 완료(리뷰 대기)**: POI·아이템북·세계관 도메인 12개 파일
+(`CategoryManager.tsx`·`PoiForm.tsx`·`Pagination.tsx`·`ItemBookForm.tsx`·`FactionForm.tsx`·
+`AdjacencyEditor.tsx` + 소형 페이지 6개, 실측 217건) 전환 완료, 사용자 최종 승인 대기 중
+(`20260826_018`). 4c/4d 착수 시 참고할 구현 노트:
+
+- 4a 매핑 규칙을 그대로 재사용, 추가로 정립한 패턴: `hover:bg-[#242424]`(버튼 hover, 항상
+  `bg-[#111111]` 짝) → `hover:bg-primary/90`, `hover:text-[#242424]`(텍스트 hover-lighten,
+  `text-[#111111]` 짝) → `hover:text-foreground/80`(#242424가 #111111보다 밝은 회색이라
+  "옅어지는" 효과 — opacity 축소로 동일 방향 재현), `bg-[#f3f4f6] hover:bg-[#e5e7eb]`(보조
+  버튼) → `bg-muted hover:bg-accent`(shadcn 표준 secondary/ghost hover 관용구),
+  `hover:border-[#d1d5db]`(드롭존 hover 테두리 강조, 대응 시맨틱 토큰 없음) →
+  `hover:border-foreground/30`. "선택됨" 칩(`AdjacencyEditor.tsx`의 인접 세계관 토글)은
+  `bg-[#111111]/15 border-[#111111]/60 text-[#111111]`처럼 텍스트가 opacity 없는 순수
+  hex라 4a의 `BadgeMultiSearchSelect` 특례(전부 opacity 변형이라 `text-primary` 통일)와
+  달리 `text-foreground`로 분리 매핑했다 — "칩 4개 속성이 전부 같은 hex의 opacity
+  변형인가"를 판별 기준으로 삼을 것.
+- Portal `container` 연결을 CategoryManager/PoiForm/ItemBookForm/FactionForm 4개 파일의
+  Select(총 6곳) + ItemBookForm의 AlertDialog(비활성화 확인, 1곳)에 실제로 연결했다 —
+  Playwright로 `[data-admin-theme]` 스코프 안에 포털됨을 프로그램적으로 확인(`listbox`/
+  `alertdialog` role 요소가 스코프 노드의 자손인지 `contains()` 체크).
+  `select.tsx`/`alert-dialog.tsx`/`dialog.tsx` 자체의 하드코딩 뉴트럴 팔레트(`bg-white`/
+  `text-[#111111]` 등)는 4a와 동일하게 이번에도 건드리지 않았다 — 티켓 018의 대상 파일
+  목록과 완료 기준 grep이 `src/components/admin/ui/`를 포함하지 않아 범위 밖으로 판단
+  (위 4a 노트는 "화면을 다룰 때 함께 판단"이라고만 했지 반드시 전환하라는 뜻은 아니었음).
+  4c/4d에서 같은 컴포넌트를 다시 만나면 이 판단을 유지할지 재검토할 것.
+- `bg-white`(hex 대괄호 아님, `text-\[#`/`border-\[#`/`bg-\[#` grep에 안 걸림)는 4a와
+  동일하게 전환하지 않았다 — 완료 기준 grep 패턴 자체가 이 클래스를 대상으로 하지 않는다.
+- 검증: `npx tsc --noEmit`(0 에러) / `npm test`(60파일 562테스트 전부 통과) / `npx next
+  build`(성공) 전부 통과. 로컬 `next dev` + 임시 `ADMIN_EMAILS` 셸 환경변수 +
+  `/api/dev-login` + Playwright로 1440px 데스크탑 렌더링 확인 — POI 목록/등록/카테고리관리/
+  수정, 아이템북 목록/등록/수정(배경 테마 카드 포함), 세계관 목록/등록/수정(인접 세계관
+  토글 포함) 전 화면 스크린샷 및 콘솔 에러 0건 확인.
+
 ### 선행 인프라 수정 (4a에서 처리, 나머지 단계의 전제조건)
 
 **1. `--color-border` 스코프 누락 (2026-08-26, 3단계 게이트 리뷰에서 발견)**: `globals.css`의
