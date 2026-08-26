@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/notifications",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/ambient-drop",
+      "schedule": "0 18 * * *"
     }
   ]
 }

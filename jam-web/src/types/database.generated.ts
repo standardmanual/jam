@@ -97,6 +97,71 @@ export type Database = {
         }
         Relationships: []
       }
+      ambient_drop_config: {
+        Row: {
+          all_random: boolean
+          auto_enabled: boolean
+          batch_size: number
+          category_mode: string
+          category_slug: string | null
+          collection_ids: string[]
+          collection_mode: string
+          exclusion_window_minutes: number
+          id: number
+          max_active_per_poi: number
+          rarity_common: number
+          rarity_legend: number
+          rarity_mythic: number
+          rarity_mode: string
+          rarity_rare: number
+          updated_at: string
+        }
+        Insert: {
+          all_random?: boolean
+          auto_enabled?: boolean
+          batch_size?: number
+          category_mode?: string
+          category_slug?: string | null
+          collection_ids?: string[]
+          collection_mode?: string
+          exclusion_window_minutes?: number
+          id?: number
+          max_active_per_poi?: number
+          rarity_common?: number
+          rarity_legend?: number
+          rarity_mythic?: number
+          rarity_mode?: string
+          rarity_rare?: number
+          updated_at?: string
+        }
+        Update: {
+          all_random?: boolean
+          auto_enabled?: boolean
+          batch_size?: number
+          category_mode?: string
+          category_slug?: string | null
+          collection_ids?: string[]
+          collection_mode?: string
+          exclusion_window_minutes?: number
+          id?: number
+          max_active_per_poi?: number
+          rarity_common?: number
+          rarity_legend?: number
+          rarity_mythic?: number
+          rarity_mode?: string
+          rarity_rare?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambient_drop_config_category_slug_fkey"
+            columns: ["category_slug"]
+            isOneToOne: false
+            referencedRelation: "poi_categories"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       badges: {
         Row: {
           activity_types: string[]
