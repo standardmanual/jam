@@ -47,7 +47,7 @@ export const ALL_NAV_ITEMS = [DASHBOARD_ITEM, ...NAV_GROUPS.flatMap((g) => g.ite
 
 export function isNavItemActive(pathname: string, item: NavItem) {
   if (item.exact) return pathname === item.href
-  return pathname.startsWith(item.href)
+  return pathname === item.href || pathname.startsWith(item.href + '/')
 }
 
 export function activeNavGroupId(pathname: string) {
