@@ -6,6 +6,7 @@ import type { AmbientDropAxisMode } from '@/types/database'
 import type { AmbientDropBatchResult } from '@/lib/ambient-drop'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export interface AmbientDropHistoryEntry {
   id: string
@@ -186,18 +187,22 @@ export default function AmbientDropForm({
           <AxisModeToggle value={values.category_mode} onChange={(mode) => set('category_mode', mode)} />
         </div>
         {values.category_mode === 'explicit' ? (
-          <select
+          <Select
             value={values.category_slug ?? ALL_CATEGORY_VALUE}
-            onChange={(e) => set('category_slug', e.target.value === ALL_CATEGORY_VALUE ? null : e.target.value)}
-            className="bg-white border border-[#e5e7eb] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#111111]/50 max-w-xs"
+            onValueChange={(value) => set('category_slug', value === ALL_CATEGORY_VALUE ? null : value)}
           >
-            <option value={ALL_CATEGORY_VALUE}>전체 카테고리</option>
-            {categories.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-auto min-w-[10rem]" aria-label="카테고리 선택">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_CATEGORY_VALUE}>전체 카테고리</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.slug} value={c.slug}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
           <p className="text-xs text-[#898989]">실행 시점에 카테고리 하나를 무작위로 선택해요.</p>
         )}
