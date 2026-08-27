@@ -4,7 +4,7 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
  *
- * 레이아웃 (위→아래): 썸네일(투명 배경) → 등급 pill → 이름
+ * 레이아웃 (위→아래): 썸네일(투명 배경) → 이름 → 등급 pill(있을 때만)
  *
  * 상태:
  *   earned: false  → 썸네일 흑백+반투명 (미획득)
@@ -79,9 +79,6 @@ export function BadgeGridCard({
         )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4)', paddingTop: 'var(--spacing-8)', width: '100%' }}>
-        <div style={{ minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {!undiscovered && <RarityBadge rarity={rarity} />}
-        </div>
         <p style={{
           fontSize: 13, fontWeight: 700, color: 'var(--color-text)',
           textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -90,6 +87,7 @@ export function BadgeGridCard({
         }}>
           {undiscovered ? '???' : name}
         </p>
+        {!undiscovered && <RarityBadge rarity={rarity} />}
       </div>
       {children && <div style={{ width: '100%', marginTop: 'var(--spacing-4)' }}>{children}</div>}
     </>
