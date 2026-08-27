@@ -1,8 +1,9 @@
 ---
 id: 20260827_013
 category: Admin
-status: OPEN
+status: CLOSED
 created: 2026-08-27
+closed: 2026-08-27
 ---
 
 > **재번호**: 최초 `20260827_011`로 배정됐으나 `20260827_012`로 1차 재번호(구현 착수 시점
@@ -242,9 +243,9 @@ Service Plan/History/Migration/Ticket/20260827_011_...md → 20260827_012_...md 
 `origin/staging` 위로 리베이스(충돌 없음) 후 `20260827_013`으로 2차 재번호했다 — 파일명·
 `id` 필드만 변경, 본문 불변.
 
-병합 승인은 사용자에게 별도 요청.
+사용자 승인 확인 후 staging에 병합했다.
 
 ### 배포 정보
-- 배포일: (staging 반영 대기 — 사용자 승인 후 진행)
+- 배포일: 2026-08-27 (staging 반영, 프로덕션 미배포)
 - 환경: staging
-- 커밋: `claude/jamwork-20260827_012-admin-datatable-select-icons` → staging 병합 예정
+- 커밋: `claude/jamwork-20260827_013-admin-datatable-select-icons` → staging 병합
