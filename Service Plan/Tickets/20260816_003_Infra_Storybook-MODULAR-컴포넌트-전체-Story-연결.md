@@ -1,3 +1,11 @@
+---
+id: 20260816_003
+category: Infra
+status: CLOSED
+created: 2026-08-16
+closed: 2026-08-16
+---
+
 # 티켓 20260816_003
 
 **카테고리:** Infra  
