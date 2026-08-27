@@ -26,6 +26,7 @@ import type { BadgeRarity, NotificationType } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { RARITY_LABEL } from '@/lib/rarity'
 import { userFacingReasonLabel } from '@/lib/points/reasons'
+import { unknownNotificationType } from './types'
 import type { RecapActivityBadge, RecapCheckinBadge, RecapItemBadge } from './types'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -692,6 +693,9 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       return { template: title || n.unknown, vars: {} }
     }
     default:
+      // 20종 전수에 case가 있어 여기서 view.type은 never다. 종류를 추가하고 이 파일을
+      // 빠뜨리면 아래 호출이 컴파일 에러가 난다(20260827_021).
+      unknownNotificationType(view.type)
       return { template: n.unknown, vars: {} }
   }
 }

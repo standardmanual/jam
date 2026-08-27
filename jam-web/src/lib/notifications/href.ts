@@ -15,6 +15,7 @@
  * 링크를 넣는다(`<a>` 안의 `<a>`는 HTML상 무효라 행 전체 래핑을 쓸 수 없다).
  */
 import { idList, recapContent, type NotificationView } from './message'
+import { unknownNotificationType } from './types'
 
 export interface NotificationTarget {
   /** 본문 탭 착지점. null이면 이동하지 않는 행 */
@@ -164,6 +165,9 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
       return single(cardId ? `/today/${cardId}` : null)
     }
     default:
+      // 20종 전수에 case가 있어 여기서 view.type은 never다. 종류를 추가하고 이 파일을
+      // 빠뜨리면 아래 호출이 컴파일 에러가 난다(20260827_021).
+      unknownNotificationType(view.type)
       return single(null)
   }
 }

@@ -25,6 +25,7 @@ import {
 import { notificationTokens, type NotificationView } from '@/lib/notifications/message'
 import { notificationTarget } from '@/lib/notifications/href'
 import { notificationSection, type NotificationSection } from '@/lib/notifications/section'
+import { unknownNotificationType } from '@/lib/notifications/types'
 import { formatRelativeTime } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import { useTopNavData } from '@/lib/topNavData'
@@ -75,6 +76,9 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'announcement':
       return <NewspaperIcon className={className} />
     default:
+      // 20종 전수에 case가 있어 여기서 type은 never다. 종류를 추가하고 이 파일을
+      // 빠뜨리면 아래 호출이 컴파일 에러가 난다(20260827_021).
+      unknownNotificationType(type)
       return <BellIcon className={className} />
   }
 }
