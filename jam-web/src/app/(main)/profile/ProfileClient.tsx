@@ -83,6 +83,11 @@ interface Props {
   currentUserId: string
   /** 본인 프로필에서만 전달됨. 타인 프로필에서는 null. */
   pointBalance: number | null
+  /**
+   * 20260827_018 — 피드 묶음 카드에 쓸 활동 이름 맵. 키는 Strava 숫자 id의 문자열.
+   * 옵셔널이다 — 안 넘겨도 묶음은 이름 없이 그대로 동작한다.
+   */
+  activityNames?: Record<string, string>
 }
 
 export default function ProfileClient({
@@ -99,6 +104,7 @@ export default function ProfileClient({
   username,
   currentUserId,
   pointBalance,
+  activityNames,
 }: Props) {
   const router = useRouter()
 
@@ -593,7 +599,7 @@ export default function ProfileClient({
 
         {/* Feed — 본인 + 기본뷰(해시 없음)일 때 */}
         {isOwnProfile && !isTabView && (
-          <FeedSection feedItems={feedItems} badgeLinkQuery={`?u=${username}`} />
+          <FeedSection feedItems={feedItems} badgeLinkQuery={`?u=${username}`} activityNames={activityNames} />
         )}
 
         {/* 로그아웃 — 본인만 */}

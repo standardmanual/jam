@@ -22,7 +22,9 @@ function makeFeedItem(id: string, event_type: ActivityFeedRow['event_type'], eve
   // DB 기록 시각이므로, created_at도 동일 값으로 채우는 게 정확하다.
   // 20260824_006 — 정렬·표시 기준이 event_at에서 created_at으로 바뀌었으므로 이 값을
   // 읽는 화면이 생겼다(FeedSection.tsx, 아래 allItems.sort).
-  return { id, user_id: '', event_type, event_at, created_at: event_at, metadata }
+  // 20260827_018 — 합성 행은 어느 활동에서 나왔는지 복원할 방법이 없다. **항상 null**로
+  // 채워 FeedSection이 단건으로 그리게 한다(추정 매칭으로 잘못 묶지 않는다).
+  return { id, user_id: '', event_type, event_at, created_at: event_at, strava_activity_id: null, metadata }
 }
 
 export default async function UserProfilePage({ params }: Props) {
@@ -283,6 +285,26 @@ export default async function UserProfilePage({ params }: Props) {
   }).length
   const badgeCount = (badgeCountResult.count ?? 0) + poiBadgeCount
 
+  // ─── 묶음 카드용 활동 이름 (20260827_018) ────────────────────────────
+  // 피드가 활동 단위로 접히면 "어느 활동인지"가 카드의 앵커가 된다(케이스북의 유저
+  // 멘탈모델 — "오늘 아침에 달린 그거, 뭐 받았지?"). non-null strava_activity_id를 모아
+  // 1회 조회하고, 실패하거나 이름이 없으면 이름 없이 묶음만 유지한다.
+  const activityIds = [...new Set(
+    feedItems.map((f) => f.strava_activity_id).filter((v): v is number => typeof v === 'number')
+  )]
+  const activityNames: Record<string, string> = {}
+  if (activityIds.length > 0) {
+    const { data: actRows } = await service
+      .from('strava_activities')
+      .select('strava_id, normalized, start_date')
+      .eq('user_id', subjectId)
+      .in('strava_id', activityIds)
+    for (const row of (actRows ?? []) as unknown as { strava_id: number; normalized: { name?: string } | null }[]) {
+      const name = typeof row.normalized?.name === 'string' ? row.normalized.name.trim() : ''
+      if (name) activityNames[String(row.strava_id)] = name
+    }
+  }
+
   const allItems = [...feedItems, ...legacyItems]
   // 20260824_006 — 표시·정렬 기준을 created_at으로 통일한다. event_at을 쓰면 정렬
   // 순서와 화면에 보이는 상대시간이 서로 모순될 수 있다(표시값과 정렬 키가 달라서).
@@ -303,6 +325,7 @@ export default async function UserProfilePage({ params }: Props) {
       username={target.username ?? username}
       currentUserId={user.id}
       pointBalance={pointBalance}
+      activityNames={activityNames}
     />
   )
 }

@@ -399,7 +399,7 @@ export async function processFetchedActivities(
           rarity: badge.rarity,
           poi_name: poi.name,
           visit_count: visitCount,
-        }, rawActivity.start_date)
+        }, rawActivity.start_date, rawActivity.id)
         continue
       }
 
