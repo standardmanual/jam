@@ -2034,6 +2034,7 @@ export type Database = {
           gps_daily_distance_km: number
           id: string
           initial_sync_done: boolean
+          is_admin: boolean
           last_location_at: string | null
           last_location_lat: number | null
           last_location_lng: number | null
@@ -2051,6 +2052,7 @@ export type Database = {
           gps_daily_distance_km?: number
           id: string
           initial_sync_done?: boolean
+          is_admin?: boolean
           last_location_at?: string | null
           last_location_lat?: number | null
           last_location_lng?: number | null
@@ -2068,6 +2070,7 @@ export type Database = {
           gps_daily_distance_km?: number
           id?: string
           initial_sync_done?: boolean
+          is_admin?: boolean
           last_location_at?: string | null
           last_location_lat?: number | null
           last_location_lng?: number | null

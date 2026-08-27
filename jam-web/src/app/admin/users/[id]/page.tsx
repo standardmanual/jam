@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
 import UserGrantForm from '../../points/UserGrantForm'
 import { BadgeHistoryTable, type BadgeHistoryRow } from './BadgeHistoryTable'
+import { AdminRoleToggle } from './AdminRoleToggle'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -31,6 +32,10 @@ export default async function AdminUserDetailPage({ params }: Props) {
 
   const badgeHistory = (badgeHistoryRaw ?? []) as unknown as BadgeHistoryRow[]
 
+  // ADMIN_EMAILS 화이트리스트 계정인지 (20260827_015) — 안내 문구에만 사용, 판정 로직은 lib/admin/auth.ts 공용
+  const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
+  const isWhitelisted = adminEmails.includes(user.email)
+
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -46,6 +51,16 @@ export default async function AdminUserDetailPage({ params }: Props) {
       {/* 잼 포인트 지급/회수 (공용 폼 — /admin/points와 동일 실행 로직) */}
       <div className="mb-8 max-w-xl">
         <UserGrantForm userId={user.id} username={user.username} />
+      </div>
+
+      {/* 어드민 권한 부여/해제 (20260827_015) */}
+      <div className="mb-8">
+        <AdminRoleToggle
+          userId={user.id}
+          userName={user.username ?? user.email}
+          initialIsAdmin={user.is_admin}
+          isWhitelisted={isWhitelisted}
+        />
       </div>
 
       <div className="mb-4 flex items-center justify-between">

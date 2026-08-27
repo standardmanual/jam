@@ -48,6 +48,8 @@ export interface UserRow {
    * "어디까지 봤나"를 판정한다. NULL이면 모든 소식이 안 읽음.
    */
   notifications_seen_at: string | null
+  /** 어드민 권한 부여 여부. ADMIN_EMAILS 환경변수 화이트리스트와 OR 조건으로 판정한다 (20260827_015). */
+  is_admin: boolean
   created_at: string
   updated_at: string
 }
