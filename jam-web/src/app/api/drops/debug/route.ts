@@ -39,8 +39,8 @@ export async function GET(req: NextRequest) {
   try {
     const { all: pipelineCategories } = await loadPipelineCategories(service)
     naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, 1000, pipelineCategories)
-  } catch (e: any) {
-    naverError = String(e?.message ?? e)
+  } catch (e) {
+    naverError = e instanceof Error ? e.message : String(e)
   }
   result.naver_count = naverPois.length
   result.naver_error = naverError

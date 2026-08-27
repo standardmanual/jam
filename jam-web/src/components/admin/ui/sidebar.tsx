@@ -669,10 +669,18 @@ const SidebarMenuSkeleton = React.forwardRef<
     showIcon?: boolean
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%.
+  // 스켈레톤 바 너비를 50~90% 사이에서 흩뜨린다.
+  // 20260827_020: 원래 Math.random()을 썼으나 렌더를 불순하게 만들고(react-hooks/purity)
+  // 서버·클라이언트 값이 달라 hydration mismatch 소지가 있었다. 목적은 "일정하지 않게 보이게"
+  // 하는 것뿐이므로 useId 기반 결정적 해시로 대체한다.
+  const skeletonId = React.useId()
   const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`
-  }, [])
+    let hash = 0
+    for (let i = 0; i < skeletonId.length; i += 1) {
+      hash = (hash * 31 + skeletonId.charCodeAt(i)) | 0
+    }
+    return `${(Math.abs(hash) % 41) + 50}%`
+  }, [skeletonId])
 
   return (
     <div

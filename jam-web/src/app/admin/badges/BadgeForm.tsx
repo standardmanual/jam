@@ -151,12 +151,13 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // ── 아이템 배지: 같은 북+희귀도 내 drop_weight 상대 확률 미리보기 ──────
-  const [siblingWeightSum, setSiblingWeightSum] = useState<number | null>(null)
+  // 20260827_020: 이펙트 진입 시의 동기 `setSiblingWeightSum(null)`은 캐스케이딩 렌더를 만든다
+  // (react-hooks/set-state-in-effect). 미리보기가 의미를 갖는 조건(아이템 타입 + 컬렉션 선택)이
+  // 아닐 때의 null은 아래 파생값으로 옮겼다 — 표시 조건은 기존과 같다.
+  const [fetchedSiblingWeightSum, setFetchedSiblingWeightSum] = useState<number | null>(null)
+  const siblingWeightSum = type === 'item' && itemBookId ? fetchedSiblingWeightSum : null
   useEffect(() => {
-    if (type !== 'item' || !itemBookId) {
-      setSiblingWeightSum(null)
-      return
-    }
+    if (type !== 'item' || !itemBookId) return
     let cancelled = false
     ;(async () => {
       try {
@@ -168,9 +169,9 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           (b) => b.type === 'item' && b.item_book_id === itemBookId && b.rarity === rarity && !b.deleted_at && b.id !== (badge?.id ?? '')
         )
         const sum = siblings.reduce((s, b) => s + (b.drop_weight ?? 1.0), 0)
-        if (!cancelled) setSiblingWeightSum(sum)
+        if (!cancelled) setFetchedSiblingWeightSum(sum)
       } catch {
-        if (!cancelled) setSiblingWeightSum(null)
+        if (!cancelled) setFetchedSiblingWeightSum(null)
       }
     })()
     return () => { cancelled = true }

@@ -32,11 +32,22 @@ export async function GET(
     return NextResponse.json({ error: 'drops_load_failed' }, { status: 500 })
   }
 
+  // Supabase 조인 결과의 생성 타입은 `badges`를 배열로 추론해 아래 접근과 맞지 않는다.
+  // 실제 응답 모양을 한 번만 명시해 두고 이후에는 타입이 붙은 값으로 다룬다(any 제거).
+  type PoiDropRow = {
+    id: string
+    badge_id: string
+    dropped_at: string
+    dropper_user_id: string | null
+    badges: { name: string; rarity: string; image_url: string | null } | null
+  }
+  const rows = (data ?? []) as unknown as PoiDropRow[]
+
   // dropper username 별도 조회 (FK 중복으로 조인 불가)
   // 프로덕션에서는 스테이징 전용 테스트 계정을 조회 대상에서 빼 이름 대신 '익명'으로 표시한다.
   const excludedIds = excludedTestUserIds()
-  const dropperIds = [...new Set((data ?? [])
-    .map((d: any) => d.dropper_user_id as string | null)
+  const dropperIds = [...new Set(rows
+    .map((d) => d.dropper_user_id)
     .filter((id): id is string => Boolean(id) && !excludedIds.includes(id as string)))]
   const usersData: { id: string; username: string }[] = dropperIds.length > 0
     ? ((await service.from('users').select('id, username').in('id', dropperIds)).data ?? [])
@@ -44,13 +55,13 @@ export async function GET(
   const nameById: Record<string, string> = {}
   for (const u of usersData) nameById[u.id] = u.username
 
-  const drops = (data ?? []).map((d: any) => ({
+  const drops = rows.map((d) => ({
     id: d.id,
     badge_id: d.badge_id,
     badge_name: d.badges?.name,
     badge_rarity: d.badges?.rarity,
     badge_image_url: d.badges?.image_url,
-    dropper_name: nameById[d.dropper_user_id] ?? '익명',
+    dropper_name: (d.dropper_user_id ? nameById[d.dropper_user_id] : undefined) ?? '익명',
     dropped_at: d.dropped_at,
   }))
 

@@ -15,7 +15,7 @@ import React, { useEffect, useRef } from 'react';
  */
 export function BottomSheet({ open, onDismiss, title, children }) {
   const panelRef = useRef(null);
-  const labelId = React.useId ? React.useId() : 'bottom-sheet-label';
+  const labelId = React.useId();
 
   useEffect(() => {
     if (!open) return;

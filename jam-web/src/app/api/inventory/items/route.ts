@@ -37,9 +37,18 @@ export async function GET() {
 
   // 소프트 삭제된 배지(badges.deleted_at)는 드랍 선택 목록에서 제외한다 —
   // 메인 인벤토리 목록(inventory/page.tsx)과 동일하게 조인 결과를 사후 필터한다.
-  const items = (data ?? [])
-    .filter((d: any) => d.badges && !d.badges.deleted_at)
-    .map((d: any) => ({
+  // Supabase 조인 결과의 생성 타입은 `badges`를 배열로 추론해 아래 접근과 맞지 않는다.
+  // 실제 응답 모양을 한 번만 명시해 두고 이후에는 타입이 붙은 값으로 다룬다(any 제거).
+  type InventoryItemRow = {
+    id: string
+    badge_id: string
+    dropped_at: string | null
+    badges: { name: string; rarity: string; image_url: string | null; deleted_at: string | null } | null
+  }
+
+  const items = ((data ?? []) as unknown as InventoryItemRow[])
+    .filter((d) => d.badges && !d.badges.deleted_at)
+    .map((d) => ({
       id: d.id,
       badge_id: d.badge_id,
       badge_name: d.badges?.name,

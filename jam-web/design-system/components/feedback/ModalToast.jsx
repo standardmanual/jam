@@ -36,7 +36,7 @@ const ICONS = {
  */
 export function ModalToast({ message, type = 'success', open = true, onDismiss, iconSlot, dismissLabel = '닫기' }) {
   const dismissRef = useRef(null);
-  const labelId = React.useId ? React.useId() : 'modal-toast-label';
+  const labelId = React.useId();
 
   useEffect(() => {
     if (!open) return;
