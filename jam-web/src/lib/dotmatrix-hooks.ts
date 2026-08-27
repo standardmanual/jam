@@ -34,6 +34,17 @@ export interface UseCyclePhaseOptions {
 export function useCyclePhase({ active, cycleMsBase, speed = 1 }: UseCyclePhaseOptions): number {
   const [phase, setPhase] = useState(0);
 
+  // 활성 → 비활성으로 바뀌는 렌더에서 phase를 0으로 되돌린다. 이펙트가 아니라 렌더 중에
+  // 조정하는 이유는 두 가지다. (1) 이펙트 안의 동기 setState는 캐스케이딩 렌더를 만든다
+  // (react-hooks/set-state-in-effect). (2) 이펙트는 페인트 이후에 돌아서, 재활성 첫 프레임에
+  // 직전 값이 한 번 그려진 뒤 정정된다 — 렌더 중 조정은 페인트 전에 다시 렌더되므로 그
+  // 잔상이 없다. React가 공식 문서에서 권장하는 "prop 변화에 따른 state 조정" 패턴이다.
+  const [prevActive, setPrevActive] = useState(active);
+  if (prevActive !== active) {
+    setPrevActive(active);
+    if (!active) setPhase(0);
+  }
+
   useEffect(() => {
     if (!active) {
       return;
@@ -55,9 +66,8 @@ export function useCyclePhase({ active, cycleMsBase, speed = 1 }: UseCyclePhaseO
     return () => cancelAnimationFrame(rafId);
   }, [active, cycleMsBase, speed]);
 
-  // 비활성일 때의 0은 이펙트에서 setPhase(0)로 되돌리지 않고 반환값에서 파생시킨다 —
-  // 이펙트 안의 동기 setState는 캐스케이딩 렌더를 만든다(react-hooks/set-state-in-effect).
-  // 형제 훅 useSteppedCycle이 이미 쓰는 방식과 같다. rAF 콜백 안의 setPhase는 해당 없음.
+  // 비활성일 때의 0은 반환값에서도 파생시킨다(위 렌더 중 조정과 이중 안전장치).
+  // rAF 콜백 안의 setPhase는 이펙트 본문이 아니라 규칙 대상이 아니다.
   return active ? phase : 0;
 }
 
@@ -122,12 +132,20 @@ export function useSteppedCycle({
   const activeRef = useRef(false);
   const currentStepRef = useRef(idleStep);
 
+  // useCyclePhase와 같은 이유로 렌더 중에 조정한다(위 주석 참조). 이 리셋이 없으면
+  // 재활성 시 updateStep이 계산한 nextStep(=0)이 currentStepRef(=idleStep)와 같아
+  // setStep이 호출되지 않고, 직전 활성 때의 step이 최대 1스텝(약 175ms) 남는다.
+  const [prevActive, setPrevActive] = useState(active);
+  if (prevActive !== active) {
+    setPrevActive(active);
+    if (!active) setStep(idleStep);
+  }
+
   useEffect(() => {
     if (!active) {
       activeRef.current = false;
       currentStepRef.current = idleStep;
-      // setStep(idleStep)은 아래 `return active ? step : idleStep`과 중복된 죽은 setState라
-      // 제거했다(react-hooks/set-state-in-effect).
+      // step state 리셋은 위 렌더 중 조정이 담당한다(이펙트 안 동기 setState 회피).
       return;
     }
 
