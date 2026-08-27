@@ -96,6 +96,18 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params
   const supabase = createServiceClient()
+
+  // 존재 여부를 먼저 확인한다 — select 없이 바로 update만 실행하면 매칭 0건에도
+  // Supabase가 에러를 주지 않아 존재하지 않는 id에도 조용히 성공 응답이 나갔다(20260827_012).
+  const { data: existing, error: fetchError } = await supabase
+    .from('badges')
+    .select('id')
+    .eq('id', id)
+    .single()
+  if (fetchError || !existing) {
+    return NextResponse.json({ error: '배지를 찾을 수 없습니다.' }, { status: 404 })
+  }
+
   const { error } = await supabase
     .from('badges')
     // @ts-expect-error Supabase 타입 추론 제한 우회
@@ -135,7 +147,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // update-후-select 구조라 존재하지 않는 id에도 update 자체(무매칭)는 실행되지만, select
+  // 단계에서 실패한다 — 이 경우 raw 500 대신 404로 응답하고, 무효화 호출 이전에 반환해
+  // invalidateUnclaimedDrops가 존재하지 않는 id에 대해 실행되지 않도록 한다(20260827_012).
+  if (error || !data) {
+    return NextResponse.json({ error: '배지를 찾을 수 없습니다.' }, { status: 404 })
+  }
 
   // 비활성화(active: false) 방향일 때만 미픽업 드랍을 함께 무효화한다. active: true로
   // 되살릴 때는 드랍을 자동 부활시키지 않는다 — 관리자가 명시적으로 새로 드랍해야 한다.
