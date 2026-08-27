@@ -40,6 +40,11 @@ export const INVENTORY_FULL_RENOTIFY_DAYS = 7
 
 export interface SyncStalledInput {
   connections: { userId: string; lastSyncedAt: string | null; createdAt: string }[]
+  /**
+   * user_id → 가장 최근 #40(Strava 끊김) 소식 생성 시각(ISO).
+   * 그 시각이 마지막 동기화보다 뒤면 **아직 해소되지 않은 끊김**이다.
+   */
+  disconnectedAt?: Map<string, string>
   startedAt: Date
 }
 
@@ -51,6 +56,13 @@ export interface SyncStalledInput {
  *
  * `group_key`는 **정체 구간의 시작일**이다. 상태가 유지되는 동안에는 키가 같아 `once`가
  * 막고, 다시 동기화하면 기준 시각이 바뀌어 다음 정체 때 새 소식이 나간다.
+ *
+ * ## #40이 미해소면 만들지 않는다 (20260827_014 §F)
+ *
+ * 끊긴 채로 3일이 지나면 확정(#40 「동기화가 끊겼어요」) 뒤에 추측(#41)이 따라붙어
+ * **정보가 더 적은 문장이 뒤에 온다.** #41은 원인이 다른 경우 전용으로 좁힌다 —
+ * 토큰은 멀쩡한데 새 활동이 안 들어오는 상황. 원인이 다르면 해결책도 달라야 한다
+ * (UX 가이드 §4 [현상 → 원인 → 해결책]).
  */
 export function selectSyncStalledDrafts(input: SyncStalledInput): NotificationDraft[] {
   const drafts: NotificationDraft[] = []
@@ -61,6 +73,10 @@ export function selectSyncStalledDrafts(input: SyncStalledInput): NotificationDr
     const days = Math.floor((input.startedAt.getTime() - baseMs) / DAY_MS)
     if (days < SYNC_STALLED_DAYS) continue
     if (days <= 0) continue
+
+    // #40 미해소 — 마지막 동기화 이후에 끊김 소식이 나갔다면 원인이 이미 확정돼 있다
+    const disconnectedAt = input.disconnectedAt?.get(conn.userId)
+    if (disconnectedAt && new Date(disconnectedAt).getTime() >= baseMs) continue
 
     drafts.push({
       userId: conn.userId,
@@ -115,6 +131,27 @@ export async function buildSyncStalledDrafts(ctx: BatchContext): Promise<StepOut
     'id',
     () => supabase.from('strava_connections').select('user_id, last_synced_at, created_at')
   )
+  if (rows.length === 0) return { drafts: [], scanned: 0 }
+
+  // #40이 미해소인 유저를 걸러내기 위해 끊김 소식의 최신 생성 시각을 읽는다.
+  // (SELECT 한 번을 더 쓰는 대신 "확정 뒤에 추측이 따라붙는" 중복을 없앤다)
+  const disconnectRows = await fetchAllRowsIn<{ user_id: string; created_at: string }, string>(
+    'notifications(strava_disconnected)',
+    'id',
+    rows.map((r) => r.user_id),
+    (chunk) =>
+      supabase
+        .from('notifications')
+        .select('user_id, created_at')
+        .eq('type', 'strava_disconnected')
+        .in('user_id', chunk)
+  )
+  const disconnectedAt = new Map<string, string>()
+  for (const row of disconnectRows) {
+    const prev = disconnectedAt.get(row.user_id)
+    if (!prev || row.created_at > prev) disconnectedAt.set(row.user_id, row.created_at)
+  }
+
   return {
     drafts: selectSyncStalledDrafts({
       connections: rows.map((r) => ({
@@ -122,6 +159,7 @@ export async function buildSyncStalledDrafts(ctx: BatchContext): Promise<StepOut
         lastSyncedAt: r.last_synced_at,
         createdAt: r.created_at,
       })),
+      disconnectedAt,
       startedAt,
     }),
     scanned: rows.length,

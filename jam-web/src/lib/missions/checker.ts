@@ -5,7 +5,8 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
-import { createNotification, scopedGroupKey } from '@/lib/notifications'
+import { createNotification, groupedTargetsKey, scopedGroupKey } from '@/lib/notifications'
+import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { grantMissionRewards } from '@/lib/missions/rewards'
 import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
 import { evaluateConditionDetailed, calcMaxStreak, passesWalkingGate } from '@/lib/badge-engine'
@@ -106,6 +107,12 @@ export async function checkMissions(
   const pendingMissions = missions.filter((m) => !completedSet.has(m.id))
   const completedMissionIds: string[] = []
   const awardedBadgeIds: string[] = []
+  /**
+   * R11 — 마일스톤·완료 소식은 미션 2건 이상이면 한 행으로 접는다(20260827_014).
+   * 루프 안에서 바로 보내면 미션 수만큼 행이 생기므로 **후보만 모아 두고 끝에서 한 번** 만든다.
+   */
+  const milestoneHits: { missionId: string; missionTitle: string; milestone: 50 | 80; current: number; target: number; unit: string }[] = []
+  const completedHits: { missionId: string; missionTitle: string }[] = []
 
   // distance/activity_count는 "이번 배치"가 아니라 실제 이력 전체로 판정해야
   // 매번 조금씩 동기화되는 정상적인 사용 패턴에서도 누적 조건이 제대로 채워진다.
@@ -144,7 +151,8 @@ export async function checkMissions(
     }
 
     if (!achieved) {
-      await notifyMissionMilestone(userId, mission, progressValue, target)
+      const hit = missionMilestoneHit(mission, progressValue, target)
+      if (hit) milestoneHits.push(hit)
       continue
     }
 
@@ -187,19 +195,15 @@ export async function checkMissions(
       target_value: getTarget(mission.mission_type, mission.condition_json as MissionCondition),
     })
 
-    // 소식 #22(미션 완료 + 보상) — 티켓 20260824_019
-    // 완료와 보상을 **한 건으로 합친다.** 따로 보내면 같은 사건이 두 줄로 보인다.
-    // L1(압축 금지)이라 group_key는 두지 않는다.
-    await createNotification({
-      userId,
-      type: 'mission_completed',
-      payload: {
-        mission_id: mission.id,
-        mission_title: mission.title,
-        reward_badge_count: reward.awardedBadgeIds.length,
-        reward_points: reward.totalAwardedPoints,
-      },
-    })
+    completedHits.push({ missionId: mission.id, missionTitle: mission.title })
+  }
+
+  // ④ 소식 — 미션 2건 이상이면 한 행으로 접는다(R11)
+  for (const draft of buildMilestoneDrafts(userId, milestoneHits)) {
+    await createNotification(draft as CreateNotificationInput<NotificationType>)
+  }
+  for (const draft of buildMissionCompletedDrafts(userId, completedHits)) {
+    await createNotification(draft as CreateNotificationInput<NotificationType>)
   }
 
   return { completedMissionIds, awardedBadgeIds }
@@ -232,33 +236,109 @@ export const MISSION_PROGRESS_UNIT: Record<MissionType, string> = {
  * 달성형(checkin/item_collect)은 목표가 0/1이라 "절반을 넘었어요"가 성립하지 않으므로
  * 제외한다. 한 번에 두 구간을 넘긴 경우(0 → 85%)에는 **높은 쪽 한 건만** 만든다.
  */
-async function notifyMissionMilestone(
-  userId: string,
+interface MilestoneHit {
+  missionId: string
+  missionTitle: string
+  milestone: 50 | 80
+  current: number
+  target: number
+  unit: string
+}
+
+function missionMilestoneHit(
   mission: MissionRow,
   progressValue: number,
   target: number
-): Promise<void> {
+): MilestoneHit | null {
   const unit = MISSION_PROGRESS_UNIT[mission.mission_type] ?? ''
-  if (unit === '' || target <= 0 || progressValue <= 0) return
+  if (unit === '' || target <= 0 || progressValue <= 0) return null
 
   const ratio = progressValue / target
   const milestone: 50 | 80 | null = ratio >= 0.8 ? 80 : ratio >= 0.5 ? 50 : null
-  if (milestone === null) return
+  if (milestone === null) return null
 
-  await createNotification({
-    userId,
-    type: 'mission_milestone',
-    groupKey: scopedGroupKey('mission_milestone', mission.id, milestone),
-    mode: 'once',
-    payload: {
-      mission_id: mission.id,
-      mission_title: mission.title,
-      current: progressValue,
-      target,
-      unit,
-      milestone,
+  return {
+    missionId: mission.id,
+    missionTitle: mission.title,
+    milestone,
+    current: progressValue,
+    target,
+    unit,
+  }
+}
+
+/**
+ * #20 초안 — 미션 2건 이상이면 「미션 N개가 목표에 가까워졌어요」 한 행(R11).
+ *
+ * 잔여량은 넣지 않는다 — 티켓 20260825_005가 "UX Writing 가이드상 불필요한 정보"로
+ * 판정해 제거한 결정을 존중한다(20260827_014 「주요 의사결정」).
+ */
+function buildMilestoneDrafts(userId: string, hits: MilestoneHit[]) {
+  if (hits.length === 0) return []
+  if (hits.length === 1) {
+    const h = hits[0]
+    return [
+      {
+        userId,
+        type: 'mission_milestone' as const,
+        groupKey: scopedGroupKey('mission_milestone', h.missionId, h.milestone),
+        mode: 'once' as const,
+        payload: {
+          mission_id: h.missionId,
+          mission_title: h.missionTitle,
+          current: h.current,
+          target: h.target,
+          unit: h.unit,
+          milestone: h.milestone,
+        },
+      },
+    ]
+  }
+  return [
+    {
+      userId,
+      type: 'mission_milestone' as const,
+      // 50%·80% 구간이 섞일 수 있어 구간을 말하지 않는다 → 키에도 구간을 넣어 집합을 구분한다
+      groupKey: groupedTargetsKey(
+        'mission_milestone',
+        hits.map((h) => `${h.missionId}:${h.milestone}`)
+      ),
+      mode: 'once' as const,
+      payload: { target_count: hits.length },
     },
-  })
+  ]
+}
+
+/**
+ * #22 초안 — R4에 따라 **보상을 문구에 넣지 않는다.** 미션이 끝났다는 사실이 보상보다
+ * 중요하고, 보상은 착지한 미션 상세에서 확인한다.
+ * 미션 2건 이상이면 「{대표} 외 미션 N개를 완료했어요」 한 행(B4).
+ */
+function buildMissionCompletedDrafts(userId: string, hits: { missionId: string; missionTitle: string }[]) {
+  if (hits.length === 0) return []
+  if (hits.length === 1) {
+    return [
+      {
+        userId,
+        type: 'mission_completed' as const,
+        // L1(압축 금지) — 개별 소식이라 group_key를 두지 않는다
+        payload: { mission_id: hits[0].missionId, mission_title: hits[0].missionTitle },
+      },
+    ]
+  }
+  return [
+    {
+      userId,
+      type: 'mission_completed' as const,
+      groupKey: groupedTargetsKey('mission_completed', hits.map((h) => h.missionId)),
+      mode: 'once' as const,
+      payload: {
+        mission_id: hits[0].missionId,
+        mission_title: hits[0].missionTitle,
+        target_count: hits.length,
+      },
+    },
+  ]
 }
 
 export interface OwnershipContext {

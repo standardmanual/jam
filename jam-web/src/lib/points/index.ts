@@ -7,7 +7,8 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { logEngineDecision } from '@/lib/engine-log'
-import { createNotification, dailyGroupKey } from '@/lib/notifications'
+import { createNotification } from '@/lib/notifications'
+import { recordActivityRecap } from '@/lib/notifications/recap'
 import type { PointReason, PointTransactionRow } from '@/types/database'
 
 export interface AwardPointsOptions {
@@ -98,13 +99,10 @@ async function notifyPointChange(
   // options.sourceMissionId가 있으면 grantMissionRewards() 경유 = 미션 보상 배지의 포인트다.
   // 이 지급은 #22(미션 완료 + 보상)가 이미 서술하므로 #5를 만들지 않는다.
   if (reason === 'badge_point_reward' && amount > 0 && !options.sourceMissionId) {
-    await createNotification({
-      userId,
-      type: 'points_earned',
-      groupKey: dailyGroupKey('points_earned'),
-      sumKeys: ['amount'],
-      payload: { amount, reason },
-    })
+    // 20260827_014 — 독립 행(#5)을 없애고 ① 활동 결산의 **문장 꼬리**로 흡수한다.
+    // "오늘 획득한 배지로 250 포인트를 획득했어요"가 배지 소식과 따로 뜨던 것을
+    // "배지 5개와 250 포인트를 획득했어요" 한 줄로 합친다(A2·C3·D1).
+    await recordActivityRecap(userId, { points: amount })
     return
   }
 

@@ -13,7 +13,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
-import { createNotification, syncGroupKey } from '@/lib/notifications'
+import { recordActivityRecap } from '@/lib/notifications/recap'
+import type { RecapItemBadge } from '@/lib/notifications/types'
 import type {
   BadgeRarity,
   BadgeRow,
@@ -520,8 +521,8 @@ export async function tryItemDrop(
 ): Promise<string[]> {
   /** 이번 호출에서 드랍된 배지 id (드랍 순서) */
   const droppedBadgeIds: string[] = []
-  /** 이번 호출에서 생성된 inventory_items.id (드랍 순서) — 소식 #3의 착지점 재료 */
-  const droppedInventoryItemIds: string[] = []
+  /** 이번 호출에서 드랍된 아이템 (드랍 순서) — ① 활동 결산의 재료 */
+  const droppedItems: RecapItemBadge[] = []
   const act: NormalizedActivity | null = typeof activity === 'object' ? activity : null
   // 20260824_006 — Strava startDateLocal은 로컬 벽시계에 Z를 붙인 값이라(진짜 UTC 아님)
   // timestamptz(피드 event_at)에 그대로 넣으면 최대 +9시간 미래로 오해석된다.
@@ -639,7 +640,12 @@ export async function tryItemDrop(
 
     usedSlots += 1
     droppedBadgeIds.push(result.badge.id)
-    droppedInventoryItemIds.push(insertedInventoryItemId)
+    droppedItems.push({
+      inventory_item_id: insertedInventoryItemId,
+      badge_id: result.badge.id,
+      name: result.badge.name,
+      rarity: result.badge.rarity,
+    })
 
     // 상태·구조 갱신 (다음 드랍/다음 싱크에 반영)
     updateLastPiecePity(structure, state, result.factionId, result.badge.id)
@@ -676,21 +682,13 @@ export async function tryItemDrop(
   state.last_activity_at = activityStartDate
   await saveDropState(state)
 
-  // 소식 #3(아이템 배지 획득) — 티켓 20260824_019
-  // 묶음 단위는 "동기화 1회"(= 활동 1건)라 이 호출에서 떨어진 것 전체를 한 건으로 만든다.
-  // 활동 정보 없이 호출된 레거시·시뮬레이터 경로는 묶을 기준이 없어 group_key를 비운다.
-  if (droppedInventoryItemIds.length > 0) {
-    await createNotification({
-      userId,
-      type: 'item_badge_earned',
-      groupKey: act ? syncGroupKey('item_badge_earned', act.stravaId) : null,
-      payload: {
-        inventory_item_ids: droppedInventoryItemIds,
-        count: droppedInventoryItemIds.length,
-        ...(act ? { activity_id: act.stravaId } : {}),
-      },
-      // 배열 필드는 append로 누적 (DATA_MODEL §6). 개수는 inventory_item_ids 길이로 렌더한다
-      appendKeys: ['inventory_item_ids'],
+  // ① 활동 결산에 아이템 배지를 싣는다 — 티켓 20260827_014
+  // (20260824_019의 #3 아이템 배지 소식이 결산으로 흡수됐다. 묶음 단위가 KST 하루라
+  //  활동 정보 없이 호출된 레거시·시뮬레이터 경로도 같은 행에 합쳐진다)
+  if (droppedItems.length > 0) {
+    await recordActivityRecap(userId, {
+      ...(act ? { activity_ids: [act.stravaId] } : {}),
+      item_badges: droppedItems,
     })
   }
 

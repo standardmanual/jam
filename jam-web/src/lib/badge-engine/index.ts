@@ -9,7 +9,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
-import { createNotification } from '@/lib/notifications'
+import { recordActivityRecap } from '@/lib/notifications/recap'
 import { logEngineDecision } from '@/lib/engine-log'
 import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
@@ -798,16 +798,15 @@ export async function evaluateBadgesDetailed(
     // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
     await usersTable.update({ initial_sync_done: true }).eq('id', userId)
 
-    // 소식 #7(첫 배지) — 티켓 20260824_019
+    // 첫 배지(평생 1회) — 티켓 20260824_019 → 20260827_014에서 결산으로 흡수.
     // initial_sync_done 전환 시점이 곧 "평생 1회"의 기준점이다. 이번 전환에서 실제로
     // 발급된 배지가 있을 때만 만든다 — 착지점이 `/badges/[badgeId]`라 배지가 없으면
     // 보낼 곳이 없다.
+    //
+    // 첫 배지는 결산 안에서 **헤드라인을 가져간다**(A8·E3). 최초 연동은 과거 활동을
+    // 한꺼번에 훑어 배지가 쏟아지는데, 그 숫자보다 "첫 배지가 도착했다"가 중요하다.
     if (earned.length > 0) {
-      await createNotification({
-        userId,
-        type: 'first_badge',
-        payload: { badge_id: earned[0].id },
-      })
+      await recordActivityRecap(userId, { first_badge_id: earned[0].id })
     }
   }
 
