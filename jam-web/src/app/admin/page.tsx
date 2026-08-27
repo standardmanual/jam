@@ -1,5 +1,15 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import {
+  IconAward,
+  IconMapPin,
+  IconBook,
+  IconUsers,
+  IconPlus,
+  IconMapPinPlus,
+  IconNotes,
+  IconDeviceGamepad2,
+} from '@tabler/icons-react'
 
 export default async function AdminDashboardPage() {
   let badgeCount: number | null = null
@@ -25,18 +35,18 @@ export default async function AdminDashboardPage() {
   }
 
   const stats = [
-    { label: '배지', value: badgeCount ?? 0, href: '/admin/badges', icon: '🏅' },
-    { label: 'POI', value: poiCount ?? 0, href: '/admin/poi', icon: '📍' },
-    { label: '컬렉션', value: itemBookCount ?? 0, href: '/admin/itembooks', icon: '📖' },
-    { label: '유저', value: userCount ?? 0, href: '/admin/users', icon: '👥' },
+    { label: '배지', value: badgeCount ?? 0, href: '/admin/badges', icon: IconAward },
+    { label: 'POI', value: poiCount ?? 0, href: '/admin/poi', icon: IconMapPin },
+    { label: '컬렉션', value: itemBookCount ?? 0, href: '/admin/itembooks', icon: IconBook },
+    { label: '유저', value: userCount ?? 0, href: '/admin/users', icon: IconUsers },
   ]
 
 
   const shortcuts = [
-    { label: '배지 등록', href: '/admin/badges/new', icon: '➕' },
-    { label: 'POI 등록', href: '/admin/poi/new', icon: '📌' },
-    { label: '컬렉션 등록', href: '/admin/itembooks/new', icon: '📝' },
-    { label: '시뮬레이터 실행', href: '/admin/simulator', icon: '🎮' },
+    { label: '배지 등록', href: '/admin/badges/new', icon: IconPlus },
+    { label: 'POI 등록', href: '/admin/poi/new', icon: IconMapPinPlus },
+    { label: '컬렉션 등록', href: '/admin/itembooks/new', icon: IconNotes },
+    { label: '시뮬레이터 실행', href: '/admin/simulator', icon: IconDeviceGamepad2 },
   ]
 
   return (
@@ -58,7 +68,7 @@ export default async function AdminDashboardPage() {
             href={stat.href}
             className="bg-white border border-border rounded-2xl p-5 hover:border-foreground/30 transition-colors"
           >
-            <p className="text-3xl mb-2">{stat.icon}</p>
+            <stat.icon className="mb-2 h-8 w-8 text-muted-foreground" />
             <p className="text-3xl font-bold tabular-nums">{stat.value.toLocaleString()}</p>
             <p className="text-muted-foreground text-sm mt-1">{stat.label}</p>
           </Link>
@@ -73,7 +83,7 @@ export default async function AdminDashboardPage() {
             href={s.href}
             className="flex items-center gap-3 bg-white border border-border rounded-xl p-4 hover:border-primary/30 hover:bg-primary/5 transition-colors"
           >
-            <span className="text-2xl">{s.icon}</span>
+            <s.icon className="h-6 w-6 text-muted-foreground" />
             <span className="font-medium">{s.label}</span>
           </Link>
         ))}
