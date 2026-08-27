@@ -1,9 +1,9 @@
 ---
 id: 20260827_011
 category: API
-status: OPEN
+status: CLOSED
 created: 2026-08-27
-closed:
+closed: 2026-08-27
 ---
 
 # [API] 배지 수정 API 부분 body PUT 시 필드 null/기본값 덮어쓰기 버그 수정
@@ -113,9 +113,9 @@ factions(`'세계관을 찾을 수 없습니다.'`)·item_books(`'아이템북�
 - [ ] 표기 규칙: 해당 없음 (날짜/시간/금액/기간 텍스트 아님)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-27 (staging)
+- 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행 — 사용자 명시 승인 필요)
+- 커밋: `c885e813` (origin/staging에 병합 push)
 
 ### 주요 의사결정 / 핵심 메모
 - 사전 검증 함수(`findCumulativeConditionError`, `findUnknownConditionKeyError`)를 병합된
