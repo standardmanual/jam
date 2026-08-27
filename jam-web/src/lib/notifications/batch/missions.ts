@@ -14,7 +14,7 @@
  * 테이블이 아직 없는 환경(마이그레이션 미적용)에서는 이 단계만 실패하고 나머지 10종은
  * 그대로 생성된다(`runStep` 격리).
  */
-import { scopedGroupKey } from '@/lib/notifications/groupKey'
+import { groupedTargetsKey, scopedGroupKey } from '@/lib/notifications/groupKey'
 import { kstDateString } from '@/lib/notifications/kst'
 import { MISSION_PROGRESS_UNIT, getTarget } from '@/lib/missions/checker'
 import { rankMissionParticipants } from '@/lib/missions/ranking'
@@ -22,6 +22,7 @@ import type { MissionCondition, MissionStatusDisplayType, MissionType } from '@/
 import {
   DAY_MS,
   fetchAllRows,
+  foldTargets,
   kstDateOffset,
   type BatchContext,
   type NotificationDraft,
@@ -102,16 +103,36 @@ export function selectMissionDeadlineDrafts(input: MissionDeadlineInput): Notifi
     })
   }
 
-  return drafts
+  // R11 — 미션 2건 이상이면 한 행. **잔여량이 사라지는 것은 규칙을 하나로 유지하는 값**이다
+  // (12km·3일·2곳은 단위가 달라 합칠 수도 없다 — 티켓 「주요 의사결정」에서 수용).
+  // 배치가 D-2만 잡으므로 묶음에서도 「이틀 뒤」는 항상 같다.
+  return foldTargets(drafts, (group) => ({
+    userId: group[0].userId,
+    type: 'mission_deadline',
+    payload: { days: MISSION_DEADLINE_DAYS, target_count: group.length },
+    groupKey: groupedTargetsKey(
+      'mission_deadline',
+      group.map((g) => (g.type === 'mission_deadline' ? g.payload.mission_id ?? '' : '')),
+      input.today
+    ),
+    mode: 'once',
+  }))
 }
 
 export interface MissionEndedInput {
   missions: BatchMission[]
   participations: MissionParticipation[]
+  /** `{missionId}:{userId}` 완료 집합 — 완료자에게만 축하한다 */
+  completedPairs: Set<string>
   startedAt: Date
 }
 
-/** #24 종료 결과 — 참가자 전원에게. `once` + 미션당 1키라 재실행해도 중복이 없다 */
+/**
+ * #24 종료 결과 — 참가자 전원에게. `once` + 미션당 1키라 재실행해도 중복이 없다.
+ *
+ * **완료 여부로 문구가 갈린다.** 목표를 못 채운 참가자에게 「축하해요!」가 나가면 조롱이
+ * 되고, PRD §3 ④ 주석("#24도 미완료 종료 시 질책 없이 담백하게")과 정면 충돌한다.
+ */
 export function selectMissionEndedDrafts(input: MissionEndedInput): NotificationDraft[] {
   const now = input.startedAt.getTime()
   const lookbackFrom = now - MISSION_ENDED_LOOKBACK_DAYS * DAY_MS
@@ -134,12 +155,31 @@ export function selectMissionEndedDrafts(input: MissionEndedInput): Notification
     drafts.push({
       userId: p.userId,
       type: 'mission_ended',
-      payload: { mission_id: mission.id, mission_title: mission.title },
+      payload: {
+        mission_id: mission.id,
+        mission_title: mission.title,
+        completed: input.completedPairs.has(`${p.missionId}:${p.userId}`),
+      },
       groupKey: scopedGroupKey('mission_ended', mission.id),
       mode: 'once',
     })
   }
-  return drafts
+
+  // R11 — 묶음에서 **하나라도 미완료면 축하를 뺀다.** 섞인 상태에서 축하하면 못 끝낸
+  // 미션까지 축하하는 문장이 된다.
+  return foldTargets(drafts, (group) => ({
+    userId: group[0].userId,
+    type: 'mission_ended',
+    payload: {
+      target_count: group.length,
+      all_completed: group.every((g) => g.type === 'mission_ended' && g.payload.completed === true),
+    },
+    groupKey: groupedTargetsKey(
+      'mission_ended',
+      group.map((g) => (g.type === 'mission_ended' ? g.payload.mission_id ?? '' : ''))
+    ),
+    mode: 'once',
+  }))
 }
 
 export interface MissionRankInput {
@@ -218,7 +258,20 @@ export function selectMissionRankDrafts(input: MissionRankInput): MissionRankOut
     }
   }
 
-  return { drafts, snapshots }
+  // R11 — 미션 2건 이상이면 「미션 N개에서 순위가 올랐어요」 한 행
+  const folded = foldTargets(drafts, (group) => ({
+    userId: group[0].userId,
+    type: 'mission_rank_up',
+    payload: { target_count: group.length },
+    groupKey: groupedTargetsKey(
+      'mission_rank_up',
+      group.map((g) => (g.type === 'mission_rank_up' ? g.payload.mission_id ?? '' : '')),
+      input.today
+    ),
+    mode: 'once',
+  }))
+
+  return { drafts: folded, snapshots }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -297,7 +350,12 @@ export async function buildMissionDrafts(ctx: BatchContext): Promise<StepOutput>
         today: ctx.today,
         deadlineDate: kstDateOffset(ctx.startedAt, MISSION_DEADLINE_DAYS),
       }),
-      ...selectMissionEndedDrafts({ missions, participations, startedAt: ctx.startedAt }),
+      ...selectMissionEndedDrafts({
+        missions,
+        participations,
+        completedPairs,
+        startedAt: ctx.startedAt,
+      }),
     ],
     scanned: participations.length,
   }

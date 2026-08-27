@@ -17,7 +17,10 @@ import { checkItemBookCompletion } from '@/lib/itembook/checker'
 import { findCompletableItemBooks } from '@/lib/itembook/completable'
 import { checkMissions } from '@/lib/missions/checker'
 import { recordFeedEvent } from '@/lib/activity-feed'
-import { createNotification, syncGroupKey, dailyGroupKey, scopedGroupKey } from '@/lib/notifications'
+import { createNotification, dailyGroupKey } from '@/lib/notifications'
+import { recordActivityRecap } from '@/lib/notifications/recap'
+import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
+import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { logEngineDecision } from '@/lib/engine-log'
 import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
@@ -130,20 +133,21 @@ export async function buildEarnedBadgePayload(
 }
 
 /**
- * 소식 #1(활동배지 획득)·#2(희귀 배지 획득) 생성 — 티켓 20260824_019
+ * ① 활동 결산에 **활동배지**를 싣는다 — 티켓 20260827_014
  *
- * **#2는 #1의 묶음에서 승격 분리된다.** 같은 동기화에서 신화·전설 배지가 나오면
- * `badge_earned` 묶음("배지 3개를 획득했어요")에 섞지 않고 배지 이름이 드러나는
- * 별도 행으로 만든다.
+ * 20260824_019의 #1(활동배지)·#2(희귀 배지) 두 소식을 결산 한 행으로 합쳤다. 희귀 배지는
+ * 별행으로 승격하지 않고 결산 안에서 헤드라인을 가져간다(E1) — 별행으로 두면 같은 활동의
+ * 보상이 알림함에서 다시 쪼개진다.
  *
- * 묶음 단위는 "동기화 1회"다. 배지 엔진은 배치 전체를 한 번에 평가하므로 개별 활동에
- * 귀속시킬 수 없어, 이번 배치에서 **가장 최신 활동**의 id를 묶음 키의 대표값으로 쓴다.
+ * 배지 엔진은 배치 전체를 한 번에 평가하므로 개별 활동에 귀속시킬 수 없다. 결산의 묶음
+ * 단위가 KST 하루라 귀속이 필요 없어졌다.
  */
 async function notifyActivityBadgesEarned(
   supabase: SupabaseClient,
   userId: string,
   activityBadgeIds: string[],
-  groupActivityId: number | null
+  /** 이번 배치가 처리한 활동들 — 결산이 「활동 N건에서」로 올라갈지(F2)의 근거다 */
+  activityIds: number[]
 ): Promise<void> {
   if (activityBadgeIds.length === 0) return
 
@@ -165,34 +169,10 @@ async function notifyActivityBadgesEarned(
   const rows = orderedIds.map((id) => byId.get(id)).filter((r): r is Row => Boolean(r))
   if (rows.length === 0) return
 
-  const isRare = (r: Row) => r.rarity === 'legend' || r.rarity === 'mythic'
-
-  for (const rare of rows.filter(isRare)) {
-    await createNotification({
-      userId,
-      type: 'rare_badge_earned',
-      payload: { badge_id: rare.id, badge_name: rare.name, rarity: rare.rarity },
-    })
-  }
-
-  const normal = rows.filter((r) => !isRare(r))
-  if (normal.length > 0) {
-    await createNotification({
-      userId,
-      type: 'badge_earned',
-      groupKey: groupActivityId !== null ? syncGroupKey('badge_earned', groupActivityId) : null,
-      payload: {
-        badge_ids: normal.map((r) => r.id),
-        count: normal.length,
-        ...(groupActivityId !== null ? { activity_id: groupActivityId } : {}),
-      },
-      // 배열 필드는 append로 누적한다 (DATA_MODEL §6). 얕은 병합이면 같은 대표 활동으로
-      // 묶인 뒤 발급된 배지가 직전 목록을 통째로 덮어쓴다.
-      // 행위자가 없는 소식이라 actor_ids는 쓰지 않는다 — 개수는 badge_ids 길이로 렌더한다
-      // (payload.count는 "이번 이벤트분"이라 병합 후에는 신뢰하면 안 된다).
-      appendKeys: ['badge_ids'],
-    })
-  }
+  await recordActivityRecap(userId, {
+    activity_ids: activityIds,
+    activity_badges: rows.map((r) => ({ id: r.id, name: r.name, rarity: r.rarity })),
+  })
 }
 
 /**
@@ -462,25 +442,14 @@ export async function processFetchedActivities(
   // 쪼개면 groupKey·appendKeys 구조를 바꿔야 해서 배보다 배꼽이 크다. 최초 획득이 하나도
   // 없으면(전부 반복 획득) 첫 번째 항목을 대표로 쓴다.
   for (const [activityId, earn] of poiEarnsByActivity) {
-    const firstEarnIndex = earn.isFirstEarns.findIndex((v) => v)
-    const repIndex = firstEarnIndex >= 0 ? firstEarnIndex : 0
-    await createNotification({
-      userId,
-      type: 'checkin_badge_earned',
-      groupKey: syncGroupKey('checkin_badge_earned', activityId),
-      payload: {
-        // 단건 렌더용 대표값 (묶음이면 렌더러가 badge_ids·count를 쓴다)
-        badge_id: earn.badgeIds[repIndex],
-        poi_name: earn.poiNames[repIndex],
-        is_first_earn: earn.isFirstEarns[repIndex],
-        visit_count: earn.visitCounts[repIndex],
-        badge_ids: earn.badgeIds,
-        poi_names: earn.poiNames,
-        count: earn.badgeIds.length,
-        activity_id: activityId,
-      },
-      // 배열 필드는 append로 누적 (DATA_MODEL §6). 개수는 badge_ids 길이로 렌더한다
-      appendKeys: ['badge_ids', 'poi_names'],
+    await recordActivityRecap(userId, {
+      activity_ids: [activityId],
+      checkin_badges: earn.badgeIds.map((badgeId, i) => ({
+        badge_id: badgeId,
+        poi_name: earn.poiNames[i],
+        first: earn.isFirstEarns[i],
+        visit: earn.visitCounts[i],
+      })),
     })
   }
 
@@ -572,13 +541,13 @@ export async function processFetchedActivities(
   const badgesEarned = activityBadgeIds.length
   earnedBadgeIds.push(...activityBadgeIds)
 
-  // 소식 #1·#2 — 묶음 키의 대표값은 이번 배치에서 가장 최신 활동
-  // (start_date가 같은 활동이 섞여도 결정론적이도록 stravaId를 보조 키로 둔다)
-  const latestActivity = [...activities].sort((a, b) => {
-    const diff = new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-    return diff !== 0 ? diff : b.stravaId - a.stravaId
-  })[0]
-  await notifyActivityBadgesEarned(supabase, userId, activityBadgeIds, latestActivity?.stravaId ?? null)
+  // ① 결산에 활동배지를 싣는다 (묶음 단위는 KST 하루라 대표 활동을 고를 필요가 없다)
+  await notifyActivityBadgesEarned(
+    supabase,
+    userId,
+    activityBadgeIds,
+    activities.map((a) => a.stravaId)
+  )
 
   // 아이템북 완성 체크 + reward_badge 발급
   const { completedIds, rewardBadgesIssued, rewardBadgeIds } = await checkItemBookCompletion(userId)
@@ -593,14 +562,10 @@ export async function processFetchedActivities(
   // mode='once' + 컬렉션 단위 group_key로 컬렉션당 1회만 나간다. 이 조건은 유저가
   // 장착할 때까지 계속 참이라, merge로 두면 동기화할 때마다 updated_at이 갱신돼
   // dot이 매번 다시 켜진다(반복 발송 = 다크패턴, PRD §2-4).
-  for (const book of await findCompletableItemBooks(userId)) {
-    await createNotification({
-      userId,
-      type: 'collection_completable',
-      groupKey: scopedGroupKey('collection_completable', book.id),
-      mode: 'once',
-      payload: { item_book_id: book.id, book_name: book.name },
-    })
+  // 20260827_014 — R11(대상 2건 이상이면 한 행)을 적용한다. 키 계산은 배치와 **같은
+  // 함수**를 쓴다: 두 경로가 각자 키를 만들면 같은 상태가 두 행이 된다.
+  for (const draft of selectCompletableDrafts(userId, await findCompletableItemBooks(userId))) {
+    await createNotification(draft as CreateNotificationInput<NotificationType>)
   }
 
   // Phase 16: 다이나믹 미션 달성 체크
