@@ -84,22 +84,22 @@ describe('group_key 빌더 — type 접두가 종류 간 충돌을 막는다', (
   it('UNIQUE 인덱스가 (user_id, group_key)뿐이라 같은 활동의 서로 다른 소식이 충돌하면 안 된다', () => {
     const activityId = 1234567890
     const keys = [
-      syncGroupKey('badge_earned', activityId),
-      syncGroupKey('item_badge_earned', activityId),
-      syncGroupKey('checkin_badge_earned', activityId),
+      syncGroupKey('activity_recap', activityId),
+      syncGroupKey('following_rare_badge', activityId),
+      syncGroupKey('inventory_full', activityId),
     ]
     expect(new Set(keys).size).toBe(3)
   })
 
   it('syncGroupKey는 {type}:sync:{activityId}', () => {
-    expect(syncGroupKey('badge_earned', 42)).toBe('badge_earned:sync:42')
+    expect(syncGroupKey('activity_recap', 42)).toBe('activity_recap:sync:42')
   })
 
   it('dailyGroupKey는 KST 날짜를 쓴다', () => {
-    expect(dailyGroupKey('points_earned', '2026-08-24T15:00:00Z')).toBe('points_earned:2026-08-25')
-    // UTC 기준이면 아래 두 시각이 다른 키가 되어 아침·저녁 포인트가 갈라진다
-    expect(dailyGroupKey('points_earned', '2026-08-24T23:00:00Z')).toBe(
-      dailyGroupKey('points_earned', '2026-08-25T05:00:00Z')
+    expect(dailyGroupKey('activity_recap', '2026-08-24T15:00:00Z')).toBe('activity_recap:2026-08-25')
+    // UTC 기준이면 아래 두 시각이 다른 키가 되어 아침·저녁 결산이 갈라진다
+    expect(dailyGroupKey('activity_recap', '2026-08-24T23:00:00Z')).toBe(
+      dailyGroupKey('activity_recap', '2026-08-25T05:00:00Z')
     )
   })
 
@@ -113,16 +113,9 @@ describe('group_key 빌더 — type 접두가 종류 간 충돌을 막는다', (
   })
 })
 
-describe('bumps_badge 파생 — ① 보상 획득 6종만 false', () => {
-  const REWARD_TYPES: NotificationType[] = [
-    'activity_recap',
-    'badge_earned',
-    'rare_badge_earned',
-    'item_badge_earned',
-    'checkin_badge_earned',
-    'points_earned',
-    'first_badge',
-  ]
+describe('bumps_badge 파생 — ① 보상 획득(활동 결산)만 false', () => {
+  // 20260827_016 — 레거시 6종이 TS 타입에서 제거돼 결산 1종만 남았다
+  const REWARD_TYPES: NotificationType[] = ['activity_recap']
 
   const OTHER_TYPES: NotificationType[] = [
     'collection_slottable', 'collection_near_complete', 'collection_completable',
@@ -135,7 +128,7 @@ describe('bumps_badge 파생 — ① 보상 획득 6종만 false', () => {
     'admin_points_changed', 'announcement',
   ]
 
-  it('보상 획득(결산 + 레거시 6종)은 dot을 켜지 않는다 (동기화 화면에서 이미 봤다)', () => {
+  it('보상 획득(활동 결산)은 dot을 켜지 않는다 (동기화 화면에서 이미 봤다)', () => {
     for (const type of REWARD_TYPES) expect(bumpsBadgeFor(type)).toBe(false)
     expect(NON_BUMPING_NOTIFICATION_TYPES.size).toBe(REWARD_TYPES.length)
   })
@@ -144,9 +137,9 @@ describe('bumps_badge 파생 — ① 보상 획득 6종만 false', () => {
     for (const type of OTHER_TYPES) expect(bumpsBadgeFor(type)).toBe(true)
   })
 
-  it('쓰는 종류 전부를 빠짐없이 분류한다 (20260827_014 — 결산 추가, 맞팔 제거)', () => {
-    expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(26)
-    expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(26)
+  it('쓰는 종류 전부를 빠짐없이 분류한다 (20260827_016 — 레거시 6종 제거 후 20종)', () => {
+    expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(20)
+    expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(20)
   })
 })
 

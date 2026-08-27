@@ -32,7 +32,7 @@ describe('createNotification — RPC 인자', () => {
   })
 
   it('bumps_badge를 호출부가 아니라 type에서 파생한다', async () => {
-    await createNotification({ userId: 'u-1', type: 'badge_earned' })
+    await createNotification({ userId: 'u-1', type: 'activity_recap' })
     expect(lastRpcArgs().p_bumps_badge).toBe(false)
 
     await createNotification({ userId: 'u-1', type: 'drop_picked_up' })
@@ -42,16 +42,16 @@ describe('createNotification — RPC 인자', () => {
   it('기본 모드는 merge — group_key가 있으면 기존 묶음에 합쳐진다', async () => {
     await createNotification({
       userId: 'u-1',
-      type: 'points_earned',
-      groupKey: 'points_earned:2026-08-25',
-      sumKeys: ['amount'],
-      payload: { amount: 250, reason: 'badge_point_reward' },
+      type: 'activity_recap',
+      groupKey: 'activity_recap:2026-08-25',
+      sumKeys: ['points'],
+      payload: { points: 250 },
     })
     const args = lastRpcArgs()
     expect(args.p_mode).toBe('merge')
-    expect(args.p_group_key).toBe('points_earned:2026-08-25')
-    expect(args.p_sum_keys).toEqual(['amount'])
-    expect(args.p_payload).toEqual({ amount: 250, reason: 'badge_point_reward' })
+    expect(args.p_group_key).toBe('activity_recap:2026-08-25')
+    expect(args.p_sum_keys).toEqual(['points'])
+    expect(args.p_payload).toEqual({ points: 250 })
   })
 
   it('once 모드는 그대로 전달된다 (구간당 1회 소식)', async () => {
@@ -116,20 +116,20 @@ describe('createNotification — 실패가 본 트랜잭션을 깨뜨리지 않�
 
   it('RPC가 오류를 반환해도 예외를 던지지 않고 null을 반환한다 — 다만 로그는 남긴다', async () => {
     rpcMock.mockResolvedValue({ data: null, error: { message: 'boom' } })
-    const result = await createNotification({ userId: 'u-1', type: 'badge_earned' })
+    const result = await createNotification({ userId: 'u-1', type: 'activity_recap' })
     expect(result).toBeNull()
     expect(errorSpy).toHaveBeenCalled()
   })
 
   it('RPC가 예외를 던져도 삼키고 로그를 남긴다', async () => {
     rpcMock.mockRejectedValue(new Error('network down'))
-    const result = await createNotification({ userId: 'u-1', type: 'badge_earned' })
+    const result = await createNotification({ userId: 'u-1', type: 'activity_recap' })
     expect(result).toBeNull()
     expect(errorSpy).toHaveBeenCalled()
   })
 
   it('userId가 없으면 RPC를 호출하지 않고 로그만 남긴다', async () => {
-    const result = await createNotification({ userId: '', type: 'badge_earned' })
+    const result = await createNotification({ userId: '', type: 'activity_recap' })
     expect(result).toBeNull()
     expect(rpcMock).not.toHaveBeenCalled()
     expect(errorSpy).toHaveBeenCalled()
@@ -346,14 +346,14 @@ describe('묶음 병합 — actor_count는 병합 횟수가 아니라 고유 인
     expect(last.payload.actor_ids).toEqual(['u-a', 'u-b'])
   })
 
-  it('행위자가 없는 묶음(#1 활동배지)은 actor_ids를 쓰지 않고 actor_count도 늘지 않는다', async () => {
+  it('행위자가 없는 묶음(① 활동 결산)은 actor_ids를 쓰지 않고 actor_count도 늘지 않는다', async () => {
     const earn = (ids: string[]) =>
       createNotification({
         userId: 'u-1',
-        type: 'badge_earned',
-        groupKey: 'badge_earned:sync:42',
-        payload: { badge_ids: ids, count: ids.length },
-        appendKeys: ['badge_ids'],
+        type: 'activity_recap',
+        groupKey: 'activity_recap:2026-08-25',
+        payload: { activity_badges: ids.map((id) => ({ id, name: id, rarity: 'common' as const })) },
+        appendKeys: ['activity_badges'],
       })
 
     await earn(['b-1', 'b-2'])
@@ -361,8 +361,12 @@ describe('묶음 병합 — actor_count는 병합 횟수가 아니라 고유 인
 
     expect(last.actor_count).toBe(1)
     expect(last.payload.actor_ids).toBeUndefined()
-    // 개수는 payload.count가 아니라 배열 길이로 렌더한다 (count는 이번 이벤트분)
-    expect(last.payload.badge_ids).toEqual(['b-1', 'b-2', 'b-3'])
+    // 개수는 payload의 개수 필드가 아니라 배열 길이로 렌더한다
+    expect((last.payload.activity_badges as { id: string }[]).map((b) => b.id)).toEqual([
+      'b-1',
+      'b-2',
+      'b-3',
+    ])
   })
 
   it('appendKeys를 빠뜨리면 배열이 통째로 덮어써진다 — 왜 필요한지에 대한 대조군', async () => {
@@ -385,18 +389,18 @@ describe('묶음 병합 — actor_count는 병합 횟수가 아니라 고유 인
     expect(last.payload.actor_ids).toEqual(['picker-b'])
   })
 
-  it('sumKeys는 그대로 동작한다 (#5 포인트 하루 합계)', async () => {
-    const earn = (amount: number) =>
+  it('sumKeys는 그대로 동작한다 (① 결산의 포인트 하루 합계)', async () => {
+    const earn = (points: number) =>
       createNotification({
         userId: 'u-1',
-        type: 'points_earned',
-        groupKey: 'points_earned:2026-08-25',
-        payload: { amount, reason: 'badge_point_reward' },
-        sumKeys: ['amount'],
+        type: 'activity_recap',
+        groupKey: 'activity_recap:2026-08-25',
+        payload: { points },
+        sumKeys: ['points'],
       })
 
     await earn(250)
     await earn(300)
-    expect(last.payload.amount).toBe(550)
+    expect(last.payload.points).toBe(550)
   })
 })

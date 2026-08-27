@@ -60,8 +60,8 @@ function row(id: string, updatedAt: string) {
   return {
     id,
     user_id: 'u-1',
-    type: 'badge_earned',
-    payload: { badge_ids: ['b1'] },
+    type: 'activity_recap',
+    payload: { activity_badges: [{ id: 'b1', name: '한강 러너', rarity: 'common' }] },
     actor_user_id: null,
     actor_count: 1,
     bumps_badge: false,
