@@ -1,11 +1,5 @@
 import React from 'react';
-
-const RARITY_CONFIG = {
-  common: { label: 'Common', bg: 'var(--color-rarity-common)', text: 'var(--color-rarity-common-text)' },
-  rare:   { label: 'Rare',   bg: 'var(--color-rarity-rare)',   text: 'var(--color-rarity-rare-text)'   },
-  legend: { label: 'Legend', bg: 'var(--color-rarity-legend)', text: 'var(--color-rarity-legend-text)' },
-  mythic: { label: 'Mythic', bg: 'var(--color-rarity-mythic)', text: 'var(--color-rarity-mythic-text)' },
-};
+import { RarityBadge } from '../cards/RarityBadge.jsx';
 
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
@@ -35,7 +29,6 @@ export function BadgeGridCard({
   style = {},
   children,
 }) {
-  const rc = RARITY_CONFIG[rarity] ?? RARITY_CONFIG.common;
   const dimmed = !earned || undiscovered;
   const interactive = !!(href || onClick);
 
@@ -69,20 +62,6 @@ export function BadgeGridCard({
     flexShrink: 0,
   };
 
-  const rarityPillStyle = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '3px 10px',
-    borderRadius: 'var(--radius-pill)',
-    fontSize: 'var(--text-caption)',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-    background: rc.bg,
-    color: rc.text,
-    lineHeight: 1.4,
-  };
-
   const content = (
     <>
       <div style={thumbnailStyle}>
@@ -101,7 +80,7 @@ export function BadgeGridCard({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4)', paddingTop: 'var(--spacing-8)', width: '100%' }}>
         <div style={{ minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {!undiscovered && <span style={rarityPillStyle}>{rc.label}</span>}
+          {!undiscovered && <RarityBadge rarity={rarity} />}
         </div>
         <p style={{
           fontSize: 13, fontWeight: 700, color: 'var(--color-text)',

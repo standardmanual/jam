@@ -1,21 +1,17 @@
 import React from 'react';
+import { RarityBadge } from '../cards/RarityBadge.jsx';
 
-const RARITY_CONFIG = {
-  common: { label: 'Common', bg: 'var(--color-rarity-common)', text: 'var(--color-rarity-common-text)' },
-  rare:   { label: 'Rare',   bg: 'var(--color-rarity-rare)',   text: 'var(--color-rarity-rare-text)'   },
-  legend: { label: 'Legend', bg: 'var(--color-rarity-legend)', text: 'var(--color-rarity-legend-text)' },
-  mythic: { label: 'Mythic', bg: 'var(--color-rarity-mythic)', text: 'var(--color-rarity-mythic-text)' },
-};
-
+// RarityBadge와 같은 축소 스케일(패딩 4px/9px, 폰트 8px) — "완성" 태그가 등급 태그 옆에
+// 나란히 붙으므로 크기를 맞춘다.
 const TAG_STYLE = {
   display: 'inline-flex',
   alignItems: 'center',
-  padding: '3px 8px',
+  padding: '4px 9px',
   borderRadius: 'var(--radius-pill)',
-  fontSize: 'var(--text-caption)',
+  fontSize: '8px',
   fontWeight: 700,
   textTransform: 'uppercase',
-  letterSpacing: '0.04em',
+  letterSpacing: '0.3px',
   lineHeight: 1,
   fontFamily: 'var(--font-family-base)',
 };
@@ -50,7 +46,7 @@ export function CollectionGridCard({
 }) {
   const pct = total > 0 ? Math.round((collected / total) * 100) : 0;
   const interactive = !!(href || onClick);
-  const rc = rarity ? (RARITY_CONFIG[rarity] ?? RARITY_CONFIG.common) : null;
+  const showRarity = !!rarity && rarity !== 'common';
 
   const containerStyle = {
     display: 'flex',
@@ -89,13 +85,9 @@ export function CollectionGridCard({
           </svg>
         )}
         {/* 태그 행: 등급(선택) + 완성(선택) */}
-        {(rc || completed) && (
+        {(showRarity || completed) && (
           <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-            {rc && (
-              <span style={{ ...TAG_STYLE, background: rc.bg, color: rc.text }}>
-                {rc.label}
-              </span>
-            )}
+            {showRarity && <RarityBadge rarity={rarity} />}
             {completed && (
               <span style={{ ...TAG_STYLE, background: 'var(--color-primary)', color: '#fff' }}>
                 완성
