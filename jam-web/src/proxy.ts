@@ -53,7 +53,7 @@ export async function proxy(request: NextRequest) {
   // 닿지 못하고 307로 리다이렉트된다 — cron이 조용히 실행되지 않는다(20260825_003).
   // 보안이 약해지는 게 아니라, 인증 주체가 미들웨어가 아니라 라우트라는 뜻이다.
   const publicPaths = ['/login', '/auth/callback', '/forbidden', '/api/dev-login', '/spike', '/api/cron']
-  const isPublicPath = publicPaths.some((p) => pathname.startsWith(p))
+  const isPublicPath = publicPaths.some((p) => pathname === p || pathname.startsWith(p + '/'))
 
   if (!user && !isPublicPath) {
     // STAGING_MODE: 미인증 유저를 /login 대신 /api/dev-login으로 자동 진입
