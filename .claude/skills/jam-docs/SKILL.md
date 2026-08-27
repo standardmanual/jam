@@ -12,7 +12,7 @@ CLAUDE.md에는 "어느 카테고리에 해당하는지" 판단 기준만 있다
 | # | 카테고리 | 대상 | 위치 | 수정 방식 |
 |---|---|---|---|---|
 | ① | PRD | 기능·스펙·로직 정의 | `Service Plan/Specs/PRD/` | 기존 파일 직접 수정 |
-| ② | 티켓 | 실행 계획·작업 이력 | `Service Plan/History/Migration/Ticket/` | 신규 파일 생성 |
+| ② | 티켓 | 실행 계획·작업 이력 | `Service Plan/Tickets/` | 신규 파일 생성 |
 | ③ | 컨텐츠 | 배지·아이템북·세계관·POI | `Service Plan/Specs/Content/` | 기존 파일 직접 수정 |
 | ④ | 배지엔진 | 발급·드랍 판정 로직 | `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` | 기존 파일 직접 수정 |
 | ⑤ | 서비스플랜 | 비전·장기 전략 | `Service Plan/Business/서비스플랜/` | 기존 파일 직접 수정 |
@@ -24,11 +24,16 @@ CLAUDE.md에는 "어느 카테고리에 해당하는지" 판단 기준만 있다
 ## ② 티켓 (가장 자주 쓰는 절차)
 
 ### 파일명
-`Service Plan/History/Migration/Ticket/YYYYMMDD_NNN_[카테고리]_[제목].md`
+`Service Plan/Tickets/YYYYMMDD_HHMM_[카테고리]_[제목].md`
 
-- `NNN`: 당일 3자리 일련번호. **기존 파일명에서 당일 최대 번호 확인 후 +1.** 날짜가 다르면 001부터.
+- `HHMM`: **티켓 생성 시각(KST, 24시간)**. 기존 파일을 조회해 번호를 계산하지 않는다.
 - `제목`: 한국어 또는 영어, 공백 대신 `-`
-- 템플릿: `Service Plan/History/Migration/Ticket/_TEMPLATE.md`
+- 템플릿: `Service Plan/Tickets/_TEMPLATE.md`
+- `id` 프론트매터도 파일명과 동일하게 `YYYYMMDD_HHMM`
+
+> **2026-08-27 규칙 전환.** 구 규칙은 `NNN`(당일 최대 번호 +1)이었으나, 병렬 세션이 같은
+> 번호를 동시에 선점해 **충돌 32건**과 재번호 커밋이 반복됐다. 기존 `NNN` 티켓은 소급
+> 개명하지 않는다 — 번호가 브랜치명·커밋 메시지·코드 주석에 박혀 있어 참조가 끊긴다.
 
 ### 카테고리 8종
 

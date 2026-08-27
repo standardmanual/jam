@@ -2,7 +2,7 @@
 
 > 이 폴더는 4카테고리 문서 체계(① PRD ② 티켓 ③ 컨텐츠 ④ 배지엔진) 중 **① PRD**에
 > 해당한다. 기능·스펙·플로우 정의를 다루며, "현재 기준 최신 스펙"이 원칙이다.
-> 실행 계획·작업 이력은 [History/Migration/Ticket/](../../History/Migration/Ticket/)을 참고할 것.
+> 실행 계획·작업 이력은 [Tickets/](../../Tickets/)을 참고할 것.
 
 ---
 
@@ -21,7 +21,7 @@
 > 기준으로 재작성했다. 세계관·조합·미션·포인트·팔로우·어뷰징·드랍엔진v2·CMS 등
 > 신규 도메인, 지도/POI 소스의 Google→네이버 전환, 도메인 전환(j-a-m.app) 등을
 > 모두 반영. 갱신 시점 이후 변경분은 각 문서가 다시 낡을 수 있으므로, 신규
-> 개선사항 작업 전에는 항상 [History/Migration/Ticket/](../../History/Migration/Ticket/) 최신 티켓을 먼저 확인할 것.
+> 개선사항 작업 전에는 항상 [Tickets/](../../Tickets/) 최신 티켓을 먼저 확인할 것.
 
 ### 주제별 PRD 세트 (하위 폴더)
 
@@ -48,7 +48,7 @@
 |------|------|
 | 배지·드랍 엔진 판정 로직 (드랍엔진 v2, 세계관 모멘텀, 앰비언트 드랍 등) | [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) |
 | 액티비티배지·컬렉션·아이템배지·세계관·POI 컨텐츠 목록 | [Specs/Content/](../Content/) |
-| 실제 개발 작업 이력 원본 | [History/Migration/Ticket/](../../History/Migration/Ticket/) |
+| 실제 개발 작업 이력 원본 | [Tickets/](../../Tickets/) |
 
 ---
 

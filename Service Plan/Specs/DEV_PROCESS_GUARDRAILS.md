@@ -155,4 +155,4 @@ Supabase/PostgREST는 한 번의 조회에서 기본 1,000행까지만 반환한
 ## 관련 문서
 - [04_PROJECT_SPEC.md](PRD/04_PROJECT_SPEC.md) — "절대 하지 마" / "항상 해" 목록
 - [BADGE_ENGINE_UNIFIED.md](BadgeEngine/BADGE_ENGINE_UNIFIED.md) — 배지·드랍 판정 로직 단일 진실 원천
-- [20260811_001](../History/Migration/Ticket/20260811_001_Service_인벤토리-미생성으로-아이템배지-미발급.md), [20260811_004](../History/Migration/Ticket/20260811_004_Service_전체-티켓-운영문서-감사-핵심루프-잔존위험-4건-조치.md) — 이 문서의 근거가 된 감사 티켓
+- [20260811_001](../Tickets/20260811_001_Service_인벤토리-미생성으로-아이템배지-미발급.md), [20260811_004](../Tickets/20260811_004_Service_전체-티켓-운영문서-감사-핵심루프-잔존위험-4건-조치.md) — 이 문서의 근거가 된 감사 티켓

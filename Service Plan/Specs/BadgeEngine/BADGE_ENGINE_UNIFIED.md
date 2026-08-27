@@ -29,7 +29,7 @@ Strava 싱크
 - 첫 싱크 게이트: `users.initial_sync_done=false`인 첫 싱크는 고가치 발급 제한 (액티비티=Rare+ 차단, 아이템=첫 드랍 확정이되 rarity 정책 적용)
 - 섀도우밴: 밴 레벨에 따라 고가치(rarity) 발급 차단 — `src/lib/abusing/`
 - 피드 이벤트: 발급 시 `recordFeedEvent` ('badge_earned' / 'item_dropped')
-- **수동 입력 활동 제외 (2026-08-10 추가)**: Strava `manual=true`(GPS/파일 없이 유저가 거리·시간을 직접 타이핑한 기록)인 활동은 `getActivities()`(`src/lib/strava/api.ts`) 반환 단계에서 완전히 걸러낸다 — 두 엔진 평가 대상에 아예 들어오지 않으며 `strava_activities`에도 기록되지 않는다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터는 상세 API 추가 호출이 필요해(목록 API 미포함) 현재는 미구현 — [History/Migration/Ticket/20260810_001](../../History/Migration/Ticket/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
+- **수동 입력 활동 제외 (2026-08-10 추가)**: Strava `manual=true`(GPS/파일 없이 유저가 거리·시간을 직접 타이핑한 기록)인 활동은 `getActivities()`(`src/lib/strava/api.ts`) 반환 단계에서 완전히 걸러낸다 — 두 엔진 평가 대상에 아예 들어오지 않으며 `strava_activities`에도 기록되지 않는다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터는 상세 API 추가 호출이 필요해(목록 API 미포함) 현재는 미구현 — [Tickets/20260810_001](../../Tickets/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
 
 ---
 
@@ -170,7 +170,7 @@ CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허�
 
 ### 2.10 걷기 배지 v4 — 축1 게이트 + 하루 1회 상한 + 신규 배지 32종 (2026-08-08)
 
-> 배경·튜닝 파라미터 상세: `Service Plan/History/Migration/Ticket/20260808_001_Content_걷기배지체계-v4-전면개편.md`
+> 배경·튜닝 파라미터 상세: `Service Plan/Tickets/20260808_001_Content_걷기배지체계-v4-전면개편.md`
 
 **축1 게이트** — 걷기(`activity_type='walking'`) 조건 평가 전 사전 필터. `evaluateConditionDetailed`가 `filtered`를 구성하는 시점에 `condition.activity_type==='walking'`인 경우에만 적용되며, 걷기가 아닌 종목에는 영향 없음.
 
@@ -197,7 +197,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 
 ### 2.11 종목별 대표 배지 미션 게이팅 (✅ 구현됨 — 2026-08-13)
 
-> 티켓: `History/Migration/Ticket/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`
+> 티켓: `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`
 
 종목별로 "운동 목표 달성감이 가장 큰" 대표 배지 1종씩(5개 트리) — 걷기 `동네 산책러`, 러닝 `첫 숨결`, 사이클 `언덕의 도전자`, 등산 `첫 고도`, 트레일러닝 `야생의 주자` — 는 Rare 이상에서 기존 크로스게이트(`prerequisite_badge_names`에 같은 종목 다른 속성 배지 2개 OR)를 쓰지 않고, **미션 완료로만 얻는 전용 배지 1개**를 선행조건으로 요구한다. 나머지 142개 배지는 기존 크로스게이트 그대로 유지.
 
@@ -434,13 +434,13 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 ### 3.12 앰비언트(시스템) POI 드랍 — 3축(카테고리/등급비율/대상컬렉션) 배치 (재도입 2026-08-26)
 
 > 유저 행동과 무관하게 시스템이 POI에 아이템배지를 직접 배치하는 판정. 2026-08-25에 한 차례
-> 전면 제거됐다가([20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md))
-> 2026-08-26에 재설계 재도입됐다([20260826_009](../../History/Migration/Ticket/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)).
+> 전면 제거됐다가([20260825_004](../../Tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md))
+> 2026-08-26에 재설계 재도입됐다([20260826_009](../../Tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)).
 > 코드: `src/lib/ambient-drop/`.
 
 **제거 판단 경위 (오해 방지를 위해 유지)**: 제거 당시 `poi_drops`에 `source='system'` 행이
 0건이었던 것은 기능 결함이 아니라 미들웨어가 `/api/cron/*`를 307로 가로채 cron 자체가
-실행되지 않았기 때문이었다([20260825_003](../../History/Migration/Ticket/20260825_003_bug_미들웨어가-cron-요청을-차단.md)).
+실행되지 않았기 때문이었다([20260825_003](../../Tickets/20260825_003_bug_미들웨어가-cron-요청을-차단.md)).
 그럼에도 사용자가 관측과 무관하게 쓰지 않기로 결정했었고, 이후 드랍엔진 v2·컨텐츠·POI 체계가
 성숙한 만큼 **옛 설계(전역 커버리지 목표치 모델, `ambient_drop_policy`)를 복원하지 않고
 배치 실행형으로 새로 설계**했다.
@@ -574,7 +574,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 
 ### 3.15 종목별 드랍 가중치 — 걷기 계수 0.4 (2026-08-08)
 
-> 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `Service Plan/History/Migration/Ticket/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
+> 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `Service Plan/Tickets/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
 
 `jam-web/src/lib/drop-engine/constants.ts`에 `ACTIVITY_TYPE_DROP_WEIGHT`(walking: 0.4) + `DEFAULT_ACTIVITY_DROP_WEIGHT`(그 외 1.0) 추가. `getActivityDropWeight(act)`는 걷기이면서 축1 게이트(§2.10)를 통과한 활동에만 0.4를 반환.
 

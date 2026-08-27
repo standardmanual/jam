@@ -5,7 +5,7 @@
  * `/api/dev-login`이 만드는 고정 테스트 유저는 staging에서 로그인 우회 확인용으로
  * 계속 존재해야 하므로 DB에서 삭제할 수 없다 — 대신 프로덕션의 랭킹/팔로잉·팔로워/
  * 유저 검색 등 "공개 유저 목록" 조회에서만 조건부로 제외한다.
- * (Service Plan/History/Migration/Ticket/20260825_027 참고)
+ * (Service Plan/Tickets/20260825_027 참고)
  *
  * 환경 판별은 `/api/dev-login`의 isAllowedEnv()와 동일 기준이다 — 이중 구현 금지.
  */

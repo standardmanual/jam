@@ -80,4 +80,4 @@ MODULAR 변경 → 컴포넌트 반영 → Story 작성/수정 → Storybook 확
 
 - `jam-web/design-system/readme.md` — 파운데이션·폰트 설정·색인
 - `jam-web/docs/storybook/` — 아키텍처(03), 접근성 감사(09), 컴포넌트 후보(08), 빌드 리포트(12)
-- `Service Plan/History/Migration/ModulerTicket/` — MODULAR 개선 티켓 (DS-NNN)
+- `Service Plan/Tickets/Moduler/` — MODULAR 개선 티켓 (DS-NNN)
