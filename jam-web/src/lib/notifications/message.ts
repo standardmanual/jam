@@ -22,10 +22,11 @@
  *
  * 클라이언트 컴포넌트가 직접 import하므로 서버 전용 모듈(`./index`)에 의존하지 않는다.
  */
-import type { NotificationType } from '@/types/database'
+import type { BadgeRarity, NotificationType } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { RARITY_LABEL } from '@/lib/rarity'
 import { userFacingReasonLabel } from '@/lib/points/reasons'
+import type { RecapActivityBadge, RecapCheckinBadge, RecapItemBadge } from './types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 뷰 모델 — 서버(feed.ts)가 조인·재평가를 마친 뒤 넘기는 형태
@@ -201,6 +202,252 @@ function dayWord(days: number): string {
   return t(d.notifications.slotDayN, { days })
 }
 
+/** R11 묶음 행인가 — 대상 2건 이상이라 한 행으로 접힌 소식 */
+function isGrouped(payload: Record<string, unknown>): boolean {
+  return num(payload, 'target_count') >= 2
+}
+
+/** 묶음 대상 수 슬롯 (「미션 2개」의 "2개") */
+function targetCount(payload: Record<string, unknown>): string {
+  return t(d.notifications.slotCount, { count: num(payload, 'target_count') })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ① 활동 결산 — RECAP_CASEBOOK A~F가 이 구획의 명세다 (20260827_014)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** 대표 선정용 희귀도 서열 (R8 — 첫 획득 순서가 아니다) */
+const RARITY_RANK: Record<string, number> = { common: 0, rare: 1, legend: 2, mythic: 3 }
+
+function rarityRank(rarity: string): number {
+  return RARITY_RANK[rarity] ?? 0
+}
+
+/** payload의 객체 배열 필드 — JSONB라 무엇이든 들어올 수 있다 */
+function objList(payload: Record<string, unknown>, key: string): Record<string, unknown>[] {
+  const v = payload[key]
+  if (!Array.isArray(v)) return []
+  return v.filter(
+    (x): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
+  )
+}
+
+function asRarity(value: string): BadgeRarity {
+  return value === 'rare' || value === 'legend' || value === 'mythic' ? value : 'common'
+}
+
+/** 결산 payload를 문구·착지 판정이 쓰는 형태로 편다. 중복은 여기서 한 번만 제거한다 */
+export interface RecapContent {
+  /** 이 결산에 들어간 활동 수. 2건 이상이면 F2로 한 단계 올라간다 */
+  activityCount: number
+  activityBadges: RecapActivityBadge[]
+  checkins: RecapCheckinBadge[]
+  items: RecapItemBadge[]
+  /** legend·mythic 중 최상위 활동배지 (E1·A3의 헤드라인) */
+  rare: RecapActivityBadge | null
+  firstBadgeId: string
+  points: number
+  /** 배지 총량 — 체크인·아이템도 모두 배지라 총량이 성립한다(R5) */
+  totalBadges: number
+  /** 배지 종류 수(활동·체크인·아이템). 2 이상이면 총량으로 말한다 */
+  kinds: number
+}
+
+export function recapContent(payload: Record<string, unknown>): RecapContent {
+  const activityIds = new Set(
+    (Array.isArray(payload.activity_ids) ? payload.activity_ids : []).map((v) => String(v))
+  )
+
+  const seenActivity = new Set<string>()
+  const activityBadges: RecapActivityBadge[] = []
+  for (const raw of objList(payload, 'activity_badges')) {
+    const id = str(raw, 'id')
+    if (!id || seenActivity.has(id)) continue
+    seenActivity.add(id)
+    activityBadges.push({ id, name: str(raw, 'name'), rarity: asRarity(str(raw, 'rarity')) })
+  }
+
+  const seenCheckin = new Set<string>()
+  const checkins: RecapCheckinBadge[] = []
+  for (const raw of objList(payload, 'checkin_badges')) {
+    const badgeId = str(raw, 'badge_id')
+    if (!badgeId) continue
+    // 같은 배지를 하루에 두 번 찍으면 visit이 달라 별개 항목이지만, **배지 개수는 하나**다.
+    if (seenCheckin.has(badgeId)) continue
+    seenCheckin.add(badgeId)
+    checkins.push({
+      badge_id: badgeId,
+      poi_name: str(raw, 'poi_name'),
+      first: boolField(raw, 'first', true),
+      visit: num(raw, 'visit'),
+    })
+  }
+
+  const seenItem = new Set<string>()
+  const items: RecapItemBadge[] = []
+  for (const raw of objList(payload, 'item_badges')) {
+    const invId = str(raw, 'inventory_item_id')
+    if (!invId || seenItem.has(invId)) continue
+    seenItem.add(invId)
+    items.push({
+      inventory_item_id: invId,
+      badge_id: str(raw, 'badge_id'),
+      name: str(raw, 'name'),
+      rarity: asRarity(str(raw, 'rarity')),
+    })
+  }
+
+  // 희귀 헤드라인은 **활동배지**에서만 고른다 — 아이템 배지는 착지가 도감이 아니라
+  // 인벤토리 인스턴스라(A6) 등급 문구로 승격하면 갈 곳이 어긋난다.
+  let rare: RecapActivityBadge | null = null
+  for (const b of activityBadges) {
+    if (rarityRank(b.rarity) < RARITY_RANK.legend) continue
+    if (!rare || rarityRank(b.rarity) > rarityRank(rare.rarity)) rare = b
+  }
+
+  const totalBadges = activityBadges.length + checkins.length + items.length
+  const kinds =
+    (activityBadges.length > 0 ? 1 : 0) + (checkins.length > 0 ? 1 : 0) + (items.length > 0 ? 1 : 0)
+
+  return {
+    activityCount: activityIds.size,
+    activityBadges,
+    checkins,
+    items,
+    rare,
+    firstBadgeId: str(payload, 'first_badge_id'),
+    points: num(payload, 'points'),
+    totalBadges,
+    kinds,
+  }
+}
+
+/** 희귀도 최상위 대표 (R8). 동순위는 먼저 들어온 것 */
+function topByRarity<T extends { rarity: BadgeRarity }>(list: T[]): T | null {
+  let best: T | null = null
+  for (const item of list) {
+    if (!best || rarityRank(item.rarity) > rarityRank(best.rarity)) best = item
+  }
+  return best
+}
+
+/** 체크인 대표 — 최초 획득 쪽을 우선한다(F3, 20260826_001). 희귀도 축이 없다 */
+function topCheckin(list: RecapCheckinBadge[]): RecapCheckinBadge | null {
+  return list.find((c) => c.first) ?? list[0] ?? null
+}
+
+/**
+ * ⑥ 사람 단위 묶음 꼬리 (R15) — 「… 소식이 N건 더 있어요」.
+ * 대표 문장은 그대로 두고 꼬리만 붙인다(문형 9개를 두 배로 만들지 않는다).
+ */
+function withFollowingMore(
+  payload: Record<string, unknown>,
+  message: NotificationMessage
+): NotificationMessage {
+  const more = num(payload, 'more_count')
+  if (more < 1) return message
+  return {
+    template: message.template + d.notifications.msgFollowingMoreSuffix,
+    vars: { ...message.vars, moreCount: t(d.notifications.slotNewsCount, { count: more }) },
+  }
+}
+
+/**
+ * 결산 문구 — 사다리 A·B(구체) / C·D(총량) / E(승격) / F2(활동 묶음).
+ *
+ * 우선순위가 곧 사다리다.
+ *   1. 첫 배지 — 평생 1회라 무엇과 섞이든 헤드라인을 가져간다 (A8·E3)
+ *   2. 활동 2건 이상 — 종류·개수와 무관하게 F2로 올라간다 (R11)
+ *   3. 희귀 배지 — 강한 신호가 헤드라인 (A3·E1)
+ *   4. 1종 — 개체를 이름으로(A) / 대표 + 외 N(B)
+ *   5. 2종 이상 — 총량 (C·D)
+ * 포인트는 종류로 세지 않고 문장 꼬리로만 붙는다.
+ */
+function buildRecapMessage(payload: Record<string, unknown>): NotificationMessage {
+  const n = d.notifications
+  const c = recapContent(payload)
+  const vars: Record<string, string> = {}
+  const pointsSlot = c.points > 0 ? points(c.points) : ''
+
+  // ── 1. 첫 배지 (A8·E3) ──────────────────────────────────────────────────
+  if (c.firstBadgeId) {
+    return {
+      template: c.totalBadges > 1 ? n.msgRecapFirstBadgeMore : n.msgRecapFirstBadge,
+      vars: { firstBadge: n.slotFirstBadge },
+    }
+  }
+
+  // 보상이 하나도 없으면 문장을 만들 수 없다(F1은 애초에 소식을 만들지 않는다).
+  // 활동 밖 적립만 있는 결산은 포인트만 말한다.
+  if (c.totalBadges === 0) {
+    if (c.points <= 0) return { template: n.unknown, vars: {} }
+    return { template: n.recapHeadPointsOnly + n.recapTail, vars: { points: pointsSlot } }
+  }
+
+  const tail = pointsSlot ? n.recapTailPoints : n.recapTail
+  if (pointsSlot) vars.points = pointsSlot
+
+  // ── 2. 활동 2건 이상 (F2) ───────────────────────────────────────────────
+  if (c.activityCount >= 2) {
+    vars.activityCount = t(n.slotActivityCount, { count: c.activityCount })
+    vars.badgeCount = t(n.slotBadgeCount, { count: c.totalBadges })
+    return { template: n.recapHeadActivities + tail, vars }
+  }
+
+  // ── 3. 희귀 배지 승격 (A3·E1) ───────────────────────────────────────────
+  if (c.rare) {
+    vars.rarity = RARITY_LABEL[c.rare.rarity] ?? ''
+    vars.badgeName = c.rare.name
+    if (c.totalBadges === 1) return { template: n.recapHeadRareOne + tail, vars }
+    vars.badgeCount = t(n.slotBadgeCount, { count: c.totalBadges - 1 })
+    return { template: n.recapHeadRareMany + tail, vars }
+  }
+
+  // ── 4. 한 종류 (A·B) ────────────────────────────────────────────────────
+  if (c.kinds === 1) {
+    if (c.activityBadges.length > 0) {
+      const rep = topByRarity(c.activityBadges)
+      vars.badgeName = rep?.name ?? ''
+      if (c.activityBadges.length === 1) return { template: n.recapHeadActivityOne + tail, vars }
+      vars.badgeCount = t(n.slotBadgeCount, { count: c.activityBadges.length - 1 })
+      return { template: n.recapHeadActivityMany + tail, vars }
+    }
+
+    if (c.items.length > 0) {
+      const rep = topByRarity(c.items)
+      vars.itemName = rep?.name ?? ''
+      if (c.items.length === 1) return { template: n.recapHeadItemOne + tail, vars }
+      vars.itemCount = t(n.slotItemBadgeCount, { count: c.items.length - 1 })
+      return { template: n.recapHeadItemMany + tail, vars }
+    }
+
+    const rep = topCheckin(c.checkins)
+    const single = rep?.poi_name ?? ''
+    // A5 — 반복 획득 1건뿐이면 서술어가 다르다("~에 3번째 체크인 했어요").
+    // 포인트가 섞이면 그 문형에 꼬리를 붙일 수 없어 획득 문형으로 되돌린다
+    // (반복 체크인은 새 배지를 발급하지 않아 실제로는 포인트가 붙지 않는다).
+    if (c.checkins.length === 1 && rep && !rep.first && rep.visit > 1 && !pointsSlot) {
+      return {
+        template: n.msgRecapCheckinRepeated,
+        vars: { poiName: single, visitCount: String(rep.visit) },
+      }
+    }
+    const names = [...new Set(c.checkins.map((x) => x.poi_name).filter(Boolean))]
+    vars.poiName =
+      names.length > 1 ? t(n.slotPlaceMore, { name: single, count: names.length - 1 }) : single
+    return { template: n.recapHeadCheckin + tail, vars }
+  }
+
+  // ── 5. 두 종류 이상 — 총량 (C·D) ────────────────────────────────────────
+  vars.badgeCount = t(n.slotBadgeCount, { count: c.totalBadges })
+  // 배지만 있고 개수가 많으면(3개+) 숫자만으로는 뭘 받았는지 몰라 보러 가게 한다(C1).
+  // 포인트가 섞이면 정보가 둘이라 서술로 충분하다(C3·D1).
+  if (!pointsSlot && c.totalBadges >= 3) {
+    return { template: n.recapHeadTotalConfirm + n.recapTailConfirm, vars }
+  }
+  return { template: n.recapHeadTotal + tail, vars }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 26종 문구 — PRD §3 표가 이 함수의 명세다
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,7 +462,11 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
   const n = d.notifications
 
   switch (view.type) {
-    // ── ① 보상 획득 ────────────────────────────────────────────────────────
+    // ── ① 활동 결산 (20260827_014) ─────────────────────────────────────────
+    case 'activity_recap':
+      return buildRecapMessage(p)
+
+    // ── ① 레거시 6종 — 더 이상 생성하지 않는다(과거 행 렌더용) ──────────────
     case 'badge_earned': {
       const count = idList(p, 'badge_ids').length
       return {
@@ -265,6 +516,13 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
 
     // ── ② 컬렉션 ──────────────────────────────────────────────────────────
     case 'collection_slottable':
+      // R11 묶음은 컬렉션이 아니라 **배지를 센다** — count가 전체 합계다
+      if (isGrouped(p)) {
+        return {
+          template: n.msgCollectionSlottableGrouped,
+          vars: { itemCount: t(n.slotItemBadgeCount, { count: num(p, 'count') }) },
+        }
+      }
       return {
         template: n.msgCollectionSlottable,
         vars: {
@@ -273,8 +531,23 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
         },
       }
     case 'collection_near_complete':
-      return { template: n.msgCollectionNearComplete, vars: { bookName: str(p, 'book_name') } }
+      if (isGrouped(p)) {
+        return { template: n.msgCollectionNearCompleteGrouped, vars: { count: targetCount(p) } }
+      }
+      // R12 — 부족한 것을 이름으로 부른다. badge_name이 없는 과거 payload는 슬롯이
+      // 통째로 버려져 문장이 깨지므로, 그때만 완성 문구(#11 형태)로 물러난다.
+      return {
+        template: str(p, 'badge_name')
+          ? n.msgCollectionNearComplete
+          : n.msgCollectionNearCompleteGrouped,
+        vars: str(p, 'badge_name')
+          ? { badgeName: str(p, 'badge_name'), bookName: str(p, 'book_name') }
+          : { count: t(n.slotCount, { count: 1 }) },
+      }
     case 'collection_completable':
+      if (isGrouped(p)) {
+        return { template: n.msgCollectionCompletableGrouped, vars: { count: targetCount(p) } }
+      }
       return { template: n.msgCollectionCompletable, vars: { bookName: str(p, 'book_name') } }
 
     // ── ③ 내가 드랍한 아이템 배지 ──────────────────────────────────────────
@@ -286,25 +559,28 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
           vars: { actor: nameOf(view.actor), badgeName: str(p, 'badge_name') },
         }
       }
+      // R14 — 본인 닉네임을 부르지 않는다
       return {
         template: n.msgDropPickedUpMany,
-        vars: {
-          me: nameOf(view.me),
-          itemCount: t(n.slotItemBadgeCount, { count: badgeCount }),
-        },
+        vars: { itemCount: t(n.slotItemBadgeCount, { count: badgeCount }) },
       }
     }
-    case 'drop_spot_active':
-      return {
-        template: n.msgDropSpotActive,
-        vars: {
-          me: nameOf(view.me),
-          visitors: t(n.slotPeopleCount, { count: num(p, 'visitor_count') }),
-        },
+    case 'drop_spot_active': {
+      const visitors = t(n.slotPeopleCount, { count: num(p, 'visitor_count') })
+      if (isGrouped(p)) {
+        return {
+          template: n.msgDropSpotActiveGrouped,
+          vars: { placeCount: t(n.slotPlaceCount, { count: num(p, 'target_count') }), visitors },
+        }
       }
+      return { template: n.msgDropSpotActive, vars: { visitors } }
+    }
 
     // ── ④ 미션 ────────────────────────────────────────────────────────────
     case 'mission_milestone': {
+      if (isGrouped(p)) {
+        return { template: n.msgMissionMilestoneGrouped, vars: { count: targetCount(p) } }
+      }
       const current = num(p, 'current')
       const target = num(p, 'target')
       // milestone 키가 없으면 current/target 비율에서 파생한다 — 없다고 그냥 50% 문구로
@@ -313,29 +589,39 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       const template = milestone >= 80 ? n.msgMissionMilestone80 : n.msgMissionMilestone50
       return { template, vars: { missionTitle: str(p, 'mission_title') } }
     }
-    case 'mission_deadline':
+    case 'mission_deadline': {
+      const days = dayWord(num(p, 'days'))
+      // R11의 대가 — 묶으면 잔여량(12km·3일·2곳)이 사라진다. 단위가 달라 합칠 수도 없다
+      if (isGrouped(p)) {
+        return { template: n.msgMissionDeadlineGrouped, vars: { count: targetCount(p), days } }
+      }
       return {
         template: n.msgMissionDeadline,
         vars: {
           missionTitle: str(p, 'mission_title'),
-          days: dayWord(num(p, 'days')),
+          days,
           remaining: `${num(p, 'remaining')}${str(p, 'unit')}`,
         },
       }
+    }
     case 'mission_completed': {
-      const badgeCount = num(p, 'reward_badge_count')
-      const rewardPoints = num(p, 'reward_points')
-      const vars: Record<string, string> = { missionTitle: str(p, 'mission_title') }
-      if (badgeCount > 0) vars.badgeCount = t(n.slotCount, { count: badgeCount })
-      if (rewardPoints > 0) vars.points = points(rewardPoints)
-      const template =
-        badgeCount > 0 && rewardPoints > 0 ? n.msgMissionCompleted
-        : badgeCount > 0 ? n.msgMissionCompletedBadgeOnly
-        : rewardPoints > 0 ? n.msgMissionCompletedPointsOnly
-        : n.msgMissionCompletedNoReward
-      return { template, vars }
+      // R4 — 미션 소식은 「완료했다」만 말한다. 보상은 착지한 미션 상세에서 확인한다
+      const missionTitle = str(p, 'mission_title')
+      if (isGrouped(p)) {
+        return {
+          template: n.msgMissionCompletedGrouped,
+          vars: {
+            missionTitle,
+            count: t(n.slotCount, { count: Math.max(num(p, 'target_count') - 1, 1) }),
+          },
+        }
+      }
+      return { template: n.msgMissionCompleted, vars: { missionTitle } }
     }
     case 'mission_rank_up':
+      if (isGrouped(p)) {
+        return { template: n.msgMissionRankUpGrouped, vars: { count: targetCount(p) } }
+      }
       return {
         template: n.msgMissionRankUp,
         vars: {
@@ -344,19 +630,31 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
         },
       }
     case 'mission_ended':
-      return { template: n.msgMissionEnded, vars: { missionTitle: str(p, 'mission_title') } }
+      // 완료자만 축하한다. 묶음은 하나라도 미완료면 축하를 뺀다
+      if (isGrouped(p)) {
+        return {
+          template: boolField(p, 'all_completed', false)
+            ? n.msgMissionEndedDoneGrouped
+            : n.msgMissionEndedGrouped,
+          vars: { count: targetCount(p) },
+        }
+      }
+      return {
+        template: boolField(p, 'completed', false) ? n.msgMissionEndedDone : n.msgMissionEnded,
+        vars: { missionTitle: str(p, 'mission_title') },
+      }
 
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {
+      // R14 — 내 알림함이라 대상은 나로 확정돼 있다. 본인 닉네임을 부르지 않는다
       const count = Math.max(view.actorCount, idList(p, 'actor_ids').length, 1)
-      const me = nameOf(view.me)
       if (count <= 1) {
-        return { template: n.msgFollowedOne, vars: { actor: nameOf(view.actor), me } }
+        return { template: n.msgFollowedOne, vars: { actor: nameOf(view.actor) } }
       }
       if (count === 2 && view.actor2) {
         return {
           template: n.msgFollowedTwo,
-          vars: { actor: nameOf(view.actor), actor2: nameOf(view.actor2), me },
+          vars: { actor: nameOf(view.actor), actor2: nameOf(view.actor2) },
         }
       }
       return {
@@ -364,46 +662,44 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
         vars: {
           actor: nameOf(view.actor),
           others: t(n.slotPeopleCount, { count: count - 1 }),
-          me,
         },
       }
     }
-    case 'mutual_follow':
-      return { template: n.msgMutualFollow, vars: { actor: nameOf(view.actor) } }
 
     // ── ⑥ 소셜 — 팔로우한 사람의 활동 ──────────────────────────────────────
+    // R15 — 한 사람의 소식이 하루 2건 이상이면 대표 하나 + "소식이 N건 더 있어요"
     case 'following_rare_badge': {
-      return {
+      return withFollowingMore(p, {
         template: `${n.msgFollowingActorPrefix}${n.msgRareBadgeEarned}`,
         vars: {
           actor: nameOf(view.actor),
           rarity: RARITY_LABEL[str(p, 'rarity')] ?? '',
           badgeName: str(p, 'badge_name'),
         },
-      }
+      })
     }
     case 'following_collection_complete':
-      return {
+      return withFollowingMore(p, {
         template: n.msgFollowingCollectionComplete,
         vars: { actor: nameOf(view.actor), bookName: str(p, 'book_name') },
-      }
+      })
     case 'following_mission_complete': {
       const count = Math.max(view.actorCount, idList(p, 'actor_ids').length, 1)
       const missionTitle = str(p, 'mission_title')
       if (count <= 1) {
-        return {
+        return withFollowingMore(p, {
           template: n.msgFollowingMissionCompleteOne,
           vars: { actor: nameOf(view.actor), missionTitle },
-        }
+        })
       }
-      return {
+      return withFollowingMore(p, {
         template: n.msgFollowingMissionCompleteMany,
         vars: {
           actor: nameOf(view.actor),
           others: t(n.slotPeopleCount, { count: count - 1 }),
           missionTitle,
         },
-      }
+      })
     }
 
     // ── ⑧ 계정·시스템 ─────────────────────────────────────────────────────

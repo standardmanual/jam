@@ -470,7 +470,8 @@ export const ko = {
     progressDone: '달성 완료',
     progressPct: '{pct}% 달성',
     rewardSectionTitle: '보상',
-    rewardPointsLine: 'JAM 포인트 {points}P',
+    /** 20260827_014 — 「JAM 포인트」·「1200P」 표기는 UX 가이드 §3 Bad. 「1,200 포인트」로 통일 */
+    rewardPointsLine: '{points} 포인트',
     statusViewButton: '미션 상황 보기',
     joinConfirmBody: '한번 참가하면 취소할 수 없어요. 참가할까요?',
     joinConfirming: '처리 중',
@@ -666,8 +667,15 @@ export const ko = {
     slotItemBadgeCount: '아이템 배지 {count}개',
     slotCount: '{count}개',
     slotPeopleCount: '{count}명',
+    /** #18 묶음 — 「드랍한 3곳에 …」 */
+    slotPlaceCount: '{count}곳',
+    /** ⑥ 사람 단위 묶음 — 「소식이 1건 더 있어요」 (R15) */
+    slotNewsCount: '{count}건',
+    /** 결산 F2 — 「활동 5건에서 …」 */
+    slotActivityCount: '활동 {count}건',
     slotPlaceMore: '{name} 외 {count}곳',
-    slotPoints: '{amount} JAM 포인트',
+    /** R3 — 유저 노출 문구의 화폐 단위는 「포인트」다(「JAM 포인트」·「P」 금지) */
+    slotPoints: '{amount} 포인트',
     slotRank: '{rank}위',
     slotDaysOrdinal: '{days}일째',
     slotFirstBadge: '첫 배지',
@@ -676,54 +684,101 @@ export const ko = {
     slotDay3: '사흘',
     slotDayN: '{days}일',
 
-    // ── ① 보상 획득 ──
-    msgBadgeEarned: '오늘 활동으로 {badgeCount}를 획득했어요',
-    /** 앞에 등급 라벨(Common/Rare/Legend/Mythic)이 고정 텍스트로 붙는다 */
-    msgRareBadgeEarned: "{rarity} 배지 '{badgeName}'{을/를} 획득했어요",
-    msgItemBadgeEarned: '활동 중에 {itemCount}를 획득했어요',
+    // ── ① 활동 결산 (RECAP_CASEBOOK A~F / 20260827_014) ──
+    //
+    // 문장을 [머리] + [꼬리] 두 조각으로 조립한다. 포인트는 「종류」가 아니라 문장 꼬리에
+    // 붙는 부속이라(티켓 §A), 머리마다 포인트 있는 판·없는 판을 따로 쓰면 문구가 두 배로
+    // 늘고 서로 어긋난다. 꼬리 하나만 갈아 끼운다.
+    //
+    //   recapHeadActivityOne + recapTail       → 한강 러너 배지를 획득했어요            (A1)
+    //   recapHeadActivityOne + recapTailPoints → 한강 러너 배지와 50 포인트를 획득했어요 (A2)
+    recapHeadActivityOne: '{badgeName} 배지',
+    recapHeadActivityMany: '{badgeName} 외 {badgeCount}',
+    recapHeadRareOne: '{rarity} 배지 {badgeName}',
+    recapHeadRareMany: '{rarity} 배지 {badgeName} 외 {badgeCount}',
+    recapHeadItemOne: '{itemName}',
+    recapHeadItemMany: '{itemName} 외 {itemCount}',
+    recapHeadCheckin: '{poiName}에서 체크인 배지',
+    recapHeadTotal: '{badgeCount}',
+    /** C1 — 숫자만으로는 뭘 받았는지 몰라 보러 가게 한다 */
+    recapHeadTotalConfirm: '획득한 {badgeCount}',
+    recapHeadActivities: '{activityCount}에서 {badgeCount}',
+    /** 활동 밖 적립(믹스 위로 포인트 등)만 남은 결산 */
+    recapHeadPointsOnly: '{points}',
+    recapTail: '{을/를} 획득했어요',
+    recapTailPoints: '{와/과} {points}{을/를} 획득했어요',
+    recapTailConfirm: '{을/를} 확인해보세요',
+    /** A5 — 「~에서 배지를 획득하다」와 서술어가 달라 조사도 「에」다 */
+    msgRecapCheckinRepeated: '{poiName}에 {visitCount}번째 체크인 했어요',
+    msgRecapFirstBadge: '{firstBadge}가 도착했어요',
+    msgRecapFirstBadgeMore: '{firstBadge}가 도착했어요. 프로필을 확인해보세요',
+
+    // ── ① 레거시 6종 — 20260827_014부터 생성하지 않는다(과거 행 렌더용) ──
+    msgBadgeEarned: '오늘 활동으로 {badgeCount}{을/를} 획득했어요',
+    /** ⑥ #29도 이 템플릿을 재사용한다 — 살아 있는 문구다 */
+    msgRareBadgeEarned: '{rarity} 배지 {badgeName}{을/를} 획득했어요',
+    msgItemBadgeEarned: '활동 중에 {itemCount}{을/를} 획득했어요',
     msgCheckinBadgeEarned: '{poiName}에서 체크인 배지를 획득했어요',
-    /** 같은 체크인 배지를 두 번째 이상 획득했을 때 msgCheckinBadgeEarned 대신 쓴다(20260826_004) */
-    msgCheckinBadgeRepeated: '{poiName}에서 {visitCount}번째 체크인 했어요',
-    msgPointsEarned: '오늘 획득한 배지로 {points}를 획득했어요',
+    msgCheckinBadgeRepeated: '{poiName}에 {visitCount}번째 체크인 했어요',
+    msgPointsEarned: '오늘 획득한 배지로 {points}{을/를} 획득했어요',
     msgFirstBadge: '{firstBadge}가 도착했어요',
 
     // ── ② 컬렉션 ──
-    msgCollectionSlottable: "'{bookName}'에 넣을 수 있는 아이템 배지가 {count} 있어요",
-    msgCollectionNearComplete: "'{bookName}', 한 칸만 남았어요",
-    msgCollectionCompletable: "'{bookName}'{을/를} 다 모았어요. 컬렉션에 추가해보세요",
+    msgCollectionSlottable: '{bookName}에 넣을 수 있는 아이템 배지가 {count} 있어요',
+    /** R11 묶음 — 컬렉션이 아니라 **배지를 센다.** 착지도 배지가 있는 곳(인벤토리)이다 */
+    msgCollectionSlottableGrouped: '컬렉션에 넣을 수 있는 {itemCount}{이/가} 있어요',
+    /** R12 — 부족한 것을 이름으로 부른다. 묶음에서는 성립하지 않는다 */
+    msgCollectionNearComplete: '{badgeName}{을/를} 찾아 {bookName}{을/를} 완성해보세요',
+    msgCollectionNearCompleteGrouped: '한 칸만 남은 컬렉션이 {count} 있어요',
+    /** R13 — 컬렉션의 목표는 「완성」이다(「추가」·「장착」 금지) */
+    msgCollectionCompletable: '{bookName}{을/를} 다 모았어요. 컬렉션을 완성해보세요',
+    msgCollectionCompletableGrouped: '다 모은 컬렉션 {count}{을/를} 완성해보세요',
 
     // ── ③ 내가 드랍한 아이템 배지 ──
-    msgDropPickedUpOne: "{actor}님이 '{badgeName}'{을/를} 픽업했어요",
-    msgDropPickedUpMany: '{me}님의 드랍 {itemCount}가 픽업됐어요',
-    msgDropSpotActive: '{me}님이 드랍한 자리에 {visitors}이 다녀갔어요',
+    msgDropPickedUpOne: '{actor}님이 {badgeName}{을/를} 픽업했어요',
+    /** 묶음은 착지가 없다 — 픽업된 아이템은 소프트 삭제 상태라 갈 곳이 없다 */
+    msgDropPickedUpMany: '드랍한 {itemCount}{이/가} 픽업됐어요',
+    /** R14 — 본인 닉네임을 부르지 않는다. 「자리」→「곳」 */
+    msgDropSpotActive: '드랍한 곳에 {visitors}{이/가} 다녀갔어요',
+    msgDropSpotActiveGrouped: '드랍한 {placeCount}에 {visitors}{이/가} 다녀갔어요',
 
     // ── ④ 미션 ──
-    msgMissionMilestone50: "'{missionTitle}', 절반을 넘었어요",
-    msgMissionMilestone80: "'{missionTitle}', 80%를 넘었어요",
-    msgMissionDeadline: "'{missionTitle}'{이/가} {days} 뒤 끝나요. {remaining} 남았어요",
-    msgMissionCompleted: "'{missionTitle}'{을/를} 완료했어요. 배지 {badgeCount}와 {points}를 획득했어요",
-    msgMissionCompletedBadgeOnly: "'{missionTitle}'{을/를} 완료했어요. 배지 {badgeCount}를 획득했어요",
-    msgMissionCompletedPointsOnly: "'{missionTitle}'{을/를} 완료했어요. {points}를 획득했어요",
-    msgMissionCompletedNoReward: "'{missionTitle}'{을/를} 완료했어요",
-    msgMissionRankUp: "'{missionTitle}'에서 {rank}로 올라섰어요",
-    msgMissionEnded: "'{missionTitle}'{이/가} 끝났어요. 결과를 확인해보세요",
+    msgMissionMilestone50: '{missionTitle}, 절반을 넘었어요',
+    msgMissionMilestone80: '{missionTitle}, 80%를 넘었어요',
+    /** 50%·80% 구간이 섞일 수 있어 구간을 말하지 않는다 */
+    msgMissionMilestoneGrouped: '미션 {count}{이/가} 목표에 가까워졌어요',
+    msgMissionDeadline: '{missionTitle}{이/가} {days} 뒤 끝나요. {remaining} 남았어요',
+    msgMissionDeadlineGrouped: '미션 {count}{이/가} {days} 뒤 끝나요',
+    /** R4 — 미션 소식은 「완료했다」만 말한다. 보상은 착지한 미션 상세에서 본다 */
+    msgMissionCompleted: '{missionTitle}{을/를} 완료했어요',
+    msgMissionCompletedGrouped: '{missionTitle} 외 미션 {count}{을/를} 완료했어요',
+    msgMissionRankUp: '{missionTitle}에서 {rank}로 올라섰어요',
+    msgMissionRankUpGrouped: '미션 {count}에서 순위가 올랐어요',
+    /** #24는 완료자에게만 축하한다 — 못 끝낸 사람에게 「축하해요!」는 조롱이 된다 */
+    msgMissionEndedDone: '축하해요! {missionTitle}{을/를} 끝냈어요. 결과를 확인해보세요',
+    msgMissionEnded: '{missionTitle}{이/가} 끝났어요. 결과를 확인해보세요',
+    msgMissionEndedDoneGrouped: '축하해요! 미션 {count}{을/를} 끝냈어요. 결과를 확인해보세요',
+    msgMissionEndedGrouped: '미션 {count}{이/가} 끝났어요. 결과를 확인해보세요',
 
     // ── ⑤ 소셜 — 나에게 ──
-    msgFollowedOne: '{actor}님이 {me}님을 팔로우해요',
-    msgFollowedTwo: '{actor}님과 {actor2}님이 {me}님을 팔로우해요',
-    msgFollowedMany: '{actor}님 외 {others}이 {me}님을 팔로우해요',
-    msgMutualFollow: '{actor}님과 서로 팔로우하게 됐어요',
+    /** R14 — 내 알림함이라 대상은 나로 확정돼 있다. 「시현님을」을 부르지 않는다 */
+    msgFollowedOne: '{actor}님이 팔로우해요',
+    msgFollowedTwo: '{actor}님과 {actor2}님이 팔로우해요',
+    msgFollowedMany: '{actor}님 외 {others}이 팔로우해요',
 
     // ── ⑥ 소셜 — 팔로우한 사람의 활동 ──
     /** 뒤에 msgRareBadgeEarned가 이어 붙는다 (등급 라벨은 그 안의 {rarity} 슬롯) */
     msgFollowingActorPrefix: '{actor}님이 ',
-    msgFollowingCollectionComplete: "{actor}님이 '{bookName}'{을/를} 다 모았어요",
-    msgFollowingMissionCompleteOne: "{actor}님이 '{missionTitle}'{을/를} 완료했어요",
-    msgFollowingMissionCompleteMany: "{actor}님 외 {others}이 '{missionTitle}'{을/를} 완료했어요",
+    msgFollowingCollectionComplete: '{actor}님이 {bookName}{을/를} 다 모았어요',
+    msgFollowingMissionCompleteOne: '{actor}님이 {missionTitle}{을/를} 완료했어요',
+    msgFollowingMissionCompleteMany: '{actor}님 외 {others}이 {missionTitle}{을/를} 완료했어요',
+    /** R15 — 한 사람의 소식이 하루 2건 이상이면 대표 하나 + 나머지는 개수로 접는다 */
+    msgFollowingMoreSuffix: '. 소식이 {moreCount} 더 있어요',
 
     // ── ⑧ 계정·시스템 (경고 스타일 — 렌더 시점에 현재 상태로 재평가) ──
     msgStravaDisconnected: 'Strava 동기화가 끊겼어요. 다시 동기화해야 배지를 획득할 수 있어요',
-    msgSyncStalled: '{days} 활동을 못 불러오고 있어요. Strava 동기화가 끊겼을 수 있어요',
+    /** #40(끊김)과 원인이 달라 해결책도 다르다 — 토큰은 멀쩡한데 새 활동이 안 들어오는 경우 */
+    msgSyncStalled: '{days} 새 활동이 없어요. Strava에 활동이 기록됐는지 확인해보세요',
     msgInventoryFull: '인벤토리가 꽉 찼어요. {maxSlots}까지만 보관할 수 있어서 픽업이 안 될 수 있어요',
     msgPointsIn: '{points}가 들어왔어요 ({reason})',
     msgPointsInNoReason: '{points}가 들어왔어요',
@@ -749,7 +804,7 @@ export const ko = {
     selectRangeError: '아이템 2~10개를 선택해주세요.',
     itemsNotFound: '아이템을 찾을 수 없어요.',
     recipeFail: '믹스에 실패했어요. 아이템이 소각됐어요.',
-    consolationPoints: ' (위로 JAM 포인트 +{points})',
+    consolationPoints: ' (위로 포인트 +{points})',
     genericError: '오류가 발생했어요.',
     genericFail: '믹스 실패',
   },

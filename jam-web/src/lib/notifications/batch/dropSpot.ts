@@ -11,11 +11,12 @@
  * `drop_spot_active:{poi_id}:{KST주}` + `once`로 건다 — 집계 창이 "지난 7일 롤링"이라
  * 어느 요일에 돌아도 결과가 같고, cron 재시도·요일 누락에 흔들리지 않는다.
  */
-import { scopedGroupKey } from '@/lib/notifications/groupKey'
+import { groupedTargetsKey, scopedGroupKey } from '@/lib/notifications/groupKey'
 import {
   DAY_MS,
   fetchAllRows,
   fetchAllRowsIn,
+  foldTargets,
   kstDateOffset,
   kstWeekKey,
   type BatchContext,
@@ -70,7 +71,26 @@ export function selectDropSpotDrafts(input: DropSpotInput): NotificationDraft[] 
     })
   }
 
-  return drafts
+  // R11 — 드랍 지점 2곳 이상이면 「드랍한 3곳에 31명이 다녀갔어요」 한 행.
+  // 인원은 지점별 집계의 **합**이다. 같은 사람이 두 곳을 다녀가면 2명으로 세지만,
+  // 지점별로 이미 본인을 제외한 고유 인원이라 실사용에서 벌어질 폭이 작다.
+  return foldTargets(drafts, (group) => {
+    let visitors = 0
+    const poiIds: string[] = []
+    for (const g of group) {
+      if (g.type !== 'drop_spot_active') continue
+      visitors += g.payload.visitor_count
+      poiIds.push(g.payload.poi_id ?? '')
+    }
+    if (visitors <= 0) return null
+    return {
+      userId: group[0].userId,
+      type: 'drop_spot_active',
+      payload: { visitor_count: visitors, target_count: group.length },
+      groupKey: groupedTargetsKey('drop_spot_active', poiIds, input.weekKey),
+      mode: 'once',
+    }
+  })
 }
 
 /** `scanned`는 **활성 드랍 수**다. 드랍이 있는데 초안이 0이면 열람 집계나 POI 이름 매칭이 깨진 것 */

@@ -8,7 +8,14 @@
  */
 import { vi } from 'vitest'
 import { kstDateString, kstHour, kstSixHourBlock } from '../kst'
-import { scopedGroupKey, syncGroupKey, dailyGroupKey, sixHourGroupKey } from '../groupKey'
+import {
+  scopedGroupKey,
+  syncGroupKey,
+  dailyGroupKey,
+  sixHourGroupKey,
+  groupFingerprint,
+  groupedTargetsKey,
+} from '../groupKey'
 import { bumpsBadgeFor, NON_BUMPING_NOTIFICATION_TYPES } from '../types'
 import type { NotificationType } from '@/types/database'
 
@@ -108,6 +115,7 @@ describe('group_key 빌더 — type 접두가 종류 간 충돌을 막는다', (
 
 describe('bumps_badge 파생 — ① 보상 획득 6종만 false', () => {
   const REWARD_TYPES: NotificationType[] = [
+    'activity_recap',
     'badge_earned',
     'rare_badge_earned',
     'item_badge_earned',
@@ -120,24 +128,52 @@ describe('bumps_badge 파생 — ① 보상 획득 6종만 false', () => {
     'collection_slottable', 'collection_near_complete', 'collection_completable',
     'drop_picked_up', 'drop_spot_active',
     'mission_milestone', 'mission_deadline', 'mission_completed', 'mission_rank_up', 'mission_ended',
-    'followed', 'mutual_follow',
+    'followed',
     'following_rare_badge', 'following_collection_complete',
     'following_mission_complete',
     'strava_disconnected', 'sync_stalled', 'inventory_full',
     'admin_points_changed', 'announcement',
   ]
 
-  it('보상 획득 6종은 dot을 켜지 않는다 (동기화 화면에서 이미 봤다)', () => {
+  it('보상 획득(결산 + 레거시 6종)은 dot을 켜지 않는다 (동기화 화면에서 이미 봤다)', () => {
     for (const type of REWARD_TYPES) expect(bumpsBadgeFor(type)).toBe(false)
-    expect(NON_BUMPING_NOTIFICATION_TYPES.size).toBe(6)
+    expect(NON_BUMPING_NOTIFICATION_TYPES.size).toBe(REWARD_TYPES.length)
   })
 
-  it('나머지 20종은 dot을 켠다', () => {
+  it('나머지는 dot을 켠다', () => {
     for (const type of OTHER_TYPES) expect(bumpsBadgeFor(type)).toBe(true)
   })
 
-  it('26종 전부를 빠짐없이 분류한다', () => {
+  it('쓰는 종류 전부를 빠짐없이 분류한다 (20260827_014 — 결산 추가, 맞팔 제거)', () => {
     expect(REWARD_TYPES.length + OTHER_TYPES.length).toBe(26)
     expect(new Set([...REWARD_TYPES, ...OTHER_TYPES]).size).toBe(26)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// R11 묶음 키 — 대상 집합의 지문 (티켓 20260827_014)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('groupedTargetsKey — 대상 집합이 그대로면 다시 알리지 않는다', () => {
+  it('순서가 달라도 같은 집합이면 같은 키다', () => {
+    expect(groupFingerprint(['a', 'b', 'c'])).toBe(groupFingerprint(['c', 'a', 'b']))
+  })
+
+  it('대상이 하나라도 바뀌면 새 상태이므로 키가 바뀐다', () => {
+    expect(groupFingerprint(['a', 'b'])).not.toBe(groupFingerprint(['a', 'b', 'c']))
+    expect(groupFingerprint(['a', 'b'])).not.toBe(groupFingerprint(['a']))
+  })
+
+  it('대상이 많아도 키 길이가 폭발하지 않는다 — (user_id, group_key) UNIQUE 인덱스 상한', () => {
+    const many = Array.from({ length: 100 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`)
+    const key = groupedTargetsKey('collection_near_complete', many)
+    expect(key.length).toBeLessThan(80)
+    expect(key.startsWith('collection_near_complete:group:')).toBe(true)
+  })
+
+  it('scope(주·일자)가 다르면 같은 집합이어도 키가 갈린다', () => {
+    expect(groupedTargetsKey('mission_deadline', ['m1', 'm2'], '2026-08-25')).not.toBe(
+      groupedTargetsKey('mission_deadline', ['m1', 'm2'], '2026-08-26')
+    )
   })
 })

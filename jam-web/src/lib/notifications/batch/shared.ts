@@ -178,6 +178,45 @@ export async function fetchAllRowsIn<T, V>(
   return all
 }
 
+/**
+ * R11 — 같은 유저·같은 종류의 초안이 **2건 이상이면 한 행으로 접는다** (티켓 20260827_014).
+ *
+ * 대상(컬렉션·미션·POI)마다 초안을 만드는 구조는 그대로 두고, 마지막에 한 번 접는다.
+ * 판정 로직과 묶음 규칙을 섞지 않기 위해서다 — 판정은 대상 단위가 자연스럽고, 묶음은
+ * "결과가 몇 건이냐"만 보면 된다.
+ *
+ * @param combine 접힌 행 1건을 만든다. `null`을 돌려주면 접지 않고 원래 초안을 유지한다
+ */
+export function foldTargets(
+  drafts: NotificationDraft[],
+  combine: (group: NotificationDraft[]) => NotificationDraft | null
+): NotificationDraft[] {
+  const buckets = new Map<string, NotificationDraft[]>()
+  const order: string[] = []
+  for (const draft of drafts) {
+    const key = `${draft.userId}\u0000${draft.type}`
+    const list = buckets.get(key)
+    if (list) {
+      list.push(draft)
+      continue
+    }
+    buckets.set(key, [draft])
+    order.push(key)
+  }
+
+  const out: NotificationDraft[] = []
+  for (const key of order) {
+    const list = buckets.get(key) ?? []
+    if (list.length < 2) {
+      out.push(...list)
+      continue
+    }
+    const folded = combine(list)
+    out.push(...(folded ? [folded] : list))
+  }
+  return out
+}
+
 export interface BatchStepResult {
   step: string
   /**

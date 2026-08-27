@@ -40,3 +40,41 @@ export function dailyGroupKey(type: NotificationType, at: Date | string | number
 export function sixHourGroupKey(type: NotificationType, at: Date | string | number = new Date()): string {
   return scopedGroupKey(type, kstSixHourBlock(at))
 }
+
+/**
+ * R11 묶음 키 — 대상 2건 이상을 한 행으로 접을 때 쓴다 (티켓 20260827_014).
+ *
+ * ## 왜 대상 집합의 지문(fingerprint)인가
+ *
+ * 묶기 전 각 소식은 대상 단위 키 + `once`로 **재발송을 막고 있었다**
+ * (`collection_near_complete:{book_id}`는 컬렉션당 평생 1회). 묶음 키를 날짜 단위로
+ * 바꾸면 그 보장이 사라져 같은 상태를 매일 다시 알린다.
+ *
+ * 그래서 키에 **대상 집합 자체**를 넣는다. 집합이 그대로면 키가 같아 `once`가 막고,
+ * 대상이 하나라도 늘거나 빠지면 새 상태이므로 새 키가 된다.
+ *
+ * 대상 id를 그대로 이어 붙이면 컬렉션 100개 × UUID 36자로 키가 3KB를 넘어
+ * `(user_id, group_key)` UNIQUE 인덱스의 btree 상한(≈2704B)에 걸린다. 그래서 **해시**한다.
+ * 충돌해도 같은 유저의 같은 종류 안에서만 문제가 되고 확률이 무시할 수준이라
+ * 암호학적 해시를 쓰지 않는다(FNV-1a 32비트 2벌 = 64비트).
+ */
+export function groupFingerprint(parts: readonly string[]): string {
+  const joined = [...parts].sort().join('|')
+  let h1 = 0x811c9dc5
+  let h2 = 0x01000193
+  for (let i = 0; i < joined.length; i += 1) {
+    const code = joined.charCodeAt(i)
+    h1 = Math.imul(h1 ^ code, 0x01000193) >>> 0
+    h2 = Math.imul(h2 ^ code, 0x85ebca6b) >>> 0
+  }
+  return h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')
+}
+
+/** `{type}:group:{scope…}:{지문}` — R11로 접힌 행의 묶음 키 */
+export function groupedTargetsKey(
+  type: NotificationType,
+  targetKeys: readonly string[],
+  ...scope: (string | number)[]
+): string {
+  return scopedGroupKey(type, 'group', ...scope, groupFingerprint(targetKeys))
+}
