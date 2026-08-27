@@ -22,7 +22,7 @@ export const d = dictionaries[DEFAULT_LOCALE]
 /**
  * `{변수}` 보간 헬퍼.
  *
- *   t(d.profile.pointBalance, { count: '1,200' }) // "1,200P"
+ *   t(d.profile.pointBalance, { count: '1,200' }) // "1,200 포인트"
  *
  * 보간이 필요 없는 문구는 딕셔너리를 직접 참조하세요.
  */

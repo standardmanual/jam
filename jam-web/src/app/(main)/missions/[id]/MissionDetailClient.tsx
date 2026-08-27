@@ -8,7 +8,7 @@ import SafeImage from '@/components/SafeImage'
 import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
 import TopNav from '@/components/ui/TopNav'
-import { LockIcon } from '@/components/ui/icons'
+import { LockIcon, CoinIcon } from '@/components/ui/icons'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import ListRowCard from '@/components/ui/ListRowCard'
 import type { MissionRow, MissionCondition, BadgeRarity } from '@/types/database'
@@ -332,16 +332,16 @@ export default function MissionDetailClient({
                 </Link>
               ))}
 
-              {/* 포인트 보상 행: ListRowCard + 서클 'P' 아이콘 */}
+              {/* 포인트 보상 행: ListRowCard + 서클 CoinIcon */}
               {mission.reward_points ? (
                 <ListRowCard
                   icon={
                     <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{ background: 'var(--color-primary)' }}>
-                      <span className="text-[15px] font-bold" style={{ color: '#fff' }}>P</span>
+                      <CoinIcon className="w-5 h-5" style={{ color: '#fff' }} />
                     </div>
                   }
-                  title={t(d.missions.rewardPointsLine, { points: mission.reward_points })}
+                  title={t(d.missions.rewardPointsLine, { points: mission.reward_points.toLocaleString('ko-KR') })}
                   subtitle="미션 완료 즉시 지급"
                 />
               ) : null}
