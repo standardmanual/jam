@@ -10,7 +10,6 @@ import { vi } from 'vitest'
 import { kstDateString, kstHour, kstSixHourBlock } from '../kst'
 import {
   scopedGroupKey,
-  syncGroupKey,
   dailyGroupKey,
   sixHourGroupKey,
   groupFingerprint,
@@ -81,18 +80,16 @@ describe('kstHour / kstSixHourBlock — 6시간 묶음 창 (#13 픽업됨)', () 
 })
 
 describe('group_key 빌더 — type 접두가 종류 간 충돌을 막는다', () => {
-  it('UNIQUE 인덱스가 (user_id, group_key)뿐이라 같은 활동의 서로 다른 소식이 충돌하면 안 된다', () => {
-    const activityId = 1234567890
+  it('UNIQUE 인덱스가 (user_id, group_key)뿐이라 같은 시간창의 서로 다른 소식이 충돌하면 안 된다', () => {
+    // 실제 호출부가 쓰는 조합 — 셋 다 dailyGroupKey로 같은 KST 하루를 묶는다
+    // (recap.ts / follows/route.ts / strava/sync.ts). type 접두가 없으면 한 행으로 병합된다.
+    const at = '2026-08-24T15:00:00Z'
     const keys = [
-      syncGroupKey('activity_recap', activityId),
-      syncGroupKey('following_rare_badge', activityId),
-      syncGroupKey('inventory_full', activityId),
+      dailyGroupKey('activity_recap', at),
+      dailyGroupKey('followed', at),
+      dailyGroupKey('strava_disconnected', at),
     ]
     expect(new Set(keys).size).toBe(3)
-  })
-
-  it('syncGroupKey는 {type}:sync:{activityId}', () => {
-    expect(syncGroupKey('activity_recap', 42)).toBe('activity_recap:sync:42')
   })
 
   it('dailyGroupKey는 KST 날짜를 쓴다', () => {
