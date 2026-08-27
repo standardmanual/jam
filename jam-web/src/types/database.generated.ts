@@ -111,8 +111,8 @@ export type Database = {
           max_active_per_poi: number
           rarity_common: number
           rarity_legend: number
-          rarity_mythic: number
           rarity_mode: string
+          rarity_mythic: number
           rarity_rare: number
           updated_at: string
         }
@@ -129,8 +129,8 @@ export type Database = {
           max_active_per_poi?: number
           rarity_common?: number
           rarity_legend?: number
-          rarity_mythic?: number
           rarity_mode?: string
+          rarity_mythic?: number
           rarity_rare?: number
           updated_at?: string
         }
@@ -147,8 +147,8 @@ export type Database = {
           max_active_per_poi?: number
           rarity_common?: number
           rarity_legend?: number
-          rarity_mythic?: number
           rarity_mode?: string
+          rarity_mythic?: number
           rarity_rare?: number
           updated_at?: string
         }
@@ -2219,6 +2219,7 @@ export type Database = {
         | "inventory_full"
         | "admin_points_changed"
         | "announcement"
+        | "activity_recap"
       trade_status: "pending" | "accepted" | "rejected" | "expired"
     }
     CompositeTypes: {
@@ -2386,6 +2387,7 @@ export const Constants = {
         "inventory_full",
         "admin_points_changed",
         "announcement",
+        "activity_recap",
       ],
       trade_status: ["pending", "accepted", "rejected", "expired"],
     },

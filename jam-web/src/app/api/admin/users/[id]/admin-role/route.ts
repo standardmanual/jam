@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!userRow) return NextResponse.json({ error: '유저를 찾을 수 없습니다.' }, { status: 404 })
 
   const usersQuery = supabase.from('users')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UsersRow와 일치
+  // @ts-expect-error Supabase update 페이로드 타입 추론 제한(never) — 타입 재생성 후에도 동일 (Supabase 라이브러리 제약, 실제 필드는 UsersRow와 일치)
   const { error } = await usersQuery.update({ is_admin: isAdmin }).eq('id', userId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
