@@ -7,13 +7,25 @@ import {
   createColumnHelper,
   useTable,
   type ColumnVisibilityState,
+  type RowSelectionState,
   type SortingState,
   type Updater,
 } from '@tanstack/react-table'
+import { Button } from '@/components/admin/ui/button'
+import { Checkbox } from '@/components/admin/ui/checkbox'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from '@/components/admin/ui/alert-dialog'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
 import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
+import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
 import type { PoiListRow } from './PoiList'
 
 interface PoiTableProps {
@@ -43,7 +55,27 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+
+  // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
+  // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
+  // 지정한다(20260827_002 게이트 리뷰에서 alert-dialog.tsx 팔레트 전환 후 미연결 시 흰
+  // 배경 위 흰 글씨로 안 보이는 회귀를 발견해 추가). useEffect로 하면 리렌더가 한 번 더
+  // 발생한다(react-hooks/set-state-in-effect) — BadgesTable.tsx와 동일하게 lazy initializer로.
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
+
+  // 필터·정렬·페이지 이동으로 목록(pois)이 바뀌면 이전 선택은 다른 행을 가리킬 수 있다 —
+  // 렌더 중 이전 값과 비교해 초기화한다(BadgesTable.tsx와 동일 패턴).
+  const [prevPois, setPrevPois] = useState(pois)
+  if (pois !== prevPois) {
+    setPrevPois(pois)
+    setRowSelection({})
+  }
 
   const sorting = useMemo(() => paramToSorting(searchParams.get('sort')), [searchParams])
 
@@ -59,6 +91,28 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
 
   const columns = useMemo(
     () => columnHelper.columns([
+      columnHelper.display({
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && 'indeterminate')
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="전체 선택"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="행 선택"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      }),
       columnHelper.accessor('name', {
         id: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="이름" />,
@@ -118,17 +172,73 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
     columns,
     getRowId: (row) => row.id,
     manualSorting: true,
-    state: { sorting, columnVisibility },
+    state: { sorting, rowSelection, columnVisibility },
     onSortingChange: handleSortingChange,
+    onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
   })
+
+  const selectedIds = table.getSelectedRowModel().rows.map((row) => row.original.id)
+
+  // 일괄 삭제 전용 API는 없다 — 기존 단건 DELETE를 선택된 행 전체에 순차 호출한다
+  // (20260827_011 요구사항, 다른 화면의 "기존 단건 API 순차 호출" 패턴과 동일).
+  // POI는 소프트 삭제 개념이 없어 하드 DELETE만 가능하다 — 되돌릴 수 없다.
+  const handleBulkDelete = async () => {
+    setBulkLoading(true)
+    try {
+      let failCount = 0
+      for (const id of selectedIds) {
+        const res = await fetch(`/api/admin/poi/${id}`, { method: 'DELETE' })
+        if (!res.ok) failCount += 1
+      }
+      if (failCount > 0) {
+        alert(`${failCount}개 POI 삭제에 실패했습니다. 다시 시도해주세요.`)
+      }
+      router.refresh()
+      setRowSelection({})
+    } finally {
+      setBulkLoading(false)
+      setShowBulkConfirm(false)
+    }
+  }
 
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
         <DataTableViewOptions table={table} />
       </div>
+
+      <DataTableBulkActionBar count={selectedIds.length} onClear={() => setRowSelection({})}>
+        <Button type="button" variant="destructive" size="sm" onClick={() => setShowBulkConfirm(true)}>
+          선택 항목 삭제
+        </Button>
+      </DataTableBulkActionBar>
+
       <DataTable table={table} columnCount={columns.length} emptyMessage="등록된 POI가 없습니다." />
+
+      <AlertDialog
+        open={showBulkConfirm}
+        onOpenChange={(open) => {
+          if (!open && !bulkLoading) setShowBulkConfirm(false)
+        }}
+      >
+        <AlertDialogContent container={themeContainer ?? undefined}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>POI 일괄 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              선택한 {selectedIds.length}개 POI를 삭제합니다. 삭제하면 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button type="button" variant="outline" disabled={bulkLoading} onClick={() => setShowBulkConfirm(false)}>
+              취소
+            </Button>
+            <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDelete}>
+              삭제
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

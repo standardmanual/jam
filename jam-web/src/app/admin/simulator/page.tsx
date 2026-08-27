@@ -1,6 +1,15 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import {
+  IconFolder,
+  IconDeviceGamepad2,
+  IconCircleCheck,
+  IconMapPin,
+  IconTag,
+  IconBook,
+  IconCircleX,
+} from '@tabler/icons-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 
 type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
@@ -314,7 +323,7 @@ export default function SimulatorPage() {
               onClick={() => fileRef.current?.click()}
               className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-foreground/30 transition-colors"
             >
-              <p className="text-3xl mb-2">📁</p>
+              <IconFolder className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 드래그앤드롭 또는 클릭해서 .gpx 파일 선택
               </p>
@@ -414,7 +423,7 @@ export default function SimulatorPage() {
           {!result && !simLoading && (
             <div className="h-full flex items-center justify-center text-center">
               <div className="text-muted-foreground">
-                <p className="text-5xl mb-3">🎮</p>
+                <IconDeviceGamepad2 className="mx-auto mb-3 h-12 w-12" />
                 <p>GPX를 업로드하고 유저를 선택한 뒤<br />시뮬레이션을 실행하세요</p>
               </div>
             </div>
@@ -453,7 +462,7 @@ export default function SimulatorPage() {
                   <div className="space-y-1.5">
                     {result.badgesEarned.map((b) => (
                       <div key={b.id} className="flex items-center gap-2">
-                        <span className="text-emerald-600">✅</span>
+                        <IconCircleCheck className="h-4 w-4 text-emerald-600" />
                         <span className="font-medium">{b.name}</span>
                         <span className={`text-xs ${rarityColors[b.rarity] ?? 'text-muted-foreground'}`}>
                           ({RARITY_LABEL[b.rarity] ?? b.rarity})
@@ -476,7 +485,7 @@ export default function SimulatorPage() {
                   <div className="space-y-1.5">
                     {result.poisMatched.map((p) => (
                       <div key={p.id} className="flex items-center gap-2">
-                        <span>📍</span>
+                        <IconMapPin className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{p.name}</span>
                       </div>
                     ))}
@@ -491,7 +500,7 @@ export default function SimulatorPage() {
                 </p>
                 {result.itemDrop ? (
                   <div className="flex items-center gap-2">
-                    <span>🏷️</span>
+                    <IconTag className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">{result.itemDrop.badgeName}</span>
                     <span className={`text-xs ${rarityColors[result.itemDrop.rarity] ?? 'text-muted-foreground'}`}>
                       ({RARITY_LABEL[result.itemDrop.rarity] ?? result.itemDrop.rarity})
@@ -513,7 +522,7 @@ export default function SimulatorPage() {
                   <div className="space-y-1.5">
                     {result.itemBooksCompleted.map((book, i) => (
                       <div key={i} className="flex items-center gap-2">
-                        <span>📖</span>
+                        <IconBook className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{book.bookName}</span>
                         {book.rewardBadgeName && (
                           <span className="text-foreground text-xs">→ {book.rewardBadgeName}</span>
@@ -533,7 +542,7 @@ export default function SimulatorPage() {
                   <div className="space-y-1.5">
                     {result.badgesMissed.map((b) => (
                       <div key={b.id} className="flex items-start gap-2">
-                        <span className="text-red-600 shrink-0">❌</span>
+                        <IconCircleX className="h-4 w-4 shrink-0 text-red-600" />
                         <div>
                           <span className="font-medium text-foreground">{b.name}</span>
                           <p className="text-muted-foreground text-xs mt-0.5">
