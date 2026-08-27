@@ -70,7 +70,7 @@ export function AdminSidebar() {
                   tooltip={DASHBOARD_ITEM.label}
                 >
                   <Link href={DASHBOARD_ITEM.href}>
-                    <span className="text-lg">{DASHBOARD_ITEM.icon}</span>
+                    <DASHBOARD_ITEM.icon />
                     <span>{DASHBOARD_ITEM.label}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -96,7 +96,7 @@ export function AdminSidebar() {
                         tooltip={item.label}
                       >
                         <Link href={item.href}>
-                          <span className="text-lg">{item.icon}</span>
+                          <item.icon />
                           <span>{item.label}</span>
                         </Link>
                       </SidebarMenuButton>
@@ -129,7 +129,7 @@ export function AdminSidebar() {
                           tooltip={item.label}
                         >
                           <Link href={item.href}>
-                            <span className="text-lg">{item.icon}</span>
+                            <item.icon />
                             <span>{item.label}</span>
                           </Link>
                         </SidebarMenuButton>

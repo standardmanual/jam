@@ -2,6 +2,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { IconX } from '@tabler/icons-react'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
 import ImageUploadField from '@/components/admin/ImageUploadField'
@@ -1047,7 +1048,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                             aria-label={`${poi.name} 연결 해제`}
                             className="text-muted-foreground hover:text-red-600 transition-colors px-1.5"
                           >
-                            ✕
+                            <IconX className="h-4 w-4" />
                           </button>
                         </td>
                       </tr>

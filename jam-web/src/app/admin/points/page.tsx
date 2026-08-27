@@ -1,3 +1,4 @@
+import { IconAlertTriangle } from '@tabler/icons-react'
 import { getPointsSummary } from '@/lib/points/summary'
 import AdminUserSearch from './AdminUserSearch'
 import { RankingTable } from './RankingTable'
@@ -22,7 +23,10 @@ export default async function AdminPointsPage() {
       {/* 정합성 경고 배너 */}
       {!s.integrityOk && (
         <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
-          <p className="text-red-600 font-bold text-sm mb-1">⚠ 포인트 정합성 오류</p>
+          <p className="flex items-center gap-1.5 text-red-600 font-bold text-sm mb-1">
+            <IconAlertTriangle className="h-4 w-4" />
+            포인트 정합성 오류
+          </p>
           <p className="text-red-600 text-xs leading-relaxed">
             유통량({fmt(s.circulation)}) · 유저 보유 합계({fmt(s.walletSum)}) · 원장 합계({fmt(s.txnSum)})가
             일치하지 않습니다. 원장을 우회한 직접 SQL 수정 등이 있었는지 확인이 필요합니다.
