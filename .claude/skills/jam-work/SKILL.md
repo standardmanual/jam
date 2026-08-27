@@ -70,12 +70,19 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 **용어 정의** — "모듈러"는 `jam-web/design-system/`의 **소스코드**를 가리킨다. Storybook은
 그 소스코드를 브라우저에서 훑어보기 위한 뷰어일 뿐 별도 실체가 아니다.
 
-**스토리북 배포는 이미 자동화돼 있다** — `jam-web/package.json`의 `build` 스크립트가
-staging 브랜치 기준 `storybook build && cp -r storybook-static public/storybook && next build`로
-구성돼 있어, 4단계에서 review 브랜치를 staging에 머지하고 `git push origin staging`하는
-순간 Vercel이 staging을 재빌드하면서 스토리북도 함께 다시 구워져 배포된다. **별도의 "스토리북
-배포" 단계를 추가할 필요가 없다** (main/프로덕션 빌드 스크립트는 `next build`만 실행 —
-스토리북은 의도적으로 프로덕션에 나가지 않는다).
+**스토리북 배포는 이미 자동화돼 있다** — `jam-web/package.json`의 `build`가 호출하는
+`jam-web/scripts/build.mjs`가 **`VERCEL_ENV` 기준으로**(브랜치 기준이 아니다) 빌드를 가른다.
+
+| `VERCEL_ENV` | 해당 환경 | 실행 단계 |
+|---|---|---|
+| 없음 / `preview` | 로컬, staging 배포 | `storybook build` → `public/storybook` 복사 → `next build` |
+| `production` | main 배포 | `next build`만 |
+
+따라서 4단계에서 review 브랜치를 staging에 머지하고 `git push origin staging`하는 순간
+Vercel이 staging을 재빌드하면서 스토리북도 함께 다시 구워져 배포된다. **별도의 "스토리북
+배포" 단계를 추가할 필요가 없다.** 스토리북 확인은 staging 도메인
+`https://jam-stage.vercel.app/storybook`에서 한다 — 프로덕션(`j-a-m.app`)에는 스토리북이
+의도적으로 나가지 않으므로 `/storybook`이 404다.
 
 **모듈러 변경은 실제 서비스 화면에도 반영된다** *(2026-08-23 실측 기준 — 2026-08-20까지는
 "미연결"이었으나 이후 연결 작업이 진행됐다)*. 다만 컴포넌트마다 상태가 달라 **세 부류를
