@@ -71,12 +71,19 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 그 소스코드를 브라우저에서 훑어보기 위한 뷰어일 뿐 별도 실체가 아니다.
 
 **스토리북 배포는 이미 자동화돼 있다** — `jam-web/package.json`의 `build`가 호출하는
-`jam-web/scripts/build.mjs`가 **`VERCEL_ENV` 기준으로**(브랜치 기준이 아니다) 빌드를 가른다.
+`jam-web/scripts/build.mjs`가 **`VERCEL_GIT_COMMIT_REF`(git 브랜치명) 기준으로** 빌드를 가른다.
 
-| `VERCEL_ENV` | 해당 환경 | 실행 단계 |
+| `VERCEL_GIT_COMMIT_REF` | 해당 환경 | 실행 단계 |
 |---|---|---|
-| `production` 이외 전부<br>(없음 / `preview` / `development`) | 로컬, staging 배포 | `storybook build` → `public/storybook` 복사 → `next build` |
-| `production` | main 배포 | `next build`만 |
+| `main` 이외 전부 | 로컬, staging 배포 | `storybook build` → `public/storybook` 복사 → `next build` |
+| `main` | 프로덕션(j-a-m.app) 배포 | `next build`만 |
+
+⚠️ **`VERCEL_ENV`로 판정하면 안 된다** — 이 저장소는 Vercel 프로젝트가 "jam"(main→Production,
+그 외→Preview)과 "jam-stage" 둘로 나뉘어 있는데, **"jam-stage" 프로젝트는 `staging` 브랜치
+자체를 자기 "Production" 환경으로 매핑**해뒀다. `VERCEL_ENV === 'production'`으로 판정하면
+jam-stage.vercel.app 배포도 프로덕션으로 오판해 스토리북이 빠지는 회귀가 난다
+(2026-08-27 실제 사고 — 배포 직후 `jam-stage.vercel.app/storybook`이 404였다). 브랜치명은
+Vercel 프로젝트의 환경 라벨 설정과 무관하므로 반드시 이 기준을 쓴다.
 
 따라서 4단계에서 review 브랜치를 staging에 머지하고 `git push origin staging`하는 순간
 Vercel이 staging을 재빌드하면서 스토리북도 함께 다시 구워져 배포된다. **별도의 "스토리북
