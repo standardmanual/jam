@@ -1,9 +1,9 @@
 ---
 id: 20260827_010
 category: Admin
-status: OPEN
+status: CLOSED
 created: 2026-08-27
-closed:
+closed: 2026-08-27
 ---
 
 # [Admin] shadcn 어드민 테마 컨테이너 조회 패턴의 `react-hooks/set-state-in-effect` 린트 오류 수정
@@ -130,9 +130,9 @@ src/components/admin/badges/BadgeActiveToggleButton.tsx
 - [x] 해당 없음 (사용자 노출 텍스트 변경 없음, 순수 리팩터링)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: staging 2026-08-27 (프로덕션 반영은 `/jam-ship`으로 별도 진행)
+- 환경: staging
+- 커밋: 82934d05 (staging 머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 - 티켓 지시대로 17개 파일 모두 동일한 방식으로 통일해 수정했다(파일마다 다르게 고치지 않음).
