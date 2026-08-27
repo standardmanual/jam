@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/admin/ui/button'
 import {
@@ -38,10 +38,9 @@ export function ItemBookActiveToggleButton({ itemBookId, isActive, className }: 
   // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
   // 지정한다(20260827_002 게이트 리뷰에서 alert-dialog.tsx 팔레트 전환 후 미연결 시 흰
   // 배경 위 흰 글씨로 안 보이는 회귀를 발견해 추가).
-  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
-  }, [])
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
 
   const toggle = async (nextActive: boolean) => {
     setLoading(true)

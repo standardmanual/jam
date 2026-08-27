@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { AmbientDropConfig } from '@/lib/ambient-drop/config'
 import type { AmbientDropAxisMode } from '@/types/database'
 import type { AmbientDropBatchResult } from '@/lib/ambient-drop'
@@ -73,10 +73,9 @@ export default function AmbientDropForm({
   // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
   // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
   // 지정한다 (4단계a `BadgeForm.tsx`와 동일 패턴, 20260826_018).
-  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
-  }, [])
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
 
   const [values, setValues] = useState<AmbientDropConfig>(initial)
   const [saving, setSaving] = useState(false)
