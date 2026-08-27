@@ -1,6 +1,6 @@
 'use client'
 
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
@@ -75,10 +75,9 @@ export default function ItemBookForm({
   // Select/AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민
   // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
   // 지정한다 (4단계a `BadgeForm.tsx`와 동일 패턴, 20260826_018).
-  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
-  }, [])
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
 
   const [name, setName] = useState(book?.name ?? '')
   const [description, setDescription] = useState(book?.description ?? '')
