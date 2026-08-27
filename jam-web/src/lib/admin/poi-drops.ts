@@ -2,7 +2,7 @@ import type { createServiceClient } from '@/lib/supabase/server'
 
 /**
  * 배지가 소프트 삭제(비활성화)될 때, 그 배지를 가리키는 아직 안 주워진 월드 드랍을 함께
- * 무효화한다(20260826_016, 20260827_003). 이미 픽업된 드랍(picked_up_at IS NOT NULL)은
+ * 무효화한다(20260826_016, 20260827_004). 이미 픽업된 드랍(picked_up_at IS NOT NULL)은
  * 이력 보존을 위해 건드리지 않는다. 실패해도 배지 소프트 삭제 자체는 이미 끝난 뒤이므로
  * 요청을 실패시키지 않고 로그만 남긴다 — 크론 안전망(api/cron/poi-cleanup)이 재시도 없이도
  * 다음 소각 주기에 정리한다.
