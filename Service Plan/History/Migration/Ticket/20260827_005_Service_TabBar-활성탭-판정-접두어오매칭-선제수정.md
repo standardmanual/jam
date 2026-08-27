@@ -1,9 +1,9 @@
 ---
-id: 20260827_004
+id: 20260827_005
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-27
-closed:
+closed: 2026-08-27
 ---
 
 # [Service] TabBar 활성탭 판정 startsWith 접두어 오매칭 선제 수정
@@ -77,15 +77,21 @@ jam-web/src/components/ui/TabBar.tsx
 해당 없음 (로직 변경만, 사용자 노출 텍스트 없음)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: staging 2026-08-27 (프로덕션 반영은 `/jam-ship`으로 별도 진행)
+- 환경: staging
+- 커밋: (staging 머지 커밋 참조)
 
 ### 주요 의사결정 / 핵심 메모
 - 티켓 구현 계획에 명시된 대로 154~166줄의 `startsWith('/inventory')`/`startsWith('/collections')`/
   `startsWith('/badges')`는 현재 형제 라우트 부재로 오매칭 위험이 없어 수정 범위에서 제외했다.
 - 코드 상단 주석에 "로직은 `src/app/(main)/TabBar.tsx`와 100% 동일해야 한다"는 문구가 있으나
   실제로 해당 경로에 파일이 존재하지 않아(이미 통합된 것으로 추정) 동기화 대상이 없었다.
+- **티켓 번호 재부여**: 최초 `20260827_004`로 생성했으나, 같은 날 다른 세션이 동일 번호
+  (`20260827_004_Service_컬렉션비활성화-미픽업드랍-지연무효화`)를 먼저 staging에 병합해
+  머지 직전 `20260827_005`로 재번호했다. 구현 커밋 메시지에는 원래 번호(004)가 남아있다.
+- 게이트 리뷰 PASS, 개선 리뷰에서 범위 밖 발견물 2건(공용 `isPathActive` 유틸화 여지,
+  `proxy.ts`의 동일 패턴 `startsWith` 접두어 위험) 확인 — 별도 작업으로 분리함.
 
 ### 잔여 이슈
--
+- `jam-web/src/proxy.ts`의 `publicPaths.some(p => pathname.startsWith(p))`도 동일 패턴의
+  접두어 오매칭 위험 (별도 작업 칩으로 분리 예정)
