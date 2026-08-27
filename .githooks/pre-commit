@@ -28,6 +28,112 @@ case "$branch" in
 esac
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 문서 체계 규칙을 기계적으로 강제한다 (2026-08-27 재편).
+#
+# 배경: 폴더 체계를 재편해도 규칙이 문서에만 있으면 시간이 지나며 무너진다. 실제로
+#   - 서비스플랜이 v3.0~v4.3 사본 15개로 증식해 최신본 판별이 불가능해졌고
+#   - 티켓 번호가 병렬 세션 경합으로 32건 충돌했으며
+#   - 폐기 선언된 Operations 폴더의 문서가 그 뒤로도 계속 갱신됐다
+# 전부 "규칙은 있었는데 아무도 막지 않은" 경우다. 여기서 기계적으로 막는다.
+#
+# 탈출구: 정당한 예외는 JAM_SKIP_DOCLINT=1 로 우회한다 (사유를 커밋 메시지에 남길 것).
+if [ "${JAM_SKIP_DOCLINT:-0}" != "1" ]; then
+  doclint=0
+  CATS='Admin|Service|Feature|Content|BadgeEngine|Infra|UI|API'
+
+  # 스테이지된 변경을 rename 탐지와 함께 '한 번에' 읽는다.
+  # ⚠️ pathspec으로 걸러 읽으면 rename 쌍의 반대쪽이 diff에서 빠져 git이 이동을 판별하지
+  #    못하고 '신규 추가(A)'로 보고한다. 그러면 정당한 git mv 아카이브까지 ③에 걸린다.
+  # (bash 3.2는 $( ) 안의 case 패턴 ')' 를 오파싱하므로 함수로 분리한다)
+  _jam_staged() {
+    local st path _old
+    while IFS= read -r -d '' st; do
+      case "$st" in
+        R*|C*)
+          IFS= read -r -d '' _old
+          IFS= read -r -d '' path
+          ;;
+        *)
+          IFS= read -r -d '' path
+          ;;
+      esac
+      printf '%s\t%s\n' "${st%%[0-9]*}" "$path"
+    done < <(git diff --cached --name-status -z --find-renames)
+  }
+  staged=$(_jam_staged)
+
+  while IFS="$(printf '\t')" read -r st f; do
+    [ -n "$f" ] || continue
+
+    # 티켓 폴더 공통 제외 대상
+    skip_ticket=0
+    case "$f" in
+      "Service Plan/Tickets/Moduler/"*) skip_ticket=1 ;;
+      "Service Plan/Tickets/_TEMPLATE.md"|"Service Plan/Tickets/README.md") skip_ticket=1 ;;
+      "Service Plan/Tickets/"*.md) ;;
+      *) skip_ticket=1 ;;
+    esac
+
+    # ① 신규 티켓 파일명: YYYYMMDD_HHMM_[카테고리8종]_제목.md
+    #    기존 YYYYMMDD_NNN 티켓은 소급 개명하지 않으므로 '신규 추가'에만 적용한다.
+    #    Tickets/Moduler/ 는 NNN_P{우선순위}_{동작}_ 규칙이라 대상이 아니다.
+    if [ "$skip_ticket" -eq 0 ] && [ "$st" = "A" ]; then
+      if ! basename "$f" | grep -qE "^[0-9]{8}_[0-9]{4}_(${CATS})_.+\.md$"; then
+        echo "차단(pre-commit): 신규 티켓 파일명이 규칙에 맞지 않습니다." >&2
+        echo "  파일: $f" >&2
+        echo "  형식: YYYYMMDD_HHMM_[카테고리]_[제목].md  (HHMM = 생성 시각 KST)" >&2
+        echo "  카테고리: ${CATS}" >&2
+        doclint=1
+      fi
+    fi
+
+    # ② 티켓 frontmatter status 누락 차단 (신규·수정 공통)
+    if [ "$skip_ticket" -eq 0 ] && { [ "$st" = "A" ] || [ "$st" = "M" ]; } && [ -f "$f" ]; then
+      if ! head -1 "$f" | grep -q '^---$' || ! head -8 "$f" | grep -qE '^status:'; then
+        echo "차단(pre-commit): 티켓에 YAML frontmatter status가 없습니다." >&2
+        echo "  파일: $f" >&2
+        echo "  첫 줄부터 ---, 8줄 안에 'status: OPEN|IN_PROGRESS|CLOSED' 가 있어야 합니다." >&2
+        echo "  템플릿: Service Plan/Tickets/_TEMPLATE.md" >&2
+        doclint=1
+      fi
+    fi
+
+    # ③ Archive/ 는 읽기 전용 — 신규 파일 생성만 막는다 (git mv 이동은 R이므로 통과)
+    case "$f" in
+      "Service Plan/Archive/"*)
+        if [ "$st" = "A" ]; then
+          echo "차단(pre-commit): Archive/ 는 읽기 전용 아카이브입니다 — 신규 파일을 만들 수 없습니다." >&2
+          echo "  파일: $f" >&2
+          echo "  현행 문서는 Specs/ 에, 작업 이력은 Tickets/ 에 남깁니다." >&2
+          echo "  기존 문서를 아카이브하려면 git mv 로 '이동'하세요 (이동은 통과합니다)." >&2
+          doclint=1
+        fi
+        ;;
+    esac
+
+    # ④ 서비스플랜 버전 사본 생성 차단 — 단일 파일 직접 수정이 원칙
+    case "$f" in
+      "Service Plan/Business/"*)
+        if [ "$st" = "A" ] && basename "$f" | grep -qE 'v[0-9]+\.[0-9]+'; then
+          echo "차단(pre-commit): 서비스플랜은 버전 사본을 만들지 않습니다." >&2
+          echo "  파일: $f" >&2
+          echo "  'Service Plan/Business/서비스플랜/02 JAM! 서비스 플랜.md' 를 직접 수정하세요." >&2
+          echo "  버전 이력은 git 이 보관합니다 (v3.0~v4.3 사본 15개가 누적된 전례가 있습니다)." >&2
+          doclint=1
+        fi
+        ;;
+    esac
+  done <<< "$staged"
+
+  if [ "$doclint" -eq 1 ]; then
+    echo "" >&2
+    echo "  문서 체계 규칙: CLAUDE.md '폴더 = 수명주기' 절 참조" >&2
+    echo "  정당한 예외라면 JAM_SKIP_DOCLINT=1 git commit ... 로 우회하고 사유를 남기세요." >&2
+    exit 1
+  fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # MODULAR 컴포넌트를 고쳤는데 Storybook Story를 빠뜨렸는지 확인한다 (경고 단계).
 #
 # 배경: Storybook은 MODULAR의 실행 가능한 카탈로그이며, Claude Code가 UI 작업 전 가장 먼저

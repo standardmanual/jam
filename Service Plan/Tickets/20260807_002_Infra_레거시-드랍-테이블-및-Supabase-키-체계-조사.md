@@ -1,3 +1,11 @@
+---
+id: 20260807_002
+category: Infra
+status: CLOSED
+created: 2026-08-07
+closed: 2026-08-07
+---
+
 # 레거시 드랍 테이블 및 Supabase 키 체계 조사
 
 | 항목 | 내용 |

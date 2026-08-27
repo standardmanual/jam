@@ -1,3 +1,11 @@
+---
+id: 20260816_004
+category: UI
+status: CLOSED
+created: 2026-08-16
+closed: 2026-08-16
+---
+
 # 티켓 20260816_004 — MODULAR Storybook 마무리: 접근성·UX Writing·메타데이터 일괄 수정
 
 | 항목 | 내용 |

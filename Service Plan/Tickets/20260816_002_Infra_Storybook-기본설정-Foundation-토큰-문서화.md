@@ -1,3 +1,11 @@
+---
+id: 20260816_002
+category: Infra
+status: CLOSED
+created: 2026-08-16
+closed: 2026-08-16
+---
+
 # 티켓: Storybook 기본 설정 + MODULAR Foundation Tokens 문서화
 
 | 항목 | 내용 |
