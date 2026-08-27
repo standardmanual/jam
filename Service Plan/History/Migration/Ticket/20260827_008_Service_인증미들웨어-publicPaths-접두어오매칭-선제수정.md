@@ -1,9 +1,9 @@
 ---
 id: 20260827_008
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-27
-closed:
+closed: 2026-08-27
 ---
 
 # [Service] 인증 미들웨어(proxy.ts) publicPaths startsWith 접두어 오매칭 선제 수정
@@ -86,9 +86,9 @@ jam-web/src/proxy.ts (1줄)
 해당 없음 (로직 변경만, 사용자 노출 텍스트 없음)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: staging 2026-08-27 (프로덕션 반영은 `/jam-ship`으로 별도 진행)
+- 환경: staging
+- 커밋: (staging 머지 커밋 참조)
 
 ### 주요 의사결정 / 핵심 메모
 - 티켓에 기록된 조사 결과·구현 계획을 그대로 따랐으며 추가 판단이 필요한 부분은 없었다.
