@@ -72,7 +72,7 @@ function rewardSummary(m: MissionRow, badgeNames: Record<string, string>): strin
     const name = badgeNames[id]
     parts.push(name ? `${name} 배지` : t(d.missions.rewardBadgeCount, { count: 1 }))
   }
-  if (m.reward_points) parts.push(t(d.missions.rewardPoints, { points: m.reward_points }))
+  if (m.reward_points) parts.push(t(d.missions.rewardPoints, { points: m.reward_points.toLocaleString('ko-KR') }))
   return parts.length > 0 ? parts.join(' + ') : d.missions.rewardNone
 }
 

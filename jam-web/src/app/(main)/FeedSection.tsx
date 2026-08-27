@@ -247,7 +247,7 @@ export function DetailSheet({
             <Row label={d.feed.rowRewardBadges} value={missionBadgeNames.join(', ')} />
           )}
           {item.event_type === 'mission_completed' && meta.reward_points && (
-            <Row label={d.feed.rowRewardPoints} value={t(d.feed.pointsValue, { points: String(meta.reward_points) })} />
+            <Row label={d.feed.rowRewardPoints} value={t(d.feed.pointsValue, { points: Number(meta.reward_points).toLocaleString('ko-KR') })} />
           )}
           {item.event_type === 'badge_earned' && typeof meta.point_reward === 'number' && meta.point_reward > 0 && (
             <Row label={d.feed.rowPoints} value={t(d.feed.pointsGained, { points: Number(meta.point_reward).toLocaleString('ko-KR') })} />
@@ -288,7 +288,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
       return meta.poi_name ? String(meta.poi_name) : null
     }
     if (item.event_type === 'item_picked_up') return meta.poi_name ? String(meta.poi_name) : null
-    if (item.event_type === 'mission_completed' && meta.reward_points) return t(d.feed.rewardPoints, { points: String(meta.reward_points) })
+    if (item.event_type === 'mission_completed' && meta.reward_points) return t(d.feed.rewardPoints, { points: Number(meta.reward_points).toLocaleString('ko-KR') })
     return null
   })()
   const isLastPiece = item.event_type === 'item_dropped' && meta.is_last_piece === true
