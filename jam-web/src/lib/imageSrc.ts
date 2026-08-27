@@ -15,6 +15,8 @@
  * 여기 한 곳에만 둔다. 호스트를 추가할 일이 생기면 이 배열만 고치면 된다.
  */
 
+import { isPathActive } from './isPathActive'
+
 /**
  * `next/image`가 최적화할 수 있는 원격 이미지 패턴. `next.config.ts`가 그대로 가져다 쓴다.
  * `pathname`의 `/**`는 "그 경로 이하 전부"를 뜻한다.
@@ -49,7 +51,7 @@ export const IMAGE_REMOTE_PATTERNS = [
 function matchesPathname(pattern: string, pathname: string): boolean {
   if (pattern.endsWith('/**')) {
     const prefix = pattern.slice(0, -3)
-    return prefix === '' ? pathname.startsWith('/') : pathname === prefix || pathname.startsWith(`${prefix}/`)
+    return prefix === '' ? pathname.startsWith('/') : isPathActive(pathname, prefix)
   }
   return pathname === pattern
 }

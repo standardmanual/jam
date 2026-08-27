@@ -1,3 +1,5 @@
+import { isPathActive } from '@/lib/isPathActive'
+
 export type NavItem = { href: string; label: string; icon: string; exact?: boolean }
 export type NavGroup = { id: string; label: string; items: NavItem[] }
 
@@ -47,7 +49,7 @@ export const ALL_NAV_ITEMS = [DASHBOARD_ITEM, ...NAV_GROUPS.flatMap((g) => g.ite
 
 export function isNavItemActive(pathname: string, item: NavItem) {
   if (item.exact) return pathname === item.href
-  return pathname === item.href || pathname.startsWith(item.href + '/')
+  return isPathActive(pathname, item.href)
 }
 
 export function activeNavGroupId(pathname: string) {
