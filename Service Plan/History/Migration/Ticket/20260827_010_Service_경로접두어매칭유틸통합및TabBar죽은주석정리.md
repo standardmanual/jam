@@ -1,8 +1,9 @@
 ---
 id: 20260827_010
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-27
+closed: 2026-08-27
 ---
 
 # [Service] 경로 접두어 매칭 유틸 통합 및 TabBar 죽은 주석 정리
@@ -120,9 +121,9 @@ created: 2026-08-27
 해당 없음 (로직 변경만, 사용자 노출 텍스트 없음)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: staging 2026-08-27 (프로덕션 반영은 `/jam-ship`으로 별도 진행)
+- 환경: staging
+- 커밋: 8c9f46a7 (staging 병합 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 - 현재 워크트리(`claude/heuristic-franklin-726d0f`)는 `origin/staging`보다 오래된 지점에서
