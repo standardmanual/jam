@@ -726,7 +726,7 @@ export const ko = {
     // ── ② 컬렉션 ──
     msgCollectionSlottable: '{bookName}에 넣을 수 있는 아이템 배지가 {count} 있어요',
     /** R11 묶음 — 컬렉션이 아니라 **배지를 센다.** 착지도 배지가 있는 곳(인벤토리)이다 */
-    msgCollectionSlottableGrouped: '컬렉션에 넣을 수 있는 {itemCount}가 있어요',
+    msgCollectionSlottableGrouped: '컬렉션에 넣을 수 있는 {itemCount}{이/가} 있어요',
     /** R12 — 부족한 것을 이름으로 부른다. 묶음에서는 성립하지 않는다 */
     msgCollectionNearComplete: '{badgeName}{을/를} 찾아 {bookName}{을/를} 완성해보세요',
     msgCollectionNearCompleteGrouped: '한 칸만 남은 컬렉션이 {count} 있어요',
@@ -737,10 +737,10 @@ export const ko = {
     // ── ③ 내가 드랍한 아이템 배지 ──
     msgDropPickedUpOne: '{actor}님이 {badgeName}{을/를} 픽업했어요',
     /** 묶음은 착지가 없다 — 픽업된 아이템은 소프트 삭제 상태라 갈 곳이 없다 */
-    msgDropPickedUpMany: '드랍한 {itemCount}가 픽업됐어요',
+    msgDropPickedUpMany: '드랍한 {itemCount}{이/가} 픽업됐어요',
     /** R14 — 본인 닉네임을 부르지 않는다. 「자리」→「곳」 */
-    msgDropSpotActive: '드랍한 곳에 {visitors}이 다녀갔어요',
-    msgDropSpotActiveGrouped: '드랍한 {placeCount}에 {visitors}이 다녀갔어요',
+    msgDropSpotActive: '드랍한 곳에 {visitors}{이/가} 다녀갔어요',
+    msgDropSpotActiveGrouped: '드랍한 {placeCount}에 {visitors}{이/가} 다녀갔어요',
 
     // ── ④ 미션 ──
     msgMissionMilestone50: '{missionTitle}, 절반을 넘었어요',
