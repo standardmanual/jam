@@ -120,7 +120,7 @@ describe('① 보상 획득', () => {
 
   it('#3 아이템 배지 — 개수는 inventory_item_ids 길이', () => {
     const v = view('item_badge_earned', { inventory_item_ids: ['i1', 'i2'], count: 1 })
-    expect(text(v)).toBe('활동 중에 아이템 배지 2개가 떨어졌어요')
+    expect(text(v)).toBe('활동 중에 아이템 배지 2개를 획득했어요')
   })
 
   it('#4 체크인 배지 — 단건은 지점명, 묶음은 "외 N곳"', () => {
