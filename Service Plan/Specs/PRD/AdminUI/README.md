@@ -102,7 +102,7 @@
 | (없음) | `ADMIN_UI_PROJECT_SPEC_20260805.md` | **신규**: 코드 작성 규칙 |
 
 **기존 문서 유지:**
-- ✅ `SERVICE_OPERATIONS.md` (계속 유지)
+- ✅ `Specs/SERVICE_OPERATIONS.md` (계속 유지 — 2026-08-27 `History/Operations/`에서 이전)
 - ✅ `01_PRD.md`, `02_DATA_MODEL.md`, `03_PHASES.md` (계속 참조)
 - ✅ `04_PROJECT_SPEC.md` (프로젝트 전체 규칙)
 
