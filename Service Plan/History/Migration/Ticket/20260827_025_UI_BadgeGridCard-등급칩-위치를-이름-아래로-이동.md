@@ -1,9 +1,9 @@
 ---
 id: 20260827_025
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-27
-closed:
+closed: 2026-08-27
 ---
 
 # [UI] BadgeGridCard — 등급칩 위치를 이름 아래로 이동, 고정 예약 높이 제거
@@ -101,9 +101,10 @@ jam-web/src/components/ui/BadgeGridCard.tsx
 - [x] 해당 없음 (레이아웃 변경만, 텍스트 변경 없음)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-27
+- 환경: staging
+- 커밋: `6ae9b230` (staging fast-forward 머지, 원본 구현 커밋은 review 브랜치
+  `claude/jamwork-20260827_025-rarity-chip-position`의 동일 해시)
 
 ### 주요 의사결정 / 핵심 메모
 > `/impeccable layout` 상담으로 방향을 먼저 확정했다: 칩을 옮기기만 하고 고정 예약을 유지하면
@@ -111,4 +112,13 @@ jam-web/src/components/ui/BadgeGridCard.tsx
 > 맡기는 쪽으로 결정. 이 정렬 방식은 실제 호출부가 전부 `grid grid-cols-3`임을 확인한 뒤 내린 결정.
 
 ### 잔여 이슈
--
+- 게이트 리뷰는 PASS(Storybook 정적 빌드 스크린샷으로 레이아웃 검증 완료). 실제 `/badges`·
+  `/profile`·`/collections/[id]`·인벤토리 화면(진짜 배지명 길이 포함)에서의 육안 확인은
+  staging 병합 후로 남아 있었음 — 이번 배포로 `jam-stage.vercel.app`에 반영됐으니 다음 확인 시
+  실물 화면에서 한 번 더 보는 걸 권장
+- 개선 리뷰 제안(승인 보류, 필요 시 후속 작업으로): ① common만 있는 카드의 카드 하단 여백이
+  거슬리면 `justify-content: center`로 세로 중앙 정렬하는 대안 검토, ② `DESIGN_RENEWAL_SPEC.md`
+  "Chip / Badge" 절에 칩 위치 규칙(썸네일→이름→칩) 한 줄 보강(선택, 코드/Storybook에는 이미 반영됨),
+  ③ 카탈로그본(`.jsx`)·서비스본(`.tsx`) 병존 구조 통합은 이번에 착수하지 않음
+- 게이트 리뷰가 발견한 범위 밖 사항: 실서비스 호출부 나열에서 `src/app/(main)/badges/[id]/page.tsx`가
+  누락됐으나 동일하게 `grid grid-cols-3`라 결론에는 영향 없음 — 다음 유사 전수조사 시 참고
