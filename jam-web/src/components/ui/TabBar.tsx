@@ -173,7 +173,7 @@ export default function TabBar({ username }: TabBarProps) {
     if (href === '/') return pathname === '/'
     if (viewingOtherUser && pathname.startsWith('/badges')) return false
     if (fromBadges) return href === '/badges'
-    return pathname.startsWith(href)
+    return pathname === href || pathname.startsWith(href + '/')
   }
 
   // 배지 공유 미리보기 같은 전체화면 오버레이가 열려 있는 동안은 물리적으로 렌더링하지 않는다
