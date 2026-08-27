@@ -1,8 +1,9 @@
 ---
 id: 20260827_009
 category: API
-status: OPEN
+status: CLOSED
 created: 2026-08-27
+closed: 2026-08-27
 ---
 
 # [API] 아이템북 수정 API 부분 body 필드 null 덮어쓰기 버그 수정
@@ -110,10 +111,22 @@ jam-web/src/app/api/admin/itembooks/[id]/route.ts
 - [x] 문장 규칙: 해요체, 마침표 위치 정확.
 - [x] 표기 규칙: 해당 없음(날짜/시간/금액/기간 문구 없음).
 
+### 게이트 리뷰 / 개선 리뷰
+- 게이트 리뷰 판정: WARN(코드 결함 아님 — 티켓 번호 충돌만 사유). 12개 필드 병합 패턴, 404 처리,
+  `nextIsActive` 공유 구조, PATCH/DELETE/POST 미변경, 프론트엔드 호출부 회귀 없음, tsc/eslint
+  통과를 모두 직접 재실행해 확인한 뒤 PASS에 준하는 결론이었다.
+- 개선 리뷰 제안(참고용, 이번 티켓 범위에서는 미반영):
+  - `select` 실패를 전부 404로 뭉뚱그리지 말고 조회 오류(네트워크/권한 등)와 "행 없음"을
+    구분하는 것을 고려할 만하다.
+  - factions·item_books 두 라우트에 동일한 "기존 row 조회 + 병합" 패턴이 반복 작성됐다 —
+    세 번째로 같은 패턴을 쓰게 되면 공용 헬퍼(`mergePartialUpdate`)로 추출을 고려한다.
+  - select→update 2단계 구조라 이론상 동시 편집 레이스가 있다 — 관리자 도구라 발생 빈도는
+    낮지만, 실제 이슈가 보고되면 `updated_at` 비교 기반 낙관적 락을 검토한다.
+
 ### 배포 정보
-- 배포일:
-- 환경:
-- 커밋:
+- 배포일: 2026-08-27 (staging)
+- 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행 — 사용자 명시 승인 필요)
+- 커밋: `6c5cc65c` (origin/staging에 fast-forward push)
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
@@ -122,6 +135,16 @@ jam-web/src/app/api/admin/itembooks/[id]/route.ts
 - `id !== undefined ? id : existing.id` 병합은 대상에서 제외했다 — `id`는 URL 경로 파라미터로만
   결정되고 update도 `.eq('id', id)`만 사용하므로 body의 `id` 필드는 애초에 무시된다(factions
   티켓과 동일 근거).
+- **티켓 번호 재조정(2회)**: 최초 생성 시 로컬·origin/staging 확인 결과 `20260827_007`이 다음
+  번호였으나, 구현 완료 후 게이트 리뷰 시점에 origin/staging에 이미 다른 내용(어드민 API HTTP
+  메서드 표기 정정)으로 CLOSED 처리된 동일 번호 티켓이 먼저 병합돼 있어 `20260827_008`로
+  재번호(커밋 `0ac69dde`)했다. staging 머지 직전 재확인에서 그 사이 또 다른 병렬 세션(인증
+  미들웨어 publicPaths 접두어 오매칭 수정)이 `20260827_007→008`로 재번호해 먼저 병합한 것을
+  발견해 재차 `20260827_009`로 재번호(커밋 `a7b087a2`)했다. 이후 `git merge origin/staging`으로
+  review 브랜치를 최신화하고 tsc/eslint/build를 모두 재검증한 뒤 fast-forward push했다 — 티켓
+  20260827_005의 003→005 재번호 사례와 동일한 패턴이 이번엔 2회 연속 발생했다.
 
 ### 잔여 이슈
--
+- `badges/[id]/route.ts` PUT 핸들러(38-52행)에 이번 티켓과 동일한 버그 클래스가 남아있다
+  (`faction_id ?? null` 등 다수 필드 + 존재하지 않는 id에 대한 404 처리 자체가 없음) —
+  개선 리뷰에서 발견된 범위 밖 항목, 별도 작업 칩으로 분리함.
