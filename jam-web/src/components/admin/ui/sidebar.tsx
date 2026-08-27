@@ -187,10 +187,9 @@ const Sidebar = React.forwardRef<
     // 테마 실값(--sidebar 등)은 [data-admin-theme] 스코프 안에만 존재한다(globals.css
     // 참고). 포털 컨테이너를 그 스코프 노드로 지정해야 bg-sidebar 등이 정상 적용된다
     // (20260826_013 — CSS 스코프 주의 사항 대응).
-    const [themeContainer, setThemeContainer] = React.useState<HTMLElement | null>(null)
-    React.useEffect(() => {
-      setThemeContainer(document.querySelector<HTMLElement>("[data-admin-theme]"))
-    }, [])
+    const [themeContainer] = React.useState<HTMLElement | null>(() =>
+      typeof document === "undefined" ? null : document.querySelector<HTMLElement>("[data-admin-theme]")
+    )
 
     if (collapsible === "none") {
       return (

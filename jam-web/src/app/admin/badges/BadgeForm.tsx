@@ -78,10 +78,9 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
   // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다(globals.css 참고). 포털 컨테이너를
   // 그 스코프 노드로 지정해야 향후(4b~4d에서 select.tsx가 시맨틱 토큰으로 전환될 때) 테마
   // 색이 정상 적용된다 — sidebar.tsx의 동일 패턴 재사용 (20260826_016, 인프라 1-2).
-  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
-  }, [])
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
 
   const [name, setName] = useState(badge?.name ?? '')
   const [description, setDescription] = useState(badge?.description ?? '')
