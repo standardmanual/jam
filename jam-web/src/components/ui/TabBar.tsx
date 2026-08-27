@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { d } from '@/lib/i18n'
 import { useTabBarHidden } from '@/lib/uiOverlay'
 import { cssDurationMs } from '@/lib/motion'
+import { isPathActive } from '@/lib/isPathActive'
 
 /**
  * 활성탭 점(`t-badge[data-open]`)은 CSS `@keyframes t-badge-slide-in`으로 팝인한다.
@@ -59,12 +60,9 @@ function TabActiveDot({ active }: { active: boolean }) {
 /**
  * SuperHi Plus 바텀 탭바 (iOS 26 스타일 플로팅 캡슐, iOS HIG Tab Bar 패턴)
  *
- * 라우팅/활성탭 판별 로직은 기존 `src/app/(main)/TabBar.tsx`와 100% 동일합니다.
- * (다른 유저 프로필 보기 `?u=` 케이스, `/inventory/[itemId]?from=badges` 케이스 포함)
  * 시각 스타일은 최신 iOS 인스타그램/앱스토어의 플로팅 캡슐 탭바를 참고해
  * 아이콘 전용(라벨 없음)으로 구성했습니다. 흰 필 자체가 다크 페이지 위에서 대비가
  * 충분해 보더/드롭섀도 없이 렌더링합니다(20260816_012).
- * 로직을 수정할 일이 생기면 두 파일을 반드시 함께 맞추세요.
  */
 interface TabBarProps {
   username: string | null
@@ -173,7 +171,7 @@ export default function TabBar({ username }: TabBarProps) {
     if (href === '/') return pathname === '/'
     if (viewingOtherUser && pathname.startsWith('/badges')) return false
     if (fromBadges) return href === '/badges'
-    return pathname === href || pathname.startsWith(href + '/')
+    return isPathActive(pathname, href)
   }
 
   // 배지 공유 미리보기 같은 전체화면 오버레이가 열려 있는 동안은 물리적으로 렌더링하지 않는다
