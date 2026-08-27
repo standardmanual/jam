@@ -812,16 +812,21 @@ export interface EngineDecisionLogRow {
 // =========================================
 
 /**
- * notification_type — 실제로 쓰는 26종 (PRD §3의 26종과 1:1).
+ * notification_type — 실제로 쓰는 종류.
  *
- * **DB ENUM에는 28개 값이 있다.** `following_nearby_drop`·`nearby_drops`(지역 기반 소식 2종)는
- * 2026-08-25에 스펙에서 제거됐지만, Postgres는 ENUM 값 제거가 안전하지 않아 DB에는 그대로 둔다
- * (해당 타입 소식은 프로덕션에 0건 — DATA_MODEL §2 "예약됐으나 사용하지 않는 값" 참고).
- * 어떤 코드도 이 2종을 만들지 않으므로 TS 타입에서는 빼고, 만에 하나 들어오면 렌더러의
- * `default` 분기가 받는다.
+ * **DB ENUM에는 더 많은 값이 있다.** `following_nearby_drop`·`nearby_drops`(지역 기반 소식 2종,
+ * 2026-08-25 스펙 제거)와 `mutual_follow`(#27 맞팔, 20260827_014에서 제거)는 Postgres가
+ * ENUM 값 제거를 안전하게 지원하지 않아 DB에는 그대로 둔다 —
+ * DATA_MODEL §2 「예약됐으나 사용하지 않는 값」. 어떤 코드도 이 3종을 만들지 않으므로
+ * TS 타입에서는 빼고, 만에 하나 들어오면 렌더러의 `default` 분기가 받는다.
+ *
+ * 20260827_014 — ① 보상 획득 6종은 **활동 결산(`activity_recap`) 1종으로 재편**됐다.
+ * 6종은 더 이상 생성되지 않지만(전량 삭제 + 재생성), 하위호환 렌더 경로는 남겨 둔다.
  */
 export type NotificationType =
-  // ① 보상 획득 (6) — bumps_badge=false 대상
+  // ① 보상 획득 — 활동 결산 (bumps_badge=false 대상)
+  | 'activity_recap'
+  // ① 레거시 6종 — 20260827_014부터 생성하지 않는다(렌더만 유지)
   | 'badge_earned'
   | 'rare_badge_earned'
   | 'item_badge_earned'
@@ -841,9 +846,9 @@ export type NotificationType =
   | 'mission_completed'
   | 'mission_rank_up'
   | 'mission_ended'
-  // ⑤ 소셜(나에게) (2)
+  // ⑤ 소셜(나에게) (1) — #27 맞팔(`mutual_follow`)은 20260827_014에서 제거됐다
+  //    (자기 행동의 메아리. 되팔로우당한 쪽에는 `followed`가 대신 나간다)
   | 'followed'
-  | 'mutual_follow'
   // ⑥ 소셜(팔로잉 활동) (3)
   | 'following_rare_badge'
   | 'following_collection_complete'

@@ -25,7 +25,12 @@ import {
   type StepOutput,
 } from './shared'
 
-/** PRD §3 ⑥ — 이 카테고리 전체에 걸리는 하루 상한 */
+/**
+ * PRD §3 ⑥ — 이 카테고리 전체에 걸리는 하루 상한.
+ *
+ * **20260827_014(R15)부터 「2건」이 아니라 「사람 2명」이다.** 한 사람이 알림함 두 줄을
+ * 차지하지 않고, 여러 사람의 근황이 고르게 보인다 — 이 카테고리의 목적("둘러보기")에 맞는다.
+ */
 export const FOLLOWING_DAILY_CAP = 2
 
 /** ⑥ 안에서만 쓰는 정렬 우선순위 (낮을수록 먼저). PRD §9의 "희귀도 단독" 해석 */
@@ -68,38 +73,66 @@ export type FollowingCandidate =
       actorIds: string[]
     }
 
+/** 대표 선정 정렬 — 우선순위(R8) → 최근 순. 동률은 행위자 id로 고정해 결정론을 유지한다 */
+function byPriorityThenRecent(a: FollowingCandidate, b: FollowingCandidate): number {
+  if (a.priority !== b.priority) return a.priority - b.priority
+  const at = b.at.localeCompare(a.at)
+  if (at !== 0) return at
+  return a.actorId.localeCompare(b.actorId)
+}
+
 /**
- * 후보 → 초안. **수신자별 하루 상한 2건**을 여기서 자른다 (순수 함수 — 테스트 대상).
+ * 후보 → 초안. **사람 단위로 묶고(R15), 수신자별 하루 상한 「사람 2명」**을 여기서 자른다
+ * (순수 함수 — 테스트 대상).
+ *
+ * 한 사람의 소식이 하루 2건 이상이면 대표 하나를 말하고 나머지는 개수로 접는다
+ * ("… 소식이 1건 더 있어요"). 대표 선정은 기존 배치 우선순위를 그대로 쓴다
+ * (mythic > legend > 컬렉션 완성 > 미션 완료, 동순위는 최근 순 — R8).
  */
 export function selectFollowingDrafts(
   candidates: FollowingCandidate[],
   today: string
 ): NotificationDraft[] {
-  const byRecipient = new Map<string, FollowingCandidate[]>()
+  const byRecipient = new Map<string, Map<string, FollowingCandidate[]>>()
   for (const c of candidates) {
-    const list = byRecipient.get(c.recipientId) ?? []
+    let byActor = byRecipient.get(c.recipientId)
+    if (!byActor) {
+      byActor = new Map()
+      byRecipient.set(c.recipientId, byActor)
+    }
+    const list = byActor.get(c.actorId) ?? []
     list.push(c)
-    byRecipient.set(c.recipientId, list)
+    byActor.set(c.actorId, list)
   }
 
   const drafts: NotificationDraft[] = []
-  for (const [, list] of byRecipient) {
-    list.sort((a, b) => (a.priority !== b.priority ? a.priority - b.priority : b.at.localeCompare(a.at)))
-    for (const c of list.slice(0, FOLLOWING_DAILY_CAP)) {
-      drafts.push(toDraft(c, today))
+  for (const [, byActor] of byRecipient) {
+    // 사람마다 대표 하나 + 나머지 건수
+    const perPerson: { rep: FollowingCandidate; more: number }[] = []
+    for (const [, list] of byActor) {
+      list.sort(byPriorityThenRecent)
+      perPerson.push({ rep: list[0], more: list.length - 1 })
+    }
+    // 사람 사이의 순서도 대표의 우선순위로 정한다 — 상한이 「사람 수」라 여기서 잘린다
+    perPerson.sort((a, b) => byPriorityThenRecent(a.rep, b.rep))
+    for (const { rep, more } of perPerson.slice(0, FOLLOWING_DAILY_CAP)) {
+      drafts.push(toDraft(rep, today, more))
     }
   }
   return drafts
 }
 
-function toDraft(c: FollowingCandidate, today: string): NotificationDraft {
+function toDraft(c: FollowingCandidate, today: string, more = 0): NotificationDraft {
+  // R15 묶음 꼬리 — 렌더러가 more_count로 "소식이 N건 더 있어요"를 붙이고 착지를
+  // 그 사람 프로필로 올린다
+  const moreCount = more > 0 ? { more_count: more } : {}
   switch (c.kind) {
     case 'rare_badge':
       return {
         userId: c.recipientId,
         type: 'following_rare_badge',
         actorUserId: c.actorId,
-        payload: { badge_id: c.badgeId, badge_name: c.badgeName, rarity: c.rarity },
+        payload: { badge_id: c.badgeId, badge_name: c.badgeName, rarity: c.rarity, ...moreCount },
         groupKey: scopedGroupKey('following_rare_badge', c.badgeId, c.actorId),
         mode: 'once',
       }
@@ -108,7 +141,7 @@ function toDraft(c: FollowingCandidate, today: string): NotificationDraft {
         userId: c.recipientId,
         type: 'following_collection_complete',
         actorUserId: c.actorId,
-        payload: { item_book_id: c.itemBookId, book_name: c.bookName },
+        payload: { item_book_id: c.itemBookId, book_name: c.bookName, ...moreCount },
         groupKey: scopedGroupKey('following_collection_complete', c.itemBookId, c.actorId),
         mode: 'once',
       }
@@ -119,7 +152,12 @@ function toDraft(c: FollowingCandidate, today: string): NotificationDraft {
         actorUserId: c.actorId,
         // actor_ids는 "예린님 외 2명"의 근거다 (DATA_MODEL §4-1). 배치가 24시간 창을 한 번에
         // 계산하므로 여기서 이미 완성된 목록을 넘긴다 — RPC의 append는 재실행 시 중복 제거용.
-        payload: { mission_id: c.missionId, mission_title: c.missionTitle, actor_ids: c.actorIds },
+        payload: {
+          mission_id: c.missionId,
+          mission_title: c.missionTitle,
+          actor_ids: c.actorIds,
+          ...moreCount,
+        },
         groupKey: scopedGroupKey('following_mission_complete', c.missionId, today),
         mode: 'once',
         appendKeys: ['actor_ids'],

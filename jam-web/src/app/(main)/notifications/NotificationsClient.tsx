@@ -43,6 +43,8 @@ const SECTION_LABEL: Record<NotificationSection, string> = {
  */
 function TypeIcon({ type, className }: { type: NotificationType; className?: string }): ReactNode {
   switch (type) {
+    // ① 활동 결산 — 배지가 결산의 대부분이라 메달을 쓴다(20260827_014)
+    case 'activity_recap':
     case 'badge_earned':
     case 'rare_badge_earned':
     case 'first_badge':
@@ -73,7 +75,6 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
     case 'following_mission_complete':
       return <TargetIcon className={className} />
     case 'followed':
-    case 'mutual_follow':
       return <UsersIcon className={className} />
     case 'strava_disconnected':
     case 'sync_stalled':

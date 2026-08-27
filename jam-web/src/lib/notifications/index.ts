@@ -32,6 +32,8 @@ import { kstDateString, toValidDate } from './kst'
 export * from './types'
 export * from './groupKey'
 export * from './kst'
+// recap.ts는 여기서 재수출하지 않는다 — index를 import하므로 순환이 된다.
+// 호출부는 '@/lib/notifications/recap'에서 직접 가져온다.
 
 /**
  * ## `@ts-expect-error` 대신 좁은 캐스팅을 쓰는 이유
