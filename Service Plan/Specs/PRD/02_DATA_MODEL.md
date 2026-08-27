@@ -148,6 +148,10 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 않음 — 소속 컬렉션·배지 전체로 캐스케이드 일괄 적용하기 위한 마스터 값 저장용. 캐스케이드 로직은
 후속 티켓(015) 범위.
 
+`PUT /api/admin/factions/[id]`는 부분 body 병합을 지원한다(20260827_005) — body에 없는(=`undefined`)
+필드는 기존 DB 값을 그대로 유지하고, body에 명시적으로 포함된 필드만 갱신한다. 인접 세계관만 저장하는
+`AdjacencyEditor.tsx`처럼 일부 필드만 담아 호출하는 화면도 안전하게 이 엔드포인트를 재사용할 수 있다.
+
 ### faction_adjacency
 세계관 간 인접 그래프 (PK: faction_id + adjacent_faction_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.2 참고.
 
