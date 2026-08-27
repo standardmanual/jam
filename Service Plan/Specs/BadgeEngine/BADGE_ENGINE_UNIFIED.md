@@ -520,6 +520,14 @@ rare 12% / legend 2%, 커버리지 0.15, POI당 최대 1개, 보충 배치 30개
 - **자기 드랍 픽업 허용**: 2026-07-10 정책 변경. `dropper_user_id` = 현재 유저 필터링 로직 제거.
 - **T2 POI 드랍 반경**: 500m (T1과 동일). `DROP_RADIUS_METERS` 상수로 관리.
 - **일련번호 형식**: `serial_prefix`(4자리 대문자) + `serial_number`(6자리 zero-pad). 예: `ABCD000042`. (§3.5의 일련번호 무작위화는 이 형식 위에서 채번 순서만 난수화하는 것으로, 형식 자체는 유지된다.)
+- **배지 소프트 삭제 시 미픽업 드랍 즉시 무효화** (2026-08-26/27, 티켓 20260826_016·20260827_004):
+  배지가 소프트 삭제(`badges.deleted_at`)되면, 그 배지를 가리키는 아직 안 주워진(`picked_up_at
+  IS NULL`) `poi_drops`를 `is_available=false`로 즉시 무효화한다. 이미 픽업된 드랍은 이력
+  보존을 위해 건드리지 않는다. 단일 배지 삭제(`api/admin/badges/[id]/route.ts`)와 컬렉션
+  비활성화로 인한 연쇄 삭제(`lib/admin/itembook-deactivation.ts`)가 공유 함수
+  (`lib/admin/poi-drops.ts`의 `invalidateUnclaimedDrops`)로 동일하게 동작한다. 다른 경로
+  (수동 DB 조작 등)로 소프트 삭제된 경우를 위한 안전망으로 `api/cron/poi-cleanup`이 매일
+  00:00 UTC에 같은 조건을 재확인해 소각한다.
 
 ### 3.14 체크인 배지 타입(`type='checkin'`) — 실데이터 일괄 생성 (2026-07-27)
 
