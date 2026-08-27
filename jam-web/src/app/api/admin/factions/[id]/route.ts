@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import type { FactionRow } from '@/types/database'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -25,12 +26,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // 부분 body 병합을 위해 기존 row를 먼저 조회한다 — body에 없는(undefined) 필드는 기존 값을
   // 그대로 유지한다(20260827_003). 존재하지 않는 id면 update 시도 전에 404로 응답한다.
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existingData, error: fetchError } = await supabase
     .from('factions')
     .select('*')
     .eq('id', id)
     .single()
-  if (fetchError || !existing) return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
+  if (fetchError || !existingData) return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
+  const existing = existingData as FactionRow
 
   const { data, error } = await supabase
     .from('factions')
