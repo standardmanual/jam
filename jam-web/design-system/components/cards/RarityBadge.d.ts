@@ -5,4 +5,4 @@ export interface RarityBadgeProps {
   className?: string;
 }
 
-export function RarityBadge(props: RarityBadgeProps): JSX.Element;
+export function RarityBadge(props: RarityBadgeProps): JSX.Element | null;
