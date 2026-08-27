@@ -40,7 +40,7 @@ const columnHelper = createColumnHelper<DataTableFeatures, FactionRow>()
  * 규모라 서버 페이지네이션은 두지 않는다(사전 조사 결과).
  *
  * 세계관은 `is_active`가 있어 일괄 비활성화가 가능하다(티켓 명시). `PUT /api/admin/factions/[id]`가
- * 부분 body를 받으면 body에 없는 필드는 기존 값을 유지하도록 병합하므로(20260827_003),
+ * 부분 body를 받으면 body에 없는 필드는 기존 값을 유지하도록 병합하므로(20260827_005),
  * `{ is_active: false }`만 보내면 된다.
  */
 export function FactionsTable({ factions, badgeCountMap, bookCountMap }: FactionsTableProps) {
@@ -180,7 +180,7 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
         const res = await fetch(`/api/admin/factions/${faction.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          // PUT 라우트가 body에 없는 필드는 기존 값을 유지하도록 병합하므로(20260827_003),
+          // PUT 라우트가 body에 없는 필드는 기존 값을 유지하도록 병합하므로(20260827_005),
           // is_active만 보내면 된다.
           body: JSON.stringify({ is_active: false }),
         })
