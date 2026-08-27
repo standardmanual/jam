@@ -1,7 +1,7 @@
 # 활동 결산 소식 — 문구 케이스북
 
 > 작성: 2026-08-27 / **v3 — 2차 검토 반영** (규칙 R1~R10 확정, 남은 확인 3건)
-> 관련: [PRD.md](./PRD.md) §3 소식 26종 · §5 문구 강조 규칙 / [DATA_MODEL.md](./DATA_MODEL.md) §4 묶음 모델 / [UX_WRITING_GUIDELINE.md](../../UX_WRITING_GUIDELINE.md)
+> 관련: [PRD.md](./PRD.md) §3 소식 20종 · §5 문구 강조 규칙 / [DATA_MODEL.md](./DATA_MODEL.md) §4 묶음 모델 / [UX_WRITING_GUIDELINE.md](../../UX_WRITING_GUIDELINE.md)
 
 한 번의 활동에서 나올 수 있는 보상 조합마다 문구를 써보고, **문장을 보면서 정책을 역산**하기
 위한 검토판이다. 정책을 먼저 확정하고 구현으로 넘어가지 않는다.

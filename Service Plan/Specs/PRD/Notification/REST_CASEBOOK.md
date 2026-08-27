@@ -2,7 +2,7 @@
 
 > 작성: 2026-08-27 / **v3 — 확정판** (남은 확인 7건 전부 결정)
 > 짝 문서: [RECAP_CASEBOOK.md](./RECAP_CASEBOOK.md) — ① 보상 획득(활동 결산) 6종
-> 관련: [PRD.md](./PRD.md) §3 소식 26종 / [DATA_MODEL.md](./DATA_MODEL.md) §4 묶음 모델 / [UX_WRITING_GUIDELINE.md](../../UX_WRITING_GUIDELINE.md)
+> 관련: [PRD.md](./PRD.md) §3 소식 20종 / [DATA_MODEL.md](./DATA_MODEL.md) §4 묶음 모델 / [UX_WRITING_GUIDELINE.md](../../UX_WRITING_GUIDELINE.md)
 
 **갱신 이력**
 
