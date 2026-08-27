@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -63,11 +63,11 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
   // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
   // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
   // 지정한다(20260827_002 게이트 리뷰에서 alert-dialog.tsx 팔레트 전환 후 미연결 시 흰
-  // 배경 위 흰 글씨로 안 보이는 회귀를 발견해 추가, BadgesTable.tsx와 동일 패턴).
-  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
-  }, [])
+  // 배경 위 흰 글씨로 안 보이는 회귀를 발견해 추가). useEffect로 하면 리렌더가 한 번 더
+  // 발생한다(react-hooks/set-state-in-effect) — BadgesTable.tsx와 동일하게 lazy initializer로.
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
 
   // 필터·정렬·페이지 이동으로 목록(pois)이 바뀌면 이전 선택은 다른 행을 가리킬 수 있다 —
   // 렌더 중 이전 값과 비교해 초기화한다(BadgesTable.tsx와 동일 패턴).

@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   createColumnHelper,
@@ -53,11 +53,11 @@ function RecipeTableInner({ recipes, badgeMap, onEdit, onDelete }: RecipeTablePr
 
   // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
   // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
-  // 지정한다(20260827_002 게이트 리뷰 이후 확립된 패턴, BadgesTable.tsx 참고).
-  const [themeContainer, setThemeContainer] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    setThemeContainer(document.querySelector<HTMLElement>('[data-admin-theme]'))
-  }, [])
+  // 지정한다(20260827_002 게이트 리뷰 이후 확립된 패턴). useEffect로 하면 리렌더가 한 번 더
+  // 발생한다(react-hooks/set-state-in-effect) — BadgesTable.tsx와 동일하게 lazy initializer로.
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
 
   // 목록(recipes)이 바뀌면(일괄 삭제 후 router.refresh() 등) 이전 선택은 다른 행을 가리킬
   // 수 있다 — 렌더 중 이전 값과 비교해 초기화한다(BadgesTable.tsx와 동일 패턴).
