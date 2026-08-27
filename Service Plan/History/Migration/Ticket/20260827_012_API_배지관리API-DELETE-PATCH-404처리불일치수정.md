@@ -1,9 +1,9 @@
 ---
 id: 20260827_012
 category: API
-status: OPEN
+status: CLOSED
 created: 2026-08-27
-closed:
+closed: 2026-08-27
 ---
 
 # [API] 배지 관리 API DELETE·PATCH 핸들러 존재하지 않는 id 처리 불일치 수정
