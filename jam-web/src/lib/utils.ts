@@ -40,26 +40,6 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
 }
 
 /**
- * 배지 희귀도 레이블
- */
-export const BADGE_RARITY_LABELS: Record<string, string> = {
-  common: 'Common',
-  rare: 'Rare',
-  legend: 'Legend',
-  mythic: 'Mythic',
-}
-
-/**
- * 배지 희귀도 색상 (Tailwind class)
- */
-export const BADGE_RARITY_COLORS: Record<string, string> = {
-  common: 'text-gray-400',
-  rare: 'text-blue-400',
-  legend: 'text-purple-400',
-  mythic: 'text-yellow-400',
-}
-
-/**
  * 날짜 포맷 (한국어)
  */
 export function formatDate(isoString: string): string {

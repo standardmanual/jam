@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
+import type { ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
 import { formatRelativeTime } from '@/lib/utils'
 import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
-import { RARITY_LABEL, RARITY_COLOR } from '@/lib/rarity'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import Button from '@/components/ui/Button'
 import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -236,9 +236,9 @@ export function DetailSheet({
         </div>
         <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 mb-1 line-clamp-2">{eventLabel(item)}</p>
         <h2 className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text mb-[var(--spacing-16)]">{title}</h2>
-        {rarity && RARITY_COLOR[rarity] && (
+        {rarity && rarity !== 'common' && (
           <div className="flex justify-center mb-[var(--spacing-16)]">
-            <span className={`text-[length:var(--text-body-sm)] px-[var(--spacing-16)] py-1 rounded-[var(--radius-tags)] font-bold uppercase tracking-[var(--tracking-label)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
+            <RarityBadge rarity={rarity as BadgeRarity} />
           </div>
         )}
         {/* 20260816_012: 보더 제거 — 티켓 20260820_012: 다크 시트 전환으로 4% 화이트 틴트로 구분 */}
@@ -328,9 +328,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
       <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">{title}</p>
       {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{sub}</p>}
       <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
-        {rarity && RARITY_COLOR[rarity] && (
-          <span className={`inline-block text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] font-bold uppercase tracking-[var(--tracking-label)] ${RARITY_COLOR[rarity]}`}>{RARITY_LABEL[rarity]}</span>
-        )}
+        {rarity && <RarityBadge rarity={rarity as BadgeRarity} />}
         {isLastPiece && (
           <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
             <PuzzleIcon className="w-3 h-3" />
