@@ -1,6 +1,6 @@
 /**
  * 알림(소식) 묶음 키 빌더 — 티켓 20260824_019
- * 스펙: DATA_MODEL.md §4 「group_key 설계」
+ * 스펙: DATA_MODEL.md §4-2 「group_key 설계」
  *
  * ## 왜 모든 키에 type을 접두로 붙이는가
  *
@@ -8,16 +8,18 @@
  * 시간창(scope)만 키로 쓰면 서로 다른 종류의 소식이 **같은 행으로 병합**되어 payload가
  * 서로를 덮어쓰고 type도 먼저 들어온 하나로 고정된다(착지점이 통째로 어긋난다).
  *
- * 실제로 겪은 사례가 근거다 — DATA_MODEL §4 표는 구 소식 1(활동배지)·3(아이템배지)·
+ * 실제로 겪은 사례가 근거다 — **구** §4-2 표(014 이전)는 구 소식 1(활동배지)·3(아이템배지)·
  * 4(POI배지)에 모두 같은 `sync:{strava_activity_id}`를 배정했고, 그대로 구현하면 한 번의
  * 동기화에서 세 종류가 충돌했다. (세 종류는 티켓 20260827_014에서 활동 결산
  * `activity_recap` 1종으로 재편되며 묶음 축이 KST 하루(`dailyGroupKey`)로 바뀌었다 —
- * 지금은 `sync` 축을 쓰는 소식이 없다. DATA_MODEL.md §4 표 참조)
+ * 지금은 `sync` 축을 쓰는 소식이 없어 **현행 §4-2 표에는 그 행이 없다.** 표를 열어
+ * `sync` 행을 찾지 말 것)
  *
- * 그래서 키를 `{type}:{scope}` 형태로 만든다. 표에 이미 나온 다른 키들
- * (`points:…`·`follow:…`·`slottable:…`)도 사실상 type을 접두로 쓰는 형태이고,
- * 티켓 본문이 제시한 `mission_milestone:{mission_id}:{50|80}`은 정확히 이 규칙이다.
- * 시간창의 의미(하루/6시간)는 그대로 유지된다.
+ * 그래서 키를 `{type}:{scope}` 형태로 만든다. 현행 §4-2 표의 다른 키들
+ * (`followed:…`·`drop_picked_up:…`·`collection_completable:…`)도 전부 type을 접두로 쓰고,
+ * `mission_milestone:{mission_id}:{50|80}`은 정확히 이 규칙이다.
+ * scope의 의미는 그대로 유지된다 — 시간창(하루/6시간)이거나, 014에서 추가된
+ * 대상 집합의 지문(`groupedTargetsKey`)이다.
  */
 import type { NotificationType } from '@/types/database'
 import { kstDateString, kstSixHourBlock } from './kst'

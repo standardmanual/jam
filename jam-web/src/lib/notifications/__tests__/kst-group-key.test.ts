@@ -89,6 +89,9 @@ describe('group_key 빌더 — type 접두가 종류 간 충돌을 막는다', (
       dailyGroupKey('followed', at),
       dailyGroupKey('strava_disconnected', at),
     ]
+    // 셋이 같은 scope를 공유한다는 전제를 고정한다 — 이 줄이 없으면 scope가 갈라져도
+    // 통과해 「같은 시간창인데 type 덕분에 안 부딪힌다」는 계약 검증이 트리비얼해진다
+    expect(keys.every((k) => k.endsWith(':2026-08-25'))).toBe(true)
     expect(new Set(keys).size).toBe(3)
   })
 

@@ -1,9 +1,9 @@
 ---
 id: 20260827_019
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-27
-closed:
+closed: 2026-08-27
 ---
 
 # [Service] 알림 `syncGroupKey()` 죽은 export 정리 + 테스트 픽스처 현행화
@@ -137,20 +137,54 @@ jam-web/src/lib/notifications/__tests__/kst-group-key.test.ts
   `groupedTargetsKey` 무변경. `create-notification.test.ts:354`·`096_notifications_merge.test.sql:34`의
   문자열 픽스처 무변경. DB·마이그레이션 변경 없음.
 
-문서 갱신은 불필요했다 — `DATA_MODEL.md:360`이 016에서 이미 「구 1·3·4가 쓰던
-`{type}:sync:{strava_activity_id}`를 대체한다」로 정리돼 있어 코드 주석과 어긋나지 않는다.
-`RECAP_CASEBOOK.md:31`의 `item_badge_earned:sync:…` 언급도 014 이전 상황을 설명하는
-케이스북 서술이라 그대로 둔다.
+- **E. 개선 리뷰 반영 (머지 후 보강, 커밋 별도)** — 스카우트가 짚은 세 가지를 이 티켓
+  안에서 처리했다.
+  1. `groupKey.ts:18`의 「`points:…`·`follow:…`·`slottable:…`」가 **stale이었다.** 현행
+     §4-2 표의 키는 `followed:`·`collection_completable:`·`drop_picked_up:`·
+     `mission_milestone:`·`strava_disconnected:`로, `points:`는 표에 아예 없고 나머지 둘도
+     접두가 다르다. C항이 손질한 문단 **바로 아래 줄**이라 함께 정리했다.
+  2. 앵커 표기를 `§4` → `§4-2`로 통일. 실제 제목이 `## 4-2. group_key 설계`이고 같은
+     디렉터리의 `index.ts:104`·`types.ts:106`·`batch/shared.ts:3`·`batch/collections.ts:4`가
+     모두 `§4-1`/`§4-2`를 쓴다. 아울러 C항 서술이 「현행 표에는 `sync` 행이 없다」를
+     명시하도록 보강 — 표를 열어본 사람이 근거를 못 찾는 문제를 막는다.
+  3. 충돌 검증 케이스에 `expect(keys.every((k) => k.endsWith(':2026-08-25'))).toBe(true)`
+     추가. 기존 `new Set(keys).size === 3`만으로는 **scope가 갈라져도 통과**해
+     「같은 시간창인데 type 덕분에 안 부딪힌다」는 계약 검증이 트리비얼해진다.
+  4. scope 서술을 「시간창(하루/6시간)이거나, 014에서 추가된 대상 집합의 지문
+     (`groupedTargetsKey`)」으로 확장 — R11 축이 생겨 시간창만으로는 설명되지 않는다.
+
+### 문서 정합성 — 이 티켓에서 닫은 것 / 뺀 것
+
+`DATA_MODEL.md:360`은 016에서 이미 「구 1·3·4가 쓰던 `{type}:sync:{strava_activity_id}`를
+대체한다」로 정리돼 있어 코드 주석과 어긋나지 않음을 대조 확인했다.
+
+반면 **아래 3건은 014/016이 남긴 문서 잔여물로 확인됐고, 이 티켓 범위를 넘어 별도 처리로
+분리했다** (코드 정리 티켓에 PRD 본문 수정을 끼워 넣지 않는다):
+
+| 위치 | 현재 표기 | 문제 |
+|---|---|---|
+| `PRD.md:57,59` | 「동기화 1회로 발급된 배지 3개 → 1건으로 묶음」·「"동기화 1회"가 묶음 단위」 | 014 이후 축은 KST 하루 — **현행 스펙과 정면 충돌하는 유일한 문서** |
+| `DATA_MODEL.md:355` | 「소식 1·3·4처럼 같은 동기화를 scope로 쓰는」(현재형) | 360행 각주(과거형)와 시제가 엇갈림 |
+| `RECAP_CASEBOOK.md:35,504` | 「PRD §3과 DATA_MODEL §4-2는 계속 "동기화 1회"라고 쓴다」 | 이제 절반만 유효(DATA_MODEL은 016에서 정정, PRD만 잔존) |
+
+`RECAP_CASEBOOK.md:31`의 `item_badge_earned:sync:…`는 014 이전 상황을 설명하는 케이스북
+서술이라 그대로 둔다(016에서 시점 표기가 이미 정리됨).
 
 ### 변경된 파일
 ```
 jam-web/src/lib/notifications/groupKey.ts
 jam-web/src/lib/notifications/__tests__/kst-group-key.test.ts
 ```
+커밋: `c927cb67`(A~D) → `f5002ce2`(병합) → E항 보강 커밋
 
 ### 테스트 결과
 - [x] `npx tsc --noEmit` — 에러 0건 (잔존 참조 없음)
 - [x] `npx vitest run src/lib/notifications` — 7 파일 / 163 케이스 전부 통과
 - [x] `npx eslint` (변경 2파일) — 경고·에러 0건
 - [x] `grep -rn "syncGroupKey" jam-web/src/` — 0건
-      (`sync:` 문자열은 `groupKey.ts:12` 주석의 역사적 사례 서술 1건만 남음 — 의도된 존치)
+      (`sync:` 문자열은 `groupKey.ts` 주석의 역사적 사례 서술만 남음 — 의도된 존치)
+- [x] E항 보강 후 재검증 — `tsc --noEmit` 0건, `vitest run src/lib/notifications` 7 파일 /
+      163 케이스 전부 통과 (케이스 추가가 아니라 기존 케이스에 단언 1줄 추가라 수 동일)
+- [x] 게이트 리뷰(체크포인트) **PASS** — A~D항 대조, `grep -rn "syncGroupKey" jam-web/` 0건,
+      `scopedGroupKey(..., 'sync', ...)` 우회 생성 0건, 실사용 빌더 5종 무변경 확인
+- [x] 머지 전 오염 검사 — `git merge-base --is-ancestor origin/staging <review>` 종료코드 0
