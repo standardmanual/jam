@@ -1,8 +1,8 @@
 /**
  * 알림(소식) 문구 렌더러 — 티켓 20260824_021
- * 스펙: Specs/PRD/Notification/PRD.md §3(26종 표) · §5(강조 규칙)
+ * 스펙: Specs/PRD/Notification/PRD.md §3(20종 표) · §5(강조 규칙)
  *
- * ## 규칙 하나로 26종을 일관되게
+ * ## 규칙 하나로 20종을 일관되게
  *
  * > **`payload`로 채워지는 변수 슬롯은 볼드, 고정 텍스트는 일반. 컬러 강조는 쓰지 않는다.**
  *
@@ -14,8 +14,8 @@
  *
  * 1. **닉네임은 `payload`에 없다.** 호출부가 `actor_user_id`·`user_id`로 조인해
  *    `NotificationView.actor`·`me`에 실어준다(유저가 닉네임을 바꾸면 과거 소식도 따라온다).
- * 2. **`payload.count`를 믿지 않는다.** #1·#3·#4는 `badge_ids`가 append로 누적되는데
- *    `count`는 얕은 병합이라 "이번 이벤트분"만 남는다 — 개수는 **항상 배열 길이**로 센다.
+ * 2. **`payload`의 개수 필드를 믿지 않는다.** 배열 필드는 append로 누적되는데 스칼라는
+ *    얕은 병합이라 "이번 이벤트분"만 남는다 — 개수는 **항상 배열 길이**로 센다.
  * 3. **#44의 `reason`은 코드다.** 반드시 `userFacingReasonLabel()`을 경유한다
  *    (어드민 원장 라벨과 분리된 유저 노출용 매핑 — PRD §3 ⑧).
  * 4. **조사는 볼드가 아니다.** `{을/를}` 마커를 바로 앞 슬롯 값의 받침으로 치환한다.
@@ -110,7 +110,7 @@ export function hasBatchim(text: string): boolean {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 토크나이저 — 이 함수 하나가 26종의 강조를 결정한다
+// 토크나이저 — 이 함수 하나가 20종의 강조를 결정한다
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface MessageToken {
@@ -171,8 +171,8 @@ function num(payload: Record<string, unknown>, key: string): number {
 }
 
 /**
- * boolean payload 필드. `defaultValue`는 필드가 아예 없는 과거 payload(20260826_001 이전에
- * 생성된 checkin_badge_earned 소식 등)를 위한 하위호환 값이다.
+ * boolean payload 필드. `defaultValue`는 해당 키가 아예 없는 payload(결산 조각의
+ * `checkin_badges[].first` 생략 등)를 위한 기본값이다.
  */
 function boolField(payload: Record<string, unknown>, key: string, defaultValue: boolean): boolean {
   const v = payload[key]
@@ -449,7 +449,7 @@ function buildRecapMessage(payload: Record<string, unknown>): NotificationMessag
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 26종 문구 — PRD §3 표가 이 함수의 명세다
+// 20종 문구 — PRD §3 표가 이 함수의 명세다
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface NotificationMessage {
@@ -465,54 +465,6 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
     // ── ① 활동 결산 (20260827_014) ─────────────────────────────────────────
     case 'activity_recap':
       return buildRecapMessage(p)
-
-    // ── ① 레거시 6종 — 더 이상 생성하지 않는다(과거 행 렌더용) ──────────────
-    case 'badge_earned': {
-      const count = idList(p, 'badge_ids').length
-      return {
-        template: n.msgBadgeEarned,
-        vars: { badgeCount: t(n.slotBadgeCount, { count }) },
-      }
-    }
-    case 'rare_badge_earned': {
-      // 등급 라벨도 payload(rarity)에서 오는 값이므로 §5 "슬롯=볼드" 규칙대로 슬롯으로 넘긴다.
-      // 템플릿에 합쳐 고정 텍스트로 두면 26종 중 이 2종만 규칙의 예외가 된다(20260825 정정).
-      return {
-        template: n.msgRareBadgeEarned,
-        vars: {
-          rarity: RARITY_LABEL[str(p, 'rarity')] ?? '',
-          badgeName: str(p, 'badge_name'),
-        },
-      }
-    }
-    case 'item_badge_earned': {
-      const count = idList(p, 'inventory_item_ids').length
-      return {
-        template: n.msgItemBadgeEarned,
-        vars: { itemCount: t(n.slotItemBadgeCount, { count }) },
-      }
-    }
-    case 'checkin_badge_earned': {
-      // 20260826_001 — 대표 지점(poi_name)은 sync.ts가 "최초 획득 우선" 규칙으로 이미
-      // 골라 넣은 값이라 names[0]이 아니라 이 값을 그대로 헤드라인에 쓴다.
-      const names = [...new Set(idList(p, 'poi_names'))]
-      const single = str(p, 'poi_name') || names[0] || ''
-      const poiName =
-        names.length > 1
-          ? t(n.slotPlaceMore, { name: single, count: names.length - 1 })
-          : single
-      // is_first_earn이 없는 과거 payload(20260826_001 이전 소식)는 항상 "획득" 문구로 유지한다.
-      const isFirstEarn = boolField(p, 'is_first_earn', true)
-      const visitCount = num(p, 'visit_count')
-      if (!isFirstEarn && visitCount > 1) {
-        return { template: n.msgCheckinBadgeRepeated, vars: { poiName, visitCount: String(visitCount) } }
-      }
-      return { template: n.msgCheckinBadgeEarned, vars: { poiName } }
-    }
-    case 'points_earned':
-      return { template: n.msgPointsEarned, vars: { points: points(num(p, 'amount')) } }
-    case 'first_badge':
-      return { template: n.msgFirstBadge, vars: { firstBadge: n.slotFirstBadge } }
 
     // ── ② 컬렉션 ──────────────────────────────────────────────────────────
     case 'collection_slottable':
@@ -669,6 +621,10 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
     // ── ⑥ 소셜 — 팔로우한 사람의 활동 ──────────────────────────────────────
     // R15 — 한 사람의 소식이 하루 2건 이상이면 대표 하나 + "소식이 N건 더 있어요"
     case 'following_rare_badge': {
+      // 등급 라벨도 payload(rarity)에서 오는 값이므로 §5 "슬롯=볼드" 규칙대로 슬롯으로 넘긴다.
+      // 템플릿에 합쳐 고정 텍스트로 두면 이 종만 규칙의 예외가 된다(20260825 정정).
+      // `msgRareBadgeEarned`는 원래 ① 레거시 #2의 문구였고, 20260827_016에서 레거시 경로가
+      // 사라진 뒤에는 **이 분기 전용**이다.
       return withFollowingMore(p, {
         template: `${n.msgFollowingActorPrefix}${n.msgRareBadgeEarned}`,
         vars: {

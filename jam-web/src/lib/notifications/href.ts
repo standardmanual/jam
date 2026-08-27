@@ -1,12 +1,12 @@
 /**
  * 알림(소식) 착지점 계산 — 티켓 20260824_021
- * 스펙: Specs/PRD/Notification/PRD.md §3(26종 표의 "착지점" 열) · §6-6
+ * 스펙: Specs/PRD/Notification/PRD.md §3(20종 표의 "착지점" 열) · §6-6
  *
  * ## 착지점을 저장하지 않는 이유
  *
  * `target_href`를 컬럼으로 저장하면 라우트를 바꿀 때 **과거 소식이 전부 깨진다.**
  * `type`은 안정적이고 라우트는 변하므로, 변하는 쪽을 코드에 둔다.
- * PRD §3의 26종 표가 이 함수의 명세다.
+ * PRD §3의 20종 표가 이 함수의 명세다.
  *
  * ## 2단 타겟 (아바타 탭 → 사람 / 본문 탭 → 대상)
  *
@@ -75,39 +75,6 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
       if (c.activityBadges.length > 0) return single('/badges?tab=activity')
       if (c.checkins.length > 0) return single('/badges?tab=checkin')
       return single('/inventory')
-    }
-
-    // ── ① 레거시 6종 ──────────────────────────────────────────────────────
-    case 'badge_earned': {
-      const ids = idList(p, 'badge_ids')
-      if (ids.length === 1) return single(`/badges/${ids[0]}`)
-      return single('/badges?tab=activity')
-    }
-    case 'rare_badge_earned': {
-      const id = typeof p.badge_id === 'string' ? p.badge_id : ''
-      return single(id ? `/badges/${id}` : '/badges')
-    }
-    case 'item_badge_earned': {
-      // 착지점이 배지 도감이 아니라 **인벤토리 인스턴스**다 — 유저가 보고 싶은 건
-      // "내가 받은 그 개체(시리얼)"이지 도감이 아니다.
-      const ids = idList(p, 'inventory_item_ids')
-      if (ids.length === 1) return single(`/inventory/${ids[0]}`)
-      return single('/inventory')
-    }
-    case 'checkin_badge_earned': {
-      const ids = idList(p, 'badge_ids')
-      const primary = typeof p.badge_id === 'string' ? p.badge_id : ids[0]
-      // 20260826_004 — 탭 식별자가 poi → checkin으로 바뀌었다. 이미 발송된 소식의
-      // `?tab=poi` 링크는 BadgesClient의 LEGACY_TAB_ALIASES가 계속 받아준다.
-      // 20260826_006 — 하이라이트 기능이 제거돼 묶음도 탭 이동만 한다.
-      if (ids.length <= 1) return single(primary ? `/badges/${primary}` : '/badges?tab=checkin')
-      return single('/badges?tab=checkin')
-    }
-    case 'points_earned':
-      return single('/points')
-    case 'first_badge': {
-      const id = typeof p.badge_id === 'string' ? p.badge_id : ''
-      return single(id ? `/badges/${id}` : '/badges')
     }
 
     // ── ② 컬렉션 ──────────────────────────────────────────────────────────

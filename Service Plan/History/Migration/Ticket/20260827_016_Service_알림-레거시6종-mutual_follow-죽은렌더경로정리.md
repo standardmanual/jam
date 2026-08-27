@@ -29,20 +29,20 @@ closed:
 | # | 조건 | 2026-08-27 현재 |
 |---|---|---|
 | 1 | 마이그레이션 105(`activity_recap` ENUM) 적용 | ✅ 완료 (prod ENUM에 존재 확인) |
-| 2 | 014 코드 프로덕션 승격 (`/jam-ship`) | ❌ **미완** — `origin/main`은 d00db1ce, 014 미포함 |
-| 3 | `seed_20260827_notifications_reset.sql` 실행 (알림 전량 삭제) | ❌ **미완** |
-| 4 | `/api/cron/notifications` 1회 수동 실행 (소식 재생성) | ❌ **미완** |
+| 2 | 014 코드 프로덕션 승격 (`/jam-ship`) | ✅ 완료 — `origin/main` = c0b3498f |
+| 3 | `seed_20260827_notifications_reset.sql` 실행 (알림 전량 삭제) | ✅ 완료 — `notifications` 0행 |
+| 4 | `/api/cron/notifications` 1회 수동 실행 (소식 재생성) | ✅ 완료 |
 
-**2026-08-27 실측 — 대상 타입 행이 아직 남아 있다:**
+**삭제 전 분포 (총 37행) — 기록용:**
 
 ```
 item_badge_earned      9
 checkin_badge_earned   5
 mutual_follow          1
-activity_recap         0   ← 아직 새 형식 소식이 하나도 없다
+...                        (총 37행, 전량 삭제됨)
 ```
 
-착수 직전 아래로 **전부 0인지 반드시 재확인**한다:
+전제조건은 오케스트레이터가 2026-08-27에 직접 확인·실행했다. 재확인용 SQL:
 
 ```sql
 SELECT type, count(*) FROM public.notifications GROUP BY type ORDER BY 2 DESC;
@@ -104,13 +104,49 @@ SELECT type, count(*) FROM public.notifications GROUP BY type ORDER BY 2 DESC;
 
 ### 구현 내용 요약
 
+레거시 6종(`badge_earned`·`rare_badge_earned`·`item_badge_earned`·`checkin_badge_earned`·
+`points_earned`·`first_badge`)의 **도달 불가능한 렌더 경로를 전면 제거**했다. `mutual_follow`는
+014에서 이미 TS 타입에서 빠져 있어 추가 코드 변경이 없었다(문서 표기만 정리).
+
+- `NotificationType` 유니온: 26종 → **20종**. 제거한 6종은 상단 주석의 「예약됐으나 사용하지 않는 값」
+  목록에 합류시켰다 (DB ENUM 값은 그대로 둔다 — Postgres가 값 제거를 안전하게 지원하지 않는다).
+- `NON_BUMPING_NOTIFICATION_TYPES`: 7원소 → `activity_recap` 1원소.
+- `NotificationPayloadMap`: 레거시 payload 인터페이스 6개 제거.
+- `buildNotificationMessage`·`notificationTarget`·`TypeIcon`: 각각 6개 분기 제거.
+  `activity_recap`·`following_rare_badge`→`MedalIcon`, `inventory_full`→`PackageIcon`,
+  `admin_points_changed`→`CoinIcon`, `drop_spot_active`→`PinIcon` 매핑은 전부 보존했다.
+- `ko.ts`: 레거시 문구 6개 제거. **`msgRareBadgeEarned`는 남기고 ⑥ 블록으로 이동**해 「#29 전용」으로
+  재분류했다 (`message.ts:673`에서 `msgFollowingActorPrefix`와 합성해 재사용한다).
+- 테스트: 레거시 픽스처를 **삭제가 아니라 현행 타입(`activity_recap` 등)으로 교체**했다.
+  「등급 라벨도 payload 슬롯이므로 볼드」(§5) 단언은 같은 템플릿을 쓰는 #29 쪽으로 옮겼다.
+- 문서: DATA_MODEL §2의 「예약됐으나 사용하지 않는 값」을 **9값 표**로 재구성, PRD §3 종수 표기를
+  21종 → **20종**으로 정정(카테고리 합계가 20인데 헤더만 21이었다 — 014의 계산 누락).
+
 ### 변경된 파일
 ```
--
+jam-web/src/types/database.ts
+jam-web/src/lib/notifications/types.ts
+jam-web/src/lib/notifications/message.ts
+jam-web/src/lib/notifications/href.ts
+jam-web/src/app/(main)/notifications/NotificationsClient.tsx
+jam-web/src/lib/i18n/ko.ts
+jam-web/src/lib/notifications/__tests__/message-href.test.ts
+jam-web/src/lib/notifications/__tests__/create-notification.test.ts
+jam-web/src/lib/notifications/__tests__/kst-group-key.test.ts
+jam-web/src/lib/notifications/__tests__/feed-cursor.test.ts
+Service Plan/Specs/PRD/Notification/DATA_MODEL.md
+Service Plan/Specs/PRD/Notification/PRD.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `tsc --noEmit` 통과 (0 에러)
+- [x] `eslint` — 변경 파일 전부 무경고
+- [x] `vitest` 유닛 393 케이스 전원 통과 (알림 모듈 7파일 164 케이스 포함)
+- [x] `npm run test:node` 통과 (실데이터 대조 48/48)
+- [x] **default 도달이 늘지 않음** — 살아 있는 20종 전수가 `buildNotificationMessage`·
+      `notificationTarget`·`TypeIcon` 세 곳 모두에서 명시 `case` 분기를 가짐(스크립트로 대조, 누락 0)
+- [x] 최종 grep 잔여가 **활동 피드 축의 `badge_earned`뿐**임을 확인
+      (`FeedSection`·`ProfileClient`·`[username]/page`·`badge-engine`·`strava/sync`·`activity-feed/*`)
 
 ### 배포 정보
 - 배포일:
@@ -119,5 +155,19 @@ SELECT type, count(*) FROM public.notifications GROUP BY type ORDER BY 2 DESC;
 
 ### 주요 의사결정 / 핵심 메모
 
+- **`msgRareBadgeEarned`는 지우지 않았다.** ⑥ #29가 재사용하는 살아 있는 문구다. ① 레거시 블록에서
+  ⑥ 블록으로 물리적으로 옮기고 「#29 전용」 주석을 달아, 다음 사람이 "레거시니까 지워도 되겠지"로
+  오독할 여지를 없앴다.
+- **`ActivityFeedEventType`의 `'badge_earned'`는 손대지 않았다.** 이름만 같고 축이 다른 활동 피드
+  이벤트 타입이며 현행이다. `database.ts`의 `NotificationType` 주석에 **혼동 금지 문구를 명시**해
+  일괄 grep 치환 사고를 예방했다.
+- **DB ENUM 값은 그대로 둔다.** SQL 마이그레이션 파일 없음. DATA_MODEL §2의 「예약됐으나 사용하지
+  않는 값」을 값·시점·사유 3열 표로 재구성해 9값을 한눈에 보이게 했다.
+- **PRD 헤더의 「21종」은 오기였다.** 카테고리 합계(① 1 + ② 3 + ③ 2 + ④ 5 + ⑤ 1 + ⑥ 3 + ⑧ 5)가
+  20인데 헤더만 21이었다 — 014에서 6종→1종(−5)은 반영하고 `mutual_follow` 제거(−1)를 빠뜨린 결과다.
+  20종으로 정정하고 코드 주석의 「26종」 표기 6곳도 함께 맞췄다.
+
 ### 잔여 이슈
--
+- `syncGroupKey()`(`src/lib/notifications/groupKey.ts`)는 014 이후 **프로덕션 호출부가 없다**
+  (`dailyGroupKey`만 쓰인다). 이번 티켓 범위가 아니라 제거하지 않았고 테스트 픽스처만 현행 타입으로
+  교체했다. 별도 티켓에서 존치/제거 판단 필요.

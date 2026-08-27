@@ -45,17 +45,10 @@ function TypeIcon({ type, className }: { type: NotificationType; className?: str
   switch (type) {
     // ① 활동 결산 — 배지가 결산의 대부분이라 메달을 쓴다(20260827_014)
     case 'activity_recap':
-    case 'badge_earned':
-    case 'rare_badge_earned':
-    case 'first_badge':
     case 'following_rare_badge':
       return <MedalIcon className={className} />
-    case 'checkin_badge_earned':
-      return <PinIcon className={className} />
-    case 'item_badge_earned':
     case 'inventory_full':
       return <PackageIcon className={className} />
-    case 'points_earned':
     case 'admin_points_changed':
       return <CoinIcon className={className} />
     case 'collection_slottable':
