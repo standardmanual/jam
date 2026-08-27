@@ -1,9 +1,9 @@
 ---
 id: 20260827_005
 category: API
-status: OPEN
+status: CLOSED
 created: 2026-08-27
-closed:
+closed: 2026-08-27
 ---
 
 # [API] 세계관 수정 API 부분 body 배경 필드 null 덮어쓰기 버그 수정
@@ -129,10 +129,14 @@ jam-web/src/app/admin/factions/FactionsTable.tsx
 - [x] 문장 규칙: 해당 없음(문구 변경 없음)
 - [x] 표기 규칙: 해당 없음(문구 변경 없음)
 
+### 문서 갱신
+- `Service Plan/Specs/PRD/02_DATA_MODEL.md` "5. 세계관 (faction)" 섹션에 `PUT /api/admin/factions/[id]`가
+  부분 body 병합을 지원한다는 API 계약을 명시했다(개선 리뷰 제안 반영).
+
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-27 (staging)
+- 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행 — 사용자 명시 승인 필요)
+- 커밋: `9d7ccfd1` (origin/staging에 fast-forward push)
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
@@ -144,7 +148,17 @@ jam-web/src/app/admin/factions/FactionsTable.tsx
   변경하지 않음).
 - 티켓 지시대로 item_books PATCH 신설 대안은 채택하지 않았고, PUT 자체를 병합 로직으로 고치는
   방향으로만 구현했다.
+- **티켓 번호 재조정**: staging 머지 직전 안전 검사에서 같은 날짜 번호 `20260827_003`이 이미
+  병렬로 진행된 다른 두 티켓(Admin 사이드바, Content 아이템배지 알림 문구)에 선점돼 있던 것을
+  발견해 `20260827_005`로 재번호했다(별도 커밋 `0981c68b`). 동시에 review 브랜치가 그 사이
+  staging에 먼저 머지된 3개 병렬 티켓(003 x2, 004)보다 뒤처져 있어 `git merge origin/staging`으로
+  최신화한 뒤 `tsc`/`build` 재검증을 거쳐 머지했다.
 
 ### 잔여 이슈
 - `item_books`의 PUT(`jam-web/src/app/api/admin/itembooks/[id]/route.ts:12-23`)에 동일한
-  `?? null` 부분 body 버그가 남아있다(이번 티켓 범위 밖, sideFinding).
+  `?? null` 부분 body 버그가 남아있다(이번 티켓 범위 밖, sideFinding) — 별도 작업 칩으로 분리함.
+- `FactionsTable.tsx`의 `themeContainer` useEffect에 `react-hooks/set-state-in-effect` 린트
+  에러가 20260827_002부터 존재(이번 범위 밖) — 별도 작업 칩으로 분리함.
+- `Service Plan/History/Operations/SERVICE_OPERATIONS.md`에 여러 어드민 엔드포인트(factions·
+  badges·itembooks·missions·poi 등)가 실제로는 PUT인데 문서상 PATCH로 잘못 기재됨(이번 범위 밖) —
+  별도 작업 칩으로 분리함.
