@@ -31,6 +31,36 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
     echo "" >&2
     exit 1
   fi
+
+  # staging push 시 jam-web 전체 lint를 게이트로 돌린다.
+  #
+  # 배경: 2026-08-27 이전까지 CI 워크플로우도, 훅도, 리뷰어 규칙도 lint를 보지 않았다.
+  # Next 16은 next build에서 ESLint를 돌리지 않으므로 Vercel 빌드도 회귀를 못 잡는다.
+  # 그 결과 에러가 183건까지 쌓였고, 전체가 레드라 신규 위반이 묻혀 각 티켓이 "변경 파일만
+  # eslint" 우회 검증을 하게 됐다(티켓 20260827_022).
+  #
+  # pre-commit이 아니라 pre-push인 이유: 커밋 단위로 돌리면 느려서 결국 같은 우회 유혹이
+  # 생긴다. 경고 상한(--max-warnings 26)은 현재 기준선이며 줄이는 방향으로만 갱신한다.
+  #
+  # 우회(예: 린트와 무관한 긴급 문서 push): JAM_SKIP_LINT=1 git push origin staging
+  if [ "$branch" = "staging" ] && [ "${JAM_SKIP_LINT:-}" != "1" ]; then
+    hook_dir="$(git rev-parse --show-toplevel)/jam-web"
+    if [ -d "$hook_dir/node_modules" ]; then
+      echo "pre-push: jam-web 전체 lint 실행 중..." >&2
+      if ! (cd "$hook_dir" && npm run lint:ci >/dev/null 2>&1); then
+        echo "" >&2
+        echo "차단(pre-push): jam-web lint가 실패했습니다." >&2
+        echo "" >&2
+        echo "  확인: cd jam-web && npm run lint:ci" >&2
+        echo "  에러 0건 · 경고 26건 이하가 기준선입니다(티켓 20260827_022)." >&2
+        echo "  린트와 무관한 긴급 push라면: JAM_SKIP_LINT=1 git push origin staging" >&2
+        echo "" >&2
+        exit 1
+      fi
+    else
+      echo "pre-push: jam-web/node_modules가 없어 lint 게이트를 건너뜁니다." >&2
+    fi
+  fi
 done
 
 exit 0

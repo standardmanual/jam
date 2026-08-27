@@ -67,7 +67,8 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 - 변경 내용:
 - 변경 파일 목록:
 - push한 브랜치명:
-- 로컬 테스트/검증 방법:
+- 로컬 테스트/검증 방법: (`cd jam-web && npm run lint` **전체** 실행 결과의 에러·경고 건수를
+  반드시 포함한다. `npx eslint <변경파일>`만 돌린 결과로 대체하지 않는다 — 티켓 20260827_022)
 - DB 변경 필요 여부 (필요시 마이그레이션 파일 경로):
 - confidence: [high / medium / low]
 - alerts:
