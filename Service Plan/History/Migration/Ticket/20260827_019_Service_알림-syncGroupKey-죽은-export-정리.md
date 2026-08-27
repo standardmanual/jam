@@ -119,10 +119,38 @@ jam-web/src/lib/notifications/__tests__/kst-group-key.test.ts
 
 ### 구현 내용 요약
 
+- **A. `syncGroupKey()` 제거** — `groupKey.ts`에서 함수 + JSDoc 삭제. `index.ts:33`의
+  `export * from './groupKey'` 재노출도 자동으로 사라진다(개별 export 목록이 아니라 와일드카드라
+  별도 수정 불필요). 프로덕션 호출부가 0건이었으므로 동작 변화 없음.
+- **B. 키 충돌 검증 케이스 치환** — 삭제하지 않고 **실제 호출부가 쓰는 조합**으로 바꿨다.
+  같은 KST 하루에 대한 `dailyGroupKey('activity_recap'|'followed'|'strava_disconnected', at)`
+  세 키가 서로 다른지 검증한다(각각 `recap.ts:70`·`follows/route.ts:63`·`strava/sync.ts:643`이
+  실제로 쓰는 조합). 「UNIQUE 인덱스가 `(user_id, group_key)`뿐이라 type 접두가 없으면 서로 다른
+  종류가 한 행으로 병합된다」는 계약은 그대로 유지된다.
+  `'syncGroupKey는 {type}:sync:{activityId}'` 형식 검증 케이스는 대상 함수가 사라져 삭제.
+- **C. 상단 주석 손질** — 「왜 모든 키에 type을 접두로 붙이는가」 블록은 유지하되, 규칙 진술
+  (type 없이 scope만 쓰면 병합된다)을 앞으로 빼고 `sync:{strava_activity_id}` 충돌은 **과거 사례**로
+  분리했다. 014에서 세 종류가 `activity_recap` 1종·`dailyGroupKey` 축으로 재편돼 현행에 `sync` 축이
+  없다는 사실을 명시 — `DATA_MODEL.md:360`(016이 정리한 표기)과 동일한 서술이다.
+  말미의 「시간창의 의미(하루/6시간/동기화 1회)」에서 '동기화 1회'도 제거했다.
+- **D. 하지 말 것 준수** — `scopedGroupKey`·`dailyGroupKey`·`sixHourGroupKey`·`groupFingerprint`·
+  `groupedTargetsKey` 무변경. `create-notification.test.ts:354`·`096_notifications_merge.test.sql:34`의
+  문자열 픽스처 무변경. DB·마이그레이션 변경 없음.
+
+문서 갱신은 불필요했다 — `DATA_MODEL.md:360`이 016에서 이미 「구 1·3·4가 쓰던
+`{type}:sync:{strava_activity_id}`를 대체한다」로 정리돼 있어 코드 주석과 어긋나지 않는다.
+`RECAP_CASEBOOK.md:31`의 `item_badge_earned:sync:…` 언급도 014 이전 상황을 설명하는
+케이스북 서술이라 그대로 둔다.
+
 ### 변경된 파일
 ```
--
+jam-web/src/lib/notifications/groupKey.ts
+jam-web/src/lib/notifications/__tests__/kst-group-key.test.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx tsc --noEmit` — 에러 0건 (잔존 참조 없음)
+- [x] `npx vitest run src/lib/notifications` — 7 파일 / 163 케이스 전부 통과
+- [x] `npx eslint` (변경 2파일) — 경고·에러 0건
+- [x] `grep -rn "syncGroupKey" jam-web/src/` — 0건
+      (`sync:` 문자열은 `groupKey.ts:12` 주석의 역사적 사례 서술 1건만 남음 — 의도된 존치)
