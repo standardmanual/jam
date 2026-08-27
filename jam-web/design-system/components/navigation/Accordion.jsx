@@ -72,7 +72,7 @@ export function Accordion({ items = [], style = {}, className = '' }) {
     setOpenIndex((prev) => (prev === index ? -1 : index));
   };
 
-  const uid = React.useId ? React.useId() : 'acc';
+  const uid = React.useId();
 
   return (
     <div

@@ -21,7 +21,6 @@ export async function GET(
   const service = createServiceClient()
 
   // username → userId
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: targetRaw } = await service
     .from('users')
     .select('id')

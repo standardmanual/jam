@@ -46,9 +46,11 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
   // 로딩 스피너 대신 타임라인 모양 스켈레톤 → 도착 시 cross-fade (Skeleton reveal, 14)
   const skelRef = useSkeletonReveal<HTMLDivElement>(events !== null)
 
+  // 20260827_020: 이펙트 진입 시의 동기 `setError(null)`은 캐스케이딩 렌더를 만든다
+  // (react-hooks/set-state-in-effect). 재시도 시 이전 에러를 지우는 용도였으므로 시트를 여는
+  // 클릭 핸들러로 옮겼다 — 시트가 열리기 전에 초기화되므로 화면 전이는 기존과 같다.
   useEffect(() => {
     if (!open || events !== null) return
-    setError(null)
     fetch(`/api/inventory/items/${itemId}/history`)
       .then((r) => r.json())
       .then((data) => {
@@ -68,7 +70,10 @@ export default function InventoryItemHistorySheet({ itemId, obtainedBy }: Props)
     <>
       {/* 획득 방법 행 */}
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setError(null)
+          setOpen(true)
+        }}
         className="flex justify-between items-center px-[var(--spacing-16)] py-[var(--spacing-16)] w-full text-left active:opacity-70 transition-opacity"
       >
         <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/50">{d.inventory.obtainMethod}</span>

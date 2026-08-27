@@ -202,7 +202,6 @@ export default function ProfileClient({
     sync()
     window.addEventListener('hashchange', sync)
     return () => window.removeEventListener('hashchange', sync)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username])
 
   // ── 탭 클릭 — 해시 이동 (브라우저 뒤로가기 지원) ────────────────────────────
@@ -586,6 +585,10 @@ export default function ProfileClient({
                 <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">
                   {d.profile.stravaDisconnected}
                 </span>
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- 규칙 오탐:
+                    `/api/strava/auth`는 페이지가 아니라 OAuth 리다이렉트용 API 라우트다.
+                    next/link로 바꾸면 클라이언트 내비게이션이 되어 스트라바 인증 리다이렉트가
+                    깨진다 — 전체 페이지 이동이 필요하므로 <a>가 정답이다. */}
                 <a
                   href="/api/strava/auth"
                   className="inline-flex items-center justify-center gap-2 min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-pill-buttons)] bg-surface text-text text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100 shrink-0"

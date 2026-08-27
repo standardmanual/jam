@@ -92,6 +92,11 @@ export default function BottomSheet({
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
+  /** 드래그 중에는 transform 트랜지션을 꺼야 손가락을 그대로 따라온다. 렌더에서 판단해야 하는
+   *  값이라 ref를 그대로 읽으면 react-hooks/refs 위반이자 값이 바뀌어도 리렌더가 없어
+   *  트랜지션이 갱신되지 않을 수 있다 — 포인터 핸들러의 즉시 가드용 ref는 그대로 두고,
+   *  렌더용으로 같은 값을 state로도 들고 간다. */
+  const [dragging, setDragging] = useState(false)
   const startYRef = useRef(0)
   const sheetRef = useRef<HTMLDivElement>(null)
   /** footer 박스 — 하단 점유 높이를 실측해 토스트에 신고하는 데 쓴다(20260826_005). */
@@ -124,11 +129,15 @@ export default function BottomSheet({
 
   useEffect(() => {
     if (!open) {
-      setDragY(0)
       dragBaseRef.current = 0
       velocitySamplesRef.current = []
     }
   }, [open])
+
+  /** 드래그 오프셋은 시트가 열려 있는 동안에만 유효하다. 닫힐 때의 `setDragY(0)`를 위 이펙트에
+   *  두면 캐스케이딩 렌더가 되므로(react-hooks/set-state-in-effect) 렌더에서 파생시키고,
+   *  state 자체는 닫힘 트랜지션이 끝나는 타이머에서 정리한다(아래 useEffect). */
+  const sheetDragY = open ? dragY : 0
 
   useEffect(() => {
     if (open) {
@@ -139,7 +148,12 @@ export default function BottomSheet({
       return () => cancelAnimationFrame(raf)
     }
     const raf = requestAnimationFrame(() => setShown(false))
-    const timer = setTimeout(() => setLingering(false), cssDurationMs('--panel-close-dur', 350))
+    const timer = setTimeout(() => {
+      setLingering(false)
+      // 드래그 세션 정리 — 이펙트 본문이 아니라 트랜지션 종료 콜백이라 캐스케이딩 렌더가 아니다.
+      setDragY(0)
+      setDragging(false)
+    }, cssDurationMs('--panel-close-dur', 350))
     return () => {
       cancelAnimationFrame(raf)
       clearTimeout(timer)
@@ -182,6 +196,7 @@ export default function BottomSheet({
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     draggingRef.current = true
+    setDragging(true)
     startYRef.current = e.clientY
     // 스프링백 트랜지션이 아직 진행 중일 수 있으므로, 화면에 실제로 보이는 현재
     // translateY를 읽어 그 지점부터 드래그가 이어지게 한다(고정 duration 트랜지션 중
@@ -205,6 +220,7 @@ export default function BottomSheet({
   function handlePointerUp() {
     if (!draggingRef.current) return
     draggingRef.current = false
+    setDragging(false)
 
     // 릴리즈 속도(px/ms) — 짧고 빠른 하향 플릭이면 거리(dragY)와 무관하게 닫는다.
     const samples = velocitySamplesRef.current
@@ -264,8 +280,8 @@ export default function BottomSheet({
           topGapPx === undefined ? (detent === 'full' ? 'h-[92dvh]' : 'max-h-[75dvh]') : '',
         ].join(' ')}
         style={{
-          transform: `translateY(${dragY}px)`,
-          transition: draggingRef.current ? 'none' : 'transform 200ms ease-out',
+          transform: `translateY(${sheetDragY}px)`,
+          transition: dragging ? 'none' : 'transform 200ms ease-out',
           ...(topGapPx !== undefined ? { height: `calc(100dvh - ${topGapPx}px)` } : {}),
         }}
       >

@@ -36,7 +36,6 @@ export function useCyclePhase({ active, cycleMsBase, speed = 1 }: UseCyclePhaseO
 
   useEffect(() => {
     if (!active) {
-      setPhase(0);
       return;
     }
 
@@ -56,7 +55,10 @@ export function useCyclePhase({ active, cycleMsBase, speed = 1 }: UseCyclePhaseO
     return () => cancelAnimationFrame(rafId);
   }, [active, cycleMsBase, speed]);
 
-  return phase;
+  // 비활성일 때의 0은 이펙트에서 setPhase(0)로 되돌리지 않고 반환값에서 파생시킨다 —
+  // 이펙트 안의 동기 setState는 캐스케이딩 렌더를 만든다(react-hooks/set-state-in-effect).
+  // 형제 훅 useSteppedCycle이 이미 쓰는 방식과 같다. rAF 콜백 안의 setPhase는 해당 없음.
+  return active ? phase : 0;
 }
 
 interface UseSteppedCycleOptions {
@@ -124,7 +126,8 @@ export function useSteppedCycle({
     if (!active) {
       activeRef.current = false;
       currentStepRef.current = idleStep;
-      setStep(idleStep);
+      // setStep(idleStep)은 아래 `return active ? step : idleStep`과 중복된 죽은 setState라
+      // 제거했다(react-hooks/set-state-in-effect).
       return;
     }
 

@@ -99,6 +99,9 @@ export default function BadgeShareButton({
       : null
   const isDisabled = disabledReason !== null
 
+  /** 이미지 URL 자체가 없으면 생성 자체가 불가능하므로 state와 무관하게 에러로 본다. */
+  const effectiveState: ShareState = imageUrl ? state : { kind: 'error', reason: 'unknown' }
+
   const [popoverOpen, setPopoverOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
 
@@ -119,6 +122,10 @@ export default function BadgeShareButton({
     return pushTabBarHidden()
   }, [open])
 
+  // 20260827_020: 이펙트 진입 시의 동기 setState(초기화)는 캐스케이딩 렌더를 만든다
+  // (react-hooks/set-state-in-effect). "loading으로 되돌리기"는 시트를 여는 클릭 핸들러로,
+  // "이미지 URL이 없으면 에러"는 아래 파생값(effectiveState)으로 옮겼다. 화면에 보이는
+  // 로딩/에러 전이는 기존과 같다(오히려 한 프레임 빨리 확정된다).
   useEffect(() => {
     if (!open) return
 
@@ -127,13 +134,9 @@ export default function BadgeShareButton({
       objectUrlRef.current = null
     }
 
-    if (!imageUrl) {
-      setState({ kind: 'error', reason: 'unknown' })
-      return
-    }
+    if (!imageUrl) return
 
     let cancelled = false
-    setState({ kind: 'loading' })
 
     async function generate() {
       try {
@@ -208,6 +211,8 @@ export default function BadgeShareButton({
       setPopoverOpen((v) => !v)
       return
     }
+    // 이전에 열었을 때의 ready/error 결과가 남아 있으므로 여는 시점에 loading으로 되돌린다.
+    setState({ kind: 'loading' })
     setOpen(true)
   }
 
@@ -244,8 +249,8 @@ export default function BadgeShareButton({
         contentScrollable={false}
         footerBottomInset="safe-area"
         footer={
-          state.kind === 'ready' ? (
-            <Button surface="dark" fullWidth onClick={() => handleAction(state.blob)}>
+          effectiveState.kind === 'ready' ? (
+            <Button surface="dark" fullWidth onClick={() => handleAction(effectiveState.blob)}>
               {supportsFileShare() ? d.badges.shareActionShare : d.badges.shareActionDownload}
             </Button>
           ) : undefined
@@ -268,10 +273,10 @@ export default function BadgeShareButton({
               backgroundSize: '20px 20px',
             }}
           >
-            {state.kind === 'ready' ? (
+            {effectiveState.kind === 'ready' ? (
               // eslint-disable-next-line @next/next/no-img-element -- 클라이언트에서 즉석 생성한 blob: URL, next/image 최적화 대상 아님
               <img
-                src={state.blobUrl}
+                src={effectiveState.blobUrl}
                 alt={badgeName}
                 className="w-full h-full object-contain"
                 /*
@@ -283,17 +288,17 @@ export default function BadgeShareButton({
                 */
                 style={{ transform: 'scale(1.3)' }}
               />
-            ) : state.kind === 'loading' ? (
+            ) : effectiveState.kind === 'loading' ? (
               <WanderingEyesLoader />
             ) : (
               <MedalIcon className="w-16 h-16 text-text/40" />
             )}
           </div>
 
-          {state.kind === 'error' && (
+          {effectiveState.kind === 'error' && (
             <div className="shrink-0 py-[var(--spacing-16)] text-center">
-              <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{errorCopy(state.reason).title}</p>
-              <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{errorCopy(state.reason).body}</p>
+              <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{errorCopy(effectiveState.reason).title}</p>
+              <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{errorCopy(effectiveState.reason).body}</p>
             </div>
           )}
         </div>
