@@ -75,7 +75,7 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 | `VERCEL_ENV` | 해당 환경 | 실행 단계 |
 |---|---|---|
-| 없음 / `preview` | 로컬, staging 배포 | `storybook build` → `public/storybook` 복사 → `next build` |
+| `production` 이외 전부<br>(없음 / `preview` / `development`) | 로컬, staging 배포 | `storybook build` → `public/storybook` 복사 → `next build` |
 | `production` | main 배포 | `next build`만 |
 
 따라서 4단계에서 review 브랜치를 staging에 머지하고 `git push origin staging`하는 순간
