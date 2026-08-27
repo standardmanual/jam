@@ -5,6 +5,7 @@ import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { AdminBodyThemeFix } from '@/components/admin/AdminBodyThemeFix'
 import { SidebarInset, SidebarProvider } from '@/components/admin/ui/sidebar'
+import { hasAdminAccess } from '@/lib/admin/auth'
 
 // 어드민 전용 서체 — Pretendard (globals.css 최상단에 CDN import로 전역 로드됨,
 // 서비스 본체·어드민 공용). shadcn 프리셋(b5Jgcv00m) 기본 폰트값(Inter)보다
@@ -23,8 +24,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
     if (!user) redirect('/login')
 
-    const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
-    if (!adminEmails.includes(user.email ?? '')) redirect('/forbidden')
+    // ADMIN_EMAILS 화이트리스트 OR users.is_admin 컬럼 (20260827_015)
+    if (!(await hasAdminAccess(user.id, user.email))) redirect('/forbidden')
 
     userEmail = user.email ?? null
   } catch (err) {

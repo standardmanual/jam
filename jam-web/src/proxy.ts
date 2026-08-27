@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { hasAdminAccess } from '@/lib/admin/auth'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -33,7 +34,7 @@ export async function proxy(request: NextRequest) {
   )
 
   // Supabase 응답 지연/네트워크 오류 시 프록시 자체가 크래시하지 않도록 방어
-  let user: { email?: string | null } | null = null
+  let user: { id: string; email?: string | null } | null = null
   try {
     const { data } = await supabase.auth.getUser()
     user = data.user
@@ -71,13 +72,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // 어드민 경로 보호: ADMIN_EMAILS에 포함된 이메일만 접근 허용
+  // 어드민 경로 보호: ADMIN_EMAILS 화이트리스트 OR users.is_admin 컬럼 (20260827_015)
   if (user && pathname.startsWith('/admin')) {
-    const adminEmails = (process.env.ADMIN_EMAILS ?? '')
-      .split(',')
-      .map((e) => e.trim())
-      .filter(Boolean)
-    if (!adminEmails.includes(user.email ?? '')) {
+    const allowed = await hasAdminAccess(user.id, user.email)
+    if (!allowed) {
       const url = request.nextUrl.clone()
       url.pathname = '/forbidden'
       return NextResponse.redirect(url)
