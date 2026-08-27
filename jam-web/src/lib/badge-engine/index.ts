@@ -787,7 +787,7 @@ export async function evaluateBadgesDetailed(
           badge_image_url: toIssue.image_url ?? '',
           rarity: toIssue.rarity,
           ...(pointReward > 0 ? { point_reward: pointReward } : {}),
-        }, triggerActivity?.startDate ?? undefined)
+        }, triggerActivity?.startDate ?? undefined, triggerActivity?.stravaId ?? null)
       }
     }
   }

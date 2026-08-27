@@ -685,6 +685,16 @@ export interface ActivityFeedRow {
    * 부정확했을 수 있어(20260824_006), 093 이전 행의 created_at은 여전히 부정확할 수 있다.
    */
   created_at: string
+  /**
+   * 이 이벤트가 나온 활동의 **Strava 숫자 id** (마이그레이션 107, 20260827_018).
+   * `strava_activities.strava_id`·`user_activity_badges.triggered_by_strava_id`·
+   * 결산 알림 payload의 `activity_ids`와 같은 규약이다 — 알림과 피드가 같은 키로 말한다.
+   *
+   * NULL = 활동 귀속 불명. 활동 단위가 아닌 이벤트(mission_joined·item_picked_up·
+   * mission_completed)와 **107 이전에 쌓인 과거 행 전부**가 여기 해당한다(백필하지 않았다).
+   * NULL 행은 프로필 피드에서 서로 묶이지 않고 단건으로 렌더된다.
+   */
+  strava_activity_id: number | null
   metadata: Record<string, unknown>
 }
 
@@ -1090,7 +1100,7 @@ export interface Database {
       }
       user_activity_feed: {
         Row: ActivityFeedRow
-        Insert: Omit<ActivityFeedRow, 'id' | 'event_at' | 'created_at'> & { id?: string; event_at?: string; created_at?: string }
+        Insert: Omit<ActivityFeedRow, 'id' | 'event_at' | 'created_at' | 'strava_activity_id'> & { id?: string; event_at?: string; created_at?: string; strava_activity_id?: number | null }
         Update: Partial<Omit<ActivityFeedRow, 'id'>>
         Relationships: []
       }

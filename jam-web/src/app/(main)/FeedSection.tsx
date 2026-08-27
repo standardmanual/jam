@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { ActivityFeedRow, ActivityFeedEventType } from '@/types/database'
@@ -22,9 +22,20 @@ import {
   PuzzleIcon,
   InboxIcon,
   ChevronRightIcon,
+  ActivityIcon,
 } from '@/components/ui/icons'
 
 const PAGE_SIZE = 20
+
+/**
+ * 활동 묶음 임계값 — **2건 이상일 때만** 한 카드로 접는다.
+ * 1건이면 기존 FeedCard 그대로 그린다(장식만 붙고 정보가 없는 껍데기를 만들지 않는다).
+ * 알림 결산의 F2 임계값(활동 2건)과 같은 판단이다 — RECAP_CASEBOOK R9.
+ */
+const GROUP_MIN_SIZE = 2
+
+/** 묶음 카드 접힘 상태에 노출하는 대표 썸네일 최대 개수 */
+const GROUP_THUMB_MAX = 4
 
 type FilterTab = 'all' | 'badge' | 'mission' | 'activity_badge'
 
@@ -331,14 +342,191 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
   )
 }
 
+/**
+ * 피드 렌더 단위 — 단건 카드 또는 **같은 활동에서 나온 이벤트 묶음**.
+ *
+ * 20260827_018 — 알림 결산(20260827_014)이 활동 단위로 접힌 뒤, 그 착지점인 프로필이
+ * 같은 9개를 다시 9줄로 펴서 보여주는 문제를 없앤다. 알림함의 결산과 프로필의 묶음
+ * 카드가 **같은 단위(활동)**를 말해야 착지가 성립한다.
+ */
+type FeedEntry =
+  | { kind: 'single'; key: string; item: ActivityFeedRow }
+  | { kind: 'group'; key: string; activityId: number; items: ActivityFeedRow[] }
+
+/**
+ * 이미 필터·정렬(created_at desc)이 끝난 목록을 활동 단위로 접는다.
+ *
+ * - **필터를 먼저 걸고 그 결과를 묶는다.** 묶음은 표현 계층이다 —
+ *   「아이템」 탭에서 묶음을 열면 아이템 이벤트만 들어 있어야 한다.
+ * - `strava_activity_id`가 NULL인 행은 **절대 서로 묶지 않는다**(과거 행·미션 참가 등).
+ *   어느 활동에서 나왔는지 모르는 행을 추정으로 묶으면 사실이 아닌 화면이 된다.
+ * - 묶음의 위치는 **가장 최신 멤버의 자리**다. 입력이 최신순이라 첫 등장 위치가 곧 그 자리다.
+ */
+function buildFeedEntries(items: ActivityFeedRow[]): FeedEntry[] {
+  const buckets = new Map<number, ActivityFeedRow[]>()
+  const entries: FeedEntry[] = []
+
+  for (const item of items) {
+    const activityId = item.strava_activity_id
+    if (typeof activityId !== 'number') {
+      entries.push({ kind: 'single', key: item.id, item })
+      continue
+    }
+    const bucket = buckets.get(activityId)
+    if (bucket) {
+      // entries에 이미 들어간 배열과 같은 참조라 push만으로 묶음이 자란다.
+      bucket.push(item)
+      continue
+    }
+    const created = [item]
+    buckets.set(activityId, created)
+    entries.push({ kind: 'group', key: `activity_${activityId}`, activityId, items: created })
+  }
+
+  // 임계값 미달(1건) 묶음은 기존 단건 카드로 되돌린다.
+  return entries.map((entry) =>
+    entry.kind === 'group' && entry.items.length < GROUP_MIN_SIZE
+      ? { kind: 'single' as const, key: entry.items[0].id, item: entry.items[0] }
+      : entry
+  )
+}
+
+/**
+ * 묶음 헤드라인 — RECAP_CASEBOOK 확정 규칙을 그대로 따른다.
+ * R1(「이번 활동으로」 접두 금지) · R3(화폐 단위는 「포인트」) · R5(2종 이상이면 총량).
+ *
+ * 포인트는 metadata의 `point_reward`를 합산한다. `badge_earned`·`item_dropped` 양쪽이
+ * 같은 규약으로 싣는다(20260827_018에서 item_dropped 쪽을 맞췄다 — 그 전에는 드랍엔진이
+ * 포인트를 지급하면서도 피드에 남기지 않아 알림 결산 총액보다 작은 숫자가 나왔다).
+ *
+ * ⚠️ 20260827_018 이전에 쌓인 item_dropped 행에는 이 필드가 없어 0으로 계산된다.
+ *    활동 참조 컬럼과 같은 graceful degradation이다 — 백필하지 않는다.
+ */
+// 합계는 프로필이 가져온 피드 윈도우(limit 150) 안에서만 계산된다. 목록 맨 아래에서
+// 활동이 잘리면 헤드라인 숫자가 실제 총량보다 작아질 수 있다 — 사실 총량처럼 읽히는
+// 문장이므로 다음 사람이 다시 파지 않도록 남겨둔다.
+function groupHeadline(items: ActivityFeedRow[]): string {
+  const badgeCount = items.filter((i) => BADGE_EVENTS.has(i.event_type)).length
+  // 활동 id가 실리는 기록 지점은 badge_earned·item_dropped 둘뿐이라 실제로는 항상
+  // badgeCount === items.length다. 그 전제가 깨지면 총량을 「배지」라고 부를 수 없으므로
+  // 중립 문구로 폴백한다.
+  if (badgeCount !== items.length || badgeCount === 0) {
+    return t(d.feed.groupRecords, { count: items.length })
+  }
+  const points = items.reduce((sum, i) => {
+    const reward = (i.metadata as Record<string, unknown>).point_reward
+    return sum + (typeof reward === 'number' ? reward : 0)
+  }, 0)
+  if (points > 0) {
+    return t(d.feed.groupBadgesWithPoints, { count: badgeCount, points: points.toLocaleString('ko-KR') })
+  }
+  return t(d.feed.groupBadges, { count: badgeCount })
+}
+
+/**
+ * 같은 활동에서 나온 이벤트를 접어 보여주는 **인라인 아코디언** 카드.
+ *
+ * 새 라우트·새 시트를 만들지 않는다 — 케이스북 R6("새 결산 화면을 만들지 않는다")이
+ * 프로필 안에서도 유효하다. 펼치면 기존 FeedCard가 그대로 나오고, 카드를 누르면
+ * 기존 DetailSheet가 뜬다.
+ */
+function ActivityGroupCard({
+  items,
+  activityName,
+  onItemClick,
+}: {
+  items: ActivityFeedRow[]
+  /** 없으면(조회 실패·이름 없음) 이름 줄 없이 헤드라인만 그린다. 묶음 자체는 유지한다. */
+  activityName?: string
+  onItemClick: (item: ActivityFeedRow) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const panelId = useId()
+
+  const headline = groupHeadline(items)
+  const thumbs = items
+    .map((i) => String((i.metadata as Record<string, unknown>).badge_image_url ?? ''))
+    .filter(Boolean)
+  const shownThumbs = thumbs.slice(0, GROUP_THUMB_MAX)
+  // 「+N」은 **썸네일 줄이 잘린 개수**다. items.length에서 빼면 이미지가 없는 이벤트까지
+  // 섞여 들어가 「썸네일 2개 + 3」처럼 두 숫자가 서로 다른 계산처럼 읽힌다.
+  // 이벤트 총량은 헤드라인이 이미 말하고 있으므로 여기서 다시 말하지 않는다.
+  const restCount = thumbs.length - shownThumbs.length
+
+  return (
+    <div className="t-acc" data-open={open}>
+      <ListRowCard
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        icon={
+          <div className="w-10 h-10 rounded-[var(--radius-cards)] bg-white/8 flex items-center justify-center">
+            <ActivityIcon className="w-5 h-5 text-text" />
+          </div>
+        }
+        trailing={
+          <span className="inline-flex items-center gap-[var(--spacing-8)]">
+            <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">
+              {formatRelativeTime(items[0].created_at)}
+            </span>
+            <ChevronRightIcon className="t-acc-chevron t-acc-chevron-right w-4 h-4 text-text/60" />
+          </span>
+        }
+      >
+        {activityName && (
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">
+            {activityName}
+          </p>
+        )}
+        <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">{headline}</p>
+        {shownThumbs.length > 0 && (
+          <span className="inline-flex items-center gap-1 mt-1" aria-hidden="true">
+            {shownThumbs.map((src, i) => (
+              <Image
+                key={`${src}_${i}`}
+                src={src}
+                alt=""
+                width={24}
+                height={24}
+                className="w-6 h-6 rounded-[var(--radius-tags)] object-cover"
+              />
+            ))}
+            {restCount > 0 && (
+              <span className="text-[length:var(--text-caption)] leading-none text-text/60">
+                {t(d.feed.groupMoreCount, { count: restCount })}
+              </span>
+            )}
+          </span>
+        )}
+      </ListRowCard>
+      <div id={panelId} className="t-acc-panel">
+        {/* 접힌 동안에도 DOM에 남아야 높이 트랜지션이 성립한다. 대신 inert로
+            키보드 포커스·보조기술 노출에서 완전히 빼 유령 포커스를 막는다. */}
+        <div className="t-acc-panel-inner" inert={!open}>
+          <div className="flex flex-col gap-[var(--spacing-8)] pt-[var(--spacing-8)] pl-[var(--spacing-16)]">
+            {items.map((item) => (
+              <FeedCard key={item.id} item={item} onClick={() => onItemClick(item)} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   feedItems: ActivityFeedRow[]
   /** 배지 상세 링크에 덧붙일 쿼리스트링. 예: `?u=username`. 기본값 없음 */
   badgeLinkQuery?: string
   title?: string
+  /**
+   * 활동 묶음 카드 헤더에 쓸 활동 이름 맵. 키는 `strava_activity_id`의 문자열.
+   * 옵셔널이다 — 안 넘기면 묶음은 이름 없이 헤드라인만으로 그려진다.
+   */
+  activityNames?: Record<string, string>
 }
 
-export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.feed.title }: Props) {
+export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.feed.title, activityNames }: Props) {
   const router = useRouter()
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [selectedItem, setSelectedItem] = useState<ActivityFeedRow | null>(null)
@@ -350,9 +538,12 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
   const closeSheet = useCallback(() => setSheetOpen(false), [])
   const handleSheetClosed = useCallback(() => setSelectedItem(null), [])
 
+  // 필터 → 묶음 순서를 지킨다. 묶음은 표현 계층이라 필터 결과 안에서만 성립한다.
   const filtered = feedItems.filter((f) => matchesFilter(f, activeFilter))
-  const visible = filtered.slice(0, visibleCount)
-  const hasMore = filtered.length > visibleCount
+  const entries = buildFeedEntries(filtered)
+  // 페이지네이션은 **묶음 카드 1개를 1개로** 센다(상단 카운트는 개별 이벤트 수 유지).
+  const visible = entries.slice(0, visibleCount)
+  const hasMore = entries.length > visibleCount
 
   const handleFilterChange = (tab: FilterTab) => {
     setActiveFilter(tab)
@@ -395,8 +586,17 @@ export default function FeedSection({ feedItems, badgeLinkQuery = '', title = d.
       ) : (
         <>
           <div className="flex flex-col gap-[var(--spacing-8)]">
-            {visible.map(item => (
-              <FeedCard key={item.id} item={item} onClick={() => handleCardClick(item)} />
+            {visible.map(entry => (
+              entry.kind === 'group' ? (
+                <ActivityGroupCard
+                  key={entry.key}
+                  items={entry.items}
+                  activityName={activityNames?.[String(entry.activityId)]}
+                  onItemClick={handleCardClick}
+                />
+              ) : (
+                <FeedCard key={entry.key} item={entry.item} onClick={() => handleCardClick(entry.item)} />
+              )
             ))}
           </div>
           {hasMore && (

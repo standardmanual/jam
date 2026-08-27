@@ -456,7 +456,13 @@ async function insertDrop(
   picked: DropBadge,
   factionName: string,
   isLastPiece: boolean,
-  activityStartDate?: string
+  activityStartDate?: string,
+  /**
+   * 20260827_018 — 이 드랍이 **실제로 발생한 그 활동 1건**의 Strava 숫자 id.
+   * 활동 없이 호출된 경로(activity 미전달)에서는 null이라 피드에서 단건으로 남는다.
+   * ⚠️ 배치 전체(`activities`)의 id를 싣지 않는다 — 귀속 입도가 어긋난다.
+   */
+  stravaActivityId?: number | null
 ): Promise<string | null> {
   const supabase = createServiceClient()
   const expiresAt = picked.valid_until ?? null
@@ -498,7 +504,11 @@ async function insertDrop(
     poi_name: '',
     faction_name: factionName,
     is_last_piece: isLastPiece,
-  }, activityStartDate)
+    // 20260827_018 — 지급한 포인트를 피드에도 남긴다. 프로필 묶음 카드가 포인트를
+    // 합산할 때 아이템 배지 몫이 빠져 알림 결산 총액과 어긋나던 문제를 해소한다.
+    // badge_earned와 같은 규약으로 0이면 싣지 않는다.
+    ...(pointReward > 0 ? { point_reward: pointReward } : {}),
+  }, activityStartDate, stravaActivityId ?? null)
   return inventoryItemId
 }
 
@@ -613,7 +623,8 @@ export async function tryItemDrop(
       result.badge,
       structure.factionNames.get(result.factionId) ?? '',
       result.isLastPiece,
-      activityStartDate
+      activityStartDate,
+      act?.stravaId ?? null
     )
     if (!insertedInventoryItemId) {
       await logEngineDecision('drop', 'drop_attempt', userId, {

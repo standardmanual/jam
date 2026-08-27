@@ -14,6 +14,13 @@ export interface ListRowCardProps {
   href?: string
   onClick?: () => void
   className?: string
+  /**
+   * 아코디언 헤더로 쓸 때의 펼침 상태 (20260827_018 프로필 피드 활동 묶음 카드).
+   * `onClick`으로 button이 렌더될 때만 의미가 있다.
+   */
+  'aria-expanded'?: boolean
+  /** 위 `aria-expanded`가 제어하는 패널의 id */
+  'aria-controls'?: string
 }
 
 // 20260816_012: 보더 제거 — 페이지 캔버스도 bg-surface라 구분이 사라지므로
@@ -30,6 +37,8 @@ export default function ListRowCard({
   href,
   onClick,
   className = '',
+  'aria-expanded': ariaExpanded,
+  'aria-controls': ariaControls,
 }: ListRowCardProps) {
   const interactive = !!(href || onClick)
   const cls = [
@@ -69,6 +78,16 @@ export default function ListRowCard({
   )
 
   if (href) return <Link href={href} className={`w-full text-left ${cls}`}>{content}</Link>
-  if (onClick) return <button type="button" onClick={onClick} className={`w-full text-left ${cls}`}>{content}</button>
+  if (onClick) return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
+      className={`w-full text-left ${cls}`}
+    >
+      {content}
+    </button>
+  )
   return <div className={cls}>{content}</div>
 }

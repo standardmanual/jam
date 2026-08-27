@@ -1613,6 +1613,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["feed_event_type"]
           id: string
           metadata: Json
+          strava_activity_id: number | null
           user_id: string
         }
         Insert: {
@@ -1621,6 +1622,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["feed_event_type"]
           id?: string
           metadata?: Json
+          strava_activity_id?: number | null
           user_id: string
         }
         Update: {
@@ -1629,6 +1631,7 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["feed_event_type"]
           id?: string
           metadata?: Json
+          strava_activity_id?: number | null
           user_id?: string
         }
         Relationships: [

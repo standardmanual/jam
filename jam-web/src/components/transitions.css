@@ -374,6 +374,19 @@
  * 새로운 트랜지션을 여기에 직접 작성하지 마세요 — 참고 문서에서 복사합니다.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Accordion chevron — 오른쪽 셰브론 변형.
+   JAM!은 ChevronDownIcon을 따로 만들지 않고 기존 ChevronRightIcon을 90도 회전해
+   펼침 어포던스를 만든다(20260827_018 UI 재사용 판정). 원본 스니펫의 scaleY(-1) 플립은
+   "v" 모양 셰브론 전용이라 ">" 모양에는 맞지 않으므로 **각도만** 덮어쓴다 —
+   지속시간(--acc-chevron)·이징(--acc-ease)·reduced-motion 가드는 원본 그대로 상속한다.
+   사용처: FeedSection 활동 묶음 카드 */
+.t-acc-chevron.t-acc-chevron-right {
+  transform: rotate(0deg);
+}
+.t-acc[data-open="true"] .t-acc-chevron.t-acc-chevron-right {
+  transform: rotate(90deg);
+}
+
 /* Panel reveal 백드롭 — 패널과 동일한 클럭으로 페이드 */
 .t-panel-backdrop {
   opacity: 0;
