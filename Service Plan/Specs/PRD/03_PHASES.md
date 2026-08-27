@@ -1,11 +1,11 @@
 # JAM! 유저 모바일 웹 — 개발 이력 & 현재 상태
 
 > **2026-08-06 전면 재작성**: 기존 Phase 번호 로드맵(2026-07-09~10 작성)은 실제 개발
-> 순서와 맞지 않아 폐기하고, `History/Migration/Ticket/`의 실제 티켓 72건(2026-07-15~
+> 순서와 맞지 않아 폐기하고, `Tickets/`의 실제 티켓 72건(2026-07-15~
 > 2026-08-06)을 시간순으로 재구성했다. 원래의 계획 원문은 이력 자료로
 > [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md)에 보관.
 >
-> 신규 개선사항 작업 시에는 이 문서보다 [History/Migration/Ticket/](../../History/Migration/Ticket/)의
+> 신규 개선사항 작업 시에는 이 문서보다 [Tickets/](../../Tickets/)의
 > 최신 티켓을 먼저 확인할 것 — 이 문서는 "지금까지 무엇이 만들어졌는지"를 훑어보는 용도.
 
 ---
@@ -42,9 +42,9 @@ OpenStreetMap → 네이버 지역검색 오픈API로 전환** (인프라 전면
 아이템배지 전량에 샘플 이미지 랜덤 배정, 피드가 배지 정보 변경을 반영 못하던 구조적
 문제 수정. **POI 앰비언트(시스템) 아이템배지 드랍** 신규 도입 — 유저 행동과 무관하게
 시스템이 주기적으로 POI에 아이템을 배치. (→ **2026-08-25 전면 제거**, 티켓
-[20260825_004](../../History/Migration/Ticket/20260825_004_Feature_앰비언트-드랍-기능-제거.md).
+[20260825_004](../../Tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md).
 미완성이 아니라 쓰지 않기로 한 제품 결정이었다 — → **2026-08-26 재설계 재도입**, 티켓
-[20260826_009](../../History/Migration/Ticket/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
+[20260826_009](../../Tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
 현재 상태는 [BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.12 참고)
 **잼 포인트 시스템 1a단계**(유저별 잔액/
 `point_wallets`) 신규 구축. Vercel Hobby 플랜의 Cron 빈도 제한으로 배포 실패했던
@@ -106,7 +106,7 @@ Custom Domain 전환 시 재검토 예정).
 ---
 
 ## 관련 문서
-- [History/Migration/Ticket/](../../History/Migration/Ticket/) — 실제 개발 작업 이력 원본 (신규 개선사항은 여기부터 확인)
+- [Tickets/](../../Tickets/) — 실제 개발 작업 이력 원본 (신규 개선사항은 여기부터 확인)
 - [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md) — 원래 계획 원문 (참고용, 실행 안 됨)
 - [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) — 배지·드랍 엔진 최신 로직
 - [01_PRD.md](./01_PRD.md) §6-2 — 미구현 기능 목록

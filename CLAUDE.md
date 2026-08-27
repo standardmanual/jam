@@ -66,19 +66,35 @@ DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요�
 | # | 카테고리 | 내용 | 위치 |
 |---|---|---|---|
 | ① | PRD | 기능·스펙·로직 정의 | `Service Plan/Specs/PRD/` |
-| ② | 티켓 | 실행 계획·작업 이력 | `Service Plan/History/Migration/Ticket/` |
+| ② | 티켓 | 실행 계획·작업 이력 | `Service Plan/Tickets/` |
 | ③ | 컨텐츠 | 액티비티배지·아이템북·아이템배지·세계관·POI | `Service Plan/Specs/Content/` |
 | ④ | 배지 드랍 로직 | 배지 발급·드랍 엔진 판정 로직 | `Service Plan/Specs/BadgeEngine/` |
 | ⑤ | 서비스 플랜 | 비전·장기 전략, 현재/향후 구분 | `Service Plan/Business/서비스플랜/` |
 
-> `Specs/UX_WRITING_GUIDELINE.md`처럼 4개 카테고리에 속하지 않는 횡단 참조 문서는 루트에 유지한다.
+> `Specs/UX_WRITING_GUIDELINE.md`·`Specs/SERVICE_OPERATIONS.md`·`Specs/DEV_PROCESS_GUARDRAILS.md`처럼
+> 4개 카테고리에 속하지 않는 횡단 참조 문서는 `Specs/` 루트에 유지한다.
+
+### 폴더 = 수명주기 (2026-08-27 재편)
+
+폴더가 곧 **"이 문서를 어떻게 쓰나"** 를 지시한다. 새 문서를 만들 때 어느 폴더인지부터 정한다.
+
+| 폴더 | 수명주기 | 쓰기 방식 |
+|---|---|---|
+| `Specs/` | 현재 상태 | **덮어쓰기.** 항상 지금 사실만 담는다. 변경 이력을 본문에 누적하지 않는다 |
+| `Tickets/` | 작업 이력 | **신규 생성.** 완료 후에도 지식베이스로 남아 계속 검색된다 |
+| `Business/` | 비전·전략 | 덮어쓰기. 버전 사본을 만들지 않는다 |
+| `Archive/` | 폐기된 기록 | **읽기 전용.** 신규 파일 추가 금지, 기존 파일 수정 금지 |
+| `Assets/` | 생성 산출물 | 파이프라인이 만든 결과물. 문서가 아니므로 문서 검색 대상에서 제외 |
+
+- **버전 사본(`v3.1`, `_20260827` 등)을 만들지 않는다.** 이력은 git이 보관한다.
+- **`Archive/`의 문서를 근거로 현재 상태를 판단하지 않는다.** 낡은 정보다.
 
 ### 새 세션 시작 시 읽기 순서
 
 서비스 전체를 파악해야 할 때 **코드부터 탐색하지 않는다.** 전체 코드 탐색은 토큰 낭비가 크고,
 아래 문서에 서비스 로직·정책·데이터 모델이 이미 정리되어 있다:
 
-1. `History/Migration/Ticket/`의 관련 최신 티켓 (유사 작업·의사결정 확인)
+1. `Tickets/`의 관련 최신 티켓 (유사 작업·의사결정 확인)
 2. `Specs/PRD/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, 주제별 폴더 `PRD/{주제}/`)
 3. `Specs/Content/` (배지·아이템·세계관·POI 관련 시)
 4. `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직 관련 시)

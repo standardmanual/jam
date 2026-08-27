@@ -16,7 +16,7 @@
  * 스토리북이 빠지는 회귀가 났다 — 정작 확인해야 할 staging 도메인에서 스토리북이 사라졌다.
  * 브랜치명은 Vercel 프로젝트의 환경 라벨 설정과 무관하게 항상 동일하므로 이 문제에서 자유롭다.
  *
- * 티켓: Service Plan/History/Migration/Ticket/20260827_020_Infra_*.md
+ * 티켓: Service Plan/Tickets/20260827_020_Infra_*.md
  */
 import { spawnSync } from 'node:child_process';
 import { rmSync, cpSync } from 'node:fs';

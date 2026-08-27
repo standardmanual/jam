@@ -3,9 +3,9 @@
 > 소스: `supabase/migrations/033_reseed_activity_badges_v3.sql`(115종) + `supabase/migrations/076_walking_badges_v4.sql`(걷기 신규 32종) + `seed_mission_gating_badges_and_missions_20260813.sql`(미션보상배지 15종)  
 > 기존 115개(5종목 × 5속성 × 4등급 + 카테고리 1~3 신규 15개) + 걷기 신규 32개(D01~D11 + 트로피 매트릭스 21종) + 미션보상배지 15개 = **총 162개**  
 > 최종 업데이트: 2026-08-13  
-> ⚠️ **2026-08-13 업데이트** — 종목별 대표 배지 1종씩(동네 산책러/첫 숨결/언덕의 도전자/첫 고도/야생의 주자)의 Rare 이상 선행조건을 기존 크로스게이트(다른 속성 배지 OR)에서 **미션 완료 기반 게이팅**으로 전환. 미션 완료 시 지급되는 미션보상배지 15종(`{배지명} 레벨업` / `레벨업 Hard` / `레벨업 Ultra`) 신규 추가 — `condition_json`이 없어 일반 동기화로는 발급되지 않고 미션 완료로만 지급됨. 첫 숨결(R1)의 Legend/Mythic 조건값이 60km/150km → 40km/100km로 변경됨. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `History/Migration/Ticket/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
+> ⚠️ **2026-08-13 업데이트** — 종목별 대표 배지 1종씩(동네 산책러/첫 숨결/언덕의 도전자/첫 고도/야생의 주자)의 Rare 이상 선행조건을 기존 크로스게이트(다른 속성 배지 OR)에서 **미션 완료 기반 게이팅**으로 전환. 미션 완료 시 지급되는 미션보상배지 15종(`{배지명} 레벨업` / `레벨업 Hard` / `레벨업 Ultra`) 신규 추가 — `condition_json`이 없어 일반 동기화로는 발급되지 않고 미션 완료로만 지급됨. 첫 숨결(R1)의 Legend/Mythic 조건값이 60km/150km → 40km/100km로 변경됨. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
 > ⚠️ **2026-08-25 업데이트(티켓 20260825_028)** — ① 미션보상배지 15종의 `condition_json`을 `{"mission_reward": true}`로 통일하고, **배지엔진이 이 플래그를 가진 배지를 발급 후보에서 제외**하도록 수정. 마이그레이션 084가 이 플래그를 넣으면서 "조건 없으면 미발급" 가드가 무력화돼 미션 없이 발급되던 결함을 막는다. ② 레벨업 미션 15종에 `missions.gated_badge_id`를 연결해 **본 배지 보유 등급 기준으로 다음 1단계만 참가 가능**하게 노출 규칙을 정비(그 다음 1단계는 잠금 카드, 그 위는 숨김). ③ 첫 숨결 Legend/Mythic 조건값을 DB에도 40km/100km로 반영. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` §2.7·§2.11.
-> ⚠️ **2026-08-08 업데이트** — 걷기(walking) 전용 "축1 게이트"(진짜 걷기 판정, badge-engine 레벨) + 빈도 조건 하루 1회 상한 도입, 걷기 신규 배지 32종(D01~D11 누적일수 체크포인트 + 트로피 매트릭스 21종) 추가. 신규 조건 필드 `day_of_week`/`active_days_count`/`season_count_all`, `month`의 배열 확장. 기존 W1~W8은 이름·설명·조건값 변경 없음(축1 게이트 + 하루 1회 상한만 새로 적용). 상세 배경·튜닝 파라미터: `Service Plan/History/Migration/Ticket/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
+> ⚠️ **2026-08-08 업데이트** — 걷기(walking) 전용 "축1 게이트"(진짜 걷기 판정, badge-engine 레벨) + 빈도 조건 하루 1회 상한 도입, 걷기 신규 배지 32종(D01~D11 누적일수 체크포인트 + 트로피 매트릭스 21종) 추가. 신규 조건 필드 `day_of_week`/`active_days_count`/`season_count_all`, `month`의 배열 확장. 기존 W1~W8은 이름·설명·조건값 변경 없음(축1 게이트 + 하루 1회 상한만 새로 적용). 상세 배경·튜닝 파라미터: `Service Plan/Tickets/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
 
 ---
 
@@ -46,7 +46,7 @@
 | Legend | 100 km | 100km. 블랙 트랙의 지도에 당신의 동선이 새겨집니다. |
 | Mythic | 300 km | 300km. 화이트 룸 진입 코드 확인 완료. |
 
-**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트(다른 속성 배지 OR 보유) 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `동네 산책러 레벨업` 완료(미션보상배지 보유) 필수, Legend는 `동네 산책러 레벨업 Hard`, Mythic은 `동네 산책러 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `History/Migration/Ticket/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
+**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트(다른 속성 배지 OR 보유) 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `동네 산책러 레벨업` 완료(미션보상배지 보유) 필수, Legend는 `동네 산책러 레벨업 Hard`, Mythic은 `동네 산책러 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
 
 ---
 
@@ -209,7 +209,7 @@
 > ⚠️ **2026-08-13 조건값 변경**: Legend/Mythic이 각각 60km/150km → 40km/100km로 하향 조정됨(미션 게이팅 도입 논의 과정에서 확정).
 > **2026-08-25 반영 확인(티켓 20260825_028)**: 티켓·이 문서는 40/100으로 일치했으나 DB만 60/150으로 남아 있어 3자 대조에서 불일치 1건으로 잡혔다. 마이그레이션 `101_mission_gated_badge.sql`에서 DB를 40/100으로 맞췄다. (나머지 4개 트리는 3자 전부 일치)
 
-**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `첫 숨결 레벨업` 완료 필수, Legend는 `첫 숨결 레벨업 Hard`, Mythic은 `첫 숨결 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `History/Migration/Ticket/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
+**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `첫 숨결 레벨업` 완료 필수, Legend는 `첫 숨결 레벨업 Hard`, Mythic은 `첫 숨결 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
 
 ---
 
@@ -354,7 +354,7 @@
 | Legend | 1500 m | 1500m. 블랙 트랙의 등반 전설 명단에 이름이 올라갑니다. |
 | Mythic | 5000 m | 5000m 등반. 화이트 룸은 언덕을 정복한 자에게 열립니다. |
 
-**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `언덕의 도전자 레벨업` 완료 필수, Legend는 `언덕의 도전자 레벨업 Hard`, Mythic은 `언덕의 도전자 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `History/Migration/Ticket/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
+**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `언덕의 도전자 레벨업` 완료 필수, Legend는 `언덕의 도전자 레벨업 Hard`, Mythic은 `언덕의 도전자 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
 
 ---
 
@@ -421,7 +421,7 @@
 | Legend | 2000 m | 2000m. 블랙 트랙의 산악 명단에 당신의 이름이 오릅니다. |
 | Mythic | 6000 m | 6000m. 화이트 룸 고도 진입 코드 확인 완료. |
 
-**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `첫 고도 레벨업` 완료 필수, Legend는 `첫 고도 레벨업 Hard`, Mythic은 `첫 고도 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `History/Migration/Ticket/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
+**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `첫 고도 레벨업` 완료 필수, Legend는 `첫 고도 레벨업 Hard`, Mythic은 `첫 고도 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
 
 ---
 
@@ -553,7 +553,7 @@
 | Legend | 60 km | 60km. 블랙 트랙의 울트라 주자 명단에 이름이 새겨집니다. |
 | Mythic | 100 km | 100km. 화이트 룸은 야생을 완주한 자에게만 열립니다. |
 
-**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `야생의 주자 레벨업` 완료 필수, Legend는 `야생의 주자 레벨업 Hard`, Mythic은 `야생의 주자 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `History/Migration/Ticket/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
+**미션 게이팅 (2026-08-13, 기존 크로스게이트 대체)** — 종목별 대표 배지 1종으로 선정되어, 크로스게이트 대신 미션 완료가 Rare 이상 선행조건이다: Rare는 미션 `야생의 주자 레벨업` 완료 필수, Legend는 `야생의 주자 레벨업 Hard`, Mythic은 `야생의 주자 레벨업 Ultra`. 상세: `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`, 티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`.
 
 ---
 

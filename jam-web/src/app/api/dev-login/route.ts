@@ -7,7 +7,7 @@
  * 둘 다 아니면 무조건 404.
  * Vercel은 프리뷰/프로덕션 빌드 모두 NODE_ENV=production으로 고정되므로,
  * 프로덕션 Vercel 프로젝트에 STAGING_MODE가 없으면 절대 동작하지 않는다.
- * (Service Plan/History/Migration/Ticket/20260812_004 참고)
+ * (Service Plan/Tickets/20260812_004 참고)
  */
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
