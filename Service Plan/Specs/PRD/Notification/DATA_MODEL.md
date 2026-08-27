@@ -68,7 +68,7 @@ CREATE TABLE public.notifications (
 );
 ```
 
-> **⚠️ 예약됐으나 사용하지 않는 값 — ENUM 28값 중 9값**
+> **⚠️ 예약됐으나 사용하지 않는 값 — ENUM 29값 중 9값 (실사용 20종)**
 >
 > | 값 | 사용 중단 시점 | 사유 |
 > |---|---|---|
@@ -99,7 +99,7 @@ CREATE TABLE public.notifications (
 | 필드 | 설명 |
 |---|---|
 | `user_id` | **받는 사람.** 행위자가 아니다 |
-| `type` | ENUM 28값 + `activity_recap` 중 **실사용 20종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 9값은 위의 「예약됐으나 사용하지 않는 값」 표 참고) |
+| `type` | ENUM 29값 중 **실사용 20종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 9값은 위의 「예약됐으나 사용하지 않는 값」 표 참고) |
 | `actor_user_id` | 아바타 탭 대상. 팔로우·픽업됨·팔로잉 활동에만 존재, 나머지는 NULL |
 | `actor_count` | 묶음 **고유 인원** — "**예린**님 외 **3명**"의 N. 기본 1. 병합 횟수가 아니라 `payload.actor_ids`의 고유 개수와 일치해야 한다 (§4-1) |
 | `group_key` | 묶음 병합 키. NULL이면 묶지 않는 소식 (§4 참고) |
@@ -318,7 +318,7 @@ create_notification(
 | 방식 | 동작 | 예 |
 |---|---|---|
 | 기본 (얕은 덮어쓰기) | `payload \|\| EXCLUDED.payload` | 최신 값만 남으면 되는 필드 |
-| `p_sum_keys` | 숫자 필드를 더한다 | `points_earned.amount` 250 + 300 = 550 |
+| `p_sum_keys` | 숫자 필드를 더한다 | `activity_recap.points` 250 + 300 = 550 |
 | `p_append_keys` | 배열을 이어붙이고 **중복 제거** | `followed.actor_ids`, `drop_picked_up.badge_ids` |
 
 ---
@@ -344,7 +344,7 @@ actor_count = jsonb_array_length(payload->'actor_ids')   -- 중복 제거 후
 | 26 팔로우 | `actor_ids` | 2명까지 나열 → 3명+ "외 N명" |
 | 31 팔로잉 미션 완료 | `actor_ids` | 동일 |
 
-행위자가 없는 묶음 소식(1·3·4·5·34 등)은 `actor_ids`가 없고 `actor_count`도 쓰지 않는다 —
+행위자가 없는 묶음 소식(① 활동 결산, ② 컬렉션, ④ 미션 등)은 `actor_ids`가 없고 `actor_count`도 쓰지 않는다 —
 개수는 `payload`의 해당 배열 길이나 `sum_keys` 합산값으로 렌더한다.
 
 ---
@@ -358,7 +358,6 @@ actor_count = jsonb_array_length(payload->'actor_ids')   -- 중복 제거 후
 | 소식 | `group_key` | 시간창 |
 |---|---|---|
 | **`activity_recap` 활동 결산** | `activity_recap:{YYYY-MM-DD}` | **KST 하루** — 활동 2건 이상이면 한 행에 접힌다(F2). *2026-08-27 — 구 1·3·4가 쓰던 `{type}:sync:{strava_activity_id}`(활동 단위)를 대체한다. 활동별 키를 쓰면 F2를 위한 fold가 따로 필요한데 결산은 인라인 생성이라 배치의 `foldTargets`를 쓸 수 없다* |
-| 5 포인트 적립 | `points_earned:{YYYY-MM-DD}` | 하루 |
 | 13 픽업됨 | `drop_picked_up:{YYYY-MM-DD-H{0..3}}` | 6시간 |
 | 26 팔로우 | `followed:{YYYY-MM-DD}` | 24시간 |
 | 11 컬렉션 완성 가능 | `collection_completable:{item_book_id}` + `once` | 장착 전까지 1회 |
@@ -430,7 +429,7 @@ SELECT로 존재를 확인해야 하고 그 확인과 INSERT 사이에 재시도
 |---|---|---|
 | **L1 압축 금지** | ⑧ 계정·시스템, 11 컬렉션 완성 가능, 22 미션 완료, 44 포인트 차감 | 항상 개별 (인스타의 멘션·DM·보안에 해당) |
 | **L2 조건부 묶음** | 26 팔로우, 13 픽업됨, ④ 미션류, 9·10 컬렉션 | 2건까지 이름 나열 → 3건+ "○○님 외 N명" |
-| **L3 적극 압축** | ① 획득류, 5 포인트, ⑥ 팔로잉 활동 | 항상 묶음 (인스타의 '좋아요'에 해당) |
+| **L3 적극 압축** | ① 활동 결산(포인트 포함), ⑥ 팔로잉 활동 | 항상 묶음 (인스타의 '좋아요'에 해당) |
 
 ---
 
@@ -442,8 +441,12 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 
 | 카테고리 | `bumps_badge` | 근거 |
 |---|---|---|
-| ① 보상 획득 (1·2·3·4·5·7) | **FALSE** | 유저가 동기화 화면에서 이미 봤다 |
-| ②~⑧ 나머지 20종 | TRUE | 내가 모르는 사이에 일어난 일 |
+| ① 활동 결산 (`activity_recap` 1종) | **FALSE** | 유저가 동기화 화면에서 이미 봤다 |
+| ②~⑧ 나머지 19종 | TRUE | 내가 모르는 사이에 일어난 일 |
+
+> 20260827_016 — 레거시 6종(`badge_earned` 등)이 제거돼 FALSE 대상은 `activity_recap`
+> **1종뿐**이다. 코드의 단일 진실은 `src/lib/notifications/types.ts`의
+> `NON_BUMPING_NOTIFICATION_TYPES`이며, `bumpsBadgeFor()`가 여기서 파생된다.
 
 **리스트에는 최신순으로 그대로 남는다.** 히스토리로서의 가치("그때 뭐 받았더라", 오버레이
 상한 10건 초과분 재확인)는 100% 유지되고, dot만 켜지 않는다.
@@ -457,11 +460,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 
 | type | payload 예시 |
 |---|---|
-| `badge_earned` | `{ badge_ids: [...], count, activity_id }` — `badge_ids`는 append |
-| `rare_badge_earned` | `{ badge_id, badge_name, rarity }` |
-| `item_badge_earned` | `{ inventory_item_ids: [...], count }` — 착지점이 인벤토리 인스턴스라 배지 id가 아니다 |
-| `checkin_badge_earned` | `{ badge_ids: [...], poi_names: [...], count }` — `poi_names`는 체크인한 **지점** 이름이라 키명 유지 |
-| `points_earned` | `{ amount, reason }` — `amount`는 `sum_keys`로 합산 |
+| `activity_recap` | `{ activity_ids: [...], activity_badges: [...], checkin_badges: [...], item_badges: [...], first_badge_id, points }` — 배열은 전부 append, `points`만 `sum_keys`. `item_badges[].inventory_item_id`가 축인 이유는 착지점이 도감이 아니라 **내가 받은 개체**여서다. `checkin_badges[].poi_name`은 체크인한 **지점** 이름이라 키명을 유지한다 |
 | `collection_completable` | `{ item_book_id, book_name }` |
 | `drop_picked_up` | `{ actor_ids: [...], badge_ids: [...], poi_id }` — 둘 다 append. 단건일 때만 `badge_name` |
 | `mission_milestone` | `{ mission_id, mission_title, current, target, unit, milestone: 50\|80 }` |
@@ -523,7 +522,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 | #23 순위 기준선 | **`mission_rank_snapshots` 테이블 신설** (§2-2). 첫 배치는 기준선만 남긴다 |
 | #42 문구 vs 임계값 | **생성 조건을 잔여 0칸으로 좁힌다.** 문구가 「꽉 찼어요」라 잔여 3칸에 보내면 사실과 다르다. `INVENTORY_LOW_SLOTS_THRESHOLD`는 후보 스캔과 T3 경고 재평가에 계속 쓴다 |
 | ⑥ 하루 상한 2건의 선별 | **희귀도 단독**(PRD §9). 희귀도 축이 없는 #30·#31은 "얻기 어려운 순"(컬렉션 완성 > 미션 완료) 고정 우선순위, 동순위는 최근 이벤트 우선 |
-| 지역 기반 소식 2종 (#32·#34) | **스펙에서 제거.** `users.region`(시/도)과 역지오코딩 결과(구/동)의 단위가 달라 매칭이 성립하지 않는다. ⑦ 발견 카테고리는 #34가 유일해 카테고리째 사라졌다 — 소식 28종 → **26종**, T2 13종 → **11종**. 사유·재도입 조건은 [PRD.md](./PRD.md) §7 |
+| 지역 기반 소식 2종 (#32·#34) | **스펙에서 제거.** `users.region`(시/도)과 역지오코딩 결과(구/동)의 단위가 달라 매칭이 성립하지 않는다. ⑦ 발견 카테고리는 #34가 유일해 카테고리째 사라졌다 — 소식 28종 → **26종**, T2 13종 → **11종**. *(이후 20260827_014·016에서 ① 6종이 활동 결산 1종으로 재편되고 #27 맞팔이 빠져 현행 **20종** — §2 참고)* 사유·재도입 조건은 [PRD.md](./PRD.md) §7 |
 | `notification_type` ENUM | **DDL로 값을 지우지 않는다.** 위 2값은 "예약됐으나 사용하지 않음"으로 DB에 남긴다 (§2 — 2026-08-27에 7값이 더 합류해 총 9값) |
 
 ### 남은 질문
