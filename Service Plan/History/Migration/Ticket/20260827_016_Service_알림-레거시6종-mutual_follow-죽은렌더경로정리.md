@@ -1,9 +1,9 @@
 ---
 id: 20260827_016
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-27
-closed:
+closed: 2026-08-27
 ---
 
 # [Service] 알림 레거시 6종 + mutual_follow 죽은 렌더 경로 정리
@@ -136,6 +136,8 @@ jam-web/src/lib/notifications/__tests__/kst-group-key.test.ts
 jam-web/src/lib/notifications/__tests__/feed-cursor.test.ts
 Service Plan/Specs/PRD/Notification/DATA_MODEL.md
 Service Plan/Specs/PRD/Notification/PRD.md
+Service Plan/Specs/PRD/Notification/REST_CASEBOOK.md      (머지 시 추가 — 시점 표기)
+Service Plan/Specs/PRD/Notification/RECAP_CASEBOOK.md     (머지 시 추가 — 시점 표기)
 ```
 
 ### 테스트 결과
@@ -149,9 +151,20 @@ Service Plan/Specs/PRD/Notification/PRD.md
       (`FeedSection`·`ProfileClient`·`[username]/page`·`badge-engine`·`strava/sync`·`activity-feed/*`)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-27 (staging 반영)
+- 환경: **staging** — 프로덕션 승격은 `/jam-ship`으로 별도 진행
+- 커밋: `494b4ac0` (구현) / `5cb7c947` (staging 병합)
+
+**선행 조치 — 오케스트레이터가 직접 실행 (2026-08-27)**
+1. 014 프로덕션 승격: `origin/main` `d00db1ce` → `c0b3498f`, 배포 `jam-noe6pdncx` Ready,
+   alias `j-a-m.app` 연결 확인
+2. `seed_20260827_notifications_reset.sql` 실행 — `notifications` **37행 → 0행**
+   (삭제 전 분포: `collection_slottable` 10 / `item_badge_earned` 9 / `checkin_badge_earned` 5 /
+   `mission_milestone` 4 / `mission_completed` 2 / `followed` 2 / `following_mission_complete` 2 /
+   `drop_picked_up` 1 / `mutual_follow` 1 / `sync_stalled` 1).
+   `users.notifications_seen_at` 설정 유저 수는 3 → 3으로 불변(설계대로)
+3. 이 시점부터 레거시 타입 행이 0이고 프로덕션 코드가 해당 타입을 생성하지 않아
+   렌더 경로가 도달 불가능해졌다 — 정리 착수 조건 충족
 
 ### 주요 의사결정 / 핵심 메모
 
@@ -171,3 +184,21 @@ Service Plan/Specs/PRD/Notification/PRD.md
 - `syncGroupKey()`(`src/lib/notifications/groupKey.ts`)는 014 이후 **프로덕션 호출부가 없다**
   (`dailyGroupKey`만 쓰인다). 이번 티켓 범위가 아니라 제거하지 않았고 테스트 픽스처만 현행 타입으로
   교체했다. 별도 티켓에서 존치/제거 판단 필요.
+- **`/api/cron/notifications` 배치 1회 수동 실행이 미완이다.** 전량 삭제 직후 T2 상태 기반
+  소식을 되살리는 절차인데, `CRON_SECRET`이 `.env.local`에 없고 Vercel 환경변수에만 있어
+  이 세션에서 호출하지 못했다. Vercel 대시보드의 Cron Jobs에서 수동 실행하거나 정규 스케줄
+  (09:00 UTC = 18:00 KST)을 기다리면 해소된다. **016 코드 정리의 전제조건은 아니다** —
+  결산(`activity_recap`)은 배치가 아니라 Strava 동기화 경로에서 생성된다.
+- **`default` 분기에 컴파일 타임 안전망이 없다.** 이번엔 "20종 전수가 세 렌더러에 명시 case를
+  가진다"를 1회성 스크립트로 확인했지만, 다음에 종류가 추가될 때 이 대조가 반복된다는 보장이
+  없다. `default`를 `never` 인자 헬퍼로 감싸면 런타임 fallback(「새로운 소식이 도착했어요」)을
+  유지하면서 타입 누락만 컴파일 에러로 잡힌다. 개선 리뷰 제안 — 별도 티켓 후보.
+- **`database.generated.ts`(Supabase 자동 생성)는 ENUM 29값을 그대로 나열한다.** 수기
+  `database.ts`의 20종과 갈라진 상태다. ENUM 존치 결정상 정상이나, 다음 `npm run db:types`
+  재생성 때 두 파일을 혼동할 여지가 있다.
+- **전체 `npm run lint`가 이미 레드다** — 183건 전부 `design-system/`·`dotmatrix-hooks`의 기존
+  `set-state-in-effect` 부채다. 이번 변경과 무관하지만 신규 위반이 묻히는 상태다.
+- **`/jam-ship` 스킬 문서의 빌드 스크립트 서술이 사실과 다르다** — 「main/프로덕션 빌드는
+  `next build`만 실행」이라 적혀 있으나 main·staging 모두 동일한 `build` 스크립트(Storybook 포함)를
+  쓴다. 이번 승격 직전 staging 빌드가 Storybook 정적 복사 단계의 `EEXIST` 플레이크로 Error가
+  났고(재배포로 통과), 같은 플레이크가 프로덕션 배포도 때릴 수 있다.
