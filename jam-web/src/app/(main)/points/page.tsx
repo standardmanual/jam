@@ -9,7 +9,7 @@ import ListRowCard from '@/components/ui/ListRowCard'
 import { CoinIcon } from '@/components/ui/icons'
 import { useDigitPopIn } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ko-KR', {
@@ -19,7 +19,7 @@ function formatDate(iso: string): string {
 
 function formatAmount(n: number): string {
   const sign = n > 0 ? '+' : '−'
-  return `${sign}${Math.abs(n).toLocaleString('ko-KR')}P`
+  return t(d.points.amountValue, { amount: `${sign}${Math.abs(n).toLocaleString('ko-KR')}` })
 }
 
 export default function PointsPage() {
@@ -31,8 +31,10 @@ export default function PointsPage() {
   const [error, setError] = useState(false)
 
   // 잔액 — 갱신될 때마다 자릿수 단위로 팝인 (Number pop-in, 02)
-  const balanceText = balance === null ? null : `${balance.toLocaleString('ko-KR')}P`
-  const balanceRef = useDigitPopIn<HTMLSpanElement>(balanceText)
+  // 훅이 문자열을 한 글자씩 쪼개 마지막 두 글자에 스태거를 걸므로, 단위 '포인트'를 붙이면
+  // 스태거가 마지막 자릿수가 아닌 한글에 걸린다. 애니메이션 대상은 숫자만 넘긴다.
+  const balanceDigits = balance === null ? null : balance.toLocaleString('ko-KR')
+  const balanceRef = useDigitPopIn<HTMLSpanElement>(balanceDigits)
 
   const load = useCallback(async (nextCursor: string | null, append: boolean) => {
     if (append) setLoadingMore(true)
@@ -84,11 +86,13 @@ export default function PointsPage() {
           <p className="text-[length:var(--text-caption)] uppercase text-text-inverse/50 mb-2">{d.points.balanceLabel}</p>
           <p
             className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] font-bold text-[color:var(--color-primary)]"
-            aria-label={balanceText ?? undefined}
+            aria-label={balanceDigits === null ? undefined : t(d.points.balanceAria, { amount: balanceDigits })}
           >
             {/* 자릿수 span은 훅이 명령형으로 생성한다 — 스크린리더에는 위 aria-label로 전달 */}
             {balance === null && <span aria-hidden="true">—</span>}
             <span ref={balanceRef} className="t-digit-group" aria-hidden="true" />
+            {/* 단위는 팝인 대상 바깥의 정적 span — t-digit을 붙이지 않는다 */}
+            {balance !== null && <span aria-hidden="true">{' '}{d.points.unitSuffix}</span>}
           </p>
         </Card>
 

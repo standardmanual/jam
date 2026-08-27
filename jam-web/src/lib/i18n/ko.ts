@@ -4,7 +4,7 @@
  * 규칙 (PRD/DesignRenewal/Design_Phase01_04_PROJECT_SPEC.md "i18n 규칙")
  * - 모든 UI 텍스트는 JSX에 직접 쓰지 않고 이 딕셔너리 키로 참조한다.
  * - 새 문구가 필요하면 반드시 여기에 키를 먼저 추가한 뒤 컴포넌트에서 참조한다.
- * - 동적 값은 `{변수}` 보간 패턴을 사용한다. 예) "{count}P" → t(ko.profile.pointBalance, { count })
+ * - 동적 값은 `{변수}` 보간 패턴을 사용한다. 예) "{count} 포인트" → t(ko.profile.pointBalance, { count })
  * - Phase 1 범위는 ko 로케일만 채운다 (en 등 실제 번역은 별도 작업).
  *
  * namespace 규칙: common / nav / profile / tabs / feed / today / todayCard
@@ -38,8 +38,8 @@ export const ko = {
     anonymous: '익명',
     avatarAlt: '프로필',
     /** 잼 포인트 잔액. count는 toLocaleString('ko-KR') 처리된 문자열 */
-    pointBalance: '{count}P',
-    pointBadgeLabel: 'P',
+    pointBalance: '{count} 포인트',
+    pointBadgeLabel: '포인트',
     pointsAriaLabel: '포인트 내역 보기',
     editButton: '편집',
     followButton: '팔로우',
@@ -118,7 +118,7 @@ export const ko = {
     // 카드 보조 문구
     fragmentOf: '{faction}의 파편',
     lastPiece: '마지막 파편!',
-    rewardPoints: '+{points}P',
+    rewardPoints: '+{points} 포인트',
 
     // 상세 시트 라벨
     /** 드랍/픽업이 일어난 지점 — '체크인'이 아니라 지점 정보다(20260826_004 경계 규칙 3) */
@@ -131,8 +131,8 @@ export const ko = {
     rowPoints: '포인트',
     rowDate: '일시',
     resultValue: '{current} / 목표 {target}',
-    pointsValue: '{points}P',
-    pointsGained: '+{points}P',
+    pointsValue: '{points} 포인트',
+    pointsGained: '+{points} 포인트',
   },
 
   /** 투데이(홈) 화면 */
@@ -451,7 +451,7 @@ export const ko = {
     rewardLabel: '보상',
     rewardNone: '없음',
     rewardBadgeCount: '배지 {count}개',
-    rewardPoints: '{points}P',
+    rewardPoints: '{points} 포인트',
 
     backToList: '뒤로',
     backToDetail: '미션',
@@ -551,6 +551,13 @@ export const ko = {
     emptyBody: 'Strava를 동기화하면 배지와 함께 포인트를 받을 수 있어요.',
     loadMore: '더 보기',
     loadingMore: '불러오는 중',
+
+    /** 잔액 카드의 단위 — 숫자 팝인 애니메이션 대상에서 분리해 정적으로 렌더한다 */
+    unitSuffix: '포인트',
+    /** 잔액 카드 스크린리더 문구 */
+    balanceAria: '{amount} 포인트',
+    /** 내역 행 금액. amount는 부호(+/−)와 천단위 구분을 포함한 문자열 */
+    amountValue: '{amount} 포인트',
 
     /**
      * 어드민 포인트 변동 사유 — **유저 노출용** 라벨 (20260824_021 2차).
