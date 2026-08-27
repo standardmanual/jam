@@ -30,9 +30,11 @@
 
 ```sql
 CREATE TYPE notification_type AS ENUM (
-  -- ① 보상 획득
+  -- ① 보상 획득 — 아래 6종은 2026-08-27부터 생성하지 않는다(활동 결산으로 통합)
   'badge_earned', 'rare_badge_earned', 'item_badge_earned', 'checkin_badge_earned',
   'points_earned', 'first_badge',
+  -- ① 활동 결산 (마이그레이션 105, 2026-08-27) — 위 6종을 대체한다
+  'activity_recap',
   -- ② 컬렉션
   'collection_slottable', 'collection_near_complete', 'collection_completable',
   -- ③ 내 드랍
@@ -41,7 +43,7 @@ CREATE TYPE notification_type AS ENUM (
   'mission_milestone', 'mission_deadline', 'mission_completed',
   'mission_rank_up', 'mission_ended',
   -- ⑤ 소셜(나에게)
-  'followed', 'mutual_follow',
+  'followed', 'mutual_follow',  -- ⚠️ mutual_follow는 2026-08-27부터 사용하지 않음 (#27 제거)
   -- ⑥ 소셜(팔로잉 활동)
   'following_rare_badge', 'following_collection_complete',
   'following_mission_complete', 'following_nearby_drop',  -- ⚠️ 예약됐으나 사용하지 않음
@@ -66,6 +68,13 @@ CREATE TABLE public.notifications (
 );
 ```
 
+> **⚠️ 2026-08-27 재편 (티켓 20260827_014)** — ① 보상 획득 6종(`badge_earned`·
+> `rare_badge_earned`·`item_badge_earned`·`checkin_badge_earned`·`points_earned`·
+> `first_badge`)과 `mutual_follow`는 **어떤 코드도 생성하지 않는다.** ENUM 값은 그대로
+> 남긴다(Postgres는 값 제거가 안전하지 않다). 렌더 경로는 유지해 과거 행이 「새로운 소식이
+> 도착했어요」로 보이지 않게 한다 — 전량 삭제가 실행되면 죽은 코드가 되므로 별도 정리 대상.
+> **실사용은 `activity_recap` 포함 21종이다.**
+>
 > **⚠️ `following_nearby_drop`·`nearby_drops`는 예약됐으나 사용하지 않는 값이다** (2026-08-25 /
 > 티켓 20260825_002). 지역 기반 소식 2종을 스펙에서 제거했고 ⑦ 발견 카테고리는 #34가 유일해
 > 카테고리째 사라졌다(제거 사유는 [PRD.md](./PRD.md) §7). **실제로 쓰는 종류는 26종**이다.
@@ -340,7 +349,7 @@ actor_count = jsonb_array_length(payload->'actor_ids')   -- 중복 제거 후
 
 | 소식 | `group_key` | 시간창 |
 |---|---|---|
-| 1·3·4 배지·아이템·POI 획득 | `{type}:sync:{strava_activity_id}` | 동기화 1회 (인스타의 "게시물 A"에 해당) |
+| **`activity_recap` 활동 결산** | `activity_recap:{YYYY-MM-DD}` | **KST 하루** — 활동 2건 이상이면 한 행에 접힌다(F2). *2026-08-27 — 구 1·3·4가 쓰던 `{type}:sync:{strava_activity_id}`(활동 단위)를 대체한다. 활동별 키를 쓰면 F2를 위한 fold가 따로 필요한데 결산은 인라인 생성이라 배치의 `foldTargets`를 쓸 수 없다* |
 | 5 포인트 적립 | `points_earned:{YYYY-MM-DD}` | 하루 |
 | 13 픽업됨 | `drop_picked_up:{YYYY-MM-DD-H{0..3}}` | 6시간 |
 | 26 팔로우 | `followed:{YYYY-MM-DD}` | 24시간 |
@@ -348,6 +357,7 @@ actor_count = jsonb_array_length(payload->'actor_ids')   -- 중복 제거 후
 | 20 미션 마일스톤 | `mission_milestone:{mission_id}:{50\|80}` + `once` | 구간당 1회 |
 | 40 Strava 끊김 | `strava_disconnected:{YYYY-MM-DD}` + `once` | 하루 1회 (폭주 방지) |
 | **T2 배치 11종** | **전부 `group_key` + `once`** — §4-3 | — |
+| **R11 묶음 (대상 2건 이상)** | `{type}:{대상 집합 지문}` — FNV-1a 64비트 | 같은 종류의 소식이 대상 2건 이상일 때 한 행으로 접는다 |
 | **묶지 않는 소식** | **NULL** | — |
 
 > **시간창은 전부 KST 기준으로 계산한다**(2026-08-24 확정). UTC로 두면 일 단위 키가 KST 09:00에
@@ -357,6 +367,17 @@ actor_count = jsonb_array_length(payload->'actor_ids')   -- 중복 제거 후
 > **배치(025)는 시작 시각을 한 번 캡처해 모든 키 빌더에 넘긴다.** 빌더가 `at`을 생략하면
 > 각각 `new Date()`를 평가하므로, KST 자정을 걸쳐 도는 배치가 두 날짜 키로 갈릴 수 있다.
 > `createBatchContext()`가 `startedAt`을 한 번 만들어 7개 단계 전부에 넘기는 구조로 못박았다.
+
+### R11 묶음 키 — 대상 집합의 지문 (2026-08-27)
+
+같은 종류의 소식이 **대상 2건 이상**이면 한 행으로 접고, 키를 **대상 집합의 지문**(FNV-1a
+64비트)으로 만든다. 날짜 키로 바꾸면 `once`가 지키던 "컬렉션당 평생 1회"가 사라져 같은 상태를
+매일 다시 알리게 된다.
+
+> **⚠️ 재알림 특성 — 버그가 아니다.** 대상 집합이 바뀌면 새 키가 되므로, 컬렉션 {A}에 대해
+> 단건 소식을 받은 뒤 {A,B}가 되면 **A를 포함한 묶음 행이 한 번 더 나간다.** 대상 단위
+> `once`(평생 1회)를 지키면서 R11을 구현하려면 집합 단위로 판정할 수밖에 없고, SELECT 없이
+> 멱등을 유지하는 배치 설계와의 절충이다.
 
 `group_key`가 NULL인 소식(2·7·22·27·44·45)은 UNIQUE 인덱스의 부분 조건
 (`WHERE group_key IS NOT NULL`)에서 제외되므로 항상 새 행으로 쌓인다. **T1 인라인 생성 소식만
