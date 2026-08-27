@@ -37,7 +37,7 @@
 
 | 자료 | 내용 |
 |------|------|
-| [History/PHASES_ROADMAP_ARCHIVE.md](../../History/PHASES_ROADMAP_ARCHIVE.md) | 2026-07-09~10 작성된 원래 Phase 계획 원문 (실행 안 됨, 참고용) |
+| [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md) | 2026-07-09~10 작성된 원래 Phase 계획 원문 (실행 안 됨, 참고용) |
 | `History/Phase7~17_01~04` 등 | 각 Phase 시점의 4종 PRD 문서 스냅샷 |
 
 ---
