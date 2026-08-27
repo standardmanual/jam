@@ -375,7 +375,7 @@ actor_count = jsonb_array_length(payload->'actor_ids')   -- 중복 제거 후
 ## 4-2. `group_key` 설계
 
 모든 키는 **`{type}:{scope}`** 형태다. UNIQUE 인덱스가 `(user_id, group_key)`뿐이라
-**type이 키에 들어있지 않기 때문**이다. type을 빼면 소식 1·3·4처럼 같은 동기화를 scope로 쓰는
+**type이 키에 들어있지 않기 때문**이다. type을 빼면 **구** 소식 1·3·4가 그랬듯 같은 scope를 쓰는
 종류들이 한 행으로 병합돼 payload가 서로를 덮어쓰고 착지점이 통째로 어긋난다.
 
 | 소식 | `group_key` | 시간창 |
