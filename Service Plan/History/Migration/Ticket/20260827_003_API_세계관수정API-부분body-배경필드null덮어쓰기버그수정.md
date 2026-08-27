@@ -80,6 +80,11 @@ update 페이로드에 명시적으로 포함되므로, **부분 body로 호출�
 - `POST /api/admin/factions`(신규 등록)는 티켓 지시대로 손대지 않았다.
 - `item_books`의 PUT(`jam-web/src/app/api/admin/itembooks/[id]/route.ts`)에 동일한 `?? null`
   패턴 버그가 있는 것을 재확인했다 — 티켓 지시대로 수정하지 않고 sideFinding으로만 기록한다.
+- **(재시도)** 1차 게이트 리뷰 FAIL 사유였던 타입 오류를 수정했다: 기존 row 조회 결과(`data`)를
+  `existingData`로 받고, null 체크 직후 `FactionRow`(`jam-web/src/types/database.ts`에서 import)로
+  명시적으로 타입 단언한 `existing` 변수를 병합 로직에서 사용하도록 고쳤다. `@ts-expect-error`가
+  `.update({` 한 줄만 억제해 그 아래 `existing.필드` 접근 11곳이 억제 범위 밖에서 TS2339를 내던
+  문제가 해결됐다 — `npx tsc --noEmit`과 `npm run build` 모두로 실제 실행 확인(테스트 결과 참조).
 
 ### 변경된 파일
 ```
@@ -91,9 +96,25 @@ jam-web/src/app/admin/factions/FactionsTable.tsx
 - [x] `npx eslint`로 변경 파일 2개 린트 확인 — `FactionsTable.tsx`의 `themeContainer` useEffect
       관련 `react-hooks/set-state-in-effect` 에러 1건은 변경 전(git stash 후 재확인)에도 동일하게
       발생하는 기존 이슈로, 이번 변경과 무관함을 확인했다(20260827_002에서 도입된 코드).
-- [ ] 타입체크(`tsc --noEmit`)는 이 워크트리에 `node_modules`가 설치돼 있지 않아 실행하지
-      못했다 — 기존 코드의 `@ts-expect-error Supabase 타입 추론 제한 우회` 패턴을 그대로 따랐고,
-      필드 접근/재할당 구조상 신규 타입 오류를 유발할 여지가 없다고 판단했다(수동 코드 검토).
+      `route.ts`는 신규 lint 에러 0건.
+- [x] **(재시도 — 1차 게이트 리뷰 FAIL 사유 해결)** 1차 시도에서 `node_modules` 미설치로 실행하지
+      못했던 `npx tsc --noEmit`을 이번엔 `npm ci`로 의존성을 설치한 뒤 실제로 실행해 확인했다.
+      - 수정 전 재현: `existing.name` 등 `select('*').eq('id', id).single()`의 반환값(`data`)을
+        `existing`이라는 이름으로 그대로 쓰던 기존 코드에서 `Property 'name' does not exist on
+        type 'never'` 등 TS2339가 11곳(필드별 1개씩) 발생함을 재확인했다 — 1차 게이트 리뷰가
+        지적한 것과 동일한 에러.
+      - 원인: `select` 반환 타입이 `never`로 좁혀지는 것을 `@ts-expect-error`가 `.update({` 앞
+        한 줄만 억제하고, 그 아래 `existing.필드` 접근 11곳은 억제 범위 밖이라 그대로 에러로
+        노출됨.
+      - 수정: `existing`을 `data`(→ `existingData`로 개명) 그대로 쓰지 않고, null 체크 직후
+        `jam-web/src/types/database.ts`의 `FactionRow`를 import해 `const existing = existingData
+        as FactionRow`로 명시적으로 타입을 확정한 뒤 그 `existing`을 병합 로직에서 사용하도록
+        고쳤다.
+      - 수정 후 `npx tsc --noEmit -p tsconfig.json`을 프로젝트 전체 기준으로 재실행해 출력 0줄,
+        exit code 0(에러 0건)을 확인했다.
+      - 추가로 `npm run build`(production build, Next.js)까지 실행해 타입체크를 포함한 전체
+        빌드가 에러 없이 완료됨을 확인했다(1차 게이트 리뷰가 "이 상태로는 next build 자체가
+        막힌다"고 지적했던 부분의 실제 해소 확인).
 - [ ] 실제 어드민 화면에서의 수동 PUT 호출 테스트는 수행하지 못했다(로컬 서버 미기동, DB 접근
       권한이 이 서브에이전트에 위임되지 않음 — 절대 규칙 3, 5). 로컬 테스트 방법은 요약 참조.
 
