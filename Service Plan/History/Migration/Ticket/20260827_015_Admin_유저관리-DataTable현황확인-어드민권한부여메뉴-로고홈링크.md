@@ -1,8 +1,9 @@
 ---
 id: 20260827_015
 category: Admin
-status: OPEN
+status: CLOSED
 created: 2026-08-27
+closed: 2026-08-27
 ---
 
 # [Admin] 유저 관리 DataTable 현황 확인 · 어드민 권한 부여 메뉴 · 로고 홈 링크
@@ -105,7 +106,7 @@ href="/admin">`으로 교체. 기존 className(레이아웃·collapse 대응)은
 
 ### 변경된 파일
 ```
-jam-web/supabase/migrations/106_users_is_admin.sql (신규, 실행 대기)
+jam-web/supabase/migrations/106_users_is_admin.sql (신규, jam-prod에 실행 완료)
 jam-web/src/lib/admin/auth.ts
 jam-web/src/proxy.ts
 jam-web/src/app/admin/layout.tsx
@@ -120,8 +121,18 @@ jam-web/src/types/database.generated.ts
 ### 테스트 결과
 - [x] `npx tsc --noEmit` 통과 (신규/변경 파일 전체)
 - [x] `npx eslint` 통과 (신규/변경 파일 전체, 경고/에러 없음)
-- [ ] 실기기 검증 — `users.is_admin` 컬럼이 아직 DB에 없어(마이그레이션 미실행) 유저 상세
-      화면의 토글 UI·API 라우트는 마이그레이션 적용 후에만 정상 동작 확인 가능
+- [x] `106_users_is_admin.sql`을 jam-prod(`ceehnkzdbecxwzxrhhns`)에 오케스트레이터가 직접 실행
+      (staging·프로덕션 공용 DB이므로 즉시 반영됨)
+- [x] `is_admin` 컬럼 반영 후 Supabase MCP `generate_typescript_types`로 타입 재생성 —
+      개발자가 미리 맞춰둔 `is_admin: boolean` 타입이 실제 생성 결과와 정확히 일치함을 확인
+      (다른 필드 순서·타 티켓의 enum 값만 갱신됨, `is_admin` 자체는 diff 없음)
+- [x] `admin-role/route.ts`의 `@ts-expect-error`가 타입 재생성 후에도 필요함을 재확인
+      (Supabase 라이브러리 공통 제약 — `drops.ts` 등 다른 라우트와 동일 패턴, 사유 주석만 갱신)
+- [x] staging 배포 확인: `vercel inspect`로 최신 staging 빌드(`jam-git-staging-*` alias)가
+      Ready 상태임을 확인
+- [ ] 어드민 화면 실기기(브라우저) 검증 — 어드민은 로그인 세션이 필요해 스테이징에서 자동
+      검증 불가(기존 관례). 프로덕션 승격(`/jam-ship`) 후 실제 로그인해 권한 토글·로고 링크
+      동작을 눈으로 확인 필요
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -135,17 +146,22 @@ jam-web/src/types/database.generated.ts
 - [ ] 톤앤매너 / 에러 메시지 3단계 구조 / 표기 규칙: 어드민 내부 도구 텍스트라 해당 없음
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-27
+- 환경: staging (Supabase는 staging·프로덕션 공용 단일 DB라 `is_admin` 컬럼은 이미 프로덕션에도
+  반영됨. 코드는 staging에만 배포됨 — main 승격은 별도 사용자 승인 필요)
+- 커밋: `8b687db2`(구현), `f6f97e12`(타입 재생성), staging 병합 `c0b3498f`
 
 ### 주요 의사결정 / 핵심 메모
 > 어드민 권한 판정 방식: DB 컬럼(`is_admin`) 추가 + 기존 `ADMIN_EMAILS` 환경변수 화이트리스트
 > 병행(OR 조건). 사용자 확인 하에 결정 — 기존 화이트리스트 계정 마이그레이션 불필요.
+>
+> `npm run db:types`는 로컬에 `supabase` CLI가 설치돼 있지 않아 실패(빈 파일로 덮어씀 —
+> 즉시 git checkout으로 복구). 대신 Supabase MCP `generate_typescript_types`로 받은 JSON의
+> `types` 필드를 파일에 직접 기록해 우회함. 이후 유사 작업에서는 CLI 설치 여부를 먼저
+> 확인하거나 이 MCP 방식을 기본으로 쓸 것.
 
 ### 잔여 이슈
-- `jam-web/supabase/migrations/106_users_is_admin.sql` 실행 필요 — 사용자 승인 후
-  오케스트레이터가 적용해야 유저 상세 화면 어드민 권한 토글이 실제로 동작한다(마이그레이션
-  전에는 `is_admin` 컬럼이 없어 관련 쿼리가 실패한다).
-- 마이그레이션 적용 후 `npm run db:types`로 `database.generated.ts`를 재생성해, 이번 티켓에서
-  손으로 미리 맞춰둔 `is_admin` 필드와 실제 생성 결과가 일치하는지 대조 확인 권장.
+- 어드민 권한 토글·로고 링크의 브라우저 실기기 검증은 프로덕션 승격 후 수행 필요(어드민은
+  스테이징에서 로그인 세션 기반 검증이 불가능한 기존 제약).
+- 로컬 개발 환경에 `supabase` CLI 미설치 — `npm run db:types`를 정상적으로 쓰려면 별도 설치 필요
+  (이번 티켓 범위 밖, 발견 사항으로만 기록).
