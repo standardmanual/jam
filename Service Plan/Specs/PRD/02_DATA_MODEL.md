@@ -272,6 +272,28 @@ append-only 원장. `reason`: `badge_point_reward` / `mission_point_reward` / `a
 ### user_activity_feed (신규)
 배지 획득·아이템 드랍·픽업·미션 참가/완료 이벤트를 통합한 피드. `event_type` ENUM, `metadata JSONB`.
 
+**`strava_activity_id BIGINT NULL`** (마이그레이션 107, 티켓 20260827_018) — 이 이벤트가
+어느 활동에서 나왔는지. UUID FK가 아니라 **Strava 숫자 id**를 쓴다:
+`strava_activities.strava_id` · `user_activity_badges.triggered_by_strava_id` ·
+결산 알림 payload의 `activity_ids`와 같은 규약이라 **알림과 피드가 같은 키로 말한다**.
+FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기록이 앞설 수 있고,
+참조 무결성보다 기록 유실 방지가 우선이다.
+
+- **NULL = 활동 귀속 불명.** 활동 단위가 아닌 이벤트(`mission_joined`·`item_picked_up`·
+  `mission_completed`)와 **107 이전에 쌓인 과거 행 전부**가 여기 해당한다.
+  `mission_completed`를 뺀 이유는 미션이 여러 활동에 걸친 누적이라 한 활동에 귀속시키면
+  사실과 어긋나기 때문이다.
+- **백필하지 않는다.** 과거 이벤트가 어느 활동에서 나왔는지 복원할 방법이 없다 —
+  `event_at`이 부정확하다는 것은 마이그레이션 093·094에서 이미 실측됐다. 추정 매칭으로
+  잘못 묶는 것보다 단건으로 남기는 쪽이 안전하다(graceful degradation).
+- 인덱스: `(user_id, strava_activity_id) WHERE strava_activity_id IS NOT NULL` 부분 인덱스.
+- 프로필 피드는 이 값이 같은 이벤트를 **2건 이상일 때만** 한 카드로 접는다. NULL 행끼리는
+  절대 묶지 않는다.
+
+> **기록 순서 제약** — 이 컬럼을 쓰는 코드보다 DDL이 **먼저** 나가야 한다. 반대로 하면
+> `recordFeedEvent`의 insert가 42703으로 실패하는데, 이 함수는 예외를 삼키고
+> `console.error`만 남겨 **화면은 멀쩡한데 피드 기록만 사라지는 무증상 장애**가 된다.
+
 ---
 
 ## 11. 어뷰징/정책 (신규)
