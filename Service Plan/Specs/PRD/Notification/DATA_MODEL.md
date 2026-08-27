@@ -91,6 +91,29 @@ CREATE TABLE public.notifications (
 > TS 쪽(`src/types/database.ts`의 `NotificationType`)에서는 20종만 노출해 컴파일러가 재사용을
 > 막는다. 만에 하나 이 타입의 행이 존재하면 렌더러의 `default` 분기가 받는다.
 >
+> **`default` 분기는 컴파일 타임 안전망을 겸한다 (2026-08-27 / 티켓 20260827_021).**
+> 새 소식 종류를 추가할 때 갱신해야 하는 지점은 다음 순서다:
+>
+> | # | 지점 | 누락하면 |
+> |---|---|---|
+> | 1 | `src/types/database.ts`의 `NotificationType` | — (여기가 출발점) |
+> | 2 | `src/lib/notifications/message.ts` `buildNotificationMessage` | **컴파일 에러** |
+> | 3 | `src/lib/notifications/href.ts` `notificationTarget` | **컴파일 에러** |
+> | 4 | `src/app/(main)/notifications/NotificationsClient.tsx` `TypeIcon` | **컴파일 에러** |
+> | 5 | `src/lib/notifications/warning.ts` (경고 종류일 때만) | 조용히 누락 — 안전망 밖이다 |
+>
+> 2~4의 `default` 분기는 `unknownNotificationType(type: never)`(`types.ts`)를 호출한다.
+> 인자가 `never`라 처리되지 않은 종류가 남아 있으면 그 호출 지점이 컴파일 에러가 난다.
+>
+> **이 헬퍼는 던지지 않는다.** 위 표의 「예약됐으나 사용하지 않는 값」 9종이 어떤 경로로든
+> 재유입되거나 배포 시차로 미지의 `type` 행이 잠깐 존재할 때, 런타임 fallback(「새로운 소식이
+> 도착했어요」·착지 없음·종 아이콘)이 그대로 받아야 하기 때문이다. 던지면 행 하나가 목록 전체를
+> 깨뜨린다 — **「차라리 throw로 바꾸자」로 되돌리지 말 것.**
+>
+> `default` 진입 시 `console.warn`이 `type`당 1회 남지만, 리포에 로그 수집 인프라가 없어
+> 클라이언트 렌더 경로의 경고는 유저 브라우저 콘솔에만 남는다. **컴파일 가드의 보조일 뿐
+> 운영 관측 수단이 아니다.**
+>
 > **`ActivityFeedEventType`의 `'badge_earned'`와 혼동하지 말 것** — 이름만 같고 축이 다르다.
 > 그쪽은 활동 피드(`user_activity_feed`) 이벤트 타입이며 현행이다.
 

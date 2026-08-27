@@ -244,3 +244,35 @@ export interface NotificationPayloadMap {
 export type NotificationPayload<T extends NotificationType> = T extends keyof NotificationPayloadMap
   ? NotificationPayloadMap[T]
   : Record<string, unknown>
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 전수 처리 안전망 (20260827_021)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 이미 경고를 남긴 미지 `type` — 프로세스/세션 단위 중복 억제용.
+ *
+ * 아래 헬퍼는 소식 **행마다·렌더마다** 호출된다. 미지 type 행이 30개 있는 목록을
+ * 스크롤하면 억제가 없을 때 경고가 수백 건 쏟아진다.
+ */
+const warnedUnknownNotificationTypes = new Set<string>()
+
+/**
+ * 소식 종류 `switch`의 `default` 분기에서 호출하는 전수 처리 확인 헬퍼.
+ *
+ * 렌더러가 세 곳(`message.ts`·`href.ts`·`NotificationsClient.tsx`)이라 새 종류를 추가할 때
+ * 하나를 빠뜨려도 컴파일이 통과하고 조용히 fallback으로 렌더됐다. 인자 타입이 `never`라
+ * 남은 종류가 있으면 **호출 지점이 컴파일 에러**가 된다.
+ *
+ * **던지지 않는다.** 배포 시차·DB `notification_type` ENUM 잔존값 재유입에 대비한
+ * 런타임 fallback은 그대로 살아 있어야 한다 — 던지면 미지 type 행 하나가 목록 전체를
+ * 깨뜨린다. 호출부는 이 함수를 부른 뒤 기존 fallback 값을 그대로 반환한다.
+ *
+ * 로그에는 `type`만 남긴다 (유저 식별자·payload 원문 금지).
+ */
+export function unknownNotificationType(type: never): void {
+  const key = String(type)
+  if (warnedUnknownNotificationTypes.has(key)) return
+  warnedUnknownNotificationTypes.add(key)
+  console.warn('[notifications] 미지 소식 종류', { type: key })
+}
