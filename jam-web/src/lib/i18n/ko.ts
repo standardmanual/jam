@@ -632,7 +632,7 @@ export const ko = {
 
   /**
    * 알림(소식)함 — 20260824_021
-   * 문구 규칙: Specs/PRD/Notification/PRD.md §3(26종 표) · §5(강조 규칙)
+   * 문구 규칙: Specs/PRD/Notification/PRD.md §3(20종 표) · §5(강조 규칙)
    *
    * `{슬롯}`은 payload에서 채워지는 변수이며 **렌더러가 자동으로 볼드 처리**한다.
    * 고정 텍스트는 일반체, 컬러 강조는 쓰지 않는다. 소식마다 강조 지점을 따로 정의하지 않는다.
@@ -720,16 +720,6 @@ export const ko = {
     msgRecapFirstBadge: '{firstBadge}가 도착했어요',
     msgRecapFirstBadgeMore: '{firstBadge}가 도착했어요. 프로필을 확인해보세요',
 
-    // ── ① 레거시 6종 — 20260827_014부터 생성하지 않는다(과거 행 렌더용) ──
-    msgBadgeEarned: '오늘 활동으로 {badgeCount}{을/를} 획득했어요',
-    /** ⑥ #29도 이 템플릿을 재사용한다 — 살아 있는 문구다 */
-    msgRareBadgeEarned: '{rarity} 배지 {badgeName}{을/를} 획득했어요',
-    msgItemBadgeEarned: '활동 중에 {itemCount}{을/를} 획득했어요',
-    msgCheckinBadgeEarned: '{poiName}에서 체크인 배지를 획득했어요',
-    msgCheckinBadgeRepeated: '{poiName}에 {visitCount}번째 체크인 했어요',
-    msgPointsEarned: '오늘 획득한 배지로 {points}{을/를} 획득했어요',
-    msgFirstBadge: '{firstBadge}가 도착했어요',
-
     // ── ② 컬렉션 ──
     msgCollectionSlottable: '{bookName}에 넣을 수 있는 아이템 배지가 {count} 있어요',
     /** R11 묶음 — 컬렉션이 아니라 **배지를 센다.** 착지도 배지가 있는 곳(인벤토리)이다 */
@@ -776,6 +766,12 @@ export const ko = {
     // ── ⑥ 소셜 — 팔로우한 사람의 활동 ──
     /** 뒤에 msgRareBadgeEarned가 이어 붙는다 (등급 라벨은 그 안의 {rarity} 슬롯) */
     msgFollowingActorPrefix: '{actor}님이 ',
+    /**
+     * #29 팔로잉 희귀 배지 전용 — `msgFollowingActorPrefix`와 합성해 쓴다.
+     * 원래 ① 레거시 #2(`rare_badge_earned`)의 문구였고, 20260827_016에서 레거시 경로가
+     * 제거된 뒤로는 이 조합에서만 쓰인다.
+     */
+    msgRareBadgeEarned: '{rarity} 배지 {badgeName}{을/를} 획득했어요',
     msgFollowingCollectionComplete: '{actor}님이 {bookName}{을/를} 다 모았어요',
     msgFollowingMissionCompleteOne: '{actor}님이 {missionTitle}{을/를} 완료했어요',
     msgFollowingMissionCompleteMany: '{actor}님 외 {others}이 {missionTitle}{을/를} 완료했어요',

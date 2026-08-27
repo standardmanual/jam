@@ -2,7 +2,7 @@
  * 알림(소식) 문구 렌더러 + 착지점 계산 + 시간 구간 + ⑧ 경고 재평가
  * 티켓 20260824_021
  *
- * PRD §3의 26종 표가 이 코드의 명세라, 표의 **예시 문구를 그대로 단언**한다.
+ * PRD §3의 20종 표가 이 코드의 명세라, 표의 **예시 문구를 그대로 단언**한다.
  * 문구가 바뀌면 테스트가 먼저 깨져야 한다.
  */
 import type { NotificationType } from '@/types/database'
@@ -270,98 +270,6 @@ describe('① 활동 결산 — 사다리 A·B / C·D / E / F2', () => {
   })
 })
 
-describe('① 레거시 6종 — 전량 삭제 전까지의 하위호환 렌더', () => {
-  it('#1 활동배지 — 개수는 payload.count가 아니라 badge_ids 길이로 센다', () => {
-    // 병합 후 count는 "이번 이벤트분"만 남는다(얕은 병합). 그대로 쓰면 3개를 1개로 말한다.
-    const v = view('badge_earned', { badge_ids: ['b1', 'b2', 'b3'], count: 1 })
-    expect(text(v)).toBe('오늘 활동으로 배지 3개를 획득했어요')
-  })
-
-  it('#2 희귀 배지', () => {
-    const v = view('rare_badge_earned', {
-      badge_id: 'b1',
-      badge_name: '별을 삼킨 바퀴',
-      rarity: 'mythic',
-    })
-    expect(text(v)).toBe('Mythic 배지 별을 삼킨 바퀴를 획득했어요')
-  })
-
-  it('#2 희귀 배지 — 등급 라벨도 payload 슬롯이므로 볼드다', () => {
-    // rarity는 payload에서 오는 값이다. 템플릿에 합쳐 고정 텍스트로 두면
-    // 26종 중 이 2종만 §5 "슬롯=볼드" 규칙의 예외가 된다(20260825 정정).
-    const v = view('rare_badge_earned', {
-      badge_id: 'b1',
-      badge_name: '별을 삼킨 바퀴',
-      rarity: 'mythic',
-    })
-    const { template, vars } = buildNotificationMessage(v)
-    const tokens = tokenizeMessage(template, vars)
-    expect(tokens.find((t) => t.text === 'Mythic')?.bold).toBe(true)
-    expect(tokens.find((t) => t.text === '별을 삼킨 바퀴')?.bold).toBe(true)
-  })
-
-  it('#3 아이템 배지 — 개수는 inventory_item_ids 길이', () => {
-    const v = view('item_badge_earned', { inventory_item_ids: ['i1', 'i2'], count: 1 })
-    expect(text(v)).toBe('활동 중에 아이템 배지 2개를 획득했어요')
-  })
-
-  it('#4 체크인 배지 — 단건은 지점명, 묶음은 "외 N곳"', () => {
-    expect(text(view('checkin_badge_earned', { poi_name: '북한산', badge_ids: ['b1'] }))).toBe(
-      '북한산에서 체크인 배지를 획득했어요'
-    )
-    expect(
-      text(
-        view('checkin_badge_earned', {
-          badge_ids: ['b1', 'b2', 'b3'],
-          poi_names: ['북한산', '관악산', '도봉산'],
-        })
-      )
-    ).toBe('북한산 외 2곳에서 체크인 배지를 획득했어요')
-  })
-
-  it('#4 체크인 배지 반복 획득 — is_first_earn=false + visit_count>1이면 "N번째 체크인 했어요"', () => {
-    expect(
-      text(
-        view('checkin_badge_earned', {
-          poi_name: '서초역',
-          badge_ids: ['b1'],
-          is_first_earn: false,
-          visit_count: 3,
-        })
-      )
-    ).toBe('서초역에 3번째 체크인 했어요')
-  })
-
-  it('#4 체크인 배지 반복 획득 — payload에 is_first_earn이 없는 과거 소식은 기존 "획득" 문구 유지(하위호환)', () => {
-    expect(text(view('checkin_badge_earned', { poi_name: '북한산', badge_ids: ['b1'] }))).toBe(
-      '북한산에서 체크인 배지를 획득했어요'
-    )
-  })
-
-  it('#4 체크인 배지 — 한 활동에서 최초 획득과 반복 획득이 섞이면 최초 획득 쪽을 대표로 "획득" 문구 + 외 N곳', () => {
-    expect(
-      text(
-        view('checkin_badge_earned', {
-          poi_name: '관악산', // sync.ts가 최초 획득 항목을 대표로 골라 넣은 값
-          is_first_earn: true,
-          badge_ids: ['b1', 'b2'],
-          poi_names: ['서초역', '관악산'],
-        })
-      )
-    ).toBe('관악산 외 1곳에서 체크인 배지를 획득했어요')
-  })
-
-  it('#5 포인트 — R3: 화폐 단위는 「포인트」다 (「JAM 포인트」·「1200P」는 가이드 위반)', () => {
-    expect(text(view('points_earned', { amount: 1200 }))).toBe(
-      '오늘 획득한 배지로 1,200 포인트를 획득했어요'
-    )
-  })
-
-  it('#7 첫 배지', () => {
-    expect(text(view('first_badge', { badge_id: 'b1' }))).toBe('첫 배지가 도착했어요')
-  })
-})
-
 describe('② 컬렉션', () => {
   it('#9 장착 가능 / #10 완성 임박(R12) / #11 완성 가능(R13) — R2: 작은따옴표 없음', () => {
     expect(
@@ -543,6 +451,22 @@ describe('⑤⑥ 소셜', () => {
     ).toBe('예린님이 잃어버린 시간을 다 모았어요')
   })
 
+  it('#29 등급 라벨도 payload 슬롯이므로 볼드다 (§5 슬롯=볼드)', () => {
+    // rarity는 payload에서 오는 값이다. 템플릿에 합쳐 고정 텍스트로 두면
+    // 이 종만 §5 "슬롯=볼드" 규칙의 예외가 된다(20260825 정정).
+    // 원래 ① 레거시 #2(rare_badge_earned)에 걸려 있던 단언을 20260827_016에서
+    // 같은 템플릿(msgRareBadgeEarned)을 쓰는 #29로 옮겼다.
+    const v = view(
+      'following_rare_badge',
+      { badge_id: 'b1', badge_name: '별을 삼킨 바퀴', rarity: 'mythic' },
+      { actor: ACTOR }
+    )
+    const { template, vars } = buildNotificationMessage(v)
+    const tokens = tokenizeMessage(template, vars)
+    expect(tokens.find((t) => t.text === 'Mythic')?.bold).toBe(true)
+    expect(tokens.find((t) => t.text === '별을 삼킨 바퀴')?.bold).toBe(true)
+  })
+
   it('R15 — 한 사람의 소식이 2건 이상이면 대표 + "소식이 N건 더 있어요", 착지는 그 사람 프로필', () => {
     const v = view(
       'following_rare_badge',
@@ -630,25 +554,62 @@ describe('⑧ 계정·시스템', () => {
 })
 
 describe('착지점 — type + payload로 런타임 계산 (PRD §3)', () => {
-  it('#1 단건은 배지 상세, 묶음은 탭 이동만(하이라이트 없음, 20260826_006)', () => {
-    expect(notificationTarget(view('badge_earned', { badge_ids: ['b1'] })).href).toBe('/badges/b1')
-    expect(notificationTarget(view('badge_earned', { badge_ids: ['b1', 'b2'] })).href).toBe(
-      '/badges?tab=activity'
-    )
+  // 20260827_016 — ① 착지 단언의 축이 레거시 6종에서 활동 결산으로 옮겨왔다.
+  // 단건은 개체 상세, 여러 개는 카테고리 목록/탭 이동이라는 계약은 그대로다.
+  const recapView = (payload: Record<string, unknown>) => view('activity_recap', payload)
+
+  it('① 활동배지 — 단건은 배지 상세, 여러 개는 탭 이동만(하이라이트 없음, 20260826_006)', () => {
+    expect(
+      notificationTarget(
+        recapView({ activity_ids: [1], activity_badges: [{ id: 'b1', name: 'A', rarity: 'common' }] })
+      ).href
+    ).toBe('/badges/b1')
+    expect(
+      notificationTarget(
+        recapView({
+          activity_ids: [1],
+          activity_badges: [
+            { id: 'b1', name: 'A', rarity: 'common' },
+            { id: 'b2', name: 'B', rarity: 'common' },
+          ],
+        })
+      ).href
+    ).toBe('/badges?tab=activity')
   })
 
-  it('#3은 배지 도감이 아니라 인벤토리 인스턴스로 보낸다', () => {
-    expect(notificationTarget(view('item_badge_earned', { inventory_item_ids: ['i1'] })).href).toBe(
-      '/inventory/i1'
-    )
+  it('① 아이템 배지는 배지 도감이 아니라 인벤토리 인스턴스로 보낸다', () => {
     expect(
-      notificationTarget(view('item_badge_earned', { inventory_item_ids: ['i1', 'i2'] })).href
+      notificationTarget(
+        recapView({
+          activity_ids: [1],
+          item_badges: [{ inventory_item_id: 'i1', badge_id: 'bd1', name: 'A', rarity: 'common' }],
+        })
+      ).href
+    ).toBe('/inventory/i1')
+    expect(
+      notificationTarget(
+        recapView({
+          activity_ids: [1],
+          item_badges: [
+            { inventory_item_id: 'i1', badge_id: 'bd1', name: 'A', rarity: 'common' },
+            { inventory_item_id: 'i2', badge_id: 'bd2', name: 'B', rarity: 'common' },
+          ],
+        })
+      ).href
     ).toBe('/inventory')
   })
 
-  it('#4 묶음은 체크인 탭 이동만(하이라이트 없음, 20260826_006)', () => {
+  it('① 체크인 배지 여러 개는 체크인 탭 이동만(하이라이트 없음, 20260826_006)', () => {
     expect(
-      notificationTarget(view('checkin_badge_earned', { badge_ids: ['b1', 'b2'] })).href
+      notificationTarget(
+        recapView({
+          activity_ids: [1],
+          checkin_badges: [
+            { badge_id: 'c1', poi_name: '북한산', first: true, visit: 1 },
+            { badge_id: 'c2', poi_name: '남산', first: true, visit: 1 },
+          ],
+        })
+      ).href
     ).toBe('/badges?tab=checkin')
   })
 
@@ -737,7 +698,7 @@ describe('⑧ 경고 스타일 — 저장하지 않고 렌더 시점에 재평�
   })
 
   it('보상 획득 같은 일반 소식은 경고가 될 수 없다', () => {
-    expect(isWarningNotification('badge_earned', {}, {}, now)).toBe(false)
+    expect(isWarningNotification('activity_recap', {}, {}, now)).toBe(false)
   })
 })
 

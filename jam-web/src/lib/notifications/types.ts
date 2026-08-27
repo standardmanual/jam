@@ -8,7 +8,7 @@ import type { BadgeRarity, NotificationType } from '@/types/database'
 export type { NotificationType }
 
 /**
- * dot을 켜지 않는 소식 — ① 보상 획득(활동 결산 + 레거시 6종).
+ * dot을 켜지 않는 소식 — ① 보상 획득(활동 결산).
  *
  * Strava 동기화는 webhook이 없어 100% 수동이라, 유저가 버튼을 눌러
  * `BadgeRevealOverlay`로 방금 확인한 것의 재방송이다. dot을 켜면 "새 소식"이 아니라
@@ -17,17 +17,12 @@ export type { NotificationType }
  * **호출부가 `bumps_badge`를 넘기지 않는다.** type 하나로 결정되는 값이라 호출부마다
  * 넘기게 하면 곧 갈린다 — 이 매핑이 유일한 진실이다.
  *
- * 20260827_014 — 결산(`activity_recap`)이 6종을 대체했다. 레거시 6종도 목록에 남겨 둔다
- * (더 이상 생성되지 않지만, 빼면 dot 규칙이 과거 행에서만 갈린다).
+ * 20260827_014 — 결산(`activity_recap`)이 레거시 6종을 대체했다.
+ * 20260827_016 — 레거시 6종 행이 전량 삭제돼(`seed_20260827_notifications_reset.sql`)
+ * 목록에서도 뺐다. 대상 행이 0이라 dot 규칙이 갈릴 여지가 없다.
  */
 export const NON_BUMPING_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType>([
   'activity_recap',
-  'badge_earned',
-  'rare_badge_earned',
-  'item_badge_earned',
-  'checkin_badge_earned',
-  'points_earned',
-  'first_badge',
 ])
 
 /** type → bumps_badge 파생 (①보상 획득만 false) */
@@ -97,29 +92,6 @@ export interface NotificationPayloadMap {
     /** 포인트는 종류로 세지 않는다. 문장 꼬리에 붙는 부속이다 */
     points?: number
   }
-
-  // ── ① 레거시 6종 — 20260827_014부터 **생성하지 않는다**(렌더 하위호환만 유지) ──
-  /** 1 활동배지 획득 (레거시) */
-  badge_earned: { badge_ids: string[]; count: number; activity_id?: number }
-  /** 2 희귀 배지 획득 (레거시) */
-  rare_badge_earned: { badge_id: string; badge_name: string; rarity: BadgeRarity }
-  /** 3 아이템 배지 획득 (레거시) */
-  item_badge_earned: { inventory_item_ids: string[]; count: number; activity_id?: number }
-  /** 4 체크인 배지 획득 (레거시) */
-  checkin_badge_earned: {
-    badge_id: string
-    poi_name: string
-    is_first_earn?: boolean
-    visit_count?: number
-    badge_ids: string[]
-    poi_names: string[]
-    count: number
-    activity_id?: number
-  }
-  /** 5 포인트 적립 (레거시) */
-  points_earned: { amount: number; reason: string }
-  /** 7 첫 배지 (레거시) */
-  first_badge: { badge_id: string }
 
   /**
    * 11 컬렉션 완성 가능 — "완성할 수 있는데 아직 안 넣은" 시점.

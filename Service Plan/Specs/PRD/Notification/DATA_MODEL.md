@@ -30,7 +30,7 @@
 
 ```sql
 CREATE TYPE notification_type AS ENUM (
-  -- ① 보상 획득 — 아래 6종은 2026-08-27부터 생성하지 않는다(활동 결산으로 통합)
+  -- ① 보상 획득 — 아래 6종은 ⚠️ 예약됐으나 사용하지 않음 (2026-08-27, 활동 결산으로 통합)
   'badge_earned', 'rare_badge_earned', 'item_badge_earned', 'checkin_badge_earned',
   'points_earned', 'first_badge',
   -- ① 활동 결산 (마이그레이션 105, 2026-08-27) — 위 6종을 대체한다
@@ -43,7 +43,7 @@ CREATE TYPE notification_type AS ENUM (
   'mission_milestone', 'mission_deadline', 'mission_completed',
   'mission_rank_up', 'mission_ended',
   -- ⑤ 소셜(나에게)
-  'followed', 'mutual_follow',  -- ⚠️ mutual_follow는 2026-08-27부터 사용하지 않음 (#27 제거)
+  'followed', 'mutual_follow',  -- ⚠️ mutual_follow는 예약됐으나 사용하지 않음 (2026-08-27 #27 제거)
   -- ⑥ 소셜(팔로잉 활동)
   'following_rare_badge', 'following_collection_complete',
   'following_mission_complete', 'following_nearby_drop',  -- ⚠️ 예약됐으나 사용하지 않음
@@ -68,30 +68,38 @@ CREATE TABLE public.notifications (
 );
 ```
 
-> **⚠️ 2026-08-27 재편 (티켓 20260827_014)** — ① 보상 획득 6종(`badge_earned`·
-> `rare_badge_earned`·`item_badge_earned`·`checkin_badge_earned`·`points_earned`·
-> `first_badge`)과 `mutual_follow`는 **어떤 코드도 생성하지 않는다.** ENUM 값은 그대로
-> 남긴다(Postgres는 값 제거가 안전하지 않다). 렌더 경로는 유지해 과거 행이 「새로운 소식이
-> 도착했어요」로 보이지 않게 한다 — 전량 삭제가 실행되면 죽은 코드가 되므로 별도 정리 대상.
-> **실사용은 `activity_recap` 포함 21종이다.**
+> **⚠️ 예약됐으나 사용하지 않는 값 — ENUM 28값 중 9값**
 >
-> **⚠️ `following_nearby_drop`·`nearby_drops`는 예약됐으나 사용하지 않는 값이다** (2026-08-25 /
-> 티켓 20260825_002). 지역 기반 소식 2종을 스펙에서 제거했고 ⑦ 발견 카테고리는 #34가 유일해
-> 카테고리째 사라졌다(제거 사유는 [PRD.md](./PRD.md) §7). **실제로 쓰는 종류는 26종**이다.
+> | 값 | 사용 중단 시점 | 사유 |
+> |---|---|---|
+> | `following_nearby_drop`·`nearby_drops` | 2026-08-25 (20260825_002) | 지역 기반 소식 2종 스펙 제거. `users.region`(시/도)과 역지오코딩(구/동)의 단위가 달라 매칭이 성립하지 않는다. ⑦ 발견 카테고리는 #34가 유일해 카테고리째 사라졌다 (사유는 [PRD.md](./PRD.md) §7) |
+> | `mutual_follow` | 2026-08-27 (20260827_014) | #27 맞팔은 자기 행동의 메아리다. 되팔로우당한 쪽에는 `followed`가 대신 나간다 |
+> | `badge_earned`·`rare_badge_earned`·`item_badge_earned`·`checkin_badge_earned`·`points_earned`·`first_badge` | 2026-08-27 (20260827_014) | ① 보상 획득 6종을 활동 결산(`activity_recap`) 1종으로 재편 |
+>
+> **실제로 쓰는 종류는 20종**이다(28 − 9 + `activity_recap` 1 = 20).
 >
 > **DDL로 지우지 않는다.** Postgres에는 `ALTER TYPE … DROP VALUE`가 없고, 타입을 새로 만들어
 > 갈아끼우는 우회는 컬럼·인덱스·RLS를 전부 재생성해야 하는 위험한 작업이다. 해당 타입 소식은
 > 프로덕션에 **0건**이고 어떤 코드도 생성하지 않으므로 남겨두어도 무해하다.
 >
-> TS 쪽(`src/types/database.ts`의 `NotificationType`)에서는 26종만 노출해 컴파일러가 재사용을
+> **렌더 경로도 남기지 않는다 (2026-08-27 / 티켓 20260827_016).** 014 승격과 알림 전량 삭제
+> (`seed_20260827_notifications_reset.sql`) 사이 구간에는 과거 행이 「새로운 소식이 도착했어요」로
+> 보이지 않도록 하위호환 렌더러를 유지했지만, 삭제가 끝나 대상 행이 0이 된 뒤로는 도달 불가능한
+> 죽은 코드다. `NotificationType`·`NotificationPayloadMap`·`buildNotificationMessage`·
+> `notificationTarget`·`TypeIcon`·`ko.ts`에서 전부 제거했다.
+>
+> TS 쪽(`src/types/database.ts`의 `NotificationType`)에서는 20종만 노출해 컴파일러가 재사용을
 > 막는다. 만에 하나 이 타입의 행이 존재하면 렌더러의 `default` 분기가 받는다.
+>
+> **`ActivityFeedEventType`의 `'badge_earned'`와 혼동하지 말 것** — 이름만 같고 축이 다르다.
+> 그쪽은 활동 피드(`user_activity_feed`) 이벤트 타입이며 현행이다.
 
 ### 컬럼 설명
 
 | 필드 | 설명 |
 |---|---|
 | `user_id` | **받는 사람.** 행위자가 아니다 |
-| `type` | ENUM 28값 중 **실사용 26종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 2값은 위의 예약 표시 참고) |
+| `type` | ENUM 28값 + `activity_recap` 중 **실사용 20종**. 문구 템플릿과 착지점 계산의 분기 키 (나머지 9값은 위의 「예약됐으나 사용하지 않는 값」 표 참고) |
 | `actor_user_id` | 아바타 탭 대상. 팔로우·픽업됨·팔로잉 활동에만 존재, 나머지는 NULL |
 | `actor_count` | 묶음 **고유 인원** — "**예린**님 외 **3명**"의 N. 기본 1. 병합 횟수가 아니라 `payload.actor_ids`의 고유 개수와 일치해야 한다 (§4-1) |
 | `group_key` | 묶음 병합 키. NULL이면 묶지 않는 소식 (§4 참고) |
@@ -516,7 +524,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. 유저가 버튼을 눌
 | #42 문구 vs 임계값 | **생성 조건을 잔여 0칸으로 좁힌다.** 문구가 「꽉 찼어요」라 잔여 3칸에 보내면 사실과 다르다. `INVENTORY_LOW_SLOTS_THRESHOLD`는 후보 스캔과 T3 경고 재평가에 계속 쓴다 |
 | ⑥ 하루 상한 2건의 선별 | **희귀도 단독**(PRD §9). 희귀도 축이 없는 #30·#31은 "얻기 어려운 순"(컬렉션 완성 > 미션 완료) 고정 우선순위, 동순위는 최근 이벤트 우선 |
 | 지역 기반 소식 2종 (#32·#34) | **스펙에서 제거.** `users.region`(시/도)과 역지오코딩 결과(구/동)의 단위가 달라 매칭이 성립하지 않는다. ⑦ 발견 카테고리는 #34가 유일해 카테고리째 사라졌다 — 소식 28종 → **26종**, T2 13종 → **11종**. 사유·재도입 조건은 [PRD.md](./PRD.md) §7 |
-| `notification_type` ENUM | **DDL로 값을 지우지 않는다.** 위 2값은 "예약됐으나 사용하지 않음"으로 DB에 남긴다 (§2) |
+| `notification_type` ENUM | **DDL로 값을 지우지 않는다.** 위 2값은 "예약됐으나 사용하지 않음"으로 DB에 남긴다 (§2 — 2026-08-27에 7값이 더 합류해 총 9값) |
 
 ### 남은 질문
 

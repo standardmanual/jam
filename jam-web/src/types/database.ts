@@ -816,25 +816,23 @@ export interface EngineDecisionLogRow {
 /**
  * notification_type — 실제로 쓰는 종류.
  *
- * **DB ENUM에는 더 많은 값이 있다.** `following_nearby_drop`·`nearby_drops`(지역 기반 소식 2종,
- * 2026-08-25 스펙 제거)와 `mutual_follow`(#27 맞팔, 20260827_014에서 제거)는 Postgres가
- * ENUM 값 제거를 안전하게 지원하지 않아 DB에는 그대로 둔다 —
- * DATA_MODEL §2 「예약됐으나 사용하지 않는 값」. 어떤 코드도 이 3종을 만들지 않으므로
- * TS 타입에서는 빼고, 만에 하나 들어오면 렌더러의 `default` 분기가 받는다.
+ * **DB ENUM에는 더 많은 값이 있다.** Postgres는 ENUM 값 제거를 안전하게 지원하지 않아
+ * DB에는 그대로 두고 TS 타입에서만 뺀다 — DATA_MODEL §2 「예약됐으나 사용하지 않는 값」.
+ * 어떤 코드도 아래 값을 만들지 않으므로, 만에 하나 들어오면 렌더러의 `default` 분기가 받는다.
  *
- * 20260827_014 — ① 보상 획득 6종은 **활동 결산(`activity_recap`) 1종으로 재편**됐다.
- * 6종은 더 이상 생성되지 않지만(전량 삭제 + 재생성), 하위호환 렌더 경로는 남겨 둔다.
+ * - `following_nearby_drop`·`nearby_drops` — 지역 기반 소식 2종, 2026-08-25 스펙 제거
+ * - `mutual_follow` — #27 맞팔, 20260827_014에서 `followed`로 대체
+ * - `badge_earned`·`rare_badge_earned`·`item_badge_earned`·`checkin_badge_earned`·
+ *   `points_earned`·`first_badge` — ① 보상 획득 6종. 20260827_014에서 활동 결산
+ *   (`activity_recap`) 1종으로 재편됐고, 20260827_016에서 죽은 렌더 경로까지 제거했다
+ *   (해당 행은 `seed_20260827_notifications_reset.sql`로 전량 삭제됨).
+ *
+ * **`ActivityFeedEventType`의 `'badge_earned'`와 혼동하지 말 것** — 이름만 같고 축이 다르다.
+ * 그쪽은 활동 피드(`user_activity_feed`) 이벤트 타입이며 현행이다.
  */
 export type NotificationType =
   // ① 보상 획득 — 활동 결산 (bumps_badge=false 대상)
   | 'activity_recap'
-  // ① 레거시 6종 — 20260827_014부터 생성하지 않는다(렌더만 유지)
-  | 'badge_earned'
-  | 'rare_badge_earned'
-  | 'item_badge_earned'
-  | 'checkin_badge_earned'
-  | 'points_earned'
-  | 'first_badge'
   // ② 컬렉션 (3)
   | 'collection_slottable'
   | 'collection_near_complete'
@@ -875,7 +873,7 @@ export interface NotificationRow {
   group_key: string | null
   /** 문구 슬롯 + 착지점 계산 재료. 닉네임은 넣지 않는다(actor_user_id로 조인) */
   payload: Record<string, unknown>
-  /** dot을 켜는가. ① 보상 획득 6종만 false */
+  /** dot을 켜는가. ① 보상 획득(활동 결산)만 false */
   bumps_badge: boolean
   created_at: string
   /** 정렬·dot 판정의 기준. created_at이 아니다 */
