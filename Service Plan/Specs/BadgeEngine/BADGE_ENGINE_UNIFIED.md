@@ -170,7 +170,7 @@ CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허�
 
 ### 2.10 걷기 배지 v4 — 축1 게이트 + 하루 1회 상한 + 신규 배지 32종 (2026-08-08)
 
-> 배경·튜닝 파라미터 상세: `Service Plan/History/Operations/SERVICE_OPERATIONS_20260808_1500.md`
+> 배경·튜닝 파라미터 상세: `Service Plan/History/Migration/Ticket/20260808_001_Content_걷기배지체계-v4-전면개편.md`
 
 **축1 게이트** — 걷기(`activity_type='walking'`) 조건 평가 전 사전 필터. `evaluateConditionDetailed`가 `filtered`를 구성하는 시점에 `condition.activity_type==='walking'`인 경우에만 적용되며, 걷기가 아닌 종목에는 영향 없음.
 
@@ -574,7 +574,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 
 ### 3.15 종목별 드랍 가중치 — 걷기 계수 0.4 (2026-08-08)
 
-> 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `Service Plan/History/Operations/SERVICE_OPERATIONS_20260808_1500.md`.
+> 배경: 걷기는 다른 종목 대비 MET(운동강도)가 낮아 활동당 아이템 드랍 기대값을 낮출 필요가 있어 도입. 상세: `Service Plan/History/Migration/Ticket/20260808_001_Content_걷기배지체계-v4-전면개편.md`.
 
 `jam-web/src/lib/drop-engine/constants.ts`에 `ACTIVITY_TYPE_DROP_WEIGHT`(walking: 0.4) + `DEFAULT_ACTIVITY_DROP_WEIGHT`(그 외 1.0) 추가. `getActivityDropWeight(act)`는 걷기이면서 축1 게이트(§2.10)를 통과한 활동에만 0.4를 반환.
 

@@ -3,7 +3,7 @@
 > **2026-08-06 전면 재작성**: 기존 Phase 번호 로드맵(2026-07-09~10 작성)은 실제 개발
 > 순서와 맞지 않아 폐기하고, `History/Migration/Ticket/`의 실제 티켓 72건(2026-07-15~
 > 2026-08-06)을 시간순으로 재구성했다. 원래의 계획 원문은 이력 자료로
-> [History/PHASES_ROADMAP_ARCHIVE.md](../../History/PHASES_ROADMAP_ARCHIVE.md)에 보관.
+> [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md)에 보관.
 >
 > 신규 개선사항 작업 시에는 이 문서보다 [History/Migration/Ticket/](../../History/Migration/Ticket/)의
 > 최신 티켓을 먼저 확인할 것 — 이 문서는 "지금까지 무엇이 만들어졌는지"를 훑어보는 용도.
@@ -23,7 +23,7 @@
 ### 2026-07-09~10 — 초기 구축 (Phase 1~7 원안)
 온보딩(구글 로그인·프로필)·Strava 연동·배지 자동발급·공유카드·POI 사후인증·인벤토리·
 확률 드랍·어드민 패널·유저 드랍/픽업(당시 Google Maps)·OSM 기반 T2 POI·아이템 일련번호.
-계획대로 완료된 것으로 확인됨. 상세는 [History/PHASES_ROADMAP_ARCHIVE.md](../../History/PHASES_ROADMAP_ARCHIVE.md).
+계획대로 완료된 것으로 확인됨. 상세는 [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md).
 
 ### 2026-07-15~20 — 배지 엔진 안정화
 POI 매칭 바운딩박스 사전필터, 배지 이름당 최상위 레어리티 1개만 노출하는 "성장 티어"
@@ -87,7 +87,7 @@ Custom Domain 전환 시 재검토 예정).
 
 ## 과거 Phase 번호와 실제 구현의 대응 관계 (참고용)
 
-계획 문서(`History/PHASES_ROADMAP_ARCHIVE.md`)의 Phase 번호가 티켓 제목에 종종
+계획 문서(`Archive/PHASES_ROADMAP_ARCHIVE.md`)의 Phase 번호가 티켓 제목에 종종
 그대로 쓰였지만, 원래 계획된 내용과는 다른 경우가 많다.
 
 | 계획상 Phase 번호 | 원래 계획 | 실제 그 번호로 불린 작업 |
@@ -107,6 +107,6 @@ Custom Domain 전환 시 재검토 예정).
 
 ## 관련 문서
 - [History/Migration/Ticket/](../../History/Migration/Ticket/) — 실제 개발 작업 이력 원본 (신규 개선사항은 여기부터 확인)
-- [History/PHASES_ROADMAP_ARCHIVE.md](../../History/PHASES_ROADMAP_ARCHIVE.md) — 원래 계획 원문 (참고용, 실행 안 됨)
+- [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md) — 원래 계획 원문 (참고용, 실행 안 됨)
 - [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) — 배지·드랍 엔진 최신 로직
 - [01_PRD.md](./01_PRD.md) §6-2 — 미구현 기능 목록

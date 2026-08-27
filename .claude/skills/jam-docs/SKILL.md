@@ -129,4 +129,5 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 ## 폐기된 규칙
 
 `SERVICE_OPERATIONS_YYYYMMDD_HHMM.md` 타임스탬프 파일 생성 방식은 티켓 시스템으로 대체됐다.
-더 이상 생성하지 않으며, 기존 파일은 `Service Plan/History/Operations/`에 아카이브로만 보관한다.
+더 이상 생성하지 않으며, 기존 파일은 `Service Plan/Archive/Operations/`에 읽기 전용으로 보관한다.
+현행 운영 로직 문서는 `Service Plan/Specs/SERVICE_OPERATIONS.md`다 (2026-08-27 승격).
