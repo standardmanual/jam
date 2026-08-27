@@ -88,12 +88,10 @@ export default function BadgeGridCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
-        <div className="h-6 flex items-center justify-center">
-          {!undiscovered && <RarityBadge rarity={rarity} />}
-        </div>
         <p className="text-[13px] font-bold text-text text-center truncate w-full leading-tight">
           {undiscovered ? '???' : name}
         </p>
+        {!undiscovered && <RarityBadge rarity={rarity} />}
       </div>
       {children && <div className="w-full mt-[var(--spacing-4)]">{children}</div>}
     </>
