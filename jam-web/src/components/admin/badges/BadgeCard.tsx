@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { IconCheck, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
@@ -96,7 +97,11 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
           <div className="flex items-center gap-2">
             <span className="text-gray-600">조건:</span>
             <span className="font-medium">
-              {hasCondition ? '○' : '✕'}
+              {hasCondition ? (
+                <IconCheck className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <IconX className="h-4 w-4 text-gray-400" />
+              )}
             </span>
           </div>
           <div className="flex items-center gap-2">

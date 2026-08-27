@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { IconCheck, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { Alert, AlertDescription } from '@/components/admin/ui/alert'
@@ -197,8 +198,16 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
           <CardContent className="space-y-3">
             <div>
               <div className="text-xs font-semibold text-gray-600 mb-1">패치 가능</div>
-              <div className="text-lg font-bold">
-                {badge.patch_available ? '✓ 가능' : '✗ 불가'}
+              <div className="flex items-center gap-1 text-lg font-bold">
+                {badge.patch_available ? (
+                  <>
+                    <IconCheck className="h-4 w-4 text-emerald-600" /> 가능
+                  </>
+                ) : (
+                  <>
+                    <IconX className="h-4 w-4 text-gray-400" /> 불가
+                  </>
+                )}
               </div>
             </div>
             {badge.patch_available && badge.patch_price_krw && (

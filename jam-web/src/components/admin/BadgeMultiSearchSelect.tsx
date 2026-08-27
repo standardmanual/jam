@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { IconX } from '@tabler/icons-react'
 import type { BadgeType } from '@/types/database'
 import type { BadgeSearchResult } from './BadgeSearchSelect'
 
@@ -8,11 +9,11 @@ interface BadgeMultiSearchSelectProps {
   /** 클릭 시 즉시 호출된다. 로컬 배열에 추가하거나(MissionList·TodayCardList) 서버에 즉시
    *  커밋(ItemBookForm)하는 건 호출부 책임 — 이 컴포넌트는 클릭 이벤트만 전달한다. */
   onSelect: (badge: BadgeSearchResult) => void
-  /** 현재 선택된 배지 목록. 넘기면 칩으로 렌더링해 개별 제거(✕)가 가능하다. 호출부가 이미
+  /** 현재 선택된 배지 목록. 넘기면 칩으로 렌더링해 개별 제거 아이콘이 가능하다. 호출부가 이미
    *  선택 목록을 별도 UI로 보여주는 경우(ItemBookForm의 "배지 슬롯 관리" 목록 등)는 생략한다 —
    *  그러면 이 컴포넌트는 검색창+드롭다운만 그린다. */
   selected?: BadgeSearchResult[]
-  /** 칩의 ✕ 클릭 시 호출. selected를 넘길 때 함께 넘겨야 한다. */
+  /** 칩의 제거 아이콘 클릭 시 호출. selected를 넘길 때 함께 넘겨야 한다. */
   onRemove?: (id: string) => void
   /** 검색 결과에서 제외할 id 목록. selected에 없더라도(예: 이미 다른 폼 필드에 쓰이는 배지)
    *  추가로 제외하고 싶을 때 쓴다. */
@@ -94,10 +95,11 @@ export default function BadgeMultiSearchSelect({
               key={b.id}
               type="button"
               onClick={() => onRemove?.(b.id)}
-              className="text-xs bg-primary/10 text-primary border border-primary/30 rounded-lg px-2 py-1 hover:bg-primary/20 transition-colors"
+              className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-primary/30 rounded-lg px-2 py-1 hover:bg-primary/20 transition-colors"
             >
               {b.name}
-              {b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''} ✕
+              {b.point_reward > 0 ? ` (+${b.point_reward}P)` : ''}
+              <IconX className="h-3.5 w-3.5" />
             </button>
           ))}
         </div>
