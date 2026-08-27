@@ -882,24 +882,24 @@ GET /api/cron/wandering (Authorization: Bearer CRON_SECRET)
 |--------|------|------|
 | POST | `/api/admin/auth` | 어드민 인증 |
 | GET, POST | `/api/admin/badges` | 배지 목록/생성 |
-| GET, PATCH, DELETE | `/api/admin/badges/[id]` | 배지 수정/삭제 |
+| PUT, PATCH, DELETE | `/api/admin/badges/[id]` | 배지 수정/삭제 |
 | PATCH | `/api/admin/badges/[id]/assign` | 배지 item_book_id 할당 |
 | GET, POST | `/api/admin/factions` | 팩션 목록/생성 |
-| GET, PATCH, DELETE | `/api/admin/factions/[id]` | 팩션 수정 |
+| GET, PUT, DELETE | `/api/admin/factions/[id]` | 팩션 수정 |
 | GET, POST | `/api/admin/itembooks` | 아이템북 목록/생성 |
-| GET, PATCH, DELETE | `/api/admin/itembooks/[id]` | 아이템북 수정/삭제 |
+| PUT, PATCH, DELETE | `/api/admin/itembooks/[id]` | 아이템북 수정/삭제 |
 | GET, POST | `/api/admin/missions` | 미션 목록/생성 |
-| GET, PATCH, DELETE | `/api/admin/missions/[id]` | 미션 수정/삭제 |
+| PATCH, DELETE | `/api/admin/missions/[id]` | 미션 수정/삭제 |
 | GET, POST | `/api/admin/poi` | POI 목록/생성 |
-| GET, PATCH, DELETE | `/api/admin/poi/[id]` | POI 수정/삭제 |
+| PUT, DELETE | `/api/admin/poi/[id]` | POI 수정/삭제 |
 | GET, POST | `/api/admin/recipes` | 조합 레시피 목록/생성 |
 | PATCH, DELETE | `/api/admin/recipes/[id]` | 레시피 수정/삭제 |
 | GET | `/api/admin/users` | 유저 목록 |
 | POST | `/api/admin/users/[id]/reset` | 유저 데이터 리셋 |
 | POST | `/api/admin/simulate` | 드랍/배지 시뮬레이션 |
-| GET, PATCH | `/api/admin/abusing/policy` | 어뷰징 정책 조회/수정 |
-| GET, POST | `/api/admin/abusing/bans` | 섀도우밴 목록/부여 |
-| GET, POST, DELETE | `/api/admin/abusing/poi-blocks` | POI 블록 관리 |
+| GET, PUT | `/api/admin/abusing/policy` | 어뷰징 정책 조회/수정 |
+| GET, POST, DELETE | `/api/admin/abusing/bans` | 섀도우밴 목록/부여 |
+| GET, DELETE | `/api/admin/abusing/poi-blocks` | POI 블록 관리 |
 
 ---
 
