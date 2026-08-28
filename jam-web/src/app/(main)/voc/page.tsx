@@ -60,9 +60,9 @@ const [SEVERITY_PREFIX, SEVERITY_SUFFIX] = d.voc.severityLabel.split('{severity}
 function VocCard({ item }: { item: VocItem }) {
   return (
     <ListRowCard
-      trailing={<span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">#{item.number}</span>}
+      icon={<span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">#{item.number}</span>}
     >
-      {/* 상태값, 날짜, 카테고리 */}
+      {/* 상태값, 날짜 — 유형(카테고리)은 별도 줄로 분리 */}
       <div className="flex flex-wrap items-center gap-[var(--spacing-8)] mb-[var(--spacing-8)]">
         <span className={STATUS_CHIP_CLASS[item.status] ?? CHIP_CLASS}>{item.status}</span>
         <span className={CHIP_CLASS}>
@@ -70,11 +70,17 @@ function VocCard({ item }: { item: VocItem }) {
           <strong className="font-bold text-[color:var(--color-primary)]">{item.severity}</strong>
           {SEVERITY_SUFFIX}
         </span>
-        {item.categories.map((category) => (
-          <span key={category} className={CATEGORY_CHIP_CLASS}>{category}</span>
-        ))}
         <span className="text-[length:var(--text-caption)] leading-none text-text/60">{formatDateTime(item.submittedAt)}</span>
       </div>
+
+      {/* 유형(카테고리) — 줄바꿈해서 별도 행으로 표시 */}
+      {item.categories.length > 0 && (
+        <div className="flex flex-wrap items-center gap-[var(--spacing-8)] mb-[var(--spacing-8)]">
+          {item.categories.map((category) => (
+            <span key={category} className={CATEGORY_CHIP_CLASS}>{category}</span>
+          ))}
+        </div>
+      )}
 
       {/* 상세 내용 */}
       <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text whitespace-pre-wrap">
