@@ -833,6 +833,12 @@ export const ko = {
     genericError: '오류가 발생했어요.',
     genericFail: '믹스 실패',
   },
+
+  /** 베타테스트 VOC 문의 채널 (임시, 20260828_1548 — 정식 VOC 시스템 도입 시 제거 검토) */
+  voc: {
+    inquiryButton: '문의',
+    pageTitle: '문의',
+  },
 } as const
 
 export type Dictionary = typeof ko
