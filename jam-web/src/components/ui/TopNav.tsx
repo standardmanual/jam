@@ -85,8 +85,15 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
     </>
   )
 
+  // 20260828_1548: 베타테스트 VOC 임시 채널 — 로고 옆에 작은 '문의' 버튼을 붙여 /voc로 이동.
+  // 로고가 노출되는 탭 최상위 화면(logo=true)에만 자연히 노출된다.
   const logoSlot = logo ? (
-    <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[26px] w-auto" priority />
+    <>
+      <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[26px] w-auto" priority />
+      <Button variant="outline" surface="main" size="xs" onClick={() => router.push('/voc')}>
+        {d.voc.inquiryButton}
+      </Button>
+    </>
   ) : null
 
   // 미연동 유저도 동기화 버튼을 항상 본다 — 누르면 스트라바 연결 플로우(OAuth 시작 라우트)로
