@@ -1,0 +1,11 @@
+{
+  "id": "5e615473",
+  "operation": "discard",
+  "variantId": null,
+  "result": {
+    "handled": true,
+    "file": "src/app/(main)/page.tsx",
+    "carbonize": false
+  },
+  "completedAt": "2026-08-27T06:41:13.309Z"
+}

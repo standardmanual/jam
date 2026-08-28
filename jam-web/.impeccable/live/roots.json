@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "appRoot": "/Users/sihyunhwang/Desktop/JAM!/jam-web",
+  "repoRoot": "/Users/sihyunhwang/Desktop/JAM!",
+  "contextRoot": "/Users/sihyunhwang/Desktop/JAM!/jam-web",
+  "sessionRoot": "/Users/sihyunhwang/Desktop/JAM!/jam-web/.impeccable/live",
+  "productPath": "/Users/sihyunhwang/Desktop/JAM!/jam-web/PRODUCT.md",
+  "designPath": "/Users/sihyunhwang/Desktop/JAM!/jam-web/DESIGN.md",
+  "resolvedFrom": "cwd"
+}
