@@ -834,10 +834,26 @@ export const ko = {
     genericFail: '믹스 실패',
   },
 
-  /** 베타테스트 VOC 문의 채널 (임시, 20260828_1548 — 정식 VOC 시스템 도입 시 제거 검토) */
+  /**
+   * VOC CS 게시판 (티켓 20260828_1921 — 20260828_1548의 Notion 임베드 임시 채널을
+   * 대체하는 정식 버전). Google Sheets(Tally 연동)를 데이터 소스로 쓰는 문의/답변 피드.
+   */
   voc: {
     inquiryButton: '문의',
     pageTitle: '문의',
+    inquireCta: '문의하기',
+    sortLatest: '최신글 순',
+    sortAnswered: '최신 답변 순',
+    sortAriaLabel: '정렬',
+    severityLabel: '심각도 {severity}/5',
+    answerLabel: '답변',
+    loading: '불러오는 중',
+    loadError: '문의 내역을 불러오지 못했어요. 잠시 후 다시 시도해주세요',
+    emptyTitle: '아직 등록된 문의가 없어요',
+    emptyBody: '문의하기 버튼을 눌러 첫 문의를 남겨보세요',
+    paginationAriaLabel: '페이지 이동',
+    paginationPrev: '이전',
+    paginationNext: '다음',
   },
 } as const
 
