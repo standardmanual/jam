@@ -1,34 +1,174 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import TopNav from '@/components/ui/TopNav'
-import { d } from '@/lib/i18n'
+import Button from '@/components/ui/Button'
+import ListRowCard from '@/components/ui/ListRowCard'
+import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
+import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { InboxIcon } from '@/components/ui/icons'
+import { d, t } from '@/lib/i18n'
+import type { VocItem, VocSortKey } from '@/app/api/voc/route'
+import VocPagination from './VocPagination'
 
 /**
- * 베타테스트 VOC 문의 채널 (임시, 티켓 20260828_1548)
+ * VOC CS 게시판 (티켓 20260828_1921).
  *
- * 별도 백엔드 없이 기존 Notion 페이지를 iframe으로 임베드한다. `(main)` 레이아웃 그룹
- * 안에 둬 TopNavDataProvider·인증 컨텍스트를 그대로 상속하고, TopNav(뒤로가기,
- * title="문의")를 유지한 채 하단 전체 영역에 Notion 페이지를 띄운다.
+ * 20260828_1548의 Notion iframe 임베드 임시 채널을 전면 대체하는 정식 버전.
+ * Google Sheets(Tally 연동)를 데이터 소스로 쓴다 — Supabase 미사용, `/api/voc`가
+ * 유일한 접근 경로다(클라이언트는 시트에 직접 접근하지 않는다).
  *
- * iframe src는 반드시 Notion 임베드 전용 경로(`/ebd/`)를 써야 한다 — 일반 공유 링크는
- * `X-Frame-Options: SAMEORIGIN` + `frame-ancestors`로 임베드가 차단됨을 확인했다.
- *
- * 정식 VOC 시스템이 생기면 제거 검토 대상.
- *
- * TopNav·TabBar는 앱 기본 다크 테마 그대로 둔다(요청: 그건 손대지 말 것). 콘텐츠
- * 영역(iframe)만 앱의 다크 모드와 무관하게 항상 흰 배경(#FFF)으로 고정 — iframe
- * 엘리먼트 자체에 배경을 지정해 콘텐츠 로드 전후 모두 흰색으로 보이게 한다.
+ * TopNav/TabBar는 다른 (main) 페이지와 동일하게 노출한다 — 이전 티켓의
+ * "임시라 TabBar 제외" 결정을 이번 정식화로 뒤집는다.
  */
-export default function VocPage() {
+
+const TALLY_URL = 'https://tally.so/r/BzWqY7'
+
+const SORT_TABS: SlidingTabItem<VocSortKey>[] = [
+  { key: 'latest', label: d.voc.sortLatest },
+  { key: 'answered', label: d.voc.sortAnswered },
+]
+
+function formatDateTime(iso: string): string {
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) return iso
+  return parsed.toLocaleDateString('ko-KR', {
+    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+const CHIP_CLASS =
+  'inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text'
+
+function VocCard({ item }: { item: VocItem }) {
   return (
-    <div className="flex flex-col h-dvh bg-surface text-text">
+    <ListRowCard
+      trailing={<span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">#{item.number}</span>}
+    >
+      {/* 상태값, 날짜, 카테고리 */}
+      <div className="flex flex-wrap items-center gap-[var(--spacing-8)] mb-[var(--spacing-8)]">
+        <span className={CHIP_CLASS}>{item.status}</span>
+        <span className={CHIP_CLASS}>{t(d.voc.severityLabel, { severity: item.severity })}</span>
+        {item.categories.map((category) => (
+          <span key={category} className={CHIP_CLASS}>{category}</span>
+        ))}
+        <span className="text-[length:var(--text-caption)] leading-none text-text/60">{formatDateTime(item.submittedAt)}</span>
+      </div>
+
+      {/* 상세 내용 */}
+      <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text whitespace-pre-wrap">
+        {item.text}
+      </p>
+
+      {/* 답변 — 상태=답변완료일 때만. 답변자는 실명 대신 고정된 JAM 로고로만 표시 */}
+      {item.answer && (
+        <div className="mt-[var(--spacing-16)] rounded-[var(--radius-cards)] bg-white/[0.04] p-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
+          <div className="flex items-center gap-[var(--spacing-8)]">
+            <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-4 w-auto" />
+            <span className="text-[length:var(--text-caption)] leading-none text-text/60">{d.voc.answerLabel}</span>
+            {item.answeredAt && (
+              <span className="text-[length:var(--text-caption)] leading-none text-text/40">· {formatDateTime(item.answeredAt)}</span>
+            )}
+          </div>
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text whitespace-pre-wrap">
+            {item.answer}
+          </p>
+        </div>
+      )}
+    </ListRowCard>
+  )
+}
+
+interface VocResponse {
+  items: VocItem[]
+  page: number
+  totalPages: number
+  totalCount: number
+}
+
+export default function VocPage() {
+  const [sort, setSort] = useState<VocSortKey>('latest')
+  const [page, setPage] = useState(1)
+  const [data, setData] = useState<VocResponse | null>(null)
+  const [error, setError] = useState(false)
+  // data===null인 동안만 초기 로딩 상태 — 정렬/페이지 전환 시에는 이전 목록을 유지한 채
+  // 백그라운드로 갱신한다(이펙트 본문에서 동기 setState를 피하려 setLoading을 따로 두지
+  // 않는다 — InventoryItemHistorySheet.tsx와 동일 패턴, react-hooks/set-state-in-effect).
+  const loading = data === null && !error
+
+  useEffect(() => {
+    let active = true
+    fetch(`/api/voc?sort=${sort}&page=${page}`, { cache: 'no-store' })
+      .then((res) => {
+        if (!res.ok) throw new Error('failed')
+        return res.json() as Promise<VocResponse>
+      })
+      .then((json) => {
+        if (!active) return
+        setData(json)
+        setError(false)
+      })
+      .catch(() => {
+        if (active) setError(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [sort, page])
+
+  const handleSortChange = (key: VocSortKey) => {
+    setSort(key)
+    setPage(1) // 정렬 전환 시 1페이지로 리셋
+  }
+
+  return (
+    <div className="min-h-full bg-surface text-text">
       <TopNav title={d.voc.pageTitle} />
-      <iframe
-        src="https://sordid-dragonfly-b31.notion.site/ebd//3caaf2fe364580afb650e2529c39a2ae"
-        title={d.voc.pageTitle}
-        className="flex-1 w-full border-0"
-        style={{ background: '#ffffff' }}
-      />
+
+      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+        <Button
+          surface="main"
+          variant="primary"
+          fullWidth
+          onClick={() => {
+            window.location.href = TALLY_URL
+          }}
+        >
+          {d.voc.inquireCta}
+        </Button>
+
+        <section>
+          <div className="mb-[var(--spacing-16)]">
+            <SlidingTabs items={SORT_TABS} value={sort} onChange={handleSortChange} outlined={false} aria-label={d.voc.sortAriaLabel} />
+          </div>
+
+          {loading && (
+            <div className="py-[var(--spacing-40)] text-center text-text/40 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+              {d.voc.loading}
+            </div>
+          )}
+
+          {!loading && error && (
+            <EmptyState icon={<InboxIcon className="w-8 h-8" />} title={d.voc.loadError} />
+          )}
+
+          {!loading && !error && data && data.items.length === 0 && (
+            <EmptyState icon={<InboxIcon className="w-8 h-8" />} title={d.voc.emptyTitle} description={d.voc.emptyBody} />
+          )}
+
+          {!loading && !error && data && data.items.length > 0 && (
+            <>
+              <div className="flex flex-col gap-[var(--spacing-8)]">
+                {data.items.map((item) => (
+                  <VocCard key={item.number} item={item} />
+                ))}
+              </div>
+              <VocPagination page={data.page} totalPages={data.totalPages} onChange={setPage} />
+            </>
+          )}
+        </section>
+      </div>
     </div>
   )
 }
