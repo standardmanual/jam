@@ -16,7 +16,7 @@ import { fetchSheetValues } from '@/lib/googleSheets'
 const SPREADSHEET_ID = '1LimKjqlOWU9JmNxG_W7bpfn_UbcyVEbKLQJ9WLKn60s'
 // A~L열만 읽는다. M열(크루 전용 이미지 미리보기 수식)은 애초에 범위에서 제외한다.
 const SHEET_RANGE = 'VOC!A2:L'
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 export type VocSortKey = 'latest' | 'answered'
 
