@@ -15,30 +15,19 @@ import { d } from '@/lib/i18n'
  *
  * 정식 VOC 시스템이 생기면 제거 검토 대상.
  *
- * 페이지 전체를 흰 배경으로 고정한다(요청: 이 페이지만 항상 #FFF). 앱은 다크 테마
- * 토큰(--color-bg 등)을 전역으로 쓰므로, 이 wrapper 안에서만 관련 토큰을 라이트 값으로
- * 재정의해 TopNav 텍스트/아이콘(기본값 --color-text = 흰색)이 흰 배경 위에서도 보이게
- * 한다. 다른 화면에는 영향 없음(스코프가 이 div 서브트리로 한정됨).
+ * TopNav·TabBar는 앱 기본 다크 테마 그대로 둔다(요청: 그건 손대지 말 것). 콘텐츠
+ * 영역(iframe)만 앱의 다크 모드와 무관하게 항상 흰 배경(#FFF)으로 고정 — iframe
+ * 엘리먼트 자체에 배경을 지정해 콘텐츠 로드 전후 모두 흰색으로 보이게 한다.
  */
 export default function VocPage() {
   return (
-    <div
-      className="flex flex-col h-dvh"
-      style={
-        {
-          '--color-bg': '#ffffff',
-          '--color-surface': '#ffffff',
-          '--color-surface-elevated': '#ffffff',
-          '--color-text': '#000000',
-          background: '#ffffff',
-        } as React.CSSProperties
-      }
-    >
+    <div className="flex flex-col h-dvh bg-surface text-text">
       <TopNav title={d.voc.pageTitle} />
       <iframe
         src="https://sordid-dragonfly-b31.notion.site/ebd//3caaf2fe364580afb650e2529c39a2ae"
         title={d.voc.pageTitle}
         className="flex-1 w-full border-0"
+        style={{ background: '#ffffff' }}
       />
     </div>
   )
