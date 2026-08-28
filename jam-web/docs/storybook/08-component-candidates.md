@@ -37,7 +37,7 @@
 
 | 컴포넌트 | 분류 | 핵심 이유 |
 |----------|------|-----------|
-| `icons.tsx` | **C** | 서비스 전체 아이콘 시스템, MODULAR 독립 카탈로그 가치 |
+| `icons.tsx` | **C** | 서비스 전체 아이콘 시스템, MODULAR 독립 카탈로그 가치 — **편입 완료(티켓 20260828_2043), `components/icons/IconCatalog.jsx`. 서비스 `icons.tsx`는 계속 단일 소스, 수동 동기화 필요** |
 | `LoadingSpinner.tsx` | **E** | NavigationLoader 전용 1회 사용, WanderingEyesLoader로 충분 |
 | `PopInNumber.tsx` | **C** | 숫자 전환 모션, 재사용 가치 높은 독립 모션 컴포넌트 |
 | `SwapText.tsx` | **C** | 텍스트 교체 모션, 재사용 가치 높은 독립 모션 컴포넌트 |
@@ -57,8 +57,8 @@
 | `FeedSection.tsx` | **E** | 서비스 데이터 로직 + 피드 레이아웃, 도메인 종속 |
 | `BadgeDetailSheet.tsx` | **A** | 이미 MODULAR BottomSheet 재사용 중 |
 | `InventoryItemHistorySheet.tsx` | **A** | 이미 MODULAR BottomSheet 재사용 중 |
-| 미션 카드 (MissionsListClient 인라인) | **C** | 3개 이상 화면 패턴 반복, MissionCard 컴포넌트화 가치 |
-| Error/Forbidden 화면 | **A** | MODULAR EmptyState로 대체 가능 |
+| 미션 카드 (MissionsListClient 인라인) | **C** | 3개 이상 화면 패턴 반복, MissionCard 컴포넌트화 가치 — **컴포넌트 신설 완료(티켓 20260828_2043), `components/cards/MissionCard.jsx`. 서비스 `MissionsListClient.tsx` 교체 연결은 잔여 작업** |
+| Error/Forbidden 화면 | **A** | MODULAR EmptyState로 대체 가능 — **`error.tsx`만 전환 완료(티켓 20260828_2043). `forbidden/page.tsx`는 어드민 전용 화면이라 프로젝트 규칙(어드민은 MODULAR 미적용)에 따라 제외** |
 
 ---
 
@@ -232,8 +232,8 @@
 
 | 순위 | 컴포넌트 | 이유 |
 |------|----------|------|
-| 1 | `icons.tsx` → Icon Catalog | 서비스 전체 의존, 가장 높은 Storybook 가치 |
-| 2 | 미션 카드 → MissionCard | 다중 화면 반복, 하드코딩 해소 기회 |
+| 1 | `icons.tsx` → Icon Catalog | 서비스 전체 의존, 가장 높은 Storybook 가치 — **완료(20260828_2043)** |
+| 2 | 미션 카드 → MissionCard | 다중 화면 반복, 하드코딩 해소 기회 — **컴포넌트 신설 완료(20260828_2043), 서비스 연결은 별도 판단 필요** |
 | 3 | `UserSearchBar.tsx` → Input 확장 또는 Pattern | 2개 화면 재사용, 코드 중복 |
 | 4 | `PopInNumber.tsx` + `SwapText.tsx` → Motion 카테고리 | transitions.css 이전 전제 필요 |
 
@@ -244,3 +244,4 @@
 - C·D 항목은 이 문서에서 **기록만** 한다. 구현은 별도 티켓으로 진행한다.
 - A 항목 중 Error/Forbidden 화면은 하드코딩 토큰 교체와 함께 EmptyState 마이그레이션 가능 — 작업량 소규모.
 - B 항목 `UserSearchBar`는 `Input`에 `surface` prop 추가가 MODULAR 수정을 수반하므로 DECISION REQUIRED 상태.
+- **2026-08-31(티켓 20260828_2043)**: `icons.tsx`·미션 카드·Error 화면 3건 편입 완료. `PopInNumber`·`SwapText`·`UserSearchBar`는 기존 MODULAR API 변경·다른 스토리 회귀 위험으로 이번 범위에서 제외됐다(사용자 확인).

@@ -97,11 +97,14 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 * `tokens/` — 색상, 타이포그래피, 간격, 반경, 엘리베이션, 폰트
 * `assets/logo/` — JAM! 워드마크, 블랙 + 화이트
 * `components/buttons/` — Button, IconButton
-* `components/cards/` — Card, RarityBadge, ShapeTag, BadgeFrame
+* `components/cards/` — Card, RarityBadge, MissionCard, ShapeTag, BadgeFrame
 * `components/navigation/` — TopNav, TabBar (JAM! 자체 TabBar.tsx에서 1:1 재현), BottomSheet, SlidingTabs, Accordion, Carousel(센터 포커스·무한 루프 카드 캐러셀)
 * `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState, ProgressBar
 * `components/forms/` — Input, Textarea, Select, Checkbox
 * `components/patterns/` — BadgeGridCard, ListRowCard, CollectionGridCard, BadgeRevealCarousel (서비스 공통 UI 패턴)
+* `components/icons/` — IconCatalog (라인 아이콘 세트 + 전체 카탈로그 그리드. 서비스
+  `src/components/ui/icons.tsx`를 이식한 Storybook 전용 사본 — 서비스는 계속 원본을 단일
+  소스로 쓴다, 20260828_2043)
 * `guidelines/` — 파운데이션 스펙 카드 (색상, 타이포그래피, 간격, 반경, 엘리베이션, 로고, 아이콘) — 브랜드 참조용으로 유지
 * `dashboard.html` — **레거시** 뷰어. 가이드라인 섹션 전용. 컴포넌트 탐색은 Storybook 사용
 * `ui_kits/jam-app/` — 인터랙티브 5개 화면 클릭스루: Today / Badges / Drops / Inventory / Profile
