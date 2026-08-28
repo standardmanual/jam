@@ -146,7 +146,7 @@ export default function VocPage() {
     <div className="min-h-full bg-surface text-text">
       <TopNav title={d.voc.pageTitle} />
 
-      <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
+      <div className="px-[var(--spacing-16)] pt-[50px] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)]">
         <Button
           surface="main"
           variant="primary"
