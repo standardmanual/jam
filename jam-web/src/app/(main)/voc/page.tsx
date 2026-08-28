@@ -8,7 +8,7 @@ import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { InboxIcon } from '@/components/ui/icons'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 import type { VocItem, VocSortKey } from '@/app/api/voc/route'
 import VocPagination from './VocPagination'
 
@@ -38,8 +38,24 @@ function formatDateTime(iso: string): string {
   })
 }
 
-const CHIP_CLASS =
-  'inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text'
+const CHIP_BASE_CLASS =
+  'inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)]'
+const CHIP_CLASS = `${CHIP_BASE_CLASS} bg-surface text-text`
+/** 유형(카테고리) 칩 — 밝은 그레이 */
+const CATEGORY_CHIP_CLASS = `${CHIP_BASE_CLASS} bg-[color:var(--color-base-grey-200)] text-[color:var(--color-base-grey-800)]`
+/**
+ * 상태 칩 색상 — 문의중=밝은 레드, 확인중=밝은 블루, 답변완료=밝은 그린(기존
+ * `--color-rarity-rare` 토큰 재사용, contrast-safe text 페어 포함).
+ */
+const STATUS_CHIP_CLASS: Record<string, string> = {
+  문의중: `${CHIP_BASE_CLASS} bg-[#ff6b6b] text-[#1a1a1a]`,
+  확인중: `${CHIP_BASE_CLASS} bg-[#4dabf7] text-[#1a1a1a]`,
+  답변완료: `${CHIP_BASE_CLASS} bg-[color:var(--color-rarity-rare)] text-[color:var(--color-rarity-rare-text)]`,
+}
+
+// "심각도 {severity}/5" 템플릿에서 숫자 부분만 볼드+포인트 컬러로 강조한다
+// (FeedSection.tsx의 eventCheckinRepeat 분할 패턴과 동일).
+const [SEVERITY_PREFIX, SEVERITY_SUFFIX] = d.voc.severityLabel.split('{severity}')
 
 function VocCard({ item }: { item: VocItem }) {
   return (
@@ -48,10 +64,14 @@ function VocCard({ item }: { item: VocItem }) {
     >
       {/* 상태값, 날짜, 카테고리 */}
       <div className="flex flex-wrap items-center gap-[var(--spacing-8)] mb-[var(--spacing-8)]">
-        <span className={CHIP_CLASS}>{item.status}</span>
-        <span className={CHIP_CLASS}>{t(d.voc.severityLabel, { severity: item.severity })}</span>
+        <span className={STATUS_CHIP_CLASS[item.status] ?? CHIP_CLASS}>{item.status}</span>
+        <span className={CHIP_CLASS}>
+          {SEVERITY_PREFIX}
+          <strong className="font-bold text-[color:var(--color-primary)]">{item.severity}</strong>
+          {SEVERITY_SUFFIX}
+        </span>
         {item.categories.map((category) => (
-          <span key={category} className={CHIP_CLASS}>{category}</span>
+          <span key={category} className={CATEGORY_CHIP_CLASS}>{category}</span>
         ))}
         <span className="text-[length:var(--text-caption)] leading-none text-text/60">{formatDateTime(item.submittedAt)}</span>
       </div>
