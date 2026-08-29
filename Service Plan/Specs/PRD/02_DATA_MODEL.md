@@ -64,13 +64,17 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | id | Supabase auth.users FK |
 | email | 구글 계정 이메일 |
 | username | 고유 닉네임 (`^[a-z0-9._]+$`, nullable — 온보딩 완료 전 null) |
+| display_name | 자유 형식 표시 이름 (nullable, 1~30자, 형식 제한 없음). 화면에서 username이 노출되던 위치는 이 값이 있으면 이 값을, 없으면 username을 대신 노출(표시 전용 폴백 — DB에 복사해 채우지 않음). 프로필 편집 화면에서만 설정 가능, 필수 아님, 수정 횟수 제한 없음 (티켓 20260830_0113) |
 | avatar_url | 프로필 이미지 |
 | region | 활동 지역 |
 | activity_types[] | 활동 종목 복수 선택 |
 | last_location_lat/lng/at | 최근 위치 (GPS 조작 감지용) |
 | initial_sync_done | 첫 Strava 동기화 시 common 등급만 발급하는 게이트 완료 여부 |
 
-> 원안의 `display_name`은 `username`으로 rename됨.
+> 원안의 `display_name`(당시엔 유일한 이름 필드)은 `username`으로 rename됐었으나,
+> 2026-08-30(티켓 20260830_0113)에 `display_name`이 **별도의 표시 전용 필드**로
+> 재도입됨 — 지금은 `username`(로그인 식별자·URL 슬러그)과 `display_name`(자유 형식
+> 노출 이름, 없으면 username 폴백)이 공존한다.
 
 ### strava_connections
 원안과 거의 동일. `access_token`/`refresh_token` 암호화 저장, `backfill_completed` 유지.
@@ -348,7 +352,7 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 
 | 원안 | 현재 |
 |---|---|
-| User | `users` — `display_name`→`username`, GPS/온보딩 컬럼 추가 |
+| User | `users` — `display_name`→`username`, GPS/온보딩 컬럼 추가, 이후 `display_name` 표시 전용 필드로 재도입(20260830) |
 | StravaConnection | `strava_connections` — 거의 원형 유지 |
 | Badge | `badges` — faction/point/soft-delete 등 대폭 확장, `type`에 `poi` 추가 |
 | UserActivityBadge | `user_activity_badges` — 트리거 메타·발급 스냅샷 추가 |
