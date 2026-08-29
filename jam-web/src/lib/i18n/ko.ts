@@ -559,6 +559,8 @@ export const ko = {
     fileSizeError: '파일 크기가 5MB를 초과해요',
     uploadError: '업로드에 실패했어요. 다시 시도해 주세요.',
     usernameLabel: '아이디',
+    nameLabel: '이름',
+    namePlaceholder: '이름을 입력해 주세요',
     saveButton: '저장',
     saving: '저장 중',
     cancelButton: '취소',

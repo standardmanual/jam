@@ -11,6 +11,7 @@ import LocalDate from '@/components/LocalDate'
 import UserSearchBar from './UserSearchBar'
 import TodayCardStack from './TodayCardStack'
 import { getTodayCards } from '@/lib/today/cards'
+import { getDisplayName } from '@/lib/utils'
 import { d } from '@/lib/i18n'
 import { MedalIcon } from '@/components/ui/icons'
 
@@ -48,7 +49,7 @@ export default async function HomePage() {
     .filter((r) => r.badge && !r.badge.deleted_at)
     .map((r) => ({ badge: r.badge, earned: r }))
 
-  const displayName = userProfile?.username ?? user.email?.split('@')[0] ?? '러너'
+  const displayName = (userProfile && getDisplayName(userProfile)) || user.email?.split('@')[0] || '러너'
 
   // ─── 투데이 카드 스택 (Phase 15) ─────────────────────────────────────
   const todayCards = await getTodayCards(userId, userProfile?.created_at)

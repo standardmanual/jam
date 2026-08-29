@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { MissionStatusDisplayType } from '@/types/database'
 import { compareMissionRank } from '@/lib/missions/ranking'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
+import { getDisplayName } from '@/lib/utils'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -92,16 +93,20 @@ export async function GET(_req: Request, { params }: Params) {
   // 유저 프로필 조회
   const userIds = participations.map((p) => p.user_id)
   const { data: usersRaw } = userIds.length > 0
-    ? await service.from('users').select('id, username, avatar_url').in('id', userIds)
+    ? await service.from('users').select('id, username, display_name, avatar_url').in('id', userIds)
     : { data: [] }
-  const users = (usersRaw ?? []) as { id: string; username: string | null; avatar_url: string | null }[]
-  const userMap = new Map<string, { username: string | null; avatar_url: string | null }>()
-  users.forEach((u) => userMap.set(u.id, { username: u.username, avatar_url: u.avatar_url }))
+  const users = (usersRaw ?? []) as { id: string; username: string | null; display_name: string | null; avatar_url: string | null }[]
+  const userMap = new Map<string, { username: string | null; display_name: string | null; avatar_url: string | null }>()
+  users.forEach((u) => userMap.set(u.id, { username: u.username, display_name: u.display_name, avatar_url: u.avatar_url }))
 
   const totalParticipants = participations.length
   const limit = missionRaw.visible_rank_count ?? Number.MAX_SAFE_INTEGER
 
-  const nameOf = (userId: string) => userMap.get(userId)?.username ?? '익명'
+  // 20260830_0113: 표시 이름 우선, 없으면 username 폴백까지 서버가 미리 계산해 내려준다
+  const nameOf = (userId: string) => {
+    const u = userMap.get(userId)
+    return (u && getDisplayName(u)) || '익명'
+  }
   const avatarOf = (userId: string) => userMap.get(userId)?.avatar_url ?? null
 
   if (missionRaw.status_display_type === 'achievement') {
