@@ -377,7 +377,10 @@ export const ko = {
     thisPlaceTitle: '이 지점',
     droppedBy: '{name}이(가) 드랍',
     anonymous: '익명',
-    confirmDrop: "'{name}'을(를)\n여기에 드랍할까요?",
+    // 20260829_2101: 유저 드랍은 기한·회수 액션 없이 픽업될 때까지 무기한 대기하는 정책이
+    // 확정됐다 — 아무도 안 주워가면 영구히 못 쓴다는 리스크를 확인 문구에 명시한다
+    // (되돌릴 수 없는 행동 → 단호 톤, [현상]→[결과]→[확인] 구조, UX_WRITING_GUIDELINE §2).
+    confirmDrop: "'{name}'을(를) 여기에 드랍하면\n다른 사람이 주워갈 때까지 되돌릴 수 없어요.\n그래도 드랍할까요?",
     cancel: '취소',
     dropButton: '드랍하기',
     dropSuccess: '드랍 완료',

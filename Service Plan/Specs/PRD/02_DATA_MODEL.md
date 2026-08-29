@@ -114,9 +114,27 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 
 ### inventory / inventory_items
 원안 구조 유지(50슬롯). `inventory_items`에 추가된 것:
-- `serial_number`: SERIAL(순차) → **BEFORE INSERT 트리거로 1~999,999 난수 부여**로 변경(발급 순서 역산 방지). 앰비언트 드랍 픽업분만 50,001~999,999로 제한하는 분기가 `assign_random_serial()`에 있다 — 2026-08-25~26 제거 기간에는 항상 거짓이었으나, 앰비언트 드랍이 재도입되며([20260826_009](../../Tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)) 다시 실제로 발동한다.
+- `serial_number`: SERIAL(순차) → **BEFORE INSERT 트리거로 1~999,999 난수 부여**로 변경(발급 순서 역산 방지). 앰비언트 드랍(배치 시점에 선발급된 개체, `obtained_by='ambient_drop'`)만 50,001~999,999로 제한하는 분기가 `assign_random_serial()`에 있다.
 - `slotted_in`: 컬렉션 슬롯에 장착된 경우 참조 (장착 중엔 인벤토리 칸 미차감)
-- `dropped_at` / `drop_id`: 드랍 후 소프트 삭제 추적
+- `dropped_at` / `drop_id`: **레거시 컬럼** — 2026-08-29(티켓 20260829_2101) 이전에 드랍된
+  과거 데이터에만 값이 남아 있다. 그 시점부터 유저 드랍은 이 컬럼을 더 이상 쓰지 않고
+  `poi_drops.inventory_item_id`로 소유권 이전을 추적한다(아래 poi_drops 참고).
+- `inventory_id`: **nullable** (2026-08-29). NULL = 현재 소유자 없음 — `poi_drops`가 이
+  개체를 참조 중이면 Dropped/AtPoi, 아니면(계정 탈퇴로 소유자를 잃음) Orphaned. FK는
+  `ON DELETE SET NULL`(과거 `ON DELETE CASCADE`였다 — 계정 탈퇴 시 개체가 하드 삭제되지
+  않고 Orphaned로 보존되도록 전환됨).
+- `destroyed_at`: **신규(2026-08-29)** — 개체 파괴(조합 소모/미픽업 만료) 소프트 삭제 시점.
+  `assign_random_serial()`의 유니크 체크가 `destroyed_at IS NULL` 조건으로 좁혀져, 파괴된
+  개체의 번호만 재사용 가능한 풀로 돌아간다.
+
+### custody_events (신규, 2026-08-29 — 티켓 20260829_2101)
+`InventoryItem` 한 개체의 점유(custody) 변화 이력(append-only). `Minted`/`UserDrop`/
+`Pickup`/`Expire`/`Slot`/`Unslot`/`Consume`/`Orphan` 8종. `from_user_id`/`to_user_id`/
+`actor_user_id`는 라이브 FK(`ON DELETE SET NULL`) + `*_username` 스냅샷을 함께 가진다 —
+계정 탈퇴로 FK가 비어도 스냅샷은 남는다. 계정 탈퇴 시 `Orphan` 이벤트는 앱 로직이 아니라
+`BEFORE DELETE ON public.users` 트리거(`log_orphan_custody_events()`)로 기록된다. 상세는
+[BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.5-1 참고. 어드민 조회 화면은
+별도 티켓([20260829_2139](../../Tickets/20260829_2139_Admin_아이템배지-발급현황-이력조회-화면.md)).
 
 ---
 
@@ -195,16 +213,25 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | 필드 | 설명 |
 |------|------|
 | source | `'user'` 또는 `'system'`. 유저 드랍/앰비언트(시스템) 드랍을 구분한다. 2026-08-25~26에 앰비언트가 한 차례 제거됐다가([20260825_004](../../Tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md)) 재도입됐다([20260826_009](../../Tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md)) — 그 사이엔 전 행이 `'user'`였다 |
-| expires_at | 유저 드랍은 30일 만료. system 드랍은 NULL(만료 없음 — 상시 존재 전제, 한시 노출은 `badges.valid_from/valid_until`로 대체) |
-| dropper_user_id | 유저 드랍만 값 존재, system 드랍은 NULL |
+| inventory_item_id | **신규(2026-08-29, 티켓 20260829_2101)** — 이 드랍이 가리키는 실제 개체(`inventory_items`). `source` 무관하게 항상 **이미 발급된** row를 참조한다(픽업은 소유권 이전일 뿐 재발급이 아니다). 마이그레이션 이전에 완료된(픽업 종료) 과거 드랍은 소급 연결되지 않아 NULL일 수 있다 |
+| badge_id | 조인 편의용 파생 컬럼 — 항상 `inventory_item_id`가 가리키는 개체의 `badge_id`와 일치(드리프트 없음). 정본은 `inventory_items.badge_id` |
+| expires_at | **2026-08-29부터 유저 드랍도 NULL(무기한 대기, 회수·만료 없음)** — 과거엔 30일 만료였으나 의도(유저 드랍은 기한 개념 없음)와 어긋나 바로잡았다. system 드랍도 여전히 NULL(만료 없음 — 상시 존재 전제, 한시 노출은 `badges.valid_from/valid_until`로 대체) |
+| dropper_user_id | 유저 드랍만 값 존재, system 드랍은 NULL. FK는 `ON DELETE SET NULL`(2026-08-29 이전엔 `CASCADE`였다 — 드랍한 사람이 탈퇴해도 무기한 대기 중인 드랍 row 자체가 사라지지 않도록 전환) |
 
-픽업은 `pickup_drop()` RPC로 원자 트랜잭션 처리.
+픽업은 `pickup_drop()` RPC로 원자 트랜잭션 처리 — 2026-08-29부터 신규 `inventory_items` row를
+INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일련번호 불변). 유저 드랍 생성도
+`create_user_drop()` RPC로 원자 처리(개체 소프트 삭제 대신 `inventory_item_id` 연결 + 소유자
+필드만 비움). 미픽업 만료·소프트 삭제된 배지 정리는 `expire_stale_poi_drops()` RPC(cron이
+호출)가 개체 소각(`destroyed_at`)까지 함께 처리한다.
 
 > **`source` 컬럼·`assign_random_serial()` 분기·`poi_drops_source_consistency` CHECK** — 전부
 > 마이그레이션 044(2026-07-22) 도입, 100(2026-08-25 제거 시)에도 살아남아 104(2026-08-26 재도입)에서
-> 그대로 재사용됐다. `assign_random_serial()`은 `source='system'`이면 일련번호를
-> 50,001~999,999로 제한하고, CHECK는 `source='user' → dropper_user_id·expires_at NOT NULL` /
-> `source='system' → 둘 다 NULL`을 강제한다.
+> 그대로 재사용됐다. `assign_random_serial()`은 `obtained_by='ambient_drop'`이면(2026-08-29
+> 이전엔 `source='system'` 조인으로 판별했다 — 앰비언트 드랍이 이제 poi_drops row 생성
+> "이전"에 개체를 선발급하므로 그 시점엔 조인 대상이 없어 판별 방식을 바꿨다) 일련번호를
+> 50,001~999,999로 제한하고, CHECK는 `source='user' → dropper_user_id NOT NULL` /
+> `source='system' → dropper_user_id NULL`을 강제한다(2026-08-29부터 `expires_at` 조건은
+> 양쪽 다 빠졌다 — 위 표 참고).
 
 ### drop_events / drop_claims / drop_probability (레거시 추정)
 어드민 주도 드랍 이벤트용 초기 테이블. 034(드랍엔진 v2) 이후 `drop_policy`가 사실상 후속 확장판 — 실사용 여부는 코드 확인 필요.

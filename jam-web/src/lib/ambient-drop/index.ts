@@ -220,16 +220,58 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
     return result
   }
 
-  const payload = inserts.map((row) => ({
-    poi_id: row.poi_id,
-    badge_id: row.badge_id,
-    source: 'system' as const,
-    dropper_user_id: null,
-    expires_at: null,
-  }))
+  // 20260829_2101: 개체 정체성 모델 — 일련번호가 확정되는 시점은 정확히 ①드랍엔진 직접지급
+  // ②시스템(앰비언트) 드랍이 POI에 "배치되는 순간" 둘뿐이다. 이후 픽업은 소유권 이전일 뿐
+  // 재발급이 아니므로, poi_drops row를 만들기 "전"에 InventoryItem을 먼저 선발급(pre-mint)
+  // 한다 — 기존에는 pickup_drop() RPC가 픽업 시점에 새 row를 INSERT해 새 일련번호를
+  // 부여했었다(의도와 반대 동작). obtained_by='ambient_drop'은 assign_random_serial()
+  // 트리거가 일련번호 범위(50,001~999,999)를 판별하는 값이기도 하다(migrations/108).
+  const poiDropPayload: {
+    poi_id: string
+    badge_id: string
+    inventory_item_id: string
+    source: 'system'
+    dropper_user_id: null
+    expires_at: null
+  }[] = []
+
+  for (const row of inserts) {
+    const mintQuery = supabase.from('inventory_items')
+    const { data: mintedRaw, error: mintError } = await mintQuery
+      // @ts-expect-error Supabase insert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemRow와 일치
+      .insert({ inventory_id: null, badge_id: row.badge_id, obtained_by: 'ambient_drop' })
+      .select('id')
+      .single()
+
+    if (mintError || !mintedRaw) {
+      console.error('[ambient-drop] 개체 선발급(pre-mint) 오류:', mintError?.message, row)
+      continue
+    }
+
+    poiDropPayload.push({
+      poi_id: row.poi_id,
+      badge_id: row.badge_id,
+      inventory_item_id: (mintedRaw as { id: string }).id,
+      source: 'system',
+      dropper_user_id: null,
+      expires_at: null,
+    })
+  }
+
+  if (poiDropPayload.length === 0) {
+    const result: AmbientDropBatchResult = {
+      ...baseResult,
+      eligiblePoiCount: candidatePoiIds.length,
+      spawned: 0,
+      reason: 'insert_failed',
+    }
+    await logResult(result, '개체 선발급(pre-mint) 전부 실패')
+    return result
+  }
+
   const q = supabase.from('poi_drops')
   // @ts-expect-error Supabase insert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiDropRow와 일치
-  const { error } = await q.insert(payload)
+  const { data: insertedDrops, error } = await q.insert(poiDropPayload).select('id, inventory_item_id, poi_id')
 
   if (error) {
     console.error('[ambient-drop] 배치 삽입 오류:', error)
@@ -243,10 +285,21 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
     return result
   }
 
+  // Minted 이벤트 — 배치 시점에 InventoryItem이 확정된 순간을 기록한다(to_user 없음 — AtPoi로 배치).
+  const custodyRows = ((insertedDrops ?? []) as { id: string; inventory_item_id: string; poi_id: string }[]).map(
+    (row) => ({ inventory_item_id: row.inventory_item_id, event_type: 'Minted' as const, poi_id: row.poi_id })
+  )
+  if (custodyRows.length > 0) {
+    const custodyQuery = supabase.from('custody_events')
+    // @ts-expect-error Supabase insert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CustodyEventRow와 일치
+    const { error: custodyError } = await custodyQuery.insert(custodyRows)
+    if (custodyError) console.error('[ambient-drop] Minted 이벤트 기록 오류:', custodyError.message)
+  }
+
   const result: AmbientDropBatchResult = {
     ...baseResult,
     eligiblePoiCount: candidatePoiIds.length,
-    spawned: inserts.length,
+    spawned: poiDropPayload.length,
   }
   await logResult(result)
   return result

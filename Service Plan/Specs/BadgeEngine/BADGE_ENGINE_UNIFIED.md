@@ -318,11 +318,51 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 | **7일+ 공백 복귀** (최우선) | **작심삼일 클럽** | 결계 '섬데이' 돌파 |
 | 러너스 하이 (고강도 장시간) | 미스터리 헌터 (rare+ 한정) | 차원의 틈새 |
 
-### 3.5 일련번호 무작위화
+### 3.5 일련번호 무작위화 + 개체 정체성 모델 (2026-08-29 갱신, 티켓 20260829_2101)
 
-- 현행: `inventory_items.serial_number SERIAL` — 발급 순서대로 1, 2, 3… → "몇 번째 발견자" 서열 노출 + 전체 발급량 역산 가능.
-- 변경: 발급 시 **1~999,999 난수 + UNIQUE 충돌 시 재시도**. 발급량이 범위의 30% 초과 시 범위 확장 또는 사전 셔플 풀 전환.
-- 기존 발급분 번호는 유지 (유저가 인지한 번호 변경 방지).
+- `inventory_items.serial_number`는 발급 시 **1~999,999 난수 + UNIQUE 충돌 시 재시도**
+  (`assign_random_serial()` 트리거). 앰비언트(시스템) 드랍으로 발급된 개체는 50,001~999,999
+  범위로 제한된다(`obtained_by='ambient_drop'`로 판별).
+- **개체 정체성**: 일련번호는 개체(`InventoryItem`)가 발급되는 순간 1회 확정되고, 그 개체가
+  소멸(`destroyed_at`)할 때까지 유지된다. **일련번호가 확정(Minting)되는 시점은 정확히
+  둘뿐이다** — ①드랍엔진을 통한 직접 지급(활동 보상 등), ②앰비언트 드랍이 POI에 배치되는
+  순간(`src/lib/ambient-drop`가 배치 시점에 선발급/pre-mint한다). **픽업은 둘 중 어디에도
+  속하지 않는다** — `poi_drops`는 `source`가 `user`/`system` 무엇이든 항상 이미 발급된
+  `inventory_items` row를 `inventory_item_id`로 참조하며, 픽업(`pickup_drop()` RPC)은
+  그 개체의 소유자만 옮길 뿐 새 row를 만들지 않는다(일련번호 불변).
+- 개체 파괴(조합 소모 `Consume` / 미픽업 만료 `Expire`)는 소프트 삭제로 확정 —
+  `inventory_items.destroyed_at`을 세우고, 번호는 `assign_random_serial()`의 유니크 체크
+  (`destroyed_at IS NULL` 조건)에서 재사용 가능한 풀로 돌아간다. 같은 번호가 시간이 지나
+  다른 개체에 재부여될 수 있으나, `custody_events`(아래 §3.5-1) 이력으로 항상 구분 가능하다.
+- 유저 드랍은 기한 개념이 없다 — 회수 액션도, 만료도 없이 픽업될 때까지 무기한 대기한다
+  (`poi_drops.expires_at`은 유저 드랍이든 시스템 드랍이든 항상 NULL).
+
+#### 3.5-1 `custody_events` — 점유(custody) 이력 (어드민 조회용, 신규)
+
+`InventoryItem` 한 개체에 점유 변화가 생길 때마다 쌓이는 append-only 이력. 8종 이벤트
+(`Minted`/`UserDrop`/`Pickup`/`Expire`/`Slot`/`Unslot`/`Consume`/`Orphan`)가 아래 상태
+전이 화살표와 1:1 대응한다. `from_user`/`to_user`/`actor`는 유저명을 스냅샷 값으로
+저장한다(계정 탈퇴로 `public.users` row가 하드 삭제돼도 이름은 남아야 하므로, 라이브 FK
+조인에만 의존하지 않는다).
+
+```
+Minted(발급 — ①직접지급 또는 ②앰비언트 배치 시점, 이때 serial 확정)
+  ├─ ①직접지급 ──────────────────────────────▶ Held
+  └─ ②앰비언트 배치 ─▶ AtPoi(소유자 없음)
+                          ├─ 픽업(소유권 이전, serial 불변) ─▶ Held
+                          └─ 기한 만료(미픽업)              ─▶ Destroyed
+
+Held ─▶ Slotted ─▶ Held
+Held ─▶ Consumed(조합 재료 소모) ─▶ Destroyed
+Held ─▶ Dropped(유저 배치 — 무기한, 회수·만료 없음) ─ 픽업(소유권 이전) ─▶ Held(새 소유자)
+Held/Slotted ─▶ Orphaned(소유자 계정 탈퇴 — 유저 비노출, 어드민 전용)
+```
+
+계정 탈퇴 시 Orphan 이벤트 기록은 앱 레벨 로직이 아니라 `BEFORE DELETE ON public.users`
+DB 트리거(`log_orphan_custody_events()`)로 구현돼 있다 — 이 저장소에 아직 앱 레벨
+"탈퇴 처리 로직"이 없어(계정 삭제는 Supabase Admin API/대시보드에서 직접 처리) 삭제 경로에
+관계없이 항상 실행되는 트리거가 더 견고하다고 판단했다. 관련 스키마: `supabase/migrations/
+108_item_identity_custody_model.sql`. 어드민 조회 화면은 별도 티켓(20260829_2139)에서 구현.
 
 ### 3.6 데이터 모델
 

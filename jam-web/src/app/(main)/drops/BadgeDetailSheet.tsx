@@ -20,6 +20,9 @@ export interface PickupDrop {
   badge_image_url: string | null
   dropper_name: string | null
   dropped_at: string
+  /** 20260829_2101 — 개체 정체성 모델: poi_drops가 항상 이미 발급된 개체를 가리키므로
+   * 픽업 전에도 일련번호가 이미 확정돼 있다. 마이그레이션 이전 완료된 과거 드랍은 null일 수 있다. */
+  serial: string | null
 }
 
 interface BadgeDetailSheetProps {
@@ -159,6 +162,14 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
           <p className="text-[length:var(--text-caption)] text-text/50 mt-1">
             {t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
+          {/* 20260829_2101 — 픽업은 소유권 이전일 뿐 재발급이 아니라서 드랍 상태에서도
+              이미 확정된 일련번호가 존재한다. ItemEarnHistory와 같은 라벨·표기 관례 재사용. */}
+          {drop.serial && (
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-text/10">
+              <span className="text-[length:var(--text-caption)] text-text/50">{d.inventory.serialNumber}</span>
+              <span className="text-[length:var(--text-caption)] text-text font-mono tracking-widest">{drop.serial}</span>
+            </div>
+          )}
         </Card>
 
         {/* 액션 버튼 — 콘텐츠와 같은 스크롤 영역 안, 페이지 맨 끝에 위치.

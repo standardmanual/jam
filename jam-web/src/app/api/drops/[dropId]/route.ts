@@ -22,7 +22,8 @@ export async function GET(
     .select(`
       *,
       badges ( name, rarity, image_url ),
-      users!dropper_user_id ( username )
+      users!dropper_user_id ( username ),
+      inventory_items ( serial_prefix, serial_number )
     `)
     .eq('id', dropId)
     .single()
@@ -34,6 +35,10 @@ export async function GET(
   const drop = data as PoiDropRow & {
     badges: { name: string; rarity: string; image_url: string }
     users: { username: string } | null
+    // 20260829_2101: 개체 정체성 모델 — poi_drops가 항상 이미 발급된 inventory_items를
+    // 가리키므로 픽업 전에도 일련번호가 이미 확정돼 있다. 마이그레이션 이전에 완료된
+    // (is_available=false) 과거 드랍은 소급 연결되지 않아 null일 수 있다.
+    inventory_items: { serial_prefix: string | null; serial_number: number } | null
   }
 
   return NextResponse.json({
@@ -46,5 +51,8 @@ export async function GET(
     dropped_at: drop.dropped_at,
     is_available: drop.is_available,
     is_own: drop.dropper_user_id === user.id,
+    serial: drop.inventory_items
+      ? `${drop.inventory_items.serial_prefix ?? '????'}${String(drop.inventory_items.serial_number).padStart(6, '0')}`
+      : null,
   })
 }
