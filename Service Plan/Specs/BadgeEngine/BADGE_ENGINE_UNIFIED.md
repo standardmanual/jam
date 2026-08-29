@@ -364,6 +364,32 @@ DB 트리거(`log_orphan_custody_events()`)로 구현돼 있다 — 이 저장�
 관계없이 항상 실행되는 트리거가 더 견고하다고 판단했다. 관련 스키마: `supabase/migrations/
 108_item_identity_custody_model.sql`. 어드민 조회 화면은 별도 티켓(20260829_2139)에서 구현.
 
+#### 3.5-2 표준 불변식 1: 원자적 소유권 이전 (2026-08-30 갱신, 티켓 20260830_0057)
+
+`InventoryItem`의 점유(custody) 상태를 바꾸는 모든 RPC는 관련 행을
+`SELECT ... FOR UPDATE`로 배타 락 건 뒤 상태를 재확인·전이하는 단일 트랜잭션이어야
+한다(동시 요청 중 하나만 성공, 두 상태 컬럼이 서로 모순되는 중간 상태가 절대 커밋되지
+않아야 함 — 티켓 20260829_2101). 현재 이 불변식을 따르는 RPC:
+
+| RPC | 전이 | 락 순서 |
+|---|---|---|
+| `create_user_drop()` | Held → Dropped | `inventory` → `inventory_items` |
+| `pickup_drop()` | Dropped/AtPoi → Held | `poi_drops` → `inventory_items` → `inventory` |
+| `admin_destroy_orphaned_item()` | Orphaned → Destroyed | `inventory_items` |
+| `admin_reassign_orphaned_item()` | Orphaned → Held(새 소유자) | `inventory_items` → `inventory` |
+| `slot_item_into_book()` | Held → Slotted | `inventory` → `inventory_items` |
+| `unslot_item_from_book()` | Slotted → Held | `user_item_book_slots` → `inventory` → `inventory_items` |
+
+`slot_item_into_book()`/`unslot_item_from_book()`(마이그레이션
+`111_item_slot_atomic_rpc.sql`)은 이 목록에서 가장 늦게 합류했다 — 기존
+`api/itembooks/[id]/slot/route.ts`가 락 없는 순차 REST 호출로 구성돼 있어, 슬롯
+장착과 드랍이 같은 아이템을 거의 동시에 대상으로 하면 `inventory_id`(드랍됨)와
+`slotted_in`(장착됨)이 동시에 non-null인 모순 상태가 발생할 수 있었다(티켓
+20260830_0055에서 발견, 20260830_0057에서 수정). 락 순서는 표에서 보듯 두 방향
+모두 `inventory`를 `inventory_items`보다 먼저 잠그도록 다른 RPC들과 통일돼 있다 —
+순서가 반대인 RPC 쌍이 있으면 같은 두 테이블을 동시에 노리는 요청끼리 AB-BA
+데드락이 발생할 수 있기 때문이다.
+
 ### 3.6 데이터 모델
 
 ```sql
