@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { Separator } from '@/components/admin/ui/separator'
 import { SidebarTrigger } from '@/components/admin/ui/sidebar'
-import { ALL_NAV_ITEMS, DASHBOARD_ITEM, isNavItemActive } from './adminNavItems'
+import { DASHBOARD_ITEM, mostSpecificActiveItem } from './adminNavItems'
 
 interface AdminHeaderProps {
   userEmail: string | null
@@ -22,7 +22,9 @@ interface AdminHeaderProps {
  */
 export function AdminHeader({ userEmail }: AdminHeaderProps) {
   const pathname = usePathname()
-  const current = ALL_NAV_ITEMS.find((item) => isNavItemActive(pathname, item)) ?? DASHBOARD_ITEM
+  // 겹치는 href(예: /admin/item-badges vs /admin/item-badges/orphaned)에서 더 구체적인
+  // 경로를 우선한다 — adminNavItems.ts의 mostSpecificActiveItem 참고.
+  const current = mostSpecificActiveItem(pathname) ?? DASHBOARD_ITEM
 
   return (
     <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-950">

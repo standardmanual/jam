@@ -201,7 +201,7 @@ export default async function ItemBadgeDetailPage({ params }: Props) {
             {poi.name}
           </Link>
         ) : status === 'Orphaned' ? (
-          <span>고아(어드민 보관 중)</span>
+          <span>소유자 없음(어드민 보관 중)</span>
         ) : (
           <span className="text-muted-foreground">—</span>
         )}

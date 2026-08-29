@@ -22,14 +22,14 @@ export interface OrphanedActionResult {
 export const DESTROY_ERROR_LABEL: Record<string, string> = {
   item_not_found: '개체를 찾을 수 없습니다',
   already_destroyed: '이미 폐기된 개체입니다',
-  not_orphaned: '고아 상태가 아닙니다 (다른 작업으로 상태가 이미 바뀌었을 수 있습니다)',
+  not_orphaned: '소유자 없음 상태가 아닙니다 (다른 작업으로 상태가 이미 바뀌었을 수 있습니다)',
   destroy_failed: '폐기 처리에 실패했습니다',
 }
 
 /** /api/admin/item-badges/orphaned/reassign가 돌려주는 error 코드 → 화면 문구 */
 export const REASSIGN_ERROR_LABEL: Record<string, string> = {
   item_not_found: '개체를 찾을 수 없습니다',
-  not_orphaned: '고아 상태가 아닙니다 (다른 작업으로 상태가 이미 바뀌었을 수 있습니다)',
+  not_orphaned: '소유자 없음 상태가 아닙니다 (다른 작업으로 상태가 이미 바뀌었을 수 있습니다)',
   inventory_not_found: '대상 유저의 인벤토리를 찾을 수 없습니다',
   inventory_full: '대상 유저의 인벤토리가 꽉 찼습니다',
   reassign_failed: '재배정 처리에 실패했습니다',
