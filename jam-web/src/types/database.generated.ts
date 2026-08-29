@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -375,6 +375,84 @@ export type Database = {
         }
         Relationships: []
       }
+      custody_events: {
+        Row: {
+          actor_user_id: string | null
+          actor_username: string | null
+          created_at: string
+          event_type: string
+          from_user_id: string | null
+          from_username: string | null
+          id: string
+          inventory_item_id: string
+          poi_id: string | null
+          to_user_id: string | null
+          to_username: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          actor_username?: string | null
+          created_at?: string
+          event_type: string
+          from_user_id?: string | null
+          from_username?: string | null
+          id?: string
+          inventory_item_id: string
+          poi_id?: string | null
+          to_user_id?: string | null
+          to_username?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          actor_username?: string | null
+          created_at?: string
+          event_type?: string
+          from_user_id?: string | null
+          from_username?: string | null
+          id?: string
+          inventory_item_id?: string
+          poi_id?: string | null
+          to_user_id?: string | null
+          to_username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custody_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custody_events_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custody_events_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custody_events_poi_id_fkey"
+            columns: ["poi_id"]
+            isOneToOne: false
+            referencedRelation: "poi"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custody_events_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drop_policy: {
         Row: {
           adjacent_weight: number
@@ -607,11 +685,12 @@ export type Database = {
       inventory_items: {
         Row: {
           badge_id: string
+          destroyed_at: string | null
           drop_id: string | null
           dropped_at: string | null
           expires_at: string | null
           id: string
-          inventory_id: string
+          inventory_id: string | null
           obtained_at: string
           obtained_by: string
           serial_number: number
@@ -620,11 +699,12 @@ export type Database = {
         }
         Insert: {
           badge_id: string
+          destroyed_at?: string | null
           drop_id?: string | null
           dropped_at?: string | null
           expires_at?: string | null
           id?: string
-          inventory_id: string
+          inventory_id?: string | null
           obtained_at?: string
           obtained_by?: string
           serial_number: number
@@ -633,11 +713,12 @@ export type Database = {
         }
         Update: {
           badge_id?: string
+          destroyed_at?: string | null
           drop_id?: string | null
           dropped_at?: string | null
           expires_at?: string | null
           id?: string
-          inventory_id?: string
+          inventory_id?: string | null
           obtained_at?: string
           obtained_by?: string
           serial_number?: number
@@ -1042,6 +1123,7 @@ export type Database = {
           dropper_user_id: string | null
           expires_at: string | null
           id: string
+          inventory_item_id: string | null
           is_available: boolean
           picked_up_at: string | null
           picked_up_by: string | null
@@ -1054,6 +1136,7 @@ export type Database = {
           dropper_user_id?: string | null
           expires_at?: string | null
           id?: string
+          inventory_item_id?: string | null
           is_available?: boolean
           picked_up_at?: string | null
           picked_up_by?: string | null
@@ -1066,6 +1149,7 @@ export type Database = {
           dropper_user_id?: string | null
           expires_at?: string | null
           id?: string
+          inventory_item_id?: string | null
           is_available?: boolean
           picked_up_at?: string | null
           picked_up_by?: string | null
@@ -1085,6 +1169,13 @@ export type Database = {
             columns: ["dropper_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poi_drops_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
           {
@@ -2168,6 +2259,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_user_drop: {
+        Args: {
+          p_dropper_id: string
+          p_inventory_item_id: string
+          p_poi_id: string
+        }
+        Returns: Json
+      }
+      expire_stale_poi_drops: { Args: never; Returns: Json }
       jsonb_as_array: { Args: { p_value: Json }; Returns: Json }
       jsonb_merge_sum: {
         Args: {
@@ -2176,6 +2276,10 @@ export type Database = {
           p_old: Json
           p_sum_keys: string[]
         }
+        Returns: Json
+      }
+      mint_and_place_ambient_drop: {
+        Args: { p_badge_id: string; p_poi_id: string }
         Returns: Json
       }
       pickup_drop: {
