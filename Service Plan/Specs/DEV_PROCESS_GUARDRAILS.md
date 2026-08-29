@@ -117,6 +117,28 @@ Supabase/PostgREST는 한 번의 조회에서 기본 1,000행까지만 반환한
 **규칙**: 새 마이그레이션 작성 전엔 `ls supabase/migrations | tail`로 최신 번호를 항상 직접
 확인한다. 레포 상태를 기억에 의존하지 않는다.
 
+### 패턴 8 — SECURITY DEFINER 함수 신규 생성 시 `REVOKE ... FROM PUBLIC`만으로는
+anon/authenticated 권한이 회수되지 않음
+
+Supabase는 새로 `CREATE`된 함수에 대해 `anon`/`authenticated` 롤에 PUBLIC 경유가 아니라
+**개별 GRANT**를 기본 권한 설정으로 자동 부여한다. 이미 존재하던 함수를 사후에 잠글 땐
+`FROM PUBLIC`만으로 충분했지만(109 — 기존 9개 함수 전부 정상 회수됨, 실측 확인), **같은
+마이그레이션 안에서 방금 `CREATE`한 신규 함수**에는 `FROM PUBLIC`이 이 개별 GRANT를
+회수하지 못한다. `get_advisors(security)` 결과도 캐시된 스냅샷이라 실행 직후엔 반영되지
+않을 수 있어, 이것만 보고 안전하다고 판단하면 놓친다.
+
+- 실제 사례: `110_admin_orphaned_item_actions.sql`(20260829_2150) — 109와 동일한 문구
+  (`REVOKE EXECUTE ... FROM PUBLIC`)로 작성했으나, 실행 직후
+  `information_schema.role_routine_grants`로 직접 조회하니 신규 함수 2종 모두
+  `anon`/`authenticated`가 여전히 `EXECUTE` 가능한 상태였다(어드민 인증 우회 가능한
+  실제 보안 구멍) — `FROM PUBLIC, anon, authenticated`로 롤을 명시해 즉시 수정.
+
+**규칙**: `SECURITY DEFINER`로 새 함수를 만드는 마이그레이션에서 `anon`/`authenticated`의
+`EXECUTE`를 막아야 한다면, 반드시 `REVOKE EXECUTE ON FUNCTION ... FROM PUBLIC, anon,
+authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
+`information_schema.role_routine_grants`로 실제 `grantee` 목록을 **직접 조회해 확인**한다
+— `get_advisors`만으로 확인을 대신하지 않는다.
+
 ---
 
 ## 핵심 루프 의존성 지도
