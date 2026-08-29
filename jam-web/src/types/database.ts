@@ -251,6 +251,10 @@ export type CustodyEventType =
   | 'Unslot'
   | 'Consume'
   | 'Orphan'
+  /** 어드민 영구 폐기(Orphaned → Destroyed) — 20260829_2150 */
+  | 'AdminDestroy'
+  /** 어드민 재배정(Orphaned → Held) — 20260829_2150 */
+  | 'AdminReassign'
 
 export interface CustodyEventRow {
   id: string
