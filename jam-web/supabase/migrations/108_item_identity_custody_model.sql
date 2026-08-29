@@ -98,11 +98,20 @@ COMMENT ON COLUMN public.inventory_items.inventory_id IS
   poi_drops.inventory_item_id 존재 여부로 판정한다(티켓 20260829_2101).';
 
 -- ----------------------------------------------------------------
--- 4. poi_drops.dropper_user_id — FK CASCADE → SET NULL
+-- 4. poi_drops.dropper_user_id — FK CASCADE → SET NULL + NOT NULL 해제
 --    (picked_up_by는 이미 SET NULL이었다 — 드랍한 사람이 탈퇴해도 무기한 대기 중인
 --    유저 드랍이 poi_drops row 통째로 사라지면 안 된다. NULL이 되면 기존 표시 로직이
 --    이미 '익명'으로 폴백한다.)
+--
+--    게이트 리뷰 지적(2차, 2026-08-29): 컬럼 자체가 004_phase7_user_drops.sql에서
+--    NOT NULL로 선언돼 있었다 — FK만 SET NULL로 바꾸고 이 DROP NOT NULL을 빠뜨리면,
+--    유저 탈퇴 시 CASCADE가 NULL을 세팅하려는 순간 NOT NULL 위반으로 DELETE 트랜잭션
+--    전체가 하드 에러로 실패한다(이전 CASCADE 방식보다 더 나쁜 회귀). 아래 CHECK
+--    완화(§5)와 반드시 함께 가야 한다 — 컬럼만 nullable화하고 CHECK을 안 고치면
+--    이번엔 CHECK 위반으로 같은 실패가 재현된다.
 -- ----------------------------------------------------------------
+ALTER TABLE public.poi_drops ALTER COLUMN dropper_user_id DROP NOT NULL;
+
 ALTER TABLE public.poi_drops DROP CONSTRAINT IF EXISTS poi_drops_dropper_user_id_fkey;
 ALTER TABLE public.poi_drops
   ADD CONSTRAINT poi_drops_dropper_user_id_fkey
@@ -110,13 +119,18 @@ ALTER TABLE public.poi_drops
 
 -- ----------------------------------------------------------------
 -- 5. poi_drops.expires_at — 기본값 제거 + CHECK 완화 (유저 드랍 = 무기한 대기)
+--
+--    게이트 리뷰 지적(2차, 2026-08-29): source='user' AND dropper_user_id IS NOT NULL을
+--    그대로 요구하면, 드랍한 사람이 탈퇴해 위 §4의 SET NULL이 실행되는 순간 이 CHECK을
+--    위반해 UPDATE가 실패한다 — "유저 드랍인데 드랍한 사람이 탈퇴해 고아가 된 상태"를
+--    정상 상태로 허용해야 한다(dropper_user_id IS NULL도 허용).
 -- ----------------------------------------------------------------
 ALTER TABLE public.poi_drops ALTER COLUMN expires_at DROP DEFAULT;
 
 ALTER TABLE public.poi_drops DROP CONSTRAINT IF EXISTS poi_drops_source_consistency;
 ALTER TABLE public.poi_drops
   ADD CONSTRAINT poi_drops_source_consistency CHECK (
-    (source = 'user'   AND dropper_user_id IS NOT NULL) OR
+    (source = 'user') OR
     (source = 'system' AND dropper_user_id IS NULL)
   );
 
