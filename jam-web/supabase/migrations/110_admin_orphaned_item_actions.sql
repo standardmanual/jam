@@ -168,9 +168,17 @@ $$;
 
 -- ----------------------------------------------------------------
 -- 4. anon/authenticated EXECUTE 권한 회수 (109와 동일한 방어, 신규 함수 2종)
+--
+-- 2026-08-30 실행 중 발견·수정: 109는 `FROM PUBLIC`만으로 anon/authenticated의
+-- EXECUTE 권한이 실제로 제거됐지만(당시 대상은 기존 함수), 이번처럼 같은 마이그레이션
+-- 안에서 방금 CREATE한 신규 함수는 Supabase 기본 권한 설정으로 anon/authenticated에
+-- PUBLIC 경유가 아니라 **개별 GRANT**가 자동으로 걸린다 — `FROM PUBLIC`만으로는
+-- 이 개별 GRANT가 회수되지 않는다(실행 후 information_schema.role_routine_grants로
+-- 직접 확인해 anon/authenticated가 여전히 EXECUTE 가능함을 발견, 즉시 아래로 수정).
+-- 반드시 anon, authenticated를 REVOKE 대상에 명시해야 한다.
 -- ----------------------------------------------------------------
-REVOKE EXECUTE ON FUNCTION public.admin_destroy_orphaned_item(uuid, uuid) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.admin_reassign_orphaned_item(uuid, uuid, uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.admin_destroy_orphaned_item(uuid, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.admin_reassign_orphaned_item(uuid, uuid, uuid) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.admin_destroy_orphaned_item(uuid, uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.admin_reassign_orphaned_item(uuid, uuid, uuid) TO service_role;
