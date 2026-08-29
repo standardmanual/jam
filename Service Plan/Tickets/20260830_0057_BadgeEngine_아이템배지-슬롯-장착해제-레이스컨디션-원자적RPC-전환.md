@@ -1,9 +1,9 @@
 ---
 id: 20260830_0057
 category: BadgeEngine
-status: OPEN
+status: CLOSED
 created: 2026-08-30
-closed:
+closed: 2026-08-30
 ---
 
 # [BadgeEngine] 아이템배지 슬롯 장착·해제 API 레이스 컨디션 수정 — 원자적 RPC로 전환
@@ -29,9 +29,9 @@ closed:
 잘못된 Slotted 상태를 표시하고, 아이템북 완성 판정
 (`jam-web/src/lib/itembook/completable.ts`) 로직도 오염될 수 있다.
 
-이 발견은 조사 과정에서 정리됐다(관련 조사 티켓을 확인했으나 저장소에서 파일을 찾지
-못함 — 병렬 세션에서 아직 커밋되지 않았을 가능성. 이 티켓 본문에 조사 결론을 그대로
-옮겨 자기 완결적으로 남긴다).
+이 발견은 티켓 [20260830_0055](20260830_0055_Admin_아이템배지-Held-Slotted-상태판정-안전성-조사.md)의
+조사 §3에서 side finding으로 분리된 것이다(티켓 작성 시점에는 병렬 세션에서 아직
+커밋되지 않아 저장소에서 찾지 못했으나, 이후 확인됨).
 
 ## 상세 요구사항
 
@@ -93,17 +93,32 @@ jam-web/src/app/api/itembooks/[id]/slot/route.ts
 - [x] `npx tsc --noEmit` — 신규/변경 코드 타입 에러 없음
 - [x] `npm run lint` (전체) — 0 errors, 26 warnings (전부 기존 파일, 변경 파일 무관 — 기존
       `lint:ci --max-warnings 26` 기준선과 동일)
-- [ ] 실제 장착/해제 흐름 + 동시 요청 레이스 재현 테스트 — DB 마이그레이션 미실행 상태라
-      로컬/스테이징에서 RPC 자체를 호출해 검증하지 못했다(사용자 승인 후 마이그레이션
-      실행 시점에 재확인 필요)
+- [x] 마이그레이션 111을 프로덕션 DB(jam-prod, `ceehnkzdbecxwzxrhhns`)에 실행 —
+      `list_migrations` 최신 버전(110) 확인 후 적용, `anon`/`authenticated` EXECUTE
+      권한 회수·`service_role`만 허용됨을 `has_function_privilege`로 재확인
+- [x] 실 프로덕션 데이터(inventory_item 1건)를 대상으로 `BEGIN ... ROLLBACK` 트랜잭션
+      안에서 6개 시나리오 실행해 검증 후 원상 복구(영구 변경 없음 확인 — `slot_rows`·
+      `custody_rows` 등 사전/사후 0건 일치):
+      1) 정상 장착 → `ok:true` + 슬롯 row 생성
+      2) 중복 장착 → `already_slotted`
+      3) 정상 해제 → `ok:true`, `slotted_in` NULL·`used_slots` 복원·슬롯 row 삭제
+      4) 존재하지 않는 슬롯 해제 → `slot_not_found`
+      5) **레이스 재현(원래 버그의 핵심)**: `inventory_id`를 NULL로 바꿔(드랍 시뮬레이션)
+         직후 장착 시도 → `already_dropped`로 정상 차단 — 모순 상태 재현되지 않음 확인
+      6) `get_advisors(security)` — 신규 RPC 2종이 `function_search_path_mutable` WARN에
+         걸리지만 이는 `create_user_drop`/`pickup_drop` 등 기존 RPC 전부와 동일한
+         기존 컨벤션(search_path 미설정)이라 이번 변경의 신규 회귀 아님. 새로운 ERROR
+         레벨 advisory 없음
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 해당 없음 (에러 메시지 문구 불변 — 기존 문구를 상수 매핑 테이블로 그대로 옮김)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-30
+- 환경: DB(마이그레이션 111)는 production에 직접 실행 완료(공용 단일 DB — 구 route.ts는
+  새 RPC를 아직 호출하지 않으므로 무해). 코드(route.ts)는 staging에 fast-forward push
+  완료 — main 승격(프로덕션 프론트 반영)은 별도 `/jam-ship` + 사용자 승인 필요
+- 커밋: 488a3f13adf98e0a25e6edc4f3cdeb7cc0d7fd2a (staging에 fast-forward 반영)
 
 ### 주요 의사결정 / 핵심 메모
 - 기존 route.ts의 "이미 드랍된 아이템" 체크가 `inventory_items.dropped_at` 컬럼을
@@ -119,10 +134,20 @@ jam-web/src/app/api/itembooks/[id]/slot/route.ts
   없앴다.
 
 ### 잔여 이슈
-- `jam-web/src/lib/itembook/completable.ts`, `lib/notifications/batch/collections.ts`,
-  `lib/notifications/batch/following.ts` 등 코드베이스 전반에 `.is('dropped_at', null)`
-  필터가 여전히 남아있는데, 108 이후 유저 드랍은 `dropped_at`을 설정하지 않으므로 이
-  필터는 대부분 죽은 코드다(대부분 `.eq('inventory_id', ...)` 필터가 동반돼 실제
-  결과는 우연히 맞지만, 필터 자체가 오해를 유발하고 일부 배치 쿼리는 `inventory_id`
-  필터 없이 `dropped_at`에만 의존한다). 이번 티켓 범위 밖이라 손대지 않았다 — 별도
-  정리 티켓 권장(alerts 참고).
+아래 2건은 게이트·개선 리뷰의 side finding으로, 사용자 승인 하에 별도 작업 칩으로
+분리했다(이번 티켓 스코프 밖):
+- `.is('dropped_at', null)` 잔존 필터 정리 — `jam-web/src/lib/itembook/completable.ts`,
+  `lib/notifications/batch/collections.ts`, `lib/notifications/batch/following.ts` 등.
+  108 이후 유저 드랍은 `dropped_at`을 설정하지 않으므로 대부분 죽은 필터이며, 일부
+  배치 쿼리는 `inventory_id` 필터 없이 이것에만 의존해 실제 오판 가능성 있음.
+- 믹스(`lib/combine/index.ts`) 동시성 점검 — 조건부 UPDATE + 영향행 수 검증 방식이라
+  단일 행 원자성에는 기대지만, "슬롯 장착"과 "믹스 소재 선택"이 같은 아이템을 동시에
+  노리는 시나리오는 이번 티켓이 다룬 것과 같은 계열의 레이스에 노출될 수 있음.
+
+## 참고
+- [20260830_0055](20260830_0055_Admin_아이템배지-Held-Slotted-상태판정-안전성-조사.md) —
+  이 티켓의 발견을 촉발한 조사 티켓 (§3)
+- [20260829_2101](20260829_2101_BadgeEngine_아이템배지-개체정체성-드랍픽업-일련번호유지.md) —
+  "표준 불변식" 정의 출처
+- `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` §3.5-2 — 이 티켓으로 갱신,
+  원자적 소유권 이전 RPC 전체 목록·락 순서 표
