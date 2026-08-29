@@ -21,7 +21,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/admin/ui/sidebar'
-import { DASHBOARD_ITEM, NAV_GROUPS, activeNavGroupId, isNavItemActive } from './adminNavItems'
+import { DASHBOARD_ITEM, NAV_GROUPS, activeNavGroupId, isNavItemActive, mostSpecificActiveItem } from './adminNavItems'
 
 /**
  * AdminSidebar
@@ -44,6 +44,9 @@ export function AdminSidebar() {
   const { state, isMobile } = useSidebar()
   const isIconMode = !isMobile && state === 'collapsed'
   const defaultOpenGroup = activeNavGroupId(pathname)
+  // 겹치는 href(예: /admin/item-badges vs /admin/item-badges/orphaned)에서 항목 하나만
+  // 활성으로 표시하기 위해 한 번만 계산 — adminNavItems.ts의 mostSpecificActiveItem 참고.
+  const activeItem = mostSpecificActiveItem(pathname)
 
   return (
     <Sidebar collapsible="icon">
@@ -95,7 +98,7 @@ export function AdminSidebar() {
                       <SidebarMenuButton
                         asChild
                         size="lg"
-                        isActive={isNavItemActive(pathname, item)}
+                        isActive={activeItem?.href === item.href}
                         tooltip={item.label}
                       >
                         <Link href={item.href}>
@@ -128,7 +131,7 @@ export function AdminSidebar() {
                         <SidebarMenuButton
                           asChild
                           size="lg"
-                          isActive={isNavItemActive(pathname, item)}
+                          isActive={activeItem?.href === item.href}
                           tooltip={item.label}
                         >
                           <Link href={item.href}>

@@ -17,6 +17,7 @@ import {
   IconUsers,
   IconShieldExclamation,
   IconPalette,
+  IconUserOff,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -32,6 +33,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/badges', label: '배지 관리', icon: IconAward },
       { href: '/admin/item-badges', label: '아이템배지 발급 현황', icon: IconBarcode },
+      { href: '/admin/item-badges/orphaned', label: '소유자 없음 아이템배지', icon: IconUserOff },
       { href: '/admin/poi', label: 'POI 관리', icon: IconMapPin },
       { href: '/admin/itembooks', label: '컬렉션', icon: IconBook },
       { href: '/admin/factions', label: '세계관', icon: IconWorld },
@@ -71,6 +73,22 @@ export const ALL_NAV_ITEMS = [DASHBOARD_ITEM, ...NAV_GROUPS.flatMap((g) => g.ite
 export function isNavItemActive(pathname: string, item: NavItem) {
   if (item.exact) return pathname === item.href
   return isPathActive(pathname, item.href)
+}
+
+/**
+ * `pathname`과 매칭되는 nav 항목 중 href가 가장 긴(=가장 구체적인) 것 하나만 고른다.
+ *
+ * `/admin/item-badges/orphaned`(신규, 티켓 20260830_0104)처럼 한 nav 항목의 href가 다른
+ * nav 항목 href의 하위 경로인 경우, `isNavItemActive`를 항목마다 독립적으로 호출하면
+ * 두 항목이 동시에 "활성"으로 판정된다(둘 다 prefix 매칭 조건을 만족하므로) — 사이드바에서
+ * 메뉴 두 개가 동시에 하이라이트되거나(AdminSidebar), 헤더 타이틀이 배열 순서상 먼저 나온
+ * 항목(부모)으로 고정되는(AdminHeader의 `.find()`) 오판을 일으킨다. href 문자열 길이가 긴
+ * 쪽이 항상 더 구체적인 경로이므로, 매칭된 후보 중 그 하나만 "진짜 활성"으로 취급한다.
+ */
+export function mostSpecificActiveItem(pathname: string): NavItem | undefined {
+  return ALL_NAV_ITEMS.filter((item) => isNavItemActive(pathname, item)).sort(
+    (a, b) => b.href.length - a.href.length
+  )[0]
 }
 
 export function activeNavGroupId(pathname: string) {

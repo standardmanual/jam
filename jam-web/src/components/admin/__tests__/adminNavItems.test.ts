@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { IconLayoutDashboard, IconAward, IconMapPin } from '@tabler/icons-react'
-import { isNavItemActive } from '@/components/admin/adminNavItems'
+import { isNavItemActive, mostSpecificActiveItem } from '@/components/admin/adminNavItems'
 import type { NavItem } from '@/components/admin/adminNavItems'
 
 describe('isNavItemActive', () => {
@@ -31,5 +31,16 @@ describe('isNavItemActive', () => {
   it('무관한 경로는 비활성', () => {
     const item: NavItem = { href: '/admin/badges', label: '배지 관리', icon: IconAward }
     expect(isNavItemActive('/admin/poi', item)).toBe(false)
+  })
+})
+
+describe('mostSpecificActiveItem', () => {
+  it('한 nav 항목의 href가 다른 항목 href의 하위 경로면(티켓 20260830_0104: 아이템배지 발급 ' +
+    '현황 vs 소유자 없음 아이템배지) 더 구체적인(긴) href 쪽만 활성으로 고른다', () => {
+    expect(mostSpecificActiveItem('/admin/item-badges/orphaned')?.href).toBe('/admin/item-badges/orphaned')
+  })
+
+  it('하위 배지 상세 경로는 여전히 부모(아이템배지 발급 현황) 항목이 활성', () => {
+    expect(mostSpecificActiveItem('/admin/item-badges/abc-123')?.href).toBe('/admin/item-badges')
   })
 })
