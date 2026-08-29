@@ -32,7 +32,7 @@ export const ITEM_BADGE_STATUS_LABEL: Record<ItemBadgeStatus, string> = {
   AtPoi: '드랍됨 (시스템)',
   Slotted: '장착중',
   Consumed: '소모됨',
-  Orphaned: '고아',
+  Orphaned: '소유자 없음',
   Destroyed: '파괴됨(만료)',
 }
 
@@ -60,7 +60,7 @@ export const CUSTODY_EVENT_LABEL: Record<CustodyEventType, string> = {
   Slot: '컬렉션 장착',
   Unslot: '장착 해제',
   Consume: '조합 소모',
-  Orphan: '소유자 탈퇴(고아화)',
+  Orphan: '소유자 탈퇴',
   AdminDestroy: '어드민 영구 폐기',
   AdminReassign: '어드민 재배정',
 }

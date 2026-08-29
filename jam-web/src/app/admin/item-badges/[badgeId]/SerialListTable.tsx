@@ -74,7 +74,7 @@ export function SerialListTable({ rows, badgeId }: SerialListTableProps) {
             <Checkbox
               checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
               onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-              aria-label="전체 선택 (고아 상태만)"
+              aria-label="전체 선택 (소유자 없음 상태만)"
             />
           ),
           cell: ({ row }) =>
@@ -153,7 +153,7 @@ export function SerialListTable({ rows, badgeId }: SerialListTableProps) {
                 <span>{r.poiName}</span>
               )
             }
-            if (r.status === 'Orphaned') return <span className="text-muted-foreground">고아(어드민 보관 중)</span>
+            if (r.status === 'Orphaned') return <span className="text-muted-foreground">소유자 없음(어드민 보관 중)</span>
             return <span className="text-muted-foreground">—</span>
           },
         }),
