@@ -1,8 +1,9 @@
 ---
 id: 20260830_0039
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-30
+closed: 2026-08-30
 ---
 
 # [Service] 드랍 단건 조회(`/api/drops/[dropId]`) poi_drops↔inventory_items FK 모호성 수정
@@ -69,9 +70,10 @@ jam-web/src/app/api/drops/[dropId]/route.ts
 해당 없음 (API 응답 필드 변경 없음)
 
 ### 배포 정보
-- 배포일: (사용자 승인 후 오케스트레이터가 staging 병합·배포 처리)
-- 환경: production
-- 커밋: (review 브랜치 push 완료, main 병합 전)
+- 배포일: 2026-08-30
+- 환경: staging (jam-stage.vercel.app — Vercel이 staging 브랜치 push 시 자동 재배포)
+- 커밋: 326fece50d76fab11c2627cd3fd4df5b481cffba (머지 커밋)
+- 프로덕션(main) 승격은 별도 `/jam-ship` 절차·사용자 승인 필요, 이번 작업 범위 아님
 
 ### 주요 의사결정 / 핵심 메모
 티켓 20260830_0026과 완전히 동일한 패턴의 재발 버그였다. 선택하지 않은 대안(라우트 자체 삭제)은
