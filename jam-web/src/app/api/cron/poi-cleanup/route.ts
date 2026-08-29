@@ -2,6 +2,12 @@
  * GET /api/cron/poi-cleanup
  * 매일 00:00(UTC) 실행: 만료된 POI 드랍 아이템 자동 소각
  * Vercel Cron: "0 0 * * *"
+ *
+ * 20260829_2101: 개체 정체성 모델 도입 이후 poi_drops가 항상 실제 개체(inventory_items)를
+ * 참조하므로, 만료/소각 시 poi_drops.is_available만 내리는 게 아니라 그 개체도 함께
+ * 파괴(소프트 삭제)하고 Expire 이벤트를 남겨야 한다 — 두 갈래(①expires_at 만료
+ * ②연결 배지 소프트 삭제) 정리 로직과 원자적 개체 파괴를 expire_stale_poi_drops() RPC
+ * 하나의 트랜잭션으로 처리한다(표준 불변식 참고 — 상태 변경과 같은 트랜잭션 내 이벤트 기록).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -13,68 +19,22 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createServiceClient()
-  const now = new Date().toISOString()
 
-  const { data: expired, error } = await supabase
-    .from('poi_drops')
-    .select('id')
-    .lt('expires_at', now)
-    .eq('is_available', true)
+  const { data, error } = await supabase.rpc('expire_stale_poi_drops')
 
   if (error) {
-    console.error('[poi-cleanup] 조회 오류:', error)
+    console.error('[poi-cleanup] expire_stale_poi_drops RPC 오류:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const expiredIds = (expired ?? []).map((r: { id: string }) => r.id)
+  const result = data as { expired: number; orphaned_by_deleted_badge: number }
 
-  if (expiredIds.length > 0) {
-    const { error: updateError } = await supabase
-      .from('poi_drops')
-      .update({ is_available: false } as never)
-      .in('id', expiredIds)
-
-    if (updateError) {
-      console.error('[poi-cleanup] 소각 오류:', updateError)
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
-    }
-
-    console.info(`[poi-cleanup] 만료 드랍 소각 — ${expiredIds.length}건`)
+  if (result.expired > 0) {
+    console.info(`[poi-cleanup] 만료 드랍 소각 — ${result.expired}건`)
+  }
+  if (result.orphaned_by_deleted_badge > 0) {
+    console.info(`[poi-cleanup] 삭제된 배지 드랍 소각 — ${result.orphaned_by_deleted_badge}건`)
   }
 
-  // 안전망(20260826_016): 소프트 삭제된 배지를 가리키는 미픽업 드랍을 소각한다.
-  // 관리자 API(admin/badges/[id]/route.ts)를 거치지 않고 DB에 직접 소프트 삭제가
-  // 실행된 경로(예: 2026-08-23 orphan 배지 일괄 삭제, 커밋 1e77419)에 대한 보완이다.
-  // expires_at 조건과 무관한 별도 조건 — 기존 만료 소각 로직은 그대로 둔다.
-  const { data: orphaned, error: orphanedError } = await supabase
-    .from('poi_drops')
-    .select('id, badges!inner(deleted_at)')
-    .eq('is_available', true)
-    .is('picked_up_at', null)
-    .not('badges.deleted_at', 'is', null)
-
-  if (orphanedError) {
-    console.error('[poi-cleanup] 삭제된 배지 드랍 조회 오류:', orphanedError)
-    return NextResponse.json({ error: orphanedError.message }, { status: 500 })
-  }
-
-  // badges!inner 조인 + 조인 컬럼(badges.deleted_at) 필터 조합은 Supabase 타입 추론이
-  // never로 무너지는 케이스라 타입 단언으로 우회한다(실제 런타임 데이터는 { id, badges }[]).
-  const orphanedIds = ((orphaned ?? []) as { id: string }[]).map((r) => r.id)
-
-  if (orphanedIds.length > 0) {
-    const { error: orphanedUpdateError } = await supabase
-      .from('poi_drops')
-      .update({ is_available: false } as never)
-      .in('id', orphanedIds)
-
-    if (orphanedUpdateError) {
-      console.error('[poi-cleanup] 삭제된 배지 드랍 소각 오류:', orphanedUpdateError)
-      return NextResponse.json({ error: orphanedUpdateError.message }, { status: 500 })
-    }
-
-    console.info(`[poi-cleanup] 삭제된 배지 드랍 소각 — ${orphanedIds.length}건`)
-  }
-
-  return NextResponse.json({ expired: expiredIds.length, orphanedByDeletedBadge: orphanedIds.length })
+  return NextResponse.json({ expired: result.expired, orphanedByDeletedBadge: result.orphaned_by_deleted_badge })
 }

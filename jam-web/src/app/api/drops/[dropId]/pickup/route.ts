@@ -134,6 +134,10 @@ export async function POST(
       cannot_pickup_own_drop: 403,
       inventory_not_found: 404,
       inventory_full: 422,
+      // 20260829_2101: pickup_drop() 재작성 — 신규 INSERT를 제거하고 기존 개체를 재사용한다.
+      // 이론상 도달하지 않아야 하는 방어적 경로(모든 활성 드랍은 마이그레이션으로 개체가
+      // 연결돼 있어야 함)지만 방어 코드가 반환할 수 있는 값이라 매핑을 추가해 둔다.
+      item_not_found: 404,
     }
     // RPC가 돌려주는 값도 snake_case 코드다. 값이 비어 있으면 일반 실패 코드로 흘린다.
     return NextResponse.json(

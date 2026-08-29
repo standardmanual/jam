@@ -21,7 +21,10 @@ export type BadgeRarity = 'common' | 'rare' | 'legend' | 'mythic'
 // poi_categories 테이블에서 어드민이 자유롭게 생성/삭제/수정 가능한 슬러그 — 고정 유니언이 아닌 string
 export type PoiCategory = string
 export type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
-export type ItemObtainedBy = 'drop' | 'drop_event' | 'system_event' | 'pickup'
+// 'ambient_drop' — 20260829_2101: 앰비언트(시스템) 드랍이 배치 시점에 InventoryItem을
+// 선발급할 때만 쓰인다. assign_random_serial() 트리거가 이 값으로 앰비언트 일련번호
+// 범위(50,001~999,999)를 판별한다(migrations/108).
+export type ItemObtainedBy = 'drop' | 'drop_event' | 'system_event' | 'pickup' | 'ambient_drop'
 
 // =========================================
 // 테이블 Row 타입
@@ -185,16 +188,21 @@ export interface InventoryRow {
 
 export interface InventoryItemRow {
   id: string
-  inventory_id: string
+  /** null = 현재 소유자 없음(Dropped/AtPoi 또는 Orphaned) — 20260829_2101 */
+  inventory_id: string | null
   badge_id: string
   serial_number: number
   serial_prefix: string | null
   obtained_at: string
   obtained_by: ItemObtainedBy
   expires_at: string | null
+  /** 레거시 필드 — 20260829_2101 이후 새 드랍은 이 컬럼을 더 이상 쓰지 않는다(소유권
+   * 이전은 poi_drops.inventory_item_id로 추적). 과거 데이터 호환을 위해 컬럼만 유지. */
   dropped_at: string | null
   drop_id: string | null
   slotted_in: string | null
+  /** 개체 파괴(조합 소모/미픽업 만료) 소프트 삭제 시점 — 20260829_2101 */
+  destroyed_at: string | null
 }
 
 /**
@@ -211,7 +219,14 @@ export interface PoiDropRow {
   id: string
   dropper_user_id: string | null
   poi_id: string
+  /** 조인 편의용 파생 컬럼 — 항상 inventory_item_id가 가리키는 개체의 badge_id와 일치
+   * (드리프트 없음, 둘 다 row 생성 시 한 번만 설정). 정본은 inventory_items.badge_id —
+   * 20260829_2101 */
   badge_id: string
+  /** 이 드랍이 가리키는 실제 개체. source 무관하게 항상 "이미 발급된" row를 참조한다
+   * (픽업은 소유권 이전일 뿐 재발급이 아님). 마이그레이션 이전 완료(is_available=false)
+   * 과거 드랍은 소급 연결하지 않아 null일 수 있다 — 20260829_2101 */
+  inventory_item_id: string | null
   dropped_at: string
   picked_up_by: string | null
   picked_up_at: string | null
@@ -219,6 +234,36 @@ export interface PoiDropRow {
   expires_at: string | null
   /** PoiDropSource 주석 참고 — 'user'/'system' 둘 다 활성 값 */
   source: PoiDropSource
+}
+
+/**
+ * InventoryItem 한 개체에 점유(custody) 변화가 생길 때마다 쌓이는 append-only 이력.
+ * 8종 이벤트가 상태 전이 다이어그램의 화살표와 1:1 대응한다 — 20260829_2101.
+ * from/to/actor는 유저명을 스냅샷 값으로 저장한다(라이브 FK 조인에만 의존 금지 — 탈퇴 후
+ * *_user_id는 SET NULL로 비지만 *_username은 영구 보존).
+ */
+export type CustodyEventType =
+  | 'Minted'
+  | 'UserDrop'
+  | 'Pickup'
+  | 'Expire'
+  | 'Slot'
+  | 'Unslot'
+  | 'Consume'
+  | 'Orphan'
+
+export interface CustodyEventRow {
+  id: string
+  inventory_item_id: string
+  event_type: CustodyEventType
+  from_user_id: string | null
+  from_username: string | null
+  to_user_id: string | null
+  to_username: string | null
+  actor_user_id: string | null
+  actor_username: string | null
+  poi_id: string | null
+  created_at: string
 }
 
 export interface ItemBookRow {
@@ -1012,11 +1057,18 @@ export interface Database {
       }
       inventory_items: {
         Row: InventoryItemRow
-        Insert: Omit<InventoryItemRow, 'id' | 'serial_number' | 'obtained_at'> & {
+        Insert: Omit<InventoryItemRow, 'id' | 'serial_number' | 'obtained_at' | 'destroyed_at'> & {
           id?: string
           obtained_at?: string
+          destroyed_at?: string | null
         }
         Update: Partial<Omit<InventoryItemRow, 'id'>>
+        Relationships: []
+      }
+      custody_events: {
+        Row: CustodyEventRow
+        Insert: Omit<CustodyEventRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<CustodyEventRow, 'id'>>
         Relationships: []
       }
       item_books: {
@@ -1049,13 +1101,14 @@ export interface Database {
       }
       poi_drops: {
         Row: PoiDropRow
-        Insert: Omit<PoiDropRow, 'id' | 'dropped_at' | 'picked_up_by' | 'picked_up_at' | 'is_available' | 'source'> & {
+        Insert: Omit<PoiDropRow, 'id' | 'dropped_at' | 'picked_up_by' | 'picked_up_at' | 'is_available' | 'source' | 'inventory_item_id'> & {
           id?: string
           dropped_at?: string
           picked_up_by?: string | null
           picked_up_at?: string | null
           is_available?: boolean
           source?: PoiDropSource
+          inventory_item_id?: string | null
         }
         Update: Partial<Omit<PoiDropRow, 'id'>>
         Relationships: []

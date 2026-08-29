@@ -95,6 +95,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .update({ used_slots: Math.max(0, inv.used_slots - 1) })
     .eq('id', inv.id)
 
+  // 4-2) Slot 이벤트 — actor(=소유자) 유저명을 스냅샷으로 기록한다(티켓 20260829_2101).
+  const { data: actorRaw } = await supabase.from('users').select('username').eq('id', user.id).maybeSingle()
+  const custodyEventsQuery = supabase.from('custody_events')
+  const custodyEventPayload = {
+    inventory_item_id,
+    event_type: 'Slot' as const,
+    actor_user_id: user.id,
+    actor_username: (actorRaw as { username: string } | null)?.username ?? null,
+  }
+  // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CustodyEventRow와 일치
+  await custodyEventsQuery.insert(custodyEventPayload)
+
   // 5) 완성 체크: 이 아이템북에 필요한 배지 수 vs 현재 슬롯 수
   const [{ count: totalBadges }, { count: slottedCount }] = await Promise.all([
     supabase.from('badges').select('id', { count: 'exact', head: true }).eq('item_book_id', itemBookId).is('deleted_at', null),
@@ -135,14 +147,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!slot_id) return NextResponse.json({ error: 'slot_id가 필요합니다.' }, { status: 400 })
 
   // slot 조회
-  const { data: slot, error: slotErr } = await supabase
+  const { data: slotRaw, error: slotErr } = await supabase
     .from('user_item_book_slots')
     .select('id, inventory_item_id, user_id')
     .eq('id', slot_id)
     .eq('user_id', user.id)
     .single()
 
-  if (slotErr || !slot) return NextResponse.json({ error: '슬롯을 찾을 수 없습니다.' }, { status: 404 })
+  if (slotErr || !slotRaw) return NextResponse.json({ error: '슬롯을 찾을 수 없습니다.' }, { status: 404 })
+  const slot = slotRaw as { id: string; inventory_item_id: string; user_id: string }
 
   // 해제하면 아이템이 인벤토리로 돌아와 칸을 다시 소비함 — 꽉 찬 상태면 해제 불가
   const { data: invRaw } = await supabase
@@ -174,6 +187,18 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ used_slots: inv.used_slots + 1 })
     .eq('id', inv.id)
+
+  // Unslot 이벤트 — actor(=소유자) 유저명을 스냅샷으로 기록한다(티켓 20260829_2101).
+  const { data: actorRaw } = await supabase.from('users').select('username').eq('id', user.id).maybeSingle()
+  const custodyEventsQuery = supabase.from('custody_events')
+  const custodyEventPayload = {
+    inventory_item_id: slot.inventory_item_id,
+    event_type: 'Unslot' as const,
+    actor_user_id: user.id,
+    actor_username: (actorRaw as { username: string } | null)?.username ?? null,
+  }
+  // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CustodyEventRow와 일치
+  await custodyEventsQuery.insert(custodyEventPayload)
 
   // DELETE에서 itemBookId 사용이 없어도 파라미터는 유지 (라우트 일관성)
   void itemBookId
