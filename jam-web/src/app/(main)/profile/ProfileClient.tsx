@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, getDisplayName } from '@/lib/utils'
 import { d } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
@@ -49,6 +49,7 @@ const MISSION_EVENTS = new Set<ActivityFeedEventType>(['mission_joined', 'missio
 interface FollowUser {
   id: string
   username: string | null
+  display_name: string | null
   avatar_url: string | null
   isFollowing: boolean
 }
@@ -367,14 +368,14 @@ export default function ProfileClient({
             href={`/${u.username}`}
             icon={
               u.avatar_url ? (
-                <Image src={u.avatar_url} alt={u.username ?? ''} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
+                <Image src={u.avatar_url} alt={getDisplayName(u)} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-white/8 flex items-center justify-center">
                   <UserIcon className="w-5 h-5 text-text/60" />
                 </div>
               )
             }
-            title={u.username ?? ''}
+            title={getDisplayName(u)}
             trailing={
               u.id !== currentUserId ? (
                 <Button
@@ -482,7 +483,7 @@ export default function ProfileClient({
           {/* 아이디는 더 이상 truncate하지 않는다 — 줄바꿈을 허용해 전체 노출(20260820_021) */}
           <div className="flex-1 min-w-0 flex flex-col gap-1">
             <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] break-words">
-              {profile?.username ?? d.profile.anonymous}
+              {(profile && getDisplayName(profile)) || d.profile.anonymous}
             </p>
 
             {/* 포인트 — 아이디 아래로 이동, 크기는 기존(--text-heading 44px)의 약 절반인

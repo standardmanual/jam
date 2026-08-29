@@ -24,6 +24,7 @@
  */
 import type { BadgeRarity, NotificationType } from '@/types/database'
 import { d, t } from '@/lib/i18n'
+import { getDisplayName } from '@/lib/utils'
 import { RARITY_LABEL } from '@/lib/rarity'
 import { userFacingReasonLabel } from '@/lib/points/reasons'
 import { unknownNotificationType } from './types'
@@ -37,6 +38,9 @@ import type { RecapActivityBadge, RecapCheckinBadge, RecapItemBadge } from './ty
 export interface NotificationActor {
   id: string
   username: string | null
+  /** 표시 이름(20260830_0113). 없으면 username으로 폴백해서 렌더한다 — nameOf() 참고.
+   *  옵셔널인 이유: 이 타입을 리터럴로 만드는 기존 테스트들이 이 필드를 몰라도 되게 하기 위함. */
+  displayName?: string | null
   avatarUrl: string | null
 }
 
@@ -188,7 +192,7 @@ export function idList(payload: Record<string, unknown>, key: string): string[] 
 }
 
 function nameOf(actor: NotificationActor | null): string {
-  return actor?.username ?? d.profile.anonymous
+  return (actor && getDisplayName({ username: actor.username, display_name: actor.displayName })) || d.profile.anonymous
 }
 
 function points(amount: number): string {

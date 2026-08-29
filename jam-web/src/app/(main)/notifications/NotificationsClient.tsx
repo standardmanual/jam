@@ -26,7 +26,7 @@ import { notificationTokens, type NotificationView } from '@/lib/notifications/m
 import { notificationTarget } from '@/lib/notifications/href'
 import { notificationSection, type NotificationSection } from '@/lib/notifications/section'
 import { unknownNotificationType } from '@/lib/notifications/types'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import { useTopNavData } from '@/lib/topNavData'
 import type { NotificationType } from '@/types/database'
@@ -164,7 +164,7 @@ function NotificationRow({ view }: { view: NotificationView }) {
   if (avatarHref) {
     // 아바타 링크는 이미지/아이콘뿐이라 접근 가능한 이름이 없다 — 스크린리더에 "링크"로만
     // 읽히지 않도록 대상 이름을 붙인다.
-    const actorName = view.actor?.username ?? d.profile.anonymous
+    const actorName = (view.actor && getDisplayName({ username: view.actor.username, display_name: view.actor.displayName })) || d.profile.anonymous
     return (
       <ListRowCard
         icon={
