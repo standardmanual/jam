@@ -2123,6 +2123,7 @@ export type Database = {
           activity_types: string[]
           avatar_url: string | null
           created_at: string
+          display_name: string | null
           email: string
           gps_daily_distance_date: string | null
           gps_daily_distance_km: number
@@ -2141,6 +2142,7 @@ export type Database = {
           activity_types?: string[]
           avatar_url?: string | null
           created_at?: string
+          display_name?: string | null
           email: string
           gps_daily_distance_date?: string | null
           gps_daily_distance_km?: number
@@ -2159,6 +2161,7 @@ export type Database = {
           activity_types?: string[]
           avatar_url?: string | null
           created_at?: string
+          display_name?: string | null
           email?: string
           gps_daily_distance_date?: string | null
           gps_daily_distance_km?: number
@@ -2183,6 +2186,18 @@ export type Database = {
       activate_theme_preset: {
         Args: { p_preset_id: string }
         Returns: undefined
+      }
+      admin_destroy_orphaned_item: {
+        Args: { p_admin_id: string; p_item_id: string }
+        Returns: Json
+      }
+      admin_reassign_orphaned_item: {
+        Args: {
+          p_admin_id: string
+          p_item_id: string
+          p_target_user_id: string
+        }
+        Returns: Json
       }
       apply_faction_background_cascade: {
         Args: { p_faction_id: string }
@@ -2284,6 +2299,18 @@ export type Database = {
       }
       pickup_drop: {
         Args: { p_drop_id: string; p_inventory_id: string; p_picker_id: string }
+        Returns: Json
+      }
+      slot_item_into_book: {
+        Args: {
+          p_inventory_item_id: string
+          p_item_book_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      unslot_item_from_book: {
+        Args: { p_slot_id: string; p_user_id: string }
         Returns: Json
       }
     }
