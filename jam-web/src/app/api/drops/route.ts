@@ -6,7 +6,7 @@ import { reverseGeocodeToRegionName } from '@/lib/poi/reverse-geocode'
 import { loadPipelineCategories, LEVEL_2_FALLBACK_THRESHOLD, type PoiCategoryConfig } from '@/lib/poi/categories'
 import { computeGridKey, shouldSearch, markSearched } from '@/lib/poi/search-cache'
 import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
-import type { PoiRow, InventoryItemRow } from '@/types/database'
+import type { PoiRow } from '@/types/database'
 
 // GET /api/drops?lat=&lng=  — T1(DB) + T2(네이버 지역검색, 카테고리 레벨 기반) 통합
 // POST /api/drops            — 드랍 실행
@@ -243,67 +243,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'inventory_not_found' }, { status: 404 })
   }
 
-  const inventoryId = (invRaw as { id: string; used_slots: number }).id
-  const currentUsedSlots = (invRaw as { id: string; used_slots: number }).used_slots
-
-  const { data: itemRaw, error: itemError } = await service
-    .from('inventory_items')
-    .select('id, badge_id, dropped_at, slotted_in')
-    .eq('id', inventory_item_id)
-    .eq('inventory_id', inventoryId)
-    .single()
-
-  if (itemError || !itemRaw) {
-    // 존재하지 않거나 내 인벤토리 소유가 아닌 아이템 — 둘을 구분해 돌려주지 않는다
-    // (남의 아이템 id 존재 여부를 알려주는 셈이 된다).
-    return NextResponse.json({ error: 'item_not_found' }, { status: 404 })
+  // 20260829_2101: 개체 정체성 모델 — 소유권을 바꾸는 액션은 원자적 락(SELECT ... FOR UPDATE)
+  // 아래서 실행해야 한다(표준 불변식 1). 소유권·상태 확인 + poi_drops 연결 + 소유자 필드
+  // 비우기 + custody_events 기록을 전부 create_user_drop() RPC 하나의 트랜잭션으로 처리한다.
+  // 기존처럼 inventory_items를 소프트 삭제(dropped_at/drop_id)하지 않는다 — 개체는 그대로
+  // 남고 poi_drops.inventory_item_id로 연결될 뿐이다(일련번호 유지).
+  const rpcArgs = {
+    p_dropper_id: user.id,
+    p_poi_id: poi_id,
+    p_inventory_item_id: inventory_item_id,
   }
+  // @ts-expect-error 'create_user_drop' RPC 함수가 src/types/database.ts의 Functions에 미등록
+  // (기존 pickup_drop과 동일한 상황 — 별도 티켓으로 타입 등록 필요)
+  const { data: rpcResult, error: rpcError } = await service.rpc('create_user_drop', rpcArgs)
 
-  const item = itemRaw as Pick<InventoryItemRow, 'id' | 'badge_id' | 'dropped_at'> & { slotted_in: string | null }
-
-  if (item.dropped_at !== null) {
-    return NextResponse.json({ error: 'already_dropped' }, { status: 409 })
-  }
-
-  // 컬렉션에 슬롯된 아이템은 인벤토리에서 이미 빠져나간 상태이므로 드랍 불가.
-  // 사용자 문구(d.drops.dropItemSlotted)는 ko.ts에 있다 — 여기서는 코드만 돌려준다.
-  if (item.slotted_in !== null) {
-    return NextResponse.json({ error: 'item_slotted' }, { status: 409 })
-  }
-
-  // poi_drops INSERT
-  const poiDropsInsertQuery = service.from('poi_drops')
-  const poiDropPayload = {
-    dropper_user_id: user.id,
-    poi_id,
-    badge_id: item.badge_id,
-  }
-  const { data: dropRaw, error: dropError } = await poiDropsInsertQuery
-    // @ts-expect-error Supabase insert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiDropRow와 일치
-    .insert(poiDropPayload)
-    .select('id')
-    .single()
-
-  if (dropError || !dropRaw) {
-    console.error('[drops] poi_drops INSERT 오류:', dropError?.message)
+  if (rpcError) {
+    console.error('[drops] create_user_drop RPC 오류:', rpcError)
     return NextResponse.json({ error: 'drop_failed' }, { status: 500 })
   }
 
-  const dropId = (dropRaw as { id: string }).id
+  const result = rpcResult as { ok: boolean; error?: string; drop_id?: string }
 
-  // inventory_items 논리 삭제
-  await service
-    .from('inventory_items')
-    // @ts-expect-error supabase-js update 파라미터 타입 추론 문제
-    .update({ dropped_at: new Date().toISOString(), drop_id: dropId })
-    .eq('id', inventory_item_id)
+  if (!result.ok) {
+    const statusMap: Record<string, number> = {
+      inventory_not_found: 404,
+      item_not_found: 404,
+      item_slotted: 409,
+      already_dropped: 409,
+    }
+    return NextResponse.json(
+      { error: result.error ?? 'drop_failed' },
+      { status: statusMap[result.error ?? ''] ?? 400 }
+    )
+  }
 
-  // 드랍한 아이템은 더 이상 내 인벤토리에 없으므로 칸 반환
-  await service
-    .from('inventory')
-    // @ts-expect-error supabase-js update 파라미터 타입 추론 문제
-    .update({ used_slots: Math.max(0, currentUsedSlots - 1) })
-    .eq('id', inventoryId)
-
-  return NextResponse.json({ drop_id: dropId })
+  return NextResponse.json({ drop_id: result.drop_id })
 }

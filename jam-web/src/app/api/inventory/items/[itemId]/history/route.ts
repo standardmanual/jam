@@ -10,12 +10,11 @@ export interface HistoryEvent {
   obtained_by?: 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event'
 }
 
-const TIMESTAMP_TOLERANCE_SEC = 120
-
-function timeDiffSec(a: string, b: string): number {
-  return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / 1000
-}
-
+// 20260829_2101: 개체 정체성 모델 도입 이후 poi_drops가 항상 이 개체(inventory_item_id)를
+// 직접 참조하므로, 드랍/픽업 이력은 badge_id + 타임스탬프 근사치로 다른 유저의 다른
+// 개체 행 사이를 추측해 이어붙일 필요가 없어졌다 — poi_drops.inventory_item_id = itemId로
+// 직접 조회하면 이 개체가 실제로 거쳐온 드랍/픽업 사이클 전체가 정확히 나온다(기존의
+// timestamp-tolerance 휴리스틱 제거, 같은 배지의 다른 유저 개체와 혼선될 여지도 사라짐).
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ itemId: string }> }
@@ -28,10 +27,9 @@ export async function GET(
 
   const service = createServiceClient()
 
-  // 1. 현재 아이템 조회
   const { data: itemRaw } = await service
     .from('inventory_items')
-    .select('id, badge_id, obtained_at, obtained_by, dropped_at, inventory_id')
+    .select('id, obtained_at, obtained_by, inventory_id')
     .eq('id', itemId)
     .single()
 
@@ -39,14 +37,15 @@ export async function GET(
 
   const item = itemRaw as {
     id: string
-    badge_id: string
     obtained_at: string
     obtained_by: string
-    dropped_at: string | null
-    inventory_id: string
+    inventory_id: string | null
   }
 
-  // 소유 확인
+  // 소유 확인 — 현재 소유자만 조회 가능. 드랍/고아 상태(inventory_id NULL)면 조회 대상이
+  // 아니므로 자연히 404가 된다(기존과 동일한 원칙 — 본인이 지금 보유 중인 개체만 이력 조회).
+  if (!item.inventory_id) return NextResponse.json({ error: '없음' }, { status: 404 })
+
   const { data: invCheck } = await service
     .from('inventory')
     .select('user_id')
@@ -58,195 +57,82 @@ export async function GET(
   const ownerUserId = (invCheck as { user_id: string }).user_id
   if (ownerUserId !== user.id) return NextResponse.json({ error: '권한 없음' }, { status: 403 })
 
-  // 2. 이 배지 타입의 모든 poi_drops 조회 (유저명 포함)
-  const { data: allDropsRaw } = await service
+  // 이 개체가 실제로 거쳐온 드랍/픽업 사이클 전체(반복 드랍 가능) — 오래된 순
+  const { data: dropsRaw } = await service
     .from('poi_drops')
-    .select(`
-      id,
-      dropper_user_id,
-      poi_id,
-      badge_id,
-      dropped_at,
-      picked_up_by,
-      picked_up_at,
-      is_available,
-      poi:poi_id ( name )
-    `)
-    .eq('badge_id', item.badge_id)
+    .select('id, dropper_user_id, picked_up_by, dropped_at, picked_up_at, poi ( name )')
+    .eq('inventory_item_id', itemId)
     .order('dropped_at', { ascending: true })
 
-  const allDrops = (allDropsRaw ?? []) as Array<{
+  const drops = (dropsRaw ?? []) as unknown as Array<{
     id: string
-    dropper_user_id: string
-    poi_id: string
-    badge_id: string
-    dropped_at: string
+    dropper_user_id: string | null
     picked_up_by: string | null
+    dropped_at: string
     picked_up_at: string | null
-    is_available: boolean
     poi: { name: string } | null
   }>
 
-  // 3. 이 배지 타입의 모든 inventory_items 조회 (최초 발급자 추적)
-  const { data: allItemsRaw } = await service
-    .from('inventory_items')
-    .select('id, inventory_id, obtained_at, obtained_by, dropped_at')
-    .eq('badge_id', item.badge_id)
-    .order('obtained_at', { ascending: true })
-
-  const allItems = (allItemsRaw ?? []) as Array<{
-    id: string
-    inventory_id: string
-    obtained_at: string
-    obtained_by: string
-    dropped_at: string | null
-  }>
-
-  // inventory_id → user_id 매핑
-  const inventoryIds = [...new Set(allItems.map((i) => i.inventory_id))]
-  const { data: inventoriesRaw } = await service
-    .from('inventory')
-    .select('id, user_id')
-    .in('id', inventoryIds)
-
-  const invMap = new Map<string, string>()
-  for (const inv of (inventoriesRaw ?? []) as Array<{ id: string; user_id: string }>) {
-    invMap.set(inv.id, inv.user_id)
-  }
-
-  // 4. 관련 유저 ID 수집 및 username 일괄 조회
+  // 관련 유저명 일괄 조회
   const userIds = new Set<string>([ownerUserId])
-  for (const d of allDrops) {
-    userIds.add(d.dropper_user_id)
-    if (d.picked_up_by) userIds.add(d.picked_up_by)
-  }
-  for (const it of allItems) {
-    const uid = invMap.get(it.inventory_id)
-    if (uid) userIds.add(uid)
+  for (const drop of drops) {
+    if (drop.dropper_user_id) userIds.add(drop.dropper_user_id)
+    if (drop.picked_up_by) userIds.add(drop.picked_up_by)
   }
 
-  const { data: usersRaw } = await service
-    .from('users')
-    .select('id, username')
-    .in('id', [...userIds])
-
+  const { data: usersRaw } = await service.from('users').select('id, username').in('id', [...userIds])
   const userMap = new Map<string, string | null>()
   for (const u of (usersRaw ?? []) as Array<{ id: string; username: string | null }>) {
     userMap.set(u.id, u.username)
   }
 
-  // 5. 체인 추적: 현재 아이템에서 역방향으로 탐색
   const events: HistoryEvent[] = []
-  const visited = new Set<string>()
 
-  // 현재 보유자 획득 이벤트
-  events.push({
-    type: 'obtained',
-    timestamp: item.obtained_at,
-    user_id: ownerUserId,
-    username: userMap.get(ownerUserId) ?? null,
-    obtained_by: item.obtained_by as 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event',
-  })
-
-  // 체인 역추적
-  let currentUserId = ownerUserId
-  let currentObtainedAt = item.obtained_at
-  let currentObtainedBy = item.obtained_by
-
-  for (let depth = 0; depth < 20; depth++) {
-    if (currentObtainedBy !== 'pickup') break
-
-    // 현재 유저가 픽업한 poi_drop 찾기
-    const matchingDrop = allDrops.find(
-      (d) =>
-        d.picked_up_by === currentUserId &&
-        d.picked_up_at != null &&
-        timeDiffSec(d.picked_up_at, currentObtainedAt) < TIMESTAMP_TOLERANCE_SEC &&
-        !visited.has(d.id)
-    )
-
-    if (!matchingDrop) break
-    visited.add(matchingDrop.id)
-
-    // 픽업 이벤트 (현재 유저)
-    events.push({
-      type: 'picked_up',
-      timestamp: matchingDrop.picked_up_at!,
-      user_id: currentUserId,
-      username: userMap.get(currentUserId) ?? null,
-      poi_name: matchingDrop.poi?.name,
-    })
-
-    // 드랍 이벤트 (이전 보유자)
-    events.push({
-      type: 'dropped',
-      timestamp: matchingDrop.dropped_at,
-      user_id: matchingDrop.dropper_user_id,
-      username: userMap.get(matchingDrop.dropper_user_id) ?? null,
-      poi_name: matchingDrop.poi?.name,
-    })
-
-    // 이전 보유자의 획득 이벤트 찾기
-    const dropperUserId = matchingDrop.dropper_user_id
-    const dropperInventory = [...invMap.entries()].filter(([, uid]) => uid === dropperUserId).map(([id]) => id)
-
-    const dropperItem = allItems.find(
-      (it) =>
-        dropperInventory.includes(it.inventory_id) &&
-        it.dropped_at != null &&
-        timeDiffSec(it.dropped_at, matchingDrop.dropped_at) < TIMESTAMP_TOLERANCE_SEC
-    )
-
-    if (!dropperItem) {
-      // 드랍 이전 이력 불명 — 이전 보유자의 첫 획득을 시간 근사로 탐색
-      const dropperFirstItem = allItems.find((it) => {
-        const uid = invMap.get(it.inventory_id)
-        return uid === dropperUserId
+  // 최초 발급(genesis) — 이 개체가 한 번이라도 드랍된 적 있다면, 최초 드랍의 dropper가
+  // 곧 발급 당시 소유자다(드랍 전까지는 소유권 이전이 없으므로). 유저 드랍이 아닌
+  // 최초 드랍(시스템/앰비언트 배치)은 발급 당시 소유자가 없어 obtained 이벤트를 생략한다.
+  const firstDrop = drops[0]
+  if (firstDrop) {
+    if (firstDrop.dropper_user_id) {
+      events.push({
+        type: 'obtained',
+        timestamp: item.obtained_at,
+        user_id: firstDrop.dropper_user_id,
+        username: userMap.get(firstDrop.dropper_user_id) ?? null,
+        obtained_by: item.obtained_by as 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event',
       })
-      if (dropperFirstItem) {
-        events.push({
-          type: 'obtained',
-          timestamp: dropperFirstItem.obtained_at,
-          user_id: dropperUserId,
-          username: userMap.get(dropperUserId) ?? null,
-          obtained_by: dropperFirstItem.obtained_by as 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event',
-        })
-        currentUserId = dropperUserId
-        currentObtainedAt = dropperFirstItem.obtained_at
-        currentObtainedBy = dropperFirstItem.obtained_by
-      }
-      break
     }
-
-    const dropperObtainedBy = dropperItem.obtained_by
+  } else {
     events.push({
       type: 'obtained',
-      timestamp: dropperItem.obtained_at,
-      user_id: dropperUserId,
-      username: userMap.get(dropperUserId) ?? null,
-      obtained_by: dropperObtainedBy as 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event',
+      timestamp: item.obtained_at,
+      user_id: ownerUserId,
+      username: userMap.get(ownerUserId) ?? null,
+      obtained_by: item.obtained_by as 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event',
     })
-
-    currentUserId = dropperUserId
-    currentObtainedAt = dropperItem.obtained_at
-    currentObtainedBy = dropperObtainedBy
   }
 
-  // 픽업으로 획득한 경우, obtained(획득) 기록과 picked_up(픽업) 기록이 같은 순간의
-  // 동일 행위를 서로 다른 테이블(inventory_items vs poi_drops)에서 각각 가져와 중복 표시한다.
-  // 지점 정보까지 담은 picked_up 기록만 남기고 obtained 기록은 제거한다.
-  const dedupedEvents = events.filter((e) => {
-    if (e.type !== 'obtained' || e.obtained_by !== 'pickup') return true
-    return !events.some(
-      (o) =>
-        o.type === 'picked_up' &&
-        o.user_id === e.user_id &&
-        timeDiffSec(o.timestamp, e.timestamp) < TIMESTAMP_TOLERANCE_SEC
-    )
-  })
+  for (const drop of drops) {
+    events.push({
+      type: 'dropped',
+      timestamp: drop.dropped_at,
+      user_id: drop.dropper_user_id ?? '',
+      username: drop.dropper_user_id ? (userMap.get(drop.dropper_user_id) ?? null) : null,
+      poi_name: drop.poi?.name,
+    })
+    if (drop.picked_up_at && drop.picked_up_by) {
+      events.push({
+        type: 'picked_up',
+        timestamp: drop.picked_up_at,
+        user_id: drop.picked_up_by,
+        username: userMap.get(drop.picked_up_by) ?? null,
+        poi_name: drop.poi?.name,
+      })
+    }
+  }
 
   // 최신순 정렬
-  dedupedEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-  return NextResponse.json({ events: dedupedEvents })
+  return NextResponse.json({ events })
 }

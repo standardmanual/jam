@@ -50,15 +50,25 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   // ── 1.5단계: 이 유저가 드랍한 POI를 "타인이" 주워서 보유 중인 inventory_items도 선삭제
-  // (poi_drops 삭제 시 inventory_items.drop_id FK가 NO ACTION이라 남아있으면 위반됨)
+  // (poi_drops 삭제 시 inventory_items.drop_id FK가 NO ACTION이라 남아있으면 위반됨 — 구모델
+  // 레거시 데이터 대상)
+  //
+  // 20260829_2101 추가: 개체 정체성 모델 도입 이후 "이 유저가 드랍했지만 아직 아무도
+  // 안 주워간" 개체는 소유자가 이미 없다(inventory_id NULL) — 1단계(inventory_id 기준
+  // 삭제)가 못 잡는다. poi_drops.inventory_item_id로 직접 찾아 함께 지운다(FK가 CASCADE라
+  // 두어도 되지만, 명시적으로 지워 로그의 deletedItemCount에도 반영되게 한다).
   const { data: droppedRows, error: droppedError } = await supabase
     .from('poi_drops')
-    .select('id')
+    .select('id, inventory_item_id')
     .eq('dropper_user_id', userId)
 
   if (droppedError) return NextResponse.json({ error: droppedError.message }, { status: 500 })
 
   const droppedIds = (droppedRows ?? []).map((row) => (row as { id: string }).id)
+  const droppedInventoryItemIds = (droppedRows ?? [])
+    .map((row) => (row as { inventory_item_id: string | null }).inventory_item_id)
+    .filter((id): id is string => Boolean(id))
+
   if (droppedIds.length > 0) {
     const { error: foreignItemErr } = await supabase
       .from('inventory_items')
@@ -66,8 +76,21 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       .in('drop_id', droppedIds)
     if (foreignItemErr) return NextResponse.json({ error: foreignItemErr.message }, { status: 500 })
   }
+  if (droppedInventoryItemIds.length > 0) {
+    const { error: newModelItemErr } = await supabase
+      .from('inventory_items')
+      .delete()
+      .in('id', droppedInventoryItemIds)
+    if (newModelItemErr) return NextResponse.json({ error: newModelItemErr.message }, { status: 500 })
+  }
 
   // ── 2단계: 병렬 삭제 (inventory_items 제거 후 poi_drops 삭제 안전) ─────────
+  // 20260829_2101 참고: 이 유저가 픽업한 개체는 1단계에서 inventory_id 기준으로 이미
+  // 삭제됐고, poi_drops.inventory_item_id FK가 CASCADE라 그 픽업 기록(poi_drops row)도
+  // 함께 사라진다 — 아래 "픽업 정보만 초기화(행은 유지)" UPDATE는 대상 행이 이미 없어
+  // 사실상 no-op이 된다(에러는 아님). 구모델에서는 드랍한 사람의 원본 row와 픽업한
+  // 사람의 개체가 서로 다른 row라 이 초기화가 유효했으나, 개체 정체성 모델에서는 둘이
+  // 같은 row라 의미가 달라졌다 — 시뮬레이터 반복 테스트 목적상 문제 없다고 판단해 그대로 둔다.
   const poiDropsQuery = supabase.from('poi_drops')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiDropsRow와 일치
   const poiDropsResetQuery = poiDropsQuery.update({ picked_up_by: null, picked_up_at: null, is_available: true }).eq('picked_up_by', userId)

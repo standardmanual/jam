@@ -401,8 +401,6 @@ function PoiCard({
   onSelectDrop,
   onClose,
 }: PoiCardProps) {
-  const isPickupState = (drops?.length ?? 0) > 0
-
   return (
     <Card
       tone="default"
@@ -439,36 +437,6 @@ function PoiCard({
       {!isActive ? null : loading || drops === undefined ? (
         <div className="flex justify-center py-[var(--spacing-24)]">
           <div className="w-5 h-5 border border-current border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : isPickupState ? (
-        /* ===== 픽업 상태: 드랍된 배지 전부 노출 ===== */
-        <div className="flex flex-col gap-2">
-          {drops!.map((drop) => {
-            const rarity = KNOWN_RARITIES.includes(drop.badge_rarity as BadgeRarity)
-              ? (drop.badge_rarity as BadgeRarity)
-              : 'common'
-            return (
-              <button
-                key={drop.id}
-                onClick={() => onSelectDrop?.(drop)}
-                disabled={!isActive}
-                className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left disabled:cursor-default"
-              >
-                <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden bg-white/[0.06] flex items-center justify-center">
-                  {drop.badge_image_url ? (
-                    <Image src={drop.badge_image_url} alt={drop.badge_name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
-                  ) : (
-                    <MedalIcon className="w-5 h-5 text-text/40" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{drop.badge_name}</p>
-                  <RarityBadge rarity={rarity} className="mt-1" />
-                </div>
-                <ChevronRightIcon className="w-5 h-5 text-text/40 shrink-0" />
-              </button>
-            )
-          })}
         </div>
       ) : showInventory ? (
         /* ===== 드랍: 인벤토리 그리드(활성 카드에서만 열림) ===== */
@@ -507,14 +475,47 @@ function PoiCard({
           <InventoryGrid items={dropGridItems} mode="select" onSelect={(item) => onSelectDropItem?.(item)} />
         )
       ) : (
-        /* ===== 드랍: 안내 + [드랍] 버튼(활성 카드에서만) ===== */
-        <div className="flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
-          <EmptyState
-            icon={<PackageIcon className="w-8 h-8" />}
-            title={d.drops.dropEmptyTitle}
-            description={d.drops.dropEmptyBody}
-            style={{ padding: 0 }}
-          />
+        /* ===== 드랍된 배지 목록(있으면) + [여기에 드랍] 액션(항상 함께 노출) — 20260829_2101
+           "No broken objects" 위반 수정: 픽업 가능 목록 유무와 드랍 액션 노출 여부를
+           독립적인 축으로 분리했다. 목록·버튼 레이블·문구는 기존 것을 그대로 재사용. */
+        <div className="flex flex-col gap-[var(--spacing-16)]">
+          {drops.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {drops.map((drop) => {
+                const rarity = KNOWN_RARITIES.includes(drop.badge_rarity as BadgeRarity)
+                  ? (drop.badge_rarity as BadgeRarity)
+                  : 'common'
+                return (
+                  <button
+                    key={drop.id}
+                    onClick={() => onSelectDrop?.(drop)}
+                    disabled={!isActive}
+                    className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left disabled:cursor-default"
+                  >
+                    <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden bg-white/[0.06] flex items-center justify-center">
+                      {drop.badge_image_url ? (
+                        <Image src={drop.badge_image_url} alt={drop.badge_name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
+                      ) : (
+                        <MedalIcon className="w-5 h-5 text-text/40" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{drop.badge_name}</p>
+                      <RarityBadge rarity={rarity} className="mt-1" />
+                    </div>
+                    <ChevronRightIcon className="w-5 h-5 text-text/40 shrink-0" />
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<PackageIcon className="w-8 h-8" />}
+              title={d.drops.dropEmptyTitle}
+              description={d.drops.dropEmptyBody}
+              style={{ padding: 0 }}
+            />
+          )}
           {isActive && (
             <Button fullWidth surface="main" onClick={onOpenInventory}>
               {d.drops.dropHereButton}

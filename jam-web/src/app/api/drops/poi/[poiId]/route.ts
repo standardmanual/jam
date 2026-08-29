@@ -20,9 +20,12 @@ export async function GET(
   const service = createServiceClient()
 
   // poi_drops + badges 조인 (users 조인은 FK 중복으로 별도 조회)
+  // 20260829_2101: inventory_items(serial_prefix, serial_number)도 함께 조회한다 — 개체
+  // 정체성 모델에서는 poi_drops가 항상 이미 발급된 개체를 가리키므로 픽업 전에도
+  // 일련번호가 이미 확정돼 있다(배지 상세 바텀시트의 드랍 컨텍스트 카드에 노출).
   const { data, error } = await service
     .from('poi_drops')
-    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url )`)
+    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url ), inventory_items ( serial_prefix, serial_number )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
     .order('dropped_at', { ascending: true })
@@ -40,6 +43,8 @@ export async function GET(
     dropped_at: string
     dropper_user_id: string | null
     badges: { name: string; rarity: string; image_url: string | null } | null
+    // 마이그레이션 이전에 완료된 과거 드랍은 소급 연결되지 않아 null일 수 있다.
+    inventory_items: { serial_prefix: string | null; serial_number: number } | null
   }
   const rows = (data ?? []) as unknown as PoiDropRow[]
 
@@ -63,6 +68,9 @@ export async function GET(
     badge_image_url: d.badges?.image_url,
     dropper_name: (d.dropper_user_id ? nameById[d.dropper_user_id] : undefined) ?? '익명',
     dropped_at: d.dropped_at,
+    serial: d.inventory_items
+      ? `${d.inventory_items.serial_prefix ?? '????'}${String(d.inventory_items.serial_number).padStart(6, '0')}`
+      : null,
   }))
 
   return NextResponse.json({ drops })
