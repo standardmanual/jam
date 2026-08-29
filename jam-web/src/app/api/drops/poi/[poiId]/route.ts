@@ -25,7 +25,11 @@ export async function GET(
   // 일련번호가 이미 확정돼 있다(배지 상세 바텀시트의 드랍 컨텍스트 카드에 노출).
   const { data, error } = await service
     .from('poi_drops')
-    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url ), inventory_items ( serial_prefix, serial_number )`)
+    // inventory_items와는 FK가 두 갈래다 — 레거시 inventory_items.drop_id(픽업 이력)와
+    // 20260829_2101 개체정체성 모델의 poi_drops.inventory_item_id(현재 드랍이 가리키는
+    // 개체). 관계명을 명시하지 않으면 PostgREST가 PGRST201로 거부해 목록 조회 자체가
+    // 실패한다 — 여기서는 후자를 써야 하므로 명시적으로 지정한다.
+    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
     .order('dropped_at', { ascending: true })
