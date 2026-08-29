@@ -220,33 +220,57 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
     return result
   }
 
-  const payload = inserts.map((row) => ({
-    poi_id: row.poi_id,
-    badge_id: row.badge_id,
-    source: 'system' as const,
-    dropper_user_id: null,
-    expires_at: null,
-  }))
-  const q = supabase.from('poi_drops')
-  // @ts-expect-error Supabase insert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiDropRow와 일치
-  const { error } = await q.insert(payload)
+  // 20260829_2101: 개체 정체성 모델 — 일련번호가 확정되는 시점은 정확히 ①드랍엔진 직접지급
+  // ②시스템(앰비언트) 드랍이 POI에 "배치되는 순간" 둘뿐이다. 이후 픽업은 소유권 이전일 뿐
+  // 재발급이 아니므로, poi_drops row를 만들기 "전"에 InventoryItem을 먼저 선발급(pre-mint)
+  // 한다 — 기존에는 pickup_drop() RPC가 픽업 시점에 새 row를 INSERT해 새 일련번호를
+  // 부여했었다(의도와 반대 동작). obtained_by='ambient_drop'은 assign_random_serial()
+  // 트리거가 일련번호 범위(50,001~999,999)를 판별하는 값이기도 하다(migrations/108).
+  //
+  // 게이트 리뷰 지적(2026-08-29): 선발급(개별 INSERT)과 poi_drops 배치 INSERT를 애플리케이션
+  // 레벨에서 분리 실행하면, 배치 INSERT가 통째로 실패할 때 이미 발급된 inventory_items가
+  // 어디에도 연결되지 못한 채 영구 고아로 남는다(일련번호 점유, custody_events 없음).
+  // mint_and_place_ambient_drop() RPC로 개체 1건 단위(선발급+poi_drops 연결+Minted 기록)를
+  // 원자적 트랜잭션으로 묶어 이 문제를 해소한다(migrations/108).
+  const spawnedDrops: { id: string; inventory_item_id: string; poi_id: string }[] = []
 
-  if (error) {
-    console.error('[ambient-drop] 배치 삽입 오류:', error)
+  for (const row of inserts) {
+    // @ts-expect-error 'mint_and_place_ambient_drop' RPC 함수가 src/types/database.ts의
+    // Functions에 미등록(기존 create_user_drop/pickup_drop과 동일한 상황)
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('mint_and_place_ambient_drop', {
+      p_poi_id: row.poi_id,
+      p_badge_id: row.badge_id,
+    })
+
+    if (rpcError) {
+      console.error('[ambient-drop] mint_and_place_ambient_drop RPC 오류:', rpcError.message, row)
+      continue
+    }
+
+    const result = rpcResult as { ok: boolean; drop_id?: string; inventory_item_id?: string }
+    if (!result.ok || !result.drop_id || !result.inventory_item_id) {
+      console.error('[ambient-drop] 개체 선발급+배치 실패:', result, row)
+      continue
+    }
+
+    spawnedDrops.push({ id: result.drop_id, inventory_item_id: result.inventory_item_id, poi_id: row.poi_id })
+  }
+
+  if (spawnedDrops.length === 0) {
     const result: AmbientDropBatchResult = {
       ...baseResult,
       eligiblePoiCount: candidatePoiIds.length,
       spawned: 0,
       reason: 'insert_failed',
     }
-    await logResult(result, error.message)
+    await logResult(result, '개체 선발급+배치 전부 실패')
     return result
   }
 
   const result: AmbientDropBatchResult = {
     ...baseResult,
     eligiblePoiCount: candidatePoiIds.length,
-    spawned: inserts.length,
+    spawned: spawnedDrops.length,
   }
   await logResult(result)
   return result

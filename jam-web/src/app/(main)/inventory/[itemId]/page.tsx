@@ -16,6 +16,11 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
   if (!itemRaw) notFound()
   const itemData = itemRaw as Pick<InventoryItemRow, 'badge_id' | 'inventory_id'>
 
+  // 20260829_2101: inventory_id가 nullable화됨 — 현재 소유자가 없는 개체(드랍/고아 상태)는
+  // 조회 대상이 아니므로 자연히 notFound() 처리한다(기존과 동일한 원칙: 본인이 지금
+  // 보유 중인 개체만 조회 가능).
+  if (!itemData.inventory_id) notFound()
+
   const { data: inventoryCheck } = await supabase
     .from('inventory')
     .select('id')

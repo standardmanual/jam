@@ -109,30 +109,53 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   }
 
   // 5. 원본 아이템 소각 — 성공/실패 무관 항상 소각
-  // .select()로 실제 삭제된 행을 반환받아 개수를 검증한다: 동일 재료로 조합 API를
-  // 동시에 2회 호출하면 둘 다 2번의 소유권 확인(위 2단계)은 통과할 수 있지만,
-  // DELETE 자체는 Postgres가 행 단위로 원자 처리하므로 먼저 커밋된 요청만
-  // itemIds 전체를 지우고 뒤늦은 요청은 이미 삭제된 행이라 0개(또는 일부)만 지운다.
+  // 20260829_2101: 개체 파괴 방식이 소프트 삭제로 확정됐다(하드 삭제하면 CustodyEvent
+  // 이력이 고아가 된다) — DELETE 대신 destroyed_at을 세운다. 레이스 판정 방식은 동일한
+  // 원리를 유지한다: `.is('destroyed_at', null)`로 필터한 UPDATE는 Postgres가 행 단위로
+  // 원자 처리하므로, 동일 재료로 조합 API를 동시에 2회 호출해도 먼저 커밋된 요청만
+  // itemIds 전체를 파괴하고 뒤늦은 요청은 이미 destroyed_at이 찍힌 행이라 매치되지 않는다.
   // 개수가 요청한 itemIds와 다르면 레이스로 판단해 보상 지급 없이 중단한다.
-  const { data: deletedRows, error: deleteError } = await supabase
+  // inventory_id도 함께 비운다 — 코드베이스 전반의 "owned = inventory_id IS NOT NULL"
+  // 조회 관례가 destroyed_at을 모르는 채로도 파괴된 개체를 자동으로 걸러내게 하기 위함
+  // (migrations/108 주석 참고).
+  const destroyedAt = new Date().toISOString()
+  const { data: destroyedRows, error: destroyError } = await supabase
     .from('inventory_items')
-    .delete()
+    // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemRow와 일치
+    .update({ destroyed_at: destroyedAt, inventory_id: null })
     .in('id', itemIds)
     .eq('inventory_id', inventory.id)
+    .is('destroyed_at', null)
     .select('id')
 
-  if (deleteError) {
-    console.error('[combineItems] 아이템 소각 오류:', deleteError)
+  if (destroyError) {
+    console.error('[combineItems] 아이템 소각 오류:', destroyError)
     return { success: false, reason: 'items_not_found', pointsAwarded: 0, streak: 0 }
   }
 
-  if (!deletedRows || deletedRows.length !== itemIds.length) {
+  if (!destroyedRows || destroyedRows.length !== itemIds.length) {
     console.error('[combineItems] 소각된 행 수 불일치 — 동시 조합 시도로 판단, 처리 중단', {
       expected: itemIds.length,
-      actual: deletedRows?.length ?? 0,
+      actual: destroyedRows?.length ?? 0,
       userId,
     })
     return { success: false, reason: 'items_not_found', pointsAwarded: 0, streak: 0 }
+  }
+
+  // Consume 이벤트 — actor 유저명을 스냅샷으로 기록한다(라이브 조인 의존 금지).
+  const { data: actorRaw } = await supabase.from('users').select('username').eq('id', userId).maybeSingle()
+  const actorUsername = (actorRaw as { username: string } | null)?.username ?? null
+  const consumeEventsQuery = supabase.from('custody_events')
+  const consumeEventsPayload = itemIds.map((id) => ({
+    inventory_item_id: id,
+    event_type: 'Consume' as const,
+    actor_user_id: userId,
+    actor_username: actorUsername,
+  }))
+  // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CustodyEventRow와 일치
+  const { error: consumeEventError } = await consumeEventsQuery.insert(consumeEventsPayload)
+  if (consumeEventError) {
+    console.error('[combineItems] Consume 이벤트 기록 오류:', consumeEventError)
   }
 
   if (matched && matched.result_badge_id) {
