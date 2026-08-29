@@ -1,8 +1,9 @@
 ---
 id: 20260830_0026
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-30
+closed: 2026-08-30
 ---
 
 # [Service] 드랍 페이지 POI 선택 시 드랍 목록 조회 실패 (PGRST201 FK 모호성) 수정
@@ -72,9 +73,9 @@ jam-web/src/app/api/drops/poi/[poiId]/route.ts
 해당 없음 — 에러 메시지 문구 변경 없음, 발생 자체를 막는 수정.
 
 ### 배포 정보
-- 배포일: (사용자 승인 후 오케스트레이터가 병합 시 기록)
-- 환경: production
-- 커밋: (아래 push 브랜치 참조)
+- 배포일: 2026-08-30
+- 환경: staging
+- 커밋: f38aaf5c (구현), staging 머지 완료 — 프로덕션 미배포, `/jam-ship`으로 별도 진행 필요
 
 ### 주요 의사결정 / 핵심 메모
 - 워킹트리에 이 티켓과 무관한 다른 진행 중 티켓(20260829_2150 고아 아이템배지 관리 기능)의
