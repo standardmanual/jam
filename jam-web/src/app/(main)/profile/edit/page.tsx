@@ -35,6 +35,11 @@ export default function ProfileEditPage() {
   const [checkStatus, setCheckStatus] = useState<CheckStatus>('idle')
   const [checkMessage, setCheckMessage] = useState('')
 
+  // 이름(display_name) — 20260830_0113: username과 달리 필수값 아님·형식 제한 없음·
+  // 수정 횟수 제한 없음. 중복확인도 없어 debounce·상태머신이 필요 없다.
+  const [currentDisplayName, setCurrentDisplayName] = useState<string | null>(null)
+  const [nameInput, setNameInput] = useState('')
+
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
 
@@ -56,10 +61,13 @@ export default function ProfileEditPage() {
         .single()
         .then(({ data: raw }) => {
           if (cancelled) return
-          const data = raw as { username: string | null; avatar_url: string | null } | null
+          const data = raw as { username: string | null; display_name: string | null; avatar_url: string | null } | null
           const uname = data?.username ?? null
           setCurrentUsername(uname)
           setUsernameInput(uname ?? '')
+          const dname = data?.display_name ?? null
+          setCurrentDisplayName(dname)
+          setNameInput(dname ?? '')
           setAvatarUrl(data?.avatar_url ?? null)
           setLoading(false)
         })
@@ -152,20 +160,31 @@ export default function ProfileEditPage() {
     }, 500)
   }
 
+  // 이름 입력 핸들러 — 형식 제한 없음(인스타그램 정책 동일), maxLength로 30자에서 조용히 멈춘다
+  function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setNameInput(e.target.value)
+    setSaveError('')
+  }
+
   // username이 변경됐는지 확인
   const usernameChanged = usernameInput !== (currentUsername ?? '') && usernameInput !== ''
+  // 이름은 필수값이 아니라 빈 문자열로 지우는 것도 유효한 변경(= 폴백 상태로 전환)이다
+  const nameChanged = nameInput.trim() !== (currentDisplayName ?? '')
 
-  const canSave = !saving && !uploading && usernameChanged && (checkStatus === 'available')
+  const canSave = !saving && !uploading && (nameChanged || (usernameChanged && checkStatus === 'available'))
 
   async function handleSave() {
     if (!canSave) return
     setSaving(true)
     setSaveError('')
     try {
+      const payload: { username?: string; display_name?: string } = {}
+      if (usernameChanged && checkStatus === 'available') payload.username = usernameInput
+      if (nameChanged) payload.display_name = nameInput
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: usernameInput }),
+        body: JSON.stringify(payload),
       })
       const json = await res.json() as { success?: boolean; error?: string }
       if (json.success) {
@@ -274,6 +293,23 @@ export default function ProfileEditPage() {
           >
             {initialMessage}
           </p>
+        </div>
+
+        {/* 이름 편집 — 20260830_0113: username과 동일한 커스텀 t-input 마크업을 재사용한다
+            (한 화면 안에서 입력 스타일이 갈라지지 않도록 — MODULAR Input 신규 도입 없음).
+            필수값이 아니고 중복확인·형식 에러가 없어 상태머신 없이 단순 controlled input이다. */}
+        <div className="t-input-wrap flex flex-col gap-2">
+          <label className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/70">{d.profileEdit.nameLabel}</label>
+          <div className="t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow shadow-[inset_0_0_0_1px_var(--color-border)]">
+            <input
+              type="text"
+              value={nameInput}
+              onChange={handleNameChange}
+              placeholder={currentDisplayName ?? d.profileEdit.namePlaceholder}
+              maxLength={30}
+              className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
+            />
+          </div>
         </div>
 
         {/* 저장 버튼 */}

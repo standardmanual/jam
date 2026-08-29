@@ -50,12 +50,13 @@ export interface NotificationPage {
 interface UserBrief {
   id: string
   username: string | null
+  display_name: string | null
   avatar_url: string | null
 }
 
 function toActor(row: UserBrief | undefined): NotificationActor | null {
   if (!row) return null
-  return { id: row.id, username: row.username, avatarUrl: row.avatar_url }
+  return { id: row.id, username: row.username, displayName: row.display_name, avatarUrl: row.avatar_url }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -183,7 +184,7 @@ export async function hydrateNotifications(
   const hasWarningCandidate = rows.some((r) => WARNING_CANDIDATE_TYPES.has(r.type))
 
   const [usersRes, stravaRes, inventoryRes] = await Promise.all([
-    supabase.from('users').select('id, username, avatar_url').in('id', [...userIds]),
+    supabase.from('users').select('id, username, display_name, avatar_url').in('id', [...userIds]),
     needsStrava
       ? supabase
           .from('strava_connections')
@@ -217,7 +218,7 @@ export async function hydrateNotifications(
 
   // 목록 전체가 같은 시점으로 판정되도록 한 번만 캡처한다
   const now = new Date()
-  const me = toActor(userById.get(userId)) ?? { id: userId, username: null, avatarUrl: null }
+  const me = toActor(userById.get(userId)) ?? { id: userId, username: null, displayName: null, avatarUrl: null }
 
   const views = rows.map((row) => ({
     id: row.id,

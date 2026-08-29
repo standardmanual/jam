@@ -34,6 +34,8 @@ export interface UserRow {
   id: string
   email: string
   username: string | null
+  /** 자유 형식 표시 이름(20260830_0113). NULL이면 화면 렌더 시점에 username으로 폴백 — DB엔 복사해 채우지 않는다. */
+  display_name: string | null
   avatar_url: string | null
   region: string
   activity_types: ActivityType[]

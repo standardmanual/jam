@@ -53,11 +53,11 @@ export async function GET(
   // 유저 정보 조회
   const { data: usersRaw } = await service
     .from('users')
-    .select('id, username, avatar_url')
+    .select('id, username, display_name, avatar_url')
     .in('id', userIds)
 
-  const userMap = new Map<string, Pick<UserRow, 'id' | 'username' | 'avatar_url'>>()
-  for (const u of (usersRaw ?? []) as Pick<UserRow, 'id' | 'username' | 'avatar_url'>[]) {
+  const userMap = new Map<string, Pick<UserRow, 'id' | 'username' | 'display_name' | 'avatar_url'>>()
+  for (const u of (usersRaw ?? []) as Pick<UserRow, 'id' | 'username' | 'display_name' | 'avatar_url'>[]) {
     userMap.set(u.id, u)
   }
 
@@ -82,6 +82,7 @@ export async function GET(
       return {
         id: u.id,
         username: u.username,
+        display_name: u.display_name,
         avatar_url: u.avatar_url,
         isFollowing: followingSet.has(u.id),
       }

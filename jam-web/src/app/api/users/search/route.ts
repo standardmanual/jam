@@ -6,6 +6,7 @@ import { excludedTestUserIds } from '@/lib/env/test-accounts'
 interface UserSearchResult {
   id: string
   username: string
+  display_name: string | null
   avatar_url: string | null
   region: string | null
   activity_types: string[] | null
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await service
     .from('users')
-    .select('id, username, avatar_url, region, activity_types')
+    .select('id, username, display_name, avatar_url, region, activity_types')
     .not('username', 'is', null)
     .or(`username.ilike.${pattern},email.ilike.${pattern}`)
     .limit(30)
@@ -59,12 +60,13 @@ export async function GET(req: NextRequest) {
   const excludedIds = excludedTestUserIds()
   const rows = ((data ?? []) as Pick<
     UserRow,
-    'id' | 'username' | 'avatar_url' | 'region' | 'activity_types'
+    'id' | 'username' | 'display_name' | 'avatar_url' | 'region' | 'activity_types'
   >[]).filter((row) => !excludedIds.includes(row.id))
   const results: UserSearchResult[] = rows
     .map((row) => ({
       id: row.id,
       username: row.username as string,
+      display_name: row.display_name ?? null,
       avatar_url: row.avatar_url ?? null,
       region: row.region ?? null,
       activity_types: row.activity_types ?? null,
