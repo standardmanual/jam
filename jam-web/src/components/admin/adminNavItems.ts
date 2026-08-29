@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import {
   IconLayoutDashboard,
   IconAward,
+  IconBarcode,
   IconMapPin,
   IconBook,
   IconWorld,
@@ -30,6 +31,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: '콘텐츠 관리',
     items: [
       { href: '/admin/badges', label: '배지 관리', icon: IconAward },
+      { href: '/admin/item-badges', label: '아이템배지 발급 현황', icon: IconBarcode },
       { href: '/admin/poi', label: 'POI 관리', icon: IconMapPin },
       { href: '/admin/itembooks', label: '컬렉션', icon: IconBook },
       { href: '/admin/factions', label: '세계관', icon: IconWorld },
