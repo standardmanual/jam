@@ -12,6 +12,8 @@ import {
   RARITY_BADGE_COLOR,
 } from '@/lib/admin/item-badge-status'
 import { CustodyTimeline } from './CustodyTimeline'
+import { DestroyOrphanedAction } from '../../_orphaned-actions/DestroyOrphanedAction'
+import { ReassignOrphanedAction } from '../../_orphaned-actions/ReassignOrphanedAction'
 
 interface Props {
   params: Promise<{ badgeId: string; itemId: string }>
@@ -199,9 +201,17 @@ export default async function ItemBadgeDetailPage({ params }: Props) {
             {poi.name}
           </Link>
         ) : status === 'Orphaned' ? (
-          <span>고아(어드민 보관 중) — 관리 기능은 별도 티켓(20260829_2150) 참고</span>
+          <span>고아(어드민 보관 중)</span>
         ) : (
           <span className="text-muted-foreground">—</span>
+        )}
+
+        {/* 고아 관리 액션(티켓 20260829_2150) — 단건. 목록 화면의 일괄 액션과 동일 컴포넌트 재사용 */}
+        {status === 'Orphaned' && (
+          <div className="flex gap-2 pt-3">
+            <DestroyOrphanedAction items={[{ id: item.id, serialLabel }]} label="영구 폐기" />
+            <ReassignOrphanedAction items={[{ id: item.id, serialLabel }]} label="재배정" />
+          </div>
         )}
 
         {item.destroyed_at && (

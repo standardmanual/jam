@@ -6,18 +6,23 @@ import {
   createColumnHelper,
   useTable,
   type ColumnVisibilityState,
+  type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
+import { Checkbox } from '@/components/admin/ui/checkbox'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
 import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
+import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
 import {
   ITEM_BADGE_STATUS_LABEL,
   ITEM_BADGE_STATUS_COLOR,
   formatDateTime,
   type ItemBadgeStatus,
 } from '@/lib/admin/item-badge-status'
+import { DestroyOrphanedAction } from '../_orphaned-actions/DestroyOrphanedAction'
+import { ReassignOrphanedAction } from '../_orphaned-actions/ReassignOrphanedAction'
 
 export interface SerialListRow {
   id: string
@@ -49,16 +54,40 @@ const PILL_CLASS = 'inline-block px-2 py-0.5 text-xs font-semibold rounded white
 
 /**
  * 배지별 발급 일련번호 목록 테이블(티켓 20260829_2139) — 다른 어드민 화면과 동일하게
- * 공용 Data Table(`admin/data-table`)을 재사용한다(열린 결정 2). 읽기 전용 조회 화면이라
- * 행 선택/일괄 액션은 없다.
+ * 공용 Data Table(`admin/data-table`)을 재사용한다(열린 결정 2).
+ *
+ * 행 선택/일괄 액션(20260829_2150) — `Orphaned` 상태 행만 다중 선택 가능하다
+ * (`enableRowSelection` 콜백). 선택 시 일괄 폐기/일괄 재배정 액션이 노출된다
+ * (`_orphaned-actions/`, 상세 페이지의 단건 액션과 동일 컴포넌트 재사용).
  */
 export function SerialListTable({ rows, badgeId }: SerialListTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
 
   const columns = useMemo(
     () =>
       columnHelper.columns([
+        columnHelper.display({
+          id: 'select',
+          header: ({ table }) => (
+            <Checkbox
+              checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+              onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+              aria-label="전체 선택 (고아 상태만)"
+            />
+          ),
+          cell: ({ row }) =>
+            row.getCanSelect() ? (
+              <Checkbox
+                checked={row.getIsSelected()}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label="행 선택"
+              />
+            ) : null,
+          enableSorting: false,
+          enableHiding: false,
+        }),
         columnHelper.accessor('serialLabel', {
           id: 'serial',
           header: '일련번호',
@@ -145,16 +174,39 @@ export function SerialListTable({ rows, badgeId }: SerialListTableProps) {
     data: rows,
     columns,
     getRowId: (row) => row.id,
-    state: { sorting, columnVisibility },
+    // Orphaned 상태 행만 선택 가능 — 나머지 상태는 이 화면이 제공하는 관리 액션의
+    // 대상이 아니다(티켓 20260829_2150 §"진입 상태는 항상 Orphaned 하나뿐").
+    enableRowSelection: (row) => row.original.status === 'Orphaned',
+    state: { sorting, rowSelection, columnVisibility },
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
   })
+
+  const selectedItems = table.getSelectedRowModel().rows.map((row) => ({
+    id: row.original.id,
+    serialLabel: row.original.serialLabel,
+  }))
 
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
         <DataTableViewOptions table={table} />
       </div>
+
+      <DataTableBulkActionBar count={selectedItems.length} onClear={() => setRowSelection({})}>
+        <DestroyOrphanedAction
+          items={selectedItems}
+          label="일괄 폐기"
+          onDone={() => setRowSelection({})}
+        />
+        <ReassignOrphanedAction
+          items={selectedItems}
+          label="일괄 재배정"
+          onDone={() => setRowSelection({})}
+        />
+      </DataTableBulkActionBar>
+
       <DataTable table={table} columnCount={columns.length} emptyMessage="조건에 맞는 결과가 없습니다." />
     </div>
   )
