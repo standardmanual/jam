@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
+// 티켓 20260830_0057: 장착/해제는 각각 원자적 RPC(slot_item_into_book/
+// unslot_item_from_book, SELECT ... FOR UPDATE 기반) 한 번 호출로 처리한다.
+// 이 라우트는 인증 확인 + RPC 호출 + 에러 코드 → HTTP 상태 매핑만 담당한다
+// (마이그레이션 111_item_slot_atomic_rpc.sql). 기존 에러 메시지·상태 코드는
+// 그대로 보존해 클라이언트 계약을 깨지 않는다.
+
+const SLOT_ERROR_STATUS_MAP: Record<string, { status: number; message: string }> = {
+  inventory_not_found: { status: 404, message: '인벤토리를 찾을 수 없습니다.' },
+  item_not_found: { status: 404, message: '인벤토리 아이템을 찾을 수 없습니다.' },
+  already_dropped: { status: 409, message: '이미 드랍된 아이템입니다.' },
+  not_owner: { status: 403, message: '본인의 아이템만 슬롯에 넣을 수 있습니다.' },
+  already_slotted: { status: 409, message: '이미 슬롯에 장착된 아이템입니다.' },
+  badge_not_found: { status: 404, message: '배지를 찾을 수 없습니다.' },
+  wrong_item_book: { status: 400, message: '이 배지는 해당 컬렉션에 속하지 않아요.' },
+  slot_insert_failed: { status: 500, message: '슬롯 등록에 실패했습니다.' },
+}
+
+const UNSLOT_ERROR_STATUS_MAP: Record<string, { status: number; message: string }> = {
+  slot_not_found: { status: 404, message: '슬롯을 찾을 수 없습니다.' },
+  inventory_not_found: { status: 404, message: '인벤토리를 찾을 수 없습니다.' },
+  inventory_full: {
+    status: 409,
+    message: '인벤토리가 꽉 차 해제할 수 없어요. 인벤토리를 늘려보세요.',
+  },
+  item_not_found: { status: 404, message: '인벤토리 아이템을 찾을 수 없습니다.' },
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: itemBookId } = await params
   const supabase = createServiceClient()
@@ -21,113 +48,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'inventory_item_id가 필요합니다.' }, { status: 400 })
   }
 
-  // 1) inventory_item 조회 → badge_id 확인
-  const { data: invItemRaw, error: invErr } = await supabase
-    .from('inventory_items')
-    .select('id, badge_id, inventory_id, slotted_in, dropped_at')
-    .eq('id', inventory_item_id)
-    .single()
-  const invItem = invItemRaw as {
-    id: string
-    badge_id: string
-    inventory_id: string
-    slotted_in: string | null
-    dropped_at: string | null
-  } | null
+  const rpcArgs = {
+    p_user_id: user.id,
+    p_item_book_id: itemBookId,
+    p_inventory_item_id: inventory_item_id,
+  }
+  // @ts-expect-error 'slot_item_into_book' RPC 함수가 src/types/database.ts의 Functions에
+  // 미등록(기존 create_user_drop/pickup_drop과 동일한 상황 — 별도 티켓으로 타입 등록 필요)
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('slot_item_into_book', rpcArgs)
 
-  if (invErr || !invItem) return NextResponse.json({ error: '인벤토리 아이템을 찾을 수 없습니다.' }, { status: 404 })
-
-  // 소유자 확인: inventory.user_id === 현재 유저
-  const { data: invRaw } = await supabase
-    .from('inventory')
-    .select('id, user_id, used_slots')
-    .eq('id', invItem.inventory_id)
-    .single()
-  const inv = invRaw as { id: string; user_id: string; used_slots: number } | null
-  if (!inv || inv.user_id !== user.id) {
-    return NextResponse.json({ error: '본인의 아이템만 슬롯에 넣을 수 있습니다.' }, { status: 403 })
+  if (rpcError) {
+    console.error('[itembooks/slot] slot_item_into_book RPC 오류:', rpcError)
+    return NextResponse.json({ error: '슬롯 등록에 실패했습니다.' }, { status: 500 })
   }
 
-  if (invItem.slotted_in) return NextResponse.json({ error: '이미 슬롯에 장착된 아이템입니다.' }, { status: 409 })
-  // 이미 드랍(다른 유저에게 넘김)된 아이템은 더 이상 내 소유가 아니므로 슬롯 불가
-  if (invItem.dropped_at) return NextResponse.json({ error: '이미 드랍된 아이템입니다.' }, { status: 409 })
+  const result = rpcResult as { ok: boolean; error?: string; slot?: unknown }
 
-  // 2) 아이템이 이 아이템북 소속인지 확인 (badges.item_book_id)
-  const { data: badgeRaw, error: badgeErr } = await supabase
-    .from('badges')
-    .select('id, item_book_id')
-    .eq('id', invItem.badge_id)
-    .single()
-  const badge = badgeRaw as { id: string; item_book_id: string | null } | null
-
-  if (badgeErr || !badge) return NextResponse.json({ error: '배지를 찾을 수 없습니다.' }, { status: 404 })
-  if (badge.item_book_id !== itemBookId) {
-    return NextResponse.json({ error: '이 배지는 해당 컬렉션에 속하지 않아요.' }, { status: 400 })
+  if (!result.ok) {
+    const mapped = SLOT_ERROR_STATUS_MAP[result.error ?? '']
+    if (!mapped) {
+      console.error('[itembooks/slot] slot_item_into_book 알 수 없는 에러 코드:', result.error)
+      return NextResponse.json({ error: '슬롯 등록에 실패했습니다.' }, { status: 500 })
+    }
+    return NextResponse.json({ error: mapped.message }, { status: mapped.status })
   }
 
-  // 3) user_item_book_slots INSERT
-  const slotPayload = {
-    user_id: user.id,
-    item_book_id: itemBookId,
-    badge_id: invItem.badge_id,
-    inventory_item_id,
-  }
-  const { data: slot, error: slotErr } = await supabase
-    .from('user_item_book_slots')
-    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserItemBookSlotRow와 일치
-    .insert(slotPayload)
-    .select()
-    .single()
-
-  if (slotErr) return NextResponse.json({ error: slotErr.message }, { status: 500 })
-
-  // 4) inventory_items.slotted_in 업데이트
-  await supabase
-    .from('inventory_items')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
-    .update({ slotted_in: slot.id })
-    .eq('id', inventory_item_id)
-
-  // 4-1) 아이템북에 들어간 아이템은 인벤토리 칸을 더 이상 차지하지 않음 — 칸 반환
-  await supabase
-    .from('inventory')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
-    .update({ used_slots: Math.max(0, inv.used_slots - 1) })
-    .eq('id', inv.id)
-
-  // 4-2) Slot 이벤트 — actor(=소유자) 유저명을 스냅샷으로 기록한다(티켓 20260829_2101).
-  const { data: actorRaw } = await supabase.from('users').select('username').eq('id', user.id).maybeSingle()
-  const custodyEventsQuery = supabase.from('custody_events')
-  const custodyEventPayload = {
-    inventory_item_id,
-    event_type: 'Slot' as const,
-    actor_user_id: user.id,
-    actor_username: (actorRaw as { username: string } | null)?.username ?? null,
-  }
-  // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CustodyEventRow와 일치
-  await custodyEventsQuery.insert(custodyEventPayload)
-
-  // 5) 완성 체크: 이 아이템북에 필요한 배지 수 vs 현재 슬롯 수
-  const [{ count: totalBadges }, { count: slottedCount }] = await Promise.all([
-    supabase.from('badges').select('id', { count: 'exact', head: true }).eq('item_book_id', itemBookId).is('deleted_at', null),
-    supabase
-      .from('user_item_book_slots')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('item_book_id', itemBookId),
-  ])
-
-  if (totalBadges && slottedCount && slottedCount >= totalBadges) {
-    // 아이템북 완성! — 이미 완성된 경우 무시 (upsert + ignoreDuplicates)
-    const completionsTable = supabase.from('user_item_book_completions')
-    // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 user_item_book_completions 스키마와 일치
-    await completionsTable.upsert({ user_id: user.id, item_book_id: itemBookId }, {
-      onConflict: 'user_id,item_book_id',
-      ignoreDuplicates: true,
-    })
-  }
-
-  return NextResponse.json({ slot }, { status: 201 })
+  return NextResponse.json({ slot: result.slot }, { status: 201 })
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -146,59 +92,26 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   if (!slot_id) return NextResponse.json({ error: 'slot_id가 필요합니다.' }, { status: 400 })
 
-  // slot 조회
-  const { data: slotRaw, error: slotErr } = await supabase
-    .from('user_item_book_slots')
-    .select('id, inventory_item_id, user_id')
-    .eq('id', slot_id)
-    .eq('user_id', user.id)
-    .single()
+  const rpcArgs = { p_user_id: user.id, p_slot_id: slot_id }
+  // @ts-expect-error 'unslot_item_from_book' RPC 함수가 src/types/database.ts의 Functions에
+  // 미등록(기존 create_user_drop/pickup_drop과 동일한 상황 — 별도 티켓으로 타입 등록 필요)
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('unslot_item_from_book', rpcArgs)
 
-  if (slotErr || !slotRaw) return NextResponse.json({ error: '슬롯을 찾을 수 없습니다.' }, { status: 404 })
-  const slot = slotRaw as { id: string; inventory_item_id: string; user_id: string }
-
-  // 해제하면 아이템이 인벤토리로 돌아와 칸을 다시 소비함 — 꽉 찬 상태면 해제 불가
-  const { data: invRaw } = await supabase
-    .from('inventory')
-    .select('id, used_slots, max_slots')
-    .eq('user_id', user.id)
-    .single()
-  const inv = invRaw as { id: string; used_slots: number; max_slots: number } | null
-  if (!inv) return NextResponse.json({ error: '인벤토리를 찾을 수 없습니다.' }, { status: 404 })
-  if (inv.used_slots >= inv.max_slots) {
-    return NextResponse.json(
-      { error: '인벤토리가 꽉 차 해제할 수 없어요. 인벤토리를 늘려보세요.' },
-      { status: 409 }
-    )
+  if (rpcError) {
+    console.error('[itembooks/slot] unslot_item_from_book RPC 오류:', rpcError)
+    return NextResponse.json({ error: '슬롯 해제에 실패했습니다.' }, { status: 500 })
   }
 
-  // inventory_items.slotted_in = NULL
-  const invItemsTable = supabase.from('inventory_items')
-  // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemRow와 일치
-  await invItemsTable.update({ slotted_in: null }).eq('id', slot.inventory_item_id)
+  const result = rpcResult as { ok: boolean; error?: string }
 
-  // slot row 삭제
-  const { error: delErr } = await supabase.from('user_item_book_slots').delete().eq('id', slot_id)
-  if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
-
-  // 인벤토리 칸 다시 소비 (완성 기록 user_item_book_completions는 그대로 유지 — 물리적 상태만 변경)
-  await supabase
-    .from('inventory')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
-    .update({ used_slots: inv.used_slots + 1 })
-    .eq('id', inv.id)
-
-  // Unslot 이벤트 — actor(=소유자) 유저명을 스냅샷으로 기록한다(티켓 20260829_2101).
-  const { data: actorRaw } = await supabase.from('users').select('username').eq('id', user.id).maybeSingle()
-  const custodyEventsQuery = supabase.from('custody_events')
-  const custodyEventPayload = {
-    inventory_item_id: slot.inventory_item_id,
-    event_type: 'Unslot' as const,
-    actor_user_id: user.id,
-    actor_username: (actorRaw as { username: string } | null)?.username ?? null,
+  if (!result.ok) {
+    const mapped = UNSLOT_ERROR_STATUS_MAP[result.error ?? '']
+    if (!mapped) {
+      console.error('[itembooks/slot] unslot_item_from_book 알 수 없는 에러 코드:', result.error)
+      return NextResponse.json({ error: '슬롯 해제에 실패했습니다.' }, { status: 500 })
+    }
+    return NextResponse.json({ error: mapped.message }, { status: mapped.status })
   }
-  // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CustodyEventRow와 일치
-  await custodyEventsQuery.insert(custodyEventPayload)
 
   // DELETE에서 itemBookId 사용이 없어도 파라미터는 유지 (라우트 일관성)
   void itemBookId
