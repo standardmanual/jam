@@ -1,0 +1,128 @@
+---
+id: 20260830_0057
+category: BadgeEngine
+status: OPEN
+created: 2026-08-30
+closed:
+---
+
+# [BadgeEngine] 아이템배지 슬롯 장착·해제 API 레이스 컨디션 수정 — 원자적 RPC로 전환
+
+## 배경 / 문제 정의
+`jam-web/src/app/api/itembooks/[id]/slot/route.ts`의 POST(장착)·DELETE(해제) 핸들러가
+원자적 락 없이 순차적인 여러 Supabase REST 호출(조회 → INSERT/UPDATE → UPDATE)로 구성돼
+있다.
+
+`jam-web/supabase/migrations/108_item_identity_custody_model.sql`이 도입한
+**"표준 불변식 1: 원자적 소유권 이전"** 패턴 — `SELECT ... FOR UPDATE` 기반 단일 RPC —
+을 `create_user_drop()`·`pickup_drop()`·`admin_reassign_orphaned_item()` 등은 따르고
+있지만, 이 슬롯 라우트에는 적용돼 있지 않다.
+
+**레이스 시나리오**: 같은 유저가 거의 동시에 "슬롯 장착"과 "드랍"을 같은 인벤토리
+아이템에 요청하면 —
+1. 슬롯 POST가 `inventory_items.slotted_in`이 NULL임을 확인
+2. 그 직후 `create_user_drop()` RPC가 락을 잡고 `inventory_id`를 NULL로 전이·커밋
+3. 슬롯 POST가 `inventory_id` 상태를 재확인하지 않은 채 `slotted_in`을 새 슬롯 id로 UPDATE
+
+결과적으로 `inventory_id = NULL`(드랍됨)이면서 `slotted_in`이 non-null(다른 유저 슬롯
+참조)인 모순 상태가 발생한다. 이후 다른 유저가 픽업하면 `deriveItemBadgeStatus()`가
+잘못된 Slotted 상태를 표시하고, 아이템북 완성 판정
+(`jam-web/src/lib/itembook/completable.ts`) 로직도 오염될 수 있다.
+
+이 발견은 조사 과정에서 정리됐다(관련 조사 티켓을 확인했으나 저장소에서 파일을 찾지
+못함 — 병렬 세션에서 아직 커밋되지 않았을 가능성. 이 티켓 본문에 조사 결론을 그대로
+옮겨 자기 완결적으로 남긴다).
+
+## 상세 요구사항
+
+### 서비스/코드베이스 관점
+- POST(장착)·DELETE(해제) 핸들러를 각각 단일 RPC(`SELECT ... FOR UPDATE` 기반,
+  `SECURITY DEFINER`)로 재작성한다. `create_user_drop()`/`pickup_drop()`과 동일한
+  락 순서·에러 코드 매핑 관례를 따른다.
+  - 장착 RPC: `inventory_items` 행 락 → `inventory_id`/`slotted_in`/`dropped_at`(또는
+    현재 컬럼 기준 드랍 여부) 재확인 → `user_item_book_slots` INSERT →
+    `inventory_items.slotted_in` UPDATE → `inventory.used_slots` 차감 →
+    `custody_events` Slot 기록 → 완성 판정(upsert)까지 한 트랜잭션 안에서 처리
+  - 해제 RPC: `user_item_book_slots` 락 → `inventory_items` 락 → `inventory` 락 →
+    `slotted_in = NULL` → slot row 삭제 → `used_slots` 증가 → `custody_events`
+    Unslot 기록까지 한 트랜잭션 안에서 처리
+- route.ts는 인증(Authorization 헤더 → `auth.getUser`)과 RPC 호출·에러 매핑만 담당하도록
+  얇게 유지한다. 기존 에러 메시지·HTTP 상태 코드(401/403/404/409/400/500)는 그대로
+  보존해 클라이언트 계약을 깨지 않는다.
+- 마이그레이션 파일: `jam-web/supabase/migrations/1XX_설명.sql` (다음 사용 가능 번호로
+  신규 생성 — 실행 전 `mcp__supabase__list_migrations`로 원격 기준 최신 번호 재확인)
+
+### UI/UX 관점 (해당 시)
+- 해당 없음 (에러 메시지·상태 코드 불변 조건이므로 클라이언트 변경 없음)
+
+### 컨텐츠 관점 (해당 시)
+- 해당 없음
+
+## 구현 계획
+1. 마이그레이션 108의 `create_user_drop()`/`pickup_drop()` 함수 본문을 템플릿으로 삼아
+   `slot_item_into_book()`/`unslot_item_from_book()`(가칭) RPC 작성
+2. route.ts의 POST/DELETE를 RPC 호출 1회 + 에러 코드 → HTTP 상태 매핑으로 축소
+3. 기존 순차 로직에 있던 모든 검증(소유자 확인, 이미 장착됨, 이미 드랍됨, 아이템북 소속
+   확인, 인벤토리 꽉 참 등)을 RPC 내부로 누락 없이 이관
+4. 회귀 확인: 정상 장착/해제 흐름 + 레이스 시나리오(가능하면 동시 요청 재현)로
+   모순 상태가 더 이상 발생하지 않는지 검증
+
+---
+## 완료 기록 *(작업 완료 후 작성)*
+
+### 구현 내용 요약
+`slot_item_into_book()`/`unslot_item_from_book()` 2종 RPC를 신규 작성했다(`SELECT ...
+FOR UPDATE`, `SECURITY DEFINER`). `route.ts`의 POST/DELETE는 인증 확인 후 RPC 1회
+호출 + 에러 코드 → HTTP 상태/메시지 매핑 테이블만 담당하도록 축소했다. 기존
+순차 로직의 모든 검증(소유자 확인, 이미 장착됨, 이미 드랍됨, 아이템북 소속 확인,
+인벤토리 꽉 참 등)을 RPC 내부로 옮겼고, 응답 상태 코드·메시지는 원문 그대로 유지했다.
+
+락 순서는 `create_user_drop()`(inventory → inventory_items)과 동일하게
+`slot_item_into_book()`도 inventory → inventory_items로 맞췄다 — 정확히 이 티켓이
+다루는 레이스 당사자이므로 두 함수 간 락 순서 일치가 데드락 회피의 핵심이다.
+`unslot_item_from_book()`은 티켓 본문이 제시한 순서(slots → items → inventory)
+대신 slots → inventory → inventory_items로 조정했다(사유는 alerts 참고).
+
+### 변경된 파일
+```
+jam-web/supabase/migrations/111_item_slot_atomic_rpc.sql (신규 — 미실행, 실행은 오케스트레이터)
+jam-web/src/app/api/itembooks/[id]/slot/route.ts
+```
+
+### 테스트 결과
+- [x] `npx tsc --noEmit` — 신규/변경 코드 타입 에러 없음
+- [x] `npm run lint` (전체) — 0 errors, 26 warnings (전부 기존 파일, 변경 파일 무관 — 기존
+      `lint:ci --max-warnings 26` 기준선과 동일)
+- [ ] 실제 장착/해제 흐름 + 동시 요청 레이스 재현 테스트 — DB 마이그레이션 미실행 상태라
+      로컬/스테이징에서 RPC 자체를 호출해 검증하지 못했다(사용자 승인 후 마이그레이션
+      실행 시점에 재확인 필요)
+
+### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
+해당 없음 (에러 메시지 문구 불변 — 기존 문구를 상수 매핑 테이블로 그대로 옮김)
+
+### 배포 정보
+- 배포일:
+- 환경: production
+- 커밋:
+
+### 주요 의사결정 / 핵심 메모
+- 기존 route.ts의 "이미 드랍된 아이템" 체크가 `inventory_items.dropped_at` 컬럼을
+  봤는데, 108 마이그레이션 이후 `create_user_drop()`은 더 이상 `dropped_at`을 설정하지
+  않고 `inventory_id`를 NULL로 비우는 방식으로 바뀌었다 — 즉 그 체크는 108 배포 이후
+  사실상 죽은 코드였다(그보다 먼저 소유자 조회가 `inventory_id` 불일치로 403을
+  반환해버려 409 분기에 도달할 수 없었음). 새 RPC는 `inventory_id IS NULL`을
+  "이미 드랍됨"(409) 신호로, `inventory_id`가 다른 인벤토리를 가리키면 "본인 소유
+  아님"(403)으로 명확히 구분해 원래 의도한 응답을 복원했다.
+- `unslot_item_from_book()`의 락 순서를 티켓 본문 제시 순서(slots→items→inventory)에서
+  slots→inventory→items로 조정했다 — `create_user_drop()`과 테이블 순서를 일치시켜
+  "슬롯 해제"와 "드랍"이 같은 아이템을 동시에 대상으로 할 때의 AB-BA 데드락 가능성을
+  없앴다.
+
+### 잔여 이슈
+- `jam-web/src/lib/itembook/completable.ts`, `lib/notifications/batch/collections.ts`,
+  `lib/notifications/batch/following.ts` 등 코드베이스 전반에 `.is('dropped_at', null)`
+  필터가 여전히 남아있는데, 108 이후 유저 드랍은 `dropped_at`을 설정하지 않으므로 이
+  필터는 대부분 죽은 코드다(대부분 `.eq('inventory_id', ...)` 필터가 동반돼 실제
+  결과는 우연히 맞지만, 필터 자체가 오해를 유발하고 일부 배치 쿼리는 `inventory_id`
+  필터 없이 `dropped_at`에만 의존한다). 이번 티켓 범위 밖이라 손대지 않았다 — 별도
+  정리 티켓 권장(alerts 참고).
