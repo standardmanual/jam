@@ -25,7 +25,9 @@
 --      Orphan 8종 append-only 이력. from/to/actor는 유저명을 스냅샷 값으로 저장한다
 --      (라이브 FK 조인에만 의존하지 않음 — 탈퇴 후에도 이름이 남아야 하므로).
 --   7. RPC 재작성 — create_user_drop()(신규), pickup_drop()(신규 INSERT 제거, 소유자만
---      UPDATE), expire_stale_poi_drops()(cron이 호출) — 전부 상태 변경과 같은 트랜잭션
+--      UPDATE + obtained_at을 현재 소유자 기준 획득 시각으로 갱신), expire_stale_poi_drops()
+--      (cron이 호출), mint_and_place_ambient_drop()(신규 — 앰비언트 배치 1건의 선발급+
+--      poi_drops 연결+Minted 기록을 원자적으로 묶음) — 전부 상태 변경과 같은 트랜잭션
 --      안에서 custody_events도 함께 INSERT한다.
 --   8. BEFORE DELETE ON public.users 트리거 — 탈퇴 직전 Held/Slotted 개체에 Orphan
 --      이벤트를 기록한다. 이 저장소에는 앱 레벨 "탈퇴 처리 로직"이 아직 없어(계정 삭제는
@@ -223,9 +225,7 @@ BEGIN
   END IF;
 
   SELECT * INTO v_item FROM public.inventory_items WHERE id = p_inventory_item_id FOR UPDATE;
-  IF NOT FOUND OR v_item.inventory_id IS DISTINCT FROM v_inv.id THEN
-    -- 존재하지 않거나 내 인벤토리 소유가 아닌 아이템 — 둘을 구분해 돌려주지 않는다
-    -- (남의 아이템 id 존재 여부를 알려주는 셈이 된다. 기존 route.ts와 동일한 원칙).
+  IF NOT FOUND THEN
     RETURN jsonb_build_object('ok', FALSE, 'error', 'item_not_found');
   END IF;
 
@@ -233,12 +233,26 @@ BEGIN
     RETURN jsonb_build_object('ok', FALSE, 'error', 'item_not_found');
   END IF;
 
-  IF v_item.slotted_in IS NOT NULL THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'item_slotted');
+  IF v_item.inventory_id IS DISTINCT FROM v_inv.id THEN
+    -- 게이트 리뷰 지적(2026-08-29): 개체 정체성 모델에서 "이미 드랍됨"은 더 이상
+    -- inventory_items의 자체 컬럼(dropped_at 등)으로 판별할 수 없다 — 드랍되는 순간
+    -- inventory_id가 NULL로 비워지므로, 소유권 불일치(위 조건)에 already_dropped와
+    -- item_not_found(존재하지 않거나 남의 아이템)가 함께 걸려 already_dropped 분기가
+    -- 도달 불가능했다. 여기서 "내가 드랍해 지금 poi_drops에 활성 상태로 걸려있는
+    -- 아이템인지"를 직접 확인해 두 경우를 다시 구분한다(기존 에러 코드 매핑 유지).
+    IF EXISTS (
+      SELECT 1 FROM public.poi_drops
+      WHERE inventory_item_id = v_item.id AND dropper_user_id = p_dropper_id AND is_available = TRUE
+    ) THEN
+      RETURN jsonb_build_object('ok', FALSE, 'error', 'already_dropped');
+    END IF;
+    -- 존재하지 않거나 내 소유가 아닌 아이템 — 둘을 구분해 돌려주지 않는다
+    -- (남의 아이템 id 존재 여부를 알려주는 셈이 된다. 기존 route.ts와 동일한 원칙).
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'item_not_found');
   END IF;
 
-  IF v_item.dropped_at IS NOT NULL THEN
-    RETURN jsonb_build_object('ok', FALSE, 'error', 'already_dropped');
+  IF v_item.slotted_in IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'item_slotted');
   END IF;
 
   INSERT INTO public.poi_drops (dropper_user_id, poi_id, badge_id, inventory_item_id, source)
@@ -315,9 +329,14 @@ BEGIN
       is_available  = FALSE
   WHERE id = p_drop_id;
 
-  -- 신규 row INSERT 없음 — 기존 개체의 소유자만 옮긴다(일련번호 불변).
+  -- 신규 row INSERT 없음 — 기존 개체의 소유자만 옮긴다(일련번호 불변). 게이트 리뷰
+  -- 지적(2026-08-29): obtained_at은 "최초 발급(Minted) 시각"이 아니라 "현재 소유자가
+  -- 이 개체를 얻은 시각"으로 코드베이스 전반(ItemEarnHistory 획득일 표시, 인벤토리/조합/
+  -- 컬렉션 페이지의 obtained_at 정렬, following/collections 알림 배치의 obtained_at>=since
+  -- 24시간 필터)이 이미 가정하고 있다 — 소유권 이전 시 반드시 함께 갱신해야 한다.
   UPDATE public.inventory_items
-  SET inventory_id = p_inventory_id
+  SET inventory_id = p_inventory_id,
+      obtained_at  = NOW()
   WHERE id = v_item.id;
 
   UPDATE public.inventory
@@ -337,6 +356,47 @@ BEGIN
   );
 
   RETURN jsonb_build_object('ok', TRUE, 'inventory_item_id', v_item.id);
+END;
+$$;
+
+-- ----------------------------------------------------------------
+-- 9-1. mint_and_place_ambient_drop() — 앰비언트(시스템) 드랍 1건을 선발급(pre-mint) +
+--      poi_drops 연결 + Minted 이벤트 기록까지 한 트랜잭션으로 묶는다(신규 RPC).
+--
+--      게이트 리뷰 지적(2026-08-29): 기존 src/lib/ambient-drop/index.ts는 이 세 작업을
+--      "개체 선발급 N건 INSERT(개별)" → "poi_drops 배치 INSERT(1건)" → "custody_events
+--      배치 INSERT(1건)"로 애플리케이션 레벨에서 순차 실행했다. 가운데 poi_drops 배치
+--      INSERT가 통째로 실패하면, 이미 발급된 inventory_items는 poi_drops·custody_events
+--      어디에도 연결되지 못한 채 영구 고아로 남는다(일련번호만 점유). 이 RPC로 개체 1건
+--      단위 원자성을 확보한다 — PostgREST가 RPC 호출 1건을 트랜잭션 1개로 실행하므로,
+--      함수 본문 중 어느 INSERT든 실패하면 이 함수가 수행한 모든 변경(선발급 포함)이
+--      자동으로 롤백된다(별도 EXCEPTION 처리 불필요).
+-- ----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.mint_and_place_ambient_drop(
+  p_poi_id   UUID,
+  p_badge_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_item_id UUID;
+  v_drop_id UUID;
+BEGIN
+  INSERT INTO public.inventory_items (inventory_id, badge_id, obtained_by)
+  VALUES (NULL, p_badge_id, 'ambient_drop')
+  RETURNING id INTO v_item_id;
+
+  INSERT INTO public.poi_drops (poi_id, badge_id, inventory_item_id, source, dropper_user_id, expires_at)
+  VALUES (p_poi_id, p_badge_id, v_item_id, 'system', NULL, NULL)
+  RETURNING id INTO v_drop_id;
+
+  -- Minted 이벤트 — 배치 시점에 InventoryItem이 확정된 순간을 기록한다(to_user 없음 — AtPoi로 배치).
+  INSERT INTO public.custody_events (inventory_item_id, event_type, poi_id)
+  VALUES (v_item_id, 'Minted', p_poi_id);
+
+  RETURN jsonb_build_object('ok', TRUE, 'drop_id', v_drop_id, 'inventory_item_id', v_item_id);
 END;
 $$;
 
