@@ -27,26 +27,27 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
   const params = await searchParams
   const q = params.q?.trim() ?? ''
 
-  const supabase = createServiceClient()
-
-  let query = supabase
-    .from('badges')
-    .select('id, name, image_url, rarity')
-    .eq('type', 'item')
-    .order('name', { ascending: true })
-    .limit(100)
-
-  if (q) query = query.ilike('name', `%${q}%`)
-
-  const { data: badgesRaw } = await query
-  const badges = (badgesRaw ?? []) as SearchBadgeRow[]
-
-  const badgeIds = badges.map((b) => b.id)
+  let badges: SearchBadgeRow[] = []
   const totalCountByBadge = new Map<string, number>()
-  if (badgeIds.length > 0) {
-    const { data: itemsRaw } = await supabase.from('inventory_items').select('badge_id').in('badge_id', badgeIds)
-    for (const row of (itemsRaw ?? []) as { badge_id: string }[]) {
-      totalCountByBadge.set(row.badge_id, (totalCountByBadge.get(row.badge_id) ?? 0) + 1)
+
+  if (q) {
+    const supabase = createServiceClient()
+
+    const { data: badgesRaw } = await supabase
+      .from('badges')
+      .select('id, name, image_url, rarity')
+      .eq('type', 'item')
+      .ilike('name', `%${q}%`)
+      .order('name', { ascending: true })
+      .limit(100)
+    badges = (badgesRaw ?? []) as SearchBadgeRow[]
+
+    const badgeIds = badges.map((b) => b.id)
+    if (badgeIds.length > 0) {
+      const { data: itemsRaw } = await supabase.from('inventory_items').select('badge_id').in('badge_id', badgeIds)
+      for (const row of (itemsRaw ?? []) as { badge_id: string }[]) {
+        totalCountByBadge.set(row.badge_id, (totalCountByBadge.get(row.badge_id) ?? 0) + 1)
+      }
     }
   }
 
@@ -63,51 +64,55 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
         <ItemBadgeSearchBar />
       </Suspense>
 
-      <div className="text-sm text-muted-foreground">
-        {q ? `"${q}" 검색 결과 ${badges.length}종` : `아이템배지 도안 ${badges.length}종`}
-      </div>
+      {q && (
+        <>
+          <div className="text-sm text-muted-foreground">
+            {`"${q}" 검색 결과 ${badges.length}종`}
+          </div>
 
-      {badges.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">
-          조건에 맞는 배지가 없습니다.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {badges.map((badge) => (
-            <Link key={badge.id} href={`/admin/item-badges/${badge.id}`}>
-              <Card className="p-4 flex items-center gap-3 hover:border-neutral-400 transition-colors h-full">
-                <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
-                  {badge.image_url ? (
-                    <Image
-                      src={badge.image_url}
-                      alt={badge.name}
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-gray-400 text-xs">—</span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{badge.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span
-                      className={`inline-block px-2 py-0.5 text-xs font-semibold rounded ${
-                        RARITY_BADGE_COLOR[badge.rarity] ?? 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {RARITY_LABEL[badge.rarity] ?? badge.rarity}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      총 발급 {totalCountByBadge.get(badge.id) ?? 0}개
-                    </span>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+          {badges.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              조건에 맞는 배지가 없습니다.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {badges.map((badge) => (
+                <Link key={badge.id} href={`/admin/item-badges/${badge.id}`}>
+                  <Card className="p-4 flex items-center gap-3 hover:border-neutral-400 transition-colors h-full">
+                    <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
+                      {badge.image_url ? (
+                        <Image
+                          src={badge.image_url}
+                          alt={badge.name}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{badge.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span
+                          className={`inline-block px-2 py-0.5 text-xs font-semibold rounded ${
+                            RARITY_BADGE_COLOR[badge.rarity] ?? 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {RARITY_LABEL[badge.rarity] ?? badge.rarity}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          총 발급 {totalCountByBadge.get(badge.id) ?? 0}개
+                        </span>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
