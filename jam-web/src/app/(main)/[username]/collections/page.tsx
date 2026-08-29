@@ -8,6 +8,7 @@ import { BookIcon } from '@/components/ui/icons'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d } from '@/lib/i18n'
+import { getDisplayName } from '@/lib/utils'
 import Link from 'next/link'
 
 interface Props {
@@ -36,12 +37,12 @@ export default async function UserItemBooksPage({ params }: Props) {
 
   const { data: targetRaw } = await service
     .from('users')
-    .select('id, username')
+    .select('id, username, display_name')
     .eq('username', username.toLowerCase())
     .maybeSingle()
 
   if (!targetRaw) notFound()
-  const target = targetRaw as { id: string; username: string }
+  const target = targetRaw as { id: string; username: string; display_name: string | null }
 
   // 대상 유저 인벤토리
   const { data: inventoryRaw } = await service
@@ -143,7 +144,7 @@ export default async function UserItemBooksPage({ params }: Props) {
 
   return (
     <div className="flex flex-col min-h-full bg-surface text-text">
-      <TopNav title={`${d.itembooks.title} · ${target.username}`} backHref={`/${username}`} />
+      <TopNav title={`${d.itembooks.title} · ${getDisplayName(target)}`} backHref={`/${username}`} />
 
       <div className="px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)]">
         {cards.length === 0 ? (

@@ -112,3 +112,13 @@ export function getUserFriendlyError(error: unknown): string {
 export function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ')
 }
+
+/**
+ * 유저 노출 이름 폴백 — 티켓 20260830_0113.
+ * display_name이 있으면 이름, 없으면(NULL/빈 문자열) username을 노출한다.
+ * DB에 username을 복사해 채우지 않는 "표시 전용" 폴백이므로 렌더 시점에 항상 이 함수를
+ * 거친다 — 화면마다 삼항식으로 중복 구현하지 않는다.
+ */
+export function getDisplayName(user: { username: string | null; display_name?: string | null }): string {
+  return user.display_name?.trim() || user.username || ''
+}

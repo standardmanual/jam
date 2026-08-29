@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
+import { getDisplayName } from '@/lib/utils'
 
 export async function GET(
   _req: NextRequest,
@@ -58,11 +59,11 @@ export async function GET(
   const dropperIds = [...new Set(rows
     .map((d) => d.dropper_user_id)
     .filter((id): id is string => Boolean(id) && !excludedIds.includes(id as string)))]
-  const usersData: { id: string; username: string }[] = dropperIds.length > 0
-    ? ((await service.from('users').select('id, username').in('id', dropperIds)).data ?? [])
+  const usersData: { id: string; username: string; display_name: string | null }[] = dropperIds.length > 0
+    ? ((await service.from('users').select('id, username, display_name').in('id', dropperIds)).data ?? [])
     : []
   const nameById: Record<string, string> = {}
-  for (const u of usersData) nameById[u.id] = u.username
+  for (const u of usersData) nameById[u.id] = getDisplayName(u)
 
   const drops = rows.map((d) => ({
     id: d.id,

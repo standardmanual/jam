@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getDisplayName } from '@/lib/utils'
 
 export interface HistoryEvent {
   type: 'obtained' | 'dropped' | 'picked_up'
   timestamp: string
   user_id: string
+  /** 20260830_0113: 표시 이름 우선, 없으면 username 폴백까지 서버가 미리 계산해 내려준다 */
   username: string | null
   poi_name?: string
   obtained_by?: 'drop' | 'drop_event' | 'pickup' | 'system' | 'system_event'
@@ -80,10 +82,10 @@ export async function GET(
     if (drop.picked_up_by) userIds.add(drop.picked_up_by)
   }
 
-  const { data: usersRaw } = await service.from('users').select('id, username').in('id', [...userIds])
+  const { data: usersRaw } = await service.from('users').select('id, username, display_name').in('id', [...userIds])
   const userMap = new Map<string, string | null>()
-  for (const u of (usersRaw ?? []) as Array<{ id: string; username: string | null }>) {
-    userMap.set(u.id, u.username)
+  for (const u of (usersRaw ?? []) as Array<{ id: string; username: string | null; display_name: string | null }>) {
+    userMap.set(u.id, getDisplayName(u) || null)
   }
 
   const events: HistoryEvent[] = []
