@@ -61,6 +61,8 @@ export const CUSTODY_EVENT_LABEL: Record<CustodyEventType, string> = {
   Unslot: '장착 해제',
   Consume: '조합 소모',
   Orphan: '소유자 탈퇴(고아화)',
+  AdminDestroy: '어드민 영구 폐기',
+  AdminReassign: '어드민 재배정',
 }
 
 /** 배지(도안) 등급 라벨 — 다른 어드민 화면(BadgeCard.tsx 등)과 동일한 표기 */
