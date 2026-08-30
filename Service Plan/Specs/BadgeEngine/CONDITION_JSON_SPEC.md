@@ -40,7 +40,7 @@
 |------|------|------|
 | `activity_type` | `string` | Strava 활동 타입. 유효값: `"walking"` `"running"` `"cycling"` `"hiking"` `"trail_running"` |
 | `day_of_week` | `DayOfWeek \| DayOfWeek[]` | 활동 시작 요일(로컬 기준, `startDateLocal`) 필터. **단일값**: `time_range`처럼 다른 필드와 AND 결합되는 필터 (예: `day_of_week:"sunday"` + `total_count:1000`). **배열 + `total_count` 동시 지정**: "요일별 독립 카운터" 모드로 전환 — 배열의 각 요일이 각각 독립적으로 `total_count`를 만족해야 발급 (예: 평일 5일 각각 300회 — W08 "평일의 성실함") |
-| `route` | `string` | 특정 루트 이름 필터용으로 스키마(`condition-schema.ts`의 `FILTER_ONLY_CONDITION_KEYS`)에 정의돼 있으나 **badge-engine 평가 로직에 실제 구현이 없다** — `src/lib/badge-engine/index.ts` 전체에 참조가 없어 조건에 넣어도 필터링 효과가 없다(무시됨). 어드민 폼에도 입력 UI가 없다(티켓 20260825_032). §6 참조 |
+| `route` | `string` | 특정 루트 이름 필터용으로 스키마(`condition-schema.ts`의 `FILTER_ONLY_CONDITION_KEYS`)에 정의돼 있으나 **badge-engine 평가 로직에 실제 구현이 없다** — `src/lib/badge-engine/index.ts` 전체에 참조가 없어 조건에 넣어도 필터링 효과가 없다(무시됨). 어드민 폼에는 입력 UI가 없지만, 값이 있는 배지를 폼에서 저장해도 유실되지는 않는다(티켓 20260825_032에서 보존 로직 적용 완료). §6 참조 |
 
 ### 2.2 누적 통계 필드 (전체 이력 합산)
 
@@ -75,7 +75,7 @@
 | `monthly_km` | `number` | 월별 누적 거리 최대값 ≥ 조건값. `month` 없으면 전체 연-월 그룹 최대 |
 | `season` | `"spring"` \| `"summer"` \| `"autumn"` \| `"winter"` | 해당 계절 지정 |
 | `season_count` | `number` | 해당 계절 활동 횟수 ≥ 조건값 |
-| `season_count_all` | `number` | 사계절(봄/여름/가을/겨울) **각각 독립 카운터**로 활동 횟수 ≥ 조건값이어야 함 — 4개 계절 모두 충족해야 통과(T15 "사계절의 발걸음"). `season_count`(지정 계절 1개만 검사)와 달리 `season` 필드 지정이 불필요 |
+| `season_count_all` | `number` | 사계절(봄/여름/가을/겨울) **각각 독립 카운터**로 활동 횟수 ≥ 조건값이어야 함 — 4개 계절 모두 충족해야 통과(T15 "사계절의 발걸음"). `season_count`(지정 계절 1개만 검사)와 달리 `season` 필드 지정이 불필요. **어드민 폼에 입력 UI가 없다** — 값이 있는 배지를 폼에서 저장해도 유실되지는 않지만(티켓 20260825_032 보존 로직), 폼에서 직접 편집은 불가하다(DB 직접 수정 필요) |
 
 ### 2.6 환경 조건 필드
 
@@ -100,7 +100,7 @@
 
 | 필드 | 타입 | 평가 주체 |
 |------|------|-----------|
-| `poi_id` | `string` (UUID) | badge-engine 내 **항상 fail** — `matchPoisForActivity` GPS 경로 매칭 파이프라인이 별도 발급 |
+| `poi_id` | `string` (UUID) | badge-engine 내 **항상 fail** — `matchPoisForActivity` GPS 경로 매칭 파이프라인이 별도 발급. `checkin` 타입 배지는 조건 빌더 자체를 건너뛰고 저장 시 `condition_json`을 항상 `null`로 처리하므로 이 티켓 범위 밖(폼 유실 문제와 무관) |
 
 ---
 
