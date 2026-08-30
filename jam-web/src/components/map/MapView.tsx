@@ -178,7 +178,9 @@ function getZoomScaleMultiplier(zoom: number): number {
 }
 
 /**
- * POI 배지 마커 — 원형 배지 이미지 + 아래에 POI 이름 라벨.
+ * POI 배지 마커 — 배지 이미지 원본 + 아래에 POI 이름 라벨.
+ * 흰 서클로 감싸지 않고 배지 이미지를 그대로 노출한다(20260830_1001) — 크기는
+ * 기존 서클과 동일한 size를 유지한다.
  * 드랍/픽업 POI 서클과 같은 좌표에 겹쳐 그려지면 서클을 완전히 가리므로,
  * anchor를 아래로 내려 서클 위쪽에 작게 얹히도록 배치한다(서클과 배지 둘 다 노출).
  * 미획득은 그레이스케일 필터로 표시한다(클릭 리스너 자체를 걸지 않아 탭 비활성).
@@ -188,14 +190,14 @@ function badgeMarkerIconHtml(imageUrl: string | null, earned: boolean, name: str
   const opacity = earned ? 1 : 0.7
   const safeName = escapeHtml(name)
   const inner = imageUrl
-    ? `<img src="${escapeHtml(imageUrl)}" alt="${safeName}" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;" />`
+    ? `<img src="${escapeHtml(imageUrl)}" alt="${safeName}" style="width:100%;height:100%;object-fit:contain;" />`
     : `<span style="font-size:13px;line-height:1;color:#666;">?</span>`
 
-  const circle = `<div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;background:#ffffff;border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;box-sizing:border-box;filter:${filter};opacity:${opacity};">${inner}</div>`
+  const badge = `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;filter:${filter};opacity:${opacity};">${inner}</div>`
   // 라벨 텍스트 — 줌 배율과 무관하게 고정 크기(14px, 70%)로 유지. 말줄임 없이 전체 텍스트 표시
   const label = `<div style="margin-top:2px;max-width:100%;padding:2px 6px;border-radius:8px;background:rgba(0,0,0,0.65);color:#ffffff;font-size:14px;line-height:18px;white-space:nowrap;overflow:visible;text-align:center;box-sizing:border-box;opacity:${opacity};">${safeName}</div>`
 
-  return `<div style="width:${BADGE_MARKER_CONTENT_WIDTH}px;display:flex;flex-direction:column;align-items:center;">${circle}${label}</div>`
+  return `<div style="width:${BADGE_MARKER_CONTENT_WIDTH}px;display:flex;flex-direction:column;align-items:center;">${badge}${label}</div>`
 }
 
 /** 클러스터 마커 — 숫자를 표기한 원형 마커 (개수에 따라 크기 가변) */
