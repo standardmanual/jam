@@ -445,9 +445,7 @@ export default function ProfileClient({
       )}
 
       <div
-        className={`px-[var(--spacing-16)] pb-[var(--spacing-40)] flex flex-col gap-[var(--spacing-24)] ${
-          isOwnProfile ? 'pt-[var(--spacing-24)]' : 'pt-0'
-        }`}
+        className={`px-[var(--spacing-16)] pb-[var(--spacing-40)] pt-[var(--spacing-24)] flex flex-col gap-[var(--spacing-24)]`}
       >
         {/* 프로필 헤더 — Card 배경 제거, 컨텐츠는 페이지 패딩 폭까지 확장 (20260820_019).
             아바타 확대·편집 버튼 축소·아이디 전체노출·포인트를 아이디 아래로 이동 (20260820_021) */}

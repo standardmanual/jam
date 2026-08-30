@@ -226,7 +226,7 @@ export default function ProfileEditPage() {
     <div className="min-h-full bg-surface text-text flex flex-col">
       <TopNav title={d.profile.title} />
 
-      <div className="flex-1 flex flex-col px-[var(--spacing-16)] pt-0 pb-[var(--spacing-32)] gap-[var(--spacing-32)]">
+      <div className="flex-1 flex flex-col px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] gap-[var(--spacing-32)]">
         {/* 프로필 사진 */}
         <div className="flex flex-col items-center gap-[var(--spacing-16)]">
           <button
