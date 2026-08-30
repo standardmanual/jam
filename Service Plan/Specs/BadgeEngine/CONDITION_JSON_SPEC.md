@@ -77,8 +77,8 @@
 
 | 필드 | 타입 | 단위 | 평가 방식 | 주의 |
 |------|------|------|-----------|------|
-| `temperature_min_c` | `number` | °C | Strava `average_temp` ≤ 조건값 (혹한) | 날씨 데이터 없는 활동 → 무조건 fail |
-| `temperature_max_c` | `number` | °C | Strava `average_temp` ≥ 조건값 (폭염) | 동일 |
+| `temperature_min_c` | `number` | °C | Strava `average_temp` ≥ 조건값 (폭염) | 날씨 데이터 없는 활동 → 무조건 fail |
+| `temperature_max_c` | `number` | °C | Strava `average_temp` ≤ 조건값 (한파) | 동일 |
 
 ### 2.7 시간대 필드
 
