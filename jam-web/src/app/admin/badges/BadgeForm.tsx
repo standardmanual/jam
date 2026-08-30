@@ -50,6 +50,9 @@ interface BadgeFormProps {
   badge?: BadgeRow
   factions: Pick<FactionRow, 'id' | 'name'>[]
   itemBooks: Pick<ItemBookRow, 'id' | 'name'>[]
+  /** 체크인 배지 전용 "배지 카테고리" Select 옵션 — poi_categories 재사용(마이그레이션 113).
+   *  목록 화면의 "지점 카테고리" 필터(연결된 지점 기준)와는 별개 개념이다. */
+  poiCategories: { slug: string; label: string }[]
 }
 
 const EMPTY_CONDITION: BadgeCondition = {}
@@ -71,7 +74,7 @@ async function uploadBackgroundFile(blob: Blob, filename: string, mimeType: stri
   return data.url as string
 }
 
-export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps) {
+export default function BadgeForm({ badge, factions, itemBooks, poiCategories }: BadgeFormProps) {
   const router = useRouter()
   const isEdit = !!badge
 
@@ -138,6 +141,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
 
   const [factionId, setFactionId] = useState(badge?.faction_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
+  const [category, setCategory] = useState(badge?.category ?? '')
   const [dropWeight, setDropWeight] = useState<string>(
     badge?.drop_weight?.toString() ?? '1.0'
   )
@@ -367,8 +371,12 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
         patch_available: patchAvailable,
         patch_price_krw: patchAvailable && patchPriceKrw ? parseInt(patchPriceKrw, 10) : null,
         condition_json: conditionJson,
-        faction_id: factionId || null,
-        item_book_id: itemBookId || null,
+        // 체크인 배지는 세계관/컬렉션 개념이 없다 — UI는 숨겼지만 기존 값이 남아있을 수 있으므로
+        // 저장 시점에 명시적으로 null 처리한다(티켓 20260830_1344).
+        faction_id: type === 'checkin' ? null : factionId || null,
+        item_book_id: type === 'checkin' ? null : itemBookId || null,
+        // 배지 카테고리는 체크인 배지 전용 — 다른 타입에서는 항상 null.
+        category: type === 'checkin' ? category || null : null,
         drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
         valid_from: validFrom ? new Date(validFrom).toISOString() : null,
         valid_until: validUntil ? new Date(validUntil).toISOString() : null,
@@ -488,43 +496,75 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
           </Select>
         </label>
 
-        {/* 세계관 선택 */}
-        <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-sm text-foreground">소속 세계관</span>
-          <Select
-            value={factionId || NONE_VALUE}
-            onValueChange={(v) => setFactionId(v === NONE_VALUE ? '' : v)}
-          >
-            <SelectTrigger aria-label="소속 세계관">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
-              {factions.map((f) => (
-                <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
+        {/* 세계관/소속 컬렉션 — 체크인 배지에는 이 개념이 없어 숨긴다(티켓 20260830_1344).
+            activity/item 타입에서는 기존과 동일하게 노출. */}
+        {type !== 'checkin' && (
+          <>
+            {/* 세계관 선택 */}
+            <label className="flex flex-col gap-1.5 col-span-2">
+              <span className="text-sm text-foreground">소속 세계관</span>
+              <Select
+                value={factionId || NONE_VALUE}
+                onValueChange={(v) => setFactionId(v === NONE_VALUE ? '' : v)}
+              >
+                <SelectTrigger aria-label="소속 세계관">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+                  {factions.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
 
-        {/* 소속 아이템북 */}
-        <label className="flex flex-col gap-1.5 col-span-2">
-          <span className="text-sm text-foreground">소속 컬렉션</span>
-          <Select
-            value={itemBookId || NONE_VALUE}
-            onValueChange={(v) => setItemBookId(v === NONE_VALUE ? '' : v)}
-          >
-            <SelectTrigger aria-label="소속 컬렉션">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
-              {itemBooks.map((b) => (
-                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
+            {/* 소속 아이템북 */}
+            <label className="flex flex-col gap-1.5 col-span-2">
+              <span className="text-sm text-foreground">소속 컬렉션</span>
+              <Select
+                value={itemBookId || NONE_VALUE}
+                onValueChange={(v) => setItemBookId(v === NONE_VALUE ? '' : v)}
+              >
+                <SelectTrigger aria-label="소속 컬렉션">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+                  {itemBooks.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          </>
+        )}
+
+        {/* 배지 카테고리 — 체크인 배지 전용(티켓 20260830_1344). poi_categories 재사용, 목록
+            화면의 "지점 카테고리" 필터(연결된 지점 기준)와는 별개 개념이다. */}
+        {type === 'checkin' && (
+          <label className="flex flex-col gap-1.5 col-span-2">
+            <span className="text-sm text-foreground">배지 카테고리</span>
+            <Select
+              value={category || NONE_VALUE}
+              onValueChange={(v) => setCategory(v === NONE_VALUE ? '' : v)}
+            >
+              <SelectTrigger aria-label="배지 카테고리">
+                <SelectValue placeholder="카테고리를 선택해주세요" />
+              </SelectTrigger>
+              <SelectContent container={themeContainer ?? undefined}>
+                <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+                {poiCategories.map((c) => (
+                  <SelectItem key={c.slug} value={c.slug}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">
+              이 체크인 배지가 속한 지점 계열이에요. 연결된 지점의 카테고리와는 별개로, 이
+              배지 자체를 분류하는 값이에요.
+            </span>
+          </label>
+        )}
 
         {/* 아이템 배지 전용 설정 */}
         {type === 'item' && (
@@ -1140,6 +1180,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
             </p>
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={handleDelete}
                 disabled={loading}
                 className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors"
@@ -1147,6 +1188,7 @@ export default function BadgeForm({ badge, factions, itemBooks }: BadgeFormProps
                 {loading ? '삭제 중...' : '삭제 확인'}
               </button>
               <button
+                type="button"
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors"
               >

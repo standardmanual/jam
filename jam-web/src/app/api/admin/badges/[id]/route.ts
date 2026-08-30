@@ -55,8 +55,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       patch_price_krw: body.patch_price_krw !== undefined ? body.patch_price_krw : existing.patch_price_krw,
       // POI 배지는 "어느 POI를 지나갔는가"로만 판정 — 활동 조건이 섞이지 않도록 강제 null
       condition_json: type === 'checkin' ? null : conditionJson,
-      faction_id: body.faction_id !== undefined ? body.faction_id : existing.faction_id,
-      item_book_id: body.item_book_id !== undefined ? body.item_book_id : existing.item_book_id,
+      // 체크인 배지에는 세계관/컬렉션 개념이 없다 — 저작 화면(BadgeForm)에서도 정리하지만
+      // 서버에서도 같은 규칙을 강제한다(20260830_1344).
+      faction_id: type === 'checkin' ? null : (body.faction_id !== undefined ? body.faction_id : existing.faction_id),
+      item_book_id: type === 'checkin' ? null : (body.item_book_id !== undefined ? body.item_book_id : existing.item_book_id),
+      // 배지 카테고리는 체크인 배지 전용(poi_categories.slug 재사용, 마이그레이션 113).
+      category: type === 'checkin' ? (body.category !== undefined ? body.category : existing.category) : null,
       drop_weight: body.drop_weight !== undefined ? body.drop_weight : existing.drop_weight,
       valid_from: body.valid_from !== undefined ? body.valid_from : existing.valid_from,
       valid_until: body.valid_until !== undefined ? body.valid_until : existing.valid_until,

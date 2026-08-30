@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url } = body
+  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, category, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url } = body
 
   if (!name || !description || !type || !rarity || !image_url) {
     return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 })
@@ -69,8 +69,12 @@ export async function POST(req: NextRequest) {
     patch_price_krw: patch_price_krw ?? null,
     // POI 배지는 "어느 POI를 지나갔는가"로만 판정 — 활동 조건이 섞이지 않도록 강제 null
     condition_json: type === 'checkin' ? null : condition_json ?? null,
-    faction_id: faction_id ?? null,
-    item_book_id: item_book_id ?? null,
+    // 체크인 배지에는 세계관/컬렉션 개념이 없다 — 저작 화면(BadgeForm)에서도 정리하지만
+    // 서버에서도 같은 규칙을 강제한다(20260830_1344).
+    faction_id: type === 'checkin' ? null : faction_id ?? null,
+    item_book_id: type === 'checkin' ? null : item_book_id ?? null,
+    // 배지 카테고리는 체크인 배지 전용(poi_categories.slug 재사용, 마이그레이션 113).
+    category: type === 'checkin' ? category ?? null : null,
     drop_weight: drop_weight ?? 1.0,
     valid_from: valid_from ?? null,
     valid_until: valid_until ?? null,
