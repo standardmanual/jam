@@ -335,13 +335,23 @@ export default function MapView({
       }
 
       const idleListener = naver.maps.Event.addListener(map, 'idle', () => {
+        // 어떤 경로로 줌이 바뀌었든(휠, 핀치, 더블탭, zoom_changed 디바운스 타이밍
+        // 어긋남 등) 지도가 완전히 정지(idle)한 시점에는 항상 실제 zoom으로
+        // 재동기화한다. idle은 팬/줌/관성 애니메이션이 모두 끝난 뒤에만 발생하는
+        // 지도 SDK의 최종 상태 신호이므로, 여기서 읽는 값이 화면에 실제로 렌더된
+        // 줌과 항상 일치한다 — zoom_changed 120ms 디바운스가 연속 핀치 제스처
+        // 중간값을 캡처해 어긋나더라도 이 지점에서 최종적으로 보정된다.
+        setZoom(map.getZoom())
         if (debounceRef.current) clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(emitViewport, VIEWPORT_DEBOUNCE_MS)
       })
 
       // 줌 변경 시 마커 크기 배율 갱신. 핀치/휠 연속 입력 중 매 프레임 리렌더를
       // 막기 위해 idle과 별개로 짧게 디바운스한다(단계 전환 자체가 3단계뿐이라
-      // 값이 실제로 바뀔 때만 setZoom이 리렌더를 유발한다).
+      // 값이 실제로 바뀔 때만 setZoom이 리렌더를 유발한다). 이 디바운스가 연속
+      // 제스처 도중의 중간값을 캡처해 최종 화면과 어긋나더라도, 위 idle
+      // 리스너가 지도 정지 시점마다 무조건 재동기화하므로 항상 최종적으로는
+      // 정확한 줌으로 수렴한다.
       const zoomListener = naver.maps.Event.addListener(map, 'zoom_changed', () => {
         if (zoomDebounceRef.current) clearTimeout(zoomDebounceRef.current)
         zoomDebounceRef.current = setTimeout(() => setZoom(map.getZoom()), 120)
@@ -482,7 +492,17 @@ export default function MapView({
 
   return (
     <div className="relative w-full h-full">
-      <div ref={mapRef} className="w-full h-full" />
+      {/*
+       * touch-none(touch-action: none) — 네이버 지도 SDK가 자체적으로 팬/핀치줌을
+       * 처리하므로, 브라우저의 네이티브 페이지 핀치줌이 같은 터치 제스처에 동시에
+       * 반응하지 않도록 이 컨테이너에서 기본 터치 제스처 처리를 완전히 차단한다.
+       * iOS Safari는 접근성 정책상 viewport meta의 maximum-scale/user-scalable을
+       * 무시할 수 있어(layout.tsx 참고) 그것만으로는 페이지 핀치줌을 막을 수 없다 —
+       * touch-action은 meta 태그와 무관하게 항상 적용되는 별도의 CSS 계약이라 이
+       * 케이스에서도 유효하다. 지도 SDK는 CSS가 아니라 자체 JS 리스너로 팬/줌을
+       * 처리하므로 패닝 동작 자체는 영향받지 않는다.
+       */}
+      <div ref={mapRef} className="w-full h-full touch-none" />
       <button
         type="button"
         onClick={handleLocateClick}
