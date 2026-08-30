@@ -57,7 +57,7 @@ export default async function OrphanedItemsPage({ searchParams }: Props) {
 
   const header = (
     <div className="mb-6">
-      <h1 className="text-2xl md:text-3xl font-bold">소유자 없음 아이템배지</h1>
+      <h1 className="text-2xl md:text-3xl font-bold">미소유 아이템배지 현황</h1>
       <p className="text-muted-foreground text-sm mt-1">
         계정 탈퇴 등으로 소유자를 잃은 아이템배지 개체를 배지 구분 없이 한 번에 조회합니다.
       </p>
