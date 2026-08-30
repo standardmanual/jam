@@ -6,11 +6,15 @@
  * 이전 디자인(subway-poi-badge, 340x340 3중 원)을 대체한다 — 디자인·텍스트 위치·크기가 전부
  * 달라져 기존 config를 수정하지 않고 새 config로 분리했다.
  *
- * 대상: public.poi.category='train_subway'(기차/지하철) POI에 연결된 public.badges
- *       (929개, 2026-08-24 기준)
+ * 대상: public.poi.category IN ('train_subway','transit') POI에 연결된 public.badges
  *
- * 2026-08-24에 이 929개를 transit(대중교통)에서 train_subway로 분리했다([[20260824_023]]).
+ * 2026-08-24에 지하철역 934개를 transit(대중교통)에서 train_subway로 분리했다([[20260824_023]]).
  * 그 전에는 `category='transit' AND name LIKE '%역'`으로 걸러냈다.
+ * 그때 이름이 '역'으로 끝나지 않는 22개(버스정류장·리무진·정류소 등)는 새 텍스트 레이아웃이
+ * 맞지 않는다는 이유로 의도적으로 제외되어 category='transit'에 남아있었는데, 이번에
+ * 사용자 승인 하에 이 22개도 동일 METRO 디자인으로 채우기로 하여 category 필터에 transit을
+ * 추가한다([[20260830_1252]]). transit에는 linked_badge_id가 없는 POI(문 배지 미연결)도 섞여
+ * 있으나 아래 dataSource가 linked_badge_id IS NOT NULL로 걸러내므로 실제로는 이 22개만 잡힌다.
  */
 const { fetchAllRows } = require('../lib/fetch-all-rows')
 
@@ -55,21 +59,25 @@ module.exports = {
   },
 
   /**
-   * poi(category='transit') 중 이름이 '역'으로 끝나는 것 ↔ badges를 linked_badge_id로 조인.
+   * poi(category IN ('train_subway','transit')) ↔ badges를 linked_badge_id로 조인.
    * 소프트삭제된 배지(deleted_at IS NOT NULL)는 제외한다.
+   *
+   * badges.type='poi'는 마이그레이션 103([[20260826_004]])에서 'checkin'으로 이름이
+   * 바뀌었다 — 이 config는 그 이후 재실행된 적이 없어 'poi' 리터럴이 남아있었고, 이대로
+   * 실행하면 aliveBadges가 0건이 되어 대상이 전부 걸러지는 버그였다(이번 티켓에서 발견·수정).
    */
   async dataSource(supabase) {
     const pois = await fetchAllRows(() =>
       supabase
         .from('poi')
         .select('name, linked_badge_id')
-        .eq('category', 'train_subway')
+        .in('category', ['train_subway', 'transit'])
         .not('linked_badge_id', 'is', null)
         .order('name')
     )
 
     const aliveBadges = await fetchAllRows(() =>
-      supabase.from('badges').select('id').eq('type', 'poi').is('deleted_at', null).order('id')
+      supabase.from('badges').select('id').eq('type', 'checkin').is('deleted_at', null).order('id')
     )
     const alive = new Set(aliveBadges.map((b) => b.id))
 
@@ -80,12 +88,12 @@ module.exports = {
 
   outputDir: 'badges/poi/metro',
 
-  updateSqlTemplate: `-- 지하철역 POI 배지 이미지(JAM METRO 디자인) 반영
+  updateSqlTemplate: `-- 지하철역/버스정류장 등 대중교통 POI 배지 이미지(JAM METRO 디자인) 반영
 -- scripts/badge-image-gen/generate.js metro-poi-badge 실행 결과
 UPDATE public.badges b
 SET image_url = '{{imagePathPrefix}}/' || b.id || '.png'
 FROM public.poi p
 WHERE p.linked_badge_id = b.id
-  AND p.category = 'train_subway'
+  AND p.category IN ('train_subway', 'transit')
   AND b.deleted_at IS NULL;`,
 }
