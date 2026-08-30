@@ -13,10 +13,22 @@ const MapPreview = dynamic(() => import('./MapPreview'), {
 interface PoiDetailProps {
   poi: PoiRow
   linkedBadgeName?: string
+  /** 연결 배지의 deleted_at — 있으면 소프트 삭제(비활성화)된 배지다(20260830_1547).
+   *  poi.linked_badge_id FK는 배지 삭제 시 정리되지 않아, 표시 단계에서 명시해야 한다. */
+  linkedBadgeDeletedAt?: string | null
   categoryLabel?: string
 }
 
-export function PoiDetail({ poi, linkedBadgeName, categoryLabel }: PoiDetailProps) {
+/** "YYYY.MM.DD" 형식으로 날짜 포맷 (BadgeDetail.tsx·BadgeCard.tsx·BadgesTable.tsx와 동일 컨벤션) */
+function formatYmd(iso: string): string {
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}.${m}.${day}`
+}
+
+export function PoiDetail({ poi, linkedBadgeName, linkedBadgeDeletedAt, categoryLabel }: PoiDetailProps) {
   return (
     <div className="space-y-6">
       {/* 기본 정보 */}
@@ -30,7 +42,14 @@ export function PoiDetail({ poi, linkedBadgeName, categoryLabel }: PoiDetailProp
               </p>
             </div>
             {linkedBadgeName && (
-              <Badge variant="outline">{linkedBadgeName}</Badge>
+              <div className="flex flex-col items-end gap-1">
+                <Badge variant="outline">{linkedBadgeName}</Badge>
+                {linkedBadgeDeletedAt && (
+                  <span className="inline-flex items-center px-2 py-1 bg-red-50 border border-red-200 rounded-full text-red-600 text-xs font-semibold whitespace-nowrap">
+                    비활성화됨 · {formatYmd(linkedBadgeDeletedAt)} 회수
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </CardHeader>
@@ -53,6 +72,11 @@ export function PoiDetail({ poi, linkedBadgeName, categoryLabel }: PoiDetailProp
               <p className="text-sm">
                 {linkedBadgeName || '없음'}
               </p>
+              {linkedBadgeName && linkedBadgeDeletedAt && (
+                <span className="inline-flex items-center px-2 py-1 bg-red-50 border border-red-200 rounded-full text-red-600 text-xs font-semibold whitespace-nowrap">
+                  비활성화됨 · {formatYmd(linkedBadgeDeletedAt)} 회수
+                </span>
+              )}
             </div>
           </div>
         </CardContent>
