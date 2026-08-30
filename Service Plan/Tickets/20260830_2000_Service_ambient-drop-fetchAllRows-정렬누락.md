@@ -1,9 +1,9 @@
 ---
 id: 20260830_2000
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-30
-closed:
+closed: 2026-08-30
 ---
 
 # [bug] ambient-drop의 fetchAllRows 헬퍼 호출부에 정렬 기준 누락 — 페이지 경계 중복/누락 위험
@@ -94,9 +94,9 @@ jam-web/src/lib/ambient-drop/index.ts
 - [x] 해당 없음 — 서버 사이드 로직 변경, 사용자 노출 텍스트 없음
 
 ### 배포 정보
-- 배포일:
-- 환경: staging
-- 커밋:
+- 배포일: 2026-08-30
+- 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행 예정)
+- 커밋: 895a02a33350a3f45d73a80f01643715f3798083 (staging 머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 - 로컬 fetchAllRows 헬퍼를 완전히 제거하고 공용 헬퍼로 5개 호출부 모두 통일해, 티켓
