@@ -50,8 +50,8 @@ interface BadgeFormProps {
   badge?: BadgeRow
   factions: Pick<FactionRow, 'id' | 'name'>[]
   itemBooks: Pick<ItemBookRow, 'id' | 'name'>[]
-  /** 체크인 배지 전용 "배지 카테고리" Select 옵션 — poi_categories 재사용(마이그레이션 113).
-   *  목록 화면의 "지점 카테고리" 필터(연결된 지점 기준)와는 별개 개념이다. */
+  /** 체크인 배지 전용 "지점 카테고리" Select 옵션 — poi_categories 재사용(마이그레이션 113).
+   *  값을 지정하면 연결된 지점의 카테고리보다 우선 적용된다(티켓 20260830_1522). */
   poiCategories: { slug: string; label: string }[]
 }
 
@@ -375,7 +375,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
         // 저장 시점에 명시적으로 null 처리한다(티켓 20260830_1344).
         faction_id: type === 'checkin' ? null : factionId || null,
         item_book_id: type === 'checkin' ? null : itemBookId || null,
-        // 배지 카테고리는 체크인 배지 전용 — 다른 타입에서는 항상 null.
+        // 지점 카테고리는 체크인 배지 전용 — 다른 타입에서는 항상 null.
         category: type === 'checkin' ? category || null : null,
         drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
         valid_from: validFrom ? new Date(validFrom).toISOString() : null,
@@ -540,16 +540,17 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
           </>
         )}
 
-        {/* 배지 카테고리 — 체크인 배지 전용(티켓 20260830_1344). poi_categories 재사용, 목록
-            화면의 "지점 카테고리" 필터(연결된 지점 기준)와는 별개 개념이다. */}
+        {/* 지점 카테고리 — 체크인 배지 전용(티켓 20260830_1344). poi_categories 재사용.
+            값을 지정하면 연결된 지점의 카테고리보다 우선 적용돼 목록·배지함 분류 기준이
+            된다(티켓 20260830_1522). */}
         {type === 'checkin' && (
           <label className="flex flex-col gap-1.5 col-span-2">
-            <span className="text-sm text-foreground">배지 카테고리</span>
+            <span className="text-sm text-foreground">지점 카테고리</span>
             <Select
               value={category || NONE_VALUE}
               onValueChange={(v) => setCategory(v === NONE_VALUE ? '' : v)}
             >
-              <SelectTrigger aria-label="배지 카테고리">
+              <SelectTrigger aria-label="지점 카테고리">
                 <SelectValue placeholder="카테고리를 선택해주세요" />
               </SelectTrigger>
               <SelectContent container={themeContainer ?? undefined}>
@@ -560,8 +561,8 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
               </SelectContent>
             </Select>
             <span className="text-xs text-muted-foreground">
-              이 체크인 배지가 속한 지점 계열이에요. 연결된 지점의 카테고리와는 별개로, 이
-              배지 자체를 분류하는 값이에요.
+              연결된 지점의 카테고리를 다시 지정하고 싶을 때 사용해요. 값을 정하면 이 배지는
+              연결된 지점의 카테고리 대신 여기서 정한 카테고리로 분류돼요.
             </span>
           </label>
         )}
