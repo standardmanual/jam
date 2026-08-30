@@ -109,6 +109,7 @@ async function refreshPoisInBackground(
     const { data: poisAfterLevel1 } = await service
       .from('poi')
       .select('*')
+      .eq('is_active', true)
       .gte('latitude', lat - BB_MARGIN_DEG)
       .lte('latitude', lat + BB_MARGIN_DEG)
       .gte('longitude', lng - BB_MARGIN_DEG)
@@ -145,9 +146,12 @@ export async function GET(req: NextRequest) {
   // 20260820_022 이전에는 이 쿼리를 동일 bbox로 3번(T1 최초 + 레벨1 이후 + 레벨2 이후)
   // 반복했다 — 네이버 검색을 백그라운드로 옮기면서(아래 참고) 응답 경로에서는 이 1회 조회만
   // 필요해졌다.
+  // 20260830_1620: is_active=false(어드민이 운영 종료 처리한 지점)는 지도·목록에서
+  // 완전히 숨긴다 — T2(네이버) 검색 캐시나 드랍 카운트 집계 대상에서도 자동으로 빠진다.
   const { data: poisRaw } = await service
     .from('poi')
     .select('*')
+    .eq('is_active', true)
     .gte('latitude', lat - BB_MARGIN_DEG)
     .lte('latitude', lat + BB_MARGIN_DEG)
     .gte('longitude', lng - BB_MARGIN_DEG)
@@ -228,6 +232,13 @@ export async function POST(req: NextRequest) {
   }
 
   const poi = poiRaw as PoiRow
+  // 20260830_1620: is_active=false는 지도/목록에서 이미 숨겨지므로 정상 흐름에서는 도달하지
+  // 않지만, 클라이언트가 들고 있던 캐시된 poi_id로 요청할 수 있어 서버에서도 막는다.
+  // 신규 드랍 시도만 막는 것이라 poi_not_found와 동일하게 취급한다(사용자에게는 '존재하지
+  // 않는 지점'과 동일한 문구가 이미 매핑돼 있음, components/PoiCarouselModal.tsx 참고).
+  if (!poi.is_active) {
+    return NextResponse.json({ error: 'poi_not_found' }, { status: 404 })
+  }
   if (!isUserNearPoi(user_lat, user_lng, poi)) {
     return NextResponse.json({ error: 'out_of_range' }, { status: 403 })
   }

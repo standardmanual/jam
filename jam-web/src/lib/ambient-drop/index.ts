@@ -119,8 +119,10 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   }
 
   // ── 대상 POI 조회 (카테고리 필터, "전체"면 무필터) ─────────────
+  // 20260830_1620: is_active=false(운영 종료 지점)는 시스템이 새로 배치할 대상에서 제외한다.
+  // 이미 배치돼 있던 시스템 드랍(source='system')은 건드리지 않는다 — 소급 회수하지 않음.
   const poiRows = await fetchAllRows('poi', (from, to) => {
-    let q = supabase.from('poi').select('id').order('id').range(from, to)
+    let q = supabase.from('poi').select('id').eq('is_active', true).order('id').range(from, to)
     if (effectiveCategorySlug) q = q.eq('category', effectiveCategorySlug)
     return q
   })
