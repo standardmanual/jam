@@ -105,8 +105,9 @@ export interface BadgeRow {
   faction_id: string | null
   item_book_id: string | null
   /** 체크인 배지가 속한 지점 계열 태그. poi_categories.slug 참조, nullable (마이그레이션 113).
-   *  poi.category(연결된 지점의 실제 카테고리)와는 별개 개념 — 배지 자체에 어드민이 붙인
-   *  분류용 값이며 발급 판정 로직에는 관여하지 않는다. 체크인 타입 외에는 항상 NULL로 유지. */
+   *  값이 있으면 연결된 지점의 poi.category보다 우선해 목록/배지함 분류 기준이 된다
+   *  (오버라이드, 티켓 20260830_1522). null이면 기존처럼 poi.category로 폴백한다.
+   *  발급 판정 로직에는 관여하지 않는다. 체크인 타입 외에는 항상 NULL로 유지. */
   category: string | null
   drop_weight: number
   drop_condition_json: Record<string, unknown> | null
