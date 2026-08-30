@@ -64,8 +64,10 @@ module.exports = {
         .order('name')
     )
 
+    // badges.type='poi'는 마이그레이션 103([[20260826_004]])에서 'checkin'으로 이름이 바뀌었다
+    // (이번 티켓 20260830_1252에서 발견·수정 — metro-poi-badge.config.js와 동일한 버그)
     const aliveBadges = await fetchAllRows(() =>
-      supabase.from('badges').select('id').eq('type', 'poi').is('deleted_at', null).order('id')
+      supabase.from('badges').select('id').eq('type', 'checkin').is('deleted_at', null).order('id')
     )
     const alive = new Set(aliveBadges.map((b) => b.id))
 
