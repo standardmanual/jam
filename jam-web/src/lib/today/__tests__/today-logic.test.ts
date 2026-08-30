@@ -5,6 +5,7 @@
 import assert from 'node:assert'
 import { timeOfDayTag, isNewUser } from '../exposure'
 import { resolveTargetHref } from '../cards'
+import { resolveFriendActivityHref } from '../status'
 import type { TodayCardRow } from '@/types/database'
 
 let passed = 0
@@ -101,6 +102,16 @@ check('resolveTargetHref: drop_alert → /drops', () => {
 check('resolveTargetHref: progress_nudge 배지없고 미션있으면 → /missions/{id}', () => {
   const card = makeCard({ template_type: 'progress_nudge', mission_id: 'm9' })
   assert.equal(resolveTargetHref(card), '/missions/m9')
+})
+
+check('resolveFriendActivityHref: 1명 + username 있음 → 프로필 href', () => {
+  assert.equal(resolveFriendActivityHref(1, 'jaesook'), '/jaesook')
+})
+check('resolveFriendActivityHref: 1명이지만 username 없음(탈퇴 등) → /feed 폴백', () => {
+  assert.equal(resolveFriendActivityHref(1, null), '/feed')
+})
+check('resolveFriendActivityHref: 2명 이상 → /feed', () => {
+  assert.equal(resolveFriendActivityHref(2, 'jaesook'), '/feed')
 })
 
 console.log(`\n${passed} passed`)
