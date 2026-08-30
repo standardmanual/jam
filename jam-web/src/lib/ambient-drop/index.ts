@@ -12,6 +12,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { logEngineDecision } from '@/lib/engine-log'
+import { fetchAllRows } from '@/lib/notifications/batch/shared'
 import type { AmbientDropConfig } from './config'
 import { getAmbientDropConfig } from './config'
 import {
@@ -44,29 +45,6 @@ export interface AmbientDropBatchResult {
   reason?: AmbientDropSkipReason
 }
 
-// PostgREST 기본 응답 상한(1000행) 대응 — poi/badges 전체 스캔이 이 상한에 걸려 조용히
-// 잘리는 사고가 있었다(티켓 20260825_029, itembook 완성 판정). 같은 패턴으로 페이지네이션한다.
-const PAGE_SIZE = 1000
-
-type RangeQuery<T> = (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
-
-async function fetchAllRows<T>(label: string, query: RangeQuery<T>): Promise<T[]> {
-  const rows: T[] = []
-  let from = 0
-  for (;;) {
-    const { data, error } = await query(from, from + PAGE_SIZE - 1)
-    if (error) {
-      console.error(`[ambient-drop] ${label} 조회 오류:`, error)
-      break
-    }
-    const page = data ?? []
-    rows.push(...page)
-    if (page.length < PAGE_SIZE) break
-    from += PAGE_SIZE
-  }
-  return rows
-}
-
 /** 배치 1회 실행 — 카테고리/등급비율/대상컬렉션을 config·all_random에 따라 확정한 뒤 배치한다 */
 export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<AmbientDropBatchResult> {
   const supabase = createServiceClient()
@@ -80,10 +58,20 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   // ── 축 1: 카테고리 ──────────────────────────────────────────
   let effectiveCategorySlug: string | null
   if (useRandomCategory) {
-    const categories = await fetchAllRows('poi_categories', (from, to) =>
-      supabase.from('poi_categories').select('slug').order('slug').range(from, to)
+    // 공용 fetchAllRows는 에러 시 예외를 던지므로 .then/.catch로 흡수해 기존 그레이스풀
+    // 폴백(에러 시 console.error 후 빈 배열로 계속 진행)을 유지한다 — drop-engine/index.ts와 동일 패턴.
+    const { data: categories, error: categoriesError } = await fetchAllRows<{ slug: string }>(
+      'poi_categories',
+      'slug',
+      () => supabase.from('poi_categories').select('slug')
     )
-    effectiveCategorySlug = pickRandom((categories as { slug: string }[]).map((c) => c.slug))
+      .then((data) => ({ data, error: null as { message: string } | null }))
+      .catch((err: unknown) => ({
+        data: [] as { slug: string }[],
+        error: { message: err instanceof Error ? err.message : String(err) },
+      }))
+    if (categoriesError) console.error('[ambient-drop] poi_categories 조회 오류:', categoriesError)
+    effectiveCategorySlug = pickRandom(categories.map((c) => c.slug))
   } else {
     effectiveCategorySlug = config.category_slug
   }
@@ -101,10 +89,18 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   // ── 축 3: 대상 컬렉션 ───────────────────────────────────────
   let effectiveCollectionIds: string[]
   if (useRandomCollection) {
-    const books = await fetchAllRows('item_books', (from, to) =>
-      supabase.from('item_books').select('id').eq('is_active', true).order('id').range(from, to)
+    const { data: books, error: booksError } = await fetchAllRows<{ id: string }>(
+      'item_books',
+      'id',
+      () => supabase.from('item_books').select('id').eq('is_active', true)
     )
-    const picked = pickRandom((books as { id: string }[]).map((b) => b.id))
+      .then((data) => ({ data, error: null as { message: string } | null }))
+      .catch((err: unknown) => ({
+        data: [] as { id: string }[],
+        error: { message: err instanceof Error ? err.message : String(err) },
+      }))
+    if (booksError) console.error('[ambient-drop] item_books 조회 오류:', booksError)
+    const picked = pickRandom(books.map((b) => b.id))
     effectiveCollectionIds = picked ? [picked] : []
   } else {
     effectiveCollectionIds = config.collection_ids
@@ -119,12 +115,18 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   }
 
   // ── 대상 POI 조회 (카테고리 필터, "전체"면 무필터) ─────────────
-  const poiRows = await fetchAllRows('poi', (from, to) => {
-    let q = supabase.from('poi').select('id').order('id').range(from, to)
+  const { data: poiRows, error: poiRowsError } = await fetchAllRows<{ id: string }>('poi', 'id', () => {
+    let q = supabase.from('poi').select('id')
     if (effectiveCategorySlug) q = q.eq('category', effectiveCategorySlug)
     return q
   })
-  const allPoiIds = (poiRows as { id: string }[]).map((p) => p.id)
+    .then((data) => ({ data, error: null as { message: string } | null }))
+    .catch((err: unknown) => ({
+      data: [] as { id: string }[],
+      error: { message: err instanceof Error ? err.message : String(err) },
+    }))
+  if (poiRowsError) console.error('[ambient-drop] poi 조회 오류:', poiRowsError)
+  const allPoiIds = poiRows.map((p) => p.id)
 
   if (allPoiIds.length === 0) {
     const result: AmbientDropBatchResult = { ...baseResult, eligiblePoiCount: 0, spawned: 0, reason: 'no_eligible_poi' }
@@ -133,11 +135,22 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   }
 
   // ── 현재 활성 시스템 드랍 카운트 (POI별 — max_active_per_poi 초과분 배제) ──
-  const activeRows = await fetchAllRows('poi_drops(active system)', (from, to) =>
-    supabase.from('poi_drops').select('poi_id').eq('source', 'system').eq('is_available', true).range(from, to)
+  // poi_id는 이 집계 자체가 POI별 카운트라 중복이 정상 — 유니크 tie-break가 아니다.
+  // poi_drops의 실제 PK는 id(migrations/004_phase7_user_drops.sql:5)이므로 select에 포함시켜
+  // orderBy: 'id'로 안정 정렬한다(select에 없는 컬럼으로 정렬하면 안정 정렬이 보장되지 않는다).
+  const { data: activeRows, error: activeRowsError } = await fetchAllRows<{ poi_id: string; id: string }>(
+    'poi_drops(active system)',
+    'id',
+    () => supabase.from('poi_drops').select('poi_id, id').eq('source', 'system').eq('is_available', true)
   )
+    .then((data) => ({ data, error: null as { message: string } | null }))
+    .catch((err: unknown) => ({
+      data: [] as { poi_id: string; id: string }[],
+      error: { message: err instanceof Error ? err.message : String(err) },
+    }))
+  if (activeRowsError) console.error('[ambient-drop] poi_drops(active system) 조회 오류:', activeRowsError)
   const activeByPoi = new Map<string, number>()
-  for (const row of activeRows as { poi_id: string }[]) {
+  for (const row of activeRows) {
     activeByPoi.set(row.poi_id, (activeByPoi.get(row.poi_id) ?? 0) + 1)
   }
 
@@ -155,22 +168,31 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   }
 
   // ── 후보 배지 로드 (item 타입 + 컬렉션 소속 + 활성 + 유효기간, rarity별로 분류) ──
-  const badgeRows = await fetchAllRows('badges(item)', (from, to) => {
-    let q = supabase
-      .from('badges')
-      .select('id, rarity, valid_from, valid_until')
-      .eq('type', 'item')
-      .is('deleted_at', null)
-      .not('item_book_id', 'is', null)
-      .order('id')
-      .range(from, to)
-    if (effectiveCollectionIds.length > 0) q = q.in('item_book_id', effectiveCollectionIds)
-    return q
-  })
+  type CandidateBadgeRow = { id: string; rarity: BadgeRarity; valid_from: string | null; valid_until: string | null }
+  const { data: badgeRows, error: badgeRowsError } = await fetchAllRows<CandidateBadgeRow>(
+    'badges(item)',
+    'id',
+    () => {
+      let q = supabase
+        .from('badges')
+        .select('id, rarity, valid_from, valid_until')
+        .eq('type', 'item')
+        .is('deleted_at', null)
+        .not('item_book_id', 'is', null)
+      if (effectiveCollectionIds.length > 0) q = q.in('item_book_id', effectiveCollectionIds)
+      return q
+    }
+  )
+    .then((data) => ({ data, error: null as { message: string } | null }))
+    .catch((err: unknown) => ({
+      data: [] as CandidateBadgeRow[],
+      error: { message: err instanceof Error ? err.message : String(err) },
+    }))
+  if (badgeRowsError) console.error('[ambient-drop] badges(item) 조회 오류:', badgeRowsError)
 
   const now = ranAt
   const badgesByRarity: Record<BadgeRarity, { id: string }[]> = { common: [], rare: [], legend: [], mythic: [] }
-  for (const b of badgeRows as { id: string; rarity: BadgeRarity; valid_from: string | null; valid_until: string | null }[]) {
+  for (const b of badgeRows) {
     if (b.valid_from && b.valid_from > now) continue
     if (b.valid_until && b.valid_until < now) continue
     badgesByRarity[b.rarity].push({ id: b.id })
