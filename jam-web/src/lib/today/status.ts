@@ -223,6 +223,16 @@ function kstTodayStartIso(now: Date): string {
 /** 아바타 스택에 노출할 최대 인원 */
 const FRIEND_AVATAR_MAX = 3
 
+/**
+ * 친구 활동 카드의 탭 목적지를 계산한다 — 순수 함수(티켓 20260830_2107).
+ * 오늘 배지를 획득한 팔로잉이 정확히 1명이고 username을 알 수 있으면 그 친구 프로필로,
+ * 그 외(2명 이상 또는 username 조회 실패)에는 통합 피드(/feed)로 보낸다.
+ */
+export function resolveFriendActivityHref(count: number, singleUsername: string | null): string {
+  if (count === 1 && singleUsername) return `/${singleUsername}`
+  return '/feed'
+}
+
 export async function getTodayRightStatus(userId: string, now: Date = new Date()): Promise<TodayRightStatus> {
   const supabase = createServiceClient()
 
@@ -255,9 +265,14 @@ export async function getTodayRightStatus(userId: string, now: Date = new Date()
   if (orderedUserIds.length === 0) return { kind: 'none' }
 
   const top = orderedUserIds.slice(0, FRIEND_AVATAR_MAX)
-  const { data: usersRaw } = await supabase.from('users').select('id, avatar_url').in('id', top)
-  const avatarMap = new Map(((usersRaw ?? []) as { id: string; avatar_url: string | null }[]).map((u) => [u.id, u.avatar_url]))
-  const avatarUrls = top.map((id) => avatarMap.get(id) ?? null)
+  const { data: usersRaw } = await supabase.from('users').select('id, avatar_url, username').in('id', top)
+  const userMap = new Map(
+    ((usersRaw ?? []) as { id: string; avatar_url: string | null; username: string | null }[]).map((u) => [u.id, u])
+  )
+  const avatarUrls = top.map((id) => userMap.get(id)?.avatar_url ?? null)
 
-  return { kind: 'friend_activity', count: orderedUserIds.length, avatarUrls, href: '/feed' }
+  const singleUsername = orderedUserIds.length === 1 ? userMap.get(orderedUserIds[0])?.username ?? null : null
+  const href = resolveFriendActivityHref(orderedUserIds.length, singleUsername)
+
+  return { kind: 'friend_activity', count: orderedUserIds.length, avatarUrls, href }
 }
