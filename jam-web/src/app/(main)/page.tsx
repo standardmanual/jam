@@ -11,7 +11,7 @@ import LocalDate from '@/components/LocalDate'
 import TodayCardStack from './TodayCardStack'
 import TodayStatusStrip from './TodayStatusStrip'
 import { getTodayCards } from '@/lib/today/cards'
-import { getTodayLeftStatus, getTodayRightStatus } from '@/lib/today/status'
+import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
 import { getDisplayName } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
 import { MedalIcon, SearchIcon } from '@/components/ui/icons'
@@ -31,29 +31,34 @@ export default async function HomePage() {
 
   const userId = user.id
 
-  // getTodayLeftStatus(userId, true)의 결과는 stravaConnected=true를 가정한 "진행 중
-  // 컬렉션/미션 유무"만 계산한다(내부적으로 strava_connections를 다시 조회하지 않는 순수
-  // 조회라 인자값이 최종 결과에 영향을 주지 않는다). 실제 stravaConnection 여부는 같은
-  // Promise.all 안의 strava_connections 쿼리 결과로만 확정되므로, 병렬 조회 후 아래에서
-  // 최종 leftStatus를 조합한다 — 순차 대기 없이 모든 쿼리를 한 번에 병렬화하기 위함.
-  const [{ data: profile }, { data: stravaConn }, { data: recentBadges }, progressStatus, rightStatus] = await Promise.all([
-    supabase.from('users').select('*').eq('id', userId).single(),
-    supabase.from('strava_connections').select('*').eq('user_id', userId).maybeSingle(),
-    supabase
-      .from('user_activity_badges')
-      .select('*, badge:badges(*)')
-      .eq('user_id', userId)
-      .order('earned_at', { ascending: false })
-      .limit(4),
-    getTodayLeftStatus(userId, true),
-    getTodayRightStatus(userId),
+  // strava_connections 조회를 먼저 시작해두고(다른 쿼리들도 동시에 시작), 그 결과로
+  // 미연동이면 getTodayLeftStatus 자체를 호출하지 않는다 — 미연동 유저에게 bestProgress()의
+  // 무의미한 DB 조회 4건이 실행되던 문제를 제거한다(티켓 20260830_2104). 나머지 쿼리는
+  // stravaConn과 무관하게 이미 병렬로 실행 중이므로 병렬화 이점은 그대로 유지된다.
+  const stravaConnPromise = supabase.from('strava_connections').select('*').eq('user_id', userId).maybeSingle()
+  const profilePromise = supabase.from('users').select('*').eq('id', userId).single()
+  const recentBadgesPromise = supabase
+    .from('user_activity_badges')
+    .select('*, badge:badges(*)')
+    .eq('user_id', userId)
+    .order('earned_at', { ascending: false })
+    .limit(4)
+  const rightStatusPromise = getTodayRightStatus(userId)
+
+  const { data: stravaConn } = await stravaConnPromise
+  const stravaConnection = stravaConn as StravaConnectionRow | null
+  const leftStatusPromise: Promise<TodayLeftStatus> = stravaConnection
+    ? getTodayLeftStatus(userId)
+    : Promise.resolve({ kind: 'strava_disconnected', href: '/api/strava/auth' })
+
+  const [{ data: profile }, { data: recentBadges }, rightStatus, leftStatus] = await Promise.all([
+    profilePromise,
+    recentBadgesPromise,
+    rightStatusPromise,
+    leftStatusPromise,
   ])
 
   const userProfile = profile as UserRow | null
-  const stravaConnection = stravaConn as StravaConnectionRow | null
-  const leftStatus = stravaConnection
-    ? progressStatus
-    : { kind: 'strava_disconnected' as const, href: '/api/strava/auth' }
   // 소프트 삭제된 배지(badges.deleted_at)는 "최근 획득 배지"에서 제외한다(20260824_007) —
   // 다른 화면들과 동일하게 조인 결과를 badge.deleted_at으로 사후 필터한다.
   const badgeWithEarned: BadgeWithEarned[] = ((recentBadges ?? []) as Array<{badge: BadgeRow} & UserActivityBadgeRow>)

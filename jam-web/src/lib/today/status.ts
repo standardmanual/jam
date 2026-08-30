@@ -186,11 +186,13 @@ const SUGGESTIONS: { text: string; category: 'drops' | 'missions'; href: string 
   { text: d.todayStatus.suggestionMissions, category: 'missions', href: '/missions' },
 ]
 
-export async function getTodayLeftStatus(userId: string, stravaConnected: boolean): Promise<TodayLeftStatus> {
-  if (!stravaConnected) {
-    return { kind: 'strava_disconnected', href: '/api/strava/auth' }
-  }
-
+/**
+ * 진행 중인 컬렉션/미션 → 없으면 신규 유저 안내를 계산한다.
+ * Strava 연동 여부 판단은 이 함수의 책임이 아니다 — 호출부(`page.tsx`)가
+ * `strava_connections` 조회로 먼저 확정하고, 미연동이면 이 함수 자체를 호출하지 않는다
+ * (티켓 20260830_2104 — 미연동 유저에게 무의미한 DB 조회 4건이 실행되던 문제 제거).
+ */
+export async function getTodayLeftStatus(userId: string): Promise<TodayLeftStatus> {
   const best = await bestProgress(userId)
   if (best) {
     return { kind: 'progress', name: best.name, current: best.current, total: best.total, href: best.href }
