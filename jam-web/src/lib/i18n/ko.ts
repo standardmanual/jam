@@ -208,6 +208,8 @@ export const ko = {
     greeting: '{name}님, 오늘도 좋은 하루예요',
 
     // 좌: 내 진행도
+    /** 좌측 슬롯 카드 타이틀 레이블 — 3분기(strava_disconnected/progress/suggestion) 공통 (티켓 20260830_2121) */
+    myProgressLabel: '내 진행도',
     // UX_WRITING_GUIDELINE.md 고정 용어 — "Strava 동기화"(X: Strava 연동). 티켓 원문 문구의
     // "연동"을 가이드 고정 용어로 교정했다.
     stravaCta: 'Strava 동기화하면 시작해요',
@@ -218,6 +220,8 @@ export const ko = {
     suggestionMissions: '미션 참가해보기',
 
     // 우: 친구 활동
+    /** 우측 슬롯 카드 타이틀 레이블 — 2분기(friend_activity/no_following) 공통 (티켓 20260830_2121) */
+    friendActivityLabel: '친구 활동',
     /** count는 오늘 배지를 받은 팔로잉 유저 수 */
     // UX_WRITING_GUIDELINE.md 고정 용어 — 배지·아이템을 얻는 행위는 "획득"으로 통일
     // (X: 받다·겟·수령). 티켓 원문 문구의 "받았어요"를 고정 용어로 교정했다.
