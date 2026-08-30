@@ -10,6 +10,7 @@
  * 대상: public.poi.category='mountain'에 연결된 public.badges (847개, 2026-08-24 기준)
  */
 const { fetchAllRows } = require('../lib/fetch-all-rows')
+const { dedupeByBadgeId } = require('../lib/dedupe-by-badge-id')
 
 module.exports = {
   name: 'mountain-poi-badge-v2',
@@ -71,9 +72,13 @@ module.exports = {
     )
     const alive = new Set(aliveBadges.map((b) => b.id))
 
-    return pois
+    const rows = pois
       .filter((p) => alive.has(p.linked_badge_id))
       .map((p) => ({ id: p.linked_badge_id, name: p.name }))
+
+    // 현재(2026-08-30 기준) mountain 카테고리에서 badge id 중복 연결은 없지만, metro-poi-badge에서
+    // 발견된 것과 동일한 다대일 연결 사고를 예방하기 위해 방어적으로 dedupe한다([[20260830_1252]]).
+    return dedupeByBadgeId(rows)
   },
 
   // 이전 디자인과 동일 경로 — 파일을 덮어쓰므로 image_url 변경이 필요 없다
