@@ -1,8 +1,9 @@
 ---
 id: 20260830_2104
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-30
+closed: 2026-08-30
 ---
 
 # [Service] getTodayLeftStatus 불필요한 DB 조회 제거
@@ -81,9 +82,10 @@ jam-web/src/app/(main)/page.tsx
 - [x] `npx tsc --noEmit -p .` — 에러 0건
 - [x] `npm run lint` (전체) — 에러 0건, 경고 25건 (모두 이번 변경과 무관한 기존 경고,
       변경 파일 2건은 경고 목록에 없음)
-- [ ] 실제 화면 확인(Strava 미연동/진행 중/신규 유저 3분기) — 이 리뷰 브랜치는 아직
-      staging에 병합되지 않아 `jam-stage.vercel.app`에는 반영되어 있지 않음. staging
-      병합 후 확인 필요.
+- [x] staging(`jam-stage.vercel.app`) 실제 화면 확인 — 미연동 분기("Strava 동기화하면
+      시작해요") 정상 렌더링 확인. 네트워크 요청 전부 200, 기능적 오류 없음. (진행 중/
+      신규 유저 분기는 게이트 리뷰의 코드 대조로 회귀 없음을 확인 — 해당 상태의 테스트
+      계정 부재로 브라우저 실측은 생략)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -95,12 +97,18 @@ jam-web/src/app/(main)/page.tsx
 - [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-30
+- 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행 예정)
+- 커밋: 7641d6ab (staging 머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
-> 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+> UX Writing/문서 갱신 체크박스는 렌더 결과가 변경 전후 동일한 내부 성능/구조 개선이라
+> 해당 없음으로 비워둔다(progressive-reviewer 검토 결과 동일 결론).
 
 ### 잔여 이슈
--
+- staging 확인 중 홈 화면에서 React 하이드레이션 에러(Minified React error #418)가
+  발견됨. 이번 변경 범위(`status.ts`/`page.tsx`의 데이터 페칭 로직)와는 무관하며,
+  `LocalDate` 컴포넌트(`src/components/LocalDate.tsx`)가 서버/클라이언트 렌더 결과가
+  달라질 수 있는 `toLocaleString` 호출을 하이드레이션 가드 없이 사용하는 것이 유력한
+  원인으로 추정된다(기능적 오류는 아니며 네트워크 요청은 전부 정상). 범위 밖 이슈로
+  별도 티켓 분리 필요.
