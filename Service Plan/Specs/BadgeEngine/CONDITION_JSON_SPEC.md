@@ -39,6 +39,8 @@
 | 필드 | 타입 | 설명 |
 |------|------|------|
 | `activity_type` | `string` | Strava 활동 타입. 유효값: `"walking"` `"running"` `"cycling"` `"hiking"` `"trail_running"` |
+| `day_of_week` | `DayOfWeek \| DayOfWeek[]` | 활동 시작 요일(로컬 기준, `startDateLocal`) 필터. **단일값**: `time_range`처럼 다른 필드와 AND 결합되는 필터 (예: `day_of_week:"sunday"` + `total_count:1000`). **배열 + `total_count` 동시 지정**: "요일별 독립 카운터" 모드로 전환 — 배열의 각 요일이 각각 독립적으로 `total_count`를 만족해야 발급 (예: 평일 5일 각각 300회 — W08 "평일의 성실함") |
+| `route` | `string` | 특정 루트 이름 필터용으로 스키마(`condition-schema.ts`의 `FILTER_ONLY_CONDITION_KEYS`)에 정의돼 있으나 **badge-engine 평가 로직에 실제 구현이 없다** — `src/lib/badge-engine/index.ts` 전체에 참조가 없어 조건에 넣어도 필터링 효과가 없다(무시됨). 어드민 폼에도 입력 UI가 없다(티켓 20260825_032). §6 참조 |
 
 ### 2.2 누적 통계 필드 (전체 이력 합산)
 
@@ -63,6 +65,7 @@
 | `streak_days` | `number` | 일 | 전체 이력 기준 최장 연속 활동일 수 ≥ 조건값 |
 | `weekly_count` | `number` | 회 | 한 주(월–일) 내 활동 횟수 최대값 ≥ 조건값. `time_range` 동반 시 해당 시간대 활동만 카운트 |
 | `weekend_duration_hours` | `number` | 시간 | 토·일 활동 이동시간(시간) 최대값 ≥ 조건값 |
+| `active_days_count` | `number` | 일 | 걷기(축1 게이트 통과) 활동의 누적 **고유** 활동일수 ≥ 조건값 — `COUNT(DISTINCT date)`. `streak_days`(연속 일수)와 달리 연속일 필요 없음 |
 
 ### 2.5 월·계절 필드
 
@@ -72,6 +75,7 @@
 | `monthly_km` | `number` | 월별 누적 거리 최대값 ≥ 조건값. `month` 없으면 전체 연-월 그룹 최대 |
 | `season` | `"spring"` \| `"summer"` \| `"autumn"` \| `"winter"` | 해당 계절 지정 |
 | `season_count` | `number` | 해당 계절 활동 횟수 ≥ 조건값 |
+| `season_count_all` | `number` | 사계절(봄/여름/가을/겨울) **각각 독립 카운터**로 활동 횟수 ≥ 조건값이어야 함 — 4개 계절 모두 충족해야 통과(T15 "사계절의 발걸음"). `season_count`(지정 계절 1개만 검사)와 달리 `season` 필드 지정이 불필요 |
 
 ### 2.6 환경 조건 필드
 
@@ -143,6 +147,12 @@
 // 선행 배지 (Rare 이상 필수)
 { "activity_type": "cycling", "distance_km": 500, "prerequisite_badge_names": ["라이딩 입문자"] }
 
+// 사계절 각각 독립 카운터 (사계절 모두 각 10회 이상 걷기 — T15 "사계절의 발걸음")
+{ "activity_type": "walking", "season_count_all": 10 }
+
+// 요일별 독립 카운터 (평일 5일 각각 300회 — W08 "평일의 성실함")
+{ "activity_type": "walking", "day_of_week": ["monday", "tuesday", "wednesday", "thursday", "friday"], "total_count": 300 }
+
 // 체크인 배지 (GPS 매칭)
 { "poi_id": "uuid-here" }
 
@@ -156,6 +166,7 @@
 
 | 항목 | 상태 |
 |------|------|
+| `route` 필드 | ❌ 미구현 — 타입(`BadgeCondition`)·스키마(`condition-schema.ts`)엔 존재하나 badge-engine 평가 로직이 없다. 조건에 넣어도 무시되며 발급 판정에 아무 영향을 주지 않는다 (2026-08-25 조사, 티켓 20260825_034) |
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
 | `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조 |
 | `temperature_*` (날씨 데이터 없는 활동) | ⚠️ fail — Strava average_temp 의존 |
