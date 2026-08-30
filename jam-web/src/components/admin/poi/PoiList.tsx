@@ -9,7 +9,7 @@ import type { PoiRow } from '@/types/database'
  *  (20260826_011 A8). 상세화면(osm_id/naver_id/poi_tier/created_at 등)은 별도로 전체 조회한다. */
 export type PoiListRow = Pick<
   PoiRow,
-  'id' | 'name' | 'latitude' | 'longitude' | 'radius_meters' | 'category' | 'linked_badge_id'
+  'id' | 'name' | 'latitude' | 'longitude' | 'radius_meters' | 'category' | 'linked_badge_id' | 'is_active'
 >
 
 interface PoiListProps {

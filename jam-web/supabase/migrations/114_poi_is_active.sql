@@ -1,0 +1,21 @@
+-- ============================================================
+-- Migration 114: POI 활성/비활성 상태 컬럼 추가
+--
+-- 티켓: 20260830_1619
+--
+-- 배경(요약 — 티켓 문서 참고):
+--   POI를 임시로 노출에서 제외하려면 하드 삭제(DELETE)뿐이었다. item_books.is_active와
+--   동일한 패턴으로 poi 테이블에도 활성/비활성 토글을 추가한다.
+--
+-- 이 마이그레이션이 하는 일:
+--   poi 테이블에 is_active boolean NOT NULL DEFAULT true 컬럼 추가. 기존 ~1,800건은
+--   DEFAULT true로 전부 활성 취급된다.
+--
+-- 범위:
+--   이번 마이그레이션은 어드민 화면 표시/관리용 컬럼 추가뿐이다. 드랍·체크인·매칭 로직
+--   (lib/poi/matcher.ts, api/drops, api/checkin-badges, lib/ambient-drop/,
+--   lib/notifications/batch/dropSpot.ts)에서 is_active를 반영하는 작업은 범위 밖 —
+--   후속 티켓 20260830_1620_BadgeEngine_비활성POI-드랍체크인로직-제외.md 참고.
+-- ============================================================
+
+ALTER TABLE public.poi ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
