@@ -22,11 +22,13 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
   const category = params.category ?? 'all'
   const sort = params.sort ?? 'created_desc'
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
+  const q = params.q?.trim() ?? ''
 
   const supabase = createServiceClient()
 
   let query = supabase.from('poi').select(POI_LIST_COLUMNS, { count: 'exact' })
   if (category !== 'all') query = query.eq('category', category)
+  if (q) query = query.ilike('name', `%${q}%`)
 
   if (sort === 'name_asc') query = query.order('name', { ascending: true })
   else if (sort === 'name_desc') query = query.order('name', { ascending: false })
