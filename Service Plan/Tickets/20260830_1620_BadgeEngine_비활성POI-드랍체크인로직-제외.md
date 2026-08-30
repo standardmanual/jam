@@ -80,6 +80,19 @@ closed:
 `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`에 §3.17을 신설해 적용/미적용 지점과 근거를
 문서화했다.
 
+**게이트 리뷰 FAIL 재작업(2차)**: `api/drops/route.ts` GET에서 `allDbPois` 조회에
+`is_active=true` 필터를 걸었더니, 같은 결과가 `refreshPoisInBackground`에 전달되는
+`naverIdMap`(existingNaverIds — `searchAndPersistCategories`의 중복 삽입 방지 키) 구성에도
+재사용되는 게 문제였다. 관리자가 `naver_id`를 가진 T2 POI를 비활성화한 뒤 검색 캐시 TTL이
+만료돼 재검색이 돌면, 네이버가 같은 장소를 다시 반환할 때 `naverIdMap`에 없다고 오판(비활성
+POI라 필터로 빠졌으므로) → INSERT 시도 → `naver_id` UNIQUE 제약 위반 → 그 배치의 진짜 신규
+POI까지 저장 실패(에러가 조용히 삼켜짐)하는 회귀였다. **수정**: bbox 쿼리 자체에서는
+`is_active` 필터를 제거하고 전량(`allDbPois`)을 가져와 `naverIdMap`은 그대로 전체 기준으로
+구성하되, 유저 노출용 `nearbyDbPois`/`allPois`/드랍 카운트 집계는 별도로 만든
+`activeDbPois = allDbPois.filter(p => p.is_active)`에서 계산하도록 분리했다. 다른 필터 적용
+지점(matcher.ts, checkin-badges/route.ts, ambient-drop/index.ts 등)은 게이트 리뷰에서 이미
+타당하다고 확인된 그대로 유지했다(변경 없음).
+
 ### 변경된 파일
 ```
 jam-web/src/lib/poi/matcher.ts
