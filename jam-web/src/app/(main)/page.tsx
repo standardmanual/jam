@@ -8,12 +8,13 @@ import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import TopNav from '@/components/ui/TopNav'
 import LocalDate from '@/components/LocalDate'
-import UserSearchBar from './UserSearchBar'
 import TodayCardStack from './TodayCardStack'
+import TodayStatusStrip from './TodayStatusStrip'
 import { getTodayCards } from '@/lib/today/cards'
+import { getTodayLeftStatus, getTodayRightStatus } from '@/lib/today/status'
 import { getDisplayName } from '@/lib/utils'
-import { d } from '@/lib/i18n'
-import { MedalIcon } from '@/components/ui/icons'
+import { d, t } from '@/lib/i18n'
+import { MedalIcon, SearchIcon } from '@/components/ui/icons'
 
 interface BadgeWithEarned {
   badge: BadgeRow
@@ -30,7 +31,12 @@ export default async function HomePage() {
 
   const userId = user.id
 
-  const [{ data: profile }, { data: stravaConn }, { data: recentBadges }] = await Promise.all([
+  // getTodayLeftStatus(userId, true)의 결과는 stravaConnected=true를 가정한 "진행 중
+  // 컬렉션/미션 유무"만 계산한다(내부적으로 strava_connections를 다시 조회하지 않는 순수
+  // 조회라 인자값이 최종 결과에 영향을 주지 않는다). 실제 stravaConnection 여부는 같은
+  // Promise.all 안의 strava_connections 쿼리 결과로만 확정되므로, 병렬 조회 후 아래에서
+  // 최종 leftStatus를 조합한다 — 순차 대기 없이 모든 쿼리를 한 번에 병렬화하기 위함.
+  const [{ data: profile }, { data: stravaConn }, { data: recentBadges }, progressStatus, rightStatus] = await Promise.all([
     supabase.from('users').select('*').eq('id', userId).single(),
     supabase.from('strava_connections').select('*').eq('user_id', userId).maybeSingle(),
     supabase
@@ -39,10 +45,15 @@ export default async function HomePage() {
       .eq('user_id', userId)
       .order('earned_at', { ascending: false })
       .limit(4),
+    getTodayLeftStatus(userId, true),
+    getTodayRightStatus(userId),
   ])
 
   const userProfile = profile as UserRow | null
   const stravaConnection = stravaConn as StravaConnectionRow | null
+  const leftStatus = stravaConnection
+    ? progressStatus
+    : { kind: 'strava_disconnected' as const, href: '/api/strava/auth' }
   // 소프트 삭제된 배지(badges.deleted_at)는 "최근 획득 배지"에서 제외한다(20260824_007) —
   // 다른 화면들과 동일하게 조인 결과를 badge.deleted_at으로 사후 필터한다.
   const badgeWithEarned: BadgeWithEarned[] = ((recentBadges ?? []) as Array<{badge: BadgeRow} & UserActivityBadgeRow>)
@@ -61,26 +72,27 @@ export default async function HomePage() {
       <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
 
       <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-24)]">
-      {/* 헤더 */}
-      <div>
-        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60">{d.today.greeting}</p>
-        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)] mt-0.5">
-          {displayName}
-        </h1>
+      {/* 압축 인사말 + 검색 아이콘화 (티켓 20260830_2030) — 기존 큰 인사말(h1)·상시 노출
+          전체 폭 검색바를 대체한다. 검색 폼 자체는 UserSearchBar가 그대로 유지하고
+          `/search` 페이지에서 계속 쓰인다. */}
+      <div className="flex items-center justify-between gap-[var(--spacing-16)]">
+        <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] font-bold truncate">
+          {t(d.todayStatus.greeting, { name: displayName })}
+        </p>
+        <Link
+          href="/search"
+          aria-label={d.today.searchAriaLabel}
+          className="w-11 h-11 -mr-1 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
+        >
+          <span className="w-9 h-9 rounded-[var(--radius-pill)] bg-surface-elevated text-text flex items-center justify-center">
+            <SearchIcon className="w-4 h-4" />
+          </span>
+        </Link>
       </div>
 
-      {/* Strava 미연동 안내 카드 — 최초 가입 시 노출, 연동 유도 목적으로 유지한다.
-          연동 후 카드(동기화 상태 표시)는 Topnavi 중앙 슬롯과 중복이라 제거했다
-          (20260824_012). */}
-      {!stravaConnection && (
-        <Card tone="inverse">
-          <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] mb-1">{d.today.stravaNotConnectedTitle}</p>
-          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60">{d.today.stravaNotConnectedBody}</p>
-        </Card>
-      )}
-
-      {/* 유저 검색 */}
-      <UserSearchBar />
+      {/* "오늘의 현황" 스트립 (신규) — 좌: 내 진행도 / 우: 친구 활동. 큐레이션 없음(today_cards
+          CMS와 역할 분리, 완료 기록 참고). */}
+      <TodayStatusStrip left={leftStatus} right={rightStatus} />
 
       {/* 투데이 카드 스택 (Phase 15) — 조건 매칭 카드 0개면 자동 미노출 */}
       <TodayCardStack cards={todayCards} />
