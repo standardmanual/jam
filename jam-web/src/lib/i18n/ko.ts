@@ -382,7 +382,7 @@ export const ko = {
     // (되돌릴 수 없는 행동 → 단호 톤, [현상]→[결과]→[확인] 구조, UX_WRITING_GUIDELINE §2).
     confirmDrop: "'{name}'을(를) 여기에 드랍하면\n다른 사람이 주워갈 때까지 되돌릴 수 없어요.\n그래도 드랍할까요?",
     cancel: '취소',
-    dropButton: '드랍하기',
+    dropButton: '드랍',
     dropSuccess: '드랍 완료',
     // 20260826_002: 드랍 실패 코드별 사용자 문구. 서버(api/drops)는 snake_case 코드만
     // 돌려주고, 이 문구들이 유일한 사용자 노출 경로다(PoiCarouselModal에서 코드로 매핑).
@@ -395,10 +395,10 @@ export const ko = {
     dropItemSlotted: '컬렉션에 넣은 아이템은 드랍할 수 없어요. 컬렉션에서 빼고 다시 시도해 주세요',
     dropEmptyTitle: '아직 아이템이 없어요',
     dropEmptyBody: '여기에 아이템을 드랍하면 다른 사람이 발견할 수 있어요',
-    dropHereButton: '여기에 드랍하기',
+    dropHereButton: '드랍',
     dropNoItems: '드랍할 아이템이 없어요',
     dropNoItemsBody: '인벤토리에 아이템이 생기면 여기서 드랍할 수 있어요',
-    pickupButton: '픽업하기',
+    pickupButton: '픽업',
     pickupSuccess: '픽업 완료! 인벤토리를 확인해보세요',
     // 20260825_039: 바텀시트 포털화로 그동안 시트에 가려져 있던 픽업 실패 토스트가
     // 실제로 노출되기 시작했다. 서버 원문(개발자용 축약 문구)이 새어 나가지 않도록
