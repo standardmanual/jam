@@ -109,6 +109,7 @@ async function refreshPoisInBackground(
     const { data: poisAfterLevel1 } = await service
       .from('poi')
       .select('*')
+      .eq('is_active', true)
       .gte('latitude', lat - BB_MARGIN_DEG)
       .lte('latitude', lat + BB_MARGIN_DEG)
       .gte('longitude', lng - BB_MARGIN_DEG)
@@ -145,6 +146,14 @@ export async function GET(req: NextRequest) {
   // 20260820_022 이전에는 이 쿼리를 동일 bbox로 3번(T1 최초 + 레벨1 이후 + 레벨2 이후)
   // 반복했다 — 네이버 검색을 백그라운드로 옮기면서(아래 참고) 응답 경로에서는 이 1회 조회만
   // 필요해졌다.
+  // 20260830_1620: is_active 필터는 여기서 걸지 않는다 — 이 쿼리 결과(allDbPois)는
+  // naverIdMap(existingNaverIds, 아래) 구성에도 재사용되는데, 그 맵은 "DB에 이미 존재하는
+  // naver_id" 중복 삽입 방지가 목적이라 is_active와 무관하게 전량 포함해야 한다. 여기서
+  // is_active=true로 거르면, 관리자가 naver_id 보유 T2 POI를 비활성화한 뒤 캐시 TTL 만료로
+  // 재검색이 돌 때 네이버가 같은 장소를 다시 반환해도 "신규"로 오판 → INSERT 시도 →
+  // naver_id UNIQUE 제약 위반으로 같은 배치의 진짜 신규 POI까지 저장 실패하는 회귀가 있었다
+  // (게이트 리뷰에서 발견, 20260830_1620 재작업 사유). 유저 노출용 필터링은 아래
+  // activeDbPois에서 별도로 적용한다.
   const { data: poisRaw } = await service
     .from('poi')
     .select('*')
@@ -156,7 +165,12 @@ export async function GET(req: NextRequest) {
   const naverIdMap = new Map(allDbPois.filter((p) => p.naver_id).map((p) => [p.naver_id!, p.id]))
   const gridKey = computeGridKey(lat, lng)
 
-  const nearbyDbPois = allDbPois.filter(
+  // 20260830_1620: 유저 노출(T1 목록)·드랍 카운트 집계는 is_active=false(어드민이 운영
+  // 종료 처리한 지점)를 완전히 숨긴다 — naverIdMap과 달리 이 목록은 사용자에게 보여주는
+  // 용도이므로 활성 POI로 좁힌다.
+  const activeDbPois = allDbPois.filter((p) => p.is_active)
+
+  const nearbyDbPois = activeDbPois.filter(
     (p) => haversineDistance(lat, lng, p.latitude, p.longitude) <= NAVER_RADIUS_M
   )
 
@@ -228,6 +242,13 @@ export async function POST(req: NextRequest) {
   }
 
   const poi = poiRaw as PoiRow
+  // 20260830_1620: is_active=false는 지도/목록에서 이미 숨겨지므로 정상 흐름에서는 도달하지
+  // 않지만, 클라이언트가 들고 있던 캐시된 poi_id로 요청할 수 있어 서버에서도 막는다.
+  // 신규 드랍 시도만 막는 것이라 poi_not_found와 동일하게 취급한다(사용자에게는 '존재하지
+  // 않는 지점'과 동일한 문구가 이미 매핑돼 있음, components/PoiCarouselModal.tsx 참고).
+  if (!poi.is_active) {
+    return NextResponse.json({ error: 'poi_not_found' }, { status: 404 })
+  }
   if (!isUserNearPoi(user_lat, user_lng, poi)) {
     return NextResponse.json({ error: 'out_of_range' }, { status: 403 })
   }

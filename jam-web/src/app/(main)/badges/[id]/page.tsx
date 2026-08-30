@@ -408,14 +408,18 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       .filter((p): p is NonNullable<typeof p> => p !== null)
   }
 
-  // triggered_by_poi_id join 결과(활동 배지) 또는 최근 체크인 이력의 지점
-  // 미획득 체크인 배지는 이력이 없으므로 linked_badge_id로 직접 조회
+  // triggered_by_poi_id join 결과(활동 배지) 또는 최근 체크인 이력의 지점 — 이미 획득한
+  // 이력이라 is_active와 무관하게 그대로 노출한다(소급 적용 금지, 20260830_1620).
+  // 미획득 체크인 배지는 이력이 없으므로 linked_badge_id로 직접 조회한다 — 이 경우는
+  // "아직 안 갔다면 여기로 가보라"는 안내(PoiMapButton)라 운영 종료된 지점을 가리키면
+  // 안 되므로 is_active=true인 지점만 찾는다.
   let poi: PoiRow | null = earned?.poi ?? checkinEarns[0]?.poi ?? null
   if (!poi && badgeRow.type === 'checkin') {
     const { data: linkedPoi } = await supabase
       .from('poi')
       .select('id, name, latitude, longitude, radius_meters')
       .eq('linked_badge_id', id)
+      .eq('is_active', true)
       .maybeSingle()
     poi = linkedPoi as PoiRow | null
   }
