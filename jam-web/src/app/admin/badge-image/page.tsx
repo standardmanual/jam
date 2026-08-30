@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconCircleCheck, IconCircleX, IconCopy, IconDownload, IconSearch } from '@tabler/icons-react'
+import { IconCircleCheck, IconCircleX, IconSearch } from '@tabler/icons-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Button } from '@/components/admin/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
@@ -24,22 +24,19 @@ interface GenerateResult {
   badgeName: string
   design: string
   text: string
-  filesWritten: boolean
-  outputDir: string
-  fileName: string
-  sql: string
-  previewBase64: string
+  imageUrl: string
 }
 
 const ALL_CATEGORIES_VALUE = '__all__'
 
 /**
- * 체크인 배지 이미지 생성 (티켓 20260830_1349 — 20260830_1252 배치 생성을 단건 선택 방식으로
- * 재설계).
+ * 체크인 배지 이미지 생성 (티켓 20260830_1500 — Storage 업로드 + 즉시 DB 반영으로 재설계.
+ * 이전 이력: 20260830_1349 단건 선택 방식, 20260830_1252 배치 방식).
  *
  * 검색(이름 키워드 + 카테고리 필터) → 목록에서 배지 1개 선택 → 디자인·텍스트 확인/편집 →
- * 이미지 1장만 생성. DB의 image_url 반영은 이 화면에서 자동 실행하지 않는다 — 생성된 이미지
- * 배포 확인 후 응답의 SQL을 직접 Supabase에 적용해야 한다(20260824_020 사고 재발 방지).
+ * 이미지 1장 생성. 생성 API가 Supabase Storage 업로드와 badges.image_url UPDATE까지 한
+ * 요청 안에서 끝내므로, 이 화면에서 별도로 파일을 다운로드하거나 SQL을 복사·적용할 필요가
+ * 없다 — 생성이 끝나면 이미 서비스에 반영된 상태다.
  */
 export default function BadgeImagePage() {
   const [query, setQuery] = useState('')
@@ -56,7 +53,6 @@ export default function BadgeImagePage() {
   const [genLoading, setGenLoading] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
   const [genResult, setGenResult] = useState<GenerateResult | null>(null)
-  const [copied, setCopied] = useState(false)
 
   async function runSearch() {
     setSearchError(null)
@@ -111,21 +107,13 @@ export default function BadgeImagePage() {
     }
   }
 
-  async function copySql() {
-    if (!genResult?.sql) return
-    await navigator.clipboard.writeText(genResult.sql)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-3xl">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">체크인 배지 이미지 생성</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          체크인 배지 1개를 검색해 선택하고, 표시할 텍스트를 입력해 이미지를 생성·교체합니다.
-          DB의 image_url 반영은 여기서 자동으로 실행되지 않습니다 — 생성된 SQL을 이미지 배포
-          확인 후 직접 적용하세요.
+          체크인 배지 1개를 검색해 선택하고, 표시할 텍스트를 입력해 이미지를 생성합니다.
+          생성하면 즉시 반영됩니다 — 별도 배포나 SQL 적용이 필요 없습니다.
         </p>
       </div>
 
@@ -284,62 +272,24 @@ export default function BadgeImagePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-start gap-4">
-              {/* base64 data URL 미리보기 — next/image가 data: URL을 지원하지 않아 img 직접 사용 */}
+              {/* Storage 절대 URL 미리보기 */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`data:image/png;base64,${genResult.previewBase64}`}
+                src={genResult.imageUrl}
                 alt={`${genResult.badgeName} 미리보기`}
                 className="h-32 w-32 rounded-lg border object-cover shrink-0"
               />
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>텍스트: {genResult.text}</p>
                 <p>디자인: {genResult.design}</p>
-                <p>파일명: {genResult.fileName}</p>
               </div>
             </div>
 
-            {genResult.filesWritten ? (
-              <Alert>
-                <AlertDescription>
-                  이미지가 <code>public/{genResult.outputDir}/</code>에 저장됐습니다. 변경된 파일을
-                  커밋·배포한 뒤, 이미지가 실제로 보이는지 확인하고 아래 SQL을 Supabase에 직접
-                  적용하세요.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Alert variant="destructive">
-                <AlertTitle>파일 시스템에 쓰기가 막혀 있습니다</AlertTitle>
-                <AlertDescription>
-                  이 환경(배포된 서버)에서는 public/ 디렉터리에 새 파일을 저장할 수 없습니다.
-                  아래에서 이미지를 다운로드해 저장소에 직접 커밋하세요. 로컬 개발 서버(npm run
-                  dev)에서 실행하면 파일이 자동 저장됩니다.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {!genResult.filesWritten && (
-              <a
-                href={`data:image/png;base64,${genResult.previewBase64}`}
-                download={genResult.fileName}
-                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-              >
-                <IconDownload className="h-3.5 w-3.5" />
-                {genResult.fileName} 다운로드
-              </a>
-            )}
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-sm font-medium">image_url 반영 SQL</p>
-                <Button size="sm" variant="outline" onClick={copySql}>
-                  <IconCopy className="h-3.5 w-3.5 mr-1" />
-                  {copied ? '복사됨' : '복사'}
-                </Button>
-              </div>
-              <pre className="text-xs bg-muted rounded-md p-3 overflow-x-auto whitespace-pre-wrap">
-                {genResult.sql}
-              </pre>
-            </div>
+            <Alert>
+              <AlertDescription>
+                이미지가 즉시 반영됐습니다. 배지 화면에서 바로 확인할 수 있습니다.
+              </AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
       )}
