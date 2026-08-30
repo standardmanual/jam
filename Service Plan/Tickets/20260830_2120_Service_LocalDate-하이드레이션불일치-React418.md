@@ -1,8 +1,9 @@
 ---
 id: 20260830_2120
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-30
+closed: 2026-08-30
 ---
 
 # [Service] LocalDate 하이드레이션 불일치 (React error #418)
@@ -93,8 +94,8 @@ jam-web/src/components/LocalDate.tsx
       `LocalDate.tsx` 관련 신규 경고 없음)
 - [x] `npx tsc --noEmit` — 에러 없음
 - [x] `npm run build` — 성공 (`[build] 완료`)
-- [ ] `jam-stage.vercel.app` 실배포 새로고침 반복 테스트는 미실시 (이 세션 도구에 브라우저
-      제어 수단이 없어 실제 콘솔 확인 불가) — staging 배포 후 사용자/오케스트레이터가 확인 필요
+- [x] `jam-stage.vercel.app` 실배포 새로고침 3회 반복 테스트 — React error #418 재현 없음
+      확인 (오케스트레이터가 브라우저로 직접 확인, dpl_HZqcU35gPa6RwpntjZjqmQ2S1TZj 배포 기준)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -106,9 +107,9 @@ jam-web/src/components/LocalDate.tsx
 - [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
 
 ### 배포 정보
-- 배포일: (review 브랜치 push까지만 진행 — staging 병합·배포는 오케스트레이터 승인 후 처리)
-- 환경: -
-- 커밋:
+- 배포일: 2026-08-30
+- 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행 예정)
+- 커밋: 6c8e0ced (staging 머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 - **마운트 가드 대신 `timeZone` 명시를 선택한 이유**: 티켓 예시(`useEffect` 마운트 감지 후
@@ -124,5 +125,7 @@ jam-web/src/components/LocalDate.tsx
   로컬 KST" 환경차).
 
 ### 잔여 이슈
-- staging(`jam-stage.vercel.app`) 실배포 후 새로고침 반복 테스트로 React error #418 소거 여부
-  최종 확인 필요 (오케스트레이터 승인·병합 이후).
+- 없음 (staging 실배포 확인 완료).
+- (범위 밖 참고) 개선 리뷰어가 동일 버그 클래스(서버 UTC vs 클라이언트 KST, `timeZone` 미지정
+  `toLocaleString`/`toLocaleDateString`)가 `FeedSection.tsx:150` 등 다른 화면에도 있을 수
+  있다고 지적함. 별도 티켓으로 점검 필요.
