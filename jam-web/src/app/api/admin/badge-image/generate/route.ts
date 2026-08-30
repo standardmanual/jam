@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import fs from 'node:fs'
+import { ImageResponse } from 'next/og'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
@@ -18,6 +19,13 @@ export const maxDuration = 60
  * CLI·구 배치 라우트와 동일하게 재사용한다. process.cwd() 기준 동적 require로 실제
  * 파일시스템 상대경로 그대로 불러온다 — next.config.ts의 outputFileTracingIncludes가
  * 배포 번들에 이 경로들을 포함시킨다.
+ *
+ * ImageResponse(next/og)는 여기서 **정적으로 import**해 engine.js의 렌더 함수에 인자로
+ * 주입한다(티켓 20260830_1438). engine.js 내부에서 동적으로 require('next/og')하면
+ * Next.js/Vercel의 빌드 시 의존성 트레이싱(@vercel/nft)이 createRequire 체인 내부의 호출을
+ * 정적으로 분석하지 못해 서버리스 함수 번들에서 next/og가 누락되고 프로덕션에서만
+ * "ImageResponse를 찾을 수 없습니다" 오류가 난다 — 이 라우트 파일에서 정적 import하면
+ * 빌드 파이프라인이 이 함수의 번들에 next/og 의존성을 정상적으로 포함시킨다.
  *
  * DB image_url 반영은 이 화면에서 자동 실행하지 않는다 — 생성된 이미지 배포 확인 후 적용할
  * 해당 배지 1건짜리 UPDATE SQL을 응답에 담아 관리자가 직접 복사·적용하도록 한다
@@ -89,7 +97,8 @@ export async function POST(req: NextRequest) {
       config,
       fontData,
       backgroundSvg,
-      widthOf
+      widthOf,
+      ImageResponse
     )
   } catch (e) {
     return NextResponse.json(

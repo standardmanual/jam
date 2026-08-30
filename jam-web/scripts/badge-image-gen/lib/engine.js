@@ -11,9 +11,19 @@ const path = require('path')
 const { createMeasurer } = require('./measure-text')
 
 /**
- * ImageResponse(satori+resvg) 로더.
+ * ImageResponse(satori+resvg) 로더 — CLI 하위호환용 지연 폴백.
  * 프로젝트가 next 16으로 올라오면서 @vercel/og 직접 의존이 빠졌고, 동일 구현이 next/og로
  * 내장돼 있다. 예전 환경(@vercel/og 설치됨)에서도 그대로 돌아가도록 둘 다 시도한다.
+ *
+ * 주의(티켓 20260830_1438): 이 함수를 모듈 최상단에서 즉시 호출하면 안 된다.
+ * 어드민 API 라우트(`route.ts`)는 이 파일을 `createRequire`로 런타임에 동적 로드하는데,
+ * Next.js/Vercel의 빌드 시 의존성 트레이싱(`@vercel/nft`)이 그 동적 require 체인 내부의
+ * `require('next/og')` 호출을 정적으로 분석하지 못해 서버리스 함수 번들에서 next/og
+ * 관련 파일이 누락되고, 결과적으로 여기서 항상 MODULE_NOT_FOUND가 난다.
+ * 그래서 route.ts는 `next/og`를 자신의 파일에서 **정적으로 import**해 각 렌더 함수에
+ * `ImageResponse` 구현체를 인자로 주입하고, 이 함수는 그 인자가 없을 때(CLI 경로)만
+ * 지연 호출된다 — CLI(`generate.js`)는 `require('./lib/engine')`로 이 파일을 정적으로
+ * 불러오므로 로컬 node_modules 해석이 그대로 동작해 문제가 없다.
  */
 function loadImageResponse() {
   for (const mod of ['@vercel/og', 'next/og']) {
@@ -25,7 +35,13 @@ function loadImageResponse() {
   }
   throw new Error('ImageResponse를 찾을 수 없습니다 — next 또는 @vercel/og가 설치돼 있어야 합니다')
 }
-const ImageResponse = loadImageResponse()
+let cachedImageResponse = null
+/** injected가 있으면 그대로 쓰고, 없으면(CLI 경로) 지연 require로 폴백한다. */
+function resolveImageResponse(injected) {
+  if (injected) return injected
+  if (!cachedImageResponse) cachedImageResponse = loadImageResponse()
+  return cachedImageResponse
+}
 
 // scripts/badge-image-gen/ 기준 경로 (이 파일은 그 아래 lib/에 있으므로 한 단계 위로)
 const BADGE_GEN_ROOT = path.join(__dirname, '..')
@@ -164,7 +180,8 @@ function resolveScale(config) {
   return config.outputSize / config.canvas.width
 }
 
-async function renderBadge(row, config, fontData, backgroundSvg, widthOf) {
+async function renderBadge(row, config, fontData, backgroundSvg, widthOf, ImageResponseImpl) {
+  const ImageResponse = resolveImageResponse(ImageResponseImpl)
   const { canvas, text, background } = config
   const label = fillTemplate(text.template, row)
   const { lines, fontSize: resolvedFontSize } = resolveLabelLines(label, config, widthOf)
@@ -245,9 +262,12 @@ async function renderBadge(row, config, fontData, backgroundSvg, widthOf) {
  * 관리자 입력 텍스트로 바꿔치기하면 템플릿 변경 없이 커스텀 텍스트 렌더링이 된다.
  * CLI 배치 경로(renderBadge를 row 그대로 호출)는 건드리지 않는다 — 이 함수는 별도
  * 진입점으로만 추가했다.
+ *
+ * ImageResponseImpl: 어드민 API 라우트가 주입하는 `next/og`의 ImageResponse 구현체
+ * (없으면 renderBadge가 CLI와 동일하게 지연 require로 폴백한다. 위 loadImageResponse 주석 참고).
  */
-async function renderBadgeWithText(row, overrideText, config, fontData, backgroundSvg, widthOf) {
-  return renderBadge({ ...row, name: overrideText }, config, fontData, backgroundSvg, widthOf)
+async function renderBadgeWithText(row, overrideText, config, fontData, backgroundSvg, widthOf, ImageResponseImpl) {
+  return renderBadge({ ...row, name: overrideText }, config, fontData, backgroundSvg, widthOf, ImageResponseImpl)
 }
 
 /**
