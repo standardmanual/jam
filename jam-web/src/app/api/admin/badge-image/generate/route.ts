@@ -1,6 +1,5 @@
 import { createRequire } from 'node:module'
 import path from 'node:path'
-import fs from 'node:fs'
 import { ImageResponse } from 'next/og'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -11,14 +10,17 @@ import { isKnownBadgeImageDesign } from '@/lib/admin/badgeImageDesigns'
 // 상한을 늘려둔다.
 export const maxDuration = 60
 
+const STORAGE_BUCKET = 'images'
+
 /**
- * 체크인 배지 이미지 단건 생성/교체 API (티켓 20260830_1349, 20260830_1252 배치 방식을 재설계).
+ * 체크인 배지 이미지 단건 생성/교체 API (티켓 20260830_1500 — Storage 업로드 + 즉시 DB 반영으로
+ * 재설계. 이전 이력: 20260830_1349 단건 선택 방식, 20260830_1252 배치 방식).
  *
  * 특정 체크인 배지 1개를 골라, 관리자가 입력한 텍스트로 그 배지 이미지 1장만 렌더링한다.
  * 렌더링 엔진(`scripts/badge-image-gen/lib/engine.js`)과 config(`configs/*.config.js`)를
  * CLI·구 배치 라우트와 동일하게 재사용한다. process.cwd() 기준 동적 require로 실제
  * 파일시스템 상대경로 그대로 불러온다 — next.config.ts의 outputFileTracingIncludes가
- * 배포 번들에 이 경로들을 포함시킨다.
+ * 배포 번들에 이 경로들을 포함시킨다(폰트/배경 SVG/config 로드에 여전히 필요).
  *
  * ImageResponse(next/og)는 여기서 **정적으로 import**해 engine.js의 렌더 함수에 인자로
  * 주입한다(티켓 20260830_1438). engine.js 내부에서 동적으로 require('next/og')하면
@@ -27,9 +29,12 @@ export const maxDuration = 60
  * "ImageResponse를 찾을 수 없습니다" 오류가 난다 — 이 라우트 파일에서 정적 import하면
  * 빌드 파이프라인이 이 함수의 번들에 next/og 의존성을 정상적으로 포함시킨다.
  *
- * DB image_url 반영은 이 화면에서 자동 실행하지 않는다 — 생성된 이미지 배포 확인 후 적용할
- * 해당 배지 1건짜리 UPDATE SQL을 응답에 담아 관리자가 직접 복사·적용하도록 한다
- * (20260824_020 이미지-DB 순서 사고 재발 방지 원칙 유지).
+ * 렌더링된 PNG는 `public/`에 파일로 쓰지 않고 Supabase Storage 'images' 버킷에 업로드한다
+ * (`/api/admin/upload-image`가 이미 쓰는 패턴 그대로 재사용, 실제 447개 배지가 이 방식의
+ * image_url을 쓰고 있어 렌더링 경로가 이미 실서비스에서 검증됨). Storage 업로드는 Next.js
+ * 배포와 무관하게 즉시 퍼블릭으로 서빙되므로, 업로드 직후 그 자리에서 바로
+ * `badges.image_url`을 UPDATE한다 — public/ 정적 파일 방식에서 있었던 "배포 전 DB부터
+ * 갱신하면 이미지가 깨져 보이는" 순서 문제(20260824_020)가 구조적으로 발생하지 않는다.
  */
 const nodeRequire = createRequire(path.join(process.cwd(), 'package.json'))
 const BADGE_GEN_DIR = path.join(process.cwd(), 'scripts', 'badge-image-gen')
@@ -107,33 +112,34 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // public/{outputDir}에 쓰기 시도 — 로컬 개발 환경은 성공하지만, 프로덕션 Vercel 서버리스는
-  // 배포 번들이 읽기 전용이라 실패할 수 있다. 그 경우 base64로 응답에 담아 관리자가 직접
-  // 저장하도록 폴백한다.
-  const outputDir = path.join(engine.PROJECT_ROOT, 'public', config.outputDir)
-  const fileName = `${badge.id}.png`
-  let filesWritten = false
-  try {
-    fs.mkdirSync(outputDir, { recursive: true })
-    fs.writeFileSync(path.join(outputDir, fileName), png)
-    filesWritten = true
-  } catch {
-    filesWritten = false
+  // Storage 파일명은 배지 id로 고정한다 — 같은 배지를 재생성하면 upsert로 같은 경로를
+  // 덮어써 Storage에 고아 파일이 쌓이지 않는다.
+  const storagePath = `badges/checkin/${badge.id}.png`
+  const { error: uploadErr } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(storagePath, png, { contentType: 'image/png', upsert: true })
+  if (uploadErr) {
+    return NextResponse.json({ error: `이미지 업로드 실패: ${uploadErr.message}` }, { status: 500 })
   }
+  const { data: { publicUrl } } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath)
+  // 같은 경로를 upsert로 덮어쓰므로 CDN·브라우저 캐시가 옛 이미지를 계속 보여줄 수 있다.
+  // DB에는 캐시 무효화용 쿼리스트링을 붙여 저장해 재생성 즉시 새 이미지가 보이도록 한다.
+  const imageUrl = `${publicUrl}?v=${Date.now()}`
 
-  const sql =
-    `-- 체크인 배지 이미지 단건 반영 (${config.name} 디자인) — badge.id=${badge.id}\n` +
-    `UPDATE public.badges SET image_url = '/${config.outputDir}/${fileName}' WHERE id = '${badge.id}';\n`
+  const { error: updateErr } = await supabase
+    .from('badges')
+    // @ts-expect-error Supabase 타입 추론 제한 우회
+    .update({ image_url: imageUrl })
+    .eq('id', badge.id)
+  if (updateErr) {
+    return NextResponse.json({ error: `이미지는 업로드됐지만 배지 반영에 실패했습니다: ${updateErr.message}` }, { status: 500 })
+  }
 
   return NextResponse.json({
     badgeId: badge.id,
     badgeName: badge.name,
     design: designId,
     text,
-    filesWritten,
-    outputDir: config.outputDir,
-    fileName,
-    sql,
-    previewBase64: png.toString('base64'),
+    imageUrl,
   })
 }
