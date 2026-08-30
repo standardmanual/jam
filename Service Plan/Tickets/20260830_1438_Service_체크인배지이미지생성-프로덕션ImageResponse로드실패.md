@@ -1,9 +1,9 @@
 ---
 id: 20260830_1438
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-30
-closed:
+closed: 2026-08-30
 ---
 
 # [Service] 체크인 배지 이미지 생성 — 프로덕션에서 ImageResponse 로드 실패
@@ -133,9 +133,9 @@ jam-web/src/app/api/admin/badge-image/generate/route.ts
 해당 없음 — 버그 수정, 노출 텍스트 변경 없음.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-30 (staging 머지·push 완료, production은 사용자 승인 하에 즉시 `/jam-ship` 진행)
+- 환경: staging → production
+- 커밋: `9a68e123`(구현) → `5f0f6dbd`(staging 머지)
 
 ### 주요 의사결정 / 핵심 메모
 - `engine.js`의 `loadImageResponse()`를 완전히 삭제하지 않고 "지연 폴백"으로 남겨둔 이유:
