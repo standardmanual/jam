@@ -238,6 +238,19 @@ async function renderBadge(row, config, fontData, backgroundSvg, widthOf) {
 }
 
 /**
+ * renderBadge 확장 — 관리자가 직접 입력한 텍스트로 배지 1개만 렌더링한다
+ * (체크인 배지 이미지 단건 생성/교체, 티켓 20260830_1349).
+ *
+ * 모든 config의 `text.template`이 현재 `'{{name}}'` 하나뿐이라, row의 name 필드만
+ * 관리자 입력 텍스트로 바꿔치기하면 템플릿 변경 없이 커스텀 텍스트 렌더링이 된다.
+ * CLI 배치 경로(renderBadge를 row 그대로 호출)는 건드리지 않는다 — 이 함수는 별도
+ * 진입점으로만 추가했다.
+ */
+async function renderBadgeWithText(row, overrideText, config, fontData, backgroundSvg, widthOf) {
+  return renderBadge({ ...row, name: overrideText }, config, fontData, backgroundSvg, widthOf)
+}
+
+/**
  * config 하나를 받아 fontData/backgroundSvg/widthOf를 준비해 렌더 가능한 상태로 만든다.
  * CLI와 어드민 API 라우트가 공통으로 쓰는 "실행 전 준비" 단계.
  */
@@ -261,5 +274,6 @@ module.exports = {
   resolveLabelLines,
   resolveScale,
   renderBadge,
+  renderBadgeWithText,
   prepareRenderContext,
 }
