@@ -310,6 +310,9 @@ export interface PoiRow {
   naver_id: string | null
   poi_tier: number
   created_at: string
+  /** 20260830_1619 — 어드민 화면 전용 노출 토글. 드랍/체크인/매칭 로직은 아직 이 값을
+   *  참조하지 않는다(후속 티켓 20260830_1620에서 연동). */
+  is_active: boolean
 }
 
 export interface PoiCategoryRow {

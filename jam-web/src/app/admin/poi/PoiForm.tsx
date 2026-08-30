@@ -6,6 +6,7 @@ import type { PoiRow, PoiCategory, PoiCategoryRow } from '@/types/database'
 import type { NaverSearchResult } from '@/lib/poi/naver'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
+import { Switch } from '@/components/admin/ui/switch'
 
 interface PoiFormProps {
   poi?: PoiRow
@@ -31,6 +32,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
   const [radiusMeters, setRadiusMeters] = useState<string>(poi?.radius_meters.toString() ?? '50')
   const [category, setCategory] = useState<PoiCategory>(poi?.category ?? categories[0]?.slug ?? 'other')
   const [linkedBadgeId, setLinkedBadgeId] = useState<string>(poi?.linked_badge_id ?? '')
+  const [isActive, setIsActive] = useState<boolean>(poi?.is_active ?? true)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,6 +79,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
       radius_meters: parseInt(radiusMeters, 10),
       category,
       linked_badge_id: linkedBadgeId || null,
+      is_active: isActive,
     }
 
     try {
@@ -234,6 +237,11 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
           placeholder="배지 이름 검색..."
           onChange={(id) => setLinkedBadgeId(id)}
         />
+      </label>
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <Switch checked={isActive} onCheckedChange={setIsActive} />
+        <span className="text-sm">활성화</span>
       </label>
 
       <div className="flex items-center gap-3 pt-2">
