@@ -83,7 +83,9 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
 
   // 삭제 확인 + 실행 (티켓 20260830_1344) — 기존에는 confirm() 뒤 console.log만 찍고 실제
   // DELETE API를 호출하지 않는 스텁이었다. BadgeActiveToggleButton과 같은 AlertDialog 패턴으로
-  // 교체하고 실제 소프트 삭제(DELETE /api/admin/badges/[id])를 호출한다.
+  // 교체하고 DELETE API를 호출한다.
+  // 20260830_1912부터 DELETE는 이력이 없을 때만 실제 하드 삭제를 수행하고, 이력이 있으면
+  // 409와 함께 안내 메시지를 반환한다 — 아래 alert()가 그 메시지를 그대로 노출한다.
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   // AlertDialog(Radix Portal)는 [data-admin-theme] 스코프 밖(document.body)에 렌더링되면 테마
@@ -316,7 +318,8 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>배지 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              &apos;{badge.name}&apos; 배지를 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+              &apos;{badge.name}&apos; 배지를 완전히 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+              단, 발급·드랍 등 이력이 있는 배지는 삭제할 수 없으며 비활성화만 가능합니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

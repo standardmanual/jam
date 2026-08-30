@@ -1193,7 +1193,8 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
           <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 className="text-lg font-bold mb-2">배지 삭제</h3>
             <p className="text-muted-foreground text-sm mb-5">
-              &apos;{badge?.name}&apos; 배지를 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+              &apos;{badge?.name}&apos; 배지를 완전히 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+              단, 발급·드랍 등 이력이 있는 배지는 삭제할 수 없으며 비활성화만 가능합니다.
             </p>
             <div className="flex gap-3">
               <button
