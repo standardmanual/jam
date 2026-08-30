@@ -27,6 +27,7 @@ import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { checkCondition, passesWalkingGate } from '@/lib/badge-engine/index'
 import { getDropPolicy, type DropPolicy } from './policy'
+import { fetchAllRows } from '@/lib/notifications/batch/shared'
 import {
   rollRarityV2,
   rollBonusDrop,
@@ -151,30 +152,6 @@ interface DropStructure {
   inventory: Pick<InventoryRow, 'id' | 'used_slots' | 'max_slots'> | null
 }
 
-/**
- * PostgREST 기본 max-rows(보통 1,000행) 제한을 넘는 테이블을 안전하게 전체 조회.
- * `.select('*')` 등 단일 호출은 결과가 조용히 잘려나가도 에러가 안 나므로
- * (2026-07-31 POI/산 배지 대량 누락 인시던트의 원인) range 기반으로 끝까지 순회한다.
- * 아이템배지(type='item')는 이 글 작성 시점 기준 활성 아이템북 안에서만도 900개에
- * 근접해 있어(전체는 3,600개), 컨텐츠가 조금만 늘어도 이 문제가 재발할 수 있었다.
- */
-async function fetchAllRows<T>(
-  queryFn: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
-  pageSize = 1000
-): Promise<{ data: T[]; error: { message: string } | null }> {
-  const all: T[] = []
-  let from = 0
-  for (;;) {
-    const { data, error } = await queryFn(from, from + pageSize - 1)
-    if (error) return { data: all, error }
-    const rows = data ?? []
-    all.push(...rows)
-    if (rows.length < pageSize) break
-    from += pageSize
-  }
-  return { data: all, error: null }
-}
-
 async function fetchDropStructure(
   userId: string,
   lastFactionId: string | null,
@@ -197,16 +174,28 @@ async function fetchDropStructure(
   }
   const activeBookIds = [...factionOfBook.keys()]
 
-  const [{ data: badgesRaw, error: badgesError }, adjacencyRes, ownedRes] = await Promise.all([
-    fetchAllRows<DropBadge>((from, to) =>
+  // PostgREST 기본 max-rows(보통 1,000행) 제한을 넘는 테이블을 안전하게 전체 조회.
+  // `.select('*')` 등 단일 호출은 결과가 조용히 잘려나가도 에러가 안 나므로
+  // (2026-07-31 POI/산 배지 대량 누락 인시던트의 원인) range 기반으로 끝까지 순회한다.
+  // 아이템배지(type='item')는 이 글 작성 시점 기준 활성 아이템북 안에서만도 900개에
+  // 근접해 있어(전체는 3,600개), 컨텐츠가 조금만 늘어도 이 문제가 재발할 수 있었다.
+  // `.order('id')`는 페이지 경계 중복/누락을 막는 안정 tie-break — notifications/batch/shared.ts의
+  // fetchAllRows는 이를 잊을 수 없게 orderBy를 필수 인자로 강제한다 (티켓 20260825_036).
+  // 이 헬퍼는 예외를 던지므로 기존 { data, error } 그레이스풀 폴백 패턴에 맞춰 여기서 흡수한다.
+  const [badgesResult, adjacencyRes, ownedRes] = await Promise.all([
+    fetchAllRows<DropBadge>('drop-engine:item-badges', 'id', () =>
       supabase
         .from('badges')
         .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json, item_book_id, point_reward')
         .eq('type', 'item')
         .is('deleted_at', null)
         .in('item_book_id', activeBookIds)
-        .range(from, to)
-    ),
+    )
+      .then((data) => ({ data, error: null as { message: string } | null }))
+      .catch((err: unknown) => ({
+        data: [] as DropBadge[],
+        error: { message: err instanceof Error ? err.message : String(err) },
+      })),
     lastFactionId
       ? createServiceClient().from('faction_adjacency').select('adjacent_faction_id').eq('faction_id', lastFactionId)
       : Promise.resolve({ data: [] }),
@@ -218,6 +207,7 @@ async function fetchDropStructure(
       : Promise.resolve({ data: [] }),
   ])
 
+  const { data: badgesRaw, error: badgesError } = badgesResult
   if (badgesError) {
     console.error('[tryItemDrop] 배지 조회 오류:', badgesError)
     return null
