@@ -1,9 +1,9 @@
 ---
 id: 20260830_1620
 category: BadgeEngine
-status: OPEN
+status: CLOSED
 created: 2026-08-30
-closed:
+closed: 2026-08-30
 ---
 
 # [BadgeEngine] 비활성 POI를 드랍·체크인·매칭 로직에서 제외
@@ -113,9 +113,9 @@ Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md (§3.17 신설)
       실행하지 않음(코드 레벨 검증만 수행)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-30
+- 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행 예정)
+- 커밋: 5414894218abe9e743e3a2074d42bf06b6a209b9 (staging 머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 - **유저 노출 정책 = 완전히 숨김.** 지도·목록·알림 딥링크 어디서도 비활성 POI가 보이지 않게
@@ -135,6 +135,14 @@ Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md (§3.17 신설)
   빠져나가 실질적 충돌은 없었지만, 한때 같은 워킹 디렉터리에서 미커밋 변경이 겹쳐 있어 파일
   덮어쓰기 위험이 있었다(Edit 도구가 "파일이 읽은 후 변경됨" 오류로 자동 방지). 이후 리뷰
   브랜치는 `origin/staging` 기준 신규 체크아웃으로 분리해 오염 없이 커밋했다.
+
+- **staging 머지 시 `lib/ambient-drop/index.ts`에서 실제 충돌 발생.** review 브랜치 분기 이후
+  티켓 `20260830_2000`(같은 파일의 `fetchAllRows` 공용화 리팩터)이 먼저 staging에 머지됐다.
+  두 변경이 같은 POI 조회 블록을 서로 다른 스타일로 건드려 머지 시 충돌했고, 오케스트레이터가
+  `20260830_2000`의 공용 헬퍼 호출 스타일(`fetchAllRows<T>(label, orderBy, factory)` +
+  `.then/.catch`)을 그대로 유지하면서 이번 티켓의 `is_active=true` 필터·주석만 결합해
+  수동으로 해소했다. 해소 후 `tsc --noEmit`·`lint`(0 errors/25 warnings)·관련 vitest
+  suite(ambient-drop·drop-engine·notifications, 222개 테스트) 재검증 완료.
 
 ### 잔여 이슈
 - 유저 노출 정책(완전 숨김 vs "운영 종료" 표시)은 향후 UX 검토에서 재논의될 수 있다.
