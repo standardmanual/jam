@@ -67,10 +67,13 @@ export async function GET(req: NextRequest) {
   const minLat = Math.min(swLat, neLat)
   const maxLat = Math.max(swLat, neLat)
 
-  // linked_badge_id가 있는 POI 중 bounding box 안에 있는 것만 조회
+  // linked_badge_id가 있는 POI 중 bounding box 안에 있는 것만 조회.
+  // 20260830_1620: is_active=false(운영 종료)는 지도에서 완전히 숨긴다 — 이미 획득한
+  // 배지는 마이페이지(badges/page.tsx)에서 이력으로 그대로 남으므로 영향 없다.
   let query = service
     .from('poi')
     .select('id, name, latitude, longitude, linked_badge_id')
+    .eq('is_active', true)
     .not('linked_badge_id', 'is', null)
     .gte('latitude', minLat)
     .lte('latitude', maxLat)

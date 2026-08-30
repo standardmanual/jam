@@ -310,8 +310,9 @@ export interface PoiRow {
   naver_id: string | null
   poi_tier: number
   created_at: string
-  /** 20260830_1619 — 어드민 화면 전용 노출 토글. 드랍/체크인/매칭 로직은 아직 이 값을
-   *  참조하지 않는다(후속 티켓 20260830_1620에서 연동). */
+  /** 20260830_1619에서 추가, 20260830_1620에서 연동 완료 — false면 드랍 생성·체크인 판정·
+   *  앰비언트 드랍 배치·지도/목록 노출에서 제외된다(matcher.ts, api/drops, api/checkin-badges,
+   *  lib/ambient-drop 등). 이미 발급된 배지·기존에 놓인 드랍에는 소급 적용되지 않는다. */
   is_active: boolean
 }
 
