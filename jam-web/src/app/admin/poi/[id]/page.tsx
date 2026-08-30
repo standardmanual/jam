@@ -18,10 +18,22 @@ export default async function EditPoiPage({ params }: { params: Promise<{ id: st
 
   const poi = poiRaw as PoiRow
 
+  // 연결 배지 조회 — 삭제(deleted_at)돼도 poi.linked_badge_id FK는 정리되지 않고 그대로
+  // 남는다(삭제 API가 poi 테이블을 건드리지 않음). 필터 없이 이름만 가져오면 삭제 후에도
+  // "연결된 배지: OOO"로 계속 표시돼 살아있는 것처럼 보인다(20260830_1547) — deleted_at도
+  // 함께 조회해 상세화면에서 "비활성화됨"으로 명시한다. 편집 폼(PoiForm)에 넘기는
+  // linkedBadgeLabel은 기존과 동일하게 이름만 유지한다(표시 로직만 고치는 이번 티켓 범위).
   let linkedBadgeLabel: string | undefined
+  let linkedBadgeDeletedAt: string | null = null
   if (poi.linked_badge_id) {
-    const { data: badgeRaw } = await supabase.from('badges').select('name').eq('id', poi.linked_badge_id).maybeSingle()
-    linkedBadgeLabel = (badgeRaw as { name: string } | null)?.name
+    const { data: badgeRaw } = await supabase
+      .from('badges')
+      .select('name, deleted_at')
+      .eq('id', poi.linked_badge_id)
+      .maybeSingle()
+    const badge = badgeRaw as { name: string; deleted_at: string | null } | null
+    linkedBadgeLabel = badge?.name
+    linkedBadgeDeletedAt = badge?.deleted_at ?? null
   }
 
   const categories = (categoriesRaw ?? []) as PoiCategoryRow[]
@@ -43,6 +55,7 @@ export default async function EditPoiPage({ params }: { params: Promise<{ id: st
       <PoiDetail
         poi={poi}
         linkedBadgeName={linkedBadgeLabel}
+        linkedBadgeDeletedAt={linkedBadgeDeletedAt}
         categoryLabel={categoryLabel}
       />
 
