@@ -14,9 +14,16 @@
  * 맞지 않는다는 이유로 의도적으로 제외되어 category='transit'에 남아있었는데, 이번에
  * 사용자 승인 하에 이 22개도 동일 METRO 디자인으로 채우기로 하여 category 필터에 transit을
  * 추가한다([[20260830_1252]]). transit에는 linked_badge_id가 없는 POI(문 배지 미연결)도 섞여
- * 있으나 아래 dataSource가 linked_badge_id IS NOT NULL로 걸러내므로 실제로는 이 22개만 잡힌다.
+ * 있으나 아래 dataSource가 linked_badge_id IS NOT NULL로 걸러내므로 실제로는 이 22개만 추가된다.
+ *
+ * 단, 강남역·선릉역·수서역 3개 배지는 train_subway POI("강남역")와 transit POI("강남역
+ * 신분당선" 등) 양쪽에 동시에 linked_badge_id로 연결돼 있다(게이트 리뷰 발견,
+ * [[20260830_1252]]). dedupeByBadgeId로 badge id 기준 1건만 남기고, train_subway 쪽
+ * 이름("강남역")을 우선한다 — 이미 934개 배치로 정확히 생성·배포된 이미지를 뒤에 처리되는
+ * transit 중복 행("강남역 신분당선")이 같은 파일명에 덮어써 깨뜨리는 사고를 막기 위함이다.
  */
 const { fetchAllRows } = require('../lib/fetch-all-rows')
+const { dedupeByBadgeId } = require('../lib/dedupe-by-badge-id')
 
 module.exports = {
   name: 'metro-poi-badge',
@@ -70,7 +77,7 @@ module.exports = {
     const pois = await fetchAllRows(() =>
       supabase
         .from('poi')
-        .select('name, linked_badge_id')
+        .select('name, category, linked_badge_id')
         .in('category', ['train_subway', 'transit'])
         .not('linked_badge_id', 'is', null)
         .order('name')
@@ -81,9 +88,12 @@ module.exports = {
     )
     const alive = new Set(aliveBadges.map((b) => b.id))
 
-    return pois
+    const rows = pois
       .filter((p) => alive.has(p.linked_badge_id))
-      .map((p) => ({ id: p.linked_badge_id, name: p.name }))
+      .map((p) => ({ id: p.linked_badge_id, name: p.name, category: p.category }))
+
+    // badge id 기준 다대일 연결(강남역·선릉역·수서역 등) 정리 — train_subway 이름을 우선한다.
+    return dedupeByBadgeId(rows, ['train_subway', 'transit'])
   },
 
   outputDir: 'badges/poi/metro',
