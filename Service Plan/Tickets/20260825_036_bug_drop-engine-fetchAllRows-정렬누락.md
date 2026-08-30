@@ -1,9 +1,9 @@
 ---
 id: 20260825_036
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-25
-closed:
+closed: 2026-08-30
 ---
 
 # [bug] drop-engine의 fetchAllRows 헬퍼에 정렬 기준 누락 — 페이지 경계 중복/누락 위험
@@ -84,9 +84,9 @@ jam-web/src/lib/drop-engine/index.ts
 - [x] 해당 없음 — 서버 사이드 로직 변경, 사용자 노출 텍스트 없음
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만 진행, 병합·배포는 사용자 승인 후 오케스트레이터)
-- 환경: production
-- 커밋: (아래 "push한 브랜치명" 참조)
+- 배포일: 2026-08-30
+- 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행 예정)
+- 커밋: 3277aa3326aac5f2ffd993a823afcec3b0419ca0 (staging 머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 - 정렬 기준: `.order('id')` — badges 테이블 PK, 유니크값이라 tie-break로 안전.
