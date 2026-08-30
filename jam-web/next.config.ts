@@ -34,6 +34,11 @@ const nextConfig: NextConfig = {
       './node_modules/@img/sharp-linux-x64/**/*',
       './node_modules/@img/sharp-libvips-linux-x64/**/*',
     ],
+    // 체크인 배지 이미지 배치 생성(티켓 20260830_1252) — 이 라우트는 웹팩 정적 번들링을
+    // 우회하는 동적 require(createRequire)로 scripts/badge-image-gen/lib/engine.js와
+    // configs/*.config.js를 원래 상대 경로 그대로 불러온다. 정적 분석으로는 이 파일들이
+    // 감지되지 않으므로 명시적으로 배포 번들에 포함시켜야 한다(fonts/backgrounds 자산 포함).
+    '/api/admin/badge-image-batch': ['./scripts/badge-image-gen/**/*'],
   },
   images: {
     // 패턴 정의는 src/lib/imageSrc.ts에 있다 (위 import 주석 참조)
