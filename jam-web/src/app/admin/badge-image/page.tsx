@@ -284,6 +284,8 @@ export default function BadgeImagePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-start gap-4">
+              {/* base64 data URL 미리보기 — next/image가 data: URL을 지원하지 않아 img 직접 사용 */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`data:image/png;base64,${genResult.previewBase64}`}
                 alt={`${genResult.badgeName} 미리보기`}
