@@ -10,7 +10,13 @@
  * 실행: `npx vitest run src/app/admin/badges/__tests__/conditionFormFields.test.ts`
  */
 
-import { buildConditionJsonFromFields, parsePaceToSec, type ConditionFormFields } from '../conditionFormFields'
+import {
+  buildConditionJsonFromFields,
+  parsePaceToSec,
+  getUnsupportedConditionKeys,
+  FORM_UNSUPPORTED_CONDITION_KEYS,
+  type ConditionFormFields,
+} from '../conditionFormFields'
 
 /** BadgeForm의 조건 빌더 state 초기값(빈 폼)과 동일한 기본값 */
 function emptyFields(overrides: Partial<ConditionFormFields> = {}): ConditionFormFields {
@@ -107,5 +113,49 @@ describe('buildConditionJsonFromFields — 기존 조건 필드 조립 (회귀 �
     expect(buildConditionJsonFromFields(emptyFields({ timeStart: '22:00', timeEnd: '06:00' }))).toEqual({
       time_range: { start: '22:00', end: '06:00' },
     })
+  })
+})
+
+describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 20260825_032)', () => {
+  it('day_of_week가 설정된 배지를 폼이 모르는 채로 그대로 저장해도 유실되지 않는다', () => {
+    const initCond = { day_of_week: 'sunday' as const, total_count: 1000 }
+    // BadgeForm은 total_count 입력 UI가 있으므로 폼 state에도 반영되지만, day_of_week는
+    // 폼에 입력 UI가 없어 initCond를 통해서만 전달된다.
+    const fields = emptyFields({ totalCount: '1000' })
+    const saved = buildConditionJsonFromFields(fields, initCond)
+    expect(saved).toEqual({ total_count: 1000, day_of_week: 'sunday' })
+  })
+
+  it('active_days_count·route·poi_id도 원본 그대로 보존된다', () => {
+    const initCond = { active_days_count: 30, route: 'hangang', poi_id: 'poi-uuid' }
+    const saved = buildConditionJsonFromFields(emptyFields(), initCond)
+    expect(saved).toEqual({ active_days_count: 30, route: 'hangang', poi_id: 'poi-uuid' })
+  })
+
+  it('initCond를 넘기지 않으면(신규 등록) 기존 동작과 동일하다', () => {
+    const fields = emptyFields({ distanceKm: '10' })
+    expect(buildConditionJsonFromFields(fields)).toEqual({ distance_km: 10 })
+  })
+
+  it('폼이 다루는 필드는 initCond 값이 있어도 폼 입력값(state)이 우선한다', () => {
+    // 관리자가 폼에서 값을 바꾼 경우, 보존 로직이 그 변경을 덮어쓰면 안 된다.
+    const initCond = { distance_km: 10 }
+    const saved = buildConditionJsonFromFields(emptyFields({ distanceKm: '20' }), initCond)
+    expect(saved).toEqual({ distance_km: 20 })
+  })
+
+  it('FORM_UNSUPPORTED_CONDITION_KEYS는 정확히 day_of_week/active_days_count/poi_id/route/season_count_all이다', () => {
+    // season_count_all은 티켓 원문에 나열되지 않았으나, 폼에 입력 UI가 없으면서도 badge-engine이
+    // 실제로 평가하는 필드다(migration 076의 "사계절의 발걸음" 배지가 사용 중) — 구현 중 발견,
+    // ALL_CONDITION_KEYS 기반 자동 진단으로 함께 잡혔다.
+    expect([...FORM_UNSUPPORTED_CONDITION_KEYS].sort()).toEqual(
+      ['active_days_count', 'day_of_week', 'poi_id', 'route', 'season_count_all'].sort()
+    )
+  })
+
+  it('getUnsupportedConditionKeys는 값이 있는 미지원 필드만 돌려준다', () => {
+    expect(getUnsupportedConditionKeys(null)).toEqual([])
+    expect(getUnsupportedConditionKeys({ distance_km: 10 })).toEqual([])
+    expect(getUnsupportedConditionKeys({ distance_km: 10, route: 'hangang' })).toEqual(['route'])
   })
 })

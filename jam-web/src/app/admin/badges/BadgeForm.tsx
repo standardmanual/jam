@@ -15,7 +15,7 @@ import type {
   BackgroundGeneratorLivePreviewState,
 } from './BackgroundGeneratorPreview'
 import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
-import { buildConditionJsonFromFields } from './conditionFormFields'
+import { buildConditionJsonFromFields, getUnsupportedConditionKeys } from './conditionFormFields'
 import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
 
 // WebGL 셰이더 5종(@paper-design/shaders-react) + mp4-muxer를 정적 import하면 BadgeForm 청크에
@@ -138,6 +138,10 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   // buildConditionJson이 이 state 없이 하드코딩된 조건 필드만 조립하던 회귀가 있었다 —
   // 미션보상배지를 어드민에서 수정 저장하면 mission_reward 플래그가 조용히 유실됐다.
   const [condMissionReward, setCondMissionReward] = useState<boolean>(initCond.mission_reward === true)
+  // 폼이 입력 UI를 갖지 않는 조건 필드(day_of_week 등) — 값이 있으면 저장 시 원본 그대로
+  // 보존되지만(conditionFormFields.ts), 이 폼에서 보거나 고칠 수는 없다는 걸 안내한다
+  // (티켓 20260825_032). initCond는 배지를 열 때의 원본 스냅샷이라 폼 세션 동안 불변이다.
+  const unsupportedConditionKeys = getUnsupportedConditionKeys(initCond)
 
   const [factionId, setFactionId] = useState(badge?.faction_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
@@ -259,7 +263,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
       timeEnd: condTimeEnd,
       prerequisiteNames: condPrerequisiteNames,
       missionReward: condMissionReward,
-    })
+    }, initCond)
 
   const toggleActivityType = (t: ActivityType) => {
     setActivityTypes((prev) =>
@@ -976,6 +980,18 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
               </span>
             </span>
           </label>
+
+          {/* 폼 미지원 조건 필드 안내 — 값은 저장 시 원본 그대로 보존되지만 이 폼에서
+              보거나 고칠 수 없다는 걸 알린다(티켓 20260825_032) */}
+          {unsupportedConditionKeys.length > 0 && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <p className="text-sm font-medium text-amber-900">이 폼에서 다룰 수 없는 조건 필드가 있어요</p>
+              <p className="text-xs text-amber-800/80 mt-0.5">
+                {unsupportedConditionKeys.join(', ')} 값이 이미 설정돼 있어요. 이 화면에는 입력 항목이
+                없어 여기서 보거나 고칠 수 없지만, 저장해도 값은 그대로 유지돼요.
+              </p>
+            </div>
+          )}
 
           <div className="bg-muted border border-border rounded-xl p-3">
             <p className="text-xs text-muted-foreground mb-1.5">JSON 미리보기</p>
