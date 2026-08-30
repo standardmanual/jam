@@ -14,7 +14,7 @@ interface Props {
 }
 
 /**
- * 아이템배지 발급 현황 — 배지 검색 화면(티켓 20260829_2139, 열린 결정 2·3).
+ * 아이템배지 현황 — 배지 검색 화면(티켓 20260829_2139, 열린 결정 2·3; 메뉴명 20260830_1242 변경).
  *
  * `/admin/badges`(도안 CRUD)와는 다른 잡스토리(조회/감사)이자 다른 객체(Badge 도안이
  * 아니라 InventoryItem 개체)를 다루므로 독립된 최상위 메뉴로 뒀다. 배지(도안)를 먼저
@@ -26,20 +26,31 @@ interface Props {
 export default async function ItemBadgesSearchPage({ searchParams }: Props) {
   const params = await searchParams
   const q = params.q?.trim() ?? ''
+  const filterFactionId = params.faction_id
+  const filterItemBookId = params.item_book_id
+  const filterRarity = params.rarity
+  const hasFilter = !!(q || filterFactionId || filterItemBookId || filterRarity)
+
+  const supabase = createServiceClient()
+
+  const [{ data: factionsRaw }, { data: itemBooksRaw }] = await Promise.all([
+    supabase.from('factions').select('id, name').order('name'),
+    supabase.from('item_books').select('id, name, faction_id').order('name'),
+  ])
+  const factions = (factionsRaw ?? []) as { id: string; name: string }[]
+  const itemBooks = (itemBooksRaw ?? []) as { id: string; name: string; faction_id: string | null }[]
 
   let badges: SearchBadgeRow[] = []
   const totalCountByBadge = new Map<string, number>()
 
-  if (q) {
-    const supabase = createServiceClient()
+  if (hasFilter) {
+    let query = supabase.from('badges').select('id, name, image_url, rarity').eq('type', 'item')
+    if (q) query = query.ilike('name', `%${q}%`)
+    if (filterFactionId) query = query.eq('faction_id', filterFactionId)
+    if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
+    if (filterRarity) query = query.eq('rarity', filterRarity)
 
-    const { data: badgesRaw } = await supabase
-      .from('badges')
-      .select('id, name, image_url, rarity')
-      .eq('type', 'item')
-      .ilike('name', `%${q}%`)
-      .order('name', { ascending: true })
-      .limit(100)
+    const { data: badgesRaw } = await query.order('name', { ascending: true }).limit(100)
     badges = (badgesRaw ?? []) as SearchBadgeRow[]
 
     const badgeIds = badges.map((b) => b.id)
@@ -54,20 +65,20 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">아이템배지 발급 현황</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">아이템배지 현황</h1>
         <p className="text-muted-foreground text-sm mt-1">
           배지를 검색해 발급된 일련번호와 이력을 조회합니다.
         </p>
       </div>
 
       <Suspense>
-        <ItemBadgeSearchBar />
+        <ItemBadgeSearchBar factions={factions} itemBooks={itemBooks} />
       </Suspense>
 
-      {q && (
+      {hasFilter && (
         <>
           <div className="text-sm text-muted-foreground">
-            {`"${q}" 검색 결과 ${badges.length}종`}
+            {q ? `"${q}" 검색 결과 ${badges.length}종` : `필터 결과 ${badges.length}종`}
           </div>
 
           {badges.length === 0 ? (
