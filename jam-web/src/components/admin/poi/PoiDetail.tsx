@@ -36,7 +36,16 @@ export function PoiDetail({ poi, linkedBadgeName, linkedBadgeDeletedAt, category
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <div>
-              <CardTitle className="text-2xl">{poi.name}</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-2xl">{poi.name}</CardTitle>
+                <span
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    poi.is_active ? 'bg-neutral-900/10 text-neutral-900' : 'bg-white text-neutral-500 border border-neutral-200'
+                  }`}
+                >
+                  {poi.is_active ? '활성' : '비활성'}
+                </span>
+              </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {categoryLabel || poi.category}
               </p>

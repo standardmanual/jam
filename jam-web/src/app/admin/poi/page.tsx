@@ -11,7 +11,7 @@ const PAGE_SIZE = 30
 
 // 목록(카드/테이블)에 실제로 쓰는 컬럼만 select — osm_id/naver_id/poi_tier/created_at 등은
 // 상세화면 전용이라 목록에는 불필요하다(20260826_011 A8).
-const POI_LIST_COLUMNS = 'id, name, latitude, longitude, radius_meters, category, linked_badge_id'
+const POI_LIST_COLUMNS = 'id, name, latitude, longitude, radius_meters, category, linked_badge_id, is_active'
 
 interface AdminPoiPageProps {
   searchParams: Promise<Record<string, string | undefined>>
