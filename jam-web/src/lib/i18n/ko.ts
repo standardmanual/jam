@@ -87,6 +87,11 @@ export const ko = {
     emptyTitle: '아직 기록이 없어요',
     emptyBody: '활동하면 여기에 기록이 쌓여요',
 
+    /** 팔로잉 통합 활동 피드(/feed, 티켓 20260830_2030) — 투데이 홈 "친구 활동" 셀의 목적지 */
+    friendFeedTitle: '친구 활동',
+    friendFeedEmptyTitle: '아직 친구 활동이 없어요',
+    friendFeedEmptyBody: '팔로우한 친구가 활동하면 여기에 모여요',
+
     // 필터 탭
     filterAll: '전체',
     filterItem: '아이템',
@@ -159,13 +164,7 @@ export const ko = {
 
   /** 투데이(홈) 화면 */
   today: {
-    greeting: '안녕하세요',
-
     // Strava 동기화 상태 카드
-    stravaLabel: 'Strava',
-    stravaNotConnectedTitle: 'Strava 미동기화',
-    stravaNotConnectedBody: 'Strava 동기화하면 활동 기반 배지를 자동 획득해요',
-    stravaConnectButton: '지금 동기화하기',
     syncButton: '동기화',
     syncDone: '동기화 완료',
     syncFailed: '동기화 실패. 잠시 후 다시 시도해주세요',
@@ -198,6 +197,32 @@ export const ko = {
     shortcutDropsBody: '가까운 지점에서 드랍·픽업',
     shortcutCombineTitle: '믹스',
     shortcutCombineBody: '아이템 믹스하기',
+  },
+
+  /**
+   * 투데이 홈 상단 "오늘의 현황" 스트립 (티켓 20260830_2030) — 인사말 압축 + 좌/우 2셀.
+   * today_cards CMS와 기능이 겹치지 않도록 큐레이션 없이 정적 안내만 담는다.
+   */
+  todayStatus: {
+    /** 압축 인사말. name은 표시 이름(닉네임/아이디) */
+    greeting: '{name}님, 오늘도 좋은 하루예요',
+
+    // 좌: 내 진행도
+    // UX_WRITING_GUIDELINE.md 고정 용어 — "Strava 동기화"(X: Strava 연동). 티켓 원문 문구의
+    // "연동"을 가이드 고정 용어로 교정했다.
+    stravaCta: 'Strava 동기화하면 시작해요',
+    /** 진행 중인 컬렉션/미션 1건. name/current/total 보간 */
+    progressLabel: '{name} {current}/{total}',
+    /** 진행 이력 없음 — 정적 후보 풀(랜덤 1개 노출), 어드민 편집 대상 아님 */
+    suggestionDrops: '드랍 아이템 찾아보기',
+    suggestionMissions: '미션 참가해보기',
+
+    // 우: 친구 활동
+    /** count는 오늘 배지를 받은 팔로잉 유저 수 */
+    // UX_WRITING_GUIDELINE.md 고정 용어 — 배지·아이템을 얻는 행위는 "획득"으로 통일
+    // (X: 받다·겟·수령). 티켓 원문 문구의 "받았어요"를 고정 용어로 교정했다.
+    friendActivity: '친구 {count}명이 오늘 배지를 획득했어요',
+    noFollowing: '아직 팔로우한 친구가 없어요',
   },
 
   /**
