@@ -170,10 +170,10 @@ export default async function BadgesPage({ searchParams }: Props) {
     // 카테고리(산/대중교통 등)별로 그룹핑하기 위해 연결된 POI의 category를 조회.
     // 배지 1개에 POI 여러 개가 연결될 수 있어 첫 번째 값만 대표로 사용한다
     // (같은 배지에 연결된 POI들은 보통 같은 카테고리).
-    const categoryByBadge = new Map<string, string>()
+    const poiCategoryByBadge = new Map<string, string>()
     for (const row of (linkedPois ?? []) as { linked_badge_id: string; category: string }[]) {
-      if (!categoryByBadge.has(row.linked_badge_id)) {
-        categoryByBadge.set(row.linked_badge_id, row.category)
+      if (!poiCategoryByBadge.has(row.linked_badge_id)) {
+        poiCategoryByBadge.set(row.linked_badge_id, row.category)
       }
     }
 
@@ -181,8 +181,11 @@ export default async function BadgesPage({ searchParams }: Props) {
       ((poiCategories ?? []) as { slug: string; label: string }[]).map((c) => [c.slug, c.label])
     )
 
+    // 배지 자체에 카테고리가 지정돼 있으면(badges.category) 그 값을 우선 쓰고, 없으면
+    // 연결된 지점의 poi.category로 폴백한다(티켓 20260830_1522 — 이전에는 badges.category가
+    // 이 화면에서 전혀 읽히지 않아 어드민에서 카테고리를 바꿔도 그룹핑에 반영되지 않았다).
     checkinBadges = ((earnedCheckinBadgeRows ?? []) as BadgeRow[]).map((badge) => {
-      const category = categoryByBadge.get(badge.id) ?? 'other'
+      const category = badge.category ?? poiCategoryByBadge.get(badge.id) ?? 'other'
       const earn = checkinEarnAgg.get(badge.id)!
       return {
         badge,
