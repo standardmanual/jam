@@ -18,7 +18,16 @@ export function PoiCard({ poi, linkedBadgeName, categoryLabel }: PoiCardProps) {
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <CardTitle className="truncate text-base">{poi.name}</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="truncate text-base">{poi.name}</CardTitle>
+                <span
+                  className={`inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    poi.is_active ? 'bg-neutral-900/10 text-neutral-900' : 'bg-white text-neutral-500 border border-neutral-200'
+                  }`}
+                >
+                  {poi.is_active ? '활성' : '비활성'}
+                </span>
+              </div>
               <CardDescription className="text-xs mt-1">
                 {categoryLabel || poi.category}
               </CardDescription>

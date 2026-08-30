@@ -26,6 +26,7 @@ import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
+import { PoiActiveToggleButton } from './PoiActiveToggleButton'
 import type { PoiListRow } from './PoiList'
 
 interface PoiTableProps {
@@ -162,6 +163,35 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
           return <span className="text-sm">{id ? (badgeMap.get(id) || id) : '—'}</span>
         },
       }),
+      columnHelper.accessor('is_active', {
+        id: 'status',
+        header: '상태',
+        enableSorting: false,
+        meta: { label: '상태' },
+        cell: ({ getValue }) => {
+          const isActive = getValue()
+          return (
+            <span
+              className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
+                isActive ? 'bg-neutral-900/10 text-neutral-900' : 'bg-white text-neutral-500 border border-neutral-200'
+              }`}
+            >
+              {isActive ? '활성' : '비활성'}
+            </span>
+          )
+        },
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: '',
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => (
+          <div className="text-right">
+            <PoiActiveToggleButton poiId={row.original.id} isActive={row.original.is_active} />
+          </div>
+        ),
+      }),
     ]),
     [badgeMap, categoryLabelMap]
   )
@@ -202,6 +232,31 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
     }
   }
 
+  // 일괄 활성화/비활성화 전용 API는 없다 — 기존 단건 PATCH를 선택된 행 전체에 순차 호출한다.
+  // POI는 연쇄 영향(드랍/체크인 로직 미연동)이 없어 삭제와 달리 확인 다이얼로그 없이 즉시
+  // 실행한다(20260830_1619).
+  const handleBulkSetActive = async (nextActive: boolean) => {
+    setBulkLoading(true)
+    try {
+      let failCount = 0
+      for (const id of selectedIds) {
+        const res = await fetch(`/api/admin/poi/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: nextActive }),
+        })
+        if (!res.ok) failCount += 1
+      }
+      if (failCount > 0) {
+        alert(`${failCount}개 POI의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
+      }
+      router.refresh()
+      setRowSelection({})
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -209,6 +264,12 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
       </div>
 
       <DataTableBulkActionBar count={selectedIds.length} onClear={() => setRowSelection({})}>
+        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => handleBulkSetActive(true)}>
+          선택 항목 활성화
+        </Button>
+        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => handleBulkSetActive(false)}>
+          선택 항목 비활성화
+        </Button>
         <Button type="button" variant="destructive" size="sm" onClick={() => setShowBulkConfirm(true)}>
           선택 항목 삭제
         </Button>
