@@ -7,7 +7,7 @@ import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
 import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
-import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
+import { BADGE_TYPES, BADGE_TYPE_LABEL, UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
 
 const TYPE_OPTIONS = BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_TYPE_LABEL[t] }))
 
@@ -156,11 +156,16 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
           />
         )}
 
-        {/* 지점 카테고리 서브 필터 — 체크인 배지는 연결된 지점(poi.category)으로만 분류된다 */}
+        {/* 지점 카테고리 서브 필터 — 체크인 배지는 연결된 지점(poi.category)으로만 분류된다.
+            "미할당"은 연결된 지점이 하나도 없는 배지를 걸러 보는 옵션(티켓 20260830_1510) —
+            poi_categories의 실제 카테고리가 아니라 전용 sentinel 값이다. */}
         {currentType === 'checkin' && (
           <DataTableFacetedFilter
             title="지점 카테고리"
-            options={poiCategories.map((c) => ({ value: c.slug, label: c.label }))}
+            options={[
+              ...poiCategories.map((c) => ({ value: c.slug, label: c.label })),
+              { value: UNASSIGNED_POI_CATEGORY, label: '미할당' },
+            ]}
             selected={searchParams.get('poi_category') ? [searchParams.get('poi_category') as string] : []}
             onChange={(values) => update({ poi_category: values[0] ?? null })}
           />

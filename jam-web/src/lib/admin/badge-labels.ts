@@ -50,3 +50,10 @@ export const MISSION_TYPE_LABEL: Record<MissionType, string> = {
 export function missionTypeLabel(type: string): string {
   return MISSION_TYPE_LABEL[type as MissionType] ?? type
 }
+
+/**
+ * 배지 목록 "지점 카테고리" 필터의 sentinel 값(티켓 20260830_1510) — 연결된 지점이
+ * 하나도 없는 체크인 배지를 걸러 보는 옵션. 실제 `poi_categories.slug` 값과 충돌하지
+ * 않도록 서버(`admin/badges/page.tsx`)와 클라이언트(`BadgesFilterBar.tsx`)가 공유한다.
+ */
+export const UNASSIGNED_POI_CATEGORY = '__unassigned__'
