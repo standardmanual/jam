@@ -104,7 +104,8 @@
 
   today/[cardId] — 투데이 카드 상세 기사
 
-[피드] feed — 팔로잉 통합 활동 피드 (오늘의 현황 "친구 활동" 진입점)
+[피드] feed — 팔로잉 통합 활동 피드 (오늘의 현황 "친구 활동" 진입점 — 오늘 배지 획득
+  팔로잉이 2명 이상일 때. 정확히 1명이면 그 유저의 프로필(`/{username}`)로 바로 이동)
 
 [배지] badges
   ├── 활동 / 아이템 / POI 3개 탭
@@ -129,7 +130,9 @@
 [포인트] points — 잔액 + 내역(커서 페이지네이션)
 
 [프로필] profile → /[username]으로 라우팅 (username 없으면 /onboarding)
-  ├── [username] — 배지/컬렉션/팔로워 수, 통합 피드
+  ├── [username] — 본인/타인 동일 컴포넌트. 기본뷰(해시 없음) = Strava 상태(본인만)
+  │     + 통합 활동 피드(본인/타인 공통, 대상 유저 기준). 해시 탭(#badge/#collections/
+  │     #followers/#following) = 배지/컬렉션/팔로워/팔로잉 그리드
   ├── [username]/followers, /following
   ├── [username]/collections — 타인 기준 진행도
   └── profile/edit — username 변경, 아바타 업로드
@@ -205,5 +208,5 @@ users / theme / today / simulator(GPX 업로드 배지발급 시뮬레이션) / 
 - [ ] **플리마켓(P2P 거래) 착수 일정**: **미정** — 착수 전까지 `/inventory/flea-market`은 "coming soon" 유지
 - [ ] **푸시 알림 도입**: **미정** — PWA manifest/Service Worker 자체 미구현. 착수 일정 미확정
 - [x] **배지 발급 조건 단일 출처**: **[`BadgeEngine/CONDITION_JSON_SPEC.md`](../BadgeEngine/CONDITION_JSON_SPEC.md) 신규 생성** (2026-08-07). 모든 `condition_json` 필드 타입·의미·평가 방식 명세.
-- [ ] **커뮤니티 피드 공개 범위**: **공개/비공개/팔로우 공개/전체공개 체계 수립 예정** — 현재 `user_activity_feed`는 본인·타인 프로필 양쪽에서 쓰이나 공개 범위 정책이 미확정. 체계 수립 후 PRD 별도 섹션으로 분리 예정.
+- [ ] **커뮤니티 피드 공개 범위**: **공개/비공개/팔로우 공개/전체공개 체계 수립 예정** — 현재 `user_activity_feed`는 본인·타인 프로필 양쪽에서 쓰이나 공개 범위 정책이 미확정. 티켓 20260830_2115(타인 프로필 기본뷰에 최근 활동 노출) 이후로 로그인한 누구나 타인 프로필 기본뷰에서 그 유저의 최근 활동(배지 획득·아이템 드랍/픽업·미션 참가/완료 및 보상 포인트액 포함)을 볼 수 있게 되어 노출 범위가 넓어졌다 — 지갑 잔액(`pointBalance`)은 본인 전용으로 강하게 보호하는 것과 비일관적이므로, 정책 수립 시 개별 이벤트 단위 포인트 노출 여부도 함께 검토 필요. 체계 수립 후 PRD 별도 섹션으로 분리 예정.
 - [x] **신화 아이템 떠돌이 속성 UI 완성도**: **기능 전면 제거로 종결** (2026-08-24, 티켓 [20260824_017](../../Tickets/20260824_017_Infra_떠돌이신화-기능-전면제거.md)). 스키마·Cron만 있고 컨텐츠가 한 번도 붙지 않은 미완성 기능이었고 프로덕션 실사용 0건이 확인되어, UI를 구현하는 대신 `wandering_mythic_state` 테이블·`badges.is_wandering` 컬럼·`/api/cron/wandering`을 모두 제거했다.
