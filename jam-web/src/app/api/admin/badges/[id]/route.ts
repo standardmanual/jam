@@ -88,10 +88,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 /**
- * 소프트 삭제 — 배지 행은 남기고 deleted_at만 세팅한다.
- * 이미 발급된 유저의 user_activity_badges/inventory_items 등 이력은 badges FK를
- * 그대로 참조하므로 하드 삭제 시 FK 위반이 나거나(CASCADE 없음) 이력이 사라진다.
- * 서비스 상에서는 신규 발급/드랍/노출 대상에서 제외되지만 보유자 이력 조회는 유지된다.
+ * 하드 삭제 — 이력이 전혀 없는 배지만 badges 행 자체를 실제로 DELETE한다(20260830_1912).
+ * 과거에는 이 엔드포인트도 deleted_at만 세팅하는 소프트 삭제였는데, PATCH(비활성화 토글)와
+ * 완전히 동일한 동작이라 "삭제" 버튼을 눌러도 이미 비활성 상태면 아무 변화가 없어 보이는
+ * 문제가 있었다(20260830_1912 신고).
+ *
+ * 아래 6개 테이블 중 하나라도 이 배지를 참조하면 하드 삭제를 차단한다:
+ * - user_activity_badges/inventory_items/poi_drops.badge_id: NOT NULL + ON DELETE NO ACTION
+ *   → 참조가 있으면 하드 삭제 시 FK 위반으로 그냥 실패한다.
+ * - user_checkin_badge_earns/user_item_book_slots.badge_id: NOT NULL + ON DELETE CASCADE
+ *   → 참조가 있는데 강행하면 FK 위반 없이 유저의 체크인 획득 기록·아이템북 슬롯 진행 기록이
+ *     조용히 통째로 사라진다. 절대 강행해서는 안 된다.
+ * - poi.linked_badge_id: nullable이지만 ON DELETE NO ACTION → 참조가 있으면 실패한다.
+ * 이력 보존형 강제 삭제(위 FK를 nullable + ON DELETE SET NULL로 바꾸는 스키마 마이그레이션)는
+ * 이번 범위 밖이다 — 이력이 하나라도 있으면 차단하고 비활성화 사용을 안내한다.
  */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -100,7 +110,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params
   const supabase = createServiceClient()
 
-  // 존재 여부를 먼저 확인한다 — select 없이 바로 update만 실행하면 매칭 0건에도
+  // 존재 여부를 먼저 확인한다 — select 없이 바로 update/delete만 실행하면 매칭 0건에도
   // Supabase가 에러를 주지 않아 존재하지 않는 id에도 조용히 성공 응답이 나갔다(20260827_012).
   const { data: existing, error: fetchError } = await supabase
     .from('badges')
@@ -111,12 +121,47 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: '배지를 찾을 수 없습니다.' }, { status: 404 })
   }
 
-  const { error } = await supabase
-    .from('badges')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', id)
+  const referenceQueries = await Promise.all([
+    supabase.from('user_activity_badges').select('*', { count: 'exact', head: true }).eq('badge_id', id),
+    supabase.from('inventory_items').select('*', { count: 'exact', head: true }).eq('badge_id', id),
+    supabase.from('poi_drops').select('*', { count: 'exact', head: true }).eq('badge_id', id),
+    supabase.from('user_checkin_badge_earns').select('*', { count: 'exact', head: true }).eq('badge_id', id),
+    supabase.from('user_item_book_slots').select('*', { count: 'exact', head: true }).eq('badge_id', id),
+    supabase.from('poi').select('*', { count: 'exact', head: true }).eq('linked_badge_id', id),
+  ])
+
+  // 6곳 중 하나라도 error면 fail-closed로 하드 삭제를 막는다. user_checkin_badge_earns·
+  // user_item_book_slots는 ON DELETE CASCADE라, 카운트 조회가 실패했는데 count만 null→0으로
+  // 넘기면 실제 이력이 있어도 0건으로 오판해 하드 삭제가 강행되고 유저의 체크인 획득 기록·
+  // 아이템북 슬롯 진행 기록이 조용히 사라진다 — 이 엔드포인트가 막으려던 시나리오 그 자체다.
+  const failedQuery = referenceQueries.find((r) => r.error)
+  if (failedQuery) {
+    console.error('[badges DELETE] 참조 카운트 조회 실패 — 하드 삭제를 차단합니다:', failedQuery.error)
+    return NextResponse.json(
+      { error: '삭제할 수 없습니다. 이력 조회 중 오류가 발생했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.' },
+      { status: 500 }
+    )
+  }
+
+  const totalReferences = referenceQueries.reduce((sum, r) => sum + (r.count ?? 0), 0)
+
+  // 이력이 하나라도 있으면 하드 삭제를 차단한다. [현상]→[원인]→[해결책] 3단계 구조로 안내한다
+  // (UX_WRITING_GUIDELINE.md) — 기존 소프트 삭제로 되돌리지 않고 명확히 실패시킨다.
+  if (totalReferences > 0) {
+    return NextResponse.json(
+      {
+        error: `삭제할 수 없습니다. 이미 ${totalReferences}건의 발급·드랍·지점 연결 이력이 있는 배지입니다. 비활성화를 이용해주세요.`,
+      },
+      { status: 409 }
+    )
+  }
+
+  const { error } = await supabase.from('badges').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // 이력 0건 조건에 poi_drops도 포함돼 있어 여기 도달했다면 무효화할 미픽업 드랍은 사실상
+  // 없지만, 방어적으로 유지한다(20260830_1912) — 호출 자체는 badgeIds가 매칭되지 않으면
+  // no-op이라 비용이 거의 없다.
   await invalidateUnclaimedDrops(supabase, [id], 'admin badges DELETE')
 
   return NextResponse.json({ ok: true })
@@ -124,9 +169,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
 /**
  * 목록/상세 화면의 즉시 토글용(20260823_006). body: { active: boolean }.
- * active: false → deleted_at = now() (기존 DELETE 핸들러와 동일 동작 — DELETE는 그대로 두고
- * BadgeForm.tsx의 기존 삭제 흐름이 계속 사용한다).
- * active: true → deleted_at = null (신규 — 지금까지 배지를 되살리는 API가 없었음).
+ * active: false → deleted_at = now() (소프트 삭제 — 가역적). active: true → deleted_at = null
+ * (되살리기).
+ * DELETE 핸들러와는 별개의 동작이다(20260830_1912부터) — DELETE는 이력 없는 배지만 실제
+ * 하드 삭제하고, 이력이 있으면 차단한다. 이 PATCH는 이력 유무와 무관하게 항상 소프트
+ * 삭제/복원만 수행하는 가역적 토글로 그대로 유지한다.
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
