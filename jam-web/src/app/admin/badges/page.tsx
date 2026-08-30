@@ -10,13 +10,12 @@ import { UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
 
 const PAGE_SIZE = 50
 
-// PostgREST 기본 응답 상한(1000행) 대응 페이지네이션 크기. "미할당" 지점 카테고리 필터
-// (티켓 20260830_1510)를 계산하려면 체크인 배지 id 전체(1800건대)와 지점이 연결된 배지
-// id 전체(1796건대, 2026-08-30 기준)를 모두 훑어야 하는데, 둘 다 1000행을 넘어 한 번에
-// 못 가져온다. 이 두 집합의 차집합(미할당 배지)만 작으므로, 큰 집합을 페이지네이션으로
-// 온전히 가져와 서버 메모리에서 차집합을 구한 뒤 그 작은 결과만 `.in()`에 넘긴다 — 반대로
-// "지점이 연결된 배지"(큰 집합, 최대 1796건)를 `.not('id','in',...)`에 통째로 넘기면
-// URL이 절단될 위험이 있다(티켓 20260825_035).
+// PostgREST 기본 응답 상한(1000행) 대응 페이지네이션 크기. 체크인 배지 카테고리 필터
+// ("미할당" 포함, 티켓 20260830_1510·20260830_1522)를 계산하려면 체크인 배지 id 전체
+// (1800건대)와 지점이 연결된 배지 id 전체(1796건대, 2026-08-30 기준)를 모두 훑어야 하는데,
+// 둘 다 1000행을 넘어 한 번에 못 가져온다. 이 크기로 나눠 완전히 조회한 뒤 서버 메모리에서
+// 유효 카테고리를 계산한다 — 매칭된 id 목록을 그대로 `.in()`에 넘기면 카테고리 하나가
+// 900개를 넘을 때 URL이 절단될 위험이 있다(티켓 20260825_035).
 const FETCH_ALL_PAGE_SIZE = 1000
 
 type RangeQuery<T> = (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
@@ -27,7 +26,7 @@ async function fetchAllRows<T>(query: RangeQuery<T>): Promise<T[]> {
   for (;;) {
     const { data, error } = await query(from, from + FETCH_ALL_PAGE_SIZE - 1)
     if (error) {
-      console.error('[admin/badges] 미할당 지점 카테고리 계산용 전체 조회 오류:', error)
+      console.error('[admin/badges] 체크인 배지 카테고리 계산용 전체 조회 오류:', error)
       break
     }
     const page = data ?? []
@@ -62,86 +61,127 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   const BADGE_LIST_COLUMNS =
     'id, name, description, type, rarity, image_url, condition_json, activity_types, patch_available, patch_price_krw, faction_id, deleted_at'
 
-  // 지점 카테고리 필터: 체크인 배지에는 카테고리 컬럼이 없고, 연결된 지점(poi.category)으로만 분류된다.
-  // 배지 id를 먼저 모아 .in()으로 거르면 한 카테고리가 900개를 넘을 때 URL이 수십 KB가 되므로
-  // FK(poi.linked_badge_id → badges.id)를 통한 inner join으로 DB에서 직접 필터한다.
-  // "미할당"(연결된 지점이 하나도 없는 배지, 티켓 20260830_1510)은 이 inner join으로는 표현할 수
-  // 없는 안티조인이라 별도 분기로 처리한다 — poi.category처럼 실제 카테고리 값이 아니므로 제외.
+  // 지점 카테고리 필터: 체크인 배지의 실제 분류 기준은 badges.category(어드민이 배지에 직접
+  // 지정한 값)를 우선하고, 값이 없으면(null) 연결된 지점의 poi.category로 폴백한다
+  // (티켓 20260830_1522 — 이전에는 badges.category가 어디서도 읽히지 않아 어드민에서
+  // 카테고리를 바꿔도 목록 분류가 그대로였다). "미할당"(연결된 지점도, badges.category도
+  // 없는 배지, 티켓 20260830_1510)도 같은 유효 카테고리 계산 결과가 null인 경우로 판정한다.
+  //
+  // badges.category는 연결된 poi 없이도 값을 가질 수 있어 DB 조인 하나로 두 값을 합성할 수
+  // 없다. 그렇다고 매칭된 id 목록을 그대로 `.in()`에 넘기면 카테고리 하나가 900개를 넘을 때
+  // URL이 수십 KB가 되는 문제(티켓 20260825_035)가 재발한다 — 실제로 "역"으로 끝나는 POI만
+  // 900건대다. 그래서 이 필터가 걸리면 체크인 배지 전체(1800건대, 페이지네이션으로 안전하게
+  // 완전 조회 가능한 규모)와 연결된 poi 전체를 통째로 가져와 메모리에서 유효 카테고리를
+  // 계산하고, 나머지 필터·정렬·페이지네이션까지 이 분기 안에서 전부 처리한다.
   const isUnassignedPoiFilter = filterType === 'checkin' && filterPoiCategory === UNASSIGNED_POI_CATEGORY
-  const filterByPoiCategory = filterType === 'checkin' && !!filterPoiCategory && !isUnassignedPoiFilter
-  const selectClause = filterByPoiCategory
-    ? `${BADGE_LIST_COLUMNS}, poi!poi_linked_badge_id_fkey!inner(category)`
-    : BADGE_LIST_COLUMNS
+  const filterByCheckinCategory = filterType === 'checkin' && !!filterPoiCategory
 
-  // "미할당" 필터: 체크인 배지 id 전체 - 지점이 연결된 배지 id 전체(둘 다 페이지네이션으로
-  // 완전히 조회) 차집합을 서버 메모리에서 구해 작은 결과만 메인 쿼리에 `.in()`으로 넘긴다.
-  let unassignedBadgeIds: string[] = []
-  if (isUnassignedPoiFilter) {
-    const [checkinBadgeRows, linkedPoiRows] = await Promise.all([
-      fetchAllRows<{ id: string }>((from, to) =>
-        supabase.from('badges').select('id').eq('type', 'checkin').order('id').range(from, to)
+  let badges: BadgeListRow[]
+  let total: number
+
+  if (filterByCheckinCategory) {
+    type CheckinCandidateRow = BadgeListRow & { category: string | null; created_at: string }
+    const [allCheckinRows, linkedPoiRows] = await Promise.all([
+      fetchAllRows<CheckinCandidateRow>((from, to) =>
+        supabase
+          .from('badges')
+          .select(`${BADGE_LIST_COLUMNS}, category, created_at`)
+          .eq('type', 'checkin')
+          .order('id')
+          .range(from, to)
       ),
-      fetchAllRows<{ linked_badge_id: string }>((from, to) =>
+      fetchAllRows<{ linked_badge_id: string; category: string }>((from, to) =>
         supabase
           .from('poi')
-          .select('linked_badge_id')
+          .select('linked_badge_id, category')
           .not('linked_badge_id', 'is', null)
           .order('linked_badge_id')
           .range(from, to)
       ),
     ])
-    const linkedBadgeIdSet = new Set(linkedPoiRows.map((r) => r.linked_badge_id))
-    unassignedBadgeIds = checkinBadgeRows.map((r) => r.id).filter((id) => !linkedBadgeIdSet.has(id))
+
+    const poiCategoryByBadge = new Map<string, string>()
+    for (const row of linkedPoiRows) {
+      if (!poiCategoryByBadge.has(row.linked_badge_id)) poiCategoryByBadge.set(row.linked_badge_id, row.category)
+    }
+
+    let candidates = allCheckinRows.filter((b) => {
+      const effectiveCategory = b.category ?? poiCategoryByBadge.get(b.id) ?? null
+      return isUnassignedPoiFilter ? effectiveCategory === null : effectiveCategory === filterPoiCategory
+    })
+
+    // 나머지 필터 — 메인 쿼리 분기(아래 else)와 동일한 조건을 메모리에서 적용
+    if (status === 'active') candidates = candidates.filter((b) => !b.deleted_at)
+    else if (status === 'inactive') candidates = candidates.filter((b) => !!b.deleted_at)
+    if (filterRarity) candidates = candidates.filter((b) => b.rarity === filterRarity)
+    if (q) {
+      const qLower = q.toLowerCase()
+      candidates = candidates.filter(
+        (b) => b.name.toLowerCase().includes(qLower) || (b.description ?? '').toLowerCase().includes(qLower)
+      )
+    }
+
+    switch (sortBy) {
+      case 'name_asc': candidates.sort((a, b) => a.name.localeCompare(b.name, 'ko')); break
+      case 'name_desc': candidates.sort((a, b) => b.name.localeCompare(a.name, 'ko')); break
+      case 'created_asc': candidates.sort((a, b) => a.created_at.localeCompare(b.created_at)); break
+      default: candidates.sort((a, b) => b.created_at.localeCompare(a.created_at))
+    }
+
+    total = candidates.length
+    const from = (page - 1) * PAGE_SIZE
+    badges = candidates.slice(from, from + PAGE_SIZE).map(
+      (c): BadgeListRow => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        type: c.type,
+        rarity: c.rarity,
+        image_url: c.image_url,
+        condition_json: c.condition_json,
+        activity_types: c.activity_types,
+        patch_available: c.patch_available,
+        patch_price_krw: c.patch_price_krw,
+        faction_id: c.faction_id,
+        deleted_at: c.deleted_at,
+      })
+    )
+  } else {
+    let query = supabase.from('badges').select(BADGE_LIST_COLUMNS, { count: 'exact' })
+
+    if (status === 'active') query = query.is('deleted_at', null)
+    else if (status === 'inactive') query = query.not('deleted_at', 'is', null)
+    // status === 'all' → 필터 없음
+
+    if (filterType) query = query.eq('type', filterType)
+    if (filterRarity) query = query.eq('rarity', filterRarity)
+    if (q) query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
+
+    if (filterActivityType) query = query.contains('activity_types', [filterActivityType])
+    if (filterFactionId) query = query.eq('faction_id', filterFactionId)
+    if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
+
+    switch (sortBy) {
+      case 'name_asc': query = query.order('name', { ascending: true }); break
+      case 'name_desc': query = query.order('name', { ascending: false }); break
+      case 'created_asc': query = query.order('created_at', { ascending: true }); break
+      default: query = query.order('created_at', { ascending: false })
+    }
+
+    const from = (page - 1) * PAGE_SIZE
+    query = query.range(from, from + PAGE_SIZE - 1)
+
+    const { data: badgesRaw, count } = await query
+    badges = (badgesRaw ?? []) as BadgeListRow[]
+    total = count ?? 0
   }
 
-  let query = supabase
-    .from('badges')
-    .select(selectClause, { count: 'exact' })
-
-  if (status === 'active') query = query.is('deleted_at', null)
-  else if (status === 'inactive') query = query.not('deleted_at', 'is', null)
-  // status === 'all' → 필터 없음
-
-  if (filterType) query = query.eq('type', filterType)
-  if (filterRarity) query = query.eq('rarity', filterRarity)
-  if (q) query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
-
-  if (filterActivityType) query = query.contains('activity_types', [filterActivityType])
-  if (filterFactionId) query = query.eq('faction_id', filterFactionId)
-  if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
-  if (filterByPoiCategory) query = query.eq('poi.category', filterPoiCategory)
-  if (isUnassignedPoiFilter) {
-    // 빈 배열을 그대로 .in()에 넘기면 PostgREST 문법상 위험하므로(티켓 20260825_035와 동일한
-    // 이유로 combine/index.ts 200행이 쓰는 것과 같은 안전장치) 존재할 수 없는 id로 대체해
-    // "결과 없음"을 안전하게 강제한다.
-    query = query.in('id', unassignedBadgeIds.length > 0 ? unassignedBadgeIds : ['00000000-0000-0000-0000-000000000000'])
-  }
-
-  switch (sortBy) {
-    case 'name_asc': query = query.order('name', { ascending: true }); break
-    case 'name_desc': query = query.order('name', { ascending: false }); break
-    case 'created_asc': query = query.order('created_at', { ascending: true }); break
-    default: query = query.order('created_at', { ascending: false })
-  }
-
-  const from = (page - 1) * PAGE_SIZE
-  query = query.range(from, from + PAGE_SIZE - 1)
-
-  const [
-    { data: badgesRaw, count },
-    { data: factionsRaw },
-    { data: itemBooksRaw },
-    { data: poiCategoriesRaw },
-  ] = await Promise.all([
-    query,
+  const [{ data: factionsRaw }, { data: itemBooksRaw }, { data: poiCategoriesRaw }] = await Promise.all([
     supabase.from('factions').select('id, name').order('name'),
     supabase.from('item_books').select('id, name, faction_id').order('name'),
     supabase.from('poi_categories').select('slug, label').order('label'),
   ])
 
-  // 조인으로 필터한 경우 행에 poi 관계가 딸려오므로 배지 필드만 남긴다
-  const badges = ((badgesRaw ?? []) as (BadgeListRow & { poi?: unknown })[]).map(({ poi: _poi, ...badge }) => badge as BadgeListRow)
-  const total = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const factionMap = new Map(
     ((factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]).map((f) => [f.id, f.name])
