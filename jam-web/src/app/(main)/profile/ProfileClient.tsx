@@ -149,9 +149,9 @@ export default function ProfileClient({
   })()
 
   // ── 탭뷰 여부 ─────────────────────────────────────────────────────────────
-  // 본인 프로필: 해시 없으면 기본뷰(Strava+Feed), 유효 해시 있으면 탭콘텐츠
-  // 타인 프로필: 항상 탭콘텐츠 (기본=배지갤러리)
-  const isTabView = !isOwnProfile || VALID_TABS.has(hashFragment)
+  // 본인/타인 구분 없이 해시로만 판정: 해시 없으면 기본뷰(Feed, 본인은 Strava도),
+  // 유효 해시 있으면 탭콘텐츠 (20260830_2115 — 전역 적용, 진입 경로 무관)
+  const isTabView = VALID_TABS.has(hashFragment)
 
   // ── 해시 동기화 (마운트·뒤로가기 포함) ────────────────────────────────────
   useEffect(() => {
@@ -599,8 +599,9 @@ export default function ProfileClient({
           </Card>
         )}
 
-        {/* Feed — 본인 + 기본뷰(해시 없음)일 때 */}
-        {isOwnProfile && !isTabView && (
+        {/* Feed — 기본뷰(해시 없음)일 때, 본인/타인 관계없이 노출 (20260830_2115).
+            데이터는 이미 대상 유저(target) 기준으로 조회돼 전달되므로 별도 분기 불필요. */}
+        {!isTabView && (
           <FeedSection feedItems={feedItems} badgeLinkQuery={`?u=${username}`} activityNames={activityNames} />
         )}
 
