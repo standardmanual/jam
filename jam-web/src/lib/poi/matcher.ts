@@ -157,9 +157,14 @@ export async function matchPoisForActivity(
   }
   const BB_MARGIN = 0.001 // ~111m 버퍼
 
+  // 20260830_1620: is_active=false(어드민이 운영 종료 처리한 지점)는 후보에서 제외한다 —
+  // 이 함수가 체크인 배지 판정(matchPoisForActivity → sync.ts)의 유일한 매칭 경로다.
+  // 과거에 이미 지나간 활동은 재평가하지 않으므로(스트라바 싱크는 신규 활동만 처리)
+  // 이미 발급된 배지에는 영향이 없다 — 이 필터는 "앞으로" 통과하는 활동에만 적용된다.
   const { data: poisRaw, error } = await supabase
     .from('poi')
     .select('*')
+    .eq('is_active', true)
     .gte('latitude', routeLatMin - BB_MARGIN)
     .lte('latitude', routeLatMax + BB_MARGIN)
     .gte('longitude', routeLngMin - BB_MARGIN)
