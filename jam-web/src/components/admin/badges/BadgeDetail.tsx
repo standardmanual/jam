@@ -1,11 +1,20 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { IconCheck, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/admin/ui/card'
 import { Alert, AlertDescription } from '@/components/admin/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from '@/components/admin/ui/alert-dialog'
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'
@@ -71,6 +80,34 @@ interface BadgeDetailProps {
 export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
   const router = useRouter()
   const condition = badge.condition_json as BadgeCondition | null
+
+  // 삭제 확인 + 실행 (티켓 20260830_1344) — 기존에는 confirm() 뒤 console.log만 찍고 실제
+  // DELETE API를 호출하지 않는 스텁이었다. BadgeActiveToggleButton과 같은 AlertDialog 패턴으로
+  // 교체하고 실제 소프트 삭제(DELETE /api/admin/badges/[id])를 호출한다.
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  // AlertDialog(Radix Portal)는 [data-admin-theme] 스코프 밖(document.body)에 렌더링되면 테마
+  // 색이 깨진다 — BadgeActiveToggleButton과 동일하게 포털 컨테이너를 지정한다(20260827_002).
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/admin/badges/${badge.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error ?? '삭제에 실패했습니다. 다시 시도해주세요.')
+        return
+      }
+      router.push('/admin/badges')
+      router.refresh()
+    } finally {
+      setDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -260,18 +297,38 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
           수정
         </Button>
         <Button
+          type="button"
           variant="destructive"
-          onClick={() => {
-            if (confirm('이 배지를 삭제하시겠습니까?')) {
-              // 삭제 로직은 추후 구현
-              console.log('Delete badge:', badge.id)
-            }
-          }}
+          onClick={() => setShowDeleteConfirm(true)}
           className="h-11 md:h-10"
         >
           삭제
         </Button>
       </div>
+
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setShowDeleteConfirm(false)
+        }}
+      >
+        <AlertDialogContent container={themeContainer ?? undefined}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>배지 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              &apos;{badge.name}&apos; 배지를 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button type="button" variant="outline" disabled={deleting} onClick={() => setShowDeleteConfirm(false)}>
+              취소
+            </Button>
+            <Button type="button" variant="destructive" disabled={deleting} onClick={handleDelete}>
+              {deleting ? '삭제 중...' : '삭제 확인'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
