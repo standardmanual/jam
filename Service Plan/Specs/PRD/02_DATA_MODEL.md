@@ -259,6 +259,15 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 > 이 테이블에서 어긋나 있어 컬럼명 불일치가 타입 체크로 잡히지 않았다. `abusing_policy`
 > (`soft_legendary_rate`/`hard_legendary_rate` vs 코드 `soft_legend_rate`/`hard_legend_rate`)도
 > 동일한 불일치가 미해결 상태다.
+>
+> ⚠️ **두 타입 파일을 DB에 맞추는 것만으로는 타입 시스템이 막아주지 않는다.** 수기 `database.ts`는
+> Row를 `interface`로 선언하는데, `interface`는 암묵적 인덱스 시그니처가 없어 supabase-js의
+> `GenericTable`(`Row: Record<string, unknown>`) 제약을 만족하지 못한다. 그 결과 **모든 쓰기
+> 페이로드가 `never[]`로 추론**되고, 개발자는 쓰기 지점마다 `@ts-expect-error`를 달 수밖에 없다
+> (2026-08-31 기준 92개 / 55개 파일, 그중 55개가 이 `never` 계열). **그 지시자가 컬럼명 검증까지
+> 함께 끈다.** 검사를 실제로 되살리려면 Supabase 클라이언트 제네릭(`lib/supabase/client.ts`·
+> `server.ts` 3곳)을 `database.generated.ts`로 바꿔야 한다. 효과·비용 실측은
+> [티켓 20260831_1158](../../Tickets/20260831_1158_Infra_수기타입-생성타입-불일치-전수점검.md) 참조.
 
 ### ambient_drop_config (재도입 — 2026-08-26, 마이그레이션 104)
 앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 카테고리(`poi_categories` 13종 또는 전체)·
