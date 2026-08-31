@@ -97,11 +97,28 @@ export type BadgeMissedInfo = {
 
 // ── 조건 평가 (상세 이유 포함) ────────────────────────────────────────────
 
-/** 한 활동 안에서 동시에 충족해야 하는 필드 — "합산"이 아니라 "그 활동 자체가" 조건을 만족해야 함 */
+/**
+ * 한 활동 안에서 동시에 충족해야 하는(또는 이력 전반에서 각각 독립 평가되는) 필드.
+ *
+ * `distance_km`/`elevation_gain_m`은 여기 없다 — 기본은 "전체 이력 누적 합계"이며(아래
+ * 전용 블록에서 처리), `condition_json.same_activity === true`인 배지(현재 T1 '야생의
+ * 첫발' 1건)만 예외적으로 이 목록에 합류해 "한 활동에서 동시 충족"으로 평가된다
+ * (2026-08-31 복원, 티켓 20260831_2100 — 2026-07-31 커밋 `27163030`이 다른 활동의 필드를
+ * 조합해 통과하는 버그를 고치면서 단독 누적 필드·독립 이력 복합조건까지 "한 활동 동시
+ * 충족"으로 과잉 일반화했던 회귀를 되돌림).
+ *
+ * 이 목록에 남은 필드가 2개 이상이고 `time_range`가 섞여 있지 않으면(= "그 시간대에
+ * 일어난 활동"이라는 본질적 결합이 없으면) 기본적으로 "이력 전반 독립 평가"로 처리한다
+ * (카테고리 2: R7/C7/H7/T7). `time_range`가 포함된 조합(W5 야간 등)은 원래부터 "그
+ * 활동 자체가" 그 시간대에 일어나야 하므로 계속 단일 활동 동시 충족을 요구한다.
+ */
 const PER_ACTIVITY_KEYS = [
-  'distance_km', 'elevation_gain_m', 'duration_minutes', 'min_speed_kmh', 'max_pace_sec_per_km',
+  'duration_minutes', 'min_speed_kmh', 'max_pace_sec_per_km',
   'temperature_min_c', 'temperature_max_c', 'weekend_duration_hours',
 ] as const
+
+/** same_activity:true일 때만 PER_ACTIVITY_KEYS에 합류하는 누적 필드 (T1 전용) */
+const CUMULATIVE_SAME_ACTIVITY_KEYS = ['distance_km', 'elevation_gain_m'] as const
 
 // 엔진이 실제로 "수치 검사"를 수행하는 필드 목록(MEASURABLE_CONDITION_KEYS)은
 // condition-schema.ts로 이전했다(티켓 20260825_031) — DB CHECK 제약·어드민 API 검증과
@@ -186,13 +203,26 @@ function describePerActivity(condition: BadgeCondition, a: NormalizedActivity): 
   return { actual, required }
 }
 
+/** 이력 전반 독립 평가(카테고리 2)에서 통과 사유 문자열에 붙이는 한국어 라벨 */
+const INDEPENDENT_FIELD_LABEL_KO: Partial<Record<typeof PER_ACTIVITY_KEYS[number], string>> = {
+  duration_minutes: '이동시간',
+  min_speed_kmh: '속도',
+  max_pace_sec_per_km: '페이스',
+  temperature_min_c: '기온',
+  temperature_max_c: '기온',
+  weekend_duration_hours: '주말활동시간',
+}
+
 /** 필드가 하나뿐인 단순 케이스의 구체적인 실패 사유 (여러 필드 동시충족 케이스는 상위에서 별도 처리) */
 function singleFieldFailure(
   condition: BadgeCondition,
-  key: typeof PER_ACTIVITY_KEYS[number] | 'time_range',
+  key: typeof PER_ACTIVITY_KEYS[number] | typeof CUMULATIVE_SAME_ACTIVITY_KEYS[number] | 'time_range',
   filtered: NormalizedActivity[]
 ): EvalConditionResult {
   switch (key) {
+    // same_activity:true 경로(T1 전용)에서 relevantPerActivityKeys가 1개뿐일 때만 도달 —
+    // 기본(same_activity 없음) 경로에서는 distance_km/elevation_gain_m이 위 누적 블록에서
+    // 먼저 처리되므로 여기까지 오지 않는다.
     case 'distance_km': {
       const best = Math.max(...filtered.map((a) => a.distanceKm), 0)
       return { pass: false, reason: '거리 부족', actual: `${Math.round(best * 10) / 10}km`, required: `${condition.distance_km}km` }
@@ -371,49 +401,98 @@ export function evaluateConditionDetailed(
     requiredParts.push(`누적일수: ${condition.active_days_count}일`)
   }
 
+  // ── distance_km / elevation_gain_m — 기본은 전체 이력 누적 합계(2026-08-31 복원,
+  //    티켓 20260831_2100). same_activity:true인 배지(T1 '야생의 첫발')만 예외로 이 블록을
+  //    건너뛰고 아래 "단일 활동 동시 충족" 블록에서 함께 평가한다.
+  if (condition.same_activity !== true) {
+    if (condition.distance_km !== undefined) {
+      const totalKm = filtered.reduce((sum, a) => sum + a.distanceKm, 0)
+      if (totalKm < condition.distance_km) {
+        return { pass: false, reason: '누적 거리 부족', actual: `${Math.round(totalKm * 10) / 10}km`, required: `${condition.distance_km}km` }
+      }
+      actualParts.push(`누적거리: ${Math.round(totalKm * 10) / 10}km`)
+      requiredParts.push(`누적거리: ${condition.distance_km}km`)
+    }
+    if (condition.elevation_gain_m !== undefined) {
+      const totalElev = filtered.reduce((sum, a) => sum + a.elevationGainM, 0)
+      if (totalElev < condition.elevation_gain_m) {
+        return { pass: false, reason: '누적 고도 상승 부족', actual: `${Math.round(totalElev)}m`, required: `${condition.elevation_gain_m}m` }
+      }
+      actualParts.push(`누적고도: ${Math.round(totalElev)}m`)
+      requiredParts.push(`누적고도: ${condition.elevation_gain_m}m`)
+    }
+  }
+
   // ── 단일 활동 동시 충족 조건 — "그 활동 하나"가 모든 필드를 함께 만족해야 함.
   //    필드별로 따로 최댓값을 찾아 합치면(예: 빠른 활동의 속도 + 긴 활동의 시간을 조합)
   //    실제로는 어느 활동도 조건을 만족 못 했는데 통과하는 버그가 생긴다.
+  //    same_activity:true(T1 전용)일 때만 distance_km/elevation_gain_m이 이 목록에 합류한다.
+  const sameActivityCumulativeKeys =
+    condition.same_activity === true ? CUMULATIVE_SAME_ACTIVITY_KEYS.filter((k) => condition[k] !== undefined) : []
+  const perActivityFieldKeys = PER_ACTIVITY_KEYS.filter((k) => {
+    if (condition[k] === undefined) return false
+    // temperature_min_c/max_c + total_count는 위에서 이미 "카운팅 대상 필터"로 처리됨 —
+    // 여기서 또 "단일 활동 매칭"으로 취급하면 total_count가 기온과 무관한 전체 걷기
+    // 횟수로 잘못 평가된다 (T12~T14 어뷰징 방지 위해 반드시 분리 처리)
+    if (condition.total_count !== undefined && (k === 'temperature_min_c' || k === 'temperature_max_c')) return false
+    return true
+  })
+  const includesTimeRange =
+    condition.time_range !== undefined && condition.weekly_count === undefined && condition.total_count === undefined
   const relevantPerActivityKeys = [
-    ...PER_ACTIVITY_KEYS.filter((k) => {
-      if (condition[k] === undefined) return false
-      // temperature_min_c/max_c + total_count는 위에서 이미 "카운팅 대상 필터"로 처리됨 —
-      // 여기서 또 "단일 활동 매칭"으로 취급하면 total_count가 기온과 무관한 전체 걷기
-      // 횟수로 잘못 평가된다 (T12~T14 어뷰징 방지 위해 반드시 분리 처리)
-      if (condition.total_count !== undefined && (k === 'temperature_min_c' || k === 'temperature_max_c')) return false
-      return true
-    }),
-    ...(condition.time_range !== undefined && condition.weekly_count === undefined && condition.total_count === undefined
-      ? ['time_range' as const]
-      : []),
+    ...sameActivityCumulativeKeys,
+    ...perActivityFieldKeys,
+    ...(includesTimeRange ? ['time_range' as const] : []),
   ]
   if (relevantPerActivityKeys.length > 0) {
-    const qualifying = filtered.find((a) => matchesPerActivityCondition(condition, a))
-    if (!qualifying) {
-      // 필드가 하나뿐이면 기존처럼 구체적인 사유를 준다. 여러 필드가 겹치면
-      // "동시 충족"이 핵심이므로 필드별 개별 최고 기록은 참고용으로만 보여준다.
-      if (relevantPerActivityKeys.length === 1) {
-        return singleFieldFailure(condition, relevantPerActivityKeys[0], filtered)
+    // time_range가 섞여 있거나 same_activity:true면 "그 활동 자체가" 전 필드를 동시에
+    // 만족해야 한다. 그 외(카테고리 2: R7/C7/H7/T7)는 필드별로 이력 전반에서 독립
+    // 평가한다 — 다른 세션에서 각각 달성해도 통과.
+    const requiresSameActivity = condition.same_activity === true || includesTimeRange
+
+    if (requiresSameActivity) {
+      const qualifying = filtered.find((a) => matchesPerActivityCondition(condition, a))
+      if (!qualifying) {
+        // 필드가 하나뿐이면 기존처럼 구체적인 사유를 준다. 여러 필드가 겹치면
+        // "동시 충족"이 핵심이므로 필드별 개별 최고 기록은 참고용으로만 보여준다.
+        if (relevantPerActivityKeys.length === 1) {
+          return singleFieldFailure(condition, relevantPerActivityKeys[0], filtered)
+        }
+        const bestByField: string[] = []
+        if (condition.distance_km !== undefined) bestByField.push(`거리 최고: ${Math.max(...filtered.map((a) => a.distanceKm), 0)}km`)
+        if (condition.elevation_gain_m !== undefined) bestByField.push(`고도 최고: ${Math.max(...filtered.map((a) => a.elevationGainM), 0)}m`)
+        if (condition.duration_minutes !== undefined) bestByField.push(`시간 최고: ${Math.round(Math.max(...filtered.map((a) => a.movingTimeSec / 60), 0))}분`)
+        if (condition.min_speed_kmh !== undefined) bestByField.push(`속도 최고: ${Math.max(...filtered.map((a) => a.averageSpeedKmh), 0)}km/h`)
+        if (condition.max_pace_sec_per_km !== undefined) {
+          const paces = filtered.map((a) => kmhToPaceSecPerKm(a.averageSpeedKmh))
+          bestByField.push(`페이스 최고: ${formatPaceSecPerKm(paces.length > 0 ? Math.min(...paces) : Infinity)}`)
+        }
+        return {
+          pass: false,
+          reason: '동시 충족 활동 없음 (개별 최고 기록은 있으나 한 활동에서 함께 달성 못함)',
+          actual: bestByField.length > 0 ? bestByField.join(', ') : '-',
+          required: '모든 조건을 만족하는 활동 1건',
+        }
       }
-      const bestByField: string[] = []
-      if (condition.distance_km !== undefined) bestByField.push(`거리 최고: ${Math.max(...filtered.map((a) => a.distanceKm), 0)}km`)
-      if (condition.elevation_gain_m !== undefined) bestByField.push(`고도 최고: ${Math.max(...filtered.map((a) => a.elevationGainM), 0)}m`)
-      if (condition.duration_minutes !== undefined) bestByField.push(`시간 최고: ${Math.round(Math.max(...filtered.map((a) => a.movingTimeSec / 60), 0))}분`)
-      if (condition.min_speed_kmh !== undefined) bestByField.push(`속도 최고: ${Math.max(...filtered.map((a) => a.averageSpeedKmh), 0)}km/h`)
-      if (condition.max_pace_sec_per_km !== undefined) {
-        const paces = filtered.map((a) => kmhToPaceSecPerKm(a.averageSpeedKmh))
-        bestByField.push(`페이스 최고: ${formatPaceSecPerKm(paces.length > 0 ? Math.min(...paces) : Infinity)}`)
+      const { actual, required } = describePerActivity(condition, qualifying)
+      actualParts.push(...actual)
+      requiredParts.push(...required)
+    } else {
+      // ── 이력 전반 독립 평가 — 필드마다 각자 최고 기록으로 조건을 만족하면 통과한다.
+      //    다른 세션의 속도 + 다른 세션의 시간을 조합해도 발급된다(R7/C7/H7/T7 문서 규정).
+      for (const key of perActivityFieldKeys) {
+        const passes = filtered.some((a) => matchesPerActivityCondition({ [key]: condition[key] } as BadgeCondition, a))
+        if (!passes) {
+          return singleFieldFailure(condition, key, filtered)
+        }
       }
-      return {
-        pass: false,
-        reason: '동시 충족 활동 없음 (개별 최고 기록은 있으나 한 활동에서 함께 달성 못함)',
-        actual: bestByField.length > 0 ? bestByField.join(', ') : '-',
-        required: '모든 조건을 만족하는 활동 1건',
+      for (const key of perActivityFieldKeys) {
+        const { actual, required } = singleFieldFailure(condition, key, filtered)
+        const label = INDEPENDENT_FIELD_LABEL_KO[key]
+        actualParts.push(label ? `${label}: ${actual}` : actual)
+        requiredParts.push(label ? `${label}: ${required}` : required)
       }
     }
-    const { actual, required } = describePerActivity(condition, qualifying)
-    actualParts.push(...actual)
-    requiredParts.push(...required)
   }
 
   if (condition.total_count !== undefined && !totalCountHandledByDayOfWeek) {

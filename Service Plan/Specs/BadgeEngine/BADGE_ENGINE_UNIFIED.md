@@ -1,8 +1,9 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-08-10 (Strava 수동 입력(manual) 활동 동기화 제외 — §1 공통 정책 참고)  
+> 최종 업데이트: 2026-08-31 (distance_km/elevation_gain_m 누적 평가 복원 + 카테고리 2 복합배지
+> 이력 전반 독립 평가 복원 + same_activity 플래그 도입 — §2.3·§2.6, 티켓 20260831_2100)  
 > **배지 운영 문서 4종 체계** — 이 문서(로직) + [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md)(조건 필드 전체 스펙) + `액티비티배지 레시피.md`(액티비티배지 전체 목록) + `아이템북 레시피.xlsx`(아이템배지 전체 목록 + 세계관 인접)  
-> DB 시드: `supabase/migrations/033_reseed_activity_badges_v3.sql` (액티비티배지 115종) + `supabase/migrations/076_walking_badges_v4.sql` (걷기 신규 32종, 2026-08-08)
+> DB 시드: `supabase/migrations/033_reseed_activity_badges_v3.sql` (액티비티배지 115종) + `supabase/migrations/118_reapply_walking_badges_v4.sql` (걷기 신규 32종. 076_walking_badges_v4.sql로 2026-08-08 작성됐으나 프로덕션에 한 번도 실행되지 않은 채 방치돼 있던 것을 발견해 118로 재적용, 티켓 20260831_2100)
 
 ---
 
@@ -65,7 +66,8 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 | 조건 필드 | 평가 방식 |
 |-----------|-----------|
 | `activity_type` | 활동을 해당 타입으로 필터링 |
-| `distance_km` / `elevation_gain_m` | **누적 합계** ≥ 조건값 |
+| `distance_km` / `elevation_gain_m` | **누적 합계** ≥ 조건값 (기본값). `same_activity: true`가 함께 있으면 예외적으로 **한 활동에서 동시 충족**해야 한다 — 현재 카탈로그에서는 T1 `야생의 첫발` 1건만 이 플래그를 쓴다(2026-08-31 복원, 티켓 20260831_2100). 자세한 배경은 §2.3-1 참고 |
+| `same_activity` (2026-08-31 신규) | 그 자체로는 pass/fail을 만들지 않는 필터 성격 플래그. `distance_km`/`elevation_gain_m`과 함께 있을 때만 의미를 가지며, 이 두 필드의 평가 방식을 "누적 합계"에서 "한 활동 동시 충족"으로 전환한다 |
 | `total_count` | 필터된 활동 건수 ≥ 조건값 |
 | `min_speed_kmh` / `duration_minutes` | **단일 활동 최고값** ≥ 조건값 (min_speed_kmh는 cycling 등 속도 단위) |
 | `max_pace_sec_per_km` | **단일 활동 최고 페이스** ≤ 조건값 — 값이 작을수록 빠름(km/h와 부등호 반대). running 등 페이스 단위 종목에 사용 |
@@ -82,6 +84,30 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 | `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 활동 횟수가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
 | `month` (2026-08-08 확장) | 기존 `number`에서 `number | number[]`로 확장 — 배열이면 여러 달을 OR로 묶어 `monthly_km`와 결합(예: 장마철 6~7월) |
 | `prerequisite_badge_names` | Step 3 C-1에서 처리 (OR 매칭) |
+
+#### 2.3-1 복합 조건 배지 — "이력 전반 독립 평가"가 기본, "동시 충족"이 예외 (2026-08-31 복원)
+
+두 개 이상의 수치 필드가 같은 `condition_json`에 있을 때, 기본 평가 방식은 **필드마다 각자
+이력 전체에서 최고 기록으로 독립 평가**한다 — 서로 다른 세션에서 각각 달성해도 AND를
+만족하면 발급된다. 예를 들어 R7 `스피드 엔듀러`(`max_pace_sec_per_km` + `duration_minutes`)는
+어제의 빠른 5km와 오늘의 느린 장거리 러닝을 조합해도 통과한다. 카테고리 2 배지 4종
+(R7 스피드 엔듀러, C7 산악 라이더, H7 혹한 장정, T7 알파인 트레일러) 전부 이 방식으로
+평가되며, 실제 코드(`relevantPerActivityKeys`의 "이력 전반 독립 평가" 분기)가 이렇게
+동작함을 확인했다(`ACTIVITY_BADGES.md` §"카테고리 2 복합 배지 평가 주의" 참고).
+
+`time_range`가 섞인 조합(W5 야간 걷기, W7/W8/T8 새벽·점심 빈도 등)은 예외다 — "그 시간대에
+일어난 활동"이라는 결합이 본질적이므로 그 활동 자체가 시간대 조건을 만족해야 하고, 계속
+단일 활동 동시 충족으로 평가된다.
+
+**진짜 "한 활동에서 동시 충족"이 필요한 유일한 배지는 T1 `야생의 첫발`**
+(`distance_km` + `elevation_gain_m`, 문서에 "이력전반" 문구 없음)이며, `condition_json`에
+`same_activity: true`를 명시해 표시한다.
+
+⚠️ **회귀 이력**: 커밋 `27163030`(2026-07-31)이 "서로 다른 활동의 필드를 조합해 잘못
+통과되던 버그"(다중 필드 복합 조건에서만 실제로 발생)를 고치면서, 단독 `distance_km`/
+`elevation_gain_m`(원래 누적 합계여야 함)과 카테고리 2의 "독립 이력" 평가까지 전부 "한
+활동 동시 충족"으로 과잉 일반화했다. 2026-08-31(티켓 20260831_2100)에 문서 기준으로
+복원하면서, 진짜 버그였던 T1 케이스만 `same_activity` 플래그로 명시적으로 남겼다.
 
 ### 2.4 성장 티어 정책
 
@@ -103,9 +129,15 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 
 복합 조건 배지(time_range+weekly_count, max_pace_sec_per_km+duration 등)는 트랙 제외 → 각각 독립 발급.
 
-### 2.6 홍수 방지 (flood cap)
+### 2.6 홍수 방지 (flood cap) — 현재 없음 (2026-08-31 정정)
 
-30일 롤링 윈도우 / activity_type당 최대 3개 / mystic → epic → rare → common 우선 통과. 기존 보유 + 이번 발급 예정 합산으로 체크, 초과분 missed.
+과거엔 30일 롤링 윈도우 / activity_type당 최대 3개 / mystic → epic → rare → common 우선
+통과라는 캡이 있었으나 **제거됐다**. 온보딩 첫 싱크에서 common 배지 여러 개가 동시에
+발급되며 자기들끼리 캡을 소진해 이후 정당한 발급까지 막는 문제가 있었기 때문이다
+(`src/lib/badge-engine/index.ts` 692~698행 주석 참고). 성과·루틴 배지(`type='activity'`)는
+전부 명시적 수치 조건으로 검증되므로 조건 충족 시 항상 발급을 보장한다 — 캡을 두지 않는다.
+아이템/드랍 배지는 §3의 drop-engine이 자체 확률·섀도우밴·일일 하향 로직으로 별도 어뷰징을
+방지한다.
 
 ### 2.7 첫 싱크 게이트 + 선행 배지 게이트
 
@@ -166,7 +198,7 @@ CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허�
 ### 2.9 배지 구성
 
 5종목(걷기·러닝·사이클·등산·트레일) × 속성 그룹 × 4등급 = 115종 (v3.1) + 걷기 신규 32종(v4, §2.10) = **총 147종**.  
-전체 목록·조건값·설명: **`액티비티배지 레시피.md`(`Specs/Content/ACTIVITY_BADGES.md`)** (단일 진실 원천). DB 시드: `033_reseed_activity_badges_v3.sql` + `076_walking_badges_v4.sql`.
+전체 목록·조건값·설명: **`액티비티배지 레시피.md`(`Specs/Content/ACTIVITY_BADGES.md`)** (단일 진실 원천). DB 시드: `033_reseed_activity_badges_v3.sql` + `118_reapply_walking_badges_v4.sql`(원본 `076_walking_badges_v4.sql`이 프로덕션 미실행 상태로 방치돼 있던 것을 2026-08-31 발견, 티켓 20260831_2100).
 
 ### 2.10 걷기 배지 v4 — 축1 게이트 + 하루 1회 상한 + 신규 배지 32종 (2026-08-08)
 

@@ -735,6 +735,14 @@ export interface BadgeCondition {
   poi_id?: string
   /** 미션 완료 시에만 지급되는 배지 — 일반 배지 엔진 동기화 대상 아님 */
   mission_reward?: boolean
+  /**
+   * `distance_km`/`elevation_gain_m`을 "한 활동에서 동시 충족"으로 평가하도록 강제하는 플래그.
+   * 기본(false/undefined)은 각각 전체 이력 누적 합계로 평가된다. true면 그 활동 하나가 두 값을
+   * 함께 만족해야 발급된다 — 현재 카탈로그에서는 T1 '야생의 첫발' 1건만 이 값을 쓴다
+   * (2026-08-31 도입, 티켓 20260831_2100). badge-engine `PER_ACTIVITY_KEYS`/`evaluateConditionDetailed`
+   * 참조.
+   */
+  same_activity?: boolean
 }
 
 // =========================================

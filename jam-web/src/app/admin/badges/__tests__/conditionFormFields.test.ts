@@ -144,12 +144,14 @@ describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 2
     expect(saved).toEqual({ distance_km: 20 })
   })
 
-  it('FORM_UNSUPPORTED_CONDITION_KEYS는 정확히 day_of_week/active_days_count/poi_id/route/season_count_all이다', () => {
+  it('FORM_UNSUPPORTED_CONDITION_KEYS는 정확히 day_of_week/active_days_count/poi_id/route/season_count_all/same_activity이다', () => {
     // season_count_all은 티켓 원문에 나열되지 않았으나, 폼에 입력 UI가 없으면서도 badge-engine이
     // 실제로 평가하는 필드다(migration 076의 "사계절의 발걸음" 배지가 사용 중) — 구현 중 발견,
     // ALL_CONDITION_KEYS 기반 자동 진단으로 함께 잡혔다.
+    // same_activity(2026-08-31, 티켓 20260831_2100)도 폼 입력 UI 없이 initCond 보존 경로로만
+    // 유지된다 — T1 '야생의 첫발' 1건 외 사용처가 없어 전용 UI를 추가하지 않았다.
     expect([...FORM_UNSUPPORTED_CONDITION_KEYS].sort()).toEqual(
-      ['active_days_count', 'day_of_week', 'poi_id', 'route', 'season_count_all'].sort()
+      ['active_days_count', 'day_of_week', 'poi_id', 'route', 'same_activity', 'season_count_all'].sort()
     )
   })
 

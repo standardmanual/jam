@@ -2,8 +2,10 @@
  * drop-engine — 드랍 가능 여부 판정 유닛 테스트
  *
  * 드랍엔진은 활동 1건(또는 이번 싱크 배치)만으로 조건을 평가한다.
- * 누적/기간 조건(monthly_km, season_count, weekly_count, streak_days, total_count)은
- * 단일 활동으로 평가 불가 → 해당 배지는 드랍 대상에서 제외(옵션 A).
+ * 누적/기간 조건(monthly_km, season_count, weekly_count, streak_days, total_count,
+ * distance_km, elevation_gain_m)은 단일 활동으로 평가 불가 → 해당 배지는 드랍 대상에서
+ * 제외(옵션 A). distance_km/elevation_gain_m은 2026-08-31(티켓 20260831_2100)부터
+ * badge-engine 기본 평가가 "전체 이력 누적 합계"로 바뀌면서 이 목록에 합류했다.
  * 그 외 단일 활동으로 평가 가능한 조건은 checkCondition 결과에 따른다.
  *
  * 실행: jest 또는 vitest (프레임워크 무관 — describe/it/expect 호환)
@@ -60,6 +62,17 @@ describe('누적/기간 조건은 드랍 대상에서 제외', () => {
     const cond: BadgeCondition = { total_count: 10 }
     expect(isDroppableForActivity(cond, [makeActivity()])).toBe(false)
   })
+
+  it('distance_km 조건 → 드랍 불가 (누적 합계로 전환, 2026-08-31)', () => {
+    const cond: BadgeCondition = { distance_km: 5 }
+    // 단일 활동이 조건을 충족해도 누적 필드는 단일 활동 시점 평가가 불가능하므로 제외된다
+    expect(isDroppableForActivity(cond, [makeActivity({ distanceKm: 10 })])).toBe(false)
+  })
+
+  it('elevation_gain_m 조건 → 드랍 불가 (누적 합계로 전환, 2026-08-31)', () => {
+    const cond: BadgeCondition = { elevation_gain_m: 50 }
+    expect(isDroppableForActivity(cond, [makeActivity({ elevationGainM: 100 })])).toBe(false)
+  })
 })
 
 // ── 단일 활동 평가 가능 조건 → checkCondition 결과에 따름 ──────────────────
@@ -68,16 +81,6 @@ describe('단일 활동 평가 가능 조건', () => {
   it('조건 없음 → 항상 드랍 가능', () => {
     expect(isDroppableForActivity(null, [makeActivity()])).toBe(true)
     expect(isDroppableForActivity({}, [makeActivity()])).toBe(true)
-  })
-
-  it('distance_km 충족 → 드랍 가능', () => {
-    const cond: BadgeCondition = { distance_km: 5 }
-    expect(isDroppableForActivity(cond, [makeActivity({ distanceKm: 10 })])).toBe(true)
-  })
-
-  it('distance_km 미달 → 드랍 불가', () => {
-    const cond: BadgeCondition = { distance_km: 50 }
-    expect(isDroppableForActivity(cond, [makeActivity({ distanceKm: 10 })])).toBe(false)
   })
 
   it('duration_minutes 충족 → 드랍 가능', () => {
@@ -102,10 +105,12 @@ describe('hasCumulativeCondition', () => {
     expect(hasCumulativeCondition({ weekly_count: 2 })).toBe(true)
     expect(hasCumulativeCondition({ streak_days: 3 })).toBe(true)
     expect(hasCumulativeCondition({ total_count: 10 })).toBe(true)
+    // 2026-08-31(티켓 20260831_2100) — badge-engine 기본 평가가 누적 합계로 전환되며 합류
+    expect(hasCumulativeCondition({ distance_km: 5 })).toBe(true)
+    expect(hasCumulativeCondition({ elevation_gain_m: 100 })).toBe(true)
   })
 
   it('단일 활동 조건만 있으면 false', () => {
-    expect(hasCumulativeCondition({ distance_km: 5 })).toBe(false)
     expect(hasCumulativeCondition({ duration_minutes: 30 })).toBe(false)
     expect(hasCumulativeCondition({ weekend_duration_hours: 0.5 })).toBe(false)
     expect(hasCumulativeCondition({ time_range: { start: '05:00', end: '08:00' } })).toBe(false)

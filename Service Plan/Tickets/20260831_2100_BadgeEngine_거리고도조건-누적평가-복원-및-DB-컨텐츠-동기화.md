@@ -194,13 +194,68 @@ mcp__supabase__list_migrations 결과에도 이 마이그레이션 적용 이력
 
 ### 구현 내용 요약
 
+**A. 배지엔진 조건 평가 복원**
+- `PER_ACTIVITY_KEYS`에서 `distance_km`/`elevation_gain_m` 제거 → 기본이 "전체 이력 누적 합계"로
+  복원(2026-07-31 이전 방식). 신규 `same_activity` 플래그(`BadgeCondition`·
+  `condition-schema.ts`의 `FILTER_ONLY_CONDITION_KEYS`에 추가)가 `true`일 때만 예외적으로
+  "한 활동 동시 충족"으로 평가 — 현재 T1 `야생의 첫발` 1건만 사용.
+- 카테고리 2(R7/C7/H7/T7) 복합배지: `relevantPerActivityKeys`에 `time_range`가 없고
+  `same_activity`도 아니면 필드별로 "이력 전반 독립 평가"(각자 최고 기록으로 AND)하도록 분리.
+  `time_range`가 섞인 조합(W5·W7·W8·T8 등)은 계속 단일 활동 동시 충족 유지(회귀 없음).
+- `drop-engine`의 `CUMULATIVE_CONDITION_FIELDS`에 `distance_km`/`elevation_gain_m` 추가 —
+  배지엔진과 "단일 활동 평가 가능 여부" 판단을 일치시킴 (현재 `type='item'` 배지는 전부
+  condition_json 비어 있어 즉시 영향 없음).
+- 회귀 테스트 5종 추가(`cumulative-conditions.test.ts`) + 기존 `droppable.test.ts`의
+  `distance_km`/`hasCumulativeCondition` 관련 테스트를 새 동작(누적 → 드랍 제외)에 맞게 갱신.
+
+**B. 걷기 배지 32종 DB 미반영 재적용**
+- `076_walking_badges_v4.sql`이 2026-08-08 작성 후 프로덕션에 한 번도 실행되지 않은 채
+  방치돼 있었음을 확인(마이그레이션 이력에 없음, D01~D11·트로피 매트릭스 0건).
+- 원인: 076이 당시 등급명(`legendary`/`mythic`)을 썼는데, 이후 두 차례 rename
+  (083: legendary→legend, 115: legend→epic·mythic→mystic)으로 그 값 자체가 enum에서 사라져
+  그대로 실행하면 즉시 실패하는 상태였다. `118_reapply_walking_badges_v4.sql`로 1:1 rename
+  (legendary→epic, mythic→mystic) 적용해 재작성 — ACTIVITY_BADGES.md 목표 등급과 32건 전수
+  대조해 정확히 일치함을 확인. 076 이후 추가된 NOT NULL 컬럼은 전부 DEFAULT 보유,
+  `badges_condition_json_known_keys` 허용 키 전부 포함, `badges.name` UNIQUE 제약 없음 —
+  호환성 문제 없음 확인.
+
+**C. 21개 배지 조건값 DB 동기화**
+- `119_sync_activity_badge_conditions_to_v4.sql` — 티켓 표의 21개 (배지명, 등급) 조합을
+  `jsonb_set(..., create_missing=false)`로 문서(v4) 목표값에 맞춤. Common 등급은 전원
+  일치해 손대지 않음. `prerequisite_badge_names`는 32개군 전부 문서와 일치해 미변경.
+
+**문서 갱신**
+- `BADGE_ENGINE_UNIFIED.md` §2.3에 `same_activity` 행 추가, 신규 §2.3-1(복합조건 배지
+  "이력 전반 독립 평가" 기본 원칙 + T1 예외) 서술. §2.6 홍수 방지 캡을 "현재 없음"으로 정정
+  (코드 주석상 이미 삭제된 로직, 문서만 뒤처져 있었음). §2.9 DB 시드 경로를 118로 갱신.
+- `CONDITION_JSON_SPEC.md` §2.2에 same_activity 참조 추가, 신규 §2.2-1(플래그 스펙),
+  §4 필드 조합 규칙에 카테고리 2 독립 평가 원칙 추가, §5 예시 갱신.
+
+**B·C의 SQL은 작성만 완료 — 실행은 사용자 승인 후 오케스트레이터가 처리한다.**
+
 ### 변경된 파일
 ```
--
+jam-web/src/lib/badge-engine/index.ts
+jam-web/src/lib/badge-engine/condition-schema.ts
+jam-web/src/lib/drop-engine/index.ts
+jam-web/src/types/database.ts
+jam-web/src/lib/badge-engine/__tests__/cumulative-conditions.test.ts (신규)
+jam-web/src/lib/drop-engine/__tests__/droppable.test.ts
+jam-web/src/app/admin/badges/__tests__/conditionFormFields.test.ts
+jam-web/supabase/migrations/117_condition_json_same_activity_flag.sql (신규, 미실행)
+jam-web/supabase/migrations/118_reapply_walking_badges_v4.sql (신규, 미실행)
+jam-web/supabase/migrations/119_sync_activity_badge_conditions_to_v4.sql (신규, 미실행)
+Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md
+Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx vitest run src/lib/badge-engine src/lib/drop-engine src/app/admin/badges src/lib/admin` — 10 파일 155건 전부 통과
+- [x] `npm test`(vitest 전체 + 미션 노드 테스트) — 646건 중 645건 통과, 1건 실패는 무관 사전 존재
+      실패(`design-system/.../BadgeRevealCarousel.stories.tsx`, 마지막 수정 커밋이 티켓
+      20260831_1115 — 등급명 rename. 이번 변경과 무관, git status로 미변경 확인)
+- [x] `npx tsc --noEmit` — 에러 0건
+- [x] `npm run lint`(전체) — 에러 0건, 경고 26건(전부 기존 파일, 이번 변경 파일 대상 경고 없음)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 사용자 노출 텍스트 변경 없음 — 해당 없음 (엔진 로직·DB 조건값만 변경)
@@ -211,6 +266,31 @@ mcp__supabase__list_migrations 결과에도 이 마이그레이션 적용 이력
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- `same_activity` 플래그를 필드 조합 추론 대신 명시적 플래그로 도입(티켓이 제시한 두 선택지
+  중 후자) — 향후 T1과 유사한 "진짜 동시 충족" 배지가 추가돼도 의도를 명시적으로 남길 수 있음.
+- 카테고리 2 복합조건의 "독립 평가 vs 동시 충족" 분기 기준을 `time_range` 포함 여부로 삼음 —
+  `time_range`는 "그 시간대에 일어난 활동"이라는 본질적 결합이 있어 항상 단일 활동 평가가
+  맞고(W5 등, 이번 티켓 범위 밖), 나머지 조합은 문서상 전부 "독립 평가"로만 쓰이고 있어
+  `same_activity` 없이도 안전하게 기본값을 뒤집을 수 있었음. 전체 카탈로그 재확인 결과 이
+  분기로 영향받는 조합은 R7/C7/H7/T7(의도한 변경) 외에 없음.
+- 마이그레이션 117(same_activity 스키마+T1 데이터)·118(걷기 32종)·119(21개 조건값)은 순서
+  의존적이지 않으나, 117은 반드시 배지엔진 코드 배포와 같은 사이클에 실행해야 한다(코드가
+  same_activity 플래그를 읽기 전에 실행되면 일시적으로 아무 영향 없고, 코드 배포 후 실행
+  전에는 T1이 잠시 누적으로 오판정될 수 있음 — 마이그레이션 파일 상단에 명시).
 
 ### 잔여 이슈
--
+- (WARN) 미션 엔진(`src/lib/missions/checker.ts`)이 `elevation_gain_m` 미션 타입 판정을
+  배지엔진 `evaluateConditionDetailed`에 위임(`ENGINE_DELEGATED_MISSION_TYPES`)하는데, 이번
+  변경으로 그 판정이 "단일 활동 최고값"에서 "참가 시점 이후 누적 합계"로 바뀐다. 반면
+  진행바 표시용 `calculateProgress`의 elevation_gain_m 계산은 그대로 "단일 활동 최고값"이라
+  표시값과 달성 기준이 어긋나게 된다. 실측(migrations 전수 grep) 결과 `mission_type=
+  'elevation_gain_m'`로 실제 생성된 미션 행은 현재 없어 즉시 영향은 0건이나, 후속 티켓에서
+  미션 엔진 쪽 의도(단일 활동 vs 누적)를 명시적으로 정리할 필요가 있음.
+- (INFO) 이번 티켓 스코프 밖 발견: 작업 시작 시점에 로컬 저장소가 다른 진행 중 티켓(2038)의
+  리뷰 브랜치에 체크인된 상태였고, 동시에 또 다른 세션(2106, Footer/TopNav)이 같은 메인
+  워크트리에서 실시간으로 파일을 수정 중이었다(`git worktree list`로 확인, 별도 워크트리
+  슬롯이 있음에도 이번 실행은 메인 워크트리를 그대로 공유). 이 티켓의 변경사항은 안전을 위해
+  별도 임시 워크트리(`origin/staging` 기준)를 만들어 파일을 옮긴 뒤 그 안에서 커밋·푸시했다 —
+  메인 워크트리의 다른 세션 작업(Footer.tsx·TopNav.tsx·DropsClient.tsx·DESIGN_RENEWAL_SPEC.md
+  미커밋 변경분)은 전혀 건드리지 않았다. 오케스트레이터가 jam-developer 실행 시 격리된
+  워크트리를 배정하는 경로를 점검할 필요가 있어 보임.
