@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
 import BadgeTreeFamily from '@/components/badges/BadgeTreeFamily'
@@ -32,12 +32,16 @@ const TREE_TAB_LABELS: Partial<Record<ActivityType, string>> = {
  */
 export interface BadgeTreeClientProps {
   trees: BadgeActivityTree[]
+  /** 이 유저가 획득한 배지 id 집합(page.tsx가 user_activity_badges로 조회) — 티켓 20260831_2250 */
+  earnedBadgeIds: string[]
 }
 
-export default function BadgeTreeClient({ trees }: BadgeTreeClientProps) {
+export default function BadgeTreeClient({ trees, earnedBadgeIds }: BadgeTreeClientProps) {
   const [activeActivity, setActiveActivity] = useState<ActivityType>(
     trees[0]?.activityType ?? 'walking'
   )
+
+  const earnedBadgeIdSet = useMemo(() => new Set(earnedBadgeIds), [earnedBadgeIds])
 
   const tabs: SlidingTabItem<ActivityType>[] = trees.map((tree) => ({
     key: tree.activityType,
@@ -92,7 +96,7 @@ export default function BadgeTreeClient({ trees }: BadgeTreeClientProps) {
                 </p>
                 <div className="flex flex-col gap-[var(--spacing-12)]">
                   {stage.families.map((family) => (
-                    <BadgeTreeFamily key={family.name} family={family} />
+                    <BadgeTreeFamily key={family.name} family={family} earnedBadgeIds={earnedBadgeIdSet} />
                   ))}
                 </div>
               </div>
@@ -105,7 +109,7 @@ export default function BadgeTreeClient({ trees }: BadgeTreeClientProps) {
                 </p>
                 <div className="flex flex-col gap-[var(--spacing-12)]">
                   {activeTree.independentFamilies.map((family) => (
-                    <BadgeTreeFamily key={family.name} family={family} />
+                    <BadgeTreeFamily key={family.name} family={family} earnedBadgeIds={earnedBadgeIdSet} />
                   ))}
                 </div>
               </div>

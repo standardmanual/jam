@@ -343,7 +343,7 @@ export const ko = {
     treeStageLabel: '{n}단계',
     treeRepresentativeLabel: '대표 배지',
     treeIndependentTitle: '선행 조건 없이 얻는 배지',
-    treeLockBadgeHint: '{name} 획득하면 열려요',
+    treeLockBadgeHint: '{name} 배지를 획득하면 열려요',
     treeLockMissionHint: "'{title}' 미션을 완료하면 열려요",
   },
 

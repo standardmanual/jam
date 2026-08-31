@@ -22,7 +22,7 @@ export default async function BadgeTreePage() {
   // missions는 다른 화면(missions/page.tsx)과 동일하게 RLS 우회가 필요해 service client로 조회한다.
   const service = createServiceClient()
 
-  const [{ data: badgesRaw }, { data: missionsRaw }] = await Promise.all([
+  const [{ data: badgesRaw }, { data: missionsRaw }, { data: earnedBadgesRaw }] = await Promise.all([
     supabase
       .from('badges')
       .select('id, name, rarity, description, image_url, activity_types, condition_json, point_reward')
@@ -30,6 +30,12 @@ export default async function BadgeTreePage() {
       .is('deleted_at', null)
       .not('activity_types', 'is', null),
     service.from('missions').select('id, title, gated_badge_id').not('gated_badge_id', 'is', null),
+    // badges/page.tsx(27~38행)와 동일한 패턴 — 미획득 배지를 흑백/반투명으로 구분하기 위해
+    // 이 유저의 실제 획득 여부를 조회한다(티켓 20260831_2250).
+    supabase
+      .from('user_activity_badges')
+      .select('badge_id, badge:badges(deleted_at)')
+      .eq('user_id', user.id),
   ])
 
   type RawBadge = BadgeTreeSourceBadge & { point_reward: number }
@@ -44,7 +50,18 @@ export default async function BadgeTreePage() {
   }))
   const missions = (missionsRaw ?? []) as BadgeTreeSourceMission[]
 
+  // 소프트 삭제된 배지(badges.deleted_at)는 이미 badges 조회에서 빠져 트리에 그려지지 않으므로
+  // 여기서 걸러도 실질적 영향은 없지만, badges/page.tsx와 동일한 필터링 원칙을 유지한다.
+  type RawEarnedBadge = { badge_id: string; badge: { deleted_at: string | null } | null }
+  const earnedBadgeIds = Array.from(
+    new Set(
+      ((earnedBadgesRaw ?? []) as RawEarnedBadge[])
+        .filter((r) => r.badge && !r.badge.deleted_at)
+        .map((r) => r.badge_id)
+    )
+  )
+
   const trees = buildBadgeActivityTrees(badges, missions)
 
-  return <BadgeTreeClient trees={trees} />
+  return <BadgeTreeClient trees={trees} earnedBadgeIds={earnedBadgeIds} />
 }
