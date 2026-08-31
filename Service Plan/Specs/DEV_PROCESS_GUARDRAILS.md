@@ -178,6 +178,14 @@ authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
 6. **안전·차단 판정에 쓰는 값의 폴백 방향을 의식적으로 고른다.** 어뷰징 차단율처럼 "못 읽으면
    막아야 하는" 값에 `?? 1.0`(허용)을 쓰면 설정 오류가 곧 차단 해제가 된다. fail-open을
    택했다면 그 사실을 주석으로 남긴다.
+   - **전면 허용 / 전면 차단 이분법으로 고르지 않는다.** `?? 1.0`은 차단을 통째로 끄고
+     `?? 0`은 정상 등급까지 막아 장애를 서비스 정지로 키운다. 대신 **로더와 소비 지점이
+     폴백 소스를 공유**하게 만들면(둘 다 `DEFAULT_POLICY`) "어느 폴백을 타든 결과가 같다"는
+     성질이 생기고 등급별 정책 의도도 보존된다. **미지의 키·미지의 등급만 fail-closed**로 둔다
+     — 그 분기는 이미 밴이 확인된 유저에게만 닿으므로 정상 유저에게 번지지 않는다
+     (20260831_1259에서 `shouldAllowDrop`에 적용).
+   - 그리고 폴백 소스가 되는 상수는 **운영 행의 미러**여야 한다. `DEFAULT_POLICY`가
+     "바람직한 값"을 담고 있으면 폴백이 곧 무음 정책 변경이다 (Epic 차단이 실제로 그랬다).
 7. **실패 전파는 API까지가 아니라 화면까지다.** 라우트가 4xx/5xx + `error`를 돌려줘도 폼이
    `res.ok`만 보고 본문을 버리면 운영자에게는 여전히 "저장 실패" 한 줄뿐이다. 저장 경로를
    고칠 땐 폼이 `json.error`를 읽는지까지 확인한다 (20260831_1118·1149 둘 다 폼 수정이 필요했다).
@@ -206,7 +214,7 @@ authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
 | `inventory` / `inventory_items` | DB 트리거 `handle_new_user()`(가입 시 자동 생성), `src/lib/drop-engine/index.ts`의 `fetchDropStructure`, `pickup_drop()` RPC |
 | `badges` 테이블(조건·보상 필드) | `src/lib/badge-engine/index.ts`(activity 타입), `src/lib/drop-engine/index.ts`(item 타입), `src/lib/strava/sync.ts`(poi 타입), `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` |
 | `award_points()` RPC / `point_*` 테이블 | `src/lib/points/index.ts`(유일한 호출 경로), 호출부 6곳(배지·드랍·미션×2·조합·어드민 지급) — 새 보상 지급 지점을 추가해도 반드시 이 함수를 거치게 할 것, 직접 INSERT/UPDATE 금지 |
-| `abusing_policy`(섀도우밴 배율·GPS/차량 속도 임계값) | `src/lib/abusing/policy.ts`(정규화·폴백·관측을 거치는 정식 경로), `src/lib/abusing/shadow-ban.ts`(런타임에 `${banLevel}_${rarity}_rate`로 **키를 문자열 조합** — 컬럼명이 바뀌어도 타입 검사에 안 걸리고 `?? 1.0` fail-open으로 차단이 조용히 꺼진다), `src/lib/strava/sync.ts`(`vehicle_speed_filter_kmh`를 `policy.ts`를 **우회해 직접 select** — 두 번째 접근 지점), `src/app/api/admin/abusing/policy/route.ts`(화이트리스트가 사실상 키 목록의 정의), `src/app/admin/abusing/AbusingClient.tsx` |
+| `abusing_policy`(섀도우밴 배율·GPS/차량 속도 임계값) | `src/lib/abusing/policy.ts`(정규화·폴백·관측을 거치는 정식 경로), `src/lib/abusing/shadow-ban.ts`(`BAN_RATE_KEY` 맵으로 등급 → 배율 키를 고정 — 20260831_1259 이전에는 `${banLevel}_${rarity}_rate` 문자열 조합 + `?? 1.0` fail-open이라 컬럼명이 바뀌면 차단이 조용히 꺼졌다. **`DEFAULT_POLICY`를 폴백 소스로 공유하므로 DB 배율을 바꿀 땐 `policy.ts`도 같이 바꾼다**), `src/lib/strava/sync.ts`(`vehicle_speed_filter_kmh`를 `policy.ts`를 **우회해 직접 select** — 두 번째 접근 지점), `src/app/api/admin/abusing/policy/route.ts`(화이트리스트가 사실상 키 목록의 정의), `src/app/admin/abusing/AbusingClient.tsx` |
 | `poi` 테이블(반경·좌표) | `src/lib/poi/matcher.ts`(활동-POI 매칭), `src/app/api/drops/route.ts`(드랍 지도), `src/app/api/checkin-badges/route.ts`(체크인 배지 탭) — 셋 다 max-rows 대응이 되어 있어야 함(패턴 3) |
 | `engine_decision_log` 이벤트 타입 | `src/lib/engine-log/index.ts`의 `EngineDecisionEvent` 유니언 — 새 실패/판정 지점을 로깅할 땐 여기 타입부터 추가 |
 | `users` 테이블 컬럼 | **기준은 `src/types/database.generated.ts`**(`npm run db:types`로 재생성 — Supabase 클라이언트 제네릭의 진실 원천). `src/types/database.ts`의 `UserRow`는 도메인 타입이므로 생성본에 맞춰 갱신한다. 방향을 반대로 잡지 말 것 — 실제로 `UserRow.gps_daily_distance_km`가 수기 쪽 오류로 드러났다(20260831_1213) |

@@ -5,10 +5,12 @@
  * 1. `updateAbusingPolicy()`가 upsert 반환 `error`를 버려 저장 실패가 "저장됐어요"로 응답됐다.
  * 2. `PUT /api/admin/abusing/policy`에 키 화이트리스트가 없어 폼이 함께 보내는
  *    `id`·`updated_at`이 upsert 페이로드에 섞였고, 미지의 키 하나로 전체 저장이 롤백됐다.
- * 3. `getAbusingPolicy()`에 정규화·관측이 없었다. 정규화를 넣되 **원본 행의 상위집합**이어야
- *    한다 — 마이그레이션 115 미실행 구간에서는 DB에 구 등급 컬럼명이 남아 있고
- *    `shadow-ban.ts`가 런타임 rarity 값으로 키를 조합하므로, 구 키를 떨어뜨리면
- *    `?? 1.0` 폴백을 타면서 지금 작동 중인 차단이 꺼진다.
+ * 3. `getAbusingPolicy()`에 정규화·관측이 없었다. 정규화를 넣되 **원본 행의 상위집합**으로 둔다.
+ *
+ * 갱신 (티켓 20260831_1259): 상위집합이 필요했던 원래 근거("shadow-ban이 런타임 문자열로
+ * 조합한 구 컬럼 키를 살려둔다")는 사라졌다. `shadow-ban.ts`가 문자열 조합을 버리고
+ * `Record<BadgeRarity, keyof AbusingPolicy>` 맵을 쓰므로 **구 키를 보존해도 맵이 찾지 않는다.**
+ * 아래 구 등급 케이스가 여전히 "차단"인 이유도 상위집합이 아니라 **미지 등급 fail-closed**다.
  *
  * 실행: cd jam-web && npx vitest run src/lib/abusing/__tests__/policy-save.test.ts
  */
@@ -93,7 +95,7 @@ beforeEach(() => {
 })
 
 describe('getAbusingPolicy — 정규화는 원본 행의 상위집합', () => {
-  it('마이그레이션 115 미실행 구간에서도 구 컬럼 키를 보존해 mythic 차단을 유지한다', async () => {
+  it('마이그레이션 115 미실행 구간에서도 구 컬럼 키를 보존하고, 구 등급 드랍은 차단된다', async () => {
     stub.row = { ...PRE_115_ROW }
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const policy = await getAbusingPolicy()
@@ -103,8 +105,9 @@ describe('getAbusingPolicy — 정규화는 원본 행의 상위집합', () => {
     expect(raw.soft_legendary_rate).toBe(0)
     expect(raw.hard_legendary_rate).toBe(0)
 
-    // shadow-ban은 런타임 rarity 값으로 키를 조합한다. 115 미실행 구간의 DB enum 값은
-    // 'mythic'/'legendary'라 타입 단언으로 그 구간을 재현한다.
+    // 115 미실행 구간의 DB enum 값은 'mythic'/'legendary'라 타입 단언으로 그 구간을 재현한다.
+    // 기대값은 그대로지만 **성립 근거가 바뀌었다** — 상위집합 보존이 아니라 등급 맵에 없는
+    // 값이라 fail-closed로 차단된다 (티켓 20260831_1259).
     expect(shouldAllowDrop('mythic' as BadgeRarity, 'soft', policy)).toBe(false)
     expect(shouldAllowDrop('legendary' as BadgeRarity, 'soft', policy)).toBe(false)
     expect(shouldAllowDrop('legendary' as BadgeRarity, 'hard', policy)).toBe(false)

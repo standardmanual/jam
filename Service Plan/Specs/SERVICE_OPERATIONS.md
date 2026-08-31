@@ -826,6 +826,20 @@ abusing_policy {
 임계값 4종은 0 이상만 검사하고 상한을 두지 않는다. 저장 실패는 500 + `error`로 화면에 노출된다
 (2026-08-13 ~ 08-31 사이 이 화면의 저장은 전부 무음 실패했다 — 티켓 20260831_1149).
 
+**불변식: `src/lib/abusing/policy.ts`의 `DEFAULT_POLICY`는 이 행의 미러다.**
+"바람직한 값"이 아니라 **DB를 못 읽을 때 현행 운영값을 그대로 재현하는 값**이다.
+폴백이 정책을 바꾸면 장애 대응이 아니라 무음 정책 변경이 된다 — 실제로 `DEFAULT_POLICY`의
+Epic 배율만 `0.0`이어서 정책 조회가 한 번 실패하면 의도적으로 꺼둔 Epic 차단이 켜졌다
+(티켓 20260831_1259에서 `1.0`으로 정렬).
+
+> ⚠️ **DB의 배율을 바꾸면 같은 티켓에서 `policy.ts`의 `DEFAULT_POLICY`도 함께 바꾼다.**
+> 한쪽만 바꾸면 정상 경로와 폴백 경로의 판정이 갈리고, 그 차이는 무음으로 드러나지 않는다.
+> 회귀 가드: `src/lib/abusing/__tests__/shadow-ban.test.ts`가 배율 8종의 일치를 고정한다.
+
+소비 지점 `shouldAllowDrop()`의 폴백 방향도 이 행과 묶여 있다 — **미지 등급은 차단(fail-closed),
+값 결여·NaN은 `DEFAULT_POLICY` 폴백**이며 둘 다 `console.error`를 남긴다. 등급 → 배율 키 매핑은
+`Record<BadgeRarity, keyof AbusingPolicy>`로 고정돼 있어 등급명이 바뀌면 `tsc`가 잡는다.
+
 ---
 
 ## 13. 떠돌이 Mystic 아이템
