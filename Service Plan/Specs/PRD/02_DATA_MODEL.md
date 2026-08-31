@@ -245,20 +245,22 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 ### user_drop_state / drop_policy (신규 — 드랍엔진 v2)
 유저별 드랍 모멘텀 상태(연속 common 카운터, 마지막 조각 피티, 일일 드랍 수)와 엔진 전체 파라미터(레어리티 확률, 모멘텀/인접/탐험 가중치). 상세 로직은 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3 참고.
 
-> ⚠️ **`drop_policy`의 legend 컬럼명은 앱 키와 다르다.** DB 실제 컬럼은 **`rarity_legendary`**,
-> 앱 전역 키는 **`rarity_legend`**다. 티켓 20260813_003(`legendary` → `legend` 전면 변경)에서
-> enum만 rename되고 이 컬럼이 누락돼 생긴 불일치로, `src/lib/drop-engine/policy.ts`의
-> `APP_KEY_TO_DB_COLUMN`이 **테이블 입출력 시점에만** 변환한다(티켓 20260831_1118).
-> 같은 성격의 `ambient_drop_config`는 정상적으로 `rarity_legend`이므로 두 테이블을 혼동하지 말 것.
+> ℹ️ **등급 컬럼명은 앱 키와 일치한다** — `drop_policy`·`ambient_drop_config`는
+> `rarity_epic`/`rarity_mystic`, `abusing_policy`는 `soft|hard_epic_rate`/`soft|hard_mystic_rate`.
+> 한동안 테이블마다 이름이 갈라져 `src/lib/drop-engine/policy.ts`가 입출력 시점에 변환했으나
+> (티켓 20260813_003의 컬럼 rename 누락 → 20260831_1118의 한시적 대응), 마이그레이션 115가
+> 세 테이블을 전부 통일하면서 그 변환 매핑은 제거했다(티켓 20260831_1115).
 >
-> **배지 등급명을 `common/rare/legend/mythic` → `common/rare/epic/mystic`으로 바꾸는 후속 작업**에
-> `rarity_legendary` → `rarity_epic` 개명이 포함된다. 그 작업에서 위 매핑 상수와 변환 함수
-> (`toAppKeys`/`toDbColumns`)를 **함께 제거**해야 한다. 개명만 하고 매핑을 남기면 다시 어긋난다.
+> ⚠️ **`abusing_policy`의 Epic 차단율은 의도적으로 꺼둔 상태다.** 컬럼명이 어긋나 있던 동안
+> `shadow-ban.ts`의 3단계 조회가 `undefined ?? 1.0`으로 폴백해 **차단이 한 번도 작동하지
+> 않았다**. 개명으로 조회가 성립하면 잠들어 있던 값 `0.00`이 살아나 soft/hard밴 유저의 Epic
+> 드랍이 즉시 0%가 되므로, 등급명 변경만으로 유저 체감 동작이 바뀌지 않도록 마이그레이션 115가
+> `soft_epic_rate`·`hard_epic_rate`를 `1.00`(허용)으로 고정했다. **Mystic 차단은 계속 정상
+> 작동한다**(`0.00`). Epic 차단을 실제로 켤지는 별도 판단이 필요하다.
 >
 > 참고: 수기 타입 `database.ts`(앱 키 기준)와 생성 타입 `database.generated.ts`(DB 컬럼 기준)가
-> 이 테이블에서 어긋나 있어 컬럼명 불일치가 타입 체크로 잡히지 않았다. `abusing_policy`
-> (`soft_legendary_rate`/`hard_legendary_rate` vs 코드 `soft_legend_rate`/`hard_legend_rate`)도
-> 동일한 불일치가 미해결 상태다.
+> 이 테이블에서 어긋나 있어 컬럼명 불일치가 타입 체크로 잡히지 않았다. 마이그레이션 115로 양쪽
+> 모두 DB와 일치하게 됐지만, 아래 경고처럼 **타입 검사 자체가 꺼져 있는 문제는 그대로 남는다.**
 >
 > ⚠️ **두 타입 파일을 DB에 맞추는 것만으로는 타입 시스템이 막아주지 않는다.** 수기 `database.ts`는
 > Row를 `interface`로 선언하는데, `interface`는 암묵적 인덱스 시그니처가 없어 supabase-js의
