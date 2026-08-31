@@ -19,8 +19,9 @@
  * 새 컬럼을 추가하거나 기존 컬럼을 바꿀 때는 `npm run db:types`로 생성 타입을 재생성한 뒤
  * 이 파일의 해당 Row 인터페이스도 맞춰서 갱신할 것. 둘이 어긋나도 자동으로 걸러지지
  * 않으므로(하단 `Database` 인터페이스는 남아 있지만 클라이언트에 주입되지 않는다) 사람이
- * 직접 대조해야 한다. 실제로 `drop_policy.rarity_legend`·`abusing_policy.soft/hard_legend_rate`
- * 3개 컬럼이 지금도 어긋나 있다(티켓 20260831_1158 조사 결과, 등급명 개명 작업에서 정리 예정).
+ * 직접 대조해야 한다. 2026-08-31 기준 불일치는 **0건**이다 — 한동안 어긋나 있던
+ * `drop_policy`·`abusing_policy`의 등급 컬럼 3개는 마이그레이션 115(티켓 20260831_1115)가
+ * `rarity_epic`·`soft/hard_epic_rate`로 통일하면서 해소됐다.
  *
  * 왜 클라이언트 제네릭에서 뗐는가: 이 파일의 Row는 `interface`라 암묵적 인덱스 시그니처가
  * 없어 supabase-js의 `GenericTable`(`Row: Record<string, unknown>`) 제약을 만족하지 못한다.
