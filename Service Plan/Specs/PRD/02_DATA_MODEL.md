@@ -245,6 +245,21 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 ### user_drop_state / drop_policy (신규 — 드랍엔진 v2)
 유저별 드랍 모멘텀 상태(연속 common 카운터, 마지막 조각 피티, 일일 드랍 수)와 엔진 전체 파라미터(레어리티 확률, 모멘텀/인접/탐험 가중치). 상세 로직은 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3 참고.
 
+> ⚠️ **`drop_policy`의 legend 컬럼명은 앱 키와 다르다.** DB 실제 컬럼은 **`rarity_legendary`**,
+> 앱 전역 키는 **`rarity_legend`**다. 티켓 20260813_003(`legendary` → `legend` 전면 변경)에서
+> enum만 rename되고 이 컬럼이 누락돼 생긴 불일치로, `src/lib/drop-engine/policy.ts`의
+> `APP_KEY_TO_DB_COLUMN`이 **테이블 입출력 시점에만** 변환한다(티켓 20260831_1118).
+> 같은 성격의 `ambient_drop_config`는 정상적으로 `rarity_legend`이므로 두 테이블을 혼동하지 말 것.
+>
+> **배지 등급명을 `common/rare/legend/mythic` → `common/rare/epic/mystic`으로 바꾸는 후속 작업**에
+> `rarity_legendary` → `rarity_epic` 개명이 포함된다. 그 작업에서 위 매핑 상수와 변환 함수
+> (`toAppKeys`/`toDbColumns`)를 **함께 제거**해야 한다. 개명만 하고 매핑을 남기면 다시 어긋난다.
+>
+> 참고: 수기 타입 `database.ts`(앱 키 기준)와 생성 타입 `database.generated.ts`(DB 컬럼 기준)가
+> 이 테이블에서 어긋나 있어 컬럼명 불일치가 타입 체크로 잡히지 않았다. `abusing_policy`
+> (`soft_legendary_rate`/`hard_legendary_rate` vs 코드 `soft_legend_rate`/`hard_legend_rate`)도
+> 동일한 불일치가 미해결 상태다.
+
 ### ambient_drop_config (재도입 — 2026-08-26, 마이그레이션 104)
 앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 카테고리(`poi_categories` 13종 또는 전체)·
 등급비율(4종 합=1)·대상 컬렉션(`item_books` 단독/멀티/전체) 3축을 각각 명시값 또는 무작위로
