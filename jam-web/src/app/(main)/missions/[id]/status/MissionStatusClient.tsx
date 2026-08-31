@@ -11,7 +11,10 @@ import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader
 
 interface RankingEntry {
   userId: string
-  username: string
+  /** 표시용 이름 — display_name 우선, 없으면 username, 그마저 없으면 '익명' (라우팅 불가) */
+  displayName: string
+  /** 라우팅용 원본 users.username 컬럼값 — 탈퇴 등으로 유저 레코드가 없으면 null */
+  username: string | null
   avatarUrl: string | null
   progressValue: number
   isCompleted: boolean
@@ -21,7 +24,10 @@ interface RankingEntry {
 
 interface AchievementEntry {
   userId: string
-  username: string
+  /** 표시용 이름 — display_name 우선, 없으면 username, 그마저 없으면 '익명' (라우팅 불가) */
+  displayName: string
+  /** 라우팅용 원본 users.username 컬럼값 — 탈퇴 등으로 유저 레코드가 없으면 null */
+  username: string | null
   avatarUrl: string | null
   achieved: boolean
   achievedAt: string | null
@@ -167,7 +173,7 @@ function PodiumColumn({
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
       }}>
-        {entry ? entry.username : '—'}
+        {entry ? entry.displayName : '—'}
       </span>
 
       {/* 포디엄 바 — 순위 번호·진행값을 바 하단에 함께 배치 */}
@@ -213,6 +219,7 @@ function RankingListRow({
 
   return (
     <ListRowCard
+      href={entry.username ? `/${entry.username}` : undefined}
       icon={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* 순위 번호 — 내 순위는 --color-primary(레드)로 강조 */}
@@ -257,7 +264,7 @@ function RankingListRow({
           className="m-0 truncate"
           style={{ fontSize: 'var(--text-small)', fontWeight: isMe ? 'bold' : 'normal', color: 'var(--color-text)' }}
         >
-          {entry.username}
+          {entry.displayName}
         </p>
         {/* 강조색은 --color-primary 하나로 통일(랭킹별 그라디언트 제거) */}
         {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
@@ -335,7 +342,7 @@ function MyRankCard({
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}>
-            {me.username}
+            {me.displayName}
           </div>
           <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', marginTop: 1 }}>
             {formatProgress(me.progressValue)} {d.missions.achieved}
@@ -374,6 +381,7 @@ function MyRankCard({
 function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (
     <ListRowCard
+      href={e.username ? `/${e.username}` : undefined}
       // 프로그래스바가 없어 한 줄짜리 행이라 기본 p-16(위아래 32px 간격)은 헐렁해 보인다 —
       // 위아래 패딩만 좁혀 목록 간격을 줄인다.
       className="!py-[var(--spacing-8)]"
@@ -394,7 +402,7 @@ function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: bool
         className="text-[length:var(--text-small)] leading-[var(--leading-body-sm)] truncate"
         style={{ color: highlight ? 'var(--color-primary)' : 'var(--color-text)', fontWeight: highlight ? 'bold' : 'normal' }}
       >
-        {e.username}{highlight ? d.missions.statusMeSuffix : ''}
+        {e.displayName}{highlight ? d.missions.statusMeSuffix : ''}
       </p>
     </ListRowCard>
   )
