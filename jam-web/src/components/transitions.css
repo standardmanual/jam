@@ -146,6 +146,10 @@
   border-radius: var(--radius-pill);
   z-index: 1;
   transition: color var(--tabs-dur) var(--tabs-ease);
+  /* block(균등분할) 모드에서 라벨이 좁아진 flex 칸보다 길면(예: 5탭 중 "트레일러닝")
+     화면 밖으로 흘러나가지 않고 말줄임되도록 방어 — 티켓 20260831_2208 후속. */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .t-tab[aria-selected="true"] {
   color: var(--tabs-text-active);

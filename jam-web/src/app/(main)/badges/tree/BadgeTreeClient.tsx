@@ -13,6 +13,16 @@ import type { ActivityType } from '@/types/database'
 import type { BadgeActivityTree } from '@/lib/badgeTree'
 
 /**
+ * 탭 바 전용 축약 라벨. `ACTIVITY_TYPE_LABELS`의 "트레일러닝"(5자)이 5탭 균등분할
+ * (`SlidingTabs` block 모드) 폭에서 다른 2~3자 라벨들과 나란히 놓이면 좁은 화면에서
+ * 넘친다(티켓 20260831_2208 후속 — 모바일 실기기 확인 결과). 다른 화면(select 옵션 등)의
+ * 정식 명칭은 그대로 두고, 탭 표시에서만 축약한다.
+ */
+const TREE_TAB_LABELS: Partial<Record<ActivityType, string>> = {
+  trail_running: '트레일',
+}
+
+/**
  * 배지 트리(/badges/tree) — 종목별 대표배지를 루트로, 선행조건(OR)으로 이어진 배지들을
  * BFS 깊이 기준 세로 단계(stage)로 보여주는 화면. 티켓 20260831_2208.
  *
@@ -31,7 +41,8 @@ export default function BadgeTreeClient({ trees }: BadgeTreeClientProps) {
 
   const tabs: SlidingTabItem<ActivityType>[] = trees.map((tree) => ({
     key: tree.activityType,
-    label: ACTIVITY_TYPE_LABELS[tree.activityType] ?? tree.activityType,
+    label: TREE_TAB_LABELS[tree.activityType] ?? ACTIVITY_TYPE_LABELS[tree.activityType] ?? tree.activityType,
+    ariaLabel: ACTIVITY_TYPE_LABELS[tree.activityType] ?? tree.activityType,
   }))
 
   const activeTree = trees.find((tree) => tree.activityType === activeActivity) ?? trees[0]
