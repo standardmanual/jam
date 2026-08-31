@@ -19,14 +19,30 @@ export interface AbusingPolicy {
   gps_daily_distance_cap_km: number
 }
 
+/**
+ * `abusing_policy` id=1 행의 **미러**. "바람직한 값"이 아니라
+ * **"DB를 못 읽을 때 현행 운영값을 그대로 재현하는 값"** 이다.
+ *
+ * 폴백이 정책을 바꾸면 장애 대응이 아니라 무음 정책 변경이 된다. 실제로
+ * `soft_epic_rate`·`hard_epic_rate`가 여기만 `0.0`(차단)이고 DB는 `1.00`(차단 꺼짐)이어서,
+ * 정책 조회가 한 번 실패하면 의도적으로 꺼둔 Epic 차단이 켜지는 상태였다 (티켓 20260831_1259).
+ *
+ * 값 출처: 2026-08-31 12:59 `abusing_policy` id=1 실측.
+ * Epic 배율이 1.00인 경위는 마이그레이션 `115_rename_rarity_epic_mystic.sql` §5
+ * (사용자 확인 2026-08-31, "유저 체감 동작을 바꾸지 않는다")와
+ * `Service Plan/Specs/SERVICE_OPERATIONS.md` §12-5 참조.
+ *
+ * ⚠️ **DB의 배율을 바꾸면 같은 티켓에서 이 상수도 함께 바꾼다.** 한쪽만 바꾸면
+ * 폴백 경로와 정상 경로의 판정이 갈리고, 그 차이는 무음으로 드러나지 않는다.
+ */
 export const DEFAULT_POLICY: AbusingPolicy = {
   soft_common_rate: 1.0,
   soft_rare_rate: 1.0,
-  soft_epic_rate: 0.0,
+  soft_epic_rate: 1.0,
   soft_mystic_rate: 0.0,
   hard_common_rate: 1.0,
   hard_rare_rate: 0.0,
-  hard_epic_rate: 0.0,
+  hard_epic_rate: 1.0,
   hard_mystic_rate: 0.0,
   gps_max_speed_kmh: 300,
   poi_block_hours: 72,
@@ -86,11 +102,11 @@ export async function getAbusingPolicy(): Promise<AbusingPolicy> {
       )
     }
 
-    // ⚠️ 원본 행의 **상위집합**으로 돌려준다 (DEFAULT_POLICY 키만 추리면 안 된다).
-    // 마이그레이션 115(등급명 legendary·mythic → epic·mystic) 실행 전에는 DB에 구 컬럼명이
-    // 남아 있고, shadow-ban.ts는 런타임 rarity 값으로 `${banLevel}_${rarity}_rate` 키를
-    // 조합한다. 구 키를 떨어뜨리면 `?? 1.0` 폴백을 타면서 지금 작동 중인 차단이 꺼진다.
-    // 115 적용 후에는 `...row` 스프레드를 지우고 normalized만 반환해도 된다.
+    // 원본 행의 **상위집합**으로 돌려준다 (티켓 20260831_1149).
+    // 원래 근거는 "마이그레이션 115 미실행 구간에서 shadow-ban.ts가 런타임 문자열로 조합한
+    // 구 컬럼 키를 살려둔다"였는데, 티켓 20260831_1259가 그 문자열 조합을 타입 맵으로
+    // 바꾸면서 **이 근거는 사라졌다** — 구 키를 보존해도 맵이 그 키를 찾지 않는다.
+    // 스프레드 제거는 1149의 잔여 이슈로 남겨 둔다 (별건).
     return { ...row, ...normalized } as unknown as AbusingPolicy
   } catch (e) {
     console.error('[abusing-policy] 조회 예외 — 기본 정책으로 폴백:', e)
