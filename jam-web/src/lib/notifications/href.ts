@@ -159,7 +159,7 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
       if (followingGrouped(p)) return single(withNotifSource(actorHref))
       return { href: actorHref ? `${actorHref}/collections` : null, avatarHref: withNotifSource(actorHref) }
     case 'following_mission_complete': {
-      if (followingGrouped(p)) return single(actorHref)
+      if (followingGrouped(p)) return single(withNotifSource(actorHref))
       const id = typeof p.mission_id === 'string' ? p.mission_id : ''
       return single(id ? `/missions/${id}/status` : '/missions')
     }
