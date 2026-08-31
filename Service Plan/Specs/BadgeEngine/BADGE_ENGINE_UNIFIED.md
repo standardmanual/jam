@@ -56,7 +56,7 @@ Step 3. 이름 그룹 단위 평가:
   C-2. evaluateConditionDetailed — 전체 이력 기준 AND 평가
   D. eligible 중 최상위 tier 1개만 후보 (나머지 missed)
 Step 4. [진행 트랙 중복 제거] 단일 조건 배지는 activity_type:조건타입 트랙당 최고 1개
-Step 5. [홍수 방지] 30일 롤링 윈도우, activity_type당 최대 3개 (mythic→common 우선)
+Step 5. [홍수 방지] 30일 롤링 윈도우, activity_type당 최대 3개 (mystic→common 우선)
 Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_done 갱신
 ```
 
@@ -85,12 +85,12 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 
 ### 2.4 성장 티어 정책
 
-같은 이름 그룹 내 common → rare → legend → mythic 순서로만 성장. 상위 달성 시 하위를 건너뛰고 **최상위 1개만** 발급.
+같은 이름 그룹 내 common → rare → epic → mystic 순서로만 성장. 상위 달성 시 하위를 건너뛰고 **최상위 1개만** 발급.
 
 ```
 예시: "첫 숨결" 그룹
   - common(3km) 보유 → rare(20km) 달성 시: rare만 발급
-  - legend(60km) 달성 시 common·rare 조건도 통과하지만: legend 1개만 발급
+  - epic(60km) 달성 시 common·rare 조건도 통과하지만: epic 1개만 발급
 ```
 
 ### 2.5 진행 트랙 정책
@@ -105,17 +105,17 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 
 ### 2.6 홍수 방지 (flood cap)
 
-30일 롤링 윈도우 / activity_type당 최대 3개 / mythic → legend → rare → common 우선 통과. 기존 보유 + 이번 발급 예정 합산으로 체크, 초과분 missed.
+30일 롤링 윈도우 / activity_type당 최대 3개 / mystic → epic → rare → common 우선 통과. 기존 보유 + 이번 발급 예정 합산으로 체크, 초과분 missed.
 
 ### 2.7 첫 싱크 게이트 + 선행 배지 게이트
 
 - **첫 싱크**: `initial_sync_done=false`면 Common만 발급 (Rare+는 missed). 종료 후 true 갱신. 목적: 첫 연동 시 수백 km 이력 보유 유저라도 배지 폭발 방지.
-- **선행 배지**: Rare/Legend/Mythic의 condition_json에 `prerequisite_badge_names: ["배지명A", "배지명B"]` (OR). 어떤 등급이든 해당 배지명 보유 시 통과. 목적: 동일 종목의 다른 속성 배지를 먼저 경험하게 유도.
+- **선행 배지**: Rare/Epic/Mystic의 condition_json에 `prerequisite_badge_names: ["배지명A", "배지명B"]` (OR). 어떤 등급이든 해당 배지명 보유 시 통과. 목적: 동일 종목의 다른 속성 배지를 먼저 경험하게 유도.
 
 | 등급 | 첫 싱크 발급 | 선행 배지 |
 |------|-------------|-----------|
 | Common | ✅ 허용 | 불필요 |
-| Rare/Legend/Mythic | ❌ 차단 | 동일 종목 다른 속성 배지 1개+ (OR) |
+| Rare/Epic/Mystic | ❌ 차단 | 동일 종목 다른 속성 배지 1개+ (OR) |
 
 **미션 보상 배지 제외** (2026-08-25, 티켓 20260825_028): `condition_json.mission_reward = true`인
 배지는 **발급 후보 조회 단계(Step 1)에서 아예 제외**한다. 이 배지들은 미션 완료
@@ -131,7 +131,7 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 > 미션보상배지 15종에 `{"mission_reward": true}`를 UPDATE하면서, "조건이 비어 있으면 미발급"이라는
 > 기존 가드(키 0개일 때만 동작)를 우회하게 됐다. `mission_reward`는 엔진이 모르는 필드라 어떤 검사
 > 블록에도 걸리지 않고 마지막 `pass:true`에 도달해, **해당 종목 활동을 한 번만 동기화해도 미션 없이
-> 미션보상배지 3개가 발급되고 본 배지 Rare/Legend/Mythic 게이트가 전부 열리는** 상태였다
+> 미션보상배지 3개가 발급되고 본 배지 Rare/Epic/Mystic 게이트가 전부 열리는** 상태였다
 > (2026-08-25 발견). 잘못 발급된 이력은 `seed_reset_levelup_missions_20260825.sql`로 회수한다.
 
 **데이터 계약 검증 계층** (2026-08-25, 티켓 20260825_031): 위 3중 방어는 084 사고의 *증상*을
@@ -202,10 +202,10 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 종목별로 "운동 목표 달성감이 가장 큰" 대표 배지 1종씩(5개 트리) — 걷기 `동네 산책러`, 러닝 `첫 숨결`, 사이클 `언덕의 도전자`, 등산 `첫 고도`, 트레일러닝 `야생의 주자` — 는 Rare 이상에서 기존 크로스게이트(`prerequisite_badge_names`에 같은 종목 다른 속성 배지 2개 OR)를 쓰지 않고, **미션 완료로만 얻는 전용 배지 1개**를 선행조건으로 요구한다. 나머지 142개 배지는 기존 크로스게이트 그대로 유지.
 
 **구조**:
-1. 미션보상배지 15종(`badges`, `type='activity'`, `condition_json = {"mission_reward": true}`) — 이름은 `{배지명} 레벨업` / `레벨업 Hard` / `레벨업 Ultra`(Rare/Legend/Mythic 대응). 일반 활동 동기화로는 절대 발급되지 않고, 미션 완료(`grantMissionRewards`)로만 지급된다.
+1. 미션보상배지 15종(`badges`, `type='activity'`, `condition_json = {"mission_reward": true}`) — 이름은 `{배지명} 레벨업` / `레벨업 Hard` / `레벨업 Ultra`(Rare/Epic/Mystic 대응). 일반 활동 동기화로는 절대 발급되지 않고, 미션 완료(`grantMissionRewards`)로만 지급된다.
    - ⚠️ 2026-08-13 최초 설계는 `condition_json = NULL`(빈 조건 → 항상 `pass:false`)이었으나, 마이그레이션 084가 `{"mission_reward": true}`를 넣으면서 그 가드가 무력화됐다(§2.7 "미션 보상 배지 제외" 참조). 2026-08-25(티켓 20260825_028)에 **플래그를 유지하되 엔진이 명시적으로 제외**하는 방식으로 바로잡고, 15종 전부 `{"mission_reward": true}`로 통일했다(배지 상세 화면이 이 플래그로 "미션 보상 배지"임을 표시하고 있어 NULL 통일 대신 플래그 유지를 택함).
 2. 미션 15종(`missions`) — `mission_type`은 `streak_days`(걷기)/`duration_minutes`(러닝·사이클·등산, 단일 활동 기준)/`elevation_gain_m`(트레일, 단일 활동 기준). `ends_at = NULL`(상시), `status_display_type = 'individual'`(본인 진행상황만 노출, 다른 참가자 비공개), `max_completions = NULL`(선착순 아님), `reward_points = 0`.
-3. 대상 배지 5종 × Rare/Legend/Mythic의 `condition_json.prerequisite_badge_names`를 기존 OR 배열 대신 해당 미션보상배지명 1개만 담은 배열로 교체 — 엔진 스펙상 배열 원소가 1개면 사실상 AND(그 이름의 배지를 보유해야만 통과)로 동작한다(`CONDITION_JSON_SPEC.md`).
+3. 대상 배지 5종 × Rare/Epic/Mystic의 `condition_json.prerequisite_badge_names`를 기존 OR 배열 대신 해당 미션보상배지명 1개만 담은 배열로 교체 — 엔진 스펙상 배열 원소가 1개면 사실상 AND(그 이름의 배지를 보유해야만 통과)로 동작한다(`CONDITION_JSON_SPEC.md`).
 
 **미션 엔진 확장**: 기존 미션 엔진(`mission_type`: distance/checkin/activity_count/item_collect — `checkin`은 2026-08-26 이전 `poi_visit`)은 이 정책이 요구하는 연속일수·단일세션 지속시간·등반고도를 계산할 수 없었다. 새 계산 로직을 만드는 대신, `jam-web/src/lib/missions/checker.ts`가 이 3개 신규 타입에 대해 배지엔진의 `evaluateConditionDetailed`를 그대로 호출해 판정한다(§2.3 조건 어휘 재사용 — `activity_type`+`streak_days`/`duration_minutes`/`elevation_gain_m`). "미션 참가 시점 이후" 제약은 `evaluateConditionDetailed` 자체가 아니라 `checkMissions`가 `joinedAt` 기준으로 활동 이력을 미리 필터링해서 넘기는 호출자 책임이다.
 
@@ -265,7 +265,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 | 장치 | 값(초기) | 근거 |
 |------|---------|------|
 | 기본 드랍 | **활동당 1개 확정** | 모든 활동이 보상받음. 꽝의 실망 제거 |
-| rarity 분포 | common 60 / rare 28 / legend 9 / mythic 3 (%) | 개수 고정 대신 희귀도가 매번의 서스펜스 담당 |
+| rarity 분포 | common 60 / rare 28 / epic 9 / mystic 3 (%) | 개수 고정 대신 희귀도가 매번의 서스펜스 담당 |
 | Rare+ pity | 연속 5회 common → 6번째 rare 이상 확정 | 좋은 것의 가뭄 상한 |
 | 보너스 드랍 | 15% 확률로 2개째 (60분+·고고도 활동은 30%) | "오늘은 2개!" 잭팟 + 노력↔보상 비례 |
 | 일일 보정 | 당일 4번째 활동부터 확정 드랍 rarity를 common 90%로 하향 | 최소 1개 약속 유지하되 짧은 활동 반복(어뷰징) 기대값 억제 |
@@ -290,7 +290,7 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 - 드랍의 ~75%가 직전 세계관·이웃에 머물러 **명시적 제한 없이 집중 경험** 형성. 유저 체감은 "요즘 이 세계관 파편이 자주 보이네" 정도가 전부여야 한다.
 - 신규 유저 첫 3드랍: **작심삼일 클럽 + 주 활동종목 매핑 세계관** (걷기→숲속의 갱단, 러닝→비트 마에스트로, 사이클→장비병 환자들, 등산/트레일→아스팔트 레인저). 이후 가중 추첨에 자연 합류.
 - 컬렉션 완성 시 별도 선택·전환 절차 없음 — 완성은 축하 모먼트일 뿐, 드랍 흐름은 이어진다.
-- **미스터리 헌터 예외**: legend·mythic 드랍 시에만 낮은 확률로 어느 유저에게나 등장하는 전역 스파이스 ("도시 괴담" 포지션).
+- **미스터리 헌터 예외**: epic·mystic 드랍 시에만 낮은 확률로 어느 유저에게나 등장하는 전역 스파이스 ("도시 괴담" 포지션).
 - 인접 그래프: `아이템북 레시피.xlsx` **'세계관 인접' 시트**가 원천 → DB `world_adjacency` 시드.
 
 ### 3.3 Layer 3 — 컬렉션·배지 선택: 완성 페이싱
@@ -532,7 +532,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 | 축 | 명시 모드 | 무작위 모드 |
 |---|---|---|
 | 카테고리 | `poi_categories`(13종) 중 하나, 또는 `category_slug=NULL`로 "전체" | 실행 시점에 카테고리 하나를 무작위로 선택 |
-| 등급(rarity) 비율 | `rarity_common/rare/legend/mythic`(합=1)로 가중 추첨 | 실행 시점에 4개 등급 비율 자체를 무작위로 생성해 그 실행 전체에 적용 |
+| 등급(rarity) 비율 | `rarity_common/rare/epic/mystic`(합=1)로 가중 추첨 | 실행 시점에 4개 등급 비율 자체를 무작위로 생성해 그 실행 전체에 적용 |
 | 대상 컬렉션(`item_books`) | 단독 또는 멀티 선택(`collection_ids`), 빈 배열은 "전체 컬렉션" | 실행 시점에 활성 컬렉션 1개를 무작위로 선택 |
 
 `all_random=true`면 저장된 축별 모드와 무관하게 실행 시점에 3축을 전부 무작위로 취급한다
@@ -546,7 +546,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
    대상에서 제외된다** — 이 축이 "컬렉션 채우기"를 돕는 것이 목적이기 때문.
 4. `batch_size`회 반복 — 활성 드랍이 0개인 POI를 우선 골라 분산 배치하고(발견 경험 분산, 구
    엔진과 동일 원칙), 등급 분포로 가중 추첨한 뒤 그 등급에 후보가 없으면
-   `common → rare → legend → mythic` 순서로 폴백한다(현재 카탈로그가 common뿐이라 사실상
+   `common → rare → epic → mystic` 순서로 폴백한다(현재 카탈로그가 common뿐이라 사실상
    발동하지 않음 — 티켓 §5).
 5. 결과를 `engine_decision_log`(`engine='drop'`, `event='ambient_batch_result'`)에 남긴다 —
    자동/수동 모두 동일하게 기록되어 어드민 화면에서 최근 실행 이력으로 조회 가능하다.
@@ -576,7 +576,7 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 수 × 커버리지 비율 → 부족분 보충"이라는 전역 상시 커버리지 목표치 모델이었다. 신규
 `ambient_drop_config`(마이그레이션 104)는 실행마다 3축을 골라 `batch_size`개를 그때그때
 배치하는 배치 실행형이며, 커버리지 계산이 없다. 구 모델의 마지막 운영값(common 86% /
-rare 12% / legend 2%, 커버리지 0.15, POI당 최대 1개, 보충 배치 30개, 최종 수정 2026-07-23)은
+rare 12% / epic 2%, 커버리지 0.15, POI당 최대 1개, 보충 배치 30개, 최종 수정 2026-07-23)은
 `batch_size`/`max_active_per_poi`의 초기값 후보로만 참고했다.
 
 ### 3.13 유저 드랍/픽업 운영 정책 (PRD 04_PROJECT_SPEC.md에서 이관, 2026-08-06)
