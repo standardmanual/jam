@@ -766,10 +766,25 @@ src/lib/abusing/gps-detector.ts
 
 checkAndUpdateLocation(userId, lat, lng):
   users.last_location_(lat/lng/at) 조회
-  이동 거리(Haversine) / 경과 시간 → 속도 계산
-  > gps_max_speed_kmh (기본 300km/h) → GPS 조작 판정 → 픽업 거부
-  정상 → users.last_location 업데이트
+  이동 거리(Haversine, 미터) / 경과 시간 → 속도 계산
+  > gps_max_speed_kmh (기본 300km/h) → GPS 조작 판정(speed) → 픽업 거부
+
+  일일 누적 이동거리(users.gps_daily_distance_km, UTC 날짜 기준 리셋):
+    구간 이동거리를 매 호출마다 누적
+    > gps_daily_distance_cap_km (기본 3000km/일) → GPS 조작 판정(daily_distance) → 픽업 거부
+
+  정상 → users.last_location · gps_daily_distance_km 업데이트
 ```
+
+- 최소 이동거리(`MIN_DISTANCE_KM=0.15km`)·최소 경과시간(`MIN_ELAPSED_SECONDS=5초`) 가드는
+  GPS 재수신 시 좌표가 튀는 노이즈를 걸러낸다. 짧은 간격의 소규모 튐만 걸러낼 뿐,
+  일일 누적거리 쪽은 게이트를 통과한 모든 정상 이동을 계속 더한다.
+- ⚠️ **`haversineDistance()`는 미터를 반환한다.** `checkAndUpdateLocation()` 안에서 이
+  값을 즉시 `/1000`으로 km 변환한 뒤 속도·누적거리 계산에 써야 한다 — 2026-08-31까지
+  이 변환이 빠져 있어 모든 임계값이 실제로는 1000배 민감하게(300km/h→0.3km/h,
+  3000km/일→3km/일, 150m→15cm) 작동했고, 정상적인 하루 도보 이동만으로도 상시 오탐이
+  났다(티켓 20260813_002의 6건, 20260831_1504의 2건 모두 같은 근본 원인). 이 함수를
+  다시 손댈 때는 반환 단위를 재확인할 것.
 
 ### 12-3. 섀도우밴
 
