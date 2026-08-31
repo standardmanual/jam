@@ -1,9 +1,9 @@
 ---
 id: 20260831_2152
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-31
-closed:
+closed: 2026-08-31
 ---
 
 # [Service] 미션 진행바 elevation_gain_m 표시 기준이 배지엔진 판정 기준과 어긋남
@@ -117,9 +117,9 @@ jam-web/src/types/database.ts
 사용자 노출 텍스트 변경 없음 — 해당 없음 (진행바 계산 로직만 변경)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-31 (staging)
+- 환경: staging (프로덕션 승격은 `/jam-ship`으로 별도 진행)
+- 커밋: review 브랜치 `claude/jamwork-20260831_2152-elevation-gain-progress`, staging 머지 커밋
 
 ### 주요 의사결정 / 핵심 메모
 - `filtered`(activity_type 필터만) vs `gated`(걷기면 축1 게이트 추가)를 나누는 기존 구조를
@@ -128,6 +128,12 @@ jam-web/src/types/database.ts
 - `MissionCondition.elevation_gain_m` 필드 주석 정정은 이번 티켓 범위(진행바 계산 로직)를
   벗어난 문서성 수정이지만, 방치 시 이번 버그와 동일한 종류의 오독을 반복 유발할 수 있는
   1줄 주석이라 함께 고쳤다(로직 변경 없음).
+- **게이트 리뷰 통과 후 오케스트레이터가 `BADGE_ENGINE_UNIFIED.md` 239행의 오기
+  ("elevation_gain_m — 단일 활동 기준")도 함께 정정** — 같은 문서 69행("누적 합계")과
+  내부 모순이던 것을 progressive-reviewer가 지적해 반영.
+- **최초 조사 시 "elevation_gain_m 미션 0건"으로 판단했으나, 사용자 재확인 지시 후
+  프로덕션 DB 직접 조회로 실제 3건(모두 활성) 존재를 확인** — 티켓 착수 전 항상 최신 staging/DB
+  상태를 재확인해야 한다는 반증 사례.
 
 ### 잔여 이슈
 - 없음
