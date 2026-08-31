@@ -60,10 +60,13 @@ const stub = vi.hoisted(() => ({
   selectError: null as { code: string; message: string } | null,
   upsertError: null as { code: string; message: string } | null,
   upsertPayloads: [] as Record<string, unknown>[],
+  /** createServiceClient 호출 횟수 — 클라이언트를 주입했을 때 새로 만들지 않는지 감시한다 */
+  serviceClientCalls: 0,
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createServiceClient: (): SupabaseClient => {
+    stub.serviceClientCalls++
     const builder = {
       select: () => builder,
       eq: () => builder,
@@ -81,7 +84,12 @@ vi.mock('@/lib/admin/auth', () => ({
   getAdminUser: async () => ({ id: 'admin-1', email: 'admin@jam.test' }),
 }))
 
-import { getAbusingPolicy, updateAbusingPolicy, DEFAULT_POLICY } from '../policy'
+import {
+  getAbusingPolicy,
+  updateAbusingPolicy,
+  DEFAULT_POLICY,
+  MIN_VEHICLE_SPEED_FILTER_KMH,
+} from '../policy'
 import { shouldAllowDrop } from '../shadow-ban'
 import { PUT } from '@/app/api/admin/abusing/policy/route'
 
@@ -92,6 +100,7 @@ beforeEach(() => {
   stub.selectError = null
   stub.upsertError = null
   stub.upsertPayloads = []
+  stub.serviceClientCalls = 0
 })
 
 describe('getAbusingPolicy — 정규화는 원본 행의 상위집합', () => {
@@ -153,6 +162,24 @@ describe('getAbusingPolicy — 정규화는 원본 행의 상위집합', () => {
     expect(await getAbusingPolicy()).toEqual(DEFAULT_POLICY)
     expect(spy).toHaveBeenCalledTimes(2)
     spy.mockRestore()
+  })
+
+  it('클라이언트를 인자로 받으면 새 service_role 클라이언트를 만들지 않고 주입본으로 조회한다', async () => {
+    // processFetchedActivities(supabase, ...)처럼 클라이언트를 인자로 받아 내려주는 호출부의
+    // 주입 사슬을 끊지 않아야 한다 (티켓 20260831_1300)
+    const injectedBuilder = {
+      select: () => injectedBuilder,
+      eq: () => injectedBuilder,
+      single: async () => ({
+        data: { ...POST_115_ROW, vehicle_speed_filter_kmh: 45 },
+        error: null,
+      }),
+    }
+    const injected = { from: () => injectedBuilder } as unknown as SupabaseClient
+
+    const policy = await getAbusingPolicy(injected)
+    expect(policy.vehicle_speed_filter_kmh).toBe(45)
+    expect(stub.serviceClientCalls).toBe(0)
   })
 })
 
@@ -221,6 +248,26 @@ describe('PUT /api/admin/abusing/policy — 키 화이트리스트', () => {
     )
     expect(res.status).toBe(200)
     expect(stub.upsertPayloads[0].gps_daily_distance_cap_km).toBe(100000)
+  })
+
+  it('차량 속도 필터는 하한(20km/h) 미만이면 400으로 거절한다', async () => {
+    // 0은 "필터 끄기"가 아니라 "전면 차단"이다 — 필터식이 `평균속도 <= 임계값`이라
+    // 0이면 모든 활동이 탈락하고 배지·드랍·미션이 한꺼번에 멈춘다 (티켓 20260831_1300)
+    const zero = await PUT(fakeReq({ vehicle_speed_filter_kmh: 0 }))
+    expect(zero.status).toBe(400)
+    expect((await zero.json()).error).toContain('차량 속도 필터')
+
+    const tooLow = await PUT(fakeReq({ vehicle_speed_filter_kmh: 5 }))
+    expect(tooLow.status).toBe(400)
+
+    // 저장 자체가 일어나지 않아야 한다 (같은 요청의 다른 필드도 함께 롤백되면 안 되므로 사전 검증)
+    expect(stub.upsertPayloads).toHaveLength(0)
+  })
+
+  it('차량 속도 필터 하한값(20km/h)은 그대로 저장한다', async () => {
+    const res = await PUT(fakeReq({ vehicle_speed_filter_kmh: MIN_VEHICLE_SPEED_FILTER_KMH }))
+    expect(res.status).toBe(200)
+    expect(stub.upsertPayloads[0].vehicle_speed_filter_kmh).toBe(MIN_VEHICLE_SPEED_FILTER_KMH)
   })
 
   it('저장이 실패하면 200이 아니라 500 + 사유를 응답한다', async () => {

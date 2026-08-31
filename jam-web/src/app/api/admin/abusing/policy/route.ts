@@ -5,6 +5,7 @@ import {
   updateAbusingPolicy,
   DEFAULT_POLICY,
   RATE_KEYS,
+  MIN_VEHICLE_SPEED_FILTER_KMH,
   type AbusingPolicy,
 } from '@/lib/abusing/policy'
 
@@ -44,6 +45,18 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json(
         {
           error: `어뷰징 정책이 저장되지 않았어요. ${key} 값이 0~1 범위를 벗어났어요. 0~1 사이로 맞추고 다시 저장해 주세요.`,
+        },
+        { status: 400 }
+      )
+    }
+    // 차량 속도 필터만 하한이 있다. 이 값은 "차량 탑승 판정 기준"인데 필터식이
+    // `평균속도 <= 임계값`(이하만 통과)이라, 낮출수록 정상 활동이 걸러진다. 20km/h 미만이면
+    // 사이클링·달리기까지 배제돼 배지·아이템 드랍·미션이 한꺼번에 멈춘다 (티켓 20260831_1300).
+    // 저장은 되는데 적용은 다르게 되는 무음 불일치를 만들지 않도록, 정책 검증은 저장 경로가 소유한다.
+    if (key === 'vehicle_speed_filter_kmh' && n < MIN_VEHICLE_SPEED_FILTER_KMH) {
+      return NextResponse.json(
+        {
+          error: `어뷰징 정책이 저장되지 않았어요. 차량 속도 필터를 ${MIN_VEHICLE_SPEED_FILTER_KMH}km/h 아래로 내리면 자전거·달리기 활동까지 걸러져 배지·아이템 드랍·미션이 모두 멈춰요. ${MIN_VEHICLE_SPEED_FILTER_KMH}km/h 이상으로 올리고 다시 저장해 주세요.`,
         },
         { status: 400 }
       )
