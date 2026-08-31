@@ -1,15 +1,22 @@
 'use client'
 
-import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import Image from 'next/image'
+import Link from 'next/link'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import BadgeTreeLockChip from './BadgeTreeLockChip'
-import { TargetIcon } from '@/components/ui/icons'
+import { TargetIcon, MedalIcon } from '@/components/ui/icons'
 import { d } from '@/lib/i18n'
 import type { BadgeTreeFamily as BadgeTreeFamilyData } from '@/lib/badgeTree'
 
 /**
  * 배지 트리(/badges/tree) 전용 — 배지 하나(이름 기준)의 Common→Rare→Epic→Mystic
  * 미니 카드를 세로로 쌓아 보여준다. 요구사항 4: 모든 카드는 `/badges/{id}`로 이동 가능.
- * 서비스 전용 UI(MODULAR 승격 대상 아님, `BadgeGridCard`만 재사용) — 티켓 20260831_2208.
+ * 서비스 전용 UI(MODULAR 승격 대상 아님) — 티켓 20260831_2208.
+ *
+ * 20260901 UI 수정: 등급 pill·배지 이름을 설명 위(썸네일 옆 텍스트 컬럼 최상단)로 옮겨
+ * "pill → 이름(볼드) → 설명" 순으로 읽히게 했다. `BadgeGridCard`(그리드 셀 전용, 이미지
+ * 아래 이름·pill이 고정된 세로 레이아웃)로는 이 순서를 만들 수 없어, 썸네일만 직접
+ * 구성하고 이름·pill·설명은 텍스트 컬럼에서 조립한다(다른 화면의 BadgeGridCard는 불변).
  */
 export interface BadgeTreeFamilyProps {
   family: BadgeTreeFamilyData
@@ -30,28 +37,51 @@ export default function BadgeTreeFamily({ family, earnedBadgeIds }: BadgeTreeFam
       )}
 
       <div className="flex flex-col gap-[var(--spacing-8)]">
-        {family.variants.map((variant) => (
-          <div key={variant.id} className="flex items-start gap-[var(--spacing-12)]">
-            <BadgeGridCard
-              href={`/badges/${variant.id}`}
-              name={family.name}
-              imageUrl={variant.imageUrl}
-              rarity={variant.rarity}
-              earned={earnedBadgeIds.has(variant.id)}
-              className="w-[110px] shrink-0"
-            />
-            <div className="flex-1 min-w-0 flex flex-col gap-[var(--spacing-8)] pt-[var(--spacing-8)]">
-              {variant.description && (
-                <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] leading-snug">
-                  {variant.description}
-                </p>
-              )}
-              {variant.locks.map((lock) => (
-                <BadgeTreeLockChip key={lock.href} label={lock.label} href={lock.href} />
-              ))}
+        {family.variants.map((variant) => {
+          const dimmed = !earnedBadgeIds.has(variant.id)
+          const href = `/badges/${variant.id}`
+          return (
+            <div key={variant.id} className="flex items-start gap-[var(--spacing-12)]">
+              <Link
+                href={href}
+                className="shrink-0 w-[90px] h-[90px] rounded-[var(--radius-card)] overflow-hidden bg-surface flex items-center justify-center active:scale-95 transition-transform duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+              >
+                {variant.imageUrl ? (
+                  <Image
+                    src={variant.imageUrl}
+                    alt={family.name}
+                    width={90}
+                    height={90}
+                    className={`w-full h-full object-contain p-1 ${dimmed ? 'grayscale opacity-40' : ''}`}
+                  />
+                ) : (
+                  <MedalIcon className="w-10 h-10 text-text/30" />
+                )}
+              </Link>
+              <div className="flex-1 min-w-0 flex flex-col gap-[var(--spacing-4)] pt-[2px]">
+                <RarityBadge rarity={variant.rarity} />
+                <Link
+                  href={href}
+                  className="text-[15px] font-bold text-text leading-snug truncate"
+                >
+                  {family.name}
+                </Link>
+                {variant.description && (
+                  <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] leading-snug">
+                    {variant.description}
+                  </p>
+                )}
+                {variant.locks.length > 0 && (
+                  <div className="flex flex-col gap-[var(--spacing-8)] pt-[2px]">
+                    {variant.locks.map((lock) => (
+                      <BadgeTreeLockChip key={lock.href} {...lock} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

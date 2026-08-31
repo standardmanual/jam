@@ -1,5 +1,4 @@
 import type { ActivityType, BadgeCondition, BadgeRarity } from '@/types/database'
-import { d, t } from '@/lib/i18n'
 
 /**
  * 배지 트리(`/badges/tree`) 전용 그래프 빌더 — 티켓 20260831_2208.
@@ -94,8 +93,12 @@ export interface BadgeTreeSourceMission {
 }
 
 export interface BadgeTreeLock {
-  label: string
+  kind: 'badge' | 'mission'
+  /** 선행 배지 이름 또는 미션 제목 — 잠금칩에서 볼드 처리 대상 (20260901 UI 수정) */
+  name: string
   href: string
+  /** kind='badge'일 때만 의미 있음 — 이 유저가 이 선행 배지를 이미 보유했는지 */
+  fulfilled: boolean
 }
 
 export interface BadgeTreeVariant {
@@ -128,17 +131,11 @@ export interface BadgeActivityTree {
   independentFamilies: BadgeTreeFamily[]
 }
 
-function lockLabelForBadge(name: string): string {
-  return t(d.badges.treeLockBadgeHint, { name })
-}
-
-function lockLabelForMission(title: string): string {
-  return t(d.badges.treeLockMissionHint, { title })
-}
-
 export function buildBadgeActivityTrees(
   badges: BadgeTreeSourceBadge[],
-  missions: BadgeTreeSourceMission[]
+  missions: BadgeTreeSourceMission[],
+  /** 이 유저가 획득한 배지 id 집합 — 선행 배지 잠금칩의 "획득 완료" 판정용 (20260901 UI 수정) */
+  earnedBadgeIds: Set<string>
 ): BadgeActivityTree[] {
   const missionByGatedBadgeId = new Map<string, BadgeTreeSourceMission>()
   for (const m of missions) {
@@ -233,14 +230,23 @@ export function buildBadgeActivityTrees(
           if (v.rarity !== 'common') {
             const mission = missionByGatedBadgeId.get(v.id)
             if (mission) {
-              locks.push({ label: lockLabelForMission(mission.title), href: `/missions/${mission.id}` })
+              locks.push({
+                kind: 'mission',
+                name: mission.title,
+                href: `/missions/${mission.id}`,
+                fulfilled: false,
+              })
             } else {
               const prereqNames = (v.condition_json?.prerequisite_badge_names ?? []).filter(
                 (n) => !missionRewardNames.has(n)
               )
               for (const prereqName of prereqNames) {
                 const id = nameToCommonId.get(prereqName)
-                if (id) locks.push({ label: lockLabelForBadge(prereqName), href: `/badges/${id}` })
+                if (!id) continue
+                // OR 조건: 선행 배지 그룹의 어느 등급이든 보유하면 충족 (엔진 규칙과 동일)
+                const prereqVariants = familyMap.get(prereqName) ?? []
+                const fulfilled = prereqVariants.some((pv) => earnedBadgeIds.has(pv.id))
+                locks.push({ kind: 'badge', name: prereqName, href: `/badges/${id}`, fulfilled })
               }
             }
           }

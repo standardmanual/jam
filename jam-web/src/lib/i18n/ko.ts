@@ -344,7 +344,9 @@ export const ko = {
     treeRepresentativeLabel: '대표 배지',
     treeIndependentTitle: '선행 조건 없이 얻는 배지',
     treeLockBadgeHint: '{name} 배지를 획득하면 열려요',
-    treeLockMissionHint: "'{title}' 미션을 완료하면 열려요",
+    // 선행 배지를 이미 보유한 경우 — 20260901 UI 수정
+    treeLockBadgeFulfilled: '{name} 배지 획득 완료',
+    treeLockMissionHint: "'{name}' 미션을 완료하면 열려요",
   },
 
   /** 인벤토리 목록/상세 */
