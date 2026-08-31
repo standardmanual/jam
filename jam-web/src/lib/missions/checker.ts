@@ -146,7 +146,6 @@ export async function checkMissions(
     // progress_value 업데이트
     if (progressValue > 0) {
       const table = supabase.from('user_mission_participations')
-      // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserMissionParticipationRow와 일치
       await table.update({ progress_value: progressValue }).eq('user_id', userId).eq('mission_id', mission.id)
     }
 
@@ -169,7 +168,6 @@ export async function checkMissions(
     // 완료 INSERT
     const { error } = await supabase
       .from('user_mission_completions')
-      // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserMissionCompletionRow와 일치
       .insert({ user_id: userId, mission_id: mission.id })
 
     if (error) {

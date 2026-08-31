@@ -13,7 +13,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('badges')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ item_book_id: item_book_id ?? null })
     .eq('id', id)
     .select()

@@ -39,7 +39,6 @@ export async function POST(req: NextRequest) {
     background_video_url: background_video_url ?? null,
   }
   const itemBooksQuery = supabase.from('item_books')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 ItemBooksRow와 일치
   const insertQuery = itemBooksQuery.insert(insertPayload)
   const { data, error } = await insertQuery.select().single()
 

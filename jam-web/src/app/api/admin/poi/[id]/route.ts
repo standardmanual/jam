@@ -23,7 +23,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
   const { data, error } = await supabase
     .from('poi')
-    // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiRow와 일치
     .update(updatePayload)
     .eq('id', id)
     .select()
@@ -54,7 +53,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('poi')
-    // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiRow와 일치
     .update({ is_active })
     .eq('id', id)
     .select()

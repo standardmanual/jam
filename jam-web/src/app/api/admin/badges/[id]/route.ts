@@ -43,7 +43,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { data, error } = await supabase
     .from('badges')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({
       name: body.name !== undefined ? body.name : existing.name,
       description: body.description !== undefined ? body.description : existing.description,
@@ -114,7 +113,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { error } = await supabase
     .from('badges')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -145,7 +143,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('badges')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ deleted_at: active ? null : new Date().toISOString() })
     .eq('id', id)
     .select()

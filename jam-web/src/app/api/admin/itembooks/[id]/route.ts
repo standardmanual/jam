@@ -28,7 +28,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { data, error } = await supabase
     .from('item_books')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({
       name: body.name !== undefined ? body.name : existing.name,
       description: body.description !== undefined ? body.description : existing.description,
@@ -89,7 +88,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { data, error } = await supabase
     .from('item_books')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ is_active })
     .eq('id', id)
     .select()

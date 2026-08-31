@@ -20,7 +20,6 @@ export async function invalidateUnclaimedDrops(
 
   const { error } = await supabase
     .from('poi_drops')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ is_available: false })
     .in('badge_id', badgeIds)
     .is('picked_up_at', null)

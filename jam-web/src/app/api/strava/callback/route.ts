@@ -75,7 +75,6 @@ export async function GET(request: NextRequest) {
       last_synced_at: null,
     }
     const connectionsTable = supabase.from('strava_connections')
-    // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 StravaConnectionRow와 일치
     const { error: upsertError } = await connectionsTable.upsert(stravaConnectionPayload, { onConflict: 'strava_athlete_id' })
 
     if (upsertError) {

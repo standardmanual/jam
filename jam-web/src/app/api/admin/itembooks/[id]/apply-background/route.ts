@@ -33,7 +33,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const badgesQuery = supabase.from('badges')
-  // @ts-expect-error Supabase update 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 BadgesRow와 일치
   const updateQuery = badgesQuery.update({ background_color, background_shader_id, background_image_url, background_video_url })
   const { data, error } = await updateQuery
     .eq('item_book_id', id)

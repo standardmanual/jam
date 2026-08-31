@@ -123,7 +123,8 @@ export default async function UserProfilePage({ params }: Props) {
     id: string
     badge_id: string
     obtained_at: string
-    badges: { id: string; name: string; image_url: string; rarity: string; deleted_at: string | null } | null
+    // badges.image_url은 DB에서 NULL 허용이다(도안 이미지 미등록 상태).
+    badges: { id: string; name: string; image_url: string | null; rarity: string; deleted_at: string | null } | null
   }
   const actDropsQuery: PromiseLike<{ data: LegacyActDropRow[] | null }> = inventoryId
     ? service

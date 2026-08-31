@@ -259,8 +259,6 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   const spawnedDrops: { id: string; inventory_item_id: string; poi_id: string }[] = []
 
   for (const row of inserts) {
-    // @ts-expect-error 'mint_and_place_ambient_drop' RPC 함수가 src/types/database.ts의
-    // Functions에 미등록(기존 create_user_drop/pickup_drop과 동일한 상황)
     const { data: rpcResult, error: rpcError } = await supabase.rpc('mint_and_place_ambient_drop', {
       p_poi_id: row.poi_id,
       p_badge_id: row.badge_id,

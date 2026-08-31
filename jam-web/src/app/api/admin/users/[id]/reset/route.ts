@@ -41,7 +41,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (inventory) {
     const [{ count, error: itemErr }, { error: slotErr }] = await Promise.all([
       supabase.from('inventory_items').delete({ count: 'exact' }).eq('inventory_id', inventory.id),
-      // @ts-expect-error Supabase 타입 추론 제한 우회
       supabase.from('inventory').update({ used_slots: 0 }).eq('id', inventory.id),
     ])
     if (itemErr) return NextResponse.json({ error: itemErr.message }, { status: 500 })
@@ -92,7 +91,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   // 사람의 개체가 서로 다른 row라 이 초기화가 유효했으나, 개체 정체성 모델에서는 둘이
   // 같은 row라 의미가 달라졌다 — 시뮬레이터 반복 테스트 목적상 문제 없다고 판단해 그대로 둔다.
   const poiDropsQuery = supabase.from('poi_drops')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiDropsRow와 일치
   const poiDropsResetQuery = poiDropsQuery.update({ picked_up_by: null, picked_up_at: null, is_available: true }).eq('picked_up_by', userId)
   const [
     { count: deletedBadgeCount, error: e1 },
@@ -131,11 +129,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   // ── 4단계: 싱크 이력 초기화 (연동 자체는 유지) ─────────
   // initial_sync_done=false + last_synced_at=NULL → 다음 싱크가 최초 연동처럼 전체 이력 재수집
   const usersQuery = supabase.from('users')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UsersRow와 일치
   const usersUpdateQuery = usersQuery.update({ initial_sync_done: false }).eq('id', userId)
   await usersUpdateQuery
   const stravaConnectionsQuery = supabase.from('strava_connections')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 StravaConnectionsRow와 일치
   const stravaUpdateQuery = stravaConnectionsQuery.update({ last_synced_at: null, backfill_completed: false }).eq('user_id', userId)
   const { error: stravaError } = await stravaUpdateQuery
   if (stravaError) return NextResponse.json({ error: stravaError.message }, { status: 500 })

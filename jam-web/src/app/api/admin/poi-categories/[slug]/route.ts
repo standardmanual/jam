@@ -29,7 +29,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('poi_categories')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({
       label,
       pipeline_linked,
