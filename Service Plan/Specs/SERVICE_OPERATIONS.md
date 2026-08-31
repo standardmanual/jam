@@ -24,7 +24,7 @@
 10. [팔로우 · 소셜](#10-팔로우--소셜)
 11. [피드 시스템](#11-피드-시스템)
 12. [어뷰징 방어 시스템](#12-어뷰징-방어-시스템)
-13. [떠돌이 신화 아이템](#13-떠돌이-신화-아이템)
+13. [떠돌이 Mystic 아이템](#13-떠돌이-mystic-아이템)
 14. [Cron 작업](#14-cron-작업)
 15. [API 라우트 전체 목록](#15-api-라우트-전체-목록)
 16. [DB 테이블 전체 목록](#16-db-테이블-전체-목록)
@@ -221,7 +221,7 @@ if (expires_at - 60초 < now) {
 
 [Step 2.5: 배지 홍수 방지]
 5. 30일 롤링 윈도우 내 activity_type당 최대 3개
-   (mythic → common 우선순위로 처리, 초과 시 missed)
+   (mystic → common 우선순위로 처리, 초과 시 missed)
 
 [Step 2.8: 첫 싱크 게이트]
 6. isFirstSync = true인 경우:
@@ -303,13 +303,13 @@ Rare 이상 배지에 `condition_json.prerequisite_badge_names: string[]`를 설
 ### 4-6. 성장 티어 · 진행 트랙 · 홍수 방지 정책
 
 **성장 티어:** 같은 이름 그룹에서 이미 보유한 티어보다 낮거나 같은 배지는 평가 대상 제외.  
-Common 보유 시 → Rare부터 평가. Legendary 이미 보유 시 → Mythic만 평가.
+Common 보유 시 → Rare부터 평가. Epic 이미 보유 시 → Mystic만 평가.
 
 **진행 트랙:** 순수 거리 또는 횟수 조건만 있는 배지는 `actType:distance_km` 또는 `actType:total_count` 키로 묶여 최고값 1개만 발급.  
 PROGRESSION_MODIFIERS(`elevation_gain_m`, `min_speed_kmh`, `streak_days`, `duration_minutes`, `weekend_duration_hours`, `monthly_km`, `weekly_count`, `season_count`, `month`, `season`, `temperature_min/max_c`, `poi_id`, `time_range`) 중 하나라도 있으면 트랙 독립.
 
 **홍수 방지:** 30일 롤링 윈도우 내 동일 `activity_type`당 최대 **3개** 발급.  
-초과 시 mythic 우선 통과, 나머지 missed 처리.
+초과 시 mystic 우선 통과, 나머지 missed 처리.
 
 ### 4-7. POI 통과 배지 발급
 
@@ -336,10 +336,10 @@ matchPoisForActivity(latlngPath, pois):
 
 | rarity | 의미 | 첫 싱크 발급 |
 |--------|------|-------------|
-| `common` | 일반 | ✅ 허용 |
-| `rare` | 레어 | ❌ 차단 (initial_sync_done 후 해제) |
-| `legendary` | 레전더리 | ❌ 차단 |
-| `mythic` | 신화 | ❌ 차단 |
+| `common` | Common | ✅ 허용 |
+| `rare` | Rare | ❌ 차단 (initial_sync_done 후 해제) |
+| `epic` | Epic | ❌ 차단 |
+| `mystic` | Mystic | ❌ 차단 |
 
 ---
 
@@ -361,13 +361,13 @@ tryItemDrop(userId, activityId):
    Random 값 → rarity 결정
    0.00 ~ 0.40: common   (40%)
    0.40 ~ 0.65: rare     (25%)
-   0.65 ~ 0.75: legendary(10%)
-   0.75 ~ 0.80: mythic   ( 5%)
+   0.65 ~ 0.75: epic(10%)
+   0.75 ~ 0.80: mystic   ( 5%)
    0.80 ~ 1.00: null     (20%, 드랍 없음)
 
 2. 섀도우밴 적용 (shouldAllowDrop):
-   soft 밴 → legendary, mythic 드랍률 0%로 강제
-   hard 밴 → rare, legendary, mythic 드랍률 0%로 강제
+   soft 밴 → epic, mystic 드랍률 0%로 강제
+   hard 밴 → rare, epic, mystic 드랍률 0%로 강제
               (common만 통과)
    null rarity → 바로 종료 (드랍 없음)
 
@@ -394,11 +394,11 @@ tryItemDrop(userId, activityId):
 |------|----------|---------------|
 | common | 40% | — |
 | rare | 25% | — |
-| legendary | 10% | — |
-| mythic | 5% | — |
+| epic | 10% | — |
+| mystic | 5% | — |
 | 드랍 없음 | — | 20% |
 
-섀도우밴 시 legendary/mythic 또는 rare까지 차단되어 실질 드랍률 감소.
+섀도우밴 시 epic/mystic 또는 rare까지 차단되어 실질 드랍률 감소.
 
 ---
 
@@ -766,11 +766,11 @@ checkAndUpdateLocation(userId, lat, lng):
 user_shadow_bans { user_id, ban_level: 'soft'|'hard', reason, expires_at }
 
 soft 밴:
-  legendary, mythic 드랍 → 0% (차단)
+  epic, mystic 드랍 → 0% (차단)
   rare, common 정상 유지
 
 hard 밴:
-  rare, legendary, mythic 드랍 → 0% (차단)
+  rare, epic, mystic 드랍 → 0% (차단)
   common만 정상 유지
 ```
 
@@ -791,11 +791,11 @@ abusing_policy {
   id: 1 (항상 단 1건)
   vehicle_speed_filter_kmh: 60      -- 차량 속도 기준
   gps_max_speed_kmh: 300            -- GPS 조작 감지 기준
-  soft_ban_legendary_rate: 0.0      -- soft밴 시 legendary 드랍률
-  soft_ban_mythic_rate: 0.0         -- soft밴 시 mythic 드랍률
-  hard_ban_rare_rate: 0.0           -- hard밴 시 rare 드랍률
-  hard_ban_legendary_rate: 0.0      -- hard밴 시 legendary 드랍률
-  hard_ban_mythic_rate: 0.0         -- hard밴 시 mythic 드랍률
+  soft_epic_rate: 0.0               -- soft밴 시 epic 드랍률
+  soft_mystic_rate: 0.0             -- soft밴 시 mystic 드랍률
+  hard_rare_rate: 0.0               -- hard밴 시 rare 드랍률
+  hard_epic_rate: 0.0               -- hard밴 시 epic 드랍률
+  hard_mystic_rate: 0.0             -- hard밴 시 mystic 드랍률
 }
 ```
 
@@ -803,7 +803,7 @@ abusing_policy {
 
 ---
 
-## 13. 떠돌이 신화 아이템
+## 13. 떠돌이 Mystic 아이템
 
 **관련 파일:** `supabase/migrations/011_phases_15_18.sql`, `src/app/api/cron/wandering/`
 
@@ -834,7 +834,7 @@ GET /api/cron/wandering (Authorization: Bearer CRON_SECRET)
 | 경로 | 실행 주기 | 기능 |
 |------|----------|------|
 | `GET /api/cron/sync` | 정기 (외부 스케줄러 설정) | 전체 `strava_connections` 유저 순차 동기화. Strava Rate Limit 대응. |
-| `GET /api/cron/wandering` | 매시간 | 떠돌이 신화 아이템 POI 이동 처리 |
+| `GET /api/cron/wandering` | 매시간 | 떠돌이 Mystic 아이템 POI 이동 처리 |
 | `GET /api/cron/poi-cleanup` | 정기 | 만료된 POI 드랍 정리 |
 
 ---
@@ -878,7 +878,7 @@ GET /api/cron/wandering (Authorization: Bearer CRON_SECRET)
 | 메서드 | 경로 | 기능 |
 |--------|------|------|
 | GET | `/api/cron/sync` | 전체 유저 Strava 정기 동기화 |
-| GET | `/api/cron/wandering` | 떠돌이 신화 아이템 POI 이동 |
+| GET | `/api/cron/wandering` | 떠돌이 Mystic 아이템 POI 이동 |
 | GET | `/api/cron/poi-cleanup` | 만료 POI 드랍 정리 |
 
 ### 어드민
@@ -936,7 +936,7 @@ GET /api/cron/wandering (Authorization: Bearer CRON_SECRET)
 | `user_shadow_bans` | 섀도우밴 기록 (ban_level, expires_at) | 010 |
 | `poi_blocks` | POI별 유저 블록 기록 (blocked_until) | 010 |
 | `abusing_logs` | 어뷰징 감지 로그 | 010 |
-| `wandering_mythic_state` | 떠돌이 신화 아이템 현재 위치 상태 | 011 |
+| `wandering_mythic_state` | 떠돌이 Mystic 아이템 현재 위치 상태 | 011 |
 
 ---
 
