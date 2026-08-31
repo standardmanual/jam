@@ -45,8 +45,9 @@ created: 2026-08-31
 | 20260831_1158 조사 당시 | 92 | 55 |
 | **현재(2026-08-31 12:13 실측)** | **97** | **58** |
 
-조사 이후 5개가 추가됐다. **잔여 오류 27건이라는 수치도 그만큼 달라질 수 있으므로,
-구현자는 전환 직후 직접 재측정하고 실제 수치를 완료 기록에 남긴다.**
+> ⚠️ **위 표는 틀렸다 (완료 기록에서 정정).** `grep -c`가 문서 주석에서 지시자를 **언급만** 하는
+> 줄 5개까지 세서 나온 수치다. 실제 지시자는 **92개 / 55파일**로 조사 당시와 같다.
+> 잔여 오류도 예측치와 정확히 같은 27건이었다.
 
 ### 조사에서 분류된 잔여 오류 원인 8종 (27건 기준, 참고용)
 
@@ -95,9 +96,10 @@ created: 2026-08-31
   이미 대응 완료다(20260831_1118).
 - **`abusing_policy` 저장 복구는 별도 티켓 소관.**
   단 `lib/abusing/policy.ts:42,52`는 이번 변경으로 컴파일 오류가 되므로 그냥 둘 수 없다.
-  → **이번 티켓의 선택: "타입만 맞춰 통과"** (아래 의사결정 참조).
-  런타임 동작(읽기 시 `soft_legend_rate`가 `undefined`, 쓰기 시 PGRST204 실패)은 **그대로 둔다.**
-  타입 경계에 불일치 사실과 후속 티켓 필요성을 주석으로 명시한다.
+  → **작성 시점의 선택: "타입만 맞춰 통과"** — 후속 티켓이 아직 없어 순서 조율이 불가능했다.
+  > ⚠️ **이 선택은 무효가 됐다.** 구현 중 티켓 20260831_1149(어뷰징 정책 저장 복구)와
+  > 20260831_1115(등급명 개명)가 staging에 먼저 랜딩해, 리베이스 후에는 캐스팅 없이
+  > 억제만 제거하면 되는 상태가 됐다. 완료 기록의 "staging 리베이스" 절 참조.
 
 ## 구현 계획
 
@@ -169,7 +171,7 @@ Supabase 클라이언트 제네릭 3곳을 수기 `database.ts` → 생성 `data
 | d | enum/nullable 정합 기타 | 7 | 아래 "드러난 수기 타입 드리프트" 참조 |
 | e | `PostgrestFilterBuilder` 대입 5곳 | 5 | **라이브러리 추론 한계가 아니었다.** 전부 실제 nullable/도메인 타입 불일치였다 — 아래 참조 |
 | f | 테스트 목 오버로드 | 5 | 스텁의 `from`을 그대로 노출(`stub.from`)해 가상 테이블명(`rows`·`composite`)을 쓰게 했다. 실제 클라이언트 타입은 실재 테이블명만 받기 때문이다. 동작은 같은 함수 |
-| g | `abusing_policy` | 2 | **타입만 통과, 런타임 불변** (아래 의사결정 참조) |
+| g | `abusing_policy` | 2 | 최초 구현에선 "타입만 통과, 런타임 불변"(티켓 지시)이었으나, **리베이스로 무효화**됐다 — 아래 "staging 리베이스" 참조. 최종본은 캐스팅 없이 억제만 제거해 **실제 컬럼 검사를 받는다** |
 
 #### 드러난 수기 타입 드리프트 — 억제가 가리고 있던 실제 불일치
 
@@ -192,6 +194,30 @@ Supabase 클라이언트 제네릭 3곳을 수기 `database.ts` → 생성 `data
 **수기 타입이 DB보다 좁은** 지점은 생성 타입(`Json`/`string[]`)으로 바로 받을 수 없다.
 조회는 DB 형태로 받고 도메인 타입으로 만들 때만 좁히도록 분리했다
 (`lib/drop-engine/index.ts`의 `DropBadgeFromDb`, `admin/badges/page.tsx`의 `CheckinCandidateRow`).
+
+#### staging 리베이스 — 개명·어뷰징복구 티켓이 먼저 랜딩해 전제가 바뀌었다
+
+구현이 도는 동안 병렬 세션이 **티켓 20260831_1115(등급명 개명)** 와 **20260831_1149(어뷰징 정책
+저장 복구)** 를 staging에 먼저 푸시했다. 마이그레이션 115는 **이미 공용 DB에 적용**돼 있었다
+(`information_schema` 직접 조회로 확인: `drop_policy.rarity_epic`·`rarity_mystic`,
+`abusing_policy.soft/hard_epic_rate`·`soft/hard_mystic_rate`, `ambient_drop_config.rarity_epic`·`rarity_mystic`).
+
+그대로 머지하면 겹치는 11개 파일에서 개명이 되돌아가 **이미 개명된 DB와 어긋난다.**
+그래서 `origin/staging`(`6214ebeb`) 위로 리베이스했다 — 충돌은 2개 파일뿐이었고
+**양쪽 다 staging 버전이 최신**이라 staging 것을 취한 뒤 이 티켓의 기여분(억제 제거)만 다시 얹었다.
+
+| 파일 | staging이 한 일 | 이번 티켓의 최종 기여 |
+|---|---|---|
+| `lib/drop-engine/policy.ts` | 개명으로 `APP_KEY_TO_DB_COLUMN`·`toDbColumns` **제거** → 페이로드가 `{ id, ...patch, updated_at }` 리터럴로 복귀 | 억제 1개 제거 (TS2578로 불필요 확인) |
+| `lib/abusing/policy.ts` | 컬럼 개명 + 에러 확인·로깅·NUMERIC 정규화 추가(1149) → 앱 키 `soft_epic_rate`가 **DB 컬럼과 일치** | 억제 1개 제거 (TS2578로 불필요 확인) |
+
+**리베이스가 잔여 이슈 2건을 없앴다.**
+
+- 잔여 이슈 1번(`toDbColumns()` 스프레드 구멍) — 매핑 자체가 사라져 **해소**. 개선 리뷰어가
+  "개명 티켓에서 자동으로 닫힌다"고 예측한 그대로다.
+- 잔여 이슈 2번(`abusing_policy` 저장 복구) — 티켓 20260831_1149가 **완료**. 따라서 최초 구현의
+  `as unknown as` 캐스팅 2개와 "⚠️ 알려진 결함" 주석 블록은 **전부 불필요해져 제거**됐고,
+  그 파일의 쓰기 경로는 이제 진짜 컬럼 검사를 받는다(역검증 2번 참조).
 
 ### 변경된 파일
 ```
@@ -234,28 +260,42 @@ jam-web/src/lib/notifications/feed.ts                       (낡아진 전제 �
 - [x] `npm run lint` — **오류 0 / 경고 25건** (전부 기존 미사용 변수 경고. 새로 만든 경고 0건 —
       테스트 스텁의 미사용 파라미터 1건은 `void columns`로 해소해 25건을 유지했다)
 - [x] `npm run build` — **성공** (종료코드 0)
-- [x] `npm test` — **594 passed / 3 failed**. 실패 3건은 **변경 전 기준선과 완전히 동일**하다
-      (`git stash`로 원상 복구해 대조 실행: 594 passed / 3 failed). 원인은 이 워크트리에
-      `.env.local`이 없어 `sync-drop-order.test.ts` 2건이 Supabase 클라이언트 생성에서 실패하는 것과,
-      `BadgeRevealCarousel.stories.tsx` 스토리 단언 1건으로 **이번 변경과 무관**하다.
+- [x] `npm test` — **리베이스 후 606 passed / 3 failed** (리베이스 전 594 passed / 3 failed.
+      증가분 12건은 staging이 가져온 신규 테스트다). 실패 3건은 **이번 변경과 무관**하다:
+      - `sync-drop-order.test.ts` 2건 — 이 워크트리에 `.env.local`이 없어
+        `Your project's URL and Key are required to create a Supabase client!`로 실패한다(환경 문제).
+      - `BadgeRevealCarousel.stories.tsx` 1건 — 이번 diff는 `design-system/` 아래 파일을
+        **한 개도 건드리지 않았다**(`git diff --name-only origin/staging..HEAD | grep design-system` → 0건).
       직접 손댄 `batch-query.test.ts`는 변경 전후 모두 통과한다.
 - [x] **역검증** — 억제를 제거한 쓰기 경로 3곳에 일부러 잘못된 컬럼을 넣어 컴파일 오류 발생 확인
 - [x] 역검증 원복 후 `npx tsc --noEmit` 종료코드 0, `git status` 클린
 
-#### 역검증 결과 (이 티켓의 존재 이유)
+#### 역검증 결과 (이 티켓의 존재 이유) — 리베이스 후 재실행
 
-**1. 이번 사고의 그 컬럼 — `drop_policy.rarity_legend`** (`lib/drop-engine/policy.ts:111`)
+억제를 제거한 쓰기 경로 3곳에 일부러 잘못된 컬럼을 넣어 컴파일 오류를 실증했다.
+**개명이 이미 반영된 최종 코드 기준**이다.
+
+**1. 이번 사고의 그 컬럼 — `drop_policy`에 구 앱 키 `rarity_legend` 주입** (`lib/drop-engine/policy.ts:70`)
 
 ```
-error TS2345: Argument of type '{ rarity_legend: number; updated_at: string; id: number; }'
-  is not assignable to parameter of type 'RejectExcessProperties<{ adjacent_weight?: number | undefined; ... }>'.
-    Type '{ rarity_legend: number; ... }' is not assignable to type '{ rarity_legend: never; }'.
-      Types of property 'rarity_legend' are incompatible.
-        Type 'number' is not assignable to type 'never'.
+error TS2345: Argument of type '{ rarity_legend: number; updated_at: string; rarity_common?: number | undefined;
+  rarity_epic?: number | undefined; rarity_mystic?: number | undefined; rarity_rare?: number | undefined;
+  ... 18 more ...; id: number; }' is not assignable to parameter of type 'RejectExcessProperties<...>'
 ```
-→ **41일간 조용히 실패했던 그 컬럼명이 이제 컴파일에서 잡힌다.**
+→ **41일간 조용히 실패했던 그 컬럼명이 컴파일에서 잡힌다.** 개명으로 `toDbColumns()`가 사라져
+페이로드 키가 타입에 그대로 드러나므로(오류 메시지에 `rarity_epic`·`rarity_mystic`이 보인다),
+최초 구현 때 잔여 이슈 1번으로 남았던 **매핑 함수 스프레드 구멍도 함께 닫혔다.**
 
-**2. 오타 컬럼 — `users.displayname`** (`app/api/profile/route.ts:40`)
+**2. 18일간 저장 실패였던 컬럼 — `abusing_policy`에 구 키 `soft_legend_rate` 주입** (`lib/abusing/policy.ts:106`)
+
+```
+error TS2345: Argument of type '{ soft_legend_rate: number; updated_at: string; soft_common_rate?: number | undefined;
+  soft_rare_rate?: number | undefined; soft_epic_rate?: number | undefined; soft_mystic_rate?: number | undefined;
+  ... 8 more ...; id: number; }' is not assignable to parameter of type 'RejectExcessProperties<...>'
+```
+→ 최초 구현에선 이 파일이 캐스팅으로 검사 밖에 있었으나, 리베이스로 **캐스팅 없이 진짜 검사를 받는다.**
+
+**3. 오타 컬럼 — `users.displayname`** (`app/api/profile/route.ts:40`)
 
 ```
 error TS2561: Object literal may only specify known properties, but 'displayname' does not exist
@@ -264,13 +304,7 @@ error TS2561: Object literal may only specify known properties, but 'displayname
 ```
 → 오타는 **정정 제안까지** 붙는다.
 
-**3. 존재하지 않는 컬럼 — `ambient_drop_config.no_such_column__`** (`lib/ambient-drop/config.ts:73`)
-
-```
-error TS2322: Type 'number' is not assignable to type 'never'.
-```
-
-세 변경 모두 확인 직후 원복했고 `git status`가 클린임을 확인했다.
+세 변경 모두 확인 직후 원복했고 `npx tsc --noEmit` 종료코드 0과 `git status` 클린을 확인했다.
 
 ### UX Writing 검증
 - [x] 해당 없음 (사용자 노출 텍스트 변경 없음 — 타입 계층 작업)
@@ -282,10 +316,15 @@ error TS2322: Type 'number' is not assignable to type 'never'.
 
 ### 주요 의사결정 / 핵심 메모
 
-- **`abusing_policy`는 "타입만 통과, 런타임 불변"을 택했다** (티켓 지시).
-  `lib/abusing/policy.ts` 상단에 **"⚠️ 알려진 결함"** 블록을 두고 읽기는 `soft/hard_legend_rate`가
-  런타임에 `undefined`이고, 쓰기는 PGRST204로 항상 실패한다는 사실을 명시했다. 두 지점의 단언은
-  결함이 고쳐질 때 함께 지우도록 주석에 적었다. 컬럼 개명은 등급명 개명 작업 소관이라 손대지 않았다.
+- **`abusing_policy`는 처음에 "타입만 통과, 런타임 불변"을 택했으나(티켓 지시), 리베이스로
+  그 선택 자체가 무효가 됐다.** 병렬 세션의 티켓 20260831_1149가 저장 복구를, 20260831_1115가
+  컬럼 개명을 이미 끝내 앱 키와 DB 컬럼이 일치한다. 따라서 최초 구현의 `as unknown as` 단언 2개와
+  "⚠️ 알려진 결함" 주석 블록은 **전부 제거**했고, 최종본은 억제만 걷어낸 상태로 **실제 컬럼
+  검사를 받는다**(역검증 2번). 결과적으로 티켓이 우려했던 "억제가 캐스팅으로 형태만 바뀌는" 일은
+  최종본에 남지 않았다.
+- **머지 순서 조율은 리베이스로 처리했다.** 티켓 작성 시점엔 `abusing_policy` 후속 티켓이 없어
+  "순서 조율" 대신 "타입만 통과"를 택했는데, 실제로는 그 티켓이 먼저 랜딩해 순서가 저절로 정해졌다.
+  `git merge-base --is-ancestor` 검사 실패를 신호로 삼아 머지를 멈추고 리베이스한 것이 주효했다.
 - **억제를 지우고 남은 오류를 `@ts-expect-error`로 다시 덮지 않았다.** 잔여 억제 **0개**다.
   대신 각 지점에서 **"왜 타입이 어긋나는가"를 한 컬럼 단위로 좁혀** 표현했다
   (`Omit<Insert,'serial_number'>`, `Omit<Row,'condition_json'>` 등). 전체 캐스팅(`as XxxRow[]`)을
@@ -300,17 +339,29 @@ error TS2322: Type 'number' is not assignable to type 'never'.
 
 ### 잔여 이슈
 
-1. **`toDbColumns()` 계열 스프레드는 여전히 검사 밖이다.** `lib/drop-engine/policy.ts`의
-   `{ id: 1, ...toDbColumns(patch), updated_at }`에서 `toDbColumns()`의 반환형이
-   `Record<string, unknown>`이라 **그 스프레드가 기여하는 키는 타입에 남지 않는다**(역검증에서
-   페이로드 타입이 `{ rarity_legend; updated_at; id }`로만 잡힌 것으로 확인). 리터럴로 적은 키는
-   잡히지만 매핑 함수를 거친 키는 못 잡는다. `APP_KEY_TO_DB_COLUMN`을 생성 타입 키에 묶으면
-   해소되지만 이번 티켓 범위 밖이다(drop_policy 중복 수정 금지).
-2. **`abusing_policy` 저장 복구** — 별도 티켓. `updated_at`이 2026-08-13에 고착돼 있다.
+1. ~~`toDbColumns()` 계열 스프레드가 검사 밖~~ — **해소.** 등급명 개명(20260831_1115)이
+   `APP_KEY_TO_DB_COLUMN`·`toDbColumns`를 제거해 페이로드가 리터럴로 돌아왔다. 역검증 1번에서
+   페이로드 키가 타입에 드러나는 것을 확인했다.
+2. ~~`abusing_policy` 저장 복구~~ — **해소.** 티켓 20260831_1149에서 완료됐다.
 3. **수기 `UserRow.gps_daily_distance_km`가 `number | null`로 잘못 적혀 있다** (DB는 NOT NULL).
-   이번엔 사용처만 생성 타입으로 우회했고 수기 타입 자체는 고치지 않았다.
-4. **생성 타입 최신성 CI가 없다.** `npm run db:types` 재생성 후 `git diff --exit-code` 한 줄이면
-   되고, 이제 생성 타입이 실제 검사 기준이므로 낡으면 잘못된 오류가 난다. 20260831_1158에서
-   보조 수단으로 제안된 항목이다.
+   이번엔 사용처(`lib/abusing/gps-detector.ts`)만 생성 타입으로 우회했고 수기 타입 자체는 그대로다.
+4. **생성 타입 최신성을 지키는 장치가 없다.** 이번 변경으로 `database.generated.ts`가 쓰기 컴파일
+   검사의 **실제 기준**이 됐다. 이 파일이 낡으면 올바른 코드가 잘못된 컴파일 오류를 낸다
+   (20260831_1158에서 `badges.category`·`poi.is_active`가 실제로 그 상태였다).
+   개선 리뷰 제안: (a) pre-commit 경고 — `supabase/migrations/`가 스테이지됐는데
+   `database.generated.ts`가 같은 커밋에 없으면 경고(오프라인·즉시), (b) 완전 검증
+   (`npm run db:types` 후 `git diff --exit-code`)은 네트워크가 확보된 `/jam-ship` 시점 1회.
 5. **좁은 캐스팅(`as unknown as`)으로 남은 우회 3곳**(`engine-log`·`notifications/index`·
-   `notifications/feed`)은 이제 없어도 되는 코드다. 제거는 별도 정리 작업.
+   `notifications/feed`)은 이제 없어도 되는 코드다. 주석만 사실에 맞게 갱신했고 제거는 별도 정리 작업.
+6. **`as never` 캐스팅 4곳이 억제 개수 지표 밖에 있다** (개선 리뷰 발견). `@ts-expect-error` 0개가
+   "모든 쓰기가 검사된다"를 뜻하지 않는다 — `.update(body as never)` 형태는 컬럼 검사를 똑같이 끈다.
+   `app/api/admin/{today,missions,recipes}/[id]/route.ts`와 `lib/missions/rewards.ts:142`.
+   전부 이번 티켓이 건드리지 않은 기존 코드이며, `rewards.ts` 건은 리터럴 페이로드라 캐스팅을
+   지워도 통과할 가능성이 높은 가장 싼 후보다.
+7. **타입 검사를 자동으로 돌리는 게이트가 없다** (개선 리뷰 발견). `.githooks/pre-push`는
+   `npm run lint:ci`만 돌리고 `tsc`는 돌리지 않으며 `.github/workflows/`도 없다. 이번에 되살린
+   방어선의 실제 발동 시점이 Vercel 빌드(=배포 실패)까지 밀린다. pre-push staging 블록에
+   `npx tsc --noEmit` 한 줄을 추가하는 것이 효과를 고정하는 가장 직접적인 수단이다.
+8. **`AwardPointsArgsAllowingNull`이 필수 인자까지 null 허용으로 넓힌다.** `p_user_id`·`p_amount`·
+   `p_reason`의 non-null 검사가 꺼져 있다. `{ [K in keyof T]: undefined extends T[K] ? T[K] | null : T[K] }`
+   로 바꾸면 선택 인자만 넓어진다 (`lib/points/index.ts:27` 한 줄).
