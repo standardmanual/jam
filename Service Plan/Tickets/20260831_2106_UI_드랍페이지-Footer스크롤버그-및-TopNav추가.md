@@ -1,8 +1,9 @@
 ---
 id: 20260831_2106
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-08-31
+closed: 2026-08-31
 ---
 
 # [UI] 드랍 페이지 Footer 스크롤 버그 수정 + TopNav 추가
@@ -141,9 +142,9 @@ Service Plan/Specs/PRD/2026-08-15 DESIGN_RENEWAL_SPEC.md
 - [x] 해당 없음 (텍스트 문구 변경 없음, 레이아웃·컴포넌트 배치만 수정)
 
 ### 배포 정보
-- 배포일: (미배포 — 사용자 승인 후 오케스트레이터가 staging 병합·배포 처리)
-- 환경: production
-- 커밋: (아래 push한 브랜치 참고, main 병합 전)
+- 배포일: 2026-08-31 (staging 반영, 프로덕션 미배포)
+- 환경: staging
+- 커밋: `claude/jamwork-20260831_2106-drops-topnav` → staging 병합
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
