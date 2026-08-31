@@ -41,7 +41,11 @@ import { d } from '@/lib/i18n'
  * `(main)/layout.tsx`가 주입)를 읽어 중앙 슬롯(스트라바 동기화 버튼)과 우측 아바타
  * 슬롯을 호출부 변경 없이 자동으로 채운다("서비스 래퍼에서 기본 주입" 판정). 호출부는
  * 필요 시 `logo` prop만 추가로 넘기면 된다(탭 최상위 목록 페이지용, 로고로 back+title
- * 대체). `/drops`·본인 프로필처럼 TopNav 자체를 렌더링하지 않는 화면은 영향 없음.
+ * 대체). 본인 프로필처럼 TopNav 자체를 렌더링하지 않는 화면은 영향 없음.
+ *
+ * 20260831_2106: `/drops`도 다른 탭 최상위 화면과 동일한 `logo` 모드로 TopNav를 렌더링한다.
+ * 노치까지 채우는 풀블리드 지도를 위해 처음엔 의도적으로 뺐던 결정(2026-07-29 `1d7a8d55`)을
+ * 뒤집었다 — 지도 상단 일부가 TopNav에 가려지는 트레이드오프를 감수한다.
  */
 export interface TopNavProps {
   title?: string
@@ -77,7 +81,7 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   // centerSlot(동기화)·avatarSlot(프로필)이 조건 없이 항상 렌더되므로 종만 화면마다
   // 나타났다 사라지면 우측 구성이 들쭉날쭉해진다. 셋을 한 세트로 묶어 일관되게 둔다.
   // 호출부가 rightSlot을 쓰는 화면(예: 배지 상세 공유 버튼)은 [공유버튼][종][아바타]가 된다.
-  // TopNav 자체를 렌더링하지 않는 /drops는 자연히 제외된다.
+  // `/drops`도 20260831_2106부터 TopNav를 렌더링하므로 알림 종이 함께 노출된다.
   const composedRightSlot = (
     <>
       {rightSlot}

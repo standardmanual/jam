@@ -6,10 +6,18 @@ import { d } from '@/lib/i18n'
 
 /**
  * 전역 하단 푸터 — 투데이(홈, `/`)는 상단에 이미 로고를 노출하므로 제외한다.
+ *
+ * `/drops`도 제외한다: `DropsClient.tsx`가 `fixed inset-0`로 문서 흐름을 완전히 이탈하는
+ * 풀스크린 지도 화면이라, `(main)/layout.tsx`의 sticky-footer 트릭(children 래퍼 `min-h-dvh`)이
+ * "콘텐츠가 fixed로 이탈해 실제 높이가 0"인 케이스를 감안하지 못해 Footer가 `main` 스크롤에
+ * 끌려 올라오는 버그가 있었다(20260831_2106). 향후 같은 종류의 풀스크린 이탈 화면이 늘어나면
+ * 경로 하드코딩 나열보다 레이아웃 쪽에서 조건부 렌더링하는 방식을 재검토할 것.
  */
+const FOOTER_EXCLUDED_PATHS = ['/', '/drops']
+
 export default function Footer() {
   const pathname = usePathname()
-  if (pathname === '/') return null
+  if (FOOTER_EXCLUDED_PATHS.includes(pathname)) return null
 
   return (
     // relative z-10 — 배지 상세화면(/badges/[id])의 고정 배경 레이어(position:fixed, z-index:0,
