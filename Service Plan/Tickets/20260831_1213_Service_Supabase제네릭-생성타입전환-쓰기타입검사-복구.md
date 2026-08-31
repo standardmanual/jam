@@ -1,8 +1,9 @@
 ---
 id: 20260831_1213
 category: Service
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-08-31
+closed: 2026-08-31
 ---
 
 # [Service] Supabase 클라이언트 제네릭을 생성 타입으로 전환 — 쓰기 페이로드 타입 검사 복구
@@ -329,9 +330,11 @@ error TS2561: Object literal may only specify known properties, but 'displayname
 - [x] 해당 없음 (사용자 노출 텍스트 변경 없음 — 타입 계층 작업)
 
 ### 배포 정보
-- 배포일: 
-- 환경: staging
-- 커밋: 
+- 배포일: 2026-08-31
+- 환경: staging (프로덕션 승격은 `/jam-ship`으로 별도 진행)
+- 커밋: `f93b2831`(구현) · `7207eddb`(완료 기록) · `1572ca87`(헤더 주석 정정) · `4087d3b7`(문서 갱신)
+- 리뷰 브랜치: `claude/jamwork-20260831_1213-supabase-generic`
+- **DB 변경 없음** — 마이그레이션 파일을 만들지 않았다. 개명 마이그레이션 115는 티켓 20260831_1115 소관이며 이미 적용돼 있었다.
 
 ### 주요 의사결정 / 핵심 메모
 
