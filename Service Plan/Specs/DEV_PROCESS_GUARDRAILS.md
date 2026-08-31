@@ -181,6 +181,15 @@ authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
 7. **실패 전파는 API까지가 아니라 화면까지다.** 라우트가 4xx/5xx + `error`를 돌려줘도 폼이
    `res.ok`만 보고 본문을 버리면 운영자에게는 여전히 "저장 실패" 한 줄뿐이다. 저장 경로를
    고칠 땐 폼이 `json.error`를 읽는지까지 확인한다 (20260831_1118·1149 둘 다 폼 수정이 필요했다).
+8. **쓰기 페이로드에 타입 억제를 걸지 않는다.** `@ts-expect-error`만이 아니라 `as never`·
+   `as unknown as XxxInsert` 같은 전체 캐스팅도 **컬럼명 검증까지 함께 끈다** — 20260831_1118
+   사고가 컴파일에서 안 잡힌 직접 원인이 그것이었다. 억제가 정말 필요하면 **어긋나는 한 컬럼
+   단위로 좁힌다**(`Omit<Insert, 'serial_number'>` 형태). 전체 캐스팅은 오타까지 다시 통과시킨다.
+   억제 개수를 안전 지표로 읽지 말 것 — `as never`는 그 집계에 잡히지 않는다.
+9. **쓰기 페이로드에 `Record<string, unknown>` 반환 함수를 스프레드하지 않는다.** 그 스프레드가
+   기여하는 키는 페이로드 타입에서 **통째로 사라져** 오타가 그대로 통과한다. 리터럴로 적은 키만
+   검사받는다. 컬럼 매핑이 필요하면 반환형을 생성 타입의 `Insert`/`Update`에 묶는다
+   (`drop_policy`의 `toDbColumns()`가 이 형태였고, 마이그레이션 115로 매핑이 사라지며 해소됐다).
 
 ---
 
@@ -200,7 +209,7 @@ authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
 | `abusing_policy`(섀도우밴 배율·GPS/차량 속도 임계값) | `src/lib/abusing/policy.ts`(정규화·폴백·관측을 거치는 정식 경로), `src/lib/abusing/shadow-ban.ts`(런타임에 `${banLevel}_${rarity}_rate`로 **키를 문자열 조합** — 컬럼명이 바뀌어도 타입 검사에 안 걸리고 `?? 1.0` fail-open으로 차단이 조용히 꺼진다), `src/lib/strava/sync.ts`(`vehicle_speed_filter_kmh`를 `policy.ts`를 **우회해 직접 select** — 두 번째 접근 지점), `src/app/api/admin/abusing/policy/route.ts`(화이트리스트가 사실상 키 목록의 정의), `src/app/admin/abusing/AbusingClient.tsx` |
 | `poi` 테이블(반경·좌표) | `src/lib/poi/matcher.ts`(활동-POI 매칭), `src/app/api/drops/route.ts`(드랍 지도), `src/app/api/checkin-badges/route.ts`(체크인 배지 탭) — 셋 다 max-rows 대응이 되어 있어야 함(패턴 3) |
 | `engine_decision_log` 이벤트 타입 | `src/lib/engine-log/index.ts`의 `EngineDecisionEvent` 유니언 — 새 실패/판정 지점을 로깅할 땐 여기 타입부터 추가 |
-| `users` 테이블 컬럼 | `src/types/database.ts`의 `UserRow` — `database.generated.ts`(자동 생성본)와 대조해 누락 없는지 확인(`npm run db:types`로 재생성) |
+| `users` 테이블 컬럼 | **기준은 `src/types/database.generated.ts`**(`npm run db:types`로 재생성 — Supabase 클라이언트 제네릭의 진실 원천). `src/types/database.ts`의 `UserRow`는 도메인 타입이므로 생성본에 맞춰 갱신한다. 방향을 반대로 잡지 말 것 — 실제로 `UserRow.gps_daily_distance_km`가 수기 쪽 오류로 드러났다(20260831_1213) |
 
 ---
 
