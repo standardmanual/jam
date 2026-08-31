@@ -57,6 +57,26 @@ export const TREE_ACTIVITY_ORDER: ActivityType[] = [
   'walking', 'running', 'cycling', 'hiking', 'trail_running',
 ]
 
+/**
+ * "선행 조건 없이 얻는 배지" 섹션(D01~D11 + 트로피 매트릭스, 걷기 전용 32종) 정렬 순서 —
+ * 티켓 20260831_2250. `Specs/Content/ACTIVITY_BADGES.md`의 실제 서술 순서(D01→D11, 그다음
+ * T01~T18·T20·T22·T23 — T19·T21은 설계 단계에서 제외되어 결번)를 그대로 옮겼다. 이름 자체가
+ * 누적일수·트로피 순서를 담고 있어 가나다순으로 정렬하면 성장 서사가 깨진다.
+ */
+const INDEPENDENT_BADGE_ORDER: string[] = [
+  // D01~D11 — 누적 걷기 일수 체크포인트
+  '첫 발자국', '일주일의 증인', '이주의 리듬', '한 달의 산책자',
+  '두 달째 걷는 사람', '백일의 걸음', '반년의 동행', '일 년의 발자취',
+  '오백일의 산책자', '칠백일의 순례자', '천일의 방랑자',
+  // 트로피 매트릭스 — T01~T18·T20·T22·T23 (T19·T21 결번)
+  '숫자의 노예', '그냥 좀 걸었을 뿐', '만보왕', '걸음의 구도자',
+  '주말의 신도', '월요병 극복자', '불금은 없다', '평일의 성실함',
+  '일요일 새벽의 수도승', '불타는 금요일 밤 산책', '월요일 점심의 도피',
+  '폭염 속의 걸음', '영하 15도의 산책자', '그냥 좀 더웠음',
+  '사계절의 발걸음', '봄에만 걷는 사람', '겨울잠 안 자는 사람',
+  '1월의 다짐', '장마철의 의지', '하루종일 걸었다', '그냥 나갔다 옴',
+]
+
 export interface BadgeTreeSourceBadge {
   id: string
   name: string
@@ -256,7 +276,16 @@ export function buildBadgeActivityTrees(
     for (const families of stageFamilies.values()) {
       families.sort((a, b) => orderIndex(a.name) - orderIndex(b.name))
     }
-    independentFamilies.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+    // 가나다순이 아니라 문서 서술 순서(성장 서사, INDEPENDENT_BADGE_ORDER)로 고정 정렬.
+    // 배열에 없는 이름(향후 신규 독립 배지)은 뒤로 보내는 fallback — 에러로 죽지 않게.
+    independentFamilies.sort((a, b) => {
+      const ai = INDEPENDENT_BADGE_ORDER.indexOf(a.name)
+      const bi = INDEPENDENT_BADGE_ORDER.indexOf(b.name)
+      const aOrder = ai === -1 ? INDEPENDENT_BADGE_ORDER.length : ai
+      const bOrder = bi === -1 ? INDEPENDENT_BADGE_ORDER.length : bi
+      if (aOrder !== bOrder) return aOrder - bOrder
+      return a.name.localeCompare(b.name, 'ko')
+    })
 
     const stages: BadgeTreeStage[] = Array.from(stageFamilies.keys())
       .sort((a, b) => a - b)

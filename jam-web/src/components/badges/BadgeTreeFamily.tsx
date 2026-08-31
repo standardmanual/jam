@@ -13,9 +13,11 @@ import type { BadgeTreeFamily as BadgeTreeFamilyData } from '@/lib/badgeTree'
  */
 export interface BadgeTreeFamilyProps {
   family: BadgeTreeFamilyData
+  /** 이 유저가 획득한 배지 id 집합 — 미획득 배지 흑백/반투명 처리(티켓 20260831_2250) */
+  earnedBadgeIds: Set<string>
 }
 
-export default function BadgeTreeFamily({ family }: BadgeTreeFamilyProps) {
+export default function BadgeTreeFamily({ family, earnedBadgeIds }: BadgeTreeFamilyProps) {
   return (
     <div className="flex flex-col gap-[var(--spacing-8)] bg-surface-elevated/60 rounded-[var(--radius-cards)] p-[var(--spacing-12)]">
       {family.representative && (
@@ -35,6 +37,7 @@ export default function BadgeTreeFamily({ family }: BadgeTreeFamilyProps) {
               name={family.name}
               imageUrl={variant.imageUrl}
               rarity={variant.rarity}
+              earned={earnedBadgeIds.has(variant.id)}
               className="w-[110px] shrink-0"
             />
             <div className="flex-1 min-w-0 flex flex-col gap-[var(--spacing-8)] pt-[var(--spacing-8)]">
