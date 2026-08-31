@@ -472,9 +472,13 @@ function calculateProgress(
       const gated = condition.activity_type === 'walking' ? filtered.filter(passesWalkingGate) : filtered
       return gated.length > 0 ? Math.max(...gated.map((a) => a.movingTimeSec / 60)) : 0
     }
+    // 티켓 20260831_2152 — 배지엔진 evaluateConditionDetailed의 elevation_gain_m 판정
+    // (참가 시점 이후 누적 합계, 티켓 20260831_2100 복원분)과 표시값을 일치시킨다.
+    // duration_minutes(위)는 여전히 배지엔진 PER_ACTIVITY_KEYS에 남아 단일 활동 최고값으로
+    // 판정되므로 Math.max를 유지 — elevation_gain_m만 reduce 합산으로 바꾼다.
     case 'elevation_gain_m': {
       const gated = condition.activity_type === 'walking' ? filtered.filter(passesWalkingGate) : filtered
-      return gated.length > 0 ? Math.max(...gated.map((a) => a.elevationGainM)) : 0
+      return gated.reduce((sum, a) => sum + a.elevationGainM, 0)
     }
     default:
       return 0
