@@ -281,7 +281,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
               </div>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">차량 속도 필터 (km/h) — 이 속도를 초과하는 활동은 배지 평가에서 제외 (Phase 18)</span>
+              <span className="text-xs text-muted-foreground">차량 속도 필터 (km/h) — 이 속도를 초과하는 활동은 배지·아이템 드랍·미션 평가에서 모두 제외 (Phase 18)</span>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -289,7 +289,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
                   onChange={(e) => policySet('vehicle_speed_filter_kmh', parseInt(e.target.value) || 60)}
                   className="w-28 bg-white border border-border rounded-xl px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
                 />
-                <span className="text-sm text-muted-foreground">km/h (기본: 60)</span>
+                <span className="text-sm text-muted-foreground">km/h (기본: 60, 최소: 20)</span>
               </div>
             </label>
             <label className="flex flex-col gap-1">

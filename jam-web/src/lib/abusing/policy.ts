@@ -2,6 +2,7 @@
  * 어뷰징 정책 설정 로딩
  * service_role 클라이언트 전용
  */
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export interface AbusingPolicy {
@@ -66,9 +67,31 @@ export const RATE_KEYS: ReadonlySet<keyof AbusingPolicy> = new Set([
   'hard_mystic_rate',
 ])
 
-export async function getAbusingPolicy(): Promise<AbusingPolicy> {
+/**
+ * `vehicle_speed_filter_kmh`의 하한 (km/h).
+ *
+ * 이 값은 "차량 탑승 판정 기준"이고 필터식은 `평균속도 <= 임계값`(이하만 통과)이라,
+ * 임계값을 낮출수록 통과 대상이 줄어든다. JAM!이 지원하는 활동 중 사이클링의 평균속도가
+ * 통상 20~30km/h이므로 20km/h 미만으로 내리면 차량이 아니라 정상 사이클링·달리기를
+ * 통째로 배제하게 된다. 걸러진 활동은 배지뿐 아니라 아이템 드랍·미션에서도 빠지므로
+ * 핵심 보상 루프가 한꺼번에 멈춘다 (티켓 20260831_1300).
+ *
+ * 하한 검증은 **저장 경로(어드민 정책 라우트)가 소유**한다 — 운영자가 즉시 400으로 인지할 수
+ * 있는 지점이기 때문이다. 소비 지점은 `<= 0`·비유한수만 막는 페일세이프만 둔다.
+ */
+export const MIN_VEHICLE_SPEED_FILTER_KMH = 20
+
+/**
+ * 어뷰징 정책을 읽는 **정식 경로**. 정규화·폴백·관측이 모두 여기에 있으므로
+ * `abusing_policy`를 직접 select하지 말고 이 함수를 쓴다 (티켓 20260831_1300).
+ *
+ * @param client 이미 만들어 둔 Supabase 클라이언트. 호출부가 클라이언트를 인자로 주입받는
+ *   구조(예: `processFetchedActivities(supabase, ...)`)에서 주입 사슬을 끊지 않기 위한 것이다.
+ *   생략하면 service_role 클라이언트를 새로 만든다.
+ */
+export async function getAbusingPolicy(client?: SupabaseClient): Promise<AbusingPolicy> {
   try {
-    const supabase = createServiceClient()
+    const supabase = client ?? createServiceClient()
     const { data, error } = await supabase.from('abusing_policy').select('*').eq('id', 1).single()
     if (error) {
       // 폴백은 유지하되(정책 로딩 실패로 픽업 경로가 죽으면 안 됨) 실패 신호는 서버 로그에 남긴다

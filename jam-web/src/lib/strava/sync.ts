@@ -22,6 +22,7 @@ import { recordActivityRecap } from '@/lib/notifications/recap'
 import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { logEngineDecision } from '@/lib/engine-log'
+import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
 import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
 import type { StravaConnectionRow, BadgeType, BadgeRarity, PoiRow, StravaActivityRow } from '@/types/database'
@@ -453,15 +454,26 @@ export async function processFetchedActivities(
     })
   }
 
-  // Phase 18: 차량 속도 필터 적용 — 어뷰징 정책에서 임계값 조회
-  let vehicleSpeedFilterKmh = 60
-  const { data: abusingPolicy } = await supabase
-    .from('abusing_policy')
-    .select('vehicle_speed_filter_kmh')
-    .limit(1)
-    .single()
-  if (abusingPolicy && (abusingPolicy as { vehicle_speed_filter_kmh?: number }).vehicle_speed_filter_kmh) {
-    vehicleSpeedFilterKmh = (abusingPolicy as { vehicle_speed_filter_kmh: number }).vehicle_speed_filter_kmh
+  // Phase 18: 차량 속도 필터 적용 — 어뷰징 정책의 정식 로더로 임계값을 읽는다.
+  // 20260831_1300 — 이전에는 여기서 abusing_policy를 직접 select해 정식 경로(getAbusingPolicy)의
+  // NUMERIC 정규화·조회 실패 로그·키 누락 관측·`id = 1` 조건을 전부 건너뛰었고, truthy 검사
+  // 때문에 임계값 0이 조용히 60으로 둔갑했다. 주입된 supabase 클라이언트를 그대로 넘겨
+  // 호출부의 클라이언트 주입 사슬을 유지한다.
+  const abusingPolicy = await getAbusingPolicy(supabase)
+  let vehicleSpeedFilterKmh = abusingPolicy.vehicle_speed_filter_kmh
+  if (!Number.isFinite(vehicleSpeedFilterKmh) || vehicleSpeedFilterKmh <= 0) {
+    // 페일세이프 — 필터식이 `평균속도 <= 임계값`이라 임계값이 0 이하면 사실상 모든 활동이
+    // 탈락하고, activitiesFiltered는 배지뿐 아니라 아이템 드랍·미션까지 흘러가므로 핵심
+    // 보상 루프 전체가 멈춘다. 그래서 폴백 방향을 **핵심 루프를 살리는 쪽**(기본 임계값)으로
+    // 고르되, 무음으로 넘기지 않고 로그를 남긴다 (DEV_PROCESS_GUARDRAILS 패턴 9 규칙 1·6).
+    // 하한(MIN_VEHICLE_SPEED_FILTER_KMH)은 여기서 재검사하지 않는다 — 정책 검증은 저장
+    // 경로(어드민 정책 라우트)가 소유한다. 운영자가 의도적으로 넣은 값을 소비 지점이 조용히
+    // 덮어쓰면 "저장한 값과 실제 동작이 다른" 같은 종류의 불일치가 재발한다.
+    console.error(
+      `[processFetchedActivities] vehicle_speed_filter_kmh 값이 비정상(${vehicleSpeedFilterKmh}) — ` +
+        `기본값 ${DEFAULT_POLICY.vehicle_speed_filter_kmh}km/h로 폴백, userId: ${userId}`
+    )
+    vehicleSpeedFilterKmh = DEFAULT_POLICY.vehicle_speed_filter_kmh
   }
   const activitiesFiltered = activities.filter((a) => a.averageSpeedKmh <= vehicleSpeedFilterKmh)
 

@@ -134,7 +134,8 @@ strava_connections UPSERT
    → NormalizedActivity로 변환 (STRAVA_TYPE_TO_JAM 매핑)
 
 4. 차량 속도 필터 적용
-   → abusing_policy.vehicle_speed_filter_kmh (기본 60km/h) 초과 활동 제외
+   → abusing_policy.vehicle_speed_filter_kmh (기본 60km/h, 최소 20km/h) 초과 활동 제외
+   → 걸러진 활동은 배지 평가뿐 아니라 아이템 드랍·미션 진행에서도 함께 빠진다
 
 5. Strava Streams API로 GPS 경로 조회
    → 각 활동의 latlng 경로 데이터 획득
@@ -740,13 +741,23 @@ user_activity_feed {
 ### 12-1. 차량 속도 필터
 
 ```
-abusing_policy.vehicle_speed_filter_kmh (기본값: 60km/h)
+abusing_policy.vehicle_speed_filter_kmh (기본값: 60km/h, 최소값: 20km/h)
 
 Strava 동기화 시:
   activity.average_speed_kmh > vehicle_speed_filter_kmh
-  → 해당 활동을 뱃지 엔진 평가에서 제외
-  (드랍은 별도 판단)
+  → 해당 활동을 아래 세 곳에서 모두 제외
+     · 액티비티 배지 평가 (evaluateBadges)
+     · 아이템 드랍 대상 선정·판정 (tryItemDrop)
+     · 미션 진행 체크 (checkMissions)
 ```
+
+- 임계값은 `getAbusingPolicy()`(정식 경로)로 읽는다. 못 읽거나 값이 0 이하면 기본값 60km/h로
+  폴백하고 서버 로그를 남긴다 — 필터식이 "이하만 통과"라 임계값이 0이면 모든 활동이 탈락해
+  배지·드랍·미션이 한꺼번에 멈추기 때문이다.
+- **하한 20km/h는 어드민 저장 경로에서 강제한다.** 사이클링 평균속도가 통상 20~30km/h라
+  그 아래로 내리면 차량이 아니라 정상 활동을 거르게 된다. 20 미만을 저장하면 400과 함께
+  안내 메시지가 뜬다. 필터를 사실상 끄고 싶으면 값을 크게(예: 999) 올린다.
+  (티켓 20260831_1300)
 
 ### 12-2. GPS 조작 감지
 
@@ -805,7 +816,7 @@ abusing_policy {
   -- 임계값 (상한 없는 정수)
   gps_max_speed_kmh:         300    -- GPS 조작 감지 기준
   gps_daily_distance_cap_km: 3000   -- 일일 누적 이동거리 상한
-  vehicle_speed_filter_kmh:  60     -- 차량 탑승 판정 기준 (초과 활동은 배지 평가 제외)
+  vehicle_speed_filter_kmh:  60     -- 차량 탑승 판정 기준. 최소 20 (초과 활동은 배지·드랍·미션에서 제외)
   poi_block_hours:           72     -- GPS 조작 감지 후 POI 블록 지속 시간
   updated_at
 }

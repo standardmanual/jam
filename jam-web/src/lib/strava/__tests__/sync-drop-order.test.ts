@@ -102,6 +102,24 @@ function makeRawActivity(overrides: Partial<StravaSummaryActivity> = {}): Strava
   }
 }
 
+/** `abusing_policy` 행 (id=1, 2026-08-31 운영값) */
+const ABUSING_POLICY_ROW: Record<string, unknown> = {
+  id: 1,
+  soft_common_rate: 1.0,
+  soft_rare_rate: 1.0,
+  soft_epic_rate: 1.0,
+  soft_mystic_rate: 0.0,
+  hard_common_rate: 1.0,
+  hard_rare_rate: 0.0,
+  hard_epic_rate: 1.0,
+  hard_mystic_rate: 0.0,
+  gps_max_speed_kmh: 300,
+  poi_block_hours: 72,
+  vehicle_speed_filter_kmh: 60,
+  gps_daily_distance_cap_km: 3000,
+  updated_at: '2026-08-31T03:48:29+00:00',
+}
+
 /** 최소한의 supabase 클라이언트 스텁 — processFetchedActivities가 실제 조회하는
  * abusing_policy / strava_activities / user_drop_state(신규 가드) 테이블만 응답한다. */
 function makeFakeSupabase(): SupabaseClient {
@@ -113,7 +131,9 @@ function makeFakeSupabase(): SupabaseClient {
       limit: () => builder,
       single: async () => {
         if (table === 'abusing_policy') {
-          return { data: { vehicle_speed_filter_kmh: 60 }, error: null }
+          // 20260831_1300 — sync.ts가 정식 로더 getAbusingPolicy()로 `select('*')`을 하므로
+          // 행 전체를 돌려준다 (일부 키만 주면 로더가 기본값 폴백 로그를 남긴다)
+          return { data: { ...ABUSING_POLICY_ROW }, error: null }
         }
         return { data: null, error: null }
       },
