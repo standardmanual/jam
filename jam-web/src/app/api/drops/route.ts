@@ -73,7 +73,6 @@ async function searchAndPersistCategories(
   }))
   const poiInsertQuery = service.from('poi')
   const { data: inserted, error: insertError } = await poiInsertQuery
-    // @ts-expect-error Supabase insert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiRow와 일치
     .insert(inserts)
     .select('id, naver_id')
 
@@ -274,8 +273,6 @@ export async function POST(req: NextRequest) {
     p_poi_id: poi_id,
     p_inventory_item_id: inventory_item_id,
   }
-  // @ts-expect-error 'create_user_drop' RPC 함수가 src/types/database.ts의 Functions에 미등록
-  // (기존 pickup_drop과 동일한 상황 — 별도 티켓으로 타입 등록 필요)
   const { data: rpcResult, error: rpcError } = await service.rpc('create_user_drop', rpcArgs)
 
   if (rpcError) {

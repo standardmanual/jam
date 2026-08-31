@@ -128,7 +128,6 @@ export async function POST(req: NextRequest) {
 
   const { error: updateErr } = await supabase
     .from('badges')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ image_url: imageUrl })
     .eq('id', badge.id)
   if (updateErr) {

@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient()
   const themePresetsQuery = supabase.from('theme_presets')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 ThemePresetsRow와 일치
   const insertQuery = themePresetsQuery.insert({ name: name.trim(), main_color, sub_color, is_active: false })
   const { data, error } = await insertQuery.select().single()
 

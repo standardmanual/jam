@@ -8,7 +8,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   const { id } = await params
   const supabase = createServiceClient()
-  // @ts-expect-error Supabase rpc() 인자 타입 매칭 제한(단일 필수 인자 RPC에서 발생하는 라이브러리 특이 케이스) 우회 — 실제 인자는 activate_theme_preset(p_preset_id uuid)와 일치
   const { error } = await supabase.rpc('activate_theme_preset', { p_preset_id: id })
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 

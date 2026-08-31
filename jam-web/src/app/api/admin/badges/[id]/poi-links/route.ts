@@ -54,7 +54,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (removedIds.length > 0) {
     const { error } = await supabase
       .from('poi')
-      // @ts-expect-error Supabase 타입 추론 제한 우회
       .update({ linked_badge_id: null })
       .in('id', removedIds)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -64,7 +63,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (nextIds.length > 0) {
     const { error } = await supabase
       .from('poi')
-      // @ts-expect-error Supabase 타입 추론 제한 우회
       .update({ linked_badge_id: id })
       .in('id', nextIds)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -75,7 +73,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     for (const [category, radiusMeters] of Object.entries(EXACT_MATCH_RADIUS_BY_CATEGORY)) {
       const { error: radiusError } = await supabase
         .from('poi')
-        // @ts-expect-error Supabase 타입 추론 제한 우회
         .update({ radius_meters: radiusMeters })
         .in('id', nextIds)
         .eq('category', category)

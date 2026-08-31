@@ -28,9 +28,7 @@ export async function shouldSearch(
     .maybeSingle()
 
   if (!data) return true
-  // @ts-expect-error 명시적 Promise<boolean> 반환 타입 조합에서 supabase-js 추론이 무너지는 TS 특이 케이스 — data는 PoiSearchCacheRow의 컬럼을 가짐
   const searchedAt = new Date(data.searched_at).getTime()
-  // @ts-expect-error 위와 동일
   const ttl = data.had_results ? SEARCH_CACHE_TTL_SECONDS : EMPTY_RESULT_CACHE_TTL_SECONDS
   return Date.now() - searchedAt > ttl * 1000
 }
@@ -43,6 +41,5 @@ export async function markSearched(
 ): Promise<void> {
   const table = service.from('poi_search_cache')
   const payload = { grid_key: gridKey, category, searched_at: new Date().toISOString(), had_results: hadResults }
-  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiSearchCacheRow와 일치
   await table.upsert(payload)
 }

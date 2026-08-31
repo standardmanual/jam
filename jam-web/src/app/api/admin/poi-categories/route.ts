@@ -55,7 +55,6 @@ export async function POST(req: NextRequest) {
     keywords: pipeline_linked ? keywords : [],
   }
   const poiCategoriesQuery = supabase.from('poi_categories')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiCategoriesRow와 일치
   const insertQuery = poiCategoriesQuery.insert(insertPayload)
   const { data, error } = await insertQuery.select().single()
 

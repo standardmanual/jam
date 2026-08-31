@@ -54,7 +54,6 @@ export async function GET(request: NextRequest) {
   }
 
   const usersTable = serviceClient.from('users')
-  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
   await usersTable.upsert(upsertData, { onConflict: 'id' })
 
   // username 존재 여부 확인 → 온보딩 필요 여부 판단

@@ -50,7 +50,6 @@ export async function getCombinePolicy(): Promise<CombinePolicy> {
 export async function updateCombinePolicy(patch: Partial<CombinePolicy>): Promise<void> {
   const supabase = createServiceClient()
   const q = supabase.from('combine_policy')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CombinePolicyRow와 일치
   await q.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
 }
 

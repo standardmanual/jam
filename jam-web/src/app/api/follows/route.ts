@@ -29,7 +29,6 @@ export async function POST(request: Request) {
 
   const { error } = await supabase
     .from('user_follows')
-    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 user_follows 스키마와 일치
     .insert({ follower_id: user.id, following_id: targetUserId })
 
   if (error) {

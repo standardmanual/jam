@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Button } from '@/components/admin/ui/button'
 import type { BadgeType, BadgeRarity, FactionRow, ItemBookRow, PoiCategoryRow } from '@/types/database'
 import BadgeList, { type BadgeListRow } from '@/components/admin/badges/BadgeList'
+import type { Json } from '@/types/database.generated'
 import BadgesFilterBar from './BadgesFilterBar'
 import Pagination from '../poi/Pagination'
 import { UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
@@ -80,7 +81,15 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   let total: number
 
   if (filterByCheckinCategory) {
-    type CheckinCandidateRow = BadgeListRow & { category: string | null; created_at: string }
+    // badges.activity_types(text[])·condition_json(jsonb)은 DB 타입이 각각 string[]·Json이라
+    // 도메인 좁힘 타입(ActivityType[]·BadgeCondition|null)으로 바로 받을 수 없다. 조회는 DB
+    // 형태로 받고 BadgeListRow로 만들 때만 좁힌다 — 나머지 컬럼은 계속 검사된다.
+    type CheckinCandidateRow = Omit<BadgeListRow, 'activity_types' | 'condition_json'> & {
+      activity_types: string[]
+      condition_json: Json
+      category: string | null
+      created_at: string
+    }
     const [allCheckinRows, linkedPoiRows] = await Promise.all([
       fetchAllRows<CheckinCandidateRow>((from, to) =>
         supabase
@@ -138,8 +147,8 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
         type: c.type,
         rarity: c.rarity,
         image_url: c.image_url,
-        condition_json: c.condition_json,
-        activity_types: c.activity_types,
+        condition_json: c.condition_json as BadgeListRow['condition_json'],
+        activity_types: c.activity_types as BadgeListRow['activity_types'],
         patch_available: c.patch_available,
         patch_price_krw: c.patch_price_krw,
         faction_id: c.faction_id,

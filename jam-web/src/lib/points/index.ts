@@ -10,6 +10,21 @@ import { logEngineDecision } from '@/lib/engine-log'
 import { createNotification } from '@/lib/notifications'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import type { PointReason, PointTransactionRow } from '@/types/database'
+import type { Database } from '@/types/database.generated'
+
+/**
+ * `award_points` RPC 인자 타입.
+ *
+ * DB 함수는 선택 인자를 `DEFAULT NULL`로 선언하는데(migrations/080), 생성 타입은 그것을
+ * `p_source_badge_id?: string`(옵셔널 · null 불허)로 옮긴다. 그래서 지금 코드처럼 명시적 null을
+ * 넘기면 타입에서 막힌다. PostgREST에서 "null 전달"과 "인자 생략"은 둘 다 DEFAULT NULL과 같은
+ * 결과이므로 어느 쪽도 동작은 같지만, 이 티켓(20260831_1213)은 타입 계층만 손대는 작업이라
+ * 실제로 보내는 값(null)을 그대로 두고 타입 쪽을 null 허용으로 넓힌다.
+ *
+ * 키 집합은 생성 타입에서 파생되므로 **인자 이름 오타는 여전히 컴파일 오류로 잡힌다.**
+ */
+type AwardPointsArgs = Database['public']['Functions']['award_points']['Args']
+type AwardPointsArgsAllowingNull = { [K in keyof AwardPointsArgs]: AwardPointsArgs[K] | null }
 
 export interface AwardPointsOptions {
   sourceBadgeId?: string | null
@@ -43,8 +58,7 @@ export async function awardPoints(
   if (amount === 0) return null
 
   const supabase = createServiceClient()
-  // @ts-expect-error Supabase rpc() 인자 타입 매칭 제한(옵셔널 필드가 섞인 RPC에서 발생하는 라이브러리 특이 케이스) 우회 — 실제 인자는 award_points() RPC 시그니처와 일치
-  const { data, error } = await supabase.rpc('award_points', {
+  const rpcArgs: AwardPointsArgsAllowingNull = {
     p_user_id: userId,
     p_amount: amount,
     p_reason: reason,
@@ -52,7 +66,8 @@ export async function awardPoints(
     p_source_mission_id: options.sourceMissionId ?? null,
     p_admin_reason_label: options.adminReasonLabel ?? null,
     p_admin_reason_note: options.adminReasonNote ?? null,
-  })
+  }
+  const { data, error } = await supabase.rpc('award_points', rpcArgs as AwardPointsArgs)
 
   if (error) {
     console.error(

@@ -15,6 +15,18 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { awardPoints } from '@/lib/points'
 import { getCombinePolicy, resolveTier } from '@/lib/combine/policy'
 import type { BadgeRow, CombinationRecipeRow, InventoryItemRow } from '@/types/database'
+import type { Database } from '@/types/database.generated'
+
+/**
+ * `inventory_items.serial_number`는 NOT NULL인데 DEFAULT가 없어(migrations/034) 생성 타입이
+ * Insert 필수 컬럼으로 잡지만, 실제 값은 BEFORE INSERT 트리거 `assign_random_serial()`
+ * (migrations/108)이 채운다. 이 한 컬럼만 `Omit`으로 떼어내고 나머지 컬럼은 이름·타입 검사를
+ * 그대로 받게 둔다 — 억제(`@ts-expect-error`)로 덮으면 컬럼명 오타까지 같이 통과한다
+ * (티켓 20260831_1213).
+ */
+type InventoryItemInsert = Database['public']['Tables']['inventory_items']['Insert']
+type InventoryItemInsertByTrigger = Omit<InventoryItemInsert, 'serial_number'>
+
 
 export type CombineResult =
   | {
@@ -121,7 +133,6 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   const destroyedAt = new Date().toISOString()
   const { data: destroyedRows, error: destroyError } = await supabase
     .from('inventory_items')
-    // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemRow와 일치
     .update({ destroyed_at: destroyedAt, inventory_id: null })
     .in('id', itemIds)
     .eq('inventory_id', inventory.id)
@@ -152,7 +163,6 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     actor_user_id: userId,
     actor_username: actorUsername,
   }))
-  // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CustodyEventRow와 일치
   const { error: consumeEventError } = await consumeEventsQuery.insert(consumeEventsPayload)
   if (consumeEventError) {
     console.error('[combineItems] Consume 이벤트 기록 오류:', consumeEventError)
@@ -241,14 +251,13 @@ async function grantBadge(
   }
 
   const q = supabase.from('inventory_items')
-  const payload = {
+  const payload: InventoryItemInsertByTrigger = {
     inventory_id: inventoryId,
     badge_id: badgeId,
     obtained_by: 'system_event',
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   }
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemsRow와 일치
-  const { error: insertError } = await q.insert(payload)
+  const { error: insertError } = await q.insert(payload as InventoryItemInsert)
 
   if (insertError) {
     console.error('[combineItems] 결과 아이템 추가 오류:', insertError)
@@ -269,7 +278,6 @@ async function getStreak(supabase: ReturnType<typeof createServiceClient>, userI
 
 async function resetStreak(supabase: ReturnType<typeof createServiceClient>, userId: string): Promise<void> {
   const q = supabase.from('user_combine_state')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserCombineStateRow와 일치
   await q.upsert({ user_id: userId, consecutive_fail_count: 0, updated_at: new Date().toISOString() })
 }
 
@@ -283,7 +291,6 @@ async function recordFailure(
   const streak = prevStreak + 1
 
   const q = supabase.from('user_combine_state')
-  // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserCombineStateRow와 일치
   await q.upsert({ user_id: userId, consecutive_fail_count: streak, updated_at: new Date().toISOString() })
 
   let pointsAwarded = 0

@@ -23,7 +23,6 @@ export async function cascadeDeactivateItemBookBadges(
 ): Promise<{ error: string | null }> {
   const { data, error } = await supabase
     .from('badges')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ deleted_at: new Date().toISOString() })
     .eq('item_book_id', itemBookId)
     .is('deleted_at', null)

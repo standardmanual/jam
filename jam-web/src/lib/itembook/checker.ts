@@ -172,7 +172,6 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   // 6. 완성 기록 upsert
   const completionRows = completedIds.map((id) => ({ user_id: userId, item_book_id: id }))
   const completionsTable = supabase.from('user_item_book_completions')
-  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 user_item_book_completions 스키마와 일치
   await completionsTable.upsert(completionRows, { onConflict: 'user_id,item_book_id', ignoreDuplicates: true })
 
   // 7. reward_badge_id 발급
@@ -204,7 +203,6 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
       triggered_by: `itembook_complete:${book.id}`,
     }
     const activityBadgesTable = supabase.from('user_activity_badges')
-    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgeRow와 일치
     const { error: insertError } = await activityBadgesTable.insert(rewardBadgePayload)
 
     if (insertError) {

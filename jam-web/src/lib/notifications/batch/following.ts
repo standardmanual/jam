@@ -200,7 +200,9 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
       'id',
       () => supabase.from('user_activity_badges').select('user_id, badge_id, earned_at').gte('earned_at', since)
     ),
-    fetchAllRows<{ inventory_id: string; badge_id: string; obtained_at: string }>(
+    // inventory_id는 NULL 허용이다 — 드랍/파괴로 주인이 없어진 개체(migrations/108, "주인 없음").
+    // 주인이 없으면 알릴 대상도 없으므로 아래에서 걸러진다(기존 동작과 동일).
+    fetchAllRows<{ inventory_id: string | null; badge_id: string; obtained_at: string }>(
       'inventory_items(24h)',
       'id',
       () =>
@@ -256,7 +258,9 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
     const rareById = new Map(badges.map((b) => [b.id, b]))
 
     // 아이템 배지는 inventory → user 매핑이 필요하다
-    const invIds = [...new Set(invItems.map((i) => i.inventory_id))]
+    const invIds = [...new Set(invItems.map((i) => i.inventory_id))].filter(
+      (id): id is string => id !== null
+    )
     const inventories =
       rareById.size > 0
         ? await fetchAllRowsIn<{ id: string; user_id: string }, string>(
@@ -272,7 +276,7 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
       ...activityBadges.map((b) => ({ userId: b.user_id, badgeId: b.badge_id, at: b.earned_at })),
       ...invItems
         .map((i) => ({
-          userId: userByInventory.get(i.inventory_id) ?? '',
+          userId: (i.inventory_id ? userByInventory.get(i.inventory_id) : undefined) ?? '',
           badgeId: i.badge_id,
           at: i.obtained_at,
         }))

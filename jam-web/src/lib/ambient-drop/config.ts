@@ -70,7 +70,6 @@ export async function getAmbientDropConfig(): Promise<AmbientDropConfig> {
 export async function updateAmbientDropConfig(patch: Partial<AmbientDropConfig>): Promise<void> {
   const supabase = createServiceClient()
   const table = supabase.from('ambient_drop_config')
-  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 AmbientDropConfigRow와 일치
   const { error } = await table.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
   if (error) throw new Error(error.message)
 }

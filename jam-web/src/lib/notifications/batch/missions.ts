@@ -398,7 +398,6 @@ export async function buildMissionRankDrafts(ctx: BatchContext): Promise<StepOut
   if (snapshots.length > 0) {
     const rows = snapshots.map((s) => ({ ...s, captured_at: ctx.startedAt.toISOString() }))
     const table = supabase.from('mission_rank_snapshots')
-    // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 mission_rank_snapshots 스키마와 일치
     const { error } = await table.upsert(rows, { onConflict: 'mission_id,user_id' })
     if (error) {
       // 소식 생성은 이미 판정이 끝났다. 저장 실패는 다음 배치의 기준선만 낡게 만든다.

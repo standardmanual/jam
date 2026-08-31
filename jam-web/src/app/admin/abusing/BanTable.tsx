@@ -32,7 +32,7 @@ export interface BanRow {
   expires_at: string | null
   created_at: string
   created_by: string
-  user: { id: string; email: string; username: string } | null
+  user: { id: string; email: string; username: string | null } | null
 }
 
 interface BanTableProps {

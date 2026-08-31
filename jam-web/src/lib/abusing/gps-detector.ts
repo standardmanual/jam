@@ -21,6 +21,9 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { haversineDistance } from '@/lib/poi/proximity'
 import type { AbusingPolicy } from './policy'
 import type { UserRow } from '@/types/database'
+import type { Database } from '@/types/database.generated'
+
+type UsersUpdate = Database['public']['Tables']['users']['Update']
 
 type LocationFields = Pick<
   UserRow,
@@ -101,7 +104,13 @@ export async function checkAndUpdateLocation(
   //  그 좌표가 영원히 기준점으로 남아 이후 모든 정상 시도까지 계속 오탐나는
   //  자가-고착 버그가 있었음 — 매번 최신 좌표로 갱신해 다음 판정은 항상
   //  "방금 요청"을 기준으로 하도록 함.)
-  const locationUpdate: Partial<LocationFields> = {
+  // 생성 타입(users.Update)을 쓴다. 수기 UserRow는 gps_daily_distance_km를 `number | null`로
+  // 적고 있지만 DB 컬럼은 NOT NULL이라 Partial<LocationFields>로는 타입이 맞지 않는다
+  // (티켓 20260831_1213에서 드러난 수기 타입 드리프트 — 수기 타입 교정은 별도 작업).
+  const locationUpdate: Pick<
+    UsersUpdate,
+    'last_location_lat' | 'last_location_lng' | 'last_location_at' | 'gps_daily_distance_km' | 'gps_daily_distance_date'
+  > = {
     last_location_lat: lat,
     last_location_lng: lng,
     last_location_at: new Date(now).toISOString(),
@@ -109,7 +118,6 @@ export async function checkAndUpdateLocation(
     gps_daily_distance_date: todayStr,
   }
   const usersTable = supabase.from('users')
-  // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
   await usersTable.update(locationUpdate).eq('id', userId)
 
   return result

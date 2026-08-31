@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
 
     const simulateBadgePayload = { user_id: userId, badge_id: badge.id, triggered_by: 'admin_test' }
     const activityBadgesTable = supabase.from('user_activity_badges')
-    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgeRow와 일치
     const { error: insertError } = await activityBadgesTable.insert(simulateBadgePayload)
 
     if (insertError) {
@@ -111,7 +110,6 @@ export async function POST(request: NextRequest) {
     const { data: newItem } = await supabase
       .from('inventory_items')
       .select('badge_id, obtained_at')
-      // @ts-expect-error inventoryBefore.id — 이 파일 상단의 badges overrideTypes와 얽혀 이후 체인 전체가 never로 새는 TS 특이 케이스(개발용 시뮬레이터 엔드포인트라 as any 대신 정확히 이 지점만 억제)
       .eq('inventory_id', inventoryBefore.id)
       .eq('obtained_by', 'drop')
       .order('obtained_at', { ascending: false })
@@ -122,11 +120,9 @@ export async function POST(request: NextRequest) {
       const { data: badgeInfo } = await supabase
         .from('badges')
         .select('name')
-        // @ts-expect-error 위와 동일한 TS 특이 케이스
         .eq('id', newItem.badge_id)
         .maybeSingle()
 
-      // @ts-expect-error 위와 동일한 TS 특이 케이스
       droppedItemName = badgeInfo?.name ?? null
     }
   }

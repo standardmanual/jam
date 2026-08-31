@@ -105,8 +105,6 @@ export async function getAbusingPolicy(): Promise<AbusingPolicy> {
 export async function updateAbusingPolicy(patch: Partial<AbusingPolicy>): Promise<void> {
   const supabase = createServiceClient()
   const payload = { id: 1, ...patch, updated_at: new Date().toISOString() }
-  // @ts-expect-error Supabase upsert()가 페이로드 타입을 never[]로 추론하는 제한 우회
-  // (억제가 여전히 필요함을 tsc로 확인)
   const { error } = await supabase.from('abusing_policy').upsert(payload)
   if (error) {
     console.error('[abusing-policy] 저장 실패:', error)

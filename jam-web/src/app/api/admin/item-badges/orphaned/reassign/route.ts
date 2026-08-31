@@ -41,8 +41,6 @@ export async function POST(req: NextRequest) {
   // 동시 호출 시 불필요한 락 대기가 생긴다. 순차 처리가 used_slots 증가 순서도 더 예측
   // 가능하게 만든다.
   for (const itemId of itemIds as string[]) {
-    // @ts-expect-error 'admin_reassign_orphaned_item' RPC 함수가 src/types/database.ts의
-    // Functions에 미등록 (기존 pickup_drop/create_user_drop과 동일한 상황)
     const { data: rpcResult, error: rpcError } = await service.rpc('admin_reassign_orphaned_item', {
       p_item_id: itemId,
       p_admin_id: admin.id,

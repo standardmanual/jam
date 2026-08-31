@@ -3,6 +3,7 @@
  * service_role 클라이언트 전용
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import type { Json } from '@/types/database.generated'
 import type { AbusingPolicy } from './policy'
 import type { BadgeRarity } from '@/types/database'
 
@@ -19,9 +20,7 @@ export async function getUserBanLevel(userId: string): Promise<BanLevel> {
       .maybeSingle()
 
     if (!data) return 'none'
-    // @ts-expect-error try/catch + 명시적 Promise 반환 타입 조합에서 supabase-js 추론이 무너지는 TS 특이 케이스(jam-web/src/lib/abusing/poi-block.ts와 동일 패턴) — data는 UserShadowBanRow의 ban_level/expires_at 컬럼을 가짐
     if (data.expires_at && new Date(data.expires_at) < new Date()) return 'none'
-    // @ts-expect-error 위와 동일한 TS 추론 특이 케이스
     return data.ban_level as BanLevel
   } catch {
     return 'none'
@@ -66,7 +65,6 @@ export async function applyBan(
     created_by: createdBy,
     expires_at: expiresAt?.toISOString() ?? null,
   }
-  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserShadowBanRow와 일치
   await table.upsert(payload, { onConflict: 'user_id' })
 
   await logAbusingEvent(userId, `${level}_ban_applied`, { reason, created_by: createdBy })
@@ -87,8 +85,10 @@ export async function logAbusingEvent(
   try {
     const supabase = createServiceClient()
     const logsTable = supabase.from('abusing_logs')
-    const payload = { user_id: userId, event_type: eventType, detail: detail ?? null }
-    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 AbusingLogRow와 일치
+    // abusing_logs.detail은 jsonb 컬럼이라 생성 타입이 Json이다. 호출부 편의를 위해 파라미터는
+    // Record<string, unknown>으로 받고 있어(값 타입이 unknown이라 Json에 직접 대입 불가) 이
+    // 한 필드만 Json으로 단언한다 — 나머지 컬럼은 이름·타입 검사를 그대로 받는다.
+    const payload = { user_id: userId, event_type: eventType, detail: (detail ?? null) as Json }
     await logsTable.insert(payload)
   } catch {
     // 로그 실패는 무시

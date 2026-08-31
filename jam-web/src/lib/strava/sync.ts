@@ -659,7 +659,6 @@ export async function syncStravaActivities(
     }
     const { error: updateError } = await supabase
       .from('strava_connections')
-      // @ts-expect-error Supabase 타입 추론 제한 우회 — 실제 필드는 StravaConnectionRow.Update와 일치
       .update(updatePayload)
       .eq('user_id', userId)
 
@@ -678,7 +677,6 @@ export async function syncStravaActivities(
   const lockNow = new Date().toISOString()
   let lockQuery = supabase
     .from('strava_connections')
-    // @ts-expect-error Supabase 타입 추론 제한 우회
     .update({ last_synced_at: lockNow })
     .eq('user_id', userId)
   lockQuery =
@@ -754,7 +752,6 @@ export async function syncStravaActivities(
     console.error(`[syncStravaActivities] 처리 중 오류 — last_synced_at 롤백 (userId: ${userId}):`, err)
     const { error: rollbackError } = await supabase
       .from('strava_connections')
-      // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 StravaConnectionRow와 일치
       .update({ last_synced_at: connection.last_synced_at })
       .eq('user_id', userId)
       .eq('last_synced_at', lockNow) // 그 사이 다른 요청이 갱신했다면 덮어쓰지 않음

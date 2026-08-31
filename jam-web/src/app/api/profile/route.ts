@@ -37,7 +37,6 @@ export async function PATCH(request: NextRequest) {
     }
 
     const usersTable = serviceClient.from('users')
-    // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
     const { error } = await usersTable.update({ display_name: trimmed.length > 0 ? trimmed : null }).eq('id', user.id)
 
     if (error) {
@@ -68,7 +67,6 @@ export async function PATCH(request: NextRequest) {
 
     // username 업데이트
     const usersTable = serviceClient.from('users')
-    // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
     const { error } = await usersTable.update({ username: lowerUsername }).eq('id', user.id)
 
     if (error) {

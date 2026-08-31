@@ -2,16 +2,31 @@
  * JAM! DB 스키마 기반 TypeScript 타입 정의 (손으로 씀 — 도메인 주석이 값어치라 유지)
  * 기반: PRD/02_DATA_MODEL.md + supabase/migrations/001_initial_schema.sql
  *
- * `database.generated.ts`가 운영 DB에서 자동 생성된 실제 스키마다. 새 컬럼을
- * 추가하거나 기존 컬럼을 바꿀 때는 `npm run db:types`로 그 파일을 재생성한
- * 뒤 이 파일의 해당 Row 인터페이스를 맞춰서 갱신할 것 — 둘이 어긋나도 지금은
- * 자동으로 걸러지지 않으니(하단 참고) 사람이 직접 대조해야 한다.
+ * ## ⚠️ 이 파일은 더 이상 Supabase 클라이언트 제네릭의 진실 원천이 아니다
  *
- * 알려진 한계: 이 파일의 Row 타입들은 하단에서 Supabase 클라이언트 제네릭
- * (`createServerClient<Database>`)에 연결돼 있어 원래는 `.from(table)` 호출마다
- * 타입 체크가 걸리지만, 코드베이스 전반에 `(supabase as any)` 캐스팅이 많이
- * 남아 있어(2026-08-11 기준 51개 파일) 이 보호가 실질적으로 우회되는 곳이
- * 많다 — 전수 제거는 별도 작업으로 필요.
+ * 진실 원천은 **`database.generated.ts`**(운영 DB에서 자동 생성)다. 티켓 20260831_1213에서
+ * `lib/supabase/{client,server}.ts`의 `createBrowserClient<Database>`·`createServerClient<Database>`
+ * 3곳이 전부 생성 타입을 주입하도록 바뀌었다. 그러므로:
+ *
+ * - `.from(table).insert/update/upsert()`의 **컬럼명·타입 검사는 생성 타입 기준**으로 걸린다.
+ *   이 파일의 Row를 아무리 고쳐도 쓰기 검사에는 영향이 없다.
+ * - 이 파일은 **도메인 타입 · 도메인 주석 자산**으로 남는다. 168개 파일이 `XxxRow`를
+ *   화면·로직의 값 형태로 import하고 있고, 각 컬럼의 의미·마이그레이션 근거 주석이
+ *   생성 타입에는 없다.
+ * - `BadgeCondition`·`ActivityType`처럼 DB의 `jsonb`/`text[]`를 좁힌 도메인 타입은
+ *   여기서만 정의된다. 생성 타입은 그것들을 `Json`/`string[]`로만 안다.
+ *
+ * 새 컬럼을 추가하거나 기존 컬럼을 바꿀 때는 `npm run db:types`로 생성 타입을 재생성한 뒤
+ * 이 파일의 해당 Row 인터페이스도 맞춰서 갱신할 것. 둘이 어긋나도 자동으로 걸러지지
+ * 않으므로(하단 `Database` 인터페이스는 남아 있지만 클라이언트에 주입되지 않는다) 사람이
+ * 직접 대조해야 한다. 실제로 `drop_policy.rarity_legend`·`abusing_policy.soft/hard_legend_rate`
+ * 3개 컬럼이 지금도 어긋나 있다(티켓 20260831_1158 조사 결과, 등급명 개명 작업에서 정리 예정).
+ *
+ * 왜 클라이언트 제네릭에서 뗐는가: 이 파일의 Row는 `interface`라 암묵적 인덱스 시그니처가
+ * 없어 supabase-js의 `GenericTable`(`Row: Record<string, unknown>`) 제약을 만족하지 못한다.
+ * 그 결과 모든 쓰기 페이로드가 `never[]`로 추론돼 **올바른 컬럼을 써도 컴파일 오류**가 났고,
+ * 쓰기 지점마다 `@ts-expect-error`(92개)가 달렸다. 그 억제가 컬럼명 검증까지 함께 꺼서
+ * 어드민 드랍 정책 저장이 41일간 조용히 실패한 사고(20260831_1118)가 컴파일에서 안 잡혔다.
  */
 
 export type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'

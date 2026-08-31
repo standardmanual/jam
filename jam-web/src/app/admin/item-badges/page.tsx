@@ -48,7 +48,9 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
     if (q) query = query.ilike('name', `%${q}%`)
     if (filterFactionId) query = query.eq('faction_id', filterFactionId)
     if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
-    if (filterRarity) query = query.eq('rarity', filterRarity)
+    // filterRarity는 쿼리스트링에서 온 string이라 badges.rarity 유니언으로 좁혀 넘긴다.
+    // 유효하지 않은 값이 들어와도 지금과 똑같이 "결과 0건"이 되도록 검증 없이 그대로 전달한다.
+    if (filterRarity) query = query.eq('rarity', filterRarity as SearchBadgeRow['rarity'])
 
     const { data: badgesRaw } = await query.order('name', { ascending: true }).limit(100)
     badges = (badgesRaw ?? []) as SearchBadgeRow[]
