@@ -56,7 +56,8 @@ export async function getUserBanLevel(userId: string): Promise<BanLevel> {
  * **폴백 방향 (fail-open이 아니다 — 티켓 20260831_1259)**
  * - 맵에 없는 등급: `false`(fail-closed). 이 분기는 `banLevel !== 'none'`, 즉 **이미 밴이 확인된
  *   유저**에게만 닿으므로 정상 유저에게 영향이 없다. DB enum이 TS 타입보다 앞서가는 구간에서
- *   밴 유저의 미지 등급을 막는 쪽이 안전하다.
+ *   밴 유저의 미지 등급을 막는 쪽이 안전하다. 실효 결과는 "드랍 취소"가 아니라 **"common 강등"**
+ *   이다 — 호출부 `applyShadowBanCap()`이 차단된 등급을 common으로 낮춰 재판정한다.
  * - 키는 있으나 값이 없거나 숫자가 아님: `DEFAULT_POLICY[rateKey]`. 폴백 소스를
  *   `getAbusingPolicy()`와 일치시켜 **어느 폴백을 타든 결과가 같게** 만든다. 전면 허용(`?? 1.0`)은
  *   차단을 통째로 끄고, 전면 차단(`?? 0`)은 common까지 막아 장애를 서비스 정지로 키운다.

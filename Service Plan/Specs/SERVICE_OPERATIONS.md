@@ -837,7 +837,10 @@ Epic 배율만 `0.0`이어서 정책 조회가 한 번 실패하면 의도적으
 > 회귀 가드: `src/lib/abusing/__tests__/shadow-ban.test.ts`가 배율 8종의 일치를 고정한다.
 
 소비 지점 `shouldAllowDrop()`의 폴백 방향도 이 행과 묶여 있다 — **미지 등급은 차단(fail-closed),
-값 결여·NaN은 `DEFAULT_POLICY` 폴백**이며 둘 다 `console.error`를 남긴다. 등급 → 배율 키 매핑은
+값 결여·NaN은 `DEFAULT_POLICY` 폴백**이며 둘 다 `console.error`를 남긴다.
+다만 미지 등급의 **실효 결과는 "드랍 취소"가 아니라 "common 강등"** 이다 — 호출부
+`drop-engine/index.ts`의 `applyShadowBanCap()`이 차단된 등급을 common으로 낮춰 재판정하고,
+common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키 매핑은
 `Record<BadgeRarity, keyof AbusingPolicy>`로 고정돼 있어 등급명이 바뀌면 `tsc`가 잡는다.
 
 ---
