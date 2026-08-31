@@ -56,7 +56,7 @@ export const WithMysticBadge: Story = {
   name: 'Mystic 배지 획득 연출',
   args: {
     open: true,
-    message: '신화 등급 배지를 획득했어요!\n100km 완주',
+    message: 'Mystic 등급 배지를 획득했어요!\n100km 완주',
     iconSlot: (
       <BadgeFrame shape="scallop" width={96} height={96} color="var(--color-rarity-mystic)">
         <StarIcon />

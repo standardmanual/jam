@@ -52,6 +52,7 @@ WHERE payload::text LIKE '%"legendary"%'
 -- 3. missions — 한글 등급 표기를 영문 고정 용어로 통일 (실측 3건)
 --    "'굿 바이브스 온리' 레전더리 배지 획득하기" → "… Epic 배지 획득하기"
 --    "희귀도 legendary 아이템배지 …"             → "희귀도 Epic 아이템배지 …"
+--    "희귀도 mythic 아이템배지 …"                → "희귀도 Mystic 아이템배지 …"
 --    "'아이 오브 더 선' 신화 배지 획득하기"       → "… Mystic 배지 획득하기"
 --    "'러브 세이브' 신화 배지 획득하기"           → "… Mystic 배지 획득하기"
 --    "신화"는 세계관 카피에서 다른 뜻으로 쓰일 수 있으므로 "신화 배지"로만 좁힌다.
@@ -60,27 +61,33 @@ UPDATE public.missions
 SET title = replace(
               replace(
                 replace(
-                  replace(title, '레전더리 배지', 'Epic 배지'),
-                '레전드 배지', 'Epic 배지'),
-              '신화 배지', 'Mystic 배지'),
-            '희귀도 legendary', '희귀도 Epic')
+                  replace(
+                    replace(title, '레전더리 배지', 'Epic 배지'),
+                  '레전드 배지', 'Epic 배지'),
+                '신화 배지', 'Mystic 배지'),
+              '희귀도 legendary', '희귀도 Epic'),
+            '희귀도 mythic', '희귀도 Mystic')
 WHERE title LIKE '%레전더리 배지%'
    OR title LIKE '%레전드 배지%'
    OR title LIKE '%신화 배지%'
-   OR title LIKE '%희귀도 legendary%';
+   OR title LIKE '%희귀도 legendary%'
+   OR title LIKE '%희귀도 mythic%';
 
 UPDATE public.missions
 SET description = replace(
                     replace(
                       replace(
-                        replace(description, '레전더리 배지', 'Epic 배지'),
-                      '레전드 배지', 'Epic 배지'),
-                    '신화 배지', 'Mystic 배지'),
-                  '희귀도 legendary', '희귀도 Epic')
+                        replace(
+                          replace(description, '레전더리 배지', 'Epic 배지'),
+                        '레전드 배지', 'Epic 배지'),
+                      '신화 배지', 'Mystic 배지'),
+                    '희귀도 legendary', '희귀도 Epic'),
+                  '희귀도 mythic', '희귀도 Mystic')
 WHERE description LIKE '%레전더리 배지%'
    OR description LIKE '%레전드 배지%'
    OR description LIKE '%신화 배지%'
-   OR description LIKE '%희귀도 legendary%';
+   OR description LIKE '%희귀도 legendary%'
+   OR description LIKE '%희귀도 mythic%';
 
 -- ────────────────────────────────────────────────────────────────────────
 -- 4. today_cards — 한글 등급 표기 통일 (실측 2건)
@@ -130,16 +137,22 @@ COMMIT;
 --  WHERE payload::text LIKE '%"legendary"%' OR payload::text LIKE '%"legend"%'
 --     OR payload::text LIKE '%"mythic"%';
 --
--- (3) 컨텐츠 문구 잔재 — 'mythic' 오탈자 포함
+-- (3) 컨텐츠 문구 잔재 — title만 보면 "희귀도 mythic"이 든 description을 놓친다.
+--     본문 컬럼(description·subtitle·body_markdown)까지 함께 검사할 것.
 -- SELECT 'missions' AS t, id::text, title FROM public.missions
---  WHERE title ILIKE '%legend%' OR title ILIKE '%mythic%' OR title LIKE '%레전%' OR title LIKE '%신화 배지%'
+--  WHERE (coalesce(title,'') || coalesce(description,'')) ~* '(legend|mythic)'
+--     OR (coalesce(title,'') || coalesce(description,'')) LIKE '%레전%'
+--     OR (coalesce(title,'') || coalesce(description,'')) LIKE '%신화 배지%'
 -- UNION ALL
 -- SELECT 'today_cards', id::text, title FROM public.today_cards
---  WHERE title ILIKE '%legend%' OR title ILIKE '%mythic%' OR title LIKE '%레전%' OR title LIKE '%신화 배지%'
+--  WHERE (coalesce(title,'') || coalesce(subtitle,'') || coalesce(body_markdown,'')) ~* '(legend|mythic)'
+--     OR (coalesce(title,'') || coalesce(subtitle,'') || coalesce(body_markdown,'')) LIKE '%레전%'
+--     OR (coalesce(title,'') || coalesce(subtitle,'') || coalesce(body_markdown,'')) LIKE '%신화 배지%'
 -- UNION ALL
 -- SELECT 'badges', id::text, name FROM public.badges
---  WHERE description ILIKE '%legend%' OR description ILIKE '%mythic%'
---     OR description LIKE '%레전%' OR description LIKE '%신화 배지%';
+--  WHERE (coalesce(name,'') || coalesce(description,'')) ~* '(legend|mythic)'
+--     OR (coalesce(name,'') || coalesce(description,'')) LIKE '%레전%'
+--     OR (coalesce(name,'') || coalesce(description,'')) LIKE '%신화 배지%';
 --
 -- (4) mythic/mystic 철자 확인 — mystic만 남아야 한다
 -- SELECT rarity, count(*) FROM public.badges GROUP BY rarity ORDER BY rarity;

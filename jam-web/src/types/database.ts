@@ -520,11 +520,10 @@ export interface UserDropStateRow {
 /**
  * drop_policy 테이블 — 컬럼명이 DB와 1:1로 일치한다.
  *
- * 티켓 20260813_003(legendary → legend)이 이 컬럼만 rename을 누락해 한동안
- * 앱 키(`rarity_legend`)와 DB 컬럼(`rarity_legendary`)이 어긋나 있었고,
- * 20260831_1118이 `policy.ts`에 한시적 변환 매핑을 두어 이를 메웠다.
- * 마이그레이션 115가 컬럼을 `rarity_epic`으로 개명하면서 불일치가 해소돼
- * 그 매핑은 제거했다. (티켓 20260831_1115)
+ * 한동안 앱 키와 DB 컬럼명이 어긋나 `policy.ts`가 입출력 시점에 변환했다
+ * (티켓 20260813_003의 컬럼 rename 누락 → 20260831_1118의 한시적 대응).
+ * 마이그레이션 115가 컬럼을 `rarity_epic`으로 개명해 불일치가 해소되면서
+ * 그 변환 매핑은 제거했다. (티켓 20260831_1115)
  */
 export interface DropPolicyRow {
   id: number

@@ -134,7 +134,7 @@ export const CustomContent: Story = {
     children: (
       <div>
         <p style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)', fontWeight: 600 }}>Mystic 배지 발견!</p>
-        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-small)', color: 'var(--color-rarity-mystic)' }}>신화 등급 · 드랍 위치: 광화문</p>
+        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-small)', color: 'var(--color-rarity-mystic)' }}>Mystic 등급 · 드랍 위치: 광화문</p>
       </div>
     ),
   },

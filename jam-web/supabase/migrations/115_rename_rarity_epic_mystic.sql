@@ -94,6 +94,24 @@ BEGIN
   END IF;
 END $$;
 
+-- ── 5. abusing_policy 차단율 — 현행 실효 동작 유지 ──────────────────────
+-- 개명 전 실효 동작(2026-08-31 실측):
+--   3단계: 코드가 `soft|hard_legend_rate`를 조합하는데 DB 컬럼은 `..._legendary_rate`라
+--          조회가 undefined → shadow-ban.ts의 `?? 1.0` 폴백 → **항상 허용**(차단 무력화)
+--   4단계: 컬럼명이 일치해 값 0.00이 그대로 적용 → **차단 정상 작동**
+--
+-- 위 4절 개명으로 3단계 조회가 성립하면, 지금까지 잠들어 있던 값 0.00이 살아나
+-- soft/hard밴 유저의 Epic 드랍이 배포 직후 0%가 된다. 이번 작업은 등급명 변경이므로
+-- 유저 체감 동작을 바꾸지 않기로 결정해(사용자 확인, 2026-08-31), epic은 기존 실효값
+-- 1.00을 명시하고 mystic은 0.00을 그대로 둔다.
+--
+-- ⚠️ 즉 "3단계 섀도우밴 차단이 꺼져 있다"는 사실 자체는 이 마이그레이션으로 해소되지
+--    않는다. 차단을 실제로 켤지는 별도 티켓에서 판단한다.
+UPDATE public.abusing_policy
+   SET soft_epic_rate = 1.00,
+       hard_epic_rate = 1.00
+ WHERE id = 1;
+
 COMMIT;
 
 -- ── 검증 쿼리 ───────────────────────────────────────────────────────────
@@ -121,6 +139,8 @@ COMMIT;
 -- ALTER TABLE public.drop_policy         RENAME COLUMN rarity_mystic TO rarity_mythic;
 -- ALTER TABLE public.ambient_drop_config RENAME COLUMN rarity_epic   TO rarity_legend;
 -- ALTER TABLE public.ambient_drop_config RENAME COLUMN rarity_mystic TO rarity_mythic;
+-- -- 5절 UPDATE 원복: 개명 전 저장값은 soft/hard 모두 0.00이었다
+-- UPDATE public.abusing_policy SET soft_epic_rate = 0.00, hard_epic_rate = 0.00 WHERE id = 1;
 -- ALTER TABLE public.abusing_policy      RENAME COLUMN soft_epic_rate   TO soft_legendary_rate;
 -- ALTER TABLE public.abusing_policy      RENAME COLUMN hard_epic_rate   TO hard_legendary_rate;
 -- ALTER TABLE public.abusing_policy      RENAME COLUMN soft_mystic_rate TO soft_mythic_rate;
