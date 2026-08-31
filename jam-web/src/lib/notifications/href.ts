@@ -28,6 +28,19 @@ function profileHref(username: string | null | undefined): string | null {
   return username ? `/${username}` : null
 }
 
+/**
+ * `actorHref`(=`/{username}` leaf 프로필 링크)에 출처 쿼리를 붙인다(20260831_2201).
+ * 알림함에서 프로필로 들어가면 `ProfileClient`의 통계탭 클릭이 브라우저 히스토리에
+ * 해시 엔트리를 쌓아, `TopNav`의 `<`(순수 `router.back()`)가 알림으로 안 돌아가고 그
+ * 탭 히스토리를 되짚는 문제가 있었다. `ProfileClient`가 이 쿼리를 읽어 `TopNav`에
+ * `backHref="/notifications"`를 조건부로 넘긴다.
+ * `/{username}/followers`·`/collections`처럼 하위 경로가 붙는 링크(이미 자체
+ * backHref를 정적으로 갖고 있음)에는 붙이지 않는다 — leaf 프로필 링크에만 적용한다.
+ */
+function withNotifSource(href: string | null): string | null {
+  return href ? `${href}?from=notifications` : null
+}
+
 /** R15 사람 단위 묶음 행인가 — 착지를 그 사람 프로필로 올린다 */
 function followingGrouped(payload: Record<string, unknown>): boolean {
   const v = payload.more_count
@@ -102,7 +115,7 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
       const badgeIds = idList(p, 'badge_ids')
       if (badgeIds.length <= 1) {
         // 픽업된 아이템은 이미 내 손을 떠나 인벤토리가 소프트 삭제 상태다 → 본문은 배지 상세로
-        return { href: badgeIds[0] ? `/badges/${badgeIds[0]}` : meHref, avatarHref: actorHref }
+        return { href: badgeIds[0] ? `/badges/${badgeIds[0]}` : meHref, avatarHref: withNotifSource(actorHref) }
       }
       // 묶음은 **갈 곳이 없다.** 픽업된 아이템은 소프트 삭제 상태라 개별 배지 상세로도
       // 못 가고 프로필로 보내봐야 볼 게 없다 — 갈 곳이 없으면 보내지 않는다
@@ -132,7 +145,7 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
     // ── ⑤ 소셜 — 나에게 ───────────────────────────────────────────────────
     case 'followed': {
       const count = Math.max(view.actorCount, idList(p, 'actor_ids').length, 1)
-      if (count <= 1) return { href: actorHref, avatarHref: actorHref }
+      if (count <= 1) return { href: withNotifSource(actorHref), avatarHref: withNotifSource(actorHref) }
       return single(meHref ? `${meHref}/followers` : null)
     }
 
@@ -140,11 +153,11 @@ export function notificationTarget(view: NotificationView): NotificationTarget {
     // R15 묶음("소식이 N건 더 있어요")은 **그 사람 프로필**로 보낸다 —
     // 약속한 나머지 소식을 보려면 대상이 아니라 사람이어야 한다
     case 'following_rare_badge':
-      if (followingGrouped(p)) return single(actorHref)
-      return single(actorHref ? `${actorHref}#badge` : null)
+      if (followingGrouped(p)) return single(withNotifSource(actorHref))
+      return single(actorHref ? `${actorHref}?from=notifications#badge` : null)
     case 'following_collection_complete':
-      if (followingGrouped(p)) return single(actorHref)
-      return { href: actorHref ? `${actorHref}/collections` : null, avatarHref: actorHref }
+      if (followingGrouped(p)) return single(withNotifSource(actorHref))
+      return { href: actorHref ? `${actorHref}/collections` : null, avatarHref: withNotifSource(actorHref) }
     case 'following_mission_complete': {
       if (followingGrouped(p)) return single(actorHref)
       const id = typeof p.mission_id === 'string' ? p.mission_id : ''

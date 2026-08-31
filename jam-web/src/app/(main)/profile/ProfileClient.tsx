@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState, useEffect, useRef, type CSSProperties } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -108,6 +108,12 @@ export default function ProfileClient({
   activityNames,
 }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // 알림함에서 진입했으면(?from=notifications) `<` 버튼이 알림으로 직행해야 한다 —
+  // 통계탭 클릭(handleTabClick)이 해시 이동마다 히스토리 엔트리를 쌓아서, 순수
+  // router.back()이면 알림이 아니라 그 탭 히스토리를 되짚는다(20260831_2201).
+  // 검색·팔로워목록·직접 URL 등 이 파라미터가 없는 기존 경로는 기존 router.back()을 유지한다.
+  const fromNotifications = searchParams.get('from') === 'notifications'
 
   // ── 탭/해시 상태 ──────────────────────────────────────────────────────────
   const [hashFragment, setHashFragment] = useState<string>('')
@@ -409,6 +415,10 @@ export default function ProfileClient({
   // 팔로워 수는 팔로우/언팔로우 즉시 바뀌므로 Number pop-in(02-number-pop-in.md)을 건다.
   // 숫자 색은 활성 탭일 때 --tabs-text-active(흰색)로 바꿔야 한다 — 활성 pill 배경이
   // --color-primary라 고정 색이면 활성 탭에서 글자가 배경에 묻혀 안 보임(2026-08-17 수정).
+  // 비활성 숫자 색은 --color-primary(레드)가 아니라 라벨과 같은 --tabs-text-muted를 쓴다 —
+  // 활성 pill(레드) 배경이 300ms 동안 탭 사이를 슬라이드하며 경유하는 탭 위를 지나가는데,
+  // 비활성 숫자가 pill과 같은 레드였다면 그 순간 "레드 pill이 레드 숫자 위를 지나가" 대비가
+  // 완전히 사라진다(20260831_2201). 라벨은 이미 --tabs-text-muted라 이 문제가 없었다.
   const statTabs: SlidingTabItem<TabKey>[] = TABS.map((tab) => {
     const isActive = isTabView && activeTab === tab.key
     return {
@@ -418,7 +428,7 @@ export default function ProfileClient({
         <span className="flex flex-col items-center justify-center gap-1">
           <span
             className={`text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold tabular-nums ${
-              isActive ? 'text-[color:var(--tabs-text-active)]' : 'text-[color:var(--color-primary)]'
+              isActive ? 'text-[color:var(--tabs-text-active)]' : 'text-[color:var(--tabs-text-muted)]'
             }`}
           >
             {tab.key === 'followers' ? (
@@ -441,7 +451,7 @@ export default function ProfileClient({
       {isOwnProfile ? (
         <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
       ) : (
-        <TopNav title="" showBack />
+        <TopNav title="" showBack backHref={fromNotifications ? '/notifications' : undefined} />
       )}
 
       <div

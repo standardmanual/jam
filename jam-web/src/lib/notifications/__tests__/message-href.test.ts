@@ -430,6 +430,12 @@ describe('⑤⑥ 소셜', () => {
     ).toBe('예린님 외 3명이 팔로우해요')
   })
 
+  it('#26 단건 followed는 프로필 leaf 링크라 출처 쿼리가 붙는다(20260831_2201)', () => {
+    const single = notificationTarget(view('followed', { actor_ids: ['a1'] }, { actor: ACTOR }))
+    expect(single.href).toBe('/예린?from=notifications')
+    expect(single.avatarHref).toBe('/예린?from=notifications')
+  })
+
   it('#29 팔로잉 희귀 배지 / #30 컬렉션 완성 — R2: 작은따옴표 없음', () => {
     expect(
       text(
@@ -440,6 +446,16 @@ describe('⑤⑥ 소셜', () => {
         )
       )
     ).toBe('예린님이 Mystic 배지 별을 삼킨 바퀴를 획득했어요')
+    // 프로필 해시(#badge) 링크도 쿼리는 해시 앞에 붙는다(20260831_2201)
+    expect(
+      notificationTarget(
+        view(
+          'following_rare_badge',
+          { badge_id: 'b1', badge_name: '별을 삼킨 바퀴', rarity: 'mystic' },
+          { actor: ACTOR }
+        )
+      ).href
+    ).toBe('/예린?from=notifications#badge')
     expect(
       text(
         view(
@@ -474,7 +490,8 @@ describe('⑤⑥ 소셜', () => {
       { actor: ACTOR }
     )
     expect(text(v)).toBe('예린님이 Mystic 배지 별을 삼킨 바퀴를 획득했어요. 소식이 1건 더 있어요')
-    expect(notificationTarget(v).href).toBe('/예린')
+    // 프로필로 연결되는 leaf 링크에는 출처 쿼리가 붙는다(20260831_2201)
+    expect(notificationTarget(v).href).toBe('/예린?from=notifications')
   })
 
   it('#31 팔로잉 미션 완료', () => {
@@ -625,17 +642,20 @@ describe('착지점 — type + payload로 런타임 계산 (PRD §3)', () => {
 
   it('2단 타겟 — 아바타는 사람, 본문은 대상', () => {
     // #13 단건: 아바타 → 픽업한 사람 / 본문 → 배지 상세(인벤토리는 이미 소프트 삭제 상태)
+    // 아바타 → 프로필 링크에는 출처 쿼리가 붙는다(20260831_2201) — 본문(href)은
+    // 프로필이 아니므로 붙지 않는다.
     const picked = notificationTarget(
       view('drop_picked_up', { actor_ids: ['a1'], badge_ids: ['b1'] }, { actor: ACTOR })
     )
-    expect(picked.avatarHref).toBe('/예린')
+    expect(picked.avatarHref).toBe('/예린?from=notifications')
     expect(picked.href).toBe('/badges/b1')
 
-    // #30: 아바타 → 프로필 / 본문 → 그 사람의 컬렉션
+    // #30: 아바타 → 프로필 / 본문 → 그 사람의 컬렉션(하위 경로라 쿼리 없음 — 이미
+    // 자체 backHref를 정적으로 가진 라우트)
     const coll = notificationTarget(
       view('following_collection_complete', { item_book_id: 'k1' }, { actor: ACTOR })
     )
-    expect(coll.avatarHref).toBe('/예린')
+    expect(coll.avatarHref).toBe('/예린?from=notifications')
     expect(coll.href).toBe('/예린/collections')
 
     // #26 묶음은 2단 타겟이 아니라 내 팔로워 목록 한 곳으로 간다
