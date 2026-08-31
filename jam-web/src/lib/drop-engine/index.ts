@@ -73,6 +73,13 @@ export { MYSTERY_FACTION_ID, RESOLUTION_FACTION_ID }
 /**
  * 드랍엔진은 활동 1건(또는 이번 싱크 배치)만으로 조건을 평가한다.
  * 누적/기간 집계 필드를 가진 배지는 단일 활동 시점 평가가 불가능하므로 드랍 제외.
+ *
+ * `distance_km`/`elevation_gain_m`은 2026-08-31(티켓 20260831_2100)부터 badge-engine에서
+ * 기본이 "전체 이력 누적 합계"로 평가되므로(활동 1건만으로는 판정 불가) 여기 추가한다.
+ * `isDroppableForActivity`가 badge-engine의 `checkCondition`(=`evaluateConditionDetailed`)을
+ * 그대로 재사용하는 이상 두 엔진의 "단일 활동 평가 가능 여부" 판단은 일치해야 한다.
+ * (`same_activity:true`로 예외 처리되는 배지가 있어도 안전한 방향으로 보수적으로 제외한다 —
+ * 현재 `type='item'` 배지는 전부 `condition_json`이 비어 있어 실질 영향 없음.)
  */
 export const CUMULATIVE_CONDITION_FIELDS: (keyof BadgeCondition)[] = [
   'monthly_km',
@@ -80,6 +87,8 @@ export const CUMULATIVE_CONDITION_FIELDS: (keyof BadgeCondition)[] = [
   'weekly_count',
   'streak_days',
   'total_count',
+  'distance_km',
+  'elevation_gain_m',
 ]
 
 export function hasCumulativeCondition(cond: BadgeCondition): boolean {

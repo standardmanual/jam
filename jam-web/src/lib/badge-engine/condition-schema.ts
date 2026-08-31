@@ -61,6 +61,13 @@ const FILTER_ONLY_CONDITION_KEYS = [
   'route',
   'poi_id',
   'season',
+  /**
+   * `distance_km`/`elevation_gain_m`을 "한 활동에서 동시 충족"으로 평가하도록 전환하는
+   * 플래그(2026-08-31, 티켓 20260831_2100). 단독으로는 pass/fail을 만들지 않고 반드시
+   * 그 두 필드와 함께 있어야 의미가 있다 — `activity_type`과 동일한 성격이라 필터 전용으로
+   * 분류한다. 현재 카탈로그에서는 T1 '야생의 첫발' 1건만 사용.
+   */
+  'same_activity',
 ] as const satisfies readonly (keyof BadgeCondition)[]
 
 /** 발급 판정에 실제로 관여하는 "조건 필드" 전체 — 수치 검사 필드 + 필터 전용 필드 */

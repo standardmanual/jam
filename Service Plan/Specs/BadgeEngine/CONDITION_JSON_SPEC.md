@@ -46,9 +46,26 @@
 
 | 필드 | 타입 | 단위 | 평가 방식 |
 |------|------|------|-----------|
-| `distance_km` | `number` | km | `activity_type` 필터 후 **전체 누적 거리** ≥ 조건값 |
-| `elevation_gain_m` | `number` | m | `activity_type` 필터 후 **전체 누적 고도** ≥ 조건값 |
+| `distance_km` | `number` | km | `activity_type` 필터 후 **전체 누적 거리** ≥ 조건값. `same_activity: true`가 함께 있으면 예외(§2.2-1) |
+| `elevation_gain_m` | `number` | m | `activity_type` 필터 후 **전체 누적 고도** ≥ 조건값. `same_activity: true`가 함께 있으면 예외(§2.2-1) |
 | `total_count` | `number` | 회 | 필터된 활동 **건수** ≥ 조건값 |
+
+#### 2.2-1 `same_activity` — "동시 충족" 예외 플래그 (2026-08-31 신규)
+
+| 필드 | 타입 | 설명 | 평가 방식 |
+|------|------|------|-----------|
+| `same_activity` | `boolean` | `distance_km`/`elevation_gain_m`을 "누적 합계"가 아니라 "한 활동에서 동시 충족"으로 평가하도록 전환하는 플래그 | 이 값이 `true`이고 `distance_km`·`elevation_gain_m`이 함께 있으면, 그 두 값을 모두 만족하는 활동이 1건 이상 있어야 발급된다. `false`/미지정(기본값)이면 각각 전체 이력 누적 합계로 독립 평가된다 |
+
+그 자체만으로는 pass/fail을 만들지 않는 **필터 전용 필드**(`condition-schema.ts`의
+`FILTER_ONLY_CONDITION_KEYS`)로 분류된다 — `activity_type`과 같은 성격이다. 현재 카탈로그에서는
+`야생의 첫발`(T1, `distance_km` + `elevation_gain_m` 복합 AND) 1건만 이 플래그를 쓴다.
+
+> 배경(티켓 20260831_2100): 커밋 `27163030`(2026-07-31)이 "서로 다른 활동의 필드를 조합해
+> 잘못 통과되던 버그"를 고치면서 단독 `distance_km`/`elevation_gain_m`(원래 누적이어야 함)까지
+> "한 활동 동시 충족"으로 과잉 일반화했다. 2026-08-31에 문서(`ACTIVITY_BADGES.md`) 기준으로
+> 복원하면서, 진짜 "동시 충족"이 맞는 T1만 이 플래그로 명시했다. 어드민 `BadgeForm.tsx`에는
+> 전용 입력 UI가 없고, `route`·`poi_id`·`day_of_week`·`active_days_count`·`season_count_all`과
+> 동일하게 폼 저장 시 원본 값이 그대로 보존된다(`FORM_UNSUPPORTED_CONDITION_KEYS`).
 
 ### 2.3 단일 활동 최고값 필드
 
@@ -127,6 +144,9 @@
 
 - 같은 `condition_json` 내 모든 필드는 **AND** 조건 (모두 충족 시 발급)
 - 단일 조건(필드 1개)과 복합 조건(필드 2개+)은 "진행 트랙 중복 제거" 정책이 다르게 적용됨 → BADGE_ENGINE_UNIFIED.md § 2.5 참조
+- 복합 조건(필드 2개+)의 기본 평가는 **필드마다 이력 전반에서 독립** — 서로 다른 활동에서 각각
+  달성해도 통과한다. `time_range`가 섞인 조합이나 `same_activity: true`가 있는 조합만 예외적으로
+  "한 활동 동시 충족"을 요구한다 → BADGE_ENGINE_UNIFIED.md § 2.3-1 참조 (2026-08-31 복원, 티켓 20260831_2100)
 - `poi_id`는 다른 조건 필드와 혼합 불가 (엔진 미지원)
 - `mission_reward`(§3)는 조건 필드와 함께 있어도 항상 §3의 규칙이 우선한다(무조건 fail)
 
@@ -138,8 +158,11 @@
 // 단순 누적 거리 (걷기 100km)
 { "activity_type": "walking", "distance_km": 100 }
 
-// 복합: 페이스 + 지속 시간 (빠른 러닝 장거리)
+// 복합: 페이스 + 지속 시간 (이력 전반 독립 평가 — 빠른 세션과 긴 세션이 달라도 통과. R7 스피드 엔듀러)
 { "activity_type": "running", "max_pace_sec_per_km": 320, "duration_minutes": 60 }
+
+// 복합: 거리 + 고도 (same_activity:true — 한 활동에서 동시 충족 필요. T1 야생의 첫발 전용 패턴)
+{ "activity_type": "trail_running", "distance_km": 15, "elevation_gain_m": 300, "same_activity": true }
 
 // 야간 활동 (22시~06시 사이 걷기, 주 3회)
 { "activity_type": "walking", "time_range": { "start": "22:00", "end": "06:00" }, "weekly_count": 3 }
