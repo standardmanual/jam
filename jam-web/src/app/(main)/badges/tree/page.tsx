@@ -53,15 +53,15 @@ export default async function BadgeTreePage() {
   // 소프트 삭제된 배지(badges.deleted_at)는 이미 badges 조회에서 빠져 트리에 그려지지 않으므로
   // 여기서 걸러도 실질적 영향은 없지만, badges/page.tsx와 동일한 필터링 원칙을 유지한다.
   type RawEarnedBadge = { badge_id: string; badge: { deleted_at: string | null } | null }
-  const earnedBadgeIds = Array.from(
-    new Set(
-      ((earnedBadgesRaw ?? []) as RawEarnedBadge[])
-        .filter((r) => r.badge && !r.badge.deleted_at)
-        .map((r) => r.badge_id)
-    )
+  const earnedBadgeIdSet = new Set(
+    ((earnedBadgesRaw ?? []) as RawEarnedBadge[])
+      .filter((r) => r.badge && !r.badge.deleted_at)
+      .map((r) => r.badge_id)
   )
+  const earnedBadgeIds = Array.from(earnedBadgeIdSet)
 
-  const trees = buildBadgeActivityTrees(badges, missions)
+  // earnedBadgeIdSet도 선행 배지 잠금칩의 "이미 획득함" 판정에 쓰인다(20260901 UI 수정).
+  const trees = buildBadgeActivityTrees(badges, missions, earnedBadgeIdSet)
 
   return <BadgeTreeClient trees={trees} earnedBadgeIds={earnedBadgeIds} />
 }
