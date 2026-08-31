@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest) {
     const detail = e instanceof Error ? e.message : String(e)
     return NextResponse.json(
       {
-        error: `드랍 정책이 저장되지 않았어요. 데이터베이스가 요청을 거부했어요. 다시 시도해도 같으면 아래 오류 내용을 개발자에게 전달해 주세요. (${detail})`,
+        error: `드랍 정책이 저장되지 않았어요. 데이터베이스가 요청을 거부했어요. 다시 시도해도 같으면 괄호 안 오류 내용을 개발자에게 전달해 주세요. (${detail})`,
       },
       { status: 500 }
     )
