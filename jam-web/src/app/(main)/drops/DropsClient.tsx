@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Button from '@/components/ui/Button'
+import TopNav from '@/components/ui/TopNav'
 import { useToast } from '@/components/ui/Toast'
 import PoiCarouselModal from '@/components/PoiCarouselModal'
 import type { PoiBadgeMarker, PoiBadgeClusterMarker, MapViewport, MapViewHandle } from '@/components/map/MapView'
@@ -228,7 +229,14 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
 
   return (
     <div className="fixed inset-0 bg-surface overflow-hidden" style={{ maxWidth: 430, margin: '0 auto' }}>
-      {/* 지도 — 풀스크린(노치·홈 인디케이터 영역까지 꽉 채움) */}
+      {/* 20260831_2106: 탭 최상위 공통 TopNav 추가 — 노치까지 채우는 풀블리드 지도를 위해
+          의도적으로 뺐던 결정을 뒤집었다(트레이드오프로 지도 상단 일부가 가려짐, 완료 기록 참고).
+          TopNav(position: sticky, z-index: 30, design-system/components/navigation/TopNav.jsx)는
+          이 fixed 컨테이너(position:fixed라 자체 스태킹 컨텍스트 생성) 안에서 z-index:auto인
+          아래 지도 레이어보다 항상 위에 그려지므로 별도 z-index 조정 불필요. */}
+      <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
+
+      {/* 지도 — 풀스크린(노치·홈 인디케이터 영역까지 꽉 채움). TopNav가 상단 일부를 가린다. */}
       <div className="absolute inset-0">
         <MapView
           userLat={userLat}
@@ -244,7 +252,9 @@ export default function DropsClient({ focusPoi = null }: { focusPoi?: DropsFocus
       </div>
 
       {poisLoading && (
-        <div className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] py-2 flex items-center gap-2">
+        // TopNav 실측 높이(env(safe-area-inset-top) + 56px, TopNav.jsx height:56 고정값) 아래로
+        // 이동 — 기존 top 값(safe-area-inset-top+1rem) 그대로면 TopNav 뒤에 가려진다.
+        <div className="absolute top-[calc(env(safe-area-inset-top)+56px+1rem)] left-1/2 -translate-x-1/2 z-10 bg-surface-inverse rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] py-2 flex items-center gap-2">
           <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin text-text-inverse" />
           <span className="text-[length:var(--text-caption)] text-text-inverse">{d.drops.exploring}</span>
         </div>
