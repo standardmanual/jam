@@ -15,7 +15,7 @@
  *     AtPoi(시스템) — poi_drops.source로 구분
  *   - 위 어디에도 해당 안 됨(소유자 없음 + 활성 드랍 없음 + 파괴 안 됨) → Orphaned
  */
-import type { CustodyEventType, PoiDropSource } from '@/types/database'
+import type { BadgeRarity, CustodyEventType, PoiDropSource } from '@/types/database'
 
 export type ItemBadgeStatus =
   | 'Held'
@@ -66,14 +66,14 @@ export const CUSTODY_EVENT_LABEL: Record<CustodyEventType, string> = {
 }
 
 /** 배지(도안) 등급 라벨 — 다른 어드민 화면(BadgeCard.tsx 등)과 동일한 표기 */
-export const RARITY_LABEL: Record<string, string> = {
+export const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: 'Common',
   rare: 'Rare',
   legend: 'Legend',
   mythic: 'Mythic',
 }
 
-export const RARITY_BADGE_COLOR: Record<string, string> = {
+export const RARITY_BADGE_COLOR: Record<BadgeRarity, string> = {
   common: 'bg-gray-200 text-gray-800',
   rare: 'bg-blue-200 text-blue-800',
   legend: 'bg-violet-200 text-violet-800',

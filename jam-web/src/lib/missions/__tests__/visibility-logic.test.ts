@@ -16,10 +16,10 @@ import {
   resolveMissionVisibility,
   resolveMissionVisibilityMap,
   isMissionJoinable,
-  RARITY_TIER,
   type GatedBadgeInfo,
   type MissionVisibilityContext,
 } from '../visibility'
+import { RARITY_TIER } from '@/lib/rarity'
 import type { BadgeRarity } from '@/types/database'
 
 // ── 픽스처 ────────────────────────────────────────────────────────────────

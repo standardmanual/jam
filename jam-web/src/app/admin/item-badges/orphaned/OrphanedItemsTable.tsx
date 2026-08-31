@@ -17,6 +17,7 @@ import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
 import { RARITY_LABEL, RARITY_BADGE_COLOR, formatDateTime } from '@/lib/admin/item-badge-status'
+import type { BadgeRarity } from '@/types/database'
 import { DestroyOrphanedAction } from '../_orphaned-actions/DestroyOrphanedAction'
 import { ReassignOrphanedAction } from '../_orphaned-actions/ReassignOrphanedAction'
 
@@ -92,10 +93,10 @@ export function OrphanedItemsTable({ rows }: OrphanedItemsTableProps) {
                   </Link>
                   <span
                     className={`inline-block mt-0.5 px-1.5 py-0.5 text-[10px] font-semibold rounded ${
-                      RARITY_BADGE_COLOR[r.badgeRarity] ?? 'bg-gray-100 text-gray-700'
+                      RARITY_BADGE_COLOR[r.badgeRarity as BadgeRarity] ?? 'bg-gray-100 text-gray-700'
                     }`}
                   >
-                    {RARITY_LABEL[r.badgeRarity] ?? r.badgeRarity}
+                    {RARITY_LABEL[r.badgeRarity as BadgeRarity] ?? r.badgeRarity}
                   </span>
                 </div>
               </div>

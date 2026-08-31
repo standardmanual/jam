@@ -222,10 +222,10 @@ function targetCount(payload: Record<string, unknown>): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** 대표 선정용 희귀도 서열 (R8 — 첫 획득 순서가 아니다) */
-const RARITY_RANK: Record<string, number> = { common: 0, rare: 1, legend: 2, mythic: 3 }
+const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, legend: 2, mythic: 3 }
 
 function rarityRank(rarity: string): number {
-  return RARITY_RANK[rarity] ?? 0
+  return RARITY_RANK[rarity as BadgeRarity] ?? 0
 }
 
 /** payload의 객체 배열 필드 — JSONB라 무엇이든 들어올 수 있다 */
@@ -634,7 +634,7 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
         template: `${n.msgFollowingActorPrefix}${n.msgRareBadgeEarned}`,
         vars: {
           actor: nameOf(view.actor),
-          rarity: RARITY_LABEL[str(p, 'rarity')] ?? '',
+          rarity: RARITY_LABEL[str(p, 'rarity') as BadgeRarity] ?? '',
           badgeName: str(p, 'badge_name'),
         },
       })

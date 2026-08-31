@@ -17,11 +17,11 @@
 import assert from 'node:assert'
 import {
   resolveMissionVisibilityMap,
-  RARITY_TIER,
   type GatedBadgeInfo,
   type MissionVisibility,
   type MissionVisibilityContext,
 } from '../visibility'
+import { RARITY_TIER } from '@/lib/rarity'
 import type { BadgeRarity } from '@/types/database'
 
 // ── 게이트 픽스처: 마이그레이션 101의 미션명 → (본 배지, 등급) 매핑 그대로 ──────────
