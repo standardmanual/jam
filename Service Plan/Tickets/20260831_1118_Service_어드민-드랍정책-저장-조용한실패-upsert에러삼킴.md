@@ -1,9 +1,9 @@
 ---
 id: 20260831_1118
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-31
-closed:
+closed: 2026-08-31
 ---
 
 # [Service] 어드민 드랍 정책 저장이 조용히 실패 — upsert 에러 삼킴 + 컬럼명 불일치
@@ -133,8 +133,17 @@ jam-web/src/types/database.ts
 - [x] `npm run lint` 전체 실행 — 오류 0 / 경고 25건 (전부 기존 미사용 변수 경고, 변경 파일과 무관)
 - [x] `npm run build` 성공
 - [x] `@ts-expect-error` 제거 실험으로 억제 필요성 실증
-- [ ] 어드민 저장 → DB `updated_at`·실제 값 갱신 확인 *(단일 공용 DB라 쓰기 검증은 승인 후 수행)*
-- [ ] 실패 페이로드로 어드민 화면에 오류 노출 확인 *(승인 후 수행)*
+- [x] **실패 재현** (수정 전, PostgREST 직접 호출) — 구 페이로드(`rarity_legend` 포함)는
+      `HTTP 400 / PGRST204: Could not find the 'rarity_legend' column of 'drop_policy'`.
+      같은 요청에 실은 `bonus_drop_rate=0.99`도 함께 롤백돼 `0.150` 유지 → 전체 실패 확정
+- [x] **저장 복구 확인** (수정 후, 사용자 승인 하에 실행) — 새 코드가 만드는 페이로드
+      (`rarity_legendary` 포함 24개 필드)로 upsert 실행 결과 **HTTP 200**,
+      `updated_at`이 `2026-07-21T01:26:10` → `2026-08-31T02:40:00`으로 **41일 만에 갱신**.
+      값은 현재값을 그대로 재저장해 **정책 값 변경분 0건**(운영 영향 없음)
+- [x] 저장 실패 시 API가 500 + `error` 메시지를 응답하고, 폼의 기존 `!res.ok` 분기로 노출됨을
+      코드 경로로 확인 (폼 구조 미변경)
+- [ ] 어드민 실화면 저장 확인 — 어드민은 staging 검증 대상이 아니므로 **프로덕션 배포 후**
+      `/admin/drop-policy`에서 수행
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -157,9 +166,9 @@ jam-web/src/types/database.ts
 - [x] 표기 규칙: 해당 없음 (날짜/금액 표기 없음)
 
 ### 배포 정보
-- 배포일:
-- 환경:
-- 커밋:
+- 배포일: 2026-08-31
+- 환경: staging (프로덕션 승격은 `/jam-ship`으로 별도 진행)
+- 커밋: `bb994469`(구현), `ec456530`(UX 문구 교정)
 
 ### 주요 의사결정 / 핵심 메모
 
@@ -171,6 +180,35 @@ jam-web/src/types/database.ts
 - `drop_policy` 테이블 접근 지점이 `policy.ts` 한 곳뿐임을 확인해 매핑 누락 위험이 없다.
 
 ### 잔여 이슈
+
 - 등급명 개명 작업 시 `APP_KEY_TO_DB_COLUMN`·`toAppKeys`·`toDbColumns`와 관련 주석을 제거할 것.
+  PRD `02_DATA_MODEL.md`의 `drop_policy` 절에도 이 사실을 명시해뒀다.
 - `database.ts`(수기)와 `database.generated.ts`(생성)가 이 컬럼에서 여전히 어긋나 있다.
   이번엔 주석으로만 정리했고, 개명 작업에서 양쪽을 일치시켜야 근본 해소된다.
+- **어드민 실화면 저장 확인이 남아 있다.** 프로덕션 배포 후 `/admin/drop-policy`에서 수행.
+
+#### 범위 밖 발견물 — 후속 티켓으로 분리 (사용자 승인, 2026-08-31)
+
+1. **`/admin/abusing` 저장도 동일하게 조용히 실패 중.** DB 실제 컬럼은
+   `soft_legendary_rate`/`hard_legendary_rate`인데 코드는 `soft_legend_rate`/`hard_legend_rate`를
+   쓴다(실측 확인). `updateAbusingPolicy()`도 `error`를 버리고,
+   `api/admin/abusing/policy/route.ts:18`은 무조건 `{ ok: true }`를 응답한다.
+   게다가 이쪽은 `body`를 **키 화이트리스트 없이** 그대로 upsert에 넘겨 위험도가 더 높다.
+   `abusing_policy.updated_at`은 2026-08-13에 멈춰 있다.
+2. **에러 삼킴 패턴 잔존 5곳** — `combine/policy.ts:50`, `drop-engine/index.ts:422`,
+   `poi/search-cache.ts:47`, `abusing/poi-block.ts:39·45`, `abusing/shadow-ban.ts:70·78`.
+   읽기 로더의 "키 누락 무음 폴백"도 함께 정리 대상.
+3. **타입 파일 불일치 전수 점검** — 수기 `database.ts` ↔ 생성 `database.generated.ts`를
+   전체 diff해 `drop_policy`·`abusing_policy` 외 어긋난 테이블이 더 있는지 확인.
+
+#### 운영 안내 필요
+
+2026-07-21 이후 어드민에서 저장한 드랍 정책 값이 **하나도 반영되지 않았다.** 그동안 조정했다고
+믿은 값이 실제로는 미적용이므로, 프로덕션 배포 후 운영자에게 **정책 값 재확인**을 안내해야 한다.
+(`abusing_policy`도 2026-08-13 이후 동일 상태)
+
+### 프로세스 반영
+
+`Specs/DEV_PROCESS_GUARDRAILS.md`에 **패턴 9 — 쓰기 호출의 반환 `error`를 읽지 않아, 실패한
+저장이 성공으로 응답됨**을 신설했다. 패턴 4("로그만 남기고 흡수")의 한 단계 더 나쁜 변종으로,
+감지 수단이 0인 사례다.
