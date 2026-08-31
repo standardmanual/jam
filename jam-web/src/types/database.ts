@@ -833,15 +833,28 @@ export interface AbusingLogRow {
   created_at: string
 }
 
-/** 어뷰징 정책 설정 (싱글톤 id=1) — src/lib/abusing/policy.ts의 AbusingPolicy와 필드 일치 */
+/**
+ * 어뷰징 정책 설정 (싱글톤 id=1) — **앱 키 기준** 타입이다 (DB 실제 컬럼명과 1:1이 아니다).
+ * src/lib/abusing/policy.ts의 AbusingPolicy와 필드가 일치한다.
+ *
+ * DB의 실제 컬럼은 `soft_legendary_rate`/`hard_legendary_rate`인데 앱 전역은
+ * `soft_legend_rate`/`hard_legend_rate`를 쓴다. 티켓 20260813_003에서 이 두 컬럼만 rename이
+ * 누락돼 생긴 불일치로, `database.generated.ts`(Supabase 생성 타입)에는 `..._legendary_rate`로
+ * 나온다. 앱 키 ↔ DB 컬럼 변환은 `src/lib/abusing/policy.ts`가 입출력 시점에만 처리한다.
+ *
+ * ⚠️ 등급명 개명(legend → epic) 후속 작업에서 DB 컬럼이 바뀌면 이 타입과 policy.ts의 매핑을
+ * 함께 정리할 것. (티켓 20260831_1149)
+ */
 export interface AbusingPolicyRow {
   id: number
   soft_common_rate: number
   soft_rare_rate: number
+  /** DB 실제 컬럼명은 `soft_legendary_rate` — abusing/policy.ts에서 변환한다 */
   soft_legend_rate: number
   soft_mythic_rate: number
   hard_common_rate: number
   hard_rare_rate: number
+  /** DB 실제 컬럼명은 `hard_legendary_rate` — abusing/policy.ts에서 변환한다 */
   hard_legend_rate: number
   hard_mythic_rate: number
   gps_max_speed_kmh: number

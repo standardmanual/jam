@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import type { AbusingPolicy } from '@/lib/abusing/policy'
 import { BanTable, type BanRow } from './BanTable'
@@ -17,6 +17,10 @@ type Tab = 'policy' | 'bans' | 'poi-blocks'
 function RateInput({
   label, value, onChange,
 }: { label: string; value: number; onChange: (v: number) => void }) {
+  // 정책 로딩이 어긋나 undefined/NaN이 들어와도 제어 컴포넌트가 비제어로 떨어지지 않게 방어한다.
+  // (컬럼명 불일치로 legend 슬라이더가 undefined를 받아 실제 DB값 0.0(차단)을 "정상"으로
+  //  잘못 표시한 이력이 있다 — 티켓 20260831_1149. 안전한 방향인 0=차단으로 폴백한다)
+  const v = Number.isFinite(value) ? value : 0
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -24,12 +28,12 @@ function RateInput({
         <input
           type="range"
           min={0} max={1} step={0.1}
-          value={value}
+          value={v}
           onChange={(e) => onChange(parseFloat(e.target.value))}
           className="flex-1 accent-primary"
         />
-        <span className={`text-sm font-mono w-8 text-right ${value === 0 ? 'text-red-600' : value < 1 ? 'text-amber-600' : 'text-foreground'}`}>
-          {value === 0 ? '차단' : value < 1 ? `${Math.round(value * 100)}%` : '정상'}
+        <span className={`text-sm font-mono w-8 text-right ${v === 0 ? 'text-red-600' : v < 1 ? 'text-amber-600' : 'text-foreground'}`}>
+          {v === 0 ? '차단' : v < 1 ? `${Math.round(v * 100)}%` : '정상'}
         </span>
       </div>
     </label>
@@ -57,9 +61,17 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
   const [banReason, setBanReason] = useState('')
   const [banAdding, setBanAdding] = useState(false)
 
+  // 오류 메시지에는 DB 오류 코드가 붙어 3초로는 읽기 어렵다 — 오류는 자동으로 사라지지 않고
+  // 닫기 버튼이나 다음 메시지로만 닫힌다. 성공 메시지는 기존대로 3초 뒤 사라진다.
+  const msgSeq = useRef(0)
   const flash = (type: 'ok' | 'err', text: string) => {
+    const seq = ++msgSeq.current
     setMsg({ type, text })
-    setTimeout(() => setMsg(null), 3000)
+    if (type === 'ok') {
+      setTimeout(() => {
+        if (msgSeq.current === seq) setMsg(null)
+      }, 3000)
+    }
   }
 
   const savePolicy = async () => {
@@ -70,10 +82,26 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(policy),
       })
-      if (!res.ok) throw new Error()
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; policy?: AbusingPolicy; error?: string }
+        | null
+      if (!res.ok) {
+        // API가 실패 사유를 실어 보내므로 그대로 노출한다 (어드민 화면 — 원인 특정이 우선)
+        flash(
+          'err',
+          json?.error ??
+            `어뷰징 정책이 저장되지 않았어요. 서버가 ${res.status} 오류로 응답했어요. 잠시 후 다시 시도해 주세요.`
+        )
+        return
+      }
+      // 저장 직후 DB에서 다시 읽은 값으로 화면을 맞춘다
+      if (json?.policy) setPolicy(json.policy)
       flash('ok', '정책이 저장됐어요')
     } catch {
-      flash('err', '저장 실패')
+      flash(
+        'err',
+        '어뷰징 정책이 저장되지 않았어요. 서버에 연결하지 못했어요. 네트워크 상태를 확인하고 다시 시도해 주세요.'
+      )
     } finally {
       setSaving(false)
     }
@@ -176,8 +204,18 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
           <p className="text-muted-foreground text-sm mt-0.5">투트랙 섀도우밴 + POI GPS 조작 감지</p>
         </div>
         {msg && (
-          <div className={`text-sm font-medium px-4 py-2 rounded-xl ${msg.type === 'ok' ? 'bg-primary/10 text-foreground' : 'bg-red-50 text-red-600'}`}>
-            {msg.text}
+          <div className={`flex items-start gap-2 text-sm font-medium px-4 py-2 rounded-xl max-w-md ${msg.type === 'ok' ? 'bg-primary/10 text-foreground' : 'bg-red-50 text-red-600'}`}>
+            <span className="flex-1 break-words">{msg.text}</span>
+            {msg.type === 'err' && (
+              <button
+                type="button"
+                onClick={() => setMsg(null)}
+                aria-label="오류 메시지 닫기"
+                className="shrink-0 text-red-600/60 hover:text-red-600 leading-5"
+              >
+                ✕
+              </button>
+            )}
           </div>
         )}
       </div>

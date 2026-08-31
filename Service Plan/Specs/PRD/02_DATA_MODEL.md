@@ -258,7 +258,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 > 참고: 수기 타입 `database.ts`(앱 키 기준)와 생성 타입 `database.generated.ts`(DB 컬럼 기준)가
 > 이 테이블에서 어긋나 있어 컬럼명 불일치가 타입 체크로 잡히지 않았다. `abusing_policy`
 > (`soft_legendary_rate`/`hard_legendary_rate` vs 코드 `soft_legend_rate`/`hard_legend_rate`)도
-> 동일한 불일치가 미해결 상태다.
+> 동일한 불일치가 있으며, 11절과 같은 방식(코드 측 매핑)으로 대응했다(티켓 20260831_1149).
 
 ### ambient_drop_config (재도입 — 2026-08-26, 마이그레이션 104)
 앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 카테고리(`poi_categories` 13종 또는 전체)·
@@ -352,6 +352,23 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 | user_shadow_bans | soft/hard 밴 등급 + 만료시각 |
 | poi_blocks | 유저×POI 단위 72시간 재방문 차단 |
 | abusing_logs | GPS 조작 감지 등 이벤트 로그 |
+
+> ⚠️ **`abusing_policy`의 legend 컬럼명은 앱 키와 다르다.** DB 실제 컬럼은
+> **`soft_legendary_rate`/`hard_legendary_rate`**, 앱 전역 키는
+> **`soft_legend_rate`/`hard_legend_rate`**다. `drop_policy.rarity_legendary`와 완전히 같은
+> 원인(티켓 20260813_003의 rename 누락)이며, `src/lib/abusing/policy.ts`의
+> `APP_KEY_TO_DB_COLUMN`이 **테이블 입출력 시점에만** 변환한다(티켓 20260831_1149).
+>
+> 이 불일치 때문에 2026-08-13 이후 어드민 저장이 전량 롤백됐고(무음 실패), 읽기에서는 앱 키가
+> 사라져 **섀도우밴의 legend 차단이 무력화**돼 있었다(소프트/하드밴 유저가 legend 배지를
+> 정상 확률로 획득). `mythic`은 컬럼명이 일치해 정상 차단됐다.
+>
+> **배지 등급명 개명(`legend` → `epic`) 후속 작업**에 이 두 컬럼 개명이 포함된다. 그 작업에서
+> 위 매핑 상수와 변환 함수(`toAppKeys`/`toDbColumns`), `database.ts`의 `AbusingPolicyRow` 주석을
+> **함께 제거**해야 한다. 개명만 하고 매핑을 남기면 다시 어긋난다.
+>
+> 참고: `abusing_policy` 접근 지점은 `src/lib/abusing/policy.ts` 한 곳이 아니다.
+> `src/lib/strava/sync.ts`도 `vehicle_speed_filter_kmh`만 직접 읽는다(매핑 대상 컬럼과는 무관).
 
 ---
 
