@@ -118,6 +118,45 @@ describe('same_activity:true — 한 활동이 두 필드를 함께 만족해야
   })
 })
 
+// ── same_activity:true — T23 '그냥 나갔다 옴' 예외 (단일 필드도 단일 활동 평가, 티켓 20260831_2100 후속) ─
+
+describe('same_activity:true — 단일 필드(distance_km)도 단일 활동 충족만 인정한다 (T23 회귀 방지)', () => {
+  const cond: BadgeCondition = {
+    activity_type: 'walking',
+    distance_km: 0.6,
+    same_activity: true,
+  }
+
+  it('한 활동이 단독으로 0.6km를 만족하면 pass', () => {
+    const acts = [makeActivity({ jamActivityType: 'walking', distanceKm: 0.6, movingTimeSec: 600, averageSpeedKmh: 3.6 })]
+    expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
+  })
+
+  // 참고: 걷기는 축1 게이트(WALKING_GATE_MIN_DISTANCE_KM=0.5km) 미만 활동을 조건 평가
+  // 대상에서 아예 제외한다. 0.6km 임계값이 이 게이트에 근접해(티켓 A-3) 0.3km짜리 활동
+  // 2건은 게이트 자체에서 걸러져 same_activity 로직을 검증하지 못한다. 게이트는 통과하되
+  // (0.5km 이상) 개별로는 0.6km에 못 미치는 0.5km 활동 2건으로 same_activity 로직 자체를
+  // 격리해 검증한다.
+  it('여러 활동에 걸친 누적 0.6km(0.5km 두 번, 개별로는 게이트 통과·조건 미달)로는 fail (same_activity가 단일 필드에도 적용됨)', () => {
+    const acts = [
+      makeActivity({ jamActivityType: 'walking', distanceKm: 0.5, movingTimeSec: 600, averageSpeedKmh: 3.0 }),
+      makeActivity({ jamActivityType: 'walking', distanceKm: 0.5, movingTimeSec: 600, averageSpeedKmh: 3.0 }),
+    ]
+    const result = evaluateConditionDetailed(cond, acts)
+    expect(result.pass).toBe(false)
+  })
+
+  it('same_activity 플래그가 없으면(기본값) 같은 두 활동이 누적으로 통과한다 — 대조군', () => {
+    const cumulativeCond: BadgeCondition = { activity_type: 'walking', distance_km: 0.6 }
+    const acts = [
+      makeActivity({ jamActivityType: 'walking', distanceKm: 0.5, movingTimeSec: 600, averageSpeedKmh: 3.0 }),
+      makeActivity({ jamActivityType: 'walking', distanceKm: 0.5, movingTimeSec: 600, averageSpeedKmh: 3.0 }),
+    ]
+    // 누적거리 1.0km ≥ 0.6 → pass (same_activity 없을 때만)
+    expect(evaluateConditionDetailed(cumulativeCond, acts).pass).toBe(true)
+  })
+})
+
 // ── 카테고리 2 복합배지 — 이력 전반 독립 평가 (R7 스타일) ─────────────────
 
 describe('카테고리 2 복합배지 — 필드별 이력 전반 독립 평가 (다른 세션 가능)', () => {
