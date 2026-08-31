@@ -1,9 +1,9 @@
 ---
 id: 20260831_2100
 category: BadgeEngine
-status: OPEN
+status: CLOSED
 created: 2026-08-31
-closed:
+closed: 2026-08-31
 ---
 
 # [BadgeEngine] distance_km/elevation_gain_m 누적 평가 복원 + 걷기배지 32종 반영 + 조건값 DB 동기화
@@ -231,7 +231,11 @@ mcp__supabase__list_migrations 결과에도 이 마이그레이션 적용 이력
 - `CONDITION_JSON_SPEC.md` §2.2에 same_activity 참조 추가, 신규 §2.2-1(플래그 스펙),
   §4 필드 조합 규칙에 카테고리 2 독립 평가 원칙 추가, §5 예시 갱신.
 
-**B·C의 SQL은 작성만 완료 — 실행은 사용자 승인 후 오케스트레이터가 처리한다.**
+**B·C의 SQL도 사용자 승인 후 오케스트레이터가 실행 완료했다** (아래 배포 정보 참고). 마이그레이션
+118 실행 결과, 걷기 활동배지가 32건(W1~W8)→64건(D01~D11·트로피 매트릭스 32종 추가)으로
+정상 증가했음을 재조회로 확인. 마이그레이션 119 실행 결과, 21개 (배지명·등급) 조합의
+`duration_minutes`/`weekly_count`/`min_speed_kmh` 값이 문서(v4) 목표값과 정확히 일치함을
+전수 재조회로 확인.
 
 ### 변경된 파일
 ```
@@ -261,9 +265,13 @@ Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
 사용자 노출 텍스트 변경 없음 — 해당 없음 (엔진 로직·DB 조건값만 변경)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-31
+- 환경: production (Supabase는 staging·프로덕션 공용 단일 DB — DB 변경은 즉시 반영)
+- 커밋: `3c75dda3`(구현) → `54ad7faa`(origin/staging 병합 후 push, 격리 워크트리에서 처리)
+- Vercel(jam-stage 프로젝트, staging 브랜치=Production 환경): 커밋 `54ad7faa` 배포 READY 확인
+  (`dpl_3DqAjWFHTxqZMsDedwSxjgj2V98S`)
+- 마이그레이션 실행: 117(`same_activity` 플래그+CHECK 제약) → 118(걷기 32종) → 119(21개
+  조건값) 순서로 전부 실행 완료, 각각 실행 직후 재조회로 반영 확인
 
 ### 주요 의사결정 / 핵심 메모
 - `same_activity` 플래그를 필드 조합 추론 대신 명시적 플래그로 도입(티켓이 제시한 두 선택지
@@ -286,6 +294,12 @@ Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
   표시값과 달성 기준이 어긋나게 된다. 실측(migrations 전수 grep) 결과 `mission_type=
   'elevation_gain_m'`로 실제 생성된 미션 행은 현재 없어 즉시 영향은 0건이나, 후속 티켓에서
   미션 엔진 쪽 의도(단일 활동 vs 누적)를 명시적으로 정리할 필요가 있음.
+  → 후속 작업으로 분리(task_b32f3df2), 사용자가 별도 세션에서 진행 중.
+- (INFO) T23 "그냥 나갔다 옴"(걷기, `distance_km:0.6`, 마이그레이션 118로 최초 시딩)이
+  `ACTIVITY_BADGES.md`에는 "(단일 활동)"으로 명시돼 있으나 `same_activity` 플래그를 부여하지
+  않아 실제로는 누적 합계로 평가된다(이번 티켓 범위는 T1 1건 한정). 임계값이 걷기 축1 게이트
+  최소거리(0.5km)에 가까워 실질 난이도 차이는 미미.
+  → 후속 작업으로 분리(task_4e98d2be), 사용자가 별도 세션에서 진행 중.
 - (INFO) 이번 티켓 스코프 밖 발견: 작업 시작 시점에 로컬 저장소가 다른 진행 중 티켓(2038)의
   리뷰 브랜치에 체크인된 상태였고, 동시에 또 다른 세션(2106, Footer/TopNav)이 같은 메인
   워크트리에서 실시간으로 파일을 수정 중이었다(`git worktree list`로 확인, 별도 워크트리
