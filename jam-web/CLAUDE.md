@@ -39,3 +39,20 @@
 - **문장**: 해요체, 간결하게, 제목에 마침표 없음
 
 코드 리뷰·테스트·배포 단계에서 확인해야 하는 필수 항목이다.
+
+## Supabase 쓰기 타입은 생성 타입이 기준이다
+
+`.from(t).insert/update/upsert()`의 컬럼명·타입 검사는 **`src/types/database.generated.ts`**
+기준으로 걸린다 (`lib/supabase/{client,server}.ts` 3곳이 이 파일을 주입한다).
+수기 `src/types/database.ts`는 도메인 타입·주석 자산으로 남아 있을 뿐, 고쳐도 쓰기 검사에는
+영향이 없다.
+
+- **컴파일 오류를 억제로 덮지 않는다.** `@ts-expect-error`뿐 아니라 `as never`·
+  `as unknown as XxxInsert` 같은 전체 캐스팅도 컬럼명 검증까지 함께 끈다. 억제가 정말 필요하면
+  어긋나는 **한 컬럼 단위로** 좁힌다(`Omit<Insert, 'serial_number'>` 형태).
+- **페이로드에 `Record<string, unknown>` 반환 함수를 스프레드하지 않는다.** 그 키들은 타입에서
+  사라져 오타가 통과한다.
+- **마이그레이션을 추가하면 `npm run db:types`로 생성 타입을 재생성해 같은 커밋에 넣는다.**
+  생성 타입이 낡으면 올바른 코드가 잘못된 컴파일 오류를 낸다.
+
+배경과 실측은 `../Service Plan/Tickets/20260831_1213_Service_Supabase제네릭-생성타입전환-쓰기타입검사-복구.md` 참조.

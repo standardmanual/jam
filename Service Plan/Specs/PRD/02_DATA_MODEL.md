@@ -258,18 +258,38 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 > `soft_epic_rate`·`hard_epic_rate`를 `1.00`(허용)으로 고정했다. **Mystic 차단은 계속 정상
 > 작동한다**(`0.00`). Epic 차단을 실제로 켤지는 별도 판단이 필요하다.
 >
-> 참고: 수기 타입 `database.ts`(앱 키 기준)와 생성 타입 `database.generated.ts`(DB 컬럼 기준)가
-> 이 테이블에서 어긋나 있어 컬럼명 불일치가 타입 체크로 잡히지 않았다. 마이그레이션 115로 양쪽
-> 모두 DB와 일치하게 됐지만, 아래 경고처럼 **타입 검사 자체가 꺼져 있는 문제는 그대로 남는다.**
->
-> ⚠️ **두 타입 파일을 DB에 맞추는 것만으로는 타입 시스템이 막아주지 않는다.** 수기 `database.ts`는
-> Row를 `interface`로 선언하는데, `interface`는 암묵적 인덱스 시그니처가 없어 supabase-js의
-> `GenericTable`(`Row: Record<string, unknown>`) 제약을 만족하지 못한다. 그 결과 **모든 쓰기
-> 페이로드가 `never[]`로 추론**되고, 개발자는 쓰기 지점마다 `@ts-expect-error`를 달 수밖에 없다
-> (2026-08-31 기준 92개 / 55개 파일, 그중 55개가 이 `never` 계열). **그 지시자가 컬럼명 검증까지
-> 함께 끈다.** 검사를 실제로 되살리려면 Supabase 클라이언트 제네릭(`lib/supabase/client.ts`·
-> `server.ts` 3곳)을 `database.generated.ts`로 바꿔야 한다. 효과·비용 실측은
-> [티켓 20260831_1158](../../Tickets/20260831_1158_Infra_수기타입-생성타입-불일치-전수점검.md) 참조.
+> 참고: 한동안 수기 타입 `database.ts`(앱 키 기준)와 생성 타입 `database.generated.ts`(DB 컬럼
+> 기준)가 이 테이블에서 어긋나 컬럼명 불일치가 타입 체크로 잡히지 않았다. 마이그레이션 115로
+> 양쪽 모두 DB와 일치하고, 티켓 20260831_1213이 타입 검사 자체도 되살렸다(아래).
+
+### Supabase 타입의 진실 원천 (2026-08-31 티켓 20260831_1213)
+
+**Supabase 클라이언트 제네릭의 진실 원천은 `src/types/database.generated.ts`다.**
+`lib/supabase/client.ts`·`server.ts` 3곳이 이 파일을 주입하므로,
+`.from(t).insert/update/upsert()`의 **컬럼명·타입 검사가 생성 타입 기준으로 실제로 걸린다.**
+
+수기 `src/types/database.ts`는 **삭제하지 않고 도메인 자산으로 남긴다** — 168개 파일이 `XxxRow`를
+값 형태로 import하고, 각 컬럼의 의미·마이그레이션 근거 주석이 생성 타입에는 없으며,
+`BadgeCondition`·`ActivityType`처럼 `jsonb`/`text[]`를 좁힌 도메인 타입은 여기서만 정의된다.
+**다만 이 파일의 Row를 고쳐도 쓰기 검사에는 영향이 없다.**
+
+> ⚠️ **왜 전환이 필요했나.** 수기 파일은 Row를 `interface`로 선언하는데, `interface`는 암묵적
+> 인덱스 시그니처가 없어 supabase-js의 `GenericTable`(`Row: Record<string, unknown>`) 제약을
+> 만족하지 못한다. 그 결과 **모든 쓰기 페이로드가 `never[]`로 추론**돼 올바른 컬럼을 써도 컴파일
+> 오류가 났고, 쓰기 지점마다 `@ts-expect-error`가 달렸다(92개 / 55파일). **그 지시자가 컬럼명
+> 검증까지 함께 껐고**, 어드민 드랍 정책 저장이 41일간 조용히 실패한 사고(20260831_1118)가
+> 컴파일에서 안 잡힌 직접 원인이 됐다. 전환 후 **억제는 0개**다.
+
+**아직 검사 밖인 예외** (전부 기존 코드, 별도 정리 대상):
+
+| 예외 | 왜 검사가 안 걸리나 |
+|---|---|
+| `.update(body as never)` 4곳 (`api/admin/{today,missions,recipes}/[id]/route.ts`, `lib/missions/rewards.ts:142`) | `as never` 캐스팅이 억제와 같은 효과를 낸다. `@ts-expect-error` 0개가 "모든 쓰기가 검사된다"를 뜻하지 않는다 |
+| 쓰기 페이로드에 `Record<string, unknown>` 반환 함수를 스프레드하는 형태 | 그 스프레드가 기여하는 키는 페이로드 타입에서 **통째로 사라진다**. `drop_policy`의 `toDbColumns()`가 그랬고, 마이그레이션 115로 매핑이 제거되면서 해소됐다 |
+
+> ⚠️ **생성 타입이 낡으면 이제는 올바른 코드가 잘못된 컴파일 오류를 낸다.** 실제로 20260831_1158
+> 조사 시점에 `badges.category`·`poi.is_active`가 그 상태였다. 마이그레이션을 추가하면
+> `npm run db:types`로 재생성해 같은 커밋에 함께 넣을 것.
 
 ### ambient_drop_config (재도입 — 2026-08-26, 마이그레이션 104)
 앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 카테고리(`poi_categories` 13종 또는 전체)·
