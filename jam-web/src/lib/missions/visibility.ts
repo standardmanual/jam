@@ -23,9 +23,8 @@
  * 완료 판정이 배지 보유보다 앞선다: 본 배지를 이미 받았더라도 완료 기록이 있으면 `completed`.
  */
 import type { BadgeRarity } from '@/types/database'
-
-/** 배지 등급 → 티어 값. badge-engine/index.ts의 RARITY_TIER와 같은 표(등급 체계는 하나뿐) */
-export const RARITY_TIER: Record<string, number> = { common: 1, rare: 2, legend: 3, mythic: 4 }
+// 등급 서열표는 @/lib/rarity 한 곳에만 둔다 (티켓 20260831_1115에서 통합)
+import { RARITY_TIER } from '@/lib/rarity'
 
 /** 티어 값 → 배지 등급 (잠금 안내에 쓸 "먼저 획득해야 하는 등급" 역산용) */
 const RARITY_BY_TIER: Record<number, BadgeRarity> = { 1: 'common', 2: 'rare', 3: 'legend', 4: 'mythic' }

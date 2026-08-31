@@ -7,11 +7,11 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import {
-  RARITY_TIER,
   type GatedBadgeInfo,
   type MissionVisibilityContext,
   type MissionVisibilityInput,
 } from './visibility'
+import { RARITY_TIER } from '@/lib/rarity'
 import type { BadgeRarity } from '@/types/database'
 
 /** 게이팅 정보가 필요 없는 경우의 빈 값 (호출마다 새 Map — 공유 인스턴스 변조 방지) */
