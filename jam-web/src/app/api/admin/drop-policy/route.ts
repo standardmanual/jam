@@ -23,7 +23,12 @@ export async function PUT(req: NextRequest) {
     if (v === undefined) continue
     const n = typeof v === 'string' ? parseFloat(v) : v
     if (typeof n !== 'number' || Number.isNaN(n) || n < 0) {
-      return NextResponse.json({ error: `${key}: 0 이상의 숫자여야 합니다.` }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: `드랍 정책이 저장되지 않았어요. ${key} 값이 0 이상의 숫자가 아니에요. 값을 확인하고 다시 저장해 주세요.`,
+        },
+        { status: 400 }
+      )
     }
     patch[key] = n
   }
@@ -35,7 +40,9 @@ export async function PUT(req: NextRequest) {
     merged.rarity_common + merged.rarity_rare + merged.rarity_epic + merged.rarity_mystic
   if (Math.abs(raritySum - 1) > 0.001) {
     return NextResponse.json(
-      { error: `rarity 분포 합이 1이어야 합니다. (현재 ${raritySum.toFixed(3)})` },
+      {
+        error: `드랍 정책이 저장되지 않았어요. rarity 분포 합이 1이 아니에요. (현재 ${raritySum.toFixed(3)}) Common·Rare·Epic·Mystic 확률 값을 합이 1이 되게 맞추고 다시 저장해 주세요.`,
+      },
       { status: 400 }
     )
   }
@@ -44,7 +51,9 @@ export async function PUT(req: NextRequest) {
   const bucketSum = merged.momentum_weight + merged.adjacent_weight + merged.explore_weight
   if (bucketSum > 1.001) {
     return NextResponse.json(
-      { error: `모멘텀+인접+탐험 합이 1 이하여야 합니다. (현재 ${bucketSum.toFixed(3)})` },
+      {
+        error: `드랍 정책이 저장되지 않았어요. 모멘텀·인접·탐험 가중치 합이 1을 넘었어요. (현재 ${bucketSum.toFixed(3)}) 세 값을 합이 1 이하가 되게 맞추고 다시 저장해 주세요.`,
+      },
       { status: 400 }
     )
   }
