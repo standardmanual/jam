@@ -6,11 +6,11 @@
  * `visibility-logic.test.ts`가 규칙 자체를 고정한다면, 이 파일은 "실제 데이터에서도 그 규칙이
  * 의도한 화면 결과로 이어지는가"를 확인한다.
  *
- * 배경: dev-login 고정 유저(00000000-…-0001)는 5개 트리의 common~mythic을 전부 보유해
+ * 배경: dev-login 고정 유저(00000000-…-0001)는 5개 트리의 common~mystic을 전부 보유해
  * 화면에서는 15개 미션이 모두 open으로만 보인다. locked/hidden을 화면으로 재현할 실유저가
  * 없으므로 순수 함수 단위로 대조한다.
  *
- * 게이트 구성(마이그레이션 101): 트리 1개당 미션 3종이 각각 Rare/Legend/Mythic 본 배지를 연다.
+ * 게이트 구성(마이그레이션 101): 트리 1개당 미션 3종이 각각 Rare/Epic/Mystic 본 배지를 연다.
  *
  * 실행: `npx tsx src/lib/missions/__tests__/visibility-realdata.test.ts`
  */
@@ -28,8 +28,8 @@ import type { BadgeRarity } from '@/types/database'
 const TREES = ['동네 산책러', '첫 숨결', '언덕의 도전자', '첫 고도', '야생의 주자'] as const
 const STEPS: Array<{ suffix: string; rarity: BadgeRarity }> = [
   { suffix: '', rarity: 'rare' },
-  { suffix: ' Hard', rarity: 'legend' },
-  { suffix: ' Ultra', rarity: 'mythic' },
+  { suffix: ' Hard', rarity: 'epic' },
+  { suffix: ' Ultra', rarity: 'mystic' },
 ]
 
 interface LevelUpMission {
@@ -65,7 +65,7 @@ type OwnedByTree = Partial<Record<(typeof TREES)[number], BadgeRarity | null>>
 interface UserCase {
   label: string
   owned: OwnedByTree
-  /** 검증 대상 트리 → [Rare미션, Legend미션, Mythic미션] 기대 노출 */
+  /** 검증 대상 트리 → [Rare미션, Epic미션, Mystic미션] 기대 노출 */
   expect: Partial<Record<(typeof TREES)[number], [MissionVisibility, MissionVisibility, MissionVisibility]>>
 }
 
@@ -92,26 +92,26 @@ const USER_CASES: UserCase[] = [
     },
   },
   {
-    // 실유저 00000000-…-0003 — '첫 숨결' legend, 나머지 4개 트리는 mythic
-    // (legend 등급 커버리지를 담당하는 실유저. 이전 버전은 이 조합을 0004로 잘못 라벨링했다)
-    label: "00000000-…-0003 (실측): '첫 숨결' legend · 나머지 4트리 mythic",
+    // 실유저 00000000-…-0003 — '첫 숨결' epic, 나머지 4개 트리는 mystic
+    // (epic 등급 커버리지를 담당하는 실유저. 이전 버전은 이 조합을 0004로 잘못 라벨링했다)
+    label: "00000000-…-0003 (실측): '첫 숨결' epic · 나머지 4트리 mystic",
     owned: {
-      '첫 숨결': 'legend',
-      '동네 산책러': 'mythic',
-      '야생의 주자': 'mythic',
-      '언덕의 도전자': 'mythic',
-      '첫 고도': 'mythic',
+      '첫 숨결': 'epic',
+      '동네 산책러': 'mystic',
+      '야생의 주자': 'mystic',
+      '언덕의 도전자': 'mystic',
+      '첫 고도': 'mystic',
     },
     expect: {
-      // legend 보유 → Mythic 게이트(tier 3)가 ownedTier(2)+1 이내라 open
+      // epic 보유 → Mystic 게이트(tier 3)가 ownedTier(2)+1 이내라 open
       '첫 숨결': ['open', 'open', 'open'],
       '동네 산책러': ['open', 'open', 'open'],
     },
   },
   {
-    // dev-login 고정 유저 00000000-…-0001 — 5개 트리 전부 mythic까지 보유
-    label: 'dev-login 00000000-…-0001 (실측): 5개 트리 전부 mythic',
-    owned: Object.fromEntries(TREES.map((t) => [t, 'mythic' as BadgeRarity])),
+    // dev-login 고정 유저 00000000-…-0001 — 5개 트리 전부 mystic까지 보유
+    label: 'dev-login 00000000-…-0001 (실측): 5개 트리 전부 mystic',
+    owned: Object.fromEntries(TREES.map((t) => [t, 'mystic' as BadgeRarity])),
     expect: Object.fromEntries(
       TREES.map((t) => [t, ['open', 'open', 'open'] as [MissionVisibility, MissionVisibility, MissionVisibility]]),
     ),

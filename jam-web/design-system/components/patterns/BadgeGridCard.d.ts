@@ -3,7 +3,7 @@ import type { ReactNode, CSSProperties } from 'react';
 export interface BadgeGridCardProps {
   name: string;
   imageUrl?: string | null;
-  rarity?: 'common' | 'rare' | 'legend' | 'mythic';
+  rarity?: 'common' | 'rare' | 'epic' | 'mystic';
   /** Link 모드 — <a href> 래핑. onClick과 상호 배타. */
   href?: string;
   /** Button 모드 — <button> 래핑. href와 상호 배타. */

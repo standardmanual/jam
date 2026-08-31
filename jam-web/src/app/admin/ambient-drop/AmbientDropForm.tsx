@@ -86,7 +86,7 @@ export default function AmbientDropForm({
   const [deployResult, setDeployResult] = useState<AmbientDropBatchResult | null>(null)
   const [deployError, setDeployError] = useState<string | null>(null)
 
-  const raritySum = values.rarity_common + values.rarity_rare + values.rarity_legend + values.rarity_mythic
+  const raritySum = values.rarity_common + values.rarity_rare + values.rarity_epic + values.rarity_mystic
   const raritySumInvalid = values.rarity_mode === 'explicit' && Math.abs(raritySum - 1) > 0.001
 
   const set = <K extends keyof AmbientDropConfig>(key: K, value: AmbientDropConfig[K]) =>
@@ -228,8 +228,8 @@ export default function AmbientDropForm({
                 [
                   ['rarity_common', 'Common'],
                   ['rarity_rare', 'Rare'],
-                  ['rarity_legend', 'Legend'],
-                  ['rarity_mythic', 'Mythic'],
+                  ['rarity_epic', 'Epic'],
+                  ['rarity_mystic', 'Mystic'],
                 ] as const
               ).map(([key, label]) => (
                 <label key={key} className="block">

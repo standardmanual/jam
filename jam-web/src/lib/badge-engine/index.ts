@@ -567,7 +567,7 @@ export async function evaluateBadgesDetailed(
 
   // 미션 보상 배지(condition_json.mission_reward = true)는 발급 후보에서 아예 제외한다.
   // 이 배지들은 미션 완료 시 grantMissionRewards()로만 지급되며, 동기화 평가로 발급되면
-  // 본 배지 Rare/Legend/Mythic의 선행 배지 게이트(§2.7)가 통째로 열린다 (티켓 20260825_028).
+  // 본 배지 Rare/Epic/Mystic의 선행 배지 게이트(§2.7)가 통째로 열린다 (티켓 20260825_028).
   const allBadges = (allBadgesRaw as BadgeRow[] | null)?.filter(
     (b) => (b.condition_json as BadgeCondition | null)?.mission_reward !== true
   ) ?? null
@@ -878,7 +878,7 @@ const PROGRESSION_MODIFIERS = [
 
 function getProgressionKey(condition: BadgeCondition): { key: string; value: number } | null {
   // 진행 트랙 병합(동일 트랙 내 최고값 1개만 발급)은 원래 prerequisite_badge_names로
-  // 명시적으로 체인된 배지 가족(예: W1 동네 산책러 rare~mythic 티어)을 위한 장치다.
+  // 명시적으로 체인된 배지 가족(예: W1 동네 산책러 rare~mystic 티어)을 위한 장치다.
   // prerequisite가 없는 조건까지 여기서 병합해버리면, 이름이 다르고 서로 무관한
   // "완전 독립" 배지들이 우연히 같은 activity_type+distance_km(혹은 total_count)
   // 조합을 쓸 때 서로 충돌해 값이 낮은 쪽이 조용히 발급 누락된다.

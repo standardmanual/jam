@@ -36,15 +36,15 @@ import { formatPaceSecPerKm } from '@/types/strava'
 const RARITY_COLOR: Record<string, string> = {
   common: 'text-gray-600',
   rare: 'text-blue-600',
-  legend: 'text-violet-600',
-  mythic: 'text-amber-600',
+  epic: 'text-violet-600',
+  mystic: 'text-amber-600',
 }
 
 const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: 'Common',
   rare: 'Rare',
-  legend: 'Legend',
-  mythic: 'Mythic',
+  epic: 'Epic',
+  mystic: 'Mystic',
 }
 
 const SEASON_SHORT: Record<string, string> = {

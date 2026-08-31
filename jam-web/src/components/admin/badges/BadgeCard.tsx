@@ -13,15 +13,15 @@ import { badgeTypeLabel } from '@/lib/admin/badge-labels'
 const RARITY_BADGE_COLOR: Record<string, string> = {
   common: 'bg-gray-200 text-gray-800',
   rare: 'bg-blue-200 text-blue-800',
-  legend: 'bg-violet-200 text-violet-800',
-  mythic: 'bg-amber-200 text-amber-800',
+  epic: 'bg-violet-200 text-violet-800',
+  mystic: 'bg-amber-200 text-amber-800',
 }
 
 const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: 'Common',
   rare: 'Rare',
-  legend: 'Legend',
-  mythic: 'Mythic',
+  epic: 'Epic',
+  mystic: 'Mystic',
 }
 
 /** "YYYY.MM.DD" 형식으로 날짜 포맷 */

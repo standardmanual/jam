@@ -34,7 +34,7 @@ export interface RevealBadge {
   name: string
   description: string
   imageUrl?: string | null
-  rarity?: 'common' | 'rare' | 'legend' | 'mythic'
+  rarity?: 'common' | 'rare' | 'epic' | 'mystic'
 }
 
 interface Props {

@@ -214,7 +214,7 @@ export interface NotificationPayloadMap {
     target_count?: number
   }
   /**
-   * 29 팔로잉 희귀 배지 — legend/mythic만.
+   * 29 팔로잉 희귀 배지 — epic/mystic만.
    * `more_count`는 R15(사람 단위 묶음) — 「소식이 N건 더 있어요」
    */
   following_rare_badge: {

@@ -76,7 +76,7 @@ export const Interactive: Story = {
           state={value.length > MAX ? 'error' : 'default'}
           aria-label="활동 소감"
         />
-        <p style={{ margin: 0, fontSize: 'var(--text-small)', color: value.length > MAX ? 'var(--color-rarity-mythic)' : 'var(--color-text-secondary)', textAlign: 'right' }}>
+        <p style={{ margin: 0, fontSize: 'var(--text-small)', color: value.length > MAX ? 'var(--color-rarity-mystic)' : 'var(--color-text-secondary)', textAlign: 'right' }}>
           {value.length} / {MAX}
         </p>
       </div>

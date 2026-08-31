@@ -27,7 +27,7 @@ interface BadgeHistoryTableProps {
 }
 
 const RARITY_LABEL: Record<string, string> = {
-  common: 'Common', rare: 'Rare', legend: 'Legend', mythic: 'Mythic',
+  common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic',
 }
 
 function formatDateTime(iso: string): string {

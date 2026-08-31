@@ -17,8 +17,8 @@ export const DEFAULT_AMBIENT_DROP_CONFIG: AmbientDropConfig = {
   // 운영값 — 티켓 20260826_009 §5: 현재 아이템배지 카탈로그는 common만 존재해 100% common으로 시작
   rarity_common: 1,
   rarity_rare: 0,
-  rarity_legend: 0,
-  rarity_mythic: 0,
+  rarity_epic: 0,
+  rarity_mystic: 0,
   collection_mode: 'random',
   collection_ids: [],
   // 구 ambient_drop_policy(마이그레이션 044) 마지막 운영값(POI당 1개, 배치당 30개)을 초기값으로만 참고
@@ -30,8 +30,8 @@ const NUMERIC_KEYS = [
   'exclusion_window_minutes',
   'rarity_common',
   'rarity_rare',
-  'rarity_legend',
-  'rarity_mythic',
+  'rarity_epic',
+  'rarity_mystic',
   'batch_size',
   'max_active_per_poi',
 ] as const

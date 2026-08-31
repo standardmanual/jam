@@ -35,7 +35,7 @@ interface InventoryItem {
 const INITIAL_WINDOW_SIZE = 3
 const WINDOW_STEP = 3
 
-const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
+const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 interface PoiCarouselModalProps {
   /** 반경 내 전체 POI 목록(정렬 순서는 무관 — 내부에서 거리순으로 재정렬한다) */

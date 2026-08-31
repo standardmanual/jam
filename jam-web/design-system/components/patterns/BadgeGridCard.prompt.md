@@ -5,13 +5,13 @@
 <BadgeGridCard name="도봉산 정상" rarity="rare" imageUrl="/badges/dobong.png" href="/badges/123" />
 
 // 미획득 (흑백+반투명)
-<BadgeGridCard name="한강 완주" rarity="legend" earned={false} />
+<BadgeGridCard name="한강 완주" rarity="epic" earned={false} />
 
 // 미발견 (아이템북 — ??? 표시)
 <BadgeGridCard name="???" rarity="common" undiscovered={true} />
 
 // 선택 모드
-<BadgeGridCard name="북한산" rarity="mythic" selected={true} onClick={() => setSelected(id)} />
+<BadgeGridCard name="북한산" rarity="mystic" selected={true} onClick={() => setSelected(id)} />
 ```
 
 `children`에 만료일 문구나 "슬롯에 넣기" 버튼을 추가할 수 있다.

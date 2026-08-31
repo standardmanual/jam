@@ -82,8 +82,8 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
     : {
         common: config.rarity_common,
         rare: config.rarity_rare,
-        legend: config.rarity_legend,
-        mythic: config.rarity_mythic,
+        epic: config.rarity_epic,
+        mystic: config.rarity_mystic,
       }
 
   // ── 축 3: 대상 컬렉션 ───────────────────────────────────────
@@ -193,7 +193,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   if (badgeRowsError) console.error('[ambient-drop] badges(item) 조회 오류:', badgeRowsError)
 
   const now = ranAt
-  const badgesByRarity: Record<BadgeRarity, { id: string }[]> = { common: [], rare: [], legend: [], mythic: [] }
+  const badgesByRarity: Record<BadgeRarity, { id: string }[]> = { common: [], rare: [], epic: [], mystic: [] }
   for (const b of badgeRows) {
     if (b.valid_from && b.valid_from > now) continue
     if (b.valid_until && b.valid_until < now) continue

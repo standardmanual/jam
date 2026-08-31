@@ -124,8 +124,8 @@ describe('① 활동 결산 — 사다리 A·B / C·D / E / F2', () => {
   })
 
   it('A3 — 희귀 배지는 등급이 첫 단어로 온다 (R2 — 작은따옴표 없음)', () => {
-    const v = recap({ activity_ids: [1], activity_badges: [badge('b1', '별을 삼킨 바퀴', 'mythic')] })
-    expect(text(v)).toBe('Mythic 배지 별을 삼킨 바퀴를 획득했어요')
+    const v = recap({ activity_ids: [1], activity_badges: [badge('b1', '별을 삼킨 바퀴', 'mystic')] })
+    expect(text(v)).toBe('Mystic 배지 별을 삼킨 바퀴를 획득했어요')
     expect(notificationTarget(v).href).toBe('/badges/b1')
   })
 
@@ -236,13 +236,13 @@ describe('① 활동 결산 — 사다리 A·B / C·D / E / F2', () => {
     const v = recap({
       activity_ids: [1],
       activity_badges: [
-        badge('b1', '별을 삼킨 바퀴', 'mythic'),
+        badge('b1', '별을 삼킨 바퀴', 'mystic'),
         ...Array.from({ length: 5 }, (_, i) => badge(`n${i}`, `배지 ${i}`)),
       ],
       item_badges: [item('i1', '멈춘 초시계'), item('i2', '녹슨 열쇠')],
     })
-    expect(text(v)).toBe('Mythic 배지 별을 삼킨 바퀴 외 배지 7개를 획득했어요')
-    // Mythic 상세로 직행하면 나머지 7개를 못 본다
+    expect(text(v)).toBe('Mystic 배지 별을 삼킨 바퀴 외 배지 7개를 획득했어요')
+    // Mystic 상세로 직행하면 나머지 7개를 못 본다
     expect(notificationTarget(v).href).toBe('/badges')
   })
 
@@ -435,11 +435,11 @@ describe('⑤⑥ 소셜', () => {
       text(
         view(
           'following_rare_badge',
-          { badge_id: 'b1', badge_name: '별을 삼킨 바퀴', rarity: 'mythic' },
+          { badge_id: 'b1', badge_name: '별을 삼킨 바퀴', rarity: 'mystic' },
           { actor: ACTOR }
         )
       )
-    ).toBe('예린님이 Mythic 배지 별을 삼킨 바퀴를 획득했어요')
+    ).toBe('예린님이 Mystic 배지 별을 삼킨 바퀴를 획득했어요')
     expect(
       text(
         view(
@@ -458,22 +458,22 @@ describe('⑤⑥ 소셜', () => {
     // 같은 템플릿(msgRareBadgeEarned)을 쓰는 #29로 옮겼다.
     const v = view(
       'following_rare_badge',
-      { badge_id: 'b1', badge_name: '별을 삼킨 바퀴', rarity: 'mythic' },
+      { badge_id: 'b1', badge_name: '별을 삼킨 바퀴', rarity: 'mystic' },
       { actor: ACTOR }
     )
     const { template, vars } = buildNotificationMessage(v)
     const tokens = tokenizeMessage(template, vars)
-    expect(tokens.find((t) => t.text === 'Mythic')?.bold).toBe(true)
+    expect(tokens.find((t) => t.text === 'Mystic')?.bold).toBe(true)
     expect(tokens.find((t) => t.text === '별을 삼킨 바퀴')?.bold).toBe(true)
   })
 
   it('R15 — 한 사람의 소식이 2건 이상이면 대표 + "소식이 N건 더 있어요", 착지는 그 사람 프로필', () => {
     const v = view(
       'following_rare_badge',
-      { badge_id: 'b1', badge_name: '별을 삼킨 바퀴', rarity: 'mythic', more_count: 1 },
+      { badge_id: 'b1', badge_name: '별을 삼킨 바퀴', rarity: 'mystic', more_count: 1 },
       { actor: ACTOR }
     )
-    expect(text(v)).toBe('예린님이 Mythic 배지 별을 삼킨 바퀴를 획득했어요. 소식이 1건 더 있어요')
+    expect(text(v)).toBe('예린님이 Mystic 배지 별을 삼킨 바퀴를 획득했어요. 소식이 1건 더 있어요')
     expect(notificationTarget(v).href).toBe('/예린')
   })
 

@@ -142,8 +142,8 @@ function ColorsPage() {
       <Section title="Badge Rarity (배경 + 텍스트 쌍)">
         <RarityPair bg="--color-rarity-common" fg="--color-rarity-common-text" label="COMMON" />
         <RarityPair bg="--color-rarity-rare" fg="--color-rarity-rare-text" label="RARE" />
-        <RarityPair bg="--color-rarity-legend" fg="--color-rarity-legend-text" label="LEGEND" />
-        <RarityPair bg="--color-rarity-mythic" fg="--color-rarity-mythic-text" label="MYTHIC" />
+        <RarityPair bg="--color-rarity-epic" fg="--color-rarity-epic-text" label="EPIC" />
+        <RarityPair bg="--color-rarity-mystic" fg="--color-rarity-mystic-text" label="MYSTIC" />
       </Section>
 
       <Section title="Tag Palette (ShapeTag colorIndex 순환)">
@@ -169,7 +169,7 @@ function ColorsPage() {
           ['--color-base-grey-700', 'Grey 700 — border default'],
           ['--color-base-grey-750', 'Grey 750 — tint elevation'],
           ['--color-base-grey-800', 'Grey 800 — card surface'],
-          ['--color-base-amber', '앰버 — legend rarity 원본'],
+          ['--color-base-amber', '앰버 — epic rarity 원본'],
           ['--color-base-lime', '라임 — tag-6'],
           ['--color-base-charcoal', '차콜 — tag-7'],
           ['--color-base-sienna', '시에나 — tag-8'],

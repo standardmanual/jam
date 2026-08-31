@@ -76,7 +76,7 @@ export const WithLabelAndError: Story = {
         aria-describedby="email-error"
         onChange={() => {}}
       />
-      <p id="email-error" role="alert" style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-rarity-mythic)' }}>
+      <p id="email-error" role="alert" style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-rarity-mystic)' }}>
         올바른 이메일 형식이 아니에요.
       </p>
     </div>
@@ -119,7 +119,7 @@ export const Interactive: Story = {
           aria-label="인터랙티브 입력"
         />
         <p style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>
-          state: <strong style={{ color: state === 'error' ? 'var(--color-rarity-mythic)' : state === 'success' ? 'var(--color-rarity-rare)' : 'var(--color-text)' }}>{state}</strong>
+          state: <strong style={{ color: state === 'error' ? 'var(--color-rarity-mystic)' : state === 'success' ? 'var(--color-rarity-rare)' : 'var(--color-text)' }}>{state}</strong>
         </p>
       </div>
     );

@@ -23,8 +23,8 @@ import { formatPaceSecPerKm } from '@/types/strava'
 const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: 'Common',
   rare: 'Rare',
-  legend: 'Legend',
-  mythic: 'Mythic',
+  epic: 'Epic',
+  mystic: 'Mystic',
 }
 
 /** "YYYY.MM.DD" 형식으로 날짜 포맷 */

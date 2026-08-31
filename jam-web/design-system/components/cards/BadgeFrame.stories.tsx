@@ -82,8 +82,8 @@ export const RarityColors: Story = {
       {[
         { color: 'var(--color-rarity-common)', label: 'Common' },
         { color: 'var(--color-rarity-rare)', label: 'Rare' },
-        { color: 'var(--color-rarity-legend)', label: 'Legend' },
-        { color: 'var(--color-rarity-mythic)', label: 'Mythic' },
+        { color: 'var(--color-rarity-epic)', label: 'Epic' },
+        { color: 'var(--color-rarity-mystic)', label: 'Mystic' },
       ].map(({ color, label }) => (
         <div key={label} style={{ textAlign: 'center' }}>
           <BadgeFrame shape="circle" width={72} height={72} color={color}>

@@ -11,8 +11,8 @@ export const DEFAULT_DROP_POLICY: DropPolicy = {
   // Layer 1
   rarity_common: 0.6,
   rarity_rare: 0.28,
-  rarity_legend: 0.09,
-  rarity_mythic: 0.03,
+  rarity_epic: 0.09,
+  rarity_mystic: 0.03,
   bonus_drop_rate: 0.15,
   bonus_drop_rate_intense: 0.3,
   intense_duration_min: 60,
@@ -35,47 +35,6 @@ export const DEFAULT_DROP_POLICY: DropPolicy = {
   last_piece_pity_threshold: 5,
 }
 
-/**
- * 앱 키 → `drop_policy` 테이블 실제 컬럼명 매핑
- *
- * 앱 전역은 `rarity_legend`를 쓰지만 `drop_policy` 테이블의 실제 컬럼은 `rarity_legendary`다.
- * 티켓 20260813_003(legendary → legend 전면 변경)에서 enum만 rename되고 이 컬럼이 누락돼
- * 생긴 불일치다. 같은 성격의 `ambient_drop_config`는 정상적으로 `rarity_legend`다.
- *
- * ⚠️ 이 매핑은 한시적이다. 배지 등급명을 common/rare/legend/mythic →
- * common/rare/epic/mystic으로 바꾸는 후속 작업에 `rarity_legendary` → `rarity_epic` 컬럼
- * 개명이 포함돼 있다. 그 작업에서 이 상수와 아래 두 변환 함수를 함께 제거할 것.
- * (티켓 20260831_1118)
- */
-const APP_KEY_TO_DB_COLUMN: Record<string, string> = {
-  rarity_legend: 'rarity_legendary',
-}
-
-const DB_COLUMN_TO_APP_KEY: Record<string, string> = Object.fromEntries(
-  Object.entries(APP_KEY_TO_DB_COLUMN).map(([appKey, dbColumn]) => [dbColumn, appKey])
-)
-
-/** DB에서 읽은 행의 컬럼명을 앱 키로 되돌린다. */
-function toAppKeys(row: Record<string, unknown>): Record<string, unknown> {
-  const mapped: Record<string, unknown> = { ...row }
-  for (const [dbColumn, appKey] of Object.entries(DB_COLUMN_TO_APP_KEY)) {
-    if (dbColumn in row) {
-      mapped[appKey] = row[dbColumn]
-      delete mapped[dbColumn]
-    }
-  }
-  return mapped
-}
-
-/** 앱 키로 작성된 패치를 DB 컬럼명으로 변환한다. */
-function toDbColumns(patch: Partial<DropPolicy>): Record<string, unknown> {
-  const mapped: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(patch)) {
-    mapped[APP_KEY_TO_DB_COLUMN[key] ?? key] = value
-  }
-  return mapped
-}
-
 export async function getDropPolicy(): Promise<DropPolicy> {
   try {
     const supabase = createServiceClient()
@@ -87,7 +46,7 @@ export async function getDropPolicy(): Promise<DropPolicy> {
     }
     if (!data) return DEFAULT_DROP_POLICY
     // NUMERIC 컬럼이 문자열로 내려올 수 있어 숫자로 정규화
-    const row = toAppKeys(data as unknown as Record<string, unknown>)
+    const row = data as unknown as Record<string, unknown>
     const policy = { ...DEFAULT_DROP_POLICY } as Record<string, number>
     for (const key of Object.keys(DEFAULT_DROP_POLICY)) {
       const v = row[key]
@@ -107,10 +66,9 @@ export async function getDropPolicy(): Promise<DropPolicy> {
  */
 export async function updateDropPolicy(patch: Partial<DropPolicy>): Promise<void> {
   const supabase = createServiceClient()
-  const payload = { id: 1, ...toDbColumns(patch), updated_at: new Date().toISOString() }
-  // @ts-expect-error Supabase upsert()가 페이로드 타입을 never[]로 추론하는 제한 우회(억제가
-  // 여전히 필요함을 tsc로 확인). 더불어 payload는 DB 컬럼명(rarity_legendary) 기준이라 앱 키
-  // 기준인 DropPolicyRow와도 형태가 다르다 — 위 APP_KEY_TO_DB_COLUMN 주석 참조
+  const payload = { id: 1, ...patch, updated_at: new Date().toISOString() }
+  // @ts-expect-error Supabase upsert()가 페이로드 타입을 never[]로 추론하는 제한 우회
+  // (억제가 여전히 필요함을 tsc로 확인)
   const { error } = await supabase.from('drop_policy').upsert(payload)
   if (error) {
     console.error('[drop-policy] 저장 실패:', error)

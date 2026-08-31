@@ -27,7 +27,7 @@ const BackgroundGeneratorPreview = lazy(() => import('./BackgroundGeneratorPrevi
 const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
 
 const ACTIVITY_TYPES: ActivityType[] = ['cycling', 'running', 'trail_running', 'hiking', 'walking']
-const RARITIES: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
+const RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 /** drop-engine의 CUMULATIVE_CONDITION_FIELDS와 동일 — 아이템 배지엔 이 필드들을 설정할 수 없다
  *  (설정하면 hasCumulativeCondition()이 항상 true가 되어 영원히 드랍 후보에서 제외됨) */

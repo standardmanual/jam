@@ -11,8 +11,8 @@ import type { BadgeRarity } from '@/types/database'
 export const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: d.feed.rarityCommon,
   rare: d.feed.rarityRare,
-  legend: d.feed.rarityLegend,
-  mythic: d.feed.rarityMythic,
+  epic: d.feed.rarityEpic,
+  mystic: d.feed.rarityMystic,
 }
 
 /**
@@ -22,6 +22,6 @@ export const RARITY_LABEL: Record<BadgeRarity, string> = {
 export const RARITY_TIER: Record<BadgeRarity, number> = {
   common: 1,
   rare: 2,
-  legend: 3,
-  mythic: 4,
+  epic: 3,
+  mystic: 4,
 }

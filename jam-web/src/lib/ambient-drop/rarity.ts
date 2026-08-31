@@ -6,7 +6,7 @@ import type { BadgeRarity } from '@/types/database'
 
 export type RarityDistribution = Record<BadgeRarity, number>
 
-export const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
+export const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 /** 배열에서 무작위로 1개 선택. 빈 배열이면 null */
 export function pickRandom<T>(arr: readonly T[]): T | null {
@@ -22,8 +22,8 @@ export function pickRandom<T>(arr: readonly T[]): T | null {
 export function randomRarityDistribution(): RarityDistribution {
   const raw = RARITY_ORDER.map(() => Math.random())
   const sum = raw.reduce((a, b) => a + b, 0) || 1
-  const [common, rare, legend, mythic] = raw.map((v) => v / sum)
-  return { common, rare, legend, mythic }
+  const [common, rare, epic, mystic] = raw.map((v) => v / sum)
+  return { common, rare, epic, mystic }
 }
 
 /** 분포(합=1 가정)에 따라 가중 무작위로 등급 1개를 뽑는다 */
@@ -40,7 +40,7 @@ export function weightedPickRarity(distribution: RarityDistribution): BadgeRarit
 
 /**
  * 뽑힌 등급에 후보 배지가 없을 때의 폴백 — "미보유 우선, rarity 없으면 인접 등급 폴백" 대신
- * 이 엔진에서는 단순하게 RARITY_ORDER 순서(common → rare → legend → mythic)로 후보가 있는
+ * 이 엔진에서는 단순하게 RARITY_ORDER 순서(common → rare → epic → mystic)로 후보가 있는
  * 첫 등급을 사용한다(티켓 §5 — 현재 카탈로그가 common뿐이라 사실상 발동하지 않는다).
  */
 export function fallbackPickBadge<T extends { id: string }>(

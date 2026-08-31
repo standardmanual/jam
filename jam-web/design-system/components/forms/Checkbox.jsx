@@ -32,7 +32,7 @@ export function Checkbox({
 }) {
   const borderByState = {
     default: checked ? 'none' : '1.5px solid var(--color-border)',
-    error: '2px solid var(--color-rarity-mythic)',
+    error: '2px solid var(--color-rarity-mystic)',
     success: checked ? 'none' : '2px solid var(--color-rarity-rare)',
   };
 

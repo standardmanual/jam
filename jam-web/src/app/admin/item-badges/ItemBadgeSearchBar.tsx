@@ -11,8 +11,8 @@ import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table
 const RARITY_OPTIONS = [
   { value: 'common', label: 'Common' },
   { value: 'rare', label: 'Rare' },
-  { value: 'legend', label: 'Legend' },
-  { value: 'mythic', label: 'Mythic' },
+  { value: 'epic', label: 'Epic' },
+  { value: 'mystic', label: 'Mystic' },
 ]
 
 interface ItemBadgeSearchBarProps {

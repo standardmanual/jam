@@ -65,12 +65,12 @@ export const Static: Story = {
 export const WithSubtitleNode: Story = {
   name: '부제 ReactNode',
   args: {
-    icon: <IconSlot color="var(--color-rarity-legend)" />,
+    icon: <IconSlot color="var(--color-rarity-epic)" />,
     title: '한강 마스터',
     subtitle: (
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-small)', color: 'var(--color-rarity-legend)' }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-rarity-legend)', display: 'inline-block' }} />
-        Legend
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-small)', color: 'var(--color-rarity-epic)' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-rarity-epic)', display: 'inline-block' }} />
+        Epic
       </span>
     ),
     trailing: <ChevronIcon />,
@@ -129,12 +129,12 @@ export const MissionRow: Story = {
 export const CustomContent: Story = {
   name: 'children 커스텀 영역',
   args: {
-    icon: <IconSlot color="var(--color-rarity-mythic)" />,
+    icon: <IconSlot color="var(--color-rarity-mystic)" />,
     trailing: <ChevronIcon />,
     children: (
       <div>
-        <p style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)', fontWeight: 600 }}>Mythic 배지 발견!</p>
-        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-small)', color: 'var(--color-rarity-mythic)' }}>신화 등급 · 드랍 위치: 광화문</p>
+        <p style={{ margin: 0, fontSize: 'var(--text-body)', color: 'var(--color-text)', fontWeight: 600 }}>Mystic 배지 발견!</p>
+        <p style={{ margin: '2px 0 0', fontSize: 'var(--text-small)', color: 'var(--color-rarity-mystic)' }}>신화 등급 · 드랍 위치: 광화문</p>
       </div>
     ),
   },
@@ -151,8 +151,8 @@ export const List: Story = {
       return next;
     });
     const users = [
-      { id: 1, name: '러너_한강', badges: 42, color: 'var(--color-rarity-mythic)' },
-      { id: 2, name: '자전거_도시', badges: 28, color: 'var(--color-rarity-legend)' },
+      { id: 1, name: '러너_한강', badges: 42, color: 'var(--color-rarity-mystic)' },
+      { id: 2, name: '자전거_도시', badges: 28, color: 'var(--color-rarity-epic)' },
       { id: 3, name: '수영장_마스터', badges: 15, color: 'var(--color-rarity-rare)' },
       { id: 4, name: '하이커_산', badges: 9, color: 'var(--color-rarity-common)' },
       { id: 5, name: '트레일_러너', badges: 7, color: 'var(--color-primary)' },

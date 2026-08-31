@@ -222,7 +222,7 @@ function targetCount(payload: Record<string, unknown>): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** 대표 선정용 희귀도 서열 (R8 — 첫 획득 순서가 아니다) */
-const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, legend: 2, mythic: 3 }
+const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, epic: 2, mystic: 3 }
 
 function rarityRank(rarity: string): number {
   return RARITY_RANK[rarity as BadgeRarity] ?? 0
@@ -238,7 +238,7 @@ function objList(payload: Record<string, unknown>, key: string): Record<string, 
 }
 
 function asRarity(value: string): BadgeRarity {
-  return value === 'rare' || value === 'legend' || value === 'mythic' ? value : 'common'
+  return value === 'rare' || value === 'epic' || value === 'mystic' ? value : 'common'
 }
 
 /** 결산 payload를 문구·착지 판정이 쓰는 형태로 편다. 중복은 여기서 한 번만 제거한다 */
@@ -248,7 +248,7 @@ export interface RecapContent {
   activityBadges: RecapActivityBadge[]
   checkins: RecapCheckinBadge[]
   items: RecapItemBadge[]
-  /** legend·mythic 중 최상위 활동배지 (E1·A3의 헤드라인) */
+  /** epic·mystic 중 최상위 활동배지 (E1·A3의 헤드라인) */
   rare: RecapActivityBadge | null
   firstBadgeId: string
   points: number
@@ -306,7 +306,7 @@ export function recapContent(payload: Record<string, unknown>): RecapContent {
   // 인벤토리 인스턴스라(A6) 등급 문구로 승격하면 갈 곳이 어긋난다.
   let rare: RecapActivityBadge | null = null
   for (const b of activityBadges) {
-    if (rarityRank(b.rarity) < RARITY_RANK.legend) continue
+    if (rarityRank(b.rarity) < RARITY_RANK.epic) continue
     if (!rare || rarityRank(b.rarity) > rarityRank(rare.rarity)) rare = b
   }
 

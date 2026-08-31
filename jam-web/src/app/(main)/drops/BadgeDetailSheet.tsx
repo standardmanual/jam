@@ -33,7 +33,7 @@ interface BadgeDetailSheetProps {
   onCancel: () => void
 }
 
-const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
+const KNOWN_RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 /** 스크롤 영역 아래 여백(safe-area 제외) — 플로팅 탭바(16+64) 위 12px. BottomSheet footer와 같은 관례. */
 const ACTION_BOTTOM_GAP_PX = 16 + 64 + 12

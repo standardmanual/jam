@@ -30,7 +30,7 @@ type Story = StoryObj<typeof BadgeRevealCarousel>;
 // (기존 patterns 스토리들이 참조하는 `/ds-assets/uploads/...`는 매핑 밖이라 깨진 경로다)
 const SAMPLE_IMAGE = '/ds-assets/logo/jam-logo-white.png';
 
-const RARITIES: BadgeRevealItem['rarity'][] = ['common', 'rare', 'legend', 'mythic'];
+const RARITIES: BadgeRevealItem['rarity'][] = ['common', 'rare', 'epic', 'mystic'];
 
 function makeItems(count: number, override?: Partial<BadgeRevealItem>): BadgeRevealItem[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -114,9 +114,9 @@ export const LongName: Story = {
   },
 };
 
-export const MythicOnly: Story = {
-  name: '엣지 — mythic만',
-  args: { open: true, items: makeItems(3, { rarity: 'mythic' }) },
+export const MysticOnly: Story = {
+  name: '엣지 — mystic만',
+  args: { open: true, items: makeItems(3, { rarity: 'mystic' }) },
 };
 
 /**

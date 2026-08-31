@@ -1,4 +1,4 @@
-export type Rarity = 'common' | 'rare' | 'legend' | 'mythic';
+export type Rarity = 'common' | 'rare' | 'epic' | 'mystic';
 
 export interface RarityBadgeProps {
   rarity?: Rarity;
