@@ -9,7 +9,10 @@ type Params = { params: Promise<{ id: string }> }
 
 interface RankingEntry {
   userId: string
-  username: string
+  /** 표시용 이름 — display_name 우선, 없으면 username, 그마저 없으면 '익명' (라우팅 불가) */
+  displayName: string
+  /** 라우팅용 원본 users.username 컬럼값 — 탈퇴 등으로 유저 레코드가 없으면 null */
+  username: string | null
   avatarUrl: string | null
   progressValue: number
   isCompleted: boolean
@@ -19,7 +22,10 @@ interface RankingEntry {
 
 interface AchievementEntry {
   userId: string
-  username: string
+  /** 표시용 이름 — display_name 우선, 없으면 username, 그마저 없으면 '익명' (라우팅 불가) */
+  displayName: string
+  /** 라우팅용 원본 users.username 컬럼값 — 탈퇴 등으로 유저 레코드가 없으면 null */
+  username: string | null
   avatarUrl: string | null
   achieved: boolean
   achievedAt: string | null
@@ -107,6 +113,10 @@ export async function GET(_req: Request, { params }: Params) {
     const u = userMap.get(userId)
     return (u && getDisplayName(u)) || '익명'
   }
+  // 20260831_2038: 표시용 이름(nameOf)은 display_name 우선이라 라우팅용 username과 다를 수
+  // 있다 — 프로필 링크는 반드시 원본 users.username 컬럼값을 그대로 써야 한다(탈퇴 등으로
+  // 레코드가 없으면 null → 프런트에서 href를 붙이지 않는다).
+  const usernameOf = (userId: string) => userMap.get(userId)?.username ?? null
   const avatarOf = (userId: string) => userMap.get(userId)?.avatar_url ?? null
 
   if (missionRaw.status_display_type === 'achievement') {
@@ -115,7 +125,8 @@ export async function GET(_req: Request, { params }: Params) {
       const achievedAt = completionMap.get(p.user_id) ?? null
       return {
         userId: p.user_id,
-        username: nameOf(p.user_id),
+        displayName: nameOf(p.user_id),
+        username: usernameOf(p.user_id),
         avatarUrl: avatarOf(p.user_id),
         achieved: achievedAt !== null,
         achievedAt,
@@ -139,7 +150,8 @@ export async function GET(_req: Request, { params }: Params) {
       const completedAt = completionMap.get(p.user_id) ?? null
       return {
         userId: p.user_id,
-        username: nameOf(p.user_id),
+        displayName: nameOf(p.user_id),
+        username: usernameOf(p.user_id),
         avatarUrl: avatarOf(p.user_id),
         progressValue: p.progress_value ?? 0,
         isCompleted: completedAt !== null,
