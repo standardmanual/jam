@@ -67,8 +67,6 @@ export async function getDropPolicy(): Promise<DropPolicy> {
 export async function updateDropPolicy(patch: Partial<DropPolicy>): Promise<void> {
   const supabase = createServiceClient()
   const payload = { id: 1, ...patch, updated_at: new Date().toISOString() }
-  // @ts-expect-error Supabase upsert()가 페이로드 타입을 never[]로 추론하는 제한 우회
-  // (억제가 여전히 필요함을 tsc로 확인)
   const { error } = await supabase.from('drop_policy').upsert(payload)
   if (error) {
     console.error('[drop-policy] 저장 실패:', error)

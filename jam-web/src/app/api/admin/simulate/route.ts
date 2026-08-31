@@ -4,6 +4,18 @@ import { getAdminUser } from '@/lib/admin/auth'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { evaluateBadgesDetailed } from '@/lib/badge-engine'
 import type { InventoryRow } from '@/types/database'
+import type { Database } from '@/types/database.generated'
+
+/**
+ * `inventory_items.serial_number`는 NOT NULL인데 DEFAULT가 없어(migrations/034) 생성 타입이
+ * Insert 필수 컬럼으로 잡지만, 실제 값은 BEFORE INSERT 트리거 `assign_random_serial()`
+ * (migrations/108)이 채운다. 이 한 컬럼만 `Omit`으로 떼어내고 나머지 컬럼은 이름·타입 검사를
+ * 그대로 받게 둔다 — 억제(`@ts-expect-error`)로 덮으면 컬럼명 오타까지 같이 통과한다
+ * (티켓 20260831_1213).
+ */
+type InventoryItemInsert = Database['public']['Tables']['inventory_items']['Insert']
+type InventoryItemInsertByTrigger = Omit<InventoryItemInsert, 'serial_number'>
+
 import type { NormalizedActivity } from '@/types/strava'
 
 // rarity 드랍 확률 (drop-engine과 동일)
@@ -102,7 +114,6 @@ export async function POST(req: NextRequest) {
       earnedBadgeIds.add(badge.id)
       if (!dryRun) {
         const userActivityBadgesQuery = supabase.from('user_activity_badges')
-        // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgesRow와 일치
         await userActivityBadgesQuery.insert({ user_id: userId, badge_id: badge.id, triggered_by: 'admin_simulate' })
       }
     }
@@ -137,15 +148,18 @@ export async function POST(req: NextRequest) {
       if (!dryRun && inventory) {
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         const inventoryItemsQuery = supabase.from('inventory_items')
-        // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemsRow와 일치
-        const insertQuery = inventoryItemsQuery.insert({ inventory_id: inventory.id, badge_id: picked.id, obtained_by: 'drop', expires_at: expiresAt })
+        const insertQuery = inventoryItemsQuery.insert({
+          inventory_id: inventory.id,
+          badge_id: picked.id,
+          obtained_by: 'drop',
+          expires_at: expiresAt,
+        } satisfies InventoryItemInsertByTrigger as InventoryItemInsert)
         const { data: insertedItem } = await insertQuery.select('id').single()
 
         if (insertedItem) {
           droppedInventoryItemId = (insertedItem as { id: string }).id
           await supabase
             .from('inventory')
-            // @ts-expect-error used_slots update
             .update({ used_slots: inventory.used_slots + 1 })
             .eq('id', inventory.id)
         }

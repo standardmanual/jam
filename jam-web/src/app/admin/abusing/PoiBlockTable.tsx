@@ -31,7 +31,7 @@ export interface PoiBlockRow {
   blocked_until: string
   reason: string
   created_at: string
-  user: { id: string; email: string; username: string } | null
+  user: { id: string; email: string; username: string | null } | null
   poi: { id: string; name: string } | null
 }
 

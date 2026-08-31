@@ -273,8 +273,8 @@ export async function getSeenAt(userId: string): Promise<string | null> {
  */
 export async function markNotificationsSeen(userId: string): Promise<boolean> {
   const supabase = createServiceClient()
-  // 좁은 캐스팅 — 리포 전역의 Supabase Update 타입 추론 제한(never) 우회.
-  // `@ts-expect-error`로 덮으면 원인이 해소되는 순간 그 주석 줄이 컴파일 오류가 된다.
+  // 좁은 캐스팅 — Supabase Update 타입 추론 제한(never) 우회였다.
+  // (원인은 티켓 20260831_1213에서 해소됐다. 캐스팅은 계약을 그대로 검사하므로 남겨 둔다)
   const table = supabase.from('users') as unknown as {
     update: (values: { notifications_seen_at: string }) => {
       eq: (column: 'id', value: string) => PromiseLike<{ error: { message: string } | null }>

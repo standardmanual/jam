@@ -39,7 +39,11 @@ export type EngineDecisionEvent =
  *
  * `src/types/database.ts`의 `XxxRow`가 `interface`라 supabase-js의 `GenericSchema` 제약
  * (`Row: Record<string, unknown>`)을 만족하지 못해 `Schema`가 `never`로 접히고,
- * `.insert()` 인자가 `never`로 추론된다(리포 전역 문제 — 해소는 이 티켓 범위 밖).
+ * `.insert()` 인자가 `never`로 추론된다.
+ *
+ * (2026-08-31 갱신: 이 전제는 티켓 20260831_1213에서 해소됐다 — 클라이언트 제네릭이
+ *  `database.generated.ts`로 바뀌어 `never` 붕괴가 사라졌다. 아래 좁은 캐스팅은 여전히
+ *  동작하고 계약 검사도 유지되지만, 이제는 없어도 되는 우회다.)
  *
  * `@ts-expect-error`로 덮으면 **원인이 해소되는 순간 그 주석 줄 자체가 컴파일 오류**가 되어
  * 무관한 작업이 빌드를 깨뜨린다. 대신 이 호출부만 실제 계약으로 좁혀 둔다 —

@@ -55,7 +55,12 @@ function createStubClient(tables: Record<string, Row[]>) {
     const inValues: RecordedQuery['inValues'] = []
 
     const builder = {
-      select: () => builder,
+      // 인자는 쓰지 않지만 시그니처는 실제 호출 형태(`.select('id')`)에 맞춰 둔다 —
+      // 스텁을 `client`(실제 클라이언트 타입) 대신 직접 호출하는 테스트가 있기 때문이다.
+      select: (columns?: string) => {
+        void columns // 시그니처만 실제 호출 형태에 맞춘다 (스텁은 컬럼을 거르지 않는다)
+        return builder
+      },
       eq: () => builder,
       is: () => builder,
       not: () => builder,
@@ -98,6 +103,15 @@ function createStubClient(tables: Record<string, Row[]>) {
   return {
     queries,
     client: { from } as unknown as BatchContext['supabase'],
+    /**
+     * 스텁 빌더 직접 접근.
+     *
+     * `client`는 실제 Supabase 클라이언트 타입으로 단언돼 있어 `from()`이 **DB에 실재하는
+     * 테이블명만** 받는다(생성 타입 제네릭, 티켓 20260831_1213). 이 파일의 페이징 테스트는
+     * `rows`·`composite` 같은 가상 테이블을 쓰므로 클라이언트 타입을 우회하지 않고
+     * 스텁 함수를 그대로 노출해 쓴다 — 동작은 `client.from`과 같은 함수다.
+     */
+    from,
     /** 페이징 조회(= `.range()`가 붙은 조회)만 추린다 */
     paged: () => queries,
   }
@@ -133,7 +147,7 @@ describe('fetchAllRows — 페이지 경계', () => {
     const got = await fetchAllRows<{ id: string }>(
       'rows',
       'id',
-      () => stub.client.from('rows').select('id') as unknown as PagedQuery<{ id: string }>,
+      () => stub.from('rows').select('id') as unknown as PagedQuery<{ id: string }>,
       3
     )
     expect(got.map((r) => r.id)).toEqual(rows.map((r) => r.id))
@@ -143,7 +157,7 @@ describe('fetchAllRows — 페이지 경계', () => {
   it('정렬이 없으면 페이지 간 중복·누락이 생긴다 — 이 테스트가 정렬의 존재 이유다', async () => {
     const stub = createStubClient({ rows })
     const got = await fetchUnordered<{ id: string }>(
-      () => stub.client.from('rows').select('id') as unknown as PagedQuery<{ id: string }>,
+      () => stub.from('rows').select('id') as unknown as PagedQuery<{ id: string }>,
       3
     )
     const ids = got.map((r) => r.id)
@@ -158,7 +172,7 @@ describe('fetchAllRows — 페이지 경계', () => {
     const got = await fetchAllRows<{ id: string }>(
       'rows',
       'id',
-      () => stub.client.from('rows').select('id') as unknown as PagedQuery<{ id: string }>,
+      () => stub.from('rows').select('id') as unknown as PagedQuery<{ id: string }>,
       3
     )
     expect(got).toHaveLength(9)
@@ -178,7 +192,7 @@ describe('fetchAllRows — 페이지 경계', () => {
       'composite',
       ['user_id', 'item_book_id'],
       () =>
-        stub.client.from('composite').select('user_id, item_book_id') as unknown as PagedQuery<{
+        stub.from('composite').select('user_id, item_book_id') as unknown as PagedQuery<{
           user_id: string
           item_book_id: string
         }>,
@@ -212,7 +226,7 @@ describe('fetchAllRowsIn — .in() 청크 분할', () => {
         'rows',
         'id',
         values,
-        (chunk) => stub.client.from('rows').select('id').in('id', chunk) as unknown as PagedQuery<{ id: string }>
+        (chunk) => stub.from('rows').select('id').in('id', chunk) as unknown as PagedQuery<{ id: string }>
       ),
     }
   }

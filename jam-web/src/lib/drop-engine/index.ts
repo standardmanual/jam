@@ -28,6 +28,18 @@ import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
 import { checkCondition, passesWalkingGate } from '@/lib/badge-engine/index'
 import { getDropPolicy, type DropPolicy } from './policy'
 import { fetchAllRows } from '@/lib/notifications/batch/shared'
+import type { Database, Json } from '@/types/database.generated'
+
+/**
+ * `inventory_items.serial_number`는 NOT NULL인데 DEFAULT가 없어(migrations/034) 생성 타입이
+ * Insert 필수 컬럼으로 잡지만, 실제 값은 BEFORE INSERT 트리거 `assign_random_serial()`
+ * (migrations/108)이 채운다. 이 한 컬럼만 `Omit`으로 떼어내고 나머지 컬럼은 이름·타입 검사를
+ * 그대로 받게 둔다 — 억제(`@ts-expect-error`)로 덮으면 컬럼명 오타까지 같이 통과한다
+ * (티켓 20260831_1213).
+ */
+type InventoryItemInsert = Database['public']['Tables']['inventory_items']['Insert']
+type InventoryItemInsertByTrigger = Omit<InventoryItemInsert, 'serial_number'>
+
 import {
   rollRarityV2,
   rollBonusDrop,
@@ -136,6 +148,14 @@ type DropBadge = Pick<
   'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight' | 'valid_from' | 'valid_until' | 'condition_json' | 'item_book_id' | 'point_reward'
 >
 
+/**
+ * 조회 단계에서 쓰는 형태. `badges.condition_json`은 jsonb라 생성 타입이 `Json`이고,
+ * 도메인 좁힘 타입인 `BadgeCondition | null`로는 바로 받을 수 없다(interface라 인덱스
+ * 시그니처가 없어 `Json`과 서로 대입되지 않는다). **이 한 컬럼만** 넓혀 두면 나머지
+ * 컬럼명·타입은 select 문과 계속 대조된다 (티켓 20260831_1213).
+ */
+type DropBadgeFromDb = Omit<DropBadge, 'condition_json'> & { condition_json: Json }
+
 interface DropStructure {
   /** 활성 북 id → faction id */
   factionOfBook: Map<string, string>
@@ -183,7 +203,7 @@ async function fetchDropStructure(
   // fetchAllRows는 이를 잊을 수 없게 orderBy를 필수 인자로 강제한다 (티켓 20260825_036).
   // 이 헬퍼는 예외를 던지므로 기존 { data, error } 그레이스풀 폴백 패턴에 맞춰 여기서 흡수한다.
   const [badgesResult, adjacencyRes, ownedRes] = await Promise.all([
-    fetchAllRows<DropBadge>('drop-engine:item-badges', 'id', () =>
+    fetchAllRows<DropBadgeFromDb>('drop-engine:item-badges', 'id', () =>
       supabase
         .from('badges')
         .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json, item_book_id, point_reward')
@@ -191,7 +211,11 @@ async function fetchDropStructure(
         .is('deleted_at', null)
         .in('item_book_id', activeBookIds)
     )
-      .then((data) => ({ data, error: null as { message: string } | null }))
+      .then((data) => ({
+        // 위 DropBadgeFromDb 주석 참조 — jsonb 컬럼 하나의 표현 차이라 형태는 동일하다.
+        data: data as unknown as DropBadge[],
+        error: null as { message: string } | null,
+      }))
       .catch((err: unknown) => ({
         data: [] as DropBadge[],
         error: { message: err instanceof Error ? err.message : String(err) },
@@ -418,7 +442,6 @@ async function saveDropState(state: UserDropStateRow): Promise<void> {
   const supabase = createServiceClient()
   const table = supabase.from('user_drop_state')
   const payload = { ...state, updated_at: new Date().toISOString() }
-  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserDropStateRow와 일치
   await table.upsert(payload)
 }
 
@@ -458,15 +481,14 @@ async function insertDrop(
   const expiresAt = picked.valid_until ?? null
 
   const inventoryItemsTable = supabase.from('inventory_items')
-  const insertPayload = {
+  const insertPayload: InventoryItemInsertByTrigger = {
     inventory_id: inventoryId,
     badge_id: picked.id,
     obtained_by: 'drop',
     expires_at: expiresAt,
   }
   const { data: insertedRaw, error: insertError } = await inventoryItemsTable
-    // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 InventoryItemRow와 일치
-    .insert(insertPayload)
+    .insert(insertPayload as InventoryItemInsert)
     .select('id')
     .single()
   if (insertError) {
@@ -674,7 +696,6 @@ export async function tryItemDrop(
     const supabase = createServiceClient()
     const { error } = await supabase
       .from('inventory')
-      // @ts-expect-error supabase-js update() 파라미터 never 추론 문제
       .update({ used_slots: usedSlots })
       .eq('id', structure.inventory.id)
     if (error) console.error('[tryItemDrop] used_slots 업데이트 오류:', error)

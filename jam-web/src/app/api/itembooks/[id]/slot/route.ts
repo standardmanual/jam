@@ -53,8 +53,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     p_item_book_id: itemBookId,
     p_inventory_item_id: inventory_item_id,
   }
-  // @ts-expect-error 'slot_item_into_book' RPC 함수가 src/types/database.ts의 Functions에
-  // 미등록(기존 create_user_drop/pickup_drop과 동일한 상황 — 별도 티켓으로 타입 등록 필요)
   const { data: rpcResult, error: rpcError } = await supabase.rpc('slot_item_into_book', rpcArgs)
 
   if (rpcError) {
@@ -93,8 +91,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!slot_id) return NextResponse.json({ error: 'slot_id가 필요합니다.' }, { status: 400 })
 
   const rpcArgs = { p_user_id: user.id, p_slot_id: slot_id }
-  // @ts-expect-error 'unslot_item_from_book' RPC 함수가 src/types/database.ts의 Functions에
-  // 미등록(기존 create_user_drop/pickup_drop과 동일한 상황 — 별도 티켓으로 타입 등록 필요)
   const { data: rpcResult, error: rpcError } = await supabase.rpc('unslot_item_from_book', rpcArgs)
 
   if (rpcError) {

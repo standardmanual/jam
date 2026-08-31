@@ -15,6 +15,7 @@ import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
 import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, DayOfWeek, UserActivityBadgeRow } from '@/types/database'
+import type { Json } from '@/types/database.generated'
 import { MEASURABLE_CONDITION_KEYS } from './condition-schema'
 // 등급 서열표는 @/lib/rarity 한 곳에만 둔다 (티켓 20260831_1115에서 통합)
 import { RARITY_TIER } from '@/lib/rarity'
@@ -757,9 +758,11 @@ export async function evaluateBadgesDetailed(
         // 배지 상세 화면(badges/[id]/page.tsx)에 "계기 활동일"로 사용자에게 노출되므로
         // 반드시 진짜 UTC인 startDate만 쓴다.
         triggered_by_activity_date: triggerActivity?.startDate ?? null,
-        condition_snapshot: conditionSnapshot,
+        // condition_snapshot은 jsonb 컬럼이라 생성 타입이 Json이다. BadgeConditionSnapshot은
+        // interface라 암묵적 인덱스 시그니처가 없어 Json에 직접 대입되지 않는다(구조는 전부
+        // 직렬화 가능한 값). 이 한 필드만 단언하고 나머지 컬럼 검사는 그대로 받는다.
+        condition_snapshot: conditionSnapshot as unknown as Json,
       }
-      // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgeRow와 일치
       const { error: insertError } = await activityBadgesTable.insert(activityBadgeInsertPayload)
 
       if (insertError) {
@@ -795,7 +798,6 @@ export async function evaluateBadgesDetailed(
   // 첫 싱크 완료 플래그 세팅 (dryRun·시뮬레이터 모드에서는 갱신 안 함)
   if (!dryRun && !overrideFirstSync && !userInitialSyncDone) {
     const usersTable = supabase.from('users')
-    // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
     await usersTable.update({ initial_sync_done: true }).eq('id', userId)
 
     // 첫 배지(평생 1회) — 티켓 20260824_019 → 20260827_014에서 결산으로 흡수.

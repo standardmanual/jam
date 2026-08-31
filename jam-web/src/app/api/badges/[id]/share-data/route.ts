@@ -152,7 +152,6 @@ export async function GET(
 
       const { error: updateError } = await service
         .from('strava_connections')
-        // @ts-expect-error Supabase 타입 추론 제한 우회 — sync.ts와 동일 패턴
         .update({
           access_token: encAccess,
           refresh_token: encRefresh,

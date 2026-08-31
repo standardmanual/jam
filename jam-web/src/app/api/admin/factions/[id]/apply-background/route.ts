@@ -22,7 +22,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params
   const supabase = createServiceClient()
 
-  // @ts-expect-error Supabase rpc() 인자 타입 매칭 제한(단일 필수 인자 RPC에서 발생하는 라이브러리 특이 케이스) 우회 — 실제 인자는 apply_faction_background_cascade(p_faction_id uuid)와 일치
   const { data, error } = await supabase.rpc('apply_faction_background_cascade', { p_faction_id: id })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -54,7 +53,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params
   const supabase = createServiceClient()
 
-  // @ts-expect-error Supabase rpc() 인자 타입 매칭 제한(단일 필수 인자 RPC에서 발생하는 라이브러리 특이 케이스) 우회 — 실제 인자는 count_faction_background_cascade(p_faction_id uuid)와 일치
   const { data, error } = await supabase.rpc('count_faction_background_cascade', { p_faction_id: id })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

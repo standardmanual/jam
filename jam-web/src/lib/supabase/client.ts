@@ -3,7 +3,7 @@
  * 클라이언트 컴포넌트에서 사용
  */
 import { createBrowserClient } from '@supabase/ssr'
-import type { Database } from '@/types/database'
+import type { Database } from '@/types/database.generated'
 
 export function createClient() {
   return createBrowserClient<Database>(

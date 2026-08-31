@@ -16,7 +16,6 @@ export async function isPoiBlocked(userId: string, poiId: string): Promise<boole
       .maybeSingle()
 
     if (!data) return false
-    // @ts-expect-error try/catch + 명시적 Promise<boolean> 반환 타입 조합에서 supabase-js 추론이 무너지는 TS 특이 케이스(격리 재현 확인) — data는 PoiBlockRow의 blocked_until 컬럼을 가짐
     return new Date(data.blocked_until) > new Date()
   } catch {
     return false
@@ -35,7 +34,6 @@ export async function blockPoiForUser(
 
   const table = supabase.from('poi_blocks')
   const payload = { user_id: userId, poi_id: poiId, blocked_until: blockedUntil, reason }
-  // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiBlockRow와 일치
   await table.upsert(payload, { onConflict: 'user_id,poi_id' })
 }
 
