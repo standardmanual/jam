@@ -1,8 +1,9 @@
 ---
 id: 20260831_2008
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-31
+closed: 2026-08-31
 ---
 
 # [Service] Windows Chrome 네이티브 select 옵션 흰색 텍스트 대비 문제
@@ -85,9 +86,9 @@ jam-web/src/app/globals.css
 - [x] 해당 없음 (텍스트 문구 변경 없음, 스타일만 수정)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-08-31 (staging 반영, 프로덕션 미배포)
+- 환경: staging
+- 커밋: `claude/jamwork-20260831_2008-select-option-contrast` → staging 병합
 
 ### 주요 의사결정 / 핵심 메모
 - **전역 CSS 규칙 vs 6곳 개별 수정**: 전역 규칙(`select option { ... }`)을 택했다. 6곳 모두 원인이
