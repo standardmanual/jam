@@ -337,6 +337,14 @@ export const ko = {
     filterCheckinCategoryAll: '전체',
     sortCheckinLatest: '최신순',
     sortCheckinName: '이름순',
+
+    // 배지 트리 (/badges/tree) — 티켓 20260831_2208
+    treeButton: '배지 트리',
+    treeStageLabel: '{n}단계',
+    treeRepresentativeLabel: '대표 배지',
+    treeIndependentTitle: '선행 조건 없이 얻는 배지',
+    treeLockBadgeHint: '{name} 획득하면 열려요',
+    treeLockMissionHint: "'{title}' 미션을 완료하면 열려요",
   },
 
   /** 인벤토리 목록/상세 */

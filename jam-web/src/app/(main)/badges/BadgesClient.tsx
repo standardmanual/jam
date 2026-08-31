@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { ActivityType, BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
@@ -188,9 +189,15 @@ export default function BadgesClient({
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) */}
       <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
 
-      {/* 헤더 — 인벤토리/미션과 동일한 크기의 타이틀 */}
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">
+      {/* 헤더 — 인벤토리/미션과 동일한 크기의 타이틀. 우측 끝에 배지 트리 진입 버튼(요구사항 9) */}
+      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] flex justify-between items-center gap-[var(--spacing-12)]">
         <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">{d.badges.title}</h1>
+        <Link
+          href="/badges/tree"
+          className="inline-flex items-center justify-center shrink-0 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text active:scale-95 transition-transform duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+        >
+          {d.badges.treeButton}
+        </Link>
       </div>
 
       {/* 탭 헤더 — Tabs sliding (16-tabs-sliding.md) */}
