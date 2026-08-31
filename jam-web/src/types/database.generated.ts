@@ -169,6 +169,7 @@ export type Database = {
           background_image_url: string | null
           background_shader_id: string | null
           background_video_url: string | null
+          category: string | null
           condition_json: Json | null
           created_at: string
           deleted_at: string | null
@@ -194,6 +195,7 @@ export type Database = {
           background_image_url?: string | null
           background_shader_id?: string | null
           background_video_url?: string | null
+          category?: string | null
           condition_json?: Json | null
           created_at?: string
           deleted_at?: string | null
@@ -219,6 +221,7 @@ export type Database = {
           background_image_url?: string | null
           background_shader_id?: string | null
           background_video_url?: string | null
+          category?: string | null
           condition_json?: Json | null
           created_at?: string
           deleted_at?: string | null
@@ -239,6 +242,13 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "badges_category_fkey"
+            columns: ["category"]
+            isOneToOne: false
+            referencedRelation: "poi_categories"
+            referencedColumns: ["slug"]
+          },
           {
             foreignKeyName: "badges_faction_id_fkey"
             columns: ["faction_id"]
@@ -995,6 +1005,7 @@ export type Database = {
           category: string
           created_at: string
           id: string
+          is_active: boolean
           latitude: number
           linked_badge_id: string | null
           longitude: number
@@ -1008,6 +1019,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          is_active?: boolean
           latitude: number
           linked_badge_id?: string | null
           longitude: number
@@ -1021,6 +1033,7 @@ export type Database = {
           category?: string
           created_at?: string
           id?: string
+          is_active?: boolean
           latitude?: number
           linked_badge_id?: string | null
           longitude?: number
