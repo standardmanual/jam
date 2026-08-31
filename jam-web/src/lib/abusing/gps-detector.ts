@@ -69,12 +69,21 @@ export async function checkAndUpdateLocation(
     userRow?.last_location_lng != null &&
     userRow?.last_location_at != null
   ) {
-    const distKm = haversineDistance(
+    // haversineDistance()는 **미터** 단위를 반환한다 (matcher.ts EARTH_RADIUS_M 참고,
+    // isUserNearPoi 등 다른 모든 호출부는 미터로 취급한다). 여기서만 반환값을 그대로
+    // "distKm"에 담아 km로 취급해 왔다 — 실제로는 미터 값이 1000배 부풀려진 채로
+    // 속도(km/h)·누적거리(km) 계산에 들어가, 임계값이 사실상 300km/h→0.3km/h,
+    // 3000km/일→3km/일, 최소이동거리 150m→15cm 수준으로 작동하고 있었다. 정상적인
+    // 하루 이동(도보로 여러 POI를 오가는 수 km 수준)만으로도 누적거리 캡을 상시
+    // 초과해 오탐이 났다 (티켓 20260831_1504, 실측 daily_distance_km 7173/7219가
+    // 정확히 그날 실제 누적 이동거리 7.173km/7.219km를 미터로 읽은 값과 일치).
+    const distMeters = haversineDistance(
       userRow.last_location_lat,
       userRow.last_location_lng,
       lat,
       lng
     )
+    const distKm = distMeters / 1000
     const elapsedMs = now - new Date(userRow.last_location_at).getTime()
     const elapsedHours = elapsedMs / 3_600_000
     const speedKmh = elapsedHours > 0 ? distKm / elapsedHours : 0
