@@ -153,6 +153,14 @@ authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
   **41일간(2026-07-21 ~ 08-31) 아무도 몰랐다.** `updated_at`이 멈춰 있던 것이 유일한 단서였다.
 - 읽기 경로가 증상을 덮은 것도 원인이다. `getDropPolicy()`의 정규화 루프가 키가 없으면
   조용히 기본값으로 대체해, 컬럼명 불일치가 읽기에서도 드러나지 않았다.
+- **실제 사례 2 — 같은 결함이 판정 결과까지 뒤집은 경우**: 어드민 어뷰징 정책 저장(20260831_1149).
+  `abusing_policy`도 같은 rename 누락(`soft|hard_legendary_rate` ↔ 코드의 `..._legend_rate`)을 안고
+  있었고, 저장이 18일간(2026-08-13 ~ 08-31) 무음으로 실패했다. **여기서 한 단계 더 갔다** —
+  `getAbusingPolicy()`에는 정규화 폴백조차 없어 앱 키가 아예 결여됐고, 소비 지점
+  `shadow-ban.ts:43`의 `policy[rateKey] as number ?? 1.0`이 그 결여를 **"드랍 허용"으로 해석**했다.
+  결과적으로 소프트밴·하드밴 유저의 최상위 등급 드랍 차단이 같은 기간 내내 꺼져 있었다.
+  저장 실패는 "값이 안 바뀐다"에서 끝나지만, **읽기 경로의 무관측 폴백은 핵심 루프의 판정을
+  조용히 뒤집는다.** 저장 경로만 고치고 읽기 경로를 두면 절반만 고친 것이다.
 
 **규칙**
 1. 쓰기 호출은 반드시 `const { error } = await ...`로 받아 확인한다. 실패를 흡수해야 하는
@@ -162,6 +170,17 @@ authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
 3. 정책·설정 로더에서 "키가 없으면 기본값" 폴백을 쓸 땐, 키 누락 자체를 로그로 남긴다.
    폴백은 서비스를 살리는 장치지 불일치를 감추는 장치가 아니다.
 4. 싱글톤 설정 테이블의 `updated_at`이 오래 멈춰 있으면 저장 경로 고장을 의심한다.
+5. **정규화·폴백은 원본 행을 _대체_하지 말고 _덮어쓰기_만 한다.** 화이트리스트로 키를 추려
+   새 객체를 만드는 로더(`{...normalized}`)는, 컬럼명이 코드보다 앞서거나 뒤늦게 바뀌는 구간에서
+   **살아 있는 키를 탈락시켜 폴백이 곧 기능 정지가 된다.** `{...row, ...normalized}`로 상위집합을
+   유지하면 그 구간에서도 기존 동작이 보존된다 (20260831_1149에서 실제로 이 선택이 필요했다 —
+   마이그레이션 115 미적용 구간에 구 컬럼명이 남아 있었다).
+6. **안전·차단 판정에 쓰는 값의 폴백 방향을 의식적으로 고른다.** 어뷰징 차단율처럼 "못 읽으면
+   막아야 하는" 값에 `?? 1.0`(허용)을 쓰면 설정 오류가 곧 차단 해제가 된다. fail-open을
+   택했다면 그 사실을 주석으로 남긴다.
+7. **실패 전파는 API까지가 아니라 화면까지다.** 라우트가 4xx/5xx + `error`를 돌려줘도 폼이
+   `res.ok`만 보고 본문을 버리면 운영자에게는 여전히 "저장 실패" 한 줄뿐이다. 저장 경로를
+   고칠 땐 폼이 `json.error`를 읽는지까지 확인한다 (20260831_1118·1149 둘 다 폼 수정이 필요했다).
 
 ---
 
@@ -178,6 +197,7 @@ authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
 | `inventory` / `inventory_items` | DB 트리거 `handle_new_user()`(가입 시 자동 생성), `src/lib/drop-engine/index.ts`의 `fetchDropStructure`, `pickup_drop()` RPC |
 | `badges` 테이블(조건·보상 필드) | `src/lib/badge-engine/index.ts`(activity 타입), `src/lib/drop-engine/index.ts`(item 타입), `src/lib/strava/sync.ts`(poi 타입), `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` |
 | `award_points()` RPC / `point_*` 테이블 | `src/lib/points/index.ts`(유일한 호출 경로), 호출부 6곳(배지·드랍·미션×2·조합·어드민 지급) — 새 보상 지급 지점을 추가해도 반드시 이 함수를 거치게 할 것, 직접 INSERT/UPDATE 금지 |
+| `abusing_policy`(섀도우밴 배율·GPS/차량 속도 임계값) | `src/lib/abusing/policy.ts`(정규화·폴백·관측을 거치는 정식 경로), `src/lib/abusing/shadow-ban.ts`(런타임에 `${banLevel}_${rarity}_rate`로 **키를 문자열 조합** — 컬럼명이 바뀌어도 타입 검사에 안 걸리고 `?? 1.0` fail-open으로 차단이 조용히 꺼진다), `src/lib/strava/sync.ts`(`vehicle_speed_filter_kmh`를 `policy.ts`를 **우회해 직접 select** — 두 번째 접근 지점), `src/app/api/admin/abusing/policy/route.ts`(화이트리스트가 사실상 키 목록의 정의), `src/app/admin/abusing/AbusingClient.tsx` |
 | `poi` 테이블(반경·좌표) | `src/lib/poi/matcher.ts`(활동-POI 매칭), `src/app/api/drops/route.ts`(드랍 지도), `src/app/api/checkin-badges/route.ts`(체크인 배지 탭) — 셋 다 max-rows 대응이 되어 있어야 함(패턴 3) |
 | `engine_decision_log` 이벤트 타입 | `src/lib/engine-log/index.ts`의 `EngineDecisionEvent` 유니언 — 새 실패/판정 지점을 로깅할 땐 여기 타입부터 추가 |
 | `users` 테이블 컬럼 | `src/types/database.ts`의 `UserRow` — `database.generated.ts`(자동 생성본)와 대조해 누락 없는지 확인(`npm run db:types`로 재생성) |

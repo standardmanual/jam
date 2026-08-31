@@ -774,6 +774,9 @@ hard 밴:
   common만 정상 유지
 ```
 
+> ⚠️ 위는 **설계 의도**다. **Epic 차단은 현재 꺼져 있다**(soft/hard 모두 배율 1.00).
+> 경위와 판단 보류 사유는 [12-5](#12-5-어뷰징-정책-싱글톤-abusing_policy) 참조.
+
 ### 12-4. POI 블록
 
 ```
@@ -787,19 +790,41 @@ poi_blocks { user_id, poi_id, blocked_until }
 ### 12-5. 어뷰징 정책 싱글톤 (abusing_policy)
 
 ```sql
+-- 컬럼 12종 + id + updated_at (2026-08-31 실측)
 abusing_policy {
   id: 1 (항상 단 1건)
-  vehicle_speed_filter_kmh: 60      -- 차량 속도 기준
-  gps_max_speed_kmh: 300            -- GPS 조작 감지 기준
-  soft_epic_rate: 0.0               -- soft밴 시 epic 드랍률
-  soft_mystic_rate: 0.0             -- soft밴 시 mystic 드랍률
-  hard_rare_rate: 0.0               -- hard밴 시 rare 드랍률
-  hard_epic_rate: 0.0               -- hard밴 시 epic 드랍률
-  hard_mystic_rate: 0.0             -- hard밴 시 mystic 드랍률
+  -- 밴 등급별 드랍 배율 (0.0 = 완전 차단, 1.0 = 정상). 8종 모두 0~1
+  soft_common_rate:  1.0            -- soft밴 시 common 드랍률
+  soft_rare_rate:    1.0            -- soft밴 시 rare 드랍률
+  soft_epic_rate:    1.0            -- soft밴 시 epic 드랍률  ⚠️ 아래 주석 참조
+  soft_mystic_rate:  0.0            -- soft밴 시 mystic 드랍률
+  hard_common_rate:  1.0            -- hard밴 시 common 드랍률
+  hard_rare_rate:    0.0            -- hard밴 시 rare 드랍률
+  hard_epic_rate:    1.0            -- hard밴 시 epic 드랍률  ⚠️ 아래 주석 참조
+  hard_mystic_rate:  0.0            -- hard밴 시 mystic 드랍률
+  -- 임계값 (상한 없는 정수)
+  gps_max_speed_kmh:         300    -- GPS 조작 감지 기준
+  gps_daily_distance_cap_km: 3000   -- 일일 누적 이동거리 상한
+  vehicle_speed_filter_kmh:  60     -- 차량 탑승 판정 기준 (초과 활동은 배지 평가 제외)
+  poi_block_hours:           72     -- GPS 조작 감지 후 POI 블록 지속 시간
+  updated_at
 }
 ```
 
-어드민 패널에서 `PATCH /api/admin/abusing/policy`로 수정 가능.
+> ⚠️ **Epic 차단은 현재 의도적으로 꺼져 있다** (`soft_epic_rate` = `hard_epic_rate` = **1.00**).
+> 12-3의 "soft/hard 밴 → epic 0% 차단"은 **설계 의도이지 현재 동작이 아니다.**
+>
+> 경위: 2026-08-13 티켓 20260813_003의 rename 누락으로 코드가 조회하는 키와 DB 컬럼명이
+> 어긋났고, `shadow-ban.ts`의 `?? 1.0` 폴백이 그 결여를 "허용"으로 읽어 Epic 차단이 18일간
+> 무음으로 꺼져 있었다. 마이그레이션 115(티켓 20260831_1115)가 컬럼명을 통일하면서
+> **유저 체감 동작을 바꾸지 않기로 결정해**(사용자 확인 2026-08-31) 실효값 1.00을 명시했다.
+> **차단을 실제로 켤지는 어뷰징 현황을 확인한 뒤 별도 티켓에서 판단한다.**
+> Mystic 차단(0.00)은 그동안에도 정상 작동했다.
+
+어드민 패널(`/admin/abusing`)에서 `PUT /api/admin/abusing/policy`로 수정한다.
+라우트는 `DEFAULT_POLICY`의 12개 키만 통과시키는 화이트리스트를 돌린다 — 배율 8종은 0~1,
+임계값 4종은 0 이상만 검사하고 상한을 두지 않는다. 저장 실패는 500 + `error`로 화면에 노출된다
+(2026-08-13 ~ 08-31 사이 이 화면의 저장은 전부 무음 실패했다 — 티켓 20260831_1149).
 
 ---
 
