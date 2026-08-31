@@ -17,7 +17,7 @@
 export type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
 export type BadgeType = 'activity' | 'item' | 'checkin'
 export type DayOfWeek = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'
-export type BadgeRarity = 'common' | 'rare' | 'legend' | 'mythic'
+export type BadgeRarity = 'common' | 'rare' | 'epic' | 'mystic'
 // poi_categories 테이블에서 어드민이 자유롭게 생성/삭제/수정 가능한 슬러그 — 고정 유니언이 아닌 string
 export type PoiCategory = string
 export type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
@@ -518,23 +518,20 @@ export interface UserDropStateRow {
 }
 
 /**
- * drop_policy 테이블 — **앱 키 기준** 타입이다 (DB 실제 컬럼명과 1:1이 아니다).
+ * drop_policy 테이블 — 컬럼명이 DB와 1:1로 일치한다.
  *
- * DB의 실제 컬럼은 `rarity_legendary`인데 앱 전역은 `rarity_legend`를 쓴다.
- * 티켓 20260813_003에서 이 컬럼만 rename이 누락돼 생긴 불일치로,
- * `database.generated.ts`(Supabase 생성 타입)에는 `rarity_legendary`로 나온다.
- * 앱 키 ↔ DB 컬럼 변환은 `src/lib/drop-engine/policy.ts`가 입출력 시점에만 처리한다.
- *
- * ⚠️ 등급명 개명(legend → epic) 후속 작업에서 DB 컬럼이 `rarity_epic`으로 바뀌면
- * 이 타입과 policy.ts의 매핑을 함께 정리할 것. (티켓 20260831_1118)
+ * 티켓 20260813_003(legendary → legend)이 이 컬럼만 rename을 누락해 한동안
+ * 앱 키(`rarity_legend`)와 DB 컬럼(`rarity_legendary`)이 어긋나 있었고,
+ * 20260831_1118이 `policy.ts`에 한시적 변환 매핑을 두어 이를 메웠다.
+ * 마이그레이션 115가 컬럼을 `rarity_epic`으로 개명하면서 불일치가 해소돼
+ * 그 매핑은 제거했다. (티켓 20260831_1115)
  */
 export interface DropPolicyRow {
   id: number
   rarity_common: number
   rarity_rare: number
-  /** DB 실제 컬럼명은 `rarity_legendary` — policy.ts에서 변환한다 */
-  rarity_legend: number
-  rarity_mythic: number
+  rarity_epic: number
+  rarity_mystic: number
   bonus_drop_rate: number
   bonus_drop_rate_intense: number
   intense_duration_min: number
@@ -579,8 +576,8 @@ export interface AmbientDropConfigRow {
   rarity_mode: AmbientDropAxisMode
   rarity_common: number
   rarity_rare: number
-  rarity_legend: number
-  rarity_mythic: number
+  rarity_epic: number
+  rarity_mystic: number
   collection_mode: AmbientDropAxisMode
   /** explicit + 빈 배열 = "전체 컬렉션". item_books.id 참조(배열이라 DB FK 없음, 앱에서 검증) */
   collection_ids: string[]
@@ -838,12 +835,12 @@ export interface AbusingPolicyRow {
   id: number
   soft_common_rate: number
   soft_rare_rate: number
-  soft_legend_rate: number
-  soft_mythic_rate: number
+  soft_epic_rate: number
+  soft_mystic_rate: number
   hard_common_rate: number
   hard_rare_rate: number
-  hard_legend_rate: number
-  hard_mythic_rate: number
+  hard_epic_rate: number
+  hard_mystic_rate: number
   gps_max_speed_kmh: number
   poi_block_hours: number
   vehicle_speed_filter_kmh: number

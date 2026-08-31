@@ -2,11 +2,11 @@ import React from 'react';
 
 /**
  * RarityBadge — badge rarity pill.
- * rarity: 'common' | 'rare' | 'legend' | 'mythic'
+ * rarity: 'common' | 'rare' | 'epic' | 'mystic'
  *
  * v2 changes:
  *   - Text color changed from '#fff' hardcoded to --color-rarity-*-text tokens
- *     (rare/legend use black text for better contrast on their light backgrounds)
+ *     (rare/epic use black text for better contrast on their light backgrounds)
  *   - letterSpacing: --tracking-label applied (uppercase label legibility)
  * v3: chip shrunk to ~65% (8px text, 4px/9px padding) — literal px, not --text-caption
  *     (there's no type-scale token below caption; common no longer renders one at all)
@@ -14,8 +14,8 @@ import React from 'react';
 const config = {
   common: { label: 'Common', bg: 'var(--color-rarity-common)', text: 'var(--color-rarity-common-text)' },
   rare:   { label: 'Rare',   bg: 'var(--color-rarity-rare)',   text: 'var(--color-rarity-rare-text)' },
-  legend: { label: 'Legend', bg: 'var(--color-rarity-legend)', text: 'var(--color-rarity-legend-text)' },
-  mythic: { label: 'Mythic', bg: 'var(--color-rarity-mythic)', text: 'var(--color-rarity-mythic-text)' },
+  epic:   { label: 'Epic',   bg: 'var(--color-rarity-epic)',   text: 'var(--color-rarity-epic-text)' },
+  mystic: { label: 'Mystic', bg: 'var(--color-rarity-mystic)', text: 'var(--color-rarity-mystic-text)' },
 };
 
 export function RarityBadge({ rarity = 'common', className = '' }) {

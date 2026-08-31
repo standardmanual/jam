@@ -209,7 +209,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
           {/* 안내 */}
           <div className="bg-white border border-border rounded-2xl p-4 text-sm text-foreground leading-relaxed">
             <p className="font-semibold text-foreground mb-1">투트랙 정책</p>
-            <p><span className="text-amber-600 font-medium">Soft-ban</span> — 폰 흔들기 등 소프트 어뷰저. 잡템은 허용하되 고가치 아이템(legend/mythic) 차단.</p>
+            <p><span className="text-amber-600 font-medium">Soft-ban</span> — 폰 흔들기 등 소프트 어뷰저. 잡템은 허용하되 고가치 아이템(epic/mystic) 차단.</p>
             <p className="mt-1"><span className="text-red-600 font-medium">Hard-ban</span> — GPS 조작 등 생태계 파괴. 유저 화면은 정상이지만 희귀 아이템 드랍률 0% 고정.</p>
           </div>
 
@@ -218,8 +218,8 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
             <h3 className="text-sm font-semibold text-amber-600 uppercase tracking-wider">Soft-ban 드랍 배율</h3>
             <RateInput label="Common" value={policy.soft_common_rate} onChange={(v) => policySet('soft_common_rate', v)} />
             <RateInput label="Rare" value={policy.soft_rare_rate} onChange={(v) => policySet('soft_rare_rate', v)} />
-            <RateInput label="Legend" value={policy.soft_legend_rate} onChange={(v) => policySet('soft_legend_rate', v)} />
-            <RateInput label="Mythic" value={policy.soft_mythic_rate} onChange={(v) => policySet('soft_mythic_rate', v)} />
+            <RateInput label="Epic" value={policy.soft_epic_rate} onChange={(v) => policySet('soft_epic_rate', v)} />
+            <RateInput label="Mystic" value={policy.soft_mystic_rate} onChange={(v) => policySet('soft_mystic_rate', v)} />
           </div>
 
           {/* Hard-ban 설정 */}
@@ -227,8 +227,8 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
             <h3 className="text-sm font-semibold text-red-600 uppercase tracking-wider">Hard-ban 드랍 배율</h3>
             <RateInput label="Common" value={policy.hard_common_rate} onChange={(v) => policySet('hard_common_rate', v)} />
             <RateInput label="Rare" value={policy.hard_rare_rate} onChange={(v) => policySet('hard_rare_rate', v)} />
-            <RateInput label="Legend" value={policy.hard_legend_rate} onChange={(v) => policySet('hard_legend_rate', v)} />
-            <RateInput label="Mythic" value={policy.hard_mythic_rate} onChange={(v) => policySet('hard_mythic_rate', v)} />
+            <RateInput label="Epic" value={policy.hard_epic_rate} onChange={(v) => policySet('hard_epic_rate', v)} />
+            <RateInput label="Mystic" value={policy.hard_mystic_rate} onChange={(v) => policySet('hard_mystic_rate', v)} />
           </div>
 
           {/* GPS 설정 */}

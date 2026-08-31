@@ -27,7 +27,7 @@ export function Input({
 
   const borderByState = {
     default: `1px solid ${isInverse ? 'rgba(255,255,255,0.2)' : 'var(--color-border)'}`,
-    error: '2px solid var(--color-rarity-mythic)',
+    error: '2px solid var(--color-rarity-mystic)',
     success: '2px solid var(--color-rarity-rare)',
   };
 

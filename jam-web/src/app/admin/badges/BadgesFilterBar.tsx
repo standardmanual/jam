@@ -14,8 +14,8 @@ const TYPE_OPTIONS = BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_
 const RARITY_OPTIONS = [
   { value: 'common', label: 'Common' },
   { value: 'rare', label: 'Rare' },
-  { value: 'legend', label: 'Legend' },
-  { value: 'mythic', label: 'Mythic' },
+  { value: 'epic', label: 'Epic' },
+  { value: 'mystic', label: 'Mystic' },
 ]
 
 const STATUS_OPTIONS = [

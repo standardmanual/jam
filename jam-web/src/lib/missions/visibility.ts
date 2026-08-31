@@ -27,7 +27,7 @@ import type { BadgeRarity } from '@/types/database'
 import { RARITY_TIER } from '@/lib/rarity'
 
 /** 티어 값 → 배지 등급 (잠금 안내에 쓸 "먼저 획득해야 하는 등급" 역산용) */
-const RARITY_BY_TIER: Record<number, BadgeRarity> = { 1: 'common', 2: 'rare', 3: 'legend', 4: 'mythic' }
+const RARITY_BY_TIER: Record<number, BadgeRarity> = { 1: 'common', 2: 'rare', 3: 'epic', 4: 'mystic' }
 
 /** 미보유 유저에게도 첫 레벨업 미션(Rare용)을 노출하기 위한 하한 티어 */
 const MIN_EFFECTIVE_TIER = RARITY_TIER.common
@@ -66,7 +66,7 @@ export interface MissionVisibilityResult {
   visibility: MissionVisibility
   /**
    * locked/hidden일 때 "이 미션을 열려면 먼저 획득해야 하는 배지".
-   * 게이트 배지의 바로 아래 등급이다(예: 첫 숨결 Legend 게이트 → 첫 숨결 Rare).
+   * 게이트 배지의 바로 아래 등급이다(예: 첫 숨결 Epic 게이트 → 첫 숨결 Rare).
    */
   requiredBadge: { name: string; rarity: BadgeRarity } | null
 }

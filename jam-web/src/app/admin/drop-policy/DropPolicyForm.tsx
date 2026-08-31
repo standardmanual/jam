@@ -23,8 +23,8 @@ const SECTIONS: SectionDef[] = [
     fields: [
       { key: 'rarity_common', label: 'Common 확률', step: '0.01' },
       { key: 'rarity_rare', label: 'Rare 확률', step: '0.01' },
-      { key: 'rarity_legend', label: 'Legend 확률', step: '0.01' },
-      { key: 'rarity_mythic', label: 'Mythic 확률', step: '0.01' },
+      { key: 'rarity_epic', label: 'Epic 확률', step: '0.01' },
+      { key: 'rarity_mystic', label: 'Mystic 확률', step: '0.01' },
       { key: 'bonus_drop_rate', label: '보너스 드랍률 (2개째)', step: '0.01' },
       { key: 'bonus_drop_rate_intense', label: '보너스 드랍률 (고강도)', step: '0.01' },
       { key: 'intense_duration_min', label: '고강도 기준 시간(분)', step: '1' },
@@ -44,7 +44,7 @@ const SECTIONS: SectionDef[] = [
       { key: 'adjacent_weight', label: '인접 세계관', step: '0.01' },
       { key: 'explore_weight', label: '탐험 (전체 랜덤)', step: '0.01' },
       { key: 'context_override_rate', label: '맥락 오버라이드 발동률', step: '0.01' },
-      { key: 'mystery_spice_rate', label: '미스터리 헌터 등장률 (legend+ 전용)', step: '0.01' },
+      { key: 'mystery_spice_rate', label: '미스터리 헌터 등장률 (epic+ 전용)', step: '0.01' },
     ],
   },
   {
@@ -73,8 +73,8 @@ export default function DropPolicyForm({ initial }: { initial: DropPolicy }) {
   const raritySum =
     parseFloat(values.rarity_common || '0') +
     parseFloat(values.rarity_rare || '0') +
-    parseFloat(values.rarity_legend || '0') +
-    parseFloat(values.rarity_mythic || '0')
+    parseFloat(values.rarity_epic || '0') +
+    parseFloat(values.rarity_mystic || '0')
   const bucketSum =
     parseFloat(values.momentum_weight || '0') +
     parseFloat(values.adjacent_weight || '0') +

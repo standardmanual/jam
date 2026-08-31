@@ -410,7 +410,7 @@ describe('버그 회귀 — getProgressionKey 크로스배지 충돌 (T01~T04)',
       makeBadge({ id: 'T01', name: '숫자의 노예', rarity: 'common', condition_json: { activity_type: 'walking', total_count: 5 } }),
       makeBadge({ id: 'T02', name: '그냥 좀 걸었을 뿐', rarity: 'common', condition_json: { activity_type: 'walking', total_count: 10 } }),
       makeBadge({ id: 'T03', name: '만보왕', rarity: 'rare', condition_json: { activity_type: 'walking', total_count: 15 } }),
-      makeBadge({ id: 'T04', name: '걸음의 구도자', rarity: 'legend', condition_json: { activity_type: 'walking', total_count: 20 } }),
+      makeBadge({ id: 'T04', name: '걸음의 구도자', rarity: 'epic', condition_json: { activity_type: 'walking', total_count: 20 } }),
     ]
     // 4개 배지의 최댓값(20)을 넘는 걷기 활동 25건 생성 (하루 상한 미적용 조건이므로 같은 날짜라도 무방하나
     // 명확성을 위해 날짜를 분산)
@@ -438,7 +438,7 @@ describe('버그 회귀 — T23(그냥 나갔다 옴)이 W1과 트랙 충돌로 
   it('activity_type+distance_km 트랙이 같아도 두 독립 배지가 모두 발급된다', async () => {
     mockBadges = [
       makeBadge({ id: 'W1', name: '동네 산책러', rarity: 'common', condition_json: { activity_type: 'walking', distance_km: 5 } }),
-      makeBadge({ id: 'T23', name: '그냥 나갔다 옴', rarity: 'legend', condition_json: { activity_type: 'walking', distance_km: 0.6 } }),
+      makeBadge({ id: 'T23', name: '그냥 나갔다 옴', rarity: 'epic', condition_json: { activity_type: 'walking', distance_km: 0.6 } }),
     ]
     const acts = [makeGatedWalk({ distanceKm: 10, movingTimeSec: 120 * 60, averageSpeedKmh: 5 })]
 

@@ -51,14 +51,14 @@ export type Database = {
           gps_daily_distance_cap_km: number
           gps_max_speed_kmh: number
           hard_common_rate: number
-          hard_legendary_rate: number
-          hard_mythic_rate: number
+          hard_epic_rate: number
+          hard_mystic_rate: number
           hard_rare_rate: number
           id: number
           poi_block_hours: number
           soft_common_rate: number
-          soft_legendary_rate: number
-          soft_mythic_rate: number
+          soft_epic_rate: number
+          soft_mystic_rate: number
           soft_rare_rate: number
           updated_at: string
           vehicle_speed_filter_kmh: number
@@ -67,14 +67,14 @@ export type Database = {
           gps_daily_distance_cap_km?: number
           gps_max_speed_kmh?: number
           hard_common_rate?: number
-          hard_legendary_rate?: number
-          hard_mythic_rate?: number
+          hard_epic_rate?: number
+          hard_mystic_rate?: number
           hard_rare_rate?: number
           id?: number
           poi_block_hours?: number
           soft_common_rate?: number
-          soft_legendary_rate?: number
-          soft_mythic_rate?: number
+          soft_epic_rate?: number
+          soft_mystic_rate?: number
           soft_rare_rate?: number
           updated_at?: string
           vehicle_speed_filter_kmh?: number
@@ -83,14 +83,14 @@ export type Database = {
           gps_daily_distance_cap_km?: number
           gps_max_speed_kmh?: number
           hard_common_rate?: number
-          hard_legendary_rate?: number
-          hard_mythic_rate?: number
+          hard_epic_rate?: number
+          hard_mystic_rate?: number
           hard_rare_rate?: number
           id?: number
           poi_block_hours?: number
           soft_common_rate?: number
-          soft_legendary_rate?: number
-          soft_mythic_rate?: number
+          soft_epic_rate?: number
+          soft_mystic_rate?: number
           soft_rare_rate?: number
           updated_at?: string
           vehicle_speed_filter_kmh?: number
@@ -110,9 +110,9 @@ export type Database = {
           id: number
           max_active_per_poi: number
           rarity_common: number
-          rarity_legend: number
+          rarity_epic: number
           rarity_mode: string
-          rarity_mythic: number
+          rarity_mystic: number
           rarity_rare: number
           updated_at: string
         }
@@ -128,9 +128,9 @@ export type Database = {
           id?: number
           max_active_per_poi?: number
           rarity_common?: number
-          rarity_legend?: number
+          rarity_epic?: number
           rarity_mode?: string
-          rarity_mythic?: number
+          rarity_mystic?: number
           rarity_rare?: number
           updated_at?: string
         }
@@ -146,9 +146,9 @@ export type Database = {
           id?: number
           max_active_per_poi?: number
           rarity_common?: number
-          rarity_legend?: number
+          rarity_epic?: number
           rarity_mode?: string
-          rarity_mythic?: number
+          rarity_mystic?: number
           rarity_rare?: number
           updated_at?: string
         }
@@ -483,8 +483,8 @@ export type Database = {
           mystery_spice_rate: number
           rare_pity_threshold: number
           rarity_common: number
-          rarity_legendary: number
-          rarity_mythic: number
+          rarity_epic: number
+          rarity_mystic: number
           rarity_rare: number
           same_book_penalty: number
           updated_at: string
@@ -509,8 +509,8 @@ export type Database = {
           mystery_spice_rate?: number
           rare_pity_threshold?: number
           rarity_common?: number
-          rarity_legendary?: number
-          rarity_mythic?: number
+          rarity_epic?: number
+          rarity_mystic?: number
           rarity_rare?: number
           same_book_penalty?: number
           updated_at?: string
@@ -535,8 +535,8 @@ export type Database = {
           mystery_spice_rate?: number
           rare_pity_threshold?: number
           rarity_common?: number
-          rarity_legendary?: number
-          rarity_mythic?: number
+          rarity_epic?: number
+          rarity_mystic?: number
           rarity_rare?: number
           same_book_penalty?: number
           updated_at?: string
@@ -2328,7 +2328,7 @@ export type Database = {
       }
     }
     Enums: {
-      badge_rarity: "common" | "rare" | "legend" | "mythic"
+      badge_rarity: "common" | "rare" | "epic" | "mystic"
       badge_type: "activity" | "item" | "checkin"
       feed_event_type:
         | "badge_earned"
@@ -2495,7 +2495,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      badge_rarity: ["common", "rare", "legend", "mythic"],
+      badge_rarity: ["common", "rare", "epic", "mystic"],
       badge_type: ["activity", "item", "checkin"],
       feed_event_type: [
         "badge_earned",

@@ -1,6 +1,6 @@
 import type { ReactNode, CSSProperties } from 'react';
 
-export type BadgeRarity = 'common' | 'rare' | 'legend' | 'mythic';
+export type BadgeRarity = 'common' | 'rare' | 'epic' | 'mystic';
 
 export interface CollectionGridCardProps {
   name: string;

@@ -596,7 +596,7 @@ describe('⑥ 팔로잉 활동 — 하루 상한 사람 2명 (R15)', () => {
       priority: 0,
       badgeId: 'b1',
       badgeName: '별을 삼킨 바퀴',
-      rarity: 'mythic',
+      rarity: 'mystic',
     },
   ]
 
@@ -641,7 +641,7 @@ describe('⑥ 팔로잉 활동 — 하루 상한 사람 2명 (R15)', () => {
         priority: 0,
         badgeId: 'b1',
         badgeName: '별을 삼킨 바퀴',
-        rarity: 'mythic',
+        rarity: 'mystic',
       },
       {
         kind: 'collection',
@@ -659,16 +659,16 @@ describe('⑥ 팔로잉 활동 — 하루 상한 사람 2명 (R15)', () => {
     expect(drafts[0].type).toBe('following_rare_badge')
     expect(drafts[0].payload).toMatchObject({ more_count: 1 })
     expect(notificationPlainText(viewOf(drafts[0]))).toBe(
-      '예린님이 Mythic 배지 별을 삼킨 바퀴를 획득했어요. 소식이 1건 더 있어요'
+      '예린님이 Mystic 배지 별을 삼킨 바퀴를 획득했어요. 소식이 1건 더 있어요'
     )
     expectContract(drafts)
   })
 
   it('상한이 「사람 수」다 — 세 사람이면 두 사람만, 각자의 나머지는 접힌다', () => {
     const many: FollowingCandidate[] = [
-      { kind: 'rare_badge', recipientId: 'me', actorId: 'a1', at: '2026-08-25T05:00:00Z', priority: 0, badgeId: 'b1', badgeName: '별을 삼킨 바퀴', rarity: 'mythic' },
+      { kind: 'rare_badge', recipientId: 'me', actorId: 'a1', at: '2026-08-25T05:00:00Z', priority: 0, badgeId: 'b1', badgeName: '별을 삼킨 바퀴', rarity: 'mystic' },
       { kind: 'collection', recipientId: 'me', actorId: 'a1', at: '2026-08-25T06:00:00Z', priority: 2, itemBookId: 'book-1', bookName: '잃어버린 시간' },
-      { kind: 'rare_badge', recipientId: 'me', actorId: 'a2', at: '2026-08-25T04:00:00Z', priority: 1, badgeId: 'b2', badgeName: '녹슨 열쇠', rarity: 'legend' },
+      { kind: 'rare_badge', recipientId: 'me', actorId: 'a2', at: '2026-08-25T04:00:00Z', priority: 1, badgeId: 'b2', badgeName: '녹슨 열쇠', rarity: 'epic' },
       { kind: 'collection', recipientId: 'me', actorId: 'a3', at: '2026-08-25T03:00:00Z', priority: 2, itemBookId: 'book-2', bookName: '오아시스 자판기' },
     ]
     const drafts = selectFollowingDrafts(many, today)
