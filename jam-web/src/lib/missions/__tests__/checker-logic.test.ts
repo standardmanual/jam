@@ -12,7 +12,8 @@
  */
 import assert from 'node:assert'
 import { evaluateMission, isMissionActive, activeMissionsQueryFilter, type OwnershipContext } from '../checker'
-import type { MissionRow, MissionCondition } from '@/types/database'
+import { evaluateConditionDetailed } from '@/lib/badge-engine'
+import type { MissionRow, MissionCondition, BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 
 function makeActivity(overrides: Partial<NormalizedActivity> = {}): NormalizedActivity {
@@ -128,7 +129,7 @@ const cases: Array<[string, () => void]> = [
     const r = evaluateMission(mission('duration_minutes', { activity_type: 'running', duration_minutes: 120 }), acts, emptyOwnership, true)
     assert.strictEqual(r.achieved, false)
   }],
-  ['elevation_gain_m: 단일 활동 상승고도 600m 이상 트레일러닝 시 달성', () => {
+  ['elevation_gain_m: 단일 활동 상승고도 600m 이상 트레일러닝 시 달성(누적 합계이므로 1건이어도 그대로 합계)', () => {
     const acts = [makeActivity({ jamActivityType: 'trail_running', elevationGainM: 650 })]
     const r = evaluateMission(mission('elevation_gain_m', { activity_type: 'trail_running', elevation_gain_m: 600 }), acts, emptyOwnership, true)
     assert.strictEqual(r.progressValue, 650)
@@ -138,6 +139,57 @@ const cases: Array<[string, () => void]> = [
     const acts = [makeActivity({ jamActivityType: 'trail_running', elevationGainM: 300 })]
     const r = evaluateMission(mission('elevation_gain_m', { activity_type: 'trail_running', elevation_gain_m: 600 }), acts, emptyOwnership, true)
     assert.strictEqual(r.achieved, false)
+  }],
+  // ── 티켓 20260831_2152 — elevation_gain_m 진행바(calculateProgress)와 완료 판정
+  // (evaluateConditionDetailed) 일치 회귀 테스트 ──
+  ['elevation_gain_m: 여러 활동에 걸쳐 누적으로 목표를 채우면 progressValue=합계, achieved=true (표시-판정 일치)', () => {
+    const acts = [
+      makeActivity({ jamActivityType: 'trail_running', elevationGainM: 300 }),
+      makeActivity({ jamActivityType: 'trail_running', elevationGainM: 250 }),
+      makeActivity({ jamActivityType: 'trail_running', elevationGainM: 100 }),
+    ]
+    const r = evaluateMission(mission('elevation_gain_m', { activity_type: 'trail_running', elevation_gain_m: 600 }), acts, emptyOwnership, true)
+    // 개별 활동은 전부 600m 미달이지만 합계(650m)는 목표를 넘는다 — Math.max였다면 300으로
+    // 표시되고 achieved=false였을 상황
+    assert.strictEqual(r.progressValue, 650)
+    assert.strictEqual(r.achieved, true)
+  }],
+  ['elevation_gain_m: 누적 합계가 목표 직전이면 progressValue는 합계 그대로, achieved=false (표시-판정 동시 미달)', () => {
+    const acts = [
+      makeActivity({ jamActivityType: 'trail_running', elevationGainM: 300 }),
+      makeActivity({ jamActivityType: 'trail_running', elevationGainM: 250 }),
+    ]
+    const r = evaluateMission(mission('elevation_gain_m', { activity_type: 'trail_running', elevation_gain_m: 600 }), acts, emptyOwnership, true)
+    assert.strictEqual(r.progressValue, 550)
+    assert.strictEqual(r.achieved, false)
+  }],
+  ['elevation_gain_m: 걷기 축1 게이트 미통과 활동은 진행값·판정 양쪽에서 제외(합산에도 포함 안 됨)', () => {
+    const acts = [
+      // 축1 게이트 통과 — 정상 걷기
+      makeActivity({ jamActivityType: 'walking', distanceKm: 2, movingTimeSec: 1800, averageSpeedKmh: 4, elevationGainM: 400 }),
+      // 축1 게이트 미통과 — 너무 짧은 거리(GPS 노이즈성 활동으로 간주)
+      makeActivity({ jamActivityType: 'walking', distanceKm: 0.05, movingTimeSec: 1800, averageSpeedKmh: 4, elevationGainM: 500 }),
+    ]
+    const r = evaluateMission(mission('elevation_gain_m', { activity_type: 'walking', elevation_gain_m: 600 }), acts, emptyOwnership, true)
+    // 게이트 통과분(400m)만 합산되어야 함 — 900m가 아니라 400m
+    assert.strictEqual(r.progressValue, 400)
+    assert.strictEqual(r.achieved, false)
+  }],
+  ['elevation_gain_m: calculateProgress(progressValue)와 evaluateConditionDetailed(actual)가 같은 누적값을 계산한다(교차 대조)', () => {
+    const acts = [
+      makeActivity({ jamActivityType: 'trail_running', elevationGainM: 210 }),
+      makeActivity({ jamActivityType: 'trail_running', elevationGainM: 190 }),
+      makeActivity({ jamActivityType: 'trail_running', elevationGainM: 205 }),
+    ]
+    const condition: MissionCondition = { activity_type: 'trail_running', elevation_gain_m: 600 }
+    const r = evaluateMission(mission('elevation_gain_m', condition), acts, emptyOwnership, true)
+    const engineResult = evaluateConditionDetailed(condition as BadgeCondition, acts)
+    // progressValue(표시값)와 evaluateConditionDetailed의 실측 문자열(판정값)이 같은
+    // 합계(605m)에서 나왔는지 대조 — 605 >= 600이므로 둘 다 달성
+    assert.strictEqual(r.progressValue, 605)
+    assert.strictEqual(engineResult.actual, '누적고도: 605m')
+    assert.strictEqual(r.achieved, true)
+    assert.strictEqual(engineResult.pass, true)
   }],
 
   // ── 상시 미션 (ends_at null) ────────────────────────────────
