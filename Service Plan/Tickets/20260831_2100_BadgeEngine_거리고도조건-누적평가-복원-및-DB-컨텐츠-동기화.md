@@ -1,10 +1,17 @@
 ---
 id: 20260831_2100
 category: BadgeEngine
-status: CLOSED
+status: IN_PROGRESS
 created: 2026-08-31
-closed: 2026-08-31
+closed:
 ---
+
+> **후속 작업 진행 중(2026-08-31)**: 이 티켓의 A/B/C 스코프(T1 same_activity·걷기 32종·
+> 21개 조건값)는 커밋 `3c75dda3`/`7166b39a`로 이미 구현·마이그레이션 실행까지 완료됐다
+> (아래 "완료 기록" 참고). 완료 시점에 잔여 이슈로 남겨뒀던 T23("그냥 나갔다 옴")의
+> `same_activity` 미적용 건을 이어서 처리하기 위해 status를 재오픈한다. T23 관련 변경은
+> A-3·상세 요구사항 A.2·A.5·구현 계획 3·4번에 반영했고, 구현 결과는 맨 아래 "완료 기록 —
+> T23 후속(2026-08-31)" 절에 별도로 기록한다.
 
 # [BadgeEngine] distance_km/elevation_gain_m 누적 평가 복원 + 걷기배지 32종 반영 + 조건값 DB 동기화
 
@@ -43,11 +50,17 @@ kangwonc 계정 배지 점검 중 발견해 `Specs/Content/ACTIVITY_BADGES.md`(�
 | 혹한 장정(H7) | hiking | temperature_max_c + duration_minutes | 기록된 최저 기온 AND 역대 최장 시간 — 독립 이력 |
 | 알파인 트레일러(T7) | trail_running | elevation_gain_m + temperature_max_c | 누적 고도 AND 기록된 최저 기온 — 독립 이력 |
 
-**A-3. 예외 — 손대지 말 것 (1개군)**
+**A-3. 예외 — 단일 활동 조건 (2개군, 2026-08-31 사용자 확인)**
 
-`야생의 첫발(T1)`은 `distance_km` + `elevation_gain_m` "복합 AND"(이력전반 문구 없음, 521행)로,
-문서상 유일하게 진짜 "한 활동에서 동시 충족"이 맞다. 현재 코드 동작이 이미 맞으므로 회귀시키지
-않는다.
+- `야생의 첫발(T1)`: `distance_km` + `elevation_gain_m` "복합 AND"(이력전반 문구 없음, 521행)로,
+  문서상 유일하게 진짜 "한 활동에서 동시 충족"이 맞다. 현재 코드 동작이 이미 맞으므로 회귀시키지
+  않는다.
+- `그냥 나갔다 옴(T23)`: 단독 `distance_km:0.6` 조건이지만 문서(193행)에 "(단일 활동)"으로
+  명시돼 있다. A-1 목록(단독 distance_km/elevation_gain_m → 누적 합계)에서 T23만 빠진 이유가
+  이 예외 때문이다 — **T23을 A-1 일괄 "누적 전환" 대상에 포함시키지 않는다.** 임계값(0.6km)이
+  걷기 축1 게이트 최소거리(0.5km)에 근접해 단일/누적 간 실질 난이도 차이는 미미하지만, 문서
+  표기와 구현을 일치시키기로 사용자가 확정했다(단일 필드 배지에 대한 `same_activity` 플래그
+  적용 첫 사례 — T1과 달리 필드 조합만으로는 판별 불가하므로 명시적 플래그가 필수다).
 
 **원인**: 커밋 `27163030`(2026-07-31, "배지·미션 누적 조건을 배치 단위가 아닌 전체 이력
 기준으로 평가")이 "서로 다른 활동의 속도+시간을 조합해 잘못 통과되던 버그"(다중 필드 복합
@@ -129,12 +142,13 @@ mcp__supabase__list_migrations 결과에도 이 마이그레이션 적용 이력
    동작을 "누적 합계 ≥ 조건값"으로 되돌린다(2026-07-31 이전 방식). 단, 07-31 커밋이 고친
    진짜 버그(서로 다른 활동에서 필드를 각각 만족시켜 조합하는 문제)는 유지해야 하므로, 이건
    아래 2·3번의 복합조건 처리로 흡수한다.
-2. `distance_km`와 `elevation_gain_m`이 **같은 condition_json에 함께** 있는 경우(현재
-   카탈로그엔 T1 야생의 첫발 1건뿐)만 예외적으로 "한 활동에서 동시 충족"을 요구한다. 이
-   판별을 필드 조합만으로 할지, `condition_json`에 명시적 플래그(예: `same_activity: true`)를
-   추가해 T1에만 설정할지는 구현자가 판단하되, 후자가 향후 확장성·의도 명시성 면에서 더
-   안전하다면 그쪽을 택하고 `condition-schema.ts`의 `MEASURABLE_CONDITION_KEYS`·DB CHECK
-   제약(`badges_condition_json_known_keys`)도 함께 갱신한다.
+2. 단일 활동 조건이 필요한 배지 — **T1(야생의 첫발, distance_km+elevation_gain_m 복합)**과
+   **T23(그냥 나갔다 옴, distance_km 단독)** 2건 — 은 예외적으로 "한 활동에서 동시/단독 충족"을
+   요구한다. T23은 필드가 하나뿐이라 필드 조합만으로는 판별할 수 없으므로(2026-08-31 사용자
+   확인, A-3 참고), 판별 방식은 **`condition_json`에 명시적 플래그 `same_activity: true`를
+   추가하는 쪽으로 확정**한다(구현자 재량 아님). T1·T23 두 배지의 `condition_json`에
+   `same_activity: true`를 설정하고, `condition-schema.ts`의 `MEASURABLE_CONDITION_KEYS`·
+   DB CHECK 제약(`badges_condition_json_known_keys`)에 `same_activity` 키를 추가한다.
 3. 카테고리 2(R7/C7/H7/T7) 4개 배지군은 현재 `relevantPerActivityKeys`가 여러
    `PER_ACTIVITY_KEYS` 필드를 묶어 "한 활동에서 동시 충족"을 요구하는 경로를 타는데, 이걸
    각 필드를 독립적으로(역대 최고/최저 — 기존 개별 필드 평가 로직 재사용 가능, elevation_gain_m은
@@ -146,6 +160,8 @@ mcp__supabase__list_migrations 결과에도 이 마이그레이션 적용 이력
 5. 배지엔진 테스트(`src/lib/badge-engine/__tests__/`)에 다음 회귀 테스트를 추가한다:
    - 단독 distance_km 조건이 여러 활동 누적으로 통과되는 케이스
    - T1(야생의 첫발)이 여전히 단일 활동 동시 충족만 통과시키는 케이스 (회귀 방지)
+   - **T23(그냥 나갔다 옴)이 `same_activity:true`로 단일 활동 0.6km 충족만 통과시키고, 여러
+     활동에 걸친 누적 0.6km(예: 0.3km 두 번)로는 통과되지 않는 케이스**
    - R7 계열이 서로 다른 활동의 페이스·시간으로도 통과되는 케이스
    - 드랍엔진 `isDroppableForActivity`가 distance_km/elevation_gain_m 조건을 가진 가상
      아이템배지를 정상적으로 드랍 제외하는 케이스
@@ -179,12 +195,12 @@ mcp__supabase__list_migrations 결과에도 이 마이그레이션 적용 이력
 2. B·C SQL 파일 작성 (실행하지 않음)
 3. `BADGE_ENGINE_UNIFIED.md` 갱신:
    - §2.3 조건 평가 필드 표: distance_km/elevation_gain_m "누적 합계" 서술은 유지(원래
-     맞았음). same_activity 플래그를 도입했다면 그 필드와 T1 예외를 §2.3에 명시
+     맞았음). `same_activity` 플래그와 그 적용 대상(T1·T23 2건 — A-3 확정)을 §2.3에 명시
    - §2.6 "홍수 방지 캡" — 이전 조사에서 코드 주석상 이미 삭제된 로직으로 확인됐다
      (`index.ts:692-697` 주석: "과거엔 30일 내 activity_type당 최대 3개 캡이 있었으나 ...
      제거함"). 재확인 후 문서를 현재 상태(캡 없음)에 맞게 정정
    - 카테고리 2(R7/C7/H7/T7) "이력 전반 독립 평가"가 실제로 그렇게 동작함을 명시
-4. `CONDITION_JSON_SPEC.md` — same_activity 플래그(도입 시) 스펙 추가
+4. `CONDITION_JSON_SPEC.md` — `same_activity` 플래그 스펙 추가 (T1·T23 적용 사례 명시)
 5. 잔재 검증: `distance_km`/`elevation_gain_m`을 조건으로 쓰는 다른 배지(예: 야생의 첫발
    외에 향후 추가될 복합조건 배지)가 이번 변경으로 의도치 않게 영향받지 않는지 전체 카탈로그
    재확인
@@ -295,11 +311,10 @@ Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
   'elevation_gain_m'`로 실제 생성된 미션 행은 현재 없어 즉시 영향은 0건이나, 후속 티켓에서
   미션 엔진 쪽 의도(단일 활동 vs 누적)를 명시적으로 정리할 필요가 있음.
   → 후속 작업으로 분리(task_b32f3df2), 사용자가 별도 세션에서 진행 중.
-- (INFO) T23 "그냥 나갔다 옴"(걷기, `distance_km:0.6`, 마이그레이션 118로 최초 시딩)이
-  `ACTIVITY_BADGES.md`에는 "(단일 활동)"으로 명시돼 있으나 `same_activity` 플래그를 부여하지
-  않아 실제로는 누적 합계로 평가된다(이번 티켓 범위는 T1 1건 한정). 임계값이 걷기 축1 게이트
-  최소거리(0.5km)에 가까워 실질 난이도 차이는 미미.
-  → 후속 작업으로 분리(task_4e98d2be), 사용자가 별도 세션에서 진행 중.
+- (해결됨, 2026-08-31) T23 "그냥 나갔다 옴"(걷기, `distance_km:0.6`, 마이그레이션 118로
+  최초 시딩)이 `ACTIVITY_BADGES.md`에는 "(단일 활동)"으로 명시돼 있으나 `same_activity`
+  플래그를 부여하지 않아 실제로는 누적 합계로 평가되던 문제. 마이그레이션 120으로 T23에도
+  `same_activity: true`를 적용해 해결 — 상세는 아래 "완료 기록 — T23 후속(2026-08-31)" 참고.
 - (INFO) 이번 티켓 스코프 밖 발견: 작업 시작 시점에 로컬 저장소가 다른 진행 중 티켓(2038)의
   리뷰 브랜치에 체크인된 상태였고, 동시에 또 다른 세션(2106, Footer/TopNav)이 같은 메인
   워크트리에서 실시간으로 파일을 수정 중이었다(`git worktree list`로 확인, 별도 워크트리
@@ -308,3 +323,66 @@ Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
   메인 워크트리의 다른 세션 작업(Footer.tsx·TopNav.tsx·DropsClient.tsx·DESIGN_RENEWAL_SPEC.md
   미커밋 변경분)은 전혀 건드리지 않았다. 오케스트레이터가 jam-developer 실행 시 격리된
   워크트리를 배정하는 경로를 점검할 필요가 있어 보임.
+
+---
+## 완료 기록 — T23 후속(2026-08-31)
+
+### 구현 내용 요약
+- 배지엔진 코드(`src/lib/badge-engine/index.ts`)는 T1 적용 시점에 이미 `same_activity:true`를
+  필드 개수와 무관하게 제네릭으로 읽도록 구현돼 있어(407·429~431·448~451행) **코드 변경 없이**
+  T23에도 그대로 적용된다. 확인 절차: `git fetch origin staging` 후 origin/staging의
+  `index.ts`·`117_condition_json_same_activity_flag.sql`·`BADGE_ENGINE_UNIFIED.md`·
+  `CONDITION_JSON_SPEC.md`를 grep해 T23/"그냥 나갔다 옴" 관련 내용이 실제로 없음을 직접 확인한
+  뒤 착수(오탐 방지 — "이미 CLOSED됐다"는 git 이력만으로 완료 여부를 판단하지 않음).
+- `jam-web/supabase/migrations/120_same_activity_flag_t23.sql` 신규 작성 — T23(단일 등급
+  Epic)의 `condition_json`에 `same_activity: true`를 추가하는 UPDATE문. CHECK 제약의
+  `same_activity` 키는 117에서 이미 추가돼 있어 이번 마이그레이션은 스키마 변경 없이 데이터만
+  갱신한다. **작성만 — 실행하지 않음(오케스트레이터가 사용자 승인 후 처리).**
+- 회귀 테스트 3종 추가(`cumulative-conditions.test.ts`, T1 블록 다음에 신규 describe 블록):
+  단일 활동 0.6km 충족 시 pass, 여러 활동에 걸친 누적 0.6km로는 fail, same_activity 없을 때는
+  누적으로 pass(대조군). 테스트 활동값은 걷기 축1 게이트(distance≥0.5km, duration≥10분,
+  speed 2~8km/h)를 통과하도록 조정 — 게이트 미만 값(예: 티켓 예시의 "0.3km 두 번")을 쓰면
+  게이트에서 먼저 걸러져 same_activity 로직 자체를 검증하지 못하는 것을 실행 중 발견해 0.5km
+  두 번(게이트는 통과, 개별로는 0.6km 미달)으로 대체.
+- `BADGE_ENGINE_UNIFIED.md`·`CONDITION_JSON_SPEC.md`의 same_activity 적용 대상 서술을
+  "T1 1건"에서 "T1·T23 2건"으로 갱신, CONDITION_JSON_SPEC.md §5 예시에 단독 필드 패턴
+  (T23) 예시 추가.
+
+### 변경된 파일
+```
+jam-web/supabase/migrations/120_same_activity_flag_t23.sql (신규, 미실행)
+jam-web/src/lib/badge-engine/__tests__/cumulative-conditions.test.ts
+Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md
+Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
+Service Plan/Tickets/20260831_2100_BadgeEngine_거리고도조건-누적평가-복원-및-DB-컨텐츠-동기화.md (본 파일 — A-3·요구사항·계획·잔여이슈 갱신)
+```
+
+### 테스트 결과
+- [x] `npx vitest run src/lib/badge-engine src/lib/drop-engine` — 5 파일 92건 전부 통과
+- [x] `npm test`(vitest 전체) — 649건 중 646건 통과, 3건 실패는 전부 이번 변경과 무관한
+      사전 존재 실패: `src/lib/strava/__tests__/sync-drop-order.test.ts` 2건은 이 워크트리에
+      `.env.local`(Supabase URL/Key) 심볼릭 링크가 없어 발생하는 환경 문제(코드 미변경, 이번
+      브랜치 diff에 해당 파일 없음), `design-system/.../BadgeRevealCarousel.stories.tsx` 1건은
+      이전 CLOSED 완료 기록에도 동일하게 기록된 기존 실패(티켓 20260831_1115 무관 이슈)
+- [x] `npx tsc --noEmit` — 에러 0건
+- [x] `npm run lint`(전체) — 에러 0건, 경고 26건(전부 기존 파일, 이번 변경 파일 대상 경고 없음 —
+      이전 CLOSED 완료 기록과 동일한 경고 26건으로 baseline 일치 확인)
+
+### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
+사용자 노출 텍스트 변경 없음 — 해당 없음 (엔진 로직·DB 조건값·문서만 변경)
+
+### 배포 정보
+- 배포일: (미배포 — 마이그레이션 120 실행 및 review 브랜치 머지는 사용자 승인 후 오케스트레이터가 처리)
+- 환경: -
+- 커밋: (커밋 예정 — review 브랜치 push 후 확정)
+
+### 주요 의사결정 / 핵심 메모
+- 배지엔진 코드는 T1 적용 시점에 이미 필드 개수와 무관한 제네릭 구현이라 T23 추가에 코드
+  변경이 전혀 필요 없었다 — 순수 데이터(마이그레이션) + 테스트 + 문서 작업으로 스코프가
+  좁혀졌다(선행 게이트 리뷰에서 확정된 범위).
+- 회귀 테스트 작성 중 걷기 축1 게이트(0.5km/10분/2~8km/h)가 T23 임계값(0.6km)에 근접해
+  있다는 티켓의 사전 경고가 실제로 테스트 값 선정에 영향을 줬다 — 티켓 예시 그대로("0.3km
+  두 번")는 게이트에서 먼저 걸러지므로 same_activity 로직만 격리 검증하도록 값을 조정했다.
+
+### 잔여 이슈
+- 없음.

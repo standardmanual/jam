@@ -54,16 +54,19 @@
 
 | 필드 | 타입 | 설명 | 평가 방식 |
 |------|------|------|-----------|
-| `same_activity` | `boolean` | `distance_km`/`elevation_gain_m`을 "누적 합계"가 아니라 "한 활동에서 동시 충족"으로 평가하도록 전환하는 플래그 | 이 값이 `true`이고 `distance_km`·`elevation_gain_m`이 함께 있으면, 그 두 값을 모두 만족하는 활동이 1건 이상 있어야 발급된다. `false`/미지정(기본값)이면 각각 전체 이력 누적 합계로 독립 평가된다 |
+| `same_activity` | `boolean` | `distance_km`/`elevation_gain_m`을 "누적 합계"가 아니라 "한 활동에서 동시/단독 충족"으로 평가하도록 전환하는 플래그 | 이 값이 `true`이면, `distance_km`·`elevation_gain_m` 중 그 배지에 있는 필드(들)를 모두 만족하는 활동이 1건 이상 있어야 발급된다. 필드가 하나뿐이어도(T23) 적용 가능 — 그 경우 "그 필드 하나를 단일 활동에서 충족"으로 평가된다. `false`/미지정(기본값)이면 각각 전체 이력 누적 합계로 독립 평가된다 |
 
 그 자체만으로는 pass/fail을 만들지 않는 **필터 전용 필드**(`condition-schema.ts`의
 `FILTER_ONLY_CONDITION_KEYS`)로 분류된다 — `activity_type`과 같은 성격이다. 현재 카탈로그에서는
-`야생의 첫발`(T1, `distance_km` + `elevation_gain_m` 복합 AND) 1건만 이 플래그를 쓴다.
+`야생의 첫발`(T1, `distance_km` + `elevation_gain_m` 복합 AND)과 `그냥 나갔다 옴`(T23, 단독
+`distance_km:0.6`) 2건이 이 플래그를 쓴다.
 
 > 배경(티켓 20260831_2100): 커밋 `27163030`(2026-07-31)이 "서로 다른 활동의 필드를 조합해
 > 잘못 통과되던 버그"를 고치면서 단독 `distance_km`/`elevation_gain_m`(원래 누적이어야 함)까지
 > "한 활동 동시 충족"으로 과잉 일반화했다. 2026-08-31에 문서(`ACTIVITY_BADGES.md`) 기준으로
-> 복원하면서, 진짜 "동시 충족"이 맞는 T1만 이 플래그로 명시했다. 어드민 `BadgeForm.tsx`에는
+> 복원하면서, 진짜 "동시 충족"이 맞는 T1만 이 플래그로 명시했다(마이그레이션 117). 같은
+> 티켓의 후속 작업으로, 문서에 "(단일 활동)"으로 명시된 T23(단독 필드라 필드 조합만으로는
+> 판별 불가)에도 동일 플래그를 적용했다(마이그레이션 120). 어드민 `BadgeForm.tsx`에는
 > 전용 입력 UI가 없고, `route`·`poi_id`·`day_of_week`·`active_days_count`·`season_count_all`과
 > 동일하게 폼 저장 시 원본 값이 그대로 보존된다(`FORM_UNSUPPORTED_CONDITION_KEYS`).
 
@@ -161,8 +164,11 @@
 // 복합: 페이스 + 지속 시간 (이력 전반 독립 평가 — 빠른 세션과 긴 세션이 달라도 통과. R7 스피드 엔듀러)
 { "activity_type": "running", "max_pace_sec_per_km": 320, "duration_minutes": 60 }
 
-// 복합: 거리 + 고도 (same_activity:true — 한 활동에서 동시 충족 필요. T1 야생의 첫발 전용 패턴)
+// 복합: 거리 + 고도 (same_activity:true — 한 활동에서 동시 충족 필요. T1 야생의 첫발 패턴)
 { "activity_type": "trail_running", "distance_km": 15, "elevation_gain_m": 300, "same_activity": true }
+
+// 단독 필드 + same_activity:true — 필드가 하나뿐이어도 "단일 활동 충족"으로 전환 가능. T23 그냥 나갔다 옴 패턴
+{ "activity_type": "walking", "distance_km": 0.6, "same_activity": true }
 
 // 야간 활동 (22시~06시 사이 걷기, 주 3회)
 { "activity_type": "walking", "time_range": { "start": "22:00", "end": "06:00" }, "weekly_count": 3 }
