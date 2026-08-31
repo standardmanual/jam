@@ -485,6 +485,7 @@ rightSlot = <>{호출부가 넘긴 값}{알림 종}</>
 |---|---|
 | `/collections/[id]` 장착 모드 진입 | 11 |
 | `/drops?poi=<id>` — 지도 카메라 이동 | 18 |
+| `?from=notifications` — 액터 프로필 착지 후 `TopNav` 뒤로가기가 알림함으로 직행 (티켓 20260831_2201) | 26(`followed`)·`following_rare_badge`·`following_collection_complete`·`following_mission_complete`·`drop_picked_up` |
 
 ### 6-7. 필요한 신규 컬러 토큰
 
