@@ -102,12 +102,27 @@ export default function SlidingTabs<K extends string = string>({
     if (!pill || !tab) return false
 
     if (!animate) {
-      const prev = pill.style.transition
+      const prevPillTransition = pill.style.transition
       pill.style.transition = 'none'
       pill.style.transform = `translateX(${tab.offsetLeft}px)`
       pill.style.width = `${tab.offsetWidth}px`
+
+      // pill과 같은 프레임에 .t-tab의 텍스트 color transition도 억제한다.
+      // 억제하지 않으면 pill 배경은 이미 목표 탭에 도착했는데 그 위 텍스트 색만
+      // muted→active로 300ms에 걸쳐 서서히 페이드돼, 그 사이 대비가 낮은 프레임이
+      // 생긴다(딥링크로 첫 포지셔닝될 때만 발생 — 사용자가 직접 탭을 눌러 전환할 때는
+      // animate=true 분기라 기존 페이드가 그대로 유지된다).
+      const tabEls = Array.from(tabRefs.current.values())
+      const prevTabTransitions = tabEls.map((el) => el.style.transition)
+      tabEls.forEach((el) => {
+        el.style.transition = 'none'
+      })
+
       void pill.offsetWidth
-      pill.style.transition = prev
+      pill.style.transition = prevPillTransition
+      tabEls.forEach((el, i) => {
+        el.style.transition = prevTabTransitions[i]
+      })
     } else {
       pill.style.transform = `translateX(${tab.offsetLeft}px)`
       pill.style.width = `${tab.offsetWidth}px`

@@ -213,6 +213,7 @@ function RankingListRow({
 
   return (
     <ListRowCard
+      href={`/${entry.username}`}
       icon={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* 순위 번호 — 내 순위는 --color-primary(레드)로 강조 */}
@@ -374,6 +375,7 @@ function MyRankCard({
 function AchievementRow({ e, highlight }: { e: AchievementEntry; highlight: boolean }) {
   return (
     <ListRowCard
+      href={`/${e.username}`}
       // 프로그래스바가 없어 한 줄짜리 행이라 기본 p-16(위아래 32px 간격)은 헐렁해 보인다 —
       // 위아래 패딩만 좁혀 목록 간격을 줄인다.
       className="!py-[var(--spacing-8)]"
