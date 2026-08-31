@@ -517,10 +517,22 @@ export interface UserDropStateRow {
   updated_at: string
 }
 
+/**
+ * drop_policy 테이블 — **앱 키 기준** 타입이다 (DB 실제 컬럼명과 1:1이 아니다).
+ *
+ * DB의 실제 컬럼은 `rarity_legendary`인데 앱 전역은 `rarity_legend`를 쓴다.
+ * 티켓 20260813_003에서 이 컬럼만 rename이 누락돼 생긴 불일치로,
+ * `database.generated.ts`(Supabase 생성 타입)에는 `rarity_legendary`로 나온다.
+ * 앱 키 ↔ DB 컬럼 변환은 `src/lib/drop-engine/policy.ts`가 입출력 시점에만 처리한다.
+ *
+ * ⚠️ 등급명 개명(legend → epic) 후속 작업에서 DB 컬럼이 `rarity_epic`으로 바뀌면
+ * 이 타입과 policy.ts의 매핑을 함께 정리할 것. (티켓 20260831_1118)
+ */
 export interface DropPolicyRow {
   id: number
   rarity_common: number
   rarity_rare: number
+  /** DB 실제 컬럼명은 `rarity_legendary` — policy.ts에서 변환한다 */
   rarity_legend: number
   rarity_mythic: number
   bonus_drop_rate: number
