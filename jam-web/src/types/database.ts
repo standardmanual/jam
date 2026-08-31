@@ -440,7 +440,9 @@ export interface MissionCondition {
   streak_days?: number
   /** duration_minutes 타입: 단일 활동 최소 이동 시간(분) — badge-engine BadgeCondition.duration_minutes 재사용 */
   duration_minutes?: number
-  /** elevation_gain_m 타입: 단일 활동 최소 고도 상승(m) — badge-engine BadgeCondition.elevation_gain_m 재사용 */
+  /** elevation_gain_m 타입: 참가 시점 이후 누적 최소 고도 상승(m) — badge-engine
+   * BadgeCondition.elevation_gain_m 재사용 (2026-08-31 배지엔진과 함께 누적 합계로 복원,
+   * 티켓 20260831_2100/2152) */
   elevation_gain_m?: number
 }
 
