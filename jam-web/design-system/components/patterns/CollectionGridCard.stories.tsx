@@ -11,7 +11,7 @@ const meta: Meta<typeof CollectionGridCard> = {
   },
   argTypes: {
     completed: { control: 'boolean' },
-    rarity: { control: 'select', options: ['common', 'rare', 'legend', 'mythic'] },
+    rarity: { control: 'select', options: ['common', 'rare', 'epic', 'mystic'] },
     collected: { control: { type: 'number', min: 0 } },
     total: { control: { type: 'number', min: 1 } },
   },
@@ -34,14 +34,14 @@ export const InProgress: Story = {
 };
 
 export const Completed: Story = {
-  name: '완성됨 — Legend',
+  name: '완성됨 — Epic',
   args: {
     name: '한강 러너 컬렉션',
     imageUrl: SAMPLE_IMAGE,
     collected: 10,
     total: 10,
     completed: true,
-    rarity: 'legend',
+    rarity: 'epic',
   },
 };
 
@@ -68,13 +68,13 @@ export const Empty: Story = {
 };
 
 export const AlmostDone: Story = {
-  name: '거의 완성 (9/10) — Mythic',
+  name: '거의 완성 (9/10) — Mystic',
   args: {
     name: '마라톤 챌린저',
     imageUrl: SAMPLE_IMAGE,
     collected: 9,
     total: 10,
-    rarity: 'mythic',
+    rarity: 'mystic',
   },
 };
 
@@ -95,8 +95,8 @@ export const Grid: Story = {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 160px)', gap: 'var(--spacing-16)' }}>
       <CollectionGridCard name="한강 러너" imageUrl={SAMPLE_IMAGE} collected={0} total={10} rarity="common" />
       <CollectionGridCard name="도시 탐험가" imageUrl={SAMPLE_IMAGE} collected={5} total={10} rarity="rare" />
-      <CollectionGridCard name="마라톤 챌린저" imageUrl={SAMPLE_IMAGE} collected={9} total={10} rarity="legend" />
-      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarity="mythic" />
+      <CollectionGridCard name="마라톤 챌린저" imageUrl={SAMPLE_IMAGE} collected={9} total={10} rarity="epic" />
+      <CollectionGridCard name="산악 마스터" imageUrl={SAMPLE_IMAGE} collected={10} total={10} completed rarity="mystic" />
     </div>
   ),
 };

@@ -265,7 +265,7 @@ function fixtures(badgeCount = 3): Record<string, Row[]> {
     item_book_id: 'book-1',
     type: 'item',
     name: `배지${i}`,
-    rarity: 'legend',
+    rarity: 'epic',
   }))
   return {
     item_books: [{ id: 'book-1', name: '오아시스 자판기' }],

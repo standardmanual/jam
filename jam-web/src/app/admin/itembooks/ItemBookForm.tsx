@@ -41,7 +41,7 @@ interface ItemBookFormProps {
 }
 
 const RARITY_LABEL: Record<string, string> = {
-  common: 'Common', rare: 'Rare', legend: 'Legend', mythic: 'Mythic',
+  common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic',
 }
 
 // Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.

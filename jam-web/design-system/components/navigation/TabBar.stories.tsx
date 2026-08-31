@@ -62,7 +62,7 @@ export const Material: Story = {
             대상이 있어야 재질 효과가 Storybook 프리뷰에서도 보인다. */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(135deg, var(--color-primary), var(--color-rarity-legend), var(--color-rarity-rare))',
+          background: 'linear-gradient(135deg, var(--color-primary), var(--color-rarity-epic), var(--color-rarity-rare))',
           padding: 24,
           color: 'var(--color-text)',
           fontSize: 'var(--text-h2)',

@@ -78,21 +78,21 @@
   /* Badge rarity — background */
   --color-rarity-common: #6b6b6b;
   --color-rarity-rare: #00cc7a;
-  --color-rarity-legend: #f5a300;
-  --color-rarity-mythic: #ff2d87;
+  --color-rarity-epic: #f5a300;
+  --color-rarity-mystic: #ff2d87;
 
   /* Badge rarity — foreground text (contrast-safe pair for each bg) */
   --color-rarity-common-text: #ffffff;   /* white on #6b6b6b — 4.6:1 */
   --color-rarity-rare-text: #000000;     /* black on #00cc7a — 5.8:1 */
-  --color-rarity-legend-text: #000000;   /* black on #f5a300 — 7.4:1 */
-  --color-rarity-mythic-text: #ffffff;   /* white on #ff2d87 — 4.6:1 */
+  --color-rarity-epic-text: #000000;     /* black on #f5a300 — 7.4:1 */
+  --color-rarity-mystic-text: #ffffff;   /* white on #ff2d87 — 4.6:1 */
 
   /* Tag / ShapeTag chip palette */
   --color-tag-1: var(--color-primary);
   --color-tag-2: var(--color-secondary);
-  --color-tag-3: var(--color-rarity-legend);
+  --color-tag-3: var(--color-rarity-epic);
   --color-tag-4: var(--color-rarity-rare);
-  --color-tag-5: var(--color-rarity-mythic);
+  --color-tag-5: var(--color-rarity-mystic);
   --color-tag-6: var(--color-base-lime);
   --color-tag-7: var(--color-base-charcoal);
   --color-tag-8: var(--color-base-sienna);

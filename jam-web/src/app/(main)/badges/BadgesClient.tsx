@@ -32,8 +32,8 @@ function normalizeTab(raw: string | undefined | null): TabKey | null {
 }
 
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
-const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'legend', 'mythic']
-const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, legend: 2, mythic: 3 }
+const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, epic: 2, mystic: 3 }
 
 function activitySortIndex(types: ActivityType[]): number {
   const idx = ACTIVITY_TYPE_ORDER.indexOf(types[0])

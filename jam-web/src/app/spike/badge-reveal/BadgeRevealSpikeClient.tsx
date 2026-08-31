@@ -12,7 +12,7 @@ import { d, t } from '@/lib/i18n'
  *   - 배지 개수: 0 / 1 / 2 / 3 / 20
  *   - 응답 지연: 0.5초 / 3초 / 8초 → "지연 동안 트리거 버튼 스피너가 돌고,
  *     결과가 오면 캐러셀이 뜬다"를 검증한다(빈 카드 스핀 단계는 20260824_001에서 폐기).
- *   - 엣지 데이터: 이미지 없음 / 설명 아주 김 / 이름 아주 김 / mythic만
+ *   - 엣지 데이터: 이미지 없음 / 설명 아주 김 / 이름 아주 김 / mystic만
  *
  * 🔴 이 화면은 배지를 발급하지 않는다. 서버에서 `badges`를 조회해 받은 데이터를
  *    화면에서 조합만 하며, 어떤 쓰기 요청도 보내지 않는다.
@@ -28,7 +28,7 @@ export type SpikeBadge = {
   name: string
   description: string
   imageUrl: string
-  rarity: 'common' | 'rare' | 'legend' | 'mythic'
+  rarity: 'common' | 'rare' | 'epic' | 'mystic'
 }
 
 const DELAY_OPTIONS = [
@@ -42,12 +42,12 @@ const EDGE_OPTIONS = [
   { key: 'no-image', label: '이미지 없음' },
   { key: 'long-desc', label: '설명 아주 김' },
   { key: 'long-name', label: '이름 아주 김' },
-  { key: 'mythic', label: 'mythic만' },
+  { key: 'mystic', label: 'mystic만' },
 ] as const
 
 type EdgeKey = (typeof EDGE_OPTIONS)[number]['key']
 
-const RARITIES: SpikeBadge['rarity'][] = ['common', 'rare', 'legend', 'mythic']
+const RARITIES: SpikeBadge['rarity'][] = ['common', 'rare', 'epic', 'mystic']
 
 /** 세션이 없어 DB 조회가 비었을 때 쓰는 대체 데이터 (연출 자체는 그대로 검증 가능) */
 const SAMPLE_BADGES: SpikeBadge[] = Array.from({ length: 24 }, (_, i) => ({
@@ -94,8 +94,8 @@ function applyEdge(badges: SpikeBadge[], edge: EdgeKey): SpikeBadge[] {
       return badges.map((b) => ({ ...b, description: LONG_DESCRIPTION }))
     case 'long-name':
       return badges.map((b) => ({ ...b, name: LONG_NAME }))
-    case 'mythic':
-      return badges.map((b) => ({ ...b, rarity: 'mythic' as const }))
+    case 'mystic':
+      return badges.map((b) => ({ ...b, rarity: 'mystic' as const }))
     default:
       return badges
   }

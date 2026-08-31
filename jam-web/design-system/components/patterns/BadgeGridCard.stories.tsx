@@ -7,7 +7,7 @@ const meta: Meta<typeof BadgeGridCard> = {
   component: BadgeGridCard,
   parameters: { layout: 'centered', docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 이름 → 등급 pill(있을 때만)' } } },
   argTypes: {
-    rarity: { control: 'select', options: ['common', 'rare', 'legend', 'mythic'] },
+    rarity: { control: 'select', options: ['common', 'rare', 'epic', 'mystic'] },
     earned: { control: 'boolean' },
     undiscovered: { control: 'boolean' },
     selected: { control: 'boolean' },
@@ -21,8 +21,8 @@ type Story = StoryObj<typeof BadgeGridCard>;
 const SAMPLE_IMAGES = {
   common: '/badges/sample/s222.png', // 혹한의 등반자
   rare: '/badges/sample/s142.png', // 첫 숨결 레벨업
-  legend: '/badges/sample/s331.png', // 첫 숨결 레벨업 Hard
-  mythic: '/badges/sample/s019.png', // 야생의 주자 레벨업 Ultra
+  epic: '/badges/sample/s331.png', // 첫 숨결 레벨업 Hard
+  mystic: '/badges/sample/s019.png', // 야생의 주자 레벨업 Ultra
 } as const;
 
 export const EarnedCommon: Story = {
@@ -45,22 +45,22 @@ export const EarnedRare: Story = {
   },
 };
 
-export const EarnedLegend: Story = {
-  name: '획득됨 — Legend',
+export const EarnedEpic: Story = {
+  name: '획득됨 — Epic',
   args: {
     name: '한강 마스터',
-    imageUrl: SAMPLE_IMAGES.legend,
-    rarity: 'legend',
+    imageUrl: SAMPLE_IMAGES.epic,
+    rarity: 'epic',
     earned: true,
   },
 };
 
-export const EarnedMythic: Story = {
-  name: '획득됨 — Mythic',
+export const EarnedMystic: Story = {
+  name: '획득됨 — Mystic',
   args: {
     name: '신화의 달리기',
-    imageUrl: SAMPLE_IMAGES.mythic,
-    rarity: 'mythic',
+    imageUrl: SAMPLE_IMAGES.mystic,
+    rarity: 'mystic',
     earned: true,
   },
 };
@@ -79,8 +79,8 @@ export const Undiscovered: Story = {
   name: '미발견 (??? 표시)',
   args: {
     name: '???',
-    imageUrl: SAMPLE_IMAGES.legend,
-    rarity: 'legend',
+    imageUrl: SAMPLE_IMAGES.epic,
+    rarity: 'epic',
     undiscovered: true,
     earned: false,
   },
@@ -112,8 +112,8 @@ export const WithChildren: Story = {
   name: '슬롯 버튼 포함',
   args: {
     name: '아이템 배지',
-    imageUrl: SAMPLE_IMAGES.mythic,
-    rarity: 'mythic',
+    imageUrl: SAMPLE_IMAGES.mystic,
+    rarity: 'mystic',
     earned: true,
     children: (
       <button
@@ -141,12 +141,12 @@ export const Grid: Story = {
       {([
         { name: '첫 러닝', rarity: 'common', earned: true },
         { name: '10km 완주', rarity: 'rare', earned: true },
-        { name: '한강 마스터', rarity: 'legend', earned: true },
-        { name: '신화의 달리기', rarity: 'mythic', earned: true },
+        { name: '한강 마스터', rarity: 'epic', earned: true },
+        { name: '신화의 달리기', rarity: 'mystic', earned: true },
         { name: '미획득 배지', rarity: 'common', earned: false },
         { name: '???', rarity: 'rare', earned: false, undiscovered: true },
-        { name: '선택됨', rarity: 'legend', earned: true, selected: true },
-        { name: '이미지 없음', rarity: 'mythic', earned: true, imageUrl: null },
+        { name: '선택됨', rarity: 'epic', earned: true, selected: true },
+        { name: '이미지 없음', rarity: 'mystic', earned: true, imageUrl: null },
       ] as const).map((props, i) => (
         <BadgeGridCard key={i} {...props} imageUrl={'imageUrl' in props ? props.imageUrl : SAMPLE_IMAGES[props.rarity]} />
       ))}
@@ -160,8 +160,8 @@ export const Interactive: Story = {
     const items = [
       { id: 1, name: '첫 러닝', rarity: 'common' as const },
       { id: 2, name: '10km 완주', rarity: 'rare' as const },
-      { id: 3, name: '한강 마스터', rarity: 'legend' as const },
-      { id: 4, name: '신화의 달리기', rarity: 'mythic' as const },
+      { id: 3, name: '한강 마스터', rarity: 'epic' as const },
+      { id: 4, name: '신화의 달리기', rarity: 'mystic' as const },
     ];
     const [selected, setSelected] = useState<number | null>(null);
     return (

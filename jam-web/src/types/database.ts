@@ -17,7 +17,7 @@
 export type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
 export type BadgeType = 'activity' | 'item' | 'checkin'
 export type DayOfWeek = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'
-export type BadgeRarity = 'common' | 'rare' | 'legend' | 'mythic'
+export type BadgeRarity = 'common' | 'rare' | 'epic' | 'mystic'
 // poi_categories 테이블에서 어드민이 자유롭게 생성/삭제/수정 가능한 슬러그 — 고정 유니언이 아닌 string
 export type PoiCategory = string
 export type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
@@ -521,8 +521,8 @@ export interface DropPolicyRow {
   id: number
   rarity_common: number
   rarity_rare: number
-  rarity_legend: number
-  rarity_mythic: number
+  rarity_epic: number
+  rarity_mystic: number
   bonus_drop_rate: number
   bonus_drop_rate_intense: number
   intense_duration_min: number
@@ -567,8 +567,8 @@ export interface AmbientDropConfigRow {
   rarity_mode: AmbientDropAxisMode
   rarity_common: number
   rarity_rare: number
-  rarity_legend: number
-  rarity_mythic: number
+  rarity_epic: number
+  rarity_mystic: number
   collection_mode: AmbientDropAxisMode
   /** explicit + 빈 배열 = "전체 컬렉션". item_books.id 참조(배열이라 DB FK 없음, 앱에서 검증) */
   collection_ids: string[]
@@ -826,12 +826,12 @@ export interface AbusingPolicyRow {
   id: number
   soft_common_rate: number
   soft_rare_rate: number
-  soft_legend_rate: number
-  soft_mythic_rate: number
+  soft_epic_rate: number
+  soft_mystic_rate: number
   hard_common_rate: number
   hard_rare_rate: number
-  hard_legend_rate: number
-  hard_mythic_rate: number
+  hard_epic_rate: number
+  hard_mystic_rate: number
   gps_max_speed_kmh: number
   poi_block_hours: number
   vehicle_speed_filter_kmh: number

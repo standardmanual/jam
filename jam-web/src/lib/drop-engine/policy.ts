@@ -11,8 +11,8 @@ export const DEFAULT_DROP_POLICY: DropPolicy = {
   // Layer 1
   rarity_common: 0.6,
   rarity_rare: 0.28,
-  rarity_legend: 0.09,
-  rarity_mythic: 0.03,
+  rarity_epic: 0.09,
+  rarity_mystic: 0.03,
   bonus_drop_rate: 0.15,
   bonus_drop_rate_intense: 0.3,
   intense_duration_min: 60,

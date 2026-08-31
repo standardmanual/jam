@@ -54,15 +54,15 @@ export async function PUT(req: NextRequest) {
   }
   const rarity_common = body.rarity_common === undefined ? current.rarity_common : Number(body.rarity_common)
   const rarity_rare = body.rarity_rare === undefined ? current.rarity_rare : Number(body.rarity_rare)
-  const rarity_legend = body.rarity_legend === undefined ? current.rarity_legend : Number(body.rarity_legend)
-  const rarity_mythic = body.rarity_mythic === undefined ? current.rarity_mythic : Number(body.rarity_mythic)
-  for (const [key, v] of Object.entries({ rarity_common, rarity_rare, rarity_legend, rarity_mythic })) {
+  const rarity_epic = body.rarity_epic === undefined ? current.rarity_epic : Number(body.rarity_epic)
+  const rarity_mystic = body.rarity_mystic === undefined ? current.rarity_mystic : Number(body.rarity_mystic)
+  for (const [key, v] of Object.entries({ rarity_common, rarity_rare, rarity_epic, rarity_mystic })) {
     if (Number.isNaN(v) || v < 0) {
       return NextResponse.json({ error: `${key}: 0 이상의 숫자여야 합니다.` }, { status: 400 })
     }
   }
   if (rarity_mode === 'explicit') {
-    const raritySum = rarity_common + rarity_rare + rarity_legend + rarity_mythic
+    const raritySum = rarity_common + rarity_rare + rarity_epic + rarity_mystic
     if (Math.abs(raritySum - 1) > 0.001) {
       return NextResponse.json(
         { error: `등급 비율 합이 1이어야 합니다. (현재 ${raritySum.toFixed(3)})` },
@@ -76,7 +76,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'collection_mode는 explicit 또는 random이어야 합니다.' }, { status: 400 })
   }
   // collection_mode='explicit' + collection_ids=[] 조합도 그대로 허용한다 — "전체 컬렉션"을
-  // 뜻한다(티켓 20260826_009 예시: "전체 컬렉션 중 legend 등급 무작위 드랍"과 동일한 표현).
+  // 뜻한다(티켓 20260826_009 예시: "전체 컬렉션 중 epic 등급 무작위 드랍"과 동일한 표현).
   const collection_ids = body.collection_ids === undefined ? current.collection_ids : body.collection_ids
   if (!Array.isArray(collection_ids) || !collection_ids.every((id) => typeof id === 'string' && UUID_PATTERN.test(id))) {
     return NextResponse.json({ error: 'collection_ids는 UUID 문자열 배열이어야 합니다.' }, { status: 400 })
@@ -101,8 +101,8 @@ export async function PUT(req: NextRequest) {
     rarity_mode,
     rarity_common,
     rarity_rare,
-    rarity_legend,
-    rarity_mythic,
+    rarity_epic,
+    rarity_mystic,
     collection_mode,
     collection_ids: collection_ids as string[],
     batch_size,

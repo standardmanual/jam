@@ -35,8 +35,8 @@ export const FOLLOWING_DAILY_CAP = 2
 
 /** ⑥ 안에서만 쓰는 정렬 우선순위 (낮을수록 먼저). PRD §9의 "희귀도 단독" 해석 */
 const FOLLOWING_PRIORITY = {
-  mythic: 0,
-  legend: 1,
+  mystic: 0,
+  epic: 1,
   collection: 2,
   mission: 3,
 } as const
@@ -87,7 +87,7 @@ function byPriorityThenRecent(a: FollowingCandidate, b: FollowingCandidate): num
  *
  * 한 사람의 소식이 하루 2건 이상이면 대표 하나를 말하고 나머지는 개수로 접는다
  * ("… 소식이 1건 더 있어요"). 대표 선정은 기존 배치 우선순위를 그대로 쓴다
- * (mythic > legend > 컬렉션 완성 > 미션 완료, 동순위는 최근 순 — R8).
+ * (mystic > epic > 컬렉션 완성 > 미션 완료, 동순위는 최근 순 — R8).
  */
 export function selectFollowingDrafts(
   candidates: FollowingCandidate[],
@@ -235,7 +235,7 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
   const scanned =
     activityBadges.length + invItems.length + bookCompletions.length + missionCompletions.length
 
-  // ── #29 팔로잉 희귀 배지 — legend/mythic만 ─────────────────────────────────
+  // ── #29 팔로잉 희귀 배지 — epic/mystic만 ─────────────────────────────────
   const badgeIds = [
     ...new Set([...activityBadges.map((b) => b.badge_id), ...invItems.map((i) => i.badge_id)]),
   ]
@@ -250,7 +250,7 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
           .from('badges')
           .select('id, name, rarity')
           .in('id', chunk)
-          .in('rarity', ['legend', 'mythic'])
+          .in('rarity', ['epic', 'mystic'])
           .is('deleted_at', null)
     )
     const rareById = new Map(badges.map((b) => [b.id, b]))
@@ -289,7 +289,7 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
           recipientId,
           actorId: e.userId,
           at: e.at,
-          priority: badge.rarity === 'mythic' ? FOLLOWING_PRIORITY.mythic : FOLLOWING_PRIORITY.legend,
+          priority: badge.rarity === 'mystic' ? FOLLOWING_PRIORITY.mystic : FOLLOWING_PRIORITY.epic,
           badgeId: badge.id,
           badgeName: badge.name,
           rarity: badge.rarity,

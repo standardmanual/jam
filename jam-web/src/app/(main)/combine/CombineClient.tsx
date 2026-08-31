@@ -31,8 +31,8 @@ interface Props {
 const rarityRing: Record<string, string> = {
   common: '',
   rare:   'shadow-[inset_0_0_0_1px_var(--color-rarity-rare)]',
-  legend: 'shadow-[inset_0_0_0_1px_var(--color-rarity-legend)]',
-  mythic: 'shadow-[inset_0_0_0_1px_var(--color-rarity-mythic)]',
+  epic: 'shadow-[inset_0_0_0_1px_var(--color-rarity-epic)]',
+  mystic: 'shadow-[inset_0_0_0_1px_var(--color-rarity-mystic)]',
 }
 
 const MAX_SELECT = 10

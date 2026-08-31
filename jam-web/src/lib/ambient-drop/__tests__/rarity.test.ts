@@ -30,7 +30,7 @@ describe('randomRarityDistribution', () => {
   it('4개 등급 비율의 합이 1 (부동소수 오차 허용)', () => {
     for (let i = 0; i < 50; i++) {
       const dist = randomRarityDistribution()
-      const sum = dist.common + dist.rare + dist.legend + dist.mythic
+      const sum = dist.common + dist.rare + dist.epic + dist.mystic
       expect(sum).toBeCloseTo(1, 10)
       for (const rarity of RARITY_ORDER) {
         expect(dist[rarity]).toBeGreaterThanOrEqual(0)
@@ -42,21 +42,21 @@ describe('randomRarityDistribution', () => {
 
 describe('weightedPickRarity', () => {
   it('common=1, 나머지=0이면 항상 common', () => {
-    const dist = { common: 1, rare: 0, legend: 0, mythic: 0 }
+    const dist = { common: 1, rare: 0, epic: 0, mystic: 0 }
     for (let i = 0; i < 20; i++) {
       expect(weightedPickRarity(dist)).toBe('common')
     }
   })
 
-  it('legend=1, 나머지=0이면 항상 legend', () => {
-    const dist = { common: 0, rare: 0, legend: 1, mythic: 0 }
+  it('epic=1, 나머지=0이면 항상 epic', () => {
+    const dist = { common: 0, rare: 0, epic: 1, mystic: 0 }
     for (let i = 0; i < 20; i++) {
-      expect(weightedPickRarity(dist)).toBe('legend')
+      expect(weightedPickRarity(dist)).toBe('epic')
     }
   })
 
   it('균등 분포면 4개 등급이 모두 등장할 수 있다 (충분히 많이 뽑으면)', () => {
-    const dist = { common: 0.25, rare: 0.25, legend: 0.25, mythic: 0.25 }
+    const dist = { common: 0.25, rare: 0.25, epic: 0.25, mystic: 0.25 }
     const seen = new Set<BadgeRarity>()
     for (let i = 0; i < 500; i++) {
       seen.add(weightedPickRarity(dist))
@@ -70,8 +70,8 @@ describe('fallbackPickBadge', () => {
     const badgesByRarity: Record<BadgeRarity, { id: string }[]> = {
       common: [{ id: 'c1' }],
       rare: [{ id: 'r1' }],
-      legend: [],
-      mythic: [],
+      epic: [],
+      mystic: [],
     }
     const picked = fallbackPickBadge(badgesByRarity, 'rare')
     expect(picked?.id).toBe('r1')
@@ -81,11 +81,11 @@ describe('fallbackPickBadge', () => {
     const badgesByRarity: Record<BadgeRarity, { id: string }[]> = {
       common: [],
       rare: [{ id: 'r1' }],
-      legend: [],
-      mythic: [],
+      epic: [],
+      mystic: [],
     }
-    // legend를 뽑았지만 후보가 없어 다음 순서(rare)로 폴백
-    const picked = fallbackPickBadge(badgesByRarity, 'legend')
+    // epic를 뽑았지만 후보가 없어 다음 순서(rare)로 폴백
+    const picked = fallbackPickBadge(badgesByRarity, 'epic')
     expect(picked?.id).toBe('r1')
   })
 
@@ -93,8 +93,8 @@ describe('fallbackPickBadge', () => {
     const badgesByRarity: Record<BadgeRarity, { id: string }[]> = {
       common: [],
       rare: [],
-      legend: [],
-      mythic: [],
+      epic: [],
+      mystic: [],
     }
     expect(fallbackPickBadge(badgesByRarity, 'common')).toBeNull()
   })
