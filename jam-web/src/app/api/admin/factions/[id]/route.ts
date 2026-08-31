@@ -59,7 +59,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // 인접 세계관 갱신 (배열 전달 시에만) — 드랍엔진 v2 Layer 2의 인접 버킷 원천
   if (Array.isArray(adjacent_faction_ids)) {
     const ids = (adjacent_faction_ids as string[]).filter((a) => a && a !== id)
-    await supabase.from('faction_adjacency').delete().eq('faction_id', id)
+    // delete → insert 재작성의 앞단. 실패를 흡수하면 중복 인접관계가 남는다
+    const { error: adjDeleteError } = await supabase.from('faction_adjacency').delete().eq('faction_id', id)
+    if (adjDeleteError) {
+      return NextResponse.json(
+        { error: `인접 세계관 정리 실패: ${adjDeleteError.message}` },
+        { status: 500 }
+      )
+    }
     if (ids.length > 0) {
       const adjacencyQuery = supabase.from('faction_adjacency')
       // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 FactionAdjacencyRow와 일치

@@ -84,7 +84,11 @@ export async function POST(
     // 만료시간 없이 적용하면 오탐이어도 관리자가 수동 해제할 때까지 legend/mythic
     // 드랍률이 영구히 0으로 묶이는 문제가 있었다 (20260813_002 티켓).
     const banExpiresAt = new Date(Date.now() + policy.poi_block_hours * 3_600_000)
-    await Promise.all([
+    // `applyBan`·`blockPoiForUser`는 저장 실패를 예외로 올린다(어드민 경로 전파용).
+    // 이 자동 감지 경로에서는 흡수해야 한다 — throw가 새어 나가면 아래 403
+    // `location_unverified` 대신 500이 나가 사용자가 이유를 알 수 없게 된다.
+    // `allSettled`로 셋을 모두 시도하고 실패는 로그로만 남긴다 (티켓 20260831_1149).
+    const abusingWrites = await Promise.allSettled([
       applyBan(user.id, 'soft', `GPS 조작 의심 (${detail})`, 'system', banExpiresAt),
       blockPoiForUser(user.id, drop.poi_id, policy, `gps_spoof_detected (${detail})`),
       logAbusingEvent(user.id, 'gps_spoof_detected', {
@@ -96,6 +100,15 @@ export async function POST(
         lng: user_lng,
       }),
     ])
+    const abusingWriteLabels = ['섀도우밴 적용', '지점 블록', '어뷰징 로그']
+    abusingWrites.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error(
+          `[pickup] GPS 조작 대응 실패(${abusingWriteLabels[i]}) — userId: ${user.id}, poiId: ${drop.poi_id}:`,
+          r.reason
+        )
+      }
+    })
     return NextResponse.json({ error: 'location_unverified' }, { status: 403 })
   }
 

@@ -123,10 +123,24 @@ export async function grantMissionRewards(
           console.error(`[grantMissionRewards] 아이템배지 지급 오류 (badge: ${badge.id}):`, error)
           continue
         }
-        await supabase
+        const { error: slotError } = await supabase
           .from('inventory')
           .update({ used_slots: inventory.used_slots + 1 } as never)
           .eq('id', inventory.id)
+        // 바로 위 inventory_items insert는 이미 error를 확인 중이라 대칭을 맞춘다.
+        // 아이템은 이미 지급됐으므로 흡수하되, 슬롯 카운트가 실제 아이템 수와 어긋난
+        // 사실은 구조화 로그로 남긴다(가드레일 패턴 4, 티켓 20260831_1149).
+        if (slotError) {
+          console.error(`[grantMissionRewards] 인벤토리 슬롯 갱신 실패 (badge: ${badge.id}):`, slotError)
+          await logEngineDecision('drop', 'reward_write_failed', userId, {
+            source: 'mission_reward',
+            table: 'inventory',
+            field: 'used_slots',
+            badgeId: badge.id,
+            missionId: mission.id,
+            error: slotError.message,
+          })
+        }
         inventory.used_slots += 1
         ownedInventoryBadgeIds.add(badge.id)
         granted = true

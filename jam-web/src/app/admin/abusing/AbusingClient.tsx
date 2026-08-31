@@ -70,10 +70,13 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(policy),
       })
-      if (!res.ok) throw new Error()
+      // 저장 API가 실패 사유를 문구로 내려준다(티켓 20260831_1149) — 그대로 보여준다
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? '')
       flash('ok', '정책이 저장됐어요')
-    } catch {
-      flash('err', '저장 실패')
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : ''
+      flash('err', detail || '정책이 저장되지 않았어요. 잠시 후 다시 시도해 주세요.')
     } finally {
       setSaving(false)
     }
@@ -89,6 +92,9 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
     if (res.ok) {
       setBans((prev) => prev.filter((b) => b.user_id !== userId))
       flash('ok', '밴 해제 완료')
+    } else {
+      const json = await res.json().catch(() => ({}))
+      flash('err', json.error ?? '섀도우밴이 해제되지 않았어요. 잠시 후 다시 시도해 주세요.')
     }
   }
 
@@ -101,7 +107,10 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: banUserId.trim(), ban_level: banLevel, reason: banReason.trim() }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? '')
+      }
       flash('ok', '섀도우밴 적용 완료')
       setBanUserId('')
       setBanReason('')
@@ -109,8 +118,9 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
       const listRes = await fetch('/api/admin/abusing/bans')
       const listData = await listRes.json()
       setBans(listData.bans ?? [])
-    } catch {
-      flash('err', '밴 적용 실패')
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : ''
+      flash('err', detail || '섀도우밴이 적용되지 않았어요. 잠시 후 다시 시도해 주세요.')
     } finally {
       setBanAdding(false)
     }
@@ -125,6 +135,9 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
     if (res.ok) {
       setPoiBlocks((prev) => prev.filter((b) => !(b.user_id === userId && b.poi_id === poiId)))
       flash('ok', '블록 해제 완료')
+    } else {
+      const json = await res.json().catch(() => ({}))
+      flash('err', json.error ?? '지점 블록이 해제되지 않았어요. 잠시 후 다시 시도해 주세요.')
     }
   }
 

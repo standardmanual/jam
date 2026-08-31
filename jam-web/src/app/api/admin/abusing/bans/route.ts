@@ -27,7 +27,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '필수 필드 누락' }, { status: 400 })
   }
 
-  await applyBan(user_id, ban_level, reason, admin.email ?? 'admin', expires_at ? new Date(expires_at) : undefined)
+  try {
+    await applyBan(user_id, ban_level, reason, admin.email ?? 'admin', expires_at ? new Date(expires_at) : undefined)
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json(
+      {
+        error: `섀도우밴이 적용되지 않았어요. 데이터베이스가 요청을 거부했어요. 다시 시도해도 같으면 괄호 안 오류 내용을 개발자에게 전달해 주세요. (${detail})`,
+      },
+      { status: 500 }
+    )
+  }
+
   return NextResponse.json({ ok: true })
 }
 
@@ -38,6 +49,17 @@ export async function DELETE(req: NextRequest) {
   const { user_id } = await req.json()
   if (!user_id) return NextResponse.json({ error: 'user_id 필요' }, { status: 400 })
 
-  await removeBan(user_id)
+  try {
+    await removeBan(user_id)
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e)
+    return NextResponse.json(
+      {
+        error: `섀도우밴이 해제되지 않았어요. 데이터베이스가 요청을 거부했어요. 다시 시도해도 같으면 괄호 안 오류 내용을 개발자에게 전달해 주세요. (${detail})`,
+      },
+      { status: 500 }
+    )
+  }
+
   return NextResponse.json({ ok: true })
 }

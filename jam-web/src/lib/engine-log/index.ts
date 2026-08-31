@@ -33,6 +33,12 @@ export type EngineDecisionEvent =
   | 'reward_badge_skipped'
   /** 앰비언트(시스템) POI 드랍 배치 1회 실행 결과 (engine='drop', 티켓 20260826_009) */
   | 'ambient_batch_result'
+  /**
+   * 보상 경로의 DB 쓰기가 실패했으나 본 흐름을 막지 않고 흡수한 지점 (티켓 20260831_1149).
+   * `event` 컬럼에는 CHECK 제약이 없어 값 추가에 마이그레이션이 필요 없다
+   * (제약은 위 `EngineKind`가 쓰이는 `engine` 컬럼에만 있다).
+   */
+  | 'reward_write_failed'
 
 /**
  * ## `@ts-expect-error` 대신 좁은 캐스팅을 쓰는 이유

@@ -110,7 +110,12 @@ export async function checkAndUpdateLocation(
   }
   const usersTable = supabase.from('users')
   // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
-  await usersTable.update(locationUpdate).eq('id', userId)
+  const { error } = await usersTable.update(locationUpdate).eq('id', userId)
+  // 흡수한다 — 판정 자체는 이미 끝났고 위치는 다음 요청에서 다시 기록된다.
+  // 다만 계속 실패하면 기준 좌표가 갱신되지 않아 오탐이 누적되므로 로그는 남긴다 (20260831_1149)
+  if (error) {
+    console.error(`[gps-detector] 위치 갱신 실패 — userId: ${userId}:`, error)
+  }
 
   return result
 }

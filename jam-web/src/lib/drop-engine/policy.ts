@@ -90,6 +90,12 @@ export async function getDropPolicy(): Promise<DropPolicy> {
     const row = toAppKeys(data as unknown as Record<string, unknown>)
     const policy = { ...DEFAULT_DROP_POLICY } as Record<string, number>
     for (const key of Object.keys(DEFAULT_DROP_POLICY)) {
+      // 키 누락은 컬럼명 불일치 신호다 — 조용히 기본값으로 덮으면 저장 고장이 읽기에서
+      // 감춰진다(이번 사고를 41일간 못 잡은 직접 원인, 티켓 20260831_1149)
+      if (!(key in row)) {
+        console.error(`[drop-policy] 컬럼 누락 — 기본값 사용: ${key}`)
+        continue
+      }
       const v = row[key]
       const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : NaN
       if (!Number.isNaN(n)) policy[key] = n

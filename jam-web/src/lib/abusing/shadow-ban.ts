@@ -48,7 +48,13 @@ export function shouldAllowDrop(
   return Math.random() < rate
 }
 
-/** 섀도우밴 적용 (admin 또는 자동 감지) */
+/**
+ * 섀도우밴 적용 (admin 또는 자동 감지)
+ *
+ * 실패하면 예외를 던진다 — 흡수는 호출부에서 한다. 어드민(`api/admin/abusing/bans`)은
+ * 그대로 500으로 전파하고, GPS 조작 자동 감지 경로(`api/drops/[dropId]/pickup`)는
+ * `Promise.allSettled`로 흡수해 403 응답을 유지한다 (티켓 20260831_1149).
+ */
 export async function applyBan(
   userId: string,
   level: BanLevel,
@@ -67,18 +73,32 @@ export async function applyBan(
     expires_at: expiresAt?.toISOString() ?? null,
   }
   // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserShadowBanRow와 일치
-  await table.upsert(payload, { onConflict: 'user_id' })
+  const { error } = await table.upsert(payload, { onConflict: 'user_id' })
+  if (error) {
+    console.error('[shadow-ban] 밴 적용 실패:', error)
+    throw new Error(`user_shadow_bans upsert 실패 (${error.code}): ${error.message}`)
+  }
 
   await logAbusingEvent(userId, `${level}_ban_applied`, { reason, created_by: createdBy })
 }
 
-/** 섀도우밴 해제 */
+/** 섀도우밴 해제. 실패하면 운영자가 알 수 있게 예외를 던진다. */
 export async function removeBan(userId: string): Promise<void> {
   const supabase = createServiceClient()
-  await supabase.from('user_shadow_bans').delete().eq('user_id', userId)
+  const { error } = await supabase.from('user_shadow_bans').delete().eq('user_id', userId)
+  if (error) {
+    console.error('[shadow-ban] 밴 해제 실패:', error)
+    throw new Error(`user_shadow_bans delete 실패 (${error.code}): ${error.message}`)
+  }
 }
 
-/** 어뷰징 이벤트 로그 기록 */
+/**
+ * 어뷰징 이벤트 로그 기록
+ *
+ * 로그 실패가 본 흐름(밴 적용·픽업 차단)을 깨뜨리면 안 되므로 예외를 던지지 않는다.
+ * 다만 조용히 사라지지도 않게 한다 — `supabase-js`는 실패해도 throw하지 않으므로
+ * 아래 try/catch만으로는 insert 실패가 전혀 잡히지 않았다 (티켓 20260831_1149).
+ */
 export async function logAbusingEvent(
   userId: string,
   eventType: string,
@@ -89,8 +109,12 @@ export async function logAbusingEvent(
     const logsTable = supabase.from('abusing_logs')
     const payload = { user_id: userId, event_type: eventType, detail: detail ?? null }
     // @ts-expect-error Supabase insert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 AbusingLogRow와 일치
-    await logsTable.insert(payload)
-  } catch {
-    // 로그 실패는 무시
+    const { error } = await logsTable.insert(payload)
+    if (error) {
+      console.error(`[abusing-log] 기록 실패 — userId: ${userId}, event: ${eventType}:`, error)
+    }
+  } catch (e) {
+    // 네트워크 예외 등 throw 경로 (본 흐름을 끌고 들어가지 않는다)
+    console.error(`[abusing-log] 기록 중 예외 — userId: ${userId}, event: ${eventType}:`, e)
   }
 }

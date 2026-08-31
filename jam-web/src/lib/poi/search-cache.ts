@@ -35,6 +35,13 @@ export async function shouldSearch(
   return Date.now() - searchedAt > ttl * 1000
 }
 
+/**
+ * 검색 시각 기록(캐시 갱신).
+ *
+ * 실패해도 예외를 던지지 않는다 — 호출부(`api/drops`)가 `Promise.all`로 await하므로
+ * throw하면 드랍 지도 조회 전체가 깨진다. 캐시 실패의 실제 피해는 다음 요청에서
+ * 네이버 API를 한 번 더 호출하는 것뿐이라 흡수가 맞다 (티켓 20260831_1149).
+ */
 export async function markSearched(
   service: ServiceClient,
   gridKey: string,
@@ -44,5 +51,8 @@ export async function markSearched(
   const table = service.from('poi_search_cache')
   const payload = { grid_key: gridKey, category, searched_at: new Date().toISOString(), had_results: hadResults }
   // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiSearchCacheRow와 일치
-  await table.upsert(payload)
+  const { error } = await table.upsert(payload)
+  if (error) {
+    console.error(`[poi-search-cache] 검색 캐시 기록 실패 — grid: ${gridKey}, category: ${category}:`, error)
+  }
 }

@@ -796,7 +796,12 @@ export async function evaluateBadgesDetailed(
   if (!dryRun && !overrideFirstSync && !userInitialSyncDone) {
     const usersTable = supabase.from('users')
     // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
-    await usersTable.update({ initial_sync_done: true }).eq('id', userId)
+    const { error: syncFlagError } = await usersTable.update({ initial_sync_done: true }).eq('id', userId)
+    // 흡수한다 — 배지는 이미 발급됐고, 실패해도 다음 싱크가 전체 이력을 다시 훑을 뿐이다
+    // (중복 발급은 보유 체크로 막힌다). 비용만 발생하므로 로그로 감지 가능하게 남긴다.
+    if (syncFlagError) {
+      console.error(`[badge-engine] initial_sync_done 갱신 실패 — userId: ${userId}:`, syncFlagError)
+    }
 
     // 첫 배지(평생 1회) — 티켓 20260824_019 → 20260827_014에서 결산으로 흡수.
     // initial_sync_done 전환 시점이 곧 "평생 1회"의 기준점이다. 이번 전환에서 실제로

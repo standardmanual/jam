@@ -12,6 +12,7 @@
  * service_role 클라이언트 사용 (RLS 우회)
  */
 import { createServiceClient } from '@/lib/supabase/server'
+import { logEngineDecision } from '@/lib/engine-log'
 import type { ItemBookRow, InventoryRow, BadgeType } from '@/types/database'
 
 export interface ItemBookCompletionResult {
@@ -173,7 +174,18 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
   const completionRows = completedIds.map((id) => ({ user_id: userId, item_book_id: id }))
   const completionsTable = supabase.from('user_item_book_completions')
   // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 user_item_book_completions 스키마와 일치
-  await completionsTable.upsert(completionRows, { onConflict: 'user_id,item_book_id', ignoreDuplicates: true })
+  const { error: completionError } = await completionsTable.upsert(completionRows, { onConflict: 'user_id,item_book_id', ignoreDuplicates: true })
+  // 흡수하되 구조화 로그를 남긴다(가드레일 패턴 4) — 완성 기록이 저장되지 않으면 아래
+  // 보상 배지 발급이 다음 호출에서 반복 시도된다. 콘솔에만 남기면 사후 추적이 불가능하다.
+  if (completionError) {
+    console.error(`[checkItemBookCompletion] 완성 기록 저장 실패 — userId: ${userId}:`, completionError)
+    await logEngineDecision('badge', 'reward_write_failed', userId, {
+      source: 'itembook_completion',
+      table: 'user_item_book_completions',
+      itemBookIds: completedIds,
+      error: completionError.message,
+    })
+  }
 
   // 7. reward_badge_id 발급
   const rewardBadgeIds: string[] = []

@@ -55,7 +55,14 @@ export async function GET(request: NextRequest) {
 
   const usersTable = serviceClient.from('users')
   // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserRow와 일치
-  await usersTable.upsert(upsertData, { onConflict: 'id' })
+  const { error: profileUpsertError } = await usersTable.upsert(upsertData, { onConflict: 'id' })
+  // 로그인을 막지 않고 흡수한다 (티켓 20260831_1149에서 판정).
+  // `users` 행과 인벤토리 생성의 1차 경로는 DB 트리거 `handle_new_user()`(마이그레이션
+  // 001·079)이고, 이 upsert는 email·프로필 사진 동기화를 맡는 보조 쓰기다. 사진 갱신
+  // 실패 같은 사유로 서비스 진입 자체를 막는 편이 피해가 크다. 대신 실패는 로그로 남긴다.
+  if (profileUpsertError) {
+    console.error(`[JAM!] 로그인 프로필 동기화 실패 — userId: ${user.id}:`, profileUpsertError)
+  }
 
   // username 존재 여부 확인 → 온보딩 필요 여부 판단
   const needsOnboarding = !existingProfile?.username

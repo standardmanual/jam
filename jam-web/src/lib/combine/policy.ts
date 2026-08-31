@@ -32,26 +32,46 @@ export const DEFAULT_COMBINE_POLICY: CombinePolicy = {
 export async function getCombinePolicy(): Promise<CombinePolicy> {
   try {
     const supabase = createServiceClient()
-    const { data } = await supabase.from('combine_policy').select('*').eq('id', 1).single()
+    const { data, error } = await supabase.from('combine_policy').select('*').eq('id', 1).single()
+    if (error) {
+      // 폴백은 유지하되(믹스가 죽으면 안 됨) 실패 신호는 서버 로그에 남긴다
+      console.error('[combine-policy] 조회 실패 — 기본 정책으로 폴백:', error)
+      return DEFAULT_COMBINE_POLICY
+    }
     if (!data) return DEFAULT_COMBINE_POLICY
     const row = data as unknown as Record<string, unknown>
     const policy = { ...DEFAULT_COMBINE_POLICY } as Record<string, number>
     for (const key of Object.keys(DEFAULT_COMBINE_POLICY)) {
+      // 키 누락은 컬럼명 불일치 신호다 — 조용히 기본값으로 덮으면 저장 고장이 읽기에서 감춰진다
+      // (티켓 20260831_1118: drop_policy가 이 경로로 41일간 무성 실패했다)
+      if (!(key in row)) {
+        console.error(`[combine-policy] 컬럼 누락 — 기본값 사용: ${key}`)
+        continue
+      }
       const v = row[key]
       const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : NaN
       if (!Number.isNaN(n)) policy[key] = n
     }
     return policy as unknown as CombinePolicy
-  } catch {
+  } catch (e) {
+    console.error('[combine-policy] 조회 예외 — 기본 정책으로 폴백:', e)
     return DEFAULT_COMBINE_POLICY
   }
 }
 
+/**
+ * 조합 정책을 저장한다. 실패하면 호출부가 인지하도록 예외를 던진다.
+ * (티켓 20260831_1149 — upsert 반환 error를 확인하지 않아 저장 실패가 200으로 응답됐다)
+ */
 export async function updateCombinePolicy(patch: Partial<CombinePolicy>): Promise<void> {
   const supabase = createServiceClient()
   const q = supabase.from('combine_policy')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 CombinePolicyRow와 일치
-  await q.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
+  const { error } = await q.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
+  if (error) {
+    console.error('[combine-policy] 저장 실패:', error)
+    throw new Error(`combine_policy upsert 실패 (${error.code}): ${error.message}`)
+  }
 }
 
 /** 재료 개수 + 서로 다른 소재 세계관 수로 티어 결정. 요건 미충족 시 하위 티어로 강등. */

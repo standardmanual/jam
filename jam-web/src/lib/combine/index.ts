@@ -267,10 +267,17 @@ async function getStreak(supabase: ReturnType<typeof createServiceClient>, userI
   return (data as { consecutive_fail_count: number } | null)?.consecutive_fail_count ?? 0
 }
 
+/**
+ * 연패 카운터 초기화. 실패해도 예외로 올리지 않는다 — 믹스 결과는 이미 확정됐고
+ * 카운터는 다음 믹스에서 다시 쓰인다. 대신 실패 신호는 남긴다 (티켓 20260831_1149).
+ */
 async function resetStreak(supabase: ReturnType<typeof createServiceClient>, userId: string): Promise<void> {
   const q = supabase.from('user_combine_state')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserCombineStateRow와 일치
-  await q.upsert({ user_id: userId, consecutive_fail_count: 0, updated_at: new Date().toISOString() })
+  const { error } = await q.upsert({ user_id: userId, consecutive_fail_count: 0, updated_at: new Date().toISOString() })
+  if (error) {
+    console.error(`[combine] 연패 카운터 초기화 실패 — userId: ${userId}:`, error)
+  }
 }
 
 /** 실패 처리: 스트릭 +1 저장 후, 임계치 이상이면 계단식 포인트 지급(독립 상한). */
@@ -284,7 +291,11 @@ async function recordFailure(
 
   const q = supabase.from('user_combine_state')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserCombineStateRow와 일치
-  await q.upsert({ user_id: userId, consecutive_fail_count: streak, updated_at: new Date().toISOString() })
+  const { error: streakError } = await q.upsert({ user_id: userId, consecutive_fail_count: streak, updated_at: new Date().toISOString() })
+  // 흡수 — 믹스 실패 결과와 보상 지급은 아래에서 그대로 진행한다 (티켓 20260831_1149)
+  if (streakError) {
+    console.error(`[combine] 연패 카운터 저장 실패 — userId: ${userId}:`, streakError)
+  }
 
   let pointsAwarded = 0
   if (streak >= policy.pity_points_start_streak) {

@@ -103,7 +103,14 @@ export async function POST(req: NextRequest) {
       if (!dryRun) {
         const userActivityBadgesQuery = supabase.from('user_activity_badges')
         // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityBadgesRow와 일치
-        await userActivityBadgesQuery.insert({ user_id: userId, badge_id: badge.id, triggered_by: 'admin_simulate' })
+        const { error: simBadgeError } = await userActivityBadgesQuery.insert({ user_id: userId, badge_id: badge.id, triggered_by: 'admin_simulate' })
+        // 실패를 흡수하면 시뮬레이션 결과가 실제 DB 상태와 어긋난다 (티켓 20260831_1149)
+        if (simBadgeError) {
+          return NextResponse.json(
+            { error: `배지 지급 실패 (${badge.name}): ${simBadgeError.message}` },
+            { status: 500 }
+          )
+        }
       }
     }
   }
@@ -143,11 +150,18 @@ export async function POST(req: NextRequest) {
 
         if (insertedItem) {
           droppedInventoryItemId = (insertedItem as { id: string }).id
-          await supabase
+          const { error: slotError } = await supabase
             .from('inventory')
             // @ts-expect-error used_slots update
             .update({ used_slots: inventory.used_slots + 1 })
             .eq('id', inventory.id)
+          // 슬롯 카운트가 실제 아이템 수와 어긋나면 이후 드랍이 잘못 차단된다
+          if (slotError) {
+            return NextResponse.json(
+              { error: `인벤토리 슬롯 갱신 실패: ${slotError.message}` },
+              { status: 500 }
+            )
+          }
         }
       }
     }

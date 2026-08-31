@@ -160,3 +160,35 @@ closed:
 
 > ⚠️ 이 저장소는 staging·프로덕션이 **단일 Supabase DB**를 공유한다. 검증용 쓰기는
 > 프로덕션에 즉시 반영되므로, 값 변경 테스트는 하지 않는다. 코드 경로 확인으로 대체한다.
+
+---
+
+## 구현 완료 기록 (2026-08-31)
+
+> status는 오케스트레이터가 최종 승인 후 변경한다.
+
+### 판정 결과 — 초안 대비 변경점
+
+| 지점 | 초안 | 최종 | 근거 |
+|---|---|---|---|
+| `lib/abusing/poi-block.ts` `blockPoiForUser` | B(흡수) | **함수는 A(throw), 호출부에서 흡수** | 티켓 본문의 "함수와 호출부의 역할 분담" 원칙을 그대로 적용. 호출부가 `pickup` 하나뿐이지만 `applyBan`과 형태를 맞춰야 이후 어드민 경로가 추가될 때 재발하지 않는다 |
+| `auth/callback/route.ts` `users` upsert | 판단 필요 | **B(흡수 + 로그)** | `users` 행·인벤토리 생성의 1차 경로는 DB 트리거 `handle_new_user()`(마이그레이션 001·079)다. 이 upsert는 email·프로필 사진 동기화를 맡는 **보조 쓰기**라, 사진 갱신 실패로 로그인 자체를 막는 편이 피해가 크다 |
+| `lib/abusing/policy.ts` 키 누락 경고 | 별도 판단 필요 | **경고만 추가(반환 형태 불변) + 프로세스당 1회 중복 억제** | ① 형제 로더처럼 `{...DEFAULT, ...data}`로 병합하면 지금 `undefined`로 내려가 `shouldAllowDrop`의 `?? 1.0` 폴백을 타는 값이 `0`이 되어 **드랍률이 실제로 바뀐다**(범위 밖). ② 이 로더는 드랍 판정·픽업마다 호출되는 핫패스라 매 호출 경고는 로그를 잠근다. 콜드스타트당 1줄이면 감지에 충분하다 |
+
+그 외 A 8곳 / B 나머지 / C 2곳은 초안 판정 그대로 구현했다.
+
+### 변경 요약
+
+- **A. 전파(8곳)** — `updateCombinePolicy`·`updateAbusingPolicy`·`unblockPoi`·`removeBan`·`applyBan`이 `error`를 확인하고 throw. 호출 라우트 4종을 `try/catch`로 감싸 500 + 안내 문구 응답. `faction_adjacency` delete·`simulate`의 배지 insert/슬롯 update·`users/[id]/reset`의 `initial_sync_done` update는 라우트에서 직접 500 전파.
+- **B. 흡수 + 로그(10곳)** — `auth/callback`·`saveDropState`·`markSearched`·`blockPoiForUser`(호출부 흡수)·`logAbusingEvent`·`gps-detector`·`recordFeedEvent`·`badge-engine` 첫싱크 플래그·조합 연패 카운터 2곳·미션 진행도.
+- **C. 흡수 + 로그 + `engine_decision_log`(2곳)** — 아이템북 완성 기록 upsert(`engine='badge'`), 미션 보상 `inventory.used_slots` update(`engine='drop'`). `EngineDecisionEvent`에 `'reward_write_failed'` 추가(`event` 컬럼에 CHECK 제약이 없어 마이그레이션 불필요).
+- **읽기 로더 4종** — `combine/policy`·`abusing/policy`·`ambient-drop/config`에 select `error` 확인 + `catch` 로그 추가, 정규화 루프에 키 누락 경고 추가. `drop-engine/policy`에도 키 누락 경고를 추가해 4개 로더가 같은 보호를 받는다.
+- **회귀 방지** — `pickup/route.ts`의 `Promise.all` → `Promise.allSettled` + 실패 항목별 로그. GPS 조작 감지 시 응답은 **403 `location_unverified` 그대로**다. `api/drops`의 `markSearched`는 여전히 throw하지 않으므로 드랍 지도 조회도 영향 없다.
+- **문서 정합성** — `ambient-drop/config.ts` JSDoc에서 "drop_policy 필드들은 전부 순수 숫자라 이 실패 경로가 없었다"를 20260831_1118 실측으로 반증된 서술로 교체.
+- **어드민 폼** — `CombinePolicyForm`은 이미 `json.error`를 표시하고 있어 수정하지 않았다. `AbusingClient`는 실패 시 아무 안내도 없거나(`removeBan`·`removePoiBlock`) 고정 문구만 띄우고 있어(`savePolicy`·`addBan`) API가 내려주는 사유를 노출하도록 최소 수정했다.
+
+### 검증
+
+- `npx tsc --noEmit` 통과, `npm run lint` 0 error / 25 warning(전부 기존 파일, 이번 변경으로 늘지 않음), `npm run build` 성공.
+- `npm test` 3건 실패는 **변경 전 커밋(441251dd)에서도 동일하게 재현**되는 기존 실패다(`sync-drop-order.test.ts` 2건 = 워크트리에 `.env.local` 부재로 Supabase 클라이언트 생성 실패, `BadgeRevealCarousel.stories.tsx` 1건).
+- 코드베이스 재스캔 결과 `src/` 전체에서 반환값을 버리는 쓰기 호출은 0건.

@@ -414,12 +414,21 @@ async function getDropState(userId: string): Promise<UserDropStateRow> {
   }
 }
 
+/**
+ * 드랍 상태 저장.
+ *
+ * 실패해도 예외로 올리지 않는다 — 이 시점에 드랍은 이미 발급됐고 상태 저장 실패로
+ * 발급을 되돌릴 수 없기 때문이다. 대신 실패 신호를 로그로 남긴다 (티켓 20260831_1149).
+ */
 async function saveDropState(state: UserDropStateRow): Promise<void> {
   const supabase = createServiceClient()
   const table = supabase.from('user_drop_state')
   const payload = { ...state, updated_at: new Date().toISOString() }
   // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserDropStateRow와 일치
-  await table.upsert(payload)
+  const { error } = await table.upsert(payload)
+  if (error) {
+    console.error(`[drop-engine] 드랍 상태 저장 실패 — userId: ${state.user_id}:`, error)
+  }
 }
 
 /** 섀도우밴을 rarity 상한으로 적용: 차단된 rarity는 common으로 강등, common도 차단이면 null */

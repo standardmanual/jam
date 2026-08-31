@@ -115,8 +115,14 @@ export async function recordFeedEvent<T extends FeedEventType>(
       ...(typeof stravaActivityId === 'number' ? { strava_activity_id: stravaActivityId } : {}),
     }
     // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserActivityFeedRow와 일치
-    await q.insert(payload)
+    const { error } = await q.insert(payload)
+    // `supabase-js`는 insert 실패에 예외를 던지지 않으므로 아래 catch로는 아무것도 잡히지
+    // 않았다 — 반환 error를 직접 확인해야 한다 (티켓 20260831_1149).
+    // 피드 기록 실패가 배지·드랍 발급 본 흐름을 깨뜨리면 안 되므로 흡수는 유지한다.
+    if (error) {
+      console.error(`[activity-feed] 피드 기록 실패 — userId: ${userId}, event: ${eventType}:`, error)
+    }
   } catch (e) {
-    console.error('[activity-feed] 피드 기록 실패:', e)
+    console.error('[activity-feed] 피드 기록 중 예외:', e)
   }
 }

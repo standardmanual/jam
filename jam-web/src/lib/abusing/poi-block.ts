@@ -23,7 +23,13 @@ export async function isPoiBlocked(userId: string, poiId: string): Promise<boole
   }
 }
 
-/** POI 블록 적용 */
+/**
+ * POI 블록 적용
+ *
+ * 실패하면 예외를 던진다 — 흡수는 호출부(자동 감지 경로)에서 한다.
+ * GPS 조작 감지 흐름을 막지 않아야 하는 `api/drops/[dropId]/pickup`은 이 실패를
+ * `Promise.allSettled`로 흡수하고 로그만 남긴다 (티켓 20260831_1149).
+ */
 export async function blockPoiForUser(
   userId: string,
   poiId: string,
@@ -36,11 +42,19 @@ export async function blockPoiForUser(
   const table = supabase.from('poi_blocks')
   const payload = { user_id: userId, poi_id: poiId, blocked_until: blockedUntil, reason }
   // @ts-expect-error Supabase upsert() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 PoiBlockRow와 일치
-  await table.upsert(payload, { onConflict: 'user_id,poi_id' })
+  const { error } = await table.upsert(payload, { onConflict: 'user_id,poi_id' })
+  if (error) {
+    console.error('[poi-block] 블록 적용 실패:', error)
+    throw new Error(`poi_blocks upsert 실패 (${error.code}): ${error.message}`)
+  }
 }
 
-/** POI 블록 해제 (어드민) */
+/** POI 블록 해제 (어드민). 실패하면 운영자가 알 수 있게 예외를 던진다. */
 export async function unblockPoi(userId: string, poiId: string): Promise<void> {
   const supabase = createServiceClient()
-  await supabase.from('poi_blocks').delete().eq('user_id', userId).eq('poi_id', poiId)
+  const { error } = await supabase.from('poi_blocks').delete().eq('user_id', userId).eq('poi_id', poiId)
+  if (error) {
+    console.error('[poi-block] 블록 해제 실패:', error)
+    throw new Error(`poi_blocks delete 실패 (${error.code}): ${error.message}`)
+  }
 }

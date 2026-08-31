@@ -133,7 +133,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const usersQuery = supabase.from('users')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UsersRow와 일치
   const usersUpdateQuery = usersQuery.update({ initial_sync_done: false }).eq('id', userId)
-  await usersUpdateQuery
+  // 바로 아래 strava_connections 갱신은 이미 500으로 전파 중이라 대칭을 맞춘다.
+  // 여기서 실패를 흡수하면 초기화가 절반만 된 채 성공으로 응답된다 (티켓 20260831_1149)
+  const { error: syncFlagError } = await usersUpdateQuery
+  if (syncFlagError) return NextResponse.json({ error: syncFlagError.message }, { status: 500 })
   const stravaConnectionsQuery = supabase.from('strava_connections')
   // @ts-expect-error Supabase insert/update/upsert 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 StravaConnectionsRow와 일치
   const stravaUpdateQuery = stravaConnectionsQuery.update({ last_synced_at: null, backfill_completed: false }).eq('user_id', userId)

@@ -147,7 +147,12 @@ export async function checkMissions(
     if (progressValue > 0) {
       const table = supabase.from('user_mission_participations')
       // @ts-expect-error Supabase update() 페이로드 타입 추론 제한(never) 우회 — 실제 필드는 UserMissionParticipationRow와 일치
-      await table.update({ progress_value: progressValue }).eq('user_id', userId).eq('mission_id', mission.id)
+      const { error: progressError } = await table.update({ progress_value: progressValue }).eq('user_id', userId).eq('mission_id', mission.id)
+      // 흡수 — 진행도는 다음 판정에서 전체 이력으로 재계산되므로 완료 판정에는 영향이 없다.
+      // 다만 화면 진행도가 멈추는 증상으로 이어지므로 로그는 남긴다 (티켓 20260831_1149)
+      if (progressError) {
+        console.error(`[missions] 진행도 저장 실패 — userId: ${userId}, missionId: ${mission.id}:`, progressError)
+      }
     }
 
     if (!achieved) {
