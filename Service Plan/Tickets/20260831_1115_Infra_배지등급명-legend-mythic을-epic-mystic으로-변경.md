@@ -1,9 +1,9 @@
 ---
 id: 20260831_1115
 category: Infra
-status: OPEN
+status: CLOSED
 created: 2026-08-31
-closed:
+closed: 2026-08-31
 ---
 
 # [Infra] 배지 등급명 `legend`·`mythic` → `epic`·`mystic` 전면 변경
@@ -298,3 +298,32 @@ rg -i "legendary|mythic" jam-web/src jam-web/design-system "Service Plan/Specs" 
 화이트 룸의 차원·미스터리 컨셉과 오히려 더 맞는다.
 
 이 판단이 다음 작업자에게 남도록 `ACTIVITY_BADGES.md` 설계 원칙에 6번 항목으로 명시했다.
+
+### 마무리 검증 및 CLOSED 처리 (2026-08-31, 별도 세션)
+
+구현 완료 시점에는 SQL이 "작성만, 미실행" 상태였으나, 이후 세션에서 마이그레이션 115와
+`seed_rarity_rename_data_20260831.sql`이 실제로 실행됐다. 티켓 상태 갱신 없이 남아있던
+것을 발견해 프로덕션 DB(`ceehnkzdbecxwzxrhhns`, service_role 조회)를 전수 재검증했다.
+
+**DB 재검증 결과**:
+- `badge_rarity` enum: `common/rare/epic/mystic` — 정상 반영
+- `drop_policy` 컬럼: `rarity_epic`/`rarity_mystic` — 정상 반영 (`rarity_legendary` 잔존 없음)
+- `ambient_drop_config` 컬럼: `rarity_epic`/`rarity_mystic` — 정상 반영
+- `abusing_policy` 컬럼: `soft_epic_rate`/`hard_epic_rate` — 정상 반영 (섀도우밴 3단계 차단 무력화
+  결함도 함께 해소됨)
+- `user_activity_feed.metadata->>'rarity'`·`engine_decision_log.payload`·`missions.description`·
+  `badges.description`의 legend/legendary/mythic 잔존 — 0건
+- **`today_cards` 1건 누락 발견 및 수정**: `a8ed15ca-129f-4df9-819d-d6b89357d77f`
+  ("지금 아니면 못 받는 배지" — '새벽 야생인') subtitle이 "신화 등급"으로 남아있었다
+  (I항이 명시한 today_cards 2건 중 1건이 원 작업에서 누락됐던 것으로 보임).
+  `"Mystic 등급"`으로 직접 UPDATE해 정정.
+
+**코드 재검증 결과**: `jam-web/src`·`jam-web/design-system`(벤더 제외) grep 재확인 시
+`legendary`/`mythic` 잔존 2개 테스트 파일(`abusing/__tests__/shadow-ban.test.ts`,
+`abusing/__tests__/policy-save.test.ts`)에서만 발견됐으나, 둘 다 "마이그레이션 115 실행 전
+구간"을 의도적으로 재현하는 방어 테스트(코드 배포와 DB 마이그레이션 실행 사이의 시차 동안
+구 enum 값이 들어와도 시스템이 안전하게 처리하는지 검증)로, 주석에도 그 의도가 명시돼 있다.
+실제 잔존 버그가 아니므로 손대지 않았다.
+
+이상으로 티켓 범위의 모든 항목(A~K)이 DB·코드 양쪽에서 실제로 반영됐음을 확인해 CLOSED
+처리한다.
