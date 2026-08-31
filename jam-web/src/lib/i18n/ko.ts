@@ -340,9 +340,6 @@ export const ko = {
 
     // 배지 트리 (/badges/tree) — 티켓 20260831_2208
     treeButton: '배지 트리',
-    treeStageLabel: '{n}단계',
-    treeRepresentativeLabel: '대표 배지',
-    treeIndependentTitle: '선행 조건 없이 얻는 배지',
     treeLockBadgeHint: '{name} 배지를 획득하면 열려요',
     // 선행 배지를 이미 보유한 경우 — 20260901 UI 수정
     treeLockBadgeFulfilled: '{name} 배지 획득 완료',

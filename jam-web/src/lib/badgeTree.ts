@@ -5,28 +5,28 @@ import type { ActivityType, BadgeCondition, BadgeRarity } from '@/types/database
  *
  * 액티비티 배지는 종목별 대표배지(동네 산책러/첫 숨결/언덕의 도전자/첫 고도/야생의 주자)를
  * 루트로, `condition_json.prerequisite_badge_names`(동일 종목 내 다른 배지 이름, OR 조건)로
- * 이어진 선행조건 그래프를 이룬다. 이 파일은 그 그래프를 BFS로 순회해 "먼저 얻어야 하는
- * 배지 → 그다음 배지들" 단계(stage)를 계산한다.
+ * 이어진 선행조건 그래프를 이룬다.
  *
  * 대표배지의 Rare 이상은 다른 배지가 아니라 **미션 완료**로 게이팅된다
  * (`missions.gated_badge_id` = 그 등급 배지의 id). 대표배지는 이 게이팅 방식으로
- * 식별한다 — 이름을 하드코딩하지 않아, 나중에 대표배지 구성이 바뀌어도 그대로 반영된다
- * (요구사항 7 "실제 DB와 라이브 연동").
+ * 식별한다 — 이름을 하드코딩하지 않아, 나중에 대표배지 구성이 바뀌어도 그대로 반영된다.
  *
- * D01~D11(누적 걷기 일수 체크포인트)·트로피 매트릭스(T01~T23) 같은 **독립 발급 배지**
- * (선행조건이 전혀 없고 대표배지도 아닌 배지, `Specs/Content/ACTIVITY_BADGES.md` 확인)는
- * 선행조건 그래프에 연결되지 않아 BFS로 도달할 수 없다. 이런 배지는 stage에 억지로
- * 끼워 넣지 않고 `independentFamilies`로 별도 반환한다 — 트리 UI가 "선행 조건 없이 얻는
- * 배지" 섹션으로 그린다.
+ * 20260901 UI 수정: 종목별로 "동일 배지의 등급 순서"(가족 단위 묶음)가 아니라 "전체 액티비티
+ * 배지의 획득 단계"를 기준으로 한 줄짜리 평평한 목록(`cards`)을 반환한다. 등급(Common→Mystic)
+ * 자체가 이미 대략적인 획득 순서를 나타내므로 1차 정렬키로 쓰고, 같은 등급 안에서는 선행조건
+ * 그래프의 BFS 깊이(대표배지가 1) → 문서 서술 순서로 2차 정렬한다. D01~D11·트로피 매트릭스처럼
+ * 선행조건 그래프에 연결되지 않은 독립 발급 배지는 같은 등급 그룹 맨 뒤에 자기들끼리의 문서
+ * 서술 순서로 붙는다. 화면에는 "1단계"·"대표 배지" 같은 구분 라벨·구분선을 두지 않는다 —
+ * 각 카드가 등급 pill을 자체적으로 보여주므로 별도 헤더가 없어도 단계가 읽힌다.
  */
 
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 /**
- * 동일 단계(depth) 내 정렬 기준 — `Specs/Content/ACTIVITY_BADGES.md`의 W1~W8/R1~R8/...
+ * 같은 등급·같은 깊이 내 정렬 기준 — `Specs/Content/ACTIVITY_BADGES.md`의 W1~W8/R1~R8/...
  * 번호 순서. DB에는 이 순서를 나타내는 컬럼이 없어(같은 배치로 삽입된 행은 created_at이
  * 전부 동일 타임스탬프) 문서 순서를 그대로 옮겨온다 — 조건값 자체는 아래에서 전부 DB
- * 라이브 조회로 채우므로 "정적 스냅샷 금지"(요구사항 7)를 어기지 않는다.
+ * 라이브 조회로 채우므로 "정적 스냅샷 금지" 요구사항을 어기지 않는다.
  */
 const ACTIVITY_BADGE_ORDER: Record<ActivityType, string[]> = {
   walking: [
@@ -57,10 +57,10 @@ export const TREE_ACTIVITY_ORDER: ActivityType[] = [
 ]
 
 /**
- * "선행 조건 없이 얻는 배지" 섹션(D01~D11 + 트로피 매트릭스, 걷기 전용 32종) 정렬 순서 —
- * 티켓 20260831_2250. `Specs/Content/ACTIVITY_BADGES.md`의 실제 서술 순서(D01→D11, 그다음
- * T01~T18·T20·T22·T23 — T19·T21은 설계 단계에서 제외되어 결번)를 그대로 옮겼다. 이름 자체가
- * 누적일수·트로피 순서를 담고 있어 가나다순으로 정렬하면 성장 서사가 깨진다.
+ * 독립 발급 배지(D01~D11 + 트로피 매트릭스, 걷기 전용 32종) 정렬 순서 — 티켓 20260831_2250.
+ * `Specs/Content/ACTIVITY_BADGES.md`의 실제 서술 순서(D01→D11, 그다음 T01~T18·T20·T22·T23 —
+ * T19·T21은 설계 단계에서 제외되어 결번)를 그대로 옮겼다. 이름 자체가 누적일수·트로피 순서를
+ * 담고 있어 가나다순으로 정렬하면 성장 서사가 깨진다.
  */
 const INDEPENDENT_BADGE_ORDER: string[] = [
   // D01~D11 — 누적 걷기 일수 체크포인트
@@ -101,34 +101,21 @@ export interface BadgeTreeLock {
   fulfilled: boolean
 }
 
-export interface BadgeTreeVariant {
+/** 배지 하나(특정 등급)의 트리 카드 — 20260901 UI 수정으로 가족 단위 묶음을 없애고 개별 카드로 평탄화 */
+export interface BadgeTreeCard {
   id: string
+  /** 등급과 무관한 배지 그룹 이름(예: "동네 산책러") */
+  name: string
   rarity: BadgeRarity
   imageUrl: string | null
   description: string | null
   locks: BadgeTreeLock[]
 }
 
-export interface BadgeTreeFamily {
-  /** 등급과 무관한 배지 그룹 이름(예: "동네 산책러") — 같은 이름을 등급별로 갖는다 */
-  name: string
-  /** 종목 대표배지 여부(⚡ 강조 표시 대상) — missions.gated_badge_id로 판정 */
-  representative: boolean
-  /** Common → Rare → Epic → Mystic 순, 실제 존재하는 등급만 */
-  variants: BadgeTreeVariant[]
-}
-
-export interface BadgeTreeStage {
-  /** 1부터 시작 — 1단계가 종목 대표배지 */
-  depth: number
-  families: BadgeTreeFamily[]
-}
-
 export interface BadgeActivityTree {
   activityType: ActivityType
-  stages: BadgeTreeStage[]
-  /** 선행조건 그래프에 연결되지 않은 독립 발급 배지(D01~D11, 트로피 매트릭스 등) */
-  independentFamilies: BadgeTreeFamily[]
+  /** 등급(획득 단계) → 그래프 깊이 → 문서 순서로 정렬된 평평한 카드 목록. 구분 라벨·구분선 없음 */
+  cards: BadgeTreeCard[]
 }
 
 export function buildBadgeActivityTrees(
@@ -142,7 +129,7 @@ export function buildBadgeActivityTrees(
     if (m.gated_badge_id) missionByGatedBadgeId.set(m.gated_badge_id, m)
   }
 
-  // 미션 완료로만 지급되는 배지(condition_json.mission_reward=true)는 트리 노드로 그리지 않고,
+  // 미션 완료로만 지급되는 배지(condition_json.mission_reward=true)는 트리 카드로 그리지 않고,
   // prerequisite_badge_names에서 "이 이름은 다른 활동 배지가 아니라 미션 보상 배지다"를
   // 걸러내는 용도로만 쓴다(요구사항: 미션 게이팅과 배지 게이팅 구분).
   const missionRewardNames = new Set(
@@ -201,7 +188,8 @@ export function buildBadgeActivityTrees(
       }
     }
 
-    // BFS — 대표배지(들)를 depth 1로 두고 최단 깊이를 채택
+    // BFS — 대표배지(들)를 depth 1로 두고 최단 깊이를 채택. 그래프에 연결되지 않은 독립
+    // 배지(D01~D11 등)는 depth가 없다 — 정렬 시 INDEPENDENT_BADGE_ORDER로 따로 처리한다.
     const depthByName = new Map<string, number>()
     const queue: string[] = []
     for (const rootName of representativeNames) {
@@ -220,45 +208,26 @@ export function buildBadgeActivityTrees(
       }
     }
 
-    function buildFamily(name: string, variants: BadgeTreeSourceBadge[]): BadgeTreeFamily {
-      const treeVariants: BadgeTreeVariant[] = RARITY_ORDER.map((rarity) =>
-        variants.find((v) => v.rarity === rarity)
+    function buildLocks(v: BadgeTreeSourceBadge): BadgeTreeLock[] {
+      if (v.rarity === 'common') return []
+      const locks: BadgeTreeLock[] = []
+      const mission = missionByGatedBadgeId.get(v.id)
+      if (mission) {
+        locks.push({ kind: 'mission', name: mission.title, href: `/missions/${mission.id}`, fulfilled: false })
+        return locks
+      }
+      const prereqNames = (v.condition_json?.prerequisite_badge_names ?? []).filter(
+        (n) => !missionRewardNames.has(n)
       )
-        .filter((v): v is BadgeTreeSourceBadge => !!v)
-        .map((v) => {
-          const locks: BadgeTreeLock[] = []
-          if (v.rarity !== 'common') {
-            const mission = missionByGatedBadgeId.get(v.id)
-            if (mission) {
-              locks.push({
-                kind: 'mission',
-                name: mission.title,
-                href: `/missions/${mission.id}`,
-                fulfilled: false,
-              })
-            } else {
-              const prereqNames = (v.condition_json?.prerequisite_badge_names ?? []).filter(
-                (n) => !missionRewardNames.has(n)
-              )
-              for (const prereqName of prereqNames) {
-                const id = nameToCommonId.get(prereqName)
-                if (!id) continue
-                // OR 조건: 선행 배지 그룹의 어느 등급이든 보유하면 충족 (엔진 규칙과 동일)
-                const prereqVariants = familyMap.get(prereqName) ?? []
-                const fulfilled = prereqVariants.some((pv) => earnedBadgeIds.has(pv.id))
-                locks.push({ kind: 'badge', name: prereqName, href: `/badges/${id}`, fulfilled })
-              }
-            }
-          }
-          return {
-            id: v.id,
-            rarity: v.rarity,
-            imageUrl: v.image_url,
-            description: v.description,
-            locks,
-          }
-        })
-      return { name, representative: representativeNames.has(name), variants: treeVariants }
+      for (const prereqName of prereqNames) {
+        const id = nameToCommonId.get(prereqName)
+        if (!id) continue
+        // OR 조건: 선행 배지 그룹의 어느 등급이든 보유하면 충족 (엔진 규칙과 동일)
+        const prereqVariants = familyMap.get(prereqName) ?? []
+        const fulfilled = prereqVariants.some((pv) => earnedBadgeIds.has(pv.id))
+        locks.push({ kind: 'badge', name: prereqName, href: `/badges/${id}`, fulfilled })
+      }
+      return locks
     }
 
     const orderList = ACTIVITY_BADGE_ORDER[activityType] ?? []
@@ -267,37 +236,42 @@ export function buildBadgeActivityTrees(
       return i === -1 ? orderList.length : i
     }
 
-    const stageFamilies = new Map<number, BadgeTreeFamily[]>()
-    const independentFamilies: BadgeTreeFamily[] = []
+    // 평탄화: 모든 (배지, 등급) 조합을 카드 하나씩으로 만들고, [등급 → 그래프 깊이(없으면
+    // 맨 뒤) → 문서 순서] 3단계 정렬키로 하나의 목록에 줄세운다. "1단계"·"대표 배지" 같은
+    // 구분 라벨이나 구분선은 화면에 두지 않는다 — 등급 pill 자체가 단계를 알려준다.
+    const ranked: { card: BadgeTreeCard; rarityIdx: number; independent: boolean; secondary: number; tertiary: number }[] = []
     for (const [name, variants] of familyMap) {
       const depth = depthByName.get(name)
-      const family = buildFamily(name, variants)
-      if (depth === undefined) {
-        independentFamilies.push(family)
-      } else {
-        if (!stageFamilies.has(depth)) stageFamilies.set(depth, [])
-        stageFamilies.get(depth)!.push(family)
+      const independent = depth === undefined
+      const secondary = independent ? INDEPENDENT_BADGE_ORDER.indexOf(name) : depth
+      const tertiary = orderIndex(name)
+      for (const rarity of RARITY_ORDER) {
+        const v = variants.find((variant) => variant.rarity === rarity)
+        if (!v) continue
+        ranked.push({
+          card: {
+            id: v.id,
+            name,
+            rarity: v.rarity,
+            imageUrl: v.image_url,
+            description: v.description,
+            locks: buildLocks(v),
+          },
+          rarityIdx: RARITY_ORDER.indexOf(v.rarity),
+          independent,
+          secondary,
+          tertiary,
+        })
       }
     }
-    for (const families of stageFamilies.values()) {
-      families.sort((a, b) => orderIndex(a.name) - orderIndex(b.name))
-    }
-    // 가나다순이 아니라 문서 서술 순서(성장 서사, INDEPENDENT_BADGE_ORDER)로 고정 정렬.
-    // 배열에 없는 이름(향후 신규 독립 배지)은 뒤로 보내는 fallback — 에러로 죽지 않게.
-    independentFamilies.sort((a, b) => {
-      const ai = INDEPENDENT_BADGE_ORDER.indexOf(a.name)
-      const bi = INDEPENDENT_BADGE_ORDER.indexOf(b.name)
-      const aOrder = ai === -1 ? INDEPENDENT_BADGE_ORDER.length : ai
-      const bOrder = bi === -1 ? INDEPENDENT_BADGE_ORDER.length : bi
-      if (aOrder !== bOrder) return aOrder - bOrder
-      return a.name.localeCompare(b.name, 'ko')
+    ranked.sort((a, b) => {
+      if (a.rarityIdx !== b.rarityIdx) return a.rarityIdx - b.rarityIdx
+      if (a.independent !== b.independent) return a.independent ? 1 : -1
+      if (a.secondary !== b.secondary) return a.secondary - b.secondary
+      return a.tertiary - b.tertiary
     })
 
-    const stages: BadgeTreeStage[] = Array.from(stageFamilies.keys())
-      .sort((a, b) => a - b)
-      .map((depth) => ({ depth, families: stageFamilies.get(depth)! }))
-
-    trees.push({ activityType, stages, independentFamilies })
+    trees.push({ activityType, cards: ranked.map((r) => r.card) })
   }
 
   return trees

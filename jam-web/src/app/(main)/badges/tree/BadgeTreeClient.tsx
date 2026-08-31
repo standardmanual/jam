@@ -3,12 +3,11 @@
 import { useMemo, useState } from 'react'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
-import BadgeTreeFamily from '@/components/badges/BadgeTreeFamily'
-import BadgeTreeConnector from '@/components/badges/BadgeTreeConnector'
+import BadgeTreeCard from '@/components/badges/BadgeTreeCard'
 import { MedalIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
-import { d, t } from '@/lib/i18n'
+import { d } from '@/lib/i18n'
 import type { ActivityType } from '@/types/database'
 import type { BadgeActivityTree } from '@/lib/badgeTree'
 
@@ -23,12 +22,12 @@ const TREE_TAB_LABELS: Partial<Record<ActivityType, string>> = {
 }
 
 /**
- * 배지 트리(/badges/tree) — 종목별 대표배지를 루트로, 선행조건(OR)으로 이어진 배지들을
- * BFS 깊이 기준 세로 단계(stage)로 보여주는 화면. 티켓 20260831_2208.
+ * 배지 트리(/badges/tree) — 종목별 배지를 등급(획득 단계) 순으로 한 줄에 늘어놓는다.
+ * 티켓 20260831_2208, 20260901 UI 수정(가족 단위 묶음·단계 라벨·구분선 제거, 등급 우선 정렬).
  *
  * 요구사항 8(횡스크롤 지양): 종목 전환 탭 1줄 외에는 전부 세로로만 쌓는다.
  * 데이터는 `page.tsx`(서버 컴포넌트)가 요청마다 Supabase에서 직접 조회해 넘긴다 —
- * 정적 스냅샷이 아니라 매 요청 최신 DB 상태를 반영한다(요구사항 1·7).
+ * 정적 스냅샷이 아니라 매 요청 최신 DB 상태를 반영한다.
  */
 export interface BadgeTreeClientProps {
   trees: BadgeActivityTree[]
@@ -87,33 +86,10 @@ export default function BadgeTreeClient({ trees, earnedBadgeIds }: BadgeTreeClie
             />
           </div>
 
-          <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-8)]">
-            {activeTree.stages.map((stage, idx) => (
-              <div key={stage.depth} className="flex flex-col gap-[var(--spacing-12)]">
-                {idx > 0 && <BadgeTreeConnector />}
-                <p className="text-[length:var(--text-body-sm)] font-bold text-[var(--color-text-secondary)]">
-                  {t(d.badges.treeStageLabel, { n: stage.depth })}
-                </p>
-                <div className="flex flex-col gap-[var(--spacing-12)]">
-                  {stage.families.map((family) => (
-                    <BadgeTreeFamily key={family.name} family={family} earnedBadgeIds={earnedBadgeIdSet} />
-                  ))}
-                </div>
-              </div>
+          <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-12)]">
+            {activeTree.cards.map((card) => (
+              <BadgeTreeCard key={card.id} card={card} earnedBadgeIds={earnedBadgeIdSet} />
             ))}
-
-            {activeTree.independentFamilies.length > 0 && (
-              <div className="flex flex-col gap-[var(--spacing-12)] pt-[var(--spacing-16)] mt-[var(--spacing-8)] border-t border-white/10">
-                <p className="text-[length:var(--text-body-sm)] font-bold text-[var(--color-text-secondary)]">
-                  {d.badges.treeIndependentTitle}
-                </p>
-                <div className="flex flex-col gap-[var(--spacing-12)]">
-                  {activeTree.independentFamilies.map((family) => (
-                    <BadgeTreeFamily key={family.name} family={family} earnedBadgeIds={earnedBadgeIdSet} />
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </>
       )}
