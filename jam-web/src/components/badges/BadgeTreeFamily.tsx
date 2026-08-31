@@ -59,7 +59,9 @@ export default function BadgeTreeFamily({ family, earnedBadgeIds }: BadgeTreeFam
                 )}
               </Link>
               <div className="flex-1 min-w-0 flex flex-col gap-[var(--spacing-4)] pt-[2px]">
-                <RarityBadge rarity={variant.rarity} />
+                {/* 부모가 flex-col(기본 align-items:stretch)이라 지정 없으면 pill이 컬럼
+                    폭 전체로 늘어난다 — self-start로 콘텐츠 폭만큼만 차지하게 고정. */}
+                <RarityBadge rarity={variant.rarity} className="self-start" />
                 <Link
                   href={href}
                   className="text-[15px] font-bold text-text leading-snug truncate"
