@@ -505,6 +505,15 @@ describe('⑤⑥ 소셜', () => {
       )
     ).toBe('예린님 외 2명이 한강 100km를 완료했어요')
   })
+
+  it('#31 팔로잉 미션 완료 — R15 묶음(사람 단위)은 following_rare_badge·following_collection_complete와 동일하게 프로필로 착지하고 출처 쿼리가 붙는다(20260831_2201)', () => {
+    const v = view(
+      'following_mission_complete',
+      { mission_id: 'm1', mission_title: '한강 100km', more_count: 1 },
+      { actor: ACTOR }
+    )
+    expect(notificationTarget(v).href).toBe('/예린?from=notifications')
+  })
 })
 
 describe('⑧ 계정·시스템', () => {
