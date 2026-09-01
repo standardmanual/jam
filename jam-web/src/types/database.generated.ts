@@ -165,6 +165,7 @@ export type Database = {
       badges: {
         Row: {
           activity_types: string[]
+          background_animation: Json | null
           background_color: string | null
           background_image_url: string | null
           background_shader_id: string | null
@@ -191,6 +192,7 @@ export type Database = {
         }
         Insert: {
           activity_types?: string[]
+          background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null
           background_shader_id?: string | null
@@ -217,6 +219,7 @@ export type Database = {
         }
         Update: {
           activity_types?: string[]
+          background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null
           background_shader_id?: string | null
@@ -611,6 +614,7 @@ export type Database = {
       }
       factions: {
         Row: {
+          background_animation: Json | null
           background_color: string | null
           background_image_url: string | null
           background_shader_id: string | null
@@ -627,6 +631,7 @@ export type Database = {
           tagline: string | null
         }
         Insert: {
+          background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null
           background_shader_id?: string | null
@@ -643,6 +648,7 @@ export type Database = {
           tagline?: string | null
         }
         Update: {
+          background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null
           background_shader_id?: string | null
@@ -768,6 +774,7 @@ export type Database = {
       }
       item_books: {
         Row: {
+          background_animation: Json | null
           background_color: string | null
           background_image_url: string | null
           background_shader_id: string | null
@@ -785,6 +792,7 @@ export type Database = {
           story_text: string | null
         }
         Insert: {
+          background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null
           background_shader_id?: string | null
@@ -802,6 +810,7 @@ export type Database = {
           story_text?: string | null
         }
         Update: {
+          background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null
           background_shader_id?: string | null

@@ -13,7 +13,7 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import SlotGrid, { type BadgeSlot } from './SlotGrid'
 import ItemBookHeroSection from './ItemBookHeroSection'
 import { d } from '@/lib/i18n'
-import { getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
+import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 
 interface Props {
@@ -196,6 +196,9 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   // 그린다. 배경이 있는 컬렉션에서는 TopNav·본문을 투명하게 두어 아래 레이어가 그대로 비쳐 보이게
   // 하고, 없으면 기존 PAGE_BG를 그대로 유지한다(회귀 방지).
   const themedBackground = hasBadgeBackgroundTheme(book)
+  // [20260901_1944] 대표 이미지 카드 "안"에서 실행하는 블롭 애니메이션 — 위 고정 배경 레이어와는
+  // 별개의 렌더링 지점이다(우선순위 판단은 badgeBackgroundTheme.ts 한 곳).
+  const bookCardAnimation = getBadgeBackgroundAnimation(book)
   const pageBg = themedBackground ? 'transparent' : PAGE_BG
   const topNavStyle: React.CSSProperties = { background: pageBg, color: '#FFFFFF' }
   const themedTextStyle: React.CSSProperties = getBadgeThemedTextStyle(themedBackground)
@@ -242,6 +245,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           book={{ name: book.name, description: book.description, image_url: book.image_url }}
           slottedCount={slottedCount}
           totalBadgeCount={totalBadgeCount}
+          backgroundAnimation={bookCardAnimation}
         />
 
         {/* 스토리 텍스트 */}

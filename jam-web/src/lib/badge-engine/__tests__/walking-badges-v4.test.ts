@@ -400,6 +400,7 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     background_shader_id: null,
     background_image_url: null,
     background_video_url: null,
+    background_animation: null,
     ...overrides,
   }
 }

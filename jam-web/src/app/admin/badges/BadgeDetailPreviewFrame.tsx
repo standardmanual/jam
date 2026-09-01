@@ -6,6 +6,7 @@ import Footer from '@/components/ui/Footer'
 import BadgeHeroSection from '@/app/(main)/badges/[id]/BadgeHeroSection'
 import BadgeConditionCard from '@/app/(main)/badges/[id]/BadgeConditionCard'
 import { getBadgeThemedTextStyle } from '@/lib/badgeBackgroundTheme'
+import type { BlobAnimationParams } from '@/lib/blobAnimation'
 import { SERVICE_WIDTH } from '@/lib/backgroundGenerator/types'
 import { d } from '@/lib/i18n'
 
@@ -26,6 +27,8 @@ interface BadgeDetailPreviewFrameProps {
   backgroundLayerRef: Ref<HTMLDivElement>
   /** 제너레이터 라이브 합성 노드(필터 캔버스 또는 평면화 img). 없으면 배경 레이어는 비어 있다 */
   liveNode?: ReactNode
+  /** 이미지 카드 안에서 실행할 애니메이션 파라미터 — 실제 화면과 동일하게 Hero 카드로 그대로 넘긴다. [20260901_1944] */
+  backgroundAnimation?: BlobAnimationParams | null
   /** 본문 "획득 조건" 카드에 표시할 문구 */
   conditionText: string
 }
@@ -52,6 +55,7 @@ export default function BadgeDetailPreviewFrame({
   backgroundLayerStyle,
   backgroundLayerRef,
   liveNode,
+  backgroundAnimation,
   conditionText,
 }: BadgeDetailPreviewFrameProps) {
   return (
@@ -90,7 +94,7 @@ export default function BadgeDetailPreviewFrame({
           />
         </div>
 
-        <BadgeHeroSection badge={badge} hasEarned themedBackground={themed} />
+        <BadgeHeroSection badge={badge} hasEarned themedBackground={themed} backgroundAnimation={backgroundAnimation} />
 
         <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
           <BadgeConditionCard text={conditionText} />

@@ -12,6 +12,7 @@ import BackgroundGeneratorPreview, {
   type BackgroundGeneratorLivePreviewState,
 } from './BackgroundGeneratorPreview'
 import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
+import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 import { buildConditionJsonFromFields, getUnsupportedConditionKeys } from './conditionFormFields'
 import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
 
@@ -80,6 +81,10 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   // 배경 테마 — background_color: 배경색(피커+hex, 이미지 업로드 시 평균 컬러 자동 프리필).
   // 제너레이터(패턴/애니메이션/Paper 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
   const [backgroundColor, setBackgroundColor] = useState<string>(badge?.background_color ?? '')
+  // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다.
+  const [backgroundAnimation, setBackgroundAnimation] = useState<BlobAnimationParams | null>(
+    () => parseBlobAnimation(badge?.background_animation)
+  )
 
   // condition_json builder state
   const initCond = (badge?.condition_json as BadgeCondition) ?? EMPTY_CONDITION
@@ -291,8 +296,10 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
       return
     }
 
+    // 애니메이션 모드에서는 배경색 입력란이 화면에 없다 — 보이지 않는 값 때문에 저장이 막히지
+    // 않도록 배경색 모드일 때만 검증한다(20260901_1944).
     const trimmedBackgroundColor = backgroundColor.trim()
-    if (trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
+    if (!backgroundAnimation && trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
       setError('배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해주세요.')
       return
     }
@@ -323,7 +330,13 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
         // background_shader_id/background_image_url/background_video_url은 보내지 않는다
         // (티켓 20260901_1929) — 제너레이터가 사라져 이 필드들을 새로 만들 방법이 없고, 저장
         // API는 누락된 필드를 기존 DB 값 그대로 둔다(undefined 병합, badges PUT/POST 참조).
-        background_color: trimmedBackgroundColor || null,
+        // [20260901_1944] 애니메이션 모드에서는 배경색 입력란이 화면에 없어 검증을 건너뛰므로,
+        // 형식이 어긋난 값이 DB로 새어들지 않도록 hex가 아닌 값은 null로 정리한다. 배경색 모드는
+        // 위에서 이미 검증돼 동작이 달라지지 않는다.
+        background_color: HEX_COLOR_PATTERN.test(trimmedBackgroundColor) ? trimmedBackgroundColor : null,
+        // 배경색과 배타 — 애니메이션 모드가 아니면 명시적으로 null을 보내 해제가 저장되게 한다
+        // (PUT의 `!== undefined` 병합에서 null과 undefined는 다르게 취급된다).
+        background_animation: backgroundAnimation,
       }
 
       const res = await fetch(
@@ -564,12 +577,14 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
           />
         </div>
 
-        {/* 배경 테마 — 배경색 단일 모드 (티켓 20260901_1929에서 제너레이터·쉐이더 제거) */}
+        {/* 배경 테마 — 배경색 / 애니메이션 배타 선택 (티켓 20260901_1944) */}
         <div className="col-span-2">
           <BackgroundGeneratorPreview
             backgroundColor={backgroundColor}
             onBackgroundColorChange={setBackgroundColor}
-            renderPreview={({ themed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
+            backgroundAnimation={backgroundAnimation}
+            onBackgroundAnimationChange={setBackgroundAnimation}
+            renderPreview={({ themed, backgroundLayerStyle, backgroundLayerRef, liveNode, backgroundAnimation: previewAnimation }: BackgroundGeneratorLivePreviewState) => (
               <>
                 <BadgeDetailPreviewFrame
                   badge={{
@@ -585,6 +600,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
                   backgroundLayerStyle={backgroundLayerStyle}
                   backgroundLayerRef={backgroundLayerRef}
                   liveNode={liveNode}
+                  backgroundAnimation={previewAnimation}
                   conditionText={PREVIEW_CONDITION_TEXT}
                 />
                 <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">

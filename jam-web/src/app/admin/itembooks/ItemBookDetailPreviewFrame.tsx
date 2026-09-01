@@ -6,6 +6,7 @@ import ItemBookHeroSection, {
   type ItemBookHeroSectionBook,
 } from '@/app/(main)/collections/[id]/ItemBookHeroSection'
 import { getBadgeThemedTextStyle } from '@/lib/badgeBackgroundTheme'
+import type { BlobAnimationParams } from '@/lib/blobAnimation'
 import { SERVICE_WIDTH } from '@/lib/backgroundGenerator/types'
 import { d } from '@/lib/i18n'
 
@@ -26,6 +27,8 @@ interface ItemBookDetailPreviewFrameProps {
   backgroundLayerRef: Ref<HTMLDivElement>
   /** 제너레이터 라이브 합성 노드(필터 캔버스 또는 평면화 img). 없으면 배경 레이어는 비어 있다 */
   liveNode?: ReactNode
+  /** 대표 이미지 카드 안에서 실행할 애니메이션 파라미터 — 실제 화면과 동일하게 Hero로 넘긴다. [20260901_1944] */
+  backgroundAnimation?: BlobAnimationParams | null
 }
 
 /**
@@ -50,6 +53,7 @@ export default function ItemBookDetailPreviewFrame({
   backgroundLayerStyle,
   backgroundLayerRef,
   liveNode,
+  backgroundAnimation,
 }: ItemBookDetailPreviewFrameProps) {
   return (
     <div
@@ -88,7 +92,12 @@ export default function ItemBookDetailPreviewFrame({
         </div>
 
         <div className="relative z-10 flex flex-col px-4 pt-4 pb-10 gap-3">
-          <ItemBookHeroSection book={book} slottedCount={0} totalBadgeCount={0} />
+          <ItemBookHeroSection
+            book={book}
+            slottedCount={0}
+            totalBadgeCount={0}
+            backgroundAnimation={backgroundAnimation}
+          />
         </div>
       </div>
     </div>
