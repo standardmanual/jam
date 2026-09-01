@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import type { Json } from '@/types/database.generated'
 
 /**
- * 이 컬렉션에 이미 저장된 background_color 값을, 이 컬렉션에 속한(item_book_id 일치, 소프트
- * 삭제되지 않은) 모든 배지에 1회성으로 복사한다 (20260818_004).
+ * 이 컬렉션에 이미 저장된 background_color / background_animation 값을, 이 컬렉션에 속한
+ * (item_book_id 일치, 소프트 삭제되지 않은) 모든 배지에 1회성으로 복사한다 (20260818_004,
+ * 20260901_1944).
  * 자동 fallback이 아니라 버튼을 누른 순간의 값만 반영 — 이후 컬렉션 값이 바뀌어도 다시
  * 이 API를 호출하기 전까지는 배지 쪽 값이 그대로 유지된다. 항상 덮어쓴다(사용자 확정 방침).
  *
@@ -21,17 +23,22 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const { data: itemBook, error: itemBookError } = await supabase
     .from('item_books')
-    .select('background_color')
+    .select('background_color, background_animation')
     .eq('id', id)
     .single()
   if (itemBookError || !itemBook) {
     return NextResponse.json({ error: '컬렉션을 찾을 수 없습니다.' }, { status: 404 })
   }
 
-  const { background_color } = itemBook as { background_color: string | null }
+  // 배경색과 애니메이션은 저작 화면에서 배타로 선택되므로, 둘을 함께 복사해야 하위 배지의 모드가
+  // 컬렉션과 정확히 일치한다. 한쪽만 복사하면 애니메이션 → 배경색 전환이 하위에 반영되지 않는다.
+  const { background_color, background_animation } = itemBook as {
+    background_color: string | null
+    background_animation: Json | null
+  }
 
   const badgesQuery = supabase.from('badges')
-  const updateQuery = badgesQuery.update({ background_color })
+  const updateQuery = badgesQuery.update({ background_color, background_animation })
   const { data, error } = await updateQuery
     .eq('item_book_id', id)
     .is('deleted_at', null)

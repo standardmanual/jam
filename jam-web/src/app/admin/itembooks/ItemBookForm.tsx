@@ -21,6 +21,7 @@ import {
 import BackgroundGeneratorPreview, {
   type BackgroundGeneratorLivePreviewState,
 } from '../badges/BackgroundGeneratorPreview'
+import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 import ItemBookDetailPreviewFrame from './ItemBookDetailPreviewFrame'
 
 interface ItemBookFormProps {
@@ -70,6 +71,11 @@ export default function ItemBookForm({
   // 소속 배지들의 background_color에 1회성으로 복사하는 원본 값. 제너레이터(패턴/애니메이션/Paper
   // 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
   const [backgroundColor, setBackgroundColor] = useState<string>(book?.background_color ?? '')
+  // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다. 하위 배지 일괄
+  // 적용의 원본 값이기도 하다.
+  const [backgroundAnimation, setBackgroundAnimation] = useState<BlobAnimationParams | null>(
+    () => parseBlobAnimation(book?.background_animation)
+  )
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -91,8 +97,10 @@ export default function ItemBookForm({
   const [bulkApplyResult, setBulkApplyResult] = useState<number | null>(null)
 
   const validate = (): string | null => {
+    // 애니메이션 모드에서는 배경색 입력란이 화면에 없다 — 보이지 않는 값 때문에 저장이 막히지
+    // 않도록 배경색 모드일 때만 검증한다(20260901_1944).
     const trimmedBackgroundColor = backgroundColor.trim()
-    if (trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
+    if (!backgroundAnimation && trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
       return '배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해주세요.'
     }
     return null
@@ -114,7 +122,11 @@ export default function ItemBookForm({
       faction_id: factionId || null,
       story_text: storyText || null,
       is_active: isActive,
-      background_color: trimmedBackgroundColor || null,
+      // [20260901_1944] 애니메이션 모드에서는 배경색을 검증하지 않으므로 hex가 아닌 값은 null로
+      // 정리한다. 배경색 모드는 위에서 이미 검증돼 동작이 달라지지 않는다.
+      background_color: HEX_COLOR_PATTERN.test(trimmedBackgroundColor) ? trimmedBackgroundColor : null,
+      // 배경색과 배타 — 해제(null)도 명시적으로 보내야 PUT의 `!== undefined` 병합에서 저장된다.
+      background_animation: backgroundAnimation,
     }
 
     const res = await fetch(
@@ -154,7 +166,7 @@ export default function ItemBookForm({
 
   // 배경값이 전혀 없으면 일괄 적용 시 하위 배지의 기존 커스터마이징을 전부 빈 값으로
   // 덮어쓰게 되므로 버튼을 비활성화한다 (티켓 20260901_1929 — 제너레이터·쉐이더 제거로 단순화).
-  const hasBackgroundValue = Boolean(backgroundColor.trim())
+  const hasBackgroundValue = Boolean(backgroundColor.trim()) || backgroundAnimation !== null
 
   // 저장된 컬렉션에서만 가능 — 클릭 시 폼의 현재 값을 먼저 저장해(항상 최신 값 기준으로 적용)
   // 실제 하위 배지 수를 조회한 뒤 확인 다이얼로그를 띄운다.
@@ -386,7 +398,9 @@ export default function ItemBookForm({
         <BackgroundGeneratorPreview
           backgroundColor={backgroundColor}
           onBackgroundColorChange={setBackgroundColor}
-          renderPreview={({ themed: previewThemed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
+          backgroundAnimation={backgroundAnimation}
+          onBackgroundAnimationChange={setBackgroundAnimation}
+          renderPreview={({ themed: previewThemed, backgroundLayerStyle, backgroundLayerRef, liveNode, backgroundAnimation: previewAnimation }: BackgroundGeneratorLivePreviewState) => (
             <>
               <ItemBookDetailPreviewFrame
                 book={{
@@ -398,6 +412,7 @@ export default function ItemBookForm({
                 backgroundLayerStyle={backgroundLayerStyle}
                 backgroundLayerRef={backgroundLayerRef}
                 liveNode={liveNode}
+                backgroundAnimation={previewAnimation}
               />
               <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
                 실제 컬렉션 상세화면과 같은 구조로 보여줘요. 진행도는 예시라 실제 값과 달라요.
@@ -419,7 +434,7 @@ export default function ItemBookForm({
             {!isEdit
               ? '컬렉션을 먼저 등록해야 하위 배지에 일괄 적용할 수 있어요.'
               : !hasBackgroundValue
-                ? '배경색을 먼저 지정해야 일괄 적용할 수 있어요.'
+                ? '배경색이나 애니메이션을 먼저 지정해야 일괄 적용할 수 있어요.'
                 : '버튼을 누르면 지금 이 값이 먼저 저장되고, 이 컬렉션에 속한 배지들에 즉시 복사돼요. 이후 컬렉션 배경을 바꿔도 이미 적용된 배지에는 자동 반영되지 않아요. 다시 이 버튼을 눌러야 해요.'}
           </p>
         </div>

@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
   const {
     name, tagline, description, image_url, drop_weight, is_active, sort_order,
     background_color, background_shader_id, background_image_url, background_video_url,
+    background_animation,
   } = body
 
   if (!name) {
@@ -42,6 +43,8 @@ export async function POST(req: NextRequest) {
     background_shader_id: background_shader_id ?? null,
     background_image_url: background_image_url ?? null,
     background_video_url: background_video_url ?? null,
+    // [20260901_1944] 하위 일괄 적용의 원본이 되는 애니메이션 파라미터(jsonb)
+    background_animation: background_animation ?? null,
   }
   const factionsQuery = supabase.from('factions')
   const insertQuery = factionsQuery.insert(insertPayload)

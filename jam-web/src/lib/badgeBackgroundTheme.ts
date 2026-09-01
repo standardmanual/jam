@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 
 /**
  * 배경 테마 계산에 필요한 최소 필드 shape — 구조적 타입이라 이 4개 필드 이름만 맞으면 어떤 row든
@@ -15,6 +16,8 @@ export interface BackgroundThemeSource {
   background_shader_id: string | null
   background_image_url: string | null
   background_video_url?: string | null
+  /** 카드 안 블롭 애니메이션 파라미터(jsonb 원본). optional이라 기존 호출부는 그대로 둬도 된다. — [20260901_1944] */
+  background_animation?: unknown
 }
 
 /** @deprecated `BackgroundThemeSource`를 쓴다. badge 전용이 아닌 범용 이름으로 정리(20260819_014).
@@ -35,6 +38,17 @@ export type BadgeBackgroundThemeSource = BackgroundThemeSource
  *   렌더링에는 관여하지 않는다. 스택이 확정되면 이 함수 내부만 확장하면 된다(호출부 변경 불필요).
  */
 export function getBadgeBackgroundStyle(badge: BackgroundThemeSource): CSSProperties {
+  // [20260901_1944] 우선순위 `background_animation` > `background_image_url` > `background_color`.
+  // 애니메이션이 켜져 있으면 배경 저작 모드가 "애니메이션"이라는 뜻이고, 그 애니메이션은 이미지
+  // 카드 안에서만 그려진다. 이때 전체 배경 레이어까지 함께 칠하면 저작 화면에서 선택하지도 않은
+  // 과거 값(구워둔 이미지·예전 배경색)이 화면 전체에 살아나므로 레이어를 비운다.
+  //
+  // 저장 시점에 background_image_url/background_color를 null로 덮지 않고 렌더링 단계에서
+  // 우선순위로 해결하는 이유: 티켓 20260901_1929가 저장 payload에서 background_image_url/
+  // background_video_url을 의도적으로 생략해 기존 DB 값을 보존하도록 바꿨다(제너레이터가 사라져
+  // 다시 만들 방법이 없는 값이다). 여기서 파괴적 null 덮어쓰기를 되살리면 그 결정을 뒤집는 것이라,
+  // 데이터는 보존하고 "무엇을 그릴지"만 이 한 곳에서 결정한다.
+  if (parseBlobAnimation(badge.background_animation)) return {}
   if (badge.background_image_url) {
     // [20260819_011] 이 스타일은 이제 앱 컬럼 폭(430px) 고정 배경 레이어 "한 곳"에만 적용된다.
     // 저장된 이미지는 SERVICE_WIDTH(430px) 기준으로 구운 정사각형이고, 적용 대상 레이어는
@@ -67,7 +81,21 @@ export function getBadgeBackgroundStyle(badge: BackgroundThemeSource): CSSProper
  * 영상만 남은 데이터에서도 투명 처리가 유지되도록 한다.
  */
 export function hasBadgeBackgroundTheme(badge: BackgroundThemeSource): boolean {
+  // [20260901_1944] 이 판정의 의미는 "고정 배경 레이어에 무언가 그려지는가"다. 애니메이션 모드는
+  // 그 레이어를 비우고(getBadgeBackgroundStyle 참조) 이미지 카드 안에만 그리므로, TopNav·본문은
+  // 배경이 없을 때와 동일하게(--color-surface / PAGE_BG) 남아야 한다 → false.
+  if (parseBlobAnimation(badge.background_animation)) return false
   return Boolean(badge.background_image_url || badge.background_video_url || badge.background_color)
+}
+
+/**
+ * 이미지 카드 안에서 실행할 배경 애니메이션 파라미터. 없거나 형식이 어긋나면 null. — [20260901_1944]
+ *
+ * 전체 배경 레이어(위 두 함수)와 렌더링 지점이 다르지만, "어떤 배경을 그릴 것인가"의 판단은
+ * 한 곳(이 모듈)에 모아 호출부가 우선순위를 각자 해석하지 않도록 한다.
+ */
+export function getBadgeBackgroundAnimation(badge: BackgroundThemeSource): BlobAnimationParams | null {
+  return parseBlobAnimation(badge.background_animation)
 }
 
 /**

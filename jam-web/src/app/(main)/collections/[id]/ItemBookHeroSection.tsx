@@ -1,5 +1,7 @@
 import { BookIcon } from '@/components/ui/icons'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
+import BlobAnimationBackground from '@/components/BlobAnimationBackground'
+import type { BlobAnimationParams } from '@/lib/blobAnimation'
 
 const TEXT_SECONDARY = '#B2B2B2'
 
@@ -15,6 +17,11 @@ interface ItemBookHeroSectionProps {
   slottedCount: number
   /** 전체 배지 개수 (0이면 진행도 바가 0%로 표시됨) */
   totalBadgeCount: number
+  /**
+   * 대표 이미지 카드 **안**에서 실행할 배경 애니메이션 파라미터. — [20260901_1944]
+   * 배지 상세(`BadgeHeroSection`)와 동일한 규약 — row에서 값을 뽑는 책임은 호출부에 있다.
+   */
+  backgroundAnimation?: BlobAnimationParams | null
 }
 
 /**
@@ -25,22 +32,25 @@ interface ItemBookHeroSectionProps {
  * `BadgeHeroSection` 패턴과 동일한 이유 — 저작 화면 미리보기가 실제 화면과 마크업이 달라지는
  * 사고를 반복하지 않기 위함(티켓 20260819_011에서 확정한 원칙).
  */
-export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCount }: ItemBookHeroSectionProps) {
+export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCount, backgroundAnimation }: ItemBookHeroSectionProps) {
   const pct = totalBadgeCount > 0 ? Math.round((slottedCount / totalBadgeCount) * 100) : 0
 
   return (
     <>
-      {/* 대표 이미지 — 미션 상세와 동일한 카드 형식 */}
+      {/* 대표 이미지 — 미션 상세와 동일한 카드 형식.
+          [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다(기존 overflow-hidden이 라운드
+          클리핑을 그대로 담당한다). 이미지는 캔버스 위(z-10)에 남는다. */}
       <div className="relative w-full aspect-square rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center">
+        {backgroundAnimation && <BlobAnimationBackground params={backgroundAnimation} />}
         {book.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={book.image_url}
             alt={book.name}
-            className="w-full h-full object-contain"
+            className="relative z-10 w-full h-full object-contain"
           />
         ) : (
-          <BookIcon className="w-16 h-16" style={{ color: '#AAAAAA' }} />
+          <BookIcon className="relative z-10 w-16 h-16" style={{ color: '#AAAAAA' }} />
         )}
       </div>
 

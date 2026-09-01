@@ -16,7 +16,7 @@ import BadgeConditionCard from './BadgeConditionCard'
 import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
 import { formatPaceSecPerKm } from '@/types/strava'
-import { getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
+import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
@@ -255,6 +255,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // 고정 레이어가 그대로 비쳐 보이게 하고, 배경이 없으면 기존과 동일하게 --color-surface를
   // 유지한다(회귀 방지).
   const themedBackground = hasBadgeBackgroundTheme(badgeRow)
+  // [20260901_1944] 이미지 카드 "안"에서 실행하는 블롭 애니메이션. 전체 배경 레이어와 렌더링
+  // 지점이 다르며, 애니메이션이 켜져 있으면 위 두 함수가 전체 레이어를 비운다(우선순위 규칙은
+  // badgeBackgroundTheme.ts 한 곳에서 결정).
+  const badgeCardAnimation = getBadgeBackgroundAnimation(badgeRow)
   const topNavStyle: React.CSSProperties = { background: themedBackground ? 'transparent' : 'var(--color-surface)' }
 
   // 뷰포트 전체(헤더 아래~본문~푸터)를 덮는 고정 배경 레이어 — [20260818_002 스코프 수정]
@@ -469,7 +473,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           }
         />
 
-        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
+        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
         {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링 */}
         {(isOwnBadge || !hasEarned) && (
@@ -560,7 +564,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
           }
         />
 
-        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
+        <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
         {/* info-section */}
         <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
@@ -629,7 +633,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
         }
       />
 
-      <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} />
+      <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
       {/* info-section */}
       <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">

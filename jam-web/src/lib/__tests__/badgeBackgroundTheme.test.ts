@@ -7,11 +7,13 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
+  getBadgeBackgroundAnimation,
   getBadgeBackgroundStyle,
   getBadgeBackgroundVideoUrl,
   hasBadgeBackgroundTheme,
   type BadgeBackgroundThemeSource,
 } from '@/lib/badgeBackgroundTheme'
+import { DEFAULT_BLOB_ANIMATION } from '@/lib/blobAnimation'
 
 const EMPTY: BadgeBackgroundThemeSource = {
   background_color: null,
@@ -80,6 +82,36 @@ describe('애니메이션(영상) 배경 — 20260819_012', () => {
   it('poster 없이 영상만 남은 데이터에서도 배경 테마로 판정한다', () => {
     const videoOnly = { ...EMPTY, background_video_url: 'https://cdn.example/bg.mp4' }
     expect(hasBadgeBackgroundTheme(videoOnly)).toBe(true)
+  })
+})
+
+describe('카드 안 블롭 애니메이션 배경 — 20260901_1944', () => {
+  const animated = { ...EMPTY, background_animation: DEFAULT_BLOB_ANIMATION }
+
+  it('애니메이션 파라미터를 돌려준다', () => {
+    expect(getBadgeBackgroundAnimation(animated)).toEqual(DEFAULT_BLOB_ANIMATION)
+  })
+
+  it('전체 배경 레이어는 비운다 — 애니메이션은 이미지 카드 안에만 그려진다', () => {
+    expect(getBadgeBackgroundStyle(animated)).toEqual({})
+    expect(hasBadgeBackgroundTheme(animated)).toBe(false)
+  })
+
+  it('과거에 구워둔 이미지 배경·배경색이 남아 있어도 애니메이션이 우선한다', () => {
+    const legacyLeftovers = {
+      ...animated,
+      background_color: '#ff0000',
+      background_image_url: 'https://cdn.example/bg.png',
+    }
+    expect(getBadgeBackgroundStyle(legacyLeftovers)).toEqual({})
+    expect(hasBadgeBackgroundTheme(legacyLeftovers)).toBe(false)
+  })
+
+  it('형식이 어긋난 값은 애니메이션 없음으로 보고 기존 배경 규칙이 그대로 산다', () => {
+    const broken = { ...EMPTY, background_color: '#1a1a1a', background_animation: { type: 'unknown' } }
+    expect(getBadgeBackgroundAnimation(broken)).toBeNull()
+    expect(getBadgeBackgroundStyle(broken)).toEqual({ backgroundColor: '#1a1a1a' })
+    expect(hasBadgeBackgroundTheme(broken)).toBe(true)
   })
 })
 

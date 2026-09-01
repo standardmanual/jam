@@ -41,6 +41,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       background_shader_id: body.background_shader_id !== undefined ? body.background_shader_id : existing.background_shader_id,
       background_image_url: body.background_image_url !== undefined ? body.background_image_url : existing.background_image_url,
       background_video_url: body.background_video_url !== undefined ? body.background_video_url : existing.background_video_url,
+      // [20260901_1944] 애니메이션 해제는 명시적 null로 온다 — undefined(필드 생략)와 구분 유지.
+      background_animation: body.background_animation !== undefined ? body.background_animation : existing.background_animation,
     })
     .eq('id', id)
     .select()

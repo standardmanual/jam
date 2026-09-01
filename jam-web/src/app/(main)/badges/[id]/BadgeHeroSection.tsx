@@ -3,6 +3,8 @@ import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRow } from '@/types/database'
 import { hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
+import BlobAnimationBackground from '@/components/BlobAnimationBackground'
+import type { BlobAnimationParams } from '@/lib/blobAnimation'
 
 /**
  * 배지 상세화면 hero-section (item/poi/activity 3변형 공통) — [20260818_002]
@@ -18,9 +20,16 @@ interface BadgeHeroSectionProps {
    * 배경 레이어가 이미 깔려 있는 경우에만 사용한다. — [20260819_011]
    */
   themedBackground?: boolean
+  /**
+   * 이미지 카드 **안**에서 실행할 배경 애니메이션 파라미터. — [20260901_1944]
+   * 상세화면 전체를 덮는 고정 배경 레이어와는 별개의 렌더링 지점이라, 배지 row에서 값을 뽑는
+   * 책임은 호출부(`getBadgeBackgroundAnimation`)에 두고 여기서는 그리기만 한다. 어드민 저작
+   * 미리보기는 아직 저장되지 않은 편집 중 파라미터를 그대로 넘긴다.
+   */
+  backgroundAnimation?: BlobAnimationParams | null
 }
 
-export default function BadgeHeroSection({ badge, hasEarned, themedBackground }: BadgeHeroSectionProps) {
+export default function BadgeHeroSection({ badge, hasEarned, themedBackground, backgroundAnimation }: BadgeHeroSectionProps) {
   // [20260819_011] 배경은 상세화면의 고정 배경 레이어 "한 곳에서만" 그린다. hero 카드가 배경을
   // 한 번 더 그리면(기존 동작) 카드 박스와 레이어 박스의 비율이 달라 같은 이미지가 서로 다른
   // 배율로 두 번 잘려 이음매가 보였다. 그래서 여기서는 배경을 그리지 않고, 배경이 있을 때는
@@ -34,8 +43,17 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground }:
     // 페인트 순서상 아래로 가려진다([20260818_002] 잔여 이슈, [20260818_003]에서 실색상 적용과
     // 함께 수정).
     <div className="relative z-10 px-6 pt-0 pb-[32px]">
-      <div className={['w-full aspect-square rounded-[var(--radius-cards)] flex flex-col p-6', themed ? 'bg-transparent' : 'bg-surface-elevated'].join(' ')}>
-        <div className="flex-1 flex items-center justify-center">
+      {/* [20260901_1944] 애니메이션 배경은 이 카드 안에만 그린다 — overflow-hidden으로 라운드 안에
+          가두고, 캔버스는 절대배치 최하단(z-0)에 두어 이미지·이름은 그 위(z-10)에 그대로 남는다.
+          애니메이션이 카드 배경 자체가 되므로 bg-surface-elevated는 깔지 않는다. */}
+      <div
+        className={[
+          'relative overflow-hidden w-full aspect-square rounded-[var(--radius-cards)] flex flex-col p-6',
+          backgroundAnimation || themed ? 'bg-transparent' : 'bg-surface-elevated',
+        ].join(' ')}
+      >
+        {backgroundAnimation && <BlobAnimationBackground params={backgroundAnimation} />}
+        <div className="relative z-10 flex-1 flex items-center justify-center">
           {badge.image_url ? (
             <div className="w-[200px] h-[200px] flex items-center justify-center">
               <Image
@@ -50,7 +68,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground }:
             <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
           )}
         </div>
-        <div className="flex flex-col items-center gap-2 pt-4">
+        <div className="relative z-10 flex flex-col items-center gap-2 pt-4">
           <RarityBadge rarity={badge.rarity} />
           <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badge.name}</h1>
         </div>

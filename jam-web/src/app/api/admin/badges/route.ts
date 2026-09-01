@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, category, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url } = body
+  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, category, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
 
   if (!name || !description || !type || !rarity || !image_url) {
     return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 })
@@ -86,6 +86,10 @@ export async function POST(req: NextRequest) {
     // 그대로 반영한다(20260819_012).
     background_image_url: background_image_url ?? null,
     background_video_url: background_video_url ?? null,
+    // [20260901_1944] 이미지 카드 안에서 라이브 실행하는 애니메이션 파라미터(jsonb). 위 4필드가
+    // 상세화면 전체 배경 레이어용인 것과 렌더링 지점이 다르며, 우선순위 판단은
+    // lib/badgeBackgroundTheme.ts 한 곳에 있다.
+    background_animation: background_animation ?? null,
   }
   const badgesQuery = supabase.from('badges')
   const insertQuery = badgesQuery.insert(insertPayload)

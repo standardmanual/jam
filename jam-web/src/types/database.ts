@@ -146,6 +146,10 @@ export interface BadgeRow {
   /** 배경 제너레이터 애니메이션 모드 결과를 구운 반복 재생 MP4(H.264)의 Storage URL.
    *  값이 있으면 background_image_url은 그 영상의 poster/폴백으로 쓰인다(20260819_012) */
   background_video_url: string | null
+  /** 이미지 카드 안에서 라이브 실행하는 배경 애니메이션 파라미터(jsonb). null이면 없음.
+   *  전체 배경 레이어용인 위 4필드와 렌더링 지점이 다르다 — `lib/blobAnimation.ts` 참조
+   *  (20260901_1944) */
+  background_animation: Record<string, unknown> | null
 }
 
 export interface UserActivityBadgeRow {
@@ -312,6 +316,8 @@ export interface ItemBookRow {
   background_image_url: string | null
   /** 20260819_013 — 배경 제너레이터 애니메이션 결과(반복 재생 MP4). background_image_url은 poster로 함께 채워진다. */
   background_video_url: string | null
+  /** 20260901_1944 — 컬렉션 상세화면 대표 이미지 카드 안에서 실행하는 배경 애니메이션 파라미터(jsonb) */
+  background_animation: Record<string, unknown> | null
 }
 
 export interface PoiRow {
@@ -515,6 +521,8 @@ export interface FactionRow {
   background_image_url: string | null
   /** 20260819_013 — 배경 제너레이터 애니메이션 결과(반복 재생 MP4). background_image_url은 poster로 함께 채워진다. */
   background_video_url: string | null
+  /** 20260901_1944 — 하위 일괄 적용 원본이 되는 배경 애니메이션 파라미터(jsonb). 세계관 자체에는 렌더링되지 않는다. */
+  background_animation: Record<string, unknown> | null
 }
 
 export interface FactionAdjacencyRow {
