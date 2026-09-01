@@ -16,9 +16,11 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
  */
 const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg-inverse);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg-inverse)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out);will-change:transform,opacity}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill{transition:none!important}}`;
 
-// 활성 배경 필의 고정 크기(px) — 렌더 스타일(width/height:64/48)과 반드시 일치해야
+// 활성 배경 필의 고정 크기(px) — 렌더 스타일(width/height:80/48)과 반드시 일치해야
 // offsetLeft/offsetWidth 기반 중앙 정렬 계산(moveTo)이 어긋나지 않는다.
-const PILL_WIDTH = 64;
+// 폭 80px(원래 64px에서 확대) — 첫/끝 탭에서 필-nav 사이 가로 여백을 세로 여백(2px)과
+// 맞추기 위함(티켓 20260901_1626 후속, 서비스 TabBar.tsx와 동일 근거).
+const PILL_WIDTH = 80;
 const PILL_HEIGHT = 48;
 
 // nav와 필 둘 다 "완전히 둥근" 캡슐이지만 각자 자기 높이 기준으로 auto-clamp하면
