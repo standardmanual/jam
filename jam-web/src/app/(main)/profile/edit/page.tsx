@@ -330,6 +330,20 @@ export default function ProfileEditPage() {
           >
             {d.profileEdit.cancelButton}
           </button>
+          {/* 티켓 20260901_2217: 탈퇴 신청 안내 — 실제 삭제 로직 없이 mailto 링크로만
+              접수 창구를 연다. 저장/취소와 시각적으로 구분되도록 별도 줄에 두고, 캡션으로
+              "되돌릴 수 없음"을 먼저 알린다(UX 라이팅 가이드 — 해요체·간결함). */}
+          <a
+            href="mailto:sihyunrr@gmail.com?subject=JAM!%20탈퇴%20신청"
+            className="w-full min-h-11 flex flex-col items-center justify-center gap-1 text-center active:opacity-70 transition-opacity"
+          >
+            <span className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">
+              {d.profileEdit.withdrawLink}
+            </span>
+            <span className="text-text/40 text-[length:var(--text-caption)] leading-[var(--leading-caption)]">
+              {d.profileEdit.withdrawCaption}
+            </span>
+          </a>
         </div>
       </div>
     </div>
