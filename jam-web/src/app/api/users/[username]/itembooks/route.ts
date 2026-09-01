@@ -15,29 +15,34 @@ export async function GET(
   const supabase = await createClient()
   const { data: { user: currentUser } } = await supabase.auth.getUser()
 
-  const { data: targetRaw } = await service
+  const { data: targetRaw, error: targetError } = await service
     .from('users')
     .select('id')
     .eq('username', username.toLowerCase())
     .maybeSingle()
+  // 20260901_1848: 조회 실패도 !targetRaw로 걸려 404로 위장된다 — 로그로 구분
+  if (targetError) console.error('[api/users/[username]/itembooks] 대상 유저(users) 조회 실패', targetError)
 
   if (!targetRaw) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
   const userId = (targetRaw as { id: string }).id
 
-  const { data: inventoryRaw } = await service
+  // .single()이라 무인벤토리도 error로 잡힘 — 실제 오류와 구분은 못 하지만 최소 가시성 확보
+  const { data: inventoryRaw, error: inventoryError } = await service
     .from('inventory')
     .select('id')
     .eq('user_id', userId)
     .single()
+  if (inventoryError) console.error('[api/users/[username]/itembooks] inventory 조회 실패(무인벤토리 포함)', inventoryError)
   const inventory = inventoryRaw as { id: string } | null
 
   if (!inventory) return NextResponse.json({ books: [] })
 
-  const { data: invItemsRaw } = await service
+  const { data: invItemsRaw, error: invItemsError } = await service
     .from('inventory_items')
     .select('badge_id, badge:badges(item_book_id, type)')
     .eq('inventory_id', inventory.id)
     .is('dropped_at', null)
+  if (invItemsError) console.error('[api/users/[username]/itembooks] inventory_items 조회 실패', invItemsError)
 
   type InvItemJoin = { badge_id: string; badge: { item_book_id: string | null; type: string } | null }
   const invItems = (invItemsRaw ?? []) as unknown as InvItemJoin[]
@@ -54,10 +59,10 @@ export async function GET(
   if (bookIds.length === 0) return NextResponse.json({ books: [] })
 
   const [
-    { data: booksRaw },
-    { data: bookBadgesRaw },
-    { data: slotsRaw },
-    { data: completionsRaw },
+    { data: booksRaw, error: booksError },
+    { data: bookBadgesRaw, error: bookBadgesError },
+    { data: slotsRaw, error: slotsError },
+    { data: completionsRaw, error: completionsError },
   ] = await Promise.all([
       service
       .from('item_books')
@@ -68,6 +73,10 @@ export async function GET(
       service.from('user_item_book_slots').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
       service.from('user_item_book_completions').select('item_book_id').eq('user_id', userId).in('item_book_id', bookIds),
   ])
+  if (booksError) console.error('[api/users/[username]/itembooks] item_books 조회 실패', booksError)
+  if (bookBadgesError) console.error('[api/users/[username]/itembooks] 아이템북 소속 배지 조회 실패', bookBadgesError)
+  if (slotsError) console.error('[api/users/[username]/itembooks] user_item_book_slots 조회 실패', slotsError)
+  if (completionsError) console.error('[api/users/[username]/itembooks] user_item_book_completions 조회 실패', completionsError)
 
   const totalByBook = new Map<string, number>()
   const rarityByBook = new Map<string, BadgeRarity>()

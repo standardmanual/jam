@@ -35,31 +35,36 @@ export default async function UserItemBooksPage({ params }: Props) {
 
   const service = createServiceClient()
 
-  const { data: targetRaw } = await service
+  const { data: targetRaw, error: targetError } = await service
     .from('users')
     .select('id, username, display_name')
     .eq('username', username.toLowerCase())
     .maybeSingle()
+  // 20260901_1848: 조회 실패도 !targetRaw로 걸려 404(notFound)로 위장된다 — 로그로 구분
+  if (targetError) console.error('[[username]/collections/page] 대상 유저(users) 조회 실패', targetError)
 
   if (!targetRaw) notFound()
   const target = targetRaw as { id: string; username: string; display_name: string | null }
 
-  // 대상 유저 인벤토리
-  const { data: inventoryRaw } = await service
+  // 대상 유저 인벤토리 (.single()이라 무인벤토리도 error로 잡힘 — 실제 오류와 구분 불가하지만
+  // 최소 가시성 확보 차원에서 우선 로깅)
+  const { data: inventoryRaw, error: inventoryError } = await service
     .from('inventory')
     .select('id')
     .eq('user_id', target.id)
     .single()
+  if (inventoryError) console.error('[[username]/collections/page] inventory 조회 실패(무인벤토리 포함)', inventoryError)
   const inventory = inventoryRaw as { id: string } | null
 
   let cards: BookCard[] = []
 
   if (inventory) {
-    const { data: invItemsRaw } = await service
+    const { data: invItemsRaw, error: invItemsError } = await service
       .from('inventory_items')
       .select('badge_id, badge:badges(item_book_id, type)')
       .eq('inventory_id', inventory.id)
       .is('dropped_at', null)
+    if (invItemsError) console.error('[[username]/collections/page] inventory_items 조회 실패', invItemsError)
 
     type InvItemJoin = {
       badge_id: string
@@ -79,10 +84,10 @@ export default async function UserItemBooksPage({ params }: Props) {
 
     if (bookIds.length > 0) {
       const [
-        { data: booksRaw },
-        { data: bookBadgesRaw },
-        { data: slotsRaw },
-        { data: completionsRaw },
+        { data: booksRaw, error: booksError },
+        { data: bookBadgesRaw, error: bookBadgesError },
+        { data: slotsRaw, error: slotsError },
+        { data: completionsRaw, error: completionsError },
       ] = await Promise.all([
         service
           .from('item_books')
@@ -106,6 +111,10 @@ export default async function UserItemBooksPage({ params }: Props) {
           .eq('user_id', target.id)
           .in('item_book_id', bookIds),
       ])
+      if (booksError) console.error('[[username]/collections/page] item_books 조회 실패', booksError)
+      if (bookBadgesError) console.error('[[username]/collections/page] 아이템북 소속 배지 조회 실패', bookBadgesError)
+      if (slotsError) console.error('[[username]/collections/page] user_item_book_slots 조회 실패', slotsError)
+      if (completionsError) console.error('[[username]/collections/page] user_item_book_completions 조회 실패', completionsError)
 
       const books = (booksRaw ?? []) as unknown as ItemBookWithFaction[]
 

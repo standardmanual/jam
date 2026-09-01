@@ -25,21 +25,24 @@ export default async function FollowingPage({ params }: Props) {
   const service = createServiceClient()
 
   // username → userId
-  const { data: targetRaw } = await service
+  const { data: targetRaw, error: targetError } = await service
     .from('users')
     .select('id, username, display_name')
     .eq('username', username.toLowerCase())
     .maybeSingle()
+  // 20260901_1848: 조회 실패도 !targetRaw로 걸려 404(notFound)로 위장된다 — 로그로 구분
+  if (targetError) console.error('[following/page] 대상 유저(users) 조회 실패', targetError)
   if (!targetRaw) notFound()
   const target = targetRaw as { id: string; username: string; display_name: string | null }
 
   // 팔로잉 목록 (target이 팔로우하는 사람들)
-  const { data: followsRaw } = await service
+  const { data: followsRaw, error: followsError } = await service
     .from('user_follows')
     .select('following_id, created_at')
     .eq('follower_id', target.id)
     .order('created_at', { ascending: false })
     .limit(100)
+  if (followsError) console.error('[following/page] user_follows(팔로잉) 조회 실패', followsError)
 
   // 프로덕션에서는 스테이징 전용 테스트 계정을 팔로잉 목록에서 제외한다.
   const excludedIds = excludedTestUserIds()
@@ -49,20 +52,22 @@ export default async function FollowingPage({ params }: Props) {
 
   const usersMap: Record<string, { id: string; username: string | null; display_name: string | null; avatar_url: string | null }> = {}
   if (followingIds.length > 0) {
-    const { data: usersRaw } = await service
+    const { data: usersRaw, error: usersError } = await service
       .from('users')
       .select('id, username, display_name, avatar_url')
       .in('id', followingIds)
+    if (usersError) console.error('[following/page] 팔로잉 유저 정보 조회 실패', usersError)
     for (const u of (usersRaw ?? []) as { id: string; username: string | null; display_name: string | null; avatar_url: string | null }[]) {
       usersMap[u.id] = u
     }
   }
 
   // 내가 팔로우 중인 사람들
-  const { data: myFollowsRaw } = await service
+  const { data: myFollowsRaw, error: myFollowsError } = await service
     .from('user_follows')
     .select('following_id')
     .eq('follower_id', user.id)
+  if (myFollowsError) console.error('[following/page] 내 팔로잉 목록 조회 실패', myFollowsError)
   const myFollowing = new Set((myFollowsRaw ?? []).map((f: { following_id: string }) => f.following_id))
 
   const followingList = follows

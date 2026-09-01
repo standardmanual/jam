@@ -44,11 +44,12 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   let subjectId = user.id
   let subjectUsername: string | null = null
   if (u) {
-    const { data: subjectRaw } = await service
+    const { data: subjectRaw, error: subjectError } = await service
       .from('users')
       .select('id, username')
       .eq('username', u.toLowerCase())
       .maybeSingle()
+    if (subjectError) console.error('[collections/[id]/page] 대상 유저(users) 조회 실패', subjectError)
     if (subjectRaw) {
       subjectId = (subjectRaw as { id: string; username: string }).id
       subjectUsername = (subjectRaw as { id: string; username: string }).username
@@ -63,24 +64,27 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     null
 
   // 1) 아이템북 + 세계관
-  const { data: bookRaw } = await supabase
+  const { data: bookRaw, error: bookError } = await supabase
     .from('item_books')
     .select('*, faction:factions(*)')
     .eq('id', id)
     .single()
+  // 20260901_1848: DB 조회 실패도 !bookRaw로 걸려 404(notFound)로 위장된다 — 로그로 구분
+  if (bookError) console.error('[collections/[id]/page] item_books 조회 실패', bookError)
   if (!bookRaw) notFound()
   const book = bookRaw as unknown as ItemBookWithFaction
 
   // 2) 배지 (아이템 + 체크인)
   // 소프트 삭제된 배지(badges.deleted_at)는 컬렉션 슬롯 목록에서 제외한다(20260824_007) —
   // 해당 슬롯만 빠지고 나머지 슬롯·완성도 계산은 그대로 유지된다.
-  const { data: badgesRaw } = await supabase
+  const { data: badgesRaw, error: badgesError } = await supabase
     .from('badges')
     .select('*')
     .eq('item_book_id', id)
     .in('type', ['item', 'checkin'])
     .is('deleted_at', null)
     .order('created_at', { ascending: true })
+  if (badgesError) console.error('[collections/[id]/page] 아이템북 소속 배지 조회 실패', badgesError)
   const allBookBadges = (badgesRaw ?? []) as BadgeRow[]
   const badges = allBookBadges.filter((b) => b.type === 'item')
   const checkinBadges = allBookBadges.filter((b) => b.type === 'checkin')
@@ -88,11 +92,15 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   const checkinBadgeIds = checkinBadges.map((b) => b.id)
 
   // 3) 인벤토리
-  const { data: inventoryRaw } = await service
+  // 참고: .single()이라 "행 없음"도 error로 잡힌다(PGRST116) — 정상 무인벤토리 케이스와
+  // 실제 DB 오류를 로그에서 구분하려면 error.code까지 봐야 하지만, 이번 티켓은 최소 가시성
+  // 확보가 목표이므로 우선 그대로 로깅만 남긴다.
+  const { data: inventoryRaw, error: inventoryError } = await service
     .from('inventory')
     .select('id')
     .eq('user_id', subjectId)
     .single()
+  if (inventoryError) console.error('[collections/[id]/page] inventory 조회 실패(무인벤토리 포함)', inventoryError)
   const inventory = inventoryRaw as { id: string } | null
 
   // 4~7) 병렬 조회
@@ -105,7 +113,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           .in('badge_id', badgeIds)
           .is('dropped_at', null)
           .order('obtained_at', { ascending: true })
-      : Promise.resolve({ data: [] as InventoryItemRow[] }),
+      : Promise.resolve({ data: [] as InventoryItemRow[], error: null }),
     service
       .from('user_item_book_slots')
       .select('id, badge_id, slotted_at')
@@ -123,8 +131,13 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
           .select('badge_id')
           .eq('user_id', subjectId)
           .in('badge_id', checkinBadgeIds)
-      : Promise.resolve({ data: [] as { badge_id: string }[] }),
+      : Promise.resolve({ data: [] as { badge_id: string }[], error: null }),
   ])
+
+  if (invRes.error) console.error('[collections/[id]/page] inventory_items 조회 실패', invRes.error)
+  if (slotsRes.error) console.error('[collections/[id]/page] user_item_book_slots 조회 실패', slotsRes.error)
+  if (completionRes.error) console.error('[collections/[id]/page] user_item_book_completions 조회 실패', completionRes.error)
+  if (checkinEarnsRes.error) console.error('[collections/[id]/page] user_checkin_badge_earns 조회 실패', checkinEarnsRes.error)
 
   const inventoryItems = (invRes.data ?? []) as Pick<
     InventoryItemRow,

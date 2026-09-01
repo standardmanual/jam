@@ -42,12 +42,13 @@ async function searchUsers(rawQuery: string): Promise<UserSearchResult[]> {
   const service = createServiceClient()
   const pattern = `%${sanitized}%`
 
-  const { data } = await service
+  const { data, error } = await service
     .from('users')
     .select('id, username, display_name, avatar_url, region, activity_types')
     .not('username', 'is', null)
     .or(`username.ilike.${pattern},email.ilike.${pattern}`)
     .limit(30)
+  if (error) console.error('[search/page] 유저 검색 조회 실패', error)
 
   const lowerQ = sanitized.toLowerCase()
   // 프로덕션에서는 스테이징 전용 테스트 계정을 검색 결과에서 제외한다.

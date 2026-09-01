@@ -21,11 +21,13 @@ export async function GET(
   const service = createServiceClient()
 
   // username → userId
-  const { data: targetRaw } = await service
+  const { data: targetRaw, error: targetError } = await service
     .from('users')
     .select('id')
     .eq('username', username.toLowerCase())
     .maybeSingle()
+  // 20260901_1848: 조회 실패도 !targetRaw로 걸려 404로 위장된다 — 로그로 구분
+  if (targetError) console.error('[api/users/[username]/followers] 대상 유저(users) 조회 실패', targetError)
 
   if (!targetRaw) {
     return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
@@ -33,12 +35,13 @@ export async function GET(
   const targetId = (targetRaw as { id: string }).id
 
   // 팔로우 관계: following_id = targetId → follower_id 목록
-  const { data: followsRaw } = await service
+  const { data: followsRaw, error: followsError } = await service
     .from('user_follows')
     .select('follower_id, created_at')
     .eq('following_id', targetId)
     .order('created_at', { ascending: false })
     .limit(100)
+  if (followsError) console.error('[api/users/[username]/followers] user_follows 조회 실패', followsError)
 
   // 프로덕션에서는 스테이징 전용 테스트 계정을 팔로워 목록에서 제외한다.
   const excludedIds = excludedTestUserIds()
@@ -51,10 +54,11 @@ export async function GET(
   }
 
   // 유저 정보 조회
-  const { data: usersRaw } = await service
+  const { data: usersRaw, error: usersError } = await service
     .from('users')
     .select('id, username, display_name, avatar_url')
     .in('id', userIds)
+  if (usersError) console.error('[api/users/[username]/followers] 팔로워 유저 정보 조회 실패', usersError)
 
   const userMap = new Map<string, Pick<UserRow, 'id' | 'username' | 'display_name' | 'avatar_url'>>()
   for (const u of (usersRaw ?? []) as Pick<UserRow, 'id' | 'username' | 'display_name' | 'avatar_url'>[]) {
@@ -64,11 +68,12 @@ export async function GET(
   // 로그인 유저가 팔로우 중인 대상 집합
   let followingSet = new Set<string>()
   if (user) {
-    const { data: myFollowsRaw } = await service
+    const { data: myFollowsRaw, error: myFollowsError } = await service
       .from('user_follows')
       .select('following_id')
       .eq('follower_id', user.id)
       .in('following_id', userIds)
+    if (myFollowsError) console.error('[api/users/[username]/followers] 내 팔로잉 목록 조회 실패', myFollowsError)
     followingSet = new Set(
       ((myFollowsRaw ?? []) as Pick<UserFollowRow, 'following_id'>[]).map((f) => f.following_id)
     )

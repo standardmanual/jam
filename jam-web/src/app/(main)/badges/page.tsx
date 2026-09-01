@@ -26,10 +26,10 @@ export default async function BadgesPage({ searchParams }: Props) {
   if (!user) redirect('/login')
 
   const [
-    { data: earnedBadges },
-    { data: inventoryData },
-    { data: checkinEarns },
-    { data: poiCategories },
+    { data: earnedBadges, error: earnedBadgesError },
+    { data: inventoryData, error: inventoryError },
+    { data: checkinEarns, error: checkinEarnsError },
+    { data: poiCategories, error: poiCategoriesError },
   ] = await Promise.all([
     // 액티비티 배지 — 어떤 배지를 어떻게 얻는지는 /badges/tree가 전담하게 됐으므로
     // (티켓 20260901_0911) 이 탭은 체크인 탭과 동일하게 획득분만 조회한다.
@@ -53,6 +53,13 @@ export default async function BadgesPage({ searchParams }: Props) {
     // poi_categories는 RLS가 service role 전용이라 일반 유저 클라이언트로는 못 읽는다
     createServiceClient().from('poi_categories').select('slug, label'),
   ])
+
+  // 20260901_1848: 조회 실패가 "빈 목록"으로 위장되지 않도록 서버 로그로 가시화한다
+  // (화면 동작은 기존과 동일하게 ?? [] 폴백 유지 — UX는 이번 티켓 범위 밖).
+  if (earnedBadgesError) console.error('[badges/page] user_activity_badges 조회 실패', earnedBadgesError)
+  if (inventoryError) console.error('[badges/page] inventory 조회 실패', inventoryError)
+  if (checkinEarnsError) console.error('[badges/page] user_checkin_badge_earns 조회 실패', checkinEarnsError)
+  if (poiCategoriesError) console.error('[badges/page] poi_categories 조회 실패', poiCategoriesError)
 
   // 소프트 삭제된 배지(badges.deleted_at)는 서비스 화면에서 숨긴다 — 발급 이력 자체는 DB에 남지만
   // 마이페이지·인벤토리에는 노출하지 않는다.
@@ -86,24 +93,33 @@ export default async function BadgesPage({ searchParams }: Props) {
   let itemBookProgress: ItemBookProgress[] = []
 
   if (ownedBadgeIds.length > 0) {
-    const { data: ownedBadgesWithBook } = await supabase
+    const { data: ownedBadgesWithBook, error: ownedBadgesWithBookError } = await supabase
       .from('badges')
       .select('id, item_book_id')
       .in('id', ownedBadgeIds)
       .eq('type', 'item')
       .not('item_book_id', 'is', null)
       .is('deleted_at', null)
+    if (ownedBadgesWithBookError) console.error('[badges/page] 보유 아이템배지→아이템북 매핑 조회 실패', ownedBadgesWithBookError)
 
     const bookIds = [...new Set(((ownedBadgesWithBook ?? []) as { id: string; item_book_id: string }[]).map((b) => b.item_book_id))]
 
     if (bookIds.length > 0) {
-      const [{ data: booksRaw }, { data: bookBadgesRaw }, { data: slotsRaw }, { data: completionsRaw }] =
-        await Promise.all([
-          supabase.from('item_books').select('*').in('id', bookIds),
-          supabase.from('badges').select('id, item_book_id, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
-          supabase.from('user_item_book_slots').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
-          supabase.from('user_item_book_completions').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
-        ])
+      const [
+        { data: booksRaw, error: booksError },
+        { data: bookBadgesRaw, error: bookBadgesError },
+        { data: slotsRaw, error: slotsError },
+        { data: completionsRaw, error: completionsError },
+      ] = await Promise.all([
+        supabase.from('item_books').select('*').in('id', bookIds),
+        supabase.from('badges').select('id, item_book_id, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
+        supabase.from('user_item_book_slots').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
+        supabase.from('user_item_book_completions').select('item_book_id').eq('user_id', user.id).in('item_book_id', bookIds),
+      ])
+      if (booksError) console.error('[badges/page] item_books 조회 실패', booksError)
+      if (bookBadgesError) console.error('[badges/page] 아이템북 소속 배지 조회 실패', bookBadgesError)
+      if (slotsError) console.error('[badges/page] user_item_book_slots 조회 실패', slotsError)
+      if (completionsError) console.error('[badges/page] user_item_book_completions 조회 실패', completionsError)
 
       books = (booksRaw ?? []) as ItemBookRow[]
 
@@ -173,6 +189,12 @@ export default async function BadgesPage({ searchParams }: Props) {
         )
       ),
     ])
+    earnedCheckinBadgeRowChunks.forEach((r, i) => {
+      if (r.error) console.error(`[badges/page] 체크인 배지 청크(${i}) 조회 실패`, r.error)
+    })
+    linkedPoiChunks.forEach((r, i) => {
+      if (r.error) console.error(`[badges/page] 체크인 배지 연결 POI 청크(${i}) 조회 실패`, r.error)
+    })
     const earnedCheckinBadgeRows = earnedCheckinBadgeRowChunks.flatMap((r) => r.data ?? [])
     const linkedPois = linkedPoiChunks.flatMap((r) => r.data ?? [])
 

@@ -61,9 +61,12 @@ export async function GET(
     .filter((id): id is string => Boolean(id) && !excludedIds.includes(id as string)))]
   // users.username은 DB에서 NULL 허용이다(가입 직후 미설정). getDisplayName()이 null을 받아
   // display_name → '' 순으로 폴백하므로 여기서도 nullable을 그대로 표기한다.
-  const usersData: { id: string; username: string | null; display_name: string | null }[] = dropperIds.length > 0
-    ? ((await service.from('users').select('id, username, display_name').in('id', dropperIds)).data ?? [])
-    : []
+  let usersData: { id: string; username: string | null; display_name: string | null }[] = []
+  if (dropperIds.length > 0) {
+    const usersRes = await service.from('users').select('id, username, display_name').in('id', dropperIds)
+    if (usersRes.error) console.error('[poi drops] 드랍퍼 유저 정보 조회 실패', usersRes.error)
+    usersData = usersRes.data ?? []
+  }
   const nameById: Record<string, string> = {}
   for (const u of usersData) nameById[u.id] = getDisplayName(u)
 
