@@ -1,9 +1,9 @@
 ---
 id: 20260901_1846
 category: Infra
-status: OPEN
+status: CLOSED
 created: 2026-09-01
-closed:
+closed: 2026-09-01
 ---
 
 # [Infra] 고아 파일 일괄 정리 — wandering-eyes.css / CollectionGridCard 2.tsx
@@ -58,9 +58,17 @@ D  jam-web/src/components/ui/wandering-eyes.css
 해당 없음 (죽은 파일 삭제)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-01
+- 환경: staging (fast-forward 머지 `bf8e09b0`)
+- 커밋: `bf8e09b0`
+
+### 작업 중 사고 및 복구 (기록용)
+공유 작업 디렉터리의 git 인덱스 경합으로, 다른 병렬 세션(티켓 20260901_1944)이 스테이징해둔
+파일 6건이 중간 커밋(`acd9956d`)에 잘못 섞여 들어갔다. jam-developer가 즉시 발견해
+(1) 그 세션의 작업을 `rescue/20260901_1944-blob-animation` 브랜치로 origin에 보존,
+(2) `git rm --cached`로 오염 파일을 이 브랜치에서 제거(실물은 워킹디렉터리 보존),
+(3) 워킹디렉터리를 그 세션이 이어서 쓸 수 있는 상태로 복원. 데이터 유실 없음, 게이트
+리뷰어가 전 과정 재검증. 사용자에게 원격 브랜치 상태 확인을 요청함(오케스트레이터 보고).
 
 ### 주요 의사결정 / 핵심 메모
 > 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
