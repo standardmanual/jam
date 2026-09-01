@@ -142,7 +142,11 @@ if (existsSync(globals)) {
     if (!next.includes(i)) {
       // 토큰 CSS 는 styles.css 앞에 와야 변수가 먼저 정의된다.
       const at = next.indexOf('styles.css');
-      at >= 0 ? next.splice(at, 0, i) : next.push(i);
+      if (at >= 0) {
+        next.splice(at, 0, i);
+      } else {
+        next.push(i);
+      }
       changes.push(`globalCssPaths 추가: ${i}`);
     }
   }

@@ -426,8 +426,6 @@ function SimpleAvatar({ url }: { url: string | null }) {
 // ────────────────────────────────────────────────────────────────
 export default function MissionStatusClient({
   missionId,
-  missionTitle: _missionTitle,
-  displayType: _displayType,
 }: Props) {
   const [data, setData] = useState<StatusResponse | null>(null)
   const [error, setError] = useState<string | null>(null)

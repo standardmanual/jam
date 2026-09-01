@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import LocalDate from '@/components/LocalDate'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import { d } from '@/lib/i18n'

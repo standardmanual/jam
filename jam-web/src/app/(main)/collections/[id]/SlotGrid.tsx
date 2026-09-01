@@ -141,10 +141,6 @@ export default function SlotGrid({
           const isUndiscovered = !isSlotted && inventoryItem == null
           const pending = pendingBadgeId === badge.id
 
-          const serialLabel = inventoryItem
-            ? `${d.itembooks.ownedPrefix}${inventoryItem.serial_prefix ?? '#'}${inventoryItem.serial_number}`
-            : ''
-
           return (
             <BadgeGridCard
               key={badge.id}

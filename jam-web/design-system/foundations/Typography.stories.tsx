@@ -8,7 +8,6 @@ function useTokenValue(name: string): string {
 
 // 타이포 스케일 한 행
 function TypeRow({
-  label,
   textToken,
   leadingToken,
   weightToken,
