@@ -201,14 +201,16 @@ export default function TabBar({ username }: TabBarProps) {
             className="relative flex-1 flex items-center justify-center h-full min-w-11 transition-transform duration-100 active:scale-90"
           >
             {/* 활성 탭 배경 필 — 요청: "선택된 탭의 배경뒤에 활성 상태를 표현해줘".
-                아이콘보다 먼저 그려 뒤에 깔리고, 44px 정사각으로 아이콘 영역만 감싼다
-                (Link 자체는 flex-1이라 탭마다 폭이 다를 수 있어, 이 배경은 아이콘 크기에
-                맞춰 별도로 중앙 정렬한다). 흰 필보다 더 불투명한 흰색을 얹어 다크 아이콘이
-                위에서 대비를 유지한다. */}
+                아이콘보다 먼저 그려 뒤에 깔린다(Link 자체는 flex-1이라 탭마다 폭이 다를
+                수 있어, 이 배경은 별도로 중앙 정렬한다). 참고 스크린샷처럼 정사각·완전한
+                원이 아니라 "양옆은 완전히 둥글고 위아래는 직선"인 캡슐(스타디움) 모양 —
+                높이보다 폭을 넓게 잡고 rounded-full(반경이 짧은 변인 높이에 의해 자연히
+                클램프됨)을 적용하면 만들어진다. 흰 필보다 더 불투명한 흰색을 얹어 다크
+                아이콘이 위에서 대비를 유지한다. */}
             {active && (
               <span
                 aria-hidden="true"
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-[var(--radius-card)]"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-12 rounded-full"
                 style={{ background: 'rgba(255,255,255,0.9)' }}
               />
             )}
