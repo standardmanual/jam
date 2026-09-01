@@ -16,11 +16,11 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
  */
 const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg-inverse);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg-inverse)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out);will-change:transform,opacity}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill{transition:none!important}}`;
 
-// 활성 배경 필의 고정 크기(px) — 렌더 스타일(width/height:80/48)과 반드시 일치해야
+// 활성 배경 필의 고정 크기(px) — 렌더 스타일(width/height:68/48)과 반드시 일치해야
 // offsetLeft/offsetWidth 기반 중앙 정렬 계산(moveTo)이 어긋나지 않는다.
-// 폭 80px(원래 64px에서 확대) — 첫/끝 탭에서 필-nav 사이 가로 여백을 세로 여백(2px)과
-// 맞추기 위함(티켓 20260901_1626 후속, 서비스 TabBar.tsx와 동일 근거).
-const PILL_WIDTH = 80;
+// 폭 68px·nav 높이 64px — 첫/끝 탭에서 필-nav 가로 여백이 세로 여백과 동일한 8px이
+// 되도록 역산한 값(티켓 20260901_1626 후속, 서비스 TabBar.tsx와 동일 근거).
+const PILL_WIDTH = 68;
 const PILL_HEIGHT = 48;
 
 // nav와 필 둘 다 "완전히 둥근" 캡슐이지만 각자 자기 높이 기준으로 auto-clamp하면
@@ -149,7 +149,7 @@ export function TabBar({ active = 'today', onChange }) {
          20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
          최소 여백 10px로 재조정. */
       bottom: 'max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px))',
-      width: 'calc(100% - 42px)', maxWidth: 388, height: 52,
+      width: 'calc(100% - 42px)', maxWidth: 388, height: 64,
       // PILL_RADIUS로 고정(위 상수 주석 참고) — var(--radius-pill)은 nav 자기 높이 기준으로
       // auto-clamp돼 필과 다른 반경이 나온다.
       borderRadius: PILL_RADIUS,
