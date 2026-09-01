@@ -202,11 +202,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   let subjectId = user.id
   let subjectUsername: string | null = null
   if (u) {
-        const { data: subjectRaw } = await service
+        const { data: subjectRaw, error: subjectError } = await service
       .from('users')
       .select('id, username')
       .eq('username', u.toLowerCase())
       .maybeSingle()
+    if (subjectError) console.error('[badges/[id]/page] 대상 유저(users) 조회 실패', subjectError)
     if (subjectRaw) {
       subjectId = (subjectRaw as { id: string; username: string }).id
       subjectUsername = (subjectRaw as { id: string; username: string }).username
@@ -214,7 +215,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   }
   const isOwnBadge = subjectId === user.id
 
-  const [{ data: badge }, { data: earnedRow }, { data: ownedBadgesRaw }, { data: stravaConnectionRaw }] = await Promise.all([
+  const [
+    { data: badge, error: badgeError },
+    { data: earnedRow, error: earnedRowError },
+    { data: ownedBadgesRaw, error: ownedBadgesError },
+    { data: stravaConnectionRaw, error: stravaConnectionError },
+  ] = await Promise.all([
     // 소프트 삭제된 배지(badges.deleted_at)는 직접 접근 시 존재하지 않는 배지와 동일하게 취급한다
     // (20260824_007) — 없으면 아래 notFound()로 빠진다. 이후 이 배지에 종속된 소속 컬렉션·
     // POI 역조회 조회는 notFound() 이후 코드라 자동으로 함께 막힌다.
@@ -230,6 +236,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     // 미리 조회한다(20260821_004 재작업: 클릭 후가 아니라 클릭 전에 판별해야 함).
     service.from('strava_connections').select('user_id').eq('user_id', subjectId).maybeSingle(),
   ])
+  // 20260901_1848: 이 파일이 티켓 20260824_017에서 "조회 실패가 빈 목록으로 위장된다"고
+  // 지적된 원 사례다 — badgeError는 특히 !badge → notFound()(404)로 위장되던 지점.
+  if (badgeError) console.error('[badges/[id]/page] badges 단건 조회 실패', badgeError)
+  if (earnedRowError) console.error('[badges/[id]/page] user_activity_badges(획득 여부) 조회 실패', earnedRowError)
+  if (ownedBadgesError) console.error('[badges/[id]/page] user_activity_badges(선행배지 보유판정용) 조회 실패', ownedBadgesError)
+  if (stravaConnectionError) console.error('[badges/[id]/page] strava_connections 조회 실패', stravaConnectionError)
   const stravaConnected = Boolean(stravaConnectionRaw)
 
   if (!badge) notFound()
@@ -308,12 +320,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // Phase 16: checkin 타입 배지는 반복 획득 가능 — 단건이 아니라 이력 전체를 최신순으로 조회
   let checkinEarns: (UserCheckinBadgeEarnRow & { poi: PoiRow | null })[] = []
   if (badgeRow.type === 'checkin') {
-        const { data: checkinEarnsRaw } = await service
+        const { data: checkinEarnsRaw, error: checkinEarnsError } = await service
       .from('user_checkin_badge_earns')
       .select('*, poi:poi_id(id, name, latitude, longitude, radius_meters)')
       .eq('user_id', subjectId)
       .eq('badge_id', id)
       .order('earned_at', { ascending: false })
+    if (checkinEarnsError) console.error('[badges/[id]/page] user_checkin_badge_earns 조회 실패', checkinEarnsError)
     checkinEarns = (checkinEarnsRaw ?? []) as (UserCheckinBadgeEarnRow & { poi: PoiRow | null })[]
   }
 
@@ -332,27 +345,30 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   let allItemInventory: ItemInventoryInfo[] = []
   let itemBook: ItemBookRow | null = null
   if (badgeRow.type === 'item') {
-        const { data: subjectInventory } = await service
+        const { data: subjectInventory, error: subjectInventoryError } = await service
       .from('inventory')
       .select('id')
       .eq('user_id', subjectId)
       .maybeSingle()
+    if (subjectInventoryError) console.error('[badges/[id]/page] inventory 조회 실패', subjectInventoryError)
     if (subjectInventory) {
-            const { data: itemsRaw } = await service
+            const { data: itemsRaw, error: itemsError } = await service
         .from('inventory_items')
         .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by, dropped_at')
         .eq('inventory_id', (subjectInventory as { id: string }).id)
         .eq('badge_id', id)
         .order('obtained_at', { ascending: false })
+      if (itemsError) console.error('[badges/[id]/page] inventory_items(보유 개체) 조회 실패', itemsError)
       allItemInventory = (itemsRaw ?? []) as ItemInventoryInfo[]
     }
 
     if (badgeRow.item_book_id) {
-      const { data: itemBookRaw } = await supabase
+      const { data: itemBookRaw, error: itemBookError } = await supabase
         .from('item_books')
         .select('*')
         .eq('id', badgeRow.item_book_id)
         .maybeSingle()
+      if (itemBookError) console.error('[badges/[id]/page] item_books 조회 실패', itemBookError)
       itemBook = itemBookRaw as ItemBookRow | null
     }
   }
@@ -379,11 +395,12 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     const ownedBadgeIds = new Set((ownedBadgesRaw ?? []).map((b: { badge_id: string }) => b.badge_id))
     // 소프트 삭제된 선행 배지는 조회 대상에서 제외한다(20260824_007) — 필터로 매치가 안 되면
     // 아래 map에서 해당 항목만 걸러내 목록에서 빠지고 나머지 선행 배지는 그대로 유지한다.
-    const { data: prereqBadgesRaw } = await supabase
+    const { data: prereqBadgesRaw, error: prereqBadgesError } = await supabase
       .from('badges')
       .select('id, name, image_url, description, rarity')
       .in('name', prereqs)
       .is('deleted_at', null)
+    if (prereqBadgesError) console.error('[badges/[id]/page] 선행 배지 조회 실패', prereqBadgesError)
     const prereqBadges = (prereqBadgesRaw ?? []) as {
       id: string
       name: string
@@ -414,12 +431,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   // 안 되므로 is_active=true인 지점만 찾는다.
   let poi: PoiRow | null = earned?.poi ?? checkinEarns[0]?.poi ?? null
   if (!poi && badgeRow.type === 'checkin') {
-    const { data: linkedPoi } = await supabase
+    const { data: linkedPoi, error: linkedPoiError } = await supabase
       .from('poi')
       .select('id, name, latitude, longitude, radius_meters')
       .eq('linked_badge_id', id)
       .eq('is_active', true)
       .maybeSingle()
+    if (linkedPoiError) console.error('[badges/[id]/page] 연결 POI(안내용) 조회 실패', linkedPoiError)
     poi = linkedPoi as PoiRow | null
   }
 

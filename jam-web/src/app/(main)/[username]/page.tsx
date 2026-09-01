@@ -37,11 +37,13 @@ export default async function UserProfilePage({ params }: Props) {
   const service = createServiceClient()
 
   // URL username으로 대상 유저 조회
-  const { data: targetRaw } = await service
+  const { data: targetRaw, error: targetError } = await service
     .from('users')
     .select('*')
     .eq('username', username.toLowerCase())
     .maybeSingle()
+  // 20260901_1848: 조회 실패도 !targetRaw로 걸려 404(notFound)로 위장된다 — 로그로 구분
+  if (targetError) console.error('[[username]/page] 대상 유저(users) 조회 실패', targetError)
 
   if (!targetRaw) notFound()
   const target = targetRaw as UserRow
@@ -68,9 +70,14 @@ export default async function UserProfilePage({ params }: Props) {
       .eq('user_id', subjectId)
       .is('badges.deleted_at', null),
     isOwnProfile
-      ? Promise.resolve({ data: null })
+      ? Promise.resolve({ data: null, error: null })
       : service.from('user_follows').select('id').eq('follower_id', user.id).eq('following_id', subjectId).maybeSingle(),
   ])
+
+  if (followerCountResult.error) console.error('[[username]/page] 팔로워 카운트 조회 실패', followerCountResult.error)
+  if (followingCountResult.error) console.error('[[username]/page] 팔로잉 카운트 조회 실패', followingCountResult.error)
+  if (badgeCountResult.error) console.error('[[username]/page] 배지 카운트 조회 실패', badgeCountResult.error)
+  if (isFollowingResult.error) console.error('[[username]/page] 팔로우 여부 조회 실패', isFollowingResult.error)
 
   const followerCount = followerCountResult.count ?? 0
   const followingCount = followingCountResult.count ?? 0
@@ -85,33 +92,40 @@ export default async function UserProfilePage({ params }: Props) {
     service.from('inventory').select('id').eq('user_id', subjectId).maybeSingle(),
   ])
 
+  if (stravaResult.error) console.error('[[username]/page] strava_connections 조회 실패', stravaResult.error)
+  if (feedResult.error) console.error('[[username]/page] user_activity_feed 조회 실패', feedResult.error)
+  if (invResult.error) console.error('[[username]/page] inventory 조회 실패', invResult.error)
+
   const inventoryId = (invResult.data as { id: string } | null)?.id
 
   // 발견한 아이템북 수 = 인벤토리에 "현재 보유 중인"(드랍하지 않은) 아이템 배지가 연결된, 활성 상태인 아이템북 수
   // (/api/users/[username]/itembooks의 목록 필터와 반드시 일치시켜야 함 — 안 그러면 숫자와 목록이 어긋남)
   let itemBookCount = 0
   if (inventoryId) {
-    const { data: invItemsForCount } = await service
+    const { data: invItemsForCount, error: invItemsForCountError } = await service
       .from('inventory_items')
       .select('badge_id')
       .eq('inventory_id', inventoryId)
       .is('dropped_at', null)
+    if (invItemsForCountError) console.error('[[username]/page] 아이템북 카운트용 inventory_items 조회 실패', invItemsForCountError)
     const ownedBadgeIds = [...new Set(((invItemsForCount ?? []) as { badge_id: string }[]).map((i) => i.badge_id))]
     if (ownedBadgeIds.length > 0) {
-      const { data: booksForCount } = await service
+      const { data: booksForCount, error: booksForCountError } = await service
         .from('badges')
         .select('item_book_id')
         .in('id', ownedBadgeIds)
         .eq('type', 'item')
         .not('item_book_id', 'is', null)
         .is('deleted_at', null)
+      if (booksForCountError) console.error('[[username]/page] 아이템북 카운트용 badges 조회 실패', booksForCountError)
       const bookIdsForCount = [...new Set(((booksForCount ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id))]
       if (bookIdsForCount.length > 0) {
-        const { count } = await service
+        const { count, error: countError } = await service
           .from('item_books')
           .select('*', { count: 'exact', head: true })
           .in('id', bookIdsForCount)
           .eq('is_active', true)
+        if (countError) console.error('[[username]/page] item_books 카운트 조회 실패', countError)
         itemBookCount = count ?? 0
       }
     }
@@ -126,7 +140,7 @@ export default async function UserProfilePage({ params }: Props) {
     // badges.image_url은 DB에서 NULL 허용이다(도안 이미지 미등록 상태).
     badges: { id: string; name: string; image_url: string | null; rarity: string; deleted_at: string | null } | null
   }
-  const actDropsQuery: PromiseLike<{ data: LegacyActDropRow[] | null }> = inventoryId
+  const actDropsQuery: PromiseLike<{ data: LegacyActDropRow[] | null; error: unknown }> = inventoryId
     ? service
         .from('inventory_items')
         .select('id, badge_id, obtained_at, badges(id, name, image_url, rarity, deleted_at)')
@@ -134,7 +148,7 @@ export default async function UserProfilePage({ params }: Props) {
         .eq('obtained_by', 'drop')
         .order('obtained_at', { ascending: false })
         .limit(100)
-    : Promise.resolve({ data: [] as LegacyActDropRow[] })
+    : Promise.resolve({ data: [] as LegacyActDropRow[], error: null })
 
   const [
     badgesHistoryResult,
@@ -192,6 +206,16 @@ export default async function UserProfilePage({ params }: Props) {
       .order('earned_at', { ascending: true })
       .limit(2000),
   ])
+
+  // 20260901_1848: 프로필 레거시 피드 재구성용 조회 7건 — 실패해도 빈 배열로 조용히
+  // 넘어가던 지점. 화면 동작은 그대로 두고 서버 로그로만 실패를 남긴다.
+  if (badgesHistoryResult.error) console.error('[[username]/page] user_activity_badges(레거시 피드용) 조회 실패', badgesHistoryResult.error)
+  if (actDropsResult.error) console.error('[[username]/page] 활동 드랍 이력(레거시 피드용) 조회 실패', actDropsResult.error)
+  if (poiDropsResult.error) console.error('[[username]/page] poi_drops(드랍한) 조회 실패', poiDropsResult.error)
+  if (pickupsResult.error) console.error('[[username]/page] poi_drops(픽업한) 조회 실패', pickupsResult.error)
+  if (completionsResult.error) console.error('[[username]/page] user_mission_completions(레거시 피드용) 조회 실패', completionsResult.error)
+  if (participationsResult.error) console.error('[[username]/page] user_mission_participations(레거시 피드용) 조회 실패', participationsResult.error)
+  if (poiBadgeEarnsResult.error) console.error('[[username]/page] user_checkin_badge_earns 조회 실패', poiBadgeEarnsResult.error)
 
   // 기록 시점 스냅샷(이름·이미지·등급)을 최신 배지 정보로 리프레시 — 피드가 항상
   // 옛 데이터를 보여주는 문제의 근본 해결 (src/lib/activity-feed/hydrate.ts 참고)
@@ -295,11 +319,12 @@ export default async function UserProfilePage({ params }: Props) {
   )]
   const activityNames: Record<string, string> = {}
   if (activityIds.length > 0) {
-    const { data: actRows } = await service
+    const { data: actRows, error: actRowsError } = await service
       .from('strava_activities')
       .select('strava_id, normalized, start_date')
       .eq('user_id', subjectId)
       .in('strava_id', activityIds)
+    if (actRowsError) console.error('[[username]/page] strava_activities(활동 이름) 조회 실패', actRowsError)
     for (const row of (actRows ?? []) as unknown as { strava_id: number; normalized: { name?: string } | null }[]) {
       const name = typeof row.normalized?.name === 'string' ? row.normalized.name.trim() : ''
       if (name) activityNames[String(row.strava_id)] = name
