@@ -53,10 +53,11 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
   // 그래서 페이지가 걸어주는 텍스트 그림자 보정도 함께 꺼진다. 그런데 카드 안 텍스트는 오히려
   // 밝은 색이 섞인 블롭 위에 놓이므로, `hasBadgeBackgroundTheme`의 의미("전체 배경 레이어에
   // 무언가 그려지는가")는 그대로 두고 이 카드의 텍스트 블록에만 같은 보정을 되살린다.
-  // 자간은 변하는 배경 위에서 글자 경계가 뭉치지 않도록 소폭만 벌린다.
-  const cardTextStyle = backgroundAnimation
-    ? { ...getBadgeThemedTextStyle(true), letterSpacing: '0.01em' }
-    : undefined
+  //
+  // 자간(`letter-spacing: 0.01em`)은 한때 여기에 함께 걸었으나 되돌렸다 — 상속 속성이라 볼드
+  // 제목뿐 아니라 `RarityBadge` 라벨까지 벌어졌고, 큰 표제에는 오히려 negative tracking이 맞다
+  // (apple-design §15). 가독성은 그림자만으로 확보한다.
+  const cardTextStyle = backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined
 
   return (
     // relative z-10 — 배지 상세화면의 고정 배경 레이어(z-index:0, 20260818_002/003)보다 항상
@@ -101,8 +102,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
       </div>
       {badge.description && (
         // 설명은 카드 바깥(페이지 배경 위)이지만, 애니메이션 모드에서는 페이지가 걸던 그림자
-        // 보정이 꺼지므로 이미지·영상 배경 모드와 동일한 보정을 여기서 유지한다. 자간은 제목만
-        // 벌린다(본문까지 벌리면 줄바꿈 위치가 달라진다).
+        // 보정이 꺼지므로 이미지·영상 배경 모드와 동일한 보정을 여기서 유지한다.
         <p
           className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6"
           style={backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined}

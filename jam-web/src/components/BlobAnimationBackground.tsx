@@ -9,32 +9,6 @@ interface BlobAnimationBackgroundProps {
   className?: string
 }
 
-/**
- * 뷰포트에 들어온 뒤 이만큼 전속력으로 재생한다 (F1).
- *
- * 430×430 카드는 화면의 시각적 주인공인데, 그 배경이 무한히 움직이면 배지 아트와 계속 경쟁하고
- * 모바일에서는 배터리·발열도 누적된다. "들어오면 살아 움직이고, 곧 가라앉아 배지에 자리를
- * 내준다"가 이 화면의 의도다. **되돌리기 쉽도록 재생/감속 시간을 이 상수 두 개로 분리한다** —
- * 무한 재생으로 되돌리려면 `playbackFactor`가 항상 1을 반환하게 하면 된다.
- */
-const PLAY_DURATION_MS = 8000
-
-/** 위 재생 구간이 끝난 뒤 이 시간에 걸쳐 감속해 완전히 멈춘다 (F1). */
-const DECELERATE_MS = 2000
-
-/**
- * 감속 구간의 **속도 배수**. `--ease-smooth-out`(cubic-bezier(0.22, 1, 0.36, 1))은 위치에 걸면
- * 처음 빠르고 끝에서 느려지는 곡선이고, 그 도함수 형태가 `(1 - p)^4`다. 위상 누적량이 아니라
- * 진행 속도에 곱하므로 도함수 쪽을 쓴다 — 감속 시작 시점에 배수 1이라 속도 불연속(툭 끊김)이
- * 없고, 끝에서 0으로 수렴해 정지한다.
- */
-function playbackFactor(playedMs: number): number {
-  if (playedMs <= PLAY_DURATION_MS) return 1
-  const p = (playedMs - PLAY_DURATION_MS) / DECELERATE_MS
-  if (p >= 1) return 0
-  return (1 - p) ** 4
-}
-
 /** 저사양(모바일) 판정 — 참조 스크립트와 동일하게 coarse 포인터를 기준으로 삼는다. */
 function isCoarsePointer(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
@@ -48,13 +22,15 @@ function isCoarsePointer(): boolean {
  * 이미지는 이 캔버스 위(z-10)에 그대로 남고, 카드의 `overflow-hidden` + 라운드가 애니메이션을
  * 카드 모양 안에 가둔다.
  *
+ * 뷰포트 안에 있는 동안에는 **계속 재생한다**(사용자 결정). 한때 8초 재생 후 감속 정지를 넣었으나,
+ * 무한 재생이 원래 요청("애니메이션 배경")에 맞고 성능은 아래 가드로 이미 확보돼 있다.
+ *
  * 성능 가드(티켓 필수 요구사항) — `ctx.filter`의 blur를 매 프레임 6회 호출하므로 비용이 크다.
  * 아래를 모두 적용한다:
- * - 블롭은 **1/3 해상도 오프스크린 캔버스**에 그린 뒤 확대 합성한다(blur 비용 약 1/9).
+ * - 블롭은 blur가 충분히 클 때 **1/3 해상도 오프스크린 캔버스**에 그린 뒤 확대 합성한다
+ *   (blur 비용 약 1/9).
  * - `IntersectionObserver`로 카드가 뷰포트 밖이면 루프를 정지한다.
  * - 탭이 백그라운드(`document.hidden`)면 루프를 정지한다.
- * - 뷰포트에 들어와도 무한히 돌지 않는다 — `PLAY_DURATION_MS` 재생 후 감속해 멈추고, 다시
- *   들어오면 재시작한다.
  * - 백킹 스토어 해상도는 DPR 상한(모바일 1.5 / 그 외 2)으로 캡한다. coarse 포인터에서는 프레임
  *   간격을 32ms(약 30fps)로 제한하되, fine 포인터(데스크톱)는 스로틀 없이 rAF에 맡긴다 —
  *   16ms 고정은 120Hz 화면을 60fps로 묶어 오히려 프레임 페이싱을 어긋나게 했다.
@@ -80,8 +56,13 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
   /** rAF 루프가 항상 최신 파라미터를 읽도록 ref로 넘긴다 — 슬라이더를 움직여도 루프를 재시작하지 않는다.
    *  갱신은 아래 effect에서만 한다(렌더 중 ref 쓰기 금지). */
   const paramsRef = useRef(params)
-  /** 정지 상태(감속 종료·뷰포트 밖)에서 파라미터가 바뀌었을 때 한 장만 다시 그리기 위한 훅 */
+  /** 정지 상태(뷰포트 밖·reduced-motion)에서 파라미터가 바뀌었을 때 한 장만 다시 그리기 위한 훅 */
   const redrawRef = useRef<(() => void) | null>(null)
+  /**
+   * 아래 params effect는 마운트 시에도 한 번 실행된다. setup effect의 `sync()`가 이미 첫 프레임을
+   * 그렸으므로 그때는 다시 그리지 않는다(같은 프레임 중복 렌더 방지).
+   */
+  const paramsSyncedRef = useRef(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -109,12 +90,23 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
     let running = false
     let rafId = 0
     let lastTs = 0
-    /** 이번 뷰포트 진입 이후 재생된 시간(ms). 재진입할 때마다 0으로 되돌아가 다시 재생된다. */
-    let playedMs = 0
+    /**
+     * 캔버스의 CSS 크기 캐시. 예전에는 `render()`가 매 프레임 `clientWidth`/`clientHeight`를
+     * **읽고** 마지막에 `style.opacity`를 **썼다** — 스타일 쓰기 → 다음 프레임 레이아웃 읽기가
+     * 반복돼 프레임마다 강제 동기 레이아웃이 걸렸다. 치수는 이미 구독 중인 `ResizeObserver`에서만
+     * 갱신하고 render는 캐시만 읽는다.
+     */
+    let cssWidth = 0
+    let cssHeight = 0
+    /** 첫 프레임 페이드 인은 한 번만 쓴다(반복 쓰기가 위 레이아웃 스래싱의 원인이었다). */
+    let ready = false
+
+    const measure = () => {
+      cssWidth = canvas.clientWidth
+      cssHeight = canvas.clientHeight
+    }
 
     const render = () => {
-      const cssWidth = canvas.clientWidth
-      const cssHeight = canvas.clientHeight
       if (cssWidth <= 0 || cssHeight <= 0) return
 
       const dpr = Math.min(window.devicePixelRatio || 1, dprCap)
@@ -134,7 +126,12 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
         scratch,
       })
       // 첫 페인트 하드컷 방지 — 그릴 내용이 실제로 생긴 뒤에 페이드 인한다(정지 프레임 포함).
-      canvas.style.opacity = '1'
+      // opacity는 CSS(`.blob-animation-canvas[data-ready='true']`)가 담당하고 여기서는 신호만
+      // 한 번 준다 — React의 선언형 style과 명령형 쓰기가 같은 속성을 다투지 않도록.
+      if (!ready) {
+        ready = true
+        canvas.dataset.ready = 'true'
+      }
     }
     redrawRef.current = render
 
@@ -145,12 +142,8 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
       // 스로틀 — 간격이 차기 전에는 누적도 그리기도 하지 않는다(정지 중 시간이 튀지 않도록).
       if (delta < frameInterval) return
       lastTs = ts
-      playedMs += delta
-      const factor = playbackFactor(playedMs)
-      tRef.current += delta * 0.001 * paramsRef.current.speed * BLOB_PHASE_RATE * factor
+      tRef.current += delta * 0.001 * paramsRef.current.speed * BLOB_PHASE_RATE
       render()
-      // 감속이 끝났으면 루프를 접는다. 마지막 프레임은 방금 그렸으므로 화면은 그대로 남는다.
-      if (factor <= 0) stop()
     }
 
     const start = () => {
@@ -193,15 +186,16 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
     }
     const handleVisibility = () => sync()
 
-    const resizeObserver = new ResizeObserver(() => render())
+    // 치수 갱신은 여기 한 곳에서만 한다(render는 캐시만 읽는다).
+    const resizeObserver = new ResizeObserver(() => {
+      measure()
+      render()
+    })
     resizeObserver.observe(canvas)
 
     const intersectionObserver = new IntersectionObserver(
       (entries) => {
-        const nextInView = entries.some((entry) => entry.isIntersecting)
-        // 뷰포트에 새로 들어올 때마다 재생 구간을 처음부터 다시 시작한다(F1).
-        if (nextInView && !inView) playedMs = 0
-        inView = nextInView
+        inView = entries.some((entry) => entry.isIntersecting)
         sync()
       },
       { threshold: 0 }
@@ -213,8 +207,10 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
     transparencyQuery.addEventListener('change', handleTransparencyChange)
     document.addEventListener('visibilitychange', handleVisibility)
 
+    // 첫 측정은 여기서 한 번 한다(ResizeObserver의 최초 콜백은 다음 프레임에나 온다).
     // sync()가 재생/정지 어느 쪽으로 가든 첫 프레임을 그린다 — 여기서 render()를 한 번 더
     // 호출하면 마운트 시 같은 프레임을 두 번 그리게 된다.
+    measure()
     sync()
 
     return () => {
@@ -230,11 +226,15 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
   }, [])
 
   // 어드민 저작 중 슬라이더를 움직이면 즉시 반영한다. 루프가 도는 중이면 다음 프레임이 어차피
-  // 최신 값을 쓰므로 한 장 더 그려도 무해하고, 정지 상태(감속 종료·뷰포트 밖)에서는 이 호출만이
-  // 미리보기를 갱신한다. 위 setup effect가 먼저 실행되므로 마운트 첫 프레임은 useRef 초기값
-  // (= 같은 params)을 쓴다 — 어긋나지 않는다.
+  // 최신 값을 쓰므로 한 장 더 그려도 무해하고, 정지 상태(뷰포트 밖·reduced-motion)에서는 이
+  // 호출만이 미리보기를 갱신한다. 마운트 시에는 위 setup effect의 sync()가 이미 같은 params로
+  // 첫 프레임을 그렸으므로 건너뛴다.
   useEffect(() => {
     paramsRef.current = params
+    if (!paramsSyncedRef.current) {
+      paramsSyncedRef.current = true
+      return
+    }
     redrawRef.current?.()
   }, [params])
 
@@ -244,10 +244,12 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
       aria-hidden="true"
       // 안전 클래스는 항상 유지하고 호출부 클래스를 **덧붙인다**. 예전에는 `className ?? '...'`
       // 치환이라 호출부가 클래스를 하나라도 넘기는 순간 절대배치·클릭 통과가 통째로 사라졌다.
-      className={['absolute inset-0 w-full h-full pointer-events-none', className].filter(Boolean).join(' ')}
-      // 첫 프레임을 그린 뒤 opacity 1로 올린다(위 render 참조). 컨텍스트를 못 얻거나 SSR~
-      // 하이드레이션 구간에서는 투명한 채로 남아 카드 배경색만 보인다.
-      style={{ opacity: 0, transition: 'opacity var(--duration-fast) var(--ease-smooth-out)' }}
+      // `blob-animation-canvas`는 첫 프레임 페이드 인을 담당한다(globals.css) — 첫 프레임을 그리면
+      // 위 render가 `data-ready="true"`를 한 번 붙인다. 컨텍스트를 못 얻거나 SSR~하이드레이션
+      // 구간에서는 투명한 채로 남아 카드 배경색만 보인다.
+      className={['blob-animation-canvas absolute inset-0 w-full h-full pointer-events-none', className]
+        .filter(Boolean)
+        .join(' ')}
     />
   )
 }

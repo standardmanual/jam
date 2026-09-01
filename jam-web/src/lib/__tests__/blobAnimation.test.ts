@@ -10,8 +10,31 @@ import {
   BLOB_ANIMATION_RANGES,
   DEFAULT_BLOB_ANIMATION,
   blobCycleSeconds,
+  opaqueBlobFill,
   parseBlobAnimation,
 } from '@/lib/blobAnimation'
+
+/** sRGB 상대 휘도 (WCAG 2.x) */
+function relativeLuminance({ r, g, b }: { r: number; g: number; b: number }): number {
+  const channel = (v: number) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+}
+
+function hexToRgb(hex: string) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  }
+}
+
+/** 흰 텍스트(`--color-text` = #ffffff)와 주어진 면색의 명도대비 */
+function contrastWithWhite(rgb: { r: number; g: number; b: number }): number {
+  return 1.05 / (relativeLuminance(rgb) + 0.05)
+}
 
 describe('애니메이션 없음으로 판정되는 값', () => {
   it.each([[null], [undefined], [0], ['blob'], [[]], [{}], [{ type: 'shader' }]])(
@@ -80,19 +103,63 @@ describe('깨진 필드 보정', () => {
   })
 })
 
-describe('기본 배경색 가독성', () => {
-  it('카드 안 흰 텍스트(--color-text = #ffffff)와 WCAG AA(4.5:1)를 넘는 대비를 갖는다', () => {
-    // 기본값이 #ffffff였을 때 '애니메이션'을 고르는 즉시 배지명이 사라졌던 회귀를 고정한다.
-    const channel = (v: number) => {
-      const c = v / 255
-      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-    }
-    const hex = DEFAULT_BLOB_ANIMATION.bgColor
-    const [r, g, b] = [1, 3, 5].map((i) => channel(parseInt(hex.slice(i, i + 2), 16)))
-    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-    const contrast = (1.0 + 0.05) / (luminance + 0.05)
-    expect(contrast).toBeGreaterThan(4.5)
+describe('블롭이 덮지 않은 면(= bgColor)의 기본 대비', () => {
+  /**
+   * 주의 — 이 테스트가 고정하는 것은 **블롭이 없는 곳**의 대비다. 텍스트 바로 뒤 최상단 레이어는
+   * 대개 블롭이고, 밝은 팔레트 색(`#ffe5d1`)이 지날 때는 1.9:1까지 떨어진다. 그 구간의 실질
+   * 가독성은 `getBadgeThemedTextStyle`의 텍스트 그림자가 지탱한다(이 모듈의 책임이 아니다).
+   * 여기서 막는 회귀는 "기본 배경색이 흰색이라 블롭 사이 여백에서 배지명이 통째로 사라지던 것"이다.
+   */
+  it('기본 배경색은 카드 안 흰 텍스트와 WCAG AA(4.5:1)를 넘는 대비를 갖는다', () => {
+    expect(contrastWithWhite(hexToRgb(DEFAULT_BLOB_ANIMATION.bgColor))).toBeGreaterThan(4.5)
   })
+})
+
+describe('prefers-reduced-transparency 경로의 블롭 면색', () => {
+  /**
+   * 예전에는 이 신호에서 알파만 0.7 → 1.0으로 올렸고, 그러면 밝은 팔레트 색이 더 밝아져 흰
+   * 텍스트 대비가 오히려 악화됐다(접근성 역행). 지금은 색을 배경색 쪽으로 미리 섞어 결과 색이
+   * "일반 경로에서 블롭 한 장이 배경 위에 놓인 합성색"과 같아지도록 한다.
+   */
+  const { bgColor } = DEFAULT_BLOB_ANIMATION
+
+  it.each(DEFAULT_BLOB_ANIMATION.colors)('%s — 일반 경로 1겹 합성색과 동일하다', (hex) => {
+    const fg = hexToRgb(hex)
+    const bg = hexToRgb(bgColor)
+    const expected = {
+      r: Math.round(bg.r + (fg.r - bg.r) * 0.7),
+      g: Math.round(bg.g + (fg.g - bg.g) * 0.7),
+      b: Math.round(bg.b + (fg.b - bg.b) * 0.7),
+    }
+    expect(opaqueBlobFill(hex, bgColor)).toEqual(expected)
+  })
+
+  it.each(DEFAULT_BLOB_ANIMATION.colors)(
+    '%s — 흰 텍스트 대비가 알파만 올리던 예전 방식보다 나아진다',
+    (hex) => {
+      // 예전 방식 = 팔레트 색 그대로 알파 1.0
+      const before = contrastWithWhite(hexToRgb(hex))
+      const after = contrastWithWhite(opaqueBlobFill(hex, bgColor))
+      expect(after).toBeGreaterThanOrEqual(before)
+    }
+  )
+
+  it.each(DEFAULT_BLOB_ANIMATION.colors)(
+    '%s — 흰 텍스트 대비가 일반 경로(알파 0.7 1겹)보다 나빠지지 않는다',
+    (hex) => {
+      const fg = hexToRgb(hex)
+      const bg = hexToRgb(bgColor)
+      const normalPath = {
+        r: bg.r + (fg.r - bg.r) * 0.7,
+        g: bg.g + (fg.g - bg.g) * 0.7,
+        b: bg.b + (fg.b - bg.b) * 0.7,
+      }
+      // 반올림 오차(채널당 최대 0.5)만 허용한다.
+      expect(contrastWithWhite(opaqueBlobFill(hex, bgColor))).toBeGreaterThan(
+        contrastWithWhite(normalPath) - 0.01
+      )
+    }
+  )
 })
 
 describe('속도 라벨용 주기 계산', () => {

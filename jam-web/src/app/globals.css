@@ -540,6 +540,27 @@ select option {
     display: none;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────────
+ * 이미지 카드 안 블롭 애니메이션 배경 캔버스 (20260901_1944)
+ *
+ * 캔버스는 첫 프레임을 그리기 전까지 투명하다(하드컷 방지). 첫 프레임을 그리면
+ * `BlobAnimationBackground`가 `data-ready="true"`를 **한 번만** 붙이고, 페이드 인은 여기 CSS가
+ * 담당한다.
+ *
+ * 이 전환을 React의 선언형 `style={{ opacity: 0 }}` + 명령형 `canvas.style.opacity = '1'` 조합으로
+ * 두지 않는 이유: 같은 속성을 두 주체가 다투는 구조라, style 객체에 값이 하나만 더 추가되면
+ * 리렌더마다 캔버스가 다시 투명으로 되돌아간다(현재는 React가 동일 값 diff를 걸러 우연히
+ * 동작할 뿐이다).
+ * ────────────────────────────────────────────────────────────────────────────── */
+.blob-animation-canvas {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-smooth-out);
+}
+
+.blob-animation-canvas[data-ready='true'] {
+  opacity: 1;
+}
 /*
  ---break---
  */
