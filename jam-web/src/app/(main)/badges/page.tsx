@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import BadgesClient, { ItemBookProgress, CheckinBadgeItem } from './BadgesClient'
+import { IN_CHUNK_SIZE } from '@/lib/notifications/batch/shared'
 
 /**
  * 20260824_021: 알림함 착지용 쿼리 파라미터.
@@ -150,10 +151,30 @@ export default async function BadgesPage({ searchParams }: Props) {
 
   let checkinBadges: CheckinBadgeItem[] = []
   if (earnedCheckinBadgeIds.length > 0) {
-    const [{ data: earnedCheckinBadgeRows }, { data: linkedPois }] = await Promise.all([
-      supabase.from('badges').select('*').in('id', earnedCheckinBadgeIds).eq('type', 'checkin').is('deleted_at', null),
-      supabase.from('poi').select('linked_badge_id, category').in('linked_badge_id', earnedCheckinBadgeIds),
+    // 20260825_035: earnedCheckinBadgeIds는 이 유저가 실제 획득한 체크인(구 POI) 배지 수만큼
+    // 늘어난다. 체크인 배지 카탈로그가 1,800건이 넘어, 아주 오래·많이 활동한 유저는 이
+    // 배열이 IN_CHUNK_SIZE(200)를 넘을 수 있다 — 그대로 .in()에 실으면 (1) PostgREST 기본
+    // 응답 상한(1,000행) 절단, (2) .in() URL 길이 상한 두 가지 위험이 동시에 있다. 청크
+    // 단위로 나눠 조회하면 청크당 응답이 최대 chunk 크기(200행)로 고정돼 둘 다 해소된다.
+    const idChunks: string[][] = []
+    for (let i = 0; i < earnedCheckinBadgeIds.length; i += IN_CHUNK_SIZE) {
+      idChunks.push(earnedCheckinBadgeIds.slice(i, i + IN_CHUNK_SIZE))
+    }
+
+    const [earnedCheckinBadgeRowChunks, linkedPoiChunks] = await Promise.all([
+      Promise.all(
+        idChunks.map((chunk) =>
+          supabase.from('badges').select('*').in('id', chunk).eq('type', 'checkin').is('deleted_at', null)
+        )
+      ),
+      Promise.all(
+        idChunks.map((chunk) =>
+          supabase.from('poi').select('linked_badge_id, category').in('linked_badge_id', chunk)
+        )
+      ),
     ])
+    const earnedCheckinBadgeRows = earnedCheckinBadgeRowChunks.flatMap((r) => r.data ?? [])
+    const linkedPois = linkedPoiChunks.flatMap((r) => r.data ?? [])
 
     // 카테고리(산/대중교통 등)별로 그룹핑하기 위해 연결된 POI의 category를 조회.
     // 배지 1개에 POI 여러 개가 연결될 수 있어 첫 번째 값만 대표로 사용한다
