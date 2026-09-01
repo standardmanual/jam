@@ -16,8 +16,10 @@ import { d } from '@/lib/i18n'
  *
  * `/philosophy`도 제외한다: Footer의 'Philosophy' 링크가 가리키는 목적지 자신이라,
  * 그 화면 하단에 같은 링크가 다시 노출되는 순환을 막는다 (20260901_2125).
+ *
+ * `/privacy`도 같은 이유로 제외한다: '개인정보처리방침' 링크의 목적지 자신이다 (20260901_2217).
  */
-const FOOTER_EXCLUDED_PATHS = ['/', '/drops', '/philosophy']
+const FOOTER_EXCLUDED_PATHS = ['/', '/drops', '/philosophy', '/privacy']
 
 export default function Footer() {
   const pathname = usePathname()
@@ -35,13 +37,23 @@ export default function Footer() {
           시각 간격은 그대로 둔다 — 캡션 12px 그대로면 히트 박스가 약 72×12px로 WCAG 2.2의
           24×24조차 못 미치는데, 이 링크가 철학 페이지로 가는 유일한 진입점이다.
           globals.css가 -webkit-tap-highlight-color를 전역으로 껐으므로 active 피드백을
-          직접 준다(텍스트 링크에는 scale보다 opacity가 자연스럽다). */}
-      <Link
-        href="/philosophy"
-        className="inline-flex items-center justify-center min-h-11 -my-4 px-[var(--spacing-16)] text-[length:var(--text-caption)] leading-none text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
-      >
-        {d.common.footerPhilosophy}
-      </Link>
+          직접 준다(텍스트 링크에는 scale보다 opacity가 자연스럽다).
+          20260901_2217: 개인정보처리방침 링크를 우측에 나란히 추가하며 이 줄만
+          flex-row로 바꾼다. 두 링크 모두 동일한 min-h-11 히트박스·캡션 스타일을 쓴다. */}
+      <div className="flex flex-row items-center gap-[var(--spacing-16)]">
+        <Link
+          href="/philosophy"
+          className="inline-flex items-center justify-center min-h-11 -my-4 px-[var(--spacing-16)] text-[length:var(--text-caption)] leading-none text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+        >
+          {d.common.footerPhilosophy}
+        </Link>
+        <Link
+          href="/privacy"
+          className="inline-flex items-center justify-center min-h-11 -my-4 px-[var(--spacing-16)] text-[length:var(--text-caption)] leading-none text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+        >
+          {d.common.footerPrivacy}
+        </Link>
+      </div>
       <div className="flex items-center justify-center gap-1.5">
         <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-3 w-auto" />
         <span className="text-[length:var(--text-caption)] leading-none text-text">{d.common.footerCopyright}</span>
