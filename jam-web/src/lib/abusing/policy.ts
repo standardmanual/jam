@@ -67,6 +67,30 @@ export const RATE_KEYS: ReadonlySet<keyof AbusingPolicy> = new Set([
   'hard_mystic_rate',
 ])
 
+/** {@link findPolicyRateMismatches}가 돌려주는 갈림 항목 하나 */
+export interface AbusingPolicyMismatch {
+  key: keyof AbusingPolicy
+  dbValue: number
+  codeValue: number
+}
+
+/**
+ * DB에 저장된 배율(`RATE_KEYS` 8종)이 `DEFAULT_POLICY`(폴백 미러)와 갈라졌는지 검사한다.
+ * 저장 경로(`updateAbusingPolicy`)와 어드민 배너가 같은 검사를 공유해 판정이 어긋나지
+ * 않게 한다 (티켓 20260831_1330).
+ */
+export function findPolicyRateMismatches(current: AbusingPolicy): AbusingPolicyMismatch[] {
+  const mismatches: AbusingPolicyMismatch[] = []
+  for (const key of RATE_KEYS) {
+    const dbValue = current[key]
+    const codeValue = DEFAULT_POLICY[key]
+    if (dbValue !== codeValue) {
+      mismatches.push({ key, dbValue, codeValue })
+    }
+  }
+  return mismatches
+}
+
 /**
  * `vehicle_speed_filter_kmh`의 하한 (km/h).
  *
@@ -148,5 +172,21 @@ export async function updateAbusingPolicy(patch: Partial<AbusingPolicy>): Promis
   if (error) {
     console.error('[abusing-policy] 저장 실패:', error)
     throw new Error(`abusing_policy upsert 실패 (${error.code}): ${error.message}`)
+  }
+
+  // 저장이 성공한 직후에만(드랍마다가 아니라 1회) DB와 DEFAULT_POLICY(폴백 미러)가
+  // 갈라졌는지 검사한다. 이 규율이 "같은 티켓에서 policy.ts도 함께 바꾼다"는 문서 규칙을
+  // 어드민 저장 경로에서도 강제하는 유일한 코드 상의 장치다 (티켓 20260831_1330).
+  const saved = await getAbusingPolicy(supabase)
+  const mismatches = findPolicyRateMismatches(saved)
+  if (mismatches.length > 0) {
+    const detail = mismatches
+      .map((m) => `${m.key}(DB=${m.dbValue}, policy.ts=${m.codeValue})`)
+      .join(', ')
+    console.warn(
+      `[abusing-policy] 저장된 배율이 DEFAULT_POLICY와 달라요 — ${detail}. ` +
+        `폴백(DB 조회 실패) 시에는 policy.ts 값이 대신 적용되니, DB 배율을 바꿨다면 ` +
+        `src/lib/abusing/policy.ts의 DEFAULT_POLICY도 같은 티켓에서 함께 갱신하세요.`
+    )
   }
 }

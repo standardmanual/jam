@@ -87,6 +87,7 @@ vi.mock('@/lib/admin/auth', () => ({
 import {
   getAbusingPolicy,
   updateAbusingPolicy,
+  findPolicyRateMismatches,
   DEFAULT_POLICY,
   MIN_VEHICLE_SPEED_FILTER_KMH,
 } from '../policy'
@@ -205,6 +206,50 @@ describe('updateAbusingPolicy — upsert 실패 전파', () => {
   })
 })
 
+describe('findPolicyRateMismatches — DB 배율과 DEFAULT_POLICY 대조', () => {
+  it('배율 8종이 모두 같으면 빈 배열을 돌려준다', () => {
+    expect(findPolicyRateMismatches(DEFAULT_POLICY)).toEqual([])
+  })
+
+  it('갈라진 키만 { key, dbValue, codeValue }로 돌려준다', () => {
+    const current = { ...DEFAULT_POLICY, soft_epic_rate: 0.5, hard_mystic_rate: 0.2 }
+    const mismatches = findPolicyRateMismatches(current)
+    expect(mismatches).toHaveLength(2)
+    expect(mismatches).toContainEqual({ key: 'soft_epic_rate', dbValue: 0.5, codeValue: 1.0 })
+    expect(mismatches).toContainEqual({ key: 'hard_mystic_rate', dbValue: 0.2, codeValue: 0.0 })
+  })
+
+  it('임계값 4종(gps_max_speed_kmh 등)은 대조 대상이 아니다', () => {
+    const current = { ...DEFAULT_POLICY, gps_max_speed_kmh: 999 }
+    expect(findPolicyRateMismatches(current)).toEqual([])
+  })
+})
+
+describe('updateAbusingPolicy — 저장 시 DEFAULT_POLICY 불일치 경고', () => {
+  it('저장 후 읽은 값이 DEFAULT_POLICY와 다르면 console.warn을 1회 남긴다', async () => {
+    // upsert 자체는 목이라 DB를 실제로 바꾸지 않으므로, "저장 후 상태"는 select가 돌려주는
+    // stub.row로 시뮬레이션한다 (기존 테스트와 동일한 방식).
+    stub.row = { ...POST_115_ROW, soft_epic_rate: 0.5 }
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await updateAbusingPolicy({ soft_epic_rate: 0.5 })
+    expect(spy).toHaveBeenCalledTimes(1)
+    const msg = String(spy.mock.calls[0][0])
+    expect(msg).toContain('soft_epic_rate')
+    expect(msg).toContain('DB=0.5')
+    expect(msg).toContain('policy.ts=1')
+    expect(msg).toContain('DEFAULT_POLICY')
+    spy.mockRestore()
+  })
+
+  it('저장 후 읽은 값이 DEFAULT_POLICY와 일치하면 console.warn을 남기지 않는다', async () => {
+    stub.row = { ...POST_115_ROW }
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await updateAbusingPolicy({ gps_max_speed_kmh: 300 })
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+})
+
 describe('PUT /api/admin/abusing/policy — 키 화이트리스트', () => {
   it('id·updated_at·미지의 키를 페이로드에서 제거한다', async () => {
     const res = await PUT(
@@ -280,5 +325,22 @@ describe('PUT /api/admin/abusing/policy — 키 화이트리스트', () => {
     expect(json.error).toContain('어뷰징 정책이 저장되지 않았어요')
     expect(json.error).toContain('PGRST204')
     spy.mockRestore()
+  })
+
+  it('저장 후 DB 값이 DEFAULT_POLICY와 갈리면 응답에 mismatch를 실어 어드민 배너가 쓸 수 있게 한다', async () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    stub.row = { ...POST_115_ROW, soft_epic_rate: 0.5 }
+    const res = await PUT(fakeReq({ soft_epic_rate: 0.5 }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.mismatch).toContainEqual({ key: 'soft_epic_rate', dbValue: 0.5, codeValue: 1.0 })
+    spy.mockRestore()
+  })
+
+  it('일치하면 응답의 mismatch가 빈 배열이다', async () => {
+    const res = await PUT(fakeReq({ gps_max_speed_kmh: 300 }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.mismatch).toEqual([])
   })
 })

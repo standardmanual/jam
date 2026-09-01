@@ -1,13 +1,16 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { IconAlertTriangle } from '@tabler/icons-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
-import type { AbusingPolicy } from '@/lib/abusing/policy'
+import { Alert, AlertTitle, AlertDescription } from '@/components/admin/ui/alert'
+import type { AbusingPolicy, AbusingPolicyMismatch } from '@/lib/abusing/policy'
 import { BanTable, type BanRow } from './BanTable'
 import { PoiBlockTable, type PoiBlockRow } from './PoiBlockTable'
 
 interface Props {
   policy: AbusingPolicy
+  policyMismatch: AbusingPolicyMismatch[]
   bans: BanRow[]
   poiBlocks: PoiBlockRow[]
 }
@@ -36,7 +39,12 @@ function RateInput({
   )
 }
 
-export default function AbusingClient({ policy: initPolicy, bans: initBans, poiBlocks: initBlocks }: Props) {
+export default function AbusingClient({
+  policy: initPolicy,
+  policyMismatch: initMismatch,
+  bans: initBans,
+  poiBlocks: initBlocks,
+}: Props) {
   // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
   // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
   // 지정한다 (4단계a `BadgeForm.tsx`와 동일 패턴, 20260826_018).
@@ -46,6 +54,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
 
   const [tab, setTab] = useState<Tab>('policy')
   const [policy, setPolicy] = useState(initPolicy)
+  const [policyMismatch, setPolicyMismatch] = useState(initMismatch)
   const [bans, setBans] = useState(initBans)
   const [poiBlocks, setPoiBlocks] = useState(initBlocks)
   const [saving, setSaving] = useState(false)
@@ -79,7 +88,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
         body: JSON.stringify(policy),
       })
       const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; policy?: AbusingPolicy; error?: string }
+        | { ok?: boolean; policy?: AbusingPolicy; mismatch?: AbusingPolicyMismatch[]; error?: string }
         | null
       if (!res.ok) {
         // API가 실패 사유를 실어 보내므로 그대로 노출한다 (어드민 화면 — 원인 특정이 우선)
@@ -92,6 +101,7 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
       }
       // 저장 직후 DB에서 다시 읽은 값으로 화면을 맞춘다
       if (json?.policy) setPolicy(json.policy)
+      setPolicyMismatch(json?.mismatch ?? [])
       flash('ok', '정책이 저장됐어요')
     } catch {
       flash(
@@ -240,6 +250,32 @@ export default function AbusingClient({ policy: initPolicy, bans: initBans, poiB
       {/* 정책 설정 탭 */}
       {tab === 'policy' && (
         <div className="space-y-6">
+          {/* 정책 불일치 배너 — DB 배율과 코드 폴백(DEFAULT_POLICY)이 갈라지면 정상 경로와
+              폴백 경로의 판정이 달라진다. 운영자가 코드를 고칠 수는 없으니 개발자 전달을
+              행동 지시로 담는다 (티켓 20260831_1330). */}
+          {policyMismatch.length > 0 && (
+            <Alert variant="destructive">
+              <IconAlertTriangle className="h-4 w-4" />
+              <AlertTitle>DB 배율이 코드 기본값과 달라요</AlertTitle>
+              <AlertDescription>
+                <p>
+                  아래 배율은 DB에 저장된 값과 코드의 폴백 기본값(DEFAULT_POLICY)이 서로 달라요.
+                  DB 조회가 실패하면 이 화면의 값이 아니라 코드 기본값이 대신 적용돼요.
+                </p>
+                <ul className="mt-1.5 list-disc list-inside space-y-0.5">
+                  {policyMismatch.map((m) => (
+                    <li key={m.key} className="font-mono text-xs">
+                      {m.key}: DB {m.dbValue} / 코드 {m.codeValue}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1.5">
+                  개발자에게 알려서 src/lib/abusing/policy.ts의 DEFAULT_POLICY를 같이 갱신해 주세요.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* 안내 */}
           <div className="bg-white border border-border rounded-2xl p-4 text-sm text-foreground leading-relaxed">
             <p className="font-semibold text-foreground mb-1">투트랙 정책</p>
