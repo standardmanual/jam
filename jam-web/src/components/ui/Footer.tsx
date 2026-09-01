@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 import { d } from '@/lib/i18n'
 
 /**
@@ -12,8 +13,11 @@ import { d } from '@/lib/i18n'
  * "콘텐츠가 fixed로 이탈해 실제 높이가 0"인 케이스를 감안하지 못해 Footer가 `main` 스크롤에
  * 끌려 올라오는 버그가 있었다(20260831_2106). 향후 같은 종류의 풀스크린 이탈 화면이 늘어나면
  * 경로 하드코딩 나열보다 레이아웃 쪽에서 조건부 렌더링하는 방식을 재검토할 것.
+ *
+ * `/philosophy`도 제외한다: Footer의 'Philosophy' 링크가 가리키는 목적지 자신이라,
+ * 그 화면 하단에 같은 링크가 다시 노출되는 순환을 막는다 (20260901_2125).
  */
-const FOOTER_EXCLUDED_PATHS = ['/', '/drops']
+const FOOTER_EXCLUDED_PATHS = ['/', '/drops', '/philosophy']
 
 export default function Footer() {
   const pathname = usePathname()
@@ -25,6 +29,14 @@ export default function Footer() {
     // Footer는 bg-transparent라 다른 화면에서는 이 승격이 시각적으로 아무 영향을 주지 않는다.
     <footer className="relative z-10 flex flex-col items-center justify-center gap-1.5 py-[var(--spacing-24)] px-[var(--spacing-16)] bg-transparent">
       <span className="text-[length:var(--text-caption)] leading-none text-text text-center">{d.common.footerSlogan}</span>
+      {/* 20260901_2125: 슬로건 아래 → 로고+저작권 줄 위. 캡션 톤을 그대로 따르고
+          밑줄만 붙여 링크임을 알린다(과한 강조 금지). */}
+      <Link
+        href="/philosophy"
+        className="text-[length:var(--text-caption)] leading-none text-text underline underline-offset-2"
+      >
+        {d.common.footerPhilosophy}
+      </Link>
       <div className="flex items-center justify-center gap-1.5">
         <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-3 w-auto" />
         <span className="text-[length:var(--text-caption)] leading-none text-text">{d.common.footerCopyright}</span>
