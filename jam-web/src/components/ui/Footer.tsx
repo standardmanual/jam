@@ -30,10 +30,15 @@ export default function Footer() {
     <footer className="relative z-10 flex flex-col items-center justify-center gap-1.5 py-[var(--spacing-24)] px-[var(--spacing-16)] bg-transparent">
       <span className="text-[length:var(--text-caption)] leading-none text-text text-center">{d.common.footerSlogan}</span>
       {/* 20260901_2125: 슬로건 아래 → 로고+저작권 줄 위. 캡션 톤을 그대로 따르고
-          밑줄만 붙여 링크임을 알린다(과한 강조 금지). */}
+          밑줄만 붙여 링크임을 알린다(과한 강조 금지).
+          min-h-11(44px)로 터치 영역을 확보하고 -my-4로 늘어난 높이를 상쇄해 3단 배치의
+          시각 간격은 그대로 둔다 — 캡션 12px 그대로면 히트 박스가 약 72×12px로 WCAG 2.2의
+          24×24조차 못 미치는데, 이 링크가 철학 페이지로 가는 유일한 진입점이다.
+          globals.css가 -webkit-tap-highlight-color를 전역으로 껐으므로 active 피드백을
+          직접 준다(텍스트 링크에는 scale보다 opacity가 자연스럽다). */}
       <Link
         href="/philosophy"
-        className="text-[length:var(--text-caption)] leading-none text-text underline underline-offset-2"
+        className="inline-flex items-center justify-center min-h-11 -my-4 px-[var(--spacing-16)] text-[length:var(--text-caption)] leading-none text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
       >
         {d.common.footerPhilosophy}
       </Link>

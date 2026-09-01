@@ -7,9 +7,18 @@ import TopNav from '@/components/ui/TopNav'
  * 서버 컴포넌트로 두고 원고는 파일 내 상수 배열로 관리한다. 라벨과 달리 장문 원고는
  * i18n(ko.ts)에 넣지 않는다: ko.ts는 짧은 UI 라벨 사전이라 성격이 무너진다.
  *
- * 타이포는 미니멀·장문 읽기용으로 --text-body + --leading-loose(1.6, 토큰 중 최대)를 쓰고,
- * 문단 사이는 --spacing-24, 본문 위아래는 --spacing-48로 여백을 준다. 커버 이미지·태그 등
- * 장식은 두지 않는다.
+ * 타이포는 미니멀·장문 읽기용으로 --text-body + --leading-reading(1.75)을 쓴다. --leading-loose
+ * (1.6)는 토큰 정의부 주석이 "condition/description blocks" 용도로 못박고 있어 10문단 에세이에는
+ * 맞지 않았다(20260901_2125 인터랙션 리뷰). 행간을 올린 만큼 문단 간격도 --spacing-32로 올려
+ * "문단 사이 > 한 줄" 비율을 유지한다.
+ *
+ * 여백은 위에서 아래로 좁아지는 서열을 만든다 — 본문 상단 --spacing-64 > 제목 아래
+ * --spacing-48 > 문단 사이 --spacing-32. 제목 위아래가 같으면 제목이 어느 쪽에도 속하지 않고
+ * 뜬다. 커버 이미지·태그 등 장식은 두지 않는다.
+ *
+ * 읽기 폭은 (main)/layout.tsx의 앱 컬럼(max-w-[430px])이 결정한다 — 좌우 패딩을 빼면 최대
+ * 398px다. 이 파일에서 별도 max-width를 걸지 않는 이유가 그것이다(42rem을 걸어봐야 발동하지
+ * 않는 무효 선언이 된다).
  *
  * 본문은 에세이라 UX 라이팅 해요체 규칙의 적용 대상이 아니며 경어체를 그대로 유지한다.
  */
@@ -35,14 +44,20 @@ export default function PhilosophyPage() {
     <div className="min-h-full bg-surface text-text">
       <TopNav title={PAGE_TITLE} />
 
-      <article className="max-w-[42rem] mx-auto px-[var(--spacing-16)] pt-[var(--spacing-48)] pb-[var(--spacing-48)]">
-        <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)]">{PAGE_TITLE}</h1>
+      <article className="px-[var(--spacing-16)] pt-[var(--spacing-64)] pb-[var(--spacing-64)]">
+        <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] font-[number:var(--weight-h3)] tracking-[var(--tracking-h3)]">
+          {PAGE_TITLE}
+        </h1>
 
-        <div className="mt-[var(--spacing-48)] flex flex-col gap-[var(--spacing-24)]">
-          {PARAGRAPHS.map((paragraph) => (
+        <div className="mt-[var(--spacing-48)] flex flex-col gap-[var(--spacing-32)]">
+          {PARAGRAPHS.map((paragraph, i) => (
+            // word-break: keep-all — CSS 기본값에서 한글은 음절 단위로 아무 데서나 끊긴다.
+            // 앱 컬럼이 좁아(한 줄 약 24자) 지정하지 않으면 문단마다 어절이 쪼개진다.
+            // break-words는 공백 없는 긴 덩어리가 폭을 넘을 때만 쓰는 최후 수단.
+            // (NotificationsClient·BadgeRevealCarousel의 선례와 같은 조합)
             <p
-              key={paragraph}
-              className="text-[length:var(--text-body)] leading-[var(--leading-loose)] text-text/90"
+              key={i}
+              className="text-[length:var(--text-body)] leading-[var(--leading-reading)] text-text/90 [word-break:keep-all] break-words"
             >
               {paragraph}
             </p>

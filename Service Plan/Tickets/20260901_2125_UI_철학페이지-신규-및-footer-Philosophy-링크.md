@@ -133,11 +133,55 @@ JAM은 운동을 직접 재지 않습니다. 손목시계나 자전거 속도계
 - MODULAR(`design-system/`) 변경 없음 — UI 재사용 판정대로 기존 `@/components/ui/TopNav`와
   기존 토큰만 사용했고 신규 컴포넌트·신규 토큰을 만들지 않았다.
 
+### 추가 반영 — 인터랙션 리뷰 지적 4건 (머지 전 오케스트레이터 직접 수정)
+
+게이트는 PASS였으나 인터랙션 리뷰가 **티켓 스펙 자체의 결함**을 찾아냈다. 사용자 요구사항이
+"가독성을 고려해 행간을 여유롭게"였는데 최초 스펙(`--leading-loose` 지정)이 그 목표에
+미달했다. 구현자 잘못이 아니라 스펙 오류이므로 머지 전에 바로잡았다.
+
+| # | 지적 | 조치 |
+|---|---|---|
+| 1 | 한글 어절 줄바꿈 미지정 — 음절 단위로 끊겨 문단마다 어절이 쪼개짐 | `<p>`에 `[word-break:keep-all] break-words` 추가. `NotificationsClient`·`BadgeRevealCarousel` 선례와 동일 조합 |
+| 2 | `--leading-loose`(1.6)는 토큰 정의부 주석이 "condition/description blocks"로 못박은 값 — 10문단 에세이용이 아님 | **`--leading-reading: 1.75` 토큰 신설**(`design-system/tokens/typography.css`). 행간을 올린 만큼 문단 간격도 `--spacing-24`→`--spacing-32`로 올려 "문단 사이 > 한 줄" 비율 유지 |
+| 3 | Footer 링크 히트 박스 약 72×12px — WCAG 2.2의 24×24조차 미달. `globals.css`가 전역으로 탭 하이라이트를 꺼 `:active` 피드백도 없음 | `min-h-11` + `-my-4`(시각 간격 상쇄) + `px-16`으로 **91×44px** 확보. `active:opacity-60` + `--duration-micro` 전환 추가 |
+| 4 | `max-w-[42rem]`이 무효 — `(main)/layout.tsx`의 앱 컬럼(`max-w-[430px]`)이 이미 상한 | 제거하고, 실제 읽기 폭이 앱 컬럼에서 결정된다는 근거를 파일 주석에 남김 |
+
+함께 처리한 부수 항목:
+- 여백 서열 정리 — 본문 상단 `--spacing-64` > 제목 아래 `--spacing-48` > 문단 사이 `--spacing-32`.
+  기존에는 제목 위아래가 48로 대칭이라 제목이 어느 쪽에도 속하지 않고 떠 있었다
+- h1에 `--weight-h3`(500)·`--tracking-h3` 명시 — Tailwind v4 preflight가 heading의 weight를
+  `inherit`로 리셋해 본문과 같은 400으로 렌더되고 있었다
+- `key={paragraph}` → `key={i}` — 향후 개정에서 같은 문장이 두 번 들어오면 key가 충돌한다
+
+**채택하지 않은 지적**
+- *h1 중복(TopNav 타이틀 + 본문 h1)* — 티켓이 "양쪽 통일"을 명시했고, 스크롤 시 사라지는 h1을
+  TopNav가 이어받는 구성이 의도다. IntersectionObserver 크로스페이드는 정적 문서에 JS를
+  들이는 값이 크지 않다고 판단해 보류
+- *TopNav 배경톤* — 헤더 `--color-bg` / 캔버스 `--color-surface`의 톤 차이는 DS TopNav 주석이
+  말하는 "보더 없이 배경톤 차이로 구분" 메커니즘이다. `/points`도 같은 조합이라 그대로 뒀다
+- *`--text-heading-sm` weight/tracking 누락* — 저장소 8곳 공통 사안. 이 페이지만 고쳤고(위)
+  전면 정리는 별도 티켓 사안
+
+### 모듈러-서비스 연결 범위 (`design-system/` 변경분)
+
+이번에 `design-system/tokens/typography.css`를 건드렸으므로 1.6단계를 적용한다.
+
+- **분류: 토큰** — `src/app/globals.css`가 `design-system/tokens/typography.css`를 직접
+  `@import`하므로 **서비스에 즉시 반영**된다. 실제 브라우저에서
+  `getComputedStyle(document.documentElement).getPropertyValue('--leading-reading')` → `1.75`,
+  본문 `line-height` → `28px`(16×1.75) 확인
+- **영향 호출부**: 신규 토큰이라 기존 호출부 영향 없음. 현재 사용처는 `/philosophy` 단독
+- **병존 구현 해당 없음** — 컴포넌트 변경이 아니므로 `src/components/ui/`의 대응 파일을
+  함께 고칠 대상이 없다
+- **Storybook 가이드라인 갱신 불필요** — `guidelines/type-body.html`은 size 스케일만 문서화하며
+  기존 `--leading-loose`도 등재돼 있지 않다. 이 카드의 문서화 범위를 벗어난다
+
 ### 변경된 파일
 ```
-jam-web/src/app/(main)/philosophy/page.tsx   (신규)
+jam-web/src/app/(main)/philosophy/page.tsx     (신규)
 jam-web/src/components/ui/Footer.tsx
 jam-web/src/lib/i18n/ko.ts
+jam-web/design-system/tokens/typography.css    (--leading-reading 신설)
 ```
 
 ### 테스트 결과
@@ -146,6 +190,18 @@ jam-web/src/lib/i18n/ko.ts
 - [x] 로컬 `next dev`(dev-login 우회) — `/philosophy` 200, 확정 원고 10문단 전량 일치 대조 통과
 - [x] `/philosophy`에는 Footer 미노출, `/points` 등 다른 화면에는 `href="/philosophy"` 링크 노출 확인
 - [x] 스크린샷(390×844) 육안 확인 — 본문 행간·문단 여백, Footer 3단 배치(슬로건 → Philosophy → 로고+저작권)
+
+**추가 반영분 재검증 (375×812 실브라우저 계산값)**
+- [x] `npm run lint` 0 errors / 13 warnings (기준선 동일, 전부 `design-system/` 기존 경고)
+- [x] `npm run build` 성공, `/philosophy` 라우트 등록
+- [x] `/philosophy` 실렌더 — `word-break: keep-all` + `overflow-wrap: break-word` 적용,
+      `line-height: 28px`(16×1.75), 문단 간격 32px, 여백 서열 64 > 48 > 32,
+      h1 `font-weight: 500`·`letter-spacing: -0.28px`, 문단 10개, Footer 미노출
+- [x] `--leading-reading` 토큰이 서비스 런타임에 `1.75`로 해석됨(globals.css `@import` 경로 확인)
+- [x] `/points` Footer 링크 히트 박스 **91×44px**(WCAG 24×24 및 44pt 충족),
+      `transition: opacity 80ms`, 행 순서 슬로건 → 링크 → 로고+저작권 유지
+- [x] 스크린샷 육안 확인 — 어절 단위 줄바꿈 동작("질문을 / 받습니다"), Footer 시각 간격
+      기존과 동일(히트 영역 확장이 레이아웃을 밀지 않음)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
