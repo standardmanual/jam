@@ -1,9 +1,9 @@
 ---
 id: 20260825_035
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-08-25
-closed:
+closed: 2026-09-01
 ---
 
 # [bug] PostgREST 1000행 절단 위험 잔여 지점 점검 (POI 배지·아이템 배지 근접 지점)
@@ -123,9 +123,10 @@ Service Plan/Tickets/20260825_035_bug_PostgREST절단위험-잔여지점-점검.
 - [x] 해당 없음 — 사용자 노출 텍스트 변경 없음 (쿼리 방식만 바꿈, 화면 출력 결과는 동일)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-01
+- 환경: staging (프로덕션은 /jam-ship으로 별도 진행)
+- 커밋: `68572bd5`. push는 staging의 기존 lint 기준선 drift(27경고, 이 티켓과 무관 — 게이트
+  리뷰에서 별도 확인됨)로 `JAM_SKIP_LINT=1` 사용.
 
 ### 주요 의사결정 / 핵심 메모
 
