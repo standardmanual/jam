@@ -1,8 +1,9 @@
 ---
 id: 20260831_1327
 category: Infra
-status: OPEN
+status: CLOSED
 created: 2026-08-31
+closed: 2026-09-01
 ---
 
 # [Infra] 유닛 테스트가 실제 Supabase에 접속한다 — createServiceClient 미모킹
@@ -103,9 +104,10 @@ jam-web/vitest.setup.ts  (신규 — Supabase 관련 env를 테스트 전 비움
 - [x] `npm run lint` 전체 — 0 error, 26 warning(모두 이번 변경과 무관한 기존 파일)
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만 수행, 병합은 사용자 승인 후 오케스트레이터)
-- 환경: 
-- 커밋: 
+- 배포일: 2026-09-01
+- 환경: staging (프로덕션은 /jam-ship으로 별도 진행)
+- 커밋: `683ecc40`(머지) — 머지 직후 발견된 무관 파일의 lint 경고 초과를 `55d29f88`로 별도 수정
+  (jam-ds 스킬 설치 과정에서 커밋에 섞여 들어온 `ds-sync-check.mjs`가 원인, 이 티켓 범위 밖)
 
 ### 주요 의사결정 / 핵심 메모
 - `sync-vehicle-speed-filter.test.ts`(티켓 20260831_1300 산출물)가 이미 "정답 패턴"을 갖고
@@ -117,3 +119,9 @@ jam-web/vitest.setup.ts  (신규 — Supabase 관련 env를 테스트 전 비움
 
 ### 잔여 이슈
 - 없음
+
+### 개선 리뷰(progressive-reviewer) 제안 반영
+- `Service Plan/Specs/DEV_PROCESS_GUARDRAILS.md`에 "패턴 10 — 테스트가 진입점만 모킹하고,
+  내부에서 새로 열리는 접속 경로는 새어나감"으로 반영 완료.
+- 공용 모킹 헬퍼 추출·env 이름 변경 시 주석 남기기·CI 스크립트화는 리뷰어도 "지금 당장은
+  불필요"로 판단한 제안이라 보류(패턴 10 규칙 3에 "세 번째 발견 시 고려"로 기록해둠).

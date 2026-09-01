@@ -204,6 +204,34 @@ authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
    검사받는다. 컬럼 매핑이 필요하면 반환형을 생성 타입의 `Insert`/`Update`에 묶는다
    (`drop_policy`의 `toDbColumns()`가 이 형태였고, 마이그레이션 115로 매핑이 사라지며 해소됐다).
 
+### 패턴 10 — 테스트가 진입점만 모킹하고, 내부에서 새로 열리는 접속 경로는 새어나감
+
+한 함수의 진입점에 가짜 Supabase 클라이언트를 주입해도, 그 함수가 내부에서 호출하는
+다른 모듈이 **주입 사슬을 타지 않고 자체적으로 `createServiceClient()`를 새로 호출**하면
+그 경로만 실 DB로 샌다. 진입점 모킹은 "이 함수를 호출하는 모든 하위 경로가 같은 클라이언트를
+쓴다"는 가정 위에 있는데, 이 가정은 코드가 자라면서 깨지기 쉽다.
+
+- 실제 사례(20260831_1327): `sync-drop-order.test.ts`가 `processFetchedActivities`에 가짜
+  supabase를 주입했지만, 내부에서 호출되는 `findCompletableItemBooks()`
+  (`@/lib/itembook/completable`)가 별도로 `createServiceClient()`를 호출해 접속했다.
+  자격증명이 없는 환경(CI)에서는 상시 red로 진짜 회귀를 덮었고, 자격증명이 있는 로컬
+  환경에서는 staging·프로덕션 공용 DB에 실제로 select 쿼리가 나갔다.
+- 같은 실행 경로에 `notifications`·`notifications/recap`·`notifications/batch/collections`도
+  모킹 공백으로 걸려 있었다 — 진입점 하나가 아니라 **그 진입점이 부르는 모든 부수 모듈을
+  전수 확인**해야 이런 누락을 잡는다.
+
+**규칙**
+1. 진입점만 모킹하지 말고, 그 함수가 호출하는 모듈 트리 전체에서 `createServiceClient`/
+   `createClient` 호출이 있는지 확인한다.
+2. **모킹 누락을 "조용한 실DB 접속"이 아니라 "즉시 실패"로 바꾸는 가드를 테스트 인프라에
+   심는다.** `vitest.setup.ts`에서 테스트 실행 전 Supabase 관련 env를 비우면, 모킹을
+   빠뜨린 새 테스트는 로컬에 `.env.local`이 있어도 즉시 throw로 드러난다 — CI에서만
+   드러나던 걸 로컬에서도 드러나게 만드는 효과가 있다.
+3. 이런 이중 주입 경로가 두 번째로 발견되면(20260831_1300의 `sync-vehicle-speed-filter.test.ts`,
+   20260831_1327의 `sync-drop-order.test.ts`) 세 번째부터는 공용 모킹 헬퍼로 추출하는 걸
+   고려한다 — 같은 모킹 목록을 여러 테스트 파일에 복붙하면 부수 모듈이 하나 늘 때마다
+   갱신을 빠뜨리기 쉽다.
+
 ---
 
 ## 핵심 루프 의존성 지도
