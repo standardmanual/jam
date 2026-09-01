@@ -67,9 +67,11 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
 
       {/* 히어로 섹션 */}
       <div className="flex flex-col items-center gap-3 text-center">
+        {/* 자간은 한때 애니메이션 모드에서 0.01em을 더했으나 되돌렸다 — 36px 표제에는 오히려
+            negative tracking이 맞다(apple-design §15). 가독성은 그림자만으로 확보한다. */}
         <h1
           className="font-bold"
-          style={{ color: '#FFFFFF', fontSize: '36px', lineHeight: '1.2', ...heroTextStyle, ...(backgroundAnimation ? { letterSpacing: '0.01em' } : null) }}
+          style={{ color: '#FFFFFF', fontSize: '36px', lineHeight: '1.2', ...heroTextStyle }}
         >
           {book.name}
         </h1>

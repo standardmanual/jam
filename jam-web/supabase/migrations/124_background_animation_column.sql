@@ -11,7 +11,7 @@
 --   {
 --     "type": "blob",
 --     "colors": ["#ff6d30", "#a8aded", "#ffe5d1", "#ff4c00"],
---     "bgColor": "#ffffff",
+--     "bgColor": "#555555",
 --     "speed": 1, "seed": 21, "blur": 0.54, "scale": 0.66
 --   }
 -- `type`을 함께 저장해 향후 다른 애니메이션을 추가할 때 컬럼을 또 늘리지 않는다.

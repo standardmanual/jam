@@ -92,7 +92,7 @@ export function blobCycleSeconds(speed: number): number {
  * 시드에 따라 6개가 한곳에 뭉치는 구도가 나왔고, 저작자가 그 화면을 미리 확인할 방법도 없었다.
  * 궤도가 충분히 흩어진 시점 하나를 고정값으로 잡아 항상 같은 구도를 보장한다.
  *
- * (감속 후 정지는 이 값을 쓰지 않는다 — 방금까지 움직이던 위상 그대로 멈춰야 자연스럽다.)
+ * 뷰포트 안에서는 애니메이션이 계속 재생되므로(사용자 결정) "정지 구도"는 이 값 하나뿐이다.
  */
 export const BLOB_STILL_T = 6
 
@@ -235,6 +235,20 @@ const BLOB_ORBITS: { fx: number; sx: number; ox: number; fy: number; sy: number;
 const BLOB_PULSE = 0.28
 
 /**
+ * 블롭별 스케일 펄스 주파수.
+ *
+ * 궤도(`axisWobble`)는 무리수 하모닉으로 루프감을 없앴는데 펄스는 6개가 **전부 같은 0.8**이라
+ * (위상만 어긋나 있었다) speed 1 기준 약 15.7초마다 여섯 개가 함께 부풀었다 줄어드는 신호가
+ * 남았다 — 루프감이 가장 지각되기 쉬운 지점이다. 황금비의 소수부(`(i·PHI) mod 1`)로 0.8~1.2배를
+ * 흩어 서로 공약수를 갖지 않게 한다. **진폭(`BLOB_PULSE`)은 그대로**라 형태가 커지는 범위는
+ * 달라지지 않는다.
+ */
+const BLOB_PULSE_FREQS = Array.from(
+  { length: BLOB_COUNT },
+  (_, i) => 0.8 * (1 + ((i * PHI) % 1) * 0.5)
+)
+
+/**
  * 두 축 펄스의 위상차(rad). 예전에는 sin/cos 조합이라 정확히 π/2(≈1.571)로 어긋나 X가 줄면
  * Y가 커지는 반대 위상이 됐다. π/2보다 좁은 1.0으로 두면 두 축이 살짝 커플링돼 형태가 함께
  * 부풀었다 줄어드는 호흡에 가까워진다.
@@ -248,12 +262,55 @@ const BLOB_PULSE_AXIS_PHASE = 1.0
 const BLOB_ALPHA = 0.7
 
 /**
+ * `prefers-reduced-transparency: reduce`에서 쓸 블롭 채움색을 계산한다.
+ *
+ * 예전에는 이 신호에서 **알파만 0.7 → 1.0으로 올렸다.** 그런데 이 카드의 전경 텍스트는 흰색
+ * (`--color-text`)이고 팔레트에 `#ffe5d1` 같은 밝은 색이 있어, 알파를 올리면 그 색이 더 밝아져
+ * 배지명 뒤 대비가 오히려 **1.91:1 → 1.21:1로 악화**됐다. 접근성 신호를 켠 사용자가 더 나쁜
+ * 화면을 받는 역행이다. apple-design §14의 의도는 "반투명 재질을 **불투명하게**"이지
+ * "**더 밝게**"가 아니다.
+ *
+ * 그래서 알파는 1.0으로 올리되(= 겹침부에서 색이 적층되지 않는다) 색 자체를 `bgColor` 쪽으로
+ * `BLOB_ALPHA`만큼 미리 섞는다. 결과 색은 "일반 경로에서 블롭 한 장이 배경 위에 놓였을 때의
+ * 합성색"과 정확히 같으므로, 밝기가 일반 경로보다 올라가지 않는다(겹침으로 더 밝아지던 경우는
+ * 오히려 사라진다). 즉 흰 텍스트 대비가 일반 경로보다 나빠지지 않는다.
+ */
+export function opaqueBlobFill(colorHex: string, bgColorHex: string): { r: number; g: number; b: number } {
+  const c = hexToRgb(colorHex)
+  const bg = hexToRgb(bgColorHex)
+  const mix = (fg: number, back: number) => Math.round(back + (fg - back) * BLOB_ALPHA)
+  return { r: mix(c.r, bg.r), g: mix(c.g, bg.g), b: mix(c.b, bg.b) }
+}
+
+/**
+ * blur 반경(px). `minDim`은 **그리는 캔버스의** 짧은 변이라, 축소 캔버스에 그대로 호출하면
+ * 반경도 함께 축소된다(별도 보정 불필요).
+ *
+ * `opaque`(reduced-transparency)에서 반경을 절반으로 줄이는 것은 그대로 유지한다 — 반투명 적층
+ * 완화라는 원 취지에 부합하고, 위 `opaqueBlobFill`과 달리 밝기를 건드리지 않는다.
+ */
+function blobBlurRadiusPx(blur: number, minDim: number, opaque: boolean): number {
+  return blur * minDim * 0.15 * (opaque ? 0.5 : 1)
+}
+
+/**
  * 오프스크린 축소 배율 — 블롭은 이 비율로 줄인 캔버스에 그린 뒤 확대 합성한다(G1).
  * `ctx.filter`의 blur는 반경 제곱에 비례하는 비용이 프레임당 6번 든다(blur 0.8·DPR 2·430px면
  * 반경 약 103px × 6회). 1/3 해상도에서는 반경도 1/3이라 비용이 약 1/9로 떨어진다. 결과물이
  * 어차피 강한 블러라 확대해도 육안 차이가 사실상 없다.
  */
 const BLOB_SCRATCH_SCALE = 1 / 3
+
+/**
+ * 축소 경로를 타기 위한 최소 blur 반경(대상 캔버스 기준 px).
+ *
+ * 1/3로 그린 뒤 bilinear로 3배 확대하므로, 재구성 오차가 대략 확대 배율만큼(≈3px) 퍼진다.
+ * blur가 그보다 작으면 선명한 곡선을 확대한 꼴이라 실루엣이 계단·뭉개짐으로 보인다.
+ * 슬라이더 하한 `blur: 0.01`은 430px·DPR 2에서 반경 약 1.3px라 정확히 그 구간이다.
+ * 오차의 2배(6px)를 임계값으로 잡아 안전 여유를 둔다 — blur가 이만큼 작으면 애초에 blur 비용도
+ * 작아서 축소로 아낄 것이 없다(축소는 반경이 클 때만 이득이다).
+ */
+const BLOB_SCRATCH_MIN_BLUR_PX = 6
 
 export interface BlobFrameOptions {
   /**
@@ -262,13 +319,15 @@ export interface BlobFrameOptions {
    */
   flatten?: boolean
   /**
-   * `prefers-reduced-transparency: reduce` — 블롭 알파를 1.0으로 올리고 blur를 절반으로 줄여
-   * 반투명·흐림 표현을 최소화한다.
+   * `prefers-reduced-transparency: reduce` — 블롭을 알파 1.0으로 칠하고(색은 `opaqueBlobFill`이
+   * 배경색 쪽으로 미리 섞어 밝기가 올라가지 않게 한다) blur를 절반으로 줄여 반투명·흐림 적층을
+   * 최소화한다.
    */
   opaque?: boolean
   /**
-   * 블롭을 축소 렌더링할 오프스크린 캔버스(G1). 넘기지 않으면 예전처럼 대상 캔버스에 직접
-   * 그린다 — 테스트·SSR 등 `document`를 쓸 수 없는 환경을 위한 폴백이다.
+   * 블롭을 축소 렌더링할 오프스크린 캔버스(G1). 넘기지 않거나 blur가
+   * `BLOB_SCRATCH_MIN_BLUR_PX`보다 작으면 대상 캔버스에 직접 그린다 — 후자는 3배 확대 아티팩트
+   * 회피용이고, 전자는 테스트·SSR 등 `document`를 쓸 수 없는 환경을 위한 폴백이다.
    */
   scratch?: HTMLCanvasElement | null
 }
@@ -309,7 +368,7 @@ function paintBlobs(
 
   // ctx.filter를 지원하지 않는 구형 브라우저에서는 대입이 무시돼 경계가 선명한 블롭이 그려진다
   // (렌더링이 깨지지는 않는다).
-  ctx.filter = `blur(${params.blur * minDim * 0.15 * (opaque ? 0.5 : 1)}px)`
+  ctx.filter = `blur(${blobBlurRadiusPx(params.blur, minDim, opaque)}px)`
 
   // 색상 4개를 블롭 6개에 순환 배치
   const blobColors = [
@@ -317,6 +376,8 @@ function paintBlobs(
     params.colors[3], params.colors[0], params.colors[1],
   ]
   const baseRadius = minDim * params.scale * 0.35
+  // opaque(reduced-transparency)에서는 알파 1.0 + 배경색 쪽으로 미리 섞은 색을 쓴다.
+  // 자세한 근거는 `opaqueBlobFill` 주석 참조 — 알파만 올리면 밝은 팔레트에서 대비가 역행한다.
   const alpha = opaque ? 1 : BLOB_ALPHA
 
   for (let i = 0; i < BLOB_COUNT; i++) {
@@ -325,14 +386,15 @@ function paintBlobs(
     const py = axisWobble(t, orbit.fy, seed * orbit.sy + orbit.oy)
     const cx = width / 2 + px * minDim * 0.3
     const cy = height / 2 + py * minDim * 0.3
+    const pulse = BLOB_PULSE_FREQS[i] * t + i * 2.1 + seed
     ctx.save()
     ctx.translate(cx, cy)
     ctx.rotate(t * (0.2 + i * 0.1) + seed * i)
     ctx.scale(
-      1.0 + BLOB_PULSE * Math.sin(t * 0.8 + i * 2.1 + seed),
-      1.0 + BLOB_PULSE * Math.sin(t * 0.8 + i * 2.1 + seed + BLOB_PULSE_AXIS_PHASE)
+      1.0 + BLOB_PULSE * Math.sin(pulse),
+      1.0 + BLOB_PULSE * Math.sin(pulse + BLOB_PULSE_AXIS_PHASE)
     )
-    const c = hexToRgb(blobColors[i])
+    const c = opaque ? opaqueBlobFill(blobColors[i], params.bgColor) : hexToRgb(blobColors[i])
     ctx.fillStyle = `rgba(${c.r}, ${c.g}, ${c.b}, ${alpha})`
     drawSmoothBlob(ctx, baseRadius, t, seed + i * 10)
     ctx.restore()
@@ -348,7 +410,7 @@ function paintBlobs(
  * `speed`를 곱했는데, 그러면 어드민에서 속도 슬라이더를 움직이는 순간 위상 전체가 재스케일돼
  * (경과 30초에서 speed 1→2면 t가 15→30 rad) 블롭 6개가 순간이동했다. 누적을 호출부로 옮겨
  * "이미 지나온 위상"이 속도 변경에 영향받지 않게 한다. 서비스에서는 speed가 상수라 결과가
- * 동일하고, 감속(호출부의 뷰포트 진입 후 정지)도 이 구조라야 튀지 않는다.
+ * 동일하다.
  *
  * 참조 스크립트에 있던 원형 aperture 마스크(aperture_size / edge_softness)는 채택하지 않았다 —
  * 카드 전체 영역을 채우도록 사용자가 요청했고, 카드의 라운드 클리핑은 호출부의
@@ -375,7 +437,12 @@ export function drawBlobFrame(
     return
   }
 
-  const scratchCtx = scratch ? prepareScratch(scratch, width, height) : null
+  // blur가 충분히 클 때만 축소 경로를 탄다 — 낮은 blur에서는 3배 확대 아티팩트가 보이고,
+  // 애초에 아낄 blur 비용도 없다(`BLOB_SCRATCH_MIN_BLUR_PX` 참조).
+  const useScratch =
+    !!scratch &&
+    blobBlurRadiusPx(params.blur, Math.min(width, height), opaque) >= BLOB_SCRATCH_MIN_BLUR_PX
+  const scratchCtx = useScratch && scratch ? prepareScratch(scratch, width, height) : null
   if (scratch && scratchCtx) {
     paintBlobs(scratchCtx, scratch.width, scratch.height, params, t, opaque)
     // 축소본은 투명 배경 위에 그려져 있으므로 배경색을 먼저 칠하고 그 위에 확대 합성한다.
