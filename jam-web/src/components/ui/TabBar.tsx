@@ -2,60 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { d } from '@/lib/i18n'
 import { useTabBarHidden } from '@/lib/uiOverlay'
-import { cssDurationMs } from '@/lib/motion'
 import { isPathActive } from '@/lib/isPathActive'
 
-/**
- * 활성탭 점(`t-badge[data-open]`)은 CSS `@keyframes t-badge-slide-in`으로 팝인한다.
- * 탭 연타처럼 짧은 간격으로 data-open이 여러 번 뒤집히면 매번 keyframe이 시작점부터
- * 재생돼 이전 진행이 끊긴다(원본 keyframe은 수정 불가 — transitions.css 상단 규칙).
- * 이미 재생 중인 애니메이션 구간에는 다음 값 적용을 미뤄, 재생이 끝난 뒤 마지막
- * 값만 반영되도록 한다.
- */
-function useDebouncedBadgeOpen(active: boolean): boolean {
-  const [applied, setApplied] = useState(active)
-  const appliedRef = useRef(active)
-  const animatingUntilRef = useRef(0)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (appliedRef.current === active) return
-
-    function apply() {
-      appliedRef.current = active
-      setApplied(active)
-      animatingUntilRef.current = Date.now() + cssDurationMs('--badge-slide-dur', 260)
-    }
-
-    if (timerRef.current) clearTimeout(timerRef.current)
-
-    const remaining = animatingUntilRef.current - Date.now()
-    if (remaining > 0) {
-      timerRef.current = setTimeout(apply, remaining)
-    } else {
-      apply()
-    }
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [active])
-
-  return applied
-}
-
-/** 탭 활성 점 — data-open을 바로 반영하지 않고 위 debounce를 거친다. */
-function TabActiveDot({ active }: { active: boolean }) {
-  const dotOpen = useDebouncedBadgeOpen(active)
-  return (
-    <span className="t-badge jam-tabbar-dot" data-open={dotOpen} aria-hidden="true">
-      <span className="t-badge-dot w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
-    </span>
-  )
-}
+// 활성 배경 필의 고정 크기(px) — 렌더 클래스(`w-16 h-12`)와 반드시 일치해야
+// offsetLeft/offsetWidth 기반 중앙 정렬 계산(moveTo)이 어긋나지 않는다.
+const PILL_WIDTH = 64
 
 /**
  * SuperHi Plus 바텀 탭바 (iOS 26 스타일 플로팅 캡슐, iOS HIG Tab Bar 패턴)
@@ -155,6 +109,14 @@ export default function TabBar({ username }: TabBarProps) {
   const searchParams = useSearchParams()
   const hidden = useTabBarHidden()
 
+  const navRef = useRef<HTMLElement>(null)
+  const pillRef = useRef<HTMLSpanElement>(null)
+  const tabRefs = useRef(new Map<string, HTMLAnchorElement>())
+  // 첫 페인트에서는 애니메이션 없이 스냅시켜야 한다 (SlidingTabs.tsx와 동일).
+  const hasPositionedRef = useRef(false)
+  // ResizeObserver 이펙트가 매 렌더의 최신 activeHref를 읽기 위한 ref.
+  const activeHrefRef = useRef<string | null>(null)
+
   // 배지/아이템북 상세를 다른 유저의 프로필 맥락(?u=)에서 보고 있으면 "내" 탭으로 취급하지 않음
   const viewingOtherUser = (() => {
     const u = searchParams.get('u')
@@ -180,12 +142,79 @@ export default function TabBar({ username }: TabBarProps) {
     return isPathActive(pathname, href)
   }
 
+  // 활성 탭이 없는 페이지(프로필/검색/알림함 등)에서는 null — pill을 숨긴다.
+  const activeHref = tabs.find((tab) => isActive(tab.href))?.href ?? null
+
+  useLayoutEffect(() => {
+    activeHrefRef.current = activeHref
+  })
+
+  // SlidingTabs.tsx의 moveTo()를 Link 기반 라우트 탐색에 맞게 이식한 것.
+  // SlidingTabs 컴포넌트 자체(value/onChange 단일 페이지 모델)는 재사용하지 않고
+  // "단일 pill + offsetLeft/offsetWidth 측정 + 첫 배치 무애니메이션" 패턴만 차용한다
+  // (20260901_1521). 활성 탭이 없으면(href=null) pill을 숨기고 false를 돌려준다.
+  const moveTo = useCallback((href: string | null, animate: boolean): boolean => {
+    const pill = pillRef.current
+    if (!pill) return false
+    const tab = href ? tabRefs.current.get(href) : undefined
+
+    const apply = () => {
+      if (tab) {
+        pill.style.opacity = '1'
+        pill.style.transform = `translate(${tab.offsetLeft + (tab.offsetWidth - PILL_WIDTH) / 2}px, -50%)`
+      } else {
+        pill.style.opacity = '0'
+      }
+    }
+
+    if (!animate) {
+      const prevTransition = pill.style.transition
+      pill.style.transition = 'none'
+      apply()
+      void pill.offsetWidth
+      pill.style.transition = prevTransition
+    } else {
+      apply()
+    }
+
+    return Boolean(tab)
+  }, [])
+
+  // 활성 탭 변경(라우트 전환) — 첫 배치만 무애니메이션, 이후에는 트윈.
+  useLayoutEffect(() => {
+    const positioned = moveTo(activeHref, hasPositionedRef.current)
+    if (positioned) hasPositionedRef.current = true
+  }, [activeHref, moveTo])
+
+  // 리사이즈 / 웹폰트 로드 / 컨테이너 폭 변화 — 항상 무애니메이션으로 재배치.
+  // deps에 activeHref를 넣지 않는 이유는 SlidingTabs.tsx와 동일
+  // (ResizeObserver.observe()의 최초 발화가 방금 트리거된 트윈을 캔슬하는 것을 막기 위함).
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+
+    const reposition = () => moveTo(activeHrefRef.current, false)
+
+    const observer = new ResizeObserver(reposition)
+    observer.observe(nav)
+    window.addEventListener('resize', reposition)
+
+    const fonts = (document as Document & { fonts?: FontFaceSet }).fonts
+    fonts?.ready.then(reposition).catch(() => {})
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', reposition)
+    }
+  }, [moveTo])
+
   // 배지 공유 미리보기 같은 전체화면 오버레이가 열려 있는 동안은 물리적으로 렌더링하지 않는다
   // (z-index로 덮기만 하면 iOS Safari 동적 툴바 상태에 따라 살짝 비쳐 보이는 경우가 있었음).
   if (hidden) return null
 
   return (
     <nav
+      ref={navRef}
       // 20260823_003: 재질(반투명 흰 필) — bg-surface-inverse(불투명) → jam-tabbar-chrome
       // (transitions.css, --color-chrome-bg-inverse/--blur-chrome 참조 — DS TabBar.jsx와 값 공유)
       className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-16 rounded-[var(--radius-pill-buttons)] jam-tabbar-chrome flex items-center justify-between px-1 z-40"
@@ -193,6 +222,20 @@ export default function TabBar({ username }: TabBarProps) {
       // 최소 여백 10px로 재조정(DS TabBar.jsx와 동일 공식).
       style={{ bottom: 'max(10px, calc(env(safe-area-inset-bottom) + 16px - 32px))' }}
     >
+      {/* 활성 탭 배경 필 — 요청: "선택된 탭의 배경뒤에 활성 상태를 표현해줘".
+          탭마다 조건부 렌더링하던 기존 방식 대신 단일 공유 pill을 두고 활성 탭의
+          offsetLeft/offsetWidth 중앙으로 translateX 이동시킨다(moveTo, 위 참고) — 탭 전환 시
+          스냅 대신 미끄러지는 모션이 생긴다(20260901_1521). 참고 스크린샷처럼 정사각·완전한
+          원이 아니라 "양옆은 완전히 둥글고 위아래는 직선"인 캡슐(스타디움) 모양 — 높이보다
+          폭을 넓게 잡고 rounded-full(반경이 짧은 변인 높이에 의해 자연히 클램프됨)을 적용하면
+          만들어진다. 색은 흰색이 아니라 반투명 그레이(rgba(0,0,0,0.08)) — 흰 필
+          (--color-chrome-bg-inverse) 위에 살짝 어두운 톤을 얹어 구분한다. */}
+      <span
+        aria-hidden="true"
+        ref={pillRef}
+        className="jam-tabbar-pill absolute top-1/2 left-0 w-16 h-12 rounded-full opacity-0"
+        style={{ background: 'rgba(0,0,0,0.08)', transform: 'translate(0px, -50%)' }}
+      />
       {tabs.map((tab) => {
         const active = isActive(tab.href)
         return (
@@ -201,35 +244,16 @@ export default function TabBar({ username }: TabBarProps) {
             href={tab.href}
             aria-label={tab.label}
             aria-current={active ? 'page' : undefined}
+            ref={(el) => {
+              if (el) tabRefs.current.set(tab.href, el)
+              else tabRefs.current.delete(tab.href)
+            }}
             className="relative flex-1 flex items-center justify-center h-full min-w-11 transition-transform duration-100 active:scale-90"
           >
-            {/* 활성 탭 배경 필 — 요청: "선택된 탭의 배경뒤에 활성 상태를 표현해줘".
-                아이콘보다 먼저 그려 뒤에 깔린다(Link 자체는 flex-1이라 탭마다 폭이 다를
-                수 있어, 이 배경은 별도로 중앙 정렬한다). 참고 스크린샷처럼 정사각·완전한
-                원이 아니라 "양옆은 완전히 둥글고 위아래는 직선"인 캡슐(스타디움) 모양 —
-                높이보다 폭을 넓게 잡고 rounded-full(반경이 짧은 변인 높이에 의해 자연히
-                클램프됨)을 적용하면 만들어진다. 색은 흰색이 아니라 반투명 그레이
-                (rgba(0,0,0,0.08)) — 흰 필(--color-chrome-bg-inverse) 위에 살짝 어두운
-                톤을 얹어 구분한다(요청: "화이트가 아니라 투명한 그레이"). */}
-            {active && (
-              <span
-                aria-hidden="true"
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-12 rounded-full"
-                style={{ background: 'rgba(0,0,0,0.08)' }}
-              />
-            )}
             {/* DS v2: 활성=--color-primary(레드), 비활성=--color-icon-inactive(다크 그레이) */}
             <span className="relative" style={{ color: active ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
               {active ? tab.iconFill : tab.iconLine}
             </span>
-            {/*
-              활성탭 점 — transitions.dev `03-notification-badge.md`.
-              조건부 렌더링을 없애고 항상 마운트한 뒤 data-open만 토글해야
-              팝인/팝아웃 트랜지션이 발화한다. 앵커는 원본(우상단) 대신
-              `.jam-tabbar-dot`으로 트리거 하단 중앙으로 옮겼다. 값 적용은
-              `TabActiveDot`이 debounce한다(탭 연타 시 keyframe 강제 재시작 방지).
-            */}
-            <TabActiveDot active={active} />
           </Link>
         )
       })}
