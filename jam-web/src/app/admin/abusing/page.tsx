@@ -1,7 +1,7 @@
 import { getAdminUser } from '@/lib/admin/auth'
 import { redirect } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getAbusingPolicy } from '@/lib/abusing/policy'
+import { getAbusingPolicy, findPolicyRateMismatches } from '@/lib/abusing/policy'
 import AbusingClient from './AbusingClient'
 import type { BanRow } from './BanTable'
 
@@ -39,6 +39,7 @@ export default async function AbusingPage() {
   return (
     <AbusingClient
       policy={policy}
+      policyMismatch={findPolicyRateMismatches(policy)}
       bans={banRows}
       poiBlocks={poiBlocks ?? []}
     />

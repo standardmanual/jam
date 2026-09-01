@@ -3,6 +3,7 @@ import { getAdminUser } from '@/lib/admin/auth'
 import {
   getAbusingPolicy,
   updateAbusingPolicy,
+  findPolicyRateMismatches,
   DEFAULT_POLICY,
   RATE_KEYS,
   MIN_VEHICLE_SPEED_FILTER_KMH,
@@ -14,7 +15,7 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const policy = await getAbusingPolicy()
-  return NextResponse.json({ policy })
+  return NextResponse.json({ policy, mismatch: findPolicyRateMismatches(policy) })
 }
 
 export async function PUT(req: NextRequest) {
@@ -78,5 +79,6 @@ export async function PUT(req: NextRequest) {
   }
 
   // 저장 직후 DB에서 다시 읽어 돌려준다 — 폼이 실제 반영된 값으로 화면을 맞출 수 있다
-  return NextResponse.json({ ok: true, policy: await getAbusingPolicy() })
+  const saved = await getAbusingPolicy()
+  return NextResponse.json({ ok: true, policy: saved, mismatch: findPolicyRateMismatches(saved) })
 }
