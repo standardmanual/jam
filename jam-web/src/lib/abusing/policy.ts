@@ -129,9 +129,11 @@ export async function getAbusingPolicy(client?: SupabaseClient): Promise<Abusing
 
     // NUMERIC 컬럼이 문자열로 내려올 수 있어 숫자로 정규화한다
     const row = data as unknown as Record<string, unknown>
-    const normalized: Record<string, number> = {}
+    // `AbusingPolicy`의 키 집합을 그대로 채우므로 값 타입을 `Record<keyof AbusingPolicy, number>`로
+    // 선언해 둔다 — 루프가 끝나면 `AbusingPolicy`와 구조적으로 같아 별도 캐스팅 없이 반환할 수 있다.
+    const normalized = {} as Record<keyof AbusingPolicy, number>
     const fellBack: string[] = []
-    for (const [key, fallback] of Object.entries(DEFAULT_POLICY)) {
+    for (const [key, fallback] of Object.entries(DEFAULT_POLICY) as [keyof AbusingPolicy, number][]) {
       const v = row[key]
       const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : NaN
       if (Number.isNaN(n)) {
@@ -149,12 +151,16 @@ export async function getAbusingPolicy(client?: SupabaseClient): Promise<Abusing
       )
     }
 
-    // 원본 행의 **상위집합**으로 돌려준다 (티켓 20260831_1149).
-    // 원래 근거는 "마이그레이션 115 미실행 구간에서 shadow-ban.ts가 런타임 문자열로 조합한
-    // 구 컬럼 키를 살려둔다"였는데, 티켓 20260831_1259가 그 문자열 조합을 타입 맵으로
-    // 바꾸면서 **이 근거는 사라졌다** — 구 키를 보존해도 맵이 그 키를 찾지 않는다.
-    // 스프레드 제거는 1149의 잔여 이슈로 남겨 둔다 (별건).
-    return { ...row, ...normalized } as unknown as AbusingPolicy
+    // `AbusingPolicy` 키만 담아 돌려준다 (티켓 20260831_1328).
+    // 한때 `{ ...row, ...normalized }`로 원본 행의 **상위집합**을 돌려줬다 — 마이그레이션 115
+    // (등급명 legend·mythic → epic·mystic) 미실행 구간에 DB에 남은 구 컬럼명을, shadow-ban.ts가
+    // 런타임 문자열로 `${banLevel}_${rarity}_rate`를 조합해 찾아갈 수 있게 살려두려는
+    // 목적이었다(티켓 20260831_1149). 그런데 1) 115가 적용돼 DB 컬럼과 앱 키가 일치하고,
+    // 2) 티켓 20260831_1259가 그 문자열 조합을 `Record<BadgeRarity, keyof AbusingPolicy>`
+    // 타입 맵으로 바꿔 애초에 구 키를 조회하지 않는다 — 두 근거가 모두 사라져 상위집합은
+    // `AbusingPolicy`에 없는 키를 실어 나르기만 했다. 소비 지점(pickup route·drop-engine·
+    // 어드민 화면·정책 API) 전수 확인 결과 `DEFAULT_POLICY` 밖 키를 읽는 곳이 없어 제거했다.
+    return normalized
   } catch (e) {
     console.error('[abusing-policy] 조회 예외 — 기본 정책으로 폴백:', e)
     return DEFAULT_POLICY
