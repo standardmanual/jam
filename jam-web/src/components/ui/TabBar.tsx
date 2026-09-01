@@ -7,9 +7,13 @@ import { d } from '@/lib/i18n'
 import { useTabBarHidden } from '@/lib/uiOverlay'
 import { isPathActive } from '@/lib/isPathActive'
 
-// 활성 배경 필의 고정 크기(px) — 렌더 클래스(`w-16 h-12`)와 반드시 일치해야
+// 활성 배경 필의 고정 크기(px) — 렌더 클래스(`w-20 h-12`)와 반드시 일치해야
 // offsetLeft/offsetWidth 기반 중앙 정렬 계산(moveTo)이 어긋나지 않는다.
-const PILL_WIDTH = 64
+// 폭 80px(원래 64px에서 확대) — 첫/끝 탭에서 필-nav 사이 가로 여백을 세로 여백(2px,
+// nav 52px와 필 48px 높이차의 절반)과 맞추기 위함(티켓 20260901_1626 후속). 가로 여백만
+// 유독 넓었던 원인은 nav의 좌우 패딩(px-1=4px)과 탭 슬롯 내 중앙정렬 여백이 합쳐졌기
+// 때문 — 필 폭을 넓혀 그 중앙정렬 여백을 줄이는 방식으로 맞췄다.
+const PILL_WIDTH = 80
 const PILL_HEIGHT = 48
 
 // nav(탭바 전체)와 필(활성 배경)은 둘 다 "완전히 둥근" 캡슐이지만, 각자 자기 높이의
@@ -246,7 +250,7 @@ export default function TabBar({ username }: TabBarProps) {
       <span
         aria-hidden="true"
         ref={pillRef}
-        className="jam-tabbar-pill absolute top-1/2 left-0 w-16 h-12 rounded-full opacity-0"
+        className="jam-tabbar-pill absolute top-1/2 left-0 w-20 h-12 rounded-full opacity-0"
         style={{ background: 'rgba(0,0,0,0.08)', transform: 'translate(0px, -50%)' }}
       />
       {tabs.map((tab) => {
