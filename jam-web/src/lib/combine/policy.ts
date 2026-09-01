@@ -32,7 +32,12 @@ export const DEFAULT_COMBINE_POLICY: CombinePolicy = {
 export async function getCombinePolicy(): Promise<CombinePolicy> {
   try {
     const supabase = createServiceClient()
-    const { data } = await supabase.from('combine_policy').select('*').eq('id', 1).single()
+    const { data, error } = await supabase.from('combine_policy').select('*').eq('id', 1).single()
+    if (error) {
+      // 폴백은 유지하되(믹스 기능이 죽으면 안 됨) 실패 신호는 서버 로그에 남긴다 (티켓 20260901_1843)
+      console.error('[combine-policy] 조회 실패 — 기본 정책으로 폴백:', error)
+      return DEFAULT_COMBINE_POLICY
+    }
     if (!data) return DEFAULT_COMBINE_POLICY
     const row = data as unknown as Record<string, unknown>
     const policy = { ...DEFAULT_COMBINE_POLICY } as Record<string, number>
@@ -42,15 +47,25 @@ export async function getCombinePolicy(): Promise<CombinePolicy> {
       if (!Number.isNaN(n)) policy[key] = n
     }
     return policy as unknown as CombinePolicy
-  } catch {
+  } catch (e) {
+    console.error('[combine-policy] 조회 예외 — 기본 정책으로 폴백:', e)
     return DEFAULT_COMBINE_POLICY
   }
 }
 
+/**
+ * 조합 정책을 저장한다. 실패하면 호출부가 인지하도록 예외를 던진다.
+ * (이전에는 upsert 반환 error를 확인하지 않아 저장 실패가 성공으로 응답됐다 — 티켓 20260901_1843,
+ * `drop-engine/policy.ts`의 `updateDropPolicy` 패턴을 그대로 따른다)
+ */
 export async function updateCombinePolicy(patch: Partial<CombinePolicy>): Promise<void> {
   const supabase = createServiceClient()
   const q = supabase.from('combine_policy')
-  await q.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
+  const { error } = await q.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
+  if (error) {
+    console.error('[combine-policy] 저장 실패:', error)
+    throw new Error(`combine_policy upsert 실패 (${error.code}): ${error.message}`)
+  }
 }
 
 /** 재료 개수 + 서로 다른 소재 세계관 수로 티어 결정. 요건 미충족 시 하위 티어로 강등. */

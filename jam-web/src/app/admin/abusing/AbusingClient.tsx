@@ -123,6 +123,11 @@ export default function AbusingClient({
     if (res.ok) {
       setBans((prev) => prev.filter((b) => b.user_id !== userId))
       flash('ok', '밴 해제 완료')
+    } else {
+      // API가 실패 사유를 실어 보내므로 그대로 노출한다 (어드민 화면 — 원인 특정이 우선).
+      // 이전에는 이 분기가 없어 DB 삭제가 실패해도 화면·유저에게 아무 신호가 없었다 (티켓 20260901_1843).
+      const json = (await res.json().catch(() => null)) as { error?: string } | null
+      flash('err', json?.error ?? `밴 해제에 실패했어요. 서버가 ${res.status} 오류로 응답했어요.`)
     }
   }
 
@@ -159,6 +164,10 @@ export default function AbusingClient({
     if (res.ok) {
       setPoiBlocks((prev) => prev.filter((b) => !(b.user_id === userId && b.poi_id === poiId)))
       flash('ok', '블록 해제 완료')
+    } else {
+      // 이전에는 이 분기가 없어 DB 삭제가 실패해도 화면·유저에게 아무 신호가 없었다 (티켓 20260901_1843).
+      const json = (await res.json().catch(() => null)) as { error?: string } | null
+      flash('err', json?.error ?? `블록 해제에 실패했어요. 서버가 ${res.status} 오류로 응답했어요.`)
     }
   }
 
