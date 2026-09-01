@@ -298,12 +298,18 @@ function checkPairs(pairs) {
     }
     if (!p.svcExists) continue; // 서비스에 짝이 없는 DS 전용 컴포넌트는 정상 (@ds 직접 import)
 
-    const dsSrc = readFileSync(p.dsPath, 'utf8');
-    const svcSrc = readFileSync(p.svcPath, 'utf8');
+    // <svg …> 여는 태그를 지워 아이콘 치수를 비교 대상에서 제외한다 (양쪽 대칭).
+    // 서비스는 <svg className="w-4 h-4">, MODULAR 은 <svg width={16} height={16}> 로 쓴다.
+    // 표현 계층이 달라 짝지을 수 없고, 짝지으면 아이콘 16px 이 버튼 28px 과 비교된다.
+    const stripSvg = (src) => src.replace(/<svg[^>]*>/g, '<svg>');
+    const dsSrc = stripSvg(readFileSync(p.dsPath, 'utf8'));
+    const svcSrc = stripSvg(readFileSync(p.svcPath, 'utf8'));
 
-    const dsSet = new Set(expandShorthand(extractInlineStyles(dsSrc)).map(keyOf));
+    const dsAll = expandShorthand(extractInlineStyles(dsSrc)).map(keyOf);
     const tw = extractTailwind(svcSrc);
-    const svcSet = new Set(expandShorthand([...tw.pairs, ...extractInlineStyles(svcSrc)]).map(keyOf));
+    const svcAll = expandShorthand([...tw.pairs, ...extractInlineStyles(svcSrc)]).map(keyOf);
+    const dsSet = new Set(dsAll);
+    const svcSet = new Set(svcAll);
 
     const onlySvc = [...svcSet].filter((x) => !dsSet.has(x)).sort();
     const onlyDs = [...dsSet].filter((x) => !svcSet.has(x)).sort();
@@ -318,9 +324,11 @@ function checkPairs(pairs) {
     for (const prop of conflictProps) {
       const svcVals = onlySvc.filter((x) => propOf(x) === prop);
       const dsVals = onlyDs.filter((x) => propOf(x) === prop);
-      // 양쪽 다 값이 하나면 그 둘이 같은 요소를 가리킨다고 봐도 안전하다 → 확정 드리프트.
-      // 여러 개면 어느 요소끼리의 짝인지 이 스크립트가 알 수 없다 → 사람 판단.
-      const certain = svcVals.length === 1 && dsVals.length === 1;
+      // 양쪽 다 그 속성이 딱 한 번씩만 등장할 때만 같은 요소를 가리킨다고 볼 수 있다.
+      // 중복 제거된 값 개수가 아니라 '원본 등장 횟수' 로 세야 한다 — DS 가 marginBottom 을
+      // 핸들·제목 두 곳에 같은 값으로 쓰면 Set 에서는 1개로 접혀 오판한다.
+      const occur = (arr) => arr.filter((x) => propOf(x) === prop).length;
+      const certain = occur(svcAll) === 1 && occur(dsAll) === 1;
       report('PAIR_GEOMETRY', certain ? 'ERROR' : 'WARN', p.name,
         certain
           ? `${prop} 값이 어긋납니다. 서비스가 기준입니다.`
@@ -345,8 +353,34 @@ function checkPairs(pairs) {
 // ── 검사 3: props 드리프트 (.d.ts ↔ .tsx) ───────────────────────────────────
 function propNames(src) {
   const names = new Set();
-  // interface/type 본문의 `name?: T` 형태만 얕게 훑는다.
-  for (const m of src.matchAll(/^\s{2,}(\w+)\??\s*:/gm)) names.add(m[1]);
+  // `interface XxxProps {` / `type XxxProps = {` 본문 '안에서만' 뽑는다.
+  // 파일 전체를 훑으면 style 객체·상수 리터럴의 키까지 props 로 잡혀(height·transform·
+  // username …) 9쌍 전부에서 오탐이 났다.
+  const re = /(?:interface|type)\s+\w*Props\b[^{]*\{/g;
+  let m;
+  while ((m = re.exec(src))) {
+    let depth = 1, i = re.lastIndex;
+    const start = i;
+    while (i < src.length && depth > 0) {
+      if (src[i] === '{') depth++;
+      else if (src[i] === '}') depth--;
+      i++;
+    }
+    const body = src.slice(start, i - 1);
+    // 중첩 객체 타입 안쪽 키는 props 가 아니므로 최상위 깊이에서만 인정한다.
+    let d = 0, buf = '';
+    for (let j = 0; j < body.length; j++) {
+      const c = body[j];
+      if (c === '{' || c === '(' || c === '[') d++;
+      else if (c === '}' || c === ')' || c === ']') d--;
+      else if (c === ':' && d === 0) {
+        const name = buf.trim().replace(/\?$/, '').replace(/^readonly\s+/, '');
+        if (/^\w+$/.test(name)) names.add(name);
+        buf = ''; continue;
+      } else if ((c === ';' || c === ',' || c === '\n') && d === 0) { buf = ''; continue; }
+      buf += c;
+    }
+  }
   return names;
 }
 function checkProps(pairs) {
@@ -359,7 +393,7 @@ function checkProps(pairs) {
     }
     const dsProps = propNames(readFileSync(dts, 'utf8'));
     const svcProps = propNames(readFileSync(p.svcPath, 'utf8'));
-    if (!svcProps.size) continue;
+    if (!svcProps.size) continue;  // 서비스에 Props 타입 선언 자체가 없으면 비교 불가
     const missing = [...svcProps].filter((n) => !dsProps.has(n));
     const extra = [...dsProps].filter((n) => !svcProps.has(n));
     if (missing.length || extra.length) {
