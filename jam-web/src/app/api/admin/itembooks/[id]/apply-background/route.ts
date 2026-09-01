@@ -13,6 +13,14 @@ import type { Json } from '@/types/database.generated'
  * background_shader_id/background_image_url/background_video_url은 더 이상 복사하지 않는다
  * (티켓 20260901_1929 — 배경 제너레이터·쉐이더 기능 제거). 어드민 저작 화면에서 더 이상 이
  * 필드들을 채울 방법이 없으므로, 과거에 만들어진 값이 배지 쪽에 남아 있어도 그대로 둔다.
+ *
+ * [20260901_1944] 그 결과 애니메이션을 일괄 적용하면 하위 배지는 "부모의 애니메이션 + 자기
+ * 예전 영상/이미지 배경"이라는 데이터 상태로 남는다. 여기서 영상·이미지를 NULL로 덮어 정리하지
+ * 않는 이유는 위와 같다 — 다시 만들 수 없는 값이라 파괴적으로 지우지 않는다. 대신 그 상태가
+ * 화면에서 충돌하지 않도록 렌더링 우선순위를 badgeBackgroundTheme.ts 한 곳에서 강제한다:
+ * background_animation이 있으면 getBadgeBackgroundStyle / getBadgeBackgroundVideoUrl /
+ * hasBadgeBackgroundTheme 세 함수가 모두 "전체 배경 레이어 없음"으로 답한다. 회귀 방지는
+ * lib/__tests__/badgeBackgroundTheme.test.ts의 캐스케이드 직후 상태 테스트가 담당한다.
  */
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()

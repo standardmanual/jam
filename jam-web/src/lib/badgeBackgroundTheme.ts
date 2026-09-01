@@ -111,6 +111,15 @@ export function getBadgeBackgroundAnimation(badge: BackgroundThemeSource): BlobA
  * 넘어서는 초장신 뷰포트까지 모두 정지 이미지가 받아준다.
  */
 export function getBadgeBackgroundVideoUrl(badge: BackgroundThemeSource): string | null {
+  // [20260901_1944] 위 두 함수와 **동일한** 우선순위를 적용한다. 여기에만 분기가 빠지면 배경
+  // 레이어가 절반만 비워져(CSS는 비었는데 영상은 재생) 화면 전체를 덮는 MP4와 카드 안 블롭이
+  // 동시에 도는 상태가 된다. 프로덕션 DB에는 background_video_url이 채워진 행이 badges 351건 /
+  // item_books 10건 / factions 1건으로 사실상 대부분이라, 애니메이션을 켜는 순간 곧바로 재현된다.
+  //
+  // 저장 시점에 영상 필드를 파괴적으로 지우지 않고 여기서 걸러내는 이유는 위 두 함수와 같다 —
+  // 제너레이터가 사라져 다시 만들 수 없는 값이므로 데이터는 보존하고 "무엇을 그릴지"만 이 모듈
+  // 한 곳에서 결정한다. 애니메이션 모드를 해제하면 예전 영상 배경이 그대로 되살아난다.
+  if (parseBlobAnimation(badge.background_animation)) return null
   return badge.background_video_url ?? null
 }
 
