@@ -1,9 +1,9 @@
 ---
 id: 20260901_2125
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-09-01
-closed:
+closed: 2026-09-01
 ---
 
 # [UI] 철학 페이지 신규 + Footer 'Philosophy' 링크 추가
@@ -212,9 +212,10 @@ jam-web/design-system/tokens/typography.css    (--leading-reading 신설)
 - [x] 표기 규칙: 링크 라벨·TopNav 타이틀·h1 모두 `Philosophy` 한 단어로 통일
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 반영일: 2026-09-01
+- 환경: **staging** — 프로덕션 승격은 `/jam-ship`으로 별도 진행
+- 커밋: `b083290c`(신규 구현) + `208dd1cf`(인터랙션 리뷰 반영 4건)
+- 브랜치: `claude/jamwork-20260901_2125-philosophy-page` → `origin/staging` fast-forward
 
 ### 주요 의사결정 / 핵심 메모
 
