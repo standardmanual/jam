@@ -357,8 +357,7 @@ function propNames(src) {
   // 파일 전체를 훑으면 style 객체·상수 리터럴의 키까지 props 로 잡혀(height·transform·
   // username …) 9쌍 전부에서 오탐이 났다.
   const re = /(?:interface|type)\s+\w*Props\b[^{]*\{/g;
-  let m;
-  while ((m = re.exec(src))) {
+  while (re.test(src)) {
     let depth = 1, i = re.lastIndex;
     const start = i;
     while (i < src.length && depth > 0) {
