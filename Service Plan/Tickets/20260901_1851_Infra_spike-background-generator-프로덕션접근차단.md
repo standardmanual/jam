@@ -1,9 +1,9 @@
 ---
 id: 20260901_1851
 category: Infra
-status: OPEN
+status: CLOSED
 created: 2026-09-01
-closed:
+closed: 2026-09-01
 ---
 
 # [Infra] /spike/background-generator 프로덕션 라우트 접근 차단
@@ -80,9 +80,9 @@ jam-web/src/app/(main)/badges/[id]/BadgeShareButton.tsx (주석 수정)
 해당 없음 (사용자 노출 텍스트 변경 없음, 라우트 삭제 및 내부 코드 정리만 수행)
 
 ### 배포 정보
-- 배포일: (미배포 — staging 병합 후 오케스트레이터가 처리)
-- 환경: production
-- 커밋: (아래 push 브랜치 참조)
+- 배포일: 2026-09-01
+- 환경: staging (프로덕션은 /jam-ship으로 별도 진행)
+- 커밋: `3ef389c1`
 
 ### 주요 의사결정 / 핵심 메모
 - **전체 폴더 삭제 대신 부분 이전을 택한 이유**: `/spike/background-generator` 폴더는
