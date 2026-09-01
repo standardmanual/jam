@@ -1,4 +1,9 @@
-/** 배경테마 제너레이터 스파이크 — 공용 타입 (20260819_001) */
+/**
+ * 배경테마 제너레이터 공용 타입 (20260819_001 스파이크에서 도입).
+ * `/spike/background-generator` 라우트 자체는 프로덕션에서 인증 없이 접근 가능했던 문제로
+ * 삭제됐지만(20260901_1851), `SERVICE_WIDTH`는 어드민 미리보기(BadgeDetailPreviewFrame,
+ * ItemBookDetailPreviewFrame)가 계속 참조하는 실서비스 상수라 이 파일만 `src/lib`로 이전했다.
+ */
 
 export type Mode = 'pattern' | 'animation'
 

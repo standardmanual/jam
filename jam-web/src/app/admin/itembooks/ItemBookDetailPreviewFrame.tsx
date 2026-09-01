@@ -6,7 +6,7 @@ import ItemBookHeroSection, {
   type ItemBookHeroSectionBook,
 } from '@/app/(main)/collections/[id]/ItemBookHeroSection'
 import { getBadgeThemedTextStyle } from '@/lib/badgeBackgroundTheme'
-import { SERVICE_WIDTH } from '@/app/spike/background-generator/types'
+import { SERVICE_WIDTH } from '@/lib/backgroundGenerator/types'
 import { d } from '@/lib/i18n'
 
 /** 미리보기 프레임 높이 — 실제 서비스 기준 단말(430×932)의 뷰포트 높이 */
