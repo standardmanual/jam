@@ -1,27 +1,19 @@
 'use client'
 
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconX } from '@tabler/icons-react'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
-import { BADGE_BACKGROUND_SHADER_OPTIONS } from '@/lib/badgeBackgroundShaderOptions'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
-import type {
-  BackgroundMode,
-  BackgroundGeneratorPreviewHandle,
-  BackgroundGeneratorLivePreviewState,
+import BackgroundGeneratorPreview, {
+  type BackgroundGeneratorLivePreviewState,
 } from './BackgroundGeneratorPreview'
 import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
 import { buildConditionJsonFromFields, getUnsupportedConditionKeys } from './conditionFormFields'
 import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
-
-// WebGL 셰이더 5종(@paper-design/shaders-react) + mp4-muxer를 정적 import하면 BadgeForm 청크에
-// 그대로 딸려온다 — React.lazy로 분리해 별도 청크로 지연 로드한다(20260826_011 A5). next/dynamic은
-// loadable 래퍼가 ref를 가로채 `ref.bake()`(배경 저장)를 깨뜨리므로 쓰지 않는다.
-const BackgroundGeneratorPreview = lazy(() => import('./BackgroundGeneratorPreview'))
 
 /** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
 const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
@@ -60,20 +52,6 @@ const EMPTY_CONDITION: BadgeCondition = {}
 // Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
 const NONE_VALUE = '__none__'
 
-/**
- * 구운 배경 파일(정지 PNG / 반복 MP4)을 기존 업로드 API로 올리고 public URL을 돌려준다.
- * 이미지와 영상이 같은 경로를 쓰므로 한 곳으로 모았다 (20260819_012).
- */
-async function uploadBackgroundFile(blob: Blob, filename: string, mimeType: string, errorMessage: string): Promise<string> {
-  const formData = new FormData()
-  formData.append('file', new File([blob], filename, { type: mimeType }))
-  formData.append('folder', 'badges/backgrounds')
-  const res = await fetch('/api/admin/upload-image', { method: 'POST', body: formData })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error ?? errorMessage)
-  return data.url as string
-}
-
 export default function BadgeForm({ badge, factions, itemBooks, poiCategories }: BadgeFormProps) {
   const router = useRouter()
   const isEdit = !!badge
@@ -99,14 +77,9 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   const [pointReward, setPointReward] = useState<string>(
     badge?.point_reward?.toString() ?? '0'
   )
-  // 배경 테마 (20260818_003) — background_color: 배경색(피커+hex, 이미지 업로드 시 평균 컬러
-  // 자동 프리필). background_shader_id: 임시 선택 드롭다운(값만 저장, 상세화면 렌더링 미연결)
+  // 배경 테마 — background_color: 배경색(피커+hex, 이미지 업로드 시 평균 컬러 자동 프리필).
+  // 제너레이터(패턴/애니메이션/Paper 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
   const [backgroundColor, setBackgroundColor] = useState<string>(badge?.background_color ?? '')
-  const [backgroundShaderId, setBackgroundShaderId] = useState<string>(badge?.background_shader_id ?? '')
-  // "단색"/"제너레이터" 상호 배타 선택 (20260819_008) — 기존에 저장된 배경 제너레이터 이미지가
-  // 있으면 제너레이터 모드로 시작, 없으면 단색 모드로 시작한다.
-  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>(badge?.background_image_url ? 'generator' : 'color')
-  const backgroundGeneratorRef = useRef<BackgroundGeneratorPreviewHandle>(null)
 
   // condition_json builder state
   const initCond = (badge?.condition_json as BadgeCondition) ?? EMPTY_CONDITION
@@ -318,10 +291,8 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
       return
     }
 
-    // 배경색 형식 검증은 "단색" 모드에서 실제로 저장될 값일 때만 한다 — "제너레이터" 모드에서는
-    // 이 필드가 화면에서 숨겨져 있어(잔여 입력값이어도) 저장에 쓰이지 않는다.
     const trimmedBackgroundColor = backgroundColor.trim()
-    if (backgroundMode === 'color' && trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
+    if (trimmedBackgroundColor && !HEX_COLOR_PATTERN.test(trimmedBackgroundColor)) {
       setError('배경색 형식이 올바르지 않아요. #1a1a1a처럼 #으로 시작하는 6자리 hex 값을 입력해주세요.')
       return
     }
@@ -329,42 +300,6 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
     setLoading(true)
 
     try {
-      // 배경 테마 — 3모드(단색 / 정적 제너레이터 / 애니메이션 제너레이터)는 상호 배타적이라 저장
-      // 시 선택하지 않은 쪽은 항상 null로 정리한다(20260819_008, 20260819_012). 제너레이터
-      // 모드에서 이번 세션에 새 이미지를 고르지 않았으면(즉 bake()가 null을 반환하면) 기존에
-      // 저장돼 있던 배경 이미지·영상을 그대로 유지한다 — 그냥 폼을 열었다 닫기만 해도 저장된
-      // 배경이 사라지는 걸 막기 위함.
-      let finalBackgroundColor: string | null = null
-      let finalBackgroundImageUrl: string | null = null
-      let finalBackgroundVideoUrl: string | null = null
-
-      if (backgroundMode === 'color') {
-        finalBackgroundColor = trimmedBackgroundColor || null
-      } else {
-        const baked = await backgroundGeneratorRef.current?.bake()
-        if (baked) {
-          // poster(정지 PNG)는 두 모드 공통. 애니메이션 모드에서는 <video poster>·영상 로드 실패
-          // 폴백·prefers-reduced-motion 대체 이미지로 계속 쓰이므로 영상과 항상 짝으로 올린다.
-          finalBackgroundImageUrl = await uploadBackgroundFile(
-            baked.poster,
-            `background-${Date.now()}.png`,
-            'image/png',
-            '배경 이미지를 업로드하지 못했습니다.'
-          )
-          if (baked.video) {
-            finalBackgroundVideoUrl = await uploadBackgroundFile(
-              baked.video,
-              `background-${Date.now()}.mp4`,
-              'video/mp4',
-              '배경 영상을 업로드하지 못했습니다.'
-            )
-          }
-        } else {
-          finalBackgroundImageUrl = badge?.background_image_url ?? null
-          finalBackgroundVideoUrl = badge?.background_video_url ?? null
-        }
-      }
-
       const body = {
         name,
         description,
@@ -385,10 +320,10 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
         valid_from: validFrom ? new Date(validFrom).toISOString() : null,
         valid_until: validUntil ? new Date(validUntil).toISOString() : null,
         point_reward: Math.max(0, parseInt(pointReward, 10) || 0),
-        background_color: finalBackgroundColor,
-        background_shader_id: backgroundShaderId || null,
-        background_image_url: finalBackgroundImageUrl,
-        background_video_url: finalBackgroundVideoUrl,
+        // background_shader_id/background_image_url/background_video_url은 보내지 않는다
+        // (티켓 20260901_1929) — 제너레이터가 사라져 이 필드들을 새로 만들 방법이 없고, 저장
+        // API는 누락된 필드를 기존 DB 값 그대로 둔다(undefined 병합, badges PUT/POST 참조).
+        background_color: trimmedBackgroundColor || null,
       }
 
       const res = await fetch(
@@ -629,62 +564,35 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
           />
         </div>
 
-        {/* 배경 쉐이더 임시 선택 (20260818_003) — 값만 저장, 상세화면 렌더링 미연결 */}
-        <div className="col-span-2 flex flex-col gap-1.5">
-          <span className="text-sm text-foreground">배경 쉐이더 (임시)</span>
-          <Select
-            value={backgroundShaderId || NONE_VALUE}
-            onValueChange={(v) => setBackgroundShaderId(v === NONE_VALUE ? '' : v)}
-          >
-            <SelectTrigger className="max-w-xs" aria-label="배경 쉐이더">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {BADGE_BACKGROUND_SHADER_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value || NONE_VALUE}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span className="text-xs text-muted-foreground">쉐이더는 아직 상세화면에 적용되지 않아요. 선택한 값은 저장만 되고 화면에는 반영되지 않아요.</span>
-        </div>
-
-        {/* 배경 테마 — 단색/제너레이터 배타 선택 + 실제 저장 연동 (20260819_007, 20260819_008,
-            20260819_013에서 공용 컴포넌트로 분리) */}
+        {/* 배경 테마 — 배경색 단일 모드 (티켓 20260901_1929에서 제너레이터·쉐이더 제거) */}
         <div className="col-span-2">
-          <Suspense fallback={<div className="h-64 bg-muted animate-pulse rounded" />}>
-            <BackgroundGeneratorPreview
-              ref={backgroundGeneratorRef}
-              backgroundColor={backgroundColor}
-              onBackgroundColorChange={setBackgroundColor}
-              mode={backgroundMode}
-              onModeChange={setBackgroundMode}
-              initialBackgroundImageUrl={badge?.background_image_url ?? null}
-              existingImageOption={{ label: '등록된 배지 이미지 사용', imageUrl }}
-              renderPreview={({ themed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
-                <>
-                  <BadgeDetailPreviewFrame
-                    badge={{
-                      image_url: imageUrl || null,
-                      name: name || '(배지 이름 미입력)',
-                      rarity,
-                      description,
-                      background_color: backgroundMode === 'color' ? backgroundColor || null : null,
-                      background_shader_id: null,
-                      background_image_url: null,
-                    }}
-                    themed={themed}
-                    backgroundLayerStyle={backgroundLayerStyle}
-                    backgroundLayerRef={backgroundLayerRef}
-                    liveNode={liveNode}
-                    conditionText={PREVIEW_CONDITION_TEXT}
-                  />
-                  <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
-                    실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
-                  </p>
-                </>
-              )}
-            />
-          </Suspense>
+          <BackgroundGeneratorPreview
+            backgroundColor={backgroundColor}
+            onBackgroundColorChange={setBackgroundColor}
+            renderPreview={({ themed, backgroundLayerStyle, backgroundLayerRef, liveNode }: BackgroundGeneratorLivePreviewState) => (
+              <>
+                <BadgeDetailPreviewFrame
+                  badge={{
+                    image_url: imageUrl || null,
+                    name: name || '(배지 이름 미입력)',
+                    rarity,
+                    description,
+                    background_color: backgroundColor || null,
+                    background_shader_id: null,
+                    background_image_url: null,
+                  }}
+                  themed={themed}
+                  backgroundLayerStyle={backgroundLayerStyle}
+                  backgroundLayerRef={backgroundLayerRef}
+                  liveNode={liveNode}
+                  conditionText={PREVIEW_CONDITION_TEXT}
+                />
+                <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
+                  실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
+                </p>
+              </>
+            )}
+          />
         </div>
       </div>
 
