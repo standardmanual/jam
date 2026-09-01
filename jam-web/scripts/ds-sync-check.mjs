@@ -80,6 +80,23 @@ function resolveVars(value, depth = 0) {
 }
 
 // ── 값 정규화 ────────────────────────────────────────────────────────────────
+/** 구조·장식만 담당해 기하 비교 대상이 아닌 속성들.
+ *
+ * 서비스(Tailwind)는 `flex items-center cursor-pointer` 를 TW_IGNORE 로 이미 걸러내는데
+ * MODULAR 은 같은 것을 인라인 style 로 쓴다. 한쪽만 추출하면 "MODULAR에만 있는 값" 이
+ * 수십 건씩 쏟아진다 — 실제 첫 점검에서 PAIR_GEOMETRY 경고의 대부분이 이것이었다.
+ * 양쪽을 대칭으로 맞춘다. */
+const LAYOUT_PROPS = new Set([
+  'display', 'position', 'alignItems', 'justifyContent', 'alignSelf', 'justifySelf',
+  'flexDirection', 'flex', 'flexShrink', 'flexGrow', 'flexBasis', 'flexWrap', 'order',
+  'cursor', 'border', 'borderStyle', 'borderColor', 'borderWidth', 'outline',
+  'boxSizing', 'fontFamily', 'overflow', 'overflowX', 'overflowY', 'WebkitOverflowScrolling',
+  'textAlign', 'whiteSpace', 'listStyle', 'appearance', 'userSelect', 'WebkitUserSelect',
+  'pointerEvents', 'transition', 'animation', 'willChange', 'transform', 'textDecoration',
+  'verticalAlign', 'objectFit', 'backdropFilter', 'WebkitBackdropFilter', 'visibility',
+  'textOverflow', 'wordBreak', 'gridTemplateColumns', 'gridTemplateRows', 'content',
+]);
+
 /** React style 에서 단위 없는 숫자가 px 로 해석되지 '않는' 속성들. */
 const UNITLESS = new Set([
   'zIndex', 'opacity', 'flex', 'flexGrow', 'flexShrink', 'fontWeight', 'lineHeight',
@@ -151,6 +168,24 @@ function parseStyleBody(body) {
   flush();
   return pairs
     .filter(([k]) => /^[A-Za-z][\w]*$/.test(k))
+    .filter(([k]) => !LAYOUT_PROPS.has(k))
+    .map(([k, v]) => {
+      // 단색 shorthand 만 backgroundColor 로 승격한다 (그라디언트 등 복합값은 그대로).
+      const bare = v.trim().replace(/^['"]|['"]$/g, '');
+      if (k === 'background' && /^(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|var\(--[\w-]+\)|transparent)$/.test(bare)) {
+        return ['backgroundColor', v];
+      }
+      return [k, v];
+    })
+    // 값이 식별자(PILL_HEIGHT)나 템플릿 보간이면 정적 비교가 불가능하다.
+    .filter(([, v]) => {
+      const bare = v.trim();
+      if (bare.includes('${')) return false;                       // 템플릿 보간
+      if (/^[A-Z_][A-Z0-9_]*$/.test(bare)) return false;           // 상수 참조 (PILL_HEIGHT)
+      // camelCase 식별자 = props 변수 참조 (titleSize). CSS 키워드는 전부 소문자라 안전하다.
+      if (/^[a-z_$][\w$]*$/i.test(bare) && /[A-Z]/.test(bare)) return false;
+      return true;
+    })
     .map(([k, v]) => [k, normalizeValue(k, v)]);
 }
 
@@ -196,6 +231,9 @@ function twValue(prop, token) {
   if (v === 'full') return prop.startsWith('max') || prop === 'width' || prop === 'height' ? '100%' : v;
   if (v === 'px') return '1px';
   if (v === 'auto' || v === 'screen' || v === 'min' || v === 'max' || v === 'fit') return v;
+  // max-w-sm 같은 이름 크기 — Tailwind 기본 스케일
+  const NAMED = { xs: '320px', sm: '384px', md: '448px', lg: '512px', xl: '576px', '2xl': '672px' };
+  if (NAMED[v]) return NAMED[v];
   if (/^\d+(\.\d+)?$/.test(v)) return TW_SCALE(v);
   if (/^\d+\/\d+$/.test(v)) { const [a, b] = v.split('/'); return `${((+a / +b) * 100).toFixed(4).replace(/\.?0+$/, '')}%`; }
   return v;
@@ -393,8 +431,16 @@ function checkProps(pairs) {
     const dsProps = propNames(readFileSync(dts, 'utf8'));
     const svcProps = propNames(readFileSync(p.svcPath, 'utf8'));
     if (!svcProps.size) continue;  // 서비스에 Props 타입 선언 자체가 없으면 비교 불가
-    const missing = [...svcProps].filter((n) => !dsProps.has(n));
-    const extra = [...dsProps].filter((n) => !svcProps.has(n));
+    // 서비스가 `extends ButtonHTMLAttributes` 로 상속받는 표준 속성을 DS .d.ts 는 손으로
+    // 나열한다. 이 차이는 드리프트가 아니라 타입 선언 방식의 차이다.
+    const DOM_PROPS = new Set([
+      'className', 'style', 'children', 'id', 'role', 'tabIndex', 'title', 'key', 'ref',
+      'onClick', 'onChange', 'onFocus', 'onBlur', 'onKeyDown', 'onSubmit',
+      'disabled', 'type', 'name', 'value', 'placeholder', 'required', 'readOnly',
+      'checked', 'defaultValue', 'defaultChecked', 'autoFocus', 'href', 'target',
+    ]);
+    const missing = [...svcProps].filter((n) => !dsProps.has(n) && !DOM_PROPS.has(n));
+    const extra = [...dsProps].filter((n) => !svcProps.has(n) && !DOM_PROPS.has(n));
     if (missing.length || extra.length) {
       report('PROPS_DRIFT', 'WARN', p.name,
         'props 시그니처가 서비스 구현과 어긋납니다.',

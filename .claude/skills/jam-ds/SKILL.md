@@ -61,22 +61,37 @@ cd jam-web && npm run ds:check
   `height`·`width`·`padding`이 여기 자주 걸린다. **반드시 파일을 열어 눈으로 확인**한다.
 - **INFO** — 해석 못 한 Tailwind 클래스 등. 비교에서 빠졌다는 뜻이지 문제라는 뜻이 아니다.
 
-스크립트는 JSX를 AST로 파싱하지 않는다. 컴포넌트 전체를 값 집합으로 보므로 "서로 다른 요소에
-같은 값이 잘못 붙은" 오배치는 못 잡는다. 이 한계를 전제로 읽는다.
+### 알려진 한계 — 이 전제로 읽는다
+
+- **JSX를 AST로 파싱하지 않는다.** 컴포넌트 전체를 값 집합으로 보므로 "서로 다른 요소에 같은
+  값이 잘못 붙은" 오배치는 못 잡는다.
+- **Tailwind 타이포 스케일을 해석하지 않는다.** 서비스의 `text-sm`·`font-bold`·`leading-*`은
+  비교에서 빠지는데 MODULAR의 `fontSize: 14px`·`fontWeight: 700`은 잡힌다. 그래서
+  `PAIR_GEOMETRY` WARN의 "MODULAR에만" 목록에 타이포 값이 짝 없이 남는 경우가 많다.
+  **대부분 오탐이다.** 색·기하 값을 먼저 보고 타이포는 나중에 본다.
+- 레이아웃·장식 속성(`display`·`cursor`·`fontFamily`·`transform` 등)은 양쪽에서 대칭으로
+  제외한다. 구조는 두 층이 다르게 표현하는 게 정상이기 때문이다.
+- 변수·템플릿 보간(`fontSize: titleSize`, `` `calc(${x}px)` ``)은 정적 비교가 불가능해 제외한다.
 
 ## 2. 자동 수선 — 승인 없이 바로 (기계 판독 산출물)
 
 원본이 따로 있고 **기계가 재생성할 수 있는 파생물**은 바로 고친다. 사람이 검토해봐야
 얻는 게 없다.
 
-- `_ds_manifest.json`의 `tokens` — `tokens/*.css`를 다시 읽어 값·`definedIn` 갱신
-- `_ds_manifest.json`의 `brandFonts` — `--font-family-base` 실제 값 기준
-- `_ds_manifest.json`의 `components` — 실제 `.jsx` 목록 기준 (iCloud 중복 ` 2.jsx`는 제외)
-- `_ds_manifest.json`의 `globalCssPaths` — `globals.css`가 import하는 목록 기준
+```bash
+cd jam-web && npm run ds:manifest          # 무엇이 바뀌는지 먼저 본다 (dry-run)
+cd jam-web && npm run ds:manifest -- --write
+```
+
+`_ds_manifest.json`의 `tokens`·`brandFonts`·`components`·`globalCssPaths`를 실제 파일에서
+재생성한다. 기존 항목의 `kind` 분류는 보존한다 — 손으로 정한 예외(`--color-text`를 font로
+두는 등)가 섞여 있어 규칙으로 일괄 재생성하면 그 의도가 지워진다.
+
+아래 둘은 아직 수동이다:
 - `readme.md` §색인 — 실제 컴포넌트 목록 기준
 - `design-system/SKILL.md`의 frontmatter `description` — 실제 토큰과 어긋나면 갱신
 
-`cards`는 자동 대상이 **아니다** — 카드가 가리키는 파일이 없을 때 "카드를 지운다"와
+`cards`는 `ds:manifest`가 건드리지 **않는다** — 카드가 가리키는 파일이 없을 때 "카드를 지운다"와
 "파일을 만든다"는 판단이 갈린다. 사용자에게 묻는다.
 
 ## 3. 코드 수선 — diff 제시 후 승인
@@ -149,5 +164,6 @@ projectId: fd735d58-25c2-4347-95ed-d15ee2b36124   (.design-sync/state.json)
 
 - `/jam-design` — 재사용 판단·MODULAR 승격 기준 (이 스킬의 앞 단계)
 - `jam-web/scripts/ds-sync-check.mjs` — 진단 엔진. 검사 규칙과 한계가 주석에 있다
+- `jam-web/scripts/ds-manifest-sync.mjs` — 색인 재생성기 (`npm run ds:manifest`)
 - `.design-sync/NOTES.md` — L4 업로드 이력과 주의사항
 - `jam-web/design-system/readme.md` — 파운데이션·색인
