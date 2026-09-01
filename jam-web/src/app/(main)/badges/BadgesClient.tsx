@@ -34,12 +34,6 @@ function normalizeTab(raw: string | undefined | null): TabKey | null {
 
 const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
-const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, epic: 2, mystic: 3 }
-
-function activitySortIndex(types: ActivityType[]): number {
-  const idx = ACTIVITY_TYPE_ORDER.indexOf(types[0])
-  return idx === -1 ? ACTIVITY_TYPE_ORDER.length : idx
-}
 
 /** 체크인 배지 — 산/지하철역 등 지점을 지나며 획득하는 배지. 반복 획득 가능. */
 export interface CheckinBadgeItem {
@@ -63,7 +57,8 @@ export interface ItemBookProgress {
 }
 
 interface BadgesClientProps {
-  badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow | null }>
+  /** 획득한 액티비티 배지만 전달된다(티켓 20260901_0911) — 미획득분은 /badges/tree가 전담 */
+  badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }>
   itemBooks: ItemBookRow[]
   itemBookProgress: ItemBookProgress[]
   checkinBadges: CheckinBadgeItem[]
@@ -121,7 +116,8 @@ export default function BadgesClient({
     window.history.replaceState(null, '', `#${key}`)
   }
 
-  const earnedCount = badges.filter((b) => b.earned).length
+  // badges는 이미 획득분만 전달되므로 개수가 곧 보유 개수
+  const earnedCount = badges.length
   const checkinEarnedCount = checkinBadges.filter((p) => p.earnCount > 0).length
 
   // 슬라이딩 탭 — 라벨 옆에 보유/전체 카운트를 함께 노출
@@ -160,25 +156,9 @@ export default function BadgesClient({
     return sorted
   }, [earnedCheckinBadges, checkinCategoryFilter, checkinSortOrder])
 
-  // 획득한 것부터(획득 최신순), 미획득은 같은 액티비티끼리 모아 이름순 → 등급 낮은순.
-  // 화면에 별도 구간 헤더로 나누진 않고 정렬 순서로만 배치한다.
-  const sortedActivityBadges = useMemo(() => {
-    const earned = badges.filter((b) => b.earned)
-    const unearned = badges.filter((b) => !b.earned)
-
-    earned.sort((a, b) => new Date(b.earned!.earned_at).getTime() - new Date(a.earned!.earned_at).getTime())
-    unearned.sort((a, b) => {
-      const activityDiff = activitySortIndex(a.badge.activity_types) - activitySortIndex(b.badge.activity_types)
-      if (activityDiff !== 0) return activityDiff
-      const nameDiff = a.badge.name.localeCompare(b.badge.name, 'ko')
-      if (nameDiff !== 0) return nameDiff
-      return RARITY_RANK[a.badge.rarity] - RARITY_RANK[b.badge.rarity]
-    })
-
-    return [...earned, ...unearned]
-  }, [badges])
-
-  const filteredActivityBadges = sortedActivityBadges.filter(({ badge }) => {
+  // 이제 badges는 획득분만 들어오며, 서버 쿼리가 이미 earned_at 내림차순으로 정렬해
+  // 온다(page.tsx) — 클라이언트에서 다시 정렬할 필요가 없다.
+  const filteredActivityBadges = badges.filter(({ badge }) => {
     if (activityFilter !== 'all' && !badge.activity_types.includes(activityFilter)) return false
     if (rarityFilter !== 'all' && badge.rarity !== rarityFilter) return false
     return true
