@@ -12,6 +12,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { MissionCondition, MissionType } from '@/types/database'
 import { KST_OFFSET_MS } from '@/lib/notifications/kst'
 import { d } from '@/lib/i18n'
+import { getDisplayName } from '@/lib/utils'
 
 // ─── 좌: 내 진행도 ──────────────────────────────────────────────────────
 
@@ -209,7 +210,7 @@ export type TodayRightStatus =
   | { kind: 'no_following'; href: string }
   /** 팔로잉은 있으나 오늘 배지 획득 활동이 없음 — 슬롯 자체를 렌더링하지 않는다 */
   | { kind: 'none' }
-  | { kind: 'friend_activity'; count: number; avatarUrls: (string | null)[]; href: string }
+  | { kind: 'friend_activity'; count: number; avatarUrls: (string | null)[]; href: string; singleFriendName: string | null }
 
 /** KST 기준 오늘 00:00의 UTC ISO 시각 */
 function kstTodayStartIso(now: Date): string {
@@ -265,14 +266,21 @@ export async function getTodayRightStatus(userId: string, now: Date = new Date()
   if (orderedUserIds.length === 0) return { kind: 'none' }
 
   const top = orderedUserIds.slice(0, FRIEND_AVATAR_MAX)
-  const { data: usersRaw } = await supabase.from('users').select('id, avatar_url, username').in('id', top)
+  const { data: usersRaw } = await supabase
+    .from('users')
+    .select('id, avatar_url, username, display_name')
+    .in('id', top)
   const userMap = new Map(
-    ((usersRaw ?? []) as { id: string; avatar_url: string | null; username: string | null }[]).map((u) => [u.id, u])
+    (
+      (usersRaw ?? []) as { id: string; avatar_url: string | null; username: string | null; display_name: string | null }[]
+    ).map((u) => [u.id, u])
   )
   const avatarUrls = top.map((id) => userMap.get(id)?.avatar_url ?? null)
 
-  const singleUsername = orderedUserIds.length === 1 ? userMap.get(orderedUserIds[0])?.username ?? null : null
+  const singleUser = orderedUserIds.length === 1 ? userMap.get(orderedUserIds[0]) ?? null : null
+  const singleUsername = singleUser?.username ?? null
+  const singleFriendName = singleUser ? getDisplayName(singleUser) || null : null
   const href = resolveFriendActivityHref(orderedUserIds.length, singleUsername)
 
-  return { kind: 'friend_activity', count: orderedUserIds.length, avatarUrls, href }
+  return { kind: 'friend_activity', count: orderedUserIds.length, avatarUrls, href, singleFriendName }
 }

@@ -219,13 +219,16 @@ export const ko = {
     suggestionDrops: '드랍 아이템 찾아보기',
     suggestionMissions: '미션 참가해보기',
 
-    // 우: 친구 활동
-    /** 우측 슬롯 카드 타이틀 레이블 — 2분기(friend_activity/no_following) 공통 (티켓 20260830_2121) */
-    friendActivityLabel: '친구 활동',
+    // 우: 팔로잉 소식
+    /** 우측 슬롯 카드 타이틀 레이블 — 2분기(friend_activity/no_following) 공통 (티켓 20260830_2121).
+     * "팔로워"가 아니라 "팔로잉"(내가 팔로우하는 사람)의 활동을 집계하는 카드다 — 티켓 20260901_1308 */
+    friendActivityLabel: '팔로잉 소식',
     /** count는 오늘 배지를 받은 팔로잉 유저 수 */
     // UX_WRITING_GUIDELINE.md 고정 용어 — 배지·아이템을 얻는 행위는 "획득"으로 통일
     // (X: 받다·겟·수령). 티켓 원문 문구의 "받았어요"를 고정 용어로 교정했다.
     friendActivity: '친구 {count}명이 오늘 배지를 획득했어요',
+    /** 오늘 배지를 획득한 팔로잉이 정확히 1명일 때. name은 표시 이름(display_name 우선, 없으면 username) */
+    friendActivitySingle: '{name}님이 오늘 배지를 획득했어요!',
     noFollowing: '아직 팔로우한 친구가 없어요',
   },
 
