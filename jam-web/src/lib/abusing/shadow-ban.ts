@@ -32,7 +32,23 @@ export async function getUserBanLevel(userId: string): Promise<BanLevel> {
 
     if (!data) return 'none'
     if (data.expires_at && new Date(data.expires_at) < new Date()) return 'none'
-    return data.ban_level as BanLevel
+
+    // 마이그레이션 010의 `CHECK (ban_level IN ('soft','hard'))` 제약이 막고 있어 현재는
+    // 도달 불가하지만, 제약이 완화되면 검증 없는 `as BanLevel` 캐스팅이 임의 문자열을
+    // 그대로 통과시킨다. 그 값이 `BAN_RATE_KEY`에 없으면 `shouldAllowDrop`에서
+    // `BAN_RATE_KEY[banLevel]`가 undefined가 되어 TypeError가 드랍 경로로 전파된다
+    // (티켓 20260831_1259 미분리 기록 → 20260901_1843에서 방어).
+    // 밴 레코드 자체는 존재하므로(=이 유저는 이미 제재 대상으로 확인됨) fail-closed 원칙에
+    // 따라 알 수 없는 레벨은 가장 강한 제재(hard)로 취급한다 — `getUserBanLevel` 자체가
+    // 통째로 실패했을 때의 fail-open('none', 아래 catch)과는 다른 상황이다: 그쪽은 "밴 여부를
+    // 아예 모르는" DB 전체 장애이고, 여기는 "밴은 확인됐는데 레벨 값만 이상한" 경우다.
+    if (data.ban_level !== 'soft' && data.ban_level !== 'hard') {
+      console.error(
+        `[shadow-ban] 알 수 없는 ban_level 값이라 hard로 취급합니다 — userId: ${userId}, value: ${String(data.ban_level)}`
+      )
+      return 'hard'
+    }
+    return data.ban_level
   } catch {
     return 'none'
   }
@@ -85,7 +101,10 @@ export function shouldAllowDrop(
   return Math.random() < rate
 }
 
-/** 섀도우밴 적용 (admin 또는 자동 감지) */
+/**
+ * 섀도우밴 적용 (admin 또는 자동 감지). 실패하면 호출부가 인지하도록 예외를 던진다.
+ * (이전에는 upsert 반환 error를 확인하지 않아 밴 부여 실패가 "적용됨"으로 처리됐다 — 티켓 20260901_1843)
+ */
 export async function applyBan(
   userId: string,
   level: BanLevel,
@@ -103,18 +122,34 @@ export async function applyBan(
     created_by: createdBy,
     expires_at: expiresAt?.toISOString() ?? null,
   }
-  await table.upsert(payload, { onConflict: 'user_id' })
+  const { error } = await table.upsert(payload, { onConflict: 'user_id' })
+  if (error) {
+    console.error(`[shadow-ban] 밴 부여 실패 (userId: ${userId}, level: ${level}):`, error)
+    throw new Error(`user_shadow_bans upsert 실패 (${error.code}): ${error.message}`)
+  }
 
+  // 로그 기록 실패는 밴 적용 자체를 실패로 만들지 않는다(logAbusingEvent가 내부에서 흡수·로깅한다).
   await logAbusingEvent(userId, `${level}_ban_applied`, { reason, created_by: createdBy })
 }
 
-/** 섀도우밴 해제 */
+/**
+ * 섀도우밴 해제. 실패하면 호출부가 인지하도록 예외를 던진다.
+ * (이전에는 delete 반환 error를 확인하지 않아 해제 실패가 "해제됨"으로 처리됐다 — 티켓 20260901_1843)
+ */
 export async function removeBan(userId: string): Promise<void> {
   const supabase = createServiceClient()
-  await supabase.from('user_shadow_bans').delete().eq('user_id', userId)
+  const { error } = await supabase.from('user_shadow_bans').delete().eq('user_id', userId)
+  if (error) {
+    console.error(`[shadow-ban] 밴 해제 실패 (userId: ${userId}):`, error)
+    throw new Error(`user_shadow_bans delete 실패 (${error.code}): ${error.message}`)
+  }
 }
 
-/** 어뷰징 이벤트 로그 기록 */
+/**
+ * 어뷰징 이벤트 로그 기록. 로그는 부가 정보이므로 실패해도 호출부(밴 적용·GPS 감지 등 핵심
+ * 동작)를 막지 않도록 예외를 던지지 않는다 — 다만 실패 자체는 반드시 서버 로그에 남긴다
+ * (이전에는 `catch {}`로 완전히 무음이었다 — 티켓 20260901_1843).
+ */
 export async function logAbusingEvent(
   userId: string,
   eventType: string,
@@ -127,8 +162,11 @@ export async function logAbusingEvent(
     // Record<string, unknown>으로 받고 있어(값 타입이 unknown이라 Json에 직접 대입 불가) 이
     // 한 필드만 Json으로 단언한다 — 나머지 컬럼은 이름·타입 검사를 그대로 받는다.
     const payload = { user_id: userId, event_type: eventType, detail: (detail ?? null) as Json }
-    await logsTable.insert(payload)
-  } catch {
-    // 로그 실패는 무시
+    const { error } = await logsTable.insert(payload)
+    if (error) {
+      console.error(`[shadow-ban] 어뷰징 이벤트 로그 기록 실패 (userId: ${userId}, eventType: ${eventType}):`, error)
+    }
+  } catch (e) {
+    console.error(`[shadow-ban] 어뷰징 이벤트 로그 기록 예외 (userId: ${userId}, eventType: ${eventType}):`, e)
   }
 }

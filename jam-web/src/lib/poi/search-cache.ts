@@ -20,13 +20,19 @@ export async function shouldSearch(
   gridKey: string,
   category: string
 ): Promise<boolean> {
-  const { data } = await service
+  const { data, error } = await service
     .from('poi_search_cache')
     .select('searched_at, had_results')
     .eq('grid_key', gridKey)
     .eq('category', category)
     .maybeSingle()
 
+  if (error) {
+    // 조회 실패는 "캐시 미스"로 취급해 재검색한다 — 네이버 API 호출이 한 번 더 나갈 뿐,
+    // 안전한 방향(fail-open)이다. 다만 원인 파악을 위해 로그는 남긴다 (티켓 20260901_1843)
+    console.error(`[poi-search-cache] 조회 실패 — 재검색 필요로 간주 (grid: ${gridKey}, category: ${category}):`, error)
+    return true
+  }
   if (!data) return true
   const searchedAt = new Date(data.searched_at).getTime()
   const ttl = data.had_results ? SEARCH_CACHE_TTL_SECONDS : EMPTY_RESULT_CACHE_TTL_SECONDS
@@ -41,5 +47,11 @@ export async function markSearched(
 ): Promise<void> {
   const table = service.from('poi_search_cache')
   const payload = { grid_key: gridKey, category, searched_at: new Date().toISOString(), had_results: hadResults }
-  await table.upsert(payload)
+  const { error } = await table.upsert(payload)
+  if (error) {
+    // 캐시 기록 실패는 다음 요청에서 같은 지역을 재검색하게 만들 뿐 — 안전하지만 무음이면
+    // 네이버 API 호출량이 조용히 늘어난다. 호출부(`refreshPoisInBackground`)가 이미
+    // 백그라운드 실패를 통째로 흡수하므로 여기서 로그만 남기고 던지지 않는다.
+    console.error(`[poi-search-cache] 기록 실패 (grid: ${gridKey}, category: ${category}):`, error)
+  }
 }

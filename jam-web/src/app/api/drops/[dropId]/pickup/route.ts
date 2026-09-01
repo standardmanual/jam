@@ -84,18 +84,30 @@ export async function POST(
     // 만료시간 없이 적용하면 오탐이어도 관리자가 수동 해제할 때까지 epic/mystic
     // 드랍률이 영구히 0으로 묶이는 문제가 있었다 (20260813_002 티켓).
     const banExpiresAt = new Date(Date.now() + policy.poi_block_hours * 3_600_000)
-    await Promise.all([
-      applyBan(user.id, 'soft', `GPS 조작 의심 (${detail})`, 'system', banExpiresAt),
-      blockPoiForUser(user.id, drop.poi_id, policy, `gps_spoof_detected (${detail})`),
-      logAbusingEvent(user.id, 'gps_spoof_detected', {
-        poi_id: drop.poi_id,
-        reason: gpsCheck.reason,
-        speed_kmh: gpsCheck.speedKmh,
-        daily_distance_km: gpsCheck.dailyDistanceKm,
-        lat: user_lat,
-        lng: user_lng,
-      }),
-    ])
+    try {
+      await Promise.all([
+        applyBan(user.id, 'soft', `GPS 조작 의심 (${detail})`, 'system', banExpiresAt),
+        blockPoiForUser(user.id, drop.poi_id, policy, `gps_spoof_detected (${detail})`),
+        logAbusingEvent(user.id, 'gps_spoof_detected', {
+          poi_id: drop.poi_id,
+          reason: gpsCheck.reason,
+          speed_kmh: gpsCheck.speedKmh,
+          daily_distance_km: gpsCheck.dailyDistanceKm,
+          lat: user_lat,
+          lng: user_lng,
+        }),
+      ])
+    } catch (e) {
+      // 제재 기록(밴·POI 블록) 저장이 실패해도 이번 픽업은 그대로 차단한다 — 스푸핑은 이미
+      // 감지됐으므로 이 요청의 판정을 바꿀 이유가 없다. 다만 제재가 실제로 걸리지 않았을 수
+      // 있으므로(다음 요청부터 다시 통과할 위험) 반드시 서버 로그로 남긴다.
+      // 이전에는 applyBan/blockPoiForUser의 upsert 에러가 통째로 삼켜져 이 실패가 무음이었다
+      // (티켓 20260901_1843).
+      console.error(
+        `[pickup] GPS 스푸핑 제재 기록 실패 — 이번 요청은 차단 유지, 제재는 미적용일 수 있음 (userId: ${user.id}, poiId: ${drop.poi_id}):`,
+        e
+      )
+    }
     return NextResponse.json({ error: 'location_unverified' }, { status: 403 })
   }
 
