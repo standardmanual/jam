@@ -97,7 +97,9 @@ export function TabBar({ active = 'today', onChange }) {
               <span aria-hidden="true" style={{
                 position: 'absolute', top: '50%', left: '50%',
                 transform: 'translate(-50%, -50%)',
-                width: 44, height: 44, borderRadius: 'var(--radius-card)',
+                // 양옆은 완전히 둥글고 위아래는 직선인 캡슐 모양 — 높이보다 폭을 넓게 잡고
+                // radius-pill(반경이 짧은 변인 높이로 자연히 클램프됨)을 적용해 만든다.
+                width: 64, height: 48, borderRadius: 'var(--radius-pill)',
                 background: 'rgba(255,255,255,0.9)',
               }} />
             )}
