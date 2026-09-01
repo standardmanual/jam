@@ -595,6 +595,9 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
                     background_color: backgroundColor || null,
                     background_shader_id: null,
                     background_image_url: null,
+                    // 편집 중인 애니메이션 파라미터를 그대로 넘긴다 — Hero 카드 내부의
+                    // `hasBadgeBackgroundTheme` 판정이 실제 화면과 동일하게 동작해야 한다.
+                    background_animation: previewAnimation,
                   }}
                   themed={themed}
                   backgroundLayerStyle={backgroundLayerStyle}

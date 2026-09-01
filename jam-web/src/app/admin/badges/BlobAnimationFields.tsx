@@ -3,6 +3,7 @@
 import {
   BLOB_ANIMATION_RANGES,
   BLOB_COLOR_COUNT,
+  blobCycleSeconds,
   type BlobAnimationParams,
 } from '@/lib/blobAnimation'
 
@@ -13,10 +14,14 @@ interface BlobAnimationFieldsProps {
 
 type SliderKey = 'speed' | 'seed' | 'blur' | 'scale'
 
+/**
+ * 라벨은 `UX_WRITING_GUIDELINE.md` 용어표의 저작 도구 용어를 그대로 쓴다.
+ * ("흐림"으로 쓰던 것을 표에 등재된 "블러"로 통일)
+ */
 const SLIDERS: { key: SliderKey; label: string; decimals: number }[] = [
-  { key: 'speed', label: '속도', decimals: 1 },
+  { key: 'speed', label: '속도', decimals: 2 },
   { key: 'seed', label: '시드', decimals: 0 },
-  { key: 'blur', label: '흐림', decimals: 2 },
+  { key: 'blur', label: '블러', decimals: 2 },
   { key: 'scale', label: '크기', decimals: 2 },
 ]
 
@@ -79,6 +84,10 @@ export default function BlobAnimationFields({ value, onChange }: BlobAnimationFi
           <label key={key} className="flex flex-col gap-1.5">
             <span className="text-sm text-foreground">
               {label} <span className="text-muted-foreground font-mono">{value[key].toFixed(decimals)}</span>
+              {/* 속도는 숫자만으로 체감이 안 잡혀 대략적인 한 바퀴 시간을 함께 보여준다 */}
+              {key === 'speed' && (
+                <span className="text-muted-foreground"> · 한 바퀴 약 {Math.round(blobCycleSeconds(value.speed))}초</span>
+              )}
             </span>
             <div className="flex items-center gap-3">
               <input
