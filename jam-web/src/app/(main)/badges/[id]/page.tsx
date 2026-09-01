@@ -287,6 +287,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
   //   display:none으로 처리한다(그 경우 아래 CSS 배경 poster가 그대로 보인다).
   //   같은 이유로 display:block도 인라인이 아니라 그 클래스에 둔다.
   // - pointerEvents:'none'은 레이어와 영상 양쪽에 유지한다(클릭 차단 회귀 방지).
+  // [20260901_1944] 카드 안 블롭 애니메이션이 켜져 있으면 이 레이어는 CSS·영상 모두 비어야 한다.
+  // 그 판단은 getBadgeBackgroundStyle / getBadgeBackgroundVideoUrl 두 함수가 모두 담당하므로
+  // 여기서는 별도 분기를 두지 않는다 — 호출부가 우선순위를 각자 해석하지 않는다는 원칙.
   const badgeBackgroundVideoUrl = getBadgeBackgroundVideoUrl(badgeRow)
   const badgeBackgroundLayer = (
     <div

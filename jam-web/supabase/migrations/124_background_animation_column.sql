@@ -36,6 +36,13 @@ COMMENT ON COLUMN public.factions.background_animation IS
 
 -- 3단 캐스케이드에 background_animation을 함께 복사하도록 확장한다.
 -- (마이그레이션 092에서 도입, 121에서 background_color 단일 필드로 축소된 함수를 다시 정의)
+--
+-- background_image_url / background_video_url은 여기서도 복사하지 않는다 — 티켓 20260901_1929가
+-- 배경 제너레이터를 제거해 "다시 만들 수 없는 값"이 됐기 때문에 파괴적으로 덮거나 지우지 않는다.
+-- 그 결과 애니메이션을 일괄 적용하면 하위는 "부모의 애니메이션 + 자기 예전 영상" 데이터 상태로
+-- 남지만, 화면에서는 충돌하지 않는다: 렌더링 우선순위를 src/lib/badgeBackgroundTheme.ts 한 곳에
+-- 모아 background_animation이 있으면 전체 배경 레이어(CSS 배경·반복 영상·TopNav 투명 판정)를
+-- 통째로 비우기 때문이다. 애니메이션을 해제하면 보존해 둔 영상 배경이 그대로 되살아난다.
 CREATE OR REPLACE FUNCTION public.apply_faction_background_cascade(p_faction_id UUID)
 RETURNS TABLE(direct_badges INT, item_books INT, item_book_badges INT)
 LANGUAGE plpgsql

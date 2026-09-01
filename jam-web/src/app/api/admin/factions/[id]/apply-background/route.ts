@@ -14,9 +14,15 @@ import { getAdminUser } from '@/lib/admin/auth'
  * 호출하기 전까지는 하위 값이 그대로 유지된다. 항상 덮어쓴다(사용자 확정 방침, 예외 없음).
  *
  * 3단 UPDATE는 단일 plpgsql 함수(apply_faction_background_cascade, 마이그레이션 092 →
- * background_color 1필드로 축소한 121 → background_animation을 더한 122)로 묶여 하나의 함수
+ * background_color 1필드로 축소한 121 → background_animation을 더한 124)로 묶여 하나의 함수
  * 호출(=암묵적 트랜잭션)로 all-or-nothing이 보장된다 (20260819_016). 복사 대상 필드가 늘어나도
  * 이 라우트는 바뀌지 않는다 — 필드 목록은 RPC 안에 있다.
+ *
+ * [20260901_1944] RPC도 background_image_url/background_video_url은 복사하지 않는다(티켓
+ * 20260901_1929 방침 — 다시 만들 수 없는 값이라 파괴적으로 지우지 않는다). 그래서 애니메이션을
+ * 일괄 적용하면 하위는 "부모의 애니메이션 + 자기 예전 영상" 상태로 남지만, 화면 충돌은
+ * badgeBackgroundTheme.ts의 우선순위가 막는다 — background_animation이 있으면 전체 배경
+ * 레이어(CSS·영상·TopNav 투명 판정)가 전부 비워진다. 자세한 설명은 itembooks 쪽 같은 라우트 참조.
  */
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
