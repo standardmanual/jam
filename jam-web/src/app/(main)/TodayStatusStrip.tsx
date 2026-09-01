@@ -125,7 +125,7 @@ function RightCell({ status }: { status: Exclude<TodayRightStatus, { kind: 'none
                 </span>
               ))}
             </div>
-            <p className="min-w-0 flex-1 truncate text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+            <p className="min-w-0 flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
               {message}
             </p>
           </div>
