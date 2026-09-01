@@ -1,16 +1,22 @@
 /**
- * abusing/policy — 저장 실패 전파 + 읽기 정규화(상위집합) 회귀 테스트
+ * abusing/policy — 저장 실패 전파 + 읽기 정규화 회귀 테스트
  *
  * 배경 (티켓 20260831_1149):
  * 1. `updateAbusingPolicy()`가 upsert 반환 `error`를 버려 저장 실패가 "저장됐어요"로 응답됐다.
  * 2. `PUT /api/admin/abusing/policy`에 키 화이트리스트가 없어 폼이 함께 보내는
  *    `id`·`updated_at`이 upsert 페이로드에 섞였고, 미지의 키 하나로 전체 저장이 롤백됐다.
- * 3. `getAbusingPolicy()`에 정규화·관측이 없었다. 정규화를 넣되 **원본 행의 상위집합**으로 둔다.
+ * 3. `getAbusingPolicy()`에 정규화·관측이 없었다. 이때는 정규화를 **원본 행의 상위집합**으로
+ *    넣었다 — 마이그레이션 115 미실행 구간의 구 컬럼명을 shadow-ban.ts가 런타임 문자열로
+ *    `${banLevel}_${rarity}_rate`를 조합해 찾아갈 수 있게 살려두려는 목적이었다.
  *
- * 갱신 (티켓 20260831_1259): 상위집합이 필요했던 원래 근거("shadow-ban이 런타임 문자열로
- * 조합한 구 컬럼 키를 살려둔다")는 사라졌다. `shadow-ban.ts`가 문자열 조합을 버리고
- * `Record<BadgeRarity, keyof AbusingPolicy>` 맵을 쓰므로 **구 키를 보존해도 맵이 찾지 않는다.**
- * 아래 구 등급 케이스가 여전히 "차단"인 이유도 상위집합이 아니라 **미지 등급 fail-closed**다.
+ * 갱신 (티켓 20260831_1259): `shadow-ban.ts`가 문자열 조합을 버리고
+ * `Record<BadgeRarity, keyof AbusingPolicy>` 타입 맵을 쓰므로 구 키를 보존해도 맵이 찾지 않는다
+ * — 상위집합의 근거가 사라졌다.
+ *
+ * 갱신 (티켓 20260831_1328): 마이그레이션 115가 적용됐고(근거 1도 소멸) 소비 지점 전수 확인
+ * 결과 `DEFAULT_POLICY` 밖 키를 읽는 곳이 없어 상위집합 스프레드를 제거했다.
+ * `getAbusingPolicy()`는 이제 `AbusingPolicy` 키만 돌려준다. 구 등급 케이스가 여전히 "차단"인
+ * 이유는 상위집합 보존이 아니라 **미지 등급 fail-closed**다(shadow-ban.ts의 타입 맵에 없음).
  *
  * 실행: cd jam-web && npx vitest run src/lib/abusing/__tests__/policy-save.test.ts
  */
@@ -104,20 +110,20 @@ beforeEach(() => {
   stub.serviceClientCalls = 0
 })
 
-describe('getAbusingPolicy — 정규화는 원본 행의 상위집합', () => {
-  it('마이그레이션 115 미실행 구간에서도 구 컬럼 키를 보존하고, 구 등급 드랍은 차단된다', async () => {
+describe('getAbusingPolicy — DEFAULT_POLICY 키만 돌려준다', () => {
+  it('마이그레이션 115 미실행 구간에서는 신규 등급 키가 기본값으로 폴백하고, 구 등급 드랍은 fail-closed로 차단된다', async () => {
     stub.row = { ...PRE_115_ROW }
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const policy = await getAbusingPolicy()
-    const raw = policy as unknown as Record<string, unknown>
 
-    // DEFAULT_POLICY에 없는 키(구 컬럼명)도 결과에 남아 있어야 한다
-    expect(raw.soft_legendary_rate).toBe(0)
-    expect(raw.hard_legendary_rate).toBe(0)
+    // 상위집합을 돌려주지 않으므로 구 컬럼명(soft_legendary_rate 등)은 결과에 없다 —
+    // 신규 키(soft_epic_rate 등)는 PRE_115_ROW에 없어 DEFAULT_POLICY로 폴백한다.
+    expect(policy.soft_epic_rate).toBe(DEFAULT_POLICY.soft_epic_rate)
+    expect(policy.hard_epic_rate).toBe(DEFAULT_POLICY.hard_epic_rate)
 
     // 115 미실행 구간의 DB enum 값은 'mythic'/'legendary'라 타입 단언으로 그 구간을 재현한다.
-    // 기대값은 그대로지만 **성립 근거가 바뀌었다** — 상위집합 보존이 아니라 등급 맵에 없는
-    // 값이라 fail-closed로 차단된다 (티켓 20260831_1259).
+    // shadow-ban.ts의 `Record<BadgeRarity, keyof AbusingPolicy>` 맵에 없는 등급이라
+    // fail-closed로 차단된다 (티켓 20260831_1259) — 상위집합 보존과는 무관하다.
     expect(shouldAllowDrop('mythic' as BadgeRarity, 'soft', policy)).toBe(false)
     expect(shouldAllowDrop('legendary' as BadgeRarity, 'soft', policy)).toBe(false)
     expect(shouldAllowDrop('legendary' as BadgeRarity, 'hard', policy)).toBe(false)
