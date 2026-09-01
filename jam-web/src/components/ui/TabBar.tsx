@@ -217,7 +217,7 @@ export default function TabBar({ username }: TabBarProps) {
       ref={navRef}
       // 20260823_003: 재질(반투명 흰 필) — bg-surface-inverse(불투명) → jam-tabbar-chrome
       // (transitions.css, --color-chrome-bg-inverse/--blur-chrome 참조 — DS TabBar.jsx와 값 공유)
-      className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-[180px] rounded-[var(--radius-pill-buttons)] jam-tabbar-chrome flex items-center justify-between px-1 z-40"
+      className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-[49px] rounded-[var(--radius-pill-buttons)] jam-tabbar-chrome flex items-center justify-between px-1 z-40"
       // 20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
       // 최소 여백 10px로 재조정(DS TabBar.jsx와 동일 공식).
       style={{ bottom: 'max(10px, calc(env(safe-area-inset-bottom) + 16px - 32px))' }}

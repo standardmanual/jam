@@ -141,7 +141,7 @@ export function TabBar({ active = 'today', onChange }) {
          20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
          최소 여백 10px로 재조정. */
       bottom: 'max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px))',
-      width: 'calc(100% - 42px)', maxWidth: 388, height: 180,
+      width: 'calc(100% - 42px)', maxWidth: 388, height: 49,
       borderRadius: 'var(--radius-pill)',
       // 20260816_012: 보더 제거 — 재질(반투명 크롬)이 다크 배경 위에서 blur로 구분됨
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
