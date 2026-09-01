@@ -26,22 +26,17 @@ export default async function BadgesPage({ searchParams }: Props) {
 
   const [
     { data: earnedBadges },
-    { data: allActivityBadges },
     { data: inventoryData },
     { data: checkinEarns },
     { data: poiCategories },
   ] = await Promise.all([
+    // 액티비티 배지 — 어떤 배지를 어떻게 얻는지는 /badges/tree가 전담하게 됐으므로
+    // (티켓 20260901_0911) 이 탭은 체크인 탭과 동일하게 획득분만 조회한다.
     supabase
       .from('user_activity_badges')
       .select('*, badge:badges(*)')
       .eq('user_id', user.id)
       .order('earned_at', { ascending: false }),
-    // 액티비티 배지는 획득 여부와 무관하게 전체 노출
-    supabase
-      .from('badges')
-      .select('*')
-      .eq('type', 'activity')
-      .is('deleted_at', null),
     supabase
       .from('inventory')
       .select('id, inventory_items(id, badge_id, serial_number, expires_at, dropped_at, badge:badges(id, name, image_url, rarity, deleted_at))')
@@ -60,18 +55,11 @@ export default async function BadgesPage({ searchParams }: Props) {
 
   // 소프트 삭제된 배지(badges.deleted_at)는 서비스 화면에서 숨긴다 — 발급 이력 자체는 DB에 남지만
   // 마이페이지·인벤토리에는 노출하지 않는다.
-  const earnedMap = new Map<string, UserActivityBadgeRow>(
-    ((earnedBadges ?? []) as Array<{ badge: BadgeRow } & UserActivityBadgeRow>)
-      .filter((r) => r.badge && !r.badge.deleted_at)
-      .map((r) => [r.badge_id, r])
+  const badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }> = (
+    (earnedBadges ?? []) as Array<{ badge: BadgeRow } & UserActivityBadgeRow>
   )
-
-  const badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow | null }> = (
-    (allActivityBadges ?? []) as BadgeRow[]
-  ).map((badge) => ({
-    badge,
-    earned: earnedMap.get(badge.id) ?? null,
-  }))
+    .filter((r) => r.badge && !r.badge.deleted_at)
+    .map((r) => ({ badge: r.badge, earned: r }))
 
   type RawInventoryItem = {
     id: string
