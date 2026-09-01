@@ -205,13 +205,14 @@ export default function TabBar({ username }: TabBarProps) {
                 수 있어, 이 배경은 별도로 중앙 정렬한다). 참고 스크린샷처럼 정사각·완전한
                 원이 아니라 "양옆은 완전히 둥글고 위아래는 직선"인 캡슐(스타디움) 모양 —
                 높이보다 폭을 넓게 잡고 rounded-full(반경이 짧은 변인 높이에 의해 자연히
-                클램프됨)을 적용하면 만들어진다. 흰 필보다 더 불투명한 흰색을 얹어 다크
-                아이콘이 위에서 대비를 유지한다. */}
+                클램프됨)을 적용하면 만들어진다. 색은 흰색이 아니라 반투명 그레이
+                (rgba(0,0,0,0.08)) — 흰 필(--color-chrome-bg-inverse) 위에 살짝 어두운
+                톤을 얹어 구분한다(요청: "화이트가 아니라 투명한 그레이"). */}
             {active && (
               <span
                 aria-hidden="true"
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-12 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.9)' }}
+                style={{ background: 'rgba(0,0,0,0.08)' }}
               />
             )}
             {/* DS v2: 활성=--color-primary(레드), 비활성=--color-icon-inactive(다크 그레이) */}

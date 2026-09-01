@@ -100,7 +100,8 @@ export function TabBar({ active = 'today', onChange }) {
                 // 양옆은 완전히 둥글고 위아래는 직선인 캡슐 모양 — 높이보다 폭을 넓게 잡고
                 // radius-pill(반경이 짧은 변인 높이로 자연히 클램프됨)을 적용해 만든다.
                 width: 64, height: 48, borderRadius: 'var(--radius-pill)',
-                background: 'rgba(255,255,255,0.9)',
+                // 화이트가 아니라 반투명 그레이 — 흰 필 위에 살짝 어두운 톤을 얹어 구분한다.
+                background: 'rgba(0,0,0,0.08)',
               }} />
             )}
             <span style={{ position: 'relative', color: isActive ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
