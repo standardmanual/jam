@@ -14,11 +14,14 @@ const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg-inverse);
 /**
  * TabBar — floating pill bottom navigation.
  * 5 tabs: today / badges / drops / missions / inventory.
- * Active state: filled icon + primary color + dot indicator.
+ * Active state: filled icon + primary color + dot indicator + 44px background pill.
  *
  * v2 changes:
  *   - bottom offset now respects env(safe-area-inset-bottom) — iPhone home indicator clearance
  *   - Removed misleading "purple active" comment (active color is --color-primary = red)
+ *
+ * 20260901: 활성 탭 아이콘 뒤에 44px 배경 필 추가(전체 필 폭·간격은 기존 유지).
+ * 서비스 `src/components/ui/TabBar.tsx`도 함께 수정했다.
  *
  * 20260824_010: 프로필 탭 제거(6탭→5탭) — 프로필 진입은 TopNav 우측 아바타로 일원화.
  * 서비스 `src/components/ui/TabBar.tsx`(병존 구현, 20260820_009)도 함께 수정해야 한다.
@@ -89,7 +92,16 @@ export function TabBar({ active = 'today', onChange }) {
               cursor: 'pointer',
             }}
           >
-            <span style={{ color: isActive ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
+            {/* 활성 탭 배경 필 — 서비스 TabBar.tsx와 동일 (20260901) */}
+            {isActive && (
+              <span aria-hidden="true" style={{
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: 44, height: 44, borderRadius: 'var(--radius-nav-buttons)',
+                background: 'rgba(255,255,255,0.9)',
+              }} />
+            )}
+            <span style={{ position: 'relative', color: isActive ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
               {/*
                 20260827_026: today는 이번 교체 대상이 아니라 기존 24x24 좌표계 path를 그대로
                 유지한다. badges/drops/missions/inventory는 Material Symbols 좌표계(0 -960 960 960)로

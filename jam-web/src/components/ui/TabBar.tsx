@@ -200,8 +200,20 @@ export default function TabBar({ username }: TabBarProps) {
             aria-current={active ? 'page' : undefined}
             className="relative flex-1 flex items-center justify-center h-full min-w-11 transition-transform duration-100 active:scale-90"
           >
+            {/* 활성 탭 배경 필 — 요청: "선택된 탭의 배경뒤에 활성 상태를 표현해줘".
+                아이콘보다 먼저 그려 뒤에 깔리고, 44px 정사각으로 아이콘 영역만 감싼다
+                (Link 자체는 flex-1이라 탭마다 폭이 다를 수 있어, 이 배경은 아이콘 크기에
+                맞춰 별도로 중앙 정렬한다). 흰 필보다 더 불투명한 흰색을 얹어 다크 아이콘이
+                위에서 대비를 유지한다. */}
+            {active && (
+              <span
+                aria-hidden="true"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-[var(--radius-nav-buttons)]"
+                style={{ background: 'rgba(255,255,255,0.9)' }}
+              />
+            )}
             {/* DS v2: 활성=--color-primary(레드), 비활성=--color-icon-inactive(다크 그레이) */}
-            <span style={{ color: active ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
+            <span className="relative" style={{ color: active ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
               {active ? tab.iconFill : tab.iconLine}
             </span>
             {/*
