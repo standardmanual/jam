@@ -427,11 +427,16 @@ function updateLastPiecePity(
 
 async function getDropState(userId: string): Promise<UserDropStateRow> {
   const supabase = createServiceClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('user_drop_state')
     .select('*')
     .eq('user_id', userId)
     .maybeSingle()
+  if (error) {
+    // 조회 실패를 "신규 유저"와 구분하지 않고 빈 상태로 폴백하면 스트릭·pity·일일 카운터가
+    // 무음으로 리셋된다 — 최소한 서버 로그로 신호를 남긴다 (티켓 20260901_1843)
+    console.error(`[tryItemDrop] 드랍 상태 조회 실패 — 신규 상태로 폴백 (userId: ${userId}):`, error)
+  }
   if (data) return data as UserDropStateRow
   return {
     user_id: userId,
@@ -447,11 +452,21 @@ async function getDropState(userId: string): Promise<UserDropStateRow> {
   }
 }
 
+/**
+ * 드랍 상태를 저장한다. 실패하면 호출부가 인지하도록 예외를 던진다.
+ * (이전에는 upsert 반환 error를 확인하지 않아 스트릭·pity·일일 카운터 저장 실패가 무음으로
+ * 넘어갔다 — 티켓 20260901_1843. 호출부(`tryItemDrop`)는 이미 배지가 지급된 뒤에 이 함수를
+ * 부르므로, 여기서 던진 예외는 `strava/sync.ts`의 활동 단위 try/catch가 로깅 후 흡수한다.)
+ */
 async function saveDropState(state: UserDropStateRow): Promise<void> {
   const supabase = createServiceClient()
   const table = supabase.from('user_drop_state')
   const payload = { ...state, updated_at: new Date().toISOString() }
-  await table.upsert(payload)
+  const { error } = await table.upsert(payload)
+  if (error) {
+    console.error(`[tryItemDrop] 드랍 상태 저장 실패 (userId: ${state.user_id}):`, error)
+    throw new Error(`user_drop_state upsert 실패 (${error.code}): ${error.message}`)
+  }
 }
 
 /** 섀도우밴을 rarity 상한으로 적용: 차단된 rarity는 common으로 강등, common도 차단이면 null */
