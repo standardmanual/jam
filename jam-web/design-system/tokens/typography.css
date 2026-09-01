@@ -52,4 +52,8 @@
 
   /* Extended leading: for long-form reading text wider than body copy */
   --leading-loose: 1.6;    /* condition / description blocks with multi-line content */
+  --leading-reading: 1.75; /* multi-paragraph prose pages (essay / policy documents) —
+                              Korean long-form reading convention is 1.7–1.8. Distinct from
+                              --leading-loose, which is scoped to single description blocks.
+                              Added 20260901_2125 for /philosophy. */
 }
