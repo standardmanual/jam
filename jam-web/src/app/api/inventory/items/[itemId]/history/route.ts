@@ -29,11 +29,13 @@ export async function GET(
 
   const service = createServiceClient()
 
-  const { data: itemRaw } = await service
+  const { data: itemRaw, error: itemError } = await service
     .from('inventory_items')
     .select('id, obtained_at, obtained_by, inventory_id')
     .eq('id', itemId)
     .single()
+  // 20260901_1848: 조회 실패도 !itemRaw로 걸려 "아이템 없음" 404로 위장된다 — 로그로 구분
+  if (itemError) console.error('[api/inventory/items/[itemId]/history] inventory_items 단건 조회 실패', itemError)
 
   if (!itemRaw) return NextResponse.json({ error: '아이템 없음' }, { status: 404 })
 
@@ -48,11 +50,12 @@ export async function GET(
   // 아니므로 자연히 404가 된다(기존과 동일한 원칙 — 본인이 지금 보유 중인 개체만 이력 조회).
   if (!item.inventory_id) return NextResponse.json({ error: '없음' }, { status: 404 })
 
-  const { data: invCheck } = await service
+  const { data: invCheck, error: invCheckError } = await service
     .from('inventory')
     .select('user_id')
     .eq('id', item.inventory_id)
     .single()
+  if (invCheckError) console.error('[api/inventory/items/[itemId]/history] inventory 소유권 확인 조회 실패', invCheckError)
 
   if (!invCheck) return NextResponse.json({ error: '없음' }, { status: 404 })
 
@@ -60,11 +63,12 @@ export async function GET(
   if (ownerUserId !== user.id) return NextResponse.json({ error: '권한 없음' }, { status: 403 })
 
   // 이 개체가 실제로 거쳐온 드랍/픽업 사이클 전체(반복 드랍 가능) — 오래된 순
-  const { data: dropsRaw } = await service
+  const { data: dropsRaw, error: dropsError } = await service
     .from('poi_drops')
     .select('id, dropper_user_id, picked_up_by, dropped_at, picked_up_at, poi ( name )')
     .eq('inventory_item_id', itemId)
     .order('dropped_at', { ascending: true })
+  if (dropsError) console.error('[api/inventory/items/[itemId]/history] poi_drops(이력) 조회 실패', dropsError)
 
   const drops = (dropsRaw ?? []) as unknown as Array<{
     id: string
@@ -82,7 +86,8 @@ export async function GET(
     if (drop.picked_up_by) userIds.add(drop.picked_up_by)
   }
 
-  const { data: usersRaw } = await service.from('users').select('id, username, display_name').in('id', [...userIds])
+  const { data: usersRaw, error: usersError } = await service.from('users').select('id, username, display_name').in('id', [...userIds])
+  if (usersError) console.error('[api/inventory/items/[itemId]/history] 관련 유저 정보 조회 실패', usersError)
   const userMap = new Map<string, string | null>()
   for (const u of (usersRaw ?? []) as Array<{ id: string; username: string | null; display_name: string | null }>) {
     userMap.set(u.id, getDisplayName(u) || null)

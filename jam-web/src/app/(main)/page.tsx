@@ -45,18 +45,21 @@ export default async function HomePage() {
     .limit(4)
   const rightStatusPromise = getTodayRightStatus(userId)
 
-  const { data: stravaConn } = await stravaConnPromise
+  const { data: stravaConn, error: stravaConnError } = await stravaConnPromise
+  if (stravaConnError) console.error('[home/page] strava_connections 조회 실패', stravaConnError)
   const stravaConnection = stravaConn as StravaConnectionRow | null
   const leftStatusPromise: Promise<TodayLeftStatus> = stravaConnection
     ? getTodayLeftStatus(userId)
     : Promise.resolve({ kind: 'strava_disconnected', href: '/api/strava/auth' })
 
-  const [{ data: profile }, { data: recentBadges }, rightStatus, leftStatus] = await Promise.all([
-    profilePromise,
-    recentBadgesPromise,
-    rightStatusPromise,
-    leftStatusPromise,
-  ])
+  const [
+    { data: profile, error: profileError },
+    { data: recentBadges, error: recentBadgesError },
+    rightStatus,
+    leftStatus,
+  ] = await Promise.all([profilePromise, recentBadgesPromise, rightStatusPromise, leftStatusPromise])
+  if (profileError) console.error('[home/page] users 프로필 조회 실패', profileError)
+  if (recentBadgesError) console.error('[home/page] 최근 획득 배지 조회 실패', recentBadgesError)
 
   const userProfile = profile as UserRow | null
   // 소프트 삭제된 배지(badges.deleted_at)는 "최근 획득 배지"에서 제외한다(20260824_007) —

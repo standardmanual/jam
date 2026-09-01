@@ -27,10 +27,13 @@ export default async function FriendFeedPage() {
 
   const service = createServiceClient()
 
-  const { data: followsRaw } = await service
+  const { data: followsRaw, error: followsError } = await service
     .from('user_follows')
     .select('following_id')
     .eq('follower_id', user.id)
+  // 20260901_1848: 조회 실패 시 팔로잉 0명으로 위장돼 "팔로잉 없음" 빈 화면이 뜬다 —
+  // 실제로는 DB 오류인데 사용자가 "친구를 안 팔로우했다"로 오인할 수 있는 지점.
+  if (followsError) console.error('[feed/page] user_follows 조회 실패', followsError)
   const followingIds = ((followsRaw ?? []) as { following_id: string }[]).map((f) => f.following_id)
 
   if (followingIds.length === 0) {
@@ -48,12 +51,13 @@ export default async function FriendFeedPage() {
     )
   }
 
-  const { data: feedRaw } = await service
+  const { data: feedRaw, error: feedError } = await service
     .from('user_activity_feed')
     .select('*')
     .in('user_id', followingIds)
     .order('created_at', { ascending: false })
     .limit(FEED_LIMIT)
+  if (feedError) console.error('[feed/page] user_activity_feed 조회 실패', feedError)
 
   const feedItems = await hydrateFeedBadgeInfo((feedRaw ?? []) as ActivityFeedRow[])
 
@@ -64,11 +68,12 @@ export default async function FriendFeedPage() {
   )]
   const activityNames: Record<string, string> = {}
   if (activityIds.length > 0) {
-    const { data: actRows } = await service
+    const { data: actRows, error: actRowsError } = await service
       .from('strava_activities')
       .select('strava_id, normalized')
       .in('user_id', followingIds)
       .in('strava_id', activityIds)
+    if (actRowsError) console.error('[feed/page] strava_activities 조회 실패', actRowsError)
     for (const row of (actRows ?? []) as unknown as { strava_id: number; normalized: { name?: string } | null }[]) {
       const name = typeof row.normalized?.name === 'string' ? row.normalized.name.trim() : ''
       if (name) activityNames[String(row.strava_id)] = name

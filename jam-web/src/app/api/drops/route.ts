@@ -153,13 +153,16 @@ export async function GET(req: NextRequest) {
   // naver_id UNIQUE 제약 위반으로 같은 배치의 진짜 신규 POI까지 저장 실패하는 회귀가 있었다
   // (게이트 리뷰에서 발견, 20260830_1620 재작업 사유). 유저 노출용 필터링은 아래
   // activeDbPois에서 별도로 적용한다.
-  const { data: poisRaw } = await service
+  const { data: poisRaw, error: poisError } = await service
     .from('poi')
     .select('*')
     .gte('latitude', lat - BB_MARGIN_DEG)
     .lte('latitude', lat + BB_MARGIN_DEG)
     .gte('longitude', lng - BB_MARGIN_DEG)
     .lte('longitude', lng + BB_MARGIN_DEG)
+  // 20260901_1848: 지도 T1 POI 조회 실패가 "이 근처엔 지점 없음"으로 위장되던 지점 —
+  // 드랍 기능 전체를 좌우하는 쿼리라 위험도가 가장 높다.
+  if (poisError) console.error('[api/drops GET] poi(T1) 조회 실패', poisError)
   const allDbPois = (poisRaw ?? []) as PoiRow[]
   const naverIdMap = new Map(allDbPois.filter((p) => p.naver_id).map((p) => [p.naver_id!, p.id]))
   const gridKey = computeGridKey(lat, lng)
@@ -194,11 +197,12 @@ export async function GET(req: NextRequest) {
   // 드랍 카운트: DB POI에만 조회
   const dbPoiIds = nearbyDbPois.map((p) => p.id).filter(Boolean)
   if (dbPoiIds.length > 0) {
-    const { data: dropsRaw } = await service
+    const { data: dropsRaw, error: dropsError } = await service
       .from('poi_drops')
       .select('poi_id')
       .in('poi_id', dbPoiIds)
       .eq('is_available', true)
+    if (dropsError) console.error('[api/drops GET] poi_drops(가용 드랍 카운트) 조회 실패', dropsError)
 
     const dropCountByPoi: Record<string, number> = {}
     for (const d of (dropsRaw ?? []) as { poi_id: string }[]) {
