@@ -4,6 +4,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
+import { RATE_KEYS } from './rate-keys'
 
 export interface AbusingPolicy {
   soft_common_rate: number
@@ -52,20 +53,13 @@ export const DEFAULT_POLICY: AbusingPolicy = {
 }
 
 /**
- * 0~1 비율(밴 레벨별 rarity 드랍 배율) 필드 목록.
- * 나머지 4개(gps_max_speed_kmh·poi_block_hours·vehicle_speed_filter_kmh·
- * gps_daily_distance_cap_km)는 상한 없는 정수 임계값이라 검증 범위가 다르다.
+ * 0~1 비율(밴 레벨별 rarity 드랍 배율) 필드 목록. `rate-keys.ts`의 `BAN_RATE_KEY`(shadow-ban.ts가
+ * 쓰는 실제 배선 맵)에서 파생된 값을 그대로 재노출한다 — 호출부(`api/admin/abusing/policy/route.ts`
+ * 등)가 계속 `policy.ts`에서 import할 수 있도록 경로만 유지한다. 나머지 4개
+ * (gps_max_speed_kmh·poi_block_hours·vehicle_speed_filter_kmh·gps_daily_distance_cap_km)는
+ * 상한 없는 정수 임계값이라 검증 범위가 다르므로 여기 없다.
  */
-export const RATE_KEYS: ReadonlySet<keyof AbusingPolicy> = new Set([
-  'soft_common_rate',
-  'soft_rare_rate',
-  'soft_epic_rate',
-  'soft_mystic_rate',
-  'hard_common_rate',
-  'hard_rare_rate',
-  'hard_epic_rate',
-  'hard_mystic_rate',
-])
+export { RATE_KEYS }
 
 /** {@link findPolicyRateMismatches}가 돌려주는 갈림 항목 하나 */
 export interface AbusingPolicyMismatch {

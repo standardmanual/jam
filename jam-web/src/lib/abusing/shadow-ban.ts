@@ -5,32 +5,20 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { Json } from '@/types/database.generated'
 import { DEFAULT_POLICY, type AbusingPolicy } from './policy'
+import { BAN_RATE_KEY } from './rate-keys'
 import type { BadgeRarity } from '@/types/database'
 
 export type BanLevel = 'none' | 'soft' | 'hard'
 
-/**
- * 밴 레벨 × 등급 → 정책 배율 키. `Record`로 고정해 등급이 늘거나 이름이 바뀌면 tsc가 잡는다.
- *
- * 이전에는 `${banLevel}_${rarity}_rate`를 런타임 문자열로 조합했다. 그래서 2026-08-13
- * 등급명 rename(티켓 20260813_003) 누락이 타입 검사에 걸리지 않았고, 조합한 키가 정책에
- * 없다는 사실이 `?? 1.0` 폴백을 타 **Epic 차단이 18일간 무음으로 꺼졌다**
- * (티켓 20260831_1149·1259). 값 쪽도 `keyof AbusingPolicy`라 인터페이스와 어긋나면 잡힌다.
- */
-const BAN_RATE_KEY: Record<Exclude<BanLevel, 'none'>, Record<BadgeRarity, keyof AbusingPolicy>> = {
-  soft: {
-    common: 'soft_common_rate',
-    rare: 'soft_rare_rate',
-    epic: 'soft_epic_rate',
-    mystic: 'soft_mystic_rate',
-  },
-  hard: {
-    common: 'hard_common_rate',
-    rare: 'hard_rare_rate',
-    epic: 'hard_epic_rate',
-    mystic: 'hard_mystic_rate',
-  },
-}
+// 밴 레벨 × 등급 → 정책 배율 키 맵(`BAN_RATE_KEY`)은 `rate-keys.ts`가 소유한다.
+// `policy.ts`의 `RATE_KEYS`(어드민 검증 대상 키 집합)도 같은 맵에서 파생돼, 두 곳이 8개 키를
+// 각각 하드코딩하던 중복(티켓 20260831_1329)이 사라졌다. 배선이 맞는지(자기 키를 읽는지)를
+// 고정하는 sentinel 테스트는 `__tests__/shadow-ban.test.ts`에 있다.
+//
+// 이전에는 `${banLevel}_${rarity}_rate`를 런타임 문자열로 조합했다. 그래서 2026-08-13
+// 등급명 rename(티켓 20260813_003) 누락이 타입 검사에 걸리지 않았고, 조합한 키가 정책에
+// 없다는 사실이 `?? 1.0` 폴백을 타 **Epic 차단이 18일간 무음으로 꺼졌다**
+// (티켓 20260831_1149·1259).
 
 /** 유저의 현재 밴 레벨 반환 (만료된 밴은 none) */
 export async function getUserBanLevel(userId: string): Promise<BanLevel> {

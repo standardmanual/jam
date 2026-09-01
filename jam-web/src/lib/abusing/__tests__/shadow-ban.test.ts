@@ -88,6 +88,63 @@ describe('shouldAllowDrop — 정상 경로', () => {
   })
 })
 
+describe('shouldAllowDrop — BAN_RATE_KEY 배선 sentinel (티켓 20260831_1329)', () => {
+  /**
+   * `BAN_RATE_KEY: Record<RateBanLevel, Record<BadgeRarity, keyof AbusingPolicy>>`는 "값이
+   * `keyof AbusingPolicy`인지"만 tsc가 검사하고 "어느 키를 가리키는지"는 검사하지 않는다.
+   * `soft.rare`를 `'soft_common_rate'`로 잘못 적어도 컴파일이 통과한다.
+   *
+   * 운영 배율이 1.0/0.0 두 값뿐이라(`DEFAULT_POLICY`) 같은 값끼리 오배선돼도 위
+   * "정상 경로" 케이스들은 전부 통과한다. 이 케이스는 8개 배율 키에 **서로 다른** sentinel
+   * 값을 넣고, `Math.random`을 각 조합의 sentinel 값 바로 위/아래로 고정해 그 조합이
+   * **정확히 자기 키의 값**에서만 판정 임계값을 읽는지 확인한다. 다른 조합의 키를 잘못
+   * 읽으면(오배선) 그 키는 다른 sentinel 값을 갖고 있어 임계값이 어긋나 반드시 red가 된다.
+   *
+   * 기대값(banLevel·rarity → key)은 `BAN_RATE_KEY`를 재사용하지 않고 `AbusingPolicy`
+   * 필드명을 이 파일에 직접 나열한다 — 프로덕션 맵을 그대로 가져다 쓰면 그 맵 자체가
+   * 잘못 배선돼도 테스트가 항상 통과해 아무것도 검증하지 못한다.
+   */
+  const SENTINEL_POLICY: AbusingPolicy = {
+    ...DEFAULT_POLICY,
+    soft_common_rate: 0.11,
+    soft_rare_rate: 0.22,
+    soft_epic_rate: 0.33,
+    soft_mystic_rate: 0.44,
+    hard_common_rate: 0.55,
+    hard_rare_rate: 0.66,
+    hard_epic_rate: 0.77,
+    hard_mystic_rate: 0.88,
+  }
+
+  const CASES: Array<{
+    banLevel: 'soft' | 'hard'
+    rarity: BadgeRarity
+    expectedRate: number
+  }> = [
+    { banLevel: 'soft', rarity: 'common', expectedRate: 0.11 },
+    { banLevel: 'soft', rarity: 'rare', expectedRate: 0.22 },
+    { banLevel: 'soft', rarity: 'epic', expectedRate: 0.33 },
+    { banLevel: 'soft', rarity: 'mystic', expectedRate: 0.44 },
+    { banLevel: 'hard', rarity: 'common', expectedRate: 0.55 },
+    { banLevel: 'hard', rarity: 'rare', expectedRate: 0.66 },
+    { banLevel: 'hard', rarity: 'epic', expectedRate: 0.77 },
+    { banLevel: 'hard', rarity: 'mystic', expectedRate: 0.88 },
+  ]
+
+  it('8개 (밴레벨, 등급) 조합이 각자 자기 배율 키의 값에서만 임계값을 읽는다', () => {
+    const random = vi.spyOn(Math, 'random')
+    for (const { banLevel, rarity, expectedRate } of CASES) {
+      // Math.random() < rate 이므로, 기대 sentinel 바로 아래면 허용·바로 위면 차단이어야 한다.
+      // 오배선으로 다른(다른 값의) 키를 읽으면 이 임계값에서 반대로 나와 즉시 red가 된다.
+      random.mockReturnValue(expectedRate - 0.001)
+      expect(shouldAllowDrop(rarity, banLevel, SENTINEL_POLICY)).toBe(true)
+
+      random.mockReturnValue(expectedRate + 0.001)
+      expect(shouldAllowDrop(rarity, banLevel, SENTINEL_POLICY)).toBe(false)
+    }
+  })
+})
+
 describe('shouldAllowDrop — 폴백 방향', () => {
   it('맵에 없는 등급은 차단하고 로그를 남긴다 (fail-closed)', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
