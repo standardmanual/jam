@@ -326,6 +326,18 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">하루 누적 이동거리 상한 (km) — 순간 속도는 정상이지만 하루 총 이동거리가 이 값을 넘으면 GPS 조작(느린 텔레포트)으로 판단</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={policy.gps_daily_distance_cap_km}
+                  onChange={(e) => policySet('gps_daily_distance_cap_km', parseInt(e.target.value) || 3000)}
+                  className="w-28 bg-white border border-border rounded-xl px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                />
+                <span className="text-sm text-muted-foreground">km (기본: 3000)</span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">차량 속도 필터 (km/h) — 이 속도를 초과하는 활동은 배지·아이템 드랍·미션 평가에서 모두 제외 (Phase 18)</span>
               <div className="flex items-center gap-3">
                 <input
