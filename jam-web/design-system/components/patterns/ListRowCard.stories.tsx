@@ -101,7 +101,7 @@ export const UserRow: Story = {
         title="러너_유저"
         subtitle="배지 23개"
         trailing={
-          <button style={{ padding: '4px 12px', fontSize: 'var(--text-small)', background: 'var(--color-primary)', color: 'var(--color-text-inverse)', border: 'none', borderRadius: 'var(--radius-button)', cursor: 'pointer' }}>
+          <button style={{ padding: '4px 12px', fontSize: 'var(--text-small)', background: 'var(--color-primary)', color: 'var(--color-text-inverse)', border: 'none', borderRadius: 'var(--radius-pill)', cursor: 'pointer' }}>
             팔로우
           </button>
         }
@@ -172,7 +172,7 @@ export const List: Story = {
             trailing={
               <button
                 onClick={(e) => { e.stopPropagation(); toggle(u.id); }}
-                style={{ padding: '4px 12px', fontSize: 'var(--text-small)', background: following.has(u.id) ? 'transparent' : 'var(--color-primary)', color: following.has(u.id) ? 'var(--color-text-secondary)' : 'var(--color-text-inverse)', border: `1px solid ${following.has(u.id) ? 'var(--color-border)' : 'var(--color-primary)'}`, borderRadius: 'var(--radius-button)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                style={{ padding: '4px 12px', fontSize: 'var(--text-small)', background: following.has(u.id) ? 'transparent' : 'var(--color-primary)', color: following.has(u.id) ? 'var(--color-text-secondary)' : 'var(--color-text-inverse)', border: `1px solid ${following.has(u.id) ? 'var(--color-border)' : 'var(--color-primary)'}`, borderRadius: 'var(--radius-pill)', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
                 {following.has(u.id) ? '팔로잉' : '팔로우'}
               </button>

@@ -124,7 +124,7 @@ export const WithChildren: Story = {
           background: 'var(--color-primary)',
           color: 'var(--color-text-inverse)',
           border: 'none',
-          borderRadius: 'var(--radius-button)',
+          borderRadius: 'var(--radius-pill)',
           cursor: 'pointer',
         }}
       >
