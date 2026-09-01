@@ -8,9 +8,15 @@
  *
  * 티켓 20260819_012의 애니메이션 배경(어드민에서 MP4로 굽고 `<video>`로 재생)과도 다르다 —
  * 파라미터만 DB(jsonb)에 저장하고 서비스에서 Canvas 2D로 라이브 실행한다. 저장 후 재편집이
- * 가능하고, 영상 파일 다운로드가 없어 페이로드가 수백 바이트로 작다. 대신 `ctx.filter`의 blur가
- * 모바일에서 비용이 있어 성능 가드(reduced-motion·뷰포트 밖 정지·DPR 캡)를 렌더링 컴포넌트
- * (`BlobAnimationBackground`)가 반드시 함께 구현한다.
+ * 가능하고, 영상 파일 다운로드가 없어 페이로드가 수백 바이트로 작다.
+ *
+ * 블러는 (티켓 20260902_0629부터) Canvas 2D 컨텍스트의 `ctx.filter`가 아니라 캔버스 **엘리먼트**의
+ * CSS `filter`(`canvas.style.filter`)로 건다 — `ctx.filter`는 iOS Safari 17.4 이전에서 조용히
+ * 무시돼(블러 없이 선명하게만 그려짐) 실기기에서 블러 옵션이 아예 동작하지 않는 버그가 있었다.
+ * CSS `filter`는 iOS Safari 9부터 지원되고 GPU 합성이라 도형 개수·복잡도에 비용이 비례하지
+ * 않으므로, 예전에 있던 오프스크린 축소 렌더링(scratch canvas) 최적화도 함께 걷어냈다. 성능
+ * 가드(reduced-motion·뷰포트 밖 정지·DPR 캡)는 렌더링 컴포넌트(`BlobAnimationBackground`)가
+ * 여전히 함께 구현한다.
  *
  * 이 모듈은 React·DOM에 의존하지 않는 순수 모듈이라 서버 컴포넌트·어드민 폼·테스트가 모두
  * 그대로 import할 수 있다.
@@ -283,34 +289,18 @@ export function opaqueBlobFill(colorHex: string, bgColorHex: string): { r: numbe
 }
 
 /**
- * blur 반경(px). `minDim`은 **그리는 캔버스의** 짧은 변이라, 축소 캔버스에 그대로 호출하면
- * 반경도 함께 축소된다(별도 보정 불필요).
+ * blur 반경(px). `minDim`은 **그리는 캔버스의** 짧은 변이다.
+ *
+ * 이제 이 값은 `paintBlobs`(Canvas 2D `ctx.filter`)가 아니라 `BlobAnimationBackground`가
+ * `canvas.style.filter`(CSS `filter: blur()`, DOM 엘리먼트 단위)에 그대로 쓴다 — 계산식 자체는
+ * 렌더링 경로가 바뀌어도 동일하게 유효하다.
  *
  * `opaque`(reduced-transparency)에서 반경을 절반으로 줄이는 것은 그대로 유지한다 — 반투명 적층
  * 완화라는 원 취지에 부합하고, 위 `opaqueBlobFill`과 달리 밝기를 건드리지 않는다.
  */
-function blobBlurRadiusPx(blur: number, minDim: number, opaque: boolean): number {
+export function blobBlurRadiusPx(blur: number, minDim: number, opaque: boolean): number {
   return blur * minDim * 0.15 * (opaque ? 0.5 : 1)
 }
-
-/**
- * 오프스크린 축소 배율 — 블롭은 이 비율로 줄인 캔버스에 그린 뒤 확대 합성한다(G1).
- * `ctx.filter`의 blur는 반경 제곱에 비례하는 비용이 프레임당 6번 든다(blur 0.8·DPR 2·430px면
- * 반경 약 103px × 6회). 1/3 해상도에서는 반경도 1/3이라 비용이 약 1/9로 떨어진다. 결과물이
- * 어차피 강한 블러라 확대해도 육안 차이가 사실상 없다.
- */
-const BLOB_SCRATCH_SCALE = 1 / 3
-
-/**
- * 축소 경로를 타기 위한 최소 blur 반경(대상 캔버스 기준 px).
- *
- * 1/3로 그린 뒤 bilinear로 3배 확대하므로, 재구성 오차가 대략 확대 배율만큼(≈3px) 퍼진다.
- * blur가 그보다 작으면 선명한 곡선을 확대한 꼴이라 실루엣이 계단·뭉개짐으로 보인다.
- * 슬라이더 하한 `blur: 0.01`은 430px·DPR 2에서 반경 약 1.3px라 정확히 그 구간이다.
- * 오차의 2배(6px)를 임계값으로 잡아 안전 여유를 둔다 — blur가 이만큼 작으면 애초에 blur 비용도
- * 작아서 축소로 아낄 것이 없다(축소는 반경이 클 때만 이득이다).
- */
-const BLOB_SCRATCH_MIN_BLUR_PX = 6
 
 export interface BlobFrameOptions {
   /**
@@ -320,37 +310,14 @@ export interface BlobFrameOptions {
   flatten?: boolean
   /**
    * `prefers-reduced-transparency: reduce` — 블롭을 알파 1.0으로 칠하고(색은 `opaqueBlobFill`이
-   * 배경색 쪽으로 미리 섞어 밝기가 올라가지 않게 한다) blur를 절반으로 줄여 반투명·흐림 적층을
-   * 최소화한다.
+   * 배경색 쪽으로 미리 섞어 밝기가 올라가지 않게 한다) blur 반경(`blobBlurRadiusPx`)을 절반으로
+   * 줄여 반투명·흐림 적층을 최소화한다. blur 자체는 호출부가 `canvas.style.filter`로 적용하므로
+   * 이 함수는 그리기(알파·색)만 담당한다.
    */
   opaque?: boolean
-  /**
-   * 블롭을 축소 렌더링할 오프스크린 캔버스(G1). 넘기지 않거나 blur가
-   * `BLOB_SCRATCH_MIN_BLUR_PX`보다 작으면 대상 캔버스에 직접 그린다 — 후자는 3배 확대 아티팩트
-   * 회피용이고, 전자는 테스트·SSR 등 `document`를 쓸 수 없는 환경을 위한 폴백이다.
-   */
-  scratch?: HTMLCanvasElement | null
 }
 
-/** 오프스크린 캔버스를 목표 크기의 1/3로 맞추고 컨텍스트를 돌려준다. */
-function prepareScratch(
-  scratch: HTMLCanvasElement,
-  width: number,
-  height: number
-): CanvasRenderingContext2D | null {
-  const w = Math.max(1, Math.round(width * BLOB_SCRATCH_SCALE))
-  const h = Math.max(1, Math.round(height * BLOB_SCRATCH_SCALE))
-  if (scratch.width !== w || scratch.height !== h) {
-    scratch.width = w
-    scratch.height = h
-  }
-  return scratch.getContext('2d')
-}
-
-/**
- * 투명 배경 위에 블롭 6개만 그린다. blur 반경·반지름이 모두 `minDim` 비례라, 이 함수를 1/3
- * 크기 캔버스에 그대로 호출하면 blur까지 함께 1/3로 줄어든다(별도 보정 불필요).
- */
+/** 투명 배경 위에 블롭 6개만 그린다(필터 없이 선명하게 — 블러는 호출부가 CSS로 건다). */
 function paintBlobs(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -366,9 +333,8 @@ function paintBlobs(
   ctx.globalCompositeOperation = 'source-over'
   ctx.clearRect(0, 0, width, height)
 
-  // ctx.filter를 지원하지 않는 구형 브라우저에서는 대입이 무시돼 경계가 선명한 블롭이 그려진다
-  // (렌더링이 깨지지는 않는다).
-  ctx.filter = `blur(${blobBlurRadiusPx(params.blur, minDim, opaque)}px)`
+  // 블러는 여기서 걸지 않는다 — 선명하게 그린 뒤, 호출부(BlobAnimationBackground)가 캔버스
+  // 엘리먼트 전체에 CSS `filter: blur()`를 건다(`blobBlurRadiusPx` 참조).
 
   // 색상 4개를 블롭 6개에 순환 배치
   const blobColors = [
@@ -399,8 +365,6 @@ function paintBlobs(
     drawSmoothBlob(ctx, baseRadius, t, seed + i * 10)
     ctx.restore()
   }
-
-  ctx.filter = 'none'
 }
 
 /**
@@ -424,11 +388,10 @@ export function drawBlobFrame(
   t: number,
   options: BlobFrameOptions = {}
 ): void {
-  const { flatten = false, opaque = false, scratch = null } = options
+  const { flatten = false, opaque = false } = options
 
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.globalCompositeOperation = 'source-over'
-  ctx.filter = 'none'
   ctx.clearRect(0, 0, width, height)
 
   if (flatten) {
@@ -437,25 +400,9 @@ export function drawBlobFrame(
     return
   }
 
-  // blur가 충분히 클 때만 축소 경로를 탄다 — 낮은 blur에서는 3배 확대 아티팩트가 보이고,
-  // 애초에 아낄 blur 비용도 없다(`BLOB_SCRATCH_MIN_BLUR_PX` 참조).
-  const useScratch =
-    !!scratch &&
-    blobBlurRadiusPx(params.blur, Math.min(width, height), opaque) >= BLOB_SCRATCH_MIN_BLUR_PX
-  const scratchCtx = useScratch && scratch ? prepareScratch(scratch, width, height) : null
-  if (scratch && scratchCtx) {
-    paintBlobs(scratchCtx, scratch.width, scratch.height, params, t, opaque)
-    // 축소본은 투명 배경 위에 그려져 있으므로 배경색을 먼저 칠하고 그 위에 확대 합성한다.
-    // 알파 합성은 결합법칙이 성립해 예전(destination-over) 방식과 결과가 같다.
-    ctx.fillStyle = params.bgColor
-    ctx.fillRect(0, 0, width, height)
-    ctx.imageSmoothingEnabled = true
-    ctx.drawImage(scratch, 0, 0, width, height)
-    return
-  }
-
-  // 폴백(오프스크린 캔버스를 만들 수 없는 환경) — 배경색은 `destination-over`로 블롭을 그린
-  // **뒤에** 깔아, blur가 켜진 상태에서 배경색 fill이 함께 번지지 않게 한다.
+  // 배경색은 `destination-over`로 블롭을 그린 **뒤에** 깐다(순서 자체는 기존과 동일). 최종
+  // 블러(CSS `filter`, 호출부 담당)는 캔버스 엘리먼트 전체 — 블롭 + 배경색 — 를 함께 블러하지만
+  // 배경색이 단색이라 내부는 블러해도 동일하게 보인다.
   paintBlobs(ctx, width, height, params, t, opaque)
   ctx.globalCompositeOperation = 'destination-over'
   ctx.fillStyle = params.bgColor
