@@ -19,6 +19,12 @@ const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg-inverse);
 // 활성 배경 필의 고정 크기(px) — 렌더 스타일(width/height:64/48)과 반드시 일치해야
 // offsetLeft/offsetWidth 기반 중앙 정렬 계산(moveTo)이 어긋나지 않는다.
 const PILL_WIDTH = 64;
+const PILL_HEIGHT = 48;
+
+// nav와 필 둘 다 "완전히 둥근" 캡슐이지만 각자 자기 높이 기준으로 auto-clamp하면
+// nav 높이와 필 높이(48px 고정)가 달라 곡률이 어긋나 보인다(티켓 20260901_1626 후속 —
+// "값이 달라서 형태가 찌그러져 있다"). nav 반경을 필과 동일한 PILL_HEIGHT/2로 고정한다.
+const PILL_RADIUS = PILL_HEIGHT / 2;
 
 /**
  * TabBar — floating pill bottom navigation.
@@ -141,8 +147,10 @@ export function TabBar({ active = 'today', onChange }) {
          20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
          최소 여백 10px로 재조정. */
       bottom: 'max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px))',
-      width: 'calc(100% - 42px)', maxWidth: 388, height: 49,
-      borderRadius: 'var(--radius-pill)',
+      width: 'calc(100% - 42px)', maxWidth: 388, height: 52,
+      // PILL_RADIUS로 고정(위 상수 주석 참고) — var(--radius-pill)은 nav 자기 높이 기준으로
+      // auto-clamp돼 필과 다른 반경이 나온다.
+      borderRadius: PILL_RADIUS,
       // 20260816_012: 보더 제거 — 재질(반투명 크롬)이 다크 배경 위에서 blur로 구분됨
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 4px', zIndex: 40,
