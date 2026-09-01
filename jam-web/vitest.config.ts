@@ -18,6 +18,9 @@ export default defineConfig({
       test: {
         globals: true,
         environment: 'node',
+        // 20260831_1327 — 실제 Supabase 자격증명이 유닛 테스트에 새어 들어가지 않도록
+        // 매 테스트 파일 실행 전 관련 env를 비운다 (모킹 누락 시 조용한 실 DB 접속 방지)
+        setupFiles: ['./vitest.setup.ts'],
         // node:assert + 자체 러너로 작성된 파일이라 vitest 러너로는 못 돈다 — 여기서 제외하되,
         // package.json의 `test:node`가 tsx로 전부 실행하고 `npm test`가 이를 이어서 호출한다.
         // (제외만 하고 방치하면 회귀 방어가 CI에서 빠진다 — 티켓 20260825_028)

@@ -22,6 +22,16 @@ import type { StravaSummaryActivity } from '@/types/strava'
 // 미치는 영향을 검증한다.
 const dropState = vi.hoisted(() => ({ current: null as string | null }))
 
+// 20260831_1327 — processFetchedActivities가 내부에서 호출하는 findCompletableItemBooks 등이
+// 모킹 없이 createServiceClient()로 실제 Supabase에 접속해 상시 실패(자격증명 없는 환경)·
+// 운영 DB 접속(자격증명 있는 환경) 위험을 만들었다. sync-vehicle-speed-filter.test.ts의
+// 가드 패턴을 그대로 따른다: 주입된 supabase 클라이언트를 쓰지 않고 새로 만들면 즉시 던진다.
+vi.mock('@/lib/supabase/server', () => ({
+  createServiceClient: () => {
+    throw new Error('createServiceClient가 호출됨 — 주입된 클라이언트가 쓰이지 않았다')
+  },
+}))
+
 // 20260824_006 — 실제 tryItemDrop은 startDate(진짜 UTC)만 쓰도록 고쳤다(startDateLocal은
 // 로컬 벽시계에 Z를 붙인 값이라 timestamptz 오해석 버그의 원인이었다). 이 모킹도 동일하게
 // 맞춰야 sync.ts의 last_activity_at 불일치 가드(같은 기준으로 함께 고쳤다)와 어긋나지 않는다.
@@ -36,10 +46,19 @@ vi.mock('@/lib/poi/matcher', () => ({ matchPoisForActivity: vi.fn(async () => []
 vi.mock('@/lib/itembook/checker', () => ({
   checkItemBookCompletion: vi.fn(async () => ({ completedIds: [], rewardBadgesIssued: 0, rewardBadgeIds: [] })),
 }))
+// findCompletableItemBooks가 내부에서 createServiceClient()를 새로 만들어(주입 사슬 밖) 실제
+// Supabase에 접속하는 원인 — 이 테스트 의도(드랍 처리 순서)와 무관하므로 빈 배열로 모킹한다.
+vi.mock('@/lib/itembook/completable', () => ({ findCompletableItemBooks: vi.fn(async () => []) }))
 vi.mock('@/lib/missions/checker', () => ({
   checkMissions: vi.fn(async () => ({ completedMissionIds: [], awardedBadgeIds: [] })),
 }))
 vi.mock('@/lib/activity-feed', () => ({ recordFeedEvent: vi.fn(async () => {}) }))
+vi.mock('@/lib/notifications', () => ({
+  createNotification: vi.fn(async () => {}),
+  dailyGroupKey: vi.fn(() => 'group-key'),
+}))
+vi.mock('@/lib/notifications/recap', () => ({ recordActivityRecap: vi.fn(async () => {}) }))
+vi.mock('@/lib/notifications/batch/collections', () => ({ selectCompletableDrafts: vi.fn(() => []) }))
 vi.mock('@/lib/strava/api', () => ({
   getActivityStreams: vi.fn(async () => null),
   getActivities: vi.fn(),
