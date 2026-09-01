@@ -97,7 +97,7 @@ export function TabBar({ active = 'today', onChange }) {
               <span aria-hidden="true" style={{
                 position: 'absolute', top: '50%', left: '50%',
                 transform: 'translate(-50%, -50%)',
-                width: 44, height: 44, borderRadius: 'var(--radius-nav-buttons)',
+                width: 44, height: 44, borderRadius: 'var(--radius-card)',
                 background: 'rgba(255,255,255,0.9)',
               }} />
             )}

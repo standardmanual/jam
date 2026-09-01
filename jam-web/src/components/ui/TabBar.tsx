@@ -208,7 +208,7 @@ export default function TabBar({ username }: TabBarProps) {
             {active && (
               <span
                 aria-hidden="true"
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-[var(--radius-nav-buttons)]"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-[var(--radius-card)]"
                 style={{ background: 'rgba(255,255,255,0.9)' }}
               />
             )}
