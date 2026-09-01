@@ -139,11 +139,12 @@ export async function GET(req: NextRequest) {
     new Set(targetPois.map((p) => p.linked_badge_id).filter((id): id is string => !!id))
   )
 
-  const { data: earnsRaw } = await service
+  const { data: earnsRaw, error: earnsError } = await service
     .from('user_checkin_badge_earns')
     .select('badge_id')
     .eq('user_id', user.id)
     .in('badge_id', targetBadgeIds)
+  if (earnsError) console.error('[api/checkin-badges] 획득 이력 조회 실패', earnsError)
 
   const earnedBadgeIds = new Set(
     ((earnsRaw ?? []) as Array<{ badge_id: string }>).map((e) => e.badge_id)

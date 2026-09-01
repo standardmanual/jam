@@ -22,7 +22,11 @@ export default async function BadgeTreePage() {
   // missions는 다른 화면(missions/page.tsx)과 동일하게 RLS 우회가 필요해 service client로 조회한다.
   const service = createServiceClient()
 
-  const [{ data: badgesRaw }, { data: missionsRaw }, { data: earnedBadgesRaw }] = await Promise.all([
+  const [
+    { data: badgesRaw, error: badgesError },
+    { data: missionsRaw, error: missionsError },
+    { data: earnedBadgesRaw, error: earnedBadgesError },
+  ] = await Promise.all([
     supabase
       .from('badges')
       .select('id, name, rarity, description, image_url, activity_types, condition_json, point_reward')
@@ -37,6 +41,9 @@ export default async function BadgeTreePage() {
       .select('badge_id, badge:badges(deleted_at)')
       .eq('user_id', user.id),
   ])
+  if (badgesError) console.error('[badges/tree/page] 활동 배지 조회 실패', badgesError)
+  if (missionsError) console.error('[badges/tree/page] missions(게이트 배지용) 조회 실패', missionsError)
+  if (earnedBadgesError) console.error('[badges/tree/page] user_activity_badges(획득여부) 조회 실패', earnedBadgesError)
 
   type RawBadge = BadgeTreeSourceBadge & { point_reward: number }
   const badges: BadgeTreeSourceBadge[] = ((badgesRaw ?? []) as RawBadge[]).map((b) => ({

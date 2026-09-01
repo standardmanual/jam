@@ -33,6 +33,8 @@ export async function GET(
     .eq('id', dropId)
     .single()
 
+  // 20260901_1848: 조회 실패도 !data와 함께 "드랍 없음" 404로 위장된다 — 로그로 구분
+  if (error) console.error('[api/drops/[dropId]] poi_drops 단건 조회 실패', error)
   if (error || !data) {
     return NextResponse.json({ error: '드랍 없음' }, { status: 404 })
   }

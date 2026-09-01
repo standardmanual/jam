@@ -25,11 +25,14 @@ export default async function InventoryPage() {
 
   if (!user) redirect('/login')
 
-  const { data: inventoryData } = await supabase
+  const { data: inventoryData, error: inventoryError } = await supabase
     .from('inventory')
     .select('*, inventory_items(*, badge:badges(*))')
     .eq('user_id', user.id)
     .single()
+  // 20260901_1848: 조회 실패가 "빈 인벤토리"로 위장되던 지점(.single()이라 무인벤토리도
+  // error로 잡히므로 실제 오류와 완전히 구분되진 않지만, 최소 가시성 확보는 된다)
+  if (inventoryError) console.error('[inventory/page] inventory 조회 실패', inventoryError)
 
   const inventory = inventoryData as InventoryWithItems | null
 
