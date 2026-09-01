@@ -17,7 +17,7 @@
  *   - share02: 배지 @ y=651, 63px 간격 뒤 로고(텍스트 없음).
  *   - 로고 174.2336×72, 가로 중앙 정렬(피그마 x=453.38 ≈ (1080-174.2336)/2).
  */
-import { loadImageFromUrl } from '@/app/spike/background-generator/loadImage'
+import { loadImageFromUrl } from '@/lib/backgroundGenerator/loadImage'
 import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
 
 const CANVAS_WIDTH = 1080
