@@ -10,6 +10,14 @@ import { isPathActive } from '@/lib/isPathActive'
 // 활성 배경 필의 고정 크기(px) — 렌더 클래스(`w-16 h-12`)와 반드시 일치해야
 // offsetLeft/offsetWidth 기반 중앙 정렬 계산(moveTo)이 어긋나지 않는다.
 const PILL_WIDTH = 64
+const PILL_HEIGHT = 48
+
+// nav(탭바 전체)와 필(활성 배경)은 둘 다 "완전히 둥근" 캡슐이지만, 각자 자기 높이의
+// 절반을 반경으로 auto-clamp(예: rounded-full/9999px)하면 nav 높이와 필 높이(48px 고정)가
+// 달라 서로 다른 반경이 계산돼 양끝 곡률이 어긋나 보인다(티켓 20260901_1626 후속 —
+// "값이 달라서 형태가 찌그러져 있다"는 사용자 피드백). nav 반경을 필과 동일한
+// PILL_HEIGHT/2로 고정해 두 캡슐의 곡률을 맞춘다.
+const PILL_RADIUS = PILL_HEIGHT / 2
 
 /**
  * SuperHi Plus 바텀 탭바 (iOS 26 스타일 플로팅 캡슐, iOS HIG Tab Bar 패턴)
@@ -217,10 +225,15 @@ export default function TabBar({ username }: TabBarProps) {
       ref={navRef}
       // 20260823_003: 재질(반투명 흰 필) — bg-surface-inverse(불투명) → jam-tabbar-chrome
       // (transitions.css, --color-chrome-bg-inverse/--blur-chrome 참조 — DS TabBar.jsx와 값 공유)
-      className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-[49px] rounded-[var(--radius-pill-buttons)] jam-tabbar-chrome flex items-center justify-between px-1 z-40"
+      className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-[52px] jam-tabbar-chrome flex items-center justify-between px-1 z-40"
       // 20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
       // 최소 여백 10px로 재조정(DS TabBar.jsx와 동일 공식).
-      style={{ bottom: 'max(10px, calc(env(safe-area-inset-bottom) + 16px - 32px))' }}
+      // borderRadius는 PILL_RADIUS로 고정(위 상수 주석 참고) — Tailwind rounded-[var(...)]는
+      // nav 자기 높이 기준으로 auto-clamp돼 필과 다른 반경이 나오므로 쓰지 않는다.
+      style={{
+        bottom: 'max(10px, calc(env(safe-area-inset-bottom) + 16px - 32px))',
+        borderRadius: PILL_RADIUS,
+      }}
     >
       {/* 활성 탭 배경 필 — 요청: "선택된 탭의 배경뒤에 활성 상태를 표현해줘".
           탭마다 조건부 렌더링하던 기존 방식 대신 단일 공유 pill을 두고 활성 탭의
