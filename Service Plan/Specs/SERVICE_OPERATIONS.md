@@ -24,11 +24,10 @@
 10. [팔로우 · 소셜](#10-팔로우--소셜)
 11. [피드 시스템](#11-피드-시스템)
 12. [어뷰징 방어 시스템](#12-어뷰징-방어-시스템)
-13. [떠돌이 Mystic 아이템](#13-떠돌이-mystic-아이템)
-14. [Cron 작업](#14-cron-작업)
-15. [API 라우트 전체 목록](#15-api-라우트-전체-목록)
-16. [DB 테이블 전체 목록](#16-db-테이블-전체-목록)
-17. [Strava 활동 타입 매핑](#17-strava-활동-타입-매핑)
+13. [Cron 작업](#13-cron-작업)
+14. [API 라우트 전체 목록](#14-api-라우트-전체-목록)
+15. [DB 테이블 전체 목록](#15-db-테이블-전체-목록)
+16. [Strava 활동 타입 매핑](#16-strava-활동-타입-매핑)
 
 ---
 
@@ -871,43 +870,18 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 
 ---
 
-## 13. 떠돌이 Mystic 아이템
-
-**관련 파일:** `supabase/migrations/011_phases_15_18.sql`, `src/app/api/cron/wandering/`
-
-### 13-1. 개요
-
-- 특별 뱃지 `badges.is_wandering = true`로 표시
-- `wandering_mythic_state` 테이블로 현재 POI 위치 추적
-- 유저가 해당 POI 방문(Strava 경로 매칭) 시 획득
-
-### 13-2. 이동 로직 (매시간 Cron)
-
-```
-GET /api/cron/wandering (Authorization: Bearer CRON_SECRET)
-
-1. wandering_mythic_state WHERE expires_at <= now 조회
-2. 만료된 상태:
-   - 보유 유저 있음 → inventory_items 소각 (expires_at 초과)
-   - 소각 후 랜덤 POI 선택 → wandering_mythic_state 업데이트
-3. expires_at 갱신 (이동 주기)
-```
-
----
-
-## 14. Cron 작업
+## 13. Cron 작업
 
 모든 Cron은 `Authorization: Bearer {CRON_SECRET}` 헤더 필요.
 
 | 경로 | 실행 주기 | 기능 |
 |------|----------|------|
 | `GET /api/cron/sync` | 정기 (외부 스케줄러 설정) | 전체 `strava_connections` 유저 순차 동기화. Strava Rate Limit 대응. |
-| `GET /api/cron/wandering` | 매시간 | 떠돌이 Mystic 아이템 POI 이동 처리 |
 | `GET /api/cron/poi-cleanup` | 정기 | 만료된 POI 드랍 정리 |
 
 ---
 
-## 15. API 라우트 전체 목록
+## 14. API 라우트 전체 목록
 
 ### 유저 앱용
 
@@ -946,7 +920,6 @@ GET /api/cron/wandering (Authorization: Bearer CRON_SECRET)
 | 메서드 | 경로 | 기능 |
 |--------|------|------|
 | GET | `/api/cron/sync` | 전체 유저 Strava 정기 동기화 |
-| GET | `/api/cron/wandering` | 떠돌이 Mystic 아이템 POI 이동 |
 | GET | `/api/cron/poi-cleanup` | 만료 POI 드랍 정리 |
 
 ### 어드민
@@ -976,13 +949,13 @@ GET /api/cron/wandering (Authorization: Bearer CRON_SECRET)
 
 ---
 
-## 16. DB 테이블 전체 목록
+## 15. DB 테이블 전체 목록
 
 | 테이블 | 설명 | 생성 마이그레이션 |
 |--------|------|------------------|
 | `users` | 유저 기본 정보 (id, email, username, avatar_url, last_location, **initial_sync_done**) | 001, 032 |
 | `strava_connections` | Strava OAuth 토큰 + 동기화 상태 | 001 |
-| `badges` | 배지 정의 (type, rarity, condition_json, drop_weight, is_wandering) | 001 |
+| `badges` | 배지 정의 (type, rarity, condition_json, drop_weight) | 001 |
 | `user_activity_badges` | 유저 획득 배지 기록 (triggered_by, strava 메타) | 001 |
 | `inventory` | 유저 인벤토리 (max_slots, used_slots) | 001 |
 | `inventory_items` | 인벤토리 아이템 개별 레코드 (expires_at, slotted_in) | 001 |
@@ -1004,11 +977,10 @@ GET /api/cron/wandering (Authorization: Bearer CRON_SECRET)
 | `user_shadow_bans` | 섀도우밴 기록 (ban_level, expires_at) | 010 |
 | `poi_blocks` | POI별 유저 블록 기록 (blocked_until) | 010 |
 | `abusing_logs` | 어뷰징 감지 로그 | 010 |
-| `wandering_mythic_state` | 떠돌이 Mystic 아이템 현재 위치 상태 | 011 |
 
 ---
 
-## 17. Strava 활동 타입 매핑
+## 16. Strava 활동 타입 매핑
 
 **파일:** `src/types/strava.ts` — `STRAVA_TYPE_TO_JAM`
 

@@ -5,7 +5,7 @@
  * 보상을 '성취의 증거'(informational reward)로 만든다.
  * 강수(비·태풍) 조건은 외부 날씨 API 도입 전까지 범위 제외.
  *
- * 로직 문서: PRD/badge/BADGE_ENGINE_UNIFIED.md §3.4
+ * 로직 문서: Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md §3.4
  */
 import type { NormalizedActivity } from '@/types/strava'
 import { MYSTERY_FACTION_ID, RESOLUTION_FACTION_ID } from './constants'

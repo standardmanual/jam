@@ -6,7 +6,7 @@
 -- 3. drop_policy        — 드랍 파라미터 싱글톤 (어드민 편집, abusing_policy 패턴)
 -- 4. inventory_items.serial_number 무작위화 (순차 SERIAL → 난수 트리거)
 --
--- 로직 문서: PRD/badge/BADGE_ENGINE_UNIFIED.md §3
+-- 로직 문서: Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md §3
 -- ============================================================
 
 -- ----------------------------------------------------------------

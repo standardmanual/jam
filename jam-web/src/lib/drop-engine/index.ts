@@ -1,7 +1,7 @@
 /**
  * JAM! 아이템 드랍 엔진 v2 (서버 사이드 전용)
  *
- * 3레이어 드랍 결정 (로직 문서: PRD/badge/BADGE_ENGINE_UNIFIED.md §3):
+ * 3레이어 드랍 결정 (로직 문서: Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md §3):
  *   Layer 1 — 드랍 발생: 활동당 최소 1개 확정, 변동성은 희귀도·보너스로
  *   Layer 2 — 세계관 선택: 모멘텀 50 / 인접 25 / 탐험 15 (하드캡·선택 UI 없이 가중치로만 집중)
  *   Layer 3 — 아이템북·배지 선택: 완성도 감쇠 + 완성 북 잔류 + 마지막 조각 pity

@@ -169,6 +169,8 @@ if [ -n "$changed_components" ]; then
     echo "⚠️  경고(pre-commit): MODULAR 컴포넌트를 변경했는데 Storybook Story가 함께 갱신되지 않았습니다." >&2
     printf "%b" "$missing" >&2
     echo "  Storybook은 UI 재사용 탐색의 기준이므로 컴포넌트와 Story는 함께 유지해야 합니다." >&2
+    echo "  → 네 층(서비스 UI·MODULAR·Storybook·claude.ai/design) 전체 점검은 '/jam-ds' 또는" >&2
+    echo "    'cd jam-web && npm run ds:check' 로 합니다." >&2
     echo "  (현재는 경고만 하고 커밋은 진행합니다)" >&2
     echo "" >&2
     if [ "$EXIT_ON_MISSING" -eq 1 ]; then

@@ -1,0 +1,8 @@
+{
+  "projectId": "fd735d58-25c2-4347-95ed-d15ee2b36124",
+  "projectName": "MODULAR",
+  "projectUrl": "https://claude.ai/design/p/fd735d58-25c2-4347-95ed-d15ee2b36124",
+  "lastUploadCommit": "2ee47854288379ff687f6efb9bba60951e7b2a1b",
+  "lastUploadAt": "2026-08-20",
+  "note": "lastUploadCommit 은 claude.ai/design 에 마지막으로 반영된 시점의 커밋이다. 재업로드할 때마다 HEAD 로 갱신한다 — 갱신을 빠뜨리면 ds:check 의 UPLOAD_STALE 이 계속 뜬다. 업로드 제외 대상과 _vendor 주의사항은 NOTES.md 참조."
+}
