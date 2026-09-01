@@ -2,7 +2,6 @@
 
 import { useCallback, useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime, getDisplayName } from '@/lib/utils'

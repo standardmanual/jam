@@ -50,7 +50,7 @@ async function naverSearch(env, query, attempt = 0) {
   let res
   try {
     res = await fetch(url, { headers: naverHeaders(env) })
-  } catch (e) {
+  } catch {
     if (attempt >= 5) return []
     await sleep(400 * 2 ** attempt + Math.random() * 200)
     return naverSearch(env, query, attempt + 1)

@@ -8,7 +8,6 @@ function useTokenValue(name: string): string {
 
 function SpacingRow({ token, desc, semantic }: { token: string; desc?: string; semantic?: boolean }) {
   const value = useTokenValue(token);
-  const px = parseFloat(value) || 0;
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--color-border)' }}>

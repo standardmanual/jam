@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase/server'
 import { tryItemDrop } from '@/lib/drop-engine/index'
-import type { ActivityType } from '@/types/database'
 
 async function verifyAdmin(): Promise<boolean> {
   const cookieStore = await cookies()
