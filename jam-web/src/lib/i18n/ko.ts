@@ -20,6 +20,7 @@ export const ko = {
     networkError: '네트워크 오류가 발생했어요',
     footerSlogan: 'JAM은 삐끗할 때도 있습니다. 하지만 곧 바로 잡습니다.',
     footerPhilosophy: 'Philosophy',
+    footerPrivacy: '개인정보처리방침',
     footerCopyright: '© 2026 Standard Manual All Rights Reserved.',
   },
 
@@ -594,6 +595,7 @@ export const ko = {
     taken: '이미 사용 중인 아이디예요',
     genericError: '오류가 발생했어요. 다시 시도해 주세요.',
     networkError: '네트워크 오류가 발생했어요.',
+    ageConfirmLabel: '만 14세 이상이에요',
   },
 
   /** 프로필 편집 */
@@ -611,6 +613,8 @@ export const ko = {
     saving: '저장 중',
     cancelButton: '취소',
     saveError: '저장에 실패했어요. 다시 시도해 주세요.',
+    withdrawLink: '탈퇴 신청',
+    withdrawCaption: '이메일로 요청하면 계정과 활동 기록이 삭제돼요',
   },
 
   /** JAM 포인트 내역 */

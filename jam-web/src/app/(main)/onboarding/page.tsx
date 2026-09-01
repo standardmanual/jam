@@ -30,6 +30,9 @@ export default function OnboardingPage() {
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 티켓 20260901_2217: 14세 미만 가입 제한 — self-declaration 체크박스. 실제 생년월일
+  // 검증이 아니다(구글 OAuth로 생년월일을 받아오지 않는 현재 구조의 한계).
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
 
   // 현재 유저 정보 로드 (avatar_url + 이미 username 있으면 홈으로)
   useEffect(() => {
@@ -98,7 +101,7 @@ export default function OnboardingPage() {
   }
 
   async function handleSubmit() {
-    if (status !== 'available' || submitting) return
+    if (status !== 'available' || submitting || !ageConfirmed) return
     setSubmitting(true)
     try {
       const res = await fetch('/api/onboarding/complete', {
@@ -189,10 +192,40 @@ export default function OnboardingPage() {
           </p>
         </div>
 
+        {/* 만 14세 이상 자기확인 — 티켓 20260901_2217. 서비스에 Checkbox 개념이 없어
+            (MODULAR Checkbox는 "미도입 8종", 티켓 20260820_010 유지/보류 확정) 네이티브
+            input[type=checkbox]를 최소 스타일링해 쓴다. 바이너리-컬러 원칙에 맞춰 체크
+            여부는 색이 아니라 보더 두께(체크 시 2px)와 체크 아이콘으로 구분한다. */}
+        <label className="w-full flex items-center gap-[var(--spacing-12)] min-h-11 cursor-pointer">
+          <span
+            className={`relative shrink-0 w-5 h-5 rounded-[var(--radius-xs)] flex items-center justify-center transition-shadow ${
+              ageConfirmed
+                ? 'shadow-[inset_0_0_0_2px_var(--color-border-inverse)]'
+                : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={ageConfirmed}
+              onChange={(e) => setAgeConfirmed(e.target.checked)}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              aria-label={d.onboarding.ageConfirmLabel}
+            />
+            {ageConfirmed && (
+              <svg viewBox="0 0 16 16" className="w-3 h-3 pointer-events-none" fill="none" aria-hidden="true">
+                <path d="M3 8.5L6.5 12L13 4.5" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </span>
+          <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/90">
+            {d.onboarding.ageConfirmLabel}
+          </span>
+        </label>
+
         {/* 생성하기 버튼 */}
         <button
           onClick={handleSubmit}
-          disabled={status !== 'available' || submitting}
+          disabled={status !== 'available' || submitting || !ageConfirmed}
           className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
         >
           {submitting ? d.onboarding.submitting : d.onboarding.submitButton}
