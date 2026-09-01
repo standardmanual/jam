@@ -1,9 +1,9 @@
 ---
 id: 20260901_1845
 category: Infra
-status: OPEN
+status: CLOSED
 created: 2026-09-01
-closed:
+closed: 2026-09-01
 ---
 
 # [Infra] sync-drop-order.test.ts 상시 red 2건 수정
@@ -33,25 +33,29 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+티켓 [20260831_1327](20260831_1327_Infra_유닛테스트가-실DB에-접속-createServiceClient-미모킹.md)에서
+`sync-drop-order.test.ts`의 근본 원인(`findCompletableItemBooks()` 등 부수 모듈이 주입
+사슬 밖에서 자체적으로 `createServiceClient()`를 호출)을 수정하면서 이 티켓이 다루려던
+"상시 red 2건"이 함께 해소됐다. `npx vitest run src/lib/strava/__tests__/sync-drop-order.test.ts`로
+재확인한 결과 2개 테스트 모두 green — 별도 구현 불필요, 재확인만 하고 종료.
 
 ### 변경된 파일
 ```
--
+(없음 — 20260831_1327의 수정으로 함께 해소됨)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx vitest run src/lib/strava/__tests__/sync-drop-order.test.ts` — 2개 테스트 전체 green
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 해당 없음 (내부 테스트 코드)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+해당 없음 (코드 변경 없음, 20260831_1327 배포에 이미 포함됨)
 
 ### 주요 의사결정 / 핵심 메모
-> 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+티켓 작성 시점에 예상했던 의존관계(1327을 먼저 처리하면 이 문제도 함께 풀릴 가능성)가
+그대로 맞아떨어져, 별도 구현 없이 재확인만으로 종결했다.
 
 ### 잔여 이슈
 -
