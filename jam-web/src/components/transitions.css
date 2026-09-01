@@ -451,6 +451,20 @@
   background: var(--color-surface-elevated);
 }
 
+/* 프로필 통계탭 전용 (20260901) — 숫자는 항상 포인트 강조색(--color-primary), pill(같은
+   레드) 배경이 실제로 그 숫자 위를 지나가는 순간(data-pill-over, SlidingTabs.tsx 실측 겹침
+   추적)이나 도착해 머문 순간(aria-selected)만 흰색으로 바꿔 대비를 지킨다 — 20260831_2201
+   "레드온레드" 버그를 회피 로직(회색으로 대체) 없이 근본적으로 해결한다. 다른 SlidingTabs
+   사용처는 이 클래스가 없어 영향받지 않는다. */
+.jam-stat-tabs .t-tab .jam-stat-number {
+  color: var(--color-primary);
+  transition: color var(--tabs-dur) var(--tabs-ease);
+}
+.jam-stat-tabs .t-tab[aria-selected="true"] .jam-stat-number,
+.jam-stat-tabs .t-tab[data-pill-over="true"] .jam-stat-number {
+  color: var(--tabs-text-active);
+}
+
 /* TabBar 활성 점 — 트리거 하단 중앙에 앵커 (원본은 우상단 앵커) */
 .t-badge.jam-tabbar-dot {
   top: auto;
