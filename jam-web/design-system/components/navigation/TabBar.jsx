@@ -16,17 +16,18 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
  */
 const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg-inverse);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg-inverse)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out);will-change:transform,opacity}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill{transition:none!important}}`;
 
-// 활성 배경 필의 고정 크기(px) — 렌더 스타일(width/height:68/48)과 반드시 일치해야
-// offsetLeft/offsetWidth 기반 중앙 정렬 계산(moveTo)이 어긋나지 않는다.
-// 폭 68px·nav 높이 64px — 첫/끝 탭에서 필-nav 가로 여백이 세로 여백과 동일한 8px이
-// 되도록 역산한 값(티켓 20260901_1626 후속, 서비스 TabBar.tsx와 동일 근거).
-const PILL_WIDTH = 68;
-const PILL_HEIGHT = 48;
-
-// nav와 필 둘 다 "완전히 둥근" 캡슐이지만 각자 자기 높이 기준으로 auto-clamp하면
-// nav 높이와 필 높이(48px 고정)가 달라 곡률이 어긋나 보인다(티켓 20260901_1626 후속 —
-// "값이 달라서 형태가 찌그러져 있다"). nav 반경을 필과 동일한 PILL_HEIGHT/2로 고정한다.
-const PILL_RADIUS = PILL_HEIGHT / 2;
+/*
+ * 탭바 기하값은 Figma 원본(file UXcBEgFagmO5ARwH5F0mMW, node 11:218 "Tab Bar Buttons")
+ * 실측을 따른다 — 티켓 20260901_1626. 서비스 `src/components/ui/TabBar.tsx`와 동일.
+ *
+ *   BG(탭바 전체)      395 × 49
+ *   Selection(활성 필)  87 × 41   → 상하좌우 여백 4px 균일
+ *
+ * **반경은 억지로 같게 맞추지 않는다.** Figma는 nav·필 둘 다 완전 라운드라 각자 자기
+ * 높이의 절반으로 auto-clamp되고(24.5 / 20.5), 그 차이가 정확히 여백(4px)과 같아 두 호가
+ * 평행한 동심원이 된다. 폭도 상수로 두지 않고 활성 탭 슬롯의 실측 폭을 그대로 쓴다.
+ */
+const PILL_HEIGHT = 41;
 
 /**
  * TabBar — floating pill bottom navigation.
@@ -100,7 +101,9 @@ export function TabBar({ active = 'today', onChange }) {
 
     const apply = () => {
       pill.style.opacity = '1';
-      pill.style.transform = `translate(${tab.offsetLeft + (tab.offsetWidth - PILL_WIDTH) / 2}px, -50%)`;
+      // 필 폭 = 탭 슬롯 폭이므로 중앙 정렬 보정 없이 offsetLeft를 그대로 쓴다.
+      pill.style.width = `${tab.offsetWidth}px`;
+      pill.style.transform = `translate(${tab.offsetLeft}px, -50%)`;
     };
 
     if (!animate) {
@@ -149,10 +152,11 @@ export function TabBar({ active = 'today', onChange }) {
          20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
          최소 여백 10px로 재조정. */
       bottom: 'max(10px, calc(var(--spacing-16) + var(--spacing-safe-bottom) - 32px))',
-      width: 'calc(100% - 42px)', maxWidth: 388, height: 64,
-      // PILL_RADIUS로 고정(위 상수 주석 참고) — var(--radius-pill)은 nav 자기 높이 기준으로
-      // auto-clamp돼 필과 다른 반경이 나온다.
-      borderRadius: PILL_RADIUS,
+      // 높이 49px·가로 388px·좌우 패딩 4px은 Figma 실측값(위 상수 주석 참고).
+      width: 'calc(100% - 42px)', maxWidth: 388, height: 49,
+      // 완전 라운드 — nav는 자기 높이의 절반(24.5px), 필은 자기 높이의 절반(20.5px)으로
+      // clamp돼 두 호가 4px 간격의 동심원이 된다(의도된 동작).
+      borderRadius: 'var(--radius-pill)',
       // 20260816_012: 보더 제거 — 재질(반투명 크롬)이 다크 배경 위에서 blur로 구분됨
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 4px', zIndex: 40,
@@ -168,7 +172,8 @@ export function TabBar({ active = 'today', onChange }) {
         className="ds-tabbar-pill"
         style={{
           position: 'absolute', top: '50%', left: 0,
-          width: PILL_WIDTH, height: 48, borderRadius: 'var(--radius-pill)',
+          // 폭은 moveTo가 활성 탭 슬롯 실측값으로 매번 지정한다(위 상수 주석 참고).
+          height: PILL_HEIGHT, borderRadius: 'var(--radius-pill)',
           background: 'rgba(0,0,0,0.08)',
           opacity: 0, transform: 'translate(0px, -50%)',
         }}

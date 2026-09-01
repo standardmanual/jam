@@ -7,21 +7,25 @@ import { d } from '@/lib/i18n'
 import { useTabBarHidden } from '@/lib/uiOverlay'
 import { isPathActive } from '@/lib/isPathActive'
 
-// 활성 배경 필의 고정 크기(px) — 렌더 클래스(`w-[68px] h-12`)와 반드시 일치해야
-// offsetLeft/offsetWidth 기반 중앙 정렬 계산(moveTo)이 어긋나지 않는다.
-// 폭 68px·nav 높이 64px(아래 참고) — 첫/끝 탭에서 필-nav 사이 가로 여백이 세로 여백과
-// 동일한 8px이 되도록 역산한 값이다(티켓 20260901_1626 후속). 2px 여백은 화면에서 거의
-// 안 보인다는 피드백을 받아, nav 높이를 원래값(64px)으로 되돌려 세로 여백을 8px로 키우고
-// 필 폭도 같은 8px 가로 여백이 나오도록 맞췄다.
-const PILL_WIDTH = 68
-const PILL_HEIGHT = 48
+/*
+ * 탭바 기하값은 Figma 원본(file UXcBEgFagmO5ARwH5F0mMW, node 11:218 "Tab Bar Buttons")
+ * 실측을 그대로 따른다 — 티켓 20260901_1626. 대화로 px를 주고받으며 맞추다 네 번 어긋나
+ * 사용자가 Figma를 지정해줬다.
+ *
+ *   BG(탭바 전체)      395 × 49
+ *   Selection(활성 필)  87 × 41   → 상하좌우 여백 4px 균일
+ *
+ * **반경은 억지로 같게 맞추지 않는다.** Figma는 nav·필 둘 다 완전 라운드
+ * (`border-radius: 296px` = 사실상 무한)라 각자 자기 높이의 절반으로 auto-clamp되고
+ * (24.5 / 20.5), 그 차이가 정확히 여백(4px)과 같아 두 호가 평행한 **동심원**이 된다.
+ * 이전에 두 반경을 24px로 강제로 통일했던 게 오히려 곡률을 어긋나게 만든 원인이었다.
+ */
+const PILL_HEIGHT = 41
 
-// nav(탭바 전체)와 필(활성 배경)은 둘 다 "완전히 둥근" 캡슐이지만, 각자 자기 높이의
-// 절반을 반경으로 auto-clamp(예: rounded-full/9999px)하면 nav 높이와 필 높이(48px 고정)가
-// 달라 서로 다른 반경이 계산돼 양끝 곡률이 어긋나 보인다(티켓 20260901_1626 후속 —
-// "값이 달라서 형태가 찌그러져 있다"는 사용자 피드백). nav 반경을 필과 동일한
-// PILL_HEIGHT/2로 고정해 두 캡슐의 곡률을 맞춘다.
-const PILL_RADIUS = PILL_HEIGHT / 2
+// 필의 폭은 상수로 두지 않고 활성 탭 슬롯의 실측 폭(offsetWidth)을 그대로 쓴다(moveTo 참고).
+// nav 가로폭은 Figma 기준 388px이지만 좁은 화면에서는 calc(100%-42px)로 줄어드는데, 폭을
+// 고정하면 그때 좌우 여백이 어긋난다 — 슬롯 폭을 그대로 따라가면 여백이 항상 nav 좌우
+// 패딩(px-1 = 4px)으로 일정하게 유지된다.
 
 /**
  * SuperHi Plus 바텀 탭바 (iOS 26 스타일 플로팅 캡슐, iOS HIG Tab Bar 패턴)
@@ -173,7 +177,9 @@ export default function TabBar({ username }: TabBarProps) {
     const apply = () => {
       if (tab) {
         pill.style.opacity = '1'
-        pill.style.transform = `translate(${tab.offsetLeft + (tab.offsetWidth - PILL_WIDTH) / 2}px, -50%)`
+        // 필 폭 = 탭 슬롯 폭이므로 중앙 정렬 보정 없이 offsetLeft를 그대로 쓴다.
+        pill.style.width = `${tab.offsetWidth}px`
+        pill.style.transform = `translate(${tab.offsetLeft}px, -50%)`
       } else {
         pill.style.opacity = '0'
       }
@@ -229,15 +235,13 @@ export default function TabBar({ username }: TabBarProps) {
       ref={navRef}
       // 20260823_003: 재질(반투명 흰 필) — bg-surface-inverse(불투명) → jam-tabbar-chrome
       // (transitions.css, --color-chrome-bg-inverse/--blur-chrome 참조 — DS TabBar.jsx와 값 공유)
-      className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-16 jam-tabbar-chrome flex items-center justify-between px-1 z-40"
+      // 높이 49px·가로 388px·좌우 패딩 4px(px-1)은 Figma 실측값(위 상수 주석 참고).
+      // rounded-full은 nav 자기 높이의 절반(24.5px)으로 clamp되고, 필은 자기 높이의
+      // 절반(20.5px)으로 clamp돼 두 호가 4px 간격의 동심원이 된다 — 의도된 동작이다.
+      className="fixed left-1/2 -translate-x-1/2 w-[calc(100%-42px)] max-w-[388px] h-[49px] rounded-full jam-tabbar-chrome flex items-center justify-between px-1 z-40"
       // 20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
       // 최소 여백 10px로 재조정(DS TabBar.jsx와 동일 공식).
-      // borderRadius는 PILL_RADIUS로 고정(위 상수 주석 참고) — Tailwind rounded-[var(...)]는
-      // nav 자기 높이 기준으로 auto-clamp돼 필과 다른 반경이 나오므로 쓰지 않는다.
-      style={{
-        bottom: 'max(10px, calc(env(safe-area-inset-bottom) + 16px - 32px))',
-        borderRadius: PILL_RADIUS,
-      }}
+      style={{ bottom: 'max(10px, calc(env(safe-area-inset-bottom) + 16px - 32px))' }}
     >
       {/* 활성 탭 배경 필 — 요청: "선택된 탭의 배경뒤에 활성 상태를 표현해줘".
           탭마다 조건부 렌더링하던 기존 방식 대신 단일 공유 pill을 두고 활성 탭의
@@ -250,8 +254,12 @@ export default function TabBar({ username }: TabBarProps) {
       <span
         aria-hidden="true"
         ref={pillRef}
-        className="jam-tabbar-pill absolute top-1/2 left-0 w-[68px] h-12 rounded-full opacity-0"
-        style={{ background: 'rgba(0,0,0,0.08)', transform: 'translate(0px, -50%)' }}
+        className="jam-tabbar-pill absolute top-1/2 left-0 rounded-full opacity-0"
+        style={{
+          height: PILL_HEIGHT,
+          background: 'rgba(0,0,0,0.08)',
+          transform: 'translate(0px, -50%)',
+        }}
       />
       {tabs.map((tab) => {
         const active = isActive(tab.href)
