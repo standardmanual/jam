@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 /*
  * 20260823_003: 재질(반투명 흰 필) — 기존 불투명 흰 필(--color-bg-inverse)의 색은
@@ -8,20 +8,29 @@ import React from 'react';
  * 참조하는 `.jam-tabbar-chrome` 클래스를 transitions.css에 별도로 두어 값이 갈리지
  * 않게 맞췄다 — 두 파일을 함께 봐야 함.
  * 비활성 아이콘 대비 재보정(--color-icon-inactive)은 tokens/colors.css 참조.
+ *
+ * 20260901_1521: 활성 배경 필 슬라이딩 트랜지션 — 서비스 SlidingTabs.tsx(16-tabs-sliding.md)의
+ * JS 포지셔닝 패턴(transform/opacity를 JS가 쓰고 트윈은 CSS가 소유)만 차용한다. duration/
+ * easing은 서비스 --tabs-dur(300ms)/--tabs-ease와 동일한 값을 이 DS 토큰(--ease-smooth-out)으로
+ * 맞췄다.
  */
-const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg-inverse);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg-inverse)}}`;
+const STATIC_CSS = `.ds-tabbar-chrome{background:var(--color-chrome-bg-inverse);backdrop-filter:blur(var(--blur-chrome)) saturate(180%);-webkit-backdrop-filter:blur(var(--blur-chrome)) saturate(180%)}@media(prefers-reduced-transparency:reduce){.ds-tabbar-chrome{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--color-bg-inverse)}}.ds-tabbar-pill{transition:transform 300ms var(--ease-smooth-out),opacity 300ms var(--ease-smooth-out);will-change:transform,opacity}@media(prefers-reduced-motion:reduce){.ds-tabbar-pill{transition:none!important}}`;
+
+// 활성 배경 필의 고정 크기(px) — 렌더 스타일(width/height:64/48)과 반드시 일치해야
+// offsetLeft/offsetWidth 기반 중앙 정렬 계산(moveTo)이 어긋나지 않는다.
+const PILL_WIDTH = 64;
 
 /**
  * TabBar — floating pill bottom navigation.
  * 5 tabs: today / badges / drops / missions / inventory.
- * Active state: filled icon + primary color + dot indicator + 44px background pill.
+ * Active state: filled icon + primary color + sliding background pill.
  *
  * v2 changes:
  *   - bottom offset now respects env(safe-area-inset-bottom) — iPhone home indicator clearance
  *   - Removed misleading "purple active" comment (active color is --color-primary = red)
  *
- * 20260901: 활성 탭 아이콘 뒤에 44px 배경 필 추가(전체 필 폭·간격은 기존 유지).
- * 서비스 `src/components/ui/TabBar.tsx`도 함께 수정했다.
+ * 20260901_1521: 활성 점 제거, 배경 필에 슬라이딩 모션 추가(단일 pill +
+ * offsetLeft/offsetWidth 측정 — 서비스 `src/components/ui/TabBar.tsx`도 함께 수정했다).
  *
  * 20260824_010: 프로필 탭 제거(6탭→5탭) — 프로필 진입은 TopNav 우측 아바타로 일원화.
  * 서비스 `src/components/ui/TabBar.tsx`(병존 구현, 20260820_009)도 함께 수정해야 한다.
@@ -64,10 +73,69 @@ const tabs = [
 ];
 
 export function TabBar({ active = 'today', onChange }) {
+  const navRef = useRef(null);
+  const pillRef = useRef(null);
+  const tabRefs = useRef(new Map());
+  // 첫 페인트에서는 애니메이션 없이 스냅시켜야 한다 (서비스 SlidingTabs.tsx와 동일).
+  const hasPositionedRef = useRef(false);
+  const activeRef = useRef(active);
+  useLayoutEffect(() => {
+    activeRef.current = active;
+  });
+
+  // 서비스 SlidingTabs.tsx의 moveTo()를 이식한 것. `active`가 이미 value/onChange로
+  // 제어되는 controlled prop이라 이 컴포넌트는 SlidingTabs 패턴을 그대로 적용할 수 있다.
+  const moveTo = useCallback((key, animate) => {
+    const pill = pillRef.current;
+    const tab = tabRefs.current.get(key);
+    if (!pill || !tab) return false;
+
+    const apply = () => {
+      pill.style.opacity = '1';
+      pill.style.transform = `translate(${tab.offsetLeft + (tab.offsetWidth - PILL_WIDTH) / 2}px, -50%)`;
+    };
+
+    if (!animate) {
+      const prevTransition = pill.style.transition;
+      pill.style.transition = 'none';
+      apply();
+      void pill.offsetWidth;
+      pill.style.transition = prevTransition;
+    } else {
+      apply();
+    }
+    return true;
+  }, []);
+
+  // 활성 탭 변경 — 첫 배치만 무애니메이션, 이후에는 트윈.
+  useLayoutEffect(() => {
+    const positioned = moveTo(active, hasPositionedRef.current);
+    if (positioned) hasPositionedRef.current = true;
+  }, [active, moveTo]);
+
+  // 리사이즈 — 항상 무애니메이션으로 재배치 (deps에 active를 넣지 않는 이유는
+  // 서비스 SlidingTabs.tsx와 동일 — ResizeObserver 최초 발화가 방금 트리거된 트윈을
+  // 캔슬하는 것을 막기 위함).
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const reposition = () => moveTo(activeRef.current, false);
+
+    const observer = new ResizeObserver(reposition);
+    observer.observe(nav);
+    window.addEventListener('resize', reposition);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', reposition);
+    };
+  }, [moveTo]);
+
   return (
     <>
     <style>{STATIC_CSS}</style>
-    <nav className="ds-tabbar-chrome" style={{
+    <nav ref={navRef} className="ds-tabbar-chrome" style={{
       position: 'fixed', left: '50%', transform: 'translateX(-50%)',
       /* v2: safe-area-inset-bottom prevents overlap with iPhone home indicator.
          20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
@@ -79,6 +147,22 @@ export function TabBar({ active = 'today', onChange }) {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 4px', zIndex: 40,
     }}>
+      {/* 활성 탭 배경 필 — 단일 공유 pill을 활성 탭의 offsetLeft/offsetWidth 중앙으로
+          translateX 이동시킨다(moveTo, 위 참고) — 탭 전환 시 스냅 대신 미끄러지는 모션이
+          생긴다(20260901_1521). 양옆은 완전히 둥글고 위아래는 직선인 캡슐 모양 — 높이보다
+          폭을 넓게 잡고 radius-pill(반경이 짧은 변인 높이로 자연히 클램프됨)을 적용해
+          만든다. 화이트가 아니라 반투명 그레이 — 흰 필 위에 살짝 어두운 톤을 얹어 구분한다. */}
+      <span
+        aria-hidden="true"
+        ref={pillRef}
+        className="ds-tabbar-pill"
+        style={{
+          position: 'absolute', top: '50%', left: 0,
+          width: PILL_WIDTH, height: 48, borderRadius: 'var(--radius-pill)',
+          background: 'rgba(0,0,0,0.08)',
+          opacity: 0, transform: 'translate(0px, -50%)',
+        }}
+      />
       {tabs.map((t) => {
         const isActive = t.key === active;
         const ic = icons[t.key];
@@ -88,6 +172,10 @@ export function TabBar({ active = 'today', onChange }) {
             aria-label={t.label}
             aria-current={isActive ? 'page' : undefined}
             onClick={() => onChange && onChange(t.key)}
+            ref={(el) => {
+              if (el) tabRefs.current.set(t.key, el);
+              else tabRefs.current.delete(t.key);
+            }}
             style={{
               position: 'relative', flex: 1, height: '100%',
               border: 'none', background: 'transparent',
@@ -95,18 +183,6 @@ export function TabBar({ active = 'today', onChange }) {
               cursor: 'pointer',
             }}
           >
-            {/* 활성 탭 배경 필 — 서비스 TabBar.tsx와 동일 (20260901) */}
-            {isActive && (
-              <span aria-hidden="true" style={{
-                position: 'absolute', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
-                // 양옆은 완전히 둥글고 위아래는 직선인 캡슐 모양 — 높이보다 폭을 넓게 잡고
-                // radius-pill(반경이 짧은 변인 높이로 자연히 클램프됨)을 적용해 만든다.
-                width: 64, height: 48, borderRadius: 'var(--radius-pill)',
-                // 화이트가 아니라 반투명 그레이 — 흰 필 위에 살짝 어두운 톤을 얹어 구분한다.
-                background: 'rgba(0,0,0,0.08)',
-              }} />
-            )}
             <span style={{ position: 'relative', color: isActive ? 'var(--color-primary)' : 'var(--color-icon-inactive)' }}>
               {/* 20260901: today도 Material Symbols 좌표계로 교체돼 5개 탭 전부 동일
                   viewBox를 쓴다(20260827_026 당시엔 today만 예외였으나 두께 불일치로 정리). */}
@@ -114,13 +190,6 @@ export function TabBar({ active = 'today', onChange }) {
                 {isActive ? ic.fill : ic.line}
               </svg>
             </span>
-            <span aria-hidden="true" style={{
-              position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
-              width: 4, height: 4, borderRadius: '50%',
-              background: 'var(--color-primary)',
-              opacity: isActive ? 1 : 0,
-              transition: 'opacity var(--duration-quick) ease',
-            }} />
           </button>
         );
       })}

@@ -465,12 +465,19 @@
   color: var(--tabs-text-active);
 }
 
-/* TabBar 활성 점 — 트리거 하단 중앙에 앵커 (원본은 우상단 앵커) */
-.t-badge.jam-tabbar-dot {
-  top: auto;
-  right: auto;
-  bottom: 10px;
-  left: calc(50% - 2px);
+/* TabBar 활성 배경 필 슬라이딩 — SlidingTabs.tsx(16-tabs-sliding.md)의 JS 포지셔닝
+   패턴(단일 pill + offsetLeft/offsetWidth 측정)만 차용한다. TabBar는 Link 기반 라우트
+   탐색이라 SlidingTabs 컴포넌트 자체(value/onChange 모델)는 재사용하지 않고, 이
+   트랜지션만 --tabs-dur/--tabs-ease(globals.css)를 공유한다(20260901_1521). transform/
+   opacity는 JS(TabBar.tsx moveTo)가 인라인으로 쓰고, 트윈은 CSS가 소유. */
+.jam-tabbar-pill {
+  transition:
+    transform var(--tabs-dur) var(--tabs-ease),
+    opacity var(--tabs-dur) var(--tabs-ease);
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jam-tabbar-pill { transition: none !important; }
 }
 
 /* TopNav 알림 종 버블 — 36px 서클의 우상단에 앵커 (20260824_021, 20260825 조정).
