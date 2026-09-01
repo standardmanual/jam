@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest'
 import {
   BLOB_ANIMATION_RANGES,
   DEFAULT_BLOB_ANIMATION,
+  blobCycleSeconds,
   parseBlobAnimation,
 } from '@/lib/blobAnimation'
 
@@ -66,5 +67,37 @@ describe('깨진 필드 보정', () => {
       DEFAULT_BLOB_ANIMATION.colors[3],
     ])
     expect(parsed?.bgColor).toBe(DEFAULT_BLOB_ANIMATION.bgColor)
+  })
+
+  it('예전 speed 범위(0.1~5)로 저장된 값도 새 범위 안으로 클램프한다', () => {
+    // 슬라이더 범위를 0.25~2.5로 좁힌 뒤에도 기존 DB 값이 렌더러·슬라이더와 어긋나면 안 된다.
+    expect(parseBlobAnimation({ ...DEFAULT_BLOB_ANIMATION, speed: 0.1 })?.speed).toBe(
+      BLOB_ANIMATION_RANGES.speed.min
+    )
+    expect(parseBlobAnimation({ ...DEFAULT_BLOB_ANIMATION, speed: 5 })?.speed).toBe(
+      BLOB_ANIMATION_RANGES.speed.max
+    )
+  })
+})
+
+describe('기본 배경색 가독성', () => {
+  it('카드 안 흰 텍스트(--color-text = #ffffff)와 WCAG AA(4.5:1)를 넘는 대비를 갖는다', () => {
+    // 기본값이 #ffffff였을 때 '애니메이션'을 고르는 즉시 배지명이 사라졌던 회귀를 고정한다.
+    const channel = (v: number) => {
+      const c = v / 255
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    }
+    const hex = DEFAULT_BLOB_ANIMATION.bgColor
+    const [r, g, b] = [1, 3, 5].map((i) => channel(parseInt(hex.slice(i, i + 2), 16)))
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    const contrast = (1.0 + 0.05) / (luminance + 0.05)
+    expect(contrast).toBeGreaterThan(4.5)
+  })
+})
+
+describe('속도 라벨용 주기 계산', () => {
+  it('속도가 빠를수록 한 바퀴 시간이 짧아지고, 배수만큼 반비례한다', () => {
+    expect(blobCycleSeconds(1)).toBeCloseTo(4 * Math.PI, 5)
+    expect(blobCycleSeconds(2)).toBeCloseTo(blobCycleSeconds(1) / 2, 5)
   })
 })

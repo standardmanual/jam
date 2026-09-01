@@ -100,7 +100,29 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | background_color | 배지 상세화면 배경 테마 컬러(nullable). `background_image_url`이 없을 때만 렌더링에 쓰임. 어드민에서 이미지 업로드 시 평균 컬러 자동 프리필 + 수동 오버라이드 가능(20260818_003). TopNav·히어로카드·고정 배경 레이어에 실제 렌더링됨 |
 | background_shader_id | 배지 상세화면 배경 쉐이더 식별자(nullable). 어드민에 선택 UI는 있으나(20260818_003, placeholder 목록) **렌더링에는 미연결** — 값이 있어도 무시됨. `background_image_url` 도입(20260819_008) 이후 이 컬럼을 통한 실시간 쉐이더 렌더링 경로는 채택되지 않음 — 사실상 레거시 |
 | background_image_url | 배경 제너레이터(패턴/애니메이션 + Paper 셰이더 필터 합성)로 만든 배경을 어드민에서 static PNG로 구워(bake) Storage에 올린 뒤 저장하는 URL(nullable, 20260819_008). **`background_color`보다 우선 렌더링**됨(`getBadgeBackgroundStyle`) — 값이 있으면 이 이미지를, 없으면 `background_color`로 폴백. `background_color`와 상호 배타적으로 쓰임(어드민에서 저장 시 반대쪽을 null로 정리, DB 제약 아님). 원시 설정값(이미지·패턴/애니메이션 파라미터·필터 종류)은 저장하지 않음 — 재편집 가능한 설정이 아니라 완성된 이미지 1장 |
+| background_animation | 배지 상세화면 **이미지 카드 안**에서 라이브 실행하는 블롭 애니메이션 파라미터(jsonb, nullable, 20260901_1944). 위 세 배경 컬럼과 **렌더링 지점이 다르다** — 전체 배경 레이어가 아니라 430×430 Hero 카드 내부의 `<canvas>`다. 영상 배경(`background_video_url`)과 달리 파일을 굽지 않고 파라미터만 저장해 재편집이 가능하다. 값 형태는 `{ type: 'blob', colors: [4색], bgColor, speed, seed, blur, scale }`이며, jsonb라 스키마 검증이 없어 `parseBlobAnimation`이 관용적으로 정규화한다(형식이 어긋나면 `null` = 애니메이션 없음). **렌더링 우선순위 최상위** — 아래 «배경 렌더링 우선순위» 참고 |
 | category | 체크인 배지(`type==='checkin'`) 전용 지점 카테고리 오버라이드(nullable text, `poi_categories.slug` FK, `ON DELETE SET NULL`, 20260830_1344). 값이 있으면 연결된 지점의 `poi.category`보다 우선해 어드민 목록·공개 배지함의 분류 기준이 되고, `null`이면 `poi.category`로 폴백한다(20260830_1522). 체크인 외 타입은 서버에서 항상 `null`로 강제 |
+
+#### 배경 렌더링 우선순위
+
+badges / item_books / factions 세 테이블이 같은 배경 컬럼 세트를 갖고, 판정은 전부
+`src/lib/badgeBackgroundTheme.ts` **한 곳**에서 한다(호출부가 우선순위를 각자 해석하지 않는다).
+
+**`background_animation` > `background_image_url` > `background_color`**
+
+- `background_animation`이 있으면 전체 배경 레이어를 **통째로 비운다** — CSS 배경(`getBadgeBackgroundStyle`),
+  반복 영상(`getBadgeBackgroundVideoUrl`), TopNav·본문 투명 판정(`hasBadgeBackgroundTheme`) 세 함수가
+  모두 "배경 없음"으로 답하고, 애니메이션은 Hero 카드 안에서만 그려진다.
+- 애니메이션이 없으면 `background_image_url`(구워둔 정적 PNG), 그것도 없으면 `background_color` 순.
+- `background_shader_id`는 값이 있어도 항상 무시된다(레거시).
+
+**캐스케이드는 영상·이미지를 복사도 삭제도 하지 않는다.** 어드민 "하위에 일괄 적용"은
+`background_color` + `background_animation` 2필드만 복사한다(아래 §4·§5). 그 결과 하위 엔티티는
+"부모의 애니메이션 + 자기 예전 영상/이미지"라는 상태로 남을 수 있는데, 제너레이터가 제거돼
+(20260901_1929) 다시 만들 수 없는 값이라 파괴적으로 지우지 않고 **위 렌더링 우선순위로 충돌을
+막는다**. 애니메이션을 해제하면 예전 배경이 그대로 되살아난다. 이 규칙을 세 함수 중 일부에만
+적용하면 레이어가 절반만 비워져(CSS는 비었는데 영상은 재생) 화면 전체 MP4와 카드 안 블롭이 동시에
+도는 상태가 된다 — 실제로 20260901_1944 게이트 FAIL이 이 부분 적용에서 나왔다.
 
 ### user_activity_badges
 활동/아이템 배지 발급 기록. 평생 1회(UNIQUE user_id+badge_id). 지점(POI)/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.
@@ -149,11 +171,19 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 `faction_id`로 세계관 연동, `story_text`, `is_active`, `drop_condition_json` 보유. **`required_item_badge_ids` 컬럼은 삭제됨** — 완성 조건은 이제 `badges.item_book_id`(배지→북 소속)로 역방향 관리.
 
 `background_color`/`background_shader_id`(20260818_004, 컬렉션 상세 배경 테마용) 외에
-`background_image_url`/`background_video_url`(nullable, 20260819_013) 보유 — badges 테이블과 동일 패턴.
-`/collections/[id]` 상세화면에 배지 상세와 동일한 단일 고정 배경 레이어로 렌더링됨(이미지 우선,
-영상 지원, 20260819_014). 어드민 "일괄 적용" 버튼으로 컬렉션 자신의 배경값(4필드 스냅샷)을
-소속 배지(`item_book_id` 일치, 소프트 삭제 제외) 전체에 1회성으로 복사 — 실시간 fallback 아니며
-항상 덮어씀.
+`background_image_url`/`background_video_url`(nullable, 20260819_013),
+`background_animation`(jsonb nullable, 20260901_1944) 보유 — badges 테이블과 동일 패턴이며
+우선순위도 §2의 «배경 렌더링 우선순위»와 동일하다. `/collections/[id]` 상세화면에 배지 상세와
+동일한 단일 고정 배경 레이어로 렌더링되고(20260819_014), `background_animation`은 그 레이어가
+아니라 대표 이미지 카드 **안**에서 실행된다.
+
+어드민 "하위에 일괄 적용" 버튼은 컬렉션 자신의 **`background_color` + `background_animation`
+2필드**를 소속 배지(`item_book_id` 일치, 소프트 삭제 제외) 전체에 1회성으로 복사한다 — 실시간
+fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복사했으나, 마이그레이션 121
+(20260901_1929)에서 배경 제너레이터·쉐이더가 제거되며 `background_color` 1필드로 줄었고,
+20260901_1944에서 `background_animation`이 더해져 지금은 2필드다. 배경색과 애니메이션은 저작
+화면에서 배타로 선택되므로 **둘을 함께 복사해야** 하위 배지의 모드가 부모와 정확히 일치한다
+(한쪽만 복사하면 애니메이션 → 배경색 전환이 하위에 반영되지 않는다).
 
 ### user_item_book_slots / user_item_book_completions (신규)
 - `user_item_book_slots`: 인벤토리 아이템을 슬롯에 장착한 기록 (UNIQUE user+book+badge)
@@ -167,9 +197,12 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 10개 세계관. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/FACTIONS.md](../Content/FACTIONS.md) 참고.
 
 `background_color`/`background_shader_id`(20260818_004) 외에 `background_image_url`/`background_video_url`
-(nullable, 20260819_013) 보유. 세계관 자체는 서비스 공개 상세 페이지가 없어 이 값이 직접 렌더링되지는
-않음 — 소속 컬렉션·배지 전체로 캐스케이드 일괄 적용하기 위한 마스터 값 저장용. 캐스케이드 로직은
-후속 티켓(015) 범위.
+(nullable, 20260819_013), `background_animation`(jsonb nullable, 20260901_1944) 보유. 세계관 자체는
+서비스 공개 상세 페이지가 없어 이 값이 직접 렌더링되지는 않음 — 소속 컬렉션·배지 전체로 캐스케이드
+일괄 적용하기 위한 마스터 값 저장용.
+
+캐스케이드는 컬렉션과 동일하게 **`background_color` + `background_animation` 2필드**만 복사하며,
+영상·이미지는 복사도 삭제도 하지 않는다(§2 «배경 렌더링 우선순위» 참고).
 
 `PUT /api/admin/factions/[id]`는 부분 body 병합을 지원한다(20260827_005) — body에 없는(=`undefined`)
 필드는 기존 DB 값을 그대로 유지하고, body에 명시적으로 포함된 필드만 갱신한다. 인접 세계관만 저장하는

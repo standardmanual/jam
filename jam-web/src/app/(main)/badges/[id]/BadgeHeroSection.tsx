@@ -2,7 +2,7 @@ import Image from 'next/image'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRow } from '@/types/database'
-import { hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
+import { getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BlobAnimationBackground from '@/components/BlobAnimationBackground'
 import type { BlobAnimationParams } from '@/lib/blobAnimation'
 
@@ -12,7 +12,19 @@ import type { BlobAnimationParams } from '@/lib/blobAnimation'
  * MODULAR 신규 컴포넌트 아님 — [20260816_006] 선례에 따라 서비스 전용 div+Tailwind 유지.
  */
 interface BadgeHeroSectionProps {
-  badge: Pick<BadgeRow, 'image_url' | 'name' | 'rarity' | 'description' | 'background_color' | 'background_shader_id' | 'background_image_url'>
+  /**
+   * [20260901_1944] `background_animation`을 **필수**로 포함한다 — 이 필드가 빠져 있으면 아래
+   * `hasBadgeBackgroundTheme(badge)`가 애니메이션 분기를 타지 못해, "무엇을 배경으로 그릴지의
+   * 판단은 `badgeBackgroundTheme.ts` 한 곳"이라는 원칙이 이 컴포넌트에서만 깨진다.
+   *
+   * `BadgeRow`에서 Pick하지 않고 `unknown`으로 따로 선언하는 이유는, 이 값이 jsonb 원본이고
+   * 파싱·검증 책임이 전적으로 `badgeBackgroundTheme.ts`(→ `parseBlobAnimation`)에 있기 때문이다.
+   * `BackgroundThemeSource`와 동일한 규약이라 어드민 미리보기처럼 아직 저장 전인 편집 중
+   * 파라미터도 그대로 넘길 수 있다.
+   */
+  badge: Pick<BadgeRow, 'image_url' | 'name' | 'rarity' | 'description' | 'background_color' | 'background_shader_id' | 'background_image_url'> & {
+    background_animation: unknown
+  }
   hasEarned: boolean
   /**
    * 배경 테마가 깔린 화면인지 강제로 지정한다(미지정 시 badge의 배경 필드로 판정).
@@ -37,6 +49,15 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
   // 배경이 없는 배지는 기존과 동일하게 bg-surface-elevated 카드로 남는다(회귀 방지).
   const themed = themedBackground ?? hasBadgeBackgroundTheme(badge)
 
+  // [20260901_1944] 애니메이션 모드에서는 `themed`가 false다(전체 배경 레이어를 비우므로) —
+  // 그래서 페이지가 걸어주는 텍스트 그림자 보정도 함께 꺼진다. 그런데 카드 안 텍스트는 오히려
+  // 밝은 색이 섞인 블롭 위에 놓이므로, `hasBadgeBackgroundTheme`의 의미("전체 배경 레이어에
+  // 무언가 그려지는가")는 그대로 두고 이 카드의 텍스트 블록에만 같은 보정을 되살린다.
+  // 자간은 변하는 배경 위에서 글자 경계가 뭉치지 않도록 소폭만 벌린다.
+  const cardTextStyle = backgroundAnimation
+    ? { ...getBadgeThemedTextStyle(true), letterSpacing: '0.01em' }
+    : undefined
+
   return (
     // relative z-10 — 배지 상세화면의 고정 배경 레이어(z-index:0, 20260818_002/003)보다 항상
     // 위에서 그려지도록 승격. 승격하지 않으면 non-positioned 콘텐츠가 positioned 배경 레이어보다
@@ -51,6 +72,11 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
           'relative overflow-hidden w-full aspect-square rounded-[var(--radius-cards)] flex flex-col p-6',
           backgroundAnimation || themed ? 'bg-transparent' : 'bg-surface-elevated',
         ].join(' ')}
+        // 애니메이션 모드의 첫 페인트 폴백 — 캔버스는 클라이언트에서 컨텍스트를 얻은 뒤에야
+        // 그려지고, `getContext('2d')`가 null이면 영영 비어 있다. 파라미터가 이미 서버 컴포넌트에
+        // 있으므로 같은 배경색을 인라인으로 미리 깔아둔다(영상 배경의 poster와 같은 역할, 추가
+        // 비용 0). 캔버스는 그 위로 페이드 인한다.
+        style={backgroundAnimation ? { backgroundColor: backgroundAnimation.bgColor } : undefined}
       >
         {backgroundAnimation && <BlobAnimationBackground params={backgroundAnimation} />}
         <div className="relative z-10 flex-1 flex items-center justify-center">
@@ -68,13 +94,21 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
             <MedalIcon className={['w-28 h-28', !hasEarned ? 'grayscale opacity-50' : ''].join(' ')} />
           )}
         </div>
-        <div className="relative z-10 flex flex-col items-center gap-2 pt-4">
+        <div className="relative z-10 flex flex-col items-center gap-2 pt-4" style={cardTextStyle}>
           <RarityBadge rarity={badge.rarity} />
           <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badge.name}</h1>
         </div>
       </div>
       {badge.description && (
-        <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6">{badge.description}</p>
+        // 설명은 카드 바깥(페이지 배경 위)이지만, 애니메이션 모드에서는 페이지가 걸던 그림자
+        // 보정이 꺼지므로 이미지·영상 배경 모드와 동일한 보정을 여기서 유지한다. 자간은 제목만
+        // 벌린다(본문까지 벌리면 줄바꿈 위치가 달라진다).
+        <p
+          className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6"
+          style={backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined}
+        >
+          {badge.description}
+        </p>
       )}
     </div>
   )

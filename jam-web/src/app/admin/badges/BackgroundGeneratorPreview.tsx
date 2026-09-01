@@ -3,6 +3,7 @@
 import { useRef, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { getBadgeBackgroundStyle } from '@/lib/badgeBackgroundTheme'
 import BackgroundColorField from '@/components/admin/BackgroundColorField'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/admin/ui/tabs'
 import BlobAnimationFields from './BlobAnimationFields'
 import { DEFAULT_BLOB_ANIMATION, type BlobAnimationParams } from '@/lib/blobAnimation'
 
@@ -90,47 +91,45 @@ export default function BackgroundGeneratorPreview({
           DOM 순서는 [설정, 미리보기]로 두고 모바일에서만 flex-col-reverse로 뒤집는다. */}
       <div className="flex flex-col-reverse gap-5 xl:flex-row xl:items-start">
         <div className="flex-1 min-w-0 space-y-5">
-          <div className="flex flex-col gap-1.5">
+          {/* 배경 방식 — 어드민 UI는 shadcn 세트를 쓴다는 방침에 따라 네이티브 라디오를 걷어냈다.
+              세트에 radio-group이 없어 두 선택지 중 하나를 골랐다:
+              (a) @radix-ui/react-radio-group 의존성을 새로 추가한다,
+              (b) 이미 세트에 있는 Tabs를 쓴다.
+              모드 선택이 곧 아래 설정 패널 전체의 교체이므로 tab/tabpanel이 의미상 정확하고,
+              새 런타임 의존성도 늘지 않아 (b)를 택했다. 슬라이더·컬러피커는 세트에 대체재가
+              없어 네이티브 입력을 그대로 둔다. */}
+          <Tabs
+            value={mode}
+            onValueChange={(next) =>
+              onBackgroundAnimationChange(next === 'animation' ? DEFAULT_BLOB_ANIMATION : null)
+            }
+            className="flex flex-col gap-1.5"
+          >
             <span className="text-sm text-foreground">배경 방식</span>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-foreground">
-                <input
-                  type="radio"
-                  name="background-mode"
-                  className="accent-primary"
-                  checked={mode === 'color'}
-                  onChange={() => onBackgroundAnimationChange(null)}
-                />
-                배경색
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-foreground">
-                <input
-                  type="radio"
-                  name="background-mode"
-                  className="accent-primary"
-                  checked={mode === 'animation'}
-                  onChange={() => onBackgroundAnimationChange(DEFAULT_BLOB_ANIMATION)}
-                />
-                애니메이션
-              </label>
-            </div>
+            <TabsList className="self-start">
+              <TabsTrigger value="color">배경색</TabsTrigger>
+              <TabsTrigger value="animation">애니메이션</TabsTrigger>
+            </TabsList>
             <span className="text-xs text-muted-foreground">
               배경색은 상세화면 전체에, 애니메이션은 이미지가 놓인 카드 안에만 적용돼요.
             </span>
-          </div>
 
-          {mode === 'color' ? (
-            <BackgroundColorField
-              value={backgroundColor}
-              onChange={onBackgroundColorChange}
-              helperText="이미지를 업로드하면 평균 색상이 자동으로 채워져요. 색상 피커나 직접 입력으로 바꿀 수 있고, 비워두면 기본 배경을 사용해요."
-            />
-          ) : (
-            <BlobAnimationFields
-              value={backgroundAnimation!}
-              onChange={onBackgroundAnimationChange}
-            />
-          )}
+            <TabsContent value="color" className="mt-4">
+              <BackgroundColorField
+                value={backgroundColor}
+                onChange={onBackgroundColorChange}
+                helperText="이미지를 업로드하면 평균 색상이 자동으로 채워져요. 색상 피커나 직접 입력으로 바꿀 수 있고, 비워두면 기본 배경을 사용해요."
+              />
+            </TabsContent>
+            <TabsContent value="animation" className="mt-4">
+              {backgroundAnimation && (
+                <BlobAnimationFields
+                  value={backgroundAnimation}
+                  onChange={onBackgroundAnimationChange}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* 호출부가 실제 화면과 동일한 구조로 그리는 미리보기 프레임 */}
