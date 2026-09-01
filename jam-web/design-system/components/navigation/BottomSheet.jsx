@@ -93,7 +93,10 @@ export function BottomSheet({ open, onDismiss, title, children }) {
             id={labelId}
             style={{
               margin: '0 0 var(--spacing-16)',
-              fontSize: 'var(--text-title)',
+              // 서비스(src/components/ui/BottomSheet.tsx)의 <h2> 가 기준이다:
+              // text-[length:var(--text-body)] leading-[var(--leading-body)]
+              fontSize: 'var(--text-body)',
+              lineHeight: 'var(--leading-body)',
               fontWeight: 700,
               color: 'var(--color-text)',
             }}

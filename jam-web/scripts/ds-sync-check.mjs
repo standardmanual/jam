@@ -538,10 +538,18 @@ function checkRawTokens() {
   }
 }
 
-/** 코드가 참조하는데 tokens/ 에 정의가 없는 var(--x) 를 잡는다. */
+/** 코드가 참조하는데 tokens/ 에 정의가 없는 var(--x) 를 잡는다.
+ *
+ * Story 와 guidelines/*.html 도 대상이다. 처음엔 컴포넌트 소스만 봤는데, DS v2 가
+ * --radius-md·--radius-button 을 폐기했을 때 그 토큰을 아직 쓰던 Story 3곳과
+ * radius-scale.html 을 통째로 놓쳤다 — 하필 radius 스케일을 보여주는 카드가
+ * 각진 사각형으로 렌더되고 있었다. 카탈로그가 깨지면 재사용 판단이 오염된다. */
 function checkUndefinedTokens() {
   const targets = [
     ...walk(path.join(DS, 'components'), (f) => f.endsWith('.jsx') && !/ \d\.jsx$/.test(f)),
+    ...walk(path.join(DS, 'components'), (f) => f.endsWith('.stories.tsx')),
+    ...walk(path.join(DS, 'foundations'), (f) => f.endsWith('.tsx')),
+    ...walk(path.join(DS, 'guidelines'), (f) => f.endsWith('.html')),
     ...walk(SERVICE_UI, (f) => f.endsWith('.tsx')),
   ];
   const globalsSrc = existsSync(path.join(WEB_ROOT, 'src/app/globals.css'))
@@ -551,8 +559,9 @@ function checkUndefinedTokens() {
     const missing = new Set();
     // 컴포넌트가 자기 style 로 주입하는 지역 변수(`'--eye-color': eyeColor`)는 토큰이 아니다.
     const localVars = new Set([...src.matchAll(/['"](--[\w-]+)['"]\s*:/g)].map((m) => m[1]));
-    for (const m of src.matchAll(/var\((--[\w-]+)\s*(,?)/g)) {
-      if (m[2] === ',') continue;                    // fallback 이 있으면 비어도 렌더가 살아 있다
+    for (const m of src.matchAll(/var\((--[\w-]+)(\*?)\s*(,?)/g)) {
+      if (m[2] === '*') continue;                    // var(--weight-*) 는 설명문 속 와일드카드 표기
+      if (m[3] === ',') continue;                    // fallback 이 있으면 비어도 렌더가 살아 있다
       if (localVars.has(m[1])) continue;
       if (!TOKENS.has(m[1]) && !globalsSrc.includes(`${m[1]}:`)) missing.add(m[1]);
     }

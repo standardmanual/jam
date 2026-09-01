@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "db:types": "supabase gen types typescript --project-id ceehnkzdbecxwzxrhhns > src/types/database.generated.ts",
     "ds:check": "node scripts/ds-sync-check.mjs",
+    "ds:manifest": "node scripts/ds-manifest-sync.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
