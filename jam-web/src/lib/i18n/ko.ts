@@ -19,6 +19,7 @@ export const ko = {
     countItems: '{count}개',
     networkError: '네트워크 오류가 발생했어요',
     footerSlogan: 'JAM은 삐끗할 때도 있습니다. 하지만 곧 바로 잡습니다.',
+    footerPhilosophy: 'Philosophy',
     footerCopyright: '© 2026 Standard Manual All Rights Reserved.',
   },
 
