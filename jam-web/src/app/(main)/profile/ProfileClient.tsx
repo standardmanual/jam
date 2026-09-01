@@ -413,24 +413,20 @@ export default function ProfileClient({
 
   // 통계바 = 슬라이딩 탭. 라벨은 "숫자 + 이름" 2줄 구성이라 ReactNode로 넘긴다.
   // 팔로워 수는 팔로우/언팔로우 즉시 바뀌므로 Number pop-in(02-number-pop-in.md)을 건다.
-  // 숫자 색은 활성 탭일 때 --tabs-text-active(흰색)로 바꿔야 한다 — 활성 pill 배경이
-  // --color-primary라 고정 색이면 활성 탭에서 글자가 배경에 묻혀 안 보임(2026-08-17 수정).
-  // 비활성 숫자 색은 --color-primary(레드)가 아니라 라벨과 같은 --tabs-text-muted를 쓴다 —
-  // 활성 pill(레드) 배경이 300ms 동안 탭 사이를 슬라이드하며 경유하는 탭 위를 지나가는데,
-  // 비활성 숫자가 pill과 같은 레드였다면 그 순간 "레드 pill이 레드 숫자 위를 지나가" 대비가
-  // 완전히 사라진다(20260831_2201). 라벨은 이미 --tabs-text-muted라 이 문제가 없었다.
+  // 숫자 색은 위 포인트 표시와 같은 강조색(--color-primary, "jam-stat-number" 클래스)을
+  // 항상 쓴다 — 활성/pill-경유 상태에만 흰색으로 바뀌는 나머지 로직은 CSS
+  // (transitions.css `.jam-stat-tabs`)가 aria-selected·data-pill-over 속성을 보고 처리한다
+  // (data-pill-over는 SlidingTabs.tsx가 pill 애니메이션 중 실시간 겹침을 측정해 붙인다).
+  // 이 화면(20260901)에서 "숫자는 항상 강조색"을 요청받아, 예전(20260831_2201)에 회색으로
+  // 우회했던 레드온레드 문제를 실측 겹침 기반으로 다시 해결했다 — 자세한 배경은
+  // SlidingTabs.tsx의 trackOverlap 주석 참고.
   const statTabs: SlidingTabItem<TabKey>[] = TABS.map((tab) => {
-    const isActive = isTabView && activeTab === tab.key
     return {
       key: tab.key,
       ariaLabel: tab.label,
       label: (
         <span className="flex flex-col items-center justify-center gap-1">
-          <span
-            className={`text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold tabular-nums ${
-              isActive ? 'text-[color:var(--tabs-text-active)]' : 'text-[color:var(--tabs-text-muted)]'
-            }`}
-          >
+          <span className="jam-stat-number text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] font-bold tabular-nums">
             {tab.key === 'followers' ? (
               <PopInNumber value={statCounts.followers} />
             ) : (
@@ -539,6 +535,7 @@ export default function ProfileClient({
             size="xl"
             shape="card"
             outlined={false}
+            className="jam-stat-tabs"
             aria-label={d.profile.title}
           />
         </Card>
