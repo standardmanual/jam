@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest'
 import {
   BLOB_ANIMATION_RANGES,
   DEFAULT_BLOB_ANIMATION,
+  blobBlurRadiusPx,
   blobCycleSeconds,
   opaqueBlobFill,
   parseBlobAnimation,
@@ -160,6 +161,23 @@ describe('prefers-reduced-transparency 경로의 블롭 면색', () => {
       )
     }
   )
+})
+
+describe('blur 반경 계산 (20260902_0629 — CSS filter 전환 후에도 계산식은 동일)', () => {
+  it('minDim·blur에 선형 비례한다(× 0.15)', () => {
+    expect(blobBlurRadiusPx(0.5, 400, false)).toBeCloseTo(0.5 * 400 * 0.15, 5)
+    expect(blobBlurRadiusPx(1, 400, false)).toBeCloseTo(blobBlurRadiusPx(0.5, 400, false) * 2, 5)
+  })
+
+  it('opaque(reduced-transparency)에서는 절반으로 줄어든다', () => {
+    const normal = blobBlurRadiusPx(DEFAULT_BLOB_ANIMATION.blur, 400, false)
+    const opaque = blobBlurRadiusPx(DEFAULT_BLOB_ANIMATION.blur, 400, true)
+    expect(opaque).toBeCloseTo(normal / 2, 5)
+  })
+
+  it('blur가 0이면 반경도 0이다', () => {
+    expect(blobBlurRadiusPx(0, 400, false)).toBe(0)
+  })
 })
 
 describe('속도 라벨용 주기 계산', () => {

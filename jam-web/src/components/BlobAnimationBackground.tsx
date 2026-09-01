@@ -1,7 +1,13 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { BLOB_PHASE_RATE, BLOB_STILL_T, drawBlobFrame, type BlobAnimationParams } from '@/lib/blobAnimation'
+import {
+  BLOB_PHASE_RATE,
+  BLOB_STILL_T,
+  blobBlurRadiusPx,
+  drawBlobFrame,
+  type BlobAnimationParams,
+} from '@/lib/blobAnimation'
 
 interface BlobAnimationBackgroundProps {
   params: BlobAnimationParams
@@ -25,10 +31,13 @@ function isCoarsePointer(): boolean {
  * 뷰포트 안에 있는 동안에는 **계속 재생한다**(사용자 결정). 한때 8초 재생 후 감속 정지를 넣었으나,
  * 무한 재생이 원래 요청("애니메이션 배경")에 맞고 성능은 아래 가드로 이미 확보돼 있다.
  *
- * 성능 가드(티켓 필수 요구사항) — `ctx.filter`의 blur를 매 프레임 6회 호출하므로 비용이 크다.
- * 아래를 모두 적용한다:
- * - 블롭은 blur가 충분히 클 때 **1/3 해상도 오프스크린 캔버스**에 그린 뒤 확대 합성한다
- *   (blur 비용 약 1/9).
+ * 블러는 (티켓 20260902_0629부터) `ctx.filter`가 아니라 캔버스 **엘리먼트**의 CSS
+ * `filter: blur()`(`canvas.style.filter`)로 건다 — `ctx.filter`는 iOS Safari 17.4 이전에서
+ * 조용히 무시돼 블러 옵션이 실기기에서 아예 동작하지 않는 버그가 있었다. CSS filter는 GPU
+ * 합성이라 도형 개수·복잡도에 비용이 비례하지 않으므로, 예전에 있던 오프스크린 축소 렌더링
+ * (scratch canvas) 최적화는 더 이상 필요 없어 제거했다.
+ *
+ * 성능 가드(티켓 필수 요구사항) — 아래를 모두 적용한다:
  * - `IntersectionObserver`로 카드가 뷰포트 밖이면 루프를 정지한다.
  * - 탭이 백그라운드(`document.hidden`)면 루프를 정지한다.
  * - 백킹 스토어 해상도는 DPR 상한(모바일 1.5 / 그 외 2)으로 캡한다. coarse 포인터에서는 프레임
@@ -77,9 +86,6 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
     // fine 포인터는 스로틀 없이 rAF에 맡긴다(0이면 아래 `delta < frameInterval`이 항상 false).
     const frameInterval = coarse ? 32 : 0
 
-    // 블롭 축소 렌더링용 오프스크린 캔버스 — 크기 조정은 drawBlobFrame이 알아서 한다.
-    const scratch = document.createElement('canvas')
-
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     const contrastQuery = window.matchMedia('(prefers-contrast: more)')
     const transparencyQuery = window.matchMedia('(prefers-reduced-transparency: reduce)')
@@ -100,6 +106,12 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
     let cssHeight = 0
     /** 첫 프레임 페이드 인은 한 번만 쓴다(반복 쓰기가 위 레이아웃 스래싱의 원인이었다). */
     let ready = false
+    /**
+     * 마지막으로 DOM에 쓴 `filter` 문자열. blur는 위상(t)에 의존하지 않으므로 매 프레임 다시
+     * 쓰지 않는다 — 이전 개선 라운드에서 opacity를 매 프레임 쓰다 강제 리플로우가 걸렸던 실수를
+     * 반복하지 않기 위함이다. `filter`는 `opacity`보다도 리플로우를 유발하기 쉬워 더 주의한다.
+     */
+    let lastFilter = ''
 
     const measure = () => {
       cssWidth = canvas.clientWidth
@@ -123,8 +135,21 @@ export default function BlobAnimationBackground({ params, className }: BlobAnima
       drawBlobFrame(ctx, canvas.width, canvas.height, paramsRef.current, phase, {
         flatten: highContrast,
         opaque,
-        scratch,
       })
+
+      // 블러는 캔버스 엘리먼트 자체의 CSS filter로 건다(iOS Safari 17.4 미만은 ctx.filter를
+      // 지원하지 않아 무시되는 버그가 있었다 — 20260902_0629). `blobBlurRadiusPx`는 CSS 픽셀
+      // 기준 minDim(=cssWidth/cssHeight)을 받아야 한다 — 예전 ctx.filter는 캔버스 백킹 스토어
+      // (device pixel) 좌표계에서 블러가 적용된 뒤 CSS 크기로 축소 표시돼 실질 blur가 1/dpr로
+      // 줄어드는 효과였다. CSS filter는 blur(Npx)가 이미 CSS 픽셀 단위라 dpr로 나눌 필요가 없고,
+      // `minDim`도 backing이 아닌 CSS 크기를 넣어야 예전과 같은 시각적 반경이 나온다.
+      const blurPx = blobBlurRadiusPx(paramsRef.current.blur, Math.min(cssWidth, cssHeight), opaque)
+      const nextFilter = `blur(${blurPx}px)`
+      if (nextFilter !== lastFilter) {
+        lastFilter = nextFilter
+        canvas.style.filter = nextFilter
+      }
+
       // 첫 페인트 하드컷 방지 — 그릴 내용이 실제로 생긴 뒤에 페이드 인한다(정지 프레임 포함).
       // opacity는 CSS(`.blob-animation-canvas[data-ready='true']`)가 담당하고 여기서는 신호만
       // 한 번 준다 — React의 선언형 style과 명령형 쓰기가 같은 속성을 다투지 않도록.
