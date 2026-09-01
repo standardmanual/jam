@@ -619,6 +619,36 @@ function checkUndefinedTokens() {
   }
 }
 
+/** 가이드라인 카드가 라벨로 적어둔 hex 가 그 칸이 실제로 칠하는 토큰 값과 같은지 본다.
+ *
+ * colors-neutral.html 은 `background:var(--color-text-secondary) … Secondary<br>#9a9a9a`
+ * 처럼 토큰과 값을 나란히 보여준다. v2 가 접근성 때문에 #9a9a9a → #b2b2b2 로 올렸는데
+ * 라벨은 그대로여서, 색 견본 카드가 자기가 칠한 색과 다른 값을 적고 있었다.
+ * 디자이너가 이 카드를 보고 값을 가져다 쓰면 그대로 틀린다. */
+function checkGuidelineLabels() {
+  for (const f of walk(path.join(DS, 'guidelines'), (x) => x.endsWith('.html'))) {
+    const lines = readFileSync(f, 'utf8').split('\n');
+    const wrong = [];
+    lines.forEach((line) => {
+      const tokenM = line.match(/var\((--[\w-]+)\)/);
+      const hexM = line.match(/#([0-9a-fA-F]{6})\b(?![0-9a-fA-F])/g);
+      if (!tokenM || !hexM) return;
+      const actual = resolveVars(`var(${tokenM[1]})`).toLowerCase();
+      if (!/^#[0-9a-f]{6}$/.test(actual)) return;   // 토큰이 색으로 안 풀리면 판정 불가
+      // 같은 줄의 hex 중 어느 것도 실제 값과 맞지 않으면 라벨이 낡은 것으로 본다.
+      const labels = hexM.map((h) => h.toLowerCase()).filter((h) => h !== '#000000' && h !== '#ffffff');
+      if (labels.length && !labels.includes(actual)) {
+        wrong.push(`${tokenM[1]}: 라벨 "${labels.join(', ')}" ≠ 실제 "${actual}"`);
+      }
+    });
+    if (wrong.length) {
+      report('GUIDELINE_LABEL', 'ERROR', path.basename(f, '.html'),
+        `카드 라벨의 색값이 실제 토큰 값과 다릅니다 (${wrong.length}개). 보고 가져다 쓰면 틀립니다.`,
+        { 어긋남: wrong, 파일: path.relative(REPO_ROOT, f) });
+    }
+  }
+}
+
 // ── 검사 8: claude.ai/design 업로드 노후 ────────────────────────────────────
 function checkUploadState() {
   const statePath = path.join(SYNC_DIR, 'state.json');
@@ -660,6 +690,7 @@ checkManifest();
 checkManifestTokens();
 checkRawTokens();
 checkUndefinedTokens();
+checkGuidelineLabels();
 checkUploadState();
 
 const counts = {

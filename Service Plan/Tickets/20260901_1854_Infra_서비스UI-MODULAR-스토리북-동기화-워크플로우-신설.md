@@ -84,13 +84,47 @@ calc 공백·hex 축약형까지 정규화한다.
 한계는 주석에 명시했다: JSX를 AST로 파싱하지 않으므로 "서로 다른 요소에 같은 값이
 잘못 붙은" 오배치는 못 잡는다. 해석 못 한 Tailwind 클래스는 삼키지 않고 INFO로 보고한다.
 
-### 최초 진단 결과 (2026-09-01)
+### 첫 정리 결과 — 오류 4 → 0 (2026-09-01)
 
-오류 6 · 경고 34 · 참고 8. **이번 티켓에서는 수선하지 않는다** — 도구를 만드는 티켓과
-그 도구가 찾아낸 문제를 고치는 티켓은 분리한다. 후속 처리 대상:
+진단 도구를 만든 뒤 같은 티켓에서 실제 정리까지 진행했다. **드러난 문제의 뿌리는 하나였다:
+DS v2 개편이 `tokens/*.css` 에만 반영되고 색인·Story·가이드라인은 v1 에 멈춰 있었다.**
 
-- `MANIFEST_TOKEN_DRIFT` 15건 + brandFonts — 자동 수선 대상
-- L4 재업로드 (60개 파일 낡음)
-- `TOKEN_UNDEFINED` `BottomSheet` `var(--text-title)`
-- `PAIR_GEOMETRY` ERROR 2건 — `Toast` height 16↔28px, `BottomSheet` marginBottom 0↔16px
-- `MANIFEST_DRIFT` — 카드가 없는 파일을 가리킴 (카드 삭제 vs 파일 생성은 판단 필요)
+**색인** (`scripts/ds-manifest-sync.mjs` 신설, `npm run ds:manifest`)
+- 토큰 100 → 137개. 값 8건 정정 (`--color-base-grey-500` `#666666` → `#b2b2b2`,
+  `--radius-card` 10px → 16px, `--leading-bold-display` 0.95 → 1.0 등)
+- v2 가 폐기한 `--radius-md`·`--radius-button`·`--duration-very-slow` 제거
+- `materials.css` 토큰 37개 신규 등록, brandFonts `Noto Sans KR` → `Pretendard Variable`
+- `cards`: `ui_kits/jam-app/index.html` 카드 제거 (파일이 저장소에도 git 이력에도 없음)
+
+**값이 비어 렌더가 깨지던 것**
+- `BottomSheet.jsx` 미정의 `--text-title` → `--text-body` + `--leading-body`
+  (서비스 `BottomSheet.tsx` 의 `<h2>` 가 기준)
+- Story 3곳 `--radius-button` → `--radius-pill`
+- `guidelines/radius-scale.html` v1 스케일 그대로였다 — `md` 칸이 빈 값이라 각진 사각형이
+  되고 `card` 라벨도 10px 로 낡아, **반경 스케일 카드가 틀린 스케일을 보여주고 있었다**
+- `guidelines/colors-neutral.html` — 없는 토큰을 쓰던 Tertiary 칸 제거, Secondary 라벨
+  `#9a9a9a` → `#b2b2b2` (v2 가 WCAG AA 로 올린 값)
+
+**진단 엔진 자체의 오탐·사각지대 (첫 실전 점검에서 드러남)**
+- SVG 아이콘 치수 제외 — 서비스 `<svg className="w-4 h-4">` 와 MODULAR
+  `<svg width={16}>` 는 표현 계층이 달라 짝지을 수 없는데 아이콘 16px 이 버튼 28px 과 비교됐다
+- 등장 횟수로 판정 — `Set` 이 중복을 지워, 같은 값을 두 요소에 쓰면 "각 1개" 로 오판했다
+- props 추출을 `interface XxxProps` 본문으로 한정 — 파일 전체를 긁어 style 객체 키까지
+  props 로 잡히며 9쌍 전부에서 오탐이 났다
+- 레이아웃·장식 속성 대칭 제외 — 서비스는 Tailwind 구조 클래스로 무시하는데 MODULAR 은
+  인라인 style 이라 잡혀 "MODULAR에만" 이 수십 건씩 쏟아졌다
+- `background`(단색) → `backgroundColor` 키 통일, 표준 DOM props 제외,
+  정적 비교 불가 값(상수·props 변수·템플릿 보간) 제외, `max-w-sm` → 384px
+- `TOKEN_UNDEFINED` 범위에 Story·foundations·guidelines 추가 — 컴포넌트 소스만 보다
+  폐기 토큰을 쓰던 4곳을 통째로 놓쳤다
+- `GUIDELINE_LABEL` 검사 신설 — 카드가 라벨로 적어둔 hex 와 실제 토큰 값 대조
+
+### 남은 것
+
+- **경고 32 · 참고 8.** 상당수는 알려진 한계다 — Tailwind 타이포 스케일(`text-sm`·
+  `font-bold`·`leading-*`)을 해석하지 않아 MODULAR 의 `fontSize`·`fontWeight` 가 짝 없이
+  남는다. 스킬 문서에 명시했다
+- **`PROPS_DRIFT` 5건은 진짜 API 분화** → 티켓 20260901_1926 으로 분리
+- **L4 재업로드 미완** — `DesignSync` 가 design-system 인증을 요구하는데 이 세션이
+  비대화형이라 `/design-login` 을 못 돌린다. 대화형 세션에서 1회 실행 후 재시도 필요
+- **Storybook 기동 검증 미완** — `node_modules` 가 없어 정적 검증만 했다
