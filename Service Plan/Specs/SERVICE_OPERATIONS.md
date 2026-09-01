@@ -56,7 +56,9 @@ JAM! 자동 동기화 (Strava API)
 
 ### 2-1. 인증 방식
 
-- Supabase Auth 사용 (Google OAuth, 이메일/패스워드 등)
+- Supabase Auth 사용 — **구글(Google) OAuth 단독** (`jam-web/src/app/(auth)/login/page.tsx`).
+  이메일/패스워드 가입은 구현돼 있지 않다. 개발 환경에서만 `/api/dev-login`으로 테스트 계정
+  로그인 우회가 가능하다(`NODE_ENV === 'development'`에서만 노출, 프로덕션 미노출).
 - 인증 콜백: `GET /auth/callback` → Supabase `exchangeCodeForSession` → 온보딩 미완료 유저는 `/onboarding`으로 리다이렉트
 
 ### 2-2. 유저 생성 트리거
