@@ -13,6 +13,11 @@ export interface ListRowCardProps {
   children?: ReactNode
   href?: string
   onClick?: () => void
+  /**
+   * href와 함께 쓸 때만 의미가 있는 클릭 핸들러 (20260902_0915).
+   * Link 이동 직전에 부수효과(예: 잔존 location.hash 제거)를 실행하고 싶을 때 사용한다.
+   */
+  onNavigate?: () => void
   className?: string
   /**
    * 아코디언 헤더로 쓸 때의 펼침 상태 (20260827_018 프로필 피드 활동 묶음 카드).
@@ -36,6 +41,7 @@ export default function ListRowCard({
   children,
   href,
   onClick,
+  onNavigate,
   className = '',
   'aria-expanded': ariaExpanded,
   'aria-controls': ariaControls,
@@ -77,7 +83,11 @@ export default function ListRowCard({
     </>
   )
 
-  if (href) return <Link href={href} className={`w-full text-left ${cls}`}>{content}</Link>
+  if (href) return (
+    <Link href={href} onClick={onNavigate} className={`w-full text-left ${cls}`}>
+      {content}
+    </Link>
+  )
   if (onClick) return (
     <button
       type="button"
