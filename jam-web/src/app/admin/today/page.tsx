@@ -1,14 +1,32 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import type { TodayCardRow } from '@/types/database'
 import TodayCardList from './TodayCardList'
+import TodayDateNav from './TodayDateNav'
+import { normalizeDateParam, kstDayBoundsIso } from '@/lib/admin/today-calendar'
 
 type BadgeLabelRow = { id: string; name: string; rarity: string; type: string; point_reward: number }
 
-export default async function AdminTodayPage() {
+interface AdminTodayPageProps {
+  searchParams: Promise<{ date?: string }>
+}
+
+export default async function AdminTodayPage({ searchParams }: AdminTodayPageProps) {
+  const params = await searchParams
+  // 20260902_1028: 날짜별 캘린더뷰로 전환 — 선택 날짜(KST 달력 기준)에 걸치는 카드만 조회한다
+  // (구간형 카드는 starts_at~ends_at에 포함되는 모든 날짜의 목록에 매일 반복 노출로 나타남).
+  const selectedDate = normalizeDateParam(params.date)
+  const { startIso, endIso } = kstDayBoundsIso(selectedDate)
+
   const supabase = createServiceClient()
 
   const [{ data: cardsRaw }, { data: missionsRaw }, { data: booksRaw }] = await Promise.all([
-    supabase.from('today_cards').select('*').order('starts_at', { ascending: false }),
+    supabase
+      .from('today_cards')
+      .select('*')
+      .lte('starts_at', endIso)
+      .gte('ends_at', startIso)
+      .order('sort_order', { ascending: true })
+      .order('starts_at', { ascending: false }),
     supabase.from('missions').select('id, title').order('created_at', { ascending: false }),
     supabase.from('item_books').select('id, name').order('name'),
   ])
@@ -38,7 +56,15 @@ export default async function AdminTodayPage() {
           </p>
         </div>
       </div>
-      <TodayCardList cards={cards} badgeLabels={badgeLabels} missions={missions} itemBooks={itemBooks} />
+      <TodayDateNav selectedDate={selectedDate} />
+      <div className="border-t border-border my-4" />
+      <TodayCardList
+        cards={cards}
+        badgeLabels={badgeLabels}
+        missions={missions}
+        itemBooks={itemBooks}
+        selectedDate={selectedDate}
+      />
     </div>
   )
 }
