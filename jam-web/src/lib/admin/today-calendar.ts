@@ -19,9 +19,23 @@ export function todayKstDateString(now: Date = new Date()): string {
   return `${y}-${m}-${d}`
 }
 
-/** URL 쿼리로 들어온 date 값을 검증한다. 형식이 잘못됐거나 없으면 오늘 날짜로 대체한다. */
+/**
+ * 'YYYY-MM-DD' 문자열이 실제 달력상 존재하는 날짜인지 검증한다.
+ * `new Date(y, m-1, d)`는 존재하지 않는 날짜(예: 2026-02-30)를 다음 달로 오버플로우
+ * 보정해버리므로, 파싱한 값을 다시 읽어 원래 년/월/일과 일치하는지 대조해 오버플로우
+ * 여부를 잡아낸다.
+ */
+function isValidCalendarDateStr(raw: string): boolean {
+  if (!DATE_STR_RE.test(raw)) return false
+  const [y, m, d] = raw.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  if (Number.isNaN(dt.getTime())) return false
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
+}
+
+/** URL 쿼리로 들어온 date 값을 검증한다. 형식이 잘못됐거나, 없거나, 달력상 존재하지 않는 날짜면 오늘 날짜로 대체한다. */
 export function normalizeDateParam(raw: string | undefined, now: Date = new Date()): string {
-  if (raw && DATE_STR_RE.test(raw) && !Number.isNaN(new Date(`${raw}T00:00:00Z`).getTime())) {
+  if (raw && isValidCalendarDateStr(raw)) {
     return raw
   }
   return todayKstDateString(now)
