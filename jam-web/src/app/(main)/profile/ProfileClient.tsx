@@ -371,6 +371,14 @@ export default function ProfileClient({
           <ListRowCard
             key={u.id}
             href={`/${u.username}`}
+            // 팔로워/팔로잉 탭이 URL 해시로 열린 상태(예: /profile#followers)에서 다른 유저
+            // 프로필로 이동하면, Next 클라이언트 라우팅이 pathname만 바꾸고 기존 해시는
+            // 지우지 않아 /{username}#followers가 남는다. 이동 직전에 해시를 제거한다 (20260902_0915).
+            onNavigate={() => {
+              if (window.location.hash) {
+                window.history.replaceState(null, '', window.location.pathname + window.location.search)
+              }
+            }}
             icon={
               u.avatar_url ? (
                 <Image src={u.avatar_url} alt={getDisplayName(u)} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
