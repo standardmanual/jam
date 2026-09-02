@@ -71,7 +71,7 @@ export default async function MissionsPage() {
 
   // 보상 배지 이름 일괄 fetch — 목록에서 "배지명 배지" 형식으로 표시하기 위해
   const allMissions = [...visibleOngoing, ...endedMissions, ...completedMissions]
-  const allRewardBadgeIds = [...new Set(allMissions.flatMap((m) => m.reward_badge_ids ?? []))]
+  const allRewardBadgeIds = [...new Set(allMissions.flatMap((m) => (m.reward_badge_ids ?? []).filter(Boolean)))]
   let rewardBadgeNames: Record<string, string> = {}
   if (allRewardBadgeIds.length > 0) {
     const { data: badgeRows, error: badgeRowsError } = await service.from('badges').select('id, name').in('id', allRewardBadgeIds).is('deleted_at', null)
