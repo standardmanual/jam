@@ -13,18 +13,7 @@ const StarIcon = () => (
 const meta: Meta<typeof BadgeFrame> = {
   title: 'MODULAR/Cards/BadgeFrame',
   component: BadgeFrame,
-  parameters: {
-    layout: 'centered',
-    docs: {
-      description: {
-        component:
-          'shape별 실루엣은 `makePath(shape, w, h)`가 만드는 SVG path로 잘라낸다. ' +
-          '이 함수는 20260902_1613부터 export되어 Canvas 2D(`new Path2D(d)`)에서도 같은 ' +
-          '실루엣을 그릴 수 있다 — 어드민 액티비티 배지 이미지 생성기의 글래스 판(ticket-h)이 ' +
-          '이 path를 그대로 재사용한다.',
-      },
-    },
-  },
+  parameters: { layout: 'centered' },
   argTypes: {
     shape: { control: 'select', options: SHAPES },
     color: { control: 'color' },

@@ -16,9 +16,3 @@ export interface BadgeFrameProps {
 }
 
 export function BadgeFrame(props: BadgeFrameProps): JSX.Element;
-
-/**
- * shape별 clip path(SVG path data). 'circle'은 path가 없어 null을 반환한다.
- * Canvas 2D(`new Path2D(d)`)에서도 그대로 쓸 수 있다 — 20260902_1613 참조.
- */
-export function makePath(shape: BadgeFrameShape, w: number, h: number): string | null;

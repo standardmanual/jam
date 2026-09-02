@@ -11,7 +11,7 @@
  *
  * ## 그리는 순서
  *   1. 블롭 정지 프레임(배경) — 라운드 60px(비율 0.111) 안으로 클리핑
- *   2. 글래스 노치 판 — 배경을 한 번 더 블러해 깔고 반투명 흰색을 얹는다
+ *   2. 글래스 노치 판 — 배경을 한 번 더 블러(21px)해 깔고 방사형 그라디언트 채움·테두리를 얹는다
  *   3. 등급 칩(common이면 그리지 않는다) → 배지 이름 → 설명
  *
  * ## 모서리 바깥 픽셀
@@ -25,7 +25,6 @@
  * CSS filter를 쓸 수 없으므로 여기서는 `ctx.filter`를 쓴다. 어드민은 데스크톱 브라우저에서만
  * 쓰는 화면이라 그 iOS 버그의 사정권 밖이고, 이 경로 말고는 대안이 없다.
  */
-import { makePath } from '@ds/components/cards/BadgeFrame'
 import { blobBlurRadiusPx, drawBlobFrame } from '@/lib/blobAnimation'
 import {
   DESIGN_SIZE,
@@ -41,12 +40,6 @@ import type { BadgeRarity } from '@/types/database'
 const BG_RADIUS = 60
 /** `glass`(1:7) 500×500, bg 기준 상하좌우 20px 인셋 */
 const GLASS_INSET = 20
-const GLASS_SIZE = DESIGN_SIZE - GLASS_INSET * 2
-/**
- * 글래스 판의 모서리 라운드. bg 라운드(60)에서 인셋(20)을 뺀 동심(concentric) 값이다 —
- * 안쪽 도형의 라운드를 이렇게 잡아야 바깥 라운드와 곡률이 나란히 보인다.
- */
-const GLASS_RADIUS = BG_RADIUS - GLASS_INSET
 /** 콘텐츠 프레임(8:4)의 패딩 */
 const CONTENT_PADDING = 58
 
@@ -66,15 +59,47 @@ const CONDITION_TRACKING = -0.8
 const CONDITION_LINE_HEIGHT = 30
 
 /**
- * 글래스 판의 재질값 — **피그마 수치를 조회하지 못해 추정한 값**이다(이 세션에서 Figma MCP를
- * 쓸 수 없었다). 세 상수만 고치면 재질이 바뀌도록 한곳에 모아 둔다.
- * - `BACKDROP_BLUR`: 판 뒤 배경을 추가로 흐리는 반경(540 좌표계 px)
- * - `FILL`: 판 위에 얹는 반투명 흰색
- * - `STROKE`: 노치 실루엣이 읽히도록 두르는 헤어라인
+ * 글래스 판(`glass` 1:7)의 실측값. 피그마에서 받은 SVG를 직접 읽어 확정한 값이며 추정치가 아니다.
+ *
+ * ## 좌표 환산
+ * 글래스 SVG의 viewBox는 502×502이고 path는 1px 인셋(1..501)이다. 판은 540 캔버스 안 (20,20)에
+ * 놓인 500×500이므로 **SVG 좌표 (x,y) → 540 좌표 = (x+19, y+19)** 다.
+ *
+ * ## 형태
+ * - 모서리 라운드 48
+ * - 좌우 변의 세로 중앙(540 기준 y=270)을 중심으로 반지름 39.4737 원호가 파인다.
+ *   SVG 근거: 우변이 y=211.526에서 x=461.526까지 들어갔다가 y=290.474에서 x=501로 복귀
+ *   → 반지름 501−461.526 = 39.474 = 세로 폭 78.947의 절반.
+ * - MODULAR `makePath('ticket-h')`를 쓰지 않는다. 그 함수는 노치 반지름에 `min(h*0.07, 13)`
+ *   **절대 상한**이 있어 500px 판에서 13px로 잘린다(피그마와 3배 차이). 그래서 여기서 직접 정의한다.
  */
-const GLASS_BACKDROP_BLUR = 20
-const GLASS_FILL = 'rgba(255, 255, 255, 0.08)'
-const GLASS_STROKE = 'rgba(255, 255, 255, 0.18)'
+const GLASS_RADIUS = 48
+const GLASS_NOTCH_RADIUS = 39.4737
+/** 글래스 SVG(viewBox 502) 좌표를 540 좌표로 옮기는 평행이동 */
+const GLASS_SVG_OFFSET = 19
+/** `backdrop-filter: blur(21px)` — 판 뒤 배경을 추가로 흐리는 반경(540 좌표계 px) */
+const GLASS_BACKDROP_BLUR = 21
+/**
+ * 판 채움·테두리에 쓰는 방사형 그라디언트의 `gradientTransform`
+ * (`paint0_radial_0_4` / `paint1_radial_0_4`가 **같은 행렬**을 공유한다).
+ * `gradientUnits="userSpaceOnUse"`, cx=0 cy=0 r=1 이므로 단위원을 이 행렬로 밀어 넣은 모양이다.
+ */
+const GLASS_GRADIENT_MATRIX: readonly [number, number, number, number, number, number] = [
+  487.831, 472.314, -472.866, 1053.76, 5.49738, 15.876,
+]
+/** 채움(paint0): 좌상단 흰색 40% → 우하단 투명 */
+const GLASS_FILL_STOPS: readonly (readonly [number, string])[] = [
+  [0, 'rgba(255, 255, 255, 0.4)'],
+  [1, 'rgba(255, 255, 255, 0)'],
+]
+/** 테두리(paint1): 채움과 반대 방향 — 좌상단 투명 → 우하단 흰색 100% */
+const GLASS_STROKE_STOPS: readonly (readonly [number, string])[] = [
+  [0, 'rgba(255, 255, 255, 0)'],
+  [1, 'rgba(255, 255, 255, 1)'],
+]
+/** SVG의 `fill-opacity="0.48"` — 테두리 그라디언트 전체에 곱해진다 */
+const GLASS_STROKE_OPACITY = 0.48
+/** 1px 아웃사이드 스트로크(540 좌표계) */
 const GLASS_STROKE_WIDTH = 1
 
 /**
@@ -287,6 +312,73 @@ function roundedRectPath(x: number, y: number, w: number, h: number, r: number):
 }
 
 /**
+ * 글래스 판 실루엣(540 좌표계) — 라운드 사각형의 좌우 변 중앙을 원호로 파낸 가로 티켓 모양.
+ *
+ * `expand`만큼 바깥으로 부풀린 경로를 만든다(0이면 실측 그대로). 도형을 바깥으로 밀면
+ * 모서리 라운드는 커지고 **안쪽으로 파인 노치 반지름은 작아진다** — 오프셋 곡선의 성질이다.
+ * 테두리 링을 even-odd로 잘라낼 때 `expand=1`(1px 아웃사이드) 경로를 함께 쓴다.
+ */
+function buildGlassPath(expand: number): Path2D {
+  const left = GLASS_INSET - expand
+  const top = GLASS_INSET - expand
+  const right = DESIGN_SIZE - GLASS_INSET + expand
+  const bottom = DESIGN_SIZE - GLASS_INSET + expand
+  const r = GLASS_RADIUS + expand
+  const nr = GLASS_NOTCH_RADIUS - expand
+  const cy = DESIGN_SIZE / 2
+  const HALF_PI = Math.PI / 2
+
+  const path = new Path2D()
+  path.moveTo(left + r, top)
+  path.lineTo(right - r, top)
+  path.arc(right - r, top + r, r, -HALF_PI, 0)
+  path.lineTo(right, cy - nr)
+  // 우변 노치 — 중심 (right, cy)의 원을 반시계로 돌아 안쪽(x = right − nr)을 훑는다.
+  path.arc(right, cy, nr, -HALF_PI, HALF_PI, true)
+  path.lineTo(right, bottom - r)
+  path.arc(right - r, bottom - r, r, 0, HALF_PI)
+  path.lineTo(left + r, bottom)
+  path.arc(left + r, bottom - r, r, HALF_PI, Math.PI)
+  path.lineTo(left, cy + nr)
+  // 좌변 노치
+  path.arc(left, cy, nr, HALF_PI, -HALF_PI, true)
+  path.lineTo(left, top + r)
+  path.arc(left + r, top + r, r, Math.PI, Math.PI * 1.5)
+  path.closePath()
+  return path
+}
+
+/**
+ * 피그마의 기울어진 방사형 그라디언트를 캔버스에 칠한다.
+ *
+ * Canvas 2D는 skew된 radial gradient를 직접 만들 수 없다. 대신 `gradientTransform`을 CTM에 곱해
+ * **그라디언트 좌표계**로 들어간 뒤 단위원 그라디언트(r=1)를 만들고, 그 좌표계에서 클립 영역을
+ * 충분히 덮는 사각형을 칠한다. 클립은 CTM을 바꾸기 전(540 좌표계)에 걸어 두므로 영향받지 않는다.
+ */
+function paintGlassGradient(
+  ctx: CanvasRenderingContext2D,
+  scale: number,
+  clipPath: Path2D,
+  fillRule: CanvasFillRule,
+  stops: readonly (readonly [number, string])[],
+  alpha: number
+): void {
+  const [a, b, c, d, e, f] = GLASS_GRADIENT_MATRIX
+  ctx.save()
+  ctx.setTransform(scale, 0, 0, scale, 0, 0)
+  ctx.clip(clipPath, fillRule)
+  ctx.globalAlpha = alpha
+  // SVG(viewBox 502) → 540 보정을 평행이동에 더한다. 배율 S는 위 setTransform이 이미 반영했다.
+  ctx.transform(a, b, c, d, e + GLASS_SVG_OFFSET, f + GLASS_SVG_OFFSET)
+  const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 1)
+  for (const [offset, color] of stops) gradient.addColorStop(offset, color)
+  ctx.fillStyle = gradient
+  // 그라디언트 좌표계에서 단위 1이 540 좌표계의 500px 이상이라 ±4면 판 전체를 덮고도 남는다.
+  ctx.fillRect(-4, -4, 8, 8)
+  ctx.restore()
+}
+
+/**
  * 대상 캔버스에 배지 이미지 한 장을 그린다. 캔버스의 백킹 스토어 크기(`canvas.width`)를 출력
  * 해상도로 삼는다 — 미리보기 캔버스와 굽는 캔버스가 **같은 캔버스**라 WYSIWYG가 구조적으로
  * 보장된다(20260819_011/014에서 확립한 원칙).
@@ -338,35 +430,27 @@ export function drawActivityBadgeImage(
   }
 
   // ── 2. 글래스 노치 판 ─────────────────────────────────────────────────────
-  // 좌우 노치 실루엣은 MODULAR의 `ticket-h`를 그대로 재사용한다(캔버스용 path를 새로 그리지 않음).
-  const notchPathD = makePath('ticket-h', GLASS_SIZE, GLASS_SIZE)
-  const notchPath = notchPathD ? new Path2D(notchPathD) : null
+  const glassPath = buildGlassPath(0)
+
+  // backdrop-filter: 판 뒤 배경만 한 번 더 흐린다.
   ctx.save()
   ctx.setTransform(S, 0, 0, S, 0, 0)
-  ctx.translate(GLASS_INSET, GLASS_INSET)
-  const glassRound = roundedRectPath(0, 0, GLASS_SIZE, GLASS_SIZE, GLASS_RADIUS)
-  // 라운드 사각형 ∩ 티켓 노치 — clip을 두 번 걸면 교집합이 된다.
-  ctx.clip(glassRound)
-  if (notchPath) ctx.clip(notchPath)
-
+  ctx.clip(glassPath)
   // 클리핑 영역은 걸어둔 시점의 좌표로 고정되므로, 배경 스냅샷은 원래 배율로 되돌려 그린다.
-  ctx.save()
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.filter = `blur(${GLASS_BACKDROP_BLUR * S}px)`
   ctx.drawImage(bgCanvas, 0, 0)
   ctx.filter = 'none'
-  ctx.fillStyle = GLASS_FILL
-  ctx.fillRect(0, 0, size, size)
   ctx.restore()
 
-  // 헤어라인 — 클립이 걸린 채로 그려 두 path의 '교집합 외곽선'만 남긴다. 클립이 선의 바깥
-  // 절반을 잘라내므로 선폭을 2배로 잡아야 의도한 두께가 안쪽에 남는다(inner stroke 관용법).
-  // 두 path를 클립 없이 각각 그리면 교집합이 아닌 두 도형의 외곽선이 겹쳐 보인다.
-  ctx.strokeStyle = GLASS_STROKE
-  ctx.lineWidth = GLASS_STROKE_WIDTH * 2
-  ctx.stroke(glassRound)
-  if (notchPath) ctx.stroke(notchPath)
-  ctx.restore()
+  // 판 채움 — 좌상단이 밝고 우하단으로 투명해지는 기울어진 방사형 그라디언트.
+  paintGlassGradient(ctx, S, glassPath, 'nonzero', GLASS_FILL_STOPS, 1)
+
+  // 테두리 — 채움과 같은 행렬, stop만 반대(우하단이 밝다). 1px 아웃사이드 스트로크를
+  // even-odd로 잘라낸 링 영역에만 칠한다(그라디언트는 stroke로 직접 칠할 수 없다).
+  const glassBorderRing = buildGlassPath(GLASS_STROKE_WIDTH)
+  glassBorderRing.addPath(glassPath)
+  paintGlassGradient(ctx, S, glassBorderRing, 'evenodd', GLASS_STROKE_STOPS, GLASS_STROKE_OPACITY)
 
   // ── 3. 콘텐츠(등급 칩 / 이름 / 설명) ──────────────────────────────────────
   // 텍스트는 클리핑하지 않는다 — 넘치면 넘친 그대로 보여야 운영자가 줄바꿈을 조절할 수 있다
