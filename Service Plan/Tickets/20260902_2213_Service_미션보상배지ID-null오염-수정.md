@@ -1,9 +1,9 @@
 ---
 id: 20260902_2213
 category: Service
-status: OPEN
+status: CLOSED
 created: 2026-09-02
-closed:
+closed: 2026-09-02
 ---
 
 # [Service] 미션 reward_badge_ids null 오염으로 인한 PostgREST 400 에러 수정
@@ -75,3 +75,57 @@ DB 조회 결과 **미션 14건**이 `reward_badge_ids`에 null 원소를 갖고
 2. `missions/page.tsx:74` — null 필터링 추가.
 3. `lib/missions/rewards.ts` — `error` 체크·로깅 추가, `badgeIds` null 방어.
 4. 수정 후 `/missions` 페이지 및 관련 유닛 테스트(있다면)로 회귀 확인.
+
+---
+## 완료 기록
+
+### 구현 내용 요약
+
+1차 게이트 리뷰에서 `missions/page.tsx`·`lib/missions/rewards.ts` 2곳은 스펙대로 확인됐으나,
+동일 버그 패턴이 남아있던 `missions/[id]/page.tsx:34`(미션 상세 페이지의 보상 배지 조회)를
+리뷰어가 `curl`로 PostgREST 400(22P02) 재현까지 해서 지적, FAIL 판정. 해당 지점에
+`admin/missions/page.tsx`와 동일한 타입가드 필터를 추가해 재시도 → PASS.
+
+- `reward_badge_ids`를 `.in('id', ...)` 조회에 쓰는 3개 지점 전부에 null 원소 방어 필터 추가
+  (`missions/page.tsx`, `missions/[id]/page.tsx`, `lib/missions/rewards.ts`)
+- `missions/page.tsx`·`rewards.ts`의 badges 조회에 `error` 체크·로깅 추가 (이전엔 무시되고 있었음)
+- 오염된 미션 14건의 `reward_badge_ids`에서 `array_remove(reward_badge_ids, NULL)`로 null 원소 정리
+  (실행 후 0건 확인)
+
+### 변경된 파일
+```
+jam-web/src/app/(main)/missions/page.tsx
+jam-web/src/app/(main)/missions/[id]/page.tsx
+jam-web/src/lib/missions/rewards.ts
+jam-web/supabase/seed_fix_mission_reward_badge_ids_null_20260902.sql (신규)
+```
+
+### 테스트 결과
+- [x] `npx tsc --noEmit` — 에러 0건
+- [x] `npm run lint` 전체 — 0 errors, 13 warnings(전부 design-system 기존 경고, 무관)
+- [x] `npm run test` — 726 passed (기존에도 실패하던 스토리북 인터랙션 테스트 1건은 이번 변경과 무관 — stash 재현으로 확인)
+- [x] SQL 실행 후 오염 미션 0건 확인 (`SELECT count(*) ... WHERE EXISTS (... x IS NULL)` → 0)
+
+### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
+- 해당 없음 — 사용자 노출 텍스트 변경 없음 (서버 사이드 방어 코드 + 데이터 정리)
+
+### 배포 정보
+- 배포일: (staging push만 완료, 프로덕션 배포는 `/jam-ship`으로 별도 진행 예정)
+- 환경: staging
+- 커밋: 머지 커밋 (staging, `claude/jamwork-20260902_2213-mission-badge-null` 병합)
+
+### 주요 의사결정 / 핵심 메모
+- 원인은 `seed_phase13_missions_30.sql`의 `ARRAY[(SELECT id FROM badges WHERE name=...)]::uuid[]`
+  패턴 — 서브쿼리가 매치 실패 시 반환하는 SQL NULL이 `ARRAY[NULL]`로 감싸지면 빈 배열이 아니라
+  NULL 원소 1개짜리 배열이 된다는 Postgres 동작을 스크립트 작성 당시 잘못 가정했음.
+- "복구"가 아니라 "정리"로 처리: 원래 참조하려던 배지 이름(레트로 스타·익스플로어 등)이
+  `migrations/012_item_badges_100.sql`에 애초에 존재하지 않아, null을 제거해도 해당 미션들은
+  포인트만 지급되고 배지 보상은 없는 상태로 남는다 — 이는 새로운 손실이 아니라 원래도 그랬던
+  상태를 에러 없이 정리한 것.
+- 개선 리뷰에서 제안된 DB CHECK 제약/트리거를 통한 재발 방지는 이번 티켓 범위 밖으로 보류.
+
+### 잔여 이슈
+- DB 레벨 가드(CHECK 제약 또는 트리거)로 `reward_badge_ids`에 null 원소가 재유입되는 것을
+  원천 차단하는 방안은 후속 검토 과제로 남김 (개선 리뷰 제안, 이번 범위 아님)
+- 오염됐던 14개 미션 중 일부(굿 바이브스 온리·러브 세이브·아이 오브 더 선 등)는 원래 특정
+  아이템배지 보상을 의도했던 것으로 보임 — 운영자가 필요 시 정식으로 배지를 재지정할 수 있음
