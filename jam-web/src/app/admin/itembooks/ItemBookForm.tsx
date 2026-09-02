@@ -23,11 +23,14 @@ import BackgroundGeneratorPreview, {
 } from '../badges/BackgroundGeneratorPreview'
 import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 import ItemBookDetailPreviewFrame from './ItemBookDetailPreviewFrame'
+import { BadgeActiveToggleButton } from '@/components/admin/badges/BadgeActiveToggleButton'
 
 interface ItemBookFormProps {
   book?: ItemBookRow
   factions: Pick<FactionRow, 'id' | 'name'>[]
-  slottedBadges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
+  // [20260902_1043] 이 컬렉션에 배정된 전체 배지(활성+비활성) — deleted_at이 있으면 유저 노출에서
+  // 회수된(비활성) 배지지만, 배정 관계(item_book_id) 자체는 남아있으므로 목록에서 제외하지 않는다.
+  slottedBadges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url' | 'deleted_at'>[]
   /** 수정 화면 진입 시 필수 액티비티/완성 보상 배지 콤보박스에 처음 보여줄 이름 */
   requiredActivityBadgeLabel?: string
   rewardBadgeLabel?: string
@@ -458,22 +461,32 @@ export default function ItemBookForm({
             <p className="text-muted-foreground text-sm">등록된 배지가 없습니다.</p>
           )}
           <div className="space-y-2">
-            {slottedBadges.map((b) => (
-              <div key={b.id} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5">
-                {b.image_url && (
-                  <Image src={b.image_url} alt={b.name} width={32} height={32} className="w-8 h-8 rounded-lg object-contain" />
-                )}
-                <span className="text-sm flex-1">{b.name}</span>
-                <span className="text-xs text-muted-foreground">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
-                <button
-                  type="button"
-                  onClick={() => handleUnassignBadge(b.id)}
-                  className="text-xs text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+            {slottedBadges.map((b) => {
+              const isBadgeInactive = !!b.deleted_at
+              return (
+                <div
+                  key={b.id}
+                  className={`flex items-center gap-3 bg-white rounded-xl px-4 py-2.5 ${isBadgeInactive ? 'opacity-50' : ''}`}
                 >
-                  제거
-                </button>
-              </div>
-            ))}
+                  {b.image_url && (
+                    <Image src={b.image_url} alt={b.name} width={32} height={32} className="w-8 h-8 rounded-lg object-contain" />
+                  )}
+                  <span className="text-sm flex-1">{b.name}</span>
+                  {isBadgeInactive && (
+                    <span className="text-xs font-semibold text-red-600">비활성</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
+                  <BadgeActiveToggleButton badgeId={b.id} isActive={!isBadgeInactive} />
+                  <button
+                    type="button"
+                    onClick={() => handleUnassignBadge(b.id)}
+                    className="text-xs text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    제거
+                  </button>
+                </div>
+              )
+            })}
           </div>
 
           <button
