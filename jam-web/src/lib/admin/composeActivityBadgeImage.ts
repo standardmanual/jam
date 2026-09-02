@@ -51,12 +51,25 @@ const CHIP_PADDING_X = 14.625
 /** `badgename`(8:30) — Pretendard Bold 64px, 자간 -2.56, line-height: normal */
 const NAME_FONT_SIZE = 64
 const NAME_TRACKING = -2.56
-/** 등급 칩과 배지 이름 사이 간격 */
-const NAME_GAP = 10
-/** `condition`(8:2) — Pretendard Bold 20px, 자간 -0.8, line-height 30px */
-const CONDITION_FONT_SIZE = 20
+/**
+ * 등급 칩과 배지 이름 사이 간격.
+ *
+ * 피그마(node 8:28의 flex gap)는 10이지만, 실제로 구운 이미지에서 칩과 이름이 붙어 보인다는
+ * 사용자 피드백으로 10을 더해 20으로 올렸다 (티켓 20260902_1732). 피그마 값을 그대로 두지
+ * 않은 유일한 수치라 여기 근거를 남긴다 — 나머지 치수는 전부 node 8:33 실측값이다.
+ */
+const NAME_GAP = 20
+/**
+ * `condition`(8:2) — 설명 텍스트.
+ *
+ * 피그마는 Pretendard Bold **20px** / line-height 30px(=1.5배)이나, 사용자 요청으로
+ * **30px / 행간 1.2배(36px)** 로 바꿨다 (티켓 20260902_1732). 피그마보다 촘촘한 행간이며
+ * 사용자가 실제 렌더 결과를 보고 지정한 값이다. 자간(-0.8)은 피그마 값을 유지한다.
+ */
+const CONDITION_FONT_SIZE = 30
 const CONDITION_TRACKING = -0.8
-const CONDITION_LINE_HEIGHT = 30
+/** 폰트 크기의 **1.2배**(사용자 지정, 티켓 20260902_1732). 30 × 1.2 = 36. */
+const CONDITION_LINE_HEIGHT = 36
 
 /**
  * 글래스 판(`glass` 1:7)의 실측값. 피그마에서 받은 SVG를 직접 읽어 확정한 값이며 추정치가 아니다.
