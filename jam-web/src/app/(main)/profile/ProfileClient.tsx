@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime, getDisplayName } from '@/lib/utils'
@@ -213,6 +214,16 @@ export default function ProfileClient({
   // ── 탭 클릭 — 해시 이동 (브라우저 뒤로가기 지원) ────────────────────────────
   const handleTabClick = (tab: TabKey) => {
     window.location.hash = tab
+  }
+
+  // 헤더의 아바타·아이디 클릭 시 현재 프로필 URL(`/${username}`)로 이동한다.
+  // 탭 해시(`#followers` 등)로 열려 있던 상태에서 자기 자신에게 다시 링크하면
+  // pathname이 같아 해시가 지워지지 않고 남는다 — 이동 직전에 제거한다(20260902_0956,
+  // ListRowCard의 onNavigate와 동일한 패턴 20260902_0915).
+  const clearProfileHash = () => {
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
   }
 
   // ── 리스트 내 팔로우 토글 ──────────────────────────────────────────────────
@@ -464,19 +475,23 @@ export default function ProfileClient({
             아바타 확대·편집 버튼 축소·아이디 전체노출·포인트를 아이디 아래로 이동 (20260820_021) */}
         <div className="flex items-center gap-[var(--spacing-16)]">
           <div className="relative shrink-0">
-            {profile?.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt={d.profile.avatarAlt}
-                width={96}
-                height={96}
-                className="w-24 h-24 rounded-[var(--radius-cards)] object-cover"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
-                <UserIcon className="w-10 h-10" />
-              </div>
-            )}
+            {/* 아바타 클릭 시 현재 보고 있는 프로필의 URL로 이동한다. 편집 버튼은
+                형제 요소로 분리해 <a> 안에 <button>이 중첩되지 않도록 한다(20260902_0956). */}
+            <Link href={`/${username}`} onClick={clearProfileHash}>
+              {profile?.avatar_url ? (
+                <Image
+                  src={profile.avatar_url}
+                  alt={d.profile.avatarAlt}
+                  width={96}
+                  height={96}
+                  className="w-24 h-24 rounded-[var(--radius-cards)] object-cover"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated text-text flex items-center justify-center">
+                  <UserIcon className="w-10 h-10" />
+                </div>
+              )}
+            </Link>
             {/* 편집 버튼 — 아바타 우측 상단 오버레이 원형 아이콘 버튼.
                 44px 터치타겟 권장 크기의 절반(22px)으로 축소 요청(20260820_021) —
                 접근성 가이드 최소 터치타겟보다 작아짐을 인지하고 반영. */}
@@ -493,9 +508,13 @@ export default function ProfileClient({
 
           {/* 아이디는 더 이상 truncate하지 않는다 — 줄바꿈을 허용해 전체 노출(20260820_021) */}
           <div className="flex-1 min-w-0 flex flex-col gap-1">
-            <p className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] break-words">
+            <Link
+              href={`/${username}`}
+              onClick={clearProfileHash}
+              className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] break-words"
+            >
               {(profile && getDisplayName(profile)) || d.profile.anonymous}
-            </p>
+            </Link>
 
             {/* 포인트 — 아이디 아래로 이동, 크기는 기존(--text-heading 44px)의 약 절반인
                 --text-subheading(24px)으로 축소(20260820_021) */}
