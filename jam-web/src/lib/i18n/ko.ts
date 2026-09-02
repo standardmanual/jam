@@ -215,8 +215,6 @@ export const ko = {
     // UX_WRITING_GUIDELINE.md 고정 용어 — "Strava 동기화"(X: Strava 연동). 티켓 원문 문구의
     // "연동"을 가이드 고정 용어로 교정했다.
     stravaCta: 'Strava 동기화하면 시작해요',
-    /** 진행 중인 컬렉션/미션 1건. name/current/total 보간 */
-    progressLabel: '{name} {current}/{total}',
     /** 진행 이력 없음 — 정적 후보 풀(랜덤 1개 노출), 어드민 편집 대상 아님 */
     suggestionDrops: '드랍 아이템 찾아보기',
     suggestionMissions: '미션 참가해보기',

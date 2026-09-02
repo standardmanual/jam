@@ -59,8 +59,11 @@ function LeftCell({ status }: { status: TodayLeftStatus }) {
         <Card tone="inverse" className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold break-words [overflow-wrap:anywhere]">
-              {t(d.todayStatus.progressLabel, { name: status.name, current, total })}
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+              <span className="break-words [overflow-wrap:anywhere]">{status.name}</span>{' '}
+              <span className="whitespace-nowrap tabular-nums">
+                {current}/{total}
+              </span>
             </p>
             <ProgressBar current={status.current} total={status.total} />
           </div>
