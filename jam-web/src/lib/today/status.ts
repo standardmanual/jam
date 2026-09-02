@@ -18,13 +18,16 @@ import { getDisplayName } from '@/lib/utils'
 
 export type TodayLeftStatus =
   | { kind: 'strava_disconnected'; href: string }
-  | { kind: 'progress'; name: string; current: number; total: number; href: string }
+  | { kind: 'progress'; name: string; current: number; total: number; missionType: MissionType | null; href: string }
   | { kind: 'suggestion'; text: string; category: 'drops' | 'missions'; href: string }
 
 interface ProgressCandidate {
   name: string
   current: number
   total: number
+  /** 거리(distance) 미션이면 소수 1자리 표시 — 아이템북 진행도(항상 정수)는 null.
+   * 티켓 20260902_0933: 화면 간 표시 자릿수를 formatMissionProgress()로 통일하기 위한 힌트. */
+  missionType: MissionType | null
   /** 완성도 동률 시 최근 활동순 정렬용 (epoch ms) */
   lastActivityAt: number
   href: string
@@ -103,6 +106,7 @@ async function collectionCandidates(userId: string): Promise<ProgressCandidate[]
         name: book.name,
         current: filled,
         total,
+        missionType: null,
         lastActivityAt: lastByBook.get(book.id) ?? 0,
         href: `/collections/${book.id}`,
       })
@@ -153,6 +157,7 @@ async function missionCandidates(userId: string): Promise<ProgressCandidate[]> {
       name: mission.title,
       current,
       total,
+      missionType: mission.mission_type,
       lastActivityAt: new Date(p.joined_at).getTime(),
       href: '/missions',
     })
@@ -196,7 +201,7 @@ const SUGGESTIONS: { text: string; category: 'drops' | 'missions'; href: string 
 export async function getTodayLeftStatus(userId: string): Promise<TodayLeftStatus> {
   const best = await bestProgress(userId)
   if (best) {
-    return { kind: 'progress', name: best.name, current: best.current, total: best.total, href: best.href }
+    return { kind: 'progress', name: best.name, current: best.current, total: best.total, missionType: best.missionType, href: best.href }
   }
 
   // 페이지 로드 시점마다 1회 랜덤 선택 — 리롤 UI는 두지 않는다(정적 안내로 충분).
