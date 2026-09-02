@@ -116,6 +116,15 @@ export default function BadgesClient({
     window.history.replaceState(null, '', `#${key}`)
   }
 
+  // 탭이 URL 해시로 열린 상태(예: /badges#checkin)에서 배지 상세로 이동하면, Next 클라이언트
+  // 라우팅이 pathname만 바꾸고 기존 해시는 지우지 않아 /badges/{id}#checkin이 남는다.
+  // 이동 직전에 해시를 제거한다 (20260902_0923, 20260902_0915와 동일 패턴).
+  const clearHashOnNavigate = () => {
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+  }
+
   // badges는 이미 획득분만 전달되므로 개수가 곧 보유 개수
   const earnedCount = badges.length
   const checkinEarnedCount = checkinBadges.filter((p) => p.earnCount > 0).length
@@ -226,6 +235,7 @@ export default function BadgesClient({
                     <BadgeGridCard
                       key={badge.id}
                       href={`/badges/${badge.id}`}
+                      onNavigate={clearHashOnNavigate}
                       name={badge.name}
                       imageUrl={badge.image_url}
                       rarity={badge.rarity}
@@ -274,6 +284,7 @@ export default function BadgesClient({
                     <BadgeGridCard
                       key={badge.id}
                       href={`/badges/${badge.id}`}
+                      onNavigate={clearHashOnNavigate}
                       name={badge.name}
                       imageUrl={badge.image_url}
                       rarity={badge.rarity}
