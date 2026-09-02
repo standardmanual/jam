@@ -6,7 +6,15 @@ import React, { useId } from 'react';
  * Pass the badge image / icon as children.
  */
 
-function makePath(shape, w, h) {
+/**
+ * shape별 clip path(SVG path data)를 만든다.
+ *
+ * export하는 이유: 어드민 액티비티 배지 이미지 생성기(티켓 20260902_1613)가 같은 실루엣을
+ * Canvas 2D `Path2D`로 그려야 한다. 노치 path를 캔버스용으로 따로 다시 그리면 MODULAR와
+ * 어긋난 두 번째 정의가 생기므로, 여기서 만든 path 문자열을 그대로 재사용한다.
+ * (`BadgeFrame` 자체의 동작은 바뀌지 않는다 — 접근 범위만 넓힌 순수 추가 변경)
+ */
+export function makePath(shape, w, h) {
   switch (shape) {
     case 'ticket-v': {
       const r = Math.min(w * 0.07, 13);

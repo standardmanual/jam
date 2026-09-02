@@ -179,6 +179,7 @@ export type Database = {
           drop_weight: number
           faction_id: string | null
           id: string
+          image_gen_params: Json | null
           image_url: string | null
           item_book_id: string | null
           name: string
@@ -206,6 +207,7 @@ export type Database = {
           drop_weight?: number
           faction_id?: string | null
           id?: string
+          image_gen_params?: Json | null
           image_url?: string | null
           item_book_id?: string | null
           name: string
@@ -233,6 +235,7 @@ export type Database = {
           drop_weight?: number
           faction_id?: string | null
           id?: string
+          image_gen_params?: Json | null
           image_url?: string | null
           item_book_id?: string | null
           name?: string

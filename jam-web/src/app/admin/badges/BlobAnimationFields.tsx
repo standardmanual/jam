@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import {
   BLOB_ANIMATION_RANGES,
   BLOB_COLOR_COUNT,
@@ -10,6 +11,14 @@ import {
 interface BlobAnimationFieldsProps {
   value: BlobAnimationParams
   onChange: (next: BlobAnimationParams) => void
+  /**
+   * 속도 슬라이더 오른쪽에 끼워 넣을 컨트롤. (티켓 20260902_1613)
+   *
+   * 액티비티 배지 이미지 생성기는 미리보기를 재생하다가 원하는 프레임에서 멈춰 그 프레임을
+   * 굽기 때문에 재생/일시정지 버튼이 속도 슬라이더 바로 옆에 있어야 한다. 값이 없으면
+   * 아무것도 그리지 않으므로 기존 호출부(배지 폼)의 렌더링은 그대로다.
+   */
+  speedAccessory?: ReactNode
 }
 
 type SliderKey = 'speed' | 'seed' | 'blur' | 'scale'
@@ -34,7 +43,7 @@ const SLIDERS: { key: SliderKey; label: string; decimals: number }[] = [
  *
  * 어드민 화면이라 MODULAR 디자인 시스템 적용 대상이 아니다(기존 정책).
  */
-export default function BlobAnimationFields({ value, onChange }: BlobAnimationFieldsProps) {
+export default function BlobAnimationFields({ value, onChange, speedAccessory }: BlobAnimationFieldsProps) {
   const setColor = (index: number, color: string) => {
     const colors = [...value.colors]
     colors[index] = color
@@ -99,6 +108,7 @@ export default function BlobAnimationFields({ value, onChange }: BlobAnimationFi
                 onChange={(e) => onChange({ ...value, [key]: Number(e.target.value) })}
                 className="flex-1 accent-primary"
               />
+              {key === 'speed' && speedAccessory}
               {key === 'seed' && (
                 <button
                   type="button"

@@ -19,6 +19,7 @@ import {
   IconPalette,
   IconUserOff,
   IconPhoto,
+  IconPhotoEdit,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -59,6 +60,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/simulator', label: '시뮬레이터', icon: IconDeviceGamepad2 },
       { href: '/admin/badge-image', label: '체크인 배지 이미지 생성', icon: IconPhoto },
+      { href: '/admin/activity-badge-image', label: '액티비티 배지 이미지 생성', icon: IconPhotoEdit },
       { href: '/admin/users', label: '유저 조회', icon: IconUsers },
       { href: '/admin/abusing', label: '어뷰징 관리', icon: IconShieldExclamation },
     ],
