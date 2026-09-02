@@ -15,6 +15,11 @@ export interface BadgeGridCardProps {
   href?: string
   /** Button mode — wraps card in <button>. Mutually exclusive with href. */
   onClick?: () => void
+  /**
+   * href와 함께 쓸 때만 의미가 있는 클릭 핸들러 (20260902_0923).
+   * Link 이동 직전에 부수효과(예: 잔존 location.hash 제거)를 실행하고 싶을 때 사용한다.
+   */
+  onNavigate?: () => void
   /** false = 썸네일 흑백+반투명 처리 (미획득 배지). 기본값 true. */
   earned?: boolean
   /** true = ??? 표시 + 썸네일 흑백 (아이템북 미발견 배지). */
@@ -41,6 +46,7 @@ export default function BadgeGridCard({
   rarity,
   href,
   onClick,
+  onNavigate,
   earned = true,
   undiscovered = false,
   selected = false,
@@ -97,7 +103,7 @@ export default function BadgeGridCard({
     </>
   )
 
-  if (href) return <Link href={href} className={containerCls}>{content}</Link>
+  if (href) return <Link href={href} onClick={onNavigate} className={containerCls}>{content}</Link>
   if (onClick) return <button type="button" onClick={onClick} className={containerCls}>{content}</button>
   return <div className={containerCls}>{content}</div>
 }
