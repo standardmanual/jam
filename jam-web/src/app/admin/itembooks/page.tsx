@@ -58,8 +58,11 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
     labelIds.length > 0
       ? supabase.from('badges').select('id, name').in('id', labelIds)
       : Promise.resolve({ data: [] as Pick<BadgeRow, 'id' | 'name'>[] }),
+    // [20260902_1043] deleted_at 필터를 제거해 배정 관계(item_book_id)가 남아있는 배지는
+    // 활성/비활성 무관하게 전부 센다 — 컬렉션을 비활성화해도 목록 페이지의 이 카운트가
+    // 0으로 사라지면 안 된다([id]/page.tsx의 배지 슬롯 관리 목록과 동일한 원칙).
     bookIds.length > 0
-      ? supabase.from('badges').select('id, item_book_id').eq('type', 'item').in('item_book_id', bookIds).is('deleted_at', null)
+      ? supabase.from('badges').select('id, item_book_id').eq('type', 'item').in('item_book_id', bookIds)
       : Promise.resolve({ data: [] as { id: string; item_book_id: string }[] }),
   ])
   const badges = (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]
