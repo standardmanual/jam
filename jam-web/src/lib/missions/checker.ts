@@ -452,8 +452,10 @@ function calculateProgress(
     : activities
 
   switch (missionType) {
-    case 'distance':
-      return filtered.reduce((sum, a) => sum + a.distanceKm, 0)
+    case 'distance': {
+      const sum = filtered.reduce((acc, a) => acc + a.distanceKm, 0)
+      return Math.round(sum * 100) / 100
+    }
     case 'activity_count':
       return filtered.length
     case 'checkin':
@@ -478,7 +480,8 @@ function calculateProgress(
     // 판정되므로 Math.max를 유지 — elevation_gain_m만 reduce 합산으로 바꾼다.
     case 'elevation_gain_m': {
       const gated = condition.activity_type === 'walking' ? filtered.filter(passesWalkingGate) : filtered
-      return gated.reduce((sum, a) => sum + a.elevationGainM, 0)
+      const sum = gated.reduce((acc, a) => acc + a.elevationGainM, 0)
+      return Math.round(sum * 100) / 100
     }
     default:
       return 0
