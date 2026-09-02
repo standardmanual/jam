@@ -43,18 +43,19 @@ export async function grantMissionRewards(
 ): Promise<MissionRewardResult> {
   const supabase = createServiceClient()
 
-  const badgeIds = mission.reward_badge_ids ?? []
+  const badgeIds = (mission.reward_badge_ids ?? []).filter(Boolean)
   const awardedBadgeIds: string[] = []
   const awardedBadgeNames: string[] = []
   let totalAwardedPoints = 0
 
   if (badgeIds.length > 0) {
     // 1. 보상 배지 정보 조회
-    const { data: badgesRaw } = await supabase
+    const { data: badgesRaw, error: badgesRawError } = await supabase
       .from('badges')
       .select('id, name, type, point_reward')
       .in('id', badgeIds)
       .is('deleted_at', null) // 티켓 20260825_016: 소프트 삭제된 배지는 미션 보상 지급 대상에서 제외(조용히 skip)
+    if (badgesRawError) console.error(`[grantMissionRewards] 보상 배지 조회 실패 (mission: ${mission.id}):`, badgesRawError)
     const badges = (badgesRaw ?? []) as { id: string; name: string; type: 'activity' | 'item'; point_reward: number }[]
 
     // 조회된 배지가 요청보다 적으면 "삭제됨"과 "애초에 존재하지 않음"을 구분해 기록한다
