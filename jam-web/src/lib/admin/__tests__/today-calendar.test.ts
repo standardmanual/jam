@@ -36,6 +36,17 @@ check('normalizeDateParam: 값이 없으면 오늘 날짜로 대체', () => {
   const now = new Date('2026-07-26T00:00:00Z')
   assert.equal(normalizeDateParam(undefined, now), todayKstDateString(now))
 })
+check('normalizeDateParam: 달력상 존재하지 않는 날짜(2026-02-30)는 오버플로우 보정 없이 오늘 날짜로 대체', () => {
+  const now = new Date('2026-07-26T00:00:00Z')
+  assert.equal(normalizeDateParam('2026-02-30', now), todayKstDateString(now))
+})
+check('normalizeDateParam: 윤년의 2월 29일(2028-02-29)은 유효한 값으로 통과', () => {
+  assert.equal(normalizeDateParam('2028-02-29'), '2028-02-29')
+})
+check('normalizeDateParam: 평년의 2월 29일(2026-02-29)은 존재하지 않으므로 오늘 날짜로 대체', () => {
+  const now = new Date('2026-07-26T00:00:00Z')
+  assert.equal(normalizeDateParam('2026-02-29', now), todayKstDateString(now))
+})
 
 check('kstDayBoundsIso: 2026-09-02 KST 하루 경계는 UTC 09-01T15:00 ~ 09-02T14:59:59.999', () => {
   const { startIso, endIso } = kstDayBoundsIso('2026-09-02')
