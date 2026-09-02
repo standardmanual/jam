@@ -22,6 +22,7 @@ import {
   type ActivityBadgeImageParams,
 } from '@/lib/admin/activityBadgeImage'
 import { ensureBadgeImageFonts } from '@/lib/admin/composeActivityBadgeImage'
+import { getBadgeBlobPreset } from '@/lib/badgeBlobPresets'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import type { ActivityType, BadgeRarity } from '@/types/database'
 import ActivityBadgeImageCanvas from './ActivityBadgeImageCanvas'
@@ -54,6 +55,22 @@ const RARITY_OPTIONS: { value: BadgeRarity; label: string }[] = [
 
 const ACTIVITY_OPTIONS = Object.entries(ACTIVITY_TYPE_LABELS).map(([value, label]) => ({ value, label }))
 
+/**
+ * 볼륨 색상 프리셋 Select용 활동 종목 목록. `ACTIVITY_OPTIONS`(검색 필터)와 달리
+ * `badgeBlobPresets.ts`가 실제로 값을 갖고 있는 5종만 노출한다 — `ActivityType`에 없는
+ * `road_running` 같은 레거시 필터 키를 고르면 `getBadgeBlobPreset`이 깨진다.
+ */
+const PRESET_ACTIVITY_OPTIONS: { value: ActivityType; label: string }[] = [
+  { value: 'walking', label: ACTIVITY_TYPE_LABELS.walking },
+  { value: 'running', label: ACTIVITY_TYPE_LABELS.running },
+  { value: 'cycling', label: ACTIVITY_TYPE_LABELS.cycling },
+  { value: 'hiking', label: ACTIVITY_TYPE_LABELS.hiking },
+  { value: 'trail_running', label: ACTIVITY_TYPE_LABELS.trail_running },
+]
+
+/** 배지에 활동 종목이 지정돼 있지 않을 때 프리셋 Select에 보여줄 기본 선택지(적용은 안 함). */
+const DEFAULT_PRESET_ACTIVITY: ActivityType = 'walking'
+
 function activityLabels(types: ActivityType[]): string {
   if (types.length === 0) return '지정 없음'
   return types.map((t) => ACTIVITY_TYPE_LABELS[t] ?? t).join(', ')
@@ -81,6 +98,11 @@ export default function ActivityBadgeImagePage() {
   const [selected, setSelected] = useState<SearchResultBadge | null>(null)
   const [draft, setDraft] = useState<ActivityBadgeImageParams | null>(null)
   const [restored, setRestored] = useState(false)
+  // 볼륨 색상 프리셋 Select 2개(활동 종목·등급)의 현재 값. 배지를 고르면 그 배지 기준으로
+  // 초기화되고(요구사항 3), 운영자가 드롭다운을 바꾸면 즉시 draft.background.colors만 교체한다
+  // (요구사항 2·4 — bgColor·speed 등 다른 값과 커스텀 입력 자체는 건드리지 않는다).
+  const [presetActivity, setPresetActivity] = useState<ActivityType>(DEFAULT_PRESET_ACTIVITY)
+  const [presetRarity, setPresetRarity] = useState<BadgeRarity>('common')
   const [playing, setPlaying] = useState(false)
   /**
    * 배지를 고를 때마다 1씩 오르는 선택 토큰. 미리보기 캔버스가 누적한 위상이 **어느 선택에
@@ -137,21 +159,36 @@ export default function ActivityBadgeImagePage() {
     setSelected(badge)
     setApplyError(null)
     setApplyResult(null)
+    // 프리셋 Select 초기값 — 배지의 첫 활동 종목(없으면 기본 선택지)과 등급으로 맞춰 둔다.
+    const badgeActivityType = badge.activityTypes[0]
+    setPresetActivity(badgeActivityType ?? DEFAULT_PRESET_ACTIVITY)
+    setPresetRarity(badge.rarity)
     // 저장된 저작 파라미터가 있으면 그대로 복원한다(정지 위상까지) — 같은 이미지를 다시 굽거나
     // 일부만 고칠 수 있어야 한다. 없으면 DB의 등급·이름·설명으로 초기값을 채운다.
     if (badge.imageGenParams) {
       setDraft(badge.imageGenParams)
       setRestored(true)
     } else {
+      // 신규 배지(아직 저작한 적 없음)만 프리셋을 자동 적용한다 — 활동 종목이 지정돼 있을 때만
+      // 프리셋 4색으로 교체하고, 없으면 기존 기본 배경(DEFAULT_ACTIVITY_BADGE_BACKGROUND)을 쓴다.
+      const presetColors = badgeActivityType ? getBadgeBlobPreset(badgeActivityType, badge.rarity) : null
       setDraft({
         version: ACTIVITY_BADGE_IMAGE_PARAMS_VERSION,
         rarity: badge.rarity,
         name: badge.name,
         condition: badge.description,
-        background: DEFAULT_ACTIVITY_BADGE_BACKGROUND,
+        background: presetColors
+          ? { ...DEFAULT_ACTIVITY_BADGE_BACKGROUND, colors: presetColors }
+          : DEFAULT_ACTIVITY_BADGE_BACKGROUND,
       })
       setRestored(false)
     }
+  }
+
+  /** 프리셋 Select(활동 종목·등급) 변경 시 draft.background.colors만 즉시 교체한다. */
+  function applyPreset(activityType: ActivityType, rarity: BadgeRarity) {
+    const colors = getBadgeBlobPreset(activityType, rarity)
+    setDraft((prev) => (prev ? { ...prev, background: { ...prev.background, colors } } : prev))
   }
 
   async function runApply() {
@@ -371,6 +408,54 @@ export default function ActivityBadgeImagePage() {
                   onChange={(e) => setDraft({ ...draft, condition: e.target.value })}
                   placeholder="누적 30000회"
                 />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm text-foreground">볼륨 색상 프리셋</span>
+                <div className="flex gap-2">
+                  <Select
+                    value={presetActivity}
+                    onValueChange={(v) => {
+                      const activityType = v as ActivityType
+                      setPresetActivity(activityType)
+                      applyPreset(activityType, presetRarity)
+                    }}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRESET_ACTIVITY_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={presetRarity}
+                    onValueChange={(v) => {
+                      const rarity = v as BadgeRarity
+                      setPresetRarity(rarity)
+                      applyPreset(presetActivity, rarity)
+                    }}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RARITY_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  활동 종목·등급을 고르면 아래 블롭 색상에 어울리는 4색이 채워져요. 채운 뒤에도
+                  각 색상은 자유롭게 다시 조정할 수 있어요.
+                </span>
               </div>
 
               <BlobAnimationFields
