@@ -17,14 +17,17 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
   ] = await Promise.all([
     supabase.from('item_books').select('*').eq('id', id).single(),
     supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
-    supabase.from('badges').select('id, name, rarity, image_url').eq('item_book_id', id).eq('type', 'item').is('deleted_at', null),
+    // [20260902_1043] deleted_at 필터를 제거해 배정 관계(item_book_id) 자체가 남아있는 배지는
+    // 활성/비활성 무관하게 전부 조회한다 — 어드민 화면에서만 전체 배정 목록이 보여야 한다
+    // (유저 노출 회수는 badges.deleted_at으로 별개로 유지됨, 20260823_004).
+    supabase.from('badges').select('id, name, rarity, image_url, deleted_at').eq('item_book_id', id).eq('type', 'item'),
   ])
 
   if (!bookRaw) notFound()
 
   const book = bookRaw as ItemBookRow
   const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
-  const slottedBadges = (slottedRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url'>[]
+  const slottedBadges = (slottedRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url' | 'deleted_at'>[]
 
   const labelIds = [book.required_activity_badge_id, book.reward_badge_id].filter((v): v is string => !!v)
   const { data: labelBadgesRaw } = labelIds.length > 0
@@ -33,6 +36,9 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
   const labelBadgeMap = new Map(((labelBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]).map((b) => [b.id, b.name]))
 
   const factionLabel = factions.find(f => f.id === book.faction_id)?.name
+  // [20260902_1043] "소속 아이템배지" 요약 수치는 목록 페이지의 "아이템 배지 수" 컬럼과 동일하게
+  // 활성 배지 수만 의미한다 — 아래 slottedBadges(전체 배정 목록)와는 다른 값이다.
+  const activeSlottedBadgeCount = slottedBadges.filter((b) => !b.deleted_at).length
 
   return (
     <div className="space-y-8 p-4 md:p-8">
@@ -60,7 +66,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
             : undefined
         }
         factionName={factionLabel}
-        itemBadgeCount={slottedBadges.length}
+        itemBadgeCount={activeSlottedBadgeCount}
       />
 
       {/* 편집 폼 */}
