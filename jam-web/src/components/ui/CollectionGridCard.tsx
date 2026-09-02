@@ -21,6 +21,8 @@ export interface CollectionGridCardProps {
   rarity?: BadgeRarity
   href?: string
   onClick?: () => void
+  /** href 모드에서 이동 직전 호출된다 (예: URL 해시 정리) */
+  onNavigate?: () => void
   className?: string
   children?: ReactNode
 }
@@ -37,6 +39,7 @@ export default function CollectionGridCard({
   rarity,
   href,
   onClick,
+  onNavigate,
   className = '',
   children,
 }: CollectionGridCardProps) {
@@ -85,7 +88,7 @@ export default function CollectionGridCard({
     </>
   )
 
-  if (href) return <Link href={href} className={cls}>{content}</Link>
+  if (href) return <Link href={href} onClick={onNavigate} className={cls}>{content}</Link>
   if (onClick) return <button type="button" onClick={onClick} className={cls}>{content}</button>
   return <div className={cls}>{content}</div>
 }

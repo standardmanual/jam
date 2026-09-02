@@ -310,6 +310,7 @@ export default function BadgesClient({
                   <CollectionGridCard
                     key={book.id}
                     href={`/collections/${book.id}?from=badges`}
+                    onNavigate={clearHashOnNavigate}
                     name={book.name}
                     imageUrl={book.image_url ?? null}
                     collected={progress.owned}
