@@ -4,6 +4,7 @@ import { Card } from '@ds/components/cards/Card'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { PackageIcon, TargetIcon, UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
+import { formatMissionProgress } from '@/lib/missions/format'
 import type { TodayLeftStatus, TodayRightStatus } from '@/lib/today/status'
 
 /**
@@ -48,13 +49,18 @@ function LeftCell({ status }: { status: TodayLeftStatus }) {
   }
 
   if (status.kind === 'progress') {
+    // 티켓 20260902_0933: 거리(distance) 미션은 소수 1자리, 그 외(아이템북 포함)는 정수 —
+    // formatMissionProgress()로 미션 상세·미션 현황과 동일한 자릿수 규칙을 쓴다.
+    // missionType이 null(아이템북)이면 항상 정수형 취급.
+    const current = formatMissionProgress(status.current, status.missionType ?? '')
+    const total = formatMissionProgress(status.total, status.missionType ?? '')
     return (
       <Link href={status.href} className="block h-full">
         <Card tone="inverse" className={CELL_CLASS}>
           <CellLabel>{d.todayStatus.myProgressLabel}</CellLabel>
           <div className={CELL_BODY_CLASS}>
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
-              {t(d.todayStatus.progressLabel, { name: status.name, current: status.current, total: status.total })}
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold break-words [overflow-wrap:anywhere]">
+              {t(d.todayStatus.progressLabel, { name: status.name, current, total })}
             </p>
             <ProgressBar current={status.current} total={status.total} />
           </div>

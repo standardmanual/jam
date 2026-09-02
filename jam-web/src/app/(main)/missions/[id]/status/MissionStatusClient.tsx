@@ -5,6 +5,8 @@ import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
 import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
+import type { MissionType } from '@/types/database'
+import { formatMissionProgress } from '@/lib/missions/format'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
@@ -48,6 +50,7 @@ interface Props {
   missionId: string
   missionTitle: string
   displayType: string
+  missionType: MissionType
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -98,13 +101,6 @@ const PODIUM_CONFIG = [
 type PodiumConfig = typeof PODIUM_CONFIG[number]
 
 // ────────────────────────────────────────────────────────────────
-// 유틸
-// ────────────────────────────────────────────────────────────────
-function formatProgress(value: number) {
-  return value.toFixed(value % 1 === 0 ? 0 : 1)
-}
-
-// ────────────────────────────────────────────────────────────────
 // 서브 컴포넌트
 // ────────────────────────────────────────────────────────────────
 
@@ -148,9 +144,11 @@ function PodiumAvatar({
 function PodiumColumn({
   entry,
   cfg,
+  missionType,
 }: {
   entry: RankingEntry | undefined
   cfg: PodiumConfig
+  missionType: MissionType
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, gap: 4 }}>
@@ -194,7 +192,7 @@ function PodiumColumn({
               {cfg.rank}
             </span>
             <span style={{ fontSize: 'var(--text-caption)', fontWeight: 'bold', color: '#fff' }}>
-              {formatProgress(entry.progressValue)}
+              {formatMissionProgress(entry.progressValue, missionType)}
             </span>
           </>
         )}
@@ -208,10 +206,12 @@ function RankingListRow({
   entry,
   maxProgress,
   isMe,
+  missionType,
 }: {
   entry: RankingEntry
   maxProgress: number
   isMe: boolean
+  missionType: MissionType
 }) {
   const fillRatio = maxProgress > 0 ? Math.min(1, entry.progressValue / maxProgress) : 0
   // 내 순위 행만 h4 토큰(24px)으로 확대 강조, 그 외에는 small 토큰(14px) 그대로
@@ -255,7 +255,7 @@ function RankingListRow({
       }
       trailing={
         <span style={{ fontSize: emphasisFontSize, fontWeight: 'bold', color: isMe ? 'var(--color-primary)' : 'var(--color-text)' }}>
-          {formatProgress(entry.progressValue)}
+          {formatMissionProgress(entry.progressValue, missionType)}
         </span>
       }
     >
@@ -290,9 +290,11 @@ function RankingListRow({
 function MyRankCard({
   me,
   maxProgress,
+  missionType,
 }: {
   me: RankingEntry
   maxProgress: number
+  missionType: MissionType
 }) {
   const fillRatio = maxProgress > 0 ? Math.min(1, me.progressValue / maxProgress) : 0
 
@@ -345,7 +347,7 @@ function MyRankCard({
             {me.displayName}
           </div>
           <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', marginTop: 1 }}>
-            {formatProgress(me.progressValue)} {d.missions.achieved}
+            {formatMissionProgress(me.progressValue, missionType)} {d.missions.achieved}
           </div>
         </div>
 
@@ -355,7 +357,7 @@ function MyRankCard({
           color: 'var(--color-primary)',
           flexShrink: 0,
         }}>
-          {formatProgress(me.progressValue)}
+          {formatMissionProgress(me.progressValue, missionType)}
         </span>
       </div>
 
@@ -426,6 +428,7 @@ function SimpleAvatar({ url }: { url: string | null }) {
 // ────────────────────────────────────────────────────────────────
 export default function MissionStatusClient({
   missionId,
+  missionType,
 }: Props) {
   const [data, setData] = useState<StatusResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -494,7 +497,7 @@ export default function MissionStatusClient({
               <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6">
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
                   {top3.map(({ cfg, entry }) => (
-                    <PodiumColumn key={cfg.rank} cfg={cfg} entry={entry} />
+                    <PodiumColumn key={cfg.rank} cfg={cfg} entry={entry} missionType={missionType} />
                   ))}
                 </div>
               </div>
@@ -516,6 +519,7 @@ export default function MissionStatusClient({
                     entry={entry}
                     maxProgress={maxProgress}
                     isMe={isMeInEntries(entry.userId)}
+                    missionType={missionType}
                   />
                 ))}
               </div>
@@ -523,7 +527,7 @@ export default function MissionStatusClient({
 
             {/* 나의 순위 카드 — 목록 밖일 때만 예외적으로 노출 */}
             {meOutsideList && me && (
-              <MyRankCard me={me} maxProgress={maxProgress} />
+              <MyRankCard me={me} maxProgress={maxProgress} missionType={missionType} />
             )}
 
             {/* 빈 상태: entries.length === 0 && me === null */}
@@ -589,7 +593,7 @@ export default function MissionStatusClient({
                 </span>
               ) : (
                 <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text shrink-0">
-                  {data.me.progressValue.toFixed(data.me.progressValue % 1 === 0 ? 0 : 1)}
+                  {formatMissionProgress(data.me.progressValue, missionType)}
                 </span>
               )}
             </div>

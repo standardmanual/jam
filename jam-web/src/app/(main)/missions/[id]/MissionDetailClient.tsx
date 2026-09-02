@@ -17,6 +17,7 @@ import { RARITY_LABEL } from '@/lib/rarity'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
+import { formatMissionProgress } from '@/lib/missions/format'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 
 export interface RewardBadgeInfo {
@@ -292,7 +293,7 @@ export default function MissionDetailClient({
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[22px] font-bold text-text tabular-nums leading-none">
-                    {isCompleted ? goal.target : (mission.mission_type === 'distance' ? progressValue.toFixed(1) : Math.floor(progressValue))}{goal.unit}
+                    {isCompleted ? goal.target : formatMissionProgress(progressValue, mission.mission_type)}{goal.unit}
                     <span className="text-[16px] font-normal text-text-secondary mx-1">/</span>
                     {goal.target}{goal.unit}
                   </span>

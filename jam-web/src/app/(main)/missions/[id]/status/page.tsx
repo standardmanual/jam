@@ -17,7 +17,7 @@ export default async function MissionStatusPage({ params }: Props) {
   const [{ data: missionRaw }, { data: participation }] = await Promise.all([
     service
       .from('missions')
-      .select('id, title, status_display_type')
+      .select('id, title, status_display_type, mission_type')
       .eq('id', missionId)
       .maybeSingle(),
     service
@@ -32,13 +32,14 @@ export default async function MissionStatusPage({ params }: Props) {
   // 미참가자는 미션 상황 진입 불가 → 상세로 돌려보냄
   if (!participation) redirect(`/missions/${missionId}`)
 
-  const mission = missionRaw as Pick<MissionRow, 'id' | 'title' | 'status_display_type'>
+  const mission = missionRaw as Pick<MissionRow, 'id' | 'title' | 'status_display_type' | 'mission_type'>
 
   return (
     <MissionStatusClient
       missionId={mission.id}
       missionTitle={mission.title}
       displayType={mission.status_display_type}
+      missionType={mission.mission_type}
     />
   )
 }
