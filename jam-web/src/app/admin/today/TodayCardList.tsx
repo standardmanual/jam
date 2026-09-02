@@ -22,6 +22,9 @@ interface Props {
   badgeLabels: BadgeSearchResult[]
   missions: MissionOption[]
   itemBooks: ItemBookOption[]
+  /** 현재 캘린더뷰가 보고 있는 날짜('YYYY-MM-DD', 20260902_1028) — 신규 카드 생성 시
+   *  시작 일시 초기값 프리필에 쓴다(구현 편의, 티켓상 선택 사항). */
+  selectedDate: string
 }
 
 const templates: { value: TodayCardTemplateType; label: string }[] = [
@@ -105,7 +108,7 @@ function toLocalInputValue(iso: string) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function TodayCardList({ cards, badgeLabels, missions, itemBooks }: Props) {
+export default function TodayCardList({ cards, badgeLabels, missions, itemBooks, selectedDate }: Props) {
   const [form, setForm] = useState(emptyForm)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -170,6 +173,19 @@ export default function TodayCardList({ cards, badgeLabels, missions, itemBooks 
     setEditingId(null)
     setError('')
     setShowForm(false)
+  }
+
+  /** [+ 컨텐츠 추가] 버튼 — 열려 있으면 취소, 닫혀 있으면 선택 날짜를 시작 일시 초기값으로
+   *  채운 새 카드 폼을 연다(20260902_1028, 프리필은 구현 편의로 선택 적용). */
+  function handleAddNew() {
+    if (showForm) {
+      handleCancel()
+      return
+    }
+    setForm({ ...emptyForm, starts_at: `${selectedDate}T00:00` })
+    setEditingId(null)
+    setError('')
+    setShowForm(true)
   }
 
   async function handleSave() {
@@ -237,8 +253,11 @@ export default function TodayCardList({ cards, badgeLabels, missions, itemBooks 
 
   return (
     <div className="space-y-6">
+      {/* 카드 목록 — 선택 날짜(page.tsx에서 조회 단계에서 필터링됨) 기준 (20260902_1028) */}
+      <TodayCardTable cards={cards} onEdit={handleEdit} onToggleActive={handleToggleActive} onDelete={handleDelete} />
+
       <button
-        onClick={() => (showForm ? handleCancel() : setShowForm(true))}
+        onClick={handleAddNew}
         className="bg-primary text-white font-bold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors text-sm"
       >
         {showForm ? '취소' : '+ 콘텐츠 추가'}
@@ -435,9 +454,6 @@ export default function TodayCardList({ cards, badgeLabels, missions, itemBooks 
           </div>
         </div>
       )}
-
-      {/* 카드 목록 */}
-      <TodayCardTable cards={cards} onEdit={handleEdit} onToggleActive={handleToggleActive} onDelete={handleDelete} />
     </div>
   )
 }
