@@ -159,7 +159,7 @@ async function missionCandidates(userId: string): Promise<ProgressCandidate[]> {
       total,
       missionType: mission.mission_type,
       lastActivityAt: new Date(p.joined_at).getTime(),
-      href: '/missions',
+      href: `/missions/${p.mission_id}`,
     })
   }
   return result
