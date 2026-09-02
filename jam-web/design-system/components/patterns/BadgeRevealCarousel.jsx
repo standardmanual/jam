@@ -536,6 +536,7 @@ function BadgeCard({ item }) {
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           wordBreak: 'keep-all',
+          whiteSpace: 'pre-line',
         }}
       >
         {item?.description}

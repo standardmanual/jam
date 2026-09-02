@@ -194,7 +194,7 @@ export default function MissionDetailClient({
               {mission.title}
             </h1>
             {mission.description && (
-              <p className="text-[15px] leading-[1.47] text-text-secondary">{mission.description}</p>
+              <p className="text-[15px] leading-[1.47] text-text-secondary whitespace-pre-line">{mission.description}</p>
             )}
           </div>
 

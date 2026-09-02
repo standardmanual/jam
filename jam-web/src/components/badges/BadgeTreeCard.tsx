@@ -47,7 +47,7 @@ export default function BadgeTreeCard({ card, earnedBadgeIds }: BadgeTreeCardPro
           {card.name}
         </Link>
         {card.description && (
-          <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] leading-snug">
+          <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)] leading-snug whitespace-pre-line">
             {card.description}
           </p>
         )}
