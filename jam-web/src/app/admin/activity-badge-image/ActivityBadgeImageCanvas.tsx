@@ -9,8 +9,16 @@ interface ActivityBadgeImageCanvasProps {
   params: ActivityBadgeImageParams
   /** 재생 중이면 rAF로 위상을 누적하며 계속 다시 그린다. */
   playing: boolean
-  /** 재생이 멈출 때(일시정지·언마운트) 그 시점의 누적 위상을 올려 준다. 저장 대상 값이다. */
-  onPause: (phase: number) => void
+  /**
+   * 지금 누적 중인 위상이 **어느 선택에 속하는지** 나타내는 토큰. 배지를 새로 고를 때마다 상위에서
+   * 바꿔 준다. `onPause`에 그대로 되돌려 보내 상위가 낡은 갱신을 버릴 수 있게 한다.
+   */
+  selectionKey: number
+  /**
+   * 재생이 멈출 때(일시정지·언마운트) 그 시점의 누적 위상을 올려 준다. 저장 대상 값이다.
+   * 두 번째 인자는 이 위상을 누적하기 시작한 시점의 `selectionKey`다.
+   */
+  onPause: (phase: number, selectionKey: number) => void
   canvasRef: RefObject<HTMLCanvasElement | null>
 }
 
@@ -27,10 +35,14 @@ interface ActivityBadgeImageCanvasProps {
  * - 누적은 `phase += BLOB_PHASE_RATE * speed * dt`다. `drawBlobFrame`의 `t`는 경과 시간이 아니라
  *   위상이라, 누적을 호출부가 맡아야 속도를 바꿔도 이미 지나온 위상이 재스케일되지 않는다
  *   (20260902_0629).
+ * - `onPause`에는 위상과 함께 **누적을 시작한 시점의 `selectionKey`** 를 실어 보낸다. 재생 중에
+ *   배지를 바꾸면 React가 rAF 정리 함수를 새 effect보다 먼저 돌리는데, 그때 올라간 이전 배지의
+ *   위상이 이미 교체된 새 배지 draft를 덮어쓰는 사고가 있었다. 키를 함께 넘겨 상위가 버린다.
  */
 export default function ActivityBadgeImageCanvas({
   params,
   playing,
+  selectionKey,
   onPause,
   canvasRef,
 }: ActivityBadgeImageCanvasProps) {
@@ -110,9 +122,11 @@ export default function ActivityBadgeImageCanvas({
     return () => {
       stopped = true
       cancelAnimationFrame(raf)
-      onPauseRef.current(phaseRef.current)
+      // `selectionKey`는 이 effect가 만들어진 렌더의 값이다(클로저로 붙잡는다) — 정리 시점의
+      // ref를 읽으면 이미 새 배지 값으로 바뀐 뒤라 낡은 갱신을 가려낼 수 없다.
+      onPauseRef.current(phaseRef.current, selectionKey)
     }
-  }, [playing, canvasRef])
+  }, [playing, selectionKey, canvasRef])
 
   return (
     <canvas

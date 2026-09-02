@@ -82,6 +82,20 @@ export default function ActivityBadgeImagePage() {
   const [draft, setDraft] = useState<ActivityBadgeImageParams | null>(null)
   const [restored, setRestored] = useState(false)
   const [playing, setPlaying] = useState(false)
+  /**
+   * 배지를 고를 때마다 1씩 오르는 선택 토큰. 미리보기 캔버스가 누적한 위상이 **어느 선택에
+   * 속하는지** 가려내는 데 쓴다.
+   *
+   * 재생 중에 다른 배지를 고르면 `setPlaying(false)`와 `setDraft(새 배지)`가 같은 렌더에 올라가고,
+   * React는 rAF 정리 함수를 새 effect보다 **먼저** 실행한다. 그래서 정리 함수가 올려 보내는
+   * 이전 배지의 누적 위상이 이미 교체된 새 배지 draft를 덮어썼다(재생 중 배지 전환 시 저장 위상
+   * 대신 이전 배지 위상으로 그려지던 버그). 토큰이 다르면 그 갱신을 버린다.
+   *
+   * ref는 이벤트 핸들러에서 **동기적으로** 올려 둔다 — effect로 미루면 정리 함수보다 늦게 돌아
+   * 비교가 무의미해진다. state는 캔버스에 prop으로 내려보내기 위해 함께 둔다.
+   */
+  const [selectionKey, setSelectionKey] = useState(0)
+  const selectionKeyRef = useRef(0)
 
   const [applying, setApplying] = useState(false)
   const [applyError, setApplyError] = useState<string | null>(null)
@@ -115,6 +129,10 @@ export default function ActivityBadgeImagePage() {
   }
 
   function selectBadge(badge: SearchResultBadge) {
+    // 같은 배지를 다시 고를 때도 새 선택이다 — 이전 재생의 누적 위상이 저장 위상을 덮지 않도록
+    // 항상 토큰을 올린다.
+    selectionKeyRef.current += 1
+    setSelectionKey(selectionKeyRef.current)
     setPlaying(false)
     setSelected(badge)
     setApplyError(null)
@@ -394,9 +412,12 @@ export default function ActivityBadgeImagePage() {
               <ActivityBadgeImageCanvas
                 params={draft}
                 playing={playing}
-                onPause={(phase) =>
+                selectionKey={selectionKey}
+                onPause={(phase, forSelection) => {
+                  // 이미 다른 배지를 고른 뒤 도착한 갱신은 버린다(위상 오염 방지 — 위 주석 참조).
+                  if (forSelection !== selectionKeyRef.current) return
                   setDraft((prev) => (prev ? { ...prev, background: { ...prev.background, phase } } : prev))
-                }
+                }}
                 canvasRef={canvasRef}
               />
               <p className="text-xs text-muted-foreground">
