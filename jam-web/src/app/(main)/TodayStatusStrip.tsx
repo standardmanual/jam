@@ -1,8 +1,7 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { Card } from '@ds/components/cards/Card'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
-import { PackageIcon, TargetIcon, UserIcon, UsersIcon } from '@/components/ui/icons'
+import { PackageIcon, TargetIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import { formatMissionProgress } from '@/lib/missions/format'
 import type { TodayLeftStatus, TodayRightStatus } from '@/lib/today/status'
@@ -119,25 +118,9 @@ function RightCell({ status }: { status: Exclude<TodayRightStatus, { kind: 'none
       <Card tone="inverse" className={CELL_CLASS}>
         <CellLabel>{d.todayStatus.friendActivityLabel}</CellLabel>
         <div className={CELL_BODY_CLASS}>
-          <div className="flex items-center gap-[var(--spacing-8)]">
-            <div className="flex -space-x-2 shrink-0">
-              {status.avatarUrls.map((url, i) => (
-                <span
-                  key={i}
-                  className="w-7 h-7 rounded-full ring-2 ring-[color:var(--color-surface-inverse)] overflow-hidden bg-white/8 flex items-center justify-center"
-                >
-                  {url ? (
-                    <Image src={url} alt="" width={28} height={28} className="w-full h-full object-cover" />
-                  ) : (
-                    <UserIcon className="w-3.5 h-3.5 text-text-inverse/40" />
-                  )}
-                </span>
-              ))}
-            </div>
-            <p className="min-w-0 flex-1 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
-              {message}
-            </p>
-          </div>
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+            {message}
+          </p>
         </div>
       </Card>
     </Link>

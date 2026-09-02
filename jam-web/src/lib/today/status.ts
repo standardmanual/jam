@@ -215,7 +215,7 @@ export type TodayRightStatus =
   | { kind: 'no_following'; href: string }
   /** 팔로잉은 있으나 오늘 배지 획득 활동이 없음 — 슬롯 자체를 렌더링하지 않는다 */
   | { kind: 'none' }
-  | { kind: 'friend_activity'; count: number; avatarUrls: (string | null)[]; href: string; singleFriendName: string | null }
+  | { kind: 'friend_activity'; count: number; href: string; singleFriendName: string | null }
 
 /** KST 기준 오늘 00:00의 UTC ISO 시각 */
 function kstTodayStartIso(now: Date): string {
@@ -225,9 +225,6 @@ function kstTodayStartIso(now: Date): string {
   const day = kst.getUTCDate()
   return new Date(Date.UTC(y, m, day) - KST_OFFSET_MS).toISOString()
 }
-
-/** 아바타 스택에 노출할 최대 인원 */
-const FRIEND_AVATAR_MAX = 3
 
 /**
  * 친구 활동 카드의 탭 목적지를 계산한다 — 순수 함수(티켓 20260830_2107).
@@ -270,22 +267,19 @@ export async function getTodayRightStatus(userId: string, now: Date = new Date()
   }
   if (orderedUserIds.length === 0) return { kind: 'none' }
 
-  const top = orderedUserIds.slice(0, FRIEND_AVATAR_MAX)
-  const { data: usersRaw } = await supabase
-    .from('users')
-    .select('id, avatar_url, username, display_name')
-    .in('id', top)
-  const userMap = new Map(
-    (
-      (usersRaw ?? []) as { id: string; avatar_url: string | null; username: string | null; display_name: string | null }[]
-    ).map((u) => [u.id, u])
-  )
-  const avatarUrls = top.map((id) => userMap.get(id)?.avatar_url ?? null)
+  let singleUser: { username: string | null; display_name: string | null } | null = null
+  if (orderedUserIds.length === 1) {
+    const { data: userRaw } = await supabase
+      .from('users')
+      .select('username, display_name')
+      .eq('id', orderedUserIds[0])
+      .maybeSingle()
+    singleUser = userRaw as { username: string | null; display_name: string | null } | null
+  }
 
-  const singleUser = orderedUserIds.length === 1 ? userMap.get(orderedUserIds[0]) ?? null : null
   const singleUsername = singleUser?.username ?? null
   const singleFriendName = singleUser ? getDisplayName(singleUser) || null : null
   const href = resolveFriendActivityHref(orderedUserIds.length, singleUsername)
 
-  return { kind: 'friend_activity', count: orderedUserIds.length, avatarUrls, href, singleFriendName }
+  return { kind: 'friend_activity', count: orderedUserIds.length, href, singleFriendName }
 }
