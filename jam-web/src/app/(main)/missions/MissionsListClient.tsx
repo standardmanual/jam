@@ -419,6 +419,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: 'vertical',
+                          whiteSpace: 'pre-line',
                         }}
                       >
                         {m.description}

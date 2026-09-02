@@ -104,7 +104,7 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
         // 설명은 카드 바깥(페이지 배경 위)이지만, 애니메이션 모드에서는 페이지가 걸던 그림자
         // 보정이 꺼지므로 이미지·영상 배경 모드와 동일한 보정을 여기서 유지한다.
         <p
-          className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6"
+          className="text-[length:var(--text-body)] text-[var(--color-text-secondary)] text-center leading-[var(--leading-body)] mt-6 whitespace-pre-line"
           style={backgroundAnimation ? getBadgeThemedTextStyle(true) : undefined}
         >
           {badge.description}

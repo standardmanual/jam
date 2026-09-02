@@ -184,8 +184,9 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
             </div>
             <div className="col-span-2">
               <label className="text-xs text-muted-foreground mb-1 block">설명 (선택)</label>
-              <input type="text" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" />
+              <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                rows={3}
+                className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm resize-none" />
             </div>
 
             <div>

@@ -76,7 +76,7 @@ export default function ItemBookHeroSection({ book, slottedCount, totalBadgeCoun
           {book.name}
         </h1>
         {book.description && (
-          <p style={{ color: TEXT_SECONDARY, fontSize: '13px', lineHeight: '1.4', ...heroTextStyle }}>
+          <p style={{ color: TEXT_SECONDARY, fontSize: '13px', lineHeight: '1.4', whiteSpace: 'pre-line', ...heroTextStyle }}>
             {book.description}
           </p>
         )}
