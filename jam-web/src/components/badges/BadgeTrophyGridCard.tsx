@@ -16,7 +16,15 @@ export interface BadgeTrophyGridCardProps {
 }
 
 const BASE =
-  'flex flex-col items-center bg-surface rounded-[var(--radius-card)] p-[var(--spacing-12)] overflow-hidden active:scale-95 transition-transform duration-100'
+  'flex flex-col items-center h-full rounded-[var(--radius-card)] p-[var(--spacing-12)] overflow-hidden active:scale-95 transition-transform duration-100'
+
+/** BadgeStageRail.jsx 카드 배경과 동일한 레시피 — 페이지 캔버스(bg-surface)와 같은 색이면
+ * 카드 경계가 안 보인다(인터랙션 리뷰 지적, 티켓 20260903_2329). */
+const CARD_STYLE = {
+  background:
+    'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--color-surface-elevated)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
+}
 
 /**
  * BadgeTrophyGridCard — 배지 트리(/badges/tree) 트로피 그리드(독립 배지) 전용 셀.
@@ -44,7 +52,7 @@ export default function BadgeTrophyGridCard({ name, imageUrl, rarity, href, earn
     .join(' ')
 
   return (
-    <Link href={href} className={BASE}>
+    <Link href={href} className={BASE} style={CARD_STYLE}>
       <div className={thumbnailCls}>
         {imageUrl ? (
           <Image
@@ -58,10 +66,13 @@ export default function BadgeTrophyGridCard({ name, imageUrl, rarity, href, earn
           <MedalIcon className="w-10 h-10 text-text/30" />
         )}
       </div>
-      <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
-        <p className="text-[13px] font-bold text-text text-center w-full leading-tight [overflow-wrap:anywhere]">
-          {name}
-        </p>
+      <p className="text-[13px] font-bold text-text text-center w-full leading-tight pt-[var(--spacing-8)] [overflow-wrap:anywhere]">
+        {name}
+      </p>
+      {/* mt-auto로 카드 하단에 고정 — 이름이 1~2줄을 오가도 같은 행의 칩 위치가
+       * 흔들리지 않는다(인터랙션 리뷰 지적, 티켓 20260903_2329). BASE의 h-full +
+       * 그리드의 기본 align-items:stretch로 카드가 행 높이만큼 늘어나는 것에 의존한다. */}
+      <div className="mt-auto pt-[var(--spacing-4)]">
         <RarityBadge rarity={rarity} />
       </div>
     </Link>
