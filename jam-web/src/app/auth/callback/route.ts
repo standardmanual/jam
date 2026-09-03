@@ -59,7 +59,16 @@ export async function GET(request: NextRequest) {
   // username 존재 여부 확인 → 온보딩 필요 여부 판단
   const needsOnboarding = !existingProfile?.username
 
+  // GA4 sign_up_complete — "구글 로그인 최초 완료" 판정은 upsert 이전에 이미 읽어둔
+  // `existing`(기존 users row 존재 여부)이 기준이다. `needsOnboarding`은 username 미설정
+  // 상태를 재방문 때도 계속 true로 보므로 "최초"를 구분하지 못한다.
+  // 서버 라우트(리다이렉트)에서는 gtag를 직접 호출할 수 없어 온보딩 도착 화면에 플래그만
+  // 넘기고, 실제 전송은 클라이언트(onboarding/page.tsx)가 담당한다.
+  const isNewSignup = existing === null
+
   return NextResponse.redirect(
-    needsOnboarding ? `${origin}/onboarding` : `${origin}/`
+    needsOnboarding
+      ? `${origin}/onboarding${isNewSignup ? '?new_signup=1' : ''}`
+      : `${origin}/`
   )
 }
