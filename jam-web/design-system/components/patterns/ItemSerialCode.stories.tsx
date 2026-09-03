@@ -29,8 +29,10 @@ export const FigmaScale: Story = {
 };
 
 export const Compact: Story = {
-  name: '컴팩트 (리스트 한 줄 맥락 가정)',
-  args: { code: 'ABCD000042', height: 56 },
+  // height 50 — badges/[id] 상세 페이지(설명↔획득이력 사이) 샘플에서 430px 모바일 폭에
+  // 맞춰 실측 검증한 값 (dev-sample/item-badge-serial, 티켓 20260903_1414).
+  name: '컴팩트 (배지 상세 페이지 실측값)',
+  args: { code: 'ABCD000042', height: 50 },
 };
 
 export const FiveDigitPlaceholder: Story = {
