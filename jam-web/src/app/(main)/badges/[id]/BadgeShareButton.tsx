@@ -224,34 +224,29 @@ export default function BadgeShareButton({
   /**
    * "저장" 버튼 — 배지 이미지를 스마트폰 사진 앱(카메라 롤)에 보관하려는 의도.
    *
-   * 플랫폼 제약(리서치 결과, 완료 기록 참고):
+   * 플랫폼 제약(실기기 검증 완료, 티켓 20260903_1122 참고):
    * - iOS: `navigator.share`도 `<a download>`도 사진 앱에 직접 쓰지 못한다. `<a download>`는
-   *   Files 앱 다운로드 폴더에 저장될 뿐이다. "공유" 버튼과 동일한 OS 공유시트를 띄우면 두 버튼의
-   *   결과가 구분되지 않으므로, 대신 이미지를 새 탭에 전체화면으로 열어 길게 눌러 "사진에 추가"할
-   *   수 있게 안내한다(iOS Safari의 표준 이미지 뷰어 동작 — 공유시트와는 확연히 다른 화면 전환).
-   *   결과를 코드에서 확인할 수 없으므로 "저장했어요"라고 단정하지 않고 다음 행동을 안내한다.
+   *   Files 앱 다운로드 폴더에 저장될 뿐이다. 과거에는 "공유" 버튼과 시트가 겹치는 걸 피하려고
+   *   이미지를 새 탭에 여는 방식을 썼으나, 실기기에서 사진 앱 저장으로 이어지지 않았다(투명 PNG를
+   *   브라우저가 흰 배경 위에 그려 흰색 텍스트·로고도 안 보이는 부작용까지 있었다). 사용자가 실기기로
+   *   확인한 유일하게 동작하는 경로는 `navigator.share` → OS 공유시트 → 시트 안의 "저장" 액션이므로,
+   *   "공유" 버튼(`handleAction`)과 동일한 호출을 그대로 재사용한다. 두 버튼이 같은 시트를 띄우는
+   *   것은 웹 플랫폼 제약상 불가피하며, "실제로 저장돼야 한다"는 요구가 우선한다.
    * - Android: `<a download>`로 다운로드 폴더에 저장하면 MediaStore가 스캔해 갤러리/사진 앱에
    *   자동 노출된다. "공유" 버튼(OS 공유시트)과 확연히 다른 동작이라 별도 안내 없이 저장 완료로
    *   알린다.
    * - 데스크톱: 사진 앱 개념이 없어 `<a download>`로 파일을 내려받는 것이 곧 "저장"이다.
    */
   async function handleSave(blob: Blob) {
-    try {
-      if (isIOS()) {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.target = '_blank'
-        a.rel = 'noopener'
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        // 새 탭이 이미지를 다 불러올 시간을 준 뒤 해제한다(너무 빨리 해제하면 새 탭이 빈 화면일 수 있음)
-        window.setTimeout(() => URL.revokeObjectURL(url), 30000)
-        toast(d.badges.shareSaveIOSHint, 'info')
-        return
-      }
+    if (isIOS()) {
+      // 시트가 뜨면 화면 대부분을 시트가 덮으므로, 열리기 직전에 토스트로 어떤 액션을 눌러야
+      // 하는지 안내한다(시트 자체는 handleAction과 완전히 동일한 navigator.share 호출).
+      toast(d.badges.shareSaveIOSHint, 'info')
+      await handleAction(blob)
+      return
+    }
 
+    try {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
