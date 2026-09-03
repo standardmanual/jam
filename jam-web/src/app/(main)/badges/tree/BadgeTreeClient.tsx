@@ -3,13 +3,17 @@
 import { useMemo, useState } from 'react'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
-import BadgeTreeCard from '@/components/badges/BadgeTreeCard'
+import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import BadgeFamilyRailItem from '@/components/badges/BadgeFamilyRailItem'
+import BadgeUnlockSheet, { type BadgeUnlockSheetData } from '@/components/badges/BadgeUnlockSheet'
 import { MedalIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { BadgeTreeSummaryHeader } from '@ds/components/patterns/BadgeTreeSummaryHeader'
+import { RecentSyncBanner } from '@ds/components/patterns/RecentSyncBanner'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
-import { d } from '@/lib/i18n'
-import type { ActivityType } from '@/types/database'
-import type { BadgeActivityTree } from '@/lib/badgeTree'
+import { d, t } from '@/lib/i18n'
+import type { ActivityType, BadgeRarity } from '@/types/database'
+import type { BadgeActivityTree, BadgeFamilyStage } from '@/lib/badgeTree'
 
 /**
  * 탭 바 전용 축약 라벨. `ACTIVITY_TYPE_LABELS`의 "트레일러닝"(5자)이 5탭 균등분할
@@ -22,8 +26,12 @@ const TREE_TAB_LABELS: Partial<Record<ActivityType, string>> = {
 }
 
 /**
- * 배지 트리(/badges/tree) — 종목별 배지를 등급(획득 단계) 순으로 한 줄에 늘어놓는다.
- * 티켓 20260831_2208, 20260901 UI 수정(가족 단위 묶음·단계 라벨·구분선 제거, 등급 우선 정렬).
+ * 배지 트리(/badges/tree) — 계열별 진행 레일. 티켓 20260831_2208, 20260903_2329(1차: 구조 전환).
+ *
+ * 이전(20260901) 버전은 배지를 등급 우선으로 평탄하게 나열했다 — 같은 계열의 Common~Mystic
+ * 4장이 화면 전역에 흩어져 위계·진행 감각이 없었다. 이번 버전은 "요약 → 직전 동기화 →
+ * 계열 레일 → 독립 배지 그리드" 네 단으로 세운다. 진행 수치(현재값/잔여값)는 새 진행
+ * 계산 모듈(computeBadgeProgress)이 필요한 2차 범위라 이번 화면에는 없다.
  *
  * 요구사항 8(횡스크롤 지양): 종목 전환 탭 1줄 외에는 전부 세로로만 쌓는다.
  * 데이터는 `page.tsx`(서버 컴포넌트)가 요청마다 Supabase에서 직접 조회해 넘긴다 —
@@ -33,14 +41,26 @@ export interface BadgeTreeClientProps {
   trees: BadgeActivityTree[]
   /** 이 유저가 획득한 배지 id 집합(page.tsx가 user_activity_badges로 조회) — 티켓 20260831_2250 */
   earnedBadgeIds: string[]
+  /** 게이트가 안 열린 미획득 눈금 중 수치 조건은 이미 채운 배지 id — 티켓 20260903_2329 */
+  conditionMetBadgeIds: string[]
+  /** 최근 24시간 안에 동기화된 활동이 있는지 — RecentSyncBanner(1차: boolean 이벤트만) */
+  hasRecentSync: boolean
 }
 
-export default function BadgeTreeClient({ trees, earnedBadgeIds }: BadgeTreeClientProps) {
+export default function BadgeTreeClient({
+  trees,
+  earnedBadgeIds,
+  conditionMetBadgeIds,
+  hasRecentSync,
+}: BadgeTreeClientProps) {
   const [activeActivity, setActiveActivity] = useState<ActivityType>(
     trees[0]?.activityType ?? 'walking'
   )
+  const [activeStageId, setActiveStageId] = useState<string | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const earnedBadgeIdSet = useMemo(() => new Set(earnedBadgeIds), [earnedBadgeIds])
+  const conditionMetBadgeIdSet = useMemo(() => new Set(conditionMetBadgeIds), [conditionMetBadgeIds])
 
   const tabs: SlidingTabItem<ActivityType>[] = trees.map((tree) => ({
     key: tree.activityType,
@@ -49,6 +69,59 @@ export default function BadgeTreeClient({ trees, earnedBadgeIds }: BadgeTreeClie
   }))
 
   const activeTree = trees.find((tree) => tree.activityType === activeActivity) ?? trees[0]
+
+  // stageId → {familyName, stage} 조회 맵 — 잠금 해제 조건 시트를 열 때 필요한 데이터를 찾는다.
+  const stageIndex = useMemo(() => {
+    const map = new Map<string, { familyName: string; stage: BadgeFamilyStage }>()
+    if (!activeTree) return map
+    for (const family of activeTree.families) {
+      for (const stage of family.stages) {
+        map.set(stage.id, { familyName: family.name, stage })
+      }
+    }
+    return map
+  }, [activeTree])
+
+  // 진행 요약(BadgeTreeSummaryHeader)용 — 현재 탭의 전체 배지(계열 레일 + 독립 배지)를
+  // 등급별로 집계한다. 진행 수치는 필요 없어(예: %, 잔여값) 획득/전체 카운트만 계산한다.
+  const summary = useMemo(() => {
+    const byRarity: Record<BadgeRarity, { earned: number; total: number }> = {
+      common: { earned: 0, total: 0 },
+      rare: { earned: 0, total: 0 },
+      epic: { earned: 0, total: 0 },
+      mystic: { earned: 0, total: 0 },
+    }
+    if (!activeTree) return { earnedCount: 0, totalCount: 0, byRarity }
+
+    const allStages = [...activeTree.families.flatMap((f) => f.stages), ...activeTree.independentBadges]
+    let earnedCount = 0
+    for (const stage of allStages) {
+      byRarity[stage.rarity].total += 1
+      if (earnedBadgeIdSet.has(stage.id)) {
+        byRarity[stage.rarity].earned += 1
+        earnedCount += 1
+      }
+    }
+    return { earnedCount, totalCount: allStages.length, byRarity }
+  }, [activeTree, earnedBadgeIdSet])
+
+  function handleLockClick(stageId: string) {
+    setActiveStageId(stageId)
+    setSheetOpen(true)
+  }
+
+  const activeEntry = activeStageId ? stageIndex.get(activeStageId) : undefined
+  const sheetData: BadgeUnlockSheetData | null = activeEntry
+    ? {
+        badgeName: activeEntry.familyName,
+        rarity: activeEntry.stage.rarity,
+        imageUrl: activeEntry.stage.imageUrl,
+        conditionMet: conditionMetBadgeIdSet.has(activeEntry.stage.id),
+        requirements: activeEntry.stage.locks,
+      }
+    : null
+
+  const trophyEarnedCount = activeTree?.independentBadges.filter((b) => earnedBadgeIdSet.has(b.id)).length ?? 0
 
   return (
     <div className="min-h-full bg-surface text-text">
@@ -86,13 +159,51 @@ export default function BadgeTreeClient({ trees, earnedBadgeIds }: BadgeTreeClie
             />
           </div>
 
-          <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-12)]">
-            {activeTree.cards.map((card) => (
-              <BadgeTreeCard key={card.id} card={card} earnedBadgeIds={earnedBadgeIdSet} />
-            ))}
+          <div className="px-[var(--spacing-16)] pb-[var(--spacing-32)] flex flex-col gap-[var(--spacing-16)]">
+            <BadgeTreeSummaryHeader
+              earnedCount={summary.earnedCount}
+              totalCount={summary.totalCount}
+              byRarity={summary.byRarity}
+            />
+
+            <RecentSyncBanner visible={hasRecentSync} />
+
+            <div className="flex flex-col gap-[var(--spacing-12)]">
+              {activeTree.families.map((family) => (
+                <BadgeFamilyRailItem
+                  key={family.name}
+                  family={family}
+                  earnedBadgeIds={earnedBadgeIdSet}
+                  conditionMetBadgeIds={conditionMetBadgeIdSet}
+                  onLockClick={handleLockClick}
+                />
+              ))}
+            </div>
+
+            {activeTree.independentBadges.length > 0 && (
+              <div className="flex flex-col gap-[var(--spacing-8)]">
+                <p className="text-right text-[length:var(--text-caption)] text-[var(--color-text-secondary)]">
+                  {t(d.badges.treeTrophyCount, { total: activeTree.independentBadges.length, earned: trophyEarnedCount })}
+                </p>
+                <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+                  {activeTree.independentBadges.map((badge) => (
+                    <BadgeGridCard
+                      key={badge.id}
+                      href={`/badges/${badge.id}`}
+                      name={badge.name}
+                      imageUrl={badge.imageUrl}
+                      rarity={badge.rarity}
+                      earned={earnedBadgeIdSet.has(badge.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
+
+      <BadgeUnlockSheet open={sheetOpen} onClose={() => setSheetOpen(false)} data={sheetData} />
     </div>
   )
 }
