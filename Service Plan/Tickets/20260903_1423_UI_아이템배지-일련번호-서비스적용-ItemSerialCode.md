@@ -1,8 +1,9 @@
 ---
 id: 20260903_1423
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-09-03
+closed: 2026-09-03
 ---
 
 # [UI] 아이템 배지 일련번호 표시를 ItemSerialCode로 교체 — 사용자 화면 적용
@@ -138,10 +139,11 @@ jam-web/design-system/components/patterns/ItemSerialCode.stories.tsx (DropSheetS
 `d.inventory.obtainedAt`·`expiresAt`·`expiresNone`은 기존 문구를 그대로 재사용).
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만, main 병합은 사용자 승인 후)
-- 환경: 서비스(L1) 적용 완료. MODULAR(L2)는 이번 티켓에서 변경 없음(티켓 20260903_1356/1414에서
-  이미 완료)
-- 커밋: (아래 브랜치 push 커밋 참조)
+- 배포일: 2026-09-03 (staging 머지). 프로덕션(main) 반영은 `/jam-ship`으로 별도 진행, 사용자
+  명시 승인 전까지 미실시
+- 환경: staging. 서비스(L1) 적용 완료 + MODULAR(L2)의 `ItemSerialCode.jsx` 자간 로직 수정
+  (자간 반전 문제 대응, 위 "추가 수정" 절 참조) — 티켓 20260903_1356/1414 이후 첫 L2 변경
+- 커밋: `afb357a8`(staging 머지 커밋), 리뷰 브랜치 `claude/jamwork-20260903_1423-item-serial-service`
 
 ### 잔여 이슈
 - `d.inventory.serialNumber`(`'일련번호'` 라벨) i18n 키가 이번 변경으로 서비스 코드 전체에서
