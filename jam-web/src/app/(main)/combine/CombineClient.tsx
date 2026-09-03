@@ -10,6 +10,7 @@ import { MedalIcon, PackageIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
+import { trackEvent } from '@/lib/analytics/gtag'
 import type { BadgeRow, CombinationRecipeRow, InventoryItemRow } from '@/types/database'
 
 interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> {
@@ -80,6 +81,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
     }
     setLoading(true)
     setResult(null)
+    trackEvent('combine_attempt', { item_count: selected.length })
 
     try {
       const res = await fetch('/api/combine', {
@@ -90,7 +92,12 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
       const data = await res.json()
 
       if (data.success) {
-        const names = (data.resultBadges ?? []).map((b: { name: string }) => b.name)
+        const resultBadges = (data.resultBadges ?? []) as { id: string; name: string }[]
+        trackEvent('combine_success', {
+          item_count: selected.length,
+          result_badge_ids: resultBadges.map((b) => b.id).join(','),
+        })
+        const names = resultBadges.map((b) => b.name)
         setResult({ success: true, names })
         setSelected([])
         router.refresh()

@@ -18,7 +18,7 @@
  * `buildEarnedBadgePayload()` 한 곳에서만 처리한다.
  *
  * 응답:
- *   200 { earnedBadges: EarnedBadgeSummary[], earnedBadgesMore: number }
+ *   200 { earnedBadges: EarnedBadgeSummary[], earnedBadgesMore: number, isFirstBadgeEver: boolean }
  *   401 { error: '인증이 필요합니다.' }
  */
 import { NextResponse } from 'next/server'
@@ -89,7 +89,7 @@ export async function GET() {
     if (typeof id === 'string') badgeIds.push(id)
   }
 
-  // 중복 제거·소프트 삭제 제외·상한 적용은 buildEarnedBadgePayload가 담당한다.
-  const payload = await buildEarnedBadgePayload(service, badgeIds)
+  // 중복 제거·소프트 삭제 제외·상한 적용·isFirstBadgeEver 판정은 buildEarnedBadgePayload가 담당한다.
+  const payload = await buildEarnedBadgePayload(service, badgeIds, user.id)
   return NextResponse.json(payload)
 }

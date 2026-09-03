@@ -17,6 +17,7 @@ import { RARITY_LABEL } from '@/lib/rarity'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
+import { trackEvent } from '@/lib/analytics/gtag'
 import { formatMissionProgress } from '@/lib/missions/format'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 
@@ -149,6 +150,7 @@ export default function MissionDetailClient({
       setParticipating(true)
       setConfirming(false)
       toast(d.missions.joinSuccess, 'success')
+      trackEvent('mission_join', { mission_id: mission.id })
       router.refresh()
     } catch {
       toast(d.missions.joinNetworkError, 'error')
