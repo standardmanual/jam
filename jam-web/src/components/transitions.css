@@ -557,3 +557,12 @@
   transform: translateY(0);
   transition: transform var(--reel-dur) var(--reel-ease);
 }
+
+/* 드래그 선택 차단(20260903_1611, 개선 리뷰 반영) — aria-hidden(스크린리더)만으로는 텍스트
+   드래그 선택/복사까지는 막지 못한다. .t-reel 안의 릴 셀은 스핀 애니메이션을 위해 0-9 전체가
+   동시에 DOM에 존재하는 시각 전용 레이어이므로, 사용자가 일련번호를 드래그 복사할 때 이 뒤섞인
+   텍스트가 함께 선택되지 않도록 select 자체를 막는다. 실제 값은 형제 노드인 sr-only span에
+   있고 그건 일반 텍스트라 평소처럼 선택·복사된다. */
+.t-reel {
+  user-select: none;
+}
