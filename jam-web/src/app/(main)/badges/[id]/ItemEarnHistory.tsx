@@ -18,10 +18,6 @@ function ItemCardContent({ entry }: { entry: ItemEarnEntry }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center">
-        <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.serialNumber}</span>
-        <span className="text-[14px] text-text font-mono tracking-widest">{entry.serial}</span>
-      </div>
-      <div className="flex justify-between items-center">
         <span className="text-[14px] text-[var(--color-text-secondary)]">{d.inventory.obtainedAt}</span>
         <span className="text-[14px] text-text">
           <LocalDate iso={entry.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
@@ -58,15 +54,16 @@ export default function ItemEarnHistory({ items }: { items: ItemEarnEntry[] }) {
         <ItemCardContent entry={first} />
       </div>
 
-      {/* 2번째부터 — ListRowCard */}
+      {/* 2번째부터 — ListRowCard. 대표 serial은 위 ItemSerialCode가 이미 보여주므로,
+          이 줄은 개체 구분용으로 획득일을 보여준다(PoiEarnHistory의 같은 자리 관례 재사용). */}
       {rest.map((entry, i) => (
         <ListRowCard
           key={entry.id}
           onClick={() => setOpenIdx(i + 1)}
           trailing={<ChevronRightIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />}
         >
-          <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text font-mono tracking-widest">
-            {entry.serial}
+          <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text">
+            <LocalDate iso={entry.obtained_at} options={{ year: 'numeric', month: '2-digit', day: '2-digit' }} />
           </p>
         </ListRowCard>
       ))}
