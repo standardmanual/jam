@@ -370,6 +370,35 @@
   .t-skel-skeleton.is-pulsing > * { animation: none !important; }
 }
 
+/* ───────────────────────────────────────────────────────────────
+ * Spinning counter — reference/transitions-dev/xx-spinning-counter.md
+ * 사용처: ItemSerialCode 숫자 릴 (design-system/components/patterns, 티켓 20260903_1611)
+ * ─────────────────────────────────────────────────────────────── */
+/*
+  Usage:
+    <div class="t-reel"></div>  <!-- reels built in JS -->
+
+  Build one .t-reel-col per digit, each clipping a strip
+  (.t-reel-strip) of 0-9 cells; translate the strip up by
+  (spins*10 + digit) cells to spin then land. A directional
+  (vertical-only) SVG feGaussianBlur stdDeviation="0 Y" gives
+  the motion streak (CSS blur() would smear sideways); decay it
+  to 0 per column as each reel settles.
+*/
+
+.t-reel { display: inline-flex; align-items: center; height: var(--reel-cell); font-variant-numeric: tabular-nums; }
+.t-reel-col {
+  position: relative; height: var(--reel-cell); overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
+}
+.t-reel-strip { display: flex; flex-direction: column; will-change: transform, filter; }
+.t-reel-digit { height: var(--reel-cell); display: flex; align-items: center; justify-content: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .t-reel-strip { transition: none !important; filter: none !important; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * 프로젝트 확장
  *
@@ -516,4 +545,15 @@
 }
 .t-skel.jam-skel-flow:not(.is-revealed) {
   min-height: var(--jam-skel-min-h, 240px);
+}
+
+/* Spinning counter — 릴 스트립 전환 배선(20260903_1611). 원본 스니펫(위 .t-reel-strip)은
+   구조·마스크만 정의하고 실제 트랜지션은 사용법 주석의 "reels built in JS"에 맡겨져 있다.
+   착지는 strip의 transform 한 번의 전이로 구현하고, 자리별 stagger는 JS가 컬럼마다 인라인
+   transition-delay를 부여한다(ItemSerialCode.jsx ReelColumn). --reel-cell은 인스턴스마다
+   height prop이 연속적으로 달라지는 자리 폭이라 고정 크기 변형 대신 JS가 인라인 커스텀
+   프로퍼티로 직접 덮어쓴다(SlidingTabs pill의 offsetLeft/offsetWidth 인라인 패턴과 동일). */
+.t-reel-strip {
+  transform: translateY(0);
+  transition: transform var(--reel-dur) var(--reel-ease);
 }
