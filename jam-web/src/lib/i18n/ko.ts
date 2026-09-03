@@ -344,12 +344,12 @@ export const ko = {
     sortCheckinLatest: '최신순',
     sortCheckinName: '이름순',
 
-    // 배지 트리 (/badges/tree) — 티켓 20260831_2208
+    // 배지 트리 (/badges/tree) — 티켓 20260831_2208, 20260903_2329(계열 진행 레일 1차)
     treeButton: '배지 트리',
-    treeLockBadgeHint: '{name} 배지를 획득하면 열려요',
-    // 선행 배지를 이미 보유한 경우 — 20260901 UI 수정
-    treeLockBadgeFulfilled: '{name} 배지 획득 완료',
-    treeLockMissionHint: "'{name}' 미션을 완료하면 열려요",
+    // 독립 배지(D01~D11 + 트로피 매트릭스) 그리드 상단 카운트 라벨. 마침표 없음(레이블).
+    treeTrophyCount: '{total}개 중 {earned}개 획득',
+    // 잠금 해제 조건 시트 — 미션 게이트일 때만 붙는 하단 CTA (§5.1 예측 가능한 행동 동사)
+    treeUnlockMissionCta: '미션 하러 가기',
   },
 
   /** 인벤토리 목록/상세 */

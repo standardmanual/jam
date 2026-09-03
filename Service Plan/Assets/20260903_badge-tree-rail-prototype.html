@@ -1,0 +1,2595 @@
+<title>배지 스테이지 레일</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+
+<style>
+/* ─────────────────────────────────────────────────────────────
+   문서 팔레트 — 따뜻한 중성 그레이(JAM! 레드오렌지 쪽으로 미세하게 편향)
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --paper:#f0eeeb;
+  --card:#ffffff;
+  --card-2:#f7f5f3;
+  --ink:#1a1512;
+  --ink-2:#6c645d;
+  --ink-3:#918982;
+  --rule:#dbd6d0;
+  --rule-2:#e8e4df;
+  --accent:#c23a1b;
+  --accent-ink:#ffffff;
+  --accent-soft:#f7e5df;
+  --ok:#1c6b46;
+  --ok-soft:#e0f0e7;
+  --warn:#8a5a00;
+  --warn-soft:#f8ecd4;
+  --bad:#a02a12;
+  --bad-soft:#f7e2dd;
+
+  --sans:"IBM Plex Sans KR","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  --measure:66ch;
+  --pad:clamp(20px,5vw,56px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131110;
+    --card:#1c1917;
+    --card-2:#211d1b;
+    --ink:#efeae5;
+    --ink-2:#a49b93;
+    --ink-3:#7d746c;
+    --rule:#2e2926;
+    --rule-2:#262220;
+    --accent:#ff6f49;
+    --accent-ink:#1a0d08;
+    --accent-soft:#2b1610;
+    --ok:#5fd39b;
+    --ok-soft:#12271d;
+    --warn:#f0b64a;
+    --warn-soft:#2a2010;
+    --bad:#ff8464;
+    --bad-soft:#2c1512;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131110;
+  --card:#1c1917;
+  --card-2:#211d1b;
+  --ink:#efeae5;
+  --ink-2:#a49b93;
+  --ink-3:#7d746c;
+  --rule:#2e2926;
+  --rule-2:#262220;
+  --accent:#ff6f49;
+  --accent-ink:#1a0d08;
+  --accent-soft:#2b1610;
+  --ok:#5fd39b;
+  --ok-soft:#12271d;
+  --warn:#f0b64a;
+  --warn-soft:#2a2010;
+  --bad:#ff8464;
+  --bad-soft:#2c1512;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 var(--pad) 96px}
+
+/* ── 표지 ───────────────────────────────────────────────── */
+.masthead{padding:clamp(48px,9vw,104px) 0 clamp(32px,5vw,52px)}
+.eyebrow{
+  font-family:var(--mono);font-size:11.5px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.eyebrow::before{content:"";width:26px;height:2px;background:var(--accent);flex:none}
+h1{
+  font-size:clamp(38px,7.2vw,68px);line-height:1.02;letter-spacing:-.035em;
+  font-weight:700;margin:.36em 0 0;text-wrap:balance;max-width:15ch;
+}
+.dek{
+  margin:22px 0 0;max-width:var(--measure);
+  font-size:clamp(16px,2vw,18.5px);line-height:1.62;color:var(--ink-2);font-weight:300;
+}
+.dek strong{color:var(--ink);font-weight:600}
+.meta{
+  margin-top:34px;padding-top:18px;border-top:1px solid var(--rule);
+  display:flex;flex-wrap:wrap;gap:8px 30px;
+  font-family:var(--mono);font-size:11.5px;color:var(--ink-3);letter-spacing:.02em;
+}
+.meta b{color:var(--ink-2);font-weight:500}
+
+/* ── 섹션 ───────────────────────────────────────────────── */
+section{padding-top:clamp(44px,6vw,76px)}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:22px}
+.sec-num{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);
+  letter-spacing:.06em;flex:none;position:relative;top:-2px;
+}
+h2{
+  font-size:clamp(23px,3.4vw,31px);line-height:1.22;letter-spacing:-.024em;
+  font-weight:600;margin:0;text-wrap:balance;
+}
+.sec-head .fill-rule{flex:1;height:1px;background:var(--rule);min-width:20px}
+h3{
+  font-size:16.5px;line-height:1.4;letter-spacing:-.012em;font-weight:600;
+  margin:38px 0 12px;
+}
+h4{
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--ink-3);margin:0 0 10px;
+}
+p{margin:0 0 15px;max-width:var(--measure)}
+p:last-child{margin-bottom:0}
+.lede{font-size:17px;line-height:1.62;color:var(--ink-2);font-weight:300;max-width:var(--measure)}
+.lede strong{color:var(--ink);font-weight:600}
+a{color:var(--accent)}
+code,.m{font-family:var(--mono);font-size:.86em;letter-spacing:-.01em}
+code{background:var(--card-2);border:1px solid var(--rule-2);border-radius:4px;padding:1px 5px;white-space:nowrap}
+strong{font-weight:600}
+ul{margin:0 0 15px;padding-inline-start:1.15em;max-width:var(--measure)}
+li{margin-bottom:7px}
+li::marker{color:var(--ink-3)}
+
+/* ── 표 ─────────────────────────────────────────────────── */
+.tw{overflow-x:auto;margin:0 0 8px;border:1px solid var(--rule);border-radius:10px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:13.5px;line-height:1.5}
+th,td{text-align:start;padding:11px 14px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+thead th{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3);background:var(--card-2);
+  border-bottom:1px solid var(--rule);white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:none}
+td.num,th.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{
+  display:inline-block;font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.06em;padding:2px 7px;border-radius:4px;white-space:nowrap;
+}
+.tag.no{background:var(--bad-soft);color:var(--bad)}
+.tag.part{background:var(--warn-soft);color:var(--warn)}
+.tag.yes{background:var(--ok-soft);color:var(--ok)}
+.tag.hi{background:var(--bad-soft);color:var(--bad)}
+.tag.mid{background:var(--warn-soft);color:var(--warn)}
+.tag.low{background:var(--card-2);color:var(--ink-2);border:1px solid var(--rule)}
+.cap{font-size:12.5px;line-height:1.55;color:var(--ink-3);margin:10px 0 0;max-width:var(--measure)}
+.cap .m{color:var(--ink-2)}
+
+/* ── 노트 박스 ──────────────────────────────────────────── */
+.note{
+  border:1px solid var(--rule);border-inline-start:3px solid var(--accent);
+  background:var(--card);border-radius:0 10px 10px 0;
+  padding:18px 20px;margin:24px 0;max-width:var(--measure);
+}
+.note h4{margin-bottom:8px;color:var(--accent)}
+.note p{font-size:14px;margin-bottom:10px}
+.note p:last-child{margin-bottom:0}
+
+/* ── 목업 레이아웃 ──────────────────────────────────────── */
+.showcase{
+  display:grid;gap:clamp(24px,4vw,44px);align-items:start;margin-top:28px;
+  grid-template-columns:1fr;
+}
+@media (min-width:900px){
+  .showcase{grid-template-columns:375px minmax(0,1fr)}
+  .showcase.rev{grid-template-columns:minmax(0,1fr) 375px}
+  .showcase.rev .phone-col{order:2}
+}
+.phone-col{
+  display:flex;justify-content:center;
+  min-width:0;max-width:100%;overflow-x:auto;
+  padding-block:8px;                 /* 목업 그림자가 잘리지 않게 */
+  scrollbar-width:thin;
+}
+.notes-col{min-width:0}
+.notes-col > :first-child{margin-top:0}
+/* 그리드 아이템 기본 min-width:auto가 좁은 화면에서 본문을 밀지 않도록 */
+.showcase > *{min-width:0}
+.ann{
+  display:grid;grid-template-columns:auto 1fr;gap:4px 12px;
+  margin:0 0 20px;max-width:var(--measure);
+}
+.ann dt{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.05em;
+  color:var(--accent-ink);background:var(--accent);
+  width:20px;height:20px;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  margin-top:3px;
+}
+.ann dd{margin:0 0 12px;font-size:14px;line-height:1.6}
+.ann dd b{font-weight:600}
+.ann dd small{display:block;color:var(--ink-3);font-size:12.5px;line-height:1.5;margin-top:2px}
+
+/* ═══════════════════════════════════════════════════════════
+   JAM! 앱 목업 — 서비스는 다크 전용(color-scheme:dark)이라
+   문서 테마와 무관하게 고정 팔레트를 쓴다.
+
+   타입 스케일은 design-system/tokens/typography.css의 단계만 쓴다 —
+   11 micro / 12 caption / 14 small / 16 body / 20 body-l / 24 h4.
+   반픽셀·중간 크기 없음. 예외는 RarityBadge의 8px 하나로,
+   이건 DS가 literal px로 고정한 값이다(RarityBadge.jsx v3 주석).
+   간격은 spacing.css의 4·8·12·16·24·32만 쓴다.
+   ═══════════════════════════════════════════════════════════ */
+.app{
+  --j-bg:#000000;
+  --j-surface:#1a1a1a;
+  --j-elev:#1f1f1f;
+  --j-text:#ffffff;
+  --j-text2:#b2b2b2;
+  --j-text3:#929292;   /* 3.73:1 → 4.80:1 (카드 #272727 기준) */
+  --j-primary:#e8461f;
+  --j-common:#6b6b6b;
+  --j-rare:#00cc7a;
+  --j-epic:#f5a300;
+  --j-mystic:#ff2d87;
+  --j-line:rgba(255,255,255,.13);
+  --j-ring:rgba(255,255,255,.40);   /* 카드 배경 대비 2.23:1 → 3.89:1 (WCAG 1.4.11) */
+
+  --t-micro:11px;   /* --text-micro */
+  --t-cap:12px;     /* --text-caption */
+  --t-sm:14px;      /* --text-small */
+  --t-body:16px;    /* --text-body */
+  --t-lg:20px;      /* --text-body-l */
+  --t-h4:24px;      /* --text-h4 */
+  /* ─────────────────────────────────────────────────────────
+     프리미티브 — 값에 이름을 붙인 층. 컴포넌트는 절대 이걸 쓰지 않는다.
+     세 램프 모두 OKLCH에서 색상각을 끝까지 고정하고, 밝기는 고르게,
+     채도는 가운데가 가장 높고 양끝으로 떨어지게 만들었다.
+     색상각은 등급 팔레트(고정값)와 겹치지 않도록 골랐다 —
+     Epic 73° · Rare 156° 사이에서 부족 95° / 완성 119°로 각각 22°·37° 떨어진다.
+     ───────────────────────────────────────────────────────── */
+  --yellow-700:#c2a200;   /* L .72 C .148 H 95 */
+  --yellow-500:#f2cb00;   /* L .85 C .175 H 95 */
+  --yellow-200:#feefb5;   /* L .95 C .076 H 95 */
+  --lime-700:#a4bc03;     /* L .75 C .175 H 119 */
+  --lime-500:#d6f24a;     /* L .91 C .188 H 119 — DS --color-base-lime 실값 */
+  --lime-200:#ecfabd;     /* L .96 C .080 H 119 */
+  --cyan-700:#1caac4;     /* L .68 C .115 H 214 */
+  --cyan-500:#36d3f1;     /* L .80 C .130 H 214 */
+  --cyan-200:#bff2ff;     /* L .93 C .055 H 214 */
+
+  /* ─────────────────────────────────────────────────────────
+     시맨틱 — 역할에 이름을 붙인 층. 컴포넌트는 이 층만 참조한다.
+     이 대시보드가 유저에게 시켜야 하는 판단은 셋뿐이다:
+       모자란 것 / 다 채운 것 / 방금 들어온 것.
+     그래서 의미색도 셋이고, 나머지는 전부 중성이다.
+     등급은 이 축에 속하지 않으므로 등급칩에서만 색을 쓴다.
+     ───────────────────────────────────────────────────────── */
+  --status-short-solid:var(--yellow-500);   /* 모자란 것 — 채우는 중인 막대·링·점 */
+  --status-short-text:var(--yellow-500);    /* 모자란 것 — 남은 값 숫자·라벨 */
+  --status-short-from:var(--yellow-700);
+  --status-short-to:var(--yellow-200);
+  --status-short-soft:rgba(242,203,0,.16);
+
+  --status-done-solid:var(--lime-500);      /* 다 채운 것 — 지나온 구간·획득 체크·충족 축 */
+  --status-done-text:var(--lime-500);
+  --status-done-from:var(--lime-700);
+  --status-done-to:var(--lime-200);
+
+  --status-latest-solid:var(--cyan-500);    /* 방금 들어온 것 — 직전 동기화 하나뿐 */
+  --status-latest-text:var(--cyan-500);
+  --status-latest-soft:rgba(54,211,241,.18);
+
+  --status-idle-track:rgba(255,255,255,.11);/* 아직 손대지 않은 자리 — 의미색을 주지 않는다 */
+
+  --grad-short:linear-gradient(90deg, var(--status-short-from) 0%, var(--status-short-solid) 42%, var(--status-short-to) 100%);
+  --grad-done:linear-gradient(90deg, var(--status-done-from) 0%, var(--status-done-solid) 42%, var(--status-done-to) 100%);
+
+  --t-hero:28px;    /* --text-h3. 40px(--text-bold-lg)에서 한 단계 내렸다 —
+                       한 요소만 크게 하는 것으로 충분하고, 그 이상은 화면이 소리친다.
+                       굵기는 700 — h3의 500은 숫자에 약하고 900은 과하다 */
+
+  width:375px;flex:none;   /* 좁은 화면에서도 375px 유지 — .phone-col이 대신 스크롤한다 */
+  background:var(--j-surface);color:var(--j-text);
+  font-family:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo",var(--sans);
+  border-radius:26px;overflow:hidden;
+  border:1px solid var(--rule);
+  box-shadow:0 18px 44px -22px rgba(0,0,0,.5);
+  font-size:var(--t-sm);line-height:1.5;
+}
+.app *{box-sizing:border-box}
+.app .pad{padding-inline:16px}          /* --spacing-16 레이아웃 마진 */
+
+/* 상단 바 */
+.app .topnav{
+  height:48px;display:flex;align-items:center;gap:8px;padding-inline:12px;
+  font-size:var(--t-body);color:var(--j-text);
+}
+.app .topnav .back{color:var(--j-text2);line-height:1}
+.app .topnav .back .ic{width:22px;height:22px}
+.app .recent .chev .ic{width:18px;height:18px}
+.app .ic.inl{display:inline-block;vertical-align:-.14em;width:1em;height:1em}
+:is(.app,.swatch) .bdg .mk .ic{width:11px;height:11px}
+.app .lnk .gt .ic{width:11px;height:11px}
+.app .chip > .ic{width:14px;height:14px}
+.app h1.screen{font-size:var(--t-h4);line-height:1.3;letter-spacing:-.02em;font-weight:600;margin:8px 0 0}
+
+/* 탭 */
+.app .tabs{
+  display:flex;background:rgba(255,255,255,.07);border-radius:9999px;padding:4px;margin-top:16px;
+}
+.app .tabs span{
+  flex:1;text-align:center;font-size:var(--t-cap);line-height:1;padding:10px 2px;border-radius:9999px;
+  color:var(--j-text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.app .tabs span.on{background:var(--j-text);color:#000;font-weight:600}
+
+/* ── 배지 썸네일 — 목업 전체가 공유하는 단 하나의 배지 표현 ──
+   이미지가 상태를 함께 나른다: 등급 링(획득) / 흑백+점선(잠김) /
+   프라이머리 링+후광(다음 목표) + 우상단 글리프. 색 단독 부호화 아님. */
+:is(.app,.swatch) .bdg{
+  width:44px;height:44px;flex:none;   /* = --touch-target-min */
+  border-radius:8px;                  /* --radius-sm */
+  background:var(--j-surface);position:relative;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;line-height:1;
+  box-shadow:inset 0 0 0 1px var(--j-line);   /* 상태 모디파이어가 덮어쓴다 */
+}
+/* ── 배지 이미지의 색 규칙 (예외 없음) ──────────────────────
+   미획득 = 그레이스케일 이미지
+   획득   = 본래의 컬러 이미지
+   상태(다음 목표·조건 충족·잠김·미도달)는 이 규칙을 바꾸지 않는다.
+   전부 "아직 못 받은" 상태이므로 넷 다 그레이이고, 서로의 구분은
+   링 색·자물쇠·밝기가 맡는다. 필터는 이미지에만 건다 —
+   .bdg에 걸면 등급 링과 후광(box-shadow)까지 함께 회색이 된다. */
+:is(.app,.swatch) .bdg .img{font-style:normal;line-height:1;filter:grayscale(1)}
+:is(.app,.swatch) .bdg.earned .img{filter:none}
+
+:is(.app,.swatch) .bdg.earned{box-shadow:inset 0 0 0 2px var(--status-done-solid)}
+:is(.app,.swatch) .bdg.ready{box-shadow:inset 0 0 0 2px var(--status-done-solid)}
+/* opacity로 다이밍하지 않는다 — 자식인 잠금 마커(.mk.lk)의 테두리까지 함께
+   흐려져 대비가 무너진다(실측 3.83:1 → 2.07:1). 다이밍은 이미지의
+   grayscale 필터가 이미 맡고 있다 */
+:is(.app,.swatch) .bdg.locked{box-shadow:inset 0 0 0 1px var(--j-ring)}
+:is(.app,.swatch) .bdg.next{
+  width:52px;height:52px;font-size:26px;border-radius:12px;
+  box-shadow:inset 0 0 0 2px var(--status-short-solid),0 0 0 5px rgba(255,184,0,.16);
+}
+:is(.app,.swatch) .bdg.lg{width:56px;height:56px;font-size:28px;border-radius:12px}
+/* 상태 글리프 — 이미지 우상단 */
+:is(.app,.swatch) .bdg .mk{
+  position:absolute;inset-block-start:-4px;inset-inline-end:-4px;
+  width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;line-height:1;font-weight:700;
+  border:2px solid var(--j-elev);filter:none;
+}
+:is(.app,.swatch) .bdg .mk.ok{background:var(--status-done-solid);color:#000}
+:is(.app,.swatch) .bdg .mk.lk{background:#2c2c2c;color:var(--j-text2);box-shadow:inset 0 0 0 1px var(--j-ring)}
+
+/* 진행 요약 */
+.app .summary{
+  margin-top:16px;padding:16px;background:var(--j-elev);border-radius:16px;
+}
+.app .summary .hd{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.app .summary{
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%),
+    var(--j-elev);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.app .summary .big{
+  font-size:var(--t-hero);font-weight:700;letter-spacing:-.28px;line-height:1.2;
+  font-variant-numeric:tabular-nums;
+}
+.app .summary .big em{font-style:normal;font-size:var(--t-sm);font-weight:500;letter-spacing:0;color:var(--j-text2)}
+.app .summary .sub{font-size:var(--t-cap);color:var(--j-text2)}
+.app .dist{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+.app .dist .d{min-width:0}
+.app .dist .d .bar{height:6px;border-radius:3px;background:var(--status-idle-track);overflow:hidden}
+.app .dist .d .bar b{
+  display:block;height:100%;border-radius:3px;background:var(--status-done-solid);
+}
+.app .dist .d .k{margin-top:8px;font-size:var(--t-micro);color:var(--j-text2);line-height:1}
+.app .dist .d .v{
+  margin-top:4px;font-size:var(--t-cap);font-weight:600;line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+
+/* 직전 활동 배너 */
+/* 직전 활동 배너도 바탕은 무채색 글래스. 구분은 색면이 아니라
+   앰버 헤어라인 + 앰버 점 하나로 준다 — 진행을 가리키므로 진행 채널 색이다 */
+.app .recent{
+  margin-top:12px;padding:12px 16px;border-radius:16px;
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.085) 0%, rgba(255,255,255,.02) 58%),
+    var(--j-elev);
+  box-shadow:inset 0 0 0 1px rgba(58,210,240,.34), inset 0 1px 0 rgba(255,255,255,.06);
+  display:flex;align-items:center;gap:12px;
+}
+.app .recent .dot{
+  width:8px;height:8px;border-radius:50%;background:var(--status-latest-solid);flex:none;
+  box-shadow:0 0 0 4px var(--status-latest-soft);
+}
+/* 동기화 값 인라인 표기 — 배너 밖에서도 같은 색으로 되돌아온다 */
+.app .sync{color:var(--status-latest-text);font-weight:600;font-variant-numeric:tabular-nums}
+.app .recent .txt{flex:1;min-width:0}
+.app .recent .t1{font-size:var(--t-sm);font-weight:600;line-height:1.35}
+.app .recent .t2{font-size:var(--t-cap);color:var(--status-latest-text);line-height:1.35;margin-top:2px}
+.app .recent .chev{color:var(--j-text2);flex:none;line-height:1}
+
+/* 섹션 제목 */
+.app .sect{
+  display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  margin:32px 0 12px;                 /* --spacing-32 섹션 간격 */
+}
+.app .sect h2{font-size:var(--t-body);font-weight:600;letter-spacing:-.01em;margin:0}
+.app .sect .more{font-size:var(--t-cap);color:var(--j-text2)}
+
+/* 다음 목표 카드 — 이미지 / 이름 / 조건값 / 상태값 네 슬롯 */
+.app .goal{
+  display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;
+  background:var(--j-elev);margin-bottom:8px;
+}
+.app .goal .g-body{flex:1;min-width:0}
+.app .goal .g-r1{display:flex;align-items:center;gap:8px}
+.app .goal .g-name{
+  font-size:var(--t-body);font-weight:600;line-height:1.3;letter-spacing:-.01em;
+  min-width:0;overflow-wrap:anywhere;
+}
+.app .goal .g-r2{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:4px}
+.app .goal .g-cond{font-size:var(--t-cap);color:var(--j-text2);font-variant-numeric:tabular-nums}
+.app .goal .g-left{
+  flex:none;font-size:var(--t-sm);font-weight:600;color:var(--status-short-solid);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.app .goal .g-left{font-size:var(--t-body);font-weight:700;letter-spacing:-.01em}
+.app .goal .bar{height:6px;border-radius:3px;background:var(--status-idle-track);margin-top:8px;overflow:hidden}
+.app .goal .bar b{display:block;height:100%;border-radius:3px;background:var(--grad-short)}
+/* 수치 조건은 채웠고 게이트(미션)만 남은 후보 — 남은 값이 아니라 완성 상태를 보여준다.
+   등급 링 대신 lg .ready 상태(라임 링 + 잠금 마커)를 그대로 재사용한다(§04와 같은 규칙). */
+.app .goal.gate .g-left{color:var(--status-done-text)}
+.app .goal.gate .bar b{background:var(--grad-done)}
+
+/* 등급 pill — DS RarityBadge 실값(8px literal). common은 서비스에서 null이지만
+   레일에서는 등급 축이 곧 위계라 목업에서만 표기한다(§01 MEDIUM의 수정안). */
+.app .pill{
+  display:inline-flex;align-items:center;padding:4px 9px;border-radius:9999px;
+  font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  line-height:1;flex:none;
+}
+.app .pill.common{background:var(--j-common);color:#fff}
+.app .pill.rare{background:var(--j-rare);color:#000}
+.app .pill.epic{background:var(--j-epic);color:#000}
+.app .pill.mystic{background:var(--j-mystic);color:#fff}
+
+/* ── 스테이지 레일 카드 ─────────────────────────────────── */
+/* 카드 바탕 — 무채색 글래스. 위에서 들어오는 빛 한 겹(160deg)과
+   상단 1px 하이라이트만으로 유리 느낌을 낸다. 색은 넣지 않는다 —
+   등급은 pill·링·라벨이 이미 말하고, 카드까지 색을 쓰면 채널이 겹친다. */
+.app .glass,
+.app .track{
+  position:relative;border-radius:16px;padding:16px;margin-bottom:12px;
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%),
+    var(--j-elev);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.app .t-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+/* 등급칩이 이름 앞에 오는 헤더 — 두 요소를 왼쪽에 붙여 하나의 덩어리로 읽히게 한다 */
+.app .t-head > .pill:first-child{margin-inline-end:-4px}
+.app .t-head.lead{justify-content:flex-start}
+.app .t-name{
+  font-size:var(--t-body);font-weight:600;line-height:1.3;letter-spacing:-.01em;
+  overflow-wrap:anywhere;
+}
+.app .t-kind{margin-top:4px;font-size:var(--t-cap);color:var(--j-text2)}
+/* 카드 우상단 조용한 라벨 — 그라데이션 틴트가 무슨 등급인지 글자로 확인해 준다 */
+.app .t-goal{
+  flex:none;font-size:var(--t-cap);font-weight:600;letter-spacing:.02em;
+  color:var(--j-text2);white-space:nowrap;
+}
+/* "다음 Epic"의 등급은 글자가 이미 말한다 — 색까지 등급으로 칠하면
+   등급 팔레트가 칩 밖으로 새어 나가 상태색과 뒤섞인다 */
+
+/* 히어로 수치 — 카드에서 가장 먼저 읽히는 하나 */
+.app .t-now{
+  margin-top:12px;display:flex;align-items:baseline;gap:6px;
+  font-size:var(--t-hero);font-weight:700;line-height:1.2;letter-spacing:-.28px;
+  font-variant-numeric:tabular-nums;
+}
+.app .t-now .u{
+  font-size:var(--t-sm);font-weight:500;letter-spacing:0;
+  color:var(--j-text2);white-space:nowrap;
+}
+.app .t-now .pre{
+  font-size:var(--t-cap);font-weight:500;letter-spacing:0;color:var(--j-text2);
+  align-self:center;
+}
+
+/* 레일 — 눈금이 곧 배지 이미지다 */
+.app .rail{display:flex;align-items:flex-start;margin-top:16px}
+.app .stop{
+  flex:none;display:flex;flex-direction:column;align-items:center;gap:8px;
+  min-width:48px;text-align:center;
+}
+.app .stop .box{height:68px;display:flex;align-items:center}
+
+/* 진행 아크 — 호가 채워진 만큼이 그 배지까지의 진행률이다.
+   **한 배지에 진행 표현은 하나만 둔다.** 아크와 막대가 같은 배지에 함께 나오면
+   같은 숫자를 두 번 그리면서 어느 쪽을 봐야 할지 흐려진다. 그래서 아크는
+   막대가 없는 곳 — 펼친 티어 목록 — 에서만 쓰고, 레일·목표 카드·2축 카드처럼
+   막대나 게이지가 이미 있는 곳에서는 쓰지 않는다. */
+:is(.app,.swatch) .ring{
+  position:relative;display:flex;padding:4px;border-radius:19px;
+  background:conic-gradient(from 0deg,
+    var(--status-short-from) 0%,
+    var(--status-short-solid) calc(var(--p,0)*0.45%),
+    var(--status-short-to) calc(var(--p,0)*1%),
+    rgba(255,255,255,.18) 0);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite:exclude;
+}
+:is(.app,.swatch) .ringwrap{position:relative;display:flex;align-items:center;justify-content:center}
+:is(.app,.swatch) .ringwrap > .ring{position:absolute;inset:-7px}
+/* 아크가 곧 링이다 — .next의 정적 링·후광을 겹치면 호가 통짜 테두리로 뭉갠다 */
+:is(.app,.swatch) .ringwrap .bdg.next{box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
+.app .stop .cd{
+  font-size:var(--t-cap);font-weight:600;line-height:1;color:var(--j-text);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.app .stop .stt{font-size:var(--t-micro);line-height:1;color:var(--j-text3);white-space:nowrap}
+.app .stop.done .stt{color:var(--status-done-solid)}
+.app .stop.on .cd{color:var(--status-short-solid)}
+.app .stop.on .stt{color:var(--status-short-solid);font-weight:600}
+.app .stop.gated .stt{color:var(--status-done-text)}
+.app .lnk{
+  flex:1;min-width:14px;height:6px;margin-top:31px;   /* 68px 썸네일 박스 중심선 */
+  border-radius:3px;background:var(--status-idle-track);position:relative;overflow:visible;
+}
+.app .lnk.gate{min-width:36px}   /* 20px 자물쇠 양옆 여백 확보 */
+.app .lnk b{
+  position:absolute;inset-block:0;inset-inline-start:0;border-radius:3px;
+  background:var(--grad-short);
+}
+/* 이미 지나온 구간은 라임, 지금 채우는 중인 구간은 앰버 —
+   두 색이 "끝난 길 / 가는 길"을 구간 단위로 갈라 준다 */
+.app .lnk.done b{background:var(--grad-done)}
+/* 꼬리는 채움색(노랑/라임) 바로 위에 얹힌다 — 둘 다 밝은 고채도 색이라
+   색상 대비만으로는 시안 꼬리가 분리되지 않는다(측정 1.13:1, 3:1 미달).
+   그래서 어두운 테두리로 "경계"를 만든다 — 테두리 자체가 어느 채움 위에서도
+   4:1 이상을 내므로, 꼬리는 색이 아니라 윤곽으로 분리된다. */
+.app .lnk b .tl{
+  position:absolute;inset-block:-1px;inset-inline-end:-1px;border-radius:4px;
+  background:var(--status-latest-solid);min-width:8px;   /* 짧은 구간에서도 기여분이 보이게 */
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,.55),
+    0 0 8px rgba(54,211,241,.65);
+}
+.app .lnk.gate{background:repeating-linear-gradient(90deg,rgba(255,255,255,.26) 0 4px,transparent 4px 8px)}
+.app .lnk.gate{display:flex;align-items:center;justify-content:center}
+.app .lnk .gt{
+  flex:none;width:20px;height:20px;border-radius:50%;background:var(--j-elev);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.34);
+  display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;
+  position:relative;color:var(--j-text2);
+}
+.app .lnk .gt::after{content:"";position:absolute;inset:-12px}  /* 44×44 터치 — 시트를 연다 */
+
+/* 확장 상태 — 티어 카드. 조건값 → 상태 → 설명 순 */
+.app .tiers{margin-top:20px;display:flex;flex-direction:column;gap:16px}
+.app .tier{display:flex;gap:12px;align-items:flex-start}
+.app .tier .tb{flex:1;min-width:0}
+.app .tier .r1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.app .tier .tcond{font-size:var(--t-body);font-weight:700;line-height:1.3;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.app .tier .tstate{margin-top:4px;font-size:var(--t-sm);font-weight:600;line-height:1.4}
+.app .tier .tstate.ok{color:var(--status-done-solid)}
+.app .tier .tstate.now{color:var(--status-short-solid)}
+.app .tier .tstate.gate{color:var(--status-done-text)}
+.app .tier .tstate.lock{color:var(--j-text3)}
+/* 세계관 설명문은 티어 목록에 두지 않는다 — 조건은 수치가 말해야 하고,
+   문장이 섞이면 "얼마를 채워야 하나"가 문장 속으로 숨는다.
+   설명문은 배지 상세 화면(/badges/[id])에 그대로 남아 있다. */
+.app .tier .tmetric{margin-top:2px;font-size:var(--t-cap);color:var(--j-text2)}
+
+/* 잠긴 배지의 모서리 자물쇠가 곧 버튼이다 — 별도 버튼을 옆에 두면
+   한 행에 자물쇠가 둘이 되고, 큰 쪽이 배지 이미지보다 먼저 읽힌다.
+   마커 크기는 18px 그대로 두고 히트 영역만 44×44로 넓힌다. */
+:is(.app,.swatch) .bdg .mk.lk{cursor:pointer}
+:is(.app,.swatch) .bdg .mk.lk::after{content:"";position:absolute;inset:-13px}
+/* 트로피 그리드 — 배지 표현은 레일과 같은 사각 썸네일로 통일하고,
+   진행은 원호가 아니라 아래 막대로 뺀다. 원호는 44px 이미지를 압도한다. */
+.app .trophy{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.app .trophy .tr{
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%),
+    var(--j-elev);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  border-radius:16px;padding:12px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
+}
+.app .trophy .tr .nm{
+  font-size:var(--t-micro);font-weight:500;line-height:1.3;
+  color:var(--j-text2);overflow-wrap:anywhere;
+}
+/* 좁은 칸에서는 이름보다 수치가 먼저다 — 크기는 12px로 두고
+   굵기·색으로 위계를 준다. 14px면 "3,180 / 10,000"이 109px 칸에서 두 줄이 된다 */
+.app .trophy .tr .pr{
+  font-size:var(--t-cap);font-weight:700;line-height:1.2;letter-spacing:-.01em;
+  color:var(--j-text);font-variant-numeric:tabular-nums;margin-top:-4px;
+  white-space:nowrap;
+}
+.app .trophy .tr.done .pr{color:var(--status-done-solid)}
+.app .trophy .tr .tbar{
+  width:100%;height:4px;border-radius:2px;background:var(--status-idle-track);
+  overflow:hidden;margin-top:auto;
+}
+.app .trophy .tr .tbar b{display:block;height:100%;border-radius:2px;background:var(--grad-short)}
+.app .trophy .tr.done .tbar b{background:var(--grad-done)}
+/* 잠금 해제 팝업 — DS BottomSheet. 잠금 아이콘을 누르면 열린다.
+   레일·티어 목록에는 아이콘만 두고, "무엇을 해야 열리는가"는 전부 여기서 말한다. */
+.app.sheetstage{position:relative;overflow:hidden;min-height:560px}
+.app.sheetstage .behind{filter:blur(1px)}
+.app .scrim{
+  position:absolute;inset:0;background:rgba(0,0,0,.66);
+  display:flex;align-items:flex-end;
+}
+.app .scrim > .sheet{width:100%}
+.app .sheet{
+  border-radius:20px 20px 0 0;padding:8px 16px 20px;
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%),
+    var(--j-elev);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+}
+.app .sheet .grip{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.22);margin:0 auto 16px}
+.app .sheet .s-head{display:flex;gap:12px;align-items:center}
+.app .sheet .s-name{font-size:var(--t-body);font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.app .sheet .s-cond{
+  margin-top:2px;font-size:var(--t-cap);color:var(--j-text2);font-variant-numeric:tabular-nums;
+}
+.app .sheet .s-met{
+  margin-top:16px;display:flex;align-items:center;gap:8px;
+  font-size:var(--t-sm);font-weight:600;color:var(--status-done-solid);
+}
+.app .sheet .s-met .ic{width:16px;height:16px}
+.app .sheet h3{
+  margin:20px 0 10px;font-size:var(--t-cap);font-weight:600;color:var(--j-text2);
+  letter-spacing:.04em;
+}
+.app .sheet .req{
+  display:flex;gap:12px;align-items:center;padding:12px;border-radius:12px;
+  background:rgba(255,255,255,.055);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);
+}
+.app .sheet .req + .orline{
+  display:flex;align-items:center;gap:10px;margin:8px 0;
+  font-size:var(--t-cap);font-weight:700;color:var(--j-text2);letter-spacing:.06em;
+}
+.app .sheet .orline i{flex:1;height:1px;background:var(--j-line)}
+.app .sheet .req .rq-b{flex:1;min-width:0}
+.app .sheet .req .rq-t{font-size:var(--t-sm);font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.app .sheet .req .rq-s{margin-top:3px;font-size:var(--t-cap);color:var(--j-text2);font-variant-numeric:tabular-nums}
+.app .sheet .req .ic{width:16px;height:16px;color:var(--j-text2);flex:none}
+.app .sheet .req .rq-i{
+  width:36px;height:36px;flex:none;border-radius:8px;background:var(--j-surface);
+  display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;
+  box-shadow:inset 0 0 0 1px var(--j-line);
+}
+/* 선행배지는 아직 못 받아서 잠긴 것이므로 그레이 — 배지 색 규칙 그대로 */
+.app .sheet .req .rq-i.badge{filter:grayscale(1)}
+.app .sheet .s-cta{
+  margin-top:20px;display:flex;align-items:center;justify-content:center;gap:6px;
+  min-height:48px;border-radius:9999px;
+  background:var(--j-text);color:#000;font-size:var(--t-body);font-weight:600;
+}
+.app .sheet .s-cta .ic{width:18px;height:18px}
+.app .fadeout{
+  height:56px;margin-top:-16px;
+  background:linear-gradient(180deg,transparent,var(--j-surface));
+}
+
+/* 필터 줄 */
+.app .filters{display:flex;gap:8px;margin-top:16px;overflow:hidden}
+.app .filters span{
+  padding:8px 12px;border-radius:9999px;font-size:var(--t-cap);line-height:1.2;
+  background:rgba(255,255,255,.08);color:var(--j-text2);white-space:nowrap;
+}
+.app .filters span.on{background:var(--j-text);color:#000;font-weight:600}
+
+/* ── 상태 범례(문서 안에서 노드 샘플 재사용) ─────────────── */
+.legend{
+  display:grid;gap:12px;margin-top:20px;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+}
+.legend .lg{
+  display:flex;gap:16px;align-items:center;
+  background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:16px;
+}
+.legend .swatch{
+  --j-elev:var(--card);--j-surface:var(--card-2);
+  --j-primary:#c23a1b;--j-rare:#1c8f5f;--j-epic:#b8790a;
+  --j-common:#6b6b6b;--j-mystic:#c9226c;
+  --j-text:var(--ink);--j-text2:var(--ink-2);--j-text3:var(--ink-3);--j-ring:var(--rule);
+  flex:none;width:56px;display:flex;align-items:center;justify-content:center;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .legend .swatch{
+    --j-primary:#ff6f49;--j-rare:#00cc7a;--j-epic:#f5a300;--j-mystic:#ff2d87;
+  }
+}
+:root[data-theme="dark"] .legend .swatch{
+  --j-primary:#ff6f49;--j-rare:#00cc7a;--j-epic:#f5a300;--j-mystic:#ff2d87;
+}
+.legend .lg-t{font-size:15px;font-weight:600;line-height:1.35}
+.legend .lg-d{font-size:13px;line-height:1.5;color:var(--ink-2);margin-top:4px}
+.legend .lg-d .m{color:var(--ink-3)}
+
+/* 배지 이름 말줄임 비교 */
+.trunc-demo{
+  background:var(--card);border:1px solid var(--rule);border-radius:12px;
+  padding:18px;margin-top:20px;max-width:520px;
+}
+.trunc-demo .td-row{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.trunc-demo .td-box{max-width:100%}
+.trunc-demo .td-row + .td-row{margin-top:16px;padding-top:16px;border-top:1px solid var(--rule-2)}
+.trunc-demo .td-k{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-3);flex:none;width:36px;padding-top:4px;
+}
+.trunc-demo .td-box{
+  width:209px;flex:none;padding:6px 8px;border-radius:6px;
+  background:var(--card-2);border:1px dashed var(--rule);
+}
+.trunc-demo .td-name{
+  display:block;font-size:15px;font-weight:600;line-height:1.35;color:var(--ink);
+  overflow-wrap:anywhere;
+}
+.trunc-demo .td-name.cut{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trunc-demo .td-note{font-size:12.5px;line-height:1.5;color:var(--ink-2);padding-top:4px}
+.trunc-demo .td-note b{color:var(--ink);font-weight:600}
+
+/* 축 비교 다이어그램 */
+.axis-demo{
+  background:var(--card);border:1px solid var(--rule);border-radius:12px;
+  padding:20px 18px;margin-top:20px;max-width:560px;
+}
+.axis-row + .axis-row{margin-top:26px}
+.axis-row h5{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3);margin:0 0 14px;
+}
+.axis{position:relative;height:3px;background:var(--rule);border-radius:2px}
+.axis i{
+  position:absolute;top:50%;transform:translate(-50%,-50%);
+  width:11px;height:11px;border-radius:50%;background:var(--paper);
+  box-shadow:inset 0 0 0 2px var(--ink-3);
+}
+.axis i.on{background:var(--accent);box-shadow:none}
+.axis i s{
+  position:absolute;top:15px;inset-inline-start:50%;transform:translateX(-50%);
+  font-family:var(--mono);font-size:10px;color:var(--ink-3);text-decoration:none;white-space:nowrap;
+}
+.axis-note{font-size:12.5px;color:var(--ink-2);margin-top:30px;line-height:1.55}
+.axis-note b{color:var(--ink);font-weight:600}
+
+/* 코드 블록 */
+.code{
+  font-family:var(--mono);font-size:12px;line-height:1.7;
+  background:var(--card);border:1px solid var(--rule);border-radius:10px;
+  padding:16px 18px;overflow-x:auto;margin:20px 0;color:var(--ink);white-space:pre;
+}
+.code b{color:var(--accent);font-weight:600}
+.code i{color:var(--ink-3);font-style:normal}
+.code u{text-decoration:none;color:var(--ok);font-weight:600}
+
+/* 2축 게이지 (앱 목업 내부) */
+.app .axis2{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+.app .ax{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.app .ax .ax-k{font-size:var(--t-cap);color:var(--j-text2);width:32px;flex:none}
+.app .ax .ax-bar{height:10px;border-radius:5px;background:var(--status-idle-track);overflow:hidden}
+.app .ax .ax-bar b{display:block;height:100%;border-radius:5px;background:var(--grad-short)}
+.app .ax.met .ax-bar b{background:var(--grad-done)}
+.app .ax.dim .ax-bar b{background:rgba(255,255,255,.30)}
+.app .ax .ax-v{font-size:var(--t-sm)}
+.app .ax.dim .ax-v{color:var(--j-text2);font-weight:500}
+.app .ax .ax-v{
+  font-size:var(--t-cap);font-weight:600;font-variant-numeric:tabular-nums;
+  color:var(--j-text);white-space:nowrap;
+}
+.app .ax.met .ax-v{color:var(--status-done-solid)}
+.app .ax-note{
+  margin-top:16px;padding-top:12px;border-top:1px solid var(--j-line);
+  font-size:var(--t-sm);color:var(--j-text2);line-height:1.4;
+}
+.app .ax-note b{font-variant-numeric:tabular-nums}
+.app .ax-note b{color:var(--j-text);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* 다중 카운터 게이지 */
+.app .counters{display:flex;gap:8px;margin-top:16px}
+.app .ctr{flex:1;min-width:0;text-align:center}
+.app .ctr .ctr-bar{
+  height:36px;border-radius:8px;background:rgba(255,255,255,.1);
+  position:relative;overflow:hidden;
+}
+.app .ctr .ctr-bar b{
+  position:absolute;inset-inline:0;inset-block-end:0;border-radius:8px;
+  background:linear-gradient(0deg, rgba(255,255,255,.30), rgba(255,255,255,.16));
+}
+/* 세로 막대는 아래에서 차오르므로 "시작"이 바닥이다 — 바닥이 진하고 위로 갈수록 흐려진다 */
+.app .ctr.met .ctr-bar b{background:linear-gradient(0deg, var(--status-done-from), var(--status-done-solid) 45%, var(--status-done-to))}
+.app .ctr.low .ctr-bar b{background:linear-gradient(0deg, var(--status-short-from), var(--status-short-solid) 45%, var(--status-short-to))}
+.app .ctr .ctr-d{font-size:var(--t-cap);color:var(--j-text2);margin-top:8px;line-height:1}
+.app .ctr .ctr-n{
+  font-size:var(--t-micro);color:var(--j-text);margin-top:4px;line-height:1;
+  font-variant-numeric:tabular-nums;font-weight:600;
+}
+.app .ctr.met .ctr-n{color:var(--status-done-solid)}
+.app .ctr.low .ctr-n{color:var(--status-short-solid)}
+
+/* 푸터 */
+footer{
+  margin-top:clamp(56px,8vw,96px);padding-top:26px;border-top:1px solid var(--rule);
+  font-size:13px;color:var(--ink-2);
+}
+footer h4{margin-bottom:12px}
+footer ul{max-width:var(--measure)}
+
+/* 누름 피드백 — --scale-press:0.96 / --duration-quick:150ms /
+   --ease-smooth-out:cubic-bezier(0.22,1,0.36,1) (motion.css 실값).
+   변하는 속성만 지정한다 — transition:all 금지. */
+.app .chip,.app .filters span,.app .tabs span,.app .goal,.app .track,.app .trophy .tr{
+  transition-property:scale, opacity;
+  transition-duration:150ms;
+  transition-timing-function:cubic-bezier(0.22, 1, 0.36, 1);
+}
+.app .chip:active,.app .filters span:active,.app .tabs span:active,
+.app .goal:active,.app .trophy .tr:active{scale:0.96}
+
+:where(a,summary):focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">JAM! · /badges/tree · UI 제안</div>
+  <h1>배지 스테이지 레일</h1>
+  <p class="dek">
+    지금의 배지 트리는 배지를 <strong>세로로 나열</strong>합니다. 걷기 탭 하나가 카드 64장,
+    스크롤로 약 8,000px입니다. 위계도, 내 진행 상태도, 얼마가 모자란지도 화면에 없습니다.
+    이 문서는 카드 나열을 <strong>계열별 진행 레일</strong>로 바꾸는 안입니다 —
+    그리고 지금 데이터로 그릴 수 없는 것은 <strong>만들어서 채웁니다.</strong>
+    유저의 7개 요구를 기준으로, 화면과 함께 <strong>새로 개발해야 할 기능을 §08에 정의</strong>했습니다.
+  </p>
+  <div class="meta">
+    <span><b>대상</b> 액티비티 배지 (/badges/tree)</span>
+    <span><b>기준일</b> 2026-09-03</span>
+    <span><b>근거</b> 코드 실측 + 프로덕션 DB 전수 조회</span>
+    <span><b>범위</b> UI 설계 + 신규 기능 정의 — 구현 전</span>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="s1">
+  <div class="sec-head">
+    <span class="sec-num">01</span>
+    <h2>지금 화면이 답하지 못하는 것</h2>
+    <span class="fill-rule"></span>
+  </div>
+
+  <p class="lede">
+    요청에 담긴 7개의 질문을 현재 화면에 그대로 물어봤습니다.
+    <strong>7개 중 6개가 화면에 존재하지 않는 정보</strong>입니다. 배치를 바꿔서 해결되는 건
+    첫 번째 하나뿐이고, <strong>나머지 여섯은 없는 데이터를 만들어야 답할 수 있습니다.</strong>
+    이 문서는 그 여섯을 화면 요구에서 역산해 <a href="#s8">신규 개발 항목</a>으로 정의합니다.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>유저의 질문</th><th>현재 화면의 답</th><th style="width:78px">판정</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>내가 얻을 수 있는 배지는 뭐가 있나</td>
+          <td>전부 나열은 된다. 단 걷기는 카드 64장이 한 줄 스크롤이라 “조망”이 아니라 “통과”가 된다</td>
+          <td><span class="tag part">부분</span></td>
+        </tr>
+        <tr>
+          <td>배지의 위계·등급 체계는 어떻게 되나</td>
+          <td>없음. 티켓 20260901 수정으로 단계 라벨·구분선·세로 커넥터를 전부 제거했고, 정렬이 <span class="m">등급 우선</span>이라 같은 계열의 4등급이 스크롤 전역에 흩어진다</td>
+          <td><span class="tag no">못 함</span></td>
+        </tr>
+        <tr>
+          <td>나는 지금 어디쯤 와 있나</td>
+          <td>없음. 서버가 조회하는 유저 데이터는 <span class="m">user_activity_badges</span>(획득 여부 boolean) 뿐이다. 획득=컬러 / 미획득=흑백 2단계가 전부</td>
+          <td><span class="tag no">못 함</span></td>
+        </tr>
+        <tr>
+          <td>얼마나 더 하면 되나</td>
+          <td>없음. 조건 문구(<span class="m">badges.description</span>)만 보여주고 내 현재값과 대조하지 않는다</td>
+          <td><span class="tag no">못 함</span></td>
+        </tr>
+        <tr>
+          <td>이건 누적형인가</td>
+          <td>구분 없음. 누적·기록·주기 배지가 시각적으로 완전히 동일한 카드다</td>
+          <td><span class="tag no">못 함</span></td>
+        </tr>
+        <tr>
+          <td>이건 횟수·주기형인가 (이번 주는?)</td>
+          <td>구분 없음. <span class="m">weekly_count</span> 배지가 이번 주 몇 회인지, 며칠 남았는지 알 방법이 없다</td>
+          <td><span class="tag no">못 함</span></td>
+        </tr>
+        <tr>
+          <td>직전 액티비티에서 얼마나 모자랐나</td>
+          <td>없음. 엔진은 계산하지만 화면 경로가 없다 (아래 참고)</td>
+          <td><span class="tag no">못 함</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <h4>이미 계산되고 있지만 버려지는 값</h4>
+    <p>
+      <span class="m">evaluateConditionDetailed()</span>는 배지마다
+      <span class="m">actual</span>(“누적거리: 87.3km”)과 <span class="m">required</span>(“100km”)를
+      이미 만들어 반환합니다. 그런데 이 값을 소비하는 곳은
+      <span class="m">/api/admin/simulate</span> — <strong>어드민 시뮬레이터 하나뿐</strong>입니다.
+      유저 화면으로 가는 경로가 존재하지 않습니다.
+    </p>
+    <p>
+      즉 “얼마나 모자란가”는 새로 만들어야 할 기능이 아니라,
+      <strong>이미 있는 값을 화면까지 잇는 문제</strong>입니다.
+    </p>
+  </div>
+
+  <h3>레이아웃 관점의 결함</h3>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th style="width:74px">심각도</th><th>위치</th><th>문제</th><th>원인</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag hi">HIGH</span></td>
+          <td class="num">BadgeTreeCard.tsx:52</td>
+          <td>배지 이름에 무조건 <span class="m">truncate</span>. 375px에서 이름 영역이 209px밖에 안 되어 “일요일 새벽의 수도승”·“불타는 금요일 밤 산책” 같은 이름이 잘린다</td>
+          <td>고정 폭 썸네일 90px + 패딩·간격이 먼저 자리를 가져가고, 남은 텍스트에 줄바꿈을 허용하지 않음</td>
+        </tr>
+        <tr>
+          <td><span class="tag mid">MEDIUM</span></td>
+          <td class="num">BadgeTreeCard.tsx:47</td>
+          <td>Common 카드에는 등급 표시가 <strong>전혀 없다</strong>. <span class="m">RarityBadge</span>는 common일 때 <span class="m">null</span>을 반환한다</td>
+          <td>“각 카드가 등급 pill을 보여주므로 별도 헤더가 없어도 단계가 읽힌다”는 전제(<span class="m">badgeTree.ts</span> 주석)가 가장 큰 구간에서 성립하지 않음</td>
+        </tr>
+        <tr>
+          <td><span class="tag mid">MEDIUM</span></td>
+          <td class="num">BadgeTreeClient.tsx:92</td>
+          <td>랜드마크 없는 단일 스크롤. 걷기 64장 × 약 114px ≈ <strong>8,000px</strong>. 섹션 헤더도, 스티키 요소도, 필터도 없다</td>
+          <td>계층 구조를 평탄화하면서 진행 감각을 줄 구조물도 함께 사라짐</td>
+        </tr>
+        <tr>
+          <td><span class="tag mid">MEDIUM</span></td>
+          <td class="num">badgeTree.ts (정렬)</td>
+          <td>정렬 1순위가 등급이라 “동네 산책러”의 Common·Rare·Epic·Mystic이 서로 수십 장 떨어져 놓인다. 성장 서사를 읽을 수 없다</td>
+          <td>등급을 “단계”로 간주했으나, 실제 단계는 계열 안에서 올라가는 축이다</td>
+        </tr>
+        <tr>
+          <td><span class="tag low">LOW</span></td>
+          <td class="num">BadgeTreeLockChip.tsx</td>
+          <td>OR 선행조건 2개가 잠금 칩 2개로 렌더링되는데, 둘의 관계(OR)가 화면에 표기되지 않는다</td>
+          <td>칩이 세로로 쌓여 AND처럼 읽힘</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">
+    코드·DB 실측 기준. 실제 렌더링 화면 확인은 로그인이 필요해 이 문서에서는 <b class="m">미검증</b>입니다 —
+    위 항목은 전부 코드 경로와 DB 값으로 확인했습니다.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="s2">
+  <div class="sec-head">
+    <span class="sec-num">02</span>
+    <h2>데이터는 이미 트리 모양이다</h2>
+    <span class="fill-rule"></span>
+  </div>
+
+  <p class="lede">
+    설계를 결정한 건 취향이 아니라 <strong>DB 실측 두 가지</strong>였습니다.
+    이 두 사실이 화면의 형태를 거의 강제합니다.
+  </p>
+
+  <h3>① 모든 계열은 “지표 하나 × 임계값 넷”이다</h3>
+  <p>
+    5개 종목 72개 계열 전부에서 <strong>계열 이름당 조건 필드 조합이 정확히 1가지</strong>였습니다
+    (<span class="m">families = name_metric_pairs</span>, 예외 0건). 즉 “동네 산책러”의 네 등급은
+    서로 다른 네 개의 조건이 아니라, <strong>같은 축 위의 네 눈금</strong>입니다.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>계열 (걷기)</th><th>지표</th><th class="num">Common</th><th class="num">Rare</th><th class="num">Epic</th><th class="num">Mystic</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>동네 산책러</td><td><span class="m">distance_km</span> 누적</td><td class="num">5</td><td class="num">30</td><td class="num">100</td><td class="num">300</td></tr>
+        <tr><td>산책의 명상가</td><td><span class="m">duration_minutes</span> 단일 최대</td><td class="num">30</td><td class="num">60</td><td class="num">100</td><td class="num">150</td></tr>
+        <tr><td>루틴의 수호자</td><td><span class="m">weekly_count</span> 주간</td><td class="num">3</td><td class="num">5</td><td class="num">6</td><td class="num">7</td></tr>
+        <tr><td>작심삼일의 파괴자</td><td><span class="m">streak_days</span> 연속</td><td class="num">3</td><td class="num">7</td><td class="num">14</td><td class="num">30</td></tr>
+        <tr><td>밤의 보행자</td><td><span class="m">duration_minutes</span> + 야간</td><td class="num">20</td><td class="num">45</td><td class="num">75</td><td class="num">110</td></tr>
+        <tr><td>이달의 산책왕</td><td><span class="m">monthly_km</span> 월간</td><td class="num">50</td><td class="num">100</td><td class="num">150</td><td class="num">250</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">프로덕션 DB <b class="m">badges.condition_json</b> 실조회값. 걷기 8계열 중 6개 발췌.</p>
+
+  <div class="note">
+    <h4>그래서 카드 4장이 아니라 축 1개다</h4>
+    <p>
+      네 등급을 카드 4장으로 그리면 같은 정보를 네 번 반복하면서 관계는 못 보여줍니다.
+      <strong>축 하나에 눈금 넷</strong>으로 그리면, “지금 어디” · “다음은 어디” · “끝은 어디”가
+      한 번에 읽히고 스크롤이 1/4로 줄어듭니다.
+    </p>
+  </div>
+
+  <h3>② 잠금은 등급마다가 아니라 계열마다 하나다</h3>
+  <p>
+    일반 계열은 Rare·Epic·Mystic <strong>세 등급의 선행조건이 전부 동일</strong>합니다
+    (<span class="m">distinct_prereq_sets = 1</span>). 예를 들어 “산책의 명상가”는 세 등급 모두
+    <span class="m">동네 산책러 OR 밤의 보행자</span>입니다 — 즉 <strong>문은 한 번만 열면 됩니다.</strong>
+    종목 대표배지 5종만 예외로, 등급마다 다른 레벨업 미션이 붙어 문이 셋입니다
+    (<span class="m">distinct_prereq_sets = 3</span>).
+  </p>
+  <ul>
+    <li><strong>일반 계열 (67개)</strong> — Common과 Rare 사이에 게이트 1개. 통과하면 위 세 칸이 한꺼번에 열린다.</li>
+    <li><strong>대표배지 계열 (5개)</strong> — Rare·Epic·Mystic 앞에 각각 미션 게이트. 레일에 문이 셋.</li>
+  </ul>
+  <p>
+    이건 UI에 그대로 옮겨집니다. <strong>게이트는 눈금 위가 아니라 눈금 사이의 선분에 놓입니다.</strong>
+    선분이 끊겨 보이면 “여기서 길이 막혔다”가 설명 없이 읽힙니다.
+  </p>
+
+  <h3>③ 레일 하나로 못 그리는 예외가 22개 있다</h3>
+  <p>
+    액티비티 배지 192개의 조건 형태를 전수 분류했습니다. <strong>170개는 축이 하나</strong>라
+    레일이 그대로 성립하지만, <strong>22개는 성립하지 않습니다.</strong>
+    이 22개를 “나중에”로 미루지 않고 §05에서 각각 전용 표현을 설계했습니다 —
+    미루면 화면에 빈칸이 남고, 빈칸은 결국 지금 화면과 같은 상태가 됩니다.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>조건 형태</th><th class="num">배지</th><th>해당 계열</th><th>표현</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>단일 축</strong></td><td class="num">170</td>
+          <td>대부분. 필터(시간대·요일·기온·계절)가 붙어도 측정축은 하나라 여기 포함된다</td>
+          <td>레일 1개</td>
+        </tr>
+        <tr>
+          <td><strong>2축 · 각각 달성</strong></td><td class="num">16</td>
+          <td>산악 라이더 · 스피드 엔듀러 · 혹한 장정 · 알파인 트레일러</td>
+          <td>게이지 2줄 + 병목 표시</td>
+        </tr>
+        <tr>
+          <td><strong>2축 · 한 활동 동시</strong></td><td class="num">4</td>
+          <td>야생의 첫발 (<span class="m">same_activity: true</span>)</td>
+          <td>게이지 2줄 + “한 번에” 명시</td>
+        </tr>
+        <tr>
+          <td><strong>다중 카운터</strong></td><td class="num">2</td>
+          <td>평일의 성실함(월~금 각 300회) · 사계절의 발걸음(4계절 각 10회)</td>
+          <td>5칸 / 4칸 세그먼트 게이지</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">
+    <b class="m">badges.condition_json</b> 전수 조회. 측정 필드 기준 분류이며,
+    <b class="m">time_range</b>·<b class="m">day_of_week</b>·<b class="m">season</b>·<b class="m">month</b>·기온+횟수 조합은
+    엔진이 필터로 처리하므로 단일 축으로 셌습니다.
+  </p>
+
+  <div class="note">
+    <h4>2축 배지에는 지금 화면이 아예 설명하지 않는 규칙이 있다</h4>
+    <p>
+      “스피드 엔듀러”는 빠른 날과 긴 날이 <strong>서로 다른 러닝이어도</strong> 됩니다.
+      “야생의 첫발”은 <strong>한 번의 트레일에서 거리와 고도를 동시에</strong> 채워야 합니다.
+      완전히 다른 규칙인데 지금은 두 배지가 똑같이 생긴 카드로 나옵니다.
+    </p>
+    <p>
+      이 구분은 엔진에서 실제로 버그가 났던 지점이기도 합니다
+      (티켓 20260831_2100 — 단일 활동 동시 충족으로 과잉 일반화됐다가 복원).
+      <strong>규칙이 헷갈릴 수 있다면 화면이 말해줘야 합니다.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="s3">
+  <div class="sec-head">
+    <span class="sec-num">03</span>
+    <h2>제안 화면</h2>
+    <span class="fill-rule"></span>
+  </div>
+
+  <p class="lede">
+    한 화면을 <strong>요약 → 다음 목표 → 전체 레일</strong> 세 계층으로 세웁니다.
+    위에서부터 “지금 상태 / 오늘 할 것 / 전체 지도” 순입니다.
+  </p>
+
+  <div class="showcase">
+    <div class="phone-col">
+      <div class="app">
+        <div class="topnav"><span class="back"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z"/></svg></span><span>배지</span></div>
+
+        <div class="pad">
+          <h1 class="screen">배지 트리</h1>
+          <div class="tabs">
+            <span class="on">걷기</span><span>러닝</span><span>사이클링</span><span>등산</span><span>트레일</span>
+          </div>
+
+          <!-- 진행 요약 -->
+          <div class="summary">
+            <div class="hd">
+              <div class="big">14 <em>/ 64</em></div>
+            </div>
+            <div class="dist">
+              <div class="d">
+                <div class="bar"><b style="width:42%;"></b></div>
+                <div class="k">Common</div><div class="v">8 / 19</div>
+              </div>
+              <div class="d">
+                <div class="bar"><b style="width:25%;"></b></div>
+                <div class="k">Rare</div><div class="v">4 / 16</div>
+              </div>
+              <div class="d">
+                <div class="bar"><b style="width:12%;"></b></div>
+                <div class="k">Epic</div><div class="v">2 / 17</div>
+              </div>
+              <div class="d">
+                <div class="bar"><b style="width:0;"></b></div>
+                <div class="k">Mystic</div><div class="v">0 / 12</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 직전 활동 -->
+          <div class="recent">
+            <span class="dot"></span>
+            <div class="txt">
+              <div class="t1">어제 걷기 5.2km · 62분</div>
+              <div class="t2">배지 3개가 가까워졌어요</div>
+            </div>
+            <span class="chev"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z"/></svg></span>
+          </div>
+
+          <!-- 다음 목표 -->
+          <div class="sect"><h2>다음 목표</h2><span class="more">가까운 순 <svg class="ic inl" viewBox="0 -960 960 960" aria-hidden="true"><path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z"/></svg></span></div>
+
+          <div class="goal gate">
+            <span class="bdg lg ready rare"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span>
+            <div class="g-body">
+              <div class="g-r1">
+                <span class="pill rare">Rare</span><span class="g-name">동네 산책러</span>
+              </div>
+              <div class="g-r2">
+                <span class="g-cond">누적 거리 30km 이상</span>
+                <span class="g-left">조건 충족</span>
+              </div>
+              <div class="bar"><b style="width:100%"></b></div>
+            </div>
+          </div>
+
+          <div class="goal">
+            <span class="bdg lg"><i class="img">🧘</i></span>
+            <div class="g-body">
+              <div class="g-r1">
+                <span class="pill epic">Epic</span><span class="g-name">산책의 명상가</span>
+              </div>
+              <div class="g-r2">
+                <span class="g-cond">한 번에 100분 이상</span>
+                <span class="g-left">8분 남음</span>
+              </div>
+              <div class="bar"><b style="width:92%"></b></div>
+            </div>
+          </div>
+
+          <div class="goal">
+            <span class="bdg lg"><i class="img">🌙</i></span>
+            <div class="g-body">
+              <div class="g-r1">
+                <span class="pill rare">Rare</span><span class="g-name">밤의 보행자</span>
+              </div>
+              <div class="g-r2">
+                <span class="g-cond">밤 10시 이후 45분 이상</span>
+                <span class="g-left">4분 남음</span>
+              </div>
+              <div class="bar"><b style="width:91%"></b></div>
+            </div>
+          </div>
+
+          <!-- 성장 트랙 -->
+          <div class="filters" style="margin-top:32px">
+            <span class="on">전체</span><span>진행 중</span><span>잠김</span><span>획득</span>
+          </div>
+
+          <!-- 트랙 1 — 대표배지, 미션 게이트 -->
+          <div class="track t-epic" style="margin-top:12px">
+            <div class="t-head">
+              <div class="t-name">동네 산책러</div>
+              <span class="t-goal">다음 Epic</span>
+            </div>
+            <div class="t-kind">누적 거리</div>
+            <div class="t-now">87.3<span class="u">/ 100 km</span></div>
+            <div class="rail">
+              <div class="stop done">
+                <span class="box"><span class="bdg earned common"><i class="img">🚶</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></span>
+                <span class="cd">5km</span><span class="stt">획득</span>
+              </div>
+              <div class="lnk gate"><span class="gt"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></span></div>
+              <div class="stop gated">
+                <span class="box"><span class="bdg ready rare"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span></span>
+                <span class="cd">30km</span><span class="stt">조건 충족</span>
+              </div>
+              <div class="lnk"><b style="width:82%"><i class="tl" style="width:9%"></i></b></div>
+              <div class="stop on">
+                <span class="box"><span class="bdg next epic"><i class="img">🚶</i></span></span>
+                <span class="cd">100km</span><span class="stt">12.7km 남음</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked mystic"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span></span>
+                <span class="cd">300km</span><span class="stt">잠김</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 트랙 2 — 기록형 -->
+          <div class="track t-epic">
+            <div class="t-head">
+              <div class="t-name">산책의 명상가</div>
+              <span class="t-goal">다음 Epic</span>
+            </div>
+            <div class="t-kind">한 번에 걸은 시간 · 최고 기록</div>
+            <div class="t-now">92<span class="u">/ 100 분</span></div>
+            <div class="rail">
+              <div class="stop done">
+                <span class="box"><span class="bdg earned common"><i class="img">🧘</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></span>
+                <span class="cd">30분</span><span class="stt">획득</span>
+              </div>
+              <div class="lnk done"><b style="width:100%"></b></div>
+              <div class="stop done">
+                <span class="box"><span class="bdg earned rare"><i class="img">🧘</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></span>
+                <span class="cd">60분</span><span class="stt">획득</span>
+              </div>
+              <div class="lnk"><b style="width:80%"></b></div>
+              <div class="stop on">
+                <span class="box"><span class="bdg next epic"><i class="img">🧘</i></span></span>
+                <span class="cd">100분</span><span class="stt">8분 남음</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked mystic"><i class="img">🧘</i></span></span>
+                <span class="cd">150분</span><span class="stt">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 트랙 3 — 주기형 -->
+          <div class="track t-rare">
+            <div class="t-head">
+              <div class="t-name">루틴의 수호자</div>
+              <span class="t-goal">다음 Rare</span>
+            </div>
+            <div class="t-kind">주간 횟수 · 일요일 초기화 · 3일 남음</div>
+            <div class="t-now"><span class="pre">이번 주</span>4<span class="u">/ 5 회</span></div>
+            <div class="rail">
+              <div class="stop done">
+                <span class="box"><span class="bdg earned common"><i class="img">🗓️</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></span>
+                <span class="cd">주 3회</span><span class="stt">획득</span>
+              </div>
+              <div class="lnk"><b style="width:50%"><i class="tl" style="width:50%"></i></b></div>
+              <div class="stop on">
+                <span class="box"><span class="bdg next rare"><i class="img">🗓️</i></span></span>
+                <span class="cd">주 5회</span><span class="stt">1회 남음</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked epic"><i class="img">🗓️</i></span></span>
+                <span class="cd">주 6회</span><span class="stt">—</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked mystic"><i class="img">🗓️</i></span></span>
+                <span class="cd">주 7회</span><span class="stt">—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fadeout"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes-col">
+      <h3 style="margin-top:0">읽는 순서를 화면 순서로</h3>
+      <dl class="ann">
+        <dt>1</dt>
+        <dd>
+          <b>진행 요약</b> — 획득/전체 하나와 등급 4칸.
+          <small>“내가 얻을 수 있는 배지가 뭐가 있나”의 답이 스크롤이 아니라 숫자 하나로 먼저 온다. 등급별 분모(19/16/17/12)가 등급 체계 자체를 노출한다.</small>
+        </dd>
+        <dt>2</dt>
+        <dd>
+          <b>직전 활동 배너</b> — 마지막 동기화가 어떤 배지를 얼마나 밀었는지.
+          <small>“직전 상태값과의 비교” 요구에 대응. 이 배너는 아래 레일들의 붉은 꼬리(기여분)와 짝을 이룬다.</small>
+        </dd>
+        <dt>3</dt>
+        <dd>
+          <b>다음 목표 3개</b> — <strong>수치 조건은 채웠는데 게이트(미션)만 남은 배지를 최우선으로</strong>,
+          그다음은 진행률이 가장 높은 순. 카드 한 장에 <em>이미지 · 이름 · 조건값 · 남은 값(또는 조건 충족)</em> 넷만 넣는다.
+          <small>92%보다 “조건 충족, 미션 하나만 남음”이 실제로는 더 가깝다 — 걸을 필요가 없고 미션 하나면 끝난다.
+          진행률 %는 넣지 않는다 — 막대가 이미 같은 말을 하고, 숫자 두 개가 겹치면 어느 쪽도 안 읽힌다.</small>
+        </dd>
+        <dt>4</dt>
+        <dd>
+          <b>성장 트랙</b> — 계열 하나 = 레일 하나, 접힌 상태가 기본.
+          <small>걷기 8계열이 카드 32장이 아니라 레일 8줄이 된다. 탭하면 그 자리에서 펼쳐진다(§04).</small>
+        </dd>
+      </dl>
+
+      <h3>레일 한 줄이 담는 것</h3>
+      <p>
+        접힌 레일 한 줄에 <strong>유저의 7개 질문 중 5개</strong>의 답이 들어갑니다.
+        중요한 건 답이 <strong>네 개의 고정 슬롯</strong>으로만 나온다는 점입니다 —
+        슬롯이 고정이면 유저는 매번 어디를 볼지 다시 찾지 않아도 됩니다.
+      </p>
+      <div class="tw">
+        <table style="min-width:0">
+          <thead><tr><th>슬롯</th><th>담는 것</th><th class="num">크기</th></tr></thead>
+          <tbody>
+            <tr><td><b>히어로 수치</b></td><td>지금 값 / 다음 임계값. 카드에서 가장 먼저 읽히는 하나</td><td class="num">40px · 900</td></tr>
+            <tr><td><b>배지 이미지</b></td><td>등급 링·흑백·자물쇠로 상태를 함께 나른다. 다음 목표에는 <b>진행 아크</b></td><td class="num">44 / 52px</td></tr>
+            <tr><td><b>배지 이름</b></td><td>계열 이름 — 카드당 한 번만</td><td class="num">16px</td></tr>
+            <tr><td><b>조건값</b></td><td>이미지 바로 아래. 5km · 30km · 100km · 300km</td><td class="num">12px</td></tr>
+            <tr><td><b>상태값</b></td><td>조건값 아래 한 단어. 획득 / 조건 충족 / N 남음 / 잠김 / —</td><td class="num">11px</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="cap">
+        접힌 카드에는 <b class="m">문장을 두지 않는다.</b> “N분 더 걸으면 열려요” 같은 안내는
+        슬롯 넷이 이미 같은 말을 하고 있어 중복이고, 레일 8줄에 문장 8개가 쌓이면
+        앞서 지적한 밀도 문제로 되돌아간다. 안내 문장은 <b class="m">펼친 상태</b>와
+        <b class="m">다음 목표 카드</b>에만 남긴다.
+      </p>
+
+      <h3>수치를 키우고, 그래픽을 함께 키운다</h3>
+      <p>
+        읽기 쉬워지는 방향은 “글씨를 고르게 키우기”가 아니라 <strong>하나만 크게, 나머지는 작게</strong>입니다.
+        카드마다 <strong>40px 수치 하나</strong>를 두고 그 아래를 전부 11~16px로 눌렀습니다.
+        40px는 새로 만든 값이 아니라 <span class="m">--text-bold-lg</span> —
+        DS가 “큰 수치” 전용으로 정의해 두고 <strong>서비스에서 아직 쓰지 않는</strong> 단계입니다.
+      </p>
+      <p>
+        수치만 키우면 그래픽이 상대적으로 사라집니다. 그래서 같이 키웠습니다 —
+        <strong>레일 3 → 6px, 2축 게이지 6 → 10px</strong>, 채움에 그라데이션을 넣었습니다.
+        화면에서 색과 굵기가 전부 값을 나릅니다.
+      </p>
+      <p>
+        <strong>다만 한 배지에 진행 표현은 하나만 둡니다.</strong>
+        썸네일을 두르는 아크와 그 아래 막대가 함께 나오면 같은 숫자를 두 번 그리면서
+        어느 쪽을 봐야 할지가 흐려집니다. 그래서 아크는 <strong>막대가 없는 곳</strong> —
+        펼친 티어 목록 — 에서만 쓰고, 레일·목표 카드·2축 카드처럼 막대나 게이지가
+        이미 있는 곳에서는 쓰지 않습니다. 레일의 다음 목표 눈금은
+        <strong>균일한 링</strong>으로 강조만 합니다(게이지가 아니라 강조라서 값이 겹치지 않습니다).
+      </p>
+      <div class="note">
+        <h4>세 개의 채널을 섞지 않는다</h4>
+        <p>
+          이 대시보드가 유저에게 시켜야 하는 판단은 셋뿐입니다 —
+          <strong>이건 모자란 것 / 이건 다 채운 것 / 이건 방금 들어온 것.</strong>
+          그래서 의미색도 정확히 셋이고, 나머지는 전부 중성입니다.
+        </p>
+        <p>
+          <strong>등급은 이 축에 속하지 않습니다.</strong> 등급은 “얼마나 남았나”를
+          말하지 않으므로 등급칩 안에서만 색을 씁니다. 등급색이 링·막대·라벨로 새어 나가면
+          유저는 노란 막대를 보고 “Epic이라 노란 건가, 모자라서 노란 건가”를 매번 되묻게 됩니다.
+          브랜드 프라이머리(<span class="m">#e8461f</span>)도 같은 이유로 그래프에서 뺐습니다 —
+          전역 강조색이라 “중요함”과 “진행 중”이 같은 빨강이 되면 둘 다 흐려집니다.</p>
+      </div>
+
+      <div class="note" style="margin-block-start:22px">
+        <h4>가장 크게 달라지는 것</h4>
+        <p>
+          첫 번째 레일을 보세요. <strong>“조건은 채웠는데 미션이 없어서 못 받는 상태”</strong>가
+          처음으로 화면에 나타납니다. 87.3km는 Rare 조건 30km를 한참 넘었지만,
+          레벨업 미션을 안 해서 잠겨 있습니다.
+        </p>
+        <p>
+          지금 화면에서 이 유저가 볼 수 있는 건 흑백 카드와 “🔒 동네 산책러 레벨업” 칩뿐입니다 —
+          <strong>자기가 이미 조건을 채웠다는 사실 자체를 알 수 없습니다.</strong>
+          레일에서는 잠긴 눈금(🔒)과 끊어진 선분이 그 상태를 그대로 그립니다.
+        </p>
+      </div>
+
+      <h3>스크롤 예산</h3>
+      <div class="tw">
+        <table style="min-width:0">
+          <thead><tr><th>걷기 탭</th><th class="num">현재</th><th class="num">제안</th></tr></thead>
+          <tbody>
+            <tr><td>세로 길이</td><td class="num">약 8,000px</td><td class="num">약 1,800px</td></tr>
+            <tr><td>첫 화면 정보</td><td class="num">카드 6장</td><td class="num">요약 + 목표 3 + 레일 3</td></tr>
+            <tr><td>섹션 랜드마크</td><td class="num">0개</td><td class="num">4개</td></tr>
+            <tr><td>카드당 텍스트 블록</td><td class="num">4개</td><td class="num">라벨 8 · 문장 0</td></tr>
+            <tr><td>본문 폰트 크기 가짓수</td><td class="num">21종</td><td class="num">5종</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="cap">현재값은 카드 높이 114px(썸네일 90 + 패딩 12×2) + 간격 12px × 64장 기준 계산값.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="s4">
+  <div class="sec-head">
+    <span class="sec-num">04</span>
+    <h2>레일 해부</h2>
+    <span class="fill-rule"></span>
+  </div>
+
+  <p class="lede">
+    레일을 탭하면 그 자리에서 펼쳐집니다. 페이지 이동 없이
+    <strong>네 등급의 실제 조건·설명·상태</strong>가 나오고, 게이트에는 행동 버튼이 붙습니다.
+  </p>
+
+  <div class="showcase rev">
+    <div class="phone-col">
+      <div class="app">
+        <div class="pad" style="padding-block:16px">
+
+          <!-- 펼친 트랙 -->
+          <div class="track t-epic" style="margin-bottom:0">
+            <div class="t-head">
+              <div class="t-name">동네 산책러</div>
+              <span class="t-goal">다음 Epic</span>
+            </div>
+            <div class="t-kind">누적 거리</div>
+            <div class="t-now">87.3<span class="u">/ 100 km</span></div>
+            <div class="rail">
+              <div class="stop done">
+                <span class="box"><span class="bdg earned common"><i class="img">🚶</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></span>
+                <span class="cd">5km</span><span class="stt">획득</span>
+              </div>
+              <div class="lnk gate"><span class="gt"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></span></div>
+              <div class="stop gated">
+                <span class="box"><span class="bdg ready rare"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span></span>
+                <span class="cd">30km</span><span class="stt">조건 충족</span>
+              </div>
+              <div class="lnk"><b style="width:82%"><i class="tl" style="width:9%"></i></b></div>
+              <div class="stop on">
+                <span class="box"><span class="bdg next epic"><i class="img">🚶</i></span></span>
+                <span class="cd">100km</span><span class="stt">12.7km 남음</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked mystic"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span></span>
+                <span class="cd">300km</span><span class="stt">잠김</span>
+              </div>
+            </div>
+
+            <div class="tiers">
+              <!-- Common -->
+              <div class="tier">
+                <span class="bdg lg earned common"><i class="img">🚶</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span>
+                <div class="tb">
+                  <div class="r1">
+                    <span class="pill common">Common</span>
+                    <span class="tcond">5 km</span>
+                  </div>
+                  <div class="tmetric">누적 거리 · 5km 이상</div>
+                  <div class="tstate ok">2026년 7월 12일 획득</div>
+                </div>
+              </div>
+
+              <!-- Rare -->
+              <div class="tier">
+                <span class="bdg lg ready rare"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span>
+                <div class="tb">
+                  <div class="r1">
+                    <span class="pill rare">Rare</span>
+                    <span class="tcond">30 km</span>
+                  </div>
+                  <div class="tmetric">누적 거리 · 30km 이상</div>
+                  <div class="tstate gate">조건 충족 · 87.3 / 30 km</div>
+                </div>
+              </div>
+
+              <!-- Epic -->
+              <div class="tier">
+                <span class="ringwrap"><span class="ring" style="--p:82"></span><span class="bdg lg next epic"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span></span>
+                <div class="tb">
+                  <div class="r1">
+                    <span class="pill epic">Epic</span>
+                    <span class="tcond">100 km</span>
+                  </div>
+                  <div class="tmetric">누적 거리 · 100km 이상</div>
+                  <div class="tstate now">87.3 / 100 km · 12.7km 남음</div>
+                </div>
+              </div>
+
+              <!-- Mystic -->
+              <div class="tier">
+                <span class="bdg lg locked mystic"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span>
+                <div class="tb">
+                  <div class="r1">
+                    <span class="pill mystic">Mystic</span>
+                    <span class="tcond">300 km</span>
+                  </div>
+                  <div class="tmetric">누적 거리 · 300km 이상</div>
+                  <div class="tstate lock">212.7km 남음</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="notes-col">
+      <h3 style="margin-top:0">배지 상태 5종</h3>
+      <p>
+        눈금을 추상 원에서 <strong>실제 배지 이미지</strong>로 바꿨습니다. 유저가 모으는 대상이
+        배지 이미지인데 레일에 그 이미지가 없으면, 레일은 배지 화면이 아니라 그래프가 됩니다.
+      </p>
+      <p>
+        <strong>이미지의 색은 획득 여부 하나만 말합니다</strong> —
+        <strong>획득한 배지는 본래의 컬러 이미지</strong>,
+        <strong>미획득 배지는 그레이스케일 이미지</strong>. 예외는 없습니다.
+        다음 목표든 조건 충족이든 잠김이든 전부 “아직 못 받은” 상태라 넷 다 그레이이고,
+        그 넷의 구분은 <strong>링 색 · 우상단 글리프 · 밝기 · 아래 상태 단어</strong>가 맡습니다.
+      </p>
+      <p>
+        그래서 상태는 네 겹으로 부호화됩니다. 색만으로 구분하지 않으므로
+        색각 이상에서도 읽힙니다 (WCAG 1.4.1).
+      </p>
+
+      <div class="legend">
+        <div class="lg">
+          <div class="swatch"><span class="bdg earned rare"><i class="img">🚶</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></div>
+          <div>
+            <div class="lg-t">획득</div>
+            <div class="lg-d">배지 이미지 원색 + 등급색 링 + 체크. 상태값은 <span class="m">획득</span>.</div>
+          </div>
+        </div>
+        <div class="lg">
+          <div class="swatch"><span class="bdg next epic"><i class="img">🚶</i></span></div>
+          <div>
+            <div class="lg-t">다음 목표</div>
+            <div class="lg-d">가장 큰 썸네일 + <strong>균일한 앰버 링과 후광</strong>. 진행량은 레일의 연결선이 이미 그리므로 링은 <span class="m">강조</span>만 맡는다. 상태값 자리에 <span class="m">남은 값</span>이 들어가는 유일한 눈금.</div>
+          </div>
+        </div>
+        <div class="lg">
+          <div class="swatch"><span class="bdg ready rare"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span></div>
+          <div>
+            <div class="lg-t">조건 충족 · 잠김</div>
+            <div class="lg-d">반쯤 살아난 이미지 + 라임 링 + 자물쇠. 상태값은 <span class="m">조건 충족</span> — 지금 화면에 없는 상태다. 자물쇠를 누르면 해제 조건 시트가 열린다.</div>
+          </div>
+        </div>
+        <div class="lg">
+          <div class="swatch"><span class="bdg locked mystic"><i class="img">🚶</i></span></div>
+          <div>
+            <div class="lg-t">잠김</div>
+            <div class="lg-d">흑백 + 얇은 링. 상태값은 <span class="m">잠김</span>. 선행 배지·미션 미완료.</div>
+          </div>
+        </div>
+        <div class="lg">
+          <div class="swatch"><span class="bdg locked common"><i class="img">🚶</i></span></div>
+          <div>
+            <div class="lg-t">미도달</div>
+            <div class="lg-d">같은 흑백이되 상태값이 <span class="m">—</span>. 잠긴 게 아니라 아직 못 간 곳이라는 뜻.</div>
+          </div>
+        </div>
+      </div>
+
+      <h3>레일에는 “지금 막는 문” 하나만 그린다</h3>
+      <p>
+        대표배지 계열은 Rare·Epic·Mystic 앞에 문이 셋입니다(§02 ②). 셋을 다 그리면
+        선분 세 개가 전부 점선이 되어 <strong>어디서 막혔는지가 사라집니다.</strong>
+        접힌 레일에는 현재 진행을 실제로 막고 있는 문 하나만 놓고,
+        나머지 문은 <strong>펼친 상태의 잠금 마커</strong>가 말합니다 —
+        위 티어 목록에서 Rare·Epic·Mystic 배지 모서리에 자물쇠가 각각 붙어 있는 것이
+        “문이 셋”이라는 사실 그 자체입니다.
+      </p>
+
+      <h3>눈금 간격 — 균등 분할</h3>
+      <p>
+        임계값이 <span class="m">5 / 30 / 100 / 300</span>처럼 기하급수적이라
+        실제 값에 비례해 축을 그리면 Common이 전체의 1.7% 지점에 붙어버립니다.
+        <strong>눈금 사이를 항상 균등하게 두고, 구간 안에서만 선형 보간</strong>합니다.
+      </p>
+
+      <div class="axis-demo">
+        <div class="axis-row">
+          <h5>값에 비례한 축 — 앞 눈금이 뭉친다</h5>
+          <div class="axis">
+            <i class="on" style="inset-inline-start:1.7%"><s>5</s></i>
+            <i class="on" style="inset-inline-start:10%"><s>30</s></i>
+            <i style="inset-inline-start:33.3%"><s>100</s></i>
+            <i style="inset-inline-start:100%"><s>300</s></i>
+          </div>
+          <div class="axis-note">Common과 Rare가 겹쳐 붙어 터치 타겟이 성립하지 않고, <b>초보 유저 구간이 사실상 보이지 않는다.</b></div>
+        </div>
+        <div class="axis-row">
+          <h5>균등 분할 축 — 채택</h5>
+          <div class="axis">
+            <i class="on" style="inset-inline-start:0"><s>5</s></i>
+            <i class="on" style="inset-inline-start:33.3%"><s>30</s></i>
+            <i style="inset-inline-start:66.6%"><s>100</s></i>
+            <i style="inset-inline-start:100%"><s>300</s></i>
+          </div>
+          <div class="axis-note">모든 등급이 같은 시각적 무게를 갖고, <b>다음 한 칸은 늘 손에 닿아 보인다.</b> 스테이지 클리어 감각은 여기서 나온다.</div>
+        </div>
+      </div>
+      <p class="cap">
+        Common도 아직 못 받은 계열은 첫 눈금이 곧 다음 목표가 된다 — 앞에 빈 도입 구간을
+        두지 않고 첫 배지를 바로 강조 상태로 세운다(예: “이달의 산책왕” 38.6 / 50km, §05 세 번째 목업).
+      </p>
+    </div>
+  </div>
+
+  <h3>잠긴 이유는 팝업이 말한다</h3>
+  <p class="lede">
+    미션이나 선행배지가 필요한 배지는 <strong>레일과 목록에 자물쇠 아이콘 하나만</strong> 둡니다.
+    조건을 카드 안에 문장으로 늘어놓으면 §03에서 지운 밀도가 그대로 되돌아옵니다.
+    아이콘을 누르면 <strong>시트가 열려 조건 전체를 제대로 보여줍니다.</strong>
+  </p>
+
+  <div class="showcase">
+    <div class="phone-col">
+      <div class="app sheetstage">
+        <div class="behind">
+          <div class="topnav"><span class="back"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z"/></svg></span><span>배지</span></div>
+          <div class="pad">
+            <h1 class="screen">배지 트리</h1>
+            <div class="track" style="margin-top:16px">
+              <div class="t-head">
+                <div class="t-name">동네 산책러</div>
+                <span class="t-goal">다음 Epic</span>
+              </div>
+              <div class="t-kind">누적 거리</div>
+              <div class="t-now">87.3<span class="u">/ 100 km</span></div>
+            </div>
+            <div class="track">
+              <div class="t-head">
+                <div class="t-name">산책의 명상가</div>
+                <span class="t-goal">다음 Epic</span>
+              </div>
+              <div class="t-kind">한 번에 걸은 시간 · 최고 기록</div>
+              <div class="t-now">92<span class="u">/ 100 분</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim">
+          <div class="sheet">
+            <div class="grip"></div>
+            <div class="s-head">
+              <span class="bdg lg ready rare"><i class="img">🚶</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span>
+              <div>
+                <div class="s-name">동네 산책러</div>
+                <div class="s-cond"><span class="pill rare" style="vertical-align:2px">Rare</span> 누적 거리 30km 이상</div>
+              </div>
+            </div>
+            <div class="s-met"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg> 조건 충족 · 87.3 / 30 km</div>
+
+            <h3>잠금 해제 조건</h3>
+            <div class="req">
+              <span class="rq-i">🎯</span>
+              <div class="rq-b">
+                <div class="rq-t">동네 산책러 레벨업</div>
+                <div class="rq-s">미션 · 진행 0 / 1</div>
+              </div>
+              <svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z"/></svg>
+            </div>
+
+            <div class="s-cta">미션 하러 가기 <svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes-col">
+      <h3 style="margin-top:0">선행배지가 OR일 때</h3>
+      <p>
+        §01의 LOW 결함 — 잠금 칩 2개가 세로로 쌓여 <strong>AND처럼 읽히는</strong> 문제는
+        시트에서 <strong>“또는” 구분선</strong>으로 풀립니다. 둘 중 하나만 채우면 열린다는 걸
+        칩 배열이 아니라 글자로 못박습니다.
+      </p>
+
+      <div class="app" style="width:320px;max-width:100%;margin-top:16px">
+        <div class="sheet" style="border-radius:16px">
+          <div class="s-head">
+            <span class="bdg lg locked rare"><i class="img">🧘</i><i class="mk lk"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z"/></svg></i></span>
+            <div>
+              <div class="s-name">산책의 명상가</div>
+              <div class="s-cond"><span class="pill rare" style="vertical-align:2px">Rare</span> 한 번에 60분 이상</div>
+            </div>
+          </div>
+          <h3>잠금 해제 조건</h3>
+          <div class="req">
+            <span class="rq-i badge">🚶</span>
+            <div class="rq-b">
+              <div class="rq-t">동네 산책러</div>
+              <div class="rq-s">배지 · 어느 등급이든 1개</div>
+            </div>
+            <svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z"/></svg>
+          </div>
+          <div class="orline"><i></i>또는<i></i></div>
+          <div class="req">
+            <span class="rq-i badge">🌙</span>
+            <div class="rq-b">
+              <div class="rq-t">밤의 보행자</div>
+              <div class="rq-s">배지 · 어느 등급이든 1개</div>
+            </div>
+            <svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <h3>시트가 담는 것</h3>
+      <ul>
+        <li><strong>수치 조건을 먼저 닫는다</strong> — “조건 충족 · 87.3 / 30 km”. 자기가 이미 채웠다는 사실을 맨 위에서 확인시킨다.</li>
+        <li><strong>남은 조건만 목록으로</strong> — 미션은 진행도(<span class="m">0 / 1</span>), 선행배지는 “어느 등급이든 1개”라는 실제 판정 규칙을 그대로 적는다.</li>
+        <li><strong>행동은 버튼 하나</strong> — 미션이 하나면 시트 하단 CTA로, 여럿이면 각 행이 링크가 된다.</li>
+        <li><strong>여는 지점은 자물쇠 그 자체</strong> — 배지 이미지 모서리의 18px 자물쇠 마커와 레일 선분의 게이트 자물쇠. 둘 다 마커 크기는 그대로 두고 <span class="m">::after</span>로 히트 영역만 44×44로 넓힌다. 텍스트 옆에 버튼을 따로 두지 않는다 — 한 행에 자물쇠가 둘이 되고, 큰 쪽이 배지보다 먼저 읽힌다.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="s5">
+  <div class="sec-head">
+    <span class="sec-num">05</span>
+    <h2>조건 유형 다섯 가지, 표현도 다섯 가지</h2>
+    <span class="fill-rule"></span>
+  </div>
+
+  <p class="lede">
+    “누적치를 채우는 배지”와 “횟수·주기를 채우는 배지”를 구분해 달라는 요구는
+    <strong>진행률의 의미 자체가 다르다</strong>는 지적입니다. 실제 조건 필드를 전수 분류하면
+    다섯 부류로 갈리고, <strong>다섯 모두에 전용 표현이 필요합니다.</strong>
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th style="width:104px">유형</th><th class="num">배지</th><th>진행의 성질</th><th>화면 표현</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>누적형</strong></td><td class="num">—</td>
+          <td>절대 줄지 않는다. 어제보다 항상 앞</td>
+          <td>채워지는 레일 + “N 남음”. 직전 활동 기여분을 막대 끝 밝은 꼬리로</td>
+        </tr>
+        <tr>
+          <td><strong>기록형</strong></td><td class="num">—</td>
+          <td>내 최고 기록 한 건이 기준. 평범한 활동은 진행을 못 민다</td>
+          <td>최고 기록 마커 + <strong>직전 활동 아쉬움 줄</strong></td>
+        </tr>
+        <tr>
+          <td><strong>주기형</strong></td><td class="num">—</td>
+          <td>기간이 끝나면 리셋된다. <strong>남은 기간이 곧 남은 기회</strong></td>
+          <td>현재 주기 진행 + <strong>초기화까지 남은 일수</strong> + 역대 최고 고스트</td>
+        </tr>
+        <tr>
+          <td><strong>2축형</strong></td><td class="num">20</td>
+          <td>두 조건을 모두 채워야 한다. 레일 하나로는 표현 불가</td>
+          <td>게이지 2줄 + <strong>병목 축 지목</strong> + “각각 / 한 번에” 규칙 명시</td>
+        </tr>
+        <tr>
+          <td><strong>다중 카운터형</strong></td><td class="num">2</td>
+          <td>독립 카운터 4~5개가 <strong>전부</strong> 임계값을 넘어야 한다</td>
+          <td>세그먼트 게이지 + 가장 뒤처진 칸 지목</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">
+    앞 세 유형은 축이 하나라 배지 수를 나누지 않았습니다(합계 170개). 뒤 두 유형은 §02 ③의 예외 22개입니다.
+  </p>
+
+  <h3>단일 축 세 유형</h3>
+  <div class="showcase" style="margin-top:32px">
+    <div class="phone-col">
+      <div class="app">
+        <div class="pad" style="padding-block:16px">
+
+          <!-- 누적형 -->
+          <div class="track t-rare">
+            <div class="t-head">
+              <div class="t-name">천일의 방랑자</div>
+              <span class="t-goal">다음 Rare</span>
+            </div>
+            <div class="t-kind">누적형 · 걸은 날 수</div>
+            <div class="t-now">46<span class="u">/ 60 일</span></div>
+            <div class="rail">
+              <div class="stop done">
+                <span class="box"><span class="bdg earned common"><i class="img">👣</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></span>
+                <span class="cd">3일</span><span class="stt">획득</span>
+              </div>
+              <div class="lnk done"><b style="width:100%"></b></div>
+              <div class="stop done">
+                <span class="box"><span class="bdg earned common"><i class="img">👣</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></span>
+                <span class="cd">14일</span><span class="stt">획득</span>
+              </div>
+              <div class="lnk done"><b style="width:100%"></b></div>
+              <div class="stop done">
+                <span class="box"><span class="bdg earned common"><i class="img">👣</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></span>
+                <span class="cd">30일</span><span class="stt">획득</span>
+              </div>
+              <div class="lnk"><b style="width:53%"><i class="tl" style="width:4%"></i></b></div>
+              <div class="stop on">
+                <span class="box"><span class="bdg next rare"><i class="img">👣</i></span></span>
+                <span class="cd">60일</span><span class="stt">14일 남음</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 기록형 -->
+          <div class="track t-rare">
+            <div class="t-head">
+              <div class="t-name">밤의 보행자</div>
+              <span class="t-goal">다음 Rare</span>
+            </div>
+            <div class="t-kind">기록형 · 야간 최장 산책</div>
+            <div class="t-now">41<span class="u">/ 45 분</span></div>
+            <div class="rail">
+              <div class="stop done">
+                <span class="box"><span class="bdg earned common"><i class="img">🌙</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span></span>
+                <span class="cd">20분</span><span class="stt">획득</span>
+              </div>
+              <div class="lnk"><b style="width:84%"></b></div>
+              <div class="stop on">
+                <span class="box"><span class="bdg next rare"><i class="img">🌙</i></span></span>
+                <span class="cd">45분</span><span class="stt">4분 남음</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked epic"><i class="img">🌙</i></span></span>
+                <span class="cd">75분</span><span class="stt">—</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked mystic"><i class="img">🌙</i></span></span>
+                <span class="cd">110분</span><span class="stt">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 주기형 -->
+          <div class="track " style="margin-bottom:0">
+            <div class="t-head">
+              <div class="t-name">이달의 산책왕</div>
+              <span class="t-goal">다음 Common</span>
+            </div>
+            <div class="t-kind">주기형 · 9월 1일 초기화 · 27일 남음</div>
+            <div class="t-now"><span class="pre">이번 달</span>38.6<span class="u">/ 50 km</span></div>
+            <div class="rail">
+              <div class="stop on">
+                <span class="box"><span class="bdg next common"><i class="img">👑</i></span></span>
+                <span class="cd">50km</span><span class="stt">11.4 남음</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked rare"><i class="img">👑</i></span></span>
+                <span class="cd">100km</span><span class="stt">—</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked epic"><i class="img">👑</i></span></span>
+                <span class="cd">150km</span><span class="stt">—</span>
+              </div>
+              <div class="lnk"></div>
+              <div class="stop">
+                <span class="box"><span class="bdg locked mystic"><i class="img">👑</i></span></span>
+                <span class="cd">250km</span><span class="stt">—</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="notes-col">
+      <h3 style="margin-top:0">주기형이 가장 크게 개선된다</h3>
+      <p>
+        지금 화면에서 <span class="m">weekly_count</span> 배지 카드는 “주 5회 달성”이라는
+        문장 한 줄이 전부입니다. 유저는 <strong>이번 주에 자기가 몇 번 걸었는지, 며칠 남았는지</strong>
+        전혀 알 수 없습니다 — 오늘 나가면 되는지 아닌지를 판단할 근거가 화면에 없습니다.
+      </p>
+      <p>
+        “이번 주 4/5회 · 3일 남음”은 이 화면 전체에서 <strong>가장 행동에 가까운 한 줄</strong>입니다.
+        주기형 배지에는 이 줄을 반드시 붙입니다.
+      </p>
+
+      <h3>기록형에는 아쉬움 줄</h3>
+      <p>
+        “직전 액티비티에서 얼마만큼 모자랐다”는 요구는 기록형에서 가장 자연스럽게 성립합니다.
+        누적형에서는 직전 활동이 늘 진행을 밀기 때문에 아쉬움이 없고,
+        기록형은 <strong>최고 기록을 못 넘긴 활동이 진행을 전혀 못 밀기</strong> 때문입니다.
+      </p>
+      <ul>
+        <li><strong>자리</strong> — 별도 박스를 만들지 않고 카드 하단 <strong>행동 줄 그 자리</strong>에 넣는다. 이전 시안은 노란 경고 박스를 하나 더 쌓아 카드가 3단이 됐다.</li>
+        <li><strong>표시 조건</strong> — 직전 활동이 다음 임계값의 85% 이상일 때만. 그 아래면 노이즈가 된다.</li>
+        <li><strong>어조</strong> — 실패를 지적하지 않는다. “못 받았어요”가 아니라 “4분만 더 걸었으면”.</li>
+        <li><strong>범위</strong> — 계열당 최대 1줄. 여러 배지에 동시에 붙으면 화면이 후회로 뒤덮인다.</li>
+      </ul>
+
+      <h3>직전 동기화의 시안 꼬리</h3>
+      <p>
+        채움 막대 끝의 <strong>시안색 꼬리</strong>가 직전 동기화가 민 만큼입니다.
+        상단 배너의 시안 점과 <strong>같은 색·같은 사건</strong>이라,
+        배너를 탭하면 꼬리가 있는 레일들만 필터링해 보여줍니다.
+      </p>
+      <p>
+        이 색은 <strong>직전 동기화에만 씁니다.</strong> 진행(앰버)·충족(라임)·등급(고정 4색)과
+        겹치지 않는 한류 계열을 골랐기 때문에, 유저는 색만 보고
+        “이건 방금 들어온 것”을 배울 수 있습니다.
+      </p>
+    </div>
+  </div>
+
+  <h3>2축형 — 병목을 지목한다</h3>
+  <div class="showcase rev">
+    <div class="phone-col">
+      <div class="app">
+        <div class="pad" style="padding-block:16px">
+
+          <!-- 2축 · 각각 달성 -->
+          <div class="track t-rare">
+            <div class="t-head lead">
+              <span class="pill rare">Rare</span>
+              <div class="t-name">산악 라이더</div>
+            </div>
+            <div class="t-kind">2축 · 누적 고도 + 최고 속도 · 각각 다른 라이딩 가능</div>
+            <div class="t-now">320<span class="u">m 남음 · 고도</span></div>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:16px">
+              <span class="bdg lg"><i class="img">⛰️</i></span>
+              <div class="axis2" style="flex:1;min-width:0;margin-top:0">
+                <div class="ax">
+                  <span class="ax-k">고도</span>
+                  <span class="ax-bar"><b style="width:79%"></b></span>
+                  <span class="ax-v">1,180 / 1,500 m</span>
+                </div>
+                <div class="ax met">
+                  <span class="ax-k">속도</span>
+                  <span class="ax-bar"><b style="width:100%"></b></span>
+                  <span class="ax-v">21.4 / 20 <svg class="ic inl" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></span>
+                </div>
+              </div>
+            </div>
+            <div class="ax-note">속도 조건은 이미 채웠어요.</div>
+          </div>
+
+          <!-- 2축 · 한 활동 동시 -->
+          <div class="track t-rare">
+            <div class="t-head lead">
+              <span class="pill rare">Rare</span>
+              <div class="t-name">야생의 첫발</div>
+            </div>
+            <div class="t-kind">2축 · 한 번의 트레일에서 동시에</div>
+            <div class="t-now">2.6<span class="u">km 남음 · 거리</span></div>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:16px">
+              <span class="bdg lg"><i class="img">🥾</i></span>
+              <div class="axis2" style="flex:1;min-width:0;margin-top:0">
+                <div class="ax">
+                  <span class="ax-k">거리</span>
+                  <span class="ax-bar"><b style="width:83%"></b></span>
+                  <span class="ax-v">12.4 / 15 km</span>
+                </div>
+                <div class="ax dim">
+                  <span class="ax-k">고도</span>
+                  <span class="ax-bar"><b style="width:87%"></b></span>
+                  <span class="ax-v">260 / 300 m</span>
+                </div>
+              </div>
+            </div>
+            <div class="ax-note">가장 가까운 기록은 9월 1일 <b>12.4km · 260m</b>.</div>
+          </div>
+
+          <!-- 다중 카운터 -->
+          <div class="track t-mystic" style="margin-bottom:0">
+            <div class="t-head lead">
+              <span class="pill mystic">Mystic</span>
+              <div class="t-name">평일의 성실함</div>
+            </div>
+            <div class="t-kind">다중 카운터 · 월~금 각 300회 · 전부 채워야 열려요</div>
+            <div class="t-now">110<span class="u">회 남음 · 금요일</span></div>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:16px">
+              <span class="bdg lg locked mystic"><i class="img">🗂️</i></span>
+              <div class="counters" style="flex:1;min-width:0;margin-top:0">
+                <div class="ctr met"><div class="ctr-bar"><b style="height:100%"></b></div><div class="ctr-d">월</div><div class="ctr-n">312</div></div>
+                <div class="ctr"><div class="ctr-bar"><b style="height:96%"></b></div><div class="ctr-d">화</div><div class="ctr-n">288</div></div>
+                <div class="ctr met"><div class="ctr-bar"><b style="height:100%"></b></div><div class="ctr-d">수</div><div class="ctr-n">301</div></div>
+                <div class="ctr"><div class="ctr-bar"><b style="height:88%"></b></div><div class="ctr-d">목</div><div class="ctr-n">264</div></div>
+                <div class="ctr low"><div class="ctr-bar"><b style="height:63%"></b></div><div class="ctr-d">금</div><div class="ctr-n">190</div></div>
+              </div>
+            </div>
+            <div class="ax-note">월·수는 채웠어요. 금요일이 가장 멀어요.</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="notes-col">
+      <h3 style="margin-top:0">병목을 말하지 않으면 2축은 읽히지 않는다</h3>
+      <p>
+        두 축이 있으면 유저의 질문은 “얼마나 남았나”가 아니라
+        <strong>“무엇이 남았나”</strong>가 됩니다. 산악 라이더는 속도를 이미 채웠고 고도만 남았는데,
+        진행률 숫자 하나(79%)만 보여주면 그 사실이 사라집니다.
+      </p>
+      <ul>
+        <li><strong>충족한 축은 체크로 닫는다.</strong> 라임 + 체크 아이콘으로 “여기는 끝났다”를 명시해 남은 축에 시선을 몰아준다.</li>
+        <li><strong>계열 진행률은 두 축의 최솟값.</strong> 평균을 쓰면 “거의 다 됐다”는 잘못된 신호가 된다.</li>
+        <li><strong>규칙을 문장으로 적는다.</strong> “각각 다른 라이딩에서” / “한 번에 둘 다” — 이 한 줄이 두 배지를 가르는 전부다.</li>
+      </ul>
+
+      <h3>다중 카운터는 막대를 세운다</h3>
+      <p>
+        평일의 성실함은 요일 5개가 <strong>독립 카운터</strong>입니다. 가로 레일로 그리면
+        “5개 중 3개 완료” 같은 요약이 되어 <strong>어느 요일이 문제인지</strong>가 사라집니다.
+        세로 막대 5칸으로 두면 금요일이 낮은 것이 한눈에 보입니다.
+      </p>
+      <p>
+        엔진은 이미 요일별·계절별 카운트를 계산해
+        <span class="m">actual</span>에 <span class="m">“월: 312회, 화: 288회…”</span> 문자열로 담고 있습니다.
+        <strong>숫자로 꺼내기만 하면 되는 유일한 유형</strong>입니다.
+      </p>
+    </div>
+  </div>
+
+  <h3>독립 배지는 레일이 아니라 그리드</h3>
+  <div class="showcase">
+    <div class="phone-col">
+      <div class="app">
+        <div class="pad" style="padding-block:16px">
+          <div class="sect" style="margin-top:0;justify-content:flex-end"><span class="more">32개 중 6개 획득</span></div>
+          <div class="trophy">
+            <div class="tr done">
+              <span class="bdg earned common"><i class="img">👣</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span>
+              <div class="nm">첫 발자국</div>
+              <div class="pr">획득</div>
+              <div class="tbar"><b style="width:100%"></b></div>
+            </div>
+            <div class="tr">
+              <span class="bdg locked"><i class="img">🔢</i></span>
+              <div class="nm">만보왕</div>
+              <div class="pr">3,180 / 10,000</div>
+              <div class="tbar"><b style="width:32%"></b></div>
+            </div>
+            <div class="tr">
+              <span class="bdg locked"><i class="img">🌡️</i></span>
+              <div class="nm">폭염 속의 걸음</div>
+              <div class="pr">3 / 5회</div>
+              <div class="tbar"><b style="width:60%"></b></div>
+            </div>
+            <div class="tr">
+              <span class="bdg locked"><i class="img">🕰️</i></span>
+              <div class="nm">하루종일 걸었다</div>
+              <div class="pr">92 / 300분</div>
+              <div class="tbar"><b style="width:31%"></b></div>
+            </div>
+            <div class="tr done">
+              <span class="bdg earned epic"><i class="img">🚪</i><i class="mk ok"><svg class="ic" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg></i></span>
+              <div class="nm">그냥 나갔다 옴</div>
+              <div class="pr">획득</div>
+              <div class="tbar"><b style="width:100%"></b></div>
+            </div>
+            <div class="tr">
+              <span class="bdg locked"><i class="img">🍂</i></span>
+              <div class="nm">사계절의 발걸음</div>
+              <div class="pr">겨울 3 / 10</div>
+              <div class="tbar"><b style="width:30%"></b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes-col">
+      <h3 style="margin-top:0">계열이 없는 배지에는 레일이 없다</h3>
+      <p>
+        걷기 전용 독립 배지 32종(D01~D11 누적일수 + 트로피 매트릭스 21종)은
+        등급이 하나뿐이고 서로 연결되지도 않습니다. 눈금이 하나인 레일은 레일이 아니므로
+        <strong>3열 그리드</strong>로 갑니다. 배지 이미지 표현은 레일과 <strong>같은 사각 썸네일</strong>을 씁니다 —
+        화면 안에서 배지가 두 가지 모양으로 보이면 같은 것으로 안 읽힙니다.
+      </p>
+      <ul>
+        <li><strong>진행은 카드 하단 막대</strong> — 썸네일을 감싸는 원호로 그리면 44px 이미지를 링이 압도한다. 값을 읽기에도 막대가 정확하다.</li>
+        <li><strong>아래 한 줄은 항상 실측/목표</strong> — “3,180 / 10,000”. 조건 문구를 반복하지 않는다.</li>
+        <li><strong>다중 카운터는 병목만 적는다</strong> — “겨울 3 / 10”. 좁은 칸에서 4개를 다 적을 수 없으므로 가장 먼 칸을 대표로 세운다.</li>
+        <li><strong>D01~D11도 이 그리드다 — 레일이 아니다.</strong> 초판에는 "지표가 같아 레일로 묶인다"고 썼는데 틀렸다. 콘텐츠 스펙이 명시한다 — "독립 배지, 성장티어 그룹 없음" · "<span class="m">prerequisite_badge_names</span> 없어 병합 안 됨" (<span class="m">ACTIVITY_BADGES.md</span> <span class="m">:147</span>,<span class="m">:650</span>). D01~D11은 <span class="m">active_days_count</span>가 같아도 이름이 전부 달라서(첫 발자국·일주일의 증인·…·천일의 방랑자) 계열 그룹핑 규칙(아래 §08 C)에 절대 안 걸린다 — 이 그리드의 다른 셀과 똑같이 진행/목표 한 줄로 그린다.</li>
+        <li><strong>정렬은 진행률 기준</strong> — 미획득 중 완료에 가까운 순으로, 획득은 뒤로. §03 "다음 목표"와 같은 규칙이라 새 규칙을 하나 더 배우지 않는다. <span class="m">INDEPENDENT_BADGE_ORDER</span> 같은 이름 하드코딩 배열을 참조하지 않는다 — 이유는 §08 G.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="s6">
+  <div class="sec-head">
+    <span class="sec-num">06</span>
+    <h2>레이아웃 · 접근성 스펙</h2>
+    <span class="fill-rule"></span>
+  </div>
+
+  <p class="lede">
+    수치는 전부 <strong>JAM! 디자인 토큰</strong>에서 가져옵니다
+    (<span class="m">design-system/tokens/*.css</span>). 새 값을 만들지 않습니다.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>항목</th><th>값</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>레이아웃 마진</td><td class="num">--spacing-16</td><td>기존 <span class="m">/badges</span>·<span class="m">/badges/tree</span>와 동일</td></tr>
+        <tr><td>레일 카드 내부 패딩</td><td class="num">--spacing-16</td><td>16px 반지름(<span class="m">--radius-card</span>)과 동심 관계</td></tr>
+        <tr><td>레일 카드 간격</td><td class="num">--spacing-12</td><td>그룹 내부 간격</td></tr>
+        <tr><td>섹션 간격</td><td class="num">--spacing-32</td><td>그룹 간격 ≥ 내부 간격 × 2 (12 → 32, 2.7배)</td></tr>
+        <tr><td><strong>히어로 수치</strong></td><td class="num">--text-h3<br>28px / 700 / -0.28px</td><td><strong>카드마다 정확히 하나.</strong> 40px(<span class="m">--text-bold-lg</span>)에서 한 단계 내렸다 — 하나만 크게 하면 충분하고, 그 이상은 화면이 소리친다. 굵기 700은 h3의 500과 볼드 레지스터의 900 사이로, 헤딩이 아니라 <strong>수치</strong>이기 때문에 고른 값</td></tr>
+        <tr><td><strong>본문 타입 스케일</strong></td><td class="num">11 / 12 / 14 / 16 / 24</td><td><strong>히어로 아래로는 이 다섯뿐.</strong> <span class="m">typography.css</span>의 micro·caption·small·body·h4. 반픽셀·중간값 금지</td></tr>
+        <tr><td>카드 바탕</td><td class="num">무채색 글래스<br>160deg · .075 → .018</td><td><strong>색을 넣지 않는다.</strong> 위에서 들어오는 빛 한 겹 + 상단 1px 하이라이트. 등급은 pill·링·라벨이 이미 말하므로 바탕까지 물들이면 채널이 겹친다</td></tr>
+        <tr><td><strong>상태 3색</strong></td><td class="num">모자람 #f2cb00<br>완성 #d6f24a<br>직전 #36d3f1</td><td>브랜드도 등급도 아닌 <strong>별도 축</strong>. 아래 “색 시스템” 표 참조</td></tr>
+        <tr><td>잠금 표시</td><td class="num">모서리 마커 18px<br>아이콘 11px · 터치 44×44</td><td>미션·선행배지 조건은 <strong>카드에 문장으로 쓰지 않고</strong> 배지 모서리의 자물쇠 마커 하나로 표시한다. 획득 체크(<span class="m">.mk.ok</span>)와 <strong>같은 자리·같은 크기</strong>라 상태가 한 위치에서만 읽힌다. 상세는 시트(§04)</td></tr>
+        <tr><td>티어 목록</td><td class="num">조건값 수치만</td><td>세계관 설명문을 넣지 않는다 — <strong>발급 조건값</strong>(<span class="m">condition_json</span>)을 “30 km / 누적 거리 · 30km 이상”처럼 지표·비교·값으로 적는다. 설명문은 배지 상세 화면에 그대로 남는다</td></tr>
+        <tr><td>그래프 그라데이션</td><td class="num">시작 진함 → 끝 흐림</td><td>가로 막대는 <span class="m">90deg</span>, 아래에서 차오르는 세로 막대는 <span class="m">0deg</span>, 아크는 <span class="m">conic from 0deg</span> — 전부 “채우기 시작점”이 진하다</td></tr>
+        <tr><td>아이콘</td><td class="num">Material Symbols<br>viewBox 0 -960 960 960</td><td><strong>TabBar와 같은 규격.</strong> 면(fill) 방식 <span class="m">currentColor</span>, 이모지·문자 글리프 미사용. TabBar의 <span class="m">fill</span>/<span class="m">line</span> 변형 규칙도 그대로 따른다</td></tr>
+        <tr><td>등급칩 순서</td><td class="num">칩 → 이름</td><td>가로로 나열될 때 <strong>항상 칩이 앞</strong>. 등급을 먼저 읽고 이름을 읽는 순서를 화면 전체에서 고정한다</td></tr>
+        <tr><td>진행 아크</td><td class="num">4px / 오프셋 7px<br>반지름 19px</td><td>썸네일 12px + 오프셋 7px = 동심. 썸네일과 3px 띄워 두 층으로 읽히게 한다. <strong>막대가 없는 곳에서만 쓴다</strong> — 한 배지에 진행 표현은 하나</td></tr>
+        <tr><td>그래픽 두께</td><td class="num">레일 6px · 게이지 10px<br>분포·목표 막대 6px</td><td>이전 3~4px는 40px 수치 옆에서 사라진다. 수치가 커지면 그래픽도 함께 커져야 한 덩어리로 읽힌다</td></tr>
+        <tr><td>누름 피드백</td><td class="num">scale 0.96 · 150ms<br>cubic-bezier(.22,1,.36,1)</td><td><span class="m">--scale-press</span>·<span class="m">--duration-quick</span>·<span class="m">--ease-smooth-out</span> 실값. <span class="m">scale</span>·<span class="m">opacity</span>만 전이 — <span class="m">transition:all</span> 금지</td></tr>
+        <tr><td>등급 pill</td><td class="num">8px</td><td>유일한 예외 — DS가 literal px로 고정한 값(<span class="m">RarityBadge.jsx</span> v3)</td></tr>
+        <tr><td>배지 썸네일</td><td class="num">44px / 52px(다음 목표)<br>56px(목표 카드·티어)</td><td>44px는 <span class="m">--touch-target-min</span>과 같은 값 — 별도 히트 영역 확장이 필요 없다</td></tr>
+        <tr><td><strong>배지 이미지 색</strong></td><td class="num">획득 = 컬러<br>미획득 = grayscale(1)</td><td><strong>예외 없음.</strong> 필터는 이미지 요소(<span class="m">.img</span>)에만 건다 — <span class="m">.bdg</span>에 걸면 등급 링·후광까지 회색이 되어 상태 구분이 무너진다</td></tr>
+        <tr><td>썸네일 반지름</td><td class="num">--radius-sm (44px)<br>12px (52·56px)</td><td>사각 썸네일. 커질수록 반지름도 커져야 모서리 곡률이 같아 보인다</td></tr>
+        <tr><td>썸네일 간 여백</td><td class="num">최소 10px</td><td>375px 기준 (343 − 4×48) ÷ 3 ≈ 50px 확보 — 44px 히트 영역이 겹치지 않는다</td></tr>
+        <tr><td>접힌 레일 카드 높이</td><td class="num">약 196px</td><td>이름·조건값 줄 + 썸네일 52 + 라벨 2줄 + 행동 줄</td></tr>
+        <tr><td>방향 속성</td><td class="num">inset-inline-*<br>padding-inline-*</td><td>물리 <span class="m">left/right</span> 미사용 — 채움 막대·상태 글리프·게이트 포함</td></tr>
+  <h3>텍스트 밀도 — 크기가 아니라 개수를 줄인다</h3>
+  <p>
+    “글씨를 키우면 읽기 쉬워진다”는 반대로 갑니다. 375px에서 크기를 키우면 줄 수가 늘어
+    카드가 더 길어집니다. <strong>줄일 것은 크기가 아니라 텍스트 블록의 개수와 크기의 가짓수</strong>입니다.
+  </p>
+  <ul>
+    <li><strong>카드당 문장은 하나.</strong> 나머지는 전부 라벨(단어)이나 숫자다. 문장이 둘이면 둘 다 안 읽힌다.</li>
+    <li><strong>같은 정보를 두 번 쓰지 않는다.</strong> 진행 막대 옆의 % 숫자, 조건 문구와 임계값, 지표 라벨과 단위 — 이전 시안에서 셋 다 중복이었다.</li>
+    <li><strong>크기는 다섯 단계로 끝낸다.</strong> 크기가 21종이면 어느 것도 “더 중요하다”는 신호가 되지 못한다. 11(보조) · 12(라벨·조건값) · 14(문장·상태) · 16(이름·현재값) · 24(요약 숫자).</li>
+    <li><strong>설명문은 접힌 상태에 넣지 않는다.</strong> 세계관 문구는 펼친 티어 카드에서만, 그것도 2줄 클램프로.</li>
+  </ul>
+
+  <h3>텍스트 성장과 잘림</h3>
+  <ul>
+    <li><strong>배지 이름에 <span class="m">truncate</span>를 쓰지 않는다.</strong> 현재 결함(§01 HIGH)의 직접적인 수정. <span class="m">overflow-wrap: anywhere</span>로 줄바꿈을 허용하고, 카드 높이는 내용이 정한다. <strong>어떤 길이에서도 이름은 잘리지 않는다</strong> — 아래가 375px 화면의 실제 이름 영역 209px에서의 차이다.</li>
+    <li><strong>지표 라벨·조건값에 고정 폭을 주지 않는다.</strong> “한 번에 걸은 시간 · 최고 기록”처럼 길어질 수 있고, 종목 탭의 “트레일러닝” 사례(티켓 20260831_2208 핫픽스)가 이미 같은 실수를 보여줬다.</li>
+    <li><strong>모든 숫자에 <span class="m">tabular-nums</span>.</strong> 레일이 세로로 쌓이면 값이 열을 이룬다. 자릿수가 흔들리면 스캔이 깨진다.</li>
+    <li><strong>조건값 라벨은 썸네일 폭을 기준으로 가운데 정렬하되 열 자체가 늘어나게 둔다.</strong> “1,500m”처럼 긴 값이 오면 그 열이 넓어지고 연결선이 그만큼 줄어든다 — 라벨이 잘리거나 카드 밖으로 나가지 않는다.</li>
+  </ul>
+
+  <div class="trunc-demo">
+    <div class="td-row">
+      <span class="td-k">현재</span>
+      <div class="td-box"><span class="td-name cut">불타는 금요일 밤 산책</span></div>
+      <div class="td-note"><b>truncate</b> — 209px에서 이름 끝이 잘려 어떤 배지인지 알 수 없다.</div>
+    </div>
+    <div class="td-row">
+      <span class="td-k">제안</span>
+      <div class="td-box"><span class="td-name">불타는 금요일 밤 산책</span></div>
+      <div class="td-note"><b>overflow-wrap: anywhere</b> — 두 줄로 흘러 전부 읽힌다. 카드 높이는 내용이 정한다.</div>
+    </div>
+  </div>
+  <p class="cap">
+    이름은 프로덕션 DB 실값. §01 HIGH가 지목한 <b class="m">BadgeTreeCard.tsx</b>의
+    <b class="m">truncate</b>가 실제로 자르는 이름 중 하나다.
+  </p>
+
+  <h3>색 시스템</h3>
+  <p>
+    램프 셋과 중성 하나. 각 램프는 OKLCH에서 <strong>색상각을 끝까지 고정</strong>하고,
+    밝기를 고르게, 채도를 가운데가 가장 높게 잡았습니다.
+    <strong>프리미티브(<span class="m">--yellow-500</span>)는 컴포넌트가 직접 쓰지 않고</strong>,
+    역할 토큰(<span class="m">--status-short-solid</span>)만 참조합니다.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th style="width:96px">역할</th><th>맡는 것</th><th class="num">색상각</th><th class="num">solid</th><th class="num">대비</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>모자란 것</strong><br><span class="m">status-short</span></td>
+          <td>채우는 중인 막대·아크, 남은 값 숫자, 다음 목표 링, 가장 뒤처진 카운터</td>
+          <td class="num">95°</td><td class="num">#f2cb00</td><td class="num">9.47</td>
+        </tr>
+        <tr>
+          <td><strong>다 채운 것</strong><br><span class="m">status-done</span></td>
+          <td>지나온 구간, 획득 배지 링·체크, 충족한 축, 조건 충족 라벨, 등급별 획득 수</td>
+          <td class="num">119°</td><td class="num">#d6f24a</td><td class="num">11.85</td>
+        </tr>
+        <tr>
+          <td><strong>방금 들어온 것</strong><br><span class="m">status-latest</span></td>
+          <td>직전 동기화 배너(점·문구·헤어라인)와 막대 끝 꼬리 — <strong>이 둘뿐</strong></td>
+          <td class="num">214°</td><td class="num">#36d3f1</td><td class="num">8.35</td>
+        </tr>
+        <tr>
+          <td>아직 손대지 않음<br><span class="m">status-idle</span></td>
+          <td>빈 트랙, 미도달 상태값(<span class="m">—</span>). 의미색을 주지 않는다</td>
+          <td class="num">—</td><td class="num">white .11<br>#929292</td><td class="num">4.80</td>
+        </tr>
+        <tr>
+          <td>등급<br><span class="m">rarity</span></td>
+          <td><strong>등급칩 안에서만.</strong> DS 고정 4색이라 재매핑하지 않는다</td>
+          <td class="num">73° / 156°<br>2° / 무채</td><td class="num">DS 실값</td><td class="num">DS 검증</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="cap">
+    대비는 카드 바탕 실측값 <b class="m">#272727</b>(글래스 그라데이션이 합성된 가장 밝은 지점) 기준
+    WCAG 2.1 비율. 색상각은 등급 팔레트와 최소 <b class="m">22°</b> 떨어뜨렸다 —
+    15° 이내는 같은 색으로 읽힌다.
+  </p>
+
+  <h3>접근성</h3>
+  <ul>
+    <li><strong>상태를 색으로만 말하지 않는다.</strong> 이미지 원색/흑백 + 링 + 글리프 + 상태 단어로 4중 부호화(§04 범례). 상태 단어가 있으므로 스크린리더에도 그대로 전달된다.</li>
+    <li><strong>레일 전체에 텍스트 대체를 준다.</strong> 시각 요소를 스크린리더로 읽을 수 없으므로 컨테이너에 요약 문장을 붙인다 — “동네 산책러, 누적 거리 87.3km. 4단계 중 1단계 획득. Rare 30km는 조건 충족했으나 미션 잠김. 다음 단계 Epic 100km까지 12.7km 남음.”</li>
+    <li><strong>배지 썸네일은 전부 초점 가능해야 한다.</strong> 각 썸네일이 상세 시트를 여는 버튼이므로 <span class="m">focus-visible</span> 링(<span class="m">--color-primary</span> 2px)을 유지한다. 크기가 44px이라 히트 영역 확장은 불필요하다.</li>
+    <li><strong>접기·펼치기에 상태를 노출한다.</strong> <span class="m">aria-expanded</span> + 셰브런 회전. 숨은 내용에는 반드시 보이는 단서를 준다.</li>
+    <li><strong>모션 축소 존중.</strong> 채움 막대 애니메이션은 <span class="m">prefers-reduced-motion</span>에서 즉시 최종 상태로.</li>
+  </ul>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="s7">
+  <div class="sec-head">
+    <span class="sec-num">07</span>
+    <h2>문구</h2>
+    <span class="fill-rule"></span>
+  </div>
+
+  <p class="lede">
+    <span class="m">Specs/UX_WRITING_GUIDELINE.md</span>의 고정 용어를 그대로 씁니다 —
+    상태 라벨은 <strong>잠김</strong>, 해제 안내는 <strong>열려요</strong>,
+    등급은 <strong>영문 표기</strong>(Common / Rare / Epic / Mystic), 문장은 해요체.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th style="width:130px">상황</th><th>제안 문구</th><th>메모</th></tr></thead>
+      <tbody>
+        <tr><td>누적형 남은 값</td><td>{N}{단위} 더 걸으면 {등급}이 열려요</td><td>기존 <span class="m">missions.lockedHint</span>의 “열려요” 패턴 재사용</td></tr>
+        <tr><td>기록형 남은 값</td><td>한 번에 {N}분 더 걸으면 {등급}이 열려요</td><td>“한 번에”가 누적과 기록을 가르는 유일한 단서 — 반드시 넣는다</td></tr>
+        <tr><td>주기형 남은 값</td><td>이번 주에 {N}번 더 걸으면 {등급}이 열려요</td><td>“이번 주 / 이번 달”로 주기를 명시</td></tr>
+        <tr><td>주기 초기화</td><td>{요일}에 초기화 · {N}일 남음</td><td>레이블이라 마침표·해요체 불필요(가이드 §6)</td></tr>
+        <tr><td>조건 충족 · 잠김</td><td>조건은 채웠어요 — 미션 <b>{미션명}</b>을 완료하면 {등급}이 열려요</td><td>새 상태. “채웠어요”로 성취를 먼저 인정하고 게이트를 안내</td></tr>
+        <tr><td>선행 배지 잠김 (OR)</td><td><b>{배지A}</b> 또는 <b>{배지B}</b>를 획득하면 열려요</td><td>현재는 칩 2개가 세로로 쌓여 AND처럼 읽힌다 — “또는”을 명시</td></tr>
+        <tr><td>아쉬움 줄</td><td>지난 {활동}은 {실측값}. {차이}만 더 {동사}면 {등급}이었어요</td><td>과거형으로 닫아 재촉하지 않는다</td></tr>
+        <tr><td>직전 활동 배너</td><td>배지 {N}개가 가까워졌어요</td><td>담담·안내 톤. 배지 트리는 열람 화면이라 신남 톤을 강요하지 않는다</td></tr>
+        <tr><td>2축 · 각각 달성</td><td>{축A} {N}{단위}가 남았어요 — 두 조건은 각각 다른 {활동}에서 채워도 돼요</td><td>병목 축을 먼저 말한다. 규칙 문장을 반드시 붙인다</td></tr>
+        <tr><td>2축 · 한 활동 동시</td><td>한 번에 둘 다 채워야 해요. 지금 가장 가까운 기록은 {날짜} {활동} {값A} · {값B}예요</td><td>“한 번에”가 <span class="m">same_activity</span>를 유일하게 드러내는 단어</td></tr>
+        <tr><td>2축 · 한 축 충족</td><td>{축B} 조건은 이미 채웠어요</td><td>충족한 축을 닫아 남은 축에 시선을 모은다</td></tr>
+        <tr><td>다중 카운터</td><td>{요일}이 {N}회 남아 가장 멀어요. {전체}를 전부 채워야 열려요</td><td>병목 하나만 지목하고 나머지는 게이지가 말하게 둔다</td></tr>
+        <tr><td>전부 획득한 계열</td><td>모두 획득했어요</td><td>레일 전체를 등급색으로 채우고 다음 행동 줄을 이 문장으로 대체</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<section id="s8">
+  <div class="sec-head">
+    <span class="sec-num">08</span>
+    <h2>새로 개발해야 하는 것</h2>
+    <span class="fill-rule"></span>
+  </div>
+
+  <p class="lede">
+    유저의 7개 요구 중 6개는 <strong>지금 존재하지 않는 데이터</strong>를 필요로 합니다.
+    화면 요구에서 역산해 신규 개발 항목 여덟을 정의했습니다.
+    <strong>발급 판정 로직·<span class="m">condition_json</span> 스키마·배지 카탈로그는 건드리지 않습니다</strong> —
+    전부 그 옆에 새로 붙는 계층입니다.
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th style="width:34px">#</th><th>신규 개발</th><th>없으면 안 되는 이유</th><th style="width:118px">충족되는 요구</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="num">A</td>
+          <td><strong>진행 계산 모듈</strong><br><span class="m">computeBadgeProgress()</span></td>
+          <td>지금 엔진은 <strong>통과/탈락만</strong> 판정한다. 진행률·남은 값·병목 축·주기 종료 시각은 어디에도 계산되지 않는다. 발급 판정과 <strong>별도 함수로 분리</strong>해 회귀 위험을 0으로 둔다</td>
+          <td>③ 현재 위치<br>④ 부족분<br>⑤⑥ 유형 구분</td>
+        </tr>
+        <tr>
+          <td class="num">B</td>
+          <td><strong>유저 지표 집계</strong></td>
+          <td>배지 192개마다 활동 이력을 재순회하면 화면이 못 버틴다. 지표 <strong>10여 개</strong>를 1회 산출하고 임계값 비교는 파생으로 처리한다. <strong>주기형의 “이번 주/이번 달” 값은 엔진에 아예 없어</strong> 여기서 새로 만든다</td>
+          <td>③ ④ ⑥</td>
+        </tr>
+        <tr>
+          <td class="num">C</td>
+          <td><strong>진행 스냅샷 테이블</strong><br><span class="m">user_family_progress</span></td>
+          <td><strong>“직전 상태값과의 비교”는 이게 없으면 원리적으로 불가능하다</strong> — 비교할 이전 상태가 저장돼 있지 않다. 키는 <span class="m">badge_id</span>가 아니라 계열(<span class="m">activity_type + name</span>) — 등급 4개가 같은 값을 공유하므로 4중 저장을 피한다</td>
+          <td>⑦ 직전 비교<br>스테이지 연출</td>
+        </tr>
+        <tr>
+          <td class="num">D</td>
+          <td><strong>활동 단위 기여도</strong></td>
+          <td>“마지막 액티비티에서 얼마만큼 모자랐나”를 답하려면 <strong>활동 1건이 조건을 얼마나 충족했는지</strong>를 따로 계산해야 한다. 엔진은 이력 전체 단위로만 평가한다. 새 테이블은 필요 없다 — C의 <span class="m">last_activity_id</span>로 그 활동 하나를 다시 읽어 계산하는 순수 함수로 충분하다</td>
+          <td>⑦ 아쉬움 줄<br>누적형 붉은 꼬리</td>
+        </tr>
+        <tr>
+          <td class="num">E</td>
+          <td><strong>화면 컴포넌트</strong></td>
+          <td>레일 · 2축 게이지 · 다중 카운터 게이지 · 트로피 진행 링 · 요약 헤더 · 직전 활동 배너 · 상세 시트. <span class="m">SlidingTabs</span>·<span class="m">RarityBadge</span>·<span class="m">BottomSheet</span>는 그대로 재사용</td>
+          <td>① 조망 ② 위계<br>전부</td>
+        </tr>
+        <tr>
+          <td class="num">F</td>
+          <td><strong>진행 알림</strong> <span class="tag low">선택</span></td>
+          <td>주기형 리셋 임박 · 잠금 해제 가능 시점 알림. 알림 타입 <span class="m">progress_nudge</span>가 <span class="m">types/database.ts</span>에 이미 정의돼 있으나 <strong>발신 경로가 없다</strong>. C가 있으면 자연스럽게 붙는다</td>
+          <td>범위 밖 — 후보</td>
+        </tr>
+        <tr>
+          <td class="num">G</td>
+          <td><strong>지표 라벨·단위 테이블</strong><br><span class="m">badge_metric_labels</span></td>
+          <td>이 문서의 “고도”·“금요일” 같은 축 라벨이 <strong>실제로는 어디에도 없다</strong>. 재사용 가능한 매핑이 0건 — <span class="m">index.ts</span>의 라벨 상수는 비공개에 6개뿐이고 <span class="m">badges.description</span>은 세계관 산문이라 못 쓴다. <strong>어드민 편집 테이블로 만든다</strong> — 코드(TS 상수)로 만들면 새 지표마다 배포가 필요해, 새 액티비티·새 계열이 늘어날수록 엔지니어 없이는 라벨을 못 붙이는 상태가 굳어진다</td>
+          <td>⑤⑥ 유형 구분<br>레일 전체 라벨</td>
+        </tr>
+        <tr>
+          <td class="num">H</td>
+          <td><strong>진행 미지원 고지</strong></td>
+          <td><span class="m">computeBadgeProgress()</span>는 5가지 유형만 안다(§05). 새 배지의 조건이 여기 안 걸리면 <strong>발급은 되는데 화면에서 조용히 빠지거나 잘못 그려질 위험</strong>이 있다 — 어드민이 저장하는 순간 알아야 한다. <strong>새 함수를 만들지 않는다</strong> — <span class="m">BadgeForm.tsx</span>가 이미 <span class="m">getUnsupportedConditionKeys</span>로 “폼이 지원 안 하는 필드”를 감지해 경고하는 같은 패턴을 “화면이 지원 안 하는 조건 형태” 체크로 확장한다</td>
+          <td>지속가능성<br>(엔지니어링 필요 시점을 사전에 노출)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>H — 진행 미지원 고지</h3>
+  <p>
+    A(<span class="m">computeBadgeProgress()</span>)가 <strong>모르는 조건은 모른다고 말해야 합니다.</strong>
+    지금 설계는 5가지 유형(§05)을 전제하는데, 이건 <strong>현재 배지 192개를 전수 조사한 결과</strong>지
+    미래에 어떤 조건이 추가돼도 다 안다는 뜻이 아닙니다. 새 조건이 5유형 밖이면 <span class="m">computeBadgeProgress</span>가
+    억지로 끼워 맞추기(§08 앞 대화에서 짚은 과잉 일반화 리스크 — 티켓 20260831_2100과 같은 실패 패턴)보다,
+    <strong>“모르겠다”는 상태를 명시적으로 반환</strong>해야 합니다.
+  </p>
+  <div class="code">type <b>BadgeProgress</b> = KnownProgress | { kind: <u>'unsupported'</u>, conditionKeys: string[] }</div>
+  <p>
+    이 반환값이 두 곳에서 쓰입니다.
+  </p>
+  <ul>
+    <li>
+      <strong>어드민 — 저장 전에 경고.</strong> <span class="m">BadgeForm.tsx</span>가 조건을 저장하기 전,
+      같은 분류 함수로 <span class="m">'unsupported'</span>인지 확인해 “이 조건은 배지 트리 화면에 진행률이
+      표시되지 않습니다 — 발급은 정상 동작합니다” 배너를 보여줍니다. 저장을 막지는 않습니다 —
+      비즈니스가 배지 출시를 개발 완료까지 기다릴 필요는 없습니다.
+    </li>
+    <li>
+      <strong>화면 — 조용히 숨기지 않고 명시적으로 보여준다.</strong> 그런 등급은 레일에서 잠긴 눈금과
+      다른 표시(“진행 표시 준비 중”, 조건 문구만)로 그립니다. 아예 안 보이게 하면 유저가
+      “이 배지가 있는지도 몰랐다”가 되고, 잠김과 똑같이 그리면 “곧 열리나?”로 오해합니다.
+    </li>
+  </ul>
+  <p class="cap">
+    분류 함수는 <strong>딱 하나</strong>로 둡니다 — 어드민 경고와 화면 렌더링이 각자 판정 로직을 따로 구현하면
+    §08 앞부분에서 이미 지적한 “여러 곳에 흩어진 조건 목록이 따로 노는” 문제(<span class="m">condition-schema.ts</span> ·
+    DB CHECK · <span class="m">PER_ACTIVITY_KEYS</span>의 수동 동기화 부담)를 하나 더 만드는 셈입니다.
+  </p>
+
+  <h3>A — 진행 계산의 반환 형태</h3>
+  <p>
+    다섯 조건 유형(§05)을 하나의 타입으로 받습니다. 축이 여럿이면
+    <strong>진행률은 평균이 아니라 최솟값</strong>이고, 병목 축을 함께 돌려줍니다.
+  </p>
+  <div class="code"><i>// 신규. 발급 판정(evaluateConditionDetailed)은 그대로 둔다 — 정본은 그쪽.</i>
+type <b>BadgeProgress</b> = {
+  kind: 'cumulative' | 'record' | 'periodic' | 'dual' | 'multi'
+  axes: {
+    key: string        <i>// 'distance_km' | 'weekly_count' | 'friday' …</i>
+    label: string      <i>// '누적 거리' | '금요일'</i>
+    current: number
+    target: number
+    unit: string
+    met: boolean
+  }[]
+  progress: number       <i>// 0~1 — 축이 여럿이면 </i><u>최솟값</u>
+  bottleneck: string     <i>// 가장 뒤처진 축의 key</i>
+  sameActivity: boolean  <i>// 축들을 한 활동에서 동시에 채워야 하는가</i>
+  periodEndsAt: string | null   <i>// 주기형만 — 리셋 시각</i>
+  gate: { kind: 'badge' | 'mission', name: string, href: string, met: boolean } | null
+}</div>
+
+  <h3>C — 진행 스냅샷 (계열 기준으로 교정)</h3>
+  <p>
+    <strong>키를 <span class="m">badge_id</span>가 아니라 계열로 잡습니다.</strong> §02①에서 이미 확인한 사실 —
+    계열 이름 하나당 조건 필드 조합이 정확히 1가지(72계열, 예외 0건) — 은 “동네 산책러”의
+    Common·Rare·Epic·Mystic 네 배지가 <strong>같은 누적거리 값을 서로 다른 임계값과 비교할 뿐</strong>이라는 뜻입니다.
+    <span class="m">badge_id</span>로 키를 잡으면 같은 <span class="m">current</span> 값을 등급마다 4번 중복 저장하고,
+    동기화 때마다 4행을 갱신해야 합니다. 진짜 객체는 <strong>“유저-배지 진행”이 아니라 “유저-계열 진행”</strong>입니다.
+  </p>
+  <p>
+    계열의 정체성은 <span class="m">badges.name</span> 문자열 일치가 <strong>유일한 근거</strong>입니다
+    (<span class="m">badgeTree.ts</span>가 실제로 이렇게 그룹핑함 — 지표 일치가 아닙니다. D01~D11이 반례입니다:
+    <span class="m">active_days_count</span>가 같아도 이름이 전부 달라 절대 안 묶입니다, §05 참조).
+    그래서 이름으로 키를 잡으면 D01처럼 <strong>계열 크기가 1인 독립 배지도 같은 모델로 자연스럽게 들어옵니다</strong> —
+    별도 분기가 필요 없습니다.
+  </p>
+  <div class="code">create table <b>user_family_progress</b> (
+  user_id           uuid references users(id),
+  activity_type     text,
+  family_name       text,          <i>-- </i><u>= badges.name — 계열의 유일한 식별자</u>
+  progress          real,          <i>-- 0~1 — 계열 안 미획득 최고 등급 기준</i>
+  current           jsonb,         <i>-- 축별 실측값 — 계열의 배지들이 </i><u>공유</u><i> 조회</i>
+  prev              jsonb,         <i>-- 직전 동기화 시점 값 — 비교의 기준</i>
+  last_activity_id  uuid,          <i>-- 이 진행을 민 마지막 활동</i>
+  updated_at        timestamptz,
+  primary key (user_id, activity_type, family_name)
+);</div>
+  <p class="cap">
+    <span class="m">computeBadgeProgress()</span>(A)는 이 행 하나 + 배지의 <span class="m">condition_json</span> 임계값을 받아
+    등급별 충족 여부를 그때그때 계산합니다 — 등급마다 저장하지 않습니다.
+    실제 마이그레이션은 <b class="m">jam-web/supabase/migrations/0XX_*.sql</b>로 남기고,
+    <b class="m">npm run db:types</b> 재생성분을 같은 커밋에 넣습니다(<b class="m">jam-web/CLAUDE.md</b> 규칙).
+  </p>
+  <div class="note">
+    <h4>이름이 유일한 식별자라는 것 자체가 취약점입니다 — 그래서 DB가 직접 막는다</h4>
+    <p>
+      어드민에서 한 등급의 이름 오타를 고치는 순간 그 계열이 조용히 둘로 쪼개집니다. 읽기 전용
+      advisor로는 이미 쪼개진 뒤에야 발견합니다 — <strong>쓰는 순간 막는</strong> 트리거로 둡니다.
+      새 화면이나 새 객체는 아닙니다. 기존 <span class="m">102_condition_json_check_constraint.sql</span>이
+      이미 쓰고 있는 “DB가 조건 형태를 직접 검증한다”는 같은 방침의 연장입니다.
+    </p>
+  </div>
+  <div class="code"><i>-- badges insert/update 시점에 같은 (activity_type, name) 형제 행과
+-- 조건 필드 셋이 다르면 저장 자체를 막는다. 어드민 폼 검증과 별개로,
+-- 마이그레이션·시드로 직접 넣는 경로까지 전부 막는다.</i>
+create function <b>check_family_condition_consistency</b>() returns trigger as $$
+declare
+  sibling_keys text[];
+  new_keys     text[] := (select array_agg(k order by k) from jsonb_object_keys(new.condition_json) k);
+begin
+  select array_agg(distinct k order by k) into sibling_keys
+  from badges, jsonb_object_keys(condition_json) k
+  where activity_type = new.activity_type
+    and name = new.name
+    and id &lt;&gt; new.id;
+
+  if sibling_keys is not null and sibling_keys &lt;&gt; new_keys then
+    raise exception <u>'"%" 계열(%) 조건 필드 불일치 — 기존 % / 신규 %'</u>,
+      new.name, new.activity_type, sibling_keys, new_keys;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger <b>badges_family_consistency</b>
+  before insert or update of name, activity_type, condition_json on badges
+  for each row execute function check_family_condition_consistency();</div>
+  <p class="cap">
+    <span class="m">mission_reward</span> 배지는 트리거 대상에서 뺀다 —
+    <span class="m">badgeTree.ts:141</span>이 이 배지들을 애초에 계열 그룹핑에서 통째로 건너뛴다
+    (“미션 완료로만 지급되는 배지는 트리 카드로 그리지 않는다”). 트리거 함수 맨 앞에
+    이 플래그가 있으면 그냥 통과시키는 한 줄을 추가해 같은 필터를 옮긴다.
+  </p>
+
+  <h3>G — 어드민 검토: 새로 필요한 화면은 이것 하나뿐</h3>
+  <p>
+    <strong>배지 CRUD 자체는 바꿀 필요가 없습니다.</strong> 같은 조건 유형의 새 계열은
+    지금도 어드민에서 DB row만 넣으면 <span class="m">badgeTree.ts</span>가 이름 매칭 +
+    <span class="m">missions.gated_badge_id</span>로 자동 편입합니다 — 계열·대표배지를
+    사람이 지정하는 필드가 애초에 없습니다.
+  </p>
+  <p>
+    새로 필요한 어드민 화면은 <strong>지표 라벨·단위를 관리하는 작은 테이블 하나</strong>입니다.
+    이게 없으면 새 액티비티 종목이나 새 계열이 추가될 때마다, 그 축의 한글 라벨을
+    코드에 박아 넣고 배포해야 <strong>이 화면에 라벨이 뜹니다</strong> — 콘텐츠 추가가
+    엔지니어링 작업에 매번 걸리는 셈입니다.
+  </p>
+  <div class="code">create table <b>badge_metric_labels</b> (
+  metric_key   text primary key,   <i>-- 'distance_km' | 'friday' | 'winter' …</i>
+  label_ko     text not null,      <i>-- '누적 거리' | '금요일' | '겨울'</i>
+  unit_ko      text,               <i>-- 'km' | '분' | '회' — 없으면 단위 없이 표시</i>
+  updated_at   timestamptz
+);</div>
+  <p class="cap">
+    화면(어드민)은 목록 + 인라인 편집 하나면 충분합니다 — 새 폼·워크플로우 불필요.
+    <span class="m">computeBadgeProgress()</span>(A)가 <span class="m">axes[].key</span>로
+    이 테이블을 조회해 <span class="m">label</span>·<span class="m">unit</span>을 채웁니다.
+    행이 없는 키는 <span class="m">key</span> 원문을 그대로 노출해 “라벨이 안 보이는” 게 아니라
+    “아직 안 채워진 게 눈에 띄게” 만듭니다.
+  </p>
+
+  <div class="note">
+    <h4>이걸로도 못 없애는 한계</h4>
+    <p>
+      <strong>진짜 새로운 축</strong>(지금 없는 조건 형태 — 예: 시간대별 5칸 카운터)은
+      라벨 테이블로도 못 만듭니다. <span class="m">condition-schema.ts</span>의
+      <span class="m">AssertAllConditionKeysCovered</span>가 컴파일 타임에 강제하고,
+      DB CHECK 제약도 별도 키 목록을 들고 있어 배지 엔진 코드 변경 + 마이그레이션이
+      항상 필요합니다. <strong>“어드민만으로 무한히 확장된다”는 이 기능의 목표가 아닙니다</strong> —
+      목표는 <em>같은 조건 유형 안에서</em> 새 지표·새 계열이 늘어도 화면이 버티는 것입니다.
+    </p>
+  </div>
+
+  <h3>의존 순서</h3>
+  <p>
+    <strong>B → A → C → D</strong> 순으로 쌓이고, <strong>E(화면)는 A가 나온 뒤 병렬</strong>,
+    <strong>G(라벨 테이블)는 A보다 먼저</strong> 끝내야 합니다 — A가 채울 라벨이 그 테이블에서 나오기 때문입니다.
+    <strong>H는 별도 단계가 아니라 A의 반환 타입 자체</strong>입니다 — A를 만들 때부터
+    <span class="m">'unsupported'</span> 분기를 넣어 두는 것이지, 나중에 덧붙이는 게 아닙니다.
+    어드민 경고 배너(H의 절반)만 E와 함께 붙습니다.
+    아래는 축소안이 아니라 <strong>배포 가능한 단위로 자른 순서</strong>입니다 —
+    각 단계가 끝나면 그 자체로 화면이 나아집니다.
+  </p>
+  <ul>
+    <li>
+      <strong>1차 — 구조.</strong> 카드 나열을 계열 레일로 전환. 눈금·게이트·트로피 그리드까지.
+      진행값 없이 <strong>위계와 등급 체계(요구 ①②)</strong>가 해결되고 스크롤이 8,000 → 1,200px이 된다.
+      데이터 변경은 <span class="m">badgeTree.ts</span> 정렬을 계열 우선으로 바꾸는 것과, 트로피 그리드가
+      <span class="m">INDEPENDENT_BADGE_ORDER</span> 대신 진행률로 정렬하도록 바꾸는 것 — 후자는 새 독립배지가
+      추가돼도 코드를 다시 안 건드리게 하는 선제 조치라 1차에 넣는다.
+    </li>
+    <li>
+      <strong>1.5차 — 미지원 고지(H).</strong> A 착수와 동시에 <span class="m">'unsupported'</span> 분기 +
+      어드민 경고 배너를 붙인다. 2차가 시작되기 전, 지금 192개 밖의 새 배지가 어드민에 들어오는 순간부터
+      바로 “이건 아직 화면에 안 뜬다”는 신호가 나오게 하는 게 목적이라 A와 분리하지 않는다.
+    </li>
+    <li>
+      <strong>2차 — 진행값.</strong> A + B. <strong>현재 위치·부족분·유형별 표현(요구 ③④⑤⑥)</strong>이 붙는다.
+      2축·다중 카운터 표현도 여기서 완성된다. 스냅샷 없이 요청 시점 계산으로 먼저 낸 뒤 부하를 실측한다.
+    </li>
+    <li>
+      <strong>3차 — 비교와 아쉬움.</strong> C + D. <strong>직전 활동 배너·붉은 꼬리·아쉬움 줄(요구 ⑦)</strong>.
+      스냅샷이 쌓여야 의미가 생기므로 마지막에 온다. 여기서 화면 부하도 조회 한 번으로 내려간다.
+    </li>
+  </ul>
+
+  <div class="note">
+    <h4>이번 범위에서 건드리지 않는 것</h4>
+    <p>
+      <strong>배지 발급 판정 로직</strong>(<span class="m">evaluateConditionDetailed</span>) ·
+      <strong><span class="m">condition_json</span> 스키마</strong>(DB CHECK 제약과 어드민 검증이 물려 있다) ·
+      <strong>배지 카탈로그와 조건 임계값</strong>.
+    </p>
+    <p>
+      진행 계산은 판정과 <strong>같은 입력을 읽되 별도 경로</strong>로 둡니다.
+      2026-08-25 사고(마이그레이션 084가 검증 없는 필드를 넣어 미션 게이팅이 12일간 무력화)처럼
+      <strong>판정 경로에 표시용 변경을 섞으면 발급이 깨집니다.</strong>
+    </p>
+  </div>
+</section>
+
+<footer>
+  <h4>이 문서의 범위와 검증</h4>
+  <ul>
+    <li><strong>구현 전 제안입니다.</strong> 코드는 읽기만 했고 서비스 코드·DB는 변경하지 않았습니다. 실제 개발은 <span class="m">/jam-work</span> 파이프라인으로 티켓을 끊어 진행합니다.</li>
+    <li><strong>대상은 액티비티 배지 192종입니다.</strong> 아이템 배지·POI(체크인) 배지는 조건 모델이 달라(<span class="m">condition_json</span> 미사용 / GPS 매칭) 이 진행 모델이 성립하지 않습니다 — 별도 설계가 필요합니다.</li>
+    <li><strong>검증한 것</strong> — 현재 구현 코드 경로, <span class="m">badges.condition_json</span> 전수 조회(192건), 계열별 지표 유일성(72계열 예외 0건), 게이트 개수(일반 1 / 대표 3), 조건 형태 분포(단일축 170 / 2축 20 / 다중 카운터 2).</li>
+    <li><strong>검증하지 않은 것</strong> — 실제 렌더링된 <span class="m">/badges/tree</span> 화면(로그인 필요), 실기기 터치 타겟 측정, 활동 이력이 큰 유저의 집계 비용, 스냅샷 테이블의 쓰기 부하.</li>
+    <li><strong>목업의 유저 데이터는 예시값</strong>입니다. 배지 이름·조건 임계값·설명 문구는 전부 프로덕션 DB 실값입니다.</li>
+    <li><strong>이 문서의 목업은 실제로 렌더해 검증했습니다</strong> — 320·360·390·430·590px(200% 확대 상당) 전 폭에서 가로 넘침 없음, RTL 미러 정상, 라이트·다크 양쪽 정상, 라벨 40% 성장 시에도 잘림 없음. 물리 <span class="m">left/right</span> 사용 0건.</li>
+  </ul>
+</footer>
+
+</div>

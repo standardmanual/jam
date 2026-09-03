@@ -96,6 +96,24 @@
   --color-tag-6: var(--color-base-lime);
   --color-tag-7: var(--color-base-charcoal);
   --color-tag-8: var(--color-base-sienna);
+
+  /*
+   * 배지 트리(/badges/tree) 상태 채널 — 티켓 20260903_2329.
+   * 등급(rarity) 4색과는 별개 축이다. 이 대시보드가 유저에게 시켜야 하는 판단은
+   * "모자란 것 / 다 채운 것 / 방금 들어온 것" 셋뿐이라 의미색도 셋이고, 등급은 이 축에
+   * 속하지 않으므로 등급칩(--color-rarity-*) 안에서만 쓴다. 색상각을 등급 팔레트와
+   * 최소 22° 띄워 같은 색으로 오독되지 않게 했다(원본 검토 문서 §06 색 시스템 표).
+   * 컴포넌트는 이 시맨틱 토큰만 참조한다.
+   *
+   * --status-short-solid(모자람, 옐로우)는 진행 막대·게이지가 붙는 2차(computeBadgeProgress)
+   * 부터 실제로 쓰인다 — 1차 화면 어디에도 아직 등장하지 않지만, 토큰 이름과 값을 지금
+   * 확정해 둬야 2차가 값을 새로 정의하며 갈라지지 않는다.
+   */
+  --status-short-solid: #f2cb00;                    /* 모자란 것 — 채우는 중인 막대·게이지(2차) */
+  --status-done-solid: var(--color-base-lime);       /* 다 채운 것 — 획득 링·체크, 조건 충족 링, 등급 분포 막대 */
+  --status-latest-solid: #36d3f1;                    /* 방금 들어온 것 — 직전 동기화 배너 점·문구, 이 하나뿐 */
+  --status-latest-soft: rgba(54, 211, 241, 0.18);    /* 동기화 점의 부드러운 후광 */
+  --status-idle-track: rgba(255, 255, 255, 0.11);    /* 아직 손대지 않은 자리 — 의미색을 주지 않는다 */
 }
 
 /*
