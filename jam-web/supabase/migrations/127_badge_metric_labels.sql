@@ -18,8 +18,11 @@
 --    제약·컴파일 타임 동기화 체크로 보장), 이걸 전부 채우면 기존 배지 192개가 쓰는 모든
 --    측정 축이 자동으로 커버된다. activity_type/route/poi_id 등 필터 전용 필드와
 --    mission_reward(메타)는 "축"이 아니므로 제외.
---  - index.ts의 비공개 DAY_LABEL_KO(7)·SEASON_LABEL_KO(4)·INDEPENDENT_FIELD_LABEL_KO(6) —
---    이미 검증된 한글 라벨이라 그대로 이식한다(추측해서 새로 짓지 않음).
+--  - index.ts의 비공개 SEASON_LABEL_KO(4)·INDEPENDENT_FIELD_LABEL_KO(6)는 그대로 이식.
+--    DAY_LABEL_KO(7)는 다중 카운터 게이지 전용 압축 표기("금" 등 1글자)라 값 자체는
+--    가져오지 않고, 그게 가리키는 요일만 확인해 전체 요일명으로 시드한다 — 이 테이블은
+--    2b 이후 여러 화면이 공통 조회하는 범용 저장소라서다(추측해서 새로 짓는 게 아니라
+--    이미 정해진 요일 순서를 전체 이름으로 풀어 쓰는 것).
 --  - season:'all'(전체 계절) 1건 — SEASON_LABEL_KO엔 없지만 evaluateConditionDetailed의
 --    인라인 삼항연산자(`condition.season === 'all' ? '전체' : ...`)에 이미 쓰이는 문자열을
 --    그대로 가져왔다. BadgeCondition.season 타입에 'all'이 명시적으로 포함돼 있다.
@@ -35,7 +38,7 @@ COMMENT ON TABLE public.badge_metric_labels IS
   '배지 조건 측정 필드 키 및 day_of_week/season 값에 대응하는 한글 라벨·단위. 어드민 편집 테이블 — 코드 배포 없이 갱신 가능. 20260904_0430';
 COMMENT ON COLUMN public.badge_metric_labels.metric_key IS
   'condition_json 필드 키(distance_km 등) 또는 day_of_week/season 값(friday, winter, all 등). condition-schema.ts ALL_CONDITION_KEYS와 자동 동기화되지 않는 자유 텍스트 — 새 조건 필드 추가 시 어드민에서 수동으로 행을 채워야 함';
-COMMENT ON COLUMN public.badge_metric_labels.label_ko IS '한글 라벨 (예: 누적 거리, 금)';
+COMMENT ON COLUMN public.badge_metric_labels.label_ko IS '한글 라벨 (예: 누적 거리, 금요일)';
 COMMENT ON COLUMN public.badge_metric_labels.unit_ko IS '단위 (예: km, 분, 회) — NULL이면 단위 없이 표시';
 
 -- RLS: 어드민 API(service_role)만 접근. poi_categories(050_poi_categories_table.sql)와 동일 패턴.
@@ -69,15 +72,19 @@ INSERT INTO public.badge_metric_labels (metric_key, label_ko, unit_ko) VALUES
   ('time_range', '활동 시간대', NULL)
 ON CONFLICT (metric_key) DO NOTHING;
 
--- day_of_week 값 7개 — DAY_LABEL_KO(src/lib/badge-engine/index.ts) 그대로 이식
+-- day_of_week 값 7개 — DAY_LABEL_KO(index.ts)는 5칸 다중 카운터 게이지처럼 자리가 좁은
+-- 특정 화면 하나를 위한 압축 표기("금" 등 1글자)라 이 테이블에는 그대로 이식하지 않는다.
+-- 이 테이블은 2b 이후 여러 화면이 공통으로 조회하는 범용 저장소라, 한 화면의 공간 제약을
+-- 전체 정답값으로 박아두면 다른 화면(레일 등)에 그대로 노출된다 — 전체 요일명을 저장하고,
+-- 자리가 좁은 컴포넌트는 필요하면 렌더 시점에 스스로 줄인다(티켓 20260904_0430 논의).
 INSERT INTO public.badge_metric_labels (metric_key, label_ko, unit_ko) VALUES
-  ('sunday', '일', NULL),
-  ('monday', '월', NULL),
-  ('tuesday', '화', NULL),
-  ('wednesday', '수', NULL),
-  ('thursday', '목', NULL),
-  ('friday', '금', NULL),
-  ('saturday', '토', NULL)
+  ('sunday', '일요일', NULL),
+  ('monday', '월요일', NULL),
+  ('tuesday', '화요일', NULL),
+  ('wednesday', '수요일', NULL),
+  ('thursday', '목요일', NULL),
+  ('friday', '금요일', NULL),
+  ('saturday', '토요일', NULL)
 ON CONFLICT (metric_key) DO NOTHING;
 
 -- season 값 5개 — SEASON_LABEL_KO(위와 동일 파일, 4개) + 'all'(같은 파일 인라인 리터럴, 1개)
