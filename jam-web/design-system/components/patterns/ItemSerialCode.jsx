@@ -20,6 +20,10 @@ import React, { useEffect, useId, useState } from 'react';
  * 컴포넌트가 그 스타일시트가 로드되지 않는 환경(claude.ai/design 등)에 단독으로 렌더링되면
  * 릴 마스크·전환이 적용되지 않고 숫자만 정적으로 겹쳐 보일 수 있다(Storybook·서비스 앱은
  * 둘 다 globals.css를 로드하므로 문제 없음).
+ *
+ * 접근성: 릴 스트립은 애니메이션을 위해 0-9 셀 전체가 DOM에 존재해 textContent가 뒤섞이므로
+ * `aria-hidden="true"`로 접근성 트리에서 제외하고, 숫자 Tile 안에 `sr-only` 텍스트로 실제
+ * 숫자값을 노출한다(알파벳 Tile은 기존과 동일하게 일반 텍스트라 별도 처리 불필요).
  */
 
 const CORNER_RATIO = 0.12; // 48/400
@@ -167,7 +171,7 @@ function DigitReelGroup({ digits, height }) {
   const chars = digits.split('');
 
   return (
-    <div className="t-reel" style={{ '--reel-cell': `${cellHeight}px` }}>
+    <div className="t-reel" aria-hidden="true" style={{ '--reel-cell': `${cellHeight}px` }}>
       {chars.map((ch, i) => {
         const parsed = Number(ch);
         const digit = Number.isFinite(parsed) ? Math.abs(parsed) % 10 : 0;
@@ -258,8 +262,12 @@ function Tile({ text, width, height }) {
 }
 
 function DigitTile({ digits, width, height }) {
+  // 릴 스트립은 애니메이션을 위해 0-9 셀 전체가 DOM에 존재하므로(시각적으로는 마스크로
+  // 한 칸만 보임) textContent가 뒤섞인다. 릴 전체를 aria-hidden으로 접근성 트리에서
+  // 제외하고(DigitReelGroup 내부), 실제 최종 숫자값만 스크린리더 전용 텍스트로 노출한다.
   return (
     <TileShell width={width} height={height}>
+      <span className="sr-only">{digits}</span>
       <DigitReelGroup digits={digits} height={height} />
     </TileShell>
   );

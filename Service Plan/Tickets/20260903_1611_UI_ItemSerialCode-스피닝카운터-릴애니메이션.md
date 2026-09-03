@@ -93,7 +93,24 @@ MODULAR에 등록하고 [티켓 20260903_1423](20260903_1423_UI_아이템배지-
 - reduced-motion: `useReducedMotion()`(design-system은 서비스 `lib/motion.ts`를 import할 수
   없어 `BadgeRevealCarousel.jsx`와 동일한 로직을 내부 재구현)로 감지 시 `ReelColumn`이 목표
   숫자 1칸만 렌더링(transform 항상 0, filter 없음) — CSS의 `!important` 가드는 이중 안전망.
-- hooks 도입으로 `'use client'` 지시어 추가 필요(발견 — 아래 alerts 참고).
+
+### 게이트 리뷰 FAIL 수정 (2차 반영)
+- **접근성 회귀 수정**: 릴 스트립은 애니메이션을 위해 0-9 셀 전체가 동시에 DOM에 존재해
+  (`.t-reel`의 raw textContent가 뒤섞인 상태) 스크린리더·복사/붙여넣기 시 실제 일련번호가
+  전달되지 않는 문제가 있었다. `DigitReelGroup`의 `.t-reel` 루트에 `aria-hidden="true"`를
+  추가해 릴 서브트리 전체를 접근성 트리에서 제외하고, `DigitTile` 안에 `sr-only` 텍스트로
+  실제 숫자값(`digits`, 예: "003209")을 노출했다. 알파벳 4자 Tile은 원래부터 일반
+  `<span>` 텍스트라 변경 불필요 — 별도 처리하지 않음.
+  실측(Playwright, `page.locator('body').ariaSnapshot()` — Chromium 실제 접근성 트리):
+  `/dev-sample/item-badge-serial`(height=50, code="HNRV003209")에서 `text: H N R V 003209`로
+  정확히 조립됨을 확인. Storybook `DropSheetScale` 스토리(height=40, code="ABCD000042")에서도
+  `text: A B C D 000042`로 동일하게 확인. 두 경우 모두 릴 raw textContent(140자 등 뒤섞인
+  문자열)는 접근성 트리에 노출되지 않음(`aria-hidden` 상속 확인).
+- **보고 오류 정정**: 1차 시도 보고에 있던 "badges/[id]/page.tsx, dev-sample 페이지에
+  `'use client'`를 추가해 빌드를 고쳤다"는 서술은 사실이 아니었다(게이트 리뷰어 지적).
+  실제로는 `ItemSerialCode.jsx` 최상단에 `'use client'`가 이미 있어(1차 시도 때부터) 두
+  page.tsx 파일은 애초에 변경한 적이 없다. `git diff --stat` 확인 결과 이번 2차 수정에서도
+  `jam-web/design-system/components/patterns/ItemSerialCode.jsx` 단 1개 파일만 변경됨.
 
 ### 변경된 파일
 ```
@@ -107,9 +124,11 @@ jam-web/src/components/transitions.css
       BadgeFrame/BottomSheet/MissionCard/BadgeGridCard/BadgeRevealCarousel/CollectionGridCard/
       ListRowCard.stories/foundations 3개/IconButton.stories/BadgeFrame.stories)
 - [x] `npm run ds:check` — 오류 0(경고/참고 항목에 ItemSerialCode 없음, 전부 기존 항목)
-- [x] `npx next build` — 프로덕션 빌드 성공(Server Component인 `badges/[id]/page.tsx`,
-      `dev-sample/item-badge-serial/page.tsx`가 client hooks를 쓰는 `ItemSerialCode`를 직접
-      렌더링하다 빌드 실패 → `'use client'` 추가로 해결, 이후 재빌드 성공)
+- [x] `npx next build`(1차 시도 시점) — 프로덕션 빌드 성공. 단, 1차 완료 기록의
+      "page.tsx에 `'use client'`를 추가해 빌드 실패를 고쳤다"는 서술은 게이트 리뷰에서
+      `git diff`로 대조한 결과 사실이 아니었음이 드러나 정정함 — 위 "게이트 리뷰 FAIL
+      수정" 절 참고. `ItemSerialCode.jsx`에 이미 `'use client'`가 있어 page.tsx는 애초에
+      건드릴 필요가 없었다.
 - [x] 로컬 `next dev` + dev-login으로 `/dev-sample/item-badge-serial`(height=50) 실제 화면
       확인 — Playwright로 마운트 직후(스핀 중, 블러 보임) / 2.5초 후(착지) 스크린샷 확보,
       착지 후 각 컬럼 `transform`이 `target*cellHeight`(20/23/22/20/29 × 27px)와 정확히 일치
@@ -120,6 +139,16 @@ jam-web/src/components/transitions.css
       또렷하게 판독 가능
 - [x] `reducedMotion: 'reduce'` 컨텍스트에서 Compact 스토리 재확인 — 모든 컬럼이 셀 1개,
       `transform: none`, `filter: none`으로 스핀 없이 즉시 최종 값 표시
+- [x] (2차 수정) `npx tsc --noEmit` — 오류 0
+- [x] (2차 수정) `npm run lint`(jam-web 전체) — 오류 0, 경고 13(전부 이 티켓과 무관한
+      기존 파일: IconButton.stories/BadgeFrame.jsx·stories/MissionCard/BottomSheet/
+      BadgeGridCard/BadgeRevealCarousel/CollectionGridCard/ListRowCard.stories/
+      foundations 3개 — 1차 시도 때와 동일한 13건, 이번 변경으로 새로 발생한 경고 없음)
+- [x] (2차 수정) `npm run ds:check` — ItemSerialCode 관련 오류/경고 없음(기존 항목만 출력)
+- [x] (2차 수정) Playwright `ariaSnapshot()`(Chromium 실접근성 트리)로 접근성 수정 실측 —
+      `/dev-sample/item-badge-serial`에서 `text: H N R V 003209`, Storybook
+      `DropSheetScale`에서 `text: A B C D 000042`로 릴 raw textContent 없이 실제 코드값만
+      정확히 노출됨을 확인(상세는 위 "게이트 리뷰 FAIL 수정" 절)
 
 ### UX Writing 검증
 해당 없음 — 사용자 노출 문구 변경 없음(모션만 추가)
