@@ -18,6 +18,7 @@ import type { NearbyPoi } from '@/types/drops'
 import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'
 import { DROP_RADIUS_METERS } from '@/lib/poi/proximity'
+import { trackEvent } from '@/lib/analytics/gtag'
 
 // 20260820_018: 드랍(지도) POI 모달 캐러셀 개편
 // 기존 하단 고정 바텀시트를 대체하는 화면 중앙 모달 — 캐러셀 아이템 자체가
@@ -215,6 +216,10 @@ export default function PoiCarouselModal({
         return
       }
       toast(d.drops.dropSuccess, 'success')
+      // GA4 item_drop — pendingDropItem(InventoryGridItem)에는 badge_id가 없어(정규화 타입),
+      // 방금 열었던 인벤토리 원본 목록에서 같은 인벤토리 아이템 id로 badge_id를 찾는다.
+      const droppedBadgeId = inventoryItems.find((it) => it.id === pendingDropItem.id)?.badge_id ?? null
+      trackEvent('item_drop', { poi_id: activePoi.id, inventory_item_id: pendingDropItem.id, badge_id: droppedBadgeId })
       setShowInventory(false)
       setPendingDropItem(null)
       setInventoryItems([])
@@ -272,6 +277,7 @@ export default function PoiCarouselModal({
         return
       }
       toast(d.drops.pickupSuccess, 'success')
+      trackEvent('item_pickup', { poi_id: activePoi.id, drop_id: selectedDrop.id, badge_id: selectedDrop.badge_id })
       const pickedId = selectedDrop.id
       const poiId = activePoi.id
       setSelectedDrop(null)

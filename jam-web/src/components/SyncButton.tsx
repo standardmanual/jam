@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { d } from '@/lib/i18n'
+import { trackEvent } from '@/lib/analytics/gtag'
 
 interface SyncResponse {
   synced: number
@@ -16,6 +17,10 @@ interface SyncResponse {
   earnedBadges?: RevealBadge[]
   /** 상세를 싣지 못한 잔여 개수 */
   earnedBadgesMore?: number
+  /** 이번에 받은 배지가 유저의 전체 첫 배지인지 — GA4 first_badge_earned (20260903_1034) */
+  isFirstBadgeEver?: boolean
+  /** 이번 싱크에서 새로 완료된 미션 id — GA4 mission_complete */
+  completedMissionIds?: string[]
 }
 
 /**
@@ -43,10 +48,20 @@ export default function SyncButton({ username }: { username: string | null }) {
       if (res.ok) {
         const data: SyncResponse = await res.json()
         const badges = data.earnedBadges ?? []
+
+        // GA4 mission_complete — 완료 INSERT 자체가 유니크 제약으로 평생 1회만 성공하므로
+        // (checkMissions), 이번 응답에 실린 id는 항상 "새로 완료된" 것만이다.
+        for (const missionId of data.completedMissionIds ?? []) {
+          trackEvent('mission_complete', { mission_id: missionId })
+        }
+
         /* 노출 판단은 earnedBadges.length 단일 기준이다.
            badges 카운터에는 아이템 드랍 배지·미션 보상 배지가 빠져 있어, 그 값을 쓰면
            아이템배지만 드랍된 날 배지를 받고도 연출이 뜨지 않는다 (20260823_008 확정). */
         if (badges.length > 0) {
+          // GA4 first_badge_earned — 서버가 user_activity_badges 전체 카운트로 판정한 값을
+          // 그대로 신뢰한다 (StravaConnectReveal과 동일 계약).
+          if (data.isFirstBadgeEver) trackEvent('first_badge_earned')
           setEarnedBadges(badges)
           setEarnedBadgesMore(data.earnedBadgesMore ?? 0)
           setRevealOpen(true)

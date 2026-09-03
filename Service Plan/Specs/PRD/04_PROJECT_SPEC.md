@@ -203,6 +203,8 @@ vercel --prod
 | `NAVER_LOCAL_SEARCH_CLIENT_ID` / `NAVER_LOCAL_SEARCH_CLIENT_SECRET` | 네이버 지역검색 오픈API (T2 POI 소스) | |
 | `NEXT_PUBLIC_BASE_URL` | 서비스 도메인 URL | **`https://j-a-m.app`** (2026-08-06부로 `jam-rose.app`에서 전환) |
 | `FOREST_SERVICE_KEY` | 산림청 API 키 | `src/` 미참조이나 **사용중** (Edge Function 또는 외부 파이프라인) — `.env.local`에 유지 |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 측정 ID (`G-7K884Q399P`) | 미설정 시(로컬 등) GA 스크립트 자체 미렌더 |
+| `NEXT_PUBLIC_GA_ENVIRONMENT` | GA4 이벤트 `environment` 파라미터 값 (`production`\|`staging`) | 스트림이 1개뿐이라 jam/jam-stage Vercel 프로젝트별로 값을 다르게 설정해 트래픽을 구분한다 |
 
 > ⚠️ **삭제된 변수**: `STRAVA_REDIRECT_URI`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — 각각 도메인 전환(2026-08-06), 지도 전환(2026-07-22)으로 더 이상 사용 안 함. 과거 문서에 남아있다면 착오.
 >

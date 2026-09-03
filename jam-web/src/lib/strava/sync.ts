@@ -117,6 +117,13 @@ export interface EarnedBadgePayload {
   earnedBadges: EarnedBadgeSummary[]
   /** 상세를 싣지 못한 잔여 개수. 0이면 "전체 보기" 카드가 뜨지 않는다 */
   earnedBadgesMore: number
+  /**
+   * 유저가 지금까지 소유한 배지(`user_activity_badges` 전체 행)가 이번에 되읽은 배지들뿐인지 —
+   * GA4 first_badge_earned 판정용 (20260903_1034). badgeIds가 비어 있으면 false.
+   * `user_activity_badges`는 배지 종류(활동/아이템/POI/미션·컬렉션 보상) 무관하게 소유권을
+   * 기록하는 단일 테이블이라, 이 카운트 비교만으로 "정말 처음 받은 배지인지"를 판정할 수 있다.
+   */
+  isFirstBadgeEver: boolean
 }
 
 /**
@@ -126,11 +133,26 @@ export interface EarnedBadgePayload {
  */
 export async function buildEarnedBadgePayload(
   supabase: SupabaseClient,
-  badgeIds: string[]
+  badgeIds: string[],
+  userId: string
 ): Promise<EarnedBadgePayload> {
   const all = await fetchEarnedBadgeDetails(supabase, badgeIds)
   const earnedBadges = all.slice(0, EARNED_BADGE_DETAIL_LIMIT)
-  return { earnedBadges, earnedBadgesMore: all.length - earnedBadges.length }
+
+  let isFirstBadgeEver = false
+  if (all.length > 0) {
+    const { count, error: countError } = await supabase
+      .from('user_activity_badges')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    if (countError) {
+      console.error('[buildEarnedBadgePayload] user_activity_badges 카운트 조회 오류:', countError)
+    } else {
+      isFirstBadgeEver = (count ?? 0) === all.length
+    }
+  }
+
+  return { earnedBadges, earnedBadgesMore: all.length - earnedBadges.length, isFirstBadgeEver }
 }
 
 /**
@@ -263,9 +285,11 @@ export async function processFetchedActivities(
   missionsCompleted: number
   /** 이번 처리에서 발급된 배지 id — 획득 순서(체크인 → 아이템 드랍 → 액티비티 → 컬렉션·미션 보상) */
   earnedBadgeIds: string[]
+  /** 이번 처리에서 새로 완료된 미션 id — GA4 mission_complete 계측용 (20260903_1034) */
+  completedMissionIds: string[]
 }> {
   if (rawActivities.length === 0) {
-    return { badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadgeIds: [] }
+    return { badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadgeIds: [], completedMissionIds: [] }
   }
 
   // 획득 연출용 — 발급된 배지 id를 발급 순서대로 모은다 (엔진 내부 로직은 건드리지 않고
@@ -596,6 +620,7 @@ export async function processFetchedActivities(
     itemBooksCompleted: completedIds.length,
     missionsCompleted: completedMissionIds.length,
     earnedBadgeIds,
+    completedMissionIds,
   }
 }
 
@@ -604,7 +629,9 @@ export async function processFetchedActivities(
  * @returns synced: 동기화된 활동 수, badges: 신규 발급된 배지 수,
  *          earnedBadges: 이번에 획득한 배지 상세(획득 순서. 최대 EARNED_BADGE_DETAIL_LIMIT건.
  *          없으면 빈 배열 — 필드는 항상 존재),
- *          earnedBadgesMore: 상한을 넘겨 상세를 싣지 못한 잔여 개수
+ *          earnedBadgesMore: 상한을 넘겨 상세를 싣지 못한 잔여 개수,
+ *          isFirstBadgeEver: 이번에 받은 배지가 유저의 전체 첫 배지인지 (GA4 first_badge_earned),
+ *          completedMissionIds: 이번에 새로 완료된 미션 id (GA4 mission_complete)
  */
 export async function syncStravaActivities(
   userId: string
@@ -615,6 +642,8 @@ export async function syncStravaActivities(
   missionsCompleted: number
   earnedBadges: EarnedBadgeSummary[]
   earnedBadgesMore: number
+  isFirstBadgeEver: boolean
+  completedMissionIds: string[]
 }> {
   const supabase = createServiceClient()
 
@@ -698,7 +727,7 @@ export async function syncStravaActivities(
   const { data: lockRows, error: lockError } = await lockQuery.select('user_id')
   if (lockError || !lockRows || lockRows.length === 0) {
     console.info(`[syncStravaActivities] 동시 싱크 감지 — 건너뜀 (userId: ${userId})`)
-    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [], earnedBadgesMore: 0 }
+    return { synced: 0, badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadges: [], earnedBadgesMore: 0, isFirstBadgeEver: false, completedMissionIds: [] }
   }
 
   // 4-2. 첫 싱크 여부 (초기화 직후·신규 연동) — 드랍 1회 제한에 사용
@@ -736,7 +765,7 @@ export async function syncStravaActivities(
       `${isFirstSync ? ' (첫 싱크 — 최신 1건 제한)' : ''}`
     )
 
-    const { badges, itemBooksCompleted, missionsCompleted, earnedBadgeIds } = await processFetchedActivities(
+    const { badges, itemBooksCompleted, missionsCompleted, earnedBadgeIds, completedMissionIds } = await processFetchedActivities(
       supabase,
       userId,
       accessToken,
@@ -747,7 +776,7 @@ export async function syncStravaActivities(
 
     // 획득 배지 상세는 엔진 4경로를 각각 개조하는 대신, 수집된 id로 여기서 1회만 조회한다.
     // 카드 상한(10장)도 여기서 적용한다 — 클라이언트는 받은 배열을 그대로 그린다.
-    const { earnedBadges, earnedBadgesMore } = await buildEarnedBadgePayload(supabase, earnedBadgeIds)
+    const { earnedBadges, earnedBadgesMore, isFirstBadgeEver } = await buildEarnedBadgePayload(supabase, earnedBadgeIds, userId)
 
     // last_synced_at은 4-1 잠금 단계에서 이미 선점 갱신됨 (여기서 재갱신하면
     // 처리 중 업로드된 활동이 다음 싱크에서 누락되는 갭이 생기므로 하지 않는다)
@@ -759,6 +788,8 @@ export async function syncStravaActivities(
       missionsCompleted,
       earnedBadges,
       earnedBadgesMore,
+      isFirstBadgeEver,
+      completedMissionIds,
     }
   } catch (err) {
     console.error(`[syncStravaActivities] 처리 중 오류 — last_synced_at 롤백 (userId: ${userId}):`, err)

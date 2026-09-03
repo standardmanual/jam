@@ -10,6 +10,7 @@ import TopNav from '@/components/ui/TopNav'
 import LocalDate from '@/components/LocalDate'
 import TodayCardStack from './TodayCardStack'
 import TodayStatusStrip from './TodayStatusStrip'
+import HomeViewTracker from './HomeViewTracker'
 import { getTodayCards } from '@/lib/today/cards'
 import { getTodayLeftStatus, getTodayRightStatus, type TodayLeftStatus } from '@/lib/today/status'
 import { getDisplayName } from '@/lib/utils'
@@ -75,6 +76,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-full bg-surface text-text">
+      <HomeViewTracker />
       {/* 20260824_010: 탭 최상위 공통 Topnavi(좌:로고/중:동기화/우:아바타) — 기존 자체
           로고 헤더 블록을 대체한다 */}
       <TopNav logo headerStyle={{ background: 'var(--color-surface)' }} />
