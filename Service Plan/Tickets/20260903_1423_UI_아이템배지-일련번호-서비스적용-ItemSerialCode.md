@@ -93,11 +93,28 @@ MODULAR에 등록하고 [티켓 20260903_1414](20260903_1414_UI_ItemSerialCode-�
   뒤 이전 개체만 보유 중)는 실사용 빈도가 낮고, 있더라도 "대표 스탬프는 보유 중인 것, 아래
   이력은 전체 이력"으로 각자 의미가 분명해 혼동 소지가 적다고 판단.
 
+### 추가 수정 — 자간 반전 문제 (인터랙션 리뷰 지적, 머지 전 반영)
+게이트 통과 후 인터랙션 리뷰(apple-design 기준)에서, `ItemSerialCode`의 자간이 모든 크기에
+고정값(-4%, Figma 원본 스탬프 스케일 기준)이라 가장 작은 실사용 크기(`BadgeDetailSheet`의
+height=40)에서 오히려 가독성이 나빠진다는 지적을 받음 — 대체 전 텍스트는 `tracking-widest`
+(+0.1em)로 작은 글씨의 판독성을 확보하고 있었는데, 그 반대 방향 고정값을 쓰고 있었음.
+
+`ItemSerialCode.jsx`에 `trackingRatioFor(fontSize)` 보간 함수를 추가해 폰트 크기가 작아질수록
+자간이 -4% → +8%로 완화되도록 수정 (fontSize 200=height 400에서 -4% 그대로 유지, fontSize
+20=height 40에서 +8%, 그 사이는 선형 보간). 자간 값이 문자 폭 계산(숫자 박스 너비 추정)에도
+쓰이고 있어 두 지점 모두 함께 고쳐 폭 계산과 실제 렌더가 어긋나지 않게 함. Storybook에
+`DropSheetScale`(height=40) 스토리 추가해 실사용 최소 크기를 별도로 문서화.
+
+이 수정은 티켓 20260903_1356/1414가 소유한 `ItemSerialCode.jsx` 자체에 대한 변경이지만,
+머지 전에 함께 반영하기로 해 이 티켓에 기록한다.
+
 ### 변경된 파일
 ```
 jam-web/src/app/(main)/badges/[id]/page.tsx          (item 분기 — ItemSerialCode 삽입, 대표 serial 계산)
 jam-web/src/app/(main)/badges/[id]/ItemEarnHistory.tsx (일련번호 표시 2곳 제거 → 획득일/만료일, 목록행은 획득일로 대체)
 jam-web/src/app/(main)/drops/BadgeDetailSheet.tsx      (serial 라벨+값 행 → ItemSerialCode(height=40))
+jam-web/design-system/components/patterns/ItemSerialCode.jsx         (자간 크기별 보간 — 추가 수정)
+jam-web/design-system/components/patterns/ItemSerialCode.stories.tsx (DropSheetScale 스토리 추가)
 ```
 
 ### 테스트 결과

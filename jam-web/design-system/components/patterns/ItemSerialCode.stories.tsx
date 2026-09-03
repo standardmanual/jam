@@ -35,6 +35,14 @@ export const Compact: Story = {
   args: { code: 'ABCD000042', height: 50 },
 };
 
+export const DropSheetScale: Story = {
+  // height 40 — drops/BadgeDetailSheet.tsx(지도 드랍 바텀시트)에 실제 적용된 최소 지원 사이즈
+  // (티켓 20260903_1423). 이 크기에서는 자간이 자동으로 양수(+8%)로 풀려 작은 글씨에서도
+  // 판독성을 유지한다 — trackingRatioFor() 참고.
+  name: '드랍 바텀시트 실측값 (height 40, 자간 자동 완화)',
+  args: { code: 'ABCD000042', height: 40 },
+};
+
 export const FiveDigitPlaceholder: Story = {
   name: 'Figma 원본 자리 수 (숫자 5자리)',
   args: { code: 'WWWW99999', height: 160 },
