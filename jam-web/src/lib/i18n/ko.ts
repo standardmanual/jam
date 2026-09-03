@@ -319,7 +319,7 @@ export const ko = {
     shareActionDownload: '저장하기',
     shareSaveSuccess: '이미지를 저장했어요',
     shareSaveError: '이미지를 저장하지 못했어요. 잠시 후 다시 시도해주세요',
-    shareSaveIOSHint: '새 탭에서 이미지를 길게 눌러 사진에 저장해보세요',
+    shareSaveIOSHint: '곧 열리는 공유 시트에서 \'저장\'을 눌러주세요',
     shareErrorStravaDisconnectedTitle: 'Strava 동기화가 끊겼어요',
     shareErrorStravaDisconnectedBody: '페이스·시간 데이터를 다시 가져오려면 Strava를 다시 동기화해야 해요',
     shareErrorNoTriggerTitle: '이 배지는 공유 이미지를 만들 수 없어요',
