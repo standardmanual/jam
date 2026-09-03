@@ -5,6 +5,7 @@ import { IconButton } from '@ds/components/buttons/IconButton'
 import { Button } from '@ds/components/buttons/Button'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
 import BottomSheet from '@/components/ui/BottomSheet'
+import { useToast } from '@/components/ui/Toast'
 import { MedalIcon } from '@/components/ui/icons'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { buildBadgeShareBlob, type BadgeShareStats } from './buildBadgeShareBlob'
@@ -65,6 +66,19 @@ function supportsFileShare(): boolean {
 }
 
 /**
+ * iOS(Safari 기반 웹뷰 포함) 판별 — "저장" 버튼의 동작 분기 전용.
+ * iOS는 웹 표준상 사용자 승인 없이 Photos 라이브러리에 직접 쓰는 API가 없고, `<a download>`는
+ * 사진 앱이 아니라 Files 앱(다운로드 폴더)에만 저장된다(플랫폼 제약 — 완료 기록 참고).
+ * iPadOS 13+는 데스크톱 Safari와 동일한 UA 문자열을 쓰므로 UA 정규식만으로는 iPad를 못 잡는다 —
+ * `MacIntel` + 멀티터치 여부로 보정한다(데스크톱 Mac은 마우스 전용이라 maxTouchPoints가 0~1).
+ */
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) return true
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+}
+
+/**
  * 배지 상세 TopNav 우측 공유 버튼 + 미리보기 바텀시트.
  * (20260821_003 UI 셸 → 20260821_004 실제 기능 → 20260821_004 재작업: 예외 처리 흐름 변경)
  *
@@ -88,6 +102,7 @@ export default function BadgeShareButton({
   stravaConnected,
   subjectUsername,
 }: BadgeShareButtonProps) {
+  const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [state, setState] = useState<ShareState>({ kind: 'loading' })
   const objectUrlRef = useRef<string | null>(null)
@@ -206,6 +221,52 @@ export default function BadgeShareButton({
     URL.revokeObjectURL(url)
   }
 
+  /**
+   * "저장" 버튼 — 배지 이미지를 스마트폰 사진 앱(카메라 롤)에 보관하려는 의도.
+   *
+   * 플랫폼 제약(리서치 결과, 완료 기록 참고):
+   * - iOS: `navigator.share`도 `<a download>`도 사진 앱에 직접 쓰지 못한다. `<a download>`는
+   *   Files 앱 다운로드 폴더에 저장될 뿐이다. "공유" 버튼과 동일한 OS 공유시트를 띄우면 두 버튼의
+   *   결과가 구분되지 않으므로, 대신 이미지를 새 탭에 전체화면으로 열어 길게 눌러 "사진에 추가"할
+   *   수 있게 안내한다(iOS Safari의 표준 이미지 뷰어 동작 — 공유시트와는 확연히 다른 화면 전환).
+   *   결과를 코드에서 확인할 수 없으므로 "저장했어요"라고 단정하지 않고 다음 행동을 안내한다.
+   * - Android: `<a download>`로 다운로드 폴더에 저장하면 MediaStore가 스캔해 갤러리/사진 앱에
+   *   자동 노출된다. "공유" 버튼(OS 공유시트)과 확연히 다른 동작이라 별도 안내 없이 저장 완료로
+   *   알린다.
+   * - 데스크톱: 사진 앱 개념이 없어 `<a download>`로 파일을 내려받는 것이 곧 "저장"이다.
+   */
+  async function handleSave(blob: Blob) {
+    try {
+      if (isIOS()) {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.target = '_blank'
+        a.rel = 'noopener'
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        // 새 탭이 이미지를 다 불러올 시간을 준 뒤 해제한다(너무 빨리 해제하면 새 탭이 빈 화면일 수 있음)
+        window.setTimeout(() => URL.revokeObjectURL(url), 30000)
+        toast(d.badges.shareSaveIOSHint, 'info')
+        return
+      }
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${badgeName}-jam.png`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast(d.badges.shareSaveSuccess, 'success')
+    } catch (err) {
+      console.error('[BadgeShareButton] 이미지 저장 실패:', err)
+      toast(d.badges.shareSaveError, 'error')
+    }
+  }
+
   function handleButtonClick() {
     if (isDisabled) {
       setPopoverOpen((v) => !v)
@@ -250,9 +311,23 @@ export default function BadgeShareButton({
         footerBottomInset="safe-area"
         footer={
           effectiveState.kind === 'ready' ? (
-            <Button surface="dark" fullWidth onClick={() => handleAction(effectiveState.blob)}>
-              {supportsFileShare() ? d.badges.shareActionShare : d.badges.shareActionDownload}
-            </Button>
+            <div className="flex gap-[var(--spacing-8)]">
+              <div className="flex-1">
+                <Button surface="dark" fullWidth onClick={() => handleAction(effectiveState.blob)}>
+                  {d.badges.shareActionShare}
+                </Button>
+              </div>
+              <div className="flex-1">
+                <Button
+                  surface="dark"
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => handleSave(effectiveState.blob)}
+                >
+                  {d.badges.shareActionDownload}
+                </Button>
+              </div>
+            </div>
           ) : undefined
         }
       >
