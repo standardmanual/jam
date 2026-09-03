@@ -12,14 +12,18 @@
  * 선행조건 락)만으로 동작하는 동기 순수 함수다. 라벨 조회(`getMetricLabels()`)는 호출부
  * (비동기 wrapper, 2c 몫)가 계열당 1회 수행해 `labelMap`으로 넘긴다.
  *
- * ## index.ts 헬퍼 재사용 (티켓 지시 — 같은 필터 규칙 복제 금지)
- * `calcMaxStreak`·`passesWalkingGate`(원래 export)와 `matchesDayOfWeek`·`inTimeRange`·
- * `dedupeOnePerDay`·`getMondayKey`(이번 티켓에서 export 추가, 동작 변경 없음)를 그대로
- * import해 재사용한다 — 요일 판정·시간대 판정·걷기 하루 1회 상한·주(월요일) 키 규칙이
- * 발급 판정과 단 한 글자도 다르면 "3일 남음"이라고 표시해놓고 실제로는 다른 날짜가 되는
- * 사고로 이어지기 때문이다. (index.ts가 `@/lib/supabase/server`→`next/headers`를 물고
- * 있어 이 import가 이 파일의 "클라이언트 import 가능" 목표와 이론적으로 긴장 관계에
- * 있다 — 실제 영향은 작업 요약 alerts 참고.)
+ * ## activityFilters.ts 헬퍼 재사용 (티켓 지시 — 같은 필터 규칙 복제 금지)
+ * `calcMaxStreak`·`passesWalkingGate`·`matchesDayOfWeek`·`inTimeRange`·`dedupeOnePerDay`·
+ * `getMondayKey`를 그대로 import해 재사용한다 — 요일 판정·시간대 판정·걷기 하루 1회 상한·
+ * 주(월요일) 키 규칙이 발급 판정과 단 한 글자도 다르면 "3일 남음"이라고 표시해놓고 실제로는
+ * 다른 날짜가 되는 사고로 이어지기 때문이다.
+ *
+ * **`./index`가 아니라 `./activityFilters`에서 직접 import한다.** `index.ts`는 파일
+ * 최상단에서 `@/lib/supabase/server`(→ `next/headers`)를 무조건 import하므로, 이 파일이
+ * `./index`를 거치면 그 전이 의존까지 함께 물려 'use client' 컴포넌트에서 이 함수들을 쓸 때
+ * `npm run build`가 실패한다(1차 시도 게이트 리뷰에서 실제 재현·확인된 실패). `activityFilters.ts`는
+ * NormalizedActivity/DayOfWeek 타입 외 어떤 것도 import하지 않는 완전히 독립적인 순수
+ * 함수 파일이라 이 문제가 없다.
  */
 import { kmhToPaceSecPerKm, type NormalizedActivity } from '@/types/strava'
 import type { ActivityType, BadgeCondition, DayOfWeek } from '@/types/database'
@@ -31,7 +35,7 @@ import {
   inTimeRange,
   dedupeOnePerDay,
   getMondayKey,
-} from './index'
+} from './activityFilters'
 
 // ── 공개 타입 (티켓 §A 그대로) ──────────────────────────────────────────────
 
