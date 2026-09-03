@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
-import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import BadgeTrophyGridCard from '@/components/badges/BadgeTrophyGridCard'
 import BadgeFamilyRailItem from '@/components/badges/BadgeFamilyRailItem'
 import BadgeUnlockSheet, { type BadgeUnlockSheetData } from '@/components/badges/BadgeUnlockSheet'
 import { MedalIcon } from '@/components/ui/icons'
@@ -187,7 +187,7 @@ export default function BadgeTreeClient({
                 </p>
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
                   {activeTree.independentBadges.map((badge) => (
-                    <BadgeGridCard
+                    <BadgeTrophyGridCard
                       key={badge.id}
                       href={`/badges/${badge.id}`}
                       name={badge.name}
