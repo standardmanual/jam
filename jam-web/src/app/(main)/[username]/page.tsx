@@ -99,7 +99,9 @@ export default async function UserProfilePage({ params }: Props) {
   const inventoryId = (invResult.data as { id: string } | null)?.id
 
   // 발견한 아이템북 수 = 인벤토리에 "현재 보유 중인"(드랍하지 않은) 아이템 배지가 연결된, 활성 상태인 아이템북 수
-  // (/api/users/[username]/itembooks의 목록 필터와 반드시 일치시켜야 함 — 안 그러면 숫자와 목록이 어긋남)
+  // + 타인 열람 시에는 아이템배지 슬롯이 1개 이상인 아이템북만
+  // (/api/users/[username]/itembooks의 목록 필터 `isOwnList || book.slottedCount > 0`과 반드시
+  //  일치시켜야 함 — 안 그러면 숫자와 목록이 어긋남. 20260824_016 정책, 20260903_1949에서 이 카운트에도 반영)
   let itemBookCount = 0
   if (inventoryId) {
     const { data: invItemsForCount, error: invItemsForCountError } = await service
@@ -118,7 +120,18 @@ export default async function UserProfilePage({ params }: Props) {
         .not('item_book_id', 'is', null)
         .is('deleted_at', null)
       if (booksForCountError) console.error('[[username]/page] 아이템북 카운트용 badges 조회 실패', booksForCountError)
-      const bookIdsForCount = [...new Set(((booksForCount ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id))]
+      let bookIdsForCount = [...new Set(((booksForCount ?? []) as { item_book_id: string }[]).map((b) => b.item_book_id))]
+      // 타인 열람이면 슬롯이 0개인 아이템북을 제외한다(본인 열람은 예외 없이 전부 합산).
+      if (!isOwnProfile && bookIdsForCount.length > 0) {
+        const { data: slotsForCount, error: slotsForCountError } = await service
+          .from('user_item_book_slots')
+          .select('item_book_id')
+          .eq('user_id', subjectId)
+          .in('item_book_id', bookIdsForCount)
+        if (slotsForCountError) console.error('[[username]/page] 아이템북 카운트용 user_item_book_slots 조회 실패(슬롯 미확인분은 카운트에서 제외됨)', slotsForCountError)
+        const slottedBookIds = new Set(((slotsForCount ?? []) as { item_book_id: string }[]).map((s) => s.item_book_id))
+        bookIdsForCount = bookIdsForCount.filter((id) => slottedBookIds.has(id))
+      }
       if (bookIdsForCount.length > 0) {
         const { count, error: countError } = await service
           .from('item_books')
