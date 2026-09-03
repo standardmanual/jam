@@ -45,14 +45,14 @@ const DAY_LABEL_KO: Record<DayOfWeek, string> = {
   sunday: '일', monday: '월', tuesday: '화', wednesday: '수', thursday: '목', friday: '금', saturday: '토',
 }
 
-/** 활동의 (로컬 기준) 요일이 지정한 day_of_week와 일치하는지 */
-function matchesDayOfWeek(a: NormalizedActivity, day: DayOfWeek): boolean {
+/** 활동의 (로컬 기준) 요일이 지정한 day_of_week와 일치하는지 (티켓 20260904_0631 — computeBadgeProgress 재사용을 위해 export) */
+export function matchesDayOfWeek(a: NormalizedActivity, day: DayOfWeek): boolean {
   const dateOnly = (a.startDateLocal ?? a.startDate).slice(0, 10)
   return new Date(`${dateOnly}T00:00:00Z`).getUTCDay() === DAY_INDEX[day]
 }
 
-/** 같은 날짜(로컬 기준)의 활동을 1건으로 압축 — 걷기 빈도 조건 하루 1회 상한용 */
-function dedupeOnePerDay(activities: NormalizedActivity[]): NormalizedActivity[] {
+/** 같은 날짜(로컬 기준)의 활동을 1건으로 압축 — 걷기 빈도 조건 하루 1회 상한용 (티켓 20260904_0631 — export) */
+export function dedupeOnePerDay(activities: NormalizedActivity[]): NormalizedActivity[] {
   const seen = new Set<string>()
   const result: NormalizedActivity[] = []
   for (const a of activities) {
@@ -124,7 +124,8 @@ const CUMULATIVE_SAME_ACTIVITY_KEYS = ['distance_km', 'elevation_gain_m'] as con
 // condition-schema.ts로 이전했다(티켓 20260825_031) — DB CHECK 제약·어드민 API 검증과
 // 단일 소스를 공유하기 위함. 정의·배경 설명은 그 파일 참조.
 
-function inTimeRange(activity: NormalizedActivity, range: { start: string; end: string }): boolean {
+/** 활동 시작시각(로컬)이 {start,end} 시간대 범위 내인지 (자정 걸침 지원). 티켓 20260904_0631 — export */
+export function inTimeRange(activity: NormalizedActivity, range: { start: string; end: string }): boolean {
   const toMin = (hhmm: string) => {
     const [h, m] = hhmm.split(':').map(Number)
     return h * 60 + m
@@ -920,7 +921,8 @@ export async function evaluateBadges(
 
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────
 
-function getMondayKey(date: Date): string {
+/** 주어진 날짜가 속한 주의 월요일 날짜(YYYY-MM-DD)를 키로 반환. 티켓 20260904_0631 — computeBadgeProgress의 "이번 주" 판정이 이 함수와 반드시 같은 경계 정의를 써야 하므로 export */
+export function getMondayKey(date: Date): string {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
   const day = d.getDay()
