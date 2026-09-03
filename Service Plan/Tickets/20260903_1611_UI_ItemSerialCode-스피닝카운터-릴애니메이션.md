@@ -1,8 +1,9 @@
 ---
 id: 20260903_1611
 category: UI
-status: OPEN
+status: CLOSED
 created: 2026-09-03
+closed: 2026-09-03
 ---
 
 # [UI] ItemSerialCode 숫자 자리에 Spinning counter(릴) 애니메이션 적용
@@ -112,9 +113,20 @@ MODULAR에 등록하고 [티켓 20260903_1423](20260903_1423_UI_아이템배지-
   page.tsx 파일은 애초에 변경한 적이 없다. `git diff --stat` 확인 결과 이번 2차 수정에서도
   `jam-web/design-system/components/patterns/ItemSerialCode.jsx` 단 1개 파일만 변경됨.
 
+### 추가 수정 — 드래그 선택 차단 (개선 리뷰 반영, 머지 전 반영)
+게이트 통과 후 개선 리뷰(progressive-reviewer)에서, `aria-hidden`은 스크린리더 접근은 막지만
+텍스트 드래그 선택/복사까지는 막지 못한다는 지적을 받음 — 원래 FAIL 사유가 "스크린리더·
+복사/붙여넣기" 둘 다 언급했는데 1차 접근성 수정은 스크린리더만 해소한 상태였음.
+`transitions.css`의 "프로젝트 확장" 섹션에 `.t-reel { user-select: none; }`을 추가해, 사용자가
+일련번호를 드래그 복사할 때 릴 셀의 뒤섞인 텍스트가 아니라 형제 노드인 `sr-only` span(실제
+`digits` 값)만 선택되도록 함. `sr-only` span은 `.t-reel`과 별개 노드라 이 규칙의 영향을 받지
+않음(`DigitTile` 내부에서 `.t-reel`과 형제로 배치돼 있음, `ItemSerialCode.jsx:270-271` 확인).
+`tsc --noEmit` 오류 0 확인 후 머지.
+
 ### 변경된 파일
 ```
 jam-web/design-system/components/patterns/ItemSerialCode.jsx
+jam-web/design-system/components/patterns/ItemSerialCode.stories.tsx
 jam-web/src/components/transitions.css
 ```
 
@@ -154,9 +166,11 @@ jam-web/src/components/transitions.css
 해당 없음 — 사용자 노출 문구 변경 없음(모션만 추가)
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만 수행)
-- 환경: staging(병합 후)
-- 커밋: (아래 push한 브랜치 참고)
+- 배포일: 2026-09-03 (staging 머지)
+- 환경: staging. 프로덕션(main) 반영은 `/jam-ship`으로 별도 진행, 사용자 명시 승인 전까지 미실시
+- 커밋: `5a513a15`(staging 머지 커밋), 리뷰 브랜치 `claude/jamwork-20260903_1611-itemserialcode-reel`
+  (`792ade40` 릴 애니메이션 적용 → `f067b2ee` 스토리 문서화 → `a011fa2e` 접근성 회귀 수정
+  → `3b9e6888` 드래그 선택 차단)
 
 ### 주요 의사결정 / 핵심 메모
 - `--reel-cell`은 discrete size 변형이 아니라 height prop에 따른 연속값이라 "프로젝트 확장"
