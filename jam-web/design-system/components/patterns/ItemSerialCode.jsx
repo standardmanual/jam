@@ -55,7 +55,7 @@ function Tile({ text, width, height }) {
         flexShrink: 0,
         clipPath: `path('${tilePath(width, height)}')`,
         background: [
-          'radial-gradient(120% 90% at 22% 12%, rgba(255,255,255,0.38), rgba(255,255,255,0) 55%)',
+          'radial-gradient(120% 90% at 22% 12%, rgba(255,255,255,0.19), rgba(255,255,255,0) 55%)',
           'linear-gradient(160deg, var(--color-base-grey-600) 0%, var(--color-base-grey-800) 100%)',
         ].join(', '),
         display: 'flex',
