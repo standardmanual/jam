@@ -17,10 +17,25 @@ const CORNER_RATIO = 0.12; // 48/400
 const NOTCH_RATIO = 0.09125; // 36.5/400
 const TILE_WIDTH_RATIO = 0.7; // 280/400 — 알파벳 카드 1장 너비
 const FONT_RATIO = 0.5; // 200/400
-const TRACKING_RATIO = -0.04; // -8/200
 const GAP_RATIO = 0.025; // 10/400
 const PAD_INLINE_RATIO = 0.13;
 const DIGIT_ADVANCE_RATIO = 0.65;
+
+// 자간은 폰트 크기에 따라 보간한다 — 큰 사이즈(Figma 스탬프 스케일, fontSize 200 = height 400)는
+// 원본처럼 타이트하게(-4%) 유지하되, 작은 사이즈(fontSize 20 = height 40, 현재 실사용 최소값인
+// BadgeDetailSheet)는 오히려 벌어지게(+8%) 한다. 이 컴포넌트가 대체한 기존 텍스트는
+// `tracking-widest`(+0.1em)로 작은 글씨의 가독성을 확보하고 있었는데, 모든 크기에 큰 사이즈용
+// 타이트한 값을 고정으로 쓰면 정작 정확히 읽어야 하는 좁은 자리에서 더 읽기 어려워진다.
+const TRACKING_LARGE_FONT = 200;
+const TRACKING_LARGE_RATIO = -0.04;
+const TRACKING_SMALL_FONT = 20;
+const TRACKING_SMALL_RATIO = 0.08;
+
+function trackingRatioFor(fontSize) {
+  const t = (fontSize - TRACKING_SMALL_FONT) / (TRACKING_LARGE_FONT - TRACKING_SMALL_FONT);
+  const clamped = Math.min(1, Math.max(0, t));
+  return TRACKING_SMALL_RATIO + clamped * (TRACKING_LARGE_RATIO - TRACKING_SMALL_RATIO);
+}
 
 function tilePath(w, h) {
   const r = h * CORNER_RATIO;
@@ -69,7 +84,7 @@ function Tile({ text, width, height }) {
           fontWeight: 700,
           fontSize,
           lineHeight: 1,
-          letterSpacing: fontSize * TRACKING_RATIO,
+          letterSpacing: fontSize * trackingRatioFor(fontSize),
           color: 'var(--color-text)',
           whiteSpace: 'nowrap',
         }}
@@ -88,7 +103,7 @@ export function ItemSerialCode({ code, height = 160, className = '', style = {} 
   const padInline = height * PAD_INLINE_RATIO;
   const fontSize = height * FONT_RATIO;
   const digitTextWidth = digits.length
-    ? digits.length * fontSize * DIGIT_ADVANCE_RATIO + (digits.length - 1) * fontSize * TRACKING_RATIO
+    ? digits.length * fontSize * DIGIT_ADVANCE_RATIO + (digits.length - 1) * fontSize * trackingRatioFor(fontSize)
     : 0;
   const numberWidth = Math.max(tileWidth, digitTextWidth + padInline * 2);
 
