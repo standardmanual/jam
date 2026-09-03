@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button'
 import { Card } from '@ds/components/cards/Card'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRarity } from '@/types/database'
 import { d, t } from '@/lib/i18n'
@@ -163,11 +164,12 @@ export default function BadgeDetailSheet({ drop, poiName, pickingUp, onPickup, o
             {t(d.drops.droppedBy, { name: drop.dropper_name ?? d.drops.anonymous })}
           </p>
           {/* 20260829_2101 — 픽업은 소유권 이전일 뿐 재발급이 아니라서 드랍 상태에서도
-              이미 확정된 일련번호가 존재한다. ItemEarnHistory와 같은 라벨·표기 관례 재사용. */}
+              이미 확정된 일련번호가 존재한다. 20260903_1423 — ItemSerialCode로 교체(타이틀 텍스트
+              없이 컴포넌트만 배치, 다른 두 화면과 동일 원칙). 이 시트는 좁은 카드라 배지 상세
+              페이지(height=50)보다 작게, 컴포넌트가 지원하는 최소값(height=40)을 쓴다. */}
           {drop.serial && (
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-text/10">
-              <span className="text-[length:var(--text-caption)] text-text/50">{d.inventory.serialNumber}</span>
-              <span className="text-[length:var(--text-caption)] text-text font-mono tracking-widest">{drop.serial}</span>
+            <div className="flex justify-center mt-3 pt-3 border-t border-text/10">
+              <ItemSerialCode code={drop.serial} height={40} />
             </div>
           )}
         </Card>
