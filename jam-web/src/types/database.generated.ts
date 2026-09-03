@@ -162,6 +162,27 @@ export type Database = {
           },
         ]
       }
+      badge_metric_labels: {
+        Row: {
+          label_ko: string
+          metric_key: string
+          unit_ko: string | null
+          updated_at: string
+        }
+        Insert: {
+          label_ko: string
+          metric_key: string
+          unit_ko?: string | null
+          updated_at?: string
+        }
+        Update: {
+          label_ko?: string
+          metric_key?: string
+          unit_ko?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           activity_types: string[]
