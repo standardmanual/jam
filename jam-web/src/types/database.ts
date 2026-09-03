@@ -210,6 +210,20 @@ export interface BadgeConditionSnapshot {
   } | null
 }
 
+/**
+ * 배지 조건 측정 필드 키(distance_km 등) 또는 day_of_week/season 값(friday, winter 등)에
+ * 대응하는 한글 라벨·단위. 어드민 편집 테이블(badge_metric_labels) — 코드 배포 없이 갱신
+ * 가능(티켓 20260904_0430). 후속 computeBadgeProgress()가 axes[].key로 이 테이블을
+ * 조회해 라벨·단위를 채운다. 행이 없는 키는 원문을 그대로 노출한다(의도적 폴백).
+ */
+export interface BadgeMetricLabelRow {
+  metric_key: string
+  label_ko: string
+  /** NULL이면 단위 없이 표시 (예: max_pace_sec_per_km은 포맷 문자열에 단위가 이미 포함돼 NULL) */
+  unit_ko: string | null
+  updated_at: string
+}
+
 export interface InventoryRow {
   id: string
   user_id: string
