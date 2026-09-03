@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { UserIcon } from '@/components/ui/icons'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d } from '@/lib/i18n'
+import { trackEvent } from '@/lib/analytics/gtag'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
@@ -20,8 +21,9 @@ function validateFormat(value: string): string | null {
   return null
 }
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
@@ -62,6 +64,21 @@ export default function OnboardingPage() {
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // GA4 sign_up_complete — /auth/callback이 신규 가입(users row가 이번에 처음 생김) 때만
+  // 붙이는 플래그. 새로고침·뒤로가기로 재전송되지 않도록 URL에서 즉시 지운다.
+  const signupTrackedRef = useRef(false)
+  useEffect(() => {
+    if (signupTrackedRef.current) return
+    if (searchParams.get('new_signup') !== '1') return
+    signupTrackedRef.current = true
+    trackEvent('sign_up_complete')
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('new_signup')
+    const query = params.toString()
+    router.replace(query ? `/onboarding?${query}` : '/onboarding', { scroll: false })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   // 입력 변경 처리
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -111,6 +128,10 @@ export default function OnboardingPage() {
       })
       const json = await res.json() as { success?: boolean; error?: string }
       if (json.success) {
+        // GA4 onboarding_complete — 현재 온보딩 플로우는 username 설정 1단계뿐이다
+        // (01_PRD.md "온보딩 — username 설정(최초 1회)"). 활동 종목·지역 입력 단계는
+        // 아직 서비스에 없다.
+        trackEvent('onboarding_complete')
         router.replace('/')
       } else if (json.error === 'DUPLICATE') {
         setStatus('taken')
@@ -232,5 +253,14 @@ export default function OnboardingPage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  // useSearchParams()는 Suspense 경계 안에서만 쓸 수 있다 (login/page.tsx와 동일 패턴).
+  return (
+    <Suspense>
+      <OnboardingContent />
+    </Suspense>
   )
 }

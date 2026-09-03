@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
 import { d } from '@/lib/i18n'
+import { trackEvent } from '@/lib/analytics/gtag'
 
 /**
  * 최초 Strava 연동 직후 도착 화면 피드백 (20260824_003, 20260824_008).
@@ -29,6 +30,8 @@ import { d } from '@/lib/i18n'
 interface RecentEarnedResponse {
   earnedBadges?: RevealBadge[]
   earnedBadgesMore?: number
+  /** 유저가 지금까지 획득한 배지가 이번 배치뿐인지 — GA4 first_badge_earned 판정 (20260903_1034) */
+  isFirstBadgeEver?: boolean
 }
 
 type Phase = 'idle' | 'loading' | 'open'
@@ -103,6 +106,11 @@ function Inner({ username }: { username: string | null }) {
     // 연동 성공 토스트를 띄운다 — 판정은 replace로 URL을 지우기 전에 미리 읽어둔다.
     const stravaConnected = searchParams.get('strava') === 'connected'
 
+    // GA4 strava_connect_complete — 콜백이 reveal=1과 함께 붙이는 strava=connected를
+    // 그대로 "OAuth 연동 완료" 신호로 쓴다. startedRef 가드 덕에 이 이펙트 자체가
+    // 컴포넌트 생애주기당 1회만 실행된다.
+    if (stravaConnected) trackEvent('strava_connect_complete')
+
     // 새로고침·뒤로가기로 연출·토스트가 다시 뜨지 않도록 URL에서 플래그를 지운다.
     const params = new URLSearchParams(searchParams.toString())
     params.delete('reveal')
@@ -134,6 +142,10 @@ function Inner({ username }: { username: string | null }) {
         setItems(badges)
         setMoreCount(data.earnedBadgesMore ?? 0)
         setPhase('open')
+        // GA4 first_badge_earned — "최초 1회"는 서버(recent-earned)가 user_activity_badges
+        // 전체 행 수 기준으로 판정해 내려준 값을 그대로 신뢰한다(클라이언트 상태만으로는
+        // 새로고침·재방문 시 재판정이 불가능하다).
+        if (data.isFirstBadgeEver) trackEvent('first_badge_earned')
       } catch (err) {
         console.error('[StravaConnectReveal] 최근 획득 배지 조회 실패:', err)
         listeningRef.current = false
