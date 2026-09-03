@@ -12,6 +12,7 @@ import StravaLink from '@/components/StravaLink'
 import LocalDate from '@/components/LocalDate'
 import ItemEarnHistory from './ItemEarnHistory'
 import BadgeHeroSection from './BadgeHeroSection'
+import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import BadgeConditionCard from './BadgeConditionCard'
 import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
@@ -453,6 +454,13 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     const activeItem = allItemInventory.find(item => !item.dropped_at) ?? null
     const expiresAt = activeItem?.expires_at ?? null
     const expiring = isExpiringSoon(expiresAt)
+    // 대표 개체(현재 보유 중인 것 중 최신 획득분)의 일련번호 — ItemSerialCode 대형 표시용
+    // (20260903_1423). 여러 개체를 보유해도(allItemInventory.length > 1) 대표 1개만 크게 보여주고,
+    // 나머지는 아래 ItemEarnHistory 목록에서 확인한다.
+    const representativeSerial = activeItem
+      ? `${activeItem.serial_prefix ?? '????'}${String(activeItem.serial_number).padStart(6, '0')}`
+      : null
+    const showSerial = isOwnBadge && representativeSerial !== null
 
     return (
       <div className="min-h-full bg-surface text-text" style={themedTextStyle}>
@@ -478,9 +486,25 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
         <BadgeHeroSection badge={badgeRow} hasEarned={hasEarned} backgroundAnimation={badgeCardAnimation} />
 
-        {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링 */}
+        {/* 대표 개체 일련번호 — 타이틀 텍스트 없이 컴포넌트만 배치(dev-sample/item-badge-serial
+            샘플에서 검증된 height=50 재사용, 20260903_1423). 본인 뷰 + 현재 보유 중인 개체가
+            있을 때만 노출한다. */}
+        {isOwnBadge && representativeSerial && (
+          <div className="relative z-10 flex justify-center px-6 pb-[32px]">
+            <ItemSerialCode code={representativeSerial} height={50} />
+          </div>
+        )}
+
+        {/* info-section — 본인 뷰이거나 미보유 안내가 필요한 경우만 렌더링.
+            위 ItemSerialCode가 이미 pb-[32px] 여백을 만들어두므로, 노출 중일 때는
+            pt-[32px]를 중복으로 더하지 않는다(dev-sample과 동일 간격). */}
         {(isOwnBadge || !hasEarned) && (
-          <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
+          <div
+            className={[
+              'relative z-10 flex flex-col gap-4 px-6 pb-[32px]',
+              showSerial ? '' : 'pt-[32px]',
+            ].join(' ')}
+          >
             {isOwnBadge && allItemInventory.length > 0 && (
               <ItemEarnHistory items={allItemInventory.map(item => ({
                 id: item.id,
