@@ -124,6 +124,27 @@ export const BothAxesMet: Story = {
   ),
 };
 
+// ── 페이스 축 포함 — 스피드 엔듀러: 페이스 × 지속시간 (formatAxisRange의 mm:ss 이중 슬래시 표기 확인) ──
+
+export const PaceAxis: Story = {
+  name: '페이스 축 포함 (스피드 엔듀러, "5:30/km / 5:00/km" 이중 슬래시 표기 확인)',
+  render: () => (
+    <Frame>
+      <DualAxisGauge
+        imageUrl={null}
+        alt="스피드 엔듀러 Rare"
+        rarity="rare"
+        axes={[
+          { key: 'max_pace_sec_per_km', label: '페이스', rangeText: '5:30/km / 5:00/km', fraction: 0.7, met: false },
+          { key: 'duration_minutes', label: '지속 시간', rangeText: '58/60분', fraction: 58 / 60, met: false },
+        ]}
+        ruleText="두 조건은 각각 다른 활동에서 채워도 돼요."
+        bottleneckNote={null}
+      />
+    </Frame>
+  ),
+};
+
 export const NoImage: Story = {
   name: '이미지 없음 (플레이스홀더)',
   render: () => (

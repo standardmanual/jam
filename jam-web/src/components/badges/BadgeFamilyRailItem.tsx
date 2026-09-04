@@ -83,28 +83,40 @@ export default function BadgeFamilyRailItem({
   const regretRaw = nextStop ? regretLineByBadgeId[nextStop.id] : undefined
   const regretLine = regretRaw && nextStop ? formatRegretLineText(regretRaw, nextStop.rarity) : null
 
+  const rail = (
+    <BadgeStageRail
+      familyName={family.name}
+      stops={stops}
+      nextRarityLabel={nextRarityLabel}
+      frontierProgress={frontierProgress}
+      regretLine={regretLine}
+      expanded={expanded}
+      onToggleExpand={() => setExpanded((v) => !v)}
+      onLockClick={onLockClick}
+    />
+  )
+
+  if (!dualAxisGauge || !nextStop) return rail
+
+  // 레일+게이지를 한 div로 묶어 내부 간격을 계열 간 간격(BadgeTreeClient의 리스트 gap,
+  // --spacing-12)보다 좁게 둔다 — Fragment로 형제 반환하면 부모 flex의 gap이 "레일-게이지
+  // 사이"와 "계열-계열 사이"에 똑같이 적용돼 이 둘이 한 묶음으로 안 읽혔다(인터랙션 리뷰
+  // 지적, 티켓 20260904_1058). aria-label로 이 묶음이 어느 계열 얘기인지도 함께 알린다.
   return (
-    <>
-      <BadgeStageRail
-        familyName={family.name}
-        stops={stops}
-        nextRarityLabel={nextRarityLabel}
-        frontierProgress={frontierProgress}
-        regretLine={regretLine}
-        expanded={expanded}
-        onToggleExpand={() => setExpanded((v) => !v)}
-        onLockClick={onLockClick}
+    <div
+      role="group"
+      aria-label={`${family.name} 진행 상세`}
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)' }}
+    >
+      {rail}
+      <DualAxisGauge
+        imageUrl={nextStop.imageUrl}
+        alt={`${family.name} ${nextRarityLabel ?? ''}`}
+        rarity={nextStop.rarity}
+        axes={dualAxisGauge.axes}
+        ruleText={dualAxisGauge.ruleText}
+        bottleneckNote={dualAxisGauge.bottleneckNote}
       />
-      {dualAxisGauge && nextStop && (
-        <DualAxisGauge
-          imageUrl={nextStop.imageUrl}
-          alt={`${family.name} ${nextRarityLabel ?? ''}`}
-          rarity={nextStop.rarity}
-          axes={dualAxisGauge.axes}
-          ruleText={dualAxisGauge.ruleText}
-          bottleneckNote={dualAxisGauge.bottleneckNote}
-        />
-      )}
-    </>
+    </div>
   )
 }
