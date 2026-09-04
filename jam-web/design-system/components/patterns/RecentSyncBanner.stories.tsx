@@ -10,8 +10,10 @@ const meta: Meta<typeof RecentSyncBanner> = {
     docs: {
       description: {
         component:
-          '직전 동기화 배너. 1차 범위는 boolean 이벤트만 표시(20260903_2329) — 구체적인 배지 ' +
-          '개수·거리 등은 진행 스냅샷이 필요한 2·3차에서 얹는다. 색은 --status-latest-solid(시안) 전용.',
+          '직전 동기화 배너. 1차 범위는 boolean 이벤트만 표시(20260903_2329). ' +
+          '3b(20260904_1425)에서 `comparisonMessage` prop을 얹어 user_family_progress 기반 ' +
+          '"직전 상태값과의 비교" 문구를 표시한다 — 없으면 기본 `message`로 폴백. ' +
+          '색은 --status-latest-solid(시안) 전용.',
       },
     },
   },
@@ -28,7 +30,9 @@ export const Visible: Story = {
   name: '최근 동기화 있음',
   render: () => (
     <Frame>
-      <RecentSyncBanner visible />
+      {/* comparisonMessage는 기본값을 두지 않는 prop이라(BadgeStageRail.jsx의 frontierProgress와
+          동일한 이유) 항상 명시적으로 넘긴다 — null이면 기본 message로 표시된다. */}
+      <RecentSyncBanner visible comparisonMessage={null} />
     </Frame>
   ),
 };
@@ -37,7 +41,7 @@ export const CustomMessage: Story = {
   name: '메시지 커스텀',
   render: () => (
     <Frame>
-      <RecentSyncBanner visible message="오늘 걷기 활동이 동기화됐어요" />
+      <RecentSyncBanner visible message="오늘 걷기 활동이 동기화됐어요" comparisonMessage={null} />
     </Frame>
   ),
 };
@@ -47,7 +51,28 @@ export const Hidden: Story = {
   render: () => (
     <Frame>
       <p style={{ color: '#929292', fontSize: 13 }}>visible=false면 아무것도 렌더하지 않습니다.</p>
-      <RecentSyncBanner visible={false} />
+      <RecentSyncBanner visible={false} comparisonMessage={null} />
+    </Frame>
+  ),
+};
+
+export const SyncComparisonMessage: Story = {
+  name: '직전 상태값과의 비교 (3b)',
+  render: () => (
+    <Frame>
+      <RecentSyncBanner visible comparisonMessage="직전 동기화보다 누적 거리 1.2km 가까워졌어요" />
+    </Frame>
+  ),
+};
+
+export const ComparisonFallback: Story = {
+  name: '비교 문구 없음 → 기본 메시지로 폴백',
+  render: () => (
+    <Frame>
+      <p style={{ color: '#929292', fontSize: 13 }}>
+        comparisonMessage가 null(비교할 진전 없음)이면 message 기본값으로 자동 폴백합니다.
+      </p>
+      <RecentSyncBanner visible comparisonMessage={null} />
     </Frame>
   ),
 };
