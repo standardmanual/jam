@@ -25,10 +25,18 @@ const config = {
  * 필요한 곳(예: 스크린리더 라이브 리전, 20260904_1502)은 이 함수를 쓴다.
  */
 export function getRarityLabel(rarity = 'common') {
+  // v5: 등급이 없는 배지(무한레벨형)는 라벨 자체가 없다 — null을 그대로 돌려준다.
+  // 기본값 `= 'common'`은 undefined에만 걸리므로 명시적 null은 여기서 따로 잡아야 한다.
+  // 이 가드가 없으면 `config[null] ?? config.common`으로 떨어져 "Common"을 돌려준다
+  // (티켓 20260905_0027 개선 리뷰).
+  if (rarity == null) return null;
   return (config[rarity] ?? config.common).label;
 }
 
 export function RarityBadge({ rarity = 'common', className = '' }) {
+  // 등급 없음(null) — 무한레벨형은 등급 칩을 그리지 않는다. common과 같은 처리지만
+  // 이유가 다르다: common은 "노이즈 축소"(20260827_024), null은 "등급이 존재하지 않음".
+  if (rarity == null) return null;
   if (rarity === 'common') return null;
   const c = config[rarity] ?? config.common;
   return (

@@ -221,14 +221,18 @@ export function BadgeStageRail({
       <div role="group" aria-label={summarySentence} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 'var(--spacing-16)' }}>
         {stops.map((stop, i) => {
           const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
+          // 등급이 없는 배지(무한레벨형)는 rarityLabel이 null이다. 템플릿 리터럴에 그대로
+          // 끼우면 "동네 산책러 null, 획득"이 aria-label과 img alt로 나간다 — 조각을 뺀다
+          // (티켓 20260905_0027 개선 리뷰).
+          const stopName = [familyName, rarityLabel].filter(Boolean).join(' ');
           const showProgress = i === frontierIndex && frontierProgress != null;
           // 진행 캡션은 화면에만 보이고 aria-label에는 반영되지 않아, 스크린리더 사용자는
           // 이번 티켓 이전과 동일하게 상태 라벨만 듣는 정보 격차가 있었다(개선 리뷰·인터랙션
           // 리뷰 공통 지적, 티켓 20260904_0921). 진행 캡션을 문장 끝에 이어 붙여 해소한다.
           const stopAriaLabel =
             (stop.status === 'ready' || stop.status === 'locked'
-              ? `${familyName} ${rarityLabel}, ${STATUS_LABEL[stop.status]}. 잠금 해제 조건 보기`
-              : `${familyName} ${rarityLabel}, ${STATUS_LABEL[stop.status]}`) +
+              ? `${stopName}, ${STATUS_LABEL[stop.status]}. 잠금 해제 조건 보기`
+              : `${stopName}, ${STATUS_LABEL[stop.status]}`) +
             (showProgress ? `. ${frontierProgress.text}` : '') +
             (showProgress && regretLine ? `. ${regretLine}` : '');
           const isGateBefore = i === frontierIndex && i > 0 && (stop.status === 'locked' || stop.status === 'ready');
@@ -270,7 +274,7 @@ export function BadgeStageRail({
                       type="button"
                       className="ds-rail-lock-btn"
                       onClick={() => onLockClick?.(stop.id)}
-                      aria-label={`${familyName} ${rarityLabel} 잠금 해제 조건 보기`}
+                      aria-label={`${stopName} 잠금 해제 조건 보기`}
                       style={{
                         width: 20, height: 20, borderRadius: '50%', background: 'var(--color-surface-elevated)',
                         boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
@@ -289,7 +293,7 @@ export function BadgeStageRail({
                 ariaLabel={stopAriaLabel}
               >
                 <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 48 }}>
-                  <StopThumbnail imageUrl={stop.imageUrl} alt={`${familyName} ${rarityLabel}`} status={stop.status} />
+                  <StopThumbnail imageUrl={stop.imageUrl} alt={stopName} status={stop.status} />
                   {(() => {
                     const captionText = showProgress ? frontierProgress.text : STATUS_LABEL[stop.status];
                     // fraction>=1(조건은 채웠고 게이트만 남음)이면 앰버가 아니라 라임 —
@@ -347,10 +351,11 @@ export function BadgeStageRail({
         <div style={{ marginTop: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
           {stops.map((stop) => {
             const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
+            const stopName = [familyName, rarityLabel].filter(Boolean).join(' ');
             const canOpenLock = stop.status === 'ready' || stop.status === 'locked';
             return (
               <div key={stop.id} style={{ display: 'flex', gap: 'var(--spacing-12)', alignItems: 'flex-start' }}>
-                <StopThumbnail imageUrl={stop.imageUrl} alt={`${familyName} ${rarityLabel}`} status={stop.status} />
+                <StopThumbnail imageUrl={stop.imageUrl} alt={stopName} status={stop.status} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <RarityBadge rarity={stop.rarity} />
@@ -359,7 +364,7 @@ export function BadgeStageRail({
                         type="button"
                         className="ds-rail-lock-btn"
                         onClick={() => onLockClick?.(stop.id)}
-                        aria-label={`${rarityLabel} 잠금 해제 조건 보기`}
+                        aria-label={[rarityLabel, '잠금 해제 조건 보기'].filter(Boolean).join(' ')}
                         style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--color-text-secondary)' }}
                       >
                         <LockGlyph size={14} />
