@@ -8,6 +8,14 @@ import {
 import type { BadgeRarity } from '@/types/database'
 
 /**
+ * ## 3b 추가분 (티켓 20260904_1425) — `pickSyncComparisonCandidate()`/`formatSyncComparisonText()`
+ * `RecentSyncBanner`(DS)의 "직전 상태값과의 비교" 문구 조립. `user_family_progress`
+ * (티켓 20260904_1156, 계열별 `current`/`prev` jsonb 스냅샷)를 읽어 "직전 동기화 대비
+ * {무엇이 얼마나} 가까워졌다" 문장을 만든다 — 다른 포맷 함수와 동일하게 숫자는 이미 계산된
+ * 스냅샷 값을 그대로 쓰고(재계산 없음), 이 파일은 문장 조립만 담당한다.
+ */
+
+/**
  * `computeBadgeProgress()`/`computeRecordRegretLine()`(순수 계산, badge-engine/badgeProgress.ts)의
  * 결과를 화면에 그릴 한국어 문자열로 바꾸는 표시 전용 레이어 — 티켓 20260904_0921(2c).
  *
@@ -188,4 +196,95 @@ export function formatRegretLineText(regret: RegretLineData, rarity: BadgeRarity
   // regret.label을 문장에 포함 — 없으면 단위만으로 "기록"이 뭘 가리키는지 유추해야 했다
   // (개선 리뷰 지적, 티켓 20260904_0921).
   return `지난 활동 ${regret.label} 기록은 ${current}${unit}. ${rarityLabel}까지 ${diff}${unit} 모자랐어요.`
+}
+
+// ── 3b. 직전 동기화 비교(RecentSyncBanner) — 티켓 20260904_1425 ────────────────
+
+export type FamilyProgressAxisSnapshot = {
+  /** user_family_progress.current(jsonb) — BadgeProgressAxis[] 그대로 */
+  current: BadgeProgressAxis[]
+  /** user_family_progress.prev(jsonb) — 최초 싱크 전이면 null */
+  prev: BadgeProgressAxis[] | null
+}
+
+export type SyncComparisonCandidate = {
+  axisKey: string
+  prevValue: number
+  currentValue: number
+}
+
+/**
+ * `user_family_progress` 전 계열의 current/prev 스냅샷에서 "가장 눈에 띄는 진전"(fraction
+ * 증가폭이 가장 큰 축) 하나를 고른다. "가장 최근에 갱신된 계열"(updated_at) 대신 이 기준을
+ * 쓴 이유 — 한 번의 싱크가 여러 계열을 동시에 갱신하면(같은 트랜잭션의 일괄 upsert,
+ * 티켓 20260904_1156 C절) updated_at만으로는 어느 쪽이 더 체감되는 진전인지 가릴 수 없다.
+ * `fraction`은 축 종류(높을수록/낮을수록 좋음)와 무관하게 이미 0~1로 정규화돼 있어, 계열·축을
+ * 가로질러 직접 비교할 수 있는 유일한 값이다(재계산 없이 스냅샷에 저장된 값 그대로 사용).
+ *
+ * fraction이 실제로 늘어난(양수) 축만 후보로 본다 — 0 이하(변화 없음, 또는 주기 리셋으로
+ * 감소)는 "가까워졌다"고 말할 수 없어 제외한다. 전부 제외되면(진전 없음) null — 호출부가
+ * 기존 문구("최근 활동이 동기화됐어요")로 폴백한다.
+ */
+export function pickSyncComparisonCandidate(rows: FamilyProgressAxisSnapshot[]): SyncComparisonCandidate | null {
+  let best: SyncComparisonCandidate | null = null
+  let bestFractionDelta = 0
+
+  for (const row of rows) {
+    if (!row.prev || row.prev.length === 0) continue
+    const prevByKey = new Map(row.prev.map((axis) => [axis.key, axis]))
+    for (const currentAxis of row.current) {
+      const prevAxis = prevByKey.get(currentAxis.key)
+      // 계열 정합성 트리거(마이그레이션 128, badges_family_consistency)가 같은 계열의 등급
+      // 간 측정 조건 필드 조합을 항상 동일하게 강제하므로 정상 상황에선 항상 찾아야 하지만,
+      // 방어적으로 스킵한다(예상 밖 데이터 형태로 화면이 죽지 않게).
+      if (!prevAxis) continue
+      const fractionDelta = currentAxis.fraction - prevAxis.fraction
+      if (fractionDelta <= bestFractionDelta) continue
+      bestFractionDelta = fractionDelta
+      best = { axisKey: currentAxis.key, prevValue: prevAxis.current, currentValue: currentAxis.current }
+    }
+  }
+  return best
+}
+
+/**
+ * `pickSyncComparisonCandidate()` 결과를 "직전 동기화보다 {라벨} {델타}{단위} 가까워졌어요"
+ * 문장으로 조립한다. 라벨/단위는 스냅샷에 저장된 값이 아니라 호출부가 새로 조회한 labelMap을
+ * 쓴다 — 저장 시점(sync.ts의 updateFamilyProgressSnapshots)엔 빈 Map을 넘겨 라벨이 원문
+ * key로만 채워져 있다(티켓 20260904_1156 의사결정, 라벨을 나중에 고쳐도 과거 스냅샷 표시가
+ * 자동으로 최신화되는 부수 이점).
+ *
+ * 델타 표기는 `formatCurrentValue`와 같은 원칙 — 방향(높을수록/낮을수록 좋음)에 맞춰 항상
+ * "아직 못 미친 쪽"으로 내림해 실제보다 부풀리지 않는다. 내림 결과가 0 이하면(표시 단위로는
+ * 구분 안 되는 미세 변화) 빈 비교문("0km 가까워졌어요")을 보여주지 않도록 null을 반환한다 —
+ * 호출부가 기존 문구로 폴백한다. 페이스(max_pace_sec_per_km)는 `formatRegretLineText`와
+ * 동일하게 델타를 정수 초 단위로 표기한다(라벨 테이블의 unit_ko가 이 축만 NULL — mm:ss
+ * 절대값과 달리 델타는 애초에 "초" 단위가 자연스러워 라벨 테이블 unit을 쓰지 않는다).
+ */
+export function formatSyncComparisonText(
+  candidate: SyncComparisonCandidate,
+  labelMap: Map<string, { label: string; unit: string | null }>
+): string | null {
+  const { axisKey, prevValue, currentValue } = candidate
+  // badge-engine/badgeProgress.ts의 resolveLabel()과 같은 폴백 규칙(라벨 없으면 key 원문)이지만
+  // 그 함수는 비공개라 재사용하지 않는다 — 이 파일은 badgeProgress.ts를 건드리지 않는다(범위 밖).
+  const found = labelMap.get(axisKey)
+  const label = found?.label ?? axisKey
+  const unit = found?.unit ?? null
+  const lowerBetter = LOWER_IS_BETTER_KEYS.has(axisKey)
+  const deltaRaw = lowerBetter ? prevValue - currentValue : currentValue - prevValue
+
+  if (axisKey === 'max_pace_sec_per_km') {
+    const deltaSec = Math.floor(deltaRaw)
+    if (deltaSec <= 0) return null
+    return `직전 동기화보다 ${label} ${deltaSec}초 가까워졌어요`
+  }
+
+  const decimals = ONE_DECIMAL_KEYS.has(axisKey) ? 1 : 0
+  const factor = 10 ** decimals
+  const deltaRounded = Math.floor(deltaRaw * factor) / factor
+  if (deltaRounded <= 0) return null
+  const deltaText = decimals === 1 ? deltaRounded.toFixed(1) : String(deltaRounded)
+  const unitSuffix = unit ?? ''
+  return `직전 동기화보다 ${label} ${deltaText}${unitSuffix} 가까워졌어요`
 }
