@@ -138,7 +138,8 @@ type BadgeListItem = {
   id: string;
   name: string;
   type: 'activity' | 'item';
-  rarity: 'common' | 'rare' | 'epic' | 'mystic';
+  rarity: 'common' | 'rare' | 'epic' | 'mystic' | null;  // null = 무한레벨형 (v5)
+  level: number | null;       // 무한레벨형의 레벨. 등급형은 null
   hasCondition: boolean;      // condition_json이 비어있지 않은지
   patchAvailable: boolean;    // patch_available
   imageUrl: string;           // 썸네일
@@ -148,7 +149,7 @@ type BadgeListItem = {
 
 **필터 기준:**
 - `type`: activity / item
-- `rarity`: common / rare / epic / mystic
+- `rarity`: common / rare / epic / mystic (v5부터 «등급 없음»도 값 하나로 선택 가능해야 한다)
 - `searchTerm`: name 검색
 
 ### 3-2. 배지 상세 화면 (읽기 모드)
@@ -336,7 +337,12 @@ const BadgeSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
   type: z.enum(['activity', 'item']),
-  rarity: z.enum(['common', 'rare', 'epic', 'mystic']),
+  // v5: 무한레벨형은 등급이 없다. rarity와 level은 정확히 하나만 채워져야 하며
+  // DB의 badges_rarity_level_exclusive CHECK가 같은 규칙을 강제한다(마이그레이션 130).
+  // ⚠️ 어드민 생성 API(api/admin/badges/route.ts)는 아직 rarity를 필수로 검사해
+  // 레벨형 배지를 만들 수 없다 — 티켓 20260905_0032에서 해소한다.
+  rarity: z.enum(['common', 'rare', 'epic', 'mystic']).nullable(),
+  level: z.number().int().min(1).nullable(),
   imageUrl: z.string().url(),
   activityTypes: z.array(z.string()).min(1),
   patchAvailable: z.boolean(),
