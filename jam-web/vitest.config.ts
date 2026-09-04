@@ -24,7 +24,14 @@ export default defineConfig({
         // node:assert + 자체 러너로 작성된 파일이라 vitest 러너로는 못 돈다 — 여기서 제외하되,
         // package.json의 `test:node`가 tsx로 전부 실행하고 `npm test`가 이를 이어서 호출한다.
         // (제외만 하고 방치하면 회귀 방어가 CI에서 빠진다 — 티켓 20260825_028)
-        exclude: ['**/node_modules/**', '**/today/__tests__/**', '**/missions/__tests__/**']
+        // today-calendar.test.ts는 admin/__tests__ 폴더 안에 badge-validation.test.ts(진짜
+        // vitest 스위트)와 공존하므로 폴더째 제외할 수 없다 — 파일 단위로 제외한다.
+        exclude: [
+          '**/node_modules/**',
+          '**/today/__tests__/**',
+          '**/missions/__tests__/**',
+          '**/admin/__tests__/today-calendar.test.ts'
+        ]
       }
     }, {
       extends: true,
