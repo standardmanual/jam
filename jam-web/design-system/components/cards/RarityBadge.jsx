@@ -18,6 +18,16 @@ const config = {
   mystic: { label: 'Mystic', bg: 'var(--color-rarity-mystic)', text: 'var(--color-rarity-mystic-text)' },
 };
 
+/**
+ * getRarityLabel — 등급의 텍스트 라벨만 반환한다("Common"/"Rare"/"Epic"/"Mystic").
+ * 위 config(라벨 단일 소스)를 그대로 재사용한다. RarityBadge는 common일 때 시각적
+ * 칩을 렌더하지 않지만(그리드/리스트 노이즈 축소, 20260827_024), 렌더링 없이 텍스트만
+ * 필요한 곳(예: 스크린리더 라이브 리전, 20260904_1502)은 이 함수를 쓴다.
+ */
+export function getRarityLabel(rarity = 'common') {
+  return (config[rarity] ?? config.common).label;
+}
+
 export function RarityBadge({ rarity = 'common', className = '' }) {
   if (rarity === 'common') return null;
   const c = config[rarity] ?? config.common;

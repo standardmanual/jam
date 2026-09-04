@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RarityBadge } from '../cards/RarityBadge.jsx';
+import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
 import { IconButton } from '../buttons/IconButton.jsx';
 
 /**
@@ -350,11 +350,14 @@ export function BadgeRevealCarousel({
     >
       {/* 중앙 카드 텍스트 공지.
           화살표·스와이프로 중앙 카드가 바뀌면 이 노드의 내용만 교체되므로 스크린리더가
-          변경을 읽는다. 카드 DOM은 순환하며 노드가 옮겨다녀 라이브 리전으로 쓸 수 없다. */}
+          변경을 읽는다. 카드 DOM은 순환하며 노드가 옮겨다녀 라이브 리전으로 쓸 수 없다.
+          등급 텍스트는 `<RarityBadge>`가 아니라 `getRarityLabel()`로 얻는다 — RarityBadge는
+          common일 때 시각적 칩을 렌더하지 않으므로(20260827_024) 여기서 그대로 재사용하면
+          common 등급에서 라이브 리전이 등급을 아예 공지하지 못한다(20260904_1502 회귀). */}
       <div aria-live="polite" aria-atomic="true" style={SR_ONLY_STYLE}>
         {center?.kind === 'badge' && (
           <>
-            <RarityBadge rarity={center.item?.rarity ?? 'common'} />{' '}
+            {getRarityLabel(center.item?.rarity ?? 'common')}{' '}
             {center.item?.name}. {center.item?.description}
           </>
         )}
