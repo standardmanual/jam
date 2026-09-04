@@ -49,7 +49,10 @@ function AxisRow({ label, rangeText, fraction, met }) {
       <span
         style={{
           fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)', flex: 'none',
-          maxWidth: 64, overflowWrap: 'anywhere',
+          // break-word: 지금 라벨(한글 2~4자)엔 영향 없지만, 라틴 문자 섞인 라벨이 나중에
+          // 추가돼도 단어 경계를 먼저 시도해 anywhere보다 방어적이다(인터랙션 리뷰 지적,
+          // 티켓 20260904_1058).
+          maxWidth: 64, overflowWrap: 'break-word',
         }}
       >
         {label}
@@ -100,6 +103,10 @@ export function DualAxisGauge({
             width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE, flex: 'none',
             borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+            // 레일의 StopThumbnail(44px)이 미획득 눈금에 항상 그리는 중성 얇은 링과 같은
+            // 문법 — 이 컴포넌트의 64px 사본만 프레임 없이 떠 있으면 같은 배지가 화면에서
+            // 두 가지로 보인다(인터랙션 리뷰 지적, 티켓 20260904_1058).
+            boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
           }}
         >
           {imageUrl ? (
