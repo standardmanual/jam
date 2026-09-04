@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React, { useState } from 'react';
+import { expect } from 'storybook/test';
 import { BadgeStageRail } from './BadgeStageRail';
 
 const meta: Meta<typeof BadgeStageRail> = {
@@ -292,4 +293,48 @@ export const FrontierProgressReadyComplete: Story = {
       />
     </Frame>
   ),
+};
+
+/**
+ * 등급 없는 계열(무한레벨형, v5 — 티켓 20260905_0027).
+ *
+ * `stops[].rarity`가 비어 있으면 등급 라벨을 만들지 않는다. 예전에는 null 가드가 라벨
+ * *생성*만 막고 문자열 *조립*은 막지 않아, aria-label과 img alt가
+ * `"동네 산책러 null, 획득"`으로 나갔다 — 스크린리더가 "null"을 그대로 읽는다.
+ * 조각을 `filter(Boolean)`으로 빼는 방식으로 접힌 레일·펼친 목록 양쪽을 고쳤고,
+ * 여기서 회귀를 고정한다.
+ */
+export const NoRarityLeveled: Story = {
+  name: '등급 없는 계열 — 라벨 조각을 빼고 조립한다',
+  render: () => (
+    <Frame>
+      <BadgeStageRail
+        familyName="동네 산책러"
+        nextRarityLabel={null}
+        expanded
+        onToggleExpand={() => {}}
+        stops={[
+          {
+            id: '1', rarity: null, imageUrl: WALK_ICON, status: 'earned', href: '/badges/1',
+            description: '한 주(월~일)에 50km 이상 걸으면 받는 배지예요.',
+          },
+          {
+            id: '2', rarity: null, imageUrl: WALK_ICON, status: 'ready', href: '/badges/2',
+            description: '한 주(월~일)에 100km 이상 걸으면 받는 배지예요.',
+          },
+        ]}
+        frontierProgress={{ text: '38/50km', fraction: 0.76 }}
+        regretLine={null}
+        onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
+      />
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    // aria-label·alt 어디에도 "null"이 문자열로 새지 않는다.
+    const labelled = canvasElement.querySelectorAll('[aria-label]');
+    labelled.forEach((el) => expect(el.getAttribute('aria-label') ?? '').not.toContain('null'));
+    canvasElement.querySelectorAll('img').forEach((img) => expect(img.getAttribute('alt') ?? '').not.toContain('null'));
+    // 등급 칩도 그려지지 않는다.
+    expect(canvasElement.textContent).not.toContain('COMMON');
+  },
 };
