@@ -13,6 +13,9 @@
     { id: 'b2', rarity: 'rare', imageUrl: '...', status: 'ready', href: '/badges/b2', description: '...' },
     { id: 'b3', rarity: 'epic', imageUrl: '...', status: 'locked', href: '/badges/b3' },
   ]}
+  // 프런티어(다음 목표) 진행 표시(2c) — null이면 상태 라벨만(위 예시와 동일 동작)
+  frontierProgress={{ text: '87.3/100km', fraction: 0.82 }}   // 누적/기록/주기 3종만. 2축/다중은 null
+  regretLine={null}   // 기록형 전용 "아쉬움 줄"(§05) — record kind이고 임계값 85% 이상일 때만 문자열
 />
 ```
 
@@ -30,5 +33,10 @@
 - 배지 이미지는 미획득 시 무조건 grayscale(1) — 획득 여부와 무관한 상태(조건 충족 등)는
   링 색·마커로만 구분하고 이미지 색은 절대 바꾸지 않는다.
 - `expanded`일 때만 `description`을 보여준다. 접힌 레일에는 문장을 두지 않는다.
-- "다음 목표" 강조 링·잔여값·진행 막대는 진행 계산 모듈(computeBadgeProgress)이 필요한
-  2차 범위 — 이 컴포넌트는 아직 그리지 않는다.
+- `frontierProgress`(2c, 20260904_0921) — 프런티어(다음 목표) 눈금 하나에만 붙는다. 캡션
+  텍스트(`STATUS_LABEL` 대체)와 프런티어 앞 연결선 비례 채움(`fraction`, 게이트가 있으면
+  점선 그대로 두고 채우지 않음)을 담당한다. `muted:true`면 §08 H(진행 미지원) 표시로
+  중립색·이탤릭으로 그린다. 문자열 조립은 호출부(`src/lib/badgeProgressText.ts`) 몫 — 이
+  컴포넌트는 kind(누적/기록/주기/2축/다중)를 전혀 모른다. 2축형·다중카운터형 프런티어는
+  이 prop에 `null`을 넘긴다(전용 게이지가 필요한 2d 몫).
+- `regretLine`(2c) — 기록형 "아쉬움 줄"(§05). 계열당 최대 1줄, null이면 렌더하지 않는다.

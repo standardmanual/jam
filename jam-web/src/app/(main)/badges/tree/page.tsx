@@ -1,8 +1,22 @@
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { buildBadgeActivityTrees, type BadgeTreeSourceBadge, type BadgeTreeSourceMission } from '@/lib/badgeTree'
+import {
+  buildBadgeActivityTrees,
+  type BadgeTreeSourceBadge,
+  type BadgeTreeSourceMission,
+  type BadgeTreeLock,
+} from '@/lib/badgeTree'
 import { collectConditionCheckTargets, computeConditionMetBadgeIds } from '@/lib/badgeTreeConditionCheck.server'
 import { getActivityHistory } from '@/lib/strava/activity-history'
+import {
+  computeUserPeriodMetrics,
+  computeBadgeProgress,
+  computeRecordRegretLine,
+  type BadgeProgress,
+  type RegretLineData,
+} from '@/lib/badge-engine/badgeProgress'
+import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
+import type { ActivityType, BadgeCondition } from '@/types/database'
 import BadgeTreeClient from './BadgeTreeClient'
 
 /** 직전 동기화 배너(RecentSyncBanner) 노출 기준 — 이 시간 안에 동기화된 활동이 있으면 보여준다. */
@@ -18,7 +32,8 @@ function isWithinRecentSyncWindow(createdAt: string | null | undefined): boolean
 }
 
 /**
- * 배지 트리(/badges/tree) — 티켓 20260831_2208, 20260903_2329(계열 진행 레일 1차).
+ * 배지 트리(/badges/tree) — 티켓 20260831_2208, 20260903_2329(계열 진행 레일 1차),
+ * 20260904_0921(2c — 진행 수치 최초 연결).
  *
  * `/badges/[id]`보다 정적 세그먼트가 우선 매칭되므로 라우트 충돌은 없다.
  * `badges/page.tsx`와 동일하게 서버 컴포넌트에서 Supabase를 직접 조회한다(API route 신설 안 함).
@@ -102,10 +117,94 @@ export default async function BadgeTreePage() {
   const allStages = trees.flatMap((tree) => tree.families.flatMap((family) => family.stages))
   const targetIds = collectConditionCheckTargets(allStages, earnedBadgeIdSet)
   const conditionById = new Map(badges.map((b) => [b.id, b.condition_json]))
+
+  // ── 진행 수치(2c, 티켓 20260904_0921) ────────────────────────────────────
+  // 대상: 계열의 프런티어(첫 미획득 눈금, 게이트 열림 여부 무관) + 미획득 독립 배지(트로피
+  // 그리드). 1차의 targetIds(게이트가 안 열린 것만)보다 넓다 — 게이트가 이미 열린
+  // not-reached 프런티어에도 진행 수치가 필요하기 때문이다.
+  type ProgressTarget = {
+    id: string
+    condition: BadgeCondition
+    locks: BadgeTreeLock[]
+    activityType: ActivityType
+    /** 아쉬움 줄(§05)은 레일(계열 프런티어)에만 붙는다 — 트로피 그리드에는 없다 */
+    isFamilyFrontier: boolean
+  }
+  const progressTargets: ProgressTarget[] = []
+  for (const tree of trees) {
+    for (const family of tree.families) {
+      const frontier = family.stages.find((s) => !earnedBadgeIdSet.has(s.id))
+      if (!frontier) continue // 계열 전부 획득 — 진행 표시 불필요
+      const condition = conditionById.get(frontier.id)
+      if (condition) {
+        progressTargets.push({
+          id: frontier.id, condition, locks: frontier.locks, activityType: tree.activityType, isFamilyFrontier: true,
+        })
+      }
+    }
+    for (const badge of tree.independentBadges) {
+      if (earnedBadgeIdSet.has(badge.id)) continue // 이미 획득 — 그리드가 100%로 고정 표시
+      const condition = conditionById.get(badge.id)
+      if (condition) {
+        progressTargets.push({
+          id: badge.id, condition, locks: badge.locks, activityType: tree.activityType, isFamilyFrontier: false,
+        })
+      }
+    }
+  }
+
   // getActivityHistory도 badge-engine/missions checker와 동일하게 service client로 호출한다
   // (badge-engine/index.ts:627, missions/checker.ts:119 — 둘 다 service client를 넘긴다).
-  const activities = targetIds.length > 0 ? await getActivityHistory(service, user.id) : []
+  const activities =
+    targetIds.length > 0 || progressTargets.length > 0 ? await getActivityHistory(service, user.id) : []
   const conditionMetBadgeIds = Array.from(computeConditionMetBadgeIds(targetIds, conditionById, activities))
+
+  // (user, activity_type) 하나당 한 번만 집계(2b 설계 그대로) — 트리에 등장하는 종목만.
+  const now = new Date()
+  const metricsByActivityType = new Map<ActivityType, ReturnType<typeof computeUserPeriodMetrics>>()
+  for (const tree of trees) {
+    if (!metricsByActivityType.has(tree.activityType)) {
+      metricsByActivityType.set(tree.activityType, computeUserPeriodMetrics(tree.activityType, activities, now))
+    }
+  }
+
+  // 라벨 배치 조회 — 실제로 쓰일 축 key를 먼저 모아야 getMetricLabels()를 1회만 부를 수
+  // 있다. 1차 패스(빈 라벨맵)로 key만 수집하고 실제 라벨은 2차 패스에서 채운다(2a 설계
+  // 의도: 배지·등급마다 개별 호출 금지). computeBadgeProgress는 순수 함수라 두 번 불러도
+  // side-effect가 없다 — DB 조회(getMetricLabels)만 정확히 1회로 지킨다.
+  const emptyLabelMap = new Map<string, { label: string; unit: string | null }>()
+  const axisKeys = new Set<string>()
+  for (const target of progressTargets) {
+    const metrics = metricsByActivityType.get(target.activityType)!
+    try {
+      const probe = computeBadgeProgress(target.condition, metrics, emptyLabelMap, target.locks)
+      if (probe.kind !== 'unsupported') {
+        for (const axis of probe.axes) axisKeys.add(axis.key)
+      }
+    } catch (error) {
+      console.error('[badges/tree/page] computeBadgeProgress 프로브 실패 — 라벨 key 수집 생략', target.id, error)
+    }
+  }
+  const labelMap = await getMetricLabels(Array.from(axisKeys))
+
+  // 배지별 진행 계산 — 실패해도(예: 예상 못한 condition_json 형태) 그 배지 하나만 진행
+  // 표시를 생략한다(2b가 남긴 잔여 이슈 — "배지별 try/catch 방어막" 반영). 레일·그리드는
+  // BadgeProgress 원본 객체를 그대로 받아 표시 문구는 클라이언트(badgeProgressText.ts)가 만든다.
+  const progressByBadgeId: Record<string, BadgeProgress> = {}
+  const regretLineByBadgeId: Record<string, RegretLineData> = {}
+  for (const target of progressTargets) {
+    const metrics = metricsByActivityType.get(target.activityType)!
+    try {
+      const progress = computeBadgeProgress(target.condition, metrics, labelMap, target.locks)
+      progressByBadgeId[target.id] = progress
+      if (target.isFamilyFrontier && progress.kind === 'record') {
+        const regret = computeRecordRegretLine(target.condition, metrics, labelMap)
+        if (regret) regretLineByBadgeId[target.id] = regret
+      }
+    } catch (error) {
+      console.error('[badges/tree/page] computeBadgeProgress 실패 — 진행 표시 생략', target.id, error)
+    }
+  }
 
   const hasRecentSync = isWithinRecentSyncWindow(latestSyncRaw?.created_at)
 
@@ -115,6 +214,8 @@ export default async function BadgeTreePage() {
       earnedBadgeIds={earnedBadgeIds}
       conditionMetBadgeIds={conditionMetBadgeIds}
       hasRecentSync={hasRecentSync}
+      progressByBadgeId={progressByBadgeId}
+      regretLineByBadgeId={regretLineByBadgeId}
     />
   )
 }

@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import { BadgeStageRail } from '@ds/components/patterns/BadgeStageRail'
 import { computeStopStatus } from '@/lib/badgeTreeConditionStatus'
+import { formatFrontierProgressText, formatRegretLineText, type FrontierCaption } from '@/lib/badgeProgressText'
 import type { BadgeFamily } from '@/lib/badgeTree'
 import type { BadgeRarity } from '@/types/database'
+import type { BadgeProgress, RegretLineData } from '@/lib/badge-engine/badgeProgress'
 
 const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic',
@@ -16,6 +18,21 @@ export interface BadgeFamilyRailItemProps {
   conditionMetBadgeIds: Set<string>
   /** ready/locked 눈금(또는 그 앞 게이트) 탭 시 잠금 해제 조건 시트 오픈 요청 */
   onLockClick: (stageId: string) => void
+  /** 계열 프런티어의 진행 계산 결과 — badge id로 조회(2c, 20260904_0921) */
+  progressByBadgeId: Record<string, BadgeProgress>
+  /** 기록형 프런티어 전용 "아쉬움 줄" 데이터 — badge id로 조회(2c, 20260904_0921) */
+  regretLineByBadgeId: Record<string, RegretLineData>
+}
+
+/**
+ * `new Date()`(비순수 호출)를 컴포넌트 함수 본문 밖으로 뺀 순수 헬퍼 — react-hooks/purity가
+ * 컴포넌트 본문 안의 비순수 호출을 막는다(`badges/tree/page.tsx`의 `isWithinRecentSyncWindow`와
+ * 동일 패턴). "이번 주 · D일 남음"의 D-day는 렌더 시점(클라이언트 현재 시각) 기준이 더
+ * 정확해 서버에서 미리 굽지 않고 여기서 계산한다.
+ */
+function buildFrontierCaption(progress: BadgeProgress | undefined): FrontierCaption | null {
+  if (!progress) return null
+  return formatFrontierProgressText(progress, new Date())
 }
 
 /**
@@ -23,12 +40,17 @@ export interface BadgeFamilyRailItemProps {
  * 이 계열의 데이터(등급·잠금·획득 여부)로 조립하고, 펼침 상태를 스스로 들고 있다.
  * 잠금 해제 조건 시트는 페이지 단위로 하나만 띄우므로 그 상태는 부모(`BadgeTreeClient`)가
  * 갖고, 이 컴포넌트는 `onLockClick`으로 어떤 눈금이 눌렸는지만 알린다.
+ *
+ * 진행 수치(2c): 프런티어(첫 미획득 눈금)의 `BadgeProgress`/`RegretLineData`를 문자열로
+ * 조립해 `BadgeStageRail`에 넘긴다 — `BadgeStageRail`은 kind를 모른 채 완성 문자열만 그린다.
  */
 export default function BadgeFamilyRailItem({
   family,
   earnedBadgeIds,
   conditionMetBadgeIds,
   onLockClick,
+  progressByBadgeId,
+  regretLineByBadgeId,
 }: BadgeFamilyRailItemProps) {
   const [expanded, setExpanded] = useState(false)
 
@@ -44,11 +66,17 @@ export default function BadgeFamilyRailItem({
   const nextStop = stops.find((s) => s.status !== 'earned')
   const nextRarityLabel = nextStop ? (RARITY_LABEL[nextStop.rarity] ?? nextStop.rarity) : null
 
+  const frontierProgress = buildFrontierCaption(nextStop ? progressByBadgeId[nextStop.id] : undefined)
+  const regretRaw = nextStop ? regretLineByBadgeId[nextStop.id] : undefined
+  const regretLine = regretRaw && nextStop ? formatRegretLineText(regretRaw, nextStop.rarity) : null
+
   return (
     <BadgeStageRail
       familyName={family.name}
       stops={stops}
       nextRarityLabel={nextRarityLabel}
+      frontierProgress={frontierProgress}
+      regretLine={regretLine}
       expanded={expanded}
       onToggleExpand={() => setExpanded((v) => !v)}
       onLockClick={onLockClick}
