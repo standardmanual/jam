@@ -282,6 +282,45 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 
 ---
 
+### 2.13 진행 계산 계층 — `computeBadgeProgress()` (2026-09-04, 티켓 20260904_0631)
+
+배지 트리 화면(`/badges/tree`)에 진행률·잔여값·병목 축을 보여주기 위한 **표시 전용 계층**.
+`evaluateConditionDetailed`/`checkCondition`(§2.2 발급 파이프라인)은 이 계층이 존재하기 전과
+**완전히 동일하게 동작**한다 — 발급 판정에 영향을 주지 않는 별도 함수를 옆에 추가했을 뿐이다.
+
+- **위치**: `src/lib/badge-engine/badgeProgress.ts`(순수 함수 — Supabase·`next/headers` 의존
+  없음, 클라이언트 컴포넌트에서도 import 가능). `classifyBadgeProgressKind()`가 분류만,
+  `computeUserPeriodMetrics()`가 유저 지표 집계만, `computeBadgeProgress()`가 최종 조립을 맡는다.
+- **다섯 유형 분류** — §2.3 조건 필드와 짝을 이룬다. `condition_json` 필드 조합만으로 결정되며
+  추측이 아니라 `evaluateConditionDetailed`의 실제 분기를 근거로 한다: **누적형**(`distance_km`/
+  `elevation_gain_m`이 `same_activity` 없이 단독, 또는 `total_count`·`streak_days`·
+  `active_days_count`), **기록형**(스칼라 축 1개만 — 이력 전체 최댓값), **주기형**(`weekly_count`
+  또는 `month`+`monthly_km`), **2축형**(스칼라 축 2개 — `same_activity:true`면 한 활동 동시 충족,
+  아니면 독립 평가), **다중카운터형**(`day_of_week` 배열+`total_count`, 또는 `season_count_all`).
+  다섯 유형 어디에도 안 걸리면 `{kind:'unsupported'}`를 명시적으로 반환한다 — 억지로 끼워
+  맞추지 않는다(카탈로그 실측: 조건이 있는 192개 전부 다섯 유형에 들어가고, `mission_reward`
+  배지 15종만 `unsupported`).
+- **"이번 주/이번 달"은 발급 판정의 "역대 최고 주기"와 다른, 신규 계산이다.** §2.3의
+  `weekly_count`/`monthly_km` 판정은 **이력 전체에서 가장 잘 나온 주/달**을 기준으로 통과
+  여부를 가른다(주간 배지 발급 자체는 그대로 이 기준). 반면 화면은 **지금 진행 중인 주(월요일
+  시작)·달(달력 1일~말일)** 만 보여줘야 유저가 행동할 수 있다 — 지난주 기록은 더 이상 유저가
+  바꿀 수 없어 무의미하다. 두 계산은 서로 다른 질문에 답하므로 값이 다를 수 있는 게 정상이다.
+- **게이트**는 새로 판정하지 않는다 — `badgeTree.ts`의 `BadgeTreeLock`을 그대로 매핑한다
+  (`fulfilled`→`met`). **라벨**도 이 함수 내부에서 조회하지 않는다 — 호출부가
+  `getMetricLabels()`(§5, `metricLabels.ts`)로 한 계열당 1회 배치 조회한 결과를 `labelMap`
+  인자로 주입한다.
+- **`index.ts` 구조 변경**: `matchesDayOfWeek`·`inTimeRange`·`dedupeOnePerDay`·`getMondayKey`·
+  `calcMaxStreak`·`passesWalkingGate`(+ 걷기 게이트 상수 4개)를 `activityFilters.ts`로 이전했다
+  (로직 변경 없음 — 순수 이동). `index.ts`는 이 이름들을 다시 `export`해 기존 소비처는 그대로
+  동작한다. 계기: `badgeProgress.ts`가 이 헬퍼들을 재사용하려면 클라이언트 세이프해야 하는데,
+  `index.ts`가 최상단에서 `@/lib/supabase/server`(→`next/headers`)를 무조건 import해서
+  분리 없이는 전이 의존이 생겼다(1차 게이트 리뷰 FAIL로 발견 — 하루 전 티켓 20260903_2329의
+  `badgeTreeConditionStatus.ts`/`.server.ts` 분리와 동일 유형 문제).
+- **다음 소비처**: 아직 이 계층을 실제로 호출하는 화면이 없다(2c, 후속 티켓에서 배지 트리
+  레일에 연결 예정).
+
+---
+
 ## 3. 아이템배지 드랍 엔진 v2 (✅ 구현됨 — 3레이어)
 
 > v1(활동당 80% 확률, 전체 풀 완전 랜덤)을 대체. 2026-07-21 구현 완료 (마이그레이션 034 + `src/lib/drop-engine/`).  
@@ -763,6 +802,9 @@ Specs/Content/POI.md                      지점(POI) 컨텐츠 (스텁)
 
 [코드]
 src/lib/badge-engine/index.ts             액티비티배지 엔진 (구현)
+src/lib/badge-engine/activityFilters.ts   요일·시간대·주경계 등 순수 필터 헬퍼 — §2.13
+src/lib/badge-engine/badgeProgress.ts     진행 계산 계층(표시 전용, 발급 판정과 분리) — §2.13
+src/lib/badge-engine/metricLabels.ts      배지 지표 라벨·단위 배치 조회 — §2.13
 src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현 — v2는 §3 설계)
 src/lib/ambient-drop/                     앰비언트(시스템) POI 드랍 엔진 — §3.12
 src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출)

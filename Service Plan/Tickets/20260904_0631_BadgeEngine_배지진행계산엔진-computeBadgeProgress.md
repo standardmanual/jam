@@ -1,8 +1,9 @@
 ---
 id: 20260904_0631
 category: BadgeEngine
-status: OPEN
+status: CLOSED
 created: 2026-09-04
+closed: 2026-09-04
 ---
 
 # [BadgeEngine] 배지 진행 계산 엔진 — `computeBadgeProgress()`
@@ -159,3 +160,89 @@ export type BadgeProgress =
    제시한 예시(천일의 방랑자·밤의 보행자·이달의 산책왕·산악 라이더·야생의
    첫발·평일의 성실함)를 픽스처로 재사용하면 설계 의도와 테스트가 어긋나지 않는다
 5. 기존 배지 엔진 테스트 5종 그대로 통과 확인(`index.ts`를 조금이라도 건드렸다면 필수)
+
+---
+## 완료 기록
+
+### 구현 내용 요약
+- `src/lib/badge-engine/badgeProgress.ts`(신규) — 순수 함수 3종: `computeUserPeriodMetrics()`
+  (B, "이번 주/이번 달" 신규 집계), `classifyBadgeProgressKind()`(다섯 유형 분류, 단독 재사용
+  가능하도록 분리), `computeBadgeProgress()`(A, 최종 조립 — 라벨은 `labelMap` 인자로만 주입).
+- 단위 테스트 40건(다섯 유형 각 1건 이상 + unsupported + classify 단독 16건) — 기존 5종(92건)과
+  합쳐 132건 전부 통과.
+- **실제 프로덕션 카탈로그로 분류 정확성 실측**: `condition_json`이 있는 배지 207건 중 192건이
+  정확히 다섯 유형(주기 54·누적 70·기록 46·다중 2·2축 20)으로 분류되고, 나머지 15건
+  (`mission_reward` 배지)만 의도대로 `unsupported`로 분리됨을 게이트 리뷰가 직접 조회해 확인.
+- 발급 판정(`evaluateConditionDetailed`/`checkCondition`)은 한 줄도 수정하지 않음.
+
+### 1차 시도 FAIL → 재시도
+게이트 리뷰 1차 시도에서 **FAIL**. `badgeProgress.ts`가 `index.ts`의 프라이빗 헬퍼(`matchesDayOfWeek`
+등)를 export만 붙여 재사용했는데, `index.ts`가 최상단에서 `@/lib/supabase/server`(→
+`next/headers`)를 무조건 import해서 `badgeProgress.ts`가 그 의존을 전이받았다 — 클라이언트
+컴포넌트에서 import하면 `next build`가 100% 실패하는, 티켓 자체의 "클라이언트에서도 import
+가능해야" 요구와 정면 충돌. 게이트 리뷰어가 `'use client'` 프로브 페이지 + `npm run build`로
+실패를 직접 재현해 확인했다. **원인은 티켓 작성 단계의 판단 누락**(index.ts의 top-level import를
+읽고도 두 요구사항의 충돌을 못 짚음)이었다.
+
+재시도에서 `matchesDayOfWeek`·`inTimeRange`·`dedupeOnePerDay`·`getMondayKey`·`calcMaxStreak`·
+`passesWalkingGate`(+걷기 게이트 상수 4개)를 `index.ts`에서 완전히 빼내 의존성 0인 신규 파일
+`activityFilters.ts`로 옮기고, `index.ts`는 그 이름들을 재export하는 방식으로 수정. 게이트
+리뷰어가 (a) 되돌린 상태로 동일 실패를 재현, (b) 현재 상태로 `next build` 성공을 재현, (c) 이동된
+함수 본문을 바이트 단위로 원본과 대조하는 3단계 검증 후 **PASS**. 이 실패 유형은 하루 전 티켓
+20260903_2329의 `badgeTreeConditionStatus.ts`/`.server.ts` 분리와 동일 패턴이었다.
+
+### 게이트 PASS 후 반영한 수정
+개선 리뷰가 `buildRecordAxis`의 필드 탐지 배열이 `SCALAR_AXIS_KEYS`를 손으로 다시 나열한
+부분집합이라 향후 축 추가 시 두 목록이 어긋날 수 있다고 지적 — 머지 전 `SCALAR_AXIS_KEYS.filter()`
+로 파생하도록 수정(커밋 `e150f0fe`). 로직 변경 없음, 132건 테스트 재확인.
+
+### 변경된 파일
+```
+jam-web/src/lib/badge-engine/badgeProgress.ts (신규)
+jam-web/src/lib/badge-engine/activityFilters.ts (신규)
+jam-web/src/lib/badge-engine/__tests__/badgeProgress.test.ts (신규)
+jam-web/src/lib/badge-engine/index.ts (수정 — 헬퍼 6개+상수 4개를 activityFilters.ts로 이전 후 재export)
+```
+
+### 테스트 결과
+- [x] `npx vitest run src/lib/badge-engine/__tests__/` — 132/132 통과
+- [x] `npm test`(전체) — 561/561 통과 (design-system 스토리 파일 40건의 "No test suite found"는
+      이번 변경과 무관한 사전 존재 리포팅 이슈, 아래 잔여 이슈 참고)
+- [x] `npx tsc --noEmit` — 오류 0건
+- [x] `npm run lint`(전체) — 0 errors, 13 warnings(전부 무관 기존 파일)
+- [x] 클라이언트 경계 실증: `'use client'` 프로브 페이지 + `npm run build` → exit 0 (실패 상태로
+      되돌려 동일 에러 재현도 확인)
+- [x] 실 프로덕션 카탈로그 207건 대조 — 192건 다섯 유형 정확 분류, 15건만 unsupported
+
+### 배포 정보
+- staging 병합: 2026-09-04, 커밋 `e150f0fe`(fast-forward)
+- DB 변경 없음 — 순수 계산 로직만 추가
+- 코드 배포: staging 병합 시점에 Vercel 재빌드. 이 계층을 실제로 호출하는 화면은 아직 없음(2c 대기)
+
+### 주요 의사결정 / 핵심 메모
+- **다섯 유형 분류 구현 방식이 티켓의 코드 인용과 다르다.** 티켓은 2축형 근거로
+  `relevantPerActivityKeys.length > 1`(index.ts:442-446)을 들었으나, 게이트 리뷰가 확인한 바
+  `elevation_gain_m`은 `same_activity` 없이는 그 배열에 전혀 들어가지 않는다(별도의 무조건
+  누적 블록에서 처리됨) — 산악 라이더류는 실제로는 "누적 블록 + 독립기록 블록" 조합이다.
+  개발자가 `relevantPerActivityKeys`를 재현하지 않고 필드 조합을 직접 검사하는 `classifyBadgeProgressKind`
+  로 구현해 결과적으로 올바르게 분류했고, 카탈로그 192개 전수 대조로 검증됨. 티켓 인용이
+  부정확했을 뿐 구현은 정확하다.
+- **T23("그냥 나갔다 옴", `distance_km` 단독+`same_activity:true`)는 티켓의 cumulative/record
+  정의 문자 그대로는 안 걸림** — 엔진의 실제 동작(단일 활동 최댓값 비교)을 근거로 'record'로
+  분류. 단위 테스트로 검증.
+- **월 제한 주기형**(`month:1` 등)의 "이번 달이 대상 아닐 때" 표시는 티켓에 명시 없어 직접
+  정함 — current=0, `periodEndsAt`은 항상 "다음 달 1일". 2c에서 이 배지들의 표시 방식(주기형
+  프레이밍 유지 여부) 기획 확인 필요.
+- **`gate`는 `BadgeTreeLock[]`(복수)을 단일 객체로 축약** — 하나라도 충족했으면 그 락을, 전부
+  미충족이면 첫 번째를 대표로 노출. 2c가 이미지 등 원본 배열 정보가 필요하면 `BadgeTreeLock[]`을
+  별도로 계속 참조해야 함(gate에는 `imageUrl` 없음).
+- **`temperature_max_c` 기록형 축의 progress 계산에 코스메틱 상수(`COLD_PROGRESS_BASELINE_C=35`)
+  도입** — 음수 임계값 때문에 단순 비율식이 안 돼서 만든 진행률 바 채움 비율 전용 기준점.
+  `met`/`current`/`target`(발급 판정과 동일 기준)에는 무관.
+
+### 잔여 이슈 (2c 착수 전 참고)
+- 배지별 try/catch 방어막 — `computeBadgeProgress`의 내부 `throw`가 호출부에서 안 걸리면
+  배지 하나의 조건 이상이 레일 전체를 죽일 수 있음.
+- 실유저 데이터로 "진행률 vs 실제 발급 여부" 교차 확인 — 지금은 합성 픽스처로만 검증됨.
+- `getMondayKey`(기존 코드) 타임존 버그, `today-calendar.test.ts` 미실행 문제 — 범위 밖
+  발견물로 별도 작업 분리(오케스트레이터가 이 완료 기록 직후 처리).
