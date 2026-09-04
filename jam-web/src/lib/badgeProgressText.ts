@@ -5,6 +5,7 @@ import {
   type BadgeProgressAxis,
   type RegretLineData,
 } from '@/lib/badge-engine/badgeProgress'
+import { RARITY_LABEL } from '@/lib/rarity'
 import type { BadgeRarity } from '@/types/database'
 
 /**
@@ -27,8 +28,6 @@ import type { BadgeRarity } from '@/types/database'
  * `formatDualAxisGaugeProps()`(2d, 티켓 20260904_1058)도 같은 원칙 — `DualAxisGauge`(DS
  * 신규 패턴)에 완성 문자열/숫자만 넘기고, 그 컴포넌트는 kind를 모른다.
  */
-
-const RARITY_LABEL: Record<BadgeRarity, string> = { common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' }
 
 /** "진행 표시 준비 중" — §08 H, computeBadgeProgress가 'unsupported'를 반환할 때 공통으로 쓴다. */
 const UNSUPPORTED_TEXT = '진행 표시 준비 중'

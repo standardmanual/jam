@@ -68,10 +68,11 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
               </span>
               <span
                 className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
-                  RARITY_BADGE_COLOR[badge.rarity] || 'bg-gray-100 text-gray-700'
+                  (badge.rarity ? RARITY_BADGE_COLOR[badge.rarity] : '') || 'bg-gray-100 text-gray-700'
                 }`}
               >
-                {RARITY_LABEL[badge.rarity as BadgeRarity] || badge.rarity}
+                {/* 무한레벨형은 등급이 없다(마이그레이션 130) — 레벨 표기는 티켓 20260905_0032/0034 */}
+                {badge.rarity ? RARITY_LABEL[badge.rarity as BadgeRarity] : '—'}
               </span>
               {badge.deleted_at && (
                 <span className="inline-block px-2 py-1 text-xs font-semibold bg-red-50 border border-red-200 text-red-600 rounded-full whitespace-nowrap">

@@ -12,7 +12,8 @@ export interface BadgeSlot {
     id: string
     name: string
     image_url: string | null
-    rarity: string
+    /** 무한레벨형 배지는 등급이 없다(마이그레이션 130). null이면 등급 칩을 그리지 않는다 */
+    rarity: string | null
   }
   inventoryItem: {
     id: string
@@ -146,7 +147,7 @@ export default function SlotGrid({
               key={badge.id}
               name={badge.name}
               imageUrl={badge.image_url}
-              rarity={badge.rarity as BadgeRarity}
+              rarity={badge.rarity as BadgeRarity | null}
               href={!isUndiscovered ? `/badges/${badge.id}${badgeLinkQuery}` : undefined}
               earned={isSlotted}
               undiscovered={isUndiscovered}

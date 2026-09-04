@@ -18,41 +18,14 @@ import type { ActivityType, BadgeCondition, BadgeRarity } from '@/types/database
  * OR-fulfillment 로직은 전부 그대로 재사용하고, **묶는 단위만** "등급별 평평한 카드
  * 목록"에서 "계열별 레일(`families`) + 계열이 없는 독립 배지(`independentBadges`)"로
  * 바꿨다 — 신규 계산은 없다. 계열 순서는 이전에 카드 2·3차 정렬키로 쓰던
- * [BFS depth → 문서 순서]를 그대로 승격했고, 독립 배지 순서는 기존
- * `INDEPENDENT_BADGE_ORDER`를 그대로 쓴다(진행률 기준 정렬은 진행 계산 모듈이 필요한
+ * [BFS depth → 문서 순서]를 그대로 승격했다(진행률 기준 정렬은 진행 계산 모듈이 필요한
  * 2차로 미룸).
+ *
+ * 20260905_0027(v5 스키마): 이름 72개 하드코딩 배열 2종을 걷어내고 `badges.sort_order`
+ * (마이그레이션 130)를 정렬키로 쓴다 — 아래 `sortRank` 주석 참고.
  */
 
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
-
-/**
- * 같은 등급·같은 깊이 내 정렬 기준 — `Specs/Content/ACTIVITY_BADGES.md`의 W1~W8/R1~R8/...
- * 번호 순서. DB에는 이 순서를 나타내는 컬럼이 없어(같은 배치로 삽입된 행은 created_at이
- * 전부 동일 타임스탬프) 문서 순서를 그대로 옮겨온다 — 조건값 자체는 아래에서 전부 DB
- * 라이브 조회로 채우므로 "정적 스냅샷 금지" 요구사항을 어기지 않는다.
- */
-const ACTIVITY_BADGE_ORDER: Record<ActivityType, string[]> = {
-  walking: [
-    '동네 산책러', '산책의 명상가', '루틴의 수호자', '작심삼일의 파괴자',
-    '밤의 보행자', '이달의 산책왕', '새벽 루틴 마스터', '점심 산책러',
-  ],
-  running: [
-    '첫 숨결', '리듬의 발견', '지구력의 전사', '달리기의 루틴',
-    '달리기의 연결', '이달의 주자왕', '스피드 엔듀러', '주말 파이터',
-  ],
-  cycling: [
-    '두 바퀴의 시작', '페달의 리듬', '장거리 항속', '언덕의 도전자',
-    '사이클 루틴', '이달의 그란폰도', '산악 라이더', '계절 라이더',
-  ],
-  hiking: [
-    '첫 고도', '산자락의 첫발', '주말 등산가', '산행의 깊이',
-    '혹한의 등반자', '이달의 정복자', '혹한 장정', '주말 등반자',
-  ],
-  trail_running: [
-    '야생의 첫발', '수직의 도전', '야생의 주자', '트레일 루틴',
-    '혹한의 트레일러', '이달의 야생왕', '알파인 트레일러', '새벽 야생인',
-  ],
-}
 
 /** 화면에 보여줄 종목 탭 순서 — 티켓 배경 문단의 순서(걷기/러닝/사이클링/등산/트레일러닝) */
 export const TREE_ACTIVITY_ORDER: ActivityType[] = [
@@ -60,33 +33,35 @@ export const TREE_ACTIVITY_ORDER: ActivityType[] = [
 ]
 
 /**
- * 독립 발급 배지(D01~D11 + 트로피 매트릭스, 걷기 전용 32종) 정렬 순서 — 티켓 20260831_2250.
- * `Specs/Content/ACTIVITY_BADGES.md`의 실제 서술 순서(D01→D11, 그다음 T01~T18·T20·T22·T23 —
- * T19·T21은 설계 단계에서 제외되어 결번)를 그대로 옮겼다. 이름 자체가 누적일수·트로피 순서를
- * 담고 있어 가나다순으로 정렬하면 성장 서사가 깨진다.
+ * 표시 순서 정렬키 — `badges.sort_order`(마이그레이션 130, 티켓 20260905_0027)를 그대로 쓴다.
+ *
+ * 이전에는 배지 **이름 72개**를 이 파일에 하드코딩해(`ACTIVITY_BADGE_ORDER` 40 +
+ * `INDEPENDENT_BADGE_ORDER` 32) `indexOf`로 순서를 매겼다. 550종(v5)에서는 유지가 불가능하고,
+ * 목록에 없는 이름은 `indexOf`가 `-1`을 반환해 **그리드 맨 앞으로 튀어나왔다.**
+ *
+ * `sort_order = 0`은 «아직 설정하지 않음»이라 맨 뒤로 민다 — 위 결함을 뒤집은 것이고,
+ * 계열 레일이 쓰던 기존 동작(목록에 없는 이름은 맨 뒤)과도 같다.
+ * DB 백필 규약: 계열 레일 1~99(계열 안 모든 등급이 같은 값) / 독립 발급 배지 101~ .
  */
-const INDEPENDENT_BADGE_ORDER: string[] = [
-  // D01~D11 — 누적 걷기 일수 체크포인트
-  '첫 발자국', '일주일의 증인', '이주의 리듬', '한 달의 산책자',
-  '두 달째 걷는 사람', '백일의 걸음', '반년의 동행', '일 년의 발자취',
-  '오백일의 산책자', '칠백일의 순례자', '천일의 방랑자',
-  // 트로피 매트릭스 — T01~T18·T20·T22·T23 (T19·T21 결번)
-  '숫자의 노예', '그냥 좀 걸었을 뿐', '만보왕', '걸음의 구도자',
-  '주말의 신도', '월요병 극복자', '불금은 없다', '평일의 성실함',
-  '일요일 새벽의 수도승', '불타는 금요일 밤 산책', '월요일 점심의 도피',
-  '폭염 속의 걸음', '영하 15도의 산책자', '그냥 좀 더웠음',
-  '사계절의 발걸음', '봄에만 걷는 사람', '겨울잠 안 자는 사람',
-  '1월의 다짐', '장마철의 의지', '하루종일 걸었다', '그냥 나갔다 옴',
-]
+const UNSET_SORT_ORDER = Number.MAX_SAFE_INTEGER
+function sortRank(sortOrder: number): number {
+  return sortOrder > 0 ? sortOrder : UNSET_SORT_ORDER
+}
 
 export interface BadgeTreeSourceBadge {
   id: string
   name: string
-  rarity: BadgeRarity
+  /**
+   * 무한레벨형은 등급이 없다(마이그레이션 130). 아래 `RARITY_ORDER` 루프가 등급 있는 배지만
+   * 눈금으로 담으므로, 레벨형은 현재 트리에 그려지지 않는다 — 레벨 레일은 티켓 20260905_0037.
+   */
+  rarity: BadgeRarity | null
   description: string | null
   image_url: string | null
   activity_types: ActivityType[] | null
   condition_json: BadgeCondition | null
+  /** 표시 순서 — `badges.sort_order`(마이그레이션 130). 0이면 미설정이라 맨 뒤로 밀린다 */
+  sort_order: number
 }
 
 export interface BadgeTreeSourceMission {
@@ -137,8 +112,8 @@ export interface BadgeActivityTree {
   families: BadgeFamily[]
   /**
    * 계열(가족) 그래프에 연결되지 않은 독립 발급 배지(D01~D11 + 트로피 매트릭스) —
-   * 레일이 아니라 그리드로 그린다. 정렬은 기존 `INDEPENDENT_BADGE_ORDER` 그대로
-   * (진행률 기준 정렬은 2차) — 20260903_2329.
+   * 레일이 아니라 그리드로 그린다. 정렬은 `badges.sort_order` 오름차순
+   * (진행률 기준 정렬은 2차) — 20260903_2329 / 20260905_0027.
    */
   independentBadges: BadgeTreeCard[]
 }
@@ -215,7 +190,7 @@ export function buildBadgeActivityTrees(
     }
 
     // BFS — 대표배지(들)를 depth 1로 두고 최단 깊이를 채택. 그래프에 연결되지 않은 독립
-    // 배지(D01~D11 등)는 depth가 없다 — 정렬 시 INDEPENDENT_BADGE_ORDER로 따로 처리한다.
+    // 배지(D01~D11 등)는 depth가 없다 — 정렬 시 sort_order로 따로 처리한다.
     const depthByName = new Map<string, number>()
     const queue: string[] = []
     for (const rootName of representativeNames) {
@@ -262,12 +237,6 @@ export function buildBadgeActivityTrees(
       return locks
     }
 
-    const orderList = ACTIVITY_BADGE_ORDER[activityType] ?? []
-    const orderIndex = (name: string) => {
-      const i = orderList.indexOf(name)
-      return i === -1 ? orderList.length : i
-    }
-
     // 계열별로 묶는다 — [그래프 깊이(대표배지가 1) → 문서 서술 순서]로 레일 순서를 정한다.
     // 이전(20260901) 버전이 "등급 우선 평탄화" 카드 목록의 2·3차 정렬키로 쓰던 것과 같은
     // 키를, 이번엔 계열(레일) 자체의 1차 정렬키로 승격했을 뿐 — 신규 계산 없음.
@@ -284,8 +253,9 @@ export function buildBadgeActivityTrees(
           const v = variants.find((variant) => variant.rarity === rarity)
           if (!v) continue
           independentRanked.push({
-            card: { id: v.id, name, rarity: v.rarity, imageUrl: v.image_url, description: v.description, locks: buildLocks(v) },
-            order: INDEPENDENT_BADGE_ORDER.indexOf(name),
+            // 이 루프는 rarity로 찾은 배지만 담으므로 등급은 항상 있다(레벨형은 애초에 안 걸린다)
+            card: { id: v.id, name, rarity, imageUrl: v.image_url, description: v.description, locks: buildLocks(v) },
+            order: sortRank(v.sort_order),
           })
         }
         continue
@@ -295,9 +265,15 @@ export function buildBadgeActivityTrees(
       for (const rarity of RARITY_ORDER) {
         const v = variants.find((variant) => variant.rarity === rarity)
         if (!v) continue
-        stages.push({ id: v.id, name, rarity: v.rarity, imageUrl: v.image_url, description: v.description, locks: buildLocks(v) })
+        stages.push({ id: v.id, name, rarity, imageUrl: v.image_url, description: v.description, locks: buildLocks(v) })
       }
-      familyRanked.push({ family: { name, stages }, depth, docOrder: orderIndex(name) })
+      // 계열의 정렬키: 계열 안 배지들의 sort_order 최솟값(백필 규약상 4장이 같은 값이지만,
+      // 어긋난 값이 섞여도 결정적으로 정렬되도록 최솟값을 쓴다)
+      familyRanked.push({
+        family: { name, stages },
+        depth,
+        docOrder: Math.min(...variants.map((v) => sortRank(v.sort_order))),
+      })
     }
 
     familyRanked.sort((a, b) => a.depth - b.depth || a.docOrder - b.docOrder)

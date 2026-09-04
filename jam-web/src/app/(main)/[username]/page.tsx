@@ -151,7 +151,7 @@ export default async function UserProfilePage({ params }: Props) {
     badge_id: string
     obtained_at: string
     // badges.image_url은 DB에서 NULL 허용이다(도안 이미지 미등록 상태).
-    badges: { id: string; name: string; image_url: string | null; rarity: string; deleted_at: string | null } | null
+    badges: { id: string; name: string; image_url: string | null; rarity: string | null; deleted_at: string | null } | null
   }
   const actDropsQuery: PromiseLike<{ data: LegacyActDropRow[] | null; error: unknown }> = inventoryId
     ? service
@@ -245,7 +245,7 @@ export default async function UserProfilePage({ params }: Props) {
   // supabase-js가 select() 내 embedded join(badges(...)/missions(...)/poi(...)) 반환 타입을
   // 추론하지 못하고 row 전체가 never로 무너진다. itembooks 페이지들과 동일하게
   // "unknown as 구체타입"으로 좁혀서 사용 (as any 대신 — 실제 필드는 select절과 일치).
-  type BadgeJoin = { id: string; name: string; image_url: string; rarity: string; deleted_at: string | null } | null
+  type BadgeJoin = { id: string; name: string; image_url: string; rarity: string | null; deleted_at: string | null } | null
   type BadgesHistoryRow = { badge_id: string; earned_at: string; badges: BadgeJoin }
   type ActDropRow = { id: string; badge_id: string; obtained_at: string; badges: BadgeJoin }
   type PoiDropRow = { id: string; badge_id: string; dropped_at: string; poi: { name: string } | null; badges: BadgeJoin }
@@ -311,7 +311,7 @@ export default async function UserProfilePage({ params }: Props) {
   for (const [badgeId, row] of poiBadgeFirstEarn) {
     // 이미 실시간 피드 이벤트로 기록된 배지(신규 로직 적용 이후 최초 획득분)는 중복 방지
     if (feedBadgeIds.has(badgeId)) continue
-    const b = row.badges as { id: string; name: string; image_url: string; rarity: string; deleted_at: string | null } | null
+    const b = row.badges as { id: string; name: string; image_url: string; rarity: string | null; deleted_at: string | null } | null
     if (!b || b.deleted_at) continue
     legacyItems.push(makeFeedItem(`legacy_poibadge_${badgeId}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }))
   }

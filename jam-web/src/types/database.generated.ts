@@ -199,15 +199,18 @@ export type Database = {
           drop_condition_json: Json | null
           drop_weight: number
           faction_id: string | null
+          family_key: string | null
           id: string
           image_gen_params: Json | null
           image_url: string | null
           item_book_id: string | null
+          level: number | null
           name: string
           patch_available: boolean
           patch_price_krw: number | null
           point_reward: number
-          rarity: Database["public"]["Enums"]["badge_rarity"]
+          rarity: Database["public"]["Enums"]["badge_rarity"] | null
+          sort_order: number
           type: Database["public"]["Enums"]["badge_type"]
           valid_from: string | null
           valid_until: string | null
@@ -227,15 +230,18 @@ export type Database = {
           drop_condition_json?: Json | null
           drop_weight?: number
           faction_id?: string | null
+          family_key?: string | null
           id?: string
           image_gen_params?: Json | null
           image_url?: string | null
           item_book_id?: string | null
+          level?: number | null
           name: string
           patch_available?: boolean
           patch_price_krw?: number | null
           point_reward?: number
-          rarity?: Database["public"]["Enums"]["badge_rarity"]
+          rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          sort_order?: number
           type: Database["public"]["Enums"]["badge_type"]
           valid_from?: string | null
           valid_until?: string | null
@@ -255,15 +261,18 @@ export type Database = {
           drop_condition_json?: Json | null
           drop_weight?: number
           faction_id?: string | null
+          family_key?: string | null
           id?: string
           image_gen_params?: Json | null
           image_url?: string | null
           item_book_id?: string | null
+          level?: number | null
           name?: string
           patch_available?: boolean
           patch_price_krw?: number | null
           point_reward?: number
-          rarity?: Database["public"]["Enums"]["badge_rarity"]
+          rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          sort_order?: number
           type?: Database["public"]["Enums"]["badge_type"]
           valid_from?: string | null
           valid_until?: string | null
@@ -1698,6 +1707,8 @@ export type Database = {
         Row: {
           badge_id: string
           condition_snapshot: Json | null
+          earn_count: number
+          earn_history: Json
           earned_at: string
           id: string
           share_card_url: string | null
@@ -1712,6 +1723,8 @@ export type Database = {
         Insert: {
           badge_id: string
           condition_snapshot?: Json | null
+          earn_count?: number
+          earn_history?: Json
           earned_at?: string
           id?: string
           share_card_url?: string | null
@@ -1726,6 +1739,8 @@ export type Database = {
         Update: {
           badge_id?: string
           condition_snapshot?: Json | null
+          earn_count?: number
+          earn_history?: Json
           earned_at?: string
           id?: string
           share_card_url?: string | null

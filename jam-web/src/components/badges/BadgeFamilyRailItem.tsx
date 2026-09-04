@@ -10,13 +10,9 @@ import {
   formatDualAxisGaugeProps,
   type FrontierCaption,
 } from '@/lib/badgeProgressText'
+import { RARITY_LABEL } from '@/lib/rarity'
 import type { BadgeFamily } from '@/lib/badgeTree'
-import type { BadgeRarity } from '@/types/database'
 import type { BadgeProgress, RegretLineData } from '@/lib/badge-engine/badgeProgress'
-
-const RARITY_LABEL: Record<BadgeRarity, string> = {
-  common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic',
-}
 
 export interface BadgeFamilyRailItemProps {
   family: BadgeFamily

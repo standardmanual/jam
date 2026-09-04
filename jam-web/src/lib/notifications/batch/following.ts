@@ -243,7 +243,7 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
   ]
   if (badgeIds.length > 0) {
     // 24시간 안에 여러 사람이 대량으로 배지를 얻으면 이 목록이 커진다 → 청크 분할
-    const badges = await fetchAllRowsIn<{ id: string; name: string; rarity: BadgeRarity }, string>(
+    const badges = await fetchAllRowsIn<{ id: string; name: string; rarity: BadgeRarity | null }, string>(
       'badges(rare)',
       'id',
       badgeIds,
@@ -286,6 +286,9 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
     for (const e of earned) {
       const badge = rareById.get(e.badgeId)
       if (!badge) continue
+      // 아래 .in('rarity', ['epic','mystic']) 필터 때문에 실제로는 null이 올 수 없지만,
+      // rarity가 nullable이 된 뒤(마이그레이션 130) 타입상 열려 있어 명시적으로 닫는다.
+      if (!badge.rarity) continue
       for (const recipientId of followersOf.get(e.userId) ?? []) {
         if (recipientId === e.userId) continue
         candidates.push({

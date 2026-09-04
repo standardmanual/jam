@@ -328,7 +328,7 @@ export default function ProfileClient({
                 onClick={() => handleCardClick(item)}
                 name={meta.badge_name}
                 imageUrl={meta.badge_image_url ?? null}
-                rarity={meta.rarity as BadgeRarity}
+                rarity={meta.rarity as BadgeRarity | null}
               />
             )
           })}

@@ -36,7 +36,8 @@ export async function hydrateFeedBadgeInfo(items: ActivityFeedRow[]): Promise<Ac
     .in('id', [...badgeIds])
 
   const badgeMap = new Map(
-    ((data ?? []) as { id: string; name: string; image_url: string | null; rarity: string; deleted_at: string | null }[])
+    // rarity는 nullable이다(무한레벨형, 마이그레이션 130) — 티켓 20260905_0027 «경계 3곳» 중 하나.
+    ((data ?? []) as { id: string; name: string; image_url: string | null; rarity: string | null; deleted_at: string | null }[])
       .map((b) => [b.id, b])
   )
 

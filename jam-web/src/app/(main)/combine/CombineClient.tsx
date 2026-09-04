@@ -170,7 +170,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
                   // 20260816_012: 슬롯 경계는 배경톤으로, 희귀도 링(rarityRing)은 기능적 정보라 유지
                   'aspect-square rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center transition-all',
                   item
-                    ? `cursor-pointer ${rarityRing[item.badge.rarity] ?? ''}`
+                    ? `cursor-pointer ${(item.badge.rarity ? rarityRing[item.badge.rarity] : '') ?? ''}`
                     : 'opacity-40',
                 ].join(' ')}
                 onClick={() => itemId && toggleItem(itemId)}

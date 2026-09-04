@@ -475,7 +475,7 @@ export default function ItemBookForm({
                   {isBadgeInactive && (
                     <span className="text-xs font-semibold text-red-600">비활성</span>
                   )}
-                  <span className="text-xs text-muted-foreground">{RARITY_LABEL[b.rarity] ?? b.rarity}</span>
+                  <span className="text-xs text-muted-foreground">{b.rarity ? RARITY_LABEL[b.rarity] : '—'}</span>
                   <BadgeActiveToggleButton badgeId={b.id} isActive={!isBadgeInactive} />
                   <button
                     type="button"

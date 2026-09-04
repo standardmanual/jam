@@ -13,7 +13,13 @@ export interface FeedEventMeta {
     badge_id: string
     badge_name: string
     badge_image_url: string
-    rarity: string
+    /**
+     * 무한레벨형 배지는 등급이 없어 null이다(마이그레이션 130 — `badges.rarity` nullable).
+     * 티켓 20260905_0027이 지목한 «컴파일이 잡지 못하는 경계» 3곳 중 하나다 —
+     * `rarity: string`으로 두면 등급 없는 배지에 조용히 Common 칩이 찍힌다.
+     * 소비처는 null이면 등급 칩을 그리지 않아야 한다(`FeedSection`은 이미 그렇게 동작한다).
+     */
+    rarity: string | null
     point_reward?: number
     /**
      * 체크인 배지에서만 채워짐 — 체크인한 지점 이름.
@@ -32,7 +38,8 @@ export interface FeedEventMeta {
     badge_id: string
     badge_name: string
     badge_image_url: string
-    rarity: string
+    /** `badges.rarity`(nullable, 마이그레이션 130)를 그대로 옮긴 값 — badge_earned와 같은 규약 */
+    rarity: string | null
     poi_name: string
     /** 드랍엔진 v2: 드랍된 배지의 세계관 이름 (레거시 이벤트에는 없음) */
     faction_name?: string
@@ -58,7 +65,8 @@ export interface FeedEventMeta {
     badge_id: string
     badge_name: string
     badge_image_url: string
-    rarity: string
+    /** `badges.rarity`(nullable, 마이그레이션 130)를 그대로 옮긴 값 — badge_earned와 같은 규약 */
+    rarity: string | null
     poi_name: string
     /** 앰비언트(시스템) 드랍 픽업이면 null */
     dropper_user_id: string | null

@@ -14,7 +14,10 @@ const meta: Meta<typeof BadgeStageRail> = {
           'not-reached 4종만 지원한다(20260903_2329). ready/locked를 가르는 조건 충족 여부는 호출부가 ' +
           '계산해 stops[].status로 넘긴다. 프런티어(다음 목표) 진행 캡션·연결선 비례 채움·기록형 ' +
           '아쉬움 줄은 2c(20260904_0921)에서 `frontierProgress`/`regretLine` prop으로 추가됐다 — ' +
-          '누적/기록/주기 3종만 다룬다(2축형·다중카운터형 전용 게이지는 2d 몫).',
+          '누적/기록/주기 3종만 다룬다(2축형·다중카운터형 전용 게이지는 2d 몫). ' +
+          '등급 라벨은 이 컴포넌트가 표를 들고 있지 않고 RarityBadge.jsx의 getRarityLabel()을 ' +
+          '재사용한다(MODULAR 단일 소스, 20260905_0027). stops[].rarity가 비어 있으면 ' +
+          '등급 라벨을 그리지 않는다 — 등급 없는 배지(무한레벨형)에 Common이 찍히지 않게 한 가드다.',
       },
     },
   },

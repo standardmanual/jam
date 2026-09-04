@@ -687,12 +687,17 @@ export async function tryItemDrop(
 
     usedSlots += 1
     droppedBadgeIds.push(result.badge.id)
-    droppedItems.push({
-      inventory_item_id: insertedInventoryItemId,
-      badge_id: result.badge.id,
-      name: result.badge.name,
-      rarity: result.badge.rarity,
-    })
+    // 결산 알림(RecapItemBadge)은 등급 문구를 전제로 한 구조라 등급 없는 배지를 담을 수 없다.
+    // 아이템 배지에는 무한레벨형이 없지만(v5의 레벨형은 활동 배지 전용, 마이그레이션 130)
+    // 타입상 열려 있으므로 명시적으로 건너뛴다 — 조용히 common으로 떨어뜨리지 않는다.
+    if (result.badge.rarity) {
+      droppedItems.push({
+        inventory_item_id: insertedInventoryItemId,
+        badge_id: result.badge.id,
+        name: result.badge.name,
+        rarity: result.badge.rarity,
+      })
+    }
 
     // 상태·구조 갱신 (다음 드랍/다음 싱크에 반영)
     updateLastPiecePity(structure, state, result.factionId, result.badge.id)

@@ -170,7 +170,9 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   }
 
   // ── 후보 배지 로드 (item 타입 + 컬렉션 소속 + 활성 + 유효기간, rarity별로 분류) ──
-  type CandidateBadgeRow = { id: string; rarity: BadgeRarity; valid_from: string | null; valid_until: string | null }
+  // rarity는 nullable이다(무한레벨형, 마이그레이션 130). 아이템 배지에는 무한레벨형이 없지만
+  // 타입은 열려 있으므로 아래 루프에서 명시적으로 걸러낸다 — 조용히 common으로 떨어뜨리지 않는다.
+  type CandidateBadgeRow = { id: string; rarity: BadgeRarity | null; valid_from: string | null; valid_until: string | null }
   const { data: badgeRows, error: badgeRowsError } = await fetchAllRows<CandidateBadgeRow>(
     'badges(item)',
     'id',
@@ -197,6 +199,7 @@ export async function runAmbientDropBatch(trigger: AmbientDropTrigger): Promise<
   for (const b of badgeRows) {
     if (b.valid_from && b.valid_from > now) continue
     if (b.valid_until && b.valid_until < now) continue
+    if (!b.rarity) continue  // 등급 없는 배지(무한레벨형)는 등급별 드랍 테이블에 자리가 없다
     badgesByRarity[b.rarity].push({ id: b.id })
   }
   const totalCandidates = Object.values(badgesByRarity).reduce((sum, arr) => sum + arr.length, 0)
