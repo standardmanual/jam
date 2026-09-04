@@ -53,7 +53,15 @@ export function RecentSyncBanner({
           background: 'var(--status-latest-solid)', boxShadow: '0 0 0 4px var(--status-latest-soft)',
         }}
       />
-      <p style={{ margin: 0, fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.35, color: 'var(--color-text)' }}>
+      <p
+        style={{
+          margin: 0, fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.35, color: 'var(--color-text)',
+          // keep-all + tabular-nums: comparisonMessage는 "1.3km" 같은 수치+단위를 담는다 —
+          // BadgeStageRail.jsx와 동일 원칙(줄바꿈 시 숫자와 단위가 쪼개지는 것을 막고, 폭 흔들림을 없앤다).
+          wordBreak: comparisonMessage ? 'keep-all' : 'normal',
+          fontVariantNumeric: comparisonMessage ? 'tabular-nums' : undefined,
+        }}
+      >
         {displayMessage}
       </p>
     </div>
