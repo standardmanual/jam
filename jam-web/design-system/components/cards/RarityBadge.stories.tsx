@@ -75,3 +75,34 @@ export const OnCard: Story = {
     </div>
   ),
 };
+
+/**
+ * 등급 없음(null) — 무한레벨형 배지(v5, 티켓 20260905_0027).
+ *
+ * 기본값 `rarity = 'common'`은 `undefined`에만 적용되므로, 명시적 `null`은 예전에
+ * `if (rarity === 'common') return null` 가드를 통과해 `config[null] ?? config.common`으로
+ * 떨어졌다 — 즉 **"COMMON" 칩이 실제로 렌더됐다.** 호출부에서 `?? undefined`로 우회하고
+ * 있던 곳만 가려져 있었을 뿐이다. 가드를 이 컴포넌트에 두어 호출부가 우회를 기억할
+ * 필요를 없앴고, 여기서 회귀를 고정한다.
+ */
+export const NoRarity: Story = {
+  name: '등급 없음(null) — 칩도 라벨도 만들지 않는다',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--font-family-base)', fontSize: 'var(--text-small)', color: 'var(--color-text)' }}>
+      <div data-testid="chip-null" style={{ minHeight: 20 }}>
+        <RarityBadge rarity={null} />
+      </div>
+      <div data-testid="label-null">{`getRarityLabel(null) → ${String(getRarityLabel(null))}`}</div>
+      <div data-testid="label-undefined">{`getRarityLabel(undefined) → ${String(getRarityLabel(undefined))}`}</div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    // 칩이 아예 렌더되지 않는다 — "COMMON" 텍스트가 어디에도 없어야 한다.
+    const chip = canvasElement.querySelector('[data-testid="chip-null"]');
+    expect(chip?.textContent?.trim()).toBe('');
+    expect(canvasElement.textContent).not.toContain('COMMON');
+    expect(canvasElement.textContent).not.toContain('Common');
+    // 헬퍼도 문자열이 아니라 null을 돌려준다 — 템플릿에 끼워도 "Common"이 새지 않는다.
+    expect(canvasElement.querySelector('[data-testid="label-null"]')?.textContent).toContain('null');
+  },
+};
