@@ -271,3 +271,22 @@ export const FrontierProgressBehindGate: Story = {
     </Frame>
   ),
 };
+
+export const FrontierProgressReadyComplete: Story = {
+  name: '프런티어 진행 — 조건 완전 충족(fraction=1) + 게이트만 대기, 라임으로 표시',
+  render: () => (
+    <Frame>
+      <BadgeStageRail
+        familyName="산책의 명상가"
+        nextRarityLabel="Rare"
+        stops={[
+          { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+          { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'ready', href: '/badges/2' },
+        ]}
+        frontierProgress={{ text: '20/20분', fraction: 1 }}
+        regretLine={null}
+        onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
+      />
+    </Frame>
+  ),
+};
