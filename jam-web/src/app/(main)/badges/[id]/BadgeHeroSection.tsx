@@ -96,7 +96,8 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
           )}
         </div>
         <div className="relative z-10 flex flex-col items-center gap-2 pt-4" style={cardTextStyle}>
-          <RarityBadge rarity={badge.rarity} />
+          {/* 무한레벨형(rarity=null)은 등급 칩을 그리지 않는다 — Lv.N 칩은 티켓 20260905_0036/0037 */}
+          <RarityBadge rarity={badge.rarity ?? undefined} />
           <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badge.name}</h1>
         </div>
       </div>

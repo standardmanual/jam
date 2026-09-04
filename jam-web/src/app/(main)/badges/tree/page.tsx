@@ -66,7 +66,7 @@ export default async function BadgeTreePage() {
   ] = await Promise.all([
     supabase
       .from('badges')
-      .select('id, name, rarity, description, image_url, activity_types, condition_json, point_reward')
+      .select('id, name, rarity, description, image_url, activity_types, condition_json, point_reward, sort_order')
       .eq('type', 'activity')
       .is('deleted_at', null)
       .not('activity_types', 'is', null),
@@ -107,6 +107,7 @@ export default async function BadgeTreePage() {
     image_url: b.image_url,
     activity_types: b.activity_types,
     condition_json: b.condition_json,
+    sort_order: b.sort_order,
   }))
   const missions = (missionsRaw ?? []) as BadgeTreeSourceMission[]
 

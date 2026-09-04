@@ -18,7 +18,7 @@ import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, DayOfWeek, UserA
 import type { Json } from '@/types/database.generated'
 import { MEASURABLE_CONDITION_KEYS } from './condition-schema'
 // 등급 서열표는 @/lib/rarity 한 곳에만 둔다 (티켓 20260831_1115에서 통합)
-import { RARITY_TIER } from '@/lib/rarity'
+import { RARITY_TIER, rarityTier } from '@/lib/rarity'
 // 활동 필터 순수 헬퍼(걷기 게이트·요일·시간대·하루1회상한·주경계·연속일수)는
 // activityFilters.ts로 분리됐다(티켓 20260904_0631 게이트 리뷰 재시도 — badgeProgress.ts가
 // 이 파일을 거치면 next/headers 전이 의존까지 끌려와 클라이언트 빌드가 실패했다). 이 파일은
@@ -72,7 +72,8 @@ export type EvalConditionResult = {
 export type BadgeEarnedInfo = {
   id: string
   name: string
-  rarity: string
+  /** 등급형은 등급 문자열, 무한레벨형은 null (마이그레이션 130 — `badges.rarity` nullable) */
+  rarity: string | null
   reason: string
 }
 
@@ -668,7 +669,7 @@ export async function evaluateBadgesDetailed(
 
     for (const b of (ownedBadgeDefsRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity'>[]) {
       ownedBadgeNames.add(b.name)
-      const tier = RARITY_TIER[b.rarity] ?? 0
+      const tier = b.rarity ? RARITY_TIER[b.rarity] : 0
       const current = highestOwnedTierByName.get(b.name) ?? 0
       if (tier > current) highestOwnedTierByName.set(b.name, tier)
     }
@@ -697,7 +698,7 @@ export async function evaluateBadgesDetailed(
     const eligible: { badge: BadgeRow; evalResult: EvalConditionResult }[] = []
     for (const badge of group) {
       if (ownedBadgeIds.has(badge.id)) continue
-      if ((RARITY_TIER[badge.rarity] ?? 0) <= highestOwned) continue
+      if (rarityTier(badge.rarity) <= highestOwned) continue
 
       // 선행 배지 게이트: prerequisite_badge_names 중 하나라도 보유해야 통과
       const prereqs = (badge.condition_json as BadgeCondition | null)?.prerequisite_badge_names
@@ -718,14 +719,14 @@ export async function evaluateBadgesDetailed(
 
     if (eligible.length === 0) continue
 
-    eligible.sort((a, b) => (RARITY_TIER[b.badge.rarity] ?? 0) - (RARITY_TIER[a.badge.rarity] ?? 0))
+    eligible.sort((a, b) => rarityTier(b.badge.rarity) - rarityTier(a.badge.rarity))
     const { badge: winner, evalResult } = eligible[0]
     const condition = winner.condition_json as BadgeCondition
     const prog = getProgressionKey(condition)
     candidates.push({ badge: winner, condition, progressionKey: prog?.key ?? null, progressionValue: prog?.value ?? 0, evalResult })
 
     for (const { badge } of eligible.slice(1)) {
-      missed.push({ id: badge.id, name: badge.name, reason: '성장 티어 — 상위 레어리티 발급됨', actual: badge.rarity, required: winner.rarity })
+      missed.push({ id: badge.id, name: badge.name, reason: '성장 티어 — 상위 레어리티 발급됨', actual: badge.rarity ?? '등급 없음', required: winner.rarity ?? '등급 없음' })
     }
   }
 
@@ -761,7 +762,7 @@ export async function evaluateBadgesDetailed(
         id: c.badge.id,
         name: c.badge.name,
         reason: '첫 싱크 게이트 — Common 등급만 발급',
-        actual: c.badge.rarity,
+        actual: c.badge.rarity ?? '등급 없음',
         required: 'common',
       })
     } else {

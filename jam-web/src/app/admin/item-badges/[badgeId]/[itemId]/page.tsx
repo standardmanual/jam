@@ -143,10 +143,10 @@ export default async function ItemBadgeDetailPage({ params }: Props) {
           {badge && (
             <span
               className={`inline-block px-2 py-0.5 text-xs font-semibold rounded ${
-                RARITY_BADGE_COLOR[badge.rarity] ?? 'bg-gray-100 text-gray-700'
+                (badge.rarity ? RARITY_BADGE_COLOR[badge.rarity] : null) ?? 'bg-gray-100 text-gray-700'
               }`}
             >
-              {RARITY_LABEL[badge.rarity] ?? badge.rarity}
+              {badge.rarity ? RARITY_LABEL[badge.rarity] : '—'}
             </span>
           )}
           <p className="font-mono text-lg">#{serialLabel}</p>

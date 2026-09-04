@@ -65,7 +65,9 @@ export default async function HomePage() {
   const userProfile = profile as UserRow | null
   // 소프트 삭제된 배지(badges.deleted_at)는 "최근 획득 배지"에서 제외한다(20260824_007) —
   // 다른 화면들과 동일하게 조인 결과를 badge.deleted_at으로 사후 필터한다.
-  const badgeWithEarned: BadgeWithEarned[] = ((recentBadges ?? []) as Array<{badge: BadgeRow} & UserActivityBadgeRow>)
+  // earn_history는 생성 타입상 Json, 손으로 쓴 Row 타입상 BadgeEarnHistoryEntry[]라 직접 캐스팅이
+  // 성립하지 않는다(마이그레이션 130) — 기존과 같은 무검증 캐스팅이므로 unknown을 한 번 거친다.
+  const badgeWithEarned: BadgeWithEarned[] = ((recentBadges ?? []) as unknown as Array<{badge: BadgeRow} & UserActivityBadgeRow>)
     .filter((r) => r.badge && !r.badge.deleted_at)
     .map((r) => ({ badge: r.badge, earned: r }))
 
@@ -131,7 +133,7 @@ export default async function HomePage() {
                   <div>
                     <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{badge.name}</p>
                     <div className="flex items-center justify-between mt-1">
-                      <RarityBadge rarity={badge.rarity} />
+                      <RarityBadge rarity={badge.rarity ?? undefined} />
                       <p className="text-[length:var(--text-caption)] text-text-inverse/50"><LocalDate iso={earned.earned_at} options={{ month: 'long', day: 'numeric' }} /></p>
                     </div>
                   </div>

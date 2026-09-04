@@ -381,6 +381,10 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     description: '',
     type: 'activity',
     rarity: 'common',
+    // v5 스키마(마이그레이션 130) — 기존 207종은 전부 등급형이라 level은 NULL이다
+    level: null,
+    family_key: null,
+    sort_order: 0,
     image_url: null,
     condition_json: {},
     activity_types: ['walking'],

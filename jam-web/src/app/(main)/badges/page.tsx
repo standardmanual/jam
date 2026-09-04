@@ -63,8 +63,10 @@ export default async function BadgesPage({ searchParams }: Props) {
 
   // 소프트 삭제된 배지(badges.deleted_at)는 서비스 화면에서 숨긴다 — 발급 이력 자체는 DB에 남지만
   // 마이페이지·인벤토리에는 노출하지 않는다.
+  // earn_history는 생성 타입상 Json, 손으로 쓴 Row 타입상 BadgeEarnHistoryEntry[]라 직접 캐스팅이
+  // 성립하지 않는다(마이그레이션 130) — 기존과 같은 무검증 캐스팅이므로 unknown을 한 번 거친다.
   const badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }> = (
-    (earnedBadges ?? []) as Array<{ badge: BadgeRow } & UserActivityBadgeRow>
+    (earnedBadges ?? []) as unknown as Array<{ badge: BadgeRow } & UserActivityBadgeRow>
   )
     .filter((r) => r.badge && !r.badge.deleted_at)
     .map((r) => ({ badge: r.badge, earned: r }))

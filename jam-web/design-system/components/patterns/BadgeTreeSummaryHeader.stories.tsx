@@ -11,7 +11,8 @@ const meta: Meta<typeof BadgeTreeSummaryHeader> = {
       description: {
         component:
           '배지 트리(/badges/tree) 진행 요약 — 획득/전체 히어로 숫자 + 등급별 분포 막대(20260903_2329). ' +
-          '분포 막대는 등급색이 아니라 상태 채널(--status-done-solid)로 채운다.',
+          '분포 막대는 등급색이 아니라 상태 채널(--status-done-solid)로 채운다. ' +
+          '등급 라벨은 RarityBadge.jsx의 getRarityLabel()을 재사용한다(MODULAR 단일 소스, 20260905_0027).',
       },
     },
   },

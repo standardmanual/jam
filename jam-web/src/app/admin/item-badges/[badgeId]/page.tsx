@@ -77,10 +77,10 @@ export default async function ItemBadgeSerialListPage({ params, searchParams }: 
           <h1 className="text-2xl font-bold">{badge.name}</h1>
           <span
             className={`inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded ${
-              RARITY_BADGE_COLOR[badge.rarity] ?? 'bg-gray-100 text-gray-700'
+              (badge.rarity ? RARITY_BADGE_COLOR[badge.rarity] : null) ?? 'bg-gray-100 text-gray-700'
             }`}
           >
-            {RARITY_LABEL[badge.rarity] ?? badge.rarity}
+            {badge.rarity ? RARITY_LABEL[badge.rarity] : '—'}
           </span>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { getRarityLabel } from '../cards/RarityBadge.jsx';
 
 /**
  * BadgeTreeSummaryHeader — 배지 트리(/badges/tree) 진행 요약 카드. 티켓 20260903_2329.
@@ -12,7 +13,8 @@ import React from 'react';
  * 몇 개를 채웠나"이지 등급 자체가 아니기 때문이다.
  */
 const RARITY_ORDER = ['common', 'rare', 'epic', 'mystic'];
-const RARITY_LABEL = { common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' };
+// 등급 라벨은 RarityBadge.jsx의 config가 MODULAR 단일 소스다 — 여기서 다시 선언하지 않는다
+// (티켓 20260905_0027).
 
 export function BadgeTreeSummaryHeader({
   earnedCount,
@@ -54,7 +56,7 @@ export function BadgeTreeSummaryHeader({
                 <div style={{ height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-xs)', background: 'var(--status-done-solid)' }} />
               </div>
               <div style={{ marginTop: 8, fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', lineHeight: 1 }}>
-                {RARITY_LABEL[rarity]}
+                {getRarityLabel(rarity)}
               </div>
               <div
                 style={{

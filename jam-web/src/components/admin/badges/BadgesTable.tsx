@@ -262,8 +262,9 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
         cell: ({ getValue }) => {
           const rarity = getValue()
           return (
-            <span className={`font-semibold text-sm ${RARITY_COLOR[rarity] || ''}`}>
-              {RARITY_LABEL[rarity as BadgeRarity] || rarity}
+            <span className={`font-semibold text-sm ${(rarity ? RARITY_COLOR[rarity] : '') || ''}`}>
+              {/* 무한레벨형은 등급이 없다(마이그레이션 130) — 레벨 표기는 티켓 20260905_0032/0034 */}
+              {rarity ? RARITY_LABEL[rarity as BadgeRarity] : '—'}
             </span>
           )
         },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { RarityBadge } from '../cards/RarityBadge.jsx';
+import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
 
 /**
  * BadgeStageRail — 계열(같은 이름, 등급별 눈금) 진행 레일. 티켓 20260903_2329 (1차: 구조 전환).
@@ -36,7 +36,8 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
  * 막혔는지"가 오히려 안 읽힌다(원 검토문서 §04).
  */
 
-const RARITY_LABEL = { common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' };
+// 등급 라벨은 RarityBadge.jsx의 config가 MODULAR 단일 소스다 — 여기서 다시 선언하지 않는다
+// (티켓 20260905_0027: 같은 표가 5곳에 복사돼 있었고, 20260813_003에서 실제로 3곳 누락 사고가 났다).
 const STATUS_LABEL = { earned: '획득', ready: '조건 충족', locked: '잠김', 'not-reached': '—' };
 
 const STATIC_CSS = `
@@ -219,7 +220,7 @@ export function BadgeStageRail({
 
       <div role="group" aria-label={summarySentence} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 'var(--spacing-16)' }}>
         {stops.map((stop, i) => {
-          const rarityLabel = RARITY_LABEL[stop.rarity] ?? stop.rarity;
+          const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
           const showProgress = i === frontierIndex && frontierProgress != null;
           // 진행 캡션은 화면에만 보이고 aria-label에는 반영되지 않아, 스크린리더 사용자는
           // 이번 티켓 이전과 동일하게 상태 라벨만 듣는 정보 격차가 있었다(개선 리뷰·인터랙션
@@ -345,7 +346,7 @@ export function BadgeStageRail({
       {expanded && (
         <div style={{ marginTop: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
           {stops.map((stop) => {
-            const rarityLabel = RARITY_LABEL[stop.rarity] ?? stop.rarity;
+            const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
             const canOpenLock = stop.status === 'ready' || stop.status === 'locked';
             return (
               <div key={stop.id} style={{ display: 'flex', gap: 'var(--spacing-12)', alignItems: 'flex-start' }}>

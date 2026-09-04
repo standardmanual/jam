@@ -12,7 +12,8 @@ export interface InventoryGridItem {
   id: string
   badgeName: string
   badgeImageUrl: string | null
-  badgeRarity: string
+  /** 무한레벨형 배지는 등급이 없다(마이그레이션 130). null이면 등급 칩을 그리지 않는다 */
+  badgeRarity: string | null
   expiresAt?: string | null
 }
 
@@ -62,7 +63,7 @@ export default function InventoryGrid({
               href={`/inventory/${item.id}`}
               name={item.badgeName}
               imageUrl={item.badgeImageUrl}
-              rarity={item.badgeRarity as import('@/types/database').BadgeRarity}
+              rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}
             >
               {expiryNode}
             </BadgeGridCard>
@@ -76,7 +77,7 @@ export default function InventoryGrid({
             onClick={() => onSelect?.(item)}
             name={item.badgeName}
             imageUrl={item.badgeImageUrl}
-            rarity={item.badgeRarity as import('@/types/database').BadgeRarity}
+            rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}
             selected={isSelected}
           >
             {expiryNode}

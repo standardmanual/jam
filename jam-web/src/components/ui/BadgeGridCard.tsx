@@ -10,7 +10,12 @@ import type { ReactNode } from 'react'
 export interface BadgeGridCardProps {
   name: string
   imageUrl?: string | null
-  rarity: BadgeRarity
+  /**
+   * 배지 등급. **null이면 무한레벨형이라 등급 칩을 그리지 않는다**
+   * (마이그레이션 130 — `badges.rarity` nullable, 티켓 20260905_0027).
+   * Lv.N 칩 자체는 티켓 20260905_0036(MODULAR 배지 컴포넌트) 범위다.
+   */
+  rarity: BadgeRarity | null
   /** Link mode — wraps card in <Link href>. Mutually exclusive with onClick. */
   href?: string
   /** Button mode — wraps card in <button>. Mutually exclusive with href. */
@@ -97,7 +102,7 @@ export default function BadgeGridCard({
         <p className="text-[13px] font-bold text-text text-center truncate w-full leading-tight">
           {undiscovered ? '???' : name}
         </p>
-        {!undiscovered && <RarityBadge rarity={rarity} />}
+        {!undiscovered && <RarityBadge rarity={rarity ?? undefined} />}
       </div>
       {children && <div className="w-full mt-[var(--spacing-4)]">{children}</div>}
     </>

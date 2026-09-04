@@ -112,7 +112,23 @@ export interface BadgeRow {
   name: string
   description: string
   type: BadgeType
-  rarity: BadgeRarity
+  /**
+   * 등급형 배지의 등급. **NULL이면 무한레벨형이다** — v5의 유일한 배지 종류 판정 기준이며,
+   * 별도 `badge_kind` 컬럼을 두지 않는다(두 개의 판정 기준은 서로 어긋날 수 있다).
+   * DB가 `CHECK ((rarity IS NULL) = (level IS NOT NULL))`로 강제한다 (마이그레이션 130).
+   * 티켓 20260905_0027
+   */
+  rarity: BadgeRarity | null
+  /** 무한레벨형 배지의 레벨(Lv.1~∞). 등급형은 NULL — `rarity`와 정확히 배타적이다 (130) */
+  level: number | null
+  /** 계열 식별자. 이름 문자열 대신 쓰는 안정적인 키. 활동 배지에만 채운다 (130) */
+  family_key: string | null
+  /**
+   * 표시 순서(오름차순). `badgeTree.ts`의 하드코딩 배열 72개를 대체한다 (130).
+   * 규약: 계열 레일 1~99(계열 안 모든 등급이 같은 값) / 독립 발급 배지 101~ .
+   * 0은 "미설정"이며 화면에서 맨 뒤로 밀린다.
+   */
+  sort_order: number
   image_url: string | null
   condition_json: BadgeCondition | null
   activity_types: ActivityType[]
@@ -172,6 +188,24 @@ export interface UserActivityBadgeRow {
   triggered_by_activity_date: string | null
   /** 어드민 전용 — 발급 근거 스냅샷(조건/실측값/트리거 활동). 일반 유저 화면에 노출 금지 */
   condition_snapshot: BadgeConditionSnapshot | null
+  /**
+   * 이 배지를 획득한 총 횟수. 최초 발급이 1이며 반복 획득 시 증가한다 — 행은 늘지 않는다
+   * (`UNIQUE(user_id, badge_id)` 유지, 마이그레이션 130 / 티켓 20260905_0027).
+   */
+  earn_count: number
+  /**
+   * 회차별 획득 이력. JSONB라 FK가 없어 근거 활동이 삭제되면 참조가 끊긴 채 남는다
+   * (표시 단계에서 결번 처리 — 티켓 20260905_0038).
+   */
+  earn_history: BadgeEarnHistoryEntry[]
+}
+
+/** `user_activity_badges.earn_history`의 원소 — 반복 획득 회차 하나 (마이그레이션 130) */
+export interface BadgeEarnHistoryEntry {
+  /** 그 회차의 획득 시각 (ISO 8601) */
+  earned_at: string
+  /** 근거 활동 `strava_activities.id`. 근거가 활동이 아니면 null */
+  activity_id?: string | null
 }
 
 /**
@@ -1137,16 +1171,25 @@ export interface Database {
       }
       badges: {
         Row: BadgeRow
-        Insert: Omit<BadgeRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Insert: Omit<BadgeRow, 'id' | 'created_at' | 'sort_order'> & {
+          id?: string
+          created_at?: string
+          /** DB DEFAULT 0 (미설정) — 마이그레이션 130 */
+          sort_order?: number
+        }
         Update: Partial<Omit<BadgeRow, 'id'>>
         Relationships: []
       }
       user_activity_badges: {
         Row: UserActivityBadgeRow
-        Insert: Omit<UserActivityBadgeRow, 'id' | 'earned_at'> & {
+        Insert: Omit<UserActivityBadgeRow, 'id' | 'earned_at' | 'earn_count' | 'earn_history'> & {
           id?: string
           earned_at?: string
           triggered_by_poi_id?: string | null
+          /** DB DEFAULT 1 — 마이그레이션 130 */
+          earn_count?: number
+          /** DB DEFAULT '[]' — 마이그레이션 130 */
+          earn_history?: BadgeEarnHistoryEntry[]
         }
         Update: Partial<Omit<UserActivityBadgeRow, 'id'>>
         Relationships: []

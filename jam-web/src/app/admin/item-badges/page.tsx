@@ -50,7 +50,7 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
     if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
     // filterRarity는 쿼리스트링에서 온 string이라 badges.rarity 유니언으로 좁혀 넘긴다.
     // 유효하지 않은 값이 들어와도 지금과 똑같이 "결과 0건"이 되도록 검증 없이 그대로 전달한다.
-    if (filterRarity) query = query.eq('rarity', filterRarity as SearchBadgeRow['rarity'])
+    if (filterRarity) query = query.eq('rarity', filterRarity as NonNullable<SearchBadgeRow['rarity']>)
 
     const { data: badgesRaw } = await query.order('name', { ascending: true }).limit(100)
     badges = (badgesRaw ?? []) as SearchBadgeRow[]
@@ -110,10 +110,10 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
                       <div className="flex items-center gap-2 mt-1">
                         <span
                           className={`inline-block px-2 py-0.5 text-xs font-semibold rounded ${
-                            RARITY_BADGE_COLOR[badge.rarity] ?? 'bg-gray-100 text-gray-700'
+                            (badge.rarity ? RARITY_BADGE_COLOR[badge.rarity] : null) ?? 'bg-gray-100 text-gray-700'
                           }`}
                         >
-                          {RARITY_LABEL[badge.rarity] ?? badge.rarity}
+                          {badge.rarity ? RARITY_LABEL[badge.rarity] : '—'}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           총 발급 {totalCountByBadge.get(badge.id) ?? 0}개
