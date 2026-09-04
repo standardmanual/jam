@@ -11,8 +11,10 @@ const meta: Meta<typeof BadgeStageRail> = {
       description: {
         component:
           '계열(같은 이름, 등급별 눈금) 진행 레일. 눈금 상태는 1차 범위에서 earned/ready/locked/' +
-          'not-reached 4종만 지원한다(20260903_2329). "다음 목표" 강조 링·잔여값은 진행 계산 모듈이 ' +
-          '필요한 2차에서 붙는다. ready/locked를 가르는 조건 충족 여부는 호출부가 계산해 stops[].status로 넘긴다.',
+          'not-reached 4종만 지원한다(20260903_2329). ready/locked를 가르는 조건 충족 여부는 호출부가 ' +
+          '계산해 stops[].status로 넘긴다. 프런티어(다음 목표) 진행 캡션·연결선 비례 채움·기록형 ' +
+          '아쉬움 줄은 2c(20260904_0921)에서 `frontierProgress`/`regretLine` prop으로 추가됐다 — ' +
+          '누적/기록/주기 3종만 다룬다(2축형·다중카운터형 전용 게이지는 2d 몫).',
       },
     },
   },
@@ -44,6 +46,8 @@ export const GateAheadReady: Story = {
           { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'locked', href: '/badges/3' },
           { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'locked', href: '/badges/4' },
         ]}
+        frontierProgress={null}
+        regretLine={null}
         onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
       />
     </Frame>
@@ -62,6 +66,8 @@ export const GateAheadLocked: Story = {
           { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'locked', href: '/badges/2' },
           { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
         ]}
+        frontierProgress={null}
+        regretLine={null}
         onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
       />
     </Frame>
@@ -76,6 +82,8 @@ export const AllEarned: Story = {
         familyName="첫 발자국"
         nextRarityLabel={null}
         stops={[{ id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' }]}
+        frontierProgress={null}
+        regretLine={null}
         onLockClick={() => {}}
       />
     </Frame>
@@ -95,6 +103,8 @@ export const NotStarted: Story = {
           { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
           { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
         ]}
+        frontierProgress={null}
+        regretLine={null}
         onLockClick={() => {}}
       />
     </Frame>
@@ -122,6 +132,8 @@ export const Expandable: Story = {
               description: '밤 10시 이후, 45분 이상 걸으면 받는 배지예요.',
             },
           ]}
+          frontierProgress={null}
+          regretLine={null}
           onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
         />
       </Frame>
@@ -137,6 +149,8 @@ export const NoImage: Story = {
         familyName="새 계열"
         nextRarityLabel="Common"
         stops={[{ id: '1', rarity: 'common', imageUrl: null, status: 'not-reached', href: '/badges/1' }]}
+        frontierProgress={null}
+        regretLine={null}
         onLockClick={() => {}}
       />
     </Frame>
@@ -154,7 +168,105 @@ export const LongFamilyName: Story = {
           { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
           { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'ready', href: '/badges/2' },
         ]}
+        frontierProgress={null}
+        regretLine={null}
         onLockClick={() => {}}
+      />
+    </Frame>
+  ),
+};
+
+// ── 2c(20260904_0921) — 프런티어 진행 수치 표시 ──────────────────────────────
+
+export const FrontierProgressCumulative: Story = {
+  name: '프런티어 진행 — 누적형 (연결선 비례 채움)',
+  render: () => (
+    <Frame>
+      <BadgeStageRail
+        familyName="동네 산책러"
+        nextRarityLabel="Epic"
+        stops={[
+          { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+          { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/2' },
+          { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
+          { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
+        ]}
+        frontierProgress={{ text: '87.3/100km', fraction: 0.82 }}
+        regretLine={null}
+        onLockClick={() => {}}
+      />
+    </Frame>
+  ),
+};
+
+export const FrontierProgressRecord: Story = {
+  name: '프런티어 진행 — 기록형 + 아쉬움 줄',
+  render: () => (
+    <Frame>
+      <BadgeStageRail
+        familyName="밤의 보행자"
+        nextRarityLabel="Rare"
+        stops={[
+          { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+          { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/2' },
+        ]}
+        frontierProgress={{ text: '40/45분', fraction: 0.89 }}
+        regretLine="지난 활동 기록은 40분. Rare까지 5분 모자랐어요."
+        onLockClick={() => {}}
+      />
+    </Frame>
+  ),
+};
+
+export const FrontierProgressPeriodic: Story = {
+  name: '프런티어 진행 — 주기형 (이번 주 · D일 남음)',
+  render: () => (
+    <Frame>
+      <BadgeStageRail
+        familyName="이달의 산책왕"
+        nextRarityLabel="Common"
+        stops={[{ id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/1' }]}
+        frontierProgress={{ text: '이번 주 4/5회 · 3일 남음', fraction: 0.8 }}
+        regretLine={null}
+        onLockClick={() => {}}
+      />
+    </Frame>
+  ),
+};
+
+export const FrontierProgressUnsupported: Story = {
+  name: '프런티어 진행 — 진행 미지원 고지 (§08 H)',
+  render: () => (
+    <Frame>
+      <BadgeStageRail
+        familyName="정체를 알 수 없는 계열"
+        nextRarityLabel="Rare"
+        stops={[
+          { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+          { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/2' },
+        ]}
+        frontierProgress={{ text: '진행 표시 준비 중', fraction: 0, muted: true }}
+        regretLine={null}
+        onLockClick={() => {}}
+      />
+    </Frame>
+  ),
+};
+
+export const FrontierProgressBehindGate: Story = {
+  name: '프런티어 진행 — 게이트 잠김 + 조건 진행(게이트 연결선은 그대로 점선)',
+  render: () => (
+    <Frame>
+      <BadgeStageRail
+        familyName="산책의 명상가"
+        nextRarityLabel="Rare"
+        stops={[
+          { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+          { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'locked', href: '/badges/2' },
+        ]}
+        frontierProgress={{ text: '18/20분', fraction: 0.9 }}
+        regretLine={null}
+        onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
       />
     </Frame>
   ),

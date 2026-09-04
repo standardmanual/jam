@@ -24,6 +24,12 @@
  * `npm run build`가 실패한다(1차 시도 게이트 리뷰에서 실제 재현·확인된 실패). `activityFilters.ts`는
  * NormalizedActivity/DayOfWeek 타입 외 어떤 것도 import하지 않는 완전히 독립적인 순수
  * 함수 파일이라 이 문제가 없다.
+ *
+ * ## 2c 추가분 (티켓 20260904_0921) — `computeRecordRegretLine()`
+ * 화면(2c)이 이 계산 계층을 처음 호출하며 함께 필요해진 "기록형 아쉬움 줄" 계산을 파일
+ * 끝(§2c 절)에 추가했다. `computeBadgeProgress`와 마찬가지로 순수 함수이고, 발급 판정에는
+ * 전혀 관여하지 않는다 — 최종 한국어 문장 조립은 이 파일이 아니라 클라이언트 쪽
+ * `src/lib/badgeProgressText.ts`가 담당한다(서버는 숫자만, 텍스트 조립은 소비처).
  */
 import { kmhToPaceSecPerKm, type NormalizedActivity } from '@/types/strava'
 import type { ActivityType, BadgeCondition, DayOfWeek } from '@/types/database'
@@ -239,6 +245,12 @@ type ScalarAxisKey = (typeof SCALAR_AXIS_KEYS)[number]
 /** "작을수록 좋음" 축 — 나머지는 전부 "클수록 좋음" */
 const LOWER_IS_BETTER: ReadonlySet<ScalarAxisKey> = new Set(['max_pace_sec_per_km', 'temperature_max_c'])
 
+/**
+ * 표시 레이어(`badgeProgressText.ts`, 티켓 20260904_0921/2c)가 "아쉬움 줄" diff 방향을
+ * 재사용하기 위한 노출. 값은 위 `LOWER_IS_BETTER`와 항상 같다 — 별도로 재정의하지 않는다.
+ */
+export const LOWER_IS_BETTER_KEYS: ReadonlySet<string> = new Set(LOWER_IS_BETTER)
+
 function measurableScalarKeys(condition: BadgeCondition): ScalarAxisKey[] {
   // temperature_min_c/max_c + total_count는 엔진에서 "카운팅 대상 필터"로만 쓰인다 — 축 아님
   // (index.ts relevantPerActivityKeys 구성부의 동일 예외, T12~T14 어뷰징 방지 목적과 동일 이유)
@@ -350,6 +362,22 @@ function getFieldValue(field: ScalarAxisKey, a: NormalizedActivity): number {
 }
 
 /**
+ * time_range 등 필터가 붙는 필드의 "관련 활동 풀" — `buildScalarAxis`(역대 최댓값)와
+ * `computeRecordRegretLine`(직전 활동, 티켓 20260904_0921/2c)이 반드시 같은 풀을 봐야
+ * "N분 남음"이라고 해놓고 아쉬움 줄은 다른 필터 결과로 계산되는 불일치를 막는다 — 필터
+ * 로직 자체는 여기 한 곳에만 둔다.
+ */
+function poolForScalarField(field: ScalarAxisKey, condition: BadgeCondition, metrics: UserPeriodMetrics): NormalizedActivity[] {
+  if (field === 'duration_minutes' && condition.time_range !== undefined) {
+    return metrics.activities.filter((a) => inTimeRange(a, condition.time_range!))
+  }
+  if (field === 'weekend_duration_hours') {
+    return metrics.activities.filter((a) => isWeekend(dateOf(a)))
+  }
+  return metrics.activities
+}
+
+/**
  * 8개 축 필드 중 하나를 "단독 필드 규칙"으로 계산한다 — dual(독립 평가)의 각 축, 그리고
  * record 단독 축(distance_km/elevation_gain_m 제외 6개) 양쪽에서 공유한다.
  * distance_km/elevation_gain_m은 여기서는 항상 "누적 합계"(cumulative) 규칙을 쓴다 —
@@ -364,9 +392,7 @@ function buildScalarAxis(field: ScalarAxisKey, condition: BadgeCondition, metric
     case 'elevation_gain_m':
       return makeHigherBetterAxis('elevation_gain_m', metrics.totalElevationGainM, target, labelMap)
     case 'duration_minutes': {
-      const pool = condition.time_range !== undefined
-        ? metrics.activities.filter((a) => inTimeRange(a, condition.time_range!))
-        : metrics.activities
+      const pool = poolForScalarField('duration_minutes', condition, metrics)
       return makeHigherBetterAxis('duration_minutes', maxOr(pool.map((a) => a.movingTimeSec / 60), 0), target, labelMap)
     }
     case 'min_speed_kmh':
@@ -387,8 +413,8 @@ function buildScalarAxis(field: ScalarAxisKey, condition: BadgeCondition, metric
       return makeColdRecordAxis('temperature_max_c', best, target, labelMap)
     }
     case 'weekend_duration_hours': {
-      const weekend = metrics.activities.filter((a) => isWeekend(dateOf(a)))
-      return makeHigherBetterAxis('weekend_duration_hours', maxOr(weekend.map((a) => a.movingTimeSec / 3600), 0), target, labelMap)
+      const pool = poolForScalarField('weekend_duration_hours', condition, metrics)
+      return makeHigherBetterAxis('weekend_duration_hours', maxOr(pool.map((a) => a.movingTimeSec / 3600), 0), target, labelMap)
     }
   }
 }
@@ -597,4 +623,69 @@ export function computeBadgeProgress(
     periodEndsAt,
     gate,
   }
+}
+
+// ── 2c. 기록형 "아쉬움 줄" (티켓 20260904_0921) ─────────────────────────────
+
+export type RegretLineData = {
+  /** BadgeProgressAxis.key와 동일 네임스페이스(예: 'duration_minutes') */
+  key: string
+  /** 직전 활동 하나의 실측값(pace는 초/km 원값 — 표시 레이어가 mm:ss로 포맷) */
+  current: number
+  target: number
+  unit: string | null
+  label: string
+}
+
+/**
+ * "그 활동 하나"의 값을 축으로 감싼다 — `makeHigherBetterAxis`/`makeLowerBetterRatioAxis`/
+ * `makeColdRecordAxis`는 "current가 어떻게 나온 값인지"(역대 최댓값이든 직전 활동 하나든)
+ * 신경 쓰지 않는 순수 매핑이라 그대로 재사용한다. `buildRecordAxis`/`buildScalarAxis`의
+ * 필드별 분기와 반드시 같은 함수를 골라야 한다(다르게 고르면 met/fraction 기준이 어긋난다).
+ */
+function axisForSingleValue(field: ScalarAxisKey, rawValue: number, target: number, labelMap: LabelMap): AxisResult {
+  if (field === 'temperature_max_c') return makeColdRecordAxis(field, rawValue, target, labelMap)
+  if (LOWER_IS_BETTER.has(field)) return makeLowerBetterRatioAxis(field, rawValue, target, labelMap)
+  return makeHigherBetterAxis(field, rawValue, target, labelMap)
+}
+
+/** 아쉬움 줄 표시 임계값 — 직전 활동이 다음 임계값의 이 비율 이상일 때만 보여준다(§05). */
+const REGRET_LINE_THRESHOLD = 0.85
+
+/**
+ * 기록형(record) 계열 프런티어 전용 — "직전 활동 하나"가 다음 등급 임계값의 85% 이상인데
+ * 아직 못 채웠을 때만 데이터를 반환한다(§05 "기록형에는 아쉬움 줄", §07 문구 참고 — 최종
+ * 문장 조립은 표시 레이어 `badgeProgressText.ts`가 담당한다. 이 함수는 순수 계산만 한다).
+ *
+ * `axis.current`(역대 최고 기록)와 다른 값이다 — 최고 기록은 과거 어느 활동일 수 있어
+ * "지금 나가면 될까"에 답하지 못한다. 이 함수는 `metrics.activities`(이미 activity_type +
+ * 걷기 게이트가 적용된 목록)에서 **가장 최근 활동 하나**만 다시 평가한다.
+ *
+ * distance_km/elevation_gain_m(same_activity:true인 record, 예: T23)은 대상에서 뺀다 —
+ * 2c 범위(레일 표시)의 기록형 계열 8개(§05 프로토타입 표 근거) 중 이 조합이 없고,
+ * `buildRecordAxis`도 이 두 필드는 별도 함수(`buildSameActivitySingleAxis`)로 처리한다.
+ */
+export function computeRecordRegretLine(
+  condition: BadgeCondition,
+  metrics: UserPeriodMetrics,
+  labelMap: LabelMap
+): RegretLineData | null {
+  if (classifyBadgeProgressKind(condition) !== 'record') return null
+
+  const key = SCALAR_AXIS_KEYS.filter((k) => k !== 'distance_km' && k !== 'elevation_gain_m').find(
+    (k) => condition[k] !== undefined
+  )
+  if (!key) return null
+
+  const pool = poolForScalarField(key, condition, metrics)
+  if (pool.length === 0) return null
+  const latest = pool.reduce((a, b) => (dateOf(a) > dateOf(b) ? a : b))
+  const rawValue = getFieldValue(key, latest)
+  if (!Number.isFinite(rawValue)) return null
+
+  const target = condition[key] as number
+  const { axis, fraction } = axisForSingleValue(key, rawValue, target, labelMap)
+  if (axis.met || fraction < REGRET_LINE_THRESHOLD) return null
+
+  return { key, current: axis.current, target: axis.target, unit: axis.unit, label: axis.label }
 }

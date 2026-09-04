@@ -16,8 +16,14 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
  *   not-reached  — 게이트가 이미 열려 있고 막고 있는 게 없지만 아직 도달 전. 그레이스케일 +
  *                  중성 얇은 링, 마커 없음. "—" 라벨.
  * ready/locked를 가르는 "조건"은 이 컴포넌트가 계산하지 않는다 — 호출부가 기존
- * evaluateConditionDetailed pass/fail을 넘겨준다. "다음 목표" 강조 링·아크·잔여값은
- * 진행 계산 모듈(computeBadgeProgress)이 필요한 2차에서 붙는다.
+ * evaluateConditionDetailed pass/fail을 넘겨준다.
+ *
+ * 진행 수치(2c, 티켓 20260904_0921): 프런티어(다음 목표) 눈금 하나에만 `frontierProgress`
+ * prop으로 붙는다 — 누적/기록/주기 3종의 캡션 문구·연결선 비례 채움. 2축형·다중카운터형
+ * 전용 강조 링·아크·게이지는 아직 없다(신규 게이지 컴포넌트가 필요한 2d 몫 — 그 경우
+ * 호출부가 `frontierProgress`를 넘기지 않으면 이 컴포넌트는 1차와 동일하게 상태 라벨만
+ * 그린다). 문구 조립은 이 컴포넌트가 하지 않는다 — 호출부가 완성 문자열을 만들어 넘긴다
+ * (프레젠테이션 전용 원칙 유지, `src/lib/badgeProgressText.ts` 참고).
  *
  * 배지 이미지 색 규칙(예외 없음): 미획득 = grayscale(1), 획득 = 원본 컬러. 필터는 이미지
  * 요소에만 걸고 링·마커에는 걸지 않는다 — MissionCard.jsx의 잠금 오버레이와 같은 원칙.
@@ -151,6 +157,23 @@ export function BadgeStageRail({
    * 시그니처" 타입 에러가 난다. 항상 명시적으로 넘긴다(잠금 눈금이 없는 스토리는 no-op을 넘김).
    */
   onLockClick,
+  /**
+   * 프런티어(다음 목표) 눈금의 진행 표시 — 2c(computeBadgeProgress 최초 연결). null이면 1차와
+   * 동일(상태 라벨만, 연결선은 idle). `{ text, fraction, muted? }` — text는 STATUS_LABEL을
+   * 대체할 완성 문자열, fraction(0~1)은 프런티어 앞 연결선 비례 채움, muted는 §08 H(진행
+   * 미지원) 전용 중립색 표시. 누적/기록/주기 3종만 넘긴다 — 2축/다중은 2d 몫이라 호출부가
+   * 이 prop에 null을 넘긴다.
+   * 기본값을 두지 않는다 — `nextRarityLabel`과 같은 이유(`= null` 기본값은 JS 추론이 타입을
+   * 정확히 `null` 하나로 좁혀, 객체를 넘기는 실제 호출부가 타입 에러가 난다). 항상 명시적으로
+   * `frontierProgress={... ?? null}` 형태로 넘긴다.
+   */
+  frontierProgress,
+  /**
+   * 기록형 "아쉬움 줄"(§05) — 계열당 최대 1줄, record kind 프런티어에서 직전 활동이 임계값
+   * 85% 이상일 때만 호출부가 완성 문장을 만들어 넘긴다. null이면 렌더하지 않는다.
+   * 기본값을 두지 않는다 — 위 `frontierProgress`와 동일한 이유.
+   */
+  regretLine,
   className = '',
   style = {},
 }) {
@@ -202,6 +225,20 @@ export function BadgeStageRail({
               ? `${familyName} ${rarityLabel}, ${STATUS_LABEL[stop.status]}. 잠금 해제 조건 보기`
               : `${familyName} ${rarityLabel}, ${STATUS_LABEL[stop.status]}`;
           const isGateBefore = i === frontierIndex && i > 0 && (stop.status === 'locked' || stop.status === 'ready');
+          // 프런티어 앞(게이트 없을 때)만 비례 채움 대상 — 그 앞(모두 획득 구간)은 항상 꽉
+          // 채우고, 뒤(아직 도달 안 한 구간)는 항상 idle이다(§05: "다음 목표" 한 곳에만 강조).
+          // frontierIndex가 -1(전부 획득)이면 모든 연결선이 "그 앞"에 해당한다.
+          const isFrontierConnector = i === frontierIndex && !isGateBefore;
+          const allEarnedBefore = frontierIndex === -1 || i < frontierIndex;
+          let connectorBackground = 'var(--status-idle-track)';
+          if (!isGateBefore) {
+            if (allEarnedBefore) {
+              connectorBackground = 'var(--status-done-solid)';
+            } else if (isFrontierConnector && frontierProgress && typeof frontierProgress.fraction === 'number') {
+              const pct = Math.round(Math.min(1, Math.max(0, frontierProgress.fraction)) * 100);
+              connectorBackground = `linear-gradient(to right, var(--status-short-solid) ${pct}%, var(--status-idle-track) ${pct}%)`;
+            }
+          }
 
           return (
             <React.Fragment key={stop.id}>
@@ -215,7 +252,7 @@ export function BadgeStageRail({
                     height: 6,
                     marginTop: 19,
                     borderRadius: 'var(--radius-xs)',
-                    background: isGateBefore ? undefined : 'var(--status-idle-track)',
+                    background: isGateBefore ? undefined : connectorBackground,
                     display: isGateBefore ? 'flex' : 'block',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -246,21 +283,48 @@ export function BadgeStageRail({
               >
                 <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 48 }}>
                   <StopThumbnail imageUrl={stop.imageUrl} alt={`${familyName} ${rarityLabel}`} status={stop.status} />
-                  <span
-                    style={{
-                      fontSize: 'var(--text-micro)', lineHeight: 1, whiteSpace: 'nowrap',
-                      color: stop.status === 'earned' || stop.status === 'ready' ? 'var(--status-done-solid)' : 'var(--color-text-secondary)',
-                      opacity: stop.status === 'not-reached' ? 0.7 : 1,
-                    }}
-                  >
-                    {STATUS_LABEL[stop.status]}
-                  </span>
+                  {(() => {
+                    const showProgress = i === frontierIndex && frontierProgress != null;
+                    const captionText = showProgress ? frontierProgress.text : STATUS_LABEL[stop.status];
+                    const captionColor = showProgress
+                      ? frontierProgress.muted ? 'var(--color-text-secondary)' : 'var(--status-short-solid)'
+                      : stop.status === 'earned' || stop.status === 'ready' ? 'var(--status-done-solid)' : 'var(--color-text-secondary)';
+                    return (
+                      <span
+                        style={{
+                          fontSize: 'var(--text-micro)', lineHeight: 1.3,
+                          whiteSpace: showProgress ? 'normal' : 'nowrap',
+                          // keep-all: "3일" 같은 수치+단위가 줄바꿈 때문에 "3"/"일"로 쪼개지지
+                          // 않게 한다(한글 줄바꿈은 공백 단위로만 — 주기형 문구가 가장 길다).
+                          wordBreak: showProgress ? 'keep-all' : 'normal',
+                          maxWidth: showProgress ? 92 : undefined,
+                          textAlign: 'center',
+                          fontStyle: showProgress && frontierProgress.muted ? 'italic' : 'normal',
+                          color: captionColor,
+                          opacity: !showProgress && stop.status === 'not-reached' ? 0.7 : 1,
+                        }}
+                      >
+                        {captionText}
+                      </span>
+                    );
+                  })()}
                 </span>
               </StopHitArea>
             </React.Fragment>
           );
         })}
       </div>
+
+      {regretLine && (
+        <p
+          style={{
+            margin: 'var(--spacing-12) 0 0', fontSize: 'var(--text-caption)', lineHeight: 1.4,
+            color: 'var(--status-short-solid)',
+          }}
+        >
+          {regretLine}
+        </p>
+      )}
 
       {expanded && (
         <div style={{ marginTop: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>

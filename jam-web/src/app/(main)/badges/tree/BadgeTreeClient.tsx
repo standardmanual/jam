@@ -12,8 +12,10 @@ import { BadgeTreeSummaryHeader } from '@ds/components/patterns/BadgeTreeSummary
 import { RecentSyncBanner } from '@ds/components/patterns/RecentSyncBanner'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { d, t } from '@/lib/i18n'
+import { formatGridProgressLine } from '@/lib/badgeProgressText'
 import type { ActivityType, BadgeRarity } from '@/types/database'
 import type { BadgeActivityTree, BadgeFamilyStage } from '@/lib/badgeTree'
+import type { BadgeProgress, RegretLineData } from '@/lib/badge-engine/badgeProgress'
 
 /**
  * 탭 바 전용 축약 라벨. `ACTIVITY_TYPE_LABELS`의 "트레일러닝"(5자)이 5탭 균등분할
@@ -30,8 +32,9 @@ const TREE_TAB_LABELS: Partial<Record<ActivityType, string>> = {
  *
  * 이전(20260901) 버전은 배지를 등급 우선으로 평탄하게 나열했다 — 같은 계열의 Common~Mystic
  * 4장이 화면 전역에 흩어져 위계·진행 감각이 없었다. 이번 버전은 "요약 → 직전 동기화 →
- * 계열 레일 → 독립 배지 그리드" 네 단으로 세운다. 진행 수치(현재값/잔여값)는 새 진행
- * 계산 모듈(computeBadgeProgress)이 필요한 2차 범위라 이번 화면에는 없다.
+ * 계열 레일 → 독립 배지 그리드" 네 단으로 세운다. 진행 수치(현재값/잔여값)는 `page.tsx`가
+ * `computeBadgeProgress()`로 미리 계산해 `progressByBadgeId`/`regretLineByBadgeId`로 넘겨준다
+ * (2c, 티켓 20260904_0921 — 누적/기록/주기 3종만. 2축형·다중카운터형 전용 게이지는 2d 몫).
  *
  * 요구사항 8(횡스크롤 지양): 종목 전환 탭 1줄 외에는 전부 세로로만 쌓는다.
  * 데이터는 `page.tsx`(서버 컴포넌트)가 요청마다 Supabase에서 직접 조회해 넘긴다 —
@@ -45,6 +48,10 @@ export interface BadgeTreeClientProps {
   conditionMetBadgeIds: string[]
   /** 최근 24시간 안에 동기화된 활동이 있는지 — RecentSyncBanner(1차: boolean 이벤트만) */
   hasRecentSync: boolean
+  /** 계열 프런티어·미획득 독립 배지의 진행 계산 결과 — badge id로 조회(2c, 20260904_0921) */
+  progressByBadgeId: Record<string, BadgeProgress>
+  /** 기록형 프런티어 전용 "아쉬움 줄" 데이터 — badge id로 조회(2c, 20260904_0921) */
+  regretLineByBadgeId: Record<string, RegretLineData>
 }
 
 export default function BadgeTreeClient({
@@ -52,6 +59,8 @@ export default function BadgeTreeClient({
   earnedBadgeIds,
   conditionMetBadgeIds,
   hasRecentSync,
+  progressByBadgeId,
+  regretLineByBadgeId,
 }: BadgeTreeClientProps) {
   const [activeActivity, setActiveActivity] = useState<ActivityType>(
     trees[0]?.activityType ?? 'walking'
@@ -176,6 +185,8 @@ export default function BadgeTreeClient({
                   earnedBadgeIds={earnedBadgeIdSet}
                   conditionMetBadgeIds={conditionMetBadgeIdSet}
                   onLockClick={handleLockClick}
+                  progressByBadgeId={progressByBadgeId}
+                  regretLineByBadgeId={regretLineByBadgeId}
                 />
               ))}
             </div>
@@ -186,16 +197,27 @@ export default function BadgeTreeClient({
                   {t(d.badges.treeTrophyCount, { total: activeTree.independentBadges.length, earned: trophyEarnedCount })}
                 </p>
                 <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-                  {activeTree.independentBadges.map((badge) => (
-                    <BadgeTrophyGridCard
-                      key={badge.id}
-                      href={`/badges/${badge.id}`}
-                      name={badge.name}
-                      imageUrl={badge.imageUrl}
-                      rarity={badge.rarity}
-                      earned={earnedBadgeIdSet.has(badge.id)}
-                    />
-                  ))}
+                  {activeTree.independentBadges.map((badge) => {
+                    const earned = earnedBadgeIdSet.has(badge.id)
+                    const rawProgress = progressByBadgeId[badge.id]
+                    // 획득한 트로피는 진행 계산 없이 100% 고정 표시(§05 프로토타입 "획득" 예시).
+                    const progress = earned
+                      ? { text: '획득', fraction: 1 }
+                      : rawProgress
+                        ? formatGridProgressLine(rawProgress)
+                        : null
+                    return (
+                      <BadgeTrophyGridCard
+                        key={badge.id}
+                        href={`/badges/${badge.id}`}
+                        name={badge.name}
+                        imageUrl={badge.imageUrl}
+                        rarity={badge.rarity}
+                        earned={earned}
+                        progress={progress}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             )}

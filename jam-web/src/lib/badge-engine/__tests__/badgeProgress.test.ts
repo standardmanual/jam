@@ -14,6 +14,7 @@ import {
   computeUserPeriodMetrics,
   classifyBadgeProgressKind,
   computeBadgeProgress,
+  computeRecordRegretLine,
   type UserPeriodMetrics,
 } from '../badgeProgress'
 import type { NormalizedActivity } from '@/types/strava'
@@ -517,5 +518,72 @@ describe('computeBadgeProgress — gate 매핑 (BadgeTreeLock → 단일 gate)',
     const result = computeBadgeProgress(condition, metrics, noLabels, locks)
     if (result.kind === 'unsupported') throw new Error('unreachable')
     expect(result.gate).toEqual({ kind: 'mission', name: '동네 산책러 레벨업', href: '/missions/1', met: false })
+  })
+})
+
+// ── computeRecordRegretLine (기록형 아쉬움 줄, 티켓 20260904_0921) ───────────
+
+describe('computeRecordRegretLine — 기록형 아쉬움 줄(밤의 보행자: duration_minutes + time_range)', () => {
+  const condition: BadgeCondition = { activity_type: 'walking', time_range: { start: '22:00', end: '05:00' }, duration_minutes: 45 }
+
+  it('직전 활동이 임계값의 85% 이상이면 아쉬움 데이터를 반환한다', () => {
+    const now = new Date()
+    // 40/45 = 88.9% — 임계값 이상, met:false
+    const nightActivity = makeActivity({
+      movingTimeSec: 40 * 60, distanceKm: 3,
+      startDate: '2026-07-20T14:00:00Z', startDateLocal: '2026-07-20T23:00:00',
+    })
+    const metrics = computeUserPeriodMetrics('walking', [nightActivity], now)
+
+    const regret = computeRecordRegretLine(condition, metrics, noLabels)
+    expect(regret).toMatchObject({ key: 'duration_minutes', current: 40, target: 45 })
+  })
+
+  it('직전 활동이 임계값의 85% 미만이면 null(노이즈 방지)', () => {
+    const now = new Date()
+    // 10/45 = 22% — 임계값 미달
+    const nightActivity = makeActivity({
+      movingTimeSec: 10 * 60, distanceKm: 1,
+      startDate: '2026-07-20T14:00:00Z', startDateLocal: '2026-07-20T23:00:00',
+    })
+    const metrics = computeUserPeriodMetrics('walking', [nightActivity], now)
+
+    expect(computeRecordRegretLine(condition, metrics, noLabels)).toBeNull()
+  })
+
+  it('직전 활동이 이미 조건을 채웠으면 null(아쉬움이 아니라 이미 달성)', () => {
+    const now = new Date()
+    const nightActivity = makeActivity({
+      movingTimeSec: 50 * 60, distanceKm: 3,
+      startDate: '2026-07-20T14:00:00Z', startDateLocal: '2026-07-20T23:00:00',
+    })
+    const metrics = computeUserPeriodMetrics('walking', [nightActivity], now)
+
+    expect(computeRecordRegretLine(condition, metrics, noLabels)).toBeNull()
+  })
+
+  it('시간대 밖의 활동은 관련 풀에서 제외된다(buildScalarAxis와 동일 필터)', () => {
+    const now = new Date()
+    // 시간대 밖(낮)의 활동만 있으면 관련 풀이 비어 null
+    const dayActivity = makeActivity({
+      movingTimeSec: 40 * 60, distanceKm: 3,
+      startDate: '2026-07-20T05:00:00Z', startDateLocal: '2026-07-20T14:00:00',
+    })
+    const metrics = computeUserPeriodMetrics('walking', [dayActivity], now)
+
+    expect(computeRecordRegretLine(condition, metrics, noLabels)).toBeNull()
+  })
+})
+
+describe('computeRecordRegretLine — record가 아닌 kind는 대상이 아니다', () => {
+  it('cumulative(동네 산책러류)는 항상 null', () => {
+    const now = new Date()
+    const metrics = computeUserPeriodMetrics(
+      'walking',
+      [makeActivity({ distanceKm: 90, startDate: now.toISOString(), startDateLocal: isoLocal(now) })],
+      now
+    )
+    const condition: BadgeCondition = { activity_type: 'walking', distance_km: 100 }
+    expect(computeRecordRegretLine(condition, metrics, noLabels)).toBeNull()
   })
 })
