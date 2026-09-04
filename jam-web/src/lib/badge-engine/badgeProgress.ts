@@ -446,8 +446,12 @@ function buildCumulativeAxis(condition: BadgeCondition, metrics: UserPeriodMetri
 function buildRecordAxis(condition: BadgeCondition, metrics: UserPeriodMetrics, labelMap: LabelMap): AxisResult {
   if (condition.distance_km !== undefined) return buildSameActivitySingleAxis('distance_km', condition, metrics, labelMap)
   if (condition.elevation_gain_m !== undefined) return buildSameActivitySingleAxis('elevation_gain_m', condition, metrics, labelMap)
-  const key = (['duration_minutes', 'min_speed_kmh', 'max_pace_sec_per_km', 'temperature_min_c', 'temperature_max_c', 'weekend_duration_hours'] as const)
-    .find((k) => condition[k] !== undefined)
+  // SCALAR_AXIS_KEYS에서 파생 — 손으로 다시 나열하면 그 목록에 축이 추가될 때 여기가 누락돼
+  // classifyBadgeProgressKind는 'record'로 분류하는데 여기서 throw하는 불일치가 생길 수 있다
+  // (개선 리뷰 지적, 티켓 20260904_0631 재시도).
+  const key = SCALAR_AXIS_KEYS.filter((k) => k !== 'distance_km' && k !== 'elevation_gain_m').find(
+    (k) => condition[k] !== undefined
+  )
   if (!key) throw new Error('[computeBadgeProgress] buildRecordAxis: 필드를 찾을 수 없음 — classifyBadgeProgressKind와 불일치')
   return buildScalarAxis(key, condition, metrics, labelMap)
 }
