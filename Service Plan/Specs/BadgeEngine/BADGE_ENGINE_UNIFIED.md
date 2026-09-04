@@ -331,6 +331,28 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   `BadgeProgressAxis`에 축 단위 진행비율 `fraction`이 노출돼 있다 — "작을수록 좋음"(페이스)·
   한파(`temperature_max_c`, 비선형 기준점) 축은 `current`/`target` 단순 비율로 재계산하면
   진행 바가 틀리므로 표시 레이어가 이 값을 그대로 써야 한다.
+- **3차 1단계 — 진행 스냅샷 저장(티켓 20260904_1156).** 2b~2d는 전부 "지금 이 순간" 값만
+  실시간 재계산해 이전 상태와 비교할 방법이 없었다. 신규 테이블 `user_family_progress`
+  (`user_id, activity_type, family_name` PK, RLS는 service_role 전용으로 닫아둠 —
+  `mission_rank_snapshots`·`poi_views`와 동일 방침)가 계열별 프런티어(첫 미획득 등급)의
+  `progress`(0~1)·`current`(`BadgeProgress.axes` 스냅샷)·`prev`(직전 동기화 시점의
+  `current`)를 저장해 "직전 동기화 대비 얼마나 나아갔는지"(3b, 레일 채움 막대 꼬리)의
+  비교 기준을 만든다. write-hook `updateFamilyProgressSnapshots()`(`src/lib/strava/sync.ts`)가
+  `processFetchedActivities()`의 `recordProcessedActivities()` 직후(활동이 이미
+  `strava_activities`에 기록된 시점) 유저가 가진 계열 전체(약 72개, 미획득 프런티어가 있는
+  것만)를 순회해 기존 `computeUserPeriodMetrics()`/`computeBadgeProgress()`를 그대로 호출한
+  결과를 일괄 upsert한다 — **새 계산 없음.** `labelMap`은 빈 Map, `locks`도 빈 배열로
+  넘긴다 — `axis.key` 원문 저장, `gate` 미저장이며 둘 다 표시 시점(3b)에 다시 채운다. 이
+  훅은 실패해도 싱크 자체(배지 발급·미션 판정)를 막지 않는다(전체 try/catch로 격리).
+- **계열 정합성 트리거 `badges_family_consistency`**(`102_condition_json_check_constraint.sql`과
+  같은 "DB가 조건 형태를 직접 검증한다" 방침의 연장, `type='activity'`에만 적용) — 어드민이
+  `condition_json`을 고쳐 같은 계열(`activity_types`+`name`) 안 형제 배지와
+  `MEASURABLE_CONDITION_KEYS` 교집합이 어긋나면 쓰기 자체를 막는다. **비교 범위는
+  `MEASURABLE_CONDITION_KEYS`(17개)로 한정** — 전체 `jsonb_object_keys`를 비교하면
+  `prerequisite_badge_names`(Common엔 없고 Rare 이상엔 있는 정상 설계) 때문에 다등급 계열
+  40/72개가 즉시 위반한다(1차 시도 실측, 사전 점검 재실측에서 위반 0건 확인 후 적용).
+  형제 존재 여부로 비교 대상을 찾으므로 이름 오타로 계열이 쪼개지는 시나리오는 막지
+  못한다(알려진 한계로 문서화만 하고 별도 대응은 후속 판단).
 
 ---
 
@@ -820,7 +842,7 @@ src/lib/badge-engine/badgeProgress.ts     진행 계산 계층(표시 전용, �
 src/lib/badge-engine/metricLabels.ts      배지 지표 라벨·단위 배치 조회 — §2.13
 src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현 — v2는 §3 설계)
 src/lib/ambient-drop/                     앰비언트(시스템) POI 드랍 엔진 — §3.12
-src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출)
+src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출) — updateFamilyProgressSnapshots §2.13
 src/lib/abusing/                          섀도우밴 정책 (공용)
 supabase/migrations/033_reseed_activity_badges_v3.sql   액티비티배지 시드
 supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 최초 스키마 — §3.12
@@ -828,4 +850,5 @@ supabase/migrations/100_remove_ambient_drop.sql         앰비언트 드랍 제�
 supabase/migrations/104_ambient_drop_reintroduce.sql    앰비언트 드랍 재도입(2026-08-26) — §3.12
 supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
 supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
+supabase/migrations/128_user_family_progress_consistency_trigger.sql   진행 스냅샷 테이블 + 계열 정합성 트리거 — §2.13
 ```
