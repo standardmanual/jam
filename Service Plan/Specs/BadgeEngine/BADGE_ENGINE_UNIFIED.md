@@ -316,8 +316,15 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   `index.ts`가 최상단에서 `@/lib/supabase/server`(→`next/headers`)를 무조건 import해서
   분리 없이는 전이 의존이 생겼다(1차 게이트 리뷰 FAIL로 발견 — 하루 전 티켓 20260903_2329의
   `badgeTreeConditionStatus.ts`/`.server.ts` 분리와 동일 유형 문제).
-- **다음 소비처**: 아직 이 계층을 실제로 호출하는 화면이 없다(2c, 후속 티켓에서 배지 트리
-  레일에 연결 예정).
+- **소비처(2c, 티켓 20260904_0921)**: 배지 트리 레일(`BadgeStageRail`)·트로피그리드
+  (`BadgeTrophyGridCard`)에 연결 완료 — 누적·기록·주기 3종(단일 축)만 반영했고, 2축형·
+  다중카운터형(22개)은 신규 게이지 컴포넌트가 필요해 후속 티켓(2d)으로 분리했다. 숫자→
+  한국어 문구 변환은 계산 계층에 섞지 않고 별도 표시 레이어 `src/lib/badgeProgressText.ts`가
+  담당한다(`computeRecordRegretLine()`이 반환하는 기록형 "아쉬움 줄" 포함).
+  카탈로그 실측: **2축형(dual) 20개는 전부 레일(계열) 소속**(러닝·사이클링·등산·트레일러닝
+  5계열×4등급), **다중카운터형(multi) 2개는 전부 트로피그리드 소속**(단일 등급, 선행 배지
+  없음) — 그리드는 kind-무관 공통 포맷("병목 축 current/target 한 줄")이라 이 2개도
+  이미 처리됐고, 2d가 만들 게이지는 레일 전용이면 된다.
 
 ---
 
