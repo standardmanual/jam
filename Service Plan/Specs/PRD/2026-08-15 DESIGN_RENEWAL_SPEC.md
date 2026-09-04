@@ -248,7 +248,7 @@
 ### Chip / Badge
 
 **희귀도 chip:** `--color-rarity-*` 토큰 사용, `--radius-tags` (pill), 패딩 4px/9px · 폰트 8px(2026-08-27 축소, 이전 12px).  
-**COMMON 등급은 칩을 표시하지 않는다** — common은 "특별할 것 없는 기본 등급"이라 라벨링할 가치가 없다는 판단(2026-08-27). `RarityBadge`(`@ds/components/cards/RarityBadge`)가 `rarity==='common'`이면 `null`을 반환해 구현하며, 이 컴포넌트를 쓰는 모든 화면(인벤토리, 아이템북, 배지 상세, 알림 피드 등)에 자동 적용된다. 새 화면에서 등급 chip이 필요하면 반드시 `RarityBadge`를 재사용하고 직접 구현하지 않는다 — 과거 `BadgeGridCard`/`CollectionGridCard`(MODULAR 카탈로그본)와 `FeedSection`이 각자 등급 pill을 복제 구현해뒀다가 이 정책 적용이 누락된 전례가 있다(20260827_024).  
+**COMMON 등급은 칩을 표시하지 않는다** — common은 "특별할 것 없는 기본 등급"이라 라벨링할 가치가 없다는 판단(2026-08-27). `RarityBadge`(`@ds/components/cards/RarityBadge`)가 `rarity==='common'`이면 `null`을 반환해 구현하며, 이 컴포넌트를 쓰는 모든 화면(인벤토리, 아이템북, 배지 상세, 알림 피드 등)에 자동 적용된다. 새 화면에서 등급 chip이 필요하면 반드시 `RarityBadge`를 재사용하고 직접 구현하지 않는다 — 과거 `BadgeGridCard`/`CollectionGridCard`(MODULAR 카탈로그본)와 `FeedSection`이 각자 등급 pill을 복제 구현해뒀다가 이 정책 적용이 누락된 전례가 있다(20260827_024). 이 미표시 정책은 **시각적 chip 렌더링에만** 적용된다 — 렌더링 없이 등급 텍스트만 필요한 소비자(스크린리더용 라이브 리전 등)는 같은 파일의 `getRarityLabel(rarity)`를 쓴다. `BadgeRevealCarousel`이 `RarityBadge`를 라이브 리전 텍스트 용도로 그대로 재사용했다가, common 등급에서 등급 공지가 통째로 사라지는 회귀가 난 전례가 있다(20260904_1502).  
 **상태 chip(NEW/참가중/상시):** `--color-primary`(NEW) 또는 `--color-border-light`(그 외), `--radius-tags`.  
 **완성 chip:** `--color-rarity-epic`(#f5a300), `--radius-tags`, 희귀도 chip과 동일 크기(나란히 붙는 경우 크기를 맞춘다).
 
