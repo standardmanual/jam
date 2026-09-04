@@ -23,9 +23,19 @@ import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { logEngineDecision } from '@/lib/engine-log'
 import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
+import { getActivityHistory } from '@/lib/strava/activity-history'
+import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engine/badgeProgress'
 import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
-import type { StravaConnectionRow, BadgeType, BadgeRarity, PoiRow, StravaActivityRow } from '@/types/database'
+import type {
+  StravaConnectionRow,
+  BadgeType,
+  BadgeRarity,
+  BadgeCondition,
+  ActivityType,
+  PoiRow,
+  StravaActivityRow,
+} from '@/types/database'
 
 /** 싱크 1회당 아이템 드랍을 시도할 최대 활동 수 (최신순). 백필 시 드랍 폭주·타임아웃 방지 */
 const MAX_DROP_ACTIVITIES_PER_SYNC = 3
@@ -266,6 +276,184 @@ async function recordProcessedActivities(
     .upsert(rows, { onConflict: 'user_id,strava_id' })
   if (error) {
     console.error('[recordProcessedActivities] 기록 오류:', error)
+  }
+}
+
+/**
+ * 계열별 프런티어(첫 미획득 등급) 판별에 쓰는 등급 오름차순 — badgeTree.ts의 비공개
+ * RARITY_ORDER와 값이 반드시 같아야 하지만, 그 파일이 export하지 않고 이 티켓도 재사용
+ * 대상으로 지정하지 않아(badgeProgress.ts가 index.ts의 PER_ACTIVITY_KEYS를 재선언하는
+ * 것과 동일한 판단 — "재사용이 아니라 재선언") 여기서 다시 선언한다. badgeTree.ts가 이
+ * 순서를 바꾸면 이 배열도 함께 봐야 한다.
+ */
+const FAMILY_RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+
+/** updateFamilyProgressSnapshots가 계열 그룹핑에 쓰는 badges 조회 최소 필드 */
+interface FamilyProgressBadgeRow {
+  id: string
+  name: string
+  rarity: BadgeRarity
+  activity_types: ActivityType[] | null
+  condition_json: BadgeCondition | null
+}
+
+/**
+ * 계열 진행 스냅샷 write-hook (티켓 20260904_1156, 배지트리 리뉴얼 3차 1단계) —
+ * `user_family_progress`에 유저가 가진 모든 계열(활동배지, 미획득 프런티어가 있는 것만)의
+ * 진행 상태를 upsert한다. 화면은 이 티켓 범위가 아니다(후속 3b) — 저장까지만 한다.
+ *
+ * - **새 계산 없음**: `computeUserPeriodMetrics()`(activity_type당 1회) + `computeBadgeProgress()`
+ *   (프런티어 1개당 1회, 2b/2c/2d 그대로)를 호출해 얻은 결과를 저장할 뿐이다.
+ * - `labelMap`은 빈 Map을 그대로 넘긴다 — `getMetricLabels()`는 이 티켓 C절이 명시한 재사용
+ *   대상(위 두 함수)에 포함되지 않는다. 게다가 `getMetricLabels()`는 내부에서 자체
+ *   `createServiceClient()`를 새로 만들어 이 파일이 지키는 "주입된 클라이언트만 사용" 규율
+ *   (티켓 20260831_1300, `sync-vehicle-speed-filter.test.ts` 회귀 테스트가 감시)을 깬다.
+ *   라벨/단위는 이 훅이 채우지 않고 axis.key 원문으로 저장되며, 실제 라벨은 표시 시점(3b)에
+ *   `badge_metric_labels`를 다시 조회해 붙인다.
+ * - `locks`는 항상 빈 배열을 넘긴다 — `computeBadgeProgress()`가 돌려주는 `gate` 필드는 이
+ *   테이블에 저장하지 않으므로(progress·axes만 저장) missions 조인을 포함한 잠금 그래프를
+ *   다시 만들 필요가 없다(`buildGate([])`는 null을 돌려줄 뿐 axes/progress 계산에는 관여하지
+ *   않는다 — badgeProgress.ts 참고).
+ * - 이 훅이 실패해도 싱크 자체(배지 발급 등 이미 끝난 로직)는 죽지 않는다 — 전체를
+ *   try/catch로 감싸 실패 시 로그만 남긴다.
+ */
+async function updateFamilyProgressSnapshots(
+  supabase: SupabaseClient,
+  userId: string,
+  /** 이번 싱크에서 새로 확인된 활동 전체(필터 전) — recordProcessedActivities 직후 호출돼야
+   *  strava_activities에 이미 기록된 상태다 */
+  activities: NormalizedActivity[]
+): Promise<void> {
+  try {
+    // 이번 배치의 "트리거 활동"(감사용 last_activity_id) — 배치 내 최신 활동 1건의
+    // strava_activities.id. 계열별 활동 종목과 무관하게 이번 싱크 전체가 공유하는 단일 값.
+    const latestInBatch = [...activities].sort(
+      (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    )[0]
+    const { data: latestActivityRow, error: latestActivityError } = await supabase
+      .from('strava_activities')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('strava_id', latestInBatch.stravaId)
+      .maybeSingle()
+    if (latestActivityError) {
+      console.error('[updateFamilyProgressSnapshots] 최신 활동 행 조회 오류:', latestActivityError)
+    }
+    const lastActivityId = (latestActivityRow as { id: string } | null)?.id ?? null
+
+    // 활동배지 카탈로그 전체(소프트 삭제 제외) — 계열 그룹핑용. 207건(1차 시도 실측) <
+    // PostgREST 기본 페이지 상한(1000)이라 별도 페이지네이션이 필요 없다.
+    const { data: badgesRaw, error: badgesError } = await supabase
+      .from('badges')
+      .select('id, name, rarity, activity_types, condition_json')
+      .eq('type', 'activity')
+      .is('deleted_at', null)
+      .not('activity_types', 'is', null)
+    if (badgesError) throw new Error(`badges 조회 실패: ${badgesError.message}`)
+    const badges = (badgesRaw ?? []) as FamilyProgressBadgeRow[]
+
+    // 이 유저의 활동배지 획득 id — 소프트 삭제 배지는 위 badges 조회에서 이미 제외되므로
+    // (badges/tree/page.tsx와 동일 판단) 별도 조인 없이 badge_id만 조회한다.
+    const { data: earnedRaw, error: earnedError } = await supabase
+      .from('user_activity_badges')
+      .select('badge_id')
+      .eq('user_id', userId)
+    if (earnedError) throw new Error(`user_activity_badges 조회 실패: ${earnedError.message}`)
+    const earnedBadgeIds = new Set(((earnedRaw ?? []) as { badge_id: string }[]).map((r) => r.badge_id))
+
+    // 계열 그룹핑 — mission_reward 제외, (activity_type, name) 키(badgeTree.ts:160-171과 동일 규칙).
+    // family_name(badges.name)이 "동네 산책러"처럼 공백을 포함해 문자열 키를 다시 split하지
+    // 않도록, 그룹 값 자체에 activityType/familyName을 원본 그대로 함께 들고 다닌다.
+    type Family = { activityType: ActivityType; familyName: string; variants: FamilyProgressBadgeRow[] }
+    const families = new Map<string, Family>()
+    for (const b of badges) {
+      if (b.condition_json?.mission_reward) continue
+      const activityType = b.activity_types?.[0]
+      if (!activityType) continue
+      const key = `${activityType}::${b.name}`
+      const entry = families.get(key)
+      if (entry) entry.variants.push(b)
+      else families.set(key, { activityType, familyName: b.name, variants: [b] })
+    }
+
+    // 프런티어(계열 안 첫 미획득 등급) 산출 — 계열을 전부 획득했으면 진행 표시 불필요(제외)
+    const frontiers: { activityType: ActivityType; familyName: string; badge: FamilyProgressBadgeRow }[] = []
+    for (const { activityType, familyName, variants } of families.values()) {
+      for (const rarity of FAMILY_RARITY_ORDER) {
+        const variant = variants.find((v) => v.rarity === rarity)
+        if (!variant) continue
+        if (!earnedBadgeIds.has(variant.id)) {
+          frontiers.push({ activityType, familyName, badge: variant })
+          break
+        }
+      }
+    }
+    if (frontiers.length === 0) return
+
+    // 유저 활동 이력 전체 — 이번 배치는 위 recordProcessedActivities()가 이미
+    // strava_activities에 기록했으므로(호출부 기준 직전) 이 조회 하나로 이번 배치까지 포함한
+    // 전체 이력을 얻는다(mergeActivityHistory 불필요 — evaluateBadgesDetailed 내부
+    // (badge-engine/index.ts:604)와 달리 이 시점엔 배치가 이미 반영돼 있다).
+    const history = await getActivityHistory(supabase, userId)
+    const now = new Date()
+    const metricsByType = new Map<ActivityType, ReturnType<typeof computeUserPeriodMetrics>>()
+    const emptyLabelMap = new Map<string, { label: string; unit: string | null }>()
+
+    // 기존 스냅샷의 current를 이번 prev로 옮기기 위한 조회 — 최대 72행(계열 총수), 일괄 조회
+    const { data: existingRaw, error: existingError } = await supabase
+      .from('user_family_progress')
+      .select('activity_type, family_name, current')
+      .eq('user_id', userId)
+    if (existingError) throw new Error(`user_family_progress 기존값 조회 실패: ${existingError.message}`)
+    const prevByKey = new Map<string, unknown>()
+    for (const row of (existingRaw ?? []) as { activity_type: string; family_name: string; current: unknown }[]) {
+      prevByKey.set(`${row.activity_type}::${row.family_name}`, row.current)
+    }
+
+    const rows: {
+      user_id: string
+      activity_type: string
+      family_name: string
+      progress: number
+      current: unknown
+      prev: unknown
+      last_activity_id: string | null
+    }[] = []
+    for (const { activityType, familyName, badge } of frontiers) {
+      if (!badge.condition_json) continue
+      if (!metricsByType.has(activityType)) {
+        metricsByType.set(activityType, computeUserPeriodMetrics(activityType, history, now))
+      }
+      const metrics = metricsByType.get(activityType)!
+      let progress: ReturnType<typeof computeBadgeProgress>
+      try {
+        progress = computeBadgeProgress(badge.condition_json, metrics, emptyLabelMap, [])
+      } catch (err) {
+        console.error(`[updateFamilyProgressSnapshots] computeBadgeProgress 실패 — badge: ${badge.name}:`, err)
+        continue
+      }
+      if (progress.kind === 'unsupported') continue
+
+      const key = `${activityType}::${familyName}`
+      rows.push({
+        user_id: userId,
+        activity_type: activityType,
+        family_name: familyName,
+        progress: progress.progress,
+        current: progress.axes,
+        prev: prevByKey.get(key) ?? null,
+        last_activity_id: lastActivityId,
+      })
+    }
+    if (rows.length === 0) return
+
+    // 일괄 upsert — 계열마다 개별 쿼리 금지(최대 72개 왕복은 싱크 지연으로 바로 체감된다)
+    const { error: upsertError } = await supabase
+      .from('user_family_progress')
+      .upsert(rows, { onConflict: 'user_id,activity_type,family_name' })
+    if (upsertError) throw new Error(`upsert 실패: ${upsertError.message}`)
+  } catch (err) {
+    console.error(`[updateFamilyProgressSnapshots] 실패 — userId: ${userId}:`, err)
   }
 }
 
@@ -614,6 +802,12 @@ export async function processFetchedActivities(
   // 멱등 처리 기준 데이터 기록 — 이번에 "새로" 확인된 활동 전체(가져온 원본 기준)를 처리 완료로 표시.
   // 성공적으로 여기까지 도달한 경우에만 기록하므로, 중간에 실패하면 다음 시도에서 자연스럽게 재처리된다.
   await recordProcessedActivities(supabase, userId, activities, processedVia)
+
+  // 계열 진행 스냅샷 갱신 — 티켓 20260904_1156(배지트리 리뉴얼 3차 1단계). 위 호출로 이번
+  // 배치가 이미 strava_activities에 기록된 직후라 getActivityHistory() 한 번으로 이번 배치까지
+  // 포함한 전체 이력을 얻을 수 있다. 실패해도 이미 끝난 배지 발급·미션 판정 결과에는 영향을
+  // 주지 않는다 — 함수 내부에서 전부 try/catch로 흡수한다.
+  await updateFamilyProgressSnapshots(supabase, userId, activities)
 
   return {
     badges: badgesEarned + poiBadgesEarned + rewardBadgesIssued,
