@@ -316,15 +316,21 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   `index.ts`가 최상단에서 `@/lib/supabase/server`(→`next/headers`)를 무조건 import해서
   분리 없이는 전이 의존이 생겼다(1차 게이트 리뷰 FAIL로 발견 — 하루 전 티켓 20260903_2329의
   `badgeTreeConditionStatus.ts`/`.server.ts` 분리와 동일 유형 문제).
-- **소비처(2c, 티켓 20260904_0921)**: 배지 트리 레일(`BadgeStageRail`)·트로피그리드
-  (`BadgeTrophyGridCard`)에 연결 완료 — 누적·기록·주기 3종(단일 축)만 반영했고, 2축형·
-  다중카운터형(22개)은 신규 게이지 컴포넌트가 필요해 후속 티켓(2d)으로 분리했다. 숫자→
-  한국어 문구 변환은 계산 계층에 섞지 않고 별도 표시 레이어 `src/lib/badgeProgressText.ts`가
-  담당한다(`computeRecordRegretLine()`이 반환하는 기록형 "아쉬움 줄" 포함).
-  카탈로그 실측: **2축형(dual) 20개는 전부 레일(계열) 소속**(러닝·사이클링·등산·트레일러닝
-  5계열×4등급), **다중카운터형(multi) 2개는 전부 트로피그리드 소속**(단일 등급, 선행 배지
-  없음) — 그리드는 kind-무관 공통 포맷("병목 축 current/target 한 줄")이라 이 2개도
-  이미 처리됐고, 2d가 만들 게이지는 레일 전용이면 된다.
+- **소비처(2c·2d, 티켓 20260904_0921/1058) — 다섯 유형 전부 화면 연결 완료.** 배지 트리
+  레일(`BadgeStageRail`)·트로피그리드(`BadgeTrophyGridCard`)에 누적·기록·주기(단일 축,
+  170개)를 2c가, 2축형(dual, 20개)을 2d가 신규 MODULAR 패턴 `DualAxisGauge`로 연결했다.
+  숫자→한국어 문구 변환은 계산 계층에 섞지 않고 별도 표시 레이어 `src/lib/
+  badgeProgressText.ts`가 담당한다(`computeRecordRegretLine()`의 기록형 "아쉬움 줄",
+  `formatDualAxisGaugeProps()`의 2축 규칙 문장·병목 안내 포함).
+  카탈로그 실측: **2축형 20개는 전부 레일(계열) 소속**(러닝·사이클링·등산·트레일러닝
+  5계열×4등급, 16개는 "각각 다른 활동"·4개(야생의 첫발)만 "한 번의 활동에서 동시"),
+  **다중카운터형(multi) 2개는 전부 트로피그리드 소속**(단일 등급, 선행 배지 없음) — 그리드는
+  kind-무관 공통 포맷("병목 축 current/target 한 줄")이라 별도 컴포넌트 없이 이미 처리됐다.
+  프로토타입이 설계했던 "다중 카운터 게이지"(세그먼트 바)는 현재 카탈로그에 쓰일 자리가
+  없어 만들지 않았다 — 새 계열이 레일에 다중카운터형으로 추가되면 그때 판단한다.
+  `BadgeProgressAxis`에 축 단위 진행비율 `fraction`이 노출돼 있다 — "작을수록 좋음"(페이스)·
+  한파(`temperature_max_c`, 비선형 기준점) 축은 `current`/`target` 단순 비율로 재계산하면
+  진행 바가 틀리므로 표시 레이어가 이 값을 그대로 써야 한다.
 
 ---
 
