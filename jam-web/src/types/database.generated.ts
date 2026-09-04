@@ -796,6 +796,24 @@ export type Database = {
           },
         ]
       }
+      inventory_policy: {
+        Row: {
+          id: number
+          max_slots: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          max_slots?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          max_slots?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       item_books: {
         Row: {
           background_animation: Json | null
@@ -2394,6 +2412,10 @@ export type Database = {
       pickup_drop: {
         Args: { p_drop_id: string; p_inventory_id: string; p_picker_id: string }
         Returns: Json
+      }
+      set_inventory_max_slots: {
+        Args: { p_max_slots: number }
+        Returns: number
       }
       slot_item_into_book: {
         Args: {

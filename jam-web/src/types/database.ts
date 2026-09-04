@@ -232,6 +232,17 @@ export interface InventoryRow {
   created_at: string
 }
 
+/**
+ * inventory_policy 테이블 — inventory.max_slots 전역 정책 싱글톤(id=1 고정).
+ * 저장 시 set_inventory_max_slots() DB 함수가 기존 inventory row 전체 UPDATE와
+ * 이 행 갱신을 함께 처리한다 (src/lib/inventory/policy.ts). 티켓 20260904_1623.
+ */
+export interface InventoryPolicyRow {
+  id: number
+  max_slots: number
+  updated_at: string
+}
+
 export interface InventoryItemRow {
   id: string
   /** null = 현재 소유자 없음(Dropped/AtPoi 또는 Orphaned) — 20260829_2101 */
@@ -1277,6 +1288,12 @@ export interface Database {
         Row: DropPolicyRow
         Insert: Partial<DropPolicyRow> & { id: number }
         Update: Partial<Omit<DropPolicyRow, 'id'>>
+        Relationships: []
+      }
+      inventory_policy: {
+        Row: InventoryPolicyRow
+        Insert: Partial<InventoryPolicyRow> & { id?: number }
+        Update: Partial<Omit<InventoryPolicyRow, 'id'>>
         Relationships: []
       }
       ambient_drop_config: {
