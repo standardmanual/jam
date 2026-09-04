@@ -396,7 +396,7 @@ async function updateFamilyProgressSnapshots(
     // (badge-engine/index.ts:604)와 달리 이 시점엔 배치가 이미 반영돼 있다).
     const history = await getActivityHistory(supabase, userId)
     const now = new Date()
-    const metricsByType = new Map<ActivityType, ReturnType<typeof computeUserPeriodMetrics>>()
+    const metricsByType = new Map<ActivityType, ReturnType<typeof computeUserPeriodMetrics> | null>()
     const emptyLabelMap = new Map<string, { label: string; unit: string | null }>()
 
     // 기존 스냅샷의 current를 이번 prev로 옮기기 위한 조회 — 최대 72행(계열 총수), 일괄 조회
@@ -422,9 +422,18 @@ async function updateFamilyProgressSnapshots(
     for (const { activityType, familyName, badge } of frontiers) {
       if (!badge.condition_json) continue
       if (!metricsByType.has(activityType)) {
-        metricsByType.set(activityType, computeUserPeriodMetrics(activityType, history, now))
+        // activityType 단위로도 방어한다 — computeUserPeriodMetrics 실패가 이 밖(함수 전체)의
+        // try/catch에만 걸리면 그 유저의 계열 72개 전부가 통째로 스킵된다(개선 리뷰 지적,
+        // 티켓 20260904_1156). 실패한 activityType만 null로 표시해 그 계열들만 건너뛴다.
+        try {
+          metricsByType.set(activityType, computeUserPeriodMetrics(activityType, history, now))
+        } catch (err) {
+          console.error(`[updateFamilyProgressSnapshots] computeUserPeriodMetrics 실패 — activityType: ${activityType}:`, err)
+          metricsByType.set(activityType, null)
+        }
       }
-      const metrics = metricsByType.get(activityType)!
+      const metrics = metricsByType.get(activityType)
+      if (!metrics) continue
       let progress: ReturnType<typeof computeBadgeProgress>
       try {
         progress = computeBadgeProgress(badge.condition_json, metrics, emptyLabelMap, [])
