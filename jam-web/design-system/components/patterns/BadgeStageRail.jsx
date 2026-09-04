@@ -220,10 +220,16 @@ export function BadgeStageRail({
       <div role="group" aria-label={summarySentence} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 'var(--spacing-16)' }}>
         {stops.map((stop, i) => {
           const rarityLabel = RARITY_LABEL[stop.rarity] ?? stop.rarity;
+          const showProgress = i === frontierIndex && frontierProgress != null;
+          // 진행 캡션은 화면에만 보이고 aria-label에는 반영되지 않아, 스크린리더 사용자는
+          // 이번 티켓 이전과 동일하게 상태 라벨만 듣는 정보 격차가 있었다(개선 리뷰·인터랙션
+          // 리뷰 공통 지적, 티켓 20260904_0921). 진행 캡션을 문장 끝에 이어 붙여 해소한다.
           const stopAriaLabel =
-            stop.status === 'ready' || stop.status === 'locked'
+            (stop.status === 'ready' || stop.status === 'locked'
               ? `${familyName} ${rarityLabel}, ${STATUS_LABEL[stop.status]}. 잠금 해제 조건 보기`
-              : `${familyName} ${rarityLabel}, ${STATUS_LABEL[stop.status]}`;
+              : `${familyName} ${rarityLabel}, ${STATUS_LABEL[stop.status]}`) +
+            (showProgress ? `. ${frontierProgress.text}` : '') +
+            (showProgress && regretLine ? `. ${regretLine}` : '');
           const isGateBefore = i === frontierIndex && i > 0 && (stop.status === 'locked' || stop.status === 'ready');
           // 프런티어 앞(게이트 없을 때)만 비례 채움 대상 — 그 앞(모두 획득 구간)은 항상 꽉
           // 채우고, 뒤(아직 도달 안 한 구간)는 항상 idle이다(§05: "다음 목표" 한 곳에만 강조).
@@ -284,10 +290,17 @@ export function BadgeStageRail({
                 <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 48 }}>
                   <StopThumbnail imageUrl={stop.imageUrl} alt={`${familyName} ${rarityLabel}`} status={stop.status} />
                   {(() => {
-                    const showProgress = i === frontierIndex && frontierProgress != null;
                     const captionText = showProgress ? frontierProgress.text : STATUS_LABEL[stop.status];
+                    // fraction>=1(조건은 채웠고 게이트만 남음)이면 앰버가 아니라 라임 —
+                    // BadgeTrophyGridCard가 이미 쓰는 것과 같은 기준(개선 리뷰 지적,
+                    // 티켓 20260904_0921). 조건 자체를 못 채운 동안만 앰버로 남긴다.
+                    const progressComplete = showProgress && !frontierProgress.muted && frontierProgress.fraction >= 1;
                     const captionColor = showProgress
-                      ? frontierProgress.muted ? 'var(--color-text-secondary)' : 'var(--status-short-solid)'
+                      ? frontierProgress.muted
+                        ? 'var(--color-text-secondary)'
+                        : progressComplete
+                          ? 'var(--status-done-solid)'
+                          : 'var(--status-short-solid)'
                       : stop.status === 'earned' || stop.status === 'ready' ? 'var(--status-done-solid)' : 'var(--color-text-secondary)';
                     return (
                       <span
@@ -302,6 +315,9 @@ export function BadgeStageRail({
                           fontStyle: showProgress && frontierProgress.muted ? 'italic' : 'normal',
                           color: captionColor,
                           opacity: !showProgress && stop.status === 'not-reached' ? 0.7 : 1,
+                          // 숫자 자릿수가 흔들리는 캡션("87.3/100km" 등)의 폭을 고정 —
+                          // BadgeTrophyGridCard와 표기 일관성(인터랙션 리뷰 지적, 20260904_0921).
+                          fontVariantNumeric: showProgress ? 'tabular-nums' : undefined,
                         }}
                       >
                         {captionText}

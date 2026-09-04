@@ -35,12 +35,29 @@ function formatAxisNumber(key: string, value: number): string {
   return String(Math.round(value))
 }
 
+/**
+ * 측정값(current) 전용 반올림 — `met`은 원값 기준으로 판정되는데 표기가 반올림으로
+ * 앞서가면 "이미 다 채운 것처럼" 보이면서 실제로는 미달인 경우가 생긴다(개선 리뷰 지적,
+ * 티켓 20260904_0921 — 예: duration_minutes 44.6/45면 아직 미달인데 "45/45분"으로 보임).
+ * higher-is-better 축은 내림, lower-is-better 축(페이스·최고기온)은 올림으로 "아직 못
+ * 미친 쪽"에 붙인다 — `missions/format.ts`의 `Math.floor` 관례를 방향까지 맞춰 확장했다.
+ * target은 고정 임계값이라 이 문제가 없어 그대로 `formatAxisNumber`(반올림)를 쓴다.
+ */
+function formatCurrentValue(key: string, current: number): string {
+  const decimals = ONE_DECIMAL_KEYS.has(key) ? 1 : 0
+  const factor = 10 ** decimals
+  const rounded = LOWER_IS_BETTER_KEYS.has(key)
+    ? Math.ceil(current * factor) / factor
+    : Math.floor(current * factor) / factor
+  return decimals === 1 ? rounded.toFixed(1) : String(rounded)
+}
+
 /** "{current}/{target}{unit}" — 페이스 축은 "7:45/km / 7:30/km"처럼 mm:ss 표기로 바꾼다. */
 function formatAxisRange(axis: BadgeProgressAxis): string {
   if (axis.key === 'max_pace_sec_per_km') {
     return `${formatPaceSecPerKm(axis.current)} / ${formatPaceSecPerKm(axis.target)}`
   }
-  const current = formatAxisNumber(axis.key, axis.current)
+  const current = formatCurrentValue(axis.key, axis.current)
   const target = formatAxisNumber(axis.key, axis.target)
   return axis.unit ? `${current}/${target}${axis.unit}` : `${current}/${target}`
 }
@@ -99,14 +116,23 @@ export function formatRegretLineText(regret: RegretLineData, rarity: BadgeRarity
   const rarityLabel = RARITY_LABEL[rarity] ?? rarity
 
   if (regret.key === 'max_pace_sec_per_km') {
-    const diffSec = Math.max(0, Math.round(regret.current - regret.target))
+    // 남은 양은 항상 올림 — 반올림으로 0이 되면 실제로 남았는데 "0초 모자랐어요"가 된다
+    // (개선 리뷰 지적, 티켓 20260904_0921).
+    const diffSec = Math.max(0, Math.ceil(regret.current - regret.target))
     return `지난 활동 페이스는 ${formatPaceSecPerKm(regret.current)}. ${rarityLabel}까지 ${diffSec}초 모자랐어요.`
   }
 
   const lowerBetter = LOWER_IS_BETTER_KEYS.has(regret.key)
   const diffRaw = lowerBetter ? regret.current - regret.target : regret.target - regret.current
-  const diff = formatAxisNumber(regret.key, Math.max(0, diffRaw))
-  const current = formatAxisNumber(regret.key, regret.current)
+  const decimals = ONE_DECIMAL_KEYS.has(regret.key) ? 1 : 0
+  const factor = 10 ** decimals
+  // 남은 양은 항상 올림(위 페이스 분기와 같은 이유) — current 표기는 formatCurrentValue와
+  // 같은 "아직 못 미친 쪽" 원칙을 공유한다.
+  const diffRounded = Math.ceil(Math.max(0, diffRaw) * factor) / factor
+  const diff = decimals === 1 ? diffRounded.toFixed(1) : String(diffRounded)
+  const current = formatCurrentValue(regret.key, regret.current)
   const unit = regret.unit ?? ''
-  return `지난 활동 기록은 ${current}${unit}. ${rarityLabel}까지 ${diff}${unit} 모자랐어요.`
+  // regret.label을 문장에 포함 — 없으면 단위만으로 "기록"이 뭘 가리키는지 유추해야 했다
+  // (개선 리뷰 지적, 티켓 20260904_0921).
+  return `지난 활동 ${regret.label} 기록은 ${current}${unit}. ${rarityLabel}까지 ${diff}${unit} 모자랐어요.`
 }
