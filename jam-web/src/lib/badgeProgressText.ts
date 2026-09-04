@@ -15,6 +15,9 @@ import type { BadgeRarity } from '@/types/database'
  * 이유로 문장 조립도 계산 계층 밖에 둔다), 이 파일이 그 숫자를 실제 문구로 조립한다.
  * `BadgeStageRail`(DS, 프레젠테이션 전용)·`BadgeTrophyGridCard`(서비스)는 이 파일이 만든
  * 완성 문자열만 prop으로 받는다 — 두 컴포넌트 모두 kind를 직접 분기하지 않는다.
+ *
+ * `formatDualAxisGaugeProps()`(2d, 티켓 20260904_1058)도 같은 원칙 — `DualAxisGauge`(DS
+ * 신규 패턴)에 완성 문자열/숫자만 넘기고, 그 컴포넌트는 kind를 모른다.
  */
 
 const RARITY_LABEL: Record<BadgeRarity, string> = { common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' }
@@ -104,6 +107,56 @@ export function formatGridProgressLine(progress: BadgeProgress): FrontierCaption
   if (progress.kind === 'unsupported') return { text: UNSUPPORTED_TEXT, fraction: 0, muted: true }
   const axis = progress.axes.find((a) => a.key === progress.bottleneck) ?? progress.axes[0]
   return { text: formatAxisRange(axis), fraction: progress.progress }
+}
+
+export type DualAxisLine = {
+  /** BadgeProgressAxis.key와 동일 네임스페이스 */
+  key: string
+  label: string
+  /** "{current}/{target}{unit}" — formatAxisRange와 동일 규칙(페이스 축은 mm:ss) */
+  rangeText: string
+  /** 이 축 하나의 DS ProgressBar percent 계산용(0~1) — BadgeProgressAxis.fraction 그대로 */
+  fraction: number
+  met: boolean
+}
+
+export type DualAxisGaugeProps = {
+  /** 항상 2개(현재 카탈로그 dual은 전부 2축) */
+  axes: [DualAxisLine, DualAxisLine]
+  /** "각각 다른 활동에서 채워도 돼요"/"한 번의 활동에서 동시에 채워야 해요" — sameActivity로 결정 */
+  ruleText: string
+  /** met:true인 축이 정확히 하나일 때만("그 축은 이미 채웠으니 남은 축에 집중하라") — 그 외(0개·2개 met)엔 null */
+  bottleneckNote: string | null
+}
+
+/**
+ * 레일(BadgeStageRail) 2축형(dual) 프런티어 전용 — `DualAxisGauge`(DS, 티켓 20260904_1058)에
+ * 넘길 완성 props를 조립한다. 다른 포맷 함수와 동일 원칙 — `DualAxisGauge` 자체는 kind를
+ * 모른 채 이 결과만 그린다. dual이 아니면 null(호출부가 kind==='dual'일 때만 부르는 것이
+ * 기본 사용법이지만, 다른 포맷 함수들처럼 방어적으로도 null을 반환한다).
+ */
+export function formatDualAxisGaugeProps(progress: BadgeProgress): DualAxisGaugeProps | null {
+  if (progress.kind !== 'dual') return null
+  if (progress.axes.length !== 2) return null // 방어적 — 현재 카탈로그는 항상 2축
+
+  const axes = progress.axes.map((axis) => ({
+    key: axis.key,
+    label: axis.label,
+    rangeText: formatAxisRange(axis),
+    fraction: axis.fraction,
+    met: axis.met,
+  })) as [DualAxisLine, DualAxisLine]
+
+  const ruleText = progress.sameActivity
+    ? '한 번의 활동에서 두 조건을 동시에 채워야 해요.'
+    : '두 조건은 각각 다른 활동에서 채워도 돼요.'
+
+  const metAxes = axes.filter((a) => a.met)
+  // 정확히 하나만 met일 때만 "병목"이 성립한다 — 0개(아직 둘 다 남음)·2개(이미 둘 다 충족,
+  // 게이트만 대기)는 지목할 대상이 없어 null(§05 "또는 사용 안 함").
+  const bottleneckNote = metAxes.length === 1 ? `${metAxes[0].label} 조건은 이미 채웠어요.` : null
+
+  return { axes, ruleText, bottleneckNote }
 }
 
 /**

@@ -30,6 +30,13 @@
  * 끝(§2c 절)에 추가했다. `computeBadgeProgress`와 마찬가지로 순수 함수이고, 발급 판정에는
  * 전혀 관여하지 않는다 — 최종 한국어 문장 조립은 이 파일이 아니라 클라이언트 쪽
  * `src/lib/badgeProgressText.ts`가 담당한다(서버는 숫자만, 텍스트 조립은 소비처).
+ *
+ * ## 2d 추가분 (티켓 20260904_1058) — `BadgeProgressAxis.fraction` 노출
+ * 2축형(dual) 게이지(`DualAxisGauge`, DS)가 축마다 독립된 진행 바를 그리려면 축 하나의
+ * 진행 비율(0~1)이 필요한데, "클수록 좋음"/"작을수록 좋음"/한파(temperature_max_c) 축마다
+ * 계산 공식이 다르다(`makeHigherBetterAxis`/`makeLowerBetterRatioAxis`/`makeColdRecordAxis`).
+ * 이 비율은 `progress`(축 전체 최솟값)·`bottleneck` 계산에 이미 쓰이던 내부 값이라 —
+ * 새 계산을 추가한 게 아니라 버리던 값을 axis 객체에 그대로 얹어 노출한 것뿐이다.
  */
 import { kmhToPaceSecPerKm, type NormalizedActivity } from '@/types/strava'
 import type { ActivityType, BadgeCondition, DayOfWeek } from '@/types/database'
@@ -54,6 +61,14 @@ export type BadgeProgressAxis = {
   current: number
   target: number
   met: boolean
+  /**
+   * 이 축 하나의 진행 비율(0~1) — 티켓 20260904_1058(2d, DualAxisGauge)에서 노출. "클수록
+   * 좋음"/"작을수록 좋음"/한파(temperature_max_c) 축마다 계산 공식이 다르므로(아래
+   * make*Axis 함수 참고), 표시 레이어가 current/target만으로 이 값을 재계산하면 lower-is-better·
+   * 한파 축에서 틀린 진행 바가 그려진다. `progress`(축 전체 최솟값)·`bottleneck` 계산에 이미
+   * 쓰이던 내부 `AxisResult.fraction`을 그대로 얹은 것 — 새 계산이 아니다.
+   */
+  fraction: number
 }
 
 export type BadgeProgressGate = { kind: 'badge' | 'mission'; name: string; href: string; met: boolean } | null
@@ -315,7 +330,7 @@ function makeHigherBetterAxis(key: string, current: number, target: number, labe
   const { label, unit } = resolveLabel(labelMap, key)
   const met = current >= target
   const fraction = target > 0 ? clamp01(current / target) : (met ? 1 : 0)
-  return { axis: { key, label, unit, current, target, met }, fraction }
+  return { axis: { key, label, unit, current, target, met, fraction }, fraction }
 }
 
 /**
@@ -328,7 +343,7 @@ function makeLowerBetterRatioAxis(key: string, current: number, target: number, 
   const hasData = Number.isFinite(current) && current > 0
   const met = hasData && current <= target
   const fraction = hasData ? clamp01(target / current) : 0
-  return { axis: { key, label, unit, current: hasData ? current : 0, target, met }, fraction }
+  return { axis: { key, label, unit, current: hasData ? current : 0, target, met, fraction }, fraction }
 }
 
 /**
@@ -345,7 +360,7 @@ function makeColdRecordAxis(key: string, current: number, target: number, labelM
   const c = hasData ? current : COLD_PROGRESS_BASELINE_C
   const span = COLD_PROGRESS_BASELINE_C - target
   const fraction = span > 0 ? clamp01((COLD_PROGRESS_BASELINE_C - c) / span) : (met ? 1 : 0)
-  return { axis: { key, label, unit, current: hasData ? current : 0, target, met }, fraction }
+  return { axis: { key, label, unit, current: hasData ? current : 0, target, met, fraction }, fraction }
 }
 
 function getFieldValue(field: ScalarAxisKey, a: NormalizedActivity): number {
