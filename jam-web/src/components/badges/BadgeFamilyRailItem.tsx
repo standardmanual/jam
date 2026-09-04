@@ -2,8 +2,14 @@
 
 import { useState } from 'react'
 import { BadgeStageRail } from '@ds/components/patterns/BadgeStageRail'
+import { DualAxisGauge } from '@ds/components/patterns/DualAxisGauge'
 import { computeStopStatus } from '@/lib/badgeTreeConditionStatus'
-import { formatFrontierProgressText, formatRegretLineText, type FrontierCaption } from '@/lib/badgeProgressText'
+import {
+  formatFrontierProgressText,
+  formatRegretLineText,
+  formatDualAxisGaugeProps,
+  type FrontierCaption,
+} from '@/lib/badgeProgressText'
 import type { BadgeFamily } from '@/lib/badgeTree'
 import type { BadgeRarity } from '@/types/database'
 import type { BadgeProgress, RegretLineData } from '@/lib/badge-engine/badgeProgress'
@@ -43,6 +49,11 @@ function buildFrontierCaption(progress: BadgeProgress | undefined): FrontierCapt
  *
  * 진행 수치(2c): 프런티어(첫 미획득 눈금)의 `BadgeProgress`/`RegretLineData`를 문자열로
  * 조립해 `BadgeStageRail`에 넘긴다 — `BadgeStageRail`은 kind를 모른 채 완성 문자열만 그린다.
+ *
+ * 2축형(dual) 게이지(2d, 티켓 20260904_1058): 프런티어가 dual이면 `formatFrontierProgressText`가
+ * `null`을 반환해 `BadgeStageRail`은 지금처럼 상태 라벨만 그린다(레일 자체는 고치지 않음) —
+ * 대신 `DualAxisGauge`(DS 신규 패턴)를 `BadgeStageRail` 아래에 추가로 렌더한다. dual이 아니면
+ * `formatDualAxisGaugeProps()`가 `null`을 반환해 아무것도 그리지 않는다.
  */
 export default function BadgeFamilyRailItem({
   family,
@@ -66,20 +77,34 @@ export default function BadgeFamilyRailItem({
   const nextStop = stops.find((s) => s.status !== 'earned')
   const nextRarityLabel = nextStop ? (RARITY_LABEL[nextStop.rarity] ?? nextStop.rarity) : null
 
-  const frontierProgress = buildFrontierCaption(nextStop ? progressByBadgeId[nextStop.id] : undefined)
+  const rawProgress = nextStop ? progressByBadgeId[nextStop.id] : undefined
+  const frontierProgress = buildFrontierCaption(rawProgress)
+  const dualAxisGauge = rawProgress ? formatDualAxisGaugeProps(rawProgress) : null
   const regretRaw = nextStop ? regretLineByBadgeId[nextStop.id] : undefined
   const regretLine = regretRaw && nextStop ? formatRegretLineText(regretRaw, nextStop.rarity) : null
 
   return (
-    <BadgeStageRail
-      familyName={family.name}
-      stops={stops}
-      nextRarityLabel={nextRarityLabel}
-      frontierProgress={frontierProgress}
-      regretLine={regretLine}
-      expanded={expanded}
-      onToggleExpand={() => setExpanded((v) => !v)}
-      onLockClick={onLockClick}
-    />
+    <>
+      <BadgeStageRail
+        familyName={family.name}
+        stops={stops}
+        nextRarityLabel={nextRarityLabel}
+        frontierProgress={frontierProgress}
+        regretLine={regretLine}
+        expanded={expanded}
+        onToggleExpand={() => setExpanded((v) => !v)}
+        onLockClick={onLockClick}
+      />
+      {dualAxisGauge && nextStop && (
+        <DualAxisGauge
+          imageUrl={nextStop.imageUrl}
+          alt={`${family.name} ${nextRarityLabel ?? ''}`}
+          rarity={nextStop.rarity}
+          axes={dualAxisGauge.axes}
+          ruleText={dualAxisGauge.ruleText}
+          bottleneckNote={dualAxisGauge.bottleneckNote}
+        />
+      )}
+    </>
   )
 }

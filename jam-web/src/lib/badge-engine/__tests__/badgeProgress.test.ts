@@ -236,7 +236,7 @@ describe('computeBadgeProgress — cumulative', () => {
 
     expect(result.kind).toBe('cumulative')
     if (result.kind === 'unsupported') throw new Error('unreachable')
-    expect(result.axes).toEqual([{ key: 'distance_km', label: 'distance_km', unit: null, current: 20, target: 30, met: false }])
+    expect(result.axes).toEqual([{ key: 'distance_km', label: 'distance_km', unit: null, current: 20, target: 30, met: false, fraction: 20 / 30 }])
     expect(result.progress).toBeCloseTo(20 / 30, 5)
     expect(result.bottleneck).toBe('distance_km')
     expect(result.sameActivity).toBe(false)
@@ -386,6 +386,54 @@ describe('computeBadgeProgress — dual (산악 라이더: elevation_gain_m 누�
     expect(byElevation).toMatchObject({ current: 1180, target: 1500, met: false })
     expect(result.bottleneck).toBe('elevation_gain_m') // 속도는 이미 충족 → 병목은 고도
     expect(result.progress).toBeCloseTo(1180 / 1500, 5) // 최솟값(평균 아님)
+    // DualAxisGauge(2d, 티켓 20260904_1058)가 축별 진행 바에 쓰는 fraction — met인 속도는
+    // 1로 clamp, 병목인 고도는 progress(최솟값)와 같아야 한다.
+    expect(bySpeed.fraction).toBe(1)
+    expect(byElevation.fraction).toBeCloseTo(1180 / 1500, 5)
+  })
+})
+
+describe('computeBadgeProgress — dual, lower-is-better 축 포함 (스피드 엔듀러: max_pace_sec_per_km + duration_minutes)', () => {
+  it('페이스 축(작을수록 좋음)의 fraction은 target/current 비율이다', () => {
+    const now = new Date()
+    const activities = [
+      // 페이스 5:30/km(330초) — 목표 5:30/km(330초)를 정확히 충족
+      makeActivity({ jamActivityType: 'running', averageSpeedKmh: 3600 / 330, movingTimeSec: 20 * 60, startDate: now.toISOString(), startDateLocal: isoLocal(now) }),
+      // 다른 세션에서 지속시간만 목표 초과 달성 — "이력 전반 독립 평가"
+      makeActivity({ jamActivityType: 'running', averageSpeedKmh: 8, movingTimeSec: 40 * 60, startDate: now.toISOString(), startDateLocal: isoLocal(now) }),
+    ]
+    const metrics = computeUserPeriodMetrics('running', activities, now)
+    const condition: BadgeCondition = { activity_type: 'running', max_pace_sec_per_km: 330, duration_minutes: 30 }
+
+    const result = computeBadgeProgress(condition, metrics, noLabels, NO_LOCKS)
+    if (result.kind === 'unsupported') throw new Error('unreachable')
+
+    expect(result.kind).toBe('dual')
+    const byPace = result.axes.find((a) => a.key === 'max_pace_sec_per_km')!
+    const byDuration = result.axes.find((a) => a.key === 'duration_minutes')!
+    expect(byPace.met).toBe(true)
+    expect(byPace.fraction).toBe(1)
+    expect(byDuration).toMatchObject({ current: 40, target: 30, met: true, fraction: 1 })
+  })
+})
+
+describe('computeBadgeProgress — dual, 한파 축 포함 (알파인 트레일러: elevation_gain_m + temperature_max_c)', () => {
+  it('한파 축(temperature_max_c)의 fraction은 COLD_PROGRESS_BASELINE 공식으로 0~1 사이다', () => {
+    const now = new Date()
+    const activities = [
+      makeActivity({ jamActivityType: 'trail_running', elevationGainM: 500, weatherTempC: 8, startDate: now.toISOString(), startDateLocal: isoLocal(now) }),
+    ]
+    const metrics = computeUserPeriodMetrics('trail_running', activities, now)
+    const condition: BadgeCondition = { activity_type: 'trail_running', elevation_gain_m: 1000, temperature_max_c: 5 }
+
+    const result = computeBadgeProgress(condition, metrics, noLabels, NO_LOCKS)
+    if (result.kind === 'unsupported') throw new Error('unreachable')
+
+    expect(result.kind).toBe('dual')
+    const byCold = result.axes.find((a) => a.key === 'temperature_max_c')!
+    expect(byCold).toMatchObject({ current: 8, target: 5, met: false })
+    expect(byCold.fraction).toBeGreaterThan(0)
+    expect(byCold.fraction).toBeLessThan(1)
   })
 })
 
