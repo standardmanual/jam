@@ -13,9 +13,15 @@ import {
   computeBadgeProgress,
   computeRecordRegretLine,
   type BadgeProgress,
+  type BadgeProgressAxis,
   type RegretLineData,
 } from '@/lib/badge-engine/badgeProgress'
 import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
+import {
+  pickSyncComparisonCandidate,
+  formatSyncComparisonText,
+  type FamilyProgressAxisSnapshot,
+} from '@/lib/badgeProgressText'
 import type { ActivityType, BadgeCondition } from '@/types/database'
 import BadgeTreeClient from './BadgeTreeClient'
 
@@ -56,6 +62,7 @@ export default async function BadgeTreePage() {
     { data: missionsRaw, error: missionsError },
     { data: earnedBadgesRaw, error: earnedBadgesError },
     { data: latestSyncRaw, error: latestSyncError },
+    { data: familyProgressRaw, error: familyProgressError },
   ] = await Promise.all([
     supabase
       .from('badges')
@@ -80,11 +87,16 @@ export default async function BadgeTreePage() {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    // RecentSyncBanner "직전 상태값과의 비교"(3b, 티켓 20260904_1425)용 — 계열별 current/prev
+    // 진행 스냅샷 전체(최대 약 72행). user_family_progress는 티켓 20260904_1156이 지정한 대로
+    // service_role 전용(RLS 정책 없음)이라 service client로 조회한다.
+    service.from('user_family_progress').select('current, prev').eq('user_id', user.id),
   ])
   if (badgesError) console.error('[badges/tree/page] 활동 배지 조회 실패', badgesError)
   if (missionsError) console.error('[badges/tree/page] missions(게이트 배지용) 조회 실패', missionsError)
   if (earnedBadgesError) console.error('[badges/tree/page] user_activity_badges(획득여부) 조회 실패', earnedBadgesError)
   if (latestSyncError) console.error('[badges/tree/page] strava_activities(최근 동기화) 조회 실패', latestSyncError)
+  if (familyProgressError) console.error('[badges/tree/page] user_family_progress(직전 동기화 비교) 조회 실패', familyProgressError)
 
   type RawBadge = BadgeTreeSourceBadge & { point_reward: number }
   const badges: BadgeTreeSourceBadge[] = ((badgesRaw ?? []) as RawBadge[]).map((b) => ({
@@ -107,6 +119,19 @@ export default async function BadgeTreePage() {
       .map((r) => r.badge_id)
   )
   const earnedBadgeIds = Array.from(earnedBadgeIdSet)
+
+  // RecentSyncBanner "직전 상태값과의 비교"(3b, 티켓 20260904_1425) — 계열 전체에서 가장
+  // 눈에 띄는 진전(fraction 증가폭이 가장 큰 축) 하나를 고른다. 이 시점엔 라벨이 아직 없다 —
+  // 축 key만 뽑아 아래 axisKeys 수집에 합류시키고, 실제 문장 조립은 labelMap 조회 이후에 한다
+  // (getMetricLabels() 왕복을 늘리지 않기 위해 — 상세 요구사항 "같은 요청 안에서 처리").
+  type RawFamilyProgress = { current: unknown; prev: unknown }
+  const familyProgressSnapshots: FamilyProgressAxisSnapshot[] = ((familyProgressRaw ?? []) as RawFamilyProgress[]).map(
+    (row) => ({
+      current: (row.current ?? []) as BadgeProgressAxis[],
+      prev: (row.prev ?? null) as BadgeProgressAxis[] | null,
+    })
+  )
+  const syncComparisonCandidate = pickSyncComparisonCandidate(familyProgressSnapshots)
 
   // earnedBadgeIdSet도 선행 배지 잠금칩의 "이미 획득함" 판정에 쓰인다(20260901 UI 수정).
   const trees = buildBadgeActivityTrees(badges, missions, earnedBadgeIdSet)
@@ -185,7 +210,12 @@ export default async function BadgeTreePage() {
       console.error('[badges/tree/page] computeBadgeProgress 프로브 실패 — 라벨 key 수집 생략', target.id, error)
     }
   }
+  // 직전 동기화 비교 후보의 축도 같은 배치 조회에 합류시킨다 — 별도 왕복 없음.
+  if (syncComparisonCandidate) axisKeys.add(syncComparisonCandidate.axisKey)
   const labelMap = await getMetricLabels(Array.from(axisKeys))
+  const syncComparisonMessage = syncComparisonCandidate
+    ? formatSyncComparisonText(syncComparisonCandidate, labelMap)
+    : null
 
   // 배지별 진행 계산 — 실패해도(예: 예상 못한 condition_json 형태) 그 배지 하나만 진행
   // 표시를 생략한다(2b가 남긴 잔여 이슈 — "배지별 try/catch 방어막" 반영). 레일·그리드는
@@ -214,6 +244,7 @@ export default async function BadgeTreePage() {
       earnedBadgeIds={earnedBadgeIds}
       conditionMetBadgeIds={conditionMetBadgeIds}
       hasRecentSync={hasRecentSync}
+      syncComparisonMessage={syncComparisonMessage}
       progressByBadgeId={progressByBadgeId}
       regretLineByBadgeId={regretLineByBadgeId}
     />

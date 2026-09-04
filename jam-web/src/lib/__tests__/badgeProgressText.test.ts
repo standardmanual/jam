@@ -6,7 +6,16 @@
  * 이 파일은 그 반올림 방향(내림/올림)이 met와 항상 같은 방향을 가리키는지 고정한다.
  */
 import { describe, it, expect } from 'vitest'
-import { formatFrontierProgressText, formatGridProgressLine, formatRegretLineText, formatDualAxisGaugeProps } from '@/lib/badgeProgressText'
+import {
+  formatFrontierProgressText,
+  formatGridProgressLine,
+  formatRegretLineText,
+  formatDualAxisGaugeProps,
+  pickSyncComparisonCandidate,
+  formatSyncComparisonText,
+  type FamilyProgressAxisSnapshot,
+  type SyncComparisonCandidate,
+} from '@/lib/badgeProgressText'
 import type { BadgeProgress, BadgeProgressAxis, RegretLineData } from '@/lib/badge-engine/badgeProgress'
 
 function axis(overrides: Partial<BadgeProgressAxis>): BadgeProgressAxis {
@@ -158,5 +167,89 @@ describe('formatRegretLineText', () => {
     const regret: RegretLineData = { key: 'max_pace_sec_per_km', current: 450, target: 420, unit: null, label: '페이스' }
     const text = formatRegretLineText(regret, 'common')
     expect(text).toBe('지난 활동 페이스는 7:30/km. Common까지 30초 모자랐어요.')
+  })
+})
+
+describe('pickSyncComparisonCandidate (티켓 20260904_1425)', () => {
+  it('rows가 비어 있으면 null', () => {
+    expect(pickSyncComparisonCandidate([])).toBeNull()
+  })
+
+  it('prev가 없는(최초 싱크 전) 계열은 후보에서 제외한다', () => {
+    const rows: FamilyProgressAxisSnapshot[] = [
+      { current: [axis({ key: 'distance_km', current: 5, fraction: 0.5 })], prev: null },
+    ]
+    expect(pickSyncComparisonCandidate(rows)).toBeNull()
+  })
+
+  it('fraction이 그대로거나 줄어든(주기 리셋 등) 축은 후보에서 제외한다', () => {
+    const rows: FamilyProgressAxisSnapshot[] = [
+      {
+        current: [axis({ key: 'distance_km', current: 5, fraction: 0.5 })],
+        prev: [axis({ key: 'distance_km', current: 5, fraction: 0.5 })], // 변화 없음
+      },
+      {
+        current: [axis({ key: 'weekly_count', current: 1, fraction: 0.2 })],
+        prev: [axis({ key: 'weekly_count', current: 3, fraction: 0.6 })], // 감소(주간 리셋)
+      },
+    ]
+    expect(pickSyncComparisonCandidate(rows)).toBeNull()
+  })
+
+  it('여러 계열·축 중 fraction 증가폭이 가장 큰 축 하나만 고른다', () => {
+    const rows: FamilyProgressAxisSnapshot[] = [
+      {
+        current: [axis({ key: 'distance_km', current: 6, fraction: 0.6 })],
+        prev: [axis({ key: 'distance_km', current: 5, fraction: 0.5 })], // +0.1
+      },
+      {
+        current: [axis({ key: 'total_count', current: 5, fraction: 0.8 })],
+        prev: [axis({ key: 'total_count', current: 2, fraction: 0.3 })], // +0.5(최댓값)
+      },
+    ]
+    expect(pickSyncComparisonCandidate(rows)).toEqual({ axisKey: 'total_count', prevValue: 2, currentValue: 5 })
+  })
+
+  it('current 축에 대응하는 prev 축이 없으면(정합성 예외 상황) 방어적으로 스킵한다', () => {
+    const rows: FamilyProgressAxisSnapshot[] = [
+      {
+        current: [axis({ key: 'elevation_gain_m', current: 100, fraction: 0.5 })],
+        prev: [axis({ key: 'distance_km', current: 5, fraction: 0.3 })], // key 불일치
+      },
+    ]
+    expect(pickSyncComparisonCandidate(rows)).toBeNull()
+  })
+})
+
+describe('formatSyncComparisonText (티켓 20260904_1425)', () => {
+  it('higher-is-better 축은 소수 1자리에서 내림한 델타를 보여준다', () => {
+    const candidate: SyncComparisonCandidate = { axisKey: 'distance_km', prevValue: 3.24, currentValue: 4.58 }
+    const labelMap = new Map([['distance_km', { label: '누적 거리', unit: 'km' }]])
+    // delta = 1.3399999999999999(부동소수점) → floor 1자리 = 1.3
+    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 누적 거리 1.3km 가까워졌어요')
+  })
+
+  it('lower-is-better 축(페이스)은 mm:ss가 아니라 정수 초 단위 델타를 쓴다', () => {
+    const candidate: SyncComparisonCandidate = { axisKey: 'max_pace_sec_per_km', prevValue: 450, currentValue: 410 }
+    const labelMap = new Map([['max_pace_sec_per_km', { label: '페이스', unit: null }]])
+    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 페이스 40초 가까워졌어요')
+  })
+
+  it('정수 축(횟수)은 라벨 단위를 그대로 붙인다', () => {
+    const candidate: SyncComparisonCandidate = { axisKey: 'total_count', prevValue: 2, currentValue: 5 }
+    const labelMap = new Map([['total_count', { label: '횟수', unit: '회' }]])
+    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 횟수 3회 가까워졌어요')
+  })
+
+  it('내림 결과가 0 이하면(미세 변화) 빈 비교문 대신 null을 반환한다', () => {
+    const candidate: SyncComparisonCandidate = { axisKey: 'distance_km', prevValue: 3.21, currentValue: 3.24 }
+    const labelMap = new Map([['distance_km', { label: '누적 거리', unit: 'km' }]])
+    expect(formatSyncComparisonText(candidate, labelMap)).toBeNull()
+  })
+
+  it('labelMap에 라벨이 없으면 key 원문을 그대로 노출한다(§08 G 폴백 원칙과 동일)', () => {
+    const candidate: SyncComparisonCandidate = { axisKey: 'streak_days', prevValue: 1, currentValue: 3 }
+    const labelMap = new Map<string, { label: string; unit: string | null }>()
+    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 streak_days 2 가까워졌어요')
   })
 })

@@ -46,8 +46,14 @@ export interface BadgeTreeClientProps {
   earnedBadgeIds: string[]
   /** 게이트가 안 열린 미획득 눈금 중 수치 조건은 이미 채운 배지 id — 티켓 20260903_2329 */
   conditionMetBadgeIds: string[]
-  /** 최근 24시간 안에 동기화된 활동이 있는지 — RecentSyncBanner(1차: boolean 이벤트만) */
+  /** 최근 24시간 안에 동기화된 활동이 있는지 — RecentSyncBanner 노출 여부(1차, 변경 없음) */
   hasRecentSync: boolean
+  /**
+   * "직전 동기화보다 {라벨} {델타}{단위} 가까워졌어요" — user_family_progress current/prev
+   * 비교 문구(3b, 티켓 20260904_1425). 비교할 진전이 없으면(최초 싱크 전·변화 없음) null —
+   * RecentSyncBanner가 자체 기본 문구("최근 활동이 동기화됐어요")로 폴백한다.
+   */
+  syncComparisonMessage: string | null
   /** 계열 프런티어·미획득 독립 배지의 진행 계산 결과 — badge id로 조회(2c, 20260904_0921) */
   progressByBadgeId: Record<string, BadgeProgress>
   /** 기록형 프런티어 전용 "아쉬움 줄" 데이터 — badge id로 조회(2c, 20260904_0921) */
@@ -59,6 +65,7 @@ export default function BadgeTreeClient({
   earnedBadgeIds,
   conditionMetBadgeIds,
   hasRecentSync,
+  syncComparisonMessage,
   progressByBadgeId,
   regretLineByBadgeId,
 }: BadgeTreeClientProps) {
@@ -175,7 +182,7 @@ export default function BadgeTreeClient({
               byRarity={summary.byRarity}
             />
 
-            <RecentSyncBanner visible={hasRecentSync} />
+            <RecentSyncBanner visible={hasRecentSync} comparisonMessage={syncComparisonMessage} />
 
             <div className="flex flex-col gap-[var(--spacing-12)]">
               {activeTree.families.map((family) => (
