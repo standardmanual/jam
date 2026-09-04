@@ -21,6 +21,7 @@ import {
   IconPhoto,
   IconPhotoEdit,
   IconTag,
+  IconBackpack,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -52,6 +53,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/drop-policy', label: '드랍 정책', icon: IconDice },
       { href: '/admin/ambient-drop', label: '앰비언트 드랍', icon: IconCloudFog },
       { href: '/admin/combine-policy', label: '믹스 정책', icon: IconTestPipe },
+      { href: '/admin/inventory-policy', label: '인벤토리 최대치', icon: IconBackpack },
       { href: '/admin/missions', label: '미션 관리', icon: IconTarget },
       { href: '/admin/points', label: '포인트 관리', icon: IconDiamond },
     ],
