@@ -1926,6 +1926,54 @@ export type Database = {
           },
         ]
       }
+      user_family_progress: {
+        Row: {
+          activity_type: string
+          current: Json
+          family_name: string
+          last_activity_id: string | null
+          prev: Json | null
+          progress: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          current: Json
+          family_name: string
+          last_activity_id?: string | null
+          prev?: Json | null
+          progress: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          current?: Json
+          family_name?: string
+          last_activity_id?: string | null
+          prev?: Json | null
+          progress?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_family_progress_last_activity_id_fkey"
+            columns: ["last_activity_id"]
+            isOneToOne: false
+            referencedRelation: "strava_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_family_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_follows: {
         Row: {
           created_at: string | null

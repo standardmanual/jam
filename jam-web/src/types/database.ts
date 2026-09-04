@@ -1034,6 +1034,30 @@ export interface MissionRankSnapshotRow {
   captured_at: string
 }
 
+/**
+ * 배지 계열(activity_type, name)별 진행 스냅샷 (마이그레이션 128, 티켓 20260904_1156) —
+ * "직전 동기화 대비 얼마나 나아갔는지"(3b, 레일 꼬리)의 비교 기준. 매 싱크마다
+ * `src/lib/strava/sync.ts`의 `updateFamilyProgressSnapshots()`가 계열별 프런티어(첫 미획득
+ * 등급)의 `computeBadgeProgress()` 결과로 갱신한다 — current를 새로 계산해 넣고, 기존
+ * current를 prev로 옮긴다(재계산 없음).
+ */
+export interface UserFamilyProgressRow {
+  user_id: string
+  /** badges.activity_types[0]과 동일 — 복수형 컬럼(activity_types)과 다르다 */
+  activity_type: string
+  /** = badges.name, 계열의 유일한 식별자 */
+  family_name: string
+  /** 0~1 */
+  progress: number
+  /** BadgeProgressAxis[] 스냅샷(jsonb) — 라벨은 원문 key, 실제 라벨은 표시 시점에 조회 */
+  current: unknown
+  /** 직전 동기화 시점의 current — 최초 1회는 null */
+  prev: unknown | null
+  /** 이 스냅샷을 갱신한 싱크 배치의 최신 활동(strava_activities.id), 감사용 */
+  last_activity_id: string | null
+  updated_at: string
+}
+
 /** create_notification() RPC 인자 — src/lib/notifications/index.ts */
 export interface CreateNotificationArgs {
   p_user_id: string
