@@ -98,6 +98,21 @@ ALTER TABLE public.user_activity_badges DROP CONSTRAINT IF EXISTS user_activity_
 ALTER TABLE public.user_activity_badges ADD CONSTRAINT user_activity_badges_earn_history_is_array
   CHECK (jsonb_typeof(earn_history) = 'array');
 
+-- 기존 행 백필 — 1회차를 earn_history에 심는다.
+-- 이걸 하지 않으면 earn_count=1인데 earn_history 원소가 0개인 상태로 출발하고,
+-- 표시 단계(티켓 20260905_0038)가 earn_history 길이를 회차 수로 읽으면 항상 1 적게 나온다.
+-- 즉 "earn_count = length(earn_history)"라는 불변식을 처음부터 성립시킨다.
+-- WHERE 절이 있어 재실행해도 중복으로 쌓이지 않는다.
+UPDATE public.user_activity_badges
+SET earn_history = jsonb_build_array(
+      jsonb_strip_nulls(jsonb_build_object(
+        'earned_at', earned_at,
+        'strava_activity_id', triggered_by_strava_id,
+        'poi_id', triggered_by_poi_id
+      ))
+    )
+WHERE earn_history = '[]'::jsonb;
+
 -- ── C. badges_family_consistency 트리거 조정 ────────────────────────────────
 --
 -- 128이 건 트리거는 같은 (activity_types, name) 계열의 모든 배지에 동일한
@@ -153,29 +168,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 트리거 자체(BEFORE INSERT OR UPDATE OF name, activity_types, condition_json / WHEN type='activity')는
--- 128이 만든 것을 그대로 쓴다 — 함수만 교체했다. 128을 실행하지 않은 환경을 위해 없을 때만 만든다.
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'badges_family_consistency' AND tgrelid = 'public.badges'::regclass
-  ) THEN
-    CREATE TRIGGER badges_family_consistency
-      BEFORE INSERT OR UPDATE OF name, activity_types, condition_json ON public.badges
-      FOR EACH ROW
-      WHEN (NEW.type = 'activity')
-      EXECUTE FUNCTION public.check_family_condition_consistency();
-  END IF;
-END $$;
+-- 트리거는 **다시 만든다**. 128의 UPDATE OF 목록은 name/activity_types/condition_json 셋뿐이라
+-- 레벨형을 등급형으로 되돌리는 UPDATE(level = NULL, rarity = 'epic')가 검사를 통째로 건너뛴다
+-- — 조건 조합이 어긋난 배지가 등급형 계열에 조용히 합류할 수 있다(개선 리뷰 지적).
+-- level·rarity를 목록에 넣어 그 구멍을 닫는다. 레벨형은 함수 초입에서 스킵되므로 부작용은 없다.
+-- IF NOT EXISTS로 두면 트리거가 이미 있는 환경(128 반영 완료 = 프로덕션)에서 컬럼 목록이
+-- 갱신되지 않으므로, 조건부가 아니라 DROP 후 CREATE 한다.
+DROP TRIGGER IF EXISTS badges_family_consistency ON public.badges;
+CREATE TRIGGER badges_family_consistency
+  BEFORE INSERT OR UPDATE OF name, activity_types, condition_json, level, rarity ON public.badges
+  FOR EACH ROW
+  WHEN (NEW.type = 'activity')
+  EXECUTE FUNCTION public.check_family_condition_consistency();
 
 -- ── D. 기존 207종 백필 — family_key · sort_order ───────────────────────────
 --
 -- 목적: badgeTree.ts의 하드코딩 배열 72개를 걷어내도 화면 순서가 **한 칸도 바뀌지 않게** 한다.
 -- v5에서 이 207종은 폐기 예정이지만(티켓 0039), 그 전까지의 마이그레이션 검증용으로 필요하다.
 --
--- 이 UPDATE는 name/activity_types/condition_json을 건드리지 않으므로 C절 트리거가 발동하지
--- 않는다(트리거 정의가 UPDATE OF 로 세 컬럼에 한정돼 있다).
+-- 이 UPDATE는 name/activity_types/condition_json/level/rarity를 건드리지 않으므로 C절 트리거가
+-- 발동하지 않는다(트리거 정의가 UPDATE OF 로 그 다섯 컬럼에 한정돼 있다).
 
 -- D-1. family_key — 활동 배지 전체에 "{activity_type}:{name}"
 UPDATE public.badges
@@ -260,6 +272,14 @@ WHERE b.type = 'activity'
 --
 -- -- ⑤ 기존 획득 이력이 전부 earn_count = 1 인지
 -- SELECT earn_count, count(*) FROM public.user_activity_badges GROUP BY 1;  -- 1 하나만
+--
+-- -- ⑥ earn_count = earn_history 길이 불변식이 성립하는지
+-- SELECT count(*) FROM public.user_activity_badges
+--  WHERE earn_count <> jsonb_array_length(earn_history);  -- 0
+--
+-- -- ⑦ 트리거 UPDATE OF 목록에 level·rarity가 들어갔는지
+-- SELECT pg_get_triggerdef(oid) FROM pg_trigger
+--  WHERE tgname = 'badges_family_consistency' AND tgrelid = 'public.badges'::regclass;
 
 -- ↩️ 롤백 DDL
 --    ALTER TABLE public.user_activity_badges DROP CONSTRAINT IF EXISTS user_activity_badges_earn_history_is_array;
