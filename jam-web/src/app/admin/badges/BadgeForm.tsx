@@ -15,6 +15,13 @@ import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
 import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 import { buildConditionJsonFromFields, getUnsupportedConditionKeys } from './conditionFormFields'
 import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
+// 배지 트리 화면(BadgeTreeClient 등)의 진행률 분류와 동일한 함수 — 어드민 경고가 화면
+// 렌더링과 다른 판정 로직을 갖지 않도록 재사용한다(제안서 §08 H, 티켓 20260904_1426).
+// `next/headers` 등 서버 전용 의존을 물지 않는 순수 함수라 이 클라이언트 컴포넌트에서
+// 값(value) import로 바로 써도 안전하다 — badgeProgressText.ts가 이미 같은 모듈에서
+// LOWER_IS_BETTER_KEYS를 값으로 import해 클라이언트 컴포넌트에 쓰고 있고(티켓 20260904_0921
+// 게이트 리뷰에서 `npm run build`로 실증됨), 이 파일 스스로도 재검증했다.
+import { classifyBadgeProgressKind } from '@/lib/badge-engine/badgeProgress'
 
 /** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
 const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
@@ -387,6 +394,14 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   }
 
   const condPreview = buildConditionJson()
+
+  // §08 H(진행 미지원 고지) 어드민 절반 — 배지 트리 화면(`/badges/tree`)이 실제로 조회하는
+  // 대상은 `type: 'activity'` 배지뿐이다(page.tsx의 `.eq('type', 'activity')`). 아이템/체크인
+  // 배지는 이 분류 결과와 무관하게 그 화면에 애초에 등장하지 않으므로, type이 'activity'가
+  // 아닐 때 이 경고를 띄우면 "배지 트리 화면에 표시 안 됨"이라는 문구 자체가 부정확해진다
+  // (체크인은 조건 빌더 자체가 이 블록 밖이라 자동으로 배제된다 — 티켓 20260904_1426).
+  const isProgressUnsupported =
+    type === 'activity' && classifyBadgeProgressKind(condPreview ?? {}) === 'unsupported'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -917,6 +932,18 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
                 {unsupportedConditionKeys.join(', ')} 값이 이미 설정돼 있어요. 이 화면에는 입력 항목이
                 없어 여기서 보거나 고칠 수 없지만, 저장해도 값은 그대로 유지돼요.
               </p>
+            </div>
+          )}
+
+          {/* 진행 미지원 조건 경고 — 저장을 막지 않는다(§08 H 어드민 절반, 티켓 20260904_1426).
+              classifyBadgeProgressKind가 5개 유형(누적·기록·주기·2축·다중카운터) 중 어디에도
+              못 걸리면, 이 조건은 배지 트리 화면에서 "진행 표시 준비 중"(화면 쪽,
+              badgeProgressText.ts)으로만 그려지고 진행률 수치는 못 보여준다 — 발급(획득) 자체는
+              기존 evaluateConditionDetailed/checkCondition이 그대로 판정하므로 영향 없다. */}
+          {isProgressUnsupported && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <p className="text-sm font-medium text-amber-900">이 조건은 배지 트리 화면에 진행률이 표시되지 않아요</p>
+              <p className="text-xs text-amber-800/80 mt-0.5">배지 획득에는 영향이 없어요.</p>
             </div>
           )}
 
