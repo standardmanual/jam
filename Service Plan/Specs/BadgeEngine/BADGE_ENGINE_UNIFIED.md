@@ -354,6 +354,14 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   40/72개가 즉시 위반한다(1차 시도 실측, 사전 점검 재실측에서 위반 0건 확인 후 적용).
   형제 존재 여부로 비교 대상을 찾으므로 이름 오타로 계열이 쪼개지는 시나리오는 막지
   못한다(알려진 한계로 문서화만 하고 별도 대응은 후속 판단).
+  **v5 조정(마이그레이션 130, 티켓 20260905_0027)** — 등급형에 대한 보장은 그대로 두고 두 줄만
+  더했다: ① `NEW.level IS NOT NULL`(무한레벨형)이면 검사를 건너뛴다 — 레벨마다 조건 필드가
+  달라지는 것이 정상 설계다. ② 형제 조회에서 `level IS NOT NULL`인 행을 뺀다 — 같은 이름을 쓰는
+  레벨형이 등급형 계열의 «기존 조건 조합»을 오염시키지 않게 한다. 아울러 트리거의 `UPDATE OF`
+  목록에 `level`·`rarity`를 추가했다 — 셋(name/activity_types/condition_json)뿐이던 예전 정의는
+  레벨형을 등급형으로 되돌리는 UPDATE가 검사를 통째로 건너뛰게 했다. **그룹핑 키는 여전히
+  `(activity_types, name)`이다** — `family_key`로 옮길지는 어드민 계열 관리(티켓 20260905_0032)에서
+  결정한다.
 - **3차 2단계 — "3b"는 배너 텍스트로 절반만 구현됨(티켓 20260904_1425).** `user_family_progress`의
   `current`/`prev`에서 fraction 증가폭이 가장 큰 축 하나를 골라 "직전 동기화보다 {라벨}
   {델타}{단위} 가까워졌어요" 문장을 조립해 `RecentSyncBanner`(DS)에 배선했다 — 재계산 없이

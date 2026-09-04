@@ -16,7 +16,7 @@
                  └─1:N─ strava_activities (동기화 원본 활동 기록)
 
 [배지]          badges (activity/item/checkin) ──faction_id──> factions
-                 ├─1:N─ user_activity_badges      (활동/아이템 배지, 평생 1회)
+                 ├─1:N─ user_activity_badges      (활동/아이템 배지, 행은 1개 · 반복 획득은 earn_count 누적)
                  └─1:N─ user_checkin_badge_earns  (체크인 배지, 반복 획득 가능)
 
 [인벤토리]      users ─1:1─ inventory ─1:N─ inventory_items ──badge_id──> badges
@@ -90,7 +90,10 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | 필드 | 설명 |
 |------|------|
 | type | `activity` / `item` / **`poi`**(신규 — POI 통과 시 반복 발급) |
-| rarity | common / rare / epic / mystic |
+| rarity | common / rare / epic / mystic. **nullable** — NULL이면 무한레벨형이며, 이것이 v5의 **유일한** 배지 종류 판정 기준이다(별도 `badge_kind` 컬럼을 두지 않는다 — 판정 기준이 둘이면 서로 어긋난다). `CHECK ((rarity IS NULL) = (level IS NOT NULL))`이 강제한다 |
+| level | 무한레벨형의 레벨(Lv.1~∞). 등급형은 NULL. `level >= 1` |
+| family_key | 계열 식별자. 이름 문자열 대신 쓰는 안정적인 키. 활동 배지에만 채운다 |
+| sort_order | 표시 순서(오름차순). 계열 레일 1~99(계열 안 모든 등급이 같은 값을 공유) / 독립 발급 배지 101~ . **`0`은 «아직 설정하지 않음»이며 화면에서 맨 뒤로 밀린다** — 저장소의 다른 `sort_order`(`today_cards`·`factions`·`item_books`)는 0이 앞이라는 반대 관습이므로, 배지에 한해 이 규약을 따른다 |
 | faction_id | 소속 세계관 (아이템 배지) |
 | item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |
@@ -125,7 +128,16 @@ badges / item_books / factions 세 테이블이 같은 배경 컬럼 세트를 �
 도는 상태가 된다 — 실제로 20260901_1944 게이트 FAIL이 이 부분 적용에서 나왔다.
 
 ### user_activity_badges
-활동/아이템 배지 발급 기록. 평생 1회(UNIQUE user_id+badge_id). 지점(POI)/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.
+활동/아이템 배지 발급 기록. **행은 유저·배지당 1개**(UNIQUE user_id+badge_id)이고, 같은 배지를 여러 번 받는 반복 획득은 행을 늘리는 대신 `earn_count`를 올린다. 지점(POI)/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.
+
+| 필드 | 설명 |
+|------|------|
+| earn_count | 획득 총 횟수. 최초 발급이 1 |
+| earn_history | 회차별 획득 이력(jsonb 배열). 원소는 `earned_at` + 근거 활동(`strava_activity_id` 또는 `poi_id`). **`earn_count = jsonb_array_length(earn_history)` 불변식**을 마이그레이션 130에서 백필로 성립시켰다. ⚠️ JSONB라 FK가 없다 — 근거 활동이 삭제되면 참조가 끊긴 채 남는다 |
+
+> UNIQUE를 해제하고 행을 쌓는 방식(선례: `user_checkin_badge_earns`)은 검토 후 미채택했다 —
+> «보유 여부»를 행 1개 전제로 판정하는 코드가 33개 파일에 퍼져 있어 전수 점검 비용이
+> 이력 보존의 이득을 넘는다(티켓 20260905_0027).
 
 ### user_checkin_badge_earns (신규)
 체크인 배지는 반복 획득 가능하므로 별도 테이블. UNIQUE(user_id, badge_id, poi_id, strava_id)로 동일 통과분 중복 방지.
