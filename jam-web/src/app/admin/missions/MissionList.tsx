@@ -2,7 +2,8 @@
 
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { MissionRow } from '@/types/database'
+import type { MissionRow, MissionType } from '@/types/database'
+import { checkMissionCondition } from '@/lib/missions/condition-keys'
 import { MISSION_TYPES, MISSION_TYPE_LABEL } from '@/lib/admin/badge-labels'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
@@ -62,6 +63,18 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
     () => new Map(badgeLabels.map((b) => [b.id, b]))
   )
   const router = useRouter()
+
+  // 저장을 막지는 않지만 달성 판정에 아무 영향도 주지 않는 조건 필드 고지 (티켓 20260905_1141).
+  // 서버 검증과 같은 순수 함수를 그대로 써서 판정 기준이 갈리지 않게 한다.
+  const conditionWarning = (() => {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(form.condition_json)
+    } catch {
+      return null
+    }
+    return checkMissionCondition(form.mission_type as MissionType, parsed).warning
+  })()
 
   const rewardBadgeChips = form.reward_badge_ids
     .map((id) => badgeLabelCache.get(id))
@@ -147,12 +160,22 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
       image_url: form.image_url || null,
     }
 
-    await fetch(editingId ? `/api/admin/missions/${editingId}` : '/api/admin/missions', {
+    const res = await fetch(editingId ? `/api/admin/missions/${editingId}` : '/api/admin/missions', {
       method: editingId ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
     setSaving(false)
+
+    // 응답을 확인하지 않으면 서버가 400(조건 JSON 키 오류 등)을 줘도 폼이 «저장됨»처럼 닫힌다
+    // — 검증을 붙인 의미가 사라진다 (티켓 20260905_1141).
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      const message = typeof payload?.error === 'string' ? payload.error : null
+      setConditionError(message ?? '미션을 저장하지 못했어요. 잠시 후 다시 시도해주세요.')
+      return
+    }
+
     cancelForm()
     router.refresh()
   }
@@ -227,6 +250,7 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
               <textarea value={form.condition_json} onChange={(e) => setForm((f) => ({ ...f, condition_json: e.target.value }))}
                 rows={2} className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm font-mono" />
               {conditionError && <p className="text-red-600 text-xs mt-1">{conditionError}</p>}
+              {!conditionError && conditionWarning && <p className="text-amber-600 text-xs mt-1">{conditionWarning}</p>}
               <p className="text-muted-foreground text-xs mt-1">예: {`{"distance_km": 50, "activity_type": "cycling"}`}</p>
             </div>
 
