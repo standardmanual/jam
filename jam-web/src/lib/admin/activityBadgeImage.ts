@@ -14,6 +14,7 @@ import {
   parseBlobAnimation,
   type BlobAnimationParams,
 } from '@/lib/blobAnimation'
+import { getBadgeBlobPreset, hasBadgeBlobPreset } from '@/lib/badgeBlobPresets'
 import type { BadgeRarity } from '@/types/database'
 
 /** 현재 저장 포맷 버전. 형태가 바뀌면 올리고, 과거 값은 `parse`에서 마이그레이션한다. */
@@ -113,6 +114,41 @@ export function parseActivityBadgeImageParams(value: unknown): ActivityBadgeImag
     name: normalizeText(raw.name, MAX_NAME_LENGTH),
     condition: normalizeText(raw.condition, MAX_CONDITION_LENGTH),
     background: { ...blob, phase: normalizePhase(rawBackground.phase) },
+  }
+}
+
+/**
+ * 아직 저작한 적 없는 배지의 초기 저작값 (티켓 20260905_0032 C-1)
+ *
+ * **무한레벨형(`rarity IS NULL`)에는 등급 기반 프리셋을 쓰지 않는다.** 블롭 색상 프리셋은
+ * «활동 종목 × 등급» 조합표(`badgeBlobPresets.ts`)라 등급이 없는 배지에는 성립하지 않는다 —
+ * 임의의 등급을 끼워 넣으면 그 배지의 등급인 것처럼 색이 정해진다. 그래서 레벨형은 기본
+ * 배경으로 두고 운영자가 색상 톤을 직접 고르게 한다.
+ *
+ * `rarity`를 `common`으로 채우는 것은 «등급 칩을 그리지 않는다»는 뜻이다
+ * (`composeActivityBadgeImage`가 common일 때 칩을 건너뛴다). 레벨형에 등급 칩을 그릴 방법은
+ * 아직 없다 — 화면도 레벨형이면 등급 Select 대신 「Lv.N」을 읽기 전용으로 보여준다.
+ */
+export function buildInitialActivityBadgeImageParams(badge: {
+  name: string
+  description: string
+  rarity: BadgeRarity | null
+  activityTypes: string[]
+}): ActivityBadgeImageParams {
+  const activityType = badge.activityTypes[0]
+  const presetColors =
+    activityType && badge.rarity && hasBadgeBlobPreset(activityType)
+      ? getBadgeBlobPreset(activityType, badge.rarity)
+      : null
+
+  return {
+    version: ACTIVITY_BADGE_IMAGE_PARAMS_VERSION,
+    rarity: badge.rarity ?? 'common',
+    name: badge.name,
+    condition: badge.description,
+    background: presetColors
+      ? { ...DEFAULT_ACTIVITY_BADGE_BACKGROUND, colors: presetColors }
+      : DEFAULT_ACTIVITY_BADGE_BACKGROUND,
   }
 }
 

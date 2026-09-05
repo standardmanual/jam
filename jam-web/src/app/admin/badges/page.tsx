@@ -8,6 +8,14 @@ import type { Json } from '@/types/database.generated'
 import BadgesFilterBar from './BadgesFilterBar'
 import Pagination from '../poi/Pagination'
 import { UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
+import {
+  badgeUsesConditionField,
+  compareBadgeListRows,
+  parseBadgeListSort,
+  parseConditionFieldFilter,
+  requiresFullFetchSort,
+  type BadgeListSortRow,
+} from '@/lib/admin/badge-list-view'
 
 const PAGE_SIZE = 50
 
@@ -27,7 +35,8 @@ async function fetchAllRows<T>(query: RangeQuery<T>): Promise<T[]> {
   for (;;) {
     const { data, error } = await query(from, from + FETCH_ALL_PAGE_SIZE - 1)
     if (error) {
-      console.error('[admin/badges] 체크인 배지 카테고리 계산용 전체 조회 오류:', error)
+      // 쓰는 곳이 둘이다 — 체크인 배지 카테고리 계산, 계열순·레벨순 정렬용 전량 조회.
+      console.error('[admin/badges] 목록 전체 조회 오류(부분 목록으로 이어감):', error)
       break
     }
     const page = data ?? []
@@ -52,7 +61,10 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   const filterFactionId = params.faction_id
   const filterItemBookId = params.item_book_id
   const status = params.status === 'inactive' || params.status === 'all' ? params.status : 'active'
-  const sortBy = params.sort ?? 'created_desc'
+  // 정렬 값·조건 필드 키는 각각 목록 정렬 규칙·조건 레지스트리에서만 나온다(티켓 20260905_0032 C-2).
+  // 조건 필드 키는 아래에서 jsonb 경로(`condition_json->>키`)로 들어가므로 임의 문자열을 통과시키지 않는다.
+  const sortBy = parseBadgeListSort(params.sort)
+  const filterConditionField = parseConditionFieldFilter(params.condition_field)
   const q = params.q?.trim() ?? ''
 
   const supabase = createServiceClient()
@@ -61,6 +73,10 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   // 필드(drop_weight, valid_from/until, background_* 등)는 목록에 불필요하다(20260826_011 A8).
   const BADGE_LIST_COLUMNS =
     'id, name, description, type, rarity, image_url, condition_json, activity_types, patch_available, patch_price_krw, faction_id, deleted_at'
+
+  // 계열순·레벨순은 DB가 정렬할 수 없어(「sort_order = 0은 맨 뒤」·계열 키 폴백) 메모리에서
+  // 비교한다 — 그 비교에 필요한 컬럼만 더 가져온다(티켓 20260905_0032 C-2).
+  const BADGE_SORT_COLUMNS = 'level, family_key, sort_order, created_at'
 
   // 지점 카테고리 필터: 체크인 배지의 실제 분류 기준은 badges.category(어드민이 배지에 직접
   // 지정한 값)를 우선하고, 값이 없으면(null) 연결된 지점의 poi.category로 폴백한다
@@ -84,17 +100,17 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
     // badges.activity_types(text[])·condition_json(jsonb)은 DB 타입이 각각 string[]·Json이라
     // 도메인 좁힘 타입(ActivityType[]·BadgeCondition|null)으로 바로 받을 수 없다. 조회는 DB
     // 형태로 받고 BadgeListRow로 만들 때만 좁힌다 — 나머지 컬럼은 계속 검사된다.
-    type CheckinCandidateRow = Omit<BadgeListRow, 'activity_types' | 'condition_json'> & {
-      activity_types: string[]
-      condition_json: Json
-      category: string | null
-      created_at: string
-    }
+    type CheckinCandidateRow = Omit<BadgeListRow, 'activity_types' | 'condition_json'> &
+      Omit<BadgeListSortRow, 'name' | 'rarity' | 'activity_types'> & {
+        activity_types: string[]
+        condition_json: Json
+        category: string | null
+      }
     const [allCheckinRows, linkedPoiRows] = await Promise.all([
       fetchAllRows<CheckinCandidateRow>((from, to) =>
         supabase
           .from('badges')
-          .select(`${BADGE_LIST_COLUMNS}, category, created_at`)
+          .select(`${BADGE_LIST_COLUMNS}, ${BADGE_SORT_COLUMNS}, category`)
           .eq('type', 'checkin')
           .order('id')
           .range(from, to)
@@ -129,13 +145,13 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
         (b) => b.name.toLowerCase().includes(qLower) || (b.description ?? '').toLowerCase().includes(qLower)
       )
     }
-
-    switch (sortBy) {
-      case 'name_asc': candidates.sort((a, b) => a.name.localeCompare(b.name, 'ko')); break
-      case 'name_desc': candidates.sort((a, b) => b.name.localeCompare(a.name, 'ko')); break
-      case 'created_asc': candidates.sort((a, b) => a.created_at.localeCompare(b.created_at)); break
-      default: candidates.sort((a, b) => b.created_at.localeCompare(a.created_at))
+    if (filterConditionField) {
+      candidates = candidates.filter((b) =>
+        badgeUsesConditionField(b.condition_json as Record<string, unknown> | null, filterConditionField)
+      )
     }
+
+    candidates.sort(compareBadgeListRows(sortBy))
 
     total = candidates.length
     const from = (page - 1) * PAGE_SIZE
@@ -156,33 +172,60 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
       })
     )
   } else {
-    let query = supabase.from('badges').select(BADGE_LIST_COLUMNS, { count: 'exact' })
+    // 필터는 두 경로(DB 정렬 / 메모리 정렬)가 똑같이 적용해야 한다 — 한 곳에서만 조립한다.
+    // select 문자열을 인자로 받지 않는 이유: 인자로 받으면 타입이 `string`으로 넓어져
+    // 응답 행 타입 추론이 통째로 사라진다(컬럼 오타가 컴파일에서 안 잡힌다).
+    const filtered = (withCount: boolean) => {
+      let query = supabase
+        .from('badges')
+        .select(`${BADGE_LIST_COLUMNS}, ${BADGE_SORT_COLUMNS}`, withCount ? { count: 'exact' } : undefined)
 
-    if (status === 'active') query = query.is('deleted_at', null)
-    else if (status === 'inactive') query = query.not('deleted_at', 'is', null)
-    // status === 'all' → 필터 없음
+      if (status === 'active') query = query.is('deleted_at', null)
+      else if (status === 'inactive') query = query.not('deleted_at', 'is', null)
+      // status === 'all' → 필터 없음
 
-    if (filterType) query = query.eq('type', filterType)
-    if (filterRarity) query = query.eq('rarity', filterRarity)
-    if (q) query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
+      if (filterType) query = query.eq('type', filterType)
+      if (filterRarity) query = query.eq('rarity', filterRarity)
+      if (q) query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
 
-    if (filterActivityType) query = query.contains('activity_types', [filterActivityType])
-    if (filterFactionId) query = query.eq('faction_id', filterFactionId)
-    if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
+      if (filterActivityType) query = query.contains('activity_types', [filterActivityType])
+      if (filterFactionId) query = query.eq('faction_id', filterFactionId)
+      if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
+      // 조건 필드 필터 — `condition_json`에 그 키가 있는 배지만. jsonb에서 없는 키는 NULL이라
+      // "not is null"로 «쓰는 배지»를 가려낸다. 키는 레지스트리를 통과한 값뿐이다.
+      if (filterConditionField) query = query.not(`condition_json->>${filterConditionField}`, 'is', null)
 
-    switch (sortBy) {
-      case 'name_asc': query = query.order('name', { ascending: true }); break
-      case 'name_desc': query = query.order('name', { ascending: false }); break
-      case 'created_asc': query = query.order('created_at', { ascending: true }); break
-      default: query = query.order('created_at', { ascending: false })
+      return query
     }
 
     const from = (page - 1) * PAGE_SIZE
-    query = query.range(from, from + PAGE_SIZE - 1)
 
-    const { data: badgesRaw, count } = await query
-    badges = (badgesRaw ?? []) as BadgeListRow[]
-    total = count ?? 0
+    if (requiresFullFetchSort(sortBy)) {
+      // 계열순·레벨순은 DB가 정렬할 수 없다(「0은 맨 뒤」·계열 키 폴백·레벨 없는 배지 맨 뒤).
+      // ⚠️ PostgREST 기본 상한 1000행 — `range`로 끝까지 넘겨 전량을 가져온 뒤 메모리에서
+      // 정렬·페이지네이션한다. 잘린 목록으로 정렬하면 뒤쪽 계열이 통째로 사라진다.
+      type SortableRow = BadgeListRow & Omit<BadgeListSortRow, 'name' | 'rarity' | 'activity_types'>
+      const rows = await fetchAllRows<SortableRow>(async (rangeFrom, rangeTo) => {
+        const { data, error } = await filtered(false).order('id').range(rangeFrom, rangeTo)
+        return { data: (data ?? []) as unknown as SortableRow[], error }
+      })
+      rows.sort(compareBadgeListRows(sortBy))
+      total = rows.length
+      badges = rows.slice(from, from + PAGE_SIZE)
+    } else {
+      let query = filtered(true)
+
+      switch (sortBy) {
+        case 'name_asc': query = query.order('name', { ascending: true }); break
+        case 'name_desc': query = query.order('name', { ascending: false }); break
+        case 'created_asc': query = query.order('created_at', { ascending: true }); break
+        default: query = query.order('created_at', { ascending: false })
+      }
+
+      const { data: badgesRaw, count } = await query.range(from, from + PAGE_SIZE - 1)
+      badges = (badgesRaw ?? []) as BadgeListRow[]
+      total = count ?? 0
+    }
   }
 
   const [{ data: factionsRaw }, { data: itemBooksRaw }, { data: poiCategoriesRaw }] = await Promise.all([
@@ -199,7 +242,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   const itemBooks = (itemBooksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name' | 'faction_id'>[]
   const poiCategories = (poiCategoriesRaw ?? []) as Pick<PoiCategoryRow, 'slug' | 'label'>[]
 
-  const hasFilter = !!(q || filterType || filterRarity || filterActivityType || filterPoiCategory || filterFactionId || filterItemBookId || status !== 'active')
+  const hasFilter = !!(q || filterType || filterRarity || filterActivityType || filterPoiCategory || filterFactionId || filterItemBookId || filterConditionField || status !== 'active')
 
   return (
     <div className="p-4 md:p-8 space-y-6">

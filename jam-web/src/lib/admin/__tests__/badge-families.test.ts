@@ -15,6 +15,7 @@ import {
   buildNextLevelDraft,
   buildRecalculationPlan,
   familyKeySlug,
+  filterFamilies,
   findFamilyKeyIssueError,
   findRecalculationConfirmError,
   groupBadgesIntoFamilies,
@@ -417,5 +418,52 @@ describe('nextFamilySlot — 상속 방향과 제안 방향이 일치한다', ()
       const highest = family.variants[family.variants.length - 1].rarity!
       expect(RANK[slot.rarity]).toBeGreaterThan(RANK[highest])
     }
+  })
+})
+
+// ── 계열 목록 좁히기 (티켓 20260905_0032 C-3) ───────────────────────────────
+describe('filterFamilies — 164계열에서 종목·계열명·조건 지표로 좁힌다', () => {
+  const families = groupBadgesIntoFamilies([
+    badge({ name: '밤의 보행자', family_key: 'walking:night-walker', activity_types: ['walking'],
+      condition_json: { activity_type: 'walking', distance_km: 10 } as BadgeCondition }),
+    badge({ name: '언덕의 도전자', family_key: 'hiking:hill-challenger', activity_types: ['hiking'],
+      condition_json: { activity_type: 'hiking', elevation_gain_m: 300 } as BadgeCondition }),
+    badge({ name: '새벽 러너', family_key: 'running:dawn-runner', activity_types: ['running'],
+      condition_json: { activity_type: 'running', distance_km: 5 } as BadgeCondition }),
+  ])
+
+  const names = (list: ReturnType<typeof filterFamilies>) => list.map((f) => f.name)
+
+  it('조건이 없으면 전부 남는다', () => {
+    expect(filterFamilies(families, {})).toHaveLength(3)
+    expect(filterFamilies(families, { q: '  ', activityType: null, conditionKey: undefined })).toHaveLength(3)
+  })
+
+  it('계열명 부분 일치로 좁힌다', () => {
+    expect(names(filterFamilies(families, { q: '러너' }))).toEqual(['새벽 러너'])
+  })
+
+  it('계열 키로도 찾는다 — 교차 게이트에 적을 키를 화면에서 확인해야 한다', () => {
+    expect(names(filterFamilies(families, { q: 'night-walker' }))).toEqual(['밤의 보행자'])
+    expect(names(filterFamilies(families, { q: 'NIGHT-WALKER' }))).toEqual(['밤의 보행자'])
+  })
+
+  it('종목으로 좁힌다', () => {
+    expect(names(filterFamilies(families, { activityType: 'hiking' }))).toEqual(['언덕의 도전자'])
+  })
+
+  it('사용 조건 지표로 좁힌다 — 그 지표를 쓰는 계열만 남는다', () => {
+    expect(names(filterFamilies(families, { conditionKey: 'elevation_gain_m' }))).toEqual(['언덕의 도전자'])
+    expect(names(filterFamilies(families, { conditionKey: 'distance_km' }))).toEqual(['밤의 보행자', '새벽 러너'])
+    expect(filterFamilies(families, { conditionKey: 'avg_watts' })).toHaveLength(0)
+  })
+
+  it('여러 축은 AND로 걸린다', () => {
+    expect(filterFamilies(families, { q: '러너', activityType: 'hiking' })).toHaveLength(0)
+    expect(names(filterFamilies(families, { q: '러너', conditionKey: 'distance_km' }))).toEqual(['새벽 러너'])
+  })
+
+  it('원본 목록의 순서를 그대로 유지한다', () => {
+    expect(names(filterFamilies(families, {}))).toEqual(names(families))
   })
 })
