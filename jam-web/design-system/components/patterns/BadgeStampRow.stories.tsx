@@ -3,6 +3,12 @@ import React from 'react';
 import { expect } from 'storybook/test';
 import { BadgeStampRow } from './BadgeStampRow';
 
+const WALK_ICON =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%23e8461f" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
+  );
+
 const meta: Meta<typeof BadgeStampRow> = {
   title: 'MODULAR/Patterns/BadgeStampRow',
   component: BadgeStampRow,
@@ -85,4 +91,33 @@ export const AlignsWithLevelGauge: Story = {
       </div>
     </Frame>
   ),
+};
+
+/**
+ * 썸네일 규칙 — 획득은 원본 컬러, **미획득은 원본 + `grayscale(1)`**(2026-09-06 확정).
+ * `imageUrl`을 넘기지 않으면 중성 자리 표시만 그린다.
+ */
+export const ThumbnailGrayscale: Story = {
+  name: '썸네일 — 획득은 컬러, 미획득은 그레이',
+  render: () => (
+    <Frame>
+      <div data-testid="rows" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <BadgeStampRow name="작심삼일의 파괴자" rarity="rare" count={5} caption="3일 연속" imageUrl={WALK_ICON} />
+        <BadgeStampRow
+          name="열흘의 리듬"
+          rarity="epic"
+          count={0}
+          caption="10일 연속"
+          earned={false}
+          imageUrl={WALK_ICON}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const imgs = Array.from(canvasElement.querySelector('[data-testid="rows"]')!.querySelectorAll('img'));
+    expect(imgs.length).toBe(2);
+    const gray = imgs.filter((i) => getComputedStyle(i).filter.includes('grayscale'));
+    expect(gray.length).toBe(1);
+  },
 };
