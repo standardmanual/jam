@@ -107,3 +107,31 @@ export const Empty: Story = {
     </Frame>
   ),
 };
+
+export const EmptyFromMap: Story = {
+  name: '펼쳤는데 비어 있을 때 — 빈 배열',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '호출부가 `{list.map(...)}`로 넘기면 목록이 비었을 때 children이 `undefined`가 아니라 ' +
+          '**빈 배열 `[]`**이 된다. 예전 구현은 `children ?? emptyText`라 `[]`가 nullish가 아니어서 ' +
+          'emptyText가 뜨지 않고 빈 영역만 남았다(티켓 20260905_0036 개선 리뷰). ' +
+          '위의 「펼쳤는데 비어 있을 때」는 children을 아예 넘기지 않는 경우라 그때도 동작했다 — ' +
+          '두 스토리가 갈라져 있어야 회귀를 잡는다.',
+      },
+    },
+  },
+  render: () => {
+    const families: { id: string; name: string }[] = [];
+    return (
+      <Frame>
+        <BadgeStatusSection title="다음 목표" count={0} defaultOpen emptyText="지금은 진행 중인 목표가 없어요">
+          {families.map((f) => (
+            <div key={f.id}>{f.name}</div>
+          ))}
+        </BadgeStatusSection>
+      </Frame>
+    );
+  },
+};
