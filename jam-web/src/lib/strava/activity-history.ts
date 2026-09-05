@@ -75,7 +75,11 @@ export async function getActivityHistory(
     query = query.gte('start_date', sinceDate)
   }
 
-  const { data, error } = await query
+  // 시간 오름차순 고정. 지금까지 정렬이 없었고 소비처들이 각자 방어적으로 정렬해 왔지만
+  // (`calcMaxStreak`·`collectRepeatOccurrences`), 휴식 조건(티켓 20260905_0030 §4)은
+  // **인접 활동 사이의 간격**을 보므로 정렬이 판정의 전제다. 여기서 한 번 고정해 두지 않으면
+  // 「가끔만 틀리는」 판정이 된다(B2 개선 리뷰).
+  const { data, error } = await query.order('start_date', { ascending: true })
   if (error) {
     console.error('[getActivityHistory] 조회 오류 — 빈 이력으로 폴백:', error)
     return []

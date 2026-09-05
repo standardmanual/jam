@@ -166,7 +166,7 @@ Step 8. initial_sync_done 갱신
 
 | 값 | 뜻 | fail-closed |
 |---|---|---|
-| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (21종) | 통과 |
+| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (22종) | 통과 |
 | `external` | **`evaluateConditionDetailed` 밖**에서 처리 — `poi_id`(체크인 파이프라인) · `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`와 교차 게이트 3종(엔진 안의 후보 선별 단계 `evaluateBadgeGates()`) | 통과 |
 | `pending` | 아직 아무도 평가하지 않는다 — v5 신규 20종 + `route` (21종) | **막힘** |
 
