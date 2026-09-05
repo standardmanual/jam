@@ -135,12 +135,12 @@ badges / item_books / factions 세 테이블이 같은 배경 컬럼 세트를 �
 도는 상태가 된다 — 실제로 20260901_1944 게이트 FAIL이 이 부분 적용에서 나왔다.
 
 ### user_activity_badges
-활동/아이템 배지 발급 기록. **행은 유저·배지당 1개**(UNIQUE user_id+badge_id)이고, 같은 배지를 여러 번 받는 반복 획득은 행을 늘리는 대신 `earn_count`를 올린다. 지점(POI)/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.
+활동/아이템 배지 발급 기록. **행은 유저·배지당 1개**(UNIQUE user_id+badge_id)이고, 같은 배지를 여러 번 받는 반복 획득은 행을 늘리는 대신 `earn_count`를 올린다. **그 증가는 발급이 아니다** — 피드·결산·획득 연출을 만들지 않는다. 실제 발급은 등급 임계값(1·5·20·50회)에서만 일어난다. 이 분리가 v5 홍수 방지의 실체다. 지점(POI)/Strava 트리거 메타(`triggered_by_*`) + 어드민 조회용 `condition_snapshot`(발급 당시 실측값) 포함.
 
 | 필드 | 설명 |
 |------|------|
-| earn_count | 획득 총 횟수. 최초 발급이 1 |
-| earn_history | 회차별 획득 이력(jsonb 배열). 원소는 `earned_at` + 근거 활동(`strava_activity_id` 또는 `poi_id`). **`earn_count = jsonb_array_length(earn_history)` 불변식**을 마이그레이션 130에서 백필로 성립시켰다. ⚠️ JSONB라 FK가 없다 — 근거 활동이 삭제되면 참조가 끊긴 채 남는다 |
+| earn_count | **그 배지의 기준 조건을 만족한 활동 수**(v5 B1에서 재정의). 등급형·레벨형은 발급 시 1. 반복형은 발급 시점에 그때까지 쌓인 회차를 전부 심고, 이후 새 활동마다 오른다. **그 증가는 발급이 아니다** — 피드·결산·획득 연출을 만들지 않는다 |
+| earn_history | 회차별 이력(jsonb 배열). 원소는 `earned_at` + 근거 활동(`strava_activity_id` 또는 `poi_id`). **`strava_activity_id`가 반복 획득의 멱등 판정 키다** — 이미 들어 있는 활동으로는 카운터가 오르지 않는다(마이그레이션 132의 `increment_activity_badge_earn`). ⚠️ **상한 200.** 여기 도달한 뒤로는 `earn_count = jsonb_array_length(earn_history)` 불변식이 깨진다(`earn_count`만 계속 증가). ⚠️ JSONB라 FK가 없다 — 근거 활동이 삭제되면 참조가 끊긴 채 남는다 |
 
 > UNIQUE를 해제하고 행을 쌓는 방식(선례: `user_checkin_badge_earns`)은 검토 후 미채택했다 —
 > «보유 여부»를 행 1개 전제로 판정하는 코드가 33개 파일에 퍼져 있어 전수 점검 비용이

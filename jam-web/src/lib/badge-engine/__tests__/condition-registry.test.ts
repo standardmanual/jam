@@ -203,7 +203,7 @@ describe('레지스트리 — 필드 구성', () => {
       repeatActs
     )
     expect(twice.pass).toBe(false)
-    expect(twice.reason).toBe('달성 횟수 부족')
+    expect(twice.reason).toBe('충족 횟수 부족')
     expect(twice.actual).toBe('1회')
 
     const once = evaluateConditionDetailed(
