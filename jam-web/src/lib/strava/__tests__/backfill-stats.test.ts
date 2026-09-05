@@ -14,6 +14,7 @@ import {
   hasAnyExtendedField,
   summarizeCoverage,
   summarizeUsers,
+  splitBackfillable,
   UNCLASSIFIED_SPORT,
   type ActivityStatRow,
 } from '../backfillStats'
@@ -184,5 +185,48 @@ describe('summarizeUsers — 유저별 현황', () => {
       row({ user_id: 'u9' }),
     ])
     expect(users).toHaveLength(1)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// 게이트 리뷰 WARN 3 반영 — 커버리지 분모에서 백필 불가능한 행을 뺀다
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('splitBackfillable — Strava 연결이 없는 유저의 활동은 분모에서 뺀다', () => {
+  // 실측(2026-09-05): strava_activities 873행 중 19행이 strava_connections 없는 유저 4명의
+  // 것이다. 분모에 남기면 백필을 전부 돌려도 커버리지가 97.8%에서 멈추고,
+  // 「달리기 97%」를 「Strava가 3%에 값을 안 줬다」로 오독하게 된다.
+  const rows = [
+    row({ user_id: 'u1', normalized: { avgCadence: 88 } }),
+    row({ user_id: 'u1', normalized: {} }),
+    row({ user_id: 'orphan1', normalized: {} }),
+    row({ user_id: 'orphan2', normalized: {} }),
+  ]
+
+  it('연결된 유저의 행만 백필 대상으로 남는다', () => {
+    const { backfillable, orphaned } = splitBackfillable(rows, ['u1'])
+    expect(backfillable).toHaveLength(2)
+    expect(orphaned).toHaveLength(2)
+    expect(orphaned.map((r) => r.user_id)).toEqual(['orphan1', 'orphan2'])
+  })
+
+  it('커버리지가 백필 대상만 세면 100%에 닿을 수 있다', () => {
+    const { backfillable } = splitBackfillable(rows, ['u1'])
+    const coverage = summarizeCoverage(backfillable)
+    expect(coverage.reduce((n, c) => n + c.activityCount, 0)).toBe(2)
+    // 고아 행을 남겼다면 4가 되어 커버리지 상한이 50%로 묶인다
+    expect(summarizeCoverage(rows).reduce((n, c) => n + c.activityCount, 0)).toBe(4)
+  })
+
+  it('전원이 연결돼 있으면 고아가 0이다', () => {
+    const { backfillable, orphaned } = splitBackfillable(rows, ['u1', 'orphan1', 'orphan2'])
+    expect(backfillable).toHaveLength(4)
+    expect(orphaned).toHaveLength(0)
+  })
+
+  it('연결 목록이 비면 전부 고아다 — 조용히 통과시키지 않는다', () => {
+    const { backfillable, orphaned } = splitBackfillable(rows, [])
+    expect(backfillable).toHaveLength(0)
+    expect(orphaned).toHaveLength(4)
   })
 })
