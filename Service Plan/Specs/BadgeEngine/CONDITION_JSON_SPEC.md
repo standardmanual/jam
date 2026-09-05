@@ -127,7 +127,7 @@
 
 ### 2.10 v5 신규 조건 필드 20종 — **선언만, 평가 미구현** (2026-09-05, 티켓 20260905_0028)
 
-`conditionRegistry.ts`에 `evaluated: false`로 선언돼 있고 DB CHECK 제약도 허용하지만,
+`conditionRegistry.ts`에 `evaluation: 'pending'`으로 선언돼 있고 DB CHECK 제약도 허용하지만,
 **badge-engine은 아직 이 필드들을 평가하지 않는다**(구현은 티켓 20260905_0030).
 이 필드가 하나라도 든 조건은 `evaluateConditionDetailed`가 fail-closed로 막으므로
 «발급되지 않는 것»이 기본값이다(§4 참조).
@@ -196,7 +196,7 @@
 - `poi_id`는 다른 조건 필드와 혼합 불가 (엔진 미지원)
 - `mission_reward`(§3)는 조건 필드와 함께 있어도 항상 §3의 규칙이 우선한다(무조건 fail)
 - **fail-closed** (2026-09-05, 티켓 20260905_0028): 조건에 «엔진이 평가하지 않는 키»가 하나라도
-  있으면 나머지 필드를 충족해도 **발급되지 않는다**. 대상은 ① `evaluated: false`인 v5 신규 20종
+  있으면 나머지 필드를 충족해도 **발급되지 않는다**. 대상은 ① `evaluation: 'pending'`인 v5 신규 20종
   (§2.10) ② 레지스트리에 아예 없는 키(오탈자). 사유는 「평가할 수 없는 조건 필드 — …」로 남는다.
   이 규칙이 없으면 `matchesPerActivityCondition()`이 모르는 키를 조용히 건너뛰고 마지막에
   `return true` 하므로, 미구현 필드가 «발급 안 됨»이 아니라 **«무조건 발급»**으로 뒤집힌다
@@ -243,7 +243,7 @@
 
 | 항목 | 상태 |
 |------|------|
-| `route` 필드 | ❌ 미구현 — 타입(`BadgeCondition`)·레지스트리엔 존재하나 badge-engine 평가 로직이 없다. 조건에 넣어도 무시되며 발급 판정에 아무 영향을 주지 않는다 (2026-08-25 조사, 티켓 20260825_034). ⚠️ 레지스트리에서는 `evaluated: true`로 남아 있어 **fail-closed가 잡지 않는다** — 현재 이 필드를 쓰는 배지가 0건이라 실제 오발급은 없지만, 쓰기 시작하기 전에 평가 구현 또는 `evaluated: false` 전환이 필요하다 |
+| `route` 필드 | ❌ 미구현 — 타입(`BadgeCondition`)·레지스트리엔 존재하나 badge-engine 평가 로직이 없다 (2026-08-25 조사, 티켓 20260825_034; badge-engine의 `condition.route` 참조 0건을 2026-09-05 재실측). **2026-09-05부터 `evaluation: 'pending'`이라 fail-closed가 막는다** — 조건에 `route`가 있으면 그 배지는 발급되지 않는다. 쓰는 배지가 0건이라 회귀 없이 전환했다. 쓰려면 먼저 평가를 구현하고 `engine`으로 뒤집거나, 스키마에서 제거한다 |
 | v5 신규 20종 | ❌ 평가 미구현 — 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). fail-closed로 막히므로 발급되지 않는다. 평가 구현은 티켓 20260905_0030, `negative_split`이 필요로 하는 `splits_metric` 수집은 티켓 20260905_0029 |
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
 | `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조 |

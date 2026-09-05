@@ -97,17 +97,36 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 #### 2.3-0 fail-closed — 평가할 수 없는 필드가 있으면 발급하지 않는다 (2026-09-05, 티켓 20260905_0028)
 
 `evaluateConditionDetailed`는 **조건 평가를 시작하기 전에** `condition_json`의 모든 키를
-레지스트리와 대조한다. ① 레지스트리에 없는 키(오탈자) ② `evaluated: false`인 키(v5 신규 20종)가
+레지스트리와 대조한다. ① 레지스트리에 없는 키(오탈자) ② `evaluation: 'pending'`인 키가
 하나라도 있으면 즉시 `pass:false`를 돌려주고, 사유는 「평가할 수 없는 조건 필드 — 알 수 없는
 필드: … / 평가 구현 대기: …」로 남는다.
+
+**평가 주체는 셋으로 구분한다** — `boolean` 하나가 세 가지 뜻을 겸하던 것을 풀었다:
+
+| 값 | 뜻 | fail-closed |
+|---|---|---|
+| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (21종) | 통과 |
+| `external` | 엔진 밖에서 처리 — `poi_id`(체크인 파이프라인) · `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`(선행 배지 게이트) | 통과 |
+| `pending` | 아직 아무도 평가하지 않는다 — v5 신규 20종 + `route` (21종) | **막힘** |
 
 이 방어가 필요한 이유는 `matchesPerActivityCondition()`(`index.ts`)이 **아는 키만 검사하고
 마지막에 `return true`** 하기 때문이다. 막지 않으면 미구현 필드가 «발급 안 됨»이 아니라
 **«무조건 발급»**이 된다 — §2.7의 084 사고와 같은 유형의, 에러 없이 조용히 뒤집히는 결함이다.
 
-기존 25개 필드는 전부 `evaluated: true`라 현행 발급 동작은 바뀌지 않는다. 다만 `route`는
-평가 로직이 실제로 없는데도 `evaluated: true`로 남아 있어 이 방어의 대상이 아니다 — 현재
-사용 배지가 0건이라 오발급은 없지만, 쓰기 전에 정리해야 한다(`CONDITION_JSON_SPEC.md` §6).
+기존 필드는 `route` 하나를 빼고 전부 `engine`/`external`이라 현행 발급 동작은 바뀌지 않는다.
+`route`는 타입·스키마·DB CHECK에만 있고 badge-engine에 `condition.route` 참조가 **0건**이라
+(실측 2026-09-05) `pending`으로 두었다 — 쓰는 배지가 0건이라 회귀 없이 정직하게 표기할 수 있다.
+평가 구현 없이 쓰려면 먼저 구현하거나 스키마에서 제거해야 한다(`CONDITION_JSON_SPEC.md` §6).
+
+**미션 평가 경로는 예외 통로가 필요하다.** `missions/checker.ts`가 `MissionCondition`을
+`BadgeCondition`으로 캐스팅해 같은 함수에 넘기는데, 미션 어휘에는 배지 조건에 없는 키가 있다
+(`count`·`badge_id`). 열어 두지 않으면 fail-closed가 「알 수 없는 필드」로 판정해 **미션이 영구
+미달성**이 된다. `evaluateConditionDetailed`의 `extraAllowedKeys` 옵션이 그 통로이며,
+**`pending` 판정에는 영향을 주지 않는다** — 평가 구현이 없는 건 미션에서도 마찬가지다.
+
+**진행률도 같은 기준을 쓴다.** `classifyBadgeProgressKind`는 아는 축만 세므로 «기존 축 1개 +
+`pending` 필드 1개»인 조건은 대기 필드를 무시한 채 진행률을 그렸다 — 발급은 막히는데 화면에는
+달성률이 뜨는 상태다. fail-closed에 걸리는 조건은 `unsupported`로 돌려 표시도 함께 막는다.
 
 #### 2.3-1 복합 조건 배지 — "이력 전반 독립 평가"가 기본, "동시 충족"이 예외 (2026-08-31 복원)
 
