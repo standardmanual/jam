@@ -1,8 +1,9 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-04 (배지트리 진행 계산 계층(§2.13) 신설·화면 연결(2b~2d)·계열 진행
+> 최종 업데이트: 2026-09-05 (`NormalizedActivity` 확장 6필드 수집·백필 경로(§2.1-1) 추가 —
+> 티켓 20260905_0029. 이전: 배지트리 진행 계산 계층(§2.13) 신설·화면 연결(2b~2d)·계열 진행
 > 스냅샷 테이블+정합성 트리거(3차 1단계, 마이그레이션 128)·직전 동기화 비교 배너(3차 2단계,
-> 배너 텍스트만) 추가 — 티켓 20260904_0631/0921/1058/1156/1425)  
+> 배너 텍스트만) — 티켓 20260904_0631/0921/1058/1156/1425)  
 > **배지 운영 문서 4종 체계** — 이 문서(로직) + [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md)(조건 필드 전체 스펙) + `액티비티배지 레시피.md`(액티비티배지 전체 목록) + `아이템북 레시피.xlsx`(아이템배지 전체 목록 + 세계관 인접)  
 > DB 시드: `supabase/migrations/033_reseed_activity_badges_v3.sql` (액티비티배지 115종) + `supabase/migrations/118_reapply_walking_badges_v4.sql` (걷기 신규 32종. 076_walking_badges_v4.sql로 2026-08-08 작성됐으나 프로덕션에 한 번도 실행되지 않은 채 방치돼 있던 것을 발견해 118로 재적용, 티켓 20260831_2100)
 
@@ -43,6 +44,37 @@ Strava 싱크
 입력: userId, activities[] (NormalizedActivity)
 출력: { earned: BadgeEarnedInfo[], missed: BadgeMissedInfo[] }
 ```
+
+#### 2.1-1 `NormalizedActivity` — 확장 6필드 (2026-09-05, 티켓 20260905_0029)
+
+정규화 지점은 `src/lib/strava/sync.ts`의 `normalizeActivity()` **한 곳뿐**이다. 여기서 만든
+객체가 그대로 `strava_activities.normalized`(jsonb)에 저장되고 두 엔진의 입력이 된다.
+
+기존 12필드에 더해 **Strava Summary(목록) 응답에 이미 오던 6필드**를 함께 읽는다 —
+추가 API 호출이 없다.
+
+| 정규화 필드 | Strava 필드 | 변환 | 대응 조건 키 |
+|---|---|---|---|
+| `elapsedTimeSec` | `elapsed_time` | 없음(초) | — (휴식 시간 = `elapsedTimeSec - movingTimeSec`) |
+| `maxSpeedKmh` | `max_speed` | **m/s → km/h** | `max_speed_kmh` |
+| `maxElevationM` | `elev_high` | 없음(m) | `max_elevation_m` |
+| `avgHeartrateBpm` | `average_heartrate` | 없음(bpm) | `avg_heartrate_bpm` |
+| `avgWatts` | `average_watts` | 없음(W) | `avg_watts` |
+| `avgCadence` | `average_cadence` | 없음 | `avg_cadence` |
+
+- **값이 없으면 키 자체를 만들지 않는다** (`null`을 넣지 않는다). 심박계·파워미터가 없는
+  유저의 활동이 «데이터 없음 = 카운트 안 함»으로 자연히 동작해야 하고, 화면에
+  「심박 데이터가 있는 활동에서만 계산돼요」 같은 안내를 넣지 않기로 확정했다. `0`은 버리지
+  않는다 — 「해수면 고도 0m」과 「필드 없음」은 다른 사실이다
+- 조건 키(snake_case) ↔ 정규화 필드(camelCase) 대응은 `conditionRegistry.ts`의 `activityField`가
+  단일 출처다. 파생물 `CONDITION_ACTIVITY_FIELD`로 꺼내 쓴다
+- **`splits_metric`(→ `negative_split`)은 수집하지 않는다.** 상세 엔드포인트에만 있어 활동
+  1건당 호출 1회가 들고, 상한을 두면 조건을 채웠는데도 배지가 조용히 안 나온다. `getActivityById`의
+  잘못 좁혀진 반환 타입만 `StravaDetailedActivity`로 고쳤다(수집 경로는 만들지 않았다)
+- 기존 활동(2026-09-05 실측 873행)은 일반 싱크로 채워지지 않는다 — `getProcessedStravaIds`가
+  전부 걸러내기 때문이다. 전용 백필 경로가 `src/lib/strava/backfill.ts` +
+  `scripts/backfill-strava-extended-fields.ts`이며 **목록 엔드포인트만 쓰고 배지·드랍·미션·소식을
+  일절 호출하지 않는다**(재평가하면 배지 홍수가 난다). 갱신한 행은 `processed_via = 'manual_backfill'`
 
 ### 2.2 발급 파이프라인
 
@@ -85,7 +117,7 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 | `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 활동 횟수가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
 | `month` (2026-08-08 확장) | 기존 `number`에서 `number | number[]`로 확장 — 배열이면 여러 달을 OR로 묶어 `monthly_km`와 결합(예: 장마철 6~7월) |
 | `prerequisite_badge_names` | Step 3 C-1에서 처리 (OR 매칭) |
-| **v5 신규 20종** (2026-09-05) | ❌ **평가 미구현 — fail-closed로 막힌다.** 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10 |
+| **v5 신규 20종** (2026-09-05) | ❌ **평가 미구현 — fail-closed로 막힌다.** 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10. 다만 스칼라 7종이 읽을 **원천 데이터는 수집이 시작됐다**(§2.1-1, 티켓 20260905_0029) — 평가 구현(0030)은 `CONDITION_ACTIVITY_FIELD`로 정규화 필드를 꺼내면 된다 |
 
 > **조건 필드 선언의 단일 출처는 `src/lib/badge-engine/conditionRegistry.ts`다** (2026-09-05,
 > 티켓 20260905_0028). 키·라벨·단위·입력 타입·min/max/step·짝 필드·방향성·**평가 구현 여부**를

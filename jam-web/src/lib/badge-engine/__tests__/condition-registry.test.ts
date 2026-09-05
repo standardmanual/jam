@@ -16,6 +16,7 @@
 import { evaluateConditionDetailed, checkCondition } from '../index'
 import {
   ALL_CONDITION_KEYS,
+  CONDITION_ACTIVITY_FIELD,
   CONDITION_FIELDS,
   EVALUATED_CONDITION_KEYS,
   PENDING_CONDITION_KEYS,
@@ -222,6 +223,92 @@ describe('레지스트리 — 필드 구성', () => {
       for (const paired of meta.pairedWith ?? []) {
         expect(ALL_CONDITION_KEYS).toContain(paired)
       }
+    }
+  })
+})
+
+/**
+ * 조건 키(snake_case) ↔ `NormalizedActivity` 필드(camelCase) 대응 (티켓 20260905_0029).
+ *
+ * 평가 구현(티켓 20260905_0030)이 이 대응을 손으로 다시 적으면 오타가 «조건 통과»로 조용히
+ * 흘러간다 — `matchesPerActivityCondition()`이 아는 키만 검사하고 마지막에 `return true`
+ * 하기 때문이다. 그래서 레지스트리에 한 번만 적고 여기서 기계적으로 고정한다.
+ */
+describe('조건 키 ↔ 정규화 필드 대응 (activityField)', () => {
+  /** 활동 1건의 스칼라 값을 그대로 비교하는 v5 신규 7종 */
+  const PER_ACTIVITY_SCALAR_V5 = [
+    'max_elevation_m',
+    'max_speed_kmh',
+    'single_distance_km',
+    'single_elevation_m',
+    'avg_heartrate_bpm',
+    'avg_watts',
+    'avg_cadence',
+  ] as const
+
+  it('v5 스칼라 7종은 전부 대응 필드를 선언한다', () => {
+    for (const key of PER_ACTIVITY_SCALAR_V5) {
+      expect(CONDITION_ACTIVITY_FIELD[key]).toBeDefined()
+    }
+  })
+
+  it('대응이 실제 필드명과 정확히 일치한다 — 이름이 어긋나면 0030이 되돌아온다', () => {
+    expect(CONDITION_ACTIVITY_FIELD).toEqual({
+      max_elevation_m: 'maxElevationM',
+      max_speed_kmh: 'maxSpeedKmh',
+      single_distance_km: 'distanceKm',      // 기존 필드를 재사용한다 (이름이 규칙적이지 않다)
+      single_elevation_m: 'elevationGainM',  // 마찬가지
+      avg_heartrate_bpm: 'avgHeartrateBpm',
+      avg_watts: 'avgWatts',
+      avg_cadence: 'avgCadence',
+    })
+  })
+
+  it('선언한 필드는 실제 정규화 객체에 존재한다 — 오타면 값이 영원히 undefined다', () => {
+    const sample: NormalizedActivity = {
+      stravaId: 1,
+      name: '샘플',
+      distanceKm: 21.1,
+      movingTimeSec: 7200,
+      elevationGainM: 350,
+      jamActivityType: 'running',
+      startDate: '2026-09-01T00:00:00Z',
+      averageSpeedKmh: 10.5,
+      startLatLng: null,
+      endLatLng: null,
+      elapsedTimeSec: 7500,
+      maxSpeedKmh: 18.4,
+      maxElevationM: 512,
+      avgHeartrateBpm: 160,
+      avgWatts: 240,
+      avgCadence: 88,
+    }
+    for (const [conditionKey, activityField] of Object.entries(CONDITION_ACTIVITY_FIELD)) {
+      expect(
+        sample[activityField as keyof NormalizedActivity],
+        `${conditionKey} → ${activityField}`
+      ).not.toBeUndefined()
+    }
+  })
+
+  it('단위 변환·누적 집계가 필요한 필드에는 대응을 달지 않는다', () => {
+    // duration_minutes(분) vs movingTimeSec(초) · max_pace_sec_per_km(페이스) vs
+    // averageSpeedKmh(속도) · distance_km/elevation_gain_m(기본이 누적 합계).
+    // 여기 담기면 «이름을 그대로 읽어 비교하면 된다»는 선언의 뜻이 깨진다.
+    for (const key of ['duration_minutes', 'max_pace_sec_per_km', 'distance_km', 'elevation_gain_m', 'min_speed_kmh']) {
+      expect(CONDITION_ACTIVITY_FIELD[key as keyof typeof CONDITION_ACTIVITY_FIELD]).toBeUndefined()
+    }
+  })
+
+  it('활동 1건의 값이 아닌 이력 패턴 필드에는 대응이 없다', () => {
+    for (const key of ['rest_after_streak', 'weekly_streak', 'negative_split', 'interval_days']) {
+      expect(CONDITION_ACTIVITY_FIELD[key as keyof typeof CONDITION_ACTIVITY_FIELD]).toBeUndefined()
+    }
+  })
+
+  it('대응을 선언한 필드는 아직 전부 평가 대기다 — 0030이 뒤집을 지점이다', () => {
+    for (const key of Object.keys(CONDITION_ACTIVITY_FIELD)) {
+      expect(PENDING_CONDITION_KEYS).toContain(key)
     }
   })
 })

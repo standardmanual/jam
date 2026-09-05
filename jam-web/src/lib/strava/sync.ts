@@ -25,7 +25,12 @@ import { logEngineDecision } from '@/lib/engine-log'
 import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
 import { getActivityHistory } from '@/lib/strava/activity-history'
 import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engine/badgeProgress'
-import { getJamActivityType, metersToKm, metersPerSecToKmH } from '@/types/strava'
+import {
+  getJamActivityType,
+  metersToKm,
+  metersPerSecToKmH,
+  extractExtendedActivityFields,
+} from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
 import type {
   StravaConnectionRow,
@@ -210,8 +215,14 @@ async function notifyActivityBadgesEarned(
 
 /**
  * StravaSummaryActivity → NormalizedActivity 변환
+ *
+ * v5 확장 6필드(티켓 20260905_0029)를 함께 읽는다. 전부 목록 엔드포인트 응답에 이미 오던
+ * 값이라 추가 API 호출이 없다. 값이 없는 확장 필드는 **키 자체가 생기지 않는다**
+ * (`extractExtendedActivityFields` 주석 참고) — 백필도 같은 함수를 쓴다.
+ *
+ * **테스트에서 참조하므로 export한다** (`__tests__/normalize-activity.test.ts`).
  */
-function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity {
+export function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity {
   return {
     stravaId: activity.id,
     name: activity.name,
@@ -229,6 +240,7 @@ function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity 
       ? (activity.end_latlng as [number, number])
       : null,
     weatherTempC: activity.average_temp ?? null,
+    ...extractExtendedActivityFields(activity),
   }
 }
 

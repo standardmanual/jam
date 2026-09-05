@@ -99,3 +99,124 @@ startDate · startDateLocal · averageSpeedKmh · startLatLng · endLatLng · we
 ## 잔여 이슈
 - splits 수집(→ `negative_split` 평가)은 별도 티켓으로 분리했다. 착수 시 러닝 한정 여부와
   상한 비결정성 문제를 함께 다뤄야 한다
+
+---
+
+## 구현 기록 (2026-09-05)
+
+### 1. `NormalizedActivity` 확장 6필드 + `normalizeActivity()` 수정
+
+`src/types/strava.ts`에 6필드를 **전부 옵셔널**로 추가했다 —
+`elapsedTimeSec` · `maxSpeedKmh` · `maxElevationM` · `avgHeartrateBpm` · `avgWatts` · `avgCadence`.
+
+| 정규화 필드 | Strava 필드 | 변환 |
+|---|---|---|
+| `elapsedTimeSec` | `elapsed_time` | 없음(초) |
+| `maxSpeedKmh` | `max_speed` | **m/s → km/h** (`metersPerSecToKmH`, 평균 속도와 같은 반올림) |
+| `maxElevationM` | `elev_high` | 없음(m) — 누적 상승량 `total_elevation_gain`과 다른 값 |
+| `avgHeartrateBpm` | `average_heartrate` | 없음 |
+| `avgWatts` | `average_watts` | 없음 |
+| `avgCadence` | `average_cadence` | 없음 |
+
+**«없는 값은 키 자체를 생략»을 함수로 강제했다.** `extractExtendedActivityFields()`
+(`src/types/strava.ts`)가 유한한 숫자일 때만 키를 만든다. `0`은 버리지 않는다 — 「해수면
+고도 0m」과 「필드 없음」은 다른 사실이라 조건 평가가 둘을 구분할 수 있어야 한다.
+
+이 함수를 **싱크와 백필이 공유**한다. 두 경로가 갈라지면 백필된 활동과 신규 활동의 형태가
+달라지고, 그 차이는 조건 평가에서 조용한 오판정이 된다.
+
+`normalizeActivity`는 테스트가 직접 봐야 해서 `export`로 바꿨다(그 외 시그니처 무변경).
+
+### 2. 조건 키 ↔ 정규화 필드 대응 — `activityField` (레지스트리)
+
+조건 키는 snake_case(`avg_heartrate_bpm`), 정규화 필드는 camelCase(`avgHeartrateBpm`)인데
+**규칙적으로 대응하지 않는다** — `single_distance_km` → `distanceKm`,
+`single_elevation_m` → `elevationGainM`처럼 이름이 아예 어긋나는 쌍이 있다. 0030이 이 대응을
+손으로 다시 적으면 오타가 조용히 «조건 통과»로 흘러간다(`matchesPerActivityCondition()`이
+아는 키만 검사하고 마지막에 `return true`).
+
+→ `ConditionFieldMeta`에 `activityField`를 추가하고 v5 스칼라 7종에 선언했다. 파생물
+`CONDITION_ACTIVITY_FIELD`(조건키 → 정규화 필드 맵)를 0030이 그대로 쓰면 된다.
+
+**단위 변환·누적 집계가 필요한 필드에는 달지 않았다** — `duration_minutes`(분 vs 초) ·
+`max_pace_sec_per_km`(페이스 vs 속도) · `distance_km`/`elevation_gain_m`(기본이 누적 합계) ·
+`min_speed_kmh`. 담으면 「이름을 그대로 읽어 비교하면 된다」는 선언의 뜻이 깨진다.
+테스트가 이 경계를 양방향으로 고정한다.
+
+### 3. 시뮬레이터 확장 (`api/admin/simulate` + `admin/simulator`)
+
+- 라우트가 확장 6필드를 받는다. `readExtendedFields()`가 **싱크와 같은 규칙**을 지킨다 —
+  빈 값이면 키를 만들지 않는다. 어드민 폼이라 문자열로 올 수 있어 숫자 변환도 흡수한다
+- 응답 `parsed.extended`에 **실제로 평가에 실린 값만** 되돌려준다. 입력이 무시됐는지
+  화면에서 바로 보인다
+- 화면에 「확장 필드」 입력 6칸(전부 비어 있음이 기본)과 결과 패널의 확인 블록을 추가했다.
+  안내 문구: 「비워 두면 «데이터 없음»으로 처리돼요. 심박계가 없는 활동을 그대로 재현할 수 있어요.」
+
+### 4. `StravaDetailedActivity` 신설 + `getActivityById` 반환 타입 교체
+
+`getActivityById`가 상세 엔드포인트를 호출하면서도 반환 타입이 `StravaSummaryActivity`로
+잘못 좁혀져 있었다. `StravaDetailedActivity`(+ `StravaSplit`)를 신설해 교체했다.
+
+**`splits_metric`은 타입에 선언만 하고 수집하지 않는다** — 확정 사항 ①. 활동당 상세 호출
+경로도 만들지 않았다. `negative_split`은 `evaluation: 'pending'` 그대로다.
+유일한 호출처(`api/badges/[id]/share-data`)는 Summary 필드만 읽으므로 영향 없다.
+
+### 5. 백필 경로 (873행 대상) — **작성만, 미실행**
+
+- `src/lib/strava/backfill.ts` — 순수 병합 함수 `mergeExtendedFields()` + 유저별/전체 실행기
+- `scripts/backfill-strava-extended-fields.ts` — CLI 러너. **기본이 미리보기**이고 `--apply`가
+  있어야 쓴다
+
+지킨 제약:
+
+| 제약 | 방법 |
+|---|---|
+| 목록 엔드포인트만 쓴다 | `getActivities(token, undefined, page)` — `page` 파라미터를 추가해 전체 이력을 페이지로 훑는다. 활동당 상세 호출 없음. 유저당 `ceil(활동수/200)`회 |
+| 배지·드랍·미션·소식·피드를 트리거하지 않는다 | 그 모듈들을 **import조차 하지 않는다.** 테스트가 소스를 스캔해 금지 의존을 고정한다 |
+| `last_synced_at`을 건드리지 않는다 | 싱크의 토큰 갱신 구간을 공유하지 않고 백필 전용 `resolveAccessToken()`을 따로 뒀다(잠금 선점·「Strava 끊김」 소식이 백필에 있어선 안 된다). 테스트가 소스에 `last_synced_at`이 없음을 고정한다 |
+| `normalized`의 확장 필드만 갱신한다 | `mergeExtendedFields`가 확장 6키 외에는 읽지도 쓰지도 않는다. Strava가 안 주는 값은 기존 값을 **지우지도 않는다** |
+| rate limit | 요청 총량 예산(기본 90 — Strava 15분당 100회 아래) + 요청 간격(기본 1.5초). 예산이 바닥나면 깨끗이 멈추고 보고한다. **멱등이라 그대로 다시 돌리면 이어진다** |
+
+갱신한 행은 `processed_via = 'manual_backfill'`로 표시한다(타입에만 있고 구현이 없던 값).
+
+**실행 방법**
+```
+cd jam-web
+npx tsx scripts/backfill-strava-extended-fields.ts            # 미리보기 — DB에 쓰지 않는다
+npx tsx scripts/backfill-strava-extended-fields.ts --apply    # 실제 반영
+```
+옵션: `--user <uuid>`(반복 가능) · `--budget <n>` · `--delay <ms>`.
+필요 환경변수: `NEXT_PUBLIC_SUPABASE_URL` · `SUPABASE_SERVICE_ROLE_KEY` · `ENCRYPTION_KEY` ·
+`STRAVA_CLIENT_ID` · `STRAVA_CLIENT_SECRET` (`.env.local`에서 읽는다).
+
+> ⚠️ 미리보기 모드에서도 **만료된 access_token은 갱신·저장된다.** Strava를 호출하려면 유효한
+> 토큰이 필요하고, Strava가 refresh_token을 회전시키므로 저장하지 않으면 그 유저의 연동이
+> 다음 싱크에서 끊긴다. `strava_activities`는 `--apply` 없이는 쓰지 않는다.
+
+### 6. 회귀 테스트
+
+- `src/lib/strava/__tests__/normalize-activity.test.ts` (**16건 신규**) — 티켓의 완료 조건 4가지를
+  그대로 고정한다. ① 값이 있으면 저장 ② 값이 없으면 **키 자체가 없다**(`'key' in obj`로 확인 —
+  `toBeUndefined()`는 「키는 있고 값이 undefined」도 통과한다) + JSON 직렬화(= jsonb 저장 형태)
+  에서도 키가 없다 ③ 단위 변환 ④ 기존 12필드 값·키 집합 무변경
+- `src/lib/strava/__tests__/backfill-extended-fields.test.ts` (**12건 신규**) — 병합 규칙 +
+  「배지 홍수를 일으킬 경로가 없다」 소스 스캔(금지 import · `last_synced_at` 부재 ·
+  `getActivityById` 부재 · 쓰기 대상 컬럼 2개)
+- `condition-registry.test.ts`에 **6건 추가** — `activityField` 대응이 실제 필드명과 일치하는지,
+  선언한 이름으로 값이 실제로 잡히는지, 단위 변환 필드에는 달리지 않았는지
+
+### 검증
+- `npx tsc --noEmit` 0건
+- `npm run lint` **에러 0 · 경고 13** (전부 기존 design-system 경고 — 티켓 0027·0028과 동일)
+- vitest **666 통과 / 45파일** (기존 632 + 신규 34). `walking-badges-v4.test.ts` 31건 포함 무회귀
+- `npm run test:node` 13건 통과
+
+### 이번 티켓에서 하지 않은 것
+- `splits_metric` 수집 · `negative_split` 평가 (별도 티켓 — 확정 사항 ①)
+- v5 신규 20종의 **평가 로직** (티켓 20260905_0030). 수집만 했고 `evaluation`은 전부 `pending` 그대로다
+- 백필 **실행** (사용자 승인 후 오케스트레이터가 처리)
+- 어드민 조건 빌더의 신규 필드 입력 UI (티켓 20260905_0032)
+
+### DB 변경
+**없다.** `normalized`가 jsonb라 스키마 변경이 필요 없고, `processed_via`도 CHECK 없는 TEXT라
+`'manual_backfill'`을 그대로 쓸 수 있다. 마이그레이션 파일을 만들지 않았다(132는 미사용).

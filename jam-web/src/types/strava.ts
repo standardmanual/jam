@@ -108,6 +108,53 @@ export interface StravaSummaryActivity {
   average_temp?: number | null   // 섭씨, Strava가 제공하는 경우만 존재
 }
 
+// =========================================
+// Strava 활동 (Activity) — 단일 조회용 (resource_state: 3, Detailed)
+// =========================================
+/**
+ * 단일 활동 상세 응답의 구간 분할(1km / 1mile 단위).
+ * 목록(Summary) 응답에는 **오지 않는다** — 상세 조회에서만 채워진다.
+ */
+export interface StravaSplit {
+  distance: number            // 미터
+  elapsed_time: number        // 초
+  elevation_difference: number | null  // 미터
+  moving_time: number         // 초
+  split: number               // 1부터 시작하는 구간 번호
+  average_speed: number       // m/s
+  average_heartrate?: number
+  pace_zone?: number
+}
+
+/**
+ * `GET /activities/{id}` 응답 (Detailed). Summary의 모든 필드를 포함하고 상세 전용 필드가 더 붙는다.
+ *
+ * `getActivityById()`가 이 엔드포인트를 호출하면서도 반환 타입을 `StravaSummaryActivity`로
+ * 잘못 좁혀 두고 있었다(티켓 20260905_0029). 그 탓에 상세 전용 필드가 타입에 아예 존재하지
+ * 않아 컴파일 단계에서 접근이 막혔다.
+ *
+ * ⚠️ `splits_metric`은 선언만 해 둔다 — **수집·저장하지 않는다.** 활동 1건당 상세 호출이
+ * 1회 더 들어 백필 비용이 러닝만 697회다. `negative_split` 조건은 별도 티켓으로 분리됐고
+ * 그때까지 레지스트리에서 `evaluation: 'pending'`으로 남아 fail-closed가 막는다.
+ */
+export interface StravaDetailedActivity extends Omit<StravaSummaryActivity, 'resource_state'> {
+  resource_state: 3
+  description: string | null
+  calories?: number
+  /** 1km 단위 구간 분할 — `negative_split` 조건의 원천 (현재 미수집) */
+  splits_metric?: StravaSplit[]
+  /** 1mile 단위 구간 분할 */
+  splits_standard?: StravaSplit[]
+  /** 기록 기기명. 목록 응답에는 없다 */
+  device_name?: string | null
+  embed_token?: string
+  photos?: unknown
+  gear?: unknown
+  laps?: unknown[]
+  best_efforts?: unknown[]
+  segment_efforts?: unknown[]
+}
+
 // Strava 활동 타입 (JAM!에서 사용하는 주요 타입)
 export type StravaActivityType =
   | 'Ride'
@@ -202,6 +249,93 @@ export interface NormalizedActivity {
   startLatLng: [number, number] | null
   endLatLng: [number, number] | null
   weatherTempC?: number | null    // Strava average_temp (섭씨, 없으면 null)
+
+  // ── v5 확장 6필드 (티켓 20260905_0029) ─────────────────────────────────
+  //
+  // 전부 Strava **Summary 응답**(목록 엔드포인트)에 이미 오던 값이다. `normalizeActivity`가
+  // 읽지 않아 버려지고 있었을 뿐이라 추가 API 호출이 없다.
+  //
+  // ⚠️ **값이 없으면 키 자체를 넣지 않는다** — `null`을 넣지 않는다. 심박계·파워미터가 없는
+  // 유저의 활동이 «데이터 없음 = 카운트 안 함»으로 자연히 동작해야 하고, 화면에
+  // 「심박 데이터가 있는 활동에서만 계산돼요」 같은 안내를 넣지 않기로 확정했다(마스터 0026).
+  // `weatherTempC`가 `null`을 저장하는 기존 관례를 따르지 않는 이유이기도 하다.
+  //
+  // 조건 필드(snake_case) ↔ 이 필드(camelCase)의 대응은 `conditionRegistry.ts`의
+  // `activityField`가 단일 출처다. 이름이 어긋나면 `condition-registry.test.ts`가 깨진다.
+
+  /** Strava `elapsed_time`(초). 휴식 시간 = elapsedTimeSec - movingTimeSec */
+  elapsedTimeSec?: number
+  /** Strava `max_speed`(m/s)를 km/h로 변환한 값 — 조건 `max_speed_kmh` */
+  maxSpeedKmh?: number
+  /** Strava `elev_high`(m) — 조건 `max_elevation_m`. 고도 상승량(elevationGainM)이 아니라 도달 고도다 */
+  maxElevationM?: number
+  /** Strava `average_heartrate`(bpm) — 조건 `avg_heartrate_bpm` */
+  avgHeartrateBpm?: number
+  /** Strava `average_watts`(W) — 조건 `avg_watts` */
+  avgWatts?: number
+  /** Strava `average_cadence` — 조건 `avg_cadence`. 단위가 종목마다 다르다(러닝 spm · 자전거 rpm) */
+  avgCadence?: number
+}
+
+/** v5 확장 6필드만 떼어낸 조각. 값이 없는 필드는 **키 자체가 없다** */
+export type ExtendedActivityFields = Pick<
+  NormalizedActivity,
+  'elapsedTimeSec' | 'maxSpeedKmh' | 'maxElevationM' | 'avgHeartrateBpm' | 'avgWatts' | 'avgCadence'
+>
+
+/** 확장 필드 키 목록 — 백필이 «무엇을 덮어쓸 것인가»를 이 목록으로 한정한다 */
+export const EXTENDED_ACTIVITY_FIELD_KEYS = [
+  'elapsedTimeSec',
+  'maxSpeedKmh',
+  'maxElevationM',
+  'avgHeartrateBpm',
+  'avgWatts',
+  'avgCadence',
+] as const satisfies readonly (keyof ExtendedActivityFields)[]
+
+/**
+ * 확장 필드 전용 «있으면 넣고 없으면 키를 만들지 않는다» 헬퍼.
+ *
+ * `?? null` 관례(`weatherTempC`)를 쓰지 않는 이유는 티켓 20260905_0029의 확정 사항이다 —
+ * 심박계·파워미터가 없는 유저의 활동에 `null`을 박아 두면 조건 평가가 «값이 0»과
+ * «측정 안 됨»을 구분하려고 매번 분기해야 한다. 키 자체가 없으면 `undefined` 하나로 수렴한다.
+ *
+ * `0`은 **버리지 않는다** — Strava가 실제로 0을 돌려준 경우(해수면 고도 0m 등)와 필드가
+ * 오지 않은 경우는 다른 사실이다. 유한한 숫자가 아니면(undefined·null·NaN) 키를 만들지 않는다.
+ */
+function putIfNumber(
+  target: Record<string, number>,
+  key: string,
+  value: number | null | undefined,
+  transform: (v: number) => number = (v) => v
+): void {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return
+  target[key] = transform(value)
+}
+
+/**
+ * Strava Summary 응답 → v5 확장 6필드 (티켓 20260905_0029).
+ *
+ * 전부 목록 엔드포인트 응답에 이미 오던 값이라 추가 API 호출이 없다.
+ * `normalizeActivity`(신규 싱크)와 백필이 **같은 함수를 쓴다** — 두 경로가 갈라지면
+ * 백필된 활동과 신규 활동의 형태가 달라진다.
+ */
+export function extractExtendedActivityFields(
+  activity: Pick<
+    StravaSummaryActivity,
+    'elapsed_time' | 'max_speed' | 'elev_high' | 'average_heartrate' | 'average_watts' | 'average_cadence'
+  >
+): ExtendedActivityFields {
+  const out: Record<string, number> = {}
+  putIfNumber(out, 'elapsedTimeSec', activity.elapsed_time)
+  // m/s → km/h. 평균 속도(averageSpeedKmh)와 같은 변환·같은 반올림을 쓴다
+  putIfNumber(out, 'maxSpeedKmh', activity.max_speed, metersPerSecToKmH)
+  // elev_high는 «도달한 가장 높은 고도»다. total_elevation_gain(누적 상승량)과 다른 값이다
+  putIfNumber(out, 'maxElevationM', activity.elev_high)
+  putIfNumber(out, 'avgHeartrateBpm', activity.average_heartrate)
+  putIfNumber(out, 'avgWatts', activity.average_watts)
+  putIfNumber(out, 'avgCadence', activity.average_cadence)
+  return out as ExtendedActivityFields
 }
 
 /**

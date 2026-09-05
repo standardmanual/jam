@@ -22,11 +22,14 @@
  *
  * ## 새 조건 필드를 추가할 때
  * 1. `src/types/database.ts`의 `BadgeCondition`에 필드 추가 (컴파일러가 아래 목록 누락을 잡는다)
- * 2. 이 파일의 `CONDITION_FIELDS`에 항목 추가 — 라벨·단위·역할·입력 타입·평가 주체
+ * 2. 이 파일의 `CONDITION_FIELDS`에 항목 추가 — 라벨·단위·역할·입력 타입·평가 주체.
+ *    활동 1건의 값을 **같은 단위로 그대로 비교**하는 필드라면 `activityField`도 함께 적는다
+ *    (조건 키는 snake_case, 정규화 필드는 camelCase라 규칙적으로 대응하지 않는다)
  * 3. 마이그레이션으로 DB CHECK 배열 + `check_family_condition_consistency()`의
  *    `measurable_keys` + `badge_metric_labels` 행을 갱신 (131 파일이 그 패턴이다)
  */
 import type { ActivityType, BadgeCondition, DayOfWeek } from '@/types/database'
+import type { NormalizedActivity } from '@/types/strava'
 import { formatPaceSecPerKm } from '@/types/strava'
 
 // ── 메타 타입 ────────────────────────────────────────────────────────────
@@ -99,6 +102,23 @@ export interface ConditionFieldMeta<K extends keyof BadgeCondition = keyof Badge
    * `evaluateConditionDetailed`가 fail-closed로 막는다. 나머지 둘은 통과시킨다.
    */
   evaluation: ConditionEvaluation
+  /**
+   * 이 조건 값과 **같은 단위로 직접 비교되는** `NormalizedActivity` 필드명 (티켓 20260905_0029).
+   *
+   * 조건 키는 snake_case(`avg_heartrate_bpm`)이고 정규화 필드는 camelCase(`avgHeartrateBpm`)라
+   * 이름이 규칙적으로 대응하지 않는다 — `max_elevation_m`↔`maxElevationM`,
+   * `single_distance_km`↔`distanceKm`처럼 어긋나는 쌍도 있다. 평가 구현(티켓 20260905_0030)이
+   * 이 대응을 다시 손으로 적으면 오타가 조용히 «조건 통과»로 흘러가므로 여기서 한 번만 적는다.
+   *
+   * **단위 변환이 필요한 필드에는 달지 않는다.** `duration_minutes`는 `movingTimeSec`(초)와
+   * 단위가 다르고, `max_pace_sec_per_km`는 `averageSpeedKmh`를 뒤집어야 하며,
+   * `distance_km`·`elevation_gain_m`은 기본이 «누적 합계»라 단일 활동 값과 의미가 다르다.
+   * 그런 필드까지 담으면 «이 이름을 그대로 읽어 비교하면 된다»는 이 선언의 뜻이 흐려진다.
+   *
+   * 값이 `undefined`(키 없음)일 수 있다 — 심박계 없는 유저의 활동에는 애초에 키가 없다.
+   * 「데이터 없음 = 카운트 안 함」이 기본 동작이다.
+   */
+  activityField?: keyof NormalizedActivity
   /** 어드민 목록의 압축 칩. null을 돌려주면 그 배지에서는 칩을 만들지 않는다 */
   chip?: (c: BadgeCondition) => string | null
   /** 어드민 상세의 한 줄. null을 돌려주면 그 배지에서는 줄을 만들지 않는다 */
@@ -591,6 +611,7 @@ export const CONDITION_FIELDS = [
     step: 10,
     direction: 'higher',
     evaluation: 'pending',
+    activityField: 'maxElevationM',
     chip: (c) => `최고 고도 ${c.max_elevation_m}m`,
     detail: (c) => `최고 도달 고도 ${c.max_elevation_m}m 이상`,
   }),
@@ -605,6 +626,7 @@ export const CONDITION_FIELDS = [
     step: 0.1,
     direction: 'higher',
     evaluation: 'pending',
+    activityField: 'maxSpeedKmh',
     chip: (c) => `최고 ${c.max_speed_kmh}km/h`,
     detail: (c) => `최고 속도 ${c.max_speed_kmh}km/h 이상`,
   }),
@@ -619,6 +641,7 @@ export const CONDITION_FIELDS = [
     step: 0.1,
     direction: 'higher',
     evaluation: 'pending',
+    activityField: 'distanceKm',
     chip: (c) => `한 번 ${c.single_distance_km}km`,
     detail: (c) => `한 번의 거리 ${c.single_distance_km}km 이상`,
   }),
@@ -633,6 +656,7 @@ export const CONDITION_FIELDS = [
     step: 10,
     direction: 'higher',
     evaluation: 'pending',
+    activityField: 'elevationGainM',
     chip: (c) => `한 번 고도 ${c.single_elevation_m}m`,
     detail: (c) => `한 번의 고도 ${c.single_elevation_m}m 이상`,
   }),
@@ -647,6 +671,7 @@ export const CONDITION_FIELDS = [
     step: 1,
     direction: 'higher',
     evaluation: 'pending',
+    activityField: 'avgHeartrateBpm',
     chip: (c) => `심박 ${c.avg_heartrate_bpm}bpm`,
     detail: (c) => `평균 심박수 ${c.avg_heartrate_bpm}bpm 이상`,
   }),
@@ -661,6 +686,7 @@ export const CONDITION_FIELDS = [
     step: 1,
     direction: 'higher',
     evaluation: 'pending',
+    activityField: 'avgWatts',
     chip: (c) => `파워 ${c.avg_watts}W`,
     detail: (c) => `평균 파워 ${c.avg_watts}W 이상`,
   }),
@@ -676,6 +702,7 @@ export const CONDITION_FIELDS = [
     step: 1,
     direction: 'higher',
     evaluation: 'pending',
+    activityField: 'avgCadence',
     chip: (c) => `케이던스 ${c.avg_cadence}`,
     detail: (c) => `평균 케이던스 ${c.avg_cadence} 이상`,
   }),
@@ -906,6 +933,18 @@ export const EVALUATED_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_FIELD
 export const PENDING_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.filter(
   (f) => f.evaluation === 'pending'
 ).map((f) => f.key)
+
+/**
+ * 조건 키 → 같은 단위로 직접 비교되는 `NormalizedActivity` 필드명 (티켓 20260905_0029).
+ *
+ * 평가 구현(티켓 20260905_0030)이 `a[CONDITION_ACTIVITY_FIELD[key]!]`로 값을 꺼내 쓰면
+ * 이름 대응을 다시 적을 필요가 없다. 여기 없는 키는 단위 변환·누적 집계가 필요하다는 뜻이다.
+ */
+export const CONDITION_ACTIVITY_FIELD: Readonly<
+  Partial<Record<ConditionKey, keyof NormalizedActivity>>
+> = Object.fromEntries(
+  CONDITION_FIELDS.filter((f) => f.activityField !== undefined).map((f) => [f.key, f.activityField])
+)
 
 const FIELD_BY_KEY = new Map<string, AnyConditionFieldMeta>(
   CONDITION_FIELDS.map((f) => [f.key as string, f as AnyConditionFieldMeta])

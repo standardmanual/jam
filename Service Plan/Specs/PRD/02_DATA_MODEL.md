@@ -82,6 +82,13 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 ### strava_activities (신규)
 동기화 원본 활동 기록. `strava_id`, `jam_activity_type`, `distance_km`, `normalized`(정규화된 활동 JSON), `processed_via`(sync/reconcile/manual_backfill). UNIQUE(user_id, strava_id)로 중복 동기화 방지 — 이기종 데이터 중복 이슈의 실제 해결책.
 
+`normalized`의 구조는 `NormalizedActivity`(`src/types/strava.ts`)다. 2026-09-05부터 v5 확장
+6필드(심박·파워·케이던스·최고속도·최고도달고도·경과시간)가 함께 저장되며, **측정값이 없으면
+키 자체가 없다**(`null`이 아니다 — 티켓 20260905_0029). 컬럼 변경은 없다(jsonb).
+`processed_via = 'manual_backfill'`은 그 확장 필드를 소급 채운 행을 뜻한다
+(`scripts/backfill-strava-extended-fields.ts`). `'reconcile'`은 2026-08-10 이전 과거 데이터에만
+있고 신규 기록은 없다.
+
 ---
 
 ## 2. 배지
