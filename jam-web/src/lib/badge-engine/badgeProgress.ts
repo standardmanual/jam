@@ -41,7 +41,7 @@
 import { kmhToPaceSecPerKm, type NormalizedActivity } from '@/types/strava'
 import type { ActivityType, BadgeCondition, DayOfWeek } from '@/types/database'
 import type { BadgeTreeLock } from '@/lib/badgeTree'
-import { findBlockingConditionKeys } from './conditionRegistry'
+import { findBlockingConditionKeys, hasBlockingConditionKeys } from './conditionRegistry'
 import {
   calcMaxStreak,
   passesWalkingGate,
@@ -49,6 +49,9 @@ import {
   inTimeRange,
   dedupeOnePerDay,
   getMondayKey,
+  // 「무엇이 휴식 조건인가」는 `activityFilters.ts`에 한 번만 적혀 있다 — 발급 판정(index.ts)과
+  // 이 파일이 **같은 함수**를 본다(v5 B3, 티켓 20260905_0030 §4).
+  restConditionKeysIn,
 } from './activityFilters'
 
 // ── 공개 타입 (티켓 §A 그대로) ──────────────────────────────────────────────
@@ -287,7 +290,7 @@ export function classifyBadgeProgressKind(condition: BadgeCondition): BadgeProgr
   // 화면에는 「78% 달성」이 뜨는 상태가 된다. 이건 어드민이 아니라 유저 노출(배지 트리 진행
   // 레일)이라, 발급이 막히는 조건은 진행률도 그리지 않는 편이 정직하다.
   const blocking = findBlockingConditionKeys(condition)
-  if (blocking.unknown.length > 0 || blocking.pending.length > 0) return 'unsupported'
+  if (hasBlockingConditionKeys(blocking)) return 'unsupported'
 
   // 반복형(repeat_count)은 아직 진행 계산 축이 없다 — 확장은 티켓 20260905_0031.
   // 그때까지 unsupported로 둔다. 이 줄이 없으면 `{ duration_minutes: 60, repeat_count: 5 }`가
@@ -295,6 +298,15 @@ export function classifyBadgeProgressKind(condition: BadgeCondition): BadgeProgr
   // 「60분을 채웠는지」만 보여주고 **「5번 채워야 한다」를 통째로 숨긴다** — 발급은 안 되는데
   // 화면은 100%가 되는, fail-closed 분기가 막으려던 것과 같은 형태의 거짓말이다.
   if (condition.repeat_count !== undefined) return 'unsupported'
+
+  // 휴식(활동 공백)도 아직 진행 계산 축이 없다 — 확장은 티켓 20260905_0031(kind: 'rest').
+  //
+  // **이 줄이 없으면 발급 판정과 화면이 정면으로 어긋난다.** `{ streak_days: 6,
+  // rest_after_streak: 2 }`는 아래 분류에서 `streak_days` 축 1개짜리 «cumulative»로 잡혀
+  // 「연속 6일」 진행률만 그리고 **「그 뒤 2일 쉬어야 한다」를 통째로 숨긴 채 100%가 뜬다** —
+  // 발급은 되지 않는데 화면은 다 찼다고 말하는, `repeat_count`·fail-closed 분기가 막으려던
+  // 것과 같은 형태의 거짓말이다. 「무엇이 휴식 조건인가」는 발급 판정과 **같은 함수**로 센다.
+  if (restConditionKeysIn(condition).length > 0) return 'unsupported'
 
   const isMulti =
     (Array.isArray(condition.day_of_week) && condition.total_count !== undefined) ||

@@ -104,6 +104,8 @@ Step 3-C. [반복형] 배지 단위 평가 — **보유해도 후보에서 빠�
   B. evaluateConditionDetailed — repeat_count 회차 임계값 포함
   C. 미보유 → action='issue' / 보유 + 이번 배치에 새 회차 → action='increment'
   ※ 성장 티어 병합·트랙 병합 모두 적용하지 않는다 — 하위 등급도 계속 카운터를 받아야 한다
+  ※ 세 경로의 evaluateConditionDetailed에는 **가입 앵커를 함께 넘긴다** — 휴식 조건이
+    앵커를 하한으로 봐야 「데이터 없음」을 「쉬었음」으로 읽지 않는다 (§2.16)
 Step 4. [진행 트랙 중복 제거] 단일 조건 배지는 activity_type:조건타입 트랙당 최고 1개
   ※ 무한레벨형·반복형은 트랙 병합 대상이 아니다(progressionKey=null) — 걸리면 발급분이 1개로 접힌다
 Step 4.8. [첫 싱크 게이트] 첫 싱크면 계열의 첫 칸(등급형=Common / 레벨형=Lv.1) 외 전부 missed
@@ -113,6 +115,8 @@ Step 6. [DB 반영] action='issue' → user_activity_badges INSERT (earn_count·
                   action='increment' → increment_activity_badge_earn() RPC (회차 카운터만)
 Step 7. [부수효과] **DB 반영에 성공한 'issue'만** — earned 배열 · 잼 포인트 · 피드 이벤트 ·
         결산 · 획득 연출. 'increment'는 여기 오지 않는다 (§2.14)
+  ※ 계기 활동(`selectTriggerActivity`)은 4분기다 — ① 반복형의 그 회차 ② **휴식의 복귀 활동**
+    (§2.16) ③ 종목 지정 배지의 첫 적격 활동 ④ 이력의 첫 활동
 Step 8. initial_sync_done 갱신
 ```
 
@@ -146,7 +150,8 @@ Step 8. initial_sync_done 갱신
 | `repeat_count` (2026-09-05 신규) | **기준 조건을 통째로 만족한 활동 건수** ≥ 조건값. `total_count`(필터 통과 건수)와 다르다 — 회차 정의는 `collectRepeatOccurrences()` 한 곳. §2.14 · CONDITION_JSON_SPEC §2.11 |
 | `prerequisite_badge_names` | Step 3 C-1에서 처리 (OR 매칭). **보유한 등급형의 이름만** 대상이다 — v5는 레벨형·반복형이 등급형과 이름을 공유할 수 있어 이름이 배지를 유일하게 식별하지 못한다 (§2.15) |
 | `cross_in_axis` / `cross_between_axis` / `gate_mission_badge` (2026-09-05 신규) | Step 3 C-1에서 처리 — **계열(`family_key`) 기준** 2단 교차 게이트. 교차 둘은 서로 OR, 미션 게이트는 AND. §2.15 |
-| **v5 신규 20종** (2026-09-05) | ❌ **평가 미구현 — fail-closed로 막힌다.** 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10. 다만 스칼라 7종이 읽을 **원천 데이터는 수집이 시작됐다**(§2.1-1, 티켓 20260905_0029) — 평가 구현(0030)은 `CONDITION_ACTIVITY_FIELD`로 정규화 필드를 꺼내면 된다 |
+| `rest_after_streak` / `rest_after_long` / `return_gap_days` / `interval_days` (2026-09-05 신규) | **인접한 두 활동 사이의 «닫힌 공백»** 판정. 활동이 0~1건이면 공백을 계산하지 않는다. 판정은 `activityFilters.ts`의 `evaluateRestConditions()` 한 곳. §2.16 |
+| **v5 신규 16종** (2026-09-05) | ❌ **평가 미구현 — fail-closed로 막힌다.** 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10. 다만 스칼라 7종이 읽을 **원천 데이터는 수집이 시작됐다**(§2.1-1, 티켓 20260905_0029) — 평가 구현은 `CONDITION_ACTIVITY_FIELD`로 정규화 필드를 꺼내면 된다. ⚠️ **`single_distance_km`이 여기 남아 있어 `rest_after_long`이 짝 필드 때문에 계속 막힌다** (§2.16) |
 
 > **조건 필드 선언의 단일 출처는 `src/lib/badge-engine/conditionRegistry.ts`다** (2026-09-05,
 > 티켓 20260905_0028). 키·라벨·단위·입력 타입·min/max/step·짝 필드·방향성·**평가 구현 여부**를
@@ -158,22 +163,32 @@ Step 8. initial_sync_done 갱신
 #### 2.3-0 fail-closed — 평가할 수 없는 필드가 있으면 발급하지 않는다 (2026-09-05, 티켓 20260905_0028)
 
 `evaluateConditionDetailed`는 **조건 평가를 시작하기 전에** `condition_json`의 모든 키를
-레지스트리와 대조한다. ① 레지스트리에 없는 키(오탈자) ② `evaluation: 'pending'`인 키가
-하나라도 있으면 즉시 `pass:false`를 돌려주고, 사유는 「평가할 수 없는 조건 필드 — 알 수 없는
-필드: … / 평가 구현 대기: …」로 남는다.
+레지스트리와 대조한다. ① 레지스트리에 없는 키(오탈자) ② `evaluation: 'pending'`인 키
+③ **짝 필드(`pairedWith`)가 하나도 없어 뜻이 완성되지 않는 키**(2026-09-05 추가, 티켓
+20260905_0030 B3)가 하나라도 있으면 즉시 `pass:false`를 돌려주고, 사유는 「평가할 수 없는
+조건 필드 — 알 수 없는 필드: … / 평가 구현 대기: … / 짝 필드 없음: …」로 남는다.
+판정은 `findBlockingConditionKeys()` → `hasBlockingConditionKeys()` 한 쌍이다.
+
+**짝 필드 강제는 `PAIR_ENFORCED_CONDITION_KEYS`(휴식 4종)에만 적용한다.** `rest_after_streak`는
+`streak_days`가 없으면 「며칠 연속 뒤인가」가, `rest_after_long`은 `single_distance_km`이 없으면
+「무엇이 장거리인가」가 정의되지 않는데, DB CHECK는 키 이름만 보므로 **짝 없이 저장돼도 통과하고
+평가 시점에 조용한 오판정이 된다.** 기존 필드(`same_activity`↔`distance_km` 등)는 카탈로그에
+실적이 있어 즉시 강제하면 이미 발급된 배지가 미발급으로 뒤집힐 수 있어 **강제하지 않는다** —
+새로 평가가 열리는 필드만 실적 0건인 지금 못 박는다.
 
 **평가 주체는 셋으로 구분한다** — `boolean` 하나가 세 가지 뜻을 겸하던 것을 풀었다:
 
 | 값 | 뜻 | fail-closed |
 |---|---|---|
-| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (22종) | 통과 |
+| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (26종) | 통과 |
 | `external` | **`evaluateConditionDetailed` 밖**에서 처리 — `poi_id`(체크인 파이프라인) · `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`와 교차 게이트 3종(엔진 안의 후보 선별 단계 `evaluateBadgeGates()`) | 통과 |
-| `pending` | 아직 아무도 평가하지 않는다 — v5 신규 20종 + `route` (21종) | **막힘** |
+| `pending` | 아직 아무도 평가하지 않는다 — v5 신규 16종 + `route` (17종) | **막힘** |
 
 이 방어가 필요한 이유는 `matchesPerActivityCondition()`(`index.ts`)이 **아는 키만 검사하고
 마지막에 `return true`** 하기 때문이다. 막지 않으면 미구현 필드가 «발급 안 됨»이 아니라
 **«무조건 발급»**이 된다 — §2.7의 084 사고와 같은 유형의, 에러 없이 조용히 뒤집히는 결함이다.
 
+v5 신규 20종 중 **휴식 4종은 2026-09-05(티켓 20260905_0030 B3)에 `engine`으로 뒤집혔다**(§2.16).
 기존 필드는 `route` 하나를 빼고 전부 `engine`/`external`이라 현행 발급 동작은 바뀌지 않는다.
 `route`는 타입·스키마·DB CHECK에만 있고 badge-engine에 `condition.route` 참조가 **0건**이라
 (실측 2026-09-05) `pending`으로 두었다 — 쓰는 배지가 0건이라 회귀 없이 정직하게 표기할 수 있다.
@@ -188,6 +203,8 @@ Step 8. initial_sync_done 갱신
 **진행률도 같은 기준을 쓴다.** `classifyBadgeProgressKind`는 아는 축만 세므로 «기존 축 1개 +
 `pending` 필드 1개»인 조건은 대기 필드를 무시한 채 진행률을 그렸다 — 발급은 막히는데 화면에는
 달성률이 뜨는 상태다. fail-closed에 걸리는 조건은 `unsupported`로 돌려 표시도 함께 막는다.
+**평가가 열린 뒤에도 진행 축이 없는 필드는 같은 처리를 받는다** — `repeat_count`(§2.14)와
+휴식 4종(§2.16)이 그렇다. 축이 하나 있다고 그것만 그리면 나머지 요구를 숨긴 채 100%가 뜬다.
 
 #### 2.3-1 복합 조건 배지 — "이력 전반 독립 평가"가 기본, "동시 충족"이 예외 (2026-08-31 복원)
 
@@ -608,6 +625,84 @@ supabase-js 쿼리 빌더에는 jsonb 포함 연산자를 조건절에 싣는 �
 
 ⚠️ DB CHECK 제약(마이그레이션 133)은 **키 이름만** 검사한다. 값이 깨진 게이트는 엔진이
 fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게이트가 조용히 사라진다.
+
+### 2.16 휴식 조건 — 활동이 «없는» 기간 (2026-09-05, 티켓 20260905_0030 B3)
+
+엔진의 다른 모든 조건은 「활동이 있었는가」를 세지만 휴식은 **「활동이 없었는가」**를 센다.
+그래서 **「데이터 없음」을 「쉬었음」으로 읽는 사고**가 구조적으로 가능하다.
+판정은 `src/lib/badge-engine/activityFilters.ts`의 `evaluateRestConditions()` **한 곳**이며,
+`index.ts`(발급 판정)와 `badgeProgress.ts`(진행 계산)가 같은 파일의 `restConditionKeysIn()`으로
+「무엇이 휴식 조건인가」를 공유한다 — 두 곳이 각자 정의하면 진행률과 발급이 어긋난다.
+
+| 필드 | 판정 | 짝 필드 |
+|---|---|---|
+| `rest_after_streak` | **연속 N일 활동 직후**의 쉰 일수 ≥ 조건값 | `streak_days` (필수) |
+| `rest_after_long` | **장거리 활동일 직후**의 쉰 일수 ≥ 조건값 | `single_distance_km` (필수) |
+| `return_gap_days` | 인접 두 활동 사이의 **쉰 일수** ≥ 조건값 (「겨울잠」) | — |
+| `interval_days` | 인접 두 활동의 **날짜 차이** ≥ 조건값 | — |
+
+- **쉰 일수 = 날짜 차이 − 1.** 1일과 3일에 활동했으면 쉰 일수는 1일(2일), 날짜 차이는 2일이다.
+  이 한 칸 차이가 `return_gap_days`와 `interval_days`를 가른다
+- 필드가 여럿이면 **각각 독립 평가 후 AND** (엔진의 「이력 전반 독립 평가」와 같은 규칙)
+
+#### 「닫힌 공백」만 센다 — 이게 안전장치의 전부다
+
+모든 판정은 **인접한 두 활동일 사이**의 간격으로만 이뤄진다. 양 끝이 전부 실제 활동이므로:
+
+| 위험 | 닫힌 공백이 막는 방식 |
+|---|---|
+| 활동 0~1건인 신규 유저가 「90일 겨울잠」으로 오판 | 인접 쌍이 없어 「휴식 판정 불가 — 창 안에 인접 활동이 없음」으로 떨어진다 |
+| 앵커가 자른 창 밖이 통째로 공백처럼 보임 | 창의 **첫 활동 앞에는 공백이 없다**. 앞쪽 경계는 공백이 아니다 |
+| 「마지막 활동 ~ 지금」이 시각에 따라 달라짐 | **현재 시각(`now`)을 보지 않는다** — 화면과 발급이 다른 시각을 볼 여지가 없다 |
+| 휴식은 싱크 트리거가 없다 | 공백은 **다음 활동이 들어온 순간에만 닫히므로** 소급 판정이 자연히 성립한다 |
+
+#### 앵커는 하한이다
+
+`evaluateConditionDetailed`의 `options.anchorDate`로 가입 앵커를 받아 **헬퍼가 직접 한 번 더
+자른다.** `getActivityHistory`는 `gte(start_date, anchor)`라 「앵커 직전 활동 1건」을 아예 읽지
+못하지만, 발급 엔진은 **이번 배치를 앵커와 무관하게 합치므로**(첫 싱크 정산분은 대개 가입 직전
+활동) 넘어온 배열에는 앵커 이전 활동이 섞일 수 있다. 그 한 건이 창 밖 공백을 만들어 낸다.
+
+> 앵커 직전 활동을 **별도 조회해 경계 공백을 살리는 안은 채택하지 않았다.** 그건 가입 이전
+> 이력을 판정에 되살리는 것이고, 「과거 이력은 아예 배제 — 엄격 유지」(§5 확정)를 약화시킨다.
+
+`/badges/tree`의 조건충족 표시(`computeConditionMetBadgeIds`)도 같은 앵커를 넘겨받는다 —
+빠뜨리면 화면이 더 넓은 창에서 공백을 세어 「조건 충족(라임)」인데 엔진은 막는 상태가 된다.
+
+#### 종목 필터는 그대로 적용한다
+
+공백도 `activity_type` + 걷기 축1 게이트를 통과한 활동만으로 센다. 즉 **「그 종목을 하지 않은
+기간」이 휴식**이다. 엔진의 다른 모든 블록이 같은 규칙 위에서 판정하므로 여기만 «전 종목»으로
+두면 `activity_type`이 조용한 no-op이 되고 「가끔만 틀리는」 비대칭이 생긴다.
+
+#### 역인센티브 차단
+
+- `rest_after_streak`·`rest_after_long`은 **활동이 선행되어야** 성립한다 — 쉬는 것만으로는 안 된다
+- 활동 선행 요구가 없는 «순수 공백» 두 종(`return_gap_days`·`interval_days`)은
+  **`REST_PURE_GAP_MIN_DAYS = 90` 미만의 조건값을 카탈로그 오류로 막는다**(「휴식 조건 설정 오류」).
+  §4의 「순수 공백 기반(「겨울잠」)만 쿨다운 90일」을 엔진이 관측 가능하게 강제한 형태다
+
+#### 회차(`repeat_count`)와 함께 쓸 수 없다
+
+휴식 4종은 **`collectRepeatOccurrences`의 `consumed` 집합에 넣지 않는다.** 게이트(§2.15)는
+「보유 여부」라 회차와 층이 다르지만, 휴식은 **이력 패턴 술어**라 넣으면 「휴식 조건을 무시한
+회차」가 세어진다. 대신 조합 자체를 **「회차와 함께 쓸 수 없는 조건」**이라는 명시적 사유로 막는다 —
+막지 않으면 회차 술어의 fail-closed 가드가 조용히 회차를 0으로 떨어뜨려 「충족 횟수 부족 / 0회」로만
+보이고, 카탈로그 담당자가 원인을 찾지 못한다.
+
+#### 계기 활동은 «복귀 활동»이다
+
+`selectTriggerActivity()`가 휴식 조건일 때 **공백을 닫은 그 활동**을 돌려준다. 없으면 조건과
+무관한 활동이 잡히고 그 날짜가 배지 상세의 「계기 활동일」로 유저에게 노출된다.
+조건 키가 여럿이면 **각 키가 처음 성립한 구간 중 가장 늦은 것** = 조건 전체가 성립한 시점이다.
+
+⚠️ **진행 계산(§2.13)은 아직 휴식 축이 없다.** `classifyBadgeProgressKind()`가 휴식 키가 든
+조건을 `unsupported`로 떨어뜨린다 — 축 하나(예: `streak_days`)만으로 그리면 「그 뒤 며칠 쉬어야
+한다」를 숨긴 채 100%가 뜬다. 확장은 티켓 20260905_0031(`kind: 'rest'`).
+
+⚠️ **`rest_after_long`은 아직 실제로 발급되지 않는다.** 짝 필드 `single_distance_km`이
+`evaluation: 'pending'`이라 fail-closed가 먼저 막는다. v5 스칼라 7종을 `engine`으로 뒤집는
+선행 작업이 끝나야 열린다(카탈로그 시딩 20260905_0035 이전).
 
 ---
 
@@ -1093,6 +1188,10 @@ Specs/Content/POI.md                      지점(POI) 컨텐츠 (스텁)
 [코드]
 src/lib/badge-engine/index.ts             액티비티배지 엔진 (구현)
 src/lib/badge-engine/activityFilters.ts   요일·시간대·주경계 등 순수 필터 헬퍼 — §2.13
+                                          + 휴식(활동 공백) 판정 evaluateRestConditions() — §2.16
+src/lib/badge-engine/badgeKind.ts         배지 종류 3분기(등급형·레벨형·반복형) — §2.14
+src/lib/badge-engine/crossGate.ts         2단 교차 게이트 판정 — §2.15
+src/lib/badge-engine/conditionRegistry.ts 조건 필드 메타 단일 출처 + fail-closed — §2.3-0
 src/lib/badge-engine/badgeProgress.ts     진행 계산 계층(표시 전용, 발급 판정과 분리) — §2.13
 src/lib/badge-engine/metricLabels.ts      배지 지표 라벨·단위 배치 조회 — §2.13
 src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현 — v2는 §3 설계)

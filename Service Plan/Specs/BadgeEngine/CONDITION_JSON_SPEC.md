@@ -130,12 +130,16 @@
 |------|------|-----------|
 | `poi_id` | `string` (UUID) | badge-engine 내 **항상 fail** — `matchPoisForActivity` GPS 경로 매칭 파이프라인이 별도 발급. `checkin` 타입 배지는 조건 빌더 자체를 건너뛰고 저장 시 `condition_json`을 항상 `null`로 처리하므로 이 티켓 범위 밖(폼 유실 문제와 무관) |
 
-### 2.10 v5 신규 조건 필드 20종 — **선언만, 평가 미구현** (2026-09-05, 티켓 20260905_0028)
+### 2.10 v5 신규 조건 필드 20종 — 16종은 **선언만, 평가 미구현** (2026-09-05, 티켓 20260905_0028)
 
 `conditionRegistry.ts`에 `evaluation: 'pending'`으로 선언돼 있고 DB CHECK 제약도 허용하지만,
-**badge-engine은 아직 이 필드들을 평가하지 않는다**(구현은 티켓 20260905_0030).
+**badge-engine은 아직 이 필드들을 평가하지 않는다**.
 이 필드가 하나라도 든 조건은 `evaluateConditionDetailed`가 fail-closed로 막으므로
 «발급되지 않는 것»이 기본값이다(§4 참조).
+
+> **휴식 4종(`rest_after_streak`·`rest_after_long`·`return_gap_days`·`interval_days`)은
+> 2026-09-05에 평가가 구현돼 `evaluation: 'engine'`으로 뒤집혔다** (티켓 20260905_0030 B3).
+> 아래 「이력 패턴」 표에 그대로 두되 판정 규칙은 **§2.13**에 있다.
 
 **활동 1건의 스칼라 값** — `PER_ACTIVITY_KEYS` 경로로 구현 예정
 
@@ -162,10 +166,10 @@
 
 | 필드 | 타입 | 단위 | 의미 | 짝 필드 |
 |------|------|------|------|---------|
-| `rest_after_streak` | `number` | 일 | 연속 활동 뒤에 쉰 일수 | `streak_days` |
-| `rest_after_long` | `number` | 일 | 장거리 활동 뒤에 쉰 일수 | `single_distance_km` |
-| `return_gap_days` | `number` | 일 | 복귀 직전에 쉰 일수 | — |
-| `interval_days` | `number` | 일 | 활동과 활동 사이 간격 | — |
+| `rest_after_streak` ✅ | `number` | 일 | 연속 활동 뒤에 쉰 일수 | `streak_days` (**필수**) |
+| `rest_after_long` ✅ | `number` | 일 | 장거리 활동 뒤에 쉰 일수 | `single_distance_km` (**필수**) |
+| `return_gap_days` ✅ | `number` | 일 | 복귀 직전에 쉰 일수 | — |
+| `interval_days` ✅ | `number` | 일 | 활동과 활동 사이 간격 | — |
 | `daily_once_count` | `number` | 일 | 하루에 1회만 활동한 날의 수 | — |
 | `negative_split` | `boolean` | — | 후반 구간이 전반보다 빠른 활동으로 한정하는 **필터**. Strava `splits_metric`이 필요한데 Summary 응답엔 없다 — **티켓 20260905_0029에서 v5 1차 범위 밖으로 확정**됐다(활동 1건당 상세 호출 1회 × 백필 697회). `evaluation: 'pending'` 그대로이고 별도 티켓으로 분리됐다 | `total_count` |
 | `weekly_streak` | `number` | 주 | 연속한 주(월~일)의 수 | — |
@@ -176,8 +180,9 @@
 | `month_over_month_ratio` | `number` | 배 | 전월 대비 비율 | — |
 | `vs_personal_average` | `number` | 배 | 평소 평균 대비 비율 | — |
 
-분류상 `negative_split`·`day_of_month`만 «필터 전용»이고 나머지 18종은 «수치 검사» 필드다
-(계열 정합성 트리거의 `measurable_keys`도 그 18종을 포함한다 — 마이그레이션 131).
+✅ = 평가 구현됨(§2.13). 분류상 `negative_split`·`day_of_month`만 «필터 전용»이고 나머지
+18종은 «수치 검사» 필드다(계열 정합성 트리거의 `measurable_keys`도 그 18종을 포함한다 —
+마이그레이션 131).
 
 ### 2.11 `repeat_count` — 반복 획득 (2026-09-05, 티켓 20260905_0030 B1) ✅ **평가 구현됨**
 
@@ -261,6 +266,30 @@ interface BadgeGateRequirement {
 
 ---
 
+### 2.13 휴식 4종 — 활동이 «없는» 기간 (2026-09-05, 티켓 20260905_0030 B3) ✅ **평가 구현됨**
+
+| 필드 | 판정 방식 |
+|------|-----------|
+| `rest_after_streak` | **연속 `streak_days`일 활동 직후**의 쉰 일수 ≥ 조건값 |
+| `rest_after_long` | **`single_distance_km` 이상 활동일 직후**의 쉰 일수 ≥ 조건값 |
+| `return_gap_days` | 인접 두 활동 사이의 **쉰 일수** ≥ 조건값 (「겨울잠」) |
+| `interval_days` | 인접 두 활동의 **날짜 차이** ≥ 조건값 |
+
+- **쉰 일수 = 날짜 차이 − 1.** 1일·3일에 활동했으면 쉰 일수 1일, 날짜 차이 2일이다
+- 판정은 `activityFilters.ts`의 `evaluateRestConditions()` 한 곳. 상세 규칙과 안전장치는
+  BADGE_ENGINE_UNIFIED.md §2.16
+
+**세 가지 제약**이 다른 필드와 다르다:
+
+1. **짝 필드가 강제된다** — `rest_after_streak`엔 `streak_days`, `rest_after_long`엔
+   `single_distance_km`이 없으면 fail-closed가 「짝 필드 없음」으로 막는다(§4)
+2. **순수 공백 두 종(`return_gap_days`·`interval_days`)은 90일 이상만 인정한다** —
+   그 미만은 「휴식 조건 설정 오류」다(역인센티브 차단)
+3. **`repeat_count`와 함께 쓸 수 없다** — 「회차와 함께 쓸 수 없는 조건」으로 막힌다
+
+⚠️ **`rest_after_long`은 짝 필드 `single_distance_km`이 아직 `pending`이라 실제로는 계속
+막힌다.** v5 스칼라 7종을 `engine`으로 뒤집는 작업이 선행돼야 열린다.
+
 ---
 
 ## 3. 메타데이터 필드 (발급 판정에 관여하지 않음)
@@ -292,12 +321,15 @@ interface BadgeGateRequirement {
 - `poi_id`는 다른 조건 필드와 혼합 불가 (엔진 미지원)
 - `mission_reward`(§3)는 조건 필드와 함께 있어도 항상 §3의 규칙이 우선한다(무조건 fail)
 - **fail-closed** (2026-09-05, 티켓 20260905_0028): 조건에 «엔진이 평가하지 않는 키»가 하나라도
-  있으면 나머지 필드를 충족해도 **발급되지 않는다**. 대상은 ① `evaluation: 'pending'`인 v5 신규 20종
-  (§2.10) ② 레지스트리에 아예 없는 키(오탈자). 사유는 「평가할 수 없는 조건 필드 — …」로 남는다.
+  있으면 나머지 필드를 충족해도 **발급되지 않는다**. 대상은 ① `evaluation: 'pending'`인 v5 신규 16종
+  (§2.10) ② 레지스트리에 아예 없는 키(오탈자) ③ **짝 필드가 하나도 없는 휴식 4종**(2026-09-05
+  추가, §2.13 — `PAIR_ENFORCED_CONDITION_KEYS`). 사유는 「평가할 수 없는 조건 필드 — …」로 남는다.
   이 규칙이 없으면 `matchesPerActivityCondition()`이 모르는 키를 조용히 건너뛰고 마지막에
   `return true` 하므로, 미구현 필드가 «발급 안 됨»이 아니라 **«무조건 발급»**으로 뒤집힌다
 - `repeat_count`(§2.11)는 fail-closed 대상이 **아니다** — 평가가 구현돼 있다. 다만 회차 술어로
   같이 쓰려는 필드가 `pending`이면 그 필드 때문에 조건 전체가 막힌다
+- 휴식 4종(§2.13)은 **`repeat_count`와 조합할 수 없다** — 회차 술어가 이력 패턴을 볼 수 없어
+  「휴식 조건을 무시한 회차」가 세어지기 때문이다. 조합하면 「회차와 함께 쓸 수 없는 조건」으로 막힌다
 - 교차 게이트 3종(§2.12)도 fail-closed 대상이 **아니다** — 다만 값의 형태가 깨지면
   **그 게이트 때문에 발급이 막힌다**(통과가 아니다). 게이트는 조건 평가가 아니라 후보
   선별 단계에서 판정되므로, 수치 조건이 하나도 없는 배지는 여전히 「평가 가능한 조건 없음」이다

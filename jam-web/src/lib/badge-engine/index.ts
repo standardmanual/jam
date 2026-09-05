@@ -29,7 +29,7 @@ import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
 import type { BadgeCondition, BadgeConditionSnapshot, BadgeEarnHistoryEntry, BadgeRow, DayOfWeek, UserActivityBadgeRow } from '@/types/database'
 import type { Json } from '@/types/database.generated'
 import { MEASURABLE_CONDITION_KEYS } from './condition-schema'
-import { describeBlockingConditionKeys, findBlockingConditionKeys } from './conditionRegistry'
+import { describeBlockingConditionKeys, findBlockingConditionKeys, hasBlockingConditionKeys } from './conditionRegistry'
 // 등급 서열표는 @/lib/rarity 한 곳에만 둔다 (티켓 20260831_1115에서 통합)
 import { RARITY_TIER, rarityTier } from '@/lib/rarity'
 // 활동 필터 순수 헬퍼(걷기 게이트·요일·시간대·하루1회상한·주경계·연속일수)는
@@ -48,6 +48,11 @@ import {
   WALKING_GATE_MIN_DURATION_MIN,
   WALKING_GATE_MIN_SPEED_KMH,
   WALKING_GATE_MAX_SPEED_KMH,
+  // 휴식(활동 공백) 판정도 같은 파일에 둔다 — `badgeProgress.ts`가 「무엇이 휴식 조건인가」를
+  // 같은 함수(`restConditionKeysIn`)로 공유해야 진행률과 발급 판정이 어긋나지 않는다
+  // (v5 B3, 티켓 20260905_0030 §4).
+  restConditionKeysIn,
+  evaluateRestConditions,
 } from './activityFilters'
 import { isLeveledBadge, familyKeyOf, badgeKindLabel, badgeKindOf, repeatCountOf } from './badgeKind'
 // 2단 교차 게이트(v5 B2, 티켓 20260905_0030 §3)는 순수 함수로 분리돼 있다 —
@@ -193,6 +198,11 @@ export function collectRepeatOccurrences(
   //    통째로 0이 되어 **영원히 발급되지 않는다**(티켓 20260905_0030 B-10).
   //    `prerequisite_badge_names`는 B1 시점에 이미 그 상태였다 — 카탈로그에 반복형이 0건이라
   //    잠복해 있었을 뿐이다.
+  //
+  //    ⚠️ **휴식 4종은 게이트와 다르다 — 이 목록에 넣지 않는다**(v5 B3, B-10). 게이트는
+  //    「보유 여부」라 회차와 층이 다르지만, 휴식은 **이력 패턴 술어**라 넣는 순간
+  //    「휴식 조건을 무시한 회차」가 세어진다. 조합 자체를 `evaluateConditionDetailed`가
+  //    「회차와 함께 쓸 수 없는 조건」으로 먼저 막으므로 이 경로에 휴식 키가 도달하지 않는다.
   const consumed = new Set<string>([
     'repeat_count',
     'activity_type',
@@ -388,6 +398,22 @@ export function evaluateConditionDetailed(
      * fail-closed가 「알 수 없는 필드」로 판정해 미션이 영구 미달성이 된다.
      */
     extraAllowedKeys?: ReadonlySet<string>
+    /**
+     * 이력 창의 시작점(= 가입 앵커, `getSignupAnchorDate`). **휴식 조건 전용이다**
+     * (v5 B3, 티켓 20260905_0030 §4 · B-7).
+     *
+     * 넘어온 `activities`는 「앵커로 자른 이력 + 이번 배치」인데, 배치는 앵커와 무관하게
+     * 합쳐지므로(첫 싱크 정산분은 대개 가입 직전 활동) 앵커 이전 활동이 섞일 수 있다.
+     * 휴식은 「데이터 없음」을 「쉬었음」으로 읽는 조건이라 그 한 건이 창 밖 공백을 만들어
+     * 낸다. 그래서 휴식 헬퍼가 앵커를 **하한으로 한 번 더** 적용한다.
+     *
+     * ⚠️ **「지금」(`now`)은 일부러 넣지 않았다.** 휴식 4종은 전부 «닫힌 공백»(인접한 두
+     * 활동 사이)만 보므로 현재 시각이 판정에 끼어들지 않는다. 열린 공백(마지막 활동 ~ 지금)을
+     * 쓰기 시작하면 그때는 **세 소비처에 함께 전파해야 한다** — `collectRepeatOccurrences` ·
+     * `badgeProgress.ts` · `/badges/tree`(이미 자기 `now`를 만든다). 하나라도 빠뜨리면
+     * 화면과 발급이 서로 다른 시각을 본다(B-8).
+     */
+    anchorDate?: string
   }
 ): EvalConditionResult {
   if (!condition || Object.keys(condition).length === 0) {
@@ -402,13 +428,33 @@ export function evaluateConditionDetailed(
   // 조용히 무시되고 조건이 통과된다 — 「미구현 = 발급 안 됨」이 아니라 「미구현 = 무조건 발급」이
   // 되는 구조다. 그래서 평가를 **시작하기 전에** 막는다. 기존 25개 필드는 전부
   // `evaluation: 'engine' | 'external'`이라 이 분기에 걸리지 않는다(현행 발급 동작 무변경).
+  // ③ 짝 필드가 없어 뜻이 완성되지 않는 키(v5 B3 신규 4종 한정)도 여기서 막는다 —
+  //    「며칠 연속 뒤인가」·「무엇이 장거리인가」가 없으면 조용한 오판정이 된다.
   const blocking = findBlockingConditionKeys(condition, options?.extraAllowedKeys)
-  if (blocking.unknown.length > 0 || blocking.pending.length > 0) {
+  if (hasBlockingConditionKeys(blocking)) {
     return {
       pass: false,
       reason: describeBlockingConditionKeys(blocking),
       actual: '-',
       required: '엔진이 평가할 수 있는 조건 필드',
+    }
+  }
+
+  // ── 회차와 함께 쓸 수 없는 조건 (v5 B3, 티켓 20260905_0030 B-10)
+  //
+  // 휴식 4종은 게이트(「보유 여부」)와 달리 **이력 패턴 술어**다. `collectRepeatOccurrences`의
+  // `consumed` 집합에 넣으면 「휴식 조건을 무시한 회차」가 세어지므로 **넣지 않는다.** 대신
+  // 조합 자체를 여기서 막는다. 막지 않고 두면 회차 술어의 fail-closed 가드가 조용히 회차를
+  // 0으로 떨어뜨려 「충족 횟수 부족 / 0회」로만 보이고, 카탈로그 담당자가 원인을 찾지 못한다.
+  if (condition.repeat_count !== undefined) {
+    const restKeys = restConditionKeysIn(condition)
+    if (restKeys.length > 0) {
+      return {
+        pass: false,
+        reason: '회차와 함께 쓸 수 없는 조건',
+        actual: `휴식 조건: ${restKeys.join(', ')}`,
+        required: 'repeat_count 없이 사용',
+      }
     }
   }
 
@@ -731,6 +777,25 @@ export function evaluateConditionDetailed(
     requiredParts.push(`계절활동: ${condition.season_count}회`)
   }
 
+  // ── 휴식(활동 공백) — v5 B3, 티켓 20260905_0030 §4
+  //
+  // 판정은 `activityFilters.ts`의 `evaluateRestConditions` 한 곳에만 있다. `badgeProgress.ts`가
+  // 같은 파일의 `restConditionKeysIn`으로 「무엇이 휴식 조건인가」를 공유한다 — 두 곳이 각자
+  // 정의하면 진행률과 발급 판정이 어긋난다(§4가 명시적으로 경계한 실패 모드).
+  //
+  // **`filtered`가 아니라 원본 `activities`를 넘긴다.** 이 시점의 `filtered`는 time_range·기온·
+  // 걷기 하루 1회 상한으로 추가로 좁혀져 있어, 공백의 정의가 조건 조합에 따라 흔들린다.
+  // 헬퍼가 앵커 하한 → 종목 필터 + 걷기 게이트를 스스로 다시 적용한다
+  // (`collectRepeatOccurrences`가 원본을 받는 것과 같은 이유).
+  const rest = evaluateRestConditions(condition, activities, { anchorDate: options?.anchorDate })
+  if (rest.kind === 'fail') {
+    return { pass: false, reason: rest.reason, actual: rest.actual, required: rest.required }
+  }
+  if (rest.kind === 'pass') {
+    actualParts.push(...rest.actual)
+    requiredParts.push(...rest.required)
+  }
+
   return {
     pass: true,
     reason: '조건 충족',
@@ -739,8 +804,13 @@ export function evaluateConditionDetailed(
   }
 }
 
-export function checkCondition(condition: BadgeCondition, activities: NormalizedActivity[]): boolean {
-  return evaluateConditionDetailed(condition, activities).pass
+export function checkCondition(
+  condition: BadgeCondition,
+  activities: NormalizedActivity[],
+  /** 휴식 조건이 앵커를 하한으로 보게 하려면 넘긴다 — 안 넘기면 창이 열려 공백이 과대평가된다 */
+  options?: { anchorDate?: string }
+): boolean {
+  return evaluateConditionDetailed(condition, activities, options).pass
 }
 
 // ── 핵심 평가 함수 ────────────────────────────────────────────────────────
@@ -992,7 +1062,9 @@ export async function evaluateBadgesDetailed(
         continue
       }
 
-      const evalResult = evaluateConditionDetailed(badge.condition_json as BadgeCondition ?? {}, evalActivities)
+      const evalResult = evaluateConditionDetailed(badge.condition_json as BadgeCondition ?? {}, evalActivities, {
+        anchorDate,
+      })
       if (evalResult.pass) {
         eligible.push({ badge, evalResult })
       } else {
@@ -1064,7 +1136,7 @@ export async function evaluateBadgesDetailed(
         continue
       }
 
-      const evalResult = evaluateConditionDetailed(condition, evalActivities)
+      const evalResult = evaluateConditionDetailed(condition, evalActivities, { anchorDate })
       if (!evalResult.pass) {
         missed.push({ id: badge.id, name: badge.name, reason: evalResult.reason, actual: evalResult.actual, required: evalResult.required })
         continue // 프런티어가 막혔으므로 위 레벨은 전부 '이전 레벨 미획득'으로 떨어진다
@@ -1105,7 +1177,7 @@ export async function evaluateBadgesDetailed(
       continue
     }
 
-    const evalResult = evaluateConditionDetailed(condition, evalActivities)
+    const evalResult = evaluateConditionDetailed(condition, evalActivities, { anchorDate })
     if (!evalResult.pass) {
       // 보유한 반복형이 여기 오는 경우도 있다 — 가입 앵커로 이력 창이 좁혀져 회차가
       // 임계값 아래로 내려간 상황. 그때는 카운터도 올리지 않는다(발급 근거가 사라진 회차다).
@@ -1201,7 +1273,7 @@ export async function evaluateBadgesDetailed(
     const { badge: toIssue, condition, evalResult, action, occurrences, newOccurrences } = plan
 
     // ── 3-a. 계기 활동 선정 (selectTriggerActivity — 순수 함수, 파일 하단)
-    const triggerActivity = selectTriggerActivity(toIssue, condition, occurrences, evalActivities)
+    const triggerActivity = selectTriggerActivity(toIssue, condition, occurrences, evalActivities, { anchorDate })
 
     // ── 3-b. 카운터 증가 경로 — 발급이 아니다. earned에도 담기지 않는다
     if (action === 'increment') {
@@ -1383,8 +1455,11 @@ export async function evaluateBadges(
  * 우선순위:
  *   ① 반복형 — «임계값을 넘긴 그 회차». 회차가 임계값보다 많으면(밀린 발급) N번째 회차를
  *      쓰고, 그것도 없으면 마지막 회차로 떨어진다
- *   ② 종목 지정 배지 — 그 종목이면서 활동 단위 조건까지 만족하는 첫 활동 → 없으면 종목만 일치
- *   ③ 종목 지정이 없으면 이력의 첫 활동
+ *   ② **휴식 조건 — 공백을 닫은 «복귀 활동»** (v5 B3, B-9). 휴식은 「활동이 없었음」이 근거라
+ *      아래 ③으로 내려가면 조건과 무관한 활동이 잡히고, 그 날짜가 배지 상세의 「계기 활동일」로
+ *      유저에게 노출된다. 소급 판정의 실제 계기는 공백을 끝낸 그 활동이다
+ *   ③ 종목 지정 배지 — 그 종목이면서 활동 단위 조건까지 만족하는 첫 활동 → 없으면 종목만 일치
+ *   ④ 종목 지정이 없으면 이력의 첫 활동
  *
  * `occurrences`가 비어 있으면 ①을 타지 않는다 — `repeatCountOf`는 레벨형에 `repeat_count`가
  * 잘못 붙은 카탈로그 오류에도 값을 돌려주므로 회차 목록의 유무로 한 번 더 가른다.
@@ -1393,12 +1468,18 @@ export function selectTriggerActivity(
   badge: Pick<BadgeRow, 'condition_json'>,
   condition: BadgeCondition,
   occurrences: NormalizedActivity[],
-  evalActivities: NormalizedActivity[]
+  evalActivities: NormalizedActivity[],
+  /** 발급 판정과 **같은 창**으로 복귀 활동을 찾기 위한 앵커. 안 넘기면 창이 열린다 */
+  options?: { anchorDate?: string }
 ): NormalizedActivity | undefined {
   const repeatCount = repeatCountOf(badge)
   if (repeatCount != null && occurrences.length > 0) {
     return occurrences[repeatCount - 1] ?? occurrences[occurrences.length - 1]
   }
+  // 순수 함수라 두 번 불러도 부작용이 없다 — 「복귀 활동이 무엇인가」의 정의를 여기서
+  // 다시 적지 않고 판정에 쓴 것과 같은 함수에서 받는다.
+  const rest = evaluateRestConditions(condition, evalActivities, { anchorDate: options?.anchorDate })
+  if (rest.kind === 'pass') return rest.resumeActivity
   if (condition.activity_type) {
     return (
       evalActivities.find(
