@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React, { useState } from 'react';
+import { expect } from 'storybook/test';
 import { BadgeGridCard } from './BadgeGridCard';
 
 const meta: Meta<typeof BadgeGridCard> = {
@@ -198,5 +199,28 @@ export const Interactive: Story = {
         </div>
       </div>
     );
+  },
+};
+
+/**
+ * 미획득·미발견 썸네일 — 실루엣 (티켓 20260905_0036).
+ *
+ * 예전에는 원본 이미지에 `filter: grayscale(1)` + `opacity .4`를 걸었는데, grayscale은
+ * 그려진 뒤 적용되는 CSS 필터라 **원본 URL이 그대로 네트워크에 나갔다** — 네트워크 탭에서
+ * 컬러 원본을 볼 수 있어 「아직 안 보여준다」가 성립하지 않는다. 이제 `BadgeSilhouette`
+ * (배지별 이미지를 요청하지 않는 공통 SVG)을 그린다.
+ */
+export const SilhouetteWhenHidden: Story = {
+  name: '미획득·미발견 — 원본 이미지를 로드하지 않는다',
+  render: () => (
+    <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
+      <BadgeGridCard name="동네 산책러" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" earned />
+      <BadgeGridCard name="동네 산책러" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" earned={false} />
+      <BadgeGridCard name="동네 산책러" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" undiscovered />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    // 획득한 카드 1장만 원본 이미지를 쓴다.
+    expect(canvasElement.querySelector('[data-testid="cards"]')!.querySelectorAll('img').length).toBe(1);
   },
 };

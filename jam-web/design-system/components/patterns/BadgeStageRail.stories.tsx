@@ -338,3 +338,211 @@ export const NoRarityLeveled: Story = {
     expect(canvasElement.textContent).not.toContain('COMMON');
   },
 };
+
+// ────────────────────────────────────────────────────────────────────────────
+// v2 (티켓 20260905_0036)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * v2 — 미획득 눈금은 **원본 이미지를 로드하지 않는다.**
+ *
+ * 예전에는 원본 `imageUrl`을 그대로 `<img>`에 넣고 `filter: grayscale(1)`만 걸었다. 그런데
+ * grayscale은 그려진 뒤 적용되는 CSS 필터라 **원본 URL이 그대로 네트워크에 나가고**
+ * 개발자도구에서 컬러 원본을 볼 수 있다 — 「아직 안 보여준다」가 성립하지 않았다.
+ * 이제 미획득 눈금은 `BadgeSilhouette`(공통 SVG)만 그린다. 아래 play가
+ * "획득 1개 = `<img>` 1개"를 실측한다.
+ */
+export const SilhouetteForUnearned: Story = {
+  name: 'v2 — 미획득은 실루엣, 원본 URL이 나가지 않는다',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="동네 산책러"
+          nextRarityLabel="Rare"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'locked', href: '/badges/2' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'locked', href: '/badges/3' },
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
+          ]}
+          frontierProgress={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    // 획득한 눈금 1개만 원본 이미지를 쓴다.
+    expect(rail.querySelectorAll('img').length).toBe(1);
+  },
+};
+
+/**
+ * v2 — 눈금 아래 **3px 등급색 바**. 44px 폭에 "Mystic" 칩은 들어가지 않아서 등급을 색으로만
+ * 표시하고, 등급명은 눈금의 `aria-label`이 읽는다(시각·비시각 어느 쪽도 정보를 잃지 않는다).
+ * 등급 색 `--color-rarity-*`는 **값을 바꾸지 않고 그대로 참조**한다 — 이 토큰들은
+ * `--color-tag-3/4/5`와 폼 입력 에러 색이 함께 물고 있다.
+ */
+export const RarityBars: Story = {
+  name: 'v2 — 눈금 아래 3px 등급색 바',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="계절의 보행자"
+          nextRarityLabel="Epic"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/2' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
+          ]}
+          frontierProgress={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const labels = Array.from(canvasElement.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') ?? '');
+    // 등급명은 색이 아니라 aria-label이 전달한다.
+    expect(labels.some((l) => l.includes('Mystic'))).toBe(true);
+    expect(labels.some((l) => l.includes('Epic'))).toBe(true);
+  },
+};
+
+/**
+ * v2 — `earnCount`: 반복형 계열의 누적 횟수를 **`×N` 칩 하나로만** 헤더 행 오른쪽 끝에 붙인다.
+ * 점 그리드를 쓰지 않는 이유는 `BadgeStampRow` 문서 참고.
+ */
+export const EarnCountChip: Story = {
+  name: 'v2 — earnCount (×N 칩)',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="이번 주의 약속"
+          nextRarityLabel="Epic"
+          earnCount={12}
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/2' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
+          ]}
+          frontierProgress={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    expect(canvasElement.querySelector('[data-testid="rail"]')?.textContent).toContain('×12');
+  },
+};
+
+/**
+ * v2 — `stop.gates`: 게이트 종류를 배열로 받아 **한 자리에 최대 2개**(자물쇠+별) 그린다.
+ * 그래서 게이트 자리 폭이 36px → **44px**이다.
+ * 미션 게이트만 `--color-primary`(4.18:1 — 텍스트 기준엔 못 미치나 아이콘이라 비텍스트
+ * 기준 3:1은 통과)이고, 교차(선행 배지) 게이트와는 **형태로도** 갈라 둔다(자물쇠 vs 별).
+ * `gates`를 넘기지 않으면 v1과 동일하게 종류 없는 자물쇠 하나만 그린다.
+ */
+export const GateKinds: Story = {
+  name: 'v2 — 게이트 종류 (미션 자물쇠 + 교차 별)',
+  render: () => (
+    <Frame>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div data-testid="rail-two">
+          <BadgeStageRail
+            familyName="누적의 증명"
+            nextRarityLabel="Epic"
+            stops={[
+              { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+              { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/2' },
+              {
+                id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'locked', href: '/badges/3',
+                gates: [{ kind: 'mission' as const }, { kind: 'cross' as const }],
+              },
+              { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'locked', href: '/badges/4' },
+            ]}
+            frontierProgress={null}
+            regretLine={null}
+            onLockClick={() => {}}
+          />
+        </div>
+        {/* gates 미지정 — v1과 동일 */}
+        <BadgeStageRail
+          familyName="동네 산책러"
+          nextRarityLabel="Rare"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'locked', href: '/badges/2' },
+          ]}
+          frontierProgress={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const labels = Array.from(canvasElement.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') ?? '');
+    // 게이트 종류는 색·형태뿐 아니라 aria-label로도 읽힌다.
+    expect(labels.some((l) => l.includes('미션') && l.includes('선행 배지'))).toBe(true);
+  },
+};
+
+/**
+ * v2 — **4눈금 상한을 코드로 강제한다.**
+ *
+ * 레일은 등급 4단계 전용 구조다(컨테이너에 `overflow`도 `flexWrap`도 없다). v5 무한레벨형은
+ * 지금 Lv.1~8까지 시딩돼 있고 상한이 없어서, 실수로 이 레일에 밀어 넣으면 눈금이 가로로
+ * 밀려나 화면이 **조용히** 망가진다. 그래서 개발 빌드에서는 즉시 던진다 — 레벨형은
+ * `BadgeLevelGauge`를 쓴다.
+ */
+export const MaxFourStopsEnforced: Story = {
+  name: 'v2 — 눈금 5개면 개발 빌드에서 에러',
+  render: function MaxStops() {
+    // 상한 검사는 «개발 빌드 전용»이다. 번들러가 정적 치환하는 `process.env.NODE_ENV`를
+    // 여기서 한 번만 읽어 data 속성으로 넘긴다 — play 함수 안에서 `typeof process`로
+    // 다시 판별하려 하면 브라우저 번들에서 process 식별자 자체가 없어 항상 실패한다.
+    const devBuild = process.env.NODE_ENV !== 'production';
+    // 컴포넌트를 함수로 직접 호출해 던지는 것을 잡는다(BadgeStageRail은 훅을 쓰지 않는다).
+    let message = '(개발 빌드가 아니라 검사를 건너뛰었거나, 상한 검사가 사라졌다)';
+    try {
+      BadgeStageRail({
+        familyName: '걸어온 거리',
+        nextRarityLabel: null,
+        stops: [1, 2, 3, 4, 5].map((n) => ({
+          id: String(n), rarity: null, imageUrl: WALK_ICON, status: 'locked' as const, href: `/badges/${n}`,
+        })),
+        frontierProgress: null,
+        regretLine: null,
+        onLockClick: () => {},
+      });
+    } catch (e) {
+      message = (e as Error).message;
+    }
+    return (
+      <Frame>
+        <p data-testid="thrown" data-dev-build={String(devBuild)} style={{ margin: 0, color: 'var(--color-text)', fontSize: 12, lineHeight: 1.5 }}>
+          {message}
+        </p>
+      </Frame>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const node = canvasElement.querySelector('[data-testid="thrown"]');
+    // 프로덕션 번들로 구운 Storybook에서는 던지지 않는 것이 «정상»이다 — 검사하지 않는다.
+    if (node?.getAttribute('data-dev-build') !== 'true') return;
+    const text = node.textContent ?? '';
+    expect(text).toContain('눈금은 최대 4개');
+    expect(text).toContain('BadgeLevelGauge');
+  },
+};
