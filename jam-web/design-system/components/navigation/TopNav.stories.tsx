@@ -3,6 +3,9 @@ import React from 'react';
 import { TopNav } from './TopNav';
 import { IconButton } from '../buttons/IconButton';
 
+// 20260901_1926: props API를 서비스 `src/components/ui/TopNav.tsx` 기준으로 재정렬
+// (logoSlot→logo, style→headerStyle, avatarSlot 제거·rightSlot 합성, 타이포 오버라이드
+// prop 4종 제거 — 서비스가 항상 넘기던 고정값을 기본값으로 흡수).
 const meta: Meta<typeof TopNav> = {
   title: 'MODULAR/Navigation/TopNav',
   component: TopNav,
@@ -19,6 +22,11 @@ export const Default: Story = {
 export const NoBack: Story = {
   name: '뒤로가기 없음',
   args: { title: '홈', showBack: false },
+};
+
+export const BackHref: Story = {
+  name: '뒤로가기 (href, 프레임워크 비종속)',
+  args: { title: '배지', showBack: true, backHref: '/badges' },
 };
 
 export const WithRightSlot: Story = {
@@ -54,28 +62,16 @@ export const NoBackNoTitle: Story = {
   args: { title: '', showBack: false },
 };
 
-export const ServiceTitleSize: Story = {
-  name: '서비스 타이틀 크기 (16px, 일반체)',
-  args: {
-    title: '배지',
-    showBack: true,
-    titleSize: 'var(--text-body)',
-    titleWeight: 'var(--weight-body)',
-    titleLineHeight: 'var(--leading-body)',
-    titleTracking: 'normal',
-  },
-};
-
 export const HeaderStyleOverride: Story = {
   name: '헤더 배경 오버라이드',
   args: {
     title: '아이템북',
     showBack: true,
-    style: { background: 'var(--color-surface)' },
+    headerStyle: { background: 'var(--color-surface)' },
   },
 };
 
-// 20260824_010: 3분할 확장 — 로고/동기화/아바타 슬롯
+// 20260824_010: 3분할 확장 — 로고/동기화/우측(아바타 포함) 슬롯
 function DemoLogo() {
   return (
     <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--color-text)' }}>
@@ -122,17 +118,17 @@ export const LogoSlot: Story = {
   name: '로고 슬롯 (탭 최상위)',
   args: {
     showBack: false,
-    logoSlot: <DemoLogo />,
+    logo: <DemoLogo />,
   },
 };
 
-export const CenterAndAvatarSlot: Story = {
-  name: '중앙 동기화 + 우측 아바타',
+export const CenterAndRightSlot: Story = {
+  name: '중앙 동기화 + 우측(아바타 포함)',
   args: {
     title: '뒤로',
     showBack: true,
     centerSlot: <DemoSyncButton />,
-    avatarSlot: <DemoAvatar />,
+    rightSlot: <DemoAvatar />,
   },
 };
 
@@ -140,9 +136,9 @@ export const FullThreeColumn: Story = {
   name: '3분할 전체 (로고+동기화+아바타)',
   args: {
     showBack: false,
-    logoSlot: <DemoLogo />,
+    logo: <DemoLogo />,
     centerSlot: <DemoSyncButton />,
-    avatarSlot: <DemoAvatar />,
+    rightSlot: <DemoAvatar />,
   },
 };
 
@@ -152,7 +148,11 @@ export const RightSlotWithAvatar: Story = {
     title: '뒤로',
     showBack: true,
     centerSlot: <DemoSyncButton />,
-    rightSlot: <IconButton icon="share" label="공유" />,
-    avatarSlot: <DemoAvatar />,
+    rightSlot: (
+      <>
+        <IconButton icon="share" label="공유" />
+        <DemoAvatar />
+      </>
+    ),
   },
 };
