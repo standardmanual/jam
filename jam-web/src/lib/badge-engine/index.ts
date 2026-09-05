@@ -7,6 +7,8 @@
  * - 반복 획득 정책(반복형, 등급 + condition_json.repeat_count): 보유해도 후보에서 빠지지
  *   않는다. 임계값을 넘지 않은 회차는 `earn_count`만 올리고 **피드·결산에는 나타나지 않는다**
  * - 진행 트랙 정책: 동일 트랙(거리/횟수) 내 최고값 배지 1개만 발급 (등급형 전용)
+ * - 게이트 정책: 선행 배지(이름 OR) + 2단 교차 게이트(계열 기준, `crossGate.ts`) —
+ *   세 후보 루프가 `evaluateBadgeGates()` 하나를 공유한다
  * - 미구현 조건 타입은 false 처리 (자동 통과 방지)
  *
  * ## 발급은 «결정 → DB 반영 → 부수효과» 3단이다 (v5 B1, 티켓 20260905_0030)
@@ -48,6 +50,9 @@ import {
   WALKING_GATE_MAX_SPEED_KMH,
 } from './activityFilters'
 import { isLeveledBadge, familyKeyOf, badgeKindLabel, badgeKindOf, repeatCountOf } from './badgeKind'
+// 2단 교차 게이트(v5 B2, 티켓 20260905_0030 §3)는 순수 함수로 분리돼 있다 —
+// 보유 컨텍스트를 인자로 받으므로 이 파일의 클로저 밖에서도 단위 테스트가 가능하다.
+import { evaluateCrossGates, GATE_CONDITION_KEYS, type OwnedBadgeDef } from './crossGate'
 export {
   passesWalkingGate,
   matchesDayOfWeek,
@@ -181,6 +186,13 @@ export function collectRepeatOccurrences(
   //    fail-closed(모르는 키가 있으면 발급을 막는다)와 정반대 방향이다.
   //    v5 스칼라 7종을 'engine'으로 뒤집는 순간(티켓 0035 선행 작업) 실제로 성립하므로
   //    미리 막는다(티켓 20260905_0030 B1 개선 리뷰).
+  //
+  //    ⚠️ **게이트 키는 예외다.** `prerequisite_badge_names`·교차 게이트 3종은 활동을 보는
+  //    술어가 아니라 «유저가 무엇을 보유했는가»를 보는 별도 판정이며(`evaluateBadgeGates`),
+  //    회차 계산과는 층이 다르다. 이 목록에 넣지 않으면 게이트가 붙은 반복형 배지의 회차가
+  //    통째로 0이 되어 **영원히 발급되지 않는다**(티켓 20260905_0030 B-10).
+  //    `prerequisite_badge_names`는 B1 시점에 이미 그 상태였다 — 카탈로그에 반복형이 0건이라
+  //    잠복해 있었을 뿐이다.
   const consumed = new Set<string>([
     'repeat_count',
     'activity_type',
@@ -189,6 +201,7 @@ export function collectRepeatOccurrences(
     'time_range',
     ...PER_ACTIVITY_KEYS,
     ...CUMULATIVE_SAME_ACTIVITY_KEYS,
+    ...GATE_CONDITION_KEYS,
   ])
   const unconsumed = Object.entries(condition)
     .filter(([k, v]) => v !== undefined && !consumed.has(k))
@@ -837,16 +850,32 @@ export async function evaluateBadgesDetailed(
   // ownedBadgeIds를 기준으로 badges 테이블을 삭제 여부 무관하게 직접 조회한다.
   // (소프트 삭제는 노출·신규지급만 막고 이미 획득한 이력은 유지: 20260823_004 정책,
   //  20260825_020/021에서 확정)
+  //
+  // ⚠️ **`ownedBadgeNames`에는 등급형만 담는다** (v5 B2, 티켓 20260905_0030 B-6).
+  // v5는 「무한레벨형·반복형이 등급형과 이름을 공유할 수 있다」를 설계 전제로 두므로
+  // 이름은 배지를 유일하게 식별하지 못한다. 종류를 가리지 않고 담으면 **레벨형 Lv.1이나
+  // 반복형 Common을 보유한 것만으로 동명 등급형의 `prerequisite_badge_names`가 열린다** —
+  // §3이 「교차 대상은 조건이 겹치지 않는 계열이어야 한다」로 경계한 것과 같은 실패 모드다.
+  // 지금은 카탈로그에 레벨형·반복형이 0건이라 무해하지만, 시딩(티켓 20260905_0035)에서
+  // 이름이 겹치는 순간 게이트가 자동 통과된다. 신규 교차 게이트는 애초에 `family_key`
+  // 기준이라(`crossGate.ts`) 이 모호성이 없다.
   const ownedBadgeNames = new Set<string>()
   const highestOwnedTierByName = new Map<string, number>()
   /** 무한레벨형 계열별 보유 최고 레벨. 다음 후보는 항상 이 값 + 1이다 (v5, 티켓 20260905_0030 §1) */
   const highestOwnedLevelByFamily = new Map<string, number>()
+  /**
+   * 보유 배지 «정의» 목록 — 2단 교차 게이트가 계열(`family_key`)·등급·종목을 봐야 한다
+   * (v5 B2, B-5). 예전에는 이 조회 결과에서 이름만 뽑고 나머지를 버리고 있었다.
+   */
+  const ownedBadgeDefs: OwnedBadgeDef[] = []
   if (ownedBadgeIds.size > 0) {
     // condition_json까지 읽는다 — 반복형 판정(`repeat_count`)이 조건에 들어 있어서
-    // id/name/rarity/level/family_key만으로는 종류를 가릴 수 없다 (v5 B1, B-5 지적)
+    // id/name/rarity/level/family_key만으로는 종류를 가릴 수 없다 (v5 B1, B-5 지적).
+    // activity_types는 교차 게이트의 종목 경계 판정에 쓴다 — 마스터 티켓 20260905_0026의
+    // 「교차도 미션도 종목 경계를 넘지 않는다」(v5 B2).
     const { data: ownedBadgeDefsRaw, error: ownedDefsError } = await supabase
       .from('badges')
-      .select('id, name, rarity, level, family_key, condition_json')
+      .select('id, name, rarity, level, family_key, activity_types, condition_json')
       .in('id', Array.from(ownedBadgeIds))
 
     if (ownedDefsError) {
@@ -854,9 +883,10 @@ export async function evaluateBadgesDetailed(
       return { earned: [], missed: [], counted: [] }
     }
 
-    for (const b of (ownedBadgeDefsRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'level' | 'family_key' | 'condition_json'>[]) {
-      ownedBadgeNames.add(b.name)
+    for (const b of (ownedBadgeDefsRaw ?? []) as OwnedBadgeDef[]) {
+      ownedBadgeDefs.push(b)
       const kind = badgeKindOf(b)
+      if (kind === 'graded') ownedBadgeNames.add(b.name)
       if (kind === 'leveled') {
         const key = familyKeyOf(b)
         const current = highestOwnedLevelByFamily.get(key) ?? 0
@@ -930,10 +960,18 @@ export async function evaluateBadgesDetailed(
    * 두 루프에 각각 복제돼 있어, 한쪽만 고치면 조용한 비대칭이 됐다(B-4 지적).
    */
   function evaluateBadgeGates(badge: BadgeRow, condition: BadgeCondition): BadgeMissedInfo | null {
-    // 선행 배지 게이트: prerequisite_badge_names 중 하나라도 보유해야 통과 (OR)
+    // ① 선행 배지 게이트: prerequisite_badge_names 중 하나라도 보유해야 통과 (OR).
+    //    **이름 기반이라 «보유한 등급형»만 대상이다** — ownedBadgeNames 선언부 주석 참조(B-6).
     const prereqs = condition.prerequisite_badge_names
     if (prereqs && prereqs.length > 0 && !prereqs.some((n) => ownedBadgeNames.has(n))) {
       return { id: badge.id, name: badge.name, reason: '선행 배지 미보유', actual: '없음', required: prereqs.join(' 또는 ') }
+    }
+
+    // ② 2단 교차 게이트 (v5 B2, 티켓 20260905_0030 §3) — 축 내 교차 · 축 간 교차 · 미션 보상 배지.
+    //    ①과 달리 계열(`family_key`) 기준이고, 교차 요구끼리는 OR·미션 게이트와는 AND다.
+    const cross = evaluateCrossGates(badge, condition, ownedBadgeDefs)
+    if (!cross.pass) {
+      return { id: badge.id, name: badge.name, reason: cross.reason, actual: cross.actual, required: cross.required }
     }
     return null
   }
@@ -1162,20 +1200,8 @@ export async function evaluateBadgesDetailed(
   for (const plan of gatedIssueList) {
     const { badge: toIssue, condition, evalResult, action, occurrences, newOccurrences } = plan
 
-    // ── 3-a. 계기 활동 선정
-    //    반복형은 «임계값을 넘긴 그 회차»가 계기다. 회차가 임계값보다 많으면(밀린 발급)
-    //    N번째 회차를 쓰고, 그것도 없으면 마지막 회차로 떨어진다.
-    //    occurrences가 비어 있으면(= 반복형이 아니다) 기존 규칙을 그대로 쓴다 —
-    //    `repeatCountOf`는 레벨형에 repeat_count가 잘못 붙은 카탈로그 오류에도 값을
-    //    돌려주므로, 회차 목록의 유무로 한 번 더 가른다.
-    const repeatCount = repeatCountOf(toIssue)
-    const triggerActivity =
-      repeatCount != null && occurrences.length > 0
-        ? (occurrences[repeatCount - 1] ?? occurrences[occurrences.length - 1])
-        : condition.activity_type
-          ? (evalActivities.find((a) => a.jamActivityType === condition.activity_type && matchesPerActivityCondition(condition, a))
-            ?? evalActivities.find((a) => a.jamActivityType === condition.activity_type))
-          : evalActivities[0]
+    // ── 3-a. 계기 활동 선정 (selectTriggerActivity — 순수 함수, 파일 하단)
+    const triggerActivity = selectTriggerActivity(toIssue, condition, occurrences, evalActivities)
 
     // ── 3-b. 카운터 증가 경로 — 발급이 아니다. earned에도 담기지 않는다
     if (action === 'increment') {
@@ -1347,6 +1373,41 @@ export async function evaluateBadges(
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────
 // getMondayKey/calcMaxStreak는 activityFilters.ts로 이전(티켓 20260904_0631) — 상단에서
 // import + 재export 처리했다.
+
+/**
+ * 발급의 «계기 활동» 선정 — 배지 상세의 「계기 활동일」·피드 `event_at`·조건 스냅샷의 근거다.
+ *
+ * B1에서 3중 삼항이 됐고 B3(휴식 조건)가 4번째 분기를 얹을 자리라 순수 함수로 뺐다
+ * (티켓 20260905_0030 B-9). 인라인으로 두면 B3가 이 표현식과 발급 루프를 함께 건드려야 한다.
+ *
+ * 우선순위:
+ *   ① 반복형 — «임계값을 넘긴 그 회차». 회차가 임계값보다 많으면(밀린 발급) N번째 회차를
+ *      쓰고, 그것도 없으면 마지막 회차로 떨어진다
+ *   ② 종목 지정 배지 — 그 종목이면서 활동 단위 조건까지 만족하는 첫 활동 → 없으면 종목만 일치
+ *   ③ 종목 지정이 없으면 이력의 첫 활동
+ *
+ * `occurrences`가 비어 있으면 ①을 타지 않는다 — `repeatCountOf`는 레벨형에 `repeat_count`가
+ * 잘못 붙은 카탈로그 오류에도 값을 돌려주므로 회차 목록의 유무로 한 번 더 가른다.
+ */
+export function selectTriggerActivity(
+  badge: Pick<BadgeRow, 'condition_json'>,
+  condition: BadgeCondition,
+  occurrences: NormalizedActivity[],
+  evalActivities: NormalizedActivity[]
+): NormalizedActivity | undefined {
+  const repeatCount = repeatCountOf(badge)
+  if (repeatCount != null && occurrences.length > 0) {
+    return occurrences[repeatCount - 1] ?? occurrences[occurrences.length - 1]
+  }
+  if (condition.activity_type) {
+    return (
+      evalActivities.find(
+        (a) => a.jamActivityType === condition.activity_type && matchesPerActivityCondition(condition, a)
+      ) ?? evalActivities.find((a) => a.jamActivityType === condition.activity_type)
+    )
+  }
+  return evalActivities[0]
+}
 
 /**
  * 반복형 회차 카운터 증가 — 실제로 오른 회차 수를 돌려준다 (v5 B1, 티켓 20260905_0030 §2).

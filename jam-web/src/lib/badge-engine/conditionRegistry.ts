@@ -28,7 +28,7 @@
  * 3. 마이그레이션으로 DB CHECK 배열 + `check_family_condition_consistency()`의
  *    `measurable_keys` + `badge_metric_labels` 행을 갱신 (131 파일이 그 패턴이다)
  */
-import type { ActivityType, BadgeCondition, DayOfWeek } from '@/types/database'
+import type { ActivityType, BadgeCondition, BadgeGateRequirement, DayOfWeek } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 import { formatPaceSecPerKm } from '@/types/strava'
 
@@ -49,9 +49,14 @@ export type ConditionRole = 'measurable' | 'filter' | 'meta'
  * 전부 `true`였다. 그 과적재가 `route`를 «평가됨»으로 남기는 오분류를 낳았다.
  *
  * - `engine`   — `evaluateConditionDetailed`가 직접 수치·필터 검사를 한다
- * - `external` — 엔진 밖에서 처리한다. `poi_id`(체크인 파이프라인) ·
- *   `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`(선행 배지 게이트,
- *   `index.ts`의 후보 선별 단계). 조건 평가 자체는 통과시켜야 한다
+ * - `external` — **`evaluateConditionDetailed` 밖에서 처리한다.** 「엔진 바깥」이 아니라
+ *   「이 함수 바깥」이 정확한 경계다: `poi_id`(체크인 파이프라인) ·
+ *   `mission_reward`(미션 보상 경로)는 엔진 밖이지만, `prerequisite_badge_names`와
+ *   2단 교차 게이트 3종(`cross_in_axis`·`cross_between_axis`·`gate_mission_badge`)은
+ *   **엔진 안**의 후보 선별 단계(`index.ts`의 `evaluateBadgeGates()`)가 판정한다.
+ *   조건 평가 함수가 «수치»로 볼 수 없는(유저 보유 배지가 필요한) 필드라 여기 속한다 —
+ *   같은 자리에서 같은 방식으로 판정되는 네 필드가 서로 다른 값을 갖는 편이 더 위험하다.
+ *   조건 평가 자체는 통과시켜야 한다(막으면 게이트가 붙은 배지가 전부 미발급이 된다)
  * - `pending`  — 아직 아무도 평가하지 않는다. **fail-closed로 막는다.**
  *   v5 신규 20종이 여기 속하며 평가 구현(티켓 20260905_0030)에서 하나씩 `engine`으로 뒤집는다.
  *   `route`도 여기다 — 타입·스키마·DB CHECK에만 있고 엔진에 참조가 0건이다(실측 2026-09-05).
@@ -191,6 +196,27 @@ function int(raw: string | boolean | undefined): number | undefined {
   if (typeof raw !== 'string' || raw === '') return undefined
   const v = parseInt(raw, 10)
   return Number.isNaN(v) ? undefined : v
+}
+
+/**
+ * 2단 교차 게이트(`cross_in_axis` 등)의 어드민 표기 (티켓 20260905_0030 B2).
+ *
+ * 값이 jsonb라 형태 보장이 없다. 깨진 값에 `undefined`/`NaN`이 섞인 문자열을 만들면
+ * `safeFormat`이 「형태 오류」로 대체하므로 여기서는 **정상 형태만** 그린다.
+ */
+function gateChip(prefix: string, req: BadgeGateRequirement | undefined): string | null {
+  const count = req?.family_keys?.length
+  if (typeof count !== 'number') return `${prefix}: 형태 오류`
+  return `${prefix} ${count}계열`
+}
+
+function gateDetail(prefix: string, req: BadgeGateRequirement | undefined): string | null {
+  const keys = req?.family_keys
+  if (!Array.isArray(keys)) return `${prefix}: 형태 오류`
+  const parts = [`${prefix}: ${keys.join(', ')}`]
+  if (req?.min_count !== undefined) parts.push(`${req.min_count}개 이상`)
+  if (req?.min_rarity !== undefined) parts.push(`${req.min_rarity} 이상`)
+  return parts.join(' / ')
 }
 
 /** "5:30" 같은 mm:ss 페이스 입력을 초(sec/km)로 변환. 형식이 어긋나면 null */
@@ -909,6 +935,50 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `${c.repeat_count}회 충족`,
     detail: (c) => `기준 조건 ${c.repeat_count}회 충족`,
+  }),
+
+  // ── ④ 2단 교차 게이트 3종 — 평가 구현됨 (티켓 20260905_0030 B2, §3) ──────
+  //
+  // 셋 다 `evaluation: 'external'`이다 — `prerequisite_badge_names`와 **같은 자리**
+  // (`index.ts`의 `evaluateBadgeGates()`)에서 같은 방식으로 판정된다. `engine`이
+  // 「`evaluateConditionDetailed`가 직접 수치·필터 검사」를 뜻하는 값이므로, 유저 보유
+  // 배지를 봐야 하는 이 넷을 그쪽에 넣으면 그 정의가 무너진다(위 ConditionEvaluation 주석).
+  // 실질 효과는 동일하다 — fail-closed를 통과하고, 게이트는 엔진이 실제로 본다.
+  //
+  // `role`은 `filter`다. 게이트는 그 자체로 pass/fail을 만들지 않는다 — 수치 조건이 하나도
+  // 없는 배지는 「평가 가능한 조건 없음」으로 여전히 막혀야 한다(084 사고 방어 유지).
+  field({
+    key: 'cross_in_axis',
+    label: '축 내 교차',
+    unit: null,
+    role: 'filter',
+    input: 'object',
+    direction: null,
+    evaluation: 'external',
+    chip: (c) => gateChip('축 내 교차', c.cross_in_axis),
+    detail: (c) => gateDetail('축 내 교차', c.cross_in_axis),
+  }),
+  field({
+    key: 'cross_between_axis',
+    label: '축 간 교차',
+    unit: null,
+    role: 'filter',
+    input: 'object',
+    direction: null,
+    evaluation: 'external',
+    chip: (c) => gateChip('축 간 교차', c.cross_between_axis),
+    detail: (c) => gateDetail('축 간 교차', c.cross_between_axis),
+  }),
+  field({
+    key: 'gate_mission_badge',
+    label: '미션 보상 배지 게이트',
+    unit: null,
+    role: 'filter',
+    input: 'object',
+    direction: null,
+    evaluation: 'external',
+    chip: (c) => gateChip('미션 보상 배지', c.gate_mission_badge),
+    detail: (c) => gateDetail('미션 보상 배지', c.gate_mission_badge),
   }),
 ] as const
 

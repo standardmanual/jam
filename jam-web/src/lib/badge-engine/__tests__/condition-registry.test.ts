@@ -140,10 +140,10 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('46종(기존 25 + v5 신규 20 + 반복 획득 1)을 선언한다', () => {
-    expect(CONDITION_FIELDS.length).toBe(46)
-    expect(ALL_CONDITION_KEYS.length).toBe(46)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(46) // 중복 키 없음
+  it('49종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3)을 선언한다', () => {
+    expect(CONDITION_FIELDS.length).toBe(49)
+    expect(ALL_CONDITION_KEYS.length).toBe(49)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(49) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -166,7 +166,18 @@ describe('레지스트리 — 필드 구성', () => {
     // boolean 하나가 「엔진이 검사」·「엔진 밖에서 처리」·「아무도 안 함」을 겸하던 과적재를
     // 풀었다. external은 fail-closed를 통과해야 한다 — 엔진이 안 볼 뿐 평가는 된다.
     const byEval = (v: string) => CONDITION_FIELDS.filter((f) => f.evaluation === v).map((f) => f.key)
-    expect(byEval('external').sort()).toEqual(['mission_reward', 'poi_id', 'prerequisite_badge_names'])
+    // 교차 게이트 3종은 `prerequisite_badge_names`와 **같은 자리**(index.ts의
+    // evaluateBadgeGates)에서 같은 방식으로 판정된다. `engine`은 「evaluateConditionDetailed가
+    // 직접 수치·필터 검사」를 뜻하는 값이라, 유저 보유 배지를 봐야 하는 이 넷은 external이다
+    // (티켓 20260905_0030 B2). 실질 효과는 동일 — fail-closed를 통과하고 엔진이 실제로 본다.
+    expect(byEval('external').sort()).toEqual([
+      'cross_between_axis',
+      'cross_in_axis',
+      'gate_mission_badge',
+      'mission_reward',
+      'poi_id',
+      'prerequisite_badge_names',
+    ])
     expect(byEval('pending')).toContain('route')
     expect(byEval('pending').length).toBe(21) // route + v5 신규 20
     expect(byEval('engine').length).toBe(22) // 기존 21 + repeat_count (티켓 20260905_0030 B1)
@@ -346,15 +357,15 @@ describe('조건 키 ↔ 정규화 필드 대응 (activityField)', () => {
   })
 })
 
-describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이션 132)', () => {
+describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이션 133)', () => {
   // 티켓 20260905_0028이 지목한 «누락돼도 조용히 통과하는» 복제 위치 중 DB 쪽 2곳
   // (CHECK 제약 · 계열 정합성 트리거의 measurable_keys)이 레지스트리와 어긋나면 여기서 깨진다.
   //
-  // ⚠️ **가장 마지막에 이 둘을 다시 쓴 마이그레이션**을 읽어야 한다. 131이 45개 키로 만든
-  //    CHECK 제약을 132가 46개로 다시 만들었으므로, 131을 계속 읽으면 「레지스트리가 늘었는데
+  // ⚠️ **가장 마지막에 이 둘을 다시 쓴 마이그레이션**을 읽어야 한다. 132가 46개 키로 만든
+  //    CHECK 제약을 133이 49개로 다시 만들었으므로, 132를 계속 읽으면 「레지스트리가 늘었는데
   //    DB는 그대로」인 상태를 통과시켜 버린다(이 대조의 존재 이유가 사라진다).
   //    조건 키를 늘리는 마이그레이션을 새로 쓸 때마다 이 경로를 함께 올릴 것.
-  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/132_repeat_earn_counter.sql'), 'utf-8')
+  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/133_cross_gate_condition_keys.sql'), 'utf-8')
 
   /** SQL 텍스트에서 `ARRAY[ ... ]` 블록 안의 작은따옴표 리터럴을 뽑는다 */
   function keysInArrayAfter(marker: string): string[] {
@@ -382,10 +393,26 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
   })
 
   it('130이 넣은 무한레벨형 예외 두 줄을 되돌리지 않았다', () => {
-    // 132가 트리거 함수를 CREATE OR REPLACE로 다시 쓰므로 여기서 함께 확인한다
+    // 133이 트리거 함수를 CREATE OR REPLACE로 다시 쓰므로 여기서 함께 확인한다
     // 되돌리면 무한레벨 계열 INSERT가 다시 EXCEPTION으로 막힌다(마스터 티켓 B-4 재발)
     expect(sql).toContain('IF NEW.level IS NOT NULL THEN')
     expect(sql).toContain('AND level IS NULL')
+  })
+
+  it('132가 만든 회차 카운터 RPC를 되돌리지 않았다', () => {
+    // 133은 CHECK 제약과 트리거 함수만 다시 쓴다. RPC를 DROP하는 문장이 섞여 들어가면
+    // 반복형 카운터가 통째로 죽는다(엔진이 이 함수를 호출한다).
+    expect(sql).not.toContain('DROP FUNCTION IF EXISTS public.increment_activity_badge_earn')
+  })
+
+  it('교차 게이트 3종은 measurable_keys에 들어가지 않는다', () => {
+    // 계열 정합성 트리거는 «측정 조건 필드의 집합»이 형제끼리 같은지 비교한다. 게이트는
+    // 등급마다 달라지는 것이 정상이라(Rare엔 없고 Epic엔 축 내 교차, Mystic엔 축 간 교차 +
+    // 미션) 넣으면 정상적인 v5 계열이 통째로 EXCEPTION에 걸린다 — 마스터 티켓 B-4와 같은 형태.
+    const measurable = keysInArrayAfter('measurable_keys TEXT[] :=')
+    for (const key of ['cross_in_axis', 'cross_between_axis', 'gate_mission_badge']) {
+      expect(measurable, `${key}가 measurable_keys에 들어갔다`).not.toContain(key)
+    }
   })
 })
 
@@ -532,9 +559,13 @@ describe('표시 함수 — 레지스트리 기반 (어드민 목록·상세)', 
 describe('지표 라벨 — 레지스트리와 마이그레이션 시드가 어긋나지 않는다', () => {
   // 라벨 시드는 «누적»이다 — 131이 20종, 132가 repeat_count 1종을 넣는다. 뒤에 온 파일이
   // 앞 파일을 덮어쓰지 않으므로 둘을 이어 붙여 대조한다.
+  // (133은 라벨을 한 건도 시드하지 않는다 — 교차 게이트는 진행률 축이 아니라 보유 게이트라
+  //  「지난 활동 {label} 기록은 …」 문장에 등장할 자리가 없다. 그래도 목록에 넣어 둔다:
+  //  나중에 라벨을 시드하는 파일이 추가되면 이 대조가 자동으로 그 파일을 함께 본다.)
   const sql = [
     readFileSync(join(process.cwd(), 'supabase/migrations/131_condition_keys_v5.sql'), 'utf-8'),
     readFileSync(join(process.cwd(), 'supabase/migrations/132_repeat_earn_counter.sql'), 'utf-8'),
+    readFileSync(join(process.cwd(), 'supabase/migrations/133_cross_gate_condition_keys.sql'), 'utf-8'),
   ].join('\n')
 
   /**

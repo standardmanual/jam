@@ -85,19 +85,22 @@ Step 0.5. [가입 앵커] 이력 조회 창을 users.created_at 이후로 자른
           (티켓 20260905_0030 §5. 이번 동기화 배치는 앵커와 무관하게 합쳐진다)
 Step 1. type='activity' 배지 전체 조회 (유효기간 필터)
 Step 2. 유저 보유 배지 조회 (오류 시 즉시 종료)
+Step 2.5. [보유 컨텍스트] 보유 배지 «정의»를 조회해 세 가지를 만든다 —
+          ownedBadgeNames(**등급형 이름만**, §2.15) · highestOwnedTierByName ·
+          highestOwnedLevelByFamily · ownedBadgeDefs(계열·등급·종목, 교차 게이트용)
 Step 3-A. [등급형] 이름 그룹 단위 평가:
   A. 이미 보유 → 스킵
   B. 보유보다 낮은 tier → 스킵 (성장 티어)
-  C-1. prerequisite_badge_names OR 매칭 — 하나도 없으면 missed
+  C-1. evaluateBadgeGates() — ① prerequisite_badge_names OR 매칭 ② 2단 교차 게이트 (§2.15)
   C-2. evaluateConditionDetailed — 전체 이력 기준 AND 평가
   D. eligible 중 최상위 tier 1개만 후보 (나머지 missed)
 Step 3-B. [무한레벨형] 계열(family_key) 단위 평가 — 「보유 레벨 + 1」부터 연속:
   A. 보유 레벨 이하 → 스킵 / 프런티어보다 위 → missed('이전 레벨 미획득', 조건 평가 안 함)
-  B. prerequisite_badge_names — 등급형과 같은 규칙
+  B. evaluateBadgeGates() — 등급형과 같은 규칙
   C. 통과하면 후보로 올리고 다음 레벨을 이어서 검사 (연속 발급, 최상위 1개가 아니다)
   ※ 등급 서열 비교(RARITY_TIER)를 적용하지 않는다 — rarityTier(null)=0이라 0 <= 0으로 매번 탈락한다
 Step 3-C. [반복형] 배지 단위 평가 — **보유해도 후보에서 빠지지 않는 유일한 종류** (§2.14):
-  A. prerequisite_badge_names — 등급형과 같은 규칙 (세 경로가 evaluateBadgeGates() 하나를 쓴다)
+  A. evaluateBadgeGates() — 등급형과 같은 규칙 (세 경로가 이 함수 하나를 쓴다)
   B. evaluateConditionDetailed — repeat_count 회차 임계값 포함
   C. 미보유 → action='issue' / 보유 + 이번 배치에 새 회차 → action='increment'
   ※ 성장 티어 병합·트랙 병합 모두 적용하지 않는다 — 하위 등급도 계속 카운터를 받아야 한다
@@ -141,14 +144,15 @@ Step 8. initial_sync_done 갱신
 | `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 활동 횟수가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
 | `month` (2026-08-08 확장) | 기존 `number`에서 `number | number[]`로 확장 — 배열이면 여러 달을 OR로 묶어 `monthly_km`와 결합(예: 장마철 6~7월) |
 | `repeat_count` (2026-09-05 신규) | **기준 조건을 통째로 만족한 활동 건수** ≥ 조건값. `total_count`(필터 통과 건수)와 다르다 — 회차 정의는 `collectRepeatOccurrences()` 한 곳. §2.14 · CONDITION_JSON_SPEC §2.11 |
-| `prerequisite_badge_names` | Step 3 C-1에서 처리 (OR 매칭) |
+| `prerequisite_badge_names` | Step 3 C-1에서 처리 (OR 매칭). **보유한 등급형의 이름만** 대상이다 — v5는 레벨형·반복형이 등급형과 이름을 공유할 수 있어 이름이 배지를 유일하게 식별하지 못한다 (§2.15) |
+| `cross_in_axis` / `cross_between_axis` / `gate_mission_badge` (2026-09-05 신규) | Step 3 C-1에서 처리 — **계열(`family_key`) 기준** 2단 교차 게이트. 교차 둘은 서로 OR, 미션 게이트는 AND. §2.15 |
 | **v5 신규 20종** (2026-09-05) | ❌ **평가 미구현 — fail-closed로 막힌다.** 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10. 다만 스칼라 7종이 읽을 **원천 데이터는 수집이 시작됐다**(§2.1-1, 티켓 20260905_0029) — 평가 구현(0030)은 `CONDITION_ACTIVITY_FIELD`로 정규화 필드를 꺼내면 된다 |
 
 > **조건 필드 선언의 단일 출처는 `src/lib/badge-engine/conditionRegistry.ts`다** (2026-09-05,
 > 티켓 20260905_0028). 키·라벨·단위·입력 타입·min/max/step·짝 필드·방향성·**평가 구현 여부**를
 > 한 곳에서 선언하고, `ALL_CONDITION_KEYS`·`MEASURABLE_CONDITION_KEYS`·어드민 조건 폼의
 > 커버 목록·어드민 목록/상세의 조건 문구가 전부 여기서 파생된다. DB 쪽 2곳(CHECK 제약,
-> 계열 정합성 트리거의 `measurable_keys`)은 마이그레이션 131이 같은 선언을 옮겨 적었고,
+> 계열 정합성 트리거의 `measurable_keys`)은 가장 마지막 마이그레이션(**133**)이 같은 선언을 옮겨 적었고,
 > 어긋나면 `condition-registry.test.ts`가 깨진다.
 
 #### 2.3-0 fail-closed — 평가할 수 없는 필드가 있으면 발급하지 않는다 (2026-09-05, 티켓 20260905_0028)
@@ -163,7 +167,7 @@ Step 8. initial_sync_done 갱신
 | 값 | 뜻 | fail-closed |
 |---|---|---|
 | `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (21종) | 통과 |
-| `external` | 엔진 밖에서 처리 — `poi_id`(체크인 파이프라인) · `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`(선행 배지 게이트) | 통과 |
+| `external` | **`evaluateConditionDetailed` 밖**에서 처리 — `poi_id`(체크인 파이프라인) · `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`와 교차 게이트 3종(엔진 안의 후보 선별 단계 `evaluateBadgeGates()`) | 통과 |
 | `pending` | 아직 아무도 평가하지 않는다 — v5 신규 20종 + `route` (21종) | **막힘** |
 
 이 방어가 필요한 이유는 `matchesPerActivityCondition()`(`index.ts`)이 **아는 키만 검사하고
@@ -264,7 +268,7 @@ Rare를 얻는 순간 Common이 후보에서 빠져 **하위 등급의 회차 �
 ### 2.7 첫 싱크 게이트 + 선행 배지 게이트
 
 - **첫 싱크**: `initial_sync_done=false`면 **계열의 첫 칸만** 발급한다 — 등급형은 Common(Rare+는 missed), 무한레벨형은 Lv.1(Lv.2+는 missed). 종료 후 true 갱신. 목적: 첫 연동 시 수백 km 이력 보유 유저라도 배지 폭발 방지. (v5 이전에는 `rarity !== 'common'` 한 줄이었고, 등급이 없는 배지는 이 판정에서 항상 탈락했다 — 티켓 20260905_0030 §6)
-- **선행 배지**: Rare/Epic/Mystic의 condition_json에 `prerequisite_badge_names: ["배지명A", "배지명B"]` (OR). 어떤 등급이든 해당 배지명 보유 시 통과. 목적: 동일 종목의 다른 속성 배지를 먼저 경험하게 유도.
+- **선행 배지**: Rare/Epic/Mystic의 condition_json에 `prerequisite_badge_names: ["배지명A", "배지명B"]` (OR). 해당 배지명의 **등급형** 배지 보유 시 통과. 목적: 동일 종목의 다른 속성 배지를 먼저 경험하게 유도. 계열을 정확히 지정하는 v5 게이트는 §2.15.
 
 | 등급 | 첫 싱크 발급 | 선행 배지 |
 |------|-------------|-----------|
@@ -545,6 +549,65 @@ supabase-js 쿼리 빌더에는 jsonb 포함 연산자를 조건절에 싣는 �
 - 나머지 세 곳의 `23505` 처리(`missions/rewards.ts` · `itembook/checker.ts` ·
   `strava/sync.ts`의 POI 경로)는 **그대로 둔다** — 미션 보상·아이템북 보상·체크인 배지는
   반복형이 아니라 「이미 보유면 스킵」이 맞는 의미다
+
+### 2.15 2단 교차 게이트 (2026-09-05, 티켓 20260905_0030 B2)
+
+마스터 티켓 20260905_0026의 게이트 표를 조건 필드 3종으로 옮긴 것.
+판정은 `src/lib/badge-engine/crossGate.ts`의 `evaluateCrossGates()` 한 곳이며,
+`index.ts`의 `evaluateBadgeGates()`가 선행 배지 게이트 다음에 호출한다.
+
+| 관문 | 조건 | 조건 필드 |
+|---|---|---|
+| Rare → Epic | 축 내 교차 **또는** 축 간 교차 | `cross_in_axis` / `cross_between_axis` |
+| Epic → Mystic | 축 간 교차 **+** 미션 보상 배지 | `cross_between_axis` + `gate_mission_badge` |
+
+**값의 형태** (`BadgeGateRequirement`, `src/types/database.ts`):
+
+```json
+{ "family_keys": ["running:tempo", "running:interval"],
+  "min_rarity": "rare",
+  "min_count": 2 }
+```
+
+- `family_keys` — 대상 **계열**(`badges.family_key`). 기본 결합은 OR
+- `min_rarity` — 생략하면 「그 계열의 배지를 하나라도 보유」. 지정하면 그 등급 이상의
+  **등급이 있는** 배지여야 한다(무한레벨형 계열에는 지정하지 않는다 — 등급이 없어 영원히 막힌다)
+- `min_count` — 생략하면 1. 2 이상이면 그만큼의 계열을 **AND**로 요구한다
+
+**결합 규칙**: 교차 요구 둘(`cross_in_axis`·`cross_between_axis`)은 **서로 OR**,
+미션 게이트(`gate_mission_badge`)는 **AND**다. 축 내 교차가 성립하지 않는 축(9축 중 5축)은
+`cross_between_axis`만 선언하며, 그때는 OR의 한쪽이 없으므로 그 하나가 필수 요건이 된다.
+
+#### 이름이 아니라 계열로 지정한다
+
+**v5에서 이름은 배지를 유일하게 식별하지 못한다.** 「무한레벨형·반복형이 등급형과 이름을
+공유할 수 있다」가 설계 전제이기 때문이다. 그래서:
+
+- 신규 게이트 3종은 **`family_key` 기준**이다
+- 기존 `prerequisite_badge_names`(이름 기준)는 그 모호성을 없앨 수 없어 **보유한 등급형의
+  이름만** 본다. 레벨형 Lv.1이나 반복형 Common을 보유했다는 이유로 동명 등급형의 게이트가
+  열리던 경로를 막은 것이다(카탈로그 시딩 전에 처리 — 티켓 20260905_0035에서 이름이 겹치는
+  순간 실제 사고가 된다)
+
+#### 엔진이 기계적으로 막는 것 / 카탈로그가 보장해야 하는 것
+
+교차 대상은 **조건이 겹치지 않는 계열**이어야 한다. 겹치면 같은 활동으로 동시에 달성돼
+게이트가 자동 통과된다. 엔진에는 «축» 데이터가 없으므로(`badges`에 축 컬럼이 없다) 다음만
+기계적으로 판정한다 — 나머지는 카탈로그(티켓 20260905_0035)의 책임이다.
+
+| 엔진이 막는다 | 카탈로그가 보장한다 |
+|---|---|
+| 자기 계열을 교차 대상으로 지정 (자동 통과) | 대상 계열이 실제로 조건이 겹치지 않는가 |
+| `family_keys` 누락·빈 배열·형태 오류 (fail-closed) | 어떤 계열이 같은 축인가 |
+| `min_count`가 대상 계열 수보다 큼 (영원히 미달성) | 축 내 교차가 성립하는 4개 축의 선정 |
+| 종목이 다른 계열의 보유 (교차는 종목 경계를 넘지 않는다) | — |
+| `gate_mission_badge`가 미션 보상 배지가 아닌 계열을 가리킴 | — |
+
+⚠️ `cross_in_axis`와 `cross_between_axis`의 **판정 규칙은 완전히 같다.** 차이는 선언 의도와
+미발급 사유 문자열뿐이다. 축 소속은 엔진이 검증할 수 없다.
+
+⚠️ DB CHECK 제약(마이그레이션 133)은 **키 이름만** 검사한다. 값이 깨진 게이트는 엔진이
+fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게이트가 조용히 사라진다.
 
 ---
 

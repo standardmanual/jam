@@ -144,7 +144,7 @@ describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 2
     expect(saved).toEqual({ distance_km: 20 })
   })
 
-  it('FORM_UNSUPPORTED_CONDITION_KEYS는 기존 6종 + v5 신규 20종 + repeat_count다', () => {
+  it('FORM_UNSUPPORTED_CONDITION_KEYS는 기존 6종 + v5 신규 20종 + repeat_count + 교차 게이트 3종이다', () => {
     // season_count_all은 티켓 20260825_032 원문에 나열되지 않았으나, 폼에 입력 UI가 없으면서도
     // badge-engine이 실제로 평가하는 필드다(migration 076의 "사계절의 발걸음" 배지가 사용 중) —
     // 구현 중 발견, ALL_CONDITION_KEYS 기반 자동 진단으로 함께 잡혔다.
@@ -187,6 +187,11 @@ describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 2
         'weekly_streak',
         // v5 반복 획득 1종 (티켓 20260905_0030 B1)
         'repeat_count',
+        // v5 2단 교차 게이트 3종 (티켓 20260905_0030 B2) — 값이 중첩 객체라 전용 UI가
+        // 필요하다. 폼은 티켓 20260905_0032 몫이고, 그때까지 initCond 보존 경로로 유지된다.
+        'cross_between_axis',
+        'cross_in_axis',
+        'gate_mission_badge',
       ].sort()
     )
   })
