@@ -144,14 +144,46 @@ describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 2
     expect(saved).toEqual({ distance_km: 20 })
   })
 
-  it('FORM_UNSUPPORTED_CONDITION_KEYS는 정확히 day_of_week/active_days_count/poi_id/route/season_count_all/same_activity이다', () => {
-    // season_count_all은 티켓 원문에 나열되지 않았으나, 폼에 입력 UI가 없으면서도 badge-engine이
-    // 실제로 평가하는 필드다(migration 076의 "사계절의 발걸음" 배지가 사용 중) — 구현 중 발견,
-    // ALL_CONDITION_KEYS 기반 자동 진단으로 함께 잡혔다.
+  it('FORM_UNSUPPORTED_CONDITION_KEYS는 기존 6종 + v5 신규 20종이다', () => {
+    // season_count_all은 티켓 20260825_032 원문에 나열되지 않았으나, 폼에 입력 UI가 없으면서도
+    // badge-engine이 실제로 평가하는 필드다(migration 076의 "사계절의 발걸음" 배지가 사용 중) —
+    // 구현 중 발견, ALL_CONDITION_KEYS 기반 자동 진단으로 함께 잡혔다.
     // same_activity(2026-08-31, 티켓 20260831_2100)도 폼 입력 UI 없이 initCond 보존 경로로만
     // 유지된다 — T1 '야생의 첫발' 1건 외 사용처가 없어 전용 UI를 추가하지 않았다.
+    // v5 신규 20종(티켓 20260905_0028)은 레지스트리에 선언만 됐고 어드민 조건 폼은 티켓
+    // 20260905_0032 몫이라, 전부 "폼 미지원 = initCond 보존" 경로로 유지된다.
     expect([...FORM_UNSUPPORTED_CONDITION_KEYS].sort()).toEqual(
-      ['active_days_count', 'day_of_week', 'poi_id', 'route', 'same_activity', 'season_count_all'].sort()
+      [
+        // 기존 6종
+        'active_days_count',
+        'day_of_week',
+        'poi_id',
+        'route',
+        'same_activity',
+        'season_count_all',
+        // v5 신규 20종 — 활동 1건의 스칼라 값 7
+        'avg_cadence',
+        'avg_heartrate_bpm',
+        'avg_watts',
+        'max_elevation_m',
+        'max_speed_kmh',
+        'single_distance_km',
+        'single_elevation_m',
+        // v5 신규 20종 — 이력 패턴 13
+        'activities_within_hours',
+        'daily_once_count',
+        'day_of_month',
+        'distinct_time_bands',
+        'interval_days',
+        'month_over_month_ratio',
+        'negative_split',
+        'personal_record_break',
+        'rest_after_long',
+        'rest_after_streak',
+        'return_gap_days',
+        'vs_personal_average',
+        'weekly_streak',
+      ].sort()
     )
   })
 

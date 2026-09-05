@@ -817,6 +817,55 @@ export interface BadgeCondition {
    * 참조.
    */
   same_activity?: boolean
+
+  // ── v5 신규 조건 필드 20종 (티켓 20260905_0028) ───────────────────────
+  //
+  // ⚠️ **아직 badge-engine이 평가하지 않는다**(구현은 티켓 20260905_0030).
+  //    `conditionRegistry.ts`의 `evaluated: false`가 이 사실을 담고 있고,
+  //    `evaluateConditionDetailed`가 이 필드들이 든 조건을 fail-closed로 막는다 —
+  //    «미구현 = 발급 안 됨»이 기본값이다.
+
+  /** [v5] 활동 1건의 최고 도달 고도 (m, 해발) */
+  max_elevation_m?: number
+  /** [v5] 활동 1건의 최고 속도 (km/h) */
+  max_speed_kmh?: number
+  /** [v5] 활동 1건의 이동 거리 (km) — 누적 합계인 `distance_km`과 구분된다 */
+  single_distance_km?: number
+  /** [v5] 활동 1건의 고도 상승 (m) — 누적 합계인 `elevation_gain_m`과 구분된다 */
+  single_elevation_m?: number
+  /** [v5] 활동 1건의 평균 심박수 (bpm) */
+  avg_heartrate_bpm?: number
+  /** [v5] 활동 1건의 평균 파워 (W) */
+  avg_watts?: number
+  /** [v5] 활동 1건의 평균 케이던스 — 단위가 종목마다 다르다(러닝 spm · 자전거 rpm) */
+  avg_cadence?: number
+
+  /** [v5] 연속 활동(`streak_days`) 뒤에 쉰 일수 (일) */
+  rest_after_streak?: number
+  /** [v5] 장거리 활동(`single_distance_km`) 뒤에 쉰 일수 (일) */
+  rest_after_long?: number
+  /** [v5] 복귀 직전에 쉰 일수 (일) */
+  return_gap_days?: number
+  /** [v5] 활동과 활동 사이 간격 (일) */
+  interval_days?: number
+  /** [v5] 하루에 1회만 활동한 날의 수 (일) */
+  daily_once_count?: number
+  /** [v5] 후반 구간이 전반보다 빠른 활동으로 한정하는 필터. Strava splits_metric 필요(티켓 20260905_0029) */
+  negative_split?: boolean
+  /** [v5] 연속한 주(월~일)의 수 */
+  weekly_streak?: number
+  /** [v5] 서로 다른 시간대의 수 (개) */
+  distinct_time_bands?: number
+  /** [v5] 매달 지정일 (1–31) — `day_of_week`와 같은 성격의 필터 */
+  day_of_month?: number
+  /** [v5] 지정한 시간 창(hours) 안에 활동이 count회 이상 */
+  activities_within_hours?: { hours: number; count: number }
+  /** [v5] 개인 기록 갱신 횟수 (회) — 가입 이후 활동만으로 직접 계산한다(Strava `pr_count` 미사용) */
+  personal_record_break?: number
+  /** [v5] 전월 대비 비율 (배) */
+  month_over_month_ratio?: number
+  /** [v5] 평소 평균 대비 비율 (배) */
+  vs_personal_average?: number
 }
 
 // =========================================

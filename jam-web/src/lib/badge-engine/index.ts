@@ -17,6 +17,7 @@ import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
 import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, DayOfWeek, UserActivityBadgeRow } from '@/types/database'
 import type { Json } from '@/types/database.generated'
 import { MEASURABLE_CONDITION_KEYS } from './condition-schema'
+import { describeBlockingConditionKeys, findBlockingConditionKeys } from './conditionRegistry'
 // 등급 서열표는 @/lib/rarity 한 곳에만 둔다 (티켓 20260831_1115에서 통합)
 import { RARITY_TIER, rarityTier } from '@/lib/rarity'
 // 활동 필터 순수 헬퍼(걷기 게이트·요일·시간대·하루1회상한·주경계·연속일수)는
@@ -258,6 +259,24 @@ export function evaluateConditionDetailed(
 ): EvalConditionResult {
   if (!condition || Object.keys(condition).length === 0) {
     return { pass: false, reason: '조건 없음', actual: '-', required: '-' }
+  }
+
+  // ── fail-closed — 평가할 수 없는 조건 필드가 하나라도 있으면 여기서 끝낸다 (티켓 20260905_0028)
+  //
+  // 아래의 어떤 검사 블록도 「모르는 키」를 걸러내지 못한다. 특히
+  // `matchesPerActivityCondition()`은 아는 키만 검사하고 마지막에 `return true` 하므로,
+  // 레지스트리에 선언됐지만 아직 평가 구현이 없는 필드(v5 신규 20종)나 오탈자로 들어간 키는
+  // 조용히 무시되고 조건이 통과된다 — 「미구현 = 발급 안 됨」이 아니라 「미구현 = 무조건 발급」이
+  // 되는 구조다. 그래서 평가를 **시작하기 전에** 막는다. 기존 25개 필드는 전부
+  // `evaluated: true`라 이 분기에 걸리지 않는다(현행 발급 동작 무변경).
+  const blocking = findBlockingConditionKeys(condition)
+  if (blocking.unknown.length > 0 || blocking.pending.length > 0) {
+    return {
+      pass: false,
+      reason: describeBlockingConditionKeys(blocking),
+      actual: '-',
+      required: '엔진이 평가할 수 있는 조건 필드',
+    }
   }
 
   // 미션 보상 배지 — 미션 완료(grantMissionRewards) 경로로만 지급된다. 동기화 평가 대상이 아니다.

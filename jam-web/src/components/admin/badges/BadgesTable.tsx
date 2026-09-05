@@ -31,7 +31,7 @@ import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
 import type { BadgeListRow } from './BadgeList'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'
-import { formatPaceSecPerKm } from '@/types/strava'
+import { formatConditionChips } from '@/lib/badge-engine/conditionRegistry'
 
 const RARITY_COLOR: Record<string, string> = {
   common: 'text-gray-600',
@@ -47,26 +47,6 @@ const RARITY_LABEL: Record<BadgeRarity, string> = {
   mystic: 'Mystic',
 }
 
-const SEASON_SHORT: Record<string, string> = {
-  spring: '봄',
-  summer: '여름',
-  fall: '가을',
-  winter: '겨울',
-  all: '전계절',
-}
-
-const DAY_OF_WEEK_SHORT: Record<string, string> = {
-  sunday: '일',
-  monday: '월',
-  tuesday: '화',
-  wednesday: '수',
-  thursday: '목',
-  friday: '금',
-  saturday: '토',
-}
-
-const WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
-
 /** "YYYY.MM.DD" 형식으로 날짜 포맷 */
 function formatYmd(iso: string): string {
   const d = new Date(iso)
@@ -76,43 +56,15 @@ function formatYmd(iso: string): string {
   return `${y}.${m}.${day}`
 }
 
-function dayOfWeekChip(days: string | string[]): string {
-  if (typeof days === 'string') return `매주 ${DAY_OF_WEEK_SHORT[days] ?? days}`
-  if (
-    days.length === WEEKDAY_ORDER.length &&
-    WEEKDAY_ORDER.every((d) => days.includes(d))
-  ) {
-    return '월~금 각각'
-  }
-  return days.map((d) => DAY_OF_WEEK_SHORT[d] ?? d).join('·')
-}
-
-/** condition_json을 간단한 칩 목록으로 변환 */
+/**
+ * condition_json을 간단한 칩 목록으로 변환.
+ *
+ * 문구는 조건 필드 메타 레지스트리(`conditionRegistry.ts`)가 단일 출처다(티켓 20260905_0028).
+ * 예전에는 이 파일이 필드마다 한글을 하드코딩하고 있어(계절·요일 표기까지 BadgeDetail과
+ * 따로 복제), 새 조건 필드가 추가돼도 목록에는 아무 칩도 나타나지 않았다.
+ */
 function conditionSummary(c: BadgeCondition | null): string[] {
-  if (!c) return []
-  const chips: string[] = []
-  if (c.distance_km !== undefined) chips.push(`누적 ${c.distance_km}km`)
-  if (c.total_count !== undefined) chips.push(`${c.total_count}회`)
-  if (c.streak_days !== undefined) chips.push(`${c.streak_days}일 연속`)
-  if (c.active_days_count !== undefined) chips.push(`누적 ${c.active_days_count}일`)
-  if (c.elevation_gain_m !== undefined) chips.push(`고도 ${c.elevation_gain_m}m`)
-  if (c.min_speed_kmh !== undefined) chips.push(`${c.min_speed_kmh}km/h+`)
-  if (c.max_pace_sec_per_km !== undefined)
-    chips.push(`${formatPaceSecPerKm(c.max_pace_sec_per_km)} 이내`)
-  if (c.duration_minutes !== undefined) chips.push(`${c.duration_minutes}분+`)
-  if (c.weekend_duration_hours !== undefined) chips.push(`주말 ${c.weekend_duration_hours}h`)
-  if (c.weekly_count !== undefined) chips.push(`주 ${c.weekly_count}회`)
-  if (c.day_of_week !== undefined) chips.push(dayOfWeekChip(c.day_of_week))
-  if (c.monthly_km !== undefined)
-    chips.push(`${c.month ? `${[c.month].flat().join('·')}월 ` : '월간 '}${c.monthly_km}km`)
-  else if (c.month !== undefined) chips.push(`${[c.month].flat().join('·')}월`)
-  if (c.season_count !== undefined && c.season)
-    chips.push(`${SEASON_SHORT[c.season] ?? c.season} ${c.season_count}회`)
-  if (c.season_count_all !== undefined) chips.push(`4계절 각 ${c.season_count_all}회`)
-  if (c.temperature_min_c !== undefined) chips.push(`≥${c.temperature_min_c}°C`)
-  if (c.temperature_max_c !== undefined) chips.push(`≤${c.temperature_max_c}°C`)
-  if (c.time_range) chips.push(`${c.time_range.start}~${c.time_range.end}`)
-  return chips
+  return formatConditionChips(c)
 }
 
 /** URL의 `sort` 파라미터 ↔ TanStack `SortingState` 변환 — "이름" 컬럼만 헤더 클릭으로 정렬한다.
