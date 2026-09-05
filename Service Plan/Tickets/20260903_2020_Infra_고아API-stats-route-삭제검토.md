@@ -1,9 +1,9 @@
 ---
 id: 20260903_2020
 category: Infra
-status: OPEN
+status: CLOSED
 created: 2026-09-03
-closed:
+closed: 2026-09-05
 ---
 
 # [Infra] 고아 API `stats/route.ts` 삭제 검토
@@ -82,9 +82,11 @@ M  Service Plan/Specs/SERVICE_OPERATIONS.md
       경고, 이번 변경과 무관)
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만 수행, main 승격은 오케스트레이터 승인 후)
-- 환경:
-- 커밋:
+- 배포일: 2026-09-05 (staging 반영, main 승격은 `/jam-ship`으로 별도 진행)
+- 환경: staging
+- 커밋: `claude/jamwork-20260903_2020-stats-route-delete` → staging 머지
+
+브랜치: `claude/jamwork-20260903_2020-stats-route-delete`
 
 ### 주요 의사결정 / 핵심 메모
 - 정합화 대신 삭제를 선택 (티켓 지시대로): 남겨두면 "여기가 통계 로직"이라는 착각을 유발할
