@@ -388,15 +388,16 @@ describe('조건 키 ↔ 정규화 필드 대응 (activityField)', () => {
   })
 })
 
-describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이션 133)', () => {
+describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이션 134)', () => {
   // 티켓 20260905_0028이 지목한 «누락돼도 조용히 통과하는» 복제 위치 중 DB 쪽 2곳
   // (CHECK 제약 · 계열 정합성 트리거의 measurable_keys)이 레지스트리와 어긋나면 여기서 깨진다.
   //
   // ⚠️ **가장 마지막에 이 둘을 다시 쓴 마이그레이션**을 읽어야 한다. 132가 46개 키로 만든
-  //    CHECK 제약을 133이 49개로 다시 만들었으므로, 132를 계속 읽으면 「레지스트리가 늘었는데
-  //    DB는 그대로」인 상태를 통과시켜 버린다(이 대조의 존재 이유가 사라진다).
-  //    조건 키를 늘리는 마이그레이션을 새로 쓸 때마다 이 경로를 함께 올릴 것.
-  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/133_cross_gate_condition_keys.sql'), 'utf-8')
+  //    CHECK 제약을 133이 49개로 다시 만들었고, 134가 그룹핑 키를 옮기며 둘 다 다시 썼다.
+  //    옛 파일을 계속 읽으면 「레지스트리가 늘었는데 DB는 그대로」인 상태를 통과시켜 버린다
+  //    (이 대조의 존재 이유가 사라진다).
+  //    CHECK/트리거를 다시 쓰는 마이그레이션을 추가할 때마다 이 경로를 함께 올릴 것.
+  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/134_family_key_grouping.sql'), 'utf-8')
 
   /** SQL 텍스트에서 `ARRAY[ ... ]` 블록 안의 작은따옴표 리터럴을 뽑는다 */
   function keysInArrayAfter(marker: string): string[] {
@@ -424,16 +425,37 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
   })
 
   it('130이 넣은 무한레벨형 예외 두 줄을 되돌리지 않았다', () => {
-    // 133이 트리거 함수를 CREATE OR REPLACE로 다시 쓰므로 여기서 함께 확인한다
+    // 134가 트리거 함수를 CREATE OR REPLACE로 다시 쓰므로 여기서 함께 확인한다
     // 되돌리면 무한레벨 계열 INSERT가 다시 EXCEPTION으로 막힌다(마스터 티켓 B-4 재발)
     expect(sql).toContain('IF NEW.level IS NOT NULL THEN')
     expect(sql).toContain('AND level IS NULL')
   })
 
   it('132가 만든 회차 카운터 RPC를 되돌리지 않았다', () => {
-    // 133은 CHECK 제약과 트리거 함수만 다시 쓴다. RPC를 DROP하는 문장이 섞여 들어가면
+    // 134는 CHECK 제약과 트리거(함수·정의)만 다시 쓴다. RPC를 DROP하는 문장이 섞여 들어가면
     // 반복형 카운터가 통째로 죽는다(엔진이 이 함수를 호출한다).
     expect(sql).not.toContain('DROP FUNCTION IF EXISTS public.increment_activity_badge_earn')
+  })
+
+  it('134가 그룹핑 키를 family_key로 옮겼다 — 비어 있으면 이름 폴백 (티켓 20260905_0032 B-2)', () => {
+    // `familyKeyOf()`(badgeKind.ts)와 **같은 규칙**이어야 한다. DB만 다른 기준으로 묶으면
+    // 「화면에서 한 계열인데 DB는 남남」이 된다.
+    expect(sql).toContain("COALESCE(family_key, '#name:' || name) = new_family_key")
+    expect(sql).toContain("COALESCE(NEW.family_key, '#name:' || NEW.name)")
+    // 이름 동일 조건으로 형제를 찾던 128의 그룹핑이 «실행되는 SQL»에 남아 있으면 이관이 안
+    // 된 것이다 — 주석은 무엇이 바뀌었는지 서술하므로 걷어내고 본다
+    const executable = sql
+      .split('\n')
+      .map((line) => line.replace(/--.*$/, ''))
+      .join('\n')
+    expect(executable).not.toContain('AND name = NEW.name')
+  })
+
+  it('134가 130의 트리거 UPDATE OF 다섯 컬럼을 하나도 빼지 않고 family_key만 더했다', () => {
+    // 하나라도 빠지면 130이 닫은 구멍(레벨형↔등급형 전환이 검사를 건너뛰던 것)이 다시 열린다.
+    expect(sql).toContain(
+      'BEFORE INSERT OR UPDATE OF name, activity_types, condition_json, level, rarity, family_key'
+    )
   })
 
   it('교차 게이트 3종은 measurable_keys에 들어가지 않는다', () => {

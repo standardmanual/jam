@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { findBadgeConditionSaveError, findRarityLevelError } from '@/lib/admin/badge-validation'
+import { isValidFamilyKey } from '@/lib/admin/badge-families'
 import type { BadgeRow } from '@/types/database'
 
 export async function GET() {
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, type, rarity, level, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, category, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
+  const { name, description, type, rarity, level, family_key, sort_order, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, category, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
 
   // `rarity`는 더 이상 필수가 아니다 — 무한레벨형 배지는 `rarity IS NULL` + `level`이다
   // (마이그레이션 130). 이 검사가 `!rarity`를 요구하는 동안 어드민은 **레벨형 배지를 아예
@@ -57,10 +58,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: rarityLevelError }, { status: 400 })
   }
 
+  // 계열 키는 **생성 시에만** 실린다(PUT은 병합하지 않는다 — 티켓 20260905_0032 판단 ③).
+  // 계열 관리 화면의 「레벨 추가」가 같은 계열에 새 자리를 만들 때 이 값을 넘긴다. 값이
+  // 없으면 예전 그대로 NULL이고, `familyKeyOf`의 `#name:` 폴백으로 묶인다.
+  const familyKey = typeof family_key === 'string' && family_key.trim() ? family_key.trim() : null
+  if (familyKey && !isValidFamilyKey(familyKey)) {
+    return NextResponse.json(
+      { error: `저장할 수 없습니다. 계열 키 형태(${familyKey})가 올바르지 않습니다. "종목:이름" 형태로, 쉼표 없이 입력해주세요.` },
+      { status: 400 }
+    )
+  }
+
   // 「저장은 되는데 영원히 안 나오는 배지」 3경로를 저장 시점에 막는다(티켓 20260905_0032 A-1).
-  // 신규 배지라 family_key는 아직 없다 — `familyKeyOf`의 `#name:` 폴백을 그대로 쓴다.
+  // 교차 게이트의 «자기 계열 지정» 판정에 쓰이므로 이번 요청에 실린 계열 키를 함께 넘긴다.
   const conditionError = findBadgeConditionSaveError(
-    { name, family_key: null },
+    { name, family_key: familyKey },
     type,
     condition_json ?? null
   )
@@ -77,6 +89,11 @@ export async function POST(req: NextRequest) {
     // 빈 문자열이 CHECK를 통과하지 못하도록 «없음»은 항상 null로 정규화한다.
     rarity: rarity || null,
     level: level === undefined || level === null || level === '' ? null : Math.trunc(Number(level)),
+    family_key: familyKey,
+    // ⚠️ `sort_order = 0`은 «미설정»이라 배지 트리에서 **맨 뒤로 밀린다** — 이 저장소의 다른
+    // sort_order(today_cards·factions·item_books, 0이 앞)와 반대 관습이다(마이그레이션 130).
+    // 계열에 새 자리를 추가할 때 계열의 값을 물려주지 않으면 그 배지만 계열에서 떨어진다.
+    sort_order: Number.isFinite(Number(sort_order)) ? Math.max(0, Math.trunc(Number(sort_order))) : 0,
     image_url,
     activity_types: activity_types ?? [],
     patch_available: patch_available ?? false,
