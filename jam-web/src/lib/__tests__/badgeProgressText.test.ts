@@ -247,10 +247,29 @@ describe('formatSyncComparisonText (티켓 20260904_1425)', () => {
     expect(formatSyncComparisonText(candidate, labelMap)).toBeNull()
   })
 
-  it('labelMap에 라벨이 없으면 key 원문을 그대로 노출한다(§08 G 폴백 원칙과 동일)', () => {
+  it('labelMap에 없으면 레지스트리 라벨로 폴백한다 — 내부 키가 유저 문장에 새지 않는다', () => {
+    // sync.ts가 빈 labelMap으로 저장하고 표시 시점에 다시 조회하는 구조라, badge_metric_labels
+    // 시드가 아직 없는 신규 축은 이 경로만 폴백을 못 받아 내부 키가 그대로 나갔다(0031 개선 리뷰).
     const candidate: SyncComparisonCandidate = { axisKey: 'streak_days', prevValue: 1, currentValue: 3 }
     const labelMap = new Map<string, { label: string; unit: string | null }>()
-    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 streak_days 2 가까워졌어요')
+    const text = formatSyncComparisonText(candidate, labelMap)
+    expect(text).not.toContain('streak_days')
+    expect(text).toBe('직전 동기화보다 연속 일수 2일 가까워졌어요')
+  })
+
+  it('레지스트리에도 없는 키만 원문으로 떨어진다 (최후 폴백)', () => {
+    const candidate: SyncComparisonCandidate = { axisKey: 'not_a_real_key', prevValue: 1, currentValue: 3 }
+    const labelMap = new Map<string, { label: string; unit: string | null }>()
+    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 not_a_real_key 2 가까워졌어요')
+  })
+
+  it('휴식 축은 이 배너의 후보가 되지 않는다 — 「휴식 재촉」 금지', () => {
+    // 「복귀 전 휴식일 2일 가까워졌어요」는 서비스가 휴식을 재촉하는 모양이 된다.
+    const rows = [{
+      prev: [{ key: 'return_gap_days', label: '복귀 전 휴식일', unit: '일', current: 1, target: 5, met: false, fraction: 0.2, remaining: 4 }],
+      current: [{ key: 'return_gap_days', label: '복귀 전 휴식일', unit: '일', current: 4, target: 5, met: false, fraction: 0.8, remaining: 1 }],
+    }] as never
+    expect(pickSyncComparisonCandidate(rows)).toBeNull()
   })
 })
 
