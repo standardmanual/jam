@@ -15,6 +15,11 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
  *   href   → <a> 래핑
  *   onClick → <button> 래핑
  *   없음   → 정적 <div>
+ *
+ * 20260901_1926: props를 서비스 기준으로 재정렬.
+ *   - `onNavigate` 추가 — href 모드에서만 의미가 있는 클릭 핸들러(Link 이동 직전 부수효과용).
+ *   - `highlighted` 추가 — 컬렉션 슬롯 장착 모드에서 "지금 넣을 수 있는 칸"을 짚어주는
+ *     강조 링. `selected`(배경톤 채움)와 시각적으로 다르다.
  */
 export function BadgeGridCard({
   name,
@@ -22,9 +27,11 @@ export function BadgeGridCard({
   rarity = 'common',
   href,
   onClick,
+  onNavigate,
   earned = true,
   undiscovered = false,
   selected = false,
+  highlighted = false,
   className = '',
   style = {},
   children,
@@ -41,6 +48,9 @@ export function BadgeGridCard({
     padding: 'var(--spacing-12)',
     overflow: 'hidden',
     // 20260816_012: selected 표시를 2px 보더 대신 배경톤 채움으로 대체 (기능적 의미 유지)
+    // highlighted: 컬렉션 슬롯 장착 모드 하이라이트 — 그리드에서 한 칸을 찾아내야 하므로
+    // 배경톤만으로는 약해 별도로 inset 링을 준다(서비스와 동일).
+    boxShadow: highlighted ? 'inset 0 0 0 2px var(--color-primary)' : undefined,
     cursor: interactive ? 'pointer' : undefined,
     transition: interactive ? 'transform 100ms' : undefined,
     textDecoration: 'none',
@@ -93,7 +103,7 @@ export function BadgeGridCard({
     </>
   );
 
-  if (href) return <a href={href} className={className} style={containerStyle}>{content}</a>;
+  if (href) return <a href={href} onClick={onNavigate} className={className} style={containerStyle}>{content}</a>;
   if (onClick) return <button type="button" onClick={onClick} className={className} style={containerStyle}>{content}</button>;
   return <div className={className} style={containerStyle}>{content}</div>;
 }

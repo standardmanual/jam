@@ -46,6 +46,12 @@ import { d } from '@/lib/i18n'
  * 20260831_2106: `/drops`도 다른 탭 최상위 화면과 동일한 `logo` 모드로 TopNav를 렌더링한다.
  * 노치까지 채우는 풀블리드 지도를 위해 처음엔 의도적으로 뺐던 결정(2026-07-29 `1d7a8d55`)을
  * 뒤집었다 — 지도 상단 일부가 TopNav에 가려지는 트레이드오프를 감수한다.
+ *
+ * 20260901_1926: DS TopNav의 props API를 이 래퍼 기준으로 재정렬(`logoSlot`→`logo`,
+ * `style`→`headerStyle`, `avatarSlot` 제거·rightSlot으로 합성, `titleSize` 등 4개
+ * 타이포 오버라이드 prop 제거 — 이 래퍼가 항상 동일한 고정값(body 16px)으로만 오버라이드
+ * 하고 있었기 때문에 그 값을 DS 기본값으로 흡수). `centerSlot`은 도메인 결합(스트라바
+ * 동기화 버튼) 콘텐츠라 서비스 TopNavProps에는 노출하지 않고 DS 전용 slot으로 남겼다.
  */
 export interface TopNavProps {
   title?: string
@@ -77,21 +83,42 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
   const handleBack = backHref ? () => router.push(backHref) : (onBack ?? (() => router.back()))
   const profileHref = username ? `/${username}` : '/profile'
 
+  const avatarSlot = (
+    <Link
+      href={profileHref}
+      aria-label={d.profile.title}
+      className="w-11 h-11 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
+    >
+      {avatarUrl ? (
+        <Image src={avatarUrl} alt={d.profile.avatarAlt} width={36} height={36} className="w-9 h-9 rounded-[var(--radius-pill)] object-cover" />
+      ) : (
+        <span className="w-9 h-9 rounded-[var(--radius-pill)] bg-surface-elevated text-text flex items-center justify-center">
+          <UserIcon className="w-4 h-4" />
+        </span>
+      )}
+    </Link>
+  )
+
   // 알림 종은 **TopNav가 렌더되는 모든 화면**에 붙는다 (20260825 확정).
-  // centerSlot(동기화)·avatarSlot(프로필)이 조건 없이 항상 렌더되므로 종만 화면마다
+  // centerSlot(동기화)·아바타가 조건 없이 항상 렌더되므로 종만 화면마다
   // 나타났다 사라지면 우측 구성이 들쭉날쭉해진다. 셋을 한 세트로 묶어 일관되게 둔다.
   // 호출부가 rightSlot을 쓰는 화면(예: 배지 상세 공유 버튼)은 [공유버튼][종][아바타]가 된다.
   // `/drops`도 20260831_2106부터 TopNav를 렌더링하므로 알림 종이 함께 노출된다.
+  //
+  // 20260901_1926: DS TopNav의 `avatarSlot`이 제거되면서(rightSlot과 같은 flex 컨테이너
+  // 안에서 바로 뒤에 이어 렌더링되던 자리였을 뿐이라 시각적 변화 없음) 아바타도 여기서
+  // 함께 합성한다.
   const composedRightSlot = (
     <>
       {rightSlot}
       <NotificationBell />
+      {avatarSlot}
     </>
   )
 
   // 20260828_1548: 베타테스트 VOC 임시 채널 — 로고 옆에 작은 '문의' 버튼을 붙여 /voc로 이동.
   // 로고가 노출되는 탭 최상위 화면(logo=true)에만 자연히 노출된다.
-  const logoSlot = logo ? (
+  const logoNode = logo ? (
     <>
       <Image src="/jam-logo-white.png" alt="JAM!" width={2238} height={925} className="h-[26px] w-auto" priority />
       <Button variant="outline" surface="main" size="xs" onClick={() => router.push('/voc')}>
@@ -118,36 +145,15 @@ export default function TopNav({ title = '', onBack, backHref, rightSlot, showBa
     </Button>
   )
 
-  const avatarSlot = (
-    <Link
-      href={profileHref}
-      aria-label={d.profile.title}
-      className="w-11 h-11 rounded-[var(--radius-pill)] flex items-center justify-center shrink-0 active:scale-95 transition-transform duration-100"
-    >
-      {avatarUrl ? (
-        <Image src={avatarUrl} alt={d.profile.avatarAlt} width={36} height={36} className="w-9 h-9 rounded-[var(--radius-pill)] object-cover" />
-      ) : (
-        <span className="w-9 h-9 rounded-[var(--radius-pill)] bg-surface-elevated text-text flex items-center justify-center">
-          <UserIcon className="w-4 h-4" />
-        </span>
-      )}
-    </Link>
-  )
-
   return (
     <DsTopNav
       title={title}
       showBack={logo ? false : showBack}
       onBack={handleBack}
       rightSlot={composedRightSlot}
-      logoSlot={logoSlot}
+      logo={logoNode}
       centerSlot={centerSlot}
-      avatarSlot={avatarSlot}
-      titleSize="var(--text-body)"
-      titleWeight="var(--weight-body)"
-      titleLineHeight="var(--leading-body)"
-      titleTracking="normal"
-      style={headerStyle}
+      headerStyle={headerStyle}
     />
   )
 }

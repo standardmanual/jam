@@ -76,6 +76,12 @@ export const Material: Story = {
   ],
 };
 
+export const WithUsername: Story = {
+  name: '로그인 유저 (username 전달)',
+  args: { active: 'badges', username: 'jam_user' },
+  decorators: [(Story) => <div style={{ minHeight: 180, background: 'var(--color-bg)', position: 'relative' }}><Story /></div>],
+};
+
 export const Interactive: Story = {
   name: '인터랙티브 (탭 전환)',
   render: () => {

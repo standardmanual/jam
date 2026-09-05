@@ -11,6 +11,7 @@ const meta: Meta<typeof BadgeGridCard> = {
     earned: { control: 'boolean' },
     undiscovered: { control: 'boolean' },
     selected: { control: 'boolean' },
+    highlighted: { control: 'boolean' },
   },
 };
 
@@ -95,6 +96,19 @@ export const Selected: Story = {
     rarity: 'rare',
     earned: true,
     selected: true,
+  },
+};
+
+export const Highlighted: Story = {
+  // 컬렉션 슬롯 장착 모드(`/collections/[id]?slot=1`)에서 "지금 넣을 수 있는 칸"을 짚어주는
+  // 강조 링 — selected(배경톤 채움)와 시각적으로 다르다.
+  name: '슬롯 하이라이트 (강조 링)',
+  args: {
+    name: '장착 가능 칸',
+    imageUrl: SAMPLE_IMAGES.epic,
+    rarity: 'epic',
+    earned: true,
+    highlighted: true,
   },
 };
 
