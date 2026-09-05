@@ -9,6 +9,15 @@
  *
  * namespace 규칙: common / nav / profile / tabs / feed / today / todayCard
  */
+
+/**
+ * 타인 시점(3인칭) 빈 상태 문구 — profile·social 두 네임스페이스가 공유한다
+ * (티켓 20260905_2050). 두 네임스페이스의 "본인 시점" 문구는 화면 톤이 달라 의도적으로
+ * 분리돼 있지만, 타인 시점 문구는 우연히 동일해서 여기서만 묶는다.
+ */
+const EMPTY_FOLLOWERS_OTHER = '{name}님에게 아직 팔로워가 없어요'
+const EMPTY_FOLLOWING_OTHER = '{name}님이 아직 아무도 팔로우하지 않았어요'
+
 export const ko = {
   /** 여러 화면에서 공통으로 쓰는 짧은 문구 */
   common: {
@@ -74,8 +83,8 @@ export const ko = {
     // 타인 프로필에서는 본인 시점 행동 유도가 성립하지 않아 body를 생략한다.
     emptyBadgesOther: '{name}님이 아직 획득한 배지가 없어요',
     emptyItembooksOther: '{name}님이 아직 발견한 컬렉션이 없어요',
-    emptyFollowersOther: '{name}님에게 아직 팔로워가 없어요',
-    emptyFollowingOther: '{name}님이 아직 아무도 팔로우하지 않았어요',
+    emptyFollowersOther: EMPTY_FOLLOWERS_OTHER,
+    emptyFollowingOther: EMPTY_FOLLOWING_OTHER,
 
     // 아이템북 카드
     itembookCompleted: '완성',
@@ -677,8 +686,8 @@ export const ko = {
     emptyFollowersBody: '누군가 팔로우하면 여기에 표시돼요',
     emptyFollowing: '아직 팔로우한 사람이 없어요',
     emptyFollowingBody: '유저가 팔로우를 시작하면 여기에 표시돼요',
-    emptyFollowersOther: '{name}님에게 아직 팔로워가 없어요',
-    emptyFollowingOther: '{name}님이 아직 아무도 팔로우하지 않았어요',
+    emptyFollowersOther: EMPTY_FOLLOWERS_OTHER,
+    emptyFollowingOther: EMPTY_FOLLOWING_OTHER,
     followButton: '팔로우',
     followingButton: '팔로잉',
   },
