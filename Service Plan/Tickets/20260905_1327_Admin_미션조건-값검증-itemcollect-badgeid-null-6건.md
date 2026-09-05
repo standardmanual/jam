@@ -174,3 +174,75 @@ jam-web/supabase/seed_*.sql                       ①의 결정에 따른 데이
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
+
+### ① 컨텐츠 결정
+사용자가 **A. 폐기**로 확정(재지정·보류 아님). item_collect 미션 6건은 하드 삭제가 아니라
+`ends_at`을 과거로 돌려 종료 처리하고, 참가자 19명의 기존 참가 기록은 그대로 보존한다.
+`20260905_0035`·`20260905_0039`(v5 카탈로그 시딩·유저 전원 삭제)의 현재 상태 확인은
+사용자가 이미 A로 확정을 지시해 별도로 조사하지 않았다(구현 계획의 착수 순서 1번은 사용자
+확정으로 대체됨).
+
+### ② 값 검증
+`lib/missions/condition-keys.ts`에 `checkMissionConditionValue()`를 **`checkMissionCondition()`과
+분리된 별도 함수**로 추가했다(같은 파일, 단일 출처는 유지). 분리한 이유: 기존
+`checkMissionCondition` 테스트 다수가 "이 필드가 이 타입에서 허용 키인지"만 보려고 다른 필드는
+비워 둔 조건(`{ poi_id: 'poi-1' }`만으로 `distance` 타입 키 검사 등)을 쓰는데, 값 검증까지 같은
+함수에 합치면 그 조건들이 "필수 값 부재"로 걸려 기존 테스트 의도가 깨진다. 두 함수를 API
+라우트(POST `route.ts`, PATCH `[id]/route.ts`)에서 순서대로(키 → 값) 호출해 연결했다.
+
+필수 키 매핑(`MISSION_CONDITION_VALUE_RULE`)은 미션 타입 7종 전부를 커버한다:
+`item_collect→badge_id`(UUID), `checkin→poi_id`(UUID), `distance→distance_km`,
+`activity_count→count`, `streak_days→streak_days`, `duration_minutes→duration_minutes`,
+`elevation_gain_m→elevation_gain_m`(이상 5종은 양수). 이 매핑이 `checker.ts`의
+`getTarget()`/`calculateProgress()`가 실제로 읽는 키와 어긋나지 않는지는 컴파일 타임으로
+보장할 수 없어(값의 존재 여부는 런타임 정보), `checker-logic.test.ts`에 `getTarget`·
+`evaluateMission`을 직접 호출해 실측 대조하는 테스트 2건을 추가했다.
+
+**참조 무결성(존재하지 않는 badge_id/poi_id UUID)은 이 티켓 범위 밖으로 명시적으로 뺐다** —
+형태(UUID 정규식) 검증만 하는 순수 함수로 유지한다. 존재 여부 확인에는 DB 조회가 필요해
+`condition-keys.ts`(서버 의존 없음 원칙)를 깨게 되고, 지금은 어드민이 목록에서 고르는 UI가
+아니라 자유 textarea라 이 위험이 남아 있다 — 후속 과제로 남겼다(코드 내 주석에도 명시).
+
+기존 6건의 "수정 저장"(복구 경로)은 새 값이 유효하면 통과한다 — 테스트로 확인.
+
+### ③ 어드민 가시성
+`MissionTable.tsx` 목록의 미션 제목 옆에 `checkMissionConditionValue()`를 그대로 재사용해
+조건이 깨진 미션에 "목표 미지정" 배지(`bg-red-50 text-red-600`, 기존 `BanTable.tsx`의 pill
+스타일 재사용)를 표시했다. `title` 속성에 상세 에러 문구를 실어 hover 시 원인을 바로 볼 수 있다.
+
+### ④ 시드 조용한 실패 차단
+`seed_phase13_missions_30.sql`은 문서 지침대로 수정하지 않았다. 대신
+`Service Plan/Specs/DEV_PROCESS_GUARDRAILS.md`에 "패턴 11"로 규약을 남겼다 — 이름 조회로
+조건/보상 필드를 채우는 시드는 조회 실패를 INSERT 실패로 바꿔야 한다(서브쿼리 결과 NULL 체크
+후 `RAISE EXCEPTION`, 또는 NOT NULL/CHECK 제약, 또는 이번 티켓처럼 API 저장 검증층 — 단
+저장 검증층은 시드의 직접 DB 쓰기는 막지 못한다는 한계도 함께 적었다).
+
+### ①의 데이터 처리 (SQL 파일 — 미실행)
+`jam-web/supabase/seed_terminate_orphaned_item_collect_missions_20260905.sql` 작성.
+`mission_type = 'item_collect' AND condition_json->>'badge_id' IS NULL` 조건으로 6건을
+식별해(1327 배경 조사에서 이 조합이 정확히 이 6건 유일함을 이미 확인) `ends_at`을
+`now() - interval '1 day'`로 갱신한다. 제목 문자열 exact-match는 따옴표 표기(직선/곡선)를
+확신할 수 없어 WHERE 절에 넣지 않았다(잘못 넣으면 0건 매치로 조용히 실패하는 게 더 위험) —
+대신 실행 전/후 확인 쿼리를 주석에 남겼다. 재실행 안전을 위해 이미 종료된 행은 건드리지 않는다.
+**실행은 사용자 승인 후 오케스트레이터가 진행.**
+
+### 변경 파일 목록
+- `jam-web/src/lib/missions/condition-keys.ts` — `checkMissionConditionValue()` 추가
+- `jam-web/src/app/api/admin/missions/route.ts` — POST에 값 검증 연결
+- `jam-web/src/app/api/admin/missions/[id]/route.ts` — PATCH에 값 검증 연결
+- `jam-web/src/app/admin/missions/MissionTable.tsx` — 목록에 "목표 미지정" 표시
+- `jam-web/src/lib/missions/__tests__/condition-values.test.ts` — 신규, 값 검증 유닛 테스트
+- `jam-web/src/lib/missions/__tests__/checker-logic.test.ts` — 필수 키 ↔ 실제 로직 일치 실측 테스트 2건 추가
+- `Service Plan/Specs/DEV_PROCESS_GUARDRAILS.md` — 패턴 11 추가
+- `jam-web/supabase/seed_terminate_orphaned_item_collect_missions_20260905.sql` — 신규, 미실행
+
+### 검증
+- `npx tsc --noEmit` — 에러 0
+- `npm run test:node` 대상 `src/lib/missions/__tests__/*.test.ts` 전건 통과
+  (checker-logic 24/24, condition-keys 18/18, condition-values 13/13, visibility-logic 16/16,
+  visibility-realdata 48/48)
+- `npm run lint` — 에러 0 / 경고 13(전부 design-system 사전 존재 경고, 이번 변경과 무관)
+
+### DB 변경 필요 여부
+필요. `jam-web/supabase/seed_terminate_orphaned_item_collect_missions_20260905.sql` —
+실행은 사용자 승인 후 오케스트레이터가 진행.
