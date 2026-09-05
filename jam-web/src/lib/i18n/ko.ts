@@ -60,7 +60,7 @@ export const ko = {
     stravaConnectCancelledToast: 'Strava 동기화를 취소했어요. 다시 시도하려면 동기화 버튼을 눌러주세요',
     stravaConnectFailedToast: 'Strava 동기화에 실패했어요. 네트워크가 불안정했거나 일시적인 오류일 수 있어요. 잠시 후 다시 시도해주세요',
 
-    // 빈 상태
+    // 빈 상태 (본인 시점 — 2인칭 행동 유도)
     emptyBadges: '아직 획득한 배지가 없어요',
     emptyBadgesBody: 'Strava를 동기화하고 활동하면 배지를 획득할 수 있어요',
     emptyItembooks: '아직 발견한 컬렉션이 없어요',
@@ -69,6 +69,13 @@ export const ko = {
     emptyFollowersBody: '활동을 공유하면 팔로워가 늘어나요',
     emptyFollowing: '아직 팔로잉이 없어요',
     emptyFollowingBody: '관심있는 유저를 팔로우해보세요',
+
+    // 빈 상태 (타인 시점 — 3인칭, {name} 보간. 20260903_2022)
+    // 타인 프로필에서는 본인 시점 행동 유도가 성립하지 않아 body를 생략한다.
+    emptyBadgesOther: '{name}님이 아직 획득한 배지가 없어요',
+    emptyItembooksOther: '{name}님이 아직 발견한 컬렉션이 없어요',
+    emptyFollowersOther: '{name}님에게 아직 팔로워가 없어요',
+    emptyFollowingOther: '{name}님이 아직 아무도 팔로우하지 않았어요',
 
     // 아이템북 카드
     itembookCompleted: '완성',
