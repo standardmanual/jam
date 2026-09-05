@@ -81,10 +81,10 @@ export function crossGateKeysIn(condition: BadgeCondition | null | undefined): C
  *
  * 지금까지 이 검증은 **발급 시점에만** 돌았다 — `family_keys` 오타 하나가 「저장은 되는데
  * 영원히 안 나오는 배지」가 되고, 그 사유(`missed`)는 어드민 시뮬레이터만 읽는다.
- * 판정은 새로 짜지 않고 `evaluateCrossGates`와 **같은 `normalizeRequirement`**를 부른다 —
+ * 판정은 새로 짜지 않고 `evaluateCrossGates`와 **같은 `normalizeGateRequirement`**를 부른다 —
  * 두 곳이 각자 형태를 정의하면 「저장은 통과하는데 발급은 막히는」 틈이 다시 생긴다.
  *
- * 자기 계열 지정도 여기서 걸린다(`normalizeRequirement`가 자기 계열을 대상에서 빼므로).
+ * 자기 계열 지정도 여기서 걸린다(`normalizeGateRequirement`가 자기 계열을 대상에서 빼므로).
  */
 export function findCrossGateShapeError(
   badge: Pick<BadgeRow, 'name' | 'family_key'>,
@@ -94,7 +94,7 @@ export function findCrossGateShapeError(
   const selfFamilyKey = familyKeyOf(badge)
   for (const key of CROSS_GATE_CONDITION_KEYS) {
     if (condition[key] === undefined) continue
-    const result = normalizeRequirement(condition[key], selfFamilyKey)
+    const result = normalizeGateRequirement(condition[key], selfFamilyKey)
     if (!result.ok) {
       return `저장할 수 없습니다. ${REQUIREMENT_LABEL[key]} 게이트 설정이 올바르지 않습니다(${result.error}). 대상 계열 키(family_key)를 쉼표로 나열하고, 자기 계열은 빼주세요.`
     }
@@ -117,7 +117,7 @@ const REQUIREMENT_LABEL: Record<(typeof GATE_CONDITION_KEYS)[number], string> = 
 type RequirementKey = 'cross_in_axis' | 'cross_between_axis' | 'gate_mission_badge'
 
 /** 형태 검증을 통과한 요구. `familyKeys`에서 자기 계열은 이미 빠져 있다 */
-type NormalizedRequirement = {
+export type NormalizedGateRequirement = {
   familyKeys: string[]
   minRarityTier: number
   minRarityLabel: string | null
@@ -127,15 +127,23 @@ type NormalizedRequirement = {
 /**
  * 요구 값의 형태를 검증하고 정규화한다. 어긋나면 사유 문자열을 돌려준다(통과가 아니다).
  *
- * **자기 계열은 대상에서 제외한다.** §3이 「교차 대상은 조건이 겹치지 않는 계열이어야 한다」로
- * 경계한 것 중 엔진이 확실하게 판정할 수 있는 유일한 경우다 — 자기 계열을 지정하면 이 배지를
- * 받는 활동이 곧 교차 대상까지 채워 게이트가 항상 자동 통과된다. 제외 후 대상이 남지 않으면
- * 그 게이트는 «표현 자체가 잘못된» 것이므로 막는다.
+ * **자기 계열은 대상에서 제외한다**(`selfFamilyKey`를 넘겼을 때). §3이 「교차 대상은 조건이
+ * 겹치지 않는 계열이어야 한다」로 경계한 것 중 엔진이 확실하게 판정할 수 있는 유일한 경우다 —
+ * 자기 계열을 지정하면 이 배지를 받는 활동이 곧 교차 대상까지 채워 게이트가 항상 자동
+ * 통과된다. 제외 후 대상이 남지 않으면 그 게이트는 «표현 자체가 잘못된» 것이므로 막는다.
+ *
+ * `selfFamilyKey`를 생략하면 자기 계열 제외를 하지 않는다 — **게이트 미션의 노출 조건**
+ * (`MissionVisibilityRule`, 티켓 20260905_0033)이 그 경우다. 미션에는 «자기 계열»이 없다.
+ *
+ * ⚠️ **export인 이유**: 게이트 미션의 노출 조건이 `BadgeGateRequirement`와 **같은 형태**를
+ * 쓴다. 미션 쪽에서 형태 검증을 다시 선언하면 「배지 게이트는 막는데 미션 노출은 통과하는」
+ * 틈이 생기고, 그 순간 미션은 열렸는데 Mystic은 안 열리는 상태가 된다
+ * (게이트 미션은 `gate_mission_badge` 요구의 «대상»이다 — 티켓 20260905_0030 B2).
  */
-function normalizeRequirement(
+export function normalizeGateRequirement(
   raw: unknown,
-  selfFamilyKey: string
-): { ok: true; value: NormalizedRequirement } | { ok: false; error: string } {
+  selfFamilyKey?: string
+): { ok: true; value: NormalizedGateRequirement } | { ok: false; error: string } {
   if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
     return { ok: false, error: '객체가 아님' }
   }
@@ -187,7 +195,7 @@ function sharesActivityType(a: readonly ActivityType[] | null, b: readonly Activ
  * 가리킨 `gate_mission_badge`가 조용히 통과하는 것을 막는다.
  */
 function countSatisfiedFamilies(
-  req: NormalizedRequirement,
+  req: NormalizedGateRequirement,
   ownedDefs: readonly OwnedBadgeDef[],
   gatedActivityTypes: readonly ActivityType[] | null,
   requireMissionReward: boolean,
@@ -218,14 +226,23 @@ function countSatisfiedFamilies(
   return matched
 }
 
-/** 미발급 사유의 `required` 문자열 — 「계열 A 또는 B, Rare 이상」 */
-function describeRequirement(key: RequirementKey, req: NormalizedRequirement): string {
+/**
+ * 요구의 «대상» 부분만 사람이 읽는 문장으로 — 「계열 A 또는 B / 2개 이상 / Rare 이상」.
+ *
+ * export인 이유: 게이트 미션 노출 조건도 같은 형태를 쓰므로 어드민 화면이 같은 문장을
+ * 보여줘야 한다(문구가 갈리면 운영자가 두 규칙을 다른 것으로 읽는다).
+ */
+export function describeGateRequirementTargets(req: NormalizedGateRequirement): string {
   const joiner = req.minCount > 1 ? ', ' : ' 또는 '
-  const families = req.familyKeys.join(joiner)
-  const parts = [`${REQUIREMENT_LABEL[key]}: 계열 ${families}`]
+  const parts = [`계열 ${req.familyKeys.join(joiner)}`]
   if (req.minCount > 1) parts.push(`${req.minCount}개 이상`)
   if (req.minRarityLabel) parts.push(`${req.minRarityLabel} 이상`)
   return parts.join(' / ')
+}
+
+/** 미발급 사유의 `required` 문자열 — 「축 내 교차: 계열 A 또는 B / Rare 이상」 */
+function describeRequirement(key: RequirementKey, req: NormalizedGateRequirement): string {
+  return `${REQUIREMENT_LABEL[key]}: ${describeGateRequirementTargets(req)}`
 }
 
 /**
@@ -251,9 +268,9 @@ export function evaluateCrossGates(
   )
   if (declared.length === 0) return { pass: true }
 
-  const normalized = new Map<RequirementKey, NormalizedRequirement>()
+  const normalized = new Map<RequirementKey, NormalizedGateRequirement>()
   for (const key of declared) {
-    const result = normalizeRequirement(condition[key], selfFamilyKey)
+    const result = normalizeGateRequirement(condition[key], selfFamilyKey)
     if (!result.ok) {
       // fail-closed — 형태가 깨진 게이트를 「검사할 게 없으니 통과」로 두면 게이트가 사라진다.
       // **형태 오류일 때만** 로그를 남긴다(정상 미충족까지 남기면 싱크마다 폭발한다).

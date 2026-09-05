@@ -20,6 +20,7 @@ import {
   type GatedBadgeInfo,
   type MissionVisibility,
   type MissionVisibilityContext,
+  type MissionVisibilityInput,
 } from '../visibility'
 import { RARITY_TIER } from '@/lib/rarity'
 import type { BadgeRarity } from '@/types/database'
@@ -32,13 +33,15 @@ const STEPS: Array<{ suffix: string; rarity: BadgeRarity }> = [
   { suffix: ' Ultra', rarity: 'mystic' },
 ]
 
-interface LevelUpMission {
-  id: string
+interface LevelUpMission extends MissionVisibilityInput {
   title: string
   tree: string
   gateRarity: BadgeRarity
   gated_badge_id: string
 }
+
+/** v5 게이트 미션 컬럼(마이그레이션 135)은 레거시 레벨업 미션에서 전부 NULL이다 */
+const NOT_A_GATE_MISSION = { gate_axis: null, gate_stage: null, visibility_rule_json: null } as const
 
 const MISSIONS: LevelUpMission[] = []
 const GATED_BADGES = new Map<string, GatedBadgeInfo>()
@@ -53,6 +56,7 @@ for (const tree of TREES) {
       tree,
       gateRarity: rarity,
       gated_badge_id: badgeId,
+      ...NOT_A_GATE_MISSION,
     })
   }
 }
@@ -138,6 +142,7 @@ function buildContext(owned: OwnedByTree): MissionVisibilityContext {
     completedMissionIds: new Set<string>(),
     gatedBadges: GATED_BADGES,
     ownedTierByBadgeName,
+    ownedFamilyTiers: new Map<string, number>(),
     participatedMissionIds: new Set<string>(),
   }
 }

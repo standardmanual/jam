@@ -944,6 +944,8 @@ export type Database = {
           created_at: string
           description: string | null
           ends_at: string | null
+          gate_axis: string | null
+          gate_stage: string | null
           gated_badge_id: string | null
           id: string
           image_url: string | null
@@ -956,6 +958,7 @@ export type Database = {
           starts_at: string
           status_display_type: string
           title: string
+          visibility_rule_json: Json | null
           visible_rank_count: number | null
         }
         Insert: {
@@ -963,6 +966,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           ends_at?: string | null
+          gate_axis?: string | null
+          gate_stage?: string | null
           gated_badge_id?: string | null
           id?: string
           image_url?: string | null
@@ -975,6 +980,7 @@ export type Database = {
           starts_at: string
           status_display_type?: string
           title: string
+          visibility_rule_json?: Json | null
           visible_rank_count?: number | null
         }
         Update: {
@@ -982,6 +988,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           ends_at?: string | null
+          gate_axis?: string | null
+          gate_stage?: string | null
           gated_badge_id?: string | null
           id?: string
           image_url?: string | null
@@ -994,6 +1002,7 @@ export type Database = {
           starts_at?: string
           status_display_type?: string
           title?: string
+          visibility_rule_json?: Json | null
           visible_rank_count?: number | null
         }
         Relationships: [

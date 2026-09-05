@@ -10,7 +10,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { TodayCardRow } from '@/types/database'
 import { computeUserExposureTags } from './exposure'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
-import { resolveMissionVisibility } from '@/lib/missions/visibility'
+import { resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
 
 /**
  * 카드의 이동 경로를 결정한다.
@@ -127,8 +127,11 @@ async function filterMissionSpotlightCards(userId: string, cards: TodayCardRow[]
   if (missionIds.length === 0) return cards
 
   const supabase = createServiceClient()
-  const { data } = await supabase.from('missions').select('id, gated_badge_id').in('id', missionIds)
-  const missions = (data ?? []) as { id: string; gated_badge_id: string | null }[]
+  // 판정에 필요한 컬럼을 이름으로 명시하지 않고 select('*')를 쓴다 — 게이트 미션 컬럼을
+  // 더하는 마이그레이션 135가 아직 실행되지 않은 환경에서 없는 컬럼을 명시하면 쿼리 자체가
+  // 실패해 오늘 카드가 통째로 사라진다(참가 API가 같은 이유로 select('*')를 쓴다).
+  const { data } = await supabase.from('missions').select('*').in('id', missionIds)
+  const missions = (data ?? []) as unknown as MissionVisibilityInput[]
   if (missions.length === 0) return cards
 
   const ctx = await loadMissionVisibilityContext(userId, missions)
