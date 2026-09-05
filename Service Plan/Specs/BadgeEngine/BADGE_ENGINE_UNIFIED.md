@@ -81,6 +81,8 @@ Strava 싱크
 
 ```
 Step 0. 초기 싱크 상태 조회 (users.initial_sync_done)
+Step 0.5. [가입 앵커] 이력 조회 창을 users.created_at 이후로 자른다 — 「과거 이력은 아예 배제」
+          (티켓 20260905_0030 §5. 이번 동기화 배치는 앵커와 무관하게 합쳐진다)
 Step 1. type='activity' 배지 전체 조회 (유효기간 필터)
 Step 2. 유저 보유 배지 조회 (오류 시 즉시 종료)
 Step 3-A. [등급형] 이름 그룹 단위 평가:
@@ -97,7 +99,7 @@ Step 3-B. [무한레벨형] 계열(family_key) 단위 평가 — 「보유 레�
 Step 4. [진행 트랙 중복 제거] 단일 조건 배지는 activity_type:조건타입 트랙당 최고 1개
   ※ 무한레벨형은 트랙 병합 대상이 아니다(progressionKey=null) — 걸리면 연속 발급분이 1개로 접힌다
 Step 4.8. [첫 싱크 게이트] 첫 싱크면 계열의 첫 칸(등급형=Common / 레벨형=Lv.1) 외 전부 missed
-Step 5. [홍수 방지] 30일 롤링 윈도우, activity_type당 최대 3개 (mystic→common 우선)
+Step 5. [홍수 방지] ❌ **제거됨** — 30일 롤링 캡은 더 이상 없다 (§2.6 참조, 코드에도 캡 없음)
 Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_done 갱신
 ```
 
