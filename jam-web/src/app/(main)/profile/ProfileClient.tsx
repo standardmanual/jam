@@ -6,7 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { formatRelativeTime, getDisplayName } from '@/lib/utils'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 import TopNav from '@/components/ui/TopNav'
 import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
@@ -305,6 +305,10 @@ export default function ProfileClient({
 
   // ── 탭 콘텐츠 렌더 ────────────────────────────────────────────────────────
 
+  // 빈 상태 문구의 3인칭 주어(20260903_2022) — 타인 프로필에서 "OO님이"에 쓸 이름.
+  // 헤더의 표시 이름 폴백(516행)과 동일한 규칙: 이름 없으면 anonymous.
+  const subjectName = (profile && getDisplayName(profile)) || d.profile.anonymous
+
   // 로딩 표시는 Skeleton loader and reveal(14-skeleton-reveal.md)이 담당하므로
   // 여기서는 실제 콘텐츠만 그린다.
   const renderTabContent = () => {
@@ -313,8 +317,8 @@ export default function ProfileClient({
         return (
           <EmptyState
             icon={<MedalIcon className="w-8 h-8" />}
-            title={d.profile.emptyBadges}
-            description={d.profile.emptyBadgesBody}
+            title={isOwnProfile ? d.profile.emptyBadges : t(d.profile.emptyBadgesOther, { name: subjectName })}
+            description={isOwnProfile ? d.profile.emptyBadgesBody : undefined}
           />
         )
       }
@@ -342,8 +346,8 @@ export default function ProfileClient({
         return (
           <EmptyState
             icon={<BookIcon className="w-8 h-8" />}
-            title={d.profile.emptyItembooks}
-            description={d.profile.emptyItembooksBody}
+            title={isOwnProfile ? d.profile.emptyItembooks : t(d.profile.emptyItembooksOther, { name: subjectName })}
+            description={isOwnProfile ? d.profile.emptyItembooksBody : undefined}
           />
         )
       }
@@ -371,8 +375,16 @@ export default function ProfileClient({
       return (
         <EmptyState
           icon={<UsersIcon className="w-8 h-8" />}
-          title={activeTab === 'followers' ? d.profile.emptyFollowers : d.profile.emptyFollowing}
-          description={activeTab === 'followers' ? d.profile.emptyFollowersBody : d.profile.emptyFollowingBody}
+          title={
+            isOwnProfile
+              ? (activeTab === 'followers' ? d.profile.emptyFollowers : d.profile.emptyFollowing)
+              : t(activeTab === 'followers' ? d.profile.emptyFollowersOther : d.profile.emptyFollowingOther, { name: subjectName })
+          }
+          description={
+            isOwnProfile
+              ? (activeTab === 'followers' ? d.profile.emptyFollowersBody : d.profile.emptyFollowingBody)
+              : undefined
+          }
         />
       )
     }
