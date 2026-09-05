@@ -1,9 +1,9 @@
 ---
 id: 20260905_2038
 category: UI
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-05
-closed:
+closed: 2026-09-05
 ---
 
 # [UI] MODULAR 3종 컴포넌트 prompt.md — API 갱신 누락 수정
@@ -108,7 +108,7 @@ jam-web/design-system/components/patterns/BadgeGridCard.prompt.md
 ### 배포 정보
 - 배포일: 2026-09-05
 - 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행)
-- 커밋: staging 머지 후 별도 문서 커밋(docs/*-close)에서 status CLOSED 반영 예정
+- 커밋: 26dc4f8f (staging 머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 - 티켓 배경절이 "`style`이 `headerStyle`로 바뀌었는데 문서가 아직 `style`을 언급한다"고
