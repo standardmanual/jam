@@ -47,8 +47,14 @@ for sp, v in mission["축_커버리지"].items():
     gate = [g["axis"] for s in design["four종목"]["종목"] if s["name"] == sp
             for g in s["groups"] if g["axis"] not in ("기록", "보너스")]
     check(sorted(gate) == sorted(v["게이트_대상_축"]), f"{sp} 게이트 대상 축 일치")
-    check(not v["빠진_축"], f"{sp} 빠진 축 0", str(v["빠진_축"]))
-    check(not v["중복_배정_축"], f"{sp} 중복 배정 0", str(v["중복_배정_축"]))
+    # ⚠️ 「빠진_축」·「중복_배정_축」 필드를 읽지 않는다. 그건 JSON이 스스로 「없다」고
+    # 선언한 값이라, 커버리지가 깨져도 그 두 배열만 비어 있으면 통과한다(게이트 리뷰
+    # 발견물). 배지의 「여는축」에서 직접 계산해 대조한다.
+    opened = [a for r in mission["배지"] if r["sport"] == sp for a in r["여는축"]]
+    missing = sorted(set(gate) - set(opened))
+    extra = sorted(set(opened) - set(gate))
+    check(not missing, f"{sp} 빠진 축 0", "빠짐: " + ",".join(missing))
+    check(not extra, f"{sp} 대상 밖 축 0", "초과: " + ",".join(extra))
 
 print("④ 축 배정 일치 (v5_mission_axis_groups.json 확정본)")
 assigned = {}
