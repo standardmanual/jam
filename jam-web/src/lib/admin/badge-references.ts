@@ -275,12 +275,25 @@ export function chunkBadgeIds(ids: string[], size = ID_CHUNK): string[][] {
 
 type CountResult = PromiseLike<{ count: number | null; error: { message: string } | null }>
 
+/**
+ * 한 번에 띄우는 청크 조회 수. 순차로 돌리면 「종류=아이템 전체」(3,600건) 같은 조합에서
+ * 청크 45개 × 카운터 7개 = 315회 왕복이 되어 Vercel 함수 시간 상한 사정권에 들어간다
+ * (게이트 리뷰 WARN, 티켓 20260905_0034). 무제한 병렬은 반대로 커넥션 풀을 고갈시키므로
+ * 폭을 묶어서 낸다.
+ */
+const CHUNK_CONCURRENCY = 6
+
 async function countChunked(ids: string[], run: (chunk: string[]) => CountResult) {
   let total = 0
-  for (const chunk of chunkBadgeIds(ids)) {
-    const { count, error } = await run(chunk)
-    if (error) return { count: total, error: error.message }
-    total += count ?? 0
+  const chunks = chunkBadgeIds(ids)
+  for (let i = 0; i < chunks.length; i += CHUNK_CONCURRENCY) {
+    const results = await Promise.all(chunks.slice(i, i + CHUNK_CONCURRENCY).map((c) => run(c)))
+    for (const { count, error } of results) {
+      // 먼저 실패한 것을 그대로 돌려준다 — 부분 집계를 「정확한 수」로 내보내면
+      // 영향 분석이 실제보다 작은 수를 보여주게 된다(호출부가 error를 fail-closed로 받는다).
+      if (error) return { count: total, error: error.message }
+      total += count ?? 0
+    }
   }
   return { count: total, error: null as string | null }
 }

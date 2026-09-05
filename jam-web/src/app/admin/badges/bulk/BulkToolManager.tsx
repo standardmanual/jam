@@ -88,6 +88,15 @@ export default function BulkToolManager({ initialFilter, recentRuns, runsError }
   const [analyzing, setAnalyzing] = useState(false)
   const [executing, setExecuting] = useState(false)
   const [detachingRow, setDetachingRow] = useState<string | null>(null)
+  // 해제는 라이브 투데이 카드·미션을 즉시 바꾸고 되돌리려면 각 어드민에서 손으로 복구해야
+  // 한다. 버튼 한 번으로 나가지 않도록 한 번 더 묻는다 (게이트 리뷰, 티켓 20260905_0034).
+  const [pendingDetach, setPendingDetach] = useState<{
+    sourceKey: BadgeReferenceKey
+    rowId: string
+    badgeIds: string[]
+    sourceLabel: string
+    rowLabel: string
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -466,7 +475,16 @@ export default function BulkToolManager({ initialFilter, recentRuns, runsError }
                               variant="outline"
                               size="sm"
                               disabled={detachingRow === rowKey || analyzing}
-                              onClick={() => detach(row.sourceKey, row.rowId, row.badgeIds)}
+                              onClick={() =>
+                                setPendingDetach({
+                                  sourceKey: row.sourceKey,
+                                  rowId: row.rowId,
+                                  badgeIds: row.badgeIds,
+                                  sourceLabel:
+                                    BADGE_REFERENCE_SOURCE_BY_KEY.get(row.sourceKey)?.label ?? row.sourceKey,
+                                  rowLabel: row.label,
+                                })
+                              }
                             >
                               {detachingRow === rowKey ? '해제 중...' : '해제'}
                             </Button>
@@ -601,6 +619,52 @@ export default function BulkToolManager({ initialFilter, recentRuns, runsError }
             </Button>
             <Button type="button" variant="destructive" disabled={executing || !phraseMatches} onClick={execute}>
               {executing ? '실행 중...' : '실행'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── 참조 해제 확인 ──────────────────────────────────────────── */}
+      <AlertDialog
+        open={pendingDetach !== null}
+        onOpenChange={(open) => {
+          if (!open && !detachingRow) setPendingDetach(null)
+        }}
+      >
+        <AlertDialogContent container={themeContainer ?? undefined}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>참조 해제</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDetach && (
+                <>
+                  {pendingDetach.sourceLabel} 「{pendingDetach.rowLabel}」에서 배지{' '}
+                  {pendingDetach.badgeIds.length}건을 빼요. 카드·미션 자체는 지워지지 않아요. 되돌리려면 해당
+                  어드민 화면에서 배지를 다시 넣어야 해요.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={detachingRow !== null}
+              onClick={() => setPendingDetach(null)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={detachingRow !== null}
+              onClick={() => {
+                if (!pendingDetach) return
+                const target = pendingDetach
+                setPendingDetach(null)
+                void detach(target.sourceKey, target.rowId, target.badgeIds)
+              }}
+            >
+              해제
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

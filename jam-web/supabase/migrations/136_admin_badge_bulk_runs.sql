@@ -57,8 +57,8 @@ COMMIT;
 
 -- ── 검증 쿼리 (실행 후 확인) ────────────────────────────────────────────────
 --
--- 1) 테이블·컬럼 생성 확인 (7행: id/admin_user_id/admin_email/action/target_count/
---    affected_count/detail/created_at → 8행)
+-- 1) 테이블·컬럼 생성 확인 (8행: id/admin_user_id/admin_email/action/target_count/
+--    affected_count/detail/created_at)
 --   SELECT column_name, data_type, is_nullable
 --     FROM information_schema.columns
 --    WHERE table_schema = 'public' AND table_name = 'admin_badge_bulk_runs'
