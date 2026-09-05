@@ -22,6 +22,7 @@ import {
   IconPhotoEdit,
   IconTag,
   IconBackpack,
+  IconDatabaseImport,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -66,6 +67,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/badge-image', label: '체크인 배지 이미지 생성', icon: IconPhoto },
       { href: '/admin/activity-badge-image', label: '액티비티 배지 이미지 생성', icon: IconPhotoEdit },
       { href: '/admin/users', label: '유저 조회', icon: IconUsers },
+      { href: '/admin/strava-backfill', label: 'Strava 확장 필드 백필', icon: IconDatabaseImport },
       { href: '/admin/abusing', label: '어뷰징 관리', icon: IconShieldExclamation },
     ],
   },
