@@ -186,7 +186,10 @@ export default async function BadgeTreePage() {
   const needsHistory = targetIds.length > 0 || progressTargets.length > 0
   const anchorDate = needsHistory ? await getSignupAnchorDate(service, user.id) : undefined
   const activities = needsHistory ? await getActivityHistory(service, user.id, anchorDate) : []
-  const conditionMetBadgeIds = Array.from(computeConditionMetBadgeIds(targetIds, conditionById, activities))
+  // 앵커를 함께 넘긴다 — 휴식 조건(§4)이 발급 엔진과 같은 창에서 공백을 세야 한다.
+  const conditionMetBadgeIds = Array.from(
+    computeConditionMetBadgeIds(targetIds, conditionById, activities, anchorDate)
+  )
 
   // (user, activity_type) 하나당 한 번만 집계(2b 설계 그대로) — 트리에 등장하는 종목만.
   const now = new Date()

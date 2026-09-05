@@ -115,6 +115,19 @@ const V5_NEW_20_KEYS = [
   'vs_personal_average',
 ] as const
 
+/**
+ * 그중 **휴식(활동 공백) 4종은 v5 B3에서 평가가 구현됐다** (티켓 20260905_0030 §4).
+ * `evaluation`을 `'engine'`으로 뒤집었으므로 fail-closed가 더는 막지 않는다 —
+ * 「막힘」을 확인하던 회귀는 「판정됨」으로 교체했다. 남겨 두면 통과하는 테스트가 거짓말을 한다.
+ */
+const V5_REST_4_KEYS = ['rest_after_streak', 'rest_after_long', 'return_gap_days', 'interval_days'] as const
+
+/** 아직 아무도 평가하지 않는 16종 — fail-closed가 계속 막아야 한다 */
+const V5_PENDING_16_KEYS = V5_NEW_20_KEYS.filter(
+  (k): k is Exclude<(typeof V5_NEW_20_KEYS)[number], (typeof V5_REST_4_KEYS)[number]> =>
+    !(V5_REST_4_KEYS as readonly string[]).includes(k)
+)
+
 /** 신규 20종 각각의 「타입상 유효한」 예시 값 — 조건에 실어 fail-closed를 확인하는 데 쓴다 */
 const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
   max_elevation_m: 1500,
@@ -179,16 +192,34 @@ describe('레지스트리 — 필드 구성', () => {
       'prerequisite_badge_names',
     ])
     expect(byEval('pending')).toContain('route')
-    expect(byEval('pending').length).toBe(21) // route + v5 신규 20
-    expect(byEval('engine').length).toBe(22) // 기존 21 + repeat_count (티켓 20260905_0030 B1)
+    expect(byEval('pending').length).toBe(17) // route + v5 신규 20 − 휴식 4 (티켓 20260905_0030 B3)
+    // 기존 21 + repeat_count(B1) + 휴식 4종(B3)
+    expect(byEval('engine').length).toBe(26)
   })
 
-  it('v5 신규 20종이 전부 들어 있고 전부 평가 미구현이다', () => {
-    for (const key of V5_NEW_20_KEYS) {
-      expect(ALL_CONDITION_KEYS).toContain(key)
+  it('v5 신규 20종이 전부 들어 있고, 휴식 4종을 뺀 16종은 아직 평가 미구현이다', () => {
+    for (const key of V5_NEW_20_KEYS) expect(ALL_CONDITION_KEYS).toContain(key)
+    for (const key of V5_PENDING_16_KEYS) {
       expect(EVALUATED_CONDITION_KEYS).not.toContain(key)
       expect(PENDING_CONDITION_KEYS).toContain(key)
     }
+  })
+
+  it('휴식 4종은 평가 주체가 엔진이다 — fail-closed에 막히지 않고 실제로 판정된다', () => {
+    // 「선언만 하고 평가는 안 한다」로 남겨 두면 fail-closed가 계속 막아 휴식 배지가
+    // 영원히 발급되지 않는다(선행 티켓 20260905_0028이 못 박은 완료 조건).
+    for (const key of V5_REST_4_KEYS) {
+      expect(EVALUATED_CONDITION_KEYS, `${key}`).toContain(key)
+      expect(PENDING_CONDITION_KEYS, `${key}`).not.toContain(key)
+      expect(MEASURABLE_CONDITION_KEYS, `${key}`).toContain(key)
+    }
+
+    // 「막힘」이 아니라 실제 수치로 판정된다는 것이 요점이다. 이 이력은 7/20·7/21 연속
+    // 2일이라 공백이 없다 — 「복귀 전 휴식 부족」으로 떨어져야 한다.
+    const r = evaluateConditionDetailed({ activity_type: 'running', return_gap_days: 90 }, activities)
+    expect(r.pass).toBe(false)
+    expect(r.reason).not.toContain('평가 구현 대기')
+    expect(r.reason).toBe('복귀 전 휴식 부족')
   })
 
   it('repeat_count는 평가 주체가 엔진이다 — fail-closed에 막히지 않고 실제로 판정된다', () => {
@@ -417,13 +448,24 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
 })
 
 describe('fail-closed — ① 평가할 수 없는 키가 든 조건은 발급되지 않는다', () => {
-  it('v5 신규 20종은 각각 단독으로도 fail한다', () => {
-    for (const key of V5_NEW_20_KEYS) {
+  it('평가 미구현 16종은 각각 단독으로도 fail한다', () => {
+    for (const key of V5_PENDING_16_KEYS) {
       const cond = { activity_type: 'running', [key]: V5_SAMPLE_VALUES[key] } as BadgeCondition
       const result = evaluateConditionDetailed(cond, activities)
       expect(result.pass, `${key} 단독 조건이 통과했다`).toBe(false)
       expect(result.reason).toContain('평가할 수 없는 조건 필드')
       expect(result.reason).toContain(key)
+    }
+  })
+
+  it('휴식 4종도 단독으로는 전부 fail한다 — 다만 사유가 「평가 구현 대기」가 아니다', () => {
+    // 평가가 열렸다고 조건이 헐거워지면 안 된다. 짝 필드가 없거나(연속·장거리),
+    // 순수 공백 하한(90일) 미만이거나, 공백이 없으면 전부 막힌다.
+    for (const key of V5_REST_4_KEYS) {
+      const cond = { activity_type: 'running', [key]: V5_SAMPLE_VALUES[key] } as BadgeCondition
+      const result = evaluateConditionDetailed(cond, activities)
+      expect(result.pass, `${key} 단독 조건이 통과했다`).toBe(false)
+      expect(result.reason, `${key}`).not.toContain('평가 구현 대기')
     }
   })
 

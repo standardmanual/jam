@@ -38,14 +38,21 @@ export function collectConditionCheckTargets(
 export function computeConditionMetBadgeIds(
   targetIds: string[],
   conditionById: Map<string, BadgeCondition | null>,
-  activities: NormalizedActivity[]
+  activities: NormalizedActivity[],
+  /**
+   * 가입 앵커 — **발급 엔진과 같은 창**을 보기 위해 그대로 넘긴다
+   * (v5 B3, 티켓 20260905_0030 §4). 휴식 조건은 「활동이 없는 기간」을 세므로 앵커를
+   * 빠뜨리면 화면이 발급보다 넓은 창에서 공백을 계산해 「조건 충족(라임)」으로 뜨는데
+   * 엔진은 막는 상태가 된다.
+   */
+  anchorDate?: string
 ): Set<string> {
   const result = new Set<string>()
   for (const id of targetIds) {
     const condition = conditionById.get(id)
     if (!condition) continue
     try {
-      if (checkCondition(condition, activities)) result.add(id)
+      if (checkCondition(condition, activities, { anchorDate })) result.add(id)
     } catch (error) {
       console.error('[computeConditionMetBadgeIds] 조건 평가 실패 — 게이트잠김으로 처리', id, error)
     }

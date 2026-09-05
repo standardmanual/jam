@@ -743,10 +743,11 @@ export const CONDITION_FIELDS = [
     min: 1,
     max: 30,
     step: 1,
-    // 「며칠 연속 뒤의 휴식인가」는 streak_days가 정한다
+    // 「며칠 연속 뒤의 휴식인가」는 streak_days가 정한다.
+    // v5 B3부터 짝 필드가 **강제된다** — 없으면 fail-closed가 막는다(PAIR_ENFORCED_CONDITION_KEYS)
     pairedWith: ['streak_days'],
     direction: 'higher',
-    evaluation: 'pending',
+    evaluation: 'engine',
     chip: (c) => `연속 후 휴식 ${c.rest_after_streak}일`,
     detail: (c) => `연속 활동 후 휴식 ${c.rest_after_streak}일 이상`,
   }),
@@ -759,10 +760,12 @@ export const CONDITION_FIELDS = [
     min: 1,
     max: 30,
     step: 1,
-    // 「무엇을 장거리로 볼 것인가」는 single_distance_km이 정한다
+    // 「무엇을 장거리로 볼 것인가」는 single_distance_km이 정한다(v5 B3부터 강제).
+    // ⚠️ 그 짝 필드 자체가 아직 `pending`이라 이 조건은 지금도 fail-closed에 걸린다 —
+    //    v5 스칼라 7종을 뒤집는 선행 작업이 끝나야 실제로 발급된다(티켓 20260905_0030 잔여 이슈).
     pairedWith: ['single_distance_km'],
     direction: 'higher',
-    evaluation: 'pending',
+    evaluation: 'engine',
     chip: (c) => `장거리 후 휴식 ${c.rest_after_long}일`,
     detail: (c) => `장거리 활동 후 휴식 ${c.rest_after_long}일 이상`,
   }),
@@ -776,7 +779,8 @@ export const CONDITION_FIELDS = [
     max: 365,
     step: 1,
     direction: 'higher',
-    evaluation: 'pending',
+    // 활동 선행 요구가 없는 «순수 공백» 조건이라 REST_PURE_GAP_MIN_DAYS(90일) 하한이 걸린다
+    evaluation: 'engine',
     chip: (c) => `복귀 전 휴식 ${c.return_gap_days}일`,
     detail: (c) => `복귀 전 휴식 ${c.return_gap_days}일 이상`,
   }),
@@ -790,7 +794,8 @@ export const CONDITION_FIELDS = [
     max: 365,
     step: 1,
     direction: 'higher',
-    evaluation: 'pending',
+    // return_gap_days와 같은 «순수 공백» 조건 — 90일 하한이 걸린다
+    evaluation: 'engine',
     chip: (c) => `간격 ${c.interval_days}일`,
     detail: (c) => `활동 간격 ${c.interval_days}일 이상`,
   }),
@@ -1050,7 +1055,31 @@ export type BlockingConditionKeys = {
   unknown: string[]
   /** 레지스트리에는 있으나 아직 엔진이 평가하지 않는 키 */
   pending: string[]
+  /**
+   * 짝 필드(`pairedWith`)가 하나도 없어 **뜻이 완성되지 않는** 키
+   * (v5 B3, 티켓 20260905_0030 §4).
+   *
+   * `rest_after_streak`는 `streak_days`가 없으면 「며칠 연속 뒤인가」가, `rest_after_long`은
+   * `single_distance_km`이 없으면 「무엇이 장거리인가」가 정의되지 않는다. 값 자체는 유효하고
+   * CHECK 제약도 키 이름만 보므로 **짝 없이 저장돼도 통과하고, 평가 시점에 조용한 오판정이
+   * 된다.** 그래서 fail-closed의 세 번째 종류로 넣었다.
+   */
+  unpaired: string[]
 }
+
+/**
+ * 짝 필드를 **기계적으로 강제하는** 키 — v5 B3 신규 4종에 한정한다.
+ *
+ * 기존 필드(`same_activity`↔`distance_km` 등)는 카탈로그에 실적이 있어 즉시 강제하면
+ * 이미 발급된 배지가 미발급으로 뒤집힐 수 있다(선행 티켓 20260905_0028이 못 박은 경계).
+ * 새로 평가가 열리는 필드만 처음부터 강제한다 — 실적이 0건이라 회귀가 없다.
+ */
+export const PAIR_ENFORCED_CONDITION_KEYS: readonly ConditionKey[] = [
+  'rest_after_streak',
+  'rest_after_long',
+  'return_gap_days',
+  'interval_days',
+]
 
 /**
  * 조건에 «평가할 수 없는 키»가 있는지 찾는다.
@@ -1070,16 +1099,37 @@ export function findBlockingConditionKeys(
    */
   extraAllowedKeys?: ReadonlySet<string>
 ): BlockingConditionKeys {
-  const result: BlockingConditionKeys = { unknown: [], pending: [] }
+  const result: BlockingConditionKeys = { unknown: [], pending: [], unpaired: [] }
   if (!condition) return result
   for (const [key, value] of Object.entries(condition)) {
     if (value === undefined) continue
     const meta = FIELD_BY_KEY.get(key)
     if (!meta) {
       if (!extraAllowedKeys?.has(key)) result.unknown.push(key)
-    } else if (meta.evaluation === 'pending') result.pending.push(key)
+      continue
+    }
+    if (meta.evaluation === 'pending') {
+      result.pending.push(key)
+      continue
+    }
+    // 짝 필드 강제 — 대상 키에 한정한다(PAIR_ENFORCED_CONDITION_KEYS 주석 참조).
+    // `pairedWith`가 여럿이면 **하나라도 있으면 통과**다(OR) — `same_activity`가
+    // `distance_km`/`elevation_gain_m` 중 하나만 있어도 뜻이 완성되는 형태를 따른다.
+    if (
+      PAIR_ENFORCED_CONDITION_KEYS.includes(meta.key) &&
+      meta.pairedWith &&
+      meta.pairedWith.length > 0 &&
+      !meta.pairedWith.some((p) => (condition as Record<string, unknown>)[p as string] !== undefined)
+    ) {
+      result.unpaired.push(key)
+    }
   }
   return result
+}
+
+/** 조건 평가를 시작할 수 없는가 — 세 종류 중 하나라도 있으면 true */
+export function hasBlockingConditionKeys(blocking: BlockingConditionKeys): boolean {
+  return blocking.unknown.length > 0 || blocking.pending.length > 0 || blocking.unpaired.length > 0
 }
 
 /** fail-closed 사유 문자열. 어드민 시뮬레이터·엔진 로그에 그대로 노출된다 */
@@ -1089,6 +1139,13 @@ export function describeBlockingConditionKeys(blocking: BlockingConditionKeys): 
   if (blocking.pending.length > 0) {
     const labeled = blocking.pending.map((k) => `${getConditionField(k)?.label ?? k}(${k})`)
     segments.push(`평가 구현 대기: ${labeled.join(', ')}`)
+  }
+  if (blocking.unpaired.length > 0) {
+    const labeled = blocking.unpaired.map((k) => {
+      const meta = getConditionField(k)
+      return `${meta?.label ?? k}(${k}) ← ${(meta?.pairedWith ?? []).join(' 또는 ')}`
+    })
+    segments.push(`짝 필드 없음: ${labeled.join(', ')}`)
   }
   return `평가할 수 없는 조건 필드 — ${segments.join(' / ')}`
 }
