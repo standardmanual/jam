@@ -249,9 +249,16 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
       {/* 헤더 */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">배지 관리</h1>
-        <Link href="/admin/badges/new" className="w-full md:w-auto">
-          <Button className="w-full md:w-auto h-11 md:h-10">+ 새 배지</Button>
-        </Link>
+        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+          <Link href="/admin/badges/bulk" className="w-full md:w-auto">
+            <Button variant="outline" className="w-full md:w-auto h-11 md:h-10">
+              일괄 작업
+            </Button>
+          </Link>
+          <Link href="/admin/badges/new" className="w-full md:w-auto">
+            <Button className="w-full md:w-auto h-11 md:h-10">+ 새 배지</Button>
+          </Link>
+        </div>
       </div>
 
       {/* 필터 */}

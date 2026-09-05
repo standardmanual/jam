@@ -97,6 +97,47 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_badge_bulk_runs: {
+        Row: {
+          action: string
+          admin_email: string | null
+          admin_user_id: string | null
+          affected_count: number
+          created_at: string
+          detail: Json
+          id: string
+          target_count: number
+        }
+        Insert: {
+          action: string
+          admin_email?: string | null
+          admin_user_id?: string | null
+          affected_count?: number
+          created_at?: string
+          detail?: Json
+          id?: string
+          target_count?: number
+        }
+        Update: {
+          action?: string
+          admin_email?: string | null
+          admin_user_id?: string | null
+          affected_count?: number
+          created_at?: string
+          detail?: Json
+          id?: string
+          target_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_badge_bulk_runs_admin_user_id_fkey"
+            columns: ["admin_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ambient_drop_config: {
         Row: {
           all_random: boolean
