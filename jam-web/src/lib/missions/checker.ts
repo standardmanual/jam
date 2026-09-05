@@ -18,6 +18,21 @@ import type { NormalizedActivity } from '@/types/strava'
  * condition_json은 BadgeCondition과 동일한 필드 어휘(activity_type + streak_days/
  * duration_minutes/elevation_gain_m)를 그대로 사용한다.
  */
+/**
+ * 미션 조건에만 쓰이고 배지 조건 레지스트리에는 없는 키.
+ *
+ * `evaluateConditionDetailed`는 티켓 20260905_0028부터 fail-closed다 — 조건에 모르는 키가
+ * 있으면 평가를 시작하지 않고 fail한다. 미션은 `MissionCondition`을 `BadgeCondition`으로
+ * 캐스팅해 그 함수에 넘기므로, 미션 고유 어휘를 열어 두지 않으면 **미션이 영구 미달성**이 된다.
+ * (실측 2026-09-05: 프로덕션의 엔진 위임 미션 15건은 전부 `{activity_type, 지표}` 2키라
+ *  당장 깨지는 건 없다. 그러나 미션 어드민이 `condition_json`을 검증 없는 자유 JSON으로
+ *  받으므로 언제든 들어올 수 있다.)
+ *
+ * ⚠️ 여기 키를 추가해도 «평가된다»는 뜻은 아니다 — fail-closed를 통과시킬 뿐이고,
+ * 실제 판정은 `progressValue >= target` 경로나 엔진의 아는 필드만으로 이뤄진다.
+ */
+const MISSION_ONLY_CONDITION_KEYS: ReadonlySet<string> = new Set(['count', 'badge_id'])
+
 const ENGINE_DELEGATED_MISSION_TYPES: ReadonlySet<MissionType> = new Set([
   'streak_days',
   'duration_minutes',
@@ -380,7 +395,9 @@ export function evaluateMission(
   // activity_count와 동일 취급). evaluateMission을 다른 곳에서 재사용할 땐 activities를
   // 반드시 참가 시점 이후로 걸러서 넘겨야 한다.
   const achieved = ENGINE_DELEGATED_MISSION_TYPES.has(mission.mission_type)
-    ? evaluateConditionDetailed(condition as BadgeCondition, activities).pass
+    ? evaluateConditionDetailed(condition as BadgeCondition, activities, {
+        extraAllowedKeys: MISSION_ONLY_CONDITION_KEYS,
+      }).pass
     : progressValue >= target
   return { isParticipating: true, progressValue, target, achieved }
 }

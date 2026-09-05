@@ -41,6 +41,7 @@
 import { kmhToPaceSecPerKm, type NormalizedActivity } from '@/types/strava'
 import type { ActivityType, BadgeCondition, DayOfWeek } from '@/types/database'
 import type { BadgeTreeLock } from '@/lib/badgeTree'
+import { findBlockingConditionKeys } from './conditionRegistry'
 import {
   calcMaxStreak,
   passesWalkingGate,
@@ -279,6 +280,14 @@ function measurableScalarKeys(condition: BadgeCondition): ScalarAxisKey[] {
 
 export function classifyBadgeProgressKind(condition: BadgeCondition): BadgeProgress['kind'] | 'unsupported' {
   if (!condition) return 'unsupported'
+
+  // fail-closed와 보조를 맞춘다 (티켓 20260905_0028 개선 리뷰).
+  // 아래 분류는 아는 축만 세므로, «기존 축 1개 + 평가 대기 필드 1개»인 조건은 대기 필드를
+  // 무시한 채 cumulative/record 진행률을 그린다 — 조건은 fail-closed로 막혀 발급되지 않는데
+  // 화면에는 「78% 달성」이 뜨는 상태가 된다. 이건 어드민이 아니라 유저 노출(배지 트리 진행
+  // 레일)이라, 발급이 막히는 조건은 진행률도 그리지 않는 편이 정직하다.
+  const blocking = findBlockingConditionKeys(condition)
+  if (blocking.unknown.length > 0 || blocking.pending.length > 0) return 'unsupported'
 
   const isMulti =
     (Array.isArray(condition.day_of_week) && condition.total_count !== undefined) ||

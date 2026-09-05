@@ -255,7 +255,16 @@ function singleFieldFailure(
 
 export function evaluateConditionDetailed(
   condition: BadgeCondition,
-  activities: NormalizedActivity[]
+  activities: NormalizedActivity[],
+  options?: {
+    /**
+     * 레지스트리에 없어도 fail-closed에 걸리지 않게 할 키. **미션 평가 경로 전용이다.**
+     * `missions/checker.ts`가 `MissionCondition`을 `BadgeCondition`으로 캐스팅해 넘기는데
+     * 그 어휘에는 배지 조건에 없는 키가 있다(`count`·`badge_id`). 열어 두지 않으면
+     * fail-closed가 「알 수 없는 필드」로 판정해 미션이 영구 미달성이 된다.
+     */
+    extraAllowedKeys?: ReadonlySet<string>
+  }
 ): EvalConditionResult {
   if (!condition || Object.keys(condition).length === 0) {
     return { pass: false, reason: '조건 없음', actual: '-', required: '-' }
@@ -268,8 +277,8 @@ export function evaluateConditionDetailed(
   // 레지스트리에 선언됐지만 아직 평가 구현이 없는 필드(v5 신규 20종)나 오탈자로 들어간 키는
   // 조용히 무시되고 조건이 통과된다 — 「미구현 = 발급 안 됨」이 아니라 「미구현 = 무조건 발급」이
   // 되는 구조다. 그래서 평가를 **시작하기 전에** 막는다. 기존 25개 필드는 전부
-  // `evaluated: true`라 이 분기에 걸리지 않는다(현행 발급 동작 무변경).
-  const blocking = findBlockingConditionKeys(condition)
+  // `evaluation: 'engine' | 'external'`이라 이 분기에 걸리지 않는다(현행 발급 동작 무변경).
+  const blocking = findBlockingConditionKeys(condition, options?.extraAllowedKeys)
   if (blocking.unknown.length > 0 || blocking.pending.length > 0) {
     return {
       pass: false,

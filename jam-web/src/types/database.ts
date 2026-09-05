@@ -821,7 +821,7 @@ export interface BadgeCondition {
   // ── v5 신규 조건 필드 20종 (티켓 20260905_0028) ───────────────────────
   //
   // ⚠️ **아직 badge-engine이 평가하지 않는다**(구현은 티켓 20260905_0030).
-  //    `conditionRegistry.ts`의 `evaluated: false`가 이 사실을 담고 있고,
+  //    `conditionRegistry.ts`의 `evaluation: 'pending'`이 이 사실을 담고 있고,
   //    `evaluateConditionDetailed`가 이 필드들이 든 조건을 fail-closed로 막는다 —
   //    «미구현 = 발급 안 됨»이 기본값이다.
 
