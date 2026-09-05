@@ -18,12 +18,14 @@ import {
   ALL_CONDITION_KEYS,
   CONDITION_FIELDS,
   EVALUATED_CONDITION_KEYS,
+  PENDING_CONDITION_KEYS,
+  getConditionField,
   MEASURABLE_CONDITION_KEYS,
   findBlockingConditionKeys,
   formatConditionChips,
   formatConditionDetail,
 } from '../conditionRegistry'
-import { LOWER_IS_BETTER_KEYS } from '../badgeProgress'
+import { LOWER_IS_BETTER_KEYS, classifyBadgeProgressKind } from '../badgeProgress'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition } from '@/types/database'
 import { readFileSync } from 'node:fs'
@@ -52,7 +54,14 @@ const activities = [
   makeActivity({ stravaId: 2, startDate: '2026-07-21T05:30:00Z', startDateLocal: '2026-07-21T05:30:00' }),
 ]
 
-/** 이 티켓 이전부터 존재하던 조건 필드 25종 — 전부 `evaluated: true`여야 한다 */
+/**
+ * 이 티켓 이전부터 존재하던 조건 필드 25종.
+ *
+ * 그중 **`route`만 예외**로 `evaluation: 'pending'`이다 — 타입·스키마·DB CHECK에만 있고
+ * badge-engine에 `condition.route` 참조가 0건이라(실측 2026-09-05) 아무도 평가하지 않는다.
+ * 「선언만 있고 평가가 없는 필드가 조용히 조건을 통과시킨다」는 이 티켓이 없애려는 문제
+ * 그 자체라, 쓰는 배지가 0건인 지금 정직하게 표기했다(게이트 리뷰 지적).
+ */
 const LEGACY_25_KEYS = [
   'distance_km',
   'elevation_gain_m',
@@ -136,17 +145,37 @@ describe('레지스트리 — 필드 구성', () => {
     expect(new Set(ALL_CONDITION_KEYS).size).toBe(45) // 중복 키 없음
   })
 
-  it('기존 25종이 전부 들어 있고 전부 평가 구현됨이다', () => {
+  it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
     for (const key of LEGACY_25_KEYS) {
       expect(ALL_CONDITION_KEYS).toContain(key)
+      if (key === 'route') continue
       expect(EVALUATED_CONDITION_KEYS).toContain(key)
     }
+  })
+
+  it('route는 평가 주체가 없다 — 선언만 있고 엔진 참조가 0건이다', () => {
+    expect(PENDING_CONDITION_KEYS).toContain('route')
+    // 조건에 route가 있으면 fail-closed가 막는다. 쓰는 배지가 0건이라 회귀는 없다.
+    const r = evaluateConditionDetailed({ activity_type: 'running', route: 'x' } as never, activities)
+    expect(r.pass).toBe(false)
+    expect(r.reason).toContain('평가 구현 대기')
+  })
+
+  it('평가 주체를 세 가지로 구분한다 — engine / external / pending', () => {
+    // boolean 하나가 「엔진이 검사」·「엔진 밖에서 처리」·「아무도 안 함」을 겸하던 과적재를
+    // 풀었다. external은 fail-closed를 통과해야 한다 — 엔진이 안 볼 뿐 평가는 된다.
+    const byEval = (v: string) => CONDITION_FIELDS.filter((f) => f.evaluation === v).map((f) => f.key)
+    expect(byEval('external').sort()).toEqual(['mission_reward', 'poi_id', 'prerequisite_badge_names'])
+    expect(byEval('pending')).toContain('route')
+    expect(byEval('pending').length).toBe(21) // route + v5 신규 20
+    expect(byEval('engine').length).toBe(21)
   })
 
   it('v5 신규 20종이 전부 들어 있고 전부 평가 미구현이다', () => {
     for (const key of V5_NEW_20_KEYS) {
       expect(ALL_CONDITION_KEYS).toContain(key)
       expect(EVALUATED_CONDITION_KEYS).not.toContain(key)
+      expect(PENDING_CONDITION_KEYS).toContain(key)
     }
   })
 
@@ -291,11 +320,13 @@ describe('fail-closed — ① 평가할 수 없는 키가 든 조건은 발급�
 })
 
 describe('fail-closed — ② 기존 25개 필드만 든 조건은 이전과 동일하게 동작한다', () => {
-  it('기존 25개 필드는 어떤 조합이어도 fail-closed에 걸리지 않는다', () => {
+  it('기존 필드는 route 하나를 빼고 fail-closed에 걸리지 않는다', () => {
+    // route만 예외다 — 선언만 있고 엔진 참조가 0건이라 evaluation: 'pending'으로 정직하게
+    // 표기했다(게이트 리뷰). 쓰는 배지가 0건이라 발급 회귀는 없다.
     for (const key of LEGACY_25_KEYS) {
       const blocking = findBlockingConditionKeys({ [key]: 1 } as unknown as BadgeCondition)
       expect(blocking.unknown, `${key}가 미지의 필드로 분류됐다`).toEqual([])
-      expect(blocking.pending, `${key}가 구현 대기로 분류됐다`).toEqual([])
+      expect(blocking.pending, `${key}의 구현 대기 분류가 예상과 다르다`).toEqual(key === 'route' ? ['route'] : [])
     }
   })
 
@@ -365,5 +396,125 @@ describe('표시 함수 — 레지스트리 기반 (어드민 목록·상세)', 
       expect(chips[0]).not.toContain(key)
       expect(detail[0]).not.toContain(key)
     }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// 리뷰 반영분 (티켓 20260905_0028 게이트·개선 리뷰)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('지표 라벨 — 레지스트리와 마이그레이션 131의 시드가 어긋나지 않는다', () => {
+  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/131_condition_keys_v5.sql'), 'utf-8')
+
+  /**
+   * 라벨은 세 곳에 복제돼 있다 — 레지스트리 `label`/`unit` · 131의 INSERT · DB 테이블.
+   * DB 런타임 값은 어드민이 편집할 수 있어 대조 대상이 아니지만, **레지스트리 ↔ 시드**가
+   * 갈리면 어드민이 편집하기 전까지 두 화면이 서로 다른 라벨을 보여준다. 이 티켓이 지목한
+   * 「누락돼도 조용히 통과」의 마지막 남은 한 곳이라 파싱해서 못 박는다(게이트 [우려 3]).
+   */
+  function seededLabels(): Map<string, { label: string; unit: string | null }> {
+    const open = sql.indexOf('INSERT INTO public.badge_metric_labels')
+    expect(open, 'badge_metric_labels INSERT를 찾지 못했다').toBeGreaterThan(-1)
+    const close = sql.indexOf('ON CONFLICT', open)
+    const body = sql
+      .slice(open, close)
+      .split('\n')
+      .map((line) => line.replace(/--.*$/, ''))
+      .join('\n')
+    const out = new Map<string, { label: string; unit: string | null }>()
+    for (const m of body.matchAll(/\(\s*'([a-z_]+)'\s*,\s*'([^']*)'\s*,\s*(?:'([^']*)'|NULL)\s*\)/g)) {
+      out.set(m[1], { label: m[2], unit: m[3] ?? null })
+    }
+    return out
+  }
+
+  it('시드된 모든 키의 라벨·단위가 레지스트리 선언과 일치한다', () => {
+    const seeded = seededLabels()
+    expect(seeded.size).toBeGreaterThan(0)
+    for (const [key, seed] of seeded) {
+      const meta = getConditionField(key)
+      expect(meta, `레지스트리에 없는 키를 시드하고 있다: ${key}`).toBeDefined()
+      expect(seed.label, `${key} 라벨 불일치`).toBe(meta!.label)
+      expect(seed.unit ?? null, `${key} 단위 불일치`).toBe(meta!.unit ?? null)
+    }
+  })
+
+  it('평가 대기 필드는 전부 라벨이 시드돼 있다 — 화면에 영문 키가 노출되지 않는다', () => {
+    const seeded = seededLabels()
+    for (const key of PENDING_CONDITION_KEYS) {
+      if (key === 'route') continue // route는 v5 신규가 아니라 기존 필드다
+      expect(seeded.has(key), `${key} 라벨 시드 누락`).toBe(true)
+    }
+  })
+
+  it('유저 문장에 삽입되는 라벨은 명사구로 끝난다', () => {
+    // getMetricLabels → computeBadgeProgress → badgeProgressText가 「지난 활동 {label}
+    // 기록은 …」 형태로 그대로 끼운다. 「전월 대비」 같은 부사구면 비문이 된다.
+    for (const meta of CONDITION_FIELDS) {
+      expect(meta.label, `${meta.key}: 부사구 라벨`).not.toMatch(/\s대비$/)
+    }
+  })
+})
+
+describe('미션 평가 경로 — fail-closed가 미션을 영구 미달성으로 만들지 않는다', () => {
+  it('미션 고유 키(count·badge_id)는 extraAllowedKeys로 통과시킨다', () => {
+    const missionCondition = { activity_type: 'running', distance_km: 5, count: 3 } as never
+    // 열어 주지 않으면 「알 수 없는 필드」로 막힌다
+    expect(evaluateConditionDetailed(missionCondition, activities).reason).toContain('알 수 없는 필드')
+    // 미션 경로처럼 열어 주면 기존 판정 로직이 그대로 돈다
+    const allowed = evaluateConditionDetailed(missionCondition, activities, {
+      extraAllowedKeys: new Set(['count', 'badge_id']),
+    })
+    expect(allowed.reason).not.toContain('알 수 없는 필드')
+  })
+
+  it('extraAllowedKeys를 열어도 평가 대기 필드는 여전히 막힌다', () => {
+    // 「모르는 키 허용」과 「미구현 필드 허용」은 다르다 — 후자는 열면 안 된다
+    const r = evaluateConditionDetailed({ activity_type: 'running', avg_watts: 200 } as never, activities, {
+      extraAllowedKeys: new Set(['avg_watts']),
+    })
+    expect(r.pass).toBe(false)
+    expect(r.reason).toContain('평가 구현 대기')
+  })
+})
+
+describe('어드민 표시 — 조건 한 건의 형태 오류가 목록 전체를 죽이지 않는다', () => {
+  it('객체형 필드에 스칼라가 들어와도 나머지 필드는 그대로 그린다', () => {
+    // condition_json은 jsonb라 형태 보장이 없다. 이 함수는 어드민 목록의 셀 안에서 행마다
+    // 호출되므로, 예외가 나면 목록 전체가 빈 화면이 된다(개선 리뷰 지적).
+    const broken = { distance_km: 5, activities_within_hours: 3 } as never
+    expect(() => formatConditionChips(broken)).not.toThrow()
+    const chips = formatConditionChips(broken)
+    expect(chips.some((c) => c.includes('5km'))).toBe(true)
+    expect(chips.some((c) => c.includes('형태 오류'))).toBe(true)
+  })
+
+  it('접근 자체가 터지는 형태(null)도 그 필드만 대체한다', () => {
+    // `(3).hours`는 던지지 않고 undefined를 주지만, `null.hours`는 TypeError를 던진다.
+    // 두 경로 모두 막아야 한다.
+    const broken = { total_count: 10, activities_within_hours: null } as never
+    expect(() => formatConditionDetail(broken)).not.toThrow()
+    const detail = formatConditionDetail(broken)
+    expect(detail.some((d) => d.includes('10'))).toBe(true)
+    expect(detail.some((d) => d.includes('형태 오류'))).toBe(true)
+  })
+
+  it('정상 조건에는 「형태 오류」가 끼어들지 않는다', () => {
+    const ok = { distance_km: 5, activities_within_hours: { hours: 3, count: 2 } } as never
+    expect(formatConditionChips(ok).join(' ')).not.toContain('형태 오류')
+    expect(formatConditionDetail(ok).join(' ')).not.toContain('형태 오류')
+  })
+})
+
+describe('진행률 — fail-closed로 막히는 조건은 진행률도 그리지 않는다', () => {
+  it('기존 축 + 평가 대기 필드 조합은 unsupported다', () => {
+    // 대기 필드를 무시한 채 cumulative 진행률을 그리면, 발급은 안 되는데 화면에는
+    // 「78% 달성」이 뜨는 상태가 된다. 유저 노출(배지 트리 진행 레일)이라 정직해야 한다.
+    expect(classifyBadgeProgressKind({ distance_km: 100 })).not.toBe('unsupported')
+    expect(classifyBadgeProgressKind({ distance_km: 100, avg_watts: 200 } as never)).toBe('unsupported')
+  })
+
+  it('오탈자 키가 섞여도 unsupported다', () => {
+    expect(classifyBadgeProgressKind({ distance_km: 100, distnace_km: 5 } as never)).toBe('unsupported')
   })
 })

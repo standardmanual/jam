@@ -21,7 +21,7 @@
 --    미구현 필드로 배지가 잘못 발급되는 경로는 없다.
 --
 -- 실행 순서: **코드 배포와 무관하게 먼저 실행해도 안전하다.** CHECK 제약을 넓히기만 하고
---    기존 5,596행의 condition_json은 한 글자도 건드리지 않는다(모두 25개 키 안에 있으므로
+--    기존 condition_json 207행(조건을 가진 활동 배지 전부)은 한 글자도 건드리지 않는다(모두 25개 키 안에 있으므로
 --    새 CHECK도 그대로 만족한다). badge_metric_labels 수정 2건은 화면 문구만 바꾼다.
 --
 -- 재실행 가능(idempotent): DROP ... IF EXISTS + ADD / CREATE OR REPLACE /
@@ -163,6 +163,11 @@ UPDATE public.badge_metric_labels
  WHERE metric_key = 'weekend_duration_hours' AND label_ko IS DISTINCT FROM '주말 활동시간';
 
 -- ③-2. v5 신규 20종 라벨
+-- ⚠️ 라벨은 어드민 표시용이 아니다. getMetricLabels → computeBadgeProgress →
+--    badgeProgressText.ts를 거쳐 **유저 문장에 그대로 삽입**된다:
+--      「지난 활동 {label} 기록은 {값}{단위}.」 · 「{label} 조건은 이미 채웠어요.」
+--    그래서 부사구가 아니라 **명사구**여야 한다 — 「전월 대비」는 「지난 활동 전월 대비
+--    기록은」이 되어 비문이므로 「전월 대비 배수」로 끝맺는다(티켓 20260905_0028 개선 리뷰).
 INSERT INTO public.badge_metric_labels (metric_key, label_ko, unit_ko) VALUES
   -- 활동 1건의 스칼라 값 (7)
   ('max_elevation_m',        '최고 도달 고도',   'm'),
@@ -183,10 +188,10 @@ INSERT INTO public.badge_metric_labels (metric_key, label_ko, unit_ko) VALUES
   ('weekly_streak',          '연속 주(월~일)',   '주'),
   ('distinct_time_bands',    '서로 다른 시간대', '개'),
   ('day_of_month',           '매달 지정일',      NULL),
-  ('activities_within_hours','정해진 시간 안의 활동 횟수', '회'),
+  ('activities_within_hours','지정 시간 내 활동 횟수', '회'),
   ('personal_record_break',  '개인 기록 갱신',   '회'),
-  ('month_over_month_ratio', '전월 대비',        '배'),
-  ('vs_personal_average',    '평소 평균 대비',   '배')
+  ('month_over_month_ratio', '전월 대비 배수',        '배'),
+  ('vs_personal_average',    '평소 평균 대비 배수',   '배')
 ON CONFLICT (metric_key) DO UPDATE
   SET label_ko   = EXCLUDED.label_ko,
       unit_ko    = EXCLUDED.unit_ko,
@@ -197,7 +202,9 @@ COMMIT;
 -- ── 검증 쿼리 (실행 후 눈으로 확인할 것) ────────────────────────────────────
 --
 -- -- ① 기존 배지가 새 CHECK를 전부 만족하는지 (제약 추가가 성공했다면 이미 보장되지만 재확인)
--- SELECT count(*) FROM public.badges WHERE condition_json IS NOT NULL;  -- 5,596 (실행 전과 동일)
+-- SELECT count(*) FROM public.badges WHERE condition_json IS NOT NULL;  -- 207 (실행 전과 동일)
+--    ⚠️ 207이 맞다. badges 테이블 «전체» 행수는 5,596이지만 그중 조건을 가진 건 활동 배지
+--       207행뿐이고 나머지 5,389행(아이템 배지 등)은 condition_json이 NULL이다(실측 2026-09-05).
 --
 -- -- ② 신규 키가 실제로 통과하는지 — 롤백 스모크. MCP엔 트랜잭션이 없으므로
 -- --    RAISE EXCEPTION으로 되돌린다.

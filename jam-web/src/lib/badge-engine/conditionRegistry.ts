@@ -8,21 +8,21 @@
  * 이 파일이 그 6곳 중 코드 쪽 전부의 단일 출처다(DB 쪽 2곳은 마이그레이션 131이 이 선언을
  * 그대로 옮겨 적는다).
  *
- * ## `evaluated` 플래그 — fail-closed 안전장치의 근거
+ * ## `evaluation` 플래그 — fail-closed 안전장치의 근거
  *
  * `index.ts`의 `matchesPerActivityCondition()`은 아는 키만 검사하고 **마지막에 `return true`**
  * 한다. 그래서 레지스트리에 선언됐지만 그 함수가 모르는 키는 조용히 무시되고 조건이 통과된다 —
  * 미구현 필드가 «발급 안 됨»이 아니라 «무조건 발급»이 되는 구조다. 오탈자로 잘못 들어간 키에도
  * 같은 일이 벌어진다.
  *
- * 그래서 필드마다 «평가 구현됨»(`evaluated`)을 명시하고, `evaluateConditionDetailed`가
- * 조건에 미구현/미지의 키가 하나라도 있으면 **명시적 사유와 함께 fail**한다
+ * 그래서 필드마다 «누가 평가하는가»(`evaluation`)를 명시하고, `evaluateConditionDetailed`가
+ * 조건에 `pending`/미지의 키가 하나라도 있으면 **명시적 사유와 함께 fail**한다
  * (`findBlockingConditionKeys`). v5 신규 20종은 평가 구현(티켓 20260905_0030) 전까지
- * `evaluated: false`이므로 «발급되지 않는 것»이 기본값이다.
+ * `pending`이므로 «발급되지 않는 것»이 기본값이다.
  *
  * ## 새 조건 필드를 추가할 때
  * 1. `src/types/database.ts`의 `BadgeCondition`에 필드 추가 (컴파일러가 아래 목록 누락을 잡는다)
- * 2. 이 파일의 `CONDITION_FIELDS`에 항목 추가 — 라벨·단위·역할·입력 타입·평가 여부
+ * 2. 이 파일의 `CONDITION_FIELDS`에 항목 추가 — 라벨·단위·역할·입력 타입·평가 주체
  * 3. 마이그레이션으로 DB CHECK 배열 + `check_family_condition_consistency()`의
  *    `measurable_keys` + `badge_metric_labels` 행을 갱신 (131 파일이 그 패턴이다)
  */
@@ -38,6 +38,23 @@ import { formatPaceSecPerKm } from '@/types/strava'
  * - `meta`: 발급 판정에 관여하지 않는 표시·안내용 메타데이터
  */
 export type ConditionRole = 'measurable' | 'filter' | 'meta'
+
+/**
+ * 이 필드를 **누가 평가하는가**. 셋을 구분하는 이유는 `boolean` 하나가 세 가지 뜻을
+ * 겸하고 있었기 때문이다(티켓 20260905_0028 개선 리뷰) — 「엔진이 수치 검사한다」와
+ * 「엔진 밖 파이프라인이 처리한다」와 「아무도 평가하지 않지만 관습상 통과시킨다」가
+ * 전부 `true`였다. 그 과적재가 `route`를 «평가됨»으로 남기는 오분류를 낳았다.
+ *
+ * - `engine`   — `evaluateConditionDetailed`가 직접 수치·필터 검사를 한다
+ * - `external` — 엔진 밖에서 처리한다. `poi_id`(체크인 파이프라인) ·
+ *   `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`(선행 배지 게이트,
+ *   `index.ts`의 후보 선별 단계). 조건 평가 자체는 통과시켜야 한다
+ * - `pending`  — 아직 아무도 평가하지 않는다. **fail-closed로 막는다.**
+ *   v5 신규 20종이 여기 속하며 평가 구현(티켓 20260905_0030)에서 하나씩 `engine`으로 뒤집는다.
+ *   `route`도 여기다 — 타입·스키마·DB CHECK에만 있고 엔진에 참조가 0건이다(실측 2026-09-05).
+ *   쓰는 배지가 0건이라 회귀 없이 정직하게 표기할 수 있다
+ */
+export type ConditionEvaluation = 'engine' | 'external' | 'pending'
 
 /** 어드민 입력 UI의 컨트롤 종류 */
 export type ConditionInputType =
@@ -78,10 +95,10 @@ export interface ConditionFieldMeta<K extends keyof BadgeCondition = keyof Badge
   pairedWith?: readonly (keyof BadgeCondition)[]
   direction: ConditionDirection
   /**
-   * 배지 엔진이 이 필드를 **실제로 평가하는가**.
-   * `false`면 이 필드가 든 조건은 `evaluateConditionDetailed`가 fail-closed로 막는다.
+   * 이 필드를 **누가 평가하는가**. `'pending'`이면 이 필드가 든 조건은
+   * `evaluateConditionDetailed`가 fail-closed로 막는다. 나머지 둘은 통과시킨다.
    */
-  evaluated: boolean
+  evaluation: ConditionEvaluation
   /** 어드민 목록의 압축 칩. null을 돌려주면 그 배지에서는 칩을 만들지 않는다 */
   chip?: (c: BadgeCondition) => string | null
   /** 어드민 상세의 한 줄. null을 돌려주면 그 배지에서는 줄을 만들지 않는다 */
@@ -184,7 +201,7 @@ export const CONDITION_FIELDS = [
     max: 100000,
     step: 0.1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `누적 ${c.distance_km}km`,
     detail: (c) => `거리 누적 ${c.distance_km}km`,
     form: { fields: ['distanceKm'], read: (f) => num(f.distanceKm) },
@@ -199,7 +216,7 @@ export const CONDITION_FIELDS = [
     max: 100000,
     step: 1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `${c.total_count}회`,
     detail: (c) => `총 ${c.total_count}회`,
     form: { fields: ['totalCount'], read: (f) => int(f.totalCount) },
@@ -214,7 +231,7 @@ export const CONDITION_FIELDS = [
     max: 3650,
     step: 1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `${c.streak_days}일 연속`,
     detail: (c) => `${c.streak_days}일 연속 활동`,
     form: { fields: ['streakDays'], read: (f) => int(f.streakDays) },
@@ -229,7 +246,7 @@ export const CONDITION_FIELDS = [
     max: 3650,
     step: 1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `누적 ${c.active_days_count}일`,
     detail: (c) => `누적 활동일수 ${c.active_days_count}일`,
   }),
@@ -243,7 +260,7 @@ export const CONDITION_FIELDS = [
     max: 1000000,
     step: 1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `고도 ${c.elevation_gain_m}m`,
     detail: (c) => `고도 ${c.elevation_gain_m}m 이상`,
     form: { fields: ['elevationM'], read: (f) => num(f.elevationM) },
@@ -258,7 +275,7 @@ export const CONDITION_FIELDS = [
     max: 120,
     step: 0.1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `${c.min_speed_kmh}km/h+`,
     detail: (c) => `최소 속력 ${c.min_speed_kmh}km/h`,
     form: { fields: ['minSpeedKmh'], read: (f) => num(f.minSpeedKmh) },
@@ -271,7 +288,7 @@ export const CONDITION_FIELDS = [
     role: 'measurable',
     input: 'pace',
     direction: 'lower',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `${formatPaceSecPerKm(c.max_pace_sec_per_km!)} 이내`,
     detail: (c) => `최대 페이스 ${formatPaceSecPerKm(c.max_pace_sec_per_km!)} 이내`,
     form: {
@@ -294,7 +311,7 @@ export const CONDITION_FIELDS = [
     max: 1440,
     step: 1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `${c.duration_minutes}분+`,
     detail: (c) => `최소 활동 시간 ${c.duration_minutes}분`,
     form: { fields: ['durationMinutes'], read: (f) => int(f.durationMinutes) },
@@ -309,7 +326,7 @@ export const CONDITION_FIELDS = [
     max: 24,
     step: 0.1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `주말 ${c.weekend_duration_hours}h`,
     detail: (c) => `주말 활동 시간 ${c.weekend_duration_hours}시간`,
     form: { fields: ['weekendDurationHours'], read: (f) => num(f.weekendDurationHours) },
@@ -324,7 +341,7 @@ export const CONDITION_FIELDS = [
     max: 50,
     step: 1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `주 ${c.weekly_count}회`,
     detail: (c) => `주 ${c.weekly_count}회 이상`,
     form: { fields: ['weeklyCount'], read: (f) => int(f.weeklyCount) },
@@ -337,7 +354,7 @@ export const CONDITION_FIELDS = [
     input: 'select',
     pairedWith: ['total_count'],
     direction: null,
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => dayOfWeekChip(c.day_of_week!),
     detail: (c) => dayOfWeekChip(c.day_of_week!),
   }),
@@ -352,7 +369,7 @@ export const CONDITION_FIELDS = [
     step: 1,
     pairedWith: ['monthly_km'],
     direction: null,
-    evaluated: true,
+    evaluation: 'engine',
     // monthly_km가 함께 있으면 그쪽 문구에 월이 흡수된다 — 여기서는 만들지 않는다
     chip: (c) => (c.monthly_km !== undefined ? null : `${monthsText(c.month!)}월`),
     detail: (c) => (c.monthly_km !== undefined ? null : `${monthsText(c.month!)}월`),
@@ -369,7 +386,7 @@ export const CONDITION_FIELDS = [
     step: 0.1,
     pairedWith: ['month'],
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `${c.month !== undefined ? `${monthsText(c.month)}월 ` : '월간 '}${c.monthly_km}km`,
     detail: (c) => `${c.month !== undefined ? `${monthsText(c.month)}월 ` : '월간 '}${c.monthly_km}km 이상`,
     form: { fields: ['monthlyKm'], read: (f) => num(f.monthlyKm) },
@@ -382,7 +399,7 @@ export const CONDITION_FIELDS = [
     input: 'select',
     pairedWith: ['season_count'],
     direction: null,
-    evaluated: true,
+    evaluation: 'engine',
     // season_count가 함께 있으면 그쪽 문구에 계절이 흡수된다
     chip: (c) => (c.season_count !== undefined ? null : (SEASON_SHORT[c.season!] ?? c.season!)),
     detail: (c) => (c.season_count !== undefined ? null : (SEASON_SHORT[c.season!] ?? c.season!)),
@@ -399,7 +416,7 @@ export const CONDITION_FIELDS = [
     step: 1,
     pairedWith: ['season'],
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => (c.season ? `${SEASON_SHORT[c.season] ?? c.season} ${c.season_count}회` : `계절 ${c.season_count}회`),
     detail: (c) => (c.season ? `${SEASON_SHORT[c.season] ?? c.season} ${c.season_count}회` : `계절 ${c.season_count}회`),
     form: { fields: ['seasonCount'], read: (f) => int(f.seasonCount) },
@@ -414,7 +431,7 @@ export const CONDITION_FIELDS = [
     max: 1000,
     step: 1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `4계절 각 ${c.season_count_all}회`,
     detail: (c) => `4계절 각 ${c.season_count_all}회`,
   }),
@@ -428,7 +445,7 @@ export const CONDITION_FIELDS = [
     max: 60,
     step: 0.1,
     direction: 'higher',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `≥${c.temperature_min_c}°C`,
     detail: (c) => `최저 기온 ${c.temperature_min_c}°C 이상`,
     form: { fields: ['tempMinC'], read: (f) => num(f.tempMinC) },
@@ -443,7 +460,7 @@ export const CONDITION_FIELDS = [
     max: 60,
     step: 0.1,
     direction: 'lower',
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `≤${c.temperature_max_c}°C`,
     detail: (c) => `최고 기온 ${c.temperature_max_c}°C 이하`,
     form: { fields: ['tempMaxC'], read: (f) => num(f.tempMaxC) },
@@ -455,7 +472,7 @@ export const CONDITION_FIELDS = [
     role: 'measurable',
     input: 'time_range',
     direction: null,
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => `${c.time_range!.start}~${c.time_range!.end}`,
     detail: (c) => `시간 ${c.time_range!.start}~${c.time_range!.end}`,
     form: {
@@ -473,7 +490,7 @@ export const CONDITION_FIELDS = [
     role: 'filter',
     input: 'select',
     direction: null,
-    evaluated: true,
+    evaluation: 'engine',
     // 칩·상세 모두 만들지 않는다 — 종목은 배지의 activity_types 필드로 이미 표시된다.
     // (조건 칩에까지 넣으면 활동 배지 대부분에 중복 칩이 하나씩 더 붙는다)
     form: {
@@ -492,7 +509,7 @@ export const CONDITION_FIELDS = [
     //    그럼에도 `true`로 둔다 — 이 티켓(20260905_0028)은 «기존 25개 필드의 현행 동작을
     //    한 톨도 바꾸지 않는다»가 전제이고, 현재 카탈로그에 route를 쓰는 배지가 0건이라
     //    당장 오발급은 없다. 사용 시작 전에 평가 구현 또는 `false` 전환이 필요하다.
-    evaluated: true,
+    evaluation: 'pending',
     chip: (c) => `루트 ${c.route}`,
     detail: (c) => `루트 ${c.route}`,
   }),
@@ -505,7 +522,7 @@ export const CONDITION_FIELDS = [
     direction: null,
     // 엔진 내 평가 불가지만 «모르는 필드»가 아니다 — evaluateConditionDetailed가 전용
     // 분기로 항상 fail 처리하고, GPS 경로 매칭 파이프라인이 별도로 발급한다.
-    evaluated: true,
+    evaluation: 'external',
     chip: () => '지점 지정',
     detail: () => '지점 지정 (체크인으로 발급)',
   }),
@@ -516,7 +533,7 @@ export const CONDITION_FIELDS = [
     role: 'filter',
     input: 'text_list',
     direction: null,
-    evaluated: true,
+    evaluation: 'external',
     chip: (c) => `선행 배지 ${c.prerequisite_badge_names!.length}개`,
     detail: (c) => `선행 배지: ${c.prerequisite_badge_names!.join(', ')}`,
     form: {
@@ -539,7 +556,7 @@ export const CONDITION_FIELDS = [
     input: 'boolean',
     pairedWith: ['distance_km', 'elevation_gain_m'],
     direction: null,
-    evaluated: true,
+    evaluation: 'engine',
     chip: (c) => (c.same_activity === true ? '단일 활동' : null),
     detail: (c) => (c.same_activity === true ? '한 번의 활동에서 충족' : null),
   }),
@@ -550,7 +567,7 @@ export const CONDITION_FIELDS = [
     role: 'meta',
     input: 'boolean',
     direction: null,
-    evaluated: true,
+    evaluation: 'external',
     chip: (c) => (c.mission_reward === true ? '미션 보상' : null),
     detail: (c) => (c.mission_reward === true ? '미션 완료로만 지급' : null),
     form: { fields: ['missionReward'], read: (f) => (f.missionReward === true ? true : undefined) },
@@ -573,7 +590,7 @@ export const CONDITION_FIELDS = [
     max: 9000,
     step: 10,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `최고 고도 ${c.max_elevation_m}m`,
     detail: (c) => `최고 도달 고도 ${c.max_elevation_m}m 이상`,
   }),
@@ -587,7 +604,7 @@ export const CONDITION_FIELDS = [
     max: 120,
     step: 0.1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `최고 ${c.max_speed_kmh}km/h`,
     detail: (c) => `최고 속도 ${c.max_speed_kmh}km/h 이상`,
   }),
@@ -601,7 +618,7 @@ export const CONDITION_FIELDS = [
     max: 500,
     step: 0.1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `한 번 ${c.single_distance_km}km`,
     detail: (c) => `한 번의 거리 ${c.single_distance_km}km 이상`,
   }),
@@ -615,7 +632,7 @@ export const CONDITION_FIELDS = [
     max: 10000,
     step: 10,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `한 번 고도 ${c.single_elevation_m}m`,
     detail: (c) => `한 번의 고도 ${c.single_elevation_m}m 이상`,
   }),
@@ -629,7 +646,7 @@ export const CONDITION_FIELDS = [
     max: 250,
     step: 1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `심박 ${c.avg_heartrate_bpm}bpm`,
     detail: (c) => `평균 심박수 ${c.avg_heartrate_bpm}bpm 이상`,
   }),
@@ -643,7 +660,7 @@ export const CONDITION_FIELDS = [
     max: 2000,
     step: 1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `파워 ${c.avg_watts}W`,
     detail: (c) => `평균 파워 ${c.avg_watts}W 이상`,
   }),
@@ -658,7 +675,7 @@ export const CONDITION_FIELDS = [
     max: 250,
     step: 1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `케이던스 ${c.avg_cadence}`,
     detail: (c) => `평균 케이던스 ${c.avg_cadence} 이상`,
   }),
@@ -676,7 +693,7 @@ export const CONDITION_FIELDS = [
     // 「며칠 연속 뒤의 휴식인가」는 streak_days가 정한다
     pairedWith: ['streak_days'],
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `연속 후 휴식 ${c.rest_after_streak}일`,
     detail: (c) => `연속 활동 후 휴식 ${c.rest_after_streak}일 이상`,
   }),
@@ -692,7 +709,7 @@ export const CONDITION_FIELDS = [
     // 「무엇을 장거리로 볼 것인가」는 single_distance_km이 정한다
     pairedWith: ['single_distance_km'],
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `장거리 후 휴식 ${c.rest_after_long}일`,
     detail: (c) => `장거리 활동 후 휴식 ${c.rest_after_long}일 이상`,
   }),
@@ -706,7 +723,7 @@ export const CONDITION_FIELDS = [
     max: 365,
     step: 1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `복귀 전 휴식 ${c.return_gap_days}일`,
     detail: (c) => `복귀 전 휴식 ${c.return_gap_days}일 이상`,
   }),
@@ -720,7 +737,7 @@ export const CONDITION_FIELDS = [
     max: 365,
     step: 1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `간격 ${c.interval_days}일`,
     detail: (c) => `활동 간격 ${c.interval_days}일 이상`,
   }),
@@ -734,7 +751,7 @@ export const CONDITION_FIELDS = [
     max: 3650,
     step: 1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `하루 1회 ${c.daily_once_count}일`,
     detail: (c) => `하루 1회만 활동한 날 ${c.daily_once_count}일 이상`,
   }),
@@ -746,7 +763,7 @@ export const CONDITION_FIELDS = [
     input: 'boolean',
     pairedWith: ['total_count'],
     direction: null,
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => (c.negative_split === true ? '후반이 더 빠름' : null),
     detail: (c) => (c.negative_split === true ? '후반 구간이 전반보다 빠른 활동' : null),
   }),
@@ -761,7 +778,7 @@ export const CONDITION_FIELDS = [
     max: 520,
     step: 1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `${c.weekly_streak}주 연속`,
     detail: (c) => `${c.weekly_streak}주(월~일) 연속 이상`,
   }),
@@ -775,7 +792,7 @@ export const CONDITION_FIELDS = [
     max: 6,
     step: 1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `시간대 ${c.distinct_time_bands}개`,
     detail: (c) => `서로 다른 시간대 ${c.distinct_time_bands}개 이상`,
   }),
@@ -790,18 +807,18 @@ export const CONDITION_FIELDS = [
     step: 1,
     pairedWith: ['total_count'],
     direction: null,
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `매달 ${c.day_of_month}일`,
     detail: (c) => `매달 ${c.day_of_month}일`,
   }),
   field({
     key: 'activities_within_hours',
-    label: '정해진 시간 안의 활동 횟수',
+    label: '지정 시간 내 활동 횟수',
     unit: '회',
     role: 'measurable',
     input: 'object',
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `${c.activities_within_hours!.hours}시간 ${c.activities_within_hours!.count}회`,
     detail: (c) => `${c.activities_within_hours!.hours}시간 안에 ${c.activities_within_hours!.count}회 이상`,
   }),
@@ -815,13 +832,13 @@ export const CONDITION_FIELDS = [
     max: 100,
     step: 1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `기록 갱신 ${c.personal_record_break}회`,
     detail: (c) => `개인 기록 갱신 ${c.personal_record_break}회 이상`,
   }),
   field({
     key: 'month_over_month_ratio',
-    label: '전월 대비',
+    label: '전월 대비 배수',
     unit: '배',
     role: 'measurable',
     input: 'number',
@@ -829,13 +846,13 @@ export const CONDITION_FIELDS = [
     max: 10,
     step: 0.1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `전월 대비 ${c.month_over_month_ratio}배`,
     detail: (c) => `전월 대비 ${c.month_over_month_ratio}배 이상`,
   }),
   field({
     key: 'vs_personal_average',
-    label: '평소 평균 대비',
+    label: '평소 평균 대비 배수',
     unit: '배',
     role: 'measurable',
     input: 'number',
@@ -843,7 +860,7 @@ export const CONDITION_FIELDS = [
     max: 10,
     step: 0.1,
     direction: 'higher',
-    evaluated: false,
+    evaluation: 'pending',
     chip: (c) => `평소 대비 ${c.vs_personal_average}배`,
     detail: (c) => `평소 평균 대비 ${c.vs_personal_average}배 이상`,
   }),
@@ -880,10 +897,15 @@ export const CONDITION_FIELD_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.fi
   (f) => f.role !== 'meta'
 ).map((f) => f.key)
 
-/** 엔진이 평가를 구현한 필드 */
-export const EVALUATED_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.filter((f) => f.evaluated).map(
-  (f) => f.key
-)
+/** 평가 주체가 있는 필드 — 엔진이 직접 보거나(engine) 엔진 밖에서 처리하거나(external) */
+export const EVALUATED_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.filter(
+  (f) => f.evaluation !== 'pending'
+).map((f) => f.key)
+
+/** 아직 아무도 평가하지 않는 필드 — 이 키가 든 조건은 fail-closed로 막힌다 */
+export const PENDING_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_FIELDS.filter(
+  (f) => f.evaluation === 'pending'
+).map((f) => f.key)
 
 const FIELD_BY_KEY = new Map<string, AnyConditionFieldMeta>(
   CONDITION_FIELDS.map((f) => [f.key as string, f as AnyConditionFieldMeta])
@@ -909,14 +931,25 @@ export type BlockingConditionKeys = {
  * 이유: `matchesPerActivityCondition()`이 모르는 키를 조용히 건너뛰고 `return true` 하므로,
  * 막지 않으면 미구현 필드가 «무조건 발급»로 뒤집힌다(티켓 20260905_0028).
  */
-export function findBlockingConditionKeys(condition: BadgeCondition | null | undefined): BlockingConditionKeys {
+export function findBlockingConditionKeys(
+  condition: BadgeCondition | null | undefined,
+  /**
+   * 레지스트리에 없어도 허용할 키. **미션 평가 경로 전용이다** —
+   * `missions/checker.ts`가 같은 함수에 `MissionCondition`을 캐스팅해 넘기는데 그 어휘에는
+   * `count`·`badge_id`처럼 배지 조건에 없는 키가 있다. 이걸 열어 두지 않으면 fail-closed가
+   * 「알 수 없는 필드」로 판정해 **미션이 영구 미달성**이 된다(게이트 리뷰 지적).
+   * `pending` 판정에는 영향을 주지 않는다 — 평가 구현이 없는 건 미션에서도 마찬가지다.
+   */
+  extraAllowedKeys?: ReadonlySet<string>
+): BlockingConditionKeys {
   const result: BlockingConditionKeys = { unknown: [], pending: [] }
   if (!condition) return result
   for (const [key, value] of Object.entries(condition)) {
     if (value === undefined) continue
     const meta = FIELD_BY_KEY.get(key)
-    if (!meta) result.unknown.push(key)
-    else if (!meta.evaluated) result.pending.push(key)
+    if (!meta) {
+      if (!extraAllowedKeys?.has(key)) result.unknown.push(key)
+    } else if (meta.evaluation === 'pending') result.pending.push(key)
   }
   return result
 }
@@ -934,13 +967,42 @@ export function describeBlockingConditionKeys(blocking: BlockingConditionKeys): 
 
 // ── 표시 함수 (어드민) ───────────────────────────────────────────────────
 
+/**
+ * 필드 하나의 표시 문구를 만든다. **한 필드의 실패가 목록 전체를 죽이지 않게 격리한다.**
+ *
+ * `condition_json`은 jsonb라 형태 보장이 없는데, 객체형 필드의 chip/detail은
+ * `c.activities_within_hours!.hours`처럼 내부를 판다. 시딩(티켓 20260905_0035) 550종 중
+ * 한 행이 스칼라로 들어오면 TypeError가 나고, 이 함수는 어드민 목록의 TanStack `cell` 안에서
+ * 행마다 호출되므로 **목록 전체가 빈 화면**이 된다(개선 리뷰 지적).
+ * 실패한 필드만 «형태 오류» 표시로 대체하고 나머지는 그대로 그린다.
+ */
+function safeFormat(
+  meta: AnyConditionFieldMeta,
+  render: ((c: BadgeCondition) => string | null) | undefined,
+  condition: BadgeCondition
+): string | null {
+  if (!render) return null
+  let text: string | null
+  try {
+    text = render(condition)
+  } catch {
+    // 형태가 아예 어긋나 접근 자체가 터진 경우 — 예: `null.hours`, 문자열에 `.join()`
+    return `${meta.label}: 형태 오류`
+  }
+  if (text == null) return null
+  // 예외가 나지 않아도 값은 깨질 수 있다. `(3).hours`는 던지지 않고 `undefined`를 돌려주므로
+  // 그대로 두면 「undefined시간 undefined회」가 화면에 찍힌다 — 던지는 경우보다 흔하다.
+  if (text.includes('undefined') || text.includes('NaN')) return `${meta.label}: 형태 오류`
+  return text
+}
+
 /** 어드민 목록의 압축 칩 목록. 선언 순서를 그대로 따른다 */
 export function formatConditionChips(condition: BadgeCondition | null | undefined): string[] {
   if (!condition) return []
   const chips: string[] = []
   for (const meta of CONDITION_FIELDS) {
-    if (condition[meta.key] === undefined || !meta.chip) continue
-    const text = meta.chip(condition)
+    if (condition[meta.key] === undefined) continue
+    const text = safeFormat(meta, meta.chip, condition)
     if (text) chips.push(text)
   }
   return chips
@@ -951,8 +1013,8 @@ export function formatConditionDetail(condition: BadgeCondition | null | undefin
   if (!condition) return []
   const parts: string[] = []
   for (const meta of CONDITION_FIELDS) {
-    if (condition[meta.key] === undefined || !meta.detail) continue
-    const text = meta.detail(condition)
+    if (condition[meta.key] === undefined) continue
+    const text = safeFormat(meta, meta.detail, condition)
     if (text) parts.push(text)
   }
   return parts
