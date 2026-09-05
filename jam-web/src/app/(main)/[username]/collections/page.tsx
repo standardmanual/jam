@@ -61,21 +61,24 @@ export default async function UserItemBooksPage({ params }: Props) {
   if (inventory) {
     const { data: invItemsRaw, error: invItemsError } = await service
       .from('inventory_items')
-      .select('badge_id, badge:badges(item_book_id, type)')
+      .select('badge_id, badge:badges(item_book_id, type, deleted_at)')
       .eq('inventory_id', inventory.id)
       .is('dropped_at', null)
     if (invItemsError) console.error('[[username]/collections/page] inventory_items 조회 실패', invItemsError)
 
     type InvItemJoin = {
       badge_id: string
-      badge: { item_book_id: string | null; type: string } | null
+      badge: { item_book_id: string | null; type: string; deleted_at: string | null } | null
     }
     const invItems = (invItemsRaw ?? []) as unknown as InvItemJoin[]
 
+    // 20260903_2021: 소프트 삭제된 배지는 목록에서도 제외한다 — 통계 카운트
+    // ([username]/page.tsx의 itemBookCount)는 이미 badges.deleted_at IS NULL을 적용 중이라
+    // 이 필터가 없으면 "목록에는 뜨는데 통계 숫자에는 안 잡히는" 비대칭이 생긴다.
     const discoveredByBook = new Map<string, Set<string>>()
     for (const it of invItems) {
       const bookId = it.badge?.item_book_id
-      if (!bookId || it.badge?.type !== 'item') continue
+      if (!bookId || it.badge?.type !== 'item' || it.badge?.deleted_at) continue
       if (!discoveredByBook.has(bookId)) discoveredByBook.set(bookId, new Set())
       discoveredByBook.get(bookId)!.add(it.badge_id)
     }
