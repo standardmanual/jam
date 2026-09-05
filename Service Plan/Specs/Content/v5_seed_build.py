@@ -748,6 +748,24 @@ for sport in sport_order:
                 sport, f.code, name, desc, rarity, level, f.family_key, idx, c
             ))
 
+# ── JSON 산출 — PostgREST로 넣기 위한 같은 데이터 ──────────────────────────
+# psql이 없는 환경에서 178KB SQL을 대화로 통과시키지 않고 REST로 삽입하기 위해,
+# SQL과 **같은 value_rows**에서 JSON을 함께 낸다. 두 산출물이 갈리지 않는다.
+import json as _json
+import os as _os
+OUT_ROWS = _os.path.join(HERE, 'seed_v5_activity_badges.rows.json')
+_json_rows = [
+    {
+        'name': name, 'description': desc, 'type': 'activity',
+        'rarity': rarity, 'level': level, 'family_key': fkey,
+        'sort_order': order, 'condition_json': c,
+        'activity_types': [sport], 'patch_available': False,
+    }
+    for sport, code, name, desc, rarity, level, fkey, order, c in value_rows
+]
+open(OUT_ROWS, 'w', encoding='utf-8').write(
+    _json.dumps(_json_rows, ensure_ascii=False, indent=1) + '\n')
+
 sql_rows = []
 prev_key = None
 for sport, code, name, desc, rarity, level, fkey, order, c in value_rows:
