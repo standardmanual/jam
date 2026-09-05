@@ -19,7 +19,7 @@ import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm } from '@/types/strava'
 import { passesWalkingGate, matchesDayOfWeek, dedupeOnePerDay, inTimeRange } from './activityFilters'
 import { GATE_CONDITION_KEYS } from './crossGate'
-import { PER_ACTIVITY_KEYS, CUMULATIVE_SAME_ACTIVITY_KEYS } from './conditionAxes'
+import { PER_ACTIVITY_KEYS, CUMULATIVE_SAME_ACTIVITY_KEYS, type ScalarAxisKey } from './conditionAxes'
 
 /** 활동 하나가 PER_ACTIVITY_KEYS + (weekly_count 없을 때의) time_range를 전부 만족하는지 */
 export function matchesPerActivityCondition(condition: BadgeCondition, a: NormalizedActivity): boolean {
@@ -84,6 +84,27 @@ export function unconsumedRepeatConditionKeys(condition: BadgeCondition): string
 }
 
 /**
+ * 회차 술어가 «활동 1건 단위 조건으로 실제로 흡수하는» 수치 축 키 (티켓 20260905_0031 재시도).
+ *
+ * `CONSUMED_REPEAT_KEYS`(위)와 다르다. 저 목록은 「이 키가 있어도 회차를 셀 수 있는가」를
+ * 묻고, 이 함수는 「그 키가 회차 축에 흡수되는가」를 묻는다. `distance_km`/
+ * `elevation_gain_m`이 정확히 이 둘 사이에서 갈린다 — `same_activity`가 없으면 **누적 합계로
+ * 따로 평가되는 독립 축**이라 회차 축이 흡수하지 못한다. 그런데도 회차를 세는 것 자체는
+ * 막지 않으므로(막으면 `{repeat_count, distance_km}` 배지가 영원히 발급되지 않는다)
+ * `CONSUMED_REPEAT_KEYS`에는 무조건 들어 있다.
+ *
+ * 그 차이를 모른 채 진행률을 그리면 「회차 5/5 = 100%」 옆에서 1,000km 축이 사라진다 —
+ * `badgeProgress.ts`가 이 함수로 그 경우를 `unsupported`로 떨어뜨린다.
+ *
+ * 아래 ③이 이 함수의 결과로 술어를 조립한다 — **흡수 목록이 한 곳뿐이라** 두 판단이 갈라질 수 없다.
+ */
+export function repeatConsumedAxisKeys(condition: BadgeCondition): readonly ScalarAxisKey[] {
+  return condition.same_activity === true
+    ? [...PER_ACTIVITY_KEYS, ...CUMULATIVE_SAME_ACTIVITY_KEYS]
+    : PER_ACTIVITY_KEYS
+}
+
+/**
  * 반복형의 «회차» 목록 — **활동 1건이 조건을 통째로 만족**한 활동을 시간순으로 돌려준다.
  * (v5 B1, 티켓 20260905_0030 §2)
  *
@@ -134,15 +155,11 @@ export function collectRepeatOccurrences(
 
   // ③ 회차 술어 — 조건에 실제로 든 «활동 1건 단위» 필드만 모아 부분 조건을 만든다.
   //    distance_km/elevation_gain_m은 기본이 «누적 합계»라 여기 들어오지 않는다.
-  //    same_activity:true일 때만 합류한다(기존 규칙 그대로).
+  //    same_activity:true일 때만 합류한다(기존 규칙 그대로 — `repeatConsumedAxisKeys`가
+  //    그 규칙의 단일 출처이며, 진행 계산도 같은 함수로 「흡수되는가」를 판단한다).
   const occurrenceCondition: Record<string, unknown> = {}
-  for (const k of PER_ACTIVITY_KEYS) {
+  for (const k of repeatConsumedAxisKeys(condition)) {
     if (condition[k] !== undefined) occurrenceCondition[k] = condition[k]
-  }
-  if (condition.same_activity === true) {
-    for (const k of CUMULATIVE_SAME_ACTIVITY_KEYS) {
-      if (condition[k] !== undefined) occurrenceCondition[k] = condition[k]
-    }
   }
   if (condition.time_range !== undefined && condition.weekly_count === undefined) {
     occurrenceCondition.time_range = condition.time_range

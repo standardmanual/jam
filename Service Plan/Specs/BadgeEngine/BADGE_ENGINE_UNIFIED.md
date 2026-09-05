@@ -524,11 +524,31 @@ v5(티켓 20260905_0030)가 만든 네 구조는 전부 진행률에서 `unsuppo
 | `repeat` | 「현재 회차 / 임계 회차」(`repeat_count`) | 회차는 **발급 판정과 같은 함수**(`collectRepeatOccurrences`)로 센다. 회차 술어가 다루지 못하는 키가 섞이면(발급이 fail-closed로 회차 0) 진행률도 `unsupported` |
 | `rest` | 「현재 최대 공백 / 요구 일수」(§2.16) | `evaluateRestConditions`의 fail 결과에 구조로 실린 `bestDays`·`shortfallKey`·`requiredDays`를 그대로 쓴다(문자열 파싱 없음). 「닫힌 공백」만 보므로 `now`가 필요 없다 |
 
+**신규 3종도 「축 하나를 숨긴 100%」를 그리지 않는다.** 기존 5종은 축이 2개를 넘으면
+`unsupported`로 떨어뜨려(축 하나만 그리고 나머지를 숨기는 상황을 막아) 이 규칙을 지켜 왔다.
+휴식·회차 축은 **자기 술어가 보는 부분만** 그리므로 같은 가드가 필요하다 —
+`{ return_gap_days: 5, distance_km: 1000 }`은 휴식만 보면 「5/5일 = 100%」인데 1,000km 축이
+화면에서 사라지고 발급은 막혀 있다. 그래서 **술어가 흡수하지 못하는 측정 축이 조건에 남아
+있으면 `unsupported`**다. 판단 근거는 각 술어 옆에 한 번만 적혀 있다 — 휴식은
+`restConsumedPairKeys()`(짝 필드 `streak_days`·`single_distance_km`), 회차는
+`repeatConsumedAxisKeys()`(활동 단위 축 + `same_activity:true`일 때의 `distance_km`/
+`elevation_gain_m`), 측정 축 목록은 `conditionAxes.ts`의 `MEASURED_AXIS_KEYS`.
+
+> ⚠️ `repeatConsumedAxisKeys()`는 「회차를 **셀 수 있는가**」(`unconsumedRepeatConditionKeys`)와
+> 다른 질문에 답한다. `{ repeat_count: 5, distance_km: 1000 }`은 회차가 정상적으로 세어지고
+> 발급도 가능하다(1,000km는 엔진이 누적으로 따로 평가한다) — 그리지 못하는 것은 **진행률**뿐이다.
+
 **표시 값의 성격이 갈린다 — 누적형은 「지금까지 쌓인 값」, 기록형은 「마지막 활동의 값」.**
 기록형에 누적/역대 최고를 쓰면 표시가 목표에 붙어 진행률이 사실상 고정되고 「이번에 얼마나
 가까웠나」가 사라진다. 다만 **판정(`met`)은 여전히 역대 최고 기준**이다 — 발급 판정은 기록형
 필드를 이력 전반에서 보므로, 마지막 활동이 짧다고 「미달」로 그리면 이번엔 반대 방향으로
-어긋난다. `met`이면 `fraction`을 1로 눌러 「조건 충족인데 바는 40%」가 나가지 않게 한다.
+어긋난다.
+
+**진행 바(`fraction`)는 캡션과 같은 값을 말한다** — `current / target`, 즉 마지막 활동 기준이다.
+초안은 `met`이면 `fraction`을 1로 눌렀는데, 그러자 「캡션은 40/45분인데 바는 가득 참」이
+실제로 재현됐다(「지구력의 전사」). 한 줄 안에서 숫자와 그림이 다른 말을 하면 안 된다.
+`met`·`remaining`은 배지 상태(=발급 판정 기준)를 말하고, `current`·`fraction`은 마지막 활동을
+말한다 — 역할이 갈릴 뿐 서로 모순되지 않는다.
 
 - `UserPeriodMetrics`에 축별 최댓값(`maxScalarValues`)·마지막 활동값(`lastActivityValues`)과
   별칭(`maxSingleDistanceKm`·`maxSingleDurationMin`·`maxSpeedKmh`·`maxElevationM`)이 추가됐다.

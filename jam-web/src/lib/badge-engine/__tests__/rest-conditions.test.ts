@@ -240,8 +240,18 @@ describe('휴식 — 발급 판정과 진행 계산이 어긋나지 않는다', 
   })
 
   it('「무엇이 휴식 조건인가」의 정의가 한 곳뿐이다 — 4종 전부가 진행률에서 rest', () => {
+    // ⚠️ **각 키를 그 키의 짝 필드와만 짝지어 준다.** 초안은 4종 전부에 `streak_days: 6`을
+    // 붙였는데, `streak_days`는 `rest_after_streak`의 짝 필드일 뿐이라 나머지 2종에서는
+    // **휴식 판정이 보지도 않는 독립 축**이다. 그 형태를 rest로 단언하면 「연속 6일은 아직
+    // 미달인데 진행률 100%」를 기대값으로 못 박게 된다(게이트 실측 재현 사례).
+    const pairFields: Record<string, BadgeCondition> = {
+      rest_after_streak: { streak_days: 6 },
+      rest_after_long: { single_distance_km: 20 },
+      return_gap_days: {},
+      interval_days: {},
+    }
     for (const key of REST_CONDITION_KEYS) {
-      const cond = { activity_type: 'running', streak_days: 6, [key]: 90 } as BadgeCondition
+      const cond = { activity_type: 'running', ...pairFields[key], [key]: 90 } as BadgeCondition
       expect(restConditionKeysIn(cond), key).toEqual([key])
       // rest_after_long은 짝 필드 single_distance_km이 아직 `evaluation: 'pending'`이라
       // fail-closed가 **발급을 먼저 막는다**(레지스트리 주석 참고). 발급이 막히는 조건은
@@ -250,6 +260,16 @@ describe('휴식 — 발급 판정과 진행 계산이 어긋나지 않는다', 
       const expected = key === 'rest_after_long' ? 'unsupported' : 'rest'
       expect(classifyBadgeProgressKind(cond), key).toBe(expected)
     }
+  })
+
+  it('휴식 술어가 보지 않는 축이 섞이면 진행률을 그리지 않는다 — 축 하나를 숨긴 100%를 막는다', () => {
+    // `streak_days`는 `rest_after_streak`의 짝 필드일 뿐이다. `return_gap_days`와 함께 오면
+    // 휴식 판정은 연속일수를 **보지 않고**, 엔진이 그 축을 따로 평가한다 — 휴식 축만 그리면
+    // 「휴식 5/5일 = 100%」인데 발급은 연속 6일 미달로 막힌 상태가 화면에 나간다.
+    const cond: BadgeCondition = { activity_type: 'running', streak_days: 6, return_gap_days: 5 }
+    const acts = [act('2026-06-01'), act('2026-06-10')] // 공백 8일 — 휴식만 보면 이미 충족
+    expect(checkCondition(cond, acts)).toBe(false)
+    expect(classifyBadgeProgressKind(cond)).toBe('unsupported')
   })
 
   it('휴식 + 회차는 발급이 막히는 조합이라 진행률도 그리지 않는다', () => {
