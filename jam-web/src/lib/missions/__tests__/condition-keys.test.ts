@@ -6,7 +6,7 @@
  *   - 미션 고유 키(count·badge_id)와 배지 조건 키가 모두 통과하는지
  *   - pending 키: 엔진 위임 타입은 거부 / 그 외 타입은 통과 + 고지
  *   - condition_json 부재(PATCH 부분 갱신) 통과, 배열·스칼라·null 거부(터지지 않음)
- *   - 프로덕션 74건(2026-09-05 실측)의 7개 조건 조합이 전부 통과하는지
+ *   - 프로덕션 45건(2026-09-05 실측)의 9개 조건 조합이 전부 통과하는지
  *   - 저장 허용 목록 ↔ checker.ts의 fail-closed 통과 목록이 같은 값인지
  *
  * `MissionCondition`에 필드를 추가했을 때 허용 키 누락이 «컴파일 에러»로 드러나는지는
@@ -28,15 +28,23 @@ import {
 import { ALL_CONDITION_KEYS, findBlockingConditionKeys } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition, MissionCondition, MissionType } from '@/types/database'
 
-/** 프로덕션 실측(2026-09-05, missions 74건)의 mission_type × condition_json 조합 */
+/**
+ * 프로덕션 실측(2026-09-05, `missions` 45행)의 mission_type × condition_json 조합 9종.
+ * 건수 내림차순 — 주석의 숫자는 그 조합을 쓰는 미션 수다.
+ *
+ * `activity_type`이 있는 조합과 없는 조합이 같은 mission_type 안에 공존한다
+ * (`activity_count`·`distance`) — 필터 키는 선택이므로 둘 다 통과해야 한다.
+ */
 const PRODUCTION_FIXTURES: Array<[MissionType, MissionCondition]> = [
-  ['distance', { activity_type: 'cycling', distance_km: 100 }],
-  ['duration_minutes', { activity_type: 'running', duration_minutes: 60 }],
-  ['activity_count', { activity_type: 'running', count: 5 }],
-  ['item_collect', { badge_id: '00000000-0000-0000-0000-000000000001' }],
-  ['streak_days', { activity_type: 'running', streak_days: 7 }],
-  ['elevation_gain_m', { activity_type: 'cycling', elevation_gain_m: 500 }],
-  ['checkin', { poi_id: '00000000-0000-0000-0000-000000000002' }],
+  ['distance', { activity_type: 'cycling', distance_km: 100 }], // 9
+  ['duration_minutes', { activity_type: 'running', duration_minutes: 60 }], // 9
+  ['item_collect', { badge_id: '00000000-0000-0000-0000-000000000001' }], // 6
+  ['activity_count', { count: 3 }], // 5 — activity_type 없음
+  ['activity_count', { activity_type: 'running', count: 5 }], // 5
+  ['checkin', { poi_id: '00000000-0000-0000-0000-000000000002' }], // 4
+  ['elevation_gain_m', { activity_type: 'cycling', elevation_gain_m: 500 }], // 3
+  ['streak_days', { activity_type: 'running', streak_days: 7 }], // 3
+  ['distance', { distance_km: 30 }], // 1 — activity_type 없음
 ]
 
 /** 레지스트리에 있으나 아직 아무도 평가하지 않는 키 — fail-closed 대상 */
@@ -127,7 +135,7 @@ const cases: Array<[string, () => void]> = [
   }],
 
   // ── 프로덕션 실데이터 ────────────────────────────────────────
-  ['프로덕션 74건의 조건 조합이 전부 통과한다', () => {
+  ['프로덕션 45건의 조건 조합이 전부 통과한다', () => {
     for (const [type, condition] of PRODUCTION_FIXTURES) {
       assert.deepStrictEqual(
         checkMissionCondition(type, condition),
@@ -136,6 +144,16 @@ const cases: Array<[string, () => void]> = [
       )
     }
   }],
+  ['값이 null인 키도 터지지 않고 통과한다 (키 검증이지 값 검증이 아니다)', () => {
+    // 프로덕션의 item_collect 6건이 전부 `{"badge_id": null}`이다(2026-09-05 실측).
+    // 목표 배지가 비어 실질 달성 불가로 보이지만 그건 «값» 문제이고, 이 검증의 대상은
+    // «키»다. 여기서 막으면 기존 6건의 수정 저장이 전부 거부된다 — 통과시켜야 한다.
+    assert.deepStrictEqual(
+      checkMissionCondition('item_collect', { badge_id: null } as unknown as MissionCondition),
+      { error: null, warning: null }
+    )
+  }],
+
   ['프로덕션 조건은 평가 경로의 fail-closed에도 걸리지 않는다', () => {
     // 저장 검증과 checker.ts의 fail-closed가 같은 허용 목록을 쓰는지 — 둘이 갈리면
     // 「저장은 되는데 평가에서 막힌다」가 생긴다.
