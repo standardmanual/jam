@@ -25,3 +25,11 @@
   쓸 수 있다.
 - `onNavigate`는 `href` 모드에서만 의미가 있다 — `<a href>`로 이동하기 직전에 실행할 부수효과
   클릭 핸들러다(`onClick`은 Button 모드 전용이라 href와 상호 배타).
+
+## v5 변경 — 미획득 썸네일은 실루엣 (티켓 20260905_0036)
+
+미획득·미발견 썸네일을 `grayscale(1)`에서 **`BadgeSilhouette`**로 바꿨다.
+원본 URL을 네트워크로 내보내지 않아야 「외형 비공개」가 실제로 성립한다.
+
+⚠️ **서비스는 이 DS 컴포넌트를 쓰지 않는다.** `src/components/ui/BadgeGridCard.tsx`가
+별도 사본이고 아직 `grayscale opacity-40`이다(병존 구현). 서비스 쪽 정리는 별도 작업이다.
