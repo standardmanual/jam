@@ -116,11 +116,12 @@ function fullyInstrumented(): StravaSummaryActivity {
     average_cadence: 88.5,
     elev_high: 412.7,
     elev_low: 12.3,
+    device_watts: true,
   })
 }
 
 describe('normalizeActivity — ① 값이 있으면 저장한다', () => {
-  it('확장 6필드가 전부 정규화 객체에 실린다', () => {
+  it('확장 9필드가 전부 정규화 객체에 실린다', () => {
     const n = normalizeActivity(fullyInstrumented())
     expect(n.avgHeartrateBpm).toBe(158.4)
     expect(n.avgWatts).toBe(243)
@@ -250,6 +251,34 @@ describe('normalizeActivity — ④ 기존 10필드 무변경', () => {
     for (const key of EXISTING_KEYS) {
       expect(rich[key]).toEqual(plain[key])
     }
+  })
+})
+
+describe('리뷰 반영 3필드 — 재백필을 피하려고 같은 응답에서 함께 담는다 (티켓 20260905_0029)', () => {
+  it('max_heartrate · weighted_average_watts · device_watts가 실린다', () => {
+    const n = normalizeActivity(fullyInstrumented())
+    expect(n.maxHeartrateBpm).toBe(181)
+    expect(n.weightedAvgWatts).toBe(251)
+    expect(n.deviceWatts).toBe(true)
+  })
+
+  it('device_watts는 false도 값이다 — 키가 생겨야 한다', () => {
+    // 추정 파워인지 실측인지를 가르는 구분자다. false를 «없음»으로 접으면
+    // 「실측 파워만 인정」 정책을 나중에 세울 수 없다.
+    const n = normalizeActivity(baseActivity({ average_watts: 180, device_watts: false }))
+    expect('deviceWatts' in n).toBe(true)
+    expect(n.deviceWatts).toBe(false)
+  })
+
+  it('세 필드가 없으면 키 자체가 없다', () => {
+    const bare = { ...baseActivity() } as Partial<StravaSummaryActivity>
+    delete bare.max_heartrate
+    delete bare.weighted_average_watts
+    delete bare.device_watts
+    const n = normalizeActivity(bare as StravaSummaryActivity)
+    expect('maxHeartrateBpm' in n).toBe(false)
+    expect('weightedAvgWatts' in n).toBe(false)
+    expect('deviceWatts' in n).toBe(false)
   })
 })
 

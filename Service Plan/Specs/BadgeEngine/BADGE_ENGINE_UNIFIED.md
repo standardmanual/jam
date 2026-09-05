@@ -32,7 +32,7 @@ Strava 싱크
 - 첫 싱크 게이트: `users.initial_sync_done=false`인 첫 싱크는 고가치 발급 제한 (액티비티=Rare+ 차단, 아이템=첫 드랍 확정이되 rarity 정책 적용)
 - 섀도우밴: 밴 레벨에 따라 고가치(rarity) 발급 차단 — `src/lib/abusing/`
 - 피드 이벤트: 발급 시 `recordFeedEvent` ('badge_earned' / 'item_dropped')
-- **수동 입력 활동 제외 (2026-08-10 추가)**: Strava `manual=true`(GPS/파일 없이 유저가 거리·시간을 직접 타이핑한 기록)인 활동은 `getActivities()`(`src/lib/strava/api.ts`) 반환 단계에서 완전히 걸러낸다 — 두 엔진 평가 대상에 아예 들어오지 않으며 `strava_activities`에도 기록되지 않는다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터는 상세 API 추가 호출이 필요해(목록 API 미포함) 현재는 미구현 — [Tickets/20260810_001](../../Tickets/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
+- **수동 입력 활동은 현재 걸러지지 않는다** ⚠️ *(2026-09-05 실측 정정)*: 2026-08-10에 Strava `manual=true` 활동을 `getActivities()` 반환 단계에서 제외하는 필터를 넣었으나, 정상 활동까지 누락되는 버그가 나 커밋 `86380c55`("revert: Strava manual 필터 제거")로 되돌려졌다. **`src/lib/strava/{api,sync}.ts`에 `manual` 참조가 0건이며**, 수동 입력 활동은 지금도 두 엔진 평가 대상에 들어오고 `strava_activities`에도 기록된다. 재도입 여부는 미결이다 — v5 카탈로그(티켓 20260905_0035)가 «수동 입력은 걸러진다»를 어뷰징 전제로 삼으면 그대로 어긋난다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터도 상세 API 추가 호출이 필요해 미구현이다 — [Tickets/20260810_001](../../Tickets/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
 
 ---
 

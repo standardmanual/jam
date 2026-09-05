@@ -189,10 +189,13 @@ describe('백필 모듈 — 배지 홍수를 일으킬 경로가 없다', () => 
     expect(source).not.toContain('getActivityById')
   })
 
-  it('strava_activities에 쓰는 컬럼은 normalized·processed_via뿐이다', () => {
-    const updateBlock = source.slice(source.indexOf('const payload'), source.indexOf('result.updated++'))
+  it('strava_activities에 쓰는 컬럼은 normalized 하나뿐이다', () => {
+    const updateBlock = source.slice(source.indexOf('for (const update of updates)'), source.indexOf('result.updated++'))
     expect(updateBlock).toContain('normalized')
-    expect(updateBlock).toContain('processed_via')
+    // processed_via는 «이 행이 어떤 경로로 들어왔는가»(sync/reconcile)다. 백필은 행을 만든 게
+    // 아니라 채운 것이므로 덮어쓰지 않는다 — 실측 reconcile 16행의 유입 이력이 사라진다.
+    expect(updateBlock).not.toContain('processed_via')
+    expect(updateBlock).toContain('extendedBackfilledAt')
     for (const column of ['distance_km', 'jam_activity_type', 'start_date', 'user_id', 'strava_id']) {
       expect(updateBlock, `쓰기 대상에 ${column}이 들어갔다`).not.toContain(`${column}:`)
     }

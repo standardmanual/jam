@@ -52,10 +52,14 @@ export interface BackfillOptions {
   /** 요청 사이 대기(ms) */
   requestDelayMs?: number
   /**
-   * 갱신한 행의 `processed_via`를 `'manual_backfill'`로 표시할지.
-   * 기본 `true` — 어느 행이 백필로 채워졌는지 사후에 구분할 수 있어야 한다.
+   * 갱신한 행에 백필 표시를 남길지. 기본 `true`.
+   *
+   * 표시는 `normalized.extendedBackfilledAt`(ISO 문자열)로 남기고 **`processed_via`는
+   * 건드리지 않는다.** `processed_via`는 «이 행이 어떤 경로로 들어왔는가»(sync / reconcile)이지
+   * «나중에 무엇으로 채워졌는가»가 아니다. 덮어쓰면 유입 경로 이력이 사라진다 —
+   * 실측 2026-09-05 기준 `reconcile` 16행이 그 정보를 들고 있다(티켓 20260905_0029 개선 리뷰).
    */
-  markProcessedVia?: boolean
+  markBackfilled?: boolean
   /** 진행 로그 훅 (기본: console.info) */
   log?: (message: string) => void
 }
@@ -188,7 +192,7 @@ export async function backfillUserExtendedFields(
   const log = options.log ?? ((m: string) => console.info(m))
   const apply = options.apply === true
   const delayMs = options.requestDelayMs ?? DEFAULT_REQUEST_DELAY_MS
-  const markProcessedVia = options.markProcessedVia !== false
+  const markBackfilled = options.markBackfilled !== false
 
   const result: BackfillUserResult = {
     userId,
@@ -256,11 +260,13 @@ export async function backfillUserExtendedFields(
 
   if (!apply) return result
 
-  // ③ 쓰기 — `normalized`(+ 표시용 `processed_via`)만 건드린다.
+  // ③ 쓰기 — `normalized` **한 컬럼만** 건드린다.
   //    배지·드랍·미션·소식은 어느 것도 호출하지 않는다.
   for (const update of updates) {
-    const payload: Record<string, unknown> = { normalized: update.normalized }
-    if (markProcessedVia) payload.processed_via = 'manual_backfill'
+    const normalized = markBackfilled
+      ? { ...update.normalized, extendedBackfilledAt: new Date().toISOString() }
+      : update.normalized
+    const payload: Record<string, unknown> = { normalized }
     const { error } = await supabase.from('strava_activities').update(payload).eq('id', update.id)
     if (error) {
       log(`[backfill] 갱신 실패 (id: ${update.id}): ${error.message}`)

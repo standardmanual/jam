@@ -275,12 +275,35 @@ export interface NormalizedActivity {
   avgWatts?: number
   /** Strava `average_cadence` — 조건 `avg_cadence`. 단위가 종목마다 다르다(러닝 spm · 자전거 rpm) */
   avgCadence?: number
+
+  // ── 아래 3필드는 티켓 20260905_0029 리뷰에서 추가됐다 ─────────────────
+  // 전부 **같은 Summary 응답에 이미 오던 값**이라 지금 담는 비용이 0이다. 나중에 필요해지면
+  // 873행을 다시 훑어야 하므로(백필 재실행), 재백필 위험을 없애는 쪽을 택했다.
+  /** Strava `max_heartrate`(bpm). 평균과 별개 축이다 */
+  maxHeartrateBpm?: number
+  /** Strava `weighted_average_watts`(W). 이른바 정규화 파워 */
+  weightedAvgWatts?: number
+  /**
+   * Strava `device_watts` — **파워가 실측인지 추정인지**를 가른다.
+   * Strava는 파워미터가 없는 활동에도 `average_watts`를 추정값으로 채워 준다. 이 값이 없으면
+   * 「실측 파워만 인정」 정책을 나중에 세울 수 없다(티켓 20260905_0029 개선 리뷰).
+   * 조건 평가에서 쓸지는 티켓 20260905_0030이 정한다.
+   */
+  deviceWatts?: boolean
 }
 
-/** v5 확장 6필드만 떼어낸 조각. 값이 없는 필드는 **키 자체가 없다** */
+/** v5 확장 9필드만 떼어낸 조각. 값이 없는 필드는 **키 자체가 없다** */
 export type ExtendedActivityFields = Pick<
   NormalizedActivity,
-  'elapsedTimeSec' | 'maxSpeedKmh' | 'maxElevationM' | 'avgHeartrateBpm' | 'avgWatts' | 'avgCadence'
+  | 'elapsedTimeSec'
+  | 'maxSpeedKmh'
+  | 'maxElevationM'
+  | 'avgHeartrateBpm'
+  | 'avgWatts'
+  | 'avgCadence'
+  | 'maxHeartrateBpm'
+  | 'weightedAvgWatts'
+  | 'deviceWatts'
 >
 
 /** 확장 필드 키 목록 — 백필이 «무엇을 덮어쓸 것인가»를 이 목록으로 한정한다 */
@@ -291,6 +314,9 @@ export const EXTENDED_ACTIVITY_FIELD_KEYS = [
   'avgHeartrateBpm',
   'avgWatts',
   'avgCadence',
+  'maxHeartrateBpm',
+  'weightedAvgWatts',
+  'deviceWatts',
 ] as const satisfies readonly (keyof ExtendedActivityFields)[]
 
 /**
@@ -304,7 +330,7 @@ export const EXTENDED_ACTIVITY_FIELD_KEYS = [
  * 오지 않은 경우는 다른 사실이다. 유한한 숫자가 아니면(undefined·null·NaN) 키를 만들지 않는다.
  */
 function putIfNumber(
-  target: Record<string, number>,
+  target: Record<string, unknown>,
   key: string,
   value: number | null | undefined,
   transform: (v: number) => number = (v) => v
@@ -313,8 +339,14 @@ function putIfNumber(
   target[key] = transform(value)
 }
 
+/** `putIfNumber`의 불리언 짝. `deviceWatts`처럼 값 자체가 참/거짓인 필드에 쓴다 */
+function putIfBoolean(target: Record<string, unknown>, key: string, value: boolean | undefined): void {
+  if (typeof value !== 'boolean') return
+  target[key] = value
+}
+
 /**
- * Strava Summary 응답 → v5 확장 6필드 (티켓 20260905_0029).
+ * Strava Summary 응답 → v5 확장 9필드 (티켓 20260905_0029).
  *
  * 전부 목록 엔드포인트 응답에 이미 오던 값이라 추가 API 호출이 없다.
  * `normalizeActivity`(신규 싱크)와 백필이 **같은 함수를 쓴다** — 두 경로가 갈라지면
@@ -323,10 +355,18 @@ function putIfNumber(
 export function extractExtendedActivityFields(
   activity: Pick<
     StravaSummaryActivity,
-    'elapsed_time' | 'max_speed' | 'elev_high' | 'average_heartrate' | 'average_watts' | 'average_cadence'
+    | 'elapsed_time'
+    | 'max_speed'
+    | 'elev_high'
+    | 'average_heartrate'
+    | 'average_watts'
+    | 'average_cadence'
+    | 'max_heartrate'
+    | 'weighted_average_watts'
+    | 'device_watts'
   >
 ): ExtendedActivityFields {
-  const out: Record<string, number> = {}
+  const out: Record<string, unknown> = {}
   putIfNumber(out, 'elapsedTimeSec', activity.elapsed_time)
   // m/s → km/h. 평균 속도(averageSpeedKmh)와 같은 변환·같은 반올림을 쓴다
   putIfNumber(out, 'maxSpeedKmh', activity.max_speed, metersPerSecToKmH)
@@ -335,6 +375,10 @@ export function extractExtendedActivityFields(
   putIfNumber(out, 'avgHeartrateBpm', activity.average_heartrate)
   putIfNumber(out, 'avgWatts', activity.average_watts)
   putIfNumber(out, 'avgCadence', activity.average_cadence)
+  putIfNumber(out, 'maxHeartrateBpm', activity.max_heartrate)
+  putIfNumber(out, 'weightedAvgWatts', activity.weighted_average_watts)
+  // Strava는 파워미터가 없어도 average_watts를 추정값으로 채운다 — 이게 그 구분자다
+  putIfBoolean(out, 'deviceWatts', activity.device_watts)
   return out as ExtendedActivityFields
 }
 
