@@ -232,6 +232,17 @@ function missionConditionValueLabel(key: string): string {
 }
 
 /**
+ * 라벨 뒤에 붙일 "을/를" 조사. 라벨이 "목표 배지"(받침 없음)·"지점"(받침 있음)처럼
+ * 받침 유무가 갈리므로 하드코딩한 "을"은 절반의 라벨에서 문법이 틀린다.
+ */
+function eulReul(label: string): '을' | '를' {
+  const ch = label[label.length - 1]
+  const code = ch?.charCodeAt(0) ?? 0
+  if (code < 0xac00 || code > 0xd7a3) return '를'
+  return (code - 0xac00) % 28 !== 0 ? '을' : '를'
+}
+
+/**
  * 미션 타입별로 달성 판정에 실제로 쓰이는 필드 하나 + 값 종류.
  *
  * **`checker.ts`의 `getTarget()`·`calculateProgress()`가 각 타입에서 읽는 키와 정확히
@@ -295,13 +306,13 @@ export function checkMissionConditionValue(
   if (rule.kind === 'uuid') {
     if (value === undefined || value === null) {
       return {
-        error: `조건 JSON을 저장하지 못했어요. 「${typeLabel}」 타입은 ${label}을 지정해야 달성 여부를 판정할 수 있는데 비어 있어요. ${label}을 선택해서 다시 저장해주세요.`,
+        error: `조건 JSON을 저장하지 못했어요. 「${typeLabel}」 타입은 ${label}${eulReul(label)} 지정해야 달성 여부를 판정할 수 있는데 비어 있어요. ${label}${eulReul(label)} 선택해서 다시 저장해주세요.`,
         warning: null,
       }
     }
     if (typeof value !== 'string' || !MISSION_UUID_RE.test(value)) {
       return {
-        error: `조건 JSON을 저장하지 못했어요. ${label} 값의 형식이 올바르지 않아요. 목록에서 ${label}을 다시 선택해 저장해주세요.`,
+        error: `조건 JSON을 저장하지 못했어요. ${label} 값의 형식이 올바르지 않아요. 목록에서 ${label}${eulReul(label)} 다시 선택해 저장해주세요.`,
         warning: null,
       }
     }
