@@ -23,29 +23,158 @@ export { parsePaceToSec }
  * ⚠️ `interface`가 아니라 `type`이다 — 레지스트리의 파서가 받는
  * `ConditionFormValues`(`Record<string, string | boolean>`)에 구조적으로 대입되려면
  * 암묵 인덱스 시그니처가 필요하고, TypeScript는 그것을 `interface`에는 부여하지 않는다.
+ *
+ * ⚠️ **레지스트리의 `form.fields`에 키를 추가하면 여기도 함께 추가해야 한다.**
+ * `form.read`가 받는 값이 `Record<string, string | boolean>`이라 키 오타를 컴파일이 잡지
+ * 못하고 그 필드가 조용히 유실된다 — 그래서 회귀 테스트가 「모든 `form.fields` 항목이
+ * `emptyConditionFormFields()`의 키에 존재한다」를 고정한다(티켓 20260905_0032 A-2).
  */
 export type ConditionFormFields = {
+  // 기본 조건
   distanceKm: string
   totalCount: string
+  streakDays: string
+  activeDaysCount: string
   elevationM: string
   minSpeedKmh: string
   maxPace: string
-  streakDays: string
-  activityType: string
   durationMinutes: string
+  activityType: string
+  sameActivity: boolean
+  // 기간·주기
   weekendDurationHours: string
   weeklyCount: string
   month: string
   monthlyKm: string
-  seasonCount: string
   season: string
+  seasonCount: string
+  seasonCountAll: string
+  weeklyStreak: string
+  dayOfMonth: string
+  // 환경·시간대
   tempMinC: string
   tempMaxC: string
   timeStart: string
   timeEnd: string
+  distinctTimeBands: string
+  // 단일 활동 지표
+  maxElevationM: string
+  maxSpeedKmh: string
+  singleDistanceKm: string
+  singleElevationM: string
+  avgHeartrateBpm: string
+  avgWatts: string
+  avgCadence: string
+  negativeSplit: boolean
+  // 이력 패턴
+  restAfterStreak: string
+  restAfterLong: string
+  returnGapDays: string
+  intervalDays: string
+  dailyOnceCount: string
+  activitiesWithinHoursHours: string
+  activitiesWithinHoursCount: string
+  personalRecordBreak: string
+  monthOverMonthRatio: string
+  vsPersonalAverage: string
+  // 반복 획득
+  repeatCount: string
+  // 2단 게이트
   prerequisiteNames: string
+  crossInAxisFamilyKeys: string
+  crossInAxisMinRarity: string
+  crossInAxisMinCount: string
+  crossBetweenAxisFamilyKeys: string
+  crossBetweenAxisMinRarity: string
+  crossBetweenAxisMinCount: string
+  gateMissionBadgeFamilyKeys: string
+  gateMissionBadgeMinRarity: string
+  gateMissionBadgeMinCount: string
   /** 메타데이터 필드 — 미션 완료로만 지급되는 배지 표시용 플래그(발급 판정에는 관여하지 않음) */
   missionReward: boolean
+}
+
+/** 빈 폼(신규 등록)의 초기값. 조건 폼 state의 단일 출처다 */
+export function emptyConditionFormFields(): ConditionFormFields {
+  return {
+    distanceKm: '',
+    totalCount: '',
+    streakDays: '',
+    activeDaysCount: '',
+    elevationM: '',
+    minSpeedKmh: '',
+    maxPace: '',
+    durationMinutes: '',
+    activityType: '',
+    sameActivity: false,
+    weekendDurationHours: '',
+    weeklyCount: '',
+    month: '',
+    monthlyKm: '',
+    season: '',
+    seasonCount: '',
+    seasonCountAll: '',
+    weeklyStreak: '',
+    dayOfMonth: '',
+    tempMinC: '',
+    tempMaxC: '',
+    timeStart: '',
+    timeEnd: '',
+    distinctTimeBands: '',
+    maxElevationM: '',
+    maxSpeedKmh: '',
+    singleDistanceKm: '',
+    singleElevationM: '',
+    avgHeartrateBpm: '',
+    avgWatts: '',
+    avgCadence: '',
+    negativeSplit: false,
+    restAfterStreak: '',
+    restAfterLong: '',
+    returnGapDays: '',
+    intervalDays: '',
+    dailyOnceCount: '',
+    activitiesWithinHoursHours: '',
+    activitiesWithinHoursCount: '',
+    personalRecordBreak: '',
+    monthOverMonthRatio: '',
+    vsPersonalAverage: '',
+    repeatCount: '',
+    prerequisiteNames: '',
+    crossInAxisFamilyKeys: '',
+    crossInAxisMinRarity: '',
+    crossInAxisMinCount: '',
+    crossBetweenAxisFamilyKeys: '',
+    crossBetweenAxisMinRarity: '',
+    crossBetweenAxisMinCount: '',
+    gateMissionBadgeFamilyKeys: '',
+    gateMissionBadgeMinRarity: '',
+    gateMissionBadgeMinCount: '',
+    missionReward: false,
+  }
+}
+
+/**
+ * 기존 배지의 `condition_json`을 폼 초기값으로 되돌린다 — `buildConditionJsonFromFields`의 역방향.
+ *
+ * 필드별 변환은 레지스트리의 `form.write`에 있다. 예전에는 BadgeForm이 필드마다
+ * `initCond.x?.toString() ?? ''`를 손으로 나열했고, 그래서 새 필드를 추가하고 이 초기화를
+ * 빠뜨리면 **배지를 열어 저장하기만 해도 그 값이 사라졌다**(티켓 20260905_0032 A-2).
+ */
+export function conditionFormFieldsFrom(cond: BadgeCondition | null | undefined): ConditionFormFields {
+  const fields = emptyConditionFormFields()
+  if (!cond) return fields
+  for (const meta of CONDITION_FIELDS) {
+    const value = cond[meta.key]
+    if (!meta.form || value === undefined) continue
+    try {
+      Object.assign(fields, meta.form.write(value as never))
+    } catch {
+      // condition_json은 jsonb라 형태 보장이 없다 — 한 필드가 깨져도 나머지 폼은 그린다.
+      // 이 경우 그 키는 아래 `findUnrepresentableConditionKeys`가 경고로 드러낸다.
+    }
+  }
+  return fields
 }
 
 /**
@@ -64,7 +193,6 @@ export const FORM_COVERED_CONDITION_KEYS: readonly ConditionKey[] = CONDITION_FI
  * 이 목록의 필드는 `buildConditionJsonFromFields`가 `initCond`(원본)에서 그대로 보존한다 —
  * 새 조건 필드가 폼 반영을 빠뜨려도 최소한 저장 시 유실은 나지 않는다
  * (티켓 20260825_032, `mission_reward` 유실 회귀 티켓 20260825_031의 재발 방지).
- * v5 신규 20종도 전부 여기 들어간다(어드민 조건 폼은 티켓 20260905_0032).
  */
 export const FORM_UNSUPPORTED_CONDITION_KEYS: readonly ConditionKey[] = ALL_CONDITION_KEYS.filter(
   (key) => !FORM_COVERED_CONDITION_KEYS.includes(key)
@@ -77,6 +205,38 @@ export const FORM_UNSUPPORTED_CONDITION_KEYS: readonly ConditionKey[] = ALL_COND
 export function getUnsupportedConditionKeys(cond: BadgeCondition | null | undefined): (keyof BadgeCondition)[] {
   if (!cond) return []
   return FORM_UNSUPPORTED_CONDITION_KEYS.filter((key) => cond[key] !== undefined)
+}
+
+/**
+ * 폼이 «그대로 재현하지 못하는» 값을 가진 필드 (티켓 20260905_0032 A-2).
+ *
+ * 폼 지원 필드라도 `write → read` 왕복이 원본과 달라질 수 있다 — 이름에 쉼표가 든 선행 배지,
+ * 정수가 아닌 페이스 초, 형태가 깨진 교차 게이트 값이 그렇다. 그대로 두면 **배지를 열어
+ * 저장하기만 해도 값이 바뀌거나 사라진다.** 저장을 막지는 않고(수기로 고칠 여지를 남긴다)
+ * 어드민 화면에 경고로 드러낸다.
+ */
+export function findUnrepresentableConditionKeys(
+  cond: BadgeCondition | null | undefined
+): (keyof BadgeCondition)[] {
+  if (!cond) return []
+  const found: (keyof BadgeCondition)[] = []
+  for (const meta of CONDITION_FIELDS) {
+    const value = cond[meta.key]
+    if (!meta.form || value === undefined) continue
+    let roundTripped: unknown
+    try {
+      const probe: Record<string, string | boolean> = {
+        ...emptyConditionFormFields(),
+        ...meta.form.write(value as never),
+      }
+      roundTripped = meta.form.read(probe)
+    } catch {
+      found.push(meta.key)
+      continue
+    }
+    if (JSON.stringify(roundTripped) !== JSON.stringify(value)) found.push(meta.key)
+  }
+  return found
 }
 
 /**

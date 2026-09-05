@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
-import { findCumulativeConditionError, findUnknownConditionKeyError } from '@/lib/admin/badge-validation'
+import { findBadgeConditionSaveError, findRarityLevelError } from '@/lib/admin/badge-validation'
 import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
 import type { BadgeRow } from '@/types/database'
 
@@ -31,14 +31,26 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const type = body.type !== undefined ? body.type : existing.type
   const conditionJson = body.condition_json !== undefined ? body.condition_json : existing.condition_json
 
-  const cumulativeError = findCumulativeConditionError(type, conditionJson ?? null)
-  if (cumulativeError) {
-    return NextResponse.json({ error: cumulativeError }, { status: 400 })
+  // 등급형/레벨형도 먼저 병합해 둔다 — 둘은 배타라 한쪽만 보내면 판정이 어긋난다
+  // (예: 레벨형을 등급형으로 바꾸려면 `rarity`와 `level`이 같은 요청에 함께 실려야 한다).
+  const rarity = body.rarity !== undefined ? body.rarity : existing.rarity
+  const rawLevel = body.level !== undefined ? body.level : existing.level
+  const level = rawLevel === null || rawLevel === undefined || rawLevel === '' ? null : Math.trunc(Number(rawLevel))
+
+  const rarityLevelError = findRarityLevelError(rarity || null, level)
+  if (rarityLevelError) {
+    return NextResponse.json({ error: rarityLevelError }, { status: 400 })
   }
 
-  const unknownConditionKeyError = findUnknownConditionKeyError(conditionJson ?? null)
-  if (unknownConditionKeyError) {
-    return NextResponse.json({ error: unknownConditionKeyError }, { status: 400 })
+  // 「저장은 되는데 영원히 안 나오는 배지」 3경로 차단 (티켓 20260905_0032 A-1).
+  // 교차 게이트의 «자기 계열 지정» 판정에 필요하므로 이 배지의 name·family_key를 함께 넘긴다.
+  const conditionError = findBadgeConditionSaveError(
+    { name: body.name !== undefined ? body.name : existing.name, family_key: existing.family_key },
+    type,
+    conditionJson ?? null
+  )
+  if (conditionError) {
+    return NextResponse.json({ error: conditionError }, { status: 400 })
   }
 
   const { data, error } = await supabase
@@ -47,7 +59,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       name: body.name !== undefined ? body.name : existing.name,
       description: body.description !== undefined ? body.description : existing.description,
       type,
-      rarity: body.rarity !== undefined ? body.rarity : existing.rarity,
+      rarity: rarity || null,
+      level,
+      // `family_key`는 **의도적으로 병합하지 않는다** — 2단 교차 게이트가 대상 계열을
+      // family_key로 지정하므로 이름을 고쳐도 키가 바뀌면 게이트 참조가 조용히 끊긴다
+      // (티켓 20260905_0032 판단 ③: 생성 시 발급하고 이후 불변).
       image_url: body.image_url !== undefined ? body.image_url : existing.image_url,
       activity_types: body.activity_types !== undefined ? body.activity_types : existing.activity_types,
       patch_available: body.patch_available !== undefined ? body.patch_available : existing.patch_available,

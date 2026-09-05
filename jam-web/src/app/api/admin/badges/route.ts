@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
-import { findCumulativeConditionError, findUnknownConditionKeyError } from '@/lib/admin/badge-validation'
+import { findBadgeConditionSaveError, findRarityLevelError } from '@/lib/admin/badge-validation'
 import type { BadgeRow } from '@/types/database'
 
 export async function GET() {
@@ -41,20 +41,31 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, type, rarity, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, category, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
+  const { name, description, type, rarity, level, image_url, activity_types, patch_available, patch_price_krw, condition_json, faction_id, item_book_id, category, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
 
-  if (!name || !description || !type || !rarity || !image_url) {
+  // `rarity`는 더 이상 필수가 아니다 — 무한레벨형 배지는 `rarity IS NULL` + `level`이다
+  // (마이그레이션 130). 이 검사가 `!rarity`를 요구하는 동안 어드민은 **레벨형 배지를 아예
+  // 만들 수 없었다**(티켓 20260905_0032 A-3). 둘 중 하나가 있는지는 아래에서 따로 본다.
+  if (!name || !description || !type || !image_url) {
     return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 })
   }
 
-  const cumulativeError = findCumulativeConditionError(type, condition_json ?? null)
-  if (cumulativeError) {
-    return NextResponse.json({ error: cumulativeError }, { status: 400 })
+  // 등급형/레벨형 배타 — DB CHECK(badges_rarity_level_exclusive) 위반 시 Postgres 원문이
+  // 그대로 어드민 화면에 뜨지 않도록 사람이 읽을 수 있는 문구로 먼저 막는다.
+  const rarityLevelError = findRarityLevelError(rarity ?? null, level ?? null)
+  if (rarityLevelError) {
+    return NextResponse.json({ error: rarityLevelError }, { status: 400 })
   }
 
-  const unknownConditionKeyError = findUnknownConditionKeyError(condition_json ?? null)
-  if (unknownConditionKeyError) {
-    return NextResponse.json({ error: unknownConditionKeyError }, { status: 400 })
+  // 「저장은 되는데 영원히 안 나오는 배지」 3경로를 저장 시점에 막는다(티켓 20260905_0032 A-1).
+  // 신규 배지라 family_key는 아직 없다 — `familyKeyOf`의 `#name:` 폴백을 그대로 쓴다.
+  const conditionError = findBadgeConditionSaveError(
+    { name, family_key: null },
+    type,
+    condition_json ?? null
+  )
+  if (conditionError) {
+    return NextResponse.json({ error: conditionError }, { status: 400 })
   }
 
   const supabase = createServiceClient()
@@ -62,7 +73,10 @@ export async function POST(req: NextRequest) {
     name,
     description,
     type,
-    rarity,
+    // 등급형은 rarity, 레벨형은 level — 정확히 하나만 값이 있다(위 findRarityLevelError).
+    // 빈 문자열이 CHECK를 통과하지 못하도록 «없음»은 항상 null로 정규화한다.
+    rarity: rarity || null,
+    level: level === undefined || level === null || level === '' ? null : Math.trunc(Number(level)),
     image_url,
     activity_types: activity_types ?? [],
     patch_available: patch_available ?? false,

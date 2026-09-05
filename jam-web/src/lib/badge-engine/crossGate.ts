@@ -76,6 +76,32 @@ export function crossGateKeysIn(condition: BadgeCondition | null | undefined): C
   return CROSS_GATE_CONDITION_KEYS.filter((k) => condition[k] !== undefined)
 }
 
+/**
+ * 교차 게이트 값의 **형태 오류**를 저장 시점에 찾는다 (티켓 20260905_0032 A-1).
+ *
+ * 지금까지 이 검증은 **발급 시점에만** 돌았다 — `family_keys` 오타 하나가 「저장은 되는데
+ * 영원히 안 나오는 배지」가 되고, 그 사유(`missed`)는 어드민 시뮬레이터만 읽는다.
+ * 판정은 새로 짜지 않고 `evaluateCrossGates`와 **같은 `normalizeRequirement`**를 부른다 —
+ * 두 곳이 각자 형태를 정의하면 「저장은 통과하는데 발급은 막히는」 틈이 다시 생긴다.
+ *
+ * 자기 계열 지정도 여기서 걸린다(`normalizeRequirement`가 자기 계열을 대상에서 빼므로).
+ */
+export function findCrossGateShapeError(
+  badge: Pick<BadgeRow, 'name' | 'family_key'>,
+  condition: BadgeCondition | null | undefined
+): string | null {
+  if (!condition) return null
+  const selfFamilyKey = familyKeyOf(badge)
+  for (const key of CROSS_GATE_CONDITION_KEYS) {
+    if (condition[key] === undefined) continue
+    const result = normalizeRequirement(condition[key], selfFamilyKey)
+    if (!result.ok) {
+      return `저장할 수 없습니다. ${REQUIREMENT_LABEL[key]} 게이트 설정이 올바르지 않습니다(${result.error}). 대상 계열 키(family_key)를 쉼표로 나열하고, 자기 계열은 빼주세요.`
+    }
+  }
+  return null
+}
+
 /** 게이트 판정 결과. 막혔으면 어드민 미발급 사유에 그대로 실린다 */
 export type CrossGateResult =
   | { pass: true }
