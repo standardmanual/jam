@@ -236,6 +236,40 @@ authenticated`처럼 대상 롤을 전부 명시한다. 그리고 적용 직후
    고려한다 — 같은 모킹 목록을 여러 테스트 파일에 복붙하면 부수 모듈이 하나 늘 때마다
    갱신을 빠뜨리기 쉽다.
 
+### 패턴 11 — 시드 SQL이 이름으로 다른 행을 조회해 채우는데, 조회 실패가 조용히 `NULL`로 새어나감
+
+시드 SQL이 `jsonb_build_object('badge_id', (SELECT id FROM badges WHERE name = '...' LIMIT 1))`처럼
+**이름 문자열로 다른 테이블을 조회해 그 결과를 조건/보상 필드에 채우는 패턴.** 조회 대상 이름이
+그 시점에 존재하지 않으면(오타, 또는 나중에 카탈로그가 교체되어 그 이름이 사라짐) 서브쿼리는
+그냥 `NULL`을 반환하고, `jsonb_build_object`·`ARRAY[...]`는 그 `NULL`을 담은 채로 INSERT를
+**그대로 성공시킨다.** 시드 파일에 "이름이 바뀌면 조회가 실패한다"는 경고 주석이 있어도, 경고는
+사람이 실행 전에 읽어야 효과가 있고 **DB가 강제하지 않는다.**
+
+- 실제 사례(20260905_1327): `seed_phase13_missions_30.sql`이 `item_collect` 미션 6건의
+  `condition_json.badge_id`를 아이템 배지 이름으로 조회해 채웠는데, 참조한 6종이 이후 카탈로그
+  교체로 전부 사라져 `{"badge_id": null}`로 저장됐다. `checker.ts`의 달성 판정이
+  `condition.badge_id && ownership.ownedBadgeIds.has(...)`처럼 `&&` 단락 평가를 쓰는 코드라
+  `null`이 조용히 "항상 미달성"으로 새어나갔고, 참가자 19명 / 완료 0명 상태로 6주간 아무도
+  몰랐다(어드민 목록이 `condition_json`을 표시하지 않아 편집 폼을 열어야만 보였다).
+  같은 근본 원인으로 `reward_badge_ids` 쪽에도 `{NULL}` 오염이 있었다(20260902_2213,
+  `seed_fix_mission_reward_badge_ids_null_20260902.sql`로 정리).
+
+**규칙**: 앞으로 이름 조회로 조건/보상 필드를 채우는 시드를 새로 작성할 땐, 조회 실패를
+INSERT 실패로 바꾼다 — 아래 중 하나를 반드시 적용한다.
+1. `jsonb_build_object` 앞에서 서브쿼리 결과를 변수/CTE로 받아 `IS NULL`이면
+   `RAISE EXCEPTION`으로 스크립트를 중단시킨다.
+2. 대상 컬럼(`condition_json->>'badge_id'` 등)에 `NOT NULL` 제약이나 CHECK 제약을 걸어
+   DB 레벨에서 거부되게 한다.
+3. (이 티켓이 실제로 취한 재발 방지책) 저장 API 층에서 값 검증을 둔다 —
+   `lib/missions/condition-keys.ts`의 `checkMissionConditionValue()`가 `item_collect`/
+   `checkin`의 목표 대상이 `null`이거나 UUID 형태가 아니면 저장 자체를 거부한다. 다만 이건
+   **어드민 API 경유 저장만 막는다** — 시드 SQL은 이 검증 층을 거치지 않고 DB에 직접 쓰므로
+   1·2가 여전히 필요하다.
+
+기존 `seed_phase13_missions_30.sql`은 이미 실행된 1회성 이력이라 소급 수정하지 않는다
+(문서 지침 — `Tickets/`는 신규 생성, `Archive/`는 읽기 전용에 준해 실행 완료 시드도 사후 편집
+대상이 아니다).
+
 ---
 
 ## 핵심 루프 의존성 지도

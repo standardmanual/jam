@@ -13,6 +13,7 @@ import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import type { MissionRow } from '@/types/database'
 import { missionTypeLabel } from '@/lib/admin/badge-labels'
+import { checkMissionConditionValue } from '@/lib/missions/condition-keys'
 
 interface MissionTableProps {
   missions: MissionRow[]
@@ -69,7 +70,26 @@ function MissionTableInner({ missions, completionCounts, onEdit, onDelete }: Mis
         enableHiding: false,
         // v9는 `sortingFn`(v8)이 아니라 `sortFn`이다 — `features.ts`에 등록한 이름(text)을 그대로 참조.
         sortFn: 'text',
-        cell: ({ row }) => <span className="font-medium">{row.original.mission.title}</span>,
+        cell: ({ row }) => {
+          const m = row.original.mission
+          // 조건 값이 깨진 미션(예: item_collect인데 badge_id null) 표시 — ②의 검증 함수를
+          // 그대로 재사용한다(별도 판정 로직 금지, 티켓 20260905_1327). 편집 폼을 열어야만
+          // 알 수 있던 상태를 목록에서 바로 알아볼 수 있게 한다.
+          const conditionError = checkMissionConditionValue(m.mission_type, m.condition_json).error
+          return (
+            <span className="font-medium inline-flex items-center gap-2">
+              {m.title}
+              {conditionError && (
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 shrink-0"
+                  title={conditionError}
+                >
+                  목표 미지정
+                </span>
+              )}
+            </span>
+          )
+        },
       }),
       columnHelper.accessor((r) => r.mission.mission_type, {
         id: 'type',

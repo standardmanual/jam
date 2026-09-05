@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
-import { checkMissionCondition } from '@/lib/missions/condition-keys'
+import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
 import type { MissionType } from '@/types/database'
 
 export async function GET() {
@@ -32,6 +32,16 @@ export async function POST(req: NextRequest) {
   )
   if (conditionError) {
     return NextResponse.json({ error: conditionError }, { status: 400 })
+  }
+
+  // condition_json 값 검증 (티켓 20260905_1327) — 키는 유효해도 값이 비었거나(item_collect의
+  // badge_id: null 등) 0 이하면 그 미션은 영원히 달성되지 않는다.
+  const { error: valueError } = checkMissionConditionValue(
+    body.mission_type as MissionType,
+    body.condition_json
+  )
+  if (valueError) {
+    return NextResponse.json({ error: valueError }, { status: 400 })
   }
 
   const supabase = createServiceClient()

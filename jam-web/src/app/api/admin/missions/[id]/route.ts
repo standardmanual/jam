@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
-import { checkMissionCondition } from '@/lib/missions/condition-keys'
+import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
 import type { MissionType } from '@/types/database'
 
 // PATCH /api/admin/missions/[id] — 기존 미션 수정.
@@ -36,6 +36,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { error: conditionError } = checkMissionCondition(missionType, body.condition_json)
     if (conditionError) {
       return NextResponse.json({ error: conditionError }, { status: 400 })
+    }
+
+    // condition_json 값 검증 (티켓 20260905_1327) — 기존 6건처럼 badge_id/poi_id가
+    // null이거나, 수치 타입 목표가 0 이하면 그 미션은 영원히 달성되지 않는다. 「저장하려는
+    // 새 값」을 검증하는 것이라 유효한 값으로 고치는 수정 저장(복구 경로)은 막지 않는다.
+    const { error: valueError } = checkMissionConditionValue(missionType, body.condition_json)
+    if (valueError) {
+      return NextResponse.json({ error: valueError }, { status: 400 })
     }
   }
 

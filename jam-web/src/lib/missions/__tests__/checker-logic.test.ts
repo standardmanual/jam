@@ -11,9 +11,10 @@
  * 실행: `npx tsx src/lib/missions/__tests__/checker-logic.test.ts` (테스트 러너 불필요 — node assert 사용)
  */
 import assert from 'node:assert'
-import { evaluateMission, isMissionActive, activeMissionsQueryFilter, type OwnershipContext } from '../checker'
+import { evaluateMission, getTarget, isMissionActive, activeMissionsQueryFilter, type OwnershipContext } from '../checker'
 import { evaluateConditionDetailed } from '@/lib/badge-engine'
-import type { MissionRow, MissionCondition, BadgeCondition } from '@/types/database'
+import { MISSION_CONDITION_VALUE_RULE } from '../condition-keys'
+import type { MissionRow, MissionCondition, MissionType, BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 
 function makeActivity(overrides: Partial<NormalizedActivity> = {}): NormalizedActivity {
@@ -190,6 +191,54 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(engineResult.actual, '누적고도: 605m')
     assert.strictEqual(r.achieved, true)
     assert.strictEqual(engineResult.pass, true)
+  }],
+
+  // ── 값 검증 필수 키 ↔ getTarget/calculateProgress 실측 일치 (티켓 20260905_1327) ──
+  // `condition-keys.ts`의 `MISSION_CONDITION_VALUE_RULE`이 하드코딩한 "타입별 필수 키" 목록이
+  // 실제 판정 로직(getTarget/calculateProgress, 여기선 evaluateMission을 경유)이 읽는 키와
+  // 어긋나면 여기서 드러난다 — 컴파일 타임 단언이 불가능한 부분(값의 존재 여부는 런타임
+  // 정보)을 런타임 실측으로 메운다.
+  ['값 검증 필수 키(수치 타입) — getTarget이 그 키를 읽는지 실측', () => {
+    for (const [missionType, rule] of Object.entries(MISSION_CONDITION_VALUE_RULE) as [MissionType, typeof MISSION_CONDITION_VALUE_RULE[MissionType]][]) {
+      if (rule.kind !== 'positive_number') continue
+      const withoutKey = {} as MissionCondition
+      assert.strictEqual(
+        getTarget(missionType, withoutKey),
+        0,
+        `${missionType}: ${rule.key} 없이도 getTarget이 0이 아니다 — 값 검증 매핑이 실제 로직과 어긋난다`
+      )
+      const withKey = { [rule.key]: 42 } as MissionCondition
+      assert.strictEqual(
+        getTarget(missionType, withKey),
+        42,
+        `${missionType}: ${rule.key}=42인데 getTarget이 42를 읽지 않는다 — 매핑이 다른 키를 가리킨다`
+      )
+    }
+  }],
+  ['값 검증 필수 키(UUID 타입) — calculateProgress(evaluateMission 경유)가 그 키를 읽는지 실측', () => {
+    for (const [missionType, rule] of Object.entries(MISSION_CONDITION_VALUE_RULE) as [MissionType, typeof MISSION_CONDITION_VALUE_RULE[MissionType]][]) {
+      if (rule.kind !== 'uuid') continue
+      // item_collect/checkin은 getTarget이 항상 1이라 그걸로는 키를 구분 못 한다 —
+      // calculateProgress가 실제로 이 키를 읽는지는 progressValue로 확인해야 한다.
+      const own: OwnershipContext =
+        rule.key === 'badge_id'
+          ? { ownedBadgeIds: new Set(['x']), visitedPoiIds: new Set() }
+          : { ownedBadgeIds: new Set(), visitedPoiIds: new Set(['x']) }
+      const withKey = { [rule.key]: 'x' } as MissionCondition
+      const withoutKey = {} as MissionCondition
+      const rWith = evaluateMission(mission(missionType, withKey), [], own, true)
+      const rWithout = evaluateMission(mission(missionType, withoutKey), [], own, true)
+      assert.strictEqual(
+        rWith.progressValue,
+        1,
+        `${missionType}: ${rule.key}='x'이고 보유 중인데 progressValue가 1이 아니다 — 매핑이 다른 키를 가리킨다`
+      )
+      assert.strictEqual(
+        rWithout.progressValue,
+        0,
+        `${missionType}: ${rule.key} 없는데 progressValue가 0이 아니다(${rWithout.progressValue}) — 값 검증 없이도 달성될 수 있다는 뜻`
+      )
+    }
   }],
 
   // ── 상시 미션 (ends_at null) ────────────────────────────────
