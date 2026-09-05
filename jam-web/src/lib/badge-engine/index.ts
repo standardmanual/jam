@@ -4,8 +4,17 @@
  * - type='activity' 배지에 대해 condition_json 평가
  * - 성장 티어 정책(등급형): 배지 이름당 최상위 레어리티 1개만 발급
  * - 무한레벨 정책(레벨형, rarity IS NULL): 계열(family_key)당 «보유 레벨 + 1»부터 연속 발급
+ * - 반복 획득 정책(반복형, 등급 + condition_json.repeat_count): 보유해도 후보에서 빠지지
+ *   않는다. 임계값을 넘지 않은 회차는 `earn_count`만 올리고 **피드·결산에는 나타나지 않는다**
  * - 진행 트랙 정책: 동일 트랙(거리/횟수) 내 최고값 배지 1개만 발급 (등급형 전용)
  * - 미구현 조건 타입은 false 처리 (자동 통과 방지)
+ *
+ * ## 발급은 «결정 → DB 반영 → 부수효과» 3단이다 (v5 B1, 티켓 20260905_0030)
+ *
+ * 예전에는 `earned.push`가 INSERT보다 **먼저**라, 발급이 실제로 실패해도(중복키 등)
+ * 결산·연출·피드에는 발급된 것으로 나갔다. 반복형은 「발급 O / 카운터만 O」를 구분해야
+ * 하므로 그 상태로는 진실 원천이 없다. 이제 `earned`에는 **DB 반영에 실제로 성공한 발급만**
+ * 담기며, 카운터 증가는 어디에도 담기지 않는다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
@@ -15,7 +24,7 @@ import { logEngineDecision } from '@/lib/engine-log'
 import { getActivityHistory, getSignupAnchorDate, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
-import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, DayOfWeek, UserActivityBadgeRow } from '@/types/database'
+import type { BadgeCondition, BadgeConditionSnapshot, BadgeEarnHistoryEntry, BadgeRow, DayOfWeek, UserActivityBadgeRow } from '@/types/database'
 import type { Json } from '@/types/database.generated'
 import { MEASURABLE_CONDITION_KEYS } from './condition-schema'
 import { describeBlockingConditionKeys, findBlockingConditionKeys } from './conditionRegistry'
@@ -38,7 +47,7 @@ import {
   WALKING_GATE_MIN_SPEED_KMH,
   WALKING_GATE_MAX_SPEED_KMH,
 } from './activityFilters'
-import { isLeveledBadge, familyKeyOf, badgeKindLabel } from './badgeKind'
+import { isLeveledBadge, familyKeyOf, badgeKindLabel, badgeKindOf, repeatCountOf } from './badgeKind'
 export {
   passesWalkingGate,
   matchesDayOfWeek,
@@ -141,6 +150,77 @@ function matchesPerActivityCondition(condition: BadgeCondition, a: NormalizedAct
     if (!inTimeRange(a, condition.time_range)) return false
   }
   return true
+}
+
+/** `earn_history` 배열 상한 — `earn_count`가 총계를 들고 있어 최근 N건만 남겨도 정보 손실이 작다 */
+export const EARN_HISTORY_LIMIT = 200
+
+/**
+ * 반복형의 «회차» 목록 — **활동 1건이 조건을 통째로 만족**한 활동을 시간순으로 돌려준다.
+ * (v5 B1, 티켓 20260905_0030 §2)
+ *
+ * `total_count`와의 차이가 이 함수의 존재 이유다. `total_count`는 «필터를 통과한 활동 수»만
+ * 세므로 `{ duration_minutes: 60, total_count: 5 }`는 「60분 이상 활동이 1건 있고, 활동이 총
+ * 5회」로 평가된다(수치 필드는 이력 전반에서 독립 평가되기 때문). `repeat_count`는
+ * 「60분 이상 활동이 5건」이어야 하므로 활동 단위 술어가 따로 필요하다.
+ *
+ * ⚠️ **조건 평가(`evaluateConditionDetailed`)와 카운터 증가(`evaluateBadgesDetailed`)가 이
+ * 함수 하나를 공유해야 한다.** 두 곳이 각자 회차를 세면 「발급은 됐는데 카운터는 안 오른다」
+ * 같은 어긋남이 생긴다(티켓 §4가 진행률·발급 판정에서 경계한 것과 같은 실패 모드).
+ * 그래서 두 곳 모두 **필터를 거치지 않은 원본 활동 배열**을 그대로 넘긴다.
+ */
+export function collectRepeatOccurrences(
+  condition: BadgeCondition,
+  activities: NormalizedActivity[]
+): NormalizedActivity[] {
+  // ① 종목 필터 + 걷기 축1 게이트 — evaluateConditionDetailed의 `filtered`와 같은 규칙
+  const pool = condition.activity_type
+    ? activities.filter(
+        (a) =>
+          a.jamActivityType === condition.activity_type &&
+          (condition.activity_type !== 'walking' || passesWalkingGate(a))
+      )
+    : activities
+
+  // ② 요일 단일값 필터 (배열 + total_count 조합은 「요일별 독립 카운터」라 반복형과 섞지 않는다)
+  const dayFiltered =
+    condition.day_of_week !== undefined && !Array.isArray(condition.day_of_week)
+      ? pool.filter((a) => matchesDayOfWeek(a, condition.day_of_week as DayOfWeek))
+      : pool
+
+  // ③ 회차 술어 — 조건에 실제로 든 «활동 1건 단위» 필드만 모아 부분 조건을 만든다.
+  //    distance_km/elevation_gain_m은 기본이 «누적 합계»라 여기 들어오지 않는다.
+  //    same_activity:true일 때만 합류한다(기존 규칙 그대로).
+  const occurrenceCondition: Record<string, unknown> = {}
+  for (const k of PER_ACTIVITY_KEYS) {
+    if (condition[k] !== undefined) occurrenceCondition[k] = condition[k]
+  }
+  if (condition.same_activity === true) {
+    for (const k of CUMULATIVE_SAME_ACTIVITY_KEYS) {
+      if (condition[k] !== undefined) occurrenceCondition[k] = condition[k]
+    }
+  }
+  if (condition.time_range !== undefined && condition.weekly_count === undefined) {
+    occurrenceCondition.time_range = condition.time_range
+  }
+
+  const matched = dayFiltered.filter((a) => matchesPerActivityCondition(occurrenceCondition as BadgeCondition, a))
+
+  // ④ 걷기 하루 1회 상한 — 걷기 배지 v4 정책(같은 날 여러 번 걸어도 1회)을 회차에도 적용한다
+  const capped = condition.activity_type === 'walking' ? dedupeOnePerDay(matched) : matched
+
+  // 시간순 고정 — earn_history 순서와 「임계값을 넘긴 회차」 선정이 호출 순서에 좌우되지 않게 한다
+  return [...capped].sort((a, b) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0))
+}
+
+/** 회차 활동 목록 → `earn_history` 원소. 상한을 넘기면 **최근 것만** 남긴다 */
+export function toEarnHistoryEntries(occurrences: NormalizedActivity[]): BadgeEarnHistoryEntry[] {
+  return occurrences.slice(-EARN_HISTORY_LIMIT).map((a) => ({
+    // 20260824_006 — startDateLocal은 로컬 벽시계에 Z를 붙인 값이라 최대 +9시간 미래로
+    // 오해석된다. 회차 시각도 진짜 UTC인 startDate만 쓴다.
+    earned_at: a.startDate,
+    strava_activity_id: a.stravaId,
+  }))
 }
 
 function describePerActivity(condition: BadgeCondition, a: NormalizedActivity): { actual: string[]; required: string[] } {
@@ -513,6 +593,22 @@ export function evaluateConditionDetailed(
     requiredParts.push(`횟수: ${condition.total_count}회`)
   }
 
+  // ── repeat_count — 반복형의 회차 임계값 (v5 B1, 티켓 20260905_0030 §2)
+  //    회차 정의는 collectRepeatOccurrences 하나에만 있다(카운터 증가와 공유).
+  if (condition.repeat_count !== undefined) {
+    if (typeof condition.repeat_count !== 'number' || !Number.isFinite(condition.repeat_count) || condition.repeat_count < 1) {
+      // condition_json은 jsonb라 형태 보장이 없다. 문자열·0이 들어오면 「전부 통과」로 새지
+      // 않게 명시적으로 막는다(시딩 550종 중 한 행이 어긋나도 조용히 발급되지 않는다).
+      return { pass: false, reason: '달성 횟수 조건 형태 오류', actual: String(condition.repeat_count), required: '1 이상의 수' }
+    }
+    const occurrences = collectRepeatOccurrences(condition, activities)
+    if (occurrences.length < condition.repeat_count) {
+      return { pass: false, reason: '달성 횟수 부족', actual: `${occurrences.length}회`, required: `${condition.repeat_count}회` }
+    }
+    actualParts.push(`달성횟수: ${occurrences.length}회`)
+    requiredParts.push(`달성횟수: ${condition.repeat_count}회`)
+  }
+
   if (condition.streak_days !== undefined) {
     const streak = calcMaxStreak(filtered)
     if (streak < condition.streak_days) {
@@ -710,9 +806,11 @@ export async function evaluateBadgesDetailed(
   /** 무한레벨형 계열별 보유 최고 레벨. 다음 후보는 항상 이 값 + 1이다 (v5, 티켓 20260905_0030 §1) */
   const highestOwnedLevelByFamily = new Map<string, number>()
   if (ownedBadgeIds.size > 0) {
+    // condition_json까지 읽는다 — 반복형 판정(`repeat_count`)이 조건에 들어 있어서
+    // id/name/rarity/level/family_key만으로는 종류를 가릴 수 없다 (v5 B1, B-5 지적)
     const { data: ownedBadgeDefsRaw, error: ownedDefsError } = await supabase
       .from('badges')
-      .select('id, name, rarity, level, family_key')
+      .select('id, name, rarity, level, family_key, condition_json')
       .in('id', Array.from(ownedBadgeIds))
 
     if (ownedDefsError) {
@@ -720,14 +818,21 @@ export async function evaluateBadgesDetailed(
       return { earned: [], missed: [] }
     }
 
-    for (const b of (ownedBadgeDefsRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'level' | 'family_key'>[]) {
+    for (const b of (ownedBadgeDefsRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'level' | 'family_key' | 'condition_json'>[]) {
       ownedBadgeNames.add(b.name)
-      if (isLeveledBadge(b)) {
+      const kind = badgeKindOf(b)
+      if (kind === 'leveled') {
         const key = familyKeyOf(b)
         const current = highestOwnedLevelByFamily.get(key) ?? 0
         if ((b.level ?? 0) > current) highestOwnedLevelByFamily.set(key, b.level ?? 0)
         // 레벨형은 등급 서열에 속하지 않는다 — highestOwnedTierByName에 넣지 않는다.
         // (같은 이름을 등급형 계열과 공유할 수 있어, 0을 섞으면 판정이 오염된다)
+        continue
+      }
+      if (kind === 'repeatable') {
+        // 반복형도 성장 티어 병합 대상이 아니다. 넣으면 Rare(5회)를 보유한 순간
+        // 같은 이름의 Common(1회)이 `rarityTier <= highestOwned`로 탈락하는데, 반복형은
+        // **보유한 등급도 계속 후보로 남아 카운터를 받아야 한다**(B-1·B-2).
         continue
       }
       const tier = b.rarity ? RARITY_TIER[b.rarity] : 0
@@ -736,16 +841,23 @@ export async function evaluateBadgesDetailed(
     }
   }
 
-  // 등급형과 무한레벨형은 **묶는 축이 다르다.** 등급형은 이름당 최상위 1개(성장 티어),
-  // 레벨형은 계열(family_key)당 보유 레벨 + 1이다. 한 맵에 섞으면 레벨형이 등급형 계열의
-  // 티어 비교에 끌려 들어가 `0 <= 0`으로 매번 탈락한다(마스터 티켓 20260905_0026 B-1).
+  // 세 종류는 **묶는 축이 다르다.** 등급형은 이름당 최상위 1개(성장 티어), 레벨형은
+  // 계열(family_key)당 보유 레벨 + 1, 반복형은 배지 하나하나가 독립 카운터다.
+  // 한 맵에 섞으면 레벨형이 등급형 계열의 티어 비교에 끌려 들어가 `0 <= 0`으로 매번
+  // 탈락하고(마스터 티켓 20260905_0026 B-1), 반복형은 보유 즉시 후보에서 사라진다(B-2).
   const badgesByName = new Map<string, BadgeRow[]>()
   const badgesByFamily = new Map<string, BadgeRow[]>()
+  const repeatableBadges: BadgeRow[] = []
   for (const badge of allBadges) {
-    if (isLeveledBadge(badge)) {
+    const kind = badgeKindOf(badge)
+    if (kind === 'leveled') {
       const key = familyKeyOf(badge)
       if (!badgesByFamily.has(key)) badgesByFamily.set(key, [])
       badgesByFamily.get(key)!.push(badge)
+      continue
+    }
+    if (kind === 'repeatable') {
+      repeatableBadges.push(badge)
       continue
     }
     if (!badgesByName.has(badge.name)) badgesByName.set(badge.name, [])
@@ -755,31 +867,55 @@ export async function evaluateBadgesDetailed(
   // ── 1단계: 후보 선정 ─────────────────────────────────────────────────
   //   1-A 등급형 — 이름당 최상위 티어 1개
   //   1-B 무한레벨형 — 계열당 «보유 레벨 + 1»부터 연속으로 통과하는 레벨 전부
+  //   1-C 반복형 — 보유 여부와 무관하게 전부. 미보유는 «발급», 보유는 «카운터 증가»
   type Candidate = {
     badge: BadgeRow
     condition: BadgeCondition
+    /**
+     * DB에 무엇을 할 것인가. **이 구분이 v5 B1의 핵심이다** — `increment`는 발급이 아니라
+     * 회차 카운터 증가이며 피드·포인트·결산·연출을 일절 만들지 않는다(홍수 집계 제외).
+     */
+    action: 'issue' | 'increment'
     progressionKey: string | null
     progressionValue: number
     evalResult: EvalConditionResult
+    /** 반복형 전용 — 이 배지의 회차 전체(시간순). `issue`의 earn_history 초기값이 된다 */
+    occurrences: NormalizedActivity[]
+    /** 반복형 전용 — 이번 배치에서 새로 생긴 회차. `increment`가 올릴 대상이다 */
+    newOccurrences: NormalizedActivity[]
   }
   const candidates: Candidate[] = []
   const missed: BadgeMissedInfo[] = []
+
+  /**
+   * 발급 게이트 판정 — 통과하면 null, 막히면 미발급 사유를 돌려준다.
+   *
+   * 등급형·레벨형·반복형 세 루프가 **같은 함수 하나**를 부른다. 예전에는 선행 배지 게이트가
+   * 두 루프에 각각 복제돼 있어, 한쪽만 고치면 조용한 비대칭이 됐다(B-4 지적).
+   */
+  function evaluateBadgeGates(badge: BadgeRow, condition: BadgeCondition): BadgeMissedInfo | null {
+    // 선행 배지 게이트: prerequisite_badge_names 중 하나라도 보유해야 통과 (OR)
+    const prereqs = condition.prerequisite_badge_names
+    if (prereqs && prereqs.length > 0 && !prereqs.some((n) => ownedBadgeNames.has(n))) {
+      return { id: badge.id, name: badge.name, reason: '선행 배지 미보유', actual: '없음', required: prereqs.join(' 또는 ') }
+    }
+    return null
+  }
 
   for (const [, group] of badgesByName) {
     const highestOwned = highestOwnedTierByName.get(group[0].name) ?? 0
 
     const eligible: { badge: BadgeRow; evalResult: EvalConditionResult }[] = []
     for (const badge of group) {
+      // 「보유하면 후보 제외」 — 등급형·레벨형에만 적용된다. 반복형은 이 루프에 오지 않는다
+      // (위 badgeKindOf 분류에서 repeatableBadges로 빠진다).
       if (ownedBadgeIds.has(badge.id)) continue
       if (rarityTier(badge.rarity) <= highestOwned) continue
 
-      // 선행 배지 게이트: prerequisite_badge_names 중 하나라도 보유해야 통과
-      const prereqs = (badge.condition_json as BadgeCondition | null)?.prerequisite_badge_names
-      if (prereqs && prereqs.length > 0) {
-        if (!prereqs.some((n) => ownedBadgeNames.has(n))) {
-          missed.push({ id: badge.id, name: badge.name, reason: '선행 배지 미보유', actual: '없음', required: prereqs.join(' 또는 ') })
-          continue
-        }
+      const gateMiss = evaluateBadgeGates(badge, (badge.condition_json as BadgeCondition | null) ?? {})
+      if (gateMiss) {
+        missed.push(gateMiss)
+        continue
       }
 
       const evalResult = evaluateConditionDetailed(badge.condition_json as BadgeCondition ?? {}, evalActivities)
@@ -796,8 +932,16 @@ export async function evaluateBadgesDetailed(
     const { badge: winner, evalResult } = eligible[0]
     const condition = winner.condition_json as BadgeCondition
     const prog = getProgressionKey(condition)
-    candidates.push({ badge: winner, condition, progressionKey: prog?.key ?? null, progressionValue: prog?.value ?? 0, evalResult })
-
+    candidates.push({
+      badge: winner,
+      condition,
+      action: 'issue',
+      progressionKey: prog?.key ?? null,
+      progressionValue: prog?.value ?? 0,
+      evalResult,
+      occurrences: [],
+      newOccurrences: [],
+    })
     for (const { badge } of eligible.slice(1)) {
       missed.push({ id: badge.id, name: badge.name, reason: '성장 티어 — 상위 레어리티 발급됨', actual: badge.rarity ?? '등급 없음', required: winner.rarity ?? '등급 없음' })
     }
@@ -828,8 +972,9 @@ export async function evaluateBadgesDetailed(
         continue
       }
       if (level < expected) continue // 이미 지난 레벨
+      // 「보유하면 후보 제외」 — 레벨형 경로. 보유 집계와 어긋난 경우(중간 레벨만 보유 등)
+      // 보유분은 건너뛰고 그 위를 본다.
       if (ownedBadgeIds.has(badge.id)) {
-        // 보유 집계와 어긋난 경우(중간 레벨만 보유 등) — 보유분은 건너뛰고 그 위를 본다
         expected = level + 1
         continue
       }
@@ -838,14 +983,13 @@ export async function evaluateBadgesDetailed(
         continue
       }
 
-      // 선행 배지 게이트 — 등급형과 같은 규칙을 그대로 적용한다
-      const prereqs = (badge.condition_json as BadgeCondition | null)?.prerequisite_badge_names
-      if (prereqs && prereqs.length > 0 && !prereqs.some((n) => ownedBadgeNames.has(n))) {
-        missed.push({ id: badge.id, name: badge.name, reason: '선행 배지 미보유', actual: '없음', required: prereqs.join(' 또는 ') })
+      const condition = (badge.condition_json as BadgeCondition | null) ?? {}
+      const gateMiss = evaluateBadgeGates(badge, condition)
+      if (gateMiss) {
+        missed.push(gateMiss)
         continue
       }
 
-      const condition = (badge.condition_json as BadgeCondition | null) ?? {}
       const evalResult = evaluateConditionDetailed(condition, evalActivities)
       if (!evalResult.pass) {
         missed.push({ id: badge.id, name: badge.name, reason: evalResult.reason, actual: evalResult.actual, required: evalResult.required })
@@ -855,9 +999,64 @@ export async function evaluateBadgesDetailed(
       // 레벨형은 **진행 트랙 병합 대상이 아니다**(progressionKey=null). 계열 안 순서는
       // level이 이미 결정하고, 트랙 병합은 등급형 계열 전용 장치라 여기에 걸리면
       // 연속 발급분이 최고값 1개로 접혀 사라진다.
-      candidates.push({ badge, condition, progressionKey: null, progressionValue: 0, evalResult })
+      candidates.push({
+        badge,
+        condition,
+        action: 'issue',
+        progressionKey: null,
+        progressionValue: 0,
+        evalResult,
+        occurrences: [],
+        newOccurrences: [],
+      })
       expected = level + 1
     }
+  }
+
+  // ── 1-C단계: 반복형 후보 선정 (v5 B1, 티켓 20260905_0030 §2) ─────────────
+  //
+  // **보유해도 후보에서 빠지지 않는 유일한 종류다.** 등급형·레벨형 루프의
+  // 「보유하면 후보 제외」 줄을 지나가야 회차 카운터를 계속 받을 수 있다(B-2).
+  //   - 미보유 + 조건 충족 → `issue` (행 INSERT + 피드 + 포인트 + 결산 + 연출)
+  //   - 보유 + 이번 배치에 새 회차 → `increment` (earn_count만 증가, 부수효과 없음)
+  // 등급 사다리(1·5·20·50회)는 같은 이름의 배지 4장이 각자 `repeat_count`를 갖는 형태이며,
+  // 성장 티어 병합을 적용하지 않는다 — 하위 등급도 계속 카운터를 받아야 하고, 한 번에
+  // 여러 임계값을 넘으면 각각 발급돼야 레일에 구멍이 남지 않는다(레벨형과 같은 이유).
+  const batchStravaIds = new Set(activities.map((a) => a.stravaId))
+  for (const badge of repeatableBadges) {
+    const condition = (badge.condition_json as BadgeCondition | null) ?? {}
+    const gateMiss = evaluateBadgeGates(badge, condition)
+    if (gateMiss) {
+      missed.push(gateMiss)
+      continue
+    }
+
+    const evalResult = evaluateConditionDetailed(condition, evalActivities)
+    if (!evalResult.pass) {
+      // 보유한 반복형이 여기 오는 경우도 있다 — 가입 앵커로 이력 창이 좁혀져 회차가
+      // 임계값 아래로 내려간 상황. 그때는 카운터도 올리지 않는다(발급 근거가 사라진 회차다).
+      missed.push({ id: badge.id, name: badge.name, reason: evalResult.reason, actual: evalResult.actual, required: evalResult.required })
+      continue
+    }
+
+    const occurrences = collectRepeatOccurrences(condition, evalActivities)
+    const owned = ownedBadgeIds.has(badge.id)
+    const newOccurrences = occurrences.filter((a) => batchStravaIds.has(a.stravaId))
+
+    if (owned && newOccurrences.length === 0) continue // 올릴 회차가 없다 — RPC를 부르지 않는다
+
+    candidates.push({
+      badge,
+      condition,
+      action: owned ? 'increment' : 'issue',
+      // 반복형도 진행 트랙 병합 대상이 아니다 — 같은 계열의 여러 등급이 한 번에 통과할 수
+      // 있고, 트랙 병합에 걸리면 그중 하나로 접혀 나머지가 조용히 사라진다.
+      progressionKey: null,
+      progressionValue: 0,
+      evalResult,
+      occurrences,
+      newOccurrences,
+    })
   }
 
   // ── 2단계: 진행 트랙별 최고값 1개만 남기기 ───────────────────────────
@@ -883,6 +1082,10 @@ export async function evaluateBadgesDetailed(
   //  common 배지 여러 개가 동시에 발급되며 자기들끼리 캡을 소진해 이후 정당한
   //  발급까지 막는 문제가 있어 제거함. 아이템/드랍 배지는 drop-engine의
   //  확률·섀도우밴·일일 하향 로직이 별도로 어뷰징을 방지한다.)
+  //
+  // v5 반복 획득이 이 자리에 캡을 다시 들이지 않는 이유(티켓 20260905_0030 §2):
+  // **회차는 발급이 아니다.** 임계값을 넘지 않은 회차는 `earn_count`만 올리고 피드
+  // 이벤트·결산을 만들지 않으므로 애초에 홍수 집계에 잡히지 않는다.
 
   // ── 2.8단계: 첫 싱크 게이트 — 계열의 **첫 칸만** 발급한다 ────────────────
   //
@@ -890,6 +1093,12 @@ export async function evaluateBadgesDetailed(
   // 등급이 없는 배지에 무의미해서(레벨형은 항상 탈락) 종류별로 갈랐다 (§6).
   const gatedIssueList: typeof toIssueList = []
   for (const c of toIssueList) {
+    // 카운터 증가는 발급이 아니므로 첫 싱크 게이트의 대상이 아니다. (첫 싱크에는 보유
+    // 배지가 없어 실제로 도달하지 않지만, 시뮬레이터의 overrideFirstSync에서는 도달한다)
+    if (c.action === 'increment') {
+      gatedIssueList.push(c)
+      continue
+    }
     const leveled = isLeveledBadge(c.badge)
     const blocked = isFirstSync && (leveled ? (c.badge.level ?? 0) > 1 : c.badge.rarity !== 'common')
     if (blocked) {
@@ -906,17 +1115,47 @@ export async function evaluateBadgesDetailed(
   }
 
   const earned: BadgeEarnedInfo[] = []
+  /** 이번 호출에서 회차 카운터만 오른 배지 — 엔진 로그 전용. `earned`에는 절대 넣지 않는다 */
+  const counted: { id: string; name: string; addedEarnCount: number }[] = []
 
-  // ── 3단계: 발급 (dryRun=false일 때만) ───────────────────────────────
-  for (const { badge: toIssue, condition, evalResult } of gatedIssueList) {
-    earned.push({ id: toIssue.id, name: toIssue.name, rarity: toIssue.rarity, reason: '조건 충족' })
+  // ── 3단계: 발급 결정 → DB 반영 → 부수효과 ────────────────────────────
+  //
+  // 세 단계를 한 루프 안에서 순서대로 밟되 **경계를 지킨다**: DB 반영이 실패하면
+  // `continue`로 부수효과(포인트·피드·결산·연출)를 전부 건너뛴다. 예전에는 `earned.push`가
+  // INSERT보다 먼저라 실패한 발급이 결산·연출에 그대로 나갔다(B-3).
+  for (const plan of gatedIssueList) {
+    const { badge: toIssue, condition, evalResult, action, occurrences, newOccurrences } = plan
 
+    // ── 3-a. 계기 활동 선정
+    //    반복형은 «임계값을 넘긴 그 회차»가 계기다. 회차가 임계값보다 많으면(밀린 발급)
+    //    N번째 회차를 쓰고, 그것도 없으면 마지막 회차로 떨어진다.
+    //    occurrences가 비어 있으면(= 반복형이 아니다) 기존 규칙을 그대로 쓴다 —
+    //    `repeatCountOf`는 레벨형에 repeat_count가 잘못 붙은 카탈로그 오류에도 값을
+    //    돌려주므로, 회차 목록의 유무로 한 번 더 가른다.
+    const repeatCount = repeatCountOf(toIssue)
+    const triggerActivity =
+      repeatCount != null && occurrences.length > 0
+        ? (occurrences[repeatCount - 1] ?? occurrences[occurrences.length - 1])
+        : condition.activity_type
+          ? (evalActivities.find((a) => a.jamActivityType === condition.activity_type && matchesPerActivityCondition(condition, a))
+            ?? evalActivities.find((a) => a.jamActivityType === condition.activity_type))
+          : evalActivities[0]
+
+    // ── 3-b. 카운터 증가 경로 — 발급이 아니다. earned에도 담기지 않는다
+    if (action === 'increment') {
+      if (dryRun) continue
+      const added = await incrementRepeatEarnCount(supabase, userId, toIssue.id, newOccurrences)
+      if (added > 0) {
+        counted.push({ id: toIssue.id, name: toIssue.name, addedEarnCount: added })
+        console.info(
+          `[evaluateBadgesDetailed] 반복 회차 누적 — userId: ${userId}, badge: ${toIssue.name}, +${added}회 (발급 아님)`
+        )
+      }
+      continue
+    }
+
+    // ── 3-c. 발급 경로 — DB 반영
     if (!dryRun) {
-      const triggerActivity = condition.activity_type
-        ? (evalActivities.find((a) => a.jamActivityType === condition.activity_type && matchesPerActivityCondition(condition, a))
-          ?? evalActivities.find((a) => a.jamActivityType === condition.activity_type))
-        : evalActivities[0]
-
       // 어드민 전용 — 발급 근거(조건/실측값/트리거 활동) 스냅샷. 일반 유저 화면에는 노출 안 함
       const conditionSnapshot: BadgeConditionSnapshot = {
         condition,
@@ -937,6 +1176,12 @@ export async function evaluateBadgesDetailed(
           : null,
       }
 
+      // 회차 이력 초기값. 반복형은 발급 시점에 이미 쌓인 회차를 **전부** 심는다 —
+      // 한 건만 심으면 다음 싱크에서 나머지 과거 회차가 뒤늦게 더해져 카운터가 흔들린다.
+      // 반복형이 아니면 발급 1건이 곧 1회차다.
+      const earnHistory = toEarnHistoryEntries(
+        occurrences.length > 0 ? occurrences : triggerActivity ? [triggerActivity] : []
+      )
       const activityBadgesTable = supabase.from('user_activity_badges')
       const activityBadgeInsertPayload = {
         user_id: userId,
@@ -950,6 +1195,15 @@ export async function evaluateBadgesDetailed(
         // 배지 상세 화면(badges/[id]/page.tsx)에 "계기 활동일"로 사용자에게 노출되므로
         // 반드시 진짜 UTC인 startDate만 쓴다.
         triggered_by_activity_date: triggerActivity?.startDate ?? null,
+        // 마이그레이션 130의 백필은 1회성이라 **그 이후 INSERT되는 행은 컬럼 기본값**
+        // (earn_count=1 · earn_history='[]')으로 들어가 «earn_count = length(earn_history)»
+        // 불변식이 깨진다. 엔진 발급 경로에서는 항상 명시적으로 채운다.
+        // 회차가 상한(200)을 넘으면 earn_history는 잘리지만 **총계는 잘리지 않는다** —
+        // earn_count가 총계를 들고 있다는 것이 상한을 둔 근거다.
+        earn_count: Math.max(occurrences.length, earnHistory.length, 1),
+        // condition_snapshot과 같은 이유로 단언한다 — BadgeEarnHistoryEntry는 interface라
+        // 암묵적 인덱스 시그니처가 없어 Json에 직접 대입되지 않는다(값은 전부 직렬화 가능).
+        earn_history: earnHistory as unknown as Json,
         // condition_snapshot은 jsonb 컬럼이라 생성 타입이 Json이다. BadgeConditionSnapshot은
         // interface라 암묵적 인덱스 시그니처가 없어 Json에 직접 대입되지 않는다(구조는 전부
         // 직렬화 가능한 값). 이 한 필드만 단언하고 나머지 컬럼 검사는 그대로 받는다.
@@ -958,13 +1212,22 @@ export async function evaluateBadgesDetailed(
       const { error: insertError } = await activityBadgesTable.insert(activityBadgeInsertPayload)
 
       if (insertError) {
-        if (insertError.code === '23505') continue
-        console.error(`[evaluateBadgesDetailed] 배지 발급 오류 (badge_id: ${toIssue.id}):`, insertError)
+        // 23505(중복키)는 «이미 보유»다. 반복형은 이 경로로 오지 않는다(보유하면 increment로
+        // 갈라진다) — 남은 건 동시 싱크가 같은 배지를 동시에 발급한 경우뿐이므로 조용히
+        // 넘긴다. 어느 쪽이든 **부수효과는 일으키지 않는다.**
+        if (insertError.code !== '23505') {
+          console.error(`[evaluateBadgesDetailed] 배지 발급 오류 (badge_id: ${toIssue.id}):`, insertError)
+        }
         continue
       }
 
       console.info(`[evaluateBadgesDetailed] 배지 발급 — userId: ${userId}, badge: ${toIssue.name} (${badgeKindLabel(toIssue)}), by: ${triggeredBy}`)
+    }
 
+    // ── 3-d. 부수효과 — **DB 반영에 성공한 발급만** 여기 도달한다
+    earned.push({ id: toIssue.id, name: toIssue.name, rarity: toIssue.rarity, reason: '조건 충족' })
+
+    if (!dryRun) {
       // 잼 포인트 지급 — 배지에 point_reward가 붙어 있으면 발급 직후 1회 지급.
       // (배지 발급 성공을 전제로 지급. 0이면 awardPoints가 스킵.)
       // 실패 시 로깅은 awardPoints() 내부에서 일괄 처리한다(호출부에서 중복 기록 안 함).
@@ -1006,7 +1269,9 @@ export async function evaluateBadgesDetailed(
 
   // 판정 과정 기록 — dryRun(시뮬레이션)에서는 소음 방지를 위해 기록하지 않음
   if (!dryRun) {
-    await logEngineDecision('badge', 'sync_result', userId, { triggeredBy, isFirstSync, earned, missed })
+    // counted(회차 카운터만 오른 배지)를 함께 남긴다 — 이게 없으면 「발급은 없는데 카운터가
+    // 올랐다」를 사후에 추적할 수단이 아예 없다. earned와는 끝까지 분리한다.
+    await logEngineDecision('badge', 'sync_result', userId, { triggeredBy, isFirstSync, earned, missed, counted })
   }
 
   return { earned, missed }
@@ -1034,6 +1299,45 @@ export async function evaluateBadges(
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────
 // getMondayKey/calcMaxStreak는 activityFilters.ts로 이전(티켓 20260904_0631) — 상단에서
 // import + 재export 처리했다.
+
+/**
+ * 반복형 회차 카운터 증가 — 실제로 오른 회차 수를 돌려준다 (v5 B1, 티켓 20260905_0030 §2).
+ *
+ * ## 왜 RPC인가
+ * 멱등 조건이 «근거 활동 id가 이미 `earn_history`에 있으면 올리지 않는다»인데, 이건
+ * `UPDATE ... WHERE NOT (earn_history @> jsonb_build_array(jsonb_build_object(...)))`
+ * 한 문장으로만 원자적으로 쓸 수 있다. supabase-js의 쿼리 빌더에는 jsonb 포함 연산자를
+ * 조건절에 싣는 표현이 없어 **읽고-고치고-쓰는 왕복**이 되고, 그 순간 동시 싱크에서 회차가
+ * 유실되거나 이중 계상된다. 그래서 마이그레이션 132의 `increment_activity_badge_earn`으로
+ * 뺐다. `UNIQUE(user_id, badge_id)`를 유지하기로 한 티켓 20260905_0027의 결정 위에서
+ * 성립하는 유일한 형태다.
+ *
+ * ⚠️ `earn_history` 상한(200)을 넘겨 밀려난 원소는 이 조건절이 막지 못한다. 다만 싱크는
+ * `getProcessedStravaIds`가 이미 처리한 활동을 상위에서 걸러내므로 **이중 방어**다.
+ */
+async function incrementRepeatEarnCount(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  badgeId: string,
+  newOccurrences: NormalizedActivity[]
+): Promise<number> {
+  const entries = toEarnHistoryEntries(newOccurrences)
+  if (entries.length === 0) return 0
+
+  const { data, error } = await supabase.rpc('increment_activity_badge_earn', {
+    p_user_id: userId,
+    p_badge_id: badgeId,
+    p_entries: entries as unknown as Json,
+    p_history_limit: EARN_HISTORY_LIMIT,
+  })
+
+  if (error) {
+    // 카운터 증가 실패는 발급 실패가 아니다 — 본 흐름(다른 배지 발급)을 끊지 않고 기록만 한다.
+    console.error(`[evaluateBadgesDetailed] 반복 회차 누적 오류 (badge_id: ${badgeId}):`, error)
+    return 0
+  }
+  return typeof data === 'number' ? data : 0
+}
 
 // ── 진행 트랙 키 추출 ────────────────────────────────────────────────────
 const PROGRESSION_MODIFIERS = [

@@ -1,5 +1,6 @@
 /**
- * 발급 엔진 v5 A묶음 회귀 — 가입 시점 앵커 · 무한레벨 발급 · 첫 싱크 게이트 재정의
+ * 발급 엔진 v5 회귀 — A묶음(가입 시점 앵커 · 무한레벨 발급 · 첫 싱크 게이트 재정의) +
+ * B1묶음(반복 획득 — 「발급」과 「카운터 증가」 분리)
  * (티켓 20260905_0030, 마스터 20260905_0026)
  *
  * 실행: cd jam-web && npx vitest run src/lib/badge-engine/__tests__/badge-engine-v5.test.ts
@@ -11,8 +12,11 @@
 import { evaluateBadgesDetailed } from '../index'
 import { recapContent } from '@/lib/notifications/message'
 import { buildEarnedBadgePayload } from '@/lib/strava/sync'
+import { recordFeedEvent } from '@/lib/activity-feed'
+import { awardPoints } from '@/lib/points'
+import { recordActivityRecap } from '@/lib/notifications/recap'
 import type { NormalizedActivity } from '@/types/strava'
-import type { BadgeRow } from '@/types/database'
+import type { BadgeEarnHistoryEntry, BadgeRarity, BadgeRow } from '@/types/database'
 
 // ── 픽스처 ───────────────────────────────────────────────────────────────
 
@@ -73,6 +77,25 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
   }
 }
 
+/** 60분짜리 러닝 — 반복형 회차 술어(`duration_minutes: 60`)를 만족하는 활동 */
+function makeLongRun(stravaId: number, startDate: string): NormalizedActivity {
+  return makeRun(startDate, { stravaId, movingTimeSec: 60 * 60 })
+}
+
+/**
+ * 반복형 한 칸 — 등급 + `condition_json.repeat_count` (v5 B1).
+ * 같은 이름의 4장이 임계값만 1·5·20·50으로 다른 것이 「평면 반복은 횟수에 등급」의 형태다.
+ */
+function makeRepeatBadge(id: string, rarity: BadgeRarity, repeatCount: number): BadgeRow {
+  return makeBadge({
+    id,
+    name: '반복 러너',
+    rarity,
+    sort_order: 20,
+    condition_json: { activity_type: 'running', duration_minutes: 60, repeat_count: repeatCount },
+  })
+}
+
 /** 무한레벨형 한 칸 — `rarity: null` + `level` (마이그레이션 130의 배타 CHECK와 같은 형태) */
 function makeLevelBadge(level: number, familyKey: string, overrides: Partial<BadgeRow> = {}): BadgeRow {
   return makeBadge({
@@ -89,6 +112,9 @@ function makeLevelBadge(level: number, familyKey: string, overrides: Partial<Bad
 // ── 모킹 ─────────────────────────────────────────────────────────────────
 
 type StoredActivity = { normalized: NormalizedActivity; start_date: string }
+/** user_activity_badges 한 행의 회차 상태 (마이그레이션 130의 두 컬럼) */
+type EarnState = { earn_count: number; earn_history: BadgeEarnHistoryEntry[] }
+type InsertPayload = { badge_id: string; earn_count?: number; earn_history?: BadgeEarnHistoryEntry[] }
 
 const state: {
   badges: BadgeRow[]
@@ -97,12 +123,24 @@ const state: {
   user: { initial_sync_done: boolean; created_at: string | null }
   /** strava_activities 조회에 실제로 걸린 gte 필터 값 — 앵커가 적용됐는지의 직접 증거 */
   lastHistoryGte: string | undefined
+  /** badge_id → 회차 상태. 보유 배지의 earn_count/earn_history를 실제로 들고 있는다 */
+  earnState: Record<string, EarnState>
+  /** user_activity_badges에 실제로 시도된 INSERT 페이로드 */
+  inserts: InsertPayload[]
+  /** increment_activity_badge_earn RPC 호출 기록 */
+  rpcCalls: { badgeId: string; entries: BadgeEarnHistoryEntry[] }[]
+  /** 강제 INSERT 실패 — 「DB 반영 실패 시 부수효과 제외」 검증용 */
+  insertErrorByBadgeId: Record<string, { code: string; message: string }>
 } = {
   badges: [],
   ownedBadgeIds: [],
   storedActivities: [],
   user: { initial_sync_done: true, created_at: SIGNUP_AT },
   lastHistoryGte: undefined,
+  earnState: {},
+  inserts: [],
+  rpcCalls: [],
+  insertErrorByBadgeId: {},
 }
 
 function resetState() {
@@ -111,6 +149,16 @@ function resetState() {
   state.storedActivities = []
   state.user = { initial_sync_done: true, created_at: SIGNUP_AT }
   state.lastHistoryGte = undefined
+  state.earnState = {}
+  state.inserts = []
+  state.rpcCalls = []
+  state.insertErrorByBadgeId = {}
+}
+
+/** 보유 배지의 회차 상태. 없으면 「발급 1회 = 1회차」로 초기화한다(마이그레이션 130 불변식) */
+function earnStateOf(badgeId: string): EarnState {
+  if (!state.earnState[badgeId]) state.earnState[badgeId] = { earn_count: 1, earn_history: [] }
+  return state.earnState[badgeId]
 }
 
 /** supabase-js 쿼리 빌더 흉내 — 필요한 연산자만 구현하고 필터는 실제로 적용한다 */
@@ -134,8 +182,25 @@ function mockSupabase() {
       inIds = values
       return builder
     }
+    builder.update = self
     builder.maybeSingle = () =>
       Promise.resolve(table === 'users' ? { data: state.user, error: null } : { data: null, error: null })
+    builder.insert = (payload: InsertPayload) => {
+      if (table !== 'user_activity_badges') return Promise.resolve({ data: null, error: null })
+      state.inserts.push(payload)
+      const forced = state.insertErrorByBadgeId[payload.badge_id]
+      if (forced) return Promise.resolve({ data: null, error: forced })
+      // UNIQUE(user_id, badge_id) — 이미 보유한 배지의 INSERT는 23505로 떨어진다
+      if (state.ownedBadgeIds.includes(payload.badge_id)) {
+        return Promise.resolve({ data: null, error: { code: '23505', message: 'duplicate key' } })
+      }
+      state.ownedBadgeIds.push(payload.badge_id)
+      state.earnState[payload.badge_id] = {
+        earn_count: payload.earn_count ?? 1,
+        earn_history: payload.earn_history ?? [],
+      }
+      return Promise.resolve({ data: null, error: null })
+    }
     builder.then = (resolve: (v: unknown) => void) => {
       let data: unknown = []
       if (table === 'badges') {
@@ -149,7 +214,37 @@ function mockSupabase() {
     }
     return builder
   }
-  return { from }
+
+  /**
+   * `increment_activity_badge_earn` RPC 흉내 — **마이그레이션 132의 멱등 조건을 실제로 구현한다.**
+   * 근거 활동 id가 이미 earn_history에 있으면 올리지 않는다(SQL의
+   * `NOT (earn_history @> [{"strava_activity_id": …}])`와 같은 판정).
+   * 흉내만 내고 통과시키면 「같은 활동으로 두 번 평가해도 한 번만 오른다」가 검증되지 않는다.
+   */
+  const rpc = (name: string, args: Record<string, unknown>) => {
+    if (name !== 'increment_activity_badge_earn') return Promise.resolve({ data: null, error: null })
+    const badgeId = args.p_badge_id as string
+    const entries = (args.p_entries ?? []) as BadgeEarnHistoryEntry[]
+    const limit = (args.p_history_limit as number | undefined) ?? 200
+    state.rpcCalls.push({ badgeId, entries })
+    if (!state.ownedBadgeIds.includes(badgeId)) return Promise.resolve({ data: 0, error: null })
+    const row = earnStateOf(badgeId)
+    const seen = new Set<number>()
+    let added = 0
+    for (const entry of entries) {
+      const id = entry.strava_activity_id
+      if (id == null) continue
+      if (seen.has(id)) continue
+      seen.add(id)
+      if (row.earn_history.some((h) => h.strava_activity_id === id)) continue
+      row.earn_count += 1
+      row.earn_history = [...row.earn_history, entry].slice(-limit)
+      added += 1
+    }
+    return Promise.resolve({ data: added, error: null })
+  }
+
+  return { from, rpc }
 }
 
 vi.mock('@/lib/supabase/server', () => ({ createServiceClient: () => mockSupabase() }))
@@ -158,7 +253,10 @@ vi.mock('@/lib/points', () => ({ awardPoints: vi.fn(async () => true) }))
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
 vi.mock('@/lib/notifications/recap', () => ({ recordActivityRecap: vi.fn(async () => {}) }))
 
-beforeEach(() => resetState())
+beforeEach(() => {
+  resetState()
+  vi.clearAllMocks() // 부수효과(피드·포인트·결산) 호출 여부를 테스트마다 새로 센다
+})
 
 // ═══════════════════════════════════════════════════════════════════════
 // ① 가입 시점 앵커 (§5)
@@ -392,5 +490,213 @@ describe("레벨형은 획득 연출 페이로드에서 Common으로 접히지 �
 
     expect(payload.earnedBadges).toHaveLength(1)
     expect(payload.earnedBadges[0].rarity).toBeNull()
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// ⑥ 반복 획득 — 「발급」과 「카운터 증가」 분리 (§2, B1묶음)
+// ═══════════════════════════════════════════════════════════════════════
+
+/** 반복형 계열 — 같은 이름의 Common(1회) · Rare(5회) */
+function repeatFamily(): BadgeRow[] {
+  return [makeRepeatBadge('RC-common', 'common', 1), makeRepeatBadge('RC-rare', 'rare', 5)]
+}
+
+describe('반복형 — 임계값 회차에서만 발급된다', () => {
+  it('회차 3건이면 Common(1회)만 발급되고 Rare(5회)는 「달성 횟수 부족」으로 남는다', async () => {
+    state.badges = repeatFamily()
+    state.storedActivities = [101, 102, 103].map((id, i) => ({
+      normalized: makeLongRun(id, `2026-04-1${i}T05:00:00Z`),
+      start_date: `2026-04-1${i}T05:00:00Z`,
+    }))
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+
+    expect(earned.map((b) => b.id)).toEqual(['RC-common'])
+    const rare = missed.find((m) => m.id === 'RC-rare')
+    expect(rare?.reason).toBe('달성 횟수 부족')
+    expect(rare?.actual).toBe('3회')
+  })
+
+  it('회차 술어를 만족하지 않는 활동은 회차로 세지 않는다 (total_count와 다르다)', async () => {
+    // 30분짜리 러닝 5건 — 「활동 5회」지만 「60분 이상 활동」은 0건이다.
+    // total_count였다면 통과했을 조건이 repeat_count에서는 통과하지 않는다.
+    state.badges = repeatFamily()
+    state.storedActivities = [201, 202, 203, 204, 205].map((id, i) => ({
+      normalized: makeRun(`2026-04-1${i}T05:00:00Z`, { stravaId: id }),
+      start_date: `2026-04-1${i}T05:00:00Z`,
+    }))
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+    expect(earned).toHaveLength(0)
+  })
+
+  it('발급 시점에 쌓인 회차 전부가 earn_history에 들어간다 (다음 싱크에서 뒤늦게 더해지지 않게)', async () => {
+    state.badges = [makeRepeatBadge('RC-common', 'common', 1)]
+    state.storedActivities = [101, 102, 103].map((id, i) => ({
+      normalized: makeLongRun(id, `2026-04-1${i}T05:00:00Z`),
+      start_date: `2026-04-1${i}T05:00:00Z`,
+    }))
+
+    await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+
+    const inserted = state.inserts.find((p) => p.badge_id === 'RC-common')
+    expect(inserted?.earn_count).toBe(3)
+    expect(inserted?.earn_history?.map((h) => h.strava_activity_id)).toEqual([101, 102, 103])
+  })
+})
+
+describe('반복형 — 보유해도 후보에서 빠지지 않는다 (B-1 · B-2)', () => {
+  it('보유한 Common의 회차 카운터가 계속 오른다 — 「보유하면 제외」에 걸리지 않는다', async () => {
+    state.badges = repeatFamily()
+    state.ownedBadgeIds = ['RC-common']
+    state.earnState['RC-common'] = {
+      earn_count: 1,
+      earn_history: [{ earned_at: '2026-04-10T05:00:00Z', strava_activity_id: 101 }],
+    }
+    state.storedActivities = [
+      { normalized: makeLongRun(101, '2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
+    ]
+
+    await evaluateBadgesDetailed(USER_ID, [makeLongRun(102, '2026-04-11T05:00:00Z')], { triggeredBy: 'test' })
+
+    expect(state.rpcCalls.map((c) => c.badgeId)).toEqual(['RC-common'])
+    expect(state.earnState['RC-common'].earn_count).toBe(2)
+  })
+
+  it('상위 등급(Rare)을 보유해도 하위 등급(Common)이 성장 티어 비교로 탈락하지 않는다', async () => {
+    // 등급형이었다면 rarityTier(common)=1 <= highestOwned(rare)=2 로 후보에서 빠진다.
+    // 반복형은 하위 등급도 계속 카운터를 받아야 하므로 그 비교의 대상이 아니다.
+    state.badges = repeatFamily()
+    state.ownedBadgeIds = ['RC-common', 'RC-rare']
+    state.earnState['RC-common'] = { earn_count: 5, earn_history: [] }
+    state.earnState['RC-rare'] = { earn_count: 1, earn_history: [] }
+    state.storedActivities = [101, 102, 103, 104, 105].map((id, i) => ({
+      normalized: makeLongRun(id, `2026-04-1${i}T05:00:00Z`),
+      start_date: `2026-04-1${i}T05:00:00Z`,
+    }))
+
+    await evaluateBadgesDetailed(USER_ID, [makeLongRun(106, '2026-04-16T05:00:00Z')], { triggeredBy: 'test' })
+
+    expect(state.rpcCalls.map((c) => c.badgeId).sort()).toEqual(['RC-common', 'RC-rare'])
+  })
+
+  it('이번 배치에 새 회차가 없으면 RPC를 부르지 않는다', async () => {
+    state.badges = [makeRepeatBadge('RC-common', 'common', 1)]
+    state.ownedBadgeIds = ['RC-common']
+    state.storedActivities = [
+      { normalized: makeLongRun(101, '2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
+    ]
+
+    await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+    expect(state.rpcCalls).toHaveLength(0)
+  })
+})
+
+describe('반복형 — 임계값이 아닌 회차는 피드·결산에 나타나지 않는다 (홍수 방지의 핵심)', () => {
+  it('카운터만 오른 회차는 earned·피드 이벤트·결산 어디에도 없다', async () => {
+    state.badges = repeatFamily()
+    state.ownedBadgeIds = ['RC-common']
+    state.earnState['RC-common'] = {
+      earn_count: 1,
+      earn_history: [{ earned_at: '2026-04-10T05:00:00Z', strava_activity_id: 101 }],
+    }
+    state.storedActivities = [
+      { normalized: makeLongRun(101, '2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
+    ]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [makeLongRun(102, '2026-04-11T05:00:00Z')], {
+      triggeredBy: 'test',
+    })
+
+    expect(earned).toHaveLength(0) // 결산·획득 연출은 earned만 본다
+    expect(vi.mocked(recordFeedEvent)).not.toHaveBeenCalled()
+    expect(vi.mocked(recordActivityRecap)).not.toHaveBeenCalled()
+    expect(state.earnState['RC-common'].earn_count).toBe(2) // 카운터는 올랐다
+  })
+
+  it('임계값을 넘긴 회차에서는 피드 이벤트가 남는다 (대비군)', async () => {
+    state.badges = [makeRepeatBadge('RC-common', 'common', 1)]
+    state.storedActivities = [
+      { normalized: makeLongRun(101, '2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
+    ]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+    expect(earned.map((b) => b.id)).toEqual(['RC-common'])
+    expect(vi.mocked(recordFeedEvent)).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('반복형 — 같은 활동으로 두 번 평가해도 회차는 한 번만 오른다 (멱등)', () => {
+  it('같은 배치를 두 번 넘겨도 earn_count가 1만 오른다', async () => {
+    state.badges = [makeRepeatBadge('RC-common', 'common', 1)]
+    state.ownedBadgeIds = ['RC-common']
+    state.earnState['RC-common'] = {
+      earn_count: 1,
+      earn_history: [{ earned_at: '2026-04-10T05:00:00Z', strava_activity_id: 101 }],
+    }
+    state.storedActivities = [
+      { normalized: makeLongRun(101, '2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
+    ]
+
+    const batch = [makeLongRun(102, '2026-04-11T05:00:00Z')]
+    await evaluateBadgesDetailed(USER_ID, batch, { triggeredBy: 'test' })
+    await evaluateBadgesDetailed(USER_ID, batch, { triggeredBy: 'test' })
+
+    expect(state.rpcCalls).toHaveLength(2) // 두 번 다 시도는 했다
+    expect(state.earnState['RC-common'].earn_count).toBe(2) // 그런데 회차는 한 번만 올랐다
+    expect(state.earnState['RC-common'].earn_history.map((h) => h.strava_activity_id)).toEqual([101, 102])
+  })
+})
+
+describe('발급 3단 분리 — DB 반영에 실패한 배지는 부수효과에서 빠진다 (B-3)', () => {
+  it('INSERT가 실패하면 earned·포인트·피드 어디에도 남지 않는다', async () => {
+    state.badges = [
+      makeBadge({
+        id: 'FAIL-1',
+        name: '실패 배지',
+        point_reward: 100,
+        condition_json: { activity_type: 'running', total_count: 1 },
+      }),
+    ]
+    state.insertErrorByBadgeId['FAIL-1'] = { code: '23503', message: 'FK 위반' }
+    state.storedActivities = [
+      { normalized: makeRun('2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
+    ]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+
+    expect(state.inserts.map((p) => p.badge_id)).toEqual(['FAIL-1']) // 시도는 했다
+    expect(earned).toHaveLength(0) // 예전에는 여기 남아 결산·연출에 나갔다
+    expect(vi.mocked(awardPoints)).not.toHaveBeenCalled()
+    expect(vi.mocked(recordFeedEvent)).not.toHaveBeenCalled()
+  })
+
+  it('중복키(23505)로 실패해도 마찬가지다 — 동시 싱크가 결산을 두 번 만들지 않는다', async () => {
+    state.badges = [
+      makeBadge({ id: 'DUP-1', name: '중복 배지', condition_json: { activity_type: 'running', total_count: 1 } }),
+    ]
+    state.insertErrorByBadgeId['DUP-1'] = { code: '23505', message: 'duplicate key' }
+    state.storedActivities = [
+      { normalized: makeRun('2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
+    ]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+    expect(earned).toHaveLength(0)
+    expect(vi.mocked(recordFeedEvent)).not.toHaveBeenCalled()
+  })
+
+  it('dryRun에서는 DB를 건드리지 않고 earned만 채운다 (어드민 시뮬레이터 회귀)', async () => {
+    state.badges = [
+      makeBadge({ id: 'OK-1', name: '정상 배지', condition_json: { activity_type: 'running', total_count: 1 } }),
+    ]
+    state.storedActivities = [
+      { normalized: makeRun('2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' },
+    ]
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['OK-1'])
+    expect(state.inserts).toHaveLength(0)
+    expect(vi.mocked(recordFeedEvent)).not.toHaveBeenCalled()
   })
 })

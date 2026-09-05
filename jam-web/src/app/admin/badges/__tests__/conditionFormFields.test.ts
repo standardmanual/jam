@@ -144,7 +144,7 @@ describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 2
     expect(saved).toEqual({ distance_km: 20 })
   })
 
-  it('FORM_UNSUPPORTED_CONDITION_KEYS는 기존 6종 + v5 신규 20종이다', () => {
+  it('FORM_UNSUPPORTED_CONDITION_KEYS는 기존 6종 + v5 신규 20종 + repeat_count다', () => {
     // season_count_all은 티켓 20260825_032 원문에 나열되지 않았으나, 폼에 입력 UI가 없으면서도
     // badge-engine이 실제로 평가하는 필드다(migration 076의 "사계절의 발걸음" 배지가 사용 중) —
     // 구현 중 발견, ALL_CONDITION_KEYS 기반 자동 진단으로 함께 잡혔다.
@@ -152,6 +152,8 @@ describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 2
     // 유지된다 — T1 '야생의 첫발' 1건 외 사용처가 없어 전용 UI를 추가하지 않았다.
     // v5 신규 20종(티켓 20260905_0028)은 레지스트리에 선언만 됐고 어드민 조건 폼은 티켓
     // 20260905_0032 몫이라, 전부 "폼 미지원 = initCond 보존" 경로로 유지된다.
+    // repeat_count(티켓 20260905_0030 B1)는 **평가는 구현됐지만** 어드민 입력 UI는 아직
+    // 없다 — 「평가 주체」와 「폼 지원」은 별개 축이라 여기 함께 남는다.
     expect([...FORM_UNSUPPORTED_CONDITION_KEYS].sort()).toEqual(
       [
         // 기존 6종
@@ -183,6 +185,8 @@ describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 2
         'return_gap_days',
         'vs_personal_average',
         'weekly_streak',
+        // v5 반복 획득 1종 (티켓 20260905_0030 B1)
+        'repeat_count',
       ].sort()
     )
   })

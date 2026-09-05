@@ -2410,6 +2410,17 @@ export type Database = {
         Returns: Json
       }
       expire_stale_poi_drops: { Args: never; Returns: Json }
+      // ⚠️ 손으로 추가한 항목 — 마이그레이션 132가 아직 실행되지 않아 자동 생성에 잡히지
+      //    않는다(티켓 20260905_0030 B1). 132 실행 후 재생성하면 그대로 나온다.
+      increment_activity_badge_earn: {
+        Args: {
+          p_badge_id: string
+          p_entries: Json
+          p_history_limit?: number
+          p_user_id: string
+        }
+        Returns: number
+      }
       jsonb_as_array: { Args: { p_value: Json }; Returns: Json }
       jsonb_merge_sum: {
         Args: {

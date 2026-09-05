@@ -174,6 +174,38 @@
 분류상 `negative_split`·`day_of_month`만 «필터 전용»이고 나머지 18종은 «수치 검사» 필드다
 (계열 정합성 트리거의 `measurable_keys`도 그 18종을 포함한다 — 마이그레이션 131).
 
+### 2.11 `repeat_count` — 반복 획득 (2026-09-05, 티켓 20260905_0030 B1) ✅ **평가 구현됨**
+
+| 필드 | 타입 | 단위 | 평가 방식 |
+|------|------|------|-----------|
+| `repeat_count` | `number` (≥1) | 회 | **기준 조건을 통째로 만족한 활동**이 조건값 이상이면 통과 |
+
+`total_count`와 다르다. 이 구분이 필드를 하나 더 만든 이유다.
+
+| 조건 | 뜻 |
+|---|---|
+| `{ duration_minutes: 60, total_count: 5 }` | 「60분 이상 활동이 **1건 있고**, 활동이 총 5회」 (수치 필드는 이력 전반에서 독립 평가되므로) |
+| `{ duration_minutes: 60, repeat_count: 5 }` | 「60분 이상 활동이 **5건**」 |
+
+**회차의 정의** — `collectRepeatOccurrences()`(`src/lib/badge-engine/index.ts`) 한 곳에만 있다.
+조건 평가와 카운터 증가가 **같은 함수를 공유해야** 「발급은 됐는데 카운터는 안 오른다」가 생기지 않는다.
+
+1. `activity_type` 필터 + 걷기 축1 게이트
+2. `day_of_week` 단일값 필터
+3. 활동 1건이 `PER_ACTIVITY_KEYS`(`duration_minutes`·`min_speed_kmh`·`max_pace_sec_per_km`·
+   `temperature_min_c`·`temperature_max_c`·`weekend_duration_hours`)를 **전부** 만족.
+   `same_activity: true`면 `distance_km`·`elevation_gain_m`도 합류하고,
+   `time_range`는 `weekly_count`가 없을 때 합류한다
+4. 걷기는 하루 1회 상한(`dedupeOnePerDay`) 적용 — 걷기 배지 v4 정책과 같다
+
+**배지 종류 판정** — `rarity`가 있고 `repeat_count`가 있으면 **반복형**이다(세 번째 종류).
+`rarity IS NULL`이면 레벨형이 우선한다. 판정은 `badgeKind.ts`의 `badgeKindOf()` 한 곳.
+
+⚠️ **현재 회차 술어로 쓸 수 있는 필드는 위 6종 + `same_activity` 조합뿐이다.**
+`single_distance_km`처럼 회차 표현에 더 자연스러운 v5 스칼라 7종은 아직 `evaluation: 'pending'`이라
+조건에 넣으면 fail-closed가 통째로 막는다(§4). 「20km 이상 러닝 5회」는 지금
+`{ activity_type: 'running', same_activity: true, distance_km: 20, repeat_count: 5 }`로 쓴다.
+
 ---
 
 ## 3. 메타데이터 필드 (발급 판정에 관여하지 않음)
@@ -209,6 +241,8 @@
   (§2.10) ② 레지스트리에 아예 없는 키(오탈자). 사유는 「평가할 수 없는 조건 필드 — …」로 남는다.
   이 규칙이 없으면 `matchesPerActivityCondition()`이 모르는 키를 조용히 건너뛰고 마지막에
   `return true` 하므로, 미구현 필드가 «발급 안 됨»이 아니라 **«무조건 발급»**으로 뒤집힌다
+- `repeat_count`(§2.11)는 fail-closed 대상이 **아니다** — 평가가 구현돼 있다. 다만 회차 술어로
+  같이 쓰려는 필드가 `pending`이면 그 필드 때문에 조건 전체가 막힌다
 
 ---
 

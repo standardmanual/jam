@@ -289,6 +289,13 @@ export function classifyBadgeProgressKind(condition: BadgeCondition): BadgeProgr
   const blocking = findBlockingConditionKeys(condition)
   if (blocking.unknown.length > 0 || blocking.pending.length > 0) return 'unsupported'
 
+  // 반복형(repeat_count)은 아직 진행 계산 축이 없다 — 확장은 티켓 20260905_0031.
+  // 그때까지 unsupported로 둔다. 이 줄이 없으면 `{ duration_minutes: 60, repeat_count: 5 }`가
+  // scalarKeys 1개(duration_minutes)로 잡혀 «record» 진행률을 그리는데, 그건
+  // 「60분을 채웠는지」만 보여주고 **「5번 채워야 한다」를 통째로 숨긴다** — 발급은 안 되는데
+  // 화면은 100%가 되는, fail-closed 분기가 막으려던 것과 같은 형태의 거짓말이다.
+  if (condition.repeat_count !== undefined) return 'unsupported'
+
   const isMulti =
     (Array.isArray(condition.day_of_week) && condition.total_count !== undefined) ||
     condition.season_count_all !== undefined
