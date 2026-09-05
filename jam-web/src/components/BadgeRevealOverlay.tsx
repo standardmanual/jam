@@ -34,7 +34,12 @@ export interface RevealBadge {
   name: string
   description: string
   imageUrl?: string | null
-  rarity?: 'common' | 'rare' | 'epic' | 'mystic'
+  /**
+   * `null`은 «등급이 존재하지 않음»(무한레벨형, 마이그레이션 130)이고 `undefined`는 «미지정»이다.
+   * 둘의 의미가 다르므로 여기서 접지 않고 그대로 캐러셀에 넘긴다 — `RarityBadge`가 null이면
+   * 칩을 그리지 않는다 (티켓 20260905_0030).
+   */
+  rarity?: 'common' | 'rare' | 'epic' | 'mystic' | null
 }
 
 interface Props {

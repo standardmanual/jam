@@ -353,11 +353,14 @@ export function BadgeRevealCarousel({
           변경을 읽는다. 카드 DOM은 순환하며 노드가 옮겨다녀 라이브 리전으로 쓸 수 없다.
           등급 텍스트는 `<RarityBadge>`가 아니라 `getRarityLabel()`로 얻는다 — RarityBadge는
           common일 때 시각적 칩을 렌더하지 않으므로(20260827_024) 여기서 그대로 재사용하면
-          common 등급에서 라이브 리전이 등급을 아예 공지하지 못한다(20260904_1502 회귀). */}
+          common 등급에서 라이브 리전이 등급을 아예 공지하지 못한다(20260904_1502 회귀).
+          rarity를 `?? 'common'`으로 접지 않는다 — null은 "등급이 존재하지 않음"(무한레벨형)이라
+          getRarityLabel이 null을 돌려주고 등급 낭독이 생략된다(20260905_0030). undefined는
+          그대로 common으로 낭독된다. */}
       <div aria-live="polite" aria-atomic="true" style={SR_ONLY_STYLE}>
         {center?.kind === 'badge' && (
           <>
-            {getRarityLabel(center.item?.rarity ?? 'common')}{' '}
+            {getRarityLabel(center.item?.rarity)}{' '}
             {center.item?.name}. {center.item?.description}
           </>
         )}
@@ -502,7 +505,7 @@ function BadgeCard({ item }) {
       </div>
 
       <div style={{ flexShrink: 0 }}>
-        <RarityBadge rarity={item?.rarity ?? 'common'} />
+        <RarityBadge rarity={item?.rarity} />
       </div>
 
       <p

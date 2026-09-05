@@ -224,9 +224,12 @@ function targetCount(payload: Record<string, unknown>): string {
 /** 대표 선정용 희귀도 서열 (R8 — 첫 획득 순서가 아니다) */
 const RARITY_RANK: Record<BadgeRarity, number> = { common: 0, rare: 1, epic: 2, mystic: 3 }
 
-function rarityRank(rarity: string): number {
-  return RARITY_RANK[rarity as BadgeRarity] ?? 0
+function rarityRank(rarity: string | null): number {
+  return rarity ? (RARITY_RANK[rarity as BadgeRarity] ?? 0) : 0
 }
+
+/** 등급이 확정된 활동배지 — 희귀 헤드라인(A3·E1)은 등급 라벨로 말하므로 레벨형이 올 수 없다 */
+type RankedActivityBadge = RecapActivityBadge & { rarity: BadgeRarity }
 
 /** payload의 객체 배열 필드 — JSONB라 무엇이든 들어올 수 있다 */
 function objList(payload: Record<string, unknown>, key: string): Record<string, unknown>[] {
@@ -237,7 +240,13 @@ function objList(payload: Record<string, unknown>, key: string): Record<string, 
   )
 }
 
-function asRarity(value: string): BadgeRarity {
+/**
+ * payload의 `rarity` 값을 등급으로 좁힌다. **값이 비어 있으면 `null`을 돌려준다** —
+ * 무한레벨형(`badges.rarity IS NULL`)이 조용히 Common으로 접히던 경로다(티켓 20260905_0030).
+ * 'common'이라는 문자열이 실제로 들어온 경우와 «등급이 존재하지 않음»은 서로 다른 상태다.
+ */
+function asRarity(value: string): BadgeRarity | null {
+  if (!value) return null
   return value === 'rare' || value === 'epic' || value === 'mystic' ? value : 'common'
 }
 
@@ -248,8 +257,8 @@ export interface RecapContent {
   activityBadges: RecapActivityBadge[]
   checkins: RecapCheckinBadge[]
   items: RecapItemBadge[]
-  /** epic·mystic 중 최상위 활동배지 (E1·A3의 헤드라인) */
-  rare: RecapActivityBadge | null
+  /** epic·mystic 중 최상위 활동배지 (E1·A3의 헤드라인). 등급이 있는 배지만 후보다 */
+  rare: RankedActivityBadge | null
   firstBadgeId: string
   points: number
   /** 배지 총량 — 체크인·아이템도 모두 배지라 총량이 성립한다(R5) */
@@ -304,10 +313,13 @@ export function recapContent(payload: Record<string, unknown>): RecapContent {
 
   // 희귀 헤드라인은 **활동배지**에서만 고른다 — 아이템 배지는 착지가 도감이 아니라
   // 인벤토리 인스턴스라(A6) 등급 문구로 승격하면 갈 곳이 어긋난다.
-  let rare: RecapActivityBadge | null = null
+  let rare: RankedActivityBadge | null = null
   for (const b of activityBadges) {
+    // 무한레벨형은 등급 서열에 속하지 않는다 — 희귀 헤드라인(A3·E1)의 후보가 아니다.
+    // 등급 라벨로 말하는 문형이라 등급이 없는 배지를 올리면 문장이 빈칸으로 나간다.
+    if (b.rarity == null) continue
     if (rarityRank(b.rarity) < RARITY_RANK.epic) continue
-    if (!rare || rarityRank(b.rarity) > rarityRank(rare.rarity)) rare = b
+    if (!rare || rarityRank(b.rarity) > rarityRank(rare.rarity)) rare = b as RankedActivityBadge
   }
 
   const totalBadges = activityBadges.length + checkins.length + items.length
@@ -328,7 +340,7 @@ export function recapContent(payload: Record<string, unknown>): RecapContent {
 }
 
 /** 희귀도 최상위 대표 (R8). 동순위는 먼저 들어온 것 */
-function topByRarity<T extends { rarity: BadgeRarity }>(list: T[]): T | null {
+function topByRarity<T extends { rarity: BadgeRarity | null }>(list: T[]): T | null {
   let best: T | null = null
   for (const item of list) {
     if (!best || rarityRank(item.rarity) > rarityRank(best.rarity)) best = item

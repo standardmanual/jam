@@ -23,7 +23,7 @@ import { selectCompletableDrafts } from '@/lib/notifications/batch/collections'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { logEngineDecision } from '@/lib/engine-log'
 import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
-import { getActivityHistory } from '@/lib/strava/activity-history'
+import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engine/badgeProgress'
 import {
   getJamActivityType,
@@ -63,7 +63,12 @@ export interface EarnedBadgeSummary {
   description: string
   /** badges.image_url이 null이면 빈 문자열 — 기존 페이로드 관례와 동일 */
   imageUrl: string
-  rarity: BadgeRarity
+  /**
+   * 등급형은 등급 문자열, **무한레벨형은 `null`**(마이그레이션 130). 획득 연출은 이 값을
+   * 그대로 `RarityBadge`에 넘긴다 — 중간에서 `?? 'common'`으로 접으면 Lv.N 배지가
+   * Common 칩을 달고 나온다 (티켓 20260905_0030).
+   */
+  rarity: BadgeRarity | null
   type: BadgeType
 }
 
@@ -99,7 +104,7 @@ async function fetchEarnedBadgeDetails(
     name: string
     description: string | null
     image_url: string | null
-    rarity: BadgeRarity
+    rarity: BadgeRarity | null
     type: BadgeType
   }
   const byId = new Map<string, EarnedBadgeRow>()
@@ -202,7 +207,10 @@ async function notifyActivityBadgesEarned(
     return
   }
 
-  type Row = { id: string; name: string; rarity: BadgeRarity }
+  // rarity는 v5에서 nullable이다(마이그레이션 130). 여기서 `BadgeRarity`로 못박아 캐스팅하면
+  // 무한레벨형이 타입상 등급을 가진 것처럼 통과해 결산에서 Common으로 표시된다 —
+  // payload가 JSONB라 그 아래로는 타입이 잡아주지 못한다 (티켓 20260905_0030).
+  type Row = { id: string; name: string; rarity: BadgeRarity | null }
   const byId = new Map(((data ?? []) as Row[]).map((r) => [r.id, r]))
   const rows = orderedIds.map((id) => byId.get(id)).filter((r): r is Row => Boolean(r))
   if (rows.length === 0) return
@@ -406,7 +414,10 @@ async function updateFamilyProgressSnapshots(
     // strava_activities에 기록했으므로(호출부 기준 직전) 이 조회 하나로 이번 배치까지 포함한
     // 전체 이력을 얻는다(mergeActivityHistory 불필요 — evaluateBadgesDetailed 내부
     // (badge-engine/index.ts:604)와 달리 이 시점엔 배치가 이미 반영돼 있다).
-    const history = await getActivityHistory(supabase, userId)
+    // 이력의 시작점은 가입 시점으로 고정한다 — 진행 스냅샷은 발급 엔진과 **같은 창**을
+    // 봐야 한다(티켓 20260905_0030 §5). 창이 어긋나면 레일 진행률과 실제 발급이 어긋난다.
+    const anchorDate = await getSignupAnchorDate(supabase, userId)
+    const history = await getActivityHistory(supabase, userId, anchorDate)
     const now = new Date()
     const metricsByType = new Map<ActivityType, ReturnType<typeof computeUserPeriodMetrics> | null>()
     const emptyLabelMap = new Map<string, { label: string; unit: string | null }>()

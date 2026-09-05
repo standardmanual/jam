@@ -38,7 +38,12 @@ export function bumpsBadgeFor(type: NotificationType): boolean {
 export interface RecapActivityBadge {
   id: string
   name: string
-  rarity: BadgeRarity
+  /**
+   * 등급형은 등급 문자열, **무한레벨형은 `null`**이다 (마이그레이션 130 / 티켓 20260905_0030).
+   * payload가 JSONB라 타입이 잡아주지 못하므로, 읽는 쪽(`recapContent`)이 `null`을 `'common'`
+   * 으로 접지 않도록 여기서 nullable을 명시한다 — 접으면 Lv.3 배지가 결산에서 Common이 된다.
+   */
+  rarity: BadgeRarity | null
 }
 
 /** 결산에 담기는 체크인 배지 1건 — 같은 배지를 다시 찍으면 `visit`만 다른 새 항목이 된다 */
@@ -57,7 +62,12 @@ export interface RecapItemBadge {
   inventory_item_id: string
   badge_id: string
   name: string
-  rarity: BadgeRarity
+  /**
+   * 등급형은 등급 문자열, 등급 없는 배지는 `null`. 드랍 엔진은 등급이 있는 배지만 담지만
+   * (`drop-engine/index.ts`), 읽는 쪽이 `null`을 `'common'`으로 접지 않도록 타입을 열어 둔다 —
+   * 접는 순간 등급 없는 배지가 조용히 Common으로 표시된다 (티켓 20260905_0030).
+   */
+  rarity: BadgeRarity | null
 }
 
 /**
