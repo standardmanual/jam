@@ -1,7 +1,6 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
-import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
 
 /**
  * UnlockConditionSheetContent — 잠금 해제 조건 시트의 본문. 티켓 20260903_2329.
@@ -24,7 +23,8 @@ import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
  *   - 배지 항목 부제가 「배지 · 어느 등급이든 1개」로 **하드코딩**돼 있었다. v5 무한레벨형은
  *     등급이 아예 없어(rarity NULL) 이 문장이 거짓이 된다 → `req.note`로 덮어쓸 수 있다.
  *   - 미획득 배지 이미지에 `grayscale(1)`만 걸어 원본 URL이 네트워크에 나가던 것을
- *     `BadgeSilhouette`으로 바꿨다(외형 비공개).
+ *     grayscale(1) 원본으로 그린다 — 미획득 배지도 어떤 배지인지 알아볼 수 있어야 한다
+ *     (2026-09-06 사용자 확정. 20260905_0036이 한때 실루엣으로 바꿨다가 되돌렸다).
  */
 function ChevronRightGlyph({ size = 16 }) {
   return (
@@ -42,9 +42,10 @@ function CheckGlyph({ size = 16 }) {
 }
 
 function RequirementIcon({ imageUrl, kind }) {
-  // 배지 항목은 «아직 못 받은 배지»라 외형을 공개하지 않는다 — 원본 URL을 요청하지 않고
-  // 실루엣을 그린다. 미션 썸네일은 미획득 개념이 아니므로 원본 그대로 둔다.
-  const isBadge = kind === 'badge';
+  // 배지 항목은 «아직 못 받은 배지»라 grayscale(1)로 그린다(2026-09-06 확정 — 외형을
+  // 감추는 대신 어떤 배지인지 알아볼 수 있게 한다). 미션 썸네일은 미획득 개념이 아니라
+  // 원본 그대로 둔다.
+  const dim = kind === 'badge';
   return (
     <span
       style={{
@@ -54,14 +55,15 @@ function RequirementIcon({ imageUrl, kind }) {
         color: 'var(--color-text)',
       }}
     >
-      {isBadge ? (
-        <BadgeSilhouette size={26} />
-      ) : imageUrl ? (
+      {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
         <img
           src={imageUrl}
           alt=""
-          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }}
+          style={{
+            width: '100%', height: '100%', objectFit: 'contain', padding: 4,
+            filter: dim ? 'grayscale(1)' : 'none',
+          }}
         />
       ) : (
         <span style={{ width: 16, height: 16, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
@@ -80,10 +82,9 @@ export function UnlockConditionSheetContent({
   // `= null` 기본값은 JS 추론이 타입을 `null` 하나로 좁히므로 JSDoc으로 캐스팅한다.
   level = /** @type {number | null} */ (null),
   /**
-   * @deprecated 20260905_0036부터 쓰이지 않는다 — 잠금 해제 조건 시트에 뜨는 배지는 정의상
-   * 미획득이라 외형을 공개하지 않는다(`BadgeSilhouette`). 호출부 호환용으로만 남겨 둔다.
+   * 본 배지 이미지. 이 시트에 뜨는 배지는 정의상 미획득이라 **grayscale(1)** 로 그린다
+   * (2026-09-06 사용자 확정 — 미획득도 원본을 그레이로 보여준다).
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 호출부 호환용 잔존 prop. 지우면 기존 호출부가 타입 에러가 난다
   imageUrl = /** @type {string | null} */ (null),
   /** true면 수치 조건은 이미 채운 상태 — "조건을 다 채웠어요" 확인 줄을 보여준다 */
   conditionMet = false,
@@ -109,7 +110,19 @@ export function UnlockConditionSheetContent({
             color: 'var(--color-text)',
           }}
         >
-          <BadgeSilhouette size={40} />
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
+            <img
+              src={imageUrl}
+              alt={badgeName}
+              style={{
+                width: '100%', height: '100%', objectFit: 'contain', padding: 4,
+                borderRadius: 'var(--radius-sm)', filter: 'grayscale(1)',
+              }}
+            />
+          ) : (
+            <span style={{ width: 32, height: 32, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+          )}
         </span>
         <div style={{ minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 'var(--text-body)', fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere', color: 'var(--color-text)' }}>

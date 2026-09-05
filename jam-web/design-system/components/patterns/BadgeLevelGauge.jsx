@@ -1,6 +1,5 @@
 import React from 'react';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
-import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
 
 /**
@@ -23,8 +22,8 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
  * 진행 바는 `ProgressBar fillMode="track-gradient"` — 트랙 기준 그라데이션이라 fill 안에서
  * 그림이 압축되지 않는다(같은 티켓에서 ProgressBar에 추가한 모드).
  *
- * 썸네일: 다음 레벨 배지는 정의상 아직 미획득이라 **외형을 공개하지 않는다** —
- * 원본 URL을 받지 않고 `BadgeSilhouette`을 그린다(`imageUrl` prop 자체가 없다).
+ * 썸네일: 다음 레벨 배지는 정의상 아직 미획득이라 **grayscale(1) 원본**으로 그린다
+ * (2026-09-06 사용자 확정 — 어떤 배지인지 알아볼 수 있어야 한다).
  */
 export function BadgeLevelGauge({
   /** 계열 이름 — 이 이름이 곧 지표다("걸어온 거리", "걸은 날들") */
@@ -39,8 +38,10 @@ export function BadgeLevelGauge({
   left,
   /** 0~1 진행률. 계산 계층이 만든 값을 그대로 쓴다("작을수록 좋음" 축 때문에 재계산 금지) */
   fraction,
-  /** 썸네일 자리에 미획득 실루엣을 그릴지. 기본 true */
-  silhouette = true,
+  /** 다음 레벨 배지 이미지. 미획득이라 grayscale(1)로 그린다 */
+  imageUrl = /** @type {string | null} */ (null),
+  /** 이미지 대체 텍스트. 생략하면 `name`을 쓴다 */
+  alt = /** @type {string | null} */ (null),
   className = '',
   style = {},
 }) {
@@ -74,7 +75,19 @@ export function BadgeLevelGauge({
           color: 'var(--color-text)',
         }}
       >
-        {silhouette && <BadgeSilhouette size={30} />}
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
+          <img
+            src={imageUrl}
+            alt={alt ?? name}
+            style={{
+              width: '100%', height: '100%', objectFit: 'contain', padding: 3,
+              borderRadius: 'var(--radius-sm)', filter: 'grayscale(1)',
+            }}
+          />
+        ) : (
+          <span style={{ width: 20, height: 20, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+        )}
       </span>
 
       <div style={{ gridColumn: 2, minWidth: 0 }}>

@@ -205,13 +205,12 @@ export const Interactive: Story = {
 /**
  * 미획득·미발견 썸네일 — 실루엣 (티켓 20260905_0036).
  *
- * 예전에는 원본 이미지에 `filter: grayscale(1)` + `opacity .4`를 걸었는데, grayscale은
- * 그려진 뒤 적용되는 CSS 필터라 **원본 URL이 그대로 네트워크에 나갔다** — 네트워크 탭에서
- * 컬러 원본을 볼 수 있어 「아직 안 보여준다」가 성립하지 않는다. 이제 `BadgeSilhouette`
- * (배지별 이미지를 요청하지 않는 공통 SVG)을 그린다.
+ * 미획득·미발견 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
+ * 20260905_0036이 한때 실루엣으로 바꿨다가 2026-09-06 사용자 확정으로 되돌렸다 —
+ * 외형을 감추는 것보다 어떤 배지인지 알아볼 수 있는 쪽을 택한다.
  */
-export const SilhouetteWhenHidden: Story = {
-  name: '미획득·미발견 — 원본 이미지를 로드하지 않는다',
+export const GrayscaleWhenHidden: Story = {
+  name: '미획득·미발견 — 원본 이미지를 그레이로',
   render: () => (
     <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
       <BadgeGridCard name="동네 산책러" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" earned />
