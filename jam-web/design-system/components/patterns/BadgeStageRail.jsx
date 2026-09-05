@@ -1,6 +1,5 @@
 import React from 'react';
 import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
-import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
 
 /**
  * BadgeStageRail — 계열(같은 이름, 등급별 눈금) 진행 레일. 티켓 20260903_2329 (1차: 구조 전환).
@@ -26,7 +25,10 @@ import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
  * 그린다). 문구 조립은 이 컴포넌트가 하지 않는다 — 호출부가 완성 문자열을 만들어 넘긴다
  * (프레젠테이션 전용 원칙 유지, `src/lib/badgeProgressText.ts` 참고).
  *
- * 배지 이미지 규칙(v2, 티켓 20260905_0036): 획득 = 원본 컬러, **미획득 = `BadgeSilhouette`**.
+ * 배지 이미지 색 규칙(예외 없음): 미획득 = grayscale(1), 획득 = 원본 컬러. 필터는 이미지
+ * 요소에만 걸고 링·마커에는 걸지 않는다 — MissionCard.jsx의 잠금 오버레이와 같은 원칙.
+ * (2026-09-06 사용자 확정: 미획득도 원본 이미지를 그레이로 보여준다. 티켓 20260905_0036이
+ *  한때 실루엣으로 바꿨다가 되돌렸다 — 「외형 비공개」보다 배지를 알아볼 수 있는 쪽을 택했다)
  * 예전에는 원본 이미지를 그대로 넣고 `filter: grayscale(1)`만 걸었는데, 그러면 원본 URL이
  * 네트워크에 나가 「아직 안 보여준다」가 성립하지 않았다. 미획득 눈금은 이제 배지별 이미지를
  * 아예 요청하지 않는다 — 어떤 배지인지는 등급 바·`aria-label`·펼친 목록의 조건 문장이 말한다.
@@ -142,18 +144,18 @@ function StopThumbnail({ imageUrl, alt, status, rarity }) {
           color: 'var(--color-text)',
         }}
       >
-        {earned && imageUrl ? (
+        {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다(BadgeGridCard.jsx와 동일 컨벤션)
           <img
             src={imageUrl}
             alt={alt}
-            style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 3, borderRadius: 'var(--radius-sm)' }}
+            style={{
+              width: '100%', height: '100%', objectFit: 'contain', padding: 3,
+              borderRadius: 'var(--radius-sm)', filter: earned ? 'none' : 'grayscale(1)',
+            }}
           />
-        ) : earned ? (
-          <span style={{ width: 20, height: 20, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
         ) : (
-          // 미획득 — 원본 URL을 아예 요청하지 않는다(§ 파일 상단 주석).
-          <BadgeSilhouette size={30} />
+          <span style={{ width: 20, height: 20, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
         )}
         {showMarker && (
           <span

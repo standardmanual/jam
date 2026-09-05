@@ -3,6 +3,12 @@ import React from 'react';
 import { expect } from 'storybook/test';
 import { BadgeLevelGauge } from './BadgeLevelGauge';
 
+const WALK_ICON =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%23e8461f" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
+  );
+
 const meta: Meta<typeof BadgeLevelGauge> = {
   title: 'MODULAR/Patterns/BadgeLevelGauge',
   component: BadgeLevelGauge,
@@ -112,19 +118,30 @@ export const NoLevelYet: Story = {
 };
 
 /**
- * 회귀 고정 — 다음 레벨 배지는 정의상 미획득이라 **원본 이미지를 요청하지 않는다.**
- * `imageUrl` prop 자체가 없고 썸네일은 `BadgeSilhouette`이다.
+ * 회귀 고정 — 다음 레벨 배지는 정의상 미획득이라 **원본 이미지를 `grayscale(1)`로** 그린다
+ * (2026-09-06 확정). `imageUrl`을 넘기지 않으면 중성 자리 표시만 나온다.
  */
-export const NoBadgeImage: Story = {
-  name: '회귀 — 배지 원본 이미지를 로드하지 않는다',
+export const GrayscaleNextLevel: Story = {
+  name: '회귀 — 다음 레벨 배지는 그레이 원본',
   render: () => (
     <Frame>
       <div data-testid="gauge">
-        <BadgeLevelGauge name="걸어온 거리" level={3} current="52.4" next="75km" left="22.6km 남음" fraction={0.7} />
+        <BadgeLevelGauge
+          name="걸어온 거리"
+          level={3}
+          current="52.4"
+          next="75km"
+          left="22.6km 남음"
+          fraction={0.7}
+          imageUrl={WALK_ICON}
+        />
       </div>
     </Frame>
   ),
   play: async ({ canvasElement }) => {
-    expect(canvasElement.querySelector('[data-testid="gauge"]')!.querySelectorAll('img').length).toBe(0);
+    const gauge = canvasElement.querySelector('[data-testid="gauge"]')!;
+    const img = gauge.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(getComputedStyle(img!).filter).toContain('grayscale');
   },
 };

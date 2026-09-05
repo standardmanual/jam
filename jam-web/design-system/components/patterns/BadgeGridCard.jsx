@@ -1,6 +1,5 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
-import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
 
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
@@ -12,10 +11,11 @@ import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
  *   undiscovered   → ??? 표시 + 실루엣 (아이템북 미발견)
  *   selected       → 강조 링 (선택 모드)
  *
- * 20260905_0036: 미획득/미발견 썸네일이 원본 이미지 + `filter: grayscale(1)`이었는데,
- * grayscale은 그려진 뒤 걸리는 CSS 필터라 **원본 URL이 그대로 네트워크에 나간다** —
- * 「아직 안 보여준다」가 성립하지 않았다. 이제 `BadgeSilhouette`(배지별 이미지를 요청하지
- * 않는 공통 SVG)을 그린다.
+ * 미획득/미발견 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
+ * 20260905_0036이 한때 실루엣(공통 SVG)으로 바꿨다 — grayscale은 그려진 뒤 걸리는 CSS
+ * 필터라 원본 URL이 네트워크에 나가 「외형 비공개」가 성립하지 않는다는 이유였다.
+ * **2026-09-06 사용자 확정으로 되돌렸다**: 외형을 감추는 것보다 어떤 배지인지 알아볼 수
+ * 있는 쪽을 택한다(v5는 조건도 전면 공개한다).
  *
  * 인터랙션 모드 (상호 배타):
  *   href   → <a> 래핑
@@ -80,13 +80,14 @@ export function BadgeGridCard({
   const content = (
     <>
       <div style={thumbnailStyle}>
-        {dimmed ? (
-          <BadgeSilhouette size={62} />
-        ) : imageUrl ? (
+        {imageUrl ? (
           <img
             src={imageUrl}
             alt={undiscovered ? '???' : name}
-            style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }}
+            style={{
+              width: '100%', height: '100%', objectFit: 'contain', padding: 4,
+              filter: dimmed ? 'grayscale(1)' : 'none',
+            }}
           />
         ) : (
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--color-text)', opacity: 0.3 }}>

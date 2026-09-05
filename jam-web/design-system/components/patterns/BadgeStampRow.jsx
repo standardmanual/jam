@@ -1,6 +1,5 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
-import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
 
 /**
  * BadgeStampRow — 반복형 계열 한 줄. 티켓 20260905_0036.
@@ -26,12 +25,13 @@ export function BadgeStampRow({
   /** 이름 아래 한 줄 보조 문장(완성 문자열). null이면 그리지 않는다 */
   caption,
   earned = true,
-  /** 썸네일 자리에 실루엣을 그릴지. 기본은 미획득일 때만 */
-  silhouette,
+  /** 배지 이미지. 미획득이면 grayscale(1)로 그린다 */
+  imageUrl = /** @type {string | null} */ (null),
+  /** 이미지 대체 텍스트. 생략하면 `name`을 쓴다 */
+  alt = /** @type {string | null} */ (null),
   className = '',
   style = {},
 }) {
-  const showSilhouette = silhouette ?? !earned;
   const nameColor = earned ? 'var(--color-text)' : 'var(--color-text-secondary)';
 
   return (
@@ -59,7 +59,19 @@ export function BadgeStampRow({
           color: 'var(--color-text)',
         }}
       >
-        {showSilhouette && <BadgeSilhouette size={30} />}
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
+          <img
+            src={imageUrl}
+            alt={alt ?? name}
+            style={{
+              width: '100%', height: '100%', objectFit: 'contain', padding: 3,
+              borderRadius: 'var(--radius-sm)', filter: earned ? 'none' : 'grayscale(1)',
+            }}
+          />
+        ) : (
+          <span style={{ width: 20, height: 20, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+        )}
       </span>
 
       <div style={{ gridColumn: 2, minWidth: 0 }}>

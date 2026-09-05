@@ -14,7 +14,10 @@ export interface BadgeLevelGaugeProps {
   /** 0~1 진행률. 계산 계층이 만든 값을 그대로 넘긴다 — current/next로 재계산하지 말 것 */
   fraction: number;
   /** 썸네일 자리에 미획득 실루엣을 그릴지. 기본 true (원본 이미지는 받지 않는다) */
-  silhouette?: boolean;
+  /** 배지 이미지. 미획득이라 grayscale(1)로 그린다 */
+  imageUrl?: string | null;
+  /** 이미지 대체 텍스트. 생략하면 name */
+  alt?: string | null;
   className?: string;
   style?: CSSProperties;
 }

@@ -346,14 +346,14 @@ export const NoRarityLeveled: Story = {
 /**
  * v2 — 미획득 눈금은 **원본 이미지를 로드하지 않는다.**
  *
- * 예전에는 원본 `imageUrl`을 그대로 `<img>`에 넣고 `filter: grayscale(1)`만 걸었다. 그런데
- * grayscale은 그려진 뒤 적용되는 CSS 필터라 **원본 URL이 그대로 네트워크에 나가고**
- * 개발자도구에서 컬러 원본을 볼 수 있다 — 「아직 안 보여준다」가 성립하지 않았다.
- * 이제 미획득 눈금은 `BadgeSilhouette`(공통 SVG)만 그린다. 아래 play가
- * "획득 1개 = `<img>` 1개"를 실측한다.
+ * 회귀 고정 — **미획득 눈금도 원본 이미지를 `grayscale(1)`로 그린다**(2026-09-06 확정).
+ * 20260905_0036이 한때 실루엣(공통 SVG)으로 바꿨다가 되돌렸다: 원본 URL이 네트워크에
+ * 나가 「외형 비공개」가 성립하지 않는다는 이유였는데, **외형을 감추는 것보다 어떤 배지인지
+ * 알아볼 수 있는 쪽**을 택했다. 아래 play가 "눈금 4개 = `<img>` 4개, 미획득 3개는
+ * grayscale"을 실측한다.
  */
-export const SilhouetteForUnearned: Story = {
-  name: 'v2 — 미획득은 실루엣, 원본 URL이 나가지 않는다',
+export const GrayscaleForUnearned: Story = {
+  name: 'v2 — 미획득은 원본 이미지를 그레이로',
   render: () => (
     <Frame>
       <div data-testid="rail">
@@ -375,8 +375,12 @@ export const SilhouetteForUnearned: Story = {
   ),
   play: async ({ canvasElement }) => {
     const rail = canvasElement.querySelector('[data-testid="rail"]')!;
-    // 획득한 눈금 1개만 원본 이미지를 쓴다.
-    expect(rail.querySelectorAll('img').length).toBe(1);
+    // 눈금 4개 전부 원본 이미지를 쓴다 — 미획득도 감추지 않는다.
+    const imgs = Array.from(rail.querySelectorAll('img'));
+    expect(imgs.length).toBe(4);
+    // 획득 1개는 필터 없음, 미획득 3개는 grayscale.
+    const gray = imgs.filter((i) => getComputedStyle(i).filter.includes('grayscale'));
+    expect(gray.length).toBe(3);
   },
 };
 
