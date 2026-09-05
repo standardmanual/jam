@@ -146,7 +146,13 @@ function countSatisfiedFamilies(
   req: NormalizedRequirement,
   ownedDefs: readonly OwnedBadgeDef[],
   gatedActivityTypes: readonly ActivityType[] | null,
-  requireMissionReward: boolean
+  requireMissionReward: boolean,
+  /**
+   * 미충족 계열 키를 여기에 담는다(선택). 미발급 사유에 「어느 계열이 비었는지」를 싣기 위함 —
+   * 대상이 3계열이어도 사유가 「해당 계열 배지 미보유」 하나뿐이면 550종 시딩(티켓 0035) 후
+   * 어드민 시뮬레이터에서 원인을 좁힐 수 없다(B2 개선 리뷰).
+   */
+  unmetOut?: string[]
 ): number {
   let matched = 0
   for (const familyKey of req.familyKeys) {
@@ -163,6 +169,7 @@ function countSatisfiedFamilies(
       return true
     })
     if (hit) matched += 1
+    else unmetOut?.push(familyKey)
   }
   return matched
 }
@@ -204,7 +211,14 @@ export function evaluateCrossGates(
   for (const key of declared) {
     const result = normalizeRequirement(condition[key], selfFamilyKey)
     if (!result.ok) {
-      // fail-closed — 형태가 깨진 게이트를 「검사할 게 없으니 통과」로 두면 게이트가 사라진다
+      // fail-closed — 형태가 깨진 게이트를 「검사할 게 없으니 통과」로 두면 게이트가 사라진다.
+      // **형태 오류일 때만** 로그를 남긴다(정상 미충족까지 남기면 싱크마다 폭발한다).
+      // 이게 없으면 카탈로그 한 행의 family_keys 오타가 「그 배지는 영원히 안 나온다」로
+      // 조용히 남는다 — missed는 어드민 시뮬레이터만 읽고 실 싱크에서는 아무도 보지 않는다
+      // (A묶음이 가입 앵커에 남긴 관측 로그와 같은 태도, B2 개선 리뷰).
+      console.warn(
+        `[badge-engine] 교차 게이트 설정 오류 — badge: ${badge.name}, ${REQUIREMENT_LABEL[key]}: ${result.error}`
+      )
       return {
         pass: false,
         reason: '교차 게이트 설정 오류',
@@ -215,16 +229,27 @@ export function evaluateCrossGates(
     normalized.set(key, result.value)
   }
 
+  /** 키별 미충족 계열 — 미발급 사유에 실어 어느 계열이 비었는지 드러낸다 */
+  const unmetByKey = new Map<RequirementKey, string[]>()
   const satisfied = (key: RequirementKey): boolean => {
     const req = normalized.get(key)
     if (!req) return false
+    const unmet: string[] = []
     const matched = countSatisfiedFamilies(
       req,
       ownedDefs,
       badge.activity_types,
-      key === 'gate_mission_badge'
+      key === 'gate_mission_badge',
+      unmet
     )
+    unmetByKey.set(key, unmet)
     return matched >= req.minCount
+  }
+
+  /** 「미보유 계열: walking:밤의 보행자」 — 계열을 특정하지 못하면 기존 문구로 폴백 */
+  const describeUnmet = (keys: readonly RequirementKey[]): string => {
+    const families = keys.flatMap((k) => unmetByKey.get(k) ?? [])
+    return families.length > 0 ? `미보유 계열: ${families.join(', ')}` : '해당 계열 배지 미보유'
   }
 
   // ── ① 교차 요구 (축 내 · 축 간) — 선언된 것끼리 OR
@@ -233,7 +258,7 @@ export function evaluateCrossGates(
     return {
       pass: false,
       reason: crossKeys.length > 1 ? '교차 게이트 미충족 — 축 내 교차 또는 축 간 교차' : `${REQUIREMENT_LABEL[crossKeys[0]]} 미충족`,
-      actual: '해당 계열 배지 미보유',
+      actual: describeUnmet(crossKeys),
       required: crossKeys.map((k) => describeRequirement(k, normalized.get(k)!)).join(' 또는 '),
     }
   }
@@ -243,7 +268,7 @@ export function evaluateCrossGates(
     return {
       pass: false,
       reason: '미션 보상 배지 미보유',
-      actual: '해당 미션 보상 배지 미보유',
+      actual: describeUnmet(['gate_mission_badge']),
       required: describeRequirement('gate_mission_badge', normalized.get('gate_mission_badge')!),
     }
   }
