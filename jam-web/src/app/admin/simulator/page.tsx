@@ -27,6 +27,28 @@ interface GpxParsed {
   fileName: string
 }
 
+/**
+ * v5 확장 6필드 (티켓 20260905_0029). Strava Summary 응답에서 오는 값과 같은 것들을
+ * 어드민이 손으로 넣어 신규 조건 배지를 검증한다.
+ *
+ * **비워 두면 서버로 보내지 않는다** — `null`을 보내지 않고 키 자체를 만들지 않는다.
+ * 심박계 없는 유저의 활동(키 없음)을 그대로 재현할 수 있어야 하기 때문이다.
+ */
+const EXTENDED_FIELDS = [
+  { key: 'avgHeartrateBpm', label: '평균 심박수', unit: 'bpm', step: 1 },
+  { key: 'avgWatts', label: '평균 파워', unit: 'W', step: 1 },
+  { key: 'avgCadence', label: '평균 케이던스', unit: '', step: 1 },
+  { key: 'maxSpeedKmh', label: '최고 속도', unit: 'km/h', step: 0.1 },
+  { key: 'maxElevationM', label: '최고 도달 고도', unit: 'm', step: 10 },
+  { key: 'elapsedTimeSec', label: '경과 시간', unit: '초', step: 1 },
+] as const
+
+type ExtendedFieldKey = (typeof EXTENDED_FIELDS)[number]['key']
+
+const EXTENDED_LABEL: Record<string, { label: string; unit: string }> = Object.fromEntries(
+  EXTENDED_FIELDS.map((f) => [f.key, { label: f.label, unit: f.unit }])
+)
+
 interface SimulateResult {
   parsed: {
     distanceKm: number
@@ -34,6 +56,8 @@ interface SimulateResult {
     elevationGainM: number
     averageSpeedKmh: number
     trackpointCount: number
+    /** 실제로 평가에 실린 확장 필드만 담긴다 — 입력이 무시됐으면 여기 없다 */
+    extended?: Partial<Record<ExtendedFieldKey, number>>
   }
   badgesEarned: { id: string; name: string; rarity: string; reason: string }[]
   badgesMissed: { id: string; name: string; reason: string; actual: string; required: string }[]
@@ -159,6 +183,15 @@ export default function SimulatorPage() {
   const [users, setUsers] = useState<{ id: string; email: string; username: string | null }[]>([])
   const [userLoading, setUserLoading] = useState(false)
   const [firstSync, setFirstSync] = useState(false)
+  /** 확장 6필드 원시 입력(문자열). 빈 문자열은 «입력 안 함»이라 전송에서 제외된다 */
+  const [extended, setExtended] = useState<Record<ExtendedFieldKey, string>>({
+    avgHeartrateBpm: '',
+    avgWatts: '',
+    avgCadence: '',
+    maxSpeedKmh: '',
+    maxElevationM: '',
+    elapsedTimeSec: '',
+  })
   const [result, setResult] = useState<SimulateResult | null>(null)
   const [simLoading, setSimLoading] = useState(false)
   const [simError, setSimError] = useState<string | null>(null)
@@ -231,6 +264,16 @@ export default function SimulatorPage() {
     try {
       const movingTimeSec = gpx.durationMin * 60
 
+      // 비워 둔 확장 필드는 키 자체를 만들지 않는다 (서버의 «없으면 키 없음» 규칙과 동일)
+      const extendedPayload: Partial<Record<ExtendedFieldKey, number>> = {}
+      for (const { key } of EXTENDED_FIELDS) {
+        const raw = extended[key].trim()
+        if (raw === '') continue
+        const value = Number(raw)
+        if (!Number.isFinite(value)) continue
+        extendedPayload[key] = value
+      }
+
       const res = await fetch('/api/admin/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -246,6 +289,7 @@ export default function SimulatorPage() {
             averageSpeedKmh: gpx.averageSpeedKmh,
             startDate: gpx.startDate,
             route: downsampleRoute(gpx.route, 5000),
+            ...extendedPayload,
           },
           repeatCount,
         }),
@@ -394,6 +438,34 @@ export default function SimulatorPage() {
             </label>
           </div>
 
+          {/* 확장 필드 — GPX에 없는 심박·파워 등을 손으로 넣어 v5 신규 조건 배지를 검증한다 */}
+          <div className="bg-white border border-border rounded-2xl p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold">확장 필드</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                비워 두면 «데이터 없음»으로 처리돼요. 심박계가 없는 활동을 그대로 재현할 수 있어요.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {EXTENDED_FIELDS.map(({ key, label, unit, step }) => (
+                <label key={key} className="flex flex-col gap-1.5">
+                  <span className="text-sm text-foreground">
+                    {label}
+                    {unit ? ` (${unit})` : ''}
+                  </span>
+                  <input
+                    type="number"
+                    step={step}
+                    value={extended[key]}
+                    onChange={(e) => setExtended((prev) => ({ ...prev, [key]: e.target.value }))}
+                    placeholder="입력 안 함"
+                    className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
           {simError && (
             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
               {simError}
@@ -449,6 +521,30 @@ export default function SimulatorPage() {
                 }`}>
                   {result.applied ? '실제 적용됨' : 'Dry Run — DB 반영 없음'}
                 </span>
+              </div>
+
+              {/* 평가에 실린 확장 필드 — 입력이 실제로 반영됐는지 확인한다 */}
+              <div>
+                <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider mb-2">
+                  확장 필드
+                </p>
+                {!result.parsed.extended || Object.keys(result.parsed.extended).length === 0 ? (
+                  <p className="text-muted-foreground text-xs">입력한 확장 필드 없음</p>
+                ) : (
+                  <ul className="space-y-1 font-mono text-xs">
+                    {Object.entries(result.parsed.extended).map(([key, value]) => (
+                      <li key={key}>
+                        <span className="text-muted-foreground">
+                          {EXTENDED_LABEL[key]?.label ?? key}:
+                        </span>{' '}
+                        <span className="text-foreground">
+                          {value}
+                          {EXTENDED_LABEL[key]?.unit ?? ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {/* 배지 획득 */}

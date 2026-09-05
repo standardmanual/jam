@@ -134,15 +134,24 @@
 
 **활동 1건의 스칼라 값** — `PER_ACTIVITY_KEYS` 경로로 구현 예정
 
-| 필드 | 타입 | 단위 | 의미 |
-|------|------|------|------|
-| `max_elevation_m` | `number` | m | 활동 1건의 최고 도달 고도(해발) |
-| `max_speed_kmh` | `number` | km/h | 활동 1건의 최고 속도 |
-| `single_distance_km` | `number` | km | 활동 1건의 이동 거리 — 누적 합계인 `distance_km`과 구분된다 |
-| `single_elevation_m` | `number` | m | 활동 1건의 고도 상승 — 누적 합계인 `elevation_gain_m`과 구분된다 |
-| `avg_heartrate_bpm` | `number` | bpm | 활동 1건의 평균 심박수 |
-| `avg_watts` | `number` | W | 활동 1건의 평균 파워 |
-| `avg_cadence` | `number` | — | 활동 1건의 평균 케이던스. 단위가 종목마다 다르다(러닝 spm · 자전거 rpm)라 지표 라벨의 단위는 비워 뒀다 |
+`정규화 필드`는 `NormalizedActivity`(`src/types/strava.ts`)에서 **같은 단위로 그대로 비교되는**
+필드다. 조건 키는 snake_case, 정규화 필드는 camelCase라 이름이 규칙적으로 대응하지 않으므로
+`conditionRegistry.ts`의 `activityField`가 단일 출처이고 파생물 `CONDITION_ACTIVITY_FIELD`로
+꺼내 쓴다(티켓 20260905_0029). 이름이 어긋나면 `condition-registry.test.ts`가 깨진다.
+
+| 필드 | 타입 | 단위 | 정규화 필드 | 의미 |
+|------|------|------|------|------|
+| `max_elevation_m` | `number` | m | `maxElevationM` | 활동 1건의 최고 도달 고도(해발) |
+| `max_speed_kmh` | `number` | km/h | `maxSpeedKmh` | 활동 1건의 최고 속도 |
+| `single_distance_km` | `number` | km | `distanceKm` | 활동 1건의 이동 거리 — 누적 합계인 `distance_km`과 구분된다 |
+| `single_elevation_m` | `number` | m | `elevationGainM` | 활동 1건의 고도 상승 — 누적 합계인 `elevation_gain_m`과 구분된다 |
+| `avg_heartrate_bpm` | `number` | bpm | `avgHeartrateBpm` | 활동 1건의 평균 심박수 |
+| `avg_watts` | `number` | W | `avgWatts` | 활동 1건의 평균 파워 |
+| `avg_cadence` | `number` | — | `avgCadence` | 활동 1건의 평균 케이던스. 단위가 종목마다 다르다(러닝 spm · 자전거 rpm)라 지표 라벨의 단위는 비워 뒀다 |
+
+> **측정값이 없는 활동에는 정규화 필드의 키 자체가 없다**(`null`이 아니다). 심박계·파워미터가
+> 없는 유저의 활동이 «데이터 없음 = 카운트 안 함»으로 자연히 동작하게 하기 위한 확정 사항이다
+> (마스터 20260905_0026). 평가 구현은 `undefined` 하나만 보면 된다.
 
 **이력 패턴** — 신규 독립 평가 블록이 필요하다
 
@@ -153,7 +162,7 @@
 | `return_gap_days` | `number` | 일 | 복귀 직전에 쉰 일수 | — |
 | `interval_days` | `number` | 일 | 활동과 활동 사이 간격 | — |
 | `daily_once_count` | `number` | 일 | 하루에 1회만 활동한 날의 수 | — |
-| `negative_split` | `boolean` | — | 후반 구간이 전반보다 빠른 활동으로 한정하는 **필터**. Strava `splits_metric`이 필요하고 Summary 응답엔 없다(티켓 20260905_0029 선행) | `total_count` |
+| `negative_split` | `boolean` | — | 후반 구간이 전반보다 빠른 활동으로 한정하는 **필터**. Strava `splits_metric`이 필요한데 Summary 응답엔 없다 — **티켓 20260905_0029에서 v5 1차 범위 밖으로 확정**됐다(활동 1건당 상세 호출 1회 × 백필 697회). `evaluation: 'pending'` 그대로이고 별도 티켓으로 분리됐다 | `total_count` |
 | `weekly_streak` | `number` | 주 | 연속한 주(월~일)의 수 | — |
 | `distinct_time_bands` | `number` | 개 | 서로 다른 시간대의 수 | — |
 | `day_of_month` | `number` (1–31) | — | 매달 지정일 **필터**. `day_of_week`와 같은 성격 | `total_count` |
@@ -244,7 +253,9 @@
 | 항목 | 상태 |
 |------|------|
 | `route` 필드 | ❌ 미구현 — 타입(`BadgeCondition`)·레지스트리엔 존재하나 badge-engine 평가 로직이 없다 (2026-08-25 조사, 티켓 20260825_034; badge-engine의 `condition.route` 참조 0건을 2026-09-05 재실측). **2026-09-05부터 `evaluation: 'pending'`이라 fail-closed가 막는다** — 조건에 `route`가 있으면 그 배지는 발급되지 않는다. 쓰는 배지가 0건이라 회귀 없이 전환했다. 쓰려면 먼저 평가를 구현하고 `engine`으로 뒤집거나, 스키마에서 제거한다 |
-| v5 신규 20종 | ❌ 평가 미구현 — 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). fail-closed로 막히므로 발급되지 않는다. 평가 구현은 티켓 20260905_0030, `negative_split`이 필요로 하는 `splits_metric` 수집은 티켓 20260905_0029 |
+| v5 신규 20종 | ❌ 평가 미구현 — 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). fail-closed로 막히므로 발급되지 않는다. 평가 구현은 티켓 20260905_0030 |
+| 스칼라 7종의 **원천 데이터** | ✅ 수집됨 (티켓 20260905_0029) — `normalizeActivity`가 Strava Summary 응답에서 심박·파워·케이던스·최고속도·최고도달고도·경과시간을 읽어 `normalized`에 저장한다. 조건 키 ↔ 정규화 필드 대응은 `CONDITION_ACTIVITY_FIELD`. 기존 활동은 `scripts/backfill-strava-extended-fields.ts`로 채운다 |
+| `negative_split` (`splits_metric`) | ❌ **v5 1차 범위 밖** (티켓 20260905_0029 확정) — 상세 엔드포인트에만 있어 활동 1건당 호출 1회가 든다(백필 697회). 상한을 두면 배지가 비결정적이 되므로 별도 티켓으로 분리했다. `StravaDetailedActivity` 타입은 신설됐지만 **수집하지 않는다** |
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
 | `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조 |
 | `temperature_*` (날씨 데이터 없는 활동) | ⚠️ fail — Strava average_temp 의존 |

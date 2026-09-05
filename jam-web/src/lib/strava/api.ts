@@ -2,7 +2,12 @@
  * Strava API 래퍼
  * 참조: https://developers.strava.com/docs/reference/
  */
-import type { StravaSummaryActivity, StravaAthlete, StravaRefreshResponse } from '@/types/strava'
+import type {
+  StravaSummaryActivity,
+  StravaDetailedActivity,
+  StravaAthlete,
+  StravaRefreshResponse,
+} from '@/types/strava'
 
 const STRAVA_API_BASE = 'https://www.strava.com/api/v3'
 const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
@@ -47,20 +52,31 @@ async function stravaFetch<T>(url: string, accessToken: string): Promise<T> {
 // =========================================
 // 활동 목록 조회
 // =========================================
+/** 목록 엔드포인트 1회 조회 상한. Strava가 허용하는 최대값이다 */
+export const ACTIVITIES_PAGE_SIZE = 200
+
 /**
  * 유저의 Strava 활동 목록 조회
  * @param accessToken Strava access_token (복호화된 평문)
  * @param after Unix timestamp — 이 시각 이후 활동만 조회
+ * @param page 1부터 시작하는 페이지 번호. 생략하면 Strava 기본값(1페이지)
+ *
+ * ⚠️ 싱크 경로는 `page`를 쓰지 않는다(커서 기반이라 1페이지면 충분하다). 전체 이력을 훑어야
+ * 하는 백필(`backfillNormalizedFields`)만 페이지를 넘긴다 — 티켓 20260905_0029.
  */
 export async function getActivities(
   accessToken: string,
-  after?: number
+  after?: number,
+  page?: number
 ): Promise<StravaSummaryActivity[]> {
   const params = new URLSearchParams({
-    per_page: '200',
+    per_page: String(ACTIVITIES_PAGE_SIZE),
   })
   if (after !== undefined) {
     params.set('after', String(after))
+  }
+  if (page !== undefined) {
+    params.set('page', String(page))
   }
 
   return stravaFetch<StravaSummaryActivity[]>(
@@ -72,10 +88,19 @@ export async function getActivities(
 // =========================================
 // 단일 활동 조회 (소급 백필·진단용)
 // =========================================
+/**
+ * `GET /activities/{id}` — **Detailed** 응답을 돌려준다.
+ *
+ * 반환 타입이 `StravaSummaryActivity`로 잘못 좁혀져 있었다(티켓 20260905_0029). 실제로는
+ * 상세 엔드포인트라 `splits_metric`·`description`·`device_name` 등이 함께 오는데, 타입에
+ * 없어 컴파일 단계에서 접근이 막혀 있었다.
+ *
+ * ⚠️ 활동 1건당 1회 호출이다. 전체 이력을 훑는 용도로 쓰지 말 것 — 백필은 목록 엔드포인트를 쓴다.
+ */
 export async function getActivityById(
   activityId: number | string,
   accessToken: string
-): Promise<StravaSummaryActivity | { error: string; status: number }> {
+): Promise<StravaDetailedActivity | { error: string; status: number }> {
   const res = await fetch(`${STRAVA_API_BASE}/activities/${activityId}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -87,7 +112,7 @@ export async function getActivityById(
     const body = await res.text()
     return { error: body, status: res.status }
   }
-  return res.json() as Promise<StravaSummaryActivity>
+  return res.json() as Promise<StravaDetailedActivity>
 }
 
 // =========================================
