@@ -1,7 +1,7 @@
 ---
 id: 20260905_1327
 category: Admin
-status: OPEN
+status: CLOSED
 created: 2026-09-05
 ---
 
@@ -246,3 +246,23 @@ jam-web/supabase/seed_*.sql                       ①의 결정에 따른 데이
 ### DB 변경 필요 여부
 필요. `jam-web/supabase/seed_terminate_orphaned_item_collect_missions_20260905.sql` —
 실행은 사용자 승인 후 오케스트레이터가 진행.
+
+### 게이트 리뷰
+**PASS.** `checker.ts` 실제 로직 대조, 라우트 연결·복구 경로 동작, 테스트 요구사항 8개 전항목,
+`tsc --noEmit`/미션 테스트 119/119/`lint` 결과를 코드 대조로 직접 확인. sideFinding으로
+`condition-keys.ts:304` 오류 메시지의 조사(助詞) 오류 1건("목표 배지**을**" — 받침 없는
+라벨에 "을"이 붙어 문법이 틀림) 발견 — 판정에는 영향 없는 범위 밖 항목으로 분류.
+
+### 오케스트레이터 후속 처리 (사용자 승인 후)
+- **sideFinding 수정**: `eulReul()` 헬퍼를 추가해 라벨 받침 유무에 따라 을/를을 올바르게
+  고르도록 수정(`condition-keys.ts`). "목표 배지를"·"지점을" 둘 다 정상 출력 확인.
+  `tsc --noEmit` 재통과, 미션 테스트 5개 파일 전건(119/119) 재통과.
+- **staging 반영**: `claude/jamwork-20260905_1327-mission-condition-values`를
+  `origin/staging`에 머지·push 완료 (커밋 `0810b0fb`).
+- **SQL 실행**: Supabase MCP로 `jam-prod`(`ceehnkzdbecxwzxrhhns`)에 직접 접속해 실행 전
+  확인 쿼리로 6건 일치 확인 후 UPDATE 실행. 6건 전부 `ends_at`이 `2026-09-04`(실행 시각
+  기준 과거)로 갱신됨 — 종료 처리 완료, 참가 기록(mission_participants 등)은 그대로 보존.
+
+### 프로덕션 반영
+staging에는 반영됐으나 main 승격은 아직 진행하지 않음. `/jam-ship`으로 별도 진행 예정
+(사용자 명시 승인 필요).
