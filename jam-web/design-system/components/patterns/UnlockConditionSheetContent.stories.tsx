@@ -3,6 +3,12 @@ import React from 'react';
 import { expect } from 'storybook/test';
 import { UnlockConditionSheetContent } from './UnlockConditionSheetContent';
 
+const WALK_ICON =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path fill="%23e8461f" d="M400-40 320-160l40-320-80 40-40 160-80-20 60-240 200-80 60 100 120 40v100l-100-20-40 140 80 300h-100Z"/></svg>'
+  );
+
 const meta: Meta<typeof UnlockConditionSheetContent> = {
   title: 'MODULAR/Patterns/UnlockConditionSheetContent',
   component: UnlockConditionSheetContent,
@@ -127,21 +133,23 @@ export const LeveledBadge: Story = {
 };
 
 /**
- * 회귀 고정 — 이 시트에 뜨는 배지는 정의상 «아직 못 받은 배지»라 **원본 이미지를 로드하지
- * 않는다.** 예전에는 `grayscale(1)`만 걸어서 원본 URL이 네트워크에 나갔다.
+ * 회귀 고정 — 이 시트에 뜨는 배지는 정의상 «아직 못 받은 배지»라 **원본 이미지를
+ * `grayscale(1)`로** 그린다(2026-09-06 확정). 미션 썸네일은 미획득 개념이 아니라 원본
+ * 그대로다. 20260905_0036이 한때 실루엣으로 바꿨다가 되돌렸다 — 외형을 감추는 것보다
+ * 어떤 배지인지 알아볼 수 있는 쪽을 택했다.
  */
-export const NoBadgeImageLoaded: Story = {
-  name: '회귀 — 배지 원본 이미지를 로드하지 않는다',
+export const GrayscaleBadgeImage: Story = {
+  name: '회귀 — 배지 원본 이미지를 그레이로',
   render: () => (
     <Sheet>
       <div data-testid="sheet">
         <UnlockConditionSheetContent
           badgeName="산책의 명상가"
           rarity="rare"
-          imageUrl="/should-not-be-requested.png"
+          imageUrl={WALK_ICON}
           conditionMet={false}
           requirements={[
-            { kind: 'badge', name: '동네 산책러', href: '/badges/1', imageUrl: '/should-not-be-requested.png' },
+            { kind: 'badge', name: '동네 산책러', href: '/badges/1', imageUrl: WALK_ICON },
             { kind: 'mission', name: '2주 안에 20km', href: '/missions/1', imageUrl: null },
           ]}
         />
@@ -150,7 +158,10 @@ export const NoBadgeImageLoaded: Story = {
   ),
   play: async ({ canvasElement }) => {
     const sheet = canvasElement.querySelector('[data-testid="sheet"]')!;
-    const srcs = Array.from(sheet.querySelectorAll('img')).map((i) => i.getAttribute('src') ?? '');
-    expect(srcs.every((s) => !s.includes('should-not-be-requested'))).toBe(true);
+    const imgs = Array.from(sheet.querySelectorAll('img'));
+    // 본 배지(56px) + 배지 항목(36px) = 최소 2개가 원본을 그린다.
+    expect(imgs.length).toBeGreaterThanOrEqual(2);
+    // 배지 이미지는 전부 grayscale이다(미션 썸네일은 imageUrl이 null이라 img가 아니다).
+    expect(imgs.every((i) => getComputedStyle(i).filter.includes('grayscale'))).toBe(true);
   },
 };
