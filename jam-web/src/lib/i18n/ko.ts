@@ -677,6 +677,8 @@ export const ko = {
     emptyFollowersBody: '누군가 팔로우하면 여기에 표시돼요',
     emptyFollowing: '아직 팔로우한 사람이 없어요',
     emptyFollowingBody: '유저가 팔로우를 시작하면 여기에 표시돼요',
+    emptyFollowersOther: '{name}님에게 아직 팔로워가 없어요',
+    emptyFollowingOther: '{name}님이 아직 아무도 팔로우하지 않았어요',
     followButton: '팔로우',
     followingButton: '팔로잉',
   },

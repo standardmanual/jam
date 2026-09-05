@@ -7,7 +7,7 @@ import ListRowCard from '@/components/ui/ListRowCard'
 import TopNav from '@/components/ui/TopNav'
 import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
 import { getDisplayName } from '@/lib/utils'
 
@@ -34,6 +34,8 @@ export default async function FollowingPage({ params }: Props) {
   if (targetError) console.error('[following/page] 대상 유저(users) 조회 실패', targetError)
   if (!targetRaw) notFound()
   const target = targetRaw as { id: string; username: string; display_name: string | null }
+  const isOwnProfile = target.id === user.id
+  const subjectName = getDisplayName(target) || d.profile.anonymous
 
   // 팔로잉 목록 (target이 팔로우하는 사람들)
   const { data: followsRaw, error: followsError } = await service
@@ -85,8 +87,8 @@ export default async function FollowingPage({ params }: Props) {
         {followingList.length === 0 ? (
           <EmptyState
             icon={<UsersIcon className="w-8 h-8" />}
-            title={d.social.emptyFollowing}
-            description={d.social.emptyFollowingBody}
+            title={isOwnProfile ? d.social.emptyFollowing : t(d.social.emptyFollowingOther, { name: subjectName })}
+            description={isOwnProfile ? d.social.emptyFollowingBody : undefined}
           />
         ) : (
           followingList.map((u) => (
