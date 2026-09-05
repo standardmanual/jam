@@ -38,6 +38,7 @@ import {
   WALKING_GATE_MIN_SPEED_KMH,
   WALKING_GATE_MAX_SPEED_KMH,
 } from './activityFilters'
+import { isLeveledBadge, familyKeyOf, badgeKindLabel } from './badgeKind'
 export {
   passesWalkingGate,
   matchesDayOfWeek,
@@ -88,33 +89,6 @@ export type BadgeMissedInfo = {
 }
 
 // ── 무한레벨형 판정 (v5, 티켓 20260905_0030) ──────────────────────────────
-
-/**
- * 무한레벨형 배지인가 — **판정 기준은 `rarity IS NULL` 하나뿐이다.**
- *
- * 마이그레이션 130이 `CHECK ((rarity IS NULL) = (level IS NOT NULL))`로 둘의 일치를 강제하므로
- * `level != null`로 물어도 결과는 같지만, 기준을 두 개 두면 언젠가 어긋난다(0027에서 확정).
- */
-function isLeveledBadge(badge: Pick<BadgeRow, 'rarity'>): boolean {
-  return badge.rarity == null
-}
-
-/**
- * 무한레벨형 배지를 묶는 계열 키.
- *
- * `family_key`가 정본이다. 다만 이 컬럼은 NOT NULL이 아니라(등급형·아이템 배지는 비어 있다)
- * 레벨형인데 비어 있을 수 있어, 그 경우에만 이름으로 폴백한다. 폴백 값에 `#name:` 접두어를
- * 붙여 실제 `family_key` 값과 절대 충돌하지 않게 한다.
- */
-function familyKeyOf(badge: Pick<BadgeRow, 'name' | 'family_key'>): string {
-  return badge.family_key ?? `#name:${badge.name}`
-}
-
-/** 발급 로그·미발급 사유에 쓰는 배지 종류 라벨 — 레벨형은 `Lv.N`, 등급형은 등급 문자열 */
-function badgeKindLabel(badge: Pick<BadgeRow, 'rarity' | 'level'>): string {
-  if (badge.rarity) return badge.rarity
-  return badge.level != null ? `Lv.${badge.level}` : '등급 없음'
-}
 
 // ── 조건 평가 (상세 이유 포함) ────────────────────────────────────────────
 
@@ -663,9 +637,24 @@ export async function evaluateBadgesDetailed(
   // 이력의 시작점은 가입 시점으로 고정한다 (티켓 20260905_0030 §5 — 근거는
   // getSignupAnchorDate 주석). 이번 배치는 앵커와 무관하게 그대로 합친다 —
   // 방금 동기화된 활동을 유저 눈앞에서 잘라내면 발급이 조용히 비게 된다.
+  // 앵커는 **반드시 `getSignupAnchorDate` 한 곳에서만** 계산한다.
+  // users 행을 여기서 함께 읽어 쿼리 하나를 아끼는 최적화를 시도했다가 되돌렸다 —
+  // 앵커 계산 경로가 둘이 되면 호출처 4곳이 서로 다른 창을 볼 수 있고, 그게 티켓 §4가
+  // 「진행률과 발급 판정이 어긋나는 사고」로 경계한 바로 그 모양이다(개선 리뷰 지적).
+  // 쿼리 한 번보다 단일 출처가 비싸다.
   const anchorDate = await getSignupAnchorDate(supabase, userId)
   const history = await getActivityHistory(supabase, userId, anchorDate)
   const evalActivities = mergeActivityHistory(history, activities)
+
+  // 앵커가 얼마나 잘라냈는지 남긴다 — 없으면 배포 후 개별 유저의 되감김 규모를 추적할
+  // 수단이 아예 없다(개선 리뷰 지적). 실측상 프로덕션 873건 중 665건이 가입 이전이었다.
+  if (anchorDate) {
+    console.info(`[badge-engine] 가입 앵커 적용 userId=${userId} since=${anchorDate} 이력=${history.length}건`)
+  } else {
+    // 폴백(= 필터 없음)은 «전체 이력»을 보게 되므로, 화면과 발급이 서로 다른 창을 보는
+    // 비대칭이 생긴다. 조용히 넘기지 않는다.
+    console.warn(`[badge-engine] 가입 앵커 없음 — 전체 이력으로 평가 userId=${userId} 이력=${history.length}건`)
+  }
 
   // initial_sync_done 조회 — 첫 싱크 게이트 판단용
   const { data: userRowRaw } = await supabase
