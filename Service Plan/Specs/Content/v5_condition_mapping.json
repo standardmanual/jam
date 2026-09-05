@@ -1,0 +1,9524 @@
+{
+ "_meta": {
+  "무엇": "v5 계열별 condition_json 키 매핑표 (티켓 20260905_0035 B1 산출물 ①)",
+  "생성": "v5_seed_build.py — 손으로 고치지 말 것",
+  "단일출처": "jam-web/src/lib/badge-engine/conditionRegistry.ts (조건 필드) · jam-web/supabase/migrations/134_family_key_grouping.sql (DB CHECK·트리거)",
+  "규모": "정본 199계열 657종 → 시딩 194계열 630종",
+  "표기": {
+   "필터": "필터 키 + 측정 축 조합 — 진행률이 필터를 무시해 실제보다 후하게 나온다",
+   "회차": "repeat_count와 함께 쓴 키를 회차 술어가 소비하지 못한다 — 회차 0(fail-closed)",
+   "근사": "조건문 정본을 레지스트리 키로 정확히 옮길 수 없어 근사했다",
+   "pending": "conditionRegistry의 evaluation:pending — 티켓 0030 구현 전까지 발급되지 않는다"
+  }
+ },
+ "시딩제외": [
+  {
+   "code": "R-S1",
+   "사유": "negative_split — splits 수집이 v5 1차에서 빠졌다 (티켓 20260905_0029 확정)",
+   "종수": 0
+  },
+  {
+   "code": "K2",
+   "사유": "누적 이동시간을 담는 조건 키가 레지스트리에 없다 (duration_minutes는 «단일 활동»)",
+   "종수": 7
+  },
+  {
+   "code": "R-K2",
+   "사유": "누적 이동시간 키 없음 (걷기 K2와 같은 사유)",
+   "종수": 6
+  },
+  {
+   "code": "H-K2",
+   "사유": "누적 이동시간 키 없음 — A묶음의 위상 조정(170→180시간)도 함께 소멸한다",
+   "종수": 6
+  },
+  {
+   "code": "C-G2",
+   "사유": "«한 달 활동 횟수» 키 없음 — monthly_km는 거리이고 weekly_count는 주 단위다",
+   "종수": 4
+  },
+  {
+   "code": "H-C2",
+   "사유": "«한 달 활동 횟수» 키 없음 (C-G2와 같은 사유)",
+   "종수": 4
+  }
+ ],
+ "계열": [
+  {
+   "family_key": "walking:M1",
+   "code": "M1",
+   "종목": "walking",
+   "축": "미션",
+   "이름": "누적의 증명",
+   "조건문": "미션 '2주 안에 20km' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:M2",
+   "code": "M2",
+   "종목": "walking",
+   "축": "미션",
+   "이름": "리듬의 증명",
+   "조건문": "미션 '3주(월~일) 연속 한 주에 3회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:M3",
+   "code": "M3",
+   "종목": "walking",
+   "축": "미션",
+   "이름": "시간의 증명",
+   "조건문": "미션 '2주 안에 새벽·낮·밤 각 2회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:M4",
+   "code": "M4",
+   "종목": "walking",
+   "축": "미션",
+   "이름": "요일의 증명",
+   "조건문": "미션 '2주 안에 서로 다른 5개 요일에 걷기' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:M5",
+   "code": "M5",
+   "종목": "walking",
+   "축": "미션",
+   "이름": "연속의 증명",
+   "조건문": "미션 '7일 연속 걷기' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:M6",
+   "code": "M6",
+   "종목": "walking",
+   "축": "미션",
+   "이름": "이정표의 증명",
+   "조건문": "미션 '한 번에 8km 이상 걷기' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:M7",
+   "code": "M7",
+   "종목": "walking",
+   "축": "미션",
+   "이름": "회복의 증명",
+   "조건문": "미션 '4주(월~일) 연속 한 주에 3회, 매주 1일 휴식' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:M8",
+   "code": "M8",
+   "종목": "walking",
+   "축": "미션",
+   "이름": "계절의 증명",
+   "조건문": "미션 '서로 다른 두 달에 각각 30km 걷기' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:K1",
+   "code": "K1",
+   "종목": "walking",
+   "축": "누적",
+   "이름": "걸어온 거리",
+   "조건문": "누적 거리 5km",
+   "배지종류": "leveled",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 15
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 40
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 75
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 130
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 210
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 330
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 550
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:K3",
+   "code": "K3",
+   "종목": "walking",
+   "축": "누적",
+   "이름": "걸은 날들",
+   "조건문": "누적 활동일수 3일",
+   "배지종류": "leveled",
+   "종수": 6,
+   "condition_keys": [
+    "active_days_count",
+    "activity_type"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 8
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 22
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 40
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 70
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 110
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:P1",
+   "code": "P1",
+   "종목": "walking",
+   "축": "주기",
+   "이름": "오늘의 한 걸음",
+   "조건문": "하루 1회 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "active_days_count",
+    "activity_type"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 30
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 100
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "active_days_count": 300
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:P2",
+   "code": "P2",
+   "종목": "walking",
+   "축": "주기",
+   "이름": "이번 주의 약속",
+   "조건문": "한 주(월~일)에 3회 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "weekly_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "weekly_count": 3,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "weekly_count": 3,
+      "repeat_count": 8
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "weekly_count": 3,
+      "repeat_count": 26
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "weekly_count": 3,
+      "repeat_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "walking:P3",
+   "code": "P3",
+   "종목": "walking",
+   "축": "주기",
+   "이름": "이달의 걸음",
+   "조건문": "한 달에 30km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "monthly_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "monthly_km": 30
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "monthly_km": 52
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "monthly_km": 85
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "monthly_km": 130
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:P4",
+   "code": "P4",
+   "종목": "walking",
+   "축": "주기",
+   "이름": "계절의 보행자",
+   "조건문": "한 계절에 100km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "distance_km",
+    "season"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "season": "all",
+      "distance_km": 100
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "season": "all",
+      "distance_km": 156
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "season": "all",
+      "distance_km": 250
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "season": "all",
+      "distance_km": 400
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "walking:A1",
+   "code": "A1",
+   "종목": "walking",
+   "축": "시간대",
+   "이름": "자정의 경계인",
+   "조건문": "자정을 넘긴 활동 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "23:00",
+       "end": "01:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "23:00",
+       "end": "01:00"
+      },
+      "total_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "23:00",
+       "end": "01:00"
+      },
+      "total_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "23:00",
+       "end": "01:00"
+      },
+      "total_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "근사"
+   ],
+   "근사_사유": "「자정을 넘긴 활동」은 시작 시각 범위로만 근사할 수 있다 (23:00~01:00)"
+  },
+  {
+   "family_key": "walking:A2",
+   "code": "A2",
+   "종목": "walking",
+   "축": "시간대",
+   "이름": "해와 달 사이",
+   "조건문": "같은 날 아침 8시 이전과 저녁 8시 이후 / 1회",
+   "배지종류": "graded",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "20:00",
+       "end": "08:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "20:00",
+       "end": "08:00"
+      },
+      "total_count": 8
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "20:00",
+       "end": "08:00"
+      },
+      "total_count": 25
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "근사"
+   ],
+   "근사_사유": "「같은 날 아침 이전 + 저녁 이후 각 1회」를 20:00~08:00 한 구간으로 근사"
+  },
+  {
+   "family_key": "walking:A3",
+   "code": "A3",
+   "종목": "walking",
+   "축": "시간대",
+   "이름": "리듬 브레이커",
+   "조건문": "3일 연속 서로 다른 시간대 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "distinct_time_bands",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 3,
+      "distinct_time_bands": 3,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 3,
+      "distinct_time_bands": 3,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 3,
+      "distinct_time_bands": 3,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "walking:A4",
+   "code": "A4",
+   "종목": "walking",
+   "축": "시간대",
+   "이름": "스물넷의 산책",
+   "조건문": "24시간 안에 3회 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activities_within_hours",
+    "activity_type",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "activities_within_hours": {
+       "hours": 24,
+       "count": 3
+      },
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "activities_within_hours": {
+       "hours": 24,
+       "count": 3
+      },
+      "repeat_count": 4
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "activities_within_hours": {
+       "hours": 24,
+       "count": 3
+      },
+      "repeat_count": 12
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "walking:A5",
+   "code": "A5",
+   "종목": "walking",
+   "축": "시간대",
+   "이름": "주말이 없다",
+   "조건문": "4주(월~일) 연속 평일만 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "repeat_count",
+    "weekly_streak"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "weekly_streak": 4,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "weekly_streak": 4,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "weekly_streak": 4,
+      "repeat_count": 8
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "근사",
+    "pending"
+   ],
+   "근사_사유": "「토·일 0회」(부정 조건)를 표현할 수 없다 — 평일 요일 목록 + 연속 주로 근사"
+  },
+  {
+   "family_key": "walking:A6",
+   "code": "A6",
+   "종목": "walking",
+   "축": "시간대",
+   "이름": "초하루의 사람",
+   "조건문": "매달 1일 / 1회",
+   "배지종류": "graded",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "day_of_month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_month": 1,
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_month": 1,
+      "total_count": 3
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_month": 1,
+      "total_count": 12
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "walking:A8",
+   "code": "A8",
+   "종목": "walking",
+   "축": "시간대",
+   "이름": "새벽의 사람",
+   "조건문": "새벽 5시~아침 8시 / 1회",
+   "배지종류": "graded",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 60
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "walking:A9",
+   "code": "A9",
+   "종목": "walking",
+   "축": "시간대",
+   "이름": "밤의 보행자",
+   "조건문": "밤 10시~새벽 5시 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "22:00",
+       "end": "05:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "22:00",
+       "end": "05:00"
+      },
+      "total_count": 15
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "22:00",
+       "end": "05:00"
+      },
+      "total_count": 50
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "22:00",
+       "end": "05:00"
+      },
+      "total_count": 120
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "walking:A10",
+   "code": "A10",
+   "종목": "walking",
+   "축": "시간대",
+   "이름": "점심의 탈출",
+   "조건문": "낮 12시~2시 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "12:00",
+       "end": "14:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "12:00",
+       "end": "14:00"
+      },
+      "total_count": 15
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "12:00",
+       "end": "14:00"
+      },
+      "total_count": 50
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "time_range": {
+       "start": "12:00",
+       "end": "14:00"
+      },
+      "total_count": 120
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "walking:D0",
+   "code": "D0",
+   "종목": "walking",
+   "축": "요일",
+   "이름": "일요일의 의식",
+   "조건문": "일요일 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "sunday",
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "sunday",
+      "total_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "sunday",
+      "total_count": 30
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "sunday",
+      "total_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "walking:D1",
+   "code": "D1",
+   "종목": "walking",
+   "축": "요일",
+   "이름": "월요병 극복자",
+   "조건문": "월요일 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "monday",
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "monday",
+      "total_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "monday",
+      "total_count": 30
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "monday",
+      "total_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "walking:D2",
+   "code": "D2",
+   "종목": "walking",
+   "축": "요일",
+   "이름": "불금은 없다",
+   "조건문": "금요일 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "friday",
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "friday",
+      "total_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "friday",
+      "total_count": 30
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": "friday",
+      "total_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "walking:D3",
+   "code": "D3",
+   "종목": "walking",
+   "축": "요일",
+   "이름": "주 5일 완주",
+   "조건문": "한 주(월~일)에 평일 5일 모두 / 1회",
+   "배지종류": "graded",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "total_count": 3
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "total_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "근사"
+   ],
+   "근사_사유": "「한 주에 평일 5일 모두」를 요일별 독립 카운터(day_of_week 배열 + total_count)로 근사"
+  },
+  {
+   "family_key": "walking:S1",
+   "code": "S1",
+   "종목": "walking",
+   "축": "연속",
+   "이름": "작심삼일의 파괴자",
+   "조건문": "3일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 3,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 3,
+      "repeat_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 3,
+      "repeat_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 3,
+      "repeat_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "walking:S2",
+   "code": "S2",
+   "종목": "walking",
+   "축": "연속",
+   "이름": "열흘의 리듬",
+   "조건문": "10일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 10,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 10,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 10,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "walking:S3",
+   "code": "S3",
+   "종목": "walking",
+   "축": "연속",
+   "이름": "한 달의 궤도",
+   "조건문": "30일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 30,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 30,
+      "repeat_count": 2
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "walking:B1",
+   "code": "B1",
+   "종목": "walking",
+   "축": "기록",
+   "이름": "자기 초월",
+   "조건문": "가장 긴 거리 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "walking:B2",
+   "code": "B2",
+   "종목": "walking",
+   "축": "기록",
+   "이름": "더 오래",
+   "조건문": "가장 긴 이동시간 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "walking",
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "근사",
+    "pending"
+   ],
+   "근사_사유": "「최장 이동시간 갱신」과 「최장 거리 갱신」(B1)을 구분할 지표 지정 수단이 없다"
+  },
+  {
+   "family_key": "walking:B3",
+   "code": "B3",
+   "종목": "walking",
+   "축": "기록",
+   "이름": "지난달의 나에게",
+   "조건문": "한 달에 지난달 거리의 120% 이상",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "month_over_month_ratio",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "walking",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "walking",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "walking",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "walking",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "walking",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "walking",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "walking",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "walking",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "walking:B4",
+   "code": "B4",
+   "종목": "walking",
+   "축": "기록",
+   "이름": "평균의 배신",
+   "조건문": "한 번에 평소 평균 거리의 2배 이상",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break",
+    "vs_personal_average"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "walking",
+      "vs_personal_average": 2,
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "walking",
+      "vs_personal_average": 2,
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "walking",
+      "vs_personal_average": 2,
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "walking",
+      "vs_personal_average": 2,
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "walking",
+      "vs_personal_average": 2,
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "walking",
+      "vs_personal_average": 2,
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "walking",
+      "vs_personal_average": 2,
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "walking",
+      "vs_personal_average": 2,
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "walking:C1",
+   "code": "C1",
+   "종목": "walking",
+   "축": "이정표",
+   "이름": "100km 클럽",
+   "조건문": "누적 거리 100km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 100
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:C2",
+   "code": "C2",
+   "종목": "walking",
+   "축": "이정표",
+   "이름": "500km 클럽",
+   "조건문": "누적 거리 500km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 500
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:C3",
+   "code": "C3",
+   "종목": "walking",
+   "축": "이정표",
+   "이름": "1000km 클럽",
+   "조건문": "누적 거리 1,000km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "distance_km": 1000
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:C4",
+   "code": "C4",
+   "종목": "walking",
+   "축": "이정표",
+   "이름": "백 번의 걸음",
+   "조건문": "총 100회",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "total_count": 100
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:C5",
+   "code": "C5",
+   "종목": "walking",
+   "축": "이정표",
+   "이름": "분실물 센터 999",
+   "조건문": "총 999회",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "total_count": 999
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:R1",
+   "code": "R1",
+   "종목": "walking",
+   "축": "휴식",
+   "이름": "완전한 하루",
+   "조건문": "6일 연속 후 하루 휴식 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "rest_after_streak",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 6,
+      "rest_after_streak": 1,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 6,
+      "rest_after_streak": 1,
+      "repeat_count": 5
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "streak_days": 6,
+      "rest_after_streak": 1,
+      "repeat_count": 20
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "walking:R2",
+   "code": "R2",
+   "종목": "walking",
+   "축": "휴식",
+   "이름": "회복의 기술",
+   "조건문": "한 번에 90분 이상 다음 날 휴식 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "duration_minutes",
+    "repeat_count",
+    "rest_after_long"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "duration_minutes": 90,
+      "rest_after_long": 1,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "duration_minutes": 90,
+      "rest_after_long": 1,
+      "repeat_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "duration_minutes": 90,
+      "rest_after_long": 1,
+      "repeat_count": 30
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "duration_minutes": 90,
+      "rest_after_long": 1,
+      "repeat_count": 100
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "근사"
+   ],
+   "근사_사유": "「90분 이상 활동 다음 날 휴식」 — rest_after_long의 짝 필드가 single_distance_km 하나뿐이라 duration_minutes와 짝지을 수 없다"
+  },
+  {
+   "family_key": "walking:R3",
+   "code": "R3",
+   "종목": "walking",
+   "축": "휴식",
+   "이름": "쉬는 것도 훈련",
+   "조건문": "4주(월~일) 연속 매주 1일 이상 휴식 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "weekly_streak"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "weekly_streak": 4,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "weekly_streak": 4,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "weekly_streak": 4,
+      "repeat_count": 12
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "근사",
+    "pending"
+   ],
+   "근사_사유": "「매주 하루 이상 휴식」을 표현할 수 없다 — 연속 주(weekly_streak)로만 근사"
+  },
+  {
+   "family_key": "walking:R4",
+   "code": "R4",
+   "종목": "walking",
+   "축": "휴식",
+   "이름": "겨울잠",
+   "조건문": "14일 이상 쉬고 복귀 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "return_gap_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "return_gap_days": 14,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "return_gap_days": 14,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "return_gap_days": 14,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "walking:W1",
+   "code": "W1",
+   "종목": "walking",
+   "축": "달력",
+   "이름": "한여름의 보행자",
+   "조건문": "7~8월 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "walking:W2",
+   "code": "W2",
+   "종목": "walking",
+   "축": "달력",
+   "이름": "한겨울의 보행자",
+   "조건문": "12~2월 / 1회",
+   "배지종류": "graded",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 60
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "walking:W3",
+   "code": "W3",
+   "종목": "walking",
+   "축": "달력",
+   "이름": "사계절의 발걸음",
+   "조건문": "네 계절 각 10회 / 1회",
+   "배지종류": "graded",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "season_count_all"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "season_count_all": 10
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "season_count_all": 20
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "walking:W4",
+   "code": "W4",
+   "종목": "walking",
+   "축": "달력",
+   "이름": "장마의 의지",
+   "조건문": "6~7월 중 한 달에 80km",
+   "배지종류": "repeatable",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "monthly_km",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "month": [
+       6,
+       7
+      ],
+      "monthly_km": 80,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "walking",
+      "month": [
+       6,
+       7
+      ],
+      "monthly_km": 80,
+      "repeat_count": 2
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "회차"
+   ]
+  },
+  {
+   "family_key": "running:K1",
+   "code": "R-K1",
+   "종목": "running",
+   "축": "누적",
+   "이름": "달려온 거리",
+   "조건문": "누적 거리 20km",
+   "배지종류": "leveled",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 20
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 60
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 150
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 320
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 600
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 1100
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 1900
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 3200
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:K3",
+   "code": "R-K3",
+   "종목": "running",
+   "축": "누적",
+   "이름": "달린 횟수",
+   "조건문": "총 10회",
+   "배지종류": "leveled",
+   "종수": 6,
+   "condition_keys": [
+    "activity_type",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "running",
+      "total_count": 10
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "running",
+      "total_count": 30
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "running",
+      "total_count": 60
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "running",
+      "total_count": 110
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "running",
+      "total_count": 190
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "running",
+      "total_count": 320
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:P1",
+   "code": "R-P1",
+   "종목": "running",
+   "축": "강도",
+   "이름": "페이스 메이커",
+   "조건문": "한 번에 5km 이상, 6:15/km보다 빠르게",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "max_pace_sec_per_km",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "max_pace_sec_per_km": 375
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "max_pace_sec_per_km": 330
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "max_pace_sec_per_km": 300
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "max_pace_sec_per_km": 270
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "running:L1",
+   "code": "R-L1",
+   "종목": "running",
+   "축": "단일 최대",
+   "이름": "긴 하루",
+   "조건문": "한 번에 15km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 15
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 21
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 32
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 42
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "running:C1",
+   "code": "R-C1",
+   "종목": "running",
+   "축": "주기",
+   "이름": "오늘의 한 발",
+   "조건문": "하루 1회 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "active_days_count",
+    "activity_type"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "active_days_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "active_days_count": 30
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "active_days_count": 100
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "active_days_count": 300
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:C2",
+   "code": "R-C2",
+   "종목": "running",
+   "축": "주기",
+   "이름": "이번 주의 페이스",
+   "조건문": "한 주(월~일)에 4회 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "weekly_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "weekly_count": 4,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "weekly_count": 4,
+      "repeat_count": 8
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "weekly_count": 4,
+      "repeat_count": 26
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "weekly_count": 4,
+      "repeat_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "running:C3",
+   "code": "R-C3",
+   "종목": "running",
+   "축": "주기",
+   "이름": "이달의 러닝",
+   "조건문": "한 달에 120km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "monthly_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "monthly_km": 120
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "monthly_km": 217
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "monthly_km": 350
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "monthly_km": 550
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:C4",
+   "code": "R-C4",
+   "종목": "running",
+   "축": "주기",
+   "이름": "계절의 러너",
+   "조건문": "한 계절에 400km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "distance_km",
+    "season"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "season": "all",
+      "distance_km": 400
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "season": "all",
+      "distance_km": 650
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "season": "all",
+      "distance_km": 1100
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "season": "all",
+      "distance_km": 1700
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "running:T1",
+   "code": "R-T1",
+   "종목": "running",
+   "축": "시간대",
+   "이름": "새벽의 러너",
+   "조건문": "새벽 5시~아침 8시 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 15
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 50
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 120
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "running:T2",
+   "code": "R-T2",
+   "종목": "running",
+   "축": "시간대",
+   "이름": "밤의 러너",
+   "조건문": "저녁 8시~새벽 5시 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "20:00",
+       "end": "05:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "20:00",
+       "end": "05:00"
+      },
+      "total_count": 15
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "20:00",
+       "end": "05:00"
+      },
+      "total_count": 50
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "20:00",
+       "end": "05:00"
+      },
+      "total_count": 120
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "running:T3",
+   "code": "R-T3",
+   "종목": "running",
+   "축": "시간대",
+   "이름": "해와 달의 주자",
+   "조건문": "같은 날 아침 8시 이전과 저녁 8시 이후 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "20:00",
+       "end": "08:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "20:00",
+       "end": "08:00"
+      },
+      "total_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "20:00",
+       "end": "08:00"
+      },
+      "total_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "time_range": {
+       "start": "20:00",
+       "end": "08:00"
+      },
+      "total_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "근사"
+   ],
+   "근사_사유": "A2와 같은 근사"
+  },
+  {
+   "family_key": "running:D1",
+   "code": "R-D1",
+   "종목": "running",
+   "축": "요일",
+   "이름": "월요일의 시작",
+   "조건문": "월요일 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "day_of_week": "monday",
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "day_of_week": "monday",
+      "total_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "day_of_week": "monday",
+      "total_count": 30
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "day_of_week": "monday",
+      "total_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "running:D2",
+   "code": "R-D2",
+   "종목": "running",
+   "축": "요일",
+   "이름": "주말 장거리",
+   "조건문": "주말에 한 번에 10km 이상 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "single_distance_km",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "single_distance_km": 10,
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "single_distance_km": 10,
+      "total_count": 8
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "single_distance_km": 10,
+      "total_count": 25
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "single_distance_km": 10,
+      "total_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "근사",
+    "pending"
+   ],
+   "근사_사유": "「주말」을 요일별 독립 카운터로 근사 — 토·일 각각 N회를 요구한다"
+  },
+  {
+   "family_key": "running:N1",
+   "code": "R-N1",
+   "종목": "running",
+   "축": "연속",
+   "이름": "사흘의 리듬",
+   "조건문": "3일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 3,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 3,
+      "repeat_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 3,
+      "repeat_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 3,
+      "repeat_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "running:N2",
+   "code": "R-N2",
+   "종목": "running",
+   "축": "연속",
+   "이름": "일주일의 궤도",
+   "조건문": "7일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 7,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 7,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 7,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "running:N3",
+   "code": "R-N3",
+   "종목": "running",
+   "축": "연속",
+   "이름": "런 스트릭",
+   "조건문": "30일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 30,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 30,
+      "repeat_count": 2
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "running:R1",
+   "code": "R-R1",
+   "종목": "running",
+   "축": "기록",
+   "이름": "발끝의 한계",
+   "조건문": "가장 긴 거리 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "running",
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "running",
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "running",
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "running",
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "running",
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "running",
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "running",
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "running",
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "running:R2",
+   "code": "R-R2",
+   "종목": "running",
+   "축": "기록",
+   "이름": "더 빠르게",
+   "조건문": "5km 이상 활동의 가장 빠른 페이스 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 5,
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "근사",
+    "pending"
+   ],
+   "근사_사유": "「5km 이상 활동의 최고 페이스 갱신」 — 지표 지정 수단이 없어 single_distance_km로 대상만 좁혔다"
+  },
+  {
+   "family_key": "running:R3",
+   "code": "R-R3",
+   "종목": "running",
+   "축": "기록",
+   "이름": "지난달의 주자",
+   "조건문": "한 달에 지난달 거리의 120% 이상",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "month_over_month_ratio",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "running",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "running",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "running",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "running",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "running",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "running",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "running",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "running",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "running:M1",
+   "code": "R-M1",
+   "종목": "running",
+   "축": "이정표",
+   "이름": "500km 주자",
+   "조건문": "누적 거리 500km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 500
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:M2",
+   "code": "R-M2",
+   "종목": "running",
+   "축": "이정표",
+   "이름": "2000km 클럽",
+   "조건문": "누적 거리 2,000km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 2000
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:M3",
+   "code": "R-M3",
+   "종목": "running",
+   "축": "이정표",
+   "이름": "5000km 클럽",
+   "조건문": "누적 거리 5,000km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "distance_km": 5000
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:M4",
+   "code": "R-M4",
+   "종목": "running",
+   "축": "이정표",
+   "이름": "백 번의 러닝",
+   "조건문": "총 100회",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "total_count": 100
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:M5",
+   "code": "R-M5",
+   "종목": "running",
+   "축": "이정표",
+   "이름": "마라톤 완주",
+   "조건문": "한 번에 42.195km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 42.195
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "running:X1",
+   "code": "R-X1",
+   "종목": "running",
+   "축": "휴식",
+   "이름": "비워둔 하루",
+   "조건문": "5일 연속 후 하루 휴식 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "rest_after_streak",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 5,
+      "rest_after_streak": 1,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 5,
+      "rest_after_streak": 1,
+      "repeat_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 5,
+      "rest_after_streak": 1,
+      "repeat_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "streak_days": 5,
+      "rest_after_streak": 1,
+      "repeat_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "running:X2",
+   "code": "R-X2",
+   "종목": "running",
+   "축": "휴식",
+   "이름": "다음 날의 여백",
+   "조건문": "한 번에 25km 이상 다음 날 휴식 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "rest_after_long",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 25,
+      "rest_after_long": 1,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 25,
+      "rest_after_long": 1,
+      "repeat_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "single_distance_km": 25,
+      "rest_after_long": 1,
+      "repeat_count": 30
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "running:X3",
+   "code": "R-X3",
+   "종목": "running",
+   "축": "휴식",
+   "이름": "돌아온 러너",
+   "조건문": "14일 이상 쉬고 복귀 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "return_gap_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "return_gap_days": 14,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "return_gap_days": 14,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "return_gap_days": 14,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "running:W1",
+   "code": "R-W1",
+   "종목": "running",
+   "축": "달력",
+   "이름": "한여름의 러너",
+   "조건문": "7~8월 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "running:W2",
+   "code": "R-W2",
+   "종목": "running",
+   "축": "달력",
+   "이름": "한겨울의 러너",
+   "조건문": "12~2월 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "running:W3",
+   "code": "R-W3",
+   "종목": "running",
+   "축": "달력",
+   "이름": "사계절의 주자",
+   "조건문": "네 계절 각 10회 / 1회",
+   "배지종류": "graded",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "season_count_all"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "season_count_all": 10
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "season_count_all": 20
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:H1",
+   "code": "R-H1",
+   "종목": "running",
+   "축": "보너스",
+   "이름": "심박의 주인",
+   "조건문": "한 번에 30분 이상, 평균 심박 160bpm 이상 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "avg_heartrate_bpm",
+    "duration_minutes",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "avg_heartrate_bpm": 160,
+      "duration_minutes": 30,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "avg_heartrate_bpm": 160,
+      "duration_minutes": 30,
+      "repeat_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "avg_heartrate_bpm": 160,
+      "duration_minutes": 30,
+      "repeat_count": 30
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "avg_heartrate_bpm": 160,
+      "duration_minutes": 30,
+      "repeat_count": 100
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "running:H2",
+   "code": "R-H2",
+   "종목": "running",
+   "축": "보너스",
+   "이름": "180의 리듬",
+   "조건문": "평균 케이던스 180spm 이상 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "avg_cadence",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "avg_cadence": 180,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "avg_cadence": 180,
+      "repeat_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "avg_cadence": 180,
+      "repeat_count": 30
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "avg_cadence": 180,
+      "repeat_count": 100
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "running:Q1",
+   "code": "R-Q1",
+   "종목": "running",
+   "축": "미션",
+   "이름": "쌓인 거리의 증명",
+   "조건문": "미션 '2주 안에 80km' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:Q2",
+   "code": "R-Q2",
+   "종목": "running",
+   "축": "미션",
+   "이름": "페이스의 증명",
+   "조건문": "미션 '4주 안에 한 번에 10km 이상, 5:30/km보다 빠르게 / 3회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:Q3",
+   "code": "R-Q3",
+   "종목": "running",
+   "축": "미션",
+   "이름": "먼 하루의 증명",
+   "조건문": "미션 '4주 안에 한 번에 25km 이상 / 2회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:Q4",
+   "code": "R-Q4",
+   "종목": "running",
+   "축": "미션",
+   "이름": "반복의 증명",
+   "조건문": "미션 '3주(월~일) 연속 한 주에 4회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:Q5",
+   "code": "R-Q5",
+   "종목": "running",
+   "축": "미션",
+   "이름": "시간표의 증명",
+   "조건문": "미션 '2주 안에 새벽·밤 각 2회, 서로 다른 5개 요일' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:Q6",
+   "code": "R-Q6",
+   "종목": "running",
+   "축": "미션",
+   "이름": "연이은 날의 증명",
+   "조건문": "미션 '7일 연속' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:Q7",
+   "code": "R-Q7",
+   "종목": "running",
+   "축": "미션",
+   "이름": "쉼표의 증명",
+   "조건문": "미션 '4주(월~일) 연속 한 주에 4회, 매주 2일 이상 휴식' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "running:Q8",
+   "code": "R-Q8",
+   "종목": "running",
+   "축": "미션",
+   "이름": "사계의 증명",
+   "조건문": "미션 '서로 다른 두 달에 각각 120km' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:K1",
+   "code": "C-K1",
+   "종목": "cycling",
+   "축": "누적",
+   "이름": "굴러온 거리",
+   "조건문": "누적 거리 80km",
+   "배지종류": "leveled",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "cycling",
+      "distance_km": 80
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "cycling",
+      "distance_km": 250
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "cycling",
+      "distance_km": 600
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "cycling",
+      "distance_km": 1300
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "cycling",
+      "distance_km": 2500
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "cycling",
+      "distance_km": 4200
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "cycling",
+      "distance_km": 8000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "cycling",
+      "distance_km": 14000
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:K2",
+   "code": "C-K2",
+   "종목": "cycling",
+   "축": "누적",
+   "이름": "바퀴로 오른 고도",
+   "조건문": "누적 상승고도 1,000m",
+   "배지종류": "leveled",
+   "종수": 6,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "cycling",
+      "elevation_gain_m": 1000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "cycling",
+      "elevation_gain_m": 3000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "cycling",
+      "elevation_gain_m": 8000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "cycling",
+      "elevation_gain_m": 22000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "cycling",
+      "elevation_gain_m": 38000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "cycling",
+      "elevation_gain_m": 70000
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:K3",
+   "code": "C-K3",
+   "종목": "cycling",
+   "축": "누적",
+   "이름": "안장에 오른 횟수",
+   "조건문": "총 8회",
+   "배지종류": "leveled",
+   "종수": 6,
+   "condition_keys": [
+    "activity_type",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "cycling",
+      "total_count": 8
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "cycling",
+      "total_count": 25
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "cycling",
+      "total_count": 55
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "cycling",
+      "total_count": 100
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "cycling",
+      "total_count": 170
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "cycling",
+      "total_count": 280
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:P1",
+   "code": "C-P1",
+   "종목": "cycling",
+   "축": "강도",
+   "이름": "속도의 주인",
+   "조건문": "한 번에 30km 이상, 평균 속도 22km/h 이상",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "min_speed_kmh",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 30,
+      "min_speed_kmh": 22
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 30,
+      "min_speed_kmh": 25
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 30,
+      "min_speed_kmh": 28
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 30,
+      "min_speed_kmh": 32
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:V1",
+   "code": "C-V1",
+   "종목": "cycling",
+   "축": "최고 도달",
+   "이름": "다운힐",
+   "조건문": "한 번에 최고 속도 45km/h 이상",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "max_speed_kmh"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "max_speed_kmh": 45
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "max_speed_kmh": 55
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "max_speed_kmh": 65
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "max_speed_kmh": 75
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:L1",
+   "code": "C-L1",
+   "종목": "cycling",
+   "축": "단일 최대",
+   "이름": "안장 위의 하루",
+   "조건문": "한 번에 80km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 80
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 120
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 160
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 200
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:E1",
+   "code": "C-E1",
+   "종목": "cycling",
+   "축": "고도",
+   "이름": "언덕의 사람",
+   "조건문": "한 번에 상승고도 500m 이상",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "single_elevation_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_elevation_m": 500
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_elevation_m": 1000
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_elevation_m": 1600
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_elevation_m": 2500
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:C1",
+   "code": "C-C1",
+   "종목": "cycling",
+   "축": "주기",
+   "이름": "오늘의 바퀴",
+   "조건문": "하루 1회 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "active_days_count",
+    "activity_type"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "active_days_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "active_days_count": 25
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "active_days_count": 80
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "active_days_count": 250
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:C2",
+   "code": "C-C2",
+   "종목": "cycling",
+   "축": "주기",
+   "이름": "이번 주의 바퀴",
+   "조건문": "한 주(월~일)에 3회 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "weekly_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "weekly_count": 3,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "weekly_count": 3,
+      "repeat_count": 8
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "weekly_count": 3,
+      "repeat_count": 26
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "weekly_count": 3,
+      "repeat_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "cycling:C3",
+   "code": "C-C3",
+   "종목": "cycling",
+   "축": "주기",
+   "이름": "이달의 라이더",
+   "조건문": "한 달에 400km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "monthly_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "monthly_km": 400
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "monthly_km": 867
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "monthly_km": 1400
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "monthly_km": 2200
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:C4",
+   "code": "C-C4",
+   "종목": "cycling",
+   "축": "주기",
+   "이름": "계절의 라이더",
+   "조건문": "한 계절에 1,300km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "distance_km",
+    "season"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "season": "all",
+      "distance_km": 1300
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "season": "all",
+      "distance_km": 2600
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "season": "all",
+      "distance_km": 4200
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "season": "all",
+      "distance_km": 6500
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "cycling:D1",
+   "code": "C-D1",
+   "종목": "cycling",
+   "축": "요일",
+   "이름": "주말 라이더",
+   "조건문": "주말 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "total_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "total_count": 35
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "total_count": 100
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "근사"
+   ],
+   "근사_사유": "「주말」을 요일별 독립 카운터로 근사"
+  },
+  {
+   "family_key": "cycling:D2",
+   "code": "C-D2",
+   "종목": "cycling",
+   "축": "요일",
+   "이름": "평일의 반란",
+   "조건문": "평일에 한 번에 100km 이상 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "single_distance_km",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "single_distance_km": 100,
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "single_distance_km": 100,
+      "total_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "single_distance_km": 100,
+      "total_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "day_of_week": [
+       "monday",
+       "tuesday",
+       "wednesday",
+       "thursday",
+       "friday"
+      ],
+      "single_distance_km": 100,
+      "total_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "근사",
+    "pending"
+   ],
+   "근사_사유": "「평일」을 요일별 독립 카운터로 근사"
+  },
+  {
+   "family_key": "cycling:N1",
+   "code": "C-N1",
+   "종목": "cycling",
+   "축": "연속",
+   "이름": "사흘의 바퀴",
+   "조건문": "3일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "streak_days": 3,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "streak_days": 3,
+      "repeat_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "streak_days": 3,
+      "repeat_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "streak_days": 3,
+      "repeat_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "cycling:N2",
+   "code": "C-N2",
+   "종목": "cycling",
+   "축": "연속",
+   "이름": "일곱 바퀴의 궤도",
+   "조건문": "7일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "streak_days": 7,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "streak_days": 7,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "streak_days": 7,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "cycling:N3",
+   "code": "C-N3",
+   "종목": "cycling",
+   "축": "연속",
+   "이름": "삼 주의 바퀴",
+   "조건문": "21일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "streak_days": 21,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "streak_days": 21,
+      "repeat_count": 2
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "cycling:G1",
+   "code": "C-G1",
+   "종목": "cycling",
+   "축": "간격",
+   "이름": "격주의 약속",
+   "조건문": "2주 안에 다시 활동 / 3회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "interval_days",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "interval_days": 14,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "interval_days": 14,
+      "repeat_count": 8
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "interval_days": 14,
+      "repeat_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "interval_days": 14,
+      "repeat_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "cycling:R1",
+   "code": "C-R1",
+   "종목": "cycling",
+   "축": "기록",
+   "이름": "바퀴의 한계",
+   "조건문": "가장 긴 거리 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "cycling",
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "cycling",
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "cycling",
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "cycling",
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "cycling",
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "cycling",
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "cycling",
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "cycling",
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:R2",
+   "code": "C-R2",
+   "종목": "cycling",
+   "축": "기록",
+   "이름": "지난달의 라이더",
+   "조건문": "한 달에 지난달 거리의 120% 이상",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "month_over_month_ratio",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "cycling",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "cycling",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "cycling",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "cycling",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "cycling",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "cycling",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "cycling",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "cycling",
+      "month_over_month_ratio": 1.2,
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:M1",
+   "code": "C-M1",
+   "종목": "cycling",
+   "축": "이정표",
+   "이름": "센추리 라이드",
+   "조건문": "한 번에 100km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 100
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:M2",
+   "code": "C-M2",
+   "종목": "cycling",
+   "축": "이정표",
+   "이름": "그란폰도",
+   "조건문": "한 번에 160km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 160
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:M3",
+   "code": "C-M3",
+   "종목": "cycling",
+   "축": "이정표",
+   "이름": "브레베",
+   "조건문": "한 번에 200km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 200
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:M4",
+   "code": "C-M4",
+   "종목": "cycling",
+   "축": "이정표",
+   "이름": "10000km 클럽",
+   "조건문": "누적 거리 10,000km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "distance_km": 10000
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:M5",
+   "code": "C-M5",
+   "종목": "cycling",
+   "축": "이정표",
+   "이름": "바퀴로 쌓은 열 채",
+   "조건문": "누적 상승고도 88,480m",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "elevation_gain_m": 88480
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:X1",
+   "code": "C-X1",
+   "종목": "cycling",
+   "축": "휴식",
+   "이름": "안장의 휴일",
+   "조건문": "한 번에 150km 이상 다음 날 휴식 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "rest_after_long",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 150,
+      "rest_after_long": 1,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 150,
+      "rest_after_long": 1,
+      "repeat_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "single_distance_km": 150,
+      "rest_after_long": 1,
+      "repeat_count": 30
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:X2",
+   "code": "C-X2",
+   "종목": "cycling",
+   "축": "휴식",
+   "이름": "돌아온 라이더",
+   "조건문": "30일 이상 쉬고 복귀 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "return_gap_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "return_gap_days": 30,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "return_gap_days": 30,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "return_gap_days": 30,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "cycling:W1",
+   "code": "C-W1",
+   "종목": "cycling",
+   "축": "달력",
+   "이름": "한여름의 라이더",
+   "조건문": "7~8월 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "cycling:W2",
+   "code": "C-W2",
+   "종목": "cycling",
+   "축": "달력",
+   "이름": "한겨울의 라이더",
+   "조건문": "12~2월 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 12
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 30
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "cycling:W3",
+   "code": "C-W3",
+   "종목": "cycling",
+   "축": "달력",
+   "이름": "사계절의 라이더",
+   "조건문": "네 계절 각 5회 / 1회",
+   "배지종류": "graded",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "season_count_all"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "season_count_all": 5
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "season_count_all": 10
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:H1",
+   "code": "C-H1",
+   "종목": "cycling",
+   "축": "보너스",
+   "이름": "와트의 주인",
+   "조건문": "한 번에 1시간 이상, 평균 파워 200W 이상 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "avg_watts",
+    "duration_minutes",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "avg_watts": 200,
+      "duration_minutes": 60,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "avg_watts": 200,
+      "duration_minutes": 60,
+      "repeat_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "avg_watts": 200,
+      "duration_minutes": 60,
+      "repeat_count": 30
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "avg_watts": 200,
+      "duration_minutes": 60,
+      "repeat_count": 100
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:H2",
+   "code": "C-H2",
+   "종목": "cycling",
+   "축": "보너스",
+   "이름": "안장 위의 심장",
+   "조건문": "한 번에 1시간 이상, 평균 심박 150bpm 이상 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "avg_heartrate_bpm",
+    "duration_minutes",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "avg_heartrate_bpm": 150,
+      "duration_minutes": 60,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "avg_heartrate_bpm": 150,
+      "duration_minutes": 60,
+      "repeat_count": 10
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "avg_heartrate_bpm": 150,
+      "duration_minutes": 60,
+      "repeat_count": 30
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "avg_heartrate_bpm": 150,
+      "duration_minutes": 60,
+      "repeat_count": 100
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "cycling:Q1",
+   "code": "C-Q1",
+   "종목": "cycling",
+   "축": "미션",
+   "이름": "바퀴 자국의 증명",
+   "조건문": "미션 '2주 안에 330km' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:Q2",
+   "code": "C-Q2",
+   "종목": "cycling",
+   "축": "미션",
+   "이름": "속도의 증명",
+   "조건문": "미션 '4주 안에 한 번에 30km 이상, 평균 속도 25km/h 이상 / 3회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:Q3",
+   "code": "C-Q3",
+   "종목": "cycling",
+   "축": "미션",
+   "이름": "지평선의 증명",
+   "조건문": "미션 '4주 안에 한 번에 130km 이상 / 2회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:Q4",
+   "code": "C-Q4",
+   "종목": "cycling",
+   "축": "미션",
+   "이름": "언덕의 증명",
+   "조건문": "미션 '4주 안에 한 번에 상승고도 1,200m 이상 / 2회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:Q5",
+   "code": "C-Q5",
+   "종목": "cycling",
+   "축": "미션",
+   "이름": "주말의 증명",
+   "조건문": "미션 '3주(월~일) 연속 한 주에 3회, 매주 주말 1회 이상' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:Q6",
+   "code": "C-Q6",
+   "종목": "cycling",
+   "축": "미션",
+   "이름": "이어진 바퀴의 증명",
+   "조건문": "미션 '4주(월~일) 안에 3일 연속 1회, 매주 1회 이상' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:Q7",
+   "code": "C-Q7",
+   "종목": "cycling",
+   "축": "미션",
+   "이름": "빈 안장의 증명",
+   "조건문": "미션 '8주 안에 한 번에 100km 이상, 다음 날 휴식 / 3회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "cycling:Q8",
+   "code": "C-Q8",
+   "종목": "cycling",
+   "축": "미션",
+   "이름": "추위와 더위의 증명",
+   "조건문": "미션 '서로 다른 두 달에 각각 500km' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "cycling",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:K1",
+   "code": "H-K1",
+   "종목": "hiking",
+   "축": "누적",
+   "이름": "올라온 고도",
+   "조건문": "누적 상승고도 1,500m",
+   "배지종류": "leveled",
+   "종수": 6,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "hiking",
+      "elevation_gain_m": 1500
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "hiking",
+      "elevation_gain_m": 5000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "hiking",
+      "elevation_gain_m": 12000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "hiking",
+      "elevation_gain_m": 25000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "hiking",
+      "elevation_gain_m": 48000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "hiking",
+      "elevation_gain_m": 85000
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:K3",
+   "code": "H-K3",
+   "종목": "hiking",
+   "축": "누적",
+   "이름": "오른 횟수",
+   "조건문": "총 5회",
+   "배지종류": "leveled",
+   "종수": 6,
+   "condition_keys": [
+    "activity_type",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "hiking",
+      "total_count": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "hiking",
+      "total_count": 15
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "hiking",
+      "total_count": 40
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "hiking",
+      "total_count": 80
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "hiking",
+      "total_count": 150
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "hiking",
+      "total_count": 260
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:P1",
+   "code": "H-P1",
+   "종목": "hiking",
+   "축": "강도",
+   "이름": "고도의 사람",
+   "조건문": "한 번에 상승고도 500m 이상",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "single_elevation_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "single_elevation_m": 500
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "single_elevation_m": 750
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "single_elevation_m": 1200
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "single_elevation_m": 1800
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "hiking:A1",
+   "code": "H-A1",
+   "종목": "hiking",
+   "축": "최고 도달",
+   "이름": "높은 곳",
+   "조건문": "한 번에 최고 도달 고도 700m 이상",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "max_elevation_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "max_elevation_m": 700
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "max_elevation_m": 1200
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "max_elevation_m": 1600
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "max_elevation_m": 1900
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "hiking:L1",
+   "code": "H-L1",
+   "종목": "hiking",
+   "축": "단일 최대",
+   "이름": "산에서의 하루",
+   "조건문": "한 번에 3시간",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "duration_minutes"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "duration_minutes": 180
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "duration_minutes": 300
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "duration_minutes": 480
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "duration_minutes": 720
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:L2",
+   "code": "H-L2",
+   "종목": "hiking",
+   "축": "단일 최대",
+   "이름": "종주",
+   "조건문": "한 번에 12km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "single_distance_km": 12
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "single_distance_km": 18
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "single_distance_km": 25
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "single_distance_km": 35
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "hiking:C1",
+   "code": "H-C1",
+   "종목": "hiking",
+   "축": "주기",
+   "이름": "산에 간 날",
+   "조건문": "하루 1회 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "active_days_count",
+    "activity_type"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "active_days_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "active_days_count": 12
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "active_days_count": 40
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "active_days_count": 120
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:C3",
+   "code": "H-C3",
+   "종목": "hiking",
+   "축": "주기",
+   "이름": "계절의 등반자",
+   "조건문": "한 계절에 상승고도 4,000m",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m",
+    "season"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "season": "all",
+      "elevation_gain_m": 4000
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "season": "all",
+      "elevation_gain_m": 9000
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "season": "all",
+      "elevation_gain_m": 15000
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "season": "all",
+      "elevation_gain_m": 24000
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "hiking:D1",
+   "code": "H-D1",
+   "종목": "hiking",
+   "축": "요일",
+   "이름": "주말 산행",
+   "조건문": "주말 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "day_of_week",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "total_count": 12
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "total_count": 40
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "day_of_week": [
+       "saturday",
+       "sunday"
+      ],
+      "total_count": 100
+     }
+    }
+   ],
+   "표기": [
+    "필터",
+    "근사"
+   ],
+   "근사_사유": "「주말」을 요일별 독립 카운터로 근사"
+  },
+  {
+   "family_key": "hiking:N1",
+   "code": "H-N1",
+   "종목": "hiking",
+   "축": "연속",
+   "이름": "이틀 연속의 산",
+   "조건문": "2일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "streak_days": 2,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "streak_days": 2,
+      "repeat_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "streak_days": 2,
+      "repeat_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "streak_days": 2,
+      "repeat_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "hiking:N2",
+   "code": "H-N2",
+   "종목": "hiking",
+   "축": "연속",
+   "이름": "사흘의 능선",
+   "조건문": "3일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "streak_days": 3,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "streak_days": 3,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "streak_days": 3,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "hiking:N3",
+   "code": "H-N3",
+   "종목": "hiking",
+   "축": "연속",
+   "이름": "일주일의 산",
+   "조건문": "7일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "streak_days": 7,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "streak_days": 7,
+      "repeat_count": 2
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "hiking:G1",
+   "code": "H-G1",
+   "종목": "hiking",
+   "축": "간격",
+   "이름": "산을 잊지 않는",
+   "조건문": "2주 안에 다시 활동 / 3회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "interval_days",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "interval_days": 14,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "interval_days": 14,
+      "repeat_count": 8
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "interval_days": 14,
+      "repeat_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "interval_days": 14,
+      "repeat_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "hiking:R1",
+   "code": "H-R1",
+   "종목": "hiking",
+   "축": "기록",
+   "이름": "더 높이",
+   "조건문": "가장 높은 도달 고도 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "hiking:R2",
+   "code": "H-R2",
+   "종목": "hiking",
+   "축": "기록",
+   "이름": "능선 위의 시간",
+   "조건문": "가장 긴 이동시간 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "hiking",
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "근사",
+    "pending"
+   ],
+   "근사_사유": "H-R1과 같은 사유 — personal_record_break에 지표 지정이 없다"
+  },
+  {
+   "family_key": "hiking:M1",
+   "code": "H-M1",
+   "종목": "hiking",
+   "축": "이정표",
+   "이름": "에베레스트 한 채",
+   "조건문": "누적 상승고도 8,848m",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "elevation_gain_m": 8848
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:M2",
+   "code": "H-M2",
+   "종목": "hiking",
+   "축": "이정표",
+   "이름": "에베레스트 다섯 채",
+   "조건문": "누적 상승고도 44,240m",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "elevation_gain_m": 44240
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:M3",
+   "code": "H-M3",
+   "종목": "hiking",
+   "축": "이정표",
+   "이름": "에베레스트 열 채",
+   "조건문": "누적 상승고도 88,480m",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "elevation_gain_m": 88480
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:M4",
+   "code": "H-M4",
+   "종목": "hiking",
+   "축": "이정표",
+   "이름": "백 번의 산",
+   "조건문": "총 100회",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "total_count": 100
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:X1",
+   "code": "H-X1",
+   "종목": "hiking",
+   "축": "휴식",
+   "이름": "하산 다음 날",
+   "조건문": "한 번에 8시간 이상 다음 날 휴식 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "duration_minutes",
+    "repeat_count",
+    "rest_after_long"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "duration_minutes": 480,
+      "rest_after_long": 1,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "duration_minutes": 480,
+      "rest_after_long": 1,
+      "repeat_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "duration_minutes": 480,
+      "rest_after_long": 1,
+      "repeat_count": 20
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "근사"
+   ],
+   "근사_사유": "「8시간 이상 산행 다음 날 휴식」 — R2와 같은 짝 필드 제약"
+  },
+  {
+   "family_key": "hiking:X2",
+   "code": "H-X2",
+   "종목": "hiking",
+   "축": "휴식",
+   "이름": "돌아온 등반자",
+   "조건문": "60일 이상 쉬고 복귀 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "return_gap_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "return_gap_days": 60,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "return_gap_days": 60,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "return_gap_days": 60,
+      "repeat_count": 8
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "hiking:W1",
+   "code": "H-W1",
+   "종목": "hiking",
+   "축": "달력",
+   "이름": "한여름의 등반자",
+   "조건문": "7~8월 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 4
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 12
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "month": [
+       7,
+       8
+      ],
+      "total_count": 30
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "hiking:W2",
+   "code": "H-W2",
+   "종목": "hiking",
+   "축": "달력",
+   "이름": "한겨울의 등반자",
+   "조건문": "12~2월 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 4
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 12
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 30
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "hiking:W3",
+   "code": "H-W3",
+   "종목": "hiking",
+   "축": "달력",
+   "이름": "사계절의 등반자",
+   "조건문": "네 계절 각 3회 / 1회",
+   "배지종류": "graded",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "season_count_all"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "season_count_all": 3
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "season_count_all": 6
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:Q1",
+   "code": "H-Q1",
+   "종목": "hiking",
+   "축": "미션",
+   "이름": "쌓인 고도의 증명",
+   "조건문": "미션 '2개월 안에 상승고도 5,000m' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:Q2",
+   "code": "H-Q2",
+   "종목": "hiking",
+   "축": "미션",
+   "이름": "높이의 증명",
+   "조건문": "미션 '한 번에 상승고도 1,000m 이상, 최고 도달 고도 1,200m 이상 / 1회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:Q3",
+   "code": "H-Q3",
+   "종목": "hiking",
+   "축": "미션",
+   "이름": "긴 산행의 증명",
+   "조건문": "미션 '3개월 안에 한 번에 6시간 이상 / 2회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:Q4",
+   "code": "H-Q4",
+   "종목": "hiking",
+   "축": "미션",
+   "이름": "발길의 증명",
+   "조건문": "미션 '3개월 연속 한 달에 4회, 매달 주말 2회 이상' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:Q5",
+   "code": "H-Q5",
+   "종목": "hiking",
+   "축": "미션",
+   "이름": "이어진 능선의 증명",
+   "조건문": "미션 '3일 연속' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:Q6",
+   "code": "H-Q6",
+   "종목": "hiking",
+   "축": "미션",
+   "이름": "돌아오는 산의 증명",
+   "조건문": "미션 '6개월 연속 한 달에 2회 이상' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:Q7",
+   "code": "H-Q7",
+   "종목": "hiking",
+   "축": "미션",
+   "이름": "하산 뒤의 증명",
+   "조건문": "미션 '3개월 안에 한 번에 5시간 이상, 다음 날 휴식 / 2회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "hiking:Q8",
+   "code": "H-Q8",
+   "종목": "hiking",
+   "축": "미션",
+   "이름": "눈과 볕의 증명",
+   "조건문": "미션 '서로 다른 두 달에 각각 상승고도 1,800m' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "hiking",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:K1",
+   "code": "T-K1",
+   "종목": "trail_running",
+   "축": "누적",
+   "이름": "산길을 달려온 거리",
+   "조건문": "누적 거리 20km",
+   "배지종류": "leveled",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "trail_running",
+      "distance_km": 20
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "trail_running",
+      "distance_km": 60
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "trail_running",
+      "distance_km": 150
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "trail_running",
+      "distance_km": 320
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "trail_running",
+      "distance_km": 600
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "trail_running",
+      "distance_km": 1100
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "trail_running",
+      "distance_km": 1900
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "trail_running",
+      "distance_km": 3200
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:K2",
+   "code": "T-K2",
+   "종목": "trail_running",
+   "축": "누적",
+   "이름": "달려서 오른 고도",
+   "조건문": "누적 상승고도 700m",
+   "배지종류": "leveled",
+   "종수": 7,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "trail_running",
+      "elevation_gain_m": 700
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "trail_running",
+      "elevation_gain_m": 2200
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "trail_running",
+      "elevation_gain_m": 5000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "trail_running",
+      "elevation_gain_m": 11000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "trail_running",
+      "elevation_gain_m": 20000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "trail_running",
+      "elevation_gain_m": 36000
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "trail_running",
+      "elevation_gain_m": 70000
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:K3",
+   "code": "T-K3",
+   "종목": "trail_running",
+   "축": "누적",
+   "이름": "산을 달린 횟수",
+   "조건문": "총 8회",
+   "배지종류": "leveled",
+   "종수": 6,
+   "condition_keys": [
+    "activity_type",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "trail_running",
+      "total_count": 8
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "trail_running",
+      "total_count": 25
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "trail_running",
+      "total_count": 55
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "trail_running",
+      "total_count": 100
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "trail_running",
+      "total_count": 170
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "trail_running",
+      "total_count": 280
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:P1",
+   "code": "T-P1",
+   "종목": "trail_running",
+   "축": "강도",
+   "이름": "산을 달리는 자",
+   "조건문": "한 번에 15km 이상, 상승고도 400m 이상",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km",
+    "single_elevation_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 15,
+      "single_elevation_m": 400
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 25,
+      "single_elevation_m": 800
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 35,
+      "single_elevation_m": 1500
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 50,
+      "single_elevation_m": 2500
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:L1",
+   "code": "T-L1",
+   "종목": "trail_running",
+   "축": "단일 최대",
+   "이름": "능선의 하루",
+   "조건문": "한 번에 25km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 25
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 42
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 60
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 100
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:L2",
+   "code": "T-L2",
+   "종목": "trail_running",
+   "축": "단일 최대",
+   "이름": "산에서의 시간",
+   "조건문": "한 번에 4시간",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "duration_minutes"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "duration_minutes": 240
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "duration_minutes": 420
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "duration_minutes": 720
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "duration_minutes": 1080
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:E1",
+   "code": "T-E1",
+   "종목": "trail_running",
+   "축": "고도",
+   "이름": "버티컬",
+   "조건문": "한 번에 상승고도 800m 이상",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "single_elevation_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_elevation_m": 800
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_elevation_m": 1500
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_elevation_m": 2500
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_elevation_m": 3500
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:A1",
+   "code": "T-A1",
+   "종목": "trail_running",
+   "축": "최고 도달",
+   "이름": "높은 곳을 달리다",
+   "조건문": "한 번에 최고 도달 고도 700m 이상",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "max_elevation_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "max_elevation_m": 700
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "max_elevation_m": 1200
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "max_elevation_m": 1600
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "max_elevation_m": 1900
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:C1",
+   "code": "T-C1",
+   "종목": "trail_running",
+   "축": "주기",
+   "이름": "산을 달린 날",
+   "조건문": "하루 1회 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "active_days_count",
+    "activity_type"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "active_days_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "active_days_count": 25
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "active_days_count": 80
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "active_days_count": 250
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:C2",
+   "code": "T-C2",
+   "종목": "trail_running",
+   "축": "주기",
+   "이름": "이달의 트레일",
+   "조건문": "한 달에 120km",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "monthly_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "monthly_km": 120
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "monthly_km": 217
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "monthly_km": 350
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "monthly_km": 550
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:C3",
+   "code": "T-C3",
+   "종목": "trail_running",
+   "축": "주기",
+   "이름": "계절의 트레일러",
+   "조건문": "한 계절에 상승고도 4,000m",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m",
+    "season"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "season": "all",
+      "elevation_gain_m": 4000
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "season": "all",
+      "elevation_gain_m": 13000
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "season": "all",
+      "elevation_gain_m": 22000
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "season": "all",
+      "elevation_gain_m": 35000
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "trail_running:T1",
+   "code": "T-T1",
+   "종목": "trail_running",
+   "축": "시간대",
+   "이름": "새벽의 산",
+   "조건문": "새벽 5시~아침 8시 / 1회",
+   "배지종류": "graded",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 15
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 50
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "time_range": {
+       "start": "05:00",
+       "end": "08:00"
+      },
+      "total_count": 120
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "trail_running:T2",
+   "code": "T-T2",
+   "종목": "trail_running",
+   "축": "시간대",
+   "이름": "밤의 산",
+   "조건문": "저녁 8시~새벽 5시 / 1회",
+   "배지종류": "graded",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "time_range",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "time_range": {
+       "start": "20:00",
+       "end": "05:00"
+      },
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "time_range": {
+       "start": "20:00",
+       "end": "05:00"
+      },
+      "total_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "time_range": {
+       "start": "20:00",
+       "end": "05:00"
+      },
+      "total_count": 20
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "trail_running:N1",
+   "code": "T-N1",
+   "종목": "trail_running",
+   "축": "연속",
+   "이름": "사흘의 산길",
+   "조건문": "3일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "streak_days": 3,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "streak_days": 3,
+      "repeat_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "streak_days": 3,
+      "repeat_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "streak_days": 3,
+      "repeat_count": 50
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "trail_running:N2",
+   "code": "T-N2",
+   "종목": "trail_running",
+   "축": "연속",
+   "이름": "일주일의 산길",
+   "조건문": "7일 연속 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "streak_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "streak_days": 7,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "streak_days": 7,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "streak_days": 7,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "trail_running:G1",
+   "code": "T-G1",
+   "종목": "trail_running",
+   "축": "간격",
+   "이름": "산길을 잊지 않는",
+   "조건문": "2주 안에 다시 활동 / 3회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "interval_days",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "interval_days": 14,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "interval_days": 14,
+      "repeat_count": 8
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "interval_days": 14,
+      "repeat_count": 20
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "interval_days": 14,
+      "repeat_count": 52
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "trail_running:R1",
+   "code": "T-R1",
+   "종목": "trail_running",
+   "축": "기록",
+   "이름": "더 멀리",
+   "조건문": "가장 긴 거리 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:R2",
+   "code": "T-R2",
+   "종목": "trail_running",
+   "축": "기록",
+   "이름": "산길의 정점",
+   "조건문": "가장 높은 도달 고도 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "근사",
+    "pending"
+   ],
+   "근사_사유": "T-R1·T-R3와 같은 사유"
+  },
+  {
+   "family_key": "trail_running:R3",
+   "code": "T-R3",
+   "종목": "trail_running",
+   "축": "기록",
+   "이름": "산길 위의 시간",
+   "조건문": "가장 긴 이동시간 갱신",
+   "배지종류": "auto",
+   "종수": 8,
+   "condition_keys": [
+    "activity_type",
+    "personal_record_break"
+   ],
+   "사다리": [
+    {
+     "rarity": null,
+     "level": 1,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 1
+     }
+    },
+    {
+     "rarity": null,
+     "level": 2,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 2
+     }
+    },
+    {
+     "rarity": null,
+     "level": 3,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 3
+     }
+    },
+    {
+     "rarity": null,
+     "level": 4,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 4
+     }
+    },
+    {
+     "rarity": null,
+     "level": 5,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 5
+     }
+    },
+    {
+     "rarity": null,
+     "level": 6,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 6
+     }
+    },
+    {
+     "rarity": null,
+     "level": 7,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 7
+     }
+    },
+    {
+     "rarity": null,
+     "level": 8,
+     "condition": {
+      "activity_type": "trail_running",
+      "personal_record_break": 8
+     }
+    }
+   ],
+   "표기": [
+    "근사",
+    "pending"
+   ],
+   "근사_사유": "T-R1·T-R2와 같은 사유"
+  },
+  {
+   "family_key": "trail_running:M1",
+   "code": "T-M1",
+   "종목": "trail_running",
+   "축": "이정표",
+   "이름": "트레일 마라톤",
+   "조건문": "한 번에 42.195km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 42.195
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:M2",
+   "code": "T-M2",
+   "종목": "trail_running",
+   "축": "이정표",
+   "이름": "울트라",
+   "조건문": "한 번에 50km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 50
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:M3",
+   "code": "T-M3",
+   "종목": "trail_running",
+   "축": "이정표",
+   "이름": "백 킬로미터",
+   "조건문": "한 번에 100km",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 100
+     }
+    }
+   ],
+   "표기": [
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:M4",
+   "code": "T-M4",
+   "종목": "trail_running",
+   "축": "이정표",
+   "이름": "달려서 쌓은 한 채",
+   "조건문": "누적 상승고도 8,848m",
+   "배지종류": "graded",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "elevation_gain_m"
+   ],
+   "사다리": [
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "elevation_gain_m": 8848
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:X1",
+   "code": "T-X1",
+   "종목": "trail_running",
+   "축": "휴식",
+   "이름": "내리막의 대가",
+   "조건문": "한 번에 35km 이상 다음 날 휴식 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "rest_after_long",
+    "single_distance_km"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 35,
+      "rest_after_long": 1,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 35,
+      "rest_after_long": 1,
+      "repeat_count": 5
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "single_distance_km": 35,
+      "rest_after_long": 1,
+      "repeat_count": 20
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:X2",
+   "code": "T-X2",
+   "종목": "trail_running",
+   "축": "휴식",
+   "이름": "돌아온 트레일러",
+   "조건문": "30일 이상 쉬고 복귀 / 1회",
+   "배지종류": "repeatable",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "repeat_count",
+    "return_gap_days"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "return_gap_days": 30,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "return_gap_days": 30,
+      "repeat_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "return_gap_days": 30,
+      "repeat_count": 10
+     }
+    }
+   ],
+   "표기": [
+    "회차"
+   ]
+  },
+  {
+   "family_key": "trail_running:W1",
+   "code": "T-W1",
+   "종목": "trail_running",
+   "축": "달력",
+   "이름": "한겨울의 트레일러",
+   "조건문": "12~2월 / 1회",
+   "배지종류": "graded",
+   "종수": 3,
+   "condition_keys": [
+    "activity_type",
+    "month",
+    "total_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 3
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "month": [
+       12,
+       1,
+       2
+      ],
+      "total_count": 12
+     }
+    }
+   ],
+   "표기": [
+    "필터"
+   ]
+  },
+  {
+   "family_key": "trail_running:W2",
+   "code": "T-W2",
+   "종목": "trail_running",
+   "축": "달력",
+   "이름": "사계절의 트레일러",
+   "조건문": "네 계절 각 3회 / 1회",
+   "배지종류": "graded",
+   "종수": 2,
+   "condition_keys": [
+    "activity_type",
+    "season_count_all"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "season_count_all": 3
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "season_count_all": 6
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:H1",
+   "code": "T-H1",
+   "종목": "trail_running",
+   "축": "보너스",
+   "이름": "오르막의 심장",
+   "조건문": "한 번에 1시간 이상, 평균 심박 155bpm 이상 / 1회",
+   "배지종류": "repeatable",
+   "종수": 4,
+   "condition_keys": [
+    "activity_type",
+    "avg_heartrate_bpm",
+    "duration_minutes",
+    "repeat_count"
+   ],
+   "사다리": [
+    {
+     "rarity": "common",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "avg_heartrate_bpm": 155,
+      "duration_minutes": 60,
+      "repeat_count": 1
+     }
+    },
+    {
+     "rarity": "rare",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "avg_heartrate_bpm": 155,
+      "duration_minutes": 60,
+      "repeat_count": 8
+     }
+    },
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "avg_heartrate_bpm": 155,
+      "duration_minutes": 60,
+      "repeat_count": 25
+     }
+    },
+    {
+     "rarity": "mystic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "avg_heartrate_bpm": 155,
+      "duration_minutes": 60,
+      "repeat_count": 70
+     }
+    }
+   ],
+   "표기": [
+    "회차",
+    "pending"
+   ]
+  },
+  {
+   "family_key": "trail_running:Q1",
+   "code": "T-Q1",
+   "종목": "trail_running",
+   "축": "미션",
+   "이름": "오르내린 거리의 증명",
+   "조건문": "미션 '2주 안에 80km, 상승고도 1,600m' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:Q2",
+   "code": "T-Q2",
+   "종목": "trail_running",
+   "축": "미션",
+   "이름": "오르막의 증명",
+   "조건문": "미션 '8주 안에 한 번에 25km 이상, 상승고도 800m 이상 / 2회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:Q3",
+   "code": "T-Q3",
+   "종목": "trail_running",
+   "축": "미션",
+   "이름": "울트라의 증명",
+   "조건문": "미션 '한 번에 42km 이상 / 1회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:Q4",
+   "code": "T-Q4",
+   "종목": "trail_running",
+   "축": "미션",
+   "이름": "수직의 증명",
+   "조건문": "미션 '한 번에 상승고도 1,500m 이상, 최고 도달 고도 1,200m 이상 / 1회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:Q5",
+   "code": "T-Q5",
+   "종목": "trail_running",
+   "축": "미션",
+   "이름": "해뜨기 전의 증명",
+   "조건문": "미션 '3주(월~일) 연속 한 주에 3회, 매주 새벽 5시~아침 8시 1회 이상' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:Q6",
+   "code": "T-Q6",
+   "종목": "trail_running",
+   "축": "미션",
+   "이름": "이어 달린 산길의 증명",
+   "조건문": "미션 '4주(월~일) 안에 3일 연속 1회, 매주 1회 이상' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:Q7",
+   "code": "T-Q7",
+   "종목": "trail_running",
+   "축": "미션",
+   "이름": "내리막 뒤의 증명",
+   "조건문": "미션 '8주 안에 한 번에 25km 이상, 다음 날 휴식 / 2회' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  },
+  {
+   "family_key": "trail_running:Q8",
+   "code": "T-Q8",
+   "종목": "trail_running",
+   "축": "미션",
+   "이름": "사철 산길의 증명",
+   "조건문": "미션 '서로 다른 두 달에 각각 120km' 완료",
+   "배지종류": "mission",
+   "종수": 1,
+   "condition_keys": [
+    "activity_type",
+    "mission_reward"
+   ],
+   "사다리": [
+    {
+     "rarity": "epic",
+     "level": null,
+     "condition": {
+      "activity_type": "trail_running",
+      "mission_reward": true
+     }
+    }
+   ],
+   "표기": []
+  }
+ ],
+ "같은_조건_짝": [
+  {
+   "계열": [
+    "walking:B1",
+    "walking:B2"
+   ],
+   "행수": 8
+  },
+  {
+   "계열": [
+    "cycling:L1",
+    "cycling:M2"
+   ],
+   "행수": 1
+  },
+  {
+   "계열": [
+    "cycling:L1",
+    "cycling:M3"
+   ],
+   "행수": 1
+  },
+  {
+   "계열": [
+    "hiking:R1",
+    "hiking:R2"
+   ],
+   "행수": 8
+  },
+  {
+   "계열": [
+    "trail_running:R1",
+    "trail_running:R2"
+   ],
+   "행수": 8
+  },
+  {
+   "계열": [
+    "trail_running:R1",
+    "trail_running:R3"
+   ],
+   "행수": 8
+  },
+  {
+   "계열": [
+    "trail_running:L1",
+    "trail_running:M3"
+   ],
+   "행수": 1
+  }
+ ]
+}
