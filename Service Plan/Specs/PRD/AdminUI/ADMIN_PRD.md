@@ -85,10 +85,13 @@
 | condition_json | **조건 빌더** (아래 별도 설명) | X (item 타입은 불필요) |
 
 **condition_json 조건 빌더**
-- `distance_km`, `total_count`, `elevation_gain_m`, `min_speed_kmh`, `streak_days` 각 항목을 숫자 입력 필드로 제공
-- `activity_type` 드롭다운
-- `poi_id` 텍스트 입력 (POI ID 직접 입력)
+- **입력 UI를 제공하는 필드 목록은 여기에 나열하지 않는다** — `jam-web/src/lib/badge-engine/conditionRegistry.ts`의
+  `form` 선언에서 파생된다(티켓 20260905_0028). 필드를 늘릴 때 이 문서가 낡지 않게 하기 위함이다.
+  (그전까지 이 자리에 5개만 적혀 있었는데 실제로는 19개를 커버하고 있었다)
+- 폼이 커버하지 않는 필드가 조건에 들어 있어도 **원본 값이 그대로 보존된다** — 폼이 모르는 키를 지우지 않는다
 - 설정된 조건 JSON 미리보기 패널 표시
+- ⚠️ 조건에 «아직 아무도 평가하지 않는 필드»(`evaluation: 'pending'`)가 있으면 배지가 발급되지 않는다.
+  v5 신규 20종이 여기 해당하며 평가 구현은 티켓 20260905_0030이다
 
 ### 5-3. POI 관리
 
