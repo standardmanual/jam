@@ -10,34 +10,20 @@ import type { CreateNotificationInput, NotificationType } from '@/lib/notificati
 import { grantMissionRewards } from '@/lib/missions/rewards'
 import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
 import { evaluateConditionDetailed, calcMaxStreak, passesWalkingGate } from '@/lib/badge-engine'
+import {
+  ENGINE_DELEGATED_MISSION_TYPES,
+  MISSION_ONLY_CONDITION_KEYS,
+} from '@/lib/missions/condition-keys'
 import type { MissionRow, MissionCondition, MissionType, BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 
 /**
- * 티켓 20260813_001: 배지엔진 evaluateConditionDetailed를 재사용해 판정하는 미션 타입.
- * condition_json은 BadgeCondition과 동일한 필드 어휘(activity_type + streak_days/
- * duration_minutes/elevation_gain_m)를 그대로 사용한다.
+ * 미션 조건 허용 키·엔진 위임 타입은 `condition_json` 저장 검증(어드민 API)과 **같은 목록**을
+ * 써야 한다 — 두 곳이 갈리면 「저장은 되는데 평가에서 막힌다」가 생긴다. 그래서 선언을
+ * `condition-keys.ts`(서버 의존 없음)로 내리고 여기서 가져다 쓴다 (티켓 20260905_1141).
+ * - `ENGINE_DELEGATED_MISSION_TYPES` — evaluateConditionDetailed에 위임하는 미션 타입
+ * - `MISSION_ONLY_CONDITION_KEYS` — 배지 레지스트리에 없는 미션 고유 어휘(fail-closed 통과용)
  */
-/**
- * 미션 조건에만 쓰이고 배지 조건 레지스트리에는 없는 키.
- *
- * `evaluateConditionDetailed`는 티켓 20260905_0028부터 fail-closed다 — 조건에 모르는 키가
- * 있으면 평가를 시작하지 않고 fail한다. 미션은 `MissionCondition`을 `BadgeCondition`으로
- * 캐스팅해 그 함수에 넘기므로, 미션 고유 어휘를 열어 두지 않으면 **미션이 영구 미달성**이 된다.
- * (실측 2026-09-05: 프로덕션의 엔진 위임 미션 15건은 전부 `{activity_type, 지표}` 2키라
- *  당장 깨지는 건 없다. 그러나 미션 어드민이 `condition_json`을 검증 없는 자유 JSON으로
- *  받으므로 언제든 들어올 수 있다.)
- *
- * ⚠️ 여기 키를 추가해도 «평가된다»는 뜻은 아니다 — fail-closed를 통과시킬 뿐이고,
- * 실제 판정은 `progressValue >= target` 경로나 엔진의 아는 필드만으로 이뤄진다.
- */
-const MISSION_ONLY_CONDITION_KEYS: ReadonlySet<string> = new Set(['count', 'badge_id'])
-
-const ENGINE_DELEGATED_MISSION_TYPES: ReadonlySet<MissionType> = new Set([
-  'streak_days',
-  'duration_minutes',
-  'elevation_gain_m',
-])
 
 /**
  * "상시 미션" 판정 — ends_at이 null이면 시작 시각만 지났으면 항상 활성 (종료 없음).
