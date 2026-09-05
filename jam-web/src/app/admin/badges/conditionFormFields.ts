@@ -234,9 +234,44 @@ export function findUnrepresentableConditionKeys(
       found.push(meta.key)
       continue
     }
-    if (JSON.stringify(roundTripped) !== JSON.stringify(value)) found.push(meta.key)
+    if (!deepEqualIgnoringKeyOrder(roundTripped, value)) found.push(meta.key)
   }
   return found
+}
+
+/**
+ * 「의미상 같은 값인가」 비교 — **키 순서를 무시한다.**
+ *
+ * `JSON.stringify` 비교로는 안 된다. Postgres jsonb는 객체 키를 자기 순서로 돌려주는데
+ * (`time_range`를 `{end, start}` 순으로 준다) 레지스트리의 `form.read`는 선언 순서대로
+ * (`{start, end}`) 만든다. 문자열로 비교하면 **값이 완전히 같은데도 다르다고 판정**한다.
+ *
+ * 실측(2026-09-05): 이 오탐으로 활동 배지 207종 중 **19종**(`time_range`를 쓰는 배지 전부)이
+ * 수정 화면을 열기만 해도 「이대로 저장하면 값이 바뀌거나 사라져요」 경고를 띄웠다.
+ * 같은 207종을 키 순서 무시로 비교하면 실제 왕복 손실은 **0건**이다.
+ * `activities_within_hours`(`{count, hours}`)도 같은 이유로 100% 오탐한다.
+ *
+ * 이 경고는 「진짜 왕복 파손」을 알리는 장치다 — 상시 뜨면 티켓 20260905_0035가 550종을
+ * 시딩한 뒤 진짜와 노이즈를 구분할 수 없게 된다(게이트 리뷰 FAIL 사유).
+ */
+function deepEqualIgnoringKeyOrder(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (typeof a !== typeof b) return false
+  if (a === null || b === null) return a === b
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
+    // 배열은 순서가 의미를 갖는다(예: prerequisite_badge_names) — 정렬하지 않는다
+    return a.every((item, i) => deepEqualIgnoringKeyOrder(item, b[i]))
+  }
+  if (typeof a === 'object' && typeof b === 'object') {
+    const ao = a as Record<string, unknown>
+    const bo = b as Record<string, unknown>
+    const aKeys = Object.keys(ao)
+    const bKeys = Object.keys(bo)
+    if (aKeys.length !== bKeys.length) return false
+    return aKeys.every((k) => k in bo && deepEqualIgnoringKeyOrder(ao[k], bo[k]))
+  }
+  return false
 }
 
 /**
