@@ -18,7 +18,7 @@ import {
 import { BadgeActiveToggleButton } from './BadgeActiveToggleButton'
 import type { BadgeRow, BadgeCondition, BadgeRarity } from '@/types/database'
 import { badgeTypeLabel } from '@/lib/admin/badge-labels'
-import { formatPaceSecPerKm } from '@/types/strava'
+import { formatConditionDetail } from '@/lib/badge-engine/conditionRegistry'
 
 const RARITY_LABEL: Record<BadgeRarity, string> = {
   common: 'Common',
@@ -36,39 +36,16 @@ function formatYmd(iso: string): string {
   return `${y}.${m}.${day}`
 }
 
-const SEASON_SHORT: Record<string, string> = {
-  spring: '봄',
-  summer: '여름',
-  fall: '가을',
-  winter: '겨울',
-  all: '전계절',
-}
-
-/** 조건을 읽기 좋은 텍스트로 변환 */
+/**
+ * 조건을 읽기 좋은 텍스트로 변환.
+ *
+ * 문구는 조건 필드 메타 레지스트리(`conditionRegistry.ts`)가 단일 출처다(티켓 20260905_0028).
+ * 예전에는 이 파일이 필드마다 한글을 하드코딩하고 있어, 새 조건 필드가 추가돼도 화면에는
+ * 아무것도 나타나지 않았다(day_of_week·active_days_count·season_count_all 등이 실제로
+ * 표시되지 않고 있었다).
+ */
 function formatCondition(c: BadgeCondition): string[] {
-  const parts: string[] = []
-
-  if (c.distance_km !== undefined) parts.push(`거리 누적 ${c.distance_km}km`)
-  if (c.total_count !== undefined) parts.push(`총 ${c.total_count}회`)
-  if (c.streak_days !== undefined) parts.push(`${c.streak_days}일 연속 활동`)
-  if (c.elevation_gain_m !== undefined) parts.push(`고도 ${c.elevation_gain_m}m 이상`)
-  if (c.min_speed_kmh !== undefined) parts.push(`최소 속력 ${c.min_speed_kmh}km/h`)
-  if (c.max_pace_sec_per_km !== undefined)
-    parts.push(`최대 페이스 ${formatPaceSecPerKm(c.max_pace_sec_per_km)} 이내`)
-  if (c.duration_minutes !== undefined) parts.push(`최소 활동 시간 ${c.duration_minutes}분`)
-  if (c.weekend_duration_hours !== undefined) parts.push(`주말 활동 시간 ${c.weekend_duration_hours}시간`)
-  if (c.weekly_count !== undefined) parts.push(`주 ${c.weekly_count}회 이상`)
-  if (c.monthly_km !== undefined)
-    parts.push(`${c.month ? `${c.month}월 ` : '월간 '}${c.monthly_km}km 이상`)
-  else if (c.month !== undefined) parts.push(`${c.month}월`)
-  if (c.season_count !== undefined && c.season)
-    parts.push(`${SEASON_SHORT[c.season] ?? c.season} ${c.season_count}회`)
-  if (c.temperature_min_c !== undefined) parts.push(`최저 기온 ${c.temperature_min_c}°C 이상`)
-  if (c.temperature_max_c !== undefined) parts.push(`최고 기온 ${c.temperature_max_c}°C 이하`)
-  if (c.time_range) parts.push(`시간 ${c.time_range.start}~${c.time_range.end}`)
-  if (c.prerequisite_badge_names?.length)
-    parts.push(`선행 배지: ${c.prerequisite_badge_names.join(', ')}`)
-
+  const parts = formatConditionDetail(c)
   return parts.length > 0 ? parts : ['없음']
 }
 

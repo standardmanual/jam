@@ -8,7 +8,10 @@
 엔진 구현의 평가 로직은 BADGE_ENGINE_UNIFIED.md를 참조하고, 이 문서는 "어떤 필드를 쓸 수 있는가"를 명세한다.
 
 > **데이터 계약 검증** (2026-08-25, 티켓 20260825_031): 아래 필드 목록은 코드에서
-> `src/lib/badge-engine/condition-schema.ts`의 `ALL_CONDITION_KEYS`가 단일 소스다.
+> `ALL_CONDITION_KEYS`가 단일 소스다. **2026-09-05(티켓 20260905_0028)부터 실제 선언 위치는
+> `src/lib/badge-engine/conditionRegistry.ts`이며**(`condition-schema.ts`는 그 파생 목록을
+> 다시 내보내는 얇은 층으로만 남았다), 키뿐 아니라 라벨·단위·입력 타입·min/max/step·짝 필드·
+> 방향성·**평가 구현 여부**까지 한 곳에서 선언한다.
 > `badges.condition_json`에 이 목록 밖의 키가 들어오면 DB CHECK 제약
 > (`badges_condition_json_known_keys`, `supabase/migrations/102_condition_json_check_constraint.sql`)이
 > INSERT/UPDATE 자체를 거부하고, 어드민 API(`src/lib/admin/badge-validation.ts`의
@@ -122,6 +125,46 @@
 |------|------|-----------|
 | `poi_id` | `string` (UUID) | badge-engine 내 **항상 fail** — `matchPoisForActivity` GPS 경로 매칭 파이프라인이 별도 발급. `checkin` 타입 배지는 조건 빌더 자체를 건너뛰고 저장 시 `condition_json`을 항상 `null`로 처리하므로 이 티켓 범위 밖(폼 유실 문제와 무관) |
 
+### 2.10 v5 신규 조건 필드 20종 — **선언만, 평가 미구현** (2026-09-05, 티켓 20260905_0028)
+
+`conditionRegistry.ts`에 `evaluated: false`로 선언돼 있고 DB CHECK 제약도 허용하지만,
+**badge-engine은 아직 이 필드들을 평가하지 않는다**(구현은 티켓 20260905_0030).
+이 필드가 하나라도 든 조건은 `evaluateConditionDetailed`가 fail-closed로 막으므로
+«발급되지 않는 것»이 기본값이다(§4 참조).
+
+**활동 1건의 스칼라 값** — `PER_ACTIVITY_KEYS` 경로로 구현 예정
+
+| 필드 | 타입 | 단위 | 의미 |
+|------|------|------|------|
+| `max_elevation_m` | `number` | m | 활동 1건의 최고 도달 고도(해발) |
+| `max_speed_kmh` | `number` | km/h | 활동 1건의 최고 속도 |
+| `single_distance_km` | `number` | km | 활동 1건의 이동 거리 — 누적 합계인 `distance_km`과 구분된다 |
+| `single_elevation_m` | `number` | m | 활동 1건의 고도 상승 — 누적 합계인 `elevation_gain_m`과 구분된다 |
+| `avg_heartrate_bpm` | `number` | bpm | 활동 1건의 평균 심박수 |
+| `avg_watts` | `number` | W | 활동 1건의 평균 파워 |
+| `avg_cadence` | `number` | — | 활동 1건의 평균 케이던스. 단위가 종목마다 다르다(러닝 spm · 자전거 rpm)라 지표 라벨의 단위는 비워 뒀다 |
+
+**이력 패턴** — 신규 독립 평가 블록이 필요하다
+
+| 필드 | 타입 | 단위 | 의미 | 짝 필드 |
+|------|------|------|------|---------|
+| `rest_after_streak` | `number` | 일 | 연속 활동 뒤에 쉰 일수 | `streak_days` |
+| `rest_after_long` | `number` | 일 | 장거리 활동 뒤에 쉰 일수 | `single_distance_km` |
+| `return_gap_days` | `number` | 일 | 복귀 직전에 쉰 일수 | — |
+| `interval_days` | `number` | 일 | 활동과 활동 사이 간격 | — |
+| `daily_once_count` | `number` | 일 | 하루에 1회만 활동한 날의 수 | — |
+| `negative_split` | `boolean` | — | 후반 구간이 전반보다 빠른 활동으로 한정하는 **필터**. Strava `splits_metric`이 필요하고 Summary 응답엔 없다(티켓 20260905_0029 선행) | `total_count` |
+| `weekly_streak` | `number` | 주 | 연속한 주(월~일)의 수 | — |
+| `distinct_time_bands` | `number` | 개 | 서로 다른 시간대의 수 | — |
+| `day_of_month` | `number` (1–31) | — | 매달 지정일 **필터**. `day_of_week`와 같은 성격 | `total_count` |
+| `activities_within_hours` | `{ hours: number; count: number }` | 회 | 지정한 시간 창 안에 활동이 `count`회 이상 | — |
+| `personal_record_break` | `number` | 회 | 개인 기록 갱신 횟수. **가입 이후 활동만으로 직접 계산한다** — Strava `pr_count`는 계정 전체 이력 기준이라 v5의 «가입 시점 카운트»와 충돌해 쓰지 않는다 | — |
+| `month_over_month_ratio` | `number` | 배 | 전월 대비 비율 | — |
+| `vs_personal_average` | `number` | 배 | 평소 평균 대비 비율 | — |
+
+분류상 `negative_split`·`day_of_month`만 «필터 전용»이고 나머지 18종은 «수치 검사» 필드다
+(계열 정합성 트리거의 `measurable_keys`도 그 18종을 포함한다 — 마이그레이션 131).
+
 ---
 
 ## 3. 메타데이터 필드 (발급 판정에 관여하지 않음)
@@ -152,6 +195,11 @@
   "한 활동 동시 충족"을 요구한다 → BADGE_ENGINE_UNIFIED.md § 2.3-1 참조 (2026-08-31 복원, 티켓 20260831_2100)
 - `poi_id`는 다른 조건 필드와 혼합 불가 (엔진 미지원)
 - `mission_reward`(§3)는 조건 필드와 함께 있어도 항상 §3의 규칙이 우선한다(무조건 fail)
+- **fail-closed** (2026-09-05, 티켓 20260905_0028): 조건에 «엔진이 평가하지 않는 키»가 하나라도
+  있으면 나머지 필드를 충족해도 **발급되지 않는다**. 대상은 ① `evaluated: false`인 v5 신규 20종
+  (§2.10) ② 레지스트리에 아예 없는 키(오탈자). 사유는 「평가할 수 없는 조건 필드 — …」로 남는다.
+  이 규칙이 없으면 `matchesPerActivityCondition()`이 모르는 키를 조용히 건너뛰고 마지막에
+  `return true` 하므로, 미구현 필드가 «발급 안 됨»이 아니라 **«무조건 발급»**으로 뒤집힌다
 
 ---
 
@@ -195,7 +243,8 @@
 
 | 항목 | 상태 |
 |------|------|
-| `route` 필드 | ❌ 미구현 — 타입(`BadgeCondition`)·스키마(`condition-schema.ts`)엔 존재하나 badge-engine 평가 로직이 없다. 조건에 넣어도 무시되며 발급 판정에 아무 영향을 주지 않는다 (2026-08-25 조사, 티켓 20260825_034) |
+| `route` 필드 | ❌ 미구현 — 타입(`BadgeCondition`)·레지스트리엔 존재하나 badge-engine 평가 로직이 없다. 조건에 넣어도 무시되며 발급 판정에 아무 영향을 주지 않는다 (2026-08-25 조사, 티켓 20260825_034). ⚠️ 레지스트리에서는 `evaluated: true`로 남아 있어 **fail-closed가 잡지 않는다** — 현재 이 필드를 쓰는 배지가 0건이라 실제 오발급은 없지만, 쓰기 시작하기 전에 평가 구현 또는 `evaluated: false` 전환이 필요하다 |
+| v5 신규 20종 | ❌ 평가 미구현 — 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). fail-closed로 막히므로 발급되지 않는다. 평가 구현은 티켓 20260905_0030, `negative_split`이 필요로 하는 `splits_metric` 수집은 티켓 20260905_0029 |
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
 | `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조 |
 | `temperature_*` (날씨 데이터 없는 활동) | ⚠️ fail — Strava average_temp 의존 |
