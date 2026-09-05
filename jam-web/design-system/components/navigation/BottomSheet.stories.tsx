@@ -4,6 +4,8 @@ import { BottomSheet } from './BottomSheet';
 import { Button } from '../buttons/Button';
 
 // 20260816_012: 패널 상단 1px 보더 제거 — --color-surface-elevated 배경으로 대체 (드래그 핸들은 기존부터 채움 방식)
+// 20260901_1926: props API를 서비스 기준(onClose/detent/footer/topGapPx/footerBottomInset/
+// contentScrollable)으로 재정렬. 드래그투클로즈는 서비스 전용 기능이라 여전히 미구현.
 const meta: Meta<typeof BottomSheet> = {
   title: 'MODULAR/Navigation/BottomSheet',
   component: BottomSheet,
@@ -68,7 +70,7 @@ export const Interactive: Story = {
         minHeight: 400, display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <Button variant="primary" onClick={() => setOpen(true)}>바텀 시트 열기</Button>
-        <BottomSheet open={open} onDismiss={() => setOpen(false)} title="확인이 필요해요">
+        <BottomSheet open={open} onClose={() => setOpen(false)} title="확인이 필요해요">
           <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 20px', lineHeight: 'var(--leading-body)' }}>
             배경을 누르거나 Escape 키를 누르면 닫혀요.
           </p>
@@ -96,6 +98,60 @@ export const LongContent: Story = {
           </div>
         ))}
       </div>
+    ),
+  },
+};
+
+export const WithFooter: Story = {
+  name: '고정 footer (액션 버튼)',
+  render: () => {
+    const [open, setOpen] = useState(true);
+    return (
+      <BottomSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title="긴 콘텐츠 + 고정 footer"
+        footer={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="ghost" onClick={() => setOpen(false)}>취소</Button>
+            <Button variant="primary" onClick={() => setOpen(false)}>확인</Button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {Array.from({ length: 10 }, (_, i) => (
+            <p key={i} style={{ margin: 0, color: 'var(--color-text-secondary)' }}>스크롤 콘텐츠 {i + 1}</p>
+          ))}
+        </div>
+      </BottomSheet>
+    );
+  },
+};
+
+export const FullDetent: Story = {
+  name: 'detent=full (화면 대부분 차지)',
+  args: {
+    open: true,
+    title: '전체 디텐트',
+    detent: 'full',
+    children: (
+      <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>
+        detent=&quot;full&quot;일 때 시트가 화면 대부분(92dvh)을 채웁니다.
+      </p>
+    ),
+  },
+};
+
+export const NotScrollable: Story = {
+  name: 'contentScrollable=false',
+  args: {
+    open: true,
+    title: '스크롤 잠금',
+    contentScrollable: false,
+    children: (
+      <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>
+        이미지 한 장짜리 미리보기처럼 스크롤할 내용이 없을 때 사용합니다.
+      </p>
     ),
   },
 };

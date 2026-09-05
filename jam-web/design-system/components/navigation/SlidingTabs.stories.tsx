@@ -11,7 +11,7 @@ const ACTIVITY_TABS = [
 ];
 
 // 20260816_012: 보더/구분선 감사 결과 이 컴포넌트는 이미 보더 없음(border: 'none') — 변경 불필요.
-// 프로덕션 SlidingTabs.tsx의 outlined 변형(별도 API)에서 보더를 제거하고 --color-surface-elevated로 대체함.
+// 20260901_1926: props API를 서비스 기준(items/value/variant/size/shape/block/outlined)으로 재정렬.
 const meta: Meta<typeof SlidingTabs> = {
   title: 'MODULAR/Navigation/SlidingTabs',
   component: SlidingTabs,
@@ -22,33 +22,45 @@ export default meta;
 type Story = StoryObj<typeof SlidingTabs>;
 
 export const Default: Story = {
-  args: { tabs: ACTIVITY_TABS, active: 'all' },
+  args: { items: ACTIVITY_TABS, value: 'all', variant: 'onSurface', size: 'lg', shape: 'pill', block: true, outlined: true },
   decorators: [(Story) => <div style={{ width: 360 }}><Story /></div>],
 };
 
 export const Interactive: Story = {
   name: '인터랙티브 (탭 전환)',
   render: () => {
-    const [active, setActive] = useState('all');
+    const [value, setValue] = useState('all');
     return (
       <div style={{ width: 360 }}>
-        <SlidingTabs tabs={ACTIVITY_TABS} active={active} onChange={setActive} />
+        <SlidingTabs items={ACTIVITY_TABS} value={value} onChange={setValue} />
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-small)', marginTop: 12 }}>
-          선택: <strong style={{ color: 'var(--color-primary)' }}>{active}</strong>
+          선택: <strong style={{ color: 'var(--color-primary)' }}>{value}</strong>
         </p>
       </div>
     );
   },
 };
 
-export const ManyTabs: Story = {
-  name: '많은 탭 (수평 스크롤)',
+export const OnCardVariant: Story = {
+  name: 'onCard 팔레트 (라이트 카드 위)',
   render: () => {
-    const [active, setActive] = useState('t1');
-    const tabs = Array.from({ length: 12 }, (_, i) => ({ key: `t${i + 1}`, label: `탭 ${i + 1}` }));
+    const [value, setValue] = useState('all');
+    return (
+      <div style={{ width: 360, background: 'var(--color-surface-inverse)', padding: 16, borderRadius: 12 }}>
+        <SlidingTabs items={ACTIVITY_TABS} value={value} onChange={setValue} variant="onCard" />
+      </div>
+    );
+  },
+};
+
+export const CardShapeNotBlock: Story = {
+  name: 'card 모서리 · 스크롤 (block=false)',
+  render: () => {
+    const [value, setValue] = useState('t1');
+    const items = Array.from({ length: 12 }, (_, i) => ({ key: `t${i + 1}`, label: `탭 ${i + 1}` }));
     return (
       <div style={{ width: 360 }}>
-        <SlidingTabs tabs={tabs} active={active} onChange={setActive} />
+        <SlidingTabs items={items} value={value} onChange={setValue} shape="card" block={false} />
       </div>
     );
   },
@@ -57,8 +69,8 @@ export const ManyTabs: Story = {
 export const WithTabPanel: Story = {
   name: 'tabpanel 연결 패턴 (aria-controls ↔ role="tabpanel")',
   render: () => {
-    const [active, setActive] = useState('all');
-    const TABS = [
+    const [value, setValue] = useState('all');
+    const ITEMS = [
       { key: 'all', label: '전체' },
       { key: 'running', label: '러닝' },
       { key: 'cycling', label: '사이클링' },
@@ -70,17 +82,13 @@ export const WithTabPanel: Story = {
     };
     return (
       <div style={{ width: 360 }}>
-        <SlidingTabs
-          tabs={TABS.map((t) => ({ ...t, 'aria-controls': `panel-${t.key}` }))}
-          active={active}
-          onChange={setActive}
-        />
-        {TABS.map((t) => (
+        <SlidingTabs items={ITEMS} value={value} onChange={setValue} />
+        {ITEMS.map((t) => (
           <div
             key={t.key}
             id={`panel-${t.key}`}
             role="tabpanel"
-            hidden={active !== t.key}
+            hidden={value !== t.key}
             style={{ padding: '16px 4px', color: 'var(--color-text-secondary)', fontSize: 'var(--text-small)' }}
           >
             {CONTENT[t.key]}
@@ -94,13 +102,13 @@ export const WithTabPanel: Story = {
 export const TwoTabs: Story = {
   name: '2개 탭',
   render: () => {
-    const [active, setActive] = useState('ongoing');
+    const [value, setValue] = useState('ongoing');
     return (
       <div style={{ width: 360 }}>
         <SlidingTabs
-          tabs={[{ key: 'ongoing', label: '진행 중' }, { key: 'completed', label: '완료' }]}
-          active={active}
-          onChange={setActive}
+          items={[{ key: 'ongoing', label: '진행 중' }, { key: 'completed', label: '완료' }]}
+          value={value}
+          onChange={setValue}
         />
       </div>
     );
