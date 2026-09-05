@@ -902,7 +902,6 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | GET | `/api/users/[username]/followers` | 팔로워 목록 |
 | GET | `/api/users/[username]/following` | 팔로잉 목록 |
 | GET | `/api/users/[username]/itembooks` | 유저 아이템북 목록 |
-| GET | `/api/users/[username]/stats` | 유저 통계 |
 | POST | `/api/missions/[id]/join` | 미션 참가 |
 | DELETE | `/api/missions/[id]/join` | 미션 취소 |
 | POST | `/api/combine` | 아이템 조합 |
