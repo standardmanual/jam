@@ -927,7 +927,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
               {renderCrossGate(
                 'gateMissionBadge',
                 '미션 보상 배지',
-                '미션 완료로만 지급되는 배지를 요구해요. 위 교차 조건과 **함께** 충족돼야 통과해요.'
+                '미션 완료로만 지급되는 배지를 요구해요. 위 교차 조건과 함께 충족돼야 통과해요.'
               )}
             </div>
           </div>

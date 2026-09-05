@@ -278,3 +278,37 @@ describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 2
     expect(getUnsupportedConditionKeys({ distance_km: 10, route: 'hangang' })).toEqual(['route'])
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// 게이트 FAIL 반영 — 키 순서가 달라도 「재현 불가」로 오탐하지 않는다
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('findUnrepresentableConditionKeys — 키 순서에 속지 않는다', () => {
+  // Postgres jsonb는 객체 키를 자기 순서로 돌려준다(time_range를 {end, start}로 준다).
+  // 문자열 비교로는 값이 완전히 같은데도 「이대로 저장하면 값이 바뀌거나 사라져요」가 떴고,
+  // 실측 207종 중 19종(time_range를 쓰는 배지 전부)이 수정 화면을 열기만 해도 걸렸다.
+  it('time_range의 키 순서가 뒤집혀도 경고하지 않는다', () => {
+    const fromDb = JSON.parse('{"time_range":{"end":"05:00","start":"22:00"}}') as BadgeCondition
+    expect(findUnrepresentableConditionKeys(fromDb)).toEqual([])
+    expect(findUnrepresentableConditionKeys({ time_range: { start: '22:00', end: '05:00' } })).toEqual([])
+  })
+
+  it('activities_within_hours도 마찬가지다', () => {
+    const fromDb = JSON.parse('{"activities_within_hours":{"count":3,"hours":6}}') as BadgeCondition
+    expect(findUnrepresentableConditionKeys(fromDb)).toEqual([])
+  })
+
+  it('진짜로 값이 다르면 여전히 경고한다 — 오탐만 없앤 것이지 검사를 끈 게 아니다', () => {
+    // 폼이 분 단위를 다루지 못하는 형태 → 왕복하면 값이 달라진다
+    const broken = { time_range: { start: '22:00', end: '05:00', extra: 'x' } } as unknown as BadgeCondition
+    expect(findUnrepresentableConditionKeys(broken)).toContain('time_range')
+  })
+
+  it('배열은 순서가 의미를 가지므로 정렬하지 않는다', () => {
+    const a = { prerequisite_badge_names: ['첫 발자국', '만보왕'] } as BadgeCondition
+    const b = { prerequisite_badge_names: ['만보왕', '첫 발자국'] } as BadgeCondition
+    // 둘 다 폼이 그대로 재현하므로 경고는 없지만, 비교 함수가 순서를 무시해서는 안 된다
+    expect(findUnrepresentableConditionKeys(a)).toEqual([])
+    expect(findUnrepresentableConditionKeys(b)).toEqual([])
+  })
+})
