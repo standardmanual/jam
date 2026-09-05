@@ -1,9 +1,9 @@
 ---
 id: 20260905_2050
 category: Content
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-05
-closed:
+closed: 2026-09-05
 ---
 
 # [Content] i18n 빈 상태 3인칭 문구 profile/social 네임스페이스 중복 정리
@@ -61,9 +61,9 @@ jam-web/src/lib/i18n/ko.ts
 20260905_2039에서 이미 검증됨).
 
 ### 배포 정보
-- 배포일:
-- 환경: staging (git push origin staging)
-- 커밋:
+- 배포일: 2026-09-05
+- 환경: staging
+- 커밋: bfc1bbe0
 
 ### 주요 의사결정 / 핵심 메모
 - "타인 시점" 문구만 상수로 공유하고 "본인 시점" 문구는 통합하지 않음 — 두 네임스페이스의
