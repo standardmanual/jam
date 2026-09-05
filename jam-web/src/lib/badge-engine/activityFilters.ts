@@ -147,13 +147,20 @@ export type RestConditionKey = (typeof REST_CONDITION_KEYS)[number]
  * 활동이 선행되지 않아도 성립하는 «순수 공백» 조건.
  *
  * `rest_after_streak`(연속 활동 뒤) · `rest_after_long`(장거리 활동 뒤)은 활동이 선행되어야
- * 성립하므로 역인센티브가 없다. 이 둘은 그 안전장치가 없어 §4가 「쿨다운 90일」을 걸었다 —
- * `REST_PURE_GAP_MIN_DAYS` 미만의 조건값은 카탈로그 오류로 막는다.
+ * 성립하므로 역인센티브가 없다. 이 둘에는 그 안전장치가 없다.
+ *
+ * ## §4 「순수 공백 기반(「겨울잠」)만 쿨다운 90일」은 **카탈로그 설계 지침이다**
+ * (2026-09-05 스펙 소유자 확정)
+ *
+ * 「공백만으로 주는 배지는 90일 이상으로 잡아라」는 **시딩 규칙**이지 엔진이 강제할 값이
+ * 아니다. 초안은 엔진에서 90일 미만을 「휴식 조건 설정 오류」로 막았는데 두 가지가 어긋났다:
+ *  1. `conditionRegistry.ts`가 이 필드들을 `min: 1, max: 365`로 선언한다 — **조건 필드 메타의
+ *     단일 출처**가 유효 범위에 대해 엔진과 다른 말을 하게 된다
+ *  2. 그 경로의 경고 로그는 «배지 × 유저 × 싱크»마다 찍혀 오설정 1건이 로그 폭주가 된다
+ *
+ * 그래서 엔진은 값을 강제하지 않는다. 하한 준수는 티켓 20260905_0035(카탈로그 시딩)의 몫이다.
  */
 export const REST_PURE_GAP_KEYS: readonly RestConditionKey[] = ['return_gap_days', 'interval_days']
-
-/** 순수 공백 조건의 최소 일수 — §4 「순수 공백 기반(「겨울잠」)만 쿨다운 90일」 */
-export const REST_PURE_GAP_MIN_DAYS = 90
 
 /** 조건에 실제로 들어 있는 휴식 조건 키. 선언 순서를 그대로 따른다 */
 export function restConditionKeysIn(condition: BadgeCondition | null | undefined): RestConditionKey[] {
@@ -207,7 +214,10 @@ function restPool(
     const anchorMs = Date.parse(anchorDate)
     // 파싱 불가한 앵커는 «필터 없음»으로 폴백한다 — getSignupAnchorDate의 폴백과 같은 태도.
     if (Number.isFinite(anchorMs)) {
-      pool = pool.filter((a) => Date.parse(a.startDate) >= anchorMs)
+      // ⚠️ 공백 계산의 날짜 키가 `startDateLocal`(localDateKey)이므로 앵커 컷도 같은 값을 쓴다.
+      //    `startDate`(UTC)로 자르면 앵커 경계 ±9시간에 걸친 활동 1건이 «창 안에 있는데
+      //    공백 계산에서는 빠지는» 식으로 기준이 갈린다(게이트 리뷰 지적).
+      pool = pool.filter((a) => Date.parse(a.startDateLocal ?? a.startDate) >= anchorMs)
     }
   }
   if (condition.activity_type) {
@@ -302,25 +312,6 @@ export function evaluateRestConditions(
         reason: '휴식 조건 형태 오류',
         actual: `${REST_KEY_LABEL[key]}: ${String(condition[key])}`,
         required: '1 이상의 수',
-      }
-    }
-  }
-
-  // ── ② 순수 공백 조건의 하한 — 역인센티브 차단 (§4 「쿨다운 90일」)
-  for (const key of keys) {
-    if (!REST_PURE_GAP_KEYS.includes(key)) continue
-    const value = condition[key] as number
-    if (value < REST_PURE_GAP_MIN_DAYS) {
-      // 형태 오류와 같은 태도로 로그를 남긴다 — missed는 어드민 시뮬레이터만 읽으므로
-      // 실 싱크에서는 아무도 보지 않는다(교차 게이트 설정 오류와 같은 이유).
-      console.warn(
-        `[badge-engine] 휴식 조건 설정 오류 — ${key}=${value}일. 순수 공백 조건은 ${REST_PURE_GAP_MIN_DAYS}일 이상만 인정한다(역인센티브 차단)`
-      )
-      return {
-        kind: 'fail',
-        reason: '휴식 조건 설정 오류',
-        actual: `${REST_KEY_LABEL[key]}: ${value}일`,
-        required: `순수 공백 조건은 ${REST_PURE_GAP_MIN_DAYS}일 이상 (역인센티브 차단)`,
       }
     }
   }

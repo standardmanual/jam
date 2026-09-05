@@ -89,6 +89,14 @@ export const CUMULATIVE_CONDITION_FIELDS: (keyof BadgeCondition)[] = [
   'total_count',
   'distance_km',
   'elevation_gain_m',
+  // 휴식 4종(티켓 20260905_0030 §4) — 「활동이 없는 기간」은 이력 전반 술어라 활동 1건으로는
+  // 판정할 수 없다. 빠져 있으면 「단일 활동으로 판정 가능」으로 분류돼 checkCondition까지
+  // 흘러가고, 거기서 「휴식 판정 불가」로 막히긴 하지만 분류 자체가 틀린다 — 아이템 배지에
+  // 휴식 조건을 쓰는 순간 의도와 다른 경로로 판정된다(게이트 리뷰 지적).
+  'rest_after_streak',
+  'rest_after_long',
+  'return_gap_days',
+  'interval_days',
 ]
 
 export function hasCumulativeCondition(cond: BadgeCondition): boolean {
