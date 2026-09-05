@@ -66,7 +66,17 @@ export interface BackfillTargetUser {
 export interface BackfillOverview {
   users: BackfillTargetUser[]
   coverage: SportCoverage[]
+  /**
+   * **백필 가능한 행만** 센다 — `strava_connections`가 있는 유저의 활동.
+   * 연결이 없는 유저의 활동은 어떤 경로로도 갱신되지 않으므로 분모에 넣으면
+   * 「Strava가 값을 안 줬다」와 「애초에 채울 수 없다」가 섞인다(게이트 리뷰 WARN 3).
+   */
   totals: { activityCount: number; extendedCount: number }
+  /**
+   * `strava_connections`가 없는 유저의 활동 — 이 화면으로 영원히 백필할 수 없는 고아 행.
+   * 커버리지 분모에서 뺐다는 사실을 화면이 밝히기 위해 따로 싣는다.
+   */
+  orphaned: { activityCount: number; userCount: number }
   /** 활동 행이 `MAX_ROWS`를 넘어 일부만 세었는지 */
   truncated: boolean
   /** 집계 시각 (ISO) */
@@ -196,6 +206,27 @@ export function summarizeUsers(
     .sort((a, b) => b.activityCount - a.activityCount)
 }
 
+/**
+ * 활동 행을 «백필 가능»과 «고아»로 가른다.
+ *
+ * `strava_connections`가 없는 유저의 활동은 토큰이 없어 어떤 경로로도 갱신되지 않는다.
+ * 커버리지 분모에 남겨 두면 백필을 전부 돌려도 100%에 닿지 않고, 「달리기 97%」를
+ * 「Strava가 3%에 값을 안 줬다」로 오독하게 된다 — 이 숫자가 티켓 20260905_0035
+ * 임계값 설계의 유일한 실측 근거라 오독 여지를 남기면 안 된다(게이트 리뷰 WARN 3).
+ */
+export function splitBackfillable(
+  rows: ActivityStatRow[],
+  connectedUserIds: Iterable<string>
+): { backfillable: ActivityStatRow[]; orphaned: ActivityStatRow[] } {
+  const connected = new Set(connectedUserIds)
+  const backfillable: ActivityStatRow[] = []
+  const orphaned: ActivityStatRow[] = []
+  for (const r of rows) {
+    ;(connected.has(r.user_id) ? backfillable : orphaned).push(r)
+  }
+  return { backfillable, orphaned }
+}
+
 /** 집계에 필요한 활동 행을 페이지 단위로 모두 읽는다 (읽기 전용) */
 async function fetchActivityStatRows(
   supabase: SupabaseClient
@@ -236,15 +267,21 @@ export async function loadBackfillOverview(supabase: SupabaseClient): Promise<Ba
 
   const { rows, truncated } = await fetchActivityStatRows(supabase)
 
-  const users = summarizeUsers(connections, profiles, rows)
-  const coverage = summarizeCoverage(rows)
+  const { backfillable, orphaned: orphanRows } = splitBackfillable(rows, userIds)
+
+  const users = summarizeUsers(connections, profiles, backfillable)
+  const coverage = summarizeCoverage(backfillable)
 
   return {
     users,
     coverage,
     totals: {
-      activityCount: rows.length,
+      activityCount: backfillable.length,
       extendedCount: coverage.reduce((sum, c) => sum + c.extendedCount, 0),
+    },
+    orphaned: {
+      activityCount: orphanRows.length,
+      userCount: new Set(orphanRows.map((r) => r.user_id)).size,
     },
     truncated,
     measuredAt: new Date().toISOString(),

@@ -289,9 +289,16 @@ export default function StravaBackfillClient({ overview: initialOverview, loadEr
         <CardHeader>
           <CardTitle>종목별 커버리지</CardTitle>
           <CardDescription>
-            집계 시각 {formatKst(overview?.measuredAt ?? null)} · 전체 활동{' '}
+            집계 시각 {formatKst(overview?.measuredAt ?? null)} · 백필 대상 활동{' '}
             {numberFormat(overview?.totals.activityCount ?? 0)}건 중 확장 필드 보유{' '}
             {withRatio(overview?.totals.extendedCount ?? 0, overview?.totals.activityCount ?? 0)}
+            {(overview?.orphaned.activityCount ?? 0) > 0 && (
+              <>
+                {' · '}Strava 연결이 없는 유저 {numberFormat(overview?.orphaned.userCount ?? 0)}명의 활동{' '}
+                {numberFormat(overview?.orphaned.activityCount ?? 0)}건은 채울 수 없어 분모에서
+                뺐습니다
+              </>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
