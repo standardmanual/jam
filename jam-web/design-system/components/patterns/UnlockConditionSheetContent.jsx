@@ -1,5 +1,7 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
+import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
+import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
 
 /**
  * UnlockConditionSheetContent — 잠금 해제 조건 시트의 본문. 티켓 20260903_2329.
@@ -12,9 +14,17 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
  * 여기 넘어오는 `requirements`는 전부 "아직 충족 안 된" 항목만이다 — OR 관계인 선행
  * 배지 그룹은 하나라도 충족되면 게이트 자체가 열린 것으로 간주해(호출부의 게이트 판정)
  * 이 시트를 띄우지 않는다. 그래서 이 컴포넌트는 fulfilled 여부를 다시 갈라 보여주지
- * 않고, 단순히 목록 + "또는" 구분선만 그린다.
+ * 않고, 단순히 목록 + 구분선만 그린다.
  *
  * 미션 진행도(0/1 등)·배지 실측값은 표시하지 않는다 — 진행 계산 모듈이 필요한 2차 범위.
+ *
+ * v5 대응(티켓 20260905_0036) 세 가지:
+ *   - 구분선 문구가 "또는" 하나로 **하드코딩**돼 있어 조건을 «모두» 채워야 하는 게이트를
+ *     표현할 수 없었다 → `relation` prop('or'|'and'). 기본값은 'or'라 기존 호출부는 그대로다.
+ *   - 배지 항목 부제가 「배지 · 어느 등급이든 1개」로 **하드코딩**돼 있었다. v5 무한레벨형은
+ *     등급이 아예 없어(rarity NULL) 이 문장이 거짓이 된다 → `req.note`로 덮어쓸 수 있다.
+ *   - 미획득 배지 이미지에 `grayscale(1)`만 걸어 원본 URL이 네트워크에 나가던 것을
+ *     `BadgeSilhouette`으로 바꿨다(외형 비공개).
  */
 function ChevronRightGlyph({ size = 16 }) {
   return (
@@ -32,20 +42,26 @@ function CheckGlyph({ size = 16 }) {
 }
 
 function RequirementIcon({ imageUrl, kind }) {
+  // 배지 항목은 «아직 못 받은 배지»라 외형을 공개하지 않는다 — 원본 URL을 요청하지 않고
+  // 실루엣을 그린다. 미션 썸네일은 미획득 개념이 아니므로 원본 그대로 둔다.
+  const isBadge = kind === 'badge';
   return (
     <span
       style={{
         width: 36, height: 36, flex: 'none', borderRadius: 'var(--radius-sm)',
         background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         boxShadow: 'inset 0 0 0 1px var(--color-border-light)', overflow: 'hidden',
+        color: 'var(--color-text)',
       }}
     >
-      {imageUrl ? (
+      {isBadge ? (
+        <BadgeSilhouette size={26} />
+      ) : imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
         <img
           src={imageUrl}
           alt=""
-          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4, filter: kind === 'badge' ? 'grayscale(1)' : undefined }}
+          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }}
         />
       ) : (
         <span style={{ width: 16, height: 16, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
@@ -57,14 +73,31 @@ function RequirementIcon({ imageUrl, kind }) {
 export function UnlockConditionSheetContent({
   badgeName,
   rarity,
-  imageUrl,
+  /**
+   * 무한레벨형 배지의 레벨(v5는 rarity가 NULL이고 level만 있다). 넘기면 등급 칩 대신
+   * `BadgeLevelChip`을 그린다.
+   */
+  // `= null` 기본값은 JS 추론이 타입을 `null` 하나로 좁히므로 JSDoc으로 캐스팅한다.
+  level = /** @type {number | null} */ (null),
+  /**
+   * @deprecated 20260905_0036부터 쓰이지 않는다 — 잠금 해제 조건 시트에 뜨는 배지는 정의상
+   * 미획득이라 외형을 공개하지 않는다(`BadgeSilhouette`). 호출부 호환용으로만 남겨 둔다.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 호출부 호환용 잔존 prop. 지우면 기존 호출부가 타입 에러가 난다
+  imageUrl = /** @type {string | null} */ (null),
   /** true면 수치 조건은 이미 채운 상태 — "조건을 다 채웠어요" 확인 줄을 보여준다 */
   conditionMet = false,
-  /** [{ kind: 'mission'|'badge', name, href, imageUrl }] — 전부 미충족 항목만 */
+  /**
+   * [{ kind: 'mission'|'badge', name, href, imageUrl, note? }] — 전부 미충족 항목만.
+   * `note`는 항목 부제를 덮어쓴다(기본값: 미션 → "미션", 배지 → "배지 · 어느 등급이든 1개").
+   */
   requirements,
+  /** 항목 사이 관계. 'or'=하나만 채우면 됨(기본), 'and'=전부 채워야 함 */
+  relation = 'or',
   className = '',
   style = {},
 }) {
+  const relationLabel = relation === 'and' ? '그리고' : '또는';
   return (
     <div className={className} style={style}>
       <div style={{ display: 'flex', gap: 'var(--spacing-12)', alignItems: 'center' }}>
@@ -73,21 +106,17 @@ export function UnlockConditionSheetContent({
             width: 56, height: 56, flex: 'none', borderRadius: 'var(--radius-sm)',
             background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: `inset 0 0 0 2px ${conditionMet ? 'var(--status-done-solid)' : 'var(--color-border-light)'}`,
+            color: 'var(--color-text)',
           }}
         >
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
-            <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4, filter: 'grayscale(1)' }} />
-          ) : (
-            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
-          )}
+          <BadgeSilhouette size={40} />
         </span>
         <div style={{ minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 'var(--text-body)', fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere', color: 'var(--color-text)' }}>
             {badgeName}
           </p>
           <div style={{ marginTop: 2 }}>
-            <RarityBadge rarity={rarity} />
+            {level != null ? <BadgeLevelChip level={level} /> : <RarityBadge rarity={rarity} />}
           </div>
         </div>
       </div>
@@ -114,7 +143,7 @@ export function UnlockConditionSheetContent({
             {i > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0', fontSize: 'var(--text-caption)', fontWeight: 700, color: 'var(--color-text-secondary)', letterSpacing: '0.06em' }}>
                 <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-                또는
+                {relationLabel}
                 <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
               </div>
             )}
@@ -132,7 +161,7 @@ export function UnlockConditionSheetContent({
                   {req.name}
                 </p>
                 <p style={{ margin: '3px 0 0', fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)' }}>
-                  {req.kind === 'mission' ? '미션' : '배지 · 어느 등급이든 1개'}
+                  {req.note ?? (req.kind === 'mission' ? '미션' : '배지 · 어느 등급이든 1개')}
                 </p>
               </div>
               <span style={{ color: 'var(--color-text-secondary)', flex: 'none', display: 'flex' }}>

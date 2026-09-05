@@ -90,3 +90,37 @@ export const RealServiceContext: Story = {
     </div>
   ),
 };
+
+/**
+ * fillMode="track-gradient" — 트랙 기준 그라데이션 (티켓 20260905_0036).
+ *
+ * 기본 'solid'는 단색 fill의 **폭**을 늘린다. 그래서 `color`에 그라데이션 문자열을 넣으면
+ * 그라데이션이 fill 안에서 압축돼 진행률이 10%든 90%든 늘 같은 그림이 보인다 —
+ * 아래 두 줄을 나란히 보면 그 차이가 바로 읽힌다.
+ * 'track-gradient'는 그라데이션을 트랙 전체 폭에 깔아 두고 `clip-path`의 `inset()`으로
+ * 진행률만큼 잘라 보여준다(진행률은 인라인 커스텀 프로퍼티 하나로만 들어간다).
+ *
+ * **기본 동작은 그대로다** — 서비스 8곳 + `DualAxisGauge`가 이 컴포넌트를 쓰기 때문에
+ * 새 표현은 반드시 새 prop으로만 켠다.
+ */
+export const TrackGradient: Story = {
+  name: '트랙 기준 그라데이션 — fill 안 압축과 비교',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: 320 }}>
+      {[20, 55, 90].map((pct) => (
+        <div key={pct} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)' }}>{pct}%</span>
+          <ProgressBar percent={pct} fillMode="track-gradient" trackColor="var(--status-idle-track)" height={6} radius="var(--radius-xs)" />
+          {/* 비교용 — fill 안에서 압축되는 예전 방식 */}
+          <ProgressBar
+            percent={pct}
+            color="linear-gradient(to right, var(--status-short-solid), var(--status-done-solid))"
+            trackColor="var(--status-idle-track)"
+            height={6}
+            radius="var(--radius-xs)"
+          />
+        </div>
+      ))}
+    </div>
+  ),
+};

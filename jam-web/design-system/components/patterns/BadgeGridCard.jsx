@@ -1,5 +1,6 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
+import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
 
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
@@ -7,9 +8,14 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
  * 레이아웃 (위→아래): 썸네일(투명 배경) → 이름 → 등급 pill(있을 때만)
  *
  * 상태:
- *   earned: false  → 썸네일 흑백+반투명 (미획득)
- *   undiscovered   → ??? 표시 + 흑백 (아이템북 미발견)
+ *   earned: false  → 썸네일을 실루엣으로 (미획득 — 외형 비공개)
+ *   undiscovered   → ??? 표시 + 실루엣 (아이템북 미발견)
  *   selected       → 강조 링 (선택 모드)
+ *
+ * 20260905_0036: 미획득/미발견 썸네일이 원본 이미지 + `filter: grayscale(1)`이었는데,
+ * grayscale은 그려진 뒤 걸리는 CSS 필터라 **원본 URL이 그대로 네트워크에 나간다** —
+ * 「아직 안 보여준다」가 성립하지 않았다. 이제 `BadgeSilhouette`(배지별 이미지를 요청하지
+ * 않는 공통 SVG)을 그린다.
  *
  * 인터랙션 모드 (상호 배타):
  *   href   → <a> 래핑
@@ -67,15 +73,16 @@ export function BadgeGridCard({
     alignItems: 'center',
     justifyContent: 'center',
     background: 'transparent',
-    filter: dimmed ? 'grayscale(1)' : undefined,
-    opacity: dimmed ? 0.4 : 1,
+    color: 'var(--color-text)',
     flexShrink: 0,
   };
 
   const content = (
     <>
       <div style={thumbnailStyle}>
-        {imageUrl ? (
+        {dimmed ? (
+          <BadgeSilhouette size={62} />
+        ) : imageUrl ? (
           <img
             src={imageUrl}
             alt={undiscovered ? '???' : name}

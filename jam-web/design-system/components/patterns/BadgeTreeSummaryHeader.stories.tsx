@@ -78,3 +78,31 @@ export const AllCompleted: Story = {
     </Frame>
   ),
 };
+
+/**
+ * v5 — 「등급 없음」 칸 (티켓 20260905_0036).
+ *
+ * 칸 수가 `repeat(4, 1fr)`로 하드코딩돼 있어서 이 요약은 사실상 **«등급 4칸» 그 자체**였다.
+ * v5 무한레벨형(193종)은 `rarity`가 NULL이라 네 칸 어디에도 들어가지 못하고, 그러면
+ * 히어로 숫자(`totalCount`)와 칸 합계가 조용히 어긋난다 — 「40개 중 12개」인데 칸을 다
+ * 더하면 20개인 상태다. `noRarity` 버킷을 받아 칸을 하나 더 그리고, 컬럼 수는 실제로
+ * 그리는 칸 수를 따른다. `noRarity`를 넘기지 않으면 예전과 똑같이 4칸이다(비파괴).
+ */
+export const WithNoRarityBucket: Story = {
+  name: 'v5 — 등급 없는 배지(무한레벨형) 칸 포함',
+  render: () => (
+    <Frame>
+      <BadgeTreeSummaryHeader
+        earnedCount={31}
+        totalCount={104}
+        byRarity={{
+          common: { earned: 9, total: 12 },
+          rare: { earned: 6, total: 10 },
+          epic: { earned: 2, total: 10 },
+          mystic: { earned: 0, total: 8 },
+        }}
+        noRarity={{ earned: 14, total: 64 }}
+      />
+    </Frame>
+  ),
+};

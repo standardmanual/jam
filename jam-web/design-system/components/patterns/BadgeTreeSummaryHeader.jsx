@@ -11,6 +11,12 @@ import { getRarityLabel } from '../cards/RarityBadge.jsx';
  * 분포 막대는 등급색이 아니라 상태 채널(--status-done-solid, 다 채운 것)로 채운다 —
  * 등급은 이 축에 속하지 않고(등급칩 안에서만 색을 쓴다), 이 막대가 말하는 건 "그 등급 중
  * 몇 개를 채웠나"이지 등급 자체가 아니기 때문이다.
+ *
+ * v5 대응(티켓 20260905_0036): 칸 수가 `repeat(4, 1fr)`로 **하드코딩**돼 있어서 요약이
+ * 「등급 4칸」 그 자체였다. v5 무한레벨형(193종)은 등급이 아예 없어(rarity NULL) 어느 칸에도
+ * 들어가지 못하고, 그러면 `totalCount`와 칸 합계가 조용히 어긋난다. `noRarity` 버킷을 받아
+ * 「등급 없음」 칸을 하나 더 그리고, 컬럼 수는 **실제로 그리는 칸 수를 따른다**.
+ * `noRarity`를 넘기지 않으면 예전과 똑같이 4칸이다(비파괴).
  */
 const RARITY_ORDER = ['common', 'rare', 'epic', 'mystic'];
 // 등급 라벨은 RarityBadge.jsx의 config가 MODULAR 단일 소스다 — 여기서 다시 선언하지 않는다
@@ -21,9 +27,20 @@ export function BadgeTreeSummaryHeader({
   totalCount,
   /** { common: {earned,total}, rare: {...}, epic: {...}, mystic: {...} } */
   byRarity,
+  /** { earned, total } — 등급이 없는 배지(무한레벨형). null이면 칸을 그리지 않는다 */
+  // `= null` 기본값은 JS 추론이 타입을 `null` 하나로 좁히므로 JSDoc으로 캐스팅한다.
+  noRarity = /** @type {{ earned: number, total: number } | null} */ (null),
   className = '',
   style = {},
 }) {
+  const buckets = [
+    ...RARITY_ORDER.map((rarity) => ({
+      key: rarity,
+      label: getRarityLabel(rarity),
+      stat: byRarity[rarity] ?? { earned: 0, total: 0 },
+    })),
+    ...(noRarity ? [{ key: 'no-rarity', label: '레벨', stat: noRarity }] : []),
+  ];
   return (
     <div
       className={className}
@@ -46,17 +63,16 @@ export function BadgeTreeSummaryHeader({
         </em>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--spacing-8)', marginTop: 'var(--spacing-16)' }}>
-        {RARITY_ORDER.map((rarity) => {
-          const stat = byRarity[rarity] ?? { earned: 0, total: 0 };
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${buckets.length}, 1fr)`, gap: 'var(--spacing-8)', marginTop: 'var(--spacing-16)' }}>
+        {buckets.map(({ key, label, stat }) => {
           const pct = stat.total > 0 ? Math.round((stat.earned / stat.total) * 100) : 0;
           return (
-            <div key={rarity} style={{ minWidth: 0 }}>
+            <div key={key} style={{ minWidth: 0 }}>
               <div style={{ height: 6, borderRadius: 'var(--radius-xs)', background: 'var(--status-idle-track)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-xs)', background: 'var(--status-done-solid)' }} />
               </div>
-              <div style={{ marginTop: 8, fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', lineHeight: 1 }}>
-                {getRarityLabel(rarity)}
+              <div style={{ marginTop: 8, fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {label}
               </div>
               <div
                 style={{

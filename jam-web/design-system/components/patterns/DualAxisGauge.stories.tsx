@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
+import { expect } from 'storybook/test';
 import { DualAxisGauge } from './DualAxisGauge';
 
 const meta: Meta<typeof DualAxisGauge> = {
@@ -15,7 +16,11 @@ const meta: Meta<typeof DualAxisGauge> = {
           '대체하지 않음). 배지 썸네일 + 축 2줄(라벨·ProgressBar·current/target·충족 체크) + ' +
           '규칙 문장("각각 다른 활동"/"한 번의 활동에서 동시에") + 병목 안내(met인 축이 정확히 ' +
           '하나일 때만)로 구성된 얇은 합성이다. kind를 모른다 — `src/lib/badgeProgressText.ts`의 ' +
-          '`formatDualAxisGaugeProps()`가 만든 완성 문자열/숫자만 받는다.',
+          '`formatDualAxisGaugeProps()`가 만든 완성 문자열/숫자만 받는다. ' +
+          '20260905_0036: 이 게이지가 뜨는 시점의 배지는 항상 미획득이라 썸네일이 ' +
+          '`BadgeSilhouette`으로 바뀌었다 — 예전 `grayscale(1)`은 원본 URL이 네트워크에 나가 ' +
+          '「외형 비공개」가 성립하지 않았다. `imageUrl`·`alt`는 호출부 호환용으로만 남아 있고 ' +
+          '쓰이지 않는다.',
       },
     },
   },
@@ -162,4 +167,32 @@ export const NoImage: Story = {
       />
     </Frame>
   ),
+};
+
+/**
+ * 회귀 고정 — 프런티어 배지는 정의상 미획득이라 **원본 이미지를 로드하지 않는다.**
+ * `imageUrl`을 넘겨도 무시한다(호출부 호환용 잔존 prop).
+ */
+export const NoBadgeImageLoaded: Story = {
+  name: '회귀 — 배지 원본 이미지를 로드하지 않는다',
+  render: () => (
+    <Frame>
+      <div data-testid="gauge">
+        <DualAxisGauge
+          imageUrl="/should-not-be-requested.png"
+          alt="산악 라이더 Rare"
+          rarity="rare"
+          axes={[
+            { key: 'min_speed_kmh', label: '속도', rangeText: '21.4/20.0km/h', fraction: 1, met: true },
+            { key: 'elevation_gain_m', label: '고도', rangeText: '1180/1500m', fraction: 1180 / 1500, met: false },
+          ]}
+          ruleText="두 조건은 각각 다른 활동에서 채워도 돼요."
+          bottleneckNote="속도 조건은 이미 채웠어요."
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    expect(canvasElement.querySelector('[data-testid="gauge"]')!.querySelectorAll('img').length).toBe(0);
+  },
 };

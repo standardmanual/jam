@@ -1,5 +1,6 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
+import { BadgeSilhouette } from '../cards/BadgeSilhouette.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
 
 /**
@@ -24,8 +25,10 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
  * 한다(계산 계층 주석 참고).
  *
  * 배지 이미지는 이 컴포넌트가 등장하는 시점(프런티어 = 아직 미획득)에는 항상 미획득
- * 상태이므로 `BadgeStageRail`과 같은 규칙(미획득 = grayscale(1))을 예외 없이 적용한다 —
- * `earned` prop을 따로 받지 않는다.
+ * 상태이므로 `BadgeStageRail`과 같은 규칙(미획득 = `BadgeSilhouette`)을 예외 없이 적용한다 —
+ * `earned` prop을 따로 받지 않는다. 예전에는 원본 이미지에 `grayscale(1)`만 걸었는데 그러면
+ * 원본 URL이 네트워크에 나가 「외형 비공개」가 성립하지 않았다(티켓 20260905_0036).
+ * 그래서 `imageUrl`은 이제 쓰이지 않는다 — 호출부 호환을 위해 prop만 남겨 둔다.
  *
  * 접근성: 인터랙티브 요소가 없는 정적 텍스트 블록이라(레일의 링크/버튼 눈금과 다름) 별도
  * `aria-label` 요약을 얹지 않는다 — 라벨·수치·규칙 문장·안내 문구가 전부 화면에 보이는
@@ -73,9 +76,14 @@ function AxisRow({ label, rangeText, fraction, met }) {
 }
 
 export function DualAxisGauge({
-  /** 프런티어 눈금의 배지 썸네일. null이면 플레이스홀더 사각형(BadgeStageRail과 동일 처리) */
+  /**
+   * @deprecated 20260905_0036부터 쓰이지 않는다 — 미획득 배지의 외형을 공개하지 않기 위해
+   * 원본 이미지를 로드하지 않고 `BadgeSilhouette`을 그린다. 호출부 호환용으로만 남겨 둔다.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 호출부 호환용 잔존 prop. 지우면 BadgeFamilyRailItem.tsx가 타입 에러가 난다
   imageUrl,
-  /** 이미지 대체 텍스트 — 호출부가 "{계열명} {등급}" 형태로 조립해 넘긴다 */
+  /** @deprecated 실루엣은 aria-hidden이라 대체 텍스트가 없다(호출부 호환용) */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 위와 동일
   alt,
   rarity = 'common',
   /** [{ key, label, rangeText, fraction, met }, { ... }] — 항상 2개, formatDualAxisGaugeProps() 결과 그대로 */
@@ -107,18 +115,10 @@ export function DualAxisGauge({
             // 문법 — 이 컴포넌트의 64px 사본만 프레임 없이 떠 있으면 같은 배지가 화면에서
             // 두 가지로 보인다(인터랙션 리뷰 지적, 티켓 20260904_1058).
             boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
+            color: 'var(--color-text)',
           }}
         >
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다(BadgeStageRail.jsx와 동일 컨벤션)
-            <img
-              src={imageUrl}
-              alt={alt}
-              style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4, filter: 'grayscale(1)' }}
-            />
-          ) : (
-            <span aria-hidden="true" style={{ width: 28, height: 28, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
-          )}
+          <BadgeSilhouette size={44} />
         </span>
 
         <div style={{ flex: 1, minWidth: 0 }}>

@@ -106,3 +106,29 @@ export const NoRarity: Story = {
     expect(canvasElement.querySelector('[data-testid="label-null"]')?.textContent).toContain('null');
   },
 };
+
+/**
+ * 미지 등급 값 — 조용한 Common 폴백을 걷어냈다(티켓 20260905_0036).
+ *
+ * 예전 구현은 `config[rarity] ?? config.common`이라 오타·신규 등급·잘못된 캐스팅
+ * (`rarity as BadgeRarity`)이 전부 **"Common" 칩**으로 화면에 나갔다 — 그게 정상 데이터와
+ * 구분되지 않아 아무도 눈치채지 못한다. 이제 아무것도 그리지 않고(개발 빌드에서만
+ * `console.warn`) 라벨도 `null`이다. "등급이 없다"와 "등급을 모른다"는 둘 다 «그리지 않음»이
+ * 맞고, 후자만 개발자에게 시끄럽게 알린다.
+ */
+export const UnknownRarity: Story = {
+  name: '미지 값 — Common으로 폴백하지 않는다',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--font-family-base)', fontSize: 'var(--text-small)', color: 'var(--color-text)' }}>
+      <div data-testid="chip-unknown" style={{ minHeight: 20 }}>
+        <RarityBadge rarity={'legendary' as never} />
+      </div>
+      <div data-testid="label-unknown">{`getRarityLabel('legendary') → ${String(getRarityLabel('legendary' as never))}`}</div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    expect(canvasElement.querySelector('[data-testid="chip-unknown"]')?.textContent?.trim()).toBe('');
+    expect(canvasElement.textContent).not.toContain('COMMON');
+    expect(canvasElement.querySelector('[data-testid="label-unknown"]')?.textContent).toContain('null');
+  },
+};
