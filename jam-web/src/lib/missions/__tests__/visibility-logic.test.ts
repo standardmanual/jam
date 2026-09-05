@@ -18,6 +18,7 @@ import {
   isMissionJoinable,
   type GatedBadgeInfo,
   type MissionVisibilityContext,
+  type MissionVisibilityInput,
 } from '../visibility'
 import { RARITY_TIER } from '@/lib/rarity'
 import type { BadgeRarity } from '@/types/database'
@@ -28,10 +29,13 @@ const BADGE_RARE: GatedBadgeInfo = { id: 'b-rare', name: '첫 숨결', rarity: '
 const BADGE_EPIC: GatedBadgeInfo = { id: 'b-epic', name: '첫 숨결', rarity: 'epic' }
 const BADGE_MYSTIC: GatedBadgeInfo = { id: 'b-mystic', name: '첫 숨결', rarity: 'mystic' }
 
-const MISSION_RARE = { id: 'm-rare', gated_badge_id: BADGE_RARE.id }
-const MISSION_EPIC = { id: 'm-epic', gated_badge_id: BADGE_EPIC.id }
-const MISSION_MYSTIC = { id: 'm-mystic', gated_badge_id: BADGE_MYSTIC.id }
-const MISSION_PLAIN = { id: 'm-plain', gated_badge_id: null }
+/** v5 게이트 미션 컬럼(마이그레이션 135)은 레거시 레벨업 미션에서 전부 NULL이다 */
+const NOT_A_GATE_MISSION = { gate_axis: null, gate_stage: null, visibility_rule_json: null } as const
+
+const MISSION_RARE = { id: 'm-rare', gated_badge_id: BADGE_RARE.id, ...NOT_A_GATE_MISSION }
+const MISSION_EPIC = { id: 'm-epic', gated_badge_id: BADGE_EPIC.id, ...NOT_A_GATE_MISSION }
+const MISSION_MYSTIC = { id: 'm-mystic', gated_badge_id: BADGE_MYSTIC.id, ...NOT_A_GATE_MISSION }
+const MISSION_PLAIN = { id: 'm-plain', gated_badge_id: null, ...NOT_A_GATE_MISSION }
 
 const ALL_GATED_BADGES = new Map<string, GatedBadgeInfo>([
   [BADGE_RARE.id, BADGE_RARE],
@@ -51,11 +55,12 @@ function ctx(options?: {
     completedMissionIds: new Set(options?.completed ?? []),
     gatedBadges: options?.gatedBadges ?? ALL_GATED_BADGES,
     ownedTierByBadgeName: owned,
+    ownedFamilyTiers: new Map<string, number>(),
     participatedMissionIds: new Set(options?.participated ?? []),
   }
 }
 
-const vis = (mission: { id: string; gated_badge_id: string | null }, c: MissionVisibilityContext) =>
+const vis = (mission: MissionVisibilityInput, c: MissionVisibilityContext) =>
   resolveMissionVisibility(mission, c).visibility
 
 // ── 케이스 ────────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
+import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
 import type { MissionType } from '@/types/database'
 
 export async function GET() {
@@ -42,6 +43,13 @@ export async function POST(req: NextRequest) {
   )
   if (valueError) {
     return NextResponse.json({ error: valueError }, { status: 400 })
+  }
+
+  // 게이트 필드 검증 (티켓 20260905_0033) — 축·단계는 짝이어야 하고, 노출 조건은 형태가
+  // 깨지면 그 미션이 아무에게도 열리지 않는다(visibility.ts가 fail-closed로 잠근다).
+  const gateError = findGateMissionSaveError(body)
+  if (gateError) {
+    return NextResponse.json({ error: gateError }, { status: 400 })
   }
 
   const supabase = createServiceClient()

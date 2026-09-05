@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
+import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
+import type { MissionRow } from '@/types/database'
 import type { MissionType } from '@/types/database'
 
 // PATCH /api/admin/missions/[id] — 기존 미션 수정.
@@ -44,6 +46,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { error: valueError } = checkMissionConditionValue(missionType, body.condition_json)
     if (valueError) {
       return NextResponse.json({ error: valueError }, { status: 400 })
+    }
+  }
+
+  // 게이트 필드 검증 (티켓 20260905_0033). PATCH는 부분 갱신이라 body에 세 필드가 다
+  // 들어오지 않을 수 있다 — 「갱신 후의 상태」로 합쳐서 검사해야 «축만 지우고 단계를
+  // 남기는» 조합이 통과하지 않는다.
+  const gateKeys = ['gate_axis', 'gate_stage', 'visibility_rule_json', 'gated_badge_id'] as const
+  if (gateKeys.some((k) => body[k] !== undefined)) {
+    const { data: existing } = await supabase
+      .from('missions')
+      .select('gate_axis, gate_stage, visibility_rule_json, gated_badge_id')
+      .eq('id', id)
+      .single<Pick<MissionRow, (typeof gateKeys)[number]>>()
+    if (!existing) {
+      return NextResponse.json({ error: '미션을 찾지 못했어요. 목록을 새로고침한 뒤 다시 시도해주세요.' }, { status: 404 })
+    }
+    const merged = Object.fromEntries(
+      gateKeys.map((k) => [k, body[k] !== undefined ? body[k] : existing[k]])
+    )
+    const gateError = findGateMissionSaveError(merged)
+    if (gateError) {
+      return NextResponse.json({ error: gateError }, { status: 400 })
     }
   }
 

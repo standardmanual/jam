@@ -24,6 +24,7 @@ import {
   IconBackpack,
   IconDatabaseImport,
   IconBinaryTree,
+  IconLock,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -58,6 +59,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/combine-policy', label: '믹스 정책', icon: IconTestPipe },
       { href: '/admin/inventory-policy', label: '인벤토리 최대치', icon: IconBackpack },
       { href: '/admin/missions', label: '미션 관리', icon: IconTarget },
+      { href: '/admin/gate-missions', label: '게이트 미션 관리', icon: IconLock },
       { href: '/admin/points', label: '포인트 관리', icon: IconDiamond },
     ],
   },

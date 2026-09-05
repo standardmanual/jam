@@ -531,6 +531,43 @@ export interface MissionCondition {
   elevation_gain_m?: number
 }
 
+/** 게이트 미션의 단계 — 마스터 티켓 20260905_0026의 2단 게이트 표를 그대로 옮긴 두 값 */
+export const MISSION_GATE_STAGES = ['rare_to_epic', 'epic_to_mystic'] as const
+export type MissionGateStage = (typeof MISSION_GATE_STAGES)[number]
+
+/**
+ * 게이트 미션의 «노출 조건» (티켓 20260905_0033, 마이그레이션 135).
+ *
+ * v5의 «해당 축 Epic 보유 AND Mystic 미보유»를 표현하기 위한 형태다. 예전 규칙은
+ * `gated_badge_id` 하나뿐이라 「그 배지의 등급 = 유저 보유 등급 + 1」밖에 말할 수 없었다.
+ *
+ * ⚠️ 안쪽 요구의 형태는 2단 교차 게이트(`BadgeGateRequirement`)와 **같은 타입이고 같은
+ * 검증 함수**(`normalizeGateRequirement`, `src/lib/badge-engine/crossGate.ts`)를 쓴다.
+ * 게이트 미션은 `gate_mission_badge` 요구의 «대상»이므로(티켓 20260905_0030 B2),
+ * 두 곳이 계열 요구를 다르게 해석하면 「미션은 열렸는데 Mystic은 안 열리는」 상태가 된다.
+ *
+ * ⚠️ **형태가 깨지면 통과가 아니라 차단이다(fail-closed).** jsonb라 형태 보장이 없고,
+ * 「검사할 게 없으니 통과」로 두면 게이트가 에러도 로그도 없이 꺼진다 —
+ * 이 티켓이 없애려는 실패 모드 그 자체다(`visibility.ts` 참조).
+ */
+export interface MissionVisibilityRule {
+  /**
+   * 이 요구를 만족해야 미션이 열린다 — 「해당 축 Epic 보유」.
+   * 생략하면 보유 요구 없음(항상 열림).
+   */
+  require_owned?: BadgeGateRequirement
+  /**
+   * 이 요구를 만족하면 미션을 숨긴다 — 「Mystic 이미 보유」. 미션의 역할이 끝난 상태다.
+   * 생략하면 숨김 조건 없음.
+   */
+  hide_when_owned?: BadgeGateRequirement
+  /**
+   * `require_owned` 미충족일 때의 노출 상태. 생략하면 `locked`(잠금 카드로 보인다).
+   * `hidden`이면 목록에서 완전히 빠진다.
+   */
+  unmet_visibility?: 'locked' | 'hidden'
+}
+
 export interface MissionRow {
   id: string
   title: string
@@ -558,8 +595,24 @@ export interface MissionRow {
    * 티켓 20260825_028: 이 미션을 완료해야 획득 조건이 열리는 본 배지 id.
    * null이면 게이팅 없는 일반 미션. 레벨업 미션 15종만 값을 가진다.
    * 노출 판정(`src/lib/missions/visibility.ts`)이 이 배지의 rarity를 기준으로 판단한다.
+   *
+   * ⚠️ **v5 게이트 미션은 이 필드를 쓰지 않는다** — `gate_axis` + `visibility_rule_json`이
+   * 정본이고, 마이그레이션 135의 CHECK가 둘의 공존을 막는다. 이 필드만 쓰는 미션은
+   * 「레거시 게이트 미션」이며 티켓 20260905_0035 시딩과 함께 폐기할 대상이다(판단 ②).
    */
   gated_badge_id: string | null
+  /**
+   * 이 미션이 «여는 축» (`{종목}:{축슬러그}`). NULL이면 게이트 미션이 아니다
+   * (기간형·일반 미션) — 티켓 20260905_0033, 마이그레이션 135.
+   *
+   * 축 목록은 DB에도 코드에도 두지 않는다. v5의 9축은 카탈로그(티켓 20260905_0035)가
+   * 정하며, 어드민 화면은 실제로 쓰이고 있는 축을 데이터에서 모아 매트릭스를 그린다.
+   */
+  gate_axis: string | null
+  /** 게이트 단계. `gate_axis`와 항상 짝이다(마이그레이션 135의 CHECK가 강제) */
+  gate_stage: MissionGateStage | null
+  /** 노출 조건. 게이트 미션에만 허용한다. null이면 노출 제한 없음 */
+  visibility_rule_json: MissionVisibilityRule | null
   created_at: string
 }
 
