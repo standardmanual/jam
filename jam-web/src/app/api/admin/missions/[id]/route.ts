@@ -54,11 +54,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // 남기는» 조합이 통과하지 않는다.
   const gateKeys = ['gate_axis', 'gate_stage', 'visibility_rule_json', 'gated_badge_id'] as const
   if (gateKeys.some((k) => body[k] !== undefined)) {
-    const { data: existing } = await supabase
+    // ⚠️ 컬럼명을 나열하지 않고 `*`로 읽는다. 나열하면 마이그레이션 135가 아직 실행되지
+    // 않은 DB에서 PostgREST가 42703(컬럼 없음)을 돌려주고, 이 경로는 어드민 미션 수정
+    // **전부**가 지나가는 길이라(목록 화면이 항상 gated_badge_id를 함께 보낸다) 게이트와
+    // 무관한 미션 수정까지 막힌다. `*`로 읽으면 미실행 DB에서는 세 필드가 그냥 빠진 채로
+    // 오고, merged가 전부 undefined가 되어 예전과 같은 검증 결과(통과)가 된다.
+    const { data: existing, error: existingError } = await supabase
       .from('missions')
-      .select('gate_axis, gate_stage, visibility_rule_json, gated_badge_id')
+      .select('*')
       .eq('id', id)
       .single<Pick<MissionRow, (typeof gateKeys)[number]>>()
+    if (existingError) {
+      // 조회 자체가 실패한 것을 「없는 미션」으로 뭉뚱그리면 원인을 못 찾는다.
+      return NextResponse.json({ error: existingError.message }, { status: 500 })
+    }
     if (!existing) {
       return NextResponse.json({ error: '미션을 찾지 못했어요. 목록을 새로고침한 뒤 다시 시도해주세요.' }, { status: 404 })
     }

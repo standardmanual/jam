@@ -194,6 +194,20 @@ function resolveGateMissionVisibility(
     return LOCKED
   }
 
+  // 아는 키가 하나도 없는 규칙({foo:1} 같은 것)은 fail-closed로 잠근다. 저장 검증
+  // (parseVisibilityRule)과 마이그레이션 135의 CHECK가 앞에서 막으므로 실사용 경로로는
+  // 도달하지 않지만, 여기서 통과시키면 「규칙이 있는데 아무 조건도 안 걸린 미션」이
+  // 조용히 전체 공개가 된다 — 이 파일이 표방하는 fail-closed와 어긋나는 유일한 자리였다.
+  const KNOWN_RULE_KEYS = ['require_owned', 'hide_when_owned', 'unmet_visibility']
+  const unknownKeys = Object.keys(rule).filter((k) => !KNOWN_RULE_KEYS.includes(k))
+  if (unknownKeys.length > 0) {
+    console.warn(
+      `[missions/visibility] 노출 조건에 모르는 키가 있어 잠근다 — mission: ${mission.id}, ` +
+        `키: ${unknownKeys.join(', ')}`,
+    )
+    return LOCKED
+  }
+
   const requirements: { key: 'require_owned' | 'hide_when_owned'; value: NormalizedGateRequirement }[] = []
   for (const key of ['require_owned', 'hide_when_owned'] as const) {
     const raw = rule[key]
