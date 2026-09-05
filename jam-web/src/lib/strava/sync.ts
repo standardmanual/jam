@@ -429,6 +429,16 @@ async function updateFamilyProgressSnapshots(
     if (badgesError) throw new Error(`badges 조회 실패: ${badgesError.message}`)
     const badges = (badgesRaw ?? []) as FamilyProgressBadgeRow[]
 
+    // PostgREST 기본 페이지 상한(1000행)에 닿으면 **에러 없이 잘린 목록**이 온다.
+    // 티켓 20260905_0035가 550종을 시딩하면 750건대가 되므로 상한 근접을 배포 없이
+    // 관측할 수 있게 로그만 둔다(페이지네이션은 0035 착수 전 별도 처리 — 개선 리뷰 지적).
+    if (badges.length >= 1000) {
+      console.warn(
+        `[family-progress] badges 조회가 PostgREST 상한에 닿았다 — ${badges.length}행. ` +
+          '잘린 목록으로 계열 프런티어를 계산하고 있을 수 있다(페이지네이션 필요).'
+      )
+    }
+
     // 이 유저의 활동배지 획득 id — 소프트 삭제 배지는 위 badges 조회에서 이미 제외되므로
     // (badges/tree/page.tsx와 동일 판단) 별도 조인 없이 badge_id만 조회한다.
     const { data: earnedRaw, error: earnedError } = await supabase

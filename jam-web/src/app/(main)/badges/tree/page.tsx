@@ -104,6 +104,17 @@ export default async function BadgeTreePage() {
 
   // `level`은 무한레벨형 진행 표시(kind: 'leveled')에만 쓰인다 — 트리 카드 구성에는 관여하지 않는다
   type RawBadge = BadgeTreeSourceBadge & { point_reward: number; level: number | null }
+  // PostgREST 기본 페이지 상한(1000행)에 닿으면 **에러 없이 잘린 목록**이 온다.
+  // 여기는 싱크 스냅샷이 아니라 **유저가 보는 화면 본체**라, 잘리면 배지 자체가 사라진다.
+  // 티켓 20260905_0035가 550종을 시딩하면 750건대가 되므로 상한 근접을 배포 없이 관측할 수
+  // 있게 로그만 둔다(페이지네이션은 0035 착수 전 별도 처리 — 개선 리뷰 지적).
+  if ((badgesRaw ?? []).length >= 1000) {
+    console.warn(
+      `[badges/tree] badges 조회가 PostgREST 상한에 닿았다 — ${(badgesRaw ?? []).length}행. ` +
+        '화면에서 배지가 누락되고 있을 수 있다(페이지네이션 필요).'
+    )
+  }
+
   const badges: BadgeTreeSourceBadge[] = ((badgesRaw ?? []) as RawBadge[]).map((b) => ({
     id: b.id,
     name: b.name,
