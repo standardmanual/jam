@@ -700,3 +700,443 @@ describe('발급 3단 분리 — DB 반영에 실패한 배지는 부수효과�
     expect(vi.mocked(recordFeedEvent)).not.toHaveBeenCalled()
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════
+// ⑦ 2단 교차 게이트 (§3, B2묶음)
+// ═══════════════════════════════════════════════════════════════════════
+
+/** 유저가 이미 보유한 배지 한 장 — 계열·등급·종목이 교차 판정의 입력이다 */
+function ownedBadge(overrides: Partial<BadgeRow>): BadgeRow {
+  return makeBadge({ condition_json: {}, ...overrides })
+}
+
+/** 보유 상태로 세팅 — 카탈로그에도 넣어야 «보유 배지 정의 조회»가 찾을 수 있다 */
+function own(...badges: BadgeRow[]) {
+  state.badges.push(...badges)
+  state.ownedBadgeIds.push(...badges.map((b) => b.id))
+}
+
+/** 러닝 활동 1건 — 게이트만 보려는 테스트의 조건(total_count:1)을 채운다 */
+function oneRun() {
+  state.storedActivities = [{ normalized: makeRun('2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' }]
+}
+
+describe('교차 게이트 — 축 내 교차와 축 간 교차는 OR다 (Rare → Epic)', () => {
+  /** 두 교차를 모두 선언한 Epic. 축 내는 등급 무관, 축 간은 Rare 이상을 요구한다 */
+  const epicBadge = () =>
+    makeBadge({
+      id: 'EPIC-1',
+      name: '속도의 정점',
+      rarity: 'epic',
+      family_key: 'run:speed',
+      condition_json: {
+        activity_type: 'running',
+        total_count: 1,
+        cross_in_axis: { family_keys: ['run:tempo'] },
+        cross_between_axis: { family_keys: ['run:streak'], min_rarity: 'rare' },
+      },
+    })
+
+  it('둘 다 미충족이면 막힌다 — 사유가 「또는」임을 밝힌다', async () => {
+    state.badges = [epicBadge()]
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    const m = missed.find((x) => x.id === 'EPIC-1')
+    expect(m?.reason).toBe('교차 게이트 미충족 — 축 내 교차 또는 축 간 교차')
+    expect(m?.required).toContain('run:tempo')
+    expect(m?.required).toContain('run:streak')
+  })
+
+  it('축 내 교차만 충족해도 통과한다', async () => {
+    state.badges = [epicBadge()]
+    own(ownedBadge({ id: 'OWN-tempo', name: '템포 러너', rarity: 'common', family_key: 'run:tempo' }))
+    oneRun()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['EPIC-1'])
+  })
+
+  it('축 간 교차만 충족해도 통과한다 — 두 교차는 서로 다른 계열을 본다', async () => {
+    state.badges = [epicBadge()]
+    own(ownedBadge({ id: 'OWN-streak', name: '연속의 증표', rarity: 'rare', family_key: 'run:streak' }))
+    oneRun()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['EPIC-1'])
+  })
+
+  it('축 간 교차의 min_rarity 미달은 통과시키지 않는다 (Common 보유로는 Rare 요구가 안 채워진다)', async () => {
+    state.badges = [epicBadge()]
+    own(ownedBadge({ id: 'OWN-streak', name: '연속의 증표', rarity: 'common', family_key: 'run:streak' }))
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'EPIC-1')?.reason).toBe('교차 게이트 미충족 — 축 내 교차 또는 축 간 교차')
+  })
+
+  it('축 간 교차 하나만 선언하면 그것이 곧 필수 요건이다 (축 내 교차가 성립하지 않는 축)', async () => {
+    state.badges = [
+      makeBadge({
+        id: 'EPIC-2',
+        name: '보완축 에픽',
+        rarity: 'epic',
+        family_key: 'run:distance',
+        condition_json: {
+          activity_type: 'running',
+          total_count: 1,
+          cross_between_axis: { family_keys: ['run:streak'] },
+        },
+      }),
+    ]
+    oneRun()
+
+    const { missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    // OR의 한쪽이 없으므로 사유도 「또는」이 아니라 그 하나를 지목한다
+    expect(missed.find((x) => x.id === 'EPIC-2')?.reason).toBe('축 간 교차 미충족')
+  })
+})
+
+describe('교차 게이트 — 교차와 미션 보상 배지는 AND다 (Epic → Mystic)', () => {
+  const mysticBadge = () =>
+    makeBadge({
+      id: 'MYSTIC-1',
+      name: '길의 끝',
+      rarity: 'mystic',
+      family_key: 'run:speed',
+      condition_json: {
+        activity_type: 'running',
+        total_count: 1,
+        cross_between_axis: { family_keys: ['run:streak'], min_rarity: 'rare' },
+        gate_mission_badge: { family_keys: ['run:oath'] },
+      },
+    })
+
+  const crossTarget = () =>
+    ownedBadge({ id: 'OWN-streak', name: '연속의 증표', rarity: 'rare', family_key: 'run:streak' })
+  const missionBadge = () =>
+    ownedBadge({
+      id: 'OWN-oath',
+      name: '러너의 서약',
+      rarity: 'rare',
+      family_key: 'run:oath',
+      condition_json: { mission_reward: true },
+    })
+
+  it('교차만 충족하면 막힌다 — 하나만으로는 통과하지 않는다', async () => {
+    state.badges = [mysticBadge()]
+    own(crossTarget())
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'MYSTIC-1')?.reason).toBe('미션 보상 배지 미보유')
+  })
+
+  it('미션 보상 배지만 보유해도 막힌다', async () => {
+    state.badges = [mysticBadge()]
+    own(missionBadge())
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'MYSTIC-1')?.reason).toBe('축 간 교차 미충족')
+  })
+
+  it('둘 다 충족해야 발급된다', async () => {
+    state.badges = [mysticBadge()]
+    own(crossTarget(), missionBadge())
+    oneRun()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['MYSTIC-1'])
+  })
+
+  it('미션 보상 배지가 아닌 일반 배지를 가리키면 게이트가 열리지 않는다', async () => {
+    // gate_mission_badge가 일반 계열을 가리키면 「미션을 깨야 한다」는 요건이 조용히 사라진다.
+    state.badges = [mysticBadge()]
+    own(crossTarget(), ownedBadge({ id: 'OWN-fake', name: '가짜 서약', rarity: 'rare', family_key: 'run:oath' }))
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'MYSTIC-1')?.reason).toBe('미션 보상 배지 미보유')
+  })
+})
+
+describe('교차 게이트 — 계열을 AND로 요구할 수 있다 (min_count)', () => {
+  const badge = () =>
+    makeBadge({
+      id: 'EPIC-3',
+      name: '두 축의 증명',
+      rarity: 'epic',
+      family_key: 'run:speed',
+      condition_json: {
+        activity_type: 'running',
+        total_count: 1,
+        cross_between_axis: { family_keys: ['run:streak', 'run:elevation'], min_count: 2 },
+      },
+    })
+
+  it('한 계열만 보유하면 막힌다 (min_count가 없으면 통과했을 상황)', async () => {
+    state.badges = [badge()]
+    own(ownedBadge({ id: 'OWN-streak', name: '연속의 증표', rarity: 'common', family_key: 'run:streak' }))
+    oneRun()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+  })
+
+  it('두 계열을 모두 보유하면 통과한다', async () => {
+    state.badges = [badge()]
+    own(
+      ownedBadge({ id: 'OWN-streak', name: '연속의 증표', rarity: 'common', family_key: 'run:streak' }),
+      ownedBadge({ id: 'OWN-elev', name: '오르막의 증표', rarity: 'common', family_key: 'run:elevation' })
+    )
+    oneRun()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['EPIC-3'])
+  })
+})
+
+describe('교차 게이트 — 자동 통과 경로를 fail-closed로 막는다', () => {
+  it('자기 계열을 교차 대상으로 지정하면 발급되지 않는다 (조건이 겹쳐 게이트가 무의미해진다)', async () => {
+    state.badges = [
+      makeBadge({
+        id: 'SELF-1',
+        name: '자기참조',
+        rarity: 'epic',
+        family_key: 'run:speed',
+        condition_json: {
+          activity_type: 'running',
+          total_count: 1,
+          cross_in_axis: { family_keys: ['run:speed'] },
+        },
+      }),
+    ]
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'SELF-1')?.reason).toBe('교차 게이트 설정 오류')
+  })
+
+  it('family_keys가 없는 게이트도 통과가 아니라 차단이다', async () => {
+    state.badges = [
+      makeBadge({
+        id: 'BROKEN-1',
+        name: '깨진 게이트',
+        rarity: 'epic',
+        family_key: 'run:speed',
+        // 시딩·수기 편집 사고로 형태가 깨진 값. 「검사할 게 없으니 통과」로 두면 게이트가 사라진다
+        condition_json: { activity_type: 'running', total_count: 1, cross_in_axis: {} } as never,
+      }),
+    ]
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'BROKEN-1')?.reason).toBe('교차 게이트 설정 오류')
+  })
+
+  it('종목이 다른 계열은 교차로 인정하지 않는다 (교차는 종목 경계를 넘지 않는다)', async () => {
+    state.badges = [
+      makeBadge({
+        id: 'EPIC-4',
+        name: '종목 경계',
+        rarity: 'epic',
+        family_key: 'run:speed',
+        activity_types: ['running'],
+        condition_json: {
+          activity_type: 'running',
+          total_count: 1,
+          cross_in_axis: { family_keys: ['ride:tempo'] },
+        },
+      }),
+    ]
+    own(
+      ownedBadge({
+        id: 'OWN-ride',
+        name: '자전거 템포',
+        rarity: 'rare',
+        family_key: 'ride:tempo',
+        activity_types: ['cycling'],
+      })
+    )
+    oneRun()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+  })
+})
+
+describe('선행 배지 게이트 — 이름은 등급형만 연다 (B-6)', () => {
+  const gated = () =>
+    makeBadge({
+      id: 'GATED-1',
+      name: '스피드 러너',
+      rarity: 'rare',
+      family_key: 'run:speed',
+      condition_json: {
+        activity_type: 'running',
+        total_count: 1,
+        prerequisite_badge_names: ['무한 러너'],
+      },
+    })
+
+  it('동명 무한레벨형(Lv.1) 보유는 게이트를 열지 않는다', async () => {
+    state.badges = [gated()]
+    // makeLevelBadge의 기본 이름이 '무한 러너'다 — 「레벨형은 등급형과 이름을 공유할 수 있다」가
+    // v5의 설계 전제이므로 이 상황은 카탈로그 오류가 아니라 정상이다.
+    own(makeLevelBadge(1, 'run:infinite', { condition_json: {} }))
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'GATED-1')?.reason).toBe('선행 배지 미보유')
+  })
+
+  it('동명 반복형(Common) 보유도 게이트를 열지 않는다', async () => {
+    state.badges = [gated()]
+    own(
+      ownedBadge({
+        id: 'OWN-repeat',
+        name: '무한 러너',
+        rarity: 'common',
+        family_key: 'run:repeat',
+        condition_json: { activity_type: 'running', duration_minutes: 60, repeat_count: 1 },
+      })
+    )
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'GATED-1')?.reason).toBe('선행 배지 미보유')
+  })
+
+  it('동명 등급형을 보유하면 열린다 (대비군 — 기존 동작 회귀 방지)', async () => {
+    state.badges = [gated()]
+    own(ownedBadge({ id: 'OWN-graded', name: '무한 러너', rarity: 'common', family_key: 'run:other' }))
+    oneRun()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['GATED-1'])
+  })
+})
+
+describe('선행 배지 게이트 — OR 배열 동작은 그대로다 (기존 회귀)', () => {
+  const gated = () =>
+    makeBadge({
+      id: 'OR-1',
+      name: 'OR 게이트',
+      rarity: 'rare',
+      condition_json: {
+        activity_type: 'running',
+        total_count: 1,
+        prerequisite_badge_names: ['첫 숨결', '리듬의 발견'],
+      },
+    })
+
+  it('둘 다 없으면 막히고 사유·요구 문자열이 그대로다', async () => {
+    state.badges = [gated()]
+    oneRun()
+
+    const { missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    const m = missed.find((x) => x.id === 'OR-1')
+    expect(m?.reason).toBe('선행 배지 미보유')
+    expect(m?.actual).toBe('없음')
+    expect(m?.required).toBe('첫 숨결 또는 리듬의 발견')
+  })
+
+  it('둘 중 하나만 보유해도 통과한다', async () => {
+    state.badges = [gated()]
+    own(ownedBadge({ id: 'OWN-2', name: '리듬의 발견', rarity: 'common', family_key: 'run:rhythm' }))
+    oneRun()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['OR-1'])
+  })
+})
+
+describe('게이트 키가 붙은 반복형의 회차가 0이 되지 않는다 (B-10)', () => {
+  /** 60분 러닝 3건 */
+  function threeLongRuns() {
+    state.storedActivities = [101, 102, 103].map((id, i) => ({
+      normalized: makeLongRun(id, `2026-04-1${i}T05:00:00Z`),
+      start_date: `2026-04-1${i}T05:00:00Z`,
+    }))
+  }
+
+  it('교차 게이트가 붙어도 회차는 정상적으로 세어진다', async () => {
+    // 회차 술어(collectRepeatOccurrences)의 fail-closed 가드가 게이트 키를 「모르는 키」로
+    // 취급하면 회차가 통째로 0이 되어 이 배지는 영원히 발급되지 않는다.
+    state.badges = [
+      makeBadge({
+        id: 'REP-GATE',
+        name: '게이트 반복형',
+        rarity: 'rare',
+        family_key: 'run:repeat',
+        condition_json: {
+          activity_type: 'running',
+          duration_minutes: 60,
+          repeat_count: 3,
+          cross_in_axis: { family_keys: ['run:tempo'] },
+        },
+      }),
+    ]
+    own(ownedBadge({ id: 'OWN-tempo', name: '템포 러너', rarity: 'common', family_key: 'run:tempo' }))
+    threeLongRuns()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+    expect(earned.map((b) => b.id)).toEqual(['REP-GATE'])
+    expect(state.inserts.find((p) => p.badge_id === 'REP-GATE')?.earn_count).toBe(3)
+  })
+
+  it('prerequisite_badge_names가 붙은 반복형도 마찬가지다 (B1 시점의 잠복 결함)', async () => {
+    state.badges = [
+      makeBadge({
+        id: 'REP-PREREQ',
+        name: '선행 반복형',
+        rarity: 'rare',
+        family_key: 'run:repeat',
+        condition_json: {
+          activity_type: 'running',
+          duration_minutes: 60,
+          repeat_count: 3,
+          prerequisite_badge_names: ['템포 러너'],
+        },
+      }),
+    ]
+    own(ownedBadge({ id: 'OWN-tempo', name: '템포 러너', rarity: 'common', family_key: 'run:tempo' }))
+    threeLongRuns()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+    expect(earned.map((b) => b.id)).toEqual(['REP-PREREQ'])
+    expect(state.inserts.find((p) => p.badge_id === 'REP-PREREQ')?.earn_count).toBe(3)
+  })
+
+  it('게이트가 막히면 회차와 무관하게 발급되지 않는다', async () => {
+    state.badges = [
+      makeBadge({
+        id: 'REP-BLOCK',
+        name: '막힌 반복형',
+        rarity: 'rare',
+        family_key: 'run:repeat',
+        condition_json: {
+          activity_type: 'running',
+          duration_minutes: 60,
+          repeat_count: 3,
+          cross_in_axis: { family_keys: ['run:tempo'] },
+        },
+      }),
+    ]
+    threeLongRuns()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { triggeredBy: 'test' })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'REP-BLOCK')?.reason).toBe('축 내 교차 미충족')
+  })
+})
