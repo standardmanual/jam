@@ -12,7 +12,11 @@
 --    132·133이 4종을 더해 현재 49종이며, 134가 그 배열과 계열 정합성 트리거를 마지막으로 다시 썼다.
 --
 -- ⚠️ `image_url`을 컬럼 목록에서 뺐다 — v5 배지 이미지 630종은 아직 제작되지 않았다
---    (마스터 티켓 잔여 이슈). 019_seed_worldview.sql이 아이템 배지 900종을 넣을 때와 같은 방식이다.
+--    (마스터 티켓 잔여 이슈). **이 630행이 image_url이 NULL인 첫 배지가 된다** —
+--    2026-09-05 프로덕션 실측 결과 현재 image_url이 NULL인 배지는 0건이다. INSERT가
+--    통과하는 근거는 「019_seed_worldview 선례」가 아니라 018에서 컬럼이 nullable로
+--    바뀐 것이다 — 게이트 리뷰 실측으로 근거를 정정했다. 화면은 안전하다: SafeImage가
+--    `if (!value || failed) return fallback`으로 null을 흡수하고 배지 경로가 전부 쓴다.
 --    실행 전에 확인할 것:
 --      SELECT is_nullable, column_default FROM information_schema.columns
 --       WHERE table_name='badges' AND column_name='image_url';
