@@ -17,6 +17,7 @@
  */
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, DayOfWeek } from '@/types/database'
+import { getConditionField } from './conditionRegistry'
 
 // ── 축1 게이트 (걷기 전용 "진짜 걷기" 판정) ────────────────────────────────
 // 걷기(activity_type='walking') 활동이 이 네 값을 모두 통과해야 어떤 걷기 배지
@@ -172,7 +173,19 @@ export function restConditionKeysIn(condition: BadgeCondition | null | undefined
 export type RestEvaluation =
   | { kind: 'none' }
   | { kind: 'pass'; actual: string[]; required: string[]; resumeActivity: NormalizedActivity }
-  | { kind: 'fail'; reason: string; actual: string; required: string }
+  | {
+      kind: 'fail'
+      reason: string
+      actual: string
+      required: string
+      /**
+       * 현재 달성한 최대 공백(일). 티켓 20260905_0031이 `kind: 'rest'` 진행 축을 만들 때
+       * 필요한 값이라 문자열(`actual`)에만 담지 않고 구조로도 싣는다 — 안 그러면 0031이
+       * 이 헬퍼 내부를 다시 파헤치거나 문자열을 파싱하게 된다(B3 개선 리뷰).
+       * 조건 형태 오류처럼 «측정 자체가 불가능»한 경우에는 없다.
+       */
+      bestDays?: number
+    }
 
 /** 인접한 두 활동일 사이의 한 구간 */
 type RestInterval = {
@@ -275,11 +288,16 @@ function isPositiveDays(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 1
 }
 
-const REST_KEY_LABEL: Record<RestConditionKey, string> = {
-  rest_after_streak: '연속 활동 후 휴식일',
-  rest_after_long: '장거리 활동 후 휴식일',
-  return_gap_days: '복귀 전 휴식일',
-  interval_days: '활동 간격',
+/**
+ * 휴식 조건의 표시 라벨 — **`conditionRegistry`가 단일 출처다.**
+ *
+ * 여기에 문자열을 다시 적으면 어드민에서 라벨을 다듬었을 때 엔진 사유 문구만 옛 이름으로
+ * 남는다(레지스트리는 `badge_metric_labels` 시드의 출처이기도 하다). 이 저장소는
+ * `RARITY_LABEL`이 5곳에 복제돼 누락 사고를 낸 전례가 있다(티켓 20260813_003·20260905_0027).
+ * 레지스트리에 없으면 키를 그대로 쓴다 — 조용히 빈 문자열이 되지 않게.
+ */
+function restKeyLabel(key: RestConditionKey): string {
+  return getConditionField(key)?.label ?? key
 }
 
 const REST_KEY_SHORTFALL_REASON: Record<RestConditionKey, string> = {
@@ -310,7 +328,7 @@ export function evaluateRestConditions(
       return {
         kind: 'fail',
         reason: '휴식 조건 형태 오류',
-        actual: `${REST_KEY_LABEL[key]}: ${String(condition[key])}`,
+        actual: `${restKeyLabel(key)}: ${String(condition[key])}`,
         required: '1 이상의 수',
       }
     }
@@ -328,6 +346,14 @@ export function evaluateRestConditions(
 
   // ── ④ 창 안의 인접 활동 — 없으면 공백을 **계산하지 않는다**(B-7).
   //    「데이터 없음」을 「쉬었음」으로 읽지 않는 지점이 여기다.
+  // 앵커가 없으면(조회 실패 폴백) 이력 전체 위에서 센다 — **다른 조건과 같은 태도다.**
+  //
+  // 「휴식만 앵커 부재를 판정 불가로 둬야 한다」는 안을 검토했다가 채택하지 않았다.
+  // 근거: 이 블록은 «인접한 두 활동 사이의 닫힌 공백»만 세므로 **양 끝이 전부 실제 활동**이고,
+  // 창이 넓어져도 «유령 공백»이 생기지 않는다 — 넓어질 때 들어오는 건 유저가 실제로 쉰
+  // 가입 이전 공백이며, 그건 휴식 고유의 오판이 아니라 「과거 이력 배제」라는 횡단 결정의
+  // 문제다(앵커가 그 결정의 유일한 수단이다). 여기서만 다르게 폴백하면 일시적 DB 오류가
+  // 「휴식 배지만 사라졌다」로 보이고, `getSignupAnchorDate`가 명시한 폴백 태도와도 어긋난다.
   const intervals = buildRestIntervals(restPool(condition, activities, options?.anchorDate))
   if (intervals.length === 0) {
     return {
@@ -373,10 +399,11 @@ export function evaluateRestConditions(
         reason: REST_KEY_SHORTFALL_REASON[key],
         actual: `${best}일`,
         required: describeRestRequirement(key, condition),
+        bestDays: best,
       }
     }
     if (!triggerInterval || hit.resume.startDate > triggerInterval.resume.startDate) triggerInterval = hit
-    actual.push(`${REST_KEY_LABEL[key]}: ${measured(hit)}일`)
+    actual.push(`${restKeyLabel(key)}: ${measured(hit)}일`)
     required.push(describeRestRequirement(key, condition))
   }
 

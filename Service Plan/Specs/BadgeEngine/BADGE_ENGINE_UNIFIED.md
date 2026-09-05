@@ -56,7 +56,7 @@ Strava 싱크
 
 | 정규화 필드 | Strava 필드 | 변환 | 대응 조건 키 |
 |---|---|---|---|
-| `elapsedTimeSec` | `elapsed_time` | 없음(초) | — (휴식 시간 = `elapsedTimeSec - movingTimeSec`) |
+| `elapsedTimeSec` | `elapsed_time` | 없음(초) | 대응 조건 키 없음. **활동 1건 안의 «정지 시간»**(= `elapsedTimeSec - movingTimeSec`)을 계산할 수 있으나 §2.16의 「휴식」(날 단위 공백)과는 **다른 축**이다 — 한 단어를 두 뜻으로 쓰지 않도록 쓰게 되면 이름부터 다르게 만들 것 |
 | `maxSpeedKmh` | `max_speed` | **m/s → km/h** | `max_speed_kmh` |
 | `maxElevationM` | `elev_high` | 없음(m) | `max_elevation_m` |
 | `avgHeartrateBpm` | `average_heartrate` | 없음(bpm) | `avg_heartrate_bpm` |
