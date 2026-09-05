@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Children } from 'react';
 
 /**
  * BadgeStatusSection — 배지 트리의 상태 섹션 하나. 티켓 20260905_0036.
@@ -53,6 +53,11 @@ export function BadgeStatusSection({
 }) {
   const reactId = React.useId();
   const bodyId = `ds-status-section-body-${reactId}`;
+
+  // ⚠️ `children ?? emptyText`로 쓰면 안 된다. 호출부가 `{list.map(...)}`로 넘길 때
+  // 빈 배열 `[]`은 nullish가 아니라서 emptyText가 영원히 안 뜨고 빈 영역만 남는다.
+  // 0037이 「다음 목표」를 map으로 그릴 자리라 실제로 밟게 되는 경로다(개선 리뷰 지적).
+  const hasChildren = Children.count(children) > 0
   const headerId = `ds-status-section-header-${reactId}`;
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
   const isControlled = open != null;
@@ -101,7 +106,9 @@ export function BadgeStatusSection({
           (display:none으로 숨기면 이펙트가 그대로 돌아 "펼친 섹션만 계산"이 성립하지 않는다) */}
       <div id={bodyId} role="region" aria-labelledby={headerId} hidden={!isOpen}>
         {isOpen &&
-          (children ?? (
+          (hasChildren ? (
+            children
+          ) : (
             emptyText && (
               <p style={{ margin: 0, padding: 'var(--spacing-12) 0', fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)' }}>
                 {emptyText}
