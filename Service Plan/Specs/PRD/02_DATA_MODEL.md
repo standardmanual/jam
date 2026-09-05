@@ -85,7 +85,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 `normalized`의 구조는 `NormalizedActivity`(`src/types/strava.ts`)다. 2026-09-05부터 v5 확장
 6필드(심박·파워·케이던스·최고속도·최고도달고도·경과시간)가 함께 저장되며, **측정값이 없으면
 키 자체가 없다**(`null`이 아니다 — 티켓 20260905_0029). 컬럼 변경은 없다(jsonb).
-`processed_via = 'manual_backfill'`은 그 확장 필드를 소급 채운 행을 뜻한다
+확장 필드를 소급 채운 행은 `normalized.extendedBackfilledAt`(ISO 문자열)로 표시한다 — **`processed_via`는 덮어쓰지 않는다.** 그 값은 «이 행이 어떤 경로로 들어왔는가»이지 «나중에 무엇으로 채워졌는가»가 아니며, 덮어쓰면 유입 경로 이력이 사라진다
 (`scripts/backfill-strava-extended-fields.ts`). `'reconcile'`은 2026-08-10 이전 과거 데이터에만
 있고 신규 기록은 없다.
 

@@ -526,7 +526,7 @@ export const CONDITION_FIELDS = [
     input: 'text',
     direction: null,
     // ⚠️ 스키마에는 있으나 badge-engine에 필터 구현이 없다(CONDITION_JSON_SPEC §2.1).
-    //    그럼에도 `true`로 둔다 — 이 티켓(20260905_0028)은 «기존 25개 필드의 현행 동작을
+    //    그럼에도 통과시킨다 — 이 티켓(20260905_0028)은 «기존 25개 필드의 현행 동작을
     //    한 톨도 바꾸지 않는다»가 전제이고, 현재 카탈로그에 route를 쓰는 배지가 0건이라
     //    당장 오발급은 없다. 사용 시작 전에 평가 구현 또는 `false` 전환이 필요하다.
     evaluation: 'pending',
@@ -595,7 +595,7 @@ export const CONDITION_FIELDS = [
 
   // ── v5 신규 20종 — 선언만 하고 평가는 티켓 20260905_0030 ────────────────
   //
-  // 전부 `evaluated: false`다. 이 필드가 하나라도 든 조건은 fail-closed로 막히므로
+  // 전부 `evaluation: 'pending'`이다. 이 필드가 하나라도 든 조건은 fail-closed로 막히므로
   // «발급되지 않는 것»이 기본값이다. 어드민 조건 빌더 폼도 아직 입력 UI를 주지 않는다
   // (티켓 20260905_0032) — 값이 있으면 `buildConditionJsonFromFields`가 원본 그대로 보존한다.
 
