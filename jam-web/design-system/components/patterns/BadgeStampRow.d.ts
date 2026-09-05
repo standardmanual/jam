@@ -10,9 +10,8 @@ export interface BadgeStampRowProps {
   count?: number | null;
   /** 이름 아래 한 줄 보조 문장(완성 문자열) */
   caption?: string | null;
-  /** 획득 여부. false면 이름·칩·카운터에서 색을 거두고 썸네일을 실루엣으로 둔다 */
+  /** 획득 여부. false면 이름·칩·카운터에서 색을 거두고 썸네일을 그레이로 둔다 */
   earned?: boolean;
-  /** 썸네일 실루엣 강제 지정. 기본은 `!earned` */
   /** 배지 이미지. 미획득이라 grayscale(1)로 그린다 */
   imageUrl?: string | null;
   /** 이미지 대체 텍스트. 생략하면 name */

@@ -3,7 +3,7 @@ import { crossGateKeysIn } from '@/lib/badge-engine/crossGate'
 import { hasUnfulfilledGate } from '@/lib/badgeTreeConditionStatus'
 import type { BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
-import type { BadgeTreeLock } from '@/lib/badgeTree'
+import type { BadgeTreeGateGroup } from '@/lib/badgeTree'
 
 /**
  * 배지 트리(`/badges/tree`) "조건 충족" 판정 — 서버 전용. 티켓 20260903_2329 (1차: 구조 전환).
@@ -19,13 +19,13 @@ import type { BadgeTreeLock } from '@/lib/badgeTree'
 
 /** 게이트가 아직 안 열린(=조건충족/게이트잠김 판정이 필요한) 미획득 배지 id만 추린다. */
 export function collectConditionCheckTargets(
-  stagesById: Iterable<{ id: string; locks: BadgeTreeLock[] }>,
+  stagesById: Iterable<{ id: string; gateGroups: BadgeTreeGateGroup[] }>,
   earnedBadgeIds: Set<string>
 ): string[] {
   const ids: string[] = []
   for (const stage of stagesById) {
     if (earnedBadgeIds.has(stage.id)) continue
-    if (hasUnfulfilledGate(stage.locks)) ids.push(stage.id)
+    if (hasUnfulfilledGate(stage.gateGroups)) ids.push(stage.id)
   }
   return ids
 }

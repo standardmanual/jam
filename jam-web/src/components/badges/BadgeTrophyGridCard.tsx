@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRarity } from '@/types/database'
@@ -11,7 +12,10 @@ import type { FrontierCaption } from '@/lib/badgeProgressText'
 export interface BadgeTrophyGridCardProps {
   name: string
   imageUrl?: string | null
-  rarity: BadgeRarity
+  /** 무한레벨형은 등급이 없다(v5, 마이그레이션 130) — 그때는 `level`로 Lv.N 칩을 그린다 */
+  rarity: BadgeRarity | null
+  /** 무한레벨형의 레벨. `rarity`와 정확히 배타적이다 */
+  level?: number | null
   href: string
   /** false = 썸네일 흑백+반투명 처리 (미획득 배지). */
   earned: boolean
@@ -55,7 +59,7 @@ const CARD_STYLE = {
  * 유형(누적·기록·주기·2축·다중) 모두 "병목 축 current/target 한 줄"로 kind-무관하게
  * 표현되므로 이 컴포넌트는 kind를 전혀 모른다(`formatGridProgressLine()` 참고).
  */
-export default function BadgeTrophyGridCard({ name, imageUrl, rarity, href, earned, progress = null }: BadgeTrophyGridCardProps) {
+export default function BadgeTrophyGridCard({ name, imageUrl, rarity, level = null, href, earned, progress = null }: BadgeTrophyGridCardProps) {
   const thumbnailCls = [
     'w-[90px] h-[90px] rounded-[var(--radius-card)] overflow-hidden',
     'flex items-center justify-center',
@@ -110,7 +114,9 @@ export default function BadgeTrophyGridCard({ name, imageUrl, rarity, href, earn
             />
           </>
         )}
-        <RarityBadge rarity={rarity} />
+        {/* v5 무한레벨형은 rarity가 NULL이라 등급 칩을 그릴 수 없다 — Lv.N 칩으로 대체한다
+         * (UnlockConditionSheetContent·BadgeLevelGauge와 같은 분기). */}
+        {level != null ? <BadgeLevelChip level={level} /> : <RarityBadge rarity={rarity} />}
       </div>
     </Link>
   )

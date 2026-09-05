@@ -6,7 +6,7 @@
  * (티켓 20260813_003의 누락 3곳이 이 경로로 발생했다 — 티켓 20260831_1115).
  *
  * **`RARITY_LABEL`은 서비스 코드(`src/`)의 유일한 등급 라벨 정의다.** 티켓 20260905_0027에서
- * `badgeProgressText.ts`·`BadgeFamilyRailItem.tsx`의 중복 재선언을 여기로 흡수했다 —
+ * `badgeProgressText.ts`·`BadgeFamilyRow.tsx`의 중복 재선언을 여기로 흡수했다 —
  * v5의 nullable 전환으로 «등급 칩 대신 Lv.N 칩» 분기가 늘어나기 때문에 중복을 남기면
  * 20260813_003과 같은 누락 사고가 반복된다.
  * ⚠️ MODULAR(`design-system/`)은 서비스 코드를 import할 수 없어(자립형 카탈로그) 같은 파일을

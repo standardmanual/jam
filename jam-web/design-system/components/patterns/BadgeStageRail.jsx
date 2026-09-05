@@ -42,6 +42,12 @@ import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
  *   - **4눈금 상한을 코드로 강제** — 등급은 4단계뿐인데 v5 무한레벨형(Lv.1~8+)을 실수로
  *     이 레일에 밀어 넣으면 화면이 조용히 망가진다. 개발 빌드에서 즉시 에러를 던진다.
  *
+ * v3에서 함께 들어온 것(티켓 20260905_0037):
+ *   - **프로덕션에서도 상한을 자른다**(`visibleStops`). 위 throw는 개발 빌드 전용이고,
+ *     `badgeTree.ts`의 등급 4회 루프가 하던 구조적 보장을 0037이 걷어냈다.
+ *   - `stop.gates[].met` — 이미 통과한 문은 체크+라임으로 그린다. 없으면 미션을 이미 깬
+ *     상태에서도 자물쇠 2개가 똑같이 그려져 「무엇이 남았나」가 안 읽혔다.
+ *
  * 인터랙션: 눈금 하나는 상태에 따라 링크(embedded 이동, earned/not-reached) 또는
  * 버튼(잠금 해제 조건 시트 오픈, ready/locked) 둘 중 하나다 — 앵커 안에 버튼을 중첩하지
  * 않기 위한 설계. "레일에는 지금 막는 문 하나만 그린다" — 마지막 획득 눈금 다음(frontier)이
@@ -203,8 +209,9 @@ export function BadgeStageRail({
   /**
    * [{ id, rarity, imageUrl, description, status, href, gates? }] — Common→Mystic 순,
    * 존재하는 등급만. **최대 4개**(등급이 4단계뿐이다 — 아래 상한 검사 참고).
-   * `gates`는 그 눈금 앞을 막고 있는 문의 종류 배열: `[{ kind: 'mission' | 'cross' }]`.
+   * `gates`는 그 눈금 앞을 막고 있는 문의 배열: `[{ kind: 'mission' | 'cross', met?: boolean }]`.
    * 넘기지 않으면 v1과 동일하게 종류 없는 자물쇠 하나만 그린다.
+   * 상한을 넘긴 `stops`는 프로덕션에서도 4개로 잘린다(개발 빌드는 그 전에 throw).
    */
   stops,
   /**
@@ -265,12 +272,18 @@ export function BadgeStageRail({
     );
   }
 
-  const frontierIndex = stops.findIndex((s) => s.status !== 'earned');
-  const earnedCount = stops.filter((s) => s.status === 'earned').length;
+  // **프로덕션 방어선**(티켓 20260905_0037). 위 throw는 개발 빌드 전용이라 프로덕션에서는
+  // 상한을 넘긴 값이 그대로 통과해 눈금이 카드를 뚫는다(이 컨테이너에는 overflow도 flexWrap도
+  // 없다). 예전엔 `badgeTree.ts`의 RARITY_ORDER 4회 루프가 상한을 «구조적으로» 보장했는데
+  // 0037이 그 루프를 걷어냈다 — 여기서 잘라 어떤 호출부가 와도 레이아웃이 깨지지 않게 한다.
+  const visibleStops = stops.length > MAX_STOPS ? stops.slice(0, MAX_STOPS) : stops;
+
+  const frontierIndex = visibleStops.findIndex((s) => s.status !== 'earned');
+  const earnedCount = visibleStops.filter((s) => s.status === 'earned').length;
   const summarySentence =
     nextRarityLabel == null
       ? `${familyName}, 모두 획득했어요.`
-      : `${familyName}, ${stops.length}단계 중 ${earnedCount}단계 획득. 다음 단계 ${nextRarityLabel}.`;
+      : `${familyName}, ${visibleStops.length}단계 중 ${earnedCount}단계 획득. 다음 단계 ${nextRarityLabel}.`;
 
   return (
     <div
@@ -320,7 +333,7 @@ export function BadgeStageRail({
       </button>
 
       <div role="group" aria-label={summarySentence} style={{ display: 'flex', alignItems: 'flex-start', marginTop: 'var(--spacing-16)' }}>
-        {stops.map((stop, i) => {
+        {visibleStops.map((stop, i) => {
           const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
           // 등급이 없는 배지(무한레벨형)는 rarityLabel이 null이다. 템플릿 리터럴에 그대로
           // 끼우면 "동네 산책러 null, 획득"이 aria-label과 img alt로 나간다 — 조각을 뺀다
@@ -339,10 +352,14 @@ export function BadgeStageRail({
           const isGateBefore = i === frontierIndex && i > 0 && (stop.status === 'locked' || stop.status === 'ready');
           // 게이트 종류(v2). 최대 2개만 그린다 — 자리가 44px이고, 그보다 많은 문을 한 자리에
           // 늘어놓으면 "어디서 막혔는지"가 오히려 안 읽힌다(원 검토문서 §04와 같은 이유).
-          const gateKinds = (stop.gates ?? []).map((g) => g.kind).slice(0, 2);
+          // `met`(0037): 문이 둘일 때 「하나는 이미 열렸다」를 색으로 가른다 — 없으면 미션을
+          // 이미 깬 상태에서도 자물쇠 2개가 똑같이 그려져 무엇이 남았는지 안 읽혔다.
+          const gates = (stop.gates ?? []).slice(0, 2);
           const gateAriaLabel =
-            gateKinds.length > 0
-              ? `${stopName} 잠금 해제 조건 보기. ${gateKinds.map((k) => GATE_KIND_LABEL[k] ?? k).join(', ')}`
+            gates.length > 0
+              ? `${stopName} 잠금 해제 조건 보기. ${gates
+                  .map((g) => `${GATE_KIND_LABEL[g.kind] ?? g.kind} ${g.met ? '통과' : '대기'}`)
+                  .join(', ')}`
               : `${stopName} 잠금 해제 조건 보기`;
           // 프런티어 앞(게이트 없을 때)만 비례 채움 대상 — 그 앞(모두 획득 구간)은 항상 꽉
           // 채우고, 뒤(아직 도달 안 한 구간)는 항상 idle이다(§05: "다음 목표" 한 곳에만 강조).
@@ -386,27 +403,33 @@ export function BadgeStageRail({
                       style={{
                         // 자물쇠 2개(미션 + 교차)까지 들어가는 자리. 종류를 안 넘기면(v1 호출부)
                         // 예전처럼 원형 자물쇠 하나만 그린다.
-                        height: 20, minWidth: 20, padding: gateKinds.length > 1 ? '0 3px' : 0,
-                        borderRadius: gateKinds.length > 1 ? 'var(--radius-pill)' : '50%',
+                        height: 20, minWidth: 20, padding: gates.length > 1 ? '0 3px' : 0,
+                        borderRadius: gates.length > 1 ? 'var(--radius-pill)' : '50%',
                         background: 'var(--color-surface-elevated)',
                         boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
                         color: 'var(--color-text-secondary)',
                       }}
                     >
-                      {gateKinds.length === 0 ? (
+                      {gates.length === 0 ? (
                         <LockGlyph size={10} />
                       ) : (
-                        gateKinds.map((kind, gi) =>
-                          kind === 'mission' ? (
+                        gates.map((gate, gi) =>
+                          // 이미 통과한 문은 **체크 + 라임**이다 — 형태까지 바꿔 색만으로
+                          // 구분하지 않는다(미션 자물쇠 대비가 4.18:1이라 색 하나에 기댈 수 없다).
+                          gate.met ? (
+                            <span key={`${gate.kind}-${gi}`} style={{ display: 'flex', color: 'var(--status-done-solid)' }}>
+                              <CheckGlyph size={10} />
+                            </span>
+                          ) : gate.kind === 'mission' ? (
                             // 미션 게이트만 --color-primary(4.18:1). 텍스트 기준에는 못 미치지만
                             // 아이콘이라 비텍스트 기준 3:1은 통과하고, 형태(자물쇠 vs 별)로도
                             // 교차 게이트와 갈라 둬서 색 하나에만 기대지 않는다.
-                            <span key={`${kind}-${gi}`} style={{ display: 'flex', color: 'var(--color-primary)' }}>
+                            <span key={`${gate.kind}-${gi}`} style={{ display: 'flex', color: 'var(--color-primary)' }}>
                               <LockGlyph size={10} />
                             </span>
                           ) : (
-                            <span key={`${kind}-${gi}`} style={{ display: 'flex', color: 'var(--color-text-secondary)' }}>
+                            <span key={`${gate.kind}-${gi}`} style={{ display: 'flex', color: 'var(--color-text-secondary)' }}>
                               <StarGlyph size={10} />
                             </span>
                           )
@@ -479,7 +502,7 @@ export function BadgeStageRail({
 
       {expanded && (
         <div style={{ marginTop: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
-          {stops.map((stop) => {
+          {visibleStops.map((stop) => {
             const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
             const stopName = [familyName, rarityLabel].filter(Boolean).join(' ');
             const canOpenLock = stop.status === 'ready' || stop.status === 'locked';

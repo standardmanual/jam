@@ -550,3 +550,41 @@ export const MaxFourStopsEnforced: Story = {
     expect(text).toContain('BadgeLevelGauge');
   },
 };
+
+/**
+ * v3 — 게이트가 둘인데 **하나는 이미 통과**했다 (티켓 20260905_0037).
+ *
+ * `stop.gates`에 충족 여부가 없던 동안에는 미션을 이미 깬 상태에서도 자물쇠 2개가 똑같이
+ * 그려져 「무엇이 남았나」가 안 읽혔다. 통과한 문은 체크+라임으로 그려 색만이 아니라
+ * **형태로도** 가른다.
+ */
+export const GatePartiallyMet: Story = {
+  name: 'v3 — 게이트 2개 중 1개 통과',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="한파의 순례자"
+          nextRarityLabel="Mystic"
+          stops={[
+            { id: 'c', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/c' },
+            { id: 'r', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/r' },
+            { id: 'e', rarity: 'epic', imageUrl: WALK_ICON, status: 'earned', href: '/badges/e' },
+            {
+              id: 'm', rarity: 'mystic', imageUrl: WALK_ICON, status: 'locked', href: '/badges/m',
+              gates: [{ kind: 'mission', met: true }, { kind: 'cross', met: false }],
+            },
+          ]}
+          frontierProgress={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const labels = Array.from(canvasElement.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') ?? '');
+    // 통과/대기가 aria-label로도 갈린다 — 색·형태에만 기대지 않는다.
+    expect(labels.some((l) => l.includes('미션 통과') && l.includes('선행 배지 대기'))).toBe(true);
+  },
+};

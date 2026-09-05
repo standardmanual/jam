@@ -165,3 +165,56 @@ export const GrayscaleBadgeImage: Story = {
     expect(imgs.every((i) => getComputedStyle(i).filter.includes('grayscale'))).toBe(true);
   },
 };
+
+/**
+ * v5 다단계 게이트 — 「미션 **그리고** (배지 A **또는** 배지 B)」 (티켓 20260905_0037).
+ *
+ * 평면 `relation` 하나는 항목 **전체**에 걸리는 값이라 이 조합을 표현할 수 없었다.
+ * `groups`는 **그룹 안은 `relation`, 그룹 사이는 언제나 AND**다.
+ * 각 그룹의 `met`이 「1단 통과, 2단 대기」를 그대로 드러낸다 — 예전에는 전부 미충족
+ * 항목만 넘어온다는 전제라 통과한 단을 표시할 방법 자체가 없었다.
+ */
+export const MultiStageGate: Story = {
+  name: 'v5 — groups(미션 AND (배지 A OR 배지 B)) · 1단 통과',
+  render: () => (
+    <Sheet>
+      <div data-testid="sheet">
+        <UnlockConditionSheetContent
+          badgeName="한파의 순례자"
+          rarity="mystic"
+          imageUrl={WALK_ICON}
+          conditionMet={false}
+          requirements={[]}
+          groups={[
+            {
+              relation: 'or',
+              met: true,
+              requirements: [
+                { kind: 'mission', name: '겨울 새벽 미션', href: '/missions/9', imageUrl: null, met: true },
+              ],
+            },
+            {
+              relation: 'or',
+              met: false,
+              requirements: [
+                { kind: 'badge', name: '동네 산책러', href: '/badges/1', imageUrl: WALK_ICON, note: '배지 · Rare 이상' },
+                { kind: 'badge', name: '밤의 보행자', href: '/badges/2', imageUrl: WALK_ICON },
+              ],
+            },
+          ]}
+        />
+      </div>
+    </Sheet>
+  ),
+  play: async ({ canvasElement }) => {
+    const text = canvasElement.querySelector('[data-testid="sheet"]')!.textContent ?? '';
+    // 그룹 사이는 AND(「그리고」), 그룹 안은 OR(「또는」) — 둘이 한 화면에 함께 있어야 조합이 읽힌다.
+    expect(text).toContain('그리고');
+    expect(text).toContain('또는');
+    // 「1단 통과, 2단 대기」
+    expect(text).toContain('통과');
+    expect(text).toContain('대기');
+    // 기본 부제는 「배지」다 — 예전 기본값(「배지 · 어느 등급이든 1개」)은 등급 없는 계열에서 거짓이 된다.
+    expect(text).not.toContain('어느 등급이든 1개');
+  },
+};

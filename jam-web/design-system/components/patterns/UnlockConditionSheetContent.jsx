@@ -10,12 +10,16 @@ import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
  * DS BottomSheet가 아니라 **서비스 `src/components/ui/BottomSheet.tsx`** 위에 얹는
  * 콘텐츠 전용 컴포넌트다 — 병존 구현 중 실제 화면은 서비스 쪽을 쓰기 때문(§1.6).
  *
- * 여기 넘어오는 `requirements`는 전부 "아직 충족 안 된" 항목만이다 — OR 관계인 선행
- * 배지 그룹은 하나라도 충족되면 게이트 자체가 열린 것으로 간주해(호출부의 게이트 판정)
- * 이 시트를 띄우지 않는다. 그래서 이 컴포넌트는 fulfilled 여부를 다시 갈라 보여주지
- * 않고, 단순히 목록 + 구분선만 그린다.
- *
  * 미션 진행도(0/1 등)·배지 실측값은 표시하지 않는다 — 진행 계산 모듈이 필요한 2차 범위.
+ *
+ * v5 다단계 대응(티켓 20260905_0037):
+ *   - `groups`를 넘기면 **그룹 안은 `relation`, 그룹 사이는 AND**로 그린다. 평면 `relation`
+ *     하나로는 「미션 AND (배지 A OR 배지 B)」를 표현할 수 없어, v5의 2단 교차 게이트가
+ *     걸린 배지에서 조건이 실제와 다르게 읽혔다.
+ *   - 항목·그룹의 `met`으로 「1단 통과, 2단 대기」를 드러낸다 — 예전에는 전부 미충족 항목만
+ *     넘어온다는 전제라 통과한 단을 표시할 방법이 없었다.
+ *   - 배지 항목 기본 부제를 「배지 · 어느 등급이든 1개」에서 **「배지」**로 낮췄다. 그 문장은
+ *     등급이 없는 계열을 가리킬 때 거짓이 된다 — 참인 문장은 호출부가 `note`로 넘긴다.
  *
  * v5 대응(티켓 20260905_0036) 세 가지:
  *   - 구분선 문구가 "또는" 하나로 **하드코딩**돼 있어 조건을 «모두» 채워야 하는 게이트를
@@ -41,17 +45,19 @@ function CheckGlyph({ size = 16 }) {
   );
 }
 
-function RequirementIcon({ imageUrl, kind }) {
+function RequirementIcon({ imageUrl, kind, met = false }) {
   // 배지 항목은 «아직 못 받은 배지»라 grayscale(1)로 그린다(2026-09-06 확정 — 외형을
   // 감추는 대신 어떤 배지인지 알아볼 수 있게 한다). 미션 썸네일은 미획득 개념이 아니라
-  // 원본 그대로 둔다.
-  const dim = kind === 'badge';
+  // 원본 그대로 둔다. **이미 받은 항목(met)은 원본 컬러**다 — 「받았다」와 「못 받았다」가
+  // 같은 그림이면 다단계 게이트에서 어느 단이 통과인지 안 읽힌다(0037).
+  const dim = kind === 'badge' && !met;
   return (
     <span
       style={{
         width: 36, height: 36, flex: 'none', borderRadius: 'var(--radius-sm)',
         background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: 'inset 0 0 0 1px var(--color-border-light)', overflow: 'hidden',
+        boxShadow: `inset 0 0 0 ${met ? 2 : 1}px ${met ? 'var(--status-done-solid)' : 'var(--color-border-light)'}`,
+        overflow: 'hidden',
         color: 'var(--color-text)',
       }}
     >
@@ -72,6 +78,58 @@ function RequirementIcon({ imageUrl, kind }) {
   );
 }
 
+/** 항목 한 줄. `met`이면 라임 링 + 체크로 «이미 통과»를 드러낸다(0037) */
+function RequirementRow({ req }) {
+  const met = req.met === true;
+  return (
+    <a
+      href={req.href}
+      style={{
+        display: 'flex', gap: 'var(--spacing-12)', alignItems: 'center', padding: 'var(--spacing-12)',
+        borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.055)',
+        boxShadow: met
+          ? 'inset 0 0 0 1px var(--status-done-solid)'
+          : 'inset 0 0 0 1px rgba(255,255,255,0.07)',
+        textDecoration: 'none', color: 'inherit',
+      }}
+    >
+      <RequirementIcon imageUrl={req.imageUrl} kind={req.kind} met={met} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.35, overflowWrap: 'anywhere', color: 'var(--color-text)' }}>
+          {req.name}
+        </p>
+        <p
+          style={{
+            margin: '3px 0 0', fontSize: 'var(--text-caption)',
+            color: met ? 'var(--status-done-solid)' : 'var(--color-text-secondary)',
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          {met && <CheckGlyph size={12} />}
+          {/* 기본값이 「배지」인 이유: 예전 기본값 「배지 · 어느 등급이든 1개」는 등급이 없는
+              계열을 가리킬 때 **조용히 거짓 문장**이 됐다. 참인 문장은 호출부가 note로 넘긴다
+              (티켓 20260905_0037, 0036 넘김 항목 4). */}
+          {met ? '이미 받았어요' : (req.note ?? (req.kind === 'mission' ? '미션' : '배지'))}
+        </p>
+      </div>
+      <span style={{ color: 'var(--color-text-secondary)', flex: 'none', display: 'flex' }}>
+        <ChevronRightGlyph size={16} />
+      </span>
+    </a>
+  );
+}
+
+/** 구분선 — 항목 사이(또는 그룹 사이)의 결합 관계를 한 단어로 */
+function RelationDivider({ label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0', fontSize: 'var(--text-caption)', fontWeight: 700, color: 'var(--color-text-secondary)', letterSpacing: '0.06em' }}>
+      <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+      {label}
+      <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+    </div>
+  );
+}
+
 export function UnlockConditionSheetContent({
   badgeName,
   rarity,
@@ -89,16 +147,28 @@ export function UnlockConditionSheetContent({
   /** true면 수치 조건은 이미 채운 상태 — "조건을 다 채웠어요" 확인 줄을 보여준다 */
   conditionMet = false,
   /**
-   * [{ kind: 'mission'|'badge', name, href, imageUrl, note? }] — 전부 미충족 항목만.
-   * `note`는 항목 부제를 덮어쓴다(기본값: 미션 → "미션", 배지 → "배지 · 어느 등급이든 1개").
+   * [{ kind: 'mission'|'badge', name, href, imageUrl, note?, met? }].
+   * `note`는 항목 부제를 덮어쓴다(기본값: 미션 → "미션", 배지 → "배지").
+   * `met`이 true면 그 항목은 이미 채운 것으로 그린다.
+   * `groups`를 넘기면 이 prop은 무시된다.
    */
   requirements,
   /** 항목 사이 관계. 'or'=하나만 채우면 됨(기본), 'and'=전부 채워야 함 */
   relation = 'or',
+  /**
+   * **다단계 게이트** — `[{ title?, relation?, met?, note?, requirements: [...] }]`.
+   * **그룹 안은 `relation`(기본 'or'), 그룹 사이는 언제나 AND**다. 그래서
+   * 「미션 AND (배지 A OR 배지 B)」가 표현된다 — 평면 `relation` 하나로는 못 담아
+   * 시트가 조건을 잘못 읽고 있었다(티켓 20260905_0037, 0036 넘김 항목 3).
+   * 그룹의 `met`이 「1단 통과, 2단 대기」를 그대로 드러낸다.
+   */
+  // `= null` 기본값은 JS 추론이 타입을 `null` 하나로 좁히므로 JSDoc으로 캐스팅한다.
+  groups = /** @type {Array<{ title?: string | null, relation?: 'or' | 'and', met?: boolean, note?: string | null, requirements: object[] }> | null} */ (null),
   className = '',
   style = {},
 }) {
   const relationLabel = relation === 'and' ? '그리고' : '또는';
+  const useGroups = Array.isArray(groups) && groups.length > 0;
   return (
     <div className={className} style={style}>
       <div style={{ display: 'flex', gap: 'var(--spacing-12)', alignItems: 'center' }}>
@@ -150,40 +220,44 @@ export function UnlockConditionSheetContent({
         잠금 해제 조건
       </h3>
 
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {requirements.map((req, i) => (
-          <React.Fragment key={req.href}>
-            {i > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0', fontSize: 'var(--text-caption)', fontWeight: 700, color: 'var(--color-text-secondary)', letterSpacing: '0.06em' }}>
-                <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-                {relationLabel}
-                <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-              </div>
-            )}
-            <a
-              href={req.href}
-              style={{
-                display: 'flex', gap: 'var(--spacing-12)', alignItems: 'center', padding: 'var(--spacing-12)',
-                borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.055)',
-                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.07)', textDecoration: 'none', color: 'inherit',
-              }}
-            >
-              <RequirementIcon imageUrl={req.imageUrl} kind={req.kind} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.35, overflowWrap: 'anywhere', color: 'var(--color-text)' }}>
-                  {req.name}
-                </p>
-                <p style={{ margin: '3px 0 0', fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)' }}>
-                  {req.note ?? (req.kind === 'mission' ? '미션' : '배지 · 어느 등급이든 1개')}
-                </p>
-              </div>
-              <span style={{ color: 'var(--color-text-secondary)', flex: 'none', display: 'flex' }}>
-                <ChevronRightGlyph size={16} />
-              </span>
-            </a>
-          </React.Fragment>
-        ))}
-      </div>
+      {useGroups ? (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {groups.map((group, gi) => {
+            const inner = group.relation === 'and' ? '그리고' : '또는';
+            const groupMet = group.met === true;
+            return (
+              <React.Fragment key={group.title ?? `group-${gi}`}>
+                {/* 그룹 사이는 **언제나 AND**다 — 그룹 자체가 「이것도 따로 채워야 한다」는 뜻이다 */}
+                {gi > 0 && <RelationDivider label="그리고" />}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {(group.title || group.note || groupMet) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 6px', fontSize: 'var(--text-caption)', color: groupMet ? 'var(--status-done-solid)' : 'var(--color-text-secondary)' }}>
+                      {groupMet && <CheckGlyph size={12} />}
+                      <span style={{ fontWeight: 600 }}>{group.title ?? (groupMet ? '통과' : '대기')}</span>
+                      {group.note && <span>· {group.note}</span>}
+                    </div>
+                  )}
+                  {group.requirements.map((req, i) => (
+                    <React.Fragment key={req.href}>
+                      {i > 0 && <RelationDivider label={inner} />}
+                      <RequirementRow req={req} />
+                    </React.Fragment>
+                  ))}
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {requirements.map((req, i) => (
+            <React.Fragment key={req.href}>
+              {i > 0 && <RelationDivider label={relationLabel} />}
+              <RequirementRow req={req} />
+            </React.Fragment>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

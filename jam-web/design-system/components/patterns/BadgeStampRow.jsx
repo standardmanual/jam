@@ -13,7 +13,8 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
  * 칩 자리 폭이 52px로 고정이라 레벨형·반복형이 섞여 있어도 이름 시작 x가 같다
  * (반복형은 등급이 있으므로 칩은 `RarityBadge`, 레벨형은 `BadgeLevelChip`).
  *
- * 미획득이면 이름·칩·카운터에서 색을 전부 거두고 썸네일은 실루엣으로 둔다.
+ * 미획득이면 이름·칩·카운터에서 색을 전부 거두고 썸네일은 grayscale(1) 원본으로 둔다
+ * (2026-09-06 사용자 확정 — 미획득도 어떤 배지인지 알아볼 수 있어야 한다).
  */
 export function BadgeStampRow({
   /** 계열 이름 */

@@ -162,6 +162,86 @@ export function formatGridProgressLine(progress: BadgeProgress): FrontierCaption
   return { text: formatAxisRange(axis), fraction: progress.progress }
 }
 
+/**
+ * 「N 남음」 한 줄 — 티켓 20260905_0037.
+ *
+ * 유저가 `178 / 210km`를 보고 32를 암산하게 두지 않는다. **재계산하지 않는다** —
+ * `axis.remaining`은 계산 계층이 방향(작을수록 좋음 축)까지 흡수해 둔 값이라
+ * `target - current`로 다시 구하면 페이스·한파 축에서 부호가 뒤집힌다.
+ *
+ * `null`을 돌려주는 세 경우:
+ *  - 이미 채웠다(`met`) — 「0 남음」은 다 채운 것을 덜 채운 것처럼 보이게 한다
+ *  - 남은 양을 말할 수 없다(`remaining === null`, 측정값 자체가 없음)
+ *  - **휴식 축** — 「3일 남음」은 운동을 권하는 서비스가 휴식을 재촉하는 문장이 된다
+ *    (티켓 20260905_0031이 확정한 「권유형 문구 금지」). 값 행은 「휴식 2/5일」로 충분하다
+ */
+export function formatRemainingText(kind: BadgeProgress['kind'], axis: BadgeProgressAxis): string | null {
+  if (kind === 'rest') return null
+  if (axis.met || axis.remaining == null || axis.remaining <= 0) return null
+  if (axis.key === 'max_pace_sec_per_km') return `${Math.ceil(axis.remaining)}초 남음`
+  const decimals = ONE_DECIMAL_KEYS.has(axis.key) ? 1 : 0
+  const factor = 10 ** decimals
+  // 남은 양은 항상 올림 — 반올림으로 0이 되면 실제로 남았는데 「0 남음」이 된다
+  // (`formatRegretLineText`와 같은 원칙).
+  const rounded = Math.ceil(axis.remaining * factor) / factor
+  const text = decimals === 1 ? rounded.toFixed(1) : String(rounded)
+  return `${text}${axis.unit ?? ''} 남음`
+}
+
+/**
+ * 계열 한 줄(`BadgeLevelGauge`·`BadgeStampRow`)의 값 행 — 티켓 20260905_0037.
+ *
+ * 다른 포맷 함수와 같은 원칙: 숫자는 계산 계층 결과를 그대로 쓰고 이 파일은 문자열만 만든다.
+ * 축이 여럿이면 **병목 축 하나만** 적는다(§05 "다중 카운터는 병목만").
+ */
+export type FamilyRowValues = {
+  /** 현재값(단위 없음 — 「/」 앞자리) */
+  current: string
+  /** 목표값 + 단위 */
+  next: string
+  /** 「N 남음」. 다 채웠거나 말할 수 없으면 null */
+  left: string | null
+  /** 0~1 */
+  fraction: number
+}
+
+export function formatFamilyRowValues(progress: BadgeProgress): FamilyRowValues | null {
+  if (progress.kind === 'unsupported') return null
+  const axis = progress.axes.find((a) => a.key === progress.bottleneck) ?? progress.axes[0]
+  if (!axis) return null
+  if (axis.key === 'max_pace_sec_per_km') {
+    return {
+      current: formatPaceSecPerKm(axis.current),
+      next: formatPaceSecPerKm(axis.target),
+      left: formatRemainingText(progress.kind, axis),
+      fraction: progress.progress,
+    }
+  }
+  const unit = axis.unit ?? ''
+  return {
+    current: formatCurrentValue(axis.key, axis.current),
+    next: `${formatAxisNumber(axis.key, axis.target)}${unit}`,
+    left: formatRemainingText(progress.kind, axis),
+    fraction: progress.progress,
+  }
+}
+
+/**
+ * 반복형 계열 행(`BadgeStampRow`)의 보조 한 줄 — 「12/26회 · 14회 남음」.
+ * 진행을 계산할 수 없으면 null(그 행은 캡션 없이 그린다).
+ */
+export function formatStampCaption(progress: BadgeProgress): string | null {
+  if (progress.kind === 'unsupported') return UNSUPPORTED_TEXT
+  const axis = progress.axes.find((a) => a.key === progress.bottleneck) ?? progress.axes[0]
+  if (!axis) return null
+  const range =
+    progress.kind === 'repeat' || progress.kind === 'rest'
+      ? formatCounterAxisText(progress.kind, axis)
+      : formatAxisRange(axis)
+  const left = formatRemainingText(progress.kind, axis)
+  return left ? `${range} · ${left}` : range
+}
+
 export type DualAxisLine = {
   /** BadgeProgressAxis.key와 동일 네임스페이스 */
   key: string
