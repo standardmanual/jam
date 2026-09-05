@@ -13,6 +13,11 @@ import { getAdminUser } from '@/lib/admin/auth'
 import { BADGE_REFERENCE_SOURCE_BY_KEY, type BadgeReferenceKey } from '@/lib/admin/badge-references'
 import { recordBulkRun } from '@/lib/admin/badge-bulk-query'
 
+// 대량 선택(예: 「종류=아이템 · 상태=전부」 3,600건)은 참조 조회가 수십 회 왕복이라
+// 기본 함수 시간 상한을 넘길 수 있다. 이 저장소의 무거운 어드민 라우트 관례를 따른다
+// (선례: api/admin/strava-backfill/route.ts). — 게이트 리뷰 WARN, 티켓 20260905_0034
+export const maxDuration = 60
+
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

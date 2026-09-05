@@ -33,6 +33,11 @@ import {
 } from '@/lib/admin/badge-bulk-query'
 import type { BadgeRarity, BadgeType } from '@/types/database'
 
+// 대량 선택(예: 「종류=아이템 · 상태=전부」 3,600건)은 참조 조회가 수십 회 왕복이라
+// 기본 함수 시간 상한을 넘길 수 있다. 이 저장소의 무거운 어드민 라우트 관례를 따른다
+// (선례: api/admin/strava-backfill/route.ts). — 게이트 리뷰 WARN, 티켓 20260905_0034
+export const maxDuration = 60
+
 const BADGE_TYPES: BadgeType[] = ['activity', 'item', 'checkin']
 const RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
