@@ -779,7 +779,8 @@ export const CONDITION_FIELDS = [
     max: 365,
     step: 1,
     direction: 'higher',
-    // 활동 선행 요구가 없는 «순수 공백» 조건이라 REST_PURE_GAP_MIN_DAYS(90일) 하한이 걸린다
+    // 활동 선행 요구가 없는 «순수 공백» 조건이다. §4의 「쿨다운 90일」은 **카탈로그 설계
+    // 지침**이지 엔진이 강제하는 값이 아니다(2026-09-05 확정) — 하한 준수는 티켓 0035의 몫.
     evaluation: 'engine',
     chip: (c) => `복귀 전 휴식 ${c.return_gap_days}일`,
     detail: (c) => `복귀 전 휴식 ${c.return_gap_days}일 이상`,

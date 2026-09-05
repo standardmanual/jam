@@ -20,7 +20,6 @@
 import { evaluateConditionDetailed, checkCondition, selectTriggerActivity } from '../index'
 import {
   REST_CONDITION_KEYS,
-  REST_PURE_GAP_MIN_DAYS,
   evaluateRestConditions,
   restConditionKeysIn,
 } from '../activityFilters'
@@ -269,24 +268,25 @@ describe('휴식 — 발급 판정과 진행 계산이 어긋나지 않는다', 
   })
 })
 
-// ── 순수 공백 조건의 하한 (역인센티브 차단) ─────────────────────────────
+// ── 순수 공백 조건 — 하한은 엔진이 아니라 카탈로그가 지킨다 ─────────────
 
-describe('휴식 — 순수 공백 조건은 90일 이상만 인정한다', () => {
+describe('휴식 — 순수 공백 조건에 엔진 하한을 걸지 않는다', () => {
   const longGap = [act('2026-01-01'), act('2026-06-01')] // 151일 차
 
-  it('return_gap_days가 90일 미만이면 설정 오류로 막는다', () => {
+  // §4의 「순수 공백 기반(「겨울잠」)만 쿨다운 90일」은 **카탈로그 설계 지침**이다
+  // (2026-09-05 스펙 소유자 확정). 엔진이 값을 강제하면 conditionRegistry의
+  // min:1/max:365와 어긋나고, 경고 로그가 «배지 × 유저 × 싱크»마다 찍혀 폭주한다.
+  it('90일 미만 조건값도 정상 판정된다 — 설정 오류로 막지 않는다', () => {
     const r = evaluateConditionDetailed({ activity_type: 'running', return_gap_days: 30 }, longGap)
-    expect(r.pass).toBe(false)
-    expect(r.reason).toBe('휴식 조건 설정 오류')
-    expect(r.required).toContain(`${REST_PURE_GAP_MIN_DAYS}일 이상`)
+    expect(r.reason).not.toBe('휴식 조건 설정 오류')
+    expect(r.pass).toBe(true) // 151일 공백 ≥ 30일
   })
 
-  it('interval_days도 같은 하한을 받는다', () => {
-    const r = evaluateConditionDetailed({ activity_type: 'running', interval_days: 3 }, longGap)
-    expect(r.reason).toBe('휴식 조건 설정 오류')
+  it('interval_days도 마찬가지다', () => {
+    expect(checkCondition({ activity_type: 'running', interval_days: 3 }, longGap)).toBe(true)
   })
 
-  it('90일 이상이면 정상 판정된다', () => {
+  it('조건값 자체의 판정은 그대로다', () => {
     expect(checkCondition({ activity_type: 'running', return_gap_days: 90 }, longGap)).toBe(true)
     expect(checkCondition({ activity_type: 'running', return_gap_days: 200 }, longGap)).toBe(false)
   })
