@@ -28,7 +28,20 @@ export default async function AdminBadgeFamilyDetailPage({ params }: AdminBadgeF
         <Link href="/admin/badge-families" className="text-sm text-muted-foreground underline underline-offset-4">
           ← 계열 관리
         </Link>
-        <h1 className="text-2xl md:text-3xl font-bold">{family.name}</h1>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold">{family.name}</h1>
+          {/* 계열 단위 폐기는 일괄 작업 도구가 맡는다(티켓 20260905_0034) — 이 화면은
+              «계열을 고치는» 곳이고, 폐기는 참조 정리·영향 분석이 함께 필요해 도구가 따로 있다.
+              계열 키가 없는 계열(`#name:` 폴백)은 키로 대상을 좁힐 수 없어 링크를 걸지 않는다. */}
+          {family.familyKey && (
+            <Link
+              href={`/admin/badges/bulk?family_key=${encodeURIComponent(family.familyKey)}&type=activity`}
+              className="text-sm text-muted-foreground underline underline-offset-4"
+            >
+              이 계열 일괄 작업 →
+            </Link>
+          )}
+        </div>
       </div>
 
       {error && (

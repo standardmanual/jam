@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { findBadgeConditionSaveError, findRarityLevelError } from '@/lib/admin/badge-validation'
 import { invalidateUnclaimedDrops } from '@/lib/admin/poi-drops'
+import { BADGE_REFERENCE_SOURCES, collectBadgeReferences } from '@/lib/admin/badge-references'
 import type { BadgeRow } from '@/types/database'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -113,15 +114,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
  * 완전히 동일한 동작이라 "삭제" 버튼을 눌러도 이미 비활성 상태면 아무 변화가 없어 보이는
  * 문제가 있었다(20260830_1912 신고).
  *
- * 아래 6개 테이블 중 하나라도 이 배지를 참조하면 하드 삭제를 차단한다:
- * - user_activity_badges/inventory_items/poi_drops.badge_id: NOT NULL + ON DELETE NO ACTION
- *   → 참조가 있으면 하드 삭제 시 FK 위반으로 그냥 실패한다.
- * - user_checkin_badge_earns/user_item_book_slots.badge_id: NOT NULL + ON DELETE CASCADE
- *   → 참조가 있는데 강행하면 FK 위반 없이 유저의 체크인 획득 기록·아이템북 슬롯 진행 기록이
- *     조용히 통째로 사라진다. 절대 강행해서는 안 된다.
- * - poi.linked_badge_id: nullable이지만 ON DELETE NO ACTION → 참조가 있으면 실패한다.
+ * **참조를 세는 목록은 `lib/admin/badge-references.ts`가 단일 출처다**(티켓 20260905_0034).
+ * 예전에는 이 파일이 6곳을 직접 세고 있었고, 거기 빠져 있던
+ * `point_transactions.source_badge_id`(ON DELETE NO ACTION)가 하드 삭제를 FK 위반으로
+ * 실패시켜 raw Postgres 에러가 500으로 새어 나갔다. 일괄 작업 도구와 같은 함수를 쓰므로
+ * 한쪽만 고쳐지는 일이 없다.
+ *
+ * 차단 기준은 두 단계다:
+ * - **FK NO ACTION**(획득 이력·인벤토리·드랍·포인트 원장·지점 연결·레시피 보유 조건) 또는
+ *   **CASCADE**(체크인 획득 이력·컬렉션 슬롯) 참조 → 실패하거나 유저 기록이 조용히 사라진다.
+ * - FK 없는 느슨한 참조(미션 보상·미션 게이트·투데이 카드·레시피 재료 uuid[]) → 삭제는
+ *   되지만 끊어진 id가 콘텐츠에 남는다. 참조 정리를 먼저 하도록 안내한다.
+ *
  * 이력 보존형 강제 삭제(위 FK를 nullable + ON DELETE SET NULL로 바꾸는 스키마 마이그레이션)는
- * 이번 범위 밖이다 — 이력이 하나라도 있으면 차단하고 비활성화 사용을 안내한다.
+ * 이번 범위 밖이다 — 참조가 하나라도 있으면 차단하고 비활성화 사용을 안내한다.
  */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -141,36 +147,48 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: '배지를 찾을 수 없습니다.' }, { status: 404 })
   }
 
-  const referenceQueries = await Promise.all([
-    supabase.from('user_activity_badges').select('*', { count: 'exact', head: true }).eq('badge_id', id),
-    supabase.from('inventory_items').select('*', { count: 'exact', head: true }).eq('badge_id', id),
-    supabase.from('poi_drops').select('*', { count: 'exact', head: true }).eq('badge_id', id),
-    supabase.from('user_checkin_badge_earns').select('*', { count: 'exact', head: true }).eq('badge_id', id),
-    supabase.from('user_item_book_slots').select('*', { count: 'exact', head: true }).eq('badge_id', id),
-    supabase.from('poi').select('*', { count: 'exact', head: true }).eq('linked_badge_id', id),
-  ])
+  // 참조 카운트는 `lib/admin/badge-references.ts` **한 곳**에 모았다 — 일괄 작업 도구
+  // (`api/admin/badges/bulk`)와 같은 함수를 쓴다(티켓 20260905_0034). 예전에는 이 핸들러가
+  // 6곳만 세고 있어서, `point_transactions.source_badge_id`(ON DELETE NO ACTION) 참조가
+  // 있으면 사전 체크를 통과한 뒤 DELETE가 FK 위반으로 실패하고 **raw Postgres 에러 문자열이
+  // 500으로 그대로 노출**됐다. 미션 보상·미션 게이트·투데이 카드·레시피 재료(uuid[])도 빠져
+  // 있어, 삭제는 되지만 끊어진 id가 콘텐츠에 남았다.
+  const references = await collectBadgeReferences(supabase, [id])
 
-  // 6곳 중 하나라도 error면 fail-closed로 하드 삭제를 막는다. user_checkin_badge_earns·
-  // user_item_book_slots는 ON DELETE CASCADE라, 카운트 조회가 실패했는데 count만 null→0으로
-  // 넘기면 실제 이력이 있어도 0건으로 오판해 하드 삭제가 강행되고 유저의 체크인 획득 기록·
-  // 아이템북 슬롯 진행 기록이 조용히 사라진다 — 이 엔드포인트가 막으려던 시나리오 그 자체다.
-  const failedQuery = referenceQueries.find((r) => r.error)
-  if (failedQuery) {
-    console.error('[badges DELETE] 참조 카운트 조회 실패 — 하드 삭제를 차단합니다:', failedQuery.error)
+  // 한 자리라도 조회가 실패하면 fail-closed로 하드 삭제를 막는다. CASCADE 참조
+  // (user_checkin_badge_earns·user_item_book_slots)를 0건으로 오판하면 유저의 획득 기록·
+  // 슬롯 진행 기록이 FK 위반 없이 조용히 사라진다 — 이 가드가 막으려던 시나리오 그 자체다.
+  if (references.error) {
+    console.error('[badges DELETE] 참조 카운트 조회 실패 — 하드 삭제를 차단합니다:', references.error)
     return NextResponse.json(
       { error: '삭제할 수 없습니다. 이력 조회 중 오류가 발생했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.' },
       { status: 500 }
     )
   }
 
-  const totalReferences = referenceQueries.reduce((sum, r) => sum + (r.count ?? 0), 0)
+  // 참조가 있는 자리를 사람이 읽을 이름으로 모은다 — 어드민이 어디를 먼저 정리해야 하는지
+  // 알 수 있어야 한다([현상]→[원인]→[해결책], UX_WRITING_GUIDELINE.md).
+  const hitLabels = BADGE_REFERENCE_SOURCES.filter((s) => references.counts[s.key] > 0)
+    .map((s) => `${s.label} ${references.counts[s.key]}건`)
+    .join(', ')
 
-  // 이력이 하나라도 있으면 하드 삭제를 차단한다. [현상]→[원인]→[해결책] 3단계 구조로 안내한다
-  // (UX_WRITING_GUIDELINE.md) — 기존 소프트 삭제로 되돌리지 않고 명확히 실패시킨다.
-  if (totalReferences > 0) {
+  // FK가 막거나(NO ACTION) 조용히 함께 지워지는(CASCADE) 참조 — 예전과 같은 차단 사유다.
+  const hardBlocking = references.blockingTotal + references.cascadeTotal
+  if (hardBlocking > 0) {
     return NextResponse.json(
       {
-        error: `삭제할 수 없습니다. 이미 ${totalReferences}건의 발급·드랍·지점 연결 이력이 있는 배지입니다. 비활성화를 이용해주세요.`,
+        error: `삭제할 수 없습니다. 이미 ${hardBlocking}건의 발급·드랍·지점 연결 이력이 있는 배지입니다(${hitLabels}). 비활성화를 이용해주세요.`,
+      },
+      { status: 409 }
+    )
+  }
+
+  // FK가 없는 느슨한 참조(미션 보상·미션 게이트·투데이 카드·레시피 재료 등)만 남은 경우.
+  // 삭제 자체는 성공하지만 **끊어진 배지 id가 콘텐츠에 남는다** — 먼저 정리하게 한다.
+  if (references.total > 0) {
+    return NextResponse.json(
+      {
+        error: `삭제할 수 없습니다. 이 배지를 가리키는 콘텐츠가 ${references.total}건 있습니다(${hitLabels}). 배지 일괄 작업 도구의 참조 정리에서 먼저 해제해주세요.`,
       },
       { status: 409 }
     )
