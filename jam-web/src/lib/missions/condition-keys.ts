@@ -210,6 +210,131 @@ export function checkMissionCondition(
   }
 }
 
+// ── 저장 검증: 조건 «값» (티켓 20260905_1327) ────────────────────────────
+//
+// 위 `checkMissionCondition`은 «키»만 본다(1141). 프로덕션 `item_collect` 6건은 키는
+// 전부 유효(`badge_id`)한데 값이 `null`이라 `calculateProgress()`의
+// `condition.badge_id && ownership.ownedBadgeIds.has(...)`가 좌변에서 항상 false를 반환해
+// **영원히 미달성**이었다(1327 배경 조사). 값 검증은 의도적으로 별도 함수로 둔다 — 기존
+// `checkMissionCondition` 테스트 다수가 "이 값이면 이 키가 허용되는지"만 확인하려고
+// 다른 필드는 비워 둔 조건을 쓰는데(예: `{ poi_id: 'poi-1' }`만으로 `distance` 타입 검사),
+// 값 검증까지 같은 함수에 합치면 그 조건들이 "필수 값 부재"로도 걸려 테스트 의도가
+// 뒤섞인다. 두 함수를 라우트 층에서 순서대로(키 → 값) 호출해 연결한다.
+
+/** 미션 고유 키(`count`·`badge_id`)는 배지 조건 레지스트리에 라벨이 없어 여기서 직접 붙인다 */
+const MISSION_ONLY_KEY_LABEL: Record<string, string> = {
+  count: '목표 횟수',
+  badge_id: '목표 배지',
+}
+
+function missionConditionValueLabel(key: string): string {
+  return getConditionField(key)?.label ?? MISSION_ONLY_KEY_LABEL[key] ?? key
+}
+
+/**
+ * 라벨 뒤에 붙일 "을/를" 조사. 라벨이 "목표 배지"(받침 없음)·"지점"(받침 있음)처럼
+ * 받침 유무가 갈리므로 하드코딩한 "을"은 절반의 라벨에서 문법이 틀린다.
+ */
+function eulReul(label: string): '을' | '를' {
+  const ch = label[label.length - 1]
+  const code = ch?.charCodeAt(0) ?? 0
+  if (code < 0xac00 || code > 0xd7a3) return '를'
+  return (code - 0xac00) % 28 !== 0 ? '을' : '를'
+}
+
+/**
+ * 미션 타입별로 달성 판정에 실제로 쓰이는 필드 하나 + 값 종류.
+ *
+ * **`checker.ts`의 `getTarget()`·`calculateProgress()`가 각 타입에서 읽는 키와 정확히
+ * 일치해야 한다** — 여기서 새 목록을 따로 적으면 1141이 없앤 "허용 키 목록과 실제 평가
+ * 로직의 불일치" 문제를 값 검증에서 재현한다. 이 매핑이 실제 로직과 어긋나지 않는지는
+ * 컴파일 타임으로 보장할 수 없다(값의 존재 여부는 런타임 정보다) — 대신
+ * `checker-logic.test.ts`의 "값 검증 필수 키 ↔ getTarget/calculateProgress 실측 일치"
+ * 케이스가 `getTarget`·`evaluateMission`을 직접 호출해 이 표와 실제 로직이 같은 키를
+ * 읽는지 대조한다.
+ */
+export interface MissionConditionValueRule {
+  key: 'badge_id' | 'poi_id' | 'distance_km' | 'count' | 'streak_days' | 'duration_minutes' | 'elevation_gain_m'
+  kind: 'uuid' | 'positive_number'
+}
+
+export const MISSION_CONDITION_VALUE_RULE: Record<MissionType, MissionConditionValueRule> = {
+  item_collect: { key: 'badge_id', kind: 'uuid' },
+  checkin: { key: 'poi_id', kind: 'uuid' },
+  distance: { key: 'distance_km', kind: 'positive_number' },
+  activity_count: { key: 'count', kind: 'positive_number' },
+  streak_days: { key: 'streak_days', kind: 'positive_number' },
+  duration_minutes: { key: 'duration_minutes', kind: 'positive_number' },
+  elevation_gain_m: { key: 'elevation_gain_m', kind: 'positive_number' },
+}
+
+/** RFC4122 형태 검사만 한다 — 버전 비트까지는 보지 않는다(`notifications/feed.ts`의 UUID_RE와 동일 패턴) */
+const MISSION_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * 미션 저장 전 `condition_json`의 «값» 검증. 순수 함수 — API 라우트(POST/PATCH)가
+ * `checkMissionCondition`(키) 다음에 이 함수(값)를 순서대로 호출해 연결한다.
+ *
+ * - `item_collect`/`checkin`: 목표 대상(`badge_id`/`poi_id`)이 없거나 UUID 형태가 아니면 거부.
+ * - 나머지 수치 타입(`distance`/`activity_count`/`streak_days`/`duration_minutes`/
+ *   `elevation_gain_m`): 대응 키가 없거나(`?? 0` 폴백이 목표를 0으로 만들어 **즉시 달성**되는
+ *   반대 방향 사고를 막는다) 0 이하이면 거부.
+ * - **참조 무결성(그 UUID가 실제 배지·POI 행으로 존재하는지)은 이 함수의 범위 밖이다.**
+ *   형태 검증만 하는 순수 함수로 유지한다 — 존재 여부 확인에는 DB 조회가 필요해 이 함수가
+ *   서버 의존 함수가 되고, 파일 상단 주석의 "서버 의존 없는 배치" 원칙과 충돌한다. 존재하지
+ *   않는 UUID를 저장하면 그 미션도 똑같이 영구 미달성되지만, 어드민이 목록에서 고르는 UI가
+ *   아니라 자유 textarea로 입력하는 한 이 위험은 남는다 — 이 티켓(6건의 `null` 재발 방지)의
+ *   범위 밖이라 후속 과제로 남긴다.
+ * - `condition`이 `undefined`(PATCH 부분 갱신)이거나 객체가 아니면 검사하지 않는다 — 형태
+ *   검증은 `checkMissionCondition`의 책임이라 여기서 중복하지 않는다.
+ * - 그 미션 타입에 대응 규칙이 없으면(존재하지 않는 값 — 방어적 처리) 통과시킨다.
+ */
+export function checkMissionConditionValue(
+  missionType: MissionType,
+  condition: unknown
+): MissionConditionCheck {
+  if (condition === undefined) return OK
+  if (typeof condition !== 'object' || condition === null || Array.isArray(condition)) return OK
+
+  const rule = MISSION_CONDITION_VALUE_RULE[missionType]
+  if (!rule) return OK
+
+  const value = (condition as Record<string, unknown>)[rule.key]
+  const label = missionConditionValueLabel(rule.key)
+  const typeLabel = missionTypeLabel(missionType)
+
+  if (rule.kind === 'uuid') {
+    if (value === undefined || value === null) {
+      return {
+        error: `조건 JSON을 저장하지 못했어요. 「${typeLabel}」 타입은 ${label}${eulReul(label)} 지정해야 달성 여부를 판정할 수 있는데 비어 있어요. ${label}${eulReul(label)} 선택해서 다시 저장해주세요.`,
+        warning: null,
+      }
+    }
+    if (typeof value !== 'string' || !MISSION_UUID_RE.test(value)) {
+      return {
+        error: `조건 JSON을 저장하지 못했어요. ${label} 값의 형식이 올바르지 않아요. 목록에서 ${label}${eulReul(label)} 다시 선택해 저장해주세요.`,
+        warning: null,
+      }
+    }
+    return OK
+  }
+
+  // positive_number
+  if (value === undefined) {
+    return {
+      error: `조건 JSON을 저장하지 못했어요. 「${typeLabel}」 타입은 ${label} 목표값을 지정해야 하는데 비어 있어요. ${label}에 0보다 큰 숫자를 넣어 다시 저장해주세요.`,
+      warning: null,
+    }
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return {
+      error: `조건 JSON을 저장하지 못했어요. ${label} 값은 0보다 큰 숫자여야 하는데 지금은 ${JSON.stringify(value)}예요. 0보다 큰 숫자로 고쳐서 다시 저장해주세요.`,
+      warning: null,
+    }
+  }
+  return OK
+}
+
 // ── 컴파일 타임 동기화 체크 ──────────────────────────────────────────────
 // `conditionRegistry.ts`의 `AssertAllConditionKeysCovered`와 같은 장치.
 // `MissionCondition`(src/types/database.ts)에 필드를 추가했는데 그 키가 배지 조건 레지스트리에도
