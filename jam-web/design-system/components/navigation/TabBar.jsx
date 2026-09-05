@@ -43,6 +43,15 @@ const PILL_HEIGHT = 41;
  *
  * 20260824_010: 프로필 탭 제거(6탭→5탭) — 프로필 진입은 TopNav 우측 아바타로 일원화.
  * 서비스 `src/components/ui/TabBar.tsx`(병존 구현, 20260820_009)도 함께 수정해야 한다.
+ *
+ * 20260901_1926: props를 서비스 기준으로 재정렬.
+ *   - `username` 추가 — 서비스는 이 값으로 pathname/searchParams(`?u=`)를 조합해 "다른
+ *     유저 프로필 맥락"인지를 판정하고 활성 탭을 계산한다(`isActive()`, TabBar.tsx 참고).
+ *     이 DS 컴포넌트는 Next.js 라우터가 없어 그 판정을 재현하지 않는다 — `data-username`
+ *     속성으로만 값을 반영해 값이 전달됐음을 확인할 수 있게 한다.
+ *   - `active`/`onChange`는 그대로 유지한다. 서비스는 `active`를 외부 prop으로 받지 않고
+ *     pathname으로 직접 판단하지만(단일 필드가 아니라 tabs 배열 순회 결과), MODULAR은
+ *     라우터가 없는 독립 카탈로그 컴포넌트라 명시적 controlled prop이 계속 필요하다.
  */
 
 const icons = {
@@ -81,7 +90,7 @@ const tabs = [
   { key: 'inventory', label: '인벤토리' },
 ];
 
-export function TabBar({ active = 'today', onChange }) {
+export function TabBar({ active = 'today', onChange, username }) {
   const navRef = useRef(null);
   const pillRef = useRef(null);
   const tabRefs = useRef(new Map());
@@ -146,7 +155,7 @@ export function TabBar({ active = 'today', onChange }) {
   return (
     <>
     <style>{STATIC_CSS}</style>
-    <nav ref={navRef} className="ds-tabbar-chrome" style={{
+    <nav ref={navRef} className="ds-tabbar-chrome" data-username={username ?? undefined} style={{
       position: 'fixed', left: '50%', transform: 'translateX(-50%)',
       /* v2: safe-area-inset-bottom prevents overlap with iPhone home indicator.
          20260824_014: 0px clamp가 페이지 하단에 완전히 붙어버려 여백이 사라짐 —
