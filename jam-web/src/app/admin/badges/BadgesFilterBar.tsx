@@ -8,6 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
 import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
 import { BADGE_TYPES, BADGE_TYPE_LABEL, UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
+import {
+  BADGE_LIST_SORT_OPTIONS,
+  CONDITION_FIELD_FILTER_OPTIONS,
+  DEFAULT_BADGE_LIST_SORT,
+} from '@/lib/admin/badge-list-view'
 
 const TYPE_OPTIONS = BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_TYPE_LABEL[t] }))
 
@@ -28,12 +33,9 @@ const STATUS_OPTIONS = [
 // 대체할 수 없다(BadgesTable.tsx 주석 참고) — 이 드롭다운이 계속 담당한다. 이름 오름/내림차순은
 // 데스크탑에서는 "이름" 헤더 클릭으로도 가능하지만, 모바일 카드 뷰는 헤더가 없어 이 드롭다운이
 // 유일한 경로다(이번 티켓은 모바일 카드 뷰를 건드리지 않는다).
-const SORT_OPTIONS = [
-  { value: 'created_desc', label: '최신순' },
-  { value: 'created_asc', label: '오래된 순' },
-  { value: 'name_asc', label: '이름 (가나다)' },
-  { value: 'name_desc', label: '이름 (역순)' },
-]
+// 목록(계열순·레벨순 포함)은 `badge-list-view.ts`가 서버 페이지와 공유하는 단일 출처다 —
+// 여기서 다시 나열하면 서버가 모르는 값을 고를 수 있다(티켓 20260905_0032 C-2).
+const SORT_OPTIONS = BADGE_LIST_SORT_OPTIONS
 
 const ACTIVITY_TYPE_OPTIONS = [
   { value: 'cycling', label: '사이클링' },
@@ -71,7 +73,7 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
   const update = (updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString())
     for (const [key, value] of Object.entries(updates)) {
-      if (value === null || value === 'all' || value === 'created_desc') {
+      if (value === null || value === 'all' || value === DEFAULT_BADGE_LIST_SORT) {
         params.delete(key)
       } else {
         params.set(key, value)
@@ -108,6 +110,7 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
     searchParams.has('type') ||
     searchParams.has('rarity') ||
     searchParams.has('status') ||
+    searchParams.has('condition_field') ||
     SUB_FILTER_KEYS.some((k) => searchParams.has(k))
 
   // 선택된 세계관 기준으로 아이템북 필터링
@@ -118,7 +121,7 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
     <div className="flex flex-col gap-3">
       <DataTableToolbar
         actions={
-          <Select value={searchParams.get('sort') ?? 'created_desc'} onValueChange={(v) => update({ sort: v })}>
+          <Select value={searchParams.get('sort') ?? DEFAULT_BADGE_LIST_SORT} onValueChange={(v) => update({ sort: v })}>
             <SelectTrigger className="h-8 w-auto min-w-[8rem]" aria-label="정렬">
               <SelectValue />
             </SelectTrigger>
@@ -194,6 +197,15 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
           options={RARITY_OPTIONS}
           selected={searchParams.get('rarity') ? [searchParams.get('rarity') as string] : []}
           onChange={(values) => update({ rarity: values[0] ?? null })}
+        />
+
+        {/* 조건 필드 필터 — 선택지는 조건 레지스트리에서 파생된다(예: 평균 파워를 쓰는 배지만).
+            새 조건 필드를 레지스트리에 추가하면 여기에도 자동으로 나타난다. */}
+        <DataTableFacetedFilter
+          title="조건 필드"
+          options={CONDITION_FIELD_FILTER_OPTIONS}
+          selected={searchParams.get('condition_field') ? [searchParams.get('condition_field') as string] : []}
+          onChange={(values) => update({ condition_field: values[0] ?? null })}
         />
 
         <DataTableFacetedFilter

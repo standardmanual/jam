@@ -13,16 +13,16 @@ import { Textarea } from '@/components/admin/ui/textarea'
 import BlobAnimationFields from '@/app/admin/badges/BlobAnimationFields'
 import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
 import {
-  DEFAULT_ACTIVITY_BADGE_BACKGROUND,
   MAX_CONDITION_LENGTH,
   MAX_IMAGE_BYTES,
   MAX_NAME_LENGTH,
-  ACTIVITY_BADGE_IMAGE_PARAMS_VERSION,
+  buildInitialActivityBadgeImageParams,
   serializeActivityBadgeImageParams,
   type ActivityBadgeImageParams,
 } from '@/lib/admin/activityBadgeImage'
 import { ensureBadgeImageFonts } from '@/lib/admin/composeActivityBadgeImage'
-import { getBadgeBlobPreset } from '@/lib/badgeBlobPresets'
+import { slotLabelOf } from '@/lib/admin/badge-families'
+import { getBadgeBlobPreset, hasBadgeBlobPreset } from '@/lib/badgeBlobPresets'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import type { ActivityType, BadgeRarity } from '@/types/database'
 import ActivityBadgeImageCanvas from './ActivityBadgeImageCanvas'
@@ -31,7 +31,11 @@ interface SearchResultBadge {
   id: string
   name: string
   description: string
-  rarity: BadgeRarity
+  /** 무한레벨형은 등급이 없다(마이그레이션 130) — 등급 칩을 그리지 않는다 */
+  rarity: BadgeRarity | null
+  level: number | null
+  /** 서버가 `badgeKind.ts`의 `isLeveledBadge`로 판정해 내려준 값 */
+  leveled: boolean
   activityTypes: ActivityType[]
   hasImage: boolean
   imageGenParams: ActivityBadgeImageParams | null
@@ -71,6 +75,15 @@ const PRESET_ACTIVITY_OPTIONS: { value: ActivityType; label: string }[] = [
 /** 배지에 활동 종목이 지정돼 있지 않을 때 프리셋 Select에 보여줄 기본 선택지(적용은 안 함). */
 const DEFAULT_PRESET_ACTIVITY: ActivityType = 'walking'
 
+/**
+ * 배지 종류 필터 (티켓 20260905_0032 C-1). 무한레벨형은 등급이 없어 **등급 필터로 좁힐 수
+ * 없다** — 550종에서 레벨형만 골라내려면 별도 축이 필요하다.
+ */
+const KIND_OPTIONS = [
+  { value: 'graded', label: '등급형' },
+  { value: 'leveled', label: '레벨형' },
+]
+
 function activityLabels(types: ActivityType[]): string {
   if (types.length === 0) return '지정 없음'
   return types.map((t) => ACTIVITY_TYPE_LABELS[t] ?? t).join(', ')
@@ -90,9 +103,15 @@ export default function ActivityBadgeImagePage() {
   const [query, setQuery] = useState('')
   const [rarityFilter, setRarityFilter] = useState<string>(ALL_VALUE)
   const [activityFilter, setActivityFilter] = useState<string>(ALL_VALUE)
+  const [kindFilter, setKindFilter] = useState<string>(ALL_VALUE)
   const [searchLoading, setSearchLoading] = useState(false)
   const [results, setResults] = useState<SearchResultBadge[] | null>(null)
-  const [searchTruncated, setSearchTruncated] = useState(false)
+  // 페이징(티켓 C-1). 550종에서는 상위 50건만 보여주면 나머지에 도달할 수 없다.
+  const [searchPage, setSearchPage] = useState(1)
+  const [searchTotal, setSearchTotal] = useState(0)
+  const [searchTotalPages, setSearchTotalPages] = useState(1)
+  /** 서버가 정한 페이지 크기 — 화면이 다시 정하면 「몇 번째 배지」 표기가 서버와 갈린다 */
+  const [searchPageSize, setSearchPageSize] = useState(50)
   const [searchError, setSearchError] = useState<string | null>(null)
 
   const [selected, setSelected] = useState<SearchResultBadge | null>(null)
@@ -125,7 +144,7 @@ export default function ActivityBadgeImagePage() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  async function runSearch() {
+  async function runSearch(page = 1) {
     setSearchError(null)
     setSearchLoading(true)
     try {
@@ -134,14 +153,20 @@ export default function ActivityBadgeImagePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           q: query,
-          rarity: rarityFilter === ALL_VALUE ? undefined : rarityFilter,
+          // 레벨형에는 등급이 없다 — 종류 필터가 레벨형이면 등급 필터를 보내지 않는다.
+          rarity: rarityFilter === ALL_VALUE || kindFilter === 'leveled' ? undefined : rarityFilter,
           activityType: activityFilter === ALL_VALUE ? undefined : activityFilter,
+          kind: kindFilter === ALL_VALUE ? undefined : kindFilter,
+          page,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '검색에 실패했습니다.')
       setResults(data.badges)
-      setSearchTruncated(Boolean(data.truncated))
+      setSearchPage(data.page ?? page)
+      setSearchTotal(data.total ?? 0)
+      setSearchTotalPages(data.totalPages ?? 1)
+      setSearchPageSize(data.pageSize ?? searchPageSize)
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : '검색에 실패했습니다.')
       setResults(null)
@@ -160,27 +185,24 @@ export default function ActivityBadgeImagePage() {
     setApplyError(null)
     setApplyResult(null)
     // 프리셋 Select 초기값 — 배지의 첫 활동 종목(없으면 기본 선택지)과 등급으로 맞춰 둔다.
+    // **레벨형은 등급이 없다**(마이그레이션 130). 등급 자리에 아무 값이나 넣으면 그 배지의
+    // 등급인 것처럼 보이므로 색상 톤 기본값(common)만 두고 자동 적용하지 않는다(티켓 C-1).
+    // 종목은 프리셋 표에 있는 값만 고른다 — `activity_types`는 text[]라 레거시 키
+    // (`road_running` 등)가 남아 있으면 `getBadgeBlobPreset`이 깨진다.
     const badgeActivityType = badge.activityTypes[0]
-    setPresetActivity(badgeActivityType ?? DEFAULT_PRESET_ACTIVITY)
-    setPresetRarity(badge.rarity)
+    setPresetActivity(
+      badgeActivityType && hasBadgeBlobPreset(badgeActivityType) ? badgeActivityType : DEFAULT_PRESET_ACTIVITY
+    )
+    setPresetRarity(badge.rarity ?? 'common')
     // 저장된 저작 파라미터가 있으면 그대로 복원한다(정지 위상까지) — 같은 이미지를 다시 굽거나
     // 일부만 고칠 수 있어야 한다. 없으면 DB의 등급·이름·설명으로 초기값을 채운다.
     if (badge.imageGenParams) {
       setDraft(badge.imageGenParams)
       setRestored(true)
     } else {
-      // 신규 배지(아직 저작한 적 없음)만 프리셋을 자동 적용한다 — 활동 종목이 지정돼 있을 때만
-      // 프리셋 4색으로 교체하고, 없으면 기존 기본 배경(DEFAULT_ACTIVITY_BADGE_BACKGROUND)을 쓴다.
-      const presetColors = badgeActivityType ? getBadgeBlobPreset(badgeActivityType, badge.rarity) : null
-      setDraft({
-        version: ACTIVITY_BADGE_IMAGE_PARAMS_VERSION,
-        rarity: badge.rarity,
-        name: badge.name,
-        condition: badge.description,
-        background: presetColors
-          ? { ...DEFAULT_ACTIVITY_BADGE_BACKGROUND, colors: presetColors }
-          : DEFAULT_ACTIVITY_BADGE_BACKGROUND,
-      })
+      // 신규 배지(아직 저작한 적 없음)만 프리셋을 자동 적용한다 — 판정은 순수 함수가 갖는다
+      // (레벨형에는 등급 기반 프리셋을 쓰지 않는다, 티켓 C-1).
+      setDraft(buildInitialActivityBadgeImageParams(badge))
       setRestored(false)
     }
   }
@@ -242,7 +264,7 @@ export default function ActivityBadgeImagePage() {
         <CardHeader>
           <CardTitle>배지 검색</CardTitle>
           <CardDescription>
-            액티비티 배지만 검색합니다. 이름이 같은 배지가 여러 개 있으니 등급·활동 종목까지 보고 고르세요.
+            액티비티 배지만 검색합니다. 이름이 같은 배지가 여러 개 있으니 등급·레벨·활동 종목까지 보고 고르세요.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -252,23 +274,39 @@ export default function ActivityBadgeImagePage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') runSearch()
+                if (e.key === 'Enter') runSearch(1)
               }}
               className="sm:flex-1"
             />
-            <Select value={rarityFilter} onValueChange={setRarityFilter}>
-              <SelectTrigger className="sm:w-40">
-                <SelectValue placeholder="등급" />
+            <Select value={kindFilter} onValueChange={setKindFilter}>
+              <SelectTrigger className="sm:w-36">
+                <SelectValue placeholder="종류" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_VALUE}>전체 등급</SelectItem>
-                {RARITY_OPTIONS.map((o) => (
+                <SelectItem value={ALL_VALUE}>전체 종류</SelectItem>
+                {KIND_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {o.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {/* 레벨형은 등급이 없어 등급으로 좁힐 수 없다 — 종류가 레벨형이면 감춘다. */}
+            {kindFilter !== 'leveled' && (
+              <Select value={rarityFilter} onValueChange={setRarityFilter}>
+                <SelectTrigger className="sm:w-40">
+                  <SelectValue placeholder="등급" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_VALUE}>전체 등급</SelectItem>
+                  {RARITY_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Select value={activityFilter} onValueChange={setActivityFilter}>
               <SelectTrigger className="sm:w-44">
                 <SelectValue placeholder="활동 종목" />
@@ -282,7 +320,7 @@ export default function ActivityBadgeImagePage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={runSearch} disabled={searchLoading}>
+            <Button onClick={() => runSearch(1)} disabled={searchLoading}>
               <IconSearch className="h-4 w-4 mr-1" />
               {searchLoading ? '검색 중…' : '검색'}
             </Button>
@@ -301,10 +339,11 @@ export default function ActivityBadgeImagePage() {
       {results && (
         <Card>
           <CardHeader>
-            <CardTitle>검색 결과 {results.length}건</CardTitle>
-            {searchTruncated && (
+            <CardTitle>검색 결과 {searchTotal}건</CardTitle>
+            {searchTotal > 0 && (
               <CardDescription>
-                결과가 많아 상위 {results.length}건만 표시합니다. 검색어나 필터를 더 좁혀 주세요.
+                {searchPage}/{searchTotalPages} 페이지 · {(searchPage - 1) * searchPageSize + 1}–
+                {(searchPage - 1) * searchPageSize + results.length}번째 배지를 보고 있어요.
               </CardDescription>
             )}
           </CardHeader>
@@ -317,7 +356,7 @@ export default function ActivityBadgeImagePage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>배지 이름</TableHead>
-                      <TableHead>등급</TableHead>
+                      <TableHead>등급 · 레벨</TableHead>
                       <TableHead>활동 종목</TableHead>
                       <TableHead>이미지</TableHead>
                       <TableHead className="text-right">선택</TableHead>
@@ -328,7 +367,8 @@ export default function ActivityBadgeImagePage() {
                       <TableRow key={b.id} data-state={selected?.id === b.id ? 'selected' : undefined}>
                         <TableCell className="font-medium">{b.name}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{b.rarity}</Badge>
+                          {/* 레벨형은 「Lv.N」 — 계열 관리 화면과 같은 자리 라벨을 쓴다 */}
+                          <Badge variant="outline">{slotLabelOf(b)}</Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{activityLabels(b.activityTypes)}</TableCell>
                         <TableCell>
@@ -347,6 +387,31 @@ export default function ActivityBadgeImagePage() {
                 </Table>
               </div>
             )}
+
+            {/* 페이징 — 550종에서는 상위 50건만으로 원하는 배지에 도달할 수 없다(티켓 C-1) */}
+            {searchTotalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={searchLoading || searchPage <= 1}
+                  onClick={() => runSearch(searchPage - 1)}
+                >
+                  이전
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {searchPage} / {searchTotalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={searchLoading || searchPage >= searchTotalPages}
+                  onClick={() => runSearch(searchPage + 1)}
+                >
+                  다음
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -363,27 +428,39 @@ export default function ActivityBadgeImagePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm text-foreground">등급</span>
-                <Select
-                  value={draft.rarity}
-                  onValueChange={(v) => setDraft({ ...draft, rarity: v as BadgeRarity })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RARITY_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span className="text-xs text-muted-foreground">
-                  Common은 이미지에 등급 칩을 그리지 않아요.
-                </span>
-              </div>
+              {/* 레벨형(rarity IS NULL)은 등급이 없다 — 등급 Select를 두면 없는 등급을 고르게
+                  된다. 대신 자리(Lv.N)를 읽기 전용으로 보여주고 칩을 그리지 않는다(티켓 C-1). */}
+              {selected.leveled ? (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm text-foreground">배지 종류</span>
+                  <p className="text-sm">레벨형 · {slotLabelOf(selected)}</p>
+                  <span className="text-xs text-muted-foreground">
+                    레벨형 배지는 등급이 없어서 이미지에 등급 칩을 그리지 않아요.
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm text-foreground">등급</span>
+                  <Select
+                    value={draft.rarity}
+                    onValueChange={(v) => setDraft({ ...draft, rarity: v as BadgeRarity })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RARITY_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs text-muted-foreground">
+                    Common은 이미지에 등급 칩을 그리지 않아요.
+                  </span>
+                </div>
+              )}
 
               <div className="flex flex-col gap-1.5">
                 <span className="text-sm text-foreground">배지 이름</span>
@@ -455,6 +532,8 @@ export default function ActivityBadgeImagePage() {
                 <span className="text-xs text-muted-foreground">
                   활동 종목·등급을 고르면 아래 블롭 색상에 어울리는 4색이 채워져요. 채운 뒤에도
                   각 색상은 자유롭게 다시 조정할 수 있어요.
+                  {selected.leveled &&
+                    ' 레벨형 배지는 등급이 없어요 — 여기 등급은 배지 등급이 아니라 색상 톤을 고르는 값이에요.'}
                 </span>
               </div>
 

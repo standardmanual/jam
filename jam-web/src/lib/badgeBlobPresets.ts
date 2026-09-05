@@ -50,3 +50,14 @@ const BADGE_BLOB_PRESETS: Record<ActivityType, Record<BadgeRarity, BlobColorPres
 export function getBadgeBlobPreset(activityType: ActivityType, rarity: BadgeRarity): BlobColorPreset {
   return BADGE_BLOB_PRESETS[activityType][rarity]
 }
+
+/**
+ * 프리셋 표에 실제로 값이 있는 종목인가 (티켓 20260905_0032 C-1).
+ *
+ * `badges.activity_types`는 text[]라 타입이 보장되지 않는다 — `road_running` 같은 레거시
+ * 필터 키가 남아 있으면 `getBadgeBlobPreset`이 `undefined[rarity]`로 깨진다. DB에서 읽은
+ * 값으로 프리셋을 고르기 전에 이 가드를 통과시킨다.
+ */
+export function hasBadgeBlobPreset(activityType: string): activityType is ActivityType {
+  return activityType in BADGE_BLOB_PRESETS
+}

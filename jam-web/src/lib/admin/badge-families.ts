@@ -78,8 +78,14 @@ export interface BadgeFamily {
   missionReward: boolean
 }
 
-/** 등급 오름차순 — `RARITY_TIER`가 유일한 등급 순서 정의다 */
-function variantRank(badge: FamilyBadge): number {
+/**
+ * 계열 안 «자리» 오름차순 — 레벨형은 레벨, 등급형은 등급 서열(`RARITY_TIER`가 유일한 정의).
+ *
+ * `export`인 이유: 배지 목록의 계열순 정렬(`badge-list-view.ts`)이 계열 안 순서를 같은
+ * 기준으로 매겨야 한다. 다시 선언하면 두 화면에서 같은 계열의 순서가 갈린다
+ * (티켓 20260905_0032 C-2).
+ */
+export function familySlotRank(badge: Pick<FamilyBadge, 'rarity' | 'level'>): number {
   if (badge.level != null) return badge.level
   return badge.rarity ? RARITY_TIER[badge.rarity] : 0
 }
@@ -112,7 +118,7 @@ export function groupBadgesIntoFamilies(badges: FamilyBadge[]): BadgeFamily[] {
   const families: BadgeFamily[] = []
   for (const [key, rawVariants] of groups) {
     const variants = [...rawVariants].sort(
-      (a, b) => variantRank(a) - variantRank(b) || a.name.localeCompare(b.name, 'ko')
+      (a, b) => familySlotRank(a) - familySlotRank(b) || a.name.localeCompare(b.name, 'ko')
     )
     const leveled = variants.filter((v) => isLeveledBadge(v)).length
     const kind: FamilyKind = leveled === 0 ? 'graded' : leveled === variants.length ? 'leveled' : 'mixed'
@@ -164,6 +170,40 @@ export function compareFamilies(a: BadgeFamily, b: BadgeFamily): number {
     a.sortOrder - b.sortOrder ||
     a.name.localeCompare(b.name, 'ko')
   )
+}
+
+// ── 계열 목록 좁히기 (티켓 20260905_0032 C-3) ───────────────────────────────
+
+/** 계열 목록 필터 조건. 값이 없는 항목은 그 축을 좁히지 않는다 */
+export interface FamilyFilterCriteria {
+  /** 계열명·계열 키 부분 일치(대소문자 무시) */
+  q?: string | null
+  activityType?: string | null
+  /** 계열이 쓰는 측정 조건 지표 — `measurableKeys`에 들어 있으면 통과 */
+  conditionKey?: string | null
+}
+
+/**
+ * 계열 목록을 좁힌다. **164계열이 되면 전체 목록을 눈으로 훑을 수 없다**(티켓 C-3).
+ *
+ * 전량을 이미 메모리에 들고 있으므로(`fetchActivityFamilyBadges`가 `range`로 끝까지 가져온다)
+ * DB 재조회 없이 여기서 거른다 — 그래야 그룹핑이 끝난 뒤에만 알 수 있는 축(사용 조건 지표)도
+ * 같은 방식으로 좁힐 수 있다.
+ */
+export function filterFamilies(families: BadgeFamily[], criteria: FamilyFilterCriteria): BadgeFamily[] {
+  const q = criteria.q?.trim().toLowerCase() ?? ''
+  const activityType = criteria.activityType || null
+  const conditionKey = criteria.conditionKey || null
+
+  return families.filter((family) => {
+    if (q) {
+      const haystack = `${family.name} ${family.familyKey ?? ''}`.toLowerCase()
+      if (!haystack.includes(q)) return false
+    }
+    if (activityType && family.activityType !== activityType) return false
+    if (conditionKey && !(family.measurableKeys as readonly string[]).includes(conditionKey)) return false
+    return true
+  })
 }
 
 // ── 계열 키 발급 ────────────────────────────────────────────────────────────
