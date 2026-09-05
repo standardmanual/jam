@@ -96,12 +96,27 @@ Step 3-B. [무한레벨형] 계열(family_key) 단위 평가 — 「보유 레�
   B. prerequisite_badge_names — 등급형과 같은 규칙
   C. 통과하면 후보로 올리고 다음 레벨을 이어서 검사 (연속 발급, 최상위 1개가 아니다)
   ※ 등급 서열 비교(RARITY_TIER)를 적용하지 않는다 — rarityTier(null)=0이라 0 <= 0으로 매번 탈락한다
+Step 3-C. [반복형] 배지 단위 평가 — **보유해도 후보에서 빠지지 않는 유일한 종류** (§2.14):
+  A. prerequisite_badge_names — 등급형과 같은 규칙 (세 경로가 evaluateBadgeGates() 하나를 쓴다)
+  B. evaluateConditionDetailed — repeat_count 회차 임계값 포함
+  C. 미보유 → action='issue' / 보유 + 이번 배치에 새 회차 → action='increment'
+  ※ 성장 티어 병합·트랙 병합 모두 적용하지 않는다 — 하위 등급도 계속 카운터를 받아야 한다
 Step 4. [진행 트랙 중복 제거] 단일 조건 배지는 activity_type:조건타입 트랙당 최고 1개
-  ※ 무한레벨형은 트랙 병합 대상이 아니다(progressionKey=null) — 걸리면 연속 발급분이 1개로 접힌다
+  ※ 무한레벨형·반복형은 트랙 병합 대상이 아니다(progressionKey=null) — 걸리면 발급분이 1개로 접힌다
 Step 4.8. [첫 싱크 게이트] 첫 싱크면 계열의 첫 칸(등급형=Common / 레벨형=Lv.1) 외 전부 missed
+          ※ action='increment'는 발급이 아니므로 이 게이트의 대상이 아니다
 Step 5. [홍수 방지] ❌ **제거됨** — 30일 롤링 캡은 더 이상 없다 (§2.6 참조, 코드에도 캡 없음)
-Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_done 갱신
+Step 6. [DB 반영] action='issue' → user_activity_badges INSERT (earn_count·earn_history 포함)
+                  action='increment' → increment_activity_badge_earn() RPC (회차 카운터만)
+Step 7. [부수효과] **DB 반영에 성공한 'issue'만** — earned 배열 · 잼 포인트 · 피드 이벤트 ·
+        결산 · 획득 연출. 'increment'는 여기 오지 않는다 (§2.14)
+Step 8. initial_sync_done 갱신
 ```
+
+> **Step 6~8을 가른 이유** (2026-09-05, 티켓 20260905_0030 B1): 예전에는 `earned.push`가
+> INSERT보다 **먼저**라, 발급이 실제로 실패해도(중복키·FK 위반) 결산·획득 연출·피드에는
+> 발급된 것으로 나갔다. 반복형은 「발급 O / 카운터만 O」를 구분해야 하는데 그 상태로는
+> 진실 원천이 없다. 이제 `earned`에는 **DB 반영에 성공한 발급만** 담긴다.
 
 ### 2.3 조건 평가 필드 (모든 필드 AND)
 
@@ -125,6 +140,7 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 | `active_days_count` (2026-08-08 신규) | 축1 게이트 통과 활동의 `(startDateLocal ?? startDate).slice(0,10)` 고유 날짜 `Set` 크기 ≥ 조건값 (연속 아님) |
 | `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 활동 횟수가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
 | `month` (2026-08-08 확장) | 기존 `number`에서 `number | number[]`로 확장 — 배열이면 여러 달을 OR로 묶어 `monthly_km`와 결합(예: 장마철 6~7월) |
+| `repeat_count` (2026-09-05 신규) | **기준 조건을 통째로 만족한 활동 건수** ≥ 조건값. `total_count`(필터 통과 건수)와 다르다 — 회차 정의는 `collectRepeatOccurrences()` 한 곳. §2.14 · CONDITION_JSON_SPEC §2.11 |
 | `prerequisite_badge_names` | Step 3 C-1에서 처리 (OR 매칭) |
 | **v5 신규 20종** (2026-09-05) | ❌ **평가 미구현 — fail-closed로 막힌다.** 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10. 다만 스칼라 7종이 읽을 **원천 데이터는 수집이 시작됐다**(§2.1-1, 티켓 20260905_0029) — 평가 구현(0030)은 `CONDITION_ACTIVITY_FIELD`로 정규화 필드를 꺼내면 된다 |
 
@@ -214,6 +230,11 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 (`isLeveledBadge()`), 보유 배지 집계에서도 레벨형은 `highestOwnedTierByName`에 섞지 않는다 —
 레벨형이 등급형 계열과 같은 이름을 쓸 수 있어 0이 섞이면 티어 판정이 오염된다.
 
+**반복형(`rarity` + `condition_json.repeat_count`)에도 적용하지 않는다** (v5 B1). 반복형의
+등급 사다리는 같은 이름의 4장이 임계값만 1·5·20·50회로 다른 형태라, 성장 티어를 적용하면
+Rare를 얻는 순간 Common이 후보에서 빠져 **하위 등급의 회차 카운터가 멈춘다**. 보유 배지 집계
+(`highestOwnedTierByName`)에도 넣지 않는다.
+
 ### 2.5 진행 트랙 정책
 
 단일 조건 배지는 `activity_type:조건타입` 트랙으로 묶여 동일 트랙 내 최고값 1개만 발급.
@@ -233,6 +254,12 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 전부 명시적 수치 조건으로 검증되므로 조건 충족 시 항상 발급을 보장한다 — 캡을 두지 않는다.
 아이템/드랍 배지는 §3의 drop-engine이 자체 확률·섀도우밴·일일 하향 로직으로 별도 어뷰징을
 방지한다.
+
+**v5의 홍수 방지는 캡이 아니라 «발급과 카운터의 분리»다** (2026-09-05, 티켓 20260905_0030 §2).
+반복형은 매 회차 `earn_count`만 올리고 임계값(예: 1·5·20·50회)에서만 실제로 발급된다.
+**회차 증가는 피드 이벤트도 결산도 만들지 않으므로 애초에 홍수 집계에 잡히지 않는다** —
+1분에 16개가 쏟아지던 원인(모든 조건 충족이 곧 발급 1건)을 구조에서 제거한 것이다.
+회차는 엔진 로그(`sync_result`)의 `counted` 배열에만 남아 사후 추적이 가능하다.
 
 ### 2.7 첫 싱크 게이트 + 선행 배지 게이트
 
@@ -461,6 +488,63 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   저장된 스냅샷만 읽는다. **위 3차 1단계 문단이 예고한 "레일 채움 막대 꼬리"(레일 진행바
   자체에 직전 위치를 시각적으로 표시하는 요소)는 이 티켓 범위가 아니다** — 배너 텍스트와
   레일 자체의 시각 표시는 별개 작업으로 갈렸다.
+
+### 2.14 반복 획득 — 「발급」과 「카운터 증가」의 분리 (2026-09-05, 티켓 20260905_0030 B1)
+
+**배지 종류는 셋이다.** 판정은 `src/lib/badge-engine/badgeKind.ts`의 `badgeKindOf()` 한 곳.
+
+| 종류 | 판정 | 묶는 축 | 보유하면 |
+|---|---|---|---|
+| 등급형 `graded` | 그 외 전부 | 이름 (`badgesByName`) | 후보 제외 |
+| 무한레벨형 `leveled` | `rarity IS NULL` | 계열 (`family_key`) | 후보 제외 (다음 레벨로 넘어감) |
+| 반복형 `repeatable` | `rarity` 있음 **+** `condition_json.repeat_count` | 배지 하나하나 | **후보로 남는다** |
+
+레벨형과 반복형이 동시에 성립하는 형태(`rarity IS NULL` + `repeat_count`)는 카탈로그 오류이며
+레벨형이 우선한다 — 계열 레일에 구멍을 내지 않는 쪽이다.
+
+#### 발급 O / 카운터만 O
+
+반복형 계열은 같은 이름의 배지 여러 장이 `repeat_count`만 다르다(강도 «낮음»이면 1·5·20·50회 —
+사다리는 강도에 따라 달라진다, 마스터 20260905_0026). 유저가 회차를 쌓으면:
+
+- **아직 없는 등급 + 임계값 도달** → 실제 발급. `user_activity_badges` INSERT, 피드 이벤트,
+  잼 포인트, 결산, 획득 연출. `earn_count`는 그 시점까지 쌓인 회차 수로 시작한다
+  (한 건만 심으면 다음 싱크에서 과거 회차가 뒤늦게 더해져 카운터가 흔들린다)
+- **이미 보유** → **회차 카운터만 증가.** 피드 이벤트도 결산도 없다. `earned` 배열에 담기지
+  않으므로 획득 연출·결산 알림에도 나타나지 않는다
+
+이 분리가 §2.6 홍수 방지의 실체다.
+
+⚠️ **진행 계산(§2.13)은 아직 반복형 축이 없다.** `classifyBadgeProgressKind()`가
+`repeat_count`가 든 조건을 `unsupported`로 떨어뜨려 진행률을 아예 그리지 않는다 — 축 하나
+(예: `duration_minutes`)만으로 그리면 「5번 달성해야 한다」를 숨긴 채 100%가 뜬다.
+확장은 티켓 20260905_0031.
+
+#### 멱등 — 조건부 원자 UPDATE
+
+`UNIQUE(user_id, badge_id)`를 유지하기로 확정했으므로(티켓 20260905_0027) 회차는 행이 아니라
+`earn_count`/`earn_history` 두 컬럼에 쌓인다. 멱등 조건은 **근거 활동 id가 이미 `earn_history`에
+있으면 올리지 않는다**이고, 이건 한 문장으로만 원자적으로 쓸 수 있다:
+
+```sql
+UPDATE public.user_activity_badges
+   SET earn_count   = earn_count + 1,
+       earn_history = earn_history || $entry::jsonb
+ WHERE user_id = $1 AND badge_id = $2
+   AND NOT (earn_history @> jsonb_build_array(jsonb_build_object('strava_activity_id', $3)))
+```
+
+supabase-js 쿼리 빌더에는 jsonb 포함 연산자를 조건절에 싣는 표현이 없어 앱 코드로 쓰면
+읽고-고치고-쓰는 왕복이 된다 — 그 순간 동시 싱크에서 회차가 유실되거나 이중 계상된다.
+그래서 `increment_activity_badge_earn()` RPC로 뺐다(마이그레이션 132, `SECURITY DEFINER` +
+`service_role`만 EXECUTE). 이 조건절이 예전에 `23505`(중복키)로 대신하던 방어를 대체한다.
+
+- `earn_history` 상한은 **200**. `earn_count`가 총계를 들고 있어 정보 손실이 작다
+- ⚠️ 상한을 넘겨 밀려난 원소는 이 조건절이 막지 못한다. 다만 싱크는 `getProcessedStravaIds`가
+  이미 처리한 활동을 상위에서 걸러내므로 **이중 방어**다
+- 나머지 세 곳의 `23505` 처리(`missions/rewards.ts` · `itembook/checker.ts` ·
+  `strava/sync.ts`의 POI 경로)는 **그대로 둔다** — 미션 보상·아이템북 보상·체크인 배지는
+  반복형이 아니라 「이미 보유면 스킵」이 맞는 의미다
 
 ---
 
