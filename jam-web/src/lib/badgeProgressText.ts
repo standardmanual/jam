@@ -6,6 +6,8 @@ import {
   type RegretLineData,
 } from '@/lib/badge-engine/badgeProgress'
 import { RARITY_LABEL } from '@/lib/rarity'
+import { REST_CONDITION_KEYS } from '@/lib/badge-engine/activityFilters'
+import { getConditionField } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeRarity } from '@/types/database'
 
 /**
@@ -276,6 +278,12 @@ export function pickSyncComparisonCandidate(rows: FamilyProgressAxisSnapshot[]):
     if (!row.prev || row.prev.length === 0) continue
     const prevByKey = new Map(row.prev.map((axis) => [axis.key, axis]))
     for (const currentAxis of row.current) {
+      // ⚠️ 휴식 축은 이 배너의 후보가 아니다.
+      //    이 문구는 「직전 동기화보다 {라벨} {델타} 가까워졌어요」 형태라, 휴식 축이 뽑히면
+      //    「복귀 전 휴식일 2일 가까워졌어요」가 되어 **서비스가 휴식을 재촉하는 모양**이 된다.
+      //    티켓 20260905_0031이 확정한 「권유형 문구 금지」의 직접 위반이다(개선 리뷰 지적).
+      //    진행 캡션(「휴식 2/5일」)은 중립적 상태 표기라 그대로 두고, 이 «권유형 문장»만 막는다.
+      if (REST_CONDITION_KEYS.includes(currentAxis.key as (typeof REST_CONDITION_KEYS)[number])) continue
       const prevAxis = prevByKey.get(currentAxis.key)
       // 계열 정합성 트리거(마이그레이션 128, badges_family_consistency)가 같은 계열의 등급
       // 간 측정 조건 필드 조합을 항상 동일하게 강제하므로 정상 상황에선 항상 찾아야 하지만,
@@ -309,11 +317,17 @@ export function formatSyncComparisonText(
   labelMap: Map<string, { label: string; unit: string | null }>
 ): string | null {
   const { axisKey, prevValue, currentValue } = candidate
-  // badge-engine/badgeProgress.ts의 resolveLabel()과 같은 폴백 규칙(라벨 없으면 key 원문)이지만
-  // 그 함수는 비공개라 재사용하지 않는다 — 이 파일은 badgeProgress.ts를 건드리지 않는다(범위 밖).
+  // 라벨 폴백은 두 단계다.
+  //  1) `badge_metric_labels`(런타임 출처, 어드민이 편집한다)
+  //  2) **`conditionRegistry`(선언 출처)** — 시드가 아직 없는 신규 축이 여기서 걸린다.
+  //     이 단계가 없으면 `rest_after_streak` 같은 **내부 키가 유저 문장에 그대로** 나간다
+  //     (`sync.ts`가 빈 labelMap으로 저장하고 표시 시점에 다시 조회하는 구조라, 이 경로만
+  //      폴백을 못 받고 있었다 — 개선 리뷰 지적).
+  //  3) 그래도 없으면 key 원문(최후)
   const found = labelMap.get(axisKey)
-  const label = found?.label ?? axisKey
-  const unit = found?.unit ?? null
+  const registryField = found ? undefined : getConditionField(axisKey)
+  const label = found?.label ?? registryField?.label ?? axisKey
+  const unit = found?.unit ?? registryField?.unit ?? null
   const lowerBetter = LOWER_IS_BETTER_KEYS.has(axisKey)
   const deltaRaw = lowerBetter ? prevValue - currentValue : currentValue - prevValue
 
