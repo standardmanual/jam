@@ -236,7 +236,7 @@ describe('computeBadgeProgress — cumulative', () => {
 
     expect(result.kind).toBe('cumulative')
     if (result.kind === 'unsupported') throw new Error('unreachable')
-    expect(result.axes).toEqual([{ key: 'distance_km', label: 'distance_km', unit: null, current: 20, target: 30, met: false, fraction: 20 / 30 }])
+    expect(result.axes).toEqual([{ key: 'distance_km', label: 'distance_km', unit: null, current: 20, target: 30, met: false, fraction: 20 / 30, remaining: 10 }])
     expect(result.progress).toBeCloseTo(20 / 30, 5)
     expect(result.bottleneck).toBe('distance_km')
     expect(result.sameActivity).toBe(false)

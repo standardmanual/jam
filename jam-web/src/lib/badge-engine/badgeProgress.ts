@@ -37,6 +37,25 @@
  * 계산 공식이 다르다(`makeHigherBetterAxis`/`makeLowerBetterRatioAxis`/`makeColdRecordAxis`).
  * 이 비율은 `progress`(축 전체 최솟값)·`bottleneck` 계산에 이미 쓰이던 내부 값이라 —
  * 새 계산을 추가한 게 아니라 버리던 값을 axis 객체에 그대로 얹어 노출한 것뿐이다.
+ *
+ * ## v5 확장 (티켓 20260905_0031) — kind 3종 · 마지막 활동값 · remaining
+ *
+ * 티켓 0030이 만든 네 구조가 전부 `unsupported`로 떨어져 있었다(발급은 판정되는데 화면에는
+ * 아무것도 그리지 않는 상태 — 「발급은 막히는데 100%가 뜨는 거짓말」을 막으려는 의도적 처리).
+ * 이 확장이 각각에 축을 만든다:
+ *
+ * - **`leveled` / `repeat` / `rest`** — 무한레벨형 · 반복 카운터 · 휴식(활동 공백)
+ * - **표시 값의 성격 분리** — 누적형은 「지금까지 쌓인 값」, **기록형은 「마지막 활동의 값」**
+ *   (`buildRecordAxis` 주석 참고. 판정(`met`)은 여전히 역대 최고 = 발급 판정과 동일 기준)
+ * - **`BadgeProgressAxis.remaining`** — 방향이 보정된 「남은 양」(페이스는 부호가 반대다)
+ * - **`crossGated`** — 교차 게이트가 걸린 배지라 축을 다 채워도 발급되지 않을 수 있다
+ *
+ * ## 재선언 금지 — 진행률과 발급 판정은 같은 출처를 본다
+ * 축 키 목록(`conditionAxes.ts`) · 회차 계산(`repeatOccurrences.ts`) · 휴식 판정
+ * (`activityFilters.ts`) · 배지 종류(`badgeKind.ts`) · 교차 게이트(`crossGate.ts`)를 전부
+ * 발급 엔진과 **같은 파일**에서 import한다. 예전에는 이 파일이 `index.ts`의
+ * `PER_ACTIVITY_KEYS`를 재선언했고(주석이 스스로 인정하고 있었다), 두 목록이 어긋나는 순간
+ * 화면과 발급이 갈라진다.
  */
 import { kmhToPaceSecPerKm, type NormalizedActivity } from '@/types/strava'
 import type { ActivityType, BadgeCondition, DayOfWeek } from '@/types/database'
@@ -52,7 +71,27 @@ import {
   // 「무엇이 휴식 조건인가」는 `activityFilters.ts`에 한 번만 적혀 있다 — 발급 판정(index.ts)과
   // 이 파일이 **같은 함수**를 본다(v5 B3, 티켓 20260905_0030 §4).
   restConditionKeysIn,
+  // 휴식 축(kind: 'rest')의 실측값도 발급 판정과 **같은 함수**에서 얻는다 — fail 결과에
+  // 구조로 실린 bestDays/shortfallKey/requiredDays를 그대로 쓴다(문자열 파싱 없음).
+  evaluateRestConditions,
 } from './activityFilters'
+// 축 키 목록은 `index.ts`(발급 판정)와 **같은 파일**에서 온다 — 예전에는 이 파일이
+// `PER_ACTIVITY_KEYS`를 재선언했고, 두 목록이 어긋나면 진행률과 발급이 갈라졌다
+// (티켓 20260905_0031).
+import {
+  SCALAR_AXIS_KEYS,
+  LOWER_IS_BETTER_AXIS_KEYS,
+  type ScalarAxisKey,
+} from './conditionAxes'
+// 회차 계산도 발급 판정과 같은 함수다 — 두 곳이 각자 세면 「화면은 4/5인데 발급은 5회차」가 된다.
+import { collectRepeatOccurrences, unconsumedRepeatConditionKeys } from './repeatOccurrences'
+// 교차 게이트는 `evaluation: 'external'`이라 fail-closed가 잡지 않는다 — 이 파일이 직접 표시한다.
+import { crossGateKeysIn } from './crossGate'
+// 휴식·반복 축의 라벨/단위는 `badge_metric_labels`에 아직 시드가 없을 수 있다. 그때
+// **조건 필드 메타(레지스트리)**를 폴백으로 쓴다 — 화면에 `rest_after_streak` 같은 내부 키가
+// 그대로 나가지 않게. 라벨의 단일 출처는 여전히 레지스트리다(activityFilters의 restKeyLabel과 동일).
+import { getConditionField } from './conditionRegistry'
+import type { BadgeKind } from './badgeKind'
 
 // ── 공개 타입 (티켓 §A 그대로) ──────────────────────────────────────────────
 
@@ -73,13 +112,43 @@ export type BadgeProgressAxis = {
    * 쓰이던 내부 `AxisResult.fraction`을 그대로 얹은 것 — 새 계산이 아니다.
    */
   fraction: number
+  /**
+   * 목표까지 남은 양 — **방향이 이미 보정된 값이다**(티켓 20260905_0031).
+   *
+   * 화면이 「N 남음」을 그릴 때 `target - current`로 재계산하면 「작을수록 좋음」 축(페이스·
+   * 한파)에서 **부호가 뒤집힌다** — 페이스 480초/km에 목표 450초/km면 남은 양은 −30이 아니라
+   * 30초다. `fraction`과 같은 태도로, 표시 레이어가 그대로 쓸 수 있게 계산 계층이 방향을
+   * 흡수한다. 항상 0 이상이며 `met`이면 0이다.
+   *
+   * `null`은 **「남은 양을 말할 수 없다」**는 뜻이다 — 측정값 자체가 없는 경우(페이스 축인데
+   * 활동이 0건 등). 0으로 두면 「0 남음」이 되어 다 채운 것처럼 보인다.
+   */
+  remaining: number | null
 }
 
 export type BadgeProgressGate = { kind: 'badge' | 'mission'; name: string; href: string; met: boolean } | null
 
+/**
+ * 진행 유형. 5종에서 8종으로 늘었다(티켓 20260905_0031 — v5 구조 3개에 축을 만들었다).
+ *
+ * - `leveled` — 무한레벨형(`rarity IS NULL`). 축 자체는 아래 5종 중 하나로 계산하고, `target`이
+ *   «다음 레벨 임계값»이라는 사실과 `level`을 함께 싣는다
+ * - `repeat`  — 반복 카운터(`repeat_count`). 「현재 회차 / 임계 회차」
+ * - `rest`    — 휴식(활동 공백). 「현재 최대 공백 / 요구 일수」
+ */
+export type BadgeProgressKind =
+  | 'cumulative'
+  | 'record'
+  | 'periodic'
+  | 'dual'
+  | 'multi'
+  | 'leveled'
+  | 'repeat'
+  | 'rest'
+
 export type BadgeProgress =
   | {
-      kind: 'cumulative' | 'record' | 'periodic' | 'dual' | 'multi'
+      kind: BadgeProgressKind
       axes: BadgeProgressAxis[]
       /** 0~1 — 축이 여럿이면 평균이 아니라 최솟값 */
       progress: number
@@ -90,8 +159,35 @@ export type BadgeProgress =
       /** 주기형만 — ISO 문자열, 리셋 시각 */
       periodEndsAt: string | null
       gate: BadgeProgressGate
+      /**
+       * 무한레벨형만 — 이 배지의 레벨(`badges.level`). 그 외에는 null.
+       * 호출부가 `options.level`로 넘긴 값을 그대로 싣는다(이 계층은 레벨을 계산하지 않는다).
+       */
+      level: number | null
+      /**
+       * **축을 다 채워도 발급되지 않을 수 있다** — 2단 교차 게이트(`cross_in_axis` /
+       * `cross_between_axis` / `gate_mission_badge`)가 걸린 배지인가.
+       *
+       * 이 계층은 게이트를 판정하지 않는다(유저 보유 배지 정의가 필요하고, 그건
+       * `evaluateBadgeGates`의 몫이다). 그래서 **판정 결과가 아니라 「게이트가 있다」는 사실만**
+       * 싣는다 — 이게 없으면 화면은 수치 100%를 「조건 충족」으로 그리는데 발급은 게이트가
+       * 막는 상태가 된다(티켓 20260905_0031, 0030이 넘긴 «거짓말 중» 항목).
+       */
+      crossGated: boolean
     }
   | { kind: 'unsupported'; conditionKeys: string[] }
+
+/**
+ * `computeBadgeProgress`/`classifyBadgeProgressKind`가 **조건만으로는 알 수 없는** 배지
+ * 속성. 무한레벨형 판정 기준은 `condition_json`이 아니라 `badges.rarity`이므로
+ * (`badgeKind.ts`의 `isLeveledBadge`), 호출부가 배지 행에서 읽어 넘긴다.
+ */
+export type BadgeProgressOptions = {
+  /** `badgeKindOf(badge)` 결과 — 넘기지 않으면 조건만으로 분류한다(기존 동작 그대로) */
+  badgeKind?: BadgeKind
+  /** `badges.level` — `badgeKind === 'leveled'`일 때만 의미가 있다 */
+  level?: number | null
+}
 
 export type Season = 'spring' | 'summer' | 'fall' | 'winter'
 
@@ -132,6 +228,42 @@ export interface UserPeriodMetrics {
   dayOfWeekCounts: Record<DayOfWeek, number>
   /** 계절별 활동 횟수 — season_count(단일)·season_count_all(다중) 축 공용 */
   seasonCounts: Record<Season, number>
+
+  // ── 최댓값·마지막 활동 지표 (티켓 20260905_0031) ─────────────────────────
+  //
+  // 예전에는 축을 만들 때마다 `metrics.activities`를 다시 순회했다(`buildScalarAxis`).
+  // 배지 550종 × 2패스면 같은 배열을 1,100번 훑는다 — 서버 컴포넌트 동기 계산이라 TTFB에
+  // 직결된다. 여기서 한 번만 접어 둔다(집계는 (user, activity_type)당 1회다).
+
+  /**
+   * 축별 «역대 최고 실측값» — **방향이 이미 적용돼 있다.** 「클수록 좋음」 축은 최댓값,
+   * 「작을수록 좋음」 축(페이스·한파)은 최솟값이다. 측정값이 하나도 없으면 축 종류에 따라
+   * `0` / `±Infinity`가 들어간다(`bestScalarValue` 참고 — 기존 `buildScalarAxis`의 폴백과 동일).
+   *
+   * ⚠️ `duration_minutes`에 `time_range`가 붙은 조건처럼 **필터가 있는 축은 이 값을 쓸 수 없다** —
+   * 그때는 좁힌 풀 위에서 같은 함수(`bestScalarValue`)를 다시 부른다.
+   */
+  maxScalarValues: Record<ScalarAxisKey, number>
+  /**
+   * **마지막 활동 하나**의 축별 실측값 — 기록형 표시의 근거다(티켓 20260905_0031 «표시 값의
+   * 성격 분리»). 누적형이 「지금까지 쌓인 값」을 보여준다면 기록형은 「이번에 얼마나
+   * 가까웠나」를 보여줘야 한다. 활동이 없으면 전부 `null`.
+   */
+  lastActivityValues: Record<ScalarAxisKey, number | null>
+  /** 한 번의 활동에서 낸 최장 거리(km) — `maxScalarValues.distance_km`과 같은 값의 별칭 */
+  maxSingleDistanceKm: number
+  /** 한 번의 활동에서 낸 최장 이동시간(분) — `maxScalarValues.duration_minutes`의 별칭 */
+  maxSingleDurationMin: number
+  /**
+   * 역대 최고 «순간 최고 속도»(km/h). v5 조건 `max_speed_kmh`용 — 평균 속도
+   * (`maxScalarValues.min_speed_kmh`)와 다른 축이다. 값이 있는 활동이 없으면 0.
+   */
+  maxSpeedKmh: number
+  /**
+   * 역대 최고 «도달 고도»(m). v5 조건 `max_elevation_m`용 — 고도 «상승량»
+   * (`totalElevationGainM`)이 아니다. 값이 있는 활동이 없으면 0.
+   */
+  maxElevationM: number
 }
 
 // ── 내부 유틸 ────────────────────────────────────────────────────────────
@@ -152,9 +284,6 @@ function dateKey(a: NormalizedActivity): string {
 function isWeekend(d: Date): boolean {
   const day = d.getDay()
   return day === 0 || day === 6
-}
-function maxOr(values: number[], fallback: number): number {
-  return values.length > 0 ? Math.max(...values) : fallback
 }
 function clamp01(n: number): number {
   if (Number.isNaN(n) || !Number.isFinite(n)) return 0
@@ -183,6 +312,43 @@ function nextMondayIso(mondayKey: string): string {
 /** 다음 달 1일 00:00 ISO 문자열(달력 기준) */
 function nextMonthStartIso(now: Date): string {
   return new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0).toISOString()
+}
+
+/**
+ * 축 하나의 «역대 최고 실측값» — **방향이 적용된 값**(티켓 20260905_0031).
+ *
+ * 「클수록 좋음」은 최댓값, 「작을수록 좋음」(페이스·한파)은 최솟값이다. 측정값이 하나도
+ * 없으면 방향에 맞는 «최악값»(`±Infinity`)을 돌려준다 — 0을 돌려주면 페이스 축에서
+ * 「0초/km」라는 완벽한 기록이 되어 버린다. 축 빌더가 각자 폴백을 적용한다(기존 코드와 동일).
+ *
+ * 예전에는 이 계산이 `buildScalarAxis` 안에 축마다 인라인으로 흩어져 있었다. 한 곳으로 모아
+ * `computeUserPeriodMetrics`가 미리 접어 두고(배지마다 재순회 제거), 필터가 붙은 축만 좁힌
+ * 풀 위에서 **같은 함수**를 다시 부른다.
+ */
+function bestScalarValue(field: ScalarAxisKey, activities: NormalizedActivity[]): number {
+  const lowerIsBetter = LOWER_IS_BETTER_AXIS_KEYS.has(field)
+  const values = activities.map((a) => getFieldValue(field, a)).filter((v) => Number.isFinite(v))
+  if (values.length === 0) return lowerIsBetter ? Infinity : -Infinity
+  return lowerIsBetter ? Math.min(...values) : Math.max(...values)
+}
+
+/**
+ * 축 하나의 «마지막 활동 값» — 측정 불가(주말 축인데 마지막 활동이 평일 등)면 null.
+ *
+ * 기록형 표시의 근거다. `computeRecordRegretLine`도 같은 함수를 쓴다 — 두 곳이 각자
+ * 「마지막 활동」을 고르면 축에는 9.8km라고 써 놓고 아쉬움 줄은 다른 활동으로 계산된다.
+ */
+function latestScalarValue(field: ScalarAxisKey, activities: NormalizedActivity[]): number | null {
+  if (activities.length === 0) return null
+  const latest = activities.reduce((a, b) => (dateOf(a) > dateOf(b) ? a : b))
+  const value = getFieldValue(field, latest)
+  return Number.isFinite(value) ? value : null
+}
+
+/** 값이 있는 활동만 골라 최댓값 — v5 확장 필드(`maxSpeedKmh`·`maxElevationM`)용. 없으면 0 */
+function maxOfOptionalField(activities: NormalizedActivity[], pick: (a: NormalizedActivity) => number | undefined): number {
+  const values = activities.map(pick).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+  return values.length > 0 ? Math.max(...values) : 0
 }
 
 // ── B. 유저 지표 집계 ────────────────────────────────────────────────────
@@ -223,6 +389,16 @@ export function computeUserPeriodMetrics(
     return acc
   }, {} as Record<Season, number>)
 
+  // 축별 최댓값·마지막 활동 값 — 배지마다 재순회하지 않도록 여기서 한 번만 접는다
+  // (티켓 20260905_0031). 두 맵 모두 SCALAR_AXIS_KEYS에서 파생되므로 축이 추가되면
+  // 자동으로 따라온다 — 손으로 나열하지 않는다.
+  const maxScalarValues = {} as Record<ScalarAxisKey, number>
+  const lastActivityValues = {} as Record<ScalarAxisKey, number | null>
+  for (const key of SCALAR_AXIS_KEYS) {
+    maxScalarValues[key] = bestScalarValue(key, activities)
+    lastActivityValues[key] = latestScalarValue(key, activities)
+  }
+
   return {
     activityType,
     activities,
@@ -240,35 +416,24 @@ export function computeUserPeriodMetrics(
     currentYear,
     dayOfWeekCounts,
     seasonCounts,
+    maxScalarValues,
+    lastActivityValues,
+    // 별칭 — 티켓이 이름으로 지목한 지표들. 파생값이라 따로 순회하지 않는다
+    maxSingleDistanceKm: Number.isFinite(maxScalarValues.distance_km) ? maxScalarValues.distance_km : 0,
+    maxSingleDurationMin: Number.isFinite(maxScalarValues.duration_minutes) ? maxScalarValues.duration_minutes : 0,
+    maxSpeedKmh: maxOfOptionalField(activities, (a) => a.maxSpeedKmh),
+    maxElevationM: maxOfOptionalField(activities, (a) => a.maxElevationM),
   }
 }
 
 // ── A. 분류 함수 (§H — 어드민 경고가 나중에 그대로 재사용) ───────────────────
 
 /**
- * 엔진이 실제로 "단일 활동 값 vs 단일 활동 값"으로 비교하거나(record) 전체 누적으로
- * 비교하는(cumulative, same_activity 없을 때) 8개 필드. distance_km/elevation_gain_m을
- * 뺀 6개는 index.ts의 `PER_ACTIVITY_KEYS`와 동일 — 이름을 다시 import하지 않고 이 파일이
- * 필요한 형태(축 판별용 튜플)로 다시 선언한다(값은 index.ts와 동일해야 하며, 그 파일이
- * 바뀌면 이 목록도 함께 봐야 한다 — 재사용이 아니라 재선언인 이유는 index.ts의
- * PER_ACTIVITY_KEYS가 private이고, 티켓이 명시적으로 재사용을 지정한 헬퍼 목록에는
- * 포함되지 않았기 때문).
- */
-const SCALAR_AXIS_KEYS = [
-  'distance_km', 'elevation_gain_m', 'duration_minutes', 'min_speed_kmh',
-  'max_pace_sec_per_km', 'temperature_min_c', 'temperature_max_c', 'weekend_duration_hours',
-] as const satisfies readonly (keyof BadgeCondition)[]
-
-type ScalarAxisKey = (typeof SCALAR_AXIS_KEYS)[number]
-
-/** "작을수록 좋음" 축 — 나머지는 전부 "클수록 좋음" */
-const LOWER_IS_BETTER: ReadonlySet<ScalarAxisKey> = new Set(['max_pace_sec_per_km', 'temperature_max_c'])
-
-/**
  * 표시 레이어(`badgeProgressText.ts`, 티켓 20260904_0921/2c)가 "아쉬움 줄" diff 방향을
- * 재사용하기 위한 노출. 값은 위 `LOWER_IS_BETTER`와 항상 같다 — 별도로 재정의하지 않는다.
+ * 재사용하기 위한 노출. `conditionAxes.ts`의 목록을 그대로 넓힌 타입으로 다시 내보내는
+ * 것뿐이다 — 값을 재정의하지 않는다(티켓 20260905_0031: 재선언 금지).
  */
-export const LOWER_IS_BETTER_KEYS: ReadonlySet<string> = new Set(LOWER_IS_BETTER)
+export const LOWER_IS_BETTER_KEYS: ReadonlySet<string> = LOWER_IS_BETTER_AXIS_KEYS
 
 function measurableScalarKeys(condition: BadgeCondition): ScalarAxisKey[] {
   // temperature_min_c/max_c + total_count는 엔진에서 "카운팅 대상 필터"로만 쓰인다 — 축 아님
@@ -281,7 +446,11 @@ function measurableScalarKeys(condition: BadgeCondition): ScalarAxisKey[] {
   })
 }
 
-export function classifyBadgeProgressKind(condition: BadgeCondition): BadgeProgress['kind'] | 'unsupported' {
+/**
+ * 조건 «자체»의 유형 — 무한레벨형 여부(배지 행 속성)는 보지 않는다.
+ * `classifyBadgeProgressKind`가 `leveled`의 «기반 유형»을 구할 때도 이 함수를 쓴다.
+ */
+function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | 'unsupported' {
   if (!condition) return 'unsupported'
 
   // fail-closed와 보조를 맞춘다 (티켓 20260905_0028 개선 리뷰).
@@ -292,21 +461,24 @@ export function classifyBadgeProgressKind(condition: BadgeCondition): BadgeProgr
   const blocking = findBlockingConditionKeys(condition)
   if (hasBlockingConditionKeys(blocking)) return 'unsupported'
 
-  // 반복형(repeat_count)은 아직 진행 계산 축이 없다 — 확장은 티켓 20260905_0031.
-  // 그때까지 unsupported로 둔다. 이 줄이 없으면 `{ duration_minutes: 60, repeat_count: 5 }`가
-  // scalarKeys 1개(duration_minutes)로 잡혀 «record» 진행률을 그리는데, 그건
-  // 「60분을 채웠는지」만 보여주고 **「5번 채워야 한다」를 통째로 숨긴다** — 발급은 안 되는데
-  // 화면은 100%가 되는, fail-closed 분기가 막으려던 것과 같은 형태의 거짓말이다.
-  if (condition.repeat_count !== undefined) return 'unsupported'
+  const restKeys = restConditionKeysIn(condition)
+  const hasRepeat = condition.repeat_count !== undefined
 
-  // 휴식(활동 공백)도 아직 진행 계산 축이 없다 — 확장은 티켓 20260905_0031(kind: 'rest').
-  //
-  // **이 줄이 없으면 발급 판정과 화면이 정면으로 어긋난다.** `{ streak_days: 6,
-  // rest_after_streak: 2 }`는 아래 분류에서 `streak_days` 축 1개짜리 «cumulative»로 잡혀
-  // 「연속 6일」 진행률만 그리고 **「그 뒤 2일 쉬어야 한다」를 통째로 숨긴 채 100%가 뜬다** —
-  // 발급은 되지 않는데 화면은 다 찼다고 말하는, `repeat_count`·fail-closed 분기가 막으려던
-  // 것과 같은 형태의 거짓말이다. 「무엇이 휴식 조건인가」는 발급 판정과 **같은 함수**로 센다.
-  if (restConditionKeysIn(condition).length > 0) return 'unsupported'
+  // 휴식 + 회차는 **발급 자체가 막히는 조합**이다(§2.16 「회차와 함께 쓸 수 없다」,
+  // 티켓 20260905_0030 B-10). 어느 한쪽 축을 그리면 나머지 절반을 숨긴 채 진행률이 차오른다.
+  if (restKeys.length > 0 && hasRepeat) return 'unsupported'
+
+  // 휴식(활동 공백) — 「닫힌 공백」만 세므로 현재 시각(now)이 필요 없다(§2.16).
+  // 실측값은 발급 판정과 **같은 함수**(`evaluateRestConditions`)에서 온다.
+  if (restKeys.length > 0) return 'rest'
+
+  // 반복 카운터 — 회차 술어가 다루지 못하는 키가 섞이면 발급 쪽이 회차를 0으로 떨어뜨린다
+  // (fail-closed). 그때 진행률을 그리면 「화면은 3/5회인데 발급은 0회차」가 된다.
+  // **판정은 발급과 같은 함수**(`unconsumedRepeatConditionKeys`)로 한다 — 여기서 직접 부르는
+  // 이유는 `collectRepeatOccurrences`가 그 경우 경고 로그를 찍기 때문이다(배지 × 유저마다 폭발).
+  if (hasRepeat) {
+    return unconsumedRepeatConditionKeys(condition).length > 0 ? 'unsupported' : 'repeat'
+  }
 
   const isMulti =
     (Array.isArray(condition.day_of_week) && condition.total_count !== undefined) ||
@@ -343,6 +515,23 @@ export function classifyBadgeProgressKind(condition: BadgeCondition): BadgeProgr
   return 'unsupported'
 }
 
+/**
+ * 진행 유형 분류. **무한레벨형은 조건만으로 알 수 없다** — 판정 기준이 `badges.rarity`라
+ * (`badgeKind.ts`의 `isLeveledBadge`) 호출부가 `options.badgeKind`로 알려줘야 한다.
+ * 넘기지 않으면 조건만으로 분류한다(기존 소비처는 그대로 동작한다).
+ *
+ * 레벨형이어도 **기반 유형이 unsupported면 unsupported다** — 「레벨형이니까 뭐라도 그리자」는
+ * 곧 거짓 진행률이다.
+ */
+export function classifyBadgeProgressKind(
+  condition: BadgeCondition,
+  options?: BadgeProgressOptions
+): BadgeProgressKind | 'unsupported' {
+  const base = classifyConditionKind(condition)
+  if (options?.badgeKind !== 'leveled') return base
+  return base === 'unsupported' ? 'unsupported' : 'leveled'
+}
+
 // ── A. 축 계산 헬퍼 ──────────────────────────────────────────────────────
 
 type LabelMap = Map<string, { label: string; unit: string | null }>
@@ -353,12 +542,31 @@ function resolveLabel(labelMap: LabelMap, key: string): { label: string; unit: s
   return { label: found?.label ?? key, unit: found?.unit ?? null }
 }
 
+/**
+ * 라벨맵에 **조건 필드 메타(레지스트리) 폴백을 얹은 사본**을 만든다 — 반복·휴식 축 전용
+ * (티켓 20260905_0031).
+ *
+ * 기존 8개 축은 `badge_metric_labels`에 시드가 있고, 없을 때 key 원문이 그대로 보이는 것은
+ * 「아직 안 채워졌음을 눈에 띄게」 하는 의도적 설계다(§08 G). 반면 `repeat_count`·휴식 4종은
+ * 그 테이블에 아직 행이 없어서 그대로 두면 화면에 `rest_after_streak`가 나간다. 레지스트리는
+ * `badge_metric_labels` 시드의 출처이기도 하므로 **같은 문자열**이며, 새 라벨을 만드는 것이
+ * 아니다(`activityFilters.ts`의 `restKeyLabel`과 동일한 태도).
+ */
+function withRegistryLabel(labelMap: LabelMap, key: string): LabelMap {
+  if (labelMap.has(key)) return labelMap
+  const meta = getConditionField(key)
+  if (!meta) return labelMap
+  return new Map(labelMap).set(key, { label: meta.label, unit: meta.unit ?? null })
+}
+
 /** "클수록 좋음" 축 — target<=0인 축은 카탈로그에 없지만 방어적으로 처리 */
 function makeHigherBetterAxis(key: string, current: number, target: number, labelMap: LabelMap): AxisResult {
   const { label, unit } = resolveLabel(labelMap, key)
   const met = current >= target
   const fraction = target > 0 ? clamp01(current / target) : (met ? 1 : 0)
-  return { axis: { key, label, unit, current, target, met, fraction }, fraction }
+  // 「클수록 좋음」 축의 남은 양은 target − current. met이면 0으로 눌러 음수가 나가지 않게 한다.
+  const remaining = met ? 0 : Math.max(0, target - current)
+  return { axis: { key, label, unit, current, target, met, fraction, remaining }, fraction }
 }
 
 /**
@@ -371,7 +579,10 @@ function makeLowerBetterRatioAxis(key: string, current: number, target: number, 
   const hasData = Number.isFinite(current) && current > 0
   const met = hasData && current <= target
   const fraction = hasData ? clamp01(target / current) : 0
-  return { axis: { key, label, unit, current: hasData ? current : 0, target, met, fraction }, fraction }
+  // **부호가 반대다** — 페이스 480초/km에 목표 450초/km면 남은 양은 30초(target − current가 아니다).
+  // 측정값이 없으면 「남은 양을 말할 수 없다」(null) — 0으로 두면 다 채운 것처럼 보인다.
+  const remaining = hasData ? (met ? 0 : Math.max(0, current - target)) : null
+  return { axis: { key, label, unit, current: hasData ? current : 0, target, met, fraction, remaining }, fraction }
 }
 
 /**
@@ -388,7 +599,9 @@ function makeColdRecordAxis(key: string, current: number, target: number, labelM
   const c = hasData ? current : COLD_PROGRESS_BASELINE_C
   const span = COLD_PROGRESS_BASELINE_C - target
   const fraction = span > 0 ? clamp01((COLD_PROGRESS_BASELINE_C - c) / span) : (met ? 1 : 0)
-  return { axis: { key, label, unit, current: hasData ? current : 0, target, met, fraction }, fraction }
+  // 한파 축도 「작을수록 좋음」이라 부호가 반대다 — 목표 −5℃에 실측 2℃면 7도 남았다.
+  const remaining = hasData ? (met ? 0 : Math.max(0, current - target)) : null
+  return { axis: { key, label, unit, current: hasData ? current : 0, target, met, fraction, remaining }, fraction }
 }
 
 function getFieldValue(field: ScalarAxisKey, a: NormalizedActivity): number {
@@ -421,51 +634,43 @@ function poolForScalarField(field: ScalarAxisKey, condition: BadgeCondition, met
 }
 
 /**
+ * "그 활동 하나"의 값을 축으로 감싼다 — `makeHigherBetterAxis`/`makeLowerBetterRatioAxis`/
+ * `makeColdRecordAxis`는 "current가 어떻게 나온 값인지"(역대 최댓값이든 직전 활동 하나든)
+ * 신경 쓰지 않는 순수 매핑이라 그대로 재사용한다.
+ *
+ * **축 종류별 함수 선택이 여기 한 곳에만 있다** — `buildScalarAxis`·기록형 축·아쉬움 줄이
+ * 전부 이 함수를 거친다. 다르게 고르면 met/fraction 기준이 어긋난다.
+ */
+function makeAxisForField(field: ScalarAxisKey, rawValue: number, target: number, labelMap: LabelMap): AxisResult {
+  if (field === 'temperature_max_c') return makeColdRecordAxis(field, rawValue, target, labelMap)
+  if (LOWER_IS_BETTER_AXIS_KEYS.has(field)) return makeLowerBetterRatioAxis(field, rawValue, target, labelMap)
+  // 「클수록 좋음」 축은 측정값이 하나도 없으면 -Infinity가 온다 — 기존 폴백(0)을 그대로 유지한다
+  return makeHigherBetterAxis(field, Number.isFinite(rawValue) ? rawValue : 0, target, labelMap)
+}
+
+/**
+ * 축의 «역대 최고 실측값». 필터가 없으면 `computeUserPeriodMetrics`가 미리 접어 둔 값을 쓰고,
+ * 필터가 붙으면(`duration_minutes` + `time_range` 등) 좁힌 풀 위에서 **같은 함수**를 다시
+ * 부른다 — 배지마다 전체 이력을 재순회하던 것을 없앤 것뿐이고 값은 이전과 동일하다
+ * (티켓 20260905_0031).
+ */
+function bestScalarValueFor(field: ScalarAxisKey, condition: BadgeCondition, metrics: UserPeriodMetrics): number {
+  const pool = poolForScalarField(field, condition, metrics)
+  return pool === metrics.activities ? metrics.maxScalarValues[field] : bestScalarValue(field, pool)
+}
+
+/**
  * 8개 축 필드 중 하나를 "단독 필드 규칙"으로 계산한다 — dual(독립 평가)의 각 축, 그리고
  * record 단독 축(distance_km/elevation_gain_m 제외 6개) 양쪽에서 공유한다.
  * distance_km/elevation_gain_m은 여기서는 항상 "누적 합계"(cumulative) 규칙을 쓴다 —
- * same_activity:true인 단일 필드(T23)는 이 함수를 거치지 않고 buildSameActivitySingleAxis를
- * 쓴다.
+ * same_activity:true인 단일 필드(T23)는 이 함수를 거치지 않고 `buildRecordAxis`가
+ * «한 활동 하나의 값»(maxScalarValues / lastActivityValues)으로 처리한다.
  */
 function buildScalarAxis(field: ScalarAxisKey, condition: BadgeCondition, metrics: UserPeriodMetrics, labelMap: LabelMap): AxisResult {
   const target = condition[field] as number
-  switch (field) {
-    case 'distance_km':
-      return makeHigherBetterAxis('distance_km', metrics.totalDistanceKm, target, labelMap)
-    case 'elevation_gain_m':
-      return makeHigherBetterAxis('elevation_gain_m', metrics.totalElevationGainM, target, labelMap)
-    case 'duration_minutes': {
-      const pool = poolForScalarField('duration_minutes', condition, metrics)
-      return makeHigherBetterAxis('duration_minutes', maxOr(pool.map((a) => a.movingTimeSec / 60), 0), target, labelMap)
-    }
-    case 'min_speed_kmh':
-      return makeHigherBetterAxis('min_speed_kmh', maxOr(metrics.activities.map((a) => a.averageSpeedKmh), 0), target, labelMap)
-    case 'max_pace_sec_per_km': {
-      const paces = metrics.activities.map((a) => kmhToPaceSecPerKm(a.averageSpeedKmh)).filter((p) => Number.isFinite(p))
-      const best = paces.length > 0 ? Math.min(...paces) : Infinity
-      return makeLowerBetterRatioAxis('max_pace_sec_per_km', best, target, labelMap)
-    }
-    case 'temperature_min_c': {
-      const temps = metrics.activities.map((a) => a.weatherTempC).filter((t): t is number => t != null)
-      const best = temps.length > 0 ? Math.max(...temps) : -Infinity
-      return makeHigherBetterAxis('temperature_min_c', Number.isFinite(best) ? best : 0, target, labelMap)
-    }
-    case 'temperature_max_c': {
-      const temps = metrics.activities.map((a) => a.weatherTempC).filter((t): t is number => t != null)
-      const best = temps.length > 0 ? Math.min(...temps) : Infinity
-      return makeColdRecordAxis('temperature_max_c', best, target, labelMap)
-    }
-    case 'weekend_duration_hours': {
-      const pool = poolForScalarField('weekend_duration_hours', condition, metrics)
-      return makeHigherBetterAxis('weekend_duration_hours', maxOr(pool.map((a) => a.movingTimeSec / 3600), 0), target, labelMap)
-    }
-  }
-}
-
-function buildSameActivitySingleAxis(field: 'distance_km' | 'elevation_gain_m', condition: BadgeCondition, metrics: UserPeriodMetrics, labelMap: LabelMap): AxisResult {
-  const target = condition[field] as number
-  const best = maxOr(metrics.activities.map((a) => getFieldValue(field, a)), 0)
-  return makeHigherBetterAxis(field, best, target, labelMap)
+  if (field === 'distance_km') return makeHigherBetterAxis('distance_km', metrics.totalDistanceKm, target, labelMap)
+  if (field === 'elevation_gain_m') return makeHigherBetterAxis('elevation_gain_m', metrics.totalElevationGainM, target, labelMap)
+  return makeAxisForField(field, bestScalarValueFor(field, condition, metrics), target, labelMap)
 }
 
 // ── A. kind별 axes 계산 ──────────────────────────────────────────────────
@@ -512,17 +717,110 @@ function buildCumulativeAxis(condition: BadgeCondition, metrics: UserPeriodMetri
   return makeHigherBetterAxis(key, pool.length, condition.total_count ?? 0, labelMap)
 }
 
+/**
+ * 기록형 축 — **표시값은 «마지막 활동의 값», 판정(met)은 «역대 최고»**
+ * (티켓 20260905_0031 «표시 값의 성격 분리»).
+ *
+ * ## 왜 두 값을 섞나
+ *
+ * 누적형은 「지금까지 쌓인 값」이 곧 판정값이라 하나면 된다. 기록형은 다르다:
+ *
+ * - **표시(`current`)에 누적이나 역대 최고를 쓰면** 「12.4 / 12.4km」처럼 목표에 붙어 버려
+ *   진행률이 사실상 고정되고, 「이번에 얼마나 가까웠나」라는 정보가 사라진다. 유저가 지금
+ *   행동을 정하는 데 쓰는 값은 **마지막 활동의 값**이다.
+ * - **판정(`met`)에 마지막 활동 값을 쓰면 발급과 어긋난다.** 발급 판정
+ *   (`evaluateConditionDetailed`)은 기록형 필드를 **이력 전반**에서 본다 — 역대 최고가
+ *   목표를 넘었으면 그 조건은 충족이다. 마지막 활동이 짧았다고 「미달」로 그리면 발급은
+ *   되는데 화면은 아니라고 말하는, 이 티켓이 없애려는 어긋남의 방향만 뒤집힌 형태가 된다.
+ *
+ * 그래서 `met`은 역대 최고로, `current`는 마지막 활동으로 잡고, **`met`이면 `fraction`을 1로
+ * 눌러** 「조건은 충족인데 바는 40%」 같은 모순이 화면에 나가지 않게 한다.
+ *
+ * 마지막 활동 값을 구할 수 없으면(활동 0건, 또는 주말 축인데 주말 활동이 없음) 역대 최고
+ * 축을 그대로 돌려준다 — 이전 동작과 동일하다.
+ */
 function buildRecordAxis(condition: BadgeCondition, metrics: UserPeriodMetrics, labelMap: LabelMap): AxisResult {
-  if (condition.distance_km !== undefined) return buildSameActivitySingleAxis('distance_km', condition, metrics, labelMap)
-  if (condition.elevation_gain_m !== undefined) return buildSameActivitySingleAxis('elevation_gain_m', condition, metrics, labelMap)
   // SCALAR_AXIS_KEYS에서 파생 — 손으로 다시 나열하면 그 목록에 축이 추가될 때 여기가 누락돼
   // classifyBadgeProgressKind는 'record'로 분류하는데 여기서 throw하는 불일치가 생길 수 있다
   // (개선 리뷰 지적, 티켓 20260904_0631 재시도).
-  const key = SCALAR_AXIS_KEYS.filter((k) => k !== 'distance_km' && k !== 'elevation_gain_m').find(
-    (k) => condition[k] !== undefined
-  )
-  if (!key) throw new Error('[computeBadgeProgress] buildRecordAxis: 필드를 찾을 수 없음 — classifyBadgeProgressKind와 불일치')
-  return buildScalarAxis(key, condition, metrics, labelMap)
+  const field = measurableScalarKeys(condition)[0]
+  if (!field) throw new Error('[computeBadgeProgress] buildRecordAxis: 필드를 찾을 수 없음 — classifyBadgeProgressKind와 불일치')
+
+  const target = condition[field] as number
+  const pool = poolForScalarField(field, condition, metrics)
+  const bestResult = makeAxisForField(field, bestScalarValueFor(field, condition, metrics), target, labelMap)
+
+  const lastValue = latestScalarValue(field, pool)
+  if (lastValue === null) return bestResult
+
+  const lastResult = makeAxisForField(field, lastValue, target, labelMap)
+  const met = bestResult.axis.met
+  const fraction = met ? 1 : lastResult.fraction
+  return {
+    axis: { ...lastResult.axis, met, fraction, remaining: met ? 0 : lastResult.axis.remaining },
+    fraction,
+  }
+}
+
+/**
+ * 반복 카운터 축 — 「현재 회차 / 임계 회차」(티켓 20260905_0031, v5 §2.14).
+ *
+ * 회차는 **발급 판정과 같은 함수**(`collectRepeatOccurrences`)로 센다. 두 곳이 각자 세면
+ * 「화면은 4/5회인데 발급은 5회차를 인정」 같은 어긋남이 생긴다.
+ *
+ * ⚠️ 넘기는 배열이 `metrics.activities`(종목 + 걷기 게이트가 이미 적용된 목록)라는 점이
+ * 발급 경로(원본 배열을 넘긴다)와 다르다. `collectRepeatOccurrences`가 같은 필터를 다시
+ * 적용하므로 `condition.activity_type === metrics.activityType`인 한 결과는 같다 —
+ * 진행 계산은 애초에 (user, activity_type) 단위로 도는 계층이라 그 전제가 성립한다.
+ */
+function buildRepeatAxis(condition: BadgeCondition, metrics: UserPeriodMetrics, labelMap: LabelMap): AxisResult {
+  const target = condition.repeat_count as number
+  const occurrences = collectRepeatOccurrences(condition, metrics.activities)
+  return makeHigherBetterAxis('repeat_count', occurrences.length, target, withRegistryLabel(labelMap, 'repeat_count'))
+}
+
+/**
+ * 휴식 축 — 「현재 최대 공백 / 요구 일수」(티켓 20260905_0031, v5 §2.16).
+ *
+ * 실측값은 **발급 판정과 같은 함수**(`evaluateRestConditions`)의 결과에서 구조 그대로 꺼낸다
+ * (0030 B3가 `bestDays`를, 이 티켓이 `shortfallKey`/`requiredDays`를 실었다) — 문자열을
+ * 파싱하거나 공백 계산을 다시 구현하지 않는다.
+ *
+ * - **`anchorDate`를 넘기지 않는다**: `metrics.activities`는 호출부가 이미 가입 앵커로 자른
+ *   이력이다(`getActivityHistory(_, _, anchorDate)`). 그리고 이 축은 「닫힌 공백」만 보므로
+ *   현재 시각(`now`)도 필요 없다(§2.16 — 「지금까지 며칠 쉬었나」 같은 열린 공백을 넣게 되면
+ *   그때 `now`를 세 소비처에 함께 전파해야 한다).
+ * - 조건 형태 오류·짝 필드 없음처럼 **값 자체를 믿을 수 없는** 경우엔 `null`을 돌려준다 —
+ *   그 조건은 발급도 막히므로 진행률을 그리지 않는 편이 정직하다.
+ */
+function buildRestAxis(condition: BadgeCondition, metrics: UserPeriodMetrics, labelMap: LabelMap): AxisResult | null {
+  const evaluation = evaluateRestConditions(condition, metrics.activities)
+
+  if (evaluation.kind === 'pass') {
+    // 조건을 이미 채웠다. 어느 키의 공백이 얼마였는지는 «미발급 사유» 문자열에만 있으므로
+    // (구조로는 실리지 않는다) 첫 키를 대표로 「요구 일수를 다 채운」 축으로 그린다 — 화면에
+    // 필요한 것은 「다 찼다」는 사실이고, 그 이상은 배지 상세가 답한다.
+    const key = restConditionKeysIn(condition)[0]
+    if (!key) return null
+    const target = condition[key] as number
+    return makeHigherBetterAxis(key, target, target, withRegistryLabel(labelMap, key))
+  }
+
+  if (
+    evaluation.kind === 'fail' &&
+    evaluation.shortfallKey !== undefined &&
+    evaluation.bestDays !== undefined &&
+    evaluation.requiredDays !== undefined
+  ) {
+    return makeHigherBetterAxis(
+      evaluation.shortfallKey,
+      evaluation.bestDays,
+      evaluation.requiredDays,
+      withRegistryLabel(labelMap, evaluation.shortfallKey)
+    )
+  }
+
+  return null
 }
 
 function buildPeriodicAxis(condition: BadgeCondition, metrics: UserPeriodMetrics, labelMap: LabelMap): { axisResult: AxisResult; periodEndsAt: string } {
@@ -576,7 +874,7 @@ function buildSameActivityDualAxes(fields: ScalarAxisKey[], condition: BadgeCond
       ...fields.map((f) => {
         const value = getFieldValue(f, a)
         const target = condition[f] as number
-        if (LOWER_IS_BETTER.has(f)) {
+        if (LOWER_IS_BETTER_AXIS_KEYS.has(f)) {
           return Number.isFinite(value) && value > 0 ? target / value : 0
         }
         return target > 0 ? value / target : (value >= target ? 1 : 0)
@@ -591,7 +889,7 @@ function buildSameActivityDualAxes(fields: ScalarAxisKey[], condition: BadgeCond
   return fields.map((f) => {
     const value = getFieldValue(f, bestActivity)
     const target = condition[f] as number
-    return LOWER_IS_BETTER.has(f)
+    return LOWER_IS_BETTER_AXIS_KEYS.has(f)
       ? makeLowerBetterRatioAxis(f, value, target, labelMap)
       : makeHigherBetterAxis(f, value, target, labelMap)
   })
@@ -617,19 +915,24 @@ export function computeBadgeProgress(
   condition: BadgeCondition,
   metrics: UserPeriodMetrics,
   labelMap: LabelMap,
-  locks: BadgeTreeLock[]
+  locks: BadgeTreeLock[],
+  options?: BadgeProgressOptions
 ): BadgeProgress {
-  const kind = classifyBadgeProgressKind(condition)
-  if (kind === 'unsupported') {
-    return { kind: 'unsupported', conditionKeys: Object.keys(condition ?? {}) }
-  }
+  const kind = classifyBadgeProgressKind(condition, options)
+  const unsupported = (): BadgeProgress => ({ kind: 'unsupported', conditionKeys: Object.keys(condition ?? {}) })
+  if (kind === 'unsupported') return unsupported()
 
   const gate = buildGate(locks)
+  // 무한레벨형은 축 자체를 «기반 유형»으로 계산한다 — 레벨은 결과에 함께 싣는 메타일 뿐,
+  // 「거리 210km」라는 축의 계산 방법을 바꾸지 않는다.
+  const axisKind = kind === 'leveled' ? classifyConditionKind(condition) : kind
+  if (axisKind === 'unsupported' || axisKind === 'leveled') return unsupported()
+
   let results: AxisResult[]
   let sameActivity = false
   let periodEndsAt: string | null = null
 
-  switch (kind) {
+  switch (axisKind) {
     case 'cumulative':
       results = [buildCumulativeAxis(condition, metrics, labelMap)]
       break
@@ -652,6 +955,16 @@ export function computeBadgeProgress(
     case 'multi':
       results = buildMultiAxes(condition, metrics, labelMap)
       break
+    case 'repeat':
+      results = [buildRepeatAxis(condition, metrics, labelMap)]
+      break
+    case 'rest': {
+      const built = buildRestAxis(condition, metrics, labelMap)
+      // 휴식 조건의 값 자체를 믿을 수 없는 경우 — 발급도 막히므로 진행률을 그리지 않는다
+      if (!built) return unsupported()
+      results = [built]
+      break
+    }
   }
 
   const progress = clamp01(Math.min(...results.map((r) => r.fraction)))
@@ -665,6 +978,10 @@ export function computeBadgeProgress(
     sameActivity,
     periodEndsAt,
     gate,
+    level: kind === 'leveled' ? options?.level ?? null : null,
+    // 교차 게이트는 이 계층이 판정할 수 없다(유저 보유 배지 정의가 필요하다) — 「있다」는
+    // 사실만 싣는다. 화면이 「조건 충족」을 그리기 전에 이 값을 봐야 «거짓말»이 되지 않는다.
+    crossGated: crossGateKeysIn(condition).length > 0,
   }
 }
 
@@ -680,18 +997,6 @@ export type RegretLineData = {
   label: string
 }
 
-/**
- * "그 활동 하나"의 값을 축으로 감싼다 — `makeHigherBetterAxis`/`makeLowerBetterRatioAxis`/
- * `makeColdRecordAxis`는 "current가 어떻게 나온 값인지"(역대 최댓값이든 직전 활동 하나든)
- * 신경 쓰지 않는 순수 매핑이라 그대로 재사용한다. `buildRecordAxis`/`buildScalarAxis`의
- * 필드별 분기와 반드시 같은 함수를 골라야 한다(다르게 고르면 met/fraction 기준이 어긋난다).
- */
-function axisForSingleValue(field: ScalarAxisKey, rawValue: number, target: number, labelMap: LabelMap): AxisResult {
-  if (field === 'temperature_max_c') return makeColdRecordAxis(field, rawValue, target, labelMap)
-  if (LOWER_IS_BETTER.has(field)) return makeLowerBetterRatioAxis(field, rawValue, target, labelMap)
-  return makeHigherBetterAxis(field, rawValue, target, labelMap)
-}
-
 /** 아쉬움 줄 표시 임계값 — 직전 활동이 다음 임계값의 이 비율 이상일 때만 보여준다(§05). */
 const REGRET_LINE_THRESHOLD = 0.85
 
@@ -700,13 +1005,13 @@ const REGRET_LINE_THRESHOLD = 0.85
  * 아직 못 채웠을 때만 데이터를 반환한다(§05 "기록형에는 아쉬움 줄", §07 문구 참고 — 최종
  * 문장 조립은 표시 레이어 `badgeProgressText.ts`가 담당한다. 이 함수는 순수 계산만 한다).
  *
- * `axis.current`(역대 최고 기록)와 다른 값이다 — 최고 기록은 과거 어느 활동일 수 있어
- * "지금 나가면 될까"에 답하지 못한다. 이 함수는 `metrics.activities`(이미 activity_type +
- * 걷기 게이트가 적용된 목록)에서 **가장 최근 활동 하나**만 다시 평가한다.
+ * 티켓 20260905_0031부터 `axis.current`도 «마지막 활동의 값»이라 **두 값이 같아졌다** —
+ * 그래도 이 함수는 남는다. 축은 숫자 한 줄(`9.8/12.4km`)이고 이 함수는 「{등급}까지 {차이}
+ * 모자랐어요」라는 문장의 근거이며, 85% 임계값(§05)을 넘겼을 때만 나가기 때문이다.
+ * **같은 함수**(`latestScalarValue`·`poolForScalarField`)를 쓰므로 두 값이 갈라질 수 없다.
  *
  * distance_km/elevation_gain_m(same_activity:true인 record, 예: T23)은 대상에서 뺀다 —
- * 2c 범위(레일 표시)의 기록형 계열 8개(§05 프로토타입 표 근거) 중 이 조합이 없고,
- * `buildRecordAxis`도 이 두 필드는 별도 함수(`buildSameActivitySingleAxis`)로 처리한다.
+ * 2c 범위(레일 표시)의 기록형 계열 8개(§05 프로토타입 표 근거) 중 이 조합이 없다.
  */
 export function computeRecordRegretLine(
   condition: BadgeCondition,
@@ -721,13 +1026,11 @@ export function computeRecordRegretLine(
   if (!key) return null
 
   const pool = poolForScalarField(key, condition, metrics)
-  if (pool.length === 0) return null
-  const latest = pool.reduce((a, b) => (dateOf(a) > dateOf(b) ? a : b))
-  const rawValue = getFieldValue(key, latest)
-  if (!Number.isFinite(rawValue)) return null
+  const rawValue = latestScalarValue(key, pool)
+  if (rawValue === null) return null
 
   const target = condition[key] as number
-  const { axis, fraction } = axisForSingleValue(key, rawValue, target, labelMap)
+  const { axis, fraction } = makeAxisForField(key, rawValue, target, labelMap)
   if (axis.met || fraction < REGRET_LINE_THRESHOLD) return null
 
   return { key, current: axis.current, target: axis.target, unit: axis.unit, label: axis.label }

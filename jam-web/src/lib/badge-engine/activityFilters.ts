@@ -185,6 +185,17 @@ export type RestEvaluation =
        * 조건 형태 오류처럼 «측정 자체가 불가능»한 경우에는 없다.
        */
       bestDays?: number
+      /**
+       * 모자란 휴식 키와 그 요구 일수 (티켓 20260905_0031).
+       *
+       * `bestDays`만으로는 축을 만들 수 없다 — 「무엇의 2일인가」(연속 후 휴식? 활동 간격?)와
+       * 「몇 일이 목표인가」가 있어야 `휴식 2/5일` 한 줄이 완성된다. **`bestDays`와 항상 같이
+       * 실린다** — 셋 중 하나만 있는 상태는 만들지 않는다(진행 축이 반쪽으로 그려지는 것을
+       * 막는다). 조건 형태 오류·짝 필드 없음처럼 «값 자체를 믿을 수 없는» 경우에는 셋 다 없다.
+       */
+      shortfallKey?: RestConditionKey
+      /** `shortfallKey`가 요구하는 일수 — `condition[shortfallKey]` 원값 */
+      requiredDays?: number
     }
 
 /** 인접한 두 활동일 사이의 한 구간 */
@@ -361,6 +372,11 @@ export function evaluateRestConditions(
       reason: '휴식 판정 불가 — 창 안에 인접 활동이 없음',
       actual: '공백 앞뒤 활동 0쌍',
       required: '가입 이후 서로 다른 날의 활동 2건',
+      // 진행 축용(티켓 20260905_0031) — 위 ①②③을 이미 통과했으므로 값의 형태는 믿을 수 있다.
+      // 「아직 0일 쉬었다」는 사실 그대로다: 공백을 «셀 수 없었다»가 아니라 «닫힌 공백이 0쌍»이다.
+      bestDays: 0,
+      shortfallKey: keys[0],
+      requiredDays: condition[keys[0]] as number,
     }
   }
 
@@ -400,6 +416,8 @@ export function evaluateRestConditions(
         actual: `${best}일`,
         required: describeRestRequirement(key, condition),
         bestDays: best,
+        shortfallKey: key,
+        requiredDays: value,
       }
     }
     if (!triggerInterval || hit.resume.startDate > triggerInterval.resume.startDate) triggerInterval = hit

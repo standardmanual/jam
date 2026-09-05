@@ -25,6 +25,9 @@ import { logEngineDecision } from '@/lib/engine-log'
 import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engine/badgeProgress'
+// 배지 «종류» 판정의 단일 출처 — 계열 프런티어 산출이 발급 엔진과 같은 기준을 본다
+// (티켓 20260905_0031, 0030이 넘긴 「레벨형 계열 통째 누락」 항목).
+import { badgeKindOf, isLeveledBadge, familyKeyOf } from '@/lib/badge-engine/badgeKind'
 import {
   getJamActivityType,
   metersToKm,
@@ -305,6 +308,10 @@ async function recordProcessedActivities(
  * 대상으로 지정하지 않아(badgeProgress.ts가 index.ts의 PER_ACTIVITY_KEYS를 재선언하는
  * 것과 동일한 판단 — "재사용이 아니라 재선언") 여기서 다시 선언한다. badgeTree.ts가 이
  * 순서를 바꾸면 이 배열도 함께 봐야 한다.
+ *
+ * **등급형 전용이다** — 무한레벨형(`rarity IS NULL`)은 이 배열에 걸리지 않아 계열이 통째로
+ * 누락됐고, 반복형은 「보유하면 프런티어가 지나간다」는 전제가 틀렸다. 두 종류는 아래
+ * `pickFamilyFrontier`가 `badgeKind.ts` 기준으로 따로 고른다(티켓 20260905_0031).
  */
 const FAMILY_RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
@@ -312,9 +319,54 @@ const FAMILY_RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 interface FamilyProgressBadgeRow {
   id: string
   name: string
-  rarity: BadgeRarity
+  /** v5에서 nullable — 무한레벨형은 null이다(마이그레이션 130) */
+  rarity: BadgeRarity | null
+  /** 무한레벨형의 계열 안 순서. 등급형은 null */
+  level: number | null
+  /** 무한레벨형 계열을 묶는 키(`badgeKind.ts`의 familyKeyOf) */
+  family_key: string | null
   activity_types: ActivityType[] | null
   condition_json: BadgeCondition | null
+}
+
+/**
+ * 계열의 «진행을 보여줄 배지» 하나를 고른다 — 배지 종류마다 규칙이 다르다
+ * (티켓 20260905_0031, 종류 판정은 `badgeKind.ts` 한 곳).
+ *
+ * | 종류 | 프런티어 |
+ * |---|---|
+ * | 등급형 `graded` | 등급 오름차순 첫 미획득 |
+ * | 무한레벨형 `leveled` | `level` 오름차순 첫 미획득 (= 보유 최고 레벨 + 1) |
+ * | 반복형 `repeatable` | **보유해도 대상이다** — 다음 회차가 계속 쌓인다 (v5 §2.14) |
+ *
+ * 반복형이 등급형보다 먼저다 — 같은 계열에 섞여 있으면 「이미 획득했지만 회차가 도는」 쪽이
+ * 유저가 지금 진행 중인 것이기 때문이다.
+ */
+function pickFamilyFrontier(
+  variants: FamilyProgressBadgeRow[],
+  earnedBadgeIds: Set<string>
+): FamilyProgressBadgeRow | null {
+  const repeatable = variants.filter((v) => badgeKindOf(v) === 'repeatable')
+  if (repeatable.length > 0) {
+    // 미획득이 있으면 그쪽(첫 발급)이 우선, 없으면 보유 중인 반복형의 회차 진행을 보여준다
+    return repeatable.find((v) => !earnedBadgeIds.has(v.id)) ?? repeatable[0]
+  }
+
+  const leveled = variants.filter((v) => badgeKindOf(v) === 'leveled')
+  if (leveled.length > 0) {
+    return (
+      [...leveled]
+        .sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+        .find((v) => !earnedBadgeIds.has(v.id)) ?? null
+    )
+  }
+
+  for (const rarity of FAMILY_RARITY_ORDER) {
+    const variant = variants.find((v) => v.rarity === rarity)
+    if (!variant) continue
+    if (!earnedBadgeIds.has(variant.id)) return variant
+  }
+  return null
 }
 
 /**
@@ -361,11 +413,16 @@ async function updateFamilyProgressSnapshots(
     }
     const lastActivityId = (latestActivityRow as { id: string } | null)?.id ?? null
 
-    // 활동배지 카탈로그 전체(소프트 삭제 제외) — 계열 그룹핑용. 207건(1차 시도 실측) <
-    // PostgREST 기본 페이지 상한(1000)이라 별도 페이지네이션이 필요 없다.
+    // 활동배지 카탈로그 전체(소프트 삭제 제외) — 계열 그룹핑용.
+    //
+    // ⚠️ **PostgREST 기본 페이지 상한(1000행)에 근접한다.** 1차 시도 시점엔 207건이었지만
+    //    v5 카탈로그 시딩(티켓 20260905_0035)이 무한레벨형 550종을 넣으면 750건대가 된다 —
+    //    아직 상한 아래지만 여유가 크지 않다. 레벨을 더 늘리면 조용히 잘린 목록으로 계열
+    //    프런티어를 계산하게 되므로(= 일부 계열의 진행 스냅샷이 사라진다), 그때는
+    //    페이지네이션이나 「보유 계열만」 조회로 좁혀야 한다 (티켓 20260905_0031 재검증).
     const { data: badgesRaw, error: badgesError } = await supabase
       .from('badges')
-      .select('id, name, rarity, activity_types, condition_json')
+      .select('id, name, rarity, level, family_key, activity_types, condition_json')
       .eq('type', 'activity')
       .is('deleted_at', null)
       .not('activity_types', 'is', null)
@@ -384,29 +441,30 @@ async function updateFamilyProgressSnapshots(
     // 계열 그룹핑 — mission_reward 제외, (activity_type, name) 키(badgeTree.ts:160-171과 동일 규칙).
     // family_name(badges.name)이 "동네 산책러"처럼 공백을 포함해 문자열 키를 다시 split하지
     // 않도록, 그룹 값 자체에 activityType/familyName을 원본 그대로 함께 들고 다닌다.
+    //
+    // **무한레벨형만 `family_key`로 묶는다**(티켓 20260905_0031). 이름은 레벨형을 유일하게
+    // 식별하지 못한다 — v5는 「레벨형이 등급형과 이름을 공유할 수 있다」를 전제로 두므로
+    // (§2.15 ①) 이름으로 묶으면 등급형 계열과 한 그룹이 되어 프런티어가 뒤섞인다.
+    // 폴백 값에 `#name:` 접두어가 붙어 있어(`familyKeyOf`) 실제 이름과 충돌하지 않는다.
     type Family = { activityType: ActivityType; familyName: string; variants: FamilyProgressBadgeRow[] }
     const families = new Map<string, Family>()
     for (const b of badges) {
       if (b.condition_json?.mission_reward) continue
       const activityType = b.activity_types?.[0]
       if (!activityType) continue
-      const key = `${activityType}::${b.name}`
+      const familyName = isLeveledBadge(b) ? familyKeyOf(b) : b.name
+      const key = `${activityType}::${familyName}`
       const entry = families.get(key)
       if (entry) entry.variants.push(b)
-      else families.set(key, { activityType, familyName: b.name, variants: [b] })
+      else families.set(key, { activityType, familyName, variants: [b] })
     }
 
-    // 프런티어(계열 안 첫 미획득 등급) 산출 — 계열을 전부 획득했으면 진행 표시 불필요(제외)
+    // 프런티어 산출 — 종류마다 규칙이 다르다(pickFamilyFrontier). 등급형은 첫 미획득 등급,
+    // 레벨형은 다음 레벨, 반복형은 보유해도 대상이다. 남는 게 없으면 진행 표시 불필요(제외)
     const frontiers: { activityType: ActivityType; familyName: string; badge: FamilyProgressBadgeRow }[] = []
     for (const { activityType, familyName, variants } of families.values()) {
-      for (const rarity of FAMILY_RARITY_ORDER) {
-        const variant = variants.find((v) => v.rarity === rarity)
-        if (!variant) continue
-        if (!earnedBadgeIds.has(variant.id)) {
-          frontiers.push({ activityType, familyName, badge: variant })
-          break
-        }
-      }
+      const badge = pickFamilyFrontier(variants, earnedBadgeIds)
+      if (badge) frontiers.push({ activityType, familyName, badge })
     }
     if (frontiers.length === 0) return
 
@@ -422,7 +480,8 @@ async function updateFamilyProgressSnapshots(
     const metricsByType = new Map<ActivityType, ReturnType<typeof computeUserPeriodMetrics> | null>()
     const emptyLabelMap = new Map<string, { label: string; unit: string | null }>()
 
-    // 기존 스냅샷의 current를 이번 prev로 옮기기 위한 조회 — 최대 72행(계열 총수), 일괄 조회
+    // 기존 스냅샷의 current를 이번 prev로 옮기기 위한 조회 — 계열 총수만큼(등급형 약 72개 +
+    // 레벨형 계열, 티켓 20260905_0035 시딩 이후) 한 번에 조회한다
     const { data: existingRaw, error: existingError } = await supabase
       .from('user_family_progress')
       .select('activity_type, family_name, current')
@@ -459,7 +518,12 @@ async function updateFamilyProgressSnapshots(
       if (!metrics) continue
       let progress: ReturnType<typeof computeBadgeProgress>
       try {
-        progress = computeBadgeProgress(badge.condition_json, metrics, emptyLabelMap, [])
+        // 배지 종류·레벨은 조건만으로 알 수 없다 — `badgeKind.ts` 기준으로 넘겨야 무한레벨형이
+        // `kind: 'leveled'`로 계산된다(티켓 20260905_0031).
+        progress = computeBadgeProgress(badge.condition_json, metrics, emptyLabelMap, [], {
+          badgeKind: badgeKindOf(badge),
+          level: badge.level,
+        })
       } catch (err) {
         console.error(`[updateFamilyProgressSnapshots] computeBadgeProgress 실패 — badge: ${badge.name}:`, err)
         continue
@@ -479,7 +543,7 @@ async function updateFamilyProgressSnapshots(
     }
     if (rows.length === 0) return
 
-    // 일괄 upsert — 계열마다 개별 쿼리 금지(최대 72개 왕복은 싱크 지연으로 바로 체감된다)
+    // 일괄 upsert — 계열마다 개별 쿼리 금지(계열 수만큼의 왕복은 싱크 지연으로 바로 체감된다)
     const { error: upsertError } = await supabase
       .from('user_family_progress')
       .upsert(rows, { onConflict: 'user_id,activity_type,family_name' })

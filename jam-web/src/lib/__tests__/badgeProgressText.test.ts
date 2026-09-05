@@ -19,11 +19,11 @@ import {
 import type { BadgeProgress, BadgeProgressAxis, RegretLineData } from '@/lib/badge-engine/badgeProgress'
 
 function axis(overrides: Partial<BadgeProgressAxis>): BadgeProgressAxis {
-  return { key: 'distance_km', label: '누적 거리', unit: 'km', current: 0, target: 100, met: false, fraction: 0, ...overrides }
+  return { key: 'distance_km', label: '누적 거리', unit: 'km', current: 0, target: 100, met: false, fraction: 0, remaining: null, ...overrides }
 }
 
 function cumulative(a: BadgeProgressAxis, progress = 0.5): BadgeProgress {
-  return { kind: 'cumulative', axes: [a], progress, bottleneck: a.key, sameActivity: false, periodEndsAt: null, gate: null }
+  return { kind: 'cumulative', axes: [a], progress, bottleneck: a.key, sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false }
 }
 
 describe('formatFrontierProgressText', () => {
@@ -53,7 +53,7 @@ describe('formatFrontierProgressText', () => {
     const a = axis({ key: 'weekly_count', unit: '회', current: 4, target: 5, met: false })
     const progress: BadgeProgress = {
       kind: 'periodic', axes: [a], progress: 0.8, bottleneck: 'weekly_count', sameActivity: false,
-      periodEndsAt: '2026-09-07T00:00:00.000Z', gate: null,
+      periodEndsAt: '2026-09-07T00:00:00.000Z', gate: null, level: null, crossGated: false,
     }
     const result = formatFrontierProgressText(progress, new Date('2026-09-04T00:00:00.000Z'))
     expect(result?.text).toBe('이번 주 4/5회 · 3일 남음')
@@ -62,7 +62,7 @@ describe('formatFrontierProgressText', () => {
   it('2축형·다중카운터형은 null을 반환한다(2d 몫)', () => {
     const dual: BadgeProgress = {
       kind: 'dual', axes: [axis({}), axis({ key: 'elevation_gain_m' })], progress: 0.5,
-      bottleneck: 'distance_km', sameActivity: true, periodEndsAt: null, gate: null,
+      bottleneck: 'distance_km', sameActivity: true, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     expect(formatFrontierProgressText(dual, new Date())).toBeNull()
     expect(formatFrontierProgressText({ ...dual, kind: 'multi' }, new Date())).toBeNull()
@@ -80,7 +80,7 @@ describe('formatGridProgressLine', () => {
     const slow = axis({ key: 'distance_km', unit: 'km', current: 3, target: 10, met: false })
     const progress: BadgeProgress = {
       kind: 'dual', axes: [fast, slow], progress: 0.3, bottleneck: 'distance_km',
-      sameActivity: false, periodEndsAt: null, gate: null,
+      sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     expect(formatGridProgressLine(progress).text).toBe('3.0/10.0km')
   })
@@ -92,7 +92,7 @@ describe('formatDualAxisGaugeProps', () => {
       kind: 'dual',
       axes: [axis({ key: 'min_speed_kmh', label: '속도', unit: 'km/h', current: 15, target: 15, met: true, fraction: 1 }),
         axis({ key: 'elevation_gain_m', label: '고도', unit: 'm', current: 1180, target: 1500, met: false, fraction: 1180 / 1500 })],
-      progress: 1180 / 1500, bottleneck: 'elevation_gain_m', sameActivity: false, periodEndsAt: null, gate: null,
+      progress: 1180 / 1500, bottleneck: 'elevation_gain_m', sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     const result = formatDualAxisGaugeProps(dual)
     expect(result?.ruleText).toBe('두 조건은 각각 다른 활동에서 채워도 돼요.')
@@ -103,7 +103,7 @@ describe('formatDualAxisGaugeProps', () => {
       kind: 'dual',
       axes: [axis({ key: 'min_speed_kmh', label: '속도', current: 21.4, target: 20, met: true, fraction: 1 }),
         axis({ key: 'elevation_gain_m', label: '고도', current: 1180, target: 1500, met: false, fraction: 1180 / 1500 })],
-      progress: 1180 / 1500, bottleneck: 'elevation_gain_m', sameActivity: false, periodEndsAt: null, gate: null,
+      progress: 1180 / 1500, bottleneck: 'elevation_gain_m', sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     const result = formatDualAxisGaugeProps(dual)
     expect(result?.bottleneckNote).toBe('속도 조건은 이미 채웠어요.')
@@ -113,7 +113,7 @@ describe('formatDualAxisGaugeProps', () => {
     const dual: BadgeProgress = {
       kind: 'dual',
       axes: [axis({ key: 'a', label: 'A', met: false, fraction: 0.3 }), axis({ key: 'b', label: 'B', met: false, fraction: 0.5 })],
-      progress: 0.3, bottleneck: 'a', sameActivity: false, periodEndsAt: null, gate: null,
+      progress: 0.3, bottleneck: 'a', sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     expect(formatDualAxisGaugeProps(dual)?.bottleneckNote).toBeNull()
   })
@@ -122,7 +122,7 @@ describe('formatDualAxisGaugeProps', () => {
     const dual: BadgeProgress = {
       kind: 'dual',
       axes: [axis({ key: 'a', label: 'A', met: true, fraction: 1 }), axis({ key: 'b', label: 'B', met: true, fraction: 1 })],
-      progress: 1, bottleneck: 'a', sameActivity: false, periodEndsAt: null, gate: null,
+      progress: 1, bottleneck: 'a', sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     expect(formatDualAxisGaugeProps(dual)?.bottleneckNote).toBeNull()
   })
@@ -132,7 +132,7 @@ describe('formatDualAxisGaugeProps', () => {
       kind: 'dual',
       axes: [axis({ key: 'distance_km', label: '거리', unit: 'km', current: 12.4, target: 15, met: false, fraction: 12.4 / 15 }),
         axis({ key: 'elevation_gain_m', label: '고도', unit: 'm', current: 260, target: 300, met: false, fraction: 260 / 300 })],
-      progress: 12.4 / 15, bottleneck: 'distance_km', sameActivity: true, periodEndsAt: null, gate: null,
+      progress: 12.4 / 15, bottleneck: 'distance_km', sameActivity: true, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     const result = formatDualAxisGaugeProps(dual)
     expect(result?.ruleText).toBe('한 번의 활동에서 두 조건을 동시에 채워야 해요.')
@@ -142,7 +142,7 @@ describe('formatDualAxisGaugeProps', () => {
   it('dual이 아니면 null(방어적)', () => {
     const cumulativeProgress: BadgeProgress = {
       kind: 'cumulative', axes: [axis({})], progress: 0.5, bottleneck: 'distance_km',
-      sameActivity: false, periodEndsAt: null, gate: null,
+      sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     expect(formatDualAxisGaugeProps(cumulativeProgress)).toBeNull()
   })
@@ -251,5 +251,60 @@ describe('formatSyncComparisonText (티켓 20260904_1425)', () => {
     const candidate: SyncComparisonCandidate = { axisKey: 'streak_days', prevValue: 1, currentValue: 3 }
     const labelMap = new Map<string, { label: string; unit: string | null }>()
     expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 streak_days 2 가까워졌어요')
+  })
+})
+
+// ── 신규 kind 문구 — leveled · repeat · rest (티켓 20260905_0031) ─────────────
+
+/** 단일 축 진행 결과 하나를 만든다 — kind만 바꿔가며 문구를 비교하기 위한 최소 픽스처 */
+function single(kind: BadgeProgress['kind'], a: BadgeProgressAxis, extra: Partial<Extract<BadgeProgress, { axes: BadgeProgressAxis[] }>> = {}): BadgeProgress {
+  return {
+    kind, axes: [a], progress: a.fraction, bottleneck: a.key, sameActivity: false,
+    periodEndsAt: null, gate: null, level: null, crossGated: false, ...extra,
+  } as BadgeProgress
+}
+
+describe('휴식(rest) 문구 — 중립적 상태 표기 (2026-09-05 확정)', () => {
+  const restAxis = axis({ key: 'rest_after_streak', label: '연속 활동 후 휴식일', unit: '일', current: 2, target: 5, met: false, fraction: 0.4, remaining: 3 })
+
+  it('상태만 표기한다 — 「휴식 2/5일」', () => {
+    expect(formatFrontierProgressText(single('rest', restAxis), new Date())?.text).toBe('휴식 2/5일')
+    expect(formatGridProgressLine(single('rest', restAxis)).text).toBe('휴식 2/5일')
+  })
+
+  it('권유형 표현을 쓰지 않는다 — 운동을 권하는 서비스가 휴식을 재촉하는 모양이 되면 안 된다', () => {
+    const texts = [
+      formatFrontierProgressText(single('rest', restAxis), new Date())?.text ?? '',
+      formatGridProgressLine(single('rest', restAxis)).text,
+      // 이미 다 쉰 경우에도 권유가 새어나오면 안 된다
+      formatGridProgressLine(single('rest', axis({ key: 'return_gap_days', unit: '일', current: 90, target: 90, met: true, fraction: 1, remaining: 0 }))).text,
+    ]
+    for (const text of texts) {
+      for (const banned of ['더 쉬', '쉬면', '쉬어', '남았어요', '남음', '채우', '채웠', '해보', '어때']) {
+        expect(text, `${text} — 금지 표현 "${banned}"`).not.toContain(banned)
+      }
+    }
+  })
+})
+
+describe('반복(repeat) 문구', () => {
+  it('「3/5회」 — 접두어 없이 카운터만 적는다', () => {
+    const a = axis({ key: 'repeat_count', label: '충족 횟수', unit: '회', current: 3, target: 5, met: false, fraction: 0.6, remaining: 2 })
+    expect(formatFrontierProgressText(single('repeat', a), new Date())?.text).toBe('3/5회')
+    expect(formatGridProgressLine(single('repeat', a)).text).toBe('3/5회')
+  })
+})
+
+describe('무한레벨(leveled) 문구', () => {
+  const a = axis({ key: 'distance_km', unit: 'km', current: 200, target: 500, met: false, fraction: 0.4, remaining: 300 })
+
+  it('레벨을 앞에 붙인다 — 「Lv.7 · 200.0/500.0km」', () => {
+    expect(formatFrontierProgressText(single('leveled', a, { level: 7 }), new Date())?.text).toBe('Lv.7 · 200.0/500.0km')
+  })
+
+  it('레벨을 모르면 축만 적는다 — 「Lv.null」 같은 문자열이 새어나가지 않는다', () => {
+    const text = formatFrontierProgressText(single('leveled', a), new Date())?.text ?? ''
+    expect(text).toBe('200.0/500.0km')
+    expect(text).not.toContain('null')
   })
 })

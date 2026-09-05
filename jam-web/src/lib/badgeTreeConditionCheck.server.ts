@@ -1,4 +1,5 @@
 import { checkCondition } from '@/lib/badge-engine'
+import { crossGateKeysIn } from '@/lib/badge-engine/crossGate'
 import { hasUnfulfilledGate } from '@/lib/badgeTreeConditionStatus'
 import type { BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
@@ -51,6 +52,15 @@ export function computeConditionMetBadgeIds(
   for (const id of targetIds) {
     const condition = conditionById.get(id)
     if (!condition) continue
+    // 2단 교차 게이트가 붙은 배지는 «조건 충족»으로 표시하지 않는다 (티켓 20260905_0031).
+    //
+    // `checkCondition`(=`evaluateConditionDetailed`)은 교차 게이트를 **보지 않는다** — 게이트는
+    // 「유저가 무엇을 보유했는가」를 봐야 해서 그 바깥(`evaluateBadgeGates`)에서 판정되고,
+    // 조건 필드 메타에도 `evaluation: 'external'`로 선언돼 fail-closed가 잡지 않는다.
+    // 그래서 이 줄이 없으면 수치만 채운 배지가 레일에 「조건 충족(라임)」으로 뜨는데 발급은
+    // 게이트가 막는다 — 0030이 «거짓말 중»으로 넘긴 항목이 바로 이것이다. 판정할 수 없으면
+    // 보수적으로 「잠김」에 둔다(이 함수가 예외 상황에서 이미 취하는 태도와 같다).
+    if (crossGateKeysIn(condition).length > 0) continue
     try {
       if (checkCondition(condition, activities, { anchorDate })) result.add(id)
     } catch (error) {

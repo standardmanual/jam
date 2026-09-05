@@ -51,12 +51,30 @@ export type OwnedBadgeDef = Pick<
  * **게이트가 붙은 반복형 배지의 회차가 통째로 0이 된다**(티켓 20260905_0030 B-10).
  * `prerequisite_badge_names`가 이미 그 상태였다(카탈로그에 반복형이 0건이라 잠복).
  */
-export const GATE_CONDITION_KEYS = [
-  'prerequisite_badge_names',
+export const CROSS_GATE_CONDITION_KEYS = [
   'cross_in_axis',
   'cross_between_axis',
   'gate_mission_badge',
 ] as const
+
+export const GATE_CONDITION_KEYS = ['prerequisite_badge_names', ...CROSS_GATE_CONDITION_KEYS] as const
+
+export type CrossGateConditionKey = (typeof CROSS_GATE_CONDITION_KEYS)[number]
+
+/**
+ * 조건에 실제로 들어 있는 교차 게이트 키 (티켓 20260905_0031).
+ *
+ * **진행 계산·트리 화면이 「거짓말」을 하지 않으려면 이 판정이 필요하다.** 교차 게이트 3종은
+ * `evaluation: 'external'`이라 `findBlockingConditionKeys`가 잡지 않고,
+ * `evaluateConditionDetailed`(=`checkCondition`)도 보지 않는다 — 게이트는 그 바깥
+ * (`evaluateBadgeGates`)에서 «유저 보유 배지»를 봐야 판정되기 때문이다. 그래서 교차 게이트가
+ * 붙은 배지는 수치 조건만 채우면 화면에 「조건 충족」으로 뜨는데 발급은 게이트가 막는 상태가
+ * 된다. 「무엇이 교차 게이트인가」를 여기 한 곳에만 두고 소비처가 같은 함수를 본다.
+ */
+export function crossGateKeysIn(condition: BadgeCondition | null | undefined): CrossGateConditionKey[] {
+  if (!condition) return []
+  return CROSS_GATE_CONDITION_KEYS.filter((k) => condition[k] !== undefined)
+}
 
 /** 게이트 판정 결과. 막혔으면 어드민 미발급 사유에 그대로 실린다 */
 export type CrossGateResult =

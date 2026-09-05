@@ -72,6 +72,29 @@ function formatAxisRange(axis: BadgeProgressAxis): string {
   return axis.unit ? `${current}/${target}${axis.unit}` : `${current}/${target}`
 }
 
+/**
+ * 휴식·반복 축의 한 줄 (티켓 20260905_0031).
+ *
+ * ## 휴식 문구는 «중립적 상태 표기»다 (2026-09-05 스펙 소유자 확정)
+ *
+ * - ✅ 「휴식 2/5일」 — 상태만 표기한다
+ * - ❌ 「3일 더 쉬면 획득」 — **운동을 권하는 서비스가 휴식을 재촉하는 모양**이 된다
+ *
+ * 그래서 이 파일의 다른 문구 패턴(「{label} 조건은 이미 채웠어요」·「{등급}까지 {N} 모자랐어요」)을
+ * 휴식에 재사용하지 않는다. 다른 배지와 **같은 규칙으로 읽히되**(숫자 한 줄) 권유가 없다.
+ *
+ * 반복형도 같은 형태다 — 「3/5회」. 라벨을 앞에 붙이지 않는 이유는 레일 캡션이 이미 배지
+ * 이름 아래에 놓이기 때문이다(누적·기록 축과 동일).
+ */
+function formatCounterAxisText(kind: BadgeProgress['kind'], axis: BadgeProgressAxis): string {
+  const current = formatCurrentValue(axis.key, axis.current)
+  const target = formatAxisNumber(axis.key, axis.target)
+  const unit = axis.unit ?? ''
+  // 「휴식」은 UX Writing 가이드 용어표의 고정 용어다. 휴식 조건 4종(연속 후·장거리 후·
+  // 복귀 전·활동 간격) 모두 「쉰 일수」를 세므로 접두어 하나로 읽힌다.
+  return kind === 'rest' ? `휴식 ${current}/${target}${unit}` : `${current}/${target}${unit}`
+}
+
 export type FrontierCaption = {
   /** 레일 프런티어 눈금의 상태 라벨(STATUS_LABEL)을 대체할 텍스트 */
   text: string
@@ -82,8 +105,11 @@ export type FrontierCaption = {
 }
 
 /**
- * 레일(BadgeStageRail) 프런티어 캡션 — 누적/기록/주기 3종만 처리한다(2d 몫인 2축/다중은
- * null을 반환해 호출부가 기존 상태 라벨을 그대로 쓰게 한다).
+ * 레일(BadgeStageRail) 프런티어 캡션 — 단일 축 유형만 처리한다(2d 몫인 2축/다중은 null을
+ * 반환해 호출부가 기존 상태 라벨을 그대로 쓰게 한다).
+ *
+ * 티켓 20260905_0031에서 `leveled`·`repeat`·`rest` 3종이 늘었다. 무한레벨형은 축 자체는
+ * 기반 유형과 같게 계산되므로(`badgeProgress.ts` 참고) 레벨 접두어만 붙인다.
  */
 export function formatFrontierProgressText(progress: BadgeProgress, now: Date): FrontierCaption | null {
   if (progress.kind === 'unsupported') return { text: UNSUPPORTED_TEXT, fraction: 0, muted: true }
@@ -100,19 +126,37 @@ export function formatFrontierProgressText(progress: BadgeProgress, now: Date): 
     return { text: `${periodNoun} ${formatAxisRange(axis)} · ${daysLeft}일 남음`, fraction: progress.progress }
   }
 
+  if (progress.kind === 'repeat' || progress.kind === 'rest') {
+    return { text: formatCounterAxisText(progress.kind, axis), fraction: progress.progress }
+  }
+
+  if (progress.kind === 'leveled') {
+    // 「레벨」은 UX Writing 가이드 용어표의 고정 용어. 레벨을 모르면(호출부가 안 넘김) 축만 쓴다.
+    // 축이 여럿인 레벨형(조건이 2축형인 계열)은 그리드와 같은 규칙으로 병목 한 줄만 적는다 —
+    // `DualAxisGauge`는 kind === 'dual'에만 붙기 때문이다.
+    const prefix = progress.level != null ? `Lv.${progress.level} · ` : ''
+    const target = progress.axes.find((a) => a.key === progress.bottleneck) ?? axis
+    return { text: `${prefix}${formatAxisRange(target)}`, fraction: progress.progress }
+  }
+
   // cumulative | record
   return { text: formatAxisRange(axis), fraction: progress.progress }
 }
 
 /**
- * 트로피 그리드(BadgeTrophyGridCard) 캡션 — 다섯 유형 전부를 kind-무관하게 "병목 축
+ * 트로피 그리드(BadgeTrophyGridCard) 캡션 — 전 유형을 kind-무관하게 "병목 축
  * current/target 한 줄"로 표현한다(§05 "다중 카운터는 병목만 적는다"). 레일과 달리 주기형
  * "D일 남음"·아쉬움 줄 같은 유형별 문구를 넣지 않는다 — 그리드는 계열이 없어 카드 자체가
  * 유일한 목표이므로 압축된 한 줄이면 충분하다.
+ *
+ * 예외는 휴식·반복 2종이다 — 「2/5일」만 적으면 무엇의 일수인지 알 수 없어 접두어를 남긴다.
  */
 export function formatGridProgressLine(progress: BadgeProgress): FrontierCaption {
   if (progress.kind === 'unsupported') return { text: UNSUPPORTED_TEXT, fraction: 0, muted: true }
   const axis = progress.axes.find((a) => a.key === progress.bottleneck) ?? progress.axes[0]
+  if (progress.kind === 'repeat' || progress.kind === 'rest') {
+    return { text: formatCounterAxisText(progress.kind, axis), fraction: progress.progress }
+  }
   return { text: formatAxisRange(axis), fraction: progress.progress }
 }
 

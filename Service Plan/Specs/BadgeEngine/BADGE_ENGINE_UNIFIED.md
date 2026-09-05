@@ -510,6 +510,57 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
   자체에 직전 위치를 시각적으로 표시하는 요소)는 이 티켓 범위가 아니다** — 배너 텍스트와
   레일 자체의 시각 표시는 별개 작업으로 갈렸다.
 
+#### 2.13-1 v5 확장 — 진행 유형 8종 · 표시 값의 성격 분리 (2026-09-05, 티켓 20260905_0031)
+
+v5(티켓 20260905_0030)가 만든 네 구조는 전부 진행률에서 `unsupported`였다 — 발급은 판정되는데
+화면에는 아무것도 그리지 않는, **의도된** 상태였다(「발급은 막히는데 화면엔 100%가 뜨는 거짓말」을
+막기 위해). 이 확장이 각각에 축을 만든다.
+
+**진행 유형은 5종에서 8종이 됐다.**
+
+| kind | 축 | 비고 |
+|---|---|---|
+| `leveled` | 기반 유형(누적·기록 등)과 **똑같이** 계산하고 `level`을 함께 싣는다 | 판정 기준이 `badges.rarity`라 조건만으로는 알 수 없다 — 호출부가 `badgeKindOf()` 결과를 `options.badgeKind`로 넘긴다. 기반 유형이 `unsupported`면 레벨형도 `unsupported`다 |
+| `repeat` | 「현재 회차 / 임계 회차」(`repeat_count`) | 회차는 **발급 판정과 같은 함수**(`collectRepeatOccurrences`)로 센다. 회차 술어가 다루지 못하는 키가 섞이면(발급이 fail-closed로 회차 0) 진행률도 `unsupported` |
+| `rest` | 「현재 최대 공백 / 요구 일수」(§2.16) | `evaluateRestConditions`의 fail 결과에 구조로 실린 `bestDays`·`shortfallKey`·`requiredDays`를 그대로 쓴다(문자열 파싱 없음). 「닫힌 공백」만 보므로 `now`가 필요 없다 |
+
+**표시 값의 성격이 갈린다 — 누적형은 「지금까지 쌓인 값」, 기록형은 「마지막 활동의 값」.**
+기록형에 누적/역대 최고를 쓰면 표시가 목표에 붙어 진행률이 사실상 고정되고 「이번에 얼마나
+가까웠나」가 사라진다. 다만 **판정(`met`)은 여전히 역대 최고 기준**이다 — 발급 판정은 기록형
+필드를 이력 전반에서 보므로, 마지막 활동이 짧다고 「미달」로 그리면 이번엔 반대 방향으로
+어긋난다. `met`이면 `fraction`을 1로 눌러 「조건 충족인데 바는 40%」가 나가지 않게 한다.
+
+- `UserPeriodMetrics`에 축별 최댓값(`maxScalarValues`)·마지막 활동값(`lastActivityValues`)과
+  별칭(`maxSingleDistanceKm`·`maxSingleDurationMin`·`maxSpeedKmh`·`maxElevationM`)이 추가됐다.
+  배지마다 `metrics.activities`를 재순회하던 계산을 (user, activity_type)당 1회로 접은 것이라
+  **값은 이전과 동일**하고, 550종 시딩 후의 2패스 루프 비용이 줄어든다.
+- `BadgeProgressAxis.remaining` — **방향이 보정된 「남은 양」.** 페이스·한파 축은
+  `current − target`이다(`target − current`가 아니다). 측정값이 없으면 `null`(「남은 양을 말할
+  수 없다」 — 0으로 두면 다 채운 것처럼 보인다).
+- `BadgeProgress.crossGated` — **교차 게이트가 걸린 배지라 축을 다 채워도 발급되지 않을 수
+  있다.** 이 계층은 게이트를 판정하지 않으므로(유저 보유 배지 정의가 필요하다) 「있다」는 사실만
+  싣는다. 같은 이유로 `/badges/tree`의 「조건 충족」 집합에서도 제외한다 —
+  `checkCondition`(=`evaluateConditionDetailed`)은 교차 게이트를 보지 않고, 그 필드는
+  `evaluation: 'external'`이라 fail-closed에도 걸리지 않아 수치만 채우면 라임으로 뜨던 상태였다.
+
+**계열 프런티어 산출이 `badgeKind.ts` 기준으로 바뀌었다.** 등급 순서 배열(`FAMILY_RARITY_ORDER`)만
+훑던 `sync.ts`의 `updateFamilyProgressSnapshots`는 레벨형 계열을 통째로 누락했고, 반복형은
+「보유하면 프런티어가 지나간다」는 전제가 틀렸다(§2.14 — 반복형은 보유해도 후보에서 빠지지 않는다).
+이제 세 종류를 각각 고른다: 등급형=첫 미획득 등급 / 레벨형=`level` 오름차순 첫 미획득 /
+반복형=**보유해도 대상**. 레벨형만 `family_key`로 묶는다(이름은 레벨형을 유일하게 식별하지
+못한다 — §2.15 ①). `/badges/tree`의 진행 대상 선정도 같은 판정을 쓴다.
+
+> **알려진 한계**: `badgeTree.ts`는 아직 `RARITY_ORDER` 루프로만 계열 눈금(`stages`)을 만들어
+> **무한레벨형 배지가 트리 화면에 그려지지 않는다.** 진행 계산과 싱크 스냅샷은 준비됐지만 트리
+> 렌더링은 티켓 20260905_0037(트리 리뉴얼)·20260905_0035(카탈로그 시딩)의 몫이다.
+
+**재선언을 없앴다.** `badgeProgress.ts`의 `SCALAR_AXIS_KEYS`가 `index.ts`의 `PER_ACTIVITY_KEYS`
+재선언이었다(주석이 스스로 인정하고 있었다). 두 목록이 어긋나면 진행률과 발급이 갈라지므로
+`conditionAxes.ts`(축 키)와 `repeatOccurrences.ts`(회차 계산)로 뽑아 **양쪽이 같은 파일을
+import한다** — `badgeKind.ts`·`activityFilters.ts`·`crossGate.ts`와 같은 태도다.
+회귀 테스트가 소스에 재선언이 다시 생기는 것 자체를 막는다
+(`__tests__/progress-layer-v5.test.ts`).
+
 ### 2.14 반복 획득 — 「발급」과 「카운터 증가」의 분리 (2026-09-05, 티켓 20260905_0030 B1)
 
 **배지 종류는 셋이다.** 판정은 `src/lib/badge-engine/badgeKind.ts`의 `badgeKindOf()` 한 곳.

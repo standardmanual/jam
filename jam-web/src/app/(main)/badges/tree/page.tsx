@@ -14,8 +14,12 @@ import {
   computeRecordRegretLine,
   type BadgeProgress,
   type BadgeProgressAxis,
+  type BadgeProgressOptions,
   type RegretLineData,
 } from '@/lib/badge-engine/badgeProgress'
+// 배지 «종류» 판정의 단일 출처 — 진행 대상 선정이 발급 엔진과 같은 기준을 본다
+// (티켓 20260905_0031).
+import { badgeKindOf, isRepeatableBadge } from '@/lib/badge-engine/badgeKind'
 import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
 import {
   pickSyncComparisonCandidate,
@@ -66,7 +70,7 @@ export default async function BadgeTreePage() {
   ] = await Promise.all([
     supabase
       .from('badges')
-      .select('id, name, rarity, description, image_url, activity_types, condition_json, point_reward, sort_order')
+      .select('id, name, rarity, level, description, image_url, activity_types, condition_json, point_reward, sort_order')
       .eq('type', 'activity')
       .is('deleted_at', null)
       .not('activity_types', 'is', null),
@@ -98,7 +102,8 @@ export default async function BadgeTreePage() {
   if (latestSyncError) console.error('[badges/tree/page] strava_activities(최근 동기화) 조회 실패', latestSyncError)
   if (familyProgressError) console.error('[badges/tree/page] user_family_progress(직전 동기화 비교) 조회 실패', familyProgressError)
 
-  type RawBadge = BadgeTreeSourceBadge & { point_reward: number }
+  // `level`은 무한레벨형 진행 표시(kind: 'leveled')에만 쓰인다 — 트리 카드 구성에는 관여하지 않는다
+  type RawBadge = BadgeTreeSourceBadge & { point_reward: number; level: number | null }
   const badges: BadgeTreeSourceBadge[] = ((badgesRaw ?? []) as RawBadge[]).map((b) => ({
     id: b.id,
     name: b.name,
@@ -155,25 +160,48 @@ export default async function BadgeTreePage() {
     activityType: ActivityType
     /** 아쉬움 줄(§05)은 레일(계열 프런티어)에만 붙는다 — 트로피 그리드에는 없다 */
     isFamilyFrontier: boolean
+    /** `computeBadgeProgress`가 조건만으로는 알 수 없는 배지 속성(무한레벨형 여부·레벨) */
+    options: BadgeProgressOptions
+  }
+  // 배지 종류 판정은 `badgeKind.ts` 한 곳이다 — 계열 프런티어 선정이 여기서 다시 선언하면
+  // 발급 엔진(index.ts)·싱크 훅(sync.ts)과 갈라진다(티켓 20260905_0031).
+  const badgeById = new Map(((badgesRaw ?? []) as RawBadge[]).map((b) => [b.id, b]))
+  const progressOptionsFor = (id: string): BadgeProgressOptions => {
+    const row = badgeById.get(id)
+    if (!row) return {}
+    return { badgeKind: badgeKindOf(row), level: row.level ?? null }
+  }
+  /**
+   * **반복형은 보유해도 진행 대상에서 빠지지 않는다** (티켓 20260905_0031, v5 §2.14).
+   * 등급형·레벨형은 획득하면 다음 칸으로 넘어가지만, 반복형은 같은 배지가 계속 회차를
+   * 쌓으므로 「이미 획득했지만 다음 카운트가 진행 중」인 상태가 정상이다. 「미획득」만
+   * 프런티어로 보던 선정 로직이 그 진행을 통째로 숨기고 있었다.
+   */
+  const isRepeatTarget = (id: string): boolean => {
+    const row = badgeById.get(id)
+    return row ? isRepeatableBadge(row) : false
   }
   const progressTargets: ProgressTarget[] = []
   for (const tree of trees) {
     for (const family of tree.families) {
-      const frontier = family.stages.find((s) => !earnedBadgeIdSet.has(s.id))
-      if (!frontier) continue // 계열 전부 획득 — 진행 표시 불필요
+      const frontier = family.stages.find((s) => !earnedBadgeIdSet.has(s.id) || isRepeatTarget(s.id))
+      if (!frontier) continue // 계열 전부 획득(반복형도 없음) — 진행 표시 불필요
       const condition = conditionById.get(frontier.id)
       if (condition) {
         progressTargets.push({
-          id: frontier.id, condition, locks: frontier.locks, activityType: tree.activityType, isFamilyFrontier: true,
+          id: frontier.id, condition, locks: frontier.locks, activityType: tree.activityType,
+          isFamilyFrontier: true, options: progressOptionsFor(frontier.id),
         })
       }
     }
     for (const badge of tree.independentBadges) {
-      if (earnedBadgeIdSet.has(badge.id)) continue // 이미 획득 — 그리드가 100%로 고정 표시
+      // 반복형은 획득 후에도 「다음 회차」 진행이 있다 — 그리드를 100%로 고정하지 않는다
+      if (earnedBadgeIdSet.has(badge.id) && !isRepeatTarget(badge.id)) continue
       const condition = conditionById.get(badge.id)
       if (condition) {
         progressTargets.push({
-          id: badge.id, condition, locks: badge.locks, activityType: tree.activityType, isFamilyFrontier: false,
+          id: badge.id, condition, locks: badge.locks, activityType: tree.activityType,
+          isFamilyFrontier: false, options: progressOptionsFor(badge.id),
         })
       }
     }
@@ -209,7 +237,7 @@ export default async function BadgeTreePage() {
   for (const target of progressTargets) {
     const metrics = metricsByActivityType.get(target.activityType)!
     try {
-      const probe = computeBadgeProgress(target.condition, metrics, emptyLabelMap, target.locks)
+      const probe = computeBadgeProgress(target.condition, metrics, emptyLabelMap, target.locks, target.options)
       if (probe.kind !== 'unsupported') {
         for (const axis of probe.axes) axisKeys.add(axis.key)
       }
@@ -232,7 +260,7 @@ export default async function BadgeTreePage() {
   for (const target of progressTargets) {
     const metrics = metricsByActivityType.get(target.activityType)!
     try {
-      const progress = computeBadgeProgress(target.condition, metrics, labelMap, target.locks)
+      const progress = computeBadgeProgress(target.condition, metrics, labelMap, target.locks, target.options)
       progressByBadgeId[target.id] = progress
       if (target.isFamilyFrontier && progress.kind === 'record') {
         const regret = computeRecordRegretLine(target.condition, metrics, labelMap)

@@ -229,28 +229,40 @@ describe('휴식 — repeat_count와 함께 쓸 수 없다 (B-10)', () => {
 // ── ⑥ 발급 판정 ↔ 진행 계산이 같은 헬퍼를 본다 ──────────────────────────
 
 describe('휴식 — 발급 판정과 진행 계산이 어긋나지 않는다', () => {
-  it('휴식 조건이 붙으면 진행률은 unsupported다 — 다른 축 하나로 100%를 그리지 않는다', () => {
-    // 이 줄이 없으면 { streak_days: 6, rest_after_streak: 2 }가 streak_days 축 1개짜리
-    // cumulative로 잡혀 「연속 6일」만 그리고 「그 뒤 2일 쉬어야 한다」를 숨긴다.
+  it('휴식 조건이 붙으면 진행률은 «rest» 축이다 — 다른 축(연속일수) 하나로 100%를 그리지 않는다', () => {
+    // 0031 이전에는 unsupported였다. { streak_days: 6, rest_after_streak: 2 }가 streak_days
+    // 축 1개짜리 cumulative로 잡히면 「연속 6일」만 그리고 「그 뒤 2일 쉬어야 한다」를 숨긴다.
+    // 이제 휴식 자체가 축이 되므로 «숨김»이 생기지 않는다.
     expect(classifyBadgeProgressKind({ activity_type: 'running', streak_days: 6 })).toBe('cumulative')
     expect(
       classifyBadgeProgressKind({ activity_type: 'running', streak_days: 6, rest_after_streak: 2 })
-    ).toBe('unsupported')
+    ).toBe('rest')
   })
 
-  it('「무엇이 휴식 조건인가」의 정의가 한 곳뿐이다 — 4종 전부가 진행률에서 unsupported', () => {
+  it('「무엇이 휴식 조건인가」의 정의가 한 곳뿐이다 — 4종 전부가 진행률에서 rest', () => {
     for (const key of REST_CONDITION_KEYS) {
       const cond = { activity_type: 'running', streak_days: 6, [key]: 90 } as BadgeCondition
       expect(restConditionKeysIn(cond), key).toEqual([key])
-      expect(classifyBadgeProgressKind(cond), key).toBe('unsupported')
+      // rest_after_long은 짝 필드 single_distance_km이 아직 `evaluation: 'pending'`이라
+      // fail-closed가 **발급을 먼저 막는다**(레지스트리 주석 참고). 발급이 막히는 조건은
+      // 진행률도 그리지 않는 것이 이 계층의 규칙이므로 unsupported가 맞다 — 두 판정이
+      // 어긋나지 않는다는 것이 이 테스트의 요지다.
+      const expected = key === 'rest_after_long' ? 'unsupported' : 'rest'
+      expect(classifyBadgeProgressKind(cond), key).toBe(expected)
     }
   })
 
-  it('발급 판정은 실제로 이뤄진다 — 진행률만 못 그릴 뿐 「평가 대기」가 아니다', () => {
+  it('휴식 + 회차는 발급이 막히는 조합이라 진행률도 그리지 않는다', () => {
+    const cond = { activity_type: 'running', duration_minutes: 60, repeat_count: 3, return_gap_days: 90 } as BadgeCondition
+    expect(evaluateConditionDetailed(cond, []).reason).toBe('회차와 함께 쓸 수 없는 조건')
+    expect(classifyBadgeProgressKind(cond)).toBe('unsupported')
+  })
+
+  it('발급 판정과 진행률이 같은 방향을 본다 — 조건을 충족하면 축도 met이다', () => {
     const cond: BadgeCondition = { activity_type: 'running', streak_days: 6, rest_after_streak: 2 }
     const acts = [...consecutive('2026-06-01', 6), act('2026-06-09')]
     expect(checkCondition(cond, acts)).toBe(true)
-    expect(classifyBadgeProgressKind(cond)).toBe('unsupported')
+    expect(classifyBadgeProgressKind(cond)).toBe('rest')
   })
 
   it('헬퍼를 직접 부른 결과와 조건 평가의 결과가 같다', () => {
