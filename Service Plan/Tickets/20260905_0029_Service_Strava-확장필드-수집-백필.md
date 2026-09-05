@@ -220,3 +220,69 @@ npx tsx scripts/backfill-strava-extended-fields.ts --apply    # 실제 반영
 ### DB 변경
 **없다.** `normalized`가 jsonb라 스키마 변경이 필요 없고, `processed_via`도 CHECK 없는 TEXT라
 `'manual_backfill'`을 그대로 쓸 수 있다. 마이그레이션 파일을 만들지 않았다(132는 미사용).
+
+## 리뷰 반영 (커밋 `9dd6a560`)
+
+백필 실행 직전이 「지금 안 하면 873행을 다시 훑어야 하는」 것들의 마지막으로 싼 시점이라,
+그 부류만 골라 먼저 처리했다.
+
+**① 같은 Summary 응답의 3필드를 함께 담는다 — 확장 6필드 → 9필드.**
+`max_heartrate` · `weighted_average_watts` · `device_watts`. 추가 API 호출이 0회라 지금 담는
+비용이 없는데, 나중에 필요해지면 873행 재백필이 필요하다. 특히 **`device_watts`가 중요하다** —
+Strava는 파워미터가 없는 활동에도 `average_watts`를 **추정값으로 채워 준다.** 이 구분자가
+없으면 「실측 파워만 인정」 정책을 아예 세울 수 없다. `false`도 값이므로 키를 만든다.
+
+**② `processed_via`를 덮어쓰지 않는다.** 그 값은 «이 행이 어떤 경로로 들어왔는가»
+(`sync` / `reconcile`)이지 «나중에 무엇으로 채워졌는가»가 아니다. 백필은 행을 만든 게 아니라
+채운 것이다. 실측 결과 `reconcile` **16행**이 그 유입 이력을 들고 있어 덮어쓰면 되돌릴 수 없다.
+대신 `normalized.extendedBackfilledAt` 마커를 남긴다. 쓰기 컬럼이 `normalized` 하나로 줄어든
+것을 회귀 테스트로 고정했다.
+
+**③ 문서-코드 불일치 정정** — `BADGE_ENGINE_UNIFIED.md`가 「Strava `manual=true` 활동은
+`getActivities()` 반환 단계에서 완전히 걸러낸다」고 단정하는데, 그 필터는 정상 활동 누락
+버그로 커밋 `86380c55`에서 되돌려졌고 `src/lib/strava/{api,sync}.ts`에 `manual` 참조가
+**0건**이다. `Specs/`는 «지금 사실»만 담아야 하므로 현행 동작으로 고쳤다 — **v5 카탈로그
+(티켓 0035)가 이 문장을 어뷰징 전제로 삼으면 그대로 어긋난다.**
+
+덤으로 티켓 0028의 `boolean` → enum 전환 때 남은 낡은 주석 2곳을 고쳤다.
+
+## ⛔ 백필 실행 — 막힘 (2026-09-05)
+
+**결정은 「지금 실행」이었으나 이 머신에서 돌릴 수 없다.**
+
+`strava_connections.access_token`·`refresh_token`이 `ENCRYPTION_KEY`로 암호화돼 있는데
+(`src/lib/utils.ts:77`), 그 키가 **로컬 `jam-web/.env.local`에 없다.** Vercel에는 있지만
+**Secret 타입이라 `vercel env pull`로 내려받을 수 없다** — 실제로 시도했고
+「21 Secret values cannot be pulled」와 함께 `[SENSITIVE]` 플레이스홀더만 받았다
+(받은 파일은 즉시 삭제했다).
+
+해소 경로는 둘이다:
+
+| 경로 | 내용 |
+|---|---|
+| A | 사용자가 `jam-web/.env.local`에 `ENCRYPTION_KEY`를 추가한다. 그러면 스크립트를 그대로 돌릴 수 있다. 아이클라우드 `JAM-secrets`에 두는 기존 구조와도 맞는다 |
+| B | 어드민 API 라우트로 만들어 Vercel에서 돌린다. 서버에는 키가 있다. 다만 어드민은 staging에서 검증할 수 없어 프로덕션 배포 후에야 확인 가능하다 |
+
+**실행 전까지 티켓 0030·0035는 「확장 필드 실데이터가 있다」를 전제할 수 없다.**
+그래서 이 티켓은 코드가 머지된 뒤에도 `status: OPEN`으로 둔다.
+
+### 실행하면 곧바로 재야 할 것 (0039가 유저를 지우면 사라지는 근거다)
+
+```sql
+-- 종목별 커버리지 + 분포. 0035 임계값 설계의 유일한 실측 근거다.
+SELECT normalized->>'jamActivityType' AS sport, count(*) AS n,
+       count(*) FILTER (WHERE normalized ? 'avgHeartrateBpm') AS hr,
+       count(*) FILTER (WHERE normalized ? 'avgWatts')        AS watts,
+       count(*) FILTER (WHERE normalized ? 'avgCadence')      AS cadence,
+       count(*) FILTER (WHERE (normalized->>'deviceWatts')::boolean IS TRUE) AS watts_measured,
+       percentile_cont(0.5) WITHIN GROUP (ORDER BY (normalized->>'avgCadence')::numeric)  AS cadence_p50,
+       percentile_cont(0.9) WITHIN GROUP (ORDER BY (normalized->>'avgHeartrateBpm')::numeric) AS hr_p90,
+       max((normalized->>'maxSpeedKmh')::numeric) AS max_speed_max
+  FROM public.strava_activities GROUP BY 1 ORDER BY 2 DESC;
+```
+
+이 한 번의 쿼리가 아래 미결 3건을 동시에 판정한다:
+- **`avgCadence` 러닝 원값 단위** — 90대면 한쪽 발 기준, 180대면 spm. 컨텐츠에 이미
+  「180 황금 케이던스」 계열이 있어 잘못 잡으면 **영원히 안 나오는 배지**가 된다
+- **심박·파워 조건 배지가 유저 몇 %에게 열리는가**
+- **`maxSpeedKmh`에 차량 구간·GPS 스파이크가 남는가**
