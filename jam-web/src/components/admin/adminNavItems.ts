@@ -23,6 +23,7 @@ import {
   IconTag,
   IconBackpack,
   IconDatabaseImport,
+  IconBinaryTree,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -37,6 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: '콘텐츠 관리',
     items: [
       { href: '/admin/badges', label: '배지 관리', icon: IconAward },
+      { href: '/admin/badge-families', label: '계열 관리', icon: IconBinaryTree },
       { href: '/admin/badge-metric-labels', label: '배지 지표 라벨', icon: IconTag },
       { href: '/admin/item-badges', label: '아이템배지 현황', icon: IconBarcode },
       { href: '/admin/item-badges/orphaned', label: '미소유 아이템배지 현황', icon: IconUserOff },
