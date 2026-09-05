@@ -2,8 +2,9 @@
  * JAM! 배지 발급 엔진 (서버 사이드 전용)
  *
  * - type='activity' 배지에 대해 condition_json 평가
- * - 성장 티어 정책: 배지 이름당 최상위 레어리티 1개만 발급
- * - 진행 트랙 정책: 동일 트랙(거리/횟수) 내 최고값 배지 1개만 발급
+ * - 성장 티어 정책(등급형): 배지 이름당 최상위 레어리티 1개만 발급
+ * - 무한레벨 정책(레벨형, rarity IS NULL): 계열(family_key)당 «보유 레벨 + 1»부터 연속 발급
+ * - 진행 트랙 정책: 동일 트랙(거리/횟수) 내 최고값 배지 1개만 발급 (등급형 전용)
  * - 미구현 조건 타입은 false 처리 (자동 통과 방지)
  */
 import { createServiceClient } from '@/lib/supabase/server'
@@ -11,7 +12,7 @@ import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import { logEngineDecision } from '@/lib/engine-log'
-import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
+import { getActivityHistory, getSignupAnchorDate, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
 import type { BadgeCondition, BadgeConditionSnapshot, BadgeRow, DayOfWeek, UserActivityBadgeRow } from '@/types/database'
@@ -84,6 +85,35 @@ export type BadgeMissedInfo = {
   reason: string
   actual: string
   required: string
+}
+
+// ── 무한레벨형 판정 (v5, 티켓 20260905_0030) ──────────────────────────────
+
+/**
+ * 무한레벨형 배지인가 — **판정 기준은 `rarity IS NULL` 하나뿐이다.**
+ *
+ * 마이그레이션 130이 `CHECK ((rarity IS NULL) = (level IS NOT NULL))`로 둘의 일치를 강제하므로
+ * `level != null`로 물어도 결과는 같지만, 기준을 두 개 두면 언젠가 어긋난다(0027에서 확정).
+ */
+function isLeveledBadge(badge: Pick<BadgeRow, 'rarity'>): boolean {
+  return badge.rarity == null
+}
+
+/**
+ * 무한레벨형 배지를 묶는 계열 키.
+ *
+ * `family_key`가 정본이다. 다만 이 컬럼은 NOT NULL이 아니라(등급형·아이템 배지는 비어 있다)
+ * 레벨형인데 비어 있을 수 있어, 그 경우에만 이름으로 폴백한다. 폴백 값에 `#name:` 접두어를
+ * 붙여 실제 `family_key` 값과 절대 충돌하지 않게 한다.
+ */
+function familyKeyOf(badge: Pick<BadgeRow, 'name' | 'family_key'>): string {
+  return badge.family_key ?? `#name:${badge.name}`
+}
+
+/** 발급 로그·미발급 사유에 쓰는 배지 종류 라벨 — 레벨형은 `Lv.N`, 등급형은 등급 문자열 */
+function badgeKindLabel(badge: Pick<BadgeRow, 'rarity' | 'level'>): string {
+  if (badge.rarity) return badge.rarity
+  return badge.level != null ? `Lv.${badge.level}` : '등급 없음'
 }
 
 // ── 조건 평가 (상세 이유 포함) ────────────────────────────────────────────
@@ -630,7 +660,11 @@ export async function evaluateBadgesDetailed(
   // 조건 평가는 "이번 배치"가 아니라 실제 이력 전체를 기준으로 한다.
   // (weekly_count/streak_days/monthly_km/season_count 같은 누적 조건이 배치 크기에
   //  좌우되지 않도록 — strava_activities에 아직 없는 이번 배치는 별도로 합쳐준다)
-  const history = await getActivityHistory(supabase, userId)
+  // 이력의 시작점은 가입 시점으로 고정한다 (티켓 20260905_0030 §5 — 근거는
+  // getSignupAnchorDate 주석). 이번 배치는 앵커와 무관하게 그대로 합친다 —
+  // 방금 동기화된 활동을 유저 눈앞에서 잘라내면 발급이 조용히 비게 된다.
+  const anchorDate = await getSignupAnchorDate(supabase, userId)
+  const history = await getActivityHistory(supabase, userId, anchorDate)
   const evalActivities = mergeActivityHistory(history, activities)
 
   // initial_sync_done 조회 — 첫 싱크 게이트 판단용
@@ -684,10 +718,12 @@ export async function evaluateBadgesDetailed(
   //  20260825_020/021에서 확정)
   const ownedBadgeNames = new Set<string>()
   const highestOwnedTierByName = new Map<string, number>()
+  /** 무한레벨형 계열별 보유 최고 레벨. 다음 후보는 항상 이 값 + 1이다 (v5, 티켓 20260905_0030 §1) */
+  const highestOwnedLevelByFamily = new Map<string, number>()
   if (ownedBadgeIds.size > 0) {
     const { data: ownedBadgeDefsRaw, error: ownedDefsError } = await supabase
       .from('badges')
-      .select('id, name, rarity')
+      .select('id, name, rarity, level, family_key')
       .in('id', Array.from(ownedBadgeIds))
 
     if (ownedDefsError) {
@@ -695,21 +731,41 @@ export async function evaluateBadgesDetailed(
       return { earned: [], missed: [] }
     }
 
-    for (const b of (ownedBadgeDefsRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity'>[]) {
+    for (const b of (ownedBadgeDefsRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'level' | 'family_key'>[]) {
       ownedBadgeNames.add(b.name)
+      if (isLeveledBadge(b)) {
+        const key = familyKeyOf(b)
+        const current = highestOwnedLevelByFamily.get(key) ?? 0
+        if ((b.level ?? 0) > current) highestOwnedLevelByFamily.set(key, b.level ?? 0)
+        // 레벨형은 등급 서열에 속하지 않는다 — highestOwnedTierByName에 넣지 않는다.
+        // (같은 이름을 등급형 계열과 공유할 수 있어, 0을 섞으면 판정이 오염된다)
+        continue
+      }
       const tier = b.rarity ? RARITY_TIER[b.rarity] : 0
       const current = highestOwnedTierByName.get(b.name) ?? 0
       if (tier > current) highestOwnedTierByName.set(b.name, tier)
     }
   }
 
+  // 등급형과 무한레벨형은 **묶는 축이 다르다.** 등급형은 이름당 최상위 1개(성장 티어),
+  // 레벨형은 계열(family_key)당 보유 레벨 + 1이다. 한 맵에 섞으면 레벨형이 등급형 계열의
+  // 티어 비교에 끌려 들어가 `0 <= 0`으로 매번 탈락한다(마스터 티켓 20260905_0026 B-1).
   const badgesByName = new Map<string, BadgeRow[]>()
+  const badgesByFamily = new Map<string, BadgeRow[]>()
   for (const badge of allBadges) {
+    if (isLeveledBadge(badge)) {
+      const key = familyKeyOf(badge)
+      if (!badgesByFamily.has(key)) badgesByFamily.set(key, [])
+      badgesByFamily.get(key)!.push(badge)
+      continue
+    }
     if (!badgesByName.has(badge.name)) badgesByName.set(badge.name, [])
     badgesByName.get(badge.name)!.push(badge)
   }
 
-  // ── 1단계: 이름별 후보 선정 (이름당 최상위 티어 1개) ──────────────────
+  // ── 1단계: 후보 선정 ─────────────────────────────────────────────────
+  //   1-A 등급형 — 이름당 최상위 티어 1개
+  //   1-B 무한레벨형 — 계열당 «보유 레벨 + 1»부터 연속으로 통과하는 레벨 전부
   type Candidate = {
     badge: BadgeRow
     condition: BadgeCondition
@@ -758,6 +814,63 @@ export async function evaluateBadgesDetailed(
     }
   }
 
+  // ── 1-B단계: 무한레벨형 후보 선정 (계열당 보유 레벨 + 1부터 연속) ──────
+  //
+  // **여러 레벨을 한 번에 넘기면 연속 순차 발급한다**(최상위 1개가 아니다).
+  //   - 레벨 조건은 누적 임계값이라 상위가 통과하면 하위도 통과한다. 최상위만 주면 계열
+  //     레일에 «획득하지 않은 하위 레벨» 구멍이 영구히 남는다 — 다음 평가에서는 보유
+  //     최고 레벨이 이미 그 위라 하위가 다시 후보가 되지 않기 때문이다.
+  //   - 폭주 위험은 이미 두 겹으로 막혀 있다: 첫 싱크는 Lv.1만 통과하고(2.8단계),
+  //     이후 이력 창은 가입 시점 앵커로 좁혀져 있다(§5).
+  for (const [famKey, group] of badgesByFamily) {
+    const ownedLevel = highestOwnedLevelByFamily.get(famKey) ?? 0
+    // 레벨 오름차순. 같은 레벨이 둘이면 카탈로그 오류이므로 sort_order로 순서를 고정한다.
+    const sorted = [...group].sort(
+      (a, b) => (a.level ?? 0) - (b.level ?? 0) || a.sort_order - b.sort_order
+    )
+
+    let expected = ownedLevel + 1
+    for (const badge of sorted) {
+      const level = badge.level
+      if (level == null) {
+        // DB CHECK((rarity IS NULL) = (level IS NOT NULL))가 막지만, 방어적으로 조용히
+        // 통과시키지 않는다 — 레벨이 없으면 계열 안 순서를 정할 수 없다.
+        missed.push({ id: badge.id, name: badge.name, reason: '레벨 정보 없음 — 계열 순서 판정 불가', actual: '레벨 없음', required: 'Lv.1 이상' })
+        continue
+      }
+      if (level < expected) continue // 이미 지난 레벨
+      if (ownedBadgeIds.has(badge.id)) {
+        // 보유 집계와 어긋난 경우(중간 레벨만 보유 등) — 보유분은 건너뛰고 그 위를 본다
+        expected = level + 1
+        continue
+      }
+      if (level > expected) {
+        missed.push({ id: badge.id, name: badge.name, reason: '이전 레벨 미획득', actual: `Lv.${ownedLevel} 보유`, required: `Lv.${expected} 먼저 획득` })
+        continue
+      }
+
+      // 선행 배지 게이트 — 등급형과 같은 규칙을 그대로 적용한다
+      const prereqs = (badge.condition_json as BadgeCondition | null)?.prerequisite_badge_names
+      if (prereqs && prereqs.length > 0 && !prereqs.some((n) => ownedBadgeNames.has(n))) {
+        missed.push({ id: badge.id, name: badge.name, reason: '선행 배지 미보유', actual: '없음', required: prereqs.join(' 또는 ') })
+        continue
+      }
+
+      const condition = (badge.condition_json as BadgeCondition | null) ?? {}
+      const evalResult = evaluateConditionDetailed(condition, evalActivities)
+      if (!evalResult.pass) {
+        missed.push({ id: badge.id, name: badge.name, reason: evalResult.reason, actual: evalResult.actual, required: evalResult.required })
+        continue // 프런티어가 막혔으므로 위 레벨은 전부 '이전 레벨 미획득'으로 떨어진다
+      }
+
+      // 레벨형은 **진행 트랙 병합 대상이 아니다**(progressionKey=null). 계열 안 순서는
+      // level이 이미 결정하고, 트랙 병합은 등급형 계열 전용 장치라 여기에 걸리면
+      // 연속 발급분이 최고값 1개로 접혀 사라진다.
+      candidates.push({ badge, condition, progressionKey: null, progressionValue: 0, evalResult })
+      expected = level + 1
+    }
+  }
+
   // ── 2단계: 진행 트랙별 최고값 1개만 남기기 ───────────────────────────
   const trackWinners = new Map<string, Candidate>()
   const standalones: Candidate[] = []
@@ -782,16 +895,21 @@ export async function evaluateBadgesDetailed(
   //  발급까지 막는 문제가 있어 제거함. 아이템/드랍 배지는 drop-engine의
   //  확률·섀도우밴·일일 하향 로직이 별도로 어뷰징을 방지한다.)
 
-  // ── 2.8단계: 첫 싱크 게이트 — initial_sync_done=false이면 Common만 발급 ──
+  // ── 2.8단계: 첫 싱크 게이트 — 계열의 **첫 칸만** 발급한다 ────────────────
+  //
+  // 등급형은 Common, 무한레벨형은 Lv.1이 그 첫 칸이다. 기존 `rarity !== 'common'` 한 줄은
+  // 등급이 없는 배지에 무의미해서(레벨형은 항상 탈락) 종류별로 갈랐다 (§6).
   const gatedIssueList: typeof toIssueList = []
   for (const c of toIssueList) {
-    if (isFirstSync && c.badge.rarity !== 'common') {
+    const leveled = isLeveledBadge(c.badge)
+    const blocked = isFirstSync && (leveled ? (c.badge.level ?? 0) > 1 : c.badge.rarity !== 'common')
+    if (blocked) {
       missed.push({
         id: c.badge.id,
         name: c.badge.name,
-        reason: '첫 싱크 게이트 — Common 등급만 발급',
-        actual: c.badge.rarity ?? '등급 없음',
-        required: 'common',
+        reason: leveled ? '첫 싱크 게이트 — Lv.1만 발급' : '첫 싱크 게이트 — Common 등급만 발급',
+        actual: badgeKindLabel(c.badge),
+        required: leveled ? 'Lv.1' : 'common',
       })
     } else {
       gatedIssueList.push(c)
@@ -856,7 +974,7 @@ export async function evaluateBadgesDetailed(
         continue
       }
 
-      console.info(`[evaluateBadgesDetailed] 배지 발급 — userId: ${userId}, badge: ${toIssue.name} (${toIssue.rarity}), by: ${triggeredBy}`)
+      console.info(`[evaluateBadgesDetailed] 배지 발급 — userId: ${userId}, badge: ${toIssue.name} (${badgeKindLabel(toIssue)}), by: ${triggeredBy}`)
 
       // 잼 포인트 지급 — 배지에 point_reward가 붙어 있으면 발급 직후 1회 지급.
       // (배지 발급 성공을 전제로 지급. 0이면 awardPoints가 스킵.)

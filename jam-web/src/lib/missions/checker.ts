@@ -8,7 +8,7 @@ import { recordFeedEvent } from '@/lib/activity-feed'
 import { createNotification, groupedTargetsKey, scopedGroupKey } from '@/lib/notifications'
 import type { CreateNotificationInput, NotificationType } from '@/lib/notifications'
 import { grantMissionRewards } from '@/lib/missions/rewards'
-import { getActivityHistory, mergeActivityHistory } from '@/lib/strava/activity-history'
+import { getActivityHistory, getSignupAnchorDate, mergeActivityHistory } from '@/lib/strava/activity-history'
 import { evaluateConditionDetailed, calcMaxStreak, passesWalkingGate } from '@/lib/badge-engine'
 import {
   ENGINE_DELEGATED_MISSION_TYPES,
@@ -117,7 +117,10 @@ export async function checkMissions(
 
   // distance/activity_count는 "이번 배치"가 아니라 실제 이력 전체로 판정해야
   // 매번 조금씩 동기화되는 정상적인 사용 패턴에서도 누적 조건이 제대로 채워진다.
-  const history = await getActivityHistory(supabase, userId)
+  // 이력의 시작점은 가입 시점으로 고정한다 — 배지 엔진과 같은 창을 봐야 한다
+  // (티켓 20260905_0030 §5. 한 곳이라도 빠지면 화면·발급·미션이 서로 다른 이력을 본다).
+  const anchorDate = await getSignupAnchorDate(supabase, userId)
+  const history = await getActivityHistory(supabase, userId, anchorDate)
   const fullHistory = mergeActivityHistory(history, activities)
 
   // 4. checkin / item_collect 판정에 필요한 유저 보유 현황을 미리 조회.

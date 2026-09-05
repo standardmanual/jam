@@ -8,7 +8,11 @@ export interface BadgeRevealItem {
   description: string;
   /** 빈 문자열·null이면 실루엣 폴백 아이콘을 그린다 */
   imageUrl?: string | null;
-  rarity?: Rarity;
+  /**
+   * `null`은 "등급이 존재하지 않음"(무한레벨형)이라 등급 칩도 등급 낭독도 하지 않는다.
+   * `undefined`(미지정)는 기존대로 common으로 취급한다.
+   */
+  rarity?: Rarity | null;
 }
 
 export interface BadgeRevealCarouselProps {

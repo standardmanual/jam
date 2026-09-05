@@ -120,6 +120,32 @@ export const MysticOnly: Story = {
 };
 
 /**
+ * v5 무한레벨형(`badges.rarity IS NULL`) 회귀 고정 — 티켓 20260905_0030.
+ * `rarity: null`은 "등급이 존재하지 않음"이라 등급 칩도 등급 낭독도 없어야 한다.
+ * 이전에는 캐러셀이 `?? 'common'`으로 접어 Lv.N 배지가 Common으로 표시됐다.
+ * (`undefined`는 여전히 미지정 = common이며, 위 스토리들이 그 경로를 덮는다)
+ */
+export const LevelBadgeNoRarity: Story = {
+  name: '엣지 — 등급 없음(무한레벨형) · Common으로 새지 않는다',
+  args: { open: true, items: makeItems(3, { rarity: null }) },
+  play: async ({ canvasElement, step }) => {
+    await step('등급 칩을 그리지 않는다', async () => {
+      await waitFor(() =>
+        expect(canvasElement.querySelector('[role="dialog"]')).toBeTruthy()
+      );
+      expect(canvasElement.textContent).not.toContain('Common');
+    });
+
+    await step('라이브 리전도 등급을 낭독하지 않는다', async () => {
+      const liveText =
+        canvasElement.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent ?? '';
+      expect(liveText).toContain('한강 러너 1');
+      expect(liveText).not.toContain('Common');
+    });
+  },
+};
+
+/**
  * 20260824_001 회귀 확인용 — 이름 2행 + 설명 3행이 동시에 걸리는 최악 조합.
  * 텍스트가 `flexShrink: 0`이고 이미지가 `maxHeight: 46%`로 먼저 양보하므로
  * 이름 2행째·설명 3행째가 잘리지 않아야 한다.

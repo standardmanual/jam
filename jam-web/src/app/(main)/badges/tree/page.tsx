@@ -7,7 +7,7 @@ import {
   type BadgeTreeLock,
 } from '@/lib/badgeTree'
 import { collectConditionCheckTargets, computeConditionMetBadgeIds } from '@/lib/badgeTreeConditionCheck.server'
-import { getActivityHistory } from '@/lib/strava/activity-history'
+import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import {
   computeUserPeriodMetrics,
   computeBadgeProgress,
@@ -181,8 +181,11 @@ export default async function BadgeTreePage() {
 
   // getActivityHistory도 badge-engine/missions checker와 동일하게 service client로 호출한다
   // (badge-engine/index.ts:627, missions/checker.ts:119 — 둘 다 service client를 넘긴다).
-  const activities =
-    targetIds.length > 0 || progressTargets.length > 0 ? await getActivityHistory(service, user.id) : []
+  // 이력의 시작점은 가입 시점으로 고정한다 — 화면(진행률)과 발급 엔진이 같은 창을 봐야
+  // 한다(티켓 20260905_0030 §5).
+  const needsHistory = targetIds.length > 0 || progressTargets.length > 0
+  const anchorDate = needsHistory ? await getSignupAnchorDate(service, user.id) : undefined
+  const activities = needsHistory ? await getActivityHistory(service, user.id, anchorDate) : []
   const conditionMetBadgeIds = Array.from(computeConditionMetBadgeIds(targetIds, conditionById, activities))
 
   // (user, activity_type) 하나당 한 번만 집계(2b 설계 그대로) — 트리에 등장하는 종목만.

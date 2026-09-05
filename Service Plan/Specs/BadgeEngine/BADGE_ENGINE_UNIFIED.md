@@ -29,7 +29,8 @@ Strava 싱크
 | 게이미피케이션 역할 | 장기 목표·티어 성장 (mastery) | 세션 보상·세계관 서사·수집 (variable reward) |
 
 **공통 정책 (두 엔진 공유):**
-- 첫 싱크 게이트: `users.initial_sync_done=false`인 첫 싱크는 고가치 발급 제한 (액티비티=Rare+ 차단, 아이템=첫 드랍 확정이되 rarity 정책 적용)
+- 첫 싱크 게이트: `users.initial_sync_done=false`인 첫 싱크는 고가치 발급 제한 (액티비티=계열의 첫 칸만 — 등급형은 Common 외 차단·무한레벨형은 Lv.1 외 차단, 아이템=첫 드랍 확정이되 rarity 정책 적용)
+- **가입 시점 앵커**(티켓 20260905_0030 §5): 누적 조건이 보는 이력은 `users.created_at` 이후로 잘린다. `getActivityHistory(supabase, userId, sinceDate)`의 3번째 인자를 호출처 4곳(`badge-engine/index.ts` · `missions/checker.ts` · `strava/sync.ts`의 진행 스냅샷 · `badges/tree/page.tsx`)이 전부 넘긴다 — 한 곳이라도 빠지면 화면·미션·발급이 서로 다른 창을 본다. **이번 싱크 배치는 앵커를 거치지 않는다**(첫 싱크의 «마지막 활동 1건 정산»이 성립해야 하므로). 앵커로 `strava_connections.created_at`을 쓰지 않은 이유는 `activity-history.ts`의 `getSignupAnchorDate` 주석 참조
 - 섀도우밴: 밴 레벨에 따라 고가치(rarity) 발급 차단 — `src/lib/abusing/`
 - 피드 이벤트: 발급 시 `recordFeedEvent` ('badge_earned' / 'item_dropped')
 - **수동 입력 활동은 현재 걸러지지 않는다** ⚠️ *(2026-09-05 실측 정정)*: 2026-08-10에 Strava `manual=true` 활동을 `getActivities()` 반환 단계에서 제외하는 필터를 넣었으나, 정상 활동까지 누락되는 버그가 나 커밋 `86380c55`("revert: Strava manual 필터 제거")로 되돌려졌다. **`src/lib/strava/{api,sync}.ts`에 `manual` 참조가 0건이며**, 수동 입력 활동은 지금도 두 엔진 평가 대상에 들어오고 `strava_activities`에도 기록된다. 재도입 여부는 미결이다 — v5 카탈로그(티켓 20260905_0035)가 «수동 입력은 걸러진다»를 어뷰징 전제로 삼으면 그대로 어긋난다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터도 상세 API 추가 호출이 필요해 미구현이다 — [Tickets/20260810_001](../../Tickets/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
@@ -82,14 +83,20 @@ Strava 싱크
 Step 0. 초기 싱크 상태 조회 (users.initial_sync_done)
 Step 1. type='activity' 배지 전체 조회 (유효기간 필터)
 Step 2. 유저 보유 배지 조회 (오류 시 즉시 종료)
-Step 2.8. [첫 싱크 게이트] 첫 싱크면 Common 외 전부 missed
-Step 3. 이름 그룹 단위 평가:
+Step 3-A. [등급형] 이름 그룹 단위 평가:
   A. 이미 보유 → 스킵
   B. 보유보다 낮은 tier → 스킵 (성장 티어)
   C-1. prerequisite_badge_names OR 매칭 — 하나도 없으면 missed
   C-2. evaluateConditionDetailed — 전체 이력 기준 AND 평가
   D. eligible 중 최상위 tier 1개만 후보 (나머지 missed)
+Step 3-B. [무한레벨형] 계열(family_key) 단위 평가 — 「보유 레벨 + 1」부터 연속:
+  A. 보유 레벨 이하 → 스킵 / 프런티어보다 위 → missed('이전 레벨 미획득', 조건 평가 안 함)
+  B. prerequisite_badge_names — 등급형과 같은 규칙
+  C. 통과하면 후보로 올리고 다음 레벨을 이어서 검사 (연속 발급, 최상위 1개가 아니다)
+  ※ 등급 서열 비교(RARITY_TIER)를 적용하지 않는다 — rarityTier(null)=0이라 0 <= 0으로 매번 탈락한다
 Step 4. [진행 트랙 중복 제거] 단일 조건 배지는 activity_type:조건타입 트랙당 최고 1개
+  ※ 무한레벨형은 트랙 병합 대상이 아니다(progressionKey=null) — 걸리면 연속 발급분이 1개로 접힌다
+Step 4.8. [첫 싱크 게이트] 첫 싱크면 계열의 첫 칸(등급형=Common / 레벨형=Lv.1) 외 전부 missed
 Step 5. [홍수 방지] 30일 롤링 윈도우, activity_type당 최대 3개 (mystic→common 우선)
 Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_done 갱신
 ```
@@ -197,6 +204,14 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
   - epic(60km) 달성 시 common·rare 조건도 통과하지만: epic 1개만 발급
 ```
 
+**무한레벨형(`badges.rarity IS NULL`)에는 적용하지 않는다** (v5, 티켓 20260905_0030). 레벨형은
+등급 서열에 속하지 않으므로 `family_key`별로 「보유 레벨 + 1」부터 **연속 순차 발급**한다 —
+상위 레벨만 주면 레일에 획득하지 않은 하위 레벨 구멍이 영구히 남기 때문이다(다음 평가에서는
+보유 최고 레벨이 이미 그 위라 하위가 다시 후보가 되지 않는다). 폭주는 첫 싱크 게이트(Lv.1만)와
+가입 시점 앵커가 함께 막는다. 배지 종류 판정 기준은 **`rarity IS NULL` 하나뿐**이며
+(`isLeveledBadge()`), 보유 배지 집계에서도 레벨형은 `highestOwnedTierByName`에 섞지 않는다 —
+레벨형이 등급형 계열과 같은 이름을 쓸 수 있어 0이 섞이면 티어 판정이 오염된다.
+
 ### 2.5 진행 트랙 정책
 
 단일 조건 배지는 `activity_type:조건타입` 트랙으로 묶여 동일 트랙 내 최고값 1개만 발급.
@@ -219,13 +234,15 @@ Step 6. 발급: user_activity_badges INSERT + 피드 이벤트 + initial_sync_do
 
 ### 2.7 첫 싱크 게이트 + 선행 배지 게이트
 
-- **첫 싱크**: `initial_sync_done=false`면 Common만 발급 (Rare+는 missed). 종료 후 true 갱신. 목적: 첫 연동 시 수백 km 이력 보유 유저라도 배지 폭발 방지.
+- **첫 싱크**: `initial_sync_done=false`면 **계열의 첫 칸만** 발급한다 — 등급형은 Common(Rare+는 missed), 무한레벨형은 Lv.1(Lv.2+는 missed). 종료 후 true 갱신. 목적: 첫 연동 시 수백 km 이력 보유 유저라도 배지 폭발 방지. (v5 이전에는 `rarity !== 'common'` 한 줄이었고, 등급이 없는 배지는 이 판정에서 항상 탈락했다 — 티켓 20260905_0030 §6)
 - **선행 배지**: Rare/Epic/Mystic의 condition_json에 `prerequisite_badge_names: ["배지명A", "배지명B"]` (OR). 어떤 등급이든 해당 배지명 보유 시 통과. 목적: 동일 종목의 다른 속성 배지를 먼저 경험하게 유도.
 
 | 등급 | 첫 싱크 발급 | 선행 배지 |
 |------|-------------|-----------|
 | Common | ✅ 허용 | 불필요 |
 | Rare/Epic/Mystic | ❌ 차단 | 동일 종목 다른 속성 배지 1개+ (OR) |
+| Lv.1 (무한레벨형) | ✅ 허용 | 등급형과 같은 규칙 |
+| Lv.2+ (무한레벨형) | ❌ 차단 | 등급형과 같은 규칙 |
 
 **미션 보상 배지 제외** (2026-08-25, 티켓 20260825_028): `condition_json.mission_reward = true`인
 배지는 **발급 후보 조회 단계(Step 1)에서 아예 제외**한다. 이 배지들은 미션 완료
