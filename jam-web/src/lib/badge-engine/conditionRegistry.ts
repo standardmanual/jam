@@ -891,6 +891,25 @@ export const CONDITION_FIELDS = [
     chip: (c) => `평소 대비 ${c.vs_personal_average}배`,
     detail: (c) => `평소 평균 대비 ${c.vs_personal_average}배 이상`,
   }),
+
+  // ── ③ 반복 획득 1종 — 평가 구현됨 (티켓 20260905_0030 B1) ───────────────
+  //
+  // 위 20종과 달리 `evaluation: 'engine'`이다. `evaluateConditionDetailed`가 직접 회차를
+  // 세고(`collectRepeatOccurrences`), `index.ts`의 후보 선정이 이 필드로 «반복형»을 가른다.
+  field({
+    key: 'repeat_count',
+    label: '달성 횟수',
+    unit: '회',
+    role: 'measurable',
+    input: 'integer',
+    min: 1,
+    max: 10000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'engine',
+    chip: (c) => `${c.repeat_count}회 달성`,
+    detail: (c) => `기준 조건 ${c.repeat_count}회 달성`,
+  }),
 ] as const
 
 // ── 파생 목록 ────────────────────────────────────────────────────────────

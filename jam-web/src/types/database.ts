@@ -189,8 +189,12 @@ export interface UserActivityBadgeRow {
   /** 어드민 전용 — 발급 근거 스냅샷(조건/실측값/트리거 활동). 일반 유저 화면에 노출 금지 */
   condition_snapshot: BadgeConditionSnapshot | null
   /**
-   * 이 배지를 획득한 총 횟수. 최초 발급이 1이며 반복 획득 시 증가한다 — 행은 늘지 않는다
+   * **그 배지의 기준 조건을 만족한 활동 수.** 행은 늘지 않는다
    * (`UNIQUE(user_id, badge_id)` 유지, 마이그레이션 130 / 티켓 20260905_0027).
+   *
+   * 반복형이 아닌 배지(등급형·레벨형·미션 보상·아이템북 보상)는 발급 1회로 끝나므로
+   * 영원히 1이다. 반복형(`condition_json.repeat_count`)만 회차마다 증가하며, 그 증가는
+   * **발급이 아니다** — 피드 이벤트도 결산도 만들지 않는다(티켓 20260905_0030 §2).
    */
   earn_count: number
   /**
@@ -200,12 +204,23 @@ export interface UserActivityBadgeRow {
   earn_history: BadgeEarnHistoryEntry[]
 }
 
-/** `user_activity_badges.earn_history`의 원소 — 반복 획득 회차 하나 (마이그레이션 130) */
+/**
+ * `user_activity_badges.earn_history`의 원소 — 반복 획득 회차 하나 (마이그레이션 130)
+ *
+ * ⚠️ 키 이름은 **마이그레이션 130의 백필이 실제로 심는 형태**를 따른다
+ * (`earned_at` · `strava_activity_id` · `poi_id`). 이 인터페이스는 원래 `activity_id`로
+ * 적혀 있었는데 DB에 그런 키를 쓰는 코드가 한 곳도 없었다 — 타입만 어긋난 상태였다
+ * (티켓 20260905_0030 B1에서 정정). `strava_activity_id`는 멱등 판정의 키이기도 하다:
+ * `increment_activity_badge_earn` RPC가 `earn_history @> [{"strava_activity_id": …}]`로
+ * 같은 활동의 재계상을 막는다.
+ */
 export interface BadgeEarnHistoryEntry {
-  /** 그 회차의 획득 시각 (ISO 8601) */
+  /** 그 회차의 획득 시각 (ISO 8601, 진짜 UTC) */
   earned_at: string
-  /** 근거 활동 `strava_activities.id`. 근거가 활동이 아니면 null */
-  activity_id?: string | null
+  /** 근거 활동의 Strava 활동 id. 근거가 활동이 아니면 없다 */
+  strava_activity_id?: number | null
+  /** 근거 지점(POI) id. 근거가 체크인이 아니면 없다 */
+  poi_id?: string | null
 }
 
 /**
@@ -866,6 +881,22 @@ export interface BadgeCondition {
   month_over_month_ratio?: number
   /** [v5] 평소 평균 대비 비율 (배) */
   vs_personal_average?: number
+
+  // ── v5 반복 획득 (티켓 20260905_0030 B1) ──────────────────────────────
+
+  /**
+   * [v5] **기준 조건을 만족한 활동이 이 횟수 이상**이면 발급된다.
+   *
+   * `total_count`와 다르다. `total_count`는 «필터를 통과한 활동 수»만 세므로
+   * `{ single_distance_km: 20, total_count: 5 }`는 「20km 이상 활동 1건이 있고, 활동이 총 5회」로
+   * 평가된다. `repeat_count`는 **활동 1건이 조건을 전부 만족해야 1회차**로 세어
+   * 「20km 이상 활동이 5건」을 표현한다.
+   *
+   * 이 필드가 있고 `rarity`가 있으면 **반복형**이다(세 번째 배지 종류 —
+   * `badgeKind.ts`의 `badgeKindOf`). 반복형은 이미 보유해도 후보에서 빠지지 않으며,
+   * 임계값을 넘지 않은 회차는 `earn_count`만 올리고 피드·결산에는 나타나지 않는다.
+   */
+  repeat_count?: number
 }
 
 // =========================================
@@ -1515,6 +1546,16 @@ export interface Database {
       create_notification: {
         Args: CreateNotificationArgs
         Returns: NotificationRow
+      }
+      /** 반복형 배지 회차 카운터 원자적 증가 (마이그레이션 132 / 티켓 20260905_0030) */
+      increment_activity_badge_earn: {
+        Args: {
+          p_user_id: string
+          p_badge_id: string
+          p_entries: BadgeEarnHistoryEntry[]
+          p_history_limit?: number
+        }
+        Returns: number
       }
     }
     Enums: {
