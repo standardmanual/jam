@@ -25,8 +25,10 @@ import {
   CUMULATIVE_SAME_ACTIVITY_KEYS,
   SCALAR_AXIS_KEYS,
 } from '../conditionAxes'
-import { collectRepeatOccurrences } from '../repeatOccurrences'
+import { collectRepeatOccurrences, repeatConsumedAxisKeys } from '../repeatOccurrences'
+import { restConsumedPairKeys } from '../activityFilters'
 import { crossGateKeysIn } from '../crossGate'
+import { checkCondition } from '../index'
 import { computeConditionMetBadgeIds } from '@/lib/badgeTreeConditionCheck.server'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, BadgeGateRequirement } from '@/types/database'
@@ -128,20 +130,40 @@ describe('기록형 — 표시값은 마지막 활동, 판정은 역대 최고',
     expect(metrics.maxSingleDurationMin).toBe(90)
   })
 
-  it('역대 최고가 이미 목표를 넘겼으면 met이고 진행 바도 가득 찬다 — 발급과 어긋나지 않는다', () => {
-    // 발급 판정(evaluateConditionDetailed)은 기록형 필드를 이력 전반에서 본다. 마지막 활동이
-    // 짧다고 「미달」로 그리면 발급은 되는데 화면은 아니라고 말하는 상태가 된다.
+  it('met이어도 진행 바는 current/target을 따른다 — 캡션과 바가 같은 숫자를 말한다', () => {
+    // 「캡션은 20/120분인데 바는 가득 참」이 실 카탈로그(「지구력의 전사」)에서 재현됐다.
+    // 한 줄 안에서 숫자와 그림이 다른 말을 하면 안 된다 — fraction은 마지막 활동 기준이다.
     const activities = [
       run('2026-06-01', { movingTimeSec: 150 * 60 }), // 150분 — 목표 초과
       run('2026-06-03', { movingTimeSec: 20 * 60 }), // 마지막은 20분
     ]
     const metrics = computeUserPeriodMetrics('running', activities)
-    const [axis] = axesOf(computeBadgeProgress(condition, metrics, noLabels, NO_LOCKS))
+    const result = computeBadgeProgress(condition, metrics, noLabels, NO_LOCKS)
+    if (result.kind === 'unsupported') throw new Error('unreachable')
+    const [axis] = result.axes
 
     expect(axis.current).toBe(20) // 표시는 마지막 활동
-    expect(axis.met).toBe(true) // 판정은 역대 최고
-    expect(axis.fraction).toBe(1)
+    expect(axis.fraction).toBeCloseTo(20 / 120, 5) // 바도 마지막 활동
+    expect(result.progress).toBeCloseTo(20 / 120, 5)
+    // 캡션이 쓰는 값(current/target)과 바가 쓰는 값(fraction)이 같은 비율이다
+    expect(axis.fraction).toBeCloseTo(axis.current / axis.target, 5)
+  })
+
+  it('met은 여전히 «역대 최고»다 — 「조건 충족」 표시가 발급 판정과 어긋나지 않는다', () => {
+    // fraction을 마지막 활동으로 내렸다고 met까지 내리면 **발급은 되는데 화면은 「조건 충족」이
+    // 아닌** 반대 방향의 어긋남이 생긴다. met의 기준은 checkCondition(=발급 판정)과 같다.
+    const activities = [
+      run('2026-06-01', { movingTimeSec: 150 * 60 }),
+      run('2026-06-03', { movingTimeSec: 20 * 60 }),
+    ]
+    const metrics = computeUserPeriodMetrics('running', activities)
+    const [axis] = axesOf(computeBadgeProgress(condition, metrics, noLabels, NO_LOCKS))
+
+    expect(axis.met).toBe(true)
     expect(axis.remaining).toBe(0)
+    // 「조건 충족」 집합(트리 레일의 라임 상태)도 같은 답을 낸다
+    const met = computeConditionMetBadgeIds(['record'], new Map([['record', condition]]), activities)
+    expect(met.has('record')).toBe(true)
   })
 
   it('아쉬움 줄과 축이 같은 «마지막 활동»을 본다', () => {
@@ -283,6 +305,90 @@ describe('kind: rest — 「휴식 N/M일」', () => {
     const broken = { activity_type: 'running', streak_days: 3, rest_after_streak: 0 } as BadgeCondition
     const metrics = computeUserPeriodMetrics('running', [...consecutive('2026-06-01', 3), run('2026-06-06')])
     expect(computeBadgeProgress(broken, metrics, noLabels, NO_LOCKS).kind).toBe('unsupported')
+  })
+})
+
+// ── 휴식·회차 축이 «다른 축을 숨기지» 않는다 (게이트 FAIL 수정, 2026-09-05) ──────
+
+describe('휴식·회차 — 술어가 흡수하지 못하는 축이 남으면 그리지 않는다', () => {
+  /**
+   * 게이트가 워크트리에서 실측 재현한 네 조합. 전부 「진행률 100% · checkCondition false」였다 —
+   * 이 티켓이 없애려던 거짓말을 신규 kind가 그대로 다시 만들고 있었다. 기존 5종이
+   * `axisCount === 1` 가드로 지켜 온 규칙(숨은 축이 있으면 그리지 않는다)을 신규 kind에도
+   * 적용한다.
+   */
+  const hiddenAxisCases: { name: string; condition: BadgeCondition; activities: NormalizedActivity[] }[] = [
+    {
+      name: 'rest + streak_days (짝 필드가 아니다 — return_gap_days는 연속일수를 보지 않는다)',
+      condition: { activity_type: 'running', streak_days: 6, return_gap_days: 5 },
+      activities: [run('2026-06-01'), run('2026-06-10')],
+    },
+    {
+      name: 'rest + distance_km (누적 1,000km가 통째로 숨는다)',
+      condition: { activity_type: 'running', distance_km: 1000, return_gap_days: 5 },
+      activities: [run('2026-06-01'), run('2026-06-10')],
+    },
+    {
+      name: 'rest + total_count',
+      condition: { activity_type: 'running', total_count: 100, interval_days: 5 },
+      activities: [run('2026-06-01'), run('2026-06-10')],
+    },
+    {
+      name: 'repeat + distance_km (same_activity가 없으면 누적 축이라 회차에 흡수되지 않는다)',
+      condition: { activity_type: 'running', repeat_count: 5, distance_km: 1000 },
+      activities: consecutive('2026-06-01', 6),
+    },
+  ]
+
+  for (const { name, condition, activities } of hiddenAxisCases) {
+    it(`unsupported다 — ${name}`, () => {
+      // 발급은 막혀 있다(숨은 축이 미달이다)
+      expect(checkCondition(condition, activities)).toBe(false)
+      expect(classifyBadgeProgressKind(condition)).toBe('unsupported')
+
+      const metrics = computeUserPeriodMetrics('running', activities)
+      const result = computeBadgeProgress(condition, metrics, noLabels, NO_LOCKS)
+      expect(result.kind).toBe('unsupported')
+    })
+  }
+
+  it('짝 필드는 독립 축으로 세지 않는다 — 술어가 실제로 읽는 값이다', () => {
+    // rest_after_streak의 streak_days는 「며칠 연속 뒤인가」를 정하는 값이라 휴식 판정이
+    // 직접 읽는다. 독립 축으로 세면 정상적인 휴식 배지가 전부 unsupported가 된다.
+    expect(restConsumedPairKeys({ rest_after_streak: 2 })).toEqual(['streak_days'])
+    expect(restConsumedPairKeys({ return_gap_days: 5 })).toEqual([])
+    expect(
+      classifyBadgeProgressKind({ activity_type: 'running', streak_days: 6, rest_after_streak: 2 })
+    ).toBe('rest')
+
+    // same_activity:true면 distance_km/elevation_gain_m이 회차 술어에 합류한다(「한 활동에서」).
+    expect(repeatConsumedAxisKeys({ same_activity: true, repeat_count: 3 })).toContain('distance_km')
+    expect(repeatConsumedAxisKeys({ repeat_count: 3 })).not.toContain('distance_km')
+    expect(
+      classifyBadgeProgressKind({ activity_type: 'running', repeat_count: 5, distance_km: 10, same_activity: true })
+    ).toBe('repeat')
+    // 회차 술어가 흡수하는 활동 단위 축(duration_minutes)도 그대로 repeat이다
+    expect(
+      classifyBadgeProgressKind({ activity_type: 'running', repeat_count: 5, duration_minutes: 60 })
+    ).toBe('repeat')
+  })
+
+  it('회차 술어의 «흡수 목록»이 한 곳뿐이다 — 발급의 회차 계산과 같은 함수를 본다', () => {
+    // same_activity:true면 「한 활동에서 10km」라 6건 중 2건만 회차다.
+    const condition: BadgeCondition = {
+      activity_type: 'running', repeat_count: 5, distance_km: 10, same_activity: true,
+    }
+    const activities = [
+      run('2026-06-01', { distanceKm: 12 }),
+      run('2026-06-02', { distanceKm: 3 }),
+      run('2026-06-03', { distanceKm: 10 }),
+    ]
+    expect(collectRepeatOccurrences(condition, activities)).toHaveLength(2)
+
+    const metrics = computeUserPeriodMetrics('running', activities)
+    const [axis] = axesOf(computeBadgeProgress(condition, metrics, noLabels, NO_LOCKS))
+    expect(axis.key).toBe('repeat_count')
+    expect(axis.current).toBe(2)
   })
 })
 

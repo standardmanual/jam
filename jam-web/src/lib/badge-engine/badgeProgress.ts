@@ -74,6 +74,9 @@ import {
   // 휴식 축(kind: 'rest')의 실측값도 발급 판정과 **같은 함수**에서 얻는다 — fail 결과에
   // 구조로 실린 bestDays/shortfallKey/requiredDays를 그대로 쓴다(문자열 파싱 없음).
   evaluateRestConditions,
+  // 휴식 술어가 짝 필드로 흡수하는 키(streak_days·single_distance_km) — 「휴식 축이 조건을
+  // 통째로 대표할 수 있는가」 판단의 예외 목록이다.
+  restConsumedPairKeys,
 } from './activityFilters'
 // 축 키 목록은 `index.ts`(발급 판정)와 **같은 파일**에서 온다 — 예전에는 이 파일이
 // `PER_ACTIVITY_KEYS`를 재선언했고, 두 목록이 어긋나면 진행률과 발급이 갈라졌다
@@ -81,10 +84,17 @@ import {
 import {
   SCALAR_AXIS_KEYS,
   LOWER_IS_BETTER_AXIS_KEYS,
+  PERIODIC_AXIS_KEYS,
+  COUNTER_AXIS_KEYS,
+  MEASURED_AXIS_KEYS,
   type ScalarAxisKey,
 } from './conditionAxes'
 // 회차 계산도 발급 판정과 같은 함수다 — 두 곳이 각자 세면 「화면은 4/5인데 발급은 5회차」가 된다.
-import { collectRepeatOccurrences, unconsumedRepeatConditionKeys } from './repeatOccurrences'
+import {
+  collectRepeatOccurrences,
+  unconsumedRepeatConditionKeys,
+  repeatConsumedAxisKeys,
+} from './repeatOccurrences'
 // 교차 게이트는 `evaluation: 'external'`이라 fail-closed가 잡지 않는다 — 이 파일이 직접 표시한다.
 import { crossGateKeysIn } from './crossGate'
 // 휴식·반복 축의 라벨/단위는 `badge_metric_labels`에 아직 시드가 없을 수 있다. 그때
@@ -447,6 +457,23 @@ function measurableScalarKeys(condition: BadgeCondition): ScalarAxisKey[] {
 }
 
 /**
+ * 술어가 흡수하지 못한 채 조건에 남은 «독립 측정 축» 키 (티켓 20260905_0031 재시도).
+ *
+ * 휴식·회차 축은 조건 전체가 아니라 **자기 술어가 보는 부분**만 그린다. 그래서 술어가
+ * 소비하지 않는 측정 축이 하나라도 남아 있으면, 그 축을 화면에서 통째로 숨긴 채 진행률이
+ * 100%까지 차오른다 — 정작 발급은 그 숨은 축이 미달이라 막혀 있다. 기존 5종은
+ * `axisCount === 1` 가드가 이 상황을 이미 막고 있었고, 이 함수가 같은 규칙을 신규 kind로
+ * 넓힌다(게이트 실측 재현: `{ streak_days: 6, return_gap_days: 5 }` → 진행률 100% · 발급 false).
+ *
+ * `consumed`는 술어별 예외 목록이다 — 휴식은 `restConsumedPairKeys`, 회차는
+ * `repeatConsumedAxisKeys`가 각 술어 옆에서 답한다(이 파일이 다시 정의하지 않는다).
+ */
+function unabsorbedAxisKeys(condition: BadgeCondition, consumed: readonly string[]): string[] {
+  const consumedSet = new Set<string>(consumed)
+  return MEASURED_AXIS_KEYS.filter((k) => condition[k] !== undefined && !consumedSet.has(k))
+}
+
+/**
  * 조건 «자체»의 유형 — 무한레벨형 여부(배지 행 속성)는 보지 않는다.
  * `classifyBadgeProgressKind`가 `leveled`의 «기반 유형»을 구할 때도 이 함수를 쓴다.
  */
@@ -470,14 +497,27 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
 
   // 휴식(활동 공백) — 「닫힌 공백」만 세므로 현재 시각(now)이 필요 없다(§2.16).
   // 실측값은 발급 판정과 **같은 함수**(`evaluateRestConditions`)에서 온다.
-  if (restKeys.length > 0) return 'rest'
+  //
+  // 휴식 판정이 보지 않는 측정 축이 조건에 남아 있으면 그리지 않는다 — 아래 기존 5종의
+  // `axisCount` 가드와 **같은 규칙**이다. 짝 필드(streak_days·single_distance_km)는 휴식
+  // 술어가 실제로 읽으므로 독립 축이 아니다(`restConsumedPairKeys`).
+  if (restKeys.length > 0) {
+    return unabsorbedAxisKeys(condition, restConsumedPairKeys(condition)).length > 0 ? 'unsupported' : 'rest'
+  }
 
   // 반복 카운터 — 회차 술어가 다루지 못하는 키가 섞이면 발급 쪽이 회차를 0으로 떨어뜨린다
   // (fail-closed). 그때 진행률을 그리면 「화면은 3/5회인데 발급은 0회차」가 된다.
   // **판정은 발급과 같은 함수**(`unconsumedRepeatConditionKeys`)로 한다 — 여기서 직접 부르는
   // 이유는 `collectRepeatOccurrences`가 그 경우 경고 로그를 찍기 때문이다(배지 × 유저마다 폭발).
+  //
+  // 회차를 «셀 수 있는가»(위)와 회차 축이 «조건을 대표할 수 있는가»(아래)는 다른 질문이다.
+  // `{ repeat_count: 5, distance_km: 1000 }`은 회차가 정상적으로 세어지지만(그래서 발급도
+  // 가능하다) 1,000km는 누적 합계로 따로 평가되는 독립 축이라 회차 축에 흡수되지 않는다 —
+  // 그리면 「5/5회 = 100%」 옆에서 1,000km가 사라진다.
   if (hasRepeat) {
-    return unconsumedRepeatConditionKeys(condition).length > 0 ? 'unsupported' : 'repeat'
+    if (unconsumedRepeatConditionKeys(condition).length > 0) return 'unsupported'
+    const consumed = [...repeatConsumedAxisKeys(condition), 'repeat_count']
+    return unabsorbedAxisKeys(condition, consumed).length > 0 ? 'unsupported' : 'repeat'
   }
 
   const isMulti =
@@ -487,13 +527,14 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
 
   // month 단독(monthly_km 없이)은 현재 카탈로그에 0건 — "활동 1회 이상 있었는지"만 보는
   // 별개 메커니즘이라(진행률로 표현 가능한 수치 축이 아님) periodic으로 묶지 않는다.
-  const isPeriodic = condition.weekly_count !== undefined || condition.monthly_km !== undefined
+  // 키 목록은 `conditionAxes.ts` 하나뿐이다 — 위 `unabsorbedAxisKeys`가 세는 축과 이 분류가
+  // 갈라지면 「가드는 통과하는데 축은 없는」 조합이 생긴다(티켓 20260905_0031 재시도).
+  const isPeriodic = PERIODIC_AXIS_KEYS.some((k) => condition[k] !== undefined)
 
-  const isCounterAlone =
-    (condition.total_count !== undefined && !Array.isArray(condition.day_of_week)) ||
-    condition.streak_days !== undefined ||
-    condition.active_days_count !== undefined ||
-    condition.season_count !== undefined
+  // total_count는 day_of_week 배열과 함께 오면 «요일별 독립 카운터»(multi)라 단독 축이 아니다.
+  const isCounterAlone = COUNTER_AXIS_KEYS.some(
+    (k) => condition[k] !== undefined && !(k === 'total_count' && Array.isArray(condition.day_of_week))
+  )
 
   const scalarKeys = measurableScalarKeys(condition)
 
@@ -733,8 +774,18 @@ function buildCumulativeAxis(condition: BadgeCondition, metrics: UserPeriodMetri
  *   목표를 넘었으면 그 조건은 충족이다. 마지막 활동이 짧았다고 「미달」로 그리면 발급은
  *   되는데 화면은 아니라고 말하는, 이 티켓이 없애려는 어긋남의 방향만 뒤집힌 형태가 된다.
  *
- * 그래서 `met`은 역대 최고로, `current`는 마지막 활동으로 잡고, **`met`이면 `fraction`을 1로
- * 눌러** 「조건은 충족인데 바는 40%」 같은 모순이 화면에 나가지 않게 한다.
+ * 그래서 `met`은 역대 최고로, `current`는 마지막 활동으로 잡는다.
+ *
+ * ## `fraction`은 «마지막 활동» 쪽이다 — 캡션과 바가 같은 숫자를 말한다 (2026-09-05 확정)
+ *
+ * 초안은 `met`이면 `fraction`을 1로 눌렀다. 그러자 실 카탈로그(「지구력의 전사」)에서
+ * **「캡션은 40/45분인데 바는 가득 참」**이 재현됐다 — 한 줄 안에서 숫자와 그림이 서로 다른
+ * 말을 한다. 그래서 `fraction`은 `current / target`(= 마지막 활동 기준)을 그대로 따른다.
+ *
+ * ⚠️ **`met`은 여전히 역대 최고다.** 「조건 충족」 표시는 `met`(과 그 원본인
+ * `checkCondition`)이 만들고, 그게 발급 판정과 같은 기준이다. `met`까지 마지막 활동으로
+ * 바꾸면 «발급은 되는데 화면은 조건 충족이 아닌» 반대 방향의 어긋남이 생긴다.
+ * `remaining`도 `met`과 짝을 이룬다(충족이면 0 — 「남은 양」은 배지 상태를 말하는 값이다).
  *
  * 마지막 활동 값을 구할 수 없으면(활동 0건, 또는 주말 축인데 주말 활동이 없음) 역대 최고
  * 축을 그대로 돌려준다 — 이전 동작과 동일하다.
@@ -755,7 +806,8 @@ function buildRecordAxis(condition: BadgeCondition, metrics: UserPeriodMetrics, 
 
   const lastResult = makeAxisForField(field, lastValue, target, labelMap)
   const met = bestResult.axis.met
-  const fraction = met ? 1 : lastResult.fraction
+  // fraction은 lastResult 그대로 — 캡션(current/target)과 진행 바가 같은 숫자를 말한다.
+  const fraction = lastResult.fraction
   return {
     axis: { ...lastResult.axis, met, fraction, remaining: met ? 0 : lastResult.axis.remaining },
     fraction,

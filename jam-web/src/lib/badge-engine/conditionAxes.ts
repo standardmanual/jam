@@ -54,6 +54,45 @@ export type PerActivityKey = (typeof PER_ACTIVITY_KEYS)[number]
 export type CumulativeSameActivityKey = (typeof CUMULATIVE_SAME_ACTIVITY_KEYS)[number]
 export type ScalarAxisKey = (typeof SCALAR_AXIS_KEYS)[number]
 
+/** 주기(리셋 경계)를 갖는 축 키 — 진행 계산의 `kind: 'periodic'` 판정 근거 */
+export const PERIODIC_AXIS_KEYS = ['weekly_count', 'monthly_km'] as const satisfies readonly (keyof BadgeCondition)[]
+
+/**
+ * 「몇 번/며칠」을 세는 카운터 축 키 — 진행 계산의 `kind: 'cumulative'`(단독일 때) 판정 근거.
+ * `season_count_all`은 계절 4개를 각각 세는 다중 축이라 여기 없다(`MULTI_AXIS_KEYS`).
+ */
+export const COUNTER_AXIS_KEYS = [
+  'total_count', 'streak_days', 'active_days_count', 'season_count',
+] as const satisfies readonly (keyof BadgeCondition)[]
+
+/** 축이 여러 개로 펼쳐지는 키 — `kind: 'multi'` */
+export const MULTI_AXIS_KEYS = ['season_count_all'] as const satisfies readonly (keyof BadgeCondition)[]
+
+/**
+ * 진행 계산이 «독립 측정 축»으로 세는 조건 키 전체 (티켓 20260905_0031 재시도).
+ *
+ * ## 왜 필요한가 — 「축 하나만 그리고 나머지를 숨기는」 거짓말을 막는다
+ *
+ * `kind: 'rest'`·`kind: 'repeat'`는 자기 술어(`evaluateRestConditions`·
+ * `collectRepeatOccurrences`)가 흡수하는 필드만 축으로 그린다. 그런데 조건에 그 술어가
+ * 소비하지 않는 측정 축이 남아 있으면 — 예: `{ return_gap_days: 5, distance_km: 1000 }` —
+ * 휴식 축 하나만 「5/5일 = 100%」로 그려지고 **1,000km 축은 화면에서 통째로 사라진다.**
+ * 발급은 당연히 막힌 상태다. 기존 5종이 `axisCount` 가드로 지켜 온 규칙과 같은 규칙을
+ * 신규 kind에도 적용하기 위해, 「무엇이 측정 축인가」를 한 곳에 모아 둔다.
+ *
+ * 손으로 다시 나열하지 않는다 — 위 네 목록의 합집합이다.
+ */
+export const MEASURED_AXIS_KEYS = [
+  ...SCALAR_AXIS_KEYS,
+  ...PERIODIC_AXIS_KEYS,
+  ...COUNTER_AXIS_KEYS,
+  ...MULTI_AXIS_KEYS,
+] as const
+
+export type PeriodicAxisKey = (typeof PERIODIC_AXIS_KEYS)[number]
+export type CounterAxisKey = (typeof COUNTER_AXIS_KEYS)[number]
+export type MeasuredAxisKey = (typeof MEASURED_AXIS_KEYS)[number]
+
 /**
  * "작을수록 좋음" 축 — 나머지는 전부 "클수록 좋음".
  *

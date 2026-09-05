@@ -169,6 +169,28 @@ export function restConditionKeysIn(condition: BadgeCondition | null | undefined
   return REST_CONDITION_KEYS.filter((k) => condition[k] !== undefined)
 }
 
+/**
+ * 휴식 술어가 «짝 필드»로 흡수하는 조건 키 (티켓 20260905_0031 재시도).
+ *
+ * `evaluateRestConditions`의 `switch`가 실제로 읽는 필드다 — `rest_after_streak`는
+ * `streak_days`를(「며칠 연속 뒤인가」), `rest_after_long`은 `single_distance_km`을
+ * (「무엇이 장거리인가」) 함께 읽어야 뜻이 완성된다. 나머지 필드는 휴식 판정이 **보지 않는다.**
+ *
+ * 진행 계산(`badgeProgress.ts`)이 「휴식 축이 이 조건을 통째로 대표할 수 있는가」를 판단할 때
+ * 이 목록을 예외로 쓴다. 예외를 두지 않으면 `{ rest_after_streak: 2, streak_days: 6 }`이
+ * 「연속일수 축이 숨겨졌다」로 잘못 걸리고, 반대로 목록을 넓히면
+ * `{ return_gap_days: 5, streak_days: 6 }`처럼 **휴식 판정이 보지도 않는 축**을 숨긴 채
+ * 진행률 100%를 그린다(게이트 실측 재현 사례).
+ *
+ * ⚠️ `evaluateRestConditions`의 `switch`에 짝 필드를 읽는 분기를 추가하면 여기도 함께 넓힌다.
+ */
+export function restConsumedPairKeys(condition: BadgeCondition): string[] {
+  const keys: string[] = []
+  if (condition.rest_after_streak !== undefined) keys.push('streak_days')
+  if (condition.rest_after_long !== undefined) keys.push('single_distance_km')
+  return keys
+}
+
 /** 휴식 판정 결과. `index.ts`가 사유 문자열을 그대로 미발급 사유에 싣는다 */
 export type RestEvaluation =
   | { kind: 'none' }
