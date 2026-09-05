@@ -378,3 +378,44 @@ describe('④ 레벨 생성이 조건 축·이미지를 상속한다', () => {
     expect(nextFamilySlot(mixed)).toBeNull()
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// 게이트 WARN 반영 — 「자리 추가」의 증가 방향이 뒤집히지 않는다
+// ─────────────────────────────────────────────────────────────────────────
+
+/** 지정한 등급들만 가진 등급형 계열 하나 */
+function gradedFamily(rarities: readonly BadgeRarity[]) {
+  return groupBadgesIntoFamilies(rarities.map((r) => badge({ rarity: r })))[0]
+}
+
+describe('nextFamilySlot — 상속 방향과 제안 방향이 일치한다', () => {
+  // 초안은 「빈 자리 중 가장 낮은 등급」을 제안했는데 조건 축은 「가장 높은 자리」에서
+  // 상속하고 증가를 위 방향으로 적용해, Mystic 하나뿐인 계열에서 Mystic보다 임계값이 더 큰
+  // Common 초안이 나왔다. 실측 87계열 중 36계열(41%)이 이 형태다.
+  it('Mystic 하나뿐인 계열은 더 얹을 자리가 없다 — Common을 제안하지 않는다', () => {
+    const family = gradedFamily(['mystic'])
+    expect(nextFamilySlot(family)).toBeNull()
+  })
+
+  it('Common 하나뿐이면 Rare를 제안한다 (위 방향)', () => {
+    expect(nextFamilySlot(gradedFamily(['common']))?.rarity).toBe('rare')
+  })
+
+  it('중간이 빈 계열도 최고 자리의 바로 위를 제안한다 — 구멍을 메우지 않는다', () => {
+    // Rare·Epic만 있는 계열: Common(구멍)이 아니라 Mystic을 제안한다.
+    // 구멍 메우기는 상속 없이 임의 등급을 만드는 일이라 기존 배지 폼의 몫이다.
+    expect(nextFamilySlot(gradedFamily(['rare', 'epic']))?.rarity).toBe('mystic')
+  })
+
+  it('초안이 상속원보다 낮은 자리를 제안하는 일이 없다', () => {
+    // 방향 뒤집힘의 근본 조건 — 제안 자리의 서열이 상속원보다 항상 높아야 한다.
+    const RANK = { common: 0, rare: 1, epic: 2, mystic: 3 } as const
+    for (const owned of [['common'], ['rare'], ['epic'], ['common', 'rare'], ['rare', 'epic']] as const) {
+      const family = gradedFamily([...owned])
+      const slot = nextFamilySlot(family)
+      if (!slot?.rarity) continue
+      const highest = family.variants[family.variants.length - 1].rarity!
+      expect(RANK[slot.rarity]).toBeGreaterThan(RANK[highest])
+    }
+  })
+})

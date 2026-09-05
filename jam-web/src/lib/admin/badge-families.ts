@@ -267,8 +267,21 @@ export function nextFamilySlot(family: BadgeFamily): FamilySlot | null {
     return { kind: 'level', level: maxLevel + 1, rarity: null, label: `Lv.${maxLevel + 1}` }
   }
   if (family.kind === 'graded') {
-    const owned = new Set(family.variants.map((v) => v.rarity))
-    const next = RARITY_ASC.find((r) => !owned.has(r))
+    // **가장 높은 자리의 «바로 위»**를 제안한다. 「빈 자리 중 가장 낮은 것」이 아니다.
+    //
+    // 초안은 빈 자리 중 가장 낮은 등급을 골랐는데, 조건 축은 `buildNextLevelDraft`가
+    // **가장 높은 자리**에서 상속하고 증가 규칙을 «위 방향»으로 적용한다. 그래서 Mystic
+    // 하나뿐인 계열에서 Common을 제안하면 **Mystic보다 임계값이 더 큰 Common 초안**이 나온다
+    // — 증가 방향이 뒤집힌다(게이트 리뷰 지적). 실측(2026-09-05): 87계열 중 **36계열(41%)**이
+    // 「자리 1개 + 등급이 common이 아님」이라 이 형태에 해당한다.
+    //
+    // 「자리 추가」의 뜻은 «계열을 위로 잇는다»이므로 상속 방향과 제안 방향을 일치시킨다.
+    // 최고 자리가 이미 Mystic이면 더 얹을 곳이 없어 null이다(버튼 비활성).
+    // 중간에 빈 등급이 있는 계열(예: Rare·Mystic만 존재)의 구멍 메우기는 이 기능이 아니라
+    // 기존 배지 폼의 몫이다 — 상속 없이 임의 등급을 만드는 일이라 규칙이 다르다.
+    const highest = family.variants[family.variants.length - 1]?.rarity ?? null
+    if (!highest) return null
+    const next = RARITY_ASC[RARITY_ASC.indexOf(highest) + 1]
     if (!next) return null
     return { kind: 'rarity', level: null, rarity: next, label: RARITY_LABEL[next] }
   }
