@@ -60,7 +60,11 @@
 import { kmhToPaceSecPerKm, type NormalizedActivity } from '@/types/strava'
 import type { ActivityType, BadgeCondition, DayOfWeek } from '@/types/database'
 import type { BadgeTreeLock } from '@/lib/badgeTree'
-import { findBlockingConditionKeys, hasBlockingConditionKeys } from './conditionRegistry'
+import {
+  findBlockingConditionKeys,
+  hasBlockingConditionKeys,
+  describeBlockingConditionKeys,
+} from './conditionRegistry'
 import {
   calcMaxStreak,
   passesWalkingGate,
@@ -571,6 +575,69 @@ export function classifyBadgeProgressKind(
   const base = classifyConditionKind(condition)
   if (options?.badgeKind !== 'leveled') return base
   return base === 'unsupported' ? 'unsupported' : 'leveled'
+}
+
+/** 「진행 표시 준비 중」의 사유 — 어드민 경고 전용 (티켓 20260905_0032) */
+export type ProgressUnsupportedReason = {
+  /** 사람이 읽는 사유 한 줄 */
+  reason: string
+  /** 진행 표시에서 **숨겨지는** 측정 축 키. 없으면 빈 배열 */
+  hiddenAxisKeys: string[]
+  /** 숨겨지는 축의 한국어 라벨 */
+  hiddenAxisLabels: string[]
+}
+
+/**
+ * 진행률을 그리지 못하는 조건의 **사유**를 돌려준다. 그릴 수 있으면 `null`.
+ *
+ * 어드민 조건 폼의 「진행률이 표시되지 않아요」 경고가 **왜인지를 말하지 못하던** 것을
+ * 메운다(티켓 20260905_0032). 판정 자체는 하지 않는다 — `classifyBadgeProgressKind`가
+ * `unsupported`라고 답했을 때만 사유를 찾는다. 그래서 아래 분기가 위 분류와 어긋나도
+ * 최악의 결과는 「일반 사유로 폴백」이지, 「그릴 수 있다고 거짓말」이 아니다.
+ */
+export function explainUnsupportedProgress(
+  condition: BadgeCondition,
+  options?: BadgeProgressOptions
+): ProgressUnsupportedReason | null {
+  if (classifyBadgeProgressKind(condition, options) !== 'unsupported') return null
+
+  const describe = (keys: string[], reason: string): ProgressUnsupportedReason => ({
+    reason,
+    hiddenAxisKeys: keys,
+    hiddenAxisLabels: keys.map((k) => getConditionField(k)?.label ?? k),
+  })
+
+  const blocking = findBlockingConditionKeys(condition)
+  if (hasBlockingConditionKeys(blocking)) {
+    return describe([], describeBlockingConditionKeys(blocking))
+  }
+
+  const restKeys = restConditionKeysIn(condition)
+  const hasRepeat = condition.repeat_count !== undefined
+
+  if (restKeys.length > 0 && hasRepeat) {
+    return describe([], '휴식 조건과 충족 횟수(repeat_count)는 함께 쓸 수 없어 발급 자체가 막혀요.')
+  }
+
+  if (restKeys.length > 0) {
+    const hidden = unabsorbedAxisKeys(condition, restConsumedPairKeys(condition))
+    if (hidden.length > 0) {
+      return describe(hidden, '휴식 축이 대표하지 못하는 조건 축이 남아 있어요. 그 축은 진행률에서 통째로 빠져요.')
+    }
+  }
+
+  if (hasRepeat) {
+    const unconsumed = unconsumedRepeatConditionKeys(condition)
+    if (unconsumed.length > 0) {
+      return describe(unconsumed, '회차 술어가 다루지 못하는 조건 필드가 있어 회차가 0으로 떨어져요.')
+    }
+    const hidden = unabsorbedAxisKeys(condition, [...repeatConsumedAxisKeys(condition), 'repeat_count'])
+    if (hidden.length > 0) {
+      return describe(hidden, '회차 축이 대표하지 못하는 조건 축이 남아 있어요. 그 축은 진행률에서 통째로 빠져요.')
+    }
+  }
+
+  return describe([], '진행률로 그릴 수 있는 조합이 아니에요. 수치 축 1개(또는 2개)로 정리해주세요.')
 }
 
 // ── A. 축 계산 헬퍼 ──────────────────────────────────────────────────────

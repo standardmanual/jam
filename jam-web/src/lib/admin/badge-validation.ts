@@ -1,6 +1,23 @@
 import { CUMULATIVE_CONDITION_FIELDS } from '@/lib/drop-engine/index'
 import { ALL_CONDITION_KEYS } from '@/lib/badge-engine/condition-schema'
-import type { BadgeCondition } from '@/types/database'
+// 순수 판정은 서버 전용 의존이 없는 파일에 있다 — 어드민 조건 폼(클라이언트 컴포넌트)이
+// **같은 문자열**을 쓰려면 이 파일(→ drop-engine → next/headers)을 import할 수 없다.
+import {
+  findConditionShapeSaveError,
+  findUnpairedConditionError,
+  findRepeatRestConflictError,
+  findRarityLevelError,
+  findCrossGateShapeError,
+} from './badge-condition-guards'
+import type { BadgeCondition, BadgeRow } from '@/types/database'
+
+export {
+  findConditionShapeSaveError,
+  findUnpairedConditionError,
+  findRepeatRestConflictError,
+  findRarityLevelError,
+  findCrossGateShapeError,
+}
 
 /**
  * 아이템 배지(type='item')에 누적조건(monthly_km 등)을 걸면 drop-engine의
@@ -30,4 +47,20 @@ export function findUnknownConditionKeyError(condition: BadgeCondition | null): 
   const unknown = Object.keys(condition).filter((key) => !allowed.has(key))
   if (unknown.length === 0) return null
   return `condition_json에 엔진이 모르는 필드(${unknown.join(', ')})가 있습니다. 허용된 필드만 저장할 수 있습니다.`
+}
+
+/**
+ * 조건 저장 전 검사 전체를 한 번에 돌린다 — 어드민 POST·PUT이 같은 순서로 같은 규칙을
+ * 적용하도록 진입점을 하나로 둔다. 첫 번째 오류만 돌려준다(한 번에 한 가지씩 고치게 한다).
+ */
+export function findBadgeConditionSaveError(
+  badge: Pick<BadgeRow, 'name' | 'family_key'>,
+  type: string,
+  condition: BadgeCondition | null
+): string | null {
+  return (
+    findCumulativeConditionError(type, condition) ??
+    findUnknownConditionKeyError(condition) ??
+    findConditionShapeSaveError(badge, condition)
+  )
 }

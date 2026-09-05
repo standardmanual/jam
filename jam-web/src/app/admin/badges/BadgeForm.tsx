@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconX } from '@tabler/icons-react'
 import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
-import { formatPaceSecPerKm } from '@/types/strava'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
@@ -13,15 +12,51 @@ import BackgroundGeneratorPreview, {
 } from './BackgroundGeneratorPreview'
 import BadgeDetailPreviewFrame from './BadgeDetailPreviewFrame'
 import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
-import { buildConditionJsonFromFields, getUnsupportedConditionKeys } from './conditionFormFields'
+import {
+  buildConditionJsonFromFields,
+  conditionFormFieldsFrom,
+  findUnrepresentableConditionKeys,
+  getUnsupportedConditionKeys,
+  type ConditionFormFields,
+} from './conditionFormFields'
 import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
+// 조건 입력 UI는 **레지스트리 선언에서 생성한다** — 필드마다 JSX를 하드코딩하던 구조를
+// 뒤집었다(티켓 20260905_0032 A-2). 새 조건 필드는 conditionRegistry.ts의 `form` 선언과
+// ConditionFormFields의 state 키만 추가하면 이 화면에 자동으로 나타난다.
+import {
+  CONDITION_FORM_ENTRIES,
+  CONDITION_FORM_SECTIONS_IN_USE,
+  CONDITION_FORM_SECTION_LABEL,
+  findBlockingConditionKeys,
+  getConditionField,
+  type ConditionFormEntry,
+} from '@/lib/badge-engine/conditionRegistry'
+// 등급형/레벨형 판정은 여기 한 곳에만 있다 — 다시 선언하지 않는다(티켓 20260905_0030).
+import { isLeveledBadge } from '@/lib/badge-engine/badgeKind'
+// 저장 API가 쓰는 것과 **같은 판정·같은 문구**. 서버 전용 의존(drop-engine → next/headers)이
+// 없는 파일로 갈라 두었기에 클라이언트 컴포넌트에서 그대로 쓸 수 있다.
+import { findConditionShapeSaveError, findRarityLevelError } from '@/lib/admin/badge-condition-guards'
 // 배지 트리 화면(BadgeTreeClient 등)의 진행률 분류와 동일한 함수 — 어드민 경고가 화면
 // 렌더링과 다른 판정 로직을 갖지 않도록 재사용한다(제안서 §08 H, 티켓 20260904_1426).
 // `next/headers` 등 서버 전용 의존을 물지 않는 순수 함수라 이 클라이언트 컴포넌트에서
 // 값(value) import로 바로 써도 안전하다 — badgeProgressText.ts가 이미 같은 모듈에서
 // LOWER_IS_BETTER_KEYS를 값으로 import해 클라이언트 컴포넌트에 쓰고 있고(티켓 20260904_0921
 // 게이트 리뷰에서 `npm run build`로 실증됨), 이 파일 스스로도 재검증했다.
-import { classifyBadgeProgressKind } from '@/lib/badge-engine/badgeProgress'
+import { explainUnsupportedProgress } from '@/lib/badge-engine/badgeProgress'
+
+/** 2단 교차 게이트 3종의 입력 블록 정의 — 폼 state 키 접두는 레지스트리의 `gateForm`과 짝이다 */
+const CROSS_GATE_BLOCKS = [
+  {
+    prefix: 'crossInAxis',
+    title: '축 내 교차',
+    help: '같은 축 안의 다른 계열 배지를 요구해요.',
+  },
+  {
+    prefix: 'crossBetweenAxis',
+    title: '축 간 교차',
+    help: '보완 축(다른 축)의 계열 배지를 요구해요.',
+  },
+] as const
 
 /** 미리보기 본문에 넣는 예시 조건 문구 — 실제 조건은 배지마다 달라 저작 화면에서는 알 수 없다 */
 const PREVIEW_CONDITION_TEXT = '실제 화면에서는 이 자리에 배지 획득 조건이 표시돼요.'
@@ -75,7 +110,17 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   const [name, setName] = useState(badge?.name ?? '')
   const [description, setDescription] = useState(badge?.description ?? '')
   const [type, setType] = useState<BadgeType>(badge?.type ?? 'activity')
+  // 등급형과 레벨형은 **배타**다(마이그레이션 130의 badges_rarity_level_exclusive).
+  // 예전에는 `badge?.rarity ?? 'common'` 하나뿐이라 **등급 없는 배지를 Common으로 접었고**,
+  // 그대로 저장하면 CHECK 위반이거나 레벨형이 등급형으로 뒤집혔다(티켓 20260905_0032 A-3).
+  // 종류 판정은 badgeKind.ts의 `isLeveledBadge` 하나만 쓴다 — 여기서 다시 선언하지 않는다.
+  const [leveledKind, setLeveledKind] = useState<boolean>(() => (badge ? isLeveledBadge(badge) : false))
   const [rarity, setRarity] = useState<BadgeRarity>(badge?.rarity ?? 'common')
+  const [level, setLevel] = useState<string>(badge?.level?.toString() ?? '1')
+  // 레벨형은 활동 배지 전용이다 — 아이템 배지는 등급으로 드랍 풀을, 체크인 배지는 등급으로
+  // 표시를 가른다. 타입을 바꾸면 종류 state를 건드리지 않고 «파생값»에서만 등급형으로 되돌린다
+  // (되돌아올 때 사용자가 고른 값이 그대로 살아 있어야 한다).
+  const isLeveled = type === 'activity' && leveledKind
   const [imageUrl, setImageUrl] = useState(badge?.image_url ?? '')
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>(badge?.activity_types ?? [])
   const [patchAvailable, setPatchAvailable] = useState(badge?.patch_available ?? false)
@@ -93,40 +138,20 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
     () => parseBlobAnimation(badge?.background_animation)
   )
 
-  // condition_json builder state
+  // condition_json builder state — **레지스트리에서 파생한다**(티켓 20260905_0032 A-2).
+  // 예전에는 필드마다 `useState`를 하나씩 선언했고(18개), 새 조건 필드를 추가하면서 여기
+  // 초기화를 빠뜨리면 그 배지를 열어 저장하기만 해도 값이 조용히 사라졌다.
   const initCond = (badge?.condition_json as BadgeCondition) ?? EMPTY_CONDITION
-  const [condDistanceKm, setCondDistanceKm] = useState<string>(initCond.distance_km?.toString() ?? '')
-  const [condTotalCount, setCondTotalCount] = useState<string>(initCond.total_count?.toString() ?? '')
-  const [condElevationM, setCondElevationM] = useState<string>(initCond.elevation_gain_m?.toString() ?? '')
-  const [condMinSpeedKmh, setCondMinSpeedKmh] = useState<string>(initCond.min_speed_kmh?.toString() ?? '')
-  const [condMaxPace, setCondMaxPace] = useState<string>(
-    initCond.max_pace_sec_per_km !== undefined ? formatPaceSecPerKm(initCond.max_pace_sec_per_km).replace('/km', '') : ''
-  )
-  const [condStreakDays, setCondStreakDays] = useState<string>(initCond.streak_days?.toString() ?? '')
-  const [condActivityType, setCondActivityType] = useState<string>(initCond.activity_type ?? '')
-  const [condDurationMinutes, setCondDurationMinutes] = useState<string>(initCond.duration_minutes?.toString() ?? '')
-  const [condWeekendDurationHours, setCondWeekendDurationHours] = useState<string>(initCond.weekend_duration_hours?.toString() ?? '')
-  const [condWeeklyCount, setCondWeeklyCount] = useState<string>(initCond.weekly_count?.toString() ?? '')
-  const [condMonth, setCondMonth] = useState<string>(initCond.month?.toString() ?? '')
-  const [condMonthlyKm, setCondMonthlyKm] = useState<string>(initCond.monthly_km?.toString() ?? '')
-  const [condSeasonCount, setCondSeasonCount] = useState<string>(initCond.season_count?.toString() ?? '')
-  const [condSeason, setCondSeason] = useState<string>(initCond.season ?? '')
-  const [condTempMinC, setCondTempMinC] = useState<string>(initCond.temperature_min_c?.toString() ?? '')
-  const [condTempMaxC, setCondTempMaxC] = useState<string>(initCond.temperature_max_c?.toString() ?? '')
-  const [condTimeStart, setCondTimeStart] = useState<string>(initCond.time_range?.start ?? '')
-  const [condTimeEnd, setCondTimeEnd] = useState<string>(initCond.time_range?.end ?? '')
-
-  const [condPrerequisiteNames, setCondPrerequisiteNames] = useState<string>(
-    (initCond.prerequisite_badge_names ?? []).join(', ')
-  )
-  // 메타데이터 필드 — 조건 필드와 달리 발급 판정에 관여하지 않는다(티켓 20260825_031).
-  // buildConditionJson이 이 state 없이 하드코딩된 조건 필드만 조립하던 회귀가 있었다 —
-  // 미션보상배지를 어드민에서 수정 저장하면 mission_reward 플래그가 조용히 유실됐다.
-  const [condMissionReward, setCondMissionReward] = useState<boolean>(initCond.mission_reward === true)
+  const [condFields, setCondFields] = useState<ConditionFormFields>(() => conditionFormFieldsFrom(initCond))
+  const setCondField = useCallback((field: string, value: string | boolean) => {
+    setCondFields((prev) => ({ ...prev, [field]: value }))
+  }, [])
   // 폼이 입력 UI를 갖지 않는 조건 필드(day_of_week 등) — 값이 있으면 저장 시 원본 그대로
   // 보존되지만(conditionFormFields.ts), 이 폼에서 보거나 고칠 수는 없다는 걸 안내한다
   // (티켓 20260825_032). initCond는 배지를 열 때의 원본 스냅샷이라 폼 세션 동안 불변이다.
   const unsupportedConditionKeys = getUnsupportedConditionKeys(initCond)
+  // 폼 지원 필드인데도 **왕복이 성립하지 않는** 값 — 저장하면 바뀌거나 사라진다.
+  const unrepresentableConditionKeys = findUnrepresentableConditionKeys(initCond)
 
   const [factionId, setFactionId] = useState(badge?.faction_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
@@ -226,29 +251,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
     setLinkedPois((prev) => prev.filter((p) => p.id !== poiId))
   }
 
-  const buildConditionJson = (): BadgeCondition | null =>
-    buildConditionJsonFromFields({
-      distanceKm: condDistanceKm,
-      totalCount: condTotalCount,
-      elevationM: condElevationM,
-      minSpeedKmh: condMinSpeedKmh,
-      maxPace: condMaxPace,
-      streakDays: condStreakDays,
-      activityType: condActivityType,
-      durationMinutes: condDurationMinutes,
-      weekendDurationHours: condWeekendDurationHours,
-      weeklyCount: condWeeklyCount,
-      month: condMonth,
-      monthlyKm: condMonthlyKm,
-      seasonCount: condSeasonCount,
-      season: condSeason,
-      tempMinC: condTempMinC,
-      tempMaxC: condTempMaxC,
-      timeStart: condTimeStart,
-      timeEnd: condTimeEnd,
-      prerequisiteNames: condPrerequisiteNames,
-      missionReward: condMissionReward,
-    }, initCond)
+  const buildConditionJson = (): BadgeCondition | null => buildConditionJsonFromFields(condFields, initCond)
 
   const toggleActivityType = (t: ActivityType) => {
     setActivityTypes((prev) =>
@@ -273,15 +276,18 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
     }
     // time_range 는 start/end 둘 다, HH:MM 형식이어야 함
     const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/
-    if (condTimeStart || condTimeEnd) {
-      if (!condTimeStart || !condTimeEnd) {
+    const { timeStart, timeEnd } = condFields
+    if (timeStart || timeEnd) {
+      if (!timeStart || !timeEnd) {
         return '시간대 조건은 시작·종료 시각을 모두 입력해야 합니다.'
       }
-      if (!hhmm.test(condTimeStart) || !hhmm.test(condTimeEnd)) {
+      if (!hhmm.test(timeStart) || !hhmm.test(timeEnd)) {
         return '시간대 조건의 시각은 HH:MM 형식이어야 합니다. (예: 05:30)'
       }
     }
-    return null
+    // 「저장은 되는데 영원히 안 나오는 배지」 3경로 — 저장 API와 **같은 함수·같은 문구**다.
+    // 여기서 먼저 걸러 왕복을 아낀다(최종 판정은 서버가 다시 한다).
+    return findConditionShapeSaveError({ name, family_key: badge?.family_key ?? null }, cond)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -292,6 +298,14 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
     // 않는다 — 여기서 직접 확인한다.
     if (!imageUrl) {
       setError('배지 이미지를 업로드해주세요. 파일 선택 버튼으로 이미지를 등록할 수 있어요.')
+      return
+    }
+
+    // 등급형/레벨형 배타 — 저장 API와 **같은 함수·같은 문구**로 먼저 막는다. 그대로 보내면
+    // Postgres CHECK 위반 원문이 화면에 그대로 뜬다(티켓 20260905_0032 A-3).
+    const rarityLevelError = findRarityLevelError(isLeveled ? null : rarity, isLeveled ? level : null)
+    if (rarityLevelError) {
+      setError(rarityLevelError)
       return
     }
 
@@ -318,7 +332,9 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
         name,
         description,
         type,
-        rarity,
+        // 레벨형은 등급이 없다(rarity IS NULL) — 둘을 함께 보내면 CHECK 위반이다.
+        rarity: isLeveled ? null : rarity,
+        level: isLeveled ? parseInt(level, 10) : null,
         image_url: imageUrl,
         activity_types: activityTypes,
         patch_available: patchAvailable,
@@ -400,8 +416,147 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   // 배지는 이 분류 결과와 무관하게 그 화면에 애초에 등장하지 않으므로, type이 'activity'가
   // 아닐 때 이 경고를 띄우면 "배지 트리 화면에 표시 안 됨"이라는 문구 자체가 부정확해진다
   // (체크인은 조건 빌더 자체가 이 블록 밖이라 자동으로 배제된다 — 티켓 20260904_1426).
-  const isProgressUnsupported =
-    type === 'activity' && classifyBadgeProgressKind(condPreview ?? {}) === 'unsupported'
+  // 경고가 **왜인지도 말한다** — 숨겨지는 축 키는 0031의 `unabsorbedAxisKeys`가 이미
+  // 계산하고 있었다(티켓 20260905_0032).
+  const progressIssue = type === 'activity' ? explainUnsupportedProgress(condPreview ?? {}) : null
+
+  // 「평가 대기」 — 레지스트리에 선언은 됐지만 엔진이 아직 평가하지 않는 필드가 든 조건은
+  // fail-closed로 막힌다. 저장은 되지만 **발급은 되지 않는다**는 걸 화면에서 알린다
+  // (0035 시딩이 0030 평가 구현보다 먼저 들어오는 경우를 전제한 표시).
+  const pendingConditionKeys = findBlockingConditionKeys(condPreview).pending
+
+  /** 조건 입력 1개를 레지스트리 선언대로 그린다 — 필드마다 JSX를 쓰지 않는다 */
+  const renderConditionControl = ({ meta, control }: ConditionFormEntry) => {
+    const label = control.label ?? (meta.unit ? `${meta.label} (${meta.unit})` : meta.label)
+    const raw = (condFields as Record<string, string | boolean>)[control.field]
+    const wideClass = control.wide ? 'col-span-2' : ''
+    const labelNode = (
+      <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+        {label}
+        {meta.evaluation === 'pending' && (
+          <span className="rounded bg-amber-100 px-1 py-px text-[10px] font-medium text-amber-800">평가 대기</span>
+        )}
+      </span>
+    )
+    const help = control.help ? <span className="text-xs text-muted-foreground">{control.help}</span> : null
+
+    if (control.kind === 'checkbox') {
+      return (
+        <label key={control.field} className={`flex items-start gap-2 cursor-pointer ${wideClass}`}>
+          <input
+            type="checkbox"
+            checked={raw === true}
+            onChange={(e) => setCondField(control.field, e.target.checked)}
+            className="mt-0.5 accent-primary"
+          />
+          <span className="flex flex-col gap-0.5">
+            {labelNode}
+            {help}
+          </span>
+        </label>
+      )
+    }
+
+    if (control.kind === 'select') {
+      const current = typeof raw === 'string' && raw ? raw : NONE_VALUE
+      return (
+        <label key={control.field} className={`flex flex-col gap-1.5 ${wideClass}`}>
+          {labelNode}
+          <Select
+            value={current}
+            onValueChange={(v) => setCondField(control.field, v === NONE_VALUE ? '' : v)}
+          >
+            <SelectTrigger aria-label={label}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent container={themeContainer ?? undefined}>
+              <SelectItem value={NONE_VALUE}>{control.noneLabel ?? '— 없음 —'}</SelectItem>
+              {(control.options ?? []).map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {help}
+        </label>
+      )
+    }
+
+    const inputClass =
+      'bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
+    return (
+      <label key={control.field} className={`flex flex-col gap-1.5 ${wideClass}`}>
+        {labelNode}
+        <input
+          type={control.kind === 'number' ? 'number' : control.kind === 'time' ? 'time' : 'text'}
+          {...(control.kind === 'number' ? { min: meta.min, max: meta.max, step: meta.step } : {})}
+          value={typeof raw === 'string' ? raw : ''}
+          onChange={(e) => setCondField(control.field, e.target.value)}
+          placeholder={control.placeholder}
+          className={inputClass}
+        />
+        {help}
+      </label>
+    )
+  }
+
+  /** 교차 게이트 1개(계열 키 · 최소 등급 · 필요 계열 수) */
+  const renderCrossGate = (prefix: string, title: string, help: string) => {
+    const value = (field: string) => {
+      const raw = (condFields as Record<string, string | boolean>)[field]
+      return typeof raw === 'string' ? raw : ''
+    }
+    const inputClass =
+      'bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
+    return (
+      <div className="rounded-xl border border-border bg-white p-3 space-y-2">
+        <p className="text-xs font-semibold text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground">{help}</p>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs text-muted-foreground">대상 계열 키 (쉼표 구분)</span>
+          <input
+            value={value(`${prefix}FamilyKeys`)}
+            onChange={(e) => setCondField(`${prefix}FamilyKeys`, e.target.value)}
+            placeholder="예: running:tempo, running:interval"
+            className={inputClass}
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">최소 등급</span>
+            <Select
+              value={value(`${prefix}MinRarity`) || NONE_VALUE}
+              onValueChange={(v) => setCondField(`${prefix}MinRarity`, v === NONE_VALUE ? '' : v)}
+            >
+              <SelectTrigger aria-label={`${title} 최소 등급`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent container={themeContainer ?? undefined}>
+                <SelectItem value={NONE_VALUE}>— 제한 없음 —</SelectItem>
+                {RARITIES.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-muted-foreground">필요 계열 수</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={value(`${prefix}MinCount`)}
+              onChange={(e) => setCondField(`${prefix}MinCount`, e.target.value)}
+              placeholder="비우면 1개 (OR)"
+              className={inputClass}
+            />
+          </label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          레벨형 계열을 대상으로 삼을 때는 최소 등급을 비워두세요. 등급이 없어 서열 비교가 성립하지 않아요.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -449,19 +604,75 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
           </Select>
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-foreground">희귀도 *</span>
-          <Select value={rarity} onValueChange={(v) => setRarity(v as BadgeRarity)}>
-            <SelectTrigger aria-label="희귀도">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {RARITIES.map((r) => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
+        {/* 배지 종류 — 등급형 / 레벨형. 레벨형은 활동 배지 전용이라 다른 타입에서는 숨긴다
+            (아이템은 등급으로 드랍 풀을, 체크인은 등급으로 표시를 가른다). */}
+        {type === 'activity' && (
+          <label className="flex flex-col gap-1.5 col-span-2">
+            <span className="text-sm text-foreground">배지 종류 *</span>
+            <Select
+              value={leveledKind ? 'leveled' : 'graded'}
+              onValueChange={(v) => setLeveledKind(v === 'leveled')}
+            >
+              <SelectTrigger aria-label="배지 종류">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent container={themeContainer ?? undefined}>
+                <SelectItem value="graded">등급형 (Common ~ Mystic)</SelectItem>
+                <SelectItem value="leveled">레벨형 (Lv.1 ~ 무한)</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
+        )}
+
+        {isLeveled ? (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-foreground">레벨 *</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+              placeholder="예: 1"
+            />
+            <span className="text-xs text-muted-foreground">
+              레벨형 배지에는 등급이 없어요. 같은 계열 안에서 보유 레벨 다음 레벨부터 순서대로 발급돼요.
+            </span>
+          </label>
+        ) : (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-foreground">희귀도 *</span>
+            <Select value={rarity} onValueChange={(v) => setRarity(v as BadgeRarity)}>
+              <SelectTrigger aria-label="희귀도">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RARITIES.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+        )}
+
+        {/* 계열 키 — **읽기 전용이다.** 2단 교차 게이트가 대상 계열을 이 키로 지정하므로
+            이름을 고쳐도 키가 바뀌면 게이트 참조가 조용히 끊긴다(티켓 20260905_0032 판단 ③). */}
+        {isEdit && (
+          <label className="flex flex-col gap-1.5 col-span-2">
+            <span className="text-sm text-foreground">계열 키 (family_key)</span>
+            <input
+              value={badge.family_key ?? ''}
+              readOnly
+              disabled
+              placeholder="— 아직 없음 —"
+              className="bg-muted border border-border rounded-xl px-4 py-2.5 text-muted-foreground cursor-not-allowed"
+            />
+            <span className="text-xs text-muted-foreground">
+              2단 교차 게이트가 이 키로 계열을 가리켜요. 배지 이름을 바꿔도 키는 그대로 두므로 여기서는 고칠 수 없어요.
+            </span>
+          </label>
+        )}
 
         {/* 세계관/소속 컬렉션 — 체크인 배지에는 이 개념이 없어 숨긴다(티켓 20260830_1344).
             activity/item 타입에서는 기존과 동일하게 노출. */}
@@ -605,7 +816,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
                   badge={{
                     image_url: imageUrl || null,
                     name: name || '(배지 이름 미입력)',
-                    rarity,
+                    rarity: isLeveled ? null : rarity,
                     description,
                     background_color: backgroundColor || null,
                     background_shader_id: null,
@@ -683,235 +894,51 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
             <p className="text-xs text-muted-foreground">조건을 설정하면 해당 조건을 충족한 유저에게만 이 배지가 드랍 풀에 포함됩니다. 설정하지 않으면 모든 유저에게 드랍 가능.</p>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">최소 거리 (km)</span>
-              <input
-                type="number"
-                step="0.1"
-                value={condDistanceKm}
-                onChange={(e) => setCondDistanceKm(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 30"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">누적 활동 횟수</span>
-              <input
-                type="number"
-                value={condTotalCount}
-                onChange={(e) => setCondTotalCount(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 10"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">고도 상승 누적 (m)</span>
-              <input
-                type="number"
-                value={condElevationM}
-                onChange={(e) => setCondElevationM(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 500"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">최소 속도 (km/h)</span>
-              <input
-                type="number"
-                step="0.1"
-                value={condMinSpeedKmh}
-                onChange={(e) => setCondMinSpeedKmh(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 25"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">최대 페이스 (mm:ss/km, 러닝 계열용)</span>
-              <input
-                type="text"
-                value={condMaxPace}
-                onChange={(e) => setCondMaxPace(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 5:30 (값이 작을수록 빠름)"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">연속 활동 일수</span>
-              <input
-                type="number"
-                value={condStreakDays}
-                onChange={(e) => setCondStreakDays(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 7"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">활동 종류 (조건)</span>
-              <Select
-                value={condActivityType || NONE_VALUE}
-                onValueChange={(v) => setCondActivityType(v === NONE_VALUE ? '' : v)}
-              >
-                <SelectTrigger aria-label="활동 종류 (조건)">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE_VALUE}>— 전체 —</SelectItem>
-                  {ACTIVITY_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          </div>
+          {/* 입력 UI는 conditionRegistry.ts의 `form` 선언에서 **생성한다** — 필드마다 JSX를
+              쓰지 않는다(티켓 20260905_0032 A-2). 섹션·순서 모두 그 선언 순서를 따른다.
+              2단 게이트(gate) 섹션만 아래 전용 블록에서 관계와 함께 그린다. */}
+          {CONDITION_FORM_SECTIONS_IN_USE.filter((section) => section !== 'gate').map((section) => (
+            <div key={section} className="space-y-2">
+              <p className="text-xs font-semibold text-foreground/70">{CONDITION_FORM_SECTION_LABEL[section]}</p>
+              <div className="grid grid-cols-2 gap-4">
+                {CONDITION_FORM_ENTRIES.filter((e) => e.section === section).map(renderConditionControl)}
+              </div>
+            </div>
+          ))}
 
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">단일 활동 최소 이동 시간 (분)</span>
-              <input
-                type="number"
-                value={condDurationMinutes}
-                onChange={(e) => setCondDurationMinutes(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 60"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">주말 활동 최소 이동 시간 (시간)</span>
-              <input
-                type="number"
-                step="0.5"
-                value={condWeekendDurationHours}
-                onChange={(e) => setCondWeekendDurationHours(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 2"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">한 주 내 최소 활동 횟수</span>
-              <input
-                type="number"
-                value={condWeeklyCount}
-                onChange={(e) => setCondWeeklyCount(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 3"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">특정 월 (1~12)</span>
-              <input
-                type="number"
-                min="1"
-                max="12"
-                value={condMonth}
-                onChange={(e) => setCondMonth(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 8"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">월 누적 거리 (km)</span>
-              <input
-                type="number"
-                step="0.1"
-                value={condMonthlyKm}
-                onChange={(e) => setCondMonthlyKm(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 100"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">계절 활동 횟수</span>
-              <input
-                type="number"
-                value={condSeasonCount}
-                onChange={(e) => setCondSeasonCount(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 5"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5 col-span-2">
-              <span className="text-xs text-muted-foreground">계절</span>
-              <Select
-                value={condSeason || NONE_VALUE}
-                onValueChange={(v) => setCondSeason(v === NONE_VALUE ? '' : v)}
-              >
-                <SelectTrigger aria-label="계절">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
-                  <SelectItem value="spring">봄 (3~5월)</SelectItem>
-                  <SelectItem value="summer">여름 (6~8월)</SelectItem>
-                  <SelectItem value="fall">가을 (9~11월)</SelectItem>
-                  <SelectItem value="winter">겨울 (12~2월)</SelectItem>
-                  <SelectItem value="all">전 계절</SelectItem>
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">최저 기온 조건 (°C 이상 · 폭염)</span>
-              <input
-                type="number"
-                step="0.1"
-                value={condTempMinC}
-                onChange={(e) => setCondTempMinC(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 30"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">최고 기온 조건 (°C 이하 · 한파)</span>
-              <input
-                type="number"
-                step="0.1"
-                value={condTempMaxC}
-                onChange={(e) => setCondTempMaxC(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="예: 0"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">활동 시작 시간대 — 시작 (HH:MM)</span>
-              <input
-                type="time"
-                value={condTimeStart}
-                onChange={(e) => setCondTimeStart(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">활동 시작 시간대 — 종료 (HH:MM)</span>
-              <input
-                type="time"
-                value={condTimeEnd}
-                onChange={(e) => setCondTimeEnd(e.target.value)}
-                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-              />
-            </label>
-          </div>
-          <p className="text-xs text-muted-foreground -mt-1">
-            시간대는 자정을 넘겨 설정 가능합니다 (예: 22:00~05:00 심야). 종료 시각이 시작보다 이르면 익일로 해석됩니다.
-          </p>
+          {/* 2단 게이트 — 관계(교차 둘은 OR, 미션 게이트는 AND)를 화면에서 드러낸다.
+              선행 배지 이름 한 줄만으로는 AND를 표현할 수 없었다(티켓 20260905_0032 A-4). */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-foreground/70">
+              {CONDITION_FORM_SECTION_LABEL.gate}
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              {CONDITION_FORM_ENTRIES.filter((e) => e.section === 'gate').map(renderConditionControl)}
+            </div>
 
-          <label className="flex flex-col gap-1.5 col-span-2">
-            <span className="text-xs text-muted-foreground">선행 배지 이름 (쉼표 구분)</span>
-            <input
-              value={condPrerequisiteNames}
-              onChange={(e) => setCondPrerequisiteNames(e.target.value)}
-              className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-              placeholder="예: 첫 페달, 아스팔트 입문 (Rare 이상에만 설정)"
-            />
-            <span className="text-xs text-muted-foreground">이 배지를 받으려면 나열된 배지 중 하나를 먼저 보유해야 합니다.</span>
-          </label>
+            <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-3">
+              <p className="text-xs font-semibold text-foreground">다음 중 하나만 충족해도 통과해요 (OR)</p>
+              {CROSS_GATE_BLOCKS.map((g) => (
+                <div key={g.prefix}>{renderCrossGate(g.prefix, g.title, g.help)}</div>
+              ))}
+            </div>
+            <p className="text-center text-xs font-semibold text-foreground">그리고 (AND)</p>
+            <div className="rounded-xl border border-border bg-muted/40 p-3">
+              {renderCrossGate(
+                'gateMissionBadge',
+                '미션 보상 배지',
+                '미션 완료로만 지급되는 배지를 요구해요. 위 교차 조건과 **함께** 충족돼야 통과해요.'
+              )}
+            </div>
+          </div>
 
           {/* 메타데이터 필드 — 위 조건 필드들과 성격이 다르다(발급 판정에 관여하지 않음)는 것을
               시각적으로도 드러내기 위해 별도 색상 박스로 구분한다 (티켓 20260825_031) */}
           <label className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 cursor-pointer">
             <input
               type="checkbox"
-              checked={condMissionReward}
-              onChange={(e) => setCondMissionReward(e.target.checked)}
+              checked={condFields.missionReward}
+              onChange={(e) => setCondField('missionReward', e.target.checked)}
               className="mt-0.5 h-4 w-4 accent-amber-600"
             />
             <span className="flex flex-col gap-0.5">
@@ -922,6 +949,22 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
               </span>
             </span>
           </label>
+
+          {/* 평가 대기 — 저장은 되지만 엔진이 그 필드를 아직 평가하지 않아 발급이 막힌다
+              (fail-closed). 0035 시딩이 0030 평가 구현보다 먼저 들어올 때 어드민이 화면에서
+              원인을 알 수 있게 한다(티켓 20260905_0032). */}
+          {pendingConditionKeys.length > 0 && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <p className="text-sm font-medium text-amber-900">아직 평가되지 않는 조건 필드가 있어요</p>
+              <p className="text-xs text-amber-800/80 mt-0.5">
+                {pendingConditionKeys
+                  .map((k) => `${getConditionField(k)?.label ?? k}(${k})`)
+                  .join(', ')}
+                {' '}는 엔진이 아직 평가하지 않아요. 저장은 되지만 이 배지는 평가가 열릴 때까지 발급되지 않아요.
+              </p>
+            </div>
+          )}
+
 
           {/* 폼 미지원 조건 필드 안내 — 값은 저장 시 원본 그대로 보존되지만 이 폼에서
               보거나 고칠 수 없다는 걸 알린다(티켓 20260825_032) */}
@@ -935,14 +978,35 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
             </div>
           )}
 
+          {/* 왕복 불가 값 안내 — 폼이 다루는 필드인데도 원본을 그대로 재현하지 못하는 값이다
+              (쉼표가 든 배지 이름, 형태가 깨진 교차 게이트 등). 저장하면 바뀌거나 사라진다.
+              저장을 막지는 않는다 — 어드민이 화면에서 고쳐 넣을 여지를 남긴다. */}
+          {unrepresentableConditionKeys.length > 0 && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <p className="text-sm font-medium text-amber-900">이 폼이 그대로 재현하지 못하는 값이 있어요</p>
+              <p className="text-xs text-amber-800/80 mt-0.5">
+                {unrepresentableConditionKeys.join(', ')} 값의 형태가 입력 항목과 맞지 않아요. 이대로
+                저장하면 값이 바뀌거나 사라져요. 위 JSON 미리보기에서 실제 저장될 값을 확인해주세요.
+              </p>
+            </div>
+          )}
+
           {/* 진행 미지원 조건 경고 — 저장을 막지 않는다(§08 H 어드민 절반, 티켓 20260904_1426).
-              classifyBadgeProgressKind가 5개 유형(누적·기록·주기·2축·다중카운터) 중 어디에도
-              못 걸리면, 이 조건은 배지 트리 화면에서 "진행 표시 준비 중"(화면 쪽,
+              classifyBadgeProgressKind가 8개 유형(누적·기록·주기·2축·다중카운터·레벨·회차·휴식)
+              중 어디에도 못 걸리면, 이 조건은 배지 트리 화면에서 "진행 표시 준비 중"(화면 쪽,
               badgeProgressText.ts)으로만 그려지고 진행률 수치는 못 보여준다 — 발급(획득) 자체는
-              기존 evaluateConditionDetailed/checkCondition이 그대로 판정하므로 영향 없다. */}
-          {isProgressUnsupported && (
+              기존 evaluateConditionDetailed/checkCondition이 그대로 판정하므로 영향 없다.
+              **왜인지도 함께 말한다** — 숨겨지는 축 키는 0031의 unabsorbedAxisKeys가 이미
+              계산한다(티켓 20260905_0032). */}
+          {progressIssue && (
             <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
               <p className="text-sm font-medium text-amber-900">이 조건은 배지 트리 화면에 진행률이 표시되지 않아요</p>
+              <p className="text-xs text-amber-800/80 mt-0.5">{progressIssue.reason}</p>
+              {progressIssue.hiddenAxisLabels.length > 0 && (
+                <p className="text-xs text-amber-800/80 mt-0.5">
+                  화면에서 빠지는 축: {progressIssue.hiddenAxisLabels.join(', ')}
+                </p>
+              )}
               <p className="text-xs text-amber-800/80 mt-0.5">배지 획득에는 영향이 없어요.</p>
             </div>
           )}
