@@ -173,6 +173,33 @@ export function collectRepeatOccurrences(
   condition: BadgeCondition,
   activities: NormalizedActivity[]
 ): NormalizedActivity[] {
+  // ⓪ 회차 술어가 «소비하지 않는 키»가 조건에 있으면 회차를 세지 않는다 (fail-closed).
+  //
+  //    아래 ①~③은 자기가 아는 키만 술어로 조립하고 나머지는 조용히 무시한다. 그래서
+  //    `{ season: 'winter', duration_minutes: 60, repeat_count: 5 }`는 계절 필터가 빠진 채
+  //    「60분 이상 활동 5건」으로 세어져 **회차가 실제보다 많이 잡힌다** — 조건 평가의
+  //    fail-closed(모르는 키가 있으면 발급을 막는다)와 정반대 방향이다.
+  //    v5 스칼라 7종을 'engine'으로 뒤집는 순간(티켓 0035 선행 작업) 실제로 성립하므로
+  //    미리 막는다(티켓 20260905_0030 B1 개선 리뷰).
+  const consumed = new Set<string>([
+    'repeat_count',
+    'activity_type',
+    'day_of_week',
+    'same_activity',
+    'time_range',
+    ...PER_ACTIVITY_KEYS,
+    ...CUMULATIVE_SAME_ACTIVITY_KEYS,
+  ])
+  const unconsumed = Object.entries(condition)
+    .filter(([k, v]) => v !== undefined && !consumed.has(k))
+    .map(([k]) => k)
+  if (unconsumed.length > 0) {
+    console.warn(
+      `[badge-engine] 회차 술어가 다루지 못하는 조건 필드 — 회차 0으로 처리: ${unconsumed.join(', ')}`
+    )
+    return []
+  }
+
   // ① 종목 필터 + 걷기 축1 게이트 — evaluateConditionDetailed의 `filtered`와 같은 규칙
   const pool = condition.activity_type
     ? activities.filter(
@@ -599,11 +626,11 @@ export function evaluateConditionDetailed(
     if (typeof condition.repeat_count !== 'number' || !Number.isFinite(condition.repeat_count) || condition.repeat_count < 1) {
       // condition_json은 jsonb라 형태 보장이 없다. 문자열·0이 들어오면 「전부 통과」로 새지
       // 않게 명시적으로 막는다(시딩 550종 중 한 행이 어긋나도 조용히 발급되지 않는다).
-      return { pass: false, reason: '달성 횟수 조건 형태 오류', actual: String(condition.repeat_count), required: '1 이상의 수' }
+      return { pass: false, reason: '충족 횟수 조건 형태 오류', actual: String(condition.repeat_count), required: '1 이상의 수' }
     }
     const occurrences = collectRepeatOccurrences(condition, activities)
     if (occurrences.length < condition.repeat_count) {
-      return { pass: false, reason: '달성 횟수 부족', actual: `${occurrences.length}회`, required: `${condition.repeat_count}회` }
+      return { pass: false, reason: '충족 횟수 부족', actual: `${occurrences.length}회`, required: `${condition.repeat_count}회` }
     }
     actualParts.push(`달성횟수: ${occurrences.length}회`)
     requiredParts.push(`달성횟수: ${condition.repeat_count}회`)
@@ -722,7 +749,16 @@ export async function evaluateBadgesDetailed(
     /** 시뮬레이터 전용: true이면 첫 싱크 게이트를 강제 적용하되 initial_sync_done은 갱신하지 않음 */
     overrideFirstSync?: boolean
   }
-): Promise<{ earned: BadgeEarnedInfo[]; missed: BadgeMissedInfo[] }> {
+): Promise<{
+  earned: BadgeEarnedInfo[]
+  missed: BadgeMissedInfo[]
+  /**
+   * 회차 카운터만 오른 반복형 배지 — **발급이 아니다.**
+   * `earned`와 끝까지 분리한다: 피드·포인트·결산·획득 연출 어디에도 실리지 않는다.
+   * 어드민 시뮬레이터가 이 반환만 소비하므로 여기 실어야 화면에서 보인다.
+   */
+  counted: { id: string; name: string; addedEarnCount: number }[]
+}> {
   const { dryRun = false, triggeredBy = 'strava_sync', silent = false, overrideFirstSync } = options ?? {}
 
   const supabase = createServiceClient()
@@ -779,7 +815,7 @@ export async function evaluateBadgesDetailed(
 
   if (badgesError || !allBadges || allBadges.length === 0) {
     if (badgesError) console.error('[evaluateBadgesDetailed] 배지 목록 조회 오류:', badgesError)
-    return { earned: [], missed: [] }
+    return { earned: [], missed: [], counted: [] }
   }
 
   const { data: ownedBadgesRaw, error: ownedError } = await supabase
@@ -791,7 +827,7 @@ export async function evaluateBadgesDetailed(
 
   if (ownedError) {
     console.error('[evaluateBadgesDetailed] 보유 배지 조회 오류:', ownedError)
-    return { earned: [], missed: [] }
+    return { earned: [], missed: [], counted: [] }
   }
 
   const ownedBadgeIds = new Set((ownedBadges ?? []).map((b) => b.badge_id))
@@ -815,7 +851,7 @@ export async function evaluateBadgesDetailed(
 
     if (ownedDefsError) {
       console.error('[evaluateBadgesDetailed] 보유 배지 정의 조회 오류:', ownedDefsError)
-      return { earned: [], missed: [] }
+      return { earned: [], missed: [], counted: [] }
     }
 
     for (const b of (ownedBadgeDefsRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'level' | 'family_key' | 'condition_json'>[]) {
@@ -1143,7 +1179,16 @@ export async function evaluateBadgesDetailed(
 
     // ── 3-b. 카운터 증가 경로 — 발급이 아니다. earned에도 담기지 않는다
     if (action === 'increment') {
-      if (dryRun) continue
+      if (dryRun) {
+        // dryRun에서도 «올랐을 회차»는 기록한다. 안 그러면 어드민 시뮬레이터가
+        // `{ earned, missed, counted }`만 소비하므로 반복형 배지가 「발급 0건·미발급 0건」으로
+        // 완전히 보이지 않는다 — 티켓 0035 시딩 후 반복형을 검증할 수단이 사라진다
+        // (B1 개선 리뷰). DB는 건드리지 않는다.
+        if (newOccurrences.length > 0) {
+          counted.push({ id: toIssue.id, name: toIssue.name, addedEarnCount: newOccurrences.length })
+        }
+        continue
+      }
       const added = await incrementRepeatEarnCount(supabase, userId, toIssue.id, newOccurrences)
       if (added > 0) {
         counted.push({ id: toIssue.id, name: toIssue.name, addedEarnCount: added })
@@ -1274,7 +1319,10 @@ export async function evaluateBadgesDetailed(
     await logEngineDecision('badge', 'sync_result', userId, { triggeredBy, isFirstSync, earned, missed, counted })
   }
 
-  return { earned, missed }
+  // counted를 함께 돌려준다 — 어드민 시뮬레이터(`/api/admin/simulate`)가 이 반환만 소비하므로,
+  // 빠뜨리면 회차 누적이 화면에서 완전히 보이지 않는다. **earned와는 끝까지 분리한다** —
+  // 회차 증가는 발급이 아니고 피드·결산·연출을 만들지 않는다.
+  return { earned, missed, counted }
 }
 
 /**

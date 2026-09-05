@@ -898,7 +898,7 @@ export const CONDITION_FIELDS = [
   // 세고(`collectRepeatOccurrences`), `index.ts`의 후보 선정이 이 필드로 «반복형»을 가른다.
   field({
     key: 'repeat_count',
-    label: '달성 횟수',
+    label: '충족 횟수',
     unit: '회',
     role: 'measurable',
     input: 'integer',
@@ -907,8 +907,8 @@ export const CONDITION_FIELDS = [
     step: 1,
     direction: 'higher',
     evaluation: 'engine',
-    chip: (c) => `${c.repeat_count}회 달성`,
-    detail: (c) => `기준 조건 ${c.repeat_count}회 달성`,
+    chip: (c) => `${c.repeat_count}회 충족`,
+    detail: (c) => `기준 조건 ${c.repeat_count}회 충족`,
   }),
 ] as const
 

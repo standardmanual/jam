@@ -144,7 +144,10 @@ $$ LANGUAGE plpgsql;
 -- 값은 `conditionRegistry.ts`의 `label`/`unit`과 한 글자도 다르면 안 된다
 -- (`condition-registry.test.ts`가 이 INSERT를 파싱해 대조한다).
 INSERT INTO public.badge_metric_labels (metric_key, label_ko, unit_ko) VALUES
-  ('repeat_count', '달성 횟수', '회')
+  -- 「달성」이 아니라 「충족」이다 — UX_WRITING_GUIDELINE 용어표가 «조건 충족»을 고정 용어로
+  -- 정하고 «조건 달성»을 X로 명시한다. 이 라벨은 badgeProgressText를 거쳐 유저 문장에
+  -- 삽입되므로 용어표를 따라야 한다(티켓 20260905_0030 B1 개선 리뷰).
+  ('repeat_count', '충족 횟수', '회')
 ON CONFLICT (metric_key) DO UPDATE
   SET label_ko   = EXCLUDED.label_ko,
       unit_ko    = EXCLUDED.unit_ko,
@@ -313,7 +316,7 @@ COMMIT;
 --
 -- -- ⑦ 지표 라벨
 -- SELECT metric_key, label_ko, unit_ko FROM public.badge_metric_labels WHERE metric_key = 'repeat_count';
---    → 달성 횟수 / 회
+--    → 충족 횟수 / 회
 
 -- ↩️ 롤백 DDL
 --    DROP FUNCTION IF EXISTS public.increment_activity_badge_earn(UUID, UUID, JSONB, INTEGER);

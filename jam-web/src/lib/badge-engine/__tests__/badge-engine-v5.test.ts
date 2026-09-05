@@ -503,7 +503,7 @@ function repeatFamily(): BadgeRow[] {
 }
 
 describe('반복형 — 임계값 회차에서만 발급된다', () => {
-  it('회차 3건이면 Common(1회)만 발급되고 Rare(5회)는 「달성 횟수 부족」으로 남는다', async () => {
+  it('회차 3건이면 Common(1회)만 발급되고 Rare(5회)는 「충족 횟수 부족」으로 남는다', async () => {
     state.badges = repeatFamily()
     state.storedActivities = [101, 102, 103].map((id, i) => ({
       normalized: makeLongRun(id, `2026-04-1${i}T05:00:00Z`),
@@ -514,7 +514,7 @@ describe('반복형 — 임계값 회차에서만 발급된다', () => {
 
     expect(earned.map((b) => b.id)).toEqual(['RC-common'])
     const rare = missed.find((m) => m.id === 'RC-rare')
-    expect(rare?.reason).toBe('달성 횟수 부족')
+    expect(rare?.reason).toBe('충족 횟수 부족')
     expect(rare?.actual).toBe('3회')
   })
 
