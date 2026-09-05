@@ -360,10 +360,14 @@ export const ko = {
     sortCheckinLatest: '최신순',
     sortCheckinName: '이름순',
 
-    // 배지 트리 (/badges/tree) — 티켓 20260831_2208, 20260903_2329(계열 진행 레일 1차)
+    // 배지 트리 (/badges/tree) — 티켓 20260831_2208, 20260903_2329, 20260905_0037(전면 리뉴얼)
     treeButton: '배지 트리',
-    // 독립 배지(D01~D11 + 트로피 매트릭스) 그리드 상단 카운트 라벨. 마침표 없음(레이블).
-    treeTrophyCount: '{total}개 중 {earned}개 획득',
+    // 상태 섹션은 둘뿐이다 — 설계 분류(누적·주기·시간대)는 화면에 노출하지 않는다.
+    // 배지 이름이 곧 구분자이므로 사용자가 묻는 건 "다음에 뭘 하면 되나"와 "내가 뭘 받았나"뿐.
+    treeSectionNext: '다음 목표',
+    treeSectionEarned: '받은 배지',
+    treeSectionNextEmpty: '이 종목의 배지를 모두 받았어요',
+    treeSectionEarnedEmpty: '아직 받은 배지가 없어요',
     // 잠금 해제 조건 시트 — 미션 게이트일 때만 붙는 하단 CTA (§5.1 예측 가능한 행동 동사)
     treeUnlockMissionCta: '미션 하러 가기',
   },

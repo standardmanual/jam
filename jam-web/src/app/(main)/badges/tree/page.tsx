@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import {
   buildBadgeActivityTrees,
+  frontierStageOf,
   type BadgeTreeSourceBadge,
   type BadgeTreeSourceMission,
   type BadgeTreeLock,
@@ -19,7 +20,7 @@ import {
 } from '@/lib/badge-engine/badgeProgress'
 // 배지 «종류» 판정의 단일 출처 — 진행 대상 선정이 발급 엔진과 같은 기준을 본다
 // (티켓 20260905_0031).
-import { badgeKindOf, isRepeatableBadge } from '@/lib/badge-engine/badgeKind'
+import { badgeKindOf } from '@/lib/badge-engine/badgeKind'
 import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
 import {
   pickSyncComparisonCandidate,
@@ -33,6 +34,16 @@ import BadgeTreeClient from './BadgeTreeClient'
 const RECENT_SYNC_WINDOW_MS = 24 * 60 * 60 * 1000
 
 /**
+ * PostgREST 기본 페이지 상한. 이 크기로 끝까지 훑는다 — `badges/page.tsx`(46~52행)에
+ * **1000행 절단 사고 기록**이 있고, 여기는 싱크 스냅샷이 아니라 «유저가 보는 화면 본체»라
+ * 잘리면 배지 자체가 사라진다. v5 활동 배지는 630종이라 지금은 1페이지지만 여유가 절반뿐이다.
+ */
+const BADGE_PAGE_SIZE = 1000
+
+const BADGE_TREE_SELECT =
+  'id, name, rarity, level, family_key, description, image_url, activity_types, condition_json, sort_order'
+
+/**
  * `Date.now()`(비순수 호출)를 컴포넌트 함수 본문 밖으로 뺀 순수 헬퍼 —
  * react-hooks/purity가 컴포넌트 본문 안의 비순수 호출을 막는다.
  */
@@ -41,14 +52,68 @@ function isWithinRecentSyncWindow(createdAt: string | null | undefined): boolean
   return Date.now() - new Date(createdAt).getTime() < RECENT_SYNC_WINDOW_MS
 }
 
+type RawBadge = BadgeTreeSourceBadge & { level: number | null }
+
 /**
- * 배지 트리(/badges/tree) — 티켓 20260831_2208, 20260903_2329(계열 진행 레일 1차),
- * 20260904_0921(2c — 진행 수치 최초 연결).
+ * 활동 배지 전량을 페이지네이션으로 읽는다 — `badges/page.tsx`의 청킹 선례와 같은 태도.
+ * `id` 오름차순으로 못 박아야 페이지 경계가 흔들리지 않는다(정렬이 없으면 PostgREST가
+ * 페이지마다 다른 순서를 줄 수 있다).
+ */
+async function fetchAllActivityBadges(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<RawBadge[]> {
+  const rows: RawBadge[] = []
+  for (let from = 0; ; from += BADGE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('badges')
+      .select(BADGE_TREE_SELECT)
+      .eq('type', 'activity')
+      .is('deleted_at', null)
+      .not('activity_types', 'is', null)
+      .order('id', { ascending: true })
+      .range(from, from + BADGE_PAGE_SIZE - 1)
+    if (error) {
+      console.error('[badges/tree/page] 활동 배지 조회 실패', error)
+      break
+    }
+    const page = (data ?? []) as unknown as RawBadge[]
+    rows.push(...page)
+    if (page.length < BADGE_PAGE_SIZE) break
+  }
+  return rows
+}
+
+/**
+ * 축 라벨을 나중에 채운다 — **진행 계산을 한 번만 돌리기 위한 것**이다(티켓 20260905_0037).
+ *
+ * 예전에는 `getMetricLabels()`를 1회로 유지하려고 «빈 라벨맵으로 프로브 → 라벨 조회 →
+ * 같은 계산 재실행» **2패스**를 돌았다. 630종이면 요청당 최대 1,260회이고, 서버 컴포넌트
+ * 동기 계산이라 TTFB에 그대로 실린다. `labelMap`은 `computeBadgeProgress` 안에서 축의
+ * `label`/`unit`만 채우고 `current`·`target`·`met`·`fraction` 어디에도 관여하지 않으므로,
+ * 결과 축에 라벨만 덮어쓰면 2패스와 **완전히 같은 값**이 나온다.
+ */
+function withResolvedAxisLabels(
+  progress: BadgeProgress,
+  labelMap: Map<string, { label: string; unit: string | null }>
+): BadgeProgress {
+  if (progress.kind === 'unsupported') return progress
+  return {
+    ...progress,
+    axes: progress.axes.map((axis) => {
+      const found = labelMap.get(axis.key)
+      // 라벨맵에 없는 축은 1패스에서 이미 레지스트리 폴백(또는 key 원문)을 받았다 — 건드리지 않는다.
+      return found ? { ...axis, label: found.label, unit: found.unit } : axis
+    }),
+  }
+}
+
+/**
+ * 배지 트리(/badges/tree) — 티켓 20260831_2208, 20260903_2329, 20260904_0921,
+ * 20260905_0037(전면 리뉴얼: 계열 정의를 `family_key` 기준으로, 진행 계산을 1패스로).
  *
  * `/badges/[id]`보다 정적 세그먼트가 우선 매칭되므로 라우트 충돌은 없다.
  * `badges/page.tsx`와 동일하게 서버 컴포넌트에서 Supabase를 직접 조회한다(API route 신설 안 함).
- * 이 페이지는 `supabase.auth.getUser()`(쿠키 기반)를 호출하므로 badges/page.tsx와 동일하게
- * 자동으로 동적 렌더링된다 — 빌드 타임 스냅샷이 아니라 매 요청 최신 DB 상태를 반영한다.
+ * 이 페이지는 `supabase.auth.getUser()`(쿠키 기반)를 호출하므로 자동으로 동적 렌더링된다.
  */
 export default async function BadgeTreePage() {
   const supabase = await createClient()
@@ -62,28 +127,21 @@ export default async function BadgeTreePage() {
   const service = createServiceClient()
 
   const [
-    { data: badgesRaw, error: badgesError },
+    badgesRaw,
     { data: missionsRaw, error: missionsError },
     { data: earnedBadgesRaw, error: earnedBadgesError },
     { data: latestSyncRaw, error: latestSyncError },
     { data: familyProgressRaw, error: familyProgressError },
   ] = await Promise.all([
-    supabase
-      .from('badges')
-      .select('id, name, rarity, level, description, image_url, activity_types, condition_json, point_reward, sort_order')
-      .eq('type', 'activity')
-      .is('deleted_at', null)
-      .not('activity_types', 'is', null),
+    fetchAllActivityBadges(supabase),
     service.from('missions').select('id, title, gated_badge_id, image_url').not('gated_badge_id', 'is', null),
-    // badges/page.tsx(27~38행)와 동일한 패턴 — 미획득 배지를 흑백/반투명으로 구분하기 위해
+    // badges/page.tsx(27~38행)와 동일한 패턴 — 미획득 배지를 흑백으로 구분하기 위해
     // 이 유저의 실제 획득 여부를 조회한다(티켓 20260831_2250).
     supabase
       .from('user_activity_badges')
       .select('badge_id, badge:badges(deleted_at)')
       .eq('user_id', user.id),
-    // RecentSyncBanner(1차: boolean 이벤트만)용 — 가장 최근에 동기화된 활동 1건의 시각만 필요.
-    // strava_activities는 [username]/page.tsx·feed/page.tsx와 동일하게 service client로 조회한다
-    // (이 테이블은 RLS를 일반 세션 클라이언트에 열어주지 않는다 — 두 화면 모두 service를 쓴다).
+    // RecentSyncBanner용 — 가장 최근에 동기화된 활동 1건의 시각만 필요.
     service
       .from('strava_activities')
       .select('created_at')
@@ -92,33 +150,20 @@ export default async function BadgeTreePage() {
       .limit(1)
       .maybeSingle(),
     // RecentSyncBanner "직전 상태값과의 비교"(3b, 티켓 20260904_1425)용 — 계열별 current/prev
-    // 진행 스냅샷 전체(최대 약 72행). user_family_progress는 티켓 20260904_1156이 지정한 대로
-    // service_role 전용(RLS 정책 없음)이라 service client로 조회한다.
+    // 진행 스냅샷. user_family_progress는 service_role 전용(RLS 정책 없음)이다.
     service.from('user_family_progress').select('current, prev').eq('user_id', user.id),
   ])
-  if (badgesError) console.error('[badges/tree/page] 활동 배지 조회 실패', badgesError)
   if (missionsError) console.error('[badges/tree/page] missions(게이트 배지용) 조회 실패', missionsError)
   if (earnedBadgesError) console.error('[badges/tree/page] user_activity_badges(획득여부) 조회 실패', earnedBadgesError)
   if (latestSyncError) console.error('[badges/tree/page] strava_activities(최근 동기화) 조회 실패', latestSyncError)
   if (familyProgressError) console.error('[badges/tree/page] user_family_progress(직전 동기화 비교) 조회 실패', familyProgressError)
 
-  // `level`은 무한레벨형 진행 표시(kind: 'leveled')에만 쓰인다 — 트리 카드 구성에는 관여하지 않는다
-  type RawBadge = BadgeTreeSourceBadge & { point_reward: number; level: number | null }
-  // PostgREST 기본 페이지 상한(1000행)에 닿으면 **에러 없이 잘린 목록**이 온다.
-  // 여기는 싱크 스냅샷이 아니라 **유저가 보는 화면 본체**라, 잘리면 배지 자체가 사라진다.
-  // 티켓 20260905_0035가 550종을 시딩하면 750건대가 되므로 상한 근접을 배포 없이 관측할 수
-  // 있게 로그만 둔다(페이지네이션은 0035 착수 전 별도 처리 — 개선 리뷰 지적).
-  if ((badgesRaw ?? []).length >= 1000) {
-    console.warn(
-      `[badges/tree] badges 조회가 PostgREST 상한에 닿았다 — ${(badgesRaw ?? []).length}행. ` +
-        '화면에서 배지가 누락되고 있을 수 있다(페이지네이션 필요).'
-    )
-  }
-
-  const badges: BadgeTreeSourceBadge[] = ((badgesRaw ?? []) as RawBadge[]).map((b) => ({
+  const badges: BadgeTreeSourceBadge[] = badgesRaw.map((b) => ({
     id: b.id,
     name: b.name,
     rarity: b.rarity,
+    level: b.level,
+    family_key: b.family_key,
     description: b.description,
     image_url: b.image_url,
     activity_types: b.activity_types,
@@ -137,10 +182,8 @@ export default async function BadgeTreePage() {
   )
   const earnedBadgeIds = Array.from(earnedBadgeIdSet)
 
-  // RecentSyncBanner "직전 상태값과의 비교"(3b, 티켓 20260904_1425) — 계열 전체에서 가장
-  // 눈에 띄는 진전(fraction 증가폭이 가장 큰 축) 하나를 고른다. 이 시점엔 라벨이 아직 없다 —
-  // 축 key만 뽑아 아래 axisKeys 수집에 합류시키고, 실제 문장 조립은 labelMap 조회 이후에 한다
-  // (getMetricLabels() 왕복을 늘리지 않기 위해 — 상세 요구사항 "같은 요청 안에서 처리").
+  // RecentSyncBanner "직전 상태값과의 비교"(3b) — 계열 전체에서 가장 눈에 띄는 진전 하나.
+  // 이 시점엔 라벨이 아직 없다 — 축 key만 뽑아 아래 axisKeys 수집에 합류시킨다.
   type RawFamilyProgress = { current: unknown; prev: unknown }
   const familyProgressSnapshots: FamilyProgressAxisSnapshot[] = ((familyProgressRaw ?? []) as RawFamilyProgress[]).map(
     (row) => ({
@@ -150,76 +193,54 @@ export default async function BadgeTreePage() {
   )
   const syncComparisonCandidate = pickSyncComparisonCandidate(familyProgressSnapshots)
 
-  // earnedBadgeIdSet도 선행 배지 잠금칩의 "이미 획득함" 판정에 쓰인다(20260901 UI 수정).
+  // earnedBadgeIdSet도 선행 배지 잠금칩의 "이미 획득함" 판정에 쓰인다.
   const trees = buildBadgeActivityTrees(badges, missions, earnedBadgeIdSet)
 
-  // 게이트(미션·선행배지)가 안 열린 미획득 눈금만 추려, 기존 evaluateConditionDetailed
-  // pass/fail(checkCondition)로 "조건 충족(라임)"과 "게이트잠김"을 가른다 — 새 진행 계산
-  // 모듈 없이 기존 함수만 재사용한다(티켓 20260903_2329 "단계 분리 근거").
+  // 게이트(미션·선행배지·교차)가 안 열린 미획득 눈금만 추려, 기존 evaluateConditionDetailed
+  // pass/fail(checkCondition)로 "조건 충족(라임)"과 "게이트잠김"을 가른다.
   const allStages = trees.flatMap((tree) => tree.families.flatMap((family) => family.stages))
   const targetIds = collectConditionCheckTargets(allStages, earnedBadgeIdSet)
   const conditionById = new Map(badges.map((b) => [b.id, b.condition_json]))
 
-  // ── 진행 수치(2c, 티켓 20260904_0921) ────────────────────────────────────
-  // 대상: 계열의 프런티어(첫 미획득 눈금, 게이트 열림 여부 무관) + 미획득 독립 배지(트로피
-  // 그리드). 1차의 targetIds(게이트가 안 열린 것만)보다 넓다 — 게이트가 이미 열린
-  // not-reached 프런티어에도 진행 수치가 필요하기 때문이다.
+  // ── 진행 수치 ────────────────────────────────────────────────────────────
+  // 대상: **「다음 목표」 섹션에 실제로 그려지는 계열의 프런티어 하나씩**이다.
+  // 다 받은 계열(=「받은 배지」 섹션)은 진행 표시가 없으므로 계산도 하지 않는다 — 화면이
+  // 접어 두는 것을 서버도 계산하지 않는 것이 이 리뉴얼의 성능 축이다(티켓 20260905_0037).
   type ProgressTarget = {
     id: string
     condition: BadgeCondition
     locks: BadgeTreeLock[]
     activityType: ActivityType
-    /** 아쉬움 줄(§05)은 레일(계열 프런티어)에만 붙는다 — 트로피 그리드에는 없다 */
-    isFamilyFrontier: boolean
     /** `computeBadgeProgress`가 조건만으로는 알 수 없는 배지 속성(무한레벨형 여부·레벨) */
     options: BadgeProgressOptions
   }
-  // 배지 종류 판정은 `badgeKind.ts` 한 곳이다 — 계열 프런티어 선정이 여기서 다시 선언하면
-  // 발급 엔진(index.ts)·싱크 훅(sync.ts)과 갈라진다(티켓 20260905_0031).
-  const badgeById = new Map(((badgesRaw ?? []) as RawBadge[]).map((b) => [b.id, b]))
+  // 배지 종류 판정은 `badgeKind.ts` 한 곳이다 — 여기서 다시 선언하면 발급 엔진과 갈라진다.
+  const badgeById = new Map(badgesRaw.map((b) => [b.id, b]))
   const progressOptionsFor = (id: string): BadgeProgressOptions => {
     const row = badgeById.get(id)
     if (!row) return {}
     return { badgeKind: badgeKindOf(row), level: row.level ?? null }
   }
-  /**
-   * **반복형은 보유해도 진행 대상에서 빠지지 않는다** (티켓 20260905_0031, v5 §2.14).
-   * 등급형·레벨형은 획득하면 다음 칸으로 넘어가지만, 반복형은 같은 배지가 계속 회차를
-   * 쌓으므로 「이미 획득했지만 다음 카운트가 진행 중」인 상태가 정상이다. 「미획득」만
-   * 프런티어로 보던 선정 로직이 그 진행을 통째로 숨기고 있었다.
-   */
-  const isRepeatTarget = (id: string): boolean => {
-    const row = badgeById.get(id)
-    return row ? isRepeatableBadge(row) : false
-  }
   const progressTargets: ProgressTarget[] = []
   for (const tree of trees) {
     for (const family of tree.families) {
-      const frontier = family.stages.find((s) => !earnedBadgeIdSet.has(s.id) || isRepeatTarget(s.id))
-      if (!frontier) continue // 계열 전부 획득(반복형도 없음) — 진행 표시 불필요
+      // 반복형은 다 받은 뒤에도 다음 회차가 진행 중이라 프런티어가 남는다
+      // (`frontierStageOf` 주석 — 티켓 20260905_0031).
+      const frontier = frontierStageOf(family, earnedBadgeIdSet)
+      if (!frontier) continue
       const condition = conditionById.get(frontier.id)
-      if (condition) {
-        progressTargets.push({
-          id: frontier.id, condition, locks: frontier.locks, activityType: tree.activityType,
-          isFamilyFrontier: true, options: progressOptionsFor(frontier.id),
-        })
-      }
-    }
-    for (const badge of tree.independentBadges) {
-      // 반복형은 획득 후에도 「다음 회차」 진행이 있다 — 그리드를 100%로 고정하지 않는다
-      if (earnedBadgeIdSet.has(badge.id) && !isRepeatTarget(badge.id)) continue
-      const condition = conditionById.get(badge.id)
-      if (condition) {
-        progressTargets.push({
-          id: badge.id, condition, locks: badge.locks, activityType: tree.activityType,
-          isFamilyFrontier: false, options: progressOptionsFor(badge.id),
-        })
-      }
+      if (!condition) continue
+      progressTargets.push({
+        id: frontier.id,
+        condition,
+        locks: frontier.locks,
+        activityType: tree.activityType,
+        options: progressOptionsFor(frontier.id),
+      })
     }
   }
 
-  // getActivityHistory도 badge-engine/missions checker와 동일하게 service client로 호출한다
-  // (badge-engine/index.ts:627, missions/checker.ts:119 — 둘 다 service client를 넘긴다).
+  // getActivityHistory도 badge-engine/missions checker와 동일하게 service client로 호출한다.
   // 이력의 시작점은 가입 시점으로 고정한다 — 화면(진행률)과 발급 엔진이 같은 창을 봐야
   // 한다(티켓 20260905_0030 §5).
   const needsHistory = targetIds.length > 0 || progressTargets.length > 0
@@ -239,21 +260,21 @@ export default async function BadgeTreePage() {
     }
   }
 
-  // 라벨 배치 조회 — 실제로 쓰일 축 key를 먼저 모아야 getMetricLabels()를 1회만 부를 수
-  // 있다. 1차 패스(빈 라벨맵)로 key만 수집하고 실제 라벨은 2차 패스에서 채운다(2a 설계
-  // 의도: 배지·등급마다 개별 호출 금지). computeBadgeProgress는 순수 함수라 두 번 불러도
-  // side-effect가 없다 — DB 조회(getMetricLabels)만 정확히 1회로 지킨다.
+  // ── 1패스: 진행 계산 + 축 key 수집 (라벨은 아직 없다) ────────────────────
+  // 배지별 try/catch — 예상 못한 condition_json 형태가 와도 그 배지 하나만 진행 표시를 생략한다.
   const emptyLabelMap = new Map<string, { label: string; unit: string | null }>()
+  const computedByBadgeId = new Map<string, BadgeProgress>()
   const axisKeys = new Set<string>()
   for (const target of progressTargets) {
     const metrics = metricsByActivityType.get(target.activityType)!
     try {
-      const probe = computeBadgeProgress(target.condition, metrics, emptyLabelMap, target.locks, target.options)
-      if (probe.kind !== 'unsupported') {
-        for (const axis of probe.axes) axisKeys.add(axis.key)
+      const progress = computeBadgeProgress(target.condition, metrics, emptyLabelMap, target.locks, target.options)
+      computedByBadgeId.set(target.id, progress)
+      if (progress.kind !== 'unsupported') {
+        for (const axis of progress.axes) axisKeys.add(axis.key)
       }
     } catch (error) {
-      console.error('[badges/tree/page] computeBadgeProgress 프로브 실패 — 라벨 key 수집 생략', target.id, error)
+      console.error('[badges/tree/page] computeBadgeProgress 실패 — 진행 표시 생략', target.id, error)
     }
   }
   // 직전 동기화 비교 후보의 축도 같은 배치 조회에 합류시킨다 — 별도 왕복 없음.
@@ -263,22 +284,22 @@ export default async function BadgeTreePage() {
     ? formatSyncComparisonText(syncComparisonCandidate, labelMap)
     : null
 
-  // 배지별 진행 계산 — 실패해도(예: 예상 못한 condition_json 형태) 그 배지 하나만 진행
-  // 표시를 생략한다(2b가 남긴 잔여 이슈 — "배지별 try/catch 방어막" 반영). 레일·그리드는
-  // BadgeProgress 원본 객체를 그대로 받아 표시 문구는 클라이언트(badgeProgressText.ts)가 만든다.
+  // ── 라벨 채우기 + 기록형 아쉬움 줄 ───────────────────────────────────────
   const progressByBadgeId: Record<string, BadgeProgress> = {}
   const regretLineByBadgeId: Record<string, RegretLineData> = {}
   for (const target of progressTargets) {
-    const metrics = metricsByActivityType.get(target.activityType)!
-    try {
-      const progress = computeBadgeProgress(target.condition, metrics, labelMap, target.locks, target.options)
-      progressByBadgeId[target.id] = progress
-      if (target.isFamilyFrontier && progress.kind === 'record') {
+    const progress = computedByBadgeId.get(target.id)
+    if (!progress) continue
+    progressByBadgeId[target.id] = withResolvedAxisLabels(progress, labelMap)
+    // 아쉬움 줄은 기록형 프런티어에만 붙는다 — 대상이 좁아 여기서 개별 계산해도 부담이 없다.
+    if (progress.kind === 'record') {
+      const metrics = metricsByActivityType.get(target.activityType)!
+      try {
         const regret = computeRecordRegretLine(target.condition, metrics, labelMap)
         if (regret) regretLineByBadgeId[target.id] = regret
+      } catch (error) {
+        console.error('[badges/tree/page] computeRecordRegretLine 실패 — 아쉬움 줄 생략', target.id, error)
       }
-    } catch (error) {
-      console.error('[badges/tree/page] computeBadgeProgress 실패 — 진행 표시 생략', target.id, error)
     }
   }
 

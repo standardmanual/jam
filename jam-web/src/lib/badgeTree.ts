@@ -1,31 +1,60 @@
 import type { ActivityType, BadgeCondition, BadgeRarity } from '@/types/database'
+import { badgeKindOf, familyKeyOf, type BadgeKind } from '@/lib/badge-engine/badgeKind'
+import {
+  CROSS_GATE_CONDITION_KEYS,
+  normalizeGateRequirement,
+  type CrossGateConditionKey,
+  type NormalizedGateRequirement,
+} from '@/lib/badge-engine/crossGate'
+import { rarityTier } from '@/lib/rarity'
 
 /**
- * 배지 트리(`/badges/tree`) 전용 그래프 빌더 — 티켓 20260831_2208.
+ * 배지 트리(`/badges/tree`) 전용 그래프 빌더 — 티켓 20260831_2208, 20260905_0037(전면 리뉴얼).
  *
- * 액티비티 배지는 종목별 대표배지(동네 산책러/첫 숨결/언덕의 도전자/첫 고도/야생의 주자)를
- * 루트로, `condition_json.prerequisite_badge_names`(동일 종목 내 다른 배지 이름, OR 조건)로
- * 이어진 선행조건 그래프를 이룬다.
+ * ## 20260905_0037에서 무엇이 바뀌었나
  *
- * 대표배지의 Rare 이상은 다른 배지가 아니라 **미션 완료**로 게이팅된다
- * (`missions.gated_badge_id` = 그 등급 배지의 id). 대표배지는 이 게이팅 방식으로
- * 식별한다 — 이름을 하드코딩하지 않아, 나중에 대표배지 구성이 바뀌어도 그대로 반영된다.
+ * 이 파일의 계열 정의는 **«같은 이름을 등급 4단으로 늘어놓은 것»** 이었다. 눈금을
+ * `RARITY_ORDER` 4회 루프로만 만들었기 때문에, v5 무한레벨형(`rarity IS NULL`, 193종 26계열)은
+ * 어느 눈금에도 담기지 못하고 **화면에서 조용히 사라졌다** — 크래시가 아니라 실종이라
+ * 아무도 모르는 채로 카탈로그의 31%가 빠져 있었다.
  *
- * 20260903_2329 UI 수정(1차: 구조 전환): 정렬 1순위를 등급 → **계열(name)**로 바꿨다.
- * 같은 계열의 Common~Mystic 4장을 화면 전역에 흩어 놓던 이전 방식(등급 우선 평탄화,
- * 20260901 수정)이 위계·진행 감각을 없앴기 때문이다 — 이 파일이 원래 갖고 있던
- * familyMap·representativeNames·BFS depth(대표배지가 1)·문서 서술 순서·`earnedBadgeIds`
- * OR-fulfillment 로직은 전부 그대로 재사용하고, **묶는 단위만** "등급별 평평한 카드
- * 목록"에서 "계열별 레일(`families`) + 계열이 없는 독립 배지(`independentBadges`)"로
- * 바꿨다 — 신규 계산은 없다. 계열 순서는 이전에 카드 2·3차 정렬키로 쓰던
- * [BFS depth → 문서 순서]를 그대로 승격했다(진행률 기준 정렬은 진행 계산 모듈이 필요한
- * 2차로 미룸).
+ * 그래서 계열의 정의를 **`family_key` 기준**으로 바꾸고(이름은 v5에서 배지를 유일하게
+ * 식별하지 못한다 — 티켓 20260905_0030 B-6), 계열 안 눈금 순서는 종류마다 다르게 둔다:
  *
- * 20260905_0027(v5 스키마): 이름 72개 하드코딩 배열 2종을 걷어내고 `badges.sort_order`
- * (마이그레이션 130)를 정렬키로 쓴다 — 아래 `sortRank` 주석 참고.
+ * | 종류 | 계열 안 순서 | 화면 표현 |
+ * |---|---|---|
+ * | `graded`     | 등급 4단(Common→Mystic) | `BadgeStageRail` (최대 4눈금) |
+ * | `leveled`    | `level` 오름차순(상한 없음) | `BadgeLevelGauge` (높이 고정) |
+ * | `repeatable` | 등급 4단(회차 임계값이 커진다) | `BadgeStampRow` |
+ *
+ * 종류 판정은 여기서 다시 선언하지 않고 `badgeKind.ts`(단일 출처)를 부른다.
+ *
+ * ## 게이트는 그룹의 배열이다
+ *
+ * 이전에는 「미션 락이 있으면 그것만 반환」이라 **«미션 AND 선행배지»를 표현할 수 없었고**,
+ * v5의 2단 교차 게이트(`cross_in_axis`·`cross_between_axis`·`gate_mission_badge`)는 아예
+ * 읽지도 않았다 — 그 배지들은 트리에서 잠금이 통째로 사라진 채 그려졌다.
+ * 이제 `BadgeTreeGateGroup[]`을 만든다: **그룹 안은 OR(또는 N개 이상), 그룹 사이는 AND**.
+ * 「1단 통과, 2단 대기」는 그룹별 `fulfilled`로 드러난다.
+ *
+ * ## 정렬
+ * `badges.sort_order`(마이그레이션 130, 티켓 20260905_0027)를 그대로 쓴다 — 이전의 이름
+ * 72개 하드코딩은 그 티켓에서 이미 걷어냈다. 이 파일은 「계열 서열」만 정하고, 화면의
+ * 「다음 목표가 가까운 순」 정렬은 진행 계산 결과를 아는 `BadgeTreeClient`가 한다.
  */
 
+/** 등급형 계열의 눈금 순서. **레일은 이 4단계 전용이다**(`BadgeStageRail` 상한과 같은 값) */
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
+
+/**
+ * 계열 눈금 상한 — 등급은 4단계뿐이다.
+ *
+ * ⚠️ 이 상수가 프로덕션의 마지막 방어선이다. `BadgeStageRail`의 상한 검사는 **개발 빌드에서만**
+ * throw하고(프로덕션에서 화면을 통째로 날리지 않으려고), 예전엔 이 파일의 `RARITY_ORDER`
+ * 4회 루프가 상한을 «구조적으로» 보장했다. 이번 리뉴얼이 그 루프를 걷어냈으므로 상한을
+ * 명시적으로 자른다(티켓 20260905_0037이 0036에게서 넘겨받은 항목 1).
+ */
+export const MAX_FAMILY_STAGES = 4
 
 /** 화면에 보여줄 종목 탭 순서 — 티켓 배경 문단의 순서(걷기/러닝/사이클링/등산/트레일러닝) */
 export const TREE_ACTIVITY_ORDER: ActivityType[] = [
@@ -35,12 +64,7 @@ export const TREE_ACTIVITY_ORDER: ActivityType[] = [
 /**
  * 표시 순서 정렬키 — `badges.sort_order`(마이그레이션 130, 티켓 20260905_0027)를 그대로 쓴다.
  *
- * 이전에는 배지 **이름 72개**를 이 파일에 하드코딩해(`ACTIVITY_BADGE_ORDER` 40 +
- * `INDEPENDENT_BADGE_ORDER` 32) `indexOf`로 순서를 매겼다. 550종(v5)에서는 유지가 불가능하고,
- * 목록에 없는 이름은 `indexOf`가 `-1`을 반환해 **그리드 맨 앞으로 튀어나왔다.**
- *
- * `sort_order = 0`은 «아직 설정하지 않음»이라 맨 뒤로 민다 — 위 결함을 뒤집은 것이고,
- * 계열 레일이 쓰던 기존 동작(목록에 없는 이름은 맨 뒤)과도 같다.
+ * `sort_order = 0`은 «아직 설정하지 않음»이라 맨 뒤로 민다.
  * DB 백필 규약: 계열 레일 1~99(계열 안 모든 등급이 같은 값) / 독립 발급 배지 101~ .
  */
 const UNSET_SORT_ORDER = Number.MAX_SAFE_INTEGER
@@ -57,11 +81,12 @@ export function sortRank(sortOrder: number): number {
 export interface BadgeTreeSourceBadge {
   id: string
   name: string
-  /**
-   * 무한레벨형은 등급이 없다(마이그레이션 130). 아래 `RARITY_ORDER` 루프가 등급 있는 배지만
-   * 눈금으로 담으므로, 레벨형은 현재 트리에 그려지지 않는다 — 레벨 레일은 티켓 20260905_0037.
-   */
+  /** 무한레벨형은 등급이 없다(마이그레이션 130) — 계열 종류 판정의 단일 기준이다 */
   rarity: BadgeRarity | null
+  /** 무한레벨형의 레벨(Lv.1~). 등급형·반복형은 null */
+  level: number | null
+  /** 계열 식별자. 이름 대신 쓰는 안정적인 키(마이그레이션 130) */
+  family_key: string | null
   description: string | null
   image_url: string | null
   activity_types: ActivityType[] | null
@@ -85,43 +110,122 @@ export interface BadgeTreeLock {
   href: string
   /** kind='badge'일 때만 의미 있음 — 이 유저가 이 선행 배지를 이미 보유했는지 */
   fulfilled: boolean
-  /** 선행 배지(Common 등급) 이미지 또는 미션 이미지 — 잠금 해제 조건 시트용 (20260903_2329) */
+  /** 선행 배지 대표 눈금 이미지 또는 미션 이미지 — 잠금 해제 조건 시트용 (20260903_2329) */
   imageUrl: string | null
+  /**
+   * 시트 항목의 부제를 덮어쓰는 한 줄(「배지 · 어느 등급이든 1개」·「배지 · Rare 이상」).
+   *
+   * DS 기본값을 「배지」로 낮췄으므로(0036 넘김 항목 4), **참인 문장만** 여기서 명시한다 —
+   * 예전엔 「어느 등급이든 1개」가 DS에 하드코딩돼 있어서 등급이 없는 레벨형 계열을 가리킬 때
+   * 조용히 거짓말이 나갔다.
+   */
+  note?: string | null
 }
 
-/** 배지 하나(특정 등급)의 트리 카드 — 20260901 UI 수정으로 가족 단위 묶음을 없애고 개별 카드로 평탄화 */
-export interface BadgeTreeCard {
-  id: string
-  /** 등급과 무관한 배지 그룹 이름(예: "동네 산책러") */
-  name: string
-  rarity: BadgeRarity
-  imageUrl: string | null
-  description: string | null
+/**
+ * 게이트 한 묶음 — **그룹 안은 OR(또는 «N개 이상»), 그룹 사이는 AND**.
+ *
+ * 「미션 AND (배지 A OR 배지 B)」가 이 구조로 표현된다(티켓 20260905_0037, 0036 넘김 항목 3).
+ * 평면 `relation` 하나로는 이 조합을 나타낼 수 없어 시트가 조건을 잘못 읽고 있었다.
+ */
+export interface BadgeTreeGateGroup {
+  /** 자물쇠 표식 종류 — 미션(프라이머리 자물쇠) / 교차·선행 배지(중성 별) */
+  kind: 'mission' | 'cross'
+  /** 그룹 안 항목 결합. 'or' = 하나만, 'and' = 전부(또는 `note`가 말하는 개수만큼) */
+  relation: 'or' | 'and'
+  /** 이 그룹이 이미 열렸는지 — 「1단 통과, 2단 대기」가 이 값으로 드러난다 */
+  fulfilled: boolean
+  /** 그룹 제목(시트에서만 노출). 없으면 그리지 않는다 */
+  title: string | null
+  /** 「계열 3개 중 2개 이상」처럼 OR/AND로 못 담는 요구를 한 줄로 적는다 */
+  note: string | null
   locks: BadgeTreeLock[]
 }
 
-/** 계열 안 눈금 하나(특정 등급) — 20260903_2329, BadgeTreeCard와 필드는 같지만 계열 레일 전용 의미로 별칭 */
-export type BadgeFamilyStage = BadgeTreeCard
-
-/** 계열(같은 이름) 하나 = 레일 하나. Common→Mystic 순, 존재하는 등급만 담는다 — 20260903_2329 */
-export interface BadgeFamily {
+/** 계열 안 눈금 하나 — 등급형은 등급 1단, 레벨형은 레벨 1단, 반복형은 회차 임계값 1단 */
+export interface BadgeFamilyStage {
+  id: string
+  /** 등급과 무관한 배지 이름(예: "동네 산책러") */
   name: string
+  /** 무한레벨형은 null */
+  rarity: BadgeRarity | null
+  /** 무한레벨형만 값이 있다 */
+  level: number | null
+  imageUrl: string | null
+  description: string | null
+  /**
+   * 이 눈금 앞을 막는 게이트 묶음. 그룹 사이는 AND다.
+   * 비어 있으면 게이트가 없다(수치 조건만 남았다).
+   */
+  gateGroups: BadgeTreeGateGroup[]
+  /**
+   * `gateGroups`를 평탄화한 목록 — `computeBadgeProgress(…, locks)`의 `buildGate`가
+   * 예전 형태를 그대로 받는다. 새 정보를 담지 않는 파생값이므로 판정에 쓰지 않는다.
+   */
+  locks: BadgeTreeLock[]
+  /** 표시 순서(계열 안 정렬은 이미 끝나 있고, 계열 자체의 서열 계산에 쓴다) */
+  sortOrder: number
+}
+
+/** 계열(같은 `family_key`) 하나 = 화면의 한 줄 */
+export interface BadgeFamily {
+  /** `family_key`(없으면 `#name:{이름}` 폴백 — `badgeKind.familyKeyOf`와 같은 규칙) */
+  key: string
+  name: string
+  /** 화면 표현을 가르는 유일한 기준 — 레일 / 레벨 게이지 / 카운터 행 */
+  kind: BadgeKind
+  /** 등급형·반복형은 최대 4눈금, 레벨형은 `level` 오름차순(상한 없음) */
   stages: BadgeFamilyStage[]
 }
 
 export interface BadgeActivityTree {
   activityType: ActivityType
   /**
-   * 계열 우선(대표배지 BFS 깊이 → 문서 서술 순서)으로 정렬된 레일 목록 — 20260903_2329.
-   * 등급 순서는 각 계열의 `stages` 내부에서만 의미를 가진다(Common→Mystic).
+   * 이 종목의 모든 계열. 순서는 [선행조건 그래프 깊이 → `sort_order`]이고,
+   * 화면의 「다음 목표가 가까운 순」 재정렬은 진행 계산을 아는 클라이언트가 한다.
    */
   families: BadgeFamily[]
-  /**
-   * 계열(가족) 그래프에 연결되지 않은 독립 발급 배지(D01~D11 + 트로피 매트릭스) —
-   * 레일이 아니라 그리드로 그린다. 정렬은 `badges.sort_order` 오름차순
-   * (진행률 기준 정렬은 2차) — 20260903_2329 / 20260905_0027.
-   */
-  independentBadges: BadgeTreeCard[]
+}
+
+/**
+ * 계열의 «다음 목표» 눈금 — 첫 미획득 눈금. **서버(진행 계산 대상 선정)와 화면(정렬·행
+ * 렌더)이 같은 눈금을 봐야** 하므로 여기 한 곳에 둔다.
+ *
+ * 예외는 반복형이다: 전부 획득한 뒤에도 **다음 회차가 계속 진행 중**이라 마지막 눈금을
+ * 그대로 목표로 둔다(티켓 20260905_0031 — 「이미 획득했지만 다음 카운트가 진행 중」인
+ * 상태가 정상이고, 미획득만 프런티어로 보던 선정 로직이 그 진행을 통째로 숨기고 있었다).
+ * 등급형·레벨형은 다 받으면 목표가 없다 — `undefined`.
+ */
+export function frontierStageOf(
+  family: BadgeFamily,
+  earnedBadgeIds: Set<string>
+): BadgeFamilyStage | undefined {
+  const unearned = family.stages.find((s) => !earnedBadgeIds.has(s.id))
+  if (unearned) return unearned
+  return family.kind === 'repeatable' ? family.stages[family.stages.length - 1] : undefined
+}
+
+/** 계열의 «입구» 눈금 — 잠금 칩이 링크할 대표 배지(등급형은 Common, 레벨형은 Lv.1) */
+function entryStageOf(variants: BadgeTreeSourceBadge[]): BadgeTreeSourceBadge | undefined {
+  return [...variants].sort(
+    (a, b) => rarityTier(a.rarity) - rarityTier(b.rarity) || (a.level ?? 0) - (b.level ?? 0)
+  )[0]
+}
+
+/** 계열 안 눈금 순서 — 레벨형은 `level`, 그 외는 등급 서열 */
+function sortStagesInFamily(variants: BadgeTreeSourceBadge[], kind: BadgeKind): BadgeTreeSourceBadge[] {
+  if (kind === 'leveled') {
+    return [...variants].sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+  }
+  // 등급형·반복형은 등급 하나당 눈금 하나다 — 같은 등급이 둘 이상이면 sort_order가 앞선 것만
+  // 남긴다. 이렇게 해야 눈금 수가 **구조적으로** 4를 넘지 않는다(MAX_FAMILY_STAGES 주석 참고).
+  const picked: BadgeTreeSourceBadge[] = []
+  for (const rarity of RARITY_ORDER) {
+    const same = variants.filter((v) => v.rarity === rarity)
+    if (same.length === 0) continue
+    picked.push(same.reduce((min, cur) => (sortRank(cur.sort_order) < sortRank(min.sort_order) ? cur : min)))
+  }
+  return picked
 }
 
 export function buildBadgeActivityTrees(
@@ -142,6 +246,18 @@ export function buildBadgeActivityTrees(
     badges.filter((b) => b.condition_json?.mission_reward).map((b) => b.name)
   )
 
+  /**
+   * **종목을 가로지르는** family_key → 배지 목록. 교차 게이트(`cross_*`·`gate_mission_badge`)의
+   * 대상 계열을 찾는 데 쓴다 — 미션 보상 배지도 포함해야 `gate_mission_badge`가 대상을 찾는다
+   * (아래 종목별 `familyMap`은 미션 보상 배지를 이미 제외한 목록이다).
+   */
+  const globalFamilyMap = new Map<string, BadgeTreeSourceBadge[]>()
+  for (const b of badges) {
+    const key = familyKeyOf(b)
+    if (!globalFamilyMap.has(key)) globalFamilyMap.set(key, [])
+    globalFamilyMap.get(key)!.push(b)
+  }
+
   const byActivity = new Map<ActivityType, BadgeTreeSourceBadge[]>()
   for (const b of badges) {
     if (b.condition_json?.mission_reward) continue
@@ -157,139 +273,263 @@ export function buildBadgeActivityTrees(
     const activityBadges = byActivity.get(activityType) ?? []
     if (activityBadges.length === 0) continue
 
+    // 계열 = family_key. 이름이 아니다 — v5는 「레벨형·반복형이 등급형과 이름을 공유할 수
+    // 있다」를 설계 전제로 둔다(티켓 20260905_0030 B-6).
     const familyMap = new Map<string, BadgeTreeSourceBadge[]>()
     for (const b of activityBadges) {
-      if (!familyMap.has(b.name)) familyMap.set(b.name, [])
-      familyMap.get(b.name)!.push(b)
+      const key = familyKeyOf(b)
+      if (!familyMap.has(key)) familyMap.set(key, [])
+      familyMap.get(key)!.push(b)
     }
 
-    // 이름 → Common 등급 배지 (배지 게이팅 잠금 칩 링크·이미지용, 요구사항: "해당 배지의 Common
-    // 등급으로 링크". image_url은 잠금 해제 조건 시트 아이콘용 — 20260903_2329)
-    const nameToCommonBadge = new Map<string, BadgeTreeSourceBadge>()
-    for (const [name, variants] of familyMap) {
-      const common = variants.find((v) => v.rarity === 'common')
-      if (common) nameToCommonBadge.set(name, common)
+    // 이름 → 그 이름을 쓰는 계열 키들. `prerequisite_badge_names`가 **이름 기반**이라
+    // 이 다리가 필요하다(엔진도 같은 모호성을 안고 있다 — crossGate.ts 원칙 ①).
+    const familyKeysByName = new Map<string, string[]>()
+    for (const [key, variants] of familyMap) {
+      for (const name of new Set(variants.map((v) => v.name))) {
+        if (!familyKeysByName.has(name)) familyKeysByName.set(name, [])
+        familyKeysByName.get(name)!.push(key)
+      }
     }
 
-    // 대표배지 판정 — 이 그룹의 어느 등급이든 missions.gated_badge_id로 지목되면 대표배지
-    const representativeNames = new Set<string>()
-    for (const [name, variants] of familyMap) {
-      if (variants.some((v) => missionByGatedBadgeId.has(v.id))) representativeNames.add(name)
+    // 대표배지 판정 — 이 계열의 어느 눈금이든 missions.gated_badge_id로 지목되면 대표배지
+    const representativeKeys = new Set<string>()
+    for (const [key, variants] of familyMap) {
+      if (variants.some((v) => missionByGatedBadgeId.has(v.id))) representativeKeys.add(key)
     }
 
-    // family 단위 선행조건 그래프: prereqFamily -> Set<의존하는 family 이름>
-    // (대표배지는 prerequisite_badge_names가 전부 미션 보상 배지 이름을 가리키므로,
-    // familyMap에 없는 이름으로 자동 필터링되어 별도 분기 없이도 간선이 생기지 않는다)
+    // 계열 단위 선행조건 그래프: prereqFamily -> Set<의존하는 family 키>
     const graph = new Map<string, Set<string>>()
-    for (const [name, variants] of familyMap) {
-      const prereqFamilyNames = new Set<string>()
+    for (const [key, variants] of familyMap) {
+      const prereqKeys = new Set<string>()
       for (const v of variants) {
         for (const prereqName of v.condition_json?.prerequisite_badge_names ?? []) {
           if (missionRewardNames.has(prereqName)) continue
-          if (familyMap.has(prereqName)) prereqFamilyNames.add(prereqName)
+          for (const prereqKey of familyKeysByName.get(prereqName) ?? []) {
+            if (prereqKey !== key) prereqKeys.add(prereqKey)
+          }
         }
       }
-      for (const prereqName of prereqFamilyNames) {
-        if (!graph.has(prereqName)) graph.set(prereqName, new Set())
-        graph.get(prereqName)!.add(name)
+      for (const prereqKey of prereqKeys) {
+        if (!graph.has(prereqKey)) graph.set(prereqKey, new Set())
+        graph.get(prereqKey)!.add(key)
       }
     }
 
     // BFS — 대표배지(들)를 depth 1로 두고 최단 깊이를 채택. 그래프에 연결되지 않은 독립
-    // 배지(D01~D11 등)는 depth가 없다 — 정렬 시 sort_order로 따로 처리한다.
-    const depthByName = new Map<string, number>()
+    // 배지(D01~D11 등)는 depth가 없다 — 정렬에서 맨 뒤로 민다.
+    const depthByKey = new Map<string, number>()
     const queue: string[] = []
-    for (const rootName of representativeNames) {
-      depthByName.set(rootName, 1)
-      queue.push(rootName)
+    for (const rootKey of representativeKeys) {
+      depthByKey.set(rootKey, 1)
+      queue.push(rootKey)
     }
     while (queue.length > 0) {
       const cur = queue.shift()!
       const children = graph.get(cur)
       if (!children) continue
       for (const child of children) {
-        if (!depthByName.has(child)) {
-          depthByName.set(child, depthByName.get(cur)! + 1)
+        if (!depthByKey.has(child)) {
+          depthByKey.set(child, depthByKey.get(cur)! + 1)
           queue.push(child)
         }
       }
     }
 
-    function buildLocks(v: BadgeTreeSourceBadge): BadgeTreeLock[] {
-      if (v.rarity === 'common') return []
-      const locks: BadgeTreeLock[] = []
-      const mission = missionByGatedBadgeId.get(v.id)
-      if (mission) {
-        locks.push({
-          kind: 'mission', name: mission.title, href: `/missions/${mission.id}`,
-          fulfilled: false, imageUrl: mission.image_url,
-        })
-        return locks
-      }
-      const prereqNames = (v.condition_json?.prerequisite_badge_names ?? []).filter(
-        (n) => !missionRewardNames.has(n)
+    /** 계열 하나를 잠금 항목 한 줄로 — 대표 눈금으로 링크하고, 보유 여부는 OR로 본다 */
+    function familyLock(
+      familyKey: string,
+      minRarityLabel: string | null,
+      minRarityTier: number
+    ): BadgeTreeLock | null {
+      const variants = globalFamilyMap.get(familyKey) ?? []
+      // 종목 경계를 넘지 않는다(crossGate.ts 원칙 ③) — 이 종목에서 받을 수 있는 눈금만 본다.
+      const inScope = variants.filter(
+        (v) => !v.activity_types || v.activity_types.length === 0 || v.activity_types.includes(activityType)
       )
-      for (const prereqName of prereqNames) {
-        const prereqCommon = nameToCommonBadge.get(prereqName)
-        if (!prereqCommon) continue
-        // OR 조건: 선행 배지 그룹의 어느 등급이든 보유하면 충족 (엔진 규칙과 동일)
-        const prereqVariants = familyMap.get(prereqName) ?? []
-        const fulfilled = prereqVariants.some((pv) => earnedBadgeIds.has(pv.id))
-        locks.push({
-          kind: 'badge', name: prereqName, href: `/badges/${prereqCommon.id}`,
-          fulfilled, imageUrl: prereqCommon.image_url,
-        })
+      const pool = inScope.length > 0 ? inScope : variants
+      const entry = entryStageOf(pool)
+      if (!entry) return null
+      const fulfilled = pool.some(
+        (v) => earnedBadgeIds.has(v.id) && (minRarityTier === 0 || rarityTier(v.rarity) >= minRarityTier)
+      )
+      return {
+        kind: 'badge',
+        name: entry.name,
+        href: `/badges/${entry.id}`,
+        fulfilled,
+        imageUrl: entry.image_url,
+        // 참인 문장만 적는다 — 등급 제한이 없으면 「어느 등급이든 1개」, 있으면 그 등급 이상.
+        note: minRarityLabel ? `배지 · ${minRarityLabel} 이상` : '배지 · 어느 등급이든 1개',
+      }
+    }
+
+    /** 교차 게이트 요구 하나 → 대상 계열 잠금 항목들 */
+    function crossLocks(req: NormalizedGateRequirement, requireMissionReward: boolean): BadgeTreeLock[] {
+      const locks: BadgeTreeLock[] = []
+      for (const familyKey of req.familyKeys) {
+        if (requireMissionReward) {
+          const variants = globalFamilyMap.get(familyKey) ?? []
+          // 미션 보상 배지가 아니면 이 요구를 만족시킬 수 없다(엔진 countSatisfiedFamilies와 동일)
+          if (!variants.some((v) => v.condition_json?.mission_reward === true)) continue
+        }
+        const lock = familyLock(familyKey, req.minRarityLabel, req.minRarityTier)
+        if (lock) locks.push(lock)
       }
       return locks
     }
 
-    // 계열별로 묶는다 — [그래프 깊이(대표배지가 1) → 문서 서술 순서]로 레일 순서를 정한다.
-    // 이전(20260901) 버전이 "등급 우선 평탄화" 카드 목록의 2·3차 정렬키로 쓰던 것과 같은
-    // 키를, 이번엔 계열(레일) 자체의 1차 정렬키로 승격했을 뿐 — 신규 계산 없음.
-    // 그래프에 연결되지 않은 이름(depth undefined)은 독립 배지이므로 별도 목록으로 뺀다.
-    const familyRanked: { family: BadgeFamily; depth: number; docOrder: number }[] = []
-    const independentRanked: { card: BadgeTreeCard; order: number }[] = []
+    function buildGateGroups(v: BadgeTreeSourceBadge): BadgeTreeGateGroup[] {
+      const groups: BadgeTreeGateGroup[] = []
 
-    for (const [name, variants] of familyMap) {
-      const depth = depthByName.get(name)
-      if (depth === undefined) {
-        // 독립 배지 — 계열 그래프에 안 걸리는 이름(D01~D11 등). 여러 등급을 가질 일이
-        // 없지만(§05 실측), 방어적으로 RARITY_ORDER 전부를 훑어 존재하는 등급만 담는다.
-        for (const rarity of RARITY_ORDER) {
-          const v = variants.find((variant) => variant.rarity === rarity)
-          if (!v) continue
-          independentRanked.push({
-            // 이 루프는 rarity로 찾은 배지만 담으므로 등급은 항상 있다(레벨형은 애초에 안 걸린다)
-            card: { id: v.id, name, rarity, imageUrl: v.image_url, description: v.description, locks: buildLocks(v) },
-            order: sortRank(v.sort_order),
-          })
+      // ① 미션 게이팅 — 대표배지의 Rare 이상은 미션 완료로 열린다.
+      //    예전엔 여기서 곧바로 return 해서 «미션 AND 선행배지»를 표현할 수 없었다.
+      const mission = missionByGatedBadgeId.get(v.id)
+      if (mission) {
+        groups.push({
+          kind: 'mission',
+          relation: 'or',
+          // 미션 진행도는 이 화면이 추적하지 않는다 — 항상 «대기»로 둔다(보수적).
+          fulfilled: false,
+          title: null,
+          note: null,
+          locks: [
+            {
+              kind: 'mission', name: mission.title, href: `/missions/${mission.id}`,
+              fulfilled: false, imageUrl: mission.image_url, note: null,
+            },
+          ],
+        })
+      }
+
+      // ② 선행 배지(이름 기반, OR) — 계열의 어느 등급이든 하나 보유하면 열린다.
+      const prereqNames = (v.condition_json?.prerequisite_badge_names ?? []).filter(
+        (n) => !missionRewardNames.has(n)
+      )
+      const prereqLocks: BadgeTreeLock[] = []
+      const seenPrereqHref = new Set<string>()
+      for (const prereqName of prereqNames) {
+        for (const prereqKey of familyKeysByName.get(prereqName) ?? []) {
+          const lock = familyLock(prereqKey, null, 0)
+          if (!lock || seenPrereqHref.has(lock.href)) continue
+          seenPrereqHref.add(lock.href)
+          prereqLocks.push(lock)
         }
-        continue
+      }
+      if (prereqLocks.length > 0) {
+        groups.push({
+          kind: 'cross', relation: 'or',
+          fulfilled: prereqLocks.some((l) => l.fulfilled),
+          title: null, note: null, locks: prereqLocks,
+        })
       }
 
-      const stages: BadgeFamilyStage[] = []
-      for (const rarity of RARITY_ORDER) {
-        const v = variants.find((variant) => variant.rarity === rarity)
-        if (!v) continue
-        stages.push({ id: v.id, name, rarity, imageUrl: v.image_url, description: v.description, locks: buildLocks(v) })
+      // ③ 2단 교차 게이트(v5) — 형태 검증은 엔진과 **같은 함수**를 쓴다.
+      //    결합 규칙(crossGate.ts): 축 내 교차 ↔ 축 간 교차는 OR, 미션 보상 배지는 AND.
+      const condition = v.condition_json
+      if (condition) {
+        const normalized = new Map<CrossGateConditionKey, NormalizedGateRequirement>()
+        for (const key of CROSS_GATE_CONDITION_KEYS) {
+          if (condition[key] === undefined) continue
+          const result = normalizeGateRequirement(condition[key], familyKeyOf(v))
+          // 형태가 깨진 게이트는 엔진이 fail-closed로 막는다. 화면도 같은 태도로 둬야
+          // 「열려 보이는데 안 나오는 배지」가 생기지 않는다 — 항목을 못 그리므로 잠금만 남긴다.
+          if (result.ok) normalized.set(key, result.value)
+        }
+
+        // 축 내 교차 · 축 간 교차 — 둘 다 선언되면 **하나만** 채우면 된다(OR). 사용자에게는
+        // 「이 계열들 중 하나」 한 묶음으로 읽히는 편이 정확하다.
+        const crossKeys = (['cross_in_axis', 'cross_between_axis'] as const).filter((k) => normalized.has(k))
+        if (crossKeys.length > 0) {
+          const locks: BadgeTreeLock[] = []
+          const seen = new Set<string>()
+          let fulfilled = false
+          let maxMinCount = 1
+          for (const key of crossKeys) {
+            const req = normalized.get(key)!
+            const keyLocks = crossLocks(req, false)
+            if (keyLocks.filter((l) => l.fulfilled).length >= req.minCount) fulfilled = true
+            if (req.minCount > maxMinCount) maxMinCount = req.minCount
+            for (const lock of keyLocks) {
+              if (seen.has(lock.href)) continue
+              seen.add(lock.href)
+              locks.push(lock)
+            }
+          }
+          if (locks.length > 0) {
+            groups.push({
+              kind: 'cross',
+              relation: maxMinCount > 1 ? 'and' : 'or',
+              fulfilled,
+              title: null,
+              note: maxMinCount > 1 ? `이 중 ${maxMinCount}개 이상 필요해요` : null,
+              locks,
+            })
+          }
+        }
+
+        // 미션 보상 배지 — 위 교차와 **AND**로 묶인다(별도 그룹이 곧 AND다).
+        const gateMissionReq = normalized.get('gate_mission_badge')
+        if (gateMissionReq) {
+          const locks = crossLocks(gateMissionReq, true)
+          if (locks.length > 0) {
+            groups.push({
+              kind: 'mission',
+              relation: gateMissionReq.minCount > 1 ? 'and' : 'or',
+              fulfilled: locks.filter((l) => l.fulfilled).length >= gateMissionReq.minCount,
+              title: null,
+              note: gateMissionReq.minCount > 1 ? `이 중 ${gateMissionReq.minCount}개 이상 필요해요` : null,
+              locks,
+            })
+          }
+        }
       }
-      // 계열의 정렬키: 계열 안 배지들의 sort_order 최솟값(백필 규약상 4장이 같은 값이지만,
-      // 어긋난 값이 섞여도 결정적으로 정렬되도록 최솟값을 쓴다)
+
+      return groups
+    }
+
+    const familyRanked: { family: BadgeFamily; depth: number; order: number }[] = []
+
+    for (const [key, variants] of familyMap) {
+      // 종류는 계열의 성격이다 — 같은 계열 안에서 갈릴 일이 없지만(정합성 트리거),
+      // 섞여 있으면 «가장 앞 눈금»의 종류를 따른다(레벨형이 하나라도 있으면 레벨 게이지).
+      const kind: BadgeKind = variants.some((v) => v.rarity == null)
+        ? 'leveled'
+        : badgeKindOf(entryStageOf(variants)!)
+
+      const ordered = sortStagesInFamily(variants, kind)
+      // 프로덕션 상한(위 MAX_FAMILY_STAGES 주석) — 레벨형은 레일이 아니라 게이지로 그리므로
+      // 상한을 걸지 않는다. 게이지는 레벨 수와 무관하게 높이가 고정이다.
+      const capped = kind === 'leveled' ? ordered : ordered.slice(0, MAX_FAMILY_STAGES)
+
+      const stages: BadgeFamilyStage[] = capped.map((v) => {
+        const gateGroups = buildGateGroups(v)
+        return {
+          id: v.id,
+          name: v.name,
+          rarity: v.rarity,
+          level: v.level,
+          imageUrl: v.image_url,
+          description: v.description,
+          gateGroups,
+          locks: gateGroups.flatMap((g) => g.locks),
+          sortOrder: sortRank(v.sort_order),
+        }
+      })
+      if (stages.length === 0) continue
+
       familyRanked.push({
-        family: { name, stages },
-        depth,
-        docOrder: Math.min(...variants.map((v) => sortRank(v.sort_order))),
+        family: { key, name: stages[0].name, kind, stages },
+        // 그래프에 안 걸리는 독립 계열은 맨 뒤로 — 이전 버전이 독립 배지를 별도 그리드로
+        // 빼서 얻던 순서 효과를 정렬키 하나로 대신한다.
+        depth: depthByKey.get(key) ?? Number.MAX_SAFE_INTEGER,
+        order: Math.min(...stages.map((s) => s.sortOrder)),
       })
     }
 
-    familyRanked.sort((a, b) => a.depth - b.depth || a.docOrder - b.docOrder)
-    independentRanked.sort((a, b) => a.order - b.order)
+    familyRanked.sort((a, b) => a.depth - b.depth || a.order - b.order || a.family.name.localeCompare(b.family.name, 'ko'))
 
-    trees.push({
-      activityType,
-      families: familyRanked.map((r) => r.family),
-      independentBadges: independentRanked.map((r) => r.card),
-    })
+    trees.push({ activityType, families: familyRanked.map((r) => r.family) })
   }
 
   return trees

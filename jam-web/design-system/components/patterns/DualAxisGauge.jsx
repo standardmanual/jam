@@ -7,7 +7,7 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
  * 리뉴얼 2차의 마지막 조각).
  *
  * `BadgeStageRail`(4등급 레일)은 그대로 두고, 프런티어(다음 목표)가 2축형일 때만 레일
- * 아래에 이 컴포넌트를 추가로 렌더한다(호출부: `BadgeFamilyRailItem.tsx`) — 레일을
+ * 아래에 이 컴포넌트를 추가로 렌더한다(호출부: `BadgeFamilyRow.tsx`) — 레일을
  * 대체하지 않는다. "얇은 합성"이면 충분하다는 설계 그대로, 새 프리미티브 없이 기존 DS
  * `ProgressBar`(축 한 줄)·`RarityBadge`(등급 칩)만 조합한다.
  *

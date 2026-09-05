@@ -18,7 +18,9 @@ const meta: Meta<typeof DualAxisGauge> = {
           '하나일 때만)로 구성된 얇은 합성이다. kind를 모른다 — `src/lib/badgeProgressText.ts`의 ' +
           '`formatDualAxisGaugeProps()`가 만든 완성 문자열/숫자만 받는다. ' +
           '이 게이지가 뜨는 시점의 배지는 항상 미획득이라 썸네일은 원본 + `grayscale(1)`이다 ' +
-          '(2026-09-06 확정 — 20260905_0036이 한때 실루엣으로 바꿨다가 되돌렸다).',
+          '(2026-09-06 확정 — 20260905_0036이 한때 실루엣으로 바꿨다가 되돌렸다). ' +
+          '서비스 호출부는 `src/components/badges/BadgeFamilyRow.tsx`다(20260905_0037에서 ' +
+          '`BadgeFamilyRailItem`에서 이름이 바뀌었다 — 이제 등급형 레일만이 아니라 계열 3종을 모두 그린다).',
       },
     },
   },
