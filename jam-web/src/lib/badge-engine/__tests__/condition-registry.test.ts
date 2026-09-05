@@ -725,11 +725,19 @@ describe('진행률 — fail-closed로 막히는 조건은 진행률도 그리�
     expect(classifyBadgeProgressKind({ distance_km: 100, avg_watts: 200 } as never)).toBe('unsupported')
   })
 
-  it('반복형(repeat_count)은 아직 진행률 축이 없어 unsupported다 — 0031이 뒤집을 지점이다', () => {
-    // 평가는 구현됐지만 진행 계산은 아직이다. 축이 없는데 다른 축 하나로 진행률을 그리면
-    // 「5번 달성」 요구를 숨긴 채 100%가 뜬다.
+  it('반복형(repeat_count)은 «repeat» 축을 갖는다 — 0031이 뒤집었다', () => {
+    // 0031 이전에는 unsupported였다. 축이 없는데 다른 축 하나(duration_minutes)로 진행률을
+    // 그리면 「5번 달성」 요구를 숨긴 채 100%가 뜨기 때문이었다. 이제 「N회 중 M회」 축이 있다.
     expect(classifyBadgeProgressKind({ duration_minutes: 60 })).not.toBe('unsupported')
-    expect(classifyBadgeProgressKind({ duration_minutes: 60, repeat_count: 5 })).toBe('unsupported')
+    expect(classifyBadgeProgressKind({ duration_minutes: 60, repeat_count: 5 })).toBe('repeat')
+  })
+
+  it('회차 술어가 다루지 못하는 키가 섞이면 여전히 unsupported다 — 발급이 회차 0으로 막히는 조합', () => {
+    // `season`은 회차 술어가 소비하지 않는다 → collectRepeatOccurrences가 fail-closed로
+    // 회차 0을 돌려준다. 그때 「3/5회」를 그리면 발급(0회차)과 정면으로 어긋난다.
+    expect(
+      classifyBadgeProgressKind({ duration_minutes: 60, repeat_count: 5, season: 'winter' } as BadgeCondition)
+    ).toBe('unsupported')
   })
 
   it('오탈자 키가 섞여도 unsupported다', () => {
