@@ -1,7 +1,7 @@
 ---
 id: 20260905_2038
 category: UI
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-05
 closed:
 ---
@@ -106,15 +106,22 @@ jam-web/design-system/components/patterns/BadgeGridCard.prompt.md
 해당 없음 — 내부 개발 문서(prompt.md)만 변경, 사용자 노출 텍스트 없음.
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만 수행, 병합·배포는 오케스트레이터 승인 후)
-- 환경: -
-- 커밋: (아래 push 이력 참고)
+- 배포일: 2026-09-05
+- 환경: staging (프로덕션 반영은 `/jam-ship`으로 별도 진행)
+- 커밋: staging 머지 후 별도 문서 커밋(docs/*-close)에서 status CLOSED 반영 예정
 
 ### 주요 의사결정 / 핵심 메모
 - 티켓 배경절이 "`style`이 `headerStyle`로 바뀌었는데 문서가 아직 `style`을 언급한다"고
   적었지만, 실측 결과 기존 prompt.md에는 `style`/`headerStyle` 언급 자체가 전혀 없었다
   (제거된 것이 아니라 애초에 문서화 안 됨). 실제 갭은 동일하므로 `headerStyle` 설명·예시를
   새로 추가하는 것으로 처리했다.
+- 게이트 리뷰 PASS 후 머지 직전, 병렬 세션이 그 사이 티켓 20260905_2039를 먼저 staging에
+  머지해 review 브랜치가 최신 origin/staging 위에서 분기하지 않은 상태가 됐다(오염이 아니라
+  단순 드리프트 — 겹치는 파일 없음). 두 차례 `git rebase origin/staging` 후 재검증하고 merge.
 
-### 잔여 이슈
--
+### 잔여 이슈 (개선 리뷰 제안, 강제 아님)
+- API 변경 시 대응 prompt.md 갱신이 두 번째로 누락됐던 사례 — `ds:check`나 pre-commit에
+  "코드 API 변경 커밋에 대응 prompt.md diff 없으면 경고" 체크 추가를 고려해볼 만함.
+- BadgeGridCard: `highlighted`와 `selected`가 동시에 `true`일 때 우선순위가 미문서화 —
+  실사용 사례 확인 후 필요하면 문서에 한 줄 추가.
+- TabBar: `username`이 `string | null`인데 예시가 문자열만 있음 — `null` 케이스 예시 추가 고려.
