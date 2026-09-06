@@ -3,9 +3,6 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
 import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeader.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 
-/** 값 행 맨 앞 레벨칩의 고정 폭 — 뒤따르는 5ch 우측 정렬(`/` 세로 정렬)을 지키려면 고정이어야 한다 */
-const LEVEL_CHIP_WIDTH = 52;
-
 /**
  * BadgeLevelGauge — 무한레벨형 계열 한 줄. 티켓 20260905_0036.
  *
@@ -124,42 +121,33 @@ export function BadgeLevelGauge({
         </span>
 
         <div style={{ minWidth: 0 }}>
-          {/* 값 행 — [52px 레벨칩][5ch 현재값][auto /][1fr 다음값][auto 남은양].
-              레벨칩이 **항상 맨 앞**에 온다(티켓 20260906_2344, 사용자 확정) — 받은 게
-              있으면 현재 레벨, 없으면 다음 목표 레벨이다. 칩 폭이 52px 고정이라 그 뒤
-              5ch 우측 정렬이 유지돼 자릿수가 달라도 `/`가 세로로 정렬된다.
-              현재값이 없는 기록형 계열(`current == null`)은 `—` 대신 칸 자체를 비운다 —
-              「—」는 아무 사실도 말하지 않으면서 레벨칩 자리를 밀어냈다. */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `${LEVEL_CHIP_WIDTH}px ${current != null ? '5ch auto' : ''} 1fr auto`,
-              columnGap: 6, alignItems: 'baseline',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            <span style={{ alignSelf: 'center' }}>
-              {chipLevel != null && <BadgeLevelChip level={chipLevel} size="md" width={LEVEL_CHIP_WIDTH} />}
+          {/* 값 행 — `BadgeStampRow`(반복형)와 같은 문법: [칩] 왼쪽부터 flex로 흘려
+              쓴다(티켓 20260906_2344 3차, 사용자 지적). 예전 grid(`5ch` 우측정렬 +
+              `1fr`)는 칩↔숫자 사이가 벌어지고 「남음」이 카드 오른쪽 끝까지 밀려,
+              같은 화면의 반복형 카드와 다른 문법으로 읽혔다.
+              레벨칩이 **항상 맨 앞**에 온다(2344 1차 확정) — 받은 게 있으면 현재 레벨,
+              없으면 다음 목표 레벨이다. 숫자만 반복형보다 크게 두고 상태 램프 색을
+              올린다 — 이 화면에서 「지금 얼마인지」를 말하는 유일한 큰 수치라 배치는
+              맞추되 강조는 남긴다(사용자 확정, 완전 동일화가 아니라 배치만 통일).
+              현재값이 없는 기록형 계열(`current == null`)은 `—` 대신 통째로 생략한다. */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-8)', minWidth: 0, flexWrap: 'wrap' }}>
+            {chipLevel != null && <BadgeLevelChip level={chipLevel} size="md" />}
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontVariantNumeric: 'tabular-nums' }}>
+              {current != null && (
+                <>
+                  <span style={{ fontSize: 'var(--text-body-l)', fontWeight: 700, lineHeight: 1.2, color: valueColor }}>
+                    {current}
+                  </span>
+                  <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>/</span>
+                </>
+              )}
+              <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>{next}</span>
             </span>
-            {current != null && (
-              <>
-            <span
-              style={{
-                textAlign: 'right', fontSize: 'var(--text-body-l)', fontWeight: 700, lineHeight: 1.2,
-                color: valueColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}
-            >
-              {current}
-            </span>
-            <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>/</span>
-              </>
+            {left != null && (
+              <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)', wordBreak: 'keep-all' }}>
+                · {left}
+              </span>
             )}
-            <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {next}
-            </span>
-            <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
-              {left}
-            </span>
           </div>
 
           <div style={{ marginTop: 'var(--spacing-8)' }}>

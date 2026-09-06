@@ -317,3 +317,22 @@ export const LevelChipAlwaysLeads: Story = {
     </div>
   ),
 }
+
+/**
+ * **값 행은 `BadgeStampRow`(반복형)와 같은 문법이어야 한다**(티켓 20260906_2344 3차,
+ * 사용자 지적 — 실화면 스크린샷에서 "한 달의 궤도"(반복형)와 "자기 초월"(레벨형)의
+ * 값 행 배치가 달라 보였다).
+ *
+ * 둘 다 `[칩] 왼쪽부터 flex로 흘려 쓴다` — 반복형은 등급칩 뒤에 `×N` 칩 + 캡션,
+ * 레벨형은 레벨칩 뒤에 `현재 / 다음`(현재값만 크게, 상태 램프 색) + `· 남은 양`.
+ * 예전 grid(`5ch` 우측정렬 + `1fr`)는 칩↔숫자 사이가 벌어지고 「남음」이 카드
+ * 오른쪽 끝까지 밀려 반복형과 다른 문법으로 읽혔다.
+ */
+export const ValueRowMatchesStampRowRhythm: Story = {
+  render: () => (
+    <div style={{ background: 'var(--color-surface)', padding: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
+      <BadgeLevelGauge name="자기 초월" level={null} nextLevel={1} current={0} next="1회" left="1회 남음" fraction={0} metaText="다음 Lv.1" imageUrl={WALK_ICON} />
+      <BadgeLevelGauge name="걸어온 거리" level={7} nextLevel={8} current="120" next="150km" left="30km 남음" fraction={0.8} metaText="다음 Lv.8" imageUrl={WALK_ICON} />
+    </div>
+  ),
+}
