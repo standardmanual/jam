@@ -27,7 +27,7 @@ import {
   PencilIcon,
 } from '@/components/ui/icons'
 import type { UserRow, StravaConnectionRow, ActivityFeedRow, ActivityFeedEventType, BadgeRarity } from '@/types/database'
-import FeedSection, { DetailSheet } from '../FeedSection'
+import FeedSection, { DetailSheet, earnCountOf, badgeLevelOf } from '../FeedSection'
 
 // ─── 탭 ─────────────────────────────────────────────────────────────────────
 
@@ -138,18 +138,40 @@ export default function ProfileClient({
   // 목록 내 팔로우: 요청 중인 userId Set으로 경쟁 조건 방지
   const [listFollowingSet, setListFollowingSet] = useState<Set<string>>(new Set())
 
-  // poi 타입 배지는 반복 획득이 가능해 badge_id가 중복된 이벤트가 들어올 수 있다
-  // (서버에서 최초 획득분만 기록하도록 이미 막아뒀지만, 갤러리는 항상 "고유 배지"만
-  // 보여줘야 하므로 렌더 단에서도 badge_id 기준으로 한 번 더 방어적으로 중복 제거한다).
+  // 갤러리는 배지 **종류**의 진열장이라 badge_id당 한 칸이다. 다만 20260905_0038 B 이전에는
+  // 중복 행을 세지도 않고 버려서 「몇 번 획득했는지」가 화면에서 완전히 사라졌다 —
+  // 이제 칸은 하나로 유지하되 횟수는 카드의 ×N으로 보존한다.
+  //
+  // 횟수의 출처는 두 갈래다(피드 카드와 같은 규칙 — `earnCountOf`가 단일 판정처다):
+  //   - 반복형 활동 배지: `metadata.earn_count` (hydrate가 렌더 직전에 실어준 최신 회차)
+  //   - 체크인 배지: `metadata.visit_count`
+  // 둘 다 없으면 접힌 행 수로 폴백한다(과거 데이터 방어).
+  //
+  // 가상화는 넣지 않는다 — 갤러리의 원본은 프로필이 가져온 피드 윈도우(limit 150)라
+  // 카드 수 상한이 150장(3열 = 50행)이다. 배지 카탈로그가 630종이어도 여기 그려지는 건
+  // 보유분뿐이고, 그마저 윈도우에 잘린다. 목록 자체를 늘리려면 갤러리 전용 조회가 먼저다.
   const badgeItems = (() => {
-    const seen = new Set<string>()
-    const result: typeof feedItems = []
+    const indexById = new Map<string, number>()
+    const rowsById = new Map<string, number>()
+    const result: { item: ActivityFeedRow; count: number | null; level: number | null }[] = []
     for (const item of feedItems) {
       if (item.event_type !== 'badge_earned') continue
       const badgeId = (item.metadata as Record<string, string>).badge_id
-      if (seen.has(badgeId)) continue
-      seen.add(badgeId)
-      result.push(item)
+      const idx = indexById.get(badgeId)
+      if (idx != null) {
+        rowsById.set(badgeId, (rowsById.get(badgeId) ?? 1) + 1)
+        continue
+      }
+      indexById.set(badgeId, result.length)
+      rowsById.set(badgeId, 1)
+      result.push({ item, count: earnCountOf(item), level: badgeLevelOf(item) })
+    }
+    for (const [badgeId, rows] of rowsById) {
+      if (rows < 2) continue
+      const idx = indexById.get(badgeId)
+      if (idx == null) continue
+      const entry = result[idx]
+      if (entry.count == null || entry.count < rows) entry.count = rows
     }
     return result
   })()
@@ -324,7 +346,7 @@ export default function ProfileClient({
       }
       return (
         <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
-          {badgeItems.map(item => {
+          {badgeItems.map(({ item, count, level }) => {
             const meta = item.metadata as Record<string, string>
             return (
               <BadgeGridCard
@@ -332,7 +354,9 @@ export default function ProfileClient({
                 onClick={() => handleCardClick(item)}
                 name={meta.badge_name}
                 imageUrl={meta.badge_image_url ?? null}
-                rarity={meta.rarity as BadgeRarity | null}
+                rarity={(meta.rarity as BadgeRarity | null) ?? null}
+                level={level}
+                count={count}
               />
             )
           })}
@@ -434,6 +458,11 @@ export default function ProfileClient({
     )
   }
 
+  // 20260905_0038 B — 「레벨 지표를 통계에 추가할지」 판단: **추가하지 않는다.**
+  // 이 통계바는 장식이 아니라 **탭 네비게이션(SlidingTabs)** 자체다. 지표를 하나 더하면
+  // 탭이 하나 더 생기고, 그 탭을 누르면 보여줄 콘텐츠가 없다(레벨은 배지별 값이라 목록이
+  // 아니라 각 카드의 Lv.N 칩이 말한다). 레벨 총합·최고 레벨 같은 유도 지표는 계열 단위로
+  // 봐야 의미가 있어 배지 트리(20260905_0037)의 자리다.
   const statCounts: Record<TabKey, number> = {
     badge: badgeCount,
     collections: itemBookCount,

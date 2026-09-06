@@ -3,7 +3,15 @@ import type { ReactNode, CSSProperties } from 'react';
 export interface BadgeGridCardProps {
   name: string;
   imageUrl?: string | null;
-  rarity?: 'common' | 'rare' | 'epic' | 'mystic';
+  /** 등급형 배지의 등급. 레벨형(v5)은 `null`이고 대신 `level`을 넘긴다. */
+  rarity?: 'common' | 'rare' | 'epic' | 'mystic' | null;
+  /**
+   * 레벨형 배지의 Lv.N. 값이 있으면 등급 칩 대신 `BadgeLevelChip`을 그린다
+   * (`rarity`와 배타 — 마이그레이션 130).
+   */
+  level?: number | null;
+  /** 반복 획득 횟수. 2 이상일 때만 썸네일 모서리에 «×N»을 그린다. */
+  count?: number | null;
   /** Link 모드 — <a href> 래핑. onClick과 상호 배타. */
   href?: string;
   /** Button 모드 — <button> 래핑. href와 상호 배타. */

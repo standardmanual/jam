@@ -72,6 +72,18 @@ export interface EarnedBadgeSummary {
    * Common 칩을 달고 나온다 (티켓 20260905_0030).
    */
   rarity: BadgeRarity | null
+  /**
+   * 레벨형 배지의 Lv.N. 등급형·반복형은 null이다(마이그레이션 130 — rarity와 배타).
+   * 획득 연출이 등급 칩과 Lv.N 칩 중 무엇을 그릴지 가르는 유일한 근거다 (20260905_0038 B).
+   */
+  level: number | null
+  /**
+   * 지금까지 이 배지를 획득한 횟수(`user_activity_badges.earn_count`).
+   * 반복형은 첫 발급 시점에 이미 쌓인 회차를 전부 심으므로 1보다 클 수 있다.
+   * 그 이후의 회차 증가는 발급이 아니라 연출을 다시 만들지 않는다(20260905_0030 §2) —
+   * 즉 «×N»을 말할 수 있는 자리는 이 첫 연출뿐이다.
+   */
+  earnCount: number
   type: BadgeType
 }
 
@@ -83,23 +95,36 @@ export interface EarnedBadgeSummary {
  */
 async function fetchEarnedBadgeDetails(
   supabase: SupabaseClient,
-  badgeIds: string[]
+  badgeIds: string[],
+  /** 회차(earn_count) 조회 대상 유저. 없으면 전부 1로 둔다(회차를 모르면 ×N을 그리지 않는다) */
+  userId?: string
 ): Promise<EarnedBadgeSummary[]> {
   if (badgeIds.length === 0) return []
 
   // 같은 배지가 두 경로에서 중복 수집될 여지를 차단 (최초 획득 순서 유지)
   const orderedIds = Array.from(new Set(badgeIds))
 
-  const { data, error } = await supabase
-    .from('badges')
-    .select('id, name, description, image_url, rarity, type')
-    .in('id', orderedIds)
-    .is('deleted_at', null)
+  const [{ data, error }, { data: earnRows, error: earnError }] = await Promise.all([
+    supabase
+      .from('badges')
+      .select('id, name, description, image_url, rarity, level, type')
+      .in('id', orderedIds)
+      .is('deleted_at', null),
+    // 회차는 badges가 아니라 소유 행에 있다(20260905_0038 B). 아이템 배지처럼 이 테이블에
+    // 행이 없는 종류는 조회되지 않고 기본값 1로 남는다.
+    userId
+      ? supabase.from('user_activity_badges').select('badge_id, earn_count').eq('user_id', userId).in('badge_id', orderedIds)
+      : Promise.resolve({ data: [], error: null }),
+  ])
 
   if (error) {
     // 상세 조회 실패가 동기화 자체를 막지는 않는다 — 연출만 생략된다.
     console.error('[fetchEarnedBadgeDetails] 획득 배지 상세 조회 오류:', error)
     return []
+  }
+  if (earnError) {
+    // 회차만 못 읽은 것이라 연출 자체는 그대로 진행한다(×N만 생략된다).
+    console.error('[fetchEarnedBadgeDetails] 획득 회차 조회 오류:', earnError)
   }
 
   type EarnedBadgeRow = {
@@ -108,10 +133,15 @@ async function fetchEarnedBadgeDetails(
     description: string | null
     image_url: string | null
     rarity: BadgeRarity | null
+    level: number | null
     type: BadgeType
   }
   const byId = new Map<string, EarnedBadgeRow>()
   for (const row of (data ?? []) as EarnedBadgeRow[]) byId.set(row.id, row)
+  const earnCountById = new Map<string, number>()
+  for (const row of (earnRows ?? []) as { badge_id: string; earn_count: number | null }[]) {
+    earnCountById.set(row.badge_id, row.earn_count ?? 1)
+  }
 
   return orderedIds
     .map((id) => byId.get(id))
@@ -122,6 +152,8 @@ async function fetchEarnedBadgeDetails(
       description: row.description ?? '',
       imageUrl: row.image_url ?? '',
       rarity: row.rarity,
+      level: row.level,
+      earnCount: earnCountById.get(row.id) ?? 1,
       type: row.type,
     }))
 }
@@ -159,7 +191,7 @@ export async function buildEarnedBadgePayload(
   badgeIds: string[],
   userId: string
 ): Promise<EarnedBadgePayload> {
-  const all = await fetchEarnedBadgeDetails(supabase, badgeIds)
+  const all = await fetchEarnedBadgeDetails(supabase, badgeIds, userId)
   const earnedBadges = all.slice(0, EARNED_BADGE_DETAIL_LIMIT)
 
   let isFirstBadgeEver = false

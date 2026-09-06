@@ -40,6 +40,13 @@ export interface RevealBadge {
    * 칩을 그리지 않는다 (티켓 20260905_0030).
    */
   rarity?: 'common' | 'rare' | 'epic' | 'mystic' | null
+  /**
+   * 레벨형 배지의 Lv.N (마이그레이션 130). `rarity`와 배타적이라 값이 있으면 캐러셀이
+   * 등급 칩 대신 Lv.N 칩을 그린다 (티켓 20260905_0038 B).
+   */
+  level?: number | null
+  /** 지금까지 이 배지를 획득한 횟수. 2 이상이면 카드에 ×N이 붙는다 */
+  earnCount?: number
 }
 
 interface Props {
@@ -138,6 +145,7 @@ export default function BadgeRevealOverlay({
         closeLabel={d.common.close}
         moreLabel={d.badgeReveal.moreLabel}
         moreMessage={(n: number) => t(d.badgeReveal.moreMessage, { count: n })}
+        earnCountMessage={(n: number) => t(d.badges.earnCountAria, { count: n })}
         style={COLUMN_STYLE}
       />
     </>

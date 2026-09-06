@@ -303,17 +303,21 @@ export default async function UserProfilePage({ params }: Props) {
   // poi 배지 — 반복 획득 이력 중 배지별 "최초 획득"만 프로필 배지 갤러리에 노출.
   // (오래된 것부터 정렬해서 가져왔으므로, 배지당 처음 만나는 행이 최초 획득)
   const poiBadgeFirstEarn = new Map<string, { earned_at: string; badges: unknown }>()
+  // 20260905_0038 B — 최초 1건만 남기면서 **횟수까지 버리던 것**을 고친다. 칸은 그대로 하나지만
+  // 몇 번 갔는지는 갤러리 카드의 ×N으로 보존한다(회차 자체는 여기 이력 행 수가 곧 사실이다).
+  const poiBadgeEarnCount = new Map<string, number>()
   for (const row of (poiBadgeEarnsResult.data ?? []) as unknown as PoiBadgeEarnRow[]) {
     if (!poiBadgeFirstEarn.has(row.badge_id)) {
       poiBadgeFirstEarn.set(row.badge_id, row)
     }
+    poiBadgeEarnCount.set(row.badge_id, (poiBadgeEarnCount.get(row.badge_id) ?? 0) + 1)
   }
   for (const [badgeId, row] of poiBadgeFirstEarn) {
     // 이미 실시간 피드 이벤트로 기록된 배지(신규 로직 적용 이후 최초 획득분)는 중복 방지
     if (feedBadgeIds.has(badgeId)) continue
     const b = row.badges as { id: string; name: string; image_url: string; rarity: string | null; deleted_at: string | null } | null
     if (!b || b.deleted_at) continue
-    legacyItems.push(makeFeedItem(`legacy_poibadge_${badgeId}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }))
+    legacyItems.push(makeFeedItem(`legacy_poibadge_${badgeId}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, earn_count: poiBadgeEarnCount.get(badgeId) ?? 1 }))
   }
 
   // "배지" 통계 수 = 활동 배지 보유 수 + 체크인 배지 고유 종류 수(반복 획득은 1개로 카운트)

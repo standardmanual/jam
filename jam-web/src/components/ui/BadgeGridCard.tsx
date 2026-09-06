@@ -3,7 +3,9 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { MedalIcon } from '@/components/ui/icons'
+import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 import type { ReactNode } from 'react'
 
@@ -16,6 +18,17 @@ export interface BadgeGridCardProps {
    * Lv.N 칩 자체는 티켓 20260905_0036(MODULAR 배지 컴포넌트) 범위다.
    */
   rarity: BadgeRarity | null
+  /**
+   * 레벨형 배지의 Lv.N (티켓 20260905_0038 B). 값이 있으면 등급 칩 대신 `BadgeLevelChip`을
+   * 그린다 — `rarity`가 NULL인 배지에 `RarityBadge`를 넘기면 칩이 조용히 사라진다(0036).
+   * `BadgeTrophyGridCard`·`UnlockConditionSheetContent`와 같은 분기다.
+   */
+  level?: number | null
+  /**
+   * 획득 횟수. 2 이상일 때만 썸네일 모서리에 «×N»을 그린다(1회는 표시하지 않는다).
+   * 시각 문법은 피드 카드의 카운터 필(`FeedSection.tsx`)과 같다 — 새 표현을 만들지 않는다.
+   */
+  count?: number | null
   /** Link mode — wraps card in <Link href>. Mutually exclusive with onClick. */
   href?: string
   /** Button mode — wraps card in <button>. Mutually exclusive with href. */
@@ -49,6 +62,8 @@ export default function BadgeGridCard({
   name,
   imageUrl,
   rarity,
+  level = null,
+  count = null,
   href,
   onClick,
   onNavigate,
@@ -83,26 +98,43 @@ export default function BadgeGridCard({
     .filter(Boolean)
     .join(' ')
 
+  const showCount = !undiscovered && typeof count === 'number' && count > 1
+
   const content = (
     <>
-      <div className={thumbnailCls}>
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={undiscovered ? '???' : name}
-            width={90}
-            height={90}
-            className="w-full h-full object-contain p-1"
-          />
-        ) : (
-          <MedalIcon className="w-10 h-10 text-text/30" />
+      {/* 카운터 필의 기준점 — 썸네일 자체에 relative를 걸면 grayscale 필터가 필까지 먹는다 */}
+      <div className="relative">
+        <div className={thumbnailCls}>
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={undiscovered ? '???' : name}
+              width={90}
+              height={90}
+              className="w-full h-full object-contain p-1"
+            />
+          ) : (
+            <MedalIcon className="w-10 h-10 text-text/30" />
+          )}
+        </div>
+        {showCount && (
+          // 피드 카드의 카운터 필과 같은 시각 문법(20260905_0038 B). 횟수는 아래 이름 줄이
+          // 아니라 썸네일에 붙어야 「이 배지를」 몇 번인지가 한눈에 붙는다.
+          <span
+            className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-[length:var(--text-caption)] leading-none font-bold text-text/80 flex items-center justify-center"
+            aria-hidden="true"
+          >
+            ×{count}
+          </span>
         )}
       </div>
       <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
         <p className="text-[13px] font-bold text-text text-center truncate w-full leading-tight">
           {undiscovered ? '???' : name}
         </p>
-        {!undiscovered && <RarityBadge rarity={rarity ?? undefined} />}
+        {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
+        {showCount && <span className="sr-only">{t(d.badges.earnCountAria, { count: String(count) })}</span>}
+        {!undiscovered && (level != null ? <BadgeLevelChip level={level} /> : <RarityBadge rarity={rarity ?? undefined} />)}
       </div>
       {children && <div className="w-full mt-[var(--spacing-4)]">{children}</div>}
     </>

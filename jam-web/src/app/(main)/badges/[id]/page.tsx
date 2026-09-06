@@ -499,6 +499,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
               hasEarned={hasEarned}
               stravaConnected={stravaConnected}
               subjectUsername={subjectUsername ?? undefined}
+              // 공유 카드의 Lv·×N 슬롯 (티켓 20260905_0038 B). 레벨은 배지 자체의 값,
+              // 횟수는 이 유저의 소유 행에서 온다 — 둘의 출처가 다르다.
+              level={badgeRow.level}
+              earnCount={earned?.earn_count ?? null}
             />
           )
         }

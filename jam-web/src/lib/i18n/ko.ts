@@ -123,6 +123,12 @@ export const ko = {
     eventCheckin: '체크인 했어요',
     /** 같은 체크인 배지를 두 번째 이상 획득했을 때 eventCheckin 대신 쓴다 */
     eventCheckinRepeat: '{visitCount}번째 체크인 했어요',
+    /**
+     * 반복 획득이 가능한 활동 배지를 두 번째 이상 획득했을 때 eventBadgeEarned 대신 쓴다
+     * (티켓 20260905_0038 B). 체크인의 `eventCheckinRepeat`와 같은 「N번째」 패턴을 쓴다 —
+     * 회차를 말하는 문장은 서비스 안에서 한 가지 형태만 유지한다.
+     */
+    eventBadgeEarnedRepeat: '{count}번째 획득했어요',
     // 활동 Strava 동기화 후 배지엔진을 통해 지급된 경우("아이템 획득")와 POI에 직접 드랍된 경우("아이템 드랍")는
     // 같은 item_dropped 이벤트지만 출처가 다르므로 문구를 분리해서 표기한다 (FeedSection.tsx의 eventLabel 참고)
     eventItemEarned: '아이템 획득',
@@ -282,6 +288,11 @@ export const ko = {
   /** 배지 목록/상세 화면 */
   badges: {
     title: '배지',
+    /**
+     * 반복 획득 배지의 «×N» 필을 보조기술이 읽을 문장 (티켓 20260905_0038 B).
+     * 필 자체는 aria-hidden이라 이 문장이 없으면 횟수가 스크린리더에 전달되지 않는다.
+     */
+    earnCountAria: '{count}번 획득했어요',
     tabActivity: '액티비티',
     tabItem: '아이템',
     tabCheckin: '체크인',

@@ -51,6 +51,17 @@ export interface BadgeShareTemplateData {
   badgeImageUrl: string
   /** item 타입은 null — 텍스트 없이 배지 이미지 + 로고만 그린다 */
   stats: BadgeShareStats | null
+  /**
+   * 레벨형 배지의 Lv.N (마이그레이션 130). 값이 있으면 stats 블록 **맨 앞**에 LEVEL 행을 넣는다
+   * (티켓 20260905_0038 B). 배지 자체를 말하는 정보라 활동 기록(거리·페이스·시간)보다 위다.
+   */
+  level?: number | null
+  /**
+   * 획득 횟수. 2 이상이면 COUNT 행을 넣는다. `level`과는 배타적이다 —
+   * 레벨형은 반복형이 아니고, 반복형은 등급이 있다. 그래서 추가 행은 **최대 1줄**이고
+   * 피그마 좌표계(1080×1920) 안에 그대로 들어간다.
+   */
+  earnCount?: number | null
 }
 
 function formatDistance(km: number): string {
@@ -132,11 +143,15 @@ export async function buildBadgeShareBlob(data: BadgeShareTemplateData): Promise
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
 
-    const rows: [string, string][] = [
+    const rows: [string, string][] = []
+    // Lv·×N 슬롯 (20260905_0038 B) — 둘은 배타적이라 실제로 늘어나는 행은 최대 1줄이다.
+    if (data.level != null) rows.push(['LEVEL', `Lv.${data.level}`])
+    else if (data.earnCount != null && data.earnCount > 1) rows.push(['COUNT', `\u00d7${data.earnCount}`])
+    rows.push(
       ['DISTANCE', formatDistance(data.stats.distanceKm)],
       ['PACE', formatPace(data.stats.paceSecPerKm)],
       ['TIME', formatElapsed(data.stats.elapsedTimeSec)],
-    ]
+    )
 
     // Figma: 값이 위, 라벨이 값 시작점에서 LABEL_OFFSET_Y만큼 아래 — 블록마다 BLOCK_GAP 간격
     let blockY = contentBottomY + BLOCK_GAP

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
+import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 import { IconButton } from '../buttons/IconButton.jsx';
 
 /**
@@ -12,8 +13,18 @@ import { IconButton } from '../buttons/IconButton.jsx';
  *    버튼의 loading 스피너가 담당한다.)
  *
  * 슬롯 (카드 1장 세로 구성)
- *   배지 이미지 → 등급 pill(RarityBadge) → 이름 → 설명(3줄 클램프)
+ *   배지 이미지 → 칩 줄 → 이름 → 설명(3줄 클램프)
  *   이미지가 없으면 실루엣 SVG 폴백을 그린다.
+ *
+ *   칩 줄은 «등급 pill 또는 Lv.N 칩» + «×N»이다(티켓 20260905_0038 B).
+ *   v5 레벨형 배지는 `rarity`가 NULL이라 `RarityBadge`가 아무것도 그리지 않는다 —
+ *   `level`이 오면 `BadgeLevelChip`으로 갈라진다(두 축은 배타적이라 칩은 언제나 한 개).
+ *   `earnCount`가 2 이상이면 그 옆에 «×N»이 붙는다.
+ *
+ * 반복 획득 접기
+ *   같은 배지가 여러 장으로 펴지면 넘겨도 넘겨도 같은 카드가 나온다. 그래서 `items`에 같은
+ *   `id`가 여러 번 오면 **첫 등장 자리에서 한 장으로 접고** 접힌 수를 ×N에 반영한다.
+ *   (서버가 이미 중복을 제거해 내려주지만, 접기는 표현 계층의 불변식이라 여기서도 보장한다.)
  *
  * 개수별 규칙
  *   0장  — 아무것도 렌더하지 않는다(캐러셀 미노출). 호출부가 애초에 열지 않는 것이 정상 경로.
@@ -133,6 +144,11 @@ export function BadgeRevealCarousel({
   closeLabel = '닫기',
   moreLabel = '전체 보기',
   moreMessage = (n) => `배지 ${n}개를 더 획득했어요`,
+  /**
+   * 반복 획득 «×N»을 보조기술이 읽을 문구. 필 자체는 숫자 기호라 낭독에 적합하지 않다.
+   * moreMessage와 같은 규약(문자열 또는 (횟수) => 문자열)이고, 서비스는 i18n 사전에서 주입한다.
+   */
+  earnCountMessage = (n) => `${n}번 획득했어요`,
   ariaLabel = '획득한 배지',
   className = '',
   style = {},
@@ -150,9 +166,26 @@ export function BadgeRevealCarousel({
 
   const height = cardHeight ?? Math.round(cardWidth * 1.34);
 
-  /** 렌더할 카드 목록 — 배지 N장 + (잔여가 있으면) 전체 보기 카드 1장 */
+  /**
+   * 렌더할 카드 목록 — 배지 N장 + (잔여가 있으면) 전체 보기 카드 1장.
+   * 같은 배지(`id`)가 여러 번 들어오면 첫 등장 자리에서 한 장으로 접고, 접힌 수는
+   * `earnCount`에 반영한다 — 이미 기록된 회차가 더 크면 그쪽이 사실이라 그대로 둔다.
+   */
   const cards = useMemo(() => {
-    const list = items.map((item, i) => ({ key: `badge-${item.id ?? i}`, kind: 'badge', item }));
+    const list = [];
+    const indexById = new Map();
+    items.forEach((item, i) => {
+      const id = item?.id;
+      const seenAt = id != null ? indexById.get(id) : undefined;
+      if (seenAt != null) {
+        const seen = list[seenAt];
+        const folded = (seen.foldedCount ?? 1) + 1;
+        list[seenAt] = { ...seen, foldedCount: folded };
+        return;
+      }
+      if (id != null) indexById.set(id, list.length);
+      list.push({ key: `badge-${id ?? i}`, kind: 'badge', item, foldedCount: 1 });
+    });
     if (moreCount > 0) list.push({ key: 'more', kind: 'more' });
     return list;
   }, [items, moreCount]);
@@ -360,8 +393,21 @@ export function BadgeRevealCarousel({
       <div aria-live="polite" aria-atomic="true" style={SR_ONLY_STYLE}>
         {center?.kind === 'badge' && (
           <>
-            {getRarityLabel(center.item?.rarity)}{' '}
-            {center.item?.name}. {center.item?.description}
+            {/* 등급이 없는 배지(레벨형)는 등급 대신 레벨을 읽는다 — 20260905_0038 B.
+                둘 다 없으면 이름부터 읽는다(빈 문자열이 아니라 아예 생략된다). */}
+            {center.item?.level != null
+              ? `Lv.${center.item.level}`
+              : getRarityLabel(center.item?.rarity)}{' '}
+            {center.item?.name}.{' '}
+            {Math.max(center.item?.earnCount ?? 1, center.foldedCount ?? 1) > 1 && (
+              <>
+                {resolveMoreMessage(
+                  earnCountMessage,
+                  Math.max(center.item?.earnCount ?? 1, center.foldedCount ?? 1)
+                )}.{' '}
+              </>
+            )}
+            {center.item?.description}
           </>
         )}
         {center?.kind === 'more' && resolveMoreMessage(moreMessage, moreCount)}
@@ -390,7 +436,7 @@ export function BadgeRevealCarousel({
           outline: 'none',
         }}
       >
-        {layout.map(({ key, kind, item, rel }) => {
+        {layout.map(({ key, kind, item, rel, foldedCount }) => {
           const distance = Math.abs(rel);
           const visible = distance <= 1;
           const isCenter = rel === 0;
@@ -423,7 +469,7 @@ export function BadgeRevealCarousel({
                   .join(', '),
               }}
             >
-              {kind === 'badge' && <BadgeCard item={item} />}
+              {kind === 'badge' && <BadgeCard item={item} foldedCount={foldedCount} />}
               {kind === 'more' && (
                 <MoreCard count={moreCount} label={moreLabel} message={moreMessage} onClick={onMoreClick} />
               )}
@@ -455,9 +501,12 @@ export function BadgeRevealCarousel({
   );
 }
 
-/** 배지 카드 — 이미지 → 등급 pill → 이름 → 설명(3줄) */
-function BadgeCard({ item }) {
+/** 배지 카드 — 이미지 → 칩 줄(등급 또는 Lv.N, ×N) → 이름 → 설명(3줄) */
+function BadgeCard({ item, foldedCount = 1 }) {
   const imageUrl = item?.imageUrl;
+  const level = item?.level ?? null;
+  // 기록된 회차와 접힌 장수 중 큰 쪽이 사실이다(회차는 카드 장수보다 많을 수 있다).
+  const earnCount = Math.max(item?.earnCount ?? 1, foldedCount);
   return (
     <div
       /* 같은 내용을 캐러셀의 라이브 리전이 읽는다 — 여기까지 읽히면 두 번 들린다 */
@@ -504,8 +553,26 @@ function BadgeCard({ item }) {
         )}
       </div>
 
-      <div style={{ flexShrink: 0 }}>
-        <RarityBadge rarity={item?.rarity} />
+      {/* 칩 줄 — 등급 또는 Lv.N이 한 개, 반복 획득이면 그 옆에 ×N.
+          `minHeight`로 자리를 고정한다: 등급이 common이라 칩이 안 그려지는 카드와 그려지는
+          카드가 섞여도 아래 이름·설명의 y가 흔들리지 않는다(이미지가 먼저 양보하는 규칙 유지). */}
+      <div style={{ flexShrink: 0, minHeight: 18, display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)' }}>
+        {level != null ? <BadgeLevelChip level={level} /> : <RarityBadge rarity={item?.rarity} />}
+        {earnCount > 1 && (
+          <span
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              minWidth: 18, height: 18, padding: '0 4px',
+              borderRadius: 'var(--radius-pill)',
+              background: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border)',
+              fontSize: 'var(--text-caption)', lineHeight: 1, fontWeight: 700,
+              color: 'var(--color-text)', opacity: 0.8,
+            }}
+          >
+            ×{earnCount}
+          </span>
+        )}
       </div>
 
       <p

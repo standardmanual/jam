@@ -313,3 +313,68 @@ export const CenterCardAnnouncement: Story = {
     });
   },
 };
+
+/**
+ * v5 레벨형 · 반복형 슬롯 (티켓 20260905_0038 B).
+ * 카드 슬롯이 「이미지 → 등급 pill → 이름 → 설명」으로 고정이라 Lv.N도 ×N도 들어갈 자리가
+ * 없던 것을 칩 줄로 열었다. 두 칩은 배타적이 아니다 — 레벨형이면서 반복 획득일 수 있다.
+ */
+export const LevelAndRepeatSlots: Story = {
+  name: 'v5 — Lv.N 칩과 ×N 자리',
+  args: {
+    open: true,
+    items: [
+      { id: 'lv', name: '첫 숨결', description: '달릴수록 레벨이 오르는 배지예요.', imageUrl: SAMPLE_IMAGE, rarity: null, level: 7 },
+      { id: 'rep', name: '주말 러너', description: '주말마다 달리면 다시 받을 수 있어요.', imageUrl: SAMPLE_IMAGE, rarity: 'rare', earnCount: 15 },
+      { id: 'plain', name: '한강 러너', description: '한강을 따라 10km를 달리면 획득해요.', imageUrl: SAMPLE_IMAGE, rarity: 'epic' },
+    ],
+  },
+  play: async ({ canvasElement, step }) => {
+    await step('레벨형은 등급 칩 대신 Lv.N을 그린다', async () => {
+      await waitFor(() => expect(canvasElement.querySelector('[role="dialog"]')).toBeTruthy());
+      expect(canvasElement.textContent).toContain('Lv.7');
+    });
+
+    await step('라이브 리전이 등급 대신 레벨을 읽는다', async () => {
+      const liveText = canvasElement.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent ?? '';
+      expect(liveText).toContain('Lv.7');
+      expect(liveText).not.toContain('Common');
+    });
+
+    await step('반복 획득 카드는 ×N과 낭독 문구를 함께 갖는다', async () => {
+      await userEvent.keyboard('{ArrowRight}');
+      await waitFor(() => expect(canvasElement.textContent).toContain('×15'));
+      const liveText = canvasElement.querySelector('[role="dialog"] [aria-live="polite"]')?.textContent ?? '';
+      expect(liveText).toContain('15번 획득했어요');
+    });
+  },
+};
+
+/**
+ * 같은 배지 3회 획득이 카드 3장이 되면 안 된다 (티켓 20260905_0038 B).
+ * 같은 `id`는 첫 등장 자리에서 한 장으로 접히고, 접힌 수가 ×N이 된다.
+ */
+export const RepeatFoldedIntoOneCard: Story = {
+  name: 'v5 — 같은 배지 반복은 한 장으로 접힌다',
+  args: {
+    open: true,
+    items: [
+      { id: 'same', name: '주말 러너', description: '주말마다 달리면 다시 받을 수 있어요.', imageUrl: SAMPLE_IMAGE, rarity: 'rare' },
+      { id: 'same', name: '주말 러너', description: '주말마다 달리면 다시 받을 수 있어요.', imageUrl: SAMPLE_IMAGE, rarity: 'rare' },
+      { id: 'same', name: '주말 러너', description: '주말마다 달리면 다시 받을 수 있어요.', imageUrl: SAMPLE_IMAGE, rarity: 'rare' },
+    ],
+  },
+  play: async ({ canvasElement, step }) => {
+    await step('카드가 한 장으로 접힌다', async () => {
+      await waitFor(() => expect(canvasElement.querySelector('[role="dialog"]')).toBeTruthy());
+      // 접힘 전이면 카드 래퍼가 3개다. 스테이지 직계 자식 중 aria-hidden을 가진 것만 카드다
+      // (닫기 버튼 슬롯은 aria-hidden이 없다).
+      const stage = canvasElement.querySelector('[aria-roledescription="carousel"]')!;
+      expect(stage.querySelectorAll(':scope > [aria-hidden]').length).toBe(1);
+    });
+
+    await step('접힌 수가 ×3으로 나온다', async () => {
+      expect(canvasElement.textContent).toContain('×3');
+    });
+  },
+};

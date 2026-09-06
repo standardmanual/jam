@@ -9,6 +9,7 @@ import { cssDurationMs } from '@/lib/motion'
 import { d, t } from '@/lib/i18n'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import Button from '@/components/ui/Button'
 import ListRowCard from '@/components/ui/ListRowCard'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
@@ -71,12 +72,16 @@ function EventIcon({ type, className }: { type: ActivityFeedEventType; className
 }
 
 /**
- * 반복 체크인 배지 썸네일 모서리에 붙는 작은 카운터 배지("×N").
+ * 반복 획득 배지 썸네일 모서리에 붙는 작은 카운터 배지("×N").
  * 인터랙션 리뷰 발견 3(20260826_001) — 반복 획득 이벤트가 최초 획득과 시각적으로 완전히
  * 동일해 텍스트를 읽기 전까지 구분이 안 된다는 지적 반영. 신규 컴포넌트를 만들지 않고 기존
  * 하우스 스타일(ProfileClient.tsx의 아바타 모서리 버튼과 동일한 pill 배지 톤)만 재사용한다.
+ *
+ * 20260905_0038 B — 체크인 전용(`CheckinCountBadge`)이었던 것을 **획득 횟수 공용**으로 넓혔다.
+ * 액티비티 배지의 반복형도 같은 필을 쓴다(새 컴포넌트를 만들지 않는다). 두 축의 출처가 다르다:
+ * 체크인은 `metadata.visit_count`, 액티비티 배지는 `metadata.earn_count`(hydrate가 채운다).
  */
-function CheckinCountBadge({ count }: { count: number }) {
+function EarnCountBadge({ count }: { count: number }) {
   return (
     <span
       className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-[var(--radius-pill)] bg-surface-elevated border border-[color:var(--color-border)] text-[length:var(--text-caption)] leading-none font-bold text-text/80 flex items-center justify-center"
@@ -114,6 +119,43 @@ function checkinInfo(item: ActivityFeedRow): { poiName: string; visitCount: numb
 }
 
 /**
+ * 카드 썸네일에 붙일 «획득 횟수». 2 이상일 때만 값이 나온다(1회는 표시하지 않는다).
+ *
+ * 체크인은 기존대로 `visit_count`가 우선이다 — 체크인 반복은 `user_checkin_badge_earns`에
+ * 쌓이고 `user_activity_badges.earn_count`는 오르지 않아 두 값이 서로 다른 사실을 말한다.
+ * 그 외 배지는 `hydrateFeedBadgeInfo`가 렌더 직전에 실어준 `earn_count`를 쓴다.
+ */
+export function earnCountOf(item: ActivityFeedRow): number | null {
+  const checkin = checkinInfo(item)
+  if (checkin) return checkin.visitCount > 1 ? checkin.visitCount : null
+  const raw = (item.metadata as Record<string, unknown>).earn_count
+  return typeof raw === 'number' && raw > 1 ? raw : null
+}
+
+/**
+ * 레벨형 배지의 Lv.N. 등급형·반복형은 null이다.
+ * `rarity`가 NULL이면 레벨형이라는 v5의 유일한 판정 기준(마이그레이션 130)을 그대로 따른다 —
+ * 여기서 `RarityBadge`에 넘기면 칩이 조용히 사라진다(티켓 20260905_0036).
+ */
+export function badgeLevelOf(item: ActivityFeedRow): number | null {
+  const raw = (item.metadata as Record<string, unknown>).level
+  return typeof raw === 'number' ? raw : null
+}
+
+/**
+ * 배지 칩 한 자리 — 등급형은 등급 칩, 레벨형은 Lv.N 칩.
+ * `BadgeTrophyGridCard`·`UnlockConditionSheetContent`·`BadgeLevelGauge`와 같은 분기다.
+ */
+function BadgeChip({ item }: { item: ActivityFeedRow }) {
+  const level = badgeLevelOf(item)
+  if (level != null) return <BadgeLevelChip level={level} />
+  const meta = item.metadata as Record<string, unknown>
+  const rarity = meta.rarity ? String(meta.rarity) : null
+  if (!rarity) return null
+  return <RarityBadge rarity={rarity as BadgeRarity} />
+}
+
+/**
  * item_dropped는 두 가지 출처를 하나의 이벤트 타입으로 공유한다:
  * - 활동 연동(Strava) 후 드랍엔진이 지급한 경우 → faction_name이 항상 채워짐 → "아이템 획득"
  * - 지점에 아이템배지를 직접 드랍한 경우(레거시 poi_drops 동기화) → faction_name 없음 → "아이템 드랍"
@@ -141,6 +183,21 @@ function eventLabel(item: ActivityFeedRow): ReactNode {
         {suffix}
       </>
     )
+  }
+  // 반복 획득한 활동 배지 — 체크인과 같은 「N번째」 패턴(20260905_0038 B).
+  // ×N 필은 aria-hidden이라 보조기술에는 이 문장만이 회차를 전달한다.
+  if (item.event_type === 'badge_earned') {
+    const earnCount = earnCountOf(item)
+    if (earnCount != null) {
+      const [prefix, suffix] = d.feed.eventBadgeEarnedRepeat.split('{count}')
+      return (
+        <>
+          {prefix}
+          <strong className="font-bold text-text">{earnCount}</strong>
+          {suffix}
+        </>
+      )
+    }
   }
   return EVENT_LABEL[item.event_type]
 }
@@ -206,6 +263,8 @@ export function DetailSheet({
   const rawBadgeNames = (item.metadata as Record<string, unknown>).awarded_badge_names
   const missionBadgeNames = Array.isArray(rawBadgeNames) ? (rawBadgeNames as string[]) : []
   const checkin = checkinInfo(item)
+  const earnCount = earnCountOf(item)
+  const level = badgeLevelOf(item)
 
   return (
     <>
@@ -231,14 +290,15 @@ export function DetailSheet({
                 <EventIcon type={item.event_type} className="w-12 h-12" />
               </div>
             )}
-            {checkin && checkin.visitCount > 1 && <CheckinCountBadge count={checkin.visitCount} />}
+            {earnCount != null && <EarnCountBadge count={earnCount} />}
           </div>
         </div>
         <p className="text-center text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 mb-1 line-clamp-2">{eventLabel(item)}</p>
         <h2 className="text-center text-[length:var(--text-subheading)] leading-[var(--leading-subheading)] text-text mb-[var(--spacing-16)]">{title}</h2>
-        {rarity && rarity !== 'common' && (
+        {/* 레벨형은 등급이 없어 Lv.N 칩으로 갈라진다. 등급형 common은 기존대로 칩을 그리지 않는다. */}
+        {(level != null || (rarity && rarity !== 'common')) && (
           <div className="flex justify-center mb-[var(--spacing-16)]">
-            <RarityBadge rarity={rarity as BadgeRarity} />
+            <BadgeChip item={item} />
           </div>
         )}
         {/* 20260816_012: 보더 제거 — 티켓 20260820_012: 다크 시트 전환으로 4% 화이트 틴트로 구분 */}
@@ -289,7 +349,6 @@ export function DetailSheet({
 
 function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => void }) {
   const meta = item.metadata as Record<string, string | number | boolean | null>
-  const rarity = meta.rarity ? String(meta.rarity) : null
   const badgeImage = meta.badge_image_url ? String(meta.badge_image_url) : null
   const title = BADGE_EVENTS.has(item.event_type) ? String(meta.badge_name ?? '') : String(meta.mission_title ?? '')
   const sub = (() => {
@@ -303,7 +362,9 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
     return null
   })()
   const isLastPiece = item.event_type === 'item_dropped' && meta.is_last_piece === true
-  const checkin = checkinInfo(item)
+  // 체크인·액티비티 배지 공용 «×N». 액티비티 배지는 예전엔 poi_name이 없다는 이유로
+  // 카운터가 아예 붙지 않았다(티켓 20260905_0038 ①).
+  const earnCount = earnCountOf(item)
 
   return (
     <ListRowCard
@@ -317,7 +378,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
               <EventIcon type={item.event_type} className="w-5 h-5 text-text" />
             </div>
           )}
-          {checkin && checkin.visitCount > 1 && <CheckinCountBadge count={checkin.visitCount} />}
+          {earnCount != null && <EarnCountBadge count={earnCount} />}
         </div>
       }
       trailing={
@@ -328,7 +389,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
       <p className="text-[length:var(--text-body)] leading-[var(--leading-body)] text-text truncate">{title}</p>
       {sub && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/60 truncate">{sub}</p>}
       <span className="inline-flex items-center gap-[var(--spacing-8)] mt-1">
-        {rarity && <RarityBadge rarity={rarity as BadgeRarity} />}
+        <BadgeChip item={item} />
         {isLastPiece && (
           <span className="inline-flex items-center gap-1 text-[length:var(--text-caption)] leading-none px-2 py-1 rounded-[var(--radius-tags)] bg-surface text-text">
             <PuzzleIcon className="w-3 h-3" />
@@ -360,7 +421,60 @@ type FeedEntry =
  *   어느 활동에서 나왔는지 모르는 행을 추정으로 묶으면 사실이 아닌 화면이 된다.
  * - 묶음의 위치는 **가장 최신 멤버의 자리**다. 입력이 최신순이라 첫 등장 위치가 곧 그 자리다.
  */
-function buildFeedEntries(items: ActivityFeedRow[]): FeedEntry[] {
+/**
+ * 같은 활동에서 나온 **같은 배지** 행을 한 장으로 접는다 — 그룹화 축에 배지 id를 더한 것이다
+ * (티켓 20260905_0038 ①). 대표 행은 가장 최신(입력이 created_at desc라 첫 등장)이고,
+ * 접힌 개수는 대표 행의 `earn_count`에 반영한다 — 아래 카드들이 이미 그 한 필드만 읽는다.
+ *
+ * **활동 축을 넘어서는 접기는 하지 않는다.** 서로 다른 활동에서 나온 획득을 한 장으로 합치면
+ * 카드가 말하는 시각이 어느 획득의 것도 아니게 된다 — `strava_activity_id`가 NULL인 행을
+ * 절대 서로 묶지 않는 기존 규칙과 같은 판단이다.
+ *
+ * v5에서 액티비티 배지가 같은 카드 여러 장으로 펴지는 일은 구조적으로 사라졌다 —
+ * 반복형의 회차 증가는 **발급이 아니라서 피드 이벤트를 만들지 않는다**(티켓 20260905_0030 §2).
+ * 남는 건 첫 발급 1행 + `earn_count`이고, 그게 곧 ×N이다. 이 접기는 v4 시절에 쌓인 과거 행과
+ * 동시 싱크가 만든 중복 행을 위한 방어선이다.
+ */
+function collapseRepeatEarns(items: ActivityFeedRow[]): ActivityFeedRow[] {
+  const indexByKey = new Map<string, number>()
+  const repeatByKey = new Map<string, number>()
+  const kept: ActivityFeedRow[] = []
+
+  for (const item of items) {
+    const badgeId = (item.metadata as Record<string, unknown>).badge_id
+    const activityId = item.strava_activity_id
+    if (!BADGE_EVENTS.has(item.event_type) || typeof badgeId !== 'string' || typeof activityId !== 'number') {
+      kept.push(item)
+      continue
+    }
+    const key = `${activityId} ${badgeId}`
+    const idx = indexByKey.get(key)
+    if (idx == null) {
+      indexByKey.set(key, kept.length)
+      repeatByKey.set(key, 1)
+      kept.push(item)
+      continue
+    }
+    repeatByKey.set(key, (repeatByKey.get(key) ?? 1) + 1)
+  }
+
+  for (const [key, repeat] of repeatByKey) {
+    if (repeat < 2) continue
+    const idx = indexByKey.get(key)
+    if (idx == null) continue
+    const item = kept[idx]
+    const meta = item.metadata as Record<string, unknown>
+    const known = typeof meta.earn_count === 'number' ? meta.earn_count : 0
+    // 기록된 회차가 더 크면 그쪽이 사실이다(회차는 피드 행보다 많을 수 있다).
+    if (repeat <= known) continue
+    kept[idx] = { ...item, metadata: { ...meta, earn_count: repeat } }
+  }
+
+  return kept
+}
+
+function buildFeedEntries(rawItems: ActivityFeedRow[]): FeedEntry[] {
+  const items = collapseRepeatEarns(rawItems)
   const buckets = new Map<number, ActivityFeedRow[]>()
   const entries: FeedEntry[] = []
 
@@ -403,6 +517,9 @@ function buildFeedEntries(items: ActivityFeedRow[]): FeedEntry[] {
 // 합계는 프로필이 가져온 피드 윈도우(limit 150) 안에서만 계산된다. 목록 맨 아래에서
 // 활동이 잘리면 헤드라인 숫자가 실제 총량보다 작아질 수 있다 — 사실 총량처럼 읽히는
 // 문장이므로 다음 사람이 다시 파지 않도록 남겨둔다.
+// 20260905_0038 B — 여기 도달하는 items는 `collapseRepeatEarns`를 거친 뒤라 **배지 종류당 1건**이다.
+// 그래서 「배지 N개」의 N은 이벤트 수가 아니라 고유 배지 수다(반복 획득은 각 카드의 ×N이 말한다).
+// 문구를 바꾸지 않은 이유가 이것이다 — 접기 이후 숫자의 의미가 문구와 일치하게 됐다.
 function groupHeadline(items: ActivityFeedRow[]): string {
   const badgeCount = items.filter((i) => BADGE_EVENTS.has(i.event_type)).length
   // 활동 id가 실리는 기록 지점은 badge_earned·item_dropped 둘뿐이라 실제로는 항상

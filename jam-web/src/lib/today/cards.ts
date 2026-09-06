@@ -61,6 +61,13 @@ export interface ResolvedBadge {
    * nullable로 좁혔다 — 현재 `TodayCardStack`은 이 값을 그리지 않는다(등급 칩 없음).
    */
   rarity: string | null
+  /**
+   * 이 카드를 보는 유저가 **이미 보유한 배지인지** (티켓 20260905_0038 B).
+   * 오늘 카드는 미획득 배지의 아트를 커버로 승격하면서 보유 여부를 한 번도 묻지 않아,
+   * 아직 못 받은 배지가 「내 것」처럼 보였다. 미보유는 `grayscale(1)`로 표시한다
+   * (2026-09-06 확정 규칙 — 실루엣으로 감추지 않는다).
+   */
+  earned: boolean
 }
 
 /** resolveTargetHref 를 적용한 카드 (UI에서 바로 링크로 사용) */
@@ -104,7 +111,7 @@ export async function getTodayCards(
   // 20260825_028: 미션 소개 카드도 미션 목록과 같은 노출 규칙을 따른다 —
   // 이미 완료했거나 아직 열리지 않은 미션은 오늘 카드로도 권하지 않는다.
   const cards = await filterMissionSpotlightCards(userId, allCards)
-  const badgesById = await fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []))
+  const badgesById = await fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []), userId)
 
   return cards.map((card) => ({
     ...card,
@@ -145,23 +152,50 @@ async function filterMissionSpotlightCards(userId: string, cards: TodayCardRow[]
   })
 }
 
-/** badge_ids 배열(중복 포함 가능)을 한 번에 조회해 id → 배지정보 맵으로 반환 */
+/**
+ * badge_ids 배열(중복 포함 가능)을 한 번에 조회해 id → 배지정보 맵으로 반환.
+ *
+ * 보유 여부는 배지 종류마다 소유 기록이 다른 테이블에 있어 세 곳을 함께 본다
+ * (`badges/page.tsx`가 배지함에서 쓰는 것과 같은 3원 구조 — 티켓 20260905_0038 B):
+ *   활동·미션·컬렉션 보상 → `user_activity_badges` / 체크인 → `user_checkin_badge_earns` /
+ *   아이템 → `inventory_items`(드랍해 넘긴 개체는 제외).
+ * 한 곳만 보면 「보유한 배지를 미보유로 표시」하는 **틀린 사실**이 화면에 나간다.
+ */
 async function fetchBadgesById(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   badgeIds: string[],
+  userId: string,
 ): Promise<Map<string, ResolvedBadge>> {
   const uniqueIds = [...new Set(badgeIds)]
   if (uniqueIds.length === 0) return new Map()
 
-  const { data } = await supabase
-    .from('badges')
-    .select('id, name, image_url, rarity')
-    .in('id', uniqueIds)
-    .is('deleted_at', null)
+  const [{ data }, activityOwned, checkinOwned, itemOwned] = await Promise.all([
+    supabase.from('badges').select('id, name, image_url, rarity').in('id', uniqueIds).is('deleted_at', null),
+    supabase.from('user_activity_badges').select('badge_id').eq('user_id', userId).in('badge_id', uniqueIds),
+    supabase.from('user_checkin_badge_earns').select('badge_id').eq('user_id', userId).in('badge_id', uniqueIds),
+    supabase
+      .from('inventory_items')
+      .select('badge_id, inventory!inner(user_id)')
+      .eq('inventory.user_id', userId)
+      .is('dropped_at', null)
+      .in('badge_id', uniqueIds),
+  ])
+
+  const ownedIds = new Set<string>()
+  for (const result of [activityOwned, checkinOwned, itemOwned]) {
+    if (result?.error) {
+      // 보유 판정 실패는 카드 노출 자체를 막지 않는다 — 그 배지가 «미보유»로 그려질 뿐이다.
+      console.error('[fetchBadgesById] 배지 보유 여부 조회 오류:', result.error.message)
+      continue
+    }
+    for (const row of (result?.data ?? []) as { badge_id: string }[]) ownedIds.add(row.badge_id)
+  }
 
   const map = new Map<string, ResolvedBadge>()
-  for (const b of (data ?? []) as ResolvedBadge[]) map.set(b.id, b)
+  for (const b of (data ?? []) as Omit<ResolvedBadge, 'earned'>[]) {
+    map.set(b.id, { ...b, earned: ownedIds.has(b.id) })
+  }
   return map
 }
 
