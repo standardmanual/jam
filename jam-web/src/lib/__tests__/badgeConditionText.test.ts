@@ -7,7 +7,7 @@
  * 조건 필드가 새로 늘어도 이 테스트가 먼저 깨진다.
  */
 import { describe, it, expect } from 'vitest'
-import { formatBadgeConditionText } from '@/lib/badgeConditionText'
+import { formatBadgeConditionText, formatBadgeConditionSpec } from '@/lib/badgeConditionText'
 import { CONDITION_FIELDS, type ConditionKey } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition } from '@/types/database'
 
@@ -169,5 +169,86 @@ describe('jsonb 형태 오류에 페이지가 죽지 않는다', () => {
   it('레지스트리가 모르는 키만 있으면 「관리자 발급」이 아니라 준비 중으로 말한다', () => {
     const unknown = { totally_unknown_key: 1 } as unknown as BadgeCondition
     expect(formatBadgeConditionText(unknown, 'x')).toBe('획득 조건 안내를 준비하고 있어요.')
+  })
+})
+
+/**
+ * 조건 표기 줄 — 티켓 20260906_1305.
+ *
+ * 이 줄이 고정하는 성질은 **자리의 약속**이다: 마지막 숫자는 언제나 「몇 번 달성해야 하는가」다.
+ * `formatBadgeConditionText`의 반환값은 한 글자도 바뀌지 않아야 하므로 위 테스트들이 그대로
+ * 남아 있는 것 자체가 회귀 방어다.
+ */
+describe('formatBadgeConditionSpec — 조건 표기 둘째 줄', () => {
+  it('요소 순서는 ①기간 ②맥락 ③지표이고, 달성 횟수만 「/ N회」로 맨 끝에 뗀다', () => {
+    expect(
+      formatBadgeConditionSpec({
+        activity_type: 'walking',
+        time_range: { start: '05:00', end: '07:00' },
+        single_distance_km: 5,
+        repeat_count: 10,
+        weekly_count: 3,
+      })
+    ).toBe('한 주(월~일)에 3회 이상 · 새벽 시간대(05:00~07:00) · 한 번의 거리 5km 이상 / 10회')
+  })
+
+  it('같은 조건을 문장 쪽은 한 문단으로, 표기 쪽은 명사구로 낸다 — 문장 반환값은 그대로다', () => {
+    const condition: BadgeCondition = { activity_type: 'walking', active_days_count: 100 }
+    expect(formatBadgeConditionText(condition, '오늘의 한 걸음')).toBe(
+      '누적 활동일수 100일 이상 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionSpec(condition)).toBe('누적 활동일수 100일 이상')
+  })
+
+  it('명사구로 끝난다 — 마침표도 「~해요」도 붙이지 않는다', () => {
+    const specs = [
+      formatBadgeConditionSpec({ distance_km: 30 }),
+      formatBadgeConditionSpec({ streak_days: 3, repeat_count: 5 }),
+      formatBadgeConditionSpec({ weekly_count: 3, single_distance_km: 5 }),
+    ]
+    for (const spec of specs) {
+      expect(spec).not.toBeNull()
+      expect(spec!.endsWith('.')).toBe(false)
+      expect(spec).not.toContain('해요')
+      expect(spec).not.toContain('획득')
+    }
+  })
+
+  it('달성 횟수는 1회도 적는다 — 맨 끝 숫자가 달성 횟수라는 약속을 비우지 않는다', () => {
+    // 문장 쪽은 1회를 생략한다(군더더기). 표기 쪽은 라이팅 정본과 같이 「/ 1회」를 적는다
+    expect(formatBadgeConditionText({ streak_days: 3, repeat_count: 1 }, 'x')).toBe(
+      '3일 연속 활동 조건을 채우면 획득할 수 있어요.'
+    )
+    expect(formatBadgeConditionSpec({ streak_days: 3, repeat_count: 1 })).toBe('3일 연속 활동 / 1회')
+  })
+
+  it('repeat_count 키가 없으면 꼬리도 없다 (v5 630종 중 491종)', () => {
+    expect(formatBadgeConditionSpec({ activity_type: 'running', distance_km: 30 })).toBe('누적 거리 30km 이상')
+  })
+
+  it('null 3케이스 — 이 줄 자체를 그리지 않는다', () => {
+    // ① 미션 보상 — 문장이 이미 「'X' 미션을 완료하면」이다
+    expect(formatBadgeConditionSpec({ activity_type: 'walking', mission_reward: true })).toBeNull()
+    // ② 조건 없음 — 어드민 수동 발급
+    expect(formatBadgeConditionSpec(null)).toBeNull()
+    expect(formatBadgeConditionSpec(undefined)).toBeNull()
+    expect(formatBadgeConditionSpec({})).toBeNull()
+    // ③ 레지스트리가 모르는 키만 있음
+    expect(formatBadgeConditionSpec({ totally_unknown_key: 1 } as unknown as BadgeCondition)).toBeNull()
+  })
+
+  it('침묵하는 키만 남으면 null이다 — 종목만 든 조건은 표기할 것이 없다', () => {
+    expect(formatBadgeConditionSpec({ activity_type: 'cycling' })).toBeNull()
+  })
+
+  it('안내 문장의 「서로 다른 활동에서 인정」 꼬리는 표기 줄에 붙지 않는다', () => {
+    expect(formatBadgeConditionSpec({ duration_minutes: 60, elevation_gain_m: 500 })).toBe(
+      '누적 고도 500m 이상 · 한 번의 이동시간 60분 이상'
+    )
+  })
+
+  it('jsonb 형태가 깨져도 나머지 조건은 그대로 표기한다', () => {
+    const broken = { activities_within_hours: 3, distance_km: 10 } as unknown as BadgeCondition
+    expect(formatBadgeConditionSpec(broken)).toBe('누적 거리 10km 이상')
   })
 })
