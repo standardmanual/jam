@@ -239,8 +239,6 @@ export function BadgeStageRail({
    * 없는 계열(전부 획득)에서도 헤더는 그려져야 하기 때문이다.
    */
   headerFraction = /** @type {number | null} */ (null),
-  /** 헤더 퍼센트 옆 라벨 — 보통 다음 등급명(`Epic`). 완성 문자열만 받는다 */
-  headerLabel = /** @type {string | null} */ (null),
   /** 헤더 2행(메타 줄) 완성 문자열. null이면 그리지 않는다 */
   headerMeta = /** @type {React.ReactNode} */ (null),
   expanded = false,
@@ -347,7 +345,6 @@ export function BadgeStageRail({
       <BadgeFamilyCardHeader
         name={familyName}
         fraction={headerFraction}
-        pctLabel={headerLabel}
         done={nextRarityLabel == null}
         metaText={
           earnCount != null ? (

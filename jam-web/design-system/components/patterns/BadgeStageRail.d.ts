@@ -55,7 +55,6 @@ export interface BadgeStageRailProps {
    */
   headerFraction?: number | null;
   /** 헤더 퍼센트 옆 라벨(보통 다음 등급명 `Epic`). 완성 문자열만 받는다 */
-  headerLabel?: string | null;
   /** 헤더 2행(메타 줄). `null`이면 그리지 않는다 */
   headerMeta?: ReactNode;
   /** 다음으로 노려야 할 등급 라벨("Epic"). 전부 획득했으면 `null`(기본값 없음 — 항상 명시) */
