@@ -198,3 +198,43 @@ export const SharedRightEdge: Story = {
     await expect(pctRights[0]).toBe(16);
   },
 };
+
+/**
+ * **펼칠 수 있는 카드와 없는 카드의 진행률 우측 엣지가 같아야 한다**(티켓 20260906_2344).
+ *
+ * 오른쪽 컬럼(`1fr auto`의 `auto`) 폭은 진행률 블록과 2행 「자세히 ⌄」 중 **넓은 쪽**이
+ * 정한다. `justifySelf: 'end'`가 없으면 퍼센트가 그 컬럼 왼쪽에 붙어, 토글이 있는 카드만
+ * 24px 안쪽에서 끝난다 — staging 실측에서 343px vs 319px로 갈렸다.
+ * 세로로 훑는 스캔 컬럼이 이 불변식 위에 서 있다.
+ */
+export const PercentRightEdgeIsUniform: Story = {
+  render: () => (
+    <div
+      style={{
+        background: 'var(--color-surface)',
+        padding: 'var(--spacing-16)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--spacing-16)',
+      }}
+    >
+      {/* 토글 있음 — 「자세히 ⌄」가 컬럼 폭을 정한다 */}
+      <div style={{ borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)', background: 'var(--color-surface-elevated)' }}>
+        <BadgeFamilyCardHeader
+          name="오늘의 한 걸음"
+          fraction={0.42}
+          metaText="다음 Rare · 4.2 / 10km"
+          onToggleExpand={() => {}}
+        />
+      </div>
+      {/* 토글 없음 — 진행률 블록만 있다 */}
+      <div style={{ borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)', background: 'var(--color-surface-elevated)' }}>
+        <BadgeFamilyCardHeader name="걸어온 거리" fraction={0.8} metaText="다음 Lv.8까지 30km" />
+      </div>
+      {/* 2행 자체가 없는 카드 */}
+      <div style={{ borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)', background: 'var(--color-surface-elevated)' }}>
+        <BadgeFamilyCardHeader name="메타 줄 없는 계열" fraction={0} />
+      </div>
+    </div>
+  ),
+}
