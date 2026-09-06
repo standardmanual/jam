@@ -855,6 +855,27 @@ export interface BadgeGateRequirement {
   min_count?: number
 }
 
+/**
+ * `personal_record_break`가 가리키는 지표 (티켓 20260906_0110 ③).
+ *
+ * `personal_record_break`만으로는 「어느 지표의 기록인가」를 담을 수 없어, 자동 상승형
+ * 계열끼리(예: `walking:B1`↔`B2`, `hiking:R1`↔`R2`) 조건이 글자 그대로 같아지는 문제가 있었다.
+ * 이 필드가 그 축을 지정한다 — 값 후보는 「기록」이 의미가 있는 스칼라 축(누적/단일 활동)이다.
+ */
+export type PersonalRecordMetric =
+  | 'distance_km'
+  | 'elevation_gain_m'
+  | 'duration_minutes'
+  | 'min_speed_kmh'
+  | 'max_pace_sec_per_km'
+  | 'single_distance_km'
+  | 'single_elevation_m'
+  | 'max_speed_kmh'
+  | 'max_elevation_m'
+  | 'avg_heartrate_bpm'
+  | 'avg_watts'
+  | 'avg_cadence'
+
 export interface BadgeCondition {
   /** 최소 거리 (km) */
   distance_km?: number
@@ -982,7 +1003,12 @@ export interface BadgeCondition {
 
   /** [v5] 연속 활동(`streak_days`) 뒤에 쉰 일수 (일) */
   rest_after_streak?: number
-  /** [v5] 장거리 활동(`single_distance_km`) 뒤에 쉰 일수 (일) */
+  /**
+   * [v5] 장거리 활동 뒤에 쉰 일수 (일). 「무엇이 장거리인가」는 `single_distance_km`(거리 기준)
+   * **또는** `duration_minutes`(시간 기준) 중 하나로 정의한다 — 둘 중 하나만 있으면 된다(OR).
+   * 걷기·등산처럼 거리보다 소요 시간이 더 자연스러운 종목을 위해 시간 축을 추가했다
+   * (티켓 20260906_0110 ④). 값 자체는 짝 필드가 정한 단위(km 또는 분)의 임계값을 그대로 쓴다.
+   */
   rest_after_long?: number
   /** [v5] 복귀 직전에 쉰 일수 (일) */
   return_gap_days?: number
@@ -1002,6 +1028,8 @@ export interface BadgeCondition {
   activities_within_hours?: { hours: number; count: number }
   /** [v5] 개인 기록 갱신 횟수 (회) — 가입 이후 활동만으로 직접 계산한다(Strava `pr_count` 미사용) */
   personal_record_break?: number
+  /** [v5 확장] `personal_record_break`가 보는 지표. 없으면 계열끼리 조건이 수렴한다 — `PersonalRecordMetric` 참조 */
+  personal_record_break_metric?: PersonalRecordMetric
   /** [v5] 전월 대비 비율 (배) */
   month_over_month_ratio?: number
   /** [v5] 평소 평균 대비 비율 (배) */
@@ -1022,6 +1050,24 @@ export interface BadgeCondition {
    * 임계값을 넘지 않은 회차는 `earn_count`만 올리고 피드·결산에는 나타나지 않는다.
    */
   repeat_count?: number
+
+  // ── v5 확장 (티켓 20260906_0110 ①) — 누적 이동시간 · 월간 활동 횟수 ──────
+  //
+  // 시딩 단계(20260905_0035)에서 이 두 키가 레지스트리에 없어 5계열 27종이 통째로
+  // 빠졌다(`walking:K2`·`running:K2`·`hiking:K2`·`cycling:G2`·`hiking:C2`).
+
+  /**
+   * [v5 확장] 누적 이동시간 (시간). `duration_minutes`(단일 활동)와 달리 **전체 이력 합계**다 —
+   * `distance_km`의 이동시간 버전. `same_activity`와는 결합하지 않는다(단일 활동 시간은
+   * `duration_minutes`가 이미 있다).
+   */
+  cumulative_duration_hours?: number
+  /**
+   * [v5 확장] 특정 달의 최소 활동 횟수. `monthly_km`(거리)와 짝을 이루는 횟수 버전이다.
+   * `repeat_count`와 결합하면 「그 횟수를 채운 달이 몇 번 있었는가」를 센다
+   * (예: 한 달 8회 라이딩 × 12개월 → `cycling:G2`).
+   */
+  monthly_count?: number
 }
 
 // =========================================

@@ -49,7 +49,7 @@ vi.mock('@/lib/strava/api', () => ({
 vi.mock('@/lib/engine-log', () => ({ logEngineDecision: vi.fn(async () => {}) }))
 
 import { normalizeActivity } from '../sync'
-import { extractExtendedActivityFields, EXTENDED_ACTIVITY_FIELD_KEYS } from '@/types/strava'
+import { extractExtendedActivityFields, EXTENDED_ACTIVITY_FIELD_KEYS, normalizeCadenceForActivityType } from '@/types/strava'
 
 /**
  * 확장 필드가 **하나도 없는** 최소 활동. Strava는 심박계·파워미터가 없으면 해당 키를
@@ -125,7 +125,9 @@ describe('normalizeActivity — ① 값이 있으면 저장한다', () => {
     const n = normalizeActivity(fullyInstrumented())
     expect(n.avgHeartrateBpm).toBe(158.4)
     expect(n.avgWatts).toBe(243)
-    expect(n.avgCadence).toBe(88.5)
+    // 러닝(fullyInstrumented의 종목)은 저장 시점에 ×2 정규화된다(티켓 20260906_0110 ⑤) —
+    // Strava 원값 88.5는 편족 기준이고, 조건 설계값(180spm)은 양발 합계 기준이다.
+    expect(n.avgCadence).toBe(177)
     expect(n.maxElevationM).toBe(412.7)
     expect(n.maxSpeedKmh).toBe(16.2)
     expect(n.elapsedTimeSec).toBe(3_900)
@@ -189,13 +191,23 @@ describe('normalizeActivity — ③ 단위 변환', () => {
     expect(n.elapsedTimeSec! - n.movingTimeSec).toBe(300) // 휴식 300초
   })
 
-  it('심박·파워·케이던스는 변환 없이 원값 그대로다', () => {
+  it('심박·파워는 변환 없이 원값 그대로다', () => {
     const n = normalizeActivity(
       baseActivity({ average_heartrate: 158.4, average_watts: 243, average_cadence: 88.5 })
     )
     expect(n.avgHeartrateBpm).toBe(158.4)
     expect(n.avgWatts).toBe(243)
-    expect(n.avgCadence).toBe(88.5)
+  })
+
+  it('케이던스는 러닝·트레일러닝만 ×2 정규화된다 — 자전거는 원값 그대로 (티켓 20260906_0110 ⑤)', () => {
+    // baseActivity 기본 종목은 Run(러닝)이다
+    const running = normalizeActivity(baseActivity({ average_cadence: 88.5 }))
+    expect(running.avgCadence).toBe(177)
+
+    const cycling = normalizeActivity(
+      baseActivity({ type: 'Ride', sport_type: 'Ride', average_cadence: 90 })
+    )
+    expect(cycling.avgCadence).toBe(90)
   })
 })
 
@@ -283,15 +295,25 @@ describe('리뷰 반영 3필드 — 재백필을 피하려고 같은 응답에�
 })
 
 describe('extractExtendedActivityFields — 싱크와 백필의 공유 지점', () => {
-  it('normalizeActivity의 확장 필드는 이 함수의 결과와 정확히 같다', () => {
+  it('normalizeActivity의 확장 필드는 이 함수의 결과와 정확히 같다 (avgCadence 제외)', () => {
+    // avgCadence만 예외다 — normalizeActivity가 저장 시점에 러닝·트레일러닝을 ×2
+    // 정규화하기 때문이다(티켓 20260906_0110 ⑤). 나머지 8필드는 두 경로가 갈리면
+    // 백필된 활동과 신규 활동의 형태가 달라지므로 계속 정확히 같아야 한다.
     const activity = fullyInstrumented()
     const extracted = extractExtendedActivityFields(activity)
     const normalized = normalizeActivity(activity)
     for (const key of EXTENDED_ACTIVITY_FIELD_KEYS) {
+      if (key === 'avgCadence') continue
       expect(normalized[key]).toBe(extracted[key])
     }
-    // 두 경로가 갈라지면 백필된 활동과 신규 활동의 형태가 달라진다
     expect(Object.keys(extracted).sort()).toEqual([...EXTENDED_ACTIVITY_FIELD_KEYS].sort())
+  })
+
+  it('avgCadence는 정규화 함수를 한 번 거친 값과 같다 — 정규화 지점이 한 곳이다', () => {
+    const activity = fullyInstrumented() // 러닝
+    const extracted = extractExtendedActivityFields(activity)
+    const normalized = normalizeActivity(activity)
+    expect(normalized.avgCadence).toBe(normalizeCadenceForActivityType('running', extracted.avgCadence))
   })
 
   it('값이 없으면 빈 객체를 돌려준다 (키를 만들지 않는다)', () => {

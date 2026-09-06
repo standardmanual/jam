@@ -44,6 +44,10 @@ import {
   inTimeRange,
   getMondayKey,
   calcMaxStreak,
+  // weekly_streak(연속 주) 단독 평가 — 티켓 20260906_0110 ②. 회차 계산(repeatOccurrences.ts)과
+  // 같은 함수를 본다.
+  calcMaxWeeklyStreak,
+  matchesDayOfWeekFilter,
   WALKING_GATE_MIN_DISTANCE_KM,
   WALKING_GATE_MIN_DURATION_MIN,
   WALKING_GATE_MIN_SPEED_KMH,
@@ -190,6 +194,14 @@ const INDEPENDENT_FIELD_LABEL_KO: Partial<Record<typeof PER_ACTIVITY_KEYS[number
   temperature_min_c: '기온',
   temperature_max_c: '기온',
   weekend_duration_hours: '주말활동시간',
+  // v5 스칼라 7종 (티켓 20260906_0110 ②)
+  max_elevation_m: '최고 도달 고도',
+  max_speed_kmh: '최고 속도',
+  single_distance_km: '한 번의 거리',
+  single_elevation_m: '한 번의 고도',
+  avg_heartrate_bpm: '평균 심박수',
+  avg_watts: '평균 파워',
+  avg_cadence: '평균 케이던스',
 }
 
 /** 필드가 하나뿐인 단순 케이스의 구체적인 실패 사유 (여러 필드 동시충족 케이스는 상위에서 별도 처리) */
@@ -249,6 +261,40 @@ function singleFieldFailure(
     case 'time_range': {
       const { start, end } = condition.time_range!
       return { pass: false, reason: '활동 시간대 불일치', actual: '-', required: `${start}~${end}` }
+    }
+    // v5 스칼라 7종 (티켓 20260906_0110 ②) — 값이 없는 활동(측정 안 됨)은 최고 기록에서 제외한다
+    case 'max_elevation_m': {
+      const values = filtered.map((a) => a.maxElevationM).filter((v): v is number => v !== undefined)
+      const best = values.length > 0 ? Math.max(...values) : 0
+      return { pass: false, reason: '최고 도달 고도 부족', actual: `${best}m`, required: `${condition.max_elevation_m}m` }
+    }
+    case 'max_speed_kmh': {
+      const values = filtered.map((a) => a.maxSpeedKmh).filter((v): v is number => v !== undefined)
+      const best = values.length > 0 ? Math.max(...values) : 0
+      return { pass: false, reason: '최고 속도 부족', actual: `${best}km/h`, required: `${condition.max_speed_kmh}km/h` }
+    }
+    case 'single_distance_km': {
+      const best = Math.max(...filtered.map((a) => a.distanceKm), 0)
+      return { pass: false, reason: '한 번의 거리 부족', actual: `${Math.round(best * 10) / 10}km`, required: `${condition.single_distance_km}km` }
+    }
+    case 'single_elevation_m': {
+      const best = Math.max(...filtered.map((a) => a.elevationGainM), 0)
+      return { pass: false, reason: '한 번의 고도 부족', actual: `${Math.round(best)}m`, required: `${condition.single_elevation_m}m` }
+    }
+    case 'avg_heartrate_bpm': {
+      const values = filtered.map((a) => a.avgHeartrateBpm).filter((v): v is number => v !== undefined)
+      const best = values.length > 0 ? Math.max(...values) : 0
+      return { pass: false, reason: '평균 심박수 부족', actual: `${best}bpm`, required: `${condition.avg_heartrate_bpm}bpm` }
+    }
+    case 'avg_watts': {
+      const values = filtered.map((a) => a.avgWatts).filter((v): v is number => v !== undefined)
+      const best = values.length > 0 ? Math.max(...values) : 0
+      return { pass: false, reason: '평균 파워 부족', actual: `${best}W`, required: `${condition.avg_watts}W` }
+    }
+    case 'avg_cadence': {
+      const values = filtered.map((a) => a.avgCadence).filter((v): v is number => v !== undefined)
+      const best = values.length > 0 ? Math.max(...values) : 0
+      return { pass: false, reason: '평균 케이던스 부족', actual: `${best}`, required: `${condition.avg_cadence}` }
     }
   }
 }
@@ -465,6 +511,23 @@ export function evaluateConditionDetailed(
     }
   }
 
+  // ── cumulative_duration_hours — 누적 이동시간(시간). distance_km과 같은 «전체 이력 합계»
+  //    규칙이지만 same_activity 전용 예외가 없다 — 단일 활동 시간은 duration_minutes가
+  //    이미 있어 같은 키가 두 가지 뜻을 가질 이유가 없다(티켓 20260906_0110 ①).
+  if (condition.cumulative_duration_hours !== undefined) {
+    const totalHours = filtered.reduce((sum, a) => sum + a.movingTimeSec / 3600, 0)
+    if (totalHours < condition.cumulative_duration_hours) {
+      return {
+        pass: false,
+        reason: '누적 이동시간 부족',
+        actual: `${Math.round(totalHours * 10) / 10}시간`,
+        required: `${condition.cumulative_duration_hours}시간`,
+      }
+    }
+    actualParts.push(`누적이동시간: ${Math.round(totalHours * 10) / 10}시간`)
+    requiredParts.push(`누적이동시간: ${condition.cumulative_duration_hours}시간`)
+  }
+
   // ── 단일 활동 동시 충족 조건 — "그 활동 하나"가 모든 필드를 함께 만족해야 함.
   //    필드별로 따로 최댓값을 찾아 합치면(예: 빠른 활동의 속도 + 긴 활동의 시간을 조합)
   //    실제로는 어느 활동도 조건을 만족 못 했는데 통과하는 버그가 생긴다.
@@ -570,6 +633,20 @@ export function evaluateConditionDetailed(
     requiredParts.push(`연속일수: ${condition.streak_days}일`)
   }
 
+  // ── weekly_streak — 연속 주(월~일). day_of_week가 배열이면 그 요일들만의 활동으로 좁힌다
+  //    (단일값은 위에서 이미 filtered에 반영됐다). 티켓 20260906_0110 ②.
+  if (condition.weekly_streak !== undefined) {
+    const weeklyStreakPool = Array.isArray(condition.day_of_week)
+      ? filtered.filter((a) => matchesDayOfWeekFilter(a, condition.day_of_week!))
+      : filtered
+    const weekStreak = calcMaxWeeklyStreak(weeklyStreakPool)
+    if (weekStreak < condition.weekly_streak) {
+      return { pass: false, reason: '연속 주 부족', actual: `${weekStreak}주`, required: `${condition.weekly_streak}주` }
+    }
+    actualParts.push(`연속주: ${weekStreak}주`)
+    requiredParts.push(`연속주: ${condition.weekly_streak}주`)
+  }
+
   if (condition.weekly_count !== undefined) {
     // time_range와 함께 쓰이면 해당 시간대 활동만 주간 집계 ("새벽 주 N회" 엄격 의미)
     let weeklyPool = filtered
@@ -597,6 +674,23 @@ export function evaluateConditionDetailed(
     }
     actualParts.push(`주간횟수: ${maxWeek}회`)
     requiredParts.push(`주간횟수: ${condition.weekly_count}회`)
+  }
+
+  // ── monthly_count — 특정 달의 최소 활동 횟수. monthly_km(거리)의 횟수 버전(티켓 20260906_0110 ①)
+  if (condition.monthly_count !== undefined) {
+    const monthlyCountPool = condition.activity_type === 'walking' ? dedupeOnePerDay(filtered) : filtered
+    const monthCounts = new Map<string, number>()
+    for (const a of monthlyCountPool) {
+      const d = new Date(a.startDateLocal ?? a.startDate)
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`
+      monthCounts.set(key, (monthCounts.get(key) ?? 0) + 1)
+    }
+    const maxMonth = monthCounts.size > 0 ? Math.max(...monthCounts.values()) : 0
+    if (maxMonth < condition.monthly_count) {
+      return { pass: false, reason: '월간 활동 횟수 부족', actual: `${maxMonth}회`, required: `${condition.monthly_count}회` }
+    }
+    actualParts.push(`월간횟수: ${maxMonth}회`)
+    requiredParts.push(`월간횟수: ${condition.monthly_count}회`)
   }
 
   if (condition.month !== undefined || condition.monthly_km !== undefined) {

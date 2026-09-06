@@ -116,9 +116,9 @@ describe('① 계열 그룹핑은 family_key 기준이고 비어 있으면 폴�
 
   it('평가 대기 필드가 있으면 계열 요약에 드러난다', () => {
     const [family] = groupBadgesIntoFamilies([
-      badge({ condition_json: { activity_type: 'walking', avg_watts: 200 } }),
+      badge({ condition_json: { activity_type: 'walking', month_over_month_ratio: 1.2 } }),
     ])
-    expect(family.pendingKeys).toContain('avg_watts')
+    expect(family.pendingKeys).toContain('month_over_month_ratio')
   })
 })
 

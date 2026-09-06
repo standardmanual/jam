@@ -33,6 +33,7 @@ import {
   metersToKm,
   metersPerSecToKmH,
   extractExtendedActivityFields,
+  normalizeCadenceForActivityType,
 } from '@/types/strava'
 import type { StravaSummaryActivity, NormalizedActivity } from '@/types/strava'
 import type {
@@ -266,13 +267,19 @@ async function notifyActivityBadgesEarned(
  * **테스트에서 참조하므로 export한다** (`__tests__/normalize-activity.test.ts`).
  */
 export function normalizeActivity(activity: StravaSummaryActivity): NormalizedActivity {
+  const jamActivityType = getJamActivityType(activity)
+  const extended = extractExtendedActivityFields(activity)
+  // 저장 시점 ×2 정규화(티켓 20260906_0110 ⑤) — 러닝·트레일러닝만, 자전거는 원값 그대로.
+  // 값이 없으면(cadence 미제공) 키 자체를 만들지 않는다 — `extractExtendedActivityFields`의
+  // 「값이 없으면 키가 없다」 관례를 여기서 깨지 않는다.
+  const normalizedCadence = normalizeCadenceForActivityType(jamActivityType, extended.avgCadence)
   return {
     stravaId: activity.id,
     name: activity.name,
     distanceKm: metersToKm(activity.distance),
     movingTimeSec: activity.moving_time,
     elevationGainM: activity.total_elevation_gain,
-    jamActivityType: getJamActivityType(activity),
+    jamActivityType,
     startDate: activity.start_date,
     startDateLocal: activity.start_date_local,
     averageSpeedKmh: metersPerSecToKmH(activity.average_speed),
@@ -283,7 +290,8 @@ export function normalizeActivity(activity: StravaSummaryActivity): NormalizedAc
       ? (activity.end_latlng as [number, number])
       : null,
     weatherTempC: activity.average_temp ?? null,
-    ...extractExtendedActivityFields(activity),
+    ...extended,
+    ...(normalizedCadence !== undefined ? { avgCadence: normalizedCadence } : {}),
   }
 }
 

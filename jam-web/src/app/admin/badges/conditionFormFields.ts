@@ -41,11 +41,15 @@ export type ConditionFormFields = {
   durationMinutes: string
   activityType: string
   sameActivity: boolean
+  // v5 확장 (티켓 20260906_0110 ①) — 누적 이동시간
+  cumulativeDurationHours: string
   // 기간·주기
   weekendDurationHours: string
   weeklyCount: string
   month: string
   monthlyKm: string
+  // v5 확장 (티켓 20260906_0110 ①) — 월간 활동 횟수
+  monthlyCount: string
   season: string
   seasonCount: string
   seasonCountAll: string
@@ -75,6 +79,8 @@ export type ConditionFormFields = {
   activitiesWithinHoursHours: string
   activitiesWithinHoursCount: string
   personalRecordBreak: string
+  // v5 확장 (티켓 20260906_0110 ③) — personal_record_break가 보는 지표
+  personalRecordBreakMetric: string
   monthOverMonthRatio: string
   vsPersonalAverage: string
   // 반복 획득
@@ -107,10 +113,12 @@ export function emptyConditionFormFields(): ConditionFormFields {
     durationMinutes: '',
     activityType: '',
     sameActivity: false,
+    cumulativeDurationHours: '',
     weekendDurationHours: '',
     weeklyCount: '',
     month: '',
     monthlyKm: '',
+    monthlyCount: '',
     season: '',
     seasonCount: '',
     seasonCountAll: '',
@@ -137,6 +145,7 @@ export function emptyConditionFormFields(): ConditionFormFields {
     activitiesWithinHoursHours: '',
     activitiesWithinHoursCount: '',
     personalRecordBreak: '',
+    personalRecordBreakMetric: '',
     monthOverMonthRatio: '',
     vsPersonalAverage: '',
     repeatCount: '',

@@ -22,7 +22,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { decrypt, encrypt } from '@/lib/utils'
 import { getActivities, refreshStravaToken, ACTIVITIES_PAGE_SIZE } from '@/lib/strava/api'
-import { extractExtendedActivityFields, EXTENDED_ACTIVITY_FIELD_KEYS } from '@/types/strava'
+import { extractExtendedActivityFields, EXTENDED_ACTIVITY_FIELD_KEYS, getJamActivityType, normalizeCadenceForActivityType } from '@/types/strava'
 import type { StravaSummaryActivity } from '@/types/strava'
 import type { StravaConnectionRow } from '@/types/database'
 
@@ -110,6 +110,12 @@ export function mergeExtendedFields(
       : {}
 
   const extended = extractExtendedActivityFields(summary) as Record<string, number | undefined>
+  // 저장 시점 ×2 정규화(티켓 20260906_0110 ⑤) — 신규 싱크(normalizeActivity)와 같은 규칙을
+  // 백필도 따른다. Strava 원본에서 매번 다시 계산하므로 재백필해도 두 번 곱해지지 않는다
+  // (`average_cadence` 원값 기준으로 매번 새로 계산 → 이미 정규화된 저장값과 같아지면
+  // `changed`가 false가 된다).
+  const jamActivityType = getJamActivityType(summary)
+  extended.avgCadence = normalizeCadenceForActivityType(jamActivityType, extended.avgCadence)
   let changed = false
   for (const key of EXTENDED_ACTIVITY_FIELD_KEYS) {
     const next = extended[key]
