@@ -5,6 +5,7 @@ import type { UserRow } from '@/types/database'
 import UserGrantForm from '../../points/UserGrantForm'
 import { BadgeHistoryTable, type BadgeHistoryRow } from './BadgeHistoryTable'
 import { AdminRoleToggle } from './AdminRoleToggle'
+import { BadgeDiagnosisButton } from './BadgeDiagnosisButton'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -65,7 +66,11 @@ export default async function AdminUserDetailPage({ params }: Props) {
 
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold">배지 획득 히스토리</h2>
-        <p className="text-muted-foreground text-sm">총 {badgeHistory.length}개</p>
+        <div className="flex items-center gap-3">
+          <p className="text-muted-foreground text-sm">총 {badgeHistory.length}개</p>
+          {/* 조건 충족·미발급 진단 (티켓 20260906_1432) */}
+          <BadgeDiagnosisButton userId={user.id} />
+        </div>
       </div>
 
       <BadgeHistoryTable rows={badgeHistory} />
