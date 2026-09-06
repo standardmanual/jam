@@ -33,6 +33,11 @@ tools: Read, Grep, Glob, Bash
    아직 반영 전이라는 뜻이지 로그인 문제가 아니다). Bash에 브라우저 도구가 없어 시각적 확인
    자체는 못 하더라도, `curl`로 실제 렌더링 HTML/JSON을 받아 값을 검증하는 건 가능하다 — 이
    경로를 고려하지 않고 "로그인 제약"만 이유로 대지 않는다.
+   **review 브랜치 단계(아직 staging 미반영)의 `admin` 유형 티켓**은 로컬에서 확인한다 —
+   `DEV_PROCESS_GUARDRAILS.md` 패턴 13 참고: `ADMIN_EMAILS=<dev-login 계정 이메일> npm run dev`로
+   로컬 서버를 띄우고 `curl`로 `/api/dev-login` 세션 쿠키를 받은 뒤 `/admin/...` 경로를 그
+   쿠키로 요청하면 실제 렌더링을 확인할 수 있다. `.env.local`은 절대 고치지 않는다(셸
+   환경변수로만).
 
 ## 판정 형식
 
