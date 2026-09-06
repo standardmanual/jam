@@ -67,7 +67,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('걸어온 거리', '두 발로 닿을 수 있는 범위가 다시 넓어졌습니다.', 'activity', NULL, 5, 'walking:K1', 9, '{"activity_type":"walking","distance_km":130}'::jsonb, ARRAY['walking']::text[]),
     ('걸어온 거리', '여기서부터는 거리를 세는 단위가 달라집니다.', 'activity', NULL, 6, 'walking:K1', 9, '{"activity_type":"walking","distance_km":210}'::jsonb, ARRAY['walking']::text[]),
     ('걸어온 거리', '이 정도는 한 장의 지도에 담기지 않습니다.', 'activity', NULL, 7, 'walking:K1', 9, '{"activity_type":"walking","distance_km":330}'::jsonb, ARRAY['walking']::text[]),
-    ('걸어온 거리', '화이트 룸은 이만큼을 남긴 발자국을 압니다.', 'activity', NULL, 8, 'walking:K1', 9, '{"activity_type":"walking","distance_km":550}'::jsonb, ARRAY['walking']::text[]),
+    ('걸어온 거리', '지도 밖의 거리 앞에서는 숫자를 세는 일도 그만두게 됩니다.', 'activity', NULL, 8, 'walking:K1', 9, '{"activity_type":"walking","distance_km":550}'::jsonb, ARRAY['walking']::text[]),
     -- walking:K3 · 걸은 날들 — 누적 활동일수 3일
     ('걸은 날들', '며칠을 걸었는지는 얼마나 걸었는지보다 정직합니다.', 'activity', NULL, 1, 'walking:K3', 10, '{"activity_type":"walking","active_days_count":3}'::jsonb, ARRAY['walking']::text[]),
     ('걸은 날들', '달력에 표시된 날들이 서로 이어지기 시작합니다.', 'activity', NULL, 2, 'walking:K3', 10, '{"activity_type":"walking","active_days_count":8}'::jsonb, ARRAY['walking']::text[]),
@@ -103,7 +103,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('자정의 경계인', '하루와 하루 사이를 걸어서 넘어간 사람입니다.', 'activity', 'common', NULL, 'walking:A1', 15, '{"activity_type":"walking","time_range":{"start":"23:00","end":"01:00"},"total_count":1}'::jsonb, ARRAY['walking']::text[]),
     ('자정의 경계인', '날짜가 바뀌는 자리를 여러 번 지나면 그 틈도 하나의 길이 됩니다.', 'activity', 'rare', NULL, 'walking:A1', 15, '{"activity_type":"walking","time_range":{"start":"23:00","end":"01:00"},"total_count":5}'::jsonb, ARRAY['walking']::text[]),
     ('자정의 경계인', '하루의 이음매는 이제 낯선 시간이 아니라 익숙한 구역입니다.', 'activity', 'epic', NULL, 'walking:A1', 15, '{"activity_type":"walking","time_range":{"start":"23:00","end":"01:00"},"total_count":20}'::jsonb, ARRAY['walking']::text[]),
-    ('자정의 경계인', '화이트 룸은 두 날 사이에 서 있던 사람을 알아봅니다.', 'activity', 'mystic', NULL, 'walking:A1', 15, '{"activity_type":"walking","time_range":{"start":"23:00","end":"01:00"},"total_count":50}'::jsonb, ARRAY['walking']::text[]),
+    ('자정의 경계인', '두 날 사이의 그 틈은 이제 이 사람만의 고정된 자리입니다.', 'activity', 'mystic', NULL, 'walking:A1', 15, '{"activity_type":"walking","time_range":{"start":"23:00","end":"01:00"},"total_count":50}'::jsonb, ARRAY['walking']::text[]),
     -- walking:A2 · 해와 달 사이 — 같은 날 아침 8시 이전과 저녁 8시 이후 / 1회
     --   [필터] time_range + total_count
     --   [근사] 「같은 날 아침 이전 + 저녁 이후 각 1회」를 20:00~08:00 한 구간으로 근사
@@ -186,7 +186,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     -- walking:S3 · 한 달의 궤도 — 30일 연속 / 1회
     --   [회차] 미소비 키 streak_days
     ('한 달의 궤도', '한 달을 하루도 끊지 않았습니다.', 'activity', 'epic', NULL, 'walking:S3', 30, '{"activity_type":"walking","streak_days":30,"repeat_count":1}'::jsonb, ARRAY['walking']::text[]),
-    ('한 달의 궤도', '화이트 룸은 궤도를 벗어난 적 없는 사람에게 열립니다.', 'activity', 'mystic', NULL, 'walking:S3', 30, '{"activity_type":"walking","streak_days":30,"repeat_count":2}'::jsonb, ARRAY['walking']::text[]),
+    ('한 달의 궤도', '한 달 내내 끊이지 않은 궤도, 그 자체가 증거입니다.', 'activity', 'mystic', NULL, 'walking:S3', 30, '{"activity_type":"walking","streak_days":30,"repeat_count":2}'::jsonb, ARRAY['walking']::text[]),
     -- walking:B1 · 자기 초월 — 가장 긴 거리 갱신
     ('자기 초월', '어제의 자신을 이기는 일만 남았습니다.', 'activity', NULL, 1, 'walking:B1', 31, '{"activity_type":"walking","personal_record_break":1}'::jsonb, ARRAY['walking']::text[]),
     ('자기 초월', '최고 기록이 한 번 더 뒤로 밀려났습니다.', 'activity', NULL, 2, 'walking:B1', 31, '{"activity_type":"walking","personal_record_break":2}'::jsonb, ARRAY['walking']::text[]),
@@ -304,7 +304,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('긴 하루', '한 번에 갈 수 있는 거리가 그 사람의 그릇입니다.', 'activity', 'common', NULL, 'running:L1', 4, '{"activity_type":"running","single_distance_km":15}'::jsonb, ARRAY['running']::text[]),
     ('긴 하루', '그릇의 크기가 한 번 늘어나면 되돌아가지 않습니다.', 'activity', 'rare', NULL, 'running:L1', 4, '{"activity_type":"running","single_distance_km":21}'::jsonb, ARRAY['running']::text[]),
     ('긴 하루', '한 번에 이만큼 가는 일은 각오의 문제가 됩니다.', 'activity', 'epic', NULL, 'running:L1', 4, '{"activity_type":"running","single_distance_km":32}'::jsonb, ARRAY['running']::text[]),
-    ('긴 하루', '화이트 룸은 끝까지 가본 사람에게만 문을 엽니다.', 'activity', 'mystic', NULL, 'running:L1', 4, '{"activity_type":"running","single_distance_km":42}'::jsonb, ARRAY['running']::text[]),
+    ('긴 하루', '화이트 룸도 이만큼 가본 사람 앞에서는 값을 다시 매깁니다.', 'activity', 'mystic', NULL, 'running:L1', 4, '{"activity_type":"running","single_distance_km":42}'::jsonb, ARRAY['running']::text[]),
     -- running:C1 · 오늘의 한 발 — 하루 1회 / 1회
     ('오늘의 한 발', '하루에 한 번, 그것으로 충분합니다.', 'activity', 'common', NULL, 'running:C1', 5, '{"activity_type":"running","active_days_count":1}'::jsonb, ARRAY['running']::text[]),
     ('오늘의 한 발', '하루씩 쌓은 것이 이제 눈에 보이는 크기가 되었습니다.', 'activity', 'rare', NULL, 'running:C1', 5, '{"activity_type":"running","active_days_count":30}'::jsonb, ARRAY['running']::text[]),
@@ -429,7 +429,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     --   [회차] 휴식 조건(return_gap_days)은 repeat_count와 함께 쓸 수 없다
     --   [회차] 미소비 키 return_gap_days
     ('돌아온 러너', '돌아왔다는 사실이 떠났던 사실을 덮습니다.', 'activity', 'common', NULL, 'running:X3', 27, '{"activity_type":"running","return_gap_days":14,"repeat_count":1}'::jsonb, ARRAY['running']::text[]),
-    ('돌아온 러너', '그루터기 살롱은 돌아온 사람에게 자리를 비워 둡니다.', 'activity', 'rare', NULL, 'running:X3', 27, '{"activity_type":"running","return_gap_days":14,"repeat_count":3}'::jsonb, ARRAY['running']::text[]),
+    ('돌아온 러너', '그루터기 살롱은 오래 빠진 손님의 몫도 계속 셈해 둡니다.', 'activity', 'rare', NULL, 'running:X3', 27, '{"activity_type":"running","return_gap_days":14,"repeat_count":3}'::jsonb, ARRAY['running']::text[]),
     ('돌아온 러너', '몇 번을 멈춰도 다시 돌아오는 쪽이 결국 남습니다.', 'activity', 'epic', NULL, 'running:X3', 27, '{"activity_type":"running","return_gap_days":14,"repeat_count":10}'::jsonb, ARRAY['running']::text[]),
     -- running:W1 · 한여름의 러너 — 7~8월 / 1회
     --   [필터] month + total_count
@@ -451,7 +451,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('심박의 주인', '심장이 어디까지 견디는지 아는 사람입니다.', 'activity', 'common', NULL, 'running:H1', 31, '{"activity_type":"running","avg_heartrate_bpm":160,"duration_minutes":30,"repeat_count":1}'::jsonb, ARRAY['running']::text[]),
     ('심박의 주인', '견딜 수 있는 자리에 스스로 머무는 법을 익혔습니다.', 'activity', 'rare', NULL, 'running:H1', 31, '{"activity_type":"running","avg_heartrate_bpm":160,"duration_minutes":30,"repeat_count":10}'::jsonb, ARRAY['running']::text[]),
     ('심박의 주인', '높은 심박을 오래 끌고 가는 일은 훈련의 영역입니다.', 'activity', 'epic', NULL, 'running:H1', 31, '{"activity_type":"running","avg_heartrate_bpm":160,"duration_minutes":30,"repeat_count":30}'::jsonb, ARRAY['running']::text[]),
-    ('심박의 주인', '화이트 룸은 심장이 한계에 닿는 순간을 기억합니다.', 'activity', 'mystic', NULL, 'running:H1', 31, '{"activity_type":"running","avg_heartrate_bpm":160,"duration_minutes":30,"repeat_count":100}'::jsonb, ARRAY['running']::text[]),
+    ('심박의 주인', '화이트 룸도 이 심장 앞에서는 문턱을 낮춥니다.', 'activity', 'mystic', NULL, 'running:H1', 31, '{"activity_type":"running","avg_heartrate_bpm":160,"duration_minutes":30,"repeat_count":100}'::jsonb, ARRAY['running']::text[]),
     -- running:H2 · 180의 리듬 — 평균 케이던스 180spm 이상 / 1회
     --   [회차] 미소비 키 avg_cadence
     ('180의 리듬', '발이 땅에 닿는 간격까지 관리하는 단계입니다.', 'activity', 'common', NULL, 'running:H2', 32, '{"activity_type":"running","avg_cadence":180,"repeat_count":1}'::jsonb, ARRAY['running']::text[]),
@@ -514,9 +514,9 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('안장 위의 하루', '하루의 길이가 이 사람의 거리를 정하지 못합니다.', 'activity', 'mystic', NULL, 'cycling:L1', 6, '{"activity_type":"cycling","single_distance_km":200}'::jsonb, ARRAY['cycling']::text[]),
     -- cycling:E1 · 언덕의 사람 — 한 번에 상승고도 500m 이상
     ('언덕의 사람', '오르막을 피하지 않는 사람이 따로 있습니다.', 'activity', 'common', NULL, 'cycling:E1', 7, '{"activity_type":"cycling","single_elevation_m":500}'::jsonb, ARRAY['cycling']::text[]),
-    ('언덕의 사람', '그루터기 살롱의 단골들은 오르막 초입에서 이 사람을 알아봅니다.', 'activity', 'rare', NULL, 'cycling:E1', 7, '{"activity_type":"cycling","single_elevation_m":1000}'::jsonb, ARRAY['cycling']::text[]),
+    ('언덕의 사람', '그루터기 살롱도 이 오르막 앞에서는 값을 매기지 못합니다.', 'activity', 'rare', NULL, 'cycling:E1', 7, '{"activity_type":"cycling","single_elevation_m":1000}'::jsonb, ARRAY['cycling']::text[]),
     ('언덕의 사람', '경사도가 아니라 남은 거리만 봅니다.', 'activity', 'epic', NULL, 'cycling:E1', 7, '{"activity_type":"cycling","single_elevation_m":1600}'::jsonb, ARRAY['cycling']::text[]),
-    ('언덕의 사람', '화이트 룸은 정상보다 그 앞의 마지막 굽이를 기억합니다.', 'activity', 'mystic', NULL, 'cycling:E1', 7, '{"activity_type":"cycling","single_elevation_m":2500}'::jsonb, ARRAY['cycling']::text[]),
+    ('언덕의 사람', '정상보다 그 앞의 마지막 굽이가 이 오르막의 진짜 얼굴입니다.', 'activity', 'mystic', NULL, 'cycling:E1', 7, '{"activity_type":"cycling","single_elevation_m":2500}'::jsonb, ARRAY['cycling']::text[]),
     -- cycling:C1 · 오늘의 바퀴 — 하루 1회 / 1회
     ('오늘의 바퀴', '하루에 한 번, 그것으로 충분합니다.', 'activity', 'common', NULL, 'cycling:C1', 8, '{"activity_type":"cycling","active_days_count":1}'::jsonb, ARRAY['cycling']::text[]),
     ('오늘의 바퀴', '하루치가 여러 달로 불어나면 그것을 습관이라고 부릅니다.', 'activity', 'rare', NULL, 'cycling:C1', 8, '{"activity_type":"cycling","active_days_count":25}'::jsonb, ARRAY['cycling']::text[]),
@@ -532,7 +532,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('이달의 라이더', '한 달의 총량은 하루의 컨디션을 이깁니다.', 'activity', 'common', NULL, 'cycling:C3', 10, '{"activity_type":"cycling","monthly_km":400}'::jsonb, ARRAY['cycling']::text[]),
     ('이달의 라이더', '총량이 커질수록 잘 탄 날과 못 탄 날의 차이가 흐려집니다.', 'activity', 'rare', NULL, 'cycling:C3', 10, '{"activity_type":"cycling","monthly_km":867}'::jsonb, ARRAY['cycling']::text[]),
     ('이달의 라이더', '한 달이라는 단위가 이 사람에게는 짧습니다.', 'activity', 'epic', NULL, 'cycling:C3', 10, '{"activity_type":"cycling","monthly_km":1400}'::jsonb, ARRAY['cycling']::text[]),
-    ('이달의 라이더', '화이트 룸은 한 달을 통째로 밀어붙인 자를 알아봅니다.', 'activity', 'mystic', NULL, 'cycling:C3', 10, '{"activity_type":"cycling","monthly_km":2200}'::jsonb, ARRAY['cycling']::text[]),
+    ('이달의 라이더', '한 달을 통째로 밀어붙인 페이스에는 더 보탤 설명이 없습니다.', 'activity', 'mystic', NULL, 'cycling:C3', 10, '{"activity_type":"cycling","monthly_km":2200}'::jsonb, ARRAY['cycling']::text[]),
     -- cycling:C4 · 계절의 라이더 — 한 계절에 1,300km
     --   [필터] season + distance_km
     ('계절의 라이더', '계절 하나를 바퀴로 통과했습니다.', 'activity', 'common', NULL, 'cycling:C4', 11, '{"activity_type":"cycling","season":"all","distance_km":1300}'::jsonb, ARRAY['cycling']::text[]),
@@ -641,7 +641,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('안장 위의 심장', '다리보다 먼저 한계를 말하는 기관이 있습니다.', 'activity', 'common', NULL, 'cycling:H2', 31, '{"activity_type":"cycling","avg_heartrate_bpm":150,"duration_minutes":60,"repeat_count":1}'::jsonb, ARRAY['cycling']::text[]),
     ('안장 위의 심장', '그 기관이 한계를 말하는 지점이 조금씩 뒤로 밀립니다.', 'activity', 'rare', NULL, 'cycling:H2', 31, '{"activity_type":"cycling","avg_heartrate_bpm":150,"duration_minutes":60,"repeat_count":10}'::jsonb, ARRAY['cycling']::text[]),
     ('안장 위의 심장', '심박수가 높은 채로 버티는 시간이 훈련의 전부가 됩니다.', 'activity', 'epic', NULL, 'cycling:H2', 31, '{"activity_type":"cycling","avg_heartrate_bpm":150,"duration_minutes":60,"repeat_count":30}'::jsonb, ARRAY['cycling']::text[]),
-    ('안장 위의 심장', '화이트 룸의 문은 심장이 가장 크게 뛸 때 열립니다.', 'activity', 'mystic', NULL, 'cycling:H2', 31, '{"activity_type":"cycling","avg_heartrate_bpm":150,"duration_minutes":60,"repeat_count":100}'::jsonb, ARRAY['cycling']::text[]),
+    ('안장 위의 심장', '심장이 가장 크게 뛰는 그 순간이 이 사람의 진짜 한계선입니다.', 'activity', 'mystic', NULL, 'cycling:H2', 31, '{"activity_type":"cycling","avg_heartrate_bpm":150,"duration_minutes":60,"repeat_count":100}'::jsonb, ARRAY['cycling']::text[]),
     -- cycling:Q1 · 바퀴 자국의 증명 — 미션 '2주 안에 330km' 완료
     ('바퀴 자국의 증명', '미션으로만 얻는 열쇠입니다. 누적·이정표 계열의 마지막 문을 엽니다.', 'activity', 'epic', NULL, 'cycling:Q1', 32, '{"activity_type":"cycling","mission_reward":true}'::jsonb, ARRAY['cycling']::text[]),
     -- cycling:Q2 · 속도의 증명 — 미션 '4주 안에 한 번에 30km 이상, 평균 속도 25km/h 이상 / 3회' 완료
@@ -676,12 +676,12 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('고도의 사람', '한 번에 오른 높이가 그 사람의 기준입니다.', 'activity', 'common', NULL, 'hiking:P1', 3, '{"activity_type":"hiking","single_elevation_m":500}'::jsonb, ARRAY['hiking']::text[]),
     ('고도의 사람', '하루치 상승만으로 산 하나가 통째로 들어갑니다.', 'activity', 'rare', NULL, 'hiking:P1', 3, '{"activity_type":"hiking","single_elevation_m":750}'::jsonb, ARRAY['hiking']::text[]),
     ('고도의 사람', '한 번의 오르막에 하루의 고도를 전부 벌어들입니다.', 'activity', 'epic', NULL, 'hiking:P1', 3, '{"activity_type":"hiking","single_elevation_m":1200}'::jsonb, ARRAY['hiking']::text[]),
-    ('고도의 사람', '화이트 룸의 문은 이런 상승의 끝에서 잠깐 열립니다.', 'activity', 'mystic', NULL, 'hiking:P1', 3, '{"activity_type":"hiking","single_elevation_m":1800}'::jsonb, ARRAY['hiking']::text[]),
+    ('고도의 사람', '이런 상승의 끝은 누구에게나 허락되지 않습니다.', 'activity', 'mystic', NULL, 'hiking:P1', 3, '{"activity_type":"hiking","single_elevation_m":1800}'::jsonb, ARRAY['hiking']::text[]),
     -- hiking:A1 · 높은 곳 — 한 번에 최고 도달 고도 700m 이상
     ('높은 곳', '얼마나 올랐는가가 아니라 어디까지 닿았는가입니다.', 'activity', 'common', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":700}'::jsonb, ARRAY['hiking']::text[]),
     ('높은 곳', '구름과 같은 높이에 서 본 사람은 등고선을 다르게 읽습니다.', 'activity', 'rare', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":1200}'::jsonb, ARRAY['hiking']::text[]),
     ('높은 곳', '여기서부터는 높이를 세는 대신 남은 봉우리를 셉니다.', 'activity', 'epic', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":1600}'::jsonb, ARRAY['hiking']::text[]),
-    ('높은 곳', '화이트 룸은 가장 멀리 닿았던 숨을 기억합니다.', 'activity', 'mystic', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":1900}'::jsonb, ARRAY['hiking']::text[]),
+    ('높은 곳', '가장 멀리 닿았던 숨은 그 자체로 지워지지 않는 흔적입니다.', 'activity', 'mystic', NULL, 'hiking:A1', 4, '{"activity_type":"hiking","max_elevation_m":1900}'::jsonb, ARRAY['hiking']::text[]),
     -- hiking:L1 · 산에서의 하루 — 한 번에 3시간
     ('산에서의 하루', '해가 뜨고 지는 동안 산에 있었습니다.', 'activity', 'common', NULL, 'hiking:L1', 5, '{"activity_type":"hiking","duration_minutes":180}'::jsonb, ARRAY['hiking']::text[]),
     ('산에서의 하루', '그루터기 살롱은 하루를 통째로 숲에 두고 가는 손님을 반깁니다.', 'activity', 'rare', NULL, 'hiking:L1', 5, '{"activity_type":"hiking","duration_minutes":300}'::jsonb, ARRAY['hiking']::text[]),
@@ -694,9 +694,9 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     ('종주', '능선의 끝을 묻는 사람에게 답할 수 있는 자리입니다.', 'activity', 'mystic', NULL, 'hiking:L2', 6, '{"activity_type":"hiking","single_distance_km":35}'::jsonb, ARRAY['hiking']::text[]),
     -- hiking:C1 · 산에 간 날 — 하루 1회 / 1회
     ('산에 간 날', '하루에 한 번, 그것으로 충분합니다.', 'activity', 'common', NULL, 'hiking:C1', 7, '{"activity_type":"hiking","active_days_count":1}'::jsonb, ARRAY['hiking']::text[]),
-    ('산에 간 날', '그 하루가 여러 번 반복되면 습관이라는 이름이 붙습니다.', 'activity', 'rare', NULL, 'hiking:C1', 7, '{"activity_type":"hiking","active_days_count":12}'::jsonb, ARRAY['hiking']::text[]),
-    ('산에 간 날', '달력에서 산이 있던 날이 없던 날보다 또렷합니다.', 'activity', 'epic', NULL, 'hiking:C1', 7, '{"activity_type":"hiking","active_days_count":40}'::jsonb, ARRAY['hiking']::text[]),
-    ('산에 간 날', '이제 일정이 산을 비켜 갑니다.', 'activity', 'mystic', NULL, 'hiking:C1', 7, '{"activity_type":"hiking","active_days_count":120}'::jsonb, ARRAY['hiking']::text[]),
+    ('산에 간 날', '산에 오르는 하루가 특별한 일에서 흔한 일로 바뀌었습니다.', 'activity', 'rare', NULL, 'hiking:C1', 7, '{"activity_type":"hiking","active_days_count":12}'::jsonb, ARRAY['hiking']::text[]),
+    ('산에 간 날', '다리가 먼저 산으로 방향을 잡는 날이 늘었습니다.', 'activity', 'epic', NULL, 'hiking:C1', 7, '{"activity_type":"hiking","active_days_count":40}'::jsonb, ARRAY['hiking']::text[]),
+    ('산에 간 날', '이제 산에 가지 않는 날이 오히려 낯섭니다.', 'activity', 'mystic', NULL, 'hiking:C1', 7, '{"activity_type":"hiking","active_days_count":120}'::jsonb, ARRAY['hiking']::text[]),
     -- hiking:C3 · 계절의 등반자 — 한 계절에 상승고도 4,000m
     --   [필터] season + elevation_gain_m
     ('계절의 등반자', '계절 하나를 고도로 통과했습니다.', 'activity', 'common', NULL, 'hiking:C3', 8, '{"activity_type":"hiking","season":"all","elevation_gain_m":4000}'::jsonb, ARRAY['hiking']::text[]),
@@ -894,7 +894,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     --   [회차] 휴식 조건(interval_days)은 repeat_count와 함께 쓸 수 없다
     --   [회차] 미소비 키 interval_days
     ('산길을 잊지 않는', '끊기지 않는 것이 멀리 가는 것보다 어렵습니다.', 'activity', 'common', NULL, 'trail_running:G1', 16, '{"activity_type":"trail_running","interval_days":14,"repeat_count":3}'::jsonb, ARRAY['trail_running']::text[]),
-    ('산길을 잊지 않는', '그루터기 살롱은 잊지 않고 돌아오는 발소리를 알아봅니다.', 'activity', 'rare', NULL, 'trail_running:G1', 16, '{"activity_type":"trail_running","interval_days":14,"repeat_count":8}'::jsonb, ARRAY['trail_running']::text[]),
+    ('산길을 잊지 않는', '그루터기 살롱 앞을 지나는 발소리가 어느새 낯설지 않습니다.', 'activity', 'rare', NULL, 'trail_running:G1', 16, '{"activity_type":"trail_running","interval_days":14,"repeat_count":8}'::jsonb, ARRAY['trail_running']::text[]),
     ('산길을 잊지 않는', '간격이 벌어지지 않는 사람은 산에서 따로 분류됩니다.', 'activity', 'epic', NULL, 'trail_running:G1', 16, '{"activity_type":"trail_running","interval_days":14,"repeat_count":20}'::jsonb, ARRAY['trail_running']::text[]),
     ('산길을 잊지 않는', '산길은 이 사람이 비운 자리를 가져본 적이 없습니다.', 'activity', 'mystic', NULL, 'trail_running:G1', 16, '{"activity_type":"trail_running","interval_days":14,"repeat_count":52}'::jsonb, ARRAY['trail_running']::text[]),
     -- trail_running:R1 · 더 멀리 — 가장 긴 거리 갱신
@@ -944,7 +944,7 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
     --   [회차] 휴식 조건(return_gap_days)은 repeat_count와 함께 쓸 수 없다
     --   [회차] 미소비 키 return_gap_days
     ('돌아온 트레일러', '돌아왔다는 사실이 떠났던 사실을 덮습니다.', 'activity', 'common', NULL, 'trail_running:X2', 25, '{"activity_type":"trail_running","return_gap_days":30,"repeat_count":1}'::jsonb, ARRAY['trail_running']::text[]),
-    ('돌아온 트레일러', '그루터기 살롱은 오래 비운 자리도 그대로 남겨 둡니다.', 'activity', 'rare', NULL, 'trail_running:X2', 25, '{"activity_type":"trail_running","return_gap_days":30,"repeat_count":3}'::jsonb, ARRAY['trail_running']::text[]),
+    ('돌아온 트레일러', '그루터기 살롱 문턱은 오래 비워도 높아지지 않습니다.', 'activity', 'rare', NULL, 'trail_running:X2', 25, '{"activity_type":"trail_running","return_gap_days":30,"repeat_count":3}'::jsonb, ARRAY['trail_running']::text[]),
     ('돌아온 트레일러', '몇 번을 멀어져도 결국 같은 들머리에 서 있습니다.', 'activity', 'epic', NULL, 'trail_running:X2', 25, '{"activity_type":"trail_running","return_gap_days":30,"repeat_count":10}'::jsonb, ARRAY['trail_running']::text[]),
     -- trail_running:W1 · 한겨울의 트레일러 — 12~2월 / 1회
     --   [필터] month + total_count
