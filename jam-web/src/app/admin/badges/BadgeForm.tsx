@@ -179,15 +179,14 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch('/api/admin/badges')
+        // 티켓 20260906_1422: 배지 테이블 전체 조회 대신 서버에서 조건에 맞는 합계만 계산해
+        // 받는다(엔드포인트: /api/admin/badges/sibling-weight).
+        const params = new URLSearchParams({ item_book_id: itemBookId, rarity })
+        if (badge?.id) params.set('excludeId', badge.id)
+        const res = await fetch(`/api/admin/badges/sibling-weight?${params.toString()}`)
         const data = await res.json()
         if (!res.ok || cancelled) return
-        type BadgeListRow = { id: string; type: string; item_book_id: string | null; rarity: string; drop_weight: number | null; deleted_at: string | null }
-        const siblings = ((data.badges ?? []) as BadgeListRow[]).filter(
-          (b) => b.type === 'item' && b.item_book_id === itemBookId && b.rarity === rarity && !b.deleted_at && b.id !== (badge?.id ?? '')
-        )
-        const sum = siblings.reduce((s, b) => s + (b.drop_weight ?? 1.0), 0)
-        if (!cancelled) setFetchedSiblingWeightSum(sum)
+        if (!cancelled) setFetchedSiblingWeightSum(data.sum ?? 0)
       } catch {
         if (!cancelled) setFetchedSiblingWeightSum(null)
       }
