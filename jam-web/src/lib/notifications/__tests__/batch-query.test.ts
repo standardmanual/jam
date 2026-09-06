@@ -65,6 +65,12 @@ function createStubClient(tables: Record<string, Row[]>) {
       is: () => builder,
       not: () => builder,
       gte: () => builder,
+      /**
+       * PostgREST의 `or=` 표현식은 문자열 하나라 스텁이 해석하지 않는다 — **행을 거르지
+       * 않는다.** 이 파일이 검증하는 것은 정렬·청크·페이징이고, 등급/레벨 필터의 의미는
+       * `batch-drafts.test.ts`가 순수 함수 쪽에서 본다(티켓 20260905_0038).
+       */
+      or: () => builder,
       in: (column: string, values: unknown[]) => {
         inValues.push({ column, values })
         return builder

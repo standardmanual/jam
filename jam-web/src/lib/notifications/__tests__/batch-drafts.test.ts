@@ -597,6 +597,7 @@ describe('⑥ 팔로잉 활동 — 하루 상한 사람 2명 (R15)', () => {
       badgeId: 'b1',
       badgeName: '별을 삼킨 바퀴',
       rarity: 'mystic',
+      level: null,
     },
   ]
 
@@ -642,6 +643,7 @@ describe('⑥ 팔로잉 활동 — 하루 상한 사람 2명 (R15)', () => {
         badgeId: 'b1',
         badgeName: '별을 삼킨 바퀴',
         rarity: 'mystic',
+        level: null,
       },
       {
         kind: 'collection',
@@ -664,11 +666,45 @@ describe('⑥ 팔로잉 활동 — 하루 상한 사람 2명 (R15)', () => {
     expectContract(drafts)
   })
 
+  it('v5 무한레벨형 — 등급이 없어도 초안이 만들어지고 Lv.N으로 말한다 (티켓 20260905_0038)', () => {
+    // 레벨형은 `badges.rarity`가 NULL이다. 이 경로가 막혀 193종 26계열의 획득이
+    // 팔로워에게 한 건도 알려지지 않았다.
+    const leveled: FollowingCandidate[] = [
+      {
+        kind: 'rare_badge',
+        recipientId: 'me',
+        actorId: 'a1',
+        at: '2026-08-25T05:00:00Z',
+        priority: 2,
+        badgeId: 'b9',
+        badgeName: '걸어온 거리',
+        rarity: null,
+        level: 6,
+      },
+    ]
+    const drafts = selectFollowingDrafts(leveled, today)
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0].payload).toMatchObject({ level: 6 })
+    // 등급이 없는 배지에 rarity 키를 만들어 넣지 않는다 — 「Common」으로 접히는 경로를 없앤다
+    expect(drafts[0].payload).not.toHaveProperty('rarity')
+    expect(notificationPlainText(viewOf(drafts[0]))).toBe('예린님이 걸어온 거리 Lv.6을 획득했어요')
+    expectContract(drafts)
+  })
+
+  it('등급형과 레벨형이 겹치면 게이트를 통과한 등급형이 먼저 온다', () => {
+    const mixed: FollowingCandidate[] = [
+      { kind: 'rare_badge', recipientId: 'me', actorId: 'a1', at: '2026-08-25T05:00:00Z', priority: 2, badgeId: 'b9', badgeName: '걸어온 거리', rarity: null, level: 8 },
+      { kind: 'rare_badge', recipientId: 'me', actorId: 'a2', at: '2026-08-25T04:00:00Z', priority: 1, badgeId: 'b2', badgeName: '녹슨 열쇠', rarity: 'epic', level: null },
+    ]
+    const drafts = selectFollowingDrafts(mixed, today)
+    expect(drafts.map((d) => d.actorUserId)).toEqual(['a2', 'a1'])
+  })
+
   it('상한이 「사람 수」다 — 세 사람이면 두 사람만, 각자의 나머지는 접힌다', () => {
     const many: FollowingCandidate[] = [
-      { kind: 'rare_badge', recipientId: 'me', actorId: 'a1', at: '2026-08-25T05:00:00Z', priority: 0, badgeId: 'b1', badgeName: '별을 삼킨 바퀴', rarity: 'mystic' },
+      { kind: 'rare_badge', recipientId: 'me', actorId: 'a1', at: '2026-08-25T05:00:00Z', priority: 0, badgeId: 'b1', badgeName: '별을 삼킨 바퀴', rarity: 'mystic', level: null },
       { kind: 'collection', recipientId: 'me', actorId: 'a1', at: '2026-08-25T06:00:00Z', priority: 2, itemBookId: 'book-1', bookName: '잃어버린 시간' },
-      { kind: 'rare_badge', recipientId: 'me', actorId: 'a2', at: '2026-08-25T04:00:00Z', priority: 1, badgeId: 'b2', badgeName: '녹슨 열쇠', rarity: 'epic' },
+      { kind: 'rare_badge', recipientId: 'me', actorId: 'a2', at: '2026-08-25T04:00:00Z', priority: 1, badgeId: 'b2', badgeName: '녹슨 열쇠', rarity: 'epic', level: null },
       { kind: 'collection', recipientId: 'me', actorId: 'a3', at: '2026-08-25T03:00:00Z', priority: 2, itemBookId: 'book-2', bookName: '오아시스 자판기' },
     ]
     const drafts = selectFollowingDrafts(many, today)

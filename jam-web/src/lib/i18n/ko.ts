@@ -872,6 +872,16 @@ export const ko = {
      * 제거된 뒤로는 이 조합에서만 쓰인다.
      */
     msgRareBadgeEarned: '{rarity} 배지 {badgeName}{을/를} 획득했어요',
+    /**
+     * #29의 **무한레벨형** 변형 — 등급이 없는 배지(`badges.rarity IS NULL`)라
+     * 「{rarity} 배지」를 부를 수 없다(티켓 20260905_0038). 레벨 표기는 「Lv.N」 고정
+     * (UX Writing 가이드 용어표). `msgFollowingActorPrefix`와 합성해 쓴다.
+     *
+     * 레벨은 **배지 이름과 한 슬롯**이다(`{badgeName}`에 「걸어온 거리 Lv.6」이 들어온다) —
+     * 슬롯을 나누면 레벨이 비었을 때 「걸어온 거리 를 획득했어요」처럼 조사만 남는다
+     * (토크나이저가 빈 슬롯을 통째로 버린다).
+     */
+    msgLeveledBadgeEarned: '{badgeName}{을/를} 획득했어요',
     msgFollowingCollectionComplete: '{actor}님이 {bookName}{을/를} 다 모았어요',
     msgFollowingMissionCompleteOne: '{actor}님이 {missionTitle}{을/를} 완료했어요',
     msgFollowingMissionCompleteMany: '{actor}님 외 {others}이 {missionTitle}{을/를} 완료했어요',

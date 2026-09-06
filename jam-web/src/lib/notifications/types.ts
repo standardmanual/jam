@@ -224,13 +224,17 @@ export interface NotificationPayloadMap {
     target_count?: number
   }
   /**
-   * 29 팔로잉 희귀 배지 — epic/mystic만.
+   * 29 팔로잉 희귀 배지 — Epic·Mystic **또는** 무한레벨형 Lv.6 이상
+   * (`FOLLOWING_LEVEL_THRESHOLD`, 티켓 20260905_0038).
    * `more_count`는 R15(사람 단위 묶음) — 「소식이 N건 더 있어요」
    */
   following_rare_badge: {
     badge_id: string
     badge_name: string
-    rarity: BadgeRarity
+    /** 등급형·반복형만. 무한레벨형은 **키 자체가 없다**(등급이 존재하지 않는다) */
+    rarity?: BadgeRarity
+    /** 무한레벨형만. 등급과 배타다 — 둘 중 하나만 들어온다 */
+    level?: number
     more_count?: number
   }
   /** 30 팔로잉 컬렉션 완성 */

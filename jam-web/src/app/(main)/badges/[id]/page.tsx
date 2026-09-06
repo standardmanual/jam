@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import SafeImage from '@/components/SafeImage'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { ActivityType, BadgeCondition, BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserCheckinBadgeEarnRow } from '@/types/database'
+import { BadgeRarity, BadgeRow, ItemBookRow, PoiRow, UserActivityBadgeRow, UserCheckinBadgeEarnRow } from '@/types/database'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
@@ -14,9 +14,9 @@ import ItemEarnHistory from './ItemEarnHistory'
 import BadgeHeroSection from './BadgeHeroSection'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import BadgeConditionCard from './BadgeConditionCard'
+import { formatBadgeConditionText } from '@/lib/badgeConditionText'
 import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
-import { formatPaceSecPerKm } from '@/types/strava'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
 
@@ -24,162 +24,6 @@ function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
   const diff = new Date(expiresAt).getTime() - Date.now()
   return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
-}
-
-const ACTIVITY_LABELS: Record<ActivityType, string> = {
-  cycling: '자전거 타기',
-  running: '러닝',
-  trail_running: '트레일러닝',
-  hiking: '하이킹',
-  walking: '걷기',
-}
-
-const SEASON_LABELS: Record<string, string> = {
-  spring: '봄(3~5월)',
-  summer: '여름(6~8월)',
-  fall: '가을(9~11월)',
-  winter: '겨울(12~2월)',
-  all: '전 계절',
-}
-
-const MONTH_LABELS: Record<number, string> = {
-  1: '1월', 2: '2월', 3: '3월', 4: '4월', 5: '5월', 6: '6월',
-  7: '7월', 8: '8월', 9: '9월', 10: '10월', 11: '11월', 12: '12월',
-}
-
-const DAY_OF_WEEK_LABELS: Record<string, string> = {
-  sunday: '일요일',
-  monday: '월요일',
-  tuesday: '화요일',
-  wednesday: '수요일',
-  thursday: '목요일',
-  friday: '금요일',
-  saturday: '토요일',
-}
-
-// 배열이 정확히 월~금(순서 무관)이면 "월~금"으로 요약
-function dayOfWeekArrayLabel(days: string[]): string {
-  const weekdaySet = new Set(['monday', 'tuesday', 'wednesday', 'thursday', 'friday'])
-  if (days.length === 5 && days.every((d) => weekdaySet.has(d))) return '월~금'
-  return days.map((d) => DAY_OF_WEEK_LABELS[d] ?? d).join(', ')
-}
-
-// 단일 월 또는 월 배열(예: 장마철 6~7월)을 사람이 읽기 쉬운 라벨로 변환
-function monthLabel(month: number | number[]): string {
-  if (Array.isArray(month)) {
-    return month.map((m) => MONTH_LABELS[m] ?? `${m}월`).join('·')
-  }
-  return MONTH_LABELS[month] ?? `${month}월`
-}
-
-// "HH:MM" 시작 시간을 사람이 읽기 쉬운 시간대 이름으로 변환
-function timeSlotLabel(start: string): string {
-  const [h] = start.split(':').map(Number)
-  if (Number.isNaN(h)) return ''
-  if (h >= 4 && h < 8) return '새벽'
-  if (h >= 8 && h < 11) return '아침'
-  if (h >= 11 && h < 14) return '점심'
-  if (h >= 14 && h < 18) return '오후'
-  if (h >= 18 && h < 22) return '저녁'
-  return '심야'
-}
-
-function formatConditionText(condition: BadgeCondition | null, badgeName: string): string {
-  if (condition?.mission_reward) {
-    return `'${badgeName}' 미션을 완료하면 받을 수 있는 배지예요.`
-  }
-  if (!condition || Object.keys(condition).length === 0) {
-    return '관리자가 직접 발급하는 배지예요.'
-  }
-
-  const actType = condition.activity_type ? ACTIVITY_LABELS[condition.activity_type] : '활동'
-  const parts: string[] = []
-
-  if (condition.distance_km !== undefined) {
-    parts.push(`${actType}으로 누적 ${condition.distance_km}km 이상 달성`)
-  }
-  // day_of_week: 배열 + total_count 동시 지정이면 "요일별 독립 카운터" 모드이므로
-  // 일반 total_count 문구 대신 합쳐진 문구 하나로 표현하고, 아래 total_count 블록은 건너뛴다.
-  const dayOfWeekHandlesTotalCount = Array.isArray(condition.day_of_week) && condition.total_count !== undefined
-  if (condition.day_of_week !== undefined) {
-    if (Array.isArray(condition.day_of_week)) {
-      if (dayOfWeekHandlesTotalCount) {
-        parts.push(`${dayOfWeekArrayLabel(condition.day_of_week)} 각 요일마다 ${actType} ${condition.total_count}회씩 완료`)
-      } else {
-        parts.push(`${dayOfWeekArrayLabel(condition.day_of_week)}에 ${actType} 활동`)
-      }
-    } else {
-      parts.push(`매주 ${DAY_OF_WEEK_LABELS[condition.day_of_week] ?? condition.day_of_week}에 ${actType} 활동`)
-    }
-  }
-  if (condition.total_count !== undefined && !dayOfWeekHandlesTotalCount) {
-    parts.push(`${actType} ${condition.total_count}회 이상 완료`)
-  }
-  if (condition.active_days_count !== undefined) {
-    parts.push(`${actType}로 누적 ${condition.active_days_count}일 이상 활동`)
-  }
-  if (condition.streak_days !== undefined) {
-    parts.push(`${condition.streak_days}일 연속으로 활동 완료`)
-  }
-  if (condition.elevation_gain_m !== undefined) {
-    parts.push(`누적 고도 상승 ${condition.elevation_gain_m}m 이상 달성`)
-  }
-  if (condition.min_speed_kmh !== undefined) {
-    parts.push(`단일 ${actType} 활동의 평균 속도 ${condition.min_speed_kmh}km/h 이상`)
-  }
-  if (condition.max_pace_sec_per_km !== undefined) {
-    parts.push(`단일 ${actType} 활동의 평균 페이스 ${formatPaceSecPerKm(condition.max_pace_sec_per_km)} 이내`)
-  }
-  if (condition.duration_minutes !== undefined) {
-    parts.push(`단일 ${actType} 활동 ${condition.duration_minutes}분 이상 이동`)
-  }
-  if (condition.weekend_duration_hours !== undefined) {
-    parts.push(`주말 ${actType} 활동 ${condition.weekend_duration_hours}시간 이상 이동`)
-  }
-  if (condition.weekly_count !== undefined) {
-    parts.push(`한 주에 ${actType} ${condition.weekly_count}회 이상 완료`)
-  }
-  if (condition.monthly_km !== undefined) {
-    const label = condition.month ? `${monthLabel(condition.month)} 한 달간` : '한 달간'
-    parts.push(`${label} ${actType}으로 ${condition.monthly_km}km 이상 달성`)
-  } else if (condition.month !== undefined) {
-    parts.push(`${monthLabel(condition.month)}에 ${actType} 활동 완료`)
-  }
-  if (condition.season_count !== undefined && condition.season) {
-    parts.push(`${SEASON_LABELS[condition.season] ?? condition.season}에 ${actType} ${condition.season_count}회 이상 완료`)
-  }
-  if (condition.season_count_all !== undefined) {
-    parts.push(`봄·여름·가을·겨울 각 계절 ${actType} ${condition.season_count_all}회 이상 완료`)
-  }
-  if (condition.temperature_min_c !== undefined) {
-    parts.push(`활동 중 기온이 ${condition.temperature_min_c}°C 이상인 조건에서 ${actType} 완료`)
-  }
-  if (condition.temperature_max_c !== undefined) {
-    parts.push(`활동 중 기온이 ${condition.temperature_max_c}°C 이하인 조건에서 ${actType} 완료`)
-  }
-  if (condition.time_range) {
-    const { start, end } = condition.time_range
-    const slot = timeSlotLabel(start)
-    parts.push(`${slot ? `${slot} 시간대(${start}~${end})` : `${start}~${end} 시간대`}에 ${actType} 활동`)
-  }
-  if (parts.length === 0) {
-    return '관리자가 직접 발급하는 배지예요.'
-  }
-
-  // 서로 다른 활동에서 각각 달성해도 인정되는 속성 조건이 2개 이상이면 안내 추가
-  const perActivityAttrs = [
-    condition.min_speed_kmh,
-    condition.max_pace_sec_per_km,
-    condition.duration_minutes,
-    condition.elevation_gain_m,
-    condition.temperature_min_c,
-    condition.temperature_max_c,
-  ].filter((v) => v !== undefined).length
-  const crossAttrNote = perActivityAttrs >= 2
-    ? ' (각 조건은 서로 다른 활동에서 달성해도 인정돼요)'
-    : ''
-
-  return parts.join(', ') + '하면 획득할 수 있어요.' + crossAttrNote
 }
 
 interface BadgeDetailPageProps {
@@ -665,7 +509,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       {/* info-section */}
       <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
         {/* 획득 조건 다크 카드 */}
-        <BadgeConditionCard text={formatConditionText(badgeRow.condition_json, badgeRow.name)} />
+        <BadgeConditionCard text={formatBadgeConditionText(badgeRow.condition_json, badgeRow.name)} />
 
         {/* 선행 배지 조건 */}
         {prereqStatus.length > 0 && (

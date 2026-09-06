@@ -246,8 +246,11 @@ function objList(payload: Record<string, unknown>, key: string): Record<string, 
  * 'common'이라는 문자열이 실제로 들어온 경우와 «등급이 존재하지 않음»은 서로 다른 상태다.
  */
 function asRarity(value: string): BadgeRarity | null {
-  if (!value) return null
-  return value === 'rare' || value === 'epic' || value === 'mystic' ? value : 'common'
+  if (value === 'common' || value === 'rare' || value === 'epic' || value === 'mystic') return value
+  // 빈 값(등급 없음)도, 아는 등급이 아닌 값(오타·미래 등급)도 **Common으로 강등하지 않는다.**
+  // 조용한 강등은 «등급이 없다»와 «가장 낮은 등급이다»를 같은 것으로 만든다 —
+  // 0036이 `RarityBadge`에서 없앤 폴백과 같은 유형이다(티켓 20260905_0038).
+  return null
 }
 
 /** 결산 payload를 문구·착지 판정이 쓰는 형태로 편다. 중복은 여기서 한 번만 제거한다 */
@@ -642,11 +645,26 @@ export function buildNotificationMessage(view: NotificationView): NotificationMe
       // 템플릿에 합쳐 고정 텍스트로 두면 이 종만 규칙의 예외가 된다(20260825 정정).
       // `msgRareBadgeEarned`는 원래 ① 레거시 #2의 문구였고, 20260827_016에서 레거시 경로가
       // 사라진 뒤에는 **이 분기 전용**이다.
+      const rarity = asRarity(str(p, 'rarity'))
+      // 무한레벨형은 등급이 없다 — 「 배지 …」로 슬롯만 비우면 **문장이 무너진다**
+      // (토크나이저가 빈 슬롯을 통째로 버린다). 문장 자체를 갈아 끼운다(티켓 20260905_0038).
+      if (!rarity) {
+        const level = num(p, 'level')
+        const badgeName = str(p, 'badge_name')
+        return withFollowingMore(p, {
+          template: `${n.msgFollowingActorPrefix}${n.msgLeveledBadgeEarned}`,
+          vars: {
+            actor: nameOf(view.actor),
+            // 레벨이 비어 있어도(payload 손상) 문장이 성립하도록 이름과 한 슬롯으로 넘긴다
+            badgeName: level > 0 ? `${badgeName} Lv.${level}` : badgeName,
+          },
+        })
+      }
       return withFollowingMore(p, {
         template: `${n.msgFollowingActorPrefix}${n.msgRareBadgeEarned}`,
         vars: {
           actor: nameOf(view.actor),
-          rarity: RARITY_LABEL[str(p, 'rarity') as BadgeRarity] ?? '',
+          rarity: RARITY_LABEL[rarity],
           badgeName: str(p, 'badge_name'),
         },
       })
