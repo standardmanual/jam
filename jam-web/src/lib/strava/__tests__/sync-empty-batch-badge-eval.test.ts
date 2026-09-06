@@ -196,7 +196,7 @@ describe('processFetchedActivities — 새 활동 0건이어도 배지 평가는
     // abusing_policy 조회를 위한 single() 스텁 보강
     const from = supabase.from.bind(supabase)
     supabase.from = ((table: string) => {
-      const builder = from(table) as Record<string, unknown>
+      const builder = from(table) as unknown as Record<string, unknown>
       if (table === 'abusing_policy') {
         builder.single = async () => ({
           data: {
@@ -219,7 +219,7 @@ describe('processFetchedActivities — 새 활동 0건이어도 배지 평가는
         })
       }
       return builder
-    }) as typeof supabase.from
+    }) as unknown as typeof supabase.from
 
     await processFetchedActivities(supabase, 'user-1', 'token', [fast], false, 'sync')
 
