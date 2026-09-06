@@ -3,7 +3,7 @@ import type { TodayCardRow } from '@/types/database'
 import TodayCardList from './TodayCardList'
 import TodayDateNav from './TodayDateNav'
 import { normalizeDateParam, kstDayBoundsIso } from '@/lib/admin/today-calendar'
-import { singleQueryParam } from '@/lib/searchParams'
+import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
 type BadgeLabelRow = { id: string; name: string; rarity: string; type: string; point_reward: number }
 
@@ -13,7 +13,7 @@ type BadgeLabelRow = { id: string; name: string; rarity: string; type: string; p
  * (티켓 20260906_1312).
  */
 interface AdminTodayPageProps {
-  searchParams: Promise<{ date?: string | string[] }>
+  searchParams: Promise<{ date?: SearchParamValue }>
 }
 
 export default async function AdminTodayPage({ searchParams }: AdminTodayPageProps) {

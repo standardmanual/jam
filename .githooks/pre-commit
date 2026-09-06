@@ -235,4 +235,58 @@ if [ -n "$badges_hits" ]; then
   echo "" >&2
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────
+# `searchParams`를 다시 단수 `string`으로 선언하는 재발을 막는다 (티켓 20260906_1350).
+#
+# 배경: Next는 같은 쿼리 키가 두 번 오면(`?q=a&q=b`) `string[]`을 넘긴다. 새 화면을 만들 때
+# `searchParams`를 단수 `string`으로 선언하면 그 사실이 타입체크에서 가려져 런타임 500으로
+# 이어진다 — 실제로 두 번 반복됐다(티켓 20260906_1158, 20260906_1312).
+# `jam-web/src/lib/searchParams.ts`에 정답 타입(`SearchParamValue`·`SearchParamsPromise`)이
+# 있으니 새 선언은 그걸 참조해야 한다.
+#
+# 범위: **이번 커밋에서 새로 추가되는 줄만** 본다(전수 검사 아님 — 예외 목록 관리 부채를
+# 피한다). 관찰된 두 사고 모두 한 줄짜리 선언(`Promise<{ x?: string }>` 형태)이었으므로
+# 한 줄 안에서 `searchParams`·`Promise<`·`string`이 함께 나오는 경우만 본다. 같은 줄에
+# `string[]`(배열 허용)이나 공용 타입(`SearchParamValue`·`SearchParamsPromise`)이 있으면
+# 안전한 선언이므로 제외한다.
+#
+# 탈출구: 오탐이면 JAM_SKIP_SEARCHPARAMS_LINT=1 로 우회하고 사유를 커밋 메시지에 남긴다.
+if [ "${JAM_SKIP_SEARCHPARAMS_LINT:-0}" != "1" ]; then
+  sp_hits=""
+  while IFS= read -r -d '' f; do
+    case "$f" in
+      *.ts|*.tsx) ;;
+      *) continue ;;
+    esac
+    while IFS= read -r line; do
+      case "$line" in
+        \+\+\+*) continue ;;
+      esac
+      body="${line#+}"
+      case "$body" in
+        *searchParams*Promise\<*string*)
+          case "$body" in
+            *'string[]'*|*SearchParamValue*|*SearchParamsPromise*) ;;
+            *)
+              sp_hits="${sp_hits}  - ${f}: ${body}\n"
+              ;;
+          esac
+          ;;
+      esac
+    done < <(git diff --cached -U0 -- "$f" | grep '^\+')
+  done < <(git diff --cached --name-only -z --diff-filter=ACM -- 'jam-web/src/*.ts' 'jam-web/src/*.tsx' 'jam-web/src/**/*.ts' 'jam-web/src/**/*.tsx')
+
+  if [ -n "$sp_hits" ]; then
+    echo "" >&2
+    echo "차단(pre-commit): searchParams가 단수 string으로 선언된 것으로 보입니다." >&2
+    printf "%b" "$sp_hits" >&2
+    echo "  같은 쿼리 키가 두 번 오면(?q=a&q=b) Next는 string[]을 넘겨 런타임 500이 됩니다" >&2
+    echo "  (티켓 20260906_1158, 20260906_1312 실제 사고)." >&2
+    echo "  jam-web/src/lib/searchParams.ts의 SearchParamValue / SearchParamsPromise를 쓰세요." >&2
+    echo "  오탐이면 JAM_SKIP_SEARCHPARAMS_LINT=1 git commit ... 로 우회하고 사유를 남기세요." >&2
+    echo "" >&2
+    exit 1
+  fi
+fi
+
 exit 0
