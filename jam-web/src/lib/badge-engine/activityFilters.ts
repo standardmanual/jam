@@ -373,7 +373,23 @@ function restConditionShapeError(
 }
 
 /**
- * 휴식 키 하나의 «구간 술어» — 「어떤 구간이 후보인가」(eligible)와 「무엇을 재는가」(measured).
+ * 휴식 키가 «클수록 좋음」인지 판정 — **`conditionRegistry`의 `direction`이 단일 출처다.**
+ *
+ * 대부분(`rest_after_*`·`return_gap_days`)은 공백이 길수록 조건에 가까워지지만,
+ * `interval_days`만 반대다 — 이름 그대로 «다음 활동까지의 간격»이고, 카탈로그(「격주의
+ * 약속」·「산을 잊지 않는」)가 요구하는 뜻은 «간격이 이 값을 넘기지 않고 계속 돌아온다»다
+ * (티켓 20260906_1423 방향 수정 — DB에 `interval_days`를 쓰는 배지는 이 12종뿐임을 실측
+ * 확인했다). 여기서 다시 표를 만들지 않는 이유: 방향을 두 곳에 적으면 어긋날 수 있고,
+ * 이 값은 이미 `badgeConditionText.ts`(「이상」/「이하」 문구)·`badge-families.ts`
+ * (레벨 스텝 난이도)가 보는 필드 메타의 단일 출처다.
+ */
+export function isRestKeyLowerBetter(key: RestConditionKey): boolean {
+  return getConditionField(key)?.direction === 'lower'
+}
+
+/**
+ * 휴식 키 하나의 «구간 술어» — 「어떤 구간이 후보인가」(eligible)·「무엇을 재는가」(measured)·
+ * 「임계값과 어떻게 비교하는가」(compare, `isRestKeyLowerBetter`가 방향의 단일 출처).
  *
  * **`evaluateRestConditions`(발급 판정)와 `collectRestOccurrences`(회차)가 이 함수 하나를
  * 공유한다.** 두 곳이 각자 구간을 고르면 「발급은 됐는데 진행률은 다르다」가 된다 —
@@ -382,12 +398,20 @@ function restConditionShapeError(
 function restKeyPredicate(
   key: RestConditionKey,
   condition: BadgeCondition
-): { eligible: (i: RestInterval) => boolean; measured: (i: RestInterval) => number } {
+): {
+  eligible: (i: RestInterval) => boolean
+  measured: (i: RestInterval) => number
+  compare: (measured: number, value: number) => boolean
+} {
+  const compare: (measured: number, value: number) => boolean = isRestKeyLowerBetter(key)
+    ? (m, v) => m <= v
+    : (m, v) => m >= v
   switch (key) {
     case 'rest_after_streak':
       return {
         eligible: (i) => i.streakBefore >= (condition.streak_days as number),
         measured: (i) => i.restDays,
+        compare,
       }
     case 'rest_after_long':
       // 「장거리」의 정의는 **조건에 실제로 든 짝 필드 전부**를 만족해야 성립한다(AND).
@@ -398,11 +422,12 @@ function restKeyPredicate(
           (condition.single_distance_km === undefined || i.maxDistanceKmBefore >= condition.single_distance_km) &&
           (condition.duration_minutes === undefined || i.maxDurationMinBefore >= condition.duration_minutes),
         measured: (i) => i.restDays,
+        compare,
       }
     case 'return_gap_days':
-      return { eligible: () => true, measured: (i) => i.restDays }
+      return { eligible: () => true, measured: (i) => i.restDays, compare }
     case 'interval_days':
-      return { eligible: () => true, measured: (i) => i.intervalDays }
+      return { eligible: () => true, measured: (i) => i.intervalDays, compare }
   }
 }
 
@@ -438,12 +463,12 @@ export function collectRestOccurrences(
 
   const key = keys[0]
   const value = condition[key] as number
-  const { eligible, measured } = restKeyPredicate(key, condition)
+  const { eligible, measured, compare } = restKeyPredicate(key, condition)
   // 구간 생성은 `evaluateRestConditions`와 **같은 두 함수**(`restPool` → `buildRestIntervals`)를
   // 쓴다 — 앵커 하한·종목 필터·걷기 축1 게이트·날짜 정렬이 한 곳에만 정의돼 있다.
   const intervals = buildRestIntervals(restPool(condition, activities, options?.anchorDate))
   // 구간은 날짜 오름차순이라 복귀 활동도 시간순이다(earn_history 순서 규약).
-  return intervals.filter((i) => eligible(i) && measured(i) >= value).map((i) => i.resume)
+  return intervals.filter((i) => eligible(i) && compare(measured(i), value)).map((i) => i.resume)
 }
 
 /**
@@ -516,7 +541,9 @@ const REST_KEY_SHORTFALL_REASON: Record<RestConditionKey, string> = {
   rest_after_streak: '연속 활동 후 휴식 부족',
   rest_after_long: '장거리 활동 후 휴식 부족',
   return_gap_days: '복귀 전 휴식 부족',
-  interval_days: '활동 간격 부족',
+  // 「작을수록 좋음」 방향이라 실패 사유도 반대다 — 간격이 «모자란» 게 아니라 «넘친» 것이다
+  // (티켓 20260906_1423 방향 수정, REST_KEY_DIRECTION 참고).
+  interval_days: '활동 간격 초과',
 }
 
 /**
@@ -576,9 +603,16 @@ export function evaluateRestConditions(
     const measured = predicate.measured
     const eligible = intervals.filter(predicate.eligible)
 
-    const hit = eligible.find((i) => measured(i) >= value)
+    const hit = eligible.find((i) => predicate.compare(measured(i), value))
     if (!hit) {
-      const best = eligible.length > 0 ? Math.max(...eligible.map(measured)) : 0
+      // 「클수록 좋음」이면 실패해도 가장 근접한 값은 최댓값, 「작을수록 좋음」이면 최솟값이다
+      // (interval_days만 후자 — isRestKeyLowerBetter).
+      const best =
+        eligible.length === 0
+          ? 0
+          : isRestKeyLowerBetter(key)
+            ? Math.min(...eligible.map(measured))
+            : Math.max(...eligible.map(measured))
       return {
         kind: 'fail',
         reason: REST_KEY_SHORTFALL_REASON[key],
@@ -612,6 +646,6 @@ function describeRestRequirement(key: RestConditionKey, condition: BadgeConditio
     case 'return_gap_days':
       return `복귀 전 휴식 ${condition.return_gap_days}일`
     case 'interval_days':
-      return `활동 간격 ${condition.interval_days}일`
+      return `활동 간격 ${condition.interval_days}일 이하`
   }
 }

@@ -1106,11 +1106,16 @@ export const CONDITION_FIELDS = [
     min: 1,
     max: 365,
     step: 1,
-    direction: 'higher',
+    // ⚠️ 휴식 4종 중 유일하게 「작을수록 좋음」이다 — 나머지(rest_after_*·return_gap_days)는
+    // 공백이 길수록 조건에 가까워지지만, interval_days는 «간격을 이 값 안으로 유지»가 뜻이다
+    // (카탈로그 「격주의 약속」·「산을 잊지 않는」 조건문과 대조해 확정, 티켓 20260906_1423
+    // 방향 수정). 이 값이 `badgeConditionText.ts`의 「이상/이하」 문구와
+    // `activityFilters.ts`의 `isRestKeyLowerBetter`(평가 비교 방향) 양쪽의 단일 출처다.
+    direction: 'lower',
     // return_gap_days와 같은 «순수 공백» 조건 — 90일 하한이 걸린다
     evaluation: 'engine',
     chip: (c) => `간격 ${c.interval_days}일`,
-    detail: (c) => `활동 간격 ${c.interval_days}일 이상`,
+    detail: (c) => `활동 간격 ${c.interval_days}일 이하`,
     form: integerForm('intervalDays', { section: 'pattern', label: '활동 간격 (일)', placeholder: '예: 90' }),
   }),
   field({

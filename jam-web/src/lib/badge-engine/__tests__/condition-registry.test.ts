@@ -27,6 +27,7 @@ import {
   formatConditionDetail,
 } from '../conditionRegistry'
 import { LOWER_IS_BETTER_KEYS, classifyBadgeProgressKind } from '../badgeProgress'
+import { REST_CONDITION_KEYS, isRestKeyLowerBetter } from '../activityFilters'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition } from '@/types/database'
 import { readFileSync } from 'node:fs'
@@ -53,6 +54,16 @@ function makeActivity(overrides: Partial<NormalizedActivity> = {}): NormalizedAc
 const activities = [
   makeActivity(),
   makeActivity({ stravaId: 2, startDate: '2026-07-21T05:30:00Z', startDateLocal: '2026-07-21T05:30:00' }),
+]
+
+/**
+ * `interval_days`만 전용 이력이 필요하다 — 방향이 반대(「작을수록 좋음」, 티켓 20260906_1423)라
+ * 위 `activities`(간격 1일)는 어떤 유효 임계값(min:1)에도 항상 통과해 「단독으로도 fail한다」를
+ * 보일 수 없다. 간격을 임계값보다 넉넉히 벌려 「너무 오래 걸려 돌아왔다」로 legit하게 fail한다.
+ */
+const wideGapActivities = [
+  makeActivity(),
+  makeActivity({ stravaId: 2, startDate: '2026-07-30T05:30:00Z', startDateLocal: '2026-07-30T05:30:00' }),
 ]
 
 /**
@@ -284,13 +295,32 @@ describe('레지스트리 — 필드 구성', () => {
   })
 
   it('방향성(direction)이 badgeProgress의 LOWER_IS_BETTER와 어긋나지 않는다', () => {
+    // 휴식 4종은 `LOWER_IS_BETTER_KEYS`(=`LOWER_IS_BETTER_AXIS_KEYS`, ScalarAxisKey 전용)의
+    // 관할이 아니다 — 진행 축이 `buildRestAxis`라는 별도 경로를 타고, 그 방향은
+    // `isRestKeyLowerBetter`(=이 레지스트리의 direction 그 자체)가 단일 출처다. 아래에서
+    // 따로 검증한다(티켓 20260906_1423 방향 수정 — `interval_days`가 최초의 «lower 휴식 키»).
     for (const meta of CONDITION_FIELDS) {
+      if (REST_CONDITION_KEYS.includes(meta.key as (typeof REST_CONDITION_KEYS)[number])) continue
       if (meta.direction === 'lower') expect(LOWER_IS_BETTER_KEYS.has(meta.key)).toBe(true)
     }
     for (const key of LOWER_IS_BETTER_KEYS) {
       const meta = CONDITION_FIELDS.find((f) => f.key === key)
       expect(meta?.direction).toBe('lower')
     }
+  })
+
+  it('휴식 4종의 방향 — isRestKeyLowerBetter가 레지스트리 direction과 정확히 일치한다', () => {
+    // interval_days만 「작을수록 좋음」이고 나머지(rest_after_*·return_gap_days)는
+    // 「클수록 좋음」이다(티켓 20260906_1423 방향 수정) — 카탈로그가 이 넷 중 셋과
+    // 하나를 반대로 요구하는 걸 실측으로 확인했다.
+    for (const key of REST_CONDITION_KEYS) {
+      const meta = getConditionField(key)
+      expect(isRestKeyLowerBetter(key)).toBe(meta?.direction === 'lower')
+    }
+    expect(isRestKeyLowerBetter('interval_days')).toBe(true)
+    expect(isRestKeyLowerBetter('rest_after_streak')).toBe(false)
+    expect(isRestKeyLowerBetter('rest_after_long')).toBe(false)
+    expect(isRestKeyLowerBetter('return_gap_days')).toBe(false)
   })
 
   it('짝 필드(pairedWith)는 전부 실재하는 키를 가리킨다', () => {
@@ -484,8 +514,10 @@ describe('fail-closed — ① 평가할 수 없는 키가 든 조건은 발급�
     // 평가가 열렸다고 조건이 헐거워지면 안 된다. 짝 필드가 없거나(연속·장거리),
     // 순수 공백 하한(90일) 미만이거나, 공백이 없으면 전부 막힌다.
     for (const key of V5_REST_4_KEYS) {
+      // interval_days만 방향이 반대라 검증용 이력도 다르다 — 위 상수 선언부 주석 참고.
+      const history = key === 'interval_days' ? wideGapActivities : activities
       const cond = { activity_type: 'running', [key]: V5_SAMPLE_VALUES[key] } as BadgeCondition
-      const result = evaluateConditionDetailed(cond, activities)
+      const result = evaluateConditionDetailed(cond, history)
       expect(result.pass, `${key} 단독 조건이 통과했다`).toBe(false)
       expect(result.reason, `${key}`).not.toContain('평가 구현 대기')
     }

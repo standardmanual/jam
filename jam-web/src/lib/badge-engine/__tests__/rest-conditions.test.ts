@@ -329,8 +329,17 @@ describe('휴식 — 순수 공백 조건에 엔진 하한을 걸지 않는다',
     expect(r.pass).toBe(true) // 151일 공백 ≥ 30일
   })
 
-  it('interval_days도 마찬가지다', () => {
-    expect(checkCondition({ activity_type: 'running', interval_days: 3 }, longGap)).toBe(true)
+  it('interval_days는 방향이 반대라 이 불변식도 반대로 검증한다', () => {
+    // return_gap_days·rest_after_*는 공백이 «길수록» 조건에 가까워지지만, interval_days는
+    // 이름 그대로 «다음 활동까지의 간격»이라 반대다(티켓 20260906_1423 방향 수정) — 90일 하한
+    // 미도입 가이드도 「길게 쉬어야 인정하는 배지」 전제라 interval_days엔 애초에 적용되지
+    // 않는다. 여기서 확인하는 것은 같은 층위의 다른 불변식이다: 낮은 임계값을
+    // 「설정 오류」로 특별 취급하지 않고 그대로 평가한다.
+    const shortGap = [act('2026-06-01'), act('2026-06-03')] // 2일 차
+    const r = evaluateConditionDetailed({ activity_type: 'running', interval_days: 3 }, shortGap)
+    expect(r.reason).not.toBe('휴식 조건 설정 오류')
+    expect(r.pass).toBe(true) // 2일 간격 ≤ 3일
+    expect(checkCondition({ activity_type: 'running', interval_days: 3 }, longGap)).toBe(false) // 151일 간격 > 3일
   })
 
   it('조건값 자체의 판정은 그대로다', () => {

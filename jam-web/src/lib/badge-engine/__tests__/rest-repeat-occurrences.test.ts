@@ -263,7 +263,9 @@ describe('회귀 — repeat_count가 없는 휴식 조건의 판정은 변하지
   it('순수 공백 조건', () => {
     expect(checkCondition({ activity_type: 'running', return_gap_days: 90 }, longGap)).toBe(true)
     expect(checkCondition({ activity_type: 'running', return_gap_days: 200 }, longGap)).toBe(false)
-    expect(checkCondition({ activity_type: 'running', interval_days: 3 }, longGap)).toBe(true)
+    // interval_days는 이 티켓의 §C(방향 반전, rest-conditions.test.ts에서 별도 검증)로
+    // 방향이 바뀌었다 — 151일 간격은 이제 「3일 이내」를 만족하지 못해 false가 맞다.
+    expect(checkCondition({ activity_type: 'running', interval_days: 3 }, longGap)).toBe(false)
   })
 
   it('연속 후 휴식 조건', () => {

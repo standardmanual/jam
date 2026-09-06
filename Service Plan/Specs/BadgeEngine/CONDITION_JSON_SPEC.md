@@ -271,9 +271,9 @@ interface BadgeGateRequirement {
 | 필드 | 판정 방식 |
 |------|-----------|
 | `rest_after_streak` | **연속 `streak_days`일 활동 직후**의 쉰 일수 ≥ 조건값 |
-| `rest_after_long` | **`single_distance_km` 이상 활동일 직후**의 쉰 일수 ≥ 조건값 |
+| `rest_after_long` | **`single_distance_km` 또는 `duration_minutes` 이상 활동일 직후**의 쉰 일수 ≥ 조건값 |
 | `return_gap_days` | 인접 두 활동 사이의 **쉰 일수** ≥ 조건값 (「겨울잠」) |
-| `interval_days` | 인접 두 활동의 **날짜 차이** ≥ 조건값 |
+| `interval_days` | 인접 두 활동의 **날짜 차이** ≤ 조건값 (부등호 방향이 나머지 셋과 **반대** — 2026-09-06, 티켓 20260906_1423) |
 
 - **쉰 일수 = 날짜 차이 − 1.** 1일·3일에 활동했으면 쉰 일수 1일, 날짜 차이 2일이다
 - 판정은 `activityFilters.ts`의 `evaluateRestConditions()` 한 곳. 상세 규칙과 안전장치는
@@ -282,13 +282,19 @@ interface BadgeGateRequirement {
 **세 가지 제약**이 다른 필드와 다르다:
 
 1. **짝 필드가 강제된다** — `rest_after_streak`엔 `streak_days`, `rest_after_long`엔
-   `single_distance_km`이 없으면 fail-closed가 「짝 필드 없음」으로 막는다(§4)
+   `single_distance_km` 또는 `duration_minutes` 중 하나가 없으면 fail-closed가
+   「짝 필드 없음」으로 막는다(§4)
 2. **순수 공백 두 종(`return_gap_days`·`interval_days`)은 90일 이상만 인정한다** —
-   그 미만은 「휴식 조건 설정 오류」다(역인센티브 차단)
-3. **`repeat_count`와 함께 쓸 수 없다** — 「회차와 함께 쓸 수 없는 조건」으로 막힌다
+   그 미만은 「휴식 조건 설정 오류」다(역인센티브 차단). 엔진은 이 하한을 강제하지
+   않는다(2026-09-05 확정) — 카탈로그 시딩 단계의 책임이다
+3. **`repeat_count`와 함께 쓰려면 휴식 키가 정확히 1개여야 한다** (2026-09-06, 티켓
+   20260906_1423) — 2개 이상이거나, `activity_type`·휴식 키·짝 필드·`repeat_count` 외의
+   키가 섞이면 여전히 「회차와 함께 쓸 수 없는 조건」으로 막힌다. 상세는
+   BADGE_ENGINE_UNIFIED.md §2.16 「회차(`repeat_count`)와 함께 쓸 수 없다」
 
-⚠️ **`rest_after_long`은 짝 필드 `single_distance_km`이 아직 `pending`이라 실제로는 계속
-막힌다.** v5 스칼라 7종을 `engine`으로 뒤집는 작업이 선행돼야 열린다.
+`rest_after_long`은 짝 필드가 둘로 늘어 `duration_minutes` 짝(7종)은 열렸지만,
+`single_distance_km` 짝(9종/3계열)은 그 필드 자체가 아직 `pending`이라 계속 막힌다 —
+v5 스칼라 7종을 `engine`으로 뒤집는 작업(티켓 20260906_0110 ①)이 선행돼야 열린다.
 
 ---
 

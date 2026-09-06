@@ -85,6 +85,9 @@ import {
   // (티켓 20260906_1423 §A-4 — 세 경로가 같은 회차를 봐야 한다).
   restRepeatBlockReason,
   unconsumedRestRepeatKeys,
+  // 휴식 축의 방향(대부분 「클수록 좋음」, interval_days만 「작을수록 좋음」) — 레지스트리의
+  // direction이 단일 출처다(티켓 20260906_1423 방향 수정).
+  isRestKeyLowerBetter,
 } from './activityFilters'
 // 축 키 목록은 `index.ts`(발급 판정)와 **같은 파일**에서 온다 — 예전에는 이 파일이
 // `PER_ACTIVITY_KEYS`를 재선언했고, 두 목록이 어긋나면 진행률과 발급이 갈라졌다
@@ -952,12 +955,22 @@ function buildRestAxis(condition: BadgeCondition, metrics: UserPeriodMetrics, la
     evaluation.bestDays !== undefined &&
     evaluation.requiredDays !== undefined
   ) {
-    return makeHigherBetterAxis(
-      evaluation.shortfallKey,
-      evaluation.bestDays,
-      evaluation.requiredDays,
-      withRegistryLabel(labelMap, evaluation.shortfallKey)
-    )
+    // 대부분은 「클수록 좋음」(공백이 길수록 임계에 가깝다)이지만 `interval_days`만
+    // 반대다 — `bestDays`가 그 키에서는 «지금까지 본 가장 짧은 간격»이라 임계값 이하로
+    // 내려갈수록 통과에 가까워진다(티켓 20260906_1423 방향 수정).
+    return isRestKeyLowerBetter(evaluation.shortfallKey)
+      ? makeLowerBetterRatioAxis(
+          evaluation.shortfallKey,
+          evaluation.bestDays,
+          evaluation.requiredDays,
+          withRegistryLabel(labelMap, evaluation.shortfallKey)
+        )
+      : makeHigherBetterAxis(
+          evaluation.shortfallKey,
+          evaluation.bestDays,
+          evaluation.requiredDays,
+          withRegistryLabel(labelMap, evaluation.shortfallKey)
+        )
   }
 
   return null
