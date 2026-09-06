@@ -695,7 +695,20 @@ export async function evaluateBadgesDetailed(
     dryRun?: boolean
     triggeredBy?: string
     silent?: boolean
-    /** 시뮬레이터 전용: true이면 첫 싱크 게이트를 강제 적용하되 initial_sync_done은 갱신하지 않음 */
+    /**
+     * `isFirstSync` 판정을 실제 `users.initial_sync_done` 대신 이 값으로 강제한다.
+     * **값을 명시하는 순간(true/false 어느 쪽이든) `initial_sync_done` 갱신 블록
+     * (아래 §「첫 싱크 완료 플래그 세팅」) 자체가 통째로 스킵된다** — 호출자가 이미
+     * 첫 싱크 여부를 자기 목적에 맞게 통제하겠다고 선언한 것이므로, 실제 상태 전환은
+     * 실제 동기화 경로(`strava_sync`, 이 옵션을 넘기지 않는 호출)에만 맡긴다.
+     * - `true`: 시뮬레이터 전용 — 첫 싱크 게이트를 강제 적용해 테스트하되 실제 온보딩
+     *   상태는 건드리지 않는다 (`/api/admin/simulate`).
+     * - `false`: 카탈로그 재평가 전용 — 첫 싱크 게이트를 강제 해제해(등급 제한 없이
+     *   정상 발급) 실제 온보딩 상태도 건드리지 않는다 (`reevaluateUsersForCatalog`,
+     *   티켓 20260906_1431). 이 배치는 실제 첫 동기화가 아니므로 "처음이라 제한한다"도
+     *   "이걸로 첫 동기화가 끝났다"도 성립하지 않는다.
+     * - `undefined`(기본): 실제 `initial_sync_done`을 그대로 신뢰하고, 필요하면 갱신도 한다.
+     */
     overrideFirstSync?: boolean
   }
 ): Promise<{
@@ -1259,8 +1272,16 @@ export async function evaluateBadgesDetailed(
     }
   }
 
-  // 첫 싱크 완료 플래그 세팅 (dryRun·시뮬레이터 모드에서는 갱신 안 함)
-  if (!dryRun && !overrideFirstSync && !userInitialSyncDone) {
+  // 첫 싱크 완료 플래그 세팅 — overrideFirstSync를 **명시적으로 넘긴 호출**(true/false
+  // 어느 쪽이든)은 전부 스킵한다. `!overrideFirstSync`(값 기준)가 아니라
+  // `overrideFirstSync === undefined`(호출 의도 기준)로 갈라야 하는 이유: 시뮬레이터의
+  // `overrideFirstSync: true`뿐 아니라 카탈로그 재평가의 `overrideFirstSync: false`도
+  // 「내가 첫 싱크 여부를 이미 통제하고 있으니 실제 온보딩 상태는 건드리지 말라」는 같은
+  // 선언이다 — `false`를 `!overrideFirstSync`로 걸렀다면 «갱신하지 않겠다는 명시적 지시»가
+  // «지시 없음»과 같은 값(둘 다 falsy)이 되어 조용히 갱신이 실행되는 사고가 난다
+  // (티켓 20260906_1431 게이트 리뷰 FAIL — 카탈로그 재평가가 미동기화 유저의
+  // initial_sync_done을 배지 발급 없이도 true로 조용히 전환시킴).
+  if (!dryRun && overrideFirstSync === undefined && !userInitialSyncDone) {
     const usersTable = supabase.from('users')
     await usersTable.update({ initial_sync_done: true }).eq('id', userId)
 
@@ -1271,6 +1292,12 @@ export async function evaluateBadgesDetailed(
     //
     // 첫 배지는 결산 안에서 **헤드라인을 가져간다**(A8·E3). 최초 연동은 과거 활동을
     // 한꺼번에 훑어 배지가 쏟아지는데, 그 숫자보다 "첫 배지가 도착했다"가 중요하다.
+    //
+    // 카탈로그 재평가(overrideFirstSync: false)는 이 블록에 아예 들어오지 않으므로
+    // recordActivityRecap도 만들지 않는다 — 의도한 동작이다. 재평가는 진짜 첫 동기화가
+    // 아니라 「달리지도 않았는데 배지가 쏟아진」 상황이므로, 그걸 온보딩 결산 하이라이트로
+    // 포장하면 오히려 잘못된 서사가 된다. 진짜 첫 동기화가 나중에 실제로 일어나면 그때
+    // (overrideFirstSync 없이) 이 블록이 정상적으로 한 번 실행되어 recap도 그때 만들어진다.
     if (earned.length > 0) {
       await recordActivityRecap(userId, { first_badge_id: earned[0].id })
     }

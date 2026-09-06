@@ -26,6 +26,17 @@
  * - `triggeredBy`는 `'strava_sync'`와 구분되는 `CATALOG_REEVALUATION_TRIGGER`
  *   (`'catalog_reevaluation'`)를 새로 쓴다 — `engine_decision_log`·
  *   `user_activity_badges.triggered_by`(자유 텍스트, CHECK 제약 없음)에 그대로 남는다.
+ * - **`overrideFirstSync: false`를 항상 명시한다 — `initial_sync_done`은 이 배치가 절대
+ *   건드리지 않는다.** 최초 구현은 이 옵션을 넘기지 않았는데, `initial_sync_done=false`인
+ *   (Strava를 한 번도 동기화한 적 없는) 유저가 배지를 하나도 못 받아도 이 배치만으로
+ *   "첫 동기화 완료"로 조용히 전환되는 게이트 리뷰 FAIL이 나왔다(티켓 20260906_1431).
+ *   `evaluateBadgesDetailed`의 갱신 가드를 `overrideFirstSync === undefined` 기준으로
+ *   고쳐(index.ts), `false`를 명시하면 (1) 그 컬럼을 절대 안 건드리고 (2) 첫 싱크 게이트
+ *   (Lv.1/Common 제한)도 강제로 풀린다 — 재평가로 나오는 배지는 실제 이력으로 정당하게
+ *   얻은 것이므로 등급 제한 없이 정상 발급하는 게 맞다. 부작용으로 이 배치는
+ *   `recordActivityRecap`(진짜 첫 동기화 때만 만드는 "첫 배지" 결산)도 절대 만들지
+ *   않는다 — 재평가는 진짜 첫 동기화가 아니므로 의도한 동작이다. 실제 첫 동기화가 나중에
+ *   일어나면 그때(`overrideFirstSync` 없이) 정상적으로 한 번 전환·결산된다.
  *
  * ## 무엇을 재사용하고 무엇을 새로 만들지 않았는가
  * 평가 로직은 전부 `evaluateBadgesDetailed` 한 곳에 있다 — 유저별로 `activities: []`를
@@ -110,6 +121,18 @@ export async function reevaluateUsersForCatalog(
         dryRun,
         triggeredBy: CATALOG_REEVALUATION_TRIGGER,
         silent: true,
+        // 반드시 명시적으로 넘긴다 (undefined 아님) — 게이트 리뷰 FAIL(티켓 20260906_1431)
+        // 사유: 넘기지 않으면 initial_sync_done=false인(=Strava를 한 번도 동기화한 적
+        // 없는) 유저가 이 배치에 걸리기만 해도 배지를 하나도 못 받아도 "첫 동기화 완료"로
+        // 조용히 전환됐다. `false`를 명시하면 evaluateBadgesDetailed가
+        // `overrideFirstSync === undefined`로만 그 전환 블록을 실행하므로(index.ts 참조)
+        // 이 배치는 그 컬럼을 절대 건드리지 않는다 — 동시에 `isFirstSync`도 강제로
+        // false가 되어 첫 싱크 게이트(Lv.1/Common 제한)도 걸리지 않는다: 재평가로
+        // 나오는 배지는 실제 활동 이력으로 정당하게 얻은 것이므로 등급 제한 없이
+        // 정상 발급하는 것이 맞다. 부작용: 진짜 첫 동기화 때 나가는 "첫 배지" 결산
+        // (recordActivityRecap)도 이 배치에서는 절대 만들어지지 않는다 — 의도한 동작이다
+        // (재평가는 진짜 첫 동기화가 아니다). 상세: BADGE_ENGINE_UNIFIED.md §2.17.
+        overrideFirstSync: false,
       })
       const pointsAwarded = earned.reduce((sum, b) => sum + (pointRewardById.get(b.id) ?? 0), 0)
       const counterIncrements = counted.reduce((sum, c) => sum + c.addedEarnCount, 0)
