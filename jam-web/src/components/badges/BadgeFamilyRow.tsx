@@ -103,7 +103,10 @@ export default function BadgeFamilyRow({
         <BadgeLevelGauge
           name={family.name}
           level={currentLevel}
-          current={values?.current ?? '—'}
+          nextLevel={nextLevel}
+          // 현재값이 없으면 `—` 대신 null — DS가 칸 자체를 비운다(티켓 20260906_2344).
+          // 「—」는 아무 사실도 말하지 않으면서 레벨칩 자리를 밀어냈다.
+          current={values?.current ?? null}
           next={values?.next ?? '—'}
           left={values?.left ?? null}
           fraction={values?.fraction ?? 0}

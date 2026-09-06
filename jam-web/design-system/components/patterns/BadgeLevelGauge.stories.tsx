@@ -292,3 +292,28 @@ export const GrayscaleNextLevel: Story = {
     expect(getComputedStyle(img!).filter).toContain('grayscale');
   },
 };
+
+/**
+ * **레벨칩은 값 행 맨 앞에 항상 있다**(티켓 20260906_2344, 사용자 확정).
+ * 받은 게 있으면 현재 레벨, 없으면 `nextLevel`(다음 목표)을 그린다.
+ *
+ * 누적 숫자가 없는 기록형 계열은 `current={null}`이라 「—」 대신 칸 자체가 빠지고
+ * `[Lv.1] / 기록 갱신 1회 · 전월 대비 1.2배`로 읽힌다 — 예전에는 아무 사실도 말하지 않는
+ * 「—」가 레벨칩 자리를 밀어내고 있었다.
+ *
+ * 칩 폭이 52px 고정이라 뒤따르는 5ch 우측 정렬이 유지된다 — 자릿수가 달라도 `/`가 세로로 정렬된다.
+ */
+export const LevelChipAlwaysLeads: Story = {
+  render: () => (
+    <div style={{ background: 'var(--color-surface)', padding: 'var(--spacing-16)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-16)' }}>
+      {/* 아직 아무것도 못 받음 — nextLevel로 폴백 */}
+      <BadgeLevelGauge name="걸어온 거리" level={null} nextLevel={1} current="0.0" next="5km" left="5km 남음" fraction={0} metaText="다음 Lv.1" />
+      {/* 받은 게 있음 — 현재 레벨 */}
+      <BadgeLevelGauge name="걸어온 거리" level={7} nextLevel={8} current="120" next="150km" left="30km 남음" fraction={0.8} metaText="다음 Lv.8" />
+      {/* 기록형 — 누적 숫자가 없어 current가 null이다 */}
+      <BadgeLevelGauge name="지난달의 나에게" level={null} nextLevel={1} current={null} next="기록 갱신 1회 · 전월 대비 1.2배" left={null} fraction={0} metaText="다음 Lv.1" />
+      {/* 자릿수가 크게 달라도 `/`가 세로로 정렬된다 */}
+      <BadgeLevelGauge name="달려온 거리" level={128} nextLevel={129} current="98120" next="100000km" left="1880km 남음" fraction={0.98} metaText="다음 Lv.129" />
+    </div>
+  ),
+}

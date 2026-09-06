@@ -8,8 +8,13 @@ export interface BadgeLevelGaugeProps {
    * (티켓 20260906_2344 — 헤더 우측은 퍼센트 숫자만 둔다). `null`이면 칩을 그리지 않는다.
    */
   level?: number | null;
+  /**
+   * 다음 목표 레벨 — `level`이 `null`(아직 아무것도 못 받음)일 때 칩에 대신 그린다.
+   * 값 행 맨 앞 레벨칩은 「현재 레벨 ?? 다음 목표」로 **항상** 하나를 말한다.
+   */
+  nextLevel?: number | null;
   /** 현재 누적값. 호출부가 포맷한 값을 그대로 받는다(DS는 계산하지 않는다) */
-  current: string | number;
+  current: string | number | null;
   /** 다음 레벨 목표값(단위 포함 문자열 허용) */
   next: string | number;
   /** 남은 양("30km 남음" 등 완성 문장). `null`이면 그리지 않는다 */
