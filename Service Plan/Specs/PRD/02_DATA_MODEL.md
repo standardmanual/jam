@@ -346,9 +346,13 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 ### ambient_drop_config (재도입 — 2026-08-26, 마이그레이션 104)
 앰비언트(시스템) POI 드랍 배치 설정 싱글톤(id=1). 카테고리(`poi_categories` 13종 또는 전체)·
 등급비율(4종 합=1)·대상 컬렉션(`item_books` 단독/멀티/전체) 3축을 각각 명시값 또는 무작위로
-설정하고, `all_random`으로 3축을 한 번에 무작위 처리할 수 있다. `auto_enabled`(자동 스케줄
-등록 여부)·`exclusion_window_minutes`(자동 스케줄 전후 수동 배포 차단 창)로 자동(cron)/수동
-트리거의 상호 배제를 관리한다. `batch_size`/`max_active_per_poi`는 3축에 속하지 않는 실행
+설정하고, `all_random`으로 3축을 한 번에 무작위 처리할 수 있다. `auto_enabled`(예약 배포
+사용 여부)·`schedule_hour_kst`(예약 배포 시각 — **KST 정시 0~23**)·`exclusion_window_minutes`
+(그 시각 전후 즉시 배포 차단 창)로 예약 배포/즉시 배포 트리거의 상호 배제를 관리한다.
+`last_auto_run_on`(KST 날짜)은 매시 도는 cron이 하루 2회 배포하지 않도록 조건부 UPDATE로
+선점하는 **시스템 전용 필드**다 — 어드민 저장 경로에서 제외돼 있다(마이그레이션 137, 티켓
+[20260906_1206](../../Tickets/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)).
+`batch_size`/`max_active_per_poi`는 3축에 속하지 않는 실행
 파라미터. 상세 로직은 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.12 참고.
 
 > **구 `ambient_drop_policy`(마이그레이션 044, 100에서 DROP)와는 스키마가 다르다.** 구 모델은

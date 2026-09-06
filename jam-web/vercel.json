@@ -11,7 +11,7 @@
     },
     {
       "path": "/api/cron/ambient-drop",
-      "schedule": "0 18 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

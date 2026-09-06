@@ -91,7 +91,7 @@ jam-web/
 |------|------------|------|
 | `/api/cron/poi-cleanup` | 매일 00:00 | 만료된 유저 드랍 소각(30일 만료) |
 | `/api/cron/notifications` | 매일 09:00 | 알림(소식) T2 배치 생성 — KST 18:00 |
-| `/api/cron/ambient-drop` | 매일 18:00 | 앰비언트(시스템) POI 드랍 배치 — `ambient_drop_config.auto_enabled`가 꺼져 있으면 no-op |
+| `/api/cron/ambient-drop` | 매시 정각 | 앰비언트(시스템) POI 드랍 배치 — 어드민이 정한 시각(`ambient_drop_config.schedule_hour_kst`, KST 정시)에만 실제 배치하고 그 외 시각·`auto_enabled=false`·당일 이미 실행됨은 전부 no-op. cron 표현식이 동적일 수 없어 매시 호출하고 핸들러가 판정한다 ([20260906_1206](../../Tickets/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)) |
 
 > **2026-08-10 제거**: `/api/cron/reconcile`(Strava 활동 소급 재점검, 매일 12:00)은 API 호출량 절감을 위해 완전히 삭제됐다. 이 크론이 완충하던 "동기화 실패 시 커서(`last_synced_at`)가 잘못 전진해 이후 재시도까지 과거 활동을 영영 놓치는" 문제는 근본 수정으로 대체했다 — `syncStravaActivities` 처리 중 예외 발생 시 `last_synced_at`을 롤백하고, OAuth 콜백의 즉시 동기화 호출도 fire-and-forget에서 `await`로 변경(서버리스 강제 종료로 처리가 끊기는 것 방지). 상세: [Tickets/20260810_002](../../Tickets/20260810_002_Service_reconcile-크론-제거-및-동기화-커서-롤백.md).
 
@@ -99,7 +99,7 @@ jam-web/
 
 > **2026-08-24 제거**: `/api/cron/wandering`(Mystic 아이템 재배치, 매일 06:00)은 해당 기능 자체가 전면 제거되면서 함께 삭제됐다. 스키마·Cron만 있고 컨텐츠가 한 번도 붙지 않아 프로덕션 실사용이 0건이었다. 상세: [Tickets/20260824_017](../../Tickets/20260824_017_Infra_떠돌이신화-기능-전면제거.md).
 
-모든 Cron 라우트는 `Authorization: Bearer {CRON_SECRET}` 검증. (Vercel Hobby 플랜은 일 1회 초과 빈도의 Cron을 배포 시점에 거부하므로 빈도 변경 시 주의 — [20260723_004](../../Tickets/20260723_004_Admin_배포가-안-되던-근본-원인Vercel-Hobby-플랜-cron-빈도-제.md) 참고)
+모든 Cron 라우트는 `Authorization: Bearer {CRON_SECRET}` 검증. (과거 Hobby 플랜에서는 일 1회 초과 빈도의 Cron이 배포 시점에 거부됐다 — [20260723_004](../../Tickets/20260723_004_Admin_배포가-안-되던-근본-원인Vercel-Hobby-플랜-cron-빈도-제.md). **현재는 Pro 플랜이라 이 제약이 없다** — `/api/cron/ambient-drop`이 2026-09-06부터 매시 정각으로 돈다)
 
 ---
 

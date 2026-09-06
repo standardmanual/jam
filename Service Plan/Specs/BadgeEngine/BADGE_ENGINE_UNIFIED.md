@@ -1096,14 +1096,27 @@ tryItemDrop(userId, activity) → string[]   -- 드랍된 badge_id 목록 (20260
 (§3.13). **만료 메커니즘 없음** — 상시 존재를 전제로 하며, 특정 배지를 한시적으로만 노출하고
 싶으면 `badges.valid_from`/`valid_until`을 쓴다.
 
-**트리거 — 자동(cron) + 수동(어드민), 상호 배제**:
-- 자동: `/api/cron/ambient-drop`이 매일 18:00 UTC에 실행되나(Vercel Hobby 플랜 일 1회 cron
-  제약으로 시각 고정, `src/lib/ambient-drop/schedule.ts`), `ambient_drop_config.auto_enabled`가
-  꺼져 있으면 그 실행은 no-op이다.
-- 수동: 어드민 `/admin/ambient-drop`의 "지금 배포" 버튼(`POST /api/admin/ambient-drop/deploy`).
-- 상호 배제: `auto_enabled=true`일 때, 고정 스케줄 시각 전후 `exclusion_window_minutes`분
-  (어드민 설정값) 동안은 수동 배포를 거부한다(409) — 레이스 컨디션 방지 목적. 이 창 밖에서는
-  자유롭게 수동 배포 가능. 서버(API) 레벨에서 강제하고, 어드민 화면 버튼 비활성화는 UX 편의일 뿐.
+**트리거 — 예약 배포 + 즉시 배포, 상호 배제** (2026-09-06 리뉴얼, [20260906_1206](../../Tickets/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)):
+- **예약 배포**: 어드민이 정한 시각(`ambient_drop_config.schedule_hour_kst`, **KST 정시 0~23**)에
+  매일 1회 자동 배포한다. Vercel의 cron 표현식은 동적일 수 없으므로 `/api/cron/ambient-drop`은
+  **매시 정각**(`"0 * * * *"`)에 호출되고, 핸들러가 지금이 설정 시각인지 판정해 아니면 즉시
+  no-op으로 반환한다(`src/lib/ambient-drop/schedule.ts`). `auto_enabled`가 꺼져 있어도 no-op이다.
+  - 매시 실행이므로 **하루 2회 배포를 원자적으로 막는다** — `last_auto_run_on`(KST 날짜)에 대한
+    조건부 UPDATE 한 번(`claimAmbientDropAutoRun`)으로 오늘 몫을 선점한 **뒤에** 배치한다.
+    조회 후 갱신 방식은 동시 호출에서 둘 다 통과하므로 쓰지 않는다.
+  - 시각 단위는 **정시**다. 분 단위 가짜 정밀도를 만들지 않았다 — 필요해지면 cron 표현식
+    (`0,30 * * * *`)과 UI만 바꾸면 된다.
+  - 과거에는 18:00 UTC 코드 상수로 고정돼 있었다. 근거였던 "Vercel Hobby 플랜은 일 1회 초과
+    cron을 배포 시점에 거부"(인시던트 20260723_004)는 **Pro 플랜 전환으로 더 이상 성립하지
+    않는다**. 마이그레이션 137의 `schedule_hour_kst` 기본값 3(KST 03:00)은 그 구 동작
+    (18:00 UTC)을 그대로 승계한 값이다.
+- **즉시 배포**: 어드민 `/admin/ambient-drop`의 「지금 배포」 버튼(`POST /api/admin/ambient-drop/deploy`).
+  저장된 설정값으로 그 자리에서 1회 배포한다.
+- 두 갈래는 **같은 설정값**(3축 + `all_random` + `batch_size` + `max_active_per_poi`)을 쓴다.
+  설정은 하나이고 실행 시점만 다르다.
+- 상호 배제: `auto_enabled=true`일 때, **설정된 배포 시각** 전후 `exclusion_window_minutes`분
+  (어드민 설정값) 동안은 즉시 배포를 거부한다(409) — 레이스 컨디션 방지 목적. 이 창 밖에서는
+  자유롭게 즉시 배포 가능. 서버(API) 레벨에서 강제하고, 어드민 화면 버튼 비활성화는 UX 편의일 뿐.
 
 **배포 옵션 — 3축, 축별 명시/무작위 + 전체 무작위 메타 옵션** (`ambient_drop_config` 싱글톤):
 
@@ -1321,6 +1334,7 @@ supabase/migrations/033_reseed_activity_badges_v3.sql   액티비티배지 시�
 supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 최초 스키마 — §3.12
 supabase/migrations/100_remove_ambient_drop.sql         앰비언트 드랍 제거(2026-08-25) — §3.12
 supabase/migrations/104_ambient_drop_reintroduce.sql    앰비언트 드랍 재도입(2026-08-26) — §3.12
+supabase/migrations/137_ambient_drop_schedule_hour.sql  예약 배포 시각(KST) 어드민 설정 — §3.12
 supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
 supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
 supabase/migrations/128_user_family_progress_consistency_trigger.sql   진행 스냅샷 테이블 + 계열 정합성 트리거 — §2.13
