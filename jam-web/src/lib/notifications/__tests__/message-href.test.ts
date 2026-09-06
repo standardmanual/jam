@@ -483,6 +483,31 @@ describe('⑤⑥ 소셜', () => {
     expect(tokens.find((t) => t.text === '별을 삼킨 바퀴')?.bold).toBe(true)
   })
 
+  it('#29 무한레벨형 — 등급 대신 Lv.N으로 말한다 (티켓 20260905_0038)', () => {
+    const v = view(
+      'following_rare_badge',
+      { badge_id: 'b9', badge_name: '걸어온 거리', level: 6 },
+      { actor: ACTOR }
+    )
+    expect(text(v)).toBe('예린님이 걸어온 거리 Lv.6을 획득했어요')
+    // 이름+레벨이 payload 슬롯이므로 볼드다 (§5)
+    const { template, vars } = buildNotificationMessage(v)
+    expect(tokenizeMessage(template, vars).find((t) => t.text === '걸어온 거리 Lv.6')?.bold).toBe(true)
+    // 착지 규칙은 등급형과 같다
+    expect(notificationTarget(v).href).toBe('/예린?from=notifications#badge')
+  })
+
+  it('#29 아는 등급이 아닌 값은 Common으로 강등하지 않는다', () => {
+    // 조용한 강등은 «등급이 없다»와 «가장 낮은 등급이다»를 같은 것으로 만든다(0036과 같은 유형)
+    const v = view(
+      'following_rare_badge',
+      { badge_id: 'b1', badge_name: '별을 삼킨 바퀴', rarity: 'legendary' },
+      { actor: ACTOR }
+    )
+    expect(text(v)).toBe('예린님이 별을 삼킨 바퀴를 획득했어요')
+    expect(text(v)).not.toContain('Common')
+  })
+
   it('R15 — 한 사람의 소식이 2건 이상이면 대표 + "소식이 N건 더 있어요", 착지는 그 사람 프로필', () => {
     const v = view(
       'following_rare_badge',

@@ -13,6 +13,13 @@
  * 친밀도 지표가 아직 없어 **희귀도만** 쓴다. 다만 #30·#31은 희귀도 축이 없으므로
  * "얻기 어려운 순"으로 고정 우선순위를 준다(컬렉션 완성 > 미션 완료).
  * 동순위는 최근 이벤트 우선. 친밀도 지표가 생기면 PRD §9에 따라 재검토한다.
+ *
+ * ## v5 — 「희귀도」가 등급만으로는 성립하지 않는다 (티켓 20260905_0038)
+ *
+ * 무한레벨형 배지는 `badges.rarity`가 **NULL**이다(`isLeveledBadge`). 그래서
+ * `.in('rarity', ['epic','mystic'])` DB 필터에 **절대 걸리지 않았고, 레벨형 193종 26계열의
+ * 획득이 팔로워에게 한 건도 알려지지 않았다**(2026-09-06 실측). 등급 축과 레벨 축을
+ * 각각의 기준으로 거른다 — `FOLLOWING_LEVEL_THRESHOLD` 참조.
  */
 import { scopedGroupKey } from '@/lib/notifications/groupKey'
 import type { BadgeRarity } from '@/types/database'
@@ -33,12 +40,43 @@ import {
  */
 export const FOLLOWING_DAILY_CAP = 2
 
+/**
+ * 팔로워에게 알릴 **무한레벨형 배지의 최소 레벨** (티켓 20260905_0038 A묶음).
+ *
+ * ## 왜 6인가 — 카탈로그가 이미 답을 갖고 있다
+ *
+ * 레벨형에는 등급이 없어 「Epic 이상」을 그대로 옮길 수 없다. 그래서 **같은 종목·같은 지표의
+ * 등급형 임계값과 레벨 사다리를 맞대어** 봤다(v5 카탈로그 실측, 2026-09-06):
+ *
+ * | 종목·지표 | 등급형 Epic | 레벨형 Lv.6 | 레벨형 Lv.7~8 |
+ * |---|---|---|---|
+ * | 러닝 누적 거리 | 1,100km | **1,100km** | 1,900 / 3,200km |
+ * | 자전거 누적 거리 | 4,200km | **4,200km** | 8,000 / 14,000km |
+ * | 걷기 누적 거리 | 250km | 210km | 330 / 550km |
+ *
+ * **Lv.6이 Epic과 같은 자리**이고 Lv.7 이상이 Mystic 대에 든다. 즉 「Epic·Mystic만 알린다」는
+ * 기존 규칙을 레벨 축으로 옮기면 그대로 「Lv.6 이상」이 된다 — 새 정책을 발명한 것이 아니라
+ * **기존 정책을 등급 없는 축으로 번역**한 값이다.
+ *
+ * 폭증 우려: 레벨형 193종 중 이 기준에 드는 것은 63종(33%)이고, 계열마다 한 유저가 한 번씩만
+ * 오른다. 게다가 `FOLLOWING_DAILY_CAP`이 수신자당 하루 **사람 2명**으로 최종 상한을 건다.
+ *
+ * 사다리가 길어져도(무한레벨) 이 절대 기준은 그대로 유효하다 — 위 칸일수록 더 희소하다.
+ */
+export const FOLLOWING_LEVEL_THRESHOLD = 6
+
 /** ⑥ 안에서만 쓰는 정렬 우선순위 (낮을수록 먼저). PRD §9의 "희귀도 단독" 해석 */
 const FOLLOWING_PRIORITY = {
   mystic: 0,
   epic: 1,
-  collection: 2,
-  mission: 3,
+  /**
+   * 무한레벨형(등급 없음). **Epic 아래에 둔다** — 위 표가 「Lv.6 ≈ Epic」을 보이지만
+   * 그건 누적 축 이야기고, 레벨형에는 Epic·Mystic이 요구하는 2단 교차 게이트가 없다.
+   * 등급형과 레벨형이 같은 날 겹치면 게이트를 통과한 쪽을 먼저 말한다.
+   */
+  leveled: 2,
+  collection: 3,
+  mission: 4,
 } as const
 
 export type FollowingCandidate =
@@ -50,7 +88,10 @@ export type FollowingCandidate =
       priority: number
       badgeId: string
       badgeName: string
-      rarity: BadgeRarity
+      /** 등급형·반복형이면 등급, **무한레벨형이면 null** */
+      rarity: BadgeRarity | null
+      /** 무한레벨형이면 레벨, 등급이 있으면 null (둘은 배타다 — 마이그레이션 130의 CHECK) */
+      level: number | null
     }
   | {
       kind: 'collection'
@@ -132,7 +173,14 @@ function toDraft(c: FollowingCandidate, today: string, more = 0): NotificationDr
         userId: c.recipientId,
         type: 'following_rare_badge',
         actorUserId: c.actorId,
-        payload: { badge_id: c.badgeId, badge_name: c.badgeName, rarity: c.rarity, ...moreCount },
+        // 레벨형은 rarity가 없다 — 없는 키를 넣지 않아 렌더러가 「등급 없음」을 그대로 읽는다
+        payload: {
+          badge_id: c.badgeId,
+          badge_name: c.badgeName,
+          ...(c.rarity ? { rarity: c.rarity } : {}),
+          ...(c.level != null ? { level: c.level } : {}),
+          ...moreCount,
+        },
         groupKey: scopedGroupKey('following_rare_badge', c.badgeId, c.actorId),
         mode: 'once',
       }
@@ -171,7 +219,7 @@ function toDraft(c: FollowingCandidate, today: string, more = 0): NotificationDr
 
 /**
  * `scanned`는 **지난 24시간 이벤트 행 수**다(배지·아이템·컬렉션 완성·미션 완료 합).
- * 이벤트가 있는데 초안이 0인 상태가 이어지면 팔로우 팬아웃이나 희귀도 필터가 깨진 것이다 —
+ * 이벤트가 있는데 초안이 0인 상태가 이어지면 팔로우 팬아웃이나 등급·레벨 필터가 깨진 것이다 —
  * 제거된 지역 소식이 정확히 이 패턴(입력은 있는데 매칭이 0)으로 무증상이었다.
  */
 export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutput> {
@@ -237,32 +285,37 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
   const scanned =
     activityBadges.length + invItems.length + bookCompletions.length + missionCompletions.length
 
-  // ── #29 팔로잉 희귀 배지 — epic/mystic만 ─────────────────────────────────
+  // ── #29 팔로잉 희귀 배지 — Epic·Mystic 또는 Lv.6 이상 ────────────────────
   const badgeIds = [
     ...new Set([...activityBadges.map((b) => b.badge_id), ...invItems.map((i) => i.badge_id)]),
   ]
   if (badgeIds.length > 0) {
     // 24시간 안에 여러 사람이 대량으로 배지를 얻으면 이 목록이 커진다 → 청크 분할
-    const badges = await fetchAllRowsIn<{ id: string; name: string; rarity: BadgeRarity | null }, string>(
-      'badges(rare)',
+    const badges = await fetchAllRowsIn<
+      { id: string; name: string; rarity: BadgeRarity | null; level: number | null },
+      string
+    >(
+      'badges(notable)',
       'id',
       badgeIds,
       (chunk) =>
         supabase
           .from('badges')
-          .select('id, name, rarity')
+          .select('id, name, rarity, level')
           .in('id', chunk)
-          .in('rarity', ['epic', 'mystic'])
+          // 등급 축과 레벨 축을 **각각** 거른다. `.in('rarity', …)` 하나로는 rarity가 NULL인
+          // 레벨형이 영원히 탈락한다(v5 193종 전부 — 티켓 20260905_0038).
+          .or(`rarity.in.(epic,mystic),and(rarity.is.null,level.gte.${FOLLOWING_LEVEL_THRESHOLD})`)
           .is('deleted_at', null)
     )
-    const rareById = new Map(badges.map((b) => [b.id, b]))
+    const notableById = new Map(badges.map((b) => [b.id, b]))
 
     // 아이템 배지는 inventory → user 매핑이 필요하다
     const invIds = [...new Set(invItems.map((i) => i.inventory_id))].filter(
       (id): id is string => id !== null
     )
     const inventories =
-      rareById.size > 0
+      notableById.size > 0
         ? await fetchAllRowsIn<{ id: string; user_id: string }, string>(
             'inventory(owner)',
             'id',
@@ -284,11 +337,18 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
     ]
 
     for (const e of earned) {
-      const badge = rareById.get(e.badgeId)
+      const badge = notableById.get(e.badgeId)
       if (!badge) continue
-      // 아래 .in('rarity', ['epic','mystic']) 필터 때문에 실제로는 null이 올 수 없지만,
-      // rarity가 nullable이 된 뒤(마이그레이션 130) 타입상 열려 있어 명시적으로 닫는다.
-      if (!badge.rarity) continue
+      // 등급도 레벨도 없는 배지는 위 필터를 통과할 수 없다(마이그레이션 130의
+      // `CHECK ((rarity IS NULL) = (level IS NOT NULL))`). 그래도 말할 수 있는 게
+      // 아무것도 없으므로 명시적으로 닫는다 — 예전 주석은 「필터 때문에 null이 올 수 없다」고
+      // 적혀 있었고 v5가 그 전제를 깼다(티켓 20260905_0038).
+      if (!badge.rarity && badge.level == null) continue
+      const priority = badge.rarity
+        ? badge.rarity === 'mystic'
+          ? FOLLOWING_PRIORITY.mystic
+          : FOLLOWING_PRIORITY.epic
+        : FOLLOWING_PRIORITY.leveled
       for (const recipientId of followersOf.get(e.userId) ?? []) {
         if (recipientId === e.userId) continue
         candidates.push({
@@ -296,10 +356,11 @@ export async function buildFollowingDrafts(ctx: BatchContext): Promise<StepOutpu
           recipientId,
           actorId: e.userId,
           at: e.at,
-          priority: badge.rarity === 'mystic' ? FOLLOWING_PRIORITY.mystic : FOLLOWING_PRIORITY.epic,
+          priority,
           badgeId: badge.id,
           badgeName: badge.name,
           rarity: badge.rarity,
+          level: badge.level,
         })
       }
     }
