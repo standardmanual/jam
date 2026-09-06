@@ -7,6 +7,11 @@ import type { AmbientDropBatchResult } from '@/lib/ambient-drop'
 import { Switch } from '@/components/admin/ui/switch'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
+import {
+  AMBIENT_DROP_SCHEDULE_HOURS_KST,
+  formatAmbientDropScheduleLabel,
+  formatAmbientDropScheduleTime,
+} from '@/lib/ambient-drop/schedule'
 
 export interface AmbientDropHistoryEntry {
   id: string
@@ -20,7 +25,6 @@ interface AmbientDropFormProps {
   books: { id: string; name: string }[]
   history: AmbientDropHistoryEntry[]
   initialBlocked: boolean
-  scheduleLabel: string
 }
 
 const ALL_CATEGORY_VALUE = '__ALL__'
@@ -68,7 +72,6 @@ export default function AmbientDropForm({
   books,
   history,
   initialBlocked,
-  scheduleLabel,
 }: AmbientDropFormProps) {
   // Select 드롭다운(Radix Portal)은 기본적으로 document.body에 렌더링되는데, shadcn 어드민
   // 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
@@ -148,31 +151,63 @@ export default function AmbientDropForm({
 
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* 트리거 — 자동 스케줄 + 상호 배제 창 */}
+      {/* 배포 트리거 — 예약 배포(시각·스위치) + 상호 배제 창 */}
       <section className="bg-white border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">트리거</h2>
+        <h2 className="font-bold mb-1">배포 트리거</h2>
         <p className="text-muted-foreground text-xs mb-4">
-          자동 스케줄 시각은 {scheduleLabel}로 고정돼요. 아래 스위치는 그 스케줄이 실제로 배치를
-          수행할지를 켜고 끕니다.
+          배포는 두 갈래예요. <strong className="text-foreground">예약 배포</strong>는 아래에서 정한
+          시각에 매일 저절로 배포하고, <strong className="text-foreground">즉시 배포</strong>는 맨 아래
+          「지금 배포」를 누른 그 자리에서 1회 배포해요. 두 갈래 모두 저장된 같은 설정값을 써요.
         </p>
-        <div className="flex items-center gap-3 mb-4">
+
+        <div className="flex items-center gap-3">
           <Switch checked={values.auto_enabled} onCheckedChange={(checked) => set('auto_enabled', checked)} />
-          <span className="text-sm">자동 스케줄 등록</span>
+          <span className="text-sm">예약 배포 켜기</span>
         </div>
-        <label className="block max-w-xs">
-          <span className="text-sm text-foreground">상호 배제 창 (분)</span>
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={values.exclusion_window_minutes}
-            onChange={(e) => set('exclusion_window_minutes', Number(e.target.value))}
-            className="mt-1 w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50"
-          />
-          <span className="text-xs text-muted-foreground">
-            자동 스케줄 시각 전후 이 분(分)만큼 수동 배포 버튼이 비활성화돼요.
-          </span>
-        </label>
+        <p className="text-xs text-muted-foreground mt-2 mb-4">
+          켜면 {formatAmbientDropScheduleLabel(values.schedule_hour_kst)}에 저장된 설정값으로 자동
+          배포해요. 끄면 「지금 배포」로만 배포돼요.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
+          <div className="block">
+            <span className="text-sm text-foreground">배포 시각 (KST)</span>
+            <Select
+              value={String(values.schedule_hour_kst)}
+              onValueChange={(value) => set('schedule_hour_kst', Number(value))}
+            >
+              <SelectTrigger className="mt-1 w-full" aria-label="예약 배포 시각 선택">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent container={themeContainer ?? undefined}>
+                {AMBIENT_DROP_SCHEDULE_HOURS_KST.map((hour) => (
+                  <SelectItem key={hour} value={String(hour)}>
+                    {formatAmbientDropScheduleTime(hour)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">
+              한국시간 기준 정시예요. 분 단위는 정할 수 없어요.
+            </span>
+          </div>
+
+          <label className="block">
+            <span className="text-sm text-foreground">상호 배제 창 (분)</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={values.exclusion_window_minutes}
+              onChange={(e) => set('exclusion_window_minutes', Number(e.target.value))}
+              className="mt-1 w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50"
+            />
+            <span className="text-xs text-muted-foreground">
+              예약 배포 시각 {formatAmbientDropScheduleTime(values.schedule_hour_kst)} 전후 이 분(分)
+              동안은 「지금 배포」를 누를 수 없어요. 두 배포가 겹치지 않게 하기 위해서예요.
+            </span>
+          </label>
+        </div>
       </section>
 
       {/* 메타 옵션 */}
@@ -333,11 +368,11 @@ export default function AmbientDropForm({
         )}
       </div>
 
-      {/* 수동 배포 */}
+      {/* 즉시 배포 */}
       <section className="bg-white border border-border rounded-2xl p-6">
-        <h2 className="font-bold mb-1">지금 배포</h2>
+        <h2 className="font-bold mb-1">즉시 배포</h2>
         <p className="text-muted-foreground text-xs mb-4">
-          위에 저장된 설정(저장 안 한 변경사항 제외)으로 즉시 1회 배치해요.
+          저장된 설정값으로 지금 1회 배포해요. 아직 저장하지 않은 변경사항은 반영되지 않아요.
         </p>
         <button
           onClick={handleDeploy}
@@ -348,7 +383,9 @@ export default function AmbientDropForm({
         </button>
         {deployBlocked && !deployError && (
           <p className="text-xs text-muted-foreground mt-2">
-            자동 스케줄 시각과 겹쳐 지금은 비활성화돼 있어요.
+            지금은 배포할 수 없어요. 예약 배포 시각{' '}
+            {formatAmbientDropScheduleTime(values.schedule_hour_kst)} 전후{' '}
+            {values.exclusion_window_minutes}분이라 배포가 겹칠 수 있어요.
           </p>
         )}
         {deployError && <p className="text-sm text-red-600 mt-2">{deployError}</p>}
