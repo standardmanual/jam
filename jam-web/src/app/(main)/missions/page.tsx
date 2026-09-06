@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import type { MissionRow, UserMissionCompletionRow, UserMissionParticipationRow } from '@/types/database'
+import type { BadgeRarity, MissionRow, UserMissionCompletionRow, UserMissionParticipationRow } from '@/types/database'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { resolveMissionVisibilityMap } from '@/lib/missions/visibility'
-import MissionsListClient, { type MissionListItem } from './MissionsListClient'
+import MissionsListClient, { type MissionListItem, type RewardBadgeInfo } from './MissionsListClient'
 
 export default async function MissionsPage() {
   const supabase = await createClient()
@@ -72,11 +72,14 @@ export default async function MissionsPage() {
   // 보상 배지 이름 일괄 fetch — 목록에서 "배지명 배지" 형식으로 표시하기 위해
   const allMissions = [...visibleOngoing, ...endedMissions, ...completedMissions]
   const allRewardBadgeIds = [...new Set(allMissions.flatMap((m) => (m.reward_badge_ids ?? []).filter(Boolean)))]
-  let rewardBadgeNames: Record<string, string> = {}
+  let rewardBadgeNames: Record<string, RewardBadgeInfo> = {}
   if (allRewardBadgeIds.length > 0) {
-    const { data: badgeRows, error: badgeRowsError } = await service.from('badges').select('id, name').in('id', allRewardBadgeIds).is('deleted_at', null)
+    const { data: badgeRows, error: badgeRowsError } = await service.from('badges').select('id, name, rarity, level').in('id', allRewardBadgeIds).is('deleted_at', null)
     if (badgeRowsError) console.error('[missions/page] 보상 배지 이름 조회 실패', badgeRowsError)
-    rewardBadgeNames = Object.fromEntries(((badgeRows ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name]))
+    rewardBadgeNames = Object.fromEntries(
+      ((badgeRows ?? []) as { id: string; name: string; rarity: BadgeRarity | null; level: number | null }[])
+        .map((b) => [b.id, { name: b.name, rarity: b.rarity, level: b.level }]),
+    )
   }
 
   const toItem = (m: MissionRow): MissionListItem => {
