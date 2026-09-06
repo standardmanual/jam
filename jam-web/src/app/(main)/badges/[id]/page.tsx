@@ -430,6 +430,9 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
                 hasEarned={hasEarned}
                 stravaConnected={stravaConnected}
                 subjectUsername={subjectUsername ?? undefined}
+                // 체크인 배지의 회차는 방문 이력 행 수다 — 활동 배지의 earn_count와 같은 자리.
+                // 안 넘기면 반복 체크인의 ×N이 공유 카드에만 빠진다(게이트 리뷰 지적).
+                earnCount={checkinEarns.length > 0 ? checkinEarns.length : null}
               />
             )
           }

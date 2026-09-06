@@ -14,8 +14,8 @@ import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
  *     서비스 피드 카드의 카운터 필과 같은 시각 문법이다(새 표현을 만들지 않는다).
  *
  * 상태:
- *   earned: false  → 썸네일을 실루엣으로 (미획득 — 외형 비공개)
- *   undiscovered   → ??? 표시 + 실루엣 (아이템북 미발견)
+ *   earned: false  → 썸네일을 원본 + grayscale(1)로 (미획득)
+ *   undiscovered   → ??? 표시 + grayscale(1) (아이템북 미발견)
  *   selected       → 강조 링 (선택 모드)
  *
  * 미획득/미발견 썸네일은 **원본 이미지 + `filter: grayscale(1)`** 이다.
