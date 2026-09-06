@@ -97,7 +97,11 @@ export async function POST(req: NextRequest) {
     image_url,
     activity_types: activity_types ?? [],
     patch_available: patch_available ?? false,
-    patch_price_krw: patch_price_krw ?? null,
+    // point_reward와 동일하게 음수를 막되, patch_available=false일 때 null이 들어올 수 있는
+    // 필드이므로 값이 없으면(null/undefined) null을 그대로 유지한다(티켓 20260906_1424).
+    patch_price_krw: patch_price_krw === null || patch_price_krw === undefined
+      ? null
+      : Math.max(0, Math.trunc(Number(patch_price_krw) || 0)),
     // POI 배지는 "어느 POI를 지나갔는가"로만 판정 — 활동 조건이 섞이지 않도록 강제 null
     condition_json: type === 'checkin' ? null : condition_json ?? null,
     // 체크인 배지에는 세계관/컬렉션 개념이 없다 — 저작 화면(BadgeForm)에서도 정리하지만

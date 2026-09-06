@@ -338,7 +338,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
         image_url: imageUrl,
         activity_types: activityTypes,
         patch_available: patchAvailable,
-        patch_price_krw: patchAvailable && patchPriceKrw ? parseInt(patchPriceKrw, 10) : null,
+        patch_price_krw: patchAvailable && patchPriceKrw ? Math.max(0, parseInt(patchPriceKrw, 10) || 0) : null,
         condition_json: conditionJson,
         // 체크인 배지는 세계관/컬렉션 개념이 없다 — UI는 숨겼지만 기존 값이 남아있을 수 있으므로
         // 저장 시점에 명시적으로 null 처리한다(티켓 20260830_1344).
@@ -875,6 +875,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
             <span className="text-sm text-foreground">패치 가격 (원)</span>
             <input
               type="number"
+              min="0"
               value={patchPriceKrw}
               onChange={(e) => setPatchPriceKrw(e.target.value)}
               className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 max-w-xs"
