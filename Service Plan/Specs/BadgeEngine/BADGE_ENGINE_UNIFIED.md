@@ -174,7 +174,8 @@ Step 8. initial_sync_done 갱신
 | `rest_after_streak` / `rest_after_long` / `return_gap_days` / `interval_days` (2026-09-05 신규) | **인접한 두 활동 사이의 «닫힌 공백»** 판정. 활동이 0~1건이면 공백을 계산하지 않는다. 판정은 `activityFilters.ts`의 `evaluateRestConditions()` 한 곳. `rest_after_long`의 짝 필드는 `single_distance_km` **또는** `duration_minutes`(OR, 2026-09-06 티켓 20260906_0110 ④ 추가) — 이제 실제로 발급된다. §2.16 |
 | `max_elevation_m` / `max_speed_kmh` / `single_distance_km` / `single_elevation_m` / `avg_heartrate_bpm` / `avg_watts` / `avg_cadence` (v5 스칼라 7종) / `weekly_streak` (2026-09-06, 티켓 20260906_0110 ②) | `pending`에서 `engine`으로 전환됨. **활동 1건의 값**을 `CONDITION_ACTIVITY_FIELD`로 정규화 필드에서 꺼내 비교(스칼라 7종), `weekly_streak`는 `calcMaxWeeklyStreak`가 연속 주(월~일) 최장 길이를 계산. 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10 |
 | `cumulative_duration_hours` / `monthly_count` (2026-09-06 신규, 티켓 20260906_0110 ①) | 레지스트리에 키가 없어 v5 카탈로그 시딩(0035)에서 통째로 빠졌던 5계열 27종(누적 이동시간·월간 활동 횟수)을 복구하기 위한 신규 필드. 둘 다 `engine` — `cumulative_duration_hours`는 누적 이동시간 합계, `monthly_count`는 월별 활동 횟수 최대값(또는 `repeat_count`와 결합 시 그 횟수를 채운 달의 수) |
-| **잔여 `pending` 9종 + `route`** (10종) | ❌ **평가 미구현 — fail-closed로 막힌다.** `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`personal_record_break`·`personal_record_break_metric`(2026-09-06 신규 필드, 스키마만)·`month_over_month_ratio`·`vs_personal_average` + `route`. 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10 |
+| `personal_record_break` / `personal_record_break_metric` (2026-09-06, 티켓 20260906_2055) | `pending`에서 `engine`으로 전환됨. 가입 시점 이후 활동을 시간순으로 훑어 `personal_record_break_metric`이 가리키는 지표(콘텐츠가 채워진 3종만 — `single_distance_km`·`duration_minutes`·`max_elevation_m`)가 그때까지의 최고 기록을 **엄격히 초과**한 횟수 ≥ 조건값. 최초의 유효 활동은 항상 1회(직전 기록이 없으므로). 판정은 `activityFilters.ts`의 `countPersonalRecordBreaks()` 한 곳(발급·진행률 공유). 짝 필드 강제 목록(`PAIR_ENFORCED_CONDITION_KEYS`)에 편입돼 `personal_record_break_metric` 없이는 발급되지 않는다 |
+| **잔여 `pending` 7종 + `route`** (8종) | ❌ **평가 미구현 — fail-closed로 막힌다.** `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`month_over_month_ratio`·`vs_personal_average` + `route`. 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10 |
 
 > **조건 필드 선언의 단일 출처는 `src/lib/badge-engine/conditionRegistry.ts`다** (2026-09-05,
 > 티켓 20260905_0028). 키·라벨·단위·입력 타입·min/max/step·짝 필드·방향성·**평가 구현 여부**를
@@ -192,29 +193,32 @@ Step 8. initial_sync_done 갱신
 조건 필드 — 알 수 없는 필드: … / 평가 구현 대기: … / 짝 필드 없음: …」로 남는다.
 판정은 `findBlockingConditionKeys()` → `hasBlockingConditionKeys()` 한 쌍이다.
 
-**짝 필드 강제는 `PAIR_ENFORCED_CONDITION_KEYS`(휴식 4종)에만 적용한다.** `rest_after_streak`는
-`streak_days`가 없으면 「며칠 연속 뒤인가」가, `rest_after_long`은 `single_distance_km`이 없으면
-「무엇이 장거리인가」가 정의되지 않는데, DB CHECK는 키 이름만 보므로 **짝 없이 저장돼도 통과하고
-평가 시점에 조용한 오판정이 된다.** 기존 필드(`same_activity`↔`distance_km` 등)는 카탈로그에
-실적이 있어 즉시 강제하면 이미 발급된 배지가 미발급으로 뒤집힐 수 있어 **강제하지 않는다** —
-새로 평가가 열리는 필드만 실적 0건인 지금 못 박는다.
+**짝 필드 강제는 `PAIR_ENFORCED_CONDITION_KEYS`(휴식 4종 + `personal_record_break`, 2026-09-06
+티켓 20260906_2055 추가)에만 적용한다.** `rest_after_streak`는 `streak_days`가 없으면 「며칠
+연속 뒤인가」가, `rest_after_long`은 `single_distance_km`이 없으면 「무엇이 장거리인가」가,
+`personal_record_break`는 `personal_record_break_metric`이 없으면 「어느 지표의 기록인가」가
+정의되지 않는데, DB CHECK는 키 이름만 보므로 **짝 없이 저장돼도 통과하고 평가 시점에 조용한
+오판정이 된다.** 기존 필드(`same_activity`↔`distance_km` 등)는 카탈로그에 실적이 있어 즉시
+강제하면 이미 발급된 배지가 미발급으로 뒤집힐 수 있어 **강제하지 않는다** — 새로 평가가 열리는
+필드만 실적 0건인 시점에 못 박는다.
 
 **평가 주체는 셋으로 구분한다** — `boolean` 하나가 세 가지 뜻을 겸하던 것을 풀었다:
 
 | 값 | 뜻 | fail-closed |
 |---|---|---|
-| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (36종) | 통과 |
+| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (38종) | 통과 |
 | `external` | **`evaluateConditionDetailed` 밖**에서 처리 — `poi_id`(체크인 파이프라인) · `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`와 교차 게이트 3종(엔진 안의 후보 선별 단계 `evaluateBadgeGates()`) (6종) | 통과 |
-| `pending` | 아직 아무도 평가하지 않는다 — `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`personal_record_break`·`personal_record_break_metric`·`month_over_month_ratio`·`vs_personal_average` + `route` (10종) | **막힘** |
+| `pending` | 아직 아무도 평가하지 않는다 — `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`month_over_month_ratio`·`vs_personal_average` + `route` (8종) | **막힘** |
 
 이 방어가 필요한 이유는 `matchesPerActivityCondition()`(`index.ts`)이 **아는 키만 검사하고
 마지막에 `return true`** 하기 때문이다. 막지 않으면 미구현 필드가 «발급 안 됨»이 아니라
 **«무조건 발급»**이 된다 — §2.7의 084 사고와 같은 유형의, 에러 없이 조용히 뒤집히는 결함이다.
 
 v5 신규 20종 중 **휴식 4종은 2026-09-05(티켓 20260905_0030 B3)에**, **v5 스칼라 7종 +
-`weekly_streak`는 2026-09-06(티켓 20260906_0110 ②)에 `engine`으로 뒤집혔다**(§2.16). 남은
-`pending`은 위 9종(전부 「이력 패턴」 계열 — `personal_record_break_metric`은 2026-09-06
-신규 필드)과 기존 필드 중 `route` 하나뿐이다. `route`는 타입·스키마·DB CHECK에만 있고
+`weekly_streak`는 2026-09-06(티켓 20260906_0110 ②)에**, **`personal_record_break`·
+`personal_record_break_metric`은 2026-09-06(티켓 20260906_2055)에 `engine`으로 뒤집혔다**
+(§2.16). 남은 `pending`은 위 7종(전부 「이력 패턴」 계열)과 기존 필드 중 `route` 하나뿐이다.
+`route`는 타입·스키마·DB CHECK에만 있고
 badge-engine에 `condition.route` 참조가 **0건**이라(실측 2026-09-05) `pending`으로 두었다 —
 쓰는 배지가 0건이라 회귀 없이 정직하게 표기할 수 있다. 평가 구현 없이 쓰려면 먼저 구현하거나
 스키마에서 제거해야 한다(`CONDITION_JSON_SPEC.md` §6).
@@ -394,11 +398,15 @@ DB 시드: `jam-web/supabase/migrations/seed_v5_activity_badges.sql`
 있는 것이 약 269종(그중 40종은 미션 전용)뿐이었다. 티켓 `20260906_0110`(CLOSED)이 v5 스칼라
 7종·`weekly_streak`의 `pending`→`engine` 전환, 「기간 단위 회차」 지원, `rest_after_long`
 짝 필드 확장, `cumulative_duration_hours`·`monthly_count` 신규 필드로 이 격차의 상당 부분을
-줄였다(부수 효과로 이 필드들을 단독으로 쓰는 기존 23여 계열의 진행률도 함께 열렸다). 나머지는
-조건 필드가 여전히 `pending`이거나(§2.3-0의 잔여 10종) `repeat_count`를 셀 수 없어
-**fail-closed로 막힌다.** 잘못 발급되는 경로는 없다. **남은 것**: ① `cumulative_duration_hours`·
-`monthly_count`가 여는 신규 배지 27종 자체의 시딩(정확한 임계값 재산정 포함)은 별도 콘텐츠
-작업 ② `personal_record_break` 자체의 평가 구현은 후속 티켓 ③ 2단 교차 게이트
+줄였다(부수 효과로 이 필드들을 단독으로 쓰는 기존 23여 계열의 진행률도 함께 열렸다). 티켓
+`20260906_2055`(진행 중)가 `personal_record_break`·`personal_record_break_metric`의 평가
+구현을 열어 콘텐츠 값이 채워진 7계열(`walking:B1/B2`·`hiking:R1/R2`·`trail_running:R1~R3`)의
+발급 경로를 추가로 열었다. 나머지는 조건 필드가 여전히 `pending`이거나(§2.3-0의 잔여 8종)
+`repeat_count`를 셀 수 없어 **fail-closed로 막힌다.** 잘못 발급되는 경로는 없다. **남은 것**:
+① `cumulative_duration_hours`·`monthly_count`가 여는 신규 배지 27종 자체의 시딩(정확한
+임계값 재산정 포함)은 별도 콘텐츠 작업 ② `personal_record_break_metric`이 비어 있는 나머지
+7계열(`walking:B3/B4`·`running:R2/R3`·`cycling:R2`)은 다른 필드(`month_over_month_ratio`
+등)로 이미 형제와 구분돼 있어 이번 범위 밖 — 필요해지면 별도 판단 ③ 2단 교차 게이트
 (`cross_in_axis`/`cross_between_axis`/`gate_mission_badge`)가 0행인 문제는 티켓
 `20260906_1947`(OPEN)로 분리됐다(§2.11).
 

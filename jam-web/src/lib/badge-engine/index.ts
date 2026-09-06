@@ -57,6 +57,10 @@ import {
   // (v5 B3, 티켓 20260905_0030 §4).
   restConditionKeysIn,
   evaluateRestConditions,
+  // 개인 기록 갱신(personal_record_break) 판정도 같은 파일에 둔다 — `badgeProgress.ts`가
+  // 같은 함수를 봐야 발급-진행률이 어긋나지 않는다(티켓 20260906_2055).
+  isSupportedPersonalRecordMetric,
+  countPersonalRecordBreaks,
 } from './activityFilters'
 import { isLeveledBadge, familyKeyOf, badgeKindLabel, badgeKindOf, repeatCountOf } from './badgeKind'
 // 2단 교차 게이트(v5 B2, 티켓 20260905_0030 §3)는 순수 함수로 분리돼 있다 —
@@ -735,6 +739,31 @@ export function evaluateConditionDetailed(
     }
     actualParts.push(`계절활동: ${seasonFiltered.length}회`)
     requiredParts.push(`계절활동: ${condition.season_count}회`)
+  }
+
+  // ── personal_record_break — 개인 기록 갱신 횟수 (티켓 20260906_2055)
+  //
+  // 「가입 시점 이후 활동만으로 직접 계산한다」(마스터 티켓 20260905_0026) — `filtered`가
+  // 이미 activity_type(+ 걷기 축1 게이트)로 좁혀진, 가입 앵커 이후 이력이라 그대로 쓴다.
+  // `personal_record_break_metric`이 짝 필드로 강제되므로(`PAIR_ENFORCED_CONDITION_KEYS`)
+  // 이 시점에 도달했다면 필드 자체는 있다 — 다만 값이 «지금 지원하는 3종» 중 하나인지는
+  // 여기서 다시 확인한다(콘텐츠가 없는 나머지 9종을 조용히 통과시키지 않기 위해).
+  if (condition.personal_record_break !== undefined) {
+    const metric = condition.personal_record_break_metric
+    if (!isSupportedPersonalRecordMetric(metric)) {
+      return {
+        pass: false,
+        reason: '개인 기록 지표 평가 미구현',
+        actual: metric ? `지표: ${metric}` : '-',
+        required: '평가 가능한 개인 기록 지표(single_distance_km · duration_minutes · max_elevation_m)',
+      }
+    }
+    const breaks = countPersonalRecordBreaks(metric, filtered)
+    if (breaks < condition.personal_record_break) {
+      return { pass: false, reason: '개인 기록 갱신 횟수 부족', actual: `${breaks}회`, required: `${condition.personal_record_break}회` }
+    }
+    actualParts.push(`기록갱신: ${breaks}회`)
+    requiredParts.push(`기록갱신: ${condition.personal_record_break}회`)
   }
 
   // ── 휴식(활동 공백) — v5 B3, 티켓 20260905_0030 §4
