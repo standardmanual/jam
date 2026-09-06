@@ -8,6 +8,7 @@ import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { isPoiBlocked, blockPoiForUser } from '@/lib/abusing/poi-block'
 import { checkAndUpdateLocation } from '@/lib/abusing/gps-detector'
 import { applyBan, logAbusingEvent } from '@/lib/abusing/shadow-ban'
+import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 
 // 20260826_002: 이 라우트의 `error` 필드는 **항상 안정적인 snake_case 코드**만 담는다.
 // 한국어 원문을 섞어 돌려주면 클라이언트의 코드 매핑이 빗나가 개발자용 축약 문구
@@ -111,18 +112,12 @@ export async function POST(
     return NextResponse.json({ error: 'location_unverified' }, { status: 403 })
   }
 
-  // 인벤토리 조회
-  const { data: invRaw, error: invError } = await service
-    .from('inventory')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
+  // 인벤토리 조회 — 없으면 즉석 생성한다(get-or-create, 티켓 20260906_2217 회귀 방지).
+  const inventoryId = await getOrCreateInventoryId(service, user.id)
 
-  if (invError || !invRaw) {
+  if (!inventoryId) {
     return NextResponse.json({ error: 'inventory_not_found' }, { status: 404 })
   }
-
-  const inventoryId = (invRaw as { id: string }).id
 
   // RPC로 원자 트랜잭션 실행
   const rpcArgs = {

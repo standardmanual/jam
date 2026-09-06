@@ -7,6 +7,7 @@ import { loadPipelineCategories, LEVEL_2_FALLBACK_THRESHOLD, type PoiCategoryCon
 import { computeGridKey, shouldSearch, markSearched } from '@/lib/poi/search-cache'
 import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import type { PoiRow } from '@/types/database'
+import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 
 // GET /api/drops?lat=&lng=  — T1(DB) + T2(네이버 지역검색, 카테고리 레벨 기반) 통합
 // POST /api/drops            — 드랍 실행
@@ -256,14 +257,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'out_of_range' }, { status: 403 })
   }
 
-  // 인벤토리 아이템 소유권 + 드랍 가능 상태 확인
-  const { data: invRaw, error: invError } = await service
-    .from('inventory')
-    .select('id, used_slots')
-    .eq('user_id', user.id)
-    .single()
+  // 인벤토리 존재 확인 — 없으면 즉석 생성한다(get-or-create, 티켓 20260906_2217 회귀 방지).
+  // 이 값 자체는 아래 RPC 인자로 쓰이지 않는다 — create_user_drop()이 user_id로 자체 조회하므로
+  // 여기서는 "인벤토리가 존재하는가"만 보장하면 된다.
+  const inventoryExists = await getOrCreateInventoryId(service, user.id)
 
-  if (invError || !invRaw) {
+  if (!inventoryExists) {
     return NextResponse.json({ error: 'inventory_not_found' }, { status: 404 })
   }
 

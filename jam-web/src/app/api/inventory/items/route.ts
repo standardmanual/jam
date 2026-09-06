@@ -2,6 +2,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 
 export async function GET() {
   const supabase = await createClient()
@@ -10,17 +11,10 @@ export async function GET() {
 
   const service = createServiceClient()
 
-  const { data: invRaw, error: invError } = await service
-    .from('inventory')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-  // .single()이라 무인벤토리도 error로 잡힘 — 실제 오류와 구분은 못 하지만 최소 가시성 확보
-  if (invError) console.error('[api/inventory/items] inventory 조회 실패(무인벤토리 포함)', invError)
+  // 인벤토리 조회 — 없으면 즉석 생성한다(get-or-create, 티켓 20260906_2217 회귀 방지).
+  const inventoryId = await getOrCreateInventoryId(service, user.id)
 
-  if (!invRaw) return NextResponse.json({ items: [] })
-
-  const inventoryId = (invRaw as { id: string }).id
+  if (!inventoryId) return NextResponse.json({ items: [] })
 
   const { data, error } = await service
     .from('inventory_items')
