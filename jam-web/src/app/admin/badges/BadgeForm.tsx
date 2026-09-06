@@ -647,7 +647,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
               <SelectTrigger aria-label="희귀도">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent container={themeContainer ?? undefined}>
                 {RARITIES.map((r) => (
                   <SelectItem key={r} value={r}>{r}</SelectItem>
                 ))}
@@ -688,7 +688,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
                 <SelectTrigger aria-label="소속 세계관">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent container={themeContainer ?? undefined}>
                   <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
                   {factions.map((f) => (
                     <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
@@ -707,7 +707,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
                 <SelectTrigger aria-label="소속 컬렉션">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent container={themeContainer ?? undefined}>
                   <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
                   {itemBooks.map((b) => (
                     <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
