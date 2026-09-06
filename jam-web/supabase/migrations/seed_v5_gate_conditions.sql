@@ -5,8 +5,9 @@
 --          v5_gate_mapping.json의 게이트_없음_의도된_예외 참고) + 그 86종과 같은 계열의 Epic 79종.
 -- 무한레벨형(누적 축) 계열 자신의 Lv.5+/Lv.8+ 게이트는 범위 밖 — 별도 콘텐츠 작업(완료기록 참고).
 --
--- ⚠️ 이 파일은 CLAUDE.md 규칙(jam-work의 jam-developer 서브에이전트)에 따라
---    **작성만 하고 실행하지 않았다.** 실행은 사용자 승인 후 오케스트레이터가 처리한다.
+-- ✅ 2026-09-06 사용자 승인(min_level=6) 후 오케스트레이터가 프로덕션(=staging 공용 단일 DB)에
+--    실행 완료. 검증: cross_in_axis 32 · cross_between_axis 133 · gate_mission_badge 86 ·
+--    mystic_with_gate 86/98(설계상 무관문 12종 제외) — 티켓 20260906_1947 참고.
 --
 -- 실행 순서: 마이그레이션 133(cross_in_axis/cross_between_axis/gate_mission_badge 키)이
 --   이미 배포돼 있어야 한다 — 이미 배포됨(확인됨). min_level은 위 세 키의 값(jsonb 객체)

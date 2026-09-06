@@ -458,22 +458,23 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 깨지면 `OPEN`이 아니라 `locked`로 **fail-closed**한다.
 >
 > **2단 교차 게이트(`cross_in_axis`·`cross_between_axis`·`gate_mission_badge`) 축→계열
-> 매핑 — 티켓 `20260906_1947`.** 98 Mystic 중 게이트가 있는 86종(설계상 무관문 예외
-> 12종 제외 — 연속·달력 축의 「이미 강도가 충분해 게이트 불필요」·「사계절 요약」류)과
-> 그 86종의 「해당 Epic」 79종에 조건을 매핑하는 SQL(`seed_v5_gate_conditions.sql`)을
-> `Specs/Content/v5_gate_build.py`가 축→계열 규칙표를 기계적으로 적용해 생성했다 —
-> **작성만 하고 아직 실행하지 않았다**(사용자 승인 대기). 실행 전까지는 여전히 모든
-> Mystic이 무관문이다. 축→계열 상세 규칙표는 `Specs/Content/v5_gate_mapping.json`.
+> 매핑 — 티켓 `20260906_1947`(CLOSED), 2026-09-06 실행 완료.** 98 Mystic 중 86종(설계상
+> 무관문 예외 12종 제외 — 연속·달력 축의 「이미 강도가 충분해 게이트 불필요」·「사계절
+> 요약」류)에 게이트가 걸렸고, 그 86종과 같은 계열의 Epic 79종에도 축 내/축 간 교차
+> 조건이 매핑됐다(`seed_v5_gate_conditions.sql`, 165행). 레벨형 계열 11건은 `min_level=6`
+> (5종목 누적축 사다리 중 가장 짧은 것의 상한 — 콘텐츠 재검토 여지 있음, confidence:
+> medium)으로 통일했다. 축→계열 상세 규칙표는 `Specs/Content/v5_gate_mapping.json`.
 > 무한레벨형(누적) 계열 자신의 Lv.5+/Lv.8+ 자체 게이트는 이번 매핑 범위 밖 — 별도
 > 콘텐츠 작업으로 남았다.
 >
-> ⚠️ **미션 40종(걷기 8 + 4종목 32) 자체가 `missions` 테이블에 아직 없다.** `gate_axis`
-> 등 3개 컬럼을 채우기 이전에, v5 설계 문서(`v5_mission_badges.json`)가 요구하는 미션
-> 완료 조건(예: 「3주 연속 주 3회」·「서로 다른 5개 요일」·「N주 안에 M회」) 대부분이
-> **현재 `missions.mission_type`/`MissionCondition` 어휘로 표현할 수 없다** — 배지엔진
-> 수준의 조건 표현력(반복 횟수·요일 분산·시간대 분산 등)이 미션 엔진에는 없다. 40종 중
-> 단일 지표·단일 시간창 조건(예: 「2주 안에 80km」)만 기존 스키마로 표현 가능하고, 나머지는
-> 미션 엔진 확장이 선행돼야 한다 — 별도 티켓 필요(20260906_1947 완료 기록 alerts 참고).
+> ⚠️ **미션 40종(걷기 8 + 4종목 32) 자체가 `missions` 테이블에 아직 없다** — 티켓
+> `20260906_2231`(OPEN)로 분리. `gate_axis` 등 3개 컬럼을 채우기 이전에, v5 설계 문서
+> (`v5_mission_badges.json`)가 요구하는 미션 완료 조건(예: 「3주 연속 주 3회」·「서로 다른
+> 5개 요일」·「N주 안에 M회」) 대부분이 **현재 `missions.mission_type`/`MissionCondition`
+> 어휘로 표현할 수 없다** — 배지엔진 수준의 조건 표현력(반복 횟수·요일 분산·시간대 분산
+> 등)이 미션 엔진에는 없다. 그 결과 **`gate_mission_badge` 요구가 걸린 Mystic은 미션이
+> 없어 그 보상 배지를 얻을 방법이 없으므로 `2231` 완료 전까지 사실상 계속 막혀 있다**
+> (fail-closed 방향이라 잘못 열리지는 않는다).
 >
 > 폐기된 v4 방식 기록 (티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
 
