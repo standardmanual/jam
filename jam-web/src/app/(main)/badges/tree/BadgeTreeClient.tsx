@@ -27,6 +27,31 @@ const TREE_TAB_LABELS: Partial<Record<ActivityType, string>> = {
   trail_running: '트레일',
 }
 
+const VALID_ACTIVITY_TYPES = new Set<string>([
+  'cycling',
+  'running',
+  'trail_running',
+  'hiking',
+  'walking',
+])
+
+/**
+ * `?activity=`로 들어온 값을 열어둘 종목으로 정규화한다. 모르는 값이면 null
+ * (`badges/page.tsx`의 `normalizeTab`과 같은 처리 — 호출부가 기존 폴백으로 떨어진다).
+ *
+ * 종목 이름이 맞아도 **그 종목의 트리가 실제로 있어야** 유효로 친다. 탭은 `trees`로만
+ * 그려지므로, 트리가 없는 종목을 그대로 선택하면 선택된 탭이 하나도 없이 본문이 비어 보인다.
+ */
+function normalizeActivity(
+  raw: string | undefined | null,
+  trees: BadgeActivityTree[]
+): ActivityType | null {
+  if (!raw) return null
+  if (!VALID_ACTIVITY_TYPES.has(raw)) return null
+  const activityType = raw as ActivityType
+  return trees.some((tree) => tree.activityType === activityType) ? activityType : null
+}
+
 /**
  * 배지 트리(/badges/tree) — 티켓 20260905_0037(전면 리뉴얼).
  *
@@ -59,6 +84,8 @@ export interface BadgeTreeClientProps {
   progressByBadgeId: Record<string, BadgeProgress>
   /** 기록형 프런티어 전용 "아쉬움 줄" 데이터 — badge id로 조회 */
   regretLineByBadgeId: Record<string, RegretLineData>
+  /** `?activity=` — 열어둘 종목 탭. 유효하지 않으면 무시하고 첫 트리를 연다 (20260906_1158) */
+  initialActivity?: string
 }
 
 export default function BadgeTreeClient({
@@ -69,9 +96,10 @@ export default function BadgeTreeClient({
   syncComparisonMessage,
   progressByBadgeId,
   regretLineByBadgeId,
+  initialActivity,
 }: BadgeTreeClientProps) {
   const [activeActivity, setActiveActivity] = useState<ActivityType>(
-    trees[0]?.activityType ?? 'walking'
+    () => normalizeActivity(initialActivity, trees) ?? trees[0]?.activityType ?? 'walking'
   )
   const [activeStageId, setActiveStageId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)

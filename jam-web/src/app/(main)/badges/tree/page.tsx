@@ -114,8 +114,17 @@ function withResolvedAxisLabels(
  * `/badges/[id]`보다 정적 세그먼트가 우선 매칭되므로 라우트 충돌은 없다.
  * `badges/page.tsx`와 동일하게 서버 컴포넌트에서 Supabase를 직접 조회한다(API route 신설 안 함).
  * 이 페이지는 `supabase.auth.getUser()`(쿠키 기반)를 호출하므로 자동으로 동적 렌더링된다.
+ *
+ * `?activity=` — 열어둘 종목 탭(티켓 20260906_1158). `badges/page.tsx`의 `?tab=`과 같은 패턴이다.
+ * 서버 조회 범위는 바꾸지 않는다 — 트리는 전 종목을 어차피 다 만들고, 쿼리는 어느 탭을 열지만 정한다.
  */
-export default async function BadgeTreePage() {
+interface Props {
+  searchParams: Promise<{ activity?: string }>
+}
+
+export default async function BadgeTreePage({ searchParams }: Props) {
+  const { activity } = await searchParams
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -314,6 +323,7 @@ export default async function BadgeTreePage() {
       syncComparisonMessage={syncComparisonMessage}
       progressByBadgeId={progressByBadgeId}
       regretLineByBadgeId={regretLineByBadgeId}
+      initialActivity={activity}
     />
   )
 }
