@@ -1,8 +1,9 @@
 ---
 id: 20260906_2056
 category: BadgeEngine
-status: OPEN
+status: CLOSED
 created: 2026-09-06
+closed: 2026-09-06
 ---
 
 # [BadgeEngine] 휴식 4종 + `repeat_count` 조합 지원 (§B-10 재설계)
@@ -171,7 +172,32 @@ created: 2026-09-06
 이번 변경과 무관), `npx tsc --noEmit` 오류 없음.
 
 ### ⑤ 남은 작업 (병합 전 오케스트레이터 확인 필요)
-- 라이브 DB에서 위 50건의 `condition_json`이 정적 분석과 일치하는지 재확인
-- 병합 후 `POST /api/admin/badges/reevaluate-all`(티켓 `20260906_1431`이 신설한 배치)로
-  기존 유저 재평가를 돌려 이 50건이 실제로 발급되기 시작하는지 게이트 리뷰에서 실측 확인
-  (티켓 본문 구현 계획 6번)
+- ~~라이브 DB에서 위 50건의 condition_json이 정적 분석과 일치하는지 재확인~~ **완료** —
+  게이트 리뷰가 service_role로 직접 조회해 50건/15계열/휴식키별 7·16·15·12건이 정적 분석과
+  정확히 일치함을 확인했다.
+- 병합 후 `POST /api/admin/badges/reevaluate-all`로 기존 유저 재평가 실측은 **staging 배포
+  이후**로 남긴다 — 실유저에게 새 배지가 실제로 발급되는 부수효과가 있어 별도 확인 후 진행.
+
+## 2026-09-06 게이트 리뷰 PASS — staging 병합 완료
+
+conservative-reviewer가 라이브 DB 직접 조회 + 실제 조건 4건으로 `evaluateConditionDetailed`
+직접 호출까지 재현해 PASS 판정. 개선 리뷰가 지적한 스펙 문서 3곳(`BADGE_ENGINE_UNIFIED.md`
+§2.16, `CONDITION_JSON_SPEC.md` 3곳)의 "휴식+repeat_count 조합 불가" 서술을 "휴식 키 1개까지
+가능"으로 갱신 완료.
+
+### 테스트 결과
+- [x] `tsc --noEmit` 0건
+- [x] `vitest run` 전체 61 files / 1112 tests 통과
+- [x] 신규 회귀 테스트(`rest-conditions.test.ts` 확장, `badge-condition-guards.test.ts`) 포함
+
+### 배포 정보
+- 배포일: 2026-09-06 (staging)
+- 환경: staging → production은 `/jam-ship`으로 별도 진행
+- 커밋: `55364dcc`(구현) staging에 병합
+
+### 잔여 이슈
+- 휴식 키 2개 이상 조합은 여전히 fail-closed(사건 경계 미정의, 현재 카탈로그 0건 — 필요해지면
+  별도 판단)
+- `running:X1`「비워둔 하루」의 `repeat_count: 50`이 체감 난이도가 매우 높음 — 컨텐츠 담당
+  확인 가치 있음(엔진 결함 아님)
+- staging 배포 후 `POST /api/admin/badges/reevaluate-all`로 50건 실제 발급 확인 필요
