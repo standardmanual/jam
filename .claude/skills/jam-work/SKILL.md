@@ -154,12 +154,16 @@ const VERDICT = {
 }
 
 phase('구현')
+// isolation: 'worktree' 필수 — 병렬 jam-work 세션이 같은 메인 트리에서 동시에 git
+// checkout/commit을 하면 서로의 미커밋 편집·체크아웃 상태를 지운다(티켓 20260906_0110
+// 게이트 리뷰 중 실측: 오케스트레이터가 남긴 문서 편집이 흔적 없이 사라짐). 격리 워크트리는
+// 이 트리 밖에서 분기·커밋하므로 다른 세션의 작업과 절대 겹치지 않는다.
 const devResult = await agent(
   `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n요청: ${userRequest}\n` +
   `${reuseDecision ? `\nUI 재사용 판정(오케스트레이터 결정, 이대로 따를 것):\n${reuseDecision}\n` : ''}` +
   `${retryReason ? `\n이전 게이트 리뷰 FAIL 사유 — 반드시 해결할 것:\n${retryReason}\n` : ''}` +
   `\n이 티켓을 읽고 구현을 진행하라.`,
-  { agentType: 'jam-developer', label: 'jam-developer' }
+  { agentType: 'jam-developer', label: 'jam-developer', isolation: 'worktree' }
 )
 
 phase('게이트 리뷰')
