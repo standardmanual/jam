@@ -423,9 +423,23 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 판정은 `resolveMissionVisibility()`(`lib/missions/visibility.ts`)가 하며, 규칙 형태가
 > 깨지면 `OPEN`이 아니라 `locked`로 **fail-closed**한다.
 >
-> ⚠️ **2단 교차 게이트(`cross_in_axis`·`cross_between_axis`·`gate_mission_badge`)는
-> 아직 한 행도 시딩되지 않았다.** 지금 발급이 열리면 모든 Mystic이 무관문으로 나간다 —
-> 티켓 `20260906_0110`.
+> **2단 교차 게이트(`cross_in_axis`·`cross_between_axis`·`gate_mission_badge`) 축→계열
+> 매핑 — 티켓 `20260906_1947`.** 98 Mystic 중 게이트가 있는 86종(설계상 무관문 예외
+> 12종 제외 — 연속·달력 축의 「이미 강도가 충분해 게이트 불필요」·「사계절 요약」류)과
+> 그 86종의 「해당 Epic」 79종에 조건을 매핑하는 SQL(`seed_v5_gate_conditions.sql`)을
+> `Specs/Content/v5_gate_build.py`가 축→계열 규칙표를 기계적으로 적용해 생성했다 —
+> **작성만 하고 아직 실행하지 않았다**(사용자 승인 대기). 실행 전까지는 여전히 모든
+> Mystic이 무관문이다. 축→계열 상세 규칙표는 `Specs/Content/v5_gate_mapping.json`.
+> 무한레벨형(누적) 계열 자신의 Lv.5+/Lv.8+ 자체 게이트는 이번 매핑 범위 밖 — 별도
+> 콘텐츠 작업으로 남았다.
+>
+> ⚠️ **미션 40종(걷기 8 + 4종목 32) 자체가 `missions` 테이블에 아직 없다.** `gate_axis`
+> 등 3개 컬럼을 채우기 이전에, v5 설계 문서(`v5_mission_badges.json`)가 요구하는 미션
+> 완료 조건(예: 「3주 연속 주 3회」·「서로 다른 5개 요일」·「N주 안에 M회」) 대부분이
+> **현재 `missions.mission_type`/`MissionCondition` 어휘로 표현할 수 없다** — 배지엔진
+> 수준의 조건 표현력(반복 횟수·요일 분산·시간대 분산 등)이 미션 엔진에는 없다. 40종 중
+> 단일 지표·단일 시간창 조건(예: 「2주 안에 80km」)만 기존 스키마로 표현 가능하고, 나머지는
+> 미션 엔진 확장이 선행돼야 한다 — 별도 티켓 필요(20260906_1947 완료 기록 alerts 참고).
 >
 > 폐기된 v4 방식 기록 (티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
 
@@ -697,6 +711,11 @@ supabase-js 쿼리 빌더에는 jsonb 포함 연산자를 조건절에 싣는 �
 판정은 `src/lib/badge-engine/crossGate.ts`의 `evaluateCrossGates()` 한 곳이며,
 `index.ts`의 `evaluateBadgeGates()`가 선행 배지 게이트 다음에 호출한다.
 
+계열 하나가 요구를 만족하는지의 최소 단위 판정(`familyGateSatisfied()`)은 **엔진과
+배지 트리 화면(`src/lib/badgeTree.ts`)이 공유한다**(2026-09-06, 티켓 `20260906_1947` ③).
+예전엔 `badgeTree.ts`가 이 규칙을 화면 전용으로 재구현해서, 두 구현이 갈리면 「트리에서는
+열려 보이는데 실제 발급은 안 되는 배지」가 생길 수 있었다.
+
 | 관문 | 조건 | 조건 필드 |
 |---|---|---|
 | Rare → Epic | 축 내 교차 **또는** 축 간 교차 | `cross_in_axis` / `cross_between_axis` |
@@ -713,6 +732,11 @@ supabase-js 쿼리 빌더에는 jsonb 포함 연산자를 조건절에 싣는 �
 - `family_keys` — 대상 **계열**(`badges.family_key`). 기본 결합은 OR
 - `min_rarity` — 생략하면 「그 계열의 배지를 하나라도 보유」. 지정하면 그 등급 이상의
   **등급이 있는** 배지여야 한다(무한레벨형 계열에는 지정하지 않는다 — 등급이 없어 영원히 막힌다)
+- `min_level`(2026-09-06, 티켓 `20260906_1947` ④) — **무한레벨형 계열 전용**, `min_rarity`와
+  **상호 배타**(둘 다 두면 저장 시 차단된다). 생략하면 「그 계열을 Lv.1이라도 보유」다.
+  이 필드가 없던 시절엔 무한레벨형(누적 축)을 보완 축으로 지정해도 "Lv.1 보유"(=첫 주에
+  달성)가 곧 「보완 축 Rare 이상」에 준하는 강도를 흉내 낸 관문을 자동 통과시켰다 —
+  실측 11건(`v5_catalog_verified.json` 잔여_이슈)
 - `min_count` — 생략하면 1. 2 이상이면 그만큼의 계열을 **AND**로 요구한다
 
 **결합 규칙**: 교차 요구 둘(`cross_in_axis`·`cross_between_axis`)은 **서로 OR**,
