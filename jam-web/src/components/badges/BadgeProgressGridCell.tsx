@@ -12,7 +12,7 @@ export interface BadgeProgressGridCellProps {
   family: BadgeFamily
   earnedBadgeIds: Set<string>
   conditionMetBadgeIds: Set<string>
-  /** ready/locked 눈금 탭 시 잠금 해제 조건 시트 오픈 요청 */
+  /** ready/locked 눈금 탭 시 「받는 방법」 시트 오픈 요청 */
   onLockClick: (stageId: string) => void
   /** 계열 진행 앵커의 진행 계산 결과 — badge id로 조회 */
   progressByBadgeId: Record<string, BadgeProgress>
@@ -47,8 +47,8 @@ export default function BadgeProgressGridCell({
 
   const rarityLabel = stage.rarity ? (RARITY_LABEL[stage.rarity] ?? stage.rarity) : null
   const stopName = [family.name, rarityLabel].filter(Boolean).join(' ')
-  // 캡션이 상태 라벨을 넘어서는 정보(수치·조건값)일 때만 이어붙인다 — 바닥 폴백("조건 충족")은
-  // statusAriaText와 같은 말이라 이어붙이면 "조건 충족. 조건 충족"으로 중복된다.
+  // 캡션이 상태 라벨을 넘어서는 정보(수치·조건값)일 때만 이어붙인다 — 바닥 폴백
+  // ("조건을 다 채웠어요")은 statusAriaText와 같은 말이라 이어붙이면 중복된다.
   const ariaLabel = `${stopName}, ${caption.statusAriaText}` + (caption.hasDetail ? `. ${caption.text}` : '')
 
   // `StopHitArea`(BadgeStageRail)와 같은 규칙 — ready/locked만 버튼(잠금 시트), 그 외는 링크.

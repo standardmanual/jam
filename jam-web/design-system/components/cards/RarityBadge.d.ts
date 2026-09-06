@@ -9,6 +9,11 @@ export interface RarityBadgeProps {
    * 않으며 개발 빌드에서 `console.warn`을 남긴다 (티켓 20260905_0036).
    */
   rarity?: Rarity | null;
+  /**
+   * 칩 크기 (티켓 20260906_2140). `sm`(기본) = 8px 라벨 · 4/9 패딩 — **기존 렌더 그대로**라
+   * `size`를 넘기지 않는 서비스 호출부는 변화가 없다. `md` = 11px 라벨 · 5/10 패딩(배지 트리).
+   */
+  size?: 'sm' | 'md';
   className?: string;
 }
 

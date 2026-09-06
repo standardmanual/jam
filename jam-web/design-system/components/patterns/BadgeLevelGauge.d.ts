@@ -1,9 +1,12 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 export interface BadgeLevelGaugeProps {
   /** 계열 이름 — 이 이름이 곧 지표다("걸어온 거리"). 말줄임하지 않고 줄바꿈으로 전부 보여준다 */
   name: string;
-  /** 지금까지 도달한 레벨(1부터). `null`이면 레벨 칩도 **칩 칸도** 그리지 않는다 */
+  /**
+   * 지금까지 도달한 레벨(1부터). 헤더 우측 진행률 옆에 `Lv.8` **텍스트**로 그린다
+   * (티켓 20260906_2140 — `BadgeLevelChip`을 여기서 더 쓰지 않는다). `null`이면 라벨 없음.
+   */
   level?: number | null;
   /** 현재 누적값. 호출부가 포맷한 값을 그대로 받는다(DS는 계산하지 않는다) */
   current: string | number;
@@ -13,6 +16,8 @@ export interface BadgeLevelGaugeProps {
   left?: string | null;
   /** 0~1 진행률. 계산 계층이 만든 값을 그대로 넘긴다 — current/next로 재계산하지 말 것 */
   fraction: number;
+  /** 헤더 2행(메타 줄). `null`이면 그리지 않는다 */
+  metaText?: ReactNode;
   /** 배지 이미지. 미획득이라 grayscale(1)로 그린다 */
   imageUrl?: string | null;
   /** 이미지 대체 텍스트. 생략하면 name */

@@ -161,7 +161,9 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   activities_within_hours: (c) =>
     `${c.activities_within_hours!.hours}시간 안에 ${c.activities_within_hours!.count}회 이상`,
   negative_split: (c) => (c.negative_split === true ? '후반이 전반보다 빠른 활동' : null),
-  same_activity: (c) => (c.same_activity === true ? '한 번의 활동에서 모두 충족' : null),
+  // 「충족」은 폐지어다(UX_WRITING_GUIDELINE.md, 커밋 00ead78f) — `DualAxisGauge`의
+  // "두 조건을 동시에 채워야 해요"와 같은 어순으로 맞춘다.
+  same_activity: (c) => (c.same_activity === true ? '한 번의 활동에서 동시에 채워야 해요' : null),
   poi_id: () => '지정된 지점에서 체크인',
 
   // 레지스트리 라벨이 「전월 대비 **배수**」라 일반 조립이 「배수 1.2배」로 겹친다
@@ -195,7 +197,7 @@ const SECTION_ORDER: Record<ConditionFormSection, number> = {
   repeat: 6,
 }
 
-/** 섹션만으로는 자리가 어긋나는 예외. `same_activity`는 지표가 아니라 «충족 방식»이라 뒤로 뺀다 */
+/** 섹션만으로는 자리가 어긋나는 예외. `same_activity`는 지표가 아니라 «채우는 방식»이라 뒤로 뺀다 */
 const ORDER_OVERRIDE: Partial<Record<ConditionKey, number>> = {
   same_activity: 5,
 }
@@ -255,7 +257,7 @@ function safePhrase(meta: AnyConditionFieldMeta, condition: BadgeCondition): str
 /**
  * 서로 다른 활동에서 각각 달성해도 인정되는 속성 조건이 2개 이상일 때 붙는 안내.
  * 이전 구현의 판단을 그대로 유지하되(대상 키 동일), **`same_activity`가 참이면 붙이지
- * 않는다** — 「한 번의 활동에서 모두 충족」과 정면으로 모순되기 때문이다.
+ * 않는다** — 「한 번의 활동에서 동시에 채워야 해요」와 정면으로 모순되기 때문이다.
  */
 function crossAttrNote(condition: BadgeCondition): string {
   if (condition.same_activity === true) return ''

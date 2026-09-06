@@ -19,6 +19,16 @@ import React, { Children } from 'react';
  * (둘 다 열어 두거나 둘 다 접어 둘 수 있다).
  *
  * 제어/비제어: `open`을 넘기면 제어 컴포넌트, 안 넘기면 `defaultOpen`으로 스스로 관리한다.
+ *
+ * ## `collapsible={false}` — 접지 않는 섹션 (티켓 20260906_2140 F-1)
+ *
+ * 배지 트리의 「다음 목표」는 **그 화면의 본문 전체**다. 접을 수 있게 두면 사용자가 화면을
+ * 통째로 닫을 수 있는 토글이 제목 자리에 놓이는 셈인데, 정작 열어 둘 이유는 100%다
+ * (`defaultOpen`으로 항상 열려 있었다). 그래서 이 화면은 chevron·토글 없이 제목 + 개수만
+ * 보여준다 — 컴포넌트를 지우지 않고 호출부가 `collapsible={false}`를 고른다.
+ *
+ * ⚠️ 「펼친 섹션만 계산」 최적화는 이 모드에서 성립하지 않는다. **회귀가 아니다** —
+ * 유일한 호출부가 이미 `defaultOpen`이라 접힌 적이 없고, 늘 전부 계산하고 있었다.
  */
 function ChevronDownGlyph({ size = 20 }) {
   return (
@@ -40,6 +50,16 @@ export function BadgeStatusSection({
   title,
   /** 접힘 상태에서도 보이는 개수. null이면 개수를 감춘다 */
   count,
+  /**
+   * false면 **접지 않는다** — 버튼·chevron 없이 제목 + 개수만 그리고 본문은 항상 보인다.
+   * 기본값 true라 기존 호출부는 그대로다.
+   */
+  collapsible = true,
+  /**
+   * 제목 오른쪽 끝에 붙는 보조 표기 — 「진행률 높은 순」처럼 **목록의 규칙**을 말한다.
+   * 정렬 기준이 화면 어디에도 없으면 사용자는 순서를 임의로 읽는다. null이면 안 그린다.
+   */
+  note = /** @type {string | null} */ (null),
   /** 제어 모드일 때의 펼침 상태. 넘기지 않으면 비제어(defaultOpen) */
   open,
   defaultOpen = false,
@@ -69,6 +89,59 @@ export function BadgeStatusSection({
     onOpenChange?.(next);
   };
 
+  const titleContent = (
+    <>
+      <span style={{ fontSize: 'var(--text-small)', fontWeight: 700, color: 'var(--color-text)' }}>
+        {title}
+      </span>
+      {count != null && (
+        <span
+          style={{
+            fontSize: 'var(--text-caption)', fontWeight: 600, lineHeight: 1,
+            color: 'var(--color-text-secondary)', fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {count}
+        </span>
+      )}
+      {/* 스페이서는 항상 둔다 — note가 있든 없든 chevron·note가 오른쪽 끝에 붙는다 */}
+      <span style={{ flex: 1 }} />
+      {note && (
+        <span style={{ fontSize: 'var(--text-caption)', lineHeight: 1, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+          {note}
+        </span>
+      )}
+    </>
+  );
+
+  const body = hasChildren ? (
+    children
+  ) : (
+    emptyText && (
+      <p style={{ margin: 0, padding: 'var(--spacing-12) 0', fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)' }}>
+        {emptyText}
+      </p>
+    )
+  );
+
+  // 접지 않는 모드 — 제목은 버튼이 아니라 정적 헤딩이다. 누를 수 없는 것을 버튼으로
+  // 그리면 보조기술이 "버튼"이라고 읽어 존재하지 않는 행동을 약속하게 된다.
+  if (!collapsible) {
+    return (
+      <section className={className} style={style}>
+        <h2
+          style={{
+            margin: 0, padding: 'var(--spacing-12) 0', display: 'flex', alignItems: 'center',
+            gap: 'var(--spacing-8)', font: 'inherit',
+          }}
+        >
+          {titleContent}
+        </h2>
+        <div>{body}</div>
+      </section>
+    );
+  }
+
   return (
     <section className={className} style={style}>
       <style>{STATIC_CSS}</style>
@@ -80,20 +153,7 @@ export function BadgeStatusSection({
         aria-expanded={isOpen}
         aria-controls={bodyId}
       >
-        <span style={{ fontSize: 'var(--text-small)', fontWeight: 700, color: 'var(--color-text)' }}>
-          {title}
-        </span>
-        {count != null && (
-          <span
-            style={{
-              fontSize: 'var(--text-caption)', fontWeight: 600, lineHeight: 1,
-              color: 'var(--color-text-secondary)', fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {count}
-          </span>
-        )}
-        <span style={{ flex: 1 }} />
+        {titleContent}
         <span
           className="ds-status-section-chevron"
           style={{ display: 'flex', color: 'var(--color-text-secondary)', transform: isOpen ? 'rotate(180deg)' : 'none' }}
@@ -105,16 +165,7 @@ export function BadgeStatusSection({
       {/* 접힌 동안에는 아예 렌더하지 않는다 — 본문에 붙은 진행 계산 요청까지 함께 멈춘다.
           (display:none으로 숨기면 이펙트가 그대로 돌아 "펼친 섹션만 계산"이 성립하지 않는다) */}
       <div id={bodyId} role="region" aria-labelledby={headerId} hidden={!isOpen}>
-        {isOpen &&
-          (hasChildren ? (
-            children
-          ) : (
-            emptyText && (
-              <p style={{ margin: 0, padding: 'var(--spacing-12) 0', fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)' }}>
-                {emptyText}
-              </p>
-            )
-          ))}
+        {isOpen && body}
       </div>
     </section>
   );
