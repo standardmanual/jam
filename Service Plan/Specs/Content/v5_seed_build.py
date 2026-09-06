@@ -501,6 +501,25 @@ for sport, arr in writing['계열'].items():
 for b in missions['배지']:
     TEXT[(SPORT_KEY[b['sport']], b['code'])] = (b['이름'], b['설명'], b['조건'])
 
+# 등급별 설명 — 티켓 20260906_1305.
+# 정본의 「설명」은 **최저 등급(또는 Lv1)의 문장**이고, 그 위 등급은 「등급별설명」이 덮는다.
+# 키는 등급형이면 rarity 값('rare'·'epic'·'mystic'), 레벨형이면 level의 문자열('2'~'8')이다.
+# 최저 등급 키는 애초에 들어 있지 않으므로 `.get(...)` 폴백이 곧 「최저 등급 유지」다.
+TIER_TEXT = {}
+for sport, arr in writing['계열'].items():
+    for f in arr:
+        if f.get('등급별설명'):
+            TIER_TEXT[(SPORT_KEY[sport], f['code'])] = f['등급별설명']
+
+
+def desc_of(sport_key, code, rarity, level, base_desc):
+    """이 행(등급/레벨) 하나의 설명. 등급별 문장이 없으면 정본 「설명」을 그대로 쓴다."""
+    tiers = TIER_TEXT.get((sport_key, code))
+    if not tiers:
+        return base_desc
+    key = str(level) if level is not None else rarity
+    return tiers.get(key, base_desc)
+
 # =========================================================================
 # 드라이런 검증
 # =========================================================================
@@ -595,6 +614,41 @@ mission_rows = [f for f in seeded if f.kind == 'mission']
 for f in mission_rows:
     if f.rows[0][2].get('mission_reward') is not True:
         problems.append(f'{f.code}: 미션 보상 배지에 mission_reward가 없다')
+
+# ⑨ 등급별 설명 — 키가 그 계열의 실제 등급/레벨과 맞는가 (티켓 20260906_1305)
+#    최저 등급 키가 들어 있으면 정본 「설명」이 조용히 덮인다 — 그것도 잡는다.
+RARITY_TIER_ORDER = ['common', 'rare', 'epic', 'mystic', 'legendary']
+tier_rows_written = 0
+for f in seeded:
+    tiers = TIER_TEXT.get((f.sport_key, f.code))
+    if not tiers:
+        continue
+    if len(f.rows) < 2:
+        problems.append(f'{f.code}: 1행 계열인데 등급별설명이 있다')
+        continue
+    is_level = any(lv is not None for _, lv, _ in f.rows)
+    if is_level:
+        levels = sorted(lv for _, lv, _ in f.rows)
+        expected = {str(lv) for lv in levels[1:]}
+    else:
+        rar = sorted((r for r, _, _ in f.rows), key=RARITY_TIER_ORDER.index)
+        expected = set(rar[1:])
+    got = set(tiers)
+    if got != expected:
+        problems.append(f'{f.code}: 등급별설명 키 불일치 기대={sorted(expected)} 실제={sorted(got)}')
+        continue
+    if any(not str(v).strip() for v in tiers.values()):
+        problems.append(f'{f.code}: 등급별설명에 빈 문장이 있다')
+    tier_rows_written += len(tiers)
+
+# 계열 내 설명이 전부 같은 문장이면 등급을 올려도 읽을 거리가 늘지 않는다 — 이 티켓의 원인
+for f in seeded:
+    if len(f.rows) < 2:
+        continue
+    name, base_desc, _ = TEXT[(f.sport_key, f.code)]
+    descs = {desc_of(f.sport_key, f.code, r, lv, base_desc) for r, lv, _ in f.rows}
+    if len(descs) == 1:
+        problems.append(f'{f.code}: {len(f.rows)}행인데 설명이 1종이다 (등급별설명 누락)')
 
 # ⑧ 필터 키 + 측정 축 조합 (진행률이 필터를 무시한다 — 기존 결함)
 FILTER_KEYS = {'time_range', 'month', 'day_of_week', 'season', 'day_of_month'}
@@ -745,7 +799,8 @@ for sport in sport_order:
         comments[(sport, f.code)] = (name, cond_text, notes, idx)
         for rarity, level, c in f.rows:
             value_rows.append((
-                sport, f.code, name, desc, rarity, level, f.family_key, idx, c
+                sport, f.code, name, desc_of(sport, f.code, rarity, level, desc),
+                rarity, level, f.family_key, idx, c
             ))
 
 # ── JSON 산출 — PostgREST로 넣기 위한 같은 데이터 ──────────────────────────
@@ -915,6 +970,7 @@ for f in seeded:
     kinds[f.kind] = kinds.get(f.kind, 0) + len(f.rows)
 print('  종류별 종 수: ' + ', '.join(f'{k}={v}' for k, v in kinds.items()))
 print(f'  미션 보상 배지: {len(mission_rows)}종')
+print(f'  등급별 설명(티켓 20260906_1305): {tier_rows_written}행이 최저 등급과 다른 문장을 쓴다')
 print()
 print(f'CHECK 허용 키(134에서 읽음): {len(ALLOWED_KEYS)}종 / 트리거 measurable_keys: {len(MEASURABLE_KEYS)}종')
 print()
