@@ -1404,7 +1404,7 @@ export const CONDITION_FIELDS = [
       label: '충족 횟수 (회)',
       placeholder: '예: 5',
       wide: true,
-      help: '휴식 조건(연속·장거리 후 휴식, 복귀 전 휴식, 활동 간격)과는 함께 쓸 수 없어요.',
+      help: '휴식 조건(연속·장거리 후 휴식, 복귀 전 휴식, 활동 간격)은 1개까지만 함께 쓸 수 있어요.',
     }),
   }),
 

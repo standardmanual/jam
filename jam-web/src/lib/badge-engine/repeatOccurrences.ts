@@ -17,7 +17,25 @@
 import type { BadgeCondition, DayOfWeek } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm } from '@/types/strava'
-import { passesWalkingGate, matchesDayOfWeek, matchesDayOfWeekFilter, dedupeOnePerDay, inTimeRange, getMondayKey } from './activityFilters'
+import {
+  passesWalkingGate,
+  matchesDayOfWeek,
+  matchesDayOfWeekFilter,
+  dedupeOnePerDay,
+  inTimeRange,
+  getMondayKey,
+  // 휴식 4종 + repeat_count 조합(티켓 20260906_2056) — 사건 하나를 활동 기반이 아니라
+  // 활동 "사이의 간격"(RestInterval)으로 세야 하므로, evaluateRestConditions와 같은 눈으로
+  // 구간을 만드는 이 세 조각을 그대로 가져다 쓴다. 둘이 각자 구간을 만들면 「진행률은
+  // 3/5회인데 발급은 4회차를 인정」 같은 어긋남이 생긴다.
+  restConditionKeysIn,
+  restConsumedPairKeys,
+  restPool,
+  buildRestIntervals,
+  isPositiveDays,
+  type RestConditionKey,
+  type RestInterval,
+} from './activityFilters'
 import { GATE_CONDITION_KEYS } from './crossGate'
 import { PER_ACTIVITY_KEYS, CUMULATIVE_SAME_ACTIVITY_KEYS, type ScalarAxisKey } from './conditionAxes'
 
@@ -74,8 +92,10 @@ export function matchesPerActivityCondition(condition: BadgeCondition, a: Normal
  *
  * ⚠️ **휴식 4종은 게이트와 다르다 — 이 목록에 넣지 않는다**(v5 B3, B-10). 게이트는
  * 「보유 여부」라 회차와 층이 다르지만, 휴식은 **이력 패턴 술어**라 넣는 순간 「휴식 조건을
- * 무시한 회차」가 세어진다. 조합 자체를 `evaluateConditionDetailed`가 「회차와 함께 쓸 수 없는
- * 조건」으로 먼저 막으므로 이 경로에 휴식 키가 도달하지 않는다.
+ * 무시한 회차」가 세어진다. 휴식 키가 «정확히 하나»면 아래 `detectRestOccurrenceDriver`가
+ * 먼저 가로채 전용 계산으로 보내므로(티켓 20260906_2056), 이 목록에 여전히 없어도 그 조합은
+ * 이 경로(활동 1건 단위 술어)에 도달하지 않는다. 휴식 키가 둘 이상이면 "사건 하나"의 경계가
+ * 정의되지 않아(§B-10 재설계) `evaluateConditionDetailed`가 여전히 먼저 막는다.
  */
 const CONSUMED_REPEAT_KEYS: ReadonlySet<string> = new Set<string>([
   'repeat_count',
@@ -305,6 +325,115 @@ export function isPeriodDrivenRepeatCondition(condition: BadgeCondition): boolea
   return detectPeriodOccurrenceDriver(condition) !== undefined
 }
 
+// ── 휴식 4종 + repeat_count (티켓 20260906_2056, §B-10 재설계) ───────────────
+//
+// `0030`은 이 조합을 의도적으로 막았다 — 휴식은 활동 1건 단위 술어가 아니라 **이력 패턴**
+// (활동 사이의 간격)이라, `CONSUMED_REPEAT_KEYS`에 넣고 `matchesPerActivityCondition`으로
+// 세면 "휴식 조건을 무시한 회차"가 세어진다(§B-10). 그래서 기간 단위 회차(위 ⓪-a)와 같은
+// 자리에서 **완전히 별도 계산**으로 처리한다.
+//
+// ## 사건(occurrence)의 경계 — activityFilters의 `RestInterval` 하나 = 사건 하나
+//
+// `evaluateRestConditions`가 이미 이력을 인접한 두 활동일 사이의 **닫힌 구간**(`RestInterval`)
+// 목록으로 쪼갠다. 구간 하나는 정확히 (직전 활동일, 복귀일) 한 쌍만 가리키는 원자적 단위다 —
+// 그 앞의 스트릭이 아무리 길어도, 그 뒤의 공백이 아무리 길어도 "그 한 번의 물리적 전환"은
+// 항상 구간 하나로만 표현된다. 그래서 `collectStreakDayOccurrences`(위)가 "런 하나가 여러
+// 회차로 쪼개지지 않게" `findRunThresholdKeys`로 따로 막아야 했던 문제가 여기엔 없다 —
+// 구간 자체가 이미 쪼갤 수 없는 단위이기 때문이다. `evaluateRestConditions`가 "그런 구간이
+// 하나라도 있는가"만 묻는 데 비해, 여기서는 그 구간들 중 조건을 만족하는 것을 전부 세고
+// (같은 eligible·threshold 판정을 그대로 재사용한다), 그 개수가 곧 사건 수다.
+//
+// ## 휴식 키가 «정확히 하나»일 때만 지원한다
+//
+// 서로 다른 두 휴식 키(예: `rest_after_streak` + `return_gap_days`)가 `repeat_count`와
+// 함께 오면 "사건 하나"가 같은 구간에서 두 키를 동시에 만족해야 하는지, 각 키가 독립적으로
+// 다른 구간에서 만족해도 되는지가 정의돼 있지 않다. `evaluateRestConditions`의 단발 판정도
+// 이 경우 각 키가 독립적으로 자기 구간을 찾아 AND로 묶을 뿐(§ 388 이하 `evaluateRestConditions`
+// 참조), "사건 하나"로 셀 방법을 정의하지 않는다. 구현 착수 시 전수 조사한 현재 카탈로그에는
+// 이런 조합이 없다(완료 기록 참고) — 있더라도 사건 경계가 모호하므로 안전하게 막는다
+// (fail-closed, `detectPeriodOccurrenceDriver`와 같은 태도). `evaluateConditionDetailed`가
+// 이 판정(`isRestDrivenRepeatCondition`)이 거짓일 때 여전히 「회차와 함께 쓸 수 없는 조건」으로
+// 막는다.
+
+const REST_OCCURRENCE_ALLOWED_COMPANIONS: ReadonlySet<string> = new Set<string>([
+  'repeat_count',
+  'activity_type',
+  'day_of_week',
+])
+
+/** 조건이 휴식-회차 전용 계산이 필요한 형태인지 판단해 드라이버 키를 고른다 (엄격하게 좁힌다) */
+function detectRestOccurrenceDriver(condition: BadgeCondition): RestConditionKey | undefined {
+  if (condition.repeat_count === undefined) return undefined
+  const restKeys = restConditionKeysIn(condition)
+  if (restKeys.length !== 1) return undefined // 휴식 키 2개 이상 — 사건 경계 미정의, 폴백
+  const driver = restKeys[0]
+  if (!isPositiveDays(condition[driver])) return undefined // 형태 오류 — 아래에서 다시 막힌다
+
+  // 짝 필드(streak_days·single_distance_km·duration_minutes)는 휴식 술어가 실제로 읽으므로
+  // 허용 동반 키에 합류한다 — `restConsumedPairKeys`가 그 목록의 단일 출처다. 드라이버 키
+  // 자신(예: rest_after_streak)도 당연히 조건에 있으므로 허용 목록에 넣는다.
+  const allowed = new Set<string>([driver, ...REST_OCCURRENCE_ALLOWED_COMPANIONS, ...restConsumedPairKeys(condition)])
+  const extraKeys = Object.entries(condition)
+    .filter(([k, v]) => v !== undefined && !allowed.has(k))
+    .map(([k]) => k)
+  if (extraKeys.length > 0) return undefined
+
+  return driver
+}
+
+/**
+ * 조건이 `detectRestOccurrenceDriver`가 다루는 «휴식-회차» 형태인지 — `evaluateConditionDetailed`의
+ * 회차 차단 분기와 `badgeProgress.ts`의 `classifyConditionKind`가 같은 판단을 하기 위한 공개 창구다.
+ */
+export function isRestDrivenRepeatCondition(condition: BadgeCondition): boolean {
+  return detectRestOccurrenceDriver(condition) !== undefined
+}
+
+/**
+ * 휴식 조건을 만족한 «복귀 사건» 목록 — 시간순.
+ *
+ * `evaluateRestConditions`의 짝 필드 검사(①③)와 같은 검사를 여기서도 한다 — 이 함수가
+ * 순수 함수로 단독 호출될 수 있고(진행 계산), 값의 형태를 믿을 수 없으면 「사건이 있다」로
+ * 잘못 새지 않아야 한다.
+ */
+function collectRestOccurrences(
+  driverKey: RestConditionKey,
+  condition: BadgeCondition,
+  activities: NormalizedActivity[],
+  anchorDate?: string
+): NormalizedActivity[] {
+  if (!isPositiveDays(condition[driverKey])) return []
+  if (driverKey === 'rest_after_streak' && !isPositiveDays(condition.streak_days)) return []
+  if (
+    driverKey === 'rest_after_long' &&
+    !isPositiveDays(condition.single_distance_km) &&
+    !isPositiveDays(condition.duration_minutes)
+  ) {
+    return []
+  }
+
+  const value = condition[driverKey] as number
+  const intervals = buildRestIntervals(restPool(condition, activities, anchorDate))
+
+  const isEligible = (i: RestInterval): boolean => {
+    switch (driverKey) {
+      case 'rest_after_streak':
+        return i.streakBefore >= (condition.streak_days as number)
+      case 'rest_after_long':
+        if (condition.single_distance_km !== undefined && i.maxDistanceKmBefore < condition.single_distance_km) return false
+        if (condition.duration_minutes !== undefined && i.maxDurationMinBefore < condition.duration_minutes) return false
+        return true
+      case 'return_gap_days':
+      case 'interval_days':
+        return true
+    }
+  }
+  const measure = (i: RestInterval): number => (driverKey === 'interval_days' ? i.intervalDays : i.restDays)
+
+  const hits = intervals.filter((i) => isEligible(i) && measure(i) >= value).map((i) => i.resume)
+  return toSortedOccurrences(hits)
+}
+
 /**
  * 반복형의 «회차» 목록 — **활동 1건이 조건을 통째로 만족**한 활동을 시간순으로 돌려준다.
  * (v5 B1, 티켓 20260905_0030 §2)
@@ -321,12 +450,26 @@ export function isPeriodDrivenRepeatCondition(condition: BadgeCondition): boolea
  */
 export function collectRepeatOccurrences(
   condition: BadgeCondition,
-  activities: NormalizedActivity[]
+  activities: NormalizedActivity[],
+  /**
+   * 휴식-회차 조합(⓪-a2) 전용 — 가입 앵커. 안 넘기면 가입 이전 공백까지 사건으로 잡힌다
+   * (`evaluateRestConditions`가 같은 이유로 앵커를 받는 것과 동일, 티켓 20260906_2056).
+   * 기간 단위 회차·활동 1건 단위 회차는 앵커가 필요 없다 — 호출부가 이미 앵커로 자른
+   * 이력을 넘긴다(기존 동작 무변경).
+   */
+  anchorDate?: string
 ): NormalizedActivity[] {
-  // ⓪-a 기간 단위 회차(streak_days·weekly_count·monthly_count·weekly_streak) — 활동 1건
+  // ⓪-a1 기간 단위 회차(streak_days·weekly_count·monthly_count·weekly_streak) — 활동 1건
   //     단위 술어와 완전히 다른 계산이 필요해 가장 먼저 갈라진다(위 헤더 주석, 티켓 20260906_0110 ②).
   const periodCollector = detectPeriodOccurrenceDriver(condition)
   if (periodCollector) return periodCollector(condition, activities)
+
+  // ⓪-a2 휴식 4종 + repeat_count — 이력 패턴 술어라 활동 1건 단위 술어와 완전히 다른
+  //     계산이 필요하다(위 헤더 주석, 티켓 20260906_2056). 휴식 키가 둘 이상이면(사건 경계
+  //     미정의) `undefined`가 돌아와 아래로 흘러가고, ⓪-b의 fail-closed가 막는다 —
+  //     `CONSUMED_REPEAT_KEYS`에 휴식 키가 없기 때문이다.
+  const restDriver = detectRestOccurrenceDriver(condition)
+  if (restDriver) return collectRestOccurrences(restDriver, condition, activities, anchorDate)
 
   // ⓪-b 회차 술어가 «소비하지 않는 키»가 조건에 있으면 회차를 세지 않는다 (fail-closed).
   //

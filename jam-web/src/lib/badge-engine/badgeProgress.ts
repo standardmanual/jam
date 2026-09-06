@@ -102,6 +102,9 @@ import {
   unconsumedRepeatConditionKeys,
   repeatConsumedAxisKeys,
   isPeriodDrivenRepeatCondition,
+  // 휴식-회차 조합(티켓 20260906_2056) — 발급 판정(index.ts)의 회차 차단 분기와 같은
+  // 판정을 봐야 「막힌 조합」과 「repeat 축으로 그려지는 조합」이 어긋나지 않는다.
+  isRestDrivenRepeatCondition,
 } from './repeatOccurrences'
 // 교차 게이트는 `evaluation: 'external'`이라 fail-closed가 잡지 않는다 — 이 파일이 직접 표시한다.
 import { crossGateKeysIn } from './crossGate'
@@ -522,9 +525,15 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
   const restKeys = restConditionKeysIn(condition)
   const hasRepeat = condition.repeat_count !== undefined
 
-  // 휴식 + 회차는 **발급 자체가 막히는 조합**이다(§2.16 「회차와 함께 쓸 수 없다」,
-  // 티켓 20260905_0030 B-10). 어느 한쪽 축을 그리면 나머지 절반을 숨긴 채 진행률이 차오른다.
-  if (restKeys.length > 0 && hasRepeat) return 'unsupported'
+  // 휴식 + 회차 — 휴식 키가 «정확히 하나»면 이제 지원한다(§B-10 재설계, 티켓 20260906_2056).
+  // «사건 하나 = 휴식 조건을 만족한 복귀»를 세는 전용 계산(`collectRepeatOccurrences`)이
+  // 있으므로 발급 판정과 같은 판정(`isRestDrivenRepeatCondition`)으로 'repeat' 축을 그린다
+  // (`buildRepeatAxis`가 이 함수를 그대로 재사용한다). 휴식 키가 둘 이상이면 "사건 하나"의
+  // 경계가 정의되지 않아(§B-10 재설계) 여전히 **발급 자체가 막히는 조합**이다 — 어느 한쪽
+  // 축을 그리면 나머지 절반을 숨긴 채 진행률이 차오른다.
+  if (restKeys.length > 0 && hasRepeat) {
+    return isRestDrivenRepeatCondition(condition) ? 'repeat' : 'unsupported'
+  }
 
   // 휴식(활동 공백) — 「닫힌 공백」만 세므로 현재 시각(now)이 필요 없다(§2.16).
   // 실측값은 발급 판정과 **같은 함수**(`evaluateRestConditions`)에서 온다.
@@ -650,8 +659,11 @@ export function explainUnsupportedProgress(
   const restKeys = restConditionKeysIn(condition)
   const hasRepeat = condition.repeat_count !== undefined
 
+  // 여기 도달했다는 건 classifyBadgeProgressKind가 'unsupported'라는 뜻이다 —
+  // 휴식 키가 정확히 1개인 조합은 이제 'repeat'로 분류되어(티켓 20260906_2056) 이 분기에
+  // 오지 않는다. 그러니 이 분기는 «휴식 키 2개 이상» 또는 «지원 형태를 벗어난 조합»뿐이다.
   if (restKeys.length > 0 && hasRepeat) {
-    return describe([], '휴식 조건과 충족 횟수(repeat_count)는 함께 쓸 수 없어 발급 자체가 막혀요.')
+    return describe([], '휴식 조건은 1개까지만 충족 횟수(repeat_count)와 함께 쓸 수 있어 발급 자체가 막혀요.')
   }
 
   if (restKeys.length > 0) {

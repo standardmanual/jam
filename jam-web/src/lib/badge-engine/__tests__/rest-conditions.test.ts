@@ -11,7 +11,9 @@
  *   ② 활동이 없는 신규 유저가 「겨울잠」으로 오판되지 않는다
  *   ③ 공백은 **다음 활동이 들어온 순간**에 소급 판정된다
  *   ④ 짝 필드가 없으면 fail-closed로 막힌다 (「며칠 연속 뒤」가 정의되지 않는다)
- *   ⑤ `repeat_count`와의 조합이 「회차와 함께 쓸 수 없는 조건」으로 명확히 드러난다
+ *   ⑤ `repeat_count`와 휴식 키 «1개»의 조합은 "휴식 조건을 만족한 복귀 사건"만 센다
+ *      (휴식 조건을 무시한 단순 활동 카운트로 퇴화하지 않는다) — 휴식 키 2개 이상은
+ *      여전히 「회차와 함께 쓸 수 없는 조건」으로 막힌다 (§B-10 재설계, 티켓 20260906_2056)
  *   ⑥ 발급 판정(`index.ts`)과 진행 계산(`badgeProgress.ts`)이 **같은 헬퍼**를 본다
  *
  * 실행: `npx vitest run src/lib/badge-engine/__tests__/rest-conditions.test.ts`
@@ -23,10 +25,17 @@ import {
   evaluateRestConditions,
   restConditionKeysIn,
 } from '../activityFilters'
-import { classifyBadgeProgressKind } from '../badgeProgress'
+import { classifyBadgeProgressKind, computeUserPeriodMetrics, computeBadgeProgress } from '../badgeProgress'
+import { collectRepeatOccurrences, isRestDrivenRepeatCondition } from '../repeatOccurrences'
 import { findBlockingConditionKeys } from '../conditionRegistry'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition } from '@/types/database'
+import type { BadgeTreeLock } from '@/lib/badgeTree'
+
+const NO_LOCKS: BadgeTreeLock[] = []
+const noLabels = new Map<string, { label: string; unit: string | null }>()
+
+const DAY_MS = 86_400_000
 
 let seq = 0
 /** `2026-06-01` 형태의 날짜 하나로 활동 1건. 로컬/UTC 표기를 같은 날짜로 맞춰 둔다 */
@@ -53,6 +62,25 @@ function act(ymd: string, overrides: Partial<NormalizedActivity> = {}): Normaliz
 function consecutive(startYmd: string, n: number, overrides: Partial<NormalizedActivity> = {}): NormalizedActivity[] {
   const base = Date.parse(`${startYmd}T00:00:00Z`)
   return Array.from({ length: n }, (_, i) => act(new Date(base + i * 86_400_000).toISOString().slice(0, 10), overrides))
+}
+
+/**
+ * 「streakLen일 연속 → restLen일 휴식」을 `repeats`번 반복한다.
+ *
+ * `repeats + 1`개의 연속 블록을 이어붙여 블록 사이 전환마다 정확히 하나의 «닫힌 구간»이
+ * 생기게 한다 — 블록이 N개면 전환(=사건 후보)은 N-1개다. `rest_after_streak` 회차 테스트의
+ * 표준 이력 생성기.
+ */
+function streakRestCycles(startYmd: string, repeats: number, streakLen: number, restLen: number): NormalizedActivity[] {
+  const acts: NormalizedActivity[] = []
+  let cursor = Date.parse(`${startYmd}T00:00:00Z`)
+  for (let c = 0; c <= repeats; c++) {
+    for (let d = 0; d < streakLen; d++) {
+      acts.push(act(new Date(cursor + d * DAY_MS).toISOString().slice(0, 10)))
+    }
+    cursor += (streakLen + restLen) * DAY_MS
+  }
+  return acts
 }
 
 // ── ① · ② 「데이터 없음」을 「쉬었음」으로 읽지 않는다 (B-7) ─────────────────
@@ -197,29 +225,111 @@ describe('휴식 — 짝 필드가 없으면 fail-closed로 막는다', () => {
   })
 })
 
-// ── ⑤ 회차와의 조합 금지 (B-10) ──────────────────────────────────────────
+// ── ⑤ 회차와의 조합 — 휴식 키 1개까지 지원 (§B-10 재설계, 티켓 20260906_2056) ──────
 
-describe('휴식 — repeat_count와 함께 쓸 수 없다 (B-10)', () => {
-  it('사유가 「회차와 함께 쓸 수 없는 조건」으로 드러난다', () => {
-    const cond: BadgeCondition = {
-      activity_type: 'running',
-      streak_days: 6,
-      rest_after_streak: 2,
-      repeat_count: 3,
-    }
-    const acts = [...consecutive('2026-06-01', 6), act('2026-06-09')]
-    const r = evaluateConditionDetailed(cond, acts)
+describe('휴식 — repeat_count와 휴식 키 1개는 "복귀 사건"만 센다 (§B-10 재설계)', () => {
+  it('티켓 예시: {rest_after_streak:2, streak_days:3, repeat_count:5} — 5번의 「3일 연속 후 2일 이상 쉬고 복귀」', () => {
+    const cond: BadgeCondition = { activity_type: 'running', streak_days: 3, rest_after_streak: 2, repeat_count: 5 }
+    expect(isRestDrivenRepeatCondition(cond)).toBe(true)
+
+    // 6개 블록(3일 연속) 사이 전환 5번 — 전부 2일씩 쉰다 → 사건 5개
+    const fiveCycles = streakRestCycles('2026-01-01', 5, 3, 2)
+    const occurrences = collectRepeatOccurrences(cond, fiveCycles)
+    expect(occurrences).toHaveLength(5)
+    expect(evaluateConditionDetailed(cond, fiveCycles).pass).toBe(true)
+
+    // 사건 4개뿐이면(블록 4번 전환) 아직 미달
+    const fourCycles = streakRestCycles('2026-01-01', 4, 3, 2)
+    const r = evaluateConditionDetailed(cond, fourCycles)
     expect(r.pass).toBe(false)
-    expect(r.reason).toBe('회차와 함께 쓸 수 없는 조건')
-    expect(r.actual).toContain('rest_after_streak')
-    // 예전이라면 회차 술어의 fail-closed 가드가 조용히 회차를 0으로 떨어뜨려
-    // 「충족 횟수 부족 / 0회」로만 보였다 — 카탈로그 담당자가 원인을 찾을 수 없다
-    expect(r.reason).not.toBe('충족 횟수 부족')
+    expect(r.reason).toBe('충족 횟수 부족')
+    expect(r.actual).toBe('4회')
   })
 
-  it('휴식 조건 전부가 같은 사유로 막힌다', () => {
-    // `rest_after_long`의 짝 필드(single_distance_km)도 이제 engine이라(티켓 20260906_0110 ②)
-    // 나머지 3종과 같은 자리에서 함께 확인한다.
+  it('휴식 조건을 무시한 단순 활동 카운트로 퇴화하지 않는다 — 쉬지 않고 매일 활동해도 사건은 0', () => {
+    // 0030 B-10이 우려한 실패 모드: {repeat_count:5, rest_after_streak:2}를 활동 1건 단위로
+    // 세면 "휴식 여부와 무관하게 활동이 있었다"만 세어진다. 30일 연속 활동은 총 활동 수로는
+    // repeat_count(2)를 훌쩍 넘지만, 한 번도 2일 이상 쉬지 않았으므로 사건은 0이어야 한다.
+    const cond: BadgeCondition = { activity_type: 'running', streak_days: 3, rest_after_streak: 2, repeat_count: 2 }
+    const neverRests = consecutive('2026-01-01', 30)
+    const occurrences = collectRepeatOccurrences(cond, neverRests)
+    expect(occurrences).toHaveLength(0)
+    const r = evaluateConditionDetailed(cond, neverRests)
+    expect(r.pass).toBe(false)
+    expect(r.reason).toBe('충족 횟수 부족')
+    expect(r.actual).toBe('0회')
+  })
+
+  it('순수 공백 키(return_gap_days)도 만족한 구간만 센다 — 짧은 공백은 사건이 아니다', () => {
+    const cond: BadgeCondition = { activity_type: 'running', return_gap_days: 30, repeat_count: 2 }
+    const acts = [
+      act('2026-01-01'),
+      act('2026-02-20'), // 공백 49일 — 사건 ①
+      act('2026-02-21'), // 공백 0일 — 미달, 사건 아님
+      act('2026-05-01'), // 공백 68일 — 사건 ②
+    ]
+    const occurrences = collectRepeatOccurrences(cond, acts)
+    expect(occurrences).toHaveLength(2)
+    expect(occurrences.map((a) => a.startDate.slice(0, 10))).toEqual(['2026-02-20', '2026-05-01'])
+    expect(evaluateConditionDetailed(cond, acts).pass).toBe(true)
+  })
+
+  it('interval_days는 활동 간격 자체(휴식일이 아니라)로 잰다', () => {
+    const cond: BadgeCondition = { activity_type: 'running', interval_days: 10, repeat_count: 1 }
+    // 9일 간격(9일차 활동) — 미달
+    expect(collectRepeatOccurrences(cond, [act('2026-01-01'), act('2026-01-10')])).toHaveLength(0)
+    // 10일 간격 — 충족
+    expect(collectRepeatOccurrences(cond, [act('2026-01-01'), act('2026-01-11')])).toHaveLength(1)
+  })
+
+  it('계기 활동은 N번째 사건의 «복귀 활동»이다', () => {
+    const cond: BadgeCondition = { activity_type: 'running', streak_days: 3, rest_after_streak: 2, repeat_count: 3 }
+    const acts = streakRestCycles('2026-01-01', 3, 3, 2)
+    const occurrences = collectRepeatOccurrences(cond, acts)
+    expect(occurrences).toHaveLength(3)
+    const trigger = selectTriggerActivity({ condition_json: cond }, cond, occurrences, acts)
+    expect(trigger?.stravaId).toBe(occurrences[2].stravaId) // repeat_count=3 → 3번째 사건
+  })
+
+  it('진행 계산도 같은 축(repeat)으로 «N/M회」를 그린다', () => {
+    const cond: BadgeCondition = { activity_type: 'running', streak_days: 3, rest_after_streak: 2, repeat_count: 5 }
+    expect(classifyBadgeProgressKind(cond)).toBe('repeat')
+
+    const threeCycles = streakRestCycles('2026-01-01', 3, 3, 2) // 사건 3개
+    const metrics = computeUserPeriodMetrics('running', threeCycles)
+    const result = computeBadgeProgress(cond, metrics, noLabels, NO_LOCKS)
+    if (result.kind === 'unsupported') throw new Error('unsupported')
+    expect(result.axes[0].key).toBe('repeat_count')
+    expect(result.axes[0].current).toBe(3)
+    expect(result.axes[0].target).toBe(5)
+    expect(result.axes[0].met).toBe(false)
+  })
+})
+
+describe('휴식 — 휴식 키 2개 이상 + repeat_count는 여전히 막힌다 (사건 경계 미정의)', () => {
+  it('서로 다른 두 휴식 키가 같이 있으면 「회차와 함께 쓸 수 없는 조건」', () => {
+    const cond: BadgeCondition = {
+      activity_type: 'running',
+      streak_days: 3,
+      rest_after_streak: 2,
+      return_gap_days: 10,
+      repeat_count: 3,
+    }
+    expect(isRestDrivenRepeatCondition(cond)).toBe(false)
+    const r = evaluateConditionDetailed(cond, [])
+    expect(r.pass).toBe(false)
+    expect(r.reason).toBe('회차와 함께 쓸 수 없는 조건')
+    expect(classifyBadgeProgressKind(cond)).toBe('unsupported')
+  })
+
+  it('휴식 키가 1개여도 휴식 술어가 보지 않는 축(짝 필드 아닌 것)이 섞이면 막힌다', () => {
+    // distance_km은 return_gap_days의 짝 필드가 아니다 — 휴식 판정이 보지 못하는 독립 축
+    const cond: BadgeCondition = { activity_type: 'running', return_gap_days: 30, distance_km: 5, repeat_count: 2 }
+    expect(isRestDrivenRepeatCondition(cond)).toBe(false)
+    expect(evaluateConditionDetailed(cond, []).reason).toBe('회차와 함께 쓸 수 없는 조건')
+  })
+
+  it('휴식 4종 전부 단독이면 이제 막히지 않는다 (레지스트리 fail-closed 회귀 방지)', () => {
     const pairs: Partial<Record<(typeof REST_CONDITION_KEYS)[number], BadgeCondition>> = {
       rest_after_streak: { streak_days: 6 },
       rest_after_long: { single_distance_km: 30 },
@@ -232,7 +342,8 @@ describe('휴식 — repeat_count와 함께 쓸 수 없다 (B-10)', () => {
         [key]: 90,
       } as BadgeCondition
       expect(restConditionKeysIn(cond), key).toEqual([key])
-      expect(evaluateConditionDetailed(cond, []).reason, key).toBe('회차와 함께 쓸 수 없는 조건')
+      expect(isRestDrivenRepeatCondition(cond), key).toBe(true)
+      expect(evaluateConditionDetailed(cond, []).reason, key).not.toBe('회차와 함께 쓸 수 없는 조건')
     }
   })
 })

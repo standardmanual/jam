@@ -65,7 +65,13 @@ import { evaluateCrossGates, type OwnedBadgeDef } from './crossGate'
 // 축 키 목록(진행 계산과 공유)·회차 계산은 순수 모듈로 분리돼 있다 — 재선언을 없애
 // 「진행률과 발급 판정이 갈라지는」 실패 모드를 구조적으로 막는다(티켓 20260905_0031).
 import { PER_ACTIVITY_KEYS, CUMULATIVE_SAME_ACTIVITY_KEYS } from './conditionAxes'
-import { matchesPerActivityCondition, collectRepeatOccurrences } from './repeatOccurrences'
+import {
+  matchesPerActivityCondition,
+  collectRepeatOccurrences,
+  // 휴식 4종 + repeat_count 조합(티켓 20260906_2056) — 회차 차단 분기와 회차 계산이
+  // 같은 판정을 봐야 「막을 조합」과 「셀 조합」이 어긋나지 않는다.
+  isRestDrivenRepeatCondition,
+} from './repeatOccurrences'
 export { collectRepeatOccurrences }
 export {
   passesWalkingGate,
@@ -352,20 +358,27 @@ export function evaluateConditionDetailed(
     }
   }
 
-  // ── 회차와 함께 쓸 수 없는 조건 (v5 B3, 티켓 20260905_0030 B-10)
+  // ── 회차와 함께 쓸 수 없는 조건 (v5 B3, 티켓 20260905_0030 B-10 → 20260906_2056 재설계)
   //
   // 휴식 4종은 게이트(「보유 여부」)와 달리 **이력 패턴 술어**다. `collectRepeatOccurrences`의
-  // `consumed` 집합에 넣으면 「휴식 조건을 무시한 회차」가 세어지므로 **넣지 않는다.** 대신
-  // 조합 자체를 여기서 막는다. 막지 않고 두면 회차 술어의 fail-closed 가드가 조용히 회차를
-  // 0으로 떨어뜨려 「충족 횟수 부족 / 0회」로만 보이고, 카탈로그 담당자가 원인을 찾지 못한다.
+  // 활동 1건 단위 `consumed` 집합에 넣으면 「휴식 조건을 무시한 회차」가 세어지므로 **넣지
+  // 않는다.** 대신 휴식 키가 «정확히 하나»면 `isRestDrivenRepeatCondition`이 참이 되어
+  // `collectRepeatOccurrences`의 전용 계산(⓪-a2)이 "휴식 조건을 만족한 복귀 사건"만 센다 —
+  // 아래 `repeat_count` 블록으로 그대로 흘려보낸다.
+  //
+  // 휴식 키가 둘 이상(또는 지원 형태를 벗어난 조합)이면 "사건 하나"의 경계가 정의되지
+  // 않으므로(§B-10 재설계, 판단이 필요한 지점 — 서로 다른 두 휴식 키가 같은 구간에서
+  // 동시에 만족해야 하는지 정의돼 있지 않다) 여기서 여전히 막는다. 막지 않고 두면 회차
+  // 술어의 fail-closed 가드가 조용히 회차를 0으로 떨어뜨려 「충족 횟수 부족 / 0회」로만
+  // 보이고, 카탈로그 담당자가 원인을 찾지 못한다.
   if (condition.repeat_count !== undefined) {
     const restKeys = restConditionKeysIn(condition)
-    if (restKeys.length > 0) {
+    if (restKeys.length > 0 && !isRestDrivenRepeatCondition(condition)) {
       return {
         pass: false,
         reason: '회차와 함께 쓸 수 없는 조건',
         actual: `휴식 조건: ${restKeys.join(', ')}`,
-        required: 'repeat_count 없이 사용',
+        required: '휴식 조건 1개(그 짝 필드만)와 repeat_count 조합만 지원',
       }
     }
   }
@@ -616,7 +629,9 @@ export function evaluateConditionDetailed(
       // 않게 명시적으로 막는다(시딩 550종 중 한 행이 어긋나도 조용히 발급되지 않는다).
       return { pass: false, reason: '충족 횟수 조건 형태 오류', actual: String(condition.repeat_count), required: '1 이상의 수' }
     }
-    const occurrences = collectRepeatOccurrences(condition, activities)
+    // anchorDate — 휴식-회차 조합(⓪-a2)이 가입 이전 공백을 사건으로 잡지 않으려면 필요하다.
+    // 다른 회차 형태(기간 단위·활동 1건 단위)는 이미 앵커로 잘린 `activities`를 받으므로 영향 없다.
+    const occurrences = collectRepeatOccurrences(condition, activities, options?.anchorDate)
     if (occurrences.length < condition.repeat_count) {
       return { pass: false, reason: '충족 횟수 부족', actual: `${occurrences.length}회`, required: `${condition.repeat_count}회` }
     }
@@ -1158,7 +1173,7 @@ export async function evaluateBadgesDetailed(
       continue
     }
 
-    const occurrences = collectRepeatOccurrences(condition, evalActivities)
+    const occurrences = collectRepeatOccurrences(condition, evalActivities, anchorDate)
     const owned = ownedBadgeIds.has(badge.id)
     const newOccurrences = occurrences.filter((a) => batchStravaIds.has(a.stravaId))
 
