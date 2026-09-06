@@ -433,9 +433,9 @@ describe('unsupported 자리의 획득 조건 표시 (티켓 20260906_1323 §9)'
     expect(caption).toEqual({ text: '진행 표시 준비 중', fraction: 0, muted: true, pending: true })
   })
 
-  it('레벨형 값 행은 목표값 자리에만 조건을 넣고 현재값은 「—」로 둔다', () => {
+  it('레벨형 값 행은 목표값 자리에만 조건을 넣고 현재값은 null로 둔다(「—」를 그리지 않는다)', () => {
     expect(formatFamilyRowValues(unsupported, '누적 30일')).toEqual({
-      current: '—', next: '누적 30일', left: null, fraction: 0,
+      current: null, next: '누적 30일', left: null, fraction: 0,
     })
     expect(formatFamilyRowValues(unsupported)).toBeNull()
   })

@@ -364,8 +364,12 @@ export function formatRemainingText(kind: BadgeProgress['kind'], axis: BadgeProg
  * 축이 여럿이면 **병목 축 하나만** 적는다(§05 "다중 카운터는 병목만").
  */
 export type FamilyRowValues = {
-  /** 현재값(단위 없음 — 「/」 앞자리) */
-  current: string
+  /**
+   * 현재값(단위 없음 — 「/」 앞자리). 진행을 계산할 수 없는 계열은 **`null`**이다 —
+   * 예전에는 「—」 글리프를 넣었는데, 아무 사실도 말하지 않으면서 레벨칩 자리를 밀어냈다
+   * (티켓 20260906_2344). DS(`BadgeLevelGauge`)가 null이면 그 칸 자체를 그리지 않는다.
+   */
+  current: string | null
   /** 목표값 + 단위 */
   next: string
   /** 「N 남음」. 다 채웠거나 말할 수 없으면 null */
@@ -383,7 +387,7 @@ export function formatFamilyRowValues(
   conditionText?: string | null
 ): FamilyRowValues | null {
   if (progress.kind === 'unsupported') {
-    return conditionText ? { current: '—', next: conditionText, left: null, fraction: 0 } : null
+    return conditionText ? { current: null, next: conditionText, left: null, fraction: 0 } : null
   }
   const axis = progress.axes.find((a) => a.key === progress.bottleneck) ?? progress.axes[0]
   if (!axis) return null
