@@ -50,10 +50,14 @@ const INNER_SIZE = RING_SIZE - RING_THICKNESS * 2;
 const INNER_RADIUS = `calc(var(--radius-card) - ${RING_THICKNESS}px)`;
 
 /**
- * 이름 자리의 예약 높이 — `--text-small`(14px) × line-height 1.3 × 2줄.
- * 이름 길이가 그리드 행 높이를 흔들면 셀들의 캡션 baseline이 행마다 어긋난다.
+ * 이름 자리에 **높이를 예약하지 않는다**(티켓 20260906_2344 2차).
+ *
+ * 2140에서 2줄 높이(37px)를 상시 예약했다 — 이름 길이가 그리드 행 높이를 흔들면 셀들의
+ * 캡션 baseline이 어긋난다는 이유였다. 그런데 실데이터는 계열명이 거의 한 줄이라
+ * 예약분이 **이미지↔이름 사이 34px 빈 공간**으로만 남았다(staging 실측, 사용자 지적).
+ * 그리드는 행마다 높이가 알아서 맞으므로, 같은 행에 한 줄·두 줄 이름이 섞일 때만
+ * 그 행 안에서 칩 위치가 어긋난다 — 상시 34px 공백보다 그쪽이 낫다는 판단이다.
  */
-const NAME_SLOT_HEIGHT = 37;
 
 const STATIC_CSS = `
 .ds-ring-card{transition:opacity var(--duration-fast,250ms) var(--ease-smooth-out,cubic-bezier(0.22,1,0.36,1))}
@@ -170,15 +174,12 @@ export function BadgeProgressRingCard({
         )}
       </span>
 
-{/* 이름 자리 — 2줄 높이는 계속 예약하되(행 정렬 불변식) 텍스트를 **아래로 붙인다**.
-          블록 레이아웃이면 한 줄 이름에서 아래로 약 19px이 남고 거기에 flex gap 8px가
-          더해져 이름↔등급칩이 27px까지 벌어졌다(2026-09-06 사용자 지적). 남는 여백을
-          링↔이름 쪽으로 보내면 이름·등급칩·캡션이 한 덩어리로 읽힌다. */}
+      {/* 이름 — 높이 예약 없이 내용만큼만 차지한다. 이미지·이름·등급칩·캡션이
+          8px 간격으로 고르게 이어져 한 덩어리로 읽힌다. */}
       <span
         style={{
           fontSize: 'var(--text-small)', fontWeight: 700, lineHeight: 1.3,
-          color: 'var(--color-text)', width: '100%', minHeight: NAME_SLOT_HEIGHT,
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          color: 'var(--color-text)', width: '100%',
           wordBreak: 'keep-all', overflowWrap: 'anywhere',
         }}
       >
