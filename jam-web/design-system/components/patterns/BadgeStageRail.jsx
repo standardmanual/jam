@@ -33,12 +33,11 @@ import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
  *  한때 실루엣으로 바꿨다가 되돌렸다 — 「외형 비공개」보다 배지를 알아볼 수 있는 쪽을 택했다)
  * 예전에는 원본 이미지를 그대로 넣고 `filter: grayscale(1)`만 걸었는데, 그러면 원본 URL이
  * 네트워크에 나가 「아직 안 보여준다」가 성립하지 않았다. 미획득 눈금은 이제 배지별 이미지를
- * 아예 요청하지 않는다 — 어떤 배지인지는 등급 바·`aria-label`·펼친 목록의 조건 문장이 말한다.
+ * 아예 요청하지 않는다 — 어떤 배지인지는 등급칩·`aria-label`·펼친 목록의 조건 문장이 말한다.
  *
  * v2에서 함께 들어온 것(같은 티켓):
  *   - `earnCount` — 반복형 계열의 누적 횟수를 **`×N` 칩 하나로만** 헤더 행 오른쪽 끝에.
- *   - 눈금별 **등급색 3px 바** — 44px 폭에 "Mystic" 칩은 들어가지 않는다. 등급명은 눈금의
- *     `aria-label`이 읽는다(시각·비시각 어느 쪽도 등급 정보를 잃지 않는다).
+ *   - 눈금별 **등급색 3px 바**(티켓 20260906_1436에서 등급칩으로 교체 — 아래 참고).
  *   - `stop.gates` — 게이트 종류를 배열로 받아 자물쇠(미션)·별(교차 계열)을 **한 자리에 최대 2개**
  *     그린다. 그래서 게이트 자리 폭이 36px → 44px이다.
  *   - **4눈금 상한을 코드로 강제** — 등급은 4단계뿐인데 v5 무한레벨형(Lv.1~8+)을 실수로
@@ -49,6 +48,20 @@ import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
  *     `badgeTree.ts`의 등급 4회 루프가 하던 구조적 보장을 0037이 걷어냈다.
  *   - `stop.gates[].met` — 이미 통과한 문은 체크+라임으로 그린다. 없으면 미션을 이미 깬
  *     상태에서도 자물쇠 2개가 똑같이 그려져 「무엇이 남았나」가 안 읽혔다.
+ *
+ * v4에서 함께 들어온 것(티켓 20260906_1436 — 표시 층 정리, 발급·진행 계산은 무관):
+ *   - 눈금별 등급색 3px 바를 **없앤다.** 접힌 레일은 그 자리에 `RarityBadge` 등급칩(압축형,
+ *     `common`은 기존처럼 칩을 그리지 않는다)을 대신 그려 등급이 색뿐 아니라 텍스트로도
+ *     바로 읽힌다. 펼친 목록은 이미 옆에 `RarityBadge` 칩이 있어 바 없이도 정보 손실이
+ *     없다 — 그래서 `StopThumbnail`은 호출부가 `showRarityChip`으로 칩 렌더 여부를 고른다.
+ *   - 펼친 목록의 상태 줄이 `not-reached`일 때도 접힌 레일과 같은 규칙으로 조건값
+ *     (`stop.conditionText`)을 보여준다 — 예전엔 접힌 레일 캡션만 이 규칙을 따랐다.
+ *   - 눈금 사이 연결선(게이트 자리)도 다른 연결선과 같은 `flex-grow`를 갖도록 맞춘다 —
+ *     게이트 자리만 grow:0(고정 44px)이라 남는 공간이 일반 연결선에만 쏠려 레일 전체가
+ *     한쪽으로 치우쳐 보였다.
+ *   - 진행 중(조건 미충족)인 눈금의 캡션 색을 옐로우(`--status-short-solid`)에서 화이트
+ *     (`--color-text`)로 바꾼다. 채움색(막대·연결선 그라데이션)은 그대로 옐로우를 쓴다 —
+ *     텍스트 가독성만의 문제였다.
  *
  * 인터랙션: 눈금 하나는 상태에 따라 링크(embedded 이동, earned/not-reached) 또는
  * 버튼(잠금 해제 조건 시트 오픈, ready/locked) 둘 중 하나다 — 앵커 안에 버튼을 중첩하지
@@ -69,25 +82,19 @@ const STATUS_LABEL = { earned: '획득', ready: '조건 충족', locked: '잠김
  */
 const STATUS_ARIA_LABEL = { earned: '획득', ready: '조건 충족', locked: '잠김', 'not-reached': '미도달' };
 
-/**
- * 눈금 아래 3px 등급 바의 색. `--color-rarity-*` **기존 값을 그대로 참조**한다(값 변경 금지 —
- * 이 토큰들은 `--color-tag-3/4/5`와 폼 입력 에러 색이 함께 물고 있다).
- * 등급 문자열을 템플릿 리터럴로 이어 붙여 토큰 이름을 조립하지 않는다(`--color-rarity-` +
- * rarity 형태) — 미지 값이 들어오면 존재하지 않는 토큰을 참조해 «색 없음»으로 조용히
- * 떨어지고, 정적 검사(`npm run ds:check`)도 토큰 이름을 확정하지 못한다.
- */
-const RARITY_BAR_COLOR = {
-  common: 'var(--color-rarity-common)',
-  rare: 'var(--color-rarity-rare)',
-  epic: 'var(--color-rarity-epic)',
-  mystic: 'var(--color-rarity-mystic)',
-};
-
 /** 눈금 최대 개수 — 등급은 Common~Mystic 4단계뿐이다. */
 const MAX_STOPS = 4;
 
 /** 게이트 자리 폭. 자물쇠 2개(미션 + 교차)가 나란히 들어가야 해서 36px → 44px (v2). */
 const GATE_SLOT_WIDTH = 44;
+
+/**
+ * 등급칩 자리의 예약 높이 — `RarityBadge`의 렌더 높이(패딩 4px×2 + 8px 폰트·line-height 1
+ * = 16px)와 맞춘다. common은 `RarityBadge`가 null을 반환해 칩이 안 보이지만, 자리는 항상
+ * 이 높이만큼 예약해야 같은 레일 안에서 등급마다 캡션 시작 위치가 어긋나지 않는다
+ * (티켓 20260906_1436 인터랙션 리뷰 — Common 눈금만 탭 타깃이 20px 낮았던 문제).
+ */
+const RARITY_CHIP_SLOT_HEIGHT = 16;
 
 const STATIC_CSS = `
 .ds-rail-header{background:none;border:none;padding:0;width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit;transition:opacity var(--duration-quick,150ms) var(--ease-smooth-out,cubic-bezier(0.22,1,0.36,1))}
@@ -139,14 +146,15 @@ function ChevronDownGlyph({ size = 20 }) {
 
 /**
  * 눈금 하나의 배지 썸네일 — 접힌 레일·펼친 티어 목록이 공유한다.
- * 44px 썸네일 + (등급이 있으면) 그 아래 3px 등급 바까지가 한 덩어리다.
+ * 44px 썸네일 + (등급이 있고 `showRarityChip`이면) 그 아래 등급칩까지가 한 덩어리다
+ * (티켓 20260906_1436 — 3px 등급 바를 걷어내고 등급칩으로 교체).
+ * 펼친 목록은 옆에 이미 `RarityBadge` 칩이 있어 `showRarityChip={false}`로 끈다.
  */
-function StopThumbnail({ imageUrl, alt, status, rarity }) {
+function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }) {
   const earned = status === 'earned';
   const ringColor = status === 'earned' || status === 'ready' ? 'var(--status-done-solid)' : 'var(--color-border-light)';
   const ringWidth = status === 'earned' || status === 'ready' ? 2 : 1;
   const showMarker = status === 'earned' || status === 'ready' || status === 'locked';
-  const barColor = rarity ? RARITY_BAR_COLOR[rarity] : undefined;
 
   return (
     <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: 'none' }}>
@@ -187,11 +195,15 @@ function StopThumbnail({ imageUrl, alt, status, rarity }) {
           </span>
         )}
       </span>
-      {barColor && (
-        <span
-          aria-hidden="true"
-          style={{ width: 44, height: 3, borderRadius: 'var(--radius-xs)', background: barColor }}
-        />
+      {/* 등급칩 자리 — showRarityChip이면 항상 같은 높이를 예약한다. common은 RarityBadge가
+          자체적으로 null을 반환하므로(노이즈 축소 관례) 칩 자체는 안 보이지만, 자리를 비워
+          두면 같은 레일 안에서 Common 눈금만 캡션이 위로 붙어 탭 타깃 높이가 어긋난다
+          (티켓 20260906_1436 인터랙션 리뷰). 44px 폭보다 칩이 넓어도(예: "MYSTIC") 방치한다
+          — 좌우 눈금 사이 여백이 흡수한다. */}
+      {showRarityChip && (
+        <span style={{ display: 'flex', alignItems: 'center', minHeight: RARITY_CHIP_SLOT_HEIGHT }}>
+          {rarity && <RarityBadge rarity={rarity} />}
+        </span>
       )}
     </span>
   );
@@ -425,7 +437,11 @@ export function BadgeStageRail({
                   aria-hidden="true"
                   className={isGateBefore ? 'ds-rail-gate-link' : undefined}
                   style={{
-                    flex: isGateBefore ? `0 0 ${GATE_SLOT_WIDTH}px` : '1 1 14px',
+                    // 게이트 자리도 다른 연결선과 같은 flex-grow(1)를 갖는다(티켓 20260906_1436
+                    // §2-4) — grow:0 고정이던 예전 값은 남는 공간이 일반 연결선에만 쏠려
+                    // 레일 전체가 한쪽으로 치우쳐 보이게 했다. 최소 폭(자물쇠 2개 자리)만
+                    // basis로 보장하고, 늘어나는 몫은 균등하게 나눈다.
+                    flex: isGateBefore ? `1 1 ${GATE_SLOT_WIDTH}px` : '1 1 14px',
                     minWidth: isGateBefore ? GATE_SLOT_WIDTH : 14,
                     height: 6,
                     marginTop: 19,
@@ -488,7 +504,7 @@ export function BadgeStageRail({
                 ariaLabel={stopAriaLabel}
               >
                 <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 48 }}>
-                  <StopThumbnail imageUrl={stop.imageUrl} alt={stopName} status={stop.status} rarity={stop.rarity} />
+                  <StopThumbnail imageUrl={stop.imageUrl} alt={stopName} status={stop.status} rarity={stop.rarity} showRarityChip />
                   {(() => {
                     const captionText = showProgress
                       ? frontierProgress.text
@@ -497,14 +513,18 @@ export function BadgeStageRail({
                         : STATUS_LABEL[stop.status];
                     // fraction>=1(조건은 채웠고 게이트만 남음)이면 앰버가 아니라 라임 —
                     // BadgeTrophyGridCard가 이미 쓰는 것과 같은 기준(개선 리뷰 지적,
-                    // 티켓 20260904_0921). 조건 자체를 못 채운 동안만 앰버로 남긴다.
+                    // 티켓 20260904_0921). 조건 자체를 못 채운 동안(진행 중)만
+                    // 화이트(`--color-text`)로 남긴다 — 옐로우(`--status-short-solid`)는
+                    // 눈에 거슬린다는 지적으로 텍스트만 바꿨다(티켓 20260906_1436 §3).
+                    // 토큰 값 자체는 바꾸지 않는다 — 채움색(막대·연결선 그라데이션, 415행)은
+                    // 계속 이 토큰을 쓴다. `/badges` 트로피 그리드 등 다른 화면에 영향 없게.
                     const progressComplete = showProgress && !frontierProgress.muted && frontierProgress.fraction >= 1;
                     const captionColor = showProgress
                       ? frontierProgress.muted
                         ? 'var(--color-text-secondary)'
                         : progressComplete
                           ? 'var(--status-done-solid)'
-                          : 'var(--status-short-solid)'
+                          : 'var(--color-text)'
                       : stop.status === 'earned' || stop.status === 'ready' ? 'var(--status-done-solid)' : 'var(--color-text-secondary)';
                     return (
                       <span
@@ -555,6 +575,11 @@ export function BadgeStageRail({
             const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
             const stopName = [familyName, rarityLabel].filter(Boolean).join(' ');
             const canOpenLock = stop.status === 'ready' || stop.status === 'locked';
+            // 접힌 레일(492~533행 인근)과 같은 규칙 — not-reached인데 조건값이 있으면
+            // 「—」 대신 조건값을 보여준다(티켓 20260906_1436 §2-1). 시각 텍스트가 그대로
+            // 스크린리더에도 읽히는 구조라(별도 aria 라벨 없음) 여기서만 바꾸면 접근성도 함께 해결된다.
+            const expandedStatusText =
+              stop.status === 'not-reached' && stop.conditionText != null ? stop.conditionText : STATUS_LABEL[stop.status];
             return (
               <div key={stop.id} style={{ display: 'flex', gap: 'var(--spacing-12)', alignItems: 'flex-start' }}>
                 <StopThumbnail imageUrl={stop.imageUrl} alt={stopName} status={stop.status} rarity={stop.rarity} />
@@ -579,7 +604,7 @@ export function BadgeStageRail({
                       color: stop.status === 'earned' || stop.status === 'ready' ? 'var(--status-done-solid)' : 'var(--color-text-secondary)',
                     }}
                   >
-                    {STATUS_LABEL[stop.status]}
+                    {expandedStatusText}
                   </p>
                   {stop.description && (
                     <p
