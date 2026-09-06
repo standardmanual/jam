@@ -113,6 +113,40 @@ export const LongNameWraps: Story = {
 };
 
 /**
+ * 티켓 20260906_1424 ③ — 말줄임 제거 후 `wordBreak: 'keep-all'`만 남으면 **공백 없는**
+ * 긴 이름(한글 어절 하나가 컬럼보다 긴 경우)은 줄바꿈이 막혀 컬럼을 뚫고 넘칠 수 있다.
+ * `overflowWrap: 'anywhere'`를 함께 둬 그런 토큰만 강제로 분리되는지 확인한다.
+ */
+export const LongNameNoSpaceDoesNotOverflow: Story = {
+  name: '공백 없는 긴 이름 — 컬럼을 뚫지 않는다',
+  render: () => (
+    <Frame>
+      <div data-testid="gauge">
+        <BadgeLevelGauge
+          name="가나다라마바사아자차카타파하몹시길고공백이전혀없는이름"
+          level={3}
+          current="52.4"
+          next="75km"
+          left="22.6km 남음"
+          fraction={0.7}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const gauge = canvasElement.querySelector('[data-testid="gauge"]')!;
+    const name = Array.from(gauge.querySelectorAll('span')).find((el) =>
+      (el.textContent ?? '').startsWith('가나다라마바사아자차카타파하')
+    ) as HTMLElement;
+    expect(name).toBeTruthy();
+    // overflowWrap:'anywhere'가 없으면 강제로 분리되지 않아 scrollWidth가 clientWidth를 넘는다.
+    expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth + 1);
+    const card = gauge.firstElementChild as HTMLElement;
+    expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(card.getBoundingClientRect().right + 1);
+  },
+};
+
+/**
  * 값 행의 요점 — 현재값을 5ch 우측 정렬해 자릿수가 달라도 `/`가 세로로 정렬된다.
  * (레일·게이지가 세로로 쌓이는 트리에서 이 정렬 하나가 스캔 비용을 크게 줄인다)
  */

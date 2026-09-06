@@ -146,6 +146,39 @@ export const LongNameWraps: Story = {
   },
 };
 
+/**
+ * 티켓 20260906_1424 ③ — 말줄임 제거 후 `wordBreak: 'keep-all'`만 남으면 **공백 없는**
+ * 긴 이름(한글 어절 하나가 컬럼보다 긴 경우)은 줄바꿈이 막혀 컬럼을 뚫고 넘칠 수 있다.
+ * `overflowWrap: 'anywhere'`를 함께 둬 그런 토큰만 강제로 분리되는지 확인한다.
+ */
+export const LongNameNoSpaceDoesNotOverflow: Story = {
+  name: '공백 없는 긴 이름 — 컬럼을 뚫지 않는다',
+  render: () => (
+    <Frame>
+      <div data-testid="row">
+        <BadgeStampRow
+          name="가나다라마바사아자차카타파하몹시길고공백이전혀없는이름"
+          rarity="mystic"
+          count={3}
+          caption="24시간 안에 3회"
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const row = canvasElement.querySelector('[data-testid="row"]')!;
+    const name = Array.from(row.querySelectorAll('span')).find((el) =>
+      (el.textContent ?? '').startsWith('가나다라마바사아자차카타파하')
+    ) as HTMLElement;
+    expect(name).toBeTruthy();
+    // overflowWrap:'anywhere'가 없으면 강제로 분리되지 않아 scrollWidth가 clientWidth를 넘는다.
+    expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth + 1);
+    // 카드 폭(375 - 32 padding - 44 썸네일 - 12 gap) 안에 들어와야 한다 — 컬럼을 뚫지 않는다.
+    const card = row.firstElementChild as HTMLElement;
+    expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(card.getBoundingClientRect().right + 1);
+  },
+};
+
 export const AlignsWithLevelGauge: Story = {
   name: '칩이 있는 행끼리는 이름 시작 x가 같다 (칩 자리 52px 고정)',
   render: () => (
