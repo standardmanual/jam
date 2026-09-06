@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { MedalIcon } from '@/components/ui/icons'
 import type { BadgeRow } from '@/types/database'
 import { getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
@@ -24,6 +25,12 @@ interface BadgeHeroSectionProps {
    */
   badge: Pick<BadgeRow, 'image_url' | 'name' | 'rarity' | 'description' | 'background_color' | 'background_shader_id' | 'background_image_url'> & {
     background_animation: unknown
+    /**
+     * v5 레벨형 배지의 레벨(`rarity`가 NULL이고 `level`이 있다). 넘기면 등급 칩 대신
+     * `BadgeLevelChip`을 그린다. **선택**이다 — 어드민 배경 미리보기·dev 샘플처럼
+     * 실제 배지 레코드가 아닌 호출부가 있어 필수로 만들면 그쪽이 막힌다.
+     */
+    level?: number | null
   }
   hasEarned: boolean
   /**
@@ -96,8 +103,11 @@ export default function BadgeHeroSection({ badge, hasEarned, themedBackground, b
           )}
         </div>
         <div className="relative z-10 flex flex-col items-center gap-2 pt-4" style={cardTextStyle}>
-          {/* 무한레벨형(rarity=null)은 등급 칩을 그리지 않는다 — Lv.N 칩은 티켓 20260905_0036/0037 */}
-          <RarityBadge rarity={badge.rarity ?? undefined} />
+          {/* v5는 배지 종류가 셋이고 레벨형은 `rarity`가 NULL이다(193종). `RarityBadge`는
+              미지 값을 그리지 않으므로(티켓 20260905_0036) 그대로 넘기면 **칩이 조용히
+              사라진다** — 상세 화면에서 등급/레벨을 알 수 없게 된다.
+              `BadgeTrophyGridCard.tsx:119`가 같은 분기를 쓴다(티켓 20260905_0037). */}
+          {badge.level != null ? <BadgeLevelChip level={badge.level} /> : <RarityBadge rarity={badge.rarity ?? undefined} />}
           <h1 className="text-[length:var(--text-heading-sm)] font-bold text-text text-center leading-[var(--leading-heading-sm)]">{badge.name}</h1>
         </div>
       </div>
