@@ -144,7 +144,7 @@ export function badgeLevelOf(item: ActivityFeedRow): number | null {
 
 /**
  * 배지 칩 한 자리 — 등급형은 등급 칩, 레벨형은 Lv.N 칩.
- * `BadgeTrophyGridCard`·`UnlockConditionSheetContent`·`BadgeLevelGauge`와 같은 분기다.
+ * `UnlockConditionSheetContent`·`BadgeLevelGauge`와 같은 분기다.
  */
 function BadgeChip({ item }: { item: ActivityFeedRow }) {
   const level = badgeLevelOf(item)

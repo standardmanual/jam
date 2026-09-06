@@ -102,7 +102,7 @@ Noto Sans KR woff2 파일을 다운로드한 뒤 프로젝트 내 `@font-face`�
 * `components/feedback/` — Toast, ModalToast, WanderingEyesLoader, Skeleton, EmptyState, ProgressBar
 * `components/forms/` — Input, Textarea, Select, Checkbox
 * `components/patterns/` — BadgeGridCard, ListRowCard, CollectionGridCard, BadgeRevealCarousel, ItemSerialCode (서비스 공통 UI 패턴)
-* `components/patterns/` 배지 트리 — BadgeStageRail(등급형 4눈금 레일), BadgeLevelGauge(무한레벨형 · 레벨 수와 무관하게 높이 고정), BadgeStampRow(반복형 · 누적을 ×N 칩 하나로), BadgeStatusSection(「다음 목표」·「받은 배지」 독립 접힘), BadgeTreeSummaryHeader, UnlockConditionSheetContent, DualAxisGauge, RecentSyncBanner
+* `components/patterns/` 배지 트리 — BadgeStageRail(등급형 4눈금 레일), BadgeLevelGauge(무한레벨형 · 레벨 수와 무관하게 높이 고정), BadgeStampRow(반복형 · 누적을 ×N 칩 하나로), BadgeStatusSection(「다음 목표」 접힘 섹션), BadgeTreeSummaryHeader, UnlockConditionSheetContent, DualAxisGauge, RecentSyncBanner
 * `components/icons/` — IconCatalog (라인 아이콘 세트 + 전체 카탈로그 그리드. 서비스
   `src/components/ui/icons.tsx`를 이식한 Storybook 전용 사본 — 서비스는 계속 원본을 단일
   소스로 쓴다, 20260828_2043)

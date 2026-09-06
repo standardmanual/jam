@@ -14,10 +14,6 @@ import {
   formatStampCaption,
   formatRegretLineText,
   formatDualAxisGaugeProps,
-  pickSyncComparisonCandidate,
-  formatSyncComparisonText,
-  type FamilyProgressAxisSnapshot,
-  type SyncComparisonCandidate,
 } from '@/lib/badgeProgressText'
 import type { BadgeProgress, BadgeProgressAxis, RegretLineData } from '@/lib/badge-engine/badgeProgress'
 import type { BadgeCondition } from '@/types/database'
@@ -172,109 +168,6 @@ describe('formatRegretLineText', () => {
     const regret: RegretLineData = { key: 'max_pace_sec_per_km', current: 450, target: 420, unit: null, label: '페이스' }
     const text = formatRegretLineText(regret, 'common')
     expect(text).toBe('지난 활동 페이스는 7:30/km. Common까지 30초 모자랐어요.')
-  })
-})
-
-describe('pickSyncComparisonCandidate (티켓 20260904_1425)', () => {
-  it('rows가 비어 있으면 null', () => {
-    expect(pickSyncComparisonCandidate([])).toBeNull()
-  })
-
-  it('prev가 없는(최초 싱크 전) 계열은 후보에서 제외한다', () => {
-    const rows: FamilyProgressAxisSnapshot[] = [
-      { current: [axis({ key: 'distance_km', current: 5, fraction: 0.5 })], prev: null },
-    ]
-    expect(pickSyncComparisonCandidate(rows)).toBeNull()
-  })
-
-  it('fraction이 그대로거나 줄어든(주기 리셋 등) 축은 후보에서 제외한다', () => {
-    const rows: FamilyProgressAxisSnapshot[] = [
-      {
-        current: [axis({ key: 'distance_km', current: 5, fraction: 0.5 })],
-        prev: [axis({ key: 'distance_km', current: 5, fraction: 0.5 })], // 변화 없음
-      },
-      {
-        current: [axis({ key: 'weekly_count', current: 1, fraction: 0.2 })],
-        prev: [axis({ key: 'weekly_count', current: 3, fraction: 0.6 })], // 감소(주간 리셋)
-      },
-    ]
-    expect(pickSyncComparisonCandidate(rows)).toBeNull()
-  })
-
-  it('여러 계열·축 중 fraction 증가폭이 가장 큰 축 하나만 고른다', () => {
-    const rows: FamilyProgressAxisSnapshot[] = [
-      {
-        current: [axis({ key: 'distance_km', current: 6, fraction: 0.6 })],
-        prev: [axis({ key: 'distance_km', current: 5, fraction: 0.5 })], // +0.1
-      },
-      {
-        current: [axis({ key: 'total_count', current: 5, fraction: 0.8 })],
-        prev: [axis({ key: 'total_count', current: 2, fraction: 0.3 })], // +0.5(최댓값)
-      },
-    ]
-    expect(pickSyncComparisonCandidate(rows)).toEqual({ axisKey: 'total_count', prevValue: 2, currentValue: 5 })
-  })
-
-  it('current 축에 대응하는 prev 축이 없으면(정합성 예외 상황) 방어적으로 스킵한다', () => {
-    const rows: FamilyProgressAxisSnapshot[] = [
-      {
-        current: [axis({ key: 'elevation_gain_m', current: 100, fraction: 0.5 })],
-        prev: [axis({ key: 'distance_km', current: 5, fraction: 0.3 })], // key 불일치
-      },
-    ]
-    expect(pickSyncComparisonCandidate(rows)).toBeNull()
-  })
-})
-
-describe('formatSyncComparisonText (티켓 20260904_1425)', () => {
-  it('higher-is-better 축은 소수 1자리에서 내림한 델타를 보여준다', () => {
-    const candidate: SyncComparisonCandidate = { axisKey: 'distance_km', prevValue: 3.24, currentValue: 4.58 }
-    const labelMap = new Map([['distance_km', { label: '누적 거리', unit: 'km' }]])
-    // delta = 1.3399999999999999(부동소수점) → floor 1자리 = 1.3
-    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 누적 거리 1.3km 가까워졌어요')
-  })
-
-  it('lower-is-better 축(페이스)은 mm:ss가 아니라 정수 초 단위 델타를 쓴다', () => {
-    const candidate: SyncComparisonCandidate = { axisKey: 'max_pace_sec_per_km', prevValue: 450, currentValue: 410 }
-    const labelMap = new Map([['max_pace_sec_per_km', { label: '페이스', unit: null }]])
-    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 페이스 40초 가까워졌어요')
-  })
-
-  it('정수 축(횟수)은 라벨 단위를 그대로 붙인다', () => {
-    const candidate: SyncComparisonCandidate = { axisKey: 'total_count', prevValue: 2, currentValue: 5 }
-    const labelMap = new Map([['total_count', { label: '횟수', unit: '회' }]])
-    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 횟수 3회 가까워졌어요')
-  })
-
-  it('내림 결과가 0 이하면(미세 변화) 빈 비교문 대신 null을 반환한다', () => {
-    const candidate: SyncComparisonCandidate = { axisKey: 'distance_km', prevValue: 3.21, currentValue: 3.24 }
-    const labelMap = new Map([['distance_km', { label: '누적 거리', unit: 'km' }]])
-    expect(formatSyncComparisonText(candidate, labelMap)).toBeNull()
-  })
-
-  it('labelMap에 없으면 레지스트리 라벨로 폴백한다 — 내부 키가 유저 문장에 새지 않는다', () => {
-    // sync.ts가 빈 labelMap으로 저장하고 표시 시점에 다시 조회하는 구조라, badge_metric_labels
-    // 시드가 아직 없는 신규 축은 이 경로만 폴백을 못 받아 내부 키가 그대로 나갔다(0031 개선 리뷰).
-    const candidate: SyncComparisonCandidate = { axisKey: 'streak_days', prevValue: 1, currentValue: 3 }
-    const labelMap = new Map<string, { label: string; unit: string | null }>()
-    const text = formatSyncComparisonText(candidate, labelMap)
-    expect(text).not.toContain('streak_days')
-    expect(text).toBe('직전 동기화보다 연속 일수 2일 가까워졌어요')
-  })
-
-  it('레지스트리에도 없는 키만 원문으로 떨어진다 (최후 폴백)', () => {
-    const candidate: SyncComparisonCandidate = { axisKey: 'not_a_real_key', prevValue: 1, currentValue: 3 }
-    const labelMap = new Map<string, { label: string; unit: string | null }>()
-    expect(formatSyncComparisonText(candidate, labelMap)).toBe('직전 동기화보다 not_a_real_key 2 가까워졌어요')
-  })
-
-  it('휴식 축은 이 배너의 후보가 되지 않는다 — 「휴식 재촉」 금지', () => {
-    // 「복귀 전 휴식일 2일 가까워졌어요」는 서비스가 휴식을 재촉하는 모양이 된다.
-    const rows = [{
-      prev: [{ key: 'return_gap_days', label: '복귀 전 휴식일', unit: '일', current: 1, target: 5, met: false, fraction: 0.2, remaining: 4 }],
-      current: [{ key: 'return_gap_days', label: '복귀 전 휴식일', unit: '일', current: 4, target: 5, met: false, fraction: 0.8, remaining: 1 }],
-    }] as never
-    expect(pickSyncComparisonCandidate(rows)).toBeNull()
   })
 })
 

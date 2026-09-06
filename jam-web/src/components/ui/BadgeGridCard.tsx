@@ -21,7 +21,7 @@ export interface BadgeGridCardProps {
   /**
    * 레벨형 배지의 Lv.N (티켓 20260905_0038 B). 값이 있으면 등급 칩 대신 `BadgeLevelChip`을
    * 그린다 — `rarity`가 NULL인 배지에 `RarityBadge`를 넘기면 칩이 조용히 사라진다(0036).
-   * `BadgeTrophyGridCard`·`UnlockConditionSheetContent`와 같은 분기다.
+   * `UnlockConditionSheetContent`와 같은 분기다.
    */
   level?: number | null
   /**

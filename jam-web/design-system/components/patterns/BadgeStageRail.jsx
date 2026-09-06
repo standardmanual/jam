@@ -496,8 +496,8 @@ export function BadgeStageRail({
                         ? stop.conditionText
                         : STATUS_LABEL[stop.status];
                     // fraction>=1(조건은 채웠고 게이트만 남음)이면 앰버가 아니라 라임 —
-                    // BadgeTrophyGridCard가 이미 쓰는 것과 같은 기준(개선 리뷰 지적,
-                    // 티켓 20260904_0921). 조건 자체를 못 채운 동안만 앰버로 남긴다.
+                    // §06 상태색 기준을 그대로 따른다(개선 리뷰 지적, 티켓 20260904_0921).
+                    // 조건 자체를 못 채운 동안만 앰버로 남긴다.
                     const progressComplete = showProgress && !frontierProgress.muted && frontierProgress.fraction >= 1;
                     const captionColor = showProgress
                       ? frontierProgress.muted
@@ -523,7 +523,7 @@ export function BadgeStageRail({
                           color: captionColor,
                           opacity: !showProgress && stop.status === 'not-reached' ? 0.7 : 1,
                           // 숫자 자릿수가 흔들리는 캡션("87.3/100km"·"100일 · 10회" 등)의 폭을
-                          // 고정 — BadgeTrophyGridCard와 표기 일관성(20260904_0921).
+                          // 고정 — 배지 진행 캡션 전반의 표기 일관성(20260904_0921).
                           fontVariantNumeric: showProgress || showConditionText ? 'tabular-nums' : undefined,
                         }}
                       >

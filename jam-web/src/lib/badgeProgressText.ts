@@ -6,21 +6,11 @@ import {
   type RegretLineData,
 } from '@/lib/badge-engine/badgeProgress'
 import { RARITY_LABEL } from '@/lib/rarity'
-import { REST_CONDITION_KEYS } from '@/lib/badge-engine/activityFilters'
 import {
   CONDITION_FIELDS,
-  getConditionField,
   type AnyConditionFieldMeta,
 } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
-
-/**
- * ## 3b 추가분 (티켓 20260904_1425) — `pickSyncComparisonCandidate()`/`formatSyncComparisonText()`
- * `RecentSyncBanner`(DS)의 "직전 상태값과의 비교" 문구 조립. `user_family_progress`
- * (티켓 20260904_1156, 계열별 `current`/`prev` jsonb 스냅샷)를 읽어 "직전 동기화 대비
- * {무엇이 얼마나} 가까워졌다" 문장을 만든다 — 다른 포맷 함수와 동일하게 숫자는 이미 계산된
- * 스냅샷 값을 그대로 쓰고(재계산 없음), 이 파일은 문장 조립만 담당한다.
- */
 
 /**
  * `computeBadgeProgress()`/`computeRecordRegretLine()`(순수 계산, badge-engine/badgeProgress.ts)의
@@ -28,8 +18,8 @@ import type { BadgeCondition, BadgeRarity } from '@/types/database'
  *
  * 계산 계층은 숫자만 돌려주고(2b 원칙 — "라벨 채우기는 이 함수 안에서 하지 않는다"와 같은
  * 이유로 문장 조립도 계산 계층 밖에 둔다), 이 파일이 그 숫자를 실제 문구로 조립한다.
- * `BadgeStageRail`(DS, 프레젠테이션 전용)·`BadgeTrophyGridCard`(서비스)는 이 파일이 만든
- * 완성 문자열만 prop으로 받는다 — 두 컴포넌트 모두 kind를 직접 분기하지 않는다.
+ * `BadgeStageRail`(DS, 프레젠테이션 전용)은 이 파일이 만든 완성 문자열만 prop으로 받는다 —
+ * 그 컴포넌트는 kind를 직접 분기하지 않는다.
  *
  * `formatDualAxisGaugeProps()`(2d, 티켓 20260904_1058)도 같은 원칙 — `DualAxisGauge`(DS
  * 신규 패턴)에 완성 문자열/숫자만 넘기고, 그 컴포넌트는 kind를 모른다.
@@ -41,7 +31,7 @@ const UNSUPPORTED_TEXT = '진행 표시 준비 중'
 // ── 조건값 표기 (티켓 20260906_1323 §7·§9) ────────────────────────────────
 
 /**
- * 조건값 한 줄에 잇는 필드 최대 개수. 레일 눈금 캡션의 폭이 92px이라 넷을 넘기면 카드를
+ * 조건값 한 줄에 잇는 필드 최대 개수. 레일 눈금 캡션의 폭이 92px이라 셋을 넘기면 카드를
  * 밀어낸다 — 조건이 더 길면 「자세히」를 펼쳐 전체 설명을 본다.
  */
 const MAX_CONDITION_VALUE_PARTS = 3
@@ -233,7 +223,7 @@ export function formatFrontierProgressText(
 }
 
 /**
- * 트로피 그리드(BadgeTrophyGridCard) 캡션 — 전 유형을 kind-무관하게 "병목 축
+ * 트로피 그리드 캡션 — 전 유형을 kind-무관하게 "병목 축
  * current/target 한 줄"로 표현한다(§05 "다중 카운터는 병목만 적는다"). 레일과 달리 주기형
  * "D일 남음"·아쉬움 줄 같은 유형별 문구를 넣지 않는다 — 그리드는 계열이 없어 카드 자체가
  * 유일한 목표이므로 압축된 한 줄이면 충분하다.
@@ -418,107 +408,4 @@ export function formatRegretLineText(regret: RegretLineData, rarity: BadgeRarity
   // regret.label을 문장에 포함 — 없으면 단위만으로 "기록"이 뭘 가리키는지 유추해야 했다
   // (개선 리뷰 지적, 티켓 20260904_0921).
   return `지난 활동 ${regret.label} 기록은 ${current}${unit}. ${rarityLabel}까지 ${diff}${unit} 모자랐어요.`
-}
-
-// ── 3b. 직전 동기화 비교(RecentSyncBanner) — 티켓 20260904_1425 ────────────────
-
-export type FamilyProgressAxisSnapshot = {
-  /** user_family_progress.current(jsonb) — BadgeProgressAxis[] 그대로 */
-  current: BadgeProgressAxis[]
-  /** user_family_progress.prev(jsonb) — 최초 싱크 전이면 null */
-  prev: BadgeProgressAxis[] | null
-}
-
-export type SyncComparisonCandidate = {
-  axisKey: string
-  prevValue: number
-  currentValue: number
-}
-
-/**
- * `user_family_progress` 전 계열의 current/prev 스냅샷에서 "가장 눈에 띄는 진전"(fraction
- * 증가폭이 가장 큰 축) 하나를 고른다. "가장 최근에 갱신된 계열"(updated_at) 대신 이 기준을
- * 쓴 이유 — 한 번의 싱크가 여러 계열을 동시에 갱신하면(같은 트랜잭션의 일괄 upsert,
- * 티켓 20260904_1156 C절) updated_at만으로는 어느 쪽이 더 체감되는 진전인지 가릴 수 없다.
- * `fraction`은 축 종류(높을수록/낮을수록 좋음)와 무관하게 이미 0~1로 정규화돼 있어, 계열·축을
- * 가로질러 직접 비교할 수 있는 유일한 값이다(재계산 없이 스냅샷에 저장된 값 그대로 사용).
- *
- * fraction이 실제로 늘어난(양수) 축만 후보로 본다 — 0 이하(변화 없음, 또는 주기 리셋으로
- * 감소)는 "가까워졌다"고 말할 수 없어 제외한다. 전부 제외되면(진전 없음) null — 호출부가
- * 기존 문구("최근 활동이 동기화됐어요")로 폴백한다.
- */
-export function pickSyncComparisonCandidate(rows: FamilyProgressAxisSnapshot[]): SyncComparisonCandidate | null {
-  let best: SyncComparisonCandidate | null = null
-  let bestFractionDelta = 0
-
-  for (const row of rows) {
-    if (!row.prev || row.prev.length === 0) continue
-    const prevByKey = new Map(row.prev.map((axis) => [axis.key, axis]))
-    for (const currentAxis of row.current) {
-      // ⚠️ 휴식 축은 이 배너의 후보가 아니다.
-      //    이 문구는 「직전 동기화보다 {라벨} {델타} 가까워졌어요」 형태라, 휴식 축이 뽑히면
-      //    「복귀 전 휴식일 2일 가까워졌어요」가 되어 **서비스가 휴식을 재촉하는 모양**이 된다.
-      //    티켓 20260905_0031이 확정한 「권유형 문구 금지」의 직접 위반이다(개선 리뷰 지적).
-      //    진행 캡션(「휴식 2/5일」)은 중립적 상태 표기라 그대로 두고, 이 «권유형 문장»만 막는다.
-      if (REST_CONDITION_KEYS.includes(currentAxis.key as (typeof REST_CONDITION_KEYS)[number])) continue
-      const prevAxis = prevByKey.get(currentAxis.key)
-      // 계열 정합성 트리거(마이그레이션 128, badges_family_consistency)가 같은 계열의 등급
-      // 간 측정 조건 필드 조합을 항상 동일하게 강제하므로 정상 상황에선 항상 찾아야 하지만,
-      // 방어적으로 스킵한다(예상 밖 데이터 형태로 화면이 죽지 않게).
-      if (!prevAxis) continue
-      const fractionDelta = currentAxis.fraction - prevAxis.fraction
-      if (fractionDelta <= bestFractionDelta) continue
-      bestFractionDelta = fractionDelta
-      best = { axisKey: currentAxis.key, prevValue: prevAxis.current, currentValue: currentAxis.current }
-    }
-  }
-  return best
-}
-
-/**
- * `pickSyncComparisonCandidate()` 결과를 "직전 동기화보다 {라벨} {델타}{단위} 가까워졌어요"
- * 문장으로 조립한다. 라벨/단위는 스냅샷에 저장된 값이 아니라 호출부가 새로 조회한 labelMap을
- * 쓴다 — 저장 시점(sync.ts의 updateFamilyProgressSnapshots)엔 빈 Map을 넘겨 라벨이 원문
- * key로만 채워져 있다(티켓 20260904_1156 의사결정, 라벨을 나중에 고쳐도 과거 스냅샷 표시가
- * 자동으로 최신화되는 부수 이점).
- *
- * 델타 표기는 `formatCurrentValue`와 같은 원칙 — 방향(높을수록/낮을수록 좋음)에 맞춰 항상
- * "아직 못 미친 쪽"으로 내림해 실제보다 부풀리지 않는다. 내림 결과가 0 이하면(표시 단위로는
- * 구분 안 되는 미세 변화) 빈 비교문("0km 가까워졌어요")을 보여주지 않도록 null을 반환한다 —
- * 호출부가 기존 문구로 폴백한다. 페이스(max_pace_sec_per_km)는 `formatRegretLineText`와
- * 동일하게 델타를 정수 초 단위로 표기한다(라벨 테이블의 unit_ko가 이 축만 NULL — mm:ss
- * 절대값과 달리 델타는 애초에 "초" 단위가 자연스러워 라벨 테이블 unit을 쓰지 않는다).
- */
-export function formatSyncComparisonText(
-  candidate: SyncComparisonCandidate,
-  labelMap: Map<string, { label: string; unit: string | null }>
-): string | null {
-  const { axisKey, prevValue, currentValue } = candidate
-  // 라벨 폴백은 두 단계다.
-  //  1) `badge_metric_labels`(런타임 출처, 어드민이 편집한다)
-  //  2) **`conditionRegistry`(선언 출처)** — 시드가 아직 없는 신규 축이 여기서 걸린다.
-  //     이 단계가 없으면 `rest_after_streak` 같은 **내부 키가 유저 문장에 그대로** 나간다
-  //     (`sync.ts`가 빈 labelMap으로 저장하고 표시 시점에 다시 조회하는 구조라, 이 경로만
-  //      폴백을 못 받고 있었다 — 개선 리뷰 지적).
-  //  3) 그래도 없으면 key 원문(최후)
-  const found = labelMap.get(axisKey)
-  const registryField = found ? undefined : getConditionField(axisKey)
-  const label = found?.label ?? registryField?.label ?? axisKey
-  const unit = found?.unit ?? registryField?.unit ?? null
-  const lowerBetter = LOWER_IS_BETTER_KEYS.has(axisKey)
-  const deltaRaw = lowerBetter ? prevValue - currentValue : currentValue - prevValue
-
-  if (axisKey === 'max_pace_sec_per_km') {
-    const deltaSec = Math.floor(deltaRaw)
-    if (deltaSec <= 0) return null
-    return `직전 동기화보다 ${label} ${deltaSec}초 가까워졌어요`
-  }
-
-  const decimals = ONE_DECIMAL_KEYS.has(axisKey) ? 1 : 0
-  const factor = 10 ** decimals
-  const deltaRounded = Math.floor(deltaRaw * factor) / factor
-  if (deltaRounded <= 0) return null
-  const deltaText = decimals === 1 ? deltaRounded.toFixed(1) : String(deltaRounded)
-  const unitSuffix = unit ?? ''
-  return `직전 동기화보다 ${label} ${deltaText}${unitSuffix} 가까워졌어요`
 }

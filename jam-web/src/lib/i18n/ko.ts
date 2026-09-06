@@ -361,7 +361,6 @@ export const ko = {
 
     checkinSafetyNotice: '이 배지는 표시된 위치 반경 {radius}m 안을 지나기만 해도 체크인돼요. 위험한 곳까지 굳이 들어갈 필요 없어요. 접근이 까다로운 곳이라면 알려주세요. 도와드릴게요.',
 
-    earnedTag: '획득',
     notEarnedTag: '미획득',
     filterActivityLabel: '액티비티',
     filterActivityAll: '전체',
