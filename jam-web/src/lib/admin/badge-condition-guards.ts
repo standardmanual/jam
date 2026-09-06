@@ -20,6 +20,10 @@
  */
 import { findBlockingConditionKeys, getConditionField } from '@/lib/badge-engine/conditionRegistry'
 import { restConditionKeysIn } from '@/lib/badge-engine/activityFilters'
+// 휴식 키가 정확히 1개면 회차와 함께 저장할 수 있다(티켓 20260906_2056, §B-10 재설계) —
+// 엔진(index.ts)의 회차 차단 분기·진행 계산(badgeProgress.ts)과 같은 판정을 봐야
+// 「저장은 막히는데 엔진은 발급하는」 어긋남이 생기지 않는다.
+import { isRestDrivenRepeatCondition } from '@/lib/badge-engine/repeatOccurrences'
 import { findCrossGateShapeError } from '@/lib/badge-engine/crossGate'
 import { RARITY_TIER } from '@/lib/rarity'
 import type { BadgeCondition, BadgeRow } from '@/types/database'
@@ -50,18 +54,21 @@ export function findUnpairedConditionError(condition: BadgeCondition | null): st
 }
 
 /**
- * 회차(`repeat_count`)와 휴식 조건의 조합을 막는다.
+ * 회차(`repeat_count`)와 휴식 조건 «2개 이상»의 조합을 막는다.
  *
- * 휴식 4종은 이력 패턴 술어라 회차 술어가 소비하지 못한다. 조합을 저장하면
- * `evaluateConditionDetailed`가 「회차와 함께 쓸 수 없는 조건」으로 **매번** fail한다
- * (티켓 20260905_0030 B-10) — 발급이 영원히 되지 않는다.
+ * 휴식 4종은 이력 패턴 술어라 회차 술어가 그대로 소비하지 못한다. 휴식 키가 정확히 1개면
+ * "휴식 조건을 만족한 복귀 사건"만 세는 전용 계산(`isRestDrivenRepeatCondition`)이 있어
+ * 저장을 막지 않는다(티켓 20260906_2056, §B-10 재설계). 휴식 키가 2개 이상이면 "사건 하나"의
+ * 경계가 정의되지 않아 `evaluateConditionDetailed`가 여전히 「회차와 함께 쓸 수 없는 조건」으로
+ * **매번** fail한다 — 발급이 영원히 되지 않으므로 저장 시점에 막는다.
  */
 export function findRepeatRestConflictError(condition: BadgeCondition | null): string | null {
   if (!condition || condition.repeat_count === undefined) return null
   const restKeys = restConditionKeysIn(condition)
   if (restKeys.length === 0) return null
+  if (isRestDrivenRepeatCondition(condition)) return null
   const labels = restKeys.map((key) => `${getConditionField(key)?.label ?? key}(${key})`)
-  return `저장할 수 없습니다. 충족 횟수(repeat_count)는 휴식 조건과 함께 쓸 수 없습니다 — ${labels.join(', ')}. 둘 중 하나만 남겨주세요.`
+  return `저장할 수 없습니다. 충족 횟수(repeat_count)는 휴식 조건 1개까지만 함께 쓸 수 있습니다 — ${labels.join(', ')}. 휴식 조건을 1개만 남겨주세요.`
 }
 
 /**

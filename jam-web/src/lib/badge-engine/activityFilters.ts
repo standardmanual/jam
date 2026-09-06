@@ -255,8 +255,14 @@ export type RestEvaluation =
       requiredDays?: number
     }
 
-/** 인접한 두 활동일 사이의 한 구간 */
-type RestInterval = {
+/**
+ * 인접한 두 활동일 사이의 한 구간.
+ *
+ * 티켓 20260906_2056부터 `repeatOccurrences.ts`도 이 형태를 본다 — 휴식 4종 +
+ * `repeat_count` 조합에서 "사건 하나"가 정확히 이 구간 하나에 대응하기 때문이다
+ * (구간은 (직전 활동일, 복귀일) 한 쌍만 가리키는 원자적 단위라 쪼개거나 합칠 필요가 없다).
+ */
+export type RestInterval = {
   /** 두 활동일의 날짜 차이(일). 연속한 날이면 1 */
   intervalDays: number
   /** 쉰 일수 = 날짜 차이 − 1. 연속한 날이면 0 */
@@ -287,7 +293,7 @@ function localDateKey(a: NormalizedActivity): string {
  * 그 변수는 `time_range`·기온·걷기 하루 1회 상한으로 추가로 좁혀져 있어 공백의 정의가
  * 조건 조합에 따라 흔들린다(`collectRepeatOccurrences`가 원본을 받는 것과 같은 이유).
  */
-function restPool(
+export function restPool(
   condition: BadgeCondition,
   activities: NormalizedActivity[],
   anchorDate?: string
@@ -320,7 +326,7 @@ function restPool(
  * 합친 배열은 그 순서를 보장하지 않으므로 **날짜 키를 여기서 다시 정렬한다.** 「인접 활동
  * 사이의 간격」이 판정의 전제라 정렬이 어긋나면 「가끔만 틀리는」 판정이 된다.
  */
-function buildRestIntervals(pool: NormalizedActivity[]): RestInterval[] {
+export function buildRestIntervals(pool: NormalizedActivity[]): RestInterval[] {
   const byDate = new Map<string, NormalizedActivity[]>()
   for (const a of pool) {
     const key = localDateKey(a)
@@ -354,8 +360,13 @@ function buildRestIntervals(pool: NormalizedActivity[]): RestInterval[] {
   return intervals
 }
 
-/** 조건값이 「1 이상의 유한한 수」인지. `condition_json`은 jsonb라 형태 보장이 없다 */
-function isPositiveDays(value: unknown): value is number {
+/**
+ * 조건값이 「1 이상의 유한한 수」인지. `condition_json`은 jsonb라 형태 보장이 없다.
+ *
+ * `repeatOccurrences.ts`(티켓 20260906_2056)도 휴식-회차 조합을 세기 전에 같은 검사를
+ * 해야 한다 — 여기서 export해 판정을 두 번 적지 않는다.
+ */
+export function isPositiveDays(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 1
 }
 

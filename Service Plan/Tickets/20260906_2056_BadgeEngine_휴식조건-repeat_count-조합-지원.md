@@ -67,3 +67,111 @@ created: 2026-09-06
 ## 하지 않는 것
 - `20260906_0110`이 이미 연 다른 조합(기간 단위 회차 등) — 그대로 유지
 - 레벨형 계열의 `min_level` 표현(별도 이슈, `20260906_1947` 참고)
+
+## 완료 기록 (구현 — 승인 대기)
+
+### ① 프로덕션 전수 조사 (구현 착수 시 실측)
+
+**환경 제약**: `jam-developer` 서브에이전트는 설계상 DB 자격증명(Supabase MCP·`.env.local`)에
+접근하지 않는다(`CLAUDE.md` §5 예외 조항 — 실행은 오케스트레이터만). 그래서 라이브 DB를
+직접 조회하지 못하고, 저장소에 커밋된 `jam-web/supabase/migrations/*.sql`(전부 `git`으로
+추적되는 SQL 파일 — 실행 자체는 오케스트레이터가 이미 승인·적용한 것들이다)을 정적으로
+파싱해 집계했다. 총 조건 행 수(630건)가 티켓 본문의 "프로덕션 630종"과 정확히 일치해
+이 카탈로그가 맞는 대상임을 확인했다.
+
+**집계 결과** (`grep`/Node 스크립트로 `condition_json`을 파싱, `repeat_count` + 휴식 4종
+동시 존재 행만 필터):
+
+| 휴식 키 | 행 수(등급 사다리 포함) | 영향받는 계열(family_key) 수 |
+|---|---|---|
+| `rest_after_streak` | 7 | 2 (`walking:R1`, `running:X1`) |
+| `rest_after_long` | 16 | 5 (`walking:R2`, `running:X2`, `cycling:X2`, `hiking:X2`, `trail_running:X2`) |
+| `return_gap_days` | 15 | 5 (`walking:R4`, `running:X3`, `cycling:X1`, `hiking:X1`, `trail_running:X1`) |
+| `interval_days` | 12 | 3 (`cycling:G1`, `hiking:G1`, `trail_running:G1`) |
+| **합계** | **50건** | **15계열** |
+
+- **휴식 키 2개 이상을 동시에 쓰는 행은 0건이다** — "사건 경계 미정의" 케이스(아래 ④)가
+  현재 카탈로그에 실존하지 않음을 확인했다. 지원 범위(휴식 키 1개까지)가 실제 카탈로그를
+  전부 커버한다.
+- 시드 파일(`seed_v5_activity_badges.sql`) 안에 이미 `-- [회차] 휴식 조건(...)은
+  repeat_count와 함께 쓸 수 없다`라는 주석과 함께 이 50건이 심어져 있었다 — 카탈로그
+  담당자(티켓 `20260905_0035`)가 이 조합이 나중에 열릴 것을 전제로 미리 시딩해 둔 것으로
+  보인다.
+- 새 술어(`isRestDrivenRepeatCondition`)가 이 50건 **전부**를 실제로 인식하는지 임시
+  테스트로 실측 검증했다(커밋에는 남기지 않음 — 검증 전용 스크립트).
+- **한계**: 이 집계는 저장소의 SQL 파일 기준이며 현재 라이브 DB의 실시간 상태와 완전히
+  같다는 보장은 없다(시딩 이후 어드민 수동 편집 가능성). 다만 본 티켓 이전에는
+  `findRepeatRestConflictError`(어드민 저장 가드)가 이 50건에 대한 재저장 자체를 막고
+  있었으므로, 시딩 이후 이 조건들이 변경됐을 가능성은 낮다. **병합 전 오케스트레이터가
+  라이브 DB로 재확인을 권장한다.**
+
+### ② 구현 내용
+
+- **`repeatOccurrences.ts`**: 신규 술어 `isRestDrivenRepeatCondition`/`collectRestOccurrences`
+  추가. "사건 하나 = `activityFilters.buildRestIntervals`가 만드는 인접 활동일 사이의 닫힌
+  구간 중, 그 휴식 조건(eligible + threshold)을 만족하는 구간 하나"로 정의했다(아래 ③ 참고).
+  `evaluateRestConditions`와 완전히 같은 눈(같은 `restPool`·`buildRestIntervals`·eligible·
+  threshold 로직)으로 구간을 보되, "하나라도 있는가"가 아니라 "몇 개인가"를 센다.
+  `collectRepeatOccurrences`에 `anchorDate` 파라미터를 추가해(기존 기간 단위 회차는 영향
+  없음 — 이미 앵커로 잘린 이력을 받음) 가입 이전 공백이 사건으로 잡히지 않게 했다.
+- **`index.ts` (`evaluateConditionDetailed`)**: 휴식+회차 차단 분기를
+  `isRestDrivenRepeatCondition`으로 교체 — 휴식 키가 정확히 1개(그 짝 필드만 동반)면 통과시켜
+  `collectRepeatOccurrences`의 전용 계산으로 흘려보내고, 그 외(휴식 키 2개 이상·지원 형태를
+  벗어난 조합)는 기존과 동일하게 「회차와 함께 쓸 수 없는 조건」으로 막는다. 두 호출부
+  (`repeat_count` 평가, 반복형 후보 선정)에 `anchorDate`를 전달하도록 수정.
+- **`badgeProgress.ts`**: `classifyConditionKind`가 휴식 키 1개 + `repeat_count`를 `'repeat'`로
+  분류(기존 `'unsupported'` 고정을 걷어냄) — `buildRepeatAxis`가 그대로 재사용돼 "N/M회" 축이
+  그려진다. `explainUnsupportedProgress`의 안내 문구도 "1개까지만 가능"으로 갱신.
+- **`activityFilters.ts`**: `RestInterval` 타입·`buildRestIntervals`·`restPool`·`isPositiveDays`를
+  export로 전환(로직 변경 없음) — `repeatOccurrences.ts`가 `evaluateRestConditions`와 같은
+  구간 계산을 재사용하기 위함.
+- **`badge-condition-guards.ts` (어드민 저장 가드)**: 티켓에 명시되지 않았지만 직접 연관된
+  결함이라 함께 수정 — `findRepeatRestConflictError`가 여전히 "휴식 아무 키나 있으면 무조건
+  거부"였다면, 이번에 엔진이 지원하게 된 50건을 어드민이 재저장(이름 오타 수정 등)할 때마다
+  거부당하는 상태가 남는다. 휴식 키 1개(지원 형태)는 통과시키고, 2개 이상만 계속 막도록
+  수정.
+- **`conditionRegistry.ts`**: `repeat_count` 필드의 어드민 폼 help 문구를 "휴식 조건과는
+  함께 쓸 수 없다" → "1개까지만 함께 쓸 수 있다"로 갱신.
+
+### ③ "사건" 경계 판단 근거 (판단이 필요할 수 있는 지점 — HALT 대신 근거를 남기고 진행)
+
+티켓이 명시한 대로 사건 경계는 §B-10이 규정하지 않았다. 다음 근거로 **"활동 사이의 닫힌
+구간(`RestInterval`) 하나 = 사건 하나"**로 해석해 진행했다(HALT하지 않은 이유):
+
+- `evaluateRestConditions`(기존 코드)가 이미 이력을 인접한 두 활동일 사이의 **닫힌 구간**
+  목록으로 쪼개고 있다. 구간 하나는 정확히 (직전 활동일, 복귀일) 한 쌍만 가리키는 원자적
+  단위라 — 스트릭이 아무리 길어도, 공백이 아무리 길어도 "그 한 번의 물리적 전환"은 항상
+  구간 하나로만 표현된다. `streak_days` 회차(`collectStreakDayOccurrences`)가 "런 하나가
+  여러 회차로 쪼개지지 않게" 별도 장치(`findRunThresholdKeys`)를 뒀어야 했던 것과 달리,
+  여기는 쪼갤 대상 자체가 없어 그 장치가 필요 없었다.
+- 티켓이 든 예시(`{rest_after_streak: 2, streak_days: 3, repeat_count: 5}` → "5번의 3일
+  연속 후 2일 휴식")를 이 정의로 그대로 재현할 수 있다(회귀 테스트로 검증, 아래 ④).
+- **딱 하나의 휴식 키만 지원**하도록 좁혔다 — 서로 다른 두 휴식 키(예: `rest_after_streak` +
+  `return_gap_days`)가 동시에 있으면 "사건 하나"가 같은 구간에서 두 키를 동시에 만족해야
+  하는지, 각자 다른 구간에서 독립적으로 만족해도 되는지가 여전히 정의돼 있지 않다.
+  `evaluateRestConditions`의 기존 단발 판정도 이 경우 각 키가 독립적으로 자기 구간을 찾아
+  AND로 묶을 뿐 "사건 하나"로 셀 방법을 정의하지 않는다. ①의 실측대로 현재 카탈로그에
+  이런 조합이 0건이라 실무 영향 없이 안전하게(fail-closed) 막아 뒀다 — 필요해지면 별도
+  티켓으로 다시 판단해야 한다.
+
+### ④ 회귀 테스트
+
+`src/lib/badge-engine/__tests__/rest-conditions.test.ts`에 추가:
+- 티켓 예시 그대로 재현(5개 사건 → pass, 4개 사건 → "충족 횟수 부족")
+- **퇴화 방지 핵심 테스트**: 30일 연속 무휴식 활동 + `{rest_after_streak:2, streak_days:3,
+  repeat_count:2}` → 활동 30건에도 불구하고 사건 0건("휴식 조건을 무시한 단순 카운트로
+  퇴화하지 않는다")
+- `return_gap_days`/`interval_days`(순수 공백 키) 각각의 사건 카운팅
+- 계기 활동(N번째 사건의 복귀 활동) 선정
+- 진행 계산(`computeBadgeProgress`)이 같은 축("N/M회")을 그리는지
+- 휴식 키 2개 이상 조합은 여전히 막힘(엔진·진행 계산 양쪽)
+- 어드민 저장 가드(`badge-condition-guards.test.ts`)도 같은 경계로 갱신
+
+전체 vitest 1112건 통과, `npm run lint` 0 errors / 13 warnings(전부 기존 design-system 경고,
+이번 변경과 무관), `npx tsc --noEmit` 오류 없음.
+
+### ⑤ 남은 작업 (병합 전 오케스트레이터 확인 필요)
+- 라이브 DB에서 위 50건의 `condition_json`이 정적 분석과 일치하는지 재확인
+- 병합 후 `POST /api/admin/badges/reevaluate-all`(티켓 `20260906_1431`이 신설한 배치)로
+  기존 유저 재평가를 돌려 이 50건이 실제로 발급되기 시작하는지 게이트 리뷰에서 실측 확인
+  (티켓 본문 구현 계획 6번)
