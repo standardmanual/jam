@@ -174,7 +174,7 @@ export default async function UserProfilePage({ params }: Props) {
   ] = await Promise.all([
     service
       .from('user_activity_badges')
-      .select('badge_id, earned_at, badges(id, name, image_url, rarity, deleted_at)')
+      .select('badge_id, earned_at, earn_count, badges(id, name, image_url, rarity, level, deleted_at)')
       .eq('user_id', subjectId)
       .order('earned_at', { ascending: false })
       .limit(100),
@@ -245,8 +245,8 @@ export default async function UserProfilePage({ params }: Props) {
   // supabase-js가 select() 내 embedded join(badges(...)/missions(...)/poi(...)) 반환 타입을
   // 추론하지 못하고 row 전체가 never로 무너진다. itembooks 페이지들과 동일하게
   // "unknown as 구체타입"으로 좁혀서 사용 (as any 대신 — 실제 필드는 select절과 일치).
-  type BadgeJoin = { id: string; name: string; image_url: string; rarity: string | null; deleted_at: string | null } | null
-  type BadgesHistoryRow = { badge_id: string; earned_at: string; badges: BadgeJoin }
+  type BadgeJoin = { id: string; name: string; image_url: string; rarity: string | null; level: number | null; deleted_at: string | null } | null
+  type BadgesHistoryRow = { badge_id: string; earned_at: string; earn_count: number | null; badges: BadgeJoin }
   type ActDropRow = { id: string; badge_id: string; obtained_at: string; badges: BadgeJoin }
   type PoiDropRow = { id: string; badge_id: string; dropped_at: string; poi: { name: string } | null; badges: BadgeJoin }
   type PickupRow = { id: string; badge_id: string; picked_up_at: string; dropper_user_id: string; poi: { name: string } | null; badges: BadgeJoin }
@@ -259,7 +259,11 @@ export default async function UserProfilePage({ params }: Props) {
     if (feedBadgeIds.has(row.badge_id)) continue
     const b = row.badges
     if (!b || b.deleted_at) continue
-    legacyItems.push(makeFeedItem(`legacy_badge_${row.badge_id}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity }))
+    // ⚠️ level·earn_count를 반드시 함께 넘긴다. 빠뜨리면 v5 레벨형(rarity NULL)에
+    //    RarityBadge가 null을 그리지 않아 **칩이 통째로 사라지고**, 반복형은 ×N을 잃는다.
+    //    이 레거시 경로는 죽은 코드가 아니다 — 피드 윈도우(150행) 밖의 활동 배지가 여기로
+    //    그려진다(게이트 리뷰 실측: 유저별 7~14종). 아래 체크인 경로와 대칭을 지킬 것.
+    legacyItems.push(makeFeedItem(`legacy_badge_${row.badge_id}`, 'badge_earned', row.earned_at, { badge_id: b.id, badge_name: b.name, badge_image_url: b.image_url, rarity: b.rarity, level: b.level, earn_count: row.earn_count }))
   }
 
   const feedDropItemIds = new Set(feedItems.filter(f => f.event_type === 'item_dropped').map(f => String((f.metadata as Record<string, unknown>).inventory_item_id ?? '')))
