@@ -256,7 +256,7 @@
  },
  {
   "name": "걸어온 거리",
-  "description": "화이트 룸은 이만큼을 남긴 발자국을 압니다.",
+  "description": "지도 밖의 거리 앞에서는 숫자를 세는 일도 그만두게 됩니다.",
   "type": "activity",
   "rarity": null,
   "level": 8,
@@ -718,7 +718,7 @@
  },
  {
   "name": "자정의 경계인",
-  "description": "화이트 룸은 두 날 사이에 서 있던 사람을 알아봅니다.",
+  "description": "두 날 사이의 그 틈은 이제 이 사람만의 고정된 자리입니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -1714,7 +1714,7 @@
  },
  {
   "name": "한 달의 궤도",
-  "description": "화이트 룸은 궤도를 벗어난 적 없는 사람에게 열립니다.",
+  "description": "한 달 내내 끊이지 않은 궤도, 그 자체가 증거입니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -3207,7 +3207,7 @@
  },
  {
   "name": "긴 하루",
-  "description": "화이트 룸은 끝까지 가본 사람에게만 문을 엽니다.",
+  "description": "화이트 룸도 이만큼 가본 사람 앞에서는 값을 다시 매깁니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -4738,7 +4738,7 @@
  },
  {
   "name": "돌아온 러너",
-  "description": "그루터기 살롱은 돌아온 사람에게 자리를 비워 둡니다.",
+  "description": "그루터기 살롱은 오래 빠진 손님의 몫도 계속 셈해 둡니다.",
   "type": "activity",
   "rarity": "rare",
   "level": null,
@@ -5037,7 +5037,7 @@
  },
  {
   "name": "심박의 주인",
-  "description": "화이트 룸은 심장이 한계에 닿는 순간을 기억합니다.",
+  "description": "화이트 룸도 이 심장 앞에서는 문턱을 낮춥니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -5829,7 +5829,7 @@
  },
  {
   "name": "언덕의 사람",
-  "description": "그루터기 살롱의 단골들은 오르막 초입에서 이 사람을 알아봅니다.",
+  "description": "그루터기 살롱도 이 오르막 앞에서는 값을 매기지 못합니다.",
   "type": "activity",
   "rarity": "rare",
   "level": null,
@@ -5863,7 +5863,7 @@
  },
  {
   "name": "언덕의 사람",
-  "description": "화이트 룸은 정상보다 그 앞의 마지막 굽이를 기억합니다.",
+  "description": "정상보다 그 앞의 마지막 굽이가 이 오르막의 진짜 얼굴입니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -6071,7 +6071,7 @@
  },
  {
   "name": "이달의 라이더",
-  "description": "화이트 룸은 한 달을 통째로 밀어붙인 자를 알아봅니다.",
+  "description": "한 달을 통째로 밀어붙인 페이스에는 더 보탤 설명이 없습니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -7393,7 +7393,7 @@
  },
  {
   "name": "안장 위의 심장",
-  "description": "화이트 룸의 문은 심장이 가장 크게 뛸 때 열립니다.",
+  "description": "심장이 가장 크게 뛰는 그 순간이 이 사람의 진짜 한계선입니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -7803,7 +7803,7 @@
  },
  {
   "name": "고도의 사람",
-  "description": "화이트 룸의 문은 이런 상승의 끝에서 잠깐 열립니다.",
+  "description": "이런 상승의 끝은 누구에게나 허락되지 않습니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -7871,7 +7871,7 @@
  },
  {
   "name": "높은 곳",
-  "description": "화이트 룸은 가장 멀리 닿았던 숨을 기억합니다.",
+  "description": "가장 멀리 닿았던 숨은 그 자체로 지워지지 않는 흔적입니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -8041,7 +8041,7 @@
  },
  {
   "name": "산에 간 날",
-  "description": "그 하루가 여러 번 반복되면 습관이라는 이름이 붙습니다.",
+  "description": "산에 오르는 하루가 특별한 일에서 흔한 일로 바뀌었습니다.",
   "type": "activity",
   "rarity": "rare",
   "level": null,
@@ -8058,7 +8058,7 @@
  },
  {
   "name": "산에 간 날",
-  "description": "달력에서 산이 있던 날이 없던 날보다 또렷합니다.",
+  "description": "다리가 먼저 산으로 방향을 잡는 날이 늘었습니다.",
   "type": "activity",
   "rarity": "epic",
   "level": null,
@@ -8075,7 +8075,7 @@
  },
  {
   "name": "산에 간 날",
-  "description": "이제 일정이 산을 비켜 갑니다.",
+  "description": "이제 산에 가지 않는 날이 오히려 낯섭니다.",
   "type": "activity",
   "rarity": "mystic",
   "level": null,
@@ -10475,7 +10475,7 @@
  },
  {
   "name": "산길을 잊지 않는",
-  "description": "그루터기 살롱은 잊지 않고 돌아오는 발소리를 알아봅니다.",
+  "description": "그루터기 살롱 앞을 지나는 발소리가 어느새 낯설지 않습니다.",
   "type": "activity",
   "rarity": "rare",
   "level": null,
@@ -11080,7 +11080,7 @@
  },
  {
   "name": "돌아온 트레일러",
-  "description": "그루터기 살롱은 오래 비운 자리도 그대로 남겨 둡니다.",
+  "description": "그루터기 살롱 문턱은 오래 비워도 높아지지 않습니다.",
   "type": "activity",
   "rarity": "rare",
   "level": null,
