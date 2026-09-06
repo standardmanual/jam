@@ -17,6 +17,7 @@ import { awardPoints } from '@/lib/points'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeEarnHistoryEntry, BadgeRarity, BadgeRow } from '@/types/database'
+import { findCrossGateShapeError } from '@/lib/badge-engine/crossGate'
 
 // ── 픽스처 ───────────────────────────────────────────────────────────────
 
@@ -899,6 +900,62 @@ describe('교차 게이트 — 계열을 AND로 요구할 수 있다 (min_count)
 
     const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
     expect(earned.map((b) => b.id)).toEqual(['EPIC-3'])
+  })
+})
+
+describe('교차 게이트 — min_level (무한레벨형 대상, 티켓 20260906_1947 ④)', () => {
+  // 누적 축(무한레벨형)을 보완 축으로 지정한 Mystic — min_rarity로는 표현할 수 없어
+  // min_level을 쓴다(등급이 없으니 「Lv.1 보유」가 곧 자동 통과였던 결함, 20260906_1947).
+  const mysticBadge = () =>
+    makeBadge({
+      id: 'MYSTIC-LV',
+      name: '누적의 정점',
+      rarity: 'mystic',
+      family_key: 'run:speed',
+      condition_json: {
+        activity_type: 'running',
+        total_count: 1,
+        cross_between_axis: { family_keys: ['run:infinite'], min_level: 3 },
+        gate_mission_badge: { family_keys: ['run:oath'] },
+      },
+    })
+  const missionBadge = () =>
+    ownedBadge({
+      id: 'OWN-oath-lv',
+      name: '러너의 서약',
+      rarity: 'rare',
+      family_key: 'run:oath',
+      condition_json: { mission_reward: true },
+    })
+
+  it('Lv.1 보유만으로는 통과하지 않는다 — min_level 없이는 자동 통과됐던 경로', async () => {
+    state.badges = [mysticBadge()]
+    own(makeLevelBadge(1, 'run:infinite', { condition_json: {} }), missionBadge())
+    oneRun()
+
+    const { earned, missed } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned).toHaveLength(0)
+    expect(missed.find((x) => x.id === 'MYSTIC-LV')?.reason).toBe('축 간 교차 미충족')
+  })
+
+  it('min_level 이상을 보유하면 통과한다', async () => {
+    state.badges = [mysticBadge()]
+    own(makeLevelBadge(3, 'run:infinite', { condition_json: {} }), missionBadge())
+    oneRun()
+
+    const { earned } = await evaluateBadgesDetailed(USER_ID, [], { dryRun: true })
+    expect(earned.map((b) => b.id)).toEqual(['MYSTIC-LV'])
+  })
+
+  it('min_rarity와 min_level을 함께 쓰면 저장할 수 없다 — 상호 배타', () => {
+    const error = findCrossGateShapeError(
+      { name: '테스트', family_key: 'run:speed' },
+      {
+        activity_type: 'running',
+        cross_between_axis: { family_keys: ['run:infinite'], min_rarity: 'rare', min_level: 3 },
+      }
+    )
+    expect(error).toContain('min_rarity와 min_level을 함께 쓸 수 없음')
   })
 })
 
