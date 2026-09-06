@@ -81,12 +81,16 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 | `main` 이외 전부 | 로컬, staging 배포 | `storybook build` → `public/storybook` 복사 → `next build` |
 | `main` | 프로덕션(j-a-m.app) 배포 | `next build`만 |
 
-⚠️ **`VERCEL_ENV`로 판정하면 안 된다** — 이 저장소는 Vercel 프로젝트가 "jam"(main→Production,
-그 외→Preview)과 "jam-stage" 둘로 나뉘어 있는데, **"jam-stage" 프로젝트는 `staging` 브랜치
-자체를 자기 "Production" 환경으로 매핑**해뒀다. `VERCEL_ENV === 'production'`으로 판정하면
-jam-stage.vercel.app 배포도 프로덕션으로 오판해 스토리북이 빠지는 회귀가 난다
+⚠️ **`build.mjs`의 스토리북 판정을 `VERCEL_ENV`로 바꾸면 안 된다** — 이 저장소는 Vercel
+프로젝트가 "jam"(main→Production)과 "jam-stage" 둘로 나뉘어 있는데, **"jam-stage" 프로젝트는
+`staging` 브랜치 자체를 자기 "Production" 환경으로 매핑**해뒀다. `VERCEL_ENV === 'production'`으로
+판정하면 jam-stage.vercel.app 배포도 프로덕션으로 오판해 스토리북이 빠지는 회귀가 난다
 (2026-08-27 실제 사고 — 배포 직후 `jam-stage.vercel.app/storybook`이 404였다). 브랜치명은
 Vercel 프로젝트의 환경 라벨 설정과 무관하므로 반드시 이 기준을 쓴다.
+
+> `vercel.json`의 `ignoreCommand`는 정반대로 **`VERCEL_ENV`를 쓴다** — 거기서는
+> "이 프로젝트가 이 브랜치를 프로덕션으로 보는가"가 정확히 알고 싶은 것이기 때문이다.
+> 두 파일의 기준이 다른 건 실수가 아니다 (`jam-web/scripts/vercel-ignore.sh` 주석 참고).
 
 따라서 4단계에서 review 브랜치를 staging에 머지하고 `git push origin staging`하는 순간
 Vercel이 staging을 재빌드하면서 스토리북도 함께 다시 구워져 배포된다. **별도의 "스토리북
@@ -234,7 +238,8 @@ gate 또는 progressive의 `sideFindings`가 비어있지 않으면:
 
 ## 4. 승인 후 처리 — 베이스캠프 모자를 쓴다 (위임하지 않음)
 
-1. review 브랜치(`claude/jamwork-*`)를 **staging에 머지**하고 `git push origin staging`
+1. review 브랜치(`claude/jamwork-*`)를 **staging에 머지**한다 (push는 아직 하지 않는다 —
+   아래 「staging push는 티켓당 한 번」 참고)
    - **머지 전에 반드시 오염 여부를 확인한다**:
      `git fetch origin staging && git merge-base --is-ancestor origin/staging claude/jamwork-{ticket-id}-{slug}`
      종료 코드가 0이 아니면(= review 브랜치가 최신 `origin/staging` 위에서 분기하지 않음) 머지를
@@ -244,7 +249,27 @@ gate 또는 progressive의 `sideFindings`가 비어있지 않으면:
 3. 티켓을 `status: CLOSED`로 변경하고 완료 기록 작성
 4. jam-developer가 SQL 마이그레이션 파일을 남겼다면 **이 시점에** 사용자 승인 하에 직접 실행
    (jam-developer는 파일 작성까지만 했음)
-5. 프로덕션 반영은 `/jam-ship`으로 별도 진행 — main 머지는 사용자 명시 승인이 있을 때만
+5. 1~4가 모두 끝난 뒤 **`git push origin staging`을 한 번만** 실행한다
+6. 프로덕션 반영은 `/jam-ship`으로 별도 진행 — main 머지는 사용자 명시 승인이 있을 때만
+
+### 4.1 staging push는 티켓당 한 번
+
+**커밋할 때마다 push하지 않는다.** `origin/staging`에 push할 때마다 Vercel이 배포를 하나
+만들고, 그게 곧 Build CPU 청구다. 커밋 단위로 push하던 관행이 20일간 staging 커밋 1,212개
+= 배포 1,212개를 만들어 **Build CPU만 $66.15**가 나왔다 (2026-09-06 실측).
+
+- 구현 커밋·문서 갱신·티켓 CLOSED를 **로컬에 다 쌓은 뒤** 마지막에 한 번 push한다
+- review 브랜치(`claude/jamwork-*`) push는 종전대로 자유롭게 한다 — `ignoreCommand`가
+  프로덕션 대상이 아닌 배포를 전부 차단하므로 빌드가 돌지 않는다
+- staging 배포를 눈으로 확인해야 하는 티켓은 **확인이 필요한 시점에만** push한다.
+  확인 후 나오는 수정·문서 커밋은 다시 묶어서 한 번에 올린다
+- 예외: 병렬 세션이 같은 파일을 건드리고 있어 먼저 올려두는 편이 안전할 때. 이때는
+  사유를 사용자에게 한 줄로 알린다
+
+**문서만 바꾼 push는 빌드를 만들지 않는다** — `jam-web/` 밖(`Service Plan/`·`.claude/` 등)만
+바뀐 구간은 `ignoreCommand`가 건너뛴다. 판정 기준은 직전 커밋이 아니라 **직전에 실제로 빌드한
+커밋**이라, 한 push에 코드 커밋과 문서 커밋이 섞여도 코드 변경을 놓치지 않는다
+(`jam-web/scripts/vercel-ignore.sh`).
 
 ## 참고
 
