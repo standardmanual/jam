@@ -9,6 +9,9 @@ export type AmbientDropConfig = Omit<AmbientDropConfigRow, 'id' | 'updated_at'>
 
 export const DEFAULT_AMBIENT_DROP_CONFIG: AmbientDropConfig = {
   auto_enabled: false,
+  // 3 = 마이그레이션 137의 DB default와 같은 값(구 고정 스케줄 18:00 UTC = KST 03:00)
+  schedule_hour_kst: 3,
+  last_auto_run_on: null,
   exclusion_window_minutes: 15,
   all_random: false,
   category_mode: 'random',
@@ -27,6 +30,7 @@ export const DEFAULT_AMBIENT_DROP_CONFIG: AmbientDropConfig = {
 }
 
 const NUMERIC_KEYS = [
+  'schedule_hour_kst',
   'exclusion_window_minutes',
   'rarity_common',
   'rarity_rare',
@@ -67,9 +71,35 @@ export async function getAmbientDropConfig(): Promise<AmbientDropConfig> {
  *   (drop_policy 필드들은 전부 순수 숫자라 이 실패 경로가 없었다) 조용히 실패하면 어드민이
  *   저장 성공으로 오인할 수 있다.
  */
-export async function updateAmbientDropConfig(patch: Partial<AmbientDropConfig>): Promise<void> {
+export async function updateAmbientDropConfig(
+  patch: Partial<Omit<AmbientDropConfig, 'last_auto_run_on'>>
+): Promise<void> {
   const supabase = createServiceClient()
   const table = supabase.from('ambient_drop_config')
   const { error } = await table.upsert({ id: 1, ...patch, updated_at: new Date().toISOString() })
   if (error) throw new Error(error.message)
+}
+
+/**
+ * 오늘(KST) 예약 배포를 선점한다 — 매시 cron이 하루 두 번 배치하는 것을 원자적으로 막는다.
+ *
+ * 판정과 기록을 하나의 조건부 UPDATE로 처리한다. 조회 후 갱신 방식은 동시 호출에서 둘 다
+ * 통과하므로 쓰지 않는다(티켓 20260906_1206 ②). 배치보다 **먼저** 호출한다.
+ *
+ * @returns true = 이번 호출이 오늘 몫을 선점했다(배치 진행) / false = 이미 오늘 실행됐거나 오류
+ */
+export async function claimAmbientDropAutoRun(kstDate: string): Promise<boolean> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('ambient_drop_config')
+    .update({ last_auto_run_on: kstDate })
+    .eq('id', 1)
+    .or(`last_auto_run_on.is.null,last_auto_run_on.lt.${kstDate}`)
+    .select('id')
+
+  if (error) {
+    console.error('[ambient-drop] 예약 배포 선점 실패:', error.message)
+    return false
+  }
+  return (data?.length ?? 0) > 0
 }

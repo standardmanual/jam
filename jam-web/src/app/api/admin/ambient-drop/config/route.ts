@@ -5,6 +5,7 @@ import {
   updateAmbientDropConfig,
   type AmbientDropConfig,
 } from '@/lib/ambient-drop/config'
+import { isValidScheduleHourKst } from '@/lib/ambient-drop/schedule'
 import type { AmbientDropAxisMode } from '@/types/database'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -31,6 +32,12 @@ export async function PUT(req: NextRequest) {
 
   const auto_enabled = typeof body.auto_enabled === 'boolean' ? body.auto_enabled : current.auto_enabled
   const all_random = typeof body.all_random === 'boolean' ? body.all_random : current.all_random
+
+  const schedule_hour_kst =
+    body.schedule_hour_kst === undefined ? current.schedule_hour_kst : Number(body.schedule_hour_kst)
+  if (!isValidScheduleHourKst(schedule_hour_kst)) {
+    return NextResponse.json({ error: 'schedule_hour_kst는 0~23 사이의 정수여야 합니다.' }, { status: 400 })
+  }
 
   const exclusion_window_minutes =
     body.exclusion_window_minutes === undefined ? current.exclusion_window_minutes : Number(body.exclusion_window_minutes)
@@ -92,8 +99,10 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'max_active_per_poi는 1 이상의 숫자여야 합니다.' }, { status: 400 })
   }
 
-  const patch: AmbientDropConfig = {
+  // last_auto_run_on은 예약 배포 선점용 시스템 전용 필드다 — 어드민이 쓰지 못하게 patch에서 제외한다.
+  const patch: Omit<AmbientDropConfig, 'last_auto_run_on'> = {
     auto_enabled,
+    schedule_hour_kst,
     exclusion_window_minutes,
     all_random,
     category_mode,

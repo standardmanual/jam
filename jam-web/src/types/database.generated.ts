@@ -149,12 +149,14 @@ export type Database = {
           collection_mode: string
           exclusion_window_minutes: number
           id: number
+          last_auto_run_on: string | null
           max_active_per_poi: number
           rarity_common: number
           rarity_epic: number
           rarity_mode: string
           rarity_mystic: number
           rarity_rare: number
+          schedule_hour_kst: number
           updated_at: string
         }
         Insert: {
@@ -167,12 +169,14 @@ export type Database = {
           collection_mode?: string
           exclusion_window_minutes?: number
           id?: number
+          last_auto_run_on?: string | null
           max_active_per_poi?: number
           rarity_common?: number
           rarity_epic?: number
           rarity_mode?: string
           rarity_mystic?: number
           rarity_rare?: number
+          schedule_hour_kst?: number
           updated_at?: string
         }
         Update: {
@@ -185,12 +189,14 @@ export type Database = {
           collection_mode?: string
           exclusion_window_minutes?: number
           id?: number
+          last_auto_run_on?: string | null
           max_active_per_poi?: number
           rarity_common?: number
           rarity_epic?: number
           rarity_mode?: string
           rarity_mystic?: number
           rarity_rare?: number
+          schedule_hour_kst?: number
           updated_at?: string
         }
         Relationships: [

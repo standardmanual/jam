@@ -721,9 +721,13 @@ export type AmbientDropAxisMode = 'explicit' | 'random'
  */
 export interface AmbientDropConfigRow {
   id: number
-  /** 자동 스케줄 등록 여부. 실제 실행 시각은 vercel.json 고정 cron(코드 상수와 동기화 필요) */
+  /** 예약 배포 사용 여부. cron은 매시 정각에 호출되고 schedule_hour_kst와 맞을 때만 배치한다 */
   auto_enabled: boolean
-  /** 자동 스케줄 시각 전후 n분 — 이 구간엔 수동 배포 버튼 비활성화 (auto_enabled=false면 무시) */
+  /** 예약 배포 시각 — KST 기준 정시(0~23). 마이그레이션 137, 티켓 20260906_1206 */
+  schedule_hour_kst: number
+  /** 마지막 예약 배포일(KST 날짜, 'YYYY-MM-DD'). 하루 1회 선점용 시스템 전용 필드 */
+  last_auto_run_on: string | null
+  /** 예약 배포 시각 전후 n분 — 이 구간엔 「지금 배포」 비활성화 (auto_enabled=false면 무시) */
   exclusion_window_minutes: number
   /** 메타 옵션 — true면 실행 시점에 아래 3축 모드를 전부 'random'으로 취급(비파괴적 오버라이드) */
   all_random: boolean
