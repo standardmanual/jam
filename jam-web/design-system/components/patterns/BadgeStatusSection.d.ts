@@ -5,6 +5,13 @@ export interface BadgeStatusSectionProps {
   title: string;
   /** 접힘 상태에서도 보이는 개수. `null`이면 감춘다 */
   count?: number | null;
+  /**
+   * false면 **접지 않는다** — 버튼·chevron 없이 정적 `h2` 제목 + 개수만 그리고 본문은
+   * 항상 보인다(티켓 20260906_2140 F-1). 기본값 true라 기존 호출부는 그대로다.
+   */
+  collapsible?: boolean;
+  /** 제목 오른쪽 끝 보조 표기 — 「진행률 높은 순」처럼 목록의 정렬 규칙을 말한다 */
+  note?: string | null;
   /** 제어 모드 펼침 상태. 넘기지 않으면 비제어(`defaultOpen`) */
   open?: boolean;
   defaultOpen?: boolean;

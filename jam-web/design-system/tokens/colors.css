@@ -114,6 +114,27 @@
   --status-latest-solid: #36d3f1;                    /* 방금 들어온 것 — 직전 동기화 배너 점·문구, 이 하나뿐 */
   --status-latest-soft: rgba(54, 211, 241, 0.18);    /* 동기화 점의 부드러운 후광 */
   --status-idle-track: rgba(255, 255, 255, 0.11);    /* 아직 손대지 않은 자리 — 의미색을 주지 않는다 */
+
+  /* ── 진행 상태 채널 (티켓 20260906_2140) ──────────────────────
+   * 밝기가 「지금 얼마나 신경 쓸 곳인가」를, 색상이 「어떤 종류인가」를 맡는다.
+   * lime(H 118.6°)과 amber(H 94.9°)가 23.7°밖에 안 떨어져 있어 색만으로는
+   * 3단계를 가를 수 없다 — 가운데 단계에서 색을 빼고 밝기를 최대로 올린다.
+   *
+   * 왜 컴포넌트가 --color-text를 그냥 쓰면 안 되나: 「진행 중이면 가장 밝게」는
+   * 본문 위계가 아니라 상태 규칙이다. 나중에 본문 색을 낮춰도 상태 채널은
+   * 따라가면 안 된다(토큰을 역할 밖에서 빌려 쓰지 않는다).
+   *
+   * 값은 전부 기존 토큰을 가리키는 역할 별칭이다 — 새 색을 만들지 않았다. */
+  --status-progress-idle: var(--color-text-secondary); /* 시작 전 */
+  --status-progress-active: var(--color-text);         /* 진행 중 — 지금 내 차례 */
+  --status-progress-near: var(--status-short-solid);   /* 거의 다 (≥80%) */
+  --status-progress-done: var(--status-done-solid);    /* 다 채움 · 획득 */
+
+  /* 채움 스윕 — 트랙 전체에 깔고 clip-path로 잘라 「어디까지 초록으로 넘어갔나」가
+   * 곧 진행도가 되게 한다. ProgressBar.jsx의 PROGRESS_TRACK_GRADIENT를 CSS로 옮긴 것 —
+   * 레일 연결선·링이 JS 상수를 import할 수 없어 한 화면에서 진행 표현이 셋으로 갈라져 있었다. */
+  --status-progress-sweep: linear-gradient(90deg in oklab,
+      var(--status-short-solid), var(--status-done-solid));
 }
 
 /*

@@ -14,6 +14,17 @@ import {
 } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
 import type { BadgeStopStatus } from '@/lib/badgeTreeConditionStatus'
+import { NEAR_THRESHOLD as DS_NEAR_THRESHOLD } from '@ds/components/patterns/BadgeFamilyCardHeader'
+
+/**
+ * 「거의 다」로 넘어가는 임계값(0.8) — 티켓 20260906_2140 A.
+ *
+ * **정책 숫자라 색 토큰이 아니다.** CSS 변수로 두면 JS가 읽을 수 없고, 두 곳에 적으면
+ * 색(램프)과 문구가 서로 다른 기준을 쓰게 된다. 단일 정의는 MODULAR
+ * `BadgeFamilyCardHeader`에 있다 — 램프 색을 실제로 고르는 쪽이 거기이기 때문이다.
+ * 서비스 계층은 이 이름으로 다시 내보내 「어디를 봐야 하나」를 한 군데로 모은다.
+ */
+export const NEAR_THRESHOLD = DS_NEAR_THRESHOLD
 
 /**
  * ## 3b 추가분 (티켓 20260904_1425) — `pickSyncComparisonCandidate()`/`formatSyncComparisonText()`
@@ -54,7 +65,7 @@ const MAX_CONDITION_VALUE_PARTS = 3
  * `{값}{unit}`만 적는 방식을 쓰지 않는 이유(실측): 「완전한 하루」의 조건은
  * `{streak_days: 6, rest_after_streak: 1, repeat_count: 5}`라 단위만 붙이면
  * 「6일 · 1일 · 5회」가 되어 무엇의 숫자인지 사라진다. registry의 `chip`은 개념을 달고 있고
- * (「6일 연속」·「연속 후 휴식 1일」·「5회 충족」) 이미 압축형이라 이 자리에 맞다.
+ * (「6일 연속」·「연속 후 휴식 1일」·「5회」) 이미 압축형이라 이 자리에 맞다.
  *
  * `condition_json`은 jsonb라 형태 보장이 없다 — `chip`이 내부를 파다 터지거나
  * `undefined`/`NaN`을 뱉으면 그 필드만 조용히 건너뛴다(`conditionRegistry.safeFormat`과 같은
@@ -235,11 +246,12 @@ export function formatFrontierProgressText(
 
 /** `BadgeStageRail.jsx`의 `STATUS_LABEL`/`STATUS_ARIA_LABEL`과 같은 어휘 — DS는 `@/lib`을
  * import하지 않으므로(서비스 비의존 원칙) 두 곳에 같은 문구가 각각 선언돼 있다. */
+// 문구는 UX_WRITING_GUIDELINE.md 갱신분(커밋 00ead78f)을 따른다 — 「충족」은 전면 금지어다.
 const GRID_CELL_STATUS_LABEL: Record<BadgeStopStatus, string> = {
-  earned: '획득', ready: '조건 충족', locked: '잠김', 'not-reached': '—',
+  earned: '획득', ready: '조건을 다 채웠어요', locked: '잠김', 'not-reached': '—',
 }
 const GRID_CELL_STATUS_ARIA_LABEL: Record<BadgeStopStatus, string> = {
-  earned: '획득', ready: '조건 충족', locked: '잠김', 'not-reached': '미도달',
+  earned: '획득', ready: '조건을 다 채웠어요', locked: '잠김', 'not-reached': '아직',
 }
 
 export type GridCellCaption = {
@@ -251,12 +263,12 @@ export type GridCellCaption = {
   muted: boolean
   /** text가 임시 상태 표기("진행 표시 준비 중")다 — 조건값·상태 라벨은 사실 표기라 false */
   pending: boolean
-  /** aria-label 조립용 — not-reached만 화면 라벨('—')과 다르다('미도달') */
+  /** aria-label 조립용 — not-reached만 화면 라벨('—')과 다르다('아직') */
   statusAriaText: string
   /**
    * true면 `text`가 상태 라벨을 넘어서는 정보(수치·조건값)를 담고 있다 — 호출부가 aria에
    * `statusAriaText`와 별도로 `text`를 이어붙일지 판단하는 데 쓴다. false(바닥 폴백)면
-   * `text`가 `statusAriaText`와 사실상 같은 말이라("조건 충족") 이어붙이면 중복된다.
+   * `text`가 `statusAriaText`와 사실상 같은 말이라("조건을 다 채웠어요") 이어붙이면 중복된다.
    */
   hasDetail: boolean
 }
@@ -268,7 +280,7 @@ export type GridCellCaption = {
  * 진행 표시라는 점은 레일과 같다. 그 함수가 `null`을 돌려주는 두 경우(2축/다중 kind, 또는
  * `progress` 자체가 없음)만 이 함수가 추가로 받는다 — `BadgeStageRail`이 그 경우 상태
  * 라벨(`STATUS_LABEL`)로 폴백하는 것과 같은 순서: **조건값이 있으면 조건값, 없으면 상태
- * 라벨**("조건 충족"/"잠김"). `earned`/`not-reached`(조건값 없음)는 `formatFrontierProgressText`가
+ * 라벨**("조건을 다 채웠어요"/"잠김"). `earned`/`not-reached`(조건값 없음)는 `formatFrontierProgressText`가
  * 이미 해결하므로(진행 앵커는 곧 프런티어 눈금이라 여기까지 오지 않거나, unsupported 분기가
  * 처리한다) 사실상 `ready`/`locked` 폴백만 실전에서 쓰인다.
  */
@@ -409,6 +421,22 @@ export function formatStampCaption(progress: BadgeProgress, conditionText?: stri
   return left ? `${range} · ${left}` : range
 }
 
+/**
+ * 계열 카드 헤더 2행(메타 줄) — 「다음 Epic · 4km」 (티켓 20260906_2140 B).
+ *
+ * 조각을 잇기만 한다. 조건을 해석하지 않고, 없는 조각은 그냥 뺀다 — 전부 없으면 `null`
+ * 이라 헤더가 2행 자체를 만들지 않는다(빈 줄이 남아 카드 높이가 흔들리지 않게).
+ */
+export function formatFamilyMetaLine(
+  nextRarityLabel: string | null,
+  conditionText: string | null
+): string | null {
+  const parts = [nextRarityLabel ? `다음 ${nextRarityLabel}` : null, conditionText].filter(
+    (part): part is string => part != null && part.length > 0
+  )
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 export type DualAxisLine = {
   /** BadgeProgressAxis.key와 동일 네임스페이스 */
   key: string
@@ -452,7 +480,7 @@ export function formatDualAxisGaugeProps(progress: BadgeProgress): DualAxisGauge
     : '두 조건은 각각 다른 활동에서 채워도 돼요.'
 
   const metAxes = axes.filter((a) => a.met)
-  // 정확히 하나만 met일 때만 "병목"이 성립한다 — 0개(아직 둘 다 남음)·2개(이미 둘 다 충족,
+  // 정확히 하나만 met일 때만 "병목"이 성립한다 — 0개(아직 둘 다 남음)·2개(이미 둘 다 채움,
   // 게이트만 대기)는 지목할 대상이 없어 null(§05 "또는 사용 안 함").
   const bottleneckNote = metAxes.length === 1 ? `${metAxes[0].label} 조건은 이미 채웠어요.` : null
 

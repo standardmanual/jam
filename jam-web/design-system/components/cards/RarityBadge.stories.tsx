@@ -132,3 +132,38 @@ export const UnknownRarity: Story = {
     expect(canvasElement.querySelector('[data-testid="label-unknown"]')?.textContent).toContain('null');
   },
 };
+
+/**
+ * 20260906_2140 — `size` 프롭. **`sm`(기본)이 기존 값 그대로**라 `size`를 넘기지 않는
+ * 서비스 9개 호출부는 렌더가 1px도 달라지지 않는다. `md`(11px 라벨 · 5/10 패딩)는 배지
+ * 트리 전용이다 — 8px 라벨이 판독 불가라는 실측에서 나왔다(등급이 그 화면의 핵심 정보다).
+ */
+export const Sizes: Story = {
+  name: '20260906_2140 — size sm(기본, 무변경) / md',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div data-testid="sm" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <RarityBadge rarity="rare" />
+        <RarityBadge rarity="epic" />
+        <RarityBadge rarity="mystic" />
+      </div>
+      <div data-testid="md" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <RarityBadge rarity="rare" size="md" />
+        <RarityBadge rarity="epic" size="md" />
+        <RarityBadge rarity="mystic" size="md" />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const sm = canvasElement.querySelector('[data-testid="sm"] span') as HTMLElement;
+    const md = canvasElement.querySelector('[data-testid="md"] span') as HTMLElement;
+    // sm은 기존 값 그대로 — 8px 라벨 · 상하 4px 패딩.
+    expect(getComputedStyle(sm).fontSize).toBe('8px');
+    expect(getComputedStyle(sm).paddingTop).toBe('4px');
+    expect(getComputedStyle(sm).paddingLeft).toBe('9px');
+    // md는 --text-micro(11px) · 5/10 패딩.
+    expect(getComputedStyle(md).fontSize).toBe('11px');
+    expect(getComputedStyle(md).paddingTop).toBe('5px');
+    expect(getComputedStyle(md).paddingLeft).toBe('10px');
+  },
+};

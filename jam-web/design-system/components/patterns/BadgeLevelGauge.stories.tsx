@@ -23,14 +23,18 @@ const meta: Meta<typeof BadgeLevelGauge> = {
           '컴포넌트는 레벨 수와 무관하게 높이가 고정이다** — 지나온 레벨을 하나도 그리지 않고 ' +
           '「지금 레벨 · 다음 목표 · 남은 양」만 말한다. 다만 **이름 줄은 말줄임이 아니다**' +
           '(20260906_1323 §5) — 이름이 곧 지표라 끝이 잘리면 안 되므로 긴 이름은 줄바꿈하고, ' +
-          '그때만 카드 높이가 한 줄 늘어난다. 레벨이 없으면(`level == null`) **칩 칸 자체를 ' +
-          '만들지 않는다**(§2 — 빈 칸을 남기면 52px + gap 8px이 여백으로 남는다). ' +
-          '`condition`·`metric`을 받지 않는다: ' +
+          '그때만 카드 높이가 한 줄 늘어난다. `condition`·`metric`을 받지 않는다: ' +
           '배지 이름이 지표를 말하고(“걸어온 거리”) 값 행이 조건을 말한다. 값 행 그리드 ' +
           '`[5ch][auto][1fr][auto]`의 요점은 **현재값 5ch 우측 정렬** — 자릿수가 달라도 `/` ' +
           '구분자가 세로로 정렬된다. 진행 바는 `ProgressBar fillMode="track-gradient"`. ' +
           '20260906_1436: 진행 중(미완료) 현재값 색이 옐로우(--status-short-solid)에서 ' +
-          '화이트(--color-text)로 바뀌었다 — 진행 바 채움색은 그대로 옐로우다.',
+          '화이트(--color-text)로 바뀌었다 — 진행 바 채움색은 그대로 옐로우다. ' +
+          '20260906_2140(v2): 헤더를 공유 부품 `BadgeFamilyCardHeader`로 올렸다 — 예전에는 ' +
+          '이름이 썸네일(44)+갭(12)+칩(52) 뒤 **88px**에서 시작해 레일 카드(32px)와 어긋나 ' +
+          '있었다. 이제 이름은 **카드 왼쪽 패딩 엣지**에서 시작하고, 레벨은 헤더 우측 진행률 ' +
+          '옆 `Lv.8` **텍스트**가 된다(`BadgeLevelChip`을 여기서 더 쓰지 않는다). 본문은 ' +
+          '`[52px 썸네일][값 행 + 10px 바]`, 현재값 --text-body-l, 이미지는 여백 없이 프레임을 ' +
+          '꽉 채운다(objectFit: cover).',
       },
     },
   },
@@ -197,11 +201,14 @@ export const Complete: Story = {
 };
 
 /**
- * 회귀 고정(20260906_1323 §2) — 레벨 칩이 없으면 **칩 칸 자체가 없다.** 예전에는 빈 52px 칸이
- * 남아 이름만 안쪽으로 밀렸다. 칩이 있는 행(아래 두 번째)과 이름 시작 x가 다른 것이 정상이다.
+ * 20260906_2140 — 레벨이 있든 없든 **이름 시작 x는 카드 왼쪽 패딩 엣지 하나**다.
+ *
+ * 20260906_1323 §2가 고친 문제(빈 52px 칩 칸이 남아 이름만 안쪽으로 밀림)는 이제 구조적으로
+ * 사라졌다 — 레벨은 헤더 오른쪽 진행률 옆 텍스트로 갔고, 이름 왼쪽에는 아무것도 없다.
+ * 레벨이 없으면 `Lv.N` 라벨만 안 그린다.
  */
 export const NoLevelYet: Story = {
-  name: 'Lv.1도 못 받은 상태 — 칩 칸 없이 이름이 왼쪽 끝에서 시작',
+  name: '20260906_2140 — 레벨 유무와 무관하게 이름 시작 x가 같다',
   render: () => (
     <Frame>
       <div data-testid="gauges" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -214,10 +221,46 @@ export const NoLevelYet: Story = {
     const rows = Array.from(canvasElement.querySelectorAll('[data-testid="gauges"] > div')) as HTMLElement[];
     const nameOf = (row: HTMLElement, text: string) =>
       Array.from(row.querySelectorAll('span')).find((el) => el.textContent === text) as HTMLElement;
-    const noChip = nameOf(rows[0], '달려온 거리');
-    const withChip = nameOf(rows[1], '걸어온 거리');
-    // 칩이 없는 행의 이름이 더 왼쪽에서 시작해야 한다 — 빈 칸이 남아 있으면 x가 같아진다.
-    expect(noChip.getBoundingClientRect().left).toBeLessThan(withChip.getBoundingClientRect().left - 10);
+    const noLevel = nameOf(rows[0], '달려온 거리');
+    const withLevel = nameOf(rows[1], '걸어온 거리');
+    // 이름 시작 x가 하나여야 세로로 훑을 축이 생긴다(이번 티켓의 핵심).
+    const leftOf = (name: HTMLElement, row: HTMLElement) =>
+      Math.round(name.getBoundingClientRect().left - row.getBoundingClientRect().left);
+    expect(leftOf(noLevel, rows[0])).toBe(leftOf(withLevel, rows[1]));
+    // 카드 안쪽 패딩(--spacing-16)과 같은 값이다.
+    expect(leftOf(noLevel, rows[0])).toBe(16);
+    // 레벨이 없으면 Lv. 라벨을 그리지 않는다.
+    expect(rows[0].textContent).not.toContain('Lv.');
+    expect(rows[1].textContent).toContain('Lv.1');
+  },
+};
+
+/**
+ * 20260906_2140 F-3 — 배지 이미지는 **여백 없이 프레임을 꽉 채운다**.
+ * `padding: 0` + `objectFit: cover`이고, 모서리는 **프레임의 `overflow: hidden`으로만** 자른다
+ * (이미지에 따로 radius를 걸면 두 radius가 어긋나 모서리가 삐져나온다).
+ */
+export const ImageFillsFrame: Story = {
+  name: '20260906_2140 — 이미지가 여백 없이 프레임을 채운다',
+  render: () => (
+    <Frame>
+      <div data-testid="gauge">
+        <BadgeLevelGauge name="걸어온 거리" level={3} current="52.4" next="75km" left="22.6km 남음" fraction={0.7} imageUrl={WALK_ICON} />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const img = canvasElement.querySelector('[data-testid="gauge"] img') as HTMLImageElement;
+    expect(img).toBeTruthy();
+    const cs = getComputedStyle(img);
+    expect(cs.objectFit).toBe('cover');
+    expect(cs.paddingTop).toBe('0px');
+    // 자르는 일은 프레임이 전담한다 — 이미지에 radius를 걸지 않는다.
+    expect(cs.borderTopLeftRadius).toBe('0px');
+    const frame = img.parentElement as HTMLElement;
+    expect(getComputedStyle(frame).overflow).toBe('hidden');
+    // 52px 프레임을 남김없이 채운다.
+    expect(Math.round(img.getBoundingClientRect().width)).toBe(52);
   },
 };
 

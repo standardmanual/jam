@@ -1,5 +1,7 @@
 import React from 'react';
-import { RarityBadge } from '../cards/RarityBadge.jsx';
+import { getRarityLabel } from '../cards/RarityBadge.jsx';
+import { ProgressBar } from '../feedback/ProgressBar.jsx';
+import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeader.jsx';
 
 /**
  * BadgeStampRow — 반복형 계열 한 줄. 티켓 20260905_0036.
@@ -9,27 +11,40 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
  * 47회를 점 47개로 그리면 100회를 넘는 순간 의미를 잃고, 축약하면(한 점 = 5회 같은 식)
  * 임의로 정한 기준이 화면에 그대로 드러난다. 숫자 하나가 정확하고 자리도 안 먹는다.
  *
- * 그리드는 `BadgeLevelGauge`와 같다 — `[썸네일 44px][내용 1fr]`, 1행 `[52px 칩][1fr 이름][auto 카운터]`.
- * 칩 자리 폭이 52px로 고정이라 **칩이 있는 행끼리는** 이름 시작 x가 같다
- * (반복형은 등급이 있으므로 칩은 `RarityBadge`, 레벨형은 `BadgeLevelChip`).
+ * ## v2 — `BadgeLevelGauge`와 같은 구조로 (티켓 20260906_2140)
  *
- * ⚠️ 칩을 그리지 않는 행(미획득·등급 없음)은 **칩 칸 자체를 만들지 않는다**(티켓 20260906_1323 §2).
- * 예전에는 빈 `<span>`을 남기고 52px 칸을 그대로 잡아서, 칩이 없는 행만 이름이 카드 가운데로
- * 밀려나고 바로 아래 캡션과 시작 x가 어긋났다. `columnGap`이 8px이라 칸만 `auto`로 바꾸는
- * 방식으로는 여백이 절반만 없어진다 — 요소를 통째로 빼야 한다.
+ * 헤더(`BadgeFamilyCardHeader`)가 카드 폭 전체를 쓰고, 본문이 `[52px 썸네일][×N 칩 +
+ * 캡션 + 바]`다. 예전에는 이름이 썸네일(44) + 갭(12) + 칩(52) 뒤 **88px**에서 시작해
+ * 레일 카드(32px)와 어긋나 있었다 — 같은 화면에서 같은 위계의 이름이 두 자리에 있었다.
+ * 등급은 헤더 우측 진행률 블록의 라벨(`Epic`) **텍스트**로 올라간다.
  *
- * 미획득이면 이름·칩·카운터에서 색을 전부 거두고 썸네일은 grayscale(1) 원본으로 둔다
- * (2026-09-06 사용자 확정 — 미획득도 어떤 배지인지 알아볼 수 있어야 한다).
+ * 미획득이면 썸네일은 grayscale(1) 원본으로 둔다(2026-09-06 사용자 확정 — 미획득도 어떤
+ * 배지인지 알아볼 수 있어야 한다). 이미지는 여백 없이 프레임을 꽉 채우고(`objectFit: cover`)
+ * 모서리는 프레임의 `overflow: hidden`이 자른다.
  */
+
+/** 썸네일 한 변 — 레일 눈금·레벨 게이지와 같은 값. 카드 종류가 달라도 배지 크기는 하나다. */
+const THUMB_SIZE = 52;
+
 export function BadgeStampRow({
   /** 계열 이름 */
   name,
-  /** 등급 — 반복형은 v5에서 등급이 있다(레벨형만 rarity가 NULL) */
-  rarity,
+  /**
+   * 등급 — 반복형은 v5에서 등급이 있다(레벨형만 rarity가 NULL). 헤더 우측 진행률 옆에
+   * **텍스트**로 그린다(칩이 아니다). 라벨 문자열은 `RarityBadge`의 config가 단일 소스다.
+   */
+  rarity = /** @type {'common' | 'rare' | 'epic' | 'mystic' | null} */ (null),
   /** 누적 횟수. `×N` 칩 하나로만 그린다 */
   count,
   /** 이름 아래 한 줄 보조 문장(완성 문자열). null이면 그리지 않는다 */
   caption,
+  /**
+   * 다음 회차까지의 0~1 진행률. null이면 진행 바를 그리지 않는다 — 진행을 계산할 수 없는
+   * 계열에서 0%짜리 빈 막대를 그리면 「아직 아무것도 안 했다」는 **틀린 사실**이 된다.
+   */
+  fraction = /** @type {number | null} */ (null),
+  /** 헤더 2행(메타 줄) 완성 문자열. null이면 그리지 않는다 */
+  metaText = /** @type {React.ReactNode} */ (null),
   earned = true,
   /** 배지 이미지. 미획득이면 grayscale(1)로 그린다 */
   imageUrl = /** @type {string | null} */ (null),
@@ -38,19 +53,12 @@ export function BadgeStampRow({
   className = '',
   style = {},
 }) {
-  const nameColor = earned ? 'var(--color-text)' : 'var(--color-text-secondary)';
-  // 칩을 실제로 그릴 때만 52px 칸을 잡는다(§2). `RarityBadge`는 등급이 없으면 아무것도
-  // 그리지 않으므로 조건이 곧 「칩이 있는가」다.
-  const showChip = earned && rarity != null;
+  const clamped = fraction == null ? null : Math.min(1, Math.max(0, fraction));
 
   return (
     <div
       className={className}
       style={{
-        display: 'grid',
-        gridTemplateColumns: '44px 1fr',
-        columnGap: 'var(--spacing-12)',
-        alignItems: 'start',
         borderRadius: 'var(--radius-card)',
         padding: 'var(--spacing-16)',
         background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--color-surface-elevated)',
@@ -58,87 +66,90 @@ export function BadgeStampRow({
         ...style,
       }}
     >
-      <span
+      <BadgeFamilyCardHeader
+        name={name}
+        fraction={clamped}
+        pctLabel={getRarityLabel(rarity)}
+        done={earned && clamped == null}
+        metaText={metaText}
+      />
+
+      {/* 본문 — [52px 썸네일][×N 칩 + 캡션 + 바] */}
+      <div
         style={{
-          gridColumn: 1, gridRow: '1 / -1',
-          width: 44, height: 44, flex: 'none',
-          borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `inset 0 0 0 ${earned ? 2 : 1}px ${earned ? 'var(--status-done-solid)' : 'var(--color-border-light)'}`,
-          color: 'var(--color-text)',
+          display: 'grid', gridTemplateColumns: `${THUMB_SIZE}px 1fr`,
+          columnGap: 'var(--spacing-12)', alignItems: 'center',
+          marginTop: 'var(--spacing-12)',
         }}
       >
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
-          <img
-            src={imageUrl}
-            alt={alt ?? name}
-            style={{
-              width: '100%', height: '100%', objectFit: 'contain', padding: 3,
-              borderRadius: 'var(--radius-sm)', filter: earned ? 'none' : 'grayscale(1)',
-            }}
-          />
-        ) : (
-          <span style={{ width: 20, height: 20, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
-        )}
-      </span>
-
-      <div style={{ gridColumn: 2, minWidth: 0 }}>
-        <div
+        <span
           style={{
-            display: 'grid', gridTemplateColumns: showChip ? '52px 1fr auto' : '1fr auto',
-            columnGap: 'var(--spacing-8)', alignItems: 'center',
+            width: THUMB_SIZE, height: THUMB_SIZE, flex: 'none',
+            borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden',
+            boxShadow: `inset 0 0 0 ${earned ? 2 : 1}px ${earned ? 'var(--status-progress-done)' : 'var(--color-border-light)'}`,
+            color: 'var(--color-text)',
           }}
         >
-          {/* 52px 고정 칸 — RarityBadge는 라벨 길이에 따라 폭이 달라지므로(Common은 아예 안
-              그린다) 칸을 고정하고 그 안에 넣는다. 그래야 칩이 있는 행끼리 이름 시작 x가 같다. */}
-          {showChip && (
-            <span style={{ width: 52, display: 'inline-flex', justifyContent: 'flex-start' }}>
-              <RarityBadge rarity={rarity} />
-            </span>
-          )}
-          <span
-            style={{
-              fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.3,
-              color: nameColor, minWidth: 0,
-              // 말줄임을 쓰지 않는다(§5) — 계열 이름이 이 화면의 지표 그 자체라 끝이 잘리면
-              // 무엇의 배지인지 사라진다. keep-all로 한글은 어절 단위로만 끊되, anywhere를
-              // 함께 둬 공백 없는 긴 토큰(어절 하나가 컬럼보다 긴 경우)만 강제로 분리한다 —
-              // 그렇지 않으면 keep-all 단독으로는 그런 토큰의 줄바꿈이 막혀 컬럼을 뚫고
-              // 넘친다(티켓 20260906_1424 ③).
-              wordBreak: 'keep-all',
-              overflowWrap: 'anywhere',
-            }}
-          >
-            {name}
-          </span>
-          {count != null && (
-            <span
-              aria-label={`누적 ${count}회`}
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
+            <img
+              src={imageUrl}
+              alt={alt ?? name}
               style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                padding: '3px 8px', borderRadius: 'var(--radius-pill)',
-                fontSize: 'var(--text-micro)', lineHeight: 1, fontWeight: 700,
-                fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-                background: 'var(--status-idle-track)',
-                color: earned ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                width: '100%', height: '100%', objectFit: 'cover', padding: 0,
+                display: 'block', filter: earned ? 'none' : 'grayscale(1)',
               }}
-            >
-              ×{count}
-            </span>
+            />
+          ) : (
+            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+          )}
+        </span>
+
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-8)', minWidth: 0 }}>
+            {count != null && (
+              <span
+                aria-label={`누적 ${count}회`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none',
+                  padding: '4px 10px', borderRadius: 'var(--radius-pill)',
+                  fontSize: 'var(--text-small)', lineHeight: 1.2, fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                  background: 'var(--status-idle-track)',
+                  color: earned ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                }}
+              >
+                ×{count}
+              </span>
+            )}
+            {caption && (
+              <span
+                style={{
+                  fontSize: 'var(--text-caption)', lineHeight: 1.4, minWidth: 0,
+                  color: clamped == null ? 'var(--color-text-secondary)' : progressRampColor(clamped),
+                  wordBreak: 'keep-all', overflowWrap: 'anywhere',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {caption}
+              </span>
+            )}
+          </div>
+
+          {clamped != null && (
+            <div style={{ marginTop: 'var(--spacing-8)' }}>
+              <ProgressBar
+                percent={clamped * 100}
+                fillMode="track-gradient"
+                trackColor="var(--status-idle-track)"
+                height={10}
+                radius="var(--radius-xs)"
+              />
+            </div>
           )}
         </div>
-
-        {caption && (
-          <p
-            style={{
-              margin: 'var(--spacing-8) 0 0', fontSize: 'var(--text-caption)', lineHeight: 1.4,
-              color: 'var(--color-text-secondary)', wordBreak: 'keep-all',
-            }}
-          >
-            {caption}
-          </p>
-        )}
       </div>
     </div>
   );

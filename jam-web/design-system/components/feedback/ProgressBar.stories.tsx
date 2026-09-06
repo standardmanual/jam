@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import React from 'react';
-import { ProgressBar } from './ProgressBar';
+import { expect } from 'storybook/test';
+import { ProgressBar, PROGRESS_TRACK_GRADIENT } from './ProgressBar';
 
 const meta: Meta<typeof ProgressBar> = {
   title: 'MODULAR/Feedback/ProgressBar',
@@ -123,4 +124,30 @@ export const TrackGradient: Story = {
       ))}
     </div>
   ),
+};
+
+/**
+ * 20260906_2140 — `PROGRESS_TRACK_GRADIENT`가 **CSS 토큰
+ * `--status-progress-sweep`을 가리킨다.** 그라데이션 정의가 `colors.css` 한 군데에만 남는다.
+ *
+ * 왜 옮겼나: 배지 트리의 레일 연결선·진행 테두리는 JSX가 아니라 CSS 문자열 안에서 채움을
+ * 그려 이 JS 상수를 import할 수 없었고, 그래서 한 화면에서 진행 표현이 셋으로 갈라져 있었다.
+ *
+ * ⚠️ 값이 `to right`(sRGB 보간) → `90deg in oklab`으로 바뀐다. amber↔lime은 인접 색상이라
+ * 시각 변화는 미미하지만, 이 컴포넌트를 쓰는 서비스 8곳 + `DualAxisGauge`에 **실제로
+ * 반영되는** 변경이다.
+ */
+export const TrackGradientToken: Story = {
+  name: '20260906_2140 — 채움 스윕은 --status-progress-sweep 토큰 하나',
+  render: () => (
+    <div data-testid="bars" style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <ProgressBar percent={20} fillMode="track-gradient" trackColor="var(--status-idle-track)" height={10} />
+      <ProgressBar percent={60} fillMode="track-gradient" trackColor="var(--status-idle-track)" height={10} />
+      <ProgressBar percent={100} fillMode="track-gradient" trackColor="var(--status-idle-track)" height={10} />
+    </div>
+  ),
+  play: async () => {
+    // 상수는 토큰만 가리킨다 — 색값을 여기서 다시 적지 않는다.
+    expect(PROGRESS_TRACK_GRADIENT).toBe('var(--status-progress-sweep)');
+  },
 };

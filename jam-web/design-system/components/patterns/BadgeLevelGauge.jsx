@@ -1,6 +1,6 @@
 import React from 'react';
-import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
+import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeader.jsx';
 
 /**
  * BadgeLevelGauge — 무한레벨형 계열 한 줄. 티켓 20260905_0036.
@@ -10,29 +10,35 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
  * 앞으로 더 늘어난다. **그래서 이 컴포넌트는 레벨 수와 무관하게 높이가 고정이다** —
  * 지나온 레벨을 하나도 그리지 않고 «지금 레벨 · 다음 목표 · 남은 양» 세 가지만 말한다.
  * 높이 고정의 근거는 그 하나뿐이다 — **이름 줄은 말줄임이 아니다**(티켓 20260906_1323 §5).
- * 계열 이름은 이 화면의 지표 그 자체라(「걸어온 거리」) 끝이 잘리면 무엇의 배지인지 사라져서,
- * 긴 이름은 줄바꿈으로 전부 보여준다. 그래서 아주 긴 이름에서는 카드 높이가 한 줄 늘어난다.
  *
  * `condition`·`metric`을 받지 않는다 — 배지 이름이 지표를 말하고("걸어온 거리"),
  * 값 행이 조건을 말한다("120 / 150km"). 같은 말을 두 번 하지 않는다.
  *
- * 그리드(프로토타입 확정):
- *   카드   `[썸네일 44px][내용 1fr]` — 썸네일이 grid-row 1/-1로 걸려 **정렬 엣지가 하나만** 생긴다
- *   1행    `[52px 칩][1fr 이름][auto 카운터]` — 칩 폭이 고정이라 **칩이 있는 행끼리** 이름 시작
- *          x가 같다. 레벨이 없으면(`level == null`) 칩 칸 자체를 만들지 않는다(§2) — 빈
- *          `<span>`을 남기면 `columnGap`(8px)까지 여백으로 남아 이름이 안쪽으로 밀린다
- *   값 행  `[5ch][auto][1fr][auto]` — 현재값을 5ch 우측 정렬해 **`/` 구분자가 세로로 정렬**된다
+ * ## v2 — 헤더를 카드 폭 전체로 (티켓 20260906_2140)
+ *
+ * 예전 그리드는 `[썸네일 44px][내용 1fr]`이고 이름이 그 안쪽 1행에 있어, 계열명 시작 x가
+ * **88px**(썸네일 44 + 갭 12 + 칩 52 뒤)이었다. 레일 카드는 32px였다 — 같은 화면에서 같은
+ * 위계의 이름이 두 자리에 있었다. 이제 헤더(`BadgeFamilyCardHeader`)가 카드 폭 전체를
+ * 차지하고 썸네일은 본문으로 내려간다: 본문 `[52px 썸네일][값 행 + 10px 바]`.
+ *
+ * 레벨은 헤더 우측 진행률 블록의 라벨(`Lv.8`)로 올라간다 — `BadgeLevelChip`을 여기서
+ * 더 쓰지 않는다(칩과 등급 텍스트가 한 카드에 섞이지 않게. 칩 자체는 다른 화면 6곳이 계속 쓴다).
  *
  * 진행 바는 `ProgressBar fillMode="track-gradient"` — 트랙 기준 그라데이션이라 fill 안에서
- * 그림이 압축되지 않는다(같은 티켓에서 ProgressBar에 추가한 모드).
+ * 그림이 압축되지 않는다. 채움색은 `--status-progress-sweep` 토큰 하나에서 온다.
  *
  * 썸네일: 다음 레벨 배지는 정의상 아직 미획득이라 **grayscale(1) 원본**으로 그린다
- * (2026-09-06 사용자 확정 — 어떤 배지인지 알아볼 수 있어야 한다).
+ * (2026-09-06 사용자 확정 — 어떤 배지인지 알아볼 수 있어야 한다). 이미지는 여백 없이
+ * 프레임을 꽉 채우고(`objectFit: cover`) 모서리는 프레임의 `overflow: hidden`이 자른다.
  */
+
+/** 썸네일 한 변 — 레일 눈금(52px)과 같은 값. 카드 종류가 달라도 배지 크기는 하나다. */
+const THUMB_SIZE = 52;
+
 export function BadgeLevelGauge({
   /** 계열 이름 — 이 이름이 곧 지표다("걸어온 거리", "걸은 날들") */
   name,
-  /** 지금까지 도달한 레벨(1부터). null이면 아직 Lv.1도 못 받은 상태라 칩을 그리지 않는다 */
+  /** 지금까지 도달한 레벨(1부터). null이면 아직 Lv.1도 못 받은 상태다 */
   level,
   /** 현재 누적값 — 호출부가 이미 포맷한 문자열/숫자를 그대로 받는다(DS는 계산하지 않는다) */
   current,
@@ -42,6 +48,8 @@ export function BadgeLevelGauge({
   left,
   /** 0~1 진행률. 계산 계층이 만든 값을 그대로 쓴다("작을수록 좋음" 축 때문에 재계산 금지) */
   fraction,
+  /** 헤더 2행(메타 줄) 완성 문자열. null이면 그리지 않는다 */
+  metaText = /** @type {React.ReactNode} */ (null),
   /** 다음 레벨 배지 이미지. 미획득이라 grayscale(1)로 그린다 */
   imageUrl = /** @type {string | null} */ (null),
   /** 이미지 대체 텍스트. 생략하면 `name`을 쓴다 */
@@ -49,24 +57,13 @@ export function BadgeLevelGauge({
   className = '',
   style = {},
 }) {
-  // 칩을 실제로 그릴 때만 52px 칸을 잡는다 — `BadgeLevelChip`은 level이 null이면 아무것도
-  // 그리지 않으므로 조건이 곧 「칩이 있는가」다(§2).
-  const showChip = level != null;
   const clamped = Math.min(1, Math.max(0, fraction ?? 0));
-  const done = clamped >= 1;
-  // 진행 중(미완료) 현재값은 화이트(`--color-text`) — 옐로우(`--status-short-solid`)가 눈에
-  // 거슬린다는 지적으로 텍스트 색만 바꿨다(티켓 20260906_1436 §3). 토큰 값 자체는 바꾸지
-  // 않는다 — 진행 바 채움색(`ProgressBar`의 `--status-short-solid`)은 그대로다.
-  const valueColor = done ? 'var(--status-done-solid)' : 'var(--color-text)';
+  const valueColor = progressRampColor(clamped);
 
   return (
     <div
       className={className}
       style={{
-        display: 'grid',
-        gridTemplateColumns: '44px 1fr',
-        columnGap: 'var(--spacing-12)',
-        alignItems: 'start',
         borderRadius: 'var(--radius-card)',
         padding: 'var(--spacing-16)',
         background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--color-surface-elevated)',
@@ -74,92 +71,81 @@ export function BadgeLevelGauge({
         ...style,
       }}
     >
-      {/* grid-row 1/-1 — 썸네일이 내용 전체 높이에 걸려 왼쪽 정렬 엣지를 하나만 만든다 */}
-      <span
+      <BadgeFamilyCardHeader
+        name={name}
+        fraction={clamped}
+        pctLabel={level != null ? `Lv.${level}` : null}
+        metaText={metaText}
+      />
+
+      {/* 본문 — [52px 썸네일][값 행 + 10px 바] */}
+      <div
         style={{
-          gridColumn: 1, gridRow: '1 / -1',
-          width: 44, height: 44, flex: 'none',
-          borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
-          color: 'var(--color-text)',
+          display: 'grid', gridTemplateColumns: `${THUMB_SIZE}px 1fr`,
+          columnGap: 'var(--spacing-12)', alignItems: 'center',
+          marginTop: 'var(--spacing-12)',
         }}
       >
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
-          <img
-            src={imageUrl}
-            alt={alt ?? name}
-            style={{
-              width: '100%', height: '100%', objectFit: 'contain', padding: 3,
-              borderRadius: 'var(--radius-sm)', filter: 'grayscale(1)',
-            }}
-          />
-        ) : (
-          <span style={{ width: 20, height: 20, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
-        )}
-      </span>
-
-      <div style={{ gridColumn: 2, minWidth: 0 }}>
-        {/* 1행 — [52px 칩][1fr 이름][auto 카운터] */}
-        <div
+        <span
           style={{
-            display: 'grid', gridTemplateColumns: showChip ? '52px 1fr auto' : '1fr auto',
-            columnGap: 'var(--spacing-8)', alignItems: 'center',
+            width: THUMB_SIZE, height: THUMB_SIZE, flex: 'none',
+            borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden',
+            boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
+            color: 'var(--color-text)',
           }}
         >
-          {showChip && <BadgeLevelChip level={level} />}
-          <span
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- DS는 Next.js에 종속되지 않는다
+            <img
+              src={imageUrl}
+              alt={alt ?? name}
+              style={{
+                width: '100%', height: '100%', objectFit: 'cover', padding: 0,
+                display: 'block', filter: 'grayscale(1)',
+              }}
+            />
+          ) : (
+            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+          )}
+        </span>
+
+        <div style={{ minWidth: 0 }}>
+          {/* 값 행 — [5ch][auto][1fr][auto]. 5ch 우측 정렬이라 자릿수가 달라도 `/`가 세로로 정렬된다 */}
+          <div
             style={{
-              fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.3,
-              color: 'var(--color-text)', minWidth: 0,
-              // 말줄임을 쓰지 않는다(§5) — 이름이 곧 지표라 끝이 잘리면 안 된다.
-              // keep-all로 한글은 어절 단위로만 끊되, anywhere를 함께 둬 공백 없는 긴
-              // 토큰(어절 하나가 컬럼보다 긴 경우)만 강제로 분리한다 — keep-all 단독으로는
-              // 그런 토큰의 줄바꿈이 막혀 컬럼을 뚫고 넘친다(티켓 20260906_1424 ③).
-              wordBreak: 'keep-all',
-              overflowWrap: 'anywhere',
+              display: 'grid', gridTemplateColumns: '5ch auto 1fr auto',
+              columnGap: 6, alignItems: 'baseline',
+              fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {name}
-          </span>
-          <span />
-        </div>
+            <span
+              style={{
+                textAlign: 'right', fontSize: 'var(--text-body-l)', fontWeight: 700, lineHeight: 1.2,
+                color: valueColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}
+            >
+              {current}
+            </span>
+            <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>/</span>
+            <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {next}
+            </span>
+            <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+              {left}
+            </span>
+          </div>
 
-        {/* 값 행 — [5ch][auto][1fr][auto] */}
-        <div
-          style={{
-            display: 'grid', gridTemplateColumns: '5ch auto 1fr auto',
-            columnGap: 6, alignItems: 'baseline', marginTop: 'var(--spacing-8)',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          <span
-            style={{
-              // 5ch 우측 정렬이 이 그리드의 요점이다 — 자릿수가 달라도 `/`가 세로로 정렬된다.
-              textAlign: 'right', fontSize: 'var(--text-small)', fontWeight: 700,
-              color: valueColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}
-          >
-            {current}
-          </span>
-          <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>/</span>
-          <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {next}
-          </span>
-          <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
-            {left}
-          </span>
-        </div>
-
-        <div style={{ marginTop: 'var(--spacing-8)' }}>
-          <ProgressBar
-            percent={clamped * 100}
-            fillMode="track-gradient"
-            trackColor="var(--status-idle-track)"
-            height={6}
-            radius="var(--radius-xs)"
-          />
+          <div style={{ marginTop: 'var(--spacing-8)' }}>
+            <ProgressBar
+              percent={clamped * 100}
+              fillMode="track-gradient"
+              trackColor="var(--status-idle-track)"
+              height={10}
+              radius="var(--radius-xs)"
+            />
+          </div>
         </div>
       </div>
     </div>

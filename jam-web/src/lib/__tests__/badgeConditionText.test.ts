@@ -147,7 +147,7 @@ describe('조합 조건', () => {
       { same_activity: true, distance_km: 30, elevation_gain_m: 500, duration_minutes: 60 },
       'x'
     )
-    expect(text).toContain('한 번의 활동에서 모두 충족')
+    expect(text).toContain('한 번의 활동에서 동시에 채워야 해요')
     expect(text).not.toContain('서로 다른 활동')
   })
 

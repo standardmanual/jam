@@ -12,7 +12,7 @@ const meta: Meta<typeof BadgeStageRail> = {
       description: {
         component:
           '계열(같은 이름, 등급별 눈금) 진행 레일. 눈금 상태는 1차 범위에서 earned/ready/locked/' +
-          'not-reached 4종만 지원한다(20260903_2329). ready/locked를 가르는 조건 충족 여부는 호출부가 ' +
+          'not-reached 4종만 지원한다(20260903_2329). ready/locked를 가르는 조건 판정은 호출부가 ' +
           '계산해 stops[].status로 넘긴다. 프런티어(다음 목표) 진행 캡션·연결선 비례 채움·기록형 ' +
           '아쉬움 줄은 2c(20260904_0921)에서 `frontierProgress`/`regretLine` prop으로 추가됐다 — ' +
           '누적/기록/주기 3종만 다룬다(2축형·다중카운터형 전용 게이지는 2d 몫). ' +
@@ -27,7 +27,20 @@ const meta: Meta<typeof BadgeStageRail> = {
           '조건값을 보여준다(접힌 레일과 동일 규칙). 게이트 자리 연결선도 다른 연결선과 같은 ' +
           'flex-grow를 갖도록 맞춰 레일 전체가 한쪽으로 쏠려 보이던 것을 고쳤다. 진행 중(조건 ' +
           '미충족)인 캡션 색은 옐로우(--status-short-solid)에서 화이트(--color-text)로 바뀌었다 — ' +
-          '채움색(막대·연결선)은 그대로다.',
+          '채움색(막대·연결선)은 그대로다. ' +
+          '20260906_2140(v5): 헤더를 직접 그리지 않고 공유 부품 `BadgeFamilyCardHeader`를 쓴다 — ' +
+          '계열명 시작 x가 패턴마다 32/88/16px로 갈라져 있었다. 눈금 기하는 **고정 상수**다 — ' +
+          '썸네일 52px · 연결선 16px을 못박고 **왼쪽부터** 나열하며 남는 오른쪽은 여백으로 둔다. ' +
+          '`1fr`을 쓰지 않는 이유: 캡션 폭이 열 폭을 정하던 원본은 한 화면에서 연결선이 ' +
+          '37/25/21/14px로 벌어졌고, 1차 수정의 `repeat(n, 1fr)`은 **눈금 수**가 열 폭을 정해 ' +
+          '2눈금 카드의 연결선이 4눈금 카드의 5.4배(95.5 vs 17.75px)가 됐다. 지금은 눈금 2·3·4개를 ' +
+          '한 화면에 쌓아도 연결선이 16px 하나이고, 375·320px 모두에서 눈금 시작 x가 ' +
+          '32·100·168·236px로 같다(Chromium 실측). 캡션 자리는 2줄 높이를 상시 예약하고 폭은 ' +
+          '「썸네일 + 연결선」(68px)까지만 허용한다 — 이웃 캡션과 맞닿되 겹치지 않는 최대치다. ' +
+          '썸네일 44→52px, 연결선 6→8px(두께), ' +
+          '캡션 --text-micro→--text-caption(진행 앵커만 --text-small/700), 등급칩 size="md", ' +
+          '배지 이미지는 여백 없이 프레임을 꽉 채운다(objectFit: cover). 캡션 색은 상태 램프 ' +
+          '(idle / active / near / done)를 따른다.',
       },
     },
   },
@@ -47,7 +60,7 @@ function Frame({ children }: { children: React.ReactNode }) {
 }
 
 export const GateAheadReady: Story = {
-  name: '게이트 앞 — 조건 충족 (라임)',
+  name: '게이트 앞 — 조건을 다 채웠어요 (라임)',
   render: () => (
     <Frame>
       <BadgeStageRail
@@ -62,14 +75,14 @@ export const GateAheadReady: Story = {
         frontierProgress={null}
         progressStopId={null}
         regretLine={null}
-        onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
+        onLockClick={(id: string) => alert(`받는 방법 시트: ${id}`)}
       />
     </Frame>
   ),
 };
 
 export const GateAheadLocked: Story = {
-  name: '게이트 앞 — 조건 미충족 (잠김)',
+  name: '게이트 앞 — 아직 (잠김)',
   render: () => (
     <Frame>
       <BadgeStageRail
@@ -83,7 +96,7 @@ export const GateAheadLocked: Story = {
         frontierProgress={null}
         progressStopId={null}
         regretLine={null}
-        onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
+        onLockClick={(id: string) => alert(`받는 방법 시트: ${id}`)}
       />
     </Frame>
   ),
@@ -107,7 +120,7 @@ export const AllEarned: Story = {
 };
 
 export const NotStarted: Story = {
-  name: '아직 시작 전 (전부 미도달)',
+  name: '아직 시작 전 (전부 아직)',
   render: () => (
     <Frame>
       <BadgeStageRail
@@ -134,7 +147,7 @@ export const NotStarted: Story = {
  * 조건 해석은 이 컴포넌트가 하지 않는다 — 완성 문자열(`conditionText`)만 받는다.
  */
 export const NotReachedShowsCondition: Story = {
-  name: '미도달 눈금 — 「—」 대신 조건값',
+  name: '아직 도달 못한 눈금 — 「—」 대신 조건값',
   render: () => (
     <Frame>
       <div data-testid="rail">
@@ -164,7 +177,7 @@ export const NotReachedShowsCondition: Story = {
     expect(rail.textContent).toContain('—');
     // aria는 상태를 말로 남기고 조건값을 덧붙인다 — 「—」를 읽지 않는다.
     const first = rail.querySelectorAll('a')[0];
-    expect(first.getAttribute('aria-label')).toBe('계절의 트레일러 Common, 미도달. 조건 4km');
+    expect(first.getAttribute('aria-label')).toBe('계절의 트레일러 Common, 아직. 조건 4km');
     // 티켓 20260906_1424 ② — 조건값 캡션은 opacity 0.7 감쇠를 걸지 않는다(대비 확보,
     // 실측값은 완료 기록 참고). 정보가 없는 「—」 폴백만 계속 0.7로 감쇠한다.
     const captionSpans = Array.from(rail.querySelectorAll('span')).filter(
@@ -191,7 +204,7 @@ export const ProgressAnchorSkipsFulfilledStop: Story = {
           familyName="오늘의 한 발"
           nextRarityLabel="Common"
           stops={[
-            // Common(1일)은 조건을 이미 넘겼지만 아직 발급 전이라 미도달로 남아 있다.
+            // Common(1일)은 조건을 이미 넘겼지만 아직 발급 전이라 not-reached로 남아 있다.
             { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/1', conditionText: '누적 1일' },
             { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/2', conditionText: '누적 30일' },
           ]}
@@ -219,7 +232,7 @@ export const ProgressAnchorSkipsFulfilledStop: Story = {
  * 회귀 테스트다 — 예전엔 펼친 목록만 `STATUS_LABEL`을 그대로 써서 조건값이 없었다.
  */
 export const ExpandedNotReachedShowsCondition: Story = {
-  name: '펼친 목록 — 미도달 줄도 「—」 대신 조건값',
+  name: '펼친 목록 — 아직인 줄도 「—」 대신 조건값',
   render: () => (
     <Frame>
       <div data-testid="rail">
@@ -258,11 +271,15 @@ export const ExpandedNotReachedShowsCondition: Story = {
 };
 
 /**
- * 20260906_1436 §3 — 진행 중(조건 미충족)인 프런티어 캡션은 화이트(--color-text)다.
- * 채움색(연결선 그라데이션)은 여전히 옐로우(--status-short-solid)를 쓴다 — 텍스트만 바뀐다.
+ * 20260906_2140 A — 진행 캡션 색은 **상태 램프**를 따른다.
+ * `0 < f < 0.8`이면 화이트(`--status-progress-active`, 「지금 내 차례」), `0.8 <= f < 1`이면
+ * 앰버(`--status-progress-near`, 「거의 다」), `f >= 1`이면 라임(`--status-progress-done`)이다.
+ *
+ * 20260906_1436 §3의 「진행 중 캡션은 화이트」는 **유지된다** — 그 티켓이 문제 삼은 구간
+ * (조건을 한참 못 채운 상태)이 곧 `active`이기 때문이다. 앰버는 80%를 넘긴 뒤에만 나온다.
  */
-export const FrontierProgressCaptionIsWhite: Story = {
-  name: '20260906_1436 — 진행 중 캡션은 화이트(막대는 옐로우 유지)',
+export const FrontierProgressCaptionRamp: Story = {
+  name: '20260906_2140 — 진행 캡션 상태 램프(진행 중 화이트 / 거의 다 앰버)',
   render: () => (
     <Frame>
       <div data-testid="rail">
@@ -275,7 +292,23 @@ export const FrontierProgressCaptionIsWhite: Story = {
             { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
             { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
           ]}
-          frontierProgress={{ text: '87.3/100km', fraction: 0.82 }}
+          frontierProgress={{ text: '42.0/100km', fraction: 0.42 }}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+      <div data-testid="rail-near" style={{ marginTop: 12 }}>
+        <BadgeStageRail
+          familyName="거의 다 온 산책러"
+          nextRarityLabel="Epic"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/2' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
+          ]}
+          frontierProgress={{ text: '87.3/100km', fraction: 0.873 }}
           progressStopId={null}
           regretLine={null}
           onLockClick={() => {}}
@@ -285,21 +318,29 @@ export const FrontierProgressCaptionIsWhite: Story = {
   ),
   play: async ({ canvasElement }) => {
     const rail = canvasElement.querySelector('[data-testid="rail"]')!;
-    const caption = Array.from(rail.querySelectorAll('span')).find((el) => el.textContent === '87.3/100km') as HTMLElement;
-    expect(caption).toBeTruthy();
-    const rgb = getComputedStyle(caption).color;
-    // --color-text(#ffffff) → rgb(255, 255, 255). 옐로우(#f2cb00, rgb(242, 203, 0))가 아니어야 한다.
-    expect(rgb).toBe('rgb(255, 255, 255)');
+    const active = Array.from(rail.querySelectorAll('span')).find((el) => el.textContent === '42.0/100km') as HTMLElement;
+    expect(active).toBeTruthy();
+    // 진행 중(<80%)은 화이트 — 20260906_1436 §3의 결정이 이 구간에서 그대로 유지된다.
+    expect(getComputedStyle(active).color).toBe('rgb(255, 255, 255)');
+
+    const nearRail = canvasElement.querySelector('[data-testid="rail-near"]')!;
+    const near = Array.from(nearRail.querySelectorAll('span')).find((el) => el.textContent === '87.3/100km') as HTMLElement;
+    expect(near).toBeTruthy();
+    // 거의 다(>=80%)는 앰버(#f2cb00) — 화이트와 갈라야 「한 발 남았다」가 읽힌다.
+    expect(getComputedStyle(near).color).toBe('rgb(242, 203, 0)');
   },
 };
 
 /**
- * 20260906_1436 §2-4 — 게이트 자리 연결선도 일반 연결선과 같은 flex-grow(1)를 갖는다.
- * 예전엔 게이트만 grow:0(고정 44px)이라 남는 공간이 일반 연결선에만 쏠려 레일 전체가
- * 한쪽으로 치우쳐 보였다.
+ * 20260906_2140 §C — **연결선 폭이 캡션 글자 수와 무관하게 고정**이다.
+ *
+ * 예전에는 눈금 열이 `flex:none; minWidth:48`인데 캡션이 `maxWidth:92`까지 번져 **열 폭을
+ * 캡션 글자 수가 정했다** — staging 실측에서 한 화면 네 카드의 연결선이 37/25/21/14px로
+ * 벌어졌다. 이제 눈금 열 폭은 「썸네일 52 + 연결선 16」 고정이고 연결선은 그 위에 절대
+ * 배치된 별도 레이어라, 캡션이 한 글자든 두 줄이든 모든 연결선 폭이 같다.
  */
-export const GateConnectorBalanced: Story = {
-  name: '20260906_1436 — 게이트 연결선도 균등하게 늘어난다',
+export const ConnectorGeometryIsFixed: Story = {
+  name: '20260906_2140 — 연결선 폭은 캡션 길이와 무관하게 같다',
   render: () => (
     <Frame>
       <div data-testid="rail">
@@ -320,16 +361,19 @@ export const GateConnectorBalanced: Story = {
     </Frame>
   ),
   play: async ({ canvasElement }) => {
-    const group = canvasElement.querySelector('[role="group"]')!;
-    const gate = group.querySelector('.ds-rail-gate-link') as HTMLElement;
-    const regular = Array.from(group.children).find(
-      (el) => el.tagName === 'SPAN' && !el.className.includes('ds-rail-gate-link') && el.getAttribute('aria-hidden') === 'true'
-    ) as HTMLElement;
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    // 연결선 레이어 — 절대 배치된 span들. 게이트 자리도 같은 레이어에 있다.
+    const connectors = Array.from(rail.querySelectorAll('span')).filter(
+      (el) => getComputedStyle(el as HTMLElement).position === 'absolute' && (el as HTMLElement).offsetHeight === 8
+    ) as HTMLElement[];
+    expect(connectors.length).toBe(2);
+    const widths = connectors.map((el) => Math.round(el.getBoundingClientRect().width));
+    // 캡션이 「10km」(짧음)과 「—」(더 짧음)로 서로 다른데도 연결선 폭은 하나다.
+    expect(new Set(widths).size).toBe(1);
+    // 게이트 자리도 같은 폭 — 예전엔 여기만 고정 44px이라 레일이 한쪽으로 쏠려 보였다.
+    const gate = rail.querySelector('.ds-rail-gate-link') as HTMLElement;
     expect(gate).toBeTruthy();
-    expect(regular).toBeTruthy();
-    // 게이트·일반 연결선 모두 flex-grow:1 — 남는 공간을 균등하게 나눈다.
-    expect(getComputedStyle(gate).flexGrow).toBe('1');
-    expect(getComputedStyle(regular).flexGrow).toBe('1');
+    expect(Math.round(gate.getBoundingClientRect().width)).toBe(widths[0]);
   },
 };
 
@@ -357,7 +401,7 @@ export const Expandable: Story = {
           frontierProgress={null}
           progressStopId={null}
           regretLine={null}
-          onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
+          onLockClick={(id: string) => alert(`받는 방법 시트: ${id}`)}
         />
       </Frame>
     );
@@ -496,14 +540,14 @@ export const FrontierProgressBehindGate: Story = {
         frontierProgress={{ text: '18/20분', fraction: 0.9 }}
         progressStopId={null}
         regretLine={null}
-        onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
+        onLockClick={(id: string) => alert(`받는 방법 시트: ${id}`)}
       />
     </Frame>
   ),
 };
 
 export const FrontierProgressReadyComplete: Story = {
-  name: '프런티어 진행 — 조건 완전 충족(fraction=1) + 게이트만 대기, 라임으로 표시',
+  name: '프런티어 진행 — 조건을 다 채움(fraction=1) + 게이트만 대기, 라임으로 표시',
   render: () => (
     <Frame>
       <BadgeStageRail
@@ -516,7 +560,7 @@ export const FrontierProgressReadyComplete: Story = {
         frontierProgress={{ text: '20/20분', fraction: 1 }}
         progressStopId={null}
         regretLine={null}
-        onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
+        onLockClick={(id: string) => alert(`받는 방법 시트: ${id}`)}
       />
     </Frame>
   ),
@@ -553,7 +597,7 @@ export const NoRarityLeveled: Story = {
         frontierProgress={{ text: '38/50km', fraction: 0.76 }}
         progressStopId={null}
         regretLine={null}
-        onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
+        onLockClick={(id: string) => alert(`받는 방법 시트: ${id}`)}
       />
     </Frame>
   ),
@@ -723,12 +767,10 @@ export const EarnCountChip: Story = {
   play: async ({ canvasElement }) => {
     const rail = canvasElement.querySelector('[data-testid="rail"]');
     expect(rail?.textContent).toContain('×12');
-    // 티켓 20260906_1424 ① — 헤더 버튼 자체에 aria-label을 달지 않아야 내용 기반 이름
-    // 계산이 살아, 안쪽 `×N` 칩의 aria-label="누적 12회"가 접근성 이름 조각으로 남는다.
-    // 헤더에 aria-label을 다시 달면 이 계산을 통째로 대체해 「누적」이 사라진다.
-    const header = rail?.querySelector('.ds-rail-header') as HTMLElement;
-    expect(header.getAttribute('aria-label')).toBeNull();
-    const countChip = header.querySelector('[aria-label^="누적"]');
+    // 20260906_2140 — 헤더가 `BadgeFamilyCardHeader`로 바뀌면서 `×N` 칩은 헤더 2행(메타 줄)
+    // 앞으로 옮겼다. 칩 자체의 aria-label("누적 12회")은 그대로 남아야 스크린리더가 숫자를
+    // 「곱하기 12」가 아니라 「누적 12회」로 읽는다.
+    const countChip = rail?.querySelector('[aria-label^="누적"]');
     expect(countChip).toBeTruthy();
     expect(countChip?.getAttribute('aria-label')).toBe('누적 12회');
   },
@@ -874,5 +916,172 @@ export const GatePartiallyMet: Story = {
     const labels = Array.from(canvasElement.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') ?? '');
     // 통과/대기가 aria-label로도 갈린다 — 색·형태에만 기대지 않는다.
     expect(labels.some((l) => l.includes('미션 통과') && l.includes('선행 배지 대기'))).toBe(true);
+  },
+};
+
+/**
+ * 20260906_2140 §B·F-4 — **헤더는 공유 부품(`BadgeFamilyCardHeader`)이 그린다.**
+ *
+ * `87%`와 등급 라벨(`EPIC`)이 **한 줄에 나란히** 있고 카드 우측 패딩 엣지에 붙는다.
+ * 「자세히 ⌄」는 그 오른쪽이 아니라 **2행(메타 줄) 오른쪽 끝**으로 내려가, 1행 진행률과
+ * 2행 자세히가 같은 우측 엣지를 쓴다 — 그래야 카드를 세로로 훑는 스캔 컬럼이 성립한다.
+ */
+export const HeaderInlinePercentAndRarity: Story = {
+  name: '20260906_2140 — 87% EPIC 한 줄 · 우측 엣지 공유',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="자정의 정복자"
+          nextRarityLabel="Epic"
+          headerFraction={0.87}
+          headerLabel="Epic"
+          headerMeta="다음 Epic · 두 조건을 한 번의 활동에서"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/2' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3', conditionText: '30km' },
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4', conditionText: '100km' },
+          ]}
+          frontierProgress={{ text: '26.1/30km', fraction: 0.87 }}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]') as HTMLElement;
+    expect(rail.textContent).toContain('87%');
+    expect(rail.textContent).toContain('Epic');
+
+    const spans = Array.from(rail.querySelectorAll('span')) as HTMLElement[];
+    const pct = spans.find((el) => el.textContent === '87%')!;
+    const label = spans.find((el) => el.textContent === 'Epic')!;
+    // 한 줄인지 — 세로로 쌓였다면 bottom이 한 줄 높이만큼 벌어진다.
+    expect(Math.abs(pct.getBoundingClientRect().bottom - label.getBoundingClientRect().bottom)).toBeLessThan(4);
+    expect(label.getBoundingClientRect().left).toBeGreaterThan(pct.getBoundingClientRect().right - 1);
+
+    // 진행률 블록과 「자세히」가 같은 우측 엣지를 쓴다.
+    const toggle = rail.querySelector('.ds-family-header-toggle') as HTMLElement;
+    expect(toggle).toBeTruthy();
+    const railRect = rail.getBoundingClientRect();
+    const pctBlock = label.parentElement as HTMLElement;
+    expect(Math.round(railRect.right - pctBlock.getBoundingClientRect().right)).toBe(
+      Math.round(railRect.right - toggle.getBoundingClientRect().right)
+    );
+  },
+};
+
+/**
+ * 20260906_2140 §C — 캡션 자리는 **2줄 높이를 상시 예약**한다.
+ * 예전에는 한 레일 안에서도 캡션 높이가 14/29/43px로 갈려 눈금 열 높이가 86/101/115px로
+ * 어긋났다(staging 실측). 이제 캡션이 한 줄이든 두 줄이든 열 높이가 같다.
+ */
+export const CaptionSlotReserved: Story = {
+  name: '20260906_2140 — 캡션 2줄 높이 상시 예약',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="계절의 트레일러"
+          nextRarityLabel="Rare"
+          headerFraction={0.2}
+          headerLabel="Rare"
+          headerMeta="다음 Rare · 6일 연속 · 5회"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/1', conditionText: '4km' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/2', conditionText: '6일 연속 · 5회' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4', conditionText: '100일 · 10회' },
+          ]}
+          frontierProgress={null}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    const stops = Array.from(rail.querySelectorAll('.ds-rail-stop')) as HTMLElement[];
+    expect(stops.length).toBe(4);
+    // 캡션 글자 수가 「4km」~「6일 연속 · 5회」로 크게 다른데도 눈금 열 높이가 하나다.
+    expect(new Set(stops.map((el) => el.offsetHeight)).size).toBe(1);
+  },
+};
+
+/**
+ * 20260906_2140 §C-1 — **눈금 수가 달라도 연결선 폭·눈금 위치가 하나로 모인다.**
+ *
+ * 1차 게이트가 FAIL한 자리다. `repeat(n, 1fr)`로 열을 균등 분할하면 «눈금 수»가 열 폭을
+ * 정해, 프로덕션 실데이터 분포(2눈금 148계열 · 3눈금 6계열 · 4눈금 2계열)가 한 화면에
+ * 섞이는 순간 연결선이 17.75 / 43.66 / 95.5px로 5.4배 갈렸다.
+ *
+ * 지금은 썸네일 52px · 연결선 16px 둘 다 고정이고 왼쪽부터 나열한다. 남는 오른쪽은
+ * 그대로 여백이다 — 「이 계열은 2단계뿐」이라는 정직한 표현이고, 진행 앵커가 카드 간 같은
+ * x에 오는 이득이 그보다 크다. Chromium 실측: 375px·320px 모두 연결선 16px 하나,
+ * 눈금 시작 x 32·100·168·236px 하나(가로 스크롤 0).
+ */
+export const FixedPitchAcrossStopCounts: Story = {
+  name: '20260906_2140 C-1 — 눈금 4·3·2개를 쌓아도 연결선 폭이 하나',
+  render: () => (
+    <Frame>
+      <div data-testid="stack" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {[4, 3, 2].map((n) => (
+          <div key={n} data-rail={String(n)}>
+            <BadgeStageRail
+              familyName={`${n}눈금 계열`}
+              nextRarityLabel="Rare"
+              headerFraction={0.42}
+              headerLabel="Rare"
+              headerMeta="다음 Rare · 4.2/10km"
+              stops={(['common', 'rare', 'epic', 'mystic'] as const).slice(0, n).map((rarity, i) => ({
+                id: `${n}-${i}`,
+                rarity,
+                imageUrl: WALK_ICON,
+                status: i === 0 ? ('earned' as const) : ('not-reached' as const),
+                href: `/badges/${n}-${i}`,
+                conditionText: ['4km', '6일 연속 · 5회', '100일 · 10회', '두 조건 동시'][i],
+              }))}
+              frontierProgress={{ text: '4.2/10km', fraction: 0.42 }}
+              progressStopId={null}
+              regretLine={null}
+              onLockClick={() => {}}
+            />
+          </div>
+        ))}
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const stack = canvasElement.querySelector('[data-testid="stack"]')!;
+    const rails = Array.from(stack.querySelectorAll('[data-rail]')) as HTMLElement[];
+    expect(rails.length).toBe(3);
+
+    // ① 세 카드의 모든 연결선 폭이 하나로 모인다.
+    const widths = rails.flatMap((rail) =>
+      (Array.from(rail.querySelectorAll('span')) as HTMLElement[])
+        .filter((el) => getComputedStyle(el).position === 'absolute' && Math.round(el.offsetHeight) === 8)
+        .map((el) => Math.round(el.getBoundingClientRect().width))
+    );
+    expect(widths.length).toBe(3 + 2 + 1);
+    expect(new Set(widths).size).toBe(1);
+    expect(widths[0]).toBe(16);
+
+    // ② i번째 눈금의 시작 x가 카드를 가로질러 같다 — 스캔 컬럼이 성립하는 조건.
+    const lefts = rails.map((rail) =>
+      (Array.from(rail.querySelectorAll('.ds-rail-stop')) as HTMLElement[]).map((el) =>
+        Math.round(el.getBoundingClientRect().left - rail.getBoundingClientRect().left)
+      )
+    );
+    // 4눈금 기준값에 3·2눈금이 앞에서부터 그대로 포개진다(= 오른쪽만 비는 배치).
+    expect(lefts[1]).toEqual(lefts[0].slice(0, 3));
+    expect(lefts[2]).toEqual(lefts[0].slice(0, 2));
+    // 간격도 하나 — 썸네일 52 + 연결선 16 = 68px.
+    expect(lefts[0][1] - lefts[0][0]).toBe(68);
+    expect(lefts[0][3] - lefts[0][2]).toBe(68);
   },
 };

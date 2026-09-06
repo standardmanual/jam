@@ -26,7 +26,7 @@ export interface BadgeUnlockSheetProps {
 }
 
 /**
- * 잠금 해제 조건 시트 — 티켓 20260903_2329, 20260905_0037(다단계 게이트).
+ * 「받는 방법」 시트 — 티켓 20260903_2329, 20260905_0037(다단계 게이트).
  * `UnlockConditionSheetContent`(DS)를 **서비스 `src/components/ui/BottomSheet.tsx`** 위에
  * 얹는다(§1.6 병존 구현 규칙 — 실제 화면은 DS BottomSheet가 아니라 서비스 쪽을 쓴다).
  *

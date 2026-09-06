@@ -96,13 +96,13 @@ describe('formatGridCellCaption', () => {
   it('진행 계산 가능(누적)이면 formatFrontierProgressText와 같은 캡션·fraction을 돌려준다', () => {
     const a = axis({ current: 42, target: 100 })
     const result = formatGridCellCaption(cumulative(a, 0.42), 'not-reached', null)
-    expect(result).toEqual({ text: '42.0/100.0km', fraction: 0.42, muted: false, pending: false, statusAriaText: '미도달', hasDetail: true })
+    expect(result).toEqual({ text: '42.0/100.0km', fraction: 0.42, muted: false, pending: false, statusAriaText: '아직', hasDetail: true })
   })
 
   it('progress가 unsupported면 조건값을 사실 표기(pending:false)로 보여준다', () => {
     const unsupported: BadgeProgress = { kind: 'unsupported', conditionKeys: [] }
     const result = formatGridCellCaption(unsupported, 'not-reached', '100km')
-    expect(result).toEqual({ text: '100km', fraction: 0, muted: true, pending: false, statusAriaText: '미도달', hasDetail: true })
+    expect(result).toEqual({ text: '100km', fraction: 0, muted: true, pending: false, statusAriaText: '아직', hasDetail: true })
   })
 
   it('progress가 없고(dual/multi 등) conditionText도 없으면 상태 라벨로 폴백한다("잠김")', () => {
@@ -112,17 +112,17 @@ describe('formatGridCellCaption', () => {
 
   it('progress가 없어도 conditionText가 있으면(not-reached) 조건값을 쓴다', () => {
     const result = formatGridCellCaption(undefined, 'not-reached', '6일 연속 · 5회 충족')
-    expect(result).toEqual({ text: '6일 연속 · 5회 충족', fraction: 0, muted: true, pending: false, statusAriaText: '미도달', hasDetail: true })
+    expect(result).toEqual({ text: '6일 연속 · 5회 충족', fraction: 0, muted: true, pending: false, statusAriaText: '아직', hasDetail: true })
   })
 
-  it('ready 상태에서 progress가 dual(null 반환)이면 "조건 충족" 폴백이고 hasDetail:false다', () => {
+  it('ready 상태에서 progress가 dual(null 반환)이면 "조건을 다 채웠어요" 폴백이고 hasDetail:false다', () => {
     const dual: BadgeProgress = {
       kind: 'dual',
       axes: [axis({ key: 'min_speed_kmh', current: 15, target: 15, met: true }), axis({ key: 'elevation_gain_m', current: 1000, target: 1500, met: false })],
       progress: 1000 / 1500, bottleneck: 'elevation_gain_m', sameActivity: false, periodEndsAt: null, gate: null, level: null, crossGated: false,
     }
     const result = formatGridCellCaption(dual, 'ready', null)
-    expect(result).toEqual({ text: '조건 충족', fraction: 0, muted: true, pending: false, statusAriaText: '조건 충족', hasDetail: false })
+    expect(result).toEqual({ text: '조건을 다 채웠어요', fraction: 0, muted: true, pending: false, statusAriaText: '조건을 다 채웠어요', hasDetail: false })
   })
 })
 

@@ -61,7 +61,17 @@ export function getRarityLabel(rarity = 'common') {
   return key == null ? null : config[key].label;
 }
 
-export function RarityBadge({ rarity = 'common', className = '' }) {
+/**
+ * 칩 크기 (티켓 20260906_2140). `sm`이 **기존 값 그대로**라 `size`를 넘기지 않는 서비스
+ * 9개 호출부는 렌더가 1px도 달라지지 않는다. `md`는 배지 트리 전용 — 8px 라벨이
+ * 판독 불가라는 실측(등급이 그 화면의 핵심 정보인데 읽히지 않는다)에서 나왔다.
+ */
+const SIZES = {
+  sm: { fontSize: '8px', padding: '4px 9px' },
+  md: { fontSize: 'var(--text-micro)', padding: '5px 10px' },
+};
+
+export function RarityBadge({ rarity = 'common', size = 'sm', className = '' }) {
   // 등급 없음(null) — 무한레벨형은 등급 칩을 그리지 않는다(대신 `BadgeLevelChip`).
   // common과 같은 처리지만 이유가 다르다: common은 "노이즈 축소"(20260827_024),
   // null은 "등급이 존재하지 않음", 미지 값은 "등급을 모름"(개발 빌드에서 경고).
@@ -69,13 +79,14 @@ export function RarityBadge({ rarity = 'common', className = '' }) {
   if (key == null) return null;
   if (key === 'common') return null;
   const c = config[key];
+  const s = SIZES[size] ?? SIZES.sm;
   return (
     <span
       className={className}
       style={{
         display: 'inline-flex', alignItems: 'center',
-        padding: '4px 9px', borderRadius: 'var(--radius-pill)',
-        fontSize: '8px', lineHeight: 1, fontWeight: 700,
+        padding: s.padding, borderRadius: 'var(--radius-pill)',
+        fontSize: s.fontSize, lineHeight: 1, fontWeight: 700,
         textTransform: 'uppercase', letterSpacing: '0.3px',
         color: c.text, background: c.bg,
       }}

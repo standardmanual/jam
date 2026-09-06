@@ -17,9 +17,13 @@ const meta: Meta<typeof UnlockConditionSheetContent> = {
     docs: {
       description: {
         component:
-          '잠금 해제 조건 시트 본문(20260903_2329). 서비스 BottomSheet(src/components/ui/BottomSheet.tsx) ' +
+          '「받는 방법」 시트 본문(20260903_2329). 시트 제목은 20260906_2140에서 ' +
+          '「잠금 해제 조건」 → **「받는 방법」**으로 바꿨다(UX_WRITING_GUIDELINE §5.1 — ' +
+          '예측 가능한 행동 동사). 서비스 BottomSheet(src/components/ui/BottomSheet.tsx) ' +
           '위에 children으로 얹는다 — DS BottomSheet 위가 아니다(병존 구현, §1.6). requirements는 전부 ' +
-          '아직 충족되지 않은 항목만 넘긴다(OR 게이트가 이미 열렸으면 이 시트 자체를 띄우지 않는다).',
+          '아직 채우지 못한 항목만 넘긴다(OR 게이트가 이미 열렸으면 이 시트 자체를 띄우지 않는다). ' +
+          '체크 글리프는 이 파일이 따로 선언하지 않고 `icons/BadgeStatusGlyphs.jsx` 단일 소스를 ' +
+          '쓴다(20260906_2140 F-2 — 사본 세 벌 중 마지막 한 벌을 여기서 걷어냈다).',
       },
     },
   },
@@ -52,7 +56,7 @@ export const MissionGateConditionMet: Story = {
 };
 
 export const MissionGateConditionNotMet: Story = {
-  name: '미션 게이트 — 조건 미충족',
+  name: '미션 게이트 — 조건이 아직 남음',
   render: () => (
     <Sheet>
       <UnlockConditionSheetContent
@@ -171,7 +175,7 @@ export const GrayscaleBadgeImage: Story = {
  *
  * 평면 `relation` 하나는 항목 **전체**에 걸리는 값이라 이 조합을 표현할 수 없었다.
  * `groups`는 **그룹 안은 `relation`, 그룹 사이는 언제나 AND**다.
- * 각 그룹의 `met`이 「1단 통과, 2단 대기」를 그대로 드러낸다 — 예전에는 전부 미충족
+ * 각 그룹의 `met`이 「1단 통과, 2단 대기」를 그대로 드러낸다 — 예전에는 전부 아직인
  * 항목만 넘어온다는 전제라 통과한 단을 표시할 방법 자체가 없었다.
  */
 export const MultiStageGate: Story = {

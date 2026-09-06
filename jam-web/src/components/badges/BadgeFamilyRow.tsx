@@ -12,6 +12,7 @@ import {
   formatDualAxisGaugeProps,
   formatFamilyRowValues,
   formatStampCaption,
+  formatFamilyMetaLine,
   type FrontierCaption,
 } from '@/lib/badgeProgressText'
 import { RARITY_LABEL } from '@/lib/rarity'
@@ -23,7 +24,7 @@ export interface BadgeFamilyRowProps {
   family: BadgeFamily
   earnedBadgeIds: Set<string>
   conditionMetBadgeIds: Set<string>
-  /** ready/locked 눈금(또는 그 앞 게이트) 탭 시 잠금 해제 조건 시트 오픈 요청 */
+  /** ready/locked 눈금(또는 그 앞 게이트) 탭 시 「받는 방법」 시트 오픈 요청 */
   onLockClick: (stageId: string) => void
   /** 계열 진행 앵커의 진행 계산 결과 — badge id로 조회 */
   progressByBadgeId: Record<string, BadgeProgress>
@@ -95,6 +96,8 @@ export default function BadgeFamilyRow({
     const earnedLevels = family.stages.filter((s) => earnedBadgeIds.has(s.id)).map((s) => s.level ?? 0)
     const currentLevel = earnedLevels.length > 0 ? Math.max(...earnedLevels) : null
     const values = rawProgress ? formatFamilyRowValues(rawProgress, progressConditionText) : null
+    // 헤더 2행 — 다음 목표 레벨. 값 행(120 / 150km)이 본문에 이미 있으므로 조건값은 잇지 않는다.
+    const nextLevel = frontierStage?.level ?? null
     return (
       <FamilyRowShell stage={frontierStage} onLockClick={onLockClick} label={family.name}>
         <BadgeLevelGauge
@@ -104,6 +107,7 @@ export default function BadgeFamilyRow({
           next={values?.next ?? '—'}
           left={values?.left ?? null}
           fraction={values?.fraction ?? 0}
+          metaText={nextLevel != null ? `다음 Lv.${nextLevel}` : null}
           imageUrl={frontierStage?.imageUrl ?? null}
           alt={family.name}
         />
@@ -114,6 +118,10 @@ export default function BadgeFamilyRow({
   // ── 반복형 — 누적 회차를 ×N 칩 하나로, 다음 임계값까지의 거리는 캡션 한 줄로
   if (family.kind === 'repeatable') {
     const axis = rawProgress && rawProgress.kind !== 'unsupported' ? rawProgress.axes[0] : null
+    // 진행을 계산할 수 없으면 막대를 그리지 않는다 — 0%짜리 빈 막대는 「아직 아무것도
+    // 안 했다」는 틀린 사실이 된다(DS `BadgeStampRow.fraction` 주석과 같은 규약).
+    const stampFraction =
+      rawProgress && rawProgress.kind !== 'unsupported' ? rawProgress.progress : null
     return (
       <FamilyRowShell stage={frontierStage} onLockClick={onLockClick} label={family.name}>
         <BadgeStampRow
@@ -121,6 +129,11 @@ export default function BadgeFamilyRow({
           rarity={frontierStage?.rarity ?? null}
           count={axis ? Math.floor(axis.current) : null}
           caption={rawProgress ? formatStampCaption(rawProgress, progressConditionText) : null}
+          fraction={stampFraction}
+          metaText={formatFamilyMetaLine(
+            frontierStage?.rarity ? (RARITY_LABEL[frontierStage.rarity] ?? null) : null,
+            null
+          )}
           earned={frontierStage ? earnedBadgeIds.has(frontierStage.id) : false}
           imageUrl={frontierStage?.imageUrl ?? null}
           alt={family.name}
@@ -153,32 +166,17 @@ export default function BadgeFamilyRow({
   const regretLine =
     regretRaw && progressStage?.rarity ? formatRegretLineText(regretRaw, progressStage.rarity) : null
 
-  const rail = (
-    <BadgeStageRail
-      familyName={family.name}
-      stops={stops}
-      nextRarityLabel={nextRarityLabel}
-      frontierProgress={frontierProgress}
-      progressStopId={progressStage?.id ?? null}
-      regretLine={regretLine}
-      expanded={expanded}
-      onToggleExpand={() => setExpanded((v) => !v)}
-      onLockClick={onLockClick}
-    />
-  )
+  // 헤더 우측 진행률 — 진행 앵커의 fraction. 계산할 수 없으면 null이라 퍼센트를 적지 않는다
+  // (0%를 적는 것과 「모른다」는 다른 사실이다).
+  const headerFraction =
+    frontierProgress && !frontierProgress.muted ? frontierProgress.fraction : null
+  // 헤더 2행 — 「다음 Epic · 4km」. 다 받은 계열이면 조각이 없어 null이 되고 2행이 사라진다.
+  const headerMeta = formatFamilyMetaLine(nextRarityLabel, nextStop?.conditionText ?? null)
 
-  if (!dualAxisGauge || !nextStop) return rail
-
-  // 레일+게이지를 한 div로 묶어 내부 간격을 계열 간 간격보다 좁게 둔다 — Fragment로 형제
-  // 반환하면 부모 flex의 gap이 "레일-게이지 사이"와 "계열-계열 사이"에 똑같이 적용돼
-  // 이 둘이 한 묶음으로 안 읽혔다(인터랙션 리뷰 지적, 티켓 20260904_1058).
-  return (
-    <div
-      role="group"
-      aria-label={`${family.name} 진행 상세`}
-      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-8)' }}
-    >
-      {rail}
+  // 2축형 게이지는 **레일 카드 안의 구획**으로 들어간다(티켓 20260906_2140) — 예전에는
+  // 자기 배경을 가진 두 번째 카드로 떠 있어 「계열 하나 = 카드 하나」가 깨져 있었다.
+  const dualSection =
+    dualAxisGauge && nextStop ? (
       <DualAxisGauge
         imageUrl={nextStop.imageUrl}
         alt={`${family.name} ${nextRarityLabel ?? ''}`}
@@ -187,13 +185,30 @@ export default function BadgeFamilyRow({
         ruleText={dualAxisGauge.ruleText}
         bottleneckNote={dualAxisGauge.bottleneckNote}
       />
-    </div>
+    ) : null
+
+  return (
+    <BadgeStageRail
+      familyName={family.name}
+      stops={stops}
+      nextRarityLabel={nextRarityLabel}
+      headerFraction={headerFraction}
+      headerLabel={nextRarityLabel}
+      headerMeta={headerMeta}
+      frontierProgress={frontierProgress}
+      progressStopId={progressStage?.id ?? null}
+      regretLine={regretLine}
+      secondarySection={dualSection}
+      expanded={expanded}
+      onToggleExpand={() => setExpanded((v) => !v)}
+      onLockClick={onLockClick}
+    />
   )
 }
 
 /**
  * 레벨 게이지·카운터 행의 «누를 곳». 레일은 눈금마다 링크/버튼을 갖지만 이 둘은 카드 한
- * 장이라 껍데기가 필요하다 — 게이트가 남아 있으면 잠금 해제 조건 시트를 열고, 아니면
+ * 장이라 껍데기가 필요하다 — 게이트가 남아 있으면 「받는 방법」 시트를 열고, 아니면
  * 그 배지 상세로 간다. 게이트가 있는데 누를 곳이 없으면 조건을 확인할 방법이 사라진다.
  */
 function FamilyRowShell({
@@ -211,7 +226,7 @@ function FamilyRowShell({
   if (!stage) return <>{children}</>
   if (hasUnfulfilledGate(stage.gateGroups)) {
     return (
-      <button type="button" style={base} onClick={() => onLockClick(stage.id)} aria-label={`${label} 잠금 해제 조건 보기`}>
+      <button type="button" style={base} onClick={() => onLockClick(stage.id)} aria-label={`${label} 받는 방법 보기`}>
         {children}
       </button>
     )

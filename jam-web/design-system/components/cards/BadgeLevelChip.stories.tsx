@@ -72,3 +72,25 @@ export const NoLevel: Story = {
     expect(canvasElement.querySelector('[data-testid="empty"]')?.textContent?.trim()).toBe('');
   },
 };
+
+/**
+ * 20260906_2140 — `size` 프롭. `RarityBadge`와 같은 어휘이고, **`sm`(기본)이 기존 값
+ * 그대로**라 서비스 5개 호출부는 렌더가 달라지지 않는다.
+ */
+export const Sizes: Story = {
+  name: '20260906_2140 — size sm(기본, 무변경) / md',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <span data-testid="sm"><BadgeLevelChip level={8} /></span>
+      <span data-testid="md"><BadgeLevelChip level={8} size="md" /></span>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const sm = canvasElement.querySelector('[data-testid="sm"] span') as HTMLElement;
+    const md = canvasElement.querySelector('[data-testid="md"] span') as HTMLElement;
+    expect(getComputedStyle(sm).fontSize).toBe('8px');
+    expect(getComputedStyle(sm).paddingTop).toBe('4px');
+    expect(getComputedStyle(md).fontSize).toBe('11px');
+    expect(getComputedStyle(md).paddingTop).toBe('5px');
+  },
+};

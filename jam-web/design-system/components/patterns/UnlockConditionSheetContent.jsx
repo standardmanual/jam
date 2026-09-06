@@ -1,9 +1,14 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
+// 체크 글리프는 배지 화면 공용 단일 소스에서 가져온다 — 이 파일에도 세 번째 사본이 있었다
+// (티켓 20260906_2140 F-2. 1차에서 레일·링 카드 두 벌만 통합하고 여기를 놓쳤다).
+import { CheckGlyph } from '../icons/BadgeStatusGlyphs.jsx';
 
 /**
- * UnlockConditionSheetContent — 잠금 해제 조건 시트의 본문. 티켓 20260903_2329.
+ * UnlockConditionSheetContent — 「받는 방법」 시트의 본문. 티켓 20260903_2329.
+ * (시트 제목은 티켓 20260906_2140에서 「잠금 해제 조건」→「받는 방법」으로 바꿨다 —
+ *  UX_WRITING_GUIDELINE.md §5.1 예측 가능한 행동 동사.)
  *
  * 레일·티어 목록에는 자물쇠 아이콘 하나만 두고(카드 안에 조건 문장을 늘어놓지 않는다),
  * 그 아이콘을 누르면 이 콘텐츠가 서비스 BottomSheet 위에 얹혀 조건 전체를 보여준다.
@@ -34,13 +39,6 @@ function ChevronRightGlyph({ size = 16 }) {
   return (
     <svg viewBox="0 -960 960 960" width={size} height={size} fill="currentColor" aria-hidden="true">
       <path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z" />
-    </svg>
-  );
-}
-function CheckGlyph({ size = 16 }) {
-  return (
-    <svg viewBox="0 -960 960 960" width={size} height={size} fill="currentColor" aria-hidden="true">
-      <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
     </svg>
   );
 }
@@ -217,7 +215,7 @@ export function UnlockConditionSheetContent({
           fontSize: 'var(--text-caption)', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--color-text-secondary)',
         }}
       >
-        잠금 해제 조건
+        받는 방법
       </h3>
 
       {useGroups ? (
