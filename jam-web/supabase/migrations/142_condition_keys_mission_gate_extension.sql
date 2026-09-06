@@ -1,4 +1,5 @@
 -- 142: condition_json 허용 키 확장 — 미션 게이트 확장 어휘 4종
+--      + missions.mission_type CHECK에 'engine_condition' 추가
 --      (티켓 20260906_2231, 마스터 20260905_0026 후속)
 --
 -- 배경:
@@ -18,11 +19,22 @@
 --   이 키를 실제로 쓰는 계열이 생기기 전까지는 이 CHECK가 통과 범위를 넓히기만 할 뿐
 --   기존 630여 행의 판정에는 아무 영향이 없다.
 --
+--   ⚠️ **게이트 리뷰 FAIL 재작업(2026-09-06)**: 초안은 `condition_json` 허용 키만
+--   확장하고 `missions.mission_type` CHECK 제약(`missions_mission_type_check`)에
+--   `engine_condition`을 추가하지 않았다. 이 제약의 최신 정의는 082가 처음 만들고
+--   103이 값 하나를 바꾼(`poi_visit`→`checkin`) 7종(`distance`·`checkin`·
+--   `activity_count`·`item_collect`·`streak_days`·`duration_minutes`·
+--   `elevation_gain_m`)뿐이라, `seed_v5_gate_missions.sql`의 `mission_type='engine_condition'`
+--   INSERT 33건이 전부 CHECK 위반으로 트랜잭션 롤백된다(0행 삽입). 082·103이 쓴 패턴
+--   그대로(제약 이름을 하드코딩하지 않고 동적으로 찾아 DROP 후 확장 목록으로 재생성)
+--   ⑤ 블록에서 8번째 값으로 추가한다.
+--
 -- ⚠️ 이 파일은 CLAUDE.md 규칙(jam-work의 jam-developer 서브에이전트)에 따라
 --    **작성만 하고 실행하지 않았다.** 실행은 사용자 승인 후 오케스트레이터가 처리한다.
 --
 -- 실행 순서: **코드 배포와 무관하게 먼저 실행해도 안전하다.** CHECK 제약을 넓히기만 하고
---    기존 condition_json 행은 한 글자도 건드리지 않는다 — 전부 기존 키 안에 있다.
+--    기존 condition_json·mission_type 행은 한 글자도 건드리지 않는다 — 전부 기존 값
+--    안에 있다(추가만, UPDATE 없음).
 --
 -- 재실행 가능(idempotent): DROP ... IF EXISTS + ADD / CREATE OR REPLACE /
 --    ON CONFLICT DO UPDATE 로 작성했다.
@@ -171,6 +183,36 @@ ON CONFLICT (metric_key) DO UPDATE
       unit_ko    = EXCLUDED.unit_ko,
       updated_at = now();
 
+-- ── ⑤ missions_mission_type_check — 'engine_condition' 추가 (게이트 리뷰 FAIL 수정) ──
+--
+-- 082가 만들고 103이 값을 바꾼(`poi_visit`→`checkin`) 최신 정의 7종에 8번째 값을
+-- 더한다. 082·103과 같은 패턴 — 제약 이름을 하드코딩하지 않고 동적으로 찾아 지운다
+-- (자동 생성 이름이 초기 상태에 따라 다를 수 있어 하드코딩하면 그 지점에서 트랜잭션
+-- 전체가 롤백된다). 이 파일의 `condition_json` 확장과 달리 이건 신규 값 추가라
+-- `distinct` UPDATE는 필요 없다 — 기존 행 중 `engine_condition`을 쓰는 행이 없다
+-- (이 값은 이 티켓에서 처음 도입됐고, `seed_v5_gate_missions.sql`은 아직 미실행이다).
+DO $$
+DECLARE
+  con RECORD;
+BEGIN
+  FOR con IN
+    SELECT conname FROM pg_constraint
+    WHERE conrelid = 'public.missions'::regclass
+      AND contype = 'c'
+      AND pg_get_constraintdef(oid) LIKE '%mission_type%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.missions DROP CONSTRAINT %I', con.conname);
+  END LOOP;
+END $$;
+
+ALTER TABLE public.missions
+  ADD CONSTRAINT missions_mission_type_check
+  CHECK (mission_type IN (
+    'distance', 'checkin', 'activity_count', 'item_collect',
+    'streak_days', 'duration_minutes', 'elevation_gain_m',
+    'engine_condition'
+  ));
+
 COMMIT;
 
 -- ── 검증 쿼리 (실행 후 눈으로 확인할 것) ────────────────────────────────────
@@ -198,9 +240,36 @@ COMMIT;
 -- -- ④ 라벨 4행이 반영됐는지
 -- SELECT metric_key, label_ko, unit_ko FROM public.badge_metric_labels
 --  WHERE metric_key IN ('period_streak','time_bands_requirement','distinct_days_of_week_count','distinct_months_threshold');
+--
+-- -- ⑤ missions_mission_type_check가 engine_condition을 허용하는지 — 롤백 스모크
+-- --    (컬럼 목록은 seed_v5_gate_missions.sql이 실제로 쓰는 것과 동일하게 맞췄다).
+-- DO $smoke_mission$
+-- DECLARE v_id UUID;
+-- BEGIN
+--   INSERT INTO public.missions (
+--     title, description, mission_type, condition_json, status_display_type, starts_at, ends_at
+--   ) VALUES (
+--     '__smoke_142_mission__', '스모크', 'engine_condition',
+--     '{"activity_type":"walking","distinct_days_of_week_count":5}'::jsonb,
+--     'individual', now(), NULL
+--   ) RETURNING id INTO v_id;
+--   RAISE EXCEPTION '롤백: engine_condition INSERT 통과 (id=%)', v_id;
+-- END
+-- $smoke_mission$;
+--
+-- -- ⑥ CHECK 제약 정의에 engine_condition이 들어갔는지
+-- SELECT pg_get_constraintdef(oid) FROM pg_constraint
+--  WHERE conrelid = 'public.missions'::regclass AND conname = 'missions_mission_type_check';
 
 -- ↩️ 롤백 DDL
 --    -- CHECK 제약을 140의 배열로 되돌린다 (140 파일의 ① 블록 재실행)
 --    -- 트리거 함수는 140의 본문으로 되돌린다 (140 파일의 ② 블록 재실행)
 --    DELETE FROM public.badge_metric_labels WHERE metric_key IN (
 --      'period_streak','time_bands_requirement','distinct_days_of_week_count','distinct_months_threshold');
+--    -- missions_mission_type_check를 082/103의 7종 정의로 되돌린다 (engine_condition 제거).
+--    -- 되돌리기 전 missions.mission_type = 'engine_condition' 행이 없는지 먼저 확인할 것
+--    -- (seed_v5_gate_missions.sql이 이미 실행됐다면 33행이 이 값을 쓴다).
+--    ALTER TABLE public.missions DROP CONSTRAINT missions_mission_type_check;
+--    ALTER TABLE public.missions ADD CONSTRAINT missions_mission_type_check
+--      CHECK (mission_type IN ('distance','checkin','activity_count','item_collect',
+--                              'streak_days','duration_minutes','elevation_gain_m'));
