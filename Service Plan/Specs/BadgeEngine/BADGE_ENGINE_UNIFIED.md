@@ -1,7 +1,13 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-05 (`NormalizedActivity` 확장 6필드 수집·백필 경로(§2.1-1) 추가 —
-> 티켓 20260905_0029. 이전: 배지트리 진행 계산 계층(§2.13) 신설·화면 연결(2b~2d)·계열 진행
+> 최종 업데이트: 2026-09-06 (v5 스칼라 7종(`max_elevation_m`·`max_speed_kmh`·`single_distance_km`·
+> `single_elevation_m`·`avg_heartrate_bpm`·`avg_watts`·`avg_cadence`)·`weekly_streak`를
+> `pending`→`engine`으로 전환, `cumulative_duration_hours`·`monthly_count` 신규 필드 추가(둘 다
+> `engine`), `rest_after_long`의 짝 필드에 `duration_minutes`를 OR로 추가해 실제 발급 가능해짐,
+> 반복 회차 계산에 「기간 단위 회차」(`streak_days`·`weekly_count`·`monthly_count`·`weekly_streak`
+> + `repeat_count` 조합) 지원 추가, 케이던스 ×2 정규화(러닝·트레일러닝만, 자전거 제외) —
+> 티켓 20260906_0110(CLOSED). 이전: `NormalizedActivity` 확장 6필드 수집·백필 경로(§2.1-1) 추가 —
+> 티켓 20260905_0029. 그 이전: 배지트리 진행 계산 계층(§2.13) 신설·화면 연결(2b~2d)·계열 진행
 > 스냅샷 테이블+정합성 트리거(3차 1단계, 마이그레이션 128)·직전 동기화 비교 배너(3차 2단계,
 > 배너 텍스트만) — 티켓 20260904_0631/0921/1058/1156/1425)  
 > **배지 운영 문서 4종 체계** — 이 문서(로직) + [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md)(조건 필드 전체 스펙) + `액티비티배지 레시피.md`(액티비티배지 전체 목록) + `아이템북 레시피.xlsx`(아이템배지 전체 목록 + 세계관 인접)  
@@ -69,8 +75,15 @@ Strava 싱크
 | `maxElevationM` | `elev_high` | 없음(m) | `max_elevation_m` |
 | `avgHeartrateBpm` | `average_heartrate` | 없음(bpm) | `avg_heartrate_bpm` |
 | `avgWatts` | `average_watts` | 없음(W) | `avg_watts` |
-| `avgCadence` | `average_cadence` | 없음 | `avg_cadence` |
+| `avgCadence` | `average_cadence` | **러닝·트레일러닝만 ×2**(양발 합계 spm으로 정규화). 사이클은 원값 그대로(rpm — 편족 개념이 없어 대상 아님) | `avg_cadence` |
 
+- **케이던스 ×2 정규화** (2026-09-06, 티켓 20260906_0110 ⑤): Strava가 `average_cadence`로 주는
+  값은 종목마다 관례가 다르다 — 러닝·트레일러닝은 한쪽 발만 센 spm, 사이클은 rpm(양발 개념
+  자체가 없음). `normalizeCadenceForActivityType()`(`src/types/strava.ts`)이 러닝·트레일러닝에만
+  ×2를 적용해 «양발 합계 spm»으로 통일하고, 저장 시점(신규 싱크의 `normalizeActivity` + 백필의
+  `mergeExtendedFields` 양쪽)에 적용한다 — 조건값(`avg_cadence`)도 이 기준(예: 180)으로 쓴다.
+  기존 저장분(러닝 574행·트레일러닝 52행)은 마이그레이션 141로 재정규화했다(자전거는
+  `avgCadence` 보유 행 자체가 0건이라 영향 없음)
 - **값이 없으면 키 자체를 만들지 않는다** (`null`을 넣지 않는다). 심박계·파워미터가 없는
   유저의 활동이 «데이터 없음 = 카운트 안 함»으로 자연히 동작해야 하고, 화면에
   「심박 데이터가 있는 활동에서만 계산돼요」 같은 안내를 넣지 않기로 확정했다. `0`은 버리지
@@ -155,17 +168,19 @@ Step 8. initial_sync_done 갱신
 | `active_days_count` (2026-08-08 신규) | 축1 게이트 통과 활동의 `(startDateLocal ?? startDate).slice(0,10)` 고유 날짜 `Set` 크기 ≥ 조건값 (연속 아님) |
 | `season_count_all` (2026-08-08 신규) | 봄/여름/가을/겨울 각 계절 활동 횟수가 전부 조건값 이상 (계절별 독립 카운터, `season`+`season_count`와 별개 필드) |
 | `month` (2026-08-08 확장) | 기존 `number`에서 `number | number[]`로 확장 — 배열이면 여러 달을 OR로 묶어 `monthly_km`와 결합(예: 장마철 6~7월) |
-| `repeat_count` (2026-09-05 신규) | **기준 조건을 통째로 만족한 활동 건수** ≥ 조건값. `total_count`(필터 통과 건수)와 다르다 — 회차 정의는 `collectRepeatOccurrences()` 한 곳. §2.14 · CONDITION_JSON_SPEC §2.11 |
+| `repeat_count` (2026-09-05 신규) | **기준 조건을 통째로 만족한 활동 건수** ≥ 조건값. `total_count`(필터 통과 건수)와 다르다 — 회차 정의는 `collectRepeatOccurrences()` 한 곳. 활동 1건 단위 축(`PER_ACTIVITY_KEYS`, v5 스칼라 7종 포함)뿐 아니라 **「기간 단위 회차」**(`streak_days`·`weekly_count`·`monthly_count`·`weekly_streak`와 결합 — 예: 「주 3회를 채운 주가 5번」)도 2026-09-06(티켓 20260906_0110 ②)부터 셀 수 있다. §2.14 · CONDITION_JSON_SPEC §2.11 |
 | `prerequisite_badge_names` | Step 3 C-1에서 처리 (OR 매칭). **보유한 등급형의 이름만** 대상이다 — v5는 레벨형·반복형이 등급형과 이름을 공유할 수 있어 이름이 배지를 유일하게 식별하지 못한다 (§2.15) |
 | `cross_in_axis` / `cross_between_axis` / `gate_mission_badge` (2026-09-05 신규) | Step 3 C-1에서 처리 — **계열(`family_key`) 기준** 2단 교차 게이트. 교차 둘은 서로 OR, 미션 게이트는 AND. §2.15 |
-| `rest_after_streak` / `rest_after_long` / `return_gap_days` / `interval_days` (2026-09-05 신규) | **인접한 두 활동 사이의 «닫힌 공백»** 판정. 활동이 0~1건이면 공백을 계산하지 않는다. 판정은 `activityFilters.ts`의 `evaluateRestConditions()` 한 곳. §2.16 |
-| **v5 신규 16종** (2026-09-05) | ❌ **평가 미구현 — fail-closed로 막힌다.** 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10. 다만 스칼라 7종이 읽을 **원천 데이터는 수집이 시작됐다**(§2.1-1, 티켓 20260905_0029) — 평가 구현은 `CONDITION_ACTIVITY_FIELD`로 정규화 필드를 꺼내면 된다. ⚠️ **`single_distance_km`이 여기 남아 있어 `rest_after_long`이 짝 필드 때문에 계속 막힌다** (§2.16) |
+| `rest_after_streak` / `rest_after_long` / `return_gap_days` / `interval_days` (2026-09-05 신규) | **인접한 두 활동 사이의 «닫힌 공백»** 판정. 활동이 0~1건이면 공백을 계산하지 않는다. 판정은 `activityFilters.ts`의 `evaluateRestConditions()` 한 곳. `rest_after_long`의 짝 필드는 `single_distance_km` **또는** `duration_minutes`(OR, 2026-09-06 티켓 20260906_0110 ④ 추가) — 이제 실제로 발급된다. §2.16 |
+| `max_elevation_m` / `max_speed_kmh` / `single_distance_km` / `single_elevation_m` / `avg_heartrate_bpm` / `avg_watts` / `avg_cadence` (v5 스칼라 7종) / `weekly_streak` (2026-09-06, 티켓 20260906_0110 ②) | `pending`에서 `engine`으로 전환됨. **활동 1건의 값**을 `CONDITION_ACTIVITY_FIELD`로 정규화 필드에서 꺼내 비교(스칼라 7종), `weekly_streak`는 `calcMaxWeeklyStreak`가 연속 주(월~일) 최장 길이를 계산. 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10 |
+| `cumulative_duration_hours` / `monthly_count` (2026-09-06 신규, 티켓 20260906_0110 ①) | 레지스트리에 키가 없어 v5 카탈로그 시딩(0035)에서 통째로 빠졌던 5계열 27종(누적 이동시간·월간 활동 횟수)을 복구하기 위한 신규 필드. 둘 다 `engine` — `cumulative_duration_hours`는 누적 이동시간 합계, `monthly_count`는 월별 활동 횟수 최대값(또는 `repeat_count`와 결합 시 그 횟수를 채운 달의 수) |
+| **잔여 `pending` 9종 + `route`** (10종) | ❌ **평가 미구현 — fail-closed로 막힌다.** `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`personal_record_break`·`personal_record_break_metric`(2026-09-06 신규 필드, 스키마만)·`month_over_month_ratio`·`vs_personal_average` + `route`. 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10 |
 
 > **조건 필드 선언의 단일 출처는 `src/lib/badge-engine/conditionRegistry.ts`다** (2026-09-05,
 > 티켓 20260905_0028). 키·라벨·단위·입력 타입·min/max/step·짝 필드·방향성·**평가 구현 여부**를
 > 한 곳에서 선언하고, `ALL_CONDITION_KEYS`·`MEASURABLE_CONDITION_KEYS`·어드민 조건 폼의
 > 커버 목록·어드민 목록/상세의 조건 문구가 전부 여기서 파생된다. DB 쪽 2곳(CHECK 제약,
-> 계열 정합성 트리거의 `measurable_keys`)은 가장 마지막 마이그레이션(**133**)이 같은 선언을 옮겨 적었고,
+> 계열 정합성 트리거의 `measurable_keys`)은 가장 마지막 마이그레이션(**140**)이 같은 선언을 옮겨 적었고,
 > 어긋나면 `condition-registry.test.ts`가 깨진다.
 
 #### 2.3-0 fail-closed — 평가할 수 없는 필드가 있으면 발급하지 않는다 (2026-09-05, 티켓 20260905_0028)
@@ -188,19 +203,21 @@ Step 8. initial_sync_done 갱신
 
 | 값 | 뜻 | fail-closed |
 |---|---|---|
-| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (26종) | 통과 |
-| `external` | **`evaluateConditionDetailed` 밖**에서 처리 — `poi_id`(체크인 파이프라인) · `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`와 교차 게이트 3종(엔진 안의 후보 선별 단계 `evaluateBadgeGates()`) | 통과 |
-| `pending` | 아직 아무도 평가하지 않는다 — v5 신규 16종 + `route` (17종) | **막힘** |
+| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (36종) | 통과 |
+| `external` | **`evaluateConditionDetailed` 밖**에서 처리 — `poi_id`(체크인 파이프라인) · `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`와 교차 게이트 3종(엔진 안의 후보 선별 단계 `evaluateBadgeGates()`) (6종) | 통과 |
+| `pending` | 아직 아무도 평가하지 않는다 — `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`personal_record_break`·`personal_record_break_metric`·`month_over_month_ratio`·`vs_personal_average` + `route` (10종) | **막힘** |
 
 이 방어가 필요한 이유는 `matchesPerActivityCondition()`(`index.ts`)이 **아는 키만 검사하고
 마지막에 `return true`** 하기 때문이다. 막지 않으면 미구현 필드가 «발급 안 됨»이 아니라
 **«무조건 발급»**이 된다 — §2.7의 084 사고와 같은 유형의, 에러 없이 조용히 뒤집히는 결함이다.
 
-v5 신규 20종 중 **휴식 4종은 2026-09-05(티켓 20260905_0030 B3)에 `engine`으로 뒤집혔다**(§2.16).
-기존 필드는 `route` 하나를 빼고 전부 `engine`/`external`이라 현행 발급 동작은 바뀌지 않는다.
-`route`는 타입·스키마·DB CHECK에만 있고 badge-engine에 `condition.route` 참조가 **0건**이라
-(실측 2026-09-05) `pending`으로 두었다 — 쓰는 배지가 0건이라 회귀 없이 정직하게 표기할 수 있다.
-평가 구현 없이 쓰려면 먼저 구현하거나 스키마에서 제거해야 한다(`CONDITION_JSON_SPEC.md` §6).
+v5 신규 20종 중 **휴식 4종은 2026-09-05(티켓 20260905_0030 B3)에**, **v5 스칼라 7종 +
+`weekly_streak`는 2026-09-06(티켓 20260906_0110 ②)에 `engine`으로 뒤집혔다**(§2.16). 남은
+`pending`은 위 9종(전부 「이력 패턴」 계열 — `personal_record_break_metric`은 2026-09-06
+신규 필드)과 기존 필드 중 `route` 하나뿐이다. `route`는 타입·스키마·DB CHECK에만 있고
+badge-engine에 `condition.route` 참조가 **0건**이라(실측 2026-09-05) `pending`으로 두었다 —
+쓰는 배지가 0건이라 회귀 없이 정직하게 표기할 수 있다. 평가 구현 없이 쓰려면 먼저 구현하거나
+스키마에서 제거해야 한다(`CONDITION_JSON_SPEC.md` §6).
 
 **미션 평가 경로는 예외 통로가 필요하다.** `missions/checker.ts`가 `MissionCondition`을
 `BadgeCondition`으로 캐스팅해 같은 함수에 넘기는데, 미션 어휘에는 배지 조건에 없는 키가 있다
@@ -373,10 +390,17 @@ CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허�
 DB 시드: `jam-web/supabase/migrations/seed_v5_activity_badges.sql`
 (생성기 `Specs/Content/v5_seed_build.py` — 손으로 고치지 말 것).
 
-⚠️ **카탈로그가 엔진 능력을 앞선 상태다.** 630종 중 엔진이 지금 평가할 수 있는 것은
-약 269종이고 그중 40종은 미션 전용이다. 나머지는 조건 필드가 `pending`이거나
-`repeat_count`를 셀 수 없어 **fail-closed로 막힌다**(§2.3-0). 잘못 발급되는 경로는 없다.
-해소는 티켓 `20260906_0110`.
+⚠️ **카탈로그가 엔진 능력을 일부 앞선 상태다.** 630종 시딩 시점(0035)에는 엔진이 평가할 수
+있는 것이 약 269종(그중 40종은 미션 전용)뿐이었다. 티켓 `20260906_0110`(CLOSED)이 v5 스칼라
+7종·`weekly_streak`의 `pending`→`engine` 전환, 「기간 단위 회차」 지원, `rest_after_long`
+짝 필드 확장, `cumulative_duration_hours`·`monthly_count` 신규 필드로 이 격차의 상당 부분을
+줄였다(부수 효과로 이 필드들을 단독으로 쓰는 기존 23여 계열의 진행률도 함께 열렸다). 나머지는
+조건 필드가 여전히 `pending`이거나(§2.3-0의 잔여 10종) `repeat_count`를 셀 수 없어
+**fail-closed로 막힌다.** 잘못 발급되는 경로는 없다. **남은 것**: ① `cumulative_duration_hours`·
+`monthly_count`가 여는 신규 배지 27종 자체의 시딩(정확한 임계값 재산정 포함)은 별도 콘텐츠
+작업 ② `personal_record_break` 자체의 평가 구현은 후속 티켓 ③ 2단 교차 게이트
+(`cross_in_axis`/`cross_between_axis`/`gate_mission_badge`)가 0행인 문제는 티켓
+`20260906_1947`(OPEN)로 분리됐다(§2.11).
 
 ### 2.10 걷기 배지 — 축1 게이트 + 하루 1회 상한
 
@@ -425,7 +449,8 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 >
 > ⚠️ **2단 교차 게이트(`cross_in_axis`·`cross_between_axis`·`gate_mission_badge`)는
 > 아직 한 행도 시딩되지 않았다.** 지금 발급이 열리면 모든 Mystic이 무관문으로 나간다 —
-> 티켓 `20260906_0110`.
+> 티켓 `20260906_0110`에서 분리된 후속 티켓 `20260906_1947`(OPEN, 축→계열 확장 매핑·시딩·
+> 판정 중복구현 통합)에서 다룬다.
 >
 > 폐기된 v4 방식 기록 (티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
 
@@ -660,10 +685,14 @@ import한다** — `badgeKind.ts`·`activityFilters.ts`·`crossGate.ts`와 같�
 
 이 분리가 §2.6 홍수 방지의 실체다.
 
-⚠️ **진행 계산(§2.13)은 아직 반복형 축이 없다.** `classifyBadgeProgressKind()`가
-`repeat_count`가 든 조건을 `unsupported`로 떨어뜨려 진행률을 아예 그리지 않는다 — 축 하나
-(예: `duration_minutes`)만으로 그리면 「5번 달성해야 한다」를 숨긴 채 100%가 뜬다.
-확장은 티켓 20260905_0031.
+반복형 축은 진행 계산(§2.13-1)에서 `kind: 'repeat'`로 지원된다(티켓 20260905_0031) — 회차는
+발급 판정과 같은 함수(`collectRepeatOccurrences`)로 센다. **「기간 단위 회차」**(`streak_days`·
+`weekly_count`·`monthly_count`·`weekly_streak` + `repeat_count`)는 2026-09-06(티켓
+20260906_0110) 이어받아 마무리 단계에서 발견·수정된 어긋남이 있었다 — `badgeProgress.ts`의
+`classifyConditionKind`가 이 네 조합을 `isPeriodDrivenRepeatCondition()`으로 먼저 확인하지
+않아 발급은 열렸는데 화면은 `unsupported`(「진행 표시 준비 중」)로 떨어지는 사고였다. 지금은
+발급(`repeatOccurrences.ts`)과 진행률(`badgeProgress.ts`)이 같은 판정 함수를 공유해 정합이
+맞는다(회귀 테스트 `v5-extension.test.ts`).
 
 #### 멱등 — 조건부 원자 UPDATE
 
@@ -761,7 +790,7 @@ fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게�
 | 필드 | 판정 | 짝 필드 |
 |---|---|---|
 | `rest_after_streak` | **연속 N일 활동 직후**의 쉰 일수 ≥ 조건값 | `streak_days` (필수) |
-| `rest_after_long` | **장거리 활동일 직후**의 쉰 일수 ≥ 조건값 | `single_distance_km` (필수) |
+| `rest_after_long` | **장거리 활동일 직후**의 쉰 일수 ≥ 조건값 | `single_distance_km` **또는** `duration_minutes` (둘 중 하나 필수, OR — 2026-09-06 티켓 20260906_0110 ④에서 `duration_minutes` 추가) |
 | `return_gap_days` | 인접 두 활동 사이의 **쉰 일수** ≥ 조건값 (「겨울잠」) | — |
 | `interval_days` | 인접 두 활동의 **날짜 차이** ≥ 조건값 | — |
 
@@ -823,13 +852,13 @@ fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게�
 무관한 활동이 잡히고 그 날짜가 배지 상세의 「계기 활동일」로 유저에게 노출된다.
 조건 키가 여럿이면 **각 키가 처음 성립한 구간 중 가장 늦은 것** = 조건 전체가 성립한 시점이다.
 
-⚠️ **진행 계산(§2.13)은 아직 휴식 축이 없다.** `classifyBadgeProgressKind()`가 휴식 키가 든
-조건을 `unsupported`로 떨어뜨린다 — 축 하나(예: `streak_days`)만으로 그리면 「그 뒤 며칠 쉬어야
-한다」를 숨긴 채 100%가 뜬다. 확장은 티켓 20260905_0031(`kind: 'rest'`).
+휴식 축은 진행 계산(§2.13-1)에서 `kind: 'rest'`로 지원된다(티켓 20260905_0031) —
+`classifyBadgeProgressKind()`가 휴식 키만 있고 다른 측정 축을 흡수하지 못하는 조건만
+`unsupported`로 떨어뜨린다.
 
-⚠️ **`rest_after_long`은 아직 실제로 발급되지 않는다.** 짝 필드 `single_distance_km`이
-`evaluation: 'pending'`이라 fail-closed가 먼저 막는다. v5 스칼라 7종을 `engine`으로 뒤집는
-선행 작업이 끝나야 열린다(카탈로그 시딩 20260905_0035 이전).
+`rest_after_long`은 이제 **실제로 발급된다.** 짝 필드 `single_distance_km` 또는
+`duration_minutes` 중 하나만 있으면 되고(위 표), v5 스칼라 7종이 `engine`으로 뒤집히면서
+(2026-09-06, 티켓 20260906_0110 ②) `single_distance_km` 짝도 fail-closed에 막히지 않는다.
 
 ### 2.17 카탈로그 시딩 후 재평가 절차 (2026-09-06, 티켓 20260906_1431)
 
@@ -1411,6 +1440,9 @@ src/lib/badge-engine/activityFilters.ts   요일·시간대·주경계 등 순�
 src/lib/badge-engine/badgeKind.ts         배지 종류 3분기(등급형·레벨형·반복형) — §2.14
 src/lib/badge-engine/crossGate.ts         2단 교차 게이트 판정 — §2.15
 src/lib/badge-engine/conditionRegistry.ts 조건 필드 메타 단일 출처 + fail-closed — §2.3-0
+src/lib/badge-engine/repeatOccurrences.ts 회차 계산(CONSUMED_REPEAT_KEYS) + 기간 단위 회차
+                                          판정(isPeriodDrivenRepeatCondition) — §2.14
+src/lib/badge-engine/conditionAxes.ts     조건 축 분류(PER_ACTIVITY_KEYS 등) 단일 출처 — §2.13-1
 src/lib/badge-engine/badgeProgress.ts     진행 계산 계층(표시 전용, 발급 판정과 분리) — §2.13
 src/lib/badge-engine/metricLabels.ts      배지 지표 라벨·단위 배치 조회 — §2.13
 src/lib/badge-engine/reevaluateCatalog.ts 카탈로그 시딩 후 일괄 재평가 조립 — §2.17
@@ -1428,4 +1460,6 @@ supabase/migrations/137_ambient_drop_schedule_hour.sql  예약 배포 시각(KST
 supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
 supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
 supabase/migrations/128_user_family_progress_consistency_trigger.sql   진행 스냅샷 테이블 + 계열 정합성 트리거 — §2.13
+supabase/migrations/140_condition_keys_v5_extension.sql  조건 키 3종 CHECK 개방(누적 이동시간·월간 횟수·개인기록 지표) — §2.3
+supabase/migrations/141_backfill_cadence_normalization.sql  케이던스 ×2 재정규화 백필(러닝·트레일러닝) — §2.1-1
 ```

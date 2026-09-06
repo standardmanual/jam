@@ -52,6 +52,8 @@
 | `distance_km` | `number` | km | `activity_type` 필터 후 **전체 누적 거리** ≥ 조건값. `same_activity: true`가 함께 있으면 예외(§2.2-1) |
 | `elevation_gain_m` | `number` | m | `activity_type` 필터 후 **전체 누적 고도** ≥ 조건값. `same_activity: true`가 함께 있으면 예외(§2.2-1) |
 | `total_count` | `number` | 회 | 필터된 활동 **건수** ≥ 조건값 |
+| `cumulative_duration_hours` (2026-09-06 신규, 티켓 20260906_0110 ①) | `number` | 시간 | `activity_type` 필터 후 **전체 누적 이동시간** ≥ 조건값. `duration_minutes`(§2.3, 단일 활동 전용)와 달리 이력 전체 합산이다. 레지스트리에 키가 없어 v5 카탈로그 시딩(0035)에서 빠졌던 `walking:K2`·`running:K2`·`hiking:K2`(3계열)를 복구하기 위해 추가됨 — `evaluation: 'engine'` |
+| `monthly_count` (2026-09-06 신규, 티켓 20260906_0110 ①) | `number` | 회 | 월별(연-월 그룹) 활동 횟수 최대값 ≥ 조건값. `monthly_km`(거리)·`weekly_count`(주 단위)와 구분되는 «월 단위 활동 횟수» 필드. `repeat_count`와 결합하면 「그 횟수를 채운 달의 수」를 센다(§2.11). `cycling:G2`·`hiking:C2`(2계열)를 복구하기 위해 추가됨 — `evaluation: 'engine'` |
 
 #### 2.2-1 `same_activity` — "동시 충족" 예외 플래그 (2026-08-31 신규)
 
@@ -130,18 +132,21 @@
 |------|------|-----------|
 | `poi_id` | `string` (UUID) | badge-engine 내 **항상 fail** — `matchPoisForActivity` GPS 경로 매칭 파이프라인이 별도 발급. `checkin` 타입 배지는 조건 빌더 자체를 건너뛰고 저장 시 `condition_json`을 항상 `null`로 처리하므로 이 티켓 범위 밖(폼 유실 문제와 무관) |
 
-### 2.10 v5 신규 조건 필드 20종 — 16종은 **선언만, 평가 미구현** (2026-09-05, 티켓 20260905_0028)
+### 2.10 v5 신규 조건 필드 20종 — 12종 평가 구현됨 · 8종은 여전히 **선언만** (2026-09-05 선언, 2026-09-06 갱신)
 
-`conditionRegistry.ts`에 `evaluation: 'pending'`으로 선언돼 있고 DB CHECK 제약도 허용하지만,
-**badge-engine은 아직 이 필드들을 평가하지 않는다**.
-이 필드가 하나라도 든 조건은 `evaluateConditionDetailed`가 fail-closed로 막으므로
-«발급되지 않는 것»이 기본값이다(§4 참조).
+`conditionRegistry.ts`에 선언된 v5 신규 20종 중 **12종은 `evaluation: 'engine'`으로 평가가
+구현됐고, 나머지 8종은 여전히 `evaluation: 'pending'`**이다. `pending`인 필드가 하나라도 든
+조건은 `evaluateConditionDetailed`가 fail-closed로 막으므로 «발급되지 않는 것»이 기본값이다
+(§4 참조).
 
-> **휴식 4종(`rest_after_streak`·`rest_after_long`·`return_gap_days`·`interval_days`)은
-> 2026-09-05에 평가가 구현돼 `evaluation: 'engine'`으로 뒤집혔다** (티켓 20260905_0030 B3).
-> 아래 「이력 패턴」 표에 그대로 두되 판정 규칙은 **§2.13**에 있다.
+> **휴식 4종**(`rest_after_streak`·`rest_after_long`·`return_gap_days`·`interval_days`)은
+> **2026-09-05**(티켓 20260905_0030 B3)에, **v5 스칼라 7종**(`max_elevation_m`·`max_speed_kmh`·
+> `single_distance_km`·`single_elevation_m`·`avg_heartrate_bpm`·`avg_watts`·`avg_cadence`)과
+> **`weekly_streak`**는 **2026-09-06**(티켓 20260906_0110 ②)에 각각 평가가 구현돼
+> `evaluation: 'engine'`으로 뒤집혔다. 아래 표에 그대로 두되 판정 규칙은 **§2.13**(휴식)·
+> 본문 §2.11(회차)·BADGE_ENGINE_UNIFIED.md §2.13-1(진행률)에 있다.
 
-**활동 1건의 스칼라 값** — `PER_ACTIVITY_KEYS` 경로로 구현 예정
+**활동 1건의 스칼라 값** — `PER_ACTIVITY_KEYS` 경로로 **평가 구현됨** (2026-09-06, 티켓 20260906_0110 ②)
 
 `정규화 필드`는 `NormalizedActivity`(`src/types/strava.ts`)에서 **같은 단위로 그대로 비교되는**
 필드다. 조건 키는 snake_case, 정규화 필드는 camelCase라 이름이 규칙적으로 대응하지 않으므로
@@ -150,13 +155,13 @@
 
 | 필드 | 타입 | 단위 | 정규화 필드 | 의미 |
 |------|------|------|------|------|
-| `max_elevation_m` | `number` | m | `maxElevationM` | 활동 1건의 최고 도달 고도(해발) |
-| `max_speed_kmh` | `number` | km/h | `maxSpeedKmh` | 활동 1건의 최고 속도 |
-| `single_distance_km` | `number` | km | `distanceKm` | 활동 1건의 이동 거리 — 누적 합계인 `distance_km`과 구분된다 |
-| `single_elevation_m` | `number` | m | `elevationGainM` | 활동 1건의 고도 상승 — 누적 합계인 `elevation_gain_m`과 구분된다 |
-| `avg_heartrate_bpm` | `number` | bpm | `avgHeartrateBpm` | 활동 1건의 평균 심박수 |
-| `avg_watts` | `number` | W | `avgWatts` | 활동 1건의 평균 파워 |
-| `avg_cadence` | `number` | — | `avgCadence` | 활동 1건의 평균 케이던스. 단위가 종목마다 다르다(러닝 spm · 자전거 rpm)라 지표 라벨의 단위는 비워 뒀다 |
+| `max_elevation_m` ✅ | `number` | m | `maxElevationM` | 활동 1건의 최고 도달 고도(해발) |
+| `max_speed_kmh` ✅ | `number` | km/h | `maxSpeedKmh` | 활동 1건의 최고 속도 |
+| `single_distance_km` ✅ | `number` | km | `distanceKm` | 활동 1건의 이동 거리 — 누적 합계인 `distance_km`과 구분된다 |
+| `single_elevation_m` ✅ | `number` | m | `elevationGainM` | 활동 1건의 고도 상승 — 누적 합계인 `elevation_gain_m`과 구분된다 |
+| `avg_heartrate_bpm` ✅ | `number` | bpm | `avgHeartrateBpm` | 활동 1건의 평균 심박수 |
+| `avg_watts` ✅ | `number` | W | `avgWatts` | 활동 1건의 평균 파워 |
+| `avg_cadence` ✅ | `number` | — | `avgCadence` | 활동 1건의 평균 케이던스. 단위가 종목마다 다르다(러닝 spm · 자전거 rpm)라 지표 라벨의 단위는 비워 뒀다. **저장 시점에 러닝·트레일러닝만 ×2 정규화**된다(`normalizeCadenceForActivityType()`, 양발 합계 spm — 사이클은 rpm 그대로, 2026-09-06 티켓 20260906_0110 ⑤) — 조건값도 이 기준으로 쓴다(예: 180) |
 
 > **측정값이 없는 활동에는 정규화 필드의 키 자체가 없다**(`null`이 아니다). 심박계·파워미터가
 > 없는 유저의 활동이 «데이터 없음 = 카운트 안 함»으로 자연히 동작하게 하기 위한 확정 사항이다
@@ -172,17 +177,25 @@
 | `interval_days` ✅ | `number` | 일 | 활동과 활동 사이 간격 | — |
 | `daily_once_count` | `number` | 일 | 하루에 1회만 활동한 날의 수 | — |
 | `negative_split` | `boolean` | — | 후반 구간이 전반보다 빠른 활동으로 한정하는 **필터**. Strava `splits_metric`이 필요한데 Summary 응답엔 없다 — **티켓 20260905_0029에서 v5 1차 범위 밖으로 확정**됐다(활동 1건당 상세 호출 1회 × 백필 697회). `evaluation: 'pending'` 그대로이고 별도 티켓으로 분리됐다 | `total_count` |
-| `weekly_streak` | `number` | 주 | 연속한 주(월~일)의 수 | — |
+| `weekly_streak` ✅ (2026-09-06, 티켓 20260906_0110 ②) | `number` | 주 | 연속한 주(월~일)의 수. 단독으로 쓰면 `calcMaxWeeklyStreak`가 최장 길이를 계산, `repeat_count`와 결합하면 그 길이 이상인 «주 스트릭»이 몇 번 끊겼다 다시 만들어졌는지를 센다 | — |
 | `distinct_time_bands` | `number` | 개 | 서로 다른 시간대의 수 | — |
 | `day_of_month` | `number` (1–31) | — | 매달 지정일 **필터**. `day_of_week`와 같은 성격 | `total_count` |
 | `activities_within_hours` | `{ hours: number; count: number }` | 회 | 지정한 시간 창 안에 활동이 `count`회 이상 | — |
 | `personal_record_break` | `number` | 회 | 개인 기록 갱신 횟수. **가입 이후 활동만으로 직접 계산한다** — Strava `pr_count`는 계정 전체 이력 기준이라 v5의 «가입 시점 카운트»와 충돌해 쓰지 않는다 | — |
+| `personal_record_break_metric` (2026-09-06 신규, 티켓 20260906_0110 ③) | `string` (select) | — | 어느 지표의 개인 기록인지 지정하는 **필터**(role: filter). `personal_record_break`만으로는 자동 상승형 계열끼리(예: `walking:B1`↔`B2`) 조건 값이 글자 그대로 같아져 구분이 안 되는 문제를 스키마 차원에서 막는다. `personal_record_break` 자체가 여전히 `pending`이라 **이 필드가 있어도 지금 당장 발급되는 배지는 없다** — 평가 구현이 이 필드를 실제로 읽기 시작하면 그때 `engine`으로 뒤집는다 | `personal_record_break` |
 | `month_over_month_ratio` | `number` | 배 | 전월 대비 비율 | — |
 | `vs_personal_average` | `number` | 배 | 평소 평균 대비 비율 | — |
 
-✅ = 평가 구현됨(§2.13). 분류상 `negative_split`·`day_of_month`만 «필터 전용»이고 나머지
-18종은 «수치 검사» 필드다(계열 정합성 트리거의 `measurable_keys`도 그 18종을 포함한다 —
-마이그레이션 131).
+✅ = 평가 구현됨(휴식 4종은 §2.13, 스칼라 7종·`weekly_streak`는 `CONDITION_ACTIVITY_FIELD`·
+`calcMaxWeeklyStreak` — 판정 상세는 BADGE_ENGINE_UNIFIED.md §2.3). **v5 신규 20종 중
+12종**(휴식 4종 + 스칼라 7종 + `weekly_streak`)이 `engine`이고, 나머지 **8종**
+(`daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·
+`activities_within_hours`·`personal_record_break`·`month_over_month_ratio`·
+`vs_personal_average`)은 `pending`이다. `personal_record_break_metric`은 이 20종과 별개로
+2026-09-06에 추가된 21번째 필드이며 역시 `pending`이다. 분류상 `negative_split`·`day_of_month`·
+`personal_record_break_metric`만 «필터 전용»이고 나머지는 «수치 검사» 필드다(계열 정합성
+트리거의 `measurable_keys`는 `personal_record_break_metric`을 제외한 수치 검사 필드만 포함한다
+— 마이그레이션 140).
 
 ### 2.11 `repeat_count` — 반복 획득 (2026-09-05, 티켓 20260905_0030 B1) ✅ **평가 구현됨**
 
@@ -203,18 +216,28 @@
 1. `activity_type` 필터 + 걷기 축1 게이트
 2. `day_of_week` 단일값 필터
 3. 활동 1건이 `PER_ACTIVITY_KEYS`(`duration_minutes`·`min_speed_kmh`·`max_pace_sec_per_km`·
-   `temperature_min_c`·`temperature_max_c`·`weekend_duration_hours`)를 **전부** 만족.
-   `same_activity: true`면 `distance_km`·`elevation_gain_m`도 합류하고,
+   `temperature_min_c`·`temperature_max_c`·`weekend_duration_hours` + v5 스칼라 7종
+   `max_elevation_m`·`max_speed_kmh`·`single_distance_km`·`single_elevation_m`·
+   `avg_heartrate_bpm`·`avg_watts`·`avg_cadence`, 2026-09-06 티켓 20260906_0110 ②에 추가)를
+   **전부** 만족. `same_activity: true`면 `distance_km`·`elevation_gain_m`도 합류하고,
    `time_range`는 `weekly_count`가 없을 때 합류한다
-4. 걷기는 하루 1회 상한(`dedupeOnePerDay`) 적용 — 걷기 배지 v4 정책과 같다
+4. **기간 단위 회차** (2026-09-06 신규, 티켓 20260906_0110 ②): `streak_days`·`weekly_count`·
+   `monthly_count`·`weekly_streak` 중 하나가 `repeat_count`와 결합하면 위의 «활동 1건 단위»
+   경로 대신 **기간이 임계값을 채운 횟수**를 센다 — 예를 들어 `{ weekly_count: 3, repeat_count: 5 }`는
+   「주 3회를 채운 주가 5번(연속 아니어도 됨)」, `{ streak_days: 7, repeat_count: 3 }`은
+   「7일 연속 스트릭이 3번 만들어짐(끊겼다 다시 생겨도 셈)」을 뜻한다. 판정은
+   `repeatOccurrences.ts`의 `isPeriodDrivenRepeatCondition()`/`detectPeriodOccurrenceDriver()`/
+   `collectPeriodStreakOccurrences()` 한 곳. `total_count`로 치환하지 않는다 —
+   「기준 조건을 무시한 전체 활동 수」가 세어져 조용히 후하게 발급되기 때문이다(위 6~13종과 같은 이유)
+5. 걷기는 하루 1회 상한(`dedupeOnePerDay`) 적용 — 걷기 배지 v4 정책과 같다
 
 **배지 종류 판정** — `rarity`가 있고 `repeat_count`가 있으면 **반복형**이다(세 번째 종류).
 `rarity IS NULL`이면 레벨형이 우선한다. 판정은 `badgeKind.ts`의 `badgeKindOf()` 한 곳.
 
-⚠️ **현재 회차 술어로 쓸 수 있는 필드는 위 6종 + `same_activity` 조합뿐이다.**
-`single_distance_km`처럼 회차 표현에 더 자연스러운 v5 스칼라 7종은 아직 `evaluation: 'pending'`이라
-조건에 넣으면 fail-closed가 통째로 막는다(§4). 「20km 이상 러닝 5회」는 지금
-`{ activity_type: 'running', same_activity: true, distance_km: 20, repeat_count: 5 }`로 쓴다.
+⚠️ **휴식 4종(§2.13)은 `repeat_count`와 함께 쓸 수 없다** — 회차 술어가 이력 패턴을 볼 수 없어
+「휴식 조건을 무시한 회차」가 세어지므로 명시적으로 막는다. 그 외 남은 `pending` 필드
+(`daily_once_count`·`distinct_time_bands`·`activities_within_hours`·`personal_record_break`·
+`month_over_month_ratio`·`vs_personal_average` 등)는 여전히 fail-closed가 통째로 막는다(§4).
 
 ### 2.12 2단 교차 게이트 3종 (2026-09-05, 티켓 20260905_0030 B2) ✅ **평가 구현됨**
 
@@ -271,7 +294,7 @@ interface BadgeGateRequirement {
 | 필드 | 판정 방식 |
 |------|-----------|
 | `rest_after_streak` | **연속 `streak_days`일 활동 직후**의 쉰 일수 ≥ 조건값 |
-| `rest_after_long` | **`single_distance_km` 이상 활동일 직후**의 쉰 일수 ≥ 조건값 |
+| `rest_after_long` | **`single_distance_km` 또는 `duration_minutes` 이상 활동일 직후**의 쉰 일수 ≥ 조건값(짝 필드는 OR, 2026-09-06 티켓 20260906_0110 ④에서 `duration_minutes` 추가) |
 | `return_gap_days` | 인접 두 활동 사이의 **쉰 일수** ≥ 조건값 (「겨울잠」) |
 | `interval_days` | 인접 두 활동의 **날짜 차이** ≥ 조건값 |
 
@@ -282,13 +305,17 @@ interface BadgeGateRequirement {
 **세 가지 제약**이 다른 필드와 다르다:
 
 1. **짝 필드가 강제된다** — `rest_after_streak`엔 `streak_days`, `rest_after_long`엔
-   `single_distance_km`이 없으면 fail-closed가 「짝 필드 없음」으로 막는다(§4)
-2. **순수 공백 두 종(`return_gap_days`·`interval_days`)은 90일 이상만 인정한다** —
-   그 미만은 「휴식 조건 설정 오류」다(역인센티브 차단)
+   `single_distance_km` **또는** `duration_minutes` 중 하나가 없으면 fail-closed가
+   「짝 필드 없음」으로 막는다(§4)
+2. **순수 공백 두 종(`return_gap_days`·`interval_days`)의 90일 하한은 카탈로그 설계
+   지침일 뿐 엔진이 강제하지 않는다** — 초안은 엔진에서 90일 미만을 막았으나 조건 필드
+   메타(`min: 1`)와 다른 말을 하게 되고 오설정 1건이 로그 폭주가 되어 철회했다(2026-09-05
+   스펙 소유자 확정). 하한 준수는 카탈로그 시딩 담당(티켓 20260905_0035)의 몫이다
 3. **`repeat_count`와 함께 쓸 수 없다** — 「회차와 함께 쓸 수 없는 조건」으로 막힌다
 
-⚠️ **`rest_after_long`은 짝 필드 `single_distance_km`이 아직 `pending`이라 실제로는 계속
-막힌다.** v5 스칼라 7종을 `engine`으로 뒤집는 작업이 선행돼야 열린다.
+`rest_after_long`은 짝 필드 중 하나(`single_distance_km` 또는 `duration_minutes`)만 있으면
+되고, v5 스칼라 7종이 `engine`으로 뒤집히면서(2026-09-06, 티켓 20260906_0110 ②) `single_distance_km`
+짝도 fail-closed에 막히지 않는다 — **이제 실제로 발급된다.**
 
 ---
 
@@ -321,13 +348,19 @@ interface BadgeGateRequirement {
 - `poi_id`는 다른 조건 필드와 혼합 불가 (엔진 미지원)
 - `mission_reward`(§3)는 조건 필드와 함께 있어도 항상 §3의 규칙이 우선한다(무조건 fail)
 - **fail-closed** (2026-09-05, 티켓 20260905_0028): 조건에 «엔진이 평가하지 않는 키»가 하나라도
-  있으면 나머지 필드를 충족해도 **발급되지 않는다**. 대상은 ① `evaluation: 'pending'`인 v5 신규 16종
-  (§2.10) ② 레지스트리에 아예 없는 키(오탈자) ③ **짝 필드가 하나도 없는 휴식 4종**(2026-09-05
-  추가, §2.13 — `PAIR_ENFORCED_CONDITION_KEYS`). 사유는 「평가할 수 없는 조건 필드 — …」로 남는다.
-  이 규칙이 없으면 `matchesPerActivityCondition()`이 모르는 키를 조용히 건너뛰고 마지막에
-  `return true` 하므로, 미구현 필드가 «발급 안 됨»이 아니라 **«무조건 발급»**으로 뒤집힌다
-- `repeat_count`(§2.11)는 fail-closed 대상이 **아니다** — 평가가 구현돼 있다. 다만 회차 술어로
-  같이 쓰려는 필드가 `pending`이면 그 필드 때문에 조건 전체가 막힌다
+  있으면 나머지 필드를 충족해도 **발급되지 않는다**. 대상은 ① `evaluation: 'pending'`인 잔여
+  9종(`daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·
+  `activities_within_hours`·`personal_record_break`·`personal_record_break_metric`·
+  `month_over_month_ratio`·`vs_personal_average`) + `route`(§2.10) ② 레지스트리에 아예 없는
+  키(오탈자) ③ **짝 필드가 하나도 없는 휴식 4종**(2026-09-05 추가, §2.13 —
+  `PAIR_ENFORCED_CONDITION_KEYS`, `rest_after_long`은 `single_distance_km`·`duration_minutes`
+  중 하나면 됨). 사유는 「평가할 수 없는 조건 필드 — …」로 남는다. 이 규칙이 없으면
+  `matchesPerActivityCondition()`이 모르는 키를 조용히 건너뛰고 마지막에 `return true` 하므로,
+  미구현 필드가 «발급 안 됨»이 아니라 **«무조건 발급»**으로 뒤집힌다
+- `repeat_count`(§2.11)는 fail-closed 대상이 **아니다** — 평가가 구현돼 있다. 활동 1건 단위
+  축(v5 스칼라 7종 포함)뿐 아니라 「기간 단위 회차」(`streak_days`·`weekly_count`·
+  `monthly_count`·`weekly_streak` 결합, 2026-09-06 티켓 20260906_0110 ②)도 셀 수 있다. 다만
+  회차 술어로 같이 쓰려는 필드가 여전히 `pending`이면 그 필드 때문에 조건 전체가 막힌다
 - 휴식 4종(§2.13)은 **`repeat_count`와 조합할 수 없다** — 회차 술어가 이력 패턴을 볼 수 없어
   「휴식 조건을 무시한 회차」가 세어지기 때문이다. 조합하면 「회차와 함께 쓸 수 없는 조건」으로 막힌다
 - 교차 게이트 3종(§2.12)도 fail-closed 대상이 **아니다** — 다만 값의 형태가 깨지면
@@ -377,8 +410,10 @@ interface BadgeGateRequirement {
 | 항목 | 상태 |
 |------|------|
 | `route` 필드 | ❌ 미구현 — 타입(`BadgeCondition`)·레지스트리엔 존재하나 badge-engine 평가 로직이 없다 (2026-08-25 조사, 티켓 20260825_034; badge-engine의 `condition.route` 참조 0건을 2026-09-05 재실측). **2026-09-05부터 `evaluation: 'pending'`이라 fail-closed가 막는다** — 조건에 `route`가 있으면 그 배지는 발급되지 않는다. 쓰는 배지가 0건이라 회귀 없이 전환했다. 쓰려면 먼저 평가를 구현하고 `engine`으로 뒤집거나, 스키마에서 제거한다 |
-| v5 신규 20종 | ❌ 평가 미구현 — 선언·DB CHECK·지표 라벨까지만 반영됐다(티켓 20260905_0028). fail-closed로 막히므로 발급되지 않는다. 평가 구현은 티켓 20260905_0030 |
-| 스칼라 7종의 **원천 데이터** | ✅ 수집됨 (티켓 20260905_0029) — `normalizeActivity`가 Strava Summary 응답에서 심박·파워·케이던스·최고속도·최고도달고도·경과시간을 읽어 `normalized`에 저장한다. 조건 키 ↔ 정규화 필드 대응은 `CONDITION_ACTIVITY_FIELD`. 기존 활동은 `scripts/backfill-strava-extended-fields.ts`로 채운다 |
+| v5 신규 20종 — 잔여 8종 | ❌ 평가 미구현 — `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`personal_record_break`·`month_over_month_ratio`·`vs_personal_average`. fail-closed로 막히므로 발급되지 않는다. 나머지 12종(휴식 4종·스칼라 7종·`weekly_streak`)은 평가가 구현됐다(티켓 20260905_0030 B3, 20260906_0110 ②) |
+| `personal_record_break_metric` (2026-09-06 신규) | ❌ 평가 미구현 — 스키마·DB CHECK·지표 라벨만 반영됐다(티켓 20260906_0110 ③). `personal_record_break` 자체의 평가 구현이 이 필드를 실제로 읽기 시작하면 그때 `engine`으로 뒤집는다 |
+| 스칼라 7종·`weekly_streak`의 **평가** | ✅ 구현됨 (2026-09-06, 티켓 20260906_0110 ②) — 원천 데이터는 그 전에(티켓 20260905_0029) `normalizeActivity`가 Strava Summary 응답에서 심박·파워·케이던스·최고속도·최고도달고도·경과시간을 읽어 `normalized`에 저장해 둔 상태였다. 조건 키 ↔ 정규화 필드 대응은 `CONDITION_ACTIVITY_FIELD`. 기존 활동은 `scripts/backfill-strava-extended-fields.ts`로 채운다 |
+| 케이던스 단위 | ✅ 러닝·트레일러닝만 ×2 정규화(양발 합계 spm), 사이클은 rpm 그대로 — 저장 시점(신규 싱크+백필)에 적용(티켓 20260906_0110 ⑤). 기존 저장분은 마이그레이션 141로 재정규화 완료 |
 | `negative_split` (`splits_metric`) | ❌ **v5 1차 범위 밖** (티켓 20260905_0029 확정) — 상세 엔드포인트에만 있어 활동 1건당 호출 1회가 든다(백필 697회). 상한을 두면 배지가 비결정적이 되므로 별도 티켓으로 분리했다. `StravaDetailedActivity` 타입은 신설됐지만 **수집하지 않는다** |
 | `poi_id` badge-engine 평가 | ❌ 항상 fail — GPS 파이프라인 전용 |
 | `mission_reward` badge-engine 평가 | ❌ 항상 fail — 미션 완료(`grantMissionRewards`)로만 지급, §3 참조 |
