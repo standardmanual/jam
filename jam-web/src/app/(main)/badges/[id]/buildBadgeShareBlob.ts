@@ -138,20 +138,27 @@ export async function buildBadgeShareBlob(data: BadgeShareTemplateData): Promise
 
   let contentBottomY = badgeY + BADGE_BOX
 
-  if (data.stats) {
+  // Lv·×N 슬롯 (20260905_0038 B) — 둘은 배타적이라 실제로 늘어나는 행은 최대 1줄이다.
+  // ⚠️ `data.stats` 밖에서 만든다. 안에 두면 **트리거 활동을 특정하지 못한 배지**
+  //    (누적·기록형 등 stats가 null인 경우)는 Lv가 공유 카드에 아예 안 나온다 —
+  //    v5 레벨형 193종이 정확히 그 부류다(게이트 리뷰 지적).
+  const metaRows: [string, string][] = []
+  if (data.level != null) metaRows.push(['LEVEL', `Lv.${data.level}`])
+  else if (data.earnCount != null && data.earnCount > 1) metaRows.push(['COUNT', `\u00d7${data.earnCount}`])
+
+  if (data.stats || metaRows.length > 0) {
     ctx.fillStyle = '#FFFFFF'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
 
-    const rows: [string, string][] = []
-    // Lv·×N 슬롯 (20260905_0038 B) — 둘은 배타적이라 실제로 늘어나는 행은 최대 1줄이다.
-    if (data.level != null) rows.push(['LEVEL', `Lv.${data.level}`])
-    else if (data.earnCount != null && data.earnCount > 1) rows.push(['COUNT', `\u00d7${data.earnCount}`])
-    rows.push(
-      ['DISTANCE', formatDistance(data.stats.distanceKm)],
-      ['PACE', formatPace(data.stats.paceSecPerKm)],
-      ['TIME', formatElapsed(data.stats.elapsedTimeSec)],
-    )
+    const rows: [string, string][] = [...metaRows]
+    if (data.stats) {
+      rows.push(
+        ['DISTANCE', formatDistance(data.stats.distanceKm)],
+        ['PACE', formatPace(data.stats.paceSecPerKm)],
+        ['TIME', formatElapsed(data.stats.elapsedTimeSec)],
+      )
+    }
 
     // Figma: 값이 위, 라벨이 값 시작점에서 LABEL_OFFSET_Y만큼 아래 — 블록마다 BLOCK_GAP 간격
     let blockY = contentBottomY + BLOCK_GAP

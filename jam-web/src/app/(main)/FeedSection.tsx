@@ -435,6 +435,12 @@ type FeedEntry =
  * 남는 건 첫 발급 1행 + `earn_count`이고, 그게 곧 ×N이다. 이 접기는 v4 시절에 쌓인 과거 행과
  * 동시 싱크가 만든 중복 행을 위한 방어선이다.
  */
+// ⚠️ 접기 대상이 BADGE_EVENTS 전체(badge_earned·item_dropped·item_picked_up)다.
+//    아이템 배지는 시리얼 넘버가 다른 **개별 개체**라, 같은 활동에서 동일 아이템배지가
+//    2개 나오면 한 장으로 접혀 한쪽 개체가 피드에서 도달 불가가 된다.
+//    지금은 드랍 엔진이 「활동당 1개 확정」(lib/drop-engine/layers.ts:12)이라 프로덕션
+//    중복 그룹이 0건이지만, **드랍 규칙이 바뀌면 즉시 발화한다**(게이트 리뷰 지적).
+//    그때는 아이템 이벤트를 접기에서 빼거나 inventory_item_id까지 키에 넣어야 한다.
 function collapseRepeatEarns(items: ActivityFeedRow[]): ActivityFeedRow[] {
   const indexByKey = new Map<string, number>()
   const repeatByKey = new Map<string, number>()
