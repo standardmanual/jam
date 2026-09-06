@@ -234,7 +234,7 @@ export default function BulkToolManager({ initialFilter, recentRuns, runsError }
               <SelectTrigger aria-label="종류">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent container={themeContainer ?? undefined}>
                 <SelectItem value={ALL}>전체</SelectItem>
                 {BADGE_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
@@ -254,7 +254,7 @@ export default function BulkToolManager({ initialFilter, recentRuns, runsError }
               <SelectTrigger aria-label="종목">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent container={themeContainer ?? undefined}>
                 <SelectItem value={ALL}>전체</SelectItem>
                 {TREE_ACTIVITY_ORDER.map((t) => (
                   <SelectItem key={t} value={t}>
@@ -274,7 +274,7 @@ export default function BulkToolManager({ initialFilter, recentRuns, runsError }
               <SelectTrigger aria-label="등급">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent container={themeContainer ?? undefined}>
                 <SelectItem value={ALL}>전체</SelectItem>
                 {RARITY_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
@@ -291,7 +291,7 @@ export default function BulkToolManager({ initialFilter, recentRuns, runsError }
               <SelectTrigger aria-label="상태">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent container={themeContainer ?? undefined}>
                 {STATUS_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {o.label}
@@ -341,7 +341,7 @@ export default function BulkToolManager({ initialFilter, recentRuns, runsError }
               <SelectTrigger aria-label="작업">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent container={themeContainer ?? undefined}>
                 {BULK_ACTIONS.map((a) => (
                   <SelectItem key={a} value={a}>
                     {BULK_ACTION_LABEL[a]}
