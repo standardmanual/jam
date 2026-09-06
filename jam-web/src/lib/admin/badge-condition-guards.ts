@@ -13,13 +13,17 @@
  * | 경로 | 이미 있는 함수 |
  * |---|---|
  * | 짝 필드 없음 | `findBlockingConditionKeys().unpaired` (conditionRegistry) |
- * | 회차 + 휴식 조합 | `restConditionKeysIn` (activityFilters) |
+ * | 회차 + 휴식 조합 | `restRepeatBlockReason` (activityFilters) |
  * | 교차 게이트 형태 오류 | `findCrossGateShapeError` (crossGate) |
  *
  * 지금까지 셋 다 **발급 시점에만** 돌았고, 그 사유(`missed`)는 어드민 시뮬레이터만 읽는다.
  */
 import { findBlockingConditionKeys, getConditionField } from '@/lib/badge-engine/conditionRegistry'
-import { restConditionKeysIn } from '@/lib/badge-engine/activityFilters'
+import {
+  restConditionKeysIn,
+  restRepeatBlockReason,
+  unconsumedRestRepeatKeys,
+} from '@/lib/badge-engine/activityFilters'
 import { findCrossGateShapeError } from '@/lib/badge-engine/crossGate'
 import { RARITY_TIER } from '@/lib/rarity'
 import type { BadgeCondition, BadgeRow } from '@/types/database'
@@ -50,18 +54,26 @@ export function findUnpairedConditionError(condition: BadgeCondition | null): st
 }
 
 /**
- * 회차(`repeat_count`)와 휴식 조건의 조합을 막는다.
+ * 회차(`repeat_count`)와 휴식 조건의 조합 중 **여전히 막히는 형태**를 막는다.
  *
- * 휴식 4종은 이력 패턴 술어라 회차 술어가 소비하지 못한다. 조합을 저장하면
- * `evaluateConditionDetailed`가 「회차와 함께 쓸 수 없는 조건」으로 **매번** fail한다
- * (티켓 20260905_0030 B-10) — 발급이 영원히 되지 않는다.
+ * 조합 자체는 열렸다 — 「성립한 휴식 구간 수」가 회차다(티켓 20260906_1423 §A).
+ * 다만 뜻이 정의되지 않는 두 형태는 계속 발급이 막히므로 저장 시점에 알린다.
+ * 판정은 **엔진과 같은 함수**(`restRepeatBlockReason`)를 부른다 — 여기서 목록을 다시 적으면
+ * 「어드민은 저장을 막는데 엔진은 발급한다」(또는 그 반대)가 된다.
  */
 export function findRepeatRestConflictError(condition: BadgeCondition | null): string | null {
-  if (!condition || condition.repeat_count === undefined) return null
+  if (!condition || !restRepeatBlockReason(condition)) return null
   const restKeys = restConditionKeysIn(condition)
-  if (restKeys.length === 0) return null
-  const labels = restKeys.map((key) => `${getConditionField(key)?.label ?? key}(${key})`)
-  return `저장할 수 없습니다. 충족 횟수(repeat_count)는 휴식 조건과 함께 쓸 수 없습니다 — ${labels.join(', ')}. 둘 중 하나만 남겨주세요.`
+  const label = (key: string) => `${getConditionField(key)?.label ?? key}(${key})`
+  if (restKeys.length >= 2) {
+    return `저장할 수 없습니다. 휴식 조건은 충족 횟수(repeat_count)와 함께 쓸 때 하나만 지정할 수 있습니다 — ${restKeys
+      .map(label)
+      .join(', ')}. 하나만 남겨주세요.`
+  }
+  const unconsumed = unconsumedRestRepeatKeys(condition).map(label)
+  return `저장할 수 없습니다. 휴식 조건 + 충족 횟수(repeat_count) 조합에서는 휴식 판정이 보지 않는 조건을 함께 쓸 수 없습니다 — ${unconsumed.join(
+    ', '
+  )}. 해당 조건을 빼주세요.`
 }
 
 /**

@@ -48,11 +48,12 @@ import {
   WALKING_GATE_MIN_DURATION_MIN,
   WALKING_GATE_MIN_SPEED_KMH,
   WALKING_GATE_MAX_SPEED_KMH,
-  // 휴식(활동 공백) 판정도 같은 파일에 둔다 — `badgeProgress.ts`가 「무엇이 휴식 조건인가」를
-  // 같은 함수(`restConditionKeysIn`)로 공유해야 진행률과 발급 판정이 어긋나지 않는다
-  // (v5 B3, 티켓 20260905_0030 §4).
-  restConditionKeysIn,
+  // 휴식(활동 공백) 판정도 같은 파일에 둔다 — `badgeProgress.ts`가 「무엇이 휴식 조건인가」·
+  // 「휴식 + 회차 조합이 성립하는가」를 같은 함수로 공유해야 진행률과 발급 판정이 어긋나지
+  // 않는다 (v5 B3, 티켓 20260905_0030 §4 · 20260906_1423 §A).
   evaluateRestConditions,
+  restConsumedPairKeys,
+  restRepeatBlockReason,
 } from './activityFilters'
 import { isLeveledBadge, familyKeyOf, badgeKindLabel, badgeKindOf, repeatCountOf } from './badgeKind'
 // 2단 교차 게이트(v5 B2, 티켓 20260905_0030 §3)는 순수 함수로 분리돼 있다 —
@@ -61,8 +62,12 @@ import { evaluateCrossGates, type OwnedBadgeDef } from './crossGate'
 // 축 키 목록(진행 계산과 공유)·회차 계산은 순수 모듈로 분리돼 있다 — 재선언을 없애
 // 「진행률과 발급 판정이 갈라지는」 실패 모드를 구조적으로 막는다(티켓 20260905_0031).
 import { PER_ACTIVITY_KEYS, CUMULATIVE_SAME_ACTIVITY_KEYS } from './conditionAxes'
-import { matchesPerActivityCondition, collectRepeatOccurrences } from './repeatOccurrences'
-export { collectRepeatOccurrences }
+import {
+  matchesPerActivityCondition,
+  collectRepeatOccurrences,
+  collectRepeatCountOccurrences,
+} from './repeatOccurrences'
+export { collectRepeatOccurrences, collectRepeatCountOccurrences }
 export {
   passesWalkingGate,
   matchesDayOfWeek,
@@ -306,22 +311,20 @@ export function evaluateConditionDetailed(
     }
   }
 
-  // ── 회차와 함께 쓸 수 없는 조건 (v5 B3, 티켓 20260905_0030 B-10)
+  // ── 휴식 조건 + 회차 — «조합 금지»에서 «층을 가른 회차»로 (티켓 20260906_1423 §A)
   //
-  // 휴식 4종은 게이트(「보유 여부」)와 달리 **이력 패턴 술어**다. `collectRepeatOccurrences`의
-  // `consumed` 집합에 넣으면 「휴식 조건을 무시한 회차」가 세어지므로 **넣지 않는다.** 대신
-  // 조합 자체를 여기서 막는다. 막지 않고 두면 회차 술어의 fail-closed 가드가 조용히 회차를
-  // 0으로 떨어뜨려 「충족 횟수 부족 / 0회」로만 보이고, 카탈로그 담당자가 원인을 찾지 못한다.
-  if (condition.repeat_count !== undefined) {
-    const restKeys = restConditionKeysIn(condition)
-    if (restKeys.length > 0) {
-      return {
-        pass: false,
-        reason: '회차와 함께 쓸 수 없는 조건',
-        actual: `휴식 조건: ${restKeys.join(', ')}`,
-        required: 'repeat_count 없이 사용',
-      }
-    }
+  // 원래 이 자리는 조합 자체를 막았다(v5 B3, 티켓 20260905_0030 B-10). 근거는 「휴식 4종은
+  // 이력 패턴 술어라 활동 단위 회차 술어(`collectRepeatOccurrences`)에 얹을 수 없다」였고,
+  // **그 근거는 지금도 옳다.** 뒤집은 것이 아니라 **층을 바꿨다** — 휴식 판정이 이미 만드는
+  // «구간 목록»이 별도의 회차 축이며, 「성립한 휴식 구간 수」가 그대로 회차다
+  // (`collectRestOccurrences`). 아래 `repeat_count` 블록이 `collectRepeatCountOccurrences`로
+  // 층을 가른다.
+  //
+  // 뜻이 정의되지 않는 두 형태만 계속 fail-closed로 막는다 — 판정은 `restRepeatBlockReason`
+  // 한 곳에 있고, 진행 계산·어드민 저장 가드도 같은 함수를 본다.
+  const restRepeatBlock = restRepeatBlockReason(condition)
+  if (restRepeatBlock) {
+    return { pass: false, ...restRepeatBlock }
   }
 
   // 미션 보상 배지 — 미션 완료(grantMissionRewards) 경로로만 지급된다. 동기화 평가 대상이 아니다.
@@ -471,8 +474,14 @@ export function evaluateConditionDetailed(
   //    same_activity:true(T1 전용)일 때만 distance_km/elevation_gain_m이 이 목록에 합류한다.
   const sameActivityCumulativeKeys =
     condition.same_activity === true ? CUMULATIVE_SAME_ACTIVITY_KEYS.filter((k) => condition[k] !== undefined) : []
+  // 휴식 술어가 «장거리의 정의»로 흡수하는 짝 필드는 독립 축으로 다시 평가하지 않는다
+  // (티켓 20260906_1423 §B). `{rest_after_long, duration_minutes}`에서 이동시간은 「무엇이
+  // 장거리인가」이지 별개의 달성 축이 아니다 — 흡수 목록(`restConsumedPairKeys`)과 조건
+  // 평가가 같은 판단을 해야 한다.
+  const restAbsorbedKeys = new Set(restConsumedPairKeys(condition))
   const perActivityFieldKeys = PER_ACTIVITY_KEYS.filter((k) => {
     if (condition[k] === undefined) return false
+    if (restAbsorbedKeys.has(k)) return false
     // temperature_min_c/max_c + total_count는 위에서 이미 "카운팅 대상 필터"로 처리됨 —
     // 여기서 또 "단일 활동 매칭"으로 취급하면 total_count가 기온과 무관한 전체 걷기
     // 횟수로 잘못 평가된다 (T12~T14 어뷰징 방지 위해 반드시 분리 처리)
@@ -546,14 +555,15 @@ export function evaluateConditionDetailed(
   }
 
   // ── repeat_count — 반복형의 회차 임계값 (v5 B1, 티켓 20260905_0030 §2)
-  //    회차 정의는 collectRepeatOccurrences 하나에만 있다(카운터 증가와 공유).
+  //    회차 정의는 `collectRepeatCountOccurrences` 하나에만 있다(카운터 증가·진행 계산과 공유).
+  //    휴식 키가 있으면 그 함수가 «휴식 구간» 층으로 갈라 센다(티켓 20260906_1423 §A).
   if (condition.repeat_count !== undefined) {
     if (typeof condition.repeat_count !== 'number' || !Number.isFinite(condition.repeat_count) || condition.repeat_count < 1) {
       // condition_json은 jsonb라 형태 보장이 없다. 문자열·0이 들어오면 「전부 통과」로 새지
       // 않게 명시적으로 막는다(시딩 550종 중 한 행이 어긋나도 조용히 발급되지 않는다).
       return { pass: false, reason: '충족 횟수 조건 형태 오류', actual: String(condition.repeat_count), required: '1 이상의 수' }
     }
-    const occurrences = collectRepeatOccurrences(condition, activities)
+    const occurrences = collectRepeatCountOccurrences(condition, activities, { anchorDate: options?.anchorDate })
     if (occurrences.length < condition.repeat_count) {
       return { pass: false, reason: '충족 횟수 부족', actual: `${occurrences.length}회`, required: `${condition.repeat_count}회` }
     }
@@ -1051,7 +1061,9 @@ export async function evaluateBadgesDetailed(
       continue
     }
 
-    const occurrences = collectRepeatOccurrences(condition, evalActivities)
+    // 회차 층 분기(활동 단위 / 휴식 구간)는 발급 판정과 **같은 함수**가 결정한다 —
+    // 두 곳이 각자 가르면 「발급은 됐는데 카운터는 안 오른다」가 된다(티켓 20260906_1423 §A-4).
+    const occurrences = collectRepeatCountOccurrences(condition, evalActivities, { anchorDate })
     const owned = ownedBadgeIds.has(badge.id)
     const newOccurrences = occurrences.filter((a) => batchStravaIds.has(a.stravaId))
 

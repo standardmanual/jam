@@ -17,7 +17,15 @@
 import type { BadgeCondition, DayOfWeek } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm } from '@/types/strava'
-import { passesWalkingGate, matchesDayOfWeek, dedupeOnePerDay, inTimeRange } from './activityFilters'
+import {
+  passesWalkingGate,
+  matchesDayOfWeek,
+  dedupeOnePerDay,
+  inTimeRange,
+  restConditionKeysIn,
+  collectRestOccurrences,
+  restRepeatBlockReason,
+} from './activityFilters'
 import { GATE_CONDITION_KEYS } from './crossGate'
 import { PER_ACTIVITY_KEYS, CUMULATIVE_SAME_ACTIVITY_KEYS, type ScalarAxisKey } from './conditionAxes'
 
@@ -55,8 +63,12 @@ export function matchesPerActivityCondition(condition: BadgeCondition, a: Normal
  *
  * ⚠️ **휴식 4종은 게이트와 다르다 — 이 목록에 넣지 않는다**(v5 B3, B-10). 게이트는
  * 「보유 여부」라 회차와 층이 다르지만, 휴식은 **이력 패턴 술어**라 넣는 순간 「휴식 조건을
- * 무시한 회차」가 세어진다. 조합 자체를 `evaluateConditionDetailed`가 「회차와 함께 쓸 수 없는
- * 조건」으로 먼저 막으므로 이 경로에 휴식 키가 도달하지 않는다.
+ * 무시한 회차」가 세어진다. **이 판단은 지금도 유효하다.**
+ *
+ * 티켓 20260906_1423이 휴식 + 회차 조합을 열었지만 그 방식은 이 목록을 넓히는 것이 **아니다** —
+ * 휴식 판정이 이미 만드는 «구간 목록»이 별도의 회차 축이라, `collectRestOccurrences`가
+ * 그 층에서 회차를 센다. 즉 휴식 키는 여전히 이 경로에 도달하지 않는다
+ * (`collectRepeatCountOccurrences`가 아래에서 층을 가른다).
  */
 const CONSUMED_REPEAT_KEYS: ReadonlySet<string> = new Set<string>([
   'repeat_count',
@@ -172,4 +184,29 @@ export function collectRepeatOccurrences(
 
   // 시간순 고정 — earn_history 순서와 「임계값을 넘긴 회차」 선정이 호출 순서에 좌우되지 않게 한다
   return [...capped].sort((a, b) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0))
+}
+
+/**
+ * 회차(`repeat_count`)의 «회차 목록» — **층을 가르는 단일 출처** (티켓 20260906_1423 §A).
+ *
+ * | 조건 형태 | 회차의 뜻 | 함수 |
+ * |---|---|---|
+ * | 휴식 키 없음 | 조건을 통째로 만족한 **활동 1건** | `collectRepeatOccurrences` |
+ * | 휴식 키 1개 | 조건이 성립한 **휴식 구간 1개**(복귀 활동) | `collectRestOccurrences` |
+ *
+ * ⚠️ **발급 판정(`evaluateConditionDetailed`) · 카운터 증가(`evaluateBadgesDetailed`) ·
+ * 진행 계산(`badgeProgress.ts`) 세 곳이 이 함수 하나를 본다.** 층을 가르는 조건문을 각자
+ * 적으면 「발급은 됐는데 카운터는 안 오른다」가 그대로 재현된다.
+ *
+ * 여전히 막히는 조합(휴식 키 2개 이상 · 휴식 술어가 보지 않는 축)은 `restRepeatBlockReason`이
+ * 답하며, 여기서는 그 경우 **빈 배열**을 돌려준다(fail-closed — 회차 0).
+ */
+export function collectRepeatCountOccurrences(
+  condition: BadgeCondition,
+  activities: NormalizedActivity[],
+  options?: { anchorDate?: string }
+): NormalizedActivity[] {
+  if (restConditionKeysIn(condition).length === 0) return collectRepeatOccurrences(condition, activities)
+  if (restRepeatBlockReason(condition)) return []
+  return collectRestOccurrences(condition, activities, options)
 }

@@ -187,7 +187,10 @@ export function restConditionKeysIn(condition: BadgeCondition | null | undefined
 export function restConsumedPairKeys(condition: BadgeCondition): string[] {
   const keys: string[] = []
   if (condition.rest_after_streak !== undefined) keys.push('streak_days')
-  if (condition.rest_after_long !== undefined) keys.push('single_distance_km')
+  // `rest_after_long`의 짝은 **2종이다**(티켓 20260906_1423 §B). 조건에 실제로 든 쪽만
+  // 흡수하는 게 아니라 **둘 다 흡수 목록에 올린다** — `evaluateRestConditions`가 「조건에
+  // 있는 짝 필드는 전부 만족」으로 읽으므로, 어느 쪽이 와도 독립 축이 아니다.
+  if (condition.rest_after_long !== undefined) keys.push('single_distance_km', 'duration_minutes')
   return keys
 }
 
@@ -230,6 +233,11 @@ type RestInterval = {
   streakBefore: number
   /** 공백 직전 활동일의 최장 단일 활동 거리(km) */
   maxDistanceKmBefore: number
+  /**
+   * 공백 직전 활동일의 최장 단일 활동 시간(분) — `rest_after_long`의 시간 축 짝
+   * (티켓 20260906_1423 §B). 「장거리」를 거리로만 정의하던 것을 시간으로도 정의할 수 있게 한다.
+   */
+  maxDurationMinBefore: number
   /** 공백을 닫은 «복귀 활동» — 그날의 첫 활동. 배지 상세의 「계기 활동일」이 된다 */
   resume: NormalizedActivity
 }
@@ -310,6 +318,7 @@ function buildRestIntervals(pool: NormalizedActivity[]): RestInterval[] {
       restDays: intervalDays - 1,
       streakBefore: runLength[i - 1],
       maxDistanceKmBefore: Math.max(...before.map((a) => a.distanceKm)),
+      maxDurationMinBefore: Math.max(...before.map((a) => a.movingTimeSec / 60)),
       resume: resumeList.reduce((first, a) => (a.startDate < first.startDate ? a : first), resumeList[0]),
     })
   }
@@ -319,6 +328,176 @@ function buildRestIntervals(pool: NormalizedActivity[]): RestInterval[] {
 /** 조건값이 「1 이상의 유한한 수」인지. `condition_json`은 jsonb라 형태 보장이 없다 */
 function isPositiveDays(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 1
+}
+
+/**
+ * `rest_after_long`의 «장거리» 정의가 조건에 들어 있는가 (티켓 20260906_1423 §B).
+ *
+ * 짝 필드가 `single_distance_km` 하나뿐이던 시절엔 그 키만 봤다. 그런데 그 키는 아직
+ * `evaluation: 'pending'`이라, 시간으로 장거리를 정의한 카탈로그 7종(`walking:R2`·`hiking:X1`)이
+ * 「짝 필드 없음」으로 영구 차단됐다. **둘 중 하나라도 있으면 뜻이 완성된다**(OR) —
+ * `conditionRegistry`의 `pairedWith` 판정(하나라도 있으면 통과)과 같은 규칙이다.
+ */
+function hasRestLongPair(condition: BadgeCondition): boolean {
+  return isPositiveDays(condition.single_distance_km) || isPositiveDays(condition.duration_minutes)
+}
+
+/** 휴식 조건 «값의 형태» 검사 — 발급 판정과 회차 수집이 **같은 검사**를 쓴다 */
+function restConditionShapeError(
+  condition: BadgeCondition
+): { reason: string; actual: string; required: string } | null {
+  for (const key of restConditionKeysIn(condition)) {
+    // ① 값의 형태 — 깨진 값을 「검사할 게 없으니 통과」로 두면 조건이 조용히 사라진다
+    if (!isPositiveDays(condition[key])) {
+      return {
+        reason: '휴식 조건 형태 오류',
+        actual: `${restKeyLabel(key)}: ${String(condition[key])}`,
+        required: '1 이상의 수',
+      }
+    }
+  }
+  // ② 짝 필드 — 없으면 「며칠 연속 뒤」·「무엇이 장거리인지」가 정의되지 않는다.
+  //    레지스트리의 fail-closed(`findBlockingConditionKeys`)가 먼저 막지만, 이 헬퍼는
+  //    순수 함수로 단독 호출될 수 있으므로 여기서도 방어한다.
+  if (condition.rest_after_streak !== undefined && !isPositiveDays(condition.streak_days)) {
+    return { reason: '휴식 조건 짝 필드 없음', actual: 'streak_days 없음', required: '연속 일수(streak_days)' }
+  }
+  if (condition.rest_after_long !== undefined && !hasRestLongPair(condition)) {
+    return {
+      reason: '휴식 조건 짝 필드 없음',
+      actual: 'single_distance_km·duration_minutes 없음',
+      required: '장거리 기준(single_distance_km 또는 duration_minutes)',
+    }
+  }
+  return null
+}
+
+/**
+ * 휴식 키 하나의 «구간 술어» — 「어떤 구간이 후보인가」(eligible)와 「무엇을 재는가」(measured).
+ *
+ * **`evaluateRestConditions`(발급 판정)와 `collectRestOccurrences`(회차)가 이 함수 하나를
+ * 공유한다.** 두 곳이 각자 구간을 고르면 「발급은 됐는데 진행률은 다르다」가 된다 —
+ * 이 파일이 맨 위에서 이미 명시한 실패 모드다(티켓 20260906_1423 §A-1).
+ */
+function restKeyPredicate(
+  key: RestConditionKey,
+  condition: BadgeCondition
+): { eligible: (i: RestInterval) => boolean; measured: (i: RestInterval) => number } {
+  switch (key) {
+    case 'rest_after_streak':
+      return {
+        eligible: (i) => i.streakBefore >= (condition.streak_days as number),
+        measured: (i) => i.restDays,
+      }
+    case 'rest_after_long':
+      // 「장거리」의 정의는 **조건에 실제로 든 짝 필드 전부**를 만족해야 성립한다(AND).
+      // 카탈로그에는 둘 중 하나만 쓰는 형태뿐이지만, 둘 다 들어와도 한쪽이 조용히
+      // 무시되지 않게 한다(fail-closed와 같은 태도).
+      return {
+        eligible: (i) =>
+          (condition.single_distance_km === undefined || i.maxDistanceKmBefore >= condition.single_distance_km) &&
+          (condition.duration_minutes === undefined || i.maxDurationMinBefore >= condition.duration_minutes),
+        measured: (i) => i.restDays,
+      }
+    case 'return_gap_days':
+      return { eligible: () => true, measured: (i) => i.restDays }
+    case 'interval_days':
+      return { eligible: () => true, measured: (i) => i.intervalDays }
+  }
+}
+
+/**
+ * 휴식 조건이 «성립한 구간»의 복귀 활동 전부 — 시간순 (티켓 20260906_1423 §A-1).
+ *
+ * ## 왜 이게 «회차»인가
+ *
+ * `repeat_count`는 원래 활동 1건 단위 술어(`collectRepeatOccurrences`)로 셌고, 휴식은
+ * 이력 패턴 술어라 그 위에 얹을 수 없었다(`repeatOccurrences.ts`의 ⚠️ 주석 — **그 판단은
+ * 지금도 옳다**). 이 함수는 그 판단을 뒤집지 않고 **층을 바꾼다**: 휴식 판정이 이미
+ * 만드는 «구간 목록»이 별도의 회차 축이다. `evaluateRestConditions`가 `find`로 첫 성립
+ * 구간을 찾는 자리에서 `filter`를 하면 「성립한 휴식 구간 수」가 그대로 회차가 된다.
+ *
+ * 반환 형태를 `NormalizedActivity[]`(각 구간의 복귀 활동)로 맞춘 이유는
+ * `collectRepeatOccurrences`의 소비처(계기 활동 선정 `selectTriggerActivity` ·
+ * `earn_history` 순서 규약 · 이번 배치 교집합)가 그대로 성립하게 하기 위해서다.
+ *
+ * ## fail-closed
+ * - 휴식 키가 2개 이상이면 «한 구간이 두 조건을 동시에 만족»의 뜻이 정의된 바 없어 `[]`
+ * - 값·짝 필드 형태 오류도 `[]` — 발급 판정이 같은 검사로 fail하는 자리와 짝을 이룬다
+ * - 「휴식 술어가 보지 않는 축」은 여기서 보지 않는다. 그 가드는 `restRepeatBlockReason`이
+ *   조건 «형태» 판정으로 상위에서 한 번에 막는다(회차·진행·어드민이 같은 함수를 본다)
+ */
+export function collectRestOccurrences(
+  condition: BadgeCondition,
+  activities: NormalizedActivity[],
+  options?: { anchorDate?: string }
+): NormalizedActivity[] {
+  const keys = restConditionKeysIn(condition)
+  if (keys.length !== 1) return []
+  if (restConditionShapeError(condition)) return []
+
+  const key = keys[0]
+  const value = condition[key] as number
+  const { eligible, measured } = restKeyPredicate(key, condition)
+  // 구간 생성은 `evaluateRestConditions`와 **같은 두 함수**(`restPool` → `buildRestIntervals`)를
+  // 쓴다 — 앵커 하한·종목 필터·걷기 축1 게이트·날짜 정렬이 한 곳에만 정의돼 있다.
+  const intervals = buildRestIntervals(restPool(condition, activities, options?.anchorDate))
+  // 구간은 날짜 오름차순이라 복귀 활동도 시간순이다(earn_history 순서 규약).
+  return intervals.filter((i) => eligible(i) && measured(i) >= value).map((i) => i.resume)
+}
+
+/**
+ * 휴식 조건 + 회차(`repeat_count`) 조합 중 **여전히 막는 형태** (티켓 20260906_1423 §A-3).
+ *
+ * 배타 규칙(티켓 20260905_0030 B-10)은 조합 자체를 막았다. 이제 「휴식 구간 = 회차」로
+ * 열되, 뜻이 정의되지 않는 두 형태는 계속 fail-closed로 남긴다.
+ *
+ *   ① 휴식 키 2개 이상 — 「한 구간이 두 휴식 조건을 동시에 만족」이 카탈로그에 정의된 바 없다
+ *   ② 휴식 술어가 «보지 않는 축»이 남아 있음 — 그 축을 무시한 회차가 세어진다
+ *      (`collectRepeatOccurrences`의 `unconsumedRepeatConditionKeys`와 같은 태도)
+ *
+ * **발급 판정·회차 카운터·진행 계산·어드민 저장 가드가 전부 이 함수 하나를 본다.**
+ * 목록을 각자 들면 「어드민은 저장을 막는데 엔진은 발급한다」가 된다.
+ */
+export function restRepeatBlockReason(
+  condition: BadgeCondition | null | undefined
+): { reason: string; actual: string; required: string } | null {
+  if (!condition || condition.repeat_count === undefined) return null
+  const keys = restConditionKeysIn(condition)
+  if (keys.length === 0) return null
+  if (keys.length >= 2) {
+    return {
+      reason: '회차와 함께 쓸 수 없는 조건',
+      actual: `휴식 조건 ${keys.length}개: ${keys.join(', ')}`,
+      required: '휴식 조건 1개 + 회차',
+    }
+  }
+  const unconsumed = unconsumedRestRepeatKeys(condition)
+  if (unconsumed.length > 0) {
+    return {
+      reason: '회차와 함께 쓸 수 없는 조건',
+      actual: `휴식 술어가 보지 않는 조건: ${unconsumed.join(', ')}`,
+      required: '종목·휴식 조건·그 짝 필드·회차만 사용',
+    }
+  }
+  return null
+}
+
+/**
+ * 휴식 + 회차 조합에서 «휴식 구간 술어가 소비하지 않는» 조건 키.
+ *
+ * 짝 필드 목록을 **다시 적지 않는다** — `restConsumedPairKeys` 하나만 본다(§A-3).
+ */
+export function unconsumedRestRepeatKeys(condition: BadgeCondition): string[] {
+  const allowed = new Set<string>([
+    'activity_type',
+    'repeat_count',
+    ...restConditionKeysIn(condition),
+    ...restConsumedPairKeys(condition),
+  ])
+  return Object.entries(condition)
+    .filter(([k, v]) => v !== undefined && !allowed.has(k))
+    .map(([k]) => k)
 }
 
 /**
@@ -355,27 +534,10 @@ export function evaluateRestConditions(
   const keys = restConditionKeysIn(condition)
   if (keys.length === 0) return { kind: 'none' }
 
-  // ── ① 값의 형태 — 깨진 값을 「검사할 게 없으니 통과」로 두면 조건이 조용히 사라진다
-  for (const key of keys) {
-    if (!isPositiveDays(condition[key])) {
-      return {
-        kind: 'fail',
-        reason: '휴식 조건 형태 오류',
-        actual: `${restKeyLabel(key)}: ${String(condition[key])}`,
-        required: '1 이상의 수',
-      }
-    }
-  }
-
-  // ── ③ 짝 필드 — 없으면 「며칠 연속 뒤」·「무엇이 장거리인지」가 정의되지 않는다.
-  //    레지스트리의 fail-closed(`findBlockingConditionKeys`)가 먼저 막지만, 이 헬퍼는
-  //    순수 함수로 단독 호출될 수 있으므로 여기서도 방어한다.
-  if (condition.rest_after_streak !== undefined && !isPositiveDays(condition.streak_days)) {
-    return { kind: 'fail', reason: '휴식 조건 짝 필드 없음', actual: 'streak_days 없음', required: '연속 일수(streak_days)' }
-  }
-  if (condition.rest_after_long !== undefined && !isPositiveDays(condition.single_distance_km)) {
-    return { kind: 'fail', reason: '휴식 조건 짝 필드 없음', actual: 'single_distance_km 없음', required: '장거리 기준(single_distance_km)' }
-  }
+  // ── ①③ 값의 형태 · 짝 필드 — `collectRestOccurrences`와 **같은 검사**를 쓴다
+  //    (티켓 20260906_1423 §A-1: 발급 판정과 회차가 같은 함수를 봐야 한다).
+  const shapeError = restConditionShapeError(condition)
+  if (shapeError) return { kind: 'fail', ...shapeError }
 
   // ── ④ 창 안의 인접 활동 — 없으면 공백을 **계산하지 않는다**(B-7).
   //    「데이터 없음」을 「쉬었음」으로 읽지 않는 지점이 여기다.
@@ -408,26 +570,11 @@ export function evaluateRestConditions(
 
   for (const key of keys) {
     const value = condition[key] as number
-    let eligible: RestInterval[]
-    let measured: (i: RestInterval) => number
-    switch (key) {
-      case 'rest_after_streak':
-        eligible = intervals.filter((i) => i.streakBefore >= (condition.streak_days as number))
-        measured = (i) => i.restDays
-        break
-      case 'rest_after_long':
-        eligible = intervals.filter((i) => i.maxDistanceKmBefore >= (condition.single_distance_km as number))
-        measured = (i) => i.restDays
-        break
-      case 'return_gap_days':
-        eligible = intervals
-        measured = (i) => i.restDays
-        break
-      case 'interval_days':
-        eligible = intervals
-        measured = (i) => i.intervalDays
-        break
-    }
+    // 구간 술어는 `restKeyPredicate` 한 곳에만 있다 — 회차 수집(`collectRestOccurrences`)이
+    // 같은 술어로 `find` 대신 `filter`를 한다(티켓 20260906_1423 §A).
+    const predicate = restKeyPredicate(key, condition)
+    const measured = predicate.measured
+    const eligible = intervals.filter(predicate.eligible)
 
     const hit = eligible.find((i) => measured(i) >= value)
     if (!hit) {
@@ -455,8 +602,13 @@ function describeRestRequirement(key: RestConditionKey, condition: BadgeConditio
   switch (key) {
     case 'rest_after_streak':
       return `연속 ${condition.streak_days}일 뒤 휴식 ${condition.rest_after_streak}일`
-    case 'rest_after_long':
-      return `${condition.single_distance_km}km 이상 활동 뒤 휴식 ${condition.rest_after_long}일`
+    case 'rest_after_long': {
+      // 「장거리」의 정의가 거리·시간 두 축이 됐다(티켓 20260906_1423 §B) — 조건에 든 축만 적는다
+      const long: string[] = []
+      if (condition.single_distance_km !== undefined) long.push(`${condition.single_distance_km}km 이상`)
+      if (condition.duration_minutes !== undefined) long.push(`${condition.duration_minutes}분 이상`)
+      return `${long.join(' · ')} 활동 뒤 휴식 ${condition.rest_after_long}일`
+    }
     case 'return_gap_days':
       return `복귀 전 휴식 ${condition.return_gap_days}일`
     case 'interval_days':

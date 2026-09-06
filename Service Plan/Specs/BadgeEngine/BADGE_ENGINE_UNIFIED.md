@@ -365,10 +365,23 @@ CHECK 제약·어드민 API 검증과 단일 소스를 공유한다(전체 허�
 DB 시드: `jam-web/supabase/migrations/seed_v5_activity_badges.sql`
 (생성기 `Specs/Content/v5_seed_build.py` — 손으로 고치지 말 것).
 
-⚠️ **카탈로그가 엔진 능력을 앞선 상태다.** 630종 중 엔진이 지금 평가할 수 있는 것은
-약 269종이고 그중 40종은 미션 전용이다. 나머지는 조건 필드가 `pending`이거나
-`repeat_count`를 셀 수 없어 **fail-closed로 막힌다**(§2.3-0). 잘못 발급되는 경로는 없다.
-해소는 티켓 `20260906_0110`.
+⚠️ **카탈로그가 엔진 능력을 앞선 상태다.** 630종 중 상당수가 조건 필드 `pending`이거나
+회차 술어가 조건을 소화하지 못해 **fail-closed로 막힌다**(§2.3-0). 잘못 발급되는 경로는 없다.
+
+`repeat_count`가 있는데 회차 술어가 소화하지 못하던 조건은 **139종 / 42계열**이었다
+(2026-09-06 프로덕션 실측, `family_key ~ '^(walking|running|cycling|hiking|trail_running):[A-Z]+[0-9]+$'`).
+내역과 진행 상태:
+
+| 층위 | 종 / 계열 | 상태 |
+|---|---:|---|
+| 휴식 조건 **없음** — 회차 술어 확장 필요 | 89 / 27 | 티켓 `20260906_0110` ②에서 진행 |
+| 휴식 + 회차, 배타 규칙만 걸리던 것 | **34 / 10** | ✅ 열림 (티켓 20260906_1423 §A) |
+| 휴식 + 회차, `rest_after_long` 짝이 `duration_minutes` | **7 / 2** | ✅ 열림 (티켓 20260906_1423 §B) |
+| 휴식 + 회차, `rest_after_long` 짝이 `single_distance_km` | 9 / 3 | `pending` — 티켓 `20260906_0110` ① 종속 |
+
+> 휴식 축(§2.16)은 카탈로그에서 **`repeat_count` 없이 쓰인 배지가 0종이다.** 배타 규칙이
+> 살아 있던 동안 축 전체가 발급 경로에 도달하지 못했다는 뜻이다 — 41종 / 12계열이 이 티켓으로
+> 열렸다.
 
 ### 2.10 걷기 배지 — 축1 게이트 + 하루 1회 상한
 
@@ -566,7 +579,8 @@ v5(티켓 20260905_0030)가 만든 네 구조는 전부 진행률에서 `unsuppo
 | kind | 축 | 비고 |
 |---|---|---|
 | `leveled` | 기반 유형(누적·기록 등)과 **똑같이** 계산하고 `level`을 함께 싣는다 | 판정 기준이 `badges.rarity`라 조건만으로는 알 수 없다 — 호출부가 `badgeKindOf()` 결과를 `options.badgeKind`로 넘긴다. 기반 유형이 `unsupported`면 레벨형도 `unsupported`다 |
-| `repeat` | 「현재 회차 / 임계 회차」(`repeat_count`) | 회차는 **발급 판정과 같은 함수**(`collectRepeatOccurrences`)로 센다. 회차 술어가 다루지 못하는 키가 섞이면(발급이 fail-closed로 회차 0) 진행률도 `unsupported` |
+| `repeat` | 「현재 회차 / 임계 회차」(`repeat_count`) | 회차는 **발급 판정과 같은 함수**(`collectRepeatCountOccurrences`)로 센다. 회차 술어가 다루지 못하는 키가 섞이면(발급이 fail-closed로 회차 0) 진행률도 `unsupported` |
+| `repeat` (휴식 구간) | 「성립한 휴식 구간 수 / 임계 회차」 | 휴식 키 1개 + `repeat_count` 조합(§2.16). **회차 축 하나만** 그린다 — 휴식 구간이 이미 회차의 «단위»라 휴식 축을 따로 그리면 같은 사실을 두 번 말하고 회차가 화면에서 사라진다. 막히는 형태는 `restRepeatBlockReason()`이 판정하며 그때는 `unsupported` |
 | `rest` | 「현재 최대 공백 / 요구 일수」(§2.16) | `evaluateRestConditions`의 fail 결과에 구조로 실린 `bestDays`·`shortfallKey`·`requiredDays`를 그대로 쓴다(문자열 파싱 없음). 「닫힌 공백」만 보므로 `now`가 필요 없다 |
 
 **신규 3종도 「축 하나를 숨긴 100%」를 그리지 않는다.** 기존 5종은 축이 2개를 넘으면
@@ -575,7 +589,7 @@ v5(티켓 20260905_0030)가 만든 네 구조는 전부 진행률에서 `unsuppo
 `{ return_gap_days: 5, distance_km: 1000 }`은 휴식만 보면 「5/5일 = 100%」인데 1,000km 축이
 화면에서 사라지고 발급은 막혀 있다. 그래서 **술어가 흡수하지 못하는 측정 축이 조건에 남아
 있으면 `unsupported`**다. 판단 근거는 각 술어 옆에 한 번만 적혀 있다 — 휴식은
-`restConsumedPairKeys()`(짝 필드 `streak_days`·`single_distance_km`), 회차는
+`restConsumedPairKeys()`(짝 필드 `streak_days`·`single_distance_km`·`duration_minutes`), 회차는
 `repeatConsumedAxisKeys()`(활동 단위 축 + `same_activity:true`일 때의 `distance_km`/
 `elevation_gain_m`), 측정 축 목록은 `conditionAxes.ts`의 `MEASURED_AXIS_KEYS`.
 
@@ -753,7 +767,7 @@ fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게�
 | 필드 | 판정 | 짝 필드 |
 |---|---|---|
 | `rest_after_streak` | **연속 N일 활동 직후**의 쉰 일수 ≥ 조건값 | `streak_days` (필수) |
-| `rest_after_long` | **장거리 활동일 직후**의 쉰 일수 ≥ 조건값 | `single_distance_km` (필수) |
+| `rest_after_long` | **장거리 활동일 직후**의 쉰 일수 ≥ 조건값 | `single_distance_km` 또는 `duration_minutes` (하나 이상 필수) |
 | `return_gap_days` | 인접 두 활동 사이의 **쉰 일수** ≥ 조건값 (「겨울잠」) | — |
 | `interval_days` | 인접 두 활동의 **날짜 차이** ≥ 조건값 | — |
 
@@ -801,13 +815,47 @@ fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게�
   엔진과 다른 말을 하게 되고 ② 그 경고 로그가 «배지 × 유저 × 싱크»마다 찍혀 오설정 1건이
   로그 폭주가 되어 철회했다. **하한 준수는 티켓 20260905_0035(카탈로그 시딩)의 몫이다.**
 
-#### 회차(`repeat_count`)와 함께 쓸 수 없다
+#### 회차(`repeat_count`)는 «휴식 구간»으로 센다 (2026-09-06, 티켓 20260906_1423)
 
-휴식 4종은 **`collectRepeatOccurrences`의 `consumed` 집합에 넣지 않는다.** 게이트(§2.15)는
-「보유 여부」라 회차와 층이 다르지만, 휴식은 **이력 패턴 술어**라 넣으면 「휴식 조건을 무시한
-회차」가 세어진다. 대신 조합 자체를 **「회차와 함께 쓸 수 없는 조건」**이라는 명시적 사유로 막는다 —
-막지 않으면 회차 술어의 fail-closed 가드가 조용히 회차를 0으로 떨어뜨려 「충족 횟수 부족 / 0회」로만
-보이고, 카탈로그 담당자가 원인을 찾지 못한다.
+> 2026-09-05~09-06까지는 이 조합을 **통째로 막았다**(티켓 20260905_0030 B-10). 그 결과 v5
+> 카탈로그의 **50종 / 15계열이 영구 미획득**이었고, 티켓 20260906_1323이 배지 트리·상세에
+> 조건값을 그대로 표시하도록 바꾸면서 「못 지킬 약속」이 됐다. 그래서 열었다.
+
+**배타 규칙의 근거는 뒤집히지 않았다.** 휴식 4종은 **여전히
+`collectRepeatOccurrences`의 `CONSUMED_REPEAT_KEYS`에 넣지 않는다** — 게이트(§2.15)는
+「보유 여부」라 회차와 층이 다르지만, 휴식은 **이력 패턴 술어**라 넣는 순간 「휴식 조건을
+무시한 회차」가 세어진다.
+
+**바꾼 것은 «층»이다.** 휴식 판정은 이미 `buildRestIntervals()`로 **구간 목록**을 만들고
+`eligible.find(...)`로 첫 성립 구간을 찾는다. `find`를 `filter`로 바꾸면 「성립한 휴식 구간 수」가
+그대로 회차가 된다 — **회차 축이 다른 층에 이미 존재했다.**
+
+| 조건 형태 | 회차 1건의 뜻 | 함수 |
+|---|---|---|
+| 휴식 키 없음 | 조건을 통째로 만족한 **활동 1건** | `collectRepeatOccurrences()` |
+| 휴식 키 1개 | 조건이 성립한 **휴식 구간 1개**(그 구간의 복귀 활동) | `collectRestOccurrences()` |
+
+층을 가르는 곳은 `repeatOccurrences.ts`의 **`collectRepeatCountOccurrences()` 한 곳**이다.
+발급 판정(`evaluateConditionDetailed`) · 카운터 증가(`evaluateBadgesDetailed`) ·
+진행 계산(`badgeProgress.ts`) 세 경로가 전부 이 함수를 본다 — 각자 층을 가르면
+「발급은 됐는데 카운터는 안 오른다」가 재현된다(§2.14의 단일 출처 규칙과 같다).
+
+계기 활동(`selectTriggerActivity`)도 그대로 성립한다. 반환이 `NormalizedActivity[]`(각 구간의
+복귀 활동, 시간순)라 「임계값을 넘긴 그 회차」 선정과 `earn_history` 순서 규약이 회차형과 같다.
+
+##### 여전히 막는 두 형태 — `restRepeatBlockReason()`
+
+사유는 계속 **「회차와 함께 쓸 수 없는 조건」**이다. 판정이 이 함수 한 곳에 있고 엔진·진행
+계산·어드민 저장 가드(`findRepeatRestConflictError`)가 같은 함수를 부른다.
+
+| 막는 형태 | 이유 |
+|---|---|
+| 휴식 키가 **2개 이상** + `repeat_count` | 「한 구간이 두 휴식 조건을 동시에 만족」의 뜻이 카탈로그에 정의된 바 없다 (실측 수요 0건) |
+| 휴식 술어가 **보지 않는 축** + `repeat_count` | 그 축을 무시한 회차가 세어진다. 허용 키는 `activity_type`·휴식 키·**그 짝 필드**(`restConsumedPairKeys()`가 단일 출처)·`repeat_count`뿐 |
+
+⚠️ 게이트 키(`prerequisite_badge_names`·교차 게이트 3종)도 허용 목록에 **없다.** 현재
+카탈로그에 그런 조합은 0건이며, 필요해지면 허용 목록을 넓히는 것이 맞다(게이트는 활동을 보는
+술어가 아니라 회차와 층이 다르다 — §2.14의 예외와 같은 논리).
 
 #### 계기 활동은 «복귀 활동»이다
 
@@ -815,13 +863,22 @@ fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게�
 무관한 활동이 잡히고 그 날짜가 배지 상세의 「계기 활동일」로 유저에게 노출된다.
 조건 키가 여럿이면 **각 키가 처음 성립한 구간 중 가장 늦은 것** = 조건 전체가 성립한 시점이다.
 
-⚠️ **진행 계산(§2.13)은 아직 휴식 축이 없다.** `classifyBadgeProgressKind()`가 휴식 키가 든
-조건을 `unsupported`로 떨어뜨린다 — 축 하나(예: `streak_days`)만으로 그리면 「그 뒤 며칠 쉬어야
-한다」를 숨긴 채 100%가 뜬다. 확장은 티켓 20260905_0031(`kind: 'rest'`).
+#### `rest_after_long`의 「장거리」는 거리 **또는** 시간이다 (2026-09-06, 티켓 20260906_1423 §B)
 
-⚠️ **`rest_after_long`은 아직 실제로 발급되지 않는다.** 짝 필드 `single_distance_km`이
-`evaluation: 'pending'`이라 fail-closed가 먼저 막는다. v5 스칼라 7종을 `engine`으로 뒤집는
-선행 작업이 끝나야 열린다(카탈로그 시딩 20260905_0035 이전).
+`pairedWith`가 `single_distance_km` 하나뿐이던 시절, 시간으로 장거리를 정의한 카탈로그 7종
+(`walking:R2`「회복의 기술」·`hiking:X1`「하산 다음 날」)이 `unpaired`로 영구 차단됐다.
+이제 짝은 **`['single_distance_km', 'duration_minutes']`**이고 **둘 중 하나라도 있으면 뜻이
+완성된다**(레지스트리의 OR 규칙 그대로). `RestInterval`에 `maxDurationMinBefore`(구간 앞쪽
+최장 활동 시간)를 실어 시간으로도 「장거리」를 판정한다. 둘 다 있으면 **AND**다.
+
+⚠️ **짝 필드는 «독립 축»으로 다시 평가되지 않는다.** `duration_minutes`는 이 조합에서
+「장거리의 정의」로 흡수되므로 `evaluateConditionDetailed`의 단일 활동 블록에서 제외된다 —
+흡수 목록(`restConsumedPairKeys()`)과 조건 평가가 같은 판단을 하게 만든 지점이다.
+
+⚠️ **`rest_after_long` + `single_distance_km` 9종은 여전히 발급되지 않는다.**
+`single_distance_km`이 `evaluation: 'pending'`이라 fail-closed가 먼저 막는다. v5 스칼라를
+`engine`으로 뒤집는 선행 작업(티켓 20260906_0110 ①)이 끝나야 열린다. **시간 축 짝 7종은
+지금 열려 있다.**
 
 ---
 

@@ -1062,10 +1062,13 @@ export const CONDITION_FIELDS = [
     min: 1,
     max: 30,
     step: 1,
-    // 「무엇을 장거리로 볼 것인가」는 single_distance_km이 정한다(v5 B3부터 강제).
-    // ⚠️ 그 짝 필드 자체가 아직 `pending`이라 이 조건은 지금도 fail-closed에 걸린다 —
-    //    v5 스칼라 7종을 뒤집는 선행 작업이 끝나야 실제로 발급된다(티켓 20260905_0030 잔여 이슈).
-    pairedWith: ['single_distance_km'],
+    // 「무엇을 장거리로 볼 것인가」는 single_distance_km **또는** duration_minutes가 정한다
+    // (티켓 20260906_1423 §B — 둘 중 하나라도 있으면 뜻이 완성된다).
+    // ⚠️ `single_distance_km`은 아직 `pending`이라 그 짝을 쓴 조건은 계속 fail-closed에 걸린다 —
+    //    v5 스칼라 전환(티켓 20260906_0110 ①)이 끝나야 열린다. 시간 축 짝은 지금 열려 있다.
+    // ⚠️ 여기를 넓히면 `activityFilters.ts`의 `restConsumedPairKeys`도 함께 넓혀야 한다 —
+    //    안 그러면 짝 필드가 «독립 축»으로 이중 평가된다.
+    pairedWith: ['single_distance_km', 'duration_minutes'],
     direction: 'higher',
     evaluation: 'engine',
     chip: (c) => `장거리 후 휴식 ${c.rest_after_long}일`,
@@ -1074,7 +1077,7 @@ export const CONDITION_FIELDS = [
       section: 'pattern',
       label: '장거리 활동 후 휴식일 (일)',
       placeholder: '예: 3',
-      help: '한 번의 거리를 함께 지정해야 해요 — 없으면 저장할 수 없어요.',
+      help: '한 번의 거리나 한 번의 이동시간을 함께 지정해야 해요 — 없으면 저장할 수 없어요.',
     }),
   }),
   field({

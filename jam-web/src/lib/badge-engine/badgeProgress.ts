@@ -81,6 +81,10 @@ import {
   // 휴식 술어가 짝 필드로 흡수하는 키(streak_days·single_distance_km) — 「휴식 축이 조건을
   // 통째로 대표할 수 있는가」 판단의 예외 목록이다.
   restConsumedPairKeys,
+  // 「휴식 + 회차 조합 중 여전히 막히는 형태」도 발급 판정과 같은 함수가 답한다
+  // (티켓 20260906_1423 §A-4 — 세 경로가 같은 회차를 봐야 한다).
+  restRepeatBlockReason,
+  unconsumedRestRepeatKeys,
 } from './activityFilters'
 // 축 키 목록은 `index.ts`(발급 판정)와 **같은 파일**에서 온다 — 예전에는 이 파일이
 // `PER_ACTIVITY_KEYS`를 재선언했고, 두 목록이 어긋나면 진행률과 발급이 갈라졌다
@@ -95,7 +99,7 @@ import {
 } from './conditionAxes'
 // 회차 계산도 발급 판정과 같은 함수다 — 두 곳이 각자 세면 「화면은 4/5인데 발급은 5회차」가 된다.
 import {
-  collectRepeatOccurrences,
+  collectRepeatCountOccurrences,
   unconsumedRepeatConditionKeys,
   repeatConsumedAxisKeys,
 } from './repeatOccurrences'
@@ -495,9 +499,14 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
   const restKeys = restConditionKeysIn(condition)
   const hasRepeat = condition.repeat_count !== undefined
 
-  // 휴식 + 회차는 **발급 자체가 막히는 조합**이다(§2.16 「회차와 함께 쓸 수 없다」,
-  // 티켓 20260905_0030 B-10). 어느 한쪽 축을 그리면 나머지 절반을 숨긴 채 진행률이 차오른다.
-  if (restKeys.length > 0 && hasRepeat) return 'unsupported'
+  // 휴식 + 회차 — 「성립한 휴식 구간 수」가 곧 회차다(티켓 20260906_1423 §A).
+  // 축은 **회차 하나**로 그린다: 휴식 구간이 이미 회차의 «단위»이므로 휴식 축을 따로 그리면
+  // 같은 사실을 두 번 말하게 되고, 「휴식 5/5일 = 100%」 옆에서 3/20회가 사라진다.
+  // 여전히 막히는 형태(휴식 키 2개 이상 · 휴식 술어가 보지 않는 축)는 발급 판정과 **같은
+  // 함수**가 답한다 — 두 곳이 각자 목록을 들면 화면과 발급이 갈라진다.
+  if (restKeys.length > 0 && hasRepeat) {
+    return restRepeatBlockReason(condition) ? 'unsupported' : 'repeat'
+  }
 
   // 휴식(활동 공백) — 「닫힌 공백」만 세므로 현재 시각(now)이 필요 없다(§2.16).
   // 실측값은 발급 판정과 **같은 함수**(`evaluateRestConditions`)에서 온다.
@@ -616,7 +625,15 @@ export function explainUnsupportedProgress(
   const hasRepeat = condition.repeat_count !== undefined
 
   if (restKeys.length > 0 && hasRepeat) {
-    return describe([], '휴식 조건과 충족 횟수(repeat_count)는 함께 쓸 수 없어 발급 자체가 막혀요.')
+    const block = restRepeatBlockReason(condition)
+    if (block) {
+      return restKeys.length >= 2
+        ? describe([], '휴식 조건이 두 개 이상이라 「몇 회 채웠는지」를 셀 수 없어요. 하나만 남겨주세요.')
+        : describe(
+            unconsumedRestRepeatKeys(condition),
+            '휴식 술어가 보지 않는 조건 축이 남아 있어요. 그 축을 무시한 회차가 세어지므로 진행률을 그리지 않아요.'
+          )
+    }
   }
 
   if (restKeys.length > 0) {
@@ -884,17 +901,21 @@ function buildRecordAxis(condition: BadgeCondition, metrics: UserPeriodMetrics, 
 /**
  * 반복 카운터 축 — 「현재 회차 / 임계 회차」(티켓 20260905_0031, v5 §2.14).
  *
- * 회차는 **발급 판정과 같은 함수**(`collectRepeatOccurrences`)로 센다. 두 곳이 각자 세면
- * 「화면은 4/5회인데 발급은 5회차를 인정」 같은 어긋남이 생긴다.
+ * 회차는 **발급 판정과 같은 함수**(`collectRepeatCountOccurrences`)로 센다. 두 곳이 각자 세면
+ * 「화면은 4/5회인데 발급은 5회차를 인정」 같은 어긋남이 생긴다. 휴식 키가 든 조건이면 그
+ * 함수가 «휴식 구간» 층으로 갈라 세므로, 이 축은 그때도 같은 숫자를 그린다
+ * (티켓 20260906_1423 §A-4).
  *
  * ⚠️ 넘기는 배열이 `metrics.activities`(종목 + 걷기 게이트가 이미 적용된 목록)라는 점이
- * 발급 경로(원본 배열을 넘긴다)와 다르다. `collectRepeatOccurrences`가 같은 필터를 다시
+ * 발급 경로(원본 배열을 넘긴다)와 다르다. 회차 함수가 같은 필터를 다시
  * 적용하므로 `condition.activity_type === metrics.activityType`인 한 결과는 같다 —
  * 진행 계산은 애초에 (user, activity_type) 단위로 도는 계층이라 그 전제가 성립한다.
+ * **`anchorDate`는 넘기지 않는다** — `metrics.activities`가 이미 가입 앵커로 잘린 이력이다
+ * (`buildRestAxis`와 같은 이유).
  */
 function buildRepeatAxis(condition: BadgeCondition, metrics: UserPeriodMetrics, labelMap: LabelMap): AxisResult {
   const target = condition.repeat_count as number
-  const occurrences = collectRepeatOccurrences(condition, metrics.activities)
+  const occurrences = collectRepeatCountOccurrences(condition, metrics.activities)
   return makeHigherBetterAxis('repeat_count', occurrences.length, target, withRegistryLabel(labelMap, 'repeat_count'))
 }
 

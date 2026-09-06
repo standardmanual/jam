@@ -11,7 +11,8 @@
  *   ② 활동이 없는 신규 유저가 「겨울잠」으로 오판되지 않는다
  *   ③ 공백은 **다음 활동이 들어온 순간**에 소급 판정된다
  *   ④ 짝 필드가 없으면 fail-closed로 막힌다 (「며칠 연속 뒤」가 정의되지 않는다)
- *   ⑤ `repeat_count`와의 조합이 「회차와 함께 쓸 수 없는 조건」으로 명확히 드러난다
+ *   ⑤ `repeat_count`와의 조합 중 **여전히 막히는 형태**가 명확히 드러난다
+ *      (조합 자체는 티켓 20260906_1423이 열었다 — 그 회차 판정은 `rest-repeat-occurrences.test.ts`)
  *   ⑥ 발급 판정(`index.ts`)과 진행 계산(`badgeProgress.ts`)이 **같은 헬퍼**를 본다
  *
  * 실행: `npx vitest run src/lib/badge-engine/__tests__/rest-conditions.test.ts`
@@ -186,34 +187,43 @@ describe('휴식 — 짝 필드가 없으면 fail-closed로 막는다', () => {
   })
 })
 
-// ── ⑤ 회차와의 조합 금지 (B-10) ──────────────────────────────────────────
+// ── ⑤ 회차와의 조합 — 열린 것과 여전히 막는 것 (B-10 → 티켓 20260906_1423 §A) ──
 
-describe('휴식 — repeat_count와 함께 쓸 수 없다 (B-10)', () => {
-  it('사유가 「회차와 함께 쓸 수 없는 조건」으로 드러난다', () => {
-    const cond: BadgeCondition = {
+describe('휴식 — repeat_count 조합 중 여전히 막는 형태', () => {
+  it('휴식 키가 2개 이상이면 계속 막는다 — 「한 구간이 두 조건을 동시에」가 정의된 바 없다', () => {
+    const cond = {
       activity_type: 'running',
-      streak_days: 6,
-      rest_after_streak: 2,
+      return_gap_days: 14,
+      interval_days: 20,
       repeat_count: 3,
-    }
-    const acts = [...consecutive('2026-06-01', 6), act('2026-06-09')]
-    const r = evaluateConditionDetailed(cond, acts)
+    } as BadgeCondition
+    const r = evaluateConditionDetailed(cond, [act('2026-01-01'), act('2026-06-01')])
     expect(r.pass).toBe(false)
     expect(r.reason).toBe('회차와 함께 쓸 수 없는 조건')
-    expect(r.actual).toContain('rest_after_streak')
-    // 예전이라면 회차 술어의 fail-closed 가드가 조용히 회차를 0으로 떨어뜨려
-    // 「충족 횟수 부족 / 0회」로만 보였다 — 카탈로그 담당자가 원인을 찾을 수 없다
-    expect(r.reason).not.toBe('충족 횟수 부족')
+    expect(r.actual).toContain('휴식 조건 2개')
   })
 
-  it('휴식 조건 전부가 같은 사유로 막힌다', () => {
-    // `rest_after_long`은 짝 필드(single_distance_km)가 아직 평가 대기라 fail-closed가
-    // **먼저** 막는다 — 그 선행 관계는 위 「짝 필드」 describe가 따로 못 박는다.
+  it('휴식 술어가 보지 않는 축이 섞이면 계속 막는다 — 그 축을 무시한 회차가 세어진다', () => {
+    const cond = {
+      activity_type: 'running',
+      return_gap_days: 14,
+      time_range: { start: '05:00', end: '07:00' },
+      repeat_count: 3,
+    } as BadgeCondition
+    const r = evaluateConditionDetailed(cond, [act('2026-01-01'), act('2026-06-01')])
+    expect(r.pass).toBe(false)
+    expect(r.reason).toBe('회차와 함께 쓸 수 없는 조건')
+    expect(r.actual).toContain('time_range')
+  })
+
+  it('휴식 키 1개 + 짝 필드 + 종목 + 회차 조합은 열린다 — 사유가 회차 어휘로 바뀐다', () => {
+    // 예전에는 이 조합 자체가 「회차와 함께 쓸 수 없는 조건」이었다(B-10). 이제 «휴식 구간»이
+    // 회차 축이 되어, 미달일 때도 회차형과 같은 어휘로 답한다.
     const pairs: Partial<Record<(typeof REST_CONDITION_KEYS)[number], BadgeCondition>> = {
       rest_after_streak: { streak_days: 6 },
+      rest_after_long: { duration_minutes: 90 },
     }
     for (const key of REST_CONDITION_KEYS) {
-      if (key === 'rest_after_long') continue
       const cond = {
         activity_type: 'running',
         repeat_count: 3,
@@ -221,7 +231,10 @@ describe('휴식 — repeat_count와 함께 쓸 수 없다 (B-10)', () => {
         [key]: 90,
       } as BadgeCondition
       expect(restConditionKeysIn(cond), key).toEqual([key])
-      expect(evaluateConditionDetailed(cond, []).reason, key).toBe('회차와 함께 쓸 수 없는 조건')
+      const r = evaluateConditionDetailed(cond, [])
+      expect(r.reason, key).toBe('충족 횟수 부족')
+      expect(r.actual, key).toBe('0회')
+      expect(r.required, key).toBe('3회')
     }
   })
 })
@@ -272,7 +285,9 @@ describe('휴식 — 발급 판정과 진행 계산이 어긋나지 않는다', 
     expect(classifyBadgeProgressKind(cond)).toBe('unsupported')
   })
 
-  it('휴식 + 회차는 발급이 막히는 조합이라 진행률도 그리지 않는다', () => {
+  it('휴식 술어가 보지 않는 축이 섞인 휴식 + 회차는 여전히 막히고, 진행률도 그리지 않는다', () => {
+    // `duration_minutes`는 `return_gap_days`의 짝 필드가 아니다 — 휴식 판정이 보지 않는
+    // 독립 축이라 그대로 두면 「이동시간을 무시한 회차」가 세어진다.
     const cond = { activity_type: 'running', duration_minutes: 60, repeat_count: 3, return_gap_days: 90 } as BadgeCondition
     expect(evaluateConditionDetailed(cond, []).reason).toBe('회차와 함께 쓸 수 없는 조건')
     expect(classifyBadgeProgressKind(cond)).toBe('unsupported')

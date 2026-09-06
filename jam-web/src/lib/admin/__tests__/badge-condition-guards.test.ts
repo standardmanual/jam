@@ -46,24 +46,32 @@ describe('① 짝 필드 없는 조건은 저장에서 거부된다', () => {
   })
 })
 
-describe('② repeat_count + 휴식 조건 조합은 저장에서 거부된다', () => {
-  it('repeat_count와 return_gap_days를 함께 쓰면 막는다', () => {
-    const error = findRepeatRestConflictError({ repeat_count: 5, return_gap_days: 90 })
-    expect(error).not.toBeNull()
-    expect(error).toContain('repeat_count')
-    expect(error).toContain('복귀 전 휴식일')
-  })
-
-  it('휴식 4종 어느 것과 조합해도 막는다', () => {
+describe('② repeat_count + 휴식 조건 조합 — 열린 것과 여전히 막는 것 (티켓 20260906_1423)', () => {
+  it('휴식 키 1개 + 짝 필드 + 회차 조합은 저장을 막지 않는다', () => {
+    // 「성립한 휴식 구간 수 = 회차」로 열렸다 — 카탈로그 정본이 「/ N회」를 명시한 형태다.
+    expect(findRepeatRestConflictError({ repeat_count: 5, return_gap_days: 90 })).toBeNull()
     const rest: BadgeCondition[] = [
-      { rest_after_streak: 2, streak_days: 6 },
-      { rest_after_long: 3, single_distance_km: 100 },
-      { return_gap_days: 90 },
-      { interval_days: 90 },
+      { activity_type: 'walking', rest_after_streak: 2, streak_days: 6 },
+      { activity_type: 'walking', rest_after_long: 3, duration_minutes: 90 },
+      { activity_type: 'walking', return_gap_days: 90 },
+      { activity_type: 'walking', interval_days: 90 },
     ]
     for (const cond of rest) {
-      expect(findRepeatRestConflictError({ ...cond, repeat_count: 3 })).not.toBeNull()
+      expect(findRepeatRestConflictError({ ...cond, repeat_count: 3 })).toBeNull()
     }
+  })
+
+  it('휴식 키가 2개 이상이면 막는다 — 「한 구간이 두 조건을 동시에」가 정의된 바 없다', () => {
+    const error = findRepeatRestConflictError({ repeat_count: 5, return_gap_days: 90, interval_days: 30 })
+    expect(error).not.toBeNull()
+    expect(error).toContain('복귀 전 휴식일')
+    expect(error).toContain('활동 간격')
+  })
+
+  it('휴식 술어가 보지 않는 축이 섞이면 막는다', () => {
+    const error = findRepeatRestConflictError({ repeat_count: 5, return_gap_days: 90, streak_days: 6 })
+    expect(error).not.toBeNull()
+    expect(error).toContain('연속 일수')
   })
 
   it('repeat_count만 있으면 통과한다', () => {
@@ -170,7 +178,9 @@ describe('findConditionShapeSaveError — 세 검사를 한 진입점에서 돌�
 
   it('세 경로 중 하나라도 걸리면 오류를 돌려준다', () => {
     expect(findConditionShapeSaveError(badge, { rest_after_streak: 2 })).not.toBeNull()
-    expect(findConditionShapeSaveError(badge, { repeat_count: 3, interval_days: 90 })).not.toBeNull()
+    expect(
+      findConditionShapeSaveError(badge, { repeat_count: 3, interval_days: 90, return_gap_days: 30 })
+    ).not.toBeNull()
     expect(
       findConditionShapeSaveError(badge, { cross_in_axis: {} } as unknown as BadgeCondition)
     ).not.toBeNull()
