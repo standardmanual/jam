@@ -50,6 +50,9 @@ function missionGoalText(type: string, condition: MissionCondition): { label: st
     case 'streak_days':       return { label: d.missions.goalStreakDays,       unit: '일', target: condition.streak_days ?? 0 }
     case 'duration_minutes':  return { label: d.missions.goalDurationMinutes,  unit: '분', target: condition.duration_minutes ?? 0 }
     case 'elevation_gain_m':  return { label: d.missions.goalElevationGainM,  unit: 'm',  target: condition.elevation_gain_m ?? 0 }
+    // engine_condition(티켓 20260906_2231) — 여러 필드를 조합하는 복합 조건이라 진행바 개념이
+    // 없다. checkin/item_collect와 같은 달성형(target=1)으로 취급한다.
+    case 'engine_condition':  return { label: d.missions.goalEngineCondition,  unit: '',   target: 1 }
     default:                  return { label: d.missions.goalDefault,          unit: '',   target: 0 }
   }
 }
@@ -135,7 +138,7 @@ export default function MissionDetailClient({
   const goal = missionGoalText(mission.mission_type, condition)
   const progressPct = goal.target > 0 ? Math.min(100, (progressValue / goal.target) * 100) : 0
   const isActive = new Date(mission.starts_at) <= new Date() && (mission.ends_at === null || new Date(mission.ends_at) > new Date())
-  const isAchievementType = mission.mission_type === 'checkin' || mission.mission_type === 'item_collect'
+  const isAchievementType = mission.mission_type === 'checkin' || mission.mission_type === 'item_collect' || mission.mission_type === 'engine_condition'
   const isStreakType = mission.mission_type === 'streak_days'
   const achieved = isCompleted || progressValue >= 1
 

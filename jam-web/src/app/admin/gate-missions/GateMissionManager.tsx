@@ -27,7 +27,7 @@ import {
   parseVisibilityRule,
 } from '@/lib/missions/gateMissions'
 import { buildFamilyKey } from '@/lib/admin/badge-families'
-import { MISSION_CONDITION_VALUE_RULE } from '@/lib/missions/condition-keys'
+import { MISSION_CONDITION_VALUE_RULE, type MissionConditionValueRule } from '@/lib/missions/condition-keys'
 import { MISSION_TYPE_LABEL } from '@/lib/admin/badge-labels'
 import { RARITY_LABEL } from '@/lib/rarity'
 import { TREE_ACTIVITY_ORDER } from '@/lib/badgeTree'
@@ -65,6 +65,16 @@ interface Props {
  */
 const GATE_MISSION_TYPES = ['distance', 'activity_count', 'streak_days', 'duration_minutes', 'elevation_gain_m'] as const
 type GateMissionType = (typeof GATE_MISSION_TYPES)[number]
+
+/**
+ * `MISSION_CONDITION_VALUE_RULE`가 `engine_condition`(티켓 20260906_2231, 값 검증 대상 아님 —
+ * 여러 필드를 조합하는 복합 조건이라 규칙 자체가 없다) 때문에 `Partial`로 바뀌면서 인덱싱
+ * 결과가 `| undefined`가 됐다. `GATE_MISSION_TYPES` 5종은 전부 이 표에 규칙이 있는 게
+ * 보장된 부분집합이라(위 선언이 그 5종만 쓴다) 안전하게 단언한다.
+ */
+function gateMissionValueRule(type: GateMissionType): MissionConditionValueRule {
+  return MISSION_CONDITION_VALUE_RULE[type] as MissionConditionValueRule
+}
 
 const STATUS_DISPLAY_TYPES = [
   { value: 'individual', label: '개인형 (본인 진행상황만)' },
@@ -159,7 +169,7 @@ function formFromMission(m: MissionRow): FormState {
   const missionType = (GATE_MISSION_TYPES as readonly string[]).includes(m.mission_type)
     ? (m.mission_type as GateMissionType)
     : 'activity_count'
-  const valueKey = MISSION_CONDITION_VALUE_RULE[missionType].key
+  const valueKey = gateMissionValueRule(missionType).key
   const condition = (m.condition_json ?? {}) as Record<string, unknown>
 
   return {
@@ -415,7 +425,7 @@ export default function GateMissionManager({ missions, families, rewardBadgeLabe
       return
     }
 
-    const valueKey = MISSION_CONDITION_VALUE_RULE[form.mission_type].key
+    const valueKey = gateMissionValueRule(form.mission_type).key
     const body = {
       title: form.title.trim(),
       description: form.description.trim() || null,
@@ -629,7 +639,7 @@ export default function GateMissionManager({ missions, families, rewardBadgeLabe
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                저장될 조건: <span className="font-mono">{JSON.stringify({ [MISSION_CONDITION_VALUE_RULE[form.mission_type].key]: Number(form.target) || 0, activity_type: form.conditionActivityType })}</span>
+                저장될 조건: <span className="font-mono">{JSON.stringify({ [gateMissionValueRule(form.mission_type).key]: Number(form.target) || 0, activity_type: form.conditionActivityType })}</span>
               </p>
             </div>
 

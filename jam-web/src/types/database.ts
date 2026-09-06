@@ -505,15 +505,37 @@ export type MissionType =
   | 'streak_days'
   | 'duration_minutes'
   | 'elevation_gain_m'
+  /**
+   * 티켓 20260906_2231: 배지엔진 수준 표현력(복합 조건)을 그대로 쓰는 범용 위임 타입.
+   * `condition_json`은 배지엔진 어휘(`repeat_count`·`rest_after_long`·`single_distance_km`·
+   * `max_pace_sec_per_km`·`same_activity` 등, 위 6종처럼 개별 필드 하나만 보는 게 아니라
+   * **여러 필드를 조합**할 수 있다) + 배지엔진에 없는 미션 전용 어휘(주기 축의 「매기간 M회」·
+   * 부분집합 요건·서로 다른 요일/달 수 — `weekly_streak_min_count`·`monthly_streak`·
+   * `streak_subset`·`distinct_weekday_count`·`distinct_months_required` 등)를 함께 담는다.
+   * 판정은 `src/lib/missions/engineCondition.ts`의 `evaluateEngineMissionCondition()` 하나뿐이다
+   * (배지엔진 위임분은 `evaluateConditionDetailed` 재사용, 미션 전용 어휘는 순수 함수로 직접 판정).
+   * 진행바 개념이 없다 — 달성형(0/1)으로만 표시된다(체크인·아이템 수집과 같은 취급).
+   */
+  | 'engine_condition'
 export type MissionRewardType = 'badge' | 'points' | 'item_badge'
 /** Phase13: 미션 상황 표시 방식 — 랭킹형(등수) / 달성형(완료 여부) */
 /** individual: 개인형 — 다른 참가자 조회 없이 본인 진행상황/달성여부만 반환 (티켓 20260813_001) */
 export type MissionStatusDisplayType = 'ranking' | 'achievement' | 'individual'
 
+/** `engine_condition` 타입의 「주기(streak) + 부분집합」 짝 필드 — `weekly_streak`/`monthly_streak`와 함께 쓴다 */
+export interface MissionStreakSubset {
+  /** 이 요일들 중 하나라도 맞으면 부분집합에 포함 (예: 주말 = ['saturday','sunday']) */
+  day_of_week?: DayOfWeek[]
+  /** 이 시간대에 속하면 부분집합에 포함 (예: 새벽 05:00~08:00) */
+  time_range?: { start: string; end: string }
+  /** 그 기간(주/달) 안에서 부분집합이 최소 이 횟수 이상이어야 함 */
+  min_count: number
+}
+
 export interface MissionCondition {
-  /** distance 타입: 목표 거리 km */
+  /** distance 타입: 목표 거리 km. engine_condition 타입: 누적 거리(km) — badge-engine BadgeCondition.distance_km 재사용 */
   distance_km?: number
-  /** distance/activity_count/streak_days/duration_minutes/elevation_gain_m 타입: 활동 종류 필터 */
+  /** distance/activity_count/streak_days/duration_minutes/elevation_gain_m/engine_condition 타입: 활동 종류 필터 */
   activity_type?: ActivityType
   /** checkin 타입: 목표 지점(POI) ID — 지점 식별자라 키명은 poi_id 유지 (20260825_031 계약) */
   poi_id?: string
@@ -523,12 +545,76 @@ export interface MissionCondition {
   badge_id?: string
   /** streak_days 타입: 목표 연속 활동 일수 — badge-engine BadgeCondition.streak_days 재사용 */
   streak_days?: number
-  /** duration_minutes 타입: 단일 활동 최소 이동 시간(분) — badge-engine BadgeCondition.duration_minutes 재사용 */
+  /** duration_minutes 타입: 단일 활동 최소 이동 시간(분) — badge-engine BadgeCondition.duration_minutes 재사용.
+   * engine_condition 타입에서는 「활동 1건」 최소 시간(분) 필터로도 쓰인다(누적 아님, PER_ACTIVITY_KEYS 재사용) */
   duration_minutes?: number
   /** elevation_gain_m 타입: 참가 시점 이후 누적 최소 고도 상승(m) — badge-engine
    * BadgeCondition.elevation_gain_m 재사용 (2026-08-31 배지엔진과 함께 누적 합계로 복원,
-   * 티켓 20260831_2100/2152) */
+   * 티켓 20260831_2100/2152). engine_condition 타입에서도 같은 「누적 합계」 의미로 재사용 */
   elevation_gain_m?: number
+
+  // ── engine_condition 전용: 배지엔진 어휘 그대로 재사용(위임) ──────────────────────
+  // 티켓 20260906_2231 — evaluateConditionDetailed가 이미 아는 필드라 새 판정 로직이 필요 없다.
+
+  /** 활동 1건의 최소 이동 거리(km) — badge-engine BadgeCondition.single_distance_km 재사용 */
+  single_distance_km?: number
+  /** 활동 1건의 최소 고도 상승(m) — badge-engine BadgeCondition.single_elevation_m 재사용 */
+  single_elevation_m?: number
+  /** 활동 1건의 최고 도달 고도(m, 해발) — badge-engine BadgeCondition.max_elevation_m 재사용 */
+  max_elevation_m?: number
+  /** 활동 1건의 최대 페이스(초/km, 작을수록 빠름) — badge-engine BadgeCondition.max_pace_sec_per_km 재사용 */
+  max_pace_sec_per_km?: number
+  /** 활동 1건의 최소 평균 속도(km/h) — badge-engine BadgeCondition.min_speed_kmh 재사용 */
+  min_speed_kmh?: number
+  /** `single_distance_km`/`single_elevation_m` 등 여러 필드를 "그 활동 1건이 동시에" 만족하도록
+   * 강제 — badge-engine BadgeCondition.same_activity 재사용. `repeat_count`가 함께 있으면
+   * 회차 판정 자체가 이미 활동 1건 단위 AND라 생략해도 결과가 같다(단일 회차 조건에만 필요) */
+  same_activity?: boolean
+  /** 기준 조건을 만족한 활동이 이 횟수 이상 — badge-engine BadgeCondition.repeat_count 재사용 */
+  repeat_count?: number
+  /** 장거리 활동(single_distance_km 또는 duration_minutes 짝 필드 기준) 뒤에 쉰 일수 —
+   * badge-engine BadgeCondition.rest_after_long 재사용. repeat_count와 결합하면 "N회 반복 +
+   * 매번 다음 날 휴식"이 된다 */
+  rest_after_long?: number
+  /** N주(월~일) 연속 — badge-engine BadgeCondition.weekly_streak 재사용. `weekly_streak_min_count`
+   * 없이 단독으로 쓰면 배지엔진과 같은 "매주 1회 이상" 의미(위임) */
+  weekly_streak?: number
+
+  // ── engine_condition 전용: 배지엔진에 없는 미션 고유 어휘 (티켓 20260906_2231 신설) ──
+  //
+  // v5_mission_axis_groups.json·v5_mission_badges.json 32건 전수 대조 결과 배지엔진
+  // 어휘만으로 표현 불가능했던 두 축(①「N주/개월 연속 한 기간에 M회[+부분집합]」— 주기 축,
+  // ②「서로 다른 K개 요일/두 달」— 요일·달력 축)을 위해 신설했다. 배지 쪽 `BadgeCondition`에는
+  // 넣지 않는다 — 현재 650여 종 배지 카탈로그 어디에도 이 어휘가 필요한 조건이 없고, 미션
+  // 전용으로 좁혀야 배지엔진(evaluateConditionDetailed)의 검증 레지스트리·회차 계산기를
+  // 건드리지 않아 기존 배지 판정에 회귀 위험이 없다(`src/lib/missions/engineCondition.ts`가
+  // 별도 순수 함수로 직접 판정한다).
+
+  /** `weekly_streak`와 함께 — 그 주가 "streak에 포함되려면" 필요한 주간 최소 활동 횟수.
+   * 없으면 배지엔진 기본값(1회 이상 = 존재만 확인)과 동일 */
+  weekly_streak_min_count?: number
+  /** N개월 연속 — `weekly_streak`의 월 단위 버전(배지엔진에 없는 신규 어휘) */
+  monthly_streak?: number
+  /** `monthly_streak`와 함께 — 그 달이 "streak에 포함되려면" 필요한 월간 최소 활동 횟수.
+   * 없으면 1회 이상(존재만 확인) */
+  monthly_streak_min_count?: number
+  /** `weekly_streak`/`monthly_streak`와 함께 — 그 기간(streak에 포함된 주/달) 안에서
+   * 추가로 만족해야 하는 부분집합 최소 횟수(예: "매주 주말 1회 이상") */
+  streak_subset?: MissionStreakSubset
+  /** 서로 다른 요일(월~일)의 수 — 특정 요일을 지정하지 않고 "며칠에 나눠 했는지"만 센다
+   * (day_of_week 배열+total_count의 "요일별 각각 N회"와 다르다 — 이건 요일 자체를 세는 것) */
+  distinct_weekday_count?: number
+  /** `distinct_months_metric`/`distinct_months_threshold`와 함께 — 그 지표가 문턱을 넘긴
+   * 서로 다른 달(연-월)의 수. 특정 달을 지정하지 않는다(배지엔진 `month`는 고정 달을
+   * 지정해야 해서 표현 불가능했다) */
+  distinct_months_required?: number
+  /** `distinct_months_required`와 함께 — 어느 지표로 월별 합계를 낼지. 기본값 distance_km */
+  distinct_months_metric?: 'distance_km' | 'elevation_gain_m'
+  /** `distinct_months_required`와 함께 — 그 달의 지표 합계가 넘어야 하는 문턱값 */
+  distinct_months_threshold?: number
+  /** 각 시간대별 최소 활동 횟수(독립 카운터, 배열의 각 항목이 각자 min_count를 만족해야
+   * 함) — day_of_week 배열+total_count의 시간대 버전(배지엔진에 없는 신규 어휘) */
+  time_band_counts?: { start: string; end: string; count: number }[]
 }
 
 /** 게이트 미션의 단계 — 마스터 티켓 20260905_0026의 2단 게이트 표를 그대로 옮긴 두 값 */

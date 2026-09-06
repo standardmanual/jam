@@ -277,10 +277,19 @@ export function checkGateMissionConsistency(input: GateConsistencyInput): GateMi
   }
 
   // ── ① 축 × 단계 커버리지 ─────────────────────────────────────────────────
+  //
+  // ⚠️ `rare_to_epic` 단계는 "미션 없음"이 구멍이 아니라 정상이다 — v5 설계(마스터 티켓
+  // 20260905_0026 §게이트 표)상 Rare→Epic 전환은 축 교차(cross_in_axis/cross_between_axis)
+  // 만으로 충분하고 미션이 필요 없다. 미션이 필요한 건 `epic_to_mystic` 한 단계뿐이다.
+  // 이 구분이 없으면 축마다 `rare_to_epic` 칸이 항상 비어 있어(정상인데도) 정합성 검사가
+  // 축 수만큼(9~12개) 매번 `error`를 냈다(0033 설계 — v5 게이트 확정 이전 가정이 남아
+  // "축마다 두 단계 모두 미션이 있어야 한다"고 잘못 가정했다. 티켓 20260906_1947 부수 발견,
+  // 20260906_2231에서 수정).
   for (const row of buildGateMatrix(gateMissions)) {
     for (const stage of MISSION_GATE_STAGES) {
       const cell = row.cells[stage]
       if (cell.length === 0) {
+        if (stage === 'rare_to_epic') continue
         issues.push({
           level: 'error',
           code: 'axis_stage_gap',
