@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRarity, MissionRow, UserMissionCompletionRow, UserMissionParticipationRow } from '@/types/database'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { resolveMissionVisibilityMap } from '@/lib/missions/visibility'
+import { dedupeByRewardBadge } from '@/lib/missions/dedupeReward'
 import MissionsListClient, { type MissionListItem, type RewardBadgeInfo } from './MissionsListClient'
 
 export default async function MissionsPage() {
@@ -64,10 +65,14 @@ export default async function MissionsPage() {
 
   // 진행중/참가중 탭 대상 — 완료(completed)·미해금 상위 단계(hidden)는 제외하고
   // 바로 다음 1단계(locked)까지만 잠금 카드로 내려보낸다.
-  const visibleOngoing = ongoingMissions.filter((m) => {
+  const visibleOngoingRaw = ongoingMissions.filter((m) => {
     const v = visibilityMap.get(m.id)?.visibility
     return v === 'open' || v === 'locked'
   })
+
+  // 같은 보상 배지를 여러 축(gate_axis)에서 열 수 있는 게이트 미션이 카드로 중복
+  // 노출되지 않도록 대표 1행만 남긴다 (ended 탭·미션 상세는 대상 아님, 티켓 20260907_0043)
+  const visibleOngoing = dedupeByRewardBadge(visibleOngoingRaw, participationSet, visibilityMap)
 
   // 보상 배지 이름 일괄 fetch — 목록에서 "배지명 배지" 형식으로 표시하기 위해
   const allMissions = [...visibleOngoing, ...endedMissions, ...completedMissions]
