@@ -145,8 +145,12 @@ export function BadgeFamilyCardHeader({
         {name}
       </span>
 
-      {/* 진행률 블록 — 카드 우측 패딩 엣지에 붙는다. 퍼센트와 라벨이 **한 줄**이다 */}
-      <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--spacing-4)', whiteSpace: 'nowrap' }}>
+      {/* 진행률 블록 — 카드 우측 패딩 엣지에 붙는다. 퍼센트와 라벨이 **한 줄**이다.
+          ⚠️ `justifySelf: 'end'`를 지우지 말 것. 2열 그리드의 오른쪽 컬럼 폭은 이 블록과
+          2행의 「자세히 ⌄」 중 **넓은 쪽**이 정하는데, 기본값(stretch)이면 퍼센트가 그 컬럼
+          왼쪽에 붙어 카드마다 24px씩 어긋난다 — 펼칠 수 있는 레일 카드만 319px, 나머지는
+          343px로 끝났다(티켓 20260906_2344 staging 실측). 세로로 훑는 스캔 컬럼이 깨진다. */}
+      <span style={{ justifySelf: 'end', display: 'inline-flex', alignItems: 'baseline', gap: 'var(--spacing-4)', whiteSpace: 'nowrap' }}>
         {pctText && (
           <span
             style={{
@@ -181,7 +185,7 @@ export function BadgeFamilyCardHeader({
           >
             {metaText}
           </span>
-          <span style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <span style={{ justifySelf: 'end', display: 'flex', justifyContent: 'flex-end' }}>
             {onToggleExpand != null && (
               <button
                 type="button"
