@@ -121,6 +121,8 @@ export type NormalizedGateRequirement = {
   familyKeys: string[]
   minRarityTier: number
   minRarityLabel: string | null
+  /** 무한레벨형 대상 전용(티켓 20260906_1947 ④). 0이면 지정 없음(=Lv.1 보유로 충분) */
+  minLevel: number
   minCount: number
 }
 
@@ -167,6 +169,20 @@ export function normalizeGateRequirement(
     minRarityLabel = RARITY_LABEL[req.min_rarity]
   }
 
+  // min_level(티켓 20260906_1947 ④) — 무한레벨형 대상 전용, min_rarity와 상호 배타.
+  // 둘 다 두면 「등급형은 min_rarity, 레벨형은 min_level」이 아니라 「둘 다 동시에 걸어야
+  // 통과」로 잘못 읽힐 여지가 있어 카탈로그 오류로 막는다(0030의 min_rarity 문서 규약과 동일 태도).
+  let minLevel = 0
+  if (req.min_level !== undefined) {
+    if (typeof req.min_level !== 'number' || !Number.isInteger(req.min_level) || req.min_level < 1) {
+      return { ok: false, error: `min_level 값 오류(${String(req.min_level)})` }
+    }
+    if (minRarityTier > 0) {
+      return { ok: false, error: 'min_rarity와 min_level을 함께 쓸 수 없음' }
+    }
+    minLevel = req.min_level
+  }
+
   let minCount = 1
   if (req.min_count !== undefined) {
     if (typeof req.min_count !== 'number' || !Number.isInteger(req.min_count) || req.min_count < 1) {
@@ -179,7 +195,7 @@ export function normalizeGateRequirement(
     return { ok: false, error: `min_count(${minCount})가 대상 계열 수(${targets.length})보다 큼` }
   }
 
-  return { ok: true, value: { familyKeys: targets, minRarityTier, minRarityLabel, minCount } }
+  return { ok: true, value: { familyKeys: targets, minRarityTier, minRarityLabel, minLevel, minCount } }
 }
 
 /** 두 종목 목록이 하나라도 겹치는가. 어느 한쪽이 비어 있으면 «종목 제한 없음»으로 본다 */
@@ -189,10 +205,46 @@ function sharesActivityType(a: readonly ActivityType[] | null, b: readonly Activ
 }
 
 /**
- * 요구를 만족하는 계열 수를 센다.
+ * 계열 하나가 이 요구를 만족하는가 — «대상 계열 N개 중 하나가 만족하는지»의 최소 단위 판정.
+ *
+ * **`countSatisfiedFamilies`(엔진 발급 판정)와 `badgeTree.ts`(배지 트리 화면)가 이 함수
+ * 하나를 공유한다**(티켓 20260906_1947 ③). 예전엔 `badgeTree.ts`가 이 로직을 별도로
+ * 재구현했는데, `crossGate.ts` 쪽이 `ownedDefs` 전량을 요구해 트리 화면이 조회를 하나 더
+ * 늘리기 싫어했던 것이 이유였다(0110 기록) — `badgeTree.ts`는 이미 전체 배지 목록과
+ * 획득 id 집합을 들고 있으므로 그 데이터로 `OwnedBadgeDef[]`(보유분만 필터링)를 만들어
+ * 이 함수를 그대로 부를 수 있다. 두 구현이 갈리면 「열려 보이는데 발급은 안 되는 배지」가
+ * 생긴다 — `RARITY_LABEL`에서 이미 겪은 유형의 사고다.
  *
  * `requireMissionReward`가 true면 보유 배지가 실제 미션 보상 배지여야 한다 — 일반 배지를
  * 가리킨 `gate_mission_badge`가 조용히 통과하는 것을 막는다.
+ */
+export function familyGateSatisfied(
+  familyKey: string,
+  req: Pick<NormalizedGateRequirement, 'minRarityTier' | 'minLevel'>,
+  ownedDefs: readonly OwnedBadgeDef[],
+  gatedActivityTypes: readonly ActivityType[] | null,
+  requireMissionReward: boolean
+): boolean {
+  return ownedDefs.some((owned) => {
+    if (familyKeyOf(owned) !== familyKey) return false
+    if (!sharesActivityType(gatedActivityTypes, owned.activity_types)) return false
+    if (requireMissionReward) {
+      if ((owned.condition_json as BadgeCondition | null)?.mission_reward !== true) return false
+    }
+    // min_rarity가 없으면 «그 계열의 배지를 하나라도 보유»다(무한레벨형 계열도 대상이 된다).
+    // 있으면 등급 서열 비교이므로 등급이 없는 배지(레벨형)는 만족시킬 수 없다 — rarityTier가
+    // 0을 돌려주는 것은 «서열의 맨 아래»가 아니라 «이 서열에 속하지 않는다»는 뜻이다.
+    if (req.minRarityTier > 0 && rarityTier(owned.rarity) < req.minRarityTier) return false
+    // min_level(티켓 20260906_1947 ④) — 무한레벨형 대상 전용. owned.level이 null이면
+    // (등급형 배지) 이 조건과 무관하므로 통과시킨다 — family_keys 목록이 등급형·레벨형을
+    // 섞어 담는 경우는 없지만(같은 축은 같은 종류다), 방어적으로 «레벨이 있을 때만» 비교한다.
+    if (req.minLevel > 0 && owned.level != null && owned.level < req.minLevel) return false
+    return true
+  })
+}
+
+/**
+ * 요구를 만족하는 계열 수를 센다. 계열 하나당 판정은 `familyGateSatisfied`에 위임한다.
  */
 function countSatisfiedFamilies(
   req: NormalizedGateRequirement,
@@ -208,18 +260,7 @@ function countSatisfiedFamilies(
 ): number {
   let matched = 0
   for (const familyKey of req.familyKeys) {
-    const hit = ownedDefs.some((owned) => {
-      if (familyKeyOf(owned) !== familyKey) return false
-      if (!sharesActivityType(gatedActivityTypes, owned.activity_types)) return false
-      if (requireMissionReward) {
-        if ((owned.condition_json as BadgeCondition | null)?.mission_reward !== true) return false
-      }
-      // min_rarity가 없으면 «그 계열의 배지를 하나라도 보유»다(무한레벨형 계열도 대상이 된다).
-      // 있으면 등급 서열 비교이므로 등급이 없는 배지(레벨형)는 만족시킬 수 없다 — rarityTier가
-      // 0을 돌려주는 것은 «서열의 맨 아래»가 아니라 «이 서열에 속하지 않는다»는 뜻이다.
-      if (req.minRarityTier > 0 && rarityTier(owned.rarity) < req.minRarityTier) return false
-      return true
-    })
+    const hit = familyGateSatisfied(familyKey, req, ownedDefs, gatedActivityTypes, requireMissionReward)
     if (hit) matched += 1
     else unmetOut?.push(familyKey)
   }
@@ -237,6 +278,7 @@ export function describeGateRequirementTargets(req: NormalizedGateRequirement): 
   const parts = [`계열 ${req.familyKeys.join(joiner)}`]
   if (req.minCount > 1) parts.push(`${req.minCount}개 이상`)
   if (req.minRarityLabel) parts.push(`${req.minRarityLabel} 이상`)
+  if (req.minLevel > 0) parts.push(`Lv.${req.minLevel} 이상`)
   return parts.join(' / ')
 }
 
