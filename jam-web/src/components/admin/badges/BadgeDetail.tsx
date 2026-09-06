@@ -261,6 +261,37 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
                 </div>
               </div>
             )}
+            {/* 배경 테마 — 수정 화면(BadgeForm.tsx)에서만 확인 가능하고 상세 화면엔 없어
+                켜져 있는지조차 알 수 없던 문제(티켓 20260906_1423). 편집 화면이 아니므로
+                애니메이션 파라미터 전체를 나열하지 않고 설정 여부만 요약한다. */}
+            <div>
+              <div className="text-xs font-semibold text-gray-600 mb-1">배경 테마</div>
+              {badge.background_color || badge.background_animation ? (
+                <div className="space-y-1.5">
+                  {badge.background_color && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span
+                        className="inline-block w-4 h-4 rounded border border-gray-300 shrink-0"
+                        style={{ backgroundColor: badge.background_color }}
+                      />
+                      <span>{badge.background_color}</span>
+                    </div>
+                  )}
+                  {badge.background_animation && (
+                    <div className="text-sm text-gray-700">애니메이션 적용됨</div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">없음</div>
+              )}
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-gray-600 mb-1">계열 키 (family_key)</div>
+              <div className="text-sm">{badge.family_key ?? '— 없음 —'}</div>
+              <div className="text-xs text-gray-500 mt-1">
+                2단 교차 게이트가 이 키로 계열을 가리켜요.
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
