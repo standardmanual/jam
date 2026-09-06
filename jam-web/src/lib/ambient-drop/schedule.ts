@@ -58,6 +58,36 @@ export function formatAmbientDropScheduleTime(scheduleHourKst: number): string {
   return `${String(scheduleHourKst).padStart(2, '0')}:00 KST`
 }
 
+/**
+ * 화면 표기 — 「03:00 KST · 새벽」.
+ *
+ * 24시간제 숫자만 보면 그게 하루 중 언제인지 감이 안 온다. 이 티켓의 발단이 정확히
+ * 그것이었다 — 배포 시각이 18:00(UTC)으로 적혀 있어 **매일 한국시간 새벽 3시에 드랍이
+ * 깔리고 있다는 사실을 아무도 읽어내지 못했다.** 그래서 선택지마다 때를 함께 적는다.
+ */
+export function formatAmbientDropScheduleOption(scheduleHourKst: number): string {
+  return `${formatAmbientDropScheduleTime(scheduleHourKst)} · ${dayBandLabel(scheduleHourKst)}`
+}
+
+function dayBandLabel(hourKst: number): string {
+  if (hourKst <= 4) return '새벽'
+  if (hourKst <= 8) return '아침'
+  if (hourKst <= 11) return '오전'
+  if (hourKst <= 17) return '오후'
+  if (hourKst <= 21) return '저녁'
+  return '밤'
+}
+
+/**
+ * 상호 배제 창 상한(분).
+ *
+ * 이 창의 목적은 예약 배포와 수동 배포가 겹치는 것을 막는 것뿐이라 몇 분이면 충분하다.
+ * 상한이 없으면 720(12시간) 이상을 넣는 순간 `isWithinAmbientDropExclusionWindow`의
+ * 랩어라운드 최댓값이 720이라 **하루 24시간 내내 「지금 배포」가 409로 막힌다** —
+ * 운영자가 스스로를 잠그는 경로다.
+ */
+export const AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES = 180
+
 /** 화면 표기 — 「매일 03:00 KST」 */
 export function formatAmbientDropScheduleLabel(scheduleHourKst: number): string {
   return `매일 ${formatAmbientDropScheduleTime(scheduleHourKst)}`

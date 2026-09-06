@@ -5,7 +5,10 @@ import {
   updateAmbientDropConfig,
   type AmbientDropConfig,
 } from '@/lib/ambient-drop/config'
-import { isValidScheduleHourKst } from '@/lib/ambient-drop/schedule'
+import {
+  AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES,
+  isValidScheduleHourKst,
+} from '@/lib/ambient-drop/schedule'
 import type { AmbientDropAxisMode } from '@/types/database'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -41,8 +44,17 @@ export async function PUT(req: NextRequest) {
 
   const exclusion_window_minutes =
     body.exclusion_window_minutes === undefined ? current.exclusion_window_minutes : Number(body.exclusion_window_minutes)
-  if (Number.isNaN(exclusion_window_minutes) || exclusion_window_minutes < 0) {
-    return NextResponse.json({ error: 'exclusion_window_minutes는 0 이상의 숫자여야 합니다.' }, { status: 400 })
+  if (
+    Number.isNaN(exclusion_window_minutes) ||
+    exclusion_window_minutes < 0 ||
+    exclusion_window_minutes > AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES
+  ) {
+    return NextResponse.json(
+      {
+        error: `상호 배제 창은 0~${AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES}분 사이여야 해요. 720분을 넘기면 「지금 배포」가 하루 종일 막혀요. 예약 배포와 겹치는 것만 막으면 되니 15분 안팎이면 충분해요.`,
+      },
+      { status: 400 }
+    )
   }
 
   const category_mode = body.category_mode === undefined ? current.category_mode : body.category_mode
