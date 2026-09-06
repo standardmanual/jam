@@ -38,6 +38,23 @@ export const GATE_STAGE_LABEL: Record<MissionGateStage, string> = {
   epic_to_mystic: 'Epic → Mystic',
 }
 
+/**
+ * 미션이 실제로 필요한 게이트 단계 — v5 설계(마스터 20260905_0026 §게이트 표)상
+ * `rare_to_epic` 전환은 축 교차(`cross_in_axis`/`cross_between_axis`)만으로 충분하고
+ * 미션이 필요 없다. 미션이 필요한 건 `epic_to_mystic` 한 단계뿐이다.
+ *
+ * `buildGateMatrix()`의 `complete` 판정과 `checkGateMissionConsistency()`의
+ * `axis_stage_gap` 검사, 어드민 화면(`GateMissionManager.tsx`)의 빈 칸 표시가 전부
+ * **이 목록 하나**를 기준으로 삼는다 — 갈리면 "정합성 검사는 정상인데 화면은 구멍으로
+ * 보이는" 모순이 재발한다(티켓 20260906_2231 게이트 리뷰 재작업).
+ */
+export const MISSION_REQUIRED_GATE_STAGES: readonly MissionGateStage[] = ['epic_to_mystic']
+
+/** 이 단계는 미션이 없어도 정상인가(=축 교차만으로 충분한 단계인가) */
+export function isGateStageMissionOptional(stage: MissionGateStage): boolean {
+  return !MISSION_REQUIRED_GATE_STAGES.includes(stage)
+}
+
 /** 노출 규칙 안에서 계열 요구를 담는 두 자리 */
 export const VISIBILITY_RULE_REQUIREMENT_KEYS = ['require_owned', 'hide_when_owned'] as const
 export type VisibilityRuleRequirementKey = (typeof VISIBILITY_RULE_REQUIREMENT_KEYS)[number]
@@ -205,7 +222,8 @@ export function buildGateMatrix(missions: readonly GateMissionInput[]): GateMatr
         axis,
         activityType: gateAxisActivityType(axis),
         cells,
-        complete: MISSION_GATE_STAGES.every((stage) => cells[stage].length > 0),
+        // `rare_to_epic`은 미션이 없어도 정상이므로 완결 판정에서 뺀다 — `MISSION_REQUIRED_GATE_STAGES` 참고
+        complete: MISSION_REQUIRED_GATE_STAGES.every((stage) => cells[stage].length > 0),
       }
     })
     .sort((a, b) => a.axis.localeCompare(b.axis, 'ko'))
@@ -277,10 +295,19 @@ export function checkGateMissionConsistency(input: GateConsistencyInput): GateMi
   }
 
   // ── ① 축 × 단계 커버리지 ─────────────────────────────────────────────────
+  //
+  // ⚠️ `rare_to_epic` 단계는 "미션 없음"이 구멍이 아니라 정상이다 — v5 설계(마스터 티켓
+  // 20260905_0026 §게이트 표)상 Rare→Epic 전환은 축 교차(cross_in_axis/cross_between_axis)
+  // 만으로 충분하고 미션이 필요 없다. 미션이 필요한 건 `epic_to_mystic` 한 단계뿐이다.
+  // 이 구분이 없으면 축마다 `rare_to_epic` 칸이 항상 비어 있어(정상인데도) 정합성 검사가
+  // 축 수만큼(9~12개) 매번 `error`를 냈다(0033 설계 — v5 게이트 확정 이전 가정이 남아
+  // "축마다 두 단계 모두 미션이 있어야 한다"고 잘못 가정했다. 티켓 20260906_1947 부수 발견,
+  // 20260906_2231에서 수정).
   for (const row of buildGateMatrix(gateMissions)) {
     for (const stage of MISSION_GATE_STAGES) {
       const cell = row.cells[stage]
       if (cell.length === 0) {
+        if (isGateStageMissionOptional(stage)) continue
         issues.push({
           level: 'error',
           code: 'axis_stage_gap',

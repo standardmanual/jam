@@ -231,6 +231,12 @@ badge-engine에 `condition.route` 참조가 **0건**이라(실측 2026-09-05) `p
 미달성**이 된다. `evaluateConditionDetailed`의 `extraAllowedKeys` 옵션이 그 통로이며,
 **`pending` 판정에는 영향을 주지 않는다** — 평가 구현이 없는 건 미션에서도 마찬가지다.
 
+> 이 통로는 티켓 `20260906_2231`(게이트 미션 40종)에서 `mission_type='engine_condition'`
+> 전용으로 한 번 더 확장됐다 — 다만 그쪽은 `evaluateConditionDetailed`를 직접 호출하지 않고
+> `src/lib/missions/engineCondition.ts`가 **배지엔진 위임분만 골라 넘긴다**(미션 전용 신규
+> 어휘 — 주기 축 「매기간 M회」·부분집합·서로 다른 요일/달 수 — 는 배지엔진이 모르는 필드라
+> 그대로 넘기면 fail-closed에 걸린다). 상세는 §2.11 참고.
+
 **진행률도 같은 기준을 쓴다.** `classifyBadgeProgressKind`는 아는 축만 세므로 «기존 축 1개 +
 `pending` 필드 1개»인 조건은 대기 필드를 무시한 채 진행률을 그렸다 — 발급은 막히는데 화면에는
 달성률이 뜨는 상태다. fail-closed에 걸리는 조건은 `unsupported`로 돌려 표시도 함께 막는다.
@@ -467,14 +473,37 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 무한레벨형(누적) 계열 자신의 Lv.5+/Lv.8+ 자체 게이트는 이번 매핑 범위 밖 — 별도
 > 콘텐츠 작업으로 남았다.
 >
-> ⚠️ **미션 40종(걷기 8 + 4종목 32) 자체가 `missions` 테이블에 아직 없다** — 티켓
-> `20260906_2231`(OPEN)로 분리. `gate_axis` 등 3개 컬럼을 채우기 이전에, v5 설계 문서
-> (`v5_mission_badges.json`)가 요구하는 미션 완료 조건(예: 「3주 연속 주 3회」·「서로 다른
-> 5개 요일」·「N주 안에 M회」) 대부분이 **현재 `missions.mission_type`/`MissionCondition`
-> 어휘로 표현할 수 없다** — 배지엔진 수준의 조건 표현력(반복 횟수·요일 분산·시간대 분산
-> 등)이 미션 엔진에는 없다. 그 결과 **`gate_mission_badge` 요구가 걸린 Mystic은 미션이
-> 없어 그 보상 배지를 얻을 방법이 없으므로 `2231` 완료 전까지 사실상 계속 막혀 있다**
-> (fail-closed 방향이라 잘못 열리지는 않는다).
+> **미션 엔진 조건 어휘 확장 + 게이트 미션 40종 시딩 SQL — 티켓 `20260906_2231`.**
+> `v5_mission_axis_groups.json`(걷기 8)·`v5_mission_badges.json`(4종목 32) 40건을 전수
+> 대조한 결과 대부분이 기존 `mission_type`/`MissionCondition` 6종(필드 하나씩만 보는 단순
+> 타입)으로 표현 불가능했다. 새 `mission_type='engine_condition'`을 추가해 두 갈래로
+> 해결한다:
+> 1. **배지엔진 어휘 위임** — `repeat_count`·`rest_after_long`·`single_distance_km`·
+>    `max_pace_sec_per_km`·`same_activity` 등 이미 배지엔진(`evaluateConditionDetailed`)이
+>    아는 필드를 그대로 재사용한다(`missions/checker.ts`가 이미 갖고 있던 캐스팅 통로를
+>    확장). 「한 번에 X 이상 / N회」·「다음 날 휴식 + N회」·「한 활동이 두 필드 동시 충족」류가
+>    여기 해당한다.
+> 2. **미션 전용 신규 어휘**(배지엔진에는 없음, `src/lib/missions/engineCondition.ts`가
+>    직접 판정) — 「N주/개월 연속 한 기간에 M회[+부분집합]」(`weekly_streak_min_count`·
+>    `monthly_streak`·`monthly_streak_min_count`·`streak_subset`)와 「서로 다른 K개
+>    요일/두 달」(`distinct_weekday_count`·`distinct_months_required`+`_metric`+`_threshold`·
+>    `time_band_counts`). 650여 종 배지 카탈로그에는 이 조합이 필요한 조건이 없어
+>    `BadgeCondition`/배지엔진 레지스트리에는 넣지 않았다 — 기존 배지 판정에 회귀 위험이 없다.
+>
+> `checkGateMissionConsistency()`(`gateMissions.ts`)의 `axis_stage_gap` 검사가 모든 축의
+> `rare_to_epic` 단계를 항상 구멍으로 오탐하던 버그도 함께 고쳤다 — v5 설계상 Rare→Epic은
+> 축 교차만으로 충분하고 미션이 필요 없다(0033 설계, v5 게이트 확정 이전 가정이 남아 있었다).
+>
+> **미션 40종(걷기 8 + 4종목 32, 실제 DB 행은 축 중복으로 53행) 시딩 SQL** —
+> `Service Plan/Specs/Content/v5_mission_seed_build.py`가 `v5_gate_build.py`(1947)의
+> `MISSION_MAP`·`family_keys_of_axis`를 그대로 재사용해 생성한다
+> (`jam-web/supabase/migrations/seed_v5_gate_missions.sql`, **미실행** — 사용자 승인 후
+> 오케스트레이터가 처리). 마이그레이션 135가 남긴 "레거시 게이트 미션 15개 폐기 + v5 40개
+> 신규 생성"(2026-09-05 사용자 확정, 판단 ②) 방침을 그대로 따라 걷기 8종도 기존 행을
+> 재사용하지 않고 새로 만든다 — SQL 파일 상단에 실행 전 확인 SELECT를 남겨 뒀다.
+>
+> 실행 전까지는 `gate_mission_badge` 요구가 걸린 Mystic은 미션이 없어 그 보상 배지를 얻을
+> 방법이 없으므로 계속 막혀 있다(fail-closed 방향이라 잘못 열리지는 않는다).
 >
 > 폐기된 v4 방식 기록 (티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
 

@@ -320,6 +320,32 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(gap[0].stage, 'epic_to_mystic')
   }],
 
+  ['④ rare_to_epic 단계는 미션이 없어도 구멍으로 잡지 않는다 (티켓 20260906_2231)', () => {
+    // v5 설계상 Rare→Epic 전환은 축 교차만으로 충분하고 미션이 필요 없다 — epic_to_mystic
+    // 하나만 채워진 정상 상태에서 axis_stage_gap이 0건이어야 한다(과거엔 축마다 항상 1건씩
+    // 오탐했다 — 티켓 20260906_1947 부수 발견).
+    const issues = checkGateMissionConsistency({
+      missions: [gateMission({ id: 'a', reward_badge_ids: ['r1'] })],
+      activityBadges: [],
+      referencedBadges: new Map([['r1', badge({ id: 'r1', name: '보상' })]]),
+    })
+    const gap = issues.filter((i) => i.code === 'axis_stage_gap')
+    assert.strictEqual(gap.length, 0)
+  }],
+
+  ['④ epic_to_mystic 단계가 비어 있으면 여전히 구멍으로 잡는다 (rare_to_epic만 예외)', () => {
+    const rows = buildGateMatrix([gateMission({ id: 'a', gate_stage: 'rare_to_epic' })])
+    assert.strictEqual(rows[0]?.cells.epic_to_mystic.length, 0)
+    const issues = checkGateMissionConsistency({
+      missions: [gateMission({ id: 'a', gate_stage: 'rare_to_epic', reward_badge_ids: ['r1'] })],
+      activityBadges: [],
+      referencedBadges: new Map([['r1', badge({ id: 'r1', name: '보상' })]]),
+    })
+    const gap = issues.filter((i) => i.code === 'axis_stage_gap')
+    assert.strictEqual(gap.length, 1)
+    assert.strictEqual(gap[0].stage, 'epic_to_mystic')
+  }],
+
   ['④ 같은 축·단계에 미션 2개면 중복을 잡는다', () => {
     const issues = checkGateMissionConsistency({
       missions: [gateMission({ id: 'a' }), gateMission({ id: 'b' })],
@@ -416,18 +442,32 @@ const cases: Array<[string, () => void]> = [
     assert.deepStrictEqual(legacy[0].missionIds, ['legacy'])
   }],
 
-  ['④ 매트릭스는 축별로 두 단계의 채움 여부를 드러낸다', () => {
+  ['④ 매트릭스의 complete는 epic_to_mystic 한 단계만으로 판정한다 (rare_to_epic은 무시, 티켓 20260906_2231 재작업)', () => {
+    // v5 설계상 rare_to_epic은 미션이 없어도 정상이다 — complete 판정에 두 단계를 다
+    // 요구하면(과거 버그) epic_to_mystic만 채운 정상 상태도 「구멍 있음」으로 오탐한다.
     const rows = buildGateMatrix([
-      gateMission({ id: 'a', gate_stage: 'rare_to_epic' }),
+      // walking: epic_to_mystic만 채움, rare_to_epic은 비어 있음(정상) → complete: true
       gateMission({ id: 'b', gate_stage: 'epic_to_mystic' }),
+      // running:속도: rare_to_epic만 채움, epic_to_mystic이 비어 있음(진짜 구멍) → complete: false
       gateMission({ id: 'c', gate_axis: 'running:속도', gate_stage: 'rare_to_epic' }),
       gateMission({ id: 'plain', gate_axis: null, gate_stage: null }),
     ])
     assert.strictEqual(rows.length, 2)
     const walking = rows.find((r) => r.axis === AXIS)
-    assert.strictEqual(walking?.complete, true)
+    assert.strictEqual(walking?.cells.rare_to_epic.length, 0)
+    assert.strictEqual(walking?.complete, true, 'rare_to_epic이 비어도 epic_to_mystic만 있으면 complete여야 한다')
     assert.strictEqual(walking?.activityType, 'walking')
-    assert.strictEqual(rows.find((r) => r.axis === 'running:속도')?.complete, false)
+    const runningSpeed = rows.find((r) => r.axis === 'running:속도')
+    assert.strictEqual(runningSpeed?.cells.epic_to_mystic.length, 0)
+    assert.strictEqual(runningSpeed?.complete, false, 'epic_to_mystic이 비면 rare_to_epic이 있어도 구멍이다')
+  }],
+
+  ['④ 매트릭스의 complete는 두 단계가 다 채워져도 여전히 참이다', () => {
+    const rows = buildGateMatrix([
+      gateMission({ id: 'a', gate_stage: 'rare_to_epic' }),
+      gateMission({ id: 'b', gate_stage: 'epic_to_mystic' }),
+    ])
+    assert.strictEqual(rows[0]?.complete, true)
   }],
 
   // ── ⑤ 마이그레이션 135가 130~134를 되돌리지 않는다 ──────────────────────

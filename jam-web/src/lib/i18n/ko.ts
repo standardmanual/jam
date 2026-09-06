@@ -565,6 +565,7 @@ export const ko = {
     goalStreakDays: '연속 활동 일수',
     goalDurationMinutes: '단일 활동 시간',
     goalElevationGainM: '단일 활동 고도 상승',
+    goalEngineCondition: '미션 완료',
     goalDefault: '목표',
     conditionTitle: '달성 조건',
     myProgressTitle: '나의 진행 상황',
