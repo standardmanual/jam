@@ -874,12 +874,14 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 
 ## 13. Cron 작업
 
-모든 Cron은 `Authorization: Bearer {CRON_SECRET}` 헤더 필요.
+**크론의 단일 진실 원천은 [`Specs/PRD/04_PROJECT_SPEC.md` 「Vercel Cron 작업」](PRD/04_PROJECT_SPEC.md#vercel-cron-작업)이다.**
+경로·스케줄·인증 방식·제거된 크론의 이력이 모두 그곳에 있다. 실체는 `jam-web/vercel.json`의
+`crons` 배열이므로, 문서와 어긋나면 항상 그 파일이 옳다.
 
-| 경로 | 실행 주기 | 기능 |
-|------|----------|------|
-| `GET /api/cron/sync` | 정기 (외부 스케줄러 설정) | 전체 `strava_connections` 유저 순차 동기화. Strava Rate Limit 대응. |
-| `GET /api/cron/poi-cleanup` | 정기 | 만료된 POI 드랍 정리 |
+> ⚠️ **이 절에 크론 표를 다시 만들지 말 것.** 예전에는 여기에도 같은 표가 있었고, 그 사본이
+> 37일 동안 틀린 채로 방치됐다 — 2026-07-31에 삭제된 `/api/cron/sync`를 계속 안내하면서
+> 실제로 도는 `notifications`·`ambient-drop`은 빠져 있었다(티켓 20260906_1245). 한 사실을 두
+> 문서가 나눠 가지면 한쪽만 갱신되는 일이 반복된다. 크론 정보가 필요하면 위 링크로 보낸다.
 
 ---
 
@@ -918,10 +920,13 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 
 ### Cron
 
+스케줄은 여기에 적지 않는다 — [§13](#13-cron-작업)이 가리키는 SOT에만 둔다.
+
 | 메서드 | 경로 | 기능 |
 |--------|------|------|
-| GET | `/api/cron/sync` | 전체 유저 Strava 정기 동기화 |
-| GET | `/api/cron/poi-cleanup` | 만료 POI 드랍 정리 |
+| GET | `/api/cron/poi-cleanup` | 만료 POI 드랍 소각 |
+| GET | `/api/cron/notifications` | 알림(소식) T2 배치 생성 |
+| GET | `/api/cron/ambient-drop` | 앰비언트(시스템) POI 드랍 배치 |
 
 ### 어드민
 
