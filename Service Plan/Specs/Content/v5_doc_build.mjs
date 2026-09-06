@@ -9,10 +9,13 @@ const ORDER = ['walking', 'running', 'cycling', 'hiking', 'trail_running']
 const KIND = { graded: '등급형', leveled: '레벨형', repeatable: '반복형', auto: '자동 상승형' }
 const RK = { common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' }
 
-// 설명문: 라이팅 정본 + 미션 정본을 (종목, 이름)으로 합친다
+// 설명문: 라이팅 정본 + 미션 정본을 (종목, 이름)으로 합친다. 등급별설명까지 함께 들고 온다
+// (티켓 20260906_1420 — 이전엔 r['설명']만 집어 계열마다 최저 등급 문장 하나만 실렸다)
 const desc = new Map()
-for (const [sp, rows] of Object.entries(writ['계열'])) for (const r of rows) desc.set(sp + '|' + r['이름'], r['설명'])
-for (const b of miss['배지']) desc.set(b.sport + '|' + b['이름'], b['설명'])
+for (const [sp, rows] of Object.entries(writ['계열'])) for (const r of rows) desc.set(sp + '|' + r['이름'], r)
+for (const b of miss['배지']) desc.set(b.sport + '|' + b['이름'], b)
+
+const RARITY_ORDER = ['common', 'rare', 'epic', 'mystic']
 
 const L = []
 const A = (s = '') => L.push(s)
@@ -111,8 +114,27 @@ for (const sp of ORDER) {
     A('<details><summary>설명문</summary>')
     A()
     for (const f of fams.filter(x => x['축'] === ax)) {
-      const dsc = desc.get(sp + '|' + f['이름']) ?? desc.get(SPORT[sp] + '|' + f['이름']) ?? '—'
-      A(`- **${f['이름']}** — ${dsc}`)
+      const row = desc.get(sp + '|' + f['이름']) ?? desc.get(SPORT[sp] + '|' + f['이름'])
+      const gm = row?.['등급별설명']
+      if (!row || !gm || Object.keys(gm).length === 0) {
+        A(`- **${f['이름']}** — ${row?.['설명'] ?? '—'}`)
+        continue
+      }
+      // 등급형은 Common→Rare→Epic→Mystic, 레벨형은 Lv 오름차순으로 정렬한 뒤
+      // 최저 등급(첫 행)은 `설명`, 나머지는 `등급별설명`에서 가져온다
+      const ladder = [...f['사다리']].sort((a, b) => a.rarity && b.rarity
+        ? RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity)
+        : (a.level ?? 0) - (b.level ?? 0))
+      A(`- **${f['이름']}**`)
+      ladder.forEach((s, i) => {
+        const tag = s.rarity ? RK[s.rarity] : `Lv.${s.level}`
+        if (i === 0) {
+          A(`  - ${tag} \`설명\` — ${row['설명']}`)
+        } else {
+          const key = s.rarity ? s.rarity : String(s.level)
+          A(`  - ${tag} \`등급별설명\` — ${gm[key] ?? '—'}`)
+        }
+      })
     }
     A()
     A('</details>')
