@@ -4,7 +4,7 @@ import type { Rarity } from '../cards/RarityBadge';
 export interface BadgeStampRowProps {
   /** 계열 이름 */
   name: string;
-  /** 등급. 반복형은 v5에서 등급이 있다(레벨형만 NULL) */
+  /** 등급. 반복형은 v5에서 등급이 있다(레벨형만 NULL). `null`이면 칩 칸 자체를 만들지 않는다 */
   rarity?: Rarity | null;
   /** 누적 횟수. `×N` 칩 하나로만 그린다 — 점 그리드는 쓰지 않는다 */
   count?: number | null;

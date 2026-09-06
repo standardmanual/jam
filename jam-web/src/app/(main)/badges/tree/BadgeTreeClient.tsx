@@ -3,14 +3,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
-import BadgeTrophyGridCard from '@/components/badges/BadgeTrophyGridCard'
 import BadgeFamilyRow from '@/components/badges/BadgeFamilyRow'
 import BadgeUnlockSheet, { type BadgeUnlockSheetData } from '@/components/badges/BadgeUnlockSheet'
 import { MedalIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { BadgeTreeSummaryHeader } from '@ds/components/patterns/BadgeTreeSummaryHeader'
 import { BadgeStatusSection } from '@ds/components/patterns/BadgeStatusSection'
-import { RecentSyncBanner } from '@ds/components/patterns/RecentSyncBanner'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
 import { d } from '@/lib/i18n'
 import type { ActivityType, BadgeRarity } from '@/types/database'
@@ -58,19 +56,18 @@ function normalizeActivity(
 }
 
 /**
- * 배지 트리(/badges/tree) — 티켓 20260905_0037(전면 리뉴얼).
+ * 배지 트리(/badges/tree) — 티켓 20260905_0037(전면 리뉴얼), 20260906_1323(화면 정리).
  *
- * ## 구분은 「다음 목표 / 받은 배지」 상태 둘뿐이다
+ * ## 이 화면은 「다음 목표」 하나만 그린다
  *
  * 이전 버전은 «계열 레일 + 독립 배지 그리드»로 나눴는데, 그건 **카탈로그의 사정**이지
  * 사용자의 질문이 아니다. 설계 분류(누적·주기·시간대)도 마찬가지다 — 배지 이름이 이미
  * 그 구분을 말한다. 이 화면의 질문은 «다음에 뭘 하면 되나» 하나이므로,
- * **다음 목표는 진행이 가까운 순으로** 정렬하고 받은 배지는 접어 둔다.
+ * **다음 목표를 진행이 가까운 순으로** 정렬해 그것만 보여준다.
  *
- * ## 왜 접기가 성능이기도 한가
- * `BadgeStatusSection`은 접힌 동안 본문을 **렌더하지 않는다**. 「받은 배지」는 진행 계산이
- * 아예 필요 없는 쪽이라 서버(`page.tsx`)도 그 배지들의 진행을 계산하지 않는다 —
- * 630종에서 계산 대상이 «아직 못 받은 계열의 프런티어»로 좁혀진다.
+ * 「받은 배지」 섹션은 20260906_1323에서 걷어냈다 — 이미 받은 것을 그리드로 다시 늘어놓아
+ * 스크롤만 길어졌고, 받은 배지는 `/badges`가 이미 담당한다. 진행 계산 대상이 «아직 못 받은
+ * 계열의 앵커»로 좁혀지는 구조(서버 `page.tsx`)는 그대로다.
  *
  * ⚠️ `BadgeStatusSection`에는 **빈 배열이 아니라 `null`을 넘겨야** `emptyText`가 뜬다
  * (`{list.map(...)}`를 그대로 넘기면 빈 영역만 남는다 — 0036이 남긴 호출부 규약).
@@ -81,14 +78,17 @@ export interface BadgeTreeClientProps {
   earnedBadgeIds: string[]
   /** 게이트가 안 열린 미획득 눈금 중 수치 조건은 이미 채운 배지 id */
   conditionMetBadgeIds: string[]
-  /** 최근 24시간 안에 동기화된 활동이 있는지 — RecentSyncBanner 노출 여부 */
-  hasRecentSync: boolean
-  /** "직전 동기화보다 {라벨} {델타}{단위} 가까워졌어요" — 비교할 진전이 없으면 null */
-  syncComparisonMessage: string | null
-  /** 계열 프런티어의 진행 계산 결과 — badge id로 조회 */
+  /** 계열 진행 앵커의 진행 계산 결과 — badge id로 조회 */
   progressByBadgeId: Record<string, BadgeProgress>
-  /** 기록형 프런티어 전용 "아쉬움 줄" 데이터 — badge id로 조회 */
+  /** 기록형 앵커 전용 "아쉬움 줄" 데이터 — badge id로 조회 */
   regretLineByBadgeId: Record<string, RegretLineData>
+  /**
+   * 계열 key → **진행 표시 앵커** 배지 id (티켓 20260906_1323 §8).
+   *
+   * 서버가 「첫 미충족」 기준으로 정한 값이다 — 같은 판정을 클라이언트가 다시 하면 서버와
+   * 갈라지므로 결과만 받는다. 값이 없는 계열은 기존 `frontierStageOf`(획득 기준)로 폴백한다.
+   */
+  frontierBadgeIdByFamilyKey: Record<string, string>
   /**
    * `?activity=` — 열어둘 종목 탭. 유효하지 않으면 무시하고 첫 트리를 연다 (20260906_1158).
    * 같은 키가 중복되면 Next가 배열을 주므로 `string[]`도 받는다 — 정규화에서 폴백된다.
@@ -100,10 +100,9 @@ export default function BadgeTreeClient({
   trees,
   earnedBadgeIds,
   conditionMetBadgeIds,
-  hasRecentSync,
-  syncComparisonMessage,
   progressByBadgeId,
   regretLineByBadgeId,
+  frontierBadgeIdByFamilyKey,
   initialActivity,
 }: BadgeTreeClientProps) {
   const [activeActivity, setActiveActivity] = useState<ActivityType>(
@@ -166,6 +165,9 @@ export default function BadgeTreeClient({
    * 「다음 목표」 — 아직 다 받지 못한 계열. **진행이 가까운 순**으로 세운다.
    * 진행을 계산할 수 없는 계열(§08 H)은 -1로 두어 맨 뒤로 민다 — 0으로 두면
    * "아직 시작도 안 한 계열"과 섞여 순서가 흔들린다.
+   *
+   * 진행을 읽는 눈금은 서버가 정한 **진행 앵커**다(티켓 20260906_1323 §8). 없으면 기존
+   * 획득 기준 프런티어로 폴백한다 — 정렬과 행 렌더가 같은 눈금을 봐야 한다.
    */
   const nextGoals = useMemo(() => {
     if (!activeTree) return []
@@ -173,22 +175,23 @@ export default function BadgeTreeClient({
       .map((family) => {
         const frontier = frontierStageOf(family, earnedBadgeIdSet)
         if (!frontier) return null
-        const progress = progressByBadgeId[frontier.id]
+        const progressBadgeId = frontierBadgeIdByFamilyKey[family.key] ?? frontier.id
+        const progress = progressByBadgeId[progressBadgeId]
         const fraction = progress && progress.kind !== 'unsupported' ? progress.progress : -1
-        return { family, fraction, order: frontier.sortOrder }
+        return { family, progressBadgeId, fraction, order: frontier.sortOrder }
       })
-      .filter((row): row is { family: BadgeActivityTree['families'][number]; fraction: number; order: number } => row != null)
+      .filter(
+        (
+          row
+        ): row is {
+          family: BadgeActivityTree['families'][number]
+          progressBadgeId: string
+          fraction: number
+          order: number
+        } => row != null
+      )
       .sort((a, b) => b.fraction - a.fraction || a.order - b.order)
-  }, [activeTree, earnedBadgeIdSet, progressByBadgeId])
-
-  /** 「받은 배지」 — 계열이 아니라 **배지 단위**다(섹션 헤더의 개수와 같은 단위). */
-  const earnedStages = useMemo(() => {
-    if (!activeTree) return []
-    return activeTree.families
-      .flatMap((family) => family.stages)
-      .filter((stage) => earnedBadgeIdSet.has(stage.id))
-      .sort((a, b) => a.sortOrder - b.sortOrder || (a.level ?? 0) - (b.level ?? 0))
-  }, [activeTree, earnedBadgeIdSet])
+  }, [activeTree, earnedBadgeIdSet, progressByBadgeId, frontierBadgeIdByFamilyKey])
 
   // 진행 요약 — 등급별 + **등급 없음(무한레벨형)** 버킷. 예전에는 칸이 4개로 고정이라
   // 레벨형 193종이 어느 칸에도 안 들어가 totalCount와 칸 합계가 조용히 어긋났다.
@@ -275,8 +278,6 @@ export default function BadgeTreeClient({
               noRarity={summary.noRarity.total > 0 ? summary.noRarity : null}
             />
 
-            <RecentSyncBanner visible={hasRecentSync} comparisonMessage={syncComparisonMessage} />
-
             <BadgeStatusSection
               title={d.badges.treeSectionNext}
               count={nextGoals.length}
@@ -286,7 +287,7 @@ export default function BadgeTreeClient({
               {/* 빈 배열이 아니라 null을 넘긴다 — 그래야 emptyText가 뜬다 */}
               {nextGoals.length > 0 ? (
                 <div className="flex flex-col gap-[var(--spacing-12)] pb-[var(--spacing-8)]">
-                  {nextGoals.map(({ family }) => (
+                  {nextGoals.map(({ family, progressBadgeId }) => (
                     <BadgeFamilyRow
                       key={family.key}
                       family={family}
@@ -295,29 +296,7 @@ export default function BadgeTreeClient({
                       onLockClick={handleLockClick}
                       progressByBadgeId={progressByBadgeId}
                       regretLineByBadgeId={regretLineByBadgeId}
-                    />
-                  ))}
-                </div>
-              ) : null}
-            </BadgeStatusSection>
-
-            <BadgeStatusSection
-              title={d.badges.treeSectionEarned}
-              count={earnedStages.length}
-              emptyText={d.badges.treeSectionEarnedEmpty}
-            >
-              {earnedStages.length > 0 ? (
-                <div className="grid grid-cols-3 gap-[var(--spacing-8)] pb-[var(--spacing-8)]">
-                  {earnedStages.map((stage) => (
-                    <BadgeTrophyGridCard
-                      key={stage.id}
-                      href={`/badges/${stage.id}`}
-                      name={stage.name}
-                      imageUrl={stage.imageUrl}
-                      rarity={stage.rarity}
-                      level={stage.level}
-                      earned
-                      progress={{ text: d.badges.earnedTag, fraction: 1 }}
+                      progressBadgeId={progressBadgeId}
                     />
                   ))}
                 </div>
