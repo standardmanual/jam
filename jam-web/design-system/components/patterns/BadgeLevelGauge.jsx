@@ -54,7 +54,10 @@ export function BadgeLevelGauge({
   const showChip = level != null;
   const clamped = Math.min(1, Math.max(0, fraction ?? 0));
   const done = clamped >= 1;
-  const valueColor = done ? 'var(--status-done-solid)' : 'var(--status-short-solid)';
+  // 진행 중(미완료) 현재값은 화이트(`--color-text`) — 옐로우(`--status-short-solid`)가 눈에
+  // 거슬린다는 지적으로 텍스트 색만 바꿨다(티켓 20260906_1436 §3). 토큰 값 자체는 바꾸지
+  // 않는다 — 진행 바 채움색(`ProgressBar`의 `--status-short-solid`)은 그대로다.
+  const valueColor = done ? 'var(--status-done-solid)' : 'var(--color-text)';
 
   return (
     <div

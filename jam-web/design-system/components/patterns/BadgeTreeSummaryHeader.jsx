@@ -27,8 +27,15 @@ import { getRarityLabel } from '../cards/RarityBadge.jsx';
  *
  * **칸 수에 따라 열 수를 바꾸지 않는다** — 3열 고정이다. `noRarity`가 없으면 2행 첫 자리를
  * 그냥 비워 Rare·Common의 열이 흔들리지 않게 한다.
- * 첫 칸에도 다른 칸과 같은 6px 막대(전체 진행률)를 둔다 — 막대·라벨·값의 세로 위치가 세 칸에서
- * 정확히 맞고, 「획득/전체」라는 같은 뜻을 막대와 숫자가 함께 말한다.
+ *
+ * ## 전체 칸에는 막대를 그리지 않는다 (티켓 20260906_1436 — 결정 번복)
+ *
+ * `20260906_1323` §6은 "막대·라벨·값의 세로 위치가 세 칸에서 정확히 맞는다"는 근거로 전체
+ * 칸에도 등급 칸과 같은 6px 막대를 넣기로 했었다. 실제 화면을 다시 본 사용자 판단으로
+ * **그 결정을 되돌린다** — 전체 칸은 막대 없이 레이블+값만 보여준다. 등급 칸(Mystic·Epic·
+ * Rare·Common)의 막대는 그대로 남는다. 막대가 빠진 자리만큼 레이블의 `marginTop`을
+ * `14`(원래 막대 6px + 여백 8px)로 올려 등급 칸과 레이블의 세로 위치(baseline)는 그대로
+ * 유지한다 — 막대만 사라지고 나머지 배치는 흔들리지 않는다.
  */
 // 배치 순서(요청 그대로) — 1행 [전체·Mystic·Epic] / 2행 [레벨·Rare·Common]
 const RARITY_ORDER = ['mystic', 'epic', 'rare', 'common'];
@@ -79,10 +86,13 @@ export function BadgeTreeSummaryHeader({
           const pct = stat.total > 0 ? Math.round((stat.earned / stat.total) * 100) : 0;
           return (
             <div key={key} style={{ minWidth: 0 }}>
-              <div style={{ height: 6, borderRadius: 'var(--radius-xs)', background: 'var(--status-idle-track)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-xs)', background: 'var(--status-done-solid)' }} />
-              </div>
-              <div style={{ marginTop: 8, fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {/* 전체 칸(primary)은 막대를 그리지 않는다(티켓 20260906_1436) — 등급 칸만 6px 막대 유지 */}
+              {!primary && (
+                <div style={{ height: 6, borderRadius: 'var(--radius-xs)', background: 'var(--status-idle-track)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-xs)', background: 'var(--status-done-solid)' }} />
+                </div>
+              )}
+              <div style={{ marginTop: primary ? 14 : 8, fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {label}
               </div>
               {primary ? (

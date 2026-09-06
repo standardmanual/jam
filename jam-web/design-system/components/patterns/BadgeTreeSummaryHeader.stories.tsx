@@ -14,8 +14,10 @@ const meta: Meta<typeof BadgeTreeSummaryHeader> = {
           '배지 트리(/badges/tree) 진행 요약 — 획득/전체 히어로 숫자 + 등급별 분포 막대(20260903_2329). ' +
           '배치는 **2행 3열 고정**이다(20260906_1323): 1행 [전체·Mystic·Epic] / 2행 [레벨·Rare·Common]. ' +
           '예전에는 큰 숫자 한 줄 + 등급 5칸이 가로로 붙어 각 칸이 60px 남짓이었다 — 큰 숫자를 첫 칸 ' +
-          '안으로 넣고 3열로 나눴다. 첫 칸에도 같은 6px 막대(전체 진행률)를 둬 세 칸의 막대·라벨 위치가 ' +
-          '정확히 맞는다. ' +
+          '안으로 넣고 3열로 나눴다. ' +
+          '전체 칸은 **막대가 없다**(20260906_1436 — 20260906_1323 §6의 "전체 칸에도 6px 막대를 둔다" ' +
+          '결정을 되돌렸다). 등급 칸(Mystic·Epic·Rare·Common)만 6px 막대를 유지한다. 전체 칸의 레이블 ' +
+          'marginTop을 14px(막대 6px + 여백 8px 자리)로 올려 등급 칸과 레이블의 세로 위치는 그대로 맞는다. ' +
           '분포 막대는 등급색이 아니라 상태 채널(--status-done-solid)로 채운다. ' +
           '등급 라벨은 RarityBadge.jsx의 getRarityLabel()을 재사용한다(MODULAR 단일 소스, 20260905_0027).',
       },
@@ -62,6 +64,12 @@ export const WalkingTab: Story = {
     expect(labels[3]).toBe('');
     expect(labels[4]).toContain('Rare');
     expect(labels[5]).toContain('Common');
+    // 20260906_1436 — 전체 칸(첫 칸)은 막대가 없다(자식 2개: 레이블+값). 등급 칸은
+    // 막대가 남아 있다(자식 3개: 막대+레이블+값).
+    const totalCell = grid.children[0];
+    const mysticCell = grid.children[1];
+    expect(totalCell.children.length).toBe(2);
+    expect(mysticCell.children.length).toBe(3);
   },
 };
 
