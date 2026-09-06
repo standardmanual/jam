@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
 import BadgeTrophyGridCard from '@/components/badges/BadgeTrophyGridCard'
@@ -27,29 +27,29 @@ const TREE_TAB_LABELS: Partial<Record<ActivityType, string>> = {
   trail_running: '트레일',
 }
 
-const VALID_ACTIVITY_TYPES = new Set<string>([
-  'cycling',
-  'running',
-  'trail_running',
-  'hiking',
-  'walking',
-])
-
 /**
  * `?activity=`로 들어온 값을 열어둘 종목으로 정규화한다. 모르는 값이면 null
  * (`badges/page.tsx`의 `normalizeTab`과 같은 처리 — 호출부가 기존 폴백으로 떨어진다).
  *
- * 종목 이름이 맞아도 **그 종목의 트리가 실제로 있어야** 유효로 친다. 탭은 `trees`로만
- * 그려지므로, 트리가 없는 종목을 그대로 선택하면 선택된 탭이 하나도 없이 본문이 비어 보인다.
+ * 판정 기준은 **그 종목의 트리가 실제로 `trees`에 있는가** 하나뿐이다. 탭은 `trees`로만
+ * 그려지므로, 트리가 없는 종목을 선택하면 선택된 탭이 하나도 없이 본문이 비어 보인다.
+ *
+ * ⚠️ `ActivityType` 5종을 하드코딩한 Set을 **따로 두지 않는다**(티켓 20260906_1158).
+ * `trees` 매칭이 이미 모든 무효값을 거르므로 Set은 완전 중복이고, 종목 목록의 출처가 둘이
+ * 되면 6번째 종목이 추가될 때 «트리는 있는데 Set에 없어 딥링크만 조용히 실패»하는 방향으로
+ * 썩는다. 매칭된 트리의 `activityType`을 그대로 돌려주므로 캐스팅도 필요 없다.
+ *
+ * `trim().toLowerCase()`를 거치는 이유: URL은 사람이 손으로 고치고 메신저가 대문자화하는
+ * 입력이다. `?activity=Running`이 아무 피드백 없이 걷기로 떨어지는 것을 막는다.
  */
 function normalizeActivity(
   raw: string | undefined | null,
   trees: BadgeActivityTree[]
 ): ActivityType | null {
   if (!raw) return null
-  if (!VALID_ACTIVITY_TYPES.has(raw)) return null
-  const activityType = raw as ActivityType
-  return trees.some((tree) => tree.activityType === activityType) ? activityType : null
+  const normalized = raw.trim().toLowerCase()
+  const matched = trees.find((tree) => tree.activityType === normalized)
+  return matched ? matched.activityType : null
 }
 
 /**
@@ -103,6 +103,35 @@ export default function BadgeTreeClient({
   )
   const [activeStageId, setActiveStageId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+
+  /**
+   * 탭을 옮기면 URL의 `?activity=`도 함께 갱신한다(티켓 20260906_1158).
+   * 읽기만 있으면 «쿼리로 열고 탭을 옮긴 뒤 주소를 공유하면 상대는 처음 종목을 본다»는
+   * 왕복 비대칭이 생긴다 — 읽기를 넣었기 때문에 따라오는 짝이다.
+   *
+   * `router.replace`가 아니라 `window.history.replaceState`를 쓴다 — 서버 재조회가
+   * 필요 없고(트리는 전 종목을 이미 다 만든다) 형제 화면 `BadgesClient`의 선례와도 같다.
+   */
+  const handleActivityChange = (activityType: ActivityType) => {
+    setActiveActivity(activityType)
+    // 지금 트리 화면에 다른 쿼리 파라미터는 없지만, 현재 URL에서 만들어 `activity`만
+    // 갈아끼운다 — 나중에 다른 파라미터가 붙어도 이 갱신이 지우지 않도록.
+    const params = new URLSearchParams(window.location.search)
+    params.set('activity', activityType)
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
+  }
+
+  // 브라우저 뒤로/앞으로 탐색 시 `?activity=`를 다시 탭에 반영(`BadgesClient`와 같은 형태).
+  // 정규화를 통과하지 못하면 상태를 바꾸지 않는다 — 현재 탭을 그대로 둔다.
+  useEffect(() => {
+    const onPopState = () => {
+      const raw = new URLSearchParams(window.location.search).get('activity')
+      const fromQuery = normalizeActivity(raw, trees)
+      if (fromQuery) setActiveActivity(fromQuery)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [trees])
 
   const earnedBadgeIdSet = useMemo(() => new Set(earnedBadgeIds), [earnedBadgeIds])
   const conditionMetBadgeIdSet = useMemo(() => new Set(conditionMetBadgeIds), [conditionMetBadgeIds])
@@ -224,7 +253,7 @@ export default function BadgeTreeClient({
             <SlidingTabs
               items={tabs}
               value={activeActivity}
-              onChange={setActiveActivity}
+              onChange={handleActivityChange}
               outlined={false}
               aria-label={d.badges.treeButton}
             />
