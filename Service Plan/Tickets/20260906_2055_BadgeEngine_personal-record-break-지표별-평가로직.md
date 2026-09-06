@@ -102,3 +102,20 @@ UPDATE가 먼저 필요하다. 개선 리뷰가 `Specs/Content/ACTIVITY_BADGES.m
 `evaluation: 'pending'→'engine'` 전환).
 
 이 티켓은 재개 대기 상태로 `OPEN` 유지한다(CLOSED 아님 — 작업이 끝난 게 아니라 막힌 것).
+
+## 2026-09-06 선행 조건 해소 — 콘텐츠 값 확정·반영 완료
+
+사용자가 "가장 긴 거리" 계열을 **단회 활동 기준**(`single_distance_km`)으로 확정했다.
+`jam-web/supabase/migrations/seed_personal_record_break_metric.sql`로 7계열 56종에 값을 반영:
+
+| 계열 | metric |
+|---|---|
+| `walking:B1` · `trail_running:R1` | `single_distance_km` |
+| `walking:B2` · `hiking:R2` · `trail_running:R3` | `duration_minutes` |
+| `hiking:R1` · `trail_running:R2` | `max_elevation_m` (해발고도 — "높은 도달 고도"는 상승량이 아니라 해발고도 개념) |
+
+프로덕션 반영 완료·검증(각 계열 8행 전부 정확한 값). 나머지 7계열(`walking:B3/B4`·
+`running:R2/R3`·`cycling:R2`)은 이미 다른 필드로 형제와 구분돼 있어 이번 블로킹 대상이
+아니었다 — `personal_record_break_metric` 채움은 재개 시 필요하면 함께 판단한다.
+
+**재개 조건 충족 — 엔진 구현 재착수 가능.**
