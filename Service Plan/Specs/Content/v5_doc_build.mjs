@@ -1,5 +1,7 @@
 import fs from 'node:fs'
-const R = '/Volumes/뚝섬하드/시현/JAM!/Service Plan/Specs/Content/'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+const R = path.dirname(fileURLToPath(import.meta.url)) + path.sep
 const map = JSON.parse(fs.readFileSync(R + 'v5_condition_mapping.json', 'utf8'))
 const writ = JSON.parse(fs.readFileSync(R + 'v5_catalog_writing.json', 'utf8'))
 const miss = JSON.parse(fs.readFileSync(R + 'v5_mission_badges.json', 'utf8'))
