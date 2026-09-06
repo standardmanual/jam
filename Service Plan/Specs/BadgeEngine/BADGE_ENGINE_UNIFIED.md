@@ -33,6 +33,14 @@ Strava 싱크
 - **가입 시점 앵커**(티켓 20260905_0030 §5): 누적 조건이 보는 이력은 `users.created_at` 이후로 잘린다. `getActivityHistory(supabase, userId, sinceDate)`의 3번째 인자를 호출처 4곳(`badge-engine/index.ts` · `missions/checker.ts` · `strava/sync.ts`의 진행 스냅샷 · `badges/tree/page.tsx`)이 전부 넘긴다 — 한 곳이라도 빠지면 화면·미션·발급이 서로 다른 창을 본다. **이번 싱크 배치는 앵커를 거치지 않는다**(첫 싱크의 «마지막 활동 1건 정산»이 성립해야 하므로). 앵커로 `strava_connections.created_at`을 쓰지 않은 이유는 `activity-history.ts`의 `getSignupAnchorDate` 주석 참조
 - 섀도우밴: 밴 레벨에 따라 고가치(rarity) 발급 차단 — `src/lib/abusing/`
 - 피드 이벤트: 발급 시 `recordFeedEvent` ('badge_earned' / 'item_dropped')
+- **새 활동 0건 동기화에서도 ① 배지 평가는 항상 실행된다** *(2026-09-06, 티켓 20260906_1430)*:
+  유저가 "동기화" 버튼을 눌러도 새로 받아올 활동이 없으면 `evaluateBadges(userId, [])`를
+  빈 배열로 호출한다 — 카탈로그가 확장된 시점부터 그 유저의 다음 새 활동까지 「조건은
+  충족인데 미발급」인 창이 열리는 것을 막기 위함(실측 사고: 22일간 미발급). **② 드랍
+  (`tryItemDrop`)과 미션 평가는 여전히 새 활동이 1건 이상 있을 때만 실행된다** — 이
+  게이트는 그대로 유지. 호출 경로는 `src/lib/strava/sync.ts`의 `processFetchedActivities`
+  최상단 이른 반환(`rawActivities.length === 0`)과 `activitiesFiltered.length > 0` 삼항
+  게이트 두 곳 — 배지 평가에 한해서만 무조건 호출로 바뀌었다.
 - **수동 입력 활동은 현재 걸러지지 않는다** ⚠️ *(2026-09-05 실측 정정)*: 2026-08-10에 Strava `manual=true` 활동을 `getActivities()` 반환 단계에서 제외하는 필터를 넣었으나, 정상 활동까지 누락되는 버그가 나 커밋 `86380c55`("revert: Strava manual 필터 제거")로 되돌려졌다. **`src/lib/strava/{api,sync}.ts`에 `manual` 참조가 0건이며**, 수동 입력 활동은 지금도 두 엔진 평가 대상에 들어오고 `strava_activities`에도 기록된다. 재도입 여부는 미결이다 — v5 카탈로그(티켓 20260905_0035)가 «수동 입력은 걸러진다»를 어뷰징 전제로 삼으면 그대로 어긋난다. `device_name`(기록 기기) 기반의 "조작된 파일 업로드" 필터도 상세 API 추가 호출이 필요해 미구현이다 — [Tickets/20260810_001](../../Tickets/20260810_001_Service_Strava-수동입력-활동-동기화-제외.md) 참고.
 
 ---
