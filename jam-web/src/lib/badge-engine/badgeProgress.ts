@@ -69,9 +69,12 @@ import {
   calcMaxStreak,
   passesWalkingGate,
   matchesDayOfWeek,
+  matchesDayOfWeekFilter,
   inTimeRange,
   dedupeOnePerDay,
   getMondayKey,
+  // weekly_streak(연속 주) 단독 축 — 발급 판정(index.ts)과 같은 함수를 본다(티켓 20260906_0110 ②).
+  calcMaxWeeklyStreak,
   // 「무엇이 휴식 조건인가」는 `activityFilters.ts`에 한 번만 적혀 있다 — 발급 판정(index.ts)과
   // 이 파일이 **같은 함수**를 본다(v5 B3, 티켓 20260905_0030 §4).
   restConditionKeysIn,
@@ -98,6 +101,7 @@ import {
   collectRepeatOccurrences,
   unconsumedRepeatConditionKeys,
   repeatConsumedAxisKeys,
+  isPeriodDrivenRepeatCondition,
 } from './repeatOccurrences'
 // 교차 게이트는 `evaluation: 'external'`이라 fail-closed가 잡지 않는다 — 이 파일이 직접 표시한다.
 import { crossGateKeysIn } from './crossGate'
@@ -219,7 +223,12 @@ export interface UserPeriodMetrics {
   totalCount: number
   totalDistanceKm: number
   totalElevationGainM: number
+  /** 누적 이동시간(시간) — `cumulative_duration_hours` 조건용(티켓 20260906_0110 ①) */
+  totalDurationHours: number
   streakDays: number
+  /** 역대 최장 "연속 주(월~일)" — `weekly_streak` 조건용(티켓 20260906_0110 ②). day_of_week
+   *  배열이 붙은 조건은 이 값을 못 쓴다(좁힌 풀에서 다시 계산 — `streakDays`의 time_range와 같은 규칙) */
+  weeklyStreakDays: number
   activeDaysCount: number
   /**
    * 오늘이 포함된 주(월요일 시작)의 활동 횟수. `weekly_count` 조건의 실측값(역대 최고 주,
@@ -233,6 +242,12 @@ export interface UserPeriodMetrics {
   currentWeekMondayKey: string
   /** 이번 달(달력 1일~말일) 누적 거리. `monthly_km` 조건의 실측값(역대 최고 달)과 다르다 */
   monthlyKmCurrent: number
+  /**
+   * 이번 달(달력 1일~말일)의 활동 횟수. `monthly_count` 조건의 실측값(역대 최고 달, index.ts의
+   * maxMonth)과 다르다 — `weeklyCountCurrent`와 같은 이유로 과대평가가 없다(티켓 20260906_0110 ①).
+   * 걷기는 하루 1회 상한 적용(엔진과 동일 규칙).
+   */
+  monthlyCountCurrent: number
   /** 다음 리셋 시각(다음 달 1일 00:00) ISO */
   monthEndsAt: string
   /** month 필터(단일/배열) 적격 여부를 재계산할 때 쓰는 현재 달(1~12)/연도 */
@@ -316,6 +331,12 @@ function sumKmInMonth(activities: NormalizedActivity[], year: number, month0: nu
     .reduce((s, a) => s + a.distanceKm, 0)
 }
 
+/** 걷기 하루 1회 상한(엔진 monthly_count 블록과 동일 규칙) 적용 후 지정 달의 활동 횟수 */
+function countInMonth(activities: NormalizedActivity[], year: number, month0: number, activityType: ActivityType): number {
+  const pool = activityType === 'walking' ? dedupeOnePerDay(activities) : activities
+  return pool.filter((a) => { const d = dateOf(a); return d.getFullYear() === year && d.getMonth() === month0 }).length
+}
+
 /** 다음 주 월요일 00:00 ISO 문자열 — getMondayKey와 동일한 "naive local" 규약(index.ts) */
 function nextMondayIso(mondayKey: string): string {
   const monday = new Date(`${mondayKey}T00:00:00`)
@@ -379,7 +400,9 @@ export function computeUserPeriodMetrics(
   const totalCount = activities.length
   const totalDistanceKm = activities.reduce((s, a) => s + a.distanceKm, 0)
   const totalElevationGainM = activities.reduce((s, a) => s + a.elevationGainM, 0)
+  const totalDurationHours = activities.reduce((s, a) => s + a.movingTimeSec / 3600, 0)
   const streakDays = calcMaxStreak(activities)
+  const weeklyStreakDays = calcMaxWeeklyStreak(activities)
   const activeDaysCount = new Set(activities.map(dateKey)).size
 
   const currentWeekMondayKey = getMondayKey(now)
@@ -389,6 +412,7 @@ export function computeUserPeriodMetrics(
   const currentYear = now.getFullYear()
   const currentMonthNumber = now.getMonth() + 1
   const monthlyKmCurrent = sumKmInMonth(activities, currentYear, now.getMonth())
+  const monthlyCountCurrent = countInMonth(activities, currentYear, now.getMonth(), activityType)
   const monthEndsAt = nextMonthStartIso(now)
 
   const dayOfWeekCounts = ALL_DAYS.reduce((acc, day) => {
@@ -419,12 +443,15 @@ export function computeUserPeriodMetrics(
     totalCount,
     totalDistanceKm,
     totalElevationGainM,
+    totalDurationHours,
     streakDays,
+    weeklyStreakDays,
     activeDaysCount,
     weeklyCountCurrent,
     weekEndsAt,
     currentWeekMondayKey,
     monthlyKmCurrent,
+    monthlyCountCurrent,
     monthEndsAt,
     currentMonthNumber,
     currentYear,
@@ -519,6 +546,12 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
   // 가능하다) 1,000km는 누적 합계로 따로 평가되는 독립 축이라 회차 축에 흡수되지 않는다 —
   // 그리면 「5/5회 = 100%」 옆에서 1,000km가 사라진다.
   if (hasRepeat) {
+    // 기간 단위 회차(streak_days·weekly_count·monthly_count·weekly_streak + repeat_count)는
+    // 활동 1건 단위 술어가 아니라 `collectRepeatOccurrences`의 전용 계산이 흡수한다 — 아래
+    // `unconsumedRepeatConditionKeys` 판정보다 먼저 확인해야 한다(티켓 20260906_0110 ②
+    // 개선 리뷰, 위 import 주석 참조). 이 판정이 참이면 흡수되는 키가 그 하나로 확정되므로
+    // `unabsorbedAxisKeys` 검사도 필요 없다.
+    if (isPeriodDrivenRepeatCondition(condition)) return 'repeat'
     if (unconsumedRepeatConditionKeys(condition).length > 0) return 'unsupported'
     const consumed = [...repeatConsumedAxisKeys(condition), 'repeat_count']
     return unabsorbedAxisKeys(condition, consumed).length > 0 ? 'unsupported' : 'repeat'
@@ -552,6 +585,8 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
       // same_activity:true면 "그 활동 하나"의 값이 기준(record) — 기본은 누적 합계(cumulative)
       return condition.same_activity === true ? 'record' : 'cumulative'
     }
+    // cumulative_duration_hours는 same_activity 변형이 없다 — 늘 cumulative다(티켓 20260906_0110 ①)
+    if (key === 'cumulative_duration_hours') return 'cumulative'
     return 'record'
   }
 
@@ -722,6 +757,20 @@ function getFieldValue(field: ScalarAxisKey, a: NormalizedActivity): number {
     case 'temperature_min_c': return a.weatherTempC ?? -Infinity
     case 'temperature_max_c': return a.weatherTempC ?? Infinity
     case 'weekend_duration_hours': return isWeekend(dateOf(a)) ? a.movingTimeSec / 3600 : -Infinity
+    // v5 스칼라 7종 (티켓 20260906_0110 ②) — 값이 없는 활동(심박계·파워미터 없음 등)은
+    // -Infinity로 «최댓값 계산에서 제외»한다. weekend_duration_hours와 같은 태도다.
+    case 'max_elevation_m': return a.maxElevationM ?? -Infinity
+    case 'max_speed_kmh': return a.maxSpeedKmh ?? -Infinity
+    case 'single_distance_km': return a.distanceKm
+    case 'single_elevation_m': return a.elevationGainM
+    case 'avg_heartrate_bpm': return a.avgHeartrateBpm ?? -Infinity
+    case 'avg_watts': return a.avgWatts ?? -Infinity
+    case 'avg_cadence': return a.avgCadence ?? -Infinity
+    // 누적 전용 필드(티켓 20260906_0110 ①) — 이 값 자체는 쓰이지 않는다(`buildCumulativeAxis`/
+    // `buildScalarAxis`가 `metrics.totalDurationHours`로 특수 처리한다). 활동 1건의 값을
+    // 정직하게 돌려준다 — SCALAR_AXIS_KEYS 순회(computeUserPeriodMetrics)가 유한한 수를
+    // 기대하므로 여기서 NaN/undefined를 주지 않는다.
+    case 'cumulative_duration_hours': return a.movingTimeSec / 3600
   }
 }
 
@@ -778,6 +827,9 @@ function buildScalarAxis(field: ScalarAxisKey, condition: BadgeCondition, metric
   const target = condition[field] as number
   if (field === 'distance_km') return makeHigherBetterAxis('distance_km', metrics.totalDistanceKm, target, labelMap)
   if (field === 'elevation_gain_m') return makeHigherBetterAxis('elevation_gain_m', metrics.totalElevationGainM, target, labelMap)
+  // cumulative_duration_hours도 늘 「전체 이력 합계」다(티켓 20260906_0110 ①) — same_activity
+  // 변형이 없어 위 둘과 달리 단독 축(record)으로만 쓰인다.
+  if (field === 'cumulative_duration_hours') return makeHigherBetterAxis('cumulative_duration_hours', metrics.totalDurationHours, target, labelMap)
   return makeAxisForField(field, bestScalarValueFor(field, condition, metrics), target, labelMap)
 }
 
@@ -790,8 +842,20 @@ function buildCumulativeAxis(condition: BadgeCondition, metrics: UserPeriodMetri
   if (condition.elevation_gain_m !== undefined) {
     return makeHigherBetterAxis('elevation_gain_m', metrics.totalElevationGainM, condition.elevation_gain_m, labelMap)
   }
+  if (condition.cumulative_duration_hours !== undefined) {
+    return makeHigherBetterAxis('cumulative_duration_hours', metrics.totalDurationHours, condition.cumulative_duration_hours, labelMap)
+  }
   if (condition.streak_days !== undefined) {
     return makeHigherBetterAxis('streak_days', metrics.streakDays, condition.streak_days, labelMap)
+  }
+  if (condition.weekly_streak !== undefined) {
+    // day_of_week가 배열이면 그 요일들만의 활동으로 좁혀 다시 계산한다 — 발급 판정(index.ts)의
+    // weekly_streak 블록과 같은 규칙(티켓 20260906_0110 ②). `metrics.weeklyStreakDays`는
+    // day_of_week 필터가 없는 기본값이라 그 경우엔 쓸 수 없다(streak_days의 time_range와 같은 이유).
+    const current = Array.isArray(condition.day_of_week)
+      ? calcMaxWeeklyStreak(metrics.activities.filter((a) => matchesDayOfWeekFilter(a, condition.day_of_week!)))
+      : metrics.weeklyStreakDays
+    return makeHigherBetterAxis('weekly_streak', current, condition.weekly_streak, labelMap)
   }
   if (condition.active_days_count !== undefined) {
     return makeHigherBetterAxis('active_days_count', metrics.activeDaysCount, condition.active_days_count, labelMap)
@@ -951,6 +1015,14 @@ function buildPeriodicAxis(condition: BadgeCondition, metrics: UserPeriodMetrics
       current = countInWeek(pool, metrics.currentWeekMondayKey, metrics.activityType)
     }
     return { axisResult: makeHigherBetterAxis('weekly_count', current, condition.weekly_count, labelMap), periodEndsAt: metrics.weekEndsAt }
+  }
+  if (condition.monthly_count !== undefined) {
+    // `monthly_km`과 달리 발급 판정(index.ts)이 `month` 필터와 결합하지 않는다 — 현재 카탈로그
+    // 실측 그대로 옮긴다(티켓 20260906_0110 ①).
+    return {
+      axisResult: makeHigherBetterAxis('monthly_count', metrics.monthlyCountCurrent, condition.monthly_count, labelMap),
+      periodEndsAt: metrics.monthEndsAt,
+    }
   }
   // monthly_km — month 필터(단일/배열)가 있으면 "이번 달"이 그 목록에 속할 때만 값을 인정한다.
   // (예: '1월의 다짐'은 9월엔 진행이 0이다 — 리셋 경계 자체는 항상 "다음 달 1일"로 통일)

@@ -23,6 +23,7 @@ import {
 import {
   PER_ACTIVITY_KEYS,
   CUMULATIVE_SAME_ACTIVITY_KEYS,
+  CUMULATIVE_ONLY_KEYS,
   SCALAR_AXIS_KEYS,
 } from '../conditionAxes'
 import { collectRepeatOccurrences, repeatConsumedAxisKeys } from '../repeatOccurrences'
@@ -72,7 +73,7 @@ function axesOf(result: ReturnType<typeof computeBadgeProgress>) {
 
 describe('축 키 목록 — 진행 계산과 발급 판정이 같은 출처를 본다', () => {
   it('SCALAR_AXIS_KEYS는 발급 판정의 두 목록에서 파생된다 — 손으로 나열하지 않는다', () => {
-    expect([...SCALAR_AXIS_KEYS]).toEqual([...CUMULATIVE_SAME_ACTIVITY_KEYS, ...PER_ACTIVITY_KEYS])
+    expect([...SCALAR_AXIS_KEYS]).toEqual([...CUMULATIVE_SAME_ACTIVITY_KEYS, ...PER_ACTIVITY_KEYS, ...CUMULATIVE_ONLY_KEYS])
   })
 
   it('index.ts·badgeProgress.ts 어디에도 재선언이 남아 있지 않다', () => {

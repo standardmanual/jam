@@ -355,6 +355,27 @@ const ACTIVITY_TYPE_FORM_OPTIONS = [
   { value: 'walking', label: 'walking' },
 ] as const
 
+/**
+ * `personal_record_break_metric` Select 선택지 (티켓 20260906_0110 ③).
+ *
+ * 값은 `PersonalRecordMetric`(database.ts)과 정확히 같은 집합이어야 한다 — 여기서 갈라지면
+ * 어드민 폼이 저장할 수 없는 값을 만든다.
+ */
+const PERSONAL_RECORD_METRIC_FORM_OPTIONS = [
+  { value: 'distance_km', label: '누적 거리' },
+  { value: 'elevation_gain_m', label: '누적 고도' },
+  { value: 'duration_minutes', label: '한 번의 이동시간' },
+  { value: 'min_speed_kmh', label: '속도' },
+  { value: 'max_pace_sec_per_km', label: '페이스' },
+  { value: 'single_distance_km', label: '한 번의 거리' },
+  { value: 'single_elevation_m', label: '한 번의 고도' },
+  { value: 'max_speed_kmh', label: '최고 속도' },
+  { value: 'max_elevation_m', label: '최고 도달 고도' },
+  { value: 'avg_heartrate_bpm', label: '평균 심박수' },
+  { value: 'avg_watts', label: '평균 파워' },
+  { value: 'avg_cadence', label: '평균 케이던스' },
+] as const
+
 const WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
 
 function dayOfWeekChip(days: DayOfWeek | DayOfWeek[]): string {
@@ -900,6 +921,10 @@ export const CONDITION_FIELDS = [
   // (티켓 20260905_0032) — 값이 있으면 `buildConditionJsonFromFields`가 원본 그대로 보존한다.
 
   // ① 활동 1건의 스칼라 값 — PER_ACTIVITY_KEYS 경로 (7종)
+  //
+  // 티켓 20260906_0110 ②에서 `pending` → `engine`으로 뒤집었다. `PER_ACTIVITY_KEYS`
+  // (conditionAxes.ts)에도 함께 추가해 `matchesPerActivityCondition`·회차 술어
+  // (`CONSUMED_REPEAT_KEYS`)·진행 계산(`badgeProgress.ts`)이 전부 이 7종을 인식한다.
   field({
     key: 'max_elevation_m',
     label: '최고 도달 고도',
@@ -910,7 +935,7 @@ export const CONDITION_FIELDS = [
     max: 9000,
     step: 10,
     direction: 'higher',
-    evaluation: 'pending',
+    evaluation: 'engine',
     activityField: 'maxElevationM',
     chip: (c) => `최고 고도 ${c.max_elevation_m}m`,
     detail: (c) => `최고 도달 고도 ${c.max_elevation_m}m 이상`,
@@ -926,7 +951,7 @@ export const CONDITION_FIELDS = [
     max: 120,
     step: 0.1,
     direction: 'higher',
-    evaluation: 'pending',
+    evaluation: 'engine',
     activityField: 'maxSpeedKmh',
     chip: (c) => `최고 ${c.max_speed_kmh}km/h`,
     detail: (c) => `최고 속도 ${c.max_speed_kmh}km/h 이상`,
@@ -942,7 +967,7 @@ export const CONDITION_FIELDS = [
     max: 500,
     step: 0.1,
     direction: 'higher',
-    evaluation: 'pending',
+    evaluation: 'engine',
     activityField: 'distanceKm',
     chip: (c) => `한 번 ${c.single_distance_km}km`,
     detail: (c) => `한 번의 거리 ${c.single_distance_km}km 이상`,
@@ -958,7 +983,7 @@ export const CONDITION_FIELDS = [
     max: 10000,
     step: 10,
     direction: 'higher',
-    evaluation: 'pending',
+    evaluation: 'engine',
     activityField: 'elevationGainM',
     chip: (c) => `한 번 고도 ${c.single_elevation_m}m`,
     detail: (c) => `한 번의 고도 ${c.single_elevation_m}m 이상`,
@@ -974,7 +999,7 @@ export const CONDITION_FIELDS = [
     max: 250,
     step: 1,
     direction: 'higher',
-    evaluation: 'pending',
+    evaluation: 'engine',
     activityField: 'avgHeartrateBpm',
     chip: (c) => `심박 ${c.avg_heartrate_bpm}bpm`,
     detail: (c) => `평균 심박수 ${c.avg_heartrate_bpm}bpm 이상`,
@@ -995,7 +1020,7 @@ export const CONDITION_FIELDS = [
     max: 2000,
     step: 1,
     direction: 'higher',
-    evaluation: 'pending',
+    evaluation: 'engine',
     activityField: 'avgWatts',
     chip: (c) => `파워 ${c.avg_watts}W`,
     detail: (c) => `평균 파워 ${c.avg_watts}W 이상`,
@@ -1008,7 +1033,9 @@ export const CONDITION_FIELDS = [
   }),
   field({
     key: 'avg_cadence',
-    // 단위가 종목마다 다르다(러닝 spm · 자전거 rpm) — 잘못된 단위를 박지 않고 비워 둔다
+    // 단위가 종목마다 다르다(러닝 spm · 자전거 rpm) — 잘못된 단위를 박지 않고 비워 둔다.
+    // ⚠️ 러닝·트레일러닝은 저장 시점에 이미 ×2 정규화된 값이다(양발 합계 spm) —
+    //    티켓 20260906_0110 ⑤, `normalizeCadenceForActivityType()`. 조건값도 그 기준(예: 180)으로 쓴다.
     label: '평균 케이던스',
     unit: null,
     role: 'measurable',
@@ -1017,7 +1044,7 @@ export const CONDITION_FIELDS = [
     max: 250,
     step: 1,
     direction: 'higher',
-    evaluation: 'pending',
+    evaluation: 'engine',
     activityField: 'avgCadence',
     chip: (c) => `케이던스 ${c.avg_cadence}`,
     detail: (c) => `평균 케이던스 ${c.avg_cadence} 이상`,
@@ -1025,7 +1052,7 @@ export const CONDITION_FIELDS = [
       section: 'single',
       label: '평균 케이던스',
       placeholder: '예: 90',
-      help: '단위가 종목마다 달라요 — 러닝은 spm, 자전거는 rpm.',
+      help: '단위가 종목마다 달라요 — 러닝·트레일러닝은 저장 시 ×2 정규화된 spm(양발 합계), 자전거는 rpm 그대로예요.',
     }),
   }),
 
@@ -1062,10 +1089,10 @@ export const CONDITION_FIELDS = [
     min: 1,
     max: 30,
     step: 1,
-    // 「무엇을 장거리로 볼 것인가」는 single_distance_km이 정한다(v5 B3부터 강제).
-    // ⚠️ 그 짝 필드 자체가 아직 `pending`이라 이 조건은 지금도 fail-closed에 걸린다 —
-    //    v5 스칼라 7종을 뒤집는 선행 작업이 끝나야 실제로 발급된다(티켓 20260905_0030 잔여 이슈).
-    pairedWith: ['single_distance_km'],
+    // 「무엇을 장거리로 볼 것인가」는 single_distance_km(거리 기준) **또는** duration_minutes
+    // (시간 기준) 중 하나가 정한다 — 둘 중 하나만 있으면 뜻이 완성된다(OR, 티켓 20260906_0110 ④).
+    // v5 스칼라 7종이 `engine`으로 뒤집혀(같은 티켓) single_distance_km 짝도 이제 평가된다.
+    pairedWith: ['single_distance_km', 'duration_minutes'],
     direction: 'higher',
     evaluation: 'engine',
     chip: (c) => `장거리 후 휴식 ${c.rest_after_long}일`,
@@ -1074,7 +1101,7 @@ export const CONDITION_FIELDS = [
       section: 'pattern',
       label: '장거리 활동 후 휴식일 (일)',
       placeholder: '예: 3',
-      help: '한 번의 거리를 함께 지정해야 해요 — 없으면 저장할 수 없어요.',
+      help: '한 번의 거리(single_distance_km) 또는 한 번의 이동시간(duration_minutes) 중 하나를 함께 지정해야 해요 — 없으면 저장할 수 없어요.',
     }),
   }),
   field({
@@ -1154,7 +1181,12 @@ export const CONDITION_FIELDS = [
     max: 520,
     step: 1,
     direction: 'higher',
-    evaluation: 'pending',
+    // 티켓 20260906_0110 ②에서 `pending` → `engine`으로 뒤집었다. 「연속 주(활동이 있던 주)의
+    // 최장 길이」는 `calcMaxWeeklyStreak`(activityFilters.ts)가 단독 조건일 때 계산하고,
+    // `repeat_count`와 결합하면 그 길이 이상인 «주 스트릭»이 몇 번 끊겼다 다시 만들어졌는지를
+    // `collectPeriodStreakOccurrences`(repeatOccurrences.ts)가 센다. `day_of_week`가 배열이면
+    // 그 요일들만의 활동으로 풀을 좁힌다(`walking:A5`).
+    evaluation: 'engine',
     chip: (c) => `${c.weekly_streak}주 연속`,
     detail: (c) => `${c.weekly_streak}주(월~일) 연속 이상`,
     form: integerForm('weeklyStreak', { section: 'period', label: '연속 주(월~일) 수', placeholder: '예: 12' }),
@@ -1240,6 +1272,42 @@ export const CONDITION_FIELDS = [
     form: integerForm('personalRecordBreak', { section: 'pattern', label: '개인 기록 갱신 (회)', placeholder: '예: 3' }),
   }),
   field({
+    key: 'personal_record_break_metric',
+    label: '개인 기록 지표',
+    unit: null,
+    role: 'filter',
+    input: 'select',
+    pairedWith: ['personal_record_break'],
+    direction: null,
+    // `personal_record_break` 자체가 아직 `pending`이라 이 필드도 함께 막힌다(같은 조건에
+    // 항상 동반된다). `personal_record_break`의 평가 구현이 이 필드를 실제로 읽기 시작하면
+    // 그때 `engine`으로 뒤집는다 — 지금은 «자동 상승형 계열이 서로 수렴하지 않도록 조건
+    // 데이터를 구분 가능하게 만드는」 스키마 정비만 한다(티켓 20260906_0110 ③).
+    evaluation: 'pending',
+    chip: (c) =>
+      `기록 지표: ${PERSONAL_RECORD_METRIC_FORM_OPTIONS.find((o) => o.value === c.personal_record_break_metric)?.label ?? c.personal_record_break_metric}`,
+    detail: (c) =>
+      `개인 기록 지표: ${PERSONAL_RECORD_METRIC_FORM_OPTIONS.find((o) => o.value === c.personal_record_break_metric)?.label ?? c.personal_record_break_metric}`,
+    form: {
+      fields: ['personalRecordBreakMetric'],
+      read: (f) =>
+        typeof f.personalRecordBreakMetric === 'string' && f.personalRecordBreakMetric
+          ? (f.personalRecordBreakMetric as NonNullable<BadgeCondition['personal_record_break_metric']>)
+          : undefined,
+      write: (v) => ({ personalRecordBreakMetric: v }),
+      controls: [
+        {
+          field: 'personalRecordBreakMetric',
+          kind: 'select',
+          label: '개인 기록 지표',
+          options: PERSONAL_RECORD_METRIC_FORM_OPTIONS,
+          help: '개인 기록 갱신(personal_record_break)이 어느 지표를 보는지 지정해요 — 없으면 같은 조건의 다른 계열과 구분되지 않아요.',
+        },
+      ],
+      section: 'pattern',
+    },
+  }),
+  field({
     key: 'month_over_month_ratio',
     label: '전월 대비 배수',
     unit: '배',
@@ -1268,6 +1336,50 @@ export const CONDITION_FIELDS = [
     chip: (c) => `평소 대비 ${c.vs_personal_average}배`,
     detail: (c) => `평소 평균 대비 ${c.vs_personal_average}배 이상`,
     form: numberForm('vsPersonalAverage', { section: 'pattern', label: '평소 평균 대비 배수', placeholder: '예: 2' }),
+  }),
+
+  // ── v5 확장 (티켓 20260906_0110 ①) — 누적 이동시간 · 월간 활동 횟수 ────
+  //
+  // 레지스트리에 키가 없어 시딩(20260905_0035)에서 아예 빠졌던 5계열 27종
+  // (`walking:K2`·`running:K2`·`hiking:K2`·`cycling:G2`·`hiking:C2`)을 복구한다.
+  field({
+    key: 'cumulative_duration_hours',
+    label: '누적 이동시간',
+    unit: '시간',
+    role: 'measurable',
+    input: 'number',
+    min: 0,
+    max: 100000,
+    step: 0.1,
+    direction: 'higher',
+    evaluation: 'engine',
+    chip: (c) => `누적 ${c.cumulative_duration_hours}시간`,
+    detail: (c) => `이동시간 누적 ${c.cumulative_duration_hours}시간`,
+    form: numberForm('cumulativeDurationHours', {
+      section: 'basic',
+      label: '누적 이동시간 (시간)',
+      placeholder: '예: 120',
+    }),
+  }),
+  field({
+    key: 'monthly_count',
+    label: '월간 활동 횟수',
+    unit: '회',
+    role: 'measurable',
+    input: 'integer',
+    min: 1,
+    max: 1000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'engine',
+    chip: (c) => `월 ${c.monthly_count}회`,
+    detail: (c) => `한 달 ${c.monthly_count}회 이상`,
+    form: integerForm('monthlyCount', {
+      section: 'period',
+      label: '한 달 최소 활동 횟수',
+      placeholder: '예: 8',
+      help: '`repeat_count`와 함께 쓰면 이 횟수를 채운 달이 몇 번 있었는지를 세요.',
+    }),
   }),
 
   // ── ③ 반복 획득 1종 — 평가 구현됨 (티켓 20260905_0030 B1) ───────────────

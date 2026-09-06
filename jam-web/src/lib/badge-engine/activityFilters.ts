@@ -103,6 +103,37 @@ export function calcMaxStreak(activities: NormalizedActivity[]): number {
   return maxStreak
 }
 
+/**
+ * `day_of_week` 조건값(단일 또는 배열)에 활동이 걸리는지 — 단일이면 그 요일, 배열이면
+ * 그중 하루라도(OR). `weekly_streak`(티켓 20260906_0110 ②)가 배열 필터를 받는 유일한
+ * 자리라 여기 한 곳에 둔다 — `matchesDayOfWeek`를 두 번 쓰는 자리가 갈라지지 않게 한다.
+ */
+export function matchesDayOfWeekFilter(a: NormalizedActivity, days: DayOfWeek | DayOfWeek[]): boolean {
+  return Array.isArray(days) ? days.some((d) => matchesDayOfWeek(a, d)) : matchesDayOfWeek(a, days)
+}
+
+/**
+ * 활동 목록에서 가장 긴 "연속 주(월요일 키, 활동이 있던 주)" 스트릭 — `calcMaxStreak`의 주
+ * 단위 버전(티켓 20260906_0110 ②, `weekly_streak` 조건). 단독 평가(`index.ts`)와 회차
+ * 계산(`repeatOccurrences.ts`)이 같은 함수를 본다.
+ */
+export function calcMaxWeeklyStreak(activities: NormalizedActivity[]): number {
+  if (activities.length === 0) return 0
+  const weekKeys = [...new Set(activities.map((a) => getMondayKey(new Date(a.startDateLocal ?? a.startDate))))].sort()
+  let maxStreak = 1
+  let currentStreak = 1
+  for (let i = 1; i < weekKeys.length; i++) {
+    const diffDays = (Date.parse(weekKeys[i]) - Date.parse(weekKeys[i - 1])) / 86_400_000
+    if (diffDays === 7) {
+      currentStreak++
+      maxStreak = Math.max(maxStreak, currentStreak)
+    } else {
+      currentStreak = 1
+    }
+  }
+  return maxStreak
+}
+
 // ── 휴식(활동 공백) 판정 (v5 B3, 티켓 20260905_0030 §4) ────────────────────
 //
 // **`index.ts`(발급 판정)와 `badgeProgress.ts`(진행 계산)가 이 파일의 같은 함수를 본다.**
@@ -187,7 +218,11 @@ export function restConditionKeysIn(condition: BadgeCondition | null | undefined
 export function restConsumedPairKeys(condition: BadgeCondition): string[] {
   const keys: string[] = []
   if (condition.rest_after_streak !== undefined) keys.push('streak_days')
-  if (condition.rest_after_long !== undefined) keys.push('single_distance_km')
+  if (condition.rest_after_long !== undefined) {
+    // 짝 필드는 OR다(단, 실제로 조건에 든 쪽만 소비한다) — 티켓 20260906_0110 ④.
+    if (condition.single_distance_km !== undefined) keys.push('single_distance_km')
+    if (condition.duration_minutes !== undefined) keys.push('duration_minutes')
+  }
   return keys
 }
 
@@ -230,6 +265,8 @@ type RestInterval = {
   streakBefore: number
   /** 공백 직전 활동일의 최장 단일 활동 거리(km) */
   maxDistanceKmBefore: number
+  /** 공백 직전 활동일의 최장 단일 활동 이동시간(분) — `rest_after_long`의 시간 축(티켓 20260906_0110 ④) */
+  maxDurationMinBefore: number
   /** 공백을 닫은 «복귀 활동» — 그날의 첫 활동. 배지 상세의 「계기 활동일」이 된다 */
   resume: NormalizedActivity
 }
@@ -310,6 +347,7 @@ function buildRestIntervals(pool: NormalizedActivity[]): RestInterval[] {
       restDays: intervalDays - 1,
       streakBefore: runLength[i - 1],
       maxDistanceKmBefore: Math.max(...before.map((a) => a.distanceKm)),
+      maxDurationMinBefore: Math.max(...before.map((a) => a.movingTimeSec / 60)),
       resume: resumeList.reduce((first, a) => (a.startDate < first.startDate ? a : first), resumeList[0]),
     })
   }
@@ -373,8 +411,19 @@ export function evaluateRestConditions(
   if (condition.rest_after_streak !== undefined && !isPositiveDays(condition.streak_days)) {
     return { kind: 'fail', reason: '휴식 조건 짝 필드 없음', actual: 'streak_days 없음', required: '연속 일수(streak_days)' }
   }
-  if (condition.rest_after_long !== undefined && !isPositiveDays(condition.single_distance_km)) {
-    return { kind: 'fail', reason: '휴식 조건 짝 필드 없음', actual: 'single_distance_km 없음', required: '장거리 기준(single_distance_km)' }
+  // 짝 필드는 OR다 — single_distance_km(거리 기준) 또는 duration_minutes(시간 기준) 중
+  // 하나만 있으면 「무엇이 장거리인가」가 정의된다(티켓 20260906_0110 ④).
+  if (
+    condition.rest_after_long !== undefined &&
+    !isPositiveDays(condition.single_distance_km) &&
+    !isPositiveDays(condition.duration_minutes)
+  ) {
+    return {
+      kind: 'fail',
+      reason: '휴식 조건 짝 필드 없음',
+      actual: 'single_distance_km · duration_minutes 없음',
+      required: '장거리 기준(single_distance_km 또는 duration_minutes)',
+    }
   }
 
   // ── ④ 창 안의 인접 활동 — 없으면 공백을 **계산하지 않는다**(B-7).
@@ -416,7 +465,12 @@ export function evaluateRestConditions(
         measured = (i) => i.restDays
         break
       case 'rest_after_long':
-        eligible = intervals.filter((i) => i.maxDistanceKmBefore >= (condition.single_distance_km as number))
+        // 짝 필드는 OR다 — 둘 다 있으면(현재 카탈로그엔 없다) 둘 다 만족해야 「장거리」로 본다.
+        eligible = intervals.filter((i) => {
+          if (condition.single_distance_km !== undefined && i.maxDistanceKmBefore < condition.single_distance_km) return false
+          if (condition.duration_minutes !== undefined && i.maxDurationMinBefore < condition.duration_minutes) return false
+          return true
+        })
         measured = (i) => i.restDays
         break
       case 'return_gap_days':
@@ -455,8 +509,15 @@ function describeRestRequirement(key: RestConditionKey, condition: BadgeConditio
   switch (key) {
     case 'rest_after_streak':
       return `연속 ${condition.streak_days}일 뒤 휴식 ${condition.rest_after_streak}일`
-    case 'rest_after_long':
-      return `${condition.single_distance_km}km 이상 활동 뒤 휴식 ${condition.rest_after_long}일`
+    case 'rest_after_long': {
+      const basis =
+        condition.single_distance_km !== undefined && condition.duration_minutes !== undefined
+          ? `${condition.single_distance_km}km 이상·${condition.duration_minutes}분 이상`
+          : condition.single_distance_km !== undefined
+            ? `${condition.single_distance_km}km 이상`
+            : `${condition.duration_minutes}분 이상`
+      return `${basis} 활동 뒤 휴식 ${condition.rest_after_long}일`
+    }
     case 'return_gap_days':
       return `복귀 전 휴식 ${condition.return_gap_days}일`
     case 'interval_days':

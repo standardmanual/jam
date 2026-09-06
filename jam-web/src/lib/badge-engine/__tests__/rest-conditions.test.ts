@@ -170,19 +170,30 @@ describe('휴식 — 짝 필드가 없으면 fail-closed로 막는다', () => {
     expect(findBlockingConditionKeys({ season: 'winter' } as BadgeCondition).unpaired).toEqual([])
   })
 
-  it('rest_after_long은 짝 필드(single_distance_km)가 아직 평가 대기라 여전히 막힌다', () => {
-    // 휴식 판정 자체는 구현됐지만, 짝 필드가 `evaluation: 'pending'`이라 fail-closed가 먼저
-    // 막는다. v5 스칼라 7종을 뒤집는 선행 작업이 끝나야 실제로 발급된다 — 이 테스트가
-    // 그 선행 관계를 못 박는다(잊고 시딩하면 「영원히 안 나오는 배지」가 된다).
+  it('rest_after_long은 짝 필드(single_distance_km)가 engine으로 뒤집혀 실제로 발급된다 (티켓 20260906_0110 ④)', () => {
+    // v5 스칼라 7종이 engine으로 뒤집히면서(같은 티켓 ②) 이 짝 필드도 함께 평가된다 —
+    // fail-closed가 더는 막지 않는다. 이 이력은 6/1(42km)→6/3 공백 1일이라 통과해야 한다.
     const cond = { activity_type: 'running', rest_after_long: 1, single_distance_km: 30 } as BadgeCondition
     const acts = [act('2026-06-01', { distanceKm: 42 }), act('2026-06-03')]
     const r = evaluateConditionDetailed(cond, acts)
-    expect(r.pass).toBe(false)
-    expect(r.reason).toContain('평가 구현 대기')
-    expect(r.reason).toContain('single_distance_km')
-
-    // 헬퍼 자체는 이미 판정할 수 있다 — 막고 있는 것은 짝 필드의 평가 대기 상태뿐이다
+    expect(r.pass).toBe(true)
     expect(evaluateRestConditions(cond, acts).kind).toBe('pass')
+  })
+
+  it('rest_after_long은 duration_minutes를 짝 필드로도 받는다 (티켓 20260906_0110 ④)', () => {
+    // 거리 대신 시간을 「장거리」 기준으로 쓸 수 있다 — 걷기·등산처럼 거리보다 소요시간이
+    // 더 자연스러운 종목을 위한 축이다(`walking:R2`·`hiking:X1`).
+    const cond = { activity_type: 'hiking', rest_after_long: 1, duration_minutes: 480 } as BadgeCondition
+    const acts = [
+      act('2026-06-01', { jamActivityType: 'hiking', movingTimeSec: 480 * 60 }),
+      act('2026-06-03', { jamActivityType: 'hiking' }),
+    ]
+    const r = evaluateConditionDetailed(cond, acts)
+    expect(r.pass).toBe(true)
+
+    // 짝 필드 없이는 여전히 막힌다 — «무엇이 장거리인가»가 정의되지 않는다
+    const noPair = { activity_type: 'hiking', rest_after_long: 1 } as BadgeCondition
+    expect(findBlockingConditionKeys(noPair).unpaired).toEqual(['rest_after_long'])
   })
 })
 
@@ -207,13 +218,13 @@ describe('휴식 — repeat_count와 함께 쓸 수 없다 (B-10)', () => {
   })
 
   it('휴식 조건 전부가 같은 사유로 막힌다', () => {
-    // `rest_after_long`은 짝 필드(single_distance_km)가 아직 평가 대기라 fail-closed가
-    // **먼저** 막는다 — 그 선행 관계는 위 「짝 필드」 describe가 따로 못 박는다.
+    // `rest_after_long`의 짝 필드(single_distance_km)도 이제 engine이라(티켓 20260906_0110 ②)
+    // 나머지 3종과 같은 자리에서 함께 확인한다.
     const pairs: Partial<Record<(typeof REST_CONDITION_KEYS)[number], BadgeCondition>> = {
       rest_after_streak: { streak_days: 6 },
+      rest_after_long: { single_distance_km: 30 },
     }
     for (const key of REST_CONDITION_KEYS) {
-      if (key === 'rest_after_long') continue
       const cond = {
         activity_type: 'running',
         repeat_count: 3,
@@ -253,12 +264,9 @@ describe('휴식 — 발급 판정과 진행 계산이 어긋나지 않는다', 
     for (const key of REST_CONDITION_KEYS) {
       const cond = { activity_type: 'running', ...pairFields[key], [key]: 90 } as BadgeCondition
       expect(restConditionKeysIn(cond), key).toEqual([key])
-      // rest_after_long은 짝 필드 single_distance_km이 아직 `evaluation: 'pending'`이라
-      // fail-closed가 **발급을 먼저 막는다**(레지스트리 주석 참고). 발급이 막히는 조건은
-      // 진행률도 그리지 않는 것이 이 계층의 규칙이므로 unsupported가 맞다 — 두 판정이
-      // 어긋나지 않는다는 것이 이 테스트의 요지다.
-      const expected = key === 'rest_after_long' ? 'unsupported' : 'rest'
-      expect(classifyBadgeProgressKind(cond), key).toBe(expected)
+      // rest_after_long의 짝 필드 single_distance_km도 이제 engine이다(티켓 20260906_0110 ②)
+      // — 4종 전부가 같은 규칙으로 rest 축을 갖는다.
+      expect(classifyBadgeProgressKind(cond), key).toBe('rest')
     }
   })
 
