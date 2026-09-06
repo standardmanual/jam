@@ -383,6 +383,29 @@ export function extractExtendedActivityFields(
 }
 
 /**
+ * `avgCadence` ×2 정규화 (티켓 20260906_0110 ⑤).
+ *
+ * Strava의 `average_cadence`는 **러닝·트레일러닝에서 편족(한쪽 다리) 기준**이라 조건 설계값
+ * (예: 180spm — 「분당 걸음 수」는 양발 합계가 관례)의 절반 수준으로 저장됐다(백필 실측
+ * 러닝 중앙값 86.5 · 최댓값 110.2 — 180의 절반 언저리). 자전거는 `average_cadence`가 처음부터
+ * **크랭크 회전수(rpm)** 자체라 편족 개념이 없다 — ×2하면 틀린 값이 된다.
+ *
+ * ⚠️ **정규화 지점은 이 함수 하나뿐이어야 한다.** 저장 시점(신규 싱크·백필)에서만 부르고,
+ * 읽는 쪽(엔진·화면)에서 다시 배로 하면 백필 이전/이후 행이 서로 다른 배수를 갖게 된다.
+ * 신규 싱크는 `strava_activities.strava_id` 멱등 처리로 활동당 정확히 1번만 이 함수를 거치고,
+ * 백필은 Strava 원본(raw `average_cadence`)에서 매번 다시 계산해 저장값과 비교하므로
+ * (`mergeExtendedFields`의 `changed` 판정) 재실행해도 두 번 곱해지지 않는다.
+ */
+export function normalizeCadenceForActivityType(
+  jamActivityType: string | null | undefined,
+  cadence: number | undefined
+): number | undefined {
+  if (cadence === undefined) return undefined
+  if (jamActivityType === 'running' || jamActivityType === 'trail_running') return cadence * 2
+  return cadence
+}
+
+/**
  * Strava m/s → km/h 변환
  */
 export function metersPerSecToKmH(mps: number): number {

@@ -122,10 +122,25 @@ const V5_NEW_20_KEYS = [
  */
 const V5_REST_4_KEYS = ['rest_after_streak', 'rest_after_long', 'return_gap_days', 'interval_days'] as const
 
-/** 아직 아무도 평가하지 않는 16종 — fail-closed가 계속 막아야 한다 */
+/**
+ * v5 스칼라 7종 + weekly_streak — 티켓 20260906_0110 ②에서 `pending` → `engine`으로 뒤집었다.
+ * `CONSUMED_REPEAT_KEYS`(반복형 회차 술어)·`matchesPerActivityCondition`이 함께 뒤집혔다.
+ */
+const V5_NEWLY_ENGINE_8_KEYS = [
+  'max_elevation_m',
+  'max_speed_kmh',
+  'single_distance_km',
+  'single_elevation_m',
+  'avg_heartrate_bpm',
+  'avg_watts',
+  'avg_cadence',
+  'weekly_streak',
+] as const
+
+/** 아직 아무도 평가하지 않는 8종 — fail-closed가 계속 막아야 한다 */
 const V5_PENDING_16_KEYS = V5_NEW_20_KEYS.filter(
-  (k): k is Exclude<(typeof V5_NEW_20_KEYS)[number], (typeof V5_REST_4_KEYS)[number]> =>
-    !(V5_REST_4_KEYS as readonly string[]).includes(k)
+  (k): k is Exclude<(typeof V5_NEW_20_KEYS)[number], (typeof V5_REST_4_KEYS)[number] | (typeof V5_NEWLY_ENGINE_8_KEYS)[number]> =>
+    !(V5_REST_4_KEYS as readonly string[]).includes(k) && !(V5_NEWLY_ENGINE_8_KEYS as readonly string[]).includes(k)
 )
 
 /** 신규 20종 각각의 「타입상 유효한」 예시 값 — 조건에 실어 fail-closed를 확인하는 데 쓴다 */
@@ -153,10 +168,12 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('49종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3)을 선언한다', () => {
-    expect(CONDITION_FIELDS.length).toBe(49)
-    expect(ALL_CONDITION_KEYS.length).toBe(49)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(49) // 중복 키 없음
+  it('52종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3)을 선언한다', () => {
+    // v5 확장 3종(티켓 20260906_0110) — cumulative_duration_hours · monthly_count ·
+    // personal_record_break_metric.
+    expect(CONDITION_FIELDS.length).toBe(52)
+    expect(ALL_CONDITION_KEYS.length).toBe(52)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(52) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -192,16 +209,28 @@ describe('레지스트리 — 필드 구성', () => {
       'prerequisite_badge_names',
     ])
     expect(byEval('pending')).toContain('route')
-    expect(byEval('pending').length).toBe(17) // route + v5 신규 20 − 휴식 4 (티켓 20260905_0030 B3)
-    // 기존 21 + repeat_count(B1) + 휴식 4종(B3)
-    expect(byEval('engine').length).toBe(26)
+    // route + v5 신규 20 − 휴식 4(B3) − v5 스칼라7·weekly_streak 8(티켓 20260906_0110 ②)
+    // + personal_record_break_metric 1(같은 티켓 ③, 짝인 personal_record_break가 여전히
+    // pending이라 이 필드도 함께 막힌다) = 1 + 8 + 1 = 10
+    expect(byEval('pending').length).toBe(10)
+    // 기존 21 + repeat_count(B1) + 휴식 4종(B3) + v5 스칼라7·weekly_streak 8 + v5 확장 2
+    // (cumulative_duration_hours·monthly_count, 티켓 20260906_0110 ①②)
+    expect(byEval('engine').length).toBe(36)
   })
 
-  it('v5 신규 20종이 전부 들어 있고, 휴식 4종을 뺀 16종은 아직 평가 미구현이다', () => {
+  it('v5 신규 20종이 전부 들어 있고, 휴식·스칼라7·weekly_streak를 뺀 8종은 아직 평가 미구현이다', () => {
     for (const key of V5_NEW_20_KEYS) expect(ALL_CONDITION_KEYS).toContain(key)
     for (const key of V5_PENDING_16_KEYS) {
       expect(EVALUATED_CONDITION_KEYS).not.toContain(key)
       expect(PENDING_CONDITION_KEYS).toContain(key)
+    }
+  })
+
+  it('v5 스칼라 7종 + weekly_streak는 평가 주체가 엔진이다 (티켓 20260906_0110 ②)', () => {
+    for (const key of V5_NEWLY_ENGINE_8_KEYS) {
+      expect(EVALUATED_CONDITION_KEYS, `${key}`).toContain(key)
+      expect(PENDING_CONDITION_KEYS, `${key}`).not.toContain(key)
+      expect(MEASURABLE_CONDITION_KEYS, `${key}`).toContain(key)
     }
   })
 
@@ -381,23 +410,25 @@ describe('조건 키 ↔ 정규화 필드 대응 (activityField)', () => {
     }
   })
 
-  it('대응을 선언한 필드는 아직 전부 평가 대기다 — 0030이 뒤집을 지점이다', () => {
+  it('대응을 선언한 필드는 전부 평가 주체가 엔진이다 — 0110이 뒤집었다', () => {
     for (const key of Object.keys(CONDITION_ACTIVITY_FIELD)) {
-      expect(PENDING_CONDITION_KEYS).toContain(key)
+      expect(EVALUATED_CONDITION_KEYS).toContain(key)
+      expect(PENDING_CONDITION_KEYS).not.toContain(key)
     }
   })
 })
 
-describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이션 134)', () => {
+describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이션 140)', () => {
   // 티켓 20260905_0028이 지목한 «누락돼도 조용히 통과하는» 복제 위치 중 DB 쪽 2곳
   // (CHECK 제약 · 계열 정합성 트리거의 measurable_keys)이 레지스트리와 어긋나면 여기서 깨진다.
   //
   // ⚠️ **가장 마지막에 이 둘을 다시 쓴 마이그레이션**을 읽어야 한다. 132가 46개 키로 만든
-  //    CHECK 제약을 133이 49개로 다시 만들었고, 134가 그룹핑 키를 옮기며 둘 다 다시 썼다.
+  //    CHECK 제약을 133이 49개로 다시 만들었고, 134가 그룹핑 키를 옮기며 둘 다 다시 썼고,
+  //    140(티켓 20260906_0110)이 v5 확장 3종을 더하며 둘 다 다시 썼다.
   //    옛 파일을 계속 읽으면 「레지스트리가 늘었는데 DB는 그대로」인 상태를 통과시켜 버린다
   //    (이 대조의 존재 이유가 사라진다).
   //    CHECK/트리거를 다시 쓰는 마이그레이션을 추가할 때마다 이 경로를 함께 올릴 것.
-  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/134_family_key_grouping.sql'), 'utf-8')
+  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/140_condition_keys_v5_extension.sql'), 'utf-8')
 
   /** SQL 텍스트에서 `ARRAY[ ... ]` 블록 안의 작은따옴표 리터럴을 뽑는다 */
   function keysInArrayAfter(marker: string): string[] {
@@ -497,7 +528,7 @@ describe('fail-closed — ① 평가할 수 없는 키가 든 조건은 발급�
     const passing: BadgeCondition = { activity_type: 'running', distance_km: 5 }
     expect(evaluateConditionDetailed(passing, activities).pass).toBe(true)
 
-    const withPending = { ...passing, avg_heartrate_bpm: 150 } as BadgeCondition
+    const withPending = { ...passing, month_over_month_ratio: 1.5 } as BadgeCondition
     const result = evaluateConditionDetailed(withPending, activities)
     expect(result.pass).toBe(false)
     expect(result.reason).toContain('평가 구현 대기')
@@ -516,18 +547,18 @@ describe('fail-closed — ① 평가할 수 없는 키가 든 조건은 발급�
     const many = Array.from({ length: 200 }, (_, i) =>
       makeActivity({ stravaId: i + 1, distanceKm: 100, elevationGainM: 3000, movingTimeSec: 36000 })
     )
-    expect(checkCondition({ activity_type: 'running', weekly_streak: 1 }, many)).toBe(false)
+    expect(checkCondition({ activity_type: 'running', distinct_time_bands: 2 }, many)).toBe(false)
     expect(checkCondition({ activity_type: 'running', personal_record_break: 1 }, many)).toBe(false)
   })
 
   it('findBlockingConditionKeys가 미지의 키와 구현 대기 키를 구분한다', () => {
     const blocking = findBlockingConditionKeys({
       distance_km: 5,
-      avg_watts: 200,
+      month_over_month_ratio: 1.2,
       nope: 1,
     } as unknown as BadgeCondition)
     expect(blocking.unknown).toEqual(['nope'])
-    expect(blocking.pending).toEqual(['avg_watts'])
+    expect(blocking.pending).toEqual(['month_over_month_ratio'])
   })
 
   it('값이 undefined인 키는 막지 않는다 (조건에 존재하지 않는 것과 같다)', () => {
@@ -621,8 +652,8 @@ describe('표시 함수 — 레지스트리 기반 (어드민 목록·상세)', 
 // ─────────────────────────────────────────────────────────────────────────
 
 describe('지표 라벨 — 레지스트리와 마이그레이션 시드가 어긋나지 않는다', () => {
-  // 라벨 시드는 «누적»이다 — 131이 20종, 132가 repeat_count 1종을 넣는다. 뒤에 온 파일이
-  // 앞 파일을 덮어쓰지 않으므로 둘을 이어 붙여 대조한다.
+  // 라벨 시드는 «누적»이다 — 131이 20종, 132가 repeat_count 1종, 140이 v5 확장 3종을 넣는다.
+  // 뒤에 온 파일이 앞 파일을 덮어쓰지 않으므로 전부 이어 붙여 대조한다.
   // (133은 라벨을 한 건도 시드하지 않는다 — 교차 게이트는 진행률 축이 아니라 보유 게이트라
   //  「지난 활동 {label} 기록은 …」 문장에 등장할 자리가 없다. 그래도 목록에 넣어 둔다:
   //  나중에 라벨을 시드하는 파일이 추가되면 이 대조가 자동으로 그 파일을 함께 본다.)
@@ -630,6 +661,7 @@ describe('지표 라벨 — 레지스트리와 마이그레이션 시드가 어�
     readFileSync(join(process.cwd(), 'supabase/migrations/131_condition_keys_v5.sql'), 'utf-8'),
     readFileSync(join(process.cwd(), 'supabase/migrations/132_repeat_earn_counter.sql'), 'utf-8'),
     readFileSync(join(process.cwd(), 'supabase/migrations/133_cross_gate_condition_keys.sql'), 'utf-8'),
+    readFileSync(join(process.cwd(), 'supabase/migrations/140_condition_keys_v5_extension.sql'), 'utf-8'),
   ].join('\n')
 
   /**
@@ -703,9 +735,11 @@ describe('미션 평가 경로 — fail-closed가 미션을 영구 미달성으�
 
   it('extraAllowedKeys를 열어도 평가 대기 필드는 여전히 막힌다', () => {
     // 「모르는 키 허용」과 「미구현 필드 허용」은 다르다 — 후자는 열면 안 된다
-    const r = evaluateConditionDetailed({ activity_type: 'running', avg_watts: 200 } as never, activities, {
-      extraAllowedKeys: new Set(['avg_watts']),
-    })
+    const r = evaluateConditionDetailed(
+      { activity_type: 'running', month_over_month_ratio: 1.2 } as never,
+      activities,
+      { extraAllowedKeys: new Set(['month_over_month_ratio']) }
+    )
     expect(r.pass).toBe(false)
     expect(r.reason).toContain('평가 구현 대기')
   })
@@ -744,7 +778,7 @@ describe('진행률 — fail-closed로 막히는 조건은 진행률도 그리�
     // 대기 필드를 무시한 채 cumulative 진행률을 그리면, 발급은 안 되는데 화면에는
     // 「78% 달성」이 뜨는 상태가 된다. 유저 노출(배지 트리 진행 레일)이라 정직해야 한다.
     expect(classifyBadgeProgressKind({ distance_km: 100 })).not.toBe('unsupported')
-    expect(classifyBadgeProgressKind({ distance_km: 100, avg_watts: 200 } as never)).toBe('unsupported')
+    expect(classifyBadgeProgressKind({ distance_km: 100, month_over_month_ratio: 1.2 } as never)).toBe('unsupported')
   })
 
   it('반복형(repeat_count)은 «repeat» 축을 갖는다 — 0031이 뒤집었다', () => {

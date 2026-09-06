@@ -17,7 +17,7 @@
 import type { BadgeCondition, DayOfWeek } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm } from '@/types/strava'
-import { passesWalkingGate, matchesDayOfWeek, dedupeOnePerDay, inTimeRange } from './activityFilters'
+import { passesWalkingGate, matchesDayOfWeek, matchesDayOfWeekFilter, dedupeOnePerDay, inTimeRange, getMondayKey } from './activityFilters'
 import { GATE_CONDITION_KEYS } from './crossGate'
 import { PER_ACTIVITY_KEYS, CUMULATIVE_SAME_ACTIVITY_KEYS, type ScalarAxisKey } from './conditionAxes'
 
@@ -41,6 +41,25 @@ export function matchesPerActivityCondition(condition: BadgeCondition, a: Normal
   }
   if (condition.time_range !== undefined && condition.weekly_count === undefined) {
     if (!inTimeRange(a, condition.time_range)) return false
+  }
+  // v5 스칼라 7종 (티켓 20260906_0110 ②) — 값이 없는(undefined) 활동은 «측정 안 됨»으로
+  // 실패 처리한다(레지스트리 `activityField` 주석의 「데이터 없음 = 카운트 안 함」과 동일 태도).
+  if (condition.max_elevation_m !== undefined) {
+    if (a.maxElevationM === undefined || a.maxElevationM < condition.max_elevation_m) return false
+  }
+  if (condition.max_speed_kmh !== undefined) {
+    if (a.maxSpeedKmh === undefined || a.maxSpeedKmh < condition.max_speed_kmh) return false
+  }
+  if (condition.single_distance_km !== undefined && a.distanceKm < condition.single_distance_km) return false
+  if (condition.single_elevation_m !== undefined && a.elevationGainM < condition.single_elevation_m) return false
+  if (condition.avg_heartrate_bpm !== undefined) {
+    if (a.avgHeartrateBpm === undefined || a.avgHeartrateBpm < condition.avg_heartrate_bpm) return false
+  }
+  if (condition.avg_watts !== undefined) {
+    if (a.avgWatts === undefined || a.avgWatts < condition.avg_watts) return false
+  }
+  if (condition.avg_cadence !== undefined) {
+    if (a.avgCadence === undefined || a.avgCadence < condition.avg_cadence) return false
   }
   return true
 }
@@ -104,6 +123,188 @@ export function repeatConsumedAxisKeys(condition: BadgeCondition): readonly Scal
     : PER_ACTIVITY_KEYS
 }
 
+// ── 기간 단위 회차 (티켓 20260906_0110 ②) ───────────────────────────────
+//
+// `streak_days`·`weekly_count`·`monthly_count`·`weekly_streak`는 활동 «1건»이 아니라
+// **날짜·주·달 단위 기간**이 조건을 만족하는가를 본다 — `matchesPerActivityCondition`으로는
+// 표현할 수 없다(그 함수는 활동 한 건의 스칼라 값만 비교한다). 이 네 키가 `repeat_count`와
+// 만나면 「그 기간 조건을 몇 번 채웠는가」를 세야 하므로 전용 계산이 필요하다.
+//
+// 넷은 서로 배타적이라고 가정한다(현재 카탈로그 실측 — 한 조건에 최대 하나만 등장한다).
+// `activity_type`·`day_of_week`(필터)·`repeat_count` 외의 다른 키가 섞이면(현재 없음)
+// **안전하게 폴백한다** — 아래 `detectPeriodOccurrenceDriver`가 `undefined`를 돌려주고,
+// 그 키는 `CONSUMED_REPEAT_KEYS`에도 없으므로 기존 ⓪ 경로가 fail-closed로 회차를 0으로 막는다.
+
+const DAY_MS = 86_400_000
+const WEEK_MS = 7 * DAY_MS
+
+function dateKeyOf(a: NormalizedActivity): string {
+  return (a.startDateLocal ?? a.startDate).slice(0, 10)
+}
+function weekKeyOf(a: NormalizedActivity): string {
+  return getMondayKey(new Date(a.startDateLocal ?? a.startDate))
+}
+function monthKeyOf(a: NormalizedActivity): string {
+  const d = new Date(a.startDateLocal ?? a.startDate)
+  return `${d.getFullYear()}-${d.getMonth() + 1}`
+}
+
+/** activity_type 필터 + 걷기 축1 게이트 — 다른 술어들과 같은 규칙 */
+function typeFilteredPool(condition: BadgeCondition, activities: NormalizedActivity[]): NormalizedActivity[] {
+  return condition.activity_type
+    ? activities.filter(
+        (a) => a.jamActivityType === condition.activity_type && (condition.activity_type !== 'walking' || passesWalkingGate(a))
+      )
+    : activities
+}
+
+/**
+ * 정렬된 고유 기간 키 배열에서 `stepMs` 간격으로 이어지는 최대 런(run)들을 찾아, `minLength`
+ * 이상인 런마다 **그 런이 minLength에 처음 도달한 키** 하나씩을 돌려준다 — 런 하나 = 회차 하나.
+ * (한 번의 아주 긴 런이 `floor(길이/minLength)`만큼 여러 회차로 쪼개지지 않는다 — 「몇 번
+ * 다시 해냈는가」를 세는 것이지 「총 길이를 minLength로 나눈 몫」을 세는 것이 아니다.)
+ */
+function findRunThresholdKeys(sortedKeys: readonly string[], stepMs: number, minLength: number): string[] {
+  const hits: string[] = []
+  let runStart = 0
+  for (let i = 1; i <= sortedKeys.length; i++) {
+    const broke = i === sortedKeys.length || Date.parse(`${sortedKeys[i]}T00:00:00Z`) - Date.parse(`${sortedKeys[i - 1]}T00:00:00Z`) !== stepMs
+    if (broke) {
+      const runLen = i - runStart
+      if (runLen >= minLength) hits.push(sortedKeys[runStart + minLength - 1])
+      runStart = i
+    }
+  }
+  return hits
+}
+
+/** 대표 활동 하나를 뽑아 시간순으로 정렬한다 — earn_history·selectTriggerActivity가 기대하는 형태 */
+function toSortedOccurrences(reps: NormalizedActivity[]): NormalizedActivity[] {
+  return [...reps].sort((a, b) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0))
+}
+
+/** `streak_days` + `repeat_count` — 「N일 연속」이 몇 번 (다시) 만들어졌는가 */
+function collectStreakDayOccurrences(condition: BadgeCondition, activities: NormalizedActivity[]): NormalizedActivity[] {
+  const minLength = condition.streak_days as number
+  const pool = typeFilteredPool(condition, activities)
+  const byDate = new Map<string, NormalizedActivity[]>()
+  for (const a of pool) {
+    const key = dateKeyOf(a)
+    const list = byDate.get(key)
+    if (list) list.push(a)
+    else byDate.set(key, [a])
+  }
+  const sortedKeys = [...byDate.keys()].sort()
+  const hitKeys = findRunThresholdKeys(sortedKeys, DAY_MS, minLength)
+  return toSortedOccurrences(
+    hitKeys.map((k) => byDate.get(k)!.reduce((first, a) => (a.startDate < first.startDate ? a : first)))
+  )
+}
+
+/** `weekly_streak` + `repeat_count` — 「N주(월~일) 연속 활동」이 몇 번 (다시) 만들어졌는가 */
+function collectWeeklyStreakOccurrences(condition: BadgeCondition, activities: NormalizedActivity[]): NormalizedActivity[] {
+  const minLength = condition.weekly_streak as number
+  let pool = typeFilteredPool(condition, activities)
+  if (condition.day_of_week !== undefined) pool = pool.filter((a) => matchesDayOfWeekFilter(a, condition.day_of_week!))
+  const byWeek = new Map<string, NormalizedActivity[]>()
+  for (const a of pool) {
+    const key = weekKeyOf(a)
+    const list = byWeek.get(key)
+    if (list) list.push(a)
+    else byWeek.set(key, [a])
+  }
+  const sortedKeys = [...byWeek.keys()].sort()
+  const hitKeys = findRunThresholdKeys(sortedKeys, WEEK_MS, minLength)
+  return toSortedOccurrences(
+    hitKeys.map((k) => byWeek.get(k)!.reduce((first, a) => (a.startDate < first.startDate ? a : first)))
+  )
+}
+
+/**
+ * `weekly_count`/`monthly_count` + `repeat_count` — 그 주기(주/달)의 활동 횟수 임계값을
+ * 채운 기간이 몇 번 있었는가. 기간은 원래 서로 겹치지 않으므로(연속일 필요 없음) «런» 개념이
+ * 필요 없다 — 임계값을 채운 기간마다 대표 활동 하나씩.
+ */
+function collectPeriodCountOccurrences(
+  condition: BadgeCondition,
+  activities: NormalizedActivity[],
+  periodKeyFn: (a: NormalizedActivity) => string,
+  threshold: number
+): NormalizedActivity[] {
+  const pool = typeFilteredPool(condition, activities)
+  // 걷기 하루 1회 상한 — index.ts의 weekly_count 블록과 동일 규칙(월간도 같은 규칙을 따른다)
+  const capped = condition.activity_type === 'walking' ? dedupeOnePerDay(pool) : pool
+  const byPeriod = new Map<string, NormalizedActivity[]>()
+  for (const a of capped) {
+    const key = periodKeyFn(a)
+    const list = byPeriod.get(key)
+    if (list) list.push(a)
+    else byPeriod.set(key, [a])
+  }
+  const reps: NormalizedActivity[] = []
+  for (const acts of byPeriod.values()) {
+    if (acts.length >= threshold) {
+      // 그 기간을 «채운» 시점 — 마지막(=임계값을 완성한) 활동을 대표로 삼는다
+      reps.push(acts.reduce((last, a) => (a.startDate > last.startDate ? a : last)))
+    }
+  }
+  return toSortedOccurrences(reps)
+}
+
+type PeriodOccurrenceCollector = (condition: BadgeCondition, activities: NormalizedActivity[]) => NormalizedActivity[]
+
+const PERIOD_DRIVER_KEYS = ['streak_days', 'weekly_count', 'monthly_count', 'weekly_streak'] as const
+
+/**
+ * 조건이 기간 단위 회차 계산이 필요한 형태인지 판단해 계산 함수를 고른다.
+ *
+ * **엄격하게 좁힌다** — `activity_type`·`day_of_week`·`repeat_count` 외의 다른 키가 하나라도
+ * 더 있으면(현재 카탈로그엔 없는 조합) `undefined`를 돌려준다. 잘못 짐작해서 세는 것보다
+ * 「모르는 조합은 안전하게 막는다」가 이 파일 전체의 원칙이다(위 헤더 주석).
+ */
+function detectPeriodOccurrenceDriver(condition: BadgeCondition): PeriodOccurrenceCollector | undefined {
+  if (condition.repeat_count === undefined) return undefined
+  const ALLOWED_COMPANIONS = new Set<string>(['repeat_count', 'activity_type', 'day_of_week'])
+  const extraKeys = Object.entries(condition)
+    .filter(([k, v]) => v !== undefined && !ALLOWED_COMPANIONS.has(k))
+    .map(([k]) => k)
+  if (extraKeys.length !== 1) return undefined
+  const driver = extraKeys[0]
+  if (!(PERIOD_DRIVER_KEYS as readonly string[]).includes(driver)) return undefined
+
+  switch (driver as (typeof PERIOD_DRIVER_KEYS)[number]) {
+    case 'streak_days':
+      return collectStreakDayOccurrences
+    case 'weekly_streak':
+      return collectWeeklyStreakOccurrences
+    case 'weekly_count':
+      return (c, activities) => collectPeriodCountOccurrences(c, activities, weekKeyOf, c.weekly_count as number)
+    case 'monthly_count':
+      return (c, activities) => collectPeriodCountOccurrences(c, activities, monthKeyOf, c.monthly_count as number)
+  }
+}
+
+/**
+ * 조건이 `detectPeriodOccurrenceDriver`가 다루는 «기간 단위 회차» 형태인지 — 진행 계산
+ * (`badgeProgress.ts`의 `classifyConditionKind`)이 발급과 같은 판단을 하기 위한 공개 창구다.
+ *
+ * ⚠️ **이 판정이 `unconsumedRepeatConditionKeys` 앞에 와야 한다.** `streak_days`·
+ * `weekly_count`·`monthly_count`·`weekly_streak`는 `CONSUMED_REPEAT_KEYS`(위)에 없다 —
+ * 활동 1건 단위 술어가 아니라 이 파일의 전용 계산(`collectPeriodCountOccurrences` 등)이
+ * 따로 흡수하기 때문이다. `unconsumedRepeatConditionKeys`만 보면 이 네 키가 매번
+ * 「회차 술어가 못 다루는 키」로 잘못 잡혀 `{repeat_count, streak_days}` 같은 정상 조합도
+ * `unsupported`로 떨어진다 — 발급(`collectRepeatOccurrences`)은 이 함수를 먼저 확인해
+ * 정상 발급되는데 화면엔 「진행 표시 준비 중」이 남는 어긋남이 생긴다(티켓 20260906_0110 ②
+ * 개선 리뷰 실측: `repeat_count + streak_days` 14계열·`repeat_count + weekly_count` 3계열).
+ *
+ * 참이면 `unabsorbedAxisKeys` 검사도 건너뛰어도 안전하다 — `detectPeriodOccurrenceDriver`
+ * 자체가 이미 「드라이버 키 하나 + 허용된 동반 키(`activity_type`·`day_of_week`·
+ * `repeat_count`)뿐」을 엄격하게 강제하므로, 그 밖의 축이 조건에 섞여 들어올 여지가 없다.
+ */
+export function isPeriodDrivenRepeatCondition(condition: BadgeCondition): boolean {
+  return detectPeriodOccurrenceDriver(condition) !== undefined
+}
+
 /**
  * 반복형의 «회차» 목록 — **활동 1건이 조건을 통째로 만족**한 활동을 시간순으로 돌려준다.
  * (v5 B1, 티켓 20260905_0030 §2)
@@ -122,7 +323,12 @@ export function collectRepeatOccurrences(
   condition: BadgeCondition,
   activities: NormalizedActivity[]
 ): NormalizedActivity[] {
-  // ⓪ 회차 술어가 «소비하지 않는 키»가 조건에 있으면 회차를 세지 않는다 (fail-closed).
+  // ⓪-a 기간 단위 회차(streak_days·weekly_count·monthly_count·weekly_streak) — 활동 1건
+  //     단위 술어와 완전히 다른 계산이 필요해 가장 먼저 갈라진다(위 헤더 주석, 티켓 20260906_0110 ②).
+  const periodCollector = detectPeriodOccurrenceDriver(condition)
+  if (periodCollector) return periodCollector(condition, activities)
+
+  // ⓪-b 회차 술어가 «소비하지 않는 키»가 조건에 있으면 회차를 세지 않는다 (fail-closed).
   //
   //    아래 ①~③은 자기가 아는 키만 술어로 조립하고 나머지는 조용히 무시한다. 그래서
   //    `{ season: 'winter', duration_minutes: 60, repeat_count: 5 }`는 계절 필터가 빠진 채

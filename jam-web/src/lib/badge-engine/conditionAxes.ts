@@ -34,13 +34,29 @@ import type { BadgeCondition } from '@/types/database'
 export const PER_ACTIVITY_KEYS = [
   'duration_minutes', 'min_speed_kmh', 'max_pace_sec_per_km',
   'temperature_min_c', 'temperature_max_c', 'weekend_duration_hours',
+  // v5 스칼라 7종 (티켓 20260906_0110 ②) — `conditionRegistry.ts`에서 `pending` → `engine`으로
+  // 뒤집으며 함께 추가했다. 전부 활동 1건의 값을 그대로 비교하는 필드다
+  // (`single_distance_km`/`single_elevation_m`은 `distanceKm`/`elevationGainM`과 단위가 같아
+  // 누적 합계인 `distance_km`/`elevation_gain_m`과 값 자체는 같은 필드를 읽지만 «단일 활동»
+  // 의미로 여기 있다).
+  'max_elevation_m', 'max_speed_kmh', 'single_distance_km', 'single_elevation_m',
+  'avg_heartrate_bpm', 'avg_watts', 'avg_cadence',
 ] as const satisfies readonly (keyof BadgeCondition)[]
 
 /** same_activity:true일 때만 PER_ACTIVITY_KEYS에 합류하는 누적 필드 (T1 전용) */
 export const CUMULATIVE_SAME_ACTIVITY_KEYS = ['distance_km', 'elevation_gain_m'] as const satisfies readonly (keyof BadgeCondition)[]
 
 /**
- * 진행 계산이 «수치 축»으로 그릴 수 있는 8개 필드 — 위 두 목록의 합집합이다.
+ * 항상 «전체 이력 누적 합계»로만 평가되는 필드 — `distance_km`/`elevation_gain_m`과 달리
+ * `same_activity:true`로 «단일 활동」 의미를 가질 수 없다(그 의미는 이미 `duration_minutes`가
+ * 있다). 그래서 `CUMULATIVE_SAME_ACTIVITY_KEYS`에 넣지 않는다 — 넣으면 `repeatConsumedAxisKeys`가
+ * `same_activity:true`일 때 이 필드를 «활동 1건 단위 비교 대상»으로 잘못 흡수한다
+ * (티켓 20260906_0110 ①).
+ */
+export const CUMULATIVE_ONLY_KEYS = ['cumulative_duration_hours'] as const satisfies readonly (keyof BadgeCondition)[]
+
+/**
+ * 진행 계산이 «수치 축»으로 그릴 수 있는 필드 — 위 목록들의 합집합이다.
  *
  * **손으로 다시 나열하지 않는다.** 스프레드로 파생시키면 `PER_ACTIVITY_KEYS`에 축이
  * 추가될 때 진행 계산이 자동으로 따라온다(반대로 어긋날 방법이 없다).
@@ -48,21 +64,32 @@ export const CUMULATIVE_SAME_ACTIVITY_KEYS = ['distance_km', 'elevation_gain_m']
 export const SCALAR_AXIS_KEYS = [
   ...CUMULATIVE_SAME_ACTIVITY_KEYS,
   ...PER_ACTIVITY_KEYS,
+  ...CUMULATIVE_ONLY_KEYS,
 ] as const
 
 export type PerActivityKey = (typeof PER_ACTIVITY_KEYS)[number]
 export type CumulativeSameActivityKey = (typeof CUMULATIVE_SAME_ACTIVITY_KEYS)[number]
 export type ScalarAxisKey = (typeof SCALAR_AXIS_KEYS)[number]
 
-/** 주기(리셋 경계)를 갖는 축 키 — 진행 계산의 `kind: 'periodic'` 판정 근거 */
-export const PERIODIC_AXIS_KEYS = ['weekly_count', 'monthly_km'] as const satisfies readonly (keyof BadgeCondition)[]
+/**
+ * 주기(리셋 경계)를 갖는 축 키 — 진행 계산의 `kind: 'periodic'` 판정 근거.
+ *
+ * `monthly_count`(티켓 20260906_0110 ①)는 `monthly_km`의 횟수 버전이라 같은 「이번 달
+ * 진행」 표시 관례를 따른다 — 발급 판정(index.ts)은 역대 최고 달을 보지만, 진행 표시는
+ * `weekly_count`와 같은 이유로 "이번 달" 값을 보여준다(미획득 배지는 역대 최고 달도
+ * 미달이므로 과대평가가 없다).
+ */
+export const PERIODIC_AXIS_KEYS = ['weekly_count', 'monthly_km', 'monthly_count'] as const satisfies readonly (keyof BadgeCondition)[]
 
 /**
  * 「몇 번/며칠」을 세는 카운터 축 키 — 진행 계산의 `kind: 'cumulative'`(단독일 때) 판정 근거.
  * `season_count_all`은 계절 4개를 각각 세는 다중 축이라 여기 없다(`MULTI_AXIS_KEYS`).
+ *
+ * `weekly_streak`(티켓 20260906_0110 ②)는 `streak_days`의 주 단위 버전이다 — 발급도 진행도
+ * "역대 최장 연속 주"를 그대로 쓴다(현재/역대 구분이 없다는 점이 `weekly_count`와 다르다).
  */
 export const COUNTER_AXIS_KEYS = [
-  'total_count', 'streak_days', 'active_days_count', 'season_count',
+  'total_count', 'streak_days', 'active_days_count', 'season_count', 'weekly_streak',
 ] as const satisfies readonly (keyof BadgeCondition)[]
 
 /** 축이 여러 개로 펼쳐지는 키 — `kind: 'multi'` */
