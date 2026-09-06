@@ -12,13 +12,16 @@ const meta: Meta<typeof BadgeTreeSummaryHeader> = {
       description: {
         component:
           '배지 트리(/badges/tree) 진행 요약 — 획득/전체 히어로 숫자 + 등급별 분포 막대(20260903_2329). ' +
-          '배치는 **2행 3열 고정**이다(20260906_1323): 1행 [전체·Mystic·Epic] / 2행 [레벨·Rare·Common]. ' +
-          '예전에는 큰 숫자 한 줄 + 등급 5칸이 가로로 붙어 각 칸이 60px 남짓이었다 — 큰 숫자를 첫 칸 ' +
-          '안으로 넣고 3열로 나눴다. ' +
-          '전체 칸은 **막대가 없다**(20260906_1436 — 20260906_1323 §6의 "전체 칸에도 6px 막대를 둔다" ' +
-          '결정을 되돌렸다). 등급 칸(Mystic·Epic·Rare·Common)만 6px 막대를 유지한다. 전체 칸의 레이블 ' +
-          'marginTop을 14px(막대 6px + 여백 8px 자리)로 올려 등급 칸과 레이블의 세로 위치는 그대로 맞는다. ' +
-          '분포 막대는 등급색이 아니라 상태 채널(--status-done-solid)로 채운다. ' +
+          '20260906_2140(v3): **1층 히어로 + 2층 2열 버킷**으로 재편했다. 예전 3열 그리드는 셀 안 ' +
+          '순서가 막대 → 라벨 → 값이라 «무엇에 대한 막대인지» 모른 채 막대를 먼저 봤고, 셀 폭이 ' +
+          '96px이라 값이 12px·막대가 6px로 눌렸다. 이제 ①1층은 `획득 12 / 145`(--text-h3) + 우측 ' +
+          '`8%`(--text-body-l), ②2층은 2열이라 셀 폭 ~148px이고 값 --text-small·막대 8px, ' +
+          '③셀 안 순서를 **라벨 + 값 → 막대**로 뒤집었다, ④라벨 앞에 등급색 8px 도트를 둬 등급을 ' +
+          '색으로도 식별한다, ⑤순서는 **Common → Rare → Epic → Mystic → 레벨**(쉬운 것부터 = ' +
+          '「앞으로 얼마나 더」를 읽는 순서). 레벨 칸은 다른 축이라 2열 전체를 쓴다. ' +
+          '⚠️ **1층에는 전체 진행 막대를 넣지 않는다** — 20260906_1436의 결정을 유지한다 ' +
+          '(2026-09-06 재확인). 분포 막대는 등급색이 아니라 상태 채널(--status-progress-done)로 ' +
+          '채운다 — 이 막대가 말하는 건 「그 등급 중 몇 개를 채웠나」이지 등급 자체가 아니다. ' +
           '등급 라벨은 RarityBadge.jsx의 getRarityLabel()을 재사용한다(MODULAR 단일 소스, 20260905_0027).',
       },
     },
@@ -37,7 +40,7 @@ function Frame({ children, ...rest }: { children: React.ReactNode } & React.HTML
 }
 
 export const WalkingTab: Story = {
-  name: '걷기 탭 (진행 중) — 2행 3열',
+  name: '걷기 탭 (진행 중) — 1층 히어로 + 2층 2열',
   render: () => (
     <Frame data-testid="summary">
       <BadgeTreeSummaryHeader
@@ -53,23 +56,34 @@ export const WalkingTab: Story = {
     </Frame>
   ),
   play: async ({ canvasElement }) => {
-    const grid = canvasElement.querySelector('[data-testid="summary"] > div > div') as HTMLElement;
-    // 3열 고정 — 칸 수에 따라 열 수가 흔들리면 여기서 걸린다.
-    expect(getComputedStyle(grid).gridTemplateColumns.split(' ').length).toBe(3);
-    // 순서: 전체 → Mystic → Epic → (레벨 없음: 빈 칸) → Rare → Common
+    const card = canvasElement.querySelector('[data-testid="summary"] > div') as HTMLElement;
+    const [hero, grid] = Array.from(card.children) as HTMLElement[];
+
+    // 1층 히어로 — 「획득 14 / 64」 + 우측 퍼센트. **막대는 없다**(20260906_1436 결정 유지).
+    expect(hero.textContent).toContain('획득');
+    expect(hero.textContent).toContain('14');
+    expect(hero.textContent).toContain('/ 64');
+    expect(hero.textContent).toContain('22%');
+    expect(hero.querySelectorAll('div').length).toBe(0);
+
+    // 2층 버킷 — 2열.
+    expect(getComputedStyle(grid).gridTemplateColumns.split(' ').length).toBe(2);
+    // 순서: Common → Rare → Epic → Mystic (쉬운 것부터). 레벨 버킷이 없으면 4칸이다.
     const labels = Array.from(grid.children).map((c) => c.textContent ?? '');
-    expect(labels[0]).toContain('전체');
-    expect(labels[1]).toContain('Mystic');
+    expect(labels.length).toBe(4);
+    expect(labels[0]).toContain('Common');
+    expect(labels[1]).toContain('Rare');
     expect(labels[2]).toContain('Epic');
-    expect(labels[3]).toBe('');
-    expect(labels[4]).toContain('Rare');
-    expect(labels[5]).toContain('Common');
-    // 20260906_1436 — 전체 칸(첫 칸)은 막대가 없다(자식 2개: 레이블+값). 등급 칸은
-    // 막대가 남아 있다(자식 3개: 막대+레이블+값).
-    const totalCell = grid.children[0];
-    const mysticCell = grid.children[1];
-    expect(totalCell.children.length).toBe(2);
-    expect(mysticCell.children.length).toBe(3);
+    expect(labels[3]).toContain('Mystic');
+
+    // 셀 안 순서 — 라벨+값 줄이 먼저, 막대가 나중이다.
+    const cell = grid.children[0] as HTMLElement;
+    expect((cell.children[0] as HTMLElement).textContent).toContain('Common');
+    expect((cell.children[1] as HTMLElement).offsetHeight).toBe(8);
+    // 라벨 앞 등급색 도트 — 등급을 색으로도 식별한다.
+    const dot = cell.querySelector('[aria-hidden="true"]') as HTMLElement;
+    expect(dot).toBeTruthy();
+    expect(dot.offsetWidth).toBe(8);
   },
 };
 
@@ -117,13 +131,13 @@ export const AllCompleted: Story = {
  * 히어로 숫자(`totalCount`)와 칸 합계가 조용히 어긋난다 — 「40개 중 12개」인데 칸을 다
  * 더하면 20개인 상태다. `noRarity` 버킷을 받아 「레벨」 칸을 그린다.
  *
- * 20260906_1323부터 그 칸의 자리는 **2행 첫 칸**으로 고정이다. `noRarity`가 없으면 그 자리를
- * 비워 두고 열 수는 바꾸지 않는다 — 그래야 Rare·Common이 늘 같은 열에 있다.
+ * 20260906_2140부터 레벨 칸은 등급 4칸 **아래에서 2열 전체**를 쓴다 — 레벨은 등급과 다른
+ * 축이고, 5칸을 2열에 넣으면 마지막 하나가 혼자 남아 「등급 하나가 빠진 것」처럼 읽힌다.
  */
 export const WithNoRarityBucket: Story = {
-  name: 'v5 — 등급 없는 배지(무한레벨형) 칸 포함',
+  name: 'v5 — 등급 없는 배지(무한레벨형) 칸 포함 (2열 전체)',
   render: () => (
-    <Frame>
+    <Frame data-testid="summary-level">
       <BadgeTreeSummaryHeader
         earnedCount={31}
         totalCount={104}
@@ -137,4 +151,13 @@ export const WithNoRarityBucket: Story = {
       />
     </Frame>
   ),
+  play: async ({ canvasElement }) => {
+    const card = canvasElement.querySelector('[data-testid="summary-level"] > div') as HTMLElement;
+    const grid = card.children[1] as HTMLElement;
+    const cells = Array.from(grid.children) as HTMLElement[];
+    expect(cells.length).toBe(5);
+    expect(cells[4].textContent).toContain('레벨');
+    // 레벨 칸은 2열 전체 — 폭이 등급 칸의 2배 남짓이다.
+    expect(cells[4].offsetWidth).toBeGreaterThan(cells[0].offsetWidth * 1.8);
+  },
 };

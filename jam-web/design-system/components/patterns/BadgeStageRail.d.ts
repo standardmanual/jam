@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 /** 눈금 하나의 화면 상태. 「조건」 판정은 이 컴포넌트가 하지 않는다 — 호출부가 넘긴다 */
 export type BadgeStageRailStopStatus = 'earned' | 'ready' | 'locked' | 'not-reached';
@@ -22,7 +22,7 @@ export interface BadgeStageRailStop {
   /** 최대 2개까지 그린다(자리 폭 44px). 넘기지 않으면 종류 없는 자물쇠 하나 */
   gates?: BadgeStageRailGate[];
   /**
-   * 「무엇이 얼마나 필요한가」 완성 문자열(「4km」·「6일 연속 · 5회 충족」).
+   * 「무엇이 얼마나 필요한가」 완성 문자열(「4km」·「6일 연속 · 5회」).
    * `not-reached` 눈금의 캡션 자리에만 쓴다 — 없으면 기존 `'—'`.
    * **이 컴포넌트는 조건을 해석하지 않는다**(`src/lib/badgeProgressText.ts`가 조립한다).
    */
@@ -47,13 +47,22 @@ export interface BadgeStageRailProps {
    * 프로덕션은 앞 4개만 그린다.
    */
   stops: BadgeStageRailStop[];
-  /** 반복형 계열의 누적 획득 횟수 — 헤더 오른쪽 `×N` 칩. `null`이면 그리지 않는다 */
+  /** 반복형 계열의 누적 획득 횟수 — 헤더 메타 줄 앞 `×N` 칩. `null`이면 그리지 않는다 */
   earnCount?: number | null;
+  /**
+   * 헤더 우측 진행률(0~1). `null`이면 퍼센트를 적지 않는다(진행 계산 불가).
+   * `frontierProgress`와 별도 prop인 이유: 진행 앵커가 없는 계열에서도 헤더는 그려진다.
+   */
+  headerFraction?: number | null;
+  /** 헤더 퍼센트 옆 라벨(보통 다음 등급명 `Epic`). 완성 문자열만 받는다 */
+  headerLabel?: string | null;
+  /** 헤더 2행(메타 줄). `null`이면 그리지 않는다 */
+  headerMeta?: ReactNode;
   /** 다음으로 노려야 할 등급 라벨("Epic"). 전부 획득했으면 `null`(기본값 없음 — 항상 명시) */
   nextRarityLabel: string | null;
   expanded?: boolean;
   onToggleExpand?: () => void;
-  /** ready/locked 눈금(또는 그 앞 게이트) 탭 시 잠금 해제 조건 시트 요청 */
+  /** ready/locked 눈금(또는 그 앞 게이트) 탭 시 받는 방법 시트 요청 */
   onLockClick: (stopId: string) => void;
   /** 기본값 없음 — 항상 `frontierProgress={... ?? null}` 형태로 명시해 넘긴다 */
   frontierProgress: BadgeStageRailFrontierProgress | null;
@@ -65,6 +74,11 @@ export interface BadgeStageRailProps {
   progressStopId: string | null;
   /** 기록형 "아쉬움 줄" 완성 문장. 기본값 없음 — 항상 명시 */
   regretLine: string | null;
+  /**
+   * 카드 안쪽 아래에 붙는 보조 구획 — 2축형 게이지(`DualAxisGauge`)가 여기로 들어온다
+   * (티켓 20260906_2140: 별도 카드에서 레일 카드 안의 구획으로).
+   */
+  secondarySection?: ReactNode;
   className?: string;
   style?: CSSProperties;
 }

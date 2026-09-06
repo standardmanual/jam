@@ -16,15 +16,25 @@ import React from 'react';
  * 이름 시작 x가 모든 계열에서 같아진다. 그래서 `width` 기본값 52px + 가운데 정렬이고,
  * 자릿수가 늘어도(Lv.128) 폭이 흔들리지 않게 `tabular-nums`를 건다.
  */
-export function BadgeLevelChip({ level, width = 52, className = '', style = {} }) {
+/**
+ * 칩 크기 (티켓 20260906_2140) — `RarityBadge`와 같은 어휘. `sm`이 **기존 값 그대로**라
+ * `size`를 넘기지 않는 서비스 5개 호출부는 렌더가 달라지지 않는다.
+ */
+const SIZES = {
+  sm: { fontSize: '8px', padding: '4px 0' },
+  md: { fontSize: 'var(--text-micro)', padding: '5px 0' },
+};
+
+export function BadgeLevelChip({ level, size = 'sm', width = 52, className = '', style = {} }) {
   if (level == null) return null;
+  const s = SIZES[size] ?? SIZES.sm;
   return (
     <span
       className={className}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width, padding: '4px 0', borderRadius: 'var(--radius-pill)',
-        fontSize: '8px', lineHeight: 1, fontWeight: 700,
+        width, padding: s.padding, borderRadius: 'var(--radius-pill)',
+        fontSize: s.fontSize, lineHeight: 1, fontWeight: 700,
         letterSpacing: '0.3px', fontVariantNumeric: 'tabular-nums',
         color: 'var(--color-text-on-primary)', background: 'var(--color-secondary)',
         ...style,

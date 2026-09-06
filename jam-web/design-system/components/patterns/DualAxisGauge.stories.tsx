@@ -12,15 +12,21 @@ const meta: Meta<typeof DualAxisGauge> = {
       description: {
         component:
           '2축형(dual) 배지 전용 진행 게이지 — 티켓 20260904_1058(2d). `BadgeStageRail` 4등급 ' +
-          '레일은 그대로 두고, 프런티어가 2축형일 때만 그 아래에 추가로 렌더한다(레일을 ' +
-          '대체하지 않음). 배지 썸네일 + 축 2줄(라벨·ProgressBar·current/target·충족 체크) + ' +
+          '레일은 그대로 두고, 프런티어가 2축형일 때만 **레일 카드 안의 구획**으로 렌더한다 ' +
+          '(레일을 대체하지 않음 — `BadgeStageRail`의 `secondarySection`으로 넣는다). ' +
+          '배지 썸네일 + 축 2줄(라벨·ProgressBar·current/target·다 채운 축 체크) + ' +
           '규칙 문장("각각 다른 활동"/"한 번의 활동에서 동시에") + 병목 안내(met인 축이 정확히 ' +
           '하나일 때만)로 구성된 얇은 합성이다. kind를 모른다 — `src/lib/badgeProgressText.ts`의 ' +
           '`formatDualAxisGaugeProps()`가 만든 완성 문자열/숫자만 받는다. ' +
           '이 게이지가 뜨는 시점의 배지는 항상 미획득이라 썸네일은 원본 + `grayscale(1)`이다 ' +
           '(2026-09-06 확정 — 20260905_0036이 한때 실루엣으로 바꿨다가 되돌렸다). ' +
           '서비스 호출부는 `src/components/badges/BadgeFamilyRow.tsx`다(20260905_0037에서 ' +
-          '`BadgeFamilyRailItem`에서 이름이 바뀌었다 — 이제 등급형 레일만이 아니라 계열 3종을 모두 그린다).',
+          '`BadgeFamilyRailItem`에서 이름이 바뀌었다 — 이제 등급형 레일만이 아니라 계열 3종을 모두 그린다). ' +
+          '20260906_2140(v2): 자기 배경·자기 패딩을 가진 **두 번째 카드**였던 것을 걷어내고 ' +
+          '1px 구분선 + 소제목만 두른 **구획**으로 바꿨다 — 한 계열이 카드 두 장을 쓰니 세로 ' +
+          '스캔에서 「계열 하나 = 카드 하나」 규칙이 깨졌다. 축 바 8→10px, 채움은 ' +
+          '`--status-progress-sweep`(ProgressBar `fillMode="track-gradient"`), 썸네일 64→52px, ' +
+          '이미지는 여백 없이 프레임을 꽉 채운다(objectFit: cover).',
       },
     },
   },
@@ -48,7 +54,7 @@ function Frame({ children }: { children: React.ReactNode }) {
 // ── sameActivity:false — "각각 다른 활동" (산악 라이더: 속도 × 고도, 이력 전반 독립 평가) ──
 
 export const IndependentAxes: Story = {
-  name: 'sameActivity:false — 각각 다른 활동 (산악 라이더, 속도는 이미 충족)',
+  name: 'sameActivity:false — 각각 다른 활동 (산악 라이더, 속도는 이미 채움)',
   render: () => (
     <Frame>
       <DualAxisGauge
@@ -69,7 +75,7 @@ export const IndependentAxes: Story = {
 // ── sameActivity:true — "한 번의 활동에서 동시에" (야생의 첫발: 거리 × 고도) ──
 
 export const SameActivity: Story = {
-  name: 'sameActivity:true — 한 번의 활동에서 동시에 (야생의 첫발, 두 축 모두 미충족)',
+  name: 'sameActivity:true — 한 번의 활동에서 동시에 (야생의 첫발, 두 축 모두 아직)',
   render: () => (
     <Frame>
       <DualAxisGauge
@@ -90,7 +96,7 @@ export const SameActivity: Story = {
 // ── 한파(lower-is-better) 축 포함 — 혹한 장정: 최저기온 × 지속시간 ──
 
 export const ColdAxisMet: Story = {
-  name: '한파 축 포함 (혹한 장정, 기온은 이미 충족 — lower-is-better 진행 바 확인)',
+  name: '한파 축 포함 (혹한 장정, 기온은 이미 채움 — lower-is-better 진행 바 확인)',
   render: () => (
     <Frame>
       <DualAxisGauge
@@ -108,10 +114,10 @@ export const ColdAxisMet: Story = {
   ),
 };
 
-// ── 두 축 모두 충족 — 게이트만 대기(병목 안내 없음) ──
+// ── 두 축 모두 다 채움 — 게이트만 대기(병목 안내 없음) ──
 
 export const BothAxesMet: Story = {
-  name: '두 축 모두 충족 — 게이트만 대기 (병목 안내 없음)',
+  name: '두 축 모두 다 채움 — 게이트만 대기 (병목 안내 없음)',
   render: () => (
     <Frame>
       <DualAxisGauge
@@ -194,5 +200,44 @@ export const NoBadgeImageLoaded: Story = {
   ),
   play: async ({ canvasElement }) => {
     expect(canvasElement.querySelector('[data-testid="gauge"]')!.querySelectorAll('img').length).toBe(0);
+  },
+};
+
+/**
+ * 20260906_2140 — **카드가 아니라 구획이다.** 자기 배경·그림자를 갖지 않고 1px 구분선 +
+ * 소제목으로만 갈린다. 실제 화면에서는 `BadgeStageRail`의 `secondarySection`으로 들어가
+ * 레일 카드 안에 놓인다.
+ */
+export const EmbeddedSection: Story = {
+  name: '20260906_2140 — 카드가 아니라 레일 카드 안의 구획',
+  render: () => (
+    <Frame>
+      <div data-testid="section">
+        <DualAxisGauge
+          imageUrl={TRAIL_ICON}
+          alt="야생의 첫발 Rare"
+          rarity="rare"
+          axes={[
+            { key: 'min_distance_km', label: '거리', rangeText: '6.2/10km', fraction: 0.62, met: false },
+            { key: 'min_elevation_gain_m', label: '고도', rangeText: '180/300m', fraction: 0.6, met: false },
+          ]}
+          ruleText="한 번의 활동에서 두 조건을 동시에 채워야 해요."
+          bottleneckNote={null}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const section = canvasElement.querySelector('[data-testid="section"]')!.firstElementChild as HTMLElement;
+    const cs = getComputedStyle(section);
+    // 카드 배경·그림자가 없다 — 이 블록은 바깥 카드 위에 얹히는 구획이다.
+    expect(cs.backgroundImage).toBe('none');
+    expect(cs.boxShadow).toBe('none');
+    // 1px 구분선으로만 갈린다.
+    expect(cs.borderTopStyle).toBe('solid');
+    expect(cs.borderTopWidth).toBe('1px');
+    // 축 바는 10px.
+    const bars = Array.from(section.querySelectorAll('div')).filter((el) => (el as HTMLElement).offsetHeight === 10);
+    expect(bars.length).toBeGreaterThanOrEqual(2);
   },
 };

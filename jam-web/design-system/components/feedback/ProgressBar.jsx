@@ -16,8 +16,16 @@ import React from 'react';
  * [20260905_0036] `fillMode="track-gradient"` 추가 — **기본 동작은 그대로다.**
  * 서비스 8곳 + `DualAxisGauge`가 이 컴포넌트를 쓰므로 새 표현은 새 prop으로만 켠다.
  */
-export const PROGRESS_TRACK_GRADIENT =
-  'linear-gradient(to right, var(--status-short-solid), var(--status-done-solid))';
+/**
+ * [20260906_2140] 그라데이션 정의를 `--status-progress-sweep` 토큰 하나로 모았다.
+ * 레일 연결선·진행 링은 JSX가 아닌 CSS 문자열 안에서 채움을 그려 이 JS 상수를 import할 수
+ * 없었고, 그래서 한 화면에서 진행 표현이 셋으로 갈라져 있었다. 토큰을 가리키게 바꾸면
+ * 정의가 한 군데(colors.css)에만 남는다.
+ * ⚠️ 값이 `to right`(sRGB 보간) → `90deg in oklab`으로 바뀐다. amber↔lime은 인접 색상이라
+ * 시각 변화는 미미하지만, 이 파일을 쓰는 서비스 8곳 + DualAxisGauge에 실제로 반영되는
+ * **이번 티켓의 유일한 기존 화면 영향**이다.
+ */
+export const PROGRESS_TRACK_GRADIENT = 'var(--status-progress-sweep)';
 
 export function ProgressBar({
   current,
