@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DropsClient, { type DropsFocusPoi } from './DropsClient'
-import { singleQueryParam } from '@/lib/searchParams'
+import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
 /**
  * 20260824_021: `?poi=<id>` — 알림 소식 #18·#32의 착지점.
@@ -13,7 +13,7 @@ import { singleQueryParam } from '@/lib/searchParams'
  * 못 박는다 (티켓 20260906_1312).
  */
 interface Props {
-  searchParams: Promise<{ poi?: string | string[] }>
+  searchParams: Promise<{ poi?: SearchParamValue }>
 }
 
 export default async function DropsPage({ searchParams }: Props) {

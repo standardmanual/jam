@@ -6,7 +6,7 @@ import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
 import { ItemBookList } from '@/components/admin/itembooks/ItemBookList'
 import ItemBookFilters from './ItemBookFilters'
 import Pagination from '../poi/Pagination'
-import { pickSingleQueryParams } from '@/lib/searchParams'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 30
 
@@ -16,7 +16,7 @@ const PAGE_SIZE = 30
  * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
  */
 interface AdminItemBooksPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: SearchParamsPromise
 }
 
 export default async function AdminItemBooksPage({ searchParams }: AdminItemBooksPageProps) {

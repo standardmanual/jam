@@ -13,7 +13,7 @@ import {
 import { SerialListFilterBar } from './SerialListFilterBar'
 import { SerialListTable, type SerialListRow } from './SerialListTable'
 import Pagination from '../../poi/Pagination'
-import { pickSingleQueryParams } from '@/lib/searchParams'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 50
 
@@ -29,7 +29,7 @@ type ListedItem = Pick<
  */
 interface Props {
   params: Promise<{ badgeId: string }>
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: SearchParamsPromise
 }
 
 /**

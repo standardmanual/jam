@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/admin/ui/table'
-import { pickSingleQueryParams } from '@/lib/searchParams'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const FAMILY_KIND_LABEL = {
   graded: '등급형',
@@ -37,7 +37,7 @@ const FAMILY_KIND_LABEL = {
  * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
  */
 interface AdminBadgeFamiliesPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: SearchParamsPromise
 }
 
 export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadgeFamiliesPageProps) {
