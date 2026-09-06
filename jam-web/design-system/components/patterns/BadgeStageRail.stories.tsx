@@ -935,7 +935,6 @@ export const HeaderInlinePercentAndRarity: Story = {
           familyName="자정의 정복자"
           nextRarityLabel="Epic"
           headerFraction={0.87}
-          headerLabel="Epic"
           headerMeta="다음 Epic · 두 조건을 한 번의 활동에서"
           stops={[
             { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
@@ -988,7 +987,6 @@ export const CaptionSlotReserved: Story = {
           familyName="계절의 트레일러"
           nextRarityLabel="Rare"
           headerFraction={0.2}
-          headerLabel="Rare"
           headerMeta="다음 Rare · 6일 연속 · 5회"
           stops={[
             { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/1', conditionText: '4km' },
@@ -1036,7 +1034,6 @@ export const FixedPitchAcrossStopCounts: Story = {
               familyName={`${n}눈금 계열`}
               nextRarityLabel="Rare"
               headerFraction={0.42}
-              headerLabel="Rare"
               headerMeta="다음 Rare · 4.2/10km"
               stops={(['common', 'rare', 'epic', 'mystic'] as const).slice(0, n).map((rarity, i) => ({
                 id: `${n}-${i}`,

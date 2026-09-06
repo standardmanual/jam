@@ -267,3 +267,20 @@ export const GridOf3Columns: Story = {
     </Grid>
   ),
 };
+
+/**
+ * 이름 한 줄 / 두 줄이 섞여도 **이름↔등급칩 간격이 같아야 한다**(티켓 20260906_2344).
+ * 이름 자리는 2줄 높이를 계속 예약하되(그리드 행 정렬 불변식) 텍스트를 아래로 붙여서,
+ * 남는 여백이 이름↔칩 사이가 아니라 링↔이름 사이로 간다.
+ */
+export const NameToChipGapIsUniform: Story = {
+  render: () => (
+    <div style={{ background: 'var(--color-surface)', padding: 'var(--spacing-16)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', columnGap: 8, rowGap: 16 }}>
+        <BadgeProgressRingCard name="백 번" rarity="rare" status="not-reached" fraction={0.46} captionText="46/100회" ariaLabel="백 번, 46/100회" />
+        <BadgeProgressRingCard name="분실물 센터 999" rarity="epic" status="not-reached" fraction={0.1} captionText="0/999" ariaLabel="분실물 센터 999, 0/999" />
+        <BadgeProgressRingCard name="1000km 클럽" rarity="mystic" status="not-reached" fraction={0.05} captionText="46/1000km" ariaLabel="1000km 클럽, 46/1000km" />
+      </div>
+    </div>
+  ),
+}

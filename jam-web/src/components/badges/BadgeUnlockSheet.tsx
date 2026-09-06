@@ -56,7 +56,12 @@ export default function BadgeUnlockSheet({ open, onClose, data }: BadgeUnlockShe
         ) : undefined
       }
     >
+      {/* BottomSheet(서비스)의 본문 래퍼는 패딩을 주지 않는다 — 호출부가 각자 넣는 관행이고
+          (BadgeDetailSheet·ItemEarnHistory·PoiEarnHistory 전부 그렇다) 이 시트만 빠져 있어
+          본문이 화면 끝에 붙어 있었다(2026-09-06 사용자 지적). 값은 같은 계열에서 DS 토큰을
+          쓰는 BadgeDetailSheet를 따른다. */}
       {data && (
+        <div className="px-[var(--spacing-16)] pt-[var(--spacing-8)] pb-[var(--spacing-24)]">
         <UnlockConditionSheetContent
           badgeName={data.badgeName}
           rarity={data.rarity}
@@ -80,6 +85,7 @@ export default function BadgeUnlockSheet({ open, onClose, data }: BadgeUnlockShe
             })),
           }))}
         />
+        </div>
       )}
     </BottomSheet>
   )

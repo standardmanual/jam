@@ -1,6 +1,7 @@
 import React from 'react';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
 import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeader.jsx';
+import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 
 /**
  * BadgeLevelGauge — 무한레벨형 계열 한 줄. 티켓 20260905_0036.
@@ -21,7 +22,9 @@ import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeade
  * 위계의 이름이 두 자리에 있었다. 이제 헤더(`BadgeFamilyCardHeader`)가 카드 폭 전체를
  * 차지하고 썸네일은 본문으로 내려간다: 본문 `[52px 썸네일][값 행 + 10px 바]`.
  *
- * 레벨은 헤더 우측 진행률 블록의 라벨(`Lv.8`)로 올라간다 — `BadgeLevelChip`을 여기서
+ * 레벨은 **본문 `BadgeLevelChip`**(`size="md"`)이 말한다. 헤더 우측은 **퍼센트 숫자만** 둔다 — 카드 타입이 달라도 숫자가 한 x에서
+ * 끝나야 세로로 훑는 스캔 컬럼이 성립한다(티켓 20260906_2344).
+ * (2140에서 잠시 헤더 라벨로 올렸다가 되돌렸다) — 예전 주석은 여기서
  * 더 쓰지 않는다(칩과 등급 텍스트가 한 카드에 섞이지 않게. 칩 자체는 다른 화면 6곳이 계속 쓴다).
  *
  * 진행 바는 `ProgressBar fillMode="track-gradient"` — 트랙 기준 그라데이션이라 fill 안에서
@@ -74,7 +77,6 @@ export function BadgeLevelGauge({
       <BadgeFamilyCardHeader
         name={name}
         fraction={clamped}
-        pctLabel={level != null ? `Lv.${level}` : null}
         metaText={metaText}
       />
 
@@ -112,6 +114,14 @@ export function BadgeLevelGauge({
         </span>
 
         <div style={{ minWidth: 0 }}>
+          {/* 레벨은 헤더가 아니라 **본문 칩**이 말한다(티켓 20260906_2344). 헤더 우측은
+              퍼센트 숫자만 두어 카드 타입과 무관하게 한 x에서 끝나야 하기 때문이다.
+              레일이 등급을 칩으로 보여주는 것과 같은 어휘다. */}
+          {level != null && (
+            <div style={{ marginBottom: 'var(--spacing-8)' }}>
+              <BadgeLevelChip level={level} size="md" />
+            </div>
+          )}
           {/* 값 행 — [5ch][auto][1fr][auto]. 5ch 우측 정렬이라 자릿수가 달라도 `/`가 세로로 정렬된다 */}
           <div
             style={{

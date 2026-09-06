@@ -1,5 +1,5 @@
 import React from 'react';
-import { getRarityLabel } from '../cards/RarityBadge.jsx';
+import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
 import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeader.jsx';
 
@@ -16,7 +16,9 @@ import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeade
  * 헤더(`BadgeFamilyCardHeader`)가 카드 폭 전체를 쓰고, 본문이 `[52px 썸네일][×N 칩 +
  * 캡션 + 바]`다. 예전에는 이름이 썸네일(44) + 갭(12) + 칩(52) 뒤 **88px**에서 시작해
  * 레일 카드(32px)와 어긋나 있었다 — 같은 화면에서 같은 위계의 이름이 두 자리에 있었다.
- * 등급은 헤더 우측 진행률 블록의 라벨(`Epic`) **텍스트**로 올라간다.
+ * 등급은 **본문 `RarityBadge`**(`size="md"`)가 말한다 — 레일이 눈금마다 등급칩을 쓰는 것과
+ * 같은 어휘다. 헤더 우측은 **퍼센트 숫자만** 둔다 — 카드 타입이 달라도 숫자가 한 x에서
+ * 끝나야 세로로 훑는 스캔 컬럼이 성립한다(티켓 20260906_2344).
  *
  * 미획득이면 썸네일은 grayscale(1) 원본으로 둔다(2026-09-06 사용자 확정 — 미획득도 어떤
  * 배지인지 알아볼 수 있어야 한다). 이미지는 여백 없이 프레임을 꽉 채우고(`objectFit: cover`)
@@ -30,7 +32,7 @@ export function BadgeStampRow({
   /** 계열 이름 */
   name,
   /**
-   * 등급 — 반복형은 v5에서 등급이 있다(레벨형만 rarity가 NULL). 헤더 우측 진행률 옆에
+   * 등급 — 반복형은 v5에서 등급이 있다(레벨형만 rarity가 NULL). 본문 `RarityBadge` 칩으로
    * **텍스트**로 그린다(칩이 아니다). 라벨 문자열은 `RarityBadge`의 config가 단일 소스다.
    */
   rarity = /** @type {'common' | 'rare' | 'epic' | 'mystic' | null} */ (null),
@@ -69,7 +71,6 @@ export function BadgeStampRow({
       <BadgeFamilyCardHeader
         name={name}
         fraction={clamped}
-        pctLabel={getRarityLabel(rarity)}
         done={earned && clamped == null}
         metaText={metaText}
       />
@@ -108,7 +109,10 @@ export function BadgeStampRow({
         </span>
 
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-8)', minWidth: 0 }}>
+          {/* 등급은 헤더가 아니라 **본문 칩**이 말한다(티켓 20260906_2344) — 헤더 우측은
+              퍼센트 숫자만 둔다. 레일이 등급을 칩으로 보여주는 것과 같은 어휘다. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-8)', minWidth: 0, flexWrap: 'wrap' }}>
+            <RarityBadge rarity={rarity} size="md" />
             {count != null && (
               <span
                 aria-label={`누적 ${count}회`}

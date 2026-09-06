@@ -193,7 +193,6 @@ export default function BadgeFamilyRow({
       stops={stops}
       nextRarityLabel={nextRarityLabel}
       headerFraction={headerFraction}
-      headerLabel={nextRarityLabel}
       headerMeta={headerMeta}
       frontierProgress={frontierProgress}
       progressStopId={progressStage?.id ?? null}

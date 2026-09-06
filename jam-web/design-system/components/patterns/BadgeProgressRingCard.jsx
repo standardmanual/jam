@@ -170,11 +170,15 @@ export function BadgeProgressRingCard({
         )}
       </span>
 
-      {/* 이름 자리 — 2줄 높이 상시 예약. 이름 길이가 그리드 행 높이를 못 흔든다 */}
+{/* 이름 자리 — 2줄 높이는 계속 예약하되(행 정렬 불변식) 텍스트를 **아래로 붙인다**.
+          블록 레이아웃이면 한 줄 이름에서 아래로 약 19px이 남고 거기에 flex gap 8px가
+          더해져 이름↔등급칩이 27px까지 벌어졌다(2026-09-06 사용자 지적). 남는 여백을
+          링↔이름 쪽으로 보내면 이름·등급칩·캡션이 한 덩어리로 읽힌다. */}
       <span
         style={{
           fontSize: 'var(--text-small)', fontWeight: 700, lineHeight: 1.3,
           color: 'var(--color-text)', width: '100%', minHeight: NAME_SLOT_HEIGHT,
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
           wordBreak: 'keep-all', overflowWrap: 'anywhere',
         }}
       >

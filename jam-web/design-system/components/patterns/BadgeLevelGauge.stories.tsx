@@ -32,7 +32,7 @@ const meta: Meta<typeof BadgeLevelGauge> = {
           '20260906_2140(v2): 헤더를 공유 부품 `BadgeFamilyCardHeader`로 올렸다 — 예전에는 ' +
           '이름이 썸네일(44)+갭(12)+칩(52) 뒤 **88px**에서 시작해 레일 카드(32px)와 어긋나 ' +
           '있었다. 이제 이름은 **카드 왼쪽 패딩 엣지**에서 시작하고, 레벨은 헤더 우측 진행률 ' +
-          '옆 `Lv.8` **텍스트**가 된다(`BadgeLevelChip`을 여기서 더 쓰지 않는다). 본문은 ' +
+          '본문 `BadgeLevelChip`(size="md")이 레벨을 말하고 헤더 우측은 퍼센트 숫자만 둔다. 본문은 ' +
           '`[52px 썸네일][값 행 + 10px 바]`, 현재값 --text-body-l, 이미지는 여백 없이 프레임을 ' +
           '꽉 채운다(objectFit: cover).',
       },
