@@ -181,21 +181,22 @@
 | `distinct_time_bands` | `number` | 개 | 서로 다른 시간대의 수 | — |
 | `day_of_month` | `number` (1–31) | — | 매달 지정일 **필터**. `day_of_week`와 같은 성격 | `total_count` |
 | `activities_within_hours` | `{ hours: number; count: number }` | 회 | 지정한 시간 창 안에 활동이 `count`회 이상 | — |
-| `personal_record_break` | `number` | 회 | 개인 기록 갱신 횟수. **가입 이후 활동만으로 직접 계산한다** — Strava `pr_count`는 계정 전체 이력 기준이라 v5의 «가입 시점 카운트»와 충돌해 쓰지 않는다 | — |
-| `personal_record_break_metric` (2026-09-06 신규, 티켓 20260906_0110 ③) | `string` (select) | — | 어느 지표의 개인 기록인지 지정하는 **필터**(role: filter). `personal_record_break`만으로는 자동 상승형 계열끼리(예: `walking:B1`↔`B2`) 조건 값이 글자 그대로 같아져 구분이 안 되는 문제를 스키마 차원에서 막는다. `personal_record_break` 자체가 여전히 `pending`이라 **이 필드가 있어도 지금 당장 발급되는 배지는 없다** — 평가 구현이 이 필드를 실제로 읽기 시작하면 그때 `engine`으로 뒤집는다 | `personal_record_break` |
+| `personal_record_break` ✅ (2026-09-06, 티켓 20260906_2055) | `number` | 회 | 개인 기록 갱신 횟수. **가입 이후 활동만으로 직접 계산한다** — Strava `pr_count`는 계정 전체 이력 기준이라 v5의 «가입 시점 카운트»와 충돌해 쓰지 않는다. 판정은 `activityFilters.ts`의 `countPersonalRecordBreaks()` — 지표 값이 그때까지의 최고 기록을 엄격히 초과할 때마다 1회(최초 활동은 항상 1회) | `personal_record_break_metric` (**필수**) |
+| `personal_record_break_metric` ✅ (2026-09-06, 티켓 20260906_2055) | `string` (select) | — | 어느 지표의 개인 기록인지 지정하는 **필터**(role: filter). `personal_record_break`만으로는 자동 상승형 계열끼리(예: `walking:B1`↔`B2`) 조건 값이 글자 그대로 같아져 구분이 안 되는 문제를 스키마 차원에서 막는다. **콘텐츠가 채워진 지표는 3종뿐**(`single_distance_km`·`duration_minutes`·`max_elevation_m`, `activityFilters.ts`의 `SUPPORTED_PERSONAL_RECORD_METRICS`) — `PersonalRecordMetric` 타입엔 9종이 더 있지만 값이 없는 나머지는 평가 시점에 「개인 기록 지표 평가 미구현」으로 막힌다 | `personal_record_break` |
 | `month_over_month_ratio` | `number` | 배 | 전월 대비 비율 | — |
 | `vs_personal_average` | `number` | 배 | 평소 평균 대비 비율 | — |
 
 ✅ = 평가 구현됨(휴식 4종은 §2.13, 스칼라 7종·`weekly_streak`는 `CONDITION_ACTIVITY_FIELD`·
-`calcMaxWeeklyStreak` — 판정 상세는 BADGE_ENGINE_UNIFIED.md §2.3). **v5 신규 20종 중
-12종**(휴식 4종 + 스칼라 7종 + `weekly_streak`)이 `engine`이고, 나머지 **8종**
+`calcMaxWeeklyStreak`, `personal_record_break`는 `countPersonalRecordBreaks` — 판정 상세는
+BADGE_ENGINE_UNIFIED.md §2.3). **v5 신규 20종 중 13종**(휴식 4종 + 스칼라 7종 +
+`weekly_streak` + `personal_record_break`)이 `engine`이고, 나머지 **7종**
 (`daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·
-`activities_within_hours`·`personal_record_break`·`month_over_month_ratio`·
-`vs_personal_average`)은 `pending`이다. `personal_record_break_metric`은 이 20종과 별개로
-2026-09-06에 추가된 21번째 필드이며 역시 `pending`이다. 분류상 `negative_split`·`day_of_month`·
-`personal_record_break_metric`만 «필터 전용»이고 나머지는 «수치 검사» 필드다(계열 정합성
-트리거의 `measurable_keys`는 `personal_record_break_metric`을 제외한 수치 검사 필드만 포함한다
-— 마이그레이션 140).
+`activities_within_hours`·`month_over_month_ratio`·`vs_personal_average`)은 `pending`이다.
+`personal_record_break_metric`은 이 20종과 별개로 2026-09-06에 추가된 21번째 필드이며
+`personal_record_break`와 같은 날 `engine`으로 전환됐다. 분류상 `negative_split`·
+`day_of_month`·`personal_record_break_metric`만 «필터 전용»이고 나머지는 «수치 검사» 필드다
+(계열 정합성 트리거의 `measurable_keys`는 `personal_record_break_metric`을 제외한 수치 검사
+필드만 포함한다 — 마이그레이션 140).
 
 ### 2.11 `repeat_count` — 반복 획득 (2026-09-05, 티켓 20260905_0030 B1) ✅ **평가 구현됨**
 

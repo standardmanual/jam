@@ -84,6 +84,10 @@ import {
   // 휴식 술어가 짝 필드로 흡수하는 키(streak_days·single_distance_km) — 「휴식 축이 조건을
   // 통째로 대표할 수 있는가」 판단의 예외 목록이다.
   restConsumedPairKeys,
+  // 개인 기록 갱신(personal_record_break) 판정 — 발급 판정(index.ts)과 **같은 함수**를 본다
+  // (티켓 20260906_2055). 각자 세면 「화면 3회 / 발급 2회」로 어긋난다.
+  isSupportedPersonalRecordMetric,
+  countPersonalRecordBreaks,
 } from './activityFilters'
 // 축 키 목록은 `index.ts`(발급 판정)와 **같은 파일**에서 온다 — 예전에는 이 파일이
 // `PER_ACTIVITY_KEYS`를 재선언했고, 두 목록이 어긋나면 진행률과 발급이 갈라졌다
@@ -526,6 +530,14 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
   // 티켓 20260905_0030 B-10). 어느 한쪽 축을 그리면 나머지 절반을 숨긴 채 진행률이 차오른다.
   if (restKeys.length > 0 && hasRepeat) return 'unsupported'
 
+  // personal_record_break — 짝 필드(personal_record_break_metric) 자체가 없는 조합은
+  // fail-closed(findBlockingConditionKeys의 unpaired)가 이미 위에서 걸렀다. 여기서는
+  // «값이 있지만 아직 콘텐츠가 없는 지표»(9종)를 추가로 막는다 — 발급 판정(index.ts)과
+  // 같은 3종만 진행률도 그린다(티켓 20260906_2055).
+  if (condition.personal_record_break !== undefined && !isSupportedPersonalRecordMetric(condition.personal_record_break_metric)) {
+    return 'unsupported'
+  }
+
   // 휴식(활동 공백) — 「닫힌 공백」만 세므로 현재 시각(now)이 필요 없다(§2.16).
   // 실측값은 발급 판정과 **같은 함수**(`evaluateRestConditions`)에서 온다.
   //
@@ -865,6 +877,21 @@ function buildCumulativeAxis(condition: BadgeCondition, metrics: UserPeriodMetri
     const current = season && season !== 'all' ? metrics.seasonCounts[season as Season] : metrics.totalCount
     const key = season && season !== 'all' ? season : 'total_count'
     return makeHigherBetterAxis(key, current, condition.season_count, labelMap)
+  }
+  // personal_record_break — 발급 판정(index.ts)과 같은 함수(countPersonalRecordBreaks)로
+  // 센다. classifyConditionKind가 이 kind를 고르는 시점엔 지표가 이미 지원 3종 중
+  // 하나임이 확정돼 있다(위 unsupported 가드) — 그래도 방어적으로 한 번 더 확인한다.
+  if (condition.personal_record_break !== undefined) {
+    const metric = condition.personal_record_break_metric
+    if (isSupportedPersonalRecordMetric(metric)) {
+      const count = countPersonalRecordBreaks(metric, metrics.activities)
+      return makeHigherBetterAxis(
+        'personal_record_break',
+        count,
+        condition.personal_record_break,
+        withRegistryLabel(labelMap, 'personal_record_break')
+      )
+    }
   }
   // total_count — day_of_week(단일)/time_range/temperature 필터가 붙어 있을 수 있음
   let pool = metrics.activities

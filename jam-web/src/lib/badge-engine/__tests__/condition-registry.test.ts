@@ -137,10 +137,24 @@ const V5_NEWLY_ENGINE_8_KEYS = [
   'weekly_streak',
 ] as const
 
-/** 아직 아무도 평가하지 않는 8종 — fail-closed가 계속 막아야 한다 */
+/**
+ * `personal_record_break` — 티켓 20260906_2055에서 `pending` → `engine`으로 뒤집었다.
+ * 짝 필드(`personal_record_break_metric`)도 함께 뒤집었고, `PAIR_ENFORCED_CONDITION_KEYS`에
+ * 새로 들어가 짝 없이는 fail-closed(unpaired)가 막는다.
+ */
+const V5_NEWLY_ENGINE_PERSONAL_RECORD_KEYS = ['personal_record_break'] as const
+
+/** 아직 아무도 평가하지 않는 7종 — fail-closed가 계속 막아야 한다 */
 const V5_PENDING_16_KEYS = V5_NEW_20_KEYS.filter(
-  (k): k is Exclude<(typeof V5_NEW_20_KEYS)[number], (typeof V5_REST_4_KEYS)[number] | (typeof V5_NEWLY_ENGINE_8_KEYS)[number]> =>
-    !(V5_REST_4_KEYS as readonly string[]).includes(k) && !(V5_NEWLY_ENGINE_8_KEYS as readonly string[]).includes(k)
+  (
+    k
+  ): k is Exclude<
+    (typeof V5_NEW_20_KEYS)[number],
+    (typeof V5_REST_4_KEYS)[number] | (typeof V5_NEWLY_ENGINE_8_KEYS)[number] | (typeof V5_NEWLY_ENGINE_PERSONAL_RECORD_KEYS)[number]
+  > =>
+    !(V5_REST_4_KEYS as readonly string[]).includes(k) &&
+    !(V5_NEWLY_ENGINE_8_KEYS as readonly string[]).includes(k) &&
+    !(V5_NEWLY_ENGINE_PERSONAL_RECORD_KEYS as readonly string[]).includes(k)
 )
 
 /** 신규 20종 각각의 「타입상 유효한」 예시 값 — 조건에 실어 fail-closed를 확인하는 데 쓴다 */
@@ -210,20 +224,31 @@ describe('레지스트리 — 필드 구성', () => {
     ])
     expect(byEval('pending')).toContain('route')
     // route + v5 신규 20 − 휴식 4(B3) − v5 스칼라7·weekly_streak 8(티켓 20260906_0110 ②)
-    // + personal_record_break_metric 1(같은 티켓 ③, 짝인 personal_record_break가 여전히
-    // pending이라 이 필드도 함께 막힌다) = 1 + 8 + 1 = 10
-    expect(byEval('pending').length).toBe(10)
+    // − personal_record_break·personal_record_break_metric 2(티켓 20260906_2055) = 1 + 7 = 8
+    expect(byEval('pending').length).toBe(8)
     // 기존 21 + repeat_count(B1) + 휴식 4종(B3) + v5 스칼라7·weekly_streak 8 + v5 확장 2
     // (cumulative_duration_hours·monthly_count, 티켓 20260906_0110 ①②)
-    expect(byEval('engine').length).toBe(36)
+    // + personal_record_break·personal_record_break_metric 2(티켓 20260906_2055)
+    expect(byEval('engine').length).toBe(38)
   })
 
-  it('v5 신규 20종이 전부 들어 있고, 휴식·스칼라7·weekly_streak를 뺀 8종은 아직 평가 미구현이다', () => {
+  it('v5 신규 20종이 전부 들어 있고, 휴식·스칼라7·weekly_streak·개인기록갱신을 뺀 7종은 아직 평가 미구현이다', () => {
     for (const key of V5_NEW_20_KEYS) expect(ALL_CONDITION_KEYS).toContain(key)
     for (const key of V5_PENDING_16_KEYS) {
       expect(EVALUATED_CONDITION_KEYS).not.toContain(key)
       expect(PENDING_CONDITION_KEYS).toContain(key)
     }
+  })
+
+  it('personal_record_break·personal_record_break_metric은 평가 주체가 엔진이다 (티켓 20260906_2055)', () => {
+    for (const key of ['personal_record_break', 'personal_record_break_metric'] as const) {
+      expect(EVALUATED_CONDITION_KEYS, key).toContain(key)
+      expect(PENDING_CONDITION_KEYS, key).not.toContain(key)
+    }
+    expect(MEASURABLE_CONDITION_KEYS).toContain('personal_record_break')
+    // personal_record_break_metric은 role: 'filter'라 measurable이 아니다 — 단독으로는
+    // pass/fail을 만들지 않는다(값을 고르는 축이 아니라 무엇을 셀지 지정할 뿐).
+    expect(MEASURABLE_CONDITION_KEYS).not.toContain('personal_record_break_metric')
   })
 
   it('v5 스칼라 7종 + weekly_streak는 평가 주체가 엔진이다 (티켓 20260906_0110 ②)', () => {
@@ -548,7 +573,9 @@ describe('fail-closed — ① 평가할 수 없는 키가 든 조건은 발급�
       makeActivity({ stravaId: i + 1, distanceKm: 100, elevationGainM: 3000, movingTimeSec: 36000 })
     )
     expect(checkCondition({ activity_type: 'running', distinct_time_bands: 2 }, many)).toBe(false)
-    expect(checkCondition({ activity_type: 'running', personal_record_break: 1 }, many)).toBe(false)
+    // personal_record_break는 티켓 20260906_2055부터 engine이라 여기 포함하지 않는다 —
+    // 짝 필드 없이 발급되지 않는 회귀는 personal-record-break.test.ts에서 다룬다.
+    expect(checkCondition({ activity_type: 'running', month_over_month_ratio: 1.2 }, many)).toBe(false)
   })
 
   it('findBlockingConditionKeys가 미지의 키와 구현 대기 키를 구분한다', () => {

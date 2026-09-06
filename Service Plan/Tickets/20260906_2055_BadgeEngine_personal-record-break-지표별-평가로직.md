@@ -119,3 +119,53 @@ UPDATE가 먼저 필요하다. 개선 리뷰가 `Specs/Content/ACTIVITY_BADGES.m
 아니었다 — `personal_record_break_metric` 채움은 재개 시 필요하면 함께 판단한다.
 
 **재개 조건 충족 — 엔진 구현 재착수 가능.**
+
+## 2026-09-06 재착수 — 엔진 구현 완료 (게이트 리뷰 대기)
+
+### 구현 내용
+
+- **`activityFilters.ts`** — `countPersonalRecordBreaks(metric, activities)` 신설. 가입 시점
+  이후 활동을 시간순으로 훑으며 지표 값이 그때까지의 최고 기록을 **엄격히 초과**할 때마다
+  1회로 센다. 최초의 유효 활동은 항상 1회로 잡힌다(직전 기록이 없으므로 어떤 값도 새
+  기록 — Strava 자체 PR 개념과 동일, `hiking:R1` 레벨1 문구 「닿아본 적 없는 높이에 처음
+  섰습니다」가 이 해석을 뒷받침한다). 값이 없는 활동(고도계 미탑재 등)은 시퀀스에서 건너뛴다.
+  지원 지표는 콘텐츠가 채워진 3종(`single_distance_km`→`distanceKm`,
+  `duration_minutes`→`movingTimeSec/60`, `max_elevation_m`→`maxElevationM`)뿐이다 —
+  `isSupportedPersonalRecordMetric()`으로 판별한다. `index.ts`(발급)와 `badgeProgress.ts`
+  (진행률)가 이 함수 하나를 공유한다.
+- **`index.ts`** — `evaluateConditionDetailed`에 `personal_record_break` 평가 분기 추가.
+  `filtered`(activity_type + 걷기 게이트 적용된, 가입 앵커 이후 이력) 위에서
+  `countPersonalRecordBreaks`를 호출해 임계값과 비교한다. 레벨형(자동상승) 배지는 기존
+  「보유 레벨+1」 프런티어 루프가 그대로 이 조건을 호출하므로 별도 배선이 필요 없었다.
+- **`conditionRegistry.ts`** — `personal_record_break`·`personal_record_break_metric`을
+  `evaluation: 'pending'` → `'engine'`으로 전환. `personal_record_break`에
+  `pairedWith: ['personal_record_break_metric']`을 추가하고 `PAIR_ENFORCED_CONDITION_KEYS`에
+  편입 — 짝 필드 없이는 fail-closed(unpaired)가 막는다. 실적 0건(선행 HALT 실측)이라 이
+  강제가 기존 발급을 뒤집지 않는다. 이 덕분에 `personal_record_break_metric`이 없는 나머지
+  7계열(`walking:B3/B4`·`running:R2/R3`·`cycling:R2`)은 손대지 않아도 계속 막힌다 — 그중
+  `running:R2`(`single_distance_km` 동반, 다른 pending 필드 없음)가 유일하게 이 짝 필드
+  강제가 없었다면 새로 뚫렸을 사례였다(회귀 테스트로 확인).
+  값 자체가 아직 콘텐츠 없는 지표(예: `avg_watts`)로 설정된 경우까지는 짝 필드 존재만으로는
+  못 걸러 `index.ts`/`badgeProgress.ts`가 `isSupportedPersonalRecordMetric()`으로 한 번 더
+  방어한다.
+- **`conditionAxes.ts`** — `personal_record_break`를 `COUNTER_AXIS_KEYS`에 추가. 짝 필드
+  `personal_record_break_metric`은 `role: 'filter'`라 스칼라 축으로 들어가지 않는다.
+- **`badgeProgress.ts`** — `classifyConditionKind`에 「짝 필드는 있지만 미지원 지표」 조기
+  가드 추가(발급 fail-closed와 별개 경로라 직접 확인 필요). `buildCumulativeAxis`에
+  `personal_record_break` 전용 분기 추가 — `countPersonalRecordBreaks`를 `metrics.activities`
+  위에서 다시 호출해 발급과 같은 축을 그린다(축 종류는 `cumulative` → 레벨형이면
+  `leveled`로 래핑).
+- **회귀 테스트** — 신규 `personal-record-break.test.ts`: 첫 활동 자동 1회 판정·미달 활동
+  무시·역대 최고 갱신 시 카운트 증가·시간 뒤섞임 정렬·측정값 없는 활동 스킵·지표 다른
+  형제(B1 거리 ↔ B2 시간) 비간섭·지표 없음/미지원 fail-closed·진행률 분류 일치. 기존
+  `condition-registry.test.ts`의 pending/engine 개수·목록도 갱신(52종 구성은 그대로,
+  pending 10→8, engine 36→38).
+
+### 검증
+- `npx vitest run` 전체 62개 파일·1121개 테스트 통과(회귀 없음).
+- `npx tsc --noEmit` 오류 없음.
+- `npm run lint` 0 error, 13 warning(전부 `design-system/` 기존 경고, 이번 변경과 무관).
+
+### 남은 것 — 게이트 리뷰
+- 프로덕션 14계열(자동 상승형) 중 지표가 채워진 7계열의 실제 발급 가능 여부 실측 확인은
+  게이트 리뷰 몫으로 남긴다(구현 계획 5단계).
