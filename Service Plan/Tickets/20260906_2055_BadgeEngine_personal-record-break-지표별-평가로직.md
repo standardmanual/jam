@@ -62,3 +62,43 @@ created: 2026-09-06
 ## 하지 않는 것
 - `20260906_0110`의 다른 4개 확장 항목 — 이미 구현·머지 완료
 - 27종 신규 배지 행 시딩 — 별도 콘텐츠 작업
+
+---
+
+## 2026-09-06 착수 — HALT (코드 미착수)
+
+구현 계획 1단계(14계열 전수 조사)에서 티켓이 명시한 HALT 조건에 정확히 해당함을 확인해
+`evaluateConditionDetailed`/`badgeProgress.ts` 구현에 착수하지 않았다. 게이트 리뷰가 이
+판단 자체를 PASS로 검증했다(DB 직접 재조회로 독립 확인).
+
+**실측**: 시딩된 14계열(`walking:B1~B4`·`running:R1~R3`·`cycling:R1~R2`·`hiking:R1~R2`·
+`trail_running:R1~R3`) 전부 `personal_record_break_metric`이 **비어 있다.** 마이그레이션
+140이 스키마만 열고 콘텐츠 쪽 값 채우기가 함께 이뤄지지 않았다. 그 결과 7쌍의 `condition_json`이
+**문자 그대로 완전히 동일**하다 — `walking:B1`↔`B2` · `hiking:R1`↔`R2` ·
+`trail_running:R1`↔`R2`↔`R3`. `repeat_count`와의 조합은 0건(§B-10류 우려는 해당 없음).
+
+**선행 조건 — 콘텐츠 작업**: 14계열 각 행에 `personal_record_break_metric` 값을 채우는
+UPDATE가 먼저 필요하다. 개선 리뷰가 `Specs/Content/ACTIVITY_BADGES.md`의 배지 설명 문구에서
+초안을 뽑아뒀다:
+
+| 계열 | 설명 문구가 암시하는 지표 |
+|---|---|
+| `walking:B1` | 가장 긴 거리 → `distance_km` 계열 |
+| `walking:B2` | 가장 긴 이동시간 → `duration_minutes` 계열 |
+| `hiking:R1` | 가장 높은 도달 고도 → `elevation_gain_m` 계열 |
+| `hiking:R2` | 가장 긴 이동시간 → `duration_minutes` 계열 |
+| `trail_running:R1` | 가장 긴 거리 → `distance_km` 계열 |
+| `trail_running:R2` | 가장 높은 도달 고도 → `elevation_gain_m` 계열 |
+| `trail_running:R3` | 가장 긴 이동시간 → `duration_minutes` 계열 |
+
+⚠️ **"거리"가 단회 활동(`single_distance_km`) 기준인지 누적(`distance_km`) 기준인지는
+문구만으로 확정되지 않는다** — 최종 값은 콘텐츠 담당(사용자) 확인이 필요하다. `walking:B3`·
+`B4`·`running:R2`·`R3`·`cycling:R2`(나머지 7계열)는 다른 필드로 이미 형제와 구분되지만
+`personal_record_break_metric` 자체는 이들도 비어 있다.
+
+**재개 순서**: ① 위 표를 근거로 사용자가 지표 확정(특히 단회/누적 구분) → ② 14계열
+`condition_json`에 `personal_record_break_metric` 값을 채우는 콘텐츠 마이그레이션 →
+③ 이 엔진 티켓 재개(`evaluateConditionDetailed`·`badgeProgress.ts`·`conditionRegistry.ts`의
+`evaluation: 'pending'→'engine'` 전환).
+
+이 티켓은 재개 대기 상태로 `OPEN` 유지한다(CLOSED 아님 — 작업이 끝난 게 아니라 막힌 것).
