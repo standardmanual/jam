@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, InventoryItemRow } from '@/types/database'
 import { OrphanedItemsTable, type OrphanedItemRow } from './OrphanedItemsTable'
 import Pagination from '../../poi/Pagination'
-import { pickSingleQueryParams } from '@/lib/searchParams'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 50
 /** PostgREST 기본 응답 상한 — range 순회 페이지 크기 */
@@ -16,7 +16,7 @@ const IN_CHUNK_SIZE = 200
  * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
  */
 interface Props {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: SearchParamsPromise
 }
 
 type CandidateItem = Pick<

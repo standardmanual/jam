@@ -19,7 +19,7 @@ import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
-import { singleQueryParam } from '@/lib/searchParams'
+import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
@@ -34,7 +34,7 @@ function isExpiringSoon(expiresAt: string | null): boolean {
  */
 interface BadgeDetailPageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ u?: string | string[] }>
+  searchParams: Promise<{ u?: SearchParamValue }>
 }
 
 export default async function BadgeDetailPage({ params, searchParams }: BadgeDetailPageProps) {

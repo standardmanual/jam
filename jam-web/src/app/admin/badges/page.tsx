@@ -16,7 +16,7 @@ import {
   requiresFullFetchSort,
   type BadgeListSortRow,
 } from '@/lib/admin/badge-list-view'
-import { pickSingleQueryParams } from '@/lib/searchParams'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 50
 
@@ -54,7 +54,7 @@ async function fetchAllRows<T>(query: RangeQuery<T>): Promise<T[]> {
  * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
  */
 interface AdminBadgesPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: SearchParamsPromise
 }
 
 export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageProps) {

@@ -15,7 +15,7 @@ import ItemBookHeroSection from './ItemBookHeroSection'
 import { d } from '@/lib/i18n'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
-import { singleQueryParam } from '@/lib/searchParams'
+import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
 /**
  * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — `?u=a&u=b`처럼 같은 키가 두 번 오면
@@ -26,10 +26,10 @@ interface Props {
   params: Promise<{ id: string }>
   // `slot=1` — 알림함 소식 #11의 착지점(장착 모드). 20260824_021
   searchParams: Promise<{
-    u?: string | string[]
-    from?: string | string[]
-    itemId?: string | string[]
-    slot?: string | string[]
+    u?: SearchParamValue
+    from?: SearchParamValue
+    itemId?: SearchParamValue
+    slot?: SearchParamValue
   }>
 }
 

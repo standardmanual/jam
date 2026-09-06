@@ -23,6 +23,7 @@ import {
 // (티켓 20260905_0031).
 import { badgeKindOf } from '@/lib/badge-engine/badgeKind'
 import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
+import type { SearchParamValue } from '@/lib/searchParams'
 import type { ActivityType, BadgeCondition } from '@/types/database'
 import BadgeTreeClient from './BadgeTreeClient'
 
@@ -108,7 +109,7 @@ function withResolvedAxisLabels(
  * `BadgeTreeClient`의 `normalizeActivity`가 담당한다.
  */
 interface Props {
-  searchParams: Promise<{ activity?: string | string[] }>
+  searchParams: Promise<{ activity?: SearchParamValue }>
 }
 
 export default async function BadgeTreePage({ searchParams }: Props) {

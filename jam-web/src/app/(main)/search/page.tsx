@@ -10,7 +10,7 @@ import { UserIcon, ChevronRightIcon, SearchIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d, t } from '@/lib/i18n'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
-import { singleQueryParam } from '@/lib/searchParams'
+import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
 /**
  * ⚠️ `q`의 타입을 `string`으로 좁히지 말 것 — `?q=a&q=b`처럼 같은 키가 두 번 오면 Next가
@@ -18,7 +18,7 @@ import { singleQueryParam } from '@/lib/searchParams'
  * (티켓 20260906_1312 — 이 화면이 실제로 500이었다).
  */
 interface SearchPageProps {
-  searchParams: Promise<{ q?: string | string[] }>
+  searchParams: Promise<{ q?: SearchParamValue }>
 }
 
 interface UserSearchResult {

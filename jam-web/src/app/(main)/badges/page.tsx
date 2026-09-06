@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import BadgesClient, { ItemBookProgress, CheckinBadgeItem } from './BadgesClient'
 import { IN_CHUNK_SIZE } from '@/lib/notifications/batch/shared'
-import { singleQueryParam } from '@/lib/searchParams'
+import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
 
 /**
  * 20260824_021: 알림함 착지용 쿼리 파라미터.
@@ -18,7 +18,7 @@ import { singleQueryParam } from '@/lib/searchParams'
  * 「값 없음」(= 기본 탭)으로 못 박는다 (티켓 20260906_1312).
  */
 interface Props {
-  searchParams: Promise<{ tab?: string | string[] }>
+  searchParams: Promise<{ tab?: SearchParamValue }>
 }
 
 export default async function BadgesPage({ searchParams }: Props) {
