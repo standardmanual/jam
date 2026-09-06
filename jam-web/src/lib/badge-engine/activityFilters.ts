@@ -515,6 +515,66 @@ export function evaluateRestConditions(
   return { kind: 'pass', actual, required, resumeActivity: triggerInterval!.resume }
 }
 
+// ── 개인 기록 갱신(personal_record_break) 판정 (티켓 20260906_2055) ─────────
+//
+// `index.ts`(발급 판정)와 `badgeProgress.ts`(진행 계산)가 이 파일의 같은 함수를 본다 —
+// 각자 세면 「화면은 3회인데 발급은 2회」로 발급-진행률이 어긋난다(0110이 반복 지적한
+// 실패 패턴). `evaluateRestConditions`와 같은 태도로 이 파일에 둔다.
+//
+// 콘텐츠가 채워진 지표는 현재 3종뿐이다(선행 티켓 20260906_2055 콘텐츠 값 확정):
+// `single_distance_km`(한 번의 거리) · `duration_minutes`(한 번의 이동시간) ·
+// `max_elevation_m`(도달 고도). `PersonalRecordMetric` 타입엔 9종이 더 있지만 카탈로그에
+// 값이 없다 — 지원을 넓히려면 `personalRecordMetricValue`의 분기와 이 상수를 함께 늘린다.
+export const SUPPORTED_PERSONAL_RECORD_METRICS = ['single_distance_km', 'duration_minutes', 'max_elevation_m'] as const
+export type SupportedPersonalRecordMetric = (typeof SUPPORTED_PERSONAL_RECORD_METRICS)[number]
+
+/** `personal_record_break_metric` 값이 지금 엔진이 평가할 수 있는 3종 중 하나인지 */
+export function isSupportedPersonalRecordMetric(value: unknown): value is SupportedPersonalRecordMetric {
+  return typeof value === 'string' && (SUPPORTED_PERSONAL_RECORD_METRICS as readonly string[]).includes(value)
+}
+
+/** 지표별로 활동 1건에서 비교할 값을 꺼낸다. 값이 없는 활동(고도계 미탑재 등)은 undefined */
+function personalRecordMetricValue(metric: SupportedPersonalRecordMetric, a: NormalizedActivity): number | undefined {
+  switch (metric) {
+    case 'single_distance_km':
+      return a.distanceKm
+    case 'duration_minutes':
+      return a.movingTimeSec / 60
+    case 'max_elevation_m':
+      return a.maxElevationM
+  }
+}
+
+/**
+ * 「개인 기록 갱신」 횟수 — 넘어온 `activities`(가입 시점 이후로 이미 좁혀져 있다는 전제,
+ * 마스터 티켓 20260905_0026 「가입 시점부터 카운트」)를 시간순으로 훑으며, 지표 값이
+ * 그때까지의 최고 기록을 **엄격히 초과**할 때마다 1회로 센다.
+ *
+ * 최초의 유효 활동은 항상 1회로 잡힌다 — 직전 기록이 없으므로(비교 대상이 −Infinity) 어떤
+ * 값도 새 기록이다. Strava 자체의 PR(personal record) 개념과 같은 태도다(예: `hiking:R1`
+ * 레벨 1 문구 「닿아본 적 없는 높이에 처음 섰습니다」— 첫 활동이 곧 최초 기록이라는 뜻).
+ *
+ * 지표 값이 없는 활동(예: 고도계 미탑재)은 시퀀스에서 완전히 건너뛴다 — 데이터 없음을
+ * 기록 갱신 실패로 세지 않고, 최고 기록 갱신에도 영향을 주지 않는다.
+ */
+export function countPersonalRecordBreaks(
+  metric: SupportedPersonalRecordMetric,
+  activities: NormalizedActivity[]
+): number {
+  const sorted = [...activities].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  let best = -Infinity
+  let count = 0
+  for (const a of sorted) {
+    const value = personalRecordMetricValue(metric, a)
+    if (value === undefined) continue
+    if (value > best) {
+      best = value
+      count++
+    }
+  }
+  return count
+}
+
 /** 미발급 사유의 `required` 문구 — 짝 필드까지 함께 읽어야 뜻이 완성된다 */
 function describeRestRequirement(key: RestConditionKey, condition: BadgeCondition): string {
   switch (key) {

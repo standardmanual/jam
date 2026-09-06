@@ -88,8 +88,14 @@ export const PERIODIC_AXIS_KEYS = ['weekly_count', 'monthly_km', 'monthly_count'
  * `weekly_streak`(티켓 20260906_0110 ②)는 `streak_days`의 주 단위 버전이다 — 발급도 진행도
  * "역대 최장 연속 주"를 그대로 쓴다(현재/역대 구분이 없다는 점이 `weekly_count`와 다르다).
  */
+/**
+ * `personal_record_break`(티켓 20260906_2055)도 「몇 번」을 세는 카운터다 — 「보유 레벨+1」
+ * 레일을 타는 레벨형 배지라 목표값 자체가 레벨(=회차)과 같다. 짝 필드(`personal_record_break_metric`)는
+ * 필터 전용(role: 'filter')이라 여기 들어오지 않는다 — 값을 고르는 축이 아니라 「무엇을 세는지」
+ * 지정할 뿐이다.
+ */
 export const COUNTER_AXIS_KEYS = [
-  'total_count', 'streak_days', 'active_days_count', 'season_count', 'weekly_streak',
+  'total_count', 'streak_days', 'active_days_count', 'season_count', 'weekly_streak', 'personal_record_break',
 ] as const satisfies readonly (keyof BadgeCondition)[]
 
 /** 축이 여러 개로 펼쳐지는 키 — `kind: 'multi'` */

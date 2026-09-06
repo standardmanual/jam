@@ -1266,7 +1266,12 @@ export const CONDITION_FIELDS = [
     max: 100,
     step: 1,
     direction: 'higher',
-    evaluation: 'pending',
+    // 티켓 20260906_2055 — `personal_record_break_metric`에 콘텐츠 값이 채워진 뒤 평가
+    // 구현을 열었다. 짝 필드(`personal_record_break_metric`)가 없으면 「어느 지표의
+    // 기록인가」가 정의되지 않으므로 `PAIR_ENFORCED_CONDITION_KEYS`에도 함께 넣는다 —
+    // 지금까지 발급된 배지가 0건이라(선행 HALT 실측) 강제해도 회귀가 없다.
+    evaluation: 'engine',
+    pairedWith: ['personal_record_break_metric'],
     chip: (c) => `기록 갱신 ${c.personal_record_break}회`,
     detail: (c) => `개인 기록 갱신 ${c.personal_record_break}회 이상`,
     form: integerForm('personalRecordBreak', { section: 'pattern', label: '개인 기록 갱신 (회)', placeholder: '예: 3' }),
@@ -1279,11 +1284,11 @@ export const CONDITION_FIELDS = [
     input: 'select',
     pairedWith: ['personal_record_break'],
     direction: null,
-    // `personal_record_break` 자체가 아직 `pending`이라 이 필드도 함께 막힌다(같은 조건에
-    // 항상 동반된다). `personal_record_break`의 평가 구현이 이 필드를 실제로 읽기 시작하면
-    // 그때 `engine`으로 뒤집는다 — 지금은 «자동 상승형 계열이 서로 수렴하지 않도록 조건
-    // 데이터를 구분 가능하게 만드는」 스키마 정비만 한다(티켓 20260906_0110 ③).
-    evaluation: 'pending',
+    // `personal_record_break`의 평가 구현(티켓 20260906_2055)이 이 필드를 실제로 읽기
+    // 시작했다 — `engine`으로 뒤집는다. 다만 실제로 값이 채워진 지표는 3종뿐이다
+    // (`single_distance_km`·`duration_minutes`·`max_elevation_m`, activityFilters.ts의
+    // `SUPPORTED_PERSONAL_RECORD_METRICS`) — 나머지 값은 평가 시점에 개별적으로 막힌다.
+    evaluation: 'engine',
     chip: (c) =>
       `기록 지표: ${PERSONAL_RECORD_METRIC_FORM_OPTIONS.find((o) => o.value === c.personal_record_break_metric)?.label ?? c.personal_record_break_metric}`,
     detail: (c) =>
@@ -1582,6 +1587,10 @@ export const PAIR_ENFORCED_CONDITION_KEYS: readonly ConditionKey[] = [
   'rest_after_long',
   'return_gap_days',
   'interval_days',
+  // 티켓 20260906_2055 — personal_record_break가 이제 막 평가를 시작해(실적 0건) 위 4종과
+  // 같은 안전 조건을 만족한다. 짝 필드(personal_record_break_metric) 없이는 「어느 지표의
+  // 기록인가」가 정의되지 않는다.
+  'personal_record_break',
 ]
 
 /**
