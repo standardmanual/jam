@@ -8,8 +8,10 @@ import { Switch } from '@/components/admin/ui/switch'
 import { Checkbox } from '@/components/admin/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import {
+  AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES,
   AMBIENT_DROP_SCHEDULE_HOURS_KST,
   formatAmbientDropScheduleLabel,
+  formatAmbientDropScheduleOption,
   formatAmbientDropScheduleTime,
 } from '@/lib/ambient-drop/schedule'
 
@@ -120,7 +122,7 @@ export default function AmbientDropForm({
         setMessage({ type: 'error', text: json.error ?? '저장 실패' })
       } else {
         setValues(json.config)
-        setMessage({ type: 'ok', text: '저장되었습니다. 다음 배포부터 즉시 적용됩니다.' })
+        setMessage({ type: 'ok', text: '저장했어요. 다음 배포부터 적용돼요.' })
       }
     } catch {
       setMessage({ type: 'error', text: '네트워크 오류' })
@@ -156,8 +158,9 @@ export default function AmbientDropForm({
         <h2 className="font-bold mb-1">배포 트리거</h2>
         <p className="text-muted-foreground text-xs mb-4">
           배포는 두 갈래예요. <strong className="text-foreground">예약 배포</strong>는 아래에서 정한
-          시각에 매일 저절로 배포하고, <strong className="text-foreground">즉시 배포</strong>는 맨 아래
-          「지금 배포」를 누른 그 자리에서 1회 배포해요. 두 갈래 모두 저장된 같은 설정값을 써요.
+          시각에 매일 저절로 배포하고, <strong className="text-foreground">즉시 배포</strong>는 아래
+          「즉시 배포」의 「지금 배포」를 누른 그 자리에서 1회 배포해요. 두 갈래 모두 저장된 같은
+          설정값을 써요.
         </p>
 
         <div className="flex items-center gap-3">
@@ -182,13 +185,14 @@ export default function AmbientDropForm({
               <SelectContent container={themeContainer ?? undefined}>
                 {AMBIENT_DROP_SCHEDULE_HOURS_KST.map((hour) => (
                   <SelectItem key={hour} value={String(hour)}>
-                    {formatAmbientDropScheduleTime(hour)}
+                    {formatAmbientDropScheduleOption(hour)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <span className="text-xs text-muted-foreground">
-              한국시간 기준 정시예요. 분 단위는 정할 수 없어요.
+              한국시간 기준 정시 단위로 정할 수 있어요. 오늘 예약 배포가 이미 돌았다면 새 시각은
+              내일부터 적용돼요.
             </span>
           </div>
 
@@ -197,6 +201,7 @@ export default function AmbientDropForm({
             <input
               type="number"
               min={0}
+              max={AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES}
               step={1}
               value={values.exclusion_window_minutes}
               onChange={(e) => set('exclusion_window_minutes', Number(e.target.value))}
@@ -205,6 +210,7 @@ export default function AmbientDropForm({
             <span className="text-xs text-muted-foreground">
               예약 배포 시각 {formatAmbientDropScheduleTime(values.schedule_hour_kst)} 전후 이 분(分)
               동안은 「지금 배포」를 누를 수 없어요. 두 배포가 겹치지 않게 하기 위해서예요.
+              최대 {AMBIENT_DROP_EXCLUSION_WINDOW_MAX_MINUTES}분까지 정할 수 있어요.
             </span>
           </label>
         </div>

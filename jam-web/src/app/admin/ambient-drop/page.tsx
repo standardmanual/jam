@@ -33,7 +33,7 @@ export default async function AdminAmbientDropPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">앰비언트 드랍</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          시스템이 POI에 아이템배지를 직접 배치합니다. 배포 시각(KST)은 아래 「배포 트리거」에서
+          시스템이 POI에 아이템배지를 직접 배치해요. 배포 시각(KST)은 아래 「배포 트리거」에서
           정해요. 로직: BadgeEngine/BADGE_ENGINE_UNIFIED.md §3.12
         </p>
       </div>
