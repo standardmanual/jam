@@ -117,9 +117,14 @@ function withResolvedAxisLabels(
  *
  * `?activity=` — 열어둘 종목 탭(티켓 20260906_1158). `badges/page.tsx`의 `?tab=`과 같은 패턴이다.
  * 서버 조회 범위는 바꾸지 않는다 — 트리는 전 종목을 어차피 다 만들고, 쿼리는 어느 탭을 열지만 정한다.
+ *
+ * ⚠️ 타입을 `string`으로 좁히지 말 것. 같은 키가 두 번 오면(`?activity=a&activity=b`) Next는
+ * **배열**을 넘긴다 — `string`으로 선언하면 그 사실이 가려져 타입체크가 못 잡고 소비 측에서
+ * 문자열 메서드를 부르다 500이 난다(티켓 20260906_1158 2차 게이트 실측). 배열 처리는
+ * `BadgeTreeClient`의 `normalizeActivity`가 담당한다.
  */
 interface Props {
-  searchParams: Promise<{ activity?: string }>
+  searchParams: Promise<{ activity?: string | string[] }>
 }
 
 export default async function BadgeTreePage({ searchParams }: Props) {
