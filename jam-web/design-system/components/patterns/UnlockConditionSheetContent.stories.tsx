@@ -21,7 +21,9 @@ const meta: Meta<typeof UnlockConditionSheetContent> = {
           '「잠금 해제 조건」 → **「받는 방법」**으로 바꿨다(UX_WRITING_GUIDELINE §5.1 — ' +
           '예측 가능한 행동 동사). 서비스 BottomSheet(src/components/ui/BottomSheet.tsx) ' +
           '위에 children으로 얹는다 — DS BottomSheet 위가 아니다(병존 구현, §1.6). requirements는 전부 ' +
-          '아직 채우지 못한 항목만 넘긴다(OR 게이트가 이미 열렸으면 이 시트 자체를 띄우지 않는다).',
+          '아직 채우지 못한 항목만 넘긴다(OR 게이트가 이미 열렸으면 이 시트 자체를 띄우지 않는다). ' +
+          '체크 글리프는 이 파일이 따로 선언하지 않고 `icons/BadgeStatusGlyphs.jsx` 단일 소스를 ' +
+          '쓴다(20260906_2140 F-2 — 사본 세 벌 중 마지막 한 벌을 여기서 걷어냈다).',
       },
     },
   },

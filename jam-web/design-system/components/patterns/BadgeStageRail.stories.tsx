@@ -29,10 +29,15 @@ const meta: Meta<typeof BadgeStageRail> = {
           '미충족)인 캡션 색은 옐로우(--status-short-solid)에서 화이트(--color-text)로 바뀌었다 — ' +
           '채움색(막대·연결선)은 그대로다. ' +
           '20260906_2140(v5): 헤더를 직접 그리지 않고 공유 부품 `BadgeFamilyCardHeader`를 쓴다 — ' +
-          '계열명 시작 x가 패턴마다 32/88/16px로 갈라져 있었다. 눈금은 `repeat(n, 1fr)` **균등 ' +
-          '그리드**이고 연결선은 그 위에 **절대 배치**된 별도 레이어라, 캡션 글자 수가 기하를 ' +
-          '움직이지 못한다(예전에는 캡션 폭이 열 폭을 정해 한 화면에서 연결선이 37/25/21/14px로 ' +
-          '벌어졌다). 캡션 자리는 2줄 높이를 상시 예약한다. 썸네일 44→52px, 연결선 6→8px, ' +
+          '계열명 시작 x가 패턴마다 32/88/16px로 갈라져 있었다. 눈금 기하는 **고정 상수**다 — ' +
+          '썸네일 52px · 연결선 16px을 못박고 **왼쪽부터** 나열하며 남는 오른쪽은 여백으로 둔다. ' +
+          '`1fr`을 쓰지 않는 이유: 캡션 폭이 열 폭을 정하던 원본은 한 화면에서 연결선이 ' +
+          '37/25/21/14px로 벌어졌고, 1차 수정의 `repeat(n, 1fr)`은 **눈금 수**가 열 폭을 정해 ' +
+          '2눈금 카드의 연결선이 4눈금 카드의 5.4배(95.5 vs 17.75px)가 됐다. 지금은 눈금 2·3·4개를 ' +
+          '한 화면에 쌓아도 연결선이 16px 하나이고, 375·320px 모두에서 눈금 시작 x가 ' +
+          '32·100·168·236px로 같다(Chromium 실측). 캡션 자리는 2줄 높이를 상시 예약하고 폭은 ' +
+          '「썸네일 + 연결선」(68px)까지만 허용한다 — 이웃 캡션과 맞닿되 겹치지 않는 최대치다. ' +
+          '썸네일 44→52px, 연결선 6→8px(두께), ' +
           '캡션 --text-micro→--text-caption(진행 앵커만 --text-small/700), 등급칩 size="md", ' +
           '배지 이미지는 여백 없이 프레임을 꽉 채운다(objectFit: cover). 캡션 색은 상태 램프 ' +
           '(idle / active / near / done)를 따른다.',
@@ -331,8 +336,8 @@ export const FrontierProgressCaptionRamp: Story = {
  *
  * 예전에는 눈금 열이 `flex:none; minWidth:48`인데 캡션이 `maxWidth:92`까지 번져 **열 폭을
  * 캡션 글자 수가 정했다** — staging 실측에서 한 화면 네 카드의 연결선이 37/25/21/14px로
- * 벌어졌다. 이제 눈금은 `repeat(n, 1fr)` 균등 그리드이고 연결선은 그 위에 절대 배치된
- * 별도 레이어라, 캡션이 한 글자든 두 줄이든 모든 연결선 폭이 같다.
+ * 벌어졌다. 이제 눈금 열 폭은 「썸네일 52 + 연결선 16」 고정이고 연결선은 그 위에 절대
+ * 배치된 별도 레이어라, 캡션이 한 글자든 두 줄이든 모든 연결선 폭이 같다.
  */
 export const ConnectorGeometryIsFixed: Story = {
   name: '20260906_2140 — 연결선 폭은 캡션 길이와 무관하게 같다',
@@ -1005,5 +1010,78 @@ export const CaptionSlotReserved: Story = {
     expect(stops.length).toBe(4);
     // 캡션 글자 수가 「4km」~「6일 연속 · 5회」로 크게 다른데도 눈금 열 높이가 하나다.
     expect(new Set(stops.map((el) => el.offsetHeight)).size).toBe(1);
+  },
+};
+
+/**
+ * 20260906_2140 §C-1 — **눈금 수가 달라도 연결선 폭·눈금 위치가 하나로 모인다.**
+ *
+ * 1차 게이트가 FAIL한 자리다. `repeat(n, 1fr)`로 열을 균등 분할하면 «눈금 수»가 열 폭을
+ * 정해, 프로덕션 실데이터 분포(2눈금 148계열 · 3눈금 6계열 · 4눈금 2계열)가 한 화면에
+ * 섞이는 순간 연결선이 17.75 / 43.66 / 95.5px로 5.4배 갈렸다.
+ *
+ * 지금은 썸네일 52px · 연결선 16px 둘 다 고정이고 왼쪽부터 나열한다. 남는 오른쪽은
+ * 그대로 여백이다 — 「이 계열은 2단계뿐」이라는 정직한 표현이고, 진행 앵커가 카드 간 같은
+ * x에 오는 이득이 그보다 크다. Chromium 실측: 375px·320px 모두 연결선 16px 하나,
+ * 눈금 시작 x 32·100·168·236px 하나(가로 스크롤 0).
+ */
+export const FixedPitchAcrossStopCounts: Story = {
+  name: '20260906_2140 C-1 — 눈금 4·3·2개를 쌓아도 연결선 폭이 하나',
+  render: () => (
+    <Frame>
+      <div data-testid="stack" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {[4, 3, 2].map((n) => (
+          <div key={n} data-rail={String(n)}>
+            <BadgeStageRail
+              familyName={`${n}눈금 계열`}
+              nextRarityLabel="Rare"
+              headerFraction={0.42}
+              headerLabel="Rare"
+              headerMeta="다음 Rare · 4.2/10km"
+              stops={(['common', 'rare', 'epic', 'mystic'] as const).slice(0, n).map((rarity, i) => ({
+                id: `${n}-${i}`,
+                rarity,
+                imageUrl: WALK_ICON,
+                status: i === 0 ? ('earned' as const) : ('not-reached' as const),
+                href: `/badges/${n}-${i}`,
+                conditionText: ['4km', '6일 연속 · 5회', '100일 · 10회', '두 조건 동시'][i],
+              }))}
+              frontierProgress={{ text: '4.2/10km', fraction: 0.42 }}
+              progressStopId={null}
+              regretLine={null}
+              onLockClick={() => {}}
+            />
+          </div>
+        ))}
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const stack = canvasElement.querySelector('[data-testid="stack"]')!;
+    const rails = Array.from(stack.querySelectorAll('[data-rail]')) as HTMLElement[];
+    expect(rails.length).toBe(3);
+
+    // ① 세 카드의 모든 연결선 폭이 하나로 모인다.
+    const widths = rails.flatMap((rail) =>
+      (Array.from(rail.querySelectorAll('span')) as HTMLElement[])
+        .filter((el) => getComputedStyle(el).position === 'absolute' && Math.round(el.offsetHeight) === 8)
+        .map((el) => Math.round(el.getBoundingClientRect().width))
+    );
+    expect(widths.length).toBe(3 + 2 + 1);
+    expect(new Set(widths).size).toBe(1);
+    expect(widths[0]).toBe(16);
+
+    // ② i번째 눈금의 시작 x가 카드를 가로질러 같다 — 스캔 컬럼이 성립하는 조건.
+    const lefts = rails.map((rail) =>
+      (Array.from(rail.querySelectorAll('.ds-rail-stop')) as HTMLElement[]).map((el) =>
+        Math.round(el.getBoundingClientRect().left - rail.getBoundingClientRect().left)
+      )
+    );
+    // 4눈금 기준값에 3·2눈금이 앞에서부터 그대로 포개진다(= 오른쪽만 비는 배치).
+    expect(lefts[1]).toEqual(lefts[0].slice(0, 3));
+    expect(lefts[2]).toEqual(lefts[0].slice(0, 2));
+    // 간격도 하나 — 썸네일 52 + 연결선 16 = 68px.
+    expect(lefts[0][1] - lefts[0][0]).toBe(68);
+    expect(lefts[0][3] - lefts[0][2]).toBe(68);
   },
 };

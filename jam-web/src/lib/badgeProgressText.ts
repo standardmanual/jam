@@ -263,7 +263,7 @@ export type GridCellCaption = {
   muted: boolean
   /** text가 임시 상태 표기("진행 표시 준비 중")다 — 조건값·상태 라벨은 사실 표기라 false */
   pending: boolean
-  /** aria-label 조립용 — not-reached만 화면 라벨('—')과 다르다('미도달') */
+  /** aria-label 조립용 — not-reached만 화면 라벨('—')과 다르다('아직') */
   statusAriaText: string
   /**
    * true면 `text`가 상태 라벨을 넘어서는 정보(수치·조건값)를 담고 있다 — 호출부가 aria에
