@@ -7,8 +7,12 @@ import {
 } from '@/lib/badge-engine/badgeProgress'
 import { RARITY_LABEL } from '@/lib/rarity'
 import { REST_CONDITION_KEYS } from '@/lib/badge-engine/activityFilters'
-import { getConditionField } from '@/lib/badge-engine/conditionRegistry'
-import type { BadgeRarity } from '@/types/database'
+import {
+  CONDITION_FIELDS,
+  getConditionField,
+  type AnyConditionFieldMeta,
+} from '@/lib/badge-engine/conditionRegistry'
+import type { BadgeCondition, BadgeRarity } from '@/types/database'
 
 /**
  * ## 3b 추가분 (티켓 20260904_1425) — `pickSyncComparisonCandidate()`/`formatSyncComparisonText()`
@@ -33,6 +37,70 @@ import type { BadgeRarity } from '@/types/database'
 
 /** "진행 표시 준비 중" — §08 H, computeBadgeProgress가 'unsupported'를 반환할 때 공통으로 쓴다. */
 const UNSUPPORTED_TEXT = '진행 표시 준비 중'
+
+// ── 조건값 표기 (티켓 20260906_1323 §7·§9) ────────────────────────────────
+
+/**
+ * 조건값 한 줄에 잇는 필드 최대 개수. 레일 눈금 캡션의 폭이 92px이라 넷을 넘기면 카드를
+ * 밀어낸다 — 조건이 더 길면 「자세히」를 펼쳐 전체 설명을 본다.
+ */
+const MAX_CONDITION_VALUE_PARTS = 3
+
+/**
+ * 필드 하나의 조건값 문구. **`conditionRegistry`의 `chip()`을 그대로 쓴다** — 조건 어휘의
+ * 단일 출처를 늘리지 않는다.
+ *
+ * `{값}{unit}`만 적는 방식을 쓰지 않는 이유(실측): 「완전한 하루」의 조건은
+ * `{streak_days: 6, rest_after_streak: 1, repeat_count: 5}`라 단위만 붙이면
+ * 「6일 · 1일 · 5회」가 되어 무엇의 숫자인지 사라진다. registry의 `chip`은 개념을 달고 있고
+ * (「6일 연속」·「연속 후 휴식 1일」·「5회 충족」) 이미 압축형이라 이 자리에 맞다.
+ *
+ * `condition_json`은 jsonb라 형태 보장이 없다 — `chip`이 내부를 파다 터지거나
+ * `undefined`/`NaN`을 뱉으면 그 필드만 조용히 건너뛴다(`conditionRegistry.safeFormat`과 같은
+ * 태도지만, 여기서는 「형태 오류」를 유저 화면에 내보내지 않고 생략한다).
+ */
+function conditionFieldValueText(meta: AnyConditionFieldMeta, condition: BadgeCondition): string | null {
+  const value = condition[meta.key]
+  if (value === undefined || value === null) return null
+  if (meta.chip) {
+    try {
+      const text = meta.chip(condition)
+      if (text && !text.includes('undefined') && !text.includes('NaN')) return text
+    } catch {
+      // 형태가 깨진 필드 — 아래 폴백으로 내려간다
+    }
+  }
+  // `chip`이 없는 필드만 폴백. 숫자가 아닌 값(객체·목록)은 단위를 붙일 수 없어 생략한다.
+  if (typeof value !== 'number') return null
+  // `unit`이 null인 축(페이스)은 원값이 「초」라 그대로 적으면 의미가 없다.
+  if (meta.key === 'max_pace_sec_per_km') return formatPaceSecPerKm(value)
+  return `${value}${meta.unit ?? ''}`
+}
+
+/**
+ * 「이 배지를 받으려면 무엇이 얼마나 필요한가」 한 줄 — 티켓 20260906_1323.
+ *
+ * **값의 출처는 `condition_json`뿐이다.** 유저 지표를 읽지 않으므로 630종 전부에 대해
+ * 계산해도 추가 쿼리가 없고, 프런티어만 진행 계산하는 성능 구조를 깨지 않는다.
+ * 진행값(`현재/목표`)을 만들지 않는다 — 그건 `formatFrontierProgressText`의 몫이다.
+ *
+ * `role === 'measurable'`인 필드만 고른다. `formatConditionChips`(registry)를 그대로 쓰지
+ * 않는 이유가 이것이다 — 그 함수는 filter·meta 역할 필드까지 전부 포함해 어드민 목록용으로 길다.
+ *
+ * measurable이 하나도 없으면(미션 보상·수동 발급 등) `null` — 호출부가 기존 폴백
+ * (레일은 `'—'`, 캡션은 「진행 표시 준비 중」)으로 떨어진다.
+ */
+export function formatStopConditionValue(condition: BadgeCondition | null | undefined): string | null {
+  if (!condition) return null
+  const parts: string[] = []
+  for (const meta of CONDITION_FIELDS as readonly AnyConditionFieldMeta[]) {
+    if (parts.length >= MAX_CONDITION_VALUE_PARTS) break
+    if (meta.role !== 'measurable') continue
+    const text = conditionFieldValueText(meta, condition)
+    if (text) parts.push(text)
+  }
+  return parts.length > 0 ? parts.join(' · ') : null
+}
 
 /**
  * 축 키별 소수점 자리 — 기존 관례를 그대로 따른다(`src/lib/missions/format.ts`의
@@ -104,6 +172,14 @@ export type FrontierCaption = {
   fraction: number
   /** true면 §08 H(진행 미지원) — 앰버/라임 상태색 대신 중립색으로 그린다 */
   muted?: boolean
+  /**
+   * true면 텍스트가 **임시 상태 표기**(「진행 표시 준비 중」)다 — 기울임으로 그린다.
+   *
+   * `muted`와 갈라 둔 이유(티켓 20260906_1323 §9): 진행을 계산할 수 없을 때 그 자리에
+   * **획득 조건**을 적게 되면서, 「중립색으로 그린다」와 「임시 표기라 기울인다」가 더 이상
+   * 같은 조건이 아니게 됐다. 조건값은 중립색이지만 **사실 표기**라 기울이지 않는다.
+   */
+  pending?: boolean
 }
 
 /**
@@ -112,9 +188,20 @@ export type FrontierCaption = {
  *
  * 티켓 20260905_0031에서 `leveled`·`repeat`·`rest` 3종이 늘었다. 무한레벨형은 축 자체는
  * 기반 유형과 같게 계산되므로(`badgeProgress.ts` 참고) 레벨 접두어만 붙인다.
+ *
+ * `conditionText`(티켓 20260906_1323 §9) — 진행을 계산할 수 없을 때(`unsupported`) 그 자리에
+ * 적을 **획득 조건**. 넘기지 않거나 조건도 만들 수 없으면 기존 「진행 표시 준비 중」이다.
  */
-export function formatFrontierProgressText(progress: BadgeProgress, now: Date): FrontierCaption | null {
-  if (progress.kind === 'unsupported') return { text: UNSUPPORTED_TEXT, fraction: 0, muted: true }
+export function formatFrontierProgressText(
+  progress: BadgeProgress,
+  now: Date,
+  conditionText?: string | null
+): FrontierCaption | null {
+  if (progress.kind === 'unsupported') {
+    return conditionText
+      ? { text: conditionText, fraction: 0, muted: true }
+      : { text: UNSUPPORTED_TEXT, fraction: 0, muted: true, pending: true }
+  }
   if (progress.kind === 'dual' || progress.kind === 'multi') return null
 
   const axis = progress.axes[0]
@@ -154,7 +241,7 @@ export function formatFrontierProgressText(progress: BadgeProgress, now: Date): 
  * 예외는 휴식·반복 2종이다 — 「2/5일」만 적으면 무엇의 일수인지 알 수 없어 접두어를 남긴다.
  */
 export function formatGridProgressLine(progress: BadgeProgress): FrontierCaption {
-  if (progress.kind === 'unsupported') return { text: UNSUPPORTED_TEXT, fraction: 0, muted: true }
+  if (progress.kind === 'unsupported') return { text: UNSUPPORTED_TEXT, fraction: 0, muted: true, pending: true }
   const axis = progress.axes.find((a) => a.key === progress.bottleneck) ?? progress.axes[0]
   if (progress.kind === 'repeat' || progress.kind === 'rest') {
     return { text: formatCounterAxisText(progress.kind, axis), fraction: progress.progress }
@@ -205,8 +292,17 @@ export type FamilyRowValues = {
   fraction: number
 }
 
-export function formatFamilyRowValues(progress: BadgeProgress): FamilyRowValues | null {
-  if (progress.kind === 'unsupported') return null
+/**
+ * `conditionText`(티켓 20260906_1323 §9) — 진행을 계산할 수 없을 때 **목표값 자리**에 적을
+ * 획득 조건. 현재값은 `'—'` 그대로 둔다(진행값을 만들 수 없다는 사실은 바뀌지 않았다).
+ */
+export function formatFamilyRowValues(
+  progress: BadgeProgress,
+  conditionText?: string | null
+): FamilyRowValues | null {
+  if (progress.kind === 'unsupported') {
+    return conditionText ? { current: '—', next: conditionText, left: null, fraction: 0 } : null
+  }
   const axis = progress.axes.find((a) => a.key === progress.bottleneck) ?? progress.axes[0]
   if (!axis) return null
   if (axis.key === 'max_pace_sec_per_km') {
@@ -228,10 +324,11 @@ export function formatFamilyRowValues(progress: BadgeProgress): FamilyRowValues 
 
 /**
  * 반복형 계열 행(`BadgeStampRow`)의 보조 한 줄 — 「12/26회 · 14회 남음」.
- * 진행을 계산할 수 없으면 null(그 행은 캡션 없이 그린다).
+ * 진행을 계산할 수 없으면 `conditionText`(획득 조건) → 없으면 「진행 표시 준비 중」이다
+ * (티켓 20260906_1323 §9).
  */
-export function formatStampCaption(progress: BadgeProgress): string | null {
-  if (progress.kind === 'unsupported') return UNSUPPORTED_TEXT
+export function formatStampCaption(progress: BadgeProgress, conditionText?: string | null): string | null {
+  if (progress.kind === 'unsupported') return conditionText ?? UNSUPPORTED_TEXT
   const axis = progress.axes.find((a) => a.key === progress.bottleneck) ?? progress.axes[0]
   if (!axis) return null
   const range =

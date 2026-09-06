@@ -1,9 +1,9 @@
 import type { CSSProperties } from 'react';
 
 export interface BadgeLevelGaugeProps {
-  /** 계열 이름 — 이 이름이 곧 지표다("걸어온 거리"). 1줄 말줄임으로 높이를 고정한다 */
+  /** 계열 이름 — 이 이름이 곧 지표다("걸어온 거리"). 말줄임하지 않고 줄바꿈으로 전부 보여준다 */
   name: string;
-  /** 지금까지 도달한 레벨(1부터). `null`이면 레벨 칩을 그리지 않는다 */
+  /** 지금까지 도달한 레벨(1부터). `null`이면 레벨 칩도 **칩 칸도** 그리지 않는다 */
   level?: number | null;
   /** 현재 누적값. 호출부가 포맷한 값을 그대로 받는다(DS는 계산하지 않는다) */
   current: string | number;

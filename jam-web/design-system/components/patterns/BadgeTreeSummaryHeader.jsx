@@ -15,10 +15,23 @@ import { getRarityLabel } from '../cards/RarityBadge.jsx';
  * v5 대응(티켓 20260905_0036): 칸 수가 `repeat(4, 1fr)`로 **하드코딩**돼 있어서 요약이
  * 「등급 4칸」 그 자체였다. v5 무한레벨형(193종)은 등급이 아예 없어(rarity NULL) 어느 칸에도
  * 들어가지 못하고, 그러면 `totalCount`와 칸 합계가 조용히 어긋난다. `noRarity` 버킷을 받아
- * 「등급 없음」 칸을 하나 더 그리고, 컬럼 수는 **실제로 그리는 칸 수를 따른다**.
- * `noRarity`를 넘기지 않으면 예전과 똑같이 4칸이다(비파괴).
+ * 「등급 없음」 칸을 하나 더 그린다.
+ *
+ * ## 배치는 **2행 3열 고정**이다 (티켓 20260906_1323 §6)
+ *
+ * 예전에는 큰 숫자 한 줄 + 등급 5칸이 가로로 붙어 각 칸이 60px 남짓이었다. 이제 큰 숫자가
+ * 첫 칸 안으로 들어가고 나머지가 그 뒤를 잇는다:
+ *
+ * | 1행 | 전체 `0/124` | Mystic | Epic |
+ * | 2행 | 레벨         | Rare   | Common |
+ *
+ * **칸 수에 따라 열 수를 바꾸지 않는다** — 3열 고정이다. `noRarity`가 없으면 2행 첫 자리를
+ * 그냥 비워 Rare·Common의 열이 흔들리지 않게 한다.
+ * 첫 칸에도 다른 칸과 같은 6px 막대(전체 진행률)를 둔다 — 막대·라벨·값의 세로 위치가 세 칸에서
+ * 정확히 맞고, 「획득/전체」라는 같은 뜻을 막대와 숫자가 함께 말한다.
  */
-const RARITY_ORDER = ['common', 'rare', 'epic', 'mystic'];
+// 배치 순서(요청 그대로) — 1행 [전체·Mystic·Epic] / 2행 [레벨·Rare·Common]
+const RARITY_ORDER = ['mystic', 'epic', 'rare', 'common'];
 // 등급 라벨은 RarityBadge.jsx의 config가 MODULAR 단일 소스다 — 여기서 다시 선언하지 않는다
 // (티켓 20260905_0027).
 
@@ -33,13 +46,20 @@ export function BadgeTreeSummaryHeader({
   className = '',
   style = {},
 }) {
-  const buckets = [
-    ...RARITY_ORDER.map((rarity) => ({
-      key: rarity,
-      label: getRarityLabel(rarity),
-      stat: byRarity[rarity] ?? { earned: 0, total: 0 },
-    })),
-    ...(noRarity ? [{ key: 'no-rarity', label: '레벨', stat: noRarity }] : []),
+  const rarityBuckets = RARITY_ORDER.map((rarity) => ({
+    key: rarity,
+    label: getRarityLabel(rarity),
+    stat: byRarity[rarity] ?? { earned: 0, total: 0 },
+  }));
+  // 6칸(2행 3열) 고정. `null`은 «그냥 비우는 자리»다 — 레벨형이 없는 종목에서도 Rare·Common의
+  // 열이 그대로 유지된다.
+  const cells = [
+    { key: 'total', label: '전체', stat: { earned: earnedCount, total: totalCount }, primary: true },
+    rarityBuckets[0],
+    rarityBuckets[1],
+    noRarity ? { key: 'no-rarity', label: '레벨', stat: noRarity } : null,
+    rarityBuckets[2],
+    rarityBuckets[3],
   ];
   return (
     <div
@@ -51,20 +71,11 @@ export function BadgeTreeSummaryHeader({
         ...style,
       }}
     >
-      <div
-        style={{
-          fontSize: 'var(--text-h3)', fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.28px',
-          fontVariantNumeric: 'tabular-nums', color: 'var(--color-text)',
-        }}
-      >
-        {earnedCount}
-        <em style={{ fontStyle: 'normal', fontSize: 'var(--text-small)', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-          {' '}/ {totalCount}
-        </em>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${buckets.length}, 1fr)`, gap: 'var(--spacing-8)', marginTop: 'var(--spacing-16)' }}>
-        {buckets.map(({ key, label, stat }) => {
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--spacing-12)' }}>
+        {cells.map((cell, i) => {
+          // 빈 자리 — 열 위치를 지키기 위한 placeholder다(레벨형이 없는 종목).
+          if (!cell) return <div key={`empty-${i}`} aria-hidden="true" />;
+          const { key, label, stat, primary } = cell;
           const pct = stat.total > 0 ? Math.round((stat.earned / stat.total) * 100) : 0;
           return (
             <div key={key} style={{ minWidth: 0 }}>
@@ -74,14 +85,28 @@ export function BadgeTreeSummaryHeader({
               <div style={{ marginTop: 8, fontSize: 'var(--text-micro)', color: 'var(--color-text-secondary)', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {label}
               </div>
-              <div
-                style={{
-                  marginTop: 4, fontSize: 'var(--text-caption)', fontWeight: 600, lineHeight: 1,
-                  color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {stat.earned} / {stat.total}
-              </div>
+              {primary ? (
+                <div
+                  style={{
+                    marginTop: 4, fontSize: 'var(--text-h3)', fontWeight: 700, lineHeight: 1.2,
+                    letterSpacing: '-0.28px', color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {stat.earned}
+                  <em style={{ fontStyle: 'normal', fontSize: 'var(--text-small)', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+                    {' '}/ {stat.total}
+                  </em>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: 4, fontSize: 'var(--text-caption)', fontWeight: 600, lineHeight: 1,
+                    color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {stat.earned} / {stat.total}
+                </div>
+              )}
             </div>
           );
         })}

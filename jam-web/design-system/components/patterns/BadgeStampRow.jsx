@@ -10,8 +10,13 @@ import { RarityBadge } from '../cards/RarityBadge.jsx';
  * 임의로 정한 기준이 화면에 그대로 드러난다. 숫자 하나가 정확하고 자리도 안 먹는다.
  *
  * 그리드는 `BadgeLevelGauge`와 같다 — `[썸네일 44px][내용 1fr]`, 1행 `[52px 칩][1fr 이름][auto 카운터]`.
- * 칩 자리 폭이 52px로 고정이라 레벨형·반복형이 섞여 있어도 이름 시작 x가 같다
+ * 칩 자리 폭이 52px로 고정이라 **칩이 있는 행끼리는** 이름 시작 x가 같다
  * (반복형은 등급이 있으므로 칩은 `RarityBadge`, 레벨형은 `BadgeLevelChip`).
+ *
+ * ⚠️ 칩을 그리지 않는 행(미획득·등급 없음)은 **칩 칸 자체를 만들지 않는다**(티켓 20260906_1323 §2).
+ * 예전에는 빈 `<span>`을 남기고 52px 칸을 그대로 잡아서, 칩이 없는 행만 이름이 카드 가운데로
+ * 밀려나고 바로 아래 캡션과 시작 x가 어긋났다. `columnGap`이 8px이라 칸만 `auto`로 바꾸는
+ * 방식으로는 여백이 절반만 없어진다 — 요소를 통째로 빼야 한다.
  *
  * 미획득이면 이름·칩·카운터에서 색을 전부 거두고 썸네일은 grayscale(1) 원본으로 둔다
  * (2026-09-06 사용자 확정 — 미획득도 어떤 배지인지 알아볼 수 있어야 한다).
@@ -34,6 +39,9 @@ export function BadgeStampRow({
   style = {},
 }) {
   const nameColor = earned ? 'var(--color-text)' : 'var(--color-text-secondary)';
+  // 칩을 실제로 그릴 때만 52px 칸을 잡는다(§2). `RarityBadge`는 등급이 없으면 아무것도
+  // 그리지 않으므로 조건이 곧 「칩이 있는가」다.
+  const showChip = earned && rarity != null;
 
   return (
     <div
@@ -78,22 +86,25 @@ export function BadgeStampRow({
       <div style={{ gridColumn: 2, minWidth: 0 }}>
         <div
           style={{
-            display: 'grid', gridTemplateColumns: '52px 1fr auto',
+            display: 'grid', gridTemplateColumns: showChip ? '52px 1fr auto' : '1fr auto',
             columnGap: 'var(--spacing-8)', alignItems: 'center',
           }}
         >
           {/* 52px 고정 칸 — RarityBadge는 라벨 길이에 따라 폭이 달라지므로(Common은 아예 안
-              그린다) 칸을 고정하고 그 안에 넣는다. 그래야 이름 시작 x가 계열마다 같다. */}
-          <span style={{ width: 52, display: 'inline-flex', justifyContent: 'flex-start' }}>
-            {earned && <RarityBadge rarity={rarity} />}
-          </span>
+              그린다) 칸을 고정하고 그 안에 넣는다. 그래야 칩이 있는 행끼리 이름 시작 x가 같다. */}
+          {showChip && (
+            <span style={{ width: 52, display: 'inline-flex', justifyContent: 'flex-start' }}>
+              <RarityBadge rarity={rarity} />
+            </span>
+          )}
           <span
             style={{
               fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.3,
               color: nameColor, minWidth: 0,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              // 말줄임을 쓰지 않는다(§5) — 계열 이름이 이 화면의 지표 그 자체라 끝이 잘리면
+              // 무엇의 배지인지 사라진다. keep-all로 한글은 어절 단위로만 끊는다.
+              wordBreak: 'keep-all',
             }}
-            title={name}
           >
             {name}
           </span>

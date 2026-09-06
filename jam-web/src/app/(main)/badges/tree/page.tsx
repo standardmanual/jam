@@ -5,8 +5,10 @@ import {
   frontierStageOf,
   type BadgeTreeSourceBadge,
   type BadgeTreeSourceMission,
+  type BadgeTreeGateGroup,
   type BadgeTreeLock,
 } from '@/lib/badgeTree'
+import { hasUnfulfilledGate } from '@/lib/badgeTreeConditionStatus'
 import { collectConditionCheckTargets, computeConditionMetBadgeIds } from '@/lib/badgeTreeConditionCheck.server'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 import {
@@ -14,7 +16,6 @@ import {
   computeBadgeProgress,
   computeRecordRegretLine,
   type BadgeProgress,
-  type BadgeProgressAxis,
   type BadgeProgressOptions,
   type RegretLineData,
 } from '@/lib/badge-engine/badgeProgress'
@@ -22,16 +23,8 @@ import {
 // (티켓 20260905_0031).
 import { badgeKindOf } from '@/lib/badge-engine/badgeKind'
 import { getMetricLabels } from '@/lib/badge-engine/metricLabels'
-import {
-  pickSyncComparisonCandidate,
-  formatSyncComparisonText,
-  type FamilyProgressAxisSnapshot,
-} from '@/lib/badgeProgressText'
 import type { ActivityType, BadgeCondition } from '@/types/database'
 import BadgeTreeClient from './BadgeTreeClient'
-
-/** 직전 동기화 배너(RecentSyncBanner) 노출 기준 — 이 시간 안에 동기화된 활동이 있으면 보여준다. */
-const RECENT_SYNC_WINDOW_MS = 24 * 60 * 60 * 1000
 
 /**
  * PostgREST 기본 페이지 상한. 이 크기로 끝까지 훑는다 — `badges/page.tsx`(46~52행)에
@@ -42,15 +35,6 @@ const BADGE_PAGE_SIZE = 1000
 
 const BADGE_TREE_SELECT =
   'id, name, rarity, level, family_key, description, image_url, activity_types, condition_json, sort_order'
-
-/**
- * `Date.now()`(비순수 호출)를 컴포넌트 함수 본문 밖으로 뺀 순수 헬퍼 —
- * react-hooks/purity가 컴포넌트 본문 안의 비순수 호출을 막는다.
- */
-function isWithinRecentSyncWindow(createdAt: string | null | undefined): boolean {
-  if (!createdAt) return false
-  return Date.now() - new Date(createdAt).getTime() < RECENT_SYNC_WINDOW_MS
-}
 
 type RawBadge = BadgeTreeSourceBadge & { level: number | null }
 
@@ -140,12 +124,13 @@ export default async function BadgeTreePage({ searchParams }: Props) {
   // missions는 다른 화면(missions/page.tsx)과 동일하게 RLS 우회가 필요해 service client로 조회한다.
   const service = createServiceClient()
 
+  // 동기화 상태 안내(RecentSyncBanner)를 이 화면에서 걷어내면서(티켓 20260906_1323 §4)
+  // 그 배너 하나만 쓰던 `strava_activities` 최근 1건·`user_family_progress` 조회도 함께
+  // 지웠다 — 렌더만 지우면 「아무도 안 보는 쿼리 2개」가 매 요청 남는다.
   const [
     badgesRaw,
     { data: missionsRaw, error: missionsError },
     { data: earnedBadgesRaw, error: earnedBadgesError },
-    { data: latestSyncRaw, error: latestSyncError },
-    { data: familyProgressRaw, error: familyProgressError },
   ] = await Promise.all([
     fetchAllActivityBadges(supabase),
     service.from('missions').select('id, title, gated_badge_id, image_url').not('gated_badge_id', 'is', null),
@@ -155,22 +140,9 @@ export default async function BadgeTreePage({ searchParams }: Props) {
       .from('user_activity_badges')
       .select('badge_id, badge:badges(deleted_at)')
       .eq('user_id', user.id),
-    // RecentSyncBanner용 — 가장 최근에 동기화된 활동 1건의 시각만 필요.
-    service
-      .from('strava_activities')
-      .select('created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    // RecentSyncBanner "직전 상태값과의 비교"(3b, 티켓 20260904_1425)용 — 계열별 current/prev
-    // 진행 스냅샷. user_family_progress는 service_role 전용(RLS 정책 없음)이다.
-    service.from('user_family_progress').select('current, prev').eq('user_id', user.id),
   ])
   if (missionsError) console.error('[badges/tree/page] missions(게이트 배지용) 조회 실패', missionsError)
   if (earnedBadgesError) console.error('[badges/tree/page] user_activity_badges(획득여부) 조회 실패', earnedBadgesError)
-  if (latestSyncError) console.error('[badges/tree/page] strava_activities(최근 동기화) 조회 실패', latestSyncError)
-  if (familyProgressError) console.error('[badges/tree/page] user_family_progress(직전 동기화 비교) 조회 실패', familyProgressError)
 
   const badges: BadgeTreeSourceBadge[] = badgesRaw.map((b) => ({
     id: b.id,
@@ -196,17 +168,6 @@ export default async function BadgeTreePage({ searchParams }: Props) {
   )
   const earnedBadgeIds = Array.from(earnedBadgeIdSet)
 
-  // RecentSyncBanner "직전 상태값과의 비교"(3b) — 계열 전체에서 가장 눈에 띄는 진전 하나.
-  // 이 시점엔 라벨이 아직 없다 — 축 key만 뽑아 아래 axisKeys 수집에 합류시킨다.
-  type RawFamilyProgress = { current: unknown; prev: unknown }
-  const familyProgressSnapshots: FamilyProgressAxisSnapshot[] = ((familyProgressRaw ?? []) as RawFamilyProgress[]).map(
-    (row) => ({
-      current: (row.current ?? []) as BadgeProgressAxis[],
-      prev: (row.prev ?? null) as BadgeProgressAxis[] | null,
-    })
-  )
-  const syncComparisonCandidate = pickSyncComparisonCandidate(familyProgressSnapshots)
-
   // earnedBadgeIdSet도 선행 배지 잠금칩의 "이미 획득함" 판정에 쓰인다.
   const trees = buildBadgeActivityTrees(badges, missions, earnedBadgeIdSet)
 
@@ -217,16 +178,29 @@ export default async function BadgeTreePage({ searchParams }: Props) {
   const conditionById = new Map(badges.map((b) => [b.id, b.condition_json]))
 
   // ── 진행 수치 ────────────────────────────────────────────────────────────
-  // 대상: **「다음 목표」 섹션에 실제로 그려지는 계열의 프런티어 하나씩**이다.
-  // 다 받은 계열(=「받은 배지」 섹션)은 진행 표시가 없으므로 계산도 하지 않는다 — 화면이
-  // 접어 두는 것을 서버도 계산하지 않는 것이 이 리뉴얼의 성능 축이다(티켓 20260905_0037).
-  type ProgressTarget = {
+  // 대상: **「다음 목표」 섹션에 실제로 그려지는 계열의 진행 앵커 하나씩**이다.
+  // 다 받은 계열은 진행 표시가 없으므로 계산도 하지 않는다 — 화면이 그리지 않는 것을 서버도
+  // 계산하지 않는 것이 이 리뉴얼의 성능 축이다(티켓 20260905_0037).
+  type ProgressCandidate = {
     id: string
     condition: BadgeCondition
     locks: BadgeTreeLock[]
-    activityType: ActivityType
+    gateGroups: BadgeTreeGateGroup[]
     /** `computeBadgeProgress`가 조건만으로는 알 수 없는 배지 속성(무한레벨형 여부·레벨) */
     options: BadgeProgressOptions
+  }
+  /**
+   * 계열 하나의 **진행 앵커 후보열** — 획득 기준 프런티어부터 계열 마지막 눈금까지
+   * (티켓 20260906_1323 §8).
+   *
+   * 앵커를 「첫 미획득」이 아니라 **「첫 미충족」**으로 정하기 위해 필요하다. 조건은 이미
+   * 채웠지만 아직 발급되지 않은 눈금(다음 동기화에서 발급될 눈금)에 진행 수치를 붙이면
+   * 「22/1일」처럼 이미 넘긴 조건에 카운트가 뜬다 — 아직 못 채운 눈금으로 한 칸씩 전진한다.
+   */
+  type FamilyProgressTarget = {
+    familyKey: string
+    activityType: ActivityType
+    candidates: ProgressCandidate[]
   }
   // 배지 종류 판정은 `badgeKind.ts` 한 곳이다 — 여기서 다시 선언하면 발급 엔진과 갈라진다.
   const badgeById = new Map(badgesRaw.map((b) => [b.id, b]))
@@ -235,29 +209,37 @@ export default async function BadgeTreePage({ searchParams }: Props) {
     if (!row) return {}
     return { badgeKind: badgeKindOf(row), level: row.level ?? null }
   }
-  const progressTargets: ProgressTarget[] = []
+  const familyProgressTargets: FamilyProgressTarget[] = []
   for (const tree of trees) {
     for (const family of tree.families) {
       // 반복형은 다 받은 뒤에도 다음 회차가 진행 중이라 프런티어가 남는다
       // (`frontierStageOf` 주석 — 티켓 20260905_0031).
       const frontier = frontierStageOf(family, earnedBadgeIdSet)
       if (!frontier) continue
-      const condition = conditionById.get(frontier.id)
-      if (!condition) continue
-      progressTargets.push({
-        id: frontier.id,
-        condition,
-        locks: frontier.locks,
-        activityType: tree.activityType,
-        options: progressOptionsFor(frontier.id),
-      })
+      const frontierIndex = family.stages.findIndex((s) => s.id === frontier.id)
+      const candidates: ProgressCandidate[] = []
+      for (const stage of family.stages.slice(frontierIndex < 0 ? 0 : frontierIndex)) {
+        const condition = conditionById.get(stage.id)
+        // 조건이 없는 눈금에서 후보열을 끊는다 — 그 눈금의 충족 여부를 알 수 없으므로
+        // 그 너머로 전진할 근거도 없다.
+        if (!condition) break
+        candidates.push({
+          id: stage.id,
+          condition,
+          locks: stage.locks,
+          gateGroups: stage.gateGroups,
+          options: progressOptionsFor(stage.id),
+        })
+      }
+      if (candidates.length === 0) continue
+      familyProgressTargets.push({ familyKey: family.key, activityType: tree.activityType, candidates })
     }
   }
 
   // getActivityHistory도 badge-engine/missions checker와 동일하게 service client로 호출한다.
   // 이력의 시작점은 가입 시점으로 고정한다 — 화면(진행률)과 발급 엔진이 같은 창을 봐야
   // 한다(티켓 20260905_0030 §5).
-  const needsHistory = targetIds.length > 0 || progressTargets.length > 0
+  const needsHistory = targetIds.length > 0 || familyProgressTargets.length > 0
   const anchorDate = needsHistory ? await getSignupAnchorDate(service, user.id) : undefined
   const activities = needsHistory ? await getActivityHistory(service, user.id, anchorDate) : []
   // 앵커를 함께 넘긴다 — 휴식 조건(§4)이 발급 엔진과 같은 창에서 공백을 세야 한다.
@@ -274,39 +256,58 @@ export default async function BadgeTreePage({ searchParams }: Props) {
     }
   }
 
-  // ── 1패스: 진행 계산 + 축 key 수집 (라벨은 아직 없다) ────────────────────
+  // ── 1패스: 진행 앵커 결정 + 계산 + 축 key 수집 (라벨은 아직 없다) ────────
+  //
+  // 앵커는 **「첫 미충족」**이다(티켓 20260906_1323 §8). 획득 기준 프런티어에서 시작해
+  //   ① 진행 계산이 가능하고 `progress >= 1`(조건을 이미 채움) **그리고**
+  //   ② 막고 있는 문이 없다(`hasUnfulfilledGate === false`)
+  // 두 조건을 모두 만족하는 동안만 다음 눈금으로 전진한다. 문이 남아 있으면 그 눈금이
+  // **진짜 다음 할 일**이므로 거기서 멈춘다(기존 `ready`(조건 충족) 표시가 그대로 유지된다).
+  // 전진은 계열 눈금 수(최대 4) 이내이고 조건을 이미 채운 눈금에서만 일어난다 — 실제 추가
+  // 계산은 계열당 평균 1회 남짓이라 1패스 구조(티켓 20260905_0037)를 깨지 않는다.
+  //
   // 배지별 try/catch — 예상 못한 condition_json 형태가 와도 그 배지 하나만 진행 표시를 생략한다.
   const emptyLabelMap = new Map<string, { label: string; unit: string | null }>()
-  const computedByBadgeId = new Map<string, BadgeProgress>()
   const axisKeys = new Set<string>()
-  for (const target of progressTargets) {
+  /** 앵커로 확정된 눈금만 담는다 — 전진 도중 지나친 눈금의 계산 결과는 화면에 쓰지 않는다. */
+  const anchors: { id: string; condition: BadgeCondition; activityType: ActivityType; progress: BadgeProgress }[] = []
+  const frontierBadgeIdByFamilyKey: Record<string, string> = {}
+  for (const target of familyProgressTargets) {
     const metrics = metricsByActivityType.get(target.activityType)!
-    try {
-      const progress = computeBadgeProgress(target.condition, metrics, emptyLabelMap, target.locks, target.options)
-      computedByBadgeId.set(target.id, progress)
-      if (progress.kind !== 'unsupported') {
-        for (const axis of progress.axes) axisKeys.add(axis.key)
+    let anchor: { candidate: ProgressCandidate; progress: BadgeProgress } | null = null
+    for (const candidate of target.candidates) {
+      let progress: BadgeProgress
+      try {
+        progress = computeBadgeProgress(candidate.condition, metrics, emptyLabelMap, candidate.locks, candidate.options)
+      } catch (error) {
+        console.error('[badges/tree/page] computeBadgeProgress 실패 — 진행 표시 생략', candidate.id, error)
+        break
       }
-    } catch (error) {
-      console.error('[badges/tree/page] computeBadgeProgress 실패 — 진행 표시 생략', target.id, error)
+      anchor = { candidate, progress }
+      if (progress.kind === 'unsupported' || progress.progress < 1) break
+      if (hasUnfulfilledGate(candidate.gateGroups)) break
+    }
+    if (!anchor) continue
+    frontierBadgeIdByFamilyKey[target.familyKey] = anchor.candidate.id
+    anchors.push({
+      id: anchor.candidate.id,
+      condition: anchor.candidate.condition,
+      activityType: target.activityType,
+      progress: anchor.progress,
+    })
+    if (anchor.progress.kind !== 'unsupported') {
+      for (const axis of anchor.progress.axes) axisKeys.add(axis.key)
     }
   }
-  // 직전 동기화 비교 후보의 축도 같은 배치 조회에 합류시킨다 — 별도 왕복 없음.
-  if (syncComparisonCandidate) axisKeys.add(syncComparisonCandidate.axisKey)
   const labelMap = await getMetricLabels(Array.from(axisKeys))
-  const syncComparisonMessage = syncComparisonCandidate
-    ? formatSyncComparisonText(syncComparisonCandidate, labelMap)
-    : null
 
   // ── 라벨 채우기 + 기록형 아쉬움 줄 ───────────────────────────────────────
   const progressByBadgeId: Record<string, BadgeProgress> = {}
   const regretLineByBadgeId: Record<string, RegretLineData> = {}
-  for (const target of progressTargets) {
-    const progress = computedByBadgeId.get(target.id)
-    if (!progress) continue
-    progressByBadgeId[target.id] = withResolvedAxisLabels(progress, labelMap)
-    // 아쉬움 줄은 기록형 프런티어에만 붙는다 — 대상이 좁아 여기서 개별 계산해도 부담이 없다.
-    if (progress.kind === 'record') {
+  for (const target of anchors) {
+    progressByBadgeId[target.id] = withResolvedAxisLabels(target.progress, labelMap)
+    // 아쉬움 줄은 기록형 앵커에만 붙는다 — 대상이 좁아 여기서 개별 계산해도 부담이 없다.
+    if (target.progress.kind === 'record') {
       const metrics = metricsByActivityType.get(target.activityType)!
       try {
         const regret = computeRecordRegretLine(target.condition, metrics, labelMap)
@@ -317,17 +318,14 @@ export default async function BadgeTreePage({ searchParams }: Props) {
     }
   }
 
-  const hasRecentSync = isWithinRecentSyncWindow(latestSyncRaw?.created_at)
-
   return (
     <BadgeTreeClient
       trees={trees}
       earnedBadgeIds={earnedBadgeIds}
       conditionMetBadgeIds={conditionMetBadgeIds}
-      hasRecentSync={hasRecentSync}
-      syncComparisonMessage={syncComparisonMessage}
       progressByBadgeId={progressByBadgeId}
       regretLineByBadgeId={regretLineByBadgeId}
+      frontierBadgeIdByFamilyKey={frontierBadgeIdByFamilyKey}
       initialActivity={activity}
     />
   )

@@ -7,6 +7,7 @@ import {
   type NormalizedGateRequirement,
 } from '@/lib/badge-engine/crossGate'
 import { rarityTier } from '@/lib/rarity'
+import { formatStopConditionValue } from '@/lib/badgeProgressText'
 
 /**
  * 배지 트리(`/badges/tree`) 전용 그래프 빌더 — 티켓 20260831_2208, 20260905_0037(전면 리뉴얼).
@@ -165,6 +166,14 @@ export interface BadgeFamilyStage {
   locks: BadgeTreeLock[]
   /** 표시 순서(계열 안 정렬은 이미 끝나 있고, 계열 자체의 서열 계산에 쓴다) */
   sortOrder: number
+  /**
+   * 「무엇이 얼마나 필요한가」 한 줄(「4km」·「6일 연속 · 5회 충족」) — 티켓 20260906_1323.
+   *
+   * `condition_json`만 읽어 만든 **완성 문자열**이라 유저 지표와 무관하다. 그래서 눈금 전량에
+   * 대해 채워도 추가 쿼리가 없다. measurable 조건이 하나도 없으면(미션 보상·수동 발급) null이고,
+   * 그때 호출부는 기존 폴백(레일 `'—'`, 캡션 「진행 표시 준비 중」)을 쓴다.
+   */
+  conditionText: string | null
 }
 
 /** 계열(같은 `family_key`) 하나 = 화면의 한 줄 */
@@ -190,6 +199,13 @@ export interface BadgeActivityTree {
 /**
  * 계열의 «다음 목표» 눈금 — 첫 미획득 눈금. **서버(진행 계산 대상 선정)와 화면(정렬·행
  * 렌더)이 같은 눈금을 봐야** 하므로 여기 한 곳에 둔다.
+ *
+ * ⚠️ **이 함수는 «획득» 기준 프런티어다 — 진행 표시 앵커와 다를 수 있다**(티켓 20260906_1323 §8).
+ * 조건은 이미 채웠지만 아직 발급되지 않은 눈금(다음 동기화에서 발급될 눈금)도 여기서는
+ * 프런티어로 남는다. 그 눈금에 진행 수치를 붙이면 「22/1일」처럼 **이미 넘긴 조건에 카운트가
+ * 뜨는** 표시가 된다. 그래서 진행 표시가 붙을 자리(앵커)는 서버(`badges/tree/page.tsx`)가
+ * 「첫 미충족」 기준으로 따로 정해 `frontierBadgeIdByFamilyKey`로 내려보낸다.
+ * 게이트 자리·「앞 구간 꽉 채움」 같은 **획득 여부** 판정은 계속 이 함수를 기준으로 한다.
  *
  * 예외는 반복형이다: 전부 획득한 뒤에도 **다음 회차가 계속 진행 중**이라 마지막 눈금을
  * 그대로 목표로 둔다(티켓 20260905_0031 — 「이미 획득했지만 다음 카운트가 진행 중」인
@@ -514,6 +530,7 @@ export function buildBadgeActivityTrees(
           gateGroups,
           locks: gateGroups.flatMap((g) => g.locks),
           sortOrder: sortRank(v.sort_order),
+          conditionText: formatStopConditionValue(v.condition_json),
         }
       })
       if (stages.length === 0) continue

@@ -21,6 +21,12 @@ export interface BadgeStageRailStop {
   href: string;
   /** 최대 2개까지 그린다(자리 폭 44px). 넘기지 않으면 종류 없는 자물쇠 하나 */
   gates?: BadgeStageRailGate[];
+  /**
+   * 「무엇이 얼마나 필요한가」 완성 문자열(「4km」·「6일 연속 · 5회 충족」).
+   * `not-reached` 눈금의 캡션 자리에만 쓴다 — 없으면 기존 `'—'`.
+   * **이 컴포넌트는 조건을 해석하지 않는다**(`src/lib/badgeProgressText.ts`가 조립한다).
+   */
+  conditionText?: string | null;
 }
 
 /** 프런티어 눈금 캡션 + 연결선 비례 채움. `src/lib/badgeProgressText.ts`가 조립한다 */
@@ -30,6 +36,8 @@ export interface BadgeStageRailFrontierProgress {
   fraction: number;
   /** 진행 미지원 — 상태색 대신 중립색 */
   muted?: boolean;
+  /** 텍스트가 임시 상태 표기(「진행 표시 준비 중」)다 — 기울임으로 그린다. 조건값은 false */
+  pending?: boolean;
 }
 
 export interface BadgeStageRailProps {
@@ -49,6 +57,12 @@ export interface BadgeStageRailProps {
   onLockClick: (stopId: string) => void;
   /** 기본값 없음 — 항상 `frontierProgress={... ?? null}` 형태로 명시해 넘긴다 */
   frontierProgress: BadgeStageRailFrontierProgress | null;
+  /**
+   * 진행 표시를 그릴 눈금 id — 호출부(서버)가 「첫 미충족」 기준으로 정한다.
+   * `null`이면 첫 미획득 눈금에 그린다. 게이트 자리·「앞 구간 꽉 채움」은 이 값과 무관하다.
+   * 기본값 없음 — 항상 `progressStopId={... ?? null}` 형태로 명시해 넘긴다.
+   */
+  progressStopId: string | null;
   /** 기록형 "아쉬움 줄" 완성 문장. 기본값 없음 — 항상 명시 */
   regretLine: string | null;
   className?: string;

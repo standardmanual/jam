@@ -21,8 +21,11 @@ const meta: Meta<typeof BadgeStampRow> = {
           '채웠는지가 전부다("한 주에 3회"를 1·8·26·52회 반복). **누적 횟수는 `×N` 칩 하나로만 ' +
           '그린다 — 점 그리드를 쓰지 않는다.** 47회를 점 47개로 그리면 100회를 넘는 순간 의미를 ' +
           '잃고, 축약하면(한 점 = 5회 같은 식) 임의로 정한 기준이 화면에 그대로 드러난다. ' +
-          '그리드는 `BadgeLevelGauge`와 같다 — 칩 자리 폭이 52px로 고정이라 레벨형·반복형이 ' +
-          '섞여 있어도 이름 시작 x가 같다. 미획득이면 이름·칩·카운터에서 색을 거두고 썸네일은 ' +
+          '그리드는 `BadgeLevelGauge`와 같다 — 칩 자리 폭이 52px로 고정이라 **칩이 있는 행끼리는** ' +
+          '이름 시작 x가 같다. 칩을 그리지 않는 행(미획득·등급 없음)은 **칩 칸 자체를 만들지 않는다** ' +
+          '(20260906_1323 §2 — 빈 칸을 남기면 52px + columnGap 8px이 여백으로 남아 이름만 안쪽으로 ' +
+          '밀린다). 이름은 말줄임하지 않고 줄바꿈한다(§5 — 계열 이름이 곧 지표다). ' +
+          '미획득이면 이름·칩·카운터에서 색을 거두고 썸네일은 ' +
           '**grayscale(1) 원본**으로 둔다(2026-09-06 확정 — 실루엣이 아니다).',
       },
     },
@@ -82,8 +85,69 @@ export const Unearned: Story = {
   ),
 };
 
+/**
+ * 회귀 고정(20260906_1323 §2) — 칩이 없는 행은 이름이 **카드 왼쪽 끝**에서 시작한다.
+ * 예전에는 빈 52px 칸이 남아 이름만 안쪽으로 밀리고 바로 아래 캡션과 시작 x가 어긋났다
+ * (스크린샷 「완전한 하루」).
+ */
+export const NoChipNoGap: Story = {
+  name: '칩 없는 행 — 이름이 캡션과 같은 x에서 시작한다',
+  render: () => (
+    <Frame>
+      <div data-testid="row">
+        <BadgeStampRow
+          name="완전한 하루"
+          rarity="epic"
+          count={null}
+          caption="6일 연속 · 연속 후 휴식 1일 · 5회 충족"
+          earned={false}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const row = canvasElement.querySelector('[data-testid="row"]')!;
+    const name = Array.from(row.querySelectorAll('span')).find(
+      (el) => el.textContent === '완전한 하루'
+    ) as HTMLElement;
+    const caption = row.querySelector('p') as HTMLElement;
+    expect(name.textContent).toBe('완전한 하루');
+    // 이름과 캡션의 시작 x가 같아야 한다 — 칩 칸이 남아 있으면 60px 어긋난다.
+    expect(Math.abs(name.getBoundingClientRect().left - caption.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+  },
+};
+
+/**
+ * 긴 계열 이름은 **말줄임하지 않고 줄바꿈한다**(§5). 이름이 이 화면의 지표 그 자체라
+ * 끝이 잘리면 무엇의 배지인지 사라진다.
+ */
+export const LongNameWraps: Story = {
+  name: '긴 이름 — 말줄임 없이 줄바꿈',
+  render: () => (
+    <Frame>
+      <div data-testid="row">
+        <BadgeStampRow
+          name="아주 길고 긴 계열 이름도 끝까지 보여준다"
+          rarity="mystic"
+          count={7}
+          caption="24시간 안에 3회"
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const row = canvasElement.querySelector('[data-testid="row"]')!;
+    const name = Array.from(row.querySelectorAll('span')).find(
+      (el) => el.textContent === '아주 길고 긴 계열 이름도 끝까지 보여준다'
+    ) as HTMLElement;
+    expect(name).toBeTruthy();
+    // 말줄임이면 scrollWidth가 clientWidth를 넘는다 — 줄바꿈이면 넘지 않는다.
+    expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth + 1);
+  },
+};
+
 export const AlignsWithLevelGauge: Story = {
-  name: '레벨형과 섞여도 이름 시작 x가 같다 (칩 자리 52px 고정)',
+  name: '칩이 있는 행끼리는 이름 시작 x가 같다 (칩 자리 52px 고정)',
   render: () => (
     <Frame>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

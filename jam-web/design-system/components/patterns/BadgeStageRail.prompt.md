@@ -4,7 +4,7 @@
 ```jsx
 <BadgeStageRail
   familyName="동네 산책러"
-  nextRarityLabel="Epic"        // 다음으로 노려야 할 등급. 전부 획득했으면 null
+  nextRarityLabel="Epic"        // 다음 등급. 헤더 라벨이 아니라 그룹 aria-label이 쓴다(20260906_1323)
   expanded={expanded}
   onToggleExpand={() => setExpanded(v => !v)}
   onLockClick={(stopId) => openUnlockSheet(stopId)}
@@ -15,6 +15,7 @@
   ]}
   // 프런티어(다음 목표) 진행 표시(2c) — null이면 상태 라벨만(위 예시와 동일 동작)
   frontierProgress={{ text: '87.3/100km', fraction: 0.82 }}   // 누적/기록/주기 3종만. 2축/다중은 null
+  progressStopId="b3"           // 진행 캡션을 그릴 눈금. 호출부가 「첫 미충족」으로 정한다(20260906_1323 §8)
   regretLine={null}   // 기록형 전용 "아쉬움 줄"(§05) — record kind이고 임계값 85% 이상일 때만 문자열
 />
 ```
@@ -22,7 +23,7 @@
 - `stops`는 Common→Mystic 순으로 그 계열에 실제로 존재하는 등급만 넘긴다.
 - `status`는 4종 — `earned`(획득) / `ready`(조건 충족·게이트 잠김, 라임 링+자물쇠) /
   `locked`(조건도 게이트도 미충족, 중성 링+자물쇠) / `not-reached`(게이트는 열려 있지만
-  아직 도달 전, 마커 없음). `ready`/`locked`를 가르는 "조건 충족" 판정은 이 컴포넌트가
+  아직 도달 전, 마커 없음 — 캡션은 `stop.conditionText`(「4km」)이고 없으면 「—」). `ready`/`locked`를 가르는 "조건 충족" 판정은 이 컴포넌트가
   계산하지 않는다 — 호출부가 기존 `evaluateConditionDetailed` pass/fail로 판정해서 넘긴다.
 - 눈금 하나는 상태에 따라 **링크(`earned`/`not-reached`) 또는 버튼(`ready`/`locked`,
   `onLockClick` 호출)** 중 하나로만 렌더된다 — 앵커 안에 버튼을 중첩하지 않기 위한 설계라,
@@ -53,3 +54,18 @@
   컴포넌트는 kind(누적/기록/주기/2축/다중)를 전혀 모른다. 2축형·다중카운터형 프런티어는
   이 prop에 `null`을 넘긴다(전용 게이지가 필요한 2d 몫).
 - `regretLine`(2c) — 기록형 "아쉬움 줄"(§05). 계열당 최대 1줄, null이면 렌더하지 않는다.
+
+## 20260906_1323에서 바뀐 것
+
+- **헤더 우측 라벨이 「자세히」다.** 예전 「다음 Epic」은 정보 표기라 «펼치기» 어포던스로
+  읽히지 않았다. 전부 획득했으면 「모두 획득」 그대로다. 헤더 버튼에는
+  `aria-label={`${familyName} 자세히`}`를 명시한다 — 안쪽 텍스트만으로는 계열 이름이 사라진다.
+- **`stop.conditionText`** — 아직 도달하지 않은 눈금의 캡션에 「—」 대신 조건값을 적는다.
+  4눈금 중 3개가 「—」면 「다음에 뭘 얼마나 해야 하나」가 화면에서 사라진다.
+  이 컴포넌트는 조건을 해석하지 않는다 — 완성 문자열만 받는다(`src/lib/badgeProgressText.ts`의
+  `formatStopConditionValue`).
+- **`progressStopId`** — 진행 캡션을 그릴 자리. 예전에는 이 컴포넌트가 «첫 미획득 눈금»을
+  스스로 골라서, 조건은 이미 채웠지만 아직 발급되지 않은 눈금에 「22/1일」처럼 이미 넘긴
+  조건의 카운트가 떴다. 게이트 자리·「앞 구간 꽉 채움」은 여전히 «획득 여부» 기준이다.
+- `frontierProgress.pending` — 「진행 표시 준비 중」 같은 **임시 상태 표기**만 기울인다.
+  같은 자리에 들어가는 조건값은 중립색이되 기울이지 않는다(사실 표기다).
