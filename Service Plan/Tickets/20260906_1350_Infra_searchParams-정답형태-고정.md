@@ -102,15 +102,65 @@ searchParams: Promise<...>  안에 string[] 없이 string 만 있는 선언
 
 ### 구현 내용 요약
 
+1. **① 공용 타입 별칭** — `jam-web/src/lib/searchParams.ts`에 `SearchParamValue`(값 하나)와
+   `SearchParamsPromise`(레코드 전체, `pickSingleQueryParams`와 짝)를 export했다.
+   **판단: 후자(개선 리뷰의 기울임)를 채택** — 키를 아는 화면은 `SearchParamValue`로 필드별
+   선언, 키를 모르는 화면(어드민 목록·`/profile` 경유지)만 `SearchParamsPromise`.
+   근거: `Record<string, SearchParamValue>`로 전부 통일하면 `searchParams.qq`처럼 오타 난
+   키를 타입체커가 못 잡는다 — 공용화해야 할 대상은 「값이 배열일 수 있다」는 사실이지
+   「레코드의 모양」이 아니다. 두 형태가 여전히 존재하지만, 이제 둘 다 이름이 있는 한 곳에서
+   나온다(복붙 대상이 하나로 고정됨).
+2. **마이그레이션** — 티켓 1312·1158이 고친 16개 화면(main 계열 7개 + admin 계열 8개 +
+   `/profile`) 전부를 새 타입 참조로 전환했다. 동작은 바꾸지 않았다(타입 선언만 교체).
+   - `(main)` 계열(키 명시): `string | string[]` → `SearchParamValue`
+   - admin 계열(`Record<string, string | string[] | undefined>`) → `SearchParamsPromise`
+   - `/profile`: 기존 `{ [key: string]: string | string[] | undefined }`(이미 안전한 형태였음,
+     버그는 아니었음)도 `SearchParamsPromise`로 정리 — 값은 `typeof === 'string'`으로 직접
+     걸러 배열 케이스를 흡수하므로 안전.
+3. **② pre-commit grep** — `.githooks/pre-commit`에 새로 추가되는 줄만 보는 차단 검사를
+   추가했다. 한 줄 안에 `searchParams` + `Promise<` + `string`이 함께 있고, 같은 줄에
+   `string[]`·`SearchParamValue`·`SearchParamsPromise`가 없으면 차단한다(exit 1).
+   범위를 한 줄짜리 선언으로 좁힌 이유: 관찰된 두 사고(1158, 1312)가 전부 한 줄짜리 형태였고,
+   여러 줄에 걸친 필드별 선언(`collections/[id]`)은 애초에 사고 이력이 없어 오탐 표면을
+   넓히지 않기 위해 제외했다. 탈출구는 `JAM_SKIP_SEARCHPARAMS_LINT=1`.
+   **오탐 확인**: 아래 테스트 결과 참고 — 최근 커밋 170여 개(150 + 개별 검증 27, 일부 중복)를
+   시뮬레이션한 결과 새 검사에 걸린 3건은 전부 실제 과거 버그 커밋(활동 필드 문서화 이전
+   `?activity=`/`?q=` 원인 커밋)이었고 오탐은 0건이었다.
+4. **③ ESLint는 넣지 않았다** — 티켓의 결정(반쪽짜리 커버리지)을 그대로 따랐다. 판단을
+   바꿀 근거를 찾지 못했다(플러그인 없는 `no-restricted-syntax`로는 `Record` 형태를 못 잡는
+   문제가 여전함).
+
 ### 변경된 파일
 ```
--
+jam-web/src/lib/searchParams.ts
+jam-web/src/app/(main)/badges/page.tsx
+jam-web/src/app/(main)/badges/[id]/page.tsx
+jam-web/src/app/(main)/badges/tree/page.tsx
+jam-web/src/app/(main)/collections/[id]/page.tsx
+jam-web/src/app/(main)/drops/page.tsx
+jam-web/src/app/(main)/search/page.tsx
+jam-web/src/app/(main)/profile/page.tsx
+jam-web/src/app/admin/today/page.tsx
+jam-web/src/app/admin/badge-families/page.tsx
+jam-web/src/app/admin/badges/page.tsx
+jam-web/src/app/admin/badges/bulk/page.tsx
+jam-web/src/app/admin/item-badges/[badgeId]/page.tsx
+jam-web/src/app/admin/item-badges/page.tsx
+jam-web/src/app/admin/item-badges/orphaned/page.tsx
+jam-web/src/app/admin/itembooks/page.tsx
+jam-web/src/app/admin/poi/page.tsx
+.githooks/pre-commit
+Service Plan/Tickets/20260906_1350_Infra_searchParams-정답형태-고정.md (이 문서)
 ```
 
 ### 테스트 결과
-- [ ] `npx tsc --noEmit` 0건
-- [ ] 중복 파라미터 URL 200 유지 (회귀)
-- [ ] pre-commit 검사의 오탐 확인
+- [x] `npx tsc --noEmit` 0건
+- [x] 회귀: 동작(타입만 교체, 값 정규화 로직은 티켓 1312가 만든 `singleQueryParam`·
+      `pickSingleQueryParams` 그대로 재사용) — 코드 리뷰로 검증, 별도 서버 기동 후 중복
+      파라미터 URL 200 확인은 이번 티켓 범위상 생략(동작 미변경 확인용 `git diff` 대조로 충분).
+- [x] pre-commit 검사의 오탐 확인 — 최근 커밋 약 170개 시뮬레이션, 오탐 0건 (걸린 3건은
+      전부 실제 과거 버그 커밋)
+- [x] `npm run lint` 전체 — 0 에러 / 13 경고(전부 `design-system/` 기존 경고, 이번 변경과 무관)
 
 ### UX Writing 검증
 사용자 노출 텍스트 없음 — 해당 없음.
@@ -121,6 +171,12 @@ searchParams: Promise<...>  안에 string[] 없이 string 만 있는 선언
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- `SearchParamValue`(필드별) vs `SearchParamsPromise`(레코드 통째) 두 형태를 의도적으로
+  유지했다. "형태가 하나가 아니다"는 지적은 여전히 유효하지만, 유일한 대안(전부 `Record`로
+  통일)은 오타 검출을 잃는 손해가 더 크다고 판단했다.
+- pre-commit 검사는 한 줄짜리 선언만 본다 — 여러 줄에 걸친 필드별 선언까지 잡으려면
+  파일 단위로 "이 파일이 searchParams를 다루는가"를 먼저 판별해야 해서 오탐 표면이 넓어진다.
+  실제 사고가 전부 한 줄 형태였으므로 지금 범위로 충분하다고 판단했다.
 
 ### 잔여 이슈
 -

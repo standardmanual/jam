@@ -44,3 +44,32 @@ export function pickSingleQueryParams(
   }
   return result
 }
+
+/**
+ * `searchParams` 값 하나의 타입 — 배열 케이스가 이름에 박혀 있어 복붙해도 빠뜨릴 수 없다
+ * (티켓 20260906_1350: 정답 형태가 이 파일과 어드민 계열, 두 곳에 흩어져 있던 문제).
+ *
+ * **키를 아는 화면(대부분의 `(main)` 화면)은 이 타입으로 필드를 하나씩 선언한다**:
+ *
+ * ```ts
+ * searchParams: Promise<{ q?: SearchParamValue }>
+ * ```
+ *
+ * ⚠️ 여기서 더 나아가 `Record<string, SearchParamValue>`로 뭉쳐서 쓰지 말 것 — 그러면
+ * `searchParams.qq`처럼 오타 난 키도 타입체커가 통과시킨다. 공용화해야 할 것은 「값이 배열일
+ * 수 있다」는 사실이지 「레코드의 모양」이 아니다. 어느 키가 오는지 미리 나열할 수 없는
+ * 화면만 아래 {@link SearchParamsPromise}로 예외를 둔다.
+ */
+export type SearchParamValue = string | string[] | undefined
+
+/**
+ * 어드민 목록처럼 **키를 미리 다 나열하지 않고 통째로 넘기는** 화면 전용
+ * ({@link pickSingleQueryParams}와 짝). 키를 아는 화면은 위 {@link SearchParamValue}로
+ * 필드별 선언을 쓴다 — `Record`로 뭉치면 얻는 것 없이 오타 검출만 잃는다.
+ *
+ * ```ts
+ * searchParams: SearchParamsPromise
+ * const params = pickSingleQueryParams(await searchParams)
+ * ```
+ */
+export type SearchParamsPromise = Promise<Record<string, SearchParamValue>>

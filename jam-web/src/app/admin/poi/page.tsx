@@ -6,7 +6,7 @@ import type { BadgeRow, PoiCategoryRow } from '@/types/database'
 import { PoiList, type PoiListRow } from '@/components/admin/poi/PoiList'
 import PoiFilters from './PoiFilters'
 import Pagination from './Pagination'
-import { pickSingleQueryParams } from '@/lib/searchParams'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 const PAGE_SIZE = 30
 
@@ -20,7 +20,7 @@ const POI_LIST_COLUMNS = 'id, name, latitude, longitude, radius_meters, category
  * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
  */
 interface AdminPoiPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: SearchParamsPromise
 }
 
 export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) {

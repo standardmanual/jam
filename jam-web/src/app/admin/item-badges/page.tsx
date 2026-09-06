@@ -6,7 +6,7 @@ import { Card } from '@/components/admin/ui/card'
 import type { BadgeRow } from '@/types/database'
 import { RARITY_LABEL, RARITY_BADGE_COLOR } from '@/lib/admin/item-badge-status'
 import { ItemBadgeSearchBar } from './ItemBadgeSearchBar'
-import { pickSingleQueryParams } from '@/lib/searchParams'
+import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchParams'
 
 type SearchBadgeRow = Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
 
@@ -16,7 +16,7 @@ type SearchBadgeRow = Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
  * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
  */
 interface Props {
-  searchParams: Promise<Record<string, string | string[] | undefined>>
+  searchParams: SearchParamsPromise
 }
 
 /**
