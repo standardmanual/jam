@@ -28,7 +28,9 @@ const meta: Meta<typeof BadgeLevelGauge> = {
           '`condition`·`metric`을 받지 않는다: ' +
           '배지 이름이 지표를 말하고(“걸어온 거리”) 값 행이 조건을 말한다. 값 행 그리드 ' +
           '`[5ch][auto][1fr][auto]`의 요점은 **현재값 5ch 우측 정렬** — 자릿수가 달라도 `/` ' +
-          '구분자가 세로로 정렬된다. 진행 바는 `ProgressBar fillMode="track-gradient"`.',
+          '구분자가 세로로 정렬된다. 진행 바는 `ProgressBar fillMode="track-gradient"`. ' +
+          '20260906_1436: 진행 중(미완료) 현재값 색이 옐로우(--status-short-solid)에서 ' +
+          '화이트(--color-text)로 바뀌었다 — 진행 바 채움색은 그대로 옐로우다.',
       },
     },
   },
@@ -125,6 +127,30 @@ export const SlashAlignment: Story = {
       </div>
     </Frame>
   ),
+};
+
+/**
+ * 회귀 고정(20260906_1436 §3) — 진행 중(미완료)인 현재값은 화이트(--color-text)다.
+ * 예전엔 옐로우(--status-short-solid)였는데 눈에 거슬린다는 지적으로 텍스트 색만 바꿨다.
+ * 진행 바 채움색(ProgressBar의 --status-short-solid → --status-done-solid 그라데이션)은
+ * 그대로다 — 이 스토리에서는 값 텍스트 색만 검증한다.
+ */
+export const InProgressValueIsWhite: Story = {
+  name: '20260906_1436 — 진행 중 값은 화이트(막대는 옐로우 유지)',
+  render: () => (
+    <Frame>
+      <div data-testid="gauge">
+        <BadgeLevelGauge name="걸어온 거리" level={3} current="52.4" next="75km" left="22.6km 남음" fraction={52.4 / 75} />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const gauge = canvasElement.querySelector('[data-testid="gauge"]')!;
+    const current = Array.from(gauge.querySelectorAll('span')).find((el) => el.textContent === '52.4') as HTMLElement;
+    expect(current).toBeTruthy();
+    // --color-text(#ffffff) → rgb(255, 255, 255). 옐로우(#f2cb00)가 아니어야 한다.
+    expect(getComputedStyle(current).color).toBe('rgb(255, 255, 255)');
+  },
 };
 
 export const Complete: Story = {

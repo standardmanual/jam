@@ -21,7 +21,13 @@ const meta: Meta<typeof BadgeStageRail> = {
           '등급 라벨을 그리지 않는다 — 등급 없는 배지(무한레벨형)에 Common이 찍히지 않게 한 가드다. ' +
           '20260906_1323: 헤더 우측 라벨이 상태값(「다음 Epic」)에서 **어포던스**(「자세히」)로 바뀌었고, ' +
           '아직 도달하지 않은 눈금의 캡션은 `stop.conditionText`(「4km」)를 그린다 — 없으면 기존 「—」. ' +
-          '진행 캡션을 어느 눈금에 그릴지는 `progressStopId`가 정한다(호출부가 「첫 미충족」으로 계산).',
+          '진행 캡션을 어느 눈금에 그릴지는 `progressStopId`가 정한다(호출부가 「첫 미충족」으로 계산). ' +
+          '20260906_1436: 눈금 아래 3px 등급색 바를 걷어내고 접힌 레일은 `RarityBadge` 등급칩으로 ' +
+          '바꿨다(펼친 목록은 이미 옆에 칩이 있어 그대로 없음). 펼친 목록의 not-reached 상태 줄도 ' +
+          '조건값을 보여준다(접힌 레일과 동일 규칙). 게이트 자리 연결선도 다른 연결선과 같은 ' +
+          'flex-grow를 갖도록 맞춰 레일 전체가 한쪽으로 쏠려 보이던 것을 고쳤다. 진행 중(조건 ' +
+          '미충족)인 캡션 색은 옐로우(--status-short-solid)에서 화이트(--color-text)로 바뀌었다 — ' +
+          '채움색(막대·연결선)은 그대로다.',
       },
     },
   },
@@ -195,6 +201,126 @@ export const ProgressAnchorSkipsFulfilledStop: Story = {
     expect(stops[0].textContent).toContain('누적 1일');
     expect(stops[0].textContent).not.toContain('22');
     expect(stops[1].textContent).toContain('22/30일');
+  },
+};
+
+/**
+ * 20260906_1436 §2-1 — **펼친 목록**의 not-reached 상태 줄도 「—」 대신 조건값을 보여준다.
+ * `NotReachedShowsCondition`(접힌 레일)이 이미 고정한 규칙을 펼친 목록에도 그대로 적용한
+ * 회귀 테스트다 — 예전엔 펼친 목록만 `STATUS_LABEL`을 그대로 써서 조건값이 없었다.
+ */
+export const ExpandedNotReachedShowsCondition: Story = {
+  name: '펼친 목록 — 미도달 줄도 「—」 대신 조건값',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="계절의 트레일러"
+          nextRarityLabel="Rare"
+          expanded
+          onToggleExpand={() => {}}
+          stops={[
+            {
+              id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1',
+              description: '4km 걸으면 받는 배지예요.',
+            },
+            {
+              id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/2',
+              conditionText: '10km', description: '10km 걸으면 받는 배지예요.',
+            },
+            // 조건값이 없는 눈금은 펼친 목록에서도 기존 「—」로 남는다.
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3', description: '조건 미정' },
+          ]}
+          frontierProgress={null}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    expect(rail.textContent).toContain('10km');
+    expect(rail.textContent).toContain('—');
+    // 등급칩도 함께 보인다(RARE) — 바를 없앤 자리를 대체하지 않고 그대로 유지.
+    expect(rail.textContent).toContain('RARE');
+  },
+};
+
+/**
+ * 20260906_1436 §3 — 진행 중(조건 미충족)인 프런티어 캡션은 화이트(--color-text)다.
+ * 채움색(연결선 그라데이션)은 여전히 옐로우(--status-short-solid)를 쓴다 — 텍스트만 바뀐다.
+ */
+export const FrontierProgressCaptionIsWhite: Story = {
+  name: '20260906_1436 — 진행 중 캡션은 화이트(막대는 옐로우 유지)',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="동네 산책러"
+          nextRarityLabel="Epic"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/2' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
+          ]}
+          frontierProgress={{ text: '87.3/100km', fraction: 0.82 }}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    const caption = Array.from(rail.querySelectorAll('span')).find((el) => el.textContent === '87.3/100km') as HTMLElement;
+    expect(caption).toBeTruthy();
+    const rgb = getComputedStyle(caption).color;
+    // --color-text(#ffffff) → rgb(255, 255, 255). 옐로우(#f2cb00, rgb(242, 203, 0))가 아니어야 한다.
+    expect(rgb).toBe('rgb(255, 255, 255)');
+  },
+};
+
+/**
+ * 20260906_1436 §2-4 — 게이트 자리 연결선도 일반 연결선과 같은 flex-grow(1)를 갖는다.
+ * 예전엔 게이트만 grow:0(고정 44px)이라 남는 공간이 일반 연결선에만 쏠려 레일 전체가
+ * 한쪽으로 치우쳐 보였다.
+ */
+export const GateConnectorBalanced: Story = {
+  name: '20260906_1436 — 게이트 연결선도 균등하게 늘어난다',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="산책의 명상가"
+          nextRarityLabel="Rare"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'locked', href: '/badges/2' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3', conditionText: '10km' },
+          ]}
+          frontierProgress={null}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const group = canvasElement.querySelector('[role="group"]')!;
+    const gate = group.querySelector('.ds-rail-gate-link') as HTMLElement;
+    const regular = Array.from(group.children).find(
+      (el) => el.tagName === 'SPAN' && !el.className.includes('ds-rail-gate-link') && el.getAttribute('aria-hidden') === 'true'
+    ) as HTMLElement;
+    expect(gate).toBeTruthy();
+    expect(regular).toBeTruthy();
+    // 게이트·일반 연결선 모두 flex-grow:1 — 남는 공간을 균등하게 나눈다.
+    expect(getComputedStyle(gate).flexGrow).toBe('1');
+    expect(getComputedStyle(regular).flexGrow).toBe('1');
   },
 };
 
@@ -479,13 +605,13 @@ export const GrayscaleForUnearned: Story = {
 };
 
 /**
- * v2 — 눈금 아래 **3px 등급색 바**. 44px 폭에 "Mystic" 칩은 들어가지 않아서 등급을 색으로만
- * 표시하고, 등급명은 눈금의 `aria-label`이 읽는다(시각·비시각 어느 쪽도 정보를 잃지 않는다).
- * 등급 색 `--color-rarity-*`는 **값을 바꾸지 않고 그대로 참조**한다 — 이 토큰들은
- * `--color-tag-3/4/5`와 폼 입력 에러 색이 함께 물고 있다.
+ * v4(티켓 20260906_1436) — 눈금 아래 **등급칩**. 예전엔 3px 등급색 바 하나로만 등급을
+ * 표시해 등급명이 `aria-label`에만 있고 화면에는 안 보였다 — 압축된 `RarityBadge` 칩으로
+ * 바꿔 시각적으로도 바로 읽히게 했다. `common`은 기존 관례대로 칩을 그리지 않는다
+ * (노이즈 축소, 20260827_024) — 등급명은 여전히 `aria-label`이 함께 전달한다.
  */
-export const RarityBars: Story = {
-  name: 'v2 — 눈금 아래 3px 등급색 바',
+export const RarityChips: Story = {
+  name: 'v4 — 눈금 아래 등급칩',
   render: () => (
     <Frame>
       <div data-testid="rail">
@@ -507,10 +633,54 @@ export const RarityBars: Story = {
     </Frame>
   ),
   play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    // 등급칩이 화면 텍스트로도 보인다(색에만 기대지 않는다).
+    expect(rail.textContent).toContain('RARE');
+    expect(rail.textContent).toContain('EPIC');
+    expect(rail.textContent).toContain('MYSTIC');
+    // common은 칩을 그리지 않는다(기존 관례).
+    expect(rail.textContent).not.toContain('COMMON');
     const labels = Array.from(canvasElement.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') ?? '');
-    // 등급명은 색이 아니라 aria-label이 전달한다.
     expect(labels.some((l) => l.includes('Mystic'))).toBe(true);
     expect(labels.some((l) => l.includes('Epic'))).toBe(true);
+  },
+};
+
+/**
+ * 인터랙션 리뷰(티켓 20260906_1436) — common 눈금은 `RarityBadge`가 칩을 그리지 않는데,
+ * 예전엔 그 자리 자체를 안 만들어 Common 눈금만 44px, 나머지는 칩만큼(+16px) 더 커져
+ * 같은 레일 안에서 캡션 시작 위치가 어긋났다. 등급칩 자리를 항상 예약해 모든 눈금의
+ * 썸네일 블록 높이가 같아졌는지(=탭 타깃·캡션 정렬이 어긋나지 않는지) 확인한다.
+ */
+export const RarityChipSlotAligned: Story = {
+  name: '20260906_1436 — Common 눈금도 칩 자리 예약(탭 타깃 정렬)',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="계절의 보행자"
+          nextRarityLabel="Epic"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/2' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
+          ]}
+          frontierProgress={null}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    const stops = Array.from(rail.querySelectorAll('.ds-rail-stop')) as HTMLElement[];
+    expect(stops.length).toBe(4);
+    const thumbnailHeights = stops.map((stop) => (stop.firstElementChild as HTMLElement).offsetHeight);
+    // common(칩 없음)과 rare/epic/mystic(칩 있음) 모두 같은 높이여야 정렬이 맞는다.
+    expect(new Set(thumbnailHeights).size).toBe(1);
   },
 };
 

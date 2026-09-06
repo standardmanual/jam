@@ -29,7 +29,12 @@ Lv.1이든 Lv.128이든 같은 높이다.
 
 ## 색
 
-`--status-short-solid`(채우는 중, 11.04:1) → `--status-done-solid`(다 채움, 13.81:1).
+진행 바 채움색은 `--status-short-solid`(채우는 중, 11.04:1) → `--status-done-solid`
+(다 채움, 13.81:1) 그라데이션 — 예전과 동일하다.
+
+현재값(`current`) 텍스트 색은 다 채웠으면 `--status-done-solid`(라임), 진행 중이면
+`--color-text`(화이트, 20260906_1436 — 예전엔 `--status-short-solid` 옐로우였다. 눈에
+거슬린다는 지적으로 텍스트 색만 바꿨고 진행 바 채움색은 그대로다).
 지표·목표는 `--color-text-secondary`(8.21:1). `DualAxisGauge.AxisRow`와 **같은 값**이다.
 
 진행 바는 `ProgressBar`의 `fillMode="track-gradient"`를 쓴다 — 트랙 기준으로 깔고 잘라야
