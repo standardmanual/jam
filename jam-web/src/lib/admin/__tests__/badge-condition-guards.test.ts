@@ -46,15 +46,14 @@ describe('① 짝 필드 없는 조건은 저장에서 거부된다', () => {
   })
 })
 
-describe('② repeat_count + 휴식 조건 조합은 저장에서 거부된다', () => {
-  it('repeat_count와 return_gap_days를 함께 쓰면 막는다', () => {
-    const error = findRepeatRestConflictError({ repeat_count: 5, return_gap_days: 90 })
-    expect(error).not.toBeNull()
-    expect(error).toContain('repeat_count')
-    expect(error).toContain('복귀 전 휴식일')
+describe('② repeat_count + 휴식 조건 «2개 이상»은 저장에서 거부된다 (§B-10 재설계, 티켓 20260906_2056)', () => {
+  it('repeat_count와 휴식 키 1개(그 짝 필드만)는 이제 저장할 수 있다', () => {
+    // "휴식 조건을 만족한 복귀 사건"만 세는 전용 계산이 있어 발급이 영원히 막히지 않는다
+    expect(findRepeatRestConflictError({ repeat_count: 5, return_gap_days: 90 })).toBeNull()
+    expect(findRepeatRestConflictError({ repeat_count: 5, rest_after_streak: 2, streak_days: 6 })).toBeNull()
   })
 
-  it('휴식 4종 어느 것과 조합해도 막는다', () => {
+  it('휴식 4종 어느 것과 단독 조합해도 이제 통과한다', () => {
     const rest: BadgeCondition[] = [
       { rest_after_streak: 2, streak_days: 6 },
       { rest_after_long: 3, single_distance_km: 100 },
@@ -62,8 +61,24 @@ describe('② repeat_count + 휴식 조건 조합은 저장에서 거부된다',
       { interval_days: 90 },
     ]
     for (const cond of rest) {
-      expect(findRepeatRestConflictError({ ...cond, repeat_count: 3 })).not.toBeNull()
+      expect(findRepeatRestConflictError({ ...cond, repeat_count: 3 })).toBeNull()
     }
+  })
+
+  it('서로 다른 휴식 키 2개를 함께 쓰면 여전히 막는다 — 사건 경계가 정의되지 않는다', () => {
+    const error = findRepeatRestConflictError({
+      repeat_count: 3,
+      rest_after_streak: 2,
+      streak_days: 6,
+      return_gap_days: 10,
+    })
+    expect(error).not.toBeNull()
+    expect(error).toContain('repeat_count')
+  })
+
+  it('휴식 키 1개여도 그 짝 필드가 아닌 축이 섞이면 막는다', () => {
+    // distance_km은 return_gap_days의 짝 필드가 아니다 — 휴식 판정이 보지 못하는 독립 축
+    expect(findRepeatRestConflictError({ repeat_count: 3, return_gap_days: 90, distance_km: 5 })).not.toBeNull()
   })
 
   it('repeat_count만 있으면 통과한다', () => {
@@ -170,7 +185,11 @@ describe('findConditionShapeSaveError — 세 검사를 한 진입점에서 돌�
 
   it('세 경로 중 하나라도 걸리면 오류를 돌려준다', () => {
     expect(findConditionShapeSaveError(badge, { rest_after_streak: 2 })).not.toBeNull()
-    expect(findConditionShapeSaveError(badge, { repeat_count: 3, interval_days: 90 })).not.toBeNull()
+    // 휴식 키 1개(interval_days) + repeat_count는 이제 통과한다(§B-10 재설계) — 휴식 키
+    // 2개(사건 경계 미정의)로 두 번째 경로를 검증한다.
+    expect(
+      findConditionShapeSaveError(badge, { repeat_count: 3, rest_after_streak: 2, streak_days: 6, return_gap_days: 10 })
+    ).not.toBeNull()
     expect(
       findConditionShapeSaveError(badge, { cross_in_axis: {} } as unknown as BadgeCondition)
     ).not.toBeNull()
