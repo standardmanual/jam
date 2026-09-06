@@ -9,6 +9,8 @@ import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
 import { LockIcon, TargetIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { useToast } from '@/components/ui/Toast'
 import { d, t } from '@/lib/i18n'
 
@@ -23,12 +25,19 @@ export interface MissionListItem extends MissionRow {
   requiredBadge: { name: string; rarity: BadgeRarity } | null
 }
 
+/** 보상 배지 요약에 필요한 최소 정보 — 20260907_0014: 등급칩/레벨칩 분기를 위해 이름만으로는 부족 */
+export interface RewardBadgeInfo {
+  name: string
+  rarity: BadgeRarity | null
+  level: number | null
+}
+
 interface Props {
   // 종료되지 않은 미션 중 노출 대상(open/locked)만. 완료·미해금 상위 단계는 서버에서 제외됨
   ongoing: MissionListItem[]
   // '완료/지난' 탭 — 내가 완료한 미션 + 내가 참여했던 종료 미션
   ended: MissionListItem[]
-  rewardBadgeNames: Record<string, string> // badge_id → 배지 이름 맵
+  rewardBadgeNames: Record<string, RewardBadgeInfo> // badge_id → 보상 배지 정보 맵
 }
 
 type Tab = 'ongoing' | 'joined' | 'ended'
@@ -64,16 +73,34 @@ function isNewMission(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() <= NEW_MISSION_WINDOW_MS
 }
 
-// Phase13: 보상은 배지 복수 + 포인트 조합 — 배지는 "배지명 배지" 형식으로 표시
-function rewardSummary(m: MissionRow, badgeNames: Record<string, string>): string {
-  const parts: string[] = []
+// Phase13: 보상은 배지 복수 + 포인트 조합. 배지는 "칩 + 배지명 배지" 형식으로 표시한다
+// (20260907_0014). 등급형/레벨형은 상호배타이므로(마이그레이션 130) level 유무로 분기하고,
+// 둘 다 값이 없으면(common·미조회) 컴포넌트 스스로 칩을 그리지 않는다.
+function rewardBadgeNode(id: string, badgeNames: Record<string, RewardBadgeInfo>): React.ReactNode {
+  const info = badgeNames[id]
+  if (!info) return t(d.missions.rewardBadgeCount, { count: 1 })
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+      {info.level != null ? <BadgeLevelChip level={info.level} /> : <RarityBadge rarity={info.rarity ?? undefined} />}
+      {`${info.name} 배지`}
+    </span>
+  )
+}
+
+// 텍스트 전용(포인트)과 배지 보상(칩+이름)을 한 줄에 " + "로 이어 붙인다.
+function rewardNodes(m: MissionRow, badgeNames: Record<string, RewardBadgeInfo>): React.ReactNode[] {
   const ids = m.reward_badge_ids ?? []
-  for (const id of ids) {
-    const name = badgeNames[id]
-    parts.push(name ? `${name} 배지` : t(d.missions.rewardBadgeCount, { count: 1 }))
+  const nodes: React.ReactNode[] = []
+  ids.forEach((id) => {
+    if (nodes.length > 0) nodes.push(<span key={`sep-${id}`}> + </span>)
+    nodes.push(<span key={id}>{rewardBadgeNode(id, badgeNames)}</span>)
+  })
+  if (m.reward_points) {
+    if (nodes.length > 0) nodes.push(<span key="sep-points"> + </span>)
+    nodes.push(<span key="points">{t(d.missions.rewardPoints, { points: m.reward_points.toLocaleString('ko-KR') })}</span>)
   }
-  if (m.reward_points) parts.push(t(d.missions.rewardPoints, { points: m.reward_points.toLocaleString('ko-KR') }))
-  return parts.length > 0 ? parts.join(' + ') : d.missions.rewardNone
+  if (nodes.length === 0) nodes.push(<span key="none">{d.missions.rewardNone}</span>)
+  return nodes
 }
 
 const TABS: SlidingTabItem<Tab>[] = [
@@ -296,7 +323,7 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
             const newMission = isNewMission(m.created_at)
             const sLabel = statusLabel(m, started)
             const period = periodText(m, tab)
-            const reward = rewardSummary(m, rewardBadgeNames)
+            const reward = rewardNodes(m, rewardBadgeNames)
             // 20260825_028: 잠긴 미션은 상세 진입을 막고, 눌리면 잠금 사유를 토스트로 알린다.
             // 카드 전체 딤(0.6)은 '시작전'과 픽셀 단위로 같아져 상태 구분이 사라지고
             // 정작 읽어야 할 잠금 힌트의 대비까지 8.21:1 → 3.78:1로 떨어뜨린다.
@@ -426,8 +453,8 @@ export default function MissionsListClient({ ongoing, ended, rewardBadgeNames }:
                       </p>
                     ) : null}
 
-                    {/* reward */}
-                    <span style={{ fontSize: '11px', color: C_REWARD, lineHeight: 1 }}>
+                    {/* reward — 칩(등급/레벨)과 텍스트(포인트)를 한 줄로 조합 (20260907_0014) */}
+                    <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', fontSize: '11px', color: C_REWARD, lineHeight: 1 }}>
                       {reward}
                     </span>
                   </div>
