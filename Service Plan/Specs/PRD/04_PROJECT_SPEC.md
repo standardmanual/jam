@@ -87,11 +87,17 @@ jam-web/
 
 ## Vercel Cron 작업
 
+> **이 절이 크론의 단일 진실 원천이다.** 다른 문서(`Specs/SERVICE_OPERATIONS.md` §13 등)는
+> 여기를 가리키기만 한다 — 크론 표를 다른 곳에 복제하지 말 것(사유: 티켓 20260906_1245).
+> 실체는 `jam-web/vercel.json`의 `crons` 배열이므로, 이 표와 어긋나면 그 파일이 옳다.
+
 | 경로 | 스케줄(UTC) | 역할 |
 |------|------------|------|
 | `/api/cron/poi-cleanup` | 매일 00:00 | 만료된 유저 드랍 소각(30일 만료) |
 | `/api/cron/notifications` | 매일 09:00 | 알림(소식) T2 배치 생성 — KST 18:00 |
 | `/api/cron/ambient-drop` | 매시 정각 | 앰비언트(시스템) POI 드랍 배치 — 어드민이 정한 시각(`ambient_drop_config.schedule_hour_kst`, KST 정시)에만 실제 배치하고 그 외 시각·`auto_enabled=false`·당일 이미 실행됨은 전부 no-op. cron 표현식이 동적일 수 없어 매시 호출하고 핸들러가 판정한다 ([20260906_1206](../../Tickets/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)) |
+
+> **2026-07-31 제거**: `/api/cron/sync`(전체 `strava_connections` 유저 순차 동기화, 매일 12:00 UTC = KST 21:00)는 유저 수 증가에 따른 배치 시간·Strava Rate Limit 부담과 "유저가 원치 않는 시점에 활동이 반영되는" 정책 문제로 삭제됐다(커밋 `b9609942`). 이후 Strava 동기화는 **수동 버튼(`POST /api/strava/sync`)과 OAuth 콜백 직후 1회**만 발생한다. 상세: [Tickets/20260731_001](../../Tickets/20260731_001_Admin_Strava-전체-유저-자동-동기화-크론-api-cron-sync.md).
 
 > **2026-08-10 제거**: `/api/cron/reconcile`(Strava 활동 소급 재점검, 매일 12:00)은 API 호출량 절감을 위해 완전히 삭제됐다. 이 크론이 완충하던 "동기화 실패 시 커서(`last_synced_at`)가 잘못 전진해 이후 재시도까지 과거 활동을 영영 놓치는" 문제는 근본 수정으로 대체했다 — `syncStravaActivities` 처리 중 예외 발생 시 `last_synced_at`을 롤백하고, OAuth 콜백의 즉시 동기화 호출도 fire-and-forget에서 `await`로 변경(서버리스 강제 종료로 처리가 끊기는 것 방지). 상세: [Tickets/20260810_002](../../Tickets/20260810_002_Service_reconcile-크론-제거-및-동기화-커서-롤백.md).
 
