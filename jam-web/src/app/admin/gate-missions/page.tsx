@@ -112,8 +112,8 @@ export default async function AdminGateMissionsPage() {
       )}
 
       <div className="text-sm text-muted-foreground">
-        게이트 미션 {gateMissions.length}개 · 축 {matrix.length}개 (두 단계가 다 채워진 축{' '}
-        {matrix.filter((r) => r.complete).length}개)
+        게이트 미션 {gateMissions.length}개 · 축 {matrix.length}개 (Epic → Mystic 미션이 채워진 축{' '}
+        {matrix.filter((r) => r.complete).length}개 — Rare → Epic은 축 교차만으로 충분해 미션이 필요 없어요)
         {legacyMissions.length > 0 && (
           <span className="ml-2 text-amber-700">· 폐기 대상(예전 방식) {legacyMissions.length}개</span>
         )}

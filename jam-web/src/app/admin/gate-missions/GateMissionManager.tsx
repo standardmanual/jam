@@ -24,6 +24,7 @@ import {
   findGateMissionSaveError,
   gateAxisLabel,
   isGateMission,
+  isGateStageMissionOptional,
   parseVisibilityRule,
 } from '@/lib/missions/gateMissions'
 import { buildFamilyKey } from '@/lib/admin/badge-families'
@@ -799,9 +800,15 @@ export default function GateMissionManager({ missions, families, rewardBadgeLabe
                   {MISSION_GATE_STAGES.map((stage) => (
                     <TableCell key={stage} className="align-top">
                       {row.cells[stage].length === 0 ? (
-                        <span className="rounded bg-red-100 px-1.5 py-px text-[11px] font-medium text-red-700">
-                          비어 있음
-                        </span>
+                        isGateStageMissionOptional(stage) ? (
+                          <span className="rounded bg-slate-100 px-1.5 py-px text-[11px] font-medium text-slate-500">
+                            미션 불필요(축 교차로 충분)
+                          </span>
+                        ) : (
+                          <span className="rounded bg-red-100 px-1.5 py-px text-[11px] font-medium text-red-700">
+                            비어 있음
+                          </span>
+                        )
                       ) : (
                         <ul className="space-y-1">
                           {row.cells[stage].map((m) => {
@@ -837,7 +844,7 @@ export default function GateMissionManager({ missions, families, rewardBadgeLabe
                   <TableCell className="text-right align-top whitespace-nowrap">
                     {row.complete ? (
                       <span className="rounded bg-emerald-100 px-1.5 py-px text-[11px] font-medium text-emerald-700">
-                        두 단계 채움
+                        채워짐
                       </span>
                     ) : (
                       <span className="rounded bg-amber-100 px-1.5 py-px text-[11px] font-medium text-amber-800">
