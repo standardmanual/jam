@@ -338,13 +338,15 @@ export function BadgeStageRail({
     >
       <style>{STATIC_CSS}</style>
 
-      {/* 접근성 이름을 명시한다 — 안쪽 텍스트가 「자세히」 하나뿐이라 계열 이름이 사라진다 */}
+      {/* 접근성 이름은 내용 기반 계산에 맡긴다 — 명시적 aria-label을 달면 그 계산을
+          통째로 대체해 버튼 안의 계열명 span·`×N` 칩(자체 aria-label)이 이름에서
+          사라진다(티켓 20260906_1424 ①). aria-expanded만 명시하면 계열명 + 누적
+          횟수 + 「자세히」/「모두 획득」이 순서대로 모두 읽힌다. */}
       <button
         type="button"
         className="ds-rail-header"
         onClick={onToggleExpand}
         aria-expanded={expanded}
-        aria-label={`${familyName} 자세히`}
       >
         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-12)' }}>
           <span
@@ -541,7 +543,10 @@ export function BadgeStageRail({
                           // 조건값은 중립색이지만 사실 표기라 기울이지 않는다(§9).
                           fontStyle: showProgress && frontierProgress.pending ? 'italic' : 'normal',
                           color: captionColor,
-                          opacity: !showProgress && stop.status === 'not-reached' ? 0.7 : 1,
+                          // 0.7 감쇠는 정보 없는 '—' 글리프 전용이다. showConditionText일 때는
+                          // 실제 조건값(「4km」 등)이 그려지므로 감쇠를 걸지 않는다 — 걸면
+                          // 다크 4.4:1·라이트 2.9:1로 WCAG AA(4.5:1) 미달이다(티켓 20260906_1424 ②).
+                          opacity: !showProgress && stop.status === 'not-reached' && !showConditionText ? 0.7 : 1,
                           // 숫자 자릿수가 흔들리는 캡션("87.3/100km"·"100일 · 10회" 등)의 폭을
                           // 고정 — BadgeTrophyGridCard와 표기 일관성(20260904_0921).
                           fontVariantNumeric: showProgress || showConditionText ? 'tabular-nums' : undefined,

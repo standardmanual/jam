@@ -165,6 +165,15 @@ export const NotReachedShowsCondition: Story = {
     // aria는 상태를 말로 남기고 조건값을 덧붙인다 — 「—」를 읽지 않는다.
     const first = rail.querySelectorAll('a')[0];
     expect(first.getAttribute('aria-label')).toBe('계절의 트레일러 Common, 미도달. 조건 4km');
+    // 티켓 20260906_1424 ② — 조건값 캡션은 opacity 0.7 감쇠를 걸지 않는다(대비 확보,
+    // 실측값은 완료 기록 참고). 정보가 없는 「—」 폴백만 계속 0.7로 감쇠한다.
+    const captionSpans = Array.from(rail.querySelectorAll('span')).filter(
+      (el) => el.children.length === 0
+    );
+    const conditionCaption = captionSpans.find((el) => el.textContent === '4km') as HTMLElement;
+    const fallbackCaption = captionSpans.find((el) => el.textContent === '—') as HTMLElement;
+    expect(getComputedStyle(conditionCaption).opacity).toBe('1');
+    expect(getComputedStyle(fallbackCaption).opacity).toBe('0.7');
   },
 };
 
@@ -712,7 +721,16 @@ export const EarnCountChip: Story = {
     </Frame>
   ),
   play: async ({ canvasElement }) => {
-    expect(canvasElement.querySelector('[data-testid="rail"]')?.textContent).toContain('×12');
+    const rail = canvasElement.querySelector('[data-testid="rail"]');
+    expect(rail?.textContent).toContain('×12');
+    // 티켓 20260906_1424 ① — 헤더 버튼 자체에 aria-label을 달지 않아야 내용 기반 이름
+    // 계산이 살아, 안쪽 `×N` 칩의 aria-label="누적 12회"가 접근성 이름 조각으로 남는다.
+    // 헤더에 aria-label을 다시 달면 이 계산을 통째로 대체해 「누적」이 사라진다.
+    const header = rail?.querySelector('.ds-rail-header') as HTMLElement;
+    expect(header.getAttribute('aria-label')).toBeNull();
+    const countChip = header.querySelector('[aria-label^="누적"]');
+    expect(countChip).toBeTruthy();
+    expect(countChip?.getAttribute('aria-label')).toBe('누적 12회');
   },
 };
 

@@ -114,8 +114,11 @@ export function BadgeLevelGauge({
               fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.3,
               color: 'var(--color-text)', minWidth: 0,
               // 말줄임을 쓰지 않는다(§5) — 이름이 곧 지표라 끝이 잘리면 안 된다.
-              // keep-all로 한글은 어절 단위로만 끊는다.
+              // keep-all로 한글은 어절 단위로만 끊되, anywhere를 함께 둬 공백 없는 긴
+              // 토큰(어절 하나가 컬럼보다 긴 경우)만 강제로 분리한다 — keep-all 단독으로는
+              // 그런 토큰의 줄바꿈이 막혀 컬럼을 뚫고 넘친다(티켓 20260906_1424 ③).
               wordBreak: 'keep-all',
+              overflowWrap: 'anywhere',
             }}
           >
             {name}
