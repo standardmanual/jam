@@ -615,7 +615,27 @@ export async function processFetchedActivities(
   completedMissionIds: string[]
 }> {
   if (rawActivities.length === 0) {
-    return { badges: 0, itemBooksCompleted: 0, missionsCompleted: 0, earnedBadgeIds: [], completedMissionIds: [] }
+    // 티켓 20260906_1430 — 새 활동이 0건이어도 배지 평가만은 항상 실행한다.
+    //
+    // 이 이른 반환이 함수 전체(POI 매칭·아이템 드랍·아이템북 완성 체크·미션·배지 평가)를
+    // 통째로 건너뛰게 만들어, 아래 §"일반 배지 엔진 호출" 지점의 게이트를 배지 평가에서만
+    // 벗겨도 실제로는 여기서 이미 막혀 있었다 — 카탈로그가 늘어난 뒤 유저의 다음 실제
+    // 활동까지 배지 엔진이 단 한 번도 돌지 않는 사고(jamfather 22일 미발급, 티켓
+    // 20260906_1426 실측)의 진짜 진원지가 이쪽이다.
+    //
+    // 드랍(tryItemDrop)·미션(checkMissions)·아이템북 완성 체크는 "활동 1건마다 시도"가
+    // 전제라 이 이른 반환을 그대로 유지해 건너뛴다 — 배지 평가와 그 직접 부수효과(결산
+    // 소식)만 벗긴다. evaluateBadges는 내부에서 이력 전체를 다시 읽으므로 빈 배열을
+    // 넘겨도 이미 조건을 채운 배지를 잡아낼 수 있다.
+    const activityBadgeIds = await evaluateBadges(userId, [])
+    await notifyActivityBadgesEarned(supabase, userId, activityBadgeIds, [])
+    return {
+      badges: activityBadgeIds.length,
+      itemBooksCompleted: 0,
+      missionsCompleted: 0,
+      earnedBadgeIds: activityBadgeIds,
+      completedMissionIds: [],
+    }
   }
 
   // 획득 연출용 — 발급된 배지 id를 발급 순서대로 모은다 (엔진 내부 로직은 건드리지 않고
@@ -898,8 +918,12 @@ export async function processFetchedActivities(
     }
   }
 
-  // 일반 배지 엔진 호출 (speed-filtered 활동만)
-  const activityBadgeIds = activitiesFiltered.length > 0 ? await evaluateBadges(userId, activitiesFiltered) : []
+  // 일반 배지 엔진 호출 — 새 활동이 0건이어도 항상 실행한다 (티켓 20260906_1430).
+  // evaluateBadgesDetailed는 내부에서 이력 전체(getActivityHistory)를 이번 배치와 합쳐
+  // 평가하므로, 빈 배치를 넘겨도 "카탈로그가 늘어난 뒤 조건은 충족인데 미발급"인 배지를
+  // 이 호출 한 번으로 따라잡을 수 있다. 드랍(tryItemDrop)·미션(checkMissions)은 "활동
+  // 1건마다 시도"가 전제라 이 게이트를 그대로 유지한다 — 배지 평가만 벗긴다.
+  const activityBadgeIds = await evaluateBadges(userId, activitiesFiltered)
   const badgesEarned = activityBadgeIds.length
   earnedBadgeIds.push(...activityBadgeIds)
 
