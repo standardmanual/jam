@@ -41,12 +41,17 @@ const TREE_TAB_LABELS: Partial<Record<ActivityType, string>> = {
  *
  * `trim().toLowerCase()`를 거치는 이유: URL은 사람이 손으로 고치고 메신저가 대문자화하는
  * 입력이다. `?activity=Running`이 아무 피드백 없이 걷기로 떨어지는 것을 막는다.
+ *
+ * ⚠️ `typeof raw !== 'string'` 검사를 **지우지 말 것**. `?activity=a&activity=b`처럼 같은 키가
+ * 두 번 오면 Next가 배열을 넘기고, 그때 `raw.trim()`이 터져 화면 전체가 500이 된다
+ * (티켓 20260906_1158 2차 게이트 실측). 중복 파라미터는 손으로 고친 URL·링크 합성으로 흔히
+ * 생기는 입력이므로, 형제 화면 `normalizeTab`이 그렇듯 오류 대신 조용히 폴백한다.
  */
 function normalizeActivity(
-  raw: string | undefined | null,
+  raw: string | string[] | undefined | null,
   trees: BadgeActivityTree[]
 ): ActivityType | null {
-  if (!raw) return null
+  if (typeof raw !== 'string' || !raw) return null
   const normalized = raw.trim().toLowerCase()
   const matched = trees.find((tree) => tree.activityType === normalized)
   return matched ? matched.activityType : null
@@ -84,8 +89,11 @@ export interface BadgeTreeClientProps {
   progressByBadgeId: Record<string, BadgeProgress>
   /** 기록형 프런티어 전용 "아쉬움 줄" 데이터 — badge id로 조회 */
   regretLineByBadgeId: Record<string, RegretLineData>
-  /** `?activity=` — 열어둘 종목 탭. 유효하지 않으면 무시하고 첫 트리를 연다 (20260906_1158) */
-  initialActivity?: string
+  /**
+   * `?activity=` — 열어둘 종목 탭. 유효하지 않으면 무시하고 첫 트리를 연다 (20260906_1158).
+   * 같은 키가 중복되면 Next가 배열을 주므로 `string[]`도 받는다 — 정규화에서 폴백된다.
+   */
+  initialActivity?: string | string[]
 }
 
 export default function BadgeTreeClient({
