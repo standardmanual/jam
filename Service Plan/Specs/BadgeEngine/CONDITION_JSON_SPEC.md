@@ -238,8 +238,9 @@ BADGE_ENGINE_UNIFIED.md §2.3). **v5 신규 20종 중 13종**(휴식 4종 + 스�
 ⚠️ **휴식 4종(§2.13)은 `repeat_count`와 휴식 키 1개까지만 조합 가능하다**(2026-09-06,
 티켓 20260906_2056) — 전용 술어(`isRestDrivenRepeatCondition`)가 "휴식 조건을 만족한 복귀
 사건"만 센다. 휴식 키가 2개 이상이면 사건 경계가 정의되지 않아 여전히 막는다. 그 외 남은 `pending` 필드
-(`daily_once_count`·`distinct_time_bands`·`activities_within_hours`·`personal_record_break`·
+(`daily_once_count`·`distinct_time_bands`·`activities_within_hours`·
 `month_over_month_ratio`·`vs_personal_average` 등)는 여전히 fail-closed가 통째로 막는다(§4).
+`personal_record_break`는 2026-09-06(티켓 20260906_2055)부터 `engine`이다 — §2.10 참조.
 
 ### 2.12 2단 교차 게이트 3종 (2026-09-05, 티켓 20260905_0030 B2) ✅ **평가 구현됨**
 
@@ -352,9 +353,11 @@ interface BadgeGateRequirement {
 - `mission_reward`(§3)는 조건 필드와 함께 있어도 항상 §3의 규칙이 우선한다(무조건 fail)
 - **fail-closed** (2026-09-05, 티켓 20260905_0028): 조건에 «엔진이 평가하지 않는 키»가 하나라도
   있으면 나머지 필드를 충족해도 **발급되지 않는다**. 대상은 ① `evaluation: 'pending'`인 잔여
-  9종(`daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·
-  `activities_within_hours`·`personal_record_break`·`personal_record_break_metric`·
-  `month_over_month_ratio`·`vs_personal_average`) + `route`(§2.10) ② 레지스트리에 아예 없는
+  7종(`daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·
+  `activities_within_hours`·`month_over_month_ratio`·`vs_personal_average`) + `route`(§2.10)
+  — `personal_record_break`·`personal_record_break_metric`은 2026-09-06(티켓 20260906_2055)
+  부터 `engine`이다(단, 콘텐츠 값이 없는 계열은 §2.10의 「미지원 지표」 방어로 계속 막힘)
+  ② 레지스트리에 아예 없는
   키(오탈자) ③ **짝 필드가 하나도 없는 휴식 4종**(2026-09-05 추가, §2.13 —
   `PAIR_ENFORCED_CONDITION_KEYS`, `rest_after_long`은 `single_distance_km`·`duration_minutes`
   중 하나면 됨). 사유는 「평가할 수 없는 조건 필드 — …」로 남는다. 이 규칙이 없으면
@@ -414,8 +417,8 @@ interface BadgeGateRequirement {
 | 항목 | 상태 |
 |------|------|
 | `route` 필드 | ❌ 미구현 — 타입(`BadgeCondition`)·레지스트리엔 존재하나 badge-engine 평가 로직이 없다 (2026-08-25 조사, 티켓 20260825_034; badge-engine의 `condition.route` 참조 0건을 2026-09-05 재실측). **2026-09-05부터 `evaluation: 'pending'`이라 fail-closed가 막는다** — 조건에 `route`가 있으면 그 배지는 발급되지 않는다. 쓰는 배지가 0건이라 회귀 없이 전환했다. 쓰려면 먼저 평가를 구현하고 `engine`으로 뒤집거나, 스키마에서 제거한다 |
-| v5 신규 20종 — 잔여 8종 | ❌ 평가 미구현 — `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`personal_record_break`·`month_over_month_ratio`·`vs_personal_average`. fail-closed로 막히므로 발급되지 않는다. 나머지 12종(휴식 4종·스칼라 7종·`weekly_streak`)은 평가가 구현됐다(티켓 20260905_0030 B3, 20260906_0110 ②) |
-| `personal_record_break_metric` (2026-09-06 신규) | ❌ 평가 미구현 — 스키마·DB CHECK·지표 라벨만 반영됐다(티켓 20260906_0110 ③). `personal_record_break` 자체의 평가 구현이 이 필드를 실제로 읽기 시작하면 그때 `engine`으로 뒤집는다 |
+| v5 신규 20종 — 잔여 7종 | ❌ 평가 미구현 — `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`month_over_month_ratio`·`vs_personal_average`. fail-closed로 막히므로 발급되지 않는다. 나머지 13종(휴식 4종·스칼라 7종·`weekly_streak`·`personal_record_break`)은 평가가 구현됐다(티켓 20260905_0030 B3, 20260906_0110 ②, 20260906_2055) |
+| `personal_record_break`·`personal_record_break_metric` | ✅ 평가 구현됨 (2026-09-06, 티켓 20260906_2055) — `activityFilters.ts`의 `countPersonalRecordBreaks()`가 가입 시점 이후 활동에서 지표별 역대 최고 기록 갱신을 판정한다. **콘텐츠 값이 채워진 지표는 3종뿐**(`single_distance_km`·`duration_minutes`·`max_elevation_m`) — 나머지 지표나 `personal_record_break_metric` 자체가 비어 있는 계열은 짝 필드 강제(`unpaired`) 또는 「미지원 지표」 가드로 계속 막힌다 |
 | 스칼라 7종·`weekly_streak`의 **평가** | ✅ 구현됨 (2026-09-06, 티켓 20260906_0110 ②) — 원천 데이터는 그 전에(티켓 20260905_0029) `normalizeActivity`가 Strava Summary 응답에서 심박·파워·케이던스·최고속도·최고도달고도·경과시간을 읽어 `normalized`에 저장해 둔 상태였다. 조건 키 ↔ 정규화 필드 대응은 `CONDITION_ACTIVITY_FIELD`. 기존 활동은 `scripts/backfill-strava-extended-fields.ts`로 채운다 |
 | 케이던스 단위 | ✅ 러닝·트레일러닝만 ×2 정규화(양발 합계 spm), 사이클은 rpm 그대로 — 저장 시점(신규 싱크+백필)에 적용(티켓 20260906_0110 ⑤). 기존 저장분은 마이그레이션 141로 재정규화 완료 |
 | `negative_split` (`splits_metric`) | ❌ **v5 1차 범위 밖** (티켓 20260905_0029 확정) — 상세 엔드포인트에만 있어 활동 1건당 호출 1회가 든다(백필 697회). 상한을 두면 배지가 비결정적이 되므로 별도 티켓으로 분리했다. `StravaDetailedActivity` 타입은 신설됐지만 **수집하지 않는다** |

@@ -1,8 +1,9 @@
 ---
 id: 20260906_2055
 category: BadgeEngine
-status: OPEN
+status: CLOSED
 created: 2026-09-06
+closed: 2026-09-06
 ---
 
 # [BadgeEngine] `personal_record_break` 지표별 평가 로직 구현
@@ -167,5 +168,32 @@ UPDATE가 먼저 필요하다. 개선 리뷰가 `Specs/Content/ACTIVITY_BADGES.m
 - `npm run lint` 0 error, 13 warning(전부 `design-system/` 기존 경고, 이번 변경과 무관).
 
 ### 남은 것 — 게이트 리뷰
-- 프로덕션 14계열(자동 상승형) 중 지표가 채워진 7계열의 실제 발급 가능 여부 실측 확인은
-  게이트 리뷰 몫으로 남긴다(구현 계획 5단계).
+- ~~프로덕션 14계열 중 지표가 채워진 7계열의 실제 발급 가능 여부 실측~~ **완료**
+
+## 2026-09-06 게이트 리뷰 PASS — staging 병합 완료
+
+conservative-reviewer가 라이브 DB의 실제 14계열 `condition_json`을 그대로 엔진에 넣어
+직접 검증: 콘텐츠 값이 채워진 7계열(`walking:B1/B2`·`hiking:R1/R2`·`trail_running:R1~R3`)은
+전부 발급 가능, 나머지 7계열(`running:R1~R3`·`cycling:R1/R2`·`walking:B3/B4` — 정정: 이전
+기록의 "나머지 7계열" 예시가 `running:R2/R3`·`cycling:R2`만 나열해 불완전했다. 정확히는
+`running:R1~R3`·`cycling:R1/R2`·`walking:B3/B4`)는 짝 필드 강제로 여전히 fail-closed.
+
+개선 리뷰가 지적한 `CONDITION_JSON_SPEC.md` §6 표의 잔존 "❌ 평가 미구현" 서술을
+"✅ 평가 구현됨"으로 정정 완료(§2.10·§4와의 문서 내 모순 해소).
+
+### 테스트 결과
+- [x] `tsc --noEmit` 0건
+- [x] `vitest run` 전체 62 files / 1121 tests 통과
+- [x] 신규 회귀 테스트(`personal-record-break.test.ts` 9건) 포함
+
+### 배포 정보
+- 배포일: 2026-09-06 (staging)
+- 환경: staging → production은 `/jam-ship`으로 별도 진행
+- 커밋: `32266937`(구현) staging에 병합
+
+### 잔여 이슈
+- 어드민 폼의 `personal_record_break_metric` 선택지 12종 중 9종이 콘텐츠 미지원 상태로
+  조용히 fail-closed된다 — 개선 리뷰 제안(옵션 라벨에 "평가 미구현" 표시)은 별도 어드민
+  UX 개선 티켓으로 판단 필요
+- 나머지 7계열(`running:R1~R3`·`cycling:R1/R2`·`walking:B3/B4`)의 `personal_record_break_metric`
+  채움은 필요해지면 별도 콘텐츠 작업으로
