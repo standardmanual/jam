@@ -36,10 +36,12 @@ import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeade
  *
  * 1. **헤더를 직접 그리지 않는다.** 계열명 시작 x가 패턴마다 32/88/16px로 갈라져 있었다 —
  *    공유 부품 `BadgeFamilyCardHeader` 하나만 쓴다.
- * 2. **글자가 기하를 움직이지 못하게 분리한다.** 눈금 열이 `flex:none; minWidth:48`인데
+ * 2. **글자도 눈금 수도 기하를 움직이지 못하게 못박는다.** 눈금 열이 `flex:none; minWidth:48`인데
  *    캡션이 `maxWidth:92`까지 번져 **열 폭을 캡션 글자 수가 정했다** — 한 화면 네 카드에서
- *    연결선 폭이 37/25/21/14px로 벌어졌다. 이제 눈금은 `repeat(n, 1fr)` **균등 그리드**이고
- *    연결선은 그 위에 **절대 배치**된 별도 레이어다. 캡션이 몇 글자든 기하가 흔들리지 않는다.
+ *    연결선 폭이 37/25/21/14px로 벌어졌다. 1차 수정의 `repeat(n, 1fr)`도 같은 병을 다르게
+ *    앓았다 — 눈금 수가 열 폭을 정해 2눈금 카드의 연결선이 4눈금 카드의 5.4배였다.
+ *    지금은 **썸네일 52px · 연결선 16px 둘 다 고정 상수**이고 눈금을 왼쪽부터 나열한다
+ *    (C-1). 남는 오른쪽은 여백이다. 연결선은 그 위에 **절대 배치**된 별도 레이어다.
  * 3. **캡션 자리 2줄 높이를 상시 예약**한다(같은 레일 안에서 눈금 열 높이가 86/101/115px로
  *    어긋나던 문제). 등급칩 자리도 마찬가지로 항상 예약한다.
  *
@@ -69,15 +71,33 @@ const STATUS_ARIA_LABEL = { earned: '획득', ready: '조건을 다 채웠어요
 const MAX_STOPS = 4;
 
 /**
- * 썸네일 한 변과 연결선 숨은 **CSS 변수**로 둔다 — 컨테이너 폭에 따라 한 번에 줄어들어야
- * 하기 때문이다(아래 STATIC_CSS의 컨테이너 쿼리). 연결선 폭이 이 두 값에서 계산되므로
- * JS 상수로 박아 두면 좁은 화면에서 연결선이 **0px가 된다**:
- *   320px 화면 → 카드 안쪽 폭 256px ÷ 4열 = 64px, 64 - 52(썸네일) - 12(숨×2) = **0**.
- * 실측으로 확인한 값이라 주석으로 남긴다. 지금 값에서 연결선은 375px에서 18px,
- * 320px에서 14px이고 **한 화면 안에서는 항상 같다**(그게 이번 티켓의 요구사항이다).
+ * 레일 기하 — **화면 폭과 눈금 수 어디에도 종속되지 않는 고정 상수**다(티켓 20260906_2140 C-1).
+ *
+ * 두 번 틀렸던 자리라 근거를 남긴다. ① 열 폭을 캡션이 정하던 원본, ② 열을 `repeat(n,1fr)`로
+ * 균등 분할해 **눈금 수가 열 폭을 정하던** 1차 수정. 둘 다 「한 화면에서 연결선 폭이 하나」를
+ * 깼다(1차 실측: 375px에서 17.75/43.66/95.5px, 320px에서 14/35.33/78px).
+ *
+ * 그래서 지금은 `1fr`을 쓰지 않는다. 눈금 열 폭 = 썸네일 + 연결선(= PITCH)으로 못박고
+ * **왼쪽부터** 나열한 뒤, 남는 오른쪽은 여백으로 둔다. 눈금이 2개든 4개든, 화면이 320이든
+ * 375이든 연결선은 **16px 하나**다(실측표는 아래).
+ *
+ * 값 선택 근거(가장 좁은 320px 화면 기준 — 티켓 C-1의 부등식 그대로):
+ *   카드 안쪽 폭 = 320 - 32(페이지 좌우 패딩) - 32(카드 좌우 패딩) = **256px**
+ *   4눈금 폭 = 52×4 + 16×3 = **256px** ≤ 256 → 딱 맞는다. 실측으로 320px에서
+ *   `scrollWidth === clientWidth === 320`(가로 스크롤 0)을 확인했다.
+ *   ⚠️ 여유가 0이다. 페이지·카드 패딩을 키우거나 320px보다 좁은 화면을 지원하게 되면
+ *   4눈금 레일이 카드를 넘는다 — 그때는 이 두 상수를 함께 줄여야 한다.
+ * 그래서 1차 구현의 컨테이너 쿼리 축소(좁으면 44px)를 **없앴다** — 축소가 걸리는 순간
+ * 화면 폭이 다시 기하에 끼어들기 때문이다.
+ *
+ * 실측(Chromium, 4·3·2눈금 레일을 한 화면에 쌓아서):
+ *   375px — 연결선 16/16/16, 눈금 시작 x 32·100·168·236 (세 카드 모두 동일)
+ *   320px — 연결선 16/16/16, 눈금 시작 x 32·100·168·236 (동일), 가로 스크롤 0
  */
-const THUMB_VAR = 'var(--ds-rail-thumb)';
-const GAP_VAR = 'var(--ds-rail-gap)';
+const THUMB_SIZE = 52;
+const LINK_WIDTH = 16;
+/** 눈금 열의 좌→좌 간격. 마지막 열만 연결선이 뒤에 없어 THUMB_SIZE로 끊는다. */
+const PITCH = THUMB_SIZE + LINK_WIDTH;
 
 /** 연결선 두께. 6→8px. */
 const CONNECTOR_HEIGHT = 8;
@@ -97,11 +117,6 @@ const RARITY_CHIP_SLOT_HEIGHT = 22;
 const CAPTION_SLOT_HEIGHT = 37;
 
 const STATIC_CSS = `
-.ds-rail{container-type:inline-size}
-.ds-rail-scale{--ds-rail-thumb:52px;--ds-rail-gap:4px}
-/* 좁은 카드(320px 화면 = 카드 안쪽 288px)에서는 썸네일·숨을 함께 줄인다. 그러지 않으면
-   4열 균등 그리드에서 연결선 폭이 0이 되어 레일이 「점 네 개」로 보인다(실측). */
-@container (max-width: 300px){.ds-rail-scale{--ds-rail-thumb:44px;--ds-rail-gap:3px}}
 .ds-rail-stop{transition:scale var(--duration-quick,150ms) var(--ease-smooth-out,cubic-bezier(0.22,1,0.36,1));text-decoration:none;color:inherit}
 .ds-rail-stop:active{scale:var(--scale-press,0.96)}
 button.ds-rail-stop{background:none;border:none;padding:0;font:inherit;cursor:pointer}
@@ -131,7 +146,7 @@ function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }
     <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4)', flex: 'none' }}>
       <span
         style={{
-          position: 'relative', width: THUMB_VAR, height: THUMB_VAR, flex: 'none',
+          position: 'relative', width: THUMB_SIZE, height: THUMB_SIZE, flex: 'none',
           borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           // 이미지를 꽉 채우므로 자르는 일은 프레임이 전담한다.
@@ -184,16 +199,16 @@ function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }
 }
 
 /** 상태에 따라 링크(이동) 또는 버튼(받는 방법 시트 오픈) 중 하나로만 렌더 — 앵커 중첩 버튼 금지. */
-function StopHitArea({ status, href, onOpenLock, ariaLabel, children }) {
+function StopHitArea({ status, href, onOpenLock, ariaLabel, style, children }) {
   if (status === 'ready' || status === 'locked') {
     return (
-      <button type="button" className="ds-rail-stop" onClick={onOpenLock} aria-label={ariaLabel}>
+      <button type="button" className="ds-rail-stop" onClick={onOpenLock} aria-label={ariaLabel} style={style}>
         {children}
       </button>
     );
   }
   return (
-    <a href={href} className="ds-rail-stop" aria-label={ariaLabel}>
+    <a href={href} className="ds-rail-stop" aria-label={ariaLabel} style={style}>
       {children}
     </a>
   );
@@ -289,12 +304,11 @@ export function BadgeStageRail({
       : `${familyName}, ${visibleStops.length}단계 중 ${earnedCount}단계 획득. 다음 단계 ${nextRarityLabel}.`;
 
   /**
-   * 연결선 레이어 — **글자와 완전히 분리된 고정 기하**가 이번 개편의 핵심이다.
-   * 눈금 열이 `1fr` 균등이므로 i번째 열의 중심은 `((i + 0.5) / n) * 100%`다. 연결선은
-   * 이웃한 두 중심 사이를 잇고, 썸네일 반지름 + 숨만큼 양쪽을 물린다. 캡션이 몇 줄이든
-   * 이 값들은 변하지 않는다.
+   * 연결선 레이어 — **글자·눈금 수·화면 폭 어디에도 종속되지 않는 고정 기하**가 이번 개편의
+   * 핵심이다. i번째 눈금의 왼쪽 끝은 `i * PITCH`(px)이므로, 그 앞 연결선은
+   * `(i-1) * PITCH + THUMB_SIZE`에서 시작해 `LINK_WIDTH`만큼 간다. 퍼센트가 한 곳도 없어서
+   * 캡션이 몇 줄이든, 눈금이 2개든 4개든, 화면이 320이든 375이든 폭은 항상 16px이다.
    */
-  const connectorInset = `calc(${THUMB_VAR} / 2 + ${GAP_VAR})`;
   const connectors = visibleStops.slice(1).map((stop, idx) => {
     const i = idx + 1; // 이 연결선의 오른쪽 눈금 인덱스
     const isGateBefore = i === frontierIndex && (stop.status === 'locked' || stop.status === 'ready');
@@ -329,9 +343,6 @@ export function BadgeStageRail({
       }}
     >
       <style>{STATIC_CSS}</style>
-      {/* 기하 스케일 변수를 여는 래퍼 — 컨테이너 쿼리는 «자기 자신»을 질의할 수 없으므로
-          변수는 컨테이너(.ds-rail)의 **자손**에 선언해야 한다. */}
-      <div className="ds-rail-scale">
 
       <BadgeFamilyCardHeader
         name={familyName}
@@ -374,9 +385,10 @@ export function BadgeStageRail({
               className={c.isGateBefore ? 'ds-rail-gate-link' : undefined}
               style={{
                 position: 'absolute',
-                left: `calc(${(((c.i - 1) + 0.5) / columnCount) * 100}% + ${connectorInset})`,
-                width: `calc(${(1 / columnCount) * 100}% - 2 * (${connectorInset}))`,
-                top: `calc(${THUMB_VAR} / 2 - ${CONNECTOR_HEIGHT / 2}px)`,
+                // 고정 px — 퍼센트를 쓰지 않는다(C-1). 앞 눈금의 오른쪽 끝에서 시작한다.
+                left: (c.i - 1) * PITCH + THUMB_SIZE,
+                width: LINK_WIDTH,
+                top: THUMB_SIZE / 2 - CONNECTOR_HEIGHT / 2,
                 height: CONNECTOR_HEIGHT,
                 borderRadius: 'var(--radius-xs)',
                 background: c.isGateBefore
@@ -444,11 +456,20 @@ export function BadgeStageRail({
           ))}
         </div>
 
-        {/* 눈금 — 균등 n열 그리드. 열 폭이 캡션 글자 수와 무관하게 고정된다. */}
+        {/* 눈금 — **고정 폭 열을 왼쪽부터** 나열한다(C-1). `1fr`을 쓰지 않는 이유는 위
+            THUMB_SIZE 주석 참고. 마지막 열은 뒤에 연결선이 없어 THUMB_SIZE로 끊는다 —
+            그러지 않으면 4눈금 카드의 그리드 폭이 272px(4×68)가 되어 320px 화면(안쪽 256px)에서
+            가로 스크롤이 생긴다. 남는 오른쪽은 여백이다. */}
         <div
           role="group"
           aria-label={summarySentence}
-          style={{ display: 'grid', gridTemplateColumns: `repeat(${columnCount}, 1fr)`, alignItems: 'start' }}
+          style={{
+            display: 'grid',
+            gridTemplateColumns:
+              columnCount > 1 ? `repeat(${columnCount - 1}, ${PITCH}px) ${THUMB_SIZE}px` : `${THUMB_SIZE}px`,
+            justifyContent: 'start',
+            alignItems: 'start',
+          }}
         >
           {visibleStops.map((stop, i) => {
             const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
@@ -482,19 +503,29 @@ export function BadgeStageRail({
                 : 'var(--status-progress-idle)';
 
             return (
-              <div key={stop.id} style={{ display: 'flex', justifyContent: 'center', minWidth: 0 }}>
+              // 셀 폭은 PITCH(마지막만 THUMB_SIZE)이고 눈금은 **셀 왼쪽 끝에 붙는다** —
+              // 가운데 정렬하면 레일 전체가 LINK_WIDTH/2만큼 안쪽으로 밀려 계열명 시작 x와
+              // 어긋난다.
+              <div key={stop.id} style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <StopHitArea
                   status={stop.status}
                   href={stop.href}
                   onOpenLock={() => onLockClick?.(stop.id)}
                   ariaLabel={stopAriaLabel}
+                  // 탭 타깃 폭을 썸네일에 못박는다. 안 박으면 캡션 글자가 앵커 폭을 정해
+                  // 썸네일 중심이 밀리고, 그러면 절대 배치한 연결선과 어긋난다.
+                  style={{ display: 'block', width: THUMB_SIZE }}
                 >
                   <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-8)', width: '100%' }}>
                     <StopThumbnail imageUrl={stop.imageUrl} alt={stopName} status={stop.status} rarity={stop.rarity} showRarityChip />
-                    {/* 캡션 자리 — 2줄 높이 상시 예약. 글자 수가 눈금 열 높이를 못 바꾼다. */}
+                    {/* 캡션 자리 — 2줄 높이 상시 예약. 글자 수가 눈금 열 높이를 못 바꾼다.
+                        폭은 «썸네일 + 연결선»(= PITCH)까지만 허용한다(C-1). 썸네일 중심에
+                        정렬돼 좌우로 LINK_WIDTH/2(8px)씩 번지므로 이웃 캡션과 딱 맞닿고
+                        겹치지 않는다. 첫 눈금 캡션이 왼쪽으로 8px 번지지만 카드 패딩(16px)
+                        안이라 잘리지 않는다. */}
                     <span
                       style={{
-                        display: 'block', minHeight: CAPTION_SLOT_HEIGHT, width: '100%',
+                        display: 'block', minHeight: CAPTION_SLOT_HEIGHT, width: PITCH,
                         // 진행 앵커 캡션만 한 단계 크고 굵다 — 「지금 내 차례」를 한 곳에만 준다.
                         fontSize: showProgress ? 'var(--text-small)' : 'var(--text-caption)',
                         fontWeight: showProgress ? 700 : 400,
@@ -585,7 +616,6 @@ export function BadgeStageRail({
           })}
         </div>
       )}
-      </div>
     </div>
   );
 }
