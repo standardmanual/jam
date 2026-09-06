@@ -1334,6 +1334,7 @@ supabase/migrations/033_reseed_activity_badges_v3.sql   액티비티배지 시�
 supabase/migrations/044_ambient_poi_drop.sql            앰비언트 드랍 최초 스키마 — §3.12
 supabase/migrations/100_remove_ambient_drop.sql         앰비언트 드랍 제거(2026-08-25) — §3.12
 supabase/migrations/104_ambient_drop_reintroduce.sql    앰비언트 드랍 재도입(2026-08-26) — §3.12
+supabase/migrations/137_ambient_drop_schedule_hour.sql  예약 배포 시각 어드민 설정(2026-09-06) — §3.12
 supabase/migrations/137_ambient_drop_schedule_hour.sql  예약 배포 시각(KST) 어드민 설정 — §3.12
 supabase/migrations/076_walking_badges_v4.sql           걷기 신규 배지 32종 — §2.10
 supabase/migrations/077_common_streak_numeric.sql       common_streak NUMERIC 확장 — §3.15
