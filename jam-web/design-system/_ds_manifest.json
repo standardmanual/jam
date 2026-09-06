@@ -152,6 +152,10 @@
     {
       "name": "BadgeStatusSection",
       "sourcePath": "components/patterns/BadgeStatusSection.jsx"
+    },
+    {
+      "name": "BadgeProgressRingCard",
+      "sourcePath": "components/patterns/BadgeProgressRingCard.jsx"
     }
   ],
   "startingPoints": [],
