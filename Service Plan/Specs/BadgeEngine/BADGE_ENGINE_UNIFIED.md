@@ -876,6 +876,32 @@ POST /api/admin/badges/reevaluate-all
 `catalog_reevaluation`(`CATALOG_REEVALUATION_TRIGGER`)을 새로 쓴다. 이 컬럼은 자유
 텍스트라(CHECK 제약 없음) DB 마이그레이션 없이 값만 추가하면 된다.
 
+#### `initial_sync_done`은 이 배치가 절대 건드리지 않는다 — `overrideFirstSync: false`
+
+**게이트 리뷰 FAIL로 발견됐다(최초 구현 재작업, 2026-09-06).** `evaluateBadgesDetailed`를
+아무 옵션 없이 호출하면, `initial_sync_done=false`인(=Strava를 한 번도 동기화한 적 없는)
+유저가 이 배치에 걸리기만 해도 — **배지를 하나도 못 받아도** — "첫 동기화 완료" 상태로
+조용히 전환된다(index.ts의 갱신 가드가 원래 `!userInitialSyncDone`만 봤기 때문). 실측:
+프로덕션 12명 중 2명이 이 상태라 즉시 영향받는다. 파급: 그 유저가 나중에 진짜 처음 Strava를
+연동하면 (1) 첫 싱크 게이트(신규 유저는 Lv.1/Common만 발급하는 온보딩 보호)가 적용되지
+않고 (2) 진짜 첫 동기화 순간에 나가야 할 "첫 배지" 결산(`recordActivityRecap`)도 만들어지지
+않는다.
+
+**수정**: `reevaluateUsersForCatalog`는 `evaluateBadgesDetailed`를 부를 때 항상
+`overrideFirstSync: false`를 명시한다. `evaluateBadgesDetailed` 쪽 가드도
+`!overrideFirstSync`(값 기준)에서 `overrideFirstSync === undefined`(호출 의도 기준)로
+고쳤다 — `false`를 명시로 넘기는 것과 아예 안 넘기는 것을 구분해야, 「명시적으로
+갱신하지 말라」는 지시가 「지시 없음」과 같은 falsy 값으로 뭉개지지 않는다.
+
+결과: 카탈로그 재평가는 (1) `initial_sync_done`을 절대 갱신하지 않고 (2) 첫 싱크 게이트도
+강제로 해제되어 재평가로 나오는 배지가 등급 제한 없이 정상 발급되며 (3)
+`recordActivityRecap`(진짜 첫 동기화 전용 "첫 배지" 결산)도 만들지 않는다 — 재평가는
+진짜 첫 동기화가 아니므로 (1)(2)(3) 모두 의도한 동작이다. 실제 첫 동기화가 나중에
+일어나면 그때(옵션 없이 호출되는 `strava_sync` 경로에서) 정상적으로 한 번 전환·결산된다.
+`/api/admin/simulate`의 `overrideFirstSync: true`(첫 싱크 시뮬레이션, 상태는 안 건드림)는
+이 변경으로 영향받지 않는다 — `true`도 `false`도 "명시적 호출"로 같이 분기하게 고쳤을 뿐,
+기존 호출부는 `true` 아니면 `undefined`만 넘기므로 동작이 그대로다.
+
 #### 알려진 한계 — 반복형 배지의 회차 카운터는 이 경로로 오르지 않는다
 
 `evaluateBadgesDetailed`는 반복형(§2.14)의 "새 회차" 판정을 **이번 호출에 넘긴 배치**
