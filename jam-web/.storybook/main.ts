@@ -24,16 +24,10 @@ const config: StorybookConfig = {
     '@storybook/addon-mcp',
   ],
   framework: '@storybook/nextjs-vite',
+  // 스토리북은 로컬 `npm run storybook`(:6006) 전용이다 — 어떤 환경에도 배포하지 않는다
+  // (2026-09-06 확정, 티켓 20260906_1142). 그래서 여기는 dev 편의만 생각하면 된다.
   staticDirs: [
-    // `../public` 복사는 로컬 `storybook dev`(:6006) 전용이다.
-    //
-    // 배포 빌드(scripts/build.mjs가 JAM_STORYBOOK_DEPLOY=1로 실행)에서는 뺀다 —
-    // storybook build 산출물이 public/storybook/으로 들어가 같은 도메인의 /storybook/
-    // 아래에 서빙되므로, 스토리가 쓰는 절대 경로(`/badges/sample/*.png`)는 사이트 루트의
-    // public/이 이미 그대로 응답한다. 복사하면 badges(97MB)+itembooks(36MB)가 배포
-    // 산출물에 두 번 실릴 뿐이다 — 2026-09-06 실측으로 public/storybook이 144MB였고
-    // 빌드 캐시 업로드가 227MB였다. 반면 :6006에는 사이트 루트가 없으므로 유지해야 한다.
-    ...(process.env.JAM_STORYBOOK_DEPLOY ? [] : ['../public']),
+    '../public',
     // MODULAR 로고·이미지 자산 → /ds-assets/* 경로로 접근
     { from: '../design-system/assets', to: '/ds-assets' },
   ],

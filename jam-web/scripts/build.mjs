@@ -2,32 +2,30 @@
 /**
  * JAM! 빌드 진입점 (package.json의 `build` 스크립트)
  *
- * 스토리북 포함 여부를 **git 브랜치**로 가른다 (VERCEL_ENV가 아니다 — 아래 사고 참고).
- * - VERCEL_GIT_COMMIT_REF === 'main' (= 프로덕션 j-a-m.app): `next build`만 실행.
- *   스토리북은 프로덕션에 배포하지 않는다. 서비스 코드에서 `/storybook`을 참조하는 곳이 없고,
- *   public(133MB)을 통째로 중복 적재하는 비용만 남기 때문이다.
- * - 그 외(로컬, `staging` 브랜치): 스토리북을 굽고 public/storybook으로 복사한다.
- *   jam-stage.vercel.app/storybook으로 확인한다.
+ * **스토리북은 어떤 환경에도 배포하지 않는다** (2026-09-06 확정, 티켓 20260906_1142).
+ * 확인은 로컬 `npm run storybook`(http://localhost:6006)에서만 한다.
  *
- * ⚠️ 2026-08-27 사고: 최초 구현은 `VERCEL_ENV === 'production'`으로 판정했다. 이 저장소는
- * Vercel 프로젝트가 "jam"(main→Production, 그 외→Preview)과 "jam-stage" 둘로 나뉘어 있는데,
- * **"jam-stage" 프로젝트는 `staging` 브랜치 자체를 자기 "Production" 환경으로 매핑**해뒀다.
- * 그 결과 VERCEL_ENV 기준 판정이 jam-stage.vercel.app 배포에서도 `production`으로 잡혀
- * 스토리북이 빠지는 회귀가 났다 — 정작 확인해야 할 staging 도메인에서 스토리북이 사라졌다.
- * 브랜치명은 Vercel 프로젝트의 환경 라벨 설정과 무관하게 항상 동일하므로 이 문제에서 자유롭다.
+ * 이력 — 원래는 브랜치명으로 갈라서 staging 배포에만 스토리북을 실었다. Vercel Build CPU가
+ * 청구의 96%($66.15/20일)를 차지해 원인을 실측했더니, 배포된 스토리북에 드는 빌드 비용이
+ * 배포 1회당 12초(129초 중 9%)였다. staging의 `/storybook`은 dev-login 뒤에 있어 팀 전용이고
+ * 로컬 :6006으로 같은 것을 볼 수 있으므로, 배포에서 들어내는 쪽을 택했다.
  *
- * 티켓: Service Plan/Tickets/20260827_020_Infra_*.md
+ * ⚠️ 그러니 `storybook build`를 이 파일에 되살리지 말 것. 되살린다면 무엇을 얻는지 먼저
+ * 적어라 — 2026-08-27에는 반대 방향의 사고가 있었다(`VERCEL_ENV`로 판정했다가 staging에서
+ * 스토리북이 통째로 사라져 404). 지금은 **모든 환경에서 일관되게 없는 것**이 규칙이라
+ * 그때와 같은 "어떤 배포에는 있고 어떤 배포에는 없는" 상태 자체가 생기지 않는다.
+ *
+ * 티켓: Service Plan/Tickets/20260906_1142_Infra_*.md (이전 경위는 20260827_020_Infra_*.md)
  */
 import { spawnSync } from 'node:child_process';
-import { rmSync, cpSync, mkdirSync, writeFileSync } from 'node:fs';
+import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const includeStorybook = process.env.VERCEL_GIT_COMMIT_REF !== 'main';
 
 /** 자식 프로세스를 순차 실행하고, 실패하면 그 종료 코드로 빌드를 중단한다. */
-function run(command, args, extraEnv = {}) {
+function run(command, args) {
   console.log(`\n[build] $ ${command} ${args.join(' ')}`);
   const result = spawnSync(command, args, {
     cwd: projectRoot,
@@ -37,7 +35,6 @@ function run(command, args, extraEnv = {}) {
     // (npm run 경유일 때는 npm이 이미 넣어주지만, 그때도 중복이라 무해하다).
     env: {
       ...process.env,
-      ...extraEnv,
       PATH: `${path.join(projectRoot, 'node_modules', '.bin')}${path.delimiter}${process.env.PATH ?? ''}`,
     },
   });
@@ -51,28 +48,13 @@ function run(command, args, extraEnv = {}) {
   }
 }
 
-console.log(
-  `[build] VERCEL_GIT_COMMIT_REF=${process.env.VERCEL_GIT_COMMIT_REF ?? '(없음)'} → 스토리북 ${
-    includeStorybook ? '포함' : '제외 (프로덕션 main 브랜치)'
-  }`
-);
+console.log('[build] 스토리북 제외 — 확인은 로컬 `npm run storybook`(:6006)에서 한다');
 
-const storybookStaticDir = path.join(projectRoot, 'storybook-static');
-const publicStorybookDir = path.join(projectRoot, 'public', 'storybook');
-
-// 이전 빌드 잔여물 정리.
-// 스토리북 제외 경로에서도 수행한다 — 로컬에 남아 있던 public/storybook이
-// 프로덕션 산출물에 섞여 들어가지 않도록 한다.
-rmSync(storybookStaticDir, { recursive: true, force: true });
-rmSync(publicStorybookDir, { recursive: true, force: true });
-
-if (includeStorybook) {
-  // JAM_STORYBOOK_DEPLOY=1 → .storybook/main.ts가 staticDirs에서 `../public`을 뺀다.
-  // 배포 산출물에 배지·아이템북 이미지 133MB가 두 번 실리는 것을 막는다(사유는 main.ts 주석).
-  run('storybook', ['build'], { JAM_STORYBOOK_DEPLOY: '1' });
-  cpSync(storybookStaticDir, publicStorybookDir, { recursive: true });
-  console.log('[build] storybook-static → public/storybook 복사 완료');
-}
+// 이전 빌드가 남긴 스토리북 산출물을 지운다.
+// **이 정리는 스토리북을 굽지 않게 된 뒤에도 반드시 필요하다** — 로컬 작업 폴더에 예전
+// public/storybook(144MB)이 남아 있으면 next build가 그것을 public 자산으로 그대로 배포한다.
+rmSync(path.join(projectRoot, 'storybook-static'), { recursive: true, force: true });
+rmSync(path.join(projectRoot, 'public', 'storybook'), { recursive: true, force: true });
 
 run('next', ['build']);
 
