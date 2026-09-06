@@ -27,6 +27,12 @@
 --
 -- 멱등: 같은 (family_key, rarity, level) 행이 이미 있으면 넣지 않는다. 두 번 돌려도 안전하다.
 --
+-- ⚠️ 문안(name·description)만 고쳐서 이 시드를 다시 돌려도 DB의 기존 행은 갱신되지 않는다
+--    (WHERE NOT EXISTS가 이미 있는 행을 건너뛴다). v5_catalog_writing.json을 고치면:
+--      v5_seed_build.py → 이 파일·rows.json 재생성 · v5_doc_build.mjs → 문서 재생성 ·
+--      DB 반영은 별도 UPDATE 마이그레이션이 필요하다 (티켓 20260906_1421).
+--    드리프트 확인: python3 "Service Plan/Specs/Content/v5_verify_db.py" (읽기 전용)
+--
 -- ── 표기 규약 ──────────────────────────────────────────────────────────────
 --   [필터] 필터 키(time_range·month·day_of_week·season·day_of_month)를 측정 축과 함께 쓴다.
 --          진행률 계산이 필터를 보지 않아 실제보다 후하게 나온다 (티켓 0035 「필터 키」 절).
