@@ -8,15 +8,24 @@ import { d } from '@/lib/i18n'
  *
  * 2026-09-06 [20260906_1305]: 안내 «문장»과 조건 «표기»를 두 줄로 나눴다.
  * 한 줄에 섞여 있을 때 어디까지가 조건이고 마지막 숫자가 무엇의 횟수인지 읽히지 않았다.
+ *
+ * 2026-09-06 [20260906_1412]: 둘을 나란히 두니 **같은 조건이 두 번** 나왔다
+ * (「…총 10회 이상 조건을 채우면 획득할 수 있어요.」 + 「…총 10회 이상」).
+ * 표기 줄이 사실을 다 담으므로 **표기가 있으면 그것만** 그린다. 문장은 표기할 조건이
+ * 없을 때의 폴백으로만 남는다 — 아래 `spec` 주석 참고.
  */
 interface BadgeConditionCardProps {
-  /** 조건 설명 문구 — 안내 문장. 종결형이다 */
+  /**
+   * 조건 설명 문구 — 안내 문장. 종결형이다.
+   * `spec`이 있으면 그리지 않는다(같은 말을 두 번 하게 된다).
+   */
   text: string
   /**
    * 조건 표기 줄(명사구). `formatBadgeConditionSpec()`의 결과를 그대로 받는다.
-   * **optional이다** — 미션 보상·수동 발급·체크인 배지처럼 표기할 조건이 없으면
-   * 넘기지 않거나 `null`을 넘긴다. 그러면 지금까지와 똑같이 문장 한 줄만 그린다
-   * (어드민 미리보기가 이 경로를 쓴다).
+   * **optional이다** — 표기할 조건이 없으면 넘기지 않거나 `null`을 넘기고,
+   * 그러면 `text` 한 줄만 그린다. 그 경로가 실제로 쓰이는 곳:
+   * 미션 보상(「'X' 미션을 완료하면…」) · 어드민 수동 발급 · 레지스트리가 모르는 키 ·
+   * 체크인 배지(`conditionCheckinBody`) · 어드민 미리보기.
    */
   spec?: string | null
 }
@@ -25,13 +34,14 @@ export default function BadgeConditionCard({ text, spec }: BadgeConditionCardPro
   return (
     <div className="bg-surface-elevated rounded-[var(--radius-cards)] p-6 flex flex-col gap-2">
       <p className="text-[length:var(--text-body)] font-bold text-text">{d.badges.conditionTitle}</p>
-      <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">{text}</p>
-      {spec && (
-        /* 문장과 형태로 구분한다 — 구분선 + 본문 색 + 굵기 + tabular 숫자.
+      {spec ? (
+        /* 카드에 이 줄뿐이라 굵기를 주지 않는다 — 대비할 문장이 없으면 볼드가 근거를 잃는다.
            길어지면 줄바꿈한다. 조건이 잘리면 안 되므로 말줄임(truncate)을 쓰지 않는다. */
-        <p className="mt-1 pt-3 border-t border-text/10 text-[length:var(--text-small)] font-bold text-text leading-[var(--leading-loose)] tabular-nums [word-break:keep-all] break-words">
+        <p className="text-[length:var(--text-small)] text-text leading-[var(--leading-loose)] tabular-nums [word-break:keep-all] break-words">
           {spec}
         </p>
+      ) : (
+        <p className="text-[length:var(--text-small)] text-[var(--color-text-secondary)] leading-[var(--leading-loose)]">{text}</p>
       )}
     </div>
   )
