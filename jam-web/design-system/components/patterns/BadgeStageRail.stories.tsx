@@ -18,7 +18,10 @@ const meta: Meta<typeof BadgeStageRail> = {
           '누적/기록/주기 3종만 다룬다(2축형·다중카운터형 전용 게이지는 2d 몫). ' +
           '등급 라벨은 이 컴포넌트가 표를 들고 있지 않고 RarityBadge.jsx의 getRarityLabel()을 ' +
           '재사용한다(MODULAR 단일 소스, 20260905_0027). stops[].rarity가 비어 있으면 ' +
-          '등급 라벨을 그리지 않는다 — 등급 없는 배지(무한레벨형)에 Common이 찍히지 않게 한 가드다.',
+          '등급 라벨을 그리지 않는다 — 등급 없는 배지(무한레벨형)에 Common이 찍히지 않게 한 가드다. ' +
+          '20260906_1323: 헤더 우측 라벨이 상태값(「다음 Epic」)에서 **어포던스**(「자세히」)로 바뀌었고, ' +
+          '아직 도달하지 않은 눈금의 캡션은 `stop.conditionText`(「4km」)를 그린다 — 없으면 기존 「—」. ' +
+          '진행 캡션을 어느 눈금에 그릴지는 `progressStopId`가 정한다(호출부가 「첫 미충족」으로 계산).',
       },
     },
   },
@@ -51,6 +54,7 @@ export const GateAheadReady: Story = {
           { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'locked', href: '/badges/4' },
         ]}
         frontierProgress={null}
+        progressStopId={null}
         regretLine={null}
         onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
       />
@@ -71,6 +75,7 @@ export const GateAheadLocked: Story = {
           { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
         ]}
         frontierProgress={null}
+        progressStopId={null}
         regretLine={null}
         onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
       />
@@ -87,6 +92,7 @@ export const AllEarned: Story = {
         nextRarityLabel={null}
         stops={[{ id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' }]}
         frontierProgress={null}
+        progressStopId={null}
         regretLine={null}
         onLockClick={() => {}}
       />
@@ -108,11 +114,88 @@ export const NotStarted: Story = {
           { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
         ]}
         frontierProgress={null}
+        progressStopId={null}
         regretLine={null}
         onLockClick={() => {}}
       />
     </Frame>
   ),
+};
+
+/**
+ * 20260906_1323 §7 — 아직 도달하지 않은 눈금의 캡션은 「—」가 아니라 **그 등급의 조건값**이다.
+ * 4눈금 중 3개가 「—」면 「다음에 뭘 얼마나 해야 하나」가 화면에서 사라진다.
+ * 조건 해석은 이 컴포넌트가 하지 않는다 — 완성 문자열(`conditionText`)만 받는다.
+ */
+export const NotReachedShowsCondition: Story = {
+  name: '미도달 눈금 — 「—」 대신 조건값',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="계절의 트레일러"
+          nextRarityLabel="Common"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/1', conditionText: '4km' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/2', conditionText: '10km' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3', conditionText: '100일 · 10회' },
+            // 조건값이 없는 눈금(미션 보상·수동 발급)은 기존 「—」로 남는다 — 폴백을 지우지 않는다.
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
+          ]}
+          frontierProgress={null}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    expect(rail.textContent).toContain('4km');
+    expect(rail.textContent).toContain('100일 · 10회');
+    // 조건값이 없는 눈금은 그대로 「—」
+    expect(rail.textContent).toContain('—');
+    // aria는 상태를 말로 남기고 조건값을 덧붙인다 — 「—」를 읽지 않는다.
+    const first = rail.querySelectorAll('a')[0];
+    expect(first.getAttribute('aria-label')).toBe('계절의 트레일러 Common, 미도달. 조건 4km');
+  },
+};
+
+/**
+ * 20260906_1323 §8 — 진행 캡션이 붙는 자리는 호출부가 정한다(`progressStopId`).
+ * 예전에는 이 컴포넌트가 «첫 미획득 눈금»을 스스로 골라서, 조건은 이미 채웠지만 아직 발급되지
+ * 않은 눈금에 「22/1일」처럼 이미 넘긴 조건의 카운트가 떴다.
+ */
+export const ProgressAnchorSkipsFulfilledStop: Story = {
+  name: '진행 앵커 — 이미 채운 눈금을 건너뛴다',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="오늘의 한 발"
+          nextRarityLabel="Common"
+          stops={[
+            // Common(1일)은 조건을 이미 넘겼지만 아직 발급 전이라 미도달로 남아 있다.
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/1', conditionText: '누적 1일' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/2', conditionText: '누적 30일' },
+          ]}
+          frontierProgress={{ text: '22/30일', fraction: 22 / 30 }}
+          progressStopId="2"
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    const stops = Array.from(rail.querySelectorAll('a'));
+    // 진행 수치는 Rare 눈금에 붙고, Common 눈금은 조건값만 말한다.
+    expect(stops[0].textContent).toContain('누적 1일');
+    expect(stops[0].textContent).not.toContain('22');
+    expect(stops[1].textContent).toContain('22/30일');
+  },
 };
 
 export const Expandable: Story = {
@@ -137,6 +220,7 @@ export const Expandable: Story = {
             },
           ]}
           frontierProgress={null}
+          progressStopId={null}
           regretLine={null}
           onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
         />
@@ -154,6 +238,7 @@ export const NoImage: Story = {
         nextRarityLabel="Common"
         stops={[{ id: '1', rarity: 'common', imageUrl: null, status: 'not-reached', href: '/badges/1' }]}
         frontierProgress={null}
+        progressStopId={null}
         regretLine={null}
         onLockClick={() => {}}
       />
@@ -173,6 +258,7 @@ export const LongFamilyName: Story = {
           { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'ready', href: '/badges/2' },
         ]}
         frontierProgress={null}
+        progressStopId={null}
         regretLine={null}
         onLockClick={() => {}}
       />
@@ -196,6 +282,7 @@ export const FrontierProgressCumulative: Story = {
           { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
         ]}
         frontierProgress={{ text: '87.3/100km', fraction: 0.82 }}
+        progressStopId={null}
         regretLine={null}
         onLockClick={() => {}}
       />
@@ -215,6 +302,7 @@ export const FrontierProgressRecord: Story = {
           { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/2' },
         ]}
         frontierProgress={{ text: '40/45분', fraction: 0.89 }}
+        progressStopId={null}
         regretLine="지난 활동 기록은 40분. Rare까지 5분 모자랐어요."
         onLockClick={() => {}}
       />
@@ -231,6 +319,7 @@ export const FrontierProgressPeriodic: Story = {
         nextRarityLabel="Common"
         stops={[{ id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/1' }]}
         frontierProgress={{ text: '이번 주 4/5회 · 3일 남음', fraction: 0.8 }}
+        progressStopId={null}
         regretLine={null}
         onLockClick={() => {}}
       />
@@ -249,7 +338,8 @@ export const FrontierProgressUnsupported: Story = {
           { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
           { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/2' },
         ]}
-        frontierProgress={{ text: '진행 표시 준비 중', fraction: 0, muted: true }}
+        frontierProgress={{ text: '진행 표시 준비 중', fraction: 0, muted: true, pending: true }}
+        progressStopId={null}
         regretLine={null}
         onLockClick={() => {}}
       />
@@ -269,6 +359,7 @@ export const FrontierProgressBehindGate: Story = {
           { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'locked', href: '/badges/2' },
         ]}
         frontierProgress={{ text: '18/20분', fraction: 0.9 }}
+        progressStopId={null}
         regretLine={null}
         onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
       />
@@ -288,6 +379,7 @@ export const FrontierProgressReadyComplete: Story = {
           { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'ready', href: '/badges/2' },
         ]}
         frontierProgress={{ text: '20/20분', fraction: 1 }}
+        progressStopId={null}
         regretLine={null}
         onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
       />
@@ -324,6 +416,7 @@ export const NoRarityLeveled: Story = {
           },
         ]}
         frontierProgress={{ text: '38/50km', fraction: 0.76 }}
+        progressStopId={null}
         regretLine={null}
         onLockClick={(id: string) => alert(`잠금 해제 조건 시트: ${id}`)}
       />
@@ -367,6 +460,7 @@ export const GrayscaleForUnearned: Story = {
             { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
           ]}
           frontierProgress={null}
+          progressStopId={null}
           regretLine={null}
           onLockClick={() => {}}
         />
@@ -405,6 +499,7 @@ export const RarityBars: Story = {
             { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
           ]}
           frontierProgress={null}
+          progressStopId={null}
           regretLine={null}
           onLockClick={() => {}}
         />
@@ -439,6 +534,7 @@ export const EarnCountChip: Story = {
             { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
           ]}
           frontierProgress={null}
+          progressStopId={null}
           regretLine={null}
           onLockClick={() => {}}
         />
@@ -476,6 +572,7 @@ export const GateKinds: Story = {
               { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'locked', href: '/badges/4' },
             ]}
             frontierProgress={null}
+            progressStopId={null}
             regretLine={null}
             onLockClick={() => {}}
           />
@@ -489,6 +586,7 @@ export const GateKinds: Story = {
             { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'locked', href: '/badges/2' },
           ]}
           frontierProgress={null}
+          progressStopId={null}
           regretLine={null}
           onLockClick={() => {}}
         />
@@ -527,6 +625,7 @@ export const MaxFourStopsEnforced: Story = {
           id: String(n), rarity: null, imageUrl: WALK_ICON, status: 'locked' as const, href: `/badges/${n}`,
         })),
         frontierProgress: null,
+        progressStopId: null,
         regretLine: null,
         onLockClick: () => {},
       });
@@ -576,6 +675,7 @@ export const GatePartiallyMet: Story = {
             },
           ]}
           frontierProgress={null}
+          progressStopId={null}
           regretLine={null}
           onLockClick={() => {}}
         />

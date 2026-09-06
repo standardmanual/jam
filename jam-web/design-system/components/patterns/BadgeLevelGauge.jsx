@@ -9,14 +9,18 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
  * 계열 하나가 Lv.1~8(지금 시딩된 범위)만으로도 화면 한 페이지를 먹고, 레벨 상한이 없으니
  * 앞으로 더 늘어난다. **그래서 이 컴포넌트는 레벨 수와 무관하게 높이가 고정이다** —
  * 지나온 레벨을 하나도 그리지 않고 «지금 레벨 · 다음 목표 · 남은 양» 세 가지만 말한다.
- * 이름 줄을 1줄 말줄임으로 못 박아 계열 이름 길이로도 높이가 흔들리지 않는다.
+ * 높이 고정의 근거는 그 하나뿐이다 — **이름 줄은 말줄임이 아니다**(티켓 20260906_1323 §5).
+ * 계열 이름은 이 화면의 지표 그 자체라(「걸어온 거리」) 끝이 잘리면 무엇의 배지인지 사라져서,
+ * 긴 이름은 줄바꿈으로 전부 보여준다. 그래서 아주 긴 이름에서는 카드 높이가 한 줄 늘어난다.
  *
  * `condition`·`metric`을 받지 않는다 — 배지 이름이 지표를 말하고("걸어온 거리"),
  * 값 행이 조건을 말한다("120 / 150km"). 같은 말을 두 번 하지 않는다.
  *
  * 그리드(프로토타입 확정):
  *   카드   `[썸네일 44px][내용 1fr]` — 썸네일이 grid-row 1/-1로 걸려 **정렬 엣지가 하나만** 생긴다
- *   1행    `[52px 칩][1fr 이름][auto 카운터]` — 칩 폭이 고정이라 이름 시작 x가 모든 계열에서 같다
+ *   1행    `[52px 칩][1fr 이름][auto 카운터]` — 칩 폭이 고정이라 **칩이 있는 행끼리** 이름 시작
+ *          x가 같다. 레벨이 없으면(`level == null`) 칩 칸 자체를 만들지 않는다(§2) — 빈
+ *          `<span>`을 남기면 `columnGap`(8px)까지 여백으로 남아 이름이 안쪽으로 밀린다
  *   값 행  `[5ch][auto][1fr][auto]` — 현재값을 5ch 우측 정렬해 **`/` 구분자가 세로로 정렬**된다
  *
  * 진행 바는 `ProgressBar fillMode="track-gradient"` — 트랙 기준 그라데이션이라 fill 안에서
@@ -45,6 +49,9 @@ export function BadgeLevelGauge({
   className = '',
   style = {},
 }) {
+  // 칩을 실제로 그릴 때만 52px 칸을 잡는다 — `BadgeLevelChip`은 level이 null이면 아무것도
+  // 그리지 않으므로 조건이 곧 「칩이 있는가」다(§2).
+  const showChip = level != null;
   const clamped = Math.min(1, Math.max(0, fraction ?? 0));
   const done = clamped >= 1;
   const valueColor = done ? 'var(--status-done-solid)' : 'var(--status-short-solid)';
@@ -94,20 +101,19 @@ export function BadgeLevelGauge({
         {/* 1행 — [52px 칩][1fr 이름][auto 카운터] */}
         <div
           style={{
-            display: 'grid', gridTemplateColumns: '52px 1fr auto',
+            display: 'grid', gridTemplateColumns: showChip ? '52px 1fr auto' : '1fr auto',
             columnGap: 'var(--spacing-8)', alignItems: 'center',
           }}
         >
-          <BadgeLevelChip level={level} />
+          {showChip && <BadgeLevelChip level={level} />}
           <span
             style={{
               fontSize: 'var(--text-small)', fontWeight: 600, lineHeight: 1.3,
               color: 'var(--color-text)', minWidth: 0,
-              // 1줄 말줄임 — 이름 길이로 카드 높이가 흔들리면 "레벨 수와 무관하게 높이 고정"이
-              // 깨진다. 계열 이름은 전체가 `title`로도 남는다.
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              // 말줄임을 쓰지 않는다(§5) — 이름이 곧 지표라 끝이 잘리면 안 된다.
+              // keep-all로 한글은 어절 단위로만 끊는다.
+              wordBreak: 'keep-all',
             }}
-            title={name}
           >
             {name}
           </span>
