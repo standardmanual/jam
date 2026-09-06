@@ -3,6 +3,9 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
 import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeader.jsx';
 import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 
+/** 값 행 맨 앞 레벨칩의 고정 폭 — 뒤따르는 5ch 우측 정렬(`/` 세로 정렬)을 지키려면 고정이어야 한다 */
+const LEVEL_CHIP_WIDTH = 52;
+
 /**
  * BadgeLevelGauge — 무한레벨형 계열 한 줄. 티켓 20260905_0036.
  *
@@ -43,6 +46,11 @@ export function BadgeLevelGauge({
   name,
   /** 지금까지 도달한 레벨(1부터). null이면 아직 Lv.1도 못 받은 상태다 */
   level,
+  /**
+   * 다음 목표 레벨 — `level`이 `null`(아직 아무것도 못 받음)일 때 칩에 대신 그린다.
+   * 「지금 어디쯤인가」를 항상 하나의 값으로 말하기 위한 폴백이다(티켓 20260906_2344).
+   */
+  nextLevel = /** @type {number | null} */ (null),
   /** 현재 누적값 — 호출부가 이미 포맷한 문자열/숫자를 그대로 받는다(DS는 계산하지 않는다) */
   current,
   /** 다음 레벨 목표값(단위 포함 문자열 허용 — "150km") */
@@ -61,6 +69,8 @@ export function BadgeLevelGauge({
   style = {},
 }) {
   const clamped = Math.min(1, Math.max(0, fraction ?? 0));
+  // 받은 게 있으면 현재 레벨, 없으면 다음 목표 레벨. 둘 다 없으면 칩을 그리지 않는다.
+  const chipLevel = level ?? nextLevel;
   const valueColor = progressRampColor(clamped);
 
   return (
@@ -114,22 +124,25 @@ export function BadgeLevelGauge({
         </span>
 
         <div style={{ minWidth: 0 }}>
-          {/* 레벨은 헤더가 아니라 **본문 칩**이 말한다(티켓 20260906_2344). 헤더 우측은
-              퍼센트 숫자만 두어 카드 타입과 무관하게 한 x에서 끝나야 하기 때문이다.
-              레일이 등급을 칩으로 보여주는 것과 같은 어휘다. */}
-          {level != null && (
-            <div style={{ marginBottom: 'var(--spacing-8)' }}>
-              <BadgeLevelChip level={level} size="md" />
-            </div>
-          )}
-          {/* 값 행 — [5ch][auto][1fr][auto]. 5ch 우측 정렬이라 자릿수가 달라도 `/`가 세로로 정렬된다 */}
+          {/* 값 행 — [52px 레벨칩][5ch 현재값][auto /][1fr 다음값][auto 남은양].
+              레벨칩이 **항상 맨 앞**에 온다(티켓 20260906_2344, 사용자 확정) — 받은 게
+              있으면 현재 레벨, 없으면 다음 목표 레벨이다. 칩 폭이 52px 고정이라 그 뒤
+              5ch 우측 정렬이 유지돼 자릿수가 달라도 `/`가 세로로 정렬된다.
+              현재값이 없는 기록형 계열(`current == null`)은 `—` 대신 칸 자체를 비운다 —
+              「—」는 아무 사실도 말하지 않으면서 레벨칩 자리를 밀어냈다. */}
           <div
             style={{
-              display: 'grid', gridTemplateColumns: '5ch auto 1fr auto',
+              display: 'grid',
+              gridTemplateColumns: `${LEVEL_CHIP_WIDTH}px ${current != null ? '5ch auto' : ''} 1fr auto`,
               columnGap: 6, alignItems: 'baseline',
               fontVariantNumeric: 'tabular-nums',
             }}
           >
+            <span style={{ alignSelf: 'center' }}>
+              {chipLevel != null && <BadgeLevelChip level={chipLevel} size="md" width={LEVEL_CHIP_WIDTH} />}
+            </span>
+            {current != null && (
+              <>
             <span
               style={{
                 textAlign: 'right', fontSize: 'var(--text-body-l)', fontWeight: 700, lineHeight: 1.2,
@@ -139,6 +152,8 @@ export function BadgeLevelGauge({
               {current}
             </span>
             <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)' }}>/</span>
+              </>
+            )}
             <span style={{ fontSize: 'var(--text-small)', color: 'var(--color-text-secondary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {next}
             </span>
