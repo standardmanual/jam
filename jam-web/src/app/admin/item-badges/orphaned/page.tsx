@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRow, InventoryItemRow } from '@/types/database'
 import { OrphanedItemsTable, type OrphanedItemRow } from './OrphanedItemsTable'
 import Pagination from '../../poi/Pagination'
+import { pickSingleQueryParams } from '@/lib/searchParams'
 
 const PAGE_SIZE = 50
 /** PostgREST 기본 응답 상한 — range 순회 페이지 크기 */
@@ -9,8 +10,13 @@ const FETCH_PAGE_SIZE = 1000
 /** `.in()` 한 번에 실을 값의 최대 개수(URL 길이 상한 방어) */
 const IN_CHUNK_SIZE = 200
 
+/**
+ * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
+ * Next가 배열을 넘긴다. `pickSingleQueryParams`가 배열을 「값 없음」으로 흡수해 이 아래
+ * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
+ */
 interface Props {
-  searchParams: Promise<Record<string, string | undefined>>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 type CandidateItem = Pick<
@@ -50,7 +56,7 @@ function chunk<T>(values: T[], size: number): T[][] {
  * 어드민이 재배정/폐기해서 상태가 바뀌지 않았는지)를 재확인한다.
  */
 export default async function OrphanedItemsPage({ searchParams }: Props) {
-  const sp = await searchParams
+  const sp = pickSingleQueryParams(await searchParams)
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1)
 
   const supabase = createServiceClient()

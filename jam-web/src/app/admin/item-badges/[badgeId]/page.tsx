@@ -13,6 +13,7 @@ import {
 import { SerialListFilterBar } from './SerialListFilterBar'
 import { SerialListTable, type SerialListRow } from './SerialListTable'
 import Pagination from '../../poi/Pagination'
+import { pickSingleQueryParams } from '@/lib/searchParams'
 
 const PAGE_SIZE = 50
 
@@ -21,9 +22,14 @@ type ListedItem = Pick<
   'id' | 'badge_id' | 'serial_number' | 'serial_prefix' | 'obtained_at' | 'destroyed_at' | 'inventory_id' | 'slotted_in'
 >
 
+/**
+ * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
+ * Next가 배열을 넘긴다. `pickSingleQueryParams`가 배열을 「값 없음」으로 흡수해 이 아래
+ * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
+ */
 interface Props {
   params: Promise<{ badgeId: string }>
-  searchParams: Promise<Record<string, string | undefined>>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 /**
@@ -38,7 +44,7 @@ interface Props {
  */
 export default async function ItemBadgeSerialListPage({ params, searchParams }: Props) {
   const { badgeId } = await params
-  const sp = await searchParams
+  const sp = pickSingleQueryParams(await searchParams)
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1)
   const statusFilter = (sp.status as ItemBadgeStatus | undefined) ?? undefined
   const reissuedOnly = sp.reissued === 'true'

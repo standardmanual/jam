@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { BadgeRow, UserActivityBadgeRow, ItemBookRow, BadgeRarity } from '@/types/database'
 import BadgesClient, { ItemBookProgress, CheckinBadgeItem } from './BadgesClient'
 import { IN_CHUNK_SIZE } from '@/lib/notifications/batch/shared'
+import { singleQueryParam } from '@/lib/searchParams'
 
 /**
  * 20260824_021: 알림함 착지용 쿼리 파라미터.
@@ -10,13 +11,18 @@ import { IN_CHUNK_SIZE } from '@/lib/notifications/batch/shared'
  *
  * 탭 상태는 원래 hash(`#activity`)로 유지되지만, 착지점은 쿼리로도 탭을 전달해야
  * 하므로 쿼리도 초기값으로 받는다(이후 탭 전환은 기존대로 hash를 쓴다).
+ *
+ * ⚠️ `tab`의 타입을 `string`으로 좁히지 말 것 — `?tab=a&tab=b`처럼 같은 키가 두 번 오면
+ * Next가 배열을 넘긴다. 지금은 `BadgesClient`의 `normalizeTab`이 배열을 우연히 걸러
+ * 200이 나오지만, 그건 선언이 사실과 어긋난 채 버티는 것뿐이다 — 여기서 정규화해
+ * 「값 없음」(= 기본 탭)으로 못 박는다 (티켓 20260906_1312).
  */
 interface Props {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string | string[] }>
 }
 
 export default async function BadgesPage({ searchParams }: Props) {
-  const { tab } = await searchParams
+  const tab = singleQueryParam((await searchParams).tab)
 
   const supabase = await createClient()
   const {

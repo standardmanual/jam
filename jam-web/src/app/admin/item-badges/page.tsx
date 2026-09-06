@@ -6,11 +6,17 @@ import { Card } from '@/components/admin/ui/card'
 import type { BadgeRow } from '@/types/database'
 import { RARITY_LABEL, RARITY_BADGE_COLOR } from '@/lib/admin/item-badge-status'
 import { ItemBadgeSearchBar } from './ItemBadgeSearchBar'
+import { pickSingleQueryParams } from '@/lib/searchParams'
 
 type SearchBadgeRow = Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>
 
+/**
+ * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
+ * Next가 배열을 넘긴다. `pickSingleQueryParams`가 배열을 「값 없음」으로 흡수해 이 아래
+ * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
+ */
 interface Props {
-  searchParams: Promise<Record<string, string | undefined>>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 /**
@@ -24,7 +30,7 @@ interface Props {
  * 과거에 발급된 개체의 이력은 감사 대상이다.
  */
 export default async function ItemBadgesSearchPage({ searchParams }: Props) {
-  const params = await searchParams
+  const params = pickSingleQueryParams(await searchParams)
   const q = params.q?.trim() ?? ''
   const filterFactionId = params.faction_id
   const filterItemBookId = params.item_book_id

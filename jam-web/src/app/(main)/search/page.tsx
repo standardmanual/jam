@@ -10,9 +10,15 @@ import { UserIcon, ChevronRightIcon, SearchIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { d, t } from '@/lib/i18n'
 import { excludedTestUserIds } from '@/lib/env/test-accounts'
+import { singleQueryParam } from '@/lib/searchParams'
 
+/**
+ * ⚠️ `q`의 타입을 `string`으로 좁히지 말 것 — `?q=a&q=b`처럼 같은 키가 두 번 오면 Next가
+ * 배열을 넘긴다. 아래 `singleQueryParam`이 그 배열을 「값 없음」으로 흡수한다
+ * (티켓 20260906_1312 — 이 화면이 실제로 500이었다).
+ */
 interface SearchPageProps {
-  searchParams: Promise<{ q?: string }>
+  searchParams: Promise<{ q?: string | string[] }>
 }
 
 interface UserSearchResult {
@@ -77,7 +83,7 @@ async function searchUsers(rawQuery: string): Promise<UserSearchResult[]> {
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const { q } = await searchParams
+  const q = singleQueryParam((await searchParams).q)
 
   // 로그인 검증 — 미로그인 시 로그인 페이지로 리다이렉트
   const supabase = await createClient()

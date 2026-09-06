@@ -15,11 +15,22 @@ import ItemBookHeroSection from './ItemBookHeroSection'
 import { d } from '@/lib/i18n'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
+import { singleQueryParam } from '@/lib/searchParams'
 
+/**
+ * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — `?u=a&u=b`처럼 같은 키가 두 번 오면
+ * Next가 배열을 넘긴다. 아래 `singleQueryParam`이 그 배열을 「값 없음」(= 내 기준·비-슬롯
+ * 모드)으로 흡수한다 (티켓 20260906_1312 — 이 화면이 실제로 500이었다).
+ */
 interface Props {
   params: Promise<{ id: string }>
   // `slot=1` — 알림함 소식 #11의 착지점(장착 모드). 20260824_021
-  searchParams: Promise<{ u?: string; from?: string; itemId?: string; slot?: string }>
+  searchParams: Promise<{
+    u?: string | string[]
+    from?: string | string[]
+    itemId?: string | string[]
+    slot?: string | string[]
+  }>
 }
 
 type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
@@ -31,7 +42,11 @@ const TEXT_SECONDARY = '#B2B2B2'
 
 export default async function ItemBookDetailPage({ params, searchParams }: Props) {
   const { id } = await params
-  const { u, from, itemId, slot } = await searchParams
+  const rawSearchParams = await searchParams
+  const u = singleQueryParam(rawSearchParams.u)
+  const from = singleQueryParam(rawSearchParams.from)
+  const itemId = singleQueryParam(rawSearchParams.itemId)
+  const slot = singleQueryParam(rawSearchParams.slot)
   const slotMode = slot === '1'
   const supabase = await createClient()
   const {
