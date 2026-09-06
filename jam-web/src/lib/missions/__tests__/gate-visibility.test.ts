@@ -320,6 +320,32 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(gap[0].stage, 'epic_to_mystic')
   }],
 
+  ['④ rare_to_epic 단계는 미션이 없어도 구멍으로 잡지 않는다 (티켓 20260906_2231)', () => {
+    // v5 설계상 Rare→Epic 전환은 축 교차만으로 충분하고 미션이 필요 없다 — epic_to_mystic
+    // 하나만 채워진 정상 상태에서 axis_stage_gap이 0건이어야 한다(과거엔 축마다 항상 1건씩
+    // 오탐했다 — 티켓 20260906_1947 부수 발견).
+    const issues = checkGateMissionConsistency({
+      missions: [gateMission({ id: 'a', reward_badge_ids: ['r1'] })],
+      activityBadges: [],
+      referencedBadges: new Map([['r1', badge({ id: 'r1', name: '보상' })]]),
+    })
+    const gap = issues.filter((i) => i.code === 'axis_stage_gap')
+    assert.strictEqual(gap.length, 0)
+  }],
+
+  ['④ epic_to_mystic 단계가 비어 있으면 여전히 구멍으로 잡는다 (rare_to_epic만 예외)', () => {
+    const rows = buildGateMatrix([gateMission({ id: 'a', gate_stage: 'rare_to_epic' })])
+    assert.strictEqual(rows[0]?.cells.epic_to_mystic.length, 0)
+    const issues = checkGateMissionConsistency({
+      missions: [gateMission({ id: 'a', gate_stage: 'rare_to_epic', reward_badge_ids: ['r1'] })],
+      activityBadges: [],
+      referencedBadges: new Map([['r1', badge({ id: 'r1', name: '보상' })]]),
+    })
+    const gap = issues.filter((i) => i.code === 'axis_stage_gap')
+    assert.strictEqual(gap.length, 1)
+    assert.strictEqual(gap[0].stage, 'epic_to_mystic')
+  }],
+
   ['④ 같은 축·단계에 미션 2개면 중복을 잡는다', () => {
     const issues = checkGateMissionConsistency({
       missions: [gateMission({ id: 'a' }), gateMission({ id: 'b' })],
