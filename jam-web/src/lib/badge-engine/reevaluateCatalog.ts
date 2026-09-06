@@ -86,10 +86,15 @@ export async function reevaluateUsersForCatalog(
 
   // point_reward 조회는 유저 루프 밖에서 한 번만 — 카탈로그 규모(수백~천 종)는
   // 유저 수보다 훨씬 안정적이라 매 유저 반복 조회할 이유가 없다.
+  // deleted_at 필터: evaluateBadgesDetailed의 발급 후보 조회(index.ts)와 같은 조건을
+  // 맞춰 둔다 — earned에 담기는 id는 항상 살아있는 배지뿐이므로 실질적 차이는 없지만
+  // (조회 결과가 많아 봐야 조회되지 않는 id는 그냥 무시되는 lookup map이다), 같은
+  // 테이블을 보는 두 조회가 서로 다른 필터를 쓰면 나중에 읽는 사람이 오해하기 쉽다.
   const { data: badgesRaw, error: badgesError } = await supabase
     .from('badges')
     .select('id, point_reward')
     .eq('type', 'activity')
+    .is('deleted_at', null)
 
   if (badgesError) {
     console.error('[reevaluateUsersForCatalog] 배지 point_reward 조회 오류:', badgesError)
