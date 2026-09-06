@@ -1,12 +1,14 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-06 (v5 스칼라 7종(`max_elevation_m`·`max_speed_kmh`·`single_distance_km`·
+> 최종 업데이트: 2026-09-06 (휴식 4종 + `repeat_count` 조합 지원 — 휴식 키 1개까지, 전용 술어
+> `isRestDrivenRepeatCondition` 신설, 진행률 `'repeat'` 축 연결, 어드민 저장 가드도 함께 갱신 —
+> 티켓 20260906_2056). 이전: v5 스칼라 7종(`max_elevation_m`·`max_speed_kmh`·`single_distance_km`·
 > `single_elevation_m`·`avg_heartrate_bpm`·`avg_watts`·`avg_cadence`)·`weekly_streak`를
 > `pending`→`engine`으로 전환, `cumulative_duration_hours`·`monthly_count` 신규 필드 추가(둘 다
 > `engine`), `rest_after_long`의 짝 필드에 `duration_minutes`를 OR로 추가해 실제 발급 가능해짐,
 > 반복 회차 계산에 「기간 단위 회차」(`streak_days`·`weekly_count`·`monthly_count`·`weekly_streak`
 > + `repeat_count` 조합) 지원 추가, 케이던스 ×2 정규화(러닝·트레일러닝만, 자전거 제외) —
-> 티켓 20260906_0110(CLOSED). 이전: `NormalizedActivity` 확장 6필드 수집·백필 경로(§2.1-1) 추가 —
+> 티켓 20260906_0110(CLOSED). 그 이전: `NormalizedActivity` 확장 6필드 수집·백필 경로(§2.1-1) 추가 —
 > 티켓 20260905_0029. 그 이전: 배지트리 진행 계산 계층(§2.13) 신설·화면 연결(2b~2d)·계열 진행
 > 스냅샷 테이블+정합성 트리거(3차 1단계, 마이그레이션 128)·직전 동기화 비교 배너(3차 2단계,
 > 배너 텍스트만) — 티켓 20260904_0631/0921/1058/1156/1425)  
@@ -838,13 +840,25 @@ fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게�
   엔진과 다른 말을 하게 되고 ② 그 경고 로그가 «배지 × 유저 × 싱크»마다 찍혀 오설정 1건이
   로그 폭주가 되어 철회했다. **하한 준수는 티켓 20260905_0035(카탈로그 시딩)의 몫이다.**
 
-#### 회차(`repeat_count`)와 함께 쓸 수 없다
+#### 회차(`repeat_count`)와의 조합 — 휴식 키 1개까지 지원 (2026-09-06, 티켓 20260906_2056 갱신)
 
-휴식 4종은 **`collectRepeatOccurrences`의 `consumed` 집합에 넣지 않는다.** 게이트(§2.15)는
-「보유 여부」라 회차와 층이 다르지만, 휴식은 **이력 패턴 술어**라 넣으면 「휴식 조건을 무시한
-회차」가 세어진다. 대신 조합 자체를 **「회차와 함께 쓸 수 없는 조건」**이라는 명시적 사유로 막는다 —
-막지 않으면 회차 술어의 fail-closed 가드가 조용히 회차를 0으로 떨어뜨려 「충족 횟수 부족 / 0회」로만
-보이고, 카탈로그 담당자가 원인을 찾지 못한다.
+휴식은 **이력 패턴 술어**라 `repeat_count`에 그냥 얹으면 「휴식 조건을 무시한 회차」가 세어진다
+(예: `{repeat_count: 5, rest_after_streak: 2}`를 단순 카운트하면 휴식 여부와 무관하게 활동
+5번이 세어진다). 이를 막기 위해 전용 술어 `isRestDrivenRepeatCondition`/`collectRestOccurrences`
+(`repeatOccurrences.ts`)를 신설했다 — "사건 하나" = `evaluateRestConditions`와 같은
+`buildRestIntervals`가 만드는 인접 활동일 사이의 **닫힌 구간** 중 그 휴식 조건(eligible +
+threshold)을 만족하는 구간 하나다. 기존 단발 판정(`evaluateRestConditions`)과 완전히 같은
+구간 계산을 재사용해 두 판정이 어긋나지 않는다.
+
+**휴식 키가 정확히 1개**(그 짝 필드만 동반)일 때만 지원한다. 휴식 키 2개 이상이 동시에
+있으면 "사건 하나"가 두 키를 같은 구간에서 동시에 만족해야 하는지 각자 독립 구간이어도
+되는지가 정의돼 있지 않아 **여전히 「회차와 함께 쓸 수 없는 조건」으로 막는다**
+(실측 2026-09-06: 프로덕션에 이런 조합 0건 — fail-closed로 막아도 실무 영향 없음).
+막힌 조합은 fail-closed 가드가 조용히 회차를 0으로 떨어뜨려 「충족 횟수 부족 / 0회」로만
+보이므로, 카탈로그 담당자가 2개 이상 조합을 쓰려면 먼저 스펙 오너 판단을 받아야 한다.
+
+지원 대상(휴식 키 1개 + `repeat_count`)은 진행 계산(§2.13-1)에서도 `'repeat'` 축으로
+분류돼 "N/M회" 진행률이 그려진다(기존 `'unsupported'` 고정 해제).
 
 #### 계기 활동은 «복귀 활동»이다
 
