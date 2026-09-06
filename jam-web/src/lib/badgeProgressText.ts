@@ -13,6 +13,7 @@ import {
   type AnyConditionFieldMeta,
 } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition, BadgeRarity } from '@/types/database'
+import type { BadgeStopStatus } from '@/lib/badgeTreeConditionStatus'
 
 /**
  * ## 3b 추가분 (티켓 20260904_1425) — `pickSyncComparisonCandidate()`/`formatSyncComparisonText()`
@@ -230,6 +231,75 @@ export function formatFrontierProgressText(
 
   // cumulative | record
   return { text: formatAxisRange(axis), fraction: progress.progress }
+}
+
+/** `BadgeStageRail.jsx`의 `STATUS_LABEL`/`STATUS_ARIA_LABEL`과 같은 어휘 — DS는 `@/lib`을
+ * import하지 않으므로(서비스 비의존 원칙) 두 곳에 같은 문구가 각각 선언돼 있다. */
+const GRID_CELL_STATUS_LABEL: Record<BadgeStopStatus, string> = {
+  earned: '획득', ready: '조건 충족', locked: '잠김', 'not-reached': '—',
+}
+const GRID_CELL_STATUS_ARIA_LABEL: Record<BadgeStopStatus, string> = {
+  earned: '획득', ready: '조건 충족', locked: '잠김', 'not-reached': '미도달',
+}
+
+export type GridCellCaption = {
+  /** BadgeProgressRingCard의 captionText로 그대로 넘긴다 */
+  text: string
+  /** 0~1 */
+  fraction: number
+  /** 진행 미지원(§08 H) — 링을 중립색으로 */
+  muted: boolean
+  /** text가 임시 상태 표기("진행 표시 준비 중")다 — 조건값·상태 라벨은 사실 표기라 false */
+  pending: boolean
+  /** aria-label 조립용 — not-reached만 화면 라벨('—')과 다르다('미도달') */
+  statusAriaText: string
+  /**
+   * true면 `text`가 상태 라벨을 넘어서는 정보(수치·조건값)를 담고 있다 — 호출부가 aria에
+   * `statusAriaText`와 별도로 `text`를 이어붙일지 판단하는 데 쓴다. false(바닥 폴백)면
+   * `text`가 `statusAriaText`와 사실상 같은 말이라("조건 충족") 이어붙이면 중복된다.
+   */
+  hasDetail: boolean
+}
+
+/**
+ * `BadgeProgressRingCard`(그리드 셀, 눈금 1개 계열 전용) 캡션 — 티켓 20260906_1425.
+ *
+ * `formatFrontierProgressText`를 그대로 재사용한다 — 눈금 1개 계열도 프런티어(유일한 눈금)의
+ * 진행 표시라는 점은 레일과 같다. 그 함수가 `null`을 돌려주는 두 경우(2축/다중 kind, 또는
+ * `progress` 자체가 없음)만 이 함수가 추가로 받는다 — `BadgeStageRail`이 그 경우 상태
+ * 라벨(`STATUS_LABEL`)로 폴백하는 것과 같은 순서: **조건값이 있으면 조건값, 없으면 상태
+ * 라벨**("조건 충족"/"잠김"). `earned`/`not-reached`(조건값 없음)는 `formatFrontierProgressText`가
+ * 이미 해결하므로(진행 앵커는 곧 프런티어 눈금이라 여기까지 오지 않거나, unsupported 분기가
+ * 처리한다) 사실상 `ready`/`locked` 폴백만 실전에서 쓰인다.
+ */
+export function formatGridCellCaption(
+  progress: BadgeProgress | undefined,
+  status: BadgeStopStatus,
+  conditionText: string | null
+): GridCellCaption {
+  const statusAriaText = GRID_CELL_STATUS_ARIA_LABEL[status]
+  const frontier = progress ? formatFrontierProgressText(progress, new Date(), conditionText) : null
+  if (frontier) {
+    return {
+      text: frontier.text,
+      fraction: frontier.fraction,
+      muted: !!frontier.muted,
+      pending: !!frontier.pending,
+      statusAriaText,
+      hasDetail: true,
+    }
+  }
+  if (status === 'not-reached' && conditionText) {
+    return { text: conditionText, fraction: 0, muted: true, pending: false, statusAriaText, hasDetail: true }
+  }
+  return {
+    text: GRID_CELL_STATUS_LABEL[status],
+    fraction: 0,
+    muted: true,
+    pending: false,
+    statusAriaText,
+    hasDetail: false,
+  }
 }
 
 /**

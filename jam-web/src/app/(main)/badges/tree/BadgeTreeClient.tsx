@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import SlidingTabs, { type SlidingTabItem } from '@/components/ui/SlidingTabs'
 import TopNav from '@/components/ui/TopNav'
 import BadgeFamilyRow from '@/components/badges/BadgeFamilyRow'
+import BadgeProgressGridCell from '@/components/badges/BadgeProgressGridCell'
 import BadgeUnlockSheet, { type BadgeUnlockSheetData } from '@/components/badges/BadgeUnlockSheet'
 import { MedalIcon } from '@/components/ui/icons'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
@@ -71,6 +72,15 @@ function normalizeActivity(
  *
  * ⚠️ `BadgeStatusSection`에는 **빈 배열이 아니라 `null`을 넘겨야** `emptyText`가 뜬다
  * (`{list.map(...)}`를 그대로 넘기면 빈 영역만 남는다 — 0036이 남긴 호출부 규약).
+ *
+ * ## 눈금 1개 계열은 그리드로 묶는다 (티켓 20260906_1425)
+ *
+ * v5 실측(194계열 630종)의 1/3(63계열)이 눈금 1개다. 눈금과 눈금을 잇는 연결선이 레일의
+ * 은유인데, 눈금이 하나면 연결선이 없어 그 은유가 성립하지 않는다 — 그 63계열이 카드 한 장씩
+ * 세로로 늘어서 스크롤만 길어졌다. 그래서 `nextGoals`를 **여기서(= `BadgeFamilyRow` 위에서)**
+ * 두 갈래로 나눈다: `kind === 'graded' && stages.length === 1`은 그리드 셀
+ * (`BadgeProgressGridCell` → DS `BadgeProgressRingCard`)로, 그 외는 그대로 `BadgeFamilyRow`
+ * 한 줄씩. `BadgeFamilyRow` 자체는 "계열 하나 = 한 줄"만 그릴 수 있어 이 분기를 할 수 없다.
  */
 export interface BadgeTreeClientProps {
   trees: BadgeActivityTree[]
@@ -193,6 +203,33 @@ export default function BadgeTreeClient({
       .sort((a, b) => b.fraction - a.fraction || a.order - b.order)
   }, [activeTree, earnedBadgeIdSet, progressByBadgeId, frontierBadgeIdByFamilyKey])
 
+  /**
+   * 「다음 목표」를 두 갈래로 나눈다(티켓 20260906_1425) — 눈금이 1개뿐인 등급형 계열은
+   * 레일의 은유(눈금과 눈금을 잇는 연결선)가 성립하지 않는다. 분기 기준은 계열의 구조
+   * (`kind === 'graded' && stages.length === 1`) 하나뿐이고, 이 분기는 `BadgeFamilyRow`가
+   * 아니라 여기(그 위)에서 한다 — `BadgeFamilyRow`는 "계열 하나 = 한 줄"을 그리는
+   * 컴포넌트라 「여러 계열을 한 그리드에 묶는다」를 할 수 없다.
+   *
+   * `nextGoals`가 이미 "진행이 가까운 순 → sortOrder"로 정렬돼 있으므로, `filter`는 그
+   * 순서를 그대로 보존한다 — 각 갈래 안에서 정렬을 다시 하지 않는다.
+   */
+  const gridGoals = useMemo(
+    () => nextGoals.filter(({ family }) => family.kind === 'graded' && family.stages.length === 1),
+    [nextGoals]
+  )
+  const railGoals = useMemo(
+    () => nextGoals.filter(({ family }) => !(family.kind === 'graded' && family.stages.length === 1)),
+    [nextGoals]
+  )
+  /**
+   * 두 섹션(그리드/레일)의 화면 순서 — 「진행이 가까운 것이 위」 원칙을 **섹션 단위**로
+   * 확장한다. `nextGoals[0]`(전체에서 가장 가까운 목표)이 어느 갈래에 속하는지로 정한다 —
+   * 그 갈래를 위에 두면 지금까지의 "가장 가까운 목표가 맨 위" 동작이 그대로 유지된다.
+   * 두 묶음을 진행률로 다시 인터리빙하지 않는 이유: 63계열 그리드를 여러 조각으로 쪼개
+   * 레일 사이사이에 흩어 놓으면 이번 티켓의 목적(그리드로 «묶어» 스크롤을 줄임)이 무너진다.
+   */
+  const gridSectionFirst = gridGoals.length > 0 && (railGoals.length === 0 || nextGoals[0]?.family === gridGoals[0]?.family)
+
   // 진행 요약 — 등급별 + **등급 없음(무한레벨형)** 버킷. 예전에는 칸이 4개로 고정이라
   // 레벨형 193종이 어느 칸에도 안 들어가 totalCount와 칸 합계가 조용히 어긋났다.
   const summary = useMemo(() => {
@@ -234,6 +271,49 @@ export default function BadgeTreeClient({
         gateGroups: activeStage.gateGroups,
       }
     : null
+
+  // 눈금 1개 계열 묶음 — 그리드 3열(375px 기준, 63계열 실측치로 스크롤을 크게 줄인다).
+  // 2열보다 3열이 행 수를 더 줄인다 — 이름·캡션은 --text-caption/--text-micro라 3열
+  // (~106px 열 폭)에서도 읽힌다(`BadgeProgressRingCard` 스토리로 확인).
+  const gridSection =
+    gridGoals.length > 0 ? (
+      <div
+        key="grid"
+        role="group"
+        aria-label="눈금 한 개 계열"
+        className="grid grid-cols-3 gap-x-[var(--spacing-8)] gap-y-[var(--spacing-16)]"
+      >
+        {gridGoals.map(({ family, progressBadgeId }) => (
+          <BadgeProgressGridCell
+            key={family.key}
+            family={family}
+            earnedBadgeIds={earnedBadgeIdSet}
+            conditionMetBadgeIds={conditionMetBadgeIdSet}
+            onLockClick={handleLockClick}
+            progressByBadgeId={progressByBadgeId}
+            progressBadgeId={progressBadgeId}
+          />
+        ))}
+      </div>
+    ) : null
+
+  const railSection =
+    railGoals.length > 0 ? (
+      <div key="rail" className="flex flex-col gap-[var(--spacing-12)]">
+        {railGoals.map(({ family, progressBadgeId }) => (
+          <BadgeFamilyRow
+            key={family.key}
+            family={family}
+            earnedBadgeIds={earnedBadgeIdSet}
+            conditionMetBadgeIds={conditionMetBadgeIdSet}
+            onLockClick={handleLockClick}
+            progressByBadgeId={progressByBadgeId}
+            regretLineByBadgeId={regretLineByBadgeId}
+            progressBadgeId={progressBadgeId}
+          />
+        ))}
+      </div>
+    ) : null
 
   return (
     <div className="min-h-full bg-surface text-text">
@@ -286,19 +366,18 @@ export default function BadgeTreeClient({
             >
               {/* 빈 배열이 아니라 null을 넘긴다 — 그래야 emptyText가 뜬다 */}
               {nextGoals.length > 0 ? (
-                <div className="flex flex-col gap-[var(--spacing-12)] pb-[var(--spacing-8)]">
-                  {nextGoals.map(({ family, progressBadgeId }) => (
-                    <BadgeFamilyRow
-                      key={family.key}
-                      family={family}
-                      earnedBadgeIds={earnedBadgeIdSet}
-                      conditionMetBadgeIds={conditionMetBadgeIdSet}
-                      onLockClick={handleLockClick}
-                      progressByBadgeId={progressByBadgeId}
-                      regretLineByBadgeId={regretLineByBadgeId}
-                      progressBadgeId={progressBadgeId}
-                    />
-                  ))}
+                <div className="flex flex-col gap-[var(--spacing-16)] pb-[var(--spacing-8)]">
+                  {gridSectionFirst ? (
+                    <>
+                      {gridSection}
+                      {railSection}
+                    </>
+                  ) : (
+                    <>
+                      {railSection}
+                      {gridSection}
+                    </>
+                  )}
                 </div>
               ) : null}
             </BadgeStatusSection>
