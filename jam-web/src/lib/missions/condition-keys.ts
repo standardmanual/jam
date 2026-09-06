@@ -49,6 +49,12 @@ export const ENGINE_DELEGATED_MISSION_TYPES: ReadonlySet<MissionType> = new Set(
   'streak_days',
   'duration_minutes',
   'elevation_gain_m',
+  // 티켓 20260906_2231 — `checker.ts`가 이 타입은 `evaluateMission`에서 먼저 특수 분기로
+  // 처리한다(`evaluateEngineMissionCondition`, badge-engine 위임 + 미션 전용 어휘 결합).
+  // 여기 포함시키는 이유는 저장 검증(`checkMissionCondition`)이 "이 타입은 fail-closed
+  // 경로를 탄다"고 판단해 `pending` 필드를 저장 단계에서부터 막게 하기 위해서다 —
+  // 빼면 `evaluateConditionDetailed`가 언젠가 fail-closed로 막을 필드를 저장은 허용해버린다.
+  'engine_condition',
 ])
 
 /**
@@ -64,6 +70,23 @@ export const ENGINE_DELEGATED_MISSION_TYPES: ReadonlySet<MissionType> = new Set(
 const MISSION_ONLY_CONDITION_KEY_LIST = [
   'count',
   'badge_id',
+  // 티켓 20260906_2231 — `engine_condition` 타입 전용 어휘. 배지 조건 레지스트리에는 없다
+  // (650여 종 배지 카탈로그 어디에도 이 조합이 필요한 조건이 없어 배지엔진에 넣지 않았다 —
+  // `src/lib/missions/engineCondition.ts` 상단 주석 참고). 그 파일이 이 목록을
+  // `ENGINE_CONDITION_ONLY_KEYS`로 재수출해 가져다 쓴다 — 이 파일(서버 의존 없음)이 정본이고
+  // `engineCondition.ts`(서버 전용, badge-engine 위임 포함)가 참조하는 방향이다. 반대 방향으로
+  // 두면(엔진 위임 파일이 정본) 클라이언트 컴포넌트가 이 파일을 import할 때
+  // `@/lib/supabase/server` → `next/headers` 전이 의존까지 끌려와 빌드가 깨진다
+  // (티켓 20260904_0631과 같은 실패 모드).
+  'distinct_weekday_count',
+  'time_band_counts',
+  'weekly_streak_min_count',
+  'monthly_streak',
+  'monthly_streak_min_count',
+  'streak_subset',
+  'distinct_months_required',
+  'distinct_months_metric',
+  'distinct_months_threshold',
 ] as const satisfies readonly (keyof MissionCondition)[]
 
 export type MissionOnlyConditionKey = (typeof MISSION_ONLY_CONDITION_KEY_LIST)[number]
@@ -258,7 +281,13 @@ export interface MissionConditionValueRule {
   kind: 'uuid' | 'positive_number'
 }
 
-export const MISSION_CONDITION_VALUE_RULE: Record<MissionType, MissionConditionValueRule> = {
+/**
+ * `Partial`인 이유 — `engine_condition`(티켓 20260906_2231)은 여러 필드를 조합하는 복합
+ * 조건이라 "달성 판정에 쓰이는 필드 하나"가 없다. 값 검증 대상이 아니므로 규칙을 아예
+ * 두지 않는다 — `checkMissionConditionValue`가 `!rule`이면 통과(OK)로 처리한다(그 함수의
+ * 방어적 처리 규칙 참고). 형태·허용 키 검증은 `checkMissionCondition`(위)이 이미 맡는다.
+ */
+export const MISSION_CONDITION_VALUE_RULE: Partial<Record<MissionType, MissionConditionValueRule>> = {
   item_collect: { key: 'badge_id', kind: 'uuid' },
   checkin: { key: 'poi_id', kind: 'uuid' },
   distance: { key: 'distance_km', kind: 'positive_number' },

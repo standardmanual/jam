@@ -14,6 +14,7 @@ import {
   ENGINE_DELEGATED_MISSION_TYPES,
   MISSION_ONLY_CONDITION_KEYS,
 } from '@/lib/missions/condition-keys'
+import { evaluateEngineMissionCondition } from '@/lib/missions/engineCondition'
 import type { MissionRow, MissionCondition, MissionType, BadgeCondition } from '@/types/database'
 import type { NormalizedActivity } from '@/types/strava'
 
@@ -226,6 +227,9 @@ export const MISSION_PROGRESS_UNIT: Record<MissionType, string> = {
   streak_days: '일',
   duration_minutes: '분',
   elevation_gain_m: 'm',
+  // 달성형(0/1) — checkin/item_collect와 같은 취급. 진행률 마일스톤·마감임박 배치가
+  // unit==='' 가드로 이 타입을 자동으로 건너뛴다(missionMilestoneHit·selectMissionDeadlineDrafts).
+  engine_condition: '',
 }
 
 /**
@@ -372,6 +376,17 @@ export function evaluateMission(
     return { isParticipating: false, progressValue: 0, target: 0, achieved: false }
   }
   const condition = mission.condition_json as MissionCondition
+
+  // engine_condition — 배지엔진 어휘 위임 + 미션 전용 어휘(주기·요일·달력)를 결합한 복합
+  // 조건 판정(티켓 20260906_2231). 진행바 개념이 없어 달성형(0/1)으로만 다룬다 —
+  // getTarget/calculateProgress의 switch에 이 타입 케이스를 두지 않고 여기서 먼저 분기한다
+  // (그 두 함수의 default 0/0 폴백을 그대로 타면 "안 걸러진 타입은 즉시 달성"이 되므로
+  // 이 분기가 반드시 먼저 와야 한다).
+  if (mission.mission_type === 'engine_condition') {
+    const achieved = evaluateEngineMissionCondition(condition, activities)
+    return { isParticipating: true, progressValue: achieved ? 1 : 0, target: 1, achieved }
+  }
+
   const progressValue = calculateProgress(mission.mission_type, condition, activities, ownership)
   const target = getTarget(mission.mission_type, condition)
   // streak_days/duration_minutes/elevation_gain_m — 배지엔진 evaluateConditionDetailed를 그대로

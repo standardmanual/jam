@@ -115,7 +115,7 @@ const cases: Array<[string, () => void]> = [
   ['엔진 위임 타입 판정은 checker.ts와 같은 목록을 쓴다', () => {
     assert.deepStrictEqual(
       [...ENGINE_DELEGATED_MISSION_TYPES].sort(),
-      ['duration_minutes', 'elevation_gain_m', 'streak_days']
+      ['duration_minutes', 'elevation_gain_m', 'engine_condition', 'streak_days']
     )
   }],
 
@@ -185,7 +185,7 @@ const cases: Array<[string, () => void]> = [
       assert.ok(!ALL_CONDITION_KEYS.includes(key as never), `중복 선언: ${key}`)
     }
   }],
-  ['MissionCondition의 8개 필드가 전부 허용 키에 들어 있다', () => {
+  ['MissionCondition의 모든 필드가 전부 허용 키에 들어 있다', () => {
     // 타입 단언(AssertAllMissionConditionKeysCovered)의 런타임 대응물 — 아래 객체는
     // MissionCondition으로 타입이 붙어 있어 필드명이 바뀌면 컴파일 단계에서 먼저 걸린다.
     const everyField: Required<MissionCondition> = {
@@ -197,6 +197,26 @@ const cases: Array<[string, () => void]> = [
       streak_days: 1,
       duration_minutes: 1,
       elevation_gain_m: 1,
+      // 티켓 20260906_2231 — engine_condition 전용 위임 필드
+      single_distance_km: 1,
+      single_elevation_m: 1,
+      max_elevation_m: 1,
+      max_pace_sec_per_km: 1,
+      min_speed_kmh: 1,
+      same_activity: true,
+      repeat_count: 1,
+      rest_after_long: 1,
+      weekly_streak: 1,
+      // 티켓 20260906_2231 — engine_condition 전용 미션 고유 어휘
+      weekly_streak_min_count: 1,
+      monthly_streak: 1,
+      monthly_streak_min_count: 1,
+      streak_subset: { day_of_week: ['saturday', 'sunday'], min_count: 1 },
+      distinct_weekday_count: 1,
+      distinct_months_required: 1,
+      distinct_months_metric: 'distance_km',
+      distinct_months_threshold: 1,
+      time_band_counts: [{ start: '05:00', end: '08:00', count: 1 }],
     }
     for (const key of Object.keys(everyField)) {
       assert.ok(MISSION_ALLOWED_CONDITION_KEYS.has(key), `허용 키에 없다: ${key}`)

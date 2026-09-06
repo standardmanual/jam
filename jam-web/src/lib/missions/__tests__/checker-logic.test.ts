@@ -200,7 +200,8 @@ const cases: Array<[string, () => void]> = [
   // 정보)을 런타임 실측으로 메운다.
   ['값 검증 필수 키(수치 타입) — getTarget이 그 키를 읽는지 실측', () => {
     for (const [missionType, rule] of Object.entries(MISSION_CONDITION_VALUE_RULE) as [MissionType, typeof MISSION_CONDITION_VALUE_RULE[MissionType]][]) {
-      if (rule.kind !== 'positive_number') continue
+      // engine_condition(티켓 20260906_2231)은 값 검증 대상이 아니라 규칙이 아예 없다(Partial) — 건너뛴다
+      if (!rule || rule.kind !== 'positive_number') continue
       const withoutKey = {} as MissionCondition
       assert.strictEqual(
         getTarget(missionType, withoutKey),
@@ -217,7 +218,7 @@ const cases: Array<[string, () => void]> = [
   }],
   ['값 검증 필수 키(UUID 타입) — calculateProgress(evaluateMission 경유)가 그 키를 읽는지 실측', () => {
     for (const [missionType, rule] of Object.entries(MISSION_CONDITION_VALUE_RULE) as [MissionType, typeof MISSION_CONDITION_VALUE_RULE[MissionType]][]) {
-      if (rule.kind !== 'uuid') continue
+      if (!rule || rule.kind !== 'uuid') continue
       // item_collect/checkin은 getTarget이 항상 1이라 그걸로는 키를 구분 못 한다 —
       // calculateProgress가 실제로 이 키를 읽는지는 progressValue로 확인해야 한다.
       const own: OwnershipContext =
