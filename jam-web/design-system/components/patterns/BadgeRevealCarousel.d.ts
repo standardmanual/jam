@@ -13,6 +13,17 @@ export interface BadgeRevealItem {
    * `undefined`(미지정)는 기존대로 common으로 취급한다.
    */
   rarity?: Rarity | null;
+  /**
+   * 레벨형 배지의 Lv.N (v5, 마이그레이션 130). 값이 있으면 등급 칩 대신 `BadgeLevelChip`을
+   * 그리고, 라이브 리전도 등급 대신 레벨을 읽는다. `rarity`와 배타적이다.
+   */
+  level?: number | null;
+  /**
+   * 지금까지 이 배지를 획득한 횟수. 2 이상이면 칩 줄에 «×N»이 붙는다.
+   * 반복형의 회차는 발급이 아니라 피드·연출을 다시 만들지 않으므로(20260905_0030 §2),
+   * 「카드 장수」가 아니라 이 값이 회차의 출처다.
+   */
+  earnCount?: number;
 }
 
 export interface BadgeRevealCarouselProps {
@@ -50,6 +61,11 @@ export interface BadgeRevealCarouselProps {
    * 서비스는 i18n 사전(`d`)에서 주입해 쓴다.
    */
   moreMessage?: string | ((count: number) => string);
+  /**
+   * 반복 획득 «×N»을 보조기술이 읽을 문구. 기본값 `(n) => \`${n}번 획득했어요\``.
+   * 서비스는 i18n 사전(`d.badges.earnCountAria`)에서 주입한다.
+   */
+  earnCountMessage?: string | ((count: number) => string);
   /**
    * dialog·carousel aria-label.
    * 중앙 카드의 등급·이름·설명은 오버레이 안 라이브 리전이 따로 읽는다 —

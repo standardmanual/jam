@@ -55,6 +55,12 @@ export default async function FriendFeedPage() {
     .from('user_activity_feed')
     .select('*')
     .in('user_id', followingIds)
+    // 정렬 축은 **발급 시각(created_at)**이다 — 성립 시각(활동 시작 시각)으로 바꾸지 않는다
+    // (티켓 20260905_0038 B에서 재검토). v5의 휴식 배지처럼 과거 활동을 소급 판정해 발급되는
+    // 배지는 「방금 획득」으로 최상단에 뜨는데, 그게 사실이다 — 배지를 받은 건 방금이다.
+    // 성립 시각으로 정렬하면 소급분이 몇 달 전 자리에 묻혀 획득 자체를 인지하지 못한다.
+    // 게다가 성립 시각 후보인 `event_at`은 프로덕션 실측에서 신뢰할 수 없다(20260824_006 —
+    // Strava startDateLocal 오해석으로 최대 +9시간 미래, 093 이전 행은 근사값).
     .order('created_at', { ascending: false })
     .limit(FEED_LIMIT)
   if (feedError) console.error('[feed/page] user_activity_feed 조회 실패', feedError)

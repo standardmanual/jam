@@ -6,9 +6,11 @@ import { BadgeGridCard } from './BadgeGridCard';
 const meta: Meta<typeof BadgeGridCard> = {
   title: 'MODULAR/Patterns/BadgeGridCard',
   component: BadgeGridCard,
-  parameters: { layout: 'centered', docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 이름 → 등급 pill(있을 때만)' } } },
+  parameters: { layout: 'centered', docs: { description: { component: '레이아웃: 썸네일(투명 배경) → 이름 → 등급 pill 또는 Lv.N 칩(있을 때만). 반복 획득은 썸네일 모서리 ×N.' } } },
   argTypes: {
-    rarity: { control: 'select', options: ['common', 'rare', 'epic', 'mystic'] },
+    rarity: { control: 'select', options: ['common', 'rare', 'epic', 'mystic', null] },
+    level: { control: 'number' },
+    count: { control: 'number' },
     earned: { control: 'boolean' },
     undiscovered: { control: 'boolean' },
     selected: { control: 'boolean' },
@@ -219,7 +221,55 @@ export const GrayscaleWhenHidden: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    // 획득한 카드 1장만 원본 이미지를 쓴다.
-    expect(canvasElement.querySelector('[data-testid="cards"]')!.querySelectorAll('img').length).toBe(1);
+    // 세 장 모두 **원본 이미지**를 쓴다(실루엣 폐기, 2026-09-06 확정). 감추는 건 색뿐이다.
+    const imgs = canvasElement.querySelector('[data-testid="cards"]')!.querySelectorAll('img');
+    expect(imgs.length).toBe(3);
+    expect(imgs[0].style.filter).toBe('none');
+    expect(imgs[1].style.filter).toBe('grayscale(1)');
+    expect(imgs[2].style.filter).toBe('grayscale(1)');
+  },
+};
+
+/**
+ * v5 배지 종류별 칩 (티켓 20260905_0038 B).
+ * 레벨형은 `rarity`가 NULL이고 `level`만 있다 — 등급 칩 자리를 `BadgeLevelChip`이 가져간다.
+ * 두 축은 배타적이라 한 카드에 칩이 두 개 그려지는 상태는 존재하지 않는다.
+ */
+export const LevelChip: Story = {
+  name: '레벨형 — 등급 칩 대신 Lv.N',
+  render: () => (
+    <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
+      <BadgeGridCard name="첫 숨결" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" earned />
+      <BadgeGridCard name="첫 숨결" imageUrl={SAMPLE_IMAGES.rare} rarity={null} level={7} earned />
+      <BadgeGridCard name="첫 숨결" imageUrl={SAMPLE_IMAGES.rare} rarity={null} level={128} earned />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const cards = canvasElement.querySelector('[data-testid="cards"]')!;
+    expect(cards.textContent).toContain('Lv.7');
+    expect(cards.textContent).toContain('Lv.128');
+    expect(cards.textContent).toContain('Rare');
+  },
+};
+
+/**
+ * 반복 획득 «×N» (티켓 20260905_0038 B).
+ * 1회면 아무것도 붙지 않는다 — 「한 번 받았다」를 굳이 숫자로 말하지 않는다.
+ */
+export const RepeatCount: Story = {
+  name: '반복 획득 — 썸네일 ×N',
+  render: () => (
+    <div data-testid="cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: 'var(--spacing-8)' }}>
+      <BadgeGridCard name="한 번 받은 배지" imageUrl={SAMPLE_IMAGES.common} rarity="common" count={1} earned />
+      <BadgeGridCard name="세 번 받은 배지" imageUrl={SAMPLE_IMAGES.rare} rarity="rare" count={3} earned />
+      <BadgeGridCard name="열다섯 번 받은 배지" imageUrl={SAMPLE_IMAGES.epic} rarity="epic" count={15} earned />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const cards = canvasElement.querySelector('[data-testid="cards"]')!;
+    // 1회 카드에는 필이 아예 없다 — 「한 번 받았다」를 숫자로 말하지 않는다.
+    expect(cards.children[0].textContent).not.toContain('×');
+    expect(cards.children[1].textContent).toContain('×3');
+    expect(cards.children[2].textContent).toContain('×15');
   },
 };

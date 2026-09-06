@@ -1,10 +1,17 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
+import { BadgeLevelChip } from '../cards/BadgeLevelChip.jsx';
 
 /**
  * BadgeGridCard — 배지 그리드 셀 패턴.
  *
- * 레이아웃 (위→아래): 썸네일(투명 배경) → 이름 → 등급 pill(있을 때만)
+ * 레이아웃 (위→아래): 썸네일(투명 배경) → 이름 → 등급 pill 또는 Lv.N 칩(있을 때만)
+ *
+ * 20260905_0038 B — v5 대응으로 두 자리를 더했다.
+ *   - `level` — 레벨형 배지는 `rarity`가 NULL이라 등급 칩을 그릴 수 없다(마이그레이션 130).
+ *     값이 있으면 `BadgeLevelChip`으로 갈라진다. 두 축은 배타적이라 칩은 언제나 한 개다.
+ *   - `count` — 반복 획득 횟수. 2 이상일 때만 썸네일 모서리에 «×N»을 붙인다.
+ *     서비스 피드 카드의 카운터 필과 같은 시각 문법이다(새 표현을 만들지 않는다).
  *
  * 상태:
  *   earned: false  → 썸네일을 실루엣으로 (미획득 — 외형 비공개)
@@ -31,6 +38,8 @@ export function BadgeGridCard({
   name,
   imageUrl,
   rarity = 'common',
+  level = null,
+  count = null,
   href,
   onClick,
   onNavigate,
@@ -77,23 +86,46 @@ export function BadgeGridCard({
     flexShrink: 0,
   };
 
+  const showCount = !undiscovered && typeof count === 'number' && count > 1;
+
   const content = (
     <>
-      <div style={thumbnailStyle}>
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={undiscovered ? '???' : name}
+      {/* 카운터 필의 기준점 — 썸네일 자체가 아니라 래퍼에 건다(필이 grayscale을 먹지 않게) */}
+      <div style={{ position: 'relative' }}>
+        <div style={thumbnailStyle}>
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={undiscovered ? '???' : name}
+              style={{
+                width: '100%', height: '100%', objectFit: 'contain', padding: 4,
+                filter: dimmed ? 'grayscale(1)' : 'none',
+              }}
+            />
+          ) : (
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--color-text)', opacity: 0.3 }}>
+              <circle cx="12" cy="8" r="5" />
+              <path d="M3 20c0-4 4-7 9-7s9 3 9 7" />
+            </svg>
+          )}
+        </div>
+        {showCount && (
+          <span
+            aria-hidden="true"
             style={{
-              width: '100%', height: '100%', objectFit: 'contain', padding: 4,
-              filter: dimmed ? 'grayscale(1)' : 'none',
+              position: 'absolute', bottom: -4, right: -4,
+              minWidth: 18, height: 18, padding: '0 4px',
+              borderRadius: 'var(--radius-pill)',
+              background: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border)',
+              fontSize: 'var(--text-caption)', lineHeight: 1, fontWeight: 700,
+              color: 'var(--color-text)', opacity: 0.8,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-family-base)',
             }}
-          />
-        ) : (
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--color-text)', opacity: 0.3 }}>
-            <circle cx="12" cy="8" r="5" />
-            <path d="M3 20c0-4 4-7 9-7s9 3 9 7" />
-          </svg>
+          >
+            ×{count}
+          </span>
         )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--spacing-4)', paddingTop: 'var(--spacing-8)', width: '100%' }}>
@@ -105,7 +137,7 @@ export function BadgeGridCard({
         }}>
           {undiscovered ? '???' : name}
         </p>
-        {!undiscovered && <RarityBadge rarity={rarity} />}
+        {!undiscovered && (level != null ? <BadgeLevelChip level={level} /> : <RarityBadge rarity={rarity} />)}
       </div>
       {children && <div style={{ width: '100%', marginTop: 'var(--spacing-4)' }}>{children}</div>}
     </>

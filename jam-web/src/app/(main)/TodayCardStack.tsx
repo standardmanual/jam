@@ -44,9 +44,23 @@ function TemplateChip({ card }: { card: TodayCardWithHref }) {
   )
 }
 
+/**
+ * 커버 이미지 결정 — `cover_image_url`이 없으면 첫 배지 이미지를 승격한다.
+ *
+ * 승격된 이미지가 **아직 못 받은 배지**면 색을 빼서(grayscale) 보유하지 않았음을 말한다
+ * (티켓 20260905_0038 B / 2026-09-06 확정 규칙 — 실루엣으로 감추지 않는다).
+ * 어드민이 직접 올린 `cover_image_url`은 배지 아트가 아니므로 손대지 않는다.
+ */
+function resolveCover(card: TodayCardWithHref): { src: string | null; dimmed: boolean } {
+  if (card.cover_image_url) return { src: card.cover_image_url, dimmed: false }
+  const first = card.resolved_badges[0]
+  if (!first?.image_url) return { src: null, dimmed: false }
+  return { src: first.image_url, dimmed: !first.earned }
+}
+
 /** 큰 썸네일형 — 커버 이미지(없으면 첫 배지 이미지) 크게 + 제목/부제 */
 function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
-  const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
+  const { src: cover, dimmed } = resolveCover(card)
   return (
     <Card
       tone="inverse"
@@ -59,7 +73,7 @@ function LargeThumbnailCard({ card }: { card: TodayCardWithHref }) {
         src={cover}
         alt={card.title}
         containerClassName="relative w-full aspect-[16/9] overflow-hidden"
-        className="object-cover"
+        className={dimmed ? 'object-cover grayscale' : 'object-cover'}
       />
       <div className="p-[var(--spacing-24)]">
         <div className="flex items-center gap-2 mb-2">
@@ -100,13 +114,14 @@ function BadgeGalleryCard({ card }: { card: TodayCardWithHref }) {
           {card.resolved_badges.map((b) => (
             <div key={b.id} className="flex flex-col items-center gap-1 shrink-0 w-16">
               {/* 20260816_012: 보더 제거 — 흰 카드 위 썸네일이라 4% 블랙 틴트로 구분 */}
+              {/* 미획득 배지는 색을 빼서 보유하지 않았음을 말한다(20260905_0038 B) */}
               <div className="w-16 h-16 rounded-[var(--radius-cards)] bg-black/[0.04] overflow-hidden flex items-center justify-center">
                 <SafeImage
                   src={b.image_url}
                   alt={b.name}
                   width={64}
                   height={64}
-                  className="w-full h-full object-cover"
+                  className={b.earned ? 'w-full h-full object-cover' : 'w-full h-full object-cover grayscale'}
                   fallback={<MedalIcon className="w-6 h-6 text-text-inverse/40" />}
                 />
               </div>
@@ -148,7 +163,7 @@ function ShortcutCard({ card }: { card: TodayCardWithHref }) {
  * 흰 배경(bg-surface-inverse) 위에 검은 스크림과 흰 텍스트가 남아 부제 대비가 무너진다.
  */
 function BannerCard({ card }: { card: TodayCardWithHref }) {
-  const cover = card.cover_image_url || card.resolved_badges[0]?.image_url || null
+  const { src: cover, dimmed } = resolveCover(card)
 
   if (!cover) {
     return <OtherCard card={card} />
@@ -160,7 +175,7 @@ function BannerCard({ card }: { card: TodayCardWithHref }) {
         src={cover}
         alt={card.title}
         containerClassName="absolute inset-0"
-        className="object-cover"
+        className={dimmed ? 'object-cover grayscale' : 'object-cover'}
         fallback={<div className="absolute inset-0 bg-black" aria-hidden="true" />}
       />
       {/* 흑백 스크림 — 사진 위 텍스트 가독성 확보용 기능적 처리(브랜드 그라데이션 아님, 컬러 도입 없음) */}

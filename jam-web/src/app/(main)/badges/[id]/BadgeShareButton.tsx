@@ -26,6 +26,10 @@ interface BadgeShareButtonProps {
   stravaConnected: boolean
   /** 다른 유저의 배지 상세를 보는 중이면(그 유저 기준 데이터 조회용) 그 유저의 username */
   subjectUsername?: string
+  /** 레벨형 배지의 Lv.N — 공유 카드에 LEVEL 행으로 들어간다 (티켓 20260905_0038 B) */
+  level?: number | null
+  /** 획득 횟수 — 2 이상이면 공유 카드에 COUNT 행으로 들어간다 */
+  earnCount?: number | null
 }
 
 type ShareErrorReason = 'strava_disconnected' | 'no_strava_trigger' | 'strava_fetch_failed' | 'unknown'
@@ -101,6 +105,8 @@ export default function BadgeShareButton({
   hasEarned,
   stravaConnected,
   subjectUsername,
+  level = null,
+  earnCount = null,
 }: BadgeShareButtonProps) {
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
@@ -171,7 +177,7 @@ export default function BadgeShareButton({
           stats = (await res.json()) as BadgeShareStats
         }
 
-        const blob = await buildBadgeShareBlob({ badgeImageUrl: imageUrl as string, stats })
+        const blob = await buildBadgeShareBlob({ badgeImageUrl: imageUrl as string, stats, level, earnCount })
         if (cancelled) return
         const blobUrl = URL.createObjectURL(blob)
         objectUrlRef.current = blobUrl
@@ -187,7 +193,7 @@ export default function BadgeShareButton({
     return () => {
       cancelled = true
     }
-  }, [open, badgeType, badgeId, subjectUsername, imageUrl])
+  }, [open, badgeType, badgeId, subjectUsername, imageUrl, level, earnCount])
 
   // 언마운트 시 마지막으로 만든 objectURL 정리
   useEffect(() => {

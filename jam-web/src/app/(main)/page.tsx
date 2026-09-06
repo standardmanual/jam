@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { BadgeRow, StravaConnectionRow, UserActivityBadgeRow, UserRow } from '@/types/database'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { BadgeLevelChip } from '@ds/components/cards/BadgeLevelChip'
 import { Card } from '@ds/components/cards/Card'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import TopNav from '@/components/ui/TopNav'
@@ -133,7 +134,12 @@ export default async function HomePage() {
                   <div>
                     <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{badge.name}</p>
                     <div className="flex items-center justify-between mt-1">
-                      <RarityBadge rarity={badge.rarity ?? undefined} />
+                      {/* v5 레벨형은 rarity가 NULL이라 등급 칩을 그릴 수 없다 — Lv.N 칩으로
+                          갈라진다(티켓 20260905_0038 B). `?? undefined`로 접으면 «등급 없음»이
+                          «미지정=common»으로 바뀌어 칩이 조용히 사라진다. */}
+                      {badge.level != null
+                        ? <BadgeLevelChip level={badge.level} />
+                        : <RarityBadge rarity={badge.rarity ?? undefined} />}
                       <p className="text-[length:var(--text-caption)] text-text-inverse/50"><LocalDate iso={earned.earned_at} options={{ month: 'long', day: 'numeric' }} /></p>
                     </div>
                   </div>
