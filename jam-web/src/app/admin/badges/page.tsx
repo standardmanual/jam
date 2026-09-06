@@ -16,6 +16,7 @@ import {
   requiresFullFetchSort,
   type BadgeListSortRow,
 } from '@/lib/admin/badge-list-view'
+import { pickSingleQueryParams } from '@/lib/searchParams'
 
 const PAGE_SIZE = 50
 
@@ -47,12 +48,17 @@ async function fetchAllRows<T>(query: RangeQuery<T>): Promise<T[]> {
   return rows
 }
 
+/**
+ * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
+ * Next가 배열을 넘긴다. `pickSingleQueryParams`가 배열을 「값 없음」으로 흡수해 이 아래
+ * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
+ */
 interface AdminBadgesPageProps {
-  searchParams: Promise<Record<string, string | undefined>>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageProps) {
-  const params = await searchParams
+  const params = pickSingleQueryParams(await searchParams)
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
   const filterType = params.type as BadgeType | undefined
   const filterRarity = params.rarity as BadgeRarity | undefined

@@ -3,18 +3,24 @@ import type { TodayCardRow } from '@/types/database'
 import TodayCardList from './TodayCardList'
 import TodayDateNav from './TodayDateNav'
 import { normalizeDateParam, kstDayBoundsIso } from '@/lib/admin/today-calendar'
+import { singleQueryParam } from '@/lib/searchParams'
 
 type BadgeLabelRow = { id: string; name: string; rarity: string; type: string; point_reward: number }
 
+/**
+ * ⚠️ `date`의 타입을 `string`으로 좁히지 말 것 — `?date=a&date=b`처럼 같은 키가 두 번 오면
+ * Next가 배열을 넘긴다. `singleQueryParam`이 배열을 「값 없음」(= 오늘 날짜)으로 흡수한다
+ * (티켓 20260906_1312).
+ */
 interface AdminTodayPageProps {
-  searchParams: Promise<{ date?: string }>
+  searchParams: Promise<{ date?: string | string[] }>
 }
 
 export default async function AdminTodayPage({ searchParams }: AdminTodayPageProps) {
-  const params = await searchParams
+  const date = singleQueryParam((await searchParams).date)
   // 20260902_1028: 날짜별 캘린더뷰로 전환 — 선택 날짜(KST 달력 기준)에 걸치는 카드만 조회한다
   // (구간형 카드는 starts_at~ends_at에 포함되는 모든 날짜의 목록에 매일 반복 노출로 나타남).
-  const selectedDate = normalizeDateParam(params.date)
+  const selectedDate = normalizeDateParam(date)
   const { startIso, endIso } = kstDayBoundsIso(selectedDate)
 
   const supabase = createServiceClient()

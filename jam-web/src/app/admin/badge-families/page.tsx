@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/admin/ui/table'
+import { pickSingleQueryParams } from '@/lib/searchParams'
 
 const FAMILY_KIND_LABEL = {
   graded: '등급형',
@@ -30,12 +31,17 @@ const FAMILY_KIND_LABEL = {
   mixed: '혼재',
 } as const
 
+/**
+ * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
+ * Next가 배열을 넘긴다. `pickSingleQueryParams`가 배열을 「값 없음」으로 흡수해 이 아래
+ * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
+ */
 interface AdminBadgeFamiliesPageProps {
-  searchParams: Promise<Record<string, string | undefined>>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadgeFamiliesPageProps) {
-  const params = await searchParams
+  const params = pickSingleQueryParams(await searchParams)
   const { badges, error } = await fetchActivityFamilyBadges()
   const allFamilies = groupBadgesIntoFamilies(badges)
 

@@ -6,6 +6,7 @@ import type { BadgeRow, PoiCategoryRow } from '@/types/database'
 import { PoiList, type PoiListRow } from '@/components/admin/poi/PoiList'
 import PoiFilters from './PoiFilters'
 import Pagination from './Pagination'
+import { pickSingleQueryParams } from '@/lib/searchParams'
 
 const PAGE_SIZE = 30
 
@@ -13,12 +14,17 @@ const PAGE_SIZE = 30
 // 상세화면 전용이라 목록에는 불필요하다(20260826_011 A8).
 const POI_LIST_COLUMNS = 'id, name, latitude, longitude, radius_meters, category, linked_badge_id, is_active'
 
+/**
+ * ⚠️ 쿼리 값의 타입을 `string`으로 좁히지 말 것 — 같은 키가 두 번 오면(`?page=1&page=2`)
+ * Next가 배열을 넘긴다. `pickSingleQueryParams`가 배열을 「값 없음」으로 흡수해 이 아래
+ * 모든 읽기가 단일 문자열만 보게 한다 (티켓 20260906_1312).
+ */
 interface AdminPoiPageProps {
-  searchParams: Promise<Record<string, string | undefined>>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) {
-  const params = await searchParams
+  const params = pickSingleQueryParams(await searchParams)
   const category = params.category ?? 'all'
   const sort = params.sort ?? 'created_desc'
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)

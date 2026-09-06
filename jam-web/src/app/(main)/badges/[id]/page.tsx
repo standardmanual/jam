@@ -19,6 +19,7 @@ import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
 import BadgeBackgroundVideoTiles from '@/components/BadgeBackgroundVideoTiles'
+import { singleQueryParam } from '@/lib/searchParams'
 
 function isExpiringSoon(expiresAt: string | null): boolean {
   if (!expiresAt) return false
@@ -26,14 +27,19 @@ function isExpiringSoon(expiresAt: string | null): boolean {
   return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
 }
 
+/**
+ * ⚠️ `u`의 타입을 `string`으로 좁히지 말 것 — `?u=a&u=b`처럼 같은 키가 두 번 오면 Next가
+ * 배열을 넘긴다. 아래 `singleQueryParam`이 그 배열을 「값 없음」(= 내 기준으로 보기)으로
+ * 흡수한다 (티켓 20260906_1312 — 이 화면이 실제로 500이었다).
+ */
 interface BadgeDetailPageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ u?: string }>
+  searchParams: Promise<{ u?: string | string[] }>
 }
 
 export default async function BadgeDetailPage({ params, searchParams }: BadgeDetailPageProps) {
   const { id } = await params
-  const { u } = await searchParams
+  const u = singleQueryParam((await searchParams).u)
   const supabase = await createClient()
   const {
     data: { user },
