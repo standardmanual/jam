@@ -14,7 +14,7 @@ import ItemEarnHistory from './ItemEarnHistory'
 import BadgeHeroSection from './BadgeHeroSection'
 import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import BadgeConditionCard from './BadgeConditionCard'
-import { formatBadgeConditionText } from '@/lib/badgeConditionText'
+import { formatBadgeConditionText, formatBadgeConditionSpec } from '@/lib/badgeConditionText'
 import BadgeShareButton from './BadgeShareButton'
 import { d, t } from '@/lib/i18n'
 import { getBadgeBackgroundAnimation, getBadgeBackgroundStyle, getBadgeBackgroundVideoUrl, getBadgeThemedTextStyle, hasBadgeBackgroundTheme } from '@/lib/badgeBackgroundTheme'
@@ -522,7 +522,10 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
       {/* info-section */}
       <div className="relative z-10 flex flex-col gap-4 pt-[32px] px-6 pb-[32px]">
         {/* 획득 조건 다크 카드 */}
-        <BadgeConditionCard text={formatBadgeConditionText(badgeRow.condition_json, badgeRow.name)} />
+        <BadgeConditionCard
+          text={formatBadgeConditionText(badgeRow.condition_json, badgeRow.name)}
+          spec={formatBadgeConditionSpec(badgeRow.condition_json)}
+        />
 
         {/* 선행 배지 조건 */}
         {prereqStatus.length > 0 && (

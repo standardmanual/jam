@@ -300,3 +300,66 @@ export function formatBadgeConditionText(condition: BadgeCondition | null | unde
 
   return `${parts.map((p) => p.text).join(' · ')} 조건을 채우면 획득할 수 있어요.${crossAttrNote(condition)}`
 }
+
+/**
+ * 배지 상세의 「획득 조건」 **둘째 줄 — 조건 표기**. 티켓 20260906_1305.
+ *
+ * ## 왜 문장과 따로 만드는가
+ *
+ * `formatBadgeConditionText`는 조건 조각을 이어 붙인 끝에 「조건을 채우면 획득할 수 있어요.」를
+ * 붙여 **한 문단**으로 만든다. 그래서
+ * 「한 주(월~일)에 3회 이상 · 새벽 시간대(05:00~07:00) · 한 번의 거리 5km 이상 ·
+ *  위 조건을 10회 달성 조건을 채우면 획득할 수 있어요.」처럼 조건과 안내문이 한 줄에 섞이고,
+ * 마지막 숫자가 무엇의 횟수인지 판단이 안 된다(라이팅 가이드 §03이 지적한 그대로다).
+ *
+ * 이 함수는 **같은 조건을 사실 표기로만** 낸다:
+ * 「한 주(월~일)에 3회 이상 · 새벽 시간대(05:00~07:00) · 한 번의 거리 5km 이상 / 10회」
+ * ①기간 ②맥락 ③지표를 ` · `로 잇고, **④달성 횟수만 ` / N회`로 맨 끝에 뗀다** —
+ * 마지막 숫자가 항상 「몇 번 달성해야 하는가」로 고정되는 것이 이 분리의 핵심이다.
+ * 표기 형태는 라이팅 정본(`v5_catalog_writing.json`의 「조건」 필드)과 같다.
+ *
+ * ## 어휘의 출처
+ *
+ * 조각 문구는 위 `safePhrase`(= 레지스트리의 `label`·`unit`·`direction` + `USER_PHRASE`)를
+ * 그대로 재사용한다. **새 어휘 목록을 만들지 않는다.** 레지스트리의 `detail`을 직접 쓰지 않는
+ * 이유는 그쪽이 «어드민 상세»용이라 유저에게 보일 수 없는 표현(「선행 배지: …」·
+ * 「미션 완료로만 지급」·실패 시 「형태 오류」)을 내고, 「이상」 같은 부등호 표기도 빠져 있어
+ * 이 화면의 표기 규칙과 어긋나기 때문이다.
+ *
+ * ## null을 돌려주는 세 경우 — 이 줄 자체를 그리지 않는다(문장만 남는다)
+ *
+ * 1. 미션 보상 배지 — 문장이 이미 「'X' 미션을 완료하면」이다. 표기할 조건이 없다
+ * 2. 조건이 비어 있음(어드민 수동 발급)
+ * 3. 레지스트리가 모르는 키만 있어 조각을 하나도 만들지 못함
+ *
+ * **명사구로 끝난다.** 마침표·「~해요」를 붙이지 않는다 — 문장이 아니라 표기다.
+ */
+export function formatBadgeConditionSpec(condition: BadgeCondition | null | undefined): string | null {
+  if (!condition || Object.keys(condition).length === 0) return null
+  if (condition.mission_reward) return null
+
+  const parts: { order: number; text: string }[] = []
+  for (const field of CONDITION_FIELDS) {
+    const meta = field as AnyConditionFieldMeta
+    // 달성 횟수는 ` · ` 나열에 섞지 않는다 — 아래에서 ` / N회`로 따로 붙인다
+    if (meta.key === 'repeat_count') continue
+    if (condition[meta.key] === undefined) continue
+    const text = safePhrase(meta, condition)
+    if (!text) continue
+    parts.push({ order: orderOf(meta), text })
+  }
+  if (parts.length === 0) return null
+
+  parts.sort((a, b) => a.order - b.order)
+  const spec = parts.map((p) => p.text).join(' · ')
+
+  /**
+   * 1회도 적는다 — 문장 쪽(`USER_PHRASE.repeat_count`)이 「위 조건을 1회 달성」을 생략하는 것과
+   * 다르다. 저기서는 기본 동작을 되풀이하는 «군더더기 문장»이지만, 여기서는 맨 끝 숫자가
+   * 언제나 달성 횟수라는 **자리의 약속**이 읽는 법 자체라 비우면 그 약속이 깨진다.
+   * 라이팅 정본의 조건 표기도 「자정을 넘긴 활동 / 1회」로 적는다.
+   * 조건에 `repeat_count` 키가 아예 없으면(630종 중 491종) 이 꼬리도 없다.
+   */
+  const repeat = condition.repeat_count
+  return typeof repeat === 'number' && repeat >= 1 ? `${spec} / ${repeat}회` : spec
+}
