@@ -647,6 +647,44 @@ export const RarityChips: Story = {
 };
 
 /**
+ * 인터랙션 리뷰(티켓 20260906_1436) — common 눈금은 `RarityBadge`가 칩을 그리지 않는데,
+ * 예전엔 그 자리 자체를 안 만들어 Common 눈금만 44px, 나머지는 칩만큼(+16px) 더 커져
+ * 같은 레일 안에서 캡션 시작 위치가 어긋났다. 등급칩 자리를 항상 예약해 모든 눈금의
+ * 썸네일 블록 높이가 같아졌는지(=탭 타깃·캡션 정렬이 어긋나지 않는지) 확인한다.
+ */
+export const RarityChipSlotAligned: Story = {
+  name: '20260906_1436 — Common 눈금도 칩 자리 예약(탭 타깃 정렬)',
+  render: () => (
+    <Frame>
+      <div data-testid="rail">
+        <BadgeStageRail
+          familyName="계절의 보행자"
+          nextRarityLabel="Epic"
+          stops={[
+            { id: '1', rarity: 'common', imageUrl: WALK_ICON, status: 'earned', href: '/badges/1' },
+            { id: '2', rarity: 'rare', imageUrl: WALK_ICON, status: 'earned', href: '/badges/2' },
+            { id: '3', rarity: 'epic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/3' },
+            { id: '4', rarity: 'mystic', imageUrl: WALK_ICON, status: 'not-reached', href: '/badges/4' },
+          ]}
+          frontierProgress={null}
+          progressStopId={null}
+          regretLine={null}
+          onLockClick={() => {}}
+        />
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const rail = canvasElement.querySelector('[data-testid="rail"]')!;
+    const stops = Array.from(rail.querySelectorAll('.ds-rail-stop')) as HTMLElement[];
+    expect(stops.length).toBe(4);
+    const thumbnailHeights = stops.map((stop) => (stop.firstElementChild as HTMLElement).offsetHeight);
+    // common(칩 없음)과 rare/epic/mystic(칩 있음) 모두 같은 높이여야 정렬이 맞는다.
+    expect(new Set(thumbnailHeights).size).toBe(1);
+  },
+};
+
+/**
  * v2 — `earnCount`: 반복형 계열의 누적 횟수를 **`×N` 칩 하나로만** 헤더 행 오른쪽 끝에 붙인다.
  * 점 그리드를 쓰지 않는 이유는 `BadgeStampRow` 문서 참고.
  */

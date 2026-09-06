@@ -88,6 +88,14 @@ const MAX_STOPS = 4;
 /** 게이트 자리 폭. 자물쇠 2개(미션 + 교차)가 나란히 들어가야 해서 36px → 44px (v2). */
 const GATE_SLOT_WIDTH = 44;
 
+/**
+ * 등급칩 자리의 예약 높이 — `RarityBadge`의 렌더 높이(패딩 4px×2 + 8px 폰트·line-height 1
+ * = 16px)와 맞춘다. common은 `RarityBadge`가 null을 반환해 칩이 안 보이지만, 자리는 항상
+ * 이 높이만큼 예약해야 같은 레일 안에서 등급마다 캡션 시작 위치가 어긋나지 않는다
+ * (티켓 20260906_1436 인터랙션 리뷰 — Common 눈금만 탭 타깃이 20px 낮았던 문제).
+ */
+const RARITY_CHIP_SLOT_HEIGHT = 16;
+
 const STATIC_CSS = `
 .ds-rail-header{background:none;border:none;padding:0;width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit;transition:opacity var(--duration-quick,150ms) var(--ease-smooth-out,cubic-bezier(0.22,1,0.36,1))}
 .ds-rail-header:active{opacity:0.7}
@@ -187,10 +195,16 @@ function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }
           </span>
         )}
       </span>
-      {/* 등급칩 — barColor와 같은 가드(rarity가 있을 때만)를 유지한다. common은 RarityBadge가
-          자체적으로 null을 반환해(노이즈 축소 관례) 자리를 차지하지 않는다. 44px 폭보다
-          칩이 넓어도(예: "MYSTIC") 방치한다 — 좌우 눈금 사이 여백이 흡수한다. */}
-      {showRarityChip && rarity && <RarityBadge rarity={rarity} />}
+      {/* 등급칩 자리 — showRarityChip이면 항상 같은 높이를 예약한다. common은 RarityBadge가
+          자체적으로 null을 반환하므로(노이즈 축소 관례) 칩 자체는 안 보이지만, 자리를 비워
+          두면 같은 레일 안에서 Common 눈금만 캡션이 위로 붙어 탭 타깃 높이가 어긋난다
+          (티켓 20260906_1436 인터랙션 리뷰). 44px 폭보다 칩이 넓어도(예: "MYSTIC") 방치한다
+          — 좌우 눈금 사이 여백이 흡수한다. */}
+      {showRarityChip && (
+        <span style={{ display: 'flex', alignItems: 'center', minHeight: RARITY_CHIP_SLOT_HEIGHT }}>
+          {rarity && <RarityBadge rarity={rarity} />}
+        </span>
+      )}
     </span>
   );
 }
