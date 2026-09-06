@@ -831,6 +831,59 @@ fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게�
 `evaluation: 'pending'`이라 fail-closed가 먼저 막는다. v5 스칼라 7종을 `engine`으로 뒤집는
 선행 작업이 끝나야 열린다(카탈로그 시딩 20260905_0035 이전).
 
+### 2.17 카탈로그 시딩 후 재평가 절차 (2026-09-06, 티켓 20260906_1431)
+
+발급은 각 유저의 **다음 활동 동기화**를 계기로만 일어난다. 카탈로그에 배지를 새로
+시딩해도 기존 유저를 재평가할 자동 경로가 없어, 같은 날 시딩한 배지가 유저마다
+며칠씩 흩어져 발급된다(실측: 티켓 20260906_1426, v5 630종 시딩 후 12명 중 1명만 발급).
+
+> ⚠️ 이건 「소급 발급 기능 신설」이 아니다. `evaluateBadgesDetailed`는 매 호출마다
+> `getActivityHistory(가입 앵커~)` 전체를 다시 보므로 소급 평가 능력은 원래 있다.
+> 없는 것은 **평가를 돌릴 계기**뿐이다.
+
+**채택안 — B안(시딩 후 1회 배치).** 정기 크론(C안)은 비용 문제로 채택하지 않았다
+(근거: 티켓 20260906_1142). 대신 카탈로그 변경과 발급을 같은 작업으로 묶는다:
+
+> **카탈로그에 배지를 새로 시딩할 때마다 오케스트레이터/운영자가
+> `POST /api/admin/badges/reevaluate-all`을 반드시 함께 실행한다.**
+> 자동 트리거가 아니라 시딩 작업과 항상 짝짓는 수동 절차다.
+
+#### 요청/응답
+
+```
+POST /api/admin/badges/reevaluate-all
+{ "dryRun": true, "userIds": ["..."] }   // userIds 생략 시 전체 유저 대상
+```
+
+`dryRun`은 **기본값 true**다 — `false`를 명시해야만 실제로 발급·포인트 지급이 일어난다.
+응답은 대상 유저 수(`targetUserCount`)·영향받는 유저 수(`affectedUserCount`)·예상(또는
+실제) 발급 건수 합계(`totalBadgesIssued`)·포인트 합계(`totalPointsAwarded`)·반복형 카운터
+증가 합계(`totalCounterIncrements`)·유저별 상세(`users[]`)를 담는다. 대상이
+`MAX_TARGET_USERS_PER_CALL`(500명)을 넘으면 400으로 거절한다 — `userIds`로 나눠 여러 번
+호출한다(멱등이라 안전, 이미 보유한 배지는 재발급되지 않는다).
+
+#### 부수효과 정책 — 피드·알림은 억제, 포인트는 정상 지급
+
+| 부수효과 | 처리 | 근거 |
+|---|---|---|
+| 피드 기록(`recordFeedEvent`) | 억제 (`silent: true`) | 재평가로 유저당 수십 종이 한 번에 나올 수 있어, 그대로 실으면 「달리지도 않았는데 배지가 쏟아진다」가 피드·알림 폭발이 된다 |
+| 포인트 지급(`awardPoints`) | **정상 지급** — `silent`와 무관하게 동작하는 기존 경로를 그대로 둔다 | 재평가로 뒤늦게 발견됐을 뿐 실제 활동 이력으로 정당하게 획득한 배지다. 자연 발급과 동일하게 보상하는 것이 맞다 |
+| 가입 앵커(`users.created_at`) 이후 이력만 대상 | 유지 (변경 없음) | `evaluateBadgesDetailed`가 이미 강제한다 — §5 |
+
+#### `triggeredBy` — `strava_sync`와 구분
+
+`user_activity_badges.triggered_by`·`engine_decision_log`에 남는 트리거 값으로
+`catalog_reevaluation`(`CATALOG_REEVALUATION_TRIGGER`)을 새로 쓴다. 이 컬럼은 자유
+텍스트라(CHECK 제약 없음) DB 마이그레이션 없이 값만 추가하면 된다.
+
+#### 알려진 한계 — 반복형 배지의 회차 카운터는 이 경로로 오르지 않는다
+
+`evaluateBadgesDetailed`는 반복형(§2.14)의 "새 회차" 판정을 **이번 호출에 넘긴 배치**
+(`activities` 인자) 기준으로 가른다. 재평가는 `activities: []`로 호출하므로(=이미 저장된
+이력 전체를 다시 본다) 이미 보유한 반복형 배지는 `newOccurrences`가 항상 비어 카운터가
+오르지 않는다 — 미보유 반복형(발급 자체)과 등급형·레벨형은 영향 없다. 이 간극은 유저의
+다음 실제 동기화에서 정상적으로 채워진다(회차 자체를 잃지 않는다, 반영 시점만 늦다).
+
 ---
 
 ## 3. 아이템배지 드랍 엔진 v2 (✅ 구현됨 — 3레이어)
@@ -1334,6 +1387,8 @@ src/lib/badge-engine/crossGate.ts         2단 교차 게이트 판정 — §2.1
 src/lib/badge-engine/conditionRegistry.ts 조건 필드 메타 단일 출처 + fail-closed — §2.3-0
 src/lib/badge-engine/badgeProgress.ts     진행 계산 계층(표시 전용, 발급 판정과 분리) — §2.13
 src/lib/badge-engine/metricLabels.ts      배지 지표 라벨·단위 배치 조회 — §2.13
+src/lib/badge-engine/reevaluateCatalog.ts 카탈로그 시딩 후 일괄 재평가 조립 — §2.17
+src/app/api/admin/badges/reevaluate-all/route.ts  위 재평가 어드민 라우트 — §2.17
 src/lib/drop-engine/index.ts              드랍 엔진 (v1 구현 — v2는 §3 설계)
 src/lib/ambient-drop/                     앰비언트(시스템) POI 드랍 엔진 — §3.12
 src/lib/strava/sync.ts                    싱크 파이프라인 (두 엔진 호출) — updateFamilyProgressSnapshots §2.13
