@@ -49,6 +49,13 @@ export const ENGINE_DELEGATED_MISSION_TYPES: ReadonlySet<MissionType> = new Set(
   'streak_days',
   'duration_minutes',
   'elevation_gain_m',
+  /**
+   * 티켓 20260906_2231: 위 세 타입은 단일 필드 하나만 위임했다. `engine_condition`은
+   * `condition_json`에 담긴 필드 조합 전체를 그대로 `evaluateConditionDetailed`에 넘기는
+   * **일반 통로**다 — 게이트 미션 40종이 `repeat_count`·`rest_after_long`·
+   * `single_distance_km`·`period_streak` 등 여러 필드를 조합해야 정확히 표현되기 때문이다.
+   */
+  'engine_condition',
 ])
 
 /**
@@ -258,7 +265,13 @@ export interface MissionConditionValueRule {
   kind: 'uuid' | 'positive_number'
 }
 
-export const MISSION_CONDITION_VALUE_RULE: Record<MissionType, MissionConditionValueRule> = {
+// 티켓 20260906_2231: `engine_condition`은 의도적으로 빠져 있다 — 여러 필드를 조합하는
+// 자유 형태라 「달성 판정에 실제로 쓰이는 필드 하나」가 존재하지 않는다(예: 「단일 활동
+// 최소값 + repeat_count」・「period_streak」 등 조합마다 다르다). 값 검증은 `checkMissionCondition`
+// (키 존재·오탈자)과 `evaluateConditionDetailed`의 자체 형태 검사(예: `period_streak` 형태
+// 오류 시 fail-closed)가 대신한다. `Partial`이라 이 타입을 생략해도 컴파일 에러가 나지 않고,
+// `checkMissionConditionValue`는 규칙이 없으면 `OK`를 돌려준다(아래 함수 주석 참고).
+export const MISSION_CONDITION_VALUE_RULE: Partial<Record<MissionType, MissionConditionValueRule>> = {
   item_collect: { key: 'badge_id', kind: 'uuid' },
   checkin: { key: 'poi_id', kind: 'uuid' },
   distance: { key: 'distance_km', kind: 'positive_number' },

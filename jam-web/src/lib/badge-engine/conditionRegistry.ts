@@ -1191,6 +1191,92 @@ export const CONDITION_FIELDS = [
     detail: (c) => `${c.weekly_streak}주(월~일) 연속 이상`,
     form: integerForm('weeklyStreak', { section: 'period', label: '연속 주(월~일) 수', placeholder: '예: 12' }),
   }),
+  // ── v5 미션 게이트 확장 어휘 4종 (티켓 20260906_2231) ─────────────────────
+  //
+  // 게이트 미션 40종(걷기 8 + 4종목 32)의 「주기(N주/개월 연속 M회)」·「시간대별 각 N회」·
+  // 「서로 다른 요일 수」·「서로 다른 달 개수(각각 임계값)」를 표현하기 위해 추가했다.
+  // 지금은 `missions.condition_json`(`MissionCondition` → `BadgeCondition` 캐스팅 통로,
+  // 티켓 20260813_001)에서만 쓰인다 — badges에는 아직 쓰이는 계열이 없다(이미 165행
+  // UPDATE가 실행된 티켓 20260906_1947의 판정을 바꾸지 않기 위해 의도적으로 새 필드로만
+  // 추가했다). `form`을 선언하지 않는다 — 배지 어드민 조건 빌더는 이 필드를 노출하지 않고
+  // (badges에서 아직 쓰이지 않으므로), 미션 어드민은 `condition_json`을 검증 없는 자유
+  // JSON textarea로 받는다(`missions/condition-keys.ts` 참고).
+  field({
+    key: 'period_streak',
+    label: '주기(연속 기간별 최소 횟수)',
+    unit: null,
+    role: 'measurable',
+    input: 'object',
+    direction: 'higher',
+    evaluation: 'engine',
+    chip: (c) => {
+      const p = c.period_streak
+      if (!p) return null
+      const unitLabel = p.unit === 'week' ? '주(월~일)' : '개월'
+      const base = `${p.length}${unitLabel} 연속 ${p.min_count}회`
+      return p.subset_min_count !== undefined ? `${base}(부분 ${p.subset_min_count}회)` : base
+    },
+    detail: (c) => {
+      const p = c.period_streak
+      if (!p) return null
+      const unitLabel = p.unit === 'week' ? '주(월~일)' : '개월'
+      const parts = [`${p.length}${unitLabel} 연속 한 기간에 ${p.min_count}회 이상`]
+      if (p.subset_min_count !== undefined) {
+        const subsetLabel = p.subset_day_of_week ? dayOfWeekChip(p.subset_day_of_week) : p.subset_time_range ? `${p.subset_time_range.start}~${p.subset_time_range.end}` : '부분 조건'
+        parts.push(`매 기간 ${subsetLabel} ${p.subset_min_count}회 이상`)
+      }
+      return parts.join(', ')
+    },
+  }),
+  field({
+    key: 'time_bands_requirement',
+    label: '시간대별 각 최소 횟수',
+    unit: null,
+    role: 'measurable',
+    input: 'object',
+    direction: 'higher',
+    evaluation: 'engine',
+    chip: (c) => (c.time_bands_requirement ? `시간대 ${c.time_bands_requirement.bands.length}개 각 ${c.time_bands_requirement.min_count}회` : null),
+    detail: (c) =>
+      c.time_bands_requirement
+        ? `${c.time_bands_requirement.bands.map((b) => `${b.start}~${b.end}`).join(', ')} 각각 ${c.time_bands_requirement.min_count}회 이상`
+        : null,
+  }),
+  field({
+    key: 'distinct_days_of_week_count',
+    label: '서로 다른 요일 수',
+    unit: '개',
+    role: 'measurable',
+    input: 'integer',
+    min: 2,
+    max: 7,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'engine',
+    chip: (c) => `서로 다른 요일 ${c.distinct_days_of_week_count}개`,
+    detail: (c) => `서로 다른 요일 ${c.distinct_days_of_week_count}개 이상`,
+  }),
+  field({
+    key: 'distinct_months_threshold',
+    label: '서로 다른 달 개수(각각 임계값)',
+    unit: null,
+    role: 'measurable',
+    input: 'object',
+    direction: 'higher',
+    evaluation: 'engine',
+    chip: (c) => {
+      const t = c.distinct_months_threshold
+      if (!t) return null
+      const unit = t.metric === 'distance_km' ? 'km' : 'm'
+      return `서로 다른 달 ${t.count}개(각 ${t.value}${unit})`
+    },
+    detail: (c) => {
+      const t = c.distinct_months_threshold
+      if (!t) return null
+      const unit = t.metric === 'distance_km' ? 'km' : 'm'
+      return `서로 다른 달 ${t.count}개에서 각각 ${t.value}${unit} 이상`
+    },
+  }),
   field({
     key: 'distinct_time_bands',
     label: '서로 다른 시간대',

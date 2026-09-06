@@ -267,12 +267,24 @@ describe('buildConditionJsonFromFields — 폼 미지원 필드 보존 (티켓 2
     expect(saved).toEqual({ distance_km: 20 })
   })
 
-  it('FORM_UNSUPPORTED_CONDITION_KEYS는 day_of_week·route·poi_id 3종만 남았다', () => {
+  it('FORM_UNSUPPORTED_CONDITION_KEYS는 day_of_week·route·poi_id + 미션 게이트 확장 4종만 남았다', () => {
     // 티켓 20260905_0032 A-2에서 v5 신규 20종 + repeat_count + 교차 게이트 3종 + 기존 3종
     // (active_days_count·same_activity·season_count_all)에 입력 UI가 생겼다.
     // 남은 셋은 전용 UI가 필요하거나(day_of_week: 요일 다중 선택) 엔진 평가가 없어
     // (route) 이번 범위 밖이거나, 다른 경로로 관리된다(poi_id: 지점 연결 UI).
-    expect([...FORM_UNSUPPORTED_CONDITION_KEYS].sort()).toEqual(['day_of_week', 'poi_id', 'route'])
+    // 티켓 20260906_2231이 추가한 4종(period_streak·time_bands_requirement·
+    // distinct_days_of_week_count·distinct_months_threshold)은 `missions.condition_json`
+    // 전용이라(badges에는 아직 쓰이는 계열이 없다) 배지 조건 빌더 폼에 의도적으로 노출하지
+    // 않는다 — 폼이 생기면 어드민이 badges에 이 필드를 넣을 수 있게 돼 설계 의도가 흐려진다.
+    expect([...FORM_UNSUPPORTED_CONDITION_KEYS].sort()).toEqual([
+      'day_of_week',
+      'distinct_days_of_week_count',
+      'distinct_months_threshold',
+      'period_streak',
+      'poi_id',
+      'route',
+      'time_bands_requirement',
+    ])
   })
 
   it('getUnsupportedConditionKeys는 값이 있는 미지원 필드만 돌려준다', () => {

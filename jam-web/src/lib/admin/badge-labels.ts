@@ -29,6 +29,7 @@ export function badgeTypeLabel(type: string): string {
 export const MISSION_TYPES: MissionType[] = [
   'distance', 'checkin', 'activity_count', 'item_collect',
   'streak_days', 'duration_minutes', 'elevation_gain_m',
+  'engine_condition',
 ]
 
 /**
@@ -44,6 +45,8 @@ export const MISSION_TYPE_LABEL: Record<MissionType, string> = {
   streak_days: '연속 일수',
   duration_minutes: '단일 활동 시간',
   elevation_gain_m: '단일 활동 고도',
+  // 티켓 20260906_2231 — 게이트 미션 40종처럼 여러 조건 필드를 조합해야 하는 경우
+  engine_condition: '복합 조건(엔진 위임)',
 }
 
 /** 모르는 값이 들어와도 화면이 비지 않도록 원시값을 그대로 돌려준다 */

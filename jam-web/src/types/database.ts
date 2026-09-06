@@ -505,6 +505,16 @@ export type MissionType =
   | 'streak_days'
   | 'duration_minutes'
   | 'elevation_gain_m'
+  /**
+   * 티켓 20260906_2231: `condition_json`을 그대로 `evaluateConditionDetailed`에 위임하는
+   * **일반 통로**. 위 세 타입(`streak_days`·`duration_minutes`·`elevation_gain_m`)은 단일
+   * 필드 하나만 위임했지만, 게이트 미션 40종(걷기 8 + 4종목 32)은 `repeat_count`·
+   * `rest_after_long`·`single_distance_km`·`max_pace_sec_per_km`·`period_streak` 등 여러
+   * 필드를 조합해야 정확히 표현된다 — 필드마다 미션 타입을 새로 만들지 않고, `condition_json`에
+   * 담긴 조합 전체를 배지엔진 그대로 평가한다. 진행률(target)은 정의하지 않는다(0/1
+   * 달성형) — `checker.ts`의 `getTarget`/`MISSION_PROGRESS_UNIT` 참고.
+   */
+  | 'engine_condition'
 export type MissionRewardType = 'badge' | 'points' | 'item_badge'
 /** Phase13: 미션 상황 표시 방식 — 랭킹형(등수) / 달성형(완료 여부) */
 /** individual: 개인형 — 다른 참가자 조회 없이 본인 진행상황/달성여부만 반환 (티켓 20260813_001) */
@@ -1079,6 +1089,70 @@ export interface BadgeCondition {
    * (예: 한 달 8회 라이딩 × 12개월 → `cycling:G2`).
    */
   monthly_count?: number
+
+  // ── v5 미션 게이트 확장 어휘 (티켓 20260906_2231) ──────────────────────
+  //
+  // 게이트 미션 40종(걷기 8 + 4종목 32)의 「주기(N주/개월 연속 M회)」·「시간대별 각 N회」·
+  // 「서로 다른 요일 수」·「서로 다른 달 개수(각각 임계값)」 4가지는 기존 어휘로 근사하면
+  // 반복·시간대 분산 요건이 사라지는 실제 결함이 된다(`missions/checker.ts`가 `MissionCondition`을
+  // 이 타입으로 캐스팅해 `evaluateConditionDetailed`에 넘기는 통로를 그대로 확장한다).
+  // **badges에는 아직 쓰이지 않는다** — 기존 165행 UPDATE(티켓 20260906_1947)의 판정을
+  // 바꾸지 않기 위해 의도적으로 새 필드로만 추가했다.
+
+  /**
+   * [v5 미션] 연속 기간(주/월)이 각각 최소 활동 수(및 선택적 부분집합 최소 활동 수)를
+   * 만족하는가 — 「N주 연속 한 주에 M회」류. `weekly_streak`(기간당 1건이면 충분)와 달리
+   * **기간당 임계값**을 요구한다는 점이 다르다 — 둘은 서로 다른 값을 표현하므로 기존
+   * `weekly_streak` 필드는 건드리지 않는다.
+   */
+  period_streak?: PeriodStreakCondition
+  /**
+   * [v5 미션] 서로 다른 시간대(band) 각각에 최소 활동 수 이상 — 「새벽·낮·밤에 각 2회」류.
+   * `day_of_week` 배열 + `total_count`(요일별 독립 카운터)의 시간대 버전이다.
+   */
+  time_bands_requirement?: TimeBandsRequirementCondition
+  /** [v5 미션] 서로 다른 요일(월~일)의 수 — 「서로 다른 5개 요일」류. 특정 요일을 지정하지 않는다 */
+  distinct_days_of_week_count?: number
+  /**
+   * [v5 미션] 지표(거리·고도)가 값 이상인 서로 다른 달의 개수 — 「서로 다른 두 달에 각각
+   * 30km」류. `month`+`monthly_km`(달 중 하나의 최댓값만 봄)와 달리 **여러 달을 각각**
+   * 요구한다는 점이 다르다.
+   */
+  distinct_months_threshold?: DistinctMonthsThresholdCondition
+}
+
+/** `BadgeCondition.period_streak` — 티켓 20260906_2231 */
+export interface PeriodStreakCondition {
+  /** 집계 단위 — 주(월~일 경계) 또는 월(달력 월) */
+  unit: 'week' | 'month'
+  /** 연속 기간 수 */
+  length: number
+  /** 기간(주/월)당 최소 활동 수 */
+  min_count: number
+  /** 부분집합 필터 — 요일(OR). `subset_time_range`와 동시에 쓰지 않는다(하나만) */
+  subset_day_of_week?: DayOfWeek[]
+  /** 부분집합 필터 — 시간대. `subset_day_of_week`와 동시에 쓰지 않는다(하나만) */
+  subset_time_range?: { start: string; end: string }
+  /** 기간(주/월)당 부분집합 최소 활동 수 — `subset_day_of_week`/`subset_time_range` 중 하나와 함께 필요 */
+  subset_min_count?: number
+}
+
+/** `BadgeCondition.time_bands_requirement` — 티켓 20260906_2231 */
+export interface TimeBandsRequirementCondition {
+  /** 서로 다른 시간대 구간 목록(각각 아래 `min_count` 이상 필요, 2개 이상) */
+  bands: { start: string; end: string }[]
+  /** 각 시간대마다 필요한 최소 활동 수 */
+  min_count: number
+}
+
+/** `BadgeCondition.distinct_months_threshold` — 티켓 20260906_2231 */
+export interface DistinctMonthsThresholdCondition {
+  /** 측정 지표 */
+  metric: 'distance_km' | 'elevation_gain_m'
+  /** 각 달이 넘어야 하는 값 */
+  value: number
+  /** 그 값을 넘긴 서로 다른 달의 최소 개수 */
+  count: number
 }
 
 // =========================================

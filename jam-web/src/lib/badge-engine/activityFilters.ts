@@ -575,6 +575,133 @@ export function countPersonalRecordBreaks(
   return count
 }
 
+// ── 미션 게이트 확장 어휘 (티켓 20260906_2231) ──────────────────────────────
+//
+// `missions/checker.ts`가 `MissionCondition`을 `BadgeCondition`으로 캐스팅해
+// `evaluateConditionDetailed`에 그대로 넘기는 기존 통로(티켓 20260813_001)를 확장 지점으로
+// 삼아, 게이트 미션 40종(걷기 8 + 4종목 32)이 요구하는 「주기(N주/개월 연속 M회)」·
+// 「시간대별 각 N회」·「서로 다른 요일 수」·「서로 다른 달 개수(각각 임계값)」 4가지 새
+// 어휘를 추가한다. **기존 필드(`weekly_streak` 등)는 건드리지 않는다** — 이미 165행
+// UPDATE(티켓 20260906_1947)가 실행된 배지의 판정이 바뀌면 안 된다.
+
+const WEEK_MS = 7 * DAY_MS
+
+/** 기간 키(주=월요일 YYYY-MM-DD, 월=YYYY-MM) — `period_streak`·`distinct_months_threshold` 공용 */
+function monthPeriodKey(a: NormalizedActivity): string {
+  const d = new Date(a.startDateLocal ?? a.startDate)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** 두 기간 키가 바로 다음 기간인지 — 주는 정확히 7일 뒤, 월은 달력상 다음 달(연도 넘김 포함) */
+function isNextPeriodKey(prevKey: string, nextKey: string, unit: 'week' | 'month'): boolean {
+  if (unit === 'week') {
+    return Date.parse(`${nextKey}T00:00:00Z`) - Date.parse(`${prevKey}T00:00:00Z`) === WEEK_MS
+  }
+  const [py, pm] = prevKey.split('-').map(Number)
+  const [ny, nm] = nextKey.split('-').map(Number)
+  return (py === ny && nm === pm + 1) || (ny === py + 1 && pm === 12 && nm === 1)
+}
+
+/**
+ * `period_streak` 조건 — N개 연속 기간(주/월)이 각각 최소 활동 수(및 선택적 부분집합
+ * 최소 활동 수)를 만족하는 최장 길이를 계산한다.
+ *
+ * `calcMaxWeeklyStreak`(기간당 활동 1건이면 충분)와 다르다 — 이 함수는 **기간당 임계값**을
+ * 요구한다. 「3주 연속 한 주에 3회」류(v5 게이트 미션 40종의 '주기' 축)는 이 임계값 없이는
+ * 표현할 수 없어 새로 추가했다(티켓 20260906_2231) — 기존 `calcMaxWeeklyStreak`는 그대로 둔다.
+ */
+export function calcMaxPeriodStreak(
+  activities: NormalizedActivity[],
+  opts: {
+    unit: 'week' | 'month'
+    minCount: number
+    /** 기간당 부분집합 최소 활동 수를 함께 검사할 때만 지정 — subsetMinCount와 짝이다 */
+    subsetPredicate?: (a: NormalizedActivity) => boolean
+    subsetMinCount?: number
+  }
+): number {
+  if (activities.length === 0) return 0
+  const keyFn = opts.unit === 'week' ? (a: NormalizedActivity) => getMondayKey(new Date(a.startDateLocal ?? a.startDate)) : monthPeriodKey
+  const byPeriod = new Map<string, NormalizedActivity[]>()
+  for (const a of activities) {
+    const key = keyFn(a)
+    const list = byPeriod.get(key)
+    if (list) list.push(a)
+    else byPeriod.set(key, [a])
+  }
+
+  const qualifies = (acts: NormalizedActivity[]): boolean => {
+    if (acts.length < opts.minCount) return false
+    if (opts.subsetPredicate && opts.subsetMinCount !== undefined) {
+      if (acts.filter(opts.subsetPredicate).length < opts.subsetMinCount) return false
+    }
+    return true
+  }
+
+  const sortedKeys = [...byPeriod.keys()].sort()
+  let maxStreak = 0
+  let currentStreak = 0
+  let prevKey: string | null = null
+  for (const key of sortedKeys) {
+    if (!qualifies(byPeriod.get(key)!)) {
+      currentStreak = 0
+      prevKey = null
+      continue
+    }
+    currentStreak = prevKey !== null && isNextPeriodKey(prevKey, key, opts.unit) ? currentStreak + 1 : 1
+    maxStreak = Math.max(maxStreak, currentStreak)
+    prevKey = key
+  }
+  return maxStreak
+}
+
+/**
+ * `distinct_days_of_week_count` 조건 — 서로 다른 요일(월~일)의 수.
+ * 같은 요일에 여러 번 활동해도 1로 묶인다(특정 요일을 지정하지 않고 "몇 개나 다른 요일"만 본다
+ * — `day_of_week` 배열 + `total_count`의 "지정한 요일마다 각 N회"와는 다른 축이다).
+ */
+export function countDistinctDaysOfWeek(activities: NormalizedActivity[]): number {
+  const days = new Set<number>()
+  for (const a of activities) {
+    const dateOnly = (a.startDateLocal ?? a.startDate).slice(0, 10)
+    days.add(new Date(`${dateOnly}T00:00:00Z`).getUTCDay())
+  }
+  return days.size
+}
+
+/**
+ * `time_bands_requirement` 조건 — 시간대(band)마다 매칭되는 활동 수. 호출부가 각 값을
+ * `min_count`와 비교한다(모든 밴드가 각각 충족해야 통과 — `day_of_week` 배열 모드와 같은 태도).
+ */
+export function countsByTimeBand(
+  activities: NormalizedActivity[],
+  bands: readonly { start: string; end: string }[]
+): number[] {
+  return bands.map((band) => activities.filter((a) => inTimeRange(a, band)).length)
+}
+
+/**
+ * `distinct_months_threshold` 조건 — 지표(거리·고도) 월합계가 `value` 이상인 서로 다른
+ * 달의 개수. `month`+`monthly_km`(달 중 «하나»의 최댓값만 봄)와 달리 **여러 달을 각각** 본다.
+ */
+export function countDistinctMonthsMeetingThreshold(
+  activities: NormalizedActivity[],
+  metric: 'distance_km' | 'elevation_gain_m',
+  value: number
+): number {
+  const sums = new Map<string, number>()
+  for (const a of activities) {
+    const key = monthPeriodKey(a)
+    const add = metric === 'distance_km' ? a.distanceKm : a.elevationGainM
+    sums.set(key, (sums.get(key) ?? 0) + add)
+  }
+  let count = 0
+  for (const sum of sums.values()) {
+    if (sum >= value) count++
+  }
+  return count
+}
+
 /** 미발급 사유의 `required` 문구 — 짝 필드까지 함께 읽어야 뜻이 완성된다 */
 function describeRestRequirement(key: RestConditionKey, condition: BadgeCondition): string {
   switch (key) {

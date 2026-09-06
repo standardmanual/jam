@@ -320,6 +320,25 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(gap[0].stage, 'epic_to_mystic')
   }],
 
+  // ── 티켓 20260906_2231: rare_to_epic은 v5 설계상 미션이 필요 없다(축 교차만으로 충분) ──
+  ['④ rare_to_epic 단계가 비어 있어도 구멍으로 잡지 않는다(v5는 그 단계에 미션이 필요 없다)', () => {
+    const issues = checkGateMissionConsistency({
+      // epic_to_mystic만 있고 rare_to_epic은 아예 없는 축 — v5 설계대로면 정상 상태다
+      missions: [gateMission({ id: 'a', gate_stage: 'epic_to_mystic', reward_badge_ids: ['r1'] })],
+      activityBadges: [],
+      referencedBadges: new Map([['r1', badge({ id: 'r1', name: '보상' })]]),
+    })
+    const gap = issues.filter((i) => i.code === 'axis_stage_gap')
+    assert.strictEqual(gap.length, 0, 'rare_to_epic 미션 부재를 구멍으로 오탐하면 안 된다')
+  }],
+
+  ['④ buildGateMatrix의 complete는 epic_to_mystic만 본다(rare_to_epic은 비어도 정상)', () => {
+    const rows = buildGateMatrix([gateMission({ id: 'a', gate_stage: 'epic_to_mystic' })])
+    assert.strictEqual(rows.length, 1)
+    assert.strictEqual(rows[0].cells.rare_to_epic.length, 0)
+    assert.strictEqual(rows[0].complete, true, 'rare_to_epic이 비어 있어도 epic_to_mystic만 있으면 complete여야 한다')
+  }],
+
   ['④ 같은 축·단계에 미션 2개면 중복을 잡는다', () => {
     const issues = checkGateMissionConsistency({
       missions: [gateMission({ id: 'a' }), gateMission({ id: 'b' })],

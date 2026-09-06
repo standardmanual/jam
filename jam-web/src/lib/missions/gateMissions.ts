@@ -163,9 +163,16 @@ export function collectRuleFamilyKeys(
 export interface GateMatrixRow {
   axis: string
   activityType: string | null
-  /** 단계별 미션. 비어 있으면 «구멍»이다 */
+  /**
+   * 단계별 미션. 비어 있으면 «구멍»이다 — 단 `rare_to_epic`은 v5 설계상 미션이 필요 없는
+   * 단계라 비어 있는 것이 정상이다(아래 `complete` 참고).
+   */
   cells: Record<MissionGateStage, GateMissionInput[]>
-  /** 두 단계가 다 채워졌는가 */
+  /**
+   * 이 축이 필요한 미션을 다 갖췄는가. `epic_to_mystic`만 본다 — `rare_to_epic`은 v5
+   * 설계(마스터 20260905_0026 §게이트 표)상 축 교차만으로 충분해 미션이 필요 없다
+   * (티켓 20260906_2231, `checkGateMissionConsistency`의 `axis_stage_gap` 수정과 같은 근거).
+   */
   complete: boolean
 }
 
@@ -205,7 +212,7 @@ export function buildGateMatrix(missions: readonly GateMissionInput[]): GateMatr
         axis,
         activityType: gateAxisActivityType(axis),
         cells,
-        complete: MISSION_GATE_STAGES.every((stage) => cells[stage].length > 0),
+        complete: cells.epic_to_mystic.length > 0,
       }
     })
     .sort((a, b) => a.axis.localeCompare(b.axis, 'ko'))
@@ -277,10 +284,19 @@ export function checkGateMissionConsistency(input: GateConsistencyInput): GateMi
   }
 
   // ── ① 축 × 단계 커버리지 ─────────────────────────────────────────────────
+  //
+  // ⚠️ `rare_to_epic`은 v5 설계(마스터 20260905_0026 §게이트 표)상 **미션이 필요 없다** —
+  // 이 단계는 축 교차(`cross_in_axis`/`cross_between_axis`)만으로 충분히 열린다. 미션은
+  // `epic_to_mystic` 단계에만 존재한다(`gate_mission_badge` 요구, `v5_gate_build.py`의
+  // `MISSION_MAP`도 `em` 단계에서만 조회한다). 이 검사기는 0033 설계(v5 게이트 확정 이전)
+  // 가정을 그대로 갖고 있어 "축마다 두 단계 모두 미션이 있어야 한다"고 잘못 가정했다 —
+  // 그 결과 `rare_to_epic`이 축 수만큼(9~12개) 항상 「구멍」으로 오탐했다(티켓 20260906_1947
+  // 부수 발견, 20260906_2231에서 수정).
   for (const row of buildGateMatrix(gateMissions)) {
     for (const stage of MISSION_GATE_STAGES) {
       const cell = row.cells[stage]
       if (cell.length === 0) {
+        if (stage === 'rare_to_epic') continue
         issues.push({
           level: 'error',
           code: 'axis_stage_gap',

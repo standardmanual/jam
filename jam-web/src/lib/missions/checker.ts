@@ -226,6 +226,10 @@ export const MISSION_PROGRESS_UNIT: Record<MissionType, string> = {
   streak_days: '일',
   duration_minutes: '분',
   elevation_gain_m: 'm',
+  // 티켓 20260906_2231: 여러 필드를 조합하는 달성형(0/1) 미션이라 진행 단위 개념이 없다.
+  // 단위가 빈 문자열이면 #20(50%/80% 마일스톤) 소식이 나가지 않는다(missionMilestoneHit
+  // 참고) — 이진 판정이 50%/80% 구간을 지나는 뜻이 없으므로 의도한 동작이다.
+  engine_condition: '',
 }
 
 /**
@@ -443,6 +447,8 @@ export function getTarget(missionType: string, condition: MissionCondition): num
     case 'streak_days': return condition.streak_days ?? 0
     case 'duration_minutes': return condition.duration_minutes ?? 0
     case 'elevation_gain_m': return condition.elevation_gain_m ?? 0
+    // 티켓 20260906_2231 — 달성형(0/1). 단일 목표치가 없는 조건 조합이라 항상 1이다.
+    case 'engine_condition': return 1
     default: return 0
   }
 }
@@ -489,6 +495,15 @@ function calculateProgress(
       const sum = gated.reduce((acc, a) => acc + a.elevationGainM, 0)
       return Math.round(sum * 100) / 100
     }
+    // 티켓 20260906_2231 — 여러 필드를 조합하는 달성형(0/1) 미션. 별도 진행률 개념이 없어
+    // `evaluateConditionDetailed`의 통과 여부를 그대로 0/1로 반환한다(evaluateMission의
+    // `achieved` 계산과 같은 판정을 다시 한 번 하지만, 순수 함수라 결과가 갈릴 수 없다).
+    case 'engine_condition':
+      return evaluateConditionDetailed(condition as BadgeCondition, activities, {
+        extraAllowedKeys: MISSION_ONLY_CONDITION_KEYS,
+      }).pass
+        ? 1
+        : 0
     default:
       return 0
   }

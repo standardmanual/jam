@@ -27,7 +27,7 @@ import {
   parseVisibilityRule,
 } from '@/lib/missions/gateMissions'
 import { buildFamilyKey } from '@/lib/admin/badge-families'
-import { MISSION_CONDITION_VALUE_RULE } from '@/lib/missions/condition-keys'
+import { MISSION_CONDITION_VALUE_RULE, type MissionConditionValueRule } from '@/lib/missions/condition-keys'
 import { MISSION_TYPE_LABEL } from '@/lib/admin/badge-labels'
 import { RARITY_LABEL } from '@/lib/rarity'
 import { TREE_ACTIVITY_ORDER } from '@/lib/badgeTree'
@@ -65,6 +65,17 @@ interface Props {
  */
 const GATE_MISSION_TYPES = ['distance', 'activity_count', 'streak_days', 'duration_minutes', 'elevation_gain_m'] as const
 type GateMissionType = (typeof GATE_MISSION_TYPES)[number]
+
+/**
+ * `MISSION_CONDITION_VALUE_RULE[type]` — `GateMissionType`(위 5종) 전용 접근자.
+ *
+ * 티켓 20260906_2231에서 그 레코드가 `Partial`로 바뀌었다(`engine_condition`처럼 단일
+ * 필드 하나로 표현할 수 없는 타입이 생겨서다). `GATE_MISSION_TYPES`는 그 5종만 쓰므로
+ * 실제로는 항상 값이 있다 — 이 접근자 하나에서만 단언해 나머지 호출부를 깨끗하게 둔다.
+ */
+function gateMissionValueRule(type: GateMissionType): MissionConditionValueRule {
+  return MISSION_CONDITION_VALUE_RULE[type]!
+}
 
 const STATUS_DISPLAY_TYPES = [
   { value: 'individual', label: '개인형 (본인 진행상황만)' },
@@ -159,7 +170,7 @@ function formFromMission(m: MissionRow): FormState {
   const missionType = (GATE_MISSION_TYPES as readonly string[]).includes(m.mission_type)
     ? (m.mission_type as GateMissionType)
     : 'activity_count'
-  const valueKey = MISSION_CONDITION_VALUE_RULE[missionType].key
+  const valueKey = gateMissionValueRule(missionType).key
   const condition = (m.condition_json ?? {}) as Record<string, unknown>
 
   return {
@@ -415,7 +426,7 @@ export default function GateMissionManager({ missions, families, rewardBadgeLabe
       return
     }
 
-    const valueKey = MISSION_CONDITION_VALUE_RULE[form.mission_type].key
+    const valueKey = gateMissionValueRule(form.mission_type).key
     const body = {
       title: form.title.trim(),
       description: form.description.trim() || null,
@@ -629,7 +640,7 @@ export default function GateMissionManager({ missions, families, rewardBadgeLabe
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                저장될 조건: <span className="font-mono">{JSON.stringify({ [MISSION_CONDITION_VALUE_RULE[form.mission_type].key]: Number(form.target) || 0, activity_type: form.conditionActivityType })}</span>
+                저장될 조건: <span className="font-mono">{JSON.stringify({ [gateMissionValueRule(form.mission_type).key]: Number(form.target) || 0, activity_type: form.conditionActivityType })}</span>
               </p>
             </div>
 
@@ -789,9 +800,17 @@ export default function GateMissionManager({ missions, families, rewardBadgeLabe
                   {MISSION_GATE_STAGES.map((stage) => (
                     <TableCell key={stage} className="align-top">
                       {row.cells[stage].length === 0 ? (
-                        <span className="rounded bg-red-100 px-1.5 py-px text-[11px] font-medium text-red-700">
-                          비어 있음
-                        </span>
+                        stage === 'rare_to_epic' ? (
+                          // v5 설계상 Rare→Epic은 축 교차만으로 충분해 미션이 필요 없다
+                          // (티켓 20260906_2231) — 비어 있어도 정상이라 경고색을 쓰지 않는다.
+                          <span className="rounded bg-neutral-100 px-1.5 py-px text-[11px] font-medium text-neutral-600">
+                            미션 불필요
+                          </span>
+                        ) : (
+                          <span className="rounded bg-red-100 px-1.5 py-px text-[11px] font-medium text-red-700">
+                            비어 있음
+                          </span>
+                        )
                       ) : (
                         <ul className="space-y-1">
                           {row.cells[stage].map((m) => {
@@ -827,7 +846,7 @@ export default function GateMissionManager({ missions, families, rewardBadgeLabe
                   <TableCell className="text-right align-top whitespace-nowrap">
                     {row.complete ? (
                       <span className="rounded bg-emerald-100 px-1.5 py-px text-[11px] font-medium text-emerald-700">
-                        두 단계 채움
+                        채움
                       </span>
                     ) : (
                       <span className="rounded bg-amber-100 px-1.5 py-px text-[11px] font-medium text-amber-800">

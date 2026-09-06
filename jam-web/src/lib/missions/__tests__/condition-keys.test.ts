@@ -113,9 +113,10 @@ const cases: Array<[string, () => void]> = [
     }
   }],
   ['엔진 위임 타입 판정은 checker.ts와 같은 목록을 쓴다', () => {
+    // 티켓 20260906_2231 — engine_condition(게이트 미션 40종의 일반 위임 통로) 추가
     assert.deepStrictEqual(
       [...ENGINE_DELEGATED_MISSION_TYPES].sort(),
-      ['duration_minutes', 'elevation_gain_m', 'streak_days']
+      ['duration_minutes', 'elevation_gain_m', 'engine_condition', 'streak_days']
     )
   }],
 

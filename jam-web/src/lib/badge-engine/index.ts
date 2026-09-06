@@ -61,6 +61,14 @@ import {
   // 같은 함수를 봐야 발급-진행률이 어긋나지 않는다(티켓 20260906_2055).
   isSupportedPersonalRecordMetric,
   countPersonalRecordBreaks,
+  // 미션 게이트 확장 어휘 4종(티켓 20260906_2231) — `period_streak`·`time_bands_requirement`·
+  // `distinct_days_of_week_count`·`distinct_months_threshold`. badgeProgress.ts는 아직
+  // 이 필드들을 쓰지 않는다(badges에 쓰이는 계열이 없다) — 진행률 표시가 필요해지면 그때
+  // 같은 함수를 재사용해 추가한다.
+  calcMaxPeriodStreak,
+  countDistinctDaysOfWeek,
+  countsByTimeBand,
+  countDistinctMonthsMeetingThreshold,
 } from './activityFilters'
 import { isLeveledBadge, familyKeyOf, badgeKindLabel, badgeKindOf, repeatCountOf } from './badgeKind'
 // 2단 교차 게이트(v5 B2, 티켓 20260905_0030 §3)는 순수 함수로 분리돼 있다 —
@@ -754,6 +762,96 @@ export function evaluateConditionDetailed(
     }
     actualParts.push(`계절활동: ${seasonFiltered.length}회`)
     requiredParts.push(`계절활동: ${condition.season_count}회`)
+  }
+
+  // ── 미션 게이트 확장 어휘 4종 (티켓 20260906_2231) ────────────────────────
+  //
+  // 게이트 미션 40종(걷기 8 + 4종목 32)이 요구하는 「주기(N주/개월 연속 M회)」·
+  // 「시간대별 각 N회」·「서로 다른 요일 수」·「서로 다른 달 개수(각각 임계값)」를 표현한다.
+  // `missions/checker.ts`가 `MissionCondition`을 `BadgeCondition`으로 캐스팅해 넘기는
+  // 기존 통로(티켓 20260813_001)를 그대로 쓴다 — badges에는 아직 쓰이는 계열이 없다.
+
+  if (condition.period_streak !== undefined) {
+    const p = condition.period_streak
+    if (
+      typeof p !== 'object' ||
+      p === null ||
+      (p.unit !== 'week' && p.unit !== 'month') ||
+      !Number.isFinite(p.length) ||
+      p.length < 1 ||
+      !Number.isFinite(p.min_count) ||
+      p.min_count < 1
+    ) {
+      return { pass: false, reason: '주기 조건 형태 오류', actual: JSON.stringify(p), required: '{unit, length, min_count}' }
+    }
+    if (p.subset_day_of_week !== undefined && p.subset_time_range !== undefined) {
+      return { pass: false, reason: '주기 조건 형태 오류', actual: '요일·시간대 동시 지정', required: '부분집합 필터는 하나만(subset_day_of_week 또는 subset_time_range)' }
+    }
+    if ((p.subset_day_of_week !== undefined || p.subset_time_range !== undefined) && p.subset_min_count === undefined) {
+      return { pass: false, reason: '주기 조건 짝 필드 없음', actual: 'subset_min_count 없음', required: '부분집합 최소 활동 수(subset_min_count)' }
+    }
+    const subsetPredicate = p.subset_day_of_week
+      ? (a: NormalizedActivity) => matchesDayOfWeekFilter(a, p.subset_day_of_week!)
+      : p.subset_time_range
+        ? (a: NormalizedActivity) => inTimeRange(a, p.subset_time_range!)
+        : undefined
+    const streak = calcMaxPeriodStreak(filtered, {
+      unit: p.unit,
+      minCount: p.min_count,
+      subsetPredicate,
+      subsetMinCount: p.subset_min_count,
+    })
+    const unitLabel = p.unit === 'week' ? '주' : '개월'
+    if (streak < p.length) {
+      return { pass: false, reason: '주기 연속 부족', actual: `${streak}${unitLabel}`, required: `${p.length}${unitLabel}` }
+    }
+    actualParts.push(`주기연속: ${streak}${unitLabel}`)
+    requiredParts.push(`주기연속: ${p.length}${unitLabel}`)
+  }
+
+  if (condition.time_bands_requirement !== undefined) {
+    const t = condition.time_bands_requirement
+    if (!t || !Array.isArray(t.bands) || t.bands.length < 2 || !Number.isFinite(t.min_count) || t.min_count < 1) {
+      return { pass: false, reason: '시간대별 조건 형태 오류', actual: JSON.stringify(t), required: '{bands: [{start,end}, ...], min_count}' }
+    }
+    const bandPool = condition.activity_type === 'walking' ? dedupeOnePerDay(filtered) : filtered
+    const bandCounts = countsByTimeBand(bandPool, t.bands)
+    const bandFailing = bandCounts.some((c) => c < t.min_count)
+    const bandSummary = bandCounts.map((c, i) => `${t.bands[i].start}~${t.bands[i].end}: ${c}회`).join(', ')
+    if (bandFailing) {
+      return { pass: false, reason: '시간대별 활동 횟수 부족', actual: bandSummary, required: `시간대별 각 ${t.min_count}회` }
+    }
+    actualParts.push(bandSummary)
+    requiredParts.push(`시간대별 각 ${t.min_count}회`)
+  }
+
+  if (condition.distinct_days_of_week_count !== undefined) {
+    const distinctDays = countDistinctDaysOfWeek(filtered)
+    if (distinctDays < condition.distinct_days_of_week_count) {
+      return { pass: false, reason: '서로 다른 요일 수 부족', actual: `${distinctDays}개`, required: `${condition.distinct_days_of_week_count}개` }
+    }
+    actualParts.push(`서로다른요일: ${distinctDays}개`)
+    requiredParts.push(`서로다른요일: ${condition.distinct_days_of_week_count}개`)
+  }
+
+  if (condition.distinct_months_threshold !== undefined) {
+    const dm = condition.distinct_months_threshold
+    if (
+      !dm ||
+      (dm.metric !== 'distance_km' && dm.metric !== 'elevation_gain_m') ||
+      !Number.isFinite(dm.value) ||
+      !Number.isFinite(dm.count) ||
+      dm.count < 1
+    ) {
+      return { pass: false, reason: '서로 다른 달 조건 형태 오류', actual: JSON.stringify(dm), required: '{metric, value, count}' }
+    }
+    const monthsHit = countDistinctMonthsMeetingThreshold(filtered, dm.metric, dm.value)
+    const dmUnit = dm.metric === 'distance_km' ? 'km' : 'm'
+    if (monthsHit < dm.count) {
+      return { pass: false, reason: '서로 다른 달 개수 부족', actual: `${monthsHit}개`, required: `${dm.count}개(각 ${dm.value}${dmUnit})` }
+    }
+    actualParts.push(`서로다른달: ${monthsHit}개`)
+    requiredParts.push(`서로다른달: ${dm.count}개(각 ${dm.value}${dmUnit})`)
   }
 
   // ── personal_record_break — 개인 기록 갱신 횟수 (티켓 20260906_2055)

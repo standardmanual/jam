@@ -208,7 +208,7 @@ Step 8. initial_sync_done 갱신
 
 | 값 | 뜻 | fail-closed |
 |---|---|---|
-| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (38종) | 통과 |
+| `engine` | `evaluateConditionDetailed`가 직접 수치·필터 검사 (42종 — 미션 게이트 확장 4종 포함, 티켓 20260906_2231) | 통과 |
 | `external` | **`evaluateConditionDetailed` 밖**에서 처리 — `poi_id`(체크인 파이프라인) · `mission_reward`(미션 보상 경로) · `prerequisite_badge_names`와 교차 게이트 3종(엔진 안의 후보 선별 단계 `evaluateBadgeGates()`) (6종) | 통과 |
 | `pending` | 아직 아무도 평가하지 않는다 — `daily_once_count`·`negative_split`·`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`month_over_month_ratio`·`vs_personal_average` + `route` (8종) | **막힘** |
 
@@ -467,14 +467,23 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 무한레벨형(누적) 계열 자신의 Lv.5+/Lv.8+ 자체 게이트는 이번 매핑 범위 밖 — 별도
 > 콘텐츠 작업으로 남았다.
 >
-> ⚠️ **미션 40종(걷기 8 + 4종목 32) 자체가 `missions` 테이블에 아직 없다** — 티켓
-> `20260906_2231`(OPEN)로 분리. `gate_axis` 등 3개 컬럼을 채우기 이전에, v5 설계 문서
-> (`v5_mission_badges.json`)가 요구하는 미션 완료 조건(예: 「3주 연속 주 3회」·「서로 다른
-> 5개 요일」·「N주 안에 M회」) 대부분이 **현재 `missions.mission_type`/`MissionCondition`
-> 어휘로 표현할 수 없다** — 배지엔진 수준의 조건 표현력(반복 횟수·요일 분산·시간대 분산
-> 등)이 미션 엔진에는 없다. 그 결과 **`gate_mission_badge` 요구가 걸린 Mystic은 미션이
-> 없어 그 보상 배지를 얻을 방법이 없으므로 `2231` 완료 전까지 사실상 계속 막혀 있다**
-> (fail-closed 방향이라 잘못 열리지는 않는다).
+> **미션 40종(걷기 8 + 4종목 32) 조건 어휘 확장 + 시딩 SQL 작성 — 티켓 `20260906_2231`
+> (게이트 리뷰 대기), 2026-09-06.** `missions.mission_type`에 일반 위임 타입
+> `engine_condition`을 추가해 `condition_json` 필드 조합 전체를 `evaluateConditionDetailed`에
+> 넘기게 했고, 배지엔진에 「주기(N주/개월 연속 M회, 선택적 부분집합)」·「시간대별 각 N회」·
+> 「서로 다른 요일 수」·「서로 다른 달 개수(각각 임계값)」 4종 신규 조건 필드(`period_streak`·
+> `time_bands_requirement`·`distinct_days_of_week_count`·`distinct_months_threshold`,
+> 마이그레이션 142)를 추가했다. 실측 결과 40건 중 32건(반복·휴식-회차·단일활동+반복 조합
+> 포함)은 **기존 어휘만으로 근사 없이 이미 표현 가능**했고, 새 어휘가 필요했던 것은 위 4종
+> 뿐이었다 — `1947`의 "32/40 표현 불가능" 판정은 단일 필드만 위임하던 좁은 통로 기준이었다.
+> 시딩 SQL(`seed_v5_gate_missions.sql`, 미실행)의 `visibility_rule_json`은 `1947`이 이미
+> 배포한 `gate_mission_badge` 참조에서 그대로 역추출했다. **5건은 콘텐츠 격차로
+> `hide_when_owned`이 비어 있다**(무한레벨 누적 축 1건 + Mystic이 아직 없는 축 4건) —
+> `checkGateMissionConsistency()` 시뮬레이션은 이 5건을 `warn`으로만 잡고 `error`는 0건이다.
+> `gateMissions.ts`의 `axis_stage_gap`이 v5 설계상 미션이 필요 없는 `rare_to_epic` 단계를
+> 항상 구멍으로 오탐하던 버그도 이 티켓에서 함께 고쳤다. **SQL은 작성만 했고 실행은 사용자
+> 승인 후 오케스트레이터가 처리한다** — 실행 전까지 `gate_mission_badge` 요구가 걸린 Mystic은
+> 여전히 사실상 막혀 있다(fail-closed 방향, 회귀 아님).
 >
 > 폐기된 v4 방식 기록 (티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
 

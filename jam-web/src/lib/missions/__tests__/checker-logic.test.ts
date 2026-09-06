@@ -11,7 +11,7 @@
  * 실행: `npx tsx src/lib/missions/__tests__/checker-logic.test.ts` (테스트 러너 불필요 — node assert 사용)
  */
 import assert from 'node:assert'
-import { evaluateMission, getTarget, isMissionActive, activeMissionsQueryFilter, type OwnershipContext } from '../checker'
+import { evaluateMission, getTarget, isMissionActive, activeMissionsQueryFilter, MISSION_PROGRESS_UNIT, type OwnershipContext } from '../checker'
 import { evaluateConditionDetailed } from '@/lib/badge-engine'
 import { MISSION_CONDITION_VALUE_RULE } from '../condition-keys'
 import type { MissionRow, MissionCondition, MissionType, BadgeCondition } from '@/types/database'
@@ -193,6 +193,65 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(engineResult.pass, true)
   }],
 
+  // ── engine_condition — 게이트 미션 40종의 일반 위임 통로 (티켓 20260906_2231) ──
+  ['engine_condition: getTarget은 항상 1(달성형)', () => {
+    assert.strictEqual(getTarget('engine_condition', {}), 1)
+  }],
+  ['engine_condition: 단일 활동 최소값 + repeat_count 조합(러닝 R-Q2 형태) — 달성', () => {
+    // "4주 안에 한 번에 10km 이상, 5:30/km보다 빠르게 / 3회" — 근사 없이 기존 어휘
+    // (single_distance_km · max_pace_sec_per_km · repeat_count)를 그대로 조합한다.
+    const fast10km = () => makeActivity({ jamActivityType: 'running', distanceKm: 10, averageSpeedKmh: 12 }) // 5:00/km
+    const acts = [fast10km(), fast10km(), fast10km()]
+    const condition: MissionCondition = {
+      activity_type: 'running',
+      single_distance_km: 10,
+      max_pace_sec_per_km: 330,
+      repeat_count: 3,
+    } as MissionCondition
+    const r = evaluateMission(mission('engine_condition', condition), acts, emptyOwnership, true)
+    assert.strictEqual(r.target, 1)
+    assert.strictEqual(r.progressValue, 1)
+    assert.strictEqual(r.achieved, true)
+  }],
+  ['engine_condition: 회차 미달이면 미달성 — 근사(누적으로 뭉개기)였다면 통과했을 케이스', () => {
+    // 10km 이상 3회가 아니라 "합쳐서 10km 이상"으로 근사했다면 이 케이스도 통과해버린다.
+    const acts = [
+      makeActivity({ jamActivityType: 'running', distanceKm: 10, averageSpeedKmh: 12 }),
+      makeActivity({ jamActivityType: 'running', distanceKm: 10, averageSpeedKmh: 12 }),
+      // 3번째 활동은 페이스 미달(5:30/km보다 느림) — 회차로 인정되지 않는다
+      makeActivity({ jamActivityType: 'running', distanceKm: 10, averageSpeedKmh: 8 }),
+    ]
+    const condition: MissionCondition = {
+      activity_type: 'running',
+      single_distance_km: 10,
+      max_pace_sec_per_km: 330,
+      repeat_count: 3,
+    } as MissionCondition
+    const r = evaluateMission(mission('engine_condition', condition), acts, emptyOwnership, true)
+    assert.strictEqual(r.achieved, false)
+  }],
+  ['engine_condition: period_streak(주기) 조합 — 자전거 Q5 "3주 연속 주 3회, 매주 주말 1회" 형태', () => {
+    const ride = (dateLocal: string) => makeActivity({
+      jamActivityType: 'cycling',
+      startDate: `${dateLocal}T09:00:00Z`,
+      startDateLocal: `${dateLocal}T09:00:00`,
+    })
+    const acts = [
+      ride('2026-06-01'), ride('2026-06-02'), ride('2026-06-06'), // 1주차 3회(토 포함)
+      ride('2026-06-08'), ride('2026-06-09'), ride('2026-06-13'), // 2주차 3회(토 포함)
+      ride('2026-06-15'), ride('2026-06-16'), ride('2026-06-20'), // 3주차 3회(토 포함)
+    ]
+    const condition: MissionCondition = {
+      activity_type: 'cycling',
+      period_streak: { unit: 'week', length: 3, min_count: 3, subset_day_of_week: ['saturday', 'sunday'], subset_min_count: 1 },
+    } as MissionCondition
+    const r = evaluateMission(mission('engine_condition', condition), acts, emptyOwnership, true)
+    assert.strictEqual(r.achieved, true)
+  }],
+  ['engine_condition: MISSION_PROGRESS_UNIT이 빈 문자열이라 마일스톤 소식 대상에서 빠진다', () => {
+    assert.strictEqual(MISSION_PROGRESS_UNIT.engine_condition, '')
+  }],
+
   // ── 값 검증 필수 키 ↔ getTarget/calculateProgress 실측 일치 (티켓 20260905_1327) ──
   // `condition-keys.ts`의 `MISSION_CONDITION_VALUE_RULE`이 하드코딩한 "타입별 필수 키" 목록이
   // 실제 판정 로직(getTarget/calculateProgress, 여기선 evaluateMission을 경유)이 읽는 키와
@@ -200,6 +259,10 @@ const cases: Array<[string, () => void]> = [
   // 정보)을 런타임 실측으로 메운다.
   ['값 검증 필수 키(수치 타입) — getTarget이 그 키를 읽는지 실측', () => {
     for (const [missionType, rule] of Object.entries(MISSION_CONDITION_VALUE_RULE) as [MissionType, typeof MISSION_CONDITION_VALUE_RULE[MissionType]][]) {
+      // 티켓 20260906_2231 — MISSION_CONDITION_VALUE_RULE이 Partial이 되어(engine_condition은
+      // 단일 필드 규칙이 없다) Object.entries 결과 타입에 undefined가 섞인다. 실제로는 항상
+      // 정의된 엔트리만 순회되지만(Object.entries는 실존 키만 돈다) 타입 가드로 명시한다.
+      if (!rule) continue
       if (rule.kind !== 'positive_number') continue
       const withoutKey = {} as MissionCondition
       assert.strictEqual(
@@ -217,6 +280,7 @@ const cases: Array<[string, () => void]> = [
   }],
   ['값 검증 필수 키(UUID 타입) — calculateProgress(evaluateMission 경유)가 그 키를 읽는지 실측', () => {
     for (const [missionType, rule] of Object.entries(MISSION_CONDITION_VALUE_RULE) as [MissionType, typeof MISSION_CONDITION_VALUE_RULE[MissionType]][]) {
+      if (!rule) continue
       if (rule.kind !== 'uuid') continue
       // item_collect/checkin은 getTarget이 항상 1이라 그걸로는 키를 구분 못 한다 —
       // calculateProgress가 실제로 이 키를 읽는지는 progressValue로 확인해야 한다.
