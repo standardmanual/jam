@@ -1,4 +1,5 @@
 {
+  "regions": ["icn1"],
   "ignoreCommand": "bash \"$(git rev-parse --show-toplevel)/jam-web/scripts/vercel-ignore.sh\"",
   "crons": [
     {
