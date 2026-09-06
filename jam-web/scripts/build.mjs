@@ -19,7 +19,7 @@
  * 티켓: Service Plan/Tickets/20260827_020_Infra_*.md
  */
 import { spawnSync } from 'node:child_process';
-import { rmSync, cpSync } from 'node:fs';
+import { rmSync, cpSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -27,7 +27,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const includeStorybook = process.env.VERCEL_GIT_COMMIT_REF !== 'main';
 
 /** 자식 프로세스를 순차 실행하고, 실패하면 그 종료 코드로 빌드를 중단한다. */
-function run(command, args) {
+function run(command, args, extraEnv = {}) {
   console.log(`\n[build] $ ${command} ${args.join(' ')}`);
   const result = spawnSync(command, args, {
     cwd: projectRoot,
@@ -37,6 +37,7 @@ function run(command, args) {
     // (npm run 경유일 때는 npm이 이미 넣어주지만, 그때도 중복이라 무해하다).
     env: {
       ...process.env,
+      ...extraEnv,
       PATH: `${path.join(projectRoot, 'node_modules', '.bin')}${path.delimiter}${process.env.PATH ?? ''}`,
     },
   });
@@ -66,11 +67,29 @@ rmSync(storybookStaticDir, { recursive: true, force: true });
 rmSync(publicStorybookDir, { recursive: true, force: true });
 
 if (includeStorybook) {
-  run('storybook', ['build']);
+  // JAM_STORYBOOK_DEPLOY=1 → .storybook/main.ts가 staticDirs에서 `../public`을 뺀다.
+  // 배포 산출물에 배지·아이템북 이미지 133MB가 두 번 실리는 것을 막는다(사유는 main.ts 주석).
+  run('storybook', ['build'], { JAM_STORYBOOK_DEPLOY: '1' });
   cpSync(storybookStaticDir, publicStorybookDir, { recursive: true });
   console.log('[build] storybook-static → public/storybook 복사 완료');
 }
 
 run('next', ['build']);
+
+// Vercel의 "Ignored Build Step"(scripts/vercel-ignore.sh)이 다음 배포에서 읽을 마커.
+// **직전에 실제로 빌드한 커밋**을 남겨, 그 뒤로 jam-web/ 변경이 없으면(= 문서 전용
+// 커밋만 쌓였으면) 다음 빌드를 통째로 건너뛰게 한다. HEAD^ 비교와 달리 건너뛴 구간이
+// 누적되므로, 한 push에 코드와 문서 커밋이 섞여도 코드 변경을 놓치지 않는다.
+//
+// .next/cache에 두는 이유: Vercel이 이 디렉토리를 빌드 캐시로 보존하고, 다음 배포에서
+// ignoreCommand 실행 **직전에** 복원한다. next build는 .next를 비우면서도 cache는
+// 남기지만, 순서에 기대지 않도록 빌드가 끝난 뒤에 쓴다.
+const commitSha = process.env.VERCEL_GIT_COMMIT_SHA;
+if (commitSha) {
+  const cacheDir = path.join(projectRoot, '.next', 'cache');
+  mkdirSync(cacheDir, { recursive: true });
+  writeFileSync(path.join(cacheDir, 'jam-last-built-sha'), commitSha, 'utf8');
+  console.log(`[build] 빌드 커밋 마커 기록: ${commitSha}`);
+}
 
 console.log('[build] 완료');
