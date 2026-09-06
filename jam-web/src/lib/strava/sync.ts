@@ -175,8 +175,9 @@ export interface EarnedBadgePayload {
   /**
    * 유저가 지금까지 소유한 배지(`user_activity_badges` 전체 행)가 이번에 되읽은 배지들뿐인지 —
    * GA4 first_badge_earned 판정용 (20260903_1034). badgeIds가 비어 있으면 false.
-   * `user_activity_badges`는 배지 종류(활동/아이템/POI/미션·컬렉션 보상) 무관하게 소유권을
-   * 기록하는 단일 테이블이라, 이 카운트 비교만으로 "정말 처음 받은 배지인지"를 판정할 수 있다.
+   * `user_activity_badges`는 checkin 타입을 제외한 나머지 배지 종류(활동/아이템/POI/
+   * 미션·컬렉션 보상)의 소유권을 기록하는 테이블이다 — checkin 타입은 반복 획득을 위해
+   * `user_checkin_badge_earns`에 별도로 적재된다(682행 참조).
    */
   isFirstBadgeEver: boolean
 }
