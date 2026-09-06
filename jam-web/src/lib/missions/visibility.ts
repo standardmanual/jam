@@ -122,6 +122,15 @@ export interface MissionVisibilityContext {
    */
   ownedFamilyTiers: ReadonlyMap<string, number>
   /**
+   * 유저가 보유한 **계열**별 최고 레벨(무한레벨형 전용) — `ownedFamilyTiers`의 레벨형
+   * 상당물이다(티켓 20260906_1947 ②-b). 등급형만 보유한 계열은 키가 없다.
+   *
+   * 이게 없으면 `min_level`이 걸린 `require_owned`/`hide_when_owned`가 `minRarityTier===0`
+   * 분기(「그 계열을 하나라도 보유」)로 떨어져 Lv.1로 자동 통과한다 — crossGate.ts의
+   * 발급 판정을 고쳐도 미션 노출 판정은 여전히 새는 것을 막기 위해 같이 둔다.
+   */
+  ownedFamilyLevels: ReadonlyMap<string, number>
+  /**
    * 유저가 참가한 적 있는 미션 id (user_mission_participations 기준).
    * `hidden` 판정을 `locked`로 완화하는 데만 쓴다 — open/completed/locked 우선순위는
    * 그대로 유지한다(티켓 20260825_029).
@@ -155,9 +164,16 @@ const HIDDEN: MissionVisibilityResult = { visibility: 'hidden', requiredBadge: n
 function countSatisfiedFamilies(
   req: NormalizedGateRequirement,
   ownedFamilyTiers: ReadonlyMap<string, number>,
+  ownedFamilyLevels: ReadonlyMap<string, number>,
 ): number {
   let matched = 0
   for (const familyKey of req.familyKeys) {
+    // min_level — 레벨형(무한레벨) 계열용 최소 레벨 요구(티켓 20260906_1947 ②-b).
+    // min_rarity와 동시에 지정될 수 없으므로(normalizeGateRequirement) 분기가 겹치지 않는다.
+    if (req.minLevel != null) {
+      if ((ownedFamilyLevels.get(familyKey) ?? 0) >= req.minLevel) matched += 1
+      continue
+    }
     if (req.minRarityTier === 0) {
       if (ownedFamilyTiers.has(familyKey)) matched += 1
       continue
@@ -170,8 +186,9 @@ function countSatisfiedFamilies(
 function satisfiesRequirement(
   req: NormalizedGateRequirement,
   ownedFamilyTiers: ReadonlyMap<string, number>,
+  ownedFamilyLevels: ReadonlyMap<string, number>,
 ): boolean {
-  return countSatisfiedFamilies(req, ownedFamilyTiers) >= req.minCount
+  return countSatisfiedFamilies(req, ownedFamilyTiers, ownedFamilyLevels) >= req.minCount
 }
 
 /**
@@ -223,12 +240,12 @@ function resolveGateMissionVisibility(
   }
 
   const hideWhenOwned = requirements.find((r) => r.key === 'hide_when_owned')?.value
-  if (hideWhenOwned && satisfiesRequirement(hideWhenOwned, ctx.ownedFamilyTiers)) {
+  if (hideWhenOwned && satisfiesRequirement(hideWhenOwned, ctx.ownedFamilyTiers, ctx.ownedFamilyLevels)) {
     return softenHidden(mission, ctx, HIDDEN)
   }
 
   const requireOwned = requirements.find((r) => r.key === 'require_owned')?.value
-  if (requireOwned && !satisfiesRequirement(requireOwned, ctx.ownedFamilyTiers)) {
+  if (requireOwned && !satisfiesRequirement(requireOwned, ctx.ownedFamilyTiers, ctx.ownedFamilyLevels)) {
     return rule.unmet_visibility === 'hidden' ? softenHidden(mission, ctx, HIDDEN) : LOCKED
   }
 

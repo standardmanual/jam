@@ -449,10 +449,12 @@ export function passesWalkingGate(a: NormalizedActivity): boolean
 > 판정은 `resolveMissionVisibility()`(`lib/missions/visibility.ts`)가 하며, 규칙 형태가
 > 깨지면 `OPEN`이 아니라 `locked`로 **fail-closed**한다.
 >
-> ⚠️ **2단 교차 게이트(`cross_in_axis`·`cross_between_axis`·`gate_mission_badge`)는
-> 아직 한 행도 시딩되지 않았다.** 지금 발급이 열리면 모든 Mystic이 무관문으로 나간다 —
-> 티켓 `20260906_0110`에서 분리된 후속 티켓 `20260906_1947`(OPEN, 축→계열 확장 매핑·시딩·
-> 판정 중복구현 통합)에서 다룬다.
+> **2단 교차 게이트(`cross_in_axis`·`cross_between_axis`·`gate_mission_badge`) 축→계열
+> 매핑·시딩** — 티켓 `20260906_1947`(`20260906_0110`에서 분리)이 완료했다. 상세는 §2.15.
+> ⚠️ **DB 반영은 마이그레이션 파일 작성까지다** — CLAUDE.md 규칙 5에 따라 98 Mystic +
+> 관련 Epic·게이트 미션 40건을 한 번에 바꾸는 대량 변경이라 실행은 사용자 승인 후
+> 오케스트레이터가 처리한다(`142_gate_cross_badges_v5.sql` · `143_gate_missions_v5.sql`).
+> 실행 전까지는 여전히 무관문 상태다.
 >
 > 폐기된 v4 방식 기록 (티켓 `Tickets/20260813_001_BadgeEngine_종목별-대표배지-레벨업-미션-게이팅-설계.md`):
 
@@ -744,7 +746,71 @@ supabase-js 쿼리 빌더에는 jsonb 포함 연산자를 조건절에 싣는 �
 - `family_keys` — 대상 **계열**(`badges.family_key`). 기본 결합은 OR
 - `min_rarity` — 생략하면 「그 계열의 배지를 하나라도 보유」. 지정하면 그 등급 이상의
   **등급이 있는** 배지여야 한다(무한레벨형 계열에는 지정하지 않는다 — 등급이 없어 영원히 막힌다)
+- `min_level` — `min_rarity`의 **무한레벨형 상당물**(2026-09-06, 티켓 20260906_1947 ②-b).
+  대상 계열이 등급형이 아니라 레벨형(`rarity IS NULL`)이면 이 필드를 대신 쓴다.
+  `min_rarity`와 동시에 지정할 수 없다(`normalizeGateRequirement`가 형태 오류로 막는다).
+  **왜 필요한가**: `min_rarity`도 `min_level`도 없으면 「그 계열을 하나라도 보유」인데,
+  레벨형은 Lv.1이 **가입 첫 주에 누구나 달성**돼 사실상 자동 통과였다(티켓 20260906_0110
+  잔여 이슈). `missions.visibility_rule_json`(§2.11)의 `require_owned`/`hide_when_owned`도
+  **같은 타입·같은 검증 함수**를 쓰므로 `ownedFamilyLevels`(`visibility-server.ts`)를 함께
+  확장했다 — 배지 발급만 고치고 미션 노출 판정을 놓치면 「미션은 계속 보이는데 Mystic은
+  막힌」 반대 방향 불일치가 생긴다.
 - `min_count` — 생략하면 1. 2 이상이면 그만큼의 계열을 **AND**로 요구한다
+
+#### 축→계열 매핑 (2026-09-06, 티켓 20260906_1947)
+
+98 Mystic + 해당 Epic(그리고 무한레벨 「누적」 계열의 Lv.5~7/Lv.8+ 구간)의 게이트 조건은
+**손으로 쓰지 않고** 스크립트로 산출했다 — `Service Plan/Specs/Content/v5_gate_mapping_build.py`가
+설계 원본 3종(`v5_catalog_design.json`의 걷기.축간교차·걷기.축내교차짝·four종목.교차짝,
+`v5_catalog_verified.json`의 교차게이트_정정 7건, `v5_mission_badges.json`·
+`v5_mission_axis_groups.json`의 여는축)에서 family_key 단위 조건을 산출해
+`v5_gate_mapping.json`(정본)으로 남기고, `v5_gate_mapping_sql_build.py`가 그 JSON만 읽어
+마이그레이션 SQL(`142_gate_cross_badges_v5.sql`)을 만든다.
+
+**축 내 교차 페어를 원본이 특정하지 않은 경우** (예: 러닝 휴식 축의 R-X2, 러닝·자전거·등산
+달력 축의 3계열 조합) — 페어를 지어내면 "같은 활동으로 동시 달성되는 가짜 관문"을 만들 위험이
+있어(달력 축 자체가 이 위험으로 이미 한 번 정정됐다 — 아래 표), 그런 계열은 축 내 교차를
+비워두고 축 간 교차(2단 보완축)만 건다. 안전하지만 관문이 하나뿐이라 강도가 약간 낮다.
+
+무한레벨 「누적」 축이 보완 축으로 지정된 관계는 5종목 합쳐 13건이다(0110이 예고한 "11건"은
+개략치 — 스크립트가 관계 단위로 정밀히 세어 13건으로 확정했다). 전부 `min_level: 5`(Epic→
+Mystic 상당, 걷기 K1 사다리 원본의 "Lv.5~7=cross 관문 진입" 경계를 그대로 씀)를 받았다.
+
+**게이트 미션 40건**(걷기 8 + 4종목 32)은 `143_gate_missions_v5.sql`이 UPDATE-or-INSERT로
+채운다. `gate_axis`·`visibility_rule_json`은 `gate_mission_badge` 역참조로 기계 산출했지만,
+미션 **자체의 달성 조건**(`mission_type`+`condition_json`)은 `MissionCondition`이 "필드 하나 +
+activity_type" 단일값만 지원해(어드민 게이트 미션 폼도 같은 제약) 복합 조건(단일활동 임계값+
+반복 횟수, 페이스, 시간대, 다음 날 휴식, 서로 다른 두 달 등)을 표현할 수 없다 — 근접한 단일
+누적값으로 근사했다. **미션 조건 필드 확장은 이 티켓의 범위 밖이며 후속 과제로 남는다.**
+
+⚠️ **어드민 `/admin/gate-missions`의 커버리지 매트릭스(`buildGateMatrix`)에는 구조적
+사각지대가 있다.** `missions.gate_axis`는 단일 문자열이라 미션 하나가 여는 축이 2개
+(`v5_mission_axis_groups.json`의 «축마다 하나씩 두면 60개가 넘어 운영이 감당되지 않는다»는
+설계 의도)여도 `gate_axis`는 그중 하나(대표 축)만 담을 수 있다. `buildGateMatrix`는 "실제로
+쓰이고 있는 축"을 **missions.gate_axis 값에서만** 모으므로(축 목록을 DB·코드 어디에도
+고정하지 않는다는 설계, §2.15 위) 어떤 미션의 대표 축으로도 뽑히지 않은 축은 매트릭스에
+행 자체가 생기지 않아 `axis_stage_gap` 검사가 그 축을 보지 못한다. 이번 시딩에서 53개
+게이트 대상 축 중 13개(예: 자전거·트레일 「이정표」·「주기」·「최고 도달」·「연속」,
+러닝 「요일」·「이정표」, 등산 「이정표」·「주기」·「최고 도달」)가 이 사각지대에 든다.
+**기능은 정확하다** — 해당 축 계열의 `gate_mission_badge`는 실제 존재하는 미션을 가리키고,
+그 미션의 `visibility_rule_json`도 두 축의 계열을 합집합으로 담아 노출 판정이 맞게 동작한다.
+어긋나는 것은 **관측성**뿐이다: 운영자가 매트릭스만 보면 이 13개 축에 미션이 없는 것처럼
+보인다. 근본 수정(예: `gate_axis`를 배열로 바꾸거나 매트릭스가 `visibility_rule_json`까지
+훑게 하는 것)은 마이그레이션 135의 스키마 변경이 필요해 이 티켓 범위 밖이며 후속 과제다.
+
+실제로 데이터를 채워 보며 `checkGateMissionConsistency`(§2.11 `gateMissions.ts`) 자체의
+결함도 둘 찾았다 — 둘 다 이 티켓에서 함께 고쳤다:
+- **`axis_stage_gap`이 `rare_to_epic`도 항상 요구했다.** 마스터 티켓 §게이트 표는 Rare→Epic에
+  미션을 요구하지 않는데(축 내/축 간 교차만으로 충분), 검사는 두 단계 모두 미션이 있어야
+  통과였다 — 이 카탈로그의 게이트 미션 40건이 전부 Epic→Mystic 전용이라 실행하자마자 축
+  53개 전부가 `rare_to_epic` "구멍"으로 영구 오탐됐다(실측). `rare_to_epic`이 비어 있는 것은
+  더 이상 오류가 아니다(있는데 2개 이상인 중복만 계속 잡는다).
+- **레벨형+등급형이 섞인 `visibility_rule_json`에 등급 하한을 걸면 절반이 영원히 미충족이다.**
+  「누적+이정표」를 동시에 여는 미션 4건(러닝·자전거·등산·트레일)이 실제로 이 조합이다 —
+  `BadgeGateRequirement`는 `family_keys` 전체에 `min_rarity`/`min_level` 하나만 걸 수 있어
+  섞인 계열의 절반은 무엇을 걸어도 막힌다(실측: `level_requirement_on_graded_family` 36건).
+  이 4건은 하한 없이 "이 계열 중 하나라도 보유"로 완화했다 — 노출만 느슨해질 뿐 실제 발급
+  게이트(각 배지의 `cross_between_axis`)는 그대로 지킨다.
 
 **결합 규칙**: 교차 요구 둘(`cross_in_axis`·`cross_between_axis`)은 **서로 OR**,
 미션 게이트(`gate_mission_badge`)는 **AND**다. 축 내 교차가 성립하지 않는 축(9축 중 5축)은
@@ -780,6 +846,17 @@ supabase-js 쿼리 빌더에는 jsonb 포함 연산자를 조건절에 싣는 �
 
 ⚠️ DB CHECK 제약(마이그레이션 133)은 **키 이름만** 검사한다. 값이 깨진 게이트는 엔진이
 fail-closed로 막는다 — 「검사할 게 없으니 통과」로 두면 게이트가 조용히 사라진다.
+
+#### 판정 재구현 통합 (2026-09-06, 티켓 20260906_1947 ③)
+
+`badgeTree.ts`(배지 트리 화면)가 이 판정을 `earnedBadgeIds.has(id) && rarityTier(...) >=
+minRarityTier`로 **별도 재구현**하고 있었다 — `evaluateCrossGates()`가 `ownedDefs`(보유 배지
+정의 전량)를 요구해 화면이 조회를 늘리기 싫어한 것이 원인이었다(티켓 20260906_0110 발견).
+두 구현이 갈리면 "열려 보이는데 발급은 안 되는" 상태가 생기고, `min_level` 같은 확장을 한쪽만
+반영하면 그 틈이 더 벌어진다. `crossGate.ts`에 `familyMeetsGateRequirement()`(계열 하나가
+요구를 만족하는지)를 export해 `countSatisfiedFamilies`(엔진)·`familyLock`(화면) 양쪽이 같은
+함수를 부르게 했다 — 화면은 이미 들고 있는 `BadgeTreeSourceBadge[]`를 `earnedBadgeIds`로
+필터링해 `ownedDefs`를 만들 뿐, 추가 조회는 없다.
 
 ### 2.16 휴식 조건 — 활동이 «없는» 기간 (2026-09-05, 티켓 20260905_0030 B3)
 

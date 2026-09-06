@@ -56,6 +56,7 @@ function ctx(options?: {
     gatedBadges: options?.gatedBadges ?? ALL_GATED_BADGES,
     ownedTierByBadgeName: owned,
     ownedFamilyTiers: new Map<string, number>(),
+    ownedFamilyLevels: new Map<string, number>(),
     participatedMissionIds: new Set(options?.participated ?? []),
   }
 }

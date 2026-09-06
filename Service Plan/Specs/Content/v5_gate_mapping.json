@@ -1,0 +1,4018 @@
+{
+ "_meta": {
+  "무엇": "2단 교차 게이트 축→계열 확장 매핑 정본 — 티켓 20260906_1947 ①",
+  "생성": "v5_gate_mapping_build.py (기계적 추출, 손으로 쓰지 않음)",
+  "family_수": 135,
+  "min_level_적용_11건": [
+   {
+    "sport": "walking",
+    "caller_axis": "주기",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "주기",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "주기",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "주기",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "달력",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "달력",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "달력",
+    "target_axis": "누적",
+    "stage": "rare_to_epic",
+    "min_level_set": null
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "달력",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "달력",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "walking",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "running",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "rare_to_epic",
+    "min_level_set": null
+   },
+   {
+    "sport": "running",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "running",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "rare_to_epic",
+    "min_level_set": null
+   },
+   {
+    "sport": "running",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "running",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "cycling",
+    "caller_axis": "고도",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "cycling",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "cycling",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "hiking",
+    "caller_axis": "단일 최대",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "hiking",
+    "caller_axis": "단일 최대",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "hiking",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "hiking",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "trail_running",
+    "caller_axis": "고도",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "trail_running",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "trail_running",
+    "caller_axis": "휴식",
+    "target_axis": "누적",
+    "stage": "epic_to_mystic",
+    "min_level_set": 5
+   },
+   {
+    "sport": "trail_running",
+    "caller_axis": "달력",
+    "target_axis": "누적",
+    "stage": "rare_to_epic",
+    "min_level_set": null
+   },
+   {
+    "sport": "trail_running",
+    "caller_axis": "달력",
+    "target_axis": "누적",
+    "stage": "rare_to_epic",
+    "min_level_set": null
+   }
+  ],
+  "alerts": [
+   "[INFO] 무한레벨 축이 보완 축(교차짝)으로 지정된 사례 13건 (0110이 예고한 '11건'과 대조 — 관계 단위로 셌다). Epic→Mystic(min_level=5 적용) / Rare→Epic(보유만 요구, min_level 미적용 — 원설계가 이미 '보유'만 요구해 자동통과가 아님): cycling:고도→누적(epic_to_mystic), cycling:휴식→누적(epic_to_mystic), hiking:단일 최대→누적(epic_to_mystic), hiking:휴식→누적(epic_to_mystic), running:휴식→누적(epic_to_mystic), running:휴식→누적(rare_to_epic), trail_running:고도→누적(epic_to_mystic), trail_running:달력→누적(rare_to_epic), trail_running:휴식→누적(epic_to_mystic), walking:달력→누적(epic_to_mystic), walking:달력→누적(rare_to_epic), walking:주기→누적(epic_to_mystic), walking:휴식→누적(epic_to_mystic)"
+  ]
+ },
+ "families": {
+  "walking:K1": {
+   "sport": "walking",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:P1",
+      "walking:P2",
+      "walking:P3",
+      "walking:P4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:R1",
+      "walking:R2",
+      "walking:R3",
+      "walking:R4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M1"
+     ]
+    }
+   }
+  },
+  "walking:K3": {
+   "sport": "walking",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:P1",
+      "walking:P2",
+      "walking:P3",
+      "walking:P4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:R1",
+      "walking:R2",
+      "walking:R3",
+      "walking:R4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M1"
+     ]
+    }
+   }
+  },
+  "walking:C1": {
+   "sport": "walking",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:P1",
+      "walking:P2",
+      "walking:P3",
+      "walking:P4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:W1",
+      "walking:W2",
+      "walking:W3",
+      "walking:W4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M6"
+     ]
+    }
+   }
+  },
+  "walking:C2": {
+   "sport": "walking",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:P1",
+      "walking:P2",
+      "walking:P3",
+      "walking:P4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:W1",
+      "walking:W2",
+      "walking:W3",
+      "walking:W4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M6"
+     ]
+    }
+   }
+  },
+  "walking:C3": {
+   "sport": "walking",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:P1",
+      "walking:P2",
+      "walking:P3",
+      "walking:P4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:W1",
+      "walking:W2",
+      "walking:W3",
+      "walking:W4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M6"
+     ]
+    }
+   }
+  },
+  "walking:C4": {
+   "sport": "walking",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:P1",
+      "walking:P2",
+      "walking:P3",
+      "walking:P4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:W1",
+      "walking:W2",
+      "walking:W3",
+      "walking:W4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M6"
+     ]
+    }
+   }
+  },
+  "walking:C5": {
+   "sport": "walking",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:P1",
+      "walking:P2",
+      "walking:P3",
+      "walking:P4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:W1",
+      "walking:W2",
+      "walking:W3",
+      "walking:W4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M6"
+     ]
+    }
+   }
+  },
+  "walking:P1": {
+   "sport": "walking",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M2"
+     ]
+    }
+   }
+  },
+  "walking:P2": {
+   "sport": "walking",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M2"
+     ]
+    }
+   }
+  },
+  "walking:P3": {
+   "sport": "walking",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M2"
+     ]
+    }
+   }
+  },
+  "walking:P4": {
+   "sport": "walking",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M2"
+     ]
+    }
+   }
+  },
+  "walking:S1": {
+   "sport": "walking",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:R1",
+      "walking:R2",
+      "walking:R3",
+      "walking:R4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M5"
+     ]
+    }
+   }
+  },
+  "walking:S2": {
+   "sport": "walking",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:R1",
+      "walking:R2",
+      "walking:R3",
+      "walking:R4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M5"
+     ]
+    }
+   }
+  },
+  "walking:S3": {
+   "sport": "walking",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:R1",
+      "walking:R2",
+      "walking:R3",
+      "walking:R4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M5"
+     ]
+    }
+   }
+  },
+  "walking:D0": {
+   "sport": "walking",
+   "axis": "요일",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:D1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M4"
+     ]
+    }
+   }
+  },
+  "walking:D1": {
+   "sport": "walking",
+   "axis": "요일",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:D0"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M4"
+     ]
+    }
+   }
+  },
+  "walking:D2": {
+   "sport": "walking",
+   "axis": "요일",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:D0"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M4"
+     ]
+    }
+   }
+  },
+  "walking:D3": {
+   "sport": "walking",
+   "axis": "요일",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:D0"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:A1",
+      "walking:A10",
+      "walking:A2",
+      "walking:A3",
+      "walking:A4",
+      "walking:A5",
+      "walking:A6",
+      "walking:A8",
+      "walking:A9"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M4"
+     ]
+    }
+   }
+  },
+  "walking:A1": {
+   "sport": "walking",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:A10"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:S1",
+      "walking:S2",
+      "walking:S3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M3"
+     ]
+    }
+   }
+  },
+  "walking:A2": {
+   "sport": "walking",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:A10"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:S1",
+      "walking:S2",
+      "walking:S3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M3"
+     ]
+    }
+   }
+  },
+  "walking:A3": {
+   "sport": "walking",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:A6"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:S1",
+      "walking:S2",
+      "walking:S3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M3"
+     ]
+    }
+   }
+  },
+  "walking:A4": {
+   "sport": "walking",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:A6"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:S1",
+      "walking:S2",
+      "walking:S3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M3"
+     ]
+    }
+   }
+  },
+  "walking:A5": {
+   "sport": "walking",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:A1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:S1",
+      "walking:S2",
+      "walking:S3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M3"
+     ]
+    }
+   }
+  },
+  "walking:A6": {
+   "sport": "walking",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:A1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:S1",
+      "walking:S2",
+      "walking:S3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M3"
+     ]
+    }
+   }
+  },
+  "walking:A8": {
+   "sport": "walking",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:A9"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:S1",
+      "walking:S2",
+      "walking:S3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M3"
+     ]
+    }
+   }
+  },
+  "walking:A9": {
+   "sport": "walking",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:A10"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:S1",
+      "walking:S2",
+      "walking:S3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M3"
+     ]
+    }
+   }
+  },
+  "walking:A10": {
+   "sport": "walking",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:A9"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:S1",
+      "walking:S2",
+      "walking:S3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M3"
+     ]
+    }
+   }
+  },
+  "walking:W1": {
+   "sport": "walking",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:W2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M8"
+     ]
+    }
+   }
+  },
+  "walking:W2": {
+   "sport": "walking",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:W1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M8"
+     ]
+    }
+   }
+  },
+  "walking:W3": {
+   "sport": "walking",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M8"
+     ]
+    }
+   }
+  },
+  "walking:W4": {
+   "sport": "walking",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:W2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M8"
+     ]
+    }
+   }
+  },
+  "walking:R1": {
+   "sport": "walking",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:R4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M7"
+     ]
+    }
+   }
+  },
+  "walking:R2": {
+   "sport": "walking",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:R4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M7"
+     ]
+    }
+   }
+  },
+  "walking:R3": {
+   "sport": "walking",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:R4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M7"
+     ]
+    }
+   }
+  },
+  "walking:R4": {
+   "sport": "walking",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "walking:R2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "walking:K1",
+      "walking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "walking:M7"
+     ]
+    }
+   }
+  },
+  "running:K1": {
+   "sport": "running",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:C1",
+      "running:C2",
+      "running:C3",
+      "running:C4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q1"
+     ]
+    }
+   }
+  },
+  "running:K3": {
+   "sport": "running",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:C1",
+      "running:C2",
+      "running:C3",
+      "running:C4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q1"
+     ]
+    }
+   }
+  },
+  "running:P1": {
+   "sport": "running",
+   "axis": "강도",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:L1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:N1",
+      "running:N2",
+      "running:N3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q2"
+     ]
+    }
+   }
+  },
+  "running:L1": {
+   "sport": "running",
+   "axis": "단일 최대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:P1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:W1",
+      "running:W2",
+      "running:W3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q3"
+     ]
+    }
+   }
+  },
+  "running:C1": {
+   "sport": "running",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:T1",
+      "running:T2",
+      "running:T3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:L1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q4"
+     ]
+    }
+   }
+  },
+  "running:C2": {
+   "sport": "running",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:T1",
+      "running:T2",
+      "running:T3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:L1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q4"
+     ]
+    }
+   }
+  },
+  "running:C3": {
+   "sport": "running",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:T1",
+      "running:T2",
+      "running:T3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:L1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q4"
+     ]
+    }
+   }
+  },
+  "running:C4": {
+   "sport": "running",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:T1",
+      "running:T2",
+      "running:T3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:L1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q4"
+     ]
+    }
+   }
+  },
+  "running:T1": {
+   "sport": "running",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:M1",
+      "running:M2",
+      "running:M3",
+      "running:M4",
+      "running:M5"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:M1",
+      "running:M2",
+      "running:M3",
+      "running:M4",
+      "running:M5"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q5"
+     ]
+    }
+   }
+  },
+  "running:T2": {
+   "sport": "running",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:M1",
+      "running:M2",
+      "running:M3",
+      "running:M4",
+      "running:M5"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:M1",
+      "running:M2",
+      "running:M3",
+      "running:M4",
+      "running:M5"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q5"
+     ]
+    }
+   }
+  },
+  "running:T3": {
+   "sport": "running",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:C1",
+      "running:C2",
+      "running:C3",
+      "running:C4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:M1",
+      "running:M2",
+      "running:M3",
+      "running:M4",
+      "running:M5"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q5"
+     ]
+    }
+   }
+  },
+  "running:D1": {
+   "sport": "running",
+   "axis": "요일",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "running:D2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:C1",
+      "running:C2",
+      "running:C3",
+      "running:C4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q5"
+     ]
+    }
+   }
+  },
+  "running:D2": {
+   "sport": "running",
+   "axis": "요일",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "running:D1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:C1",
+      "running:C2",
+      "running:C3",
+      "running:C4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q5"
+     ]
+    }
+   }
+  },
+  "running:N1": {
+   "sport": "running",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:D1",
+      "running:D2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q6"
+     ]
+    }
+   }
+  },
+  "running:N2": {
+   "sport": "running",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:D1",
+      "running:D2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q6"
+     ]
+    }
+   }
+  },
+  "running:N3": {
+   "sport": "running",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:D1",
+      "running:D2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q6"
+     ]
+    }
+   }
+  },
+  "running:M1": {
+   "sport": "running",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:W1",
+      "running:W2",
+      "running:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q1"
+     ]
+    }
+   }
+  },
+  "running:M2": {
+   "sport": "running",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:W1",
+      "running:W2",
+      "running:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q1"
+     ]
+    }
+   }
+  },
+  "running:M3": {
+   "sport": "running",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:W1",
+      "running:W2",
+      "running:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q1"
+     ]
+    }
+   }
+  },
+  "running:M4": {
+   "sport": "running",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:W1",
+      "running:W2",
+      "running:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q1"
+     ]
+    }
+   }
+  },
+  "running:M5": {
+   "sport": "running",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:W1",
+      "running:W2",
+      "running:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:X1",
+      "running:X2",
+      "running:X3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q1"
+     ]
+    }
+   }
+  },
+  "running:X1": {
+   "sport": "running",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:K1",
+      "running:K3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:K1",
+      "running:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q7"
+     ]
+    }
+   }
+  },
+  "running:X2": {
+   "sport": "running",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:K1",
+      "running:K3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:K1",
+      "running:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q7"
+     ]
+    }
+   }
+  },
+  "running:X3": {
+   "sport": "running",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "running:X1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:K1",
+      "running:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q7"
+     ]
+    }
+   }
+  },
+  "running:W1": {
+   "sport": "running",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:P1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q8"
+     ]
+    }
+   }
+  },
+  "running:W2": {
+   "sport": "running",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:P1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q8"
+     ]
+    }
+   }
+  },
+  "running:W3": {
+   "sport": "running",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:P1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "running:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "running:Q8"
+     ]
+    }
+   }
+  },
+  "cycling:K1": {
+   "sport": "cycling",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:C1",
+      "cycling:C2",
+      "cycling:C3",
+      "cycling:C4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:X1",
+      "cycling:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q1"
+     ]
+    }
+   }
+  },
+  "cycling:K2": {
+   "sport": "cycling",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:C1",
+      "cycling:C2",
+      "cycling:C3",
+      "cycling:C4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:X1",
+      "cycling:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q1"
+     ]
+    }
+   }
+  },
+  "cycling:K3": {
+   "sport": "cycling",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:C1",
+      "cycling:C2",
+      "cycling:C3",
+      "cycling:C4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:X1",
+      "cycling:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q1"
+     ]
+    }
+   }
+  },
+  "cycling:P1": {
+   "sport": "cycling",
+   "axis": "강도",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:L1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:N1",
+      "cycling:N2",
+      "cycling:N3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q2"
+     ]
+    }
+   }
+  },
+  "cycling:V1": {
+   "sport": "cycling",
+   "axis": "최고 도달",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:E1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:G1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q2"
+     ]
+    }
+   }
+  },
+  "cycling:L1": {
+   "sport": "cycling",
+   "axis": "단일 최대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:P1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:W1",
+      "cycling:W2",
+      "cycling:W3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q3"
+     ]
+    }
+   }
+  },
+  "cycling:E1": {
+   "sport": "cycling",
+   "axis": "고도",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:V1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:K1",
+      "cycling:K2",
+      "cycling:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q4"
+     ]
+    }
+   }
+  },
+  "cycling:C1": {
+   "sport": "cycling",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:D1",
+      "cycling:D2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:L1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q5"
+     ]
+    }
+   }
+  },
+  "cycling:C2": {
+   "sport": "cycling",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:D1",
+      "cycling:D2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:L1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q5"
+     ]
+    }
+   }
+  },
+  "cycling:C3": {
+   "sport": "cycling",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:D1",
+      "cycling:D2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:L1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q5"
+     ]
+    }
+   }
+  },
+  "cycling:C4": {
+   "sport": "cycling",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:D1",
+      "cycling:D2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:L1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q5"
+     ]
+    }
+   }
+  },
+  "cycling:D1": {
+   "sport": "cycling",
+   "axis": "요일",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "cycling:D2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:C1",
+      "cycling:C2",
+      "cycling:C3",
+      "cycling:C4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q5"
+     ]
+    }
+   }
+  },
+  "cycling:D2": {
+   "sport": "cycling",
+   "axis": "요일",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "cycling:D1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:C1",
+      "cycling:C2",
+      "cycling:C3",
+      "cycling:C4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q5"
+     ]
+    }
+   }
+  },
+  "cycling:N1": {
+   "sport": "cycling",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:G1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:X1",
+      "cycling:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q6"
+     ]
+    }
+   }
+  },
+  "cycling:N2": {
+   "sport": "cycling",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:G1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:X1",
+      "cycling:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q6"
+     ]
+    }
+   }
+  },
+  "cycling:N3": {
+   "sport": "cycling",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:G1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:X1",
+      "cycling:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q6"
+     ]
+    }
+   }
+  },
+  "cycling:G1": {
+   "sport": "cycling",
+   "axis": "간격",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:N1",
+      "cycling:N2",
+      "cycling:N3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:E1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q6"
+     ]
+    }
+   }
+  },
+  "cycling:M1": {
+   "sport": "cycling",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:W1",
+      "cycling:W2",
+      "cycling:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q1"
+     ]
+    }
+   }
+  },
+  "cycling:M2": {
+   "sport": "cycling",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:W1",
+      "cycling:W2",
+      "cycling:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q1"
+     ]
+    }
+   }
+  },
+  "cycling:M3": {
+   "sport": "cycling",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:W1",
+      "cycling:W2",
+      "cycling:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q1"
+     ]
+    }
+   }
+  },
+  "cycling:M4": {
+   "sport": "cycling",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:W1",
+      "cycling:W2",
+      "cycling:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q1"
+     ]
+    }
+   }
+  },
+  "cycling:M5": {
+   "sport": "cycling",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:W1",
+      "cycling:W2",
+      "cycling:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q1"
+     ]
+    }
+   }
+  },
+  "cycling:X1": {
+   "sport": "cycling",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "cycling:X2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:K1",
+      "cycling:K2",
+      "cycling:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q7"
+     ]
+    }
+   }
+  },
+  "cycling:X2": {
+   "sport": "cycling",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "cycling:X1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:K1",
+      "cycling:K2",
+      "cycling:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q7"
+     ]
+    }
+   }
+  },
+  "cycling:W1": {
+   "sport": "cycling",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:M1",
+      "cycling:M2",
+      "cycling:M3",
+      "cycling:M4",
+      "cycling:M5"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:M1",
+      "cycling:M2",
+      "cycling:M3",
+      "cycling:M4",
+      "cycling:M5"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q8"
+     ]
+    }
+   }
+  },
+  "cycling:W2": {
+   "sport": "cycling",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:M1",
+      "cycling:M2",
+      "cycling:M3",
+      "cycling:M4",
+      "cycling:M5"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:M1",
+      "cycling:M2",
+      "cycling:M3",
+      "cycling:M4",
+      "cycling:M5"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q8"
+     ]
+    }
+   }
+  },
+  "cycling:W3": {
+   "sport": "cycling",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:M1",
+      "cycling:M2",
+      "cycling:M3",
+      "cycling:M4",
+      "cycling:M5"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "cycling:M1",
+      "cycling:M2",
+      "cycling:M3",
+      "cycling:M4",
+      "cycling:M5"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "cycling:Q8"
+     ]
+    }
+   }
+  },
+  "hiking:K1": {
+   "sport": "hiking",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:C1",
+      "hiking:C3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:X1",
+      "hiking:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q1"
+     ]
+    }
+   }
+  },
+  "hiking:K3": {
+   "sport": "hiking",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:C1",
+      "hiking:C3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:X1",
+      "hiking:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q1"
+     ]
+    }
+   }
+  },
+  "hiking:P1": {
+   "sport": "hiking",
+   "axis": "강도",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:L1",
+      "hiking:L2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:N1",
+      "hiking:N2",
+      "hiking:N3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q2"
+     ]
+    }
+   }
+  },
+  "hiking:A1": {
+   "sport": "hiking",
+   "axis": "최고 도달",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:P1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:W1",
+      "hiking:W2",
+      "hiking:W3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q2"
+     ]
+    }
+   }
+  },
+  "hiking:L1": {
+   "sport": "hiking",
+   "axis": "단일 최대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:A1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:K1",
+      "hiking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q3"
+     ]
+    }
+   }
+  },
+  "hiking:L2": {
+   "sport": "hiking",
+   "axis": "단일 최대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:A1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:K1",
+      "hiking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q3"
+     ]
+    }
+   }
+  },
+  "hiking:C1": {
+   "sport": "hiking",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:D1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:L1",
+      "hiking:L2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q4"
+     ]
+    }
+   }
+  },
+  "hiking:C3": {
+   "sport": "hiking",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:D1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:L1",
+      "hiking:L2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q4"
+     ]
+    }
+   }
+  },
+  "hiking:D1": {
+   "sport": "hiking",
+   "axis": "요일",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:P1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:C1",
+      "hiking:C3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q4"
+     ]
+    }
+   }
+  },
+  "hiking:N1": {
+   "sport": "hiking",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:G1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:X1",
+      "hiking:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q5"
+     ]
+    }
+   }
+  },
+  "hiking:N2": {
+   "sport": "hiking",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:G1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:X1",
+      "hiking:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q5"
+     ]
+    }
+   }
+  },
+  "hiking:N3": {
+   "sport": "hiking",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:G1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:X1",
+      "hiking:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q5"
+     ]
+    }
+   }
+  },
+  "hiking:G1": {
+   "sport": "hiking",
+   "axis": "간격",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:N1",
+      "hiking:N2",
+      "hiking:N3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:A1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q6"
+     ]
+    }
+   }
+  },
+  "hiking:M1": {
+   "sport": "hiking",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:W1",
+      "hiking:W2",
+      "hiking:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q1"
+     ]
+    }
+   }
+  },
+  "hiking:M2": {
+   "sport": "hiking",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:W1",
+      "hiking:W2",
+      "hiking:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q1"
+     ]
+    }
+   }
+  },
+  "hiking:M3": {
+   "sport": "hiking",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:W1",
+      "hiking:W2",
+      "hiking:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q1"
+     ]
+    }
+   }
+  },
+  "hiking:M4": {
+   "sport": "hiking",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:W1",
+      "hiking:W2",
+      "hiking:W3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q1"
+     ]
+    }
+   }
+  },
+  "hiking:X1": {
+   "sport": "hiking",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "hiking:X2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:K1",
+      "hiking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q7"
+     ]
+    }
+   }
+  },
+  "hiking:X2": {
+   "sport": "hiking",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "hiking:X1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:K1",
+      "hiking:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q7"
+     ]
+    }
+   }
+  },
+  "hiking:W1": {
+   "sport": "hiking",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:M1",
+      "hiking:M2",
+      "hiking:M3",
+      "hiking:M4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:M1",
+      "hiking:M2",
+      "hiking:M3",
+      "hiking:M4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q8"
+     ]
+    }
+   }
+  },
+  "hiking:W2": {
+   "sport": "hiking",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:M1",
+      "hiking:M2",
+      "hiking:M3",
+      "hiking:M4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:M1",
+      "hiking:M2",
+      "hiking:M3",
+      "hiking:M4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q8"
+     ]
+    }
+   }
+  },
+  "hiking:W3": {
+   "sport": "hiking",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:M1",
+      "hiking:M2",
+      "hiking:M3",
+      "hiking:M4"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "hiking:M1",
+      "hiking:M2",
+      "hiking:M3",
+      "hiking:M4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "hiking:Q8"
+     ]
+    }
+   }
+  },
+  "trail_running:K1": {
+   "sport": "trail_running",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:C1",
+      "trail_running:C2",
+      "trail_running:C3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:X1",
+      "trail_running:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q1"
+     ]
+    }
+   }
+  },
+  "trail_running:K2": {
+   "sport": "trail_running",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:C1",
+      "trail_running:C2",
+      "trail_running:C3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:X1",
+      "trail_running:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q1"
+     ]
+    }
+   }
+  },
+  "trail_running:K3": {
+   "sport": "trail_running",
+   "axis": "누적",
+   "leveled": true,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:C1",
+      "trail_running:C2",
+      "trail_running:C3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:X1",
+      "trail_running:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q1"
+     ]
+    }
+   }
+  },
+  "trail_running:P1": {
+   "sport": "trail_running",
+   "axis": "강도",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:E1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:N1",
+      "trail_running:N2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q2"
+     ]
+    }
+   }
+  },
+  "trail_running:L1": {
+   "sport": "trail_running",
+   "axis": "단일 최대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:P1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:W1",
+      "trail_running:W2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q3"
+     ]
+    }
+   }
+  },
+  "trail_running:L2": {
+   "sport": "trail_running",
+   "axis": "단일 최대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:P1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:W1",
+      "trail_running:W2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q3"
+     ]
+    }
+   }
+  },
+  "trail_running:E1": {
+   "sport": "trail_running",
+   "axis": "고도",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:A1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:K1",
+      "trail_running:K2",
+      "trail_running:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q4"
+     ]
+    }
+   }
+  },
+  "trail_running:A1": {
+   "sport": "trail_running",
+   "axis": "최고 도달",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:L1",
+      "trail_running:L2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:G1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q4"
+     ]
+    }
+   }
+  },
+  "trail_running:C1": {
+   "sport": "trail_running",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:T1",
+      "trail_running:T2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:L1",
+      "trail_running:L2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q5"
+     ]
+    }
+   }
+  },
+  "trail_running:C2": {
+   "sport": "trail_running",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:T1",
+      "trail_running:T2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:L1",
+      "trail_running:L2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q5"
+     ]
+    }
+   }
+  },
+  "trail_running:C3": {
+   "sport": "trail_running",
+   "axis": "주기",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:T1",
+      "trail_running:T2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:L1",
+      "trail_running:L2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q5"
+     ]
+    }
+   }
+  },
+  "trail_running:T1": {
+   "sport": "trail_running",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "trail_running:T2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:C1",
+      "trail_running:C2",
+      "trail_running:C3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q5"
+     ]
+    }
+   }
+  },
+  "trail_running:T2": {
+   "sport": "trail_running",
+   "axis": "시간대",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "trail_running:T1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:C1",
+      "trail_running:C2",
+      "trail_running:C3"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q5"
+     ]
+    }
+   }
+  },
+  "trail_running:N1": {
+   "sport": "trail_running",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:G1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:X1",
+      "trail_running:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q6"
+     ]
+    }
+   }
+  },
+  "trail_running:N2": {
+   "sport": "trail_running",
+   "axis": "연속",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:G1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:X1",
+      "trail_running:X2"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q6"
+     ]
+    }
+   }
+  },
+  "trail_running:G1": {
+   "sport": "trail_running",
+   "axis": "간격",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:N1",
+      "trail_running:N2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:E1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q6"
+     ]
+    }
+   }
+  },
+  "trail_running:M1": {
+   "sport": "trail_running",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:W1",
+      "trail_running:W2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q1"
+     ]
+    }
+   }
+  },
+  "trail_running:M2": {
+   "sport": "trail_running",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:W1",
+      "trail_running:W2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q1"
+     ]
+    }
+   }
+  },
+  "trail_running:M3": {
+   "sport": "trail_running",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:W1",
+      "trail_running:W2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q1"
+     ]
+    }
+   }
+  },
+  "trail_running:M4": {
+   "sport": "trail_running",
+   "axis": "이정표",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:W1",
+      "trail_running:W2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:P1"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q1"
+     ]
+    }
+   }
+  },
+  "trail_running:X1": {
+   "sport": "trail_running",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "trail_running:X2"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:K1",
+      "trail_running:K2",
+      "trail_running:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q7"
+     ]
+    }
+   }
+  },
+  "trail_running:X2": {
+   "sport": "trail_running",
+   "axis": "휴식",
+   "leveled": false,
+   "epic_condition": {
+    "cross_in_axis": {
+     "family_keys": [
+      "trail_running:X1"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:K1",
+      "trail_running:K2",
+      "trail_running:K3"
+     ],
+     "min_level": 5
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q7"
+     ]
+    }
+   }
+  },
+  "trail_running:W1": {
+   "sport": "trail_running",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:K1",
+      "trail_running:K2",
+      "trail_running:K3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:M1",
+      "trail_running:M2",
+      "trail_running:M3",
+      "trail_running:M4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q8"
+     ]
+    }
+   }
+  },
+  "trail_running:W2": {
+   "sport": "trail_running",
+   "axis": "달력",
+   "leveled": false,
+   "epic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:K1",
+      "trail_running:K2",
+      "trail_running:K3"
+     ]
+    }
+   },
+   "mystic_condition": {
+    "cross_between_axis": {
+     "family_keys": [
+      "trail_running:M1",
+      "trail_running:M2",
+      "trail_running:M3",
+      "trail_running:M4"
+     ],
+     "min_rarity": "rare"
+    },
+    "gate_mission_badge": {
+     "family_keys": [
+      "trail_running:Q8"
+     ]
+    }
+   }
+  }
+ }
+}

@@ -69,7 +69,14 @@ function warnMissingGatedBadges(
   }
 }
 
-type BadgeIdentity = { id: string; name: string; rarity: BadgeRarity | null; family_key: string | null }
+type BadgeIdentity = {
+  id: string
+  name: string
+  rarity: BadgeRarity | null
+  family_key: string | null
+  /** 무한레벨형의 레벨 — 등급형은 null(티켓 20260906_1947 ②-b, ownedFamilyLevels 산출용) */
+  level: number | null
+}
 
 /**
  * 게이트 미션 노출 규칙이 가리키는 **계열**에 대해, 유저가 보유한 최고 등급 티어를 구한다
@@ -90,16 +97,17 @@ async function loadOwnedFamilyTiers(
   supabase: ReturnType<typeof createServiceClient>,
   userId: string,
   familyKeys: readonly string[],
-): Promise<Map<string, number>> {
+): Promise<{ ownedFamilyTiers: Map<string, number>; ownedFamilyLevels: Map<string, number> }> {
   const ownedFamilyTiers = new Map<string, number>()
-  if (familyKeys.length === 0) return ownedFamilyTiers
+  const ownedFamilyLevels = new Map<string, number>()
+  if (familyKeys.length === 0) return { ownedFamilyTiers, ownedFamilyLevels }
 
   // `#name:` 접두어는 `familyKeyOf()`의 폴백이다 — 그쪽은 `family_key IS NULL`인 배지를
   // 이름으로 묶으므로 조회 조건이 다르다.
   const realKeys = familyKeys.filter((k) => !k.startsWith('#name:'))
   const fallbackNames = familyKeys.filter((k) => k.startsWith('#name:')).map((k) => k.slice('#name:'.length))
 
-  const columns = 'id, name, rarity, family_key'
+  const columns = 'id, name, rarity, family_key, level'
   const familyBadges: BadgeIdentity[] = []
   if (realKeys.length > 0) {
     familyBadges.push(
@@ -121,7 +129,7 @@ async function loadOwnedFamilyTiers(
       )),
     )
   }
-  if (familyBadges.length === 0) return ownedFamilyTiers
+  if (familyBadges.length === 0) return { ownedFamilyTiers, ownedFamilyLevels }
 
   const badgeById = new Map(familyBadges.map((b) => [b.id, b] as const))
   const owned = await fetchAllPages<{ badge_id: string }>((from, to) =>
@@ -143,8 +151,14 @@ async function loadOwnedFamilyTiers(
     if (!ownedFamilyTiers.has(key) || tier > (ownedFamilyTiers.get(key) as number)) {
       ownedFamilyTiers.set(key, tier)
     }
+    // 레벨형(무한레벨) — min_level 판정용 최고 레벨(티켓 20260906_1947 ②-b)
+    if (badge.level != null) {
+      if (!ownedFamilyLevels.has(key) || badge.level > (ownedFamilyLevels.get(key) as number)) {
+        ownedFamilyLevels.set(key, badge.level)
+      }
+    }
   }
-  return ownedFamilyTiers
+  return { ownedFamilyTiers, ownedFamilyLevels }
 }
 
 /**
@@ -191,13 +205,17 @@ export async function loadMissionVisibilityContext(
   }
 
   // ── 게이트 미션(v5) 노출 규칙이 가리키는 계열 ───────────────────────────
-  const ownedFamilyTiers = await loadOwnedFamilyTiers(supabase, userId, collectRuleFamilyKeys(missions))
+  const { ownedFamilyTiers, ownedFamilyLevels } = await loadOwnedFamilyTiers(
+    supabase,
+    userId,
+    collectRuleFamilyKeys(missions),
+  )
 
   // ── 레거시 게이트 배지 정보 ─────────────────────────────────────────────
   const gatedBadgeIds = [...new Set(missions.map((m) => m.gated_badge_id).filter((id): id is string => !!id))]
   if (gatedBadgeIds.length === 0) {
     // 레거시 게이팅이 걸린 미션이 하나도 없으면 배지 조회 자체가 불필요하다
-    return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, ...emptyBadgeContext() }
+    return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, ownedFamilyLevels, ...emptyBadgeContext() }
   }
 
   const gatedRaw = await fetchAllPages<GatedBadgeInfo>((from, to) =>
@@ -216,7 +234,7 @@ export async function loadMissionVisibilityContext(
 
   const gatedNames = [...new Set([...gatedBadges.values()].map((b) => b.name))]
   if (gatedNames.length === 0) {
-    return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, ...emptyBadgeContext() }
+    return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, ownedFamilyLevels, ...emptyBadgeContext() }
   }
 
   // ── 유저가 보유한 게이트 배지 이름의 최고 등급 (레거시 경로 전용) ────────
@@ -260,5 +278,5 @@ export async function loadMissionVisibilityContext(
     }
   }
 
-  return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, gatedBadges, ownedTierByBadgeName }
+  return { completedMissionIds, participatedMissionIds, ownedFamilyTiers, ownedFamilyLevels, gatedBadges, ownedTierByBadgeName }
 }

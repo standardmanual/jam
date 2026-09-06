@@ -3,8 +3,10 @@ import { badgeKindOf, familyKeyOf, type BadgeKind } from '@/lib/badge-engine/bad
 import {
   CROSS_GATE_CONDITION_KEYS,
   normalizeGateRequirement,
+  familyMeetsGateRequirement,
   type CrossGateConditionKey,
   type NormalizedGateRequirement,
+  type OwnedBadgeDef,
 } from '@/lib/badge-engine/crossGate'
 import { rarityTier } from '@/lib/rarity'
 import { formatStopConditionValue } from '@/lib/badgeProgressText'
@@ -255,6 +257,17 @@ export function buildBadgeActivityTrees(
     if (m.gated_badge_id) missionByGatedBadgeId.set(m.gated_badge_id, m)
   }
 
+  /**
+   * 이 유저가 실제로 보유한 배지 정의 — `crossGate.ts`의 `familyMeetsGateRequirement`가
+   * 요구하는 형태 그대로다(티켓 20260906_1947 ③). `BadgeTreeSourceBadge`가 이미
+   * `OwnedBadgeDef`의 필드를 전부 가지고 있어 추가 조회 없이 필터만으로 만들 수 있다 —
+   * 예전에 이 파일이 판정을 별도로 재구현한 이유(엔진 쪽 함수가 전량 조회를 요구해서)가
+   * 애초에 성립하지 않았다.
+   */
+  const ownedDefs: OwnedBadgeDef[] = badges
+    .filter((b) => earnedBadgeIds.has(b.id))
+    .map((b) => ({ ...b, activity_types: b.activity_types ?? [] }))
+
   // 미션 완료로만 지급되는 배지(condition_json.mission_reward=true)는 트리 카드로 그리지 않고,
   // prerequisite_badge_names에서 "이 이름은 다른 활동 배지가 아니라 미션 보상 배지다"를
   // 걸러내는 용도로만 쓴다(요구사항: 미션 게이팅과 배지 게이팅 구분).
@@ -352,11 +365,20 @@ export function buildBadgeActivityTrees(
       }
     }
 
-    /** 계열 하나를 잠금 항목 한 줄로 — 대표 눈금으로 링크하고, 보유 여부는 OR로 본다 */
+    /**
+     * 계열 하나를 잠금 항목 한 줄로 — 대표 눈금으로 링크하고, 보유 여부는 `crossGate.ts`의
+     * `familyMeetsGateRequirement`(엔진과 **같은 함수**)로 판정한다(티켓 20260906_1947 ③).
+     * 예전에는 여기서 `earnedBadgeIds.has(v.id) && rarityTier(...) >= minRarityTier`를
+     * 별도로 재구현했다 — 엔진이 `min_level`을 지원하도록 확장돼도(②-b) 이 파일은 계속
+     * 등급만 보고 있어 "화면은 열려 보이는데 발급은 안 되는" 틈이 생길 뻔했다.
+     */
     function familyLock(
       familyKey: string,
       minRarityLabel: string | null,
-      minRarityTier: number
+      minRarityTier: number,
+      minLevel: number | null = null,
+      gatedActivityTypes: readonly ActivityType[] | null = null,
+      requireMissionReward = false
     ): BadgeTreeLock | null {
       const variants = globalFamilyMap.get(familyKey) ?? []
       // 종목 경계를 넘지 않는다(crossGate.ts 원칙 ③) — 이 종목에서 받을 수 있는 눈금만 본다.
@@ -366,8 +388,12 @@ export function buildBadgeActivityTrees(
       const pool = inScope.length > 0 ? inScope : variants
       const entry = entryStageOf(pool)
       if (!entry) return null
-      const fulfilled = pool.some(
-        (v) => earnedBadgeIds.has(v.id) && (minRarityTier === 0 || rarityTier(v.rarity) >= minRarityTier)
+      const fulfilled = familyMeetsGateRequirement(
+        familyKey,
+        { minRarityTier, minLevel },
+        ownedDefs,
+        gatedActivityTypes,
+        requireMissionReward
       )
       return {
         kind: 'badge',
@@ -376,20 +402,35 @@ export function buildBadgeActivityTrees(
         fulfilled,
         imageUrl: entry.image_url,
         // 참인 문장만 적는다 — 등급 제한이 없으면 「어느 등급이든 1개」, 있으면 그 등급 이상.
-        note: minRarityLabel ? `배지 · ${minRarityLabel} 이상` : '배지 · 어느 등급이든 1개',
+        note: minRarityLabel
+          ? `배지 · ${minRarityLabel} 이상`
+          : minLevel != null
+            ? `배지 · Lv.${minLevel} 이상`
+            : '배지 · 어느 등급이든 1개',
       }
     }
 
     /** 교차 게이트 요구 하나 → 대상 계열 잠금 항목들 */
-    function crossLocks(req: NormalizedGateRequirement, requireMissionReward: boolean): BadgeTreeLock[] {
+    function crossLocks(
+      req: NormalizedGateRequirement,
+      requireMissionReward: boolean,
+      gatedActivityTypes: readonly ActivityType[] | null
+    ): BadgeTreeLock[] {
       const locks: BadgeTreeLock[] = []
       for (const familyKey of req.familyKeys) {
         if (requireMissionReward) {
           const variants = globalFamilyMap.get(familyKey) ?? []
-          // 미션 보상 배지가 아니면 이 요구를 만족시킬 수 없다(엔진 countSatisfiedFamilies와 동일)
+          // 미션 보상 배지가 아니면 이 요구를 만족시킬 수 없다(엔진 familyMeetsGateRequirement와 동일)
           if (!variants.some((v) => v.condition_json?.mission_reward === true)) continue
         }
-        const lock = familyLock(familyKey, req.minRarityLabel, req.minRarityTier)
+        const lock = familyLock(
+          familyKey,
+          req.minRarityLabel,
+          req.minRarityTier,
+          req.minLevel,
+          gatedActivityTypes,
+          requireMissionReward
+        )
         if (lock) locks.push(lock)
       }
       return locks
@@ -426,7 +467,7 @@ export function buildBadgeActivityTrees(
       const seenPrereqHref = new Set<string>()
       for (const prereqName of prereqNames) {
         for (const prereqKey of familyKeysByName.get(prereqName) ?? []) {
-          const lock = familyLock(prereqKey, null, 0)
+          const lock = familyLock(prereqKey, null, 0, null, v.activity_types)
           if (!lock || seenPrereqHref.has(lock.href)) continue
           seenPrereqHref.add(lock.href)
           prereqLocks.push(lock)
@@ -463,7 +504,7 @@ export function buildBadgeActivityTrees(
           let maxMinCount = 1
           for (const key of crossKeys) {
             const req = normalized.get(key)!
-            const keyLocks = crossLocks(req, false)
+            const keyLocks = crossLocks(req, false, v.activity_types)
             if (keyLocks.filter((l) => l.fulfilled).length >= req.minCount) fulfilled = true
             if (req.minCount > maxMinCount) maxMinCount = req.minCount
             for (const lock of keyLocks) {
@@ -487,7 +528,7 @@ export function buildBadgeActivityTrees(
         // 미션 보상 배지 — 위 교차와 **AND**로 묶인다(별도 그룹이 곧 AND다).
         const gateMissionReq = normalized.get('gate_mission_badge')
         if (gateMissionReq) {
-          const locks = crossLocks(gateMissionReq, true)
+          const locks = crossLocks(gateMissionReq, true, v.activity_types)
           if (locks.length > 0) {
             groups.push({
               kind: 'mission',

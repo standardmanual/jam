@@ -225,6 +225,7 @@ export interface GateMissionIssue {
     | 'invalid_visibility_rule'
     | 'unknown_family_key'
     | 'rarity_requirement_on_leveled_family'
+    | 'level_requirement_on_graded_family'
     | 'reward_badge_missing'
     | 'reward_badge_deleted'
     | 'reward_badge_not_mission_reward'
@@ -265,6 +266,11 @@ export function checkGateMissionConsistency(input: GateConsistencyInput): GateMi
   const gradedFamilyKeys = new Set(
     activityBadges.filter((b) => !isLeveledBadge(b)).map((b) => familyKeyOf(b)),
   )
+  // 반대 방향(티켓 20260906_1947 ②-b) — 계열이 «등급형만으로 이뤄졌는가».
+  // min_level(레벨형 전용)을 등급형 계열에 걸면 그쪽도 영원히 미충족이 된다(level이 항상 null).
+  const leveledFamilyKeys = new Set(
+    activityBadges.filter((b) => isLeveledBadge(b)).map((b) => familyKeyOf(b)),
+  )
   // 어떤 배지든 `gate_mission_badge`로 가리키고 있는 계열
   const gatedByMysticFamilyKeys = new Set<string>()
   for (const badge of activityBadges) {
@@ -277,10 +283,19 @@ export function checkGateMissionConsistency(input: GateConsistencyInput): GateMi
   }
 
   // ── ① 축 × 단계 커버리지 ─────────────────────────────────────────────────
+  //
+  // ⚠️ `rare_to_epic`은 구멍으로 잡지 않는다(티켓 20260906_1947 실측으로 발견) — 마스터
+  // 티켓 20260905_0026 §게이트 표가 「Rare → Epic: 축 내 교차 또는 축 간 교차」로 못 박아
+  // **미션이 필요 없다.** 미션 40건은 전부 「Epic → Mystic」 전용 열쇠이고, 이 카탈로그에는
+  // `rare_to_epic` 게이트 미션이 구조적으로 하나도 없다 — 두 단계 모두 구멍으로 요구하면
+  // 실제로 정상인 축 53개가 매번 rare_to_epic 「구멍」으로 오탐돼 커버리지가 영원히
+  // 0건이 될 수 없다. `rare_to_epic`에 미션이 실려 있으면(스키마는 허용한다) 중복만
+  // 계속 검사한다 — 「있는데 2개 이상」은 여전히 문제이지만 「아예 없음」은 정상이다.
   for (const row of buildGateMatrix(gateMissions)) {
     for (const stage of MISSION_GATE_STAGES) {
       const cell = row.cells[stage]
       if (cell.length === 0) {
+        if (stage === 'rare_to_epic') continue
         issues.push({
           level: 'error',
           code: 'axis_stage_gap',
@@ -348,6 +363,14 @@ export function checkGateMissionConsistency(input: GateConsistencyInput): GateMi
               level: 'error',
               code: 'rarity_requirement_on_leveled_family',
               message: `"${mission.title}"의 ${VISIBILITY_RULE_REQUIREMENT_LABEL[req.key]}가 레벨형 계열(${familyKey})에 등급 조건을 걸었어요. 등급이 없는 계열이라 영원히 충족되지 않아요.`,
+            })
+          }
+          if (req.value.minLevel != null && !leveledFamilyKeys.has(familyKey)) {
+            issues.push({
+              ...base,
+              level: 'error',
+              code: 'level_requirement_on_graded_family',
+              message: `"${mission.title}"의 ${VISIBILITY_RULE_REQUIREMENT_LABEL[req.key]}가 등급형 계열(${familyKey})에 레벨 조건을 걸었어요. 레벨이 없는 계열이라 영원히 충족되지 않아요.`,
             })
           }
         }

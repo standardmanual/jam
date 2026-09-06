@@ -59,6 +59,7 @@ function ctx(options?: {
   completed?: string[]
   participated?: string[]
   ownedFamilyTiers?: Record<string, number>
+  ownedFamilyLevels?: Record<string, number>
   gatedBadges?: Map<string, GatedBadgeInfo>
   ownedTierByBadgeName?: Record<string, number>
 }): MissionVisibilityContext {
@@ -68,6 +69,7 @@ function ctx(options?: {
     gatedBadges: options?.gatedBadges ?? new Map(),
     ownedTierByBadgeName: new Map(Object.entries(options?.ownedTierByBadgeName ?? {})),
     ownedFamilyTiers: new Map(Object.entries(options?.ownedFamilyTiers ?? {})),
+    ownedFamilyLevels: new Map(Object.entries(options?.ownedFamilyLevels ?? {})),
   }
 }
 
@@ -197,6 +199,18 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(vis(mission, ctx()), 'locked')
   }],
 
+  ['②-b min_level — 레벨형 계열은 Lv.N 이상 보유해야 열린다(자동통과 방지, 티켓 20260906_1947)', () => {
+    const LEVELED_FAMILY = 'running:K1'
+    const mission: MissionVisibilityInput = {
+      ...GATE_MISSION,
+      id: 'gm-min-level',
+      visibility_rule_json: { require_owned: { family_keys: [LEVELED_FAMILY], min_level: 5 } },
+    }
+    // 첫 주에 누구나 달성하는 Lv.1 — min_rarity였다면 「하나라도 보유」로 자동 통과했을 자리
+    assert.strictEqual(vis(mission, ctx({ ownedFamilyLevels: { [LEVELED_FAMILY]: 1 } })), 'locked')
+    assert.strictEqual(vis(mission, ctx({ ownedFamilyLevels: { [LEVELED_FAMILY]: 5 } })), 'open')
+  }],
+
   ['② min_count는 AND — 두 계열을 다 보유해야 열린다', () => {
     const mission: MissionVisibilityInput = {
       ...GATE_MISSION,
@@ -320,6 +334,17 @@ const cases: Array<[string, () => void]> = [
     assert.strictEqual(gap[0].stage, 'epic_to_mystic')
   }],
 
+  ['④-b rare_to_epic 미션이 없어도 구멍으로 잡지 않는다 (티켓 20260906_1947 실측 — 마스터 티켓 게이트 표는 Rare→Epic에 미션을 요구하지 않는다)', () => {
+    const issues = checkGateMissionConsistency({
+      // epic_to_mystic 하나만 있고 rare_to_epic은 아예 없다 — 실제 v5 카탈로그(게이트 미션
+      // 40건 전부 Epic→Mystic 전용)와 같은 모양
+      missions: [gateMission({ id: 'a', gate_stage: 'epic_to_mystic', reward_badge_ids: ['r1'] })],
+      activityBadges: [],
+      referencedBadges: new Map([['r1', badge({ id: 'r1', name: '보상' })]]),
+    })
+    assert.strictEqual(issues.filter((i) => i.code === 'axis_stage_gap').length, 0)
+  }],
+
   ['④ 같은 축·단계에 미션 2개면 중복을 잡는다', () => {
     const issues = checkGateMissionConsistency({
       missions: [gateMission({ id: 'a' }), gateMission({ id: 'b' })],
@@ -369,6 +394,21 @@ const cases: Array<[string, () => void]> = [
     })
     assert.strictEqual(issues.filter((i) => i.code === 'rarity_requirement_on_leveled_family').length, 1)
     assert.strictEqual(issues.filter((i) => i.code === 'unknown_family_key').length, 0)
+  }],
+
+  ['④-b 등급형 계열에 min_level을 걸면 「영원히 미충족」으로 잡는다 (티켓 20260906_1947 ②-b 반대 방향)', () => {
+    const issues = checkGateMissionConsistency({
+      missions: [
+        gateMission({
+          id: 'a',
+          visibility_rule_json: { require_owned: { family_keys: [EPIC_FAMILY], min_level: 5 } },
+        }),
+      ],
+      // 그 계열이 등급형(rarity 있음)만으로 이뤄져 있다 — level은 항상 null
+      activityBadges: [badge({ id: 'e1', name: '밤의 보행자', rarity: 'epic', level: null, family_key: EPIC_FAMILY })],
+      referencedBadges: new Map(),
+    })
+    assert.strictEqual(issues.filter((i) => i.code === 'level_requirement_on_graded_family').length, 1)
   }],
 
   ['④ 보상 배지 계열을 미션 게이트로 가리키는 배지가 없으면 잡는다 (두 판정이 어긋남)', () => {
