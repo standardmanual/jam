@@ -19,7 +19,12 @@ const meta: Meta<typeof BadgeStatusSection> = {
           '힌트를 준다. 펼쳤을 때만 본문을 렌더하므로(display:none이 아니다) 호출부는 ' +
           '`onOpenChange`가 true로 올 때만 그 섹션의 진행 계산을 요청하면 된다 — 194계열을 ' +
           '전부 계산하지 않는다. DS `Accordion`을 쓰지 않은 이유는 그 API가 **「한 번에 하나만 ' +
-          '열림」**이기 때문이다: 여기서는 두 섹션이 각각 독립으로 접히고 펼쳐진다.',
+          '열림」**이기 때문이다: 여기서는 두 섹션이 각각 독립으로 접히고 펼쳐진다. ' +
+          '20260906_2140 F-1: `collapsible={false}`로 **접지 않는 모드**가 생겼다 — 배지 트리의 ' +
+          '「다음 목표」는 그 화면의 본문 전체라 접을 이유가 없었는데(`defaultOpen`으로 늘 열려 ' +
+          '있었다), 제목 자리의 chevron이 「화면을 통째로 닫는 버튼」처럼 보였다. 이 모드에서는 ' +
+          '버튼 대신 정적 `h2`를 그리고 본문을 항상 보여준다. `note`(예: 「진행률 높은 순」)는 ' +
+          '목록의 정렬 규칙을 제목 오른쪽 끝에 적는다.',
       },
     },
   },
@@ -39,12 +44,12 @@ export const TwoSections: Story = {
       <BadgeStatusSection title="다음 목표" count={7} defaultOpen>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 12 }}>
           <BadgeLevelGauge name="걸어온 거리" level={3} current="52.4" next="75km" left="22.6km 남음" fraction={0.7} />
-          <BadgeStampRow name="이번 주의 약속" rarity="rare" count={null} caption="8회 반복하면 받아요" earned={false} />
+          <BadgeStampRow name="이번 주의 약속" rarity="rare" count={null} caption="8회 반복하면 받아요" fraction={null} earned={false} />
         </div>
       </BadgeStatusSection>
       <BadgeStatusSection title="받은 배지" count={23}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 12 }}>
-          <BadgeStampRow name="스물넷의 산책" rarity="mystic" count={12} caption="24시간 안에 3회" />
+          <BadgeStampRow name="스물넷의 산책" rarity="mystic" count={12} caption="12/26회" fraction={0.46} />
         </div>
       </BadgeStatusSection>
     </Frame>
@@ -133,5 +138,34 @@ export const EmptyFromMap: Story = {
         </BadgeStatusSection>
       </Frame>
     );
+  },
+};
+
+/**
+ * 20260906_2140 F-1 — **접지 않는 섹션.** 버튼·chevron이 없고 본문이 항상 보인다.
+ * 누를 수 없는 것을 버튼으로 그리면 보조기술이 「버튼」이라고 읽어 존재하지 않는 행동을
+ * 약속하게 되므로, 제목은 정적 `h2`다. `note`가 정렬 규칙을 제목 오른쪽 끝에 적는다.
+ */
+export const NotCollapsible: Story = {
+  name: '20260906_2140 — 접지 않는 섹션 + 정렬 규칙 표기',
+  render: () => (
+    <Frame>
+      <div data-testid="section">
+        <BadgeStatusSection title="다음 목표" count={7} collapsible={false} note="진행률 높은 순">
+          <div data-testid="body" style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 12 }}>
+            <BadgeLevelGauge name="걸어온 거리" level={3} current="52.4" next="75km" left="22.6km 남음" fraction={0.7} />
+          </div>
+        </BadgeStatusSection>
+      </div>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const root = canvasElement.querySelector('[data-testid="section"]')!;
+    // 토글 버튼이 없다 — 누를 수 없는 것을 버튼으로 그리지 않는다.
+    expect(root.querySelector('button')).toBeNull();
+    expect(root.querySelector('h2')).toBeTruthy();
+    // 본문은 항상 보인다.
+    expect(root.querySelector('[data-testid="body"]')).toBeTruthy();
+    expect(root.textContent).toContain('진행률 높은 순');
   },
 };

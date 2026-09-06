@@ -1,6 +1,7 @@
 import React from 'react';
 import { RarityBadge } from '../cards/RarityBadge.jsx';
 import { ProgressBar } from '../feedback/ProgressBar.jsx';
+import { CheckGlyph } from '../icons/BadgeStatusGlyphs.jsx';
 
 /**
  * DualAxisGauge — 2축형(dual) 배지 전용 진행 게이지. 티켓 20260904_1058 (2d: 배지 트리
@@ -31,20 +32,24 @@ import { ProgressBar } from '../feedback/ProgressBar.jsx';
  * 접근성: 인터랙티브 요소가 없는 정적 텍스트 블록이라(레일의 링크/버튼 눈금과 다름) 별도
  * `aria-label` 요약을 얹지 않는다 — 라벨·수치·규칙 문장·안내 문구가 전부 화면에 보이는
  * 실제 텍스트 노드라 스크린리더가 DOM 순서 그대로 읽어도 의미가 그대로 전달된다.
+ *
+ * ## v2 — 별도 카드에서 레일 카드 안의 «구획»으로 (티켓 20260906_2140)
+ *
+ * 예전에는 레일 카드 바로 아래에 **자기 배경·자기 패딩을 가진 두 번째 카드**로 떠 있었다.
+ * 한 계열이 카드 두 장을 쓰니 세로 스캔에서 「계열 하나 = 카드 하나」 규칙이 깨졌다. 이제
+ * 카드 껍데기를 벗고 1px 구분선 + 소제목만 두른 구획이 되어, 호출부가
+ * `BadgeStageRail`의 `secondarySection`으로 **레일 카드 안에** 넣는다.
+ *
+ * 축 바는 8→10px, 채움은 `--status-progress-sweep`(`ProgressBar fillMode="track-gradient"`)이다
+ * — 같은 화면 안에서 진행 채움이 여러 문법으로 갈라지지 않게 한다.
+ *
+ * 체크 글리프는 `icons/BadgeStatusGlyphs.jsx`(단일 소스)에서 가져온다.
  */
 
-function CheckGlyph({ size = 11 }) {
-  return (
-    <svg viewBox="0 -960 960 960" width={size} height={size} fill="currentColor" aria-hidden="true">
-      <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-    </svg>
-  );
-}
-
-const THUMBNAIL_SIZE = 64;
+const THUMBNAIL_SIZE = 52;
 
 function AxisRow({ label, rangeText, fraction, met }) {
-  const color = met ? 'var(--status-done-solid)' : 'var(--status-short-solid)';
+  const color = met ? 'var(--status-progress-done)' : 'var(--status-progress-active)';
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 'var(--spacing-8)', alignItems: 'center' }}>
       <span
@@ -58,7 +63,13 @@ function AxisRow({ label, rangeText, fraction, met }) {
       >
         {label}
       </span>
-      <ProgressBar percent={fraction * 100} color={color} trackColor="var(--status-idle-track)" />
+      <ProgressBar
+        percent={fraction * 100}
+        fillMode="track-gradient"
+        trackColor="var(--status-idle-track)"
+        height={10}
+        radius="var(--radius-xs)"
+      />
       <span
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, flex: 'none',
@@ -85,6 +96,8 @@ export function DualAxisGauge({
   ruleText,
   /** "{축} 조건은 이미 채웠어요." — met인 축이 정확히 하나일 때만. 그 외엔 null(렌더 안 함) */
   bottleneckNote,
+  /** 구획 소제목 — 이 블록이 무엇에 대한 진행인지 한 마디로 말한다 */
+  title = '두 조건 진행',
   className = '',
   style = {},
 }) {
@@ -92,12 +105,22 @@ export function DualAxisGauge({
     <div
       className={className}
       style={{
-        position: 'relative', borderRadius: 'var(--radius-card)', padding: 'var(--spacing-16)',
-        background: 'linear-gradient(160deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.018) 58%), var(--color-surface-elevated)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
+        // 카드가 아니라 «구획»이다 — 배경·그림자를 갖지 않고 1px 구분선으로만 갈린다.
+        marginTop: 'var(--spacing-16)',
+        paddingTop: 'var(--spacing-16)',
+        borderTop: '1px solid var(--color-border-light)',
         ...style,
       }}
     >
+      <p
+        style={{
+          margin: '0 0 var(--spacing-12)', fontSize: 'var(--text-micro)', fontWeight: 700,
+          letterSpacing: '0.3px', color: 'var(--status-progress-idle)',
+        }}
+      >
+        {title}
+      </p>
+
       <div style={{ display: 'flex', gap: 'var(--spacing-12)', alignItems: 'flex-start' }}>
         <span
           style={{
@@ -117,18 +140,20 @@ export function DualAxisGauge({
               src={imageUrl}
               alt={alt}
               style={{
-                width: '100%', height: '100%', objectFit: 'contain', padding: 4,
-                borderRadius: 'var(--radius-sm)', filter: 'grayscale(1)',
+                // 여백 없이 프레임을 꽉 채운다 — 모서리는 프레임의 overflow: hidden이 자른다
+                // (이미지에 radius를 따로 걸면 두 radius가 어긋나 모서리가 삐져나온다).
+                width: '100%', height: '100%', objectFit: 'cover', padding: 0,
+                display: 'block', filter: 'grayscale(1)',
               }}
             />
           ) : (
-            <span style={{ width: 28, height: 28, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
+            <span style={{ width: 24, height: 24, borderRadius: 'var(--radius-xs)', background: 'var(--color-bg-inverse)', opacity: 0.2 }} />
           )}
         </span>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ marginBottom: 'var(--spacing-8)' }}>
-            <RarityBadge rarity={rarity} />
+            <RarityBadge rarity={rarity} size="md" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-12)' }}>
             {axes.map((axis) => (
@@ -142,7 +167,7 @@ export function DualAxisGauge({
         {ruleText}
       </p>
       {bottleneckNote && (
-        <p style={{ margin: 'var(--spacing-4) 0 0', fontSize: 'var(--text-caption)', lineHeight: 1.4, color: 'var(--status-done-solid)' }}>
+        <p style={{ margin: 'var(--spacing-4) 0 0', fontSize: 'var(--text-caption)', lineHeight: 1.4, color: 'var(--status-progress-done)' }}>
           {bottleneckNote}
         </p>
       )}

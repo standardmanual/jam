@@ -161,7 +161,7 @@ export default function BadgeTreeClient({
 
   const activeTree = trees.find((tree) => tree.activityType === activeActivity) ?? trees[0]
 
-  // stageId → 눈금 — 잠금 해제 조건 시트를 열 때 필요한 데이터를 찾는다.
+  // stageId → 눈금 — 「받는 방법」 시트를 열 때 필요한 데이터를 찾는다.
   const stageIndex = useMemo(() => {
     const map = new Map<string, BadgeFamilyStage>()
     if (!activeTree) return map
@@ -222,13 +222,20 @@ export default function BadgeTreeClient({
     [nextGoals]
   )
   /**
-   * 두 섹션(그리드/레일)의 화면 순서 — 「진행이 가까운 것이 위」 원칙을 **섹션 단위**로
-   * 확장한다. `nextGoals[0]`(전체에서 가장 가까운 목표)이 어느 갈래에 속하는지로 정한다 —
-   * 그 갈래를 위에 두면 지금까지의 "가장 가까운 목표가 맨 위" 동작이 그대로 유지된다.
-   * 두 묶음을 진행률로 다시 인터리빙하지 않는 이유: 63계열 그리드를 여러 조각으로 쪼개
-   * 레일 사이사이에 흩어 놓으면 이번 티켓의 목적(그리드로 «묶어» 스크롤을 줄임)이 무너진다.
+   * 그리드 카드가 레일 목록 **어디에 끼어드나** — 「구성원 최고 진행률 자리」다
+   * (티켓 20260906_2140 E③). 그리드는 카드 한 장으로 묶이므로 여러 조각으로 쪼개
+   * 레일 사이사이에 흩어 놓지 않는다(그러면 «묶어서 스크롤을 줄인다»는 목적이 무너진다).
+   * 대신 그 한 장을 **가장 잘 나가는 구성원의 진행률에 해당하는 자리**에 통째로 넣는다.
+   *
+   * 예전에는 「그리드가 맨 위냐 맨 아래냐」 이분법이었다 — 그리드 최고 진행률이 3등이어도
+   * 맨 아래로 밀려 「진행이 가까운 것이 위」가 깨졌다.
    */
-  const gridSectionFirst = gridGoals.length > 0 && (railGoals.length === 0 || nextGoals[0]?.family === gridGoals[0]?.family)
+  const gridInsertIndex = useMemo(() => {
+    if (gridGoals.length === 0) return -1
+    const best = gridGoals[0]?.fraction ?? -1
+    const idx = railGoals.findIndex((row) => row.fraction < best)
+    return idx === -1 ? railGoals.length : idx
+  }, [gridGoals, railGoals])
 
   // 진행 요약 — 등급별 + **등급 없음(무한레벨형)** 버킷. 예전에는 칸이 4개로 고정이라
   // 레벨형 193종이 어느 칸에도 안 들어가 totalCount와 칸 합계가 조용히 어긋났다.
@@ -273,16 +280,22 @@ export default function BadgeTreeClient({
     : null
 
   // 눈금 1개 계열 묶음 — 그리드 3열(375px 기준, 63계열 실측치로 스크롤을 크게 줄인다).
-  // 2열보다 3열이 행 수를 더 줄인다 — 이름·캡션은 --text-caption/--text-micro라 3열
-  // (~106px 열 폭)에서도 읽힌다(`BadgeProgressRingCard` 스토리로 확인).
+  // 2열보다 3열이 행 수를 더 줄인다.
+  //
+  // 티켓 20260906_2140 E③: 이 묶음을 **카드 한 장**으로 감싼다. 예전에는 셀들이 배경 없이
+  // 떠 있어 「계열 하나 = 카드 하나」인 레일들 사이에서 이 63계열만 다른 문법으로 읽혔다.
+  // 카드 제목은 사용자가 그 자리에서 얻는 것을 그대로 말한다 — 「한 번에 끝나는 배지」.
   const gridSection =
     gridGoals.length > 0 ? (
-      <div
+      <section
         key="grid"
-        role="group"
-        aria-label="눈금 한 개 계열"
-        className="grid grid-cols-3 gap-x-[var(--spacing-8)] gap-y-[var(--spacing-16)]"
+        aria-label="한 번에 끝나는 배지"
+        className="rounded-[var(--radius-card)] bg-[var(--color-surface-elevated)] p-[var(--spacing-16)]"
       >
+        <h3 className="mb-[var(--spacing-16)] text-[length:var(--text-small)] font-bold text-text">
+          한 번에 끝나는 배지
+        </h3>
+        <div className="grid grid-cols-3 gap-x-[var(--spacing-8)] gap-y-[var(--spacing-16)]">
         {gridGoals.map(({ family, progressBadgeId }) => (
           <BadgeProgressGridCell
             key={family.key}
@@ -294,13 +307,12 @@ export default function BadgeTreeClient({
             progressBadgeId={progressBadgeId}
           />
         ))}
-      </div>
+        </div>
+      </section>
     ) : null
 
-  const railSection =
-    railGoals.length > 0 ? (
-      <div key="rail" className="flex flex-col gap-[var(--spacing-12)]">
-        {railGoals.map(({ family, progressBadgeId }) => (
+  // 레일 카드들 — 그리드 카드가 「구성원 최고 진행률 자리」에 끼어든다.
+  const railCards = railGoals.map(({ family, progressBadgeId }) => (
           <BadgeFamilyRow
             key={family.key}
             family={family}
@@ -311,9 +323,14 @@ export default function BadgeTreeClient({
             regretLineByBadgeId={regretLineByBadgeId}
             progressBadgeId={progressBadgeId}
           />
-        ))}
-      </div>
-    ) : null
+  ))
+
+  // 카드 간 간격 12→16px(E④) — 카드 안 여백이 16px이라 12px 간격이면 카드 사이가 카드
+  // 안쪽보다 좁아 두 카드가 한 덩어리로 보였다.
+  const goalCards =
+    gridInsertIndex === -1
+      ? railCards
+      : [...railCards.slice(0, gridInsertIndex), gridSection, ...railCards.slice(gridInsertIndex)]
 
   return (
     <div className="min-h-full bg-surface text-text">
@@ -324,12 +341,10 @@ export default function BadgeTreeClient({
         headerStyle={{ background: 'var(--color-surface)' }}
       />
 
-      <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)]">
-        <h1 className="text-[length:var(--text-heading)] leading-[var(--leading-heading)]">
-          {d.badges.treeButton}
-        </h1>
-      </div>
-
+      {/* 화면 제목 `<h1>배지 트리</h1>`를 두지 않는다(티켓 20260906_2140 E①) —
+          TopNav가 이미 「배지」를 달고 있고, 탭 5개가 곧 이 화면이 무엇인지 말한다.
+          제목 한 줄이 첫 화면에서 카드 한 장 분량의 세로를 먹고 있었다. 대신 TopNav와
+          탭 사이에 --spacing-24를 확보해 숨을 준다. */}
       {trees.length === 0 || !activeTree ? (
         <div className="px-[var(--spacing-16)] pt-[var(--spacing-32)]">
           <EmptyState
@@ -340,7 +355,7 @@ export default function BadgeTreeClient({
         </div>
       ) : (
         <>
-          <div className="px-[var(--spacing-16)] py-[var(--spacing-16)]">
+          <div className="px-[var(--spacing-16)] pt-[var(--spacing-24)] pb-[var(--spacing-16)]">
             <SlidingTabs
               items={tabs}
               value={activeActivity}
@@ -358,26 +373,20 @@ export default function BadgeTreeClient({
               noRarity={summary.noRarity.total > 0 ? summary.noRarity : null}
             />
 
+            {/* 접기/펴기를 쓰지 않는다(E② · F-1) — 이 섹션이 곧 화면 본문이라 접을 이유가
+                없었고(`defaultOpen`으로 늘 열려 있었다), 제목 자리의 chevron이 「화면을
+                통째로 닫는 버튼」처럼 보였다. 정렬 기준은 헤더에 적는다(E⑤). */}
             <BadgeStatusSection
               title={d.badges.treeSectionNext}
               count={nextGoals.length}
-              defaultOpen
+              collapsible={false}
+              note={nextGoals.length > 0 ? '진행률 높은 순' : null}
               emptyText={d.badges.treeSectionNextEmpty}
             >
               {/* 빈 배열이 아니라 null을 넘긴다 — 그래야 emptyText가 뜬다 */}
               {nextGoals.length > 0 ? (
                 <div className="flex flex-col gap-[var(--spacing-16)] pb-[var(--spacing-8)]">
-                  {gridSectionFirst ? (
-                    <>
-                      {gridSection}
-                      {railSection}
-                    </>
-                  ) : (
-                    <>
-                      {railSection}
-                      {gridSection}
-                    </>
-                  )}
+                  {goalCards}
                 </div>
               ) : null}
             </BadgeStatusSection>
