@@ -980,7 +980,7 @@ POST /api/admin/badges/reevaluate-all
 `catalog_reevaluation`(`CATALOG_REEVALUATION_TRIGGER`)을 새로 쓴다. 이 컬럼은 자유
 텍스트라(CHECK 제약 없음) DB 마이그레이션 없이 값만 추가하면 된다.
 
-#### `initial_sync_done`은 이 배치가 절대 건드리지 않는다 — `overrideFirstSync: false`
+#### `initial_sync_done`은 이 배치가 절대 건드리지 않는다 — `forceFirstSyncGate: false` + `skipInitialSyncFlagUpdate: true`
 
 **게이트 리뷰 FAIL로 발견됐다(최초 구현 재작업, 2026-09-06).** `evaluateBadgesDetailed`를
 아무 옵션 없이 호출하면, `initial_sync_done=false`인(=Strava를 한 번도 동기화한 적 없는)
@@ -991,20 +991,33 @@ POST /api/admin/badges/reevaluate-all
 않고 (2) 진짜 첫 동기화 순간에 나가야 할 "첫 배지" 결산(`recordActivityRecap`)도 만들어지지
 않는다.
 
-**수정**: `reevaluateUsersForCatalog`는 `evaluateBadgesDetailed`를 부를 때 항상
-`overrideFirstSync: false`를 명시한다. `evaluateBadgesDetailed` 쪽 가드도
+**수정 1차(2026-09-06)**: `reevaluateUsersForCatalog`는 `evaluateBadgesDetailed`를 부를 때
+항상 `overrideFirstSync: false`를 명시하고, `evaluateBadgesDetailed` 쪽 가드도
 `!overrideFirstSync`(값 기준)에서 `overrideFirstSync === undefined`(호출 의도 기준)로
-고쳤다 — `false`를 명시로 넘기는 것과 아예 안 넘기는 것을 구분해야, 「명시적으로
-갱신하지 말라」는 지시가 「지시 없음」과 같은 falsy 값으로 뭉개지지 않는다.
+고쳤다.
+
+**수정 2차(티켓 20260906_1928)**: 위 1차 수정은 여전히 값 하나(`overrideFirstSync`)로
+"게이트 강제 여부"와 "`initial_sync_done` 갱신 여부"라는 서로 다른 두 계약을 표현했다 —
+타입 선언만 봐서는 이 이중 의미가 드러나지 않아 다음 호출부가 추가되면 같은 함정에
+다시 빠질 위험이 있었다. 그래서 파라미터를 이름으로 분리했다:
+`forceFirstSyncGate?: boolean`(`isFirstSync = forceFirstSyncGate ?? !userInitialSyncDone`,
+게이트 적용 여부만 담당)와 `skipInitialSyncFlagUpdate?: boolean`(`true`면
+`initial_sync_done` 갱신 블록 자체를 건너뜀). 갱신 가드는
+`!dryRun && !skipInitialSyncFlagUpdate && !userInitialSyncDone`으로 단순해져
+"값 기준 vs 호출 의도 기준"이라는 미묘한 판정이 더 이상 필요 없다.
+`reevaluateUsersForCatalog`는 **둘 다** 명시한다 — `forceFirstSyncGate: false`가
+게이트를 강제 해제하고, `skipInitialSyncFlagUpdate: true`가 상태 갱신을 막는다
+(예전엔 `overrideFirstSync: false` 하나가 이 두 효과를 동시에 냈다).
 
 결과: 카탈로그 재평가는 (1) `initial_sync_done`을 절대 갱신하지 않고 (2) 첫 싱크 게이트도
 강제로 해제되어 재평가로 나오는 배지가 등급 제한 없이 정상 발급되며 (3)
 `recordActivityRecap`(진짜 첫 동기화 전용 "첫 배지" 결산)도 만들지 않는다 — 재평가는
 진짜 첫 동기화가 아니므로 (1)(2)(3) 모두 의도한 동작이다. 실제 첫 동기화가 나중에
 일어나면 그때(옵션 없이 호출되는 `strava_sync` 경로에서) 정상적으로 한 번 전환·결산된다.
-`/api/admin/simulate`의 `overrideFirstSync: true`(첫 싱크 시뮬레이션, 상태는 안 건드림)는
-이 변경으로 영향받지 않는다 — `true`도 `false`도 "명시적 호출"로 같이 분기하게 고쳤을 뿐,
-기존 호출부는 `true` 아니면 `undefined`만 넘기므로 동작이 그대로다.
+`/api/admin/simulate`는 `firstSync=true`(첫 싱크 강제 시뮬레이션)일 때
+`forceFirstSyncGate: true`와 `skipInitialSyncFlagUpdate: true`를 함께 넘긴다 — 게이트는
+강제 적용해 테스트하되, `dryRun: false`(실제 적용)로 돌리더라도 유저의 실제 온보딩
+상태는 절대 오염시키지 않는다.
 
 #### 알려진 한계 — 반복형 배지의 회차 카운터는 이 경로로 오르지 않는다
 

@@ -21,11 +21,12 @@
  * 전제). `dryRun: true`는 DB에 아무것도 쓰지 않는다(index.ts 발급 INSERT가
  * `if (!dryRun)`로 감싸여 있다) — 몇 번을 눌러도 안전하다.
  *
- * `overrideFirstSync`는 넘기지 않는다(재평가 배치와 다른 점) — 실제
+ * `forceFirstSyncGate`는 넘기지 않는다(재평가 배치와 다른 점) — 실제
  * `users.initial_sync_done`을 그대로 반영해야 "지금 실제로 동기화하면 정말 나올 값"과
- * 일치한다. 재평가 배치는 "이 유저의 첫 동기화 여부와 무관하게 강제 지급"이 목적이라 항상
- * `false`를 명시하지만, 이 진단은 반대로 "정말 지금 미뤄진 게 맞는지"를 보는 도구라 실제
- * 상태를 왜곡하면 오탐이 생긴다.
+ * 일치한다. 재평가 배치는 "이 유저의 첫 동기화 여부와 무관하게 강제 지급"이 목적이라
+ * `skipInitialSyncFlagUpdate: true`를 명시하지만, 이 진단은 반대로 "정말 지금 미뤄진 게
+ * 맞는지"를 보는 도구라 실제 상태를 왜곡하면 오탐이 생긴다. `dryRun: true`라 어차피
+ * `initial_sync_done` 갱신 블록 자체가 실행되지 않는다.
  */
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
