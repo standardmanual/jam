@@ -31,6 +31,9 @@ export interface BadgeSlot {
     id: string
     serial_number: number
     serial_prefix: string | null
+    /** 만료 임박 칩("곧 만료")을 선택 시트에 띄우기 위한 값 — 만료가 코앞인 개체를 모르고
+     *  장착하는 것을 막는다(20260907_2059). 만료 없는 개체는 null. */
+    expires_at: string | null
   }[]
   slot: {
     id: string
@@ -67,6 +70,15 @@ export default function SlotGrid({
   const [error, setError] = useState<string | null>(null)
   /** 개체 선택 시트를 띄운 배지 id(후보가 2개 이상일 때만 설정된다) — 20260907_2059 */
   const [selectingBadgeId, setSelectingBadgeId] = useState<string | null>(null)
+  /** 시트에서 방금 탭한 개체 id — 요청이 끝나기 전에 카드에 선택 톤을 바로 켠다(20260907_2059) */
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
+  /**
+   * 시트 안에서 보여줄 실패 사유. 그리드 상단의 `error` 배너와 분리한 이유는,
+   * 장착 모드에서는 그리드가 이미 `scrollIntoView`된 상태라 시트를 닫고 배너를 띄우면
+   * 실패 메시지가 화면 밖에 있을 수 있기 때문이다 — **성공했을 때만 시트를 닫고,
+   * 실패는 시트 안에서 알린다**(20260907_2059).
+   */
+  const [sheetError, setSheetError] = useState<string | null>(null)
   const gridRef = useRef<HTMLDivElement | null>(null)
 
   // 장착 모드로 진입하면 슬롯 그리드가 화면에 들어오게 한다(스토리 텍스트가 길어 스크롤이 필요)
@@ -83,15 +95,16 @@ export default function SlotGrid({
     return session?.access_token ?? null
   }
 
-  async function handleSlot(badgeId: string, inventoryItemId: string) {
-    setError(null)
+  /**
+   * 장착 요청. **실패 사유를 문자열로 돌려주고(성공이면 null) 표시 위치는 호출부가 정한다.**
+   * 그리드 버튼에서 호출하면 그리드 상단 배너에, 선택 시트에서 호출하면 시트 안에 띄운다
+   * (20260907_2059 — 시트를 먼저 닫으면 실패 배너가 화면 밖일 수 있었다).
+   */
+  async function requestSlot(badgeId: string, inventoryItemId: string): Promise<string | null> {
     setPendingBadgeId(badgeId)
     try {
       const token = await getToken()
-      if (!token) {
-        setError(d.itembooks.slotLoginRequired)
-        return
-      }
+      if (!token) return d.itembooks.slotLoginRequired
       const res = await fetch(`/api/itembooks/${itemBookId}/slot`, {
         method: 'POST',
         headers: {
@@ -102,15 +115,21 @@ export default function SlotGrid({
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error ?? d.itembooks.slotFailed)
-        return
+        return data.error ?? d.itembooks.slotFailed
       }
       router.refresh()
+      return null
     } catch {
-      setError(d.itembooks.networkError)
+      return d.itembooks.networkError
     } finally {
       setPendingBadgeId(null)
     }
+  }
+
+  /** 그리드의 «추가» 버튼 경로 — 실패 사유는 그리드 상단 배너에 띄운다(기존 동작). */
+  async function handleSlot(badgeId: string, inventoryItemId: string) {
+    setError(null)
+    setError(await requestSlot(badgeId, inventoryItemId))
   }
 
   async function handleUnslot(badgeId: string, slotId: string) {
@@ -150,7 +169,29 @@ export default function SlotGrid({
       return
     }
     setError(null)
+    setSheetError(null)
+    setSelectedCandidateId(null)
     setSelectingBadgeId(badgeSlot.badge.id)
+  }
+
+  function closeSelectSheet() {
+    setSelectingBadgeId(null)
+    setSelectedCandidateId(null)
+    setSheetError(null)
+  }
+
+  /** 시트에서 개체를 골랐을 때 — 탭 즉시 선택 톤을 켜고, 성공해야만 시트를 닫는다. */
+  async function handleSelectCandidate(badgeId: string, inventoryItemId: string) {
+    if (pendingBadgeId) return
+    setSheetError(null)
+    setSelectedCandidateId(inventoryItemId)
+    const failure = await requestSlot(badgeId, inventoryItemId)
+    if (failure) {
+      setSheetError(failure)
+      setSelectedCandidateId(null)
+      return
+    }
+    closeSelectSheet()
   }
 
   const selectingSlot = selectingBadgeId
@@ -163,6 +204,9 @@ export default function SlotGrid({
         badgeImageUrl: selectingSlot.badge.image_url,
         badgeRarity: selectingSlot.badge.rarity,
         serial: formatSerial(candidate),
+        // 만료 임박 칩("곧 만료")을 그리려면 값이 필요하다 — 없으면 InventoryGrid가 칩을
+        // 그리지 않는다(20260907_2059).
+        expiresAt: candidate.expires_at,
       }))
     : []
 
@@ -234,20 +278,29 @@ export default function SlotGrid({
           하단 고정 액션(footer)이 없으므로 pushBottomOverlay 신고 대상도 아니다. */}
       <BottomSheet
         open={selectingSlot != null}
-        onClose={() => setSelectingBadgeId(null)}
+        onClose={closeSelectSheet}
         title={d.itembooks.selectItemTitle}
       >
         <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-12)]">
           <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
             {selectingSlot ? t(d.itembooks.selectItemBody, { count: String(selectingSlot.candidates.length) }) : ''}
           </p>
+          {sheetError && (
+            <div className="rounded-[var(--radius-cards)] bg-surface-elevated px-3 py-2 text-xs text-text/70">
+              {sheetError}
+            </div>
+          )}
           <InventoryGrid
             items={selectingItems}
             mode="select"
+            // 일련번호를 읽고 비교해서 고르는 화면이라 1열이다 — 3열 카드 폭(360px 뷰포트에서
+            // 클리핑 경계 100px)에는 판독 가능한 크기의 ItemSerialCode가 들어가지 않는다.
+            columns={1}
+            selectedItemId={selectedCandidateId}
+            disabled={pendingBadgeId != null}
             onSelect={(item) => {
               if (!selectingSlot) return
-              setSelectingBadgeId(null)
-              handleSlot(selectingSlot.badge.id, item.id)
+              void handleSelectCandidate(selectingSlot.badge.id, item.id)
             }}
           />
         </div>

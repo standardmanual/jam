@@ -123,7 +123,9 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     inventory && badgeIds.length > 0
       ? service
           .from('inventory_items')
-          .select('id, badge_id, serial_number, serial_prefix, slotted_in, obtained_at')
+          // expires_at — 선택 시트의 "곧 만료" 칩용. 만료가 코앞인 개체를 모르고 장착하는
+          // 것을 막는 정보라 후보 목록에 반드시 실어 보낸다(20260907_2059).
+          .select('id, badge_id, serial_number, serial_prefix, slotted_in, obtained_at, expires_at')
           .eq('inventory_id', inventory.id)
           .in('badge_id', badgeIds)
           .is('dropped_at', null)
@@ -161,7 +163,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
   const inventoryItems = (invRes.data ?? []) as Pick<
     InventoryItemRow,
-    'id' | 'badge_id' | 'serial_number' | 'serial_prefix' | 'slotted_in'
+    'id' | 'badge_id' | 'serial_number' | 'serial_prefix' | 'slotted_in' | 'expires_at'
   >[]
   const slots = (slotsRes.data ?? []) as Pick<
     UserItemBookSlotRow,
@@ -190,7 +192,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   // 그대로 유지한다 — 후보가 1개일 때의 자동 장착 대상이 종전(가장 오래된 개체)과 같아진다.
   const inventoryCandidates = new Map<
     string,
-    Pick<InventoryItemRow, 'id' | 'serial_number' | 'serial_prefix'>[]
+    Pick<InventoryItemRow, 'id' | 'serial_number' | 'serial_prefix' | 'expires_at'>[]
   >()
   for (const item of inventoryItems) {
     if (item.slotted_in) continue
@@ -199,6 +201,7 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
       id: item.id,
       serial_number: item.serial_number,
       serial_prefix: item.serial_prefix,
+      expires_at: item.expires_at,
     }
     if (list) list.push(candidate)
     else inventoryCandidates.set(item.badge_id, [candidate])

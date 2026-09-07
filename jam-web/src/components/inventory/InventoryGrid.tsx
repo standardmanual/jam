@@ -25,13 +25,20 @@ export interface InventoryGridItem {
 }
 
 /**
- * 그리드 카드 안의 `ItemSerialCode` 높이(px). 컴포넌트 총 너비는 height의 약 5.3배로
- * (4자리 알파벳 타일 + 6자리 숫자 타일) 커지므로, 3열 그리드에서 가장 좁아지는
- * 360px 뷰포트의 카드 콘텐츠 폭(약 80px) 안에 들어오는 값으로 고정한다.
- * 추정이 아니라 ItemSerialCode의 비율 상수(TILE_WIDTH_RATIO·DIGIT_ADVANCE_RATIO 등)로
- * 역산한 값이다 — 14 × 5.31 ≈ 74px.
+ * 카드 안의 `ItemSerialCode` 높이(px). **1열(`columns=1`) 전용 값이다** — serial을 넘기는
+ * 호출부(컬렉션 장착 개체 선택 시트)가 1열이기 때문이다.
+ *
+ * 값의 근거(추정 아님, Chromium 실렌더 `offsetWidth` 측정, 20260907_2059):
+ *   - `ItemSerialCode` 총 폭 = height × 5.31 (4자리 알파벳 타일 + 6자리 숫자 타일 + 간격)
+ *   - 3열 · 360px 뷰포트 카드의 클리핑 경계(padding box)는 **100px**이라, height 20이면
+ *     106px가 되어 6px 잘린다. 3열에서는 height 20 이상을 쓸 수 없다
+ *   - 1열 · 360px 뷰포트는 카드 콘텐츠 폭 300px / 클리핑 경계 324px → height 40이면 212px로
+ *     여유 있게 들어간다
+ *   - 40을 고른 이유: `ItemSerialCode`의 자간 보간 하한이 fontSize 20(=height 40)이라
+ *     그 아래로는 작은 글씨용 자간 보정이 클램프돼 캘리브레이션 범위를 벗어난다.
+ *     서비스 실사용 최소값(드랍 시트)도 40이다
  */
-const GRID_SERIAL_HEIGHT_PX = 14
+const SELECT_SERIAL_HEIGHT_PX = 40
 
 interface InventoryGridProps {
   items: InventoryGridItem[]
@@ -42,6 +49,14 @@ interface InventoryGridProps {
   emptySlots?: number
   /** 현재 선택된 아이템 id(select 모드 하이라이트용) */
   selectedItemId?: string | null
+  /**
+   * 열 수. 기본 3(인벤토리 목록·드랍 시트). 일련번호를 **읽고 비교해서** 골라야 하는
+   * 화면(컬렉션 장착 개체 선택 시트)만 1을 넘긴다 — 3열 카드 폭에는 판독 가능한 크기의
+   * `ItemSerialCode`가 들어가지 않는다(위 상수 주석의 실측 참조).
+   */
+  columns?: 1 | 3
+  /** 카드 탭을 일시적으로 막는다(장착 요청 진행 중 중복 탭 방지). */
+  disabled?: boolean
 }
 
 /**
@@ -61,9 +76,11 @@ export default function InventoryGrid({
   onSelect,
   emptySlots = 0,
   selectedItemId = null,
+  columns = 3,
+  disabled = false,
 }: InventoryGridProps) {
   return (
-    <div className="grid grid-cols-3 gap-[var(--spacing-8)]">
+    <div className={`grid ${columns === 1 ? 'grid-cols-1' : 'grid-cols-3'} gap-[var(--spacing-8)]`}>
       {items.map((item) => {
         const expiring = isExpiringSoon(item.expiresAt)
         const expiryNode = expiring && item.expiresAt ? (
@@ -75,10 +92,13 @@ export default function InventoryGrid({
         // 일련번호는 serial이 넘어온 카드에서만 그린다. serial이 없으면 자식 노드를 종전과
         // **완전히 동일하게**(expiryNode 그대로) 유지한다 — 기존 호출부 2곳
         // (`/inventory`, 드랍 바텀시트)의 레이아웃을 건드리지 않기 위함이다.
+        // 릴(슬롯머신) 연출은 끈다 — 이 카드가 뜨는 유일한 화면이 "이미 가진 번호들을 읽고
+        // 비교해서 고르는" 자리라, "번호가 지금 확정되는 순간"을 연출하는 릴과 목적이 반대다.
+        // 시트를 열 때마다 약 1.9초간 숫자가 회전하면 정작 읽어야 할 값을 읽을 수 없다.
         const cardChildren = item.serial ? (
           <div className="flex flex-col items-center gap-[var(--spacing-4)]">
-            <ItemSerialCode code={item.serial} height={GRID_SERIAL_HEIGHT_PX} />
-            {expiryNode && <div className="w-full">{expiryNode}</div>}
+            <ItemSerialCode code={item.serial} height={SELECT_SERIAL_HEIGHT_PX} animate={false} />
+            {expiryNode}
           </div>
         ) : (
           expiryNode
@@ -102,7 +122,7 @@ export default function InventoryGrid({
         return (
           <BadgeGridCard
             key={item.id}
-            onClick={() => onSelect?.(item)}
+            onClick={() => { if (!disabled) onSelect?.(item) }}
             name={item.badgeName}
             imageUrl={item.badgeImageUrl}
             rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}

@@ -377,12 +377,18 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
             ].join(' ')}
           >
             {isOwnBadge && allItemInventory.length > 0 && (
-              <ItemEarnHistory items={allItemInventory.map(item => ({
-                id: item.id,
-                serial: `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`,
-                obtained_at: item.obtained_at,
-                expires_at: item.expires_at,
-              }))} />
+              // activeItemId — 위 히어로에 일련번호가 크게 표시된 개체를 그대로 넘긴다.
+              // 넘기지 않으면 이력 첫 카드가 항상 최신 획득분(obtained_at DESC 첫 행)을 그려서
+              // 히어로와 서로 다른 개체를 가리킨다(20260907_2059 보완).
+              <ItemEarnHistory
+                activeItemId={activeItem?.id ?? null}
+                items={allItemInventory.map(item => ({
+                  id: item.id,
+                  serial: `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`,
+                  obtained_at: item.obtained_at,
+                  expires_at: item.expires_at,
+                }))}
+              />
             )}
 
             {!hasEarned && (
