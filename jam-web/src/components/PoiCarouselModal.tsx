@@ -11,6 +11,8 @@ import { Card } from '@ds/components/cards/Card'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { Carousel } from '@ds/components/navigation/Carousel'
 import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
+import ItemCandidateRow from '@/components/inventory/ItemCandidateRow'
+import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeDetailSheet, { PickupDrop } from '@/app/(main)/drops/BadgeDetailSheet'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
@@ -30,6 +32,39 @@ interface InventoryItem {
   badge_name: string
   badge_rarity: string
   badge_image_url: string | null
+  // 20260908_0040: 드랍 시트가 같은 배지의 여러 개체를 구분할 수 있게 API가 함께 내려준다.
+  serial_prefix: string | null
+  serial_number: number
+  expires_at: string | null
+}
+
+/** 같은 badge_id를 가진 드랍 후보 개체 묶음 — 20260908_0040. */
+interface DropGroup {
+  badgeId: string
+  badgeName: string
+  badgeRarity: string
+  badgeImageUrl: string | null
+  items: InventoryItem[]
+}
+
+/** 개체 하나를 드랍 확인 단계(`pendingDropItem`)가 쓰는 정규화 형태로 변환한다. */
+function toGridItem(item: InventoryItem): InventoryGridItem {
+  return {
+    id: item.id,
+    badgeName: item.badge_name,
+    badgeImageUrl: item.badge_image_url,
+    badgeRarity: item.badge_rarity,
+  }
+}
+
+/** 그룹 내 가장 이른 만료일(있으면) — 드랍 그리드 카드의 "곧 만료" 칩 기준(20260908_0040). */
+function earliestExpiry(items: InventoryItem[]): string | null {
+  let earliest: string | null = null
+  for (const item of items) {
+    if (!item.expires_at) continue
+    if (!earliest || new Date(item.expires_at) < new Date(earliest)) earliest = item.expires_at
+  }
+  return earliest
 }
 
 /** 최초 공개 카드 수 + 윈도우가 확장될 때마다 추가되는 카드 수 */
@@ -156,6 +191,8 @@ export default function PoiCarouselModal({
   const [inventoryLoading, setInventoryLoading] = useState(false)
   const [pendingDropItem, setPendingDropItem] = useState<InventoryGridItem | null>(null)
   const [dropping, setDropping] = useState(false)
+  /** 그룹(같은 배지)의 개체가 2개 이상일 때 여는 개체 선택 시트의 대상 — 20260908_0040. */
+  const [dropCandidateGroup, setDropCandidateGroup] = useState<DropGroup | null>(null)
 
   // 카드가 바뀌면 이전 카드에서 진행 중이던 드랍 플로우를 초기화한다.
   // react.dev의 "prop 변경 시 렌더 중 state 조정" 패턴 — effect 없이 렌더 중
@@ -166,6 +203,7 @@ export default function PoiCarouselModal({
     setShowInventory(false)
     setInventoryItems([])
     setPendingDropItem(null)
+    setDropCandidateGroup(null)
   }
 
   async function openInventory() {
@@ -180,6 +218,26 @@ export default function PoiCarouselModal({
     } finally {
       setInventoryLoading(false)
     }
+  }
+
+  /**
+   * 드랍 그리드에서 배지 종류(그룹) 카드를 골랐을 때. 개체가 1개면 지금까지와 동일하게
+   * 즉시 드랍 확인 단계로 진행하고, 2개 이상이면 일련번호로 구분하는 개체 선택 시트를
+   * 연다(20260908_0040 — 장착 시트가 이미 쓰는 "후보 1개는 즉시, 2개 이상은 시트" 규칙과
+   * 동일). 시트에서 고른 개체도 결국 이 확인 단계로 합류한다 — 새 확인 단계를 만들지 않는다.
+   */
+  function handleSelectDropGroup(group: DropGroup) {
+    if (group.items.length === 1) {
+      setPendingDropItem(toGridItem(group.items[0]))
+      return
+    }
+    setDropCandidateGroup(group)
+  }
+
+  /** 개체 선택 시트에서 하나를 골랐을 때 — 기존 드랍 확인 단계로 넘기고 시트를 닫는다. */
+  function handleSelectDropCandidate(item: InventoryItem) {
+    setPendingDropItem(toGridItem(item))
+    setDropCandidateGroup(null)
   }
 
   async function executeDrop() {
@@ -293,12 +351,43 @@ export default function PoiCarouselModal({
     }
   }
 
-  const dropGridItems: InventoryGridItem[] = inventoryItems.map((it) => ({
-    id: it.id,
-    badgeName: it.badge_name,
-    badgeImageUrl: it.badge_image_url,
-    badgeRarity: it.badge_rarity,
+  // 드랍 그리드는 개체가 아니라 배지 종류(badge_id)별로 묶은 카드 1장이다(20260908_0040) —
+  // 원래도 드랍 대상은 "개체"였지만(그리드가 개체 1:1 매핑) 같은 배지를 여러 개 가져도
+  // 구분할 수단이 없었다. 묶음을 클릭하면 개체가 1개면 즉시, 2개 이상이면 개체 선택 시트로
+  // 이어진다(handleSelectDropGroup).
+  const dropGroups: DropGroup[] = []
+  const dropGroupByBadgeId = new Map<string, DropGroup>()
+  for (const it of inventoryItems) {
+    const existing = dropGroupByBadgeId.get(it.badge_id)
+    if (existing) {
+      existing.items.push(it)
+      continue
+    }
+    const group: DropGroup = {
+      badgeId: it.badge_id,
+      badgeName: it.badge_name,
+      badgeRarity: it.badge_rarity,
+      badgeImageUrl: it.badge_image_url,
+      items: [it],
+    }
+    dropGroupByBadgeId.set(it.badge_id, group)
+    dropGroups.push(group)
+  }
+
+  const dropGridItems: InventoryGridItem[] = dropGroups.map((group) => ({
+    id: group.badgeId,
+    badgeName: group.badgeName,
+    badgeImageUrl: group.badgeImageUrl,
+    badgeRarity: group.badgeRarity,
+    expiresAt: earliestExpiry(group.items),
+    count: group.items.length,
+    countAriaText: t(d.drops.dropOwnedCountAria, { count: String(group.items.length) }),
   }))
+
+  function handleSelectDropGridItem(item: InventoryGridItem) {
+    const group = dropGroupByBadgeId.get(item.id)
+    if (group) handleSelectDropGroup(group)
+  }
 
   if (visiblePois.length === 0) return null
 
@@ -346,7 +435,7 @@ export default function PoiCarouselModal({
                 dropping={dropping}
                 dropGridItems={dropGridItems}
                 onOpenInventory={isActive ? openInventory : undefined}
-                onSelectDropItem={isActive ? setPendingDropItem : undefined}
+                onSelectDropItem={isActive ? handleSelectDropGridItem : undefined}
                 onCancelPending={isActive ? () => setPendingDropItem(null) : undefined}
                 onConfirmDrop={isActive ? executeDrop : undefined}
                 onSelectDrop={isActive ? setSelectedDrop : undefined}
@@ -366,6 +455,38 @@ export default function PoiCarouselModal({
           onCancel={() => setSelectedDrop(null)}
         />
       )}
+
+      {/* 드랍 개체 선택 시트 — 같은 배지를 2개 이상 보유했을 때만 열린다(20260908_0040).
+          장착 개체 선택 시트(SlotGrid.tsx)와 같은 구성(ItemCandidateRow 목록)을 재사용한다.
+          여기서 개체를 고르면 기존 드랍 확인 단계(pendingDropItem)로 그대로 합류한다 —
+          이 시트 자체는 API를 호출하지 않으므로 진행 중 상태·행 억제가 필요 없다. */}
+      <BottomSheet
+        open={dropCandidateGroup != null}
+        onClose={() => setDropCandidateGroup(null)}
+        title={dropCandidateGroup?.badgeName}
+      >
+        <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
+          <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
+            {dropCandidateGroup
+              ? t(d.drops.selectDropItemBody, { count: String(dropCandidateGroup.items.length) })
+              : ''}
+          </p>
+          <div className="flex flex-col gap-[var(--spacing-8)]">
+            {dropCandidateGroup?.items.map((item) => (
+              <ItemCandidateRow
+                key={item.id}
+                candidate={item}
+                rarity={
+                  KNOWN_RARITIES.includes(item.badge_rarity as BadgeRarity)
+                    ? (item.badge_rarity as BadgeRarity)
+                    : 'common'
+                }
+                onClick={() => handleSelectDropCandidate(item)}
+              />
+            ))}
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   )
 }
