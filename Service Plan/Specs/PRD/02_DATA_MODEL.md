@@ -206,6 +206,10 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 
 ### user_item_book_slots / user_item_book_completions (신규)
 - `user_item_book_slots`: 인벤토리 아이템을 슬롯에 장착한 기록 (UNIQUE user+book+badge)
+  - `inventory_item_id`(NOT NULL): **어느 개체가 꽂혀 있는지의 정본.** UNIQUE 제약이 배지 단위라
+    컬렉션당 같은 배지는 1개만 장착되지만, 유저가 같은 배지를 여러 개 보유할 수 있으므로
+    "어느 개체인가"는 이 컬럼으로만 확정된다. 컬렉션 화면의 배지 상세 링크가 싣는
+    `?item={inventory_item_id}`의 출처이기도 하다 (티켓 20260907_2059).
 - `user_item_book_completions`: 완성 기록 (PK user_id+item_book_id)
 
 ---
