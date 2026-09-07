@@ -32,5 +32,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
   // 20260907_2059: 개체 id를 `?item`으로 실어 보낸다. 이 redirect가 없으면 "인벤토리에서
   // 어느 개체를 눌렀는가"가 배지 상세에 도달하기 전에 사라져, 같은 배지를 여러 개 보유한
   // 유저가 어느 카드를 눌러도 같은 일련번호만 보게 된다.
-  redirect(`/badges/${itemData.badge_id}?item=${encodeURIComponent(itemId)}`)
+  // 20260908_0205: `&from=inventory`도 함께 싣는다 — 안 실으면 도착 pathname이 항상
+  // `/badges/...`라 TabBar가 기본 규칙으로 "배지" 탭을 켠다(인벤토리에서 들어왔는데도).
+  redirect(`/badges/${itemData.badge_id}?item=${encodeURIComponent(itemId)}&from=inventory`)
 }

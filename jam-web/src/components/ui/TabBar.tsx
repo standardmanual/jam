@@ -141,11 +141,17 @@ export default function TabBar({ username }: TabBarProps) {
   })()
 
   // 배지 메뉴에서 파생된 페이지는 "배지" 탭 활성 유지:
-  //   - /inventory/[itemId]?from=badges (아이템배지 상세)
   //   - /collections/[id]?from=badges (컬렉션 상세)
+  // (과거 /inventory/[itemId]?from=badges 케이스는 20260907_2059로 /inventory/[itemId]가
+  //  redirect 전용이 되며 실효 없어졌다 — 그 URL을 만드는 곳이 이제 없다)
   const fromBadges =
-    (pathname.startsWith('/inventory') || pathname.startsWith('/collections')) &&
-    searchParams.get('from') === 'badges'
+    pathname.startsWith('/collections') && searchParams.get('from') === 'badges'
+
+  // 20260908_0205: 인벤토리에서 아이템배지 상세로 들어오면 도착 pathname이 `/badges/...`라
+  // 기본 규칙으로 "배지" 탭이 켜진다. `/inventory/[itemId]`의 redirect가 실어 보내는
+  // `&from=inventory`로 "인벤토리" 탭을 대신 활성화한다.
+  const fromInventory =
+    pathname.startsWith('/badges') && searchParams.get('from') === 'inventory'
 
   // 20260824_010: 프로필 탭 제거 — 프로필 진입은 TopNav 우측 아바타로 일원화됐다.
   // baseTabs는 이제 href 치환 없이 그대로 쓴다.
@@ -155,6 +161,7 @@ export default function TabBar({ username }: TabBarProps) {
     if (href === '/') return pathname === '/'
     if (viewingOtherUser && pathname.startsWith('/badges')) return false
     if (fromBadges) return href === '/badges'
+    if (fromInventory) return href === '/inventory'
     return isPathActive(pathname, href)
   }
 
