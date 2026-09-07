@@ -738,8 +738,8 @@ export const ko = {
     unslotButton: '해제',
     slotButton: '추가',
     /** 같은 배지를 여러 개 보유했을 때 뜨는 개체 선택 시트 — 20260907_2059 */
-    selectItemTitle: '어떤 배지를 장착할까요?',
-    selectItemBody: '같은 배지를 {count}개 보유하고 있어요. 일련번호로 구분해서 골라주세요',
+    selectItemTitle: '어느 배지를 장착할까요?',
+    selectItemBody: '장착할 수 있는 배지가 {count}개예요. 일련번호로 구분해서 골라주세요.',
     processing: '처리 중',
     ownedPrefix: '보유 ',
   },
