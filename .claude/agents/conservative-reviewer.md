@@ -77,3 +77,10 @@ tools: Read, Grep, Glob, Bash
 문서·변수명·커밋 메시지는 제외. 해당하는 문구가 없으면 `hasKoreanCopy: false`로 둔다.
 이 추출은 verdict 판정과 무관한 별도 정보 전달이며, 후속 한국어 리뷰 단계가 별도 에이전트
 없이 이 값을 바로 쓴다. 그 외 유형에서는 두 필드 모두 비워둔다.
+
+### diffLineCount — 인터페이스 리뷰 규모 판정용 (`ui` 유형만)
+
+작업 유형이 `ui`면, `git diff --numstat <review 브랜치> origin/staging -- jam-web`로
+추가+삭제 라인 수 합계를 세어 `diffLineCount`에 채운다. 이 값도 verdict 판정과 무관하며,
+오케스트레이터가 인터페이스 리뷰 단계를 돌릴지 말지 정하는 데만 쓴다. 그 외 유형에서는
+비워둔다.
