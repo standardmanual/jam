@@ -65,20 +65,13 @@
     "vercel@claude-plugins-official": true,
     "humanize-korean@im-not-ai": true,
     "pm-product-strategy@pm-skills": true,
-    "pm-execution@pm-skills": true,
-    "headroom@headroom-marketplace": true
+    "pm-execution@pm-skills": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
       "source": {
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
-      }
-    },
-    "headroom-marketplace": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/headroomlabs-ai/headroom.git"
       }
     },
     "pm-skills": {
