@@ -22,6 +22,9 @@ export async function GET() {
       id,
       badge_id,
       dropped_at,
+      serial_prefix,
+      serial_number,
+      expires_at,
       badges ( name, rarity, image_url, deleted_at )
     `)
     .eq('inventory_id', inventoryId)
@@ -39,6 +42,10 @@ export async function GET() {
     id: string
     badge_id: string
     dropped_at: string | null
+    // 20260908_0040: 드랍 시트가 같은 배지의 여러 개체를 구분할 수 있게 일련번호·만료일을 싣는다.
+    serial_prefix: string | null
+    serial_number: number
+    expires_at: string | null
     badges: { name: string; rarity: string; image_url: string | null; deleted_at: string | null } | null
   }
 
@@ -50,6 +57,9 @@ export async function GET() {
       badge_name: d.badges?.name,
       badge_rarity: d.badges?.rarity,
       badge_image_url: d.badges?.image_url,
+      serial_prefix: d.serial_prefix,
+      serial_number: d.serial_number,
+      expires_at: d.expires_at,
     }))
 
   return NextResponse.json({ items })
