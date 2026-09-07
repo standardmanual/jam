@@ -35,7 +35,14 @@
 - [ ] 신규 POI 소스 추가 시 체크리스트
 - [ ] 네이버 원본 분류 검증 게이트·어드민 검토 큐 운영 가이드 ([[20260907_1242]]) —
       카테고리별 allow/reject 패턴 튜닝 기준, 검토 큐 처리 SOP
-- [ ] 카테고리 체계 재정리·기존 POI 재분류 결과 ([[20260907_1243]], 진행 중)
+- [x] 카테고리 체계 재정리 ([[20260907_1243]]) — 마이그레이션 144 적용 완료(2026-09-07).
+      14종으로 정리: government·convenience·tourist_attraction·nature·stadium·school·
+      park·hospital·pharmacy·food·mountain·train_subway·route·unassigned. 삭제:
+      transit(POI 16건)·other(POI 3건→unassigned 이관). 통합: bike_route+trail→route.
+      키워드 구조가 `text[]`→`jsonb({keyword,scope})`로 전환돼 카테고리 내에서도 키워드별
+      지역단위(동/구/시도) 지정 가능
+- [ ] 기존 POI 599건 재분류 (산·기차지하철 제외) — 스크립트(`scripts/reclassify-poi-categories.ts`)
+      작성 완료, 실제 반영은 미리보기 확인 후 별도 승인 필요
 
 ## 관련 문서
 - [BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) — POI 기반 배지 발급 로직

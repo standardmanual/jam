@@ -65,6 +65,20 @@
 --
 -- 실행 순서: 코드 배포보다 먼저 실행해야 한다 — 배포된 코드가 keywords를 jsonb 배열로
 --    읽고 poi_categories.display_on_map을 조회하므로, 컬럼이 없으면 조회가 깨진다.
+--
+-- 2026-09-07 실행 시 오케스트레이터가 추가한 보정 2건(게이트 리뷰 지적 + 실행 전 백업
+-- 관례 반영) — 원안(jam-developer 작성분) 대비 달라진 부분:
+--   0) poi_backup_144 스냅샷을 맨 앞에서 생성(아래 "백업 권장" 안내를 실제 실행 스텝으로 승격)
+--   11) poi.category의 DEFAULT가 삭제되는 'other'를 계속 가리키던 문제를 마지막에 수정
+--       (게이트 리뷰: 현재 모든 INSERT 경로가 category를 명시해 즉시 회귀는 없으나,
+--       향후 생략 INSERT가 추가되면 FK 위반이 이 마이그레이션과 무관해 보이는 에러로
+--       나타난다 — 원인 추적 난이도를 낮추기 위해 선제 수정)
+
+-- ----------------------------------------------------------------
+-- 0. 실행 전 백업 (transit 16건 하드삭제·other 3건 이관 대비 스냅샷)
+-- ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.poi_backup_144 AS
+SELECT * FROM public.poi WHERE category IN ('transit', 'other');
 
 -- ----------------------------------------------------------------
 -- 1. display_on_map 컬럼 추가
@@ -201,6 +215,11 @@ DELETE FROM public.poi_categories WHERE slug IN ('transit', 'other', 'bike_route
 --     비노출로 덮어쓴다.
 -- ----------------------------------------------------------------
 UPDATE public.poi_categories SET display_on_map = false WHERE slug = 'unassigned';
+
+-- ----------------------------------------------------------------
+-- 11. poi.category DEFAULT 보정 (게이트 리뷰 지적 — 위 헤더 주석 참고)
+-- ----------------------------------------------------------------
+ALTER TABLE public.poi ALTER COLUMN category SET DEFAULT 'unassigned';
 
 -- 🧪 적용 후 검증
 --   SELECT slug, label, pipeline_linked, tier, display_on_map, keywords
