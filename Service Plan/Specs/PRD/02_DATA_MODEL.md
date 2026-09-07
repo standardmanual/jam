@@ -254,13 +254,14 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 > `poi_categories.requires_review`·`naver_category`/`category-gate.ts`다(아래 참고).
 
 ### poi_categories (신규, ENUM 대체)
-`slug`(PK), `label`, `pipeline_linked`, `tier`, `keywords[]`, `requires_review` — 드랍/픽업 파이프라인과 자동 검색 연동 메타를 코드 하드코딩에서 DB로 이전.
+`slug`(PK), `label`, `pipeline_linked`, `tier`, `keywords`(jsonb), `display_on_map`, `requires_review` — 드랍/픽업 파이프라인과 자동 검색 연동 메타를 코드 하드코딩에서 DB로 이전.
 
 | 필드 | 운영 기준 |
 |------|------|
 | `pipeline_linked` | `true`인 카테고리만 자동 검색 대상으로 로드된다. `false`는 수동 등록 전용 |
-| `tier` | 1 = 매 요청마다 검색 / 2 = 티어1 결과가 반경 500m 내 3건 미만일 때만 보조 검색. 1·2가 아니면 검색에서 제외 |
-| `keywords[]` | 네이버 지역검색 쿼리 문자열. **검색 결과의 카테고리는 그 키워드를 소유한 슬러그로 고정**되며, POI 이름은 판정에 쓰이지 않는다 |
+| `tier` | **2026-09-07([20260907_1243](../../Tickets/20260907_1243_Infra_POI-카테고리체계-재정리-및-기존POI재분류.md))부터 파이프라인 연동 카테고리 전부 `1`로 통일** — 컬럼·코드의 `tier===1\|\|tier===2` 필터(`categories.ts`)는 남아있지만 `tier=2`인 행이 없어 사실상 전부 "매 요청마다 검색"으로 동작한다. `pipeline_linked=false`는 `tier=NULL` |
+| `keywords` | **2026-09-07부터 `text[]`→`jsonb` 전환.** 각 원소 `{"keyword": string, "scope": "dong"\|"gu"\|"sido"}` — `scope`는 역지오코딩 결과(`{sido, gu, dong}`, `reverse-geocode.ts`) 중 이 키워드에 접두어로 붙일 지역 단위. 카테고리 하나 안에서도 키워드별로 다른 지역 단위를 쓸 수 있다(예: government의 주민센터=동, 구청=구, 시청=시도). **검색 결과의 카테고리는 그 키워드를 소유한 슬러그로 고정**되며, POI 이름은 판정에 쓰이지 않는다 |
+| `display_on_map` | **신규(2026-09-07)** — `false`면 자동수집은 계속하되 지도(드랍/픽업 화면)에는 노출하지 않는다. 노출 여부와 게이트 통과 여부(`pending_review`)는 서로 무관 — 검토 대기 중에도 `display_on_map`을 그대로 따른다 |
 | `requires_review` | **신규(2026-09-07, [20260907_1242](../../Tickets/20260907_1242_Infra_POI-네이버원본분류검증게이트및-어드민검토큐.md))** — `true`면 수집 시 네이버 원본 분류를 카테고리별 allow/reject 패턴(`src/lib/poi/category-gate.ts`)과 대조해 자동거부(미저장)/자동승인/검토대기 3단계로 분기한다. 기본 `false`(기존처럼 무조건 저장). 검토대기분은 어드민 `/admin/poi/review`에서 승인·카테고리 변경·거부 처리. 거부된 POI는 삭제 대신 `unassigned`(미분류·거부됨) 홀딩 카테고리로 이관돼 보관된다(`pipeline_linked=false`라 재수집·재검토 큐 어느 쪽에도 다시 나타나지 않음) |
 
 > **카테고리를 새로 만들 때 주의**: `slug`는 `^[a-z][a-z0-9_]*$`만 허용(한글 불가, 라벨로 표기).
@@ -268,10 +269,16 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 > `EXACT_MATCH_RADIUS_BY_CATEGORY`에 반경을 **반드시 함께 등록**해야 한다 — 누락 시 기본
 > 500m가 적용돼 오탐이 발생한다(20260811_006). 또한 `poi.category`는 `poi_categories.slug`를
 > 참조하는 FK(ON UPDATE CASCADE / ON DELETE RESTRICT)라 **카테고리 행을 먼저 INSERT**해야
-> POI를 옮길 수 있고, 소속 POI가 남아 있는 카테고리는 삭제되지 않는다.
+> POI를 옮길 수 있고, 소속 POI가 남아 있는 카테고리는 삭제되지 않는다. `poi.category`의 컬럼
+> DEFAULT는 `unassigned`(2026-09-07 이전엔 `other`였으나 그 카테고리가 삭제되며 함께 보정).
 >
-> 2026-08-24 기준 배지 연결 카테고리: `train_subway`(기차/지하철) 929개 · `mountain`(산) 847개는
-> POI와 배지가 1:1 일치, `transit`(대중교통) 69개 중 22개만 배지 연결([[20260824_023]]).
+> **2026-09-07 카테고리 재정리([[20260907_1243]]) 이후 14종**: government·convenience·
+> tourist_attraction·nature·stadium·school·park·hospital·pharmacy·food·mountain·
+> train_subway·route·unassigned. 삭제됨: `transit`(대중교통, 카테고리+POI 16건 전부 삭제 —
+> 삭제 전 실측상 배지 연결·드랍/조회 이력 0건 확인됨), `other`(기타, POI 3건은 `unassigned`로
+> 이관). 통합됨: `bike_route`+`trail` → `route`. 신설: `stadium`(경기장)·`school`(학교).
+> `mountain`·`train_subway`는 `pipeline_linked=false`로 전환(자동수집 중단, 기존 POI는 활성
+> 유지 — 실측상 두 카테고리 모두 자동수집 산출이 사실상 없었고 대부분 수동 등록이었음).
 
 ### poi_search_cache (신규)
 네이버 지역검색 API 캐시. `grid_key`+`category` PK, TTL 관리.
