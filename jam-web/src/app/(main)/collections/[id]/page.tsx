@@ -123,15 +123,22 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     inventory && badgeIds.length > 0
       ? service
           .from('inventory_items')
-          .select('id, badge_id, serial_number, serial_prefix, slotted_in, obtained_at')
+          // expires_at — 선택 시트의 "곧 만료" 칩용. 만료가 코앞인 개체를 모르고 장착하는
+          // 것을 막는 정보라 후보 목록에 반드시 실어 보낸다(20260907_2059).
+          .select('id, badge_id, serial_number, serial_prefix, slotted_in, obtained_at, expires_at')
           .eq('inventory_id', inventory.id)
           .in('badge_id', badgeIds)
           .is('dropped_at', null)
+          // 파괴된 개체(조합 소모/미픽업 만료)는 장착 후보가 될 수 없다 — 20260907_2059.
+          // 이전에도 RPC가 거절했지만, 이제 후보를 시트에 나열하므로 목록 단계에서 걸러낸다.
+          .is('destroyed_at', null)
           .order('obtained_at', { ascending: true })
       : Promise.resolve({ data: [] as InventoryItemRow[], error: null }),
     service
       .from('user_item_book_slots')
-      .select('id, badge_id, slotted_at')
+      // inventory_item_id — 슬롯에 실제로 꽂힌 개체. 배지 상세 링크에 `?item`으로 실어
+      // 보내야 "장착한 그 개체"의 일련번호가 표시된다(20260907_2059).
+      .select('id, badge_id, slotted_at, inventory_item_id')
       .eq('user_id', subjectId)
       .eq('item_book_id', id),
     service
@@ -156,11 +163,11 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
 
   const inventoryItems = (invRes.data ?? []) as Pick<
     InventoryItemRow,
-    'id' | 'badge_id' | 'serial_number' | 'serial_prefix' | 'slotted_in'
+    'id' | 'badge_id' | 'serial_number' | 'serial_prefix' | 'slotted_in' | 'expires_at'
   >[]
   const slots = (slotsRes.data ?? []) as Pick<
     UserItemBookSlotRow,
-    'id' | 'badge_id' | 'slotted_at'
+    'id' | 'badge_id' | 'slotted_at' | 'inventory_item_id'
   >[]
 
   // 타인 열람 시 아이템배지 슬롯이 0개인 컬렉션은 상세 접근 자체를 막는다(20260824_016).
@@ -179,18 +186,25 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
   if (!isOwnBook && slots.length === 0) notFound()
 
   const slotsMap = new Map(slots.map((s) => [s.badge_id, s]))
-  const inventoryMap = new Map<
+  // [20260907_2059] badge_id당 1개만 남기던 Map을 **미장착 후보 배열 전체**로 바꾼다.
+  // 같은 배지를 여러 개 보유했을 때 어느 개체를 장착할지 사용자가 고를 수 있어야 하고,
+  // 시트에는 각 후보의 일련번호가 표시돼야 한다. 정렬은 조회 시점의 obtained_at ASC를
+  // 그대로 유지한다 — 후보가 1개일 때의 자동 장착 대상이 종전(가장 오래된 개체)과 같아진다.
+  const inventoryCandidates = new Map<
     string,
-    Pick<InventoryItemRow, 'id' | 'serial_number' | 'serial_prefix'>
+    Pick<InventoryItemRow, 'id' | 'serial_number' | 'serial_prefix' | 'expires_at'>[]
   >()
   for (const item of inventoryItems) {
-    if (!item.slotted_in && !inventoryMap.has(item.badge_id)) {
-      inventoryMap.set(item.badge_id, {
-        id: item.id,
-        serial_number: item.serial_number,
-        serial_prefix: item.serial_prefix,
-      })
+    if (item.slotted_in) continue
+    const list = inventoryCandidates.get(item.badge_id)
+    const candidate = {
+      id: item.id,
+      serial_number: item.serial_number,
+      serial_prefix: item.serial_prefix,
+      expires_at: item.expires_at,
     }
+    if (list) list.push(candidate)
+    else inventoryCandidates.set(item.badge_id, [candidate])
   }
 
   const badgeSlots: BadgeSlot[] = badges.map((badge) => {
@@ -202,8 +216,10 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
         image_url: badge.image_url,
         rarity: badge.rarity,
       },
-      inventoryItem: inventoryMap.get(badge.id) ?? null,
-      slot: slot ? { id: slot.id, slotted_at: slot.slotted_at } : null,
+      candidates: inventoryCandidates.get(badge.id) ?? [],
+      slot: slot
+        ? { id: slot.id, slotted_at: slot.slotted_at, inventory_item_id: slot.inventory_item_id }
+        : null,
     }
   })
 

@@ -29,5 +29,8 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
     .single()
   if (!inventoryCheck) notFound()
 
-  redirect('/badges/' + itemData.badge_id)
+  // 20260907_2059: 개체 id를 `?item`으로 실어 보낸다. 이 redirect가 없으면 "인벤토리에서
+  // 어느 개체를 눌렀는가"가 배지 상세에 도달하기 전에 사라져, 같은 배지를 여러 개 보유한
+  // 유저가 어느 카드를 눌러도 같은 일련번호만 보게 된다.
+  redirect(`/badges/${itemData.badge_id}?item=${encodeURIComponent(itemId)}`)
 }

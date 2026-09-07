@@ -13,13 +13,15 @@ const meta: Meta<typeof ItemSerialCode> = {
           '앞 4자(알파벳)는 카드 1장씩, 나머지(숫자)는 하나의 박스로 렌더링하는 일련번호 스탬프. ' +
           '숫자 자리는 마운트 시 transitions.dev "Spinning counter"(.t-reel)로 0-9를 스핀한 뒤 ' +
           '목표 숫자에 착지한다(20260903_1611). 알파벳 prefix 카드는 정적 텍스트 그대로 유지. ' +
-          'prefers-reduced-motion에서는 스핀 없이 즉시 최종 값을 표시한다.',
+          'prefers-reduced-motion에서는 스핀 없이 즉시 최종 값을 표시한다. ' +
+          'animate={false}를 넘기면 같은 정적 렌더 경로를 강제한다(20260907_2059).',
       },
     },
   },
   argTypes: {
     code: { control: 'text' },
     height: { control: { type: 'range', min: 40, max: 400, step: 4 } },
+    animate: { control: 'boolean' },
   },
 };
 
@@ -50,6 +52,30 @@ export const DropSheetScale: Story = {
   name: '드랍 바텀시트 실측값 (height 40, 자간 자동 완화)',
   args: { code: 'ABCD000042', height: 40 },
 };
+
+export const StaticNoReel: Story = {
+  // height 40 · animate=false — 컬렉션 장착 개체 선택 시트(SlotGrid)에 실제 적용된 조합
+  // (티켓 20260907_2059). 시트를 여는 목적이 "이미 가진 번호들을 읽고 비교해서 고르는 것"이라
+  // 릴 연출(약 1.9초 회전)과 목적이 반대다. 스핀 없이 즉시 최종 값을 그린다.
+  name: '릴 정지 (선택 시트 실측값 — height 40, animate=false)',
+  args: { code: 'MMBT829356', height: 40, animate: false },
+}
+
+export const ReelVsStatic: Story = {
+  name: '릴 재생 vs 릴 정지 비교',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'flex-start' }}>
+      <div>
+        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>animate 기본값(true) — 마운트 시 스핀</p>
+        <ItemSerialCode code="MMBT829356" height={40} />
+      </div>
+      <div>
+        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 8 }}>animate=false — 즉시 최종 값</p>
+        <ItemSerialCode code="MMBT829356" height={40} animate={false} />
+      </div>
+    </div>
+  ),
+}
 
 export const FiveDigitPlaceholder: Story = {
   name: 'Figma 원본 자리 수 (숫자 5자리)',
