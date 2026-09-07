@@ -21,6 +21,11 @@ import React, { useEffect, useId, useState } from 'react';
  * 릴 마스크·전환이 적용되지 않고 숫자만 정적으로 겹쳐 보일 수 있다(Storybook·서비스 앱은
  * 둘 다 globals.css를 로드하므로 문제 없음).
  *
+ * `animate={false}`를 넘기면 릴을 끄고 최종 값을 즉시 정적으로 그린다(20260907_2059).
+ * 릴은 "번호가 지금 확정되는 순간"의 연출이라, 이미 가진 개체들의 번호를 **비교해서 고르는**
+ * 화면(컬렉션 장착 개체 선택 시트)에서는 목적이 반대다 — 그 자리에서만 끈다. 기본값은 true라
+ * 기존 사용처(배지 상세 height=50, 드랍 시트 height=40, dev-sample)는 그대로 스핀한다.
+ *
  * 접근성: 릴 스트립은 애니메이션을 위해 0-9 셀 전체가 DOM에 존재해 textContent가 뒤섞이므로
  * `aria-hidden="true"`로 접근성 트리에서 제외하고, 숫자 Tile 안에 `sr-only` 텍스트로 실제
  * 숫자값을 노출한다(알파벳 Tile은 기존과 동일하게 일반 텍스트라 별도 처리 불필요).
@@ -141,9 +146,14 @@ function ReelColumn({ digit, index, colWidth, cellHeight, marginRight, fontSize,
  *  trackingRatioFor)과 동일한 값을 재사용해 외곽 Tile 폭 계산과 어긋나지 않게 한다. 릴 셀은
  *  고정폭이라 "가변폭 텍스트" 가정과는 다르지만, 자리 수 × 자리당 advance + (n-1)×tracking
  *  이라는 총 폭 공식 자체는 변하지 않는다 — 텍스트 한 덩어리 대신 자리마다 나눠 렌더링할 뿐. */
-function DigitReelGroup({ digits, height }) {
+function DigitReelGroup({ digits, height, animate }) {
   const uid = useId();
-  const reduced = useReducedMotion();
+  const prefersReduced = useReducedMotion();
+  // `animate=false`는 OS 모션 축소와 **완전히 같은 렌더 경로**를 탄다(cells=[digit],
+  // translateY 0, SVG 블러 필터 미생성). 새 정적 분기를 따로 만들지 않는 이유는, 릴을 끈
+  // 상태에서 지켜야 할 시각 결과가 reduced-motion과 동일하기 때문이다 — 전역 모션 토큰
+  // (`--reel-*`)은 건드리지 않는다.
+  const reduced = !animate || prefersReduced;
   const [landed, setLanded] = useState(false);
 
   useEffect(() => {
@@ -261,19 +271,19 @@ function Tile({ text, width, height }) {
   );
 }
 
-function DigitTile({ digits, width, height }) {
+function DigitTile({ digits, width, height, animate }) {
   // 릴 스트립은 애니메이션을 위해 0-9 셀 전체가 DOM에 존재하므로(시각적으로는 마스크로
   // 한 칸만 보임) textContent가 뒤섞인다. 릴 전체를 aria-hidden으로 접근성 트리에서
   // 제외하고(DigitReelGroup 내부), 실제 최종 숫자값만 스크린리더 전용 텍스트로 노출한다.
   return (
     <TileShell width={width} height={height}>
       <span className="sr-only">{digits}</span>
-      <DigitReelGroup digits={digits} height={height} />
+      <DigitReelGroup digits={digits} height={height} animate={animate} />
     </TileShell>
   );
 }
 
-export function ItemSerialCode({ code, height = 160, className = '', style = {} }) {
+export function ItemSerialCode({ code, height = 160, animate = true, className = '', style = {} }) {
   const letters = code.slice(0, 4).padEnd(4, '?').split('');
   const digits = code.slice(4);
 
@@ -298,7 +308,7 @@ export function ItemSerialCode({ code, height = 160, className = '', style = {} 
       {letters.map((ch, i) => (
         <Tile key={i} text={ch} width={tileWidth} height={height} />
       ))}
-      {digits.length > 0 && <DigitTile digits={digits} width={numberWidth} height={height} />}
+      {digits.length > 0 && <DigitTile digits={digits} width={numberWidth} height={height} animate={animate} />}
     </div>
   );
 }
