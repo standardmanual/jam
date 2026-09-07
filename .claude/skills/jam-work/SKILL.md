@@ -188,10 +188,13 @@ phase('구현')
 // checkout/commit을 하면 서로의 미커밋 편집·체크아웃 상태를 지운다(티켓 20260906_0110
 // 게이트 리뷰 중 실측: 오케스트레이터가 남긴 문서 편집이 흔적 없이 사라짐). 격리 워크트리는
 // 이 트리 밖에서 분기·커밋하므로 다른 세션의 작업과 절대 겹치지 않는다.
+const KOREAN_WRITING_TYPES = ['copy', 'ui', 'content']
 const devResult = await agent(
   `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n요청: ${userRequest}\n` +
   `${reuseDecision ? `\nUI 재사용 판정(오케스트레이터 결정, 이대로 따를 것):\n${reuseDecision}\n` : ''}` +
   `${retryReason ? `\n이전 게이트 리뷰 FAIL 사유 — 반드시 해결할 것:\n${retryReason}\n` : ''}` +
+  `${KOREAN_WRITING_TYPES.includes(workType) ? `\n신규·변경되는 사용자 노출 한국어 문구(UI 카피, 배지·미션·POI 설명, 알림·토스트 등)를 ` +
+    `작성할 때는 .claude/output-styles/fluent-korean.md를 읽고 그 지침을 따라 작성하라.\n` : ''}` +
   `\n이 티켓을 읽고 구현을 진행하라.`,
   { agentType: 'jam-developer', label: 'jam-developer', isolation: 'worktree' }
 )
@@ -338,6 +341,10 @@ gate의 `sideFindings`와 progressive의 "## 범위 밖 발견물" 섹션이 비
 - 이 스킬 호출 자체가 Workflow 툴 사용에 대한 명시적 opt-in이다.
 - 경미 수정(1파일·수 줄·로직 무변경, 예: 오타)은 파이프라인 없이 직접 처리해도 된다.
   단 티켓은 남긴다.
+- `copy`·`ui`·`content` 유형의 한국어 문구 작성·점검은 2단계로 나뉜다: **구현 단계**에서
+  jam-developer가 `.claude/output-styles/fluent-korean.md` 지침을 따라 쓰고, **한국어 리뷰
+  단계**에서 그 결과물을 `humanize-korean`으로 점검한다(제안형, 판정에 영향 없음).
 - 한국어 리뷰 단계는 `humanize-korean` 플러그인(에이전트: `humanize-korean:humanize-monolith`)이
   설치돼 있어야 동작한다. 플러그인을 제거하면 이 단계도 함께 걷어낼 것 — 없는 에이전트 타입을
-  호출하면 Workflow가 해당 phase에서 에러를 낸다.
+  호출하면 Workflow가 해당 phase에서 에러를 낸다. `.claude/output-styles/fluent-korean.md`를
+  제거하면 구현 단계의 참조 지시도 함께 걷어낼 것.
