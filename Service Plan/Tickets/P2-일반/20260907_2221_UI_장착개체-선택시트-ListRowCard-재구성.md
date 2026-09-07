@@ -156,18 +156,46 @@ jam-web/src/lib/i18n/ko.ts                             문구 정리
 - 닫힘 트랜지션 동안에도 행이 DOM에 남아 눌릴 수 있으므로, `handleSelectCandidate`에
   `selectingBadgeId`가 없으면 무시하는 가드를 추가했다.
 
+**3차 — 요청 진행 중 상태 보완**(개선·인터랙션 리뷰 지적 3건)
+
+- **① 열려 있는 동안 목록이 갱신되지 않던 문제**(2차가 만든 회귀). 2차의 스냅샷이 닫히는
+  동안뿐 아니라 **열려 있는 동안에도** 내용을 고정해, 장착이 409로 실패한 뒤 `router.refresh()`
+  결과가 도착해도 시트가 옛 목록을 그리고 이미 사라진 후보를 계속 탭할 수 있었다.
+  → 시트가 그리는 대상을 이중 폴백 `sheetView`로 바꿨다:
+  `(selectingBadgeId ? badgeSlots.find(...) : null) ?? sheetSlot`.
+  **열려 있으면 최신값, 닫히는 중이면 스냅샷**이라 2차가 확보한 성질(닫는 동안 내용 유지)이
+  그대로 유지된다. `sheetSlot` 상태는 닫힘 구간 전용 폴백으로 역할이 좁아졌다.
+- **② 요청 중 시트를 닫으면 실패가 조용히 묻히던 문제.** 요청이 도는 동안에도 백드롭 탭·핸들
+  드래그로 시트를 닫을 수 있었고, 그 뒤 도착한 실패는 이미 사라진 시트의 `sheetError`에만
+  세팅돼 다음에 열 때 지워졌다 — **장착이 실패했는데 사용자가 아무것도 보지 못했다.**
+  → `BottomSheet`의 `onClose`를 `handleSheetClose`로 바꿔 **요청 중 닫기를 무시**한다.
+  그리드 상단 배너로 대신 알리는 방식은 택하지 않았다 — 20260907_2059가 "장착 모드에서는
+  그리드가 화면 밖일 수 있다"는 이유로 이미 배제한 경로다. 성공 후 닫기는 기존
+  `closeSelectSheet()`를 그대로 쓴다(그 시점의 클로저는 `pendingBadgeId`가 null인 렌더의 것).
+- **③ 요청 중 다른 행이 「죽은 탭」이던 문제.** 1차에 있던 `disabled` 시각 억제가 2차에서
+  죽은 prop 제거와 함께 사라져, 핸들러 가드로 **동작만** 막히고 행은 `active:scale`·
+  `cursor-pointer`가 살아 있어 **눌린 반응은 나오는데 아무 일도 안 했다.**
+  → 요청 중 선택되지 않은 행에 `opacity-40 pointer-events-none`을 준다. 선택된 행에는
+  `trailing`으로 진행 표시(`d.itembooks.processing` = "처리 중")를 띄워 **왜 지금 다른 행이
+  눌리지 않고 시트도 닫히지 않는지**를 설명한다. 후보 목록 묶음에는 `aria-busy`를 건다.
+  `ListRowCard`(13개 화면 공용)에 `disabled` prop을 추가하지 않고 전부 호출부에서 처리했다.
+- **주석 정정.** `handleSelectCandidate` 가드의 근거를 "닫힘 트랜지션 동안 행이 눌릴 수 있다"에서
+  **"BottomSheet가 `setShown(false)`를 rAF로 미루는 1프레임"**으로 고쳤다. `.t-panel-slide`가
+  `data-open="false"`에서 `pointer-events: none`을 걸므로(`src/components/transitions.css:23`)
+  실제로 열려 있는 창은 그 1프레임뿐이다 — 기존 문구는 다음 작업자를 오도한다.
+
 ### 변경된 파일
 ```
-jam-web/src/app/(main)/collections/[id]/SlotGrid.tsx   시트 재구성 + 닫힘 트랜지션 스냅샷
+jam-web/src/app/(main)/collections/[id]/SlotGrid.tsx   시트 재구성 + 이중 폴백 + 진행 중 상태
 jam-web/src/components/inventory/InventoryGrid.tsx     죽은 prop 제거
 jam-web/src/lib/i18n/ko.ts                             selectItemTitle 키 삭제
 ```
 
 ### 테스트 결과
-- [x] `npm run lint` 전체: **0 errors, 13 warnings** (13건 모두 `design-system/**`의 기존 경고 —
-      변경 파일에서 발생한 경고 0건)
-- [x] `npx tsc --noEmit` 전체: 오류 0
-- [x] `npx vitest run`: 66개 파일 / 1158개 테스트 전부 통과
+- [x] `npm run lint` 전체(3차 재실행): **0 errors, 13 warnings** (13건 모두 `design-system/**`의
+      기존 경고 — 변경 파일에서 발생한 경고 0건)
+- [x] `npx tsc --noEmit` 전체(3차 재실행): 오류 0
+- [x] `npx vitest run`(3차 재실행): 66개 파일 / 1158개 테스트 전부 통과
 - [x] 행 레이아웃 실측(Chromium 실렌더, `ListRowCard`+`RarityBadge`+`ItemSerialCode` 그대로 번들해
       `offsetWidth` 측정): 뷰포트 320/360/430px에서 행 콘텐츠 폭 254/294/364px, 일련번호 폭
       212px → **가장 좁은 320px에서도 넘치지 않음**
@@ -175,7 +203,8 @@ jam-web/src/lib/i18n/ko.ts                             selectItemTitle 키 삭�
       92px vs 72px). 주의사항 4의 결정에 따라 그대로 둔다
 - [ ] 실화면 확인: 이 브랜치가 staging에 병합되기 전이라 `jam-stage.vercel.app`에는 아직
       반영되지 않았다 — **staging 병합 후 확인 필요**(닫힘 트랜지션 중 제목·목록 유지,
-      재오픈 시 이전 배지 잔상 없음)
+      재오픈 시 이전 배지 잔상 없음, 요청 중 진행 표시·다른 행 억제·닫기 무시,
+      실패 후 목록이 최신으로 갱신되는지)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -185,6 +214,8 @@ jam-web/src/lib/i18n/ko.ts                             selectItemTitle 키 삭�
 - [x] 에러 메시지: 장착 실패 사유는 기존 문구를 그대로 시트 안에 띄운다(변경 없음)
 - [x] 문장 규칙: 제목은 배지 이름(고유명사)이라 마침표 없음. 안내문 두 문장 모두 마침표 유지
 - [x] 표기 규칙: 만료 임박 칩의 날짜 표기(`M/D 만료`) 기존 그대로
+- [x] 3차 추가 노출 문구: 진행 표시에 **기존 키 `d.itembooks.processing`("처리 중")을 재사용**했다
+  (신규 문구 없음). 같은 화면의 다른 진행 표시와 어휘가 갈리지 않게 한 선택이다.
 - 정리: 제목이 배지 이름으로 바뀌어 쓰이지 않게 된 `d.itembooks.selectItemTitle` 키 삭제.
   안내문 `selectItemBody`("장착할 수 있는 배지가 {count}개예요. 일련번호로 구분해서 골라주세요.")는
   제목이 배지 이름으로 바뀐 뒤에도 «개수 + 선택 기준»을 그대로 전달하므로 유지했다.

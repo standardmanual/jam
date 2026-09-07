@@ -93,14 +93,14 @@ export default function SlotGrid({
   /** 개체 선택 시트를 띄운 배지 id(후보가 2개 이상일 때만 설정된다) — 20260907_2059 */
   const [selectingBadgeId, setSelectingBadgeId] = useState<string | null>(null)
   /**
-   * 시트가 그리는 대상. **여는 순간의 스냅샷을 그대로 들고 있는다** — `selectingBadgeId`로
-   * 매 렌더 `badgeSlots`에서 찾으면, 닫는 동안 제목과 후보 목록이 한꺼번에 비어 **내용 없는
-   * 시트가 쪼그라들며 내려간다**(`BottomSheet`는 `open=false` 이후에도 닫힘 트랜지션이 끝날
-   * 때까지 DOM에 남는다 — `BottomSheet.tsx:195`). 장착 성공 뒤 `router.refresh()`로 갱신된
-   * 목록이 닫힘 도중 도착해 후보가 사라지는 경우도 스냅샷이 함께 막는다.
+   * **닫힘 트랜지션 동안에만 쓰는 폴백 스냅샷**(여는 순간의 `BadgeSlot`).
    *
-   * 다시 열 때 이전 배지가 비치지 않는 이유: 여는 클릭이 `selectingBadgeId`와 이 값을 같은
-   * 핸들러에서 함께 세팅하므로, 시트가 다시 열리는 첫 렌더부터 새 배지다.
+   * `BottomSheet`는 `open=false` 이후에도 닫힘 트랜지션이 끝날 때까지 DOM에 남는데
+   * (`BottomSheet.tsx:195`), 그때 `selectingBadgeId`는 이미 null이라 최신값 조회가 실패한다.
+   * 그러면 제목과 후보 목록이 한꺼번에 비어 **내용 없는 시트가 쪼그라들며 내려간다.**
+   * 이 스냅샷이 그 구간을 메운다.
+   *
+   * 열려 있는 동안에는 이 값을 쓰지 않는다 — 아래 `sheetView` 주석 참고.
    */
   const [sheetSlot, setSheetSlot] = useState<BadgeSlot | null>(null)
   /** 시트에서 방금 탭한 개체 id — 요청이 끝나기 전에 카드에 선택 톤을 바로 켠다(20260907_2059) */
@@ -113,6 +113,23 @@ export default function SlotGrid({
    */
   const [sheetError, setSheetError] = useState<string | null>(null)
   const gridRef = useRef<HTMLDivElement | null>(null)
+
+  /**
+   * 시트가 그리는 대상 — **열려 있으면 최신값, 닫히는 중이면 스냅샷**의 이중 폴백이다.
+   *
+   * 스냅샷만 쓰면 열려 있는 동안에도 내용이 고정된다. 장착이 409로 실패한 뒤
+   * `router.refresh()` 결과가 도착해도 시트는 옛 목록을 계속 그리고, 이미 사라진 후보를
+   * 계속 탭할 수 있었다. `selectingBadgeId`가 살아 있는 동안에는 `badgeSlots`에서 매번
+   * 다시 찾아 최신 상태를 따라간다.
+   *
+   * 다시 열 때 이전 배지가 비치지 않는 이유: 여는 클릭이 `selectingBadgeId`와 스냅샷을 같은
+   * 핸들러에서 함께 세팅하므로, 시트가 다시 열리는 첫 렌더부터 새 배지다.
+   */
+  const sheetView =
+    (selectingBadgeId ? badgeSlots.find((bs) => bs.badge.id === selectingBadgeId) : null) ?? sheetSlot
+
+  /** 장착 요청이 도는 중 — 시트 안의 행 억제·진행 표시·닫기 차단이 모두 이 값을 본다. */
+  const sheetBusy = pendingBadgeId != null
 
   // 장착 모드로 진입하면 슬롯 그리드가 화면에 들어오게 한다(스토리 텍스트가 길어 스크롤이 필요)
   useEffect(() => {
@@ -217,9 +234,23 @@ export default function SlotGrid({
     setSelectingBadgeId(null)
   }
 
+  /**
+   * 사용자가 시트를 닫으려 할 때(백드롭 탭·핸들 드래그). **요청이 도는 동안에는 무시한다.**
+   * 닫힌 뒤 실패가 도착하면 `sheetError`는 이미 사라진 시트에 세팅되고 다음에 열 때 지워져,
+   * **장착이 실패했는데 사용자가 아무것도 보지 못한다.** 그리드 상단 배너로 대신 알리는 방식은
+   * 20260907_2059가 배제했다 — 장착 모드에서는 그리드가 화면 밖일 수 있다.
+   * 왜 안 닫히는지는 행에 함께 뜨는 진행 표시("처리 중")가 설명한다.
+   */
+  function handleSheetClose() {
+    if (sheetBusy) return
+    closeSelectSheet()
+  }
+
   /** 시트에서 개체를 골랐을 때 — 탭 즉시 선택 톤을 켜고, 성공해야만 시트를 닫는다. */
   async function handleSelectCandidate(badgeId: string, inventoryItemId: string) {
-    // 닫힘 트랜지션 동안에도 행이 DOM에 남아 눌릴 수 있다 — 이미 닫힌 시트의 탭은 무시한다.
+    // `.t-panel-slide`가 data-open="false"에서 pointer-events를 끊으므로 닫힘 트랜지션 동안
+    // 행은 눌리지 않는다. 남는 창은 `BottomSheet`가 `setShown(false)`를 rAF로 미루는 **1프레임**
+    // 뿐이지만, 그 사이의 탭도 이미 닫힌 시트의 탭이므로 무시한다.
     if (!selectingBadgeId || pendingBadgeId) return
     setSheetError(null)
     setSelectedCandidateId(inventoryItemId)
@@ -300,14 +331,14 @@ export default function SlotGrid({
           하단 고정 액션(footer)이 없으므로 pushBottomOverlay 신고 대상도 아니다. */}
       <BottomSheet
         open={selectingBadgeId != null}
-        onClose={closeSelectSheet}
+        onClose={handleSheetClose}
         // 후보가 전부 같은 배지라 어느 배지인지는 상단에서 한 번만 알린다(20260907_2221).
         // 등급칩은 상단이 아니라 각 행에 둔다 — 같은 칩이 화면에 중복되지 않게 하기 위함.
-        title={sheetSlot?.badge.name}
+        title={sheetView?.badge.name}
       >
         <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
           <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
-            {sheetSlot ? t(d.itembooks.selectItemBody, { count: String(sheetSlot.candidates.length) }) : ''}
+            {sheetView ? t(d.itembooks.selectItemBody, { count: String(sheetView.candidates.length) }) : ''}
           </p>
           {sheetError && (
             <div className="rounded-[var(--radius-cards)] bg-surface-elevated px-3 py-2 text-xs text-text/70">
@@ -316,24 +347,45 @@ export default function SlotGrid({
           )}
           {/* 후보 행 — 반복되는 이미지·이름을 걷어내고 «등급칩(위) + 일련번호(아래)»만 쌓는다.
               행 전체가 버튼이므로(ListRowCard는 onClick이 있으면 <button>) 행 안에 별도
-              버튼을 두지 않는다(20260907_2221). */}
-          {sheetSlot?.candidates.map((candidate) => {
+              버튼을 두지 않는다(20260907_2221).
+              요청이 도는 동안에는 이 묶음이 갱신 중임을 aria-busy로 알린다 —
+              `ListRowCard`는 13개 화면 공용이라 disabled/aria 관련 prop을 늘리지 않고
+              호출부에서 처리한다. */}
+          <div className="flex flex-col gap-[var(--spacing-8)]" aria-busy={sheetBusy}>
+          {sheetView?.candidates.map((candidate) => {
             const expiring = isExpiringSoon(candidate.expires_at)
             const isSelected = selectedCandidateId === candidate.id
+            // 요청 중 «고르지 않은» 행은 눌러도 아무 일이 없다(핸들러 가드). 그런데 행은 여전히
+            // active:scale·cursor-pointer가 살아 있어 «눌린 반응은 나오는데 아무 일도 안 하는»
+            // 죽은 탭이 된다 — 시각적으로도 함께 억제한다.
+            const muted = sheetBusy && !isSelected
             return (
               <ListRowCard
                 key={candidate.id}
                 onClick={() => {
-                  void handleSelectCandidate(sheetSlot.badge.id, candidate.id)
+                  void handleSelectCandidate(sheetView.badge.id, candidate.id)
                 }}
                 // ListRowCard에는 선택 상태 시각이 없어(active:scale만 있다) 탭 즉시 반응이
                 // 사라진다 — 요청이 끝날 때까지 프라이머리 링으로 «지금 이 행»을 표시한다.
                 // 배경톤 대신 inset 링을 쓰는 이유: 카드 기본 배경(bg-surface-elevated)과
                 // 배경 유틸리티가 경합하지 않아 결과가 규칙 순서에 좌우되지 않는다.
-                className={isSelected ? 'shadow-[inset_0_0_0_2px_var(--color-primary)]' : ''}
+                className={[
+                  isSelected ? 'shadow-[inset_0_0_0_2px_var(--color-primary)]' : '',
+                  muted ? 'opacity-40 pointer-events-none' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                // 진행 표시 — 왜 지금 다른 행이 눌리지 않고 시트도 닫히지 않는지를 설명한다.
+                trailing={
+                  isSelected && sheetBusy ? (
+                    <span className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
+                      {d.itembooks.processing}
+                    </span>
+                  ) : undefined
+                }
               >
                 <div className="flex flex-col items-start gap-[var(--spacing-4)]">
-                  <RarityBadge rarity={(sheetSlot.badge.rarity as BadgeRarity | null) ?? undefined} />
+                  <RarityBadge rarity={(sheetView.badge.rarity as BadgeRarity | null) ?? undefined} />
                   <ItemSerialCode
                     code={formatSerial(candidate)}
                     height={SELECT_SERIAL_HEIGHT_PX}
@@ -357,6 +409,7 @@ export default function SlotGrid({
               </ListRowCard>
             )
           })}
+          </div>
         </div>
       </BottomSheet>
     </div>
