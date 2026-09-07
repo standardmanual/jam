@@ -10,8 +10,9 @@ import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { Card } from '@ds/components/cards/Card'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { Carousel } from '@ds/components/navigation/Carousel'
-import InventoryGrid, { InventoryGridItem } from '@/components/inventory/InventoryGrid'
+import type { InventoryGridItem } from '@/components/inventory/InventoryGrid'
 import ItemCandidateRow from '@/components/inventory/ItemCandidateRow'
+import LocalDate from '@/components/LocalDate'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeDetailSheet, { PickupDrop } from '@/app/(main)/drops/BadgeDetailSheet'
 import { useRevealOnMount } from '@/components/transitions-pages'
@@ -65,6 +66,17 @@ function earliestExpiry(items: InventoryItem[]): string | null {
     if (!earliest || new Date(item.expires_at) < new Date(earliest)) earliest = item.expires_at
   }
   return earliest
+}
+
+/**
+ * 만료 임박(7일 이내) 여부 — `InventoryGrid.tsx`의 동명 함수와 동일 기준(20260908_0217,
+ * 픽업 목록·드랍 선택 목록 행 통일). 드랍 선택 행에만 쓰인다 — 픽업 행(다른 사람이 드랍한
+ * 배지)에는 만료 개념이 없다.
+ */
+function isRowExpiringSoon(expiresAt: string | null | undefined): boolean {
+  if (!expiresAt) return false
+  const diff = new Date(expiresAt).getTime() - Date.now()
+  return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
 }
 
 /** 최초 공개 카드 수 + 윈도우가 확장될 때마다 추가되는 카드 수 */
@@ -599,7 +611,22 @@ function PoiCard({
             description={d.drops.dropNoItemsBody}
           />
         ) : (
-          <InventoryGrid items={dropGridItems} mode="select" onSelect={(item) => onSelectDropItem?.(item)} />
+          // 20260908_0217: 그리드 카드 대신 픽업 목록과 같은 행 형태(ItemRow)로 통일.
+          // dropGridItems(배지 종류별 그룹 — 개수·만료일 포함)는 그대로 두고 렌더링만 교체.
+          <div className="flex flex-col gap-2">
+            {dropGridItems.map((item) => (
+              <ItemRow
+                key={item.id}
+                name={item.badgeName}
+                imageUrl={item.badgeImageUrl}
+                rarity={item.badgeRarity}
+                count={item.count}
+                countAriaText={item.countAriaText}
+                expiresAt={item.expiresAt}
+                onClick={() => onSelectDropItem?.(item)}
+              />
+            ))}
+          </div>
         )
       ) : (
         /* ===== 드랍된 배지 목록(있으면) + [여기에 드랍] 액션(항상 함께 노출) — 20260829_2101
@@ -608,32 +635,16 @@ function PoiCard({
         <div className="flex flex-col gap-[var(--spacing-16)]">
           {drops.length > 0 ? (
             <div className="flex flex-col gap-2">
-              {drops.map((drop) => {
-                const rarity = KNOWN_RARITIES.includes(drop.badge_rarity as BadgeRarity)
-                  ? (drop.badge_rarity as BadgeRarity)
-                  : 'common'
-                return (
-                  <button
-                    key={drop.id}
-                    onClick={() => onSelectDrop?.(drop)}
-                    disabled={!isActive}
-                    className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left disabled:cursor-default"
-                  >
-                    <div className="w-11 h-11 rounded-[var(--radius-cards)] flex-shrink-0 overflow-hidden bg-white/[0.06] flex items-center justify-center">
-                      {drop.badge_image_url ? (
-                        <Image src={drop.badge_image_url} alt={drop.badge_name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
-                      ) : (
-                        <MedalIcon className="w-5 h-5 text-text/40" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{drop.badge_name}</p>
-                      <RarityBadge rarity={rarity} className="mt-1" />
-                    </div>
-                    <ChevronRightIcon className="w-5 h-5 text-text/40 shrink-0" />
-                  </button>
-                )
-              })}
+              {drops.map((drop) => (
+                <ItemRow
+                  key={drop.id}
+                  name={drop.badge_name}
+                  imageUrl={drop.badge_image_url}
+                  rarity={drop.badge_rarity}
+                  onClick={() => onSelectDrop?.(drop)}
+                  disabled={!isActive}
+                />
+              ))}
             </div>
           ) : (
             <EmptyState
@@ -651,5 +662,93 @@ function PoiCard({
         </div>
       )}
     </Card>
+  )
+}
+
+// ===== 아이템 행 (픽업 목록 · 드랍 선택 목록 공용, 20260908_0217) =====
+
+interface ItemRowProps {
+  name: string
+  imageUrl: string | null
+  /** 미지 등급 값은 픽업 행과 동일하게 'common'으로 폴백한다(기존 관례 유지, 되돌리지 않음). */
+  rarity: string | null
+  onClick?: () => void
+  disabled?: boolean
+  /**
+   * 같은 배지를 여러 개 보유했을 때의 개수 — 드랍 선택 행에서만 넘어온다. 픽업 행은
+   * 넘기지 않으므로(undefined) 서클이 그려지지 않는다.
+   */
+  count?: number | null
+  /** count>1일 때 행 버튼의 aria-label에 포함할 문구(dropOwnedCountAria, 새 문구 아님). */
+  countAriaText?: string
+  /** 그룹 내 가장 이른 만료일 — 드랍 선택 행에서만 넘어온다. 픽업 행에는 만료 개념이 없다. */
+  expiresAt?: string | null
+}
+
+/**
+ * 픽업 목록(다른 사람이 드랍한 배지)과 드랍 선택 목록(내 인벤토리에서 여기 내놓을 배지 고르기)이
+ * 함께 쓰는 행 프레젠테이션 컴포넌트 — 20260908_0217. 기존에는 픽업이 행, 드랍 선택이
+ * InventoryGrid 그리드 카드로 서로 다른 UI였다. 데이터(dropGridItems 그룹화·핸들러·개체
+ * 선택 시트)는 그대로 두고 렌더링만 통일한다.
+ *
+ * count·expiresAt은 드랍 선택 쪽에서만 값이 온다 — 만료 임박이 아니면(대부분의 경우, 그리고
+ * 픽업 행은 항상) RarityBadge만 그려 픽업 행과 시각적으로 완전히 동일하다.
+ */
+function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaText, expiresAt }: ItemRowProps) {
+  const rarityValue = KNOWN_RARITIES.includes(rarity as BadgeRarity) ? (rarity as BadgeRarity) : 'common'
+  const showCount = typeof count === 'number' && count > 1
+  const expiring = isRowExpiringSoon(expiresAt)
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left disabled:cursor-default"
+    >
+      {/* 카운터 서클의 기준점 — BadgeGridCard의 카운터 필과 같은 이유로 relative를
+          overflow-hidden 밖(아이콘 wrapper)에 둔다: 아이콘 자체에 relative를 걸면
+          overflow-hidden이 모서리에 걸치는 서클을 잘라낸다. */}
+      <div className="relative flex-shrink-0">
+        <div className="w-11 h-11 rounded-[var(--radius-cards)] overflow-hidden bg-white/[0.06] flex items-center justify-center">
+          {imageUrl ? (
+            <Image src={imageUrl} alt={name} width={44} height={44} className="w-full h-full object-contain p-0.5" />
+          ) : (
+            <MedalIcon className="w-5 h-5 text-text/40" />
+          )}
+        </div>
+        {showCount && (
+          // BadgeGridCard의 ×N 카운터 필과 같은 색 토큰(bg-surface-elevated + border)이지만
+          // 모양은 완전한 원(rounded-full)이고 접두어 없이 숫자만, 위치도 반대 코너
+          // (우측 상단)다 — 사용자 결정(20260908_0217).
+          // w-5 h-5로 폭·높이를 고정한다(min-w+px-1이 아님) — 두 자리 수(최대 보유 슬롯
+          // 50개라 실제로 나온다)에서 폭만 늘어나 알약 모양이 되는 걸 막는다. 인터랙션
+          // 리뷰가 렌더 확인으로 잡아낸 회귀(2026-09-08).
+          <span
+            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface-elevated border border-[color:var(--color-border)] text-[10px] leading-none font-bold text-text/80 flex items-center justify-center"
+            aria-hidden="true"
+          >
+            {count}
+          </span>
+        )}
+        {/* 스크린리더용 — aria-label로 버튼 전체를 덮지 않는다. BadgeGridCard.tsx의
+            sr-only 관례와 동일하게 "덧붙이는" 방식이라, count>1이어도 이름·등급·만료 정보가
+            그대로 읽힌다(인터랙션 리뷰 지적 반영). */}
+        {showCount && countAriaText && <span className="sr-only">{countAriaText}</span>}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{name}</p>
+        {expiring && expiresAt ? (
+          <div className="flex items-center gap-[var(--spacing-8)] mt-1">
+            <RarityBadge rarity={rarityValue} />
+            <p className="text-[length:var(--text-caption)] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70">
+              <LocalDate iso={expiresAt} options={{ month: 'numeric', day: 'numeric' }} suffix={d.inventory.expiringSuffix} />
+            </p>
+          </div>
+        ) : (
+          <RarityBadge rarity={rarityValue} className="mt-1" />
+        )}
+      </div>
+      <ChevronRightIcon className="w-5 h-5 text-text/40 shrink-0" />
+    </button>
   )
 }
