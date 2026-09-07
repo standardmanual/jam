@@ -21,6 +21,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
 } from '@/components/admin/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/admin/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
 import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
@@ -28,11 +30,14 @@ import { DataTableViewOptions } from '@/components/admin/data-table/data-table-v
 import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
 import { PoiActiveToggleButton } from './PoiActiveToggleButton'
 import type { PoiListRow } from './PoiList'
+import type { PoiCategoryRow } from '@/types/database'
 
 interface PoiTableProps {
   pois: PoiListRow[]
   badgeMap: Map<string, string>
   categoryLabelMap: Map<string, string>
+  /** 다중선택 카테고리 일괄변경 다이얼로그의 Select 옵션(20260907_1643) */
+  categories: PoiCategoryRow[]
 }
 
 const columnHelper = createColumnHelper<DataTableFeatures, PoiListRow>()
@@ -52,7 +57,7 @@ function sortingToParam(sorting: SortingState): string | null {
   return nameSort.desc ? 'name_desc' : 'name_asc'
 }
 
-export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
+export function PoiTable({ pois, badgeMap, categoryLabelMap, categories }: PoiTableProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -60,6 +65,8 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
   const [bulkLoading, setBulkLoading] = useState(false)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false)
+  const [bulkCategory, setBulkCategory] = useState('')
 
   // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
   // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
@@ -257,6 +264,33 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
     }
   }
 
+  // 일괄 카테고리 변경 전용 API는 없다 — 기존 단건 PATCH를 선택된 행 전체에 순차 호출한다
+  // (handleBulkSetActive와 동일 구조, 20260907_1643). 반경 재계산까지 연쇄되고 여러 건에
+  // 한꺼번에 적용되므로 삭제와 동일하게 확인 다이얼로그(카테고리 선택 겸용)를 거친다.
+  const handleBulkSetCategory = async (newSlug: string) => {
+    setBulkLoading(true)
+    try {
+      let failCount = 0
+      for (const id of selectedIds) {
+        const res = await fetch(`/api/admin/poi/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category: newSlug }),
+        })
+        if (!res.ok) failCount += 1
+      }
+      if (failCount > 0) {
+        alert(`${failCount}개 POI의 카테고리 변경에 실패했습니다. 다시 시도해주세요.`)
+      }
+      router.refresh()
+      setRowSelection({})
+    } finally {
+      setBulkLoading(false)
+      setShowCategoryDialog(false)
+      setBulkCategory('')
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -269,6 +303,18 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
         </Button>
         <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => handleBulkSetActive(false)}>
           선택 항목 비활성화
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={bulkLoading}
+          onClick={() => {
+            setBulkCategory('')
+            setShowCategoryDialog(true)
+          }}
+        >
+          선택 항목 카테고리 변경
         </Button>
         <Button type="button" variant="destructive" size="sm" onClick={() => setShowBulkConfirm(true)}>
           선택 항목 삭제
@@ -300,6 +346,46 @@ export function PoiTable({ pois, badgeMap, categoryLabelMap }: PoiTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={showCategoryDialog}
+        onOpenChange={(open) => {
+          if (!open && !bulkLoading) setShowCategoryDialog(false)
+        }}
+      >
+        <DialogContent container={themeContainer ?? undefined}>
+          <DialogHeader>
+            <DialogTitle>POI 카테고리 일괄 변경</DialogTitle>
+            <DialogDescription>
+              선택한 {selectedIds.length}개 POI의 카테고리를 변경합니다.
+            </DialogDescription>
+          </DialogHeader>
+          <Select value={bulkCategory} onValueChange={setBulkCategory} disabled={bulkLoading}>
+            <SelectTrigger aria-label="변경할 카테고리">
+              <SelectValue placeholder="카테고리를 선택하세요" />
+            </SelectTrigger>
+            <SelectContent container={themeContainer ?? undefined}>
+              {categories.map((c) => (
+                <SelectItem key={c.slug} value={c.slug}>
+                  {c.label} ({c.slug})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={bulkLoading} onClick={() => setShowCategoryDialog(false)}>
+              취소
+            </Button>
+            <Button
+              type="button"
+              disabled={bulkLoading || !bulkCategory}
+              onClick={() => handleBulkSetCategory(bulkCategory)}
+            >
+              변경
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
