@@ -52,6 +52,9 @@ function Inner() {
   // 앱 내부 링크 클릭 감지 → SHOW_DELAY_MS 후에도 탐색 중이면 그때 표시
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
+      // 이미 다른 핸들러(예: 카드 안에 중첩된 버튼)가 preventDefault로 이동을 막았다면
+      // 실제 이동이 일어나지 않으므로 pending 진입 자체를 취소한다.
+      if (e.defaultPrevented) return
       const anchor = (e.target as Element).closest('a[href]')
       if (!anchor) return
       const href = anchor.getAttribute('href') ?? ''
@@ -73,9 +76,12 @@ function Inner() {
       }, SHOW_DELAY_MS)
     }
 
-    document.addEventListener('click', handleClick, true)
+    // bubble 단계로 등록 — 카드 안에 중첩된 버튼의 stopPropagation()이 먼저 먹히게 한다.
+    // (capture로 등록하면 target까지 내려가기 전에 여기서 먼저 발동해, 자식 버튼이
+    // preventDefault/stopPropagation으로 막으려던 클릭까지 앞질러 잡아버린다.)
+    document.addEventListener('click', handleClick)
     return () => {
-      document.removeEventListener('click', handleClick, true)
+      document.removeEventListener('click', handleClick)
       clearTimer()
     }
   }, [fadeOut])
