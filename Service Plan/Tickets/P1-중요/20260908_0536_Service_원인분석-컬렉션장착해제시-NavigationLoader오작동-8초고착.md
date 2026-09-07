@@ -73,12 +73,44 @@ closed: 2026-09-08
 이미 잘 설계돼 있다(`pendingBadgeId`로 버튼에 "…" 표시, 시트 안에 "처리 중" 캡션) —
 NavigationLoader가 그 위에 **불필요하게 덧씌워지는** 것이 문제다.
 
+### 전수 조사 (2026-09-08 추가 — "이전 조사에서 놓쳤다"는 지적에 따른 재조사)
+
+20260908_0529는 `WanderingEyesLoader` **사용처만** 훑어서 이 버그(엉뚱한 트리거로 뜬 뒤
+고착되는 문제)를 놓쳤다. 이번엔 두 축으로 전수 조사했다.
+
+**A) `WanderingEyesLoader` 사용처 (5곳, 전부 20260908_0529에서 확인됨)** —
+`NavigationLoader.tsx`(전환용, 디바운스 있음) · `MissionStatusClient.tsx` ·
+`BadgeShareButton.tsx` · `BadgeRevealOverlay.tsx`(호출부: `StravaConnectReveal.tsx`,
+`SyncButton.tsx`) — 추가로 발견된 곳 없음.
+
+**B) NavigationLoader 오작동 트리거 패턴(`href` 카드 안에 `preventDefault`/`stopPropagation`
+버튼을 중첩) — `preventDefault`/`stopPropagation`을 쓰는 전체 지점을 grep해 대조**
+
+| 위치 | 구조 | 판정 |
+|---|---|---|
+| `SlotGrid.tsx:276` (해제 버튼) | `BadgeGridCard(href=...)` 안에 중첩 | **버그 재현** |
+| `SlotGrid.tsx:288` (장착 버튼) | `BadgeGridCard(href=...)` 안에 중첩 | **버그 재현** |
+| `ProfileClient.tsx:444` (팔로우 버튼) | `ListRowCard(href=...)`의 `trailing`에 중첩 | **버그 재현 — 이번에 코드로 확정**(이전엔 "가능성"으로만 추정) |
+| 어드민 `*ActiveToggleButton.tsx` 3종 | 테이블 별도 셀(다른 `<td>`) — `Link`와 중첩 아님 | 해당 없음 |
+| `UserSearchBar.tsx`, 어드민 폼 6곳, `sidebar.tsx` | 폼 submit/keydown/사이드바 토글 — 앵커 클릭과 무관 | 해당 없음 |
+
+`BadgeGridCard`·`ListRowCard`를 `href`와 함께 쓰면서 내부에 클릭 가능한 자식(버튼)을
+넣는 **모든** 지점이 이 버그의 후보다. 현재 코드베이스에는 위 2개 컴포넌트, 3개 호출
+지점(`SlotGrid` 2곳 + `ProfileClient` 1곳)이 전부이며, 다른 카드형 컴포넌트
+(`CollectionGridCard`·`InventoryGrid`의 `BadgeGridCard` 호출 등)는 `href`와 인터랙티브
+자식을 동시에 쓰지 않아 해당하지 않는다.
+
+**참고 — 범위 밖**: `Skeleton` 로더(`InventoryItemHistorySheet.tsx`, `ProfileClient.tsx`
+등 2곳)는 이번 제보(eye loader)와 다른 시각적 패턴이라 이번 조사에서 제외했다. 필요하면
+별도로 점검할 것.
+
 ### 잔여 이슈
 - 개선 방향 후보(이번 조사 범위 밖, 별도 티켓 필요):
   1. `NavigationLoader`의 클릭 리스너를 capture 대신 bubble 단계로 등록 — 자식 버튼의
      `stopPropagation()`이 먼저 먹히게 함 (가장 근본적인 수정)
-  2. 클릭 핸들러에서 `e.defaultPrevented`를 clique 직후 확인해, 이미 막힌 이동이면
+  2. 클릭 핸들러에서 `e.defaultPrevented`를 클릭 직후 확인해, 이미 막힌 이동이면
      `pending` 진입 자체를 취소
   3. `href` 카드 안에 동작 버튼을 중첩하는 패턴 자체를 재검토 — `<Link>` 안에 `<button>`을
      넣는 건 HTML 시맨틱상으로도 유효하지 않다(중첩 인터랙티브 요소)
-  4. `ProfileClient.tsx`의 팔로우 버튼도 동일 버그 여부 실측 필요
+  4. 수정 시 `SlotGrid.tsx`(장착/해제 2곳)와 `ProfileClient.tsx`(팔로우 1곳) 세 지점 모두
+     함께 검증
