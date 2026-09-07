@@ -50,6 +50,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/factions', label: '세계관', icon: IconWorld },
       { href: '/admin/recipes', label: '믹스 레시피', icon: IconFlask },
       { href: '/admin/today', label: '투데이 콘텐츠', icon: IconNews },
+      { href: '/admin/missions', label: '미션 관리', icon: IconTarget },
     ],
   },
   {
@@ -60,7 +61,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/ambient-drop', label: '앰비언트 드랍', icon: IconCloudFog },
       { href: '/admin/combine-policy', label: '믹스 정책', icon: IconTestPipe },
       { href: '/admin/inventory-policy', label: '인벤토리 최대치', icon: IconBackpack },
-      { href: '/admin/missions', label: '미션 관리', icon: IconTarget },
       { href: '/admin/gate-missions', label: '게이트 미션 관리', icon: IconLock },
       { href: '/admin/points', label: '포인트 관리', icon: IconDiamond },
     ],
