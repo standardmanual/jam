@@ -19,6 +19,7 @@
   하나만 추가하면 재사용됨. 사용법은 `scripts/badge-image-gen/README.md` 참고.
   (적용 이력: 지하철역 973개 `20260806_005_*`, 산 847개 + autoGrow 옵션 추가 `20260806_006_*`)
 - 어드민 관리 화면: `jam-web/src/app/admin/poi/`
+- 네이버 원본 분류 검증 게이트 + 어드민 검토 큐: `jam-web/supabase/migrations/143_poi_naver_category_review_gate.sql`, `jam-web/src/lib/poi/category-gate.ts`, 어드민 화면 `jam-web/src/app/admin/poi/review/`
 
 ## 티어 구조 (기존 티켓 참고)
 - T2: OSM/네이버 지역검색 기반 자동 수집 (편의점/카페 등)
@@ -32,6 +33,9 @@
 - [ ] 카테고리별 드랍/픽업 파이프라인 연동 규칙 (키워드·가중치)
 - [ ] 지역별 POI 밀도/커버리지 현황
 - [ ] 신규 POI 소스 추가 시 체크리스트
+- [ ] 네이버 원본 분류 검증 게이트·어드민 검토 큐 운영 가이드 ([[20260907_1242]]) —
+      카테고리별 allow/reject 패턴 튜닝 기준, 검토 큐 처리 SOP
+- [ ] 카테고리 체계 재정리·기존 POI 재분류 결과 ([[20260907_1243]], 진행 중)
 
 ## 관련 문서
 - [BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) — POI 기반 배지 발급 로직
