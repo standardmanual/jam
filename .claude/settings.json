@@ -62,7 +62,10 @@
   "enabledPlugins": {
     "impeccable@impeccable": true,
     "figma@claude-plugins-official": true,
-    "vercel@claude-plugins-official": true
+    "vercel@claude-plugins-official": true,
+    "humanize-korean@im-not-ai": true,
+    "pm-product-strategy@pm-skills": true,
+    "pm-execution@pm-skills": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
