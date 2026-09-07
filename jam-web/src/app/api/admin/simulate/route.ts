@@ -136,8 +136,8 @@ export async function POST(req: NextRequest) {
 
   const poiBadgeIds = matchedPois.map((p) => p.linked_badge_id).filter(Boolean) as string[]
   const { data: poiBadgesRaw } = poiBadgeIds.length > 0
-    ? await supabase.from('badges').select('id, name, rarity').in('id', poiBadgeIds).is('deleted_at', null)
-    : { data: [] as { id: string; name: string; rarity: string }[] }
+    ? await supabase.from('badges').select('id, name, rarity, type').in('id', poiBadgeIds).is('deleted_at', null)
+    : { data: [] as { id: string; name: string; rarity: string; type: string }[] }
   const poiBadgesById = new Map((poiBadgesRaw ?? []).map((b) => [b.id, b]))
 
   for (const poi of matchedPois) {
@@ -148,8 +148,21 @@ export async function POST(req: NextRequest) {
       badgesEarned.push({ id: badge.id, name: badge.name, rarity: badge.rarity, reason: `POI 통과: ${poi.name}` })
       earnedBadgeIds.add(badge.id)
       if (!dryRun) {
-        const userActivityBadgesQuery = supabase.from('user_activity_badges')
-        await userActivityBadgesQuery.insert({ user_id: userId, badge_id: badge.id, triggered_by: 'admin_simulate' })
+        // checkin 타입 배지(POI 연결 배지는 항상 이 타입)는 반복 획득 이력 테이블에 기록한다.
+        // 정상 체크인 경로(src/lib/strava/sync.ts)와 동일한 테이블로 맞춰야 badges/page.tsx의
+        // 활동 탭·체크인 탭이 서로 새지 않는다 (티켓 20260906_2023).
+        if (badge.type === 'checkin') {
+          const checkinBadgeEarnsQuery = supabase.from('user_checkin_badge_earns')
+          await checkinBadgeEarnsQuery.insert({
+            user_id: userId,
+            badge_id: badge.id,
+            poi_id: poi.id,
+            triggered_by_activity_name: 'admin_simulate',
+          })
+        } else {
+          const userActivityBadgesQuery = supabase.from('user_activity_badges')
+          await userActivityBadgesQuery.insert({ user_id: userId, badge_id: badge.id, triggered_by: 'admin_simulate' })
+        }
       }
     }
   }
