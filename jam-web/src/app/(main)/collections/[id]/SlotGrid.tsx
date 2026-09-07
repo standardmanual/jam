@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
-import BottomSheet from '@/components/ui/BottomSheet'
-import ItemCandidateRow from '@/components/inventory/ItemCandidateRow'
+import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 
@@ -301,60 +300,37 @@ export default function SlotGrid({
       {/* 개체 선택 시트 — 같은 배지를 2개 이상 보유했을 때만 열린다(20260907_2059).
           레이어: BottomSheet가 document.body 포털 + z-50(시트·다이얼로그 층)이라
           DESIGN_RENEWAL_SPEC의 기존 층 서열을 그대로 따른다(새 z값 도입 없음).
-          하단 고정 액션(footer)이 없으므로 pushBottomOverlay 신고 대상도 아니다. */}
-      <BottomSheet
+          하단 고정 액션(footer)이 없으므로 pushBottomOverlay 신고 대상도 아니다.
+          마크업은 드랍·픽업 개체 선택 시트와 공유하는 ItemCandidateSheet로 옮겼다
+          (20260908, 세 번째 사용처 시점에 공용 컴포넌트로 추출 — 사용자 지시). 이 화면만
+          요청 진행 중 상태(선택 표시·비활성화·진행 표시·에러 배너)가 있어 관련 prop을 넘긴다. */}
+      <ItemCandidateSheet
         open={selectingBadgeId != null}
         onClose={handleSheetClose}
-        // 후보가 전부 같은 배지라 어느 배지인지는 상단에서 한 번만 알린다(20260907_2221).
-        // 등급칩은 상단이 아니라 각 행에 둔다 — 같은 칩이 화면에 중복되지 않게 하기 위함.
-        title={sheetView?.badge.name}
-      >
-        <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
-          <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
-            {sheetView ? t(d.itembooks.selectItemBody, { count: String(sheetView.candidates.length) }) : ''}
-          </p>
-          {sheetError && (
-            <div className="rounded-[var(--radius-cards)] bg-surface-elevated px-3 py-2 text-xs text-text/70">
-              {sheetError}
-            </div>
-          )}
-          {/* 후보 행 — 반복되는 이미지·이름을 걷어내고 «등급칩(위) + 일련번호(아래)»만 쌓는다.
-              행 전체가 버튼이므로(ListRowCard는 onClick이 있으면 <button>) 행 안에 별도
-              버튼을 두지 않는다(20260907_2221).
-              요청이 도는 동안에는 이 묶음이 갱신 중임을 aria-busy로 알린다 —
-              `ListRowCard`는 13개 화면 공용이라 disabled/aria 관련 prop을 늘리지 않고
-              호출부에서 처리한다. */}
-          <div className="flex flex-col gap-[var(--spacing-8)]" aria-busy={sheetBusy}>
-          {sheetView?.candidates.map((candidate) => {
-            const isSelected = selectedCandidateId === candidate.id
-            // 요청 중 «고르지 않은» 행은 눌러도 아무 일이 없다(핸들러 가드). 그런데 행은 여전히
-            // active:scale·cursor-pointer가 살아 있어 «눌린 반응은 나오는데 아무 일도 안 하는»
-            // 죽은 탭이 된다 — 시각적으로도 함께 억제한다.
-            const muted = sheetBusy && !isSelected
-            return (
-              <ItemCandidateRow
-                key={candidate.id}
-                candidate={candidate}
-                rarity={sheetView.badge.rarity as BadgeRarity | null}
-                selected={isSelected}
-                muted={muted}
-                // 진행 표시 — 왜 지금 다른 행이 눌리지 않고 시트도 닫히지 않는지를 설명한다.
-                trailing={
-                  isSelected && sheetBusy ? (
-                    <span className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
-                      {d.itembooks.processing}
-                    </span>
-                  ) : undefined
-                }
-                onClick={() => {
-                  void handleSelectCandidate(sheetView.badge.id, candidate.id)
-                }}
-              />
-            )
-          })}
-          </div>
-        </div>
-      </BottomSheet>
+        badgeName={sheetView?.badge.name}
+        rarity={sheetView?.badge.rarity as BadgeRarity | null}
+        bodyText={sheetView ? t(d.itembooks.selectItemBody, { count: String(sheetView.candidates.length) }) : ''}
+        candidates={sheetView?.candidates ?? []}
+        error={sheetError}
+        busy={sheetBusy}
+        isSelected={(candidate) => selectedCandidateId === candidate.id}
+        // 요청 중 «고르지 않은» 행은 눌러도 아무 일이 없다(핸들러 가드). 그런데 행은 여전히
+        // active:scale·cursor-pointer가 살아 있어 «눌린 반응은 나오는데 아무 일도 안 하는»
+        // 죽은 탭이 된다 — 시각적으로도 함께 억제한다.
+        isMuted={(candidate) => sheetBusy && selectedCandidateId !== candidate.id}
+        // 진행 표시 — 왜 지금 다른 행이 눌리지 않고 시트도 닫히지 않는지를 설명한다.
+        renderTrailing={(candidate) =>
+          selectedCandidateId === candidate.id && sheetBusy ? (
+            <span className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
+              {d.itembooks.processing}
+            </span>
+          ) : undefined
+        }
+        onSelect={(candidate) => {
+          if (!sheetView) return
+          void handleSelectCandidate(sheetView.badge.id, candidate.id)
+        }}
+      />
     </div>
   )
 }
