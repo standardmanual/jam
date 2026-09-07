@@ -155,6 +155,17 @@ const BADGE_MARKER_SIZE = 24
  */
 const BADGE_MARKER_LIFT = 16
 /**
+ * 배지 마커의 이름 라벨(`badgeMarkerIconHtml`의 `label` div) 높이(px) — 20260908.
+ * margin-top(2) + padding(2+2) + line-height(18) = 24. 라벨은 `줌 배율과 무관하게 고정
+ * 크기`로 렌더되므로(주석 참고) 이 값도 `zoomScale`을 곱하지 않는다.
+ *
+ * `BADGE_MARKER_LIFT`는 배지 **이미지**를 서클 위로 띄우는 값일 뿐, 이미지 아래에 붙는
+ * 라벨의 높이는 anchor 계산에 반영되지 않았다 — 그 결과 불투명 배경의 라벨이 서클 중앙에
+ * 그대로 얹혀 서클을 가리고 탭도 막았다(같은 이름의 POI+체크인배지가 겹치는 모든 지점에서
+ * 재현, 실측: `getBoundingClientRect` 기반 정적 재현으로 확인).
+ */
+const BADGE_LABEL_HEIGHT_PX = 24
+/**
  * 마커 콘텐츠 전체(서클+이름 라벨) 기준 너비(px). 서클은 이 너비 안에서 가운데 정렬되므로
  * anchor.x는 항상 이 값의 절반 — 라벨 길이가 서클보다 넓어져도 서클 중심 좌표는 그대로 유지된다.
  */
@@ -455,7 +466,14 @@ export default function MapView({
         title: badge.name,
         icon: {
           content: badgeMarkerIconHtml(badge.image_url, badge.earned, badge.name, badgeSize),
-          anchor: new naver.maps.Point(BADGE_MARKER_CONTENT_WIDTH / 2, badgeSize / 2 + badgeLift),
+          // 이미지(badgeSize) 아래에 이름 라벨(BADGE_LABEL_HEIGHT_PX)이 붙으므로, 서클 위로
+          // 띄우는 오프셋은 "이미지 절반 + 라벨 높이 + 여유 간격(badgeLift)"까지 감안해야
+          // 라벨이 서클을 덮지 않는다(20260908, 라벨 미반영으로 서클이 가려져 탭 불가하던
+          // 문제 수정).
+          anchor: new naver.maps.Point(
+            BADGE_MARKER_CONTENT_WIDTH / 2,
+            badgeSize / 2 + BADGE_LABEL_HEIGHT_PX + badgeLift
+          ),
         },
         zIndex: badge.earned ? 8 : 7,
       })
