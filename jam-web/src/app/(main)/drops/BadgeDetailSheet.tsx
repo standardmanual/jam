@@ -24,6 +24,15 @@ export interface PickupDrop {
   /** 20260829_2101 — 개체 정체성 모델: poi_drops가 항상 이미 발급된 개체를 가리키므로
    * 픽업 전에도 일련번호가 이미 확정돼 있다. 마이그레이션 이전 완료된 과거 드랍은 null일 수 있다. */
   serial: string | null
+  /**
+   * 20260908_0223 — 픽업 목록을 badge_id별로 그룹핑해 개체 선택 시트(`ItemCandidateRow`)를
+   * 열기 위한 원본 값. 이 시트는 `serial`(포맷된 문자열)이 아니라
+   * `{id, serial_number, serial_prefix, expires_at}` 셰이프를 요구한다. `BadgeDetailSheet`
+   * 자체는 여전히 `serial`만 사용한다 — 이 필드들을 건드리지 않는다.
+   */
+  serial_prefix: string | null
+  serial_number: number | null
+  expires_at: string | null
 }
 
 interface BadgeDetailSheetProps {

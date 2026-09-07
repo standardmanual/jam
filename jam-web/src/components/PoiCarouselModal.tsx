@@ -58,8 +58,12 @@ function toGridItem(item: InventoryItem): InventoryGridItem {
   }
 }
 
-/** 그룹 내 가장 이른 만료일(있으면) — 드랍 그리드 카드의 "곧 만료" 칩 기준(20260908_0040). */
-function earliestExpiry(items: InventoryItem[]): string | null {
+/**
+ * 그룹 내 가장 이른 만료일(있으면) — 드랍 그리드 카드의 "곧 만료" 칩 기준(20260908_0040).
+ * 20260908_0223: 픽업 그룹(`PickupDrop[]`)도 같은 기준으로 재사용하도록 `expires_at`
+ * 필드만 요구하는 형태로 넓혔다 — 나머지 필드(badge_id 등)는 필요 없다.
+ */
+function earliestExpiry(items: { expires_at: string | null }[]): string | null {
   let earliest: string | null = null
   for (const item of items) {
     if (!item.expires_at) continue
@@ -68,10 +72,46 @@ function earliestExpiry(items: InventoryItem[]): string | null {
   return earliest
 }
 
+/** 같은 badge_id를 가진 픽업 후보(다른 사람이 드랍한 개체) 묶음 — 20260908_0223. */
+interface PickupGroup {
+  badgeId: string
+  badgeName: string
+  badgeRarity: string
+  badgeImageUrl: string | null
+  items: PickupDrop[]
+}
+
+/**
+ * 픽업 목록(POI에 드랍된 개체 flat 배열)을 badge_id별로 묶는다 — 20260908_0040의 `dropGroups`
+ * 빌드 루프와 같은 패턴(20260908_0223). 목록은 API가 이미 `dropped_at` 오름차순으로 내려주므로
+ * 그룹 내 순서도 먼저 드랍된 순서를 유지한다.
+ */
+function groupPickupDrops(drops: PickupDrop[]): PickupGroup[] {
+  const groups: PickupGroup[] = []
+  const byBadgeId = new Map<string, PickupGroup>()
+  for (const drop of drops) {
+    const existing = byBadgeId.get(drop.badge_id)
+    if (existing) {
+      existing.items.push(drop)
+      continue
+    }
+    const group: PickupGroup = {
+      badgeId: drop.badge_id,
+      badgeName: drop.badge_name,
+      badgeRarity: drop.badge_rarity,
+      badgeImageUrl: drop.badge_image_url,
+      items: [drop],
+    }
+    byBadgeId.set(drop.badge_id, group)
+    groups.push(group)
+  }
+  return groups
+}
+
 /**
  * 만료 임박(7일 이내) 여부 — `InventoryGrid.tsx`의 동명 함수와 동일 기준(20260908_0217,
- * 픽업 목록·드랍 선택 목록 행 통일). 드랍 선택 행에만 쓰인다 — 픽업 행(다른 사람이 드랍한
- * 배지)에는 만료 개념이 없다.
+ * 픽업 목록·드랍 선택 목록 행 통일). 20260908_0223부터 픽업 그룹 행에도 쓰인다 — 이미 발급된
+ * 개체가 POI에 드랍돼 대기 중인 동안에도 만료는 계속 진행되기 때문이다.
  */
 function isRowExpiringSoon(expiresAt: string | null | undefined): boolean {
   if (!expiresAt) return false
@@ -205,6 +245,8 @@ export default function PoiCarouselModal({
   const [dropping, setDropping] = useState(false)
   /** 그룹(같은 배지)의 개체가 2개 이상일 때 여는 개체 선택 시트의 대상 — 20260908_0040. */
   const [dropCandidateGroup, setDropCandidateGroup] = useState<DropGroup | null>(null)
+  /** 픽업 목록 그룹(같은 배지를 여러 명이 드랍)의 개체 선택 시트 대상 — 20260908_0223. */
+  const [pickupCandidateGroup, setPickupCandidateGroup] = useState<PickupGroup | null>(null)
 
   // 카드가 바뀌면 이전 카드에서 진행 중이던 드랍 플로우를 초기화한다.
   // react.dev의 "prop 변경 시 렌더 중 state 조정" 패턴 — effect 없이 렌더 중
@@ -216,6 +258,7 @@ export default function PoiCarouselModal({
     setInventoryItems([])
     setPendingDropItem(null)
     setDropCandidateGroup(null)
+    setPickupCandidateGroup(null)
   }
 
   async function openInventory() {
@@ -311,6 +354,26 @@ export default function PoiCarouselModal({
   // ── 픽업 플로우 ──
   const [selectedDrop, setSelectedDrop] = useState<PickupDrop | null>(null)
   const [pickingUp, setPickingUp] = useState(false)
+
+  /**
+   * 픽업 목록에서 배지 종류(그룹) 행을 골랐을 때 — 20260908_0223. 개체가 1개면 지금까지와
+   * 완전히 동일하게 즉시 픽업 상세 바텀시트(`BadgeDetailSheet`)로 진행하고, 2개 이상이면
+   * 일련번호로 구분하는 개체 선택 시트를 연다(드랍 쪽 `handleSelectDropGroup`과 동일 원칙).
+   * 시트에서 고른 개체도 결국 같은 `selectedDrop`으로 합류한다 — 새 확인 단계를 만들지 않는다.
+   */
+  function handleSelectPickupGroup(group: PickupGroup) {
+    if (group.items.length === 1) {
+      setSelectedDrop(group.items[0])
+      return
+    }
+    setPickupCandidateGroup(group)
+  }
+
+  /** 픽업 개체 선택 시트에서 하나를 골랐을 때 — 기존 픽업 상세 바텀시트로 넘기고 시트를 닫는다. */
+  function handleSelectPickupCandidate(drop: PickupDrop) {
+    setSelectedDrop(drop)
+    setPickupCandidateGroup(null)
+  }
 
   async function executePickup() {
     if (!selectedDrop || !activePoi) return
@@ -450,7 +513,7 @@ export default function PoiCarouselModal({
                 onSelectDropItem={isActive ? handleSelectDropGridItem : undefined}
                 onCancelPending={isActive ? () => setPendingDropItem(null) : undefined}
                 onConfirmDrop={isActive ? executeDrop : undefined}
-                onSelectDrop={isActive ? setSelectedDrop : undefined}
+                onSelectPickupGroup={isActive ? handleSelectPickupGroup : undefined}
                 onClose={onClose}
               />
             )}
@@ -499,6 +562,46 @@ export default function PoiCarouselModal({
           </div>
         </div>
       </BottomSheet>
+
+      {/* 픽업 개체 선택 시트 — 같은 배지를 2명 이상이 드랍해 2개 이상 쌓였을 때만 열린다
+          (20260908_0223). 위 드랍 개체 선택 시트와 같은 구성(ItemCandidateRow 목록)을
+          재사용한다. 여기서 개체를 고르면 기존 픽업 상세 바텀시트(selectedDrop →
+          BadgeDetailSheet)로 그대로 합류한다 — 이 시트 자체는 API를 호출하지 않는다. */}
+      <BottomSheet
+        open={pickupCandidateGroup != null}
+        onClose={() => setPickupCandidateGroup(null)}
+        title={pickupCandidateGroup?.badgeName}
+      >
+        <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
+          <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
+            {pickupCandidateGroup
+              ? t(d.drops.selectPickupItemBody, { count: String(pickupCandidateGroup.items.length) })
+              : ''}
+          </p>
+          <div className="flex flex-col gap-[var(--spacing-8)]">
+            {pickupCandidateGroup?.items.map((drop) => (
+              <ItemCandidateRow
+                key={drop.id}
+                candidate={{
+                  id: drop.id,
+                  // 마이그레이션 이전 완료된 과거 드랍 등 원본 개체 연결이 소급되지 않은
+                  // 극히 드문 레거시 데이터만 null일 수 있다(`drop.serial`도 이미 null).
+                  // ItemCandidate 셰이프는 number를 요구하므로 0으로 안전하게 폴백한다.
+                  serial_number: drop.serial_number ?? 0,
+                  serial_prefix: drop.serial_prefix,
+                  expires_at: drop.expires_at,
+                }}
+                rarity={
+                  KNOWN_RARITIES.includes(drop.badge_rarity as BadgeRarity)
+                    ? (drop.badge_rarity as BadgeRarity)
+                    : 'common'
+                }
+                onClick={() => handleSelectPickupCandidate(drop)}
+              />
+            ))}
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   )
 }
@@ -519,7 +622,8 @@ interface PoiCardProps {
   onSelectDropItem?: (item: InventoryGridItem) => void
   onCancelPending?: () => void
   onConfirmDrop?: () => void
-  onSelectDrop?: (drop: PickupDrop) => void
+  /** 픽업 목록의 배지 종류(그룹) 행을 골랐을 때 — 20260908_0223. */
+  onSelectPickupGroup?: (group: PickupGroup) => void
   onClose: () => void
 }
 
@@ -537,7 +641,7 @@ function PoiCard({
   onSelectDropItem,
   onCancelPending,
   onConfirmDrop,
-  onSelectDrop,
+  onSelectPickupGroup,
   onClose,
 }: PoiCardProps) {
   return (
@@ -634,14 +738,21 @@ function PoiCard({
            독립적인 축으로 분리했다. 목록·버튼 레이블·문구는 기존 것을 그대로 재사용. */
         <div className="flex flex-col gap-[var(--spacing-16)]">
           {drops.length > 0 ? (
+            // 20260908_0223: 픽업 목록도 개체 flat 배열이 아니라 badge_id별 그룹으로
+            // 묶는다(같은 배지를 여러 명이 드랍해도 행 하나 + 개수 서클). 그룹 클릭 시
+            // 개체가 1개면 지금까지처럼 즉시, 2개 이상이면 개체 선택 시트로 이어진다
+            // (handleSelectPickupGroup).
             <div className="flex flex-col gap-2">
-              {drops.map((drop) => (
+              {groupPickupDrops(drops).map((group) => (
                 <ItemRow
-                  key={drop.id}
-                  name={drop.badge_name}
-                  imageUrl={drop.badge_image_url}
-                  rarity={drop.badge_rarity}
-                  onClick={() => onSelectDrop?.(drop)}
+                  key={group.badgeId}
+                  name={group.badgeName}
+                  imageUrl={group.badgeImageUrl}
+                  rarity={group.badgeRarity}
+                  count={group.items.length}
+                  countAriaText={t(d.drops.pickupAvailableCountAria, { count: String(group.items.length) })}
+                  expiresAt={earliestExpiry(group.items)}
+                  onClick={() => onSelectPickupGroup?.(group)}
                   disabled={!isActive}
                 />
               ))}
@@ -675,13 +786,18 @@ interface ItemRowProps {
   onClick?: () => void
   disabled?: boolean
   /**
-   * 같은 배지를 여러 개 보유했을 때의 개수 — 드랍 선택 행에서만 넘어온다. 픽업 행은
-   * 넘기지 않으므로(undefined) 서클이 그려지지 않는다.
+   * 같은 배지를 여러 개(드랍 선택 행: 내 보유 개체 / 픽업 행: 이 지점에 드랍된 개체)
+   * 가진 그룹일 때의 개수 — 1 이하면(undefined 포함) 서클이 그려지지 않는다. 20260908_0040에서
+   * 드랍 선택 행에만 도입됐다가, 20260908_0223에서 픽업 행도 badge_id로 그룹핑하며 함께 받는다.
    */
   count?: number | null
-  /** count>1일 때 행 버튼의 aria-label에 포함할 문구(dropOwnedCountAria, 새 문구 아님). */
+  /** count>1일 때 행 버튼의 aria-label에 포함할 문구(dropOwnedCountAria/pickupAvailableCountAria, 새 문구 아님). */
   countAriaText?: string
-  /** 그룹 내 가장 이른 만료일 — 드랍 선택 행에서만 넘어온다. 픽업 행에는 만료 개념이 없다. */
+  /**
+   * 그룹 내 가장 이른 만료일. 드랍 선택 그룹은 내 인벤토리 개체의 만료일, 픽업 그룹은 이미
+   * 발급된 개체가 이 지점에 드랍돼 대기 중인 동안의 만료일이다(둘 다 20260908_0223 기준
+   * 만료 개념이 있다 — 픽업 대기 중이라고 만료가 멈추지 않는다).
+   */
   expiresAt?: string | null
 }
 
@@ -689,10 +805,9 @@ interface ItemRowProps {
  * 픽업 목록(다른 사람이 드랍한 배지)과 드랍 선택 목록(내 인벤토리에서 여기 내놓을 배지 고르기)이
  * 함께 쓰는 행 프레젠테이션 컴포넌트 — 20260908_0217. 기존에는 픽업이 행, 드랍 선택이
  * InventoryGrid 그리드 카드로 서로 다른 UI였다. 데이터(dropGridItems 그룹화·핸들러·개체
- * 선택 시트)는 그대로 두고 렌더링만 통일한다.
- *
- * count·expiresAt은 드랍 선택 쪽에서만 값이 온다 — 만료 임박이 아니면(대부분의 경우, 그리고
- * 픽업 행은 항상) RarityBadge만 그려 픽업 행과 시각적으로 완전히 동일하다.
+ * 선택 시트)는 그대로 두고 렌더링만 통일한다. 20260908_0223부터 픽업 쪽도 같은 방식으로
+ * badge_id 그룹핑돼 count·expiresAt을 함께 받는다 — 두 목록의 행 시각·규칙(개체 1개=서클
+ * 없음, 2개 이상=서클)이 완전히 동일하다.
  */
 function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaText, expiresAt }: ItemRowProps) {
   const rarityValue = KNOWN_RARITIES.includes(rarity as BadgeRarity) ? (rarity as BadgeRarity) : 'common'
