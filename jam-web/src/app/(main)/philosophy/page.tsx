@@ -95,7 +95,7 @@ const FAQ_ITEMS: { title: string; content: ReactNode }[] = [
     title: '배지는 어떻게 얻나요?',
     content: (
       <p className={FAQ_ANSWER_CLASS}>
-        운동을 마치고 Strava 동기화가 되면 자동으로 조건을 확인해서 배지를 드려요. 따로
+        운동을 마치고 Strava 동기화를 하면 자동으로 조건을 확인해서 배지를 드려요. 따로
         신청할 필요는 없어요. Common부터 Mystic까지 등급이 있는 배지도 있고, 계속 올라가는
         레벨형 배지도 있어요.
       </p>
@@ -105,9 +105,9 @@ const FAQ_ITEMS: { title: string; content: ReactNode }[] = [
     title: '운동을 마쳤는데 왜 배지가 바로 안 나오나요?',
     content: (
       <p className={FAQ_ANSWER_CLASS}>
-        Strava에 활동이 올라온 뒤 JAM이 그 기록을 불러와야 배지를 확인할 수 있어요. 자동
-        동기화까지 시간이 조금 걸릴 수 있으니, 바로 확인하고 싶다면 홈 화면의 동기화
-        버튼을 눌러 주세요.
+        JAM은 활동을 자동으로 가져오지 않아요. Strava에 기록이 올라온 뒤, 홈 화면의
+        동기화 버튼을 직접 눌러야 최신 활동을 불러오고 배지 조건을 확인해요. 배지가
+        안 보인다면 동기화 버튼부터 눌러 보세요.
       </p>
     ),
   },
@@ -144,7 +144,7 @@ const FAQ_ITEMS: { title: string; content: ReactNode }[] = [
     title: '아이템은 어떻게 드랍되나요?',
     content: (
       <p className={FAQ_ANSWER_CLASS}>
-        Strava 동기화가 되면 활동마다 확률에 따라 아이템이 드랍될 수 있어요. 등급이
+        Strava 동기화를 하면 활동마다 확률에 따라 아이템이 드랍될 수 있어요. 등급이
         높을수록 나올 확률은 낮아지고, 이번엔 드랍이 없을 수도 있어요. 드랍된 아이템은
         인벤토리에서 확인할 수 있어요.
       </p>
