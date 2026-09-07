@@ -6,6 +6,7 @@ import { reverseGeocodeToRegionName } from '@/lib/poi/reverse-geocode'
 import { loadPipelineCategories, LEVEL_2_FALLBACK_THRESHOLD, type PoiCategoryConfig } from '@/lib/poi/categories'
 import { computeGridKey, shouldSearch, markSearched } from '@/lib/poi/search-cache'
 import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
+import { classifyNaverCategory } from '@/lib/poi/category-gate'
 import type { PoiRow } from '@/types/database'
 import { getOrCreateInventoryId } from '@/lib/inventory/get-or-create'
 
@@ -23,6 +24,53 @@ const NAVER_RADIUS_M = 500  // T2 네이버 POI는 넓게 표시 (지도 탐색�
 // 응답에서 통째로 잘려나갈 수 있다(matcher.ts에서 같은 원인으로 산 POI 누락 확인됨).
 // bbox로 미리 좁혀서 가져오면 결과 행 수가 작아 재발하지 않는다.
 const BB_MARGIN_DEG = 0.01 // 위도 기준 약 1.11km — NAVER_RADIUS_M(500m) 커버 + 여유
+
+/**
+ * 20260907_1242: naver_category/naver_keyword/pending_review는 마이그레이션 143에서 막
+ * 추가된 컬럼이라 생성 타입(database.generated.ts)에 아직 없다 — db:types CLI 부재로
+ * 재생성 불가(완료 보고 참고). `.insert()`의 초과 속성 검사가 신규 컬럼을 알 수 없는 키로
+ * 보고 막으므로, 이 세 컬럼을 포함한 최소 인터페이스로 빌더만 좁게 캐스팅한다
+ * (`lib/engine-log/index.ts`와 동일 기법) — 다른 컬럼명 검사는 그대로 유지되고, 전체를
+ * `as any`로 덮지 않는다.
+ */
+interface PoiInsertWithGateColumns {
+  insert: (values: {
+    name: string
+    latitude: number
+    longitude: number
+    radius_meters: number
+    category: string
+    naver_id: string
+    naver_category: string | null
+    naver_keyword: string | null
+    poi_tier: number
+    pending_review: boolean
+  }[]) => {
+    select: (columns: string) => PromiseLike<{
+      data: { id: string; naver_id: string }[] | null
+      error: { message: string } | null
+    }>
+  }
+}
+
+// 20260907_1242: 카테고리별 requires_review가 켜져 있으면 네이버 원본 분류(naverCategory)를
+// 기대 카테고리와 대조해 3단계로 나눈다 — 자동거부는 애초에 insert 목록에서 빠지고(저장하지
+// 않음), 자동승인/검토대기는 둘 다 저장되되 pending_review 값만 다르다(노출은 동일, 게이트와
+// 노출 로직은 분리 — 티켓 완료기록 참고). requires_review가 꺼진 카테고리는 기존처럼 게이트
+// 없이 전부 자동승인 취급한다.
+function gatePois(
+  pois: NaverPlace[],
+  requiresReviewByCategory: Map<string, boolean>
+): { poi: NaverPlace; pendingReview: boolean }[] {
+  return pois
+    .map((poi) => {
+      const requiresReview = requiresReviewByCategory.get(poi.category) ?? false
+      const verdict = requiresReview ? classifyNaverCategory(poi.category, poi.naverCategory) : 'approved'
+      return { poi, verdict }
+    })
+    .filter(({ verdict }) => verdict !== 'rejected')
+    .map(({ poi, verdict }) => ({ poi, pendingReview: verdict === 'pending' }))
+}
 
 // 캐시가 만료된 카테고리만 네이버로 검색해 DB에 신규 저장. 반환값은 저장 실패한 fallback POI 목록
 // (20260820_022 이후로는 백그라운드에서만 호출되어 이 반환값은 로깅 목적 외로는 쓰이지 않는다).
@@ -63,26 +111,33 @@ async function searchAndPersistCategories(
   const newPois = naverPois.filter((p) => !existingNaverIds.has(p.naverId))
   if (newPois.length === 0) return []
 
-  const inserts = newPois.map((p) => ({
+  const requiresReviewByCategory = new Map(toSearch.map((cfg) => [cfg.category, cfg.requiresReview]))
+  const gated = gatePois(newPois, requiresReviewByCategory)
+  if (gated.length === 0) return [] // 전부 자동거부 — 저장하지 않음(fallback 재시도 대상도 아님)
+
+  const inserts = gated.map(({ poi: p, pendingReview }) => ({
     name: p.name,
     latitude: p.latitude,
     longitude: p.longitude,
     radius_meters: resolvePoiRadiusMeters(p.category, NAVER_RADIUS_M),
     category: p.category,
     naver_id: p.naverId,
+    naver_category: p.naverCategory || null,
+    naver_keyword: p.naverKeyword || null,
     poi_tier: 2,
+    pending_review: pendingReview,
   }))
-  const poiInsertQuery = service.from('poi')
+  const poiInsertQuery = service.from('poi') as unknown as PoiInsertWithGateColumns
   const { data: inserted, error: insertError } = await poiInsertQuery
     .insert(inserts)
     .select('id, naver_id')
 
-  if (insertError) return newPois // 저장 실패 — 전부 fallback으로 취급
+  if (insertError) return gated.map(({ poi }) => poi) // 저장 실패 — 전부 fallback으로 취급
 
   const insertedRows = (inserted ?? []) as Array<{ id: string; naver_id: string }>
   const insertedIds = new Set(insertedRows.map((row) => row.naver_id))
   for (const row of insertedRows) existingNaverIds.set(row.naver_id, row.id)
-  return newPois.filter((p) => !insertedIds.has(p.naverId))
+  return gated.map(({ poi }) => poi).filter((p) => !insertedIds.has(p.naverId))
 }
 
 // 20260820_022: 역지오코딩 + 네이버 지역검색(캐시 미스 시 최대 13초+)은 응답을 블로킹하지

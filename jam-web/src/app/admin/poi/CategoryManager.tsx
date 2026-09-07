@@ -23,6 +23,7 @@ interface EditState {
   pipelineLinked: boolean
   tier: 1 | 2
   keywordsInput: string
+  requiresReview: boolean
 }
 
 function toEditState(c: PoiCategoryRow): EditState {
@@ -31,6 +32,7 @@ function toEditState(c: PoiCategoryRow): EditState {
     pipelineLinked: c.pipeline_linked,
     tier: c.tier ?? 1,
     keywordsInput: c.keywords.join(', '),
+    requiresReview: c.requires_review,
   }
 }
 
@@ -50,6 +52,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
   const [pipelineLinked, setPipelineLinked] = useState(false)
   const [tier, setTier] = useState<1 | 2>(1)
   const [keywordsInput, setKeywordsInput] = useState('')
+  const [requiresReview, setRequiresReview] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -72,6 +75,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
           pipeline_linked: pipelineLinked,
           tier: pipelineLinked ? tier : null,
           keywords: pipelineLinked ? parseKeywords(keywordsInput) : [],
+          requires_review: requiresReview,
         }),
       })
       const data = await res.json()
@@ -81,6 +85,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
       setPipelineLinked(false)
       setTier(1)
       setKeywordsInput('')
+      setRequiresReview(false)
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : '생성 중 오류가 발생했습니다.')
@@ -107,6 +112,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
           pipeline_linked: editState.pipelineLinked,
           tier: editState.pipelineLinked ? editState.tier : null,
           keywords: editState.pipelineLinked ? parseKeywords(editState.keywordsInput) : [],
+          requires_review: editState.requiresReview,
         }),
       })
       const data = await res.json()
@@ -207,6 +213,18 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
           </div>
         )}
 
+        {pipelineLinked && (
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={requiresReview}
+              onChange={(e) => setRequiresReview(e.target.checked)}
+              className="accent-primary"
+            />
+            원본 분류 검증 게이트 적용 (애매한 수집 건은 어드민 검토 큐로)
+          </label>
+        )}
+
         {error && <p className="text-red-600 text-sm">{error}</p>}
       </form>
 
@@ -220,6 +238,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
               <th className="px-5 py-3 font-medium">연동</th>
               <th className="px-5 py-3 font-medium">티어</th>
               <th className="px-5 py-3 font-medium">키워드</th>
+              <th className="px-5 py-3 font-medium">검토 게이트</th>
               <th className="px-5 py-3 font-medium"></th>
             </tr>
           </thead>
@@ -305,6 +324,28 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                       </div>
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3 whitespace-nowrap">
+                    {isEditing && editState ? (
+                      editState.pipelineLinked ? (
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={editState.requiresReview}
+                            onChange={(e) => setEditState({ ...editState, requiresReview: e.target.checked })}
+                            className="accent-primary"
+                          />
+                        </label>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )
+                    ) : c.requires_review ? (
+                      <span className="text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-2.5 py-1 whitespace-nowrap">
+                        적용중
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">미적용</span>
                     )}
                   </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
