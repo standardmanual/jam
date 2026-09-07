@@ -62,6 +62,7 @@ function TodayCardTableInner({ cards, onEdit, onToggleActive, onDelete }: TodayC
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
   const [bulkLoading, setBulkLoading] = useState(false)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
   const now = new Date()
 
   // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
@@ -216,6 +217,28 @@ function TodayCardTableInner({ cards, onEdit, onToggleActive, onDelete }: TodayC
     }
   }
 
+  // 일괄 하드 삭제(20260907_1134) — 참조 위험이 낮다고 판단해 별도 가드 없이 한 번의
+  // DELETE 쿼리로 처리한다(순차 단건 호출이 아니다).
+  const handleBulkDelete = async () => {
+    setBulkLoading(true)
+    try {
+      const res = await fetch('/api/admin/today/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        alert(data?.error ?? '일괄 삭제 중 오류가 발생했습니다.')
+      }
+      router.refresh()
+      setRowSelection({})
+    } finally {
+      setBulkLoading(false)
+      setShowBulkDeleteConfirm(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -223,8 +246,11 @@ function TodayCardTableInner({ cards, onEdit, onToggleActive, onDelete }: TodayC
       </div>
 
       <DataTableBulkActionBar count={selectedIds.length} onClear={() => setRowSelection({})}>
-        <Button type="button" variant="destructive" size="sm" onClick={() => setShowBulkConfirm(true)}>
+        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => setShowBulkConfirm(true)}>
           선택 항목 비활성화
+        </Button>
+        <Button type="button" variant="destructive" size="sm" disabled={bulkLoading} onClick={() => setShowBulkDeleteConfirm(true)}>
+          선택 항목 삭제
         </Button>
       </DataTableBulkActionBar>
 
@@ -250,6 +276,30 @@ function TodayCardTableInner({ cards, onEdit, onToggleActive, onDelete }: TodayC
             </Button>
             <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDeactivate}>
               계속
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={showBulkDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!open && !bulkLoading) setShowBulkDeleteConfirm(false)
+        }}
+      >
+        <AlertDialogContent container={themeContainer ?? undefined}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>투데이 카드 일괄 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              선택한 {selectedIds.length}개 카드를 삭제합니다. 삭제하면 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button type="button" variant="outline" disabled={bulkLoading} onClick={() => setShowBulkDeleteConfirm(false)}>
+              취소
+            </Button>
+            <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDelete}>
+              삭제
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
