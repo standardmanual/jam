@@ -99,6 +99,7 @@ const VERDICT = {
     sideFindings: { type: 'array', items: { type: 'string' } },
     hasKoreanCopy: { type: 'boolean' },
     koreanCopyText: { type: 'string' },
+    diffLineCount: { type: 'number' },
   },
   required: ['verdict', 'reasons'],
 }
@@ -142,7 +143,11 @@ if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && FULL.includes(workTy
 
 let interfaceReview = null
 // 어드민은 admin 유형(별도 라이트 파이프라인)이라 여기 들어오지 않는다 — ui만 대상.
-if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && workType === 'ui') {
+// 아주 작은 변경(패딩 1줄 조정 등)까지 6개 도메인 전체를 검토하는 건 과하므로, 게이트
+// 리뷰가 이미 잰 diffLineCount가 기준 미만이면 이 phase 자체를 건너뛴다(2026-09-08).
+const INTERFACE_REVIEW_MIN_DIFF_LINES = 15
+if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && workType === 'ui' &&
+    (gate.diffLineCount ?? Infinity) >= INTERFACE_REVIEW_MIN_DIFF_LINES) {
   phase('인터페이스 리뷰')
   interfaceReview = await agent(
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
@@ -281,3 +286,7 @@ gate의 `sideFindings`와 progressive의 "## 범위 밖 발견물" 섹션이 비
   skills/`를 가리키는 심볼릭 링크이므로, 다른 PC로 옮기거나 그 폴더가 없으면 링크가 깨진다 —
   깨지면 이 단계도 함께 걷어낼 것. (이전에 쓰던 `apple-design` 기준 "인터랙션 리뷰" 단계는
   2026-09-08 apple-design 스킬 삭제로 이 단계로 대체됨.)
+- 인터페이스 리뷰는 `gate.diffLineCount`(conservative-reviewer가 `git diff --numstat`으로 잰
+  jam-web 변경 라인 수)가 `INTERFACE_REVIEW_MIN_DIFF_LINES`(15) 미만이면 건너뛴다 — 패딩 1줄
+  조정 같은 아주 작은 변경까지 6개 도메인 전체를 검토하는 건 낭비이기 때문(2026-09-08). 값이
+  없으면(에이전트가 채우지 않았거나 스키마 누락) 안전하게 실행 쪽으로 기운다.
