@@ -19,7 +19,7 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 
 | 유형 | 대상 | 추가 절차 | 티켓 카테고리 |
 |---|---|---|---|
-| `ui` | 서비스 화면·기능 | **0.5단계 탐색·재사용 판정 필수** + 게이트 통과 후 **인터랙션 리뷰**(apple-design 기준, 제안형) | UI / Feature |
+| `ui` | 서비스 화면·기능 | **0.5단계 탐색·재사용 판정 필수** + 게이트 통과 후 **인터페이스 리뷰**(interface-review/better-interface 기준, 제안형) | UI / Feature |
 | `ds` | MODULAR 디자인 시스템 | 0.5단계 + Story 동반 확인 + **1.6단계(모듈러-서비스 연결 범위 표기) 필수** | UI |
 | `bug` | 버그 수정 | 회귀 재현 경로 집중 | Service / Feature |
 | `engine` | 배지·드랍 엔진 | ④ 엔진 문서 대조 (확률·정책) | BadgeEngine |
@@ -157,7 +157,7 @@ cd jam-web && npm run storybook   # http://localhost:6006
 export const meta = {
   name: 'jam-work',
   description: 'JAM! 개발자/리뷰어 분리 파이프라인',
-  phases: [{ title: '구현' }, { title: '게이트 리뷰' }, { title: '개선 리뷰' }, { title: '인터랙션 리뷰' }, { title: '한국어 리뷰' }],
+  phases: [{ title: '구현' }, { title: '게이트 리뷰' }, { title: '개선 리뷰' }, { title: '인터페이스 리뷰' }, { title: '한국어 리뷰' }],
 }
 
 // 게이트 판정은 자유 텍스트가 아니라 구조화 출력으로 받는다.
@@ -220,17 +220,19 @@ if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && FULL.includes(workTy
   )
 }
 
-let interactionReview = null
+let interfaceReview = null
 // 어드민은 admin 유형(별도 라이트 파이프라인)이라 여기 들어오지 않는다 — ui만 대상.
 if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && workType === 'ui') {
-  phase('인터랙션 리뷰')
-  interactionReview = await agent(
+  phase('인터페이스 리뷰')
+  interfaceReview = await agent(
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
-    `.claude/skills/apple-design/SKILL.md를 읽고 그 기준(제스처 반응성, 스프링 곡선과 인터럽트 ` +
-    `가능성, depth·재질감, 타이포그래피, reduced-motion 등)으로 이번 변경의 실제 git diff를 검토해 ` +
-    `개선 제안을 제시하라. 이건 머지를 막는 게이트가 아니라 제안형 리뷰다 — PASS/FAIL 판정 없이 ` +
-    `발견한 점과 제안만 나열하라.`,
-    { agentType: 'general-purpose', label: 'interaction-reviewer' }
+    `.claude/skills/interface-review/SKILL.md를 읽고 그 절차대로 이번 변경의 스코프(diff)를 ` +
+    `해석한 뒤, .claude/skills/better-interface/SKILL.md가 지정하는 순서(better-accessibility → ` +
+    `better-layout → better-writing → better-typography → better-colors → better-ui)로 각 ` +
+    `도메인 스킬을 적용해 검토하라. 이번 티켓의 실제 git diff(review 브랜치 vs origin/staging)만 ` +
+    `대상으로 하고, 손대지 않은 기존 코드는 다루지 마라. 이건 머지를 막는 게이트가 아니라 제안형 ` +
+    `리뷰다 — PASS/FAIL 판정 없이 발견한 점과 제안만 나열하라.`,
+    { agentType: 'general-purpose', label: 'interface-reviewer' }
   )
 }
 
@@ -255,7 +257,7 @@ if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && KOREAN_COPY_TYPES.in
   }
 }
 
-return { devResult, gate, progressive, interactionReview, koreanReview }
+return { devResult, gate, progressive, interfaceReview, koreanReview }
 ```
 
 - `ticketPath`·`userRequest`·`workType`·`reuseDecision`은 0~1.5단계 값으로 채운다.
@@ -281,8 +283,8 @@ return { devResult, gate, progressive, interactionReview, koreanReview }
   사용자가 WARN 사유에 대해 추가 조치를 원하면 그때 처리한다.
 - **PASS**: 구현 요약 + PASS 근거 + 개선 제안/문서 갱신 제안을 한 번에 요약하고,
   **머지 승인 여부를 명시적으로 묻는다.**
-- **인터랙션 리뷰**(`ui` 유형, `interactionReview`가 있을 때): 개선 제안과 별도 섹션
-  "인터랙션 리뷰 제안"으로 요약한다. 제안형이라 판정에 영향을 주지 않으며, 머지 승인 여부와
+- **인터페이스 리뷰**(`ui` 유형, `interfaceReview`가 있을 때): 개선 제안과 별도 섹션
+  "인터페이스 리뷰 제안"으로 요약한다. 제안형이라 판정에 영향을 주지 않으며, 머지 승인 여부와
   무관하게 참고용으로만 제시한다.
 - **한국어 리뷰**(`copy`·`ui`·`content` 유형이고 사용자 노출 문구가 있었을 때, `koreanReview`가
   있을 때): 개선 제안과 별도 섹션 "한국어 표현 리뷰 제안"으로 요약한다. 제안형이라 판정에 영향을
@@ -348,3 +350,9 @@ gate의 `sideFindings`와 progressive의 "## 범위 밖 발견물" 섹션이 비
   설치돼 있어야 동작한다. 플러그인을 제거하면 이 단계도 함께 걷어낼 것 — 없는 에이전트 타입을
   호출하면 Workflow가 해당 phase에서 에러를 낸다. `.claude/output-styles/fluent-korean.md`를
   제거하면 구현 단계의 참조 지시도 함께 걷어낼 것.
+- `ui` 유형의 인터페이스 리뷰 단계는 `.claude/skills/interface-review`·`.claude/skills/
+  better-interface`(및 그 안에서 참조하는 better-accessibility·better-layout·better-writing·
+  better-typography·better-colors·better-ui)가 있어야 의미가 있다. 이 스킬들은 `~/.agents/
+  skills/`를 가리키는 심볼릭 링크이므로, 다른 PC로 옮기거나 그 폴더가 없으면 링크가 깨진다 —
+  깨지면 이 단계도 함께 걷어낼 것. (이전에 쓰던 `apple-design` 기준 "인터랙션 리뷰" 단계는
+  2026-09-08 apple-design 스킬 삭제로 이 단계로 대체됨.)
