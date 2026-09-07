@@ -11,6 +11,13 @@ export interface NaverPlace {
   longitude: number
   category: PoiCategory
   address: string
+  /** 20260907_1242 — 네이버 응답 원본 분류 문자열(가공 없이, 예: "음식점>카페,디저트").
+   *  검증 게이트(category-gate.ts)가 기대 카테고리와 대조하는 판정 근거. */
+  naverCategory: string
+  /** 20260907_1242 — 이 결과를 찾는 데 실제로 쓰인 검색 키워드(지역명 접두어 제외한 원본,
+   *  예: "국립공원"). 카테고리당 키워드가 여럿일 수 있어 어느 키워드가 오염을 유발했는지
+   *  구분하는 데 쓴다. */
+  naverKeyword: string
 }
 
 // 어드민 자유 검색용 (카테고리는 네이버가 내려주는 원문 그대로)
@@ -95,6 +102,7 @@ export async function fetchNearbyNaverPoisForCategories(
   const keywordQueries = categories.flatMap(({ category, keywords }) =>
     keywords.map((keyword) => ({
       keyword: regionName ? `${regionName} ${keyword}` : keyword,
+      rawKeyword: keyword,
       category,
     }))
   )
@@ -108,7 +116,7 @@ export async function fetchNearbyNaverPoisForCategories(
 
   searches.forEach((result, i) => {
     if (result.status !== 'fulfilled') return
-    const { category } = keywordQueries[i]
+    const { category, rawKeyword } = keywordQueries[i]
 
     for (const item of result.value) {
       if (!item.mapx || !item.mapy) continue
@@ -127,6 +135,8 @@ export async function fetchNearbyNaverPoisForCategories(
         longitude,
         category,
         address: item.roadAddress || item.address,
+        naverCategory: item.category,
+        naverKeyword: rawKeyword,
       })
     }
   })

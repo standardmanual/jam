@@ -44,9 +44,15 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
   const to = from + PAGE_SIZE - 1
   query = query.range(from, to)
 
-  const [{ data: poisRaw, count }, { data: categoriesRaw }] = await Promise.all([
+  const [{ data: poisRaw, count }, { data: categoriesRaw }, { count: pendingReviewCount }] = await Promise.all([
     query,
     supabase.from('poi_categories').select('*').order('slug'),
+    // 20260907_1242: 헤더의 "검토 큐" 버튼에 대기 건수를 보여준다 — 검토 큐 진입 없이도
+    // 처리할 게 있는지 한눈에 알 수 있어야 실제로 쓰인다.
+    // pending_review는 마이그레이션 143에서 막 추가된 컬럼이라 생성 타입에 없다 — db:types
+    // CLI 부재로 재생성 불가(완료 보고 참고). eq()의 컬럼명 리터럴 검사만 `as string`으로
+    // 넓혀 우회한다(다른 컬럼명 검사에는 영향 없음).
+    supabase.from('poi').select('*', { count: 'exact', head: true }).eq('pending_review' as string, true),
   ])
 
   const pois = (poisRaw ?? []) as PoiListRow[]
@@ -67,6 +73,11 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold md:text-3xl">POI 관리</h1>
         <div className="flex flex-col gap-2 sm:flex-row">
+          <Link href="/admin/poi/review">
+            <Button variant="outline" className="w-full sm:w-auto">
+              검토 큐{pendingReviewCount ? ` (${pendingReviewCount})` : ''}
+            </Button>
+          </Link>
           <Link href="/admin/poi/categories">
             <Button variant="outline" className="w-full sm:w-auto">
               카테고리 관리
