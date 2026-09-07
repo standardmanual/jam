@@ -45,24 +45,6 @@ description: JAM! 프로젝트의 표준 개발 워크플로우. 버그 수정·
 > 유형은 **파이프라인 라우팅 키**, 티켓 카테고리는 **문서 분류 키**로 축이 다르다.
 > 카테고리 8종(Admin·Service·Feature·Content·BadgeEngine·Infra·UI·API)은 `/jam-docs` 참조.
 
-### 0.1 토큰 절감 준비 (`docs`·`research` 제외, 위임하지 않음)
-
-이 파이프라인은 유형에 따라 서브에이전트를 2~6개 fresh context로 스폰한다. 터미널 CLI 세션이고
-`command -v headroom`이 있다면, [headroom](https://github.com/headroomlabs-ai/headroom) 프록시로
-서브에이전트의 grep·read 결과를 압축해 토큰을 줄일 수 있다.
-
-`echo $ANTHROPIC_BASE_URL`로 이미 프록시(기본 `http://127.0.0.1:8787`)를 경유 중인지 확인한다.
-설치돼 있는데 아직 경유 중이 아니면, 차단하지 않고 세션당 1회만 안내한다:
-
-```bash
-headroom proxy --port 8787                        # 다른 터미널에서 기동
-ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude   # 이 터미널에서 재시작 후 이어서 진행
-```
-
-데스크톱 앱(Code 탭) 세션은 `claude` CLI 프로세스를 감싸는 방식이 아니라서 이 환경변수가
-반영되지 않을 수 있다 — 그 경우 안내를 생략한다. `headroom`이 없는 PC(설치는 머신별 로컬)에서는
-이 절 전체를 건너뛴다.
-
 ## 1. 사전 준비 (모든 유형 공통, 위임하지 않음)
 
 1. `Service Plan/Tickets/`에서 유사·관련 티켓 검토 (재구현 방지, 미채택 대안 확인)
@@ -169,18 +151,10 @@ const VERDICT = {
     reasons: { type: 'array', items: { type: 'string' } },
     checked: { type: 'array', items: { type: 'string' } },
     sideFindings: { type: 'array', items: { type: 'string' } },
+    hasKoreanCopy: { type: 'boolean' },
+    koreanCopyText: { type: 'string' },
   },
   required: ['verdict', 'reasons'],
-}
-
-// 한국어 리뷰용 diff 추출도 구조화 출력으로 받는다 (자유 텍스트의 "없음" 판별은 취약하다).
-const COPY_EXTRACT = {
-  type: 'object',
-  properties: {
-    hasContent: { type: 'boolean' },
-    text: { type: 'string' },
-  },
-  required: ['hasContent'],
 }
 
 phase('구현')
@@ -237,24 +211,19 @@ if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && workType === 'ui') {
 }
 
 let koreanReview = null
-// UX Writing 문안이 나올 가능성이 있는 유형만 대상. diff 추출과 윤문은 역할이 다르므로 2단계로 분리:
-// humanize-korean 에이전트는 "받은 텍스트를 그대로 처리"하는 계약이라, 직접 diff를 뒤지게 하지 않는다.
+// UX Writing 문안이 나올 가능성이 있는 유형만 대상. 추출은 별도 에이전트를 새로 띄우지 않고
+// 게이트 리뷰(conservative-reviewer)가 이미 diff를 읽은 김에 VERDICT.hasKoreanCopy/koreanCopyText로
+// 함께 판정한다 — humanize-korean 에이전트는 "받은 텍스트를 그대로 처리"하는 계약이라, 직접
+// diff를 뒤지게 하지 않는다.
 const KOREAN_COPY_TYPES = ['copy', 'ui', 'content']
-if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && KOREAN_COPY_TYPES.includes(workType)) {
+if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && KOREAN_COPY_TYPES.includes(workType) &&
+    gate.hasKoreanCopy && gate.koreanCopyText) {
   phase('한국어 리뷰')
-  const extracted = await agent(
-    `이번 티켓의 git diff(review 브랜치 vs origin/staging)에서 사용자에게 노출되는 한국어 문구만 ` +
-    `원문 그대로 뽑아라 — UI 카피, 배지·미션·POI 설명, 알림·토스트 문구 등. 코드 주석·티켓 문서· ` +
-    `변수명·커밋 메시지는 제외. 해당하는 문구가 없으면 hasContent: false로 답하라.`,
-    { agentType: 'general-purpose', label: 'copy-diff-extract', schema: COPY_EXTRACT }
+  koreanReview = await agent(
+    `다음은 이번 티켓에서 새로 추가·변경된 사용자 노출 한국어 문구다. 번역투·과도한 수동태· ` +
+    `AI 특유의 상투구 같은 어색한 표현이 있는지 점검하고 자연스러운 대안을 제시하라:\n\n${gate.koreanCopyText}`,
+    { agentType: 'humanize-korean:humanize-monolith', label: 'korean-writing-reviewer' }
   )
-  if (extracted.hasContent && extracted.text) {
-    koreanReview = await agent(
-      `다음은 이번 티켓에서 새로 추가·변경된 사용자 노출 한국어 문구다. 번역투·과도한 수동태· ` +
-      `AI 특유의 상투구 같은 어색한 표현이 있는지 점검하고 자연스러운 대안을 제시하라:\n\n${extracted.text}`,
-      { agentType: 'humanize-korean:humanize-monolith', label: 'korean-writing-reviewer' }
-    )
-  }
 }
 
 return { devResult, gate, progressive, interfaceReview, koreanReview }

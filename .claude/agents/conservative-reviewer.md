@@ -64,3 +64,12 @@ tools: Read, Grep, Glob, Bash
 - 오케스트레이터가 이를 받아 별도 티켓이나 작업으로 분리한다
 
 이번 티켓의 PASS/FAIL과 무관한 발견물을 verdict에 끼워넣지 않는다.
+
+### hasKoreanCopy / koreanCopyText — 한국어 리뷰용 추출 (`copy`·`ui`·`content` 유형만)
+
+전달받은 프롬프트의 "작업 유형"이 `copy`·`ui`·`content` 중 하나면, 어차피 읽는 diff에서
+**사용자에게 노출되는 한국어 문구**(UI 카피, 배지·미션·POI 설명, 알림·토스트 문구 등)를
+원문 그대로 뽑아 `koreanCopyText`에 담고 `hasKoreanCopy: true`로 표시한다. 코드 주석·티켓
+문서·변수명·커밋 메시지는 제외. 해당하는 문구가 없으면 `hasKoreanCopy: false`로 둔다.
+이 추출은 verdict 판정과 무관한 별도 정보 전달이며, 후속 한국어 리뷰 단계가 별도 에이전트
+없이 이 값을 바로 쓴다. 그 외 유형에서는 두 필드 모두 비워둔다.
