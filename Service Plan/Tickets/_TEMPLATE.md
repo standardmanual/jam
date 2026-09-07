@@ -1,6 +1,7 @@
 ---
 id: YYYYMMDD_HHMM
 category: Infra | Admin | Service | Feature | Content | BadgeEngine | UI | API
+priority: P0 | P1 | P2 | P3
 status: OPEN | IN_PROGRESS | CLOSED
 created: YYYY-MM-DD
 closed: YYYY-MM-DD
