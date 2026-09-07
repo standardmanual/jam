@@ -24,13 +24,15 @@ export async function GET(
   // 20260829_2101: inventory_items(serial_prefix, serial_number)도 함께 조회한다 — 개체
   // 정체성 모델에서는 poi_drops가 항상 이미 발급된 개체를 가리키므로 픽업 전에도
   // 일련번호가 이미 확정돼 있다(배지 상세 바텀시트의 드랍 컨텍스트 카드에 노출).
+  // 20260908_0223: expires_at을 추가로 select한다 — 픽업 목록을 badge_id별로 그룹핑할 때
+  // 그룹의 "곧 만료" 칩 기준(가장 이른 만료일)을 계산하려면 원본 값이 필요하다.
   const { data, error } = await service
     .from('poi_drops')
     // inventory_items와는 FK가 두 갈래다 — 레거시 inventory_items.drop_id(픽업 이력)와
     // 20260829_2101 개체정체성 모델의 poi_drops.inventory_item_id(현재 드랍이 가리키는
     // 개체). 관계명을 명시하지 않으면 PostgREST가 PGRST201로 거부해 목록 조회 자체가
     // 실패한다 — 여기서는 후자를 써야 하므로 명시적으로 지정한다.
-    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number )`)
+    .select(`id, badge_id, dropped_at, dropper_user_id, badges ( name, rarity, image_url ), inventory_items!poi_drops_inventory_item_id_fkey ( serial_prefix, serial_number, expires_at )`)
     .eq('poi_id', poiId)
     .eq('is_available', true)
     .order('dropped_at', { ascending: true })
@@ -49,7 +51,7 @@ export async function GET(
     dropper_user_id: string | null
     badges: { name: string; rarity: string; image_url: string | null } | null
     // 마이그레이션 이전에 완료된 과거 드랍은 소급 연결되지 않아 null일 수 있다.
-    inventory_items: { serial_prefix: string | null; serial_number: number } | null
+    inventory_items: { serial_prefix: string | null; serial_number: number; expires_at: string | null } | null
   }
   const rows = (data ?? []) as unknown as PoiDropRow[]
 
@@ -81,6 +83,12 @@ export async function GET(
     serial: d.inventory_items
       ? `${d.inventory_items.serial_prefix ?? '????'}${String(d.inventory_items.serial_number).padStart(6, '0')}`
       : null,
+    // 20260908_0223: 픽업 목록도 badge_id별로 그룹핑해 개체 선택 시트(ItemCandidateRow)를
+    // 열 수 있도록 원본 serial_prefix/serial_number/expires_at을 함께 내려준다. 기존
+    // 포맷된 `serial` 필드는 그대로 유지 — BadgeDetailSheet.tsx가 계속 그 필드만 쓴다.
+    serial_prefix: d.inventory_items?.serial_prefix ?? null,
+    serial_number: d.inventory_items?.serial_number ?? null,
+    expires_at: d.inventory_items?.expires_at ?? null,
   }))
 
   return NextResponse.json({ drops })
