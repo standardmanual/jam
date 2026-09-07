@@ -38,9 +38,9 @@ const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 /** 체크인 배지 — 산/지하철역 등 지점을 지나며 획득하는 배지. 반복 획득 가능. */
 export interface CheckinBadgeItem {
   badge: BadgeRow
-  /** 연결된 지점(POI)의 category slug (예: mountain, transit) */
+  /** 연결된 지점(POI)의 category slug (예: mountain, train_subway) */
   category: string
-  /** 어드민이 관리하는 카테고리 한글 라벨 (예: 산, 대중교통) */
+  /** 어드민이 관리하는 카테고리 한글 라벨 (예: 산, 기차/지하철) */
   categoryLabel: string
   /** 획득 횟수 — 0이면 미획득 */
   earnCount: number

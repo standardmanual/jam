@@ -1,8 +1,9 @@
 // 네이버 지역검색(Local Search) 오픈API로 T2 POI 조회 (관공서/교통/병원/약국/관광명소/자연/편의점/카페 등)
 // 참조: https://developers.naver.com/docs/serviceapi/search/local/local.md
 import { haversineDistance } from './matcher'
-import type { PoiCategory } from '@/types/database'
+import type { PoiCategory, PoiKeywordScope } from '@/types/database'
 import type { PoiCategoryConfig } from './categories'
+import type { ReverseGeocodeRegions } from './reverse-geocode'
 
 export interface NaverPlace {
   naverId: string
@@ -86,25 +87,44 @@ function parseNaverCoord(mapx: string, mapy: string): { latitude: number; longit
   }
 }
 
+/**
+ * 20260907_1243 — 키워드의 scope(dong/gu/sido)에 맞춰 region을 sido→gu→dong 계층으로
+ * 누적 조합한 접두어를 만든다. 예: scope='gu'면 "{sido} {gu}"까지만(동은 뺀다) — 관공서의
+ * "구청"처럼 구 단위로는 흔하지만 동 단위로는 드문 키워드가 "동"까지 강제돼 결과 0건이 되는
+ * 문제를 피한다. 해당 단계까지 값 중 비어있는 게 있으면 있는 부분만 이어붙이고, 전부
+ * 없으면 null(호출부는 지역명 없이 순수 키워드로 폴백).
+ */
+export function buildRegionPrefix(regions: ReverseGeocodeRegions | null, scope: PoiKeywordScope): string | null {
+  if (!regions) return null
+  const order: (keyof ReverseGeocodeRegions)[] =
+    scope === 'sido' ? ['sido'] : scope === 'gu' ? ['sido', 'gu'] : ['sido', 'gu', 'dong']
+  const parts = order.map((key) => regions[key]).filter((v): v is string => Boolean(v && v.trim()))
+  return parts.length > 0 ? parts.join(' ') : null
+}
+
 // 지정된 카테고리(들)의 키워드로 네이버 지역검색을 수행해 반경 내 결과만 반환
 //
-// regionName: 역지오코딩으로 얻은 "구 동" 문자열(reverse-geocode.ts). 네이버 지역검색 API는
-// 좌표/반경 파라미터가 없어 순수 키워드("카페")만 넘기면 전국 무작위 결과가 나온다 —
-// 지역명을 키워드 앞에 붙여("서초구 서초동 카페") 실제로 해당 지역 결과가 나오게 한다.
+// regions: 역지오코딩 결과(reverse-geocode.ts). 네이버 지역검색 API는 좌표/반경 파라미터가
+// 없어 순수 키워드("카페")만 넘기면 전국 무작위 결과가 나온다 — 지역명을 키워드 앞에
+// 붙여("서초구 서초동 카페") 실제로 해당 지역 결과가 나오게 한다. 키워드마다 필요한 지역
+// 단위(scope)가 달라 buildRegionPrefix로 키워드별 접두어를 따로 만든다.
 // null이면(역지오코딩 실패) 기존처럼 순수 키워드로 폴백 — 결과가 적게 나올 수 있음.
 export async function fetchNearbyNaverPoisForCategories(
   lat: number,
   lng: number,
   radiusM: number,
   categories: PoiCategoryConfig[],
-  regionName?: string | null
+  regions?: ReverseGeocodeRegions | null
 ): Promise<NaverPlace[]> {
   const keywordQueries = categories.flatMap(({ category, keywords }) =>
-    keywords.map((keyword) => ({
-      keyword: regionName ? `${regionName} ${keyword}` : keyword,
-      rawKeyword: keyword,
-      category,
-    }))
+    keywords.map(({ keyword, scope }) => {
+      const prefix = buildRegionPrefix(regions ?? null, scope)
+      return {
+        keyword: prefix ? `${prefix} ${keyword}` : keyword,
+        rawKeyword: keyword,
+        category,
+      }
+    })
   )
 
   const results: NaverPlace[] = []
