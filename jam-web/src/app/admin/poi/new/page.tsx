@@ -6,7 +6,9 @@ import type { PoiCategoryRow } from '@/types/database'
 export default async function NewPoiPage() {
   const supabase = createServiceClient()
   const { data: categoriesRaw } = await supabase.from('poi_categories').select('*').order('slug')
-  const categories = (categoriesRaw ?? []) as PoiCategoryRow[]
+  // 20260907_1243: keywords가 text[]→jsonb로 바뀌어 생성 타입(여전히 string[]로 인식)과
+  // 어긋난다 — unknown 경유로 좁게 우회한다.
+  const categories = (categoriesRaw ?? []) as unknown as PoiCategoryRow[]
 
   return (
     <div className="p-8">

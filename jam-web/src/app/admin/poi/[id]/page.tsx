@@ -36,7 +36,9 @@ export default async function EditPoiPage({ params }: { params: Promise<{ id: st
     linkedBadgeDeletedAt = badge?.deleted_at ?? null
   }
 
-  const categories = (categoriesRaw ?? []) as PoiCategoryRow[]
+  // 20260907_1243: keywords가 text[]→jsonb로 바뀌어 생성 타입(여전히 string[]로 인식)과
+  // 어긋난다 — unknown 경유로 좁게 우회한다.
+  const categories = (categoriesRaw ?? []) as unknown as PoiCategoryRow[]
   const categoryLabel = categories.find(c => c.slug === poi.category)?.label
 
   return (
