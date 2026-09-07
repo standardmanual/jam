@@ -29,6 +29,13 @@ export interface BadgeGridCardProps {
    * 시각 문법은 피드 카드의 카운터 필(`FeedSection.tsx`)과 같다 — 새 표현을 만들지 않는다.
    */
   count?: number | null
+  /**
+   * ×N 필의 접근성 문구를 교체한다. 기본값(`d.badges.earnCountAria`, "N번 획득했어요")은
+   * "획득 이력" 맥락이다 — 드랍 그리드처럼 "지금 보유한 것 중 고르기" 맥락에서는 횟수가 아니라
+   * 개수를 읽어야 뜻이 맞는다(20260908_0040). 화면마다 문구가 다를 수 있어 문자열을 직접
+   * 호출부에서 넘긴다(i18n 그룹을 badges 하나로 고정하지 않기 위함).
+   */
+  countAriaText?: string
   /** Link mode — wraps card in <Link href>. Mutually exclusive with onClick. */
   href?: string
   /** Button mode — wraps card in <button>. Mutually exclusive with href. */
@@ -64,6 +71,7 @@ export default function BadgeGridCard({
   rarity,
   level = null,
   count = null,
+  countAriaText,
   href,
   onClick,
   onNavigate,
@@ -133,7 +141,9 @@ export default function BadgeGridCard({
           {undiscovered ? '???' : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
-        {showCount && <span className="sr-only">{t(d.badges.earnCountAria, { count: String(count) })}</span>}
+        {showCount && (
+          <span className="sr-only">{countAriaText ?? t(d.badges.earnCountAria, { count: String(count) })}</span>
+        )}
         {!undiscovered && (level != null ? <BadgeLevelChip level={level} /> : <RarityBadge rarity={rarity ?? undefined} />)}
       </div>
       {children && <div className="w-full mt-[var(--spacing-4)]">{children}</div>}
