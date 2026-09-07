@@ -34,12 +34,19 @@ function isExpiringSoon(expiresAt: string | null): boolean {
  */
 interface BadgeDetailPageProps {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ u?: SearchParamValue }>
+  /**
+   * `item` — 보고 있는 아이템배지 **개체**(`inventory_items.id`). 20260907_2059.
+   * 인벤토리 카드·컬렉션 슬롯에서 진입할 때 "어느 개체를 눌렀는가"를 싣는다.
+   * 없거나 무효하면 아래에서 조용히 기존 대표 개체(최신 획득분)로 폴백한다.
+   */
+  searchParams: Promise<{ u?: SearchParamValue; item?: SearchParamValue }>
 }
 
 export default async function BadgeDetailPage({ params, searchParams }: BadgeDetailPageProps) {
   const { id } = await params
-  const u = singleQueryParam((await searchParams).u)
+  const rawSearchParams = await searchParams
+  const u = singleQueryParam(rawSearchParams.u)
+  const requestedItemId = singleQueryParam(rawSearchParams.item)
   const supabase = await createClient()
   const {
     data: { user },
@@ -199,6 +206,8 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     expires_at: string | null
     obtained_by: string
     dropped_at: string | null
+    /** 파괴(조합 소모/미픽업 만료)된 개체 — `?item`으로 지목돼도 대표로 쓰지 않는다(20260907_2059) */
+    destroyed_at: string | null
   }
   let allItemInventory: ItemInventoryInfo[] = []
   let itemBook: ItemBookRow | null = null
@@ -212,7 +221,7 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
     if (subjectInventory) {
             const { data: itemsRaw, error: itemsError } = await service
         .from('inventory_items')
-        .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by, dropped_at')
+        .select('id, serial_number, serial_prefix, obtained_at, expires_at, obtained_by, dropped_at, destroyed_at')
         .eq('inventory_id', (subjectInventory as { id: string }).id)
         .eq('badge_id', id)
         .order('obtained_at', { ascending: false })
@@ -301,12 +310,24 @@ export default async function BadgeDetailPage({ params, searchParams }: BadgeDet
 
   // ========== 변형 2: 아이템 배지 ==========
   if (badgeRow.type === 'item') {
-    const activeItem = allItemInventory.find(item => !item.dropped_at) ?? null
+    // [20260907_2059] `?item`으로 지목된 개체가 **이 조회 주체의 인벤토리 안에, 이 배지로,
+    // 살아 있는 상태로** 존재할 때만 대표로 채택한다. allItemInventory는 이미
+    // `inventory_id = subjectId의 인벤토리` + `badge_id = id`로 좁혀 조회한 목록이므로,
+    // 그 안에서 id가 일치하는지 보는 것만으로 소유·배지 일치 검증이 끝난다(추가 쿼리 없음).
+    // 무효한 값(타인 소유·타 배지·파괴·오타)은 notFound()가 아니라 조용히 아래 폴백으로
+    // 떨어뜨린다 — 공유된 링크가 깨져 보이지 않게 하기 위함이다.
+    const requestedItem = requestedItemId
+      ? allItemInventory.find(
+          (item) => item.id === requestedItemId && !item.dropped_at && !item.destroyed_at
+        ) ?? null
+      : null
+    const activeItem = requestedItem ?? allItemInventory.find(item => !item.dropped_at) ?? null
     const expiresAt = activeItem?.expires_at ?? null
     const expiring = isExpiringSoon(expiresAt)
-    // 대표 개체(현재 보유 중인 것 중 최신 획득분)의 일련번호 — ItemSerialCode 대형 표시용
-    // (20260903_1423). 여러 개체를 보유해도(allItemInventory.length > 1) 대표 1개만 크게 보여주고,
-    // 나머지는 아래 ItemEarnHistory 목록에서 확인한다.
+    // 대표 개체(`?item`으로 지목된 개체 → 없으면 현재 보유 중인 것 중 최신 획득분)의 일련번호 —
+    // ItemSerialCode 대형 표시용(20260903_1423). 여러 개체를 보유해도
+    // (allItemInventory.length > 1) 대표 1개만 크게 보여주고, 나머지는 아래 ItemEarnHistory
+    // 목록에서 확인한다.
     const representativeSerial = activeItem
       ? `${activeItem.serial_prefix ?? '????'}${String(activeItem.serial_number).padStart(6, '0')}`
       : null

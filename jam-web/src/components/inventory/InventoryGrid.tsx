@@ -2,6 +2,7 @@
 
 import LocalDate from '@/components/LocalDate'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
+import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import { d } from '@/lib/i18n'
 
 // 인벤토리 그리드 카드에 필요한 정규화된 아이템 형태.
@@ -15,7 +16,22 @@ export interface InventoryGridItem {
   /** 무한레벨형 배지는 등급이 없다(마이그레이션 130). null이면 등급 칩을 그리지 않는다 */
   badgeRarity: string | null
   expiresAt?: string | null
+  /**
+   * 개체 일련번호(`(serial_prefix ?? '????') + zero-pad 6자리`). 값이 있을 때만 카드 하단에
+   * `ItemSerialCode`를 그린다 — 같은 배지 여러 개 중 하나를 골라야 하는 화면(컬렉션 장착
+   * 개체 선택 시트, 20260907_2059)에서만 쓰고, 일반 인벤토리 목록·드랍 시트는 넘기지 않는다.
+   */
+  serial?: string
 }
+
+/**
+ * 그리드 카드 안의 `ItemSerialCode` 높이(px). 컴포넌트 총 너비는 height의 약 5.3배로
+ * (4자리 알파벳 타일 + 6자리 숫자 타일) 커지므로, 3열 그리드에서 가장 좁아지는
+ * 360px 뷰포트의 카드 콘텐츠 폭(약 80px) 안에 들어오는 값으로 고정한다.
+ * 추정이 아니라 ItemSerialCode의 비율 상수(TILE_WIDTH_RATIO·DIGIT_ADVANCE_RATIO 등)로
+ * 역산한 값이다 — 14 × 5.31 ≈ 74px.
+ */
+const GRID_SERIAL_HEIGHT_PX = 14
 
 interface InventoryGridProps {
   items: InventoryGridItem[]
@@ -56,6 +72,18 @@ export default function InventoryGrid({
           </p>
         ) : null
 
+        // 일련번호는 serial이 넘어온 카드에서만 그린다. serial이 없으면 자식 노드를 종전과
+        // **완전히 동일하게**(expiryNode 그대로) 유지한다 — 기존 호출부 2곳
+        // (`/inventory`, 드랍 바텀시트)의 레이아웃을 건드리지 않기 위함이다.
+        const cardChildren = item.serial ? (
+          <div className="flex flex-col items-center gap-[var(--spacing-4)]">
+            <ItemSerialCode code={item.serial} height={GRID_SERIAL_HEIGHT_PX} />
+            {expiryNode && <div className="w-full">{expiryNode}</div>}
+          </div>
+        ) : (
+          expiryNode
+        )
+
         if (mode === 'navigate') {
           return (
             <BadgeGridCard
@@ -65,7 +93,7 @@ export default function InventoryGrid({
               imageUrl={item.badgeImageUrl}
               rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}
             >
-              {expiryNode}
+              {cardChildren}
             </BadgeGridCard>
           )
         }
@@ -80,7 +108,7 @@ export default function InventoryGrid({
             rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}
             selected={isSelected}
           >
-            {expiryNode}
+            {cardChildren}
           </BadgeGridCard>
         )
       })}
