@@ -60,7 +60,6 @@
     ]
   },
   "enabledPlugins": {
-    "impeccable@impeccable": true,
     "figma@claude-plugins-official": true,
     "vercel@claude-plugins-official": true,
     "humanize-korean@im-not-ai": true,
@@ -79,6 +78,18 @@
       "source": {
         "source": "git",
         "url": "https://github.com/headroomlabs-ai/headroom.git"
+      }
+    },
+    "pm-skills": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/phuryn/pm-skills.git"
+      }
+    },
+    "im-not-ai": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/epoko77-ai/im-not-ai.git"
       }
     }
   }
