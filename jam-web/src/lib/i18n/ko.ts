@@ -477,6 +477,11 @@ export const ko = {
      */
     selectDropItemBody: '드랍할 수 있는 배지가 {count}개예요. 일련번호를 확인하고 골라주세요.',
     /**
+     * 픽업 목록에서 같은 배지를 여러 명이 드랍해 2개 이상 쌓였을 때 뜨는 개체 선택 시트
+     * — 20260908_0223. selectDropItemBody와 어간만 다르다("드랍" → "픽업").
+     */
+    selectPickupItemBody: '픽업할 수 있는 배지가 {count}개예요. 일련번호를 확인하고 골라주세요.',
+    /**
      * 드랍 그리드에서 같은 배지를 2개 이상 보유했을 때 «×N» 필이 뜨는데, 이 필은
      * aria-hidden이라 이 문장이 없으면 보조기술에 개수가 전달되지 않는다(`BadgeGridCard`).
      * `d.badges.earnCountAria`("N번 획득했어요")를 그대로 쓰지 않는 이유: 그 문구는 "획득
@@ -484,6 +489,12 @@ export const ko = {
      * 개수를 읽어야 뜻이 맞는다(20260908_0040).
      */
     dropOwnedCountAria: '이 배지를 {count}개 보유했어요',
+    /**
+     * 픽업 목록에서 같은 배지가 2개 이상 드랍돼 있을 때 «×N» 필의 sr-only 보조문 — 위
+     * dropOwnedCountAria와 같은 이유(aria-hidden 필)이지만 "보유"가 아니라 "여기 놓여있음"
+     * 맥락이라 어간을 다르게 짓는다(20260908_0223).
+     */
+    pickupAvailableCountAria: '이 배지가 여기 {count}개 있어요',
     pickupButton: '픽업',
     pickupSuccess: '픽업 완료! 인벤토리를 확인해보세요',
     // 20260825_039: 바텀시트 포털화로 그동안 시트에 가려져 있던 픽업 실패 토스트가
