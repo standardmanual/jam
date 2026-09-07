@@ -3,7 +3,7 @@
 import { PoiCard } from './PoiCard'
 import { PoiTable } from './PoiTable'
 import { useIsDesktop } from '@/lib/admin/use-is-desktop'
-import type { PoiRow } from '@/types/database'
+import type { PoiCategoryRow, PoiRow } from '@/types/database'
 
 /** 목록(카드/테이블)에 실제로 쓰는 컬럼만 — `admin/poi/page.tsx`의 select()와 짝을 이룬다
  *  (20260826_011 A8). 상세화면(osm_id/naver_id/poi_tier/created_at 등)은 별도로 전체 조회한다. */
@@ -16,9 +16,11 @@ interface PoiListProps {
   pois: PoiListRow[]
   badgeMap: Map<string, string>
   categoryLabelMap: Map<string, string>
+  /** 다중선택 카테고리 일괄변경 다이얼로그의 선택지 — 데스크톱 테이블에만 전달한다(20260907_1643) */
+  categories: PoiCategoryRow[]
 }
 
-export function PoiList({ pois, badgeMap, categoryLabelMap }: PoiListProps) {
+export function PoiList({ pois, badgeMap, categoryLabelMap, categories }: PoiListProps) {
   // `hidden md:block`으로 카드 그리드와 테이블을 둘 다 마운트하면 렌더 비용이 이중으로 든다
   // (20260826_011 A4) — 실제 뷰포트에 맞는 한쪽만 마운트한다.
   const isDesktop = useIsDesktop()
@@ -49,5 +51,5 @@ export function PoiList({ pois, badgeMap, categoryLabelMap }: PoiListProps) {
     )
   }
 
-  return <PoiTable pois={pois} badgeMap={badgeMap} categoryLabelMap={categoryLabelMap} />
+  return <PoiTable pois={pois} badgeMap={badgeMap} categoryLabelMap={categoryLabelMap} categories={categories} />
 }

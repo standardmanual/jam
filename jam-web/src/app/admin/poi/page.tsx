@@ -104,7 +104,7 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
       </div>
 
       {/* 목록 */}
-      <PoiList pois={pois} badgeMap={badgeMap} categoryLabelMap={categoryLabelMap} />
+      <PoiList pois={pois} badgeMap={badgeMap} categoryLabelMap={categoryLabelMap} categories={categories} />
 
       {/* 페이지네이션 */}
       <Pagination page={page} totalPages={totalPages} searchParams={params} />
