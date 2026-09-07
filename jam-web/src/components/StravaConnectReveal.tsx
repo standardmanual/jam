@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { useToast } from '@/components/ui/Toast'
+import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
 import { d } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
 
@@ -197,10 +198,15 @@ function Inner({ username }: { username: string | null }) {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  // /api/badges/recent-earned 조회가 빠르게 끝나면(예: 캐시 히트) 대기 화면을 아예 띄우지
+  // 않도록 디바운스 적용 (NavigationLoader와 동일한 정책, 20260908_0544). 배지가 있어
+  // phase가 바로 'open'으로 넘어가는 경우엔 이 값과 무관하게 즉시 캐러셀을 연다.
+  const showLoadingOverlay = useDebouncedLoading(phase === 'loading')
+
   return (
     <BadgeRevealOverlay
-      open={phase !== 'idle'}
-      loading={phase === 'loading'}
+      open={phase === 'open' || showLoadingOverlay}
+      loading={showLoadingOverlay}
       items={items}
       moreCount={moreCount}
       profileHref={username ? `/${username}` : '/profile'}
