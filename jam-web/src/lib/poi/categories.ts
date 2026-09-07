@@ -11,6 +11,9 @@ export interface PoiCategoryConfig {
   category: PoiCategory
   keywords: string[]
   level: 1 | 2
+  /** 20260907_1242 — 이 카테고리 수집 시 원본 분류 검증 게이트(3단계 판정)를 적용할지 여부.
+   *  poi_categories.requires_review 그대로 전달 — false면 기존처럼 무조건 자동 저장된다. */
+  requiresReview: boolean
 }
 
 // level 1 검색 결과가 이 개수 미만이면 level 2(보조 카테고리)까지 검색
@@ -30,6 +33,7 @@ interface PipelineCategoryRow {
   slug: string
   tier: 1 | 2 | null
   keywords: string[] | null
+  requires_review: boolean | null
 }
 
 export interface PipelineCategories {
@@ -42,12 +46,15 @@ export interface PipelineCategories {
 export async function loadPipelineCategories(service: ServiceClient): Promise<PipelineCategories> {
   const { data } = await service
     .from('poi_categories')
-    .select('slug, tier, keywords')
+    .select('slug, tier, keywords, requires_review')
     .eq('pipeline_linked', true)
 
-  const all: PoiCategoryConfig[] = ((data ?? []) as PipelineCategoryRow[])
+  // requires_review는 마이그레이션 143에서 막 추가된 컬럼이라 생성 타입(database.generated.ts)에
+  // 아직 없다 — db:types CLI 부재로 재생성 불가(티켓 20260907_1242 완료 보고 참고). select()
+  // 결과가 SelectQueryError로 잡혀 직접 캐스팅이 막히므로 unknown을 경유한다.
+  const all: PoiCategoryConfig[] = ((data ?? []) as unknown as PipelineCategoryRow[])
     .filter((c): c is PipelineCategoryRow & { tier: 1 | 2 } => (c.tier === 1 || c.tier === 2) && (c.keywords?.length ?? 0) > 0)
-    .map((c) => ({ category: c.slug, keywords: c.keywords!, level: c.tier }))
+    .map((c) => ({ category: c.slug, keywords: c.keywords!, level: c.tier, requiresReview: c.requires_review ?? false }))
 
   return {
     all,
