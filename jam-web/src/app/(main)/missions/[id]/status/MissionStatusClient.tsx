@@ -10,6 +10,7 @@ import { formatMissionProgress } from '@/lib/missions/format'
 import { ProgressBar } from '@ds/components/feedback/ProgressBar'
 import { EmptyState } from '@ds/components/feedback/EmptyState'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
+import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
 
 interface RankingEntry {
   userId: string
@@ -452,6 +453,10 @@ export default function MissionStatusClient({
     return () => { alive = false }
   }, [missionId])
 
+  // 빠르게 끝나는 요청(예: 150ms)에도 매번 로더가 스치듯 보이지 않도록 디바운스 적용
+  // (NavigationLoader와 동일한 SHOW_DELAY_MS/MIN_VISIBLE_MS/MAX_VISIBLE_MS 정책, 20260908_0544)
+  const showLoader = useDebouncedLoading(loading)
+
   const isMeInEntries = (userId: string) =>
     data?.type !== 'individual' && data?.me?.userId === userId
 
@@ -462,7 +467,7 @@ export default function MissionStatusClient({
       {/* 로딩 — 다른 화면(배지 획득 연출·공유 카드 등)과 동일한 눈모양 로더.
           라우트 전환 시 뜨는 전체화면 NavigationLoader(화면 정중앙)와 위치가 어긋나 보이지 않도록,
           TopNav(56px)를 제외한 나머지 영역 정중앙에 배치한다. */}
-      {loading && (
+      {showLoader && (
         <div className="min-h-[calc(100dvh-56px)] flex items-center justify-center">
           <WanderingEyesLoader />
         </div>

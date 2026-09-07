@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toast'
 import { MedalIcon } from '@/components/ui/icons'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { buildBadgeShareBlob, type BadgeShareStats } from './buildBadgeShareBlob'
+import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
 import { d } from '@/lib/i18n'
 import type { BadgeType } from '@/types/database'
 
@@ -122,6 +123,12 @@ export default function BadgeShareButton({
 
   /** 이미지 URL 자체가 없으면 생성 자체가 불가능하므로 state와 무관하게 에러로 본다. */
   const effectiveState: ShareState = imageUrl ? state : { kind: 'error', reason: 'unknown' }
+
+  // 페치+캔버스 합성(buildBadgeShareBlob)이 빠르게 끝나도 로더부터 스치듯 보이지 않도록
+  // 디바운스 적용 (NavigationLoader와 동일한 정책, 20260908_0544). ready/error는 아래
+  // 렌더링에서 이 값보다 먼저 확인하므로, 실제 콘텐츠가 준비되면 minVisibleMs와 무관하게
+  // 즉시 노출된다 — 인위적으로 늦춰지지 않는다.
+  const showShareLoader = useDebouncedLoading(effectiveState.kind === 'loading')
 
   const [popoverOpen, setPopoverOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
@@ -365,11 +372,11 @@ export default function BadgeShareButton({
                 */
                 style={{ transform: 'scale(1.3)' }}
               />
-            ) : effectiveState.kind === 'loading' ? (
-              <WanderingEyesLoader />
-            ) : (
+            ) : effectiveState.kind === 'error' ? (
               <MedalIcon className="w-16 h-16 text-text/40" />
-            )}
+            ) : showShareLoader ? (
+              <WanderingEyesLoader />
+            ) : null}
           </div>
 
           {effectiveState.kind === 'error' && (
