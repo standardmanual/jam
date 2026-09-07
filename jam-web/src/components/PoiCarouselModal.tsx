@@ -11,9 +11,8 @@ import { Card } from '@ds/components/cards/Card'
 import { RarityBadge } from '@ds/components/cards/RarityBadge'
 import { Carousel } from '@ds/components/navigation/Carousel'
 import type { InventoryGridItem } from '@/components/inventory/InventoryGrid'
-import ItemCandidateRow from '@/components/inventory/ItemCandidateRow'
+import ItemCandidateSheet from '@/components/inventory/ItemCandidateSheet'
 import LocalDate from '@/components/LocalDate'
-import BottomSheet from '@/components/ui/BottomSheet'
 import BadgeDetailSheet, { PickupDrop } from '@/app/(main)/drops/BadgeDetailSheet'
 import { useRevealOnMount } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
@@ -532,76 +531,63 @@ export default function PoiCarouselModal({
       )}
 
       {/* 드랍 개체 선택 시트 — 같은 배지를 2개 이상 보유했을 때만 열린다(20260908_0040).
-          장착 개체 선택 시트(SlotGrid.tsx)와 같은 구성(ItemCandidateRow 목록)을 재사용한다.
-          여기서 개체를 고르면 기존 드랍 확인 단계(pendingDropItem)로 그대로 합류한다 —
-          이 시트 자체는 API를 호출하지 않으므로 진행 중 상태·행 억제가 필요 없다. */}
-      <BottomSheet
+          장착·픽업 개체 선택 시트와 공유하는 ItemCandidateSheet를 쓴다(20260908, 세 번째
+          사용처 시점에 공용 컴포넌트로 추출 — 사용자 지시). 여기서 개체를 고르면 기존 드랍
+          확인 단계(pendingDropItem)로 그대로 합류한다 — 이 시트 자체는 API를 호출하지
+          않으므로 진행 중 상태·행 억제가 필요 없다. */}
+      <ItemCandidateSheet
         open={dropCandidateGroup != null}
         onClose={() => setDropCandidateGroup(null)}
-        title={dropCandidateGroup?.badgeName}
-      >
-        <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
-          <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
-            {dropCandidateGroup
-              ? t(d.drops.selectDropItemBody, { count: String(dropCandidateGroup.items.length) })
-              : ''}
-          </p>
-          <div className="flex flex-col gap-[var(--spacing-8)]">
-            {dropCandidateGroup?.items.map((item) => (
-              <ItemCandidateRow
-                key={item.id}
-                candidate={item}
-                rarity={
-                  KNOWN_RARITIES.includes(item.badge_rarity as BadgeRarity)
-                    ? (item.badge_rarity as BadgeRarity)
-                    : 'common'
-                }
-                onClick={() => handleSelectDropCandidate(item)}
-              />
-            ))}
-          </div>
-        </div>
-      </BottomSheet>
+        badgeName={dropCandidateGroup?.badgeName}
+        rarity={
+          dropCandidateGroup && KNOWN_RARITIES.includes(dropCandidateGroup.badgeRarity as BadgeRarity)
+            ? (dropCandidateGroup.badgeRarity as BadgeRarity)
+            : 'common'
+        }
+        bodyText={
+          dropCandidateGroup
+            ? t(d.drops.selectDropItemBody, { count: String(dropCandidateGroup.items.length) })
+            : ''
+        }
+        candidates={dropCandidateGroup?.items ?? []}
+        onSelect={(candidate) => {
+          const item = dropCandidateGroup?.items.find((it) => it.id === candidate.id)
+          if (item) handleSelectDropCandidate(item)
+        }}
+      />
 
       {/* 픽업 개체 선택 시트 — 같은 배지를 2명 이상이 드랍해 2개 이상 쌓였을 때만 열린다
-          (20260908_0223). 위 드랍 개체 선택 시트와 같은 구성(ItemCandidateRow 목록)을
-          재사용한다. 여기서 개체를 고르면 기존 픽업 상세 바텀시트(selectedDrop →
-          BadgeDetailSheet)로 그대로 합류한다 — 이 시트 자체는 API를 호출하지 않는다. */}
-      <BottomSheet
+          (20260908_0223). 위 드랍 개체 선택 시트와 같은 ItemCandidateSheet를 재사용한다.
+          여기서 개체를 고르면 기존 픽업 상세 바텀시트(selectedDrop → BadgeDetailSheet)로
+          그대로 합류한다 — 이 시트 자체는 API를 호출하지 않는다. */}
+      <ItemCandidateSheet
         open={pickupCandidateGroup != null}
         onClose={() => setPickupCandidateGroup(null)}
-        title={pickupCandidateGroup?.badgeName}
-      >
-        <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
-          <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
-            {pickupCandidateGroup
-              ? t(d.drops.selectPickupItemBody, { count: String(pickupCandidateGroup.items.length) })
-              : ''}
-          </p>
-          <div className="flex flex-col gap-[var(--spacing-8)]">
-            {pickupCandidateGroup?.items.map((drop) => (
-              <ItemCandidateRow
-                key={drop.id}
-                candidate={{
-                  id: drop.id,
-                  // 마이그레이션 이전 완료된 과거 드랍 등 원본 개체 연결이 소급되지 않은
-                  // 극히 드문 레거시 데이터만 null일 수 있다(`drop.serial`도 이미 null).
-                  // ItemCandidate 셰이프는 number를 요구하므로 0으로 안전하게 폴백한다.
-                  serial_number: drop.serial_number ?? 0,
-                  serial_prefix: drop.serial_prefix,
-                  expires_at: drop.expires_at,
-                }}
-                rarity={
-                  KNOWN_RARITIES.includes(drop.badge_rarity as BadgeRarity)
-                    ? (drop.badge_rarity as BadgeRarity)
-                    : 'common'
-                }
-                onClick={() => handleSelectPickupCandidate(drop)}
-              />
-            ))}
-          </div>
-        </div>
-      </BottomSheet>
+        badgeName={pickupCandidateGroup?.badgeName}
+        rarity={
+          pickupCandidateGroup && KNOWN_RARITIES.includes(pickupCandidateGroup.badgeRarity as BadgeRarity)
+            ? (pickupCandidateGroup.badgeRarity as BadgeRarity)
+            : 'common'
+        }
+        bodyText={
+          pickupCandidateGroup
+            ? t(d.drops.selectPickupItemBody, { count: String(pickupCandidateGroup.items.length) })
+            : ''
+        }
+        candidates={(pickupCandidateGroup?.items ?? []).map((drop) => ({
+          id: drop.id,
+          // 마이그레이션 이전 완료된 과거 드랍 등 원본 개체 연결이 소급되지 않은 극히 드문
+          // 레거시 데이터만 null일 수 있다(`drop.serial`도 이미 null). ItemCandidate 셰이프는
+          // number를 요구하므로 0으로 안전하게 폴백한다.
+          serial_number: drop.serial_number ?? 0,
+          serial_prefix: drop.serial_prefix,
+          expires_at: drop.expires_at,
+        }))}
+        onSelect={(candidate) => {
+          const drop = pickupCandidateGroup?.items.find((d) => d.id === candidate.id)
+          if (drop) handleSelectPickupCandidate(drop)
+        }}
+      />
     </div>
   )
 }

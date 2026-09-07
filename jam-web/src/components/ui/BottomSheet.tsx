@@ -17,6 +17,16 @@ interface BottomSheetProps {
   open: boolean
   onClose: () => void
   title?: string
+  /**
+   * 헤더 래퍼(핸들 아래, 제목을 감싸는 영역)의 클래스를 **전체 교체**한다 — 기본 클래스와
+   * 병합하지 않는다(패딩 유틸리티가 같은 축에서 충돌하면 Tailwind 생성 순서에 결과가
+   * 좌우되므로, 지정 시 기본값을 대체하는 편이 안전하다). 제목 위·아래 여백을 시트별로
+   * 다르게 둬야 할 때(예: 개체 선택 시트가 배지 이름을 더 크게, 본문과의 간격은 더
+   * 좁게 쓰는 경우) 사용한다.
+   */
+  headerClassName?: string
+  /** 제목(`<h2>`)의 클래스를 **전체 교체**한다 — 위와 같은 이유로 병합하지 않는다. */
+  titleClassName?: string
   children: ReactNode
   /** compact: 콘텐츠 높이만큼(최대 75vh) / full: 화면 대부분을 채우는 큰 디텐트 */
   detent?: 'compact' | 'full'
@@ -83,6 +93,8 @@ export default function BottomSheet({
   open,
   onClose,
   title,
+  headerClassName,
+  titleClassName,
   children,
   detent = 'compact',
   footer,
@@ -298,8 +310,8 @@ export default function BottomSheet({
         </div>
 
         {hasHeader && (
-          <div className="px-[var(--spacing-24)] pb-[var(--spacing-16)] shrink-0">
-            <h2 className="text-[length:var(--text-body)] leading-[var(--leading-body)]">{title}</h2>
+          <div className={headerClassName ?? 'px-[var(--spacing-24)] pb-[var(--spacing-16)] shrink-0'}>
+            <h2 className={titleClassName ?? 'text-[length:var(--text-body)] leading-[var(--leading-body)]'}>{title}</h2>
           </div>
         )}
 
