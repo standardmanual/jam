@@ -63,7 +63,9 @@ export default async function AdminPoiPage({ searchParams }: AdminPoiPageProps) 
     : { data: [] as Pick<BadgeRow, 'id' | 'name'>[] }
   const badges = (badgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]
   const badgeMap = new Map(badges.map((b) => [b.id, b.name]))
-  const categories = (categoriesRaw ?? []) as PoiCategoryRow[]
+  // 20260907_1243: keywords가 text[]→jsonb로 바뀌어 생성 타입(여전히 string[]로 인식)과
+  // 어긋난다 — 다른 컬럼은 그대로인 known-shape이므로 unknown 경유로 좁게 우회한다.
+  const categories = (categoriesRaw ?? []) as unknown as PoiCategoryRow[]
   const categoryLabelMap = new Map(categories.map((c) => [c.slug, c.label]))
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
 

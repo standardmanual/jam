@@ -6,7 +6,9 @@ import type { PoiCategoryRow } from '@/types/database'
 export default async function AdminPoiCategoriesPage() {
   const supabase = createServiceClient()
   const { data: categoriesRaw } = await supabase.from('poi_categories').select('*').order('slug')
-  const categories = (categoriesRaw ?? []) as PoiCategoryRow[]
+  // 20260907_1243: keywords가 text[]→jsonb로 바뀌어 생성 타입(여전히 string[]로 인식)과
+  // 어긋난다 — unknown 경유로 좁게 우회한다.
+  const categories = (categoriesRaw ?? []) as unknown as PoiCategoryRow[]
 
   // 카테고리별 사용량은 DB에서 직접 센다 — poi 전체를 select하면 PostgREST 기본 max-rows(1000)에
   // 걸려 앞 1000행만 집계되고, POI가 그보다 많아진 지금은 실제와 다른 숫자가 표시된다.

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isUserNearPoi, haversineDistance, DROP_RADIUS_METERS } from '@/lib/poi/proximity'
 import { fetchNearbyNaverPoisForCategories, type NaverPlace } from '@/lib/poi/naver'
-import { reverseGeocodeToRegionName } from '@/lib/poi/reverse-geocode'
+import { reverseGeocodeToRegions, type ReverseGeocodeRegions } from '@/lib/poi/reverse-geocode'
 import { loadPipelineCategories, LEVEL_2_FALLBACK_THRESHOLD, type PoiCategoryConfig } from '@/lib/poi/categories'
 import { computeGridKey, shouldSearch, markSearched } from '@/lib/poi/search-cache'
 import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
@@ -32,6 +32,10 @@ const BB_MARGIN_DEG = 0.01 // 위도 기준 약 1.11km — NAVER_RADIUS_M(500m) 
  * 보고 막으므로, 이 세 컬럼을 포함한 최소 인터페이스로 빌더만 좁게 캐스팅한다
  * (`lib/engine-log/index.ts`와 동일 기법) — 다른 컬럼명 검사는 그대로 유지되고, 전체를
  * `as any`로 덮지 않는다.
+ * `is_active`는 기존에도 있던 컬럼(생성 타입에 이미 존재)이라 이 우회가 필요 없지만,
+ * 이 인터페이스가 이미 `.insert()` 빌더 전체를 좁게 캐스팅하는 자리라 20260907_1243에서
+ * 함께 선언했다 — category.display_on_map을 반영해 지도 비노출 카테고리를 비활성으로
+ * 저장한다(아래 inserts 매핑 참고).
  */
 interface PoiInsertWithGateColumns {
   insert: (values: {
@@ -45,6 +49,7 @@ interface PoiInsertWithGateColumns {
     naver_keyword: string | null
     poi_tier: number
     pending_review: boolean
+    is_active: boolean
   }[]) => {
     select: (columns: string) => PromiseLike<{
       data: { id: string; naver_id: string }[] | null
@@ -81,7 +86,7 @@ async function searchAndPersistCategories(
   gridKey: string,
   categories: PoiCategoryConfig[],
   existingNaverIds: Map<string, string>,
-  regionName: string | null
+  regions: ReverseGeocodeRegions | null
 ): Promise<NaverPlace[]> {
   const toSearch: PoiCategoryConfig[] = []
   for (const cfg of categories) {
@@ -92,7 +97,7 @@ async function searchAndPersistCategories(
   let naverPois: NaverPlace[] = []
   let fetchFailed = false
   try {
-    naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, NAVER_RADIUS_M, toSearch, regionName)
+    naverPois = await fetchNearbyNaverPoisForCategories(lat, lng, NAVER_RADIUS_M, toSearch, regions)
   } catch {
     // 네이버 조회 실패 — 기존 DB 데이터만 사용, 캐시는 짧은 TTL로 남겨 곧 재시도되게 함
     fetchFailed = true
@@ -115,6 +120,11 @@ async function searchAndPersistCategories(
   const gated = gatePois(newPois, requiresReviewByCategory)
   if (gated.length === 0) return [] // 전부 자동거부 — 저장하지 않음(fallback 재시도 대상도 아님)
 
+  // 20260907_1243: 카테고리별 display_on_map을 그대로 is_active에 반영한다 — false인
+  // 카테고리(예: 병원/약국)는 자동수집은 계속하되 지도/목록에는 노출하지 않는다. 이 필드가
+  // 없던 이전에는 전부 무조건 활성(true)으로 저장됐다.
+  const displayOnMapByCategory = new Map(toSearch.map((cfg) => [cfg.category, cfg.displayOnMap]))
+
   const inserts = gated.map(({ poi: p, pendingReview }) => ({
     name: p.name,
     latitude: p.latitude,
@@ -126,6 +136,7 @@ async function searchAndPersistCategories(
     naver_keyword: p.naverKeyword || null,
     poi_tier: 2,
     pending_review: pendingReview,
+    is_active: displayOnMapByCategory.get(p.category) ?? true,
   }))
   const poiInsertQuery = service.from('poi') as unknown as PoiInsertWithGateColumns
   const { data: inserted, error: insertError } = await poiInsertQuery
@@ -153,10 +164,10 @@ async function refreshPoisInBackground(
   naverIdMap: Map<string, string>
 ): Promise<void> {
   try {
-    const regionName = await reverseGeocodeToRegionName(lat, lng)
+    const regions = await reverseGeocodeToRegions(lat, lng)
     const { level1: LEVEL_1_CATEGORIES, level2: LEVEL_2_CATEGORIES } = await loadPipelineCategories(service)
 
-    await searchAndPersistCategories(service, lat, lng, gridKey, LEVEL_1_CATEGORIES, naverIdMap, regionName)
+    await searchAndPersistCategories(service, lat, lng, gridKey, LEVEL_1_CATEGORIES, naverIdMap, regions)
 
     // 레벨 1 결과가 지역 내 부족하면 레벨 2까지 보조 검색 — 방금 저장된 레벨1 결과를
     // 반영해 판단해야 하므로 최신 DB 상태를 다시 조회한다(백그라운드라 응답 지연과 무관).
@@ -174,7 +185,7 @@ async function refreshPoisInBackground(
     ).length
 
     if (level1NearbyCount < LEVEL_2_FALLBACK_THRESHOLD) {
-      await searchAndPersistCategories(service, lat, lng, gridKey, LEVEL_2_CATEGORIES, naverIdMap, regionName)
+      await searchAndPersistCategories(service, lat, lng, gridKey, LEVEL_2_CATEGORIES, naverIdMap, regions)
     }
   } catch {
     // 백그라운드 갱신 실패는 사용자 응답에 영향 없음 — poi_search_cache TTL에 따라 다음

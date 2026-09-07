@@ -36,6 +36,14 @@ export type DayOfWeek = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursda
 export type BadgeRarity = 'common' | 'rare' | 'epic' | 'mystic'
 // poi_categories 테이블에서 어드민이 자유롭게 생성/삭제/수정 가능한 슬러그 — 고정 유니언이 아닌 string
 export type PoiCategory = string
+// 20260907_1243 — poi_categories.keywords(jsonb) 원소의 지역 검색 단위. 키워드마다 필요한
+// 범위가 다르다(주민센터=동, 구청=구, 시청=시/도). reverse-geocode.ts가 반환하는
+// { sido, gu, dong }에서 이 scope까지의 계층(시도→구→동 누적)을 검색 접두어로 쓴다.
+export type PoiKeywordScope = 'dong' | 'gu' | 'sido'
+export interface PoiCategoryKeyword {
+  keyword: string
+  scope: PoiKeywordScope
+}
 export type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
 // 'ambient_drop' — 20260829_2101: 앰비언트(시스템) 드랍이 배치 시점에 InventoryItem을
 // 선발급할 때만 쓰인다. assign_random_serial() 트리거가 이 값으로 앰비언트 일련번호
@@ -434,12 +442,18 @@ export interface PoiCategoryRow {
   pipeline_linked: boolean
   /** 1: 항상 검색, 2: level 1 결과 부족 시 보조 검색. pipeline_linked=false면 null */
   tier: 1 | 2 | null
-  /** 네이버 지역검색에 쓸 키워드 목록 (pipeline_linked=true일 때만 의미 있음) */
-  keywords: string[]
+  /** 네이버 지역검색에 쓸 키워드 목록(jsonb, pipeline_linked=true일 때만 의미 있음).
+   *  20260907_1243에서 text[] → jsonb로 전환 — 키워드마다 검색 지역 단위(scope)가 다를 수
+   *  있다(예: 관공서의 주민센터는 동 단위, 시청은 시/도 단위). */
+  keywords: PoiCategoryKeyword[]
   created_at: string
   /** 20260907_1242 — 이 카테고리의 자동수집에 원본 분류 검증 게이트(3단계 판정)를 적용할지
    *  여부. 기본 false — 켜지 않으면 기존처럼 무조건 자동 저장된다. */
   requires_review: boolean
+  /** 20260907_1243 — false면 자동수집은 계속하되 지도에는 노출하지 않는다(병원/약국처럼
+   *  방문 목적이 사적인 카테고리). pipeline_linked 여부와 무관하게 의미 있다(수동 등록 전용
+   *  카테고리도 지도 노출 여부를 이 값으로 결정). 기본 true. */
+  display_on_map: boolean
 }
 
 export interface TradeRow {

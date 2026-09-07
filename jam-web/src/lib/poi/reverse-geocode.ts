@@ -1,8 +1,14 @@
-// NCP Reverse Geocoding — 좌표 → 행정동 이름
+// NCP Reverse Geocoding — 좌표 → 행정구역(시/도, 구, 동)
 // 목적: 네이버 지역검색(Local Search) API는 좌표/반경 파라미터를 지원하지 않고
 // query 문자열만으로 매칭한다. "카페" 같은 순수 키워드만 넘기면 전국 아무 데서나
 // 무작위 결과가 나와 유저 근처 필터링 시 거의 항상 0건이 된다.
-// 좌표를 "구 동" 지역명으로 변환해 키워드 앞에 붙여 실제로 해당 지역 결과가 나오게 한다.
+// 좌표를 행정구역 이름으로 변환해 키워드 앞에 붙여 실제로 해당 지역 결과가 나오게 한다.
+//
+// 20260907_1243: 카테고리 키워드마다 필요한 지역 단위가 다르다(관공서의 주민센터는 동 단위,
+// 구청은 구 단위, 시청은 시/도 단위라야 결과가 나옴). 이전에는 area2+area3(구+동)만 합쳐
+// 문자열 하나로 반환했으나, area1(시/도)까지 포함해 { sido, gu, dong } 세 부분으로 분리
+// 반환한다 — 호출부(naver.ts의 buildRegionPrefix)가 키워드별 scope에 맞는 지역 단위까지
+// 계층적으로 조합해 쓴다.
 // 참조: https://api.ncloud-docs.com/docs/application-maps-reversegeocoding
 // 자격증명은 지도 JS SDK와 동일한 NCP Maps 것을 재사용 (신규 발급 불필요)
 //   NEXT_PUBLIC_NAVER_MAP_CLIENT_ID → x-ncp-apigw-api-key-id
@@ -20,8 +26,15 @@ const FETCH_TIMEOUT_MS = 5_000
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24시간
 const FAILURE_CACHE_TTL_MS = 60 * 1000 // 실패는 짧게만 캐시해 일시 장애 시 빠르게 재시도
 
+/** 좌표를 역지오코딩한 행정구역 3단계. 개별 필드는 API가 해당 단계를 못 내려주면 null. */
+export interface ReverseGeocodeRegions {
+  sido: string | null // area1 — 시/도
+  gu: string | null // area2 — 시/군/구
+  dong: string | null // area3 — 읍/면/동
+}
+
 interface RegionCacheEntry {
-  value: string | null
+  value: ReverseGeocodeRegions | null
   expiresAt: number
 }
 
@@ -50,8 +63,8 @@ interface NcpReverseGeocodeResponse {
   results: NcpReverseGeocodeResult[]
 }
 
-/** 좌표 → "구 동" 형태 지역명. 자격증명 미설정·API 실패 시 null (호출부는 지역명 없이 폴백). */
-export async function reverseGeocodeToRegionName(lat: number, lng: number): Promise<string | null> {
+/** 좌표 → { sido, gu, dong }. 자격증명 미설정·API 실패 시 null (호출부는 지역명 없이 폴백). */
+export async function reverseGeocodeToRegions(lat: number, lng: number): Promise<ReverseGeocodeRegions | null> {
   const clientId = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID
   const clientSecret = process.env.NCP_MAP_CLIENT_SECRET
   if (!clientId || !clientSecret) return null
@@ -83,11 +96,14 @@ export async function reverseGeocodeToRegionName(lat: number, lng: number): Prom
       return null
     }
 
-    const { area2, area3 } = result.region
-    const parts = [area2?.name, area3?.name].filter(Boolean)
-    const regionName = parts.length > 0 ? parts.join(' ') : null
-    regionCache.set(cacheKey, { value: regionName, expiresAt: Date.now() + SUCCESS_CACHE_TTL_MS })
-    return regionName
+    const { area1, area2, area3 } = result.region
+    const regions: ReverseGeocodeRegions = {
+      sido: area1?.name || null,
+      gu: area2?.name || null,
+      dong: area3?.name || null,
+    }
+    regionCache.set(cacheKey, { value: regions, expiresAt: Date.now() + SUCCESS_CACHE_TTL_MS })
+    return regions
   } catch {
     regionCache.set(cacheKey, { value: null, expiresAt: Date.now() + FAILURE_CACHE_TTL_MS })
     return null

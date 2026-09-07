@@ -3,27 +3,21 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
-import type { PoiCategoryRow } from '@/types/database'
+import KeywordListEditor, { SCOPE_LABELS } from './KeywordListEditor'
+import type { PoiCategoryRow, PoiCategoryKeyword } from '@/types/database'
 
 interface CategoryManagerProps {
   categories: PoiCategoryRow[]
   usageCounts: Record<string, number>
 }
 
-// 콤마로 구분된 키워드 입력 문자열 <-> string[] 배열 변환
-function parseKeywords(input: string): string[] {
-  return input
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean)
-}
-
 interface EditState {
   label: string
   pipelineLinked: boolean
   tier: 1 | 2
-  keywordsInput: string
+  keywords: PoiCategoryKeyword[]
   requiresReview: boolean
+  displayOnMap: boolean
 }
 
 function toEditState(c: PoiCategoryRow): EditState {
@@ -31,8 +25,9 @@ function toEditState(c: PoiCategoryRow): EditState {
     label: c.label,
     pipelineLinked: c.pipeline_linked,
     tier: c.tier ?? 1,
-    keywordsInput: c.keywords.join(', '),
+    keywords: c.keywords,
     requiresReview: c.requires_review,
+    displayOnMap: c.display_on_map,
   }
 }
 
@@ -51,8 +46,9 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
   const [label, setLabel] = useState('')
   const [pipelineLinked, setPipelineLinked] = useState(false)
   const [tier, setTier] = useState<1 | 2>(1)
-  const [keywordsInput, setKeywordsInput] = useState('')
+  const [keywords, setKeywords] = useState<PoiCategoryKeyword[]>([])
   const [requiresReview, setRequiresReview] = useState(false)
+  const [displayOnMap, setDisplayOnMap] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -74,8 +70,9 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
           label,
           pipeline_linked: pipelineLinked,
           tier: pipelineLinked ? tier : null,
-          keywords: pipelineLinked ? parseKeywords(keywordsInput) : [],
+          keywords: pipelineLinked ? keywords : [],
           requires_review: requiresReview,
+          display_on_map: displayOnMap,
         }),
       })
       const data = await res.json()
@@ -84,8 +81,9 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
       setLabel('')
       setPipelineLinked(false)
       setTier(1)
-      setKeywordsInput('')
+      setKeywords([])
       setRequiresReview(false)
+      setDisplayOnMap(true)
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : '생성 중 오류가 발생했습니다.')
@@ -111,8 +109,9 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
           label: editState.label,
           pipeline_linked: editState.pipelineLinked,
           tier: editState.pipelineLinked ? editState.tier : null,
-          keywords: editState.pipelineLinked ? parseKeywords(editState.keywordsInput) : [],
+          keywords: editState.pipelineLinked ? editState.keywords : [],
           requires_review: editState.requiresReview,
+          display_on_map: editState.displayOnMap,
         }),
       })
       const data = await res.json()
@@ -188,7 +187,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
         </label>
 
         {pipelineLinked && (
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-start gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm text-foreground">티어</span>
               <Select value={String(tier)} onValueChange={(v) => setTier(Number(v) as 1 | 2)}>
@@ -201,15 +200,10 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                 </SelectContent>
               </Select>
             </label>
-            <label className="flex flex-col gap-1.5 flex-1 min-w-[220px]">
-              <span className="text-sm text-foreground">키워드 (콤마로 구분) *</span>
-              <input
-                value={keywordsInput}
-                onChange={(e) => setKeywordsInput(e.target.value)}
-                placeholder="헬스장, 필라테스"
-                className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm"
-              />
-            </label>
+            <div className="flex flex-col gap-1.5 flex-1 min-w-[280px]">
+              <span className="text-sm text-foreground">키워드 (키워드별 지역 단위 지정) *</span>
+              <KeywordListEditor value={keywords} onChange={setKeywords} themeContainer={themeContainer} />
+            </div>
           </div>
         )}
 
@@ -225,6 +219,16 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
           </label>
         )}
 
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={displayOnMap}
+            onChange={(e) => setDisplayOnMap(e.target.checked)}
+            className="accent-primary"
+          />
+          지도에 노출 (끄면 자동수집·수동등록은 그대로 되지만 지도/목록에는 표시하지 않음)
+        </label>
+
         {error && <p className="text-red-600 text-sm">{error}</p>}
       </form>
 
@@ -239,6 +243,7 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
               <th className="px-5 py-3 font-medium">티어</th>
               <th className="px-5 py-3 font-medium">키워드</th>
               <th className="px-5 py-3 font-medium">검토 게이트</th>
+              <th className="px-5 py-3 font-medium">지도노출</th>
               <th className="px-5 py-3 font-medium"></th>
             </tr>
           </thead>
@@ -302,23 +307,22 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                       '—'
                     )}
                   </td>
-                  <td className="px-5 py-3 min-w-[200px]">
+                  <td className="px-5 py-3 min-w-[240px]">
                     {isEditing && editState ? (
                       editState.pipelineLinked ? (
-                        <input
-                          value={editState.keywordsInput}
-                          onChange={(e) => setEditState({ ...editState, keywordsInput: e.target.value })}
-                          placeholder="키워드1, 키워드2"
-                          className="bg-white border border-border rounded-lg px-3 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-xs w-full"
+                        <KeywordListEditor
+                          value={editState.keywords}
+                          onChange={(next) => setEditState({ ...editState, keywords: next })}
+                          themeContainer={themeContainer}
                         />
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>
                       )
                     ) : c.keywords.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {c.keywords.map((k) => (
-                          <span key={k} className="text-xs bg-muted text-foreground rounded-full px-2 py-0.5">
-                            {k}
+                        {c.keywords.map((kw, i) => (
+                          <span key={i} className="text-xs bg-muted text-foreground rounded-full px-2 py-0.5">
+                            {kw.keyword}({SCOPE_LABELS[kw.scope]})
                           </span>
                         ))}
                       </div>
@@ -346,6 +350,24 @@ export default function CategoryManager({ categories, usageCounts }: CategoryMan
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">미적용</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3 whitespace-nowrap">
+                    {isEditing && editState ? (
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={editState.displayOnMap}
+                          onChange={(e) => setEditState({ ...editState, displayOnMap: e.target.checked })}
+                          className="accent-primary"
+                        />
+                      </label>
+                    ) : c.display_on_map ? (
+                      <span className="text-xs bg-green-50 text-green-600 border border-green-200 rounded-full px-2.5 py-1 whitespace-nowrap">
+                        노출
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">비노출</span>
                     )}
                   </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
