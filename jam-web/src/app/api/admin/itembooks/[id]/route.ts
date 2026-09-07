@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { cascadeDeactivateItemBookBadges } from '@/lib/admin/itembook-deactivation'
+import { collectItemBookReferences, ITEM_BOOK_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
 import type { ItemBookRow } from '@/types/database'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -113,12 +114,43 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ itemBook: data })
 }
 
+/**
+ * 하드 삭제 — 참조 가드는 `lib/admin/reference-guards.ts`가 단일 출처다(티켓 20260907_1134).
+ * `user_item_book_slots`·`user_item_book_completions`는 CASCADE라 그냥 삭제하면 유저 진행
+ * 기록이 조용히 사라지고, `user_drop_state.last_drop_book_id`는 NO ACTION이라 FK 위반으로
+ * 삭제 자체가 실패할 수 있다. 참조가 있으면 비활성화를 안내한다.
+ */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
   const supabase = createServiceClient()
+
+  const { data: existing, error: fetchError } = await supabase.from('item_books').select('id').eq('id', id).single()
+  if (fetchError || !existing) {
+    return NextResponse.json({ error: '컬렉션을 찾을 수 없습니다.' }, { status: 404 })
+  }
+
+  const { counts, error: refError } = await collectItemBookReferences(supabase, [id])
+  if (refError) {
+    console.error('[itembooks DELETE] 참조 카운트 조회 실패 — 하드 삭제를 차단합니다:', refError)
+    return NextResponse.json(
+      { error: '삭제할 수 없습니다. 이력 조회 중 오류가 발생했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.' },
+      { status: 500 }
+    )
+  }
+
+  const summary = summarizeReference(ITEM_BOOK_REFERENCE_SOURCES, counts.get(id)!)
+  if (summary.blockingTotal > 0) {
+    return NextResponse.json(
+      {
+        error: `삭제할 수 없습니다. 이 컬렉션에 유저 진행 기록이 ${summary.blockingTotal}건 있습니다(${summary.hitLabels}). 비활성화를 이용해주세요.`,
+      },
+      { status: 409 }
+    )
+  }
+
   const { error } = await supabase.from('item_books').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

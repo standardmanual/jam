@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
+import { collectFactionReferences, FACTION_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
 import type { FactionRow } from '@/types/database'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -72,12 +73,43 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json({ faction: data })
 }
 
+/**
+ * 하드 삭제 — 참조 가드는 `lib/admin/reference-guards.ts`가 단일 출처다(티켓 20260907_1134).
+ * `faction_adjacency`는 CASCADE라 그냥 삭제하면 드랍엔진 인접 그래프가 조용히 깨지고,
+ * `user_drop_state.last_drop_faction_id`는 NO ACTION이라 FK 위반으로 삭제 자체가 실패할 수
+ * 있다. 참조가 있으면 비활성화를 안내한다.
+ */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await params
   const supabase = createServiceClient()
+
+  const { data: existing, error: fetchError } = await supabase.from('factions').select('id').eq('id', id).single()
+  if (fetchError || !existing) {
+    return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
+  }
+
+  const { counts, error: refError } = await collectFactionReferences(supabase, [id])
+  if (refError) {
+    console.error('[factions DELETE] 참조 카운트 조회 실패 — 하드 삭제를 차단합니다:', refError)
+    return NextResponse.json(
+      { error: '삭제할 수 없습니다. 이력 조회 중 오류가 발생했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.' },
+      { status: 500 }
+    )
+  }
+
+  const summary = summarizeReference(FACTION_REFERENCE_SOURCES, counts.get(id)!)
+  if (summary.blockingTotal > 0) {
+    return NextResponse.json(
+      {
+        error: `삭제할 수 없습니다. 이 세계관에 연결된 참조가 ${summary.blockingTotal}건 있습니다(${summary.hitLabels}). 비활성화를 이용해주세요.`,
+      },
+      { status: 409 }
+    )
+  }
+
   const { error } = await supabase.from('factions').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

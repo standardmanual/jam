@@ -67,6 +67,7 @@ export function ItemBookTable({
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
   const [bulkLoading, setBulkLoading] = useState(false)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
 
   // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
   // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
@@ -194,9 +195,10 @@ export function ItemBookTable({
     onColumnVisibilityChange: setColumnVisibility,
   })
 
-  const selectedIds = table.getSelectedRowModel().rows.map((row) => row.original.id)
+  const selectedRows = table.getSelectedRowModel().rows.map((row) => row.original)
+  const selectedIds = selectedRows.map((r) => r.id)
 
-  // 일괄 삭제 전용 API는 없다 — 기존 단건 PATCH(is_active 토글)를 선택된 행 전체에 순차
+  // 일괄 비활성화 전용 API는 없다 — 기존 단건 PATCH(is_active 토글)를 선택된 행 전체에 순차
   // 호출한다(20260826_014 배지 파일럿과 동일 방식). 컬렉션 비활성화는 소속 아이템배지를
   // 연쇄 소프트삭제한다(`cascadeDeactivateItemBookBadges`, PATCH 라우트가 처리).
   const handleBulkDeactivate = async () => {
@@ -222,6 +224,37 @@ export function ItemBookTable({
     }
   }
 
+  // 일괄 하드 삭제(20260907_1134) — 참조 가드(`lib/admin/reference-guards.ts`)를 통과한
+  // 항목만 서버가 한 번의 DELETE 쿼리로 지운다(순차 단건 호출이 아니다). 참조가 있는
+  // 컬렉션은 건너뛰고 항목별 사유를 돌려받는다.
+  const handleBulkDelete = async () => {
+    setBulkLoading(true)
+    try {
+      const res = await fetch('/api/admin/itembooks/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        alert(data?.error ?? '일괄 삭제 중 오류가 발생했습니다.')
+      } else {
+        const blocked = (data?.blocked ?? []) as { id: string; reason: string }[]
+        const deleted = (data?.deleted ?? []) as string[]
+        if (blocked.length > 0) {
+          const nameOf = (id: string) => selectedRows.find((r) => r.id === id)?.name ?? id
+          const detail = blocked.map((b) => `${nameOf(b.id)}: ${b.reason}`).join(' / ')
+          alert(`${deleted.length}개 삭제됨, ${blocked.length}개는 참조가 있어 건너뜀 (${detail})`)
+        }
+      }
+      router.refresh()
+      setRowSelection({})
+    } finally {
+      setBulkLoading(false)
+      setShowBulkDeleteConfirm(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -229,8 +262,11 @@ export function ItemBookTable({
       </div>
 
       <DataTableBulkActionBar count={selectedIds.length} onClear={() => setRowSelection({})}>
-        <Button type="button" variant="destructive" size="sm" onClick={() => setShowBulkConfirm(true)}>
+        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => setShowBulkConfirm(true)}>
           선택 항목 비활성화
+        </Button>
+        <Button type="button" variant="destructive" size="sm" disabled={bulkLoading} onClick={() => setShowBulkDeleteConfirm(true)}>
+          선택 항목 삭제
         </Button>
       </DataTableBulkActionBar>
 
@@ -256,6 +292,31 @@ export function ItemBookTable({
             </Button>
             <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDeactivate}>
               계속
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={showBulkDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!open && !bulkLoading) setShowBulkDeleteConfirm(false)
+        }}
+      >
+        <AlertDialogContent container={themeContainer ?? undefined}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>컬렉션 일괄 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              선택한 {selectedIds.length}개 컬렉션을 삭제합니다. 삭제하면 되돌릴 수 없습니다. 유저 진행
+              기록이 있는 컬렉션은 삭제되지 않고 결과에서 안내됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button type="button" variant="outline" disabled={bulkLoading} onClick={() => setShowBulkDeleteConfirm(false)}>
+              취소
+            </Button>
+            <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDelete}>
+              삭제
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

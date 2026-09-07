@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { checkMissionCondition, checkMissionConditionValue } from '@/lib/missions/condition-keys'
 import { findGateMissionSaveError } from '@/lib/missions/gateMissions'
+import { collectMissionReferences, MISSION_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
 import type { MissionRow } from '@/types/database'
 import type { MissionType } from '@/types/database'
 
@@ -91,12 +92,44 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json(data)
 }
 
+/**
+ * 하드 삭제 — 참조 가드는 `lib/admin/reference-guards.ts`가 단일 출처다(티켓 20260907_1134).
+ * 참여·완료 이력·랭킹 스냅샷은 CASCADE라 그냥 삭제하면 유저 기록이 조용히 사라지고,
+ * 포인트 원장(`source_mission_id`)은 NO ACTION이라 FK 위반으로 삭제 자체가 실패한다.
+ * 미션은 소프트 삭제 개념이 없으므로(상태는 시작/종료일에서 파생) 참조가 있으면 삭제 대신
+ * 종료일을 지나게 두도록 안내한다.
+ */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireAdmin()
   if (authError) return authError
 
   const { id } = await params
   const supabase = createServiceClient()
+
+  const { data: existing, error: fetchError } = await supabase.from('missions').select('id').eq('id', id).single()
+  if (fetchError || !existing) {
+    return NextResponse.json({ error: '미션을 찾을 수 없습니다.' }, { status: 404 })
+  }
+
+  const { counts, error: refError } = await collectMissionReferences(supabase, [id])
+  if (refError) {
+    console.error('[missions DELETE] 참조 카운트 조회 실패 — 하드 삭제를 차단합니다:', refError)
+    return NextResponse.json(
+      { error: '삭제할 수 없습니다. 이력 조회 중 오류가 발생했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.' },
+      { status: 500 }
+    )
+  }
+
+  const summary = summarizeReference(MISSION_REFERENCE_SOURCES, counts.get(id)!)
+  if (summary.blockingTotal > 0) {
+    return NextResponse.json(
+      {
+        error: `삭제할 수 없습니다. 이 미션에 이미 참여·완료 이력이 ${summary.blockingTotal}건 있습니다(${summary.hitLabels}). 종료일을 지난 날짜로 수정해 노출만 막아주세요.`,
+      },
+      { status: 409 }
+    )
+  }
+
   const { error } = await supabase.from('missions').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

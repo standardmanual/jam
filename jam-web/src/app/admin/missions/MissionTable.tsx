@@ -1,16 +1,29 @@
 'use client'
 
 import { memo, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   createColumnHelper,
   useTable,
   type ColumnVisibilityState,
+  type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
+import { Button } from '@/components/admin/ui/button'
+import { Checkbox } from '@/components/admin/ui/checkbox'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from '@/components/admin/ui/alert-dialog'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
 import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
+import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
 import type { MissionRow } from '@/types/database'
 import { missionTypeLabel } from '@/lib/admin/badge-labels'
 import { checkMissionConditionValue } from '@/lib/missions/condition-keys'
@@ -36,16 +49,37 @@ const columnHelper = createColumnHelper<DataTableFeatures, MissionTableRow>()
  * 두지 않고(사전 조사 결과) 정렬도 클라이언트에서 처리한다(URL 동기화 불필요 — 모바일
  * 전용 뷰가 없어 배지/POI처럼 뷰 간 상태를 공유할 필요가 없다).
  *
- * 일괄 삭제 API가 없고(하드 DELETE만 존재, PATCH에 활성/비활성 개념 없음) 미션 "상태"는
- * 저장된 값이 아니라 시작/종료일에서 파생되는 값이라 소프트 삭제 대상도 아니다 — 행 선택 +
- * 일괄 액션은 이 화면 범위에서 제외한다(20260826_015 티켓 판단, 완료 기록 참고).
+ * 다중선택 일괄 삭제(20260907_1134) — 참여 이력에 `ON DELETE CASCADE`가 걸려 있어
+ * `20260826_015`에서 의도적으로 뺐던 기능이다. 참조 가드(`lib/admin/reference-guards.ts`)를
+ * 새로 만들어 참조가 있는 미션은 차단하는 조건으로 다시 추가한다. 상태 컬럼은 여전히
+ * 저장된 값이 아니라 시작/종료일에서 파생되는 값이라 소프트 삭제 대상이 아니다 — 일괄
+ * 액션은 하드 삭제 하나뿐이다.
  *
  * `React.memo`로 감싸 저작 폼에 입력할 때마다 목록 전체가 리렌더되는 걸 막는다(20260826_011 A3).
  */
 function MissionTableInner({ missions, completionCounts, onEdit, onDelete }: MissionTableProps) {
+  const router = useRouter()
   const [sorting, setSorting] = useState<SortingState>([])
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
   const now = new Date()
+
+  // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
+  // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
+  // 지정한다(20260827_002 게이트 리뷰에서 발견된 회귀 방지, BadgesTable.tsx와 동일 패턴).
+  const [themeContainer] = useState<HTMLElement | null>(() =>
+    typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
+  )
+
+  // 필터·정렬로 목록이 바뀌면 이전 선택은 다른 행을 가리킬 수 있다 — 렌더 중 비교해 초기화
+  // (BadgesTable.tsx와 동일 패턴).
+  const [prevMissions, setPrevMissions] = useState(missions)
+  if (missions !== prevMissions) {
+    setPrevMissions(missions)
+    setRowSelection({})
+  }
 
   const rows = useMemo<MissionTableRow[]>(
     () =>
@@ -64,6 +98,28 @@ function MissionTableInner({ missions, completionCounts, onEdit, onDelete }: Mis
 
   const columns = useMemo(
     () => columnHelper.columns([
+      columnHelper.display({
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && 'indeterminate')
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="전체 선택"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="행 선택"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      }),
       columnHelper.accessor((r) => r.mission.title, {
         id: 'title',
         header: ({ column }) => <DataTableColumnHeader column={column} title="미션" />,
@@ -168,17 +224,83 @@ function MissionTableInner({ missions, completionCounts, onEdit, onDelete }: Mis
     data: rows,
     columns,
     getRowId: (row) => row.mission.id,
-    state: { sorting, columnVisibility },
+    state: { sorting, rowSelection, columnVisibility },
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
   })
+
+  const selectedRows = table.getSelectedRowModel().rows.map((row) => row.original.mission)
+  const selectedIds = selectedRows.map((m) => m.id)
+
+  // 일괄 삭제는 진짜 배치 엔드포인트를 쓴다(순차 단건 DELETE 반복이 아니다) — 참조가 있는
+  // 미션은 서버가 건너뛰고 항목별 사유를 돌려준다(티켓 20260907_1134).
+  const handleBulkDelete = async () => {
+    setBulkLoading(true)
+    try {
+      const res = await fetch('/api/admin/missions/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        alert(data?.error ?? '일괄 삭제 중 오류가 발생했습니다.')
+      } else {
+        const blocked = (data?.blocked ?? []) as { id: string; reason: string }[]
+        const deleted = (data?.deleted ?? []) as string[]
+        if (blocked.length > 0) {
+          const titleOf = (id: string) => selectedRows.find((m) => m.id === id)?.title ?? id
+          const detail = blocked.map((b) => `${titleOf(b.id)}: ${b.reason}`).join(' / ')
+          alert(`${deleted.length}건 삭제됨, ${blocked.length}건은 참조가 있어 건너뜀 (${detail})`)
+        }
+      }
+      router.refresh()
+      setRowSelection({})
+    } finally {
+      setBulkLoading(false)
+      setShowBulkConfirm(false)
+    }
+  }
 
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
         <DataTableViewOptions table={table} />
       </div>
+
+      <DataTableBulkActionBar count={selectedIds.length} onClear={() => setRowSelection({})}>
+        <Button type="button" variant="destructive" size="sm" onClick={() => setShowBulkConfirm(true)}>
+          선택 항목 삭제
+        </Button>
+      </DataTableBulkActionBar>
+
       <DataTable table={table} columnCount={columns.length} emptyMessage="미션 없음" />
+
+      <AlertDialog
+        open={showBulkConfirm}
+        onOpenChange={(open) => {
+          if (!open && !bulkLoading) setShowBulkConfirm(false)
+        }}
+      >
+        <AlertDialogContent container={themeContainer ?? undefined}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>미션 일괄 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              선택한 {selectedIds.length}개 미션을 삭제합니다. 삭제하면 되돌릴 수 없습니다. 참여·완료
+              이력이 있는 미션은 삭제되지 않고 결과에서 안내됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button type="button" variant="outline" disabled={bulkLoading} onClick={() => setShowBulkConfirm(false)}>
+              취소
+            </Button>
+            <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDelete}>
+              삭제
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

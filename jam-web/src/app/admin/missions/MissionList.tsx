@@ -182,7 +182,14 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
 
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm('미션을 삭제하시겠습니까?')) return
-    await fetch(`/api/admin/missions/${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/admin/missions/${id}`, { method: 'DELETE' })
+    // 참여·완료 이력이 있으면 서버가 409로 차단한다(20260907_1134 참조 가드) — 응답을
+    // 확인하지 않으면 실패해도 목록이 그냥 새로고침돼 "삭제된 것처럼" 보인다.
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      alert(typeof payload?.error === 'string' ? payload.error : '미션을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.')
+      return
+    }
     router.refresh()
   }, [router])
 

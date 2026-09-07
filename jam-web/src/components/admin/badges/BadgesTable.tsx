@@ -98,6 +98,7 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
   const [bulkLoading, setBulkLoading] = useState(false)
   const [showBulkConfirm, setShowBulkConfirm] = useState(false)
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
 
   // AlertDialog(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn 어드민 테마
   // 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그 스코프 노드로
@@ -309,9 +310,10 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
     onColumnVisibilityChange: setColumnVisibility,
   })
 
-  const selectedIds = table.getSelectedRowModel().rows.map((row) => row.original.id)
+  const selectedRows = table.getSelectedRowModel().rows.map((row) => row.original)
+  const selectedIds = selectedRows.map((r) => r.id)
 
-  // 일괄 삭제 전용 API는 없다(티켓 사전 확인 결과) — 기존 단건 PATCH를 선택된 행 전체에
+  // 일괄 비활성화 전용 API는 없다(티켓 사전 확인 결과) — 기존 단건 PATCH를 선택된 행 전체에
   // 순차 호출한다(20260826_014 요구사항). 배지 목록 페이지 크기가 50건이라 규모상 문제없다.
   const handleBulkDeactivate = async () => {
     setBulkLoading(true)
@@ -336,6 +338,37 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
     }
   }
 
+  // 일괄 하드 삭제(20260907_1134) — 단건 하드 삭제(`badges/[id]/route.ts`)와 같은 참조 가드
+  // (`lib/admin/badge-references.ts`)를 재사용하는 새 배치 엔드포인트를 부른다(새 가드를
+  // 만들지 않는다). 참조가 있는 배지는 서버가 건너뛰고 항목별 사유를 돌려준다.
+  const handleBulkDelete = async () => {
+    setBulkLoading(true)
+    try {
+      const res = await fetch('/api/admin/badges/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        alert(data?.error ?? '일괄 삭제 중 오류가 발생했습니다.')
+      } else {
+        const blocked = (data?.blocked ?? []) as { id: string; reason: string }[]
+        const deleted = (data?.deleted ?? []) as string[]
+        if (blocked.length > 0) {
+          const nameOf = (id: string) => selectedRows.find((r) => r.id === id)?.name ?? id
+          const detail = blocked.map((b) => `${nameOf(b.id)}: ${b.reason}`).join(' / ')
+          alert(`${deleted.length}개 삭제됨, ${blocked.length}개는 참조가 있어 건너뜀 (${detail})`)
+        }
+      }
+      router.refresh()
+      setRowSelection({})
+    } finally {
+      setBulkLoading(false)
+      setShowBulkDeleteConfirm(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -343,8 +376,11 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
       </div>
 
       <DataTableBulkActionBar count={selectedIds.length} onClear={() => setRowSelection({})}>
-        <Button type="button" variant="destructive" size="sm" onClick={() => setShowBulkConfirm(true)}>
+        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => setShowBulkConfirm(true)}>
           선택 항목 비활성화
+        </Button>
+        <Button type="button" variant="destructive" size="sm" disabled={bulkLoading} onClick={() => setShowBulkDeleteConfirm(true)}>
+          선택 항목 삭제
         </Button>
       </DataTableBulkActionBar>
 
@@ -370,6 +406,31 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
             </Button>
             <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDeactivate}>
               계속
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={showBulkDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!open && !bulkLoading) setShowBulkDeleteConfirm(false)
+        }}
+      >
+        <AlertDialogContent container={themeContainer ?? undefined}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>배지 일괄 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              선택한 {selectedIds.length}개 배지를 삭제합니다. 삭제하면 되돌릴 수 없습니다. 발급·드랍
+              이력이 있거나 콘텐츠가 참조 중인 배지는 삭제되지 않고 결과에서 안내됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button type="button" variant="outline" disabled={bulkLoading} onClick={() => setShowBulkDeleteConfirm(false)}>
+              취소
+            </Button>
+            <Button type="button" variant="destructive" disabled={bulkLoading} onClick={handleBulkDelete}>
+              삭제
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
