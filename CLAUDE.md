@@ -114,3 +114,17 @@ DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요�
 5. 위에서 찾지 못한 경우에만 코드(`jam-web/src/`) 탐색
 
 ---
+
+## gstack (권장)
+
+이 프로젝트는 AI 작업 보조를 위해 [gstack](https://github.com/garrytan/gstack)을 사용한다.
+아래 명령으로 설치하면 더 나은 경험을 얻을 수 있다:
+
+```bash
+git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
+cd ~/.claude/skills/gstack && ./setup --team
+```
+
+설치하면 `/qa`, `/ship`, `/review`, `/investigate`, `/browse` 같은 스킬을 쓸 수 있게 된다.
+모든 웹 브라우징에는 `/browse`를 사용한다 (Aside 우선, 안 되면 gstack 내장 브라우저로 대체). gstack 파일 경로는
+`~/.claude/skills/gstack/...` 기준이다.
