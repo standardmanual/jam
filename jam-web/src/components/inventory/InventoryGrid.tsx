@@ -15,6 +15,17 @@ export interface InventoryGridItem {
   /** 무한레벨형 배지는 등급이 없다(마이그레이션 130). null이면 등급 칩을 그리지 않는다 */
   badgeRarity: string | null
   expiresAt?: string | null
+  /**
+   * 그룹 내 개체 수 — 드랍 그리드가 같은 배지의 여러 개체를 카드 1장으로 묶을 때만 쓴다
+   * (20260908_0040). 2 이상일 때만 `BadgeGridCard`가 모서리에 ×N을 그린다.
+   */
+  count?: number | null
+  /**
+   * `count`가 있을 때의 ×N 접근성 문구 — 호출부가 맥락에 맞는 문구를 만들어 넘긴다
+   * (`InventoryGrid`는 두 화면이 공유하는 정규화 컴포넌트라 특정 화면의 i18n 그룹을
+   * 이 파일이 직접 알지 않는다, 20260908_0040).
+   */
+  countAriaText?: string
 }
 
 interface InventoryGridProps {
@@ -78,6 +89,8 @@ export default function InventoryGrid({
             name={item.badgeName}
             imageUrl={item.badgeImageUrl}
             rarity={item.badgeRarity as import('@/types/database').BadgeRarity | null}
+            count={item.count}
+            countAriaText={item.countAriaText}
           >
             {cardChildren}
           </BadgeGridCard>
