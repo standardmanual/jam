@@ -189,7 +189,7 @@ if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && FULL.includes(workTy
   progressive = await agent(
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
     `게이트 리뷰 PASS 근거:\n${gate.reasons.join('\n')}\n\n` +
-    `개선 제안·UX 라이팅·문서 갱신 필요 여부·MODULAR 승격 후보를 검토하라.`,
+    `개선 제안·문서 갱신 필요 여부·MODULAR 승격 후보를 검토하라.`,
     { agentType: 'progressive-reviewer', label: 'progressive-reviewer' }
   )
 }
@@ -201,11 +201,13 @@ if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && workType === 'ui') {
   interfaceReview = await agent(
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
     `.claude/skills/interface-review/SKILL.md를 읽고 그 절차대로 이번 변경의 스코프(diff)를 ` +
-    `해석한 뒤, .claude/skills/better-interface/SKILL.md가 지정하는 순서(better-accessibility → ` +
-    `better-layout → better-writing → better-typography → better-colors → better-ui)로 각 ` +
-    `도메인 스킬을 적용해 검토하라. 이번 티켓의 실제 git diff(review 브랜치 vs origin/staging)만 ` +
-    `대상으로 하고, 손대지 않은 기존 코드는 다루지 마라. 이건 머지를 막는 게이트가 아니라 제안형 ` +
-    `리뷰다 — PASS/FAIL 판정 없이 발견한 점과 제안만 나열하라.`,
+    `해석한 뒤, .claude/skills/better-interface/SKILL.md가 지정하는 도메인 스킬 중 ` +
+    `**better-writing은 제외하고** 나머지 순서(better-accessibility → better-layout → ` +
+    `better-typography → better-colors → better-ui)로만 검토하라 — 라이팅 품질은 한국어 리뷰 ` +
+    `단계(humanize-korean)가 별도로 담당하므로 여기서 중복 검토하지 않는다. 이번 티켓의 실제 ` +
+    `git diff(review 브랜치 vs origin/staging)만 대상으로 하고, 손대지 않은 기존 코드는 다루지 ` +
+    `마라. 이건 머지를 막는 게이트가 아니라 제안형 리뷰다 — PASS/FAIL 판정 없이 발견한 점과 ` +
+    `제안만 나열하라.`,
     { agentType: 'general-purpose', label: 'interface-reviewer' }
   )
 }
@@ -220,8 +222,11 @@ if ((gate.verdict === 'PASS' || gate.verdict === 'WARN') && KOREAN_COPY_TYPES.in
     gate.hasKoreanCopy && gate.koreanCopyText) {
   phase('한국어 리뷰')
   koreanReview = await agent(
-    `다음은 이번 티켓에서 새로 추가·변경된 사용자 노출 한국어 문구다. 번역투·과도한 수동태· ` +
-    `AI 특유의 상투구 같은 어색한 표현이 있는지 점검하고 자연스러운 대안을 제시하라:\n\n${gate.koreanCopyText}`,
+    `다음은 이번 티켓에서 새로 추가·변경된 사용자 노출 한국어 문구다. 두 가지를 함께 점검하라:\n` +
+    `1) 번역투·과도한 수동태·AI 특유의 상투구 같은 어색한 표현이 있는지\n` +
+    `2) Service Plan/Specs/UX_WRITING_GUIDELINE.md 기준(용어 일관성, 톤앤매너, 에러 메시지 3단계 ` +
+    `구조, 해요체, 표기 규칙)을 충족하는지\n` +
+    `두 관점의 문제를 구분해 지적하고 자연스러운 대안을 제시하라:\n\n${gate.koreanCopyText}`,
     { agentType: 'humanize-korean:humanize-monolith', label: 'korean-writing-reviewer' }
   )
 }
@@ -256,8 +261,9 @@ return { devResult, gate, progressive, interfaceReview, koreanReview }
   "인터페이스 리뷰 제안"으로 요약한다. 제안형이라 판정에 영향을 주지 않으며, 머지 승인 여부와
   무관하게 참고용으로만 제시한다.
 - **한국어 리뷰**(`copy`·`ui`·`content` 유형이고 사용자 노출 문구가 있었을 때, `koreanReview`가
-  있을 때): 개선 제안과 별도 섹션 "한국어 표현 리뷰 제안"으로 요약한다. 제안형이라 판정에 영향을
-  주지 않으며, 대안 문구 채택 여부는 사용자가 결정한다.
+  있을 때): 개선 제안과 별도 섹션 "한국어 표현 리뷰 제안"으로 요약한다(번역투·자연스러움 +
+  UX 라이팅 가이드 준수 여부 포함). 제안형이라 판정에 영향을 주지 않으며, 대안 문구 채택 여부는
+  사용자가 결정한다.
 
 ### 3.2 범위 밖 발견물 처리 — 자동 티켓화
 
@@ -314,14 +320,18 @@ gate의 `sideFindings`와 progressive의 "## 범위 밖 발견물" 섹션이 비
   단 티켓은 남긴다.
 - `copy`·`ui`·`content` 유형의 한국어 문구 작성·점검은 2단계로 나뉜다: **구현 단계**에서
   jam-developer가 `.claude/output-styles/fluent-korean.md` 지침을 따라 쓰고, **한국어 리뷰
-  단계**에서 그 결과물을 `humanize-korean`으로 점검한다(제안형, 판정에 영향 없음).
+  단계**에서 그 결과물을 `humanize-korean`으로 점검한다(제안형, 판정에 영향 없음). 이 단계가
+  번역투·자연스러움과 `UX_WRITING_GUIDELINE.md` 준수 여부를 함께 담당한다 — 원래
+  progressive-reviewer가 따로 하던 "UX 라이팅 가이드 준수 여부" 검토를 여기로 합쳐서 같은
+  텍스트를 두 번 검토하지 않게 했다(2026-09-08).
 - 한국어 리뷰 단계는 `humanize-korean` 플러그인(에이전트: `humanize-korean:humanize-monolith`)이
   설치돼 있어야 동작한다. 플러그인을 제거하면 이 단계도 함께 걷어낼 것 — 없는 에이전트 타입을
   호출하면 Workflow가 해당 phase에서 에러를 낸다. `.claude/output-styles/fluent-korean.md`를
   제거하면 구현 단계의 참조 지시도 함께 걷어낼 것.
 - `ui` 유형의 인터페이스 리뷰 단계는 `.claude/skills/interface-review`·`.claude/skills/
-  better-interface`(및 그 안에서 참조하는 better-accessibility·better-layout·better-writing·
-  better-typography·better-colors·better-ui)가 있어야 의미가 있다. 이 스킬들은 `~/.agents/
+  better-interface`(및 그 안에서 참조하는 better-accessibility·better-layout·
+  better-typography·better-colors·better-ui — **better-writing은 의도적으로 제외**, 라이팅
+  품질은 한국어 리뷰 단계가 담당)가 있어야 의미가 있다. 이 스킬들은 `~/.agents/
   skills/`를 가리키는 심볼릭 링크이므로, 다른 PC로 옮기거나 그 폴더가 없으면 링크가 깨진다 —
   깨지면 이 단계도 함께 걷어낼 것. (이전에 쓰던 `apple-design` 기준 "인터랙션 리뷰" 단계는
   2026-09-08 apple-design 스킬 삭제로 이 단계로 대체됨.)
