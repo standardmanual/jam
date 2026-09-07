@@ -2,8 +2,9 @@
 id: 20260908_0544
 category: Service
 priority: P1
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-08
+closed: 2026-09-08
 ---
 
 # [Service] eye loader(WanderingEyesLoader) 과다 노출 및 NavigationLoader 고착 수정
@@ -96,3 +97,15 @@ jam-web/src/components/StravaConnectReveal.tsx
 - 대상 3개 컴포넌트 외에도 `BadgeRevealOverlay`를 호출하는 다른 지점(`SyncButton.tsx`
   등)이 있다면 동일 디바운스 적용 여지가 있으나, 이번 티켓 범위(명시된 3곳)를 벗어나
   손대지 않았다.
+
+### 게이트 리뷰 WARN 및 후속 처리 (오케스트레이터 기록)
+- 게이트 리뷰 판정: WARN. `StravaConnectReveal.tsx`는 `loading={showLoadingOverlay}`를
+  `phase === 'open'` 여부와 무관하게 넘겨서, 요청이 `SHOW_DELAY_MS`(1초)를 넘긴 뒤
+  결과가 도착하는 경로에서는 배지가 이미 준비돼도 `MIN_VISIBLE_MS`(400ms)만큼 로더가
+  잔존 노출될 수 있음 — `BadgeShareButton`·`MissionStatusClient`와 다른 예외. 판정에는
+  영향 없어 이번 범위에서는 수정하지 않고 다음 항목으로 별도 티켓화함.
+- 범위 밖 발견물 자동 티켓화:
+  - [20260908_0556](../P3-낮음/20260908_0556_Service_실기기확인-NavigationLoader수정-컬렉션장착팔로우버튼.md)(P3) — 컬렉션 장착·팔로우 버튼 실기기 확인
+  - [20260908_0557](../P2-일반/20260908_0557_Service_SyncButton-BadgeRevealOverlay-디바운스-미적용.md)(P2) — `SyncButton` 디바운스 미적용
+- 개선 리뷰 제안(선택 사항, 미반영): `MAX_VISIBLE_MS` 강제 숨김 시 `console.warn` 관찰
+  로깅 추가 제안 — 이번엔 반영하지 않음.
