@@ -92,6 +92,17 @@ export default function SlotGrid({
   const [error, setError] = useState<string | null>(null)
   /** 개체 선택 시트를 띄운 배지 id(후보가 2개 이상일 때만 설정된다) — 20260907_2059 */
   const [selectingBadgeId, setSelectingBadgeId] = useState<string | null>(null)
+  /**
+   * 시트가 그리는 대상. **여는 순간의 스냅샷을 그대로 들고 있는다** — `selectingBadgeId`로
+   * 매 렌더 `badgeSlots`에서 찾으면, 닫는 동안 제목과 후보 목록이 한꺼번에 비어 **내용 없는
+   * 시트가 쪼그라들며 내려간다**(`BottomSheet`는 `open=false` 이후에도 닫힘 트랜지션이 끝날
+   * 때까지 DOM에 남는다 — `BottomSheet.tsx:195`). 장착 성공 뒤 `router.refresh()`로 갱신된
+   * 목록이 닫힘 도중 도착해 후보가 사라지는 경우도 스냅샷이 함께 막는다.
+   *
+   * 다시 열 때 이전 배지가 비치지 않는 이유: 여는 클릭이 `selectingBadgeId`와 이 값을 같은
+   * 핸들러에서 함께 세팅하므로, 시트가 다시 열리는 첫 렌더부터 새 배지다.
+   */
+  const [sheetSlot, setSheetSlot] = useState<BadgeSlot | null>(null)
   /** 시트에서 방금 탭한 개체 id — 요청이 끝나기 전에 카드에 선택 톤을 바로 켠다(20260907_2059) */
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   /**
@@ -193,18 +204,23 @@ export default function SlotGrid({
     setError(null)
     setSheetError(null)
     setSelectedCandidateId(null)
+    setSheetSlot(badgeSlot)
     setSelectingBadgeId(badgeSlot.badge.id)
   }
 
+  /**
+   * 시트를 닫는다. **여는 시점에 세팅하는 값(대상 배지·선택 톤·시트 에러)은 여기서 건드리지
+   * 않는다** — `BottomSheet`는 닫힘 트랜지션 동안 DOM에 남으므로, 여기서 지우면 내려가는
+   * 시트에서 그 값들만 툭 사라진다. 초기화는 `handleSlotButton`(=여는 순간)이 이미 하고 있다.
+   */
   function closeSelectSheet() {
     setSelectingBadgeId(null)
-    setSelectedCandidateId(null)
-    setSheetError(null)
   }
 
   /** 시트에서 개체를 골랐을 때 — 탭 즉시 선택 톤을 켜고, 성공해야만 시트를 닫는다. */
   async function handleSelectCandidate(badgeId: string, inventoryItemId: string) {
-    if (pendingBadgeId) return
+    // 닫힘 트랜지션 동안에도 행이 DOM에 남아 눌릴 수 있다 — 이미 닫힌 시트의 탭은 무시한다.
+    if (!selectingBadgeId || pendingBadgeId) return
     setSheetError(null)
     setSelectedCandidateId(inventoryItemId)
     const failure = await requestSlot(badgeId, inventoryItemId)
@@ -215,10 +231,6 @@ export default function SlotGrid({
     }
     closeSelectSheet()
   }
-
-  const selectingSlot = selectingBadgeId
-    ? badgeSlots.find((bs) => bs.badge.id === selectingBadgeId) ?? null
-    : null
 
   return (
     <div ref={gridRef}>
@@ -287,15 +299,15 @@ export default function SlotGrid({
           DESIGN_RENEWAL_SPEC의 기존 층 서열을 그대로 따른다(새 z값 도입 없음).
           하단 고정 액션(footer)이 없으므로 pushBottomOverlay 신고 대상도 아니다. */}
       <BottomSheet
-        open={selectingSlot != null}
+        open={selectingBadgeId != null}
         onClose={closeSelectSheet}
         // 후보가 전부 같은 배지라 어느 배지인지는 상단에서 한 번만 알린다(20260907_2221).
         // 등급칩은 상단이 아니라 각 행에 둔다 — 같은 칩이 화면에 중복되지 않게 하기 위함.
-        title={selectingSlot?.badge.name}
+        title={sheetSlot?.badge.name}
       >
         <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
           <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
-            {selectingSlot ? t(d.itembooks.selectItemBody, { count: String(selectingSlot.candidates.length) }) : ''}
+            {sheetSlot ? t(d.itembooks.selectItemBody, { count: String(sheetSlot.candidates.length) }) : ''}
           </p>
           {sheetError && (
             <div className="rounded-[var(--radius-cards)] bg-surface-elevated px-3 py-2 text-xs text-text/70">
@@ -305,14 +317,14 @@ export default function SlotGrid({
           {/* 후보 행 — 반복되는 이미지·이름을 걷어내고 «등급칩(위) + 일련번호(아래)»만 쌓는다.
               행 전체가 버튼이므로(ListRowCard는 onClick이 있으면 <button>) 행 안에 별도
               버튼을 두지 않는다(20260907_2221). */}
-          {selectingSlot?.candidates.map((candidate) => {
+          {sheetSlot?.candidates.map((candidate) => {
             const expiring = isExpiringSoon(candidate.expires_at)
             const isSelected = selectedCandidateId === candidate.id
             return (
               <ListRowCard
                 key={candidate.id}
                 onClick={() => {
-                  void handleSelectCandidate(selectingSlot.badge.id, candidate.id)
+                  void handleSelectCandidate(sheetSlot.badge.id, candidate.id)
                 }}
                 // ListRowCard에는 선택 상태 시각이 없어(active:scale만 있다) 탭 즉시 반응이
                 // 사라진다 — 요청이 끝날 때까지 프라이머리 링으로 «지금 이 행»을 표시한다.
@@ -321,7 +333,7 @@ export default function SlotGrid({
                 className={isSelected ? 'shadow-[inset_0_0_0_2px_var(--color-primary)]' : ''}
               >
                 <div className="flex flex-col items-start gap-[var(--spacing-4)]">
-                  <RarityBadge rarity={(selectingSlot.badge.rarity as BadgeRarity | null) ?? undefined} />
+                  <RarityBadge rarity={(sheetSlot.badge.rarity as BadgeRarity | null) ?? undefined} />
                   <ItemSerialCode
                     code={formatSerial(candidate)}
                     height={SELECT_SERIAL_HEIGHT_PX}
