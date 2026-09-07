@@ -415,6 +415,16 @@ export interface PoiRow {
    *  앰비언트 드랍 배치·지도/목록 노출에서 제외된다(matcher.ts, api/drops, api/checkin-badges,
    *  lib/ambient-drop 등). 이미 발급된 배지·기존에 놓인 드랍에는 소급 적용되지 않는다. */
   is_active: boolean
+  /** 20260907_1242 — 네이버 지역검색 응답의 원본 분류 문자열(가공 없이 저장, 예: "음식점>카페").
+   *  수동 등록(T1) POI는 null. 재분류·판정 기준 보정의 근거 데이터. */
+  naver_category: string | null
+  /** 20260907_1242 — 이 POI를 찾는 데 실제로 쓰인 네이버 검색 키워드. 수동 등록(T1)은 null. */
+  naver_keyword: string | null
+  /** 20260907_1242 — 수집 시 3단계 판정(자동승인/자동거부/검토대기) 중 "검토대기"로 저장된
+   *  행 표시(`/admin/poi/review` 큐 대상). 자동거부는 애초에 저장되지 않아 이 컬럼에 나타나지
+   *  않는다. 노출(is_active)과는 분리된 개념 — 검토 대기 중에도 게이트 통과분과 동일하게
+   *  노출된다. */
+  pending_review: boolean
 }
 
 export interface PoiCategoryRow {
@@ -427,6 +437,9 @@ export interface PoiCategoryRow {
   /** 네이버 지역검색에 쓸 키워드 목록 (pipeline_linked=true일 때만 의미 있음) */
   keywords: string[]
   created_at: string
+  /** 20260907_1242 — 이 카테고리의 자동수집에 원본 분류 검증 게이트(3단계 판정)를 적용할지
+   *  여부. 기본 false — 켜지 않으면 기존처럼 무조건 자동 저장된다. */
+  requires_review: boolean
 }
 
 export interface TradeRow {
