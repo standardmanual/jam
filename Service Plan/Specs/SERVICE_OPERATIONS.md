@@ -944,6 +944,8 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | PATCH, DELETE | `/api/admin/missions/[id]` | 미션 수정/삭제 |
 | GET, POST | `/api/admin/poi` | POI 목록/생성 |
 | PUT, DELETE | `/api/admin/poi/[id]` | POI 수정/삭제 |
+| PATCH | `/api/admin/poi/review/[id]` | 검토 큐 단건 승인/카테고리변경후승인/거부 ([[20260907_1242]]) |
+| POST | `/api/admin/poi/review/bulk` | 검토 큐 다중선택 일괄 처리 ([[20260907_1242]]) |
 | GET, POST | `/api/admin/recipes` | 조합 레시피 목록/생성 |
 | PATCH, DELETE | `/api/admin/recipes/[id]` | 레시피 수정/삭제 |
 | GET | `/api/admin/users` | 유저 목록 |
