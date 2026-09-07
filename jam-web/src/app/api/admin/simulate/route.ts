@@ -105,10 +105,19 @@ export async function POST(req: NextRequest) {
   // 1. 배지 평가 — badge-engine을 그대로 사용 (진행 트랙 dedup 포함)
   //    dryRun=true이면 평가만 수행, false이면 DB에도 저장됨
   //    silent=true: 시뮬레이션 결과는 피드에 기록하지 않음
+  //    firstSync=true(첫 싱크 강제 시뮬레이션)면 게이트를 강제 적용하되(forceFirstSyncGate),
+  //    dryRun=false로 실제 유저에게 적용하더라도 users.initial_sync_done은 건드리지 않는다
+  //    (skipInitialSyncFlagUpdate) — 시뮬레이터가 실제 온보딩 상태를 오염시키면 안 된다.
   const { earned: badgesEarned, missed: badgesMissed } = await evaluateBadgesDetailed(
     userId,
     activities,
-    { dryRun, triggeredBy: 'admin_simulate', silent: true, overrideFirstSync: firstSync || undefined }
+    {
+      dryRun,
+      triggeredBy: 'admin_simulate',
+      silent: true,
+      forceFirstSyncGate: firstSync || undefined,
+      skipInitialSyncFlagUpdate: firstSync || undefined,
+    }
   )
 
   // 2. 기존 보유 배지 조회 — POI 배지 중복 발급 방지에 사용
