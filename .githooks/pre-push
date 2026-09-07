@@ -9,8 +9,9 @@
 #   → /jam-ship 스킬이 사용자 확인을 거친 뒤 이 환경변수를 붙여 실행한다.
 
 remote_ref_prefix="refs/heads/"
+zero_sha="0000000000000000000000000000000000000000"
 
-while read -r _local_ref _local_sha remote_ref _remote_sha; do
+while read -r _local_ref local_sha remote_ref remote_sha; do
   branch="${remote_ref#$remote_ref_prefix}"
 
   if [ "$branch" = "main" ]; then
@@ -42,23 +43,39 @@ while read -r _local_ref _local_sha remote_ref _remote_sha; do
   # pre-commit이 아니라 pre-push인 이유: 커밋 단위로 돌리면 느려서 결국 같은 우회 유혹이
   # 생긴다. 경고 상한(--max-warnings 26)은 현재 기준선이며 줄이는 방향으로만 갱신한다.
   #
+  # jam-web을 건드리지 않은 push(문서·티켓·.claude/ 등)는 린트가 실패할 수 없으므로 건너뛴다
+  # (2026-09-08, jam-work 최적화 검토) — 새 브랜치를 처음 push할 때(remote_sha가 전부 0)는
+  # 비교 기준이 없으므로 안전하게 실행한다.
+  #
   # 우회(예: 린트와 무관한 긴급 문서 push): JAM_SKIP_LINT=1 git push origin staging
   if [ "$branch" = "staging" ] && [ "${JAM_SKIP_LINT:-}" != "1" ]; then
-    hook_dir="$(git rev-parse --show-toplevel)/jam-web"
-    if [ -d "$hook_dir/node_modules" ]; then
-      echo "pre-push: jam-web 전체 lint 실행 중..." >&2
-      if ! (cd "$hook_dir" && npm run lint:ci >/dev/null 2>&1); then
-        echo "" >&2
-        echo "차단(pre-push): jam-web lint가 실패했습니다." >&2
-        echo "" >&2
-        echo "  확인: cd jam-web && npm run lint:ci" >&2
-        echo "  에러 0건 · 경고 26건 이하가 기준선입니다(티켓 20260827_022)." >&2
-        echo "  린트와 무관한 긴급 push라면: JAM_SKIP_LINT=1 git push origin staging" >&2
-        echo "" >&2
-        exit 1
+    if [ "$remote_sha" != "$zero_sha" ] && ! git diff --quiet "$remote_sha" "$local_sha" -- jam-web; then
+      jam_web_changed=1
+    elif [ "$remote_sha" = "$zero_sha" ]; then
+      jam_web_changed=1
+    else
+      jam_web_changed=0
+    fi
+
+    if [ "$jam_web_changed" = "1" ]; then
+      hook_dir="$(git rev-parse --show-toplevel)/jam-web"
+      if [ -d "$hook_dir/node_modules" ]; then
+        echo "pre-push: jam-web 전체 lint 실행 중..." >&2
+        if ! (cd "$hook_dir" && npm run lint:ci >/dev/null 2>&1); then
+          echo "" >&2
+          echo "차단(pre-push): jam-web lint가 실패했습니다." >&2
+          echo "" >&2
+          echo "  확인: cd jam-web && npm run lint:ci" >&2
+          echo "  에러 0건 · 경고 26건 이하가 기준선입니다(티켓 20260827_022)." >&2
+          echo "  린트와 무관한 긴급 push라면: JAM_SKIP_LINT=1 git push origin staging" >&2
+          echo "" >&2
+          exit 1
+        fi
+      else
+        echo "pre-push: jam-web/node_modules가 없어 lint 게이트를 건너뜁니다." >&2
       fi
     else
-      echo "pre-push: jam-web/node_modules가 없어 lint 게이트를 건너뜁니다." >&2
+      echo "pre-push: jam-web 변경 없음 — lint 게이트를 건너뜁니다." >&2
     fi
   fi
 done
