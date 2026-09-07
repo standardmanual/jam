@@ -62,9 +62,24 @@ closed:
    이 시트가 유일한 사용처였다. 다른 소비자가 없음을 확인한 뒤 **함께 제거한다** — 남겨두면
    다음 작업자가 쓰이는 기능으로 오해한다. (`selectedItemId`는 20260907_2059 이전부터 아무도
    넘기지 않던 prop이므로, 제거하면 그 이전 상태로 돌아가는 셈이다.)
-4. **아이템배지는 현재 전부 `common` 등급이다**(36종, 레벨형 0건 — 2026-09-07 실측). 따라서
-   등급칩은 당분간 항상 같은 값을 보여준다. `RarityBadge`는 rarity가 NULL이면 칩이 조용히
-   사라지는 함정이 있으나(티켓 20260905_0036), 아이템배지에는 NULL이 없어 해당하지 않는다.
+4. **⚠️ 접수 시점 판단 정정 — 등급칩은 현재 데이터에서 한 개도 그려지지 않는다.**
+
+   `RarityBadge`는 rarity가 NULL일 때만이 아니라 **`common`일 때도 렌더하지 않는다**
+   (`design-system/components/cards/RarityBadge.jsx:80` — `if (key === 'common') return null;`).
+   티켓 [20260827_024](20260827_024_UI_배지등급칩-Common-미표시-정책-도입.md)가 "common은 특별할
+   것 없는 기본 등급이라 칩이 불필요하다"는 판단으로 도입한 정책이다. 아이템배지는 36종 전부
+   `common`(레벨형 0건, 2026-09-07 프로덕션 실측)이므로 **선택 시트의 모든 행에서 칩이 비어 보인다.**
+   게이트 리뷰가 실렌더로 확인했다(rare 행 92px = 칩 있음 / common·NULL 행 72px = 칩 없음).
+
+   접수 시 이 절은 "아이템배지에는 NULL이 없어 해당하지 않는다"고 적었으나, **DB의 등급 값만
+   확인하고 컴포넌트 소스를 읽지 않아 나온 오판이었다.** 게이트 리뷰가 이를 FAIL로 잡아냈다.
+
+   **결정 (2026-09-08, 사용자): 그대로 둔다.** 등급칩은 요구사항대로 행에 배치하되, 현재
+   데이터에서 보이지 않는 상태를 받아들인다. 아이템배지에 `rare` 이상 등급이 생기면 **코드 변경
+   없이** 그때부터 칩이 보인다. 검토했으나 채택하지 않은 대안:
+   - `RarityBadge`에 common 표시 옵션 추가 → 후보가 전부 같은 배지라 모든 행에 똑같은 `COMMON`
+     칩이 반복된다. 그 칩을 숨기기로 한 이유(노이즈 축소)와 정면으로 충돌한다.
+   - 등급칩 자리에 획득일 → 개체 구분에는 더 유용하나, 요청은 등급칩이었다. 별도로 판단할 사안.
 
 ### 문구
 
@@ -93,16 +108,22 @@ jam-web/src/lib/i18n/ko.ts                             문구 정리
 - 인벤토리 목록(`/inventory`)과 드랍 바텀시트(`PoiCarouselModal`)가 `InventoryGrid` prop 제거에
   영향받지 않는가
 - 시트를 닫았다 다시 열 때 선택 상태가 남지 않는가
-- 등급칩이 모든 행에서 실제로 그려지는가 (rarity가 비면 조용히 사라진다 — 주의사항 4)
+- **시트를 닫는 트랜지션 동안 제목과 목록이 유지되는가** — `BottomSheet`는 `open=false` 이후에도
+  `lingering` 동안 DOM에 남는다(`src/components/ui/BottomSheet.tsx:195`). 제목이 고정 문자열일
+  때는 문제가 없었으나 `selectingSlot?.badge.name`으로 바뀌면서 상태가 즉시 null이 되어 **내용이
+  사라진 빈 시트가 쪼그라들며 내려가는** 회귀가 생겼다(게이트 리뷰 지적, 1차 구현에서 발견).
+- 등급칩은 현재 데이터에서 그려지지 않는 것이 정상이다 — 주의사항 4의 결정 참고
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
 
+**1차 — 시트 재구성**
+
 - 선택 시트의 `InventoryGrid mode="select"`(1열 `BadgeGridCard`)를 걷어내고 `ListRowCard` 목록으로
-  재구성했다. 시트 제목은 `selectingSlot.badge.name`(배지 이름), 각 행은 `children`으로 텍스트
-  영역을 통째로 대체해 **등급칩(위) → 일련번호(아래)** 세로 스택을 그린다.
+  재구성했다. 시트 제목은 배지 이름, 각 행은 `children`으로 텍스트 영역을 통째로 대체해
+  **등급칩(위) → 일련번호(아래)** 세로 스택을 그린다.
 - `ListRowCard`는 `onClick`이 있으면 `<button>`으로 렌더되므로 행 전체가 눌린다. 행 안에 별도
   버튼은 두지 않았다.
 - 선택 톤은 `className`으로 프라이머리 inset 링(`shadow-[inset_0_0_0_2px_var(--color-primary)]`)을
@@ -113,26 +134,48 @@ jam-web/src/lib/i18n/ko.ts                             문구 정리
   2곳(`/inventory`, `PoiCarouselModal` 드랍 시트)은 애초에 이 prop들을 넘기지 않았다.
 - 일련번호 높이 상수(40px)는 근거 주석과 함께 `SlotGrid.tsx`로 옮겼다(행 폭 기준으로 근거를
   다시 씀).
+- 쓰이지 않게 된 `d.itembooks.selectItemTitle` 키를 삭제했다(`selectItemBody`는 유지).
 - `BottomSheet`는 손대지 않았다(제목이 문자열이라 기존 `title?: string`으로 충분).
+
+**2차 — 닫힘 트랜지션 회귀 수정**(게이트 FAIL 사유 2)
+
+- 증상: 시트를 닫으면 제목과 후보 목록이 동시에 사라져 **내용이 빈 시트가 쪼그라들며 내려갔다.**
+  원인은 `BottomSheet`가 `open=false` 이후에도 닫힘 트랜지션이 끝날 때까지 DOM에 남는데
+  (`BottomSheet.tsx:195`), 1차 구현이 제목·목록을 매 렌더 `selectingBadgeId`로 `badgeSlots`에서
+  되찾고 있어 그 값이 null이 되는 순간 내용이 통째로 비었기 때문이다.
+- 수정: 시트가 그리는 대상을 **여는 순간의 스냅샷**(`sheetSlot` 상태)으로 들고, 닫을 때는
+  `selectingBadgeId`만 null로 만든다. 제목·안내문·후보 목록·등급칩이 모두 같은 스냅샷을 쓰므로
+  닫히는 동안 내용이 그대로 유지된다.
+- 재오픈 시 이전 배지가 비치지 않는 이유: 여는 핸들러(`handleSlotButton`)가 `sheetSlot`과
+  `selectingBadgeId`를 같은 핸들러에서 함께 세팅해, 시트가 다시 열리는 첫 렌더부터 새 배지다.
+- 선택 상태(`selectedCandidateId`)·시트 에러의 초기화 지점을 «닫을 때»에서 «열 때»로 옮겼다.
+  닫을 때 지우면 내려가는 시트에서 그 값들만 툭 사라진다. **재오픈 시 리셋되는 동작은 동일하다**
+  (`handleSlotButton`이 이미 셋 다 초기화하고 있었다).
+- 부수 효과: 장착 성공 후 `router.refresh()`로 갱신된 목록이 **닫힘 도중** 도착해 후보가 0개로
+  비는 경우도 스냅샷이 함께 막는다.
+- 닫힘 트랜지션 동안에도 행이 DOM에 남아 눌릴 수 있으므로, `handleSelectCandidate`에
+  `selectingBadgeId`가 없으면 무시하는 가드를 추가했다.
 
 ### 변경된 파일
 ```
-jam-web/src/app/(main)/collections/[id]/SlotGrid.tsx
-jam-web/src/components/inventory/InventoryGrid.tsx
-jam-web/src/lib/i18n/ko.ts
+jam-web/src/app/(main)/collections/[id]/SlotGrid.tsx   시트 재구성 + 닫힘 트랜지션 스냅샷
+jam-web/src/components/inventory/InventoryGrid.tsx     죽은 prop 제거
+jam-web/src/lib/i18n/ko.ts                             selectItemTitle 키 삭제
 ```
 
 ### 테스트 결과
 - [x] `npm run lint` 전체: **0 errors, 13 warnings** (13건 모두 `design-system/**`의 기존 경고 —
       변경 파일에서 발생한 경고 0건)
-- [x] `tsc --noEmit` 전체: 오류 0
+- [x] `npx tsc --noEmit` 전체: 오류 0
+- [x] `npx vitest run`: 66개 파일 / 1158개 테스트 전부 통과
 - [x] 행 레이아웃 실측(Chromium 실렌더, `ListRowCard`+`RarityBadge`+`ItemSerialCode` 그대로 번들해
       `offsetWidth` 측정): 뷰포트 320/360/430px에서 행 콘텐츠 폭 254/294/364px, 일련번호 폭
       212px → **가장 좁은 320px에서도 넘치지 않음**
 - [x] 등급칩 실렌더 확인: `rare`는 칩이 그려지고 **`common`·NULL은 그려지지 않음**(행 높이
-      92px vs 72px로 확인). 아래 «잔여 이슈» 참조
+      92px vs 72px). 주의사항 4의 결정에 따라 그대로 둔다
 - [ ] 실화면 확인: 이 브랜치가 staging에 병합되기 전이라 `jam-stage.vercel.app`에는 아직
-      반영되지 않았다 — **staging 병합 후 확인 필요**
+      반영되지 않았다 — **staging 병합 후 확인 필요**(닫힘 트랜지션 중 제목·목록 유지,
+      재오픈 시 이전 배지 잔상 없음)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -156,16 +199,16 @@ jam-web/src/lib/i18n/ko.ts
 - **만료 임박 칩("곧 만료")을 일련번호 «아래»에 유지했다.** 20260907_2059가 "만료가 코앞인 개체를
   모르고 장착하는 것"을 막으려고 넣은 칩이라 이번 재구성에서 조용히 사라지면 안전장치가 사라진다.
   `ListRowCard`의 `trailing` 슬롯에 두는 안도 있었으나, 320px 뷰포트에서 일련번호(212px)와 폭을
-  두고 경합해 넘칠 수 있어(잔여 폭 약 174px) 스택 아래에 뒀다 — 20260907_2059의 카드 배치
-  (일련번호 아래 만료 칩)와 같은 순서다.
+  두고 경합해 넘칠 수 있어(잔여 폭 약 174px) 스택 아래에 뒀다.
 - 선택 상태 시각은 링으로. `ListRowCard`에는 선택 상태 표현이 없어(`active:scale-[0.98]`뿐)
   탭 즉시 반응이 사라질 수 있었다. 중복 탭 가드(`pendingBadgeId`)는 그대로다.
+- **등급칩은 현재 데이터에서 한 개도 그려지지 않지만 그대로 둔다**(2026-09-08 사용자 결정,
+  주의사항 4 참조). 요구사항대로 행에 배치돼 있어 `rare` 이상 아이템배지가 생기면 코드 변경 없이
+  그때부터 보인다.
+- **닫힘 트랜지션 대응을 ref가 아니라 «상태 스냅샷»으로 구현했다.** 마지막 값을 `useRef`에 담고
+  렌더에서 읽는 방식을 먼저 시도했으나, `react-hooks/refs` 규칙이 «렌더 중 ref 접근»을 에러로
+  막아 lint 10건이 났다. 상태로 들면 규칙에 걸리지 않고, 스냅샷이라 refresh 타이밍에도 안전하다.
 
 ### 잔여 이슈
-- **아이템배지가 전부 `common`인 동안 등급칩은 화면에 나오지 않는다.** `RarityBadge`는 설계상
-  `common`에서 아무것도 그리지 않는다(`RarityBadge.jsx` — 그리드·리스트 노이즈 축소, 티켓
-  20260827_024). 티켓 주의사항 4는 NULL 함정만 다뤘으나, 실제로 칩을 지우는 것은 NULL이 아니라
-  **`common` 규칙**이다. 따라서 요구사항 3의 «등급칩 + 일련번호» 스택은 rare/epic/mystic
-  아이템배지가 생기기 전까지 일련번호만 보인다. 등급칩을 지금 당장 보이게 하려면
-  `RarityBadge`의 common 비렌더 규칙을 바꿔야 하고, 그건 서비스 9개 호출부에 함께 영향을 주므로
-  이 티켓 범위 밖이다 — 판단 필요.
+- 등급칩 자리에 획득일을 넣는 안은 개체 구분에는 더 유용하지만 이번 요청 범위 밖이다
+  (요청은 등급칩이었다 — 별도 판단 사안).
