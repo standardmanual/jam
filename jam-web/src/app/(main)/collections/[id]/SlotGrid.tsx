@@ -5,13 +5,35 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import BadgeGridCard from '@/components/ui/BadgeGridCard'
 import BottomSheet from '@/components/ui/BottomSheet'
-import InventoryGrid, { type InventoryGridItem } from '@/components/inventory/InventoryGrid'
+import ListRowCard from '@/components/ui/ListRowCard'
+import LocalDate from '@/components/LocalDate'
+import { RarityBadge } from '@ds/components/cards/RarityBadge'
+import { ItemSerialCode } from '@ds/components/patterns/ItemSerialCode'
 import { d, t } from '@/lib/i18n'
 import type { BadgeRarity } from '@/types/database'
 
 /** 일련번호 표시 포맷 — 서비스 전역 공통(4자리 prefix + 6자리 zero-pad). */
 function formatSerial(item: { serial_prefix: string | null; serial_number: number }): string {
   return `${item.serial_prefix ?? '????'}${String(item.serial_number).padStart(6, '0')}`
+}
+
+/**
+ * 선택 시트 행의 `ItemSerialCode` 높이(px). **행 폭 안에 들어가는지가 이 값의 제약이다.**
+ *
+ * 값의 근거(20260907_2059의 Chromium 실렌더 측정 + 20260907_2221의 행 폭 계산):
+ *   - `ItemSerialCode` 총 폭 = height × 5.31 → height 40이면 212px
+ *   - 가장 좁은 기기(320px 뷰포트)의 행 콘텐츠 폭 = 320 − 시트 좌우 패딩 32 − `ListRowCard`
+ *     패딩 32 = **256px**. 212px가 여유 있게 들어간다
+ *   - 40 아래로 내리지 않는 이유: `ItemSerialCode`의 자간 보간 하한이 fontSize 20(=height 40)
+ *     이라 그 아래는 캘리브레이션 범위를 벗어난다. 서비스 실사용 최소값(드랍 시트)도 40이다
+ */
+const SELECT_SERIAL_HEIGHT_PX = 40
+
+/** 만료 임박(7일 이내) 여부 — 인벤토리 그리드와 같은 기준. */
+function isExpiringSoon(expiresAt: string | null | undefined): boolean {
+  if (!expiresAt) return false
+  const diff = new Date(expiresAt).getTime() - Date.now()
+  return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
 }
 
 export interface BadgeSlot {
@@ -70,6 +92,17 @@ export default function SlotGrid({
   const [error, setError] = useState<string | null>(null)
   /** 개체 선택 시트를 띄운 배지 id(후보가 2개 이상일 때만 설정된다) — 20260907_2059 */
   const [selectingBadgeId, setSelectingBadgeId] = useState<string | null>(null)
+  /**
+   * **닫힘 트랜지션 동안에만 쓰는 폴백 스냅샷**(여는 순간의 `BadgeSlot`).
+   *
+   * `BottomSheet`는 `open=false` 이후에도 닫힘 트랜지션이 끝날 때까지 DOM에 남는데
+   * (`BottomSheet.tsx:195`), 그때 `selectingBadgeId`는 이미 null이라 최신값 조회가 실패한다.
+   * 그러면 제목과 후보 목록이 한꺼번에 비어 **내용 없는 시트가 쪼그라들며 내려간다.**
+   * 이 스냅샷이 그 구간을 메운다.
+   *
+   * 열려 있는 동안에는 이 값을 쓰지 않는다 — 아래 `sheetView` 주석 참고.
+   */
+  const [sheetSlot, setSheetSlot] = useState<BadgeSlot | null>(null)
   /** 시트에서 방금 탭한 개체 id — 요청이 끝나기 전에 카드에 선택 톤을 바로 켠다(20260907_2059) */
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   /**
@@ -80,6 +113,23 @@ export default function SlotGrid({
    */
   const [sheetError, setSheetError] = useState<string | null>(null)
   const gridRef = useRef<HTMLDivElement | null>(null)
+
+  /**
+   * 시트가 그리는 대상 — **열려 있으면 최신값, 닫히는 중이면 스냅샷**의 이중 폴백이다.
+   *
+   * 스냅샷만 쓰면 열려 있는 동안에도 내용이 고정된다. 장착이 409로 실패한 뒤
+   * `router.refresh()` 결과가 도착해도 시트는 옛 목록을 계속 그리고, 이미 사라진 후보를
+   * 계속 탭할 수 있었다. `selectingBadgeId`가 살아 있는 동안에는 `badgeSlots`에서 매번
+   * 다시 찾아 최신 상태를 따라간다.
+   *
+   * 다시 열 때 이전 배지가 비치지 않는 이유: 여는 클릭이 `selectingBadgeId`와 스냅샷을 같은
+   * 핸들러에서 함께 세팅하므로, 시트가 다시 열리는 첫 렌더부터 새 배지다.
+   */
+  const sheetView =
+    (selectingBadgeId ? badgeSlots.find((bs) => bs.badge.id === selectingBadgeId) : null) ?? sheetSlot
+
+  /** 장착 요청이 도는 중 — 시트 안의 행 억제·진행 표시·닫기 차단이 모두 이 값을 본다. */
+  const sheetBusy = pendingBadgeId != null
 
   // 장착 모드로 진입하면 슬롯 그리드가 화면에 들어오게 한다(스토리 텍스트가 길어 스크롤이 필요)
   useEffect(() => {
@@ -171,18 +221,37 @@ export default function SlotGrid({
     setError(null)
     setSheetError(null)
     setSelectedCandidateId(null)
+    setSheetSlot(badgeSlot)
     setSelectingBadgeId(badgeSlot.badge.id)
   }
 
+  /**
+   * 시트를 닫는다. **여는 시점에 세팅하는 값(대상 배지·선택 톤·시트 에러)은 여기서 건드리지
+   * 않는다** — `BottomSheet`는 닫힘 트랜지션 동안 DOM에 남으므로, 여기서 지우면 내려가는
+   * 시트에서 그 값들만 툭 사라진다. 초기화는 `handleSlotButton`(=여는 순간)이 이미 하고 있다.
+   */
   function closeSelectSheet() {
     setSelectingBadgeId(null)
-    setSelectedCandidateId(null)
-    setSheetError(null)
+  }
+
+  /**
+   * 사용자가 시트를 닫으려 할 때(백드롭 탭·핸들 드래그). **요청이 도는 동안에는 무시한다.**
+   * 닫힌 뒤 실패가 도착하면 `sheetError`는 이미 사라진 시트에 세팅되고 다음에 열 때 지워져,
+   * **장착이 실패했는데 사용자가 아무것도 보지 못한다.** 그리드 상단 배너로 대신 알리는 방식은
+   * 20260907_2059가 배제했다 — 장착 모드에서는 그리드가 화면 밖일 수 있다.
+   * 왜 안 닫히는지는 행에 함께 뜨는 진행 표시("처리 중")가 설명한다.
+   */
+  function handleSheetClose() {
+    if (sheetBusy) return
+    closeSelectSheet()
   }
 
   /** 시트에서 개체를 골랐을 때 — 탭 즉시 선택 톤을 켜고, 성공해야만 시트를 닫는다. */
   async function handleSelectCandidate(badgeId: string, inventoryItemId: string) {
-    if (pendingBadgeId) return
+    // `.t-panel-slide`가 data-open="false"에서 pointer-events를 끊으므로 닫힘 트랜지션 동안
+    // 행은 눌리지 않는다. 남는 창은 `BottomSheet`가 `setShown(false)`를 rAF로 미루는 **1프레임**
+    // 뿐이지만, 그 사이의 탭도 이미 닫힌 시트의 탭이므로 무시한다.
+    if (!selectingBadgeId || pendingBadgeId) return
     setSheetError(null)
     setSelectedCandidateId(inventoryItemId)
     const failure = await requestSlot(badgeId, inventoryItemId)
@@ -193,22 +262,6 @@ export default function SlotGrid({
     }
     closeSelectSheet()
   }
-
-  const selectingSlot = selectingBadgeId
-    ? badgeSlots.find((bs) => bs.badge.id === selectingBadgeId) ?? null
-    : null
-  const selectingItems: InventoryGridItem[] = selectingSlot
-    ? selectingSlot.candidates.map((candidate) => ({
-        id: candidate.id,
-        badgeName: selectingSlot.badge.name,
-        badgeImageUrl: selectingSlot.badge.image_url,
-        badgeRarity: selectingSlot.badge.rarity,
-        serial: formatSerial(candidate),
-        // 만료 임박 칩("곧 만료")을 그리려면 값이 필요하다 — 없으면 InventoryGrid가 칩을
-        // 그리지 않는다(20260907_2059).
-        expiresAt: candidate.expires_at,
-      }))
-    : []
 
   return (
     <div ref={gridRef}>
@@ -277,32 +330,86 @@ export default function SlotGrid({
           DESIGN_RENEWAL_SPEC의 기존 층 서열을 그대로 따른다(새 z값 도입 없음).
           하단 고정 액션(footer)이 없으므로 pushBottomOverlay 신고 대상도 아니다. */}
       <BottomSheet
-        open={selectingSlot != null}
-        onClose={closeSelectSheet}
-        title={d.itembooks.selectItemTitle}
+        open={selectingBadgeId != null}
+        onClose={handleSheetClose}
+        // 후보가 전부 같은 배지라 어느 배지인지는 상단에서 한 번만 알린다(20260907_2221).
+        // 등급칩은 상단이 아니라 각 행에 둔다 — 같은 칩이 화면에 중복되지 않게 하기 위함.
+        title={sheetView?.badge.name}
       >
-        <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-12)]">
+        <div className="px-[var(--spacing-16)] pb-[var(--spacing-16)] flex flex-col gap-[var(--spacing-8)]">
           <p className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
-            {selectingSlot ? t(d.itembooks.selectItemBody, { count: String(selectingSlot.candidates.length) }) : ''}
+            {sheetView ? t(d.itembooks.selectItemBody, { count: String(sheetView.candidates.length) }) : ''}
           </p>
           {sheetError && (
             <div className="rounded-[var(--radius-cards)] bg-surface-elevated px-3 py-2 text-xs text-text/70">
               {sheetError}
             </div>
           )}
-          <InventoryGrid
-            items={selectingItems}
-            mode="select"
-            // 일련번호를 읽고 비교해서 고르는 화면이라 1열이다 — 3열 카드 폭(360px 뷰포트에서
-            // 클리핑 경계 100px)에는 판독 가능한 크기의 ItemSerialCode가 들어가지 않는다.
-            columns={1}
-            selectedItemId={selectedCandidateId}
-            disabled={pendingBadgeId != null}
-            onSelect={(item) => {
-              if (!selectingSlot) return
-              void handleSelectCandidate(selectingSlot.badge.id, item.id)
-            }}
-          />
+          {/* 후보 행 — 반복되는 이미지·이름을 걷어내고 «등급칩(위) + 일련번호(아래)»만 쌓는다.
+              행 전체가 버튼이므로(ListRowCard는 onClick이 있으면 <button>) 행 안에 별도
+              버튼을 두지 않는다(20260907_2221).
+              요청이 도는 동안에는 이 묶음이 갱신 중임을 aria-busy로 알린다 —
+              `ListRowCard`는 13개 화면 공용이라 disabled/aria 관련 prop을 늘리지 않고
+              호출부에서 처리한다. */}
+          <div className="flex flex-col gap-[var(--spacing-8)]" aria-busy={sheetBusy}>
+          {sheetView?.candidates.map((candidate) => {
+            const expiring = isExpiringSoon(candidate.expires_at)
+            const isSelected = selectedCandidateId === candidate.id
+            // 요청 중 «고르지 않은» 행은 눌러도 아무 일이 없다(핸들러 가드). 그런데 행은 여전히
+            // active:scale·cursor-pointer가 살아 있어 «눌린 반응은 나오는데 아무 일도 안 하는»
+            // 죽은 탭이 된다 — 시각적으로도 함께 억제한다.
+            const muted = sheetBusy && !isSelected
+            return (
+              <ListRowCard
+                key={candidate.id}
+                onClick={() => {
+                  void handleSelectCandidate(sheetView.badge.id, candidate.id)
+                }}
+                // ListRowCard에는 선택 상태 시각이 없어(active:scale만 있다) 탭 즉시 반응이
+                // 사라진다 — 요청이 끝날 때까지 프라이머리 링으로 «지금 이 행»을 표시한다.
+                // 배경톤 대신 inset 링을 쓰는 이유: 카드 기본 배경(bg-surface-elevated)과
+                // 배경 유틸리티가 경합하지 않아 결과가 규칙 순서에 좌우되지 않는다.
+                className={[
+                  isSelected ? 'shadow-[inset_0_0_0_2px_var(--color-primary)]' : '',
+                  muted ? 'opacity-40 pointer-events-none' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                // 진행 표시 — 왜 지금 다른 행이 눌리지 않고 시트도 닫히지 않는지를 설명한다.
+                trailing={
+                  isSelected && sheetBusy ? (
+                    <span className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] text-[var(--color-text-secondary)]">
+                      {d.itembooks.processing}
+                    </span>
+                  ) : undefined
+                }
+              >
+                <div className="flex flex-col items-start gap-[var(--spacing-4)]">
+                  <RarityBadge rarity={(sheetView.badge.rarity as BadgeRarity | null) ?? undefined} />
+                  <ItemSerialCode
+                    code={formatSerial(candidate)}
+                    height={SELECT_SERIAL_HEIGHT_PX}
+                    // 릴(슬롯머신) 연출은 끈다 — 이 화면은 "이미 가진 번호들을 읽고 비교해서
+                    // 고르는" 자리라, "번호가 지금 확정되는 순간"을 연출하는 릴과 목적이 반대다
+                    // (20260907_2059).
+                    animate={false}
+                  />
+                  {/* 만료가 코앞인 개체를 모르고 장착하는 것을 막는 칩(20260907_2059에서 확보).
+                      일련번호 아래에 두어 행 폭을 두고 경합하지 않게 한다. */}
+                  {expiring && candidate.expires_at && (
+                    <p className="text-[length:var(--text-caption)] font-bold leading-none px-1.5 py-1 rounded-[var(--radius-tags)] shadow-[inset_0_0_0_1px_var(--color-border)] text-text/70">
+                      <LocalDate
+                        iso={candidate.expires_at}
+                        options={{ month: 'numeric', day: 'numeric' }}
+                        suffix={d.inventory.expiringSuffix}
+                      />
+                    </p>
+                  )}
+                </div>
+              </ListRowCard>
+            )
+          })}
+          </div>
         </div>
       </BottomSheet>
     </div>
