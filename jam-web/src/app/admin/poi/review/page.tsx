@@ -57,7 +57,9 @@ export default async function AdminPoiReviewPage({ searchParams }: AdminPoiRevie
   // select 결과에 naver_category/naver_keyword가 포함돼 SelectQueryError로 잡힌다(위와 동일
   // 이유) — unknown을 경유해 캐스팅한다.
   const pois = (poisRaw ?? []) as unknown as PoiReviewRow[]
-  const categories = (categoriesRaw ?? []) as PoiCategoryRow[]
+  // 20260907_1243: keywords가 text[]→jsonb로 바뀌어 생성 타입(여전히 string[]로 인식)과
+  // 어긋난다 — unknown 경유로 좁게 우회한다(위 pois와 동일 이유).
+  const categories = (categoriesRaw ?? []) as unknown as PoiCategoryRow[]
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
 
   return (

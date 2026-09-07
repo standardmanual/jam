@@ -10,6 +10,9 @@
 // (티켓 완료기록 참고). 패턴이 정의되지 않은 카테고리(어드민이 poi_categories에서 새로 만든
 // 파이프라인 카테고리 등)는 근거 없이 자동승인/자동거부하지 않고 안전하게 'pending'으로
 // 떨어진다.
+//
+// 20260907_1243: transit(대중교통) 카테고리와 기존 POI가 전부 삭제되면서 transit 패턴도
+// 함께 제거했다(더 이상 매칭될 대상 카테고리가 없음).
 
 export type CategoryGateVerdict = 'approved' | 'pending' | 'rejected'
 
@@ -24,10 +27,6 @@ const CATEGORY_GATE_PATTERNS: Record<string, GatePattern> = {
   government: {
     allow: ['공공기관', '주민센터', '구청', '시청', '동사무소', '행정'],
     reject: ['음식점', '카페', '술집', '숙박', '병원', '약국', '부동산', '학원'],
-  },
-  transit: {
-    allow: ['지하철', '전철', '기차역', '버스', '교통'],
-    reject: ['음식점', '카페', '술집', '숙박', '병원', '약국', '부동산'],
   },
   hospital: {
     allow: ['병원', '의원', '한의원', '의료'],
