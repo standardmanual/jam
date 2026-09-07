@@ -34,8 +34,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 /**
- * 목록/상세 화면의 즉시 토글용 — 폼의 전체 저장 PUT과 별개(20260830_1619).
- * body: { is_active: boolean }. is_active 컬럼만 갱신한다.
+ * 목록/상세 화면의 즉시 토글·일괄변경용 — 폼의 전체 저장 PUT과 별개(20260830_1619).
+ * body: { is_active?: boolean, category?: string }. 최소 하나는 있어야 하며, 둘 다 와도
+ * 동작한다(20260907_1643 — 다중선택 카테고리 일괄변경이 이 PATCH를 선택 항목마다 순차
+ * 호출한다).
+ * category가 오면 poi_categories에 존재하는 슬러그인지 검증하고, radius_meters도
+ * resolvePoiRadiusMeters로 함께 재계산한다 — 안 하면 카테고리별 정확 매칭 반경 정책(예:
+ * train_subway 50m)이 어긋나 기존 반경 그대로 남아 20260811_006 오탐 버그가 재발한다.
+ * 재계산 기준값은 이 POI의 기존 radius_meters다(요청에 없는 값이라 먼저 조회해야 한다) —
+ * 안 그러면 정확 매칭 정책이 없는 카테고리로 옮길 때 커스텀 반경이 기본값(500m)으로
+ * 조용히 초기화된다.
  * item_books.is_active와 달리 POI는 연쇄 영향(드랍/체크인 로직 미연동)이 없어 확인 없이
  * 즉시 반영한다.
  */
@@ -45,16 +53,49 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const body = await req.json()
-  const { is_active } = body as { is_active?: boolean }
+  const { is_active, category } = body as { is_active?: boolean; category?: string }
 
-  if (typeof is_active !== 'boolean') {
+  if (is_active === undefined && category === undefined) {
+    return NextResponse.json({ error: 'is_active 또는 category 중 하나는 필요합니다.' }, { status: 400 })
+  }
+  if (is_active !== undefined && typeof is_active !== 'boolean') {
     return NextResponse.json({ error: 'is_active는 boolean이어야 합니다.' }, { status: 400 })
+  }
+  if (category !== undefined && (typeof category !== 'string' || !category.trim())) {
+    return NextResponse.json({ error: 'category는 비어 있지 않은 문자열이어야 합니다.' }, { status: 400 })
   }
 
   const supabase = createServiceClient()
+  const updatePayload: { is_active?: boolean; category?: string; radius_meters?: number } = {}
+
+  if (is_active !== undefined) updatePayload.is_active = is_active
+
+  if (category !== undefined) {
+    const { data: categoryRow, error: categoryError } = await supabase
+      .from('poi_categories')
+      .select('slug')
+      .eq('slug', category)
+      .maybeSingle()
+    if (categoryError) return NextResponse.json({ error: categoryError.message }, { status: 500 })
+    if (!categoryRow) {
+      return NextResponse.json({ error: '존재하지 않는 카테고리입니다.' }, { status: 400 })
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from('poi')
+      .select('radius_meters')
+      .eq('id', id)
+      .maybeSingle()
+    if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+    if (!existing) return NextResponse.json({ error: 'POI를 찾을 수 없습니다.' }, { status: 404 })
+
+    updatePayload.category = category
+    updatePayload.radius_meters = resolvePoiRadiusMeters(category, existing.radius_meters)
+  }
+
   const { data, error } = await supabase
     .from('poi')
-    .update({ is_active })
+    .update(updatePayload)
     .eq('id', id)
     .select()
     .single()
