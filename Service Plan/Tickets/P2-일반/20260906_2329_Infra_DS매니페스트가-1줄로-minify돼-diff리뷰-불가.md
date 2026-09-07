@@ -2,9 +2,9 @@
 id: 20260906_2329
 category: Infra
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-06
-closed:
+closed: 2026-09-08
 ---
 
 # [Infra] DS 매니페스트가 1줄로 minify돼 diff 리뷰가 불가능하다
@@ -37,22 +37,40 @@ diff가 안 생기는지) 확인할 것.
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`ds-manifest-sync.mjs:164`의 `JSON.stringify(manifest)`를 `JSON.stringify(manifest, null, 2)`로
+수정했다. 다만 스크립트의 `--write`는 소스 코드 스캔 결과(`changes` 배열)가 비어 있으면
+파일 쓰기 자체를 건너뛰는 구조라(158-159행), 지금처럼 매니페스트 **내용**이 이미 최신인
+상태에서는 `--write`를 줘도 pretty-print 재작성이 일어나지 않는다 — 실행해서 직접 확인했다.
+그래서 이번 1회는 매니페스트를 읽어 같은 포맷(`JSON.stringify(x, null, 2) + '\n'`)으로
+수동 재작성했다. 이후로는 스크립트가 실제 변경을 감지할 때마다 같은 포맷으로 쓰므로
+정상 경로로 돌아간다.
 
 ### 변경된 파일
 ```
--
+jam-web/scripts/ds-manifest-sync.mjs
+jam-web/design-system/_ds_manifest.json
 ```
 
 ### 테스트 결과
-- [ ] `npm run ds:manifest` 두 번 연속 실행 시 두 번째는 diff 없음
-- [ ] 컴포넌트 하나를 추가/삭제했을 때 diff가 해당 줄만 보임
+- [x] `node scripts/ds-manifest-sync.mjs`(dry-run) 및 `--write` 재실행 — 둘 다 "manifest 가
+      이미 최신입니다" 반환, 추가 diff 없음(idempotent 확인)
+- [x] 파일 끝 개행 1개(`}\n`)로 저장소 컨벤션과 일치함을 `xxd`로 직접 확인
+- [x] `npx tsc --noEmit` — 오류 0건
+- [ ] 컴포넌트 하나를 추가/삭제했을 때 diff가 해당 줄만 보임 — 별도 검증 안 함(JSON
+      pretty-print의 자명한 성질이라 실제 컴포넌트 추가/삭제가 생기는 다음 DS 작업에서
+      자연히 확인될 것)
 
 ### 배포 정보
-- 배포일:
-- 환경:
-- 커밋:
+- 배포일: 2026-09-08
+- 환경: staging
+- 커밋: (아래 커밋 참조)
 
 ### 주요 의사결정 / 핵심 메모
+**`--write`가 스킵하는 문제는 이 티켓 범위 밖으로 남긴다** — "소스와 매니페스트 내용이
+같으면 쓰지 않는다"는 동작 자체는 의도된 설계(불필요한 재작성 방지)이고, 이번처럼
+"포맷만 바꾸고 싶다"는 요구는 스크립트가 원래 다루는 시나리오가 아니다. 매번 수동
+재작성이 필요한 것도 아니고(포맷 변경은 일회성), 스크립트에 `--force-write` 같은 옵션을
+추가하는 것은 이번 한 줄 수정의 범위를 넘어선다고 판단했다.
 
 ### 잔여 이슈
 -

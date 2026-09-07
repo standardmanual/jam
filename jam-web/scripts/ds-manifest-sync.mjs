@@ -161,7 +161,7 @@ if (!changes.length) {
 console.log(`\n변경 ${changes.length}건:\n`);
 for (const c of changes) console.log(`  · ${c}`);
 if (WRITE) {
-  writeFileSync(MANIFEST, JSON.stringify(manifest) + '\n');
+  writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
   console.log(`\n→ ${path.relative(WEB_ROOT, MANIFEST)} 갱신 완료\n`);
 } else {
   console.log('\n(dry-run — 실제로 쓰려면 --write)\n');
