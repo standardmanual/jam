@@ -834,20 +834,34 @@ export async function evaluateBadgesDetailed(
     triggeredBy?: string
     silent?: boolean
     /**
-     * `isFirstSync` 판정을 실제 `users.initial_sync_done` 대신 이 값으로 강제한다.
-     * **값을 명시하는 순간(true/false 어느 쪽이든) `initial_sync_done` 갱신 블록
-     * (아래 §「첫 싱크 완료 플래그 세팅」) 자체가 통째로 스킵된다** — 호출자가 이미
-     * 첫 싱크 여부를 자기 목적에 맞게 통제하겠다고 선언한 것이므로, 실제 상태 전환은
-     * 실제 동기화 경로(`strava_sync`, 이 옵션을 넘기지 않는 호출)에만 맡긴다.
-     * - `true`: 시뮬레이터 전용 — 첫 싱크 게이트를 강제 적용해 테스트하되 실제 온보딩
-     *   상태는 건드리지 않는다 (`/api/admin/simulate`).
-     * - `false`: 카탈로그 재평가 전용 — 첫 싱크 게이트를 강제 해제해(등급 제한 없이
-     *   정상 발급) 실제 온보딩 상태도 건드리지 않는다 (`reevaluateUsersForCatalog`,
-     *   티켓 20260906_1431). 이 배치는 실제 첫 동기화가 아니므로 "처음이라 제한한다"도
-     *   "이걸로 첫 동기화가 끝났다"도 성립하지 않는다.
-     * - `undefined`(기본): 실제 `initial_sync_done`을 그대로 신뢰하고, 필요하면 갱신도 한다.
+     * `isFirstSync` 판정(첫 싱크 게이트 — Common/Lv.1 제한)을 실제
+     * `users.initial_sync_done` 대신 이 값으로 강제한다.
+     * `isFirstSync = forceFirstSyncGate ?? !userInitialSyncDone`.
+     * - `true`: 첫 싱크인 것처럼 게이트를 강제 적용한다 (`/api/admin/simulate`의
+     *   "첫 싱크 강제 시뮬레이션"에서만 씀).
+     * - `false`: 게이트를 강제 해제한다(등급 제한 없이 정상 발급).
+     * - `undefined`(기본): 실제 `initial_sync_done`을 그대로 신뢰한다.
+     *
+     * `initial_sync_done` 갱신 여부는 이 값과 **무관하다** — `skipInitialSyncFlagUpdate`로
+     * 따로 통제한다. 예전엔 이 두 관심사가 `overrideFirstSync` 하나에 얽혀 있어서,
+     * "값이 명시되면 갱신도 스킵"이라는 암묵 규칙이 타입 선언에 드러나지 않았고
+     * (티켓 20260906_1431 게이트 리뷰에서 실제 회귀로 드러남), 이후 새 호출부가
+     * 추가되면 같은 함정에 다시 빠질 위험이 있었다(티켓 20260906_1928로 파라미터 자체를
+     * 분리).
      */
-    overrideFirstSync?: boolean
+    forceFirstSyncGate?: boolean
+    /**
+     * `true`면 이번 호출에서 `users.initial_sync_done` 갱신 블록(§「첫 싱크 완료
+     * 플래그 세팅」)을 통째로 건너뛴다 — 실제 온보딩 상태를 절대 건드리면 안 되는
+     * 배치용 옵션이다.
+     * - 카탈로그 재평가(`reevaluateUsersForCatalog`, 티켓 20260906_1431)는 진짜 첫
+     *   동기화가 아니라 「달리지도 않았는데 배지가 쏟아진」 상황이므로 `true`로 넘긴다.
+     * - 관리자 시뮬레이터(`/api/admin/simulate`)도 실제 유저 상태를 오염시키면 안
+     *   되므로 `forceFirstSyncGate`와 별개로 이 플래그를 챙긴다.
+     * - `undefined`/`false`(기본): 실제 동기화 경로(`strava_sync`)와 동일하게, 조건
+     *   충족 시 정상 갱신한다.
+     */
+    skipInitialSyncFlagUpdate?: boolean
   }
 ): Promise<{
   earned: BadgeEarnedInfo[]
@@ -859,7 +873,7 @@ export async function evaluateBadgesDetailed(
    */
   counted: { id: string; name: string; addedEarnCount: number }[]
 }> {
-  const { dryRun = false, triggeredBy = 'strava_sync', silent = false, overrideFirstSync } = options ?? {}
+  const { dryRun = false, triggeredBy = 'strava_sync', silent = false, forceFirstSyncGate, skipInitialSyncFlagUpdate = false } = options ?? {}
 
   const supabase = createServiceClient()
 
@@ -895,7 +909,7 @@ export async function evaluateBadgesDetailed(
     .eq('id', userId)
     .maybeSingle()
   const userInitialSyncDone = (userRowRaw as { initial_sync_done: boolean } | null)?.initial_sync_done ?? false
-  const isFirstSync = overrideFirstSync ?? !userInitialSyncDone
+  const isFirstSync = forceFirstSyncGate ?? !userInitialSyncDone
 
   const now = new Date().toISOString()
   const { data: allBadgesRaw, error: badgesError } = await supabase
@@ -1257,7 +1271,7 @@ export async function evaluateBadgesDetailed(
   const gatedIssueList: typeof toIssueList = []
   for (const c of toIssueList) {
     // 카운터 증가는 발급이 아니므로 첫 싱크 게이트의 대상이 아니다. (첫 싱크에는 보유
-    // 배지가 없어 실제로 도달하지 않지만, 시뮬레이터의 overrideFirstSync에서는 도달한다)
+    // 배지가 없어 실제로 도달하지 않지만, 시뮬레이터의 forceFirstSyncGate에서는 도달한다)
     if (c.action === 'increment') {
       gatedIssueList.push(c)
       continue
@@ -1410,16 +1424,16 @@ export async function evaluateBadgesDetailed(
     }
   }
 
-  // 첫 싱크 완료 플래그 세팅 — overrideFirstSync를 **명시적으로 넘긴 호출**(true/false
-  // 어느 쪽이든)은 전부 스킵한다. `!overrideFirstSync`(값 기준)가 아니라
-  // `overrideFirstSync === undefined`(호출 의도 기준)로 갈라야 하는 이유: 시뮬레이터의
-  // `overrideFirstSync: true`뿐 아니라 카탈로그 재평가의 `overrideFirstSync: false`도
-  // 「내가 첫 싱크 여부를 이미 통제하고 있으니 실제 온보딩 상태는 건드리지 말라」는 같은
-  // 선언이다 — `false`를 `!overrideFirstSync`로 걸렀다면 «갱신하지 않겠다는 명시적 지시»가
-  // «지시 없음»과 같은 값(둘 다 falsy)이 되어 조용히 갱신이 실행되는 사고가 난다
-  // (티켓 20260906_1431 게이트 리뷰 FAIL — 카탈로그 재평가가 미동기화 유저의
-  // initial_sync_done을 배지 발급 없이도 true로 조용히 전환시킴).
-  if (!dryRun && overrideFirstSync === undefined && !userInitialSyncDone) {
+  // 첫 싱크 완료 플래그 세팅 — `skipInitialSyncFlagUpdate: true`를 넘긴 호출은 전부
+  // 스킵한다. 예전엔 이 갱신 여부가 `overrideFirstSync`(게이트 강제 파라미터)의 "값이
+  // 명시됐는가"에 얽혀 있어서, 카탈로그 재평가가 `overrideFirstSync: false`(게이트는
+  // 해제하되 상태는 갱신 금지)를 표현하려면 `false`를 «지시 없음»과 구분해야 했다
+  // (`overrideFirstSync === undefined` 판정, 티켓 20260906_1431 게이트 리뷰 FAIL — 값
+  // 기준 `!overrideFirstSync`로 걸렀다면 카탈로그 재평가가 미동기화 유저의
+  // initial_sync_done을 배지 발급 없이도 true로 조용히 전환시켰을 것). 이제는
+  // `forceFirstSyncGate`(게이트)와 `skipInitialSyncFlagUpdate`(상태 갱신)가 서로 다른
+  // 파라미터라 이 미묘한 판정 자체가 필요 없다(티켓 20260906_1928).
+  if (!dryRun && !skipInitialSyncFlagUpdate && !userInitialSyncDone) {
     const usersTable = supabase.from('users')
     await usersTable.update({ initial_sync_done: true }).eq('id', userId)
 
@@ -1431,11 +1445,12 @@ export async function evaluateBadgesDetailed(
     // 첫 배지는 결산 안에서 **헤드라인을 가져간다**(A8·E3). 최초 연동은 과거 활동을
     // 한꺼번에 훑어 배지가 쏟아지는데, 그 숫자보다 "첫 배지가 도착했다"가 중요하다.
     //
-    // 카탈로그 재평가(overrideFirstSync: false)는 이 블록에 아예 들어오지 않으므로
+    // 카탈로그 재평가(skipInitialSyncFlagUpdate: true)는 이 블록에 아예 들어오지 않으므로
     // recordActivityRecap도 만들지 않는다 — 의도한 동작이다. 재평가는 진짜 첫 동기화가
     // 아니라 「달리지도 않았는데 배지가 쏟아진」 상황이므로, 그걸 온보딩 결산 하이라이트로
     // 포장하면 오히려 잘못된 서사가 된다. 진짜 첫 동기화가 나중에 실제로 일어나면 그때
-    // (overrideFirstSync 없이) 이 블록이 정상적으로 한 번 실행되어 recap도 그때 만들어진다.
+    // (skipInitialSyncFlagUpdate 없이) 이 블록이 정상적으로 한 번 실행되어 recap도 그때
+    // 만들어진다.
     if (earned.length > 0) {
       await recordActivityRecap(userId, { first_badge_id: earned[0].id })
     }

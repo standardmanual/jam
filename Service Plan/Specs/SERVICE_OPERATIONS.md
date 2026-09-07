@@ -242,7 +242,7 @@ if (expires_at - 60초 < now) {
 8. recordFeedEvent 호출 (silent=false인 경우)
    → event_type: 'badge_earned'
 
-9. 첫 싱크 플래그 세팅 (dryRun=false이고 overrideFirstSync=undefined인 경우만):
+9. 첫 싱크 플래그 세팅 (dryRun=false이고 skipInitialSyncFlagUpdate가 false/undefined인 경우만):
    users.initial_sync_done = true UPDATE
 ```
 
