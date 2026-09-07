@@ -698,13 +698,11 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
   const rarityValue = KNOWN_RARITIES.includes(rarity as BadgeRarity) ? (rarity as BadgeRarity) : 'common'
   const showCount = typeof count === 'number' && count > 1
   const expiring = isRowExpiringSoon(expiresAt)
-  const ariaLabel = showCount && countAriaText ? `${name}, ${countAriaText}` : undefined
 
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      aria-label={ariaLabel}
       className="w-full flex items-center gap-[var(--spacing-16)] px-[var(--spacing-16)] py-[var(--spacing-8)] rounded-[var(--radius-cards)] bg-white/[0.04] active:scale-[0.98] transition-transform duration-100 text-left disabled:cursor-default"
     >
       {/* 카운터 서클의 기준점 — BadgeGridCard의 카운터 필과 같은 이유로 relative를
@@ -722,13 +720,20 @@ function ItemRow({ name, imageUrl, rarity, onClick, disabled, count, countAriaTe
           // BadgeGridCard의 ×N 카운터 필과 같은 색 토큰(bg-surface-elevated + border)이지만
           // 모양은 완전한 원(rounded-full)이고 접두어 없이 숫자만, 위치도 반대 코너
           // (우측 상단)다 — 사용자 결정(20260908_0217).
+          // w-5 h-5로 폭·높이를 고정한다(min-w+px-1이 아님) — 두 자리 수(최대 보유 슬롯
+          // 50개라 실제로 나온다)에서 폭만 늘어나 알약 모양이 되는 걸 막는다. 인터랙션
+          // 리뷰가 렌더 확인으로 잡아낸 회귀(2026-09-08).
           <span
-            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-surface-elevated border border-[color:var(--color-border)] text-[length:var(--text-caption)] leading-none font-bold text-text/80 flex items-center justify-center"
+            className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface-elevated border border-[color:var(--color-border)] text-[10px] leading-none font-bold text-text/80 flex items-center justify-center"
             aria-hidden="true"
           >
             {count}
           </span>
         )}
+        {/* 스크린리더용 — aria-label로 버튼 전체를 덮지 않는다. BadgeGridCard.tsx의
+            sr-only 관례와 동일하게 "덧붙이는" 방식이라, count>1이어도 이름·등급·만료 정보가
+            그대로 읽힌다(인터랙션 리뷰 지적 반영). */}
+        {showCount && countAriaText && <span className="sr-only">{countAriaText}</span>}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] truncate">{name}</p>
