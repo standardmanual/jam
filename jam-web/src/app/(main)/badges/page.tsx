@@ -71,10 +71,13 @@ export default async function BadgesPage({ searchParams }: Props) {
   // 마이페이지·인벤토리에는 노출하지 않는다.
   // earn_history는 생성 타입상 Json, 손으로 쓴 Row 타입상 BadgeEarnHistoryEntry[]라 직접 캐스팅이
   // 성립하지 않는다(마이그레이션 130) — 기존과 같은 무검증 캐스팅이므로 unknown을 한 번 거친다.
+  // 20260906_2023: user_activity_badges는 원래 "타입 무관 소유권 통합 테이블"이지만,
+  // 상위 쓰기 경로(admin/simulate 등)가 타입 분기를 놓치면 checkin 타입 배지가 여기 섞여
+  // 들어올 수 있다. 화면 쪽 마지막 방어선으로 activity 타입만 노출한다.
   const badges: Array<{ badge: BadgeRow; earned: UserActivityBadgeRow }> = (
     (earnedBadges ?? []) as unknown as Array<{ badge: BadgeRow } & UserActivityBadgeRow>
   )
-    .filter((r) => r.badge && !r.badge.deleted_at)
+    .filter((r) => r.badge && !r.badge.deleted_at && r.badge.type === 'activity')
     .map((r) => ({ badge: r.badge, earned: r }))
 
   type RawInventoryItem = {

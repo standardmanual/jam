@@ -185,8 +185,38 @@ export async function checkItemBookCompletion(userId: string): Promise<ItemBookC
     .single()
   const inventory = inventoryRaw as Pick<InventoryRow, 'id'> | null
 
+  // 7-0. 보상 배지 타입 확인 — 아래 발급 로직은 "보상 배지는 항상 activity 타입"이라는
+  //      가정 하에 무조건 user_activity_badges에 쓴다. 이 가정이 깨지면(예: 콘텐츠 쪽에서
+  //      checkin/item 타입 배지를 보상으로 지정) 조용히 잘못된 테이블에 기록되므로,
+  //      동작은 바꾸지 않되 경고 로그로 드러낸다 (티켓 20260906_2023).
+  const rewardBadgeIdCandidates = completedBooks
+    .map((b) => b.reward_badge_id)
+    .filter((id): id is string => Boolean(id))
+  const rewardBadgeTypeById = new Map<string, BadgeType>()
+  if (rewardBadgeIdCandidates.length > 0) {
+    const { data: rewardBadgeTypesRaw, error: rewardBadgeTypesError } = await supabase
+      .from('badges')
+      .select('id, type')
+      .in('id', rewardBadgeIdCandidates)
+
+    if (rewardBadgeTypesError) {
+      console.error('[checkItemBookCompletion] reward_badge type 조회 오류:', rewardBadgeTypesError)
+    } else {
+      for (const b of (rewardBadgeTypesRaw ?? []) as { id: string; type: BadgeType }[]) {
+        rewardBadgeTypeById.set(b.id, b.type)
+      }
+    }
+  }
+
   for (const book of completedBooks) {
     if (!book.reward_badge_id) continue
+
+    const rewardBadgeType = rewardBadgeTypeById.get(book.reward_badge_id)
+    if (rewardBadgeType && rewardBadgeType !== 'activity') {
+      console.error(
+        `[checkItemBookCompletion] reward_badge type 불일치 — book: ${book.id}, reward_badge_id: ${book.reward_badge_id}, type: ${rewardBadgeType} (activity 예상, user_activity_badges에 기록됨)`
+      )
+    }
 
     const { data: existing } = await supabase
       .from('user_activity_badges')
