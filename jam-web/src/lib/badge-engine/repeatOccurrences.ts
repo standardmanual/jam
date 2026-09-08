@@ -84,6 +84,32 @@ export function matchesPerActivityCondition(condition: BadgeCondition, a: Normal
   return true
 }
 
+// ── personal_record_break 결합 필터 흡수 (티켓 20260908_1512) ─────────────
+//
+// `single_distance_km` 같은 PER_ACTIVITY_KEYS 필드가 `personal_record_break`와 함께 오면
+// "그런 활동이 하나라도 있었는가"(존재 여부 확인용 필터)가 아니라 "그 필터를 통과한 활동만
+// 개인기록 후보로 좁혀서 세라"는 뜻이다(컨텐츠 스펙: running:R2 "5km 이상 활동의 가장 빠른
+// 페이스 갱신"). 발급 판정(index.ts)과 진행 계산(badgeProgress.ts)이 **같은 흡수 목록·같은
+// 좁히기 로직**을 봐야 한다 — `repeatConsumedAxisKeys`/`repeatOccurrences`가 회차에 대해
+// 이미 구현한 것과 같은 패턴이다.
+
+/** `personal_record_break`가 실제로 흡수하는 PER_ACTIVITY_KEYS 필터 키 목록 */
+export function personalRecordBreakConsumedAxisKeys(condition: BadgeCondition): readonly ScalarAxisKey[] {
+  if (condition.personal_record_break === undefined) return []
+  return PER_ACTIVITY_KEYS.filter((k) => condition[k] !== undefined)
+}
+
+/**
+ * `personal_record_break` 카운팅 대상 활동 풀 — 위 흡수 키로 실제로 좁힌다. 흡수할 필터가
+ * 없으면(단독 계열: cycling:R1·running:R1·hiking:R1/R2·trail_running:R1/R2/R3·walking:B1/B2)
+ * `activities`를 그대로 돌려준다 — 기존 동작을 그대로 보존한다(회귀 방지의 핵심).
+ */
+export function personalRecordBreakPool(condition: BadgeCondition, activities: NormalizedActivity[]): NormalizedActivity[] {
+  const keys = personalRecordBreakConsumedAxisKeys(condition)
+  if (keys.length === 0) return activities
+  return activities.filter((a) => keys.every((k) => matchesPerActivityCondition({ [k]: condition[k] } as BadgeCondition, a)))
+}
+
 /**
  * 회차 술어가 «소비하는» 조건 키. 여기 없는 키가 조건에 있으면 회차를 세지 않는다(fail-closed).
  *

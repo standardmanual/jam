@@ -82,6 +82,9 @@ import {
   // 휴식 4종 + repeat_count 조합(티켓 20260906_2056) — 회차 차단 분기와 회차 계산이
   // 같은 판정을 봐야 「막을 조합」과 「셀 조합」이 어긋나지 않는다.
   isRestDrivenRepeatCondition,
+  // personal_record_break + single_distance_km 등 결합 필터 흡수(티켓 20260908_1512) —
+  // 진행 계산(badgeProgress.ts)과 같은 함수로 후보 풀을 좁혀야 발급-진행률이 어긋나지 않는다.
+  personalRecordBreakPool,
 } from './repeatOccurrences'
 export { collectRepeatOccurrences }
 export {
@@ -820,7 +823,13 @@ export function evaluateConditionDetailed(
         required: '평가 가능한 개인 기록 지표(single_distance_km · duration_minutes · max_elevation_m · max_pace_sec_per_km)',
       }
     }
-    const breaks = countPersonalRecordBreaks(metric, filtered)
+    // single_distance_km 등 PER_ACTIVITY_KEYS 필터가 함께 오면 "존재 여부 확인"이 아니라
+    // "그 필터를 통과한 활동만 개인기록 후보로 좁히는 필터"로 동작해야 한다(컨텐츠 스펙:
+    // running:R2 "5km 이상 활동의 가장 빠른 페이스 갱신"). 필터가 없는 단독 계열은
+    // `personalRecordBreakPool`이 `filtered`를 그대로 돌려줘 기존 동작이 보존된다
+    // (티켓 20260908_1512).
+    const recordBreakPool = personalRecordBreakPool(condition, filtered)
+    const breaks = countPersonalRecordBreaks(metric, recordBreakPool)
     if (breaks < condition.personal_record_break) {
       return { pass: false, reason: '개인 기록 갱신 횟수 부족', actual: `${breaks}회`, required: `${condition.personal_record_break}회` }
     }
