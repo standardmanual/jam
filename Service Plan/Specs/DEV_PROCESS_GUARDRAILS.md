@@ -43,7 +43,7 @@ JAM!의 핵심 신뢰 루프는 "활동을 하면 정확히 그에 맞는 보상
 
 **규칙**: DB 스키마·함수·트리거 변경은 **마이그레이션 파일 작성 → 즉시 적용(`apply_migration`
 또는 동등한 방식) → 커밋을 한 세트**로 묶어 같은 턴 안에 끝낸다. "일단 파일만 써두고 나중에
-적용"을 기본 흐름으로 만들지 않는다. ([04_PROJECT_SPEC.md](PRD/04_PROJECT_SPEC.md) "절대 하지
+적용"을 기본 흐름으로 만들지 않는다. ([04_PROJECT_SPEC.md](04_PROJECT_SPEC.md) "절대 하지
 마" 목록에도 명문화됨)
 
 ### 패턴 3 — 대용량 테이블을 페이지네이션 없이 조회해 조용히 잘려나감
@@ -332,7 +332,7 @@ ADMIN_EMAILS=<dev-login 계정 이메일> npm run dev
 ## 핵심 루프 의존성 지도
 
 아래 테이블·함수 중 하나라도 건드리는 작업이면, **작업 시작 전에 오른쪽 열의 파일들을 전부
-확인**하고, 어떤 걸 건드리는지 사용자에게 평문으로 먼저 보고한다([04_PROJECT_SPEC.md](PRD/04_PROJECT_SPEC.md)
+확인**하고, 어떤 걸 건드리는지 사용자에게 평문으로 먼저 보고한다([04_PROJECT_SPEC.md](04_PROJECT_SPEC.md)
 "항상 해" 참고).
 
 | 건드리는 대상 | 반드시 같이 확인할 것 |
@@ -364,6 +364,6 @@ ADMIN_EMAILS=<dev-login 계정 이메일> npm run dev
 ---
 
 ## 관련 문서
-- [04_PROJECT_SPEC.md](PRD/04_PROJECT_SPEC.md) — "절대 하지 마" / "항상 해" 목록
-- [BADGE_ENGINE_UNIFIED.md](BadgeEngine/BADGE_ENGINE_UNIFIED.md) — 배지·드랍 판정 로직 단일 진실 원천
+- [04_PROJECT_SPEC.md](04_PROJECT_SPEC.md) — "절대 하지 마" / "항상 해" 목록
+- [BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) — 배지·드랍 판정 로직 단일 진실 원천
 - [20260811_001](../Tickets/20260811_001_Service_인벤토리-미생성으로-아이템배지-미발급.md), [20260811_004](../Tickets/20260811_004_Service_전체-티켓-운영문서-감사-핵심루프-잔존위험-4건-조치.md) — 이 문서의 근거가 된 감사 티켓

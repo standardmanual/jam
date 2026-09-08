@@ -874,7 +874,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 
 ## 13. Cron 작업
 
-**크론의 단일 진실 원천은 [`Specs/PRD/04_PROJECT_SPEC.md` 「Vercel Cron 작업」](PRD/04_PROJECT_SPEC.md#vercel-cron-작업)이다.**
+**크론의 단일 진실 원천은 [`Specs/PRD/04_PROJECT_SPEC.md` 「Vercel Cron 작업」](04_PROJECT_SPEC.md#vercel-cron-작업)이다.**
 경로·스케줄·인증 방식·제거된 크론의 이력이 모두 그곳에 있다. 실체는 `jam-web/vercel.json`의
 `crons` 배열이므로, 문서와 어긋나면 항상 그 파일이 옳다.
 

@@ -105,4 +105,4 @@ jam-web/supabase/seed/update_subway-poi-badge_images.sql (신규 — 실행된 U
 
 ### 잔여 이슈
 - 없음. 다음 디자인(예: 아이템배지)을 자동 생성할 때는 `scripts/badge-image-gen/configs/`에
-  새 config 파일만 추가하면 됨 ([[README.md]] 참고).
+  새 config 파일만 추가하면 됨 ([[JAM-OFFICE/Service Plan/Tickets/README]] 참고).

@@ -11,7 +11,7 @@ closed:
 
 ## 배경 / 문제 정의
 
-티켓 [20260907_2221](../P2-일반/20260907_2221_UI_장착개체-선택시트-ListRowCard-재구성.md) 게이트
+티켓 [20260907_2221](20260907_2221_UI_장착개체-선택시트-ListRowCard-재구성.md) 게이트
 리뷰가 실렌더 중 발견한 범위 밖 항목이다.
 
 `design-system/components/patterns/ItemSerialCode.jsx`를 브라우저에서 렌더하면 요소의

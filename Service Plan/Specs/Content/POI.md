@@ -45,5 +45,5 @@
       작성 완료, 실제 반영은 미리보기 확인 후 별도 승인 필요
 
 ## 관련 문서
-- [BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) — POI 기반 배지 발급 로직
+- [BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) — POI 기반 배지 발급 로직
 - 관련 티켓: `Tickets/20260726_006_*`, `20260727_001_*` (POI 일괄 등록 이력)

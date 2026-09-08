@@ -10,7 +10,7 @@ closed: 2026-08-30
 # [Service] LocalDate 하이드레이션 불일치 (React error #418)
 
 ## 배경 / 문제 정의
-티켓 [20260830_2104](./20260830_2104_Service_getTodayLeftStatus-불필요한-DB조회-제거.md)
+티켓 [20260830_2104](20260830_2104_Service_getTodayLeftStatus-불필요한-DB조회-제거.md)
 완료 후 발견된 잔여 이슈. staging(`jam-stage.vercel.app`) 홈 화면에서 브라우저 콘솔에
 "Minified React error #418"(하이드레이션 불일치)이 매 새로고침마다 재현된다.
 

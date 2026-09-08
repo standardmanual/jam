@@ -1,8 +1,8 @@
 # 그 외 소식 17종 — 문구 케이스북
 
 > 작성: 2026-08-27 / **v3 — 확정판** (남은 확인 7건 전부 결정)
-> 짝 문서: [RECAP_CASEBOOK.md](./RECAP_CASEBOOK.md) — ① 보상 획득(활동 결산) 6종
-> 관련: [PRD.md](./PRD.md) §3 소식 20종 / [DATA_MODEL.md](./DATA_MODEL.md) §4 묶음 모델 / [UX_WRITING_GUIDELINE.md](../../UX_WRITING_GUIDELINE.md)
+> 짝 문서: [RECAP_CASEBOOK.md](RECAP_CASEBOOK.md) — ① 보상 획득(활동 결산) 6종
+> 관련: [PRD.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/PRD.md) §3 소식 20종 / [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) §4 묶음 모델 / [UX_WRITING_GUIDELINE.md](UX_WRITING_GUIDELINE.md)
 
 **갱신 이력**
 
@@ -396,12 +396,12 @@ R3 적용. 괄호 안 사유는 유저 노출용 라벨을 쓴다 — 어드민 
 
 | 문서 | 갱신 내용 |
 |---|---|
-| [PRD.md](./PRD.md) §3 | ②③④⑤⑥⑧ 표의 문구·묶음 열. **#27 맞팔을 §7「만들지 않는 것」으로 이동** |
-| [PRD.md](./PRD.md) §4 T1 | 맞팔 성립 시 `followed`를 만들도록 변경 |
-| [PRD.md](./PRD.md) §3 ⑥ | 하루 상한을 「2건」→「2명」(R15) |
-| [DATA_MODEL.md](./DATA_MODEL.md) §2 | `mutual_follow`를 「예약됐으나 사용하지 않음」으로 표시 (ENUM 값은 남긴다) |
-| [DATA_MODEL.md](./DATA_MODEL.md) §4-2 | `group_key` — R11의 대상 단위 → 목록 단위 승격 조건 |
-| [RECAP_CASEBOOK.md](./RECAP_CASEBOOK.md) | R9 → R11 대체, CTA 규칙에 #24 근거 반영 |
+| [PRD.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/PRD.md) §3 | ②③④⑤⑥⑧ 표의 문구·묶음 열. **#27 맞팔을 §7「만들지 않는 것」으로 이동** |
+| [PRD.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/PRD.md) §4 T1 | 맞팔 성립 시 `followed`를 만들도록 변경 |
+| [PRD.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/PRD.md) §3 ⑥ | 하루 상한을 「2건」→「2명」(R15) |
+| [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) §2 | `mutual_follow`를 「예약됐으나 사용하지 않음」으로 표시 (ENUM 값은 남긴다) |
+| [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) §4-2 | `group_key` — R11의 대상 단위 → 목록 단위 승격 조건 |
+| [RECAP_CASEBOOK.md](RECAP_CASEBOOK.md) | R9 → R11 대체, CTA 규칙에 #24 근거 반영 |
 | `src/lib/i18n/ko.ts` | 따옴표 제거 11문구 + `msgPointsIn`·`msgPointsOut` + **묶음 문구 9개 신규** |
 | `src/lib/notifications/message.ts` | 묶음 렌더 분기, ⑥ 사람 묶음 |
 | `src/lib/notifications/href.ts` | 묶음 행의 목록 착지, #13 묶음 링크 제거 |

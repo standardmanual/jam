@@ -10,11 +10,11 @@
 
 | 문서 | 내용 | 언제 읽나 |
 |------|------|----------|
-| [01_PRD.md](./01_PRD.md) | 뭘 만드는지, 누가 쓰는지, 핵심 기능 목록(구현 상태 표시) | 프로젝트 시작 전 / 방향 확인할 때 |
-| [02_DATA_MODEL.md](./02_DATA_MODEL.md) | 데이터 구조, 엔티티 상세, 관계도 | DB 설계할 때 / 새 기능 추가할 때 |
-| [03_PHASES.md](./03_PHASES.md) | 실제 개발 이력(티켓 기준 시간순) + 현재 상태 요약 | 지금까지 뭐가 만들어졌는지 훑어볼 때 |
-| [04_PROJECT_SPEC.md](./04_PROJECT_SPEC.md) | 기술 스택, 절대 금지 목록, 환경변수 | AI에게 코드 시킬 때마다 함께 공유 |
-| [../UX_WRITING_GUIDELINE.md](../UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
+| [01_PRD.md](01_PRD.md) | 뭘 만드는지, 누가 쓰는지, 핵심 기능 목록(구현 상태 표시) | 프로젝트 시작 전 / 방향 확인할 때 |
+| [02_DATA_MODEL.md](02_DATA_MODEL.md) | 데이터 구조, 엔티티 상세, 관계도 | DB 설계할 때 / 새 기능 추가할 때 |
+| [03_PHASES.md](03_PHASES.md) | 실제 개발 이력(티켓 기준 시간순) + 현재 상태 요약 | 지금까지 뭐가 만들어졌는지 훑어볼 때 |
+| [04_PROJECT_SPEC.md](04_PROJECT_SPEC.md) | 기술 스택, 절대 금지 목록, 환경변수 | AI에게 코드 시킬 때마다 함께 공유 |
+| [../UX_WRITING_GUIDELINE.md](UX_WRITING_GUIDELINE.md) | 화면 문구·알림·에러 메시지 작성 기준 | 신규 기능 문구 작성 시 / 기존 문구 수정 시 항상 |
 
 > **2026-08-06 전면 갱신 완료**: 위 4개 문서를 `jam-web/src/app` 라우트 전체,
 > `supabase/migrations/` 001~074 전수, 프로젝트 설정을 코드와 대조해 현재 상태
@@ -38,7 +38,7 @@
 
 | 자료 | 내용 |
 |------|------|
-| [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md) | 2026-07-09~10 작성된 원래 Phase 계획 원문 (실행 안 됨, 참고용) |
+| [Archive/PHASES_ROADMAP_ARCHIVE.md](PHASES_ROADMAP_ARCHIVE.md) | 2026-07-09~10 작성된 원래 Phase 계획 원문 (실행 안 됨, 참고용) |
 | `History/Phase7~17_01~04` 등 | 각 Phase 시점의 4종 PRD 문서 스냅샷 |
 
 ---
@@ -47,7 +47,7 @@
 
 | 영역 | 문서 |
 |------|------|
-| 배지·드랍 엔진 판정 로직 (드랍엔진 v2, 세계관 모멘텀, 앰비언트 드랍 등) | [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) |
+| 배지·드랍 엔진 판정 로직 (드랍엔진 v2, 세계관 모멘텀, 앰비언트 드랍 등) | [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) |
 | 액티비티배지·컬렉션·아이템배지·세계관·POI 컨텐츠 목록 | [Specs/Content/](../Content/) |
 | 실제 개발 작업 이력 원본 | [Tickets/](../../Tickets/) |
 
@@ -70,7 +70,7 @@
 | 스타일 | Tailwind CSS 4 + Radix UI |
 | 지도 / POI 자동수집 | **네이버 지도(NCP Maps.js) / 네이버 지역검색 오픈API** |
 
-상세는 [04_PROJECT_SPEC.md](./04_PROJECT_SPEC.md) 참고.
+상세는 [04_PROJECT_SPEC.md](04_PROJECT_SPEC.md) 참고.
 
 ---
 

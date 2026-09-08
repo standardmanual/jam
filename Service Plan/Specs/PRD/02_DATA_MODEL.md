@@ -179,7 +179,7 @@ badges / item_books / factions 세 테이블이 같은 배경 컬럼 세트를 �
 `actor_user_id`는 라이브 FK(`ON DELETE SET NULL`) + `*_username` 스냅샷을 함께 가진다 —
 계정 탈퇴로 FK가 비어도 스냅샷은 남는다. 계정 탈퇴 시 `Orphan` 이벤트는 앱 로직이 아니라
 `BEFORE DELETE ON public.users` 트리거(`log_orphan_custody_events()`)로 기록된다. 상세는
-[BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.5-1 참고. 어드민 조회 화면은
+[BadgeEngine 문서](BADGE_ENGINE_UNIFIED.md) §3.5-1 참고. 어드민 조회 화면은
 별도 티켓([20260829_2139](../../Tickets/20260829_2139_Admin_아이템배지-발급현황-이력조회-화면.md)).
 
 ---
@@ -217,7 +217,7 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 ## 5. 세계관 (faction) — 신규 도메인
 
 ### factions
-10개 세계관. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/FACTIONS.md](../Content/FACTIONS.md) 참고.
+10개 세계관. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/FACTIONS.md](FACTIONS.md) 참고.
 
 `background_color`/`background_shader_id`(20260818_004) 외에 `background_image_url`/`background_video_url`
 (nullable, 20260819_013), `background_animation`(jsonb nullable, 20260901_1944) 보유. 세계관 자체는
@@ -232,7 +232,7 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 `AdjacencyEditor.tsx`처럼 일부 필드만 담아 호출하는 화면도 안전하게 이 엔드포인트를 재사용할 수 있다.
 
 ### faction_adjacency
-세계관 간 인접 그래프 (PK: faction_id + adjacent_faction_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.2 참고.
+세계관 간 인접 그래프 (PK: faction_id + adjacent_faction_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) §3.2 참고.
 
 ---
 
@@ -315,7 +315,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 어드민 주도 드랍 이벤트용 초기 테이블. 034(드랍엔진 v2) 이후 `drop_policy`가 사실상 후속 확장판 — 실사용 여부는 코드 확인 필요.
 
 ### user_drop_state / drop_policy (신규 — 드랍엔진 v2)
-유저별 드랍 모멘텀 상태(연속 common 카운터, 마지막 조각 피티, 일일 드랍 수)와 엔진 전체 파라미터(레어리티 확률, 모멘텀/인접/탐험 가중치). 상세 로직은 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3 참고.
+유저별 드랍 모멘텀 상태(연속 common 카운터, 마지막 조각 피티, 일일 드랍 수)와 엔진 전체 파라미터(레어리티 확률, 모멘텀/인접/탐험 가중치). 상세 로직은 [BadgeEngine 문서](BADGE_ENGINE_UNIFIED.md) §3 참고.
 
 > ℹ️ **등급 컬럼명은 앱 키와 일치한다** — `drop_policy`·`ambient_drop_config`는
 > `rarity_epic`/`rarity_mystic`, `abusing_policy`는 `soft|hard_epic_rate`/`soft|hard_mystic_rate`.
@@ -373,7 +373,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 선점하는 **시스템 전용 필드**다 — 어드민 저장 경로에서 제외돼 있다(마이그레이션 137, 티켓
 [20260906_1206](../../Tickets/20260906_1206_BadgeEngine_앰비언트-드랍-배포시각-어드민설정.md)).
 `batch_size`/`max_active_per_poi`는 3축에 속하지 않는 실행
-파라미터. 상세 로직은 [BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.12 참고.
+파라미터. 상세 로직은 [BadgeEngine 문서](BADGE_ENGINE_UNIFIED.md) §3.12 참고.
 
 > **구 `ambient_drop_policy`(마이그레이션 044, 100에서 DROP)와는 스키마가 다르다.** 구 모델은
 > "활성 POI 수 × 커버리지 비율 → 부족분 보충"이라는 전역 목표치 모델이었고, 신규 모델은
@@ -390,7 +390,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 ### combine_policy / user_combine_state (신규)
 세계관 다양성 티어별 확률 정책(싱글톤) + 유저별 연속 실패 피티 카운터.
 
-> 조합 시스템은 v1(2026-07 초 계획) → v2(2026-07-27 재설계, "정석 레시피/재료 정확 매칭")로 갈아엎어짐. 현재 상세는 [Specs/Content/COMBINE_RECIPES.md](../Content/COMBINE_RECIPES.md) 참고.
+> 조합 시스템은 v1(2026-07 초 계획) → v2(2026-07-27 재설계, "정석 레시피/재료 정확 매칭")로 갈아엎어짐. 현재 상세는 [Specs/Content/COMBINE_RECIPES.md](COMBINE_RECIPES.md) 참고.
 
 ---
 
