@@ -16,7 +16,11 @@ export default async function NewPoiPage() {
         <Link href="/admin/poi" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
           ← POI 목록
         </Link>
-        <h1 className="text-2xl font-bold mt-2">POI 등록</h1>
+        <h1 className="text-2xl font-bold mt-2">POI 임시등록</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          자동수집은 중단됐습니다(티켓 20260907_1811). 새 POI는 여기서 임시등록한 뒤 검토
+          큐에서 확인·수정하고 명시적으로 활성화해 주세요.
+        </p>
       </div>
       <PoiForm categories={categories} />
     </div>

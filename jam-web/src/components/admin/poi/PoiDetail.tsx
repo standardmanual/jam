@@ -45,6 +45,11 @@ export function PoiDetail({ poi, linkedBadgeName, linkedBadgeDeletedAt, category
                 >
                   {poi.is_active ? '활성' : '비활성'}
                 </span>
+                {poi.pending_review && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                    검토대기
+                  </span>
+                )}
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {categoryLabel || poi.category}
