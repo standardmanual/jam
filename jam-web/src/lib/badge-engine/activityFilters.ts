@@ -18,6 +18,7 @@
 import type { NormalizedActivity } from '@/types/strava'
 import type { BadgeCondition, DayOfWeek } from '@/types/database'
 import { getConditionField } from './conditionRegistry'
+import { kmhToPaceSecPerKm } from '@/types/strava'
 
 // ── 축1 게이트 (걷기 전용 "진짜 걷기" 판정) ────────────────────────────────
 // 걷기(activity_type='walking') 활동이 이 네 값을 모두 통과해야 어떤 걷기 배지
@@ -573,16 +574,35 @@ export function evaluateRestConditions(
 // 각자 세면 「화면은 3회인데 발급은 2회」로 발급-진행률이 어긋난다(0110이 반복 지적한
 // 실패 패턴). `evaluateRestConditions`와 같은 태도로 이 파일에 둔다.
 //
-// 콘텐츠가 채워진 지표는 현재 3종뿐이다(선행 티켓 20260906_2055 콘텐츠 값 확정):
-// `single_distance_km`(한 번의 거리) · `duration_minutes`(한 번의 이동시간) ·
-// `max_elevation_m`(도달 고도). `PersonalRecordMetric` 타입엔 9종이 더 있지만 카탈로그에
-// 값이 없다 — 지원을 넓히려면 `personalRecordMetricValue`의 분기와 이 상수를 함께 늘린다.
-export const SUPPORTED_PERSONAL_RECORD_METRICS = ['single_distance_km', 'duration_minutes', 'max_elevation_m'] as const
+// 콘텐츠가 채워진 지표는 현재 4종이다(선행 티켓 20260906_2055 콘텐츠 값 확정 3종 +
+// 티켓 20260908_1438 페이스 1종 추가): `single_distance_km`(한 번의 거리) ·
+// `duration_minutes`(한 번의 이동시간) · `max_elevation_m`(도달 고도) ·
+// `max_pace_sec_per_km`(페이스, 값이 작을수록 갱신). `PersonalRecordMetric` 타입엔 그 외에도
+// 더 있지만 카탈로그에 값이 없다 — 지원을 넓히려면 `personalRecordMetricValue`·
+// `PERSONAL_RECORD_METRIC_DIRECTION`의 분기와 이 상수를 함께 늘린다.
+export const SUPPORTED_PERSONAL_RECORD_METRICS = [
+  'single_distance_km',
+  'duration_minutes',
+  'max_elevation_m',
+  'max_pace_sec_per_km',
+] as const
 export type SupportedPersonalRecordMetric = (typeof SUPPORTED_PERSONAL_RECORD_METRICS)[number]
 
-/** `personal_record_break_metric` 값이 지금 엔진이 평가할 수 있는 3종 중 하나인지 */
+/** `personal_record_break_metric` 값이 지금 엔진이 평가할 수 있는 지표 중 하나인지 */
 export function isSupportedPersonalRecordMetric(value: unknown): value is SupportedPersonalRecordMetric {
   return typeof value === 'string' && (SUPPORTED_PERSONAL_RECORD_METRICS as readonly string[]).includes(value)
+}
+
+/**
+ * 지표별 「기록 갱신」 방향. `conditionRegistry.ts`의 `ConditionDirection`(`'higher'|'lower'`)
+ * 관례를 그대로 따른다 — 대부분의 지표는 값이 클수록 갱신(`higher`)이지만, 페이스는 값이
+ * 작을수록(빠를수록) 갱신(`lower`)이라 반대다.
+ */
+const PERSONAL_RECORD_METRIC_DIRECTION: Record<SupportedPersonalRecordMetric, 'higher' | 'lower'> = {
+  single_distance_km: 'higher',
+  duration_minutes: 'higher',
+  max_elevation_m: 'higher',
+  max_pace_sec_per_km: 'lower',
 }
 
 /** 지표별로 활동 1건에서 비교할 값을 꺼낸다. 값이 없는 활동(고도계 미탑재 등)은 undefined */
@@ -594,6 +614,8 @@ function personalRecordMetricValue(metric: SupportedPersonalRecordMetric, a: Nor
       return a.movingTimeSec / 60
     case 'max_elevation_m':
       return a.maxElevationM
+    case 'max_pace_sec_per_km':
+      return kmhToPaceSecPerKm(a.averageSpeedKmh)
   }
 }
 
@@ -602,24 +624,31 @@ function personalRecordMetricValue(metric: SupportedPersonalRecordMetric, a: Nor
  * 마스터 티켓 20260905_0026 「가입 시점부터 카운트」)를 시간순으로 훑으며, 지표 값이
  * 그때까지의 최고 기록을 **엄격히 초과**할 때마다 1회로 센다.
  *
- * 최초의 유효 활동은 항상 1회로 잡힌다 — 직전 기록이 없으므로(비교 대상이 −Infinity) 어떤
- * 값도 새 기록이다. Strava 자체의 PR(personal record) 개념과 같은 태도다(예: `hiking:R1`
- * 레벨 1 문구 「닿아본 적 없는 높이에 처음 섰습니다」— 첫 활동이 곧 최초 기록이라는 뜻).
+ * 최초의 유효 활동은 항상 1회로 잡힌다 — 직전 기록이 없으므로(비교 대상이 방향별 최악값,
+ * `higher`는 −Infinity·`lower`는 +Infinity) 어떤 값도 새 기록이다. Strava 자체의 PR(personal
+ * record) 개념과 같은 태도다(예: `hiking:R1` 레벨 1 문구 「닿아본 적 없는 높이에 처음
+ * 섰습니다」— 첫 활동이 곧 최초 기록이라는 뜻).
  *
  * 지표 값이 없는 활동(예: 고도계 미탑재)은 시퀀스에서 완전히 건너뛴다 — 데이터 없음을
  * 기록 갱신 실패로 세지 않고, 최고 기록 갱신에도 영향을 주지 않는다.
+ *
+ * 지표 방향(`PERSONAL_RECORD_METRIC_DIRECTION`)에 따라 "갱신"의 의미가 갈린다 — `higher`
+ * 지표(거리·시간·고도)는 값이 커질 때, `lower` 지표(페이스)는 값이 작아질 때(더 빨라질 때)
+ * 기록 갱신으로 센다.
  */
 export function countPersonalRecordBreaks(
   metric: SupportedPersonalRecordMetric,
   activities: NormalizedActivity[]
 ): number {
+  const direction = PERSONAL_RECORD_METRIC_DIRECTION[metric]
   const sorted = [...activities].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
-  let best = -Infinity
+  let best = direction === 'higher' ? -Infinity : Infinity
   let count = 0
   for (const a of sorted) {
     const value = personalRecordMetricValue(metric, a)
     if (value === undefined) continue
-    if (value > best) {
+    const isNewRecord = direction === 'higher' ? value > best : value < best
+    if (isNewRecord) {
       best = value
       count++
     }

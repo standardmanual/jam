@@ -113,6 +113,54 @@ describe('personal_record_break — max_elevation_m 지표 (hiking:R1 형태)', 
   })
 })
 
+describe('personal_record_break — max_pace_sec_per_km 지표 (running:R2 형태, 티켓 20260908_1438)', () => {
+  // 페이스는 "값이 작을수록(빠를수록) 갱신"인 lower 방향 지표라, 나머지 3종(higher 방향)과
+  // 반대 부등호로 판정돼야 한다. averageSpeedKmh가 클수록 페이스(초/km)는 작아진다.
+  it('첫 활동은 항상 기록 갱신 1회', () => {
+    const cond: BadgeCondition = { activity_type: 'running', single_distance_km: 5, personal_record_break: 1, personal_record_break_metric: 'max_pace_sec_per_km' }
+    const acts = [act({ jamActivityType: 'running', distanceKm: 5, averageSpeedKmh: 10 })]
+    expect(checkCondition(cond, acts)).toBe(true)
+  })
+
+  it('더 느린 페이스(속도 감소)로 반복해도 갱신 횟수가 늘지 않는다', () => {
+    const cond: BadgeCondition = { activity_type: 'running', single_distance_km: 5, personal_record_break: 2, personal_record_break_metric: 'max_pace_sec_per_km' }
+    const acts = [
+      act({ jamActivityType: 'running', distanceKm: 5, averageSpeedKmh: 10, startDate: '2026-07-01T00:00:00Z', startDateLocal: '2026-07-01T00:00:00' }), // 페이스 360초/km
+      act({ jamActivityType: 'running', distanceKm: 5, averageSpeedKmh: 8, startDate: '2026-07-02T00:00:00Z', startDateLocal: '2026-07-02T00:00:00' }), // 450초/km — 느려짐, 갱신 아님
+    ]
+    const r = evaluateConditionDetailed(cond, acts)
+    expect(r.pass).toBe(false)
+    expect(r.actual).toBe('1회')
+  })
+
+  it('더 빠른 페이스(속도 증가)로 갱신하면 2회로 오르고 조건을 통과한다', () => {
+    const cond: BadgeCondition = { activity_type: 'running', single_distance_km: 5, personal_record_break: 2, personal_record_break_metric: 'max_pace_sec_per_km' }
+    const acts = [
+      act({ jamActivityType: 'running', distanceKm: 5, averageSpeedKmh: 8, startDate: '2026-07-01T00:00:00Z', startDateLocal: '2026-07-01T00:00:00' }), // 450초/km
+      act({ jamActivityType: 'running', distanceKm: 5, averageSpeedKmh: 9, startDate: '2026-07-02T00:00:00Z', startDateLocal: '2026-07-02T00:00:00' }), // 400초/km — 갱신 아님(9<10 아니지만 8보다 빠름 — 두번째 갱신)
+      act({ jamActivityType: 'running', distanceKm: 5, averageSpeedKmh: 12, startDate: '2026-07-03T00:00:00Z', startDateLocal: '2026-07-03T00:00:00' }), // 300초/km — 세번째 갱신
+    ]
+    expect(checkCondition(cond, acts)).toBe(true) // 450→400→300, 3회 모두 갱신 (2회 이상 충족)
+  })
+
+  it('진행 계산(badgeProgress)도 같은 방향으로 센다 — 발급과 어긋나지 않는다', () => {
+    // single_distance_km 없이(cycling:R1/running:R1과 같은 형태) 검증한다 — single_distance_km는
+    // SCALAR_AXIS_KEYS에도 속해 personal_record_break(COUNTER_AXIS_KEYS)와 함께 있으면
+    // classifyConditionKind가 axisCount 충돌로 'unsupported'를 반환한다(running:R2 실콘텐츠의
+    // 기존 형태, 이 티켓 범위 밖의 별개 이슈 — 완료 기록 alerts 참고). 여기서 확인하려는 건
+    // "같은 지표를 badgeProgress도 같은 방향(lower)으로 센다"는 점이므로 그 축 하나만 둔다.
+    expect(
+      classifyBadgeProgressKind({ activity_type: 'running', personal_record_break: 3, personal_record_break_metric: 'max_pace_sec_per_km' })
+    ).toBe('cumulative')
+  })
+
+  it('실콘텐츠 형태(single_distance_km + personal_record_break)는 axisCount 충돌로 unsupported다 — 이 티켓 범위 밖의 기존 동작, 회귀 아님', () => {
+    expect(
+      classifyBadgeProgressKind({ activity_type: 'running', single_distance_km: 5, personal_record_break: 3, personal_record_break_metric: 'max_pace_sec_per_km' })
+    ).toBe('unsupported')
+  })
+})
+
 describe('personal_record_break — 지표별 형제 배지는 서로 간섭하지 않는다 (walking:B1 ↔ B2)', () => {
   const acts = [
     // 1번째 활동: 거리 최고지만 시간은 짧음

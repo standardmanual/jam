@@ -807,8 +807,9 @@ export function evaluateConditionDetailed(
   // 「가입 시점 이후 활동만으로 직접 계산한다」(마스터 티켓 20260905_0026) — `filtered`가
   // 이미 activity_type(+ 걷기 축1 게이트)로 좁혀진, 가입 앵커 이후 이력이라 그대로 쓴다.
   // `personal_record_break_metric`이 짝 필드로 강제되므로(`PAIR_ENFORCED_CONDITION_KEYS`)
-  // 이 시점에 도달했다면 필드 자체는 있다 — 다만 값이 «지금 지원하는 3종» 중 하나인지는
-  // 여기서 다시 확인한다(콘텐츠가 없는 나머지 9종을 조용히 통과시키지 않기 위해).
+  // 이 시점에 도달했다면 필드 자체는 있다 — 다만 값이 «지금 지원하는 지표»
+  // (`SUPPORTED_PERSONAL_RECORD_METRICS`) 중 하나인지는 여기서 다시 확인한다(콘텐츠가 없는
+  // 나머지를 조용히 통과시키지 않기 위해).
   if (condition.personal_record_break !== undefined) {
     const metric = condition.personal_record_break_metric
     if (!isSupportedPersonalRecordMetric(metric)) {
@@ -816,7 +817,7 @@ export function evaluateConditionDetailed(
         pass: false,
         reason: '개인 기록 지표 평가 미구현',
         actual: metric ? `지표: ${metric}` : '-',
-        required: '평가 가능한 개인 기록 지표(single_distance_km · duration_minutes · max_elevation_m)',
+        required: '평가 가능한 개인 기록 지표(single_distance_km · duration_minutes · max_elevation_m · max_pace_sec_per_km)',
       }
     }
     const breaks = countPersonalRecordBreaks(metric, filtered)

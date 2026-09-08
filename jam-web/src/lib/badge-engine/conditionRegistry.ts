@@ -1293,10 +1293,11 @@ export const CONDITION_FIELDS = [
     input: 'select',
     pairedWith: ['personal_record_break'],
     direction: null,
-    // `personal_record_break`의 평가 구현(티켓 20260906_2055)이 이 필드를 실제로 읽기
-    // 시작했다 — `engine`으로 뒤집는다. 다만 실제로 값이 채워진 지표는 3종뿐이다
-    // (`single_distance_km`·`duration_minutes`·`max_elevation_m`, activityFilters.ts의
-    // `SUPPORTED_PERSONAL_RECORD_METRICS`) — 나머지 값은 평가 시점에 개별적으로 막힌다.
+    // `personal_record_break`의 평가 구현(티켓 20260906_2055, 20260908_1438)이 이 필드를
+    // 실제로 읽기 시작했다 — `engine`으로 뒤집는다. 다만 실제로 값이 채워진 지표는 4종뿐이다
+    // (`single_distance_km`·`duration_minutes`·`max_elevation_m`·`max_pace_sec_per_km`,
+    // activityFilters.ts의 `SUPPORTED_PERSONAL_RECORD_METRICS`) — 나머지 값은 평가 시점에
+    // 개별적으로 막힌다.
     evaluation: 'engine',
     chip: (c) =>
       `기록 지표: ${PERSONAL_RECORD_METRIC_FORM_OPTIONS.find((o) => o.value === c.personal_record_break_metric)?.label ?? c.personal_record_break_metric}`,
