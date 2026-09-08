@@ -107,6 +107,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | valid_from / valid_until | 노출 기간 |
 | point_reward | 발급 시 지급 포인트 |
 | deleted_at | 소프트 삭제 |
+| deactivated_by_item_book_id | 컬렉션(`item_books`) 캐스케이드 비활성화로 이 배지가 소프트삭제됐다면 그 컬렉션 id(nullable, `item_books(id)` FK, `ON DELETE SET NULL`, 20260908_2129). 개별 사유로 비활성화됐거나 활성 상태면 `NULL`. 컬렉션 재활성화 캐스케이드가 "이 컬렉션이 죽인 배지만" 되살릴 때의 판별 기준 — 개별 배지 활성/비활성 API는 조작할 때마다 이 값을 `NULL`로 리셋해 해당 배지를 "개별 관리 대상"으로 전환한다(컬렉션이 나중에 재활성화돼도 다시 건드려지지 않음) |
 | background_color | 배지 상세화면 배경 테마 컬러(nullable). `background_image_url`이 없을 때만 렌더링에 쓰임. 어드민에서 이미지 업로드 시 평균 컬러 자동 프리필 + 수동 오버라이드 가능(20260818_003). TopNav·히어로카드·고정 배경 레이어에 실제 렌더링됨 |
 | background_shader_id | 배지 상세화면 배경 쉐이더 식별자(nullable). 어드민에 선택 UI는 있으나(20260818_003, placeholder 목록) **렌더링에는 미연결** — 값이 있어도 무시됨. `background_image_url` 도입(20260819_008) 이후 이 컬럼을 통한 실시간 쉐이더 렌더링 경로는 채택되지 않음 — 사실상 레거시 |
 | background_image_url | 배경 제너레이터(패턴/애니메이션 + Paper 셰이더 필터 합성)로 만든 배경을 어드민에서 static PNG로 구워(bake) Storage에 올린 뒤 저장하는 URL(nullable, 20260819_008). **`background_color`보다 우선 렌더링**됨(`getBadgeBackgroundStyle`) — 값이 있으면 이 이미지를, 없으면 `background_color`로 폴백. `background_color`와 상호 배타적으로 쓰임(어드민에서 저장 시 반대쪽을 null로 정리, DB 제약 아님). 원시 설정값(이미지·패턴/애니메이션 파라미터·필터 종류)은 저장하지 않음 — 재편집 가능한 설정이 아니라 완성된 이미지 1장 |
