@@ -47,7 +47,7 @@ export interface BadgeRevealCarouselProps {
   onMoreClick?: () => void;
   /** 닫기 버튼·Escape */
   onClose?: () => void;
-  /** 중앙 카드 폭(px). 기본 344 = 서비스 컬럼 430px의 80% */
+  /** 중앙 카드 폭(px). 기본 292 ≈ 서비스 컬럼 430px의 68%(344px 대비 85%) */
   cardWidth?: number;
   /** 카드 높이(px). 생략 시 cardWidth × 1.34 */
   cardHeight?: number;
