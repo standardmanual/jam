@@ -51,7 +51,8 @@ import { IconButton } from '../buttons/IconButton.jsx';
  *   대체한다(디자인 시스템은 서비스 코드를 import할 수 없어 동일 로직을 내부 구현).
  *
  * 레이아웃 메모
- *   중앙 카드 폭 기본 344px = 서비스 컬럼(430px)의 80%. 이웃 카드는 화면 밖으로 잘려도 된다.
+ *   중앙 카드 폭 기본 292px ≈ 서비스 컬럼(430px)의 68%(344px 대비로는 85%). 이웃 카드는
+ *   화면 밖으로 잘려도 된다.
  *   닫기 버튼은 카드 DOM 안이 아니라 **스테이지 기준 절대 위치**에 둔다 — 카드가 preserve-3d
  *   안에서 rotateY/scale 변환을 받기 때문에, 카드 안에 넣으면 버튼도 함께 기울고 축소돼
  *   터치 타겟이 뒤틀린다.
@@ -139,7 +140,7 @@ export function BadgeRevealCarousel({
   moreCount = 0,
   onMoreClick,
   onClose,
-  cardWidth = 344,
+  cardWidth = 292,
   cardHeight,
   closeLabel = '닫기',
   moreLabel = '전체 보기',
@@ -469,7 +470,9 @@ export function BadgeRevealCarousel({
                   .join(', '),
               }}
             >
-              {kind === 'badge' && <BadgeCard item={item} foldedCount={foldedCount} />}
+              {kind === 'badge' && (
+                <BadgeCard item={item} foldedCount={foldedCount} cardWidth={cardWidth} />
+              )}
               {kind === 'more' && (
                 <MoreCard count={moreCount} label={moreLabel} message={moreMessage} onClick={onMoreClick} />
               )}
@@ -501,9 +504,20 @@ export function BadgeRevealCarousel({
   );
 }
 
+/**
+ * 이미지 정사각 한 변 = 카드 폭 × 이 비율. 카드 높이(폭×1.34)가 아니라 **카드 폭 기준**인 이유는
+ * 캐러셀 원 설계가 "모든 카드는 고정 크기 사각 박스"(cardBaseStyle의 width/height 상수)이기
+ * 때문이다 — 카드마다 이미지가 남는 세로 공간을 흡수해 키가 달라지는 가변 높이 재설계는
+ * 이 전제를 깬다(20260908_2008 2차 시도). 대신 이미지 자체를 고정 크기로 박고
+ * `justifyContent:'center'`가 콘텐츠 블록 전체를 카드 중앙에 배치하게 해, 텍스트가 짧으면
+ * 블록이 작아지고 카드 상하로 여백이 고르게 분산되도록 한다.
+ */
+const IMAGE_SIZE_RATIO = 0.58;
+
 /** 배지 카드 — 이미지 → 칩 줄(등급 또는 Lv.N, ×N) → 이름 → 설명(3줄) */
-function BadgeCard({ item, foldedCount = 1 }) {
+function BadgeCard({ item, foldedCount = 1, cardWidth }) {
   const imageUrl = item?.imageUrl;
+  const imageSize = Math.round(cardWidth * IMAGE_SIZE_RATIO);
   const level = item?.level ?? null;
   // 기록된 회차와 접힌 장수 중 큰 쪽이 사실이다(회차는 카드 장수보다 많을 수 있다).
   const earnCount = Math.max(item?.earnCount ?? 1, foldedCount);
@@ -526,17 +540,20 @@ function BadgeCard({ item, foldedCount = 1 }) {
         animation: 'ds-badge-reveal-in 220ms var(--ease-out) both',
       }}
     >
-      {/* 이미지 — 남는 공간을 차지하되 카드 높이의 46%를 넘지 않는다.
-          텍스트(등급·이름·설명)는 flexShrink:0이라 절대 눌리지 않고, 이미지가 먼저 양보한다.
-          20260824: 이름 2행 + 설명 3행일 때 마지막 행이 잘리던 문제 수정 —
-          원인은 텍스트 요소들이 기본 flex-shrink:1이라 이미지에 밀려 높이가 깎이면서
-          -webkit-box의 overflow:hidden에 잘려나간 것이었다. */}
+      {/* 이미지 — 카드 폭 비례 고정 정사각(IMAGE_SIZE_RATIO). growable(flex:'1 1 auto')이
+          아니라 flex:'0 0 auto'인 이유: 남는 공간을 흡수해 채우던 이전 구조는 짧은 텍스트
+          카드에서도 이미지가 최대치까지 커져 그 아래에 빈 공간이 그대로 남았다(1차 시도
+          FAIL — cap만 낮춰도 flex가 남는 공간을 다시 카드 상하로 재분배할 뿐 사라지지
+          않았다). 이미지를 고정 크기로 박으면 콘텐츠 블록 전체 높이가 텍스트 길이를 그대로
+          반영하고, `justifyContent:'center'`가 그 블록을 카드 중앙에 놓아 여백이 상하로
+          고르게 분산된다.
+          텍스트(등급·이름·설명)는 flexShrink:0이라 절대 눌리지 않는다 — 20260824: 이름 2행 +
+          설명 3행일 때 마지막 행이 잘리던 문제 수정. */}
       <div
         style={{
-          flex: '1 1 auto',
-          minHeight: 0,
-          maxHeight: '46%',
-          width: '100%',
+          flex: '0 0 auto',
+          width: imageSize,
+          height: imageSize,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
