@@ -125,6 +125,7 @@ export default function BadgeFamilyRow({
     // 안 했다」는 틀린 사실이 된다(DS `BadgeStampRow.fraction` 주석과 같은 규약).
     const stampFraction =
       rawProgress && rawProgress.kind !== 'unsupported' ? rawProgress.progress : null
+    const frontierEarned = frontierStage ? earnedBadgeIds.has(frontierStage.id) : false
     return (
       <FamilyRowShell stage={frontierStage} onLockClick={onLockClick} label={family.name}>
         <BadgeStampRow
@@ -133,11 +134,17 @@ export default function BadgeFamilyRow({
           count={axis ? Math.floor(axis.current) : null}
           caption={rawProgress ? formatStampCaption(rawProgress, progressConditionText) : null}
           fraction={stampFraction}
-          metaText={formatFamilyMetaLine(
-            frontierStage?.rarity ? (RARITY_LABEL[frontierStage.rarity] ?? null) : null,
-            null
-          )}
-          earned={frontierStage ? earnedBadgeIds.has(frontierStage.id) : false}
+          // 프런티어 눈금이 이미 획득된 상태면(최고 등급까지 다 받음) 「다음 {등급}」을
+          // 적지 않는다 — 더 다음이 없다(티켓 20260908_1727).
+          metaText={
+            frontierStage && !frontierEarned
+              ? formatFamilyMetaLine(
+                  frontierStage.rarity ? (RARITY_LABEL[frontierStage.rarity] ?? null) : null,
+                  null
+                )
+              : null
+          }
+          earned={frontierEarned}
           imageUrl={frontierStage?.imageUrl ?? null}
           alt={family.name}
         />
