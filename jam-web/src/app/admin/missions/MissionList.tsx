@@ -9,6 +9,10 @@ import ImageUploadField from '@/components/admin/ImageUploadField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import BadgeSearchSelect, { type BadgeSearchResult } from '@/components/admin/BadgeSearchSelect'
 import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
+// 판정 시뮬레이션 패널 — 배지 폼과 공용 컴포넌트(티켓 20260908_1554, 20260908_1632).
+// mission_type='engine_condition'일 때만 붙인다 — 나머지 5종은 checker.ts의 boolean-only
+// 판정 경로라 사유·실제값 대 필요값 표시가 불가능하다.
+import ConditionSimulationPanel from '@/components/admin/ConditionSimulationPanel'
 import { MissionTable } from './MissionTable'
 
 interface Props {
@@ -74,6 +78,17 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
       return null
     }
     return checkMissionCondition(form.mission_type as MissionType, parsed).warning
+  })()
+
+  // 판정 시뮬레이션에 넘길 파싱된 조건값 — mission_type='engine_condition'일 때만 쓴다.
+  // JSON이 아직 유효하지 않으면(입력 중) null을 넘겨 조건 없음으로 취급한다(저장 자체는
+  // conditionError가 이미 막는다).
+  const missionConditionPreview = (() => {
+    try {
+      return JSON.parse(form.condition_json)
+    } catch {
+      return null
+    }
   })()
 
   const rewardBadgeChips = form.reward_badge_ids
@@ -260,6 +275,17 @@ export default function MissionList({ missions, completionCounts, badgeLabels }:
               {!conditionError && conditionWarning && <p className="text-amber-600 text-xs mt-1">{conditionWarning}</p>}
               <p className="text-muted-foreground text-xs mt-1">예: {`{"distance_km": 50, "activity_type": "cycling"}`}</p>
             </div>
+
+            {/* 판정 시뮬레이션 — mission_type='engine_condition' 전용 (티켓 20260908_1632).
+                나머지 5종은 checker.ts의 boolean-only 판정이라 사유 표시가 불가능해 제외한다. */}
+            {form.mission_type === 'engine_condition' && (
+              <div className="col-span-2">
+                <ConditionSimulationPanel
+                  condition={missionConditionPreview}
+                  apiPath="/api/admin/missions/simulate-condition"
+                />
+              </div>
+            )}
 
             {/* 보상 구성 — 배지 복수 선택 + 포인트 */}
             <div className="col-span-2 border border-border rounded-2xl p-4 space-y-3">
