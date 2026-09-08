@@ -74,30 +74,114 @@ POI 픽업이 처음으로 이 갭을 드러낸 경로다.
   (`/jam-work` 1.6절의 병존 구현 8종 규칙)
 
 ## 구현 계획
-> 착수 시 작성.
+`src/components/ui/BottomSheet.tsx`를 직접 수정한다(오케스트레이터 UI 재사용 판정 — 아래
+"주요 의사결정" 참조). 13개 사용처(정확히는 직접 import 8개 파일, 화면 기준 13개 진입점)를
+전수 확인하고, 드래그-투-클로즈(포인터 핸들러)와 포커스 트랩(키보드 핸들러)이 서로 다른
+이벤트 축이라 충돌 없음을 확인한다.
 
 ---
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+1. **role="dialog" + aria-modal + aria-labelledby** — 시트 본체(`sheetRef`)에 `role="dialog"`,
+   `aria-modal="true"`를 항상 붙이고, `title`이 있을 때만 `useId()`로 생성한 `titleId`를
+   `aria-labelledby`/`<h2 id>`에 연결한다. `title`이 없는 시트(BadgeShareButton·ItemEarnHistory·
+   PoiEarnHistory·BadgeDetailSheet·BadgeUnlockSheet)는 티켓 문구("title이 있을 때") 그대로
+   레이블 없이 둔다.
+2. **포커스 트랩·복귀** — `open`이 true가 되는 순간(이미 DOM에 붙어 있는 시점) 열기 전
+   `document.activeElement`를 캡처하고, 시트 내부의 첫 포커스 가능 요소(없으면 시트 자체,
+   `tabIndex={-1}`)로 포커스를 옮긴다. `keydown` 리스너로 Tab을 시트 내부에 순환시키고
+   (Shift+Tab 포함, 활성 요소가 시트 밖으로 나가면 강제로 되돌림), 닫힐 때(effect cleanup)
+   캡처해둔 요소로 복귀한다. 그 요소가 그새 DOM에서 사라졌으면(장착 성공 후 버튼 텍스트
+   교체 등) `document.contains` 체크로 건너뛰어 존재하지 않는 요소에 `.focus()`를 호출하지
+   않는다. `onClose`는 대부분 호출부가 인라인 화살표로 넘기므로 매 렌더 아이덴티티가
+   바뀐다 — effect 의존성에 `onClose`를 직접 넣으면 시트가 열려 있는 동안 부모가 리렌더될
+   때마다 포커스를 되채가는 회귀가 생겨, `onCloseRef`로 최신값만 참조하고 effect는 `[open]`
+   에만 의존하도록 분리했다.
+3. **Escape 닫기** — 같은 `keydown` 리스너에서 `Escape` 시 `onCloseRef.current()` 호출.
+4. **reduced-motion 350ms 뒷화면 탭 먹힘** — 원인은 두 겹이었다. (a) 백드롭(`.t-panel-backdrop`)
+   에 `pointer-events` 규칙 자체가 없어 기본값 `auto`로 opacity 0 상태에서도 클릭을 계속
+   가로챘다(패널 본체 `.t-panel-slide`는 이미 `data-open` 연동 `pointer-events: none/auto`를
+   쓰고 있었는데 백드롭만 빠져 있었다). (b) 루트 `fixed inset-0 z-50` 자체도 투명하지만
+   `pointer-events: auto` 기본값이라 화면 전체를 계속 덮었다. `transitions.css`의 "프로젝트
+   확장" 섹션(원본 스니펫 블록은 건드리지 않는 관례)에 `.t-panel-backdrop`/
+   `.t-panel-backdrop[data-open='true']`용 pointer-events 규칙을 추가하고, 루트 div에
+   `pointer-events-none`을 줘 백드롭·시트 본체만 각자 `data-open`에 따라 클릭을 받게 했다.
+   `t-panel-backdrop`은 FeedSection·PoiCarouselModal도 공유하는 클래스라 이 수정은 그
+   쪽도 함께 고친다(같은 잠재 버그였을 가능성 — alerts 참조).
+5. **배경 스크롤 락 참조 카운팅** — `src/lib/uiOverlay.ts`에 `pushMainScrollLock()`을
+   추가했다. 기존 `pushTabBarHidden()`과 동일한 모듈 전역 카운터 패턴(0→1일 때만 잠그고
+   1→0일 때만 푼다, 해제 함수는 idempotent). `BottomSheet.tsx`의 `lingering` 기준 스크롤
+   락 effect가 각자 `prevOverflow`를 캡처/복원하던 기존 코드를 `pushMainScrollLock()`
+   호출로 교체 — "닫히는 시트 → 열리는 시트" 전환(같은 배치에서 `setSelectedDrop`/
+   `setPickupCandidateGroup(null)`이 함께 호출되는 POI 픽업 흐름, `PoiCarouselModal.tsx`)
+   에서 두 인스턴스의 `lingering` 구간이 겹쳐도 카운트가 0에 닿기 전까지는 풀리지 않는다.
+
+### 13개 화면 전수 확인
+`grep -rn "components/ui/BottomSheet" src/` — 직접 import 8개 파일 확인, 화면별 props(title
+유무·footer 유무·detent) 파악 후 각각 시나리오 검토:
+- `src/app/(main)/badges/[id]/BadgeShareButton.tsx` (title 없음, detent=full, contentScrollable=false)
+- `src/app/(main)/badges/[id]/ItemEarnHistory.tsx` (title 없음)
+- `src/app/(main)/badges/[id]/PoiEarnHistory.tsx` (title 없음)
+- `src/app/(main)/drops/BadgeDetailSheet.tsx` (title 없음, detent=full) — `PoiCarouselModal`에서
+  `selectedDrop`으로 열림, 결함 5의 재현 경로 당사자
+- `src/app/(main)/inventory/[itemId]/InventoryItemHistorySheet.tsx` (title 있음)
+- `src/components/badges/BadgeUnlockSheet.tsx` (title 없음, footer 있음)
+- `src/components/inventory/ItemCandidateSheet.tsx` (title 있음) — `PoiCarouselModal`에서
+  드랍 개체 선택(`pickupCandidateGroup`)과 컬렉션/POI 장착 개체 선택 두 곳에서 재사용,
+  결함 5의 재현 경로 당사자
+- `SlotGrid.tsx`·`BadgeRevealOverlay.tsx`·`PoiCarouselModal.tsx`·`use-mobile.tsx`는
+  `BottomSheet` 문자열이 주석(다른 티켓 참조·설계 메모)에만 등장 — 실제 import 아님, 확인 후 제외
+
+드래그-투-클로즈와의 충돌: 포인터 이벤트(핸들 `onPointerDown/Move/Up`)와 포커스 트랩의
+키보드 이벤트(`document`의 `keydown`)는 서로 다른 이벤트 축이라 겹치지 않는다. 핸들 자체는
+`tabIndex` 없는 `div`라 `FOCUSABLE_SELECTOR`에 잡히지 않으므로 Tab 순환에도 끼지 않는다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/components/ui/BottomSheet.tsx
+jam-web/src/lib/uiOverlay.ts
+jam-web/src/components/transitions.css
 ```
 
 ### 테스트 결과
-- [ ] 
+- [x] `cd jam-web && npm run lint` 전체 실행 — 0 errors, 13 warnings(모두 기존 `design-system/`
+  파일의 사전 존재 경고, 이번 변경 파일과 무관)
+- [x] `grep -rn "components/ui/BottomSheet" src/`로 8개 직접 import 파일 전수 확인, 각 props
+  조합(title 유무·footer 유무·detent) 검토
+- [ ] 실기기/스크린리더(VoiceOver 등) 수동 확인은 미실시 — 코드 레벨 검증(role/aria 속성,
+  포커스 이동 로직, 이벤트 리스너 등록/해제)까지만 진행. staging 병합 후 실제 화면에서
+  Tab/Shift+Tab/Escape 키보드 조작으로 재확인 필요
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-- [ ] 텍스트 변경이 없으면 해당 없음
+- [x] 텍스트 변경이 없으면 해당 없음
 
 ### 배포 정보
-- 배포일: 
-- 환경: 
-- 커밋: 
+- 배포일: (미배포 — review 브랜치 push까지만 수행)
+- 환경:
+- 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- **DS(`design-system/components/navigation/BottomSheet.jsx`)로 전면 교체하지 않고 서비스
+  구현(`src/components/ui/BottomSheet.tsx`)을 직접 고쳤다** — 오케스트레이터 0.5단계 판정을
+  그대로 따름. 두 컴포넌트는 API가 다르고(DS는 드래그-투-클로즈 미구현, `footerBottomInset`
+  일부 값 매핑 방식도 다름) 13개 호출부 전부를 마이그레이션하는 일은 이번 접근성 버그
+  수정 범위를 크게 벗어난다. 다만 DS 쪽 구현이 이미 이번에 서비스 쪽에 적용한 것과 거의
+  동일한 포커스 트랩·Escape·`aria-labelledby` 패턴을 갖고 있어(`useId`, 캐시된 focusable
+  목록, cleanup에서 `prev?.focus()`) 이번 구현의 참고 기준으로 삼았다. 병존 구현 두 쪽의
+  접근성 정책이 이제 사실상 동일한 패턴으로 수렴했다.
+- **결함 4는 백드롭 CSS(`t-panel-backdrop`)와 루트 div 두 겹의 pointer-events 문제였다.**
+  `transitions.css` 상단 원본 스니펫 블록은 손대지 않고, 파일 하단 "프로젝트 확장" 섹션에
+  규칙을 추가하는 기존 관례를 따랐다.
+- **결함 5는 `pushTabBarHidden()`과 동일한 참조 카운팅 패턴**(`uiOverlay.ts`)으로 풀었다 —
+  새 컨텍스트나 별도 상태관리 라이브러리를 끌어오지 않고 기존 모듈 전역 카운터 관례를 재사용.
+- **`onClose` ref 분리**는 티켓에 명시된 요구사항은 아니지만, 인라인 화살표로 넘기는 호출부가
+  대부분이라(`onClose={() => setOpen(false)}`) effect 의존성에 직접 넣으면 열려 있는 동안
+  부모 리렌더마다 포커스를 되채가는 새 회귀가 생길 것이 확실해 구현 중 판단으로 추가했다.
 
 ### 잔여 이슈
--
+- 스크린리더 실기기 검증 미실시 (테스트 결과 항목 참조)
+- `FeedSection.tsx`·`MissionDetailClient.tsx`·`SlotGrid.tsx`·`PoiCarouselModal.tsx`가 쓰는
+  `.t-panel-backdrop`/`.t-panel-slide` 기반의 다른 패널(바텀시트 아닌 것 포함)도 이번
+  pointer-events 수정의 수혜를 받았을 가능성이 높다 — 이번 티켓 범위 밖이라 그쪽의 role/
+  aria/포커스트랩까지는 손대지 않았다(alerts 참조)
