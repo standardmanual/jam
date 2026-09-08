@@ -2,8 +2,9 @@
 id: 20260908_1536
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-08
+closed: 2026-09-08
 ---
 
 # [BadgeEngine] walking:W4 「장마의 의지」 month+monthly_km+repeat_count 회차 0 버그
@@ -78,9 +79,17 @@ jam-web/src/lib/badge-engine/__tests__/v5-extension.test.ts   (회귀 테스트 
 - [x] `npm run lint` (전체) — 에러 0건, 경고 13건(전부 design-system 사전 존재, 이번 변경과 무관)
 
 ### 배포 정보
-- 배포일:
-- 환경: staging (review 브랜치, main 미병합)
-- 커밋:
+- 배포일: 2026-09-08 (staging)
+- 환경: staging → production은 `/jam-ship`으로 별도 진행
+- 커밋: `8e3cdd79` staging에 fast-forward 병합
+
+### 게이트 리뷰 PASS — staging 병합 완료 (2026-09-08)
+
+conservative-reviewer가 격리 워크트리에서 재검증(`vitest` 전체 69파일 1204건, `tsc --noEmit`
+0건, `lint` 0 errors + 단발 판정과의 그룹핑 규칙 일치 여부 코드 대조)해 PASS 판정. DB 변경
+불필요(순수 엔진 로직 확장). 이로써 액티비티 배지 전수 재감사에서 발견된 마지막 2종
+(`walking:W4` epic·mystic)도 정상 발급 가능해졌다 — 오늘(2026-09-08) 세 티켓(20260908_1318·
+1438·1512·1536)으로 액티비티 배지 593종(미션보상 제외) **전량 발급 가능 상태 확인**.
 
 ### 주요 의사결정 / 핵심 메모
 
