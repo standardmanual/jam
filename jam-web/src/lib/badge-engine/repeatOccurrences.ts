@@ -339,13 +339,20 @@ const PERIOD_DRIVER_KEYS = ['streak_days', 'weekly_count', 'monthly_count', 'wee
 /**
  * 조건이 기간 단위 회차 계산이 필요한 형태인지 판단해 계산 함수를 고른다.
  *
- * **엄격하게 좁힌다** — `activity_type`·`day_of_week`·`repeat_count` 외의 다른 키가 하나라도
- * 더 있으면(현재 카탈로그엔 없는 조합) `undefined`를 돌려준다. 잘못 짐작해서 세는 것보다
- * 「모르는 조합은 안전하게 막는다」가 이 파일 전체의 원칙이다(위 헤더 주석).
+ * **엄격하게 좁힌다** — `activity_type`·`day_of_week`·`repeat_count`·게이트 3종
+ * (`GATE_CONDITION_KEYS`) 외의 다른 키가 하나라도 더 있으면(현재 카탈로그엔 없는 조합)
+ * `undefined`를 돌려준다. 잘못 짐작해서 세는 것보다 「모르는 조합은 안전하게 막는다」가
+ * 이 파일 전체의 원칙이다(위 헤더 주석).
+ *
+ * ⚠️ **게이트 키는 예외다**(티켓 20260908_1438). 게이트는 「보유 여부」만 보는 별도 판정이라
+ * (위 91행 `CONSUMED_REPEAT_KEYS` 주석과 동일 근거) 기간 단위 회차 계산 자체에는 관여하지
+ * 않는다. 여기 넣지 않으면 `streak_days`/휴식 키에 게이트가 붙은 조합(주로 Epic·Mystic)의
+ * 회차가 통째로 0이 되어 영원히 발급되지 않는다(전수 감사 실측: cycling:N1 epic/mystic 등
+ * 26계열 49종).
  */
 function detectPeriodOccurrenceDriver(condition: BadgeCondition): PeriodOccurrenceCollector | undefined {
   if (condition.repeat_count === undefined) return undefined
-  const ALLOWED_COMPANIONS = new Set<string>(['repeat_count', 'activity_type', 'day_of_week'])
+  const ALLOWED_COMPANIONS = new Set<string>(['repeat_count', 'activity_type', 'day_of_week', ...GATE_CONDITION_KEYS])
   const extraKeys = Object.entries(condition)
     .filter(([k, v]) => v !== undefined && !ALLOWED_COMPANIONS.has(k))
     .map(([k]) => k)
@@ -429,10 +436,14 @@ export function isPeriodDrivenRepeatCondition(condition: BadgeCondition): boolea
 // 이 판정(`isRestDrivenRepeatCondition`)이 거짓일 때 여전히 「회차와 함께 쓸 수 없는 조건」으로
 // 막는다.
 
+// ⚠️ 게이트 키는 예외다(티켓 20260908_1438) — 위 `detectPeriodOccurrenceDriver`의
+// `ALLOWED_COMPANIONS`와 동일 근거. 게이트는 「보유 여부」만 보는 별도 판정이라 휴식-회차
+// 계산에는 관여하지 않는다. 빠져 있으면 휴식 키+게이트 조합의 회차가 통째로 0이 된다.
 const REST_OCCURRENCE_ALLOWED_COMPANIONS: ReadonlySet<string> = new Set<string>([
   'repeat_count',
   'activity_type',
   'day_of_week',
+  ...GATE_CONDITION_KEYS,
 ])
 
 /** 조건이 휴식-회차 전용 계산이 필요한 형태인지 판단해 드라이버 키를 고른다 (엄격하게 좁힌다) */
