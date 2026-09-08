@@ -44,14 +44,38 @@ created: 2026-09-08
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`classifyConditionKind`(badgeProgress.ts)의 개별 가드 `NO_PROGRESS_AXIS_YET`(4개 키 수동
+나열)를 화이트리스트 구조로 일반화했다.
+
+- `KNOWN_MEASURABLE_AXIS_KEYS` = `MEASURED_AXIS_KEYS`(conditionAxes.ts, 수치 축) ∪
+  `KNOWN_NON_AXIS_MEASURABLE_KEYS`(`month`·`time_range`·휴식 4종·`repeat_count` — 이 함수의
+  다른 분기가 이미 명시적으로 처리하는 measurable 필드)
+- `unknownMeasurableAxisKeys()` — 조건에 남은 키 중 `role: 'measurable'`이면서 위 화이트리스트
+  밖에 있는 키가 하나라도 있으면 `unsupported`로 fail-safe
+- 이 검사를 `hasRepeat` 분기 직후·`isMulti` 판정 **이전**으로 옮겼다 — 기존
+  `NO_PROGRESS_AXIS_YET`은 `isMulti` 판정 뒤에 있어 `season_count_all` + 미지의 측정 축
+  조합을 보호하지 못했다(실측으로 확인, 아래 테스트가 회귀 소재로 남긴다).
+
+**영향 범위 실측**: `conditionRegistry.ts`의 `role: 'measurable' && evaluation: 'engine'`
+키 전체(34종)를 화이트리스트와 대조했다. 4종(`distinct_time_bands`·
+`activities_within_hours`·`month_over_month_ratio`·`vs_personal_average`)만 여전히
+축이 없고(티켓 20260908_1318이 후속으로 미룬 것과 동일 — 회귀 아님), 나머지 30종은 전부
+화이트리스트에 있어 기존 정상 분류가 그대로 유지된다. `evaluation: 'pending'`인 키
+(`daily_once_count` 등)는 `findBlockingConditionKeys`가 이 함수보다 먼저 막아 화이트리스트가
+필요 없다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/badge-engine/badgeProgress.ts
+jam-web/src/lib/badge-engine/__tests__/condition-registry-axis-coverage.test.ts (신규)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx vitest run src/lib/badge-engine/__tests__/condition-registry-axis-coverage.test.ts` — 8/8 통과
+- [x] `npx vitest run src/lib/badge-engine` — 407/407 통과 (기존 축 분류 회귀 없음)
+- [x] `npx vitest run` (전체) — 1212/1212 통과
+- [x] `npx tsc --noEmit` — 오류 없음
+- [x] `npm run lint` (전체) — 0 에러 / 13 경고(전부 design-system 기존 경고, 이 작업과 무관)
 
 ### 배포 정보
 - 배포일:
@@ -59,6 +83,16 @@ created: 2026-09-08
 - 커밋:
 
 ### 주요 의사결정 / 핵심 메모
+- `NO_PROGRESS_AXIS_YET`은 전량 대체·삭제했다 — 화이트리스트가 기존 4개 케이스를 그대로
+  포함하면서 새 measurable 필드 추가 시에도 자동으로 fail-safe가 작동한다.
+- 회귀 테스트는 "전체 measurable 키가 화이트리스트에 있어야 한다"는 과도한 단언 대신,
+  "measurable+`engine` 키만" 대조하고 `EXPECTED_AXIS_GAP`(현재 알려진 4개 공백)을 명시적으로
+  분리했다 — `evaluation: 'pending'` 필드까지 포함하면 아직 축이 없는 게 당연한 필드까지
+  실패로 잡혀 테스트가 신호를 못 낸다.
+- `rest_after_streak`류 4종·`repeat_count`는 `MEASURED_AXIS_KEYS`에는 없지만 이 함수의
+  앞선 분기(`restKeys.length > 0`/`hasRepeat`)가 이미 가로채므로 화이트리스트 검사 지점에
+  도달할 때는 항상 부재 상태다 — `KNOWN_NON_AXIS_MEASURABLE_KEYS`에 넣어 자기 문서화했다.
 
 ### 잔여 이슈
--
+- `distinct_time_bands`·`activities_within_hours`·`month_over_month_ratio`·
+  `vs_personal_average` 4종의 진행 축 지원은 여전히 미해결(후속 티켓 몫, 20260908_1318과 동일 결정).

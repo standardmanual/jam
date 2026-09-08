@@ -84,6 +84,10 @@ import {
   // 휴식 술어가 짝 필드로 흡수하는 키(streak_days·single_distance_km) — 「휴식 축이 조건을
   // 통째로 대표할 수 있는가」 판단의 예외 목록이다.
   restConsumedPairKeys,
+  // 휴식 4종 키 목록 그 자체 — 화이트리스트(KNOWN_MEASURABLE_AXIS_KEYS)가 "이 함수가 이미
+  // 아는 measurable 필드"를 셀 때 재사용한다(티켓 20260908_1343). `restConditionKeysIn`은
+  // 조건에 실제로 있는 키만 돌려주는 함수라 화이트리스트 자체(가능한 전체 키)에는 못 쓴다.
+  REST_CONDITION_KEYS,
   // 개인 기록 갱신(personal_record_break) 판정 — 발급 판정(index.ts)과 **같은 함수**를 본다
   // (티켓 20260906_2055). 각자 세면 「화면 3회 / 발급 2회」로 어긋난다.
   isSupportedPersonalRecordMetric,
@@ -517,6 +521,58 @@ function unabsorbedAxisKeys(condition: BadgeCondition, consumed: readonly string
 }
 
 /**
+ * `classifyConditionKind`가 «축을 그릴 필요가 없다고 이미 아는» measurable 필드 —
+ * `MEASURED_AXIS_KEYS`(수치 축) 밖에 있지만 그 자체가 축이 아니라는 사실을 이 함수의 다른
+ * 분기가 이미 명시적으로 처리한다(티켓 20260908_1343 화이트리스트 재설계).
+ *
+ * - `REST_CONDITION_KEYS`(휴식 4종) — `restKeys.length > 0` 분기가 이 지점보다 먼저
+ *   가로챈다. 아래 화이트리스트 검사에 도달했다는 건 이미 `restKeys.length === 0`이라는 뜻.
+ * - `repeat_count` — `hasRepeat` 분기가 먼저 가로챈다. 도달 시점엔 이미
+ *   `condition.repeat_count === undefined`.
+ * - `month` — `monthly_km`(periodic 축)에 흡수되는 필터성 필드. 단독으로는 축이 아니다
+ *   (아래 §isPeriodic 절 주석 — month 단독 배지는 카탈로그에 0건).
+ * - `time_range` — pass/fail 필터일 뿐 스스로 진행률을 낼 수치가 없다.
+ */
+const KNOWN_NON_AXIS_MEASURABLE_KEYS: ReadonlySet<string> = new Set<string>([
+  'month',
+  'time_range',
+  ...REST_CONDITION_KEYS,
+  'repeat_count',
+])
+
+/**
+ * `classifyConditionKind`가 «이미 아는» measurable 필드 전체 — 수치 축(`MEASURED_AXIS_KEYS`)
+ * + 축이 필요 없다고 확인된 필드(`KNOWN_NON_AXIS_MEASURABLE_KEYS`)의 합집합이다.
+ *
+ * 회귀 테스트(`condition-registry-axis-coverage.test.ts`)가 `conditionRegistry.ts`의
+ * `MEASURABLE_CONDITION_KEYS` 전체가 이 집합에 포함되는지 대조한다 — 새 measurable 필드를
+ * 추가하고 여기 반영하지 않으면 그 테스트가 실패한다.
+ */
+export const KNOWN_MEASURABLE_AXIS_KEYS: ReadonlySet<string> = new Set<string>([
+  ...MEASURED_AXIS_KEYS,
+  ...KNOWN_NON_AXIS_MEASURABLE_KEYS,
+])
+
+/**
+ * 조건에 이 분류 함수가 **모르는 measurable 축**이 남아 있는지 검사한다 — 화이트리스트
+ * fail-safe(티켓 20260908_1343, `20260908_1318`의 개별 가드 `NO_PROGRESS_AXIS_YET`를
+ * 대체·일반화). `role: 'measurable'`인 키만 본다 — filter/meta/external 역할 키
+ * (`day_of_week`·`season`·`activity_type`·게이트 3종 등)는 독립 축이 필요 없어 화이트리스트에
+ * 없어도 안전하다(그 값 자체가 다른 축을 좁히는 필터일 뿐, 스스로 진행률을 내지 않는다).
+ *
+ * `personal_record_break_metric`처럼 `role: 'filter'`인 필드는 여기서 걸리지 않는다 —
+ * 이미 fail-closed(`findBlockingConditionKeys`)와 `isSupportedPersonalRecordMetric` 가드가
+ * 따로 그 필드를 본다.
+ */
+function unknownMeasurableAxisKeys(condition: BadgeCondition): string[] {
+  return Object.keys(condition).filter((k) => {
+    if ((condition as Record<string, unknown>)[k] === undefined) return false
+    if (KNOWN_MEASURABLE_AXIS_KEYS.has(k)) return false
+    return getConditionField(k)?.role === 'measurable'
+  })
+}
+
+/**
  * 조건 «자체»의 유형 — 무한레벨형 여부(배지 행 속성)는 보지 않는다.
  * `classifyBadgeProgressKind`가 `leveled`의 «기반 유형»을 구할 때도 이 함수를 쓴다.
  */
@@ -584,27 +640,20 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
     return unabsorbedAxisKeys(condition, consumed).length > 0 ? 'unsupported' : 'repeat'
   }
 
+  // 화이트리스트 fail-safe(티켓 20260908_1343) — 여기 도달했다는 건 이미 hasRepeat===false,
+  // restKeys.length===0이라는 뜻이다. 조건에 이 함수가 「축으로 그릴 수 있다」고 아는 목록
+  // (`KNOWN_MEASURABLE_AXIS_KEYS`) 밖의 measurable 필드가 하나라도 남아 있으면, 아래
+  // isMulti/axisCount 계산이 그 필드를 조용히 무시한 채 다른 축만으로 진행률을 그릴 수 있다
+  // (게이트 실측: `{ distance_km: 100, month_over_month_ratio: 1.2 }` → 옛 코드는
+  // 'cumulative'로 잘못 분류). `NO_PROGRESS_AXIS_YET`(티켓 20260908_1318)가 4개만 손으로
+  // 나열하던 것을 일반화했다 — 신규 measurable 필드가 추가되고 축 목록에 반영되지 않으면
+  // 자동으로 이 가드에 걸린다(회귀 테스트: `condition-registry-axis-coverage.test.ts`).
+  if (unknownMeasurableAxisKeys(condition).length > 0) return 'unsupported'
+
   const isMulti =
     (Array.isArray(condition.day_of_week) && condition.total_count !== undefined) ||
     condition.season_count_all !== undefined
   if (isMulti) return 'multi'
-
-  // v5 잔여 4종 평가(티켓 20260908_1318) — `distinct_time_bands`·`activities_within_hours`는
-  // `repeat_count`와 결합된 형태만 진행 축이 있다(위 `hasRepeat` 분기의
-  // `isPeriodDrivenRepeatCondition`이 그 경우를 이미 'repeat'로 처리했다 — 여기 도달했다면
-  // 그 결합이 아니라는 뜻이다). `month_over_month_ratio`·`vs_personal_average`는 아직 진행
-  // 축 자체가 없다. `conditionAxes.ts`의 어떤 목록에도 없어 그냥 두면 `axisCount` 계산이
-  // 이 키를 못 본 채 `personal_record_break` 같은 다른 축만으로 100%를 그린다 —
-  // `unabsorbedAxisKeys`가 막는 것과 같은 「숨은 축」 버그(게이트 실측:
-  // `{ distance_km: 100, month_over_month_ratio: 1.2 }` → 'cumulative'로 잘못 분류). 진행
-  // 축 지원은 후속 티켓으로 미루고 지금은 안전하게 unsupported로 떨어뜨린다.
-  const NO_PROGRESS_AXIS_YET = new Set<string>([
-    'distinct_time_bands',
-    'activities_within_hours',
-    'month_over_month_ratio',
-    'vs_personal_average',
-  ])
-  if (Object.keys(condition).some((k) => NO_PROGRESS_AXIS_YET.has(k))) return 'unsupported'
 
   // month 단독(monthly_km 없이)은 현재 카탈로그에 0건 — "활동 1회 이상 있었는지"만 보는
   // 별개 메커니즘이라(진행률로 표현 가능한 수치 축이 아님) periodic으로 묶지 않는다.
