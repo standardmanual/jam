@@ -27,6 +27,7 @@ import type { BadgeCondition } from '@/types/database'
 import { formatPaceSecPerKm } from '@/types/strava'
 import {
   CONDITION_FIELDS,
+  PERSONAL_RECORD_METRIC_FORM_OPTIONS,
   type AnyConditionFieldMeta,
   type ConditionFormSection,
   type ConditionKey,
@@ -165,6 +166,13 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
   // "두 조건을 동시에 채워야 해요"와 같은 어순으로 맞춘다.
   same_activity: (c) => (c.same_activity === true ? '한 번의 활동에서 동시에 채워야 해요' : null),
   poi_id: () => '지정된 지점에서 체크인',
+  // 코드값(single_distance_km 등)을 그대로 노출하지 않는다 — 레지스트리 select 라벨로 치환
+  // (레지스트리 `detail`과 같은 폴백 패턴: 못 찾으면 원래 값)
+  personal_record_break_metric: (c) =>
+    `개인 기록 지표: ${
+      PERSONAL_RECORD_METRIC_FORM_OPTIONS.find((o) => o.value === c.personal_record_break_metric)?.label ??
+      c.personal_record_break_metric
+    }`,
 
   // 레지스트리 라벨이 「전월 대비 **배수**」라 일반 조립이 「배수 1.2배」로 겹친다
   month_over_month_ratio: (c) => `전월 대비 ${c.month_over_month_ratio}배 이상`,
