@@ -399,6 +399,7 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     valid_until: null,
     point_reward: 0,
     deleted_at: null,
+    deactivated_by_item_book_id: null,
     created_at: '2026-01-01T00:00:00Z',
     background_color: null,
     background_shader_id: null,

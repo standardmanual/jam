@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
-import { cascadeDeactivateItemBookBadges } from '@/lib/admin/itembook-deactivation'
+import { cascadeActivateItemBookBadges, cascadeDeactivateItemBookBadges } from '@/lib/admin/itembook-deactivation'
 import { collectItemBookReferences, ITEM_BOOK_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
 import type { ItemBookRow } from '@/types/database'
 
@@ -73,7 +73,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
  * 목록/상세 화면의 즉시 토글용 — 폼의 전체 저장 PUT과 별개(20260823_006).
  * body: { is_active: boolean }. is_active 컬럼만 갱신한다.
  * true→false(비활성화)는 PUT과 동일하게 소속 배지를 연쇄 소프트삭제한다.
- * false→true(재활성화)는 is_active만 갱신, 배지는 건드리지 않는다(기존 설계 결정 유지).
+ * false→true(재활성화)는 이 컬렉션 캐스케이드로 죽었던 배지만 연쇄로 되살린다
+ * (`cascadeActivateItemBookBadges`, 티켓 20260908_2129 2차) — 개별 사유로 비활성화된 배지는
+ * 건드리지 않는다. 이전에는 "배지는 건드리지 않는다"가 의도적 결정이었으나, "컬렉션 비활성화로
+ * 죽은 배지와 개별 사유로 죽은 배지를 구분할 수 없다"는 그 이유가 `deactivated_by_item_book_id`
+ * 컬럼 추가로 해소되면서 사용자 확정에 따라 뒤집혔다.
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -105,6 +109,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json(
         {
           error: `컬렉션은 비활성화됐지만 소속 배지 회수에 실패했습니다: ${badgesError}. 다시 시도해주세요.`,
+        },
+        { status: 500 }
+      )
+    }
+  } else if (is_active === true) {
+    const { error: badgesError } = await cascadeActivateItemBookBadges(supabase, id)
+
+    if (badgesError) {
+      return NextResponse.json(
+        {
+          error: `컬렉션은 활성화됐지만 소속 배지 복구에 실패했습니다: ${badgesError}. 다시 시도해주세요.`,
         },
         { status: 500 }
       )
