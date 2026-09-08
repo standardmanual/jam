@@ -368,6 +368,17 @@ JAM!은 **모바일 전용 앱**이다.
 - [ ] `document.body` 포털로 만들었는가? 아니면 조상에 스태킹 컨텍스트가 없음을 확인했는가?
 - [ ] 화면 하단을 점유하면 `pushBottomOverlay()`로 신고했는가?
 - [ ] 같은 z에 다른 참여자가 있는가? 있다면 DOM 순서로 갈리는 **취약한 동률**이다.
+- [ ] **접근성**: 모달 성격이면 `role="dialog"`+`aria-modal="true"`(+ 제목이 있으면
+  `aria-labelledby`)를 붙였는가? 포커스가 열릴 때 오버레이 안으로 이동하고, Tab이 안에서
+  순환하며, 닫힐 때 여는 요소로 복귀하는가? Escape로 닫히는가? (`BottomSheet.tsx` 참고,
+  티켓 20260908_0040)
+- [ ] **모션**: `prefers-reduced-motion`에서 닫힘 트랜지션이 즉시 사라진 것처럼 보여도, 백드롭·
+  루트 요소의 `pointer-events`가 트랜지션 지속시간(예: 350ms) 동안 뒷화면 탭을 가로채지 않는가?
+  (`data-open` 상태에 따라 백드롭·본체에만 `pointer-events: auto`를 주고 루트는
+  `pointer-events-none`으로 두는 패턴, `transitions.css` 참고)
+- [ ] **배경 스크롤 락**: 인스턴스별로 직접 `overflow` 캡처/복원을 하지 말고 `uiOverlay.ts`의
+  참조 카운팅 헬퍼(`pushTabBarHidden`/`pushMainScrollLock` 패턴)를 쓰는가? 여러 오버레이가
+  겹쳐 열리고 닫히는 전환(시트→시트)에서 카운트 없이 덮어쓰면 배경 스크롤이 풀리는 창이 생긴다.
 
 #### 알려진 취약점
 

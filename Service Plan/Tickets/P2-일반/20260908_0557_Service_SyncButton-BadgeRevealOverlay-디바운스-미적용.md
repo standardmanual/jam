@@ -2,8 +2,9 @@
 id: 20260908_0557
 category: Service
 priority: P2
-status: IN_PROGRESS
+status: CLOSED
 created: 2026-09-08
+closed: 2026-09-08
 ---
 
 # [Service] SyncButton의 BadgeRevealOverlay 디바운스 미적용
@@ -44,6 +45,11 @@ jam-web/src/components/SyncButton.tsx
 ### 테스트 결과
 - [x] `npm run lint` 전체 실행 — 0 errors, 13 warnings (모두 기존 파일의 사전 존재 경고, 변경
       파일과 무관)
+
+### 배포 정보
+- 배포일: staging은 이 커밋으로 즉시 반영. 프로덕션은 `/jam-ship`으로 별도 승인 후 진행 예정
+- 환경: staging (production 미배포)
+- 커밋: `42f5ab30` (최종 머지 커밋)
 
 ### 잔여 이슈
 -

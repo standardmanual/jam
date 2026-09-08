@@ -1,6 +1,15 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-08 (잔여 `pending` 5종 — `distinct_time_bands`·`day_of_month`·
+> 최종 업데이트: 2026-09-08 (`badgeProgress.ts`의 `classifyConditionKind`를 화이트리스트
+> 기반으로 일반화 — 20260908_1318이 추가한 개별 가드 `NO_PROGRESS_AXIS_YET`(4개 키 하드코딩)를
+> `KNOWN_MEASURABLE_AXIS_KEYS` 화이트리스트 + `unknownMeasurableAxisKeys()`로 대체. `role:
+> 'measurable'`인 미지의 축이 하나라도 남으면 fail-safe로 `unsupported`를 반환하는 구조가 돼,
+> 신규 조건 필드를 추가할 때마다 같은 「숨은 축」 버그가 재발하지 않는다. `season_count_all`
+> (multi) 경로에도 같은 결함이 있었음을 실측으로 확인해 함께 막았다. `conditionRegistry.ts`의
+> measurable+`engine` 키 전체를 화이트리스트와 자동 대조하는 회귀 테스트
+> (`condition-registry-axis-coverage.test.ts`)도 신설 — 티켓 20260908_1343)
+>
+> 이전: 2026-09-08 (잔여 `pending` 5종 — `distinct_time_bands`·`day_of_month`·
 > `activities_within_hours`·`month_over_month_ratio`·`vs_personal_average` — 을 `engine`으로
 > 전환. `month_over_month_ratio`·`vs_personal_average`는 거리(km) 지표로 고정 판정. 부수 발견:
 > `badgeProgress.ts` 진행률 분류의 「숨은 축」 결함(다축 결합 시 신규 축이 조용히 무시되는 문제)에
@@ -688,6 +697,15 @@ v5(티켓 20260905_0030)가 만든 네 구조는 전부 진행률에서 `unsuppo
 `restConsumedPairKeys()`(짝 필드 `streak_days`·`single_distance_km`), 회차는
 `repeatConsumedAxisKeys()`(활동 단위 축 + `same_activity:true`일 때의 `distance_km`/
 `elevation_gain_m`), 측정 축 목록은 `conditionAxes.ts`의 `MEASURED_AXIS_KEYS`.
+
+**이 가드는 2026-09-08(티켓 20260908_1343)부터 화이트리스트 방식으로 일반화됐다** —
+`classifyConditionKind`가 조건에 남은 키 중 `role: 'measurable'`이면서 `KNOWN_MEASURABLE_AXIS_KEYS`
+(`MEASURED_AXIS_KEYS` ∪ `month`·`time_range`·휴식 4종·`repeat_count`) 밖에 있는 키를 하나라도
+발견하면 곧바로 `unsupported`로 fail-safe한다. 신규 조건 필드를 추가할 때 이 화이트리스트에
+등록하지 않으면(즉 어느 술어도 그 축을 흡수하지 못하면) 자동으로 `unsupported`로 떨어지므로,
+개별 조합마다 수동 가드를 추가할 필요가 없다. `conditionRegistry.ts`의 measurable+`engine`
+키 전체를 이 화이트리스트와 자동 대조하는 회귀 테스트(`condition-registry-axis-coverage.test.ts`)가
+있어, 화이트리스트 등록을 빠뜨리면 테스트가 즉시 실패한다.
 
 > ⚠️ `repeatConsumedAxisKeys()`는 「회차를 **셀 수 있는가**」(`unconsumedRepeatConditionKeys`)와
 > 다른 질문에 답한다. `{ repeat_count: 5, distance_km: 1000 }`은 회차가 정상적으로 세어지고

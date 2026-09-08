@@ -2,8 +2,9 @@
 id: 20260908_1343
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-08
+closed: 2026-09-08
 ---
 
 # [BadgeEngine] badgeProgress.ts 「숨은 축」 설계 결함의 일반적 해소
@@ -78,9 +79,9 @@ jam-web/src/lib/badge-engine/__tests__/condition-registry-axis-coverage.test.ts 
 - [x] `npm run lint` (전체) — 0 에러 / 13 경고(전부 design-system 기존 경고, 이 작업과 무관)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: staging은 이 커밋으로 즉시 반영. 프로덕션은 `/jam-ship`으로 별도 승인 후 진행 예정
+- 환경: staging (production 미배포)
+- 커밋: `42f5ab30` (최종 머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 - `NO_PROGRESS_AXIS_YET`은 전량 대체·삭제했다 — 화이트리스트가 기존 4개 케이스를 그대로
