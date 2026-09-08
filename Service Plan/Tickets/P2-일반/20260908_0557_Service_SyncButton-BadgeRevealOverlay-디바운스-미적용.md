@@ -2,7 +2,7 @@
 id: 20260908_0557
 category: Service
 priority: P2
-status: OPEN
+status: IN_PROGRESS
 created: 2026-09-08
 ---
 
@@ -30,14 +30,20 @@ created: 2026-09-08
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`SyncButton.tsx`의 `loading` 상태(스트라바 수동 동기화 버튼 스피너)에 `useDebouncedLoading`을
+적용했다. `MissionStatusClient`·`BadgeShareButton`과 동일하게 훅이 반환하는 값(`showLoading`)을
+버튼의 `loading` prop(스피너 노출)에 연결하되, 클릭 즉시 재요청을 막는 `disabled`는 디바운스와
+무관하게 원본 `loading` 상태를 그대로 써서, 디바운스 지연(SHOW_DELAY_MS) 구간에도 중복 클릭으로
+`/api/strava/sync`가 두 번 호출되는 회귀가 생기지 않게 했다.
 
 ### 변경된 파일
 ```
--
+jam-web/src/components/SyncButton.tsx
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npm run lint` 전체 실행 — 0 errors, 13 warnings (모두 기존 파일의 사전 존재 경고, 변경
+      파일과 무관)
 
 ### 잔여 이슈
 -
