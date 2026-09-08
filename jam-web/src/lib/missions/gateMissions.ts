@@ -32,6 +32,33 @@ import {
 import { familyKeyOf, isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 import { isValidFamilyKey } from '@/lib/admin/badge-families'
 
+/**
+ * `reward_family_not_gated` 판정에서 제외할 «게이트 미션의 보상 배지 계열» — 설계상
+ * 의도적으로 게이트가 없는 계열을 여는 미션들(티켓 20260908_1049).
+ *
+ * 정본 소스: `Service Plan/Specs/Content/v5_gate_mapping.json`의
+ * `_meta.게이트_없음_의도된_예외`(15건, `v5_gate_build.py`의 `uses_season_count_all()`·
+ * 걷기 ladder 태그 부재 검사가 만든 목록). 그 목록은 **"게이트가 없는 계열"**
+ * (예: `trail_running:W2`) 자체를 담지만, `reward_family_not_gated`가 보는 값은
+ * **그 계열을 여는 미션의 보상 배지 계열**(예: `trail_running:Q8`)이라 서로 다르다 —
+ * `v5_gate_build.py`의 `MISSION_MAP[sport][axis]`로 축→미션코드를 역매핑해 옮겼다.
+ *
+ * 15건 중 축이 `보너스`/`기록`/없음인 항목(러닝·자전거 H1·H2, 트레일 H1 — "축 게이트
+ * 대상 아님")은 애초에 `MISSION_MAP`에 대응 미션 코드가 없어(`AXIS_RULES`가 `None`)
+ * 제외했다 — 이 상수에 넣을 "여는 미션"이 존재하지 않는다.
+ *
+ * ⚠️ **정본이 갱신되면(15건 목록이 바뀌면) 이 상수도 함께 갱신한다.** 갈리면 이 검사가
+ * 다시 낡은 예외 기준으로 거짓양성·거짓음성을 만든다.
+ */
+export const GATE_EXEMPT_REWARD_FAMILY_KEYS: ReadonlySet<string> = new Set([
+  'walking:M5', // walking:S3(연속) — 설계 ladder에 태그 없음
+  'walking:M8', // walking:W3·W4(달력) — 설계 ladder에 태그 없음
+  'running:Q8', // running:W3(달력) — season_count_all(사계절 보너스)
+  'cycling:Q8', // cycling:W3(달력) — season_count_all(사계절 보너스)
+  'hiking:Q8', // hiking:W3(달력) — season_count_all(사계절 보너스)
+  'trail_running:Q8', // trail_running:W2(달력) — season_count_all(사계절 보너스)
+])
+
 /** 게이트 단계 라벨 — 화면·검사 문구의 단일 출처 */
 export const GATE_STAGE_LABEL: Record<MissionGateStage, string> = {
   rare_to_epic: 'Rare → Epic',
@@ -411,7 +438,7 @@ export function checkGateMissionConsistency(input: GateConsistencyInput): GateMi
         })
       }
       const rewardFamilyKey = familyKeyOf(badge)
-      if (!gatedByMysticFamilyKeys.has(rewardFamilyKey)) {
+      if (!gatedByMysticFamilyKeys.has(rewardFamilyKey) && !GATE_EXEMPT_REWARD_FAMILY_KEYS.has(rewardFamilyKey)) {
         issues.push({
           ...base,
           level: 'warn',
