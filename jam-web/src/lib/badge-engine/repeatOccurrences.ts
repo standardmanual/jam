@@ -35,6 +35,8 @@ import {
   isPositiveDays,
   type RestConditionKey,
   type RestInterval,
+  // distinct_time_bands + streak_days 조합(walking:A3, 티켓 20260908_1318)의 창 안 판정에 쓴다.
+  countDistinctTimeBands,
 } from './activityFilters'
 import { GATE_CONDITION_KEYS } from './crossGate'
 import { PER_ACTIVITY_KEYS, CUMULATIVE_SAME_ACTIVITY_KEYS, type ScalarAxisKey } from './conditionAxes'
@@ -178,20 +180,30 @@ function typeFilteredPool(condition: BadgeCondition, activities: NormalizedActiv
     : activities
 }
 
+/** 런(run) 하나가 `minLength`에 처음 도달한 지점 — 그 지점의 키와, 그 지점까지 채운 창(윈도우) 전체 키 */
+type RunHit = { hitKey: string; windowKeys: string[] }
+
 /**
  * 정렬된 고유 기간 키 배열에서 `stepMs` 간격으로 이어지는 최대 런(run)들을 찾아, `minLength`
- * 이상인 런마다 **그 런이 minLength에 처음 도달한 키** 하나씩을 돌려준다 — 런 하나 = 회차 하나.
- * (한 번의 아주 긴 런이 `floor(길이/minLength)`만큼 여러 회차로 쪼개지지 않는다 — 「몇 번
- * 다시 해냈는가」를 세는 것이지 「총 길이를 minLength로 나눈 몫」을 세는 것이 아니다.)
+ * 이상인 런마다 **그 런이 minLength에 처음 도달한 키**와 그 창을 채운 `minLength`개의 키를
+ * 돌려준다 — 런 하나 = 회차 하나. (한 번의 아주 긴 런이 `floor(길이/minLength)`만큼 여러
+ * 회차로 쪼개지지 않는다 — 「몇 번 다시 해냈는가」를 세는 것이지 「총 길이를 minLength로
+ * 나눈 몫」을 세는 것이 아니다.)
+ *
+ * `windowKeys`는 `distinct_time_bands` + `streak_days` 조합(walking:A3, 티켓 20260908_1318)이
+ * "그 스트릭 창 안에서" 서로 다른 시간대를 세야 해서 추가됐다 — 그 전까지는 `hitKey`만 썼다.
  */
-function findRunThresholdKeys(sortedKeys: readonly string[], stepMs: number, minLength: number): string[] {
-  const hits: string[] = []
+function findRunThresholdKeys(sortedKeys: readonly string[], stepMs: number, minLength: number): RunHit[] {
+  const hits: RunHit[] = []
   let runStart = 0
   for (let i = 1; i <= sortedKeys.length; i++) {
     const broke = i === sortedKeys.length || Date.parse(`${sortedKeys[i]}T00:00:00Z`) - Date.parse(`${sortedKeys[i - 1]}T00:00:00Z`) !== stepMs
     if (broke) {
       const runLen = i - runStart
-      if (runLen >= minLength) hits.push(sortedKeys[runStart + minLength - 1])
+      if (runLen >= minLength) {
+        const hitIndex = runStart + minLength - 1
+        hits.push({ hitKey: sortedKeys[hitIndex], windowKeys: sortedKeys.slice(runStart, hitIndex + 1) })
+      }
       runStart = i
     }
   }
@@ -203,7 +215,13 @@ function toSortedOccurrences(reps: NormalizedActivity[]): NormalizedActivity[] {
   return [...reps].sort((a, b) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0))
 }
 
-/** `streak_days` + `repeat_count` — 「N일 연속」이 몇 번 (다시) 만들어졌는가 */
+/**
+ * `streak_days` + `repeat_count` — 「N일 연속」이 몇 번 (다시) 만들어졌는가.
+ *
+ * `distinct_time_bands`가 함께 있으면(walking:A3 「리듬 브레이커」, 티켓 20260908_1318) 그
+ * minLength일 창 **안의** 활동만으로 서로 다른 시간대 수를 세어, 미달인 런은 회차에서 뺀다 —
+ * "사흘 내리 시간대를 흔들었다"는 그 3일 창 자체의 성질이지 이력 전체의 성질이 아니다.
+ */
 function collectStreakDayOccurrences(condition: BadgeCondition, activities: NormalizedActivity[]): NormalizedActivity[] {
   const minLength = condition.streak_days as number
   const pool = typeFilteredPool(condition, activities)
@@ -215,9 +233,16 @@ function collectStreakDayOccurrences(condition: BadgeCondition, activities: Norm
     else byDate.set(key, [a])
   }
   const sortedKeys = [...byDate.keys()].sort()
-  const hitKeys = findRunThresholdKeys(sortedKeys, DAY_MS, minLength)
+  let runs = findRunThresholdKeys(sortedKeys, DAY_MS, minLength)
+  if (condition.distinct_time_bands !== undefined) {
+    const requiredBands = condition.distinct_time_bands
+    runs = runs.filter((r) => {
+      const windowActivities = r.windowKeys.flatMap((k) => byDate.get(k) ?? [])
+      return countDistinctTimeBands(windowActivities) >= requiredBands
+    })
+  }
   return toSortedOccurrences(
-    hitKeys.map((k) => byDate.get(k)!.reduce((first, a) => (a.startDate < first.startDate ? a : first)))
+    runs.map((r) => byDate.get(r.hitKey)!.reduce((first, a) => (a.startDate < first.startDate ? a : first)))
   )
 }
 
@@ -234,10 +259,46 @@ function collectWeeklyStreakOccurrences(condition: BadgeCondition, activities: N
     else byWeek.set(key, [a])
   }
   const sortedKeys = [...byWeek.keys()].sort()
-  const hitKeys = findRunThresholdKeys(sortedKeys, WEEK_MS, minLength)
+  const runs = findRunThresholdKeys(sortedKeys, WEEK_MS, minLength)
   return toSortedOccurrences(
-    hitKeys.map((k) => byWeek.get(k)!.reduce((first, a) => (a.startDate < first.startDate ? a : first)))
+    runs.map((r) => byWeek.get(r.hitKey)!.reduce((first, a) => (a.startDate < first.startDate ? a : first)))
   )
+}
+
+/**
+ * `activities_within_hours` + `repeat_count` — 「hours시간 안에 count회」를 몇 번 (다시)
+ * 채웠는가 (walking:A4 「스물넷의 산책」, 티켓 20260908_1318).
+ *
+ * `startDate`(UTC) 기준 슬라이딩 윈도우로 창이 처음 count에 도달한 활동을 회차로 잡고,
+ * 그 직후 창을 리셋한다(`findRunThresholdKeys`의 런 개념과 같은 태도 — 겹치는 창을 여러
+ * 회차로 중복 세지 않는다). 걷기 하루 1회 상한은 **적용하지 않는다** — 하루에 여러 번
+ * 하는 것이 이 배지의 핵심 의도다(index.ts의 독립 평가 블록과 같은 예외).
+ */
+function collectActivitiesWithinHoursOccurrences(condition: BadgeCondition, activities: NormalizedActivity[]): NormalizedActivity[] {
+  const spec = condition.activities_within_hours
+  if (
+    !spec ||
+    typeof spec.hours !== 'number' || !Number.isFinite(spec.hours) || spec.hours <= 0 ||
+    typeof spec.count !== 'number' || !Number.isFinite(spec.count) || spec.count < 1
+  ) {
+    return []
+  }
+  let pool = typeFilteredPool(condition, activities)
+  if (condition.day_of_week !== undefined && !Array.isArray(condition.day_of_week)) {
+    pool = pool.filter((a) => matchesDayOfWeek(a, condition.day_of_week as DayOfWeek))
+  }
+  const sorted = [...pool].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  const windowMs = spec.hours * 60 * 60 * 1000
+  const hits: NormalizedActivity[] = []
+  let left = 0
+  for (let right = 0; right < sorted.length; right++) {
+    while (Date.parse(sorted[right].startDate) - Date.parse(sorted[left].startDate) > windowMs) left++
+    if (right - left + 1 >= spec.count) {
+      hits.push(sorted[right])
+      left = right + 1 // 창을 채운 순간 리셋 — 다음 회차는 새 창에서 시작한다(겹침 중복 카운트 방지)
+    }
+  }
+  return toSortedOccurrences(hits)
 }
 
 /**
@@ -288,8 +349,21 @@ function detectPeriodOccurrenceDriver(condition: BadgeCondition): PeriodOccurren
   const extraKeys = Object.entries(condition)
     .filter(([k, v]) => v !== undefined && !ALLOWED_COMPANIONS.has(k))
     .map(([k]) => k)
+
+  // `streak_days` + `distinct_time_bands` 조합(walking:A3, 티켓 20260908_1318) — 다른
+  // 드라이버와 달리 여기만 driver 키가 둘이다. 이 조합 하나만 예외로 허용하고 다른 결합은
+  // 여전히 막는다(이 파일의 「모르는 조합은 안전하게 막는다」 원칙, 위 헤더 주석).
+  if (extraKeys.length === 2 && extraKeys.includes('streak_days') && extraKeys.includes('distinct_time_bands')) {
+    return collectStreakDayOccurrences
+  }
+
   if (extraKeys.length !== 1) return undefined
   const driver = extraKeys[0]
+
+  // `activities_within_hours` + `repeat_count` 조합(walking:A4, 티켓 20260908_1318) —
+  // `PERIOD_DRIVER_KEYS`(날짜·주·달 단위 기간)와 성격이 달라 별도 분기로 둔다.
+  if (driver === 'activities_within_hours') return collectActivitiesWithinHoursOccurrences
+
   if (!(PERIOD_DRIVER_KEYS as readonly string[]).includes(driver)) return undefined
 
   switch (driver as (typeof PERIOD_DRIVER_KEYS)[number]) {

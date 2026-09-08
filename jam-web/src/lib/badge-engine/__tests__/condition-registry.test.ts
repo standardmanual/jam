@@ -144,17 +144,34 @@ const V5_NEWLY_ENGINE_8_KEYS = [
  */
 const V5_NEWLY_ENGINE_PERSONAL_RECORD_KEYS = ['personal_record_break'] as const
 
-/** 아직 아무도 평가하지 않는 7종 — fail-closed가 계속 막아야 한다 */
-const V5_PENDING_16_KEYS = V5_NEW_20_KEYS.filter(
+/**
+ * v5 잔여 5종 — 티켓 20260908_1318에서 `pending` → `engine`으로 뒤집었다
+ * (`distinct_time_bands`·`day_of_month`·`activities_within_hours`·`month_over_month_ratio`·
+ * `vs_personal_average`).
+ */
+const V5_NEWLY_ENGINE_REMAINING_5_KEYS = [
+  'distinct_time_bands',
+  'day_of_month',
+  'activities_within_hours',
+  'month_over_month_ratio',
+  'vs_personal_average',
+] as const
+
+/** 아직 아무도 평가하지 않는 2종(`daily_once_count`·`negative_split`) — fail-closed가 계속 막아야 한다 */
+const V5_PENDING_2_KEYS = V5_NEW_20_KEYS.filter(
   (
     k
   ): k is Exclude<
     (typeof V5_NEW_20_KEYS)[number],
-    (typeof V5_REST_4_KEYS)[number] | (typeof V5_NEWLY_ENGINE_8_KEYS)[number] | (typeof V5_NEWLY_ENGINE_PERSONAL_RECORD_KEYS)[number]
+    | (typeof V5_REST_4_KEYS)[number]
+    | (typeof V5_NEWLY_ENGINE_8_KEYS)[number]
+    | (typeof V5_NEWLY_ENGINE_PERSONAL_RECORD_KEYS)[number]
+    | (typeof V5_NEWLY_ENGINE_REMAINING_5_KEYS)[number]
   > =>
     !(V5_REST_4_KEYS as readonly string[]).includes(k) &&
     !(V5_NEWLY_ENGINE_8_KEYS as readonly string[]).includes(k) &&
-    !(V5_NEWLY_ENGINE_PERSONAL_RECORD_KEYS as readonly string[]).includes(k)
+    !(V5_NEWLY_ENGINE_PERSONAL_RECORD_KEYS as readonly string[]).includes(k) &&
+    !(V5_NEWLY_ENGINE_REMAINING_5_KEYS as readonly string[]).includes(k)
 )
 
 /** 신규 20종 각각의 「타입상 유효한」 예시 값 — 조건에 실어 fail-closed를 확인하는 데 쓴다 */
@@ -224,17 +241,19 @@ describe('레지스트리 — 필드 구성', () => {
     ])
     expect(byEval('pending')).toContain('route')
     // route + v5 신규 20 − 휴식 4(B3) − v5 스칼라7·weekly_streak 8(티켓 20260906_0110 ②)
-    // − personal_record_break·personal_record_break_metric 2(티켓 20260906_2055) = 1 + 7 = 8
-    expect(byEval('pending').length).toBe(8)
+    // − personal_record_break·personal_record_break_metric 2(티켓 20260906_2055)
+    // − v5 잔여 5종(티켓 20260908_1318) = 1 + 2(daily_once_count·negative_split) = 3
+    expect(byEval('pending').length).toBe(3)
     // 기존 21 + repeat_count(B1) + 휴식 4종(B3) + v5 스칼라7·weekly_streak 8 + v5 확장 2
     // (cumulative_duration_hours·monthly_count, 티켓 20260906_0110 ①②)
     // + personal_record_break·personal_record_break_metric 2(티켓 20260906_2055)
-    expect(byEval('engine').length).toBe(38)
+    // + v5 잔여 5종(티켓 20260908_1318)
+    expect(byEval('engine').length).toBe(43)
   })
 
-  it('v5 신규 20종이 전부 들어 있고, 휴식·스칼라7·weekly_streak·개인기록갱신을 뺀 7종은 아직 평가 미구현이다', () => {
+  it('v5 신규 20종이 전부 들어 있고, daily_once_count·negative_split 2종만 아직 평가 미구현이다', () => {
     for (const key of V5_NEW_20_KEYS) expect(ALL_CONDITION_KEYS).toContain(key)
-    for (const key of V5_PENDING_16_KEYS) {
+    for (const key of V5_PENDING_2_KEYS) {
       expect(EVALUATED_CONDITION_KEYS).not.toContain(key)
       expect(PENDING_CONDITION_KEYS).toContain(key)
     }
@@ -256,6 +275,19 @@ describe('레지스트리 — 필드 구성', () => {
       expect(EVALUATED_CONDITION_KEYS, `${key}`).toContain(key)
       expect(PENDING_CONDITION_KEYS, `${key}`).not.toContain(key)
       expect(MEASURABLE_CONDITION_KEYS, `${key}`).toContain(key)
+    }
+  })
+
+  it('v5 잔여 5종은 평가 주체가 엔진이다 (티켓 20260908_1318)', () => {
+    for (const key of V5_NEWLY_ENGINE_REMAINING_5_KEYS) {
+      expect(EVALUATED_CONDITION_KEYS, `${key}`).toContain(key)
+      expect(PENDING_CONDITION_KEYS, `${key}`).not.toContain(key)
+    }
+    // day_of_month는 role: 'filter'라 measurable이 아니다 — 단독으로는 pass/fail을 만들지
+    // 않는다(day_of_week 단일값과 같은 성격).
+    expect(MEASURABLE_CONDITION_KEYS).not.toContain('day_of_month')
+    for (const key of ['distinct_time_bands', 'activities_within_hours', 'month_over_month_ratio', 'vs_personal_average']) {
+      expect(MEASURABLE_CONDITION_KEYS, key).toContain(key)
     }
   })
 
@@ -526,8 +558,8 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
 })
 
 describe('fail-closed — ① 평가할 수 없는 키가 든 조건은 발급되지 않는다', () => {
-  it('평가 미구현 16종은 각각 단독으로도 fail한다', () => {
-    for (const key of V5_PENDING_16_KEYS) {
+  it('평가 미구현 2종은 각각 단독으로도 fail한다', () => {
+    for (const key of V5_PENDING_2_KEYS) {
       const cond = { activity_type: 'running', [key]: V5_SAMPLE_VALUES[key] } as BadgeCondition
       const result = evaluateConditionDetailed(cond, activities)
       expect(result.pass, `${key} 단독 조건이 통과했다`).toBe(false)
@@ -553,7 +585,10 @@ describe('fail-closed — ① 평가할 수 없는 키가 든 조건은 발급�
     const passing: BadgeCondition = { activity_type: 'running', distance_km: 5 }
     expect(evaluateConditionDetailed(passing, activities).pass).toBe(true)
 
-    const withPending = { ...passing, month_over_month_ratio: 1.5 } as BadgeCondition
+    // daily_once_count는 티켓 20260908_1318 이후에도 여전히 pending이다(negative_split과
+    // 함께 남은 2종 중 하나) — month_over_month_ratio는 이 티켓에서 engine으로 뒤집혔으므로
+    // 「아직 구현되지 않은 필드」 예시로 더 이상 쓸 수 없다.
+    const withPending = { ...passing, daily_once_count: 30 } as BadgeCondition
     const result = evaluateConditionDetailed(withPending, activities)
     expect(result.pass).toBe(false)
     expect(result.reason).toContain('평가 구현 대기')
@@ -572,20 +607,21 @@ describe('fail-closed — ① 평가할 수 없는 키가 든 조건은 발급�
     const many = Array.from({ length: 200 }, (_, i) =>
       makeActivity({ stravaId: i + 1, distanceKm: 100, elevationGainM: 3000, movingTimeSec: 36000 })
     )
-    expect(checkCondition({ activity_type: 'running', distinct_time_bands: 2 }, many)).toBe(false)
-    // personal_record_break는 티켓 20260906_2055부터 engine이라 여기 포함하지 않는다 —
-    // 짝 필드 없이 발급되지 않는 회귀는 personal-record-break.test.ts에서 다룬다.
-    expect(checkCondition({ activity_type: 'running', month_over_month_ratio: 1.2 }, many)).toBe(false)
+    expect(checkCondition({ activity_type: 'running', daily_once_count: 30 }, many)).toBe(false)
+    // personal_record_break·distinct_time_bands·month_over_month_ratio는 티켓 20260906_2055·
+    // 20260908_1318부터 engine이라 여기 포함하지 않는다 — 그 필드들의 실제 판정 회귀는
+    // personal-record-break.test.ts·v5-extension.test.ts·new-conditions.test.ts에서 다룬다.
+    expect(checkCondition({ activity_type: 'running', negative_split: true }, many)).toBe(false)
   })
 
   it('findBlockingConditionKeys가 미지의 키와 구현 대기 키를 구분한다', () => {
     const blocking = findBlockingConditionKeys({
       distance_km: 5,
-      month_over_month_ratio: 1.2,
+      daily_once_count: 30,
       nope: 1,
     } as unknown as BadgeCondition)
     expect(blocking.unknown).toEqual(['nope'])
-    expect(blocking.pending).toEqual(['month_over_month_ratio'])
+    expect(blocking.pending).toEqual(['daily_once_count'])
   })
 
   it('값이 undefined인 키는 막지 않는다 (조건에 존재하지 않는 것과 같다)', () => {
@@ -763,9 +799,9 @@ describe('미션 평가 경로 — fail-closed가 미션을 영구 미달성으�
   it('extraAllowedKeys를 열어도 평가 대기 필드는 여전히 막힌다', () => {
     // 「모르는 키 허용」과 「미구현 필드 허용」은 다르다 — 후자는 열면 안 된다
     const r = evaluateConditionDetailed(
-      { activity_type: 'running', month_over_month_ratio: 1.2 } as never,
+      { activity_type: 'running', daily_once_count: 30 } as never,
       activities,
-      { extraAllowedKeys: new Set(['month_over_month_ratio']) }
+      { extraAllowedKeys: new Set(['daily_once_count']) }
     )
     expect(r.pass).toBe(false)
     expect(r.reason).toContain('평가 구현 대기')

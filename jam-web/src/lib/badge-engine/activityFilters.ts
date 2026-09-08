@@ -134,6 +134,58 @@ export function calcMaxWeeklyStreak(activities: NormalizedActivity[]): number {
   return maxStreak
 }
 
+/** 활동의 (로컬 기준) 「일(day of month)」이 지정한 값과 일치하는지 — `day_of_month` 조건(티켓 20260908_1318) */
+export function matchesDayOfMonth(a: NormalizedActivity, day: number): boolean {
+  const dateOnly = (a.startDateLocal ?? a.startDate).slice(0, 10)
+  return new Date(`${dateOnly}T00:00:00Z`).getUTCDate() === day
+}
+
+// ── 서로 다른 시간대 판정 (`distinct_time_bands`, 티켓 20260908_1318) ─────────
+//
+// 시간대 6구간 경계는 `badgeConditionText.ts`의 `timeSlotLabel`(time_range 칩 표기용)과
+// **똑같다** — 두 곳이 다른 경계를 쓰면 「시간대 문구」와 「시간대 개수 판정」이 어긋난다.
+// `distinct_time_bands`의 min:2~max:6(conditionRegistry.ts)이 이 6구간 수와 정확히
+// 일치하는 것도 같은 경계를 의도했다는 근거다.
+export const TIME_BANDS = ['새벽', '아침', '점심', '오후', '저녁', '심야'] as const
+export type TimeBand = (typeof TIME_BANDS)[number]
+
+/** 활동 시작시각(로컬)이 속하는 시간대(6구간 중 하나) */
+export function timeBandOf(a: NormalizedActivity): TimeBand {
+  const local = a.startDateLocal ?? a.startDate
+  const h = Number(local.slice(11, 13))
+  if (h >= 4 && h < 8) return '새벽'
+  if (h >= 8 && h < 11) return '아침'
+  if (h >= 11 && h < 14) return '점심'
+  if (h >= 14 && h < 18) return '오후'
+  if (h >= 18 && h < 22) return '저녁'
+  return '심야'
+}
+
+/** 활동 목록이 서로 다른 시간대를 몇 개나 포함하는지 (`distinct_time_bands` 조건 평가) */
+export function countDistinctTimeBands(activities: NormalizedActivity[]): number {
+  return new Set(activities.map(timeBandOf)).size
+}
+
+// ── 지정 시간 창 안의 활동 횟수 (`activities_within_hours`, 티켓 20260908_1318) ────
+//
+// `{hours, count}` — 실제 경과 시각(`startDate`, UTC) 기준 슬라이딩 윈도우다. 로컬 날짜
+// 경계(자정)로 자르지 않는다 — "24시간 안에 3회"는 달력의 하루가 아니라 실제 24시간
+// 경과를 뜻하기 때문이다(예: 23시 활동 → 다음날 22시 활동도 24시간 안).
+
+/** 시간순 정렬된 활동 배열에서, `hours`시간 슬라이딩 창 안에 든 활동의 최댓값 */
+export function maxActivitiesWithinHours(activities: NormalizedActivity[], hours: number): number {
+  if (activities.length === 0) return 0
+  const times = activities.map((a) => Date.parse(a.startDate)).sort((a, b) => a - b)
+  const windowMs = hours * 60 * 60 * 1000
+  let left = 0
+  let max = 0
+  for (let right = 0; right < times.length; right++) {
+    while (times[right] - times[left] > windowMs) left++
+    max = Math.max(max, right - left + 1)
+  }
+  return max
+}
+
 // ── 휴식(활동 공백) 판정 (v5 B3, 티켓 20260905_0030 §4) ────────────────────
 //
 // **`index.ts`(발급 판정)와 `badgeProgress.ts`(진행 계산)가 이 파일의 같은 함수를 본다.**
@@ -573,6 +625,72 @@ export function countPersonalRecordBreaks(
     }
   }
   return count
+}
+
+// ── 전월 대비 배수 · 평소 평균 대비 배수 (티켓 20260908_1318) ────────────────
+//
+// 콘텐츠 실측(`seed_v5_activity_badges.sql` 주석 「지난달 거리의 120%」·「평소 평균 거리의
+// 2배」)에 따라 두 필드 모두 **거리(distanceKm)** 를 지표로 고정한다. `personal_record_break`와
+// 달리 지표를 고르는 짝 필드가 레지스트리에 없다 — 카탈로그가 거리 외 지표를 쓸 계획이 없다는 뜻이다.
+
+function monthKeyOf(a: NormalizedActivity): string {
+  const d = new Date(a.startDateLocal ?? a.startDate)
+  return `${d.getFullYear()}-${d.getMonth() + 1}`
+}
+
+/** `monthKeyOf`가 만드는 「YYYY-M」 키의 바로 전월 키 */
+function prevMonthKeyOf(key: string): string {
+  const [y, m] = key.split('-').map(Number)
+  return m === 1 ? `${y - 1}-12` : `${y}-${m - 1}`
+}
+
+/**
+ * 「전월 대비 N배 이상」 최고 달성 배수 — 이력 전체에서 **달력상 인접한 두 달**(어느 달과
+ * 그 바로 전달)의 누적 거리 쌍을 전부 훑어 가장 높은 비율을 돌려준다. "이력 전반 독립
+ * 평가"와 같은 태도로, 실행 시각(`now`)이 아니라 데이터에 있는 달만 본다 — 백필된 과거
+ * 이력에도 동일하게 동작하고, 화면과 발급이 실행 시각에 따라 갈리지 않는다.
+ *
+ * **전월 실적이 0(또는 그 달에 활동이 아예 없음)이면 그 쌍은 판정에서 제외한다** — "0 대비
+ * 몇 배"는 정의되지 않으므로, 분모 0을 자동 통과로 두지 않는다(스펙 요구사항).
+ */
+export function bestMonthOverMonthRatio(activities: NormalizedActivity[]): number {
+  const monthKm = new Map<string, number>()
+  for (const a of activities) {
+    const key = monthKeyOf(a)
+    monthKm.set(key, (monthKm.get(key) ?? 0) + a.distanceKm)
+  }
+  let best = 0
+  for (const [key, km] of monthKm) {
+    const prevKm = monthKm.get(prevMonthKeyOf(key))
+    if (!prevKm || prevKm <= 0) continue
+    best = Math.max(best, km / prevKm)
+  }
+  return best
+}
+
+/**
+ * 「평소 평균 대비 N배 이상」 최고 달성 배수 — 활동을 시간순으로 훑으며, **그 활동 이전까지의
+ * 평균 거리** 대비 그 활동의 거리 비율을 계산해 최댓값을 돌려준다.
+ *
+ * `countPersonalRecordBreaks`와 같은 원칙("직전까지의 이력만으로" 판정)이다 — 평균에 자기
+ * 자신을 포함하면 활동이 1건뿐이어도 항상 「평균의 1배」로 통과해 버린다. 비교할 이전 활동이
+ * 없는 최초 활동은 평균을 계산할 수 없으므로 건너뛴다(스펙의 "활동 이력 부족 시 처리 방침"
+ * — 최소 2건의 활동이 있어야 판정 가능하다).
+ */
+export function bestVsPersonalAverage(activities: NormalizedActivity[]): number {
+  const sorted = [...activities].sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate))
+  let sum = 0
+  let n = 0
+  let best = 0
+  for (const a of sorted) {
+    if (n > 0) {
+      const avg = sum / n
+      if (avg > 0) best = Math.max(best, a.distanceKm / avg)
+    }
+    sum += a.distanceKm
+    n++
+  }
+  return best
 }
 
 /** 미발급 사유의 `required` 문구 — 짝 필드까지 함께 읽어야 뜻이 완성된다 */

@@ -152,7 +152,8 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
                     )}
                     {family.pendingKeys.length > 0 && (
                       <span className="rounded bg-amber-100 px-1.5 py-px text-[11px] font-medium text-amber-800">
-                        평가 대기 {family.pendingKeys.length}종
+                        평가 대기 {family.pendingKeys.length}종 —{' '}
+                        {family.pendingKeys.map((k) => getConditionField(k)?.label ?? k).join(', ')}
                       </span>
                     )}
                   </div>

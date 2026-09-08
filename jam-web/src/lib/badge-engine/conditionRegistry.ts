@@ -1201,7 +1201,11 @@ export const CONDITION_FIELDS = [
     max: 6,
     step: 1,
     direction: 'higher',
-    evaluation: 'pending',
+    // 티켓 20260908_1318 — `countDistinctTimeBands`(activityFilters.ts)가 시간대 6구간
+    // (새벽·아침·점심·오후·저녁·심야, `badgeConditionText.ts`의 `timeSlotLabel`과 같은 경계)
+    // 중 몇 개에서 활동이 있었는지 센다. `streak_days`와 결합되면(walking:A3) 그 스트릭 창
+    // 안으로 좁힌 판정을 `repeatOccurrences.ts`가 추가로 수행한다.
+    evaluation: 'engine',
     chip: (c) => `시간대 ${c.distinct_time_bands}개`,
     detail: (c) => `서로 다른 시간대 ${c.distinct_time_bands}개 이상`,
     form: integerForm('distinctTimeBands', { section: 'environment', label: '서로 다른 시간대 (개)', placeholder: '예: 3' }),
@@ -1217,7 +1221,9 @@ export const CONDITION_FIELDS = [
     step: 1,
     pairedWith: ['total_count'],
     direction: null,
-    evaluation: 'pending',
+    // 티켓 20260908_1318 — day_of_week 단일값과 같은 자리에서 `filtered`를 좁히는 필터로
+    // 평가한다(index.ts). total_count가 그렇게 좁혀진 활동 수를 센다(walking:A6 「초하루의 사람」).
+    evaluation: 'engine',
     chip: (c) => `매달 ${c.day_of_month}일`,
     detail: (c) => `매달 ${c.day_of_month}일`,
     form: integerForm('dayOfMonth', {
@@ -1234,7 +1240,10 @@ export const CONDITION_FIELDS = [
     role: 'measurable',
     input: 'object',
     direction: 'higher',
-    evaluation: 'pending',
+    // 티켓 20260908_1318 — `maxActivitiesWithinHours`(activityFilters.ts)가 `startDate`(UTC)
+    // 기준 슬라이딩 윈도우로 hours시간 창 안 최다 활동 수를 센다. `repeat_count`와 결합되면
+    // (walking:A4) `repeatOccurrences.ts`가 창을 채울 때마다 회차 하나로 센다.
+    evaluation: 'engine',
     chip: (c) => `${c.activities_within_hours!.hours}시간 ${c.activities_within_hours!.count}회`,
     detail: (c) => `${c.activities_within_hours!.hours}시간 안에 ${c.activities_within_hours!.count}회 이상`,
     // 중첩 객체라 폼 state 2개가 한 필드를 이룬다 — 둘 다 있어야 값이 만들어진다
@@ -1322,7 +1331,10 @@ export const CONDITION_FIELDS = [
     max: 10,
     step: 0.1,
     direction: 'higher',
-    evaluation: 'pending',
+    // 티켓 20260908_1318 — 지표는 거리(km)로 고정한다(콘텐츠 확정 근거는
+    // `bestMonthOverMonthRatio`, activityFilters.ts 주석 참조). 전월 실적 0(분모 0)인 달은
+    // 판정에서 제외한다.
+    evaluation: 'engine',
     chip: (c) => `전월 대비 ${c.month_over_month_ratio}배`,
     detail: (c) => `전월 대비 ${c.month_over_month_ratio}배 이상`,
     form: numberForm('monthOverMonthRatio', { section: 'pattern', label: '전월 대비 배수', placeholder: '예: 1.5' }),
@@ -1337,7 +1349,10 @@ export const CONDITION_FIELDS = [
     max: 10,
     step: 0.1,
     direction: 'higher',
-    evaluation: 'pending',
+    // 티켓 20260908_1318 — 지표는 거리(km)로 고정한다(콘텐츠 확정 근거는
+    // `bestVsPersonalAverage`, activityFilters.ts 주석 참조). 비교할 이전 활동이 없으면
+    // (최초 활동) 판정에서 제외한다.
+    evaluation: 'engine',
     chip: (c) => `평소 대비 ${c.vs_personal_average}배`,
     detail: (c) => `평소 평균 대비 ${c.vs_personal_average}배 이상`,
     form: numberForm('vsPersonalAverage', { section: 'pattern', label: '평소 평균 대비 배수', placeholder: '예: 2' }),
