@@ -1,5 +1,6 @@
 /**
- * 조건 저장 전 사전 시뮬레이션 — 배지·미션 공용 판정 헬퍼 (티켓 20260908_1554, 20260908_1632)
+ * 조건 저장 전 사전 시뮬레이션 — 배지·미션 공용 판정 헬퍼
+ * (티켓 20260908_1554, 20260908_1631, 20260908_1632)
  *
  * 배지 조건(`/api/admin/badges/simulate-condition`)과 미션 `engine_condition` 조건
  * (`/api/admin/missions/simulate-condition`)이 **같은 판정 함수**를 쓴다는 걸 코드로 강제하기
@@ -7,9 +8,20 @@
  *
  * ## 어떻게 판정하는가
  * `evaluateConditionDetailed`(badge-engine)는 이미 순수 함수 형태로 조건 하나를 활동 배열에
- * 대해 평가한다 — 저장 여부와 무관하게 호출할 수 있다. 선택한 유저의 실제 활동 이력(가입
- * 앵커 이후, 발급 판정과 동일한 창)을 그대로 대입해 「지금 이 조건으로 저장하면 이 유저는
- * 어떻게 판정될까」를 계산한다. DB에는 아무것도 쓰지 않는다(dry run 전용) — 조회만 한다.
+ * 대해 평가한다 — 저장 여부와 무관하게 호출할 수 있다. DB에는 아무것도 쓰지 않는다(dry run
+ * 전용) — 유저 경로는 조회만 한다.
+ *
+ * 대상은 두 가지 중 하나다(티켓 20260908_1631로 두 번째 경로 추가):
+ *  1. **기존 유저**(`userId`): 선택한 유저의 실제 활동 이력(가입 앵커 이후, 발급 판정과 동일한
+ *     창)을 그대로 대입해 「지금 이 조건으로 저장하면 이 유저는 어떻게 판정될까」를 계산한다.
+ *  2. **가상 활동**(`virtualActivity`+`repeatCount`): 아직 아무 유저에게도 없는 활동 패턴(GPX
+ *     업로드 또는 수치 직접입력, `VirtualActivityForm` 재사용)을 `buildVirtualActivities`
+ *     (`lib/admin/virtualActivity.ts`)로 `NormalizedActivity[]`로 변환해 그대로 대입한다.
+ *     가입 앵커 개념이 없으므로 이력 전체가 평가 대상이고 `anchorDate`는 `null`로 응답한다.
+ *
+ * 미션 라우트는 현재 `userId` 경로만 실제로 호출하지만(1632 범위), 시그니처는 두 경로 모두
+ * 배지·미션 어느 호출부에서든 쓸 수 있게 열어 둔다 — `userId`와 `virtualActivity`는 서로
+ * 배타적으로 하나만 채운다.
  *
  * ## ⚠️ 미션 `engine_condition` 타입에 쓸 때의 한계
  * `engine_condition` 미션의 실제 달성 판정은 `evaluateEngineMissionCondition`
@@ -35,12 +47,14 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { evaluateConditionDetailed } from '@/lib/badge-engine'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
+import { buildVirtualActivities, type VirtualActivityInput } from '@/lib/admin/virtualActivity'
 import {
   findBlockingConditionKeys,
   describeBlockingConditionKeys,
   hasBlockingConditionKeys,
 } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition } from '@/types/database'
+import type { NormalizedActivity } from '@/types/strava'
 
 /**
  * `evaluateConditionDetailed`가 «활동 값과 무관하게 항상 같은 이유»로 떨어뜨리는 분기의
@@ -68,40 +82,69 @@ export type SimulateConditionOutcome =
   | { ok: true; data: SimulateConditionResult }
   | { ok: false; status: number; error: string }
 
+/** 판정 대상 — `userId`(기존 유저) 아니면 `virtualActivity`(가상 활동) 중 하나만 채운다. */
+export interface SimulateConditionTarget {
+  userId?: string
+  /** 가상 활동 입력 — 시뮬레이터 폼(`VirtualActivityForm`)이 만든 값(티켓 20260908_1631) */
+  virtualActivity?: VirtualActivityInput | null
+  repeatCount?: number
+}
+
 /**
- * 저장하지 않은 조건값을 그대로 선택한 유저의 실제 활동 이력에 대입해 판정한다.
+ * 저장하지 않은 조건값을 그대로 선택한 대상(기존 유저 또는 가상 활동)의 활동 이력에
+ * 대입해 판정한다.
  *
  * @param extraAllowedKeys 레지스트리에 없어도 "알 수 없는 필드"로 막지 않을 키 집합.
  *   미션 전용 어휘를 여는 용도(위 파일 주석 참고) — 배지 라우트는 넘기지 않는다.
  */
 export async function simulateCondition(
   condition: Record<string, unknown> | null | undefined,
-  userId: string | undefined,
+  target: SimulateConditionTarget,
   extraAllowedKeys?: ReadonlySet<string>
 ): Promise<SimulateConditionOutcome> {
-  if (!userId) {
-    return { ok: false, status: 400, error: '대상 유저를 선택해주세요.' }
+  const { userId, virtualActivity, repeatCount } = target
+
+  if (!userId && !virtualActivity) {
+    return { ok: false, status: 400, error: '대상 유저를 선택하거나 가상 활동을 입력해주세요.' }
   }
-
-  const supabase = createServiceClient()
-  const { data: userRow, error: userError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', userId)
-    .maybeSingle()
-
-  if (userError) return { ok: false, status: 500, error: userError.message }
-  if (!userRow) return { ok: false, status: 404, error: '유저를 찾을 수 없습니다.' }
 
   // 필드 자체의 구조적 차단(레지스트리에 없는 키·평가 대기·짝 필드 누락)은 활동 이력을
   // 조회하지 않고도 판정 가능하다 — 먼저 계산해 결과에 함께 실어 보낸다.
   const blocking = findBlockingConditionKeys(condition as BadgeCondition | undefined, extraAllowedKeys)
   const fieldBlocked = hasBlockingConditionKeys(blocking)
 
-  // 실제 발급 판정과 동일한 이력 창 — 가입 앵커 이후 이력 (badge-engine/index.ts
-  // evaluateBadgesDetailed와 같은 조회 순서: 앵커 → 그 앵커로 자른 이력).
-  const anchorDate = await getSignupAnchorDate(supabase, userId)
-  const history = await getActivityHistory(supabase, userId, anchorDate)
+  let history: NormalizedActivity[]
+  let anchorDate: string | undefined
+
+  if (userId) {
+    const supabase = createServiceClient()
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (userError) return { ok: false, status: 500, error: userError.message }
+    if (!userRow) return { ok: false, status: 404, error: '유저를 찾을 수 없습니다.' }
+
+    // 실제 발급 판정과 동일한 이력 창 — 가입 앵커 이후 이력 (badge-engine/index.ts
+    // evaluateBadgesDetailed와 같은 조회 순서: 앵커 → 그 앵커로 자른 이력).
+    anchorDate = await getSignupAnchorDate(supabase, userId)
+    history = await getActivityHistory(supabase, userId, anchorDate)
+  } else {
+    // 가상 활동 — DB 조회 없이 입력값을 그대로 NormalizedActivity[]로 변환한다. 실제 유저가
+    // 아니므로 가입 앵커 개념이 없다(이력 전체가 평가 대상).
+    if (
+      !virtualActivity ||
+      typeof virtualActivity.distanceKm !== 'number' ||
+      typeof virtualActivity.movingTimeSec !== 'number' ||
+      !virtualActivity.startDate
+    ) {
+      return { ok: false, status: 400, error: '가상 활동 입력이 올바르지 않습니다.' }
+    }
+    history = buildVirtualActivities(virtualActivity, repeatCount ?? 1)
+    anchorDate = undefined
+  }
 
   // extraAllowedKeys는 위 findBlockingConditionKeys뿐 아니라 evaluateConditionDetailed
   // 내부의 같은 검사(fail-closed 진입점)에도 그대로 넘겨야 한다 — 안 넘기면 미션 전용 키가

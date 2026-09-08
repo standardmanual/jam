@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   const outcome = await simulateCondition(
     condition as Record<string, unknown> | null,
-    userId,
+    { userId },
     MISSION_ONLY_CONDITION_KEYS
   )
   if (!outcome.ok) return NextResponse.json({ error: outcome.error }, { status: outcome.status })
