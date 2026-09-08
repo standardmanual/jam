@@ -28,6 +28,7 @@ import {
   checkGateMissionConsistency,
   collectRuleFamilyKeys,
   parseVisibilityRule,
+  GATE_EXEMPT_REWARD_FAMILY_KEYS,
   type GateMissionBadge,
   type GateMissionInput,
 } from '../gateMissions'
@@ -426,6 +427,51 @@ const cases: Array<[string, () => void]> = [
     })
     assert.strictEqual(linked.filter((i) => i.code === 'reward_family_not_gated').length, 0)
     assert.strictEqual(linked.filter((i) => i.code === 'reward_badge_not_mission_reward').length, 0)
+  }],
+
+  ['④ 설계상 무관문(season_count_all 등) 예외 계열을 여는 미션은 reward_family_not_gated를 내지 않는다 (티켓 20260908_1049)', () => {
+    // trail_running:Q8("사철 산길의 증명")의 보상 배지 계열이 곧 예외 상수의 값이다.
+    // 이 계열을 gate_mission_badge로 가리키는 배지가 하나도 없어도(=trail_running:W2가
+    // season_count_all 패턴이라 원래 게이트가 없다) 더는 경고가 나오면 안 된다.
+    const reward = badge({
+      id: 'r-exempt',
+      name: '사철 산길의 증명 보상',
+      family_key: 'trail_running:Q8',
+      condition_json: { mission_reward: true },
+    })
+    const issues = checkGateMissionConsistency({
+      missions: [gateMission({ id: 'q8', reward_badge_ids: ['r-exempt'] })],
+      activityBadges: [reward], // 이 계열을 gate_mission_badge로 가리키는 배지 없음
+      referencedBadges: new Map([['r-exempt', reward]]),
+    })
+    assert.strictEqual(
+      issues.filter((i) => i.code === 'reward_family_not_gated').length,
+      0,
+      'trail_running:Q8은 문서화된 예외라 경고가 없어야 한다'
+    )
+  }],
+
+  ['④ 예외 목록에 없는 진짜 미연결 계열은 여전히 경고한다 (검사 자체를 무력화하지 않는다)', () => {
+    const reward = badge({
+      id: 'r-gap',
+      name: '진짜 우발적 격차 보상',
+      family_key: 'running:Q7', // GATE_EXEMPT_REWARD_FAMILY_KEYS에 없는 계열
+      condition_json: { mission_reward: true },
+    })
+    assert.ok(
+      !GATE_EXEMPT_REWARD_FAMILY_KEYS.has('running:Q7'),
+      '이 테스트는 예외 목록 밖의 계열을 전제한다 — 상수가 바뀌면 다른 계열로 교체할 것'
+    )
+    const issues = checkGateMissionConsistency({
+      missions: [gateMission({ id: 'q7', reward_badge_ids: ['r-gap'] })],
+      activityBadges: [reward],
+      referencedBadges: new Map([['r-gap', reward]]),
+    })
+    assert.strictEqual(
+      issues.filter((i) => i.code === 'reward_family_not_gated').length,
+      1,
+      '예외 목록에 없는 미연결 계열은 계속 경고돼야 한다'
+    )
   }],
 
   ['④ 폐기 대상(레거시 게이트 미션)을 식별한다', () => {
