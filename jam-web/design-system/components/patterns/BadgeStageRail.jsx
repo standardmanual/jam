@@ -1,6 +1,6 @@
 import React from 'react';
 import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
-import { LockGlyph, CheckGlyph, StarGlyph } from '../icons/BadgeStatusGlyphs.jsx';
+import { LockGlyph, CheckGlyph } from '../icons/BadgeStatusGlyphs.jsx';
 import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeader.jsx';
 
 /**
@@ -52,7 +52,11 @@ import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeade
  * 인터랙션: 눈금 하나는 상태에 따라 링크(embedded 이동, earned/not-reached) 또는
  * 버튼(받는 방법 시트 오픈, ready/locked) 둘 중 하나다 — 앵커 안에 버튼을 중첩하지
  * 않기 위한 설계. "레일에는 지금 막는 문 하나만 그린다" — 마지막 획득 눈금 다음(frontier)이
- * ready/locked일 때만 그 앞 연결선에 점선+자물쇠(게이트)를 그린다.
+ * ready/locked일 때만 그 앞 연결선에 점선(게이트)을 그린다. 게이트 자체(어떤 문인지·통과
+ * 여부)는 별도 자물쇠 버튼으로 표시하지 않는다 — 그 정보는 눈금 자신의 마커(자물쇠·체크,
+ * `StopThumbnail`의 `showMarker`)로 충분하다고 보고, 연결선에는 클릭 가능한 게이트 버튼을
+ * 두지 않기로 확정했다(2026-09-08 사용자 확정, 티켓 20260906_2333). 점선 트랙만 "여기
+ * 막는 문이 있다"는 시각 신호로 남는다.
  */
 
 // 등급 라벨은 RarityBadge.jsx의 config가 MODULAR 단일 소스다 — 여기서 다시 선언하지 않는다
@@ -125,8 +129,6 @@ button.ds-rail-stop{background:none;border:none;padding:0;font:inherit;cursor:po
 .ds-rail-gate-link{background:repeating-linear-gradient(90deg, rgba(255,255,255,.26) 0 4px, transparent 4px 8px)}
 @media (prefers-reduced-motion: reduce){.ds-rail-stop{transition:none!important}}
 `;
-
-const GATE_KIND_LABEL = { mission: '미션', cross: '선행 배지' };
 
 /**
  * 눈금 하나의 배지 썸네일 — 접힌 레일·펼친 티어 목록이 공유한다.
@@ -316,18 +318,7 @@ export function BadgeStageRail({
       isFrontierConnector && frontierProgress && typeof frontierProgress.fraction === 'number' && !frontierProgress.muted
         ? Math.round(Math.min(1, Math.max(0, frontierProgress.fraction)) * 100)
         : 0;
-    // 게이트 종류(v2). 최대 2개만 그린다 — 그보다 많은 문을 한 자리에 늘어놓으면
-    // "어디서 막혔는지"가 오히려 안 읽힌다(원 검토문서 §04와 같은 이유).
-    const gates = (stop.gates ?? []).slice(0, 2);
-    const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
-    const stopName = [familyName, rarityLabel].filter(Boolean).join(' ');
-    const gateAriaLabel =
-      gates.length > 0
-        ? `${stopName} 받는 방법 보기. ${gates
-            .map((g) => `${GATE_KIND_LABEL[g.kind] ?? g.kind} ${g.met ? '통과' : '대기'}`)
-            .join(', ')}`
-        : `${stopName} 받는 방법 보기`;
-    return { key: stop.id, i, isGateBefore, allEarnedBefore, isFrontierConnector, pct, gates, gateAriaLabel, stopId: stop.id };
+    return { key: stop.id, i, isGateBefore, allEarnedBefore, isFrontierConnector, pct };
   });
 
   return (
@@ -374,7 +365,8 @@ export function BadgeStageRail({
 
       <div style={{ position: 'relative', marginTop: 'var(--spacing-16)' }}>
         {/* 연결선 레이어 — 절대 배치. 캡션 글자 수가 이 기하를 움직이지 못한다.
-            레이어 자체는 클릭을 통과시키고, 게이트 버튼만 pointer-events를 되살린다. */}
+            순수 장식(트랙·진행 스윕)만 그리고 클릭을 통과시킨다 — 게이트 여부는 별도
+            버튼 없이 점선 트랙으로만 표시한다(2026-09-08 사용자 확정, 티켓 20260906_2333). */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           {connectors.map((c) => (
             <span
@@ -408,46 +400,6 @@ export function BadgeStageRail({
                     clipPath: `inset(0 ${100 - c.pct}% 0 0)`,
                   }}
                 />
-              )}
-              {c.isGateBefore && (
-                <button
-                  type="button"
-                  className="ds-rail-lock-btn"
-                  onClick={() => onLockClick?.(c.stopId)}
-                  aria-label={c.gateAriaLabel}
-                  style={{
-                    // 자물쇠 2개(미션 + 교차)까지 들어가는 자리. 종류를 안 넘기면(v1 호출부)
-                    // 예전처럼 원형 자물쇠 하나만 그린다.
-                    height: 20, minWidth: 20, padding: c.gates.length > 1 ? '0 3px' : 0,
-                    borderRadius: c.gates.length > 1 ? 'var(--radius-pill)' : '50%',
-                    background: 'var(--color-surface-elevated)',
-                    boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
-                    color: 'var(--color-text-secondary)',
-                  }}
-                >
-                  {c.gates.length === 0 ? (
-                    <LockGlyph size={10} />
-                  ) : (
-                    c.gates.map((gate, gi) =>
-                      // 이미 통과한 문은 **체크 + 라임**이다 — 형태까지 바꿔 색만으로
-                      // 구분하지 않는다(미션 자물쇠 대비가 4.18:1이라 색 하나에 기댈 수 없다).
-                      gate.met ? (
-                        <span key={`${gate.kind}-${gi}`} style={{ display: 'flex', color: 'var(--status-progress-done)' }}>
-                          <CheckGlyph size={10} />
-                        </span>
-                      ) : gate.kind === 'mission' ? (
-                        <span key={`${gate.kind}-${gi}`} style={{ display: 'flex', color: 'var(--color-primary)' }}>
-                          <LockGlyph size={10} />
-                        </span>
-                      ) : (
-                        <span key={`${gate.kind}-${gi}`} style={{ display: 'flex', color: 'var(--color-text-secondary)' }}>
-                          <StarGlyph size={10} />
-                        </span>
-                      )
-                    )
-                  )}
-                </button>
               )}
             </span>
           ))}

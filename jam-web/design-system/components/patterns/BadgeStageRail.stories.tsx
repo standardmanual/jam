@@ -777,11 +777,14 @@ export const EarnCountChip: Story = {
 };
 
 /**
- * v2 — `stop.gates`: 게이트 종류를 배열로 받아 **한 자리에 최대 2개**(자물쇠+별) 그린다.
- * 그래서 게이트 자리 폭이 36px → **44px**이다.
- * 미션 게이트만 `--color-primary`(4.18:1 — 텍스트 기준엔 못 미치나 아이콘이라 비텍스트
- * 기준 3:1은 통과)이고, 교차(선행 배지) 게이트와는 **형태로도** 갈라 둔다(자물쇠 vs 별).
- * `gates`를 넘기지 않으면 v1과 동일하게 종류 없는 자물쇠 하나만 그린다.
+ * v2 — `stop.gates`(게이트 종류 배열)를 넘겨도 렌더가 깨지지 않는지 확인한다.
+ *
+ * 예전에는 이 자리에 게이트 종류(미션 자물쇠·교차 별)를 시각적으로 구분해 그리는 별도
+ * 버튼이 있었다. **2026-09-08 사용자 확정(티켓 20260906_2333)으로 그 버튼을 없앴다** —
+ * 게이트가 있다는 사실은 눈금 자신의 마커(잠김 자물쇠)만으로 충분하다고 보고, 게이트별
+ * 세부(종류·통과 여부)는 더 이상 화면에 노출하지 않는다. 그래서 `gates` prop은 여전히
+ * 받지만(호출부 계약 유지) 이제 조용히 무시된다 — 이 스토리는 그 무시가 에러 없이
+ * 되는지를 확인하는 회귀 방지 스토리다.
  */
 export const GateKinds: Story = {
   name: 'v2 — 게이트 종류 (미션 자물쇠 + 교차 별)',
@@ -825,8 +828,9 @@ export const GateKinds: Story = {
   ),
   play: async ({ canvasElement }) => {
     const labels = Array.from(canvasElement.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') ?? '');
-    // 게이트 종류는 색·형태뿐 아니라 aria-label로도 읽힌다.
-    expect(labels.some((l) => l.includes('미션') && l.includes('선행 배지'))).toBe(true);
+    // 게이트 세부(미션/교차)는 더 이상 화면에 노출하지 않는다(2026-09-08 사용자 확정) —
+    // 눈금 자신의 잠김 마커로 충분하다고 보고 게이트별 aria-label 자체를 없앴다.
+    expect(labels.some((l) => l.includes('미션') || l.includes('선행 배지'))).toBe(false);
   },
 };
 
@@ -881,11 +885,10 @@ export const MaxFourStopsEnforced: Story = {
 };
 
 /**
- * v3 — 게이트가 둘인데 **하나는 이미 통과**했다 (티켓 20260905_0037).
- *
- * `stop.gates`에 충족 여부가 없던 동안에는 미션을 이미 깬 상태에서도 자물쇠 2개가 똑같이
- * 그려져 「무엇이 남았나」가 안 읽혔다. 통과한 문은 체크+라임으로 그려 색만이 아니라
- * **형태로도** 가른다.
+ * v3 — 게이트가 둘(하나는 이미 통과)인 데이터를 넘겨도 렌더가 깨지지 않는지 확인한다
+ * (원래 티켓 20260905_0037. 이후 2026-09-08 사용자 확정으로 게이트별 통과·대기를
+ * 시각적으로 가르던 버튼 자체를 없앴다 — 티켓 20260906_2333). `gates`는 여전히 받지만
+ * 조용히 무시된다.
  */
 export const GatePartiallyMet: Story = {
   name: 'v3 — 게이트 2개 중 1개 통과',
@@ -914,8 +917,8 @@ export const GatePartiallyMet: Story = {
   ),
   play: async ({ canvasElement }) => {
     const labels = Array.from(canvasElement.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') ?? '');
-    // 통과/대기가 aria-label로도 갈린다 — 색·형태에만 기대지 않는다.
-    expect(labels.some((l) => l.includes('미션 통과') && l.includes('선행 배지 대기'))).toBe(true);
+    // 게이트별 통과/대기 세부는 더 이상 화면에 노출하지 않는다(2026-09-08 사용자 확정).
+    expect(labels.some((l) => l.includes('미션 통과') || l.includes('선행 배지 대기'))).toBe(false);
   },
 };
 
