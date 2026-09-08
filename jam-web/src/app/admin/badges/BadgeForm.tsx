@@ -1022,8 +1022,13 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
 
           {/* 판정 시뮬레이션 — 저장 전 실제 발급 엔진으로 이 조건을 미리 돌려본다
               (티켓 20260908_1554). 저장 버튼과 별개이며 저장하지 않아도 언제든 실행 가능.
-              배지·미션 폼 공용 컴포넌트(티켓 20260908_1632). */}
-          <ConditionSimulationPanel condition={condPreview} apiPath="/api/admin/badges/simulate-condition" />
+              배지·미션 폼 공용 컴포넌트(티켓 20260908_1632) — "기존 유저"/"가상 활동" 대상
+              전환은 패널 내부가 갖는다(티켓 20260908_1631). */}
+          <ConditionSimulationPanel
+            condition={condPreview}
+            apiPath="/api/admin/badges/simulate-condition"
+            themeContainer={themeContainer}
+          />
         </div>
       )}
 
