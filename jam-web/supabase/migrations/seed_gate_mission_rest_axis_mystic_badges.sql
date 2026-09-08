@@ -36,6 +36,11 @@
 --
 -- 멱등: 아래 INSERT는 WHERE NOT EXISTS로 (family_key, rarity, level) 중복을 막는다.
 -- 두 번 실행해도 안전하다.
+--
+-- ⚠️ 2026-09-08 실행 시 수정 — VALUES의 `level` 열이 문자열 리터럴들 사이에 섞인 순수 NULL이라
+-- PostgreSQL이 타입을 text로 추론해 `b.level IS NOT DISTINCT FROM v.level`이
+-- `integer = text` 오류로 실패했다(원본은 `NULL`이었음). `NULL::integer`로 명시해 고쳤다 —
+-- 실행 완료 후 원본 형태를 이 값으로 교정해 남긴다(재실행해도 동일하게 성공하도록).
 
 BEGIN;
 
@@ -47,15 +52,15 @@ SELECT v.name, v.description, v.type::badge_type, v.rarity::badge_rarity, v.leve
        v.family_key, v.sort_order, v.condition_json, v.activity_types, false
   FROM (VALUES
     -- cycling:X1 · 안장의 휴일 — 한 번에 150km 이상 다음 날 휴식 / 100회 (Mystic, 게이트: 누적 K1~K3 min_level 6 + 미션 Q7)
-    ('안장의 휴일', '휴식은 이제 계획이 아니라 몸에 새겨진 습관입니다.', 'activity', 'mystic', NULL, 'cycling:X1', 25,
+    ('안장의 휴일', '휴식은 이제 계획이 아니라 몸에 새겨진 습관입니다.', 'activity', 'mystic', NULL::integer, 'cycling:X1', 25,
      '{"activity_type":"cycling","single_distance_km":150,"rest_after_long":1,"repeat_count":100,"cross_between_axis":{"family_keys":["cycling:K1","cycling:K2","cycling:K3"],"min_level":6},"gate_mission_badge":{"family_keys":["cycling:Q7"]}}'::jsonb,
      ARRAY['cycling']::text[]),
     -- hiking:X1 · 하산 다음 날 — 한 번에 8시간 이상 다음 날 휴식 / 70회 (Mystic, 게이트: 누적 K1·K3 min_level 6 + 미션 Q7)
-    ('하산 다음 날', '물러설 때를 아는 판단은 이제 몸에 새겨진 감각이 되었습니다.', 'activity', 'mystic', NULL, 'hiking:X1', 20,
+    ('하산 다음 날', '물러설 때를 아는 판단은 이제 몸에 새겨진 감각이 되었습니다.', 'activity', 'mystic', NULL::integer, 'hiking:X1', 20,
      '{"activity_type":"hiking","duration_minutes":480,"rest_after_long":1,"repeat_count":70,"cross_between_axis":{"family_keys":["hiking:K1","hiking:K3"],"min_level":6},"gate_mission_badge":{"family_keys":["hiking:Q7"]}}'::jsonb,
      ARRAY['hiking']::text[]),
     -- trail_running:X1 · 내리막의 대가 — 한 번에 35km 이상 다음 날 휴식 / 70회 (Mystic, 게이트: 누적 K1~K3 min_level 6 + 미션 Q7)
-    ('내리막의 대가', '무너지지 않는 몸은 회복하는 법조차 본능으로 압니다.', 'activity', 'mystic', NULL, 'trail_running:X1', 24,
+    ('내리막의 대가', '무너지지 않는 몸은 회복하는 법조차 본능으로 압니다.', 'activity', 'mystic', NULL::integer, 'trail_running:X1', 24,
      '{"activity_type":"trail_running","single_distance_km":35,"rest_after_long":1,"repeat_count":70,"cross_between_axis":{"family_keys":["trail_running:K1","trail_running:K2","trail_running:K3"],"min_level":6},"gate_mission_badge":{"family_keys":["trail_running:Q7"]}}'::jsonb,
      ARRAY['trail_running']::text[])
   ) AS v(name, description, type, rarity, level, family_key, sort_order, condition_json, activity_types)

@@ -2,8 +2,9 @@
 id: 20260908_1033
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-08
+closed: 2026-09-08
 ---
 
 # [BadgeEngine] 자전거·등산·트레일러닝 "휴식" 축 3계열 Mystic 배지 신규 추가 + 미션 게이트 연결
@@ -136,7 +137,14 @@ jam-web/supabase/migrations/seed_gate_mission_rest_axis_mystic_badges.sql (신�
   또는 `duration_minutes`)이 같은 계열 Common·Rare·Epic 형제 행과 동일해 계열 정합성
   검사를 통과함(`cross_between_axis`·`gate_mission_badge`는 measurable_keys에 없어
   비교 대상이 아님 — 133 주석에서 확인).
-- [ ] 실제 DB 실행·SELECT 검증은 사용자 승인 후 오케스트레이터가 처리(이 티켓 범위 밖).
+- [x] 실행 전 SELECT로 대상 3계열에 기존 Mystic 행 없음(0행) 확인 후 오케스트레이터가
+  Supabase에 직접 실행(2026-09-08).
+- [x] 실행 결과 3계열 모두 4행(Common·Rare·Epic·Mystic)으로 정상 삽입, Mystic 행의
+  `condition_json`에 `cross_between_axis`·`gate_mission_badge` 확인.
+- ⚠️ 실행 중 SQL 버그 발견·수정: `VALUES`의 `level` 열이 문자열 리터럴 사이에 순수
+  `NULL`로 섞여 PostgreSQL이 타입을 `text`로 추론, `b.level IS NOT DISTINCT FROM v.level`
+  비교가 `integer = text` 오류로 실패했다. `NULL::integer`로 명시해 해결하고 저장소
+  SQL 파일도 같은 값으로 교정했다 — 재실행해도 안전하다.
 - `cd jam-web && npm run lint` 미실행 — 이번 변경은 SQL·마크다운 문서만 수정했고 TS/JS
   코드 변경이 없어 lint 대상 파일이 없음.
 
@@ -152,9 +160,9 @@ jam-web/supabase/migrations/seed_gate_mission_rest_axis_mystic_badges.sql (신�
 - [x] 표기 규칙: 해당 없음(날짜·시간·금액·기간 표기 없음)
 
 ### 배포 정보
-- 배포일: (미실행 — SQL 작성만 완료, 실행은 사용자 승인 후 오케스트레이터)
-- 환경: -
-- 커밋: (review 브랜치 push 후 기록)
+- 배포일: 2026-09-08 (SQL 직접 실행 — 코드 배포 아님, Supabase MCP로 오케스트레이터가 직접 처리)
+- 환경: production (Supabase는 staging·프로덕션 공용 단일 DB)
+- 커밋: staging 머지 커밋(`claude/jamwork-20260908_1033-rest-axis-mystic-gate` → staging)
 
 ### 주요 의사결정 / 핵심 메모
 - **X1만 추가하고 X2는 이번 범위에서 뺐다.** 티켓 본문이 "X2도 필요하다고 판단되면 함께
