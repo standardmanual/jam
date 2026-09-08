@@ -1,5 +1,5 @@
 ---
-status: partially-implemented
+status: implemented
 ---
 
 > **구현 현황(2026-09-08):**
