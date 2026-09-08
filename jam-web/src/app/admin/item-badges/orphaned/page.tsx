@@ -36,24 +36,26 @@ function chunk<T>(values: T[], size: number): T[][] {
  * 자체는 20260829_2150에서 이미 구현된 `DestroyOrphanedAction`/`ReassignOrphanedAction`을
  * 그대로 재사용한다 — 이 화면은 접근 경로(목록)만 새로 만든다.
  *
- * ## 조회 방향을 뒤집는다 (DEV_PROCESS_GUARDRAILS.md 패턴 3 "쿼리 방향 역전")
+ * ## `inventory_items`를 직접 스캔한다 (티켓 20260908_0842 — 후보 좁히기 폐기)
  *
- * "소유자 없음" 판정 자체는 `inventory_id IS NULL AND destroyed_at IS NULL AND 참조하는
- * 활성(is_available=true) poi_drops 없음`이다(`admin_destroy_orphaned_item()`/
- * `admin_reassign_orphaned_item()`, 110_admin_orphaned_item_actions.sql과 동일 기준,
- * `deriveItemBadgeStatus()`의 Orphaned 분기와 반드시 같은 결과를 내야 함). 하지만 이 조건을
- * `inventory_items`에 직접 걸면(`inventory_id IS NULL AND destroyed_at IS NULL`) 지금
- * 픽업을 기다리는 중인 모든 유저 드랍·시스템 드랍까지 스캔 대상에 들어간다 — 게임 전체의
- * "현재 활성 드랍" 규모로 애플리케이션 메모리에 끌어와야 할 데이터가 불어난다.
+ * 이전에는 "Orphaned 상태로 들어가는 경로는 계정 탈퇴(`BEFORE DELETE ON public.users`
+ * 트리거 `log_orphan_custody_events`) 하나뿐이고, 그 경로는 항상 `custody_events`에
+ * `Orphan` 이벤트를 남긴다"는 전제로 먼저 `Orphan` 이벤트 후보만 추린 뒤 재확인하는
+ * 2단계 조회(DEV_PROCESS_GUARDRAILS.md 패턴 3 "쿼리 방향 역전")를 썼다.
  *
- * 이 코드베이스에서 Orphaned 상태로 들어가는 경로는 계정 탈퇴 하나뿐이고(108_...sql의
- * `BEFORE DELETE ON public.users` 트리거 `log_orphan_custody_events` — 3항 스키마 변경에서
- * `inventory_id`가 nullable화되기 전에는 계정 탈퇴 시 CASCADE로 개체가 하드 삭제됐으므로
- * 이 트리거 도입 이전에는 Orphaned 상태 자체가 존재할 수 없었다), 이 트리거는 항상
- * `custody_events`에 `Orphan` 이벤트를 남긴다. 그래서 먼저 `Orphan` 이벤트를 한 번이라도
- * 겪은 개체 id만 후보로 좁히고(범위가 "계정 탈퇴 건수 × 그 계정이 보유했던 개체 수"로
- * 구조적으로 작아짐), 그 후보들만 대상으로 "지금도 실제로 소유자 없음 상태인지"(그새
- * 어드민이 재배정/폐기해서 상태가 바뀌지 않았는지)를 재확인한다.
+ * 그 전제가 v5 전환 유저 초기화(`inventory`/`inventory_items`를 직접 조작, `users` 행
+ * `DELETE` 트리거를 거치지 않음)로 깨졌다 — `Orphan` 이벤트가 0건인데도 실제로는 325건이
+ * 소유자를 잃은 상태였다(전체 325건 중 156건은 다른 custody_events는 있지만 Orphan만
+ * 없었고, 169건은 custody_events 자체가 없었다). "이 경로 하나뿐"이라는 전제가 유저 초기화
+ * 같은 일회성 대량 작업으로 우회될 수 있는 이상, 이 후보 좁히기는 신뢰할 수 없다.
+ *
+ * `inventory_items` 전체 규모(2026-09-08 기준 515건, `inventory_id IS NULL AND
+ * destroyed_at IS NULL`인 행은 488건)가 작아 `custody_events` 경유 없이 직접 스캔해도
+ * 성능 부담이 없으므로, 후보 좁히기 없이 `inventory_id IS NULL AND destroyed_at IS NULL`을
+ * 바로 건다. "소유자 없음" 최종 판정(참조하는 활성 `poi_drops` 제외)은 그대로 3단계에서
+ * 재확인한다 — `admin_destroy_orphaned_item()`/`admin_reassign_orphaned_item()`
+ * (110_admin_orphaned_item_actions.sql), `deriveItemBadgeStatus()`의 Orphaned 분기와
+ * 반드시 같은 결과를 내야 한다.
  */
 export default async function OrphanedItemsPage({ searchParams }: Props) {
   const sp = pickSingleQueryParams(await searchParams)
@@ -70,22 +72,24 @@ export default async function OrphanedItemsPage({ searchParams }: Props) {
     </div>
   )
 
-  // 1. Orphan 이벤트를 한 번이라도 겪은 개체 id 후보군 — range 순회로 전량 확보(대용량 대비).
-  const candidateIds = new Set<string>()
+  // 1. 소유자 없는(inventory_id IS NULL) + 파괴되지 않은 개체를 직접 스캔 — range 순회로
+  //    전량 확보. 최종 "소유자 없음" 판정은 3단계(활성 poi_drops 제외)에서 마무리한다.
+  const stillUnowned: CandidateItem[] = []
   for (let from = 0; ; from += FETCH_PAGE_SIZE) {
-    const { data: eventsRaw, error } = await supabase
-      .from('custody_events')
-      .select('inventory_item_id')
-      .eq('event_type', 'Orphan')
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('id, badge_id, serial_number, serial_prefix, obtained_at, destroyed_at, inventory_id')
+      .is('destroyed_at', null)
+      .is('inventory_id', null)
       .order('id', { ascending: true })
       .range(from, from + FETCH_PAGE_SIZE - 1)
-    if (error) throw new Error(`Orphan 이벤트 조회 실패: ${error.message}`)
-    const events = (eventsRaw ?? []) as { inventory_item_id: string | null }[]
-    for (const e of events) if (e.inventory_item_id) candidateIds.add(e.inventory_item_id)
-    if (events.length < FETCH_PAGE_SIZE) break
+    if (error) throw new Error(`개체 상태 조회 실패: ${error.message}`)
+    const rows = (data ?? []) as CandidateItem[]
+    stillUnowned.push(...rows)
+    if (rows.length < FETCH_PAGE_SIZE) break
   }
 
-  if (candidateIds.size === 0) {
+  if (stillUnowned.length === 0) {
     return (
       <div className="p-4 md:p-8">
         {header}
@@ -94,21 +98,7 @@ export default async function OrphanedItemsPage({ searchParams }: Props) {
     )
   }
 
-  // 2. 후보 중 지금도 소유자가 없고 파괴되지 않은 개체만 추린다(청크로 나눠 조회).
-  const candidateIdList = [...candidateIds]
-  const stillUnowned: CandidateItem[] = []
-  for (const ids of chunk(candidateIdList, IN_CHUNK_SIZE)) {
-    const { data, error } = await supabase
-      .from('inventory_items')
-      .select('id, badge_id, serial_number, serial_prefix, obtained_at, destroyed_at, inventory_id')
-      .in('id', ids)
-      .is('destroyed_at', null)
-      .is('inventory_id', null)
-    if (error) throw new Error(`개체 상태 조회 실패: ${error.message}`)
-    stillUnowned.push(...((data ?? []) as CandidateItem[]))
-  }
-
-  // 3. 그중 참조하는 활성(is_available=true) poi_drops가 있으면 제외한다(Dropped/AtPoi 제외).
+  // 2. 그중 참조하는 활성(is_available=true) poi_drops가 있으면 제외한다(Dropped/AtPoi 제외).
   const activeDropItemIds = new Set<string>()
   for (const ids of chunk(
     stillUnowned.map((i) => i.id),
@@ -136,7 +126,7 @@ export default async function OrphanedItemsPage({ searchParams }: Props) {
     )
   }
 
-  // 4. 배지(도안) 정보 조인 — 이름/이미지/등급 표시용.
+  // 3. 배지(도안) 정보 조인 — 이름/이미지/등급 표시용.
   const badgeIds = [...new Set(orphaned.map((i) => i.badge_id))]
   const badgeById = new Map<string, Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>>()
   for (const ids of chunk(badgeIds, IN_CHUNK_SIZE)) {
@@ -145,7 +135,7 @@ export default async function OrphanedItemsPage({ searchParams }: Props) {
     for (const b of (data ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>[]) badgeById.set(b.id, b)
   }
 
-  // 5. 발급일시 — 배지별 목록 화면([badgeId]/page.tsx)과 동일하게 Minted 이벤트를 우선하고,
+  // 4. 발급일시 — 배지별 목록 화면([badgeId]/page.tsx)과 동일하게 Minted 이벤트를 우선하고,
   //    없으면 obtained_at으로 폴백한다(레거시 데이터 등).
   const mintedAtByItem = new Map<string, string>()
   for (const ids of chunk(
