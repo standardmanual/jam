@@ -313,6 +313,31 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
   const selectedRows = table.getSelectedRowModel().rows.map((row) => row.original)
   const selectedIds = selectedRows.map((r) => r.id)
 
+  // 일괄 활성화 — 단건 활성화(BadgeActiveToggleButton)가 확인 없이 즉시 반영하는 것과 동일하게
+  // 확인 다이얼로그 없이 즉시 실행한다(20260908_2129). 비활성화와 마찬가지로 전용 배치 API가
+  // 없어 기존 단건 PATCH를 선택된 행 전체에 순차 호출한다.
+  const handleBulkActivate = async () => {
+    setBulkLoading(true)
+    try {
+      let failCount = 0
+      for (const id of selectedIds) {
+        const res = await fetch(`/api/admin/badges/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: true }),
+        })
+        if (!res.ok) failCount += 1
+      }
+      if (failCount > 0) {
+        alert(`${failCount}개 배지의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
+      }
+      router.refresh()
+      setRowSelection({})
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
   // 일괄 비활성화 전용 API는 없다(티켓 사전 확인 결과) — 기존 단건 PATCH를 선택된 행 전체에
   // 순차 호출한다(20260826_014 요구사항). 배지 목록 페이지 크기가 50건이라 규모상 문제없다.
   const handleBulkDeactivate = async () => {
@@ -376,6 +401,9 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
       </div>
 
       <DataTableBulkActionBar count={selectedIds.length} onClear={() => setRowSelection({})}>
+        <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={handleBulkActivate}>
+          선택 항목 활성화
+        </Button>
         <Button type="button" variant="outline" size="sm" disabled={bulkLoading} onClick={() => setShowBulkConfirm(true)}>
           선택 항목 비활성화
         </Button>
