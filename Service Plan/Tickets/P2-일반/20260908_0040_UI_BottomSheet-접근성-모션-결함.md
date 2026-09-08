@@ -2,9 +2,9 @@
 id: 20260908_0040
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-08
-closed:
+closed: 2026-09-08
 ---
 
 # [UI] BottomSheet의 접근성·모션 결함 — 13개 화면 공용
@@ -157,9 +157,9 @@ jam-web/src/components/transitions.css
 - [x] 텍스트 변경이 없으면 해당 없음
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만 수행)
-- 환경:
-- 커밋:
+- 배포일: staging은 이 커밋으로 즉시 반영. 프로덕션은 `/jam-ship`으로 별도 승인 후 진행 예정
+- 환경: staging (production 미배포)
+- 커밋: `42f5ab30` (최종 머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
 - **DS(`design-system/components/navigation/BottomSheet.jsx`)로 전면 교체하지 않고 서비스
@@ -182,6 +182,10 @@ jam-web/src/components/transitions.css
 ### 잔여 이슈
 - 스크린리더 실기기 검증 미실시 (테스트 결과 항목 참조)
 - `FeedSection.tsx`·`MissionDetailClient.tsx`·`SlotGrid.tsx`·`PoiCarouselModal.tsx`가 쓰는
-  `.t-panel-backdrop`/`.t-panel-slide` 기반의 다른 패널(바텀시트 아닌 것 포함)도 이번
-  pointer-events 수정의 수혜를 받았을 가능성이 높다 — 이번 티켓 범위 밖이라 그쪽의 role/
-  aria/포커스트랩까지는 손대지 않았다(alerts 참조)
+  `.t-panel-backdrop`/`.t-panel-slide` 기반의 다른 패널도 이번 pointer-events 수정의 수혜를
+  받았을 가능성이 높으나, role/aria/포커스트랩까지는 이번 범위 밖 — 후속 티켓
+  [20260908_1754](../P3-낮음/20260908_1754_UI_FeedSection-PoiCarouselModal-접근성점검-BottomSheet통합검토.md)로
+  분리
+- `Specs/PRD/2026-08-15 DESIGN_RENEWAL_SPEC.md`의 "새 오버레이 체크리스트"에 이번에 확립한
+  접근성·모션 패턴(role/aria-modal/포커스트랩/Escape, `pointer-events` data-open 토글,
+  `uiOverlay.ts` 참조 카운팅 스크롤락) 반영 필요 — 오케스트레이터가 머지 시 처리
