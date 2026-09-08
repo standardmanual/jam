@@ -109,6 +109,11 @@ import {
   // 휴식-회차 조합(티켓 20260906_2056) — 발급 판정(index.ts)의 회차 차단 분기와 같은
   // 판정을 봐야 「막힌 조합」과 「repeat 축으로 그려지는 조합」이 어긋나지 않는다.
   isRestDrivenRepeatCondition,
+  // personal_record_break + single_distance_km 등 결합 필터 흡수(티켓 20260908_1512) —
+  // 발급 판정(index.ts)과 같은 흡수 목록·같은 좁히기 로직을 써야 축 계산과 실측값이
+  // 어긋나지 않는다.
+  personalRecordBreakConsumedAxisKeys,
+  personalRecordBreakPool,
 } from './repeatOccurrences'
 // 교차 게이트는 `evaluation: 'external'`이라 fail-closed가 잡지 않는다 — 이 파일이 직접 표시한다.
 import { crossGateKeysIn } from './crossGate'
@@ -612,7 +617,13 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
     (k) => condition[k] !== undefined && !(k === 'total_count' && Array.isArray(condition.day_of_week))
   )
 
-  const scalarKeys = measurableScalarKeys(condition)
+  // personal_record_break가 흡수하는 PER_ACTIVITY_KEYS 필터(예: running:R2의
+  // single_distance_km)는 독립 축이 아니다 — 발급 판정(index.ts)이 그 필터로 후보 풀을
+  // 좁혀 personal_record_break 하나의 축으로 흡수한다. 여기서 축을 2개로 세면(스칼라 1 +
+  // 카운터 1) `axisCount`가 기존 dual(스칼라 2개) 패턴과 겹쳐 `unsupported`로 떨어진다
+  // (티켓 20260908_1512, 원인②).
+  const consumedByPersonalRecordBreak = personalRecordBreakConsumedAxisKeys(condition)
+  const scalarKeys = measurableScalarKeys(condition).filter((k) => !consumedByPersonalRecordBreak.includes(k))
 
   const axisCount = scalarKeys.length + (isPeriodic ? 1 : 0) + (isCounterAlone ? 1 : 0)
 
@@ -916,7 +927,10 @@ function buildCumulativeAxis(condition: BadgeCondition, metrics: UserPeriodMetri
   if (condition.personal_record_break !== undefined) {
     const metric = condition.personal_record_break_metric
     if (isSupportedPersonalRecordMetric(metric)) {
-      const count = countPersonalRecordBreaks(metric, metrics.activities)
+      // single_distance_km 등 결합 필터가 있으면 그 필터를 통과한 활동만 후보로 좁힌다 —
+      // 발급 판정(index.ts)과 같은 함수(`personalRecordBreakPool`)를 본다(티켓 20260908_1512).
+      const pool = personalRecordBreakPool(condition, metrics.activities)
+      const count = countPersonalRecordBreaks(metric, pool)
       return makeHigherBetterAxis(
         'personal_record_break',
         count,

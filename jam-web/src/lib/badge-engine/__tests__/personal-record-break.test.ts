@@ -144,20 +144,56 @@ describe('personal_record_break — max_pace_sec_per_km 지표 (running:R2 형�
   })
 
   it('진행 계산(badgeProgress)도 같은 방향으로 센다 — 발급과 어긋나지 않는다', () => {
-    // single_distance_km 없이(cycling:R1/running:R1과 같은 형태) 검증한다 — single_distance_km는
-    // SCALAR_AXIS_KEYS에도 속해 personal_record_break(COUNTER_AXIS_KEYS)와 함께 있으면
-    // classifyConditionKind가 axisCount 충돌로 'unsupported'를 반환한다(running:R2 실콘텐츠의
-    // 기존 형태, 이 티켓 범위 밖의 별개 이슈 — 완료 기록 alerts 참고). 여기서 확인하려는 건
-    // "같은 지표를 badgeProgress도 같은 방향(lower)으로 센다"는 점이므로 그 축 하나만 둔다.
+    // single_distance_km 없이(cycling:R1/running:R1과 같은 형태) 검증한다 — "같은 지표를
+    // badgeProgress도 같은 방향(lower)으로 센다"는 점만 확인하려는 것이라 그 축 하나만 둔다.
+    // single_distance_km이 결합된 실콘텐츠 형태(running:R2)는 바로 아래 테스트에서 확인한다.
     expect(
       classifyBadgeProgressKind({ activity_type: 'running', personal_record_break: 3, personal_record_break_metric: 'max_pace_sec_per_km' })
     ).toBe('cumulative')
   })
 
-  it('실콘텐츠 형태(single_distance_km + personal_record_break)는 axisCount 충돌로 unsupported다 — 이 티켓 범위 밖의 기존 동작, 회귀 아님', () => {
+  it('실콘텐츠 형태(single_distance_km + personal_record_break)는 single_distance_km이 personal_record_break 축에 흡수돼 cumulative로 분류된다 (티켓 20260908_1512 원인②)', () => {
     expect(
       classifyBadgeProgressKind({ activity_type: 'running', single_distance_km: 5, personal_record_break: 3, personal_record_break_metric: 'max_pace_sec_per_km' })
-    ).toBe('unsupported')
+    ).toBe('cumulative')
+  })
+
+  // ── 티켓 20260908_1512 원인① 회귀 테스트 — single_distance_km은 "존재 여부"가 아니라
+  //    "그 필터를 통과한 활동만 개인기록 후보로 좁히는 필터"로 동작해야 한다.
+  it('5km 미만 활동의 페이스 신기록은 카운트되지 않는다 — 5km 이상 활동만 개인기록 후보다', () => {
+    const cond: BadgeCondition = { activity_type: 'running', single_distance_km: 5, personal_record_break: 2, personal_record_break_metric: 'max_pace_sec_per_km' }
+    const acts = [
+      // 1번째: 5km 이상 — 후보 1회 갱신
+      act({ jamActivityType: 'running', distanceKm: 5, averageSpeedKmh: 8, startDate: '2026-07-01T00:00:00Z', startDateLocal: '2026-07-01T00:00:00' }), // 450초/km
+      // 2번째: 200m 전력질주로 페이스만 극단적으로 빠름 — 5km 미만이라 후보에서 제외돼야 한다
+      act({ jamActivityType: 'running', distanceKm: 0.2, averageSpeedKmh: 20, startDate: '2026-07-02T00:00:00Z', startDateLocal: '2026-07-02T00:00:00' }), // 180초/km
+    ]
+    const r = evaluateConditionDetailed(cond, acts)
+    expect(r.pass).toBe(false)
+    expect(r.reason).toBe('개인 기록 갱신 횟수 부족')
+    expect(r.actual).toBe('1회') // 200m 전력질주는 후보에서 빠져 갱신으로 세어지지 않는다
+  })
+
+  it('5km 이상 활동 중에서 페이스가 갱신되면 정상적으로 카운트된다', () => {
+    const cond: BadgeCondition = { activity_type: 'running', single_distance_km: 5, personal_record_break: 2, personal_record_break_metric: 'max_pace_sec_per_km' }
+    const acts = [
+      act({ jamActivityType: 'running', distanceKm: 5, averageSpeedKmh: 8, startDate: '2026-07-01T00:00:00Z', startDateLocal: '2026-07-01T00:00:00' }), // 450초/km
+      act({ jamActivityType: 'running', distanceKm: 0.2, averageSpeedKmh: 20, startDate: '2026-07-02T00:00:00Z', startDateLocal: '2026-07-02T00:00:00' }), // 5km 미만 — 후보 제외
+      act({ jamActivityType: 'running', distanceKm: 6, averageSpeedKmh: 10, startDate: '2026-07-03T00:00:00Z', startDateLocal: '2026-07-03T00:00:00' }), // 360초/km, 5km 이상 — 2번째 갱신
+    ]
+    expect(checkCondition(cond, acts)).toBe(true)
+  })
+
+  it('5km 미만 신기록 활동이 섞여 있어도 실제 갱신 횟수(2회) 임계값에서 정확히 갈린다', () => {
+    const acts = [
+      act({ jamActivityType: 'running', distanceKm: 5, averageSpeedKmh: 8, startDate: '2026-07-01T00:00:00Z', startDateLocal: '2026-07-01T00:00:00' }),
+      act({ jamActivityType: 'running', distanceKm: 0.2, averageSpeedKmh: 20, startDate: '2026-07-02T00:00:00Z', startDateLocal: '2026-07-02T00:00:00' }), // 5km 미만 — 후보 제외
+      act({ jamActivityType: 'running', distanceKm: 6, averageSpeedKmh: 10, startDate: '2026-07-03T00:00:00Z', startDateLocal: '2026-07-03T00:00:00' }),
+    ]
+    // 실제 갱신 횟수는 2회(200m 전력질주 제외) — 요구치 2회는 통과, 3회는 미달이어야
+    // "200m 전력질주가 몰래 3번째 갱신으로 세어지지 않았다"는 것을 확인할 수 있다.
+    expect(checkCondition({ activity_type: 'running', single_distance_km: 5, personal_record_break: 2, personal_record_break_metric: 'max_pace_sec_per_km' }, acts)).toBe(true)
+    expect(checkCondition({ activity_type: 'running', single_distance_km: 5, personal_record_break: 3, personal_record_break_metric: 'max_pace_sec_per_km' }, acts)).toBe(false)
   })
 })
 
