@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button'
 import BadgeRevealOverlay, { type RevealBadge } from '@/components/BadgeRevealOverlay'
 import { d } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
+import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
 
 interface SyncResponse {
   synced: number
@@ -37,6 +38,12 @@ export default function SyncButton({ username }: { username: string | null }) {
   const [earnedBadgesMore, setEarnedBadgesMore] = useState(0)
   const { toast } = useToast()
   const router = useRouter()
+
+  // 빠르게 끝나는 동기화 요청에도 버튼 스피너가 스치듯 보이지 않도록 디바운스 적용
+  // (NavigationLoader와 동일한 SHOW_DELAY_MS/MIN_VISIBLE_MS/MAX_VISIBLE_MS 정책, 20260908_0544).
+  // loading이 false로 돌아오면(=결과가 이미 준비됨) 훅이 즉시 반영하므로, 실제 완료 시점을
+  // 인위적으로 늦추지 않는다 — MissionStatusClient/BadgeShareButton과 동일한 폴백 패턴.
+  const showLoading = useDebouncedLoading(loading)
 
   // "배지 전부 보기" 이동 경로 — TopNav 우측 아바타 링크(20260824_010)와 같은 값
   const profileHref = username ? `/${username}` : '/profile'
@@ -95,7 +102,8 @@ export default function SyncButton({ username }: { username: string | null }) {
         size="xs"
         style={{ backgroundColor: 'var(--color-secondary)', color: 'var(--color-base-white)' }}
         onClick={handleSync}
-        loading={loading}
+        disabled={loading}
+        loading={showLoading}
       >
         {d.today.syncButton}
       </Button>
