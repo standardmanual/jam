@@ -124,6 +124,40 @@ export function getBottomOverlayReserved(): number {
   return bottomOverlayReserved
 }
 
+/**
+ * 20260908_0040 — 배경(main 스크롤 컨테이너)의 스크롤 잠금을 참조 카운팅으로 관리한다.
+ *
+ * `BottomSheet`는 각자 자기 인스턴스가 열리는 시점의 `overflow` 이전값을 캡처해뒀다가
+ * 닫힐 때 그 값으로 되돌리는 방식을 썼는데, 이는 "인스턴스 하나만 열려 있다"는 전제다.
+ * 시트 → 시트로 전환되는 흐름(닫히는 시트와 열리는 시트가 겹치는 구간)에서는 먼저 열린
+ * 시트가 캡처해둔 `''`(잠기기 전 값)로 나중에 열린 시트가 아직 떠 있는 동안 스크롤을
+ * 되돌려버린다. 열린 인스턴스 수를 세어 0→1일 때만 잠그고 1→0일 때만 푸는 방식이면
+ * 이 경합이 생기지 않는다.
+ */
+let mainScrollLockCount = 0
+
+function applyMainScrollLock(locked: boolean) {
+  const scroller = document.querySelector<HTMLElement>('main')
+  if (!scroller) return
+  scroller.style.overflow = locked ? 'hidden' : ''
+}
+
+/** 배경 스크롤 잠금이 필요한 시점에 호출. 반환된 함수를 해제 시점(정리 함수)에 호출하면
+ *  카운트가 내려가고, 0이 되는 순간에만 실제로 스크롤이 풀린다. 반환된 해제 함수는 여러 번
+ *  호출해도 한 번만 반영된다. */
+export function pushMainScrollLock(): () => void {
+  mainScrollLockCount += 1
+  if (mainScrollLockCount === 1) applyMainScrollLock(true)
+
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    mainScrollLockCount = Math.max(0, mainScrollLockCount - 1)
+    if (mainScrollLockCount === 0) applyMainScrollLock(false)
+  }
+}
+
 /** 하단 오버레이 점유 높이를 구독한다(px, safe-area 제외). 아무것도 없으면 0. */
 export function useBottomOverlayReserved(): number {
   return useSyncExternalStore(
