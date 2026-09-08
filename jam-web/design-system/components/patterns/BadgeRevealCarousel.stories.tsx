@@ -13,7 +13,7 @@ const meta: Meta<typeof BadgeRevealCarousel> = {
       description: {
         component:
           '배지 획득 연출용 3D 코버플로우 캐러셀. 배지 드랍 엔진의 최종 결과가 나온 뒤에만 열리며, 열리면 곧바로 실제 배지 카드다. ' +
-          '중앙 카드 344px, 이웃 카드는 화면 밖 잘림 허용. 좌우 스와이프·ArrowLeft/Right로 순환한다.',
+          '중앙 카드 292px, 이웃 카드는 화면 밖 잘림 허용. 좌우 스와이프·ArrowLeft/Right로 순환한다.',
       },
     },
   },
@@ -103,6 +103,19 @@ export const LongDescription: Story = {
         '한강 자전거길 전 구간을 완주하고, 같은 주에 러닝과 라이딩을 각각 3회 이상 기록하면 획득할 수 있어요. ' +
         '누적 거리 200km를 넘기면 다음 단계 배지로 이어집니다. 시즌이 끝나기 전에 도전해 보세요.',
     }),
+  },
+};
+
+/**
+ * 엣지 — 이름 1행 + 설명 1행 ("서초역" 케이스, 20260908_2008 여백 문제의 근원).
+ * 이미지가 고정 크기(IMAGE_SIZE_RATIO)로 콘텐츠 블록에 포함되고, `justifyContent:'center'`가
+ * 블록 전체를 카드 중앙에 배치해 텍스트가 짧을수록 카드 상하로 여백이 고르게 분산돼야 한다.
+ */
+export const ShortText: Story = {
+  name: '엣지 — 이름·설명 짧음 (서초역 케이스, 여백 축소 확인)',
+  args: {
+    open: true,
+    items: makeItems(3, { name: '서초역', description: '서초역에서 체크인하면 획득해요.' }),
   },
 };
 
