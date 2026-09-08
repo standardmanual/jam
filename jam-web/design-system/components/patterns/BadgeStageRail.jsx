@@ -1,6 +1,6 @@
 import React from 'react';
 import { RarityBadge, getRarityLabel } from '../cards/RarityBadge.jsx';
-import { LockGlyph, CheckGlyph, StarGlyph } from '../icons/BadgeStatusGlyphs.jsx';
+import { LockGlyph, CheckGlyph } from '../icons/BadgeStatusGlyphs.jsx';
 import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeader.jsx';
 
 /**
@@ -52,7 +52,11 @@ import { BadgeFamilyCardHeader, progressRampColor } from './BadgeFamilyCardHeade
  * 인터랙션: 눈금 하나는 상태에 따라 링크(embedded 이동, earned/not-reached) 또는
  * 버튼(받는 방법 시트 오픈, ready/locked) 둘 중 하나다 — 앵커 안에 버튼을 중첩하지
  * 않기 위한 설계. "레일에는 지금 막는 문 하나만 그린다" — 마지막 획득 눈금 다음(frontier)이
- * ready/locked일 때만 그 앞 연결선에 점선+자물쇠(게이트)를 그린다.
+ * ready/locked일 때만 그 앞 연결선에 점선(게이트)을 그린다. 게이트 자체(어떤 문인지·통과
+ * 여부)는 별도 자물쇠 버튼으로 표시하지 않는다 — 그 정보는 눈금 자신의 마커(자물쇠·체크,
+ * `StopThumbnail`의 `showMarker`)로 충분하다고 보고, 연결선에는 클릭 가능한 게이트 버튼을
+ * 두지 않기로 확정했다(2026-09-08 사용자 확정, 티켓 20260906_2333). 점선 트랙만 "여기
+ * 막는 문이 있다"는 시각 신호로 남는다.
  */
 
 // 등급 라벨은 RarityBadge.jsx의 config가 MODULAR 단일 소스다 — 여기서 다시 선언하지 않는다
@@ -126,8 +130,6 @@ button.ds-rail-stop{background:none;border:none;padding:0;font:inherit;cursor:po
 @media (prefers-reduced-motion: reduce){.ds-rail-stop{transition:none!important}}
 `;
 
-const GATE_KIND_LABEL = { mission: '미션', cross: '선행 배지' };
-
 /**
  * 눈금 하나의 배지 썸네일 — 접힌 레일·펼친 티어 목록이 공유한다.
  * 52px 썸네일 + (등급이 있고 `showRarityChip`이면) 그 아래 등급칩까지가 한 덩어리다.
@@ -195,55 +197,6 @@ function StopThumbnail({ imageUrl, alt, status, rarity, showRarityChip = false }
         </span>
       )}
     </span>
-  );
-}
-
-/**
- * 게이트(자물쇠) 버튼 — 눈금 사이 연결선 자리에 시각적으로 얹히지만, DOM상으로는
- * **그 앞 눈금의 그리드 셀 안**에 절대배치된다(티켓 20260906_2333). 예전에는 연결선
- * 절대배치 레이어(눈금 그리드보다 DOM상 앞)에 있어 보조기술이 "자물쇠 전부 → 눈금 전부"
- * 순으로 읽었다 — 인터랙티브 요소만 옮기고, 트랙(배경·점선)은 연결선 레이어에 그대로 둔다.
- */
-function GateButton({ gates, ariaLabel, onClick }) {
-  return (
-    <button
-      type="button"
-      className="ds-rail-lock-btn"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      style={{
-        // 자물쇠 2개(미션 + 교차)까지 들어가는 자리. 종류를 안 넘기면(v1 호출부)
-        // 예전처럼 원형 자물쇠 하나만 그린다.
-        height: 20, minWidth: 20, padding: gates.length > 1 ? '0 3px' : 0,
-        borderRadius: gates.length > 1 ? 'var(--radius-pill)' : '50%',
-        background: 'var(--color-surface-elevated)',
-        boxShadow: 'inset 0 0 0 1px var(--color-border-light)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2,
-        color: 'var(--color-text-secondary)',
-      }}
-    >
-      {gates.length === 0 ? (
-        <LockGlyph size={10} />
-      ) : (
-        gates.map((gate, gi) =>
-          // 이미 통과한 문은 **체크 + 라임**이다 — 형태까지 바꿔 색만으로
-          // 구분하지 않는다(미션 자물쇠 대비가 4.18:1이라 색 하나에 기댈 수 없다).
-          gate.met ? (
-            <span key={`${gate.kind}-${gi}`} style={{ display: 'flex', color: 'var(--status-progress-done)' }}>
-              <CheckGlyph size={10} />
-            </span>
-          ) : gate.kind === 'mission' ? (
-            <span key={`${gate.kind}-${gi}`} style={{ display: 'flex', color: 'var(--color-primary)' }}>
-              <LockGlyph size={10} />
-            </span>
-          ) : (
-            <span key={`${gate.kind}-${gi}`} style={{ display: 'flex', color: 'var(--color-text-secondary)' }}>
-              <StarGlyph size={10} />
-            </span>
-          )
-        )
-      )}
-    </button>
   );
 }
 
@@ -365,26 +318,8 @@ export function BadgeStageRail({
       isFrontierConnector && frontierProgress && typeof frontierProgress.fraction === 'number' && !frontierProgress.muted
         ? Math.round(Math.min(1, Math.max(0, frontierProgress.fraction)) * 100)
         : 0;
-    // 게이트 종류(v2). 최대 2개만 그린다 — 그보다 많은 문을 한 자리에 늘어놓으면
-    // "어디서 막혔는지"가 오히려 안 읽힌다(원 검토문서 §04와 같은 이유).
-    const gates = (stop.gates ?? []).slice(0, 2);
-    const rarityLabel = stop.rarity ? getRarityLabel(stop.rarity) : null;
-    const stopName = [familyName, rarityLabel].filter(Boolean).join(' ');
-    const gateAriaLabel =
-      gates.length > 0
-        ? `${stopName} 받는 방법 보기. ${gates
-            .map((g) => `${GATE_KIND_LABEL[g.kind] ?? g.kind} ${g.met ? '통과' : '대기'}`)
-            .join(', ')}`
-        : `${stopName} 받는 방법 보기`;
-    return { key: stop.id, i, isGateBefore, allEarnedBefore, isFrontierConnector, pct, gates, gateAriaLabel, stopId: stop.id };
+    return { key: stop.id, i, isGateBefore, allEarnedBefore, isFrontierConnector, pct };
   });
-
-  /**
-   * 게이트 버튼을 어느 눈금 셀 뒤에 옮겨 그릴지 — 셀 인덱스(i-1) → 커넥터 매핑
-   * (티켓 20260906_2333). 연결선의 오른쪽 눈금 인덱스가 `i`이므로, 그 앞 눈금(i-1) 셀에
-   * 심는다.
-   */
-  const gateByBeforeStopIndex = new Map(connectors.filter((c) => c.isGateBefore).map((c) => [c.i - 1, c]));
 
   return (
     <div
@@ -430,8 +365,8 @@ export function BadgeStageRail({
 
       <div style={{ position: 'relative', marginTop: 'var(--spacing-16)' }}>
         {/* 연결선 레이어 — 절대 배치. 캡션 글자 수가 이 기하를 움직이지 못한다.
-            순수 장식(트랙·진행 스윕)만 그리고 클릭을 통과시킨다 — 게이트 버튼(인터랙티브
-            요소)은 눈금 그리드 셀 안으로 옮겨졌다(티켓 20260906_2333, 보조기술 읽는 순서). */}
+            순수 장식(트랙·진행 스윕)만 그리고 클릭을 통과시킨다 — 게이트 여부는 별도
+            버튼 없이 점선 트랙으로만 표시한다(2026-09-08 사용자 확정, 티켓 20260906_2333). */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           {connectors.map((c) => (
             <span
@@ -466,10 +401,6 @@ export function BadgeStageRail({
                   }}
                 />
               )}
-              {/* 게이트 버튼(인터랙티브 요소)은 여기 그리지 않는다 — 눈금 그리드의 해당
-                  셀 안으로 옮겨졌다(티켓 20260906_2333, GateButton 참고). 이 span은
-                  트랙(점선 배경)만 남는다 — 시각적으로 같은 좌표에 겹쳐 그려지므로
-                  결과는 동일하다. */}
             </span>
           ))}
         </div>
@@ -520,15 +451,11 @@ export function BadgeStageRail({
                 ? 'var(--status-progress-done)'
                 : 'var(--status-progress-idle)';
 
-            // 이 눈금 바로 다음에 게이트가 있으면(티켓 20260906_2333) 그 버튼을 이 셀 안에
-            // 심는다 — 보조기술이 "눈금(i) → 자물쇠 → 눈금(i+1)" 순으로 읽게 하기 위해서다.
-            const gateAfter = gateByBeforeStopIndex.get(i);
-
             return (
               // 셀 폭은 PITCH(마지막만 THUMB_SIZE)이고 눈금은 **셀 왼쪽 끝에 붙는다** —
               // 가운데 정렬하면 레일 전체가 LINK_WIDTH/2만큼 안쪽으로 밀려 계열명 시작 x와
-              // 어긋난다. position: relative는 게이트 버튼(다음 형제)의 절대배치 기준점이다.
-              <div key={stop.id} style={{ display: 'flex', justifyContent: 'flex-start', position: 'relative' }}>
+              // 어긋난다.
+              <div key={stop.id} style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <StopHitArea
                   status={stop.status}
                   href={stop.href}
@@ -568,24 +495,6 @@ export function BadgeStageRail({
                     </span>
                   </span>
                 </StopHitArea>
-                {gateAfter && (
-                  // 연결선 자리에 겹쳐 그리는 게이트 버튼 — DOM상으로는 이 눈금 셀의
-                  // 형제(눈금(i) 다음, 눈금(i+1) 이전)라 보조기술이 시각 순서대로 읽는다.
-                  // 좌표는 「그 눈금 셀 자신」이 부모라 (i-1)*PITCH를 뺀 형태로 단순하다
-                  // (셀의 top-left가 이미 그 지점이므로).
-                  <span
-                    style={{
-                      position: 'absolute', left: THUMB_SIZE, top: THUMB_SIZE / 2 - 10 /* 버튼 높이 20 절반 */,
-                      width: LINK_WIDTH, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    <GateButton
-                      gates={gateAfter.gates}
-                      ariaLabel={gateAfter.gateAriaLabel}
-                      onClick={() => onLockClick?.(gateAfter.stopId)}
-                    />
-                  </span>
-                )}
               </div>
             );
           })}
