@@ -361,7 +361,7 @@ const ACTIVITY_TYPE_FORM_OPTIONS = [
  * 값은 `PersonalRecordMetric`(database.ts)과 정확히 같은 집합이어야 한다 — 여기서 갈라지면
  * 어드민 폼이 저장할 수 없는 값을 만든다.
  */
-const PERSONAL_RECORD_METRIC_FORM_OPTIONS = [
+export const PERSONAL_RECORD_METRIC_FORM_OPTIONS = [
   { value: 'distance_km', label: '누적 거리' },
   { value: 'elevation_gain_m', label: '누적 고도' },
   { value: 'duration_minutes', label: '한 번의 이동시간' },

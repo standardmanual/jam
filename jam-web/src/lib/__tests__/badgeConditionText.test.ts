@@ -79,6 +79,15 @@ describe('레지스트리 전 필드 커버리지 — 「관리자가 직접 발
       '복귀 전 휴식일 90일 이상 조건을 채우면 획득할 수 있어요.'
     )
   })
+
+  it('personal_record_break_metric은 코드값이 아니라 한국어 라벨로 나온다 (티켓 20260908_2157)', () => {
+    expect(
+      formatBadgeConditionText(
+        { personal_record_break: 1, personal_record_break_metric: 'single_distance_km' },
+        '발끝의 한계'
+      )
+    ).toBe('개인 기록 갱신 1회 이상 · 개인 기록 지표: 한 번의 거리 조건을 채우면 획득할 수 있어요.')
+  })
 })
 
 describe('「관리자가 직접 발급」·미션 보상은 여전히 맞는 문구다', () => {
