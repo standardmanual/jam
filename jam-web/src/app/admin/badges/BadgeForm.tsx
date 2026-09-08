@@ -20,6 +20,9 @@ import {
   type ConditionFormFields,
 } from './conditionFormFields'
 import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
+// 판정 시뮬레이션의 "가상 활동으로 시험" 경로 — /admin/simulator 폼을 그대로 재사용한다
+// (티켓 20260908_1631). 새로 디자인하지 않는다.
+import VirtualActivityForm, { type VirtualActivityValue } from '@/components/admin/VirtualActivityForm'
 // 조건 입력 UI는 **레지스트리 선언에서 생성한다** — 필드마다 JSX를 하드코딩하던 구조를
 // 뒤집었다(티켓 20260905_0032 A-2). 새 조건 필드는 conditionRegistry.ts의 `form` 선언과
 // ConditionFormFields의 state 키만 추가하면 이 화면에 자동으로 나타난다.
@@ -179,11 +182,14 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
 
   // ── 판정 시뮬레이션 (티켓 20260908_1554) — 저장 없이 현재 조건값 그대로 실제 발급 엔진에
   // 대입해 결과를 본다. 저장 버튼과 별개이며 저장하지 않아도 언제든 실행할 수 있다.
+  // 대상은 기존 유저 검색 또는 가상 활동 입력(티켓 20260908_1631) 두 가지 중 하나로 고른다.
   const [simOpen, setSimOpen] = useState(false)
+  const [simTargetMode, setSimTargetMode] = useState<'user' | 'virtual'>('user')
   const [simUserQuery, setSimUserQuery] = useState('')
   const [simUsers, setSimUsers] = useState<{ id: string; email: string; username: string | null }[]>([])
   const [simUserId, setSimUserId] = useState('')
   const [simUserLoading, setSimUserLoading] = useState(false)
+  const [simVirtualActivity, setSimVirtualActivity] = useState<VirtualActivityValue | null>(null)
   const [simLoading, setSimLoading] = useState(false)
   const [simError, setSimError] = useState<string | null>(null)
   const [simResult, setSimResult] = useState<SimulateConditionResult | null>(null)
@@ -457,21 +463,44 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   // (0035 시딩이 0030 평가 구현보다 먼저 들어오는 경우를 전제한 표시).
   const pendingConditionKeys = findBlockingConditionKeys(condPreview).pending
 
-  /** 저장하지 않은 현재 조건값을 그대로 선택한 유저의 실제 활동 이력에 대입해 판정한다
-   *  (티켓 20260908_1554). DB에는 아무것도 쓰지 않는다. */
+  /** 저장하지 않은 현재 조건값을 그대로 선택한 대상(기존 유저 또는 가상 활동)에 대입해
+   *  판정한다(티켓 20260908_1554, 가상 활동 경로는 20260908_1631). DB에는 아무것도 쓰지 않는다. */
   const runConditionSimulation = async () => {
-    if (!simUserId) {
+    if (simTargetMode === 'user' && !simUserId) {
       setSimError('먼저 대상 유저를 선택해주세요.')
+      return
+    }
+    if (simTargetMode === 'virtual' && !simVirtualActivity) {
+      setSimError('먼저 가상 활동을 입력해주세요.')
       return
     }
     setSimError(null)
     setSimLoading(true)
     setSimResult(null)
     try {
+      const body =
+        simTargetMode === 'user'
+          ? { condition: condPreview, userId: simUserId }
+          : {
+              condition: condPreview,
+              virtualActivity: simVirtualActivity
+                ? {
+                    activityType: simVirtualActivity.activityType,
+                    distanceKm: simVirtualActivity.distanceKm,
+                    movingTimeSec: simVirtualActivity.movingTimeSec,
+                    elevationGainM: simVirtualActivity.elevationGainM,
+                    averageSpeedKmh: simVirtualActivity.averageSpeedKmh,
+                    startDate: simVirtualActivity.startDate,
+                    route: simVirtualActivity.route,
+                    ...simVirtualActivity.extended,
+                  }
+                : null,
+              repeatCount: simVirtualActivity?.repeatCount ?? 1,
+            }
       const res = await fetch('/api/admin/badges/simulate-condition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ condition: condPreview, userId: simUserId }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '시뮬레이션 실패')
@@ -1086,8 +1115,8 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
               <div>
                 <p className="text-sm font-semibold text-foreground">판정 시뮬레이션</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  저장하지 않은 지금 조건값 그대로, 선택한 유저의 실제 활동 이력에 대입해
-                  발급 엔진 판정 결과를 미리 확인해요. 저장은 되지 않아요.
+                  저장하지 않은 지금 조건값 그대로, 선택한 대상에 대입해 발급 엔진 판정 결과를
+                  미리 확인해요. 저장은 되지 않아요.
                 </p>
               </div>
               <button
@@ -1101,60 +1130,94 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
 
             {simOpen && (
               <div className="space-y-3">
+                {/* 대상 선택 방식 — 기존 유저 검색 / 가상 활동 입력(티켓 20260908_1631) */}
                 <div className="flex gap-2">
-                  <input
-                    value={simUserQuery}
-                    onChange={(e) => setSimUserQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        searchSimUsers()
-                      }
-                    }}
-                    placeholder="이메일 또는 이름으로 대상 유저 검색"
-                    className="flex-1 bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-                  />
                   <button
                     type="button"
-                    onClick={searchSimUsers}
-                    disabled={simUserLoading || !simUserQuery.trim()}
-                    className="bg-muted text-foreground text-sm px-3 py-2 rounded-lg hover:bg-accent disabled:opacity-50 transition-colors shrink-0"
+                    onClick={() => setSimTargetMode('user')}
+                    className={`flex-1 text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                      simTargetMode === 'user' ? 'bg-primary text-white font-semibold' : 'bg-muted text-foreground hover:bg-accent'
+                    }`}
                   >
-                    {simUserLoading ? '검색 중...' : '검색'}
+                    기존 유저로 시험
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSimTargetMode('virtual')}
+                    className={`flex-1 text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                      simTargetMode === 'virtual' ? 'bg-primary text-white font-semibold' : 'bg-muted text-foreground hover:bg-accent'
+                    }`}
+                  >
+                    가상 활동으로 시험
                   </button>
                 </div>
 
-                {simUsers.length > 0 && (
-                  <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {simUsers.map((u) => (
+                {simTargetMode === 'user' && (
+                  <>
+                    <div className="flex gap-2">
+                      <input
+                        value={simUserQuery}
+                        onChange={(e) => setSimUserQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            searchSimUsers()
+                          }
+                        }}
+                        placeholder="이메일 또는 이름으로 대상 유저 검색"
+                        className="flex-1 bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                      />
                       <button
-                        key={u.id}
                         type="button"
-                        onClick={() => setSimUserId(u.id)}
-                        className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                          simUserId === u.id ? 'bg-primary/20 text-foreground' : 'hover:bg-muted text-foreground'
-                        }`}
+                        onClick={searchSimUsers}
+                        disabled={simUserLoading || !simUserQuery.trim()}
+                        className="bg-muted text-foreground text-sm px-3 py-2 rounded-lg hover:bg-accent disabled:opacity-50 transition-colors shrink-0"
                       >
-                        <span className="font-medium">{u.username ?? u.email}</span>
-                        <span className="text-xs text-foreground/60 ml-2">{u.email}</span>
+                        {simUserLoading ? '검색 중...' : '검색'}
                       </button>
-                    ))}
-                  </div>
+                    </div>
+
+                    {simUsers.length > 0 && (
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {simUsers.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => setSimUserId(u.id)}
+                            className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                              simUserId === u.id ? 'bg-primary/20 text-foreground' : 'hover:bg-muted text-foreground'
+                            }`}
+                          >
+                            <span className="font-medium">{u.username ?? u.email}</span>
+                            <span className="text-xs text-foreground/60 ml-2">{u.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {selectedSimUser && (
+                      <p className="text-xs text-foreground">
+                        대상 유저: <strong>{selectedSimUser.username ?? selectedSimUser.email}</strong> ({selectedSimUser.email})
+                      </p>
+                    )}
+                  </>
                 )}
 
-                {selectedSimUser && (
-                  <p className="text-xs text-foreground">
-                    대상 유저: <strong>{selectedSimUser.username ?? selectedSimUser.email}</strong> ({selectedSimUser.email})
-                  </p>
+                {simTargetMode === 'virtual' && (
+                  <VirtualActivityForm onActivityChange={setSimVirtualActivity} themeContainer={themeContainer} />
                 )}
 
                 <button
                   type="button"
                   onClick={runConditionSimulation}
-                  disabled={simLoading || !simUserId}
+                  disabled={simLoading || (simTargetMode === 'user' ? !simUserId : !simVirtualActivity)}
                   className="bg-primary text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
-                  {simLoading ? '판정 중...' : '이 유저로 판정하기'}
+                  {simLoading
+                    ? '판정 중...'
+                    : simTargetMode === 'user'
+                      ? '이 유저로 판정하기'
+                      : '이 가상 활동으로 판정하기'}
                 </button>
 
                 {simError && (

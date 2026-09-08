@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
 import { evaluateBadgesDetailed } from '@/lib/badge-engine'
+import { buildVirtualActivities, readExtendedFields } from '@/lib/admin/virtualActivity'
 import type { InventoryRow } from '@/types/database'
 import type { Database } from '@/types/database.generated'
 
@@ -15,9 +16,6 @@ import type { Database } from '@/types/database.generated'
  */
 type InventoryItemInsert = Database['public']['Tables']['inventory_items']['Insert']
 type InventoryItemInsertByTrigger = Omit<InventoryItemInsert, 'serial_number'>
-
-import type { NormalizedActivity, ExtendedActivityFields } from '@/types/strava'
-import { EXTENDED_ACTIVITY_FIELD_KEYS } from '@/types/strava'
 
 // rarity 드랍 확률 (drop-engine과 동일)
 const RARITY_THRESHOLDS = [
@@ -45,27 +43,6 @@ function weightedPick<T extends { drop_weight: number }>(items: T[]): T {
   return items[items.length - 1]
 }
 
-/**
- * 시뮬레이터가 보낸 v5 확장 6필드를 `NormalizedActivity` 조각으로 옮긴다 (티켓 20260905_0029).
- *
- * `normalizeActivity`와 **같은 규칙**을 지킨다 — 값이 없으면 `null`을 넣지 않고 **키 자체를
- * 만들지 않는다.** 시뮬레이터가 `null`을 넣으면 실제 Strava 활동과 다른 형태가 되어,
- * 「심박 데이터가 없는 활동」을 어드민에서 재현할 수 없게 된다.
- *
- * 입력이 어드민 폼이라 문자열로 올 수 있어 숫자 변환도 여기서 흡수한다.
- */
-function readExtendedFields(activity: Record<string, unknown>): ExtendedActivityFields {
-  const out: Record<string, number> = {}
-  for (const key of EXTENDED_ACTIVITY_FIELD_KEYS) {
-    const raw = activity[key]
-    if (raw === undefined || raw === null || raw === '') continue
-    const value = typeof raw === 'number' ? raw : Number(raw)
-    if (!Number.isFinite(value)) continue
-    out[key] = value
-  }
-  return out as ExtendedActivityFields
-}
-
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -79,28 +56,10 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient()
 
+  // 가상 활동 배열 구성(repeatCount만큼 연속 날짜에 생성) — 시뮬레이터/시뮬레이션 API가 공유하는
+  // 변환 로직으로 옮겼다(티켓 20260908_1631, `lib/admin/virtualActivity.ts`).
+  const activities = buildVirtualActivities(activity, repeatCount)
   const extended = readExtendedFields(activity)
-
-  // 시뮬레이션 활동 배열 구성 (repeatCount만큼 연속 날짜에 생성)
-  const baseDate = new Date(activity.startDate)
-  const activities: NormalizedActivity[] = Array.from({ length: repeatCount }, (_, i) => {
-    const date = new Date(baseDate)
-    date.setDate(date.getDate() - (repeatCount - 1 - i))
-    return {
-      stravaId: -(i + 1),
-      name: `시뮬레이션 활동 #${i + 1}`,
-      distanceKm: activity.distanceKm,
-      movingTimeSec: activity.movingTimeSec,
-      elevationGainM: activity.elevationGainM,
-      jamActivityType: activity.activityType,
-      startDate: date.toISOString(),
-      averageSpeedKmh: activity.averageSpeedKmh,
-      startLatLng: activity.route?.[0] ?? null,
-      endLatLng: activity.route?.[activity.route.length - 1] ?? null,
-      // 확장 6필드 — 입력된 것만 실린다(`normalizeActivity`와 같은 «없으면 키 없음» 규칙)
-      ...extended,
-    }
-  })
 
   // 1. 배지 평가 — badge-engine을 그대로 사용 (진행 트랙 dedup 포함)
   //    dryRun=true이면 평가만 수행, false이면 DB에도 저장됨
