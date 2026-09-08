@@ -358,6 +358,44 @@ function collectPeriodCountOccurrences(
   return toSortedOccurrences(reps)
 }
 
+/**
+ * `month` + `monthly_km` + `repeat_count` — 「그 월 목록(예: [6,7]) 중 `monthly_km` 이상을
+ * 채운 연-월」이 몇 번 있었는가 (walking:W4 「장마의 의지」, 티켓 20260908_1536).
+ *
+ * 단발 판정(`index.ts`의 `evaluateConditionDetailed`, 761~785행)과 같은 그룹핑 규칙을 쓴다 —
+ * `month` 배열은 "그중 한 달"이고, `monthly_km`는 **연-월별 합산 거리**(합산 아님, 개별 월
+ * 최댓값)로 평가된다(`database.ts` 1027행 주석). 그 실측값이 회차에서도 그대로 "연-월 하나 =
+ * 사건 하나"가 된다 — 6월도 채우고 7월도 채우면 회차 2, 둘 중 한 달만 채우면 회차 1.
+ *
+ * 걷기 하루 1회 상한(`dedupeOnePerDay`)은 **적용하지 않는다** — 단발 판정의 monthly_km
+ * 블록도 거리 합산에는 적용하지 않는다(횟수를 세는 `monthly_count`만 적용). 규칙을 하나
+ * 더 만들면 발급(이 함수)과 단발 판정이 다른 값을 볼 위험이 생긴다.
+ */
+function collectMonthlyKmOccurrences(condition: BadgeCondition, activities: NormalizedActivity[]): NormalizedActivity[] {
+  const monthlyKm = condition.monthly_km as number
+  let pool = typeFilteredPool(condition, activities)
+  if (condition.month !== undefined) {
+    const months = Array.isArray(condition.month) ? condition.month : [condition.month]
+    pool = pool.filter((a) => months.includes(new Date(a.startDateLocal ?? a.startDate).getMonth() + 1))
+  }
+  const byMonth = new Map<string, NormalizedActivity[]>()
+  for (const a of pool) {
+    const key = monthKeyOf(a)
+    const list = byMonth.get(key)
+    if (list) list.push(a)
+    else byMonth.set(key, [a])
+  }
+  const reps: NormalizedActivity[] = []
+  for (const acts of byMonth.values()) {
+    const totalKm = acts.reduce((sum, a) => sum + a.distanceKm, 0)
+    if (totalKm >= monthlyKm) {
+      // 그 달을 «채운» 시점 — 마지막(=임계값을 완성한) 활동을 대표로 삼는다 (다른 기간 드라이버와 동일 규칙)
+      reps.push(acts.reduce((last, a) => (a.startDate > last.startDate ? a : last)))
+    }
+  }
+  return toSortedOccurrences(reps)
+}
+
 type PeriodOccurrenceCollector = (condition: BadgeCondition, activities: NormalizedActivity[]) => NormalizedActivity[]
 
 const PERIOD_DRIVER_KEYS = ['streak_days', 'weekly_count', 'monthly_count', 'weekly_streak'] as const
@@ -388,6 +426,12 @@ function detectPeriodOccurrenceDriver(condition: BadgeCondition): PeriodOccurren
   // 여전히 막는다(이 파일의 「모르는 조합은 안전하게 막는다」 원칙, 위 헤더 주석).
   if (extraKeys.length === 2 && extraKeys.includes('streak_days') && extraKeys.includes('distinct_time_bands')) {
     return collectStreakDayOccurrences
+  }
+
+  // `month` + `monthly_km` + `repeat_count` 조합(walking:W4 「장마의 의지」, 티켓 20260908_1536) —
+  // 여기도 driver 키가 둘이다. 이 조합 하나만 예외로 허용하고 다른 결합은 여전히 막는다.
+  if (extraKeys.length === 2 && extraKeys.includes('month') && extraKeys.includes('monthly_km')) {
+    return collectMonthlyKmOccurrences
   }
 
   if (extraKeys.length !== 1) return undefined
