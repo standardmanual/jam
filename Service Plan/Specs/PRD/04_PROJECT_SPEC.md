@@ -5,7 +5,7 @@
 >
 > **2026-08-06 갱신**: 코드베이스(`jam-web/`) 전수 대조로 현재 상태 기준 재작성.
 >
-> **핵심 루프(동기화→배지→드랍→포인트)에 손대는 작업이면 [DEV_PROCESS_GUARDRAILS.md](../DEV_PROCESS_GUARDRAILS.md)를
+> **핵심 루프(동기화→배지→드랍→포인트)에 손대는 작업이면 [DEV_PROCESS_GUARDRAILS.md](DEV_PROCESS_GUARDRAILS.md)를
 > 먼저 확인하세요** — 과거에 반복된 개발 프로세스 실수 패턴과 의존성 지도가 정리돼 있습니다.
 
 ---
@@ -118,7 +118,7 @@ jam-web/
 - **API 키나 비밀번호를 코드에 직접 쓰지 마** — 반드시 `.env.local` 환경변수 사용
 - **Strava access_token을 평문으로 DB에 저장하지 마** — `ENCRYPTION_KEY`로 암호화 필수
 - **기존 DB 스키마를 임의로 변경하지 마** — 마이그레이션 파일 작성 후 리뷰 요청 (현재 080까지 진행, 번호 이어서 작성 — 새로 시작하기 전 `ls supabase/migrations | tail`로 직접 확인할 것, 045가 두 파일에 중복 부여됐던 전례 있음)
-- **테이블뿐 아니라 함수·트리거도 마이그레이션 파일 없이 운영 DB에서 직접(SQL 에디터·MCP execute_sql 등) 재정의하지 마** — 2026-08-11 `handle_new_user()` 트리거 함수가 마이그레이션 파일 없이 운영 DB에서만 재정의되면서 인벤토리 생성 구문이 누락된 채 방치돼, 신규 유저 3명의 아이템 배지가 조용히 미발급되는 인시던트가 있었음(원인 규명 불가 — 추적 기록 자체가 없었음). `execute_sql`은 조회·데이터 백필(별도 티켓 문서화 전제)에만 쓰고, 함수/트리거/컬럼 등 스키마·로직 정의 변경은 반드시 새 마이그레이션 파일 작성 → `apply_migration`으로 적용 → 커밋까지 한 번에 끝낼 것. 프로젝트 규모상 `supabase_migrations.schema_migrations`에 이력이 다 남지 않는 경우도 있으므로, 의심 시 [BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) 같은 핵심 로직 문서보다도 `pg_get_functiondef`로 운영 DB 실물을 먼저 확인할 것 (Service Plan/Tickets/20260811_001 참고)
+- **테이블뿐 아니라 함수·트리거도 마이그레이션 파일 없이 운영 DB에서 직접(SQL 에디터·MCP execute_sql 등) 재정의하지 마** — 2026-08-11 `handle_new_user()` 트리거 함수가 마이그레이션 파일 없이 운영 DB에서만 재정의되면서 인벤토리 생성 구문이 누락된 채 방치돼, 신규 유저 3명의 아이템 배지가 조용히 미발급되는 인시던트가 있었음(원인 규명 불가 — 추적 기록 자체가 없었음). `execute_sql`은 조회·데이터 백필(별도 티켓 문서화 전제)에만 쓰고, 함수/트리거/컬럼 등 스키마·로직 정의 변경은 반드시 새 마이그레이션 파일 작성 → `apply_migration`으로 적용 → 커밋까지 한 번에 끝낼 것. 프로젝트 규모상 `supabase_migrations.schema_migrations`에 이력이 다 남지 않는 경우도 있으므로, 의심 시 [BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) 같은 핵심 로직 문서보다도 `pg_get_functiondef`로 운영 DB 실물을 먼저 확인할 것 (Service Plan/Tickets/20260811_001 참고)
 - **목업/하드코딩 데이터로 완성이라고 하지 마** — 실제 Strava 계정 연동 테스트 필수
 - **package.json 의존성 버전을 임의로 변경하지 마** — 보안 패치 외 버전 고정. 특히 Next.js는 16 메이저 버전 고정 — 임의 업/다운그레이드 금지
 - **Strava rate limit 초과하지 마** — 200/15분, 2000/일 제한. 배치 처리 시 딜레이 추가
@@ -227,7 +227,7 @@ vercel --prod
 5. **배지 양도 불가**: UserActivityBadge는 생성/삭제만 가능, 소유자 변경 API 노출 금지
 6. **실물 패치 구매 조건**: 해당 배지 보유 확인 후 D2C 스토어 URL 활성화 (미보유 시 잠금 상태)
 
-> 드랍/픽업 트랜잭션 처리, 자기 드랍 픽업 허용, T2 POI 드랍 반경, 일련번호 형식 등 **배지·드랍 엔진의 판정 로직·정책**은 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md)로 이관됨 (2026-08-06, 4카테고리 문서 체계 재정리).
+> 드랍/픽업 트랜잭션 처리, 자기 드랍 픽업 허용, T2 POI 드랍 반경, 일련번호 형식 등 **배지·드랍 엔진의 판정 로직·정책**은 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md)로 이관됨 (2026-08-06, 4카테고리 문서 체계 재정리).
 
 ---
 

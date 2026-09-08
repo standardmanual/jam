@@ -105,7 +105,7 @@ jam-web/src/components/StravaConnectReveal.tsx
   잔존 노출될 수 있음 — `BadgeShareButton`·`MissionStatusClient`와 다른 예외. 판정에는
   영향 없어 이번 범위에서는 수정하지 않고 다음 항목으로 별도 티켓화함.
 - 범위 밖 발견물 자동 티켓화:
-  - [20260908_0556](../P3-낮음/20260908_0556_Service_실기기확인-NavigationLoader수정-컬렉션장착팔로우버튼.md)(P3) — 컬렉션 장착·팔로우 버튼 실기기 확인
-  - [20260908_0557](../P2-일반/20260908_0557_Service_SyncButton-BadgeRevealOverlay-디바운스-미적용.md)(P2) — `SyncButton` 디바운스 미적용
+  - [20260908_0556](20260908_0556_Service_실기기확인-NavigationLoader수정-컬렉션장착팔로우버튼.md)(P3) — 컬렉션 장착·팔로우 버튼 실기기 확인
+  - [20260908_0557](20260908_0557_Service_SyncButton-BadgeRevealOverlay-디바운스-미적용.md)(P2) — `SyncButton` 디바운스 미적용
 - 개선 리뷰 제안(선택 사항, 미반영): `MAX_VISIBLE_MS` 강제 숨김 시 `console.warn` 관찰
   로깅 추가 제안 — 이번엔 반영하지 않음.

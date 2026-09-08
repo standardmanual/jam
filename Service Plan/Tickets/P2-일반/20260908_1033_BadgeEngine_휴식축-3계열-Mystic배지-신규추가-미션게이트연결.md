@@ -11,7 +11,7 @@ closed: 2026-09-08
 
 ## 배경 / 문제 정의
 
-티켓 [20260908_1017](Service%20Plan/Tickets/P1-중요/20260908_1017_BadgeEngine_게이트미션-누적축-노출조건-등급오류-보상게이트-연결.md)
+티켓 [20260908_1017](20260908_1017_BadgeEngine_게이트미션-누적축-노출조건-등급오류-보상게이트-연결.md)
 처리 도중 어드민 정합성 검사에 남아 있던 `reward_family_not_gated` 4건 중 3건의 원인을
 조사한 결과다.
 
@@ -36,7 +36,7 @@ closed: 2026-09-08
   (`trail_running:W2`, `season_count_all` 조건)이 걷기 W3와 같은 **설계상 의도된 무관문
   예외 12종** 중 하나로 실측 확인됐다 — 버그 아님, 조치 불필요.
 
-이 문제 자체는 신규 발견이 아니다 — 티켓 [20260906_1947](Service%20Plan/Tickets/P1-중요/20260906_1947_BadgeEngine_2단교차게이트-축매핑-시딩.md)
+이 문제 자체는 신규 발견이 아니다 — 티켓 [20260906_1947](20260906_1947_BadgeEngine_2단교차게이트-축매핑-시딩.md)
 153~165행이 이미 "자전거·등산·트레일러닝의 '휴식' 반복형 계열이 Mystic 없이 Epic까지만
 시딩돼 있어 게이트를 붙일 대상 자체가 없다 — 이 3계열의 Mystic 부재가 원래 설계 의도인지
 0035 시딩 단계의 우발적 격차인지 확인되지 않았다. 콘텐츠 팀 확인 필요"로 남긴 미해결 사안과
@@ -61,21 +61,21 @@ Mystic까지 있지만, 새 컨텐츠 범위를 최소화하기 위해 이번엔
 
 - **수치 임계값**: 정본 지표가 없다. 같은 축(휴식)의 이미 Mystic까지 시딩된 선례
   (`walking:R1`: Common1·Rare5·Epic20·**Mystic20**은 오타로 보임 — 실제로는
-  [v5_seed_build.py](Service%20Plan/Specs/Content/v5_seed_build.py) 233행
+  [v5_seed_build.py](v5_seed_build.py) 233행
   `[(R, 1), (E, 5), (M, 20)]`이 정본. `walking:R2`(235행): `[(C, 1), (R, 10), (E, 30),
   (M, 100)]`, Epic→Mystic 비율 약 3.3배)의 **Epic→Mystic 배율**을 참고해 각 계열의 Epic
   값에 곱해 산정한다. 예: `cycling:X1` Epic=30 → Mystic ≈ 30×3~4배 = 90~120 범위에서
   선택(정수, 보기 좋은 값으로 반올림).
 - **배지 이름·설명문**: `.claude/output-styles/fluent-korean.md` 지침을 따라 작성.
   같은 계열의 기존 등급(Common~Epic) 설명문과 톤을 이어가되, Mystic 등급다운 무게감을
-  담을 것. [ACTIVITY_BADGES.md](Service%20Plan/Specs/Content/ACTIVITY_BADGES.md)의 해당
+  담을 것. [ACTIVITY_BADGES.md](ACTIVITY_BADGES.md)의 해당
   섹션(각 3계열 위치는 위 표 참고)에 반영.
 - **컨텐츠 문서 갱신**: `ACTIVITY_BADGES.md`의 대상 3계열 표·설명문에 Mystic 행 추가.
 
 ### 서비스/코드베이스 관점 (게이트 연결)
 
 - 신규 Mystic 배지 3종의 `condition_json`에 **기존 2단교차게이트 패턴**
-  ([v5_gate_build.py](Service%20Plan/Specs/Content/v5_gate_build.py) 296~310행 참고,
+  ([v5_gate_build.py](v5_gate_build.py) 296~310행 참고,
   AXIS_RULES의 `'휴식': {'em': ('between', '누적', 'min_level')}`)을 그대로 적용한다:
   ```json
   {"cross_between_axis": {"family_keys": ["<sport>:K1", "<sport>:K2"(있다면), "<sport>:K3"],

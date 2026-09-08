@@ -10,7 +10,7 @@ closed:
 # [Admin] POI 생성/전체수정 API가 category를 존재 여부로 검증하지 않음
 
 ## 배경 / 문제 정의
-[20260907_1643](../P2-일반/20260907_1643_Admin_POI관리-다중선택-카테고리-일괄변경.md) 게이트
+[20260907_1643](20260907_1643_Admin_POI관리-다중선택-카테고리-일괄변경.md) 게이트
 리뷰 중 발견(범위 밖). `POST /api/admin/poi`·`PUT /api/admin/poi/[id]`는 `category`가
 `poi_categories`에 실제 존재하는 슬러그인지 앱 레벨로 검증하지 않는다. 반면 이번 티켓에서
 확장한 `PATCH /api/admin/poi/[id]`는 검증을 추가해, 같은 리소스에 대해 엔드포인트별 검증

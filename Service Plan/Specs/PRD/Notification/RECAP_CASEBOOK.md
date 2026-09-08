@@ -1,7 +1,7 @@
 # 활동 결산 소식 — 문구 케이스북
 
 > 작성: 2026-08-27 / **v3 — 2차 검토 반영** (규칙 R1~R10 확정, 남은 확인 3건)
-> 관련: [PRD.md](./PRD.md) §3 소식 20종 · §5 문구 강조 규칙 / [DATA_MODEL.md](./DATA_MODEL.md) §4 묶음 모델 / [UX_WRITING_GUIDELINE.md](../../UX_WRITING_GUIDELINE.md)
+> 관련: [PRD.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/PRD.md) §3 소식 20종 · §5 문구 강조 규칙 / [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) §4 묶음 모델 / [UX_WRITING_GUIDELINE.md](UX_WRITING_GUIDELINE.md)
 
 한 번의 활동에서 나올 수 있는 보상 조합마다 문구를 써보고, **문장을 보면서 정책을 역산**하기
 위한 검토판이다. 정책을 먼저 확정하고 구현으로 넘어가지 않는다.
@@ -501,12 +501,12 @@ R4("미션은 완료만 말한다")를 그대로 적용하면 E2도 "**한강 10
 
 | 문서 | 갱신 내용 |
 |---|---|
-| [PRD.md](./PRD.md) §3 | 소식 26종 표 — ① 보상 획득 6종을 결산 1종으로 재편 |
-| [PRD.md](./PRD.md) §5 | 문구 강조 규칙 — 개체 이름 슬롯 추가, 작은따옴표 미사용(R2) 명시 |
-| [PRD.md](./PRD.md) §6-1 | 알림함 — 착지 규칙(R6)·분행 규칙(R10) |
-| [DATA_MODEL.md](./DATA_MODEL.md) §4-2 | `group_key` 설계 — 활동 2건 이상 묶음(R9). **✅ 반영 완료** — 다만 확정 축은 검토 당시 후보였던 「활동 단위」가 아니라 **KST 하루**다 (20260827_014·016) |
-| [DATA_MODEL.md](./DATA_MODEL.md) §2 | `notification_type` ENUM에 결산 타입 추가 |
-| [UX_WRITING_GUIDELINE.md](../../UX_WRITING_GUIDELINE.md) §3 | 포인트 표기 — 「1,200 JAM 포인트」→「1,200 포인트」(R3) |
+| [PRD.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/PRD.md) §3 | 소식 26종 표 — ① 보상 획득 6종을 결산 1종으로 재편 |
+| [PRD.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/PRD.md) §5 | 문구 강조 규칙 — 개체 이름 슬롯 추가, 작은따옴표 미사용(R2) 명시 |
+| [PRD.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/PRD.md) §6-1 | 알림함 — 착지 규칙(R6)·분행 규칙(R10) |
+| [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) §4-2 | `group_key` 설계 — 활동 2건 이상 묶음(R9). **✅ 반영 완료** — 다만 확정 축은 검토 당시 후보였던 「활동 단위」가 아니라 **KST 하루**다 (20260827_014·016) |
+| [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) §2 | `notification_type` ENUM에 결산 타입 추가 |
+| [UX_WRITING_GUIDELINE.md](UX_WRITING_GUIDELINE.md) §3 | 포인트 표기 — 「1,200 JAM 포인트」→「1,200 포인트」(R3) |
 | `src/lib/i18n/ko.ts` | `slotPoints`·`rewardPointsLine`·`consolationPoints` + 결산 문구 전반 |
 | `src/lib/notifications/message.ts` | 총량 계산(R5)·대표 선정(R8)·활동 묶음(R9) |
 | `src/lib/notifications/href.ts` | 착지 규칙(R6) |

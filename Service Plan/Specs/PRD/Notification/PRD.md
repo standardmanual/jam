@@ -3,11 +3,11 @@
 > **⚠️ 2026-08-27 전면 개편** — 티켓 [20260827_014](../../../Tickets/20260827_014_API_알림소식-전면개편-활동결산-대상묶음-문구규칙R1R15.md)로
 > ① 보상 획득 6종이 **활동 결산 1종**으로 재편되고, **R11(대상 2건 이상 묶음)**·**R15(팔로잉 사람 단위)**가
 > 도입됐다. 문구의 단일 진실은 두 케이스북이다 —
-> [RECAP_CASEBOOK.md](./RECAP_CASEBOOK.md)(결산) · [REST_CASEBOOK.md](./REST_CASEBOOK.md)(그 외 17종).
+> [RECAP_CASEBOOK.md](RECAP_CASEBOOK.md)(결산) · [REST_CASEBOOK.md](REST_CASEBOOK.md)(그 외 17종).
 > 문구 규칙 R1~R15는 케이스북 상단 표에 정리돼 있다.
 
 > 최초 작성: 2026-08-24 / 티켓 [20260824_018](../../../Tickets/20260824_018_Feature_알림소식-PRD수립.md)
-> 데이터 구조는 [DATA_MODEL.md](./DATA_MODEL.md) 참고.
+> 데이터 구조는 [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) 참고.
 
 ---
 
@@ -37,7 +37,7 @@ Web Push 인프라(PWA manifest / Service Worker)는 여전히 미구현이며 �
 | 참가한 미션이 마감돼도 모른다 | 직접 `/missions`에 들어가 확인해야 한다 |
 | 비동기 발급 배지를 놓친다 | 동기화 오버레이 상한(10건) 초과분은 다시 볼 창구가 없다 |
 
-[01_PRD.md](../01_PRD.md) §6에 "거래 알림은 앱 내 알림으로만"이 이미 명시돼 있다.
+[01_PRD.md](01_PRD.md) §6에 "거래 알림은 앱 내 알림으로만"이 이미 명시돼 있다.
 신규 발상이 아니라 인지된 갭을 채우는 작업이다.
 
 ---
@@ -61,7 +61,7 @@ JAM!에 대응시키면 이렇게 된다.
 
 > *2026-08-27 — 묶음 축을 「동기화 1회」에서 **KST 하루**로 정정했다. 티켓 20260827_014에서
 > ① 보상 획득 6종이 활동 결산 1종(`activity_recap:{YYYY-MM-DD}`)으로 재편되며 축이 바뀌었다.
-> 현행 정의는 §3 ①과 [DATA_MODEL.md](./DATA_MODEL.md) §4-2에 있다. (티켓 20260827_023)*
+> 현행 정의는 §3 ①과 [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) §4-2에 있다. (티켓 20260827_023)*
 
 ### 2-2. JAM! 고유 원칙 — 자기 행동의 메아리를 넣지 않는다
 
@@ -99,7 +99,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. `SyncButton`이 `/api/s
 > (구 26종에서 ① 보상 획득 6종 → 결산 1종, #27 맞팔 제거. 2026-08-27 티켓 20260827_014·016)
 
 > **문구의 단일 진실은 케이스북이다.** 아래 표의 「예시 문구」는 대표값이고, 글자 단위 명세는
-> [RECAP_CASEBOOK.md](./RECAP_CASEBOOK.md)(결산) · [REST_CASEBOOK.md](./REST_CASEBOOK.md)(그 외)에
+> [RECAP_CASEBOOK.md](RECAP_CASEBOOK.md)(결산) · [REST_CASEBOOK.md](REST_CASEBOOK.md)(그 외)에
 > 있다. 두 문서가 어긋나면 케이스북이 이긴다.
 >
 > **모든 종류에 R11이 적용된다** — 같은 종류의 소식이 **대상 2건 이상이면 한 행으로 묶고
@@ -113,7 +113,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. `SyncButton`이 `/api/s
 
 > **2026-08-27 재편** — 구 6종(#1 활동배지 · #2 희귀 배지 · #3 아이템 배지 · #4 체크인 배지 ·
 > #5 포인트 · #7 첫 배지)이 **결산 1종으로 합쳐졌다.** 한 번의 활동이 종류마다 행을 만들어
-> 홍수가 되던 것이 원인이다. 문구의 단일 진실은 [RECAP_CASEBOOK.md](./RECAP_CASEBOOK.md)의
+> 홍수가 되던 것이 원인이다. 문구의 단일 진실은 [RECAP_CASEBOOK.md](RECAP_CASEBOOK.md)의
 > A~F 케이스 표다.
 
 | 항목 | 내용 |
@@ -198,7 +198,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. `SyncButton`이 `/api/s
 > **#18의 "다녀갔다" = 누군가 그 POI를 열어서 확인한 것**(2026-08-24 확정). 픽업 여부와 무관하다.
 > 현재 POI 열람을 기록하는 코드가 전혀 없으므로 **`poi_views` 테이블과 계측을 신설**해야 한다 —
 > `PoiCarouselModal`이 열리는 지점(`DropsClient`)에서 기록하고, 주간 배치가 고유 인원을 집계한다.
-> 상세는 [DATA_MODEL.md](./DATA_MODEL.md) §2-1.
+> 상세는 [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) §2-1.
 
 ### ④ 미션 — 5종
 
@@ -337,7 +337,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. `SyncButton`이 `/api/s
 
 **KST 18:00 (UTC 09:00) 하루 1회.**
 
-[01_PRD.md](../01_PRD.md) §2의 핵심 시나리오가 "운동 후 귀가해서 저녁에 확인"이라, 저녁 접속
+[01_PRD.md](01_PRD.md) §2의 핵심 시나리오가 "운동 후 귀가해서 저녁에 확인"이라, 저녁 접속
 시점에 소식이 갓 만들어져 있는 게 가장 신선하다. 기존 cron 2개(UTC 00:00·18:00)와도 겹치지 않는다.
 
 빈도를 올리려면 KST 08:00 추가해 2회까지. 그 이상은 의미가 없다 — 유저가 하루에 앱을 여는
@@ -377,7 +377,7 @@ Strava 동기화는 webhook이 없어 100% 수동이다. `SyncButton`이 `/api/s
 
 ### 5-1. 호칭 — 닉네임 직접 호출
 
-[UX_WRITING_GUIDELINE.md](../../UX_WRITING_GUIDELINE.md)가 `고객님`·`유저님` 류 호칭을 지양하고
+[UX_WRITING_GUIDELINE.md](UX_WRITING_GUIDELINE.md)가 `고객님`·`유저님` 류 호칭을 지양하고
 `OO님`(닉네임)을 쓰도록 규정한다. **"회원님"을 쓰지 않는다.**
 
 본인도 닉네임으로 호출하며, 본인 닉네임 역시 `payload` 슬롯이므로 볼드가 적용된다.
@@ -558,7 +558,7 @@ rightSlot = <>{호출부가 넘긴 값}{알림 종}</>
 >
 > DB의 `notification_type` ENUM에는 `following_nearby_drop`·`nearby_drops` 값이 그대로 남아
 > 있다(Postgres는 ENUM 값 제거가 안전하지 않다). 해당 타입 소식은 프로덕션에 0건이며 어떤
-> 코드도 생성하지 않는다 — [DATA_MODEL.md](./DATA_MODEL.md) §2 참고.
+> 코드도 생성하지 않는다 — [DATA_MODEL.md](JAM-OFFICE/Service%20Plan/Specs/PRD/Notification/DATA_MODEL.md) §2 참고.
 
 ### 보류 — 후속 판단 대상
 

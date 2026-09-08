@@ -399,7 +399,7 @@ Phase 7 (드랍/픽업 + OSM T2)
 ### 전제 조건
 Phase 3 (인벤토리), Phase 9 (포인트, 소각 보상 연계 시)
 
-> **참고**: 아이템 조합 시스템은 실제로 `054_combine_v2.sql` 마이그레이션으로 구현됨 — [Content/COMBINE_RECIPES.md](../Specs/Content/COMBINE_RECIPES.md) 참고.
+> **참고**: 아이템 조합 시스템은 실제로 `054_combine_v2.sql` 마이그레이션으로 구현됨 — [Content/COMBINE_RECIPES.md](COMBINE_RECIPES.md) 참고.
 
 ---
 

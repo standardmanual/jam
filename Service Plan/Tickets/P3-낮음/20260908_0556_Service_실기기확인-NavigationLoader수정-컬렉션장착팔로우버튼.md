@@ -9,7 +9,7 @@ created: 2026-09-08
 # [Service] 실기기 확인 — NavigationLoader 수정 후 컬렉션 장착·팔로우 버튼
 
 ## 배경 / 문제 정의
-[20260908_0544](../P1-중요/20260908_0544_Service_eye-loader-과다노출및NavigationLoader고착-수정.md)에서
+[20260908_0544](20260908_0544_Service_eye-loader-과다노출및NavigationLoader고착-수정.md)에서
 `NavigationLoader`의 클릭 리스너를 capture→bubble로 바꿔 컬렉션 장착/해제·팔로우 버튼의 8초
 고착 버그를 논리적으로 해결했다고 판단했으나, 격리 워크트리 환경 제약으로 실제 브라우저 실렌더
 확인은 하지 못했다(게이트 리뷰 sideFindings에서도 지적됨).

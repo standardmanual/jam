@@ -1,6 +1,6 @@
 # 세계관 (Factions) 컨텐츠 관리
 
-> 원천 소스: [`Service Plan/Business/04 JAM! 세계관.md`](../../Business/04%20JAM!%20세계관.md) (세계관 설정·서비스 노출 텍스트), [`Content/ITEMBOOKS.xlsx`](./ITEMBOOKS.xlsx) (컬렉션·아이템배지 목록)
+> 원천 소스: [`Service Plan/Business/04 JAM! 세계관.md`](04%20JAM!%20세계관.md) (세계관 설정·서비스 노출 텍스트), [`Content/ITEMBOOKS.xlsx`](ITEMBOOKS.xlsx) (컬렉션·아이템배지 목록)
 
 ## 총괄 컨셉
 
@@ -8,7 +8,7 @@
 
 - 유저가 활동(러닝/라이딩/등산 등)을 하며 흘리거나 줍는 모든 아이템배지는 반드시 10개 세계관 중 하나에 소속된다.
 - 각 세계관은 고유한 캐치프레이즈·플레이버 텍스트·아이템 컨셉을 가지며, 서비스 노출 텍스트(배지 설명 등)에 직접 반영된다.
-- **에필로그 크로스오버 서사**: 서로 다른 세계관의 아이템을 조합하면 새로운 컬렉션이 완성되는 구조 (예: 아날로그 수집가의 '태엽이 멈춘 초시계' + 미스터리 헌터의 '시간이 멈춘 회중시계'). → [Content/COMBINE_RECIPES.md](./COMBINE_RECIPES.md) 참고
+- **에필로그 크로스오버 서사**: 서로 다른 세계관의 아이템을 조합하면 새로운 컬렉션이 완성되는 구조 (예: 아날로그 수집가의 '태엽이 멈춘 초시계' + 미스터리 헌터의 '시간이 멈춘 회중시계'). → [Content/COMBINE_RECIPES.md](COMBINE_RECIPES.md) 참고
 
 ---
 
@@ -29,7 +29,7 @@
 
 **총계: 세계관 10개 · 컬렉션 10개(세계관당 1개) · 아이템배지 900개(세계관당 90개)**
 
-각 컬렉션은 내부적으로 10개 하위 그룹(예: `1-1` ~ `1-10`)으로 나뉘고, 그룹당 9종의 아이템배지로 구성된다. 아이템배지 전체 목록·개별 설명문은 [`Content/ITEMBOOKS.xlsx`](./ITEMBOOKS.xlsx)의 `팩션1`~`팩션10` 시트 참고 (엑셀은 다시 열 때 시트명이 유니코드 NFD로 깨져 보일 수 있음 — 프로그램에서 읽을 때는 NFC 정규화 필요).
+각 컬렉션은 내부적으로 10개 하위 그룹(예: `1-1` ~ `1-10`)으로 나뉘고, 그룹당 9종의 아이템배지로 구성된다. 아이템배지 전체 목록·개별 설명문은 [`Content/ITEMBOOKS.xlsx`](ITEMBOOKS.xlsx)의 `팩션1`~`팩션10` 시트 참고 (엑셀은 다시 열 때 시트명이 유니코드 NFD로 깨져 보일 수 있음 — 프로그램에서 읽을 때는 NFC 정규화 필요).
 
 ### 1. 낭만 미식가
 
@@ -110,7 +110,7 @@
 | 작심삼일 클럽 | 낭만 미식가, 장비병 환자들, **전 세계관(약한 가중치)** | 회식·치킨 서사 / 장비만 사는 자들 / '섬데이 돌파' 후 모멘텀이 자연스럽게 다른 세계관으로 넘어감(서사적 졸업) |
 | 미스터리 헌터 | **전역(모든 세계관과 인접)** | '모든 유저들이 열망하는 환상 등급 전리품' = 전역 스파이스. epic·mystic 드랍 시에만 낮은 확률로 등장 |
 
-> **작심삼일 클럽**과 **미스터리 헌터**는 특수 노드다 — 각각 "약한 가중치로 전 세계관 인접", "전역 스파이스(epic·mystic 한정)"로 일반적인 3-인접 규칙에서 벗어난다. 드랍엔진 구현 시 이 두 세계관은 예외 처리가 필요할 수 있음. 실제 구현 여부는 [BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md)에서 확인.
+> **작심삼일 클럽**과 **미스터리 헌터**는 특수 노드다 — 각각 "약한 가중치로 전 세계관 인접", "전역 스파이스(epic·mystic 한정)"로 일반적인 3-인접 규칙에서 벗어난다. 드랍엔진 구현 시 이 두 세계관은 예외 처리가 필요할 수 있음. 실제 구현 여부는 [BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md)에서 확인.
 
 ---
 
@@ -124,7 +124,7 @@
 | 배지 연결 | `jam-web/supabase/migrations/015_badges_faction.sql`, `016_itembooks_faction.sql` |
 | 초기 시드 | `jam-web/supabase/migrations/019_seed_worldview.sql` |
 | 드랍엔진 v2 세계관 모멘텀 로직 | `jam-web/supabase/migrations/034_drop_engine_v2_schema.sql`, `jam-web/src/lib/drop-engine/` |
-| 조합 시스템 세계관 융합 | `jam-web/supabase/migrations/054_combine_v2.sql`, [Content/COMBINE_RECIPES.md](./COMBINE_RECIPES.md) |
+| 조합 시스템 세계관 융합 | `jam-web/supabase/migrations/054_combine_v2.sql`, [Content/COMBINE_RECIPES.md](COMBINE_RECIPES.md) |
 | 어드민 관리 화면 | `jam-web/src/app/admin/factions/` |
 
 ## 채워야 할 내용
@@ -136,6 +136,6 @@
 - [ ] DB(`factions` 테이블)의 실제 컬럼·값이 이 문서와 100% 일치하는지 검증 (본 문서는 Business/ITEMBOOKS 소스 기준으로 작성, 코드 대조 검증 별도 필요)
 
 ## 관련 문서
-- [BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) — 세계관 모멘텀이 드랍 확률에 반영되는 로직
-- [Content/ITEMBOOKS.xlsx](./ITEMBOOKS.xlsx) — 세계관별 컬렉션·아이템배지 원본 데이터
-- [Content/COMBINE_RECIPES.md](./COMBINE_RECIPES.md) — 세계관 간 크로스오버 조합 레시피
+- [BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) — 세계관 모멘텀이 드랍 확률에 반영되는 로직
+- [Content/ITEMBOOKS.xlsx](ITEMBOOKS.xlsx) — 세계관별 컬렉션·아이템배지 원본 데이터
+- [Content/COMBINE_RECIPES.md](COMBINE_RECIPES.md) — 세계관 간 크로스오버 조합 레시피

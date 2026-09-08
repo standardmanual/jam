@@ -9,7 +9,7 @@ created: 2026-09-08
 # [Service] SyncButton의 BadgeRevealOverlay 디바운스 미적용
 
 ## 배경 / 문제 정의
-[20260908_0544](../P1-중요/20260908_0544_Service_eye-loader-과다노출및NavigationLoader고착-수정.md)에서
+[20260908_0544](20260908_0544_Service_eye-loader-과다노출및NavigationLoader고착-수정.md)에서
 `useDebouncedLoading` 훅을 만들어 `MissionStatusClient`·`BadgeShareButton`·`StravaConnectReveal`
 세 곳에 적용했지만, `BadgeRevealOverlay`의 네 번째 호출부인 `SyncButton.tsx`는 티켓 범위 밖이라
 손대지 않았다. `SyncButton.tsx`는 `loading` prop 자체를 넘기지 않고 `open`만 즉시 토글하고

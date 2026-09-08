@@ -3,7 +3,7 @@
 > **2026-08-06 전면 재작성**: 기존 Phase 번호 로드맵(2026-07-09~10 작성)은 실제 개발
 > 순서와 맞지 않아 폐기하고, `Tickets/`의 실제 티켓 72건(2026-07-15~
 > 2026-08-06)을 시간순으로 재구성했다. 원래의 계획 원문은 이력 자료로
-> [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md)에 보관.
+> [Archive/PHASES_ROADMAP_ARCHIVE.md](PHASES_ROADMAP_ARCHIVE.md)에 보관.
 >
 > 신규 개선사항 작업 시에는 이 문서보다 [Tickets/](../../Tickets/)의
 > 최신 티켓을 먼저 확인할 것 — 이 문서는 "지금까지 무엇이 만들어졌는지"를 훑어보는 용도.
@@ -14,7 +14,7 @@
 
 핵심 기능(배지·인벤토리·드랍/픽업·컬렉션·세계관·조합·미션·포인트·어드민)은 모두
 구현되어 있다. 미구현으로 확인된 것은 **P2P 플리마켓 실거래, D2C 실물 패치 구매,
-푸시 알림** 3가지뿐 — 상세는 [01_PRD.md](./01_PRD.md) §6-2 참고.
+푸시 알림** 3가지뿐 — 상세는 [01_PRD.md](01_PRD.md) §6-2 참고.
 
 ---
 
@@ -23,7 +23,7 @@
 ### 2026-07-09~10 — 초기 구축 (Phase 1~7 원안)
 온보딩(구글 로그인·프로필)·Strava 연동·배지 자동발급·공유카드·POI 사후인증·인벤토리·
 확률 드랍·어드민 패널·유저 드랍/픽업(당시 Google Maps)·OSM 기반 T2 POI·아이템 일련번호.
-계획대로 완료된 것으로 확인됨. 상세는 [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md).
+계획대로 완료된 것으로 확인됨. 상세는 [Archive/PHASES_ROADMAP_ARCHIVE.md](PHASES_ROADMAP_ARCHIVE.md).
 
 ### 2026-07-15~20 — 배지 엔진 안정화
 POI 매칭 바운딩박스 사전필터, 배지 이름당 최상위 레어리티 1개만 노출하는 "성장 티어"
@@ -32,7 +32,7 @@ POI 매칭 바운딩박스 사전필터, 배지 이름당 최상위 레어리티
 ### 2026-07-21 — 유저 검색 + 드랍엔진 v2 전면 교체
 유저 검색 기능(`api/users/search`) 추가. **아이템배지 드랍엔진을 v2로 전면 교체**
 — 활동당 최소 1개 확정 드랍 + 세계관 서사 모멘텀(마르코프 가중 추첨) 도입, 상세는
-[BadgeEngine 문서](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3 참고. 동시에 Strava 싱크
+[BadgeEngine 문서](BADGE_ENGINE_UNIFIED.md) §3 참고. 동시에 Strava 싱크
 파이프라인 안정화(동시 싱크 잠금, 첫 싱크 드랍 1회 제한, 무한대기 타임아웃 수정),
 홈/프로필 피드 중복 표시 버그 수정.
 
@@ -45,7 +45,7 @@ OpenStreetMap → 네이버 지역검색 오픈API로 전환** (인프라 전면
 [20260825_004](../../Tickets/20260825_004_Feature_앰비언트-드랍-기능-제거.md).
 미완성이 아니라 쓰지 않기로 한 제품 결정이었다 — → **2026-08-26 재설계 재도입**, 티켓
 [20260826_009](../../Tickets/20260826_009_BadgeEngine_앰비언트-POI-드랍-재도입.md).
-현재 상태는 [BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) §3.12 참고)
+현재 상태는 [BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) §3.12 참고)
 **잼 포인트 시스템 1a단계**(유저별 잔액/
 `point_wallets`) 신규 구축. Vercel Hobby 플랜의 Cron 빈도 제한으로 배포 실패했던
 근본 원인 해결.
@@ -107,6 +107,6 @@ Custom Domain 전환 시 재검토 예정).
 
 ## 관련 문서
 - [Tickets/](../../Tickets/) — 실제 개발 작업 이력 원본 (신규 개선사항은 여기부터 확인)
-- [Archive/PHASES_ROADMAP_ARCHIVE.md](../../Archive/PHASES_ROADMAP_ARCHIVE.md) — 원래 계획 원문 (참고용, 실행 안 됨)
-- [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](../BadgeEngine/BADGE_ENGINE_UNIFIED.md) — 배지·드랍 엔진 최신 로직
-- [01_PRD.md](./01_PRD.md) §6-2 — 미구현 기능 목록
+- [Archive/PHASES_ROADMAP_ARCHIVE.md](PHASES_ROADMAP_ARCHIVE.md) — 원래 계획 원문 (참고용, 실행 안 됨)
+- [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) — 배지·드랍 엔진 최신 로직
+- [01_PRD.md](01_PRD.md) §6-2 — 미구현 기능 목록
