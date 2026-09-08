@@ -61,6 +61,13 @@ import {
   // 같은 함수를 봐야 발급-진행률이 어긋나지 않는다(티켓 20260906_2055).
   isSupportedPersonalRecordMetric,
   countPersonalRecordBreaks,
+  // v5 잔여 5종 평가(티켓 20260908_1318) — day_of_month·distinct_time_bands·
+  // activities_within_hours·month_over_month_ratio·vs_personal_average
+  matchesDayOfMonth,
+  countDistinctTimeBands,
+  maxActivitiesWithinHours,
+  bestMonthOverMonthRatio,
+  bestVsPersonalAverage,
 } from './activityFilters'
 import { isLeveledBadge, familyKeyOf, badgeKindLabel, badgeKindOf, repeatCountOf } from './badgeKind'
 // 2단 교차 게이트(v5 B2, 티켓 20260905_0030 §3)는 순수 함수로 분리돼 있다 —
@@ -418,6 +425,12 @@ export function evaluateConditionDetailed(
     filtered = filtered.filter((a) => matchesDayOfWeek(a, condition.day_of_week as DayOfWeek))
   }
 
+  // day_of_month — day_of_week 단일값과 같은 성격의 필터(티켓 20260908_1318). total_count와
+  // 짝을 이뤄 "매달 지정일에 활동한 누적 횟수"를 센다(walking:A6 「초하루의 사람」).
+  if (condition.day_of_month !== undefined) {
+    filtered = filtered.filter((a) => matchesDayOfMonth(a, condition.day_of_month as number))
+  }
+
   // time_range + total_count 조합(T09~T11) — "그 시간대의 활동만" 카운팅 대상으로 좁힌다.
   // (time_range + weekly_count 조합은 아래 weekly_count 블록에서 별도 처리)
   if (condition.time_range !== undefined && condition.total_count !== undefined) {
@@ -435,12 +448,12 @@ export function evaluateConditionDetailed(
     })
   }
 
-  // 걷기 빈도 조건(day_of_week 단일값 + total_count) 하루 1회 상한 — 같은 날 여러 번 걸어도 1회만 카운트
+  // 걷기 빈도 조건(day_of_week 단일값 또는 day_of_month + total_count) 하루 1회 상한 —
+  // 같은 날 여러 번 걸어도 1회만 카운트 (day_of_month 추가는 티켓 20260908_1318)
   if (
     condition.activity_type === 'walking' &&
-    condition.day_of_week !== undefined &&
-    !Array.isArray(condition.day_of_week) &&
-    condition.total_count !== undefined
+    condition.total_count !== undefined &&
+    ((condition.day_of_week !== undefined && !Array.isArray(condition.day_of_week)) || condition.day_of_month !== undefined)
   ) {
     filtered = dedupeOnePerDay(filtered)
   }
@@ -666,6 +679,39 @@ export function evaluateConditionDetailed(
     requiredParts.push(`연속주: ${condition.weekly_streak}주`)
   }
 
+  // ── distinct_time_bands — 서로 다른 시간대 개수 (티켓 20260908_1318). 이 블록은 전체
+  //    이력(filtered) 기준의 «독립 평가»다. `streak_days`와 결합된 조합(walking:A3)은
+  //    `repeat_count` 블록(아래)이 `repeatOccurrences.ts`에서 «그 스트릭 창 안»으로 좁혀
+  //    이미 별도로 판정한다 — 이 블록은 그 판정과 무관하게 항상 추가로 함께 통과해야 한다
+  //    (다른 필드들의 이력-전체 독립 평가와 같은 태도).
+  if (condition.distinct_time_bands !== undefined) {
+    const bands = countDistinctTimeBands(filtered)
+    if (bands < condition.distinct_time_bands) {
+      return { pass: false, reason: '서로 다른 시간대 부족', actual: `${bands}개`, required: `${condition.distinct_time_bands}개` }
+    }
+    actualParts.push(`시간대: ${bands}개`)
+    requiredParts.push(`시간대: ${condition.distinct_time_bands}개`)
+  }
+
+  // ── activities_within_hours — 지정 시간 창 안의 활동 횟수 (티켓 20260908_1318, walking:A4
+  //    「스물넷의 산책」). 하루에 여러 번 하는 것이 배지의 핵심 의도라 걷기 하루 1회 상한을
+  //    적용하지 않는다(다른 걷기 블록과 다른 예외 — 문서화된 의도적 결정).
+  if (condition.activities_within_hours !== undefined) {
+    const { hours, count } = condition.activities_within_hours
+    if (
+      typeof hours !== 'number' || !Number.isFinite(hours) || hours <= 0 ||
+      typeof count !== 'number' || !Number.isFinite(count) || count < 1
+    ) {
+      return { pass: false, reason: '지정 시간 내 활동 횟수 조건 형태 오류', actual: JSON.stringify(condition.activities_within_hours), required: 'hours > 0, count ≥ 1' }
+    }
+    const best = maxActivitiesWithinHours(filtered, hours)
+    if (best < count) {
+      return { pass: false, reason: '지정 시간 내 활동 횟수 부족', actual: `${best}회`, required: `${count}회` }
+    }
+    actualParts.push(`시간창내횟수: ${best}회`)
+    requiredParts.push(`시간창내횟수: ${count}회`)
+  }
+
   if (condition.weekly_count !== undefined) {
     // time_range와 함께 쓰이면 해당 시간대 활동만 주간 집계 ("새벽 주 N회" 엄격 의미)
     let weeklyPool = filtered
@@ -779,6 +825,38 @@ export function evaluateConditionDetailed(
     }
     actualParts.push(`기록갱신: ${breaks}회`)
     requiredParts.push(`기록갱신: ${condition.personal_record_break}회`)
+  }
+
+  // ── month_over_month_ratio — 전월 대비 배수 (티켓 20260908_1318). 지표는 거리(km)로
+  //    고정한다(콘텐츠 확정 근거는 `bestMonthOverMonthRatio` 주석 참조).
+  if (condition.month_over_month_ratio !== undefined) {
+    const ratio = bestMonthOverMonthRatio(filtered)
+    if (ratio < condition.month_over_month_ratio) {
+      return {
+        pass: false,
+        reason: '전월 대비 배수 부족',
+        actual: ratio > 0 ? `${Math.round(ratio * 100) / 100}배` : '전월 대비 비교 불가(전월 실적 없음)',
+        required: `${condition.month_over_month_ratio}배`,
+      }
+    }
+    actualParts.push(`전월대비: ${Math.round(ratio * 100) / 100}배`)
+    requiredParts.push(`전월대비: ${condition.month_over_month_ratio}배`)
+  }
+
+  // ── vs_personal_average — 평소 평균 대비 배수 (티켓 20260908_1318). 지표는 거리(km)로
+  //    고정한다(콘텐츠 확정 근거는 `bestVsPersonalAverage` 주석 참조).
+  if (condition.vs_personal_average !== undefined) {
+    const ratio = bestVsPersonalAverage(filtered)
+    if (ratio < condition.vs_personal_average) {
+      return {
+        pass: false,
+        reason: '평소 평균 대비 배수 부족',
+        actual: ratio > 0 ? `${Math.round(ratio * 100) / 100}배` : '평균 비교 불가(이전 활동 부족)',
+        required: `${condition.vs_personal_average}배`,
+      }
+    }
+    actualParts.push(`평균대비: ${Math.round(ratio * 100) / 100}배`)
+    requiredParts.push(`평균대비: ${condition.vs_personal_average}배`)
   }
 
   // ── 휴식(활동 공백) — v5 B3, 티켓 20260905_0030 §4

@@ -583,6 +583,23 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
     condition.season_count_all !== undefined
   if (isMulti) return 'multi'
 
+  // v5 잔여 4종 평가(티켓 20260908_1318) — `distinct_time_bands`·`activities_within_hours`는
+  // `repeat_count`와 결합된 형태만 진행 축이 있다(위 `hasRepeat` 분기의
+  // `isPeriodDrivenRepeatCondition`이 그 경우를 이미 'repeat'로 처리했다 — 여기 도달했다면
+  // 그 결합이 아니라는 뜻이다). `month_over_month_ratio`·`vs_personal_average`는 아직 진행
+  // 축 자체가 없다. `conditionAxes.ts`의 어떤 목록에도 없어 그냥 두면 `axisCount` 계산이
+  // 이 키를 못 본 채 `personal_record_break` 같은 다른 축만으로 100%를 그린다 —
+  // `unabsorbedAxisKeys`가 막는 것과 같은 「숨은 축」 버그(게이트 실측:
+  // `{ distance_km: 100, month_over_month_ratio: 1.2 }` → 'cumulative'로 잘못 분류). 진행
+  // 축 지원은 후속 티켓으로 미루고 지금은 안전하게 unsupported로 떨어뜨린다.
+  const NO_PROGRESS_AXIS_YET = new Set<string>([
+    'distinct_time_bands',
+    'activities_within_hours',
+    'month_over_month_ratio',
+    'vs_personal_average',
+  ])
+  if (Object.keys(condition).some((k) => NO_PROGRESS_AXIS_YET.has(k))) return 'unsupported'
+
   // month 단독(monthly_km 없이)은 현재 카탈로그에 0건 — "활동 1회 이상 있었는지"만 보는
   // 별개 메커니즘이라(진행률로 표현 가능한 수치 축이 아님) periodic으로 묶지 않는다.
   // 키 목록은 `conditionAxes.ts` 하나뿐이다 — 위 `unabsorbedAxisKeys`가 세는 축과 이 분류가

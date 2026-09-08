@@ -115,10 +115,12 @@ describe('① 계열 그룹핑은 family_key 기준이고 비어 있으면 폴�
   })
 
   it('평가 대기 필드가 있으면 계열 요약에 드러난다', () => {
+    // month_over_month_ratio는 티켓 20260908_1318부터 engine이라 더 이상 pending 예시로
+    // 쓸 수 없다 — daily_once_count(여전히 pending)로 교체한다.
     const [family] = groupBadgesIntoFamilies([
-      badge({ condition_json: { activity_type: 'walking', month_over_month_ratio: 1.2 } }),
+      badge({ condition_json: { activity_type: 'walking', daily_once_count: 30 } }),
     ])
-    expect(family.pendingKeys).toContain('month_over_month_ratio')
+    expect(family.pendingKeys).toContain('daily_once_count')
   })
 })
 
