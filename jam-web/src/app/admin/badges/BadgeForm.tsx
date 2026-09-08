@@ -43,6 +43,8 @@ import { findConditionShapeSaveError, findRarityLevelError } from '@/lib/admin/b
 // LOWER_IS_BETTER_KEYS를 값으로 import해 클라이언트 컴포넌트에 쓰고 있고(티켓 20260904_0921
 // 게이트 리뷰에서 `npm run build`로 실증됨), 이 파일 스스로도 재검증했다.
 import { explainUnsupportedProgress } from '@/lib/badge-engine/badgeProgress'
+// 판정 시뮬레이션 패널 — 배지·미션 폼 공용 컴포넌트(티켓 20260908_1554, 20260908_1632)
+import ConditionSimulationPanel from '@/components/admin/ConditionSimulationPanel'
 
 /** 2단 교차 게이트 3종의 입력 블록 정의 — 폼 state 키 접두는 레지스트리의 `gateForm`과 짝이다 */
 const CROSS_GATE_BLOCKS = [
@@ -94,15 +96,6 @@ const EMPTY_CONDITION: BadgeCondition = {}
 
 // Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
 const NONE_VALUE = '__none__'
-
-/** /api/admin/badges/simulate-condition 응답 (티켓 20260908_1554) */
-interface SimulateConditionResult {
-  result: { pass: boolean; reason: string; actual: string; required: string }
-  kind: 'pass' | 'blocked' | 'unmet'
-  fieldBlockedReason: string | null
-  activityCount: number
-  anchorDate: string | null
-}
 
 export default function BadgeForm({ badge, factions, itemBooks, poiCategories }: BadgeFormProps) {
   const router = useRouter()
@@ -176,30 +169,6 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-
-  // ── 판정 시뮬레이션 (티켓 20260908_1554) — 저장 없이 현재 조건값 그대로 실제 발급 엔진에
-  // 대입해 결과를 본다. 저장 버튼과 별개이며 저장하지 않아도 언제든 실행할 수 있다.
-  const [simOpen, setSimOpen] = useState(false)
-  const [simUserQuery, setSimUserQuery] = useState('')
-  const [simUsers, setSimUsers] = useState<{ id: string; email: string; username: string | null }[]>([])
-  const [simUserId, setSimUserId] = useState('')
-  const [simUserLoading, setSimUserLoading] = useState(false)
-  const [simLoading, setSimLoading] = useState(false)
-  const [simError, setSimError] = useState<string | null>(null)
-  const [simResult, setSimResult] = useState<SimulateConditionResult | null>(null)
-
-  const searchSimUsers = useCallback(async () => {
-    const q = simUserQuery.trim()
-    if (!q) return
-    setSimUserLoading(true)
-    try {
-      const res = await fetch(`/api/admin/users?q=${encodeURIComponent(q)}`)
-      const data = await res.json()
-      setSimUsers(data.users ?? [])
-    } finally {
-      setSimUserLoading(false)
-    }
-  }, [simUserQuery])
 
   // ── 아이템 배지: 같은 북+희귀도 내 drop_weight 상대 확률 미리보기 ──────
   // 20260827_020: 이펙트 진입 시의 동기 `setSiblingWeightSum(null)`은 캐스케이딩 렌더를 만든다
@@ -456,34 +425,6 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   // fail-closed로 막힌다. 저장은 되지만 **발급은 되지 않는다**는 걸 화면에서 알린다
   // (0035 시딩이 0030 평가 구현보다 먼저 들어오는 경우를 전제한 표시).
   const pendingConditionKeys = findBlockingConditionKeys(condPreview).pending
-
-  /** 저장하지 않은 현재 조건값을 그대로 선택한 유저의 실제 활동 이력에 대입해 판정한다
-   *  (티켓 20260908_1554). DB에는 아무것도 쓰지 않는다. */
-  const runConditionSimulation = async () => {
-    if (!simUserId) {
-      setSimError('먼저 대상 유저를 선택해주세요.')
-      return
-    }
-    setSimError(null)
-    setSimLoading(true)
-    setSimResult(null)
-    try {
-      const res = await fetch('/api/admin/badges/simulate-condition', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ condition: condPreview, userId: simUserId }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? '시뮬레이션 실패')
-      setSimResult(data as SimulateConditionResult)
-    } catch (err) {
-      setSimError(err instanceof Error ? err.message : '시뮬레이션 중 오류가 발생했습니다.')
-    } finally {
-      setSimLoading(false)
-    }
-  }
-
-  const selectedSimUser = simUsers.find((u) => u.id === simUserId)
 
   /** 조건 입력 1개를 레지스트리 선언대로 그린다 — 필드마다 JSX를 쓰지 않는다 */
   const renderConditionControl = ({ meta, control }: ConditionFormEntry) => {
@@ -1080,128 +1021,9 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
           </div>
 
           {/* 판정 시뮬레이션 — 저장 전 실제 발급 엔진으로 이 조건을 미리 돌려본다
-              (티켓 20260908_1554). 저장 버튼과 별개이며 저장하지 않아도 언제든 실행 가능. */}
-          <div className="border border-border rounded-xl p-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-foreground">판정 시뮬레이션</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  저장하지 않은 지금 조건값 그대로, 선택한 유저의 실제 활동 이력에 대입해
-                  발급 엔진 판정 결과를 미리 확인해요. 저장은 되지 않아요.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSimOpen((v) => !v)}
-                className="shrink-0 bg-muted text-foreground text-sm px-3 py-1.5 rounded-lg hover:bg-accent transition-colors"
-              >
-                {simOpen ? '접기' : '시뮬레이션 실행'}
-              </button>
-            </div>
-
-            {simOpen && (
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <input
-                    value={simUserQuery}
-                    onChange={(e) => setSimUserQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        searchSimUsers()
-                      }
-                    }}
-                    placeholder="이메일 또는 이름으로 대상 유저 검색"
-                    className="flex-1 bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-                  />
-                  <button
-                    type="button"
-                    onClick={searchSimUsers}
-                    disabled={simUserLoading || !simUserQuery.trim()}
-                    className="bg-muted text-foreground text-sm px-3 py-2 rounded-lg hover:bg-accent disabled:opacity-50 transition-colors shrink-0"
-                  >
-                    {simUserLoading ? '검색 중...' : '검색'}
-                  </button>
-                </div>
-
-                {simUsers.length > 0 && (
-                  <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {simUsers.map((u) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => setSimUserId(u.id)}
-                        className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                          simUserId === u.id ? 'bg-primary/20 text-foreground' : 'hover:bg-muted text-foreground'
-                        }`}
-                      >
-                        <span className="font-medium">{u.username ?? u.email}</span>
-                        <span className="text-xs text-foreground/60 ml-2">{u.email}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {selectedSimUser && (
-                  <p className="text-xs text-foreground">
-                    대상 유저: <strong>{selectedSimUser.username ?? selectedSimUser.email}</strong> ({selectedSimUser.email})
-                  </p>
-                )}
-
-                <button
-                  type="button"
-                  onClick={runConditionSimulation}
-                  disabled={simLoading || !simUserId}
-                  className="bg-primary text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
-                  {simLoading ? '판정 중...' : '이 유저로 판정하기'}
-                </button>
-
-                {simError && (
-                  <p className="text-sm text-red-600">{simError}</p>
-                )}
-
-                {simResult && (
-                  <div
-                    className={`rounded-xl border p-3 space-y-1.5 ${
-                      simResult.kind === 'pass'
-                        ? 'border-green-300 bg-green-50'
-                        : simResult.kind === 'blocked'
-                          ? 'border-red-300 bg-red-50'
-                          : 'border-amber-300 bg-amber-50'
-                    }`}
-                  >
-                    <p
-                      className={`text-sm font-semibold ${
-                        simResult.kind === 'pass'
-                          ? 'text-green-900'
-                          : simResult.kind === 'blocked'
-                            ? 'text-red-900'
-                            : 'text-amber-900'
-                      }`}
-                    >
-                      {simResult.kind === 'pass'
-                        ? '판정 통과 — 이 유저는 이 조건으로 발급 가능해요'
-                        : simResult.kind === 'blocked'
-                          ? '구조적으로 차단됨 — 활동과 무관하게 영원히 발급될 수 없어요'
-                          : '조건 미충족 — 아직 활동이 이 조건에 못 미쳐요'}
-                    </p>
-                    <p className="text-xs text-foreground/80">사유: {simResult.result.reason}</p>
-                    {simResult.fieldBlockedReason && (
-                      <p className="text-xs text-red-800">{simResult.fieldBlockedReason}</p>
-                    )}
-                    <p className="text-xs text-foreground/80">
-                      실제값: {simResult.result.actual} / 필요값: {simResult.result.required}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      대입한 활동 {simResult.activityCount}건
-                      {simResult.anchorDate && ` · 가입 앵커 ${simResult.anchorDate.slice(0, 10)} 이후`}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+              (티켓 20260908_1554). 저장 버튼과 별개이며 저장하지 않아도 언제든 실행 가능.
+              배지·미션 폼 공용 컴포넌트(티켓 20260908_1632). */}
+          <ConditionSimulationPanel condition={condPreview} apiPath="/api/admin/badges/simulate-condition" />
         </div>
       )}
 
