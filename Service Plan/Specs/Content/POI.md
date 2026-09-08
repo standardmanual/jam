@@ -20,11 +20,46 @@
   (적용 이력: 지하철역 973개 `20260806_005_*`, 산 847개 + autoGrow 옵션 추가 `20260806_006_*`)
 - 어드민 관리 화면: `jam-web/src/app/admin/poi/`
 - 네이버 원본 분류 검증 게이트 + 어드민 검토 큐: `jam-web/supabase/migrations/143_poi_naver_category_review_gate.sql`, `jam-web/src/lib/poi/category-gate.ts`, 어드민 화면 `jam-web/src/app/admin/poi/review/`
+- 자동수집 중단 데이터 변경([[20260907_1811]]): `jam-web/supabase/seed_20260907_poi_pipeline_linked_off.sql`
 
 ## 티어 구조 (기존 티켓 참고)
-- T2: OSM/네이버 지역검색 기반 자동 수집 (편의점/카페 등)
+- T2: OSM/네이버 지역검색 기반 자동 수집 (편의점/카페 등) — **2026-09-07 전면 중단
+      ([[20260907_1811]]).** 아래 "신규 등록 정책" 참고.
 - T3: 향후 확장 예정 (Phase 14, 미착수)
 - 산·지하철역 등 특수 POI: 공공데이터 일괄 등록
+
+## 신규 등록 정책 (2026-09-07 갱신)
+
+**자동수집(T2, 네이버 지역검색 기반)은 전면 중단됐고, 앞으로 신규 POI는 전부 수동등록이다**
+([[20260907_1811]]). `poi_categories.pipeline_linked`가 T2 연동 10개 카테고리
+(government/convenience/nature/tourist_attraction/stadium/school/park/hospital/
+pharmacy/food) 전부 `false`로 전환됐다.
+
+**중단 사유**: 네이버 지역검색 API가 좌표·반경 검색을 지원하지 않아(텍스트 검색+인기도순
+`display=5`뿐) 실제 최근접 매장이 반경 500m 안에 들 확률이 낮고(실측 0~15%), 검증
+게이트([[20260907_1242]])가 사실상 전 카테고리에서 꺼져 있었으며, "시청"·"국립공원"·
+"전망대"·"시장"·"공원" 같은 포괄 명사 키워드가 무관한 상호명(파티룸·떡볶이집·생선회
+음식점 등)을 다수 오염시킨 것이 실측·DB 확인으로 드러났다. 좌표기반 서드파티 대안도
+검토했으나 전무하다 — NCP Maps는 좌표+반경 장소검색을 지원하지 않고, 카카오 로컬 API는
+기술적으로 적합하나 이용정책상 검색결과 원본의 자체 DB 영구저장이 금지돼 있어(장소 데이터를
+`poi` 테이블에 영구 저장해 배지 GPS 매칭·배지명 표시에 재사용하는 구조와 정면 충돌) 채택할
+수 없었다. 상세 실측·검토 근거는 [[20260907_1811]] 참고.
+
+**기존 자동수집 POI는 그대로 유지된다** — poi_tier=2(599건, 오늘 재분류 완료)·mountain(847)·
+train_subway(967) 모두 지금 상태(활성/비활성) 그대로 두고, 검토 큐로 옮기거나 일괄
+비활성화하지 않는다.
+
+**신규 수동등록 흐름**: `/admin/poi/new`에서 등록하면 클라이언트 입력과 무관하게 항상
+**임시등록(비활성 `is_active=false` · 검토대기 `pending_review=true`)** 으로 저장된다.
+관리자가 `/admin/poi/review`(검토 큐)에서 이름을 눌러 `/admin/poi/[id]` 편집 화면으로
+이동해 이름·좌표·반경·카테고리를 확인·수정한 뒤, 활성화 스위치를 켜고 저장해야 지도·드랍에
+노출된다(저장 시 `is_active=true`이면 서버가 `pending_review`도 함께 `false`로 자동
+해제한다). 검토 큐의 "승인" 버튼은 `pending_review`만 해제할 뿐 노출 여부는 바꾸지 않는다
+— 노출(활성화)은 편집 화면에서만 명시적으로 이뤄진다.
+
+자동수집 코드(`naver.ts`·`category-gate.ts`·`search-cache.ts`, `api/drops/route.ts`의
+`searchAndPersistCategories`·`refreshPoisInBackground`)는 삭제하지 않고 남겨뒀다 —
+향후 자동수집을 재개하기로 결정하면 재사용할 수 있다.
 
 ## 채워야 할 내용
 - [ ] POI 카테고리 전체 목록과 티어 분류 기준

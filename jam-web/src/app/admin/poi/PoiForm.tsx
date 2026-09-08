@@ -32,7 +32,9 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
   const [radiusMeters, setRadiusMeters] = useState<string>(poi?.radius_meters.toString() ?? '50')
   const [category, setCategory] = useState<PoiCategory>(poi?.category ?? categories[0]?.slug ?? 'other')
   const [linkedBadgeId, setLinkedBadgeId] = useState<string>(poi?.linked_badge_id ?? '')
-  const [isActive, setIsActive] = useState<boolean>(poi?.is_active ?? true)
+  // 티켓 20260907_1811 — 신규 등록은 항상 "임시등록"(비활성·검토대기)으로 저장한다(서버도
+  // POST에서 이 값을 강제한다). 수정 화면에서만 활성화 여부를 직접 고를 수 있다.
+  const [isActive, setIsActive] = useState<boolean>(poi?.is_active ?? false)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -239,10 +241,25 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
         />
       </label>
 
-      <label className="flex items-center gap-3 cursor-pointer">
-        <Switch checked={isActive} onCheckedChange={setIsActive} />
-        <span className="text-sm">활성화</span>
-      </label>
+      {isEdit ? (
+        <>
+          {poi?.pending_review && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-700 text-sm">
+              검토 대기 중인 임시등록 POI입니다. 정보를 확인·수정한 뒤 아래 활성화 스위치를 켜고
+              저장하면 검토가 완료되며 지도·드랍에 노출됩니다.
+            </div>
+          )}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+            <span className="text-sm">활성화</span>
+          </label>
+        </>
+      ) : (
+        <div className="bg-muted border border-border rounded-xl px-4 py-3 text-sm text-muted-foreground">
+          임시등록(비활성·검토대기) 상태로 저장됩니다. 저장 후 검토 큐(/admin/poi/review)에서
+          정보를 확인·수정하고 명시적으로 활성화해야 지도·드랍에 노출됩니다.
+        </div>
+      )}
 
       <div className="flex items-center gap-3 pt-2">
         <button
@@ -250,7 +267,7 @@ export default function PoiForm({ poi, linkedBadgeLabel, categories }: PoiFormPr
           disabled={loading}
           className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
-          {loading ? '저장 중...' : isEdit ? '수정 저장' : 'POI 등록'}
+          {loading ? '저장 중...' : isEdit ? '수정 저장' : '임시등록'}
         </button>
         <button
           type="button"
