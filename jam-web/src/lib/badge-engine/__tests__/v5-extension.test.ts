@@ -153,6 +153,58 @@ describe('weekly_count + repeat_count — 기간 단위 회차', () => {
   })
 })
 
+// ── ② month + monthly_km + repeat_count — 「그 월 목록 중 monthly_km를 채운 달」의 수 ──
+// (walking:W4 「장마의 의지」, 티켓 20260908_1536)
+
+describe('month + monthly_km + repeat_count — 기간 단위 회차', () => {
+  function monthAct(ym: string, day: number, km: number): NormalizedActivity {
+    const d = String(day).padStart(2, '0')
+    return act({
+      jamActivityType: 'walking',
+      averageSpeedKmh: 5,
+      distanceKm: km,
+      startDate: `${ym}-${d}T00:00:00Z`,
+      startDateLocal: `${ym}-${d}T00:00:00`,
+    })
+  }
+
+  it('6~7월 중 두 달 모두 80km를 채우면 회차 2 (mystic 형태)', () => {
+    const cond: BadgeCondition = { activity_type: 'walking', month: [6, 7], monthly_km: 80, repeat_count: 2 }
+    const acts = [
+      monthAct('2026-06', 1, 40),
+      monthAct('2026-06', 15, 40), // 6월 합계 80
+      monthAct('2026-07', 1, 40),
+      monthAct('2026-07', 15, 40), // 7월 합계 80
+    ]
+    expect(collectRepeatOccurrences(cond, acts).length).toBe(2)
+    expect(checkCondition(cond, acts)).toBe(true)
+  })
+
+  it('한 달만 채우면 epic(repeat_count 1)은 통과하고 mystic(repeat_count 2)은 미달', () => {
+    const epic: BadgeCondition = { activity_type: 'walking', month: [6, 7], monthly_km: 80, repeat_count: 1 }
+    const mystic: BadgeCondition = { ...epic, repeat_count: 2 }
+    const acts = [monthAct('2026-06', 1, 40), monthAct('2026-06', 15, 40)] // 6월만 80, 7월 없음
+    expect(collectRepeatOccurrences(epic, acts).length).toBe(1)
+    expect(checkCondition(epic, acts)).toBe(true)
+    expect(checkCondition(mystic, acts)).toBe(false)
+  })
+
+  it('월 목록 밖의 활동은 그 달 합산에 들어가지 않는다', () => {
+    const cond: BadgeCondition = { activity_type: 'walking', month: [6, 7], monthly_km: 80, repeat_count: 1 }
+    // 5월(목록 밖) 80km + 6월 40km(미달) — 회차 0
+    const acts = [monthAct('2026-05', 1, 80), monthAct('2026-06', 1, 40)]
+    expect(collectRepeatOccurrences(cond, acts).length).toBe(0)
+    expect(checkCondition(cond, acts)).toBe(false)
+  })
+
+  it('month + monthly_km 단발 판정(반복 없음)은 이번 변경으로 바뀌지 않는다', () => {
+    const cond: BadgeCondition = { activity_type: 'walking', month: [6, 7], monthly_km: 80 }
+    const acts = [monthAct('2026-06', 1, 40), monthAct('2026-06', 15, 40)]
+    expect(checkCondition(cond, acts)).toBe(true)
+    expect(checkCondition(cond, [monthAct('2026-06', 1, 40)])).toBe(false)
+  })
+})
+
 // ── ② weekly_streak — 연속 주(월~일) ────────────────────────────────────
 
 describe('weekly_streak — 연속 주', () => {
@@ -216,6 +268,16 @@ describe('진행률 분류 — 발급과 같은 조건 조합을 인식한다', 
 
   it('monthly_count + repeat_count는 repeat로 분류된다 (cycling:G2 형태)', () => {
     expect(classifyBadgeProgressKind({ activity_type: 'cycling', monthly_count: 8, repeat_count: 2 })).toBe('repeat')
+  })
+
+  it('month + monthly_km + repeat_count는 repeat로 분류된다 (walking:W4 형태, 티켓 20260908_1536)', () => {
+    expect(
+      classifyBadgeProgressKind({ activity_type: 'walking', month: [6, 7], monthly_km: 80, repeat_count: 2 })
+    ).toBe('repeat')
+  })
+
+  it('month + monthly_km 단독(반복 없음)은 periodic이다', () => {
+    expect(classifyBadgeProgressKind({ activity_type: 'walking', month: [6, 7], monthly_km: 80 })).toBe('periodic')
   })
 
   it('weekly_streak 단독은 cumulative다 (walking:A5 형태)', () => {
