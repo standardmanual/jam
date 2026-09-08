@@ -96,8 +96,8 @@
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
-| `month` | `number` (1–12) | 특정 달 지정. `monthly_km`과 함께 사용 |
-| `monthly_km` | `number` | 월별 누적 거리 최대값 ≥ 조건값. `month` 없으면 전체 연-월 그룹 최대 |
+| `month` | `number` (1–12) 또는 `number[]` | 특정 달(들) 지정. `monthly_km`과 함께 사용. 배열이면 각 달을 OR로 묶는다(예: 장마철 6~7월) |
+| `monthly_km` | `number` | 월별 누적 거리 최대값 ≥ 조건값. `month` 없으면 전체 연-월 그룹 최대. `repeat_count`와 결합하면(2026-09-08, 티켓 20260908_1536) 「그 임계값을 채운 연-월의 수」를 센다 — `month`가 배열이면 **각 달을 독립적으로** 카운트한다(`walking:W4` 실측: Epic 1개월·Mystic 2개월 = `month:[6,7]` 중 한 달/두 달). 판정은 `repeatOccurrences.ts`의 `collectMonthlyKmOccurrences()`, 단발 판정(`index.ts`)과 같은 연-월 그룹핑 규칙 공유 |
 | `season` | `"spring"` \| `"summer"` \| `"autumn"` \| `"winter"` | 해당 계절 지정 |
 | `season_count` | `number` | 해당 계절 활동 횟수 ≥ 조건값 |
 | `season_count_all` | `number` | 사계절(봄/여름/가을/겨울) **각각 독립 카운터**로 활동 횟수 ≥ 조건값이어야 함 — 4개 계절 모두 충족해야 통과(T15 "사계절의 발걸음"). `season_count`(지정 계절 1개만 검사)와 달리 `season` 필드 지정이 불필요. **어드민 폼에 입력 UI가 없다** — 값이 있는 배지를 폼에서 저장해도 유실되지는 않지만(티켓 20260825_032 보존 로직), 폼에서 직접 편집은 불가하다(DB 직접 수정 필요) |
