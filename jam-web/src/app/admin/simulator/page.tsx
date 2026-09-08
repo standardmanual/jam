@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import {
-  IconFolder,
   IconDeviceGamepad2,
   IconCircleCheck,
   IconMapPin,
@@ -10,44 +9,14 @@ import {
   IconBook,
   IconCircleX,
 } from '@tabler/icons-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
-
-type ActivityType = 'cycling' | 'running' | 'trail_running' | 'hiking' | 'walking'
-
-interface GpxParsed {
-  distanceKm: number
-  durationMin: number
-  elevationGainM: number
-  averageSpeedKmh: number
-  trackpointCount: number
-  startDate: string
-  startLat: number
-  startLng: number
-  route: [number, number][]
-  fileName: string
-}
+import VirtualActivityForm, { type VirtualActivityValue } from '@/components/admin/VirtualActivityForm'
 
 /**
- * v5 확장 6필드 (티켓 20260905_0029). Strava Summary 응답에서 오는 값과 같은 것들을
- * 어드민이 손으로 넣어 신규 조건 배지를 검증한다.
- *
- * **비워 두면 서버로 보내지 않는다** — `null`을 보내지 않고 키 자체를 만들지 않는다.
- * 심박계 없는 유저의 활동(키 없음)을 그대로 재현할 수 있어야 하기 때문이다.
+ * 가상 활동 입력 폼(GPX 업로드·수치 직접입력·활동 종류·반복 횟수·확장 필드)은
+ * `VirtualActivityForm`으로 뽑혀 나갔다(티켓 20260908_1631) — 배지 조건 사전 시뮬레이션의
+ * "가상 활동으로 시험" 경로에서도 같은 컴포넌트를 재사용한다. 이 페이지는 대상 유저 선택 +
+ * 실행 + 결과 표시만 담당한다.
  */
-const EXTENDED_FIELDS = [
-  { key: 'avgHeartrateBpm', label: '평균 심박수', unit: 'bpm', step: 1 },
-  { key: 'avgWatts', label: '평균 파워', unit: 'W', step: 1 },
-  { key: 'avgCadence', label: '평균 케이던스', unit: '', step: 1 },
-  { key: 'maxSpeedKmh', label: '최고 속도', unit: 'km/h', step: 0.1 },
-  { key: 'maxElevationM', label: '최고 도달 고도', unit: 'm', step: 10 },
-  { key: 'elapsedTimeSec', label: '경과 시간', unit: '초', step: 1 },
-] as const
-
-type ExtendedFieldKey = (typeof EXTENDED_FIELDS)[number]['key']
-
-const EXTENDED_LABEL: Record<string, { label: string; unit: string }> = Object.fromEntries(
-  EXTENDED_FIELDS.map((f) => [f.key, { label: f.label, unit: f.unit }])
-)
 
 interface SimulateResult {
   parsed: {
@@ -56,8 +25,7 @@ interface SimulateResult {
     elevationGainM: number
     averageSpeedKmh: number
     trackpointCount: number
-    /** 실제로 평가에 실린 확장 필드만 담긴다 — 입력이 무시됐으면 여기 없다 */
-    extended?: Partial<Record<ExtendedFieldKey, number>>
+    extended?: Partial<Record<string, number>>
   }
   badgesEarned: { id: string; name: string; rarity: string; reason: string }[]
   badgesMissed: { id: string; name: string; reason: string; actual: string; required: string }[]
@@ -67,92 +35,13 @@ interface SimulateResult {
   applied: boolean
 }
 
-function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000
-  const toRad = (d: number) => (d * Math.PI) / 180
-  const dLat = toRad(lat2 - lat1)
-  const dLng = toRad(lng2 - lng1)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-function parseGpx(text: string, fileName: string): GpxParsed {
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(text, 'application/xml')
-  const trkpts = Array.from(doc.querySelectorAll('trkpt'))
-
-  if (trkpts.length === 0) throw new Error('트랙포인트가 없습니다. 유효한 GPX 파일인지 확인하세요.')
-
-  const route: [number, number][] = trkpts.map((pt) => [
-    parseFloat(pt.getAttribute('lat') ?? '0'),
-    parseFloat(pt.getAttribute('lon') ?? '0'),
-  ])
-
-  // 거리 계산 (Haversine 누적)
-  let distanceM = 0
-  for (let i = 1; i < route.length; i++) {
-    distanceM += haversine(route[i - 1][0], route[i - 1][1], route[i][0], route[i][1])
-  }
-  const distanceKm = Math.round(distanceM / 10) / 100
-
-  // 이동 시간 계산
-  const firstTime = trkpts[0].querySelector('time')?.textContent
-  const lastTime = trkpts[trkpts.length - 1].querySelector('time')?.textContent
-  let durationMin = 0
-  let startDate = new Date().toISOString()
-  if (firstTime && lastTime) {
-    startDate = firstTime
-    durationMin = Math.round((new Date(lastTime).getTime() - new Date(firstTime).getTime()) / 60000)
-  }
-
-  // 고도 상승 계산
-  let elevationGainM = 0
-  const eles = trkpts.map((pt) => {
-    const ele = pt.querySelector('ele')?.textContent
-    return ele ? parseFloat(ele) : null
-  })
-  for (let i = 1; i < eles.length; i++) {
-    const prev = eles[i - 1]
-    const curr = eles[i]
-    if (prev !== null && curr !== null && curr > prev) {
-      elevationGainM += curr - prev
-    }
-  }
-  elevationGainM = Math.round(elevationGainM)
-
-  // 평균 속도
-  const averageSpeedKmh =
-    durationMin > 0 ? Math.round((distanceKm / (durationMin / 60)) * 10) / 10 : 0
-
-  return {
-    distanceKm,
-    durationMin,
-    elevationGainM,
-    averageSpeedKmh,
-    trackpointCount: trkpts.length,
-    startDate,
-    startLat: route[0][0],
-    startLng: route[0][1],
-    route,
-    fileName,
-  }
-}
-
-function downsampleRoute(route: [number, number][], maxPoints: number): [number, number][] {
-  if (route.length <= maxPoints) return route
-  const step = Math.ceil(route.length / maxPoints)
-  const sampled: [number, number][] = []
-  for (let i = 0; i < route.length; i += step) sampled.push(route[i])
-  if (sampled[sampled.length - 1] !== route[route.length - 1]) sampled.push(route[route.length - 1])
-  return sampled
-}
-
-function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return h > 0 ? `${h}시간 ${m}분` : `${m}분`
+const EXTENDED_LABEL: Record<string, { label: string; unit: string }> = {
+  avgHeartrateBpm: { label: '평균 심박수', unit: 'bpm' },
+  avgWatts: { label: '평균 파워', unit: 'W' },
+  avgCadence: { label: '평균 케이던스', unit: '' },
+  maxSpeedKmh: { label: '최고 속도', unit: 'km/h' },
+  maxElevationM: { label: '최고 도달 고도', unit: 'm' },
+  elapsedTimeSec: { label: '경과 시간', unit: '초' },
 }
 
 const rarityColors: Record<string, string> = {
@@ -174,70 +63,15 @@ export default function SimulatorPage() {
     typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
   )
 
-  const [gpx, setGpx] = useState<GpxParsed | null>(null)
-  const [gpxError, setGpxError] = useState<string | null>(null)
-  const [activityType, setActivityType] = useState<ActivityType>('cycling')
-  const [repeatCount, setRepeatCount] = useState<number>(1)
+  const [activity, setActivity] = useState<VirtualActivityValue | null>(null)
   const [userId, setUserId] = useState('')
   const [userSearch, setUserSearch] = useState('')
   const [users, setUsers] = useState<{ id: string; email: string; username: string | null }[]>([])
   const [userLoading, setUserLoading] = useState(false)
   const [firstSync, setFirstSync] = useState(false)
-  /** 확장 6필드 원시 입력(문자열). 빈 문자열은 «입력 안 함»이라 전송에서 제외된다 */
-  const [extended, setExtended] = useState<Record<ExtendedFieldKey, string>>({
-    avgHeartrateBpm: '',
-    avgWatts: '',
-    avgCadence: '',
-    maxSpeedKmh: '',
-    maxElevationM: '',
-    elapsedTimeSec: '',
-  })
   const [result, setResult] = useState<SimulateResult | null>(null)
   const [simLoading, setSimLoading] = useState(false)
   const [simError, setSimError] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setGpxError(null)
-    setGpx(null)
-    setResult(null)
-
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      try {
-        const parsed = parseGpx(ev.target?.result as string, file.name)
-        setGpx(parsed)
-      } catch (err) {
-        setGpxError(err instanceof Error ? err.message : 'GPX 파싱 실패')
-      }
-    }
-    reader.readAsText(file)
-  }
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    const file = e.dataTransfer.files[0]
-    if (!file || !file.name.endsWith('.gpx')) {
-      setGpxError('.gpx 파일만 업로드할 수 있습니다.')
-      return
-    }
-    setGpxError(null)
-    setGpx(null)
-    setResult(null)
-
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      try {
-        const parsed = parseGpx(ev.target?.result as string, file.name)
-        setGpx(parsed)
-      } catch (err) {
-        setGpxError(err instanceof Error ? err.message : 'GPX 파싱 실패')
-      }
-    }
-    reader.readAsText(file)
-  }
 
   const handleUserSearch = async () => {
     if (!userSearch.trim()) return
@@ -252,7 +86,7 @@ export default function SimulatorPage() {
   }
 
   const runSimulate = async (dryRun: boolean) => {
-    if (!gpx) return
+    if (!activity) return
     if (!userId) {
       setSimError('대상 유저를 선택하세요.')
       return
@@ -262,18 +96,6 @@ export default function SimulatorPage() {
     setResult(null)
 
     try {
-      const movingTimeSec = gpx.durationMin * 60
-
-      // 비워 둔 확장 필드는 키 자체를 만들지 않는다 (서버의 «없으면 키 없음» 규칙과 동일)
-      const extendedPayload: Partial<Record<ExtendedFieldKey, number>> = {}
-      for (const { key } of EXTENDED_FIELDS) {
-        const raw = extended[key].trim()
-        if (raw === '') continue
-        const value = Number(raw)
-        if (!Number.isFinite(value)) continue
-        extendedPayload[key] = value
-      }
-
       const res = await fetch('/api/admin/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -282,16 +104,16 @@ export default function SimulatorPage() {
           dryRun,
           firstSync,
           activity: {
-            activityType,
-            distanceKm: gpx.distanceKm,
-            movingTimeSec,
-            elevationGainM: gpx.elevationGainM,
-            averageSpeedKmh: gpx.averageSpeedKmh,
-            startDate: gpx.startDate,
-            route: downsampleRoute(gpx.route, 5000),
-            ...extendedPayload,
+            activityType: activity.activityType,
+            distanceKm: activity.distanceKm,
+            movingTimeSec: activity.movingTimeSec,
+            elevationGainM: activity.elevationGainM,
+            averageSpeedKmh: activity.averageSpeedKmh,
+            startDate: activity.startDate,
+            route: activity.route,
+            ...activity.extended,
           },
-          repeatCount,
+          repeatCount: activity.repeatCount,
         }),
       })
 
@@ -358,75 +180,10 @@ export default function SimulatorPage() {
             )}
           </div>
 
-          {/* GPX 업로드 */}
+          {/* 가상 활동 입력 (GPX 업로드 또는 수치 직접입력) */}
           <div className="bg-white border border-border rounded-2xl p-5 space-y-4">
-            <h2 className="font-semibold">GPX 파일</h2>
-            <div
-              onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
-              onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-foreground/30 transition-colors"
-            >
-              <IconFolder className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                드래그앤드롭 또는 클릭해서 .gpx 파일 선택
-              </p>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".gpx"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </div>
-
-            {gpxError && (
-              <p className="text-red-600 text-sm">{gpxError}</p>
-            )}
-
-            {gpx && (
-              <div className="bg-muted border border-border rounded-xl p-4 font-mono text-xs space-y-1">
-                <p className="text-muted-foreground mb-2">{gpx.fileName}</p>
-                <p><span className="text-muted-foreground">거리:</span> <span className="text-foreground">{gpx.distanceKm} km</span></p>
-                <p><span className="text-muted-foreground">이동 시간:</span> <span className="text-foreground">{formatDuration(gpx.durationMin)}</span></p>
-                <p><span className="text-muted-foreground">고도 상승:</span> <span className="text-foreground">{gpx.elevationGainM} m</span></p>
-                <p><span className="text-muted-foreground">평균 속도:</span> <span className="text-foreground">{gpx.averageSpeedKmh} km/h</span></p>
-                <p><span className="text-muted-foreground">시작 시각:</span> <span className="text-foreground">{new Date(gpx.startDate).toLocaleString('ko-KR')}</span></p>
-                <p><span className="text-muted-foreground">트랙포인트:</span> <span className="text-foreground">{gpx.trackpointCount.toLocaleString()}개</span></p>
-                <p><span className="text-muted-foreground">시작점:</span> <span className="text-foreground">{gpx.startLat.toFixed(4)}° N, {gpx.startLng.toFixed(4)}° E</span></p>
-              </div>
-            )}
-          </div>
-
-          {/* 활동 설정 */}
-          <div className="bg-white border border-border rounded-2xl p-5 space-y-4">
-            <h2 className="font-semibold">활동 설정</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm text-foreground">활동 종류</span>
-                <Select value={activityType} onValueChange={(v) => setActivityType(v as ActivityType)}>
-                  <SelectTrigger aria-label="활동 종류">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent container={themeContainer ?? undefined}>
-                    {(['cycling', 'running', 'trail_running', 'hiking', 'walking'] as ActivityType[]).map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm text-foreground">활동 횟수 배수</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={repeatCount}
-                  onChange={(e) => setRepeatCount(parseInt(e.target.value, 10) || 1)}
-                  className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-                />
-              </label>
-            </div>
+            <h2 className="font-semibold">가상 활동</h2>
+            <VirtualActivityForm onActivityChange={setActivity} themeContainer={themeContainer} />
             <label className="flex items-center gap-3 cursor-pointer pt-1">
               <input
                 type="checkbox"
@@ -438,34 +195,6 @@ export default function SimulatorPage() {
             </label>
           </div>
 
-          {/* 확장 필드 — GPX에 없는 심박·파워 등을 손으로 넣어 v5 신규 조건 배지를 검증한다 */}
-          <div className="bg-white border border-border rounded-2xl p-5 space-y-4">
-            <div>
-              <h2 className="font-semibold">확장 필드</h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                비워 두면 «데이터 없음»으로 처리돼요. 심박계가 없는 활동을 그대로 재현할 수 있어요.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {EXTENDED_FIELDS.map(({ key, label, unit, step }) => (
-                <label key={key} className="flex flex-col gap-1.5">
-                  <span className="text-sm text-foreground">
-                    {label}
-                    {unit ? ` (${unit})` : ''}
-                  </span>
-                  <input
-                    type="number"
-                    step={step}
-                    value={extended[key]}
-                    onChange={(e) => setExtended((prev) => ({ ...prev, [key]: e.target.value }))}
-                    placeholder="입력 안 함"
-                    className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-                  />
-                </label>
-              ))}
-            </div>
-          </div>
-
           {simError && (
             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
               {simError}
@@ -475,14 +204,14 @@ export default function SimulatorPage() {
           <div className="flex gap-3">
             <button
               onClick={() => runSimulate(true)}
-              disabled={!gpx || !userId || simLoading}
+              disabled={!activity || !userId || simLoading}
               className="flex-1 bg-muted text-foreground font-bold py-3 rounded-xl hover:bg-accent disabled:opacity-40 transition-colors"
             >
               {simLoading ? '실행 중...' : '미리보기 (Dry Run)'}
             </button>
             <button
               onClick={() => runSimulate(false)}
-              disabled={!gpx || !userId || simLoading}
+              disabled={!activity || !userId || simLoading}
               className="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary/90 disabled:opacity-40 transition-colors"
             >
               {simLoading ? '실행 중...' : '실제 적용 (Apply)'}
@@ -496,7 +225,7 @@ export default function SimulatorPage() {
             <div className="h-full flex items-center justify-center text-center">
               <div className="text-muted-foreground">
                 <IconDeviceGamepad2 className="mx-auto mb-3 h-12 w-12" />
-                <p>GPX를 업로드하고 유저를 선택한 뒤<br />시뮬레이션을 실행하세요</p>
+                <p>가상 활동을 입력하고 유저를 선택한 뒤<br />시뮬레이션을 실행하세요</p>
               </div>
             </div>
           )}

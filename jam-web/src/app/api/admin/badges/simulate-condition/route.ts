@@ -12,10 +12,16 @@
  * 새 판정 로직을 만들지 않는다. `evaluateConditionDetailed`(badge-engine)는 이미 순수 함수
  * 형태로 조건 하나를 활동 배열에 대해 평가한다 — 저장 여부와 무관하게 호출할 수 있다(PRD
  * §7.4 가정, 이 라우트 작성 전 코드로 검증 완료: DB 쓰기가 없고 인자만으로 결과가 결정된다).
- * 선택한 유저의 실제 활동 이력(가입 앵커 이후, 발급 판정과 동일한 창)을 그대로 대입해
- * 「지금 이 조건으로 저장하면 이 유저는 어떻게 판정될까」를 계산한다.
  *
- * DB에는 아무것도 쓰지 않는다(dry run 전용) — 조회만 한다.
+ * 대상은 두 가지 중 하나다(티켓 20260908_1631로 두 번째 경로 추가):
+ *  1. **기존 유저**: 선택한 유저의 실제 활동 이력(가입 앵커 이후, 발급 판정과 동일한 창)을
+ *     그대로 대입해 「지금 이 조건으로 저장하면 이 유저는 어떻게 판정될까」를 계산한다.
+ *  2. **가상 활동**: 아직 아무 유저에게도 없는 활동 패턴(GPX 업로드 또는 수치 직접입력, 시뮬레이터
+ *     폼 재사용 — `lib/admin/virtualActivity.ts`)을 `NormalizedActivity[]`로 변환해 그대로
+ *     대입한다. 가입 앵커 개념이 없으므로 이력 전체가 평가 대상이고 `anchorDate`는 `null`로
+ *     응답한다.
+ *
+ * DB에는 아무것도 쓰지 않는다(dry run 전용) — 유저 경로는 조회만 한다.
  *
  * ## fail-closed 사유를 「정상 미충족」과 구분한다
  * `evaluateConditionDetailed`가 반환하는 실패에는 두 종류가 섞여 있다.
@@ -32,12 +38,14 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { evaluateConditionDetailed } from '@/lib/badge-engine'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
+import { buildVirtualActivities, type VirtualActivityInput } from '@/lib/admin/virtualActivity'
 import {
   findBlockingConditionKeys,
   describeBlockingConditionKeys,
   hasBlockingConditionKeys,
 } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition } from '@/types/database'
+import type { NormalizedActivity } from '@/types/strava'
 
 export const maxDuration = 30
 export const dynamic = 'force-dynamic'
@@ -61,31 +69,55 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: '어드민 권한이 필요합니다.' }, { status: 403 })
 
   const body = await req.json()
-  const { condition, userId } = body as { condition?: BadgeCondition | null; userId?: string }
-
-  if (!userId) {
-    return NextResponse.json({ error: '대상 유저를 선택해주세요.' }, { status: 400 })
+  const { condition, userId, virtualActivity, repeatCount } = body as {
+    condition?: BadgeCondition | null
+    userId?: string
+    /** 가상 활동 입력 — 시뮬레이터 폼(`VirtualActivityForm`)이 만든 값(티켓 20260908_1631) */
+    virtualActivity?: VirtualActivityInput
+    repeatCount?: number
   }
 
-  const supabase = createServiceClient()
-  const { data: userRow, error: userError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', userId)
-    .maybeSingle()
-
-  if (userError) return NextResponse.json({ error: userError.message }, { status: 500 })
-  if (!userRow) return NextResponse.json({ error: '유저를 찾을 수 없습니다.' }, { status: 404 })
+  if (!userId && !virtualActivity) {
+    return NextResponse.json({ error: '대상 유저를 선택하거나 가상 활동을 입력해주세요.' }, { status: 400 })
+  }
 
   // 필드 자체의 구조적 차단(레지스트리에 없는 키·평가 대기·짝 필드 누락)은 활동 이력을
   // 조회하지 않고도 판정 가능하다 — 먼저 계산해 결과에 함께 실어 보낸다.
   const blocking = findBlockingConditionKeys(condition ?? undefined)
   const fieldBlocked = hasBlockingConditionKeys(blocking)
 
-  // 실제 발급 판정과 동일한 이력 창 — 가입 앵커 이후 이력 (badge-engine/index.ts
-  // evaluateBadgesDetailed와 같은 조회 순서: 앵커 → 그 앵커로 자른 이력).
-  const anchorDate = await getSignupAnchorDate(supabase, userId)
-  const history = await getActivityHistory(supabase, userId, anchorDate)
+  let history: NormalizedActivity[]
+  let anchorDate: string | undefined
+
+  if (userId) {
+    const supabase = createServiceClient()
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (userError) return NextResponse.json({ error: userError.message }, { status: 500 })
+    if (!userRow) return NextResponse.json({ error: '유저를 찾을 수 없습니다.' }, { status: 404 })
+
+    // 실제 발급 판정과 동일한 이력 창 — 가입 앵커 이후 이력 (badge-engine/index.ts
+    // evaluateBadgesDetailed와 같은 조회 순서: 앵커 → 그 앵커로 자른 이력).
+    anchorDate = await getSignupAnchorDate(supabase, userId)
+    history = await getActivityHistory(supabase, userId, anchorDate)
+  } else {
+    // 가상 활동 — DB 조회 없이 입력값을 그대로 NormalizedActivity[]로 변환한다. 실제 유저가
+    // 아니므로 가입 앵커 개념이 없다(이력 전체가 평가 대상).
+    if (
+      !virtualActivity ||
+      typeof virtualActivity.distanceKm !== 'number' ||
+      typeof virtualActivity.movingTimeSec !== 'number' ||
+      !virtualActivity.startDate
+    ) {
+      return NextResponse.json({ error: '가상 활동 입력이 올바르지 않습니다.' }, { status: 400 })
+    }
+    history = buildVirtualActivities(virtualActivity, repeatCount ?? 1)
+    anchorDate = undefined
+  }
 
   const evalResult = evaluateConditionDetailed((condition ?? {}) as BadgeCondition, history, { anchorDate })
 
