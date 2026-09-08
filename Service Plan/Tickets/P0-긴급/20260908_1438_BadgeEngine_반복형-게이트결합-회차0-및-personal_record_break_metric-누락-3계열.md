@@ -2,8 +2,9 @@
 id: 20260908_1438
 category: BadgeEngine
 priority: P0
-status: OPEN
+status: CLOSED
 created: 2026-09-08
+closed: 2026-09-08
 ---
 
 # [BadgeEngine] 반복형+게이트 결합 시 회차 영원히 0 (26계열 49종) + personal_record_break_metric 누락 (3계열 24종)
@@ -164,9 +165,30 @@ jam-web/supabase/migrations/seed_personal_record_break_metric_r1_families.sql (2
 - [x] `npm run lint` 전체 — 0 errors, 13 warnings(모두 기존 design-system 경고, 이번 변경과 무관)
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만)
-- 환경: -
-- 커밋: (아래 push 브랜치 참고)
+- 배포일: 2026-09-08 (staging)
+- 환경: staging → production은 `/jam-ship`으로 별도 진행
+- 커밋: `4fe8b43f`(1차 라운드) → `e7bf0b04`(2차 라운드, running:R2 해소) staging에 fast-forward 병합
+
+### 게이트 리뷰 PASS(2회) — staging 병합·마이그레이션 실행·문서 동기화 완료 (2026-09-08)
+
+conservative-reviewer가 두 라운드 모두 격리 워크트리에서 재검증(`vitest` 전체 69파일 1195건,
+`tsc --noEmit` 0건, `lint` 0 errors + 코드 대조 실측)해 PASS 판정. 특히 2차 라운드에서는
+기존 3개 지표(`higher` 방향)의 판정 로직이 이번 확장으로 조금도 바뀌지 않았음을 diff로
+직접 확인했다.
+
+**`seed_personal_record_break_metric_r1_families.sql`을 사용자 승인 후 직접 실행** —
+`cycling:R1`·`running:R1`→`single_distance_km`, `running:R2`→`max_pace_sec_per_km`
+(3계열 24종) 반영 확인. 이로써 원인②(personal_record_break_metric 누락) 관련 전체
+7계열(`walking:B3/B4`·`running:R3`·`cycling:R2`, 티켓 20260908_1318 + `cycling:R1`·
+`running:R1`·`running:R2`, 이 티켓)이 모두 해소됐다.
+
+`BADGE_ENGINE_UNIFIED.md`·`CONDITION_JSON_SPEC.md`에 원인 ①(게이트 필드 동반 허용)·
+원인 ②(페이스 지표·방향 개념 추가) 반영 완료.
+
+**후속 티켓 분리**: `running:R2`의 진행률 표시 갭(`classifyBadgeProgressKind`가
+`single_distance_km`+`personal_record_break` 조합을 axisCount 충돌로 `unsupported`
+처리하는 기존 별개 문제, 발급 자체는 정상)을 [`20260908_1512`](../P2-일반/20260908_1512_BadgeEngine_running-R2-진행률표시-axisCount충돌-unsupported.md)
+(P2)로 분리했다.
 
 ### 주요 의사결정 / 핵심 메모
 - 원인 ①은 게이트 키를 "활동 1건 단위 회차"(`CONSUMED_REPEAT_KEYS`)와 동일한 원칙으로

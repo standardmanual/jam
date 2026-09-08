@@ -182,7 +182,7 @@ Step 8. initial_sync_done 갱신
 | `rest_after_streak` / `rest_after_long` / `return_gap_days` / `interval_days` (2026-09-05 신규) | **인접한 두 활동 사이의 «닫힌 공백»** 판정. 활동이 0~1건이면 공백을 계산하지 않는다. 판정은 `activityFilters.ts`의 `evaluateRestConditions()` 한 곳. `rest_after_long`의 짝 필드는 `single_distance_km` **또는** `duration_minutes`(OR, 2026-09-06 티켓 20260906_0110 ④ 추가) — 이제 실제로 발급된다. §2.16 |
 | `max_elevation_m` / `max_speed_kmh` / `single_distance_km` / `single_elevation_m` / `avg_heartrate_bpm` / `avg_watts` / `avg_cadence` (v5 스칼라 7종) / `weekly_streak` (2026-09-06, 티켓 20260906_0110 ②) | `pending`에서 `engine`으로 전환됨. **활동 1건의 값**을 `CONDITION_ACTIVITY_FIELD`로 정규화 필드에서 꺼내 비교(스칼라 7종), `weekly_streak`는 `calcMaxWeeklyStreak`가 연속 주(월~일) 최장 길이를 계산. 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10 |
 | `cumulative_duration_hours` / `monthly_count` (2026-09-06 신규, 티켓 20260906_0110 ①) | 레지스트리에 키가 없어 v5 카탈로그 시딩(0035)에서 통째로 빠졌던 5계열 27종(누적 이동시간·월간 활동 횟수)을 복구하기 위한 신규 필드. 둘 다 `engine` — `cumulative_duration_hours`는 누적 이동시간 합계, `monthly_count`는 월별 활동 횟수 최대값(또는 `repeat_count`와 결합 시 그 횟수를 채운 달의 수) |
-| `personal_record_break` / `personal_record_break_metric` (2026-09-06, 티켓 20260906_2055) | `pending`에서 `engine`으로 전환됨. 가입 시점 이후 활동을 시간순으로 훑어 `personal_record_break_metric`이 가리키는 지표(콘텐츠가 채워진 3종만 — `single_distance_km`·`duration_minutes`·`max_elevation_m`)가 그때까지의 최고 기록을 **엄격히 초과**한 횟수 ≥ 조건값. 최초의 유효 활동은 항상 1회(직전 기록이 없으므로). 판정은 `activityFilters.ts`의 `countPersonalRecordBreaks()` 한 곳(발급·진행률 공유). 짝 필드 강제 목록(`PAIR_ENFORCED_CONDITION_KEYS`)에 편입돼 `personal_record_break_metric` 없이는 발급되지 않는다 |
+| `personal_record_break` / `personal_record_break_metric` (2026-09-06, 티켓 20260906_2055 · 2026-09-08, 티켓 20260908_1438에서 지표 방향 지원 확장) | `pending`에서 `engine`으로 전환됨. 가입 시점 이후 활동을 시간순으로 훑어 `personal_record_break_metric`이 가리키는 지표(콘텐츠가 채워진 4종 — `single_distance_km`·`duration_minutes`·`max_elevation_m`·`max_pace_sec_per_km`)가 그때까지의 최고 기록을 갱신한 횟수 ≥ 조건값. `PERSONAL_RECORD_METRIC_DIRECTION`으로 지표별 갱신 방향이 갈린다 — 앞 3종은 `higher`(값이 클수록 갱신 = **엄격히 초과**), `max_pace_sec_per_km`(페이스)는 `lower`(값이 작을수록=빠를수록 갱신). 최초의 유효 활동은 항상 1회(직전 기록이 없으므로). 판정은 `activityFilters.ts`의 `countPersonalRecordBreaks()` 한 곳(발급·진행률 공유). 짝 필드 강제 목록(`PAIR_ENFORCED_CONDITION_KEYS`)에 편입돼 `personal_record_break_metric` 없이는 발급되지 않는다 |
 | `distinct_time_bands` / `activities_within_hours` / `month_over_month_ratio` / `vs_personal_average` / `day_of_month` (2026-09-08, 티켓 20260908_1318) | `pending`에서 `engine`으로 전환됨. `distinct_time_bands`는 `badgeConditionText.ts`와 같은 시간대 6구간(새벽·아침·점심·오후·저녁·심야) 경계로 서로 다른 시간대 수를 센다(`streak_days`와 결합 시 그 스트릭 창 안에서만). `activities_within_hours`는 `startDate` 기준 슬라이딩 윈도우. `day_of_month`는 `total_count`와 짝을 이루는 필터. `month_over_month_ratio`/`vs_personal_average`는 지표를 **거리(km)로 고정**해 전월 대비·평소 평균 대비 배수를 판정(둘 다 지표 선택 짝 필드가 레지스트리에 없음). 판정은 `activityFilters.ts` 신규 헬퍼, 회차 결합은 `repeatOccurrences.ts`. 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10 |
 | **잔여 `pending` 2종 + `route`** (3종) | ❌ **평가 미구현 — fail-closed로 막힌다.** `daily_once_count`·`negative_split` + `route`. 목록과 의미는 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §2.10 |
 
@@ -941,6 +941,14 @@ threshold)을 만족하는 구간 하나다. 기존 단발 판정(`evaluateRestC
 (실측 2026-09-06: 프로덕션에 이런 조합 0건 — fail-closed로 막아도 실무 영향 없음).
 막힌 조합은 fail-closed 가드가 조용히 회차를 0으로 떨어뜨려 「충족 횟수 부족 / 0회」로만
 보이므로, 카탈로그 담당자가 2개 이상 조합을 쓰려면 먼저 스펙 오너 판단을 받아야 한다.
+
+> ⚠️ **게이트 필드 동반 허용 (2026-09-08, 티켓 20260908_1438)** — 위 "휴식 키 1개까지"와
+> 아래 §2.14의 "기간 단위 회차" 동반 키 제한(`repeat_count`·`activity_type`·`day_of_week`뿐)에
+> 게이트 필드(`cross_in_axis`/`cross_between_axis`/`gate_mission_badge`, `GATE_CONDITION_KEYS`)가
+> 빠져 있었다. 활동 1건 단위 경로(`CONSUMED_REPEAT_KEYS`)는 이미 게이트 키를 허용하는데
+> 이 두 경로만 허용하지 않아, 게이트가 붙는 상위 등급(주로 Epic·Mystic)의 반복형 배지
+> **26계열 49종**이 회차 영원히 0으로 fail-closed됐던 것을 전수 감사로 발견해 수정했다.
+> 게이트 필드는 "보유 여부"만 확인하는 필터라 회차 집계 의미에는 영향을 주지 않는다.
 
 지원 대상(휴식 키 1개 + `repeat_count`)은 진행 계산(§2.13-1)에서도 `'repeat'` 축으로
 분류돼 "N/M회" 진행률이 그려진다(기존 `'unsupported'` 고정 해제).
