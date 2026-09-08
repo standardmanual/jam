@@ -11,7 +11,7 @@ export interface BadgeProgressRingCardProps {
   status: BadgeProgressRingCardStatus;
   /** 0~1. `muted`가 true면 표시에 쓰지 않는다(호출부가 0을 넘겨도 무방) */
   fraction: number;
-  /** 완성 캡션 문자열("0.0/100.0km"·"4km"·"조건 충족" 등). null이면 캡션을 그리지 않는다 */
+  /** 완성 캡션 문자열("0.0/100.0km"·"4km"·"조건을 다 채웠어요" 등). null이면 캡션을 그리지 않는다 */
   captionText: string | null;
   /** 진행을 계산할 수 없다(§08 H) — 링을 중립색으로 그린다. 기본값 false */
   muted?: boolean;

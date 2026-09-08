@@ -10,8 +10,8 @@
   status="not-reached"          // earned/ready/locked/not-reached — BadgeStageRail과 같은 어휘
   fraction={0.42}
   captionText="42.0/100.0km"    // 완성 문자열만 받는다(문구 조립은 src/lib/badgeProgressText.ts)
-  ariaLabel="100km 클럽 Rare, 미도달. 42.0/100.0km"
-  href="/badges/b1"             // 또는 onClick(잠금 해제 조건 시트 오픈)
+  ariaLabel="100km 클럽 Rare, 아직. 42.0/100.0km"
+  href="/badges/b1"             // 또는 onClick(받는 방법 시트 오픈)
 />
 ```
 
@@ -32,5 +32,5 @@
   `prefers-reduced-motion: reduce`에서는 이 진입 효과 자체가 꺼진다. 채우기 %(링 각도)에는
   전이를 걸지 않는다 — 도착 즉시 값을 그리는 스냅샷이라 애니메이션 대상이 아니다.
 - **프레젠테이션 전용** — `condition`·`kind`를 모른다. 완성 문자열과 0~1 숫자만 받는다.
-- 인터랙션은 `href`(링크 이동) 또는 `onClick`(잠금 해제 조건 시트 등) 중 하나만 넘긴다.
+- 인터랙션은 `href`(링크 이동) 또는 `onClick`(받는 방법 시트 등) 중 하나만 넘긴다.
   둘 다 없으면 정적 `<div>`.

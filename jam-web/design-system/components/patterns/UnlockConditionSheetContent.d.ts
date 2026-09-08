@@ -10,7 +10,7 @@ export interface UnlockConditionRequirement {
    * (예전 기본값 "배지 · 어느 등급이든 1개"는 등급 없는 계열에서 거짓이 됐다 — 티켓 20260905_0037)
    */
   note?: string | null;
-  /** 이미 충족한 항목인가. true면 라임 링 + 체크로 그린다 */
+  /** 이미 채운 항목인가. true면 라임 링 + 체크로 그린다 */
   met?: boolean;
 }
 
@@ -48,7 +48,7 @@ export interface UnlockConditionSheetContentProps {
 }
 
 /**
- * 잠금 해제 조건 시트의 본문. 서비스 `src/components/ui/BottomSheet.tsx` 위에 얹는다
+ * 받는 방법 시트의 본문. 서비스 `src/components/ui/BottomSheet.tsx` 위에 얹는다
  * (병존 구현 중 실제 화면은 서비스 쪽 시트를 쓴다).
  */
 export function UnlockConditionSheetContent(props: UnlockConditionSheetContentProps): JSX.Element;
