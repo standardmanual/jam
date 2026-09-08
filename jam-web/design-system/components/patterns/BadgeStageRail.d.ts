@@ -66,7 +66,7 @@ export interface BadgeStageRailProps {
   /** 기본값 없음 — 항상 `frontierProgress={... ?? null}` 형태로 명시해 넘긴다 */
   frontierProgress: BadgeStageRailFrontierProgress | null;
   /**
-   * 진행 표시를 그릴 눈금 id — 호출부(서버)가 「첫 미충족」 기준으로 정한다.
+   * 진행 표시를 그릴 눈금 id — 호출부(서버)가 「처음 조건을 못 채운 눈금」 기준으로 정한다.
    * `null`이면 첫 미획득 눈금에 그린다. 게이트 자리·「앞 구간 꽉 채움」은 이 값과 무관하다.
    * 기본값 없음 — 항상 `progressStopId={... ?? null}` 형태로 명시해 넘긴다.
    */

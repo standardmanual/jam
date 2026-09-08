@@ -1,4 +1,5 @@
 import React, { Children } from 'react';
+import { ChevronDownGlyph } from '../icons/BadgeStatusGlyphs.jsx';
 
 /**
  * BadgeStatusSection — 배지 트리의 상태 섹션 하나. 티켓 20260905_0036.
@@ -30,14 +31,6 @@ import React, { Children } from 'react';
  * ⚠️ 「펼친 섹션만 계산」 최적화는 이 모드에서 성립하지 않는다. **회귀가 아니다** —
  * 유일한 호출부가 이미 `defaultOpen`이라 접힌 적이 없고, 늘 전부 계산하고 있었다.
  */
-function ChevronDownGlyph({ size = 20 }) {
-  return (
-    <svg viewBox="0 -960 960 960" width={size} height={size} fill="currentColor" aria-hidden="true">
-      <path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
-    </svg>
-  );
-}
-
 const STATIC_CSS = `
 .ds-status-section-header{background:none;border:none;padding:var(--spacing-12) 0;width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit;display:flex;align-items:center;gap:var(--spacing-8);transition:opacity var(--duration-quick,150ms) var(--ease-smooth-out,cubic-bezier(0.22,1,0.36,1))}
 .ds-status-section-header:active{opacity:.7}
