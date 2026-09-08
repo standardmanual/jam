@@ -13,7 +13,7 @@ const meta: Meta<typeof BadgeRevealCarousel> = {
       description: {
         component:
           '배지 획득 연출용 3D 코버플로우 캐러셀. 배지 드랍 엔진의 최종 결과가 나온 뒤에만 열리며, 열리면 곧바로 실제 배지 카드다. ' +
-          '중앙 카드 344px, 이웃 카드는 화면 밖 잘림 허용. 좌우 스와이프·ArrowLeft/Right로 순환한다.',
+          '중앙 카드 292px(티켓 20260908_2008, 344px에서 축소), 이웃 카드는 화면 밖 잘림 허용. 좌우 스와이프·ArrowLeft/Right로 순환한다.',
       },
     },
   },
@@ -114,6 +114,19 @@ export const LongName: Story = {
   },
 };
 
+/**
+ * 짧은 텍스트(이름 1줄 + 설명 1줄) — 여백 과다 문제의 근원 케이스(티켓 20260908_2008).
+ * "서초역"처럼 POI형 배지는 이름·설명이 짧아 이미지 영역 아래로 빈 공간이 크게 남았다.
+ * 이미지 `maxHeight`를 46%→38%로 낮춰 이 케이스의 여백을 줄이는 것이 이번 티켓의 목적이다.
+ */
+export const ShortText: Story = {
+  name: '엣지 — 짧은 텍스트(이름 1줄 + 설명 1줄, 여백 축소 대상)',
+  args: {
+    open: true,
+    items: makeItems(3, { name: '서초역', description: '서초역에서 체크인하면 획득해요.' }),
+  },
+};
+
 export const MysticOnly: Story = {
   name: '엣지 — mystic만',
   args: { open: true, items: makeItems(3, { rarity: 'mystic' }) },
@@ -147,8 +160,8 @@ export const LevelBadgeNoRarity: Story = {
 
 /**
  * 20260824_001 회귀 확인용 — 이름 2행 + 설명 3행이 동시에 걸리는 최악 조합.
- * 텍스트가 `flexShrink: 0`이고 이미지가 `maxHeight: 46%`로 먼저 양보하므로
- * 이름 2행째·설명 3행째가 잘리지 않아야 한다.
+ * 텍스트가 `flexShrink: 0`이고 이미지가 `maxHeight: 38%`(티켓 20260908_2008, 46%에서 축소)로
+ * 먼저 양보하므로 이름 2행째·설명 3행째가 잘리지 않아야 한다.
  */
 export const LongNameAndDescription: Story = {
   name: '엣지 — 이름 2행 + 설명 3행 (텍스트 잘림 회귀)',

@@ -51,7 +51,8 @@ import { IconButton } from '../buttons/IconButton.jsx';
  *   대체한다(디자인 시스템은 서비스 코드를 import할 수 없어 동일 로직을 내부 구현).
  *
  * 레이아웃 메모
- *   중앙 카드 폭 기본 344px = 서비스 컬럼(430px)의 80%. 이웃 카드는 화면 밖으로 잘려도 된다.
+ *   중앙 카드 폭 기본 292px = 서비스 컬럼(430px)의 약 85%(티켓 20260908_2008, 344px에서 축소).
+ *   이웃 카드는 화면 밖으로 잘려도 된다.
  *   닫기 버튼은 카드 DOM 안이 아니라 **스테이지 기준 절대 위치**에 둔다 — 카드가 preserve-3d
  *   안에서 rotateY/scale 변환을 받기 때문에, 카드 안에 넣으면 버튼도 함께 기울고 축소돼
  *   터치 타겟이 뒤틀린다.
@@ -139,7 +140,7 @@ export function BadgeRevealCarousel({
   moreCount = 0,
   onMoreClick,
   onClose,
-  cardWidth = 344,
+  cardWidth = 292,
   cardHeight,
   closeLabel = '닫기',
   moreLabel = '전체 보기',
@@ -526,7 +527,9 @@ function BadgeCard({ item, foldedCount = 1 }) {
         animation: 'ds-badge-reveal-in 220ms var(--ease-out) both',
       }}
     >
-      {/* 이미지 — 남는 공간을 차지하되 카드 높이의 46%를 넘지 않는다.
+      {/* 이미지 — 남는 공간을 차지하되 카드 높이의 38%를 넘지 않는다(티켓 20260908_2008,
+          46%에서 축소 — 짧은 텍스트 카드에서 이미지 아래로 남는 빈 공간이 여백 과다의
+          실질 원인이었다).
           텍스트(등급·이름·설명)는 flexShrink:0이라 절대 눌리지 않고, 이미지가 먼저 양보한다.
           20260824: 이름 2행 + 설명 3행일 때 마지막 행이 잘리던 문제 수정 —
           원인은 텍스트 요소들이 기본 flex-shrink:1이라 이미지에 밀려 높이가 깎이면서
@@ -535,7 +538,7 @@ function BadgeCard({ item, foldedCount = 1 }) {
         style={{
           flex: '1 1 auto',
           minHeight: 0,
-          maxHeight: '46%',
+          maxHeight: '38%',
           width: '100%',
           display: 'flex',
           alignItems: 'center',
