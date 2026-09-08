@@ -120,23 +120,46 @@ cycling:R1 Lv.1~8: { activity_type: "cycling", personal_record_break: N }
 **원인 ②**: `cycling:R1`·`running:R1`(각 「가장 긴 거리 갱신」, walking:B1·trail_running:R1과
 문자 그대로 동일한 설명)에 `personal_record_break_metric: 'single_distance_km'`을 채우는 SQL
 마이그레이션을 작성했다(실행은 하지 않음). `running:R2`(「5km 이상 활동의 가장 빠른 페이스
-갱신」)는 **제외**했다 — 엔진의 `SUPPORTED_PERSONAL_RECORD_METRICS`(single_distance_km·
-duration_minutes·max_elevation_m) 3종이 전부 "값이 클수록 갱신"(`countPersonalRecordBreaks`가
-`value > best`만 봄) 방향인데, running:R2가 원하는 건 "페이스가 빠를수록(값이 작을수록)
-갱신"이라 방향이 반대다. 조건에 이미 있는 `single_distance_km:5`는 지표가 아니라 활동 1건
-단위 필터(5km 이상만 포함)이므로 그대로 metric으로 채우면 "가장 긴 거리 갱신"으로 의미가
-바뀌어 배지 설명과 어긋난다. 지표를 추가하려면 코드 변경(감소 방향 기록 카운트 또는 새 페이스
-지표)이 필요해 이 티켓 범위(SQL 시딩만)를 벗어난다 — HALT로 보고하고 실행하지 않았다.
+갱신」)는 1차 라운드에서 **제외**했었다 — 엔진의 `SUPPORTED_PERSONAL_RECORD_METRICS`(당시
+single_distance_km·duration_minutes·max_elevation_m 3종)가 전부 "값이 클수록 갱신"
+(`countPersonalRecordBreaks`가 `value > best`만 봄) 방향인데, running:R2가 원하는 건
+"페이스가 빠를수록(값이 작을수록) 갱신"이라 방향이 반대여서 표현할 수 없었다.
+
+**2차 라운드 — running:R2 HALT 해소**: `activityFilters.ts`의 `countPersonalRecordBreaks`가
+지표별 방향(`PERSONAL_RECORD_METRIC_DIRECTION`, `conditionRegistry.ts`의 `ConditionDirection`
+(`'higher'|'lower'`) 관례를 그대로 재사용)을 지원하도록 확장했다 — `higher` 지표는
+기존과 동일하게 `best = -Infinity` / `value > best`, `lower` 지표(페이스)는
+`best = +Infinity` / `value < best`로 비교한다. `SUPPORTED_PERSONAL_RECORD_METRICS`에
+`max_pace_sec_per_km`(방향 `lower`)를 추가하고, `personalRecordMetricValue`에
+`kmhToPaceSecPerKm(a.averageSpeedKmh)`(`@/types/strava`, 기존 `repeatOccurrences.ts`·
+`index.ts`·`badgeProgress.ts`가 이미 쓰는 것과 같은 변환) 케이스를 추가했다. 기존 3개
+지표(`single_distance_km`·`duration_minutes`·`max_elevation_m`, 전부 `higher`)는 분기 로직만
+`direction` 변수로 일반화됐을 뿐 비교 방향·초기값이 전과 동일해 회귀가 없다(회귀 테스트로
+재확인). `badgeProgress.ts`의 personal_record_break 진행률 계산(약 913행)은 같은
+`countPersonalRecordBreaks` 함수를 그대로 호출하므로 별도 수정 없이 방향이 함께 반영된다 —
+다만 실측 중 이와는 **무관한 기존 진행률 표시 제약**을 하나 발견했다(아래 alerts 참고).
+
+`running:R2`에 `personal_record_break_metric: 'max_pace_sec_per_km'`을 채우는 SQL을
+기존 마이그레이션 파일(`cycling:R1`·`running:R1` 2계열)에 합쳐 3계열 24종 전부를 다루도록
+갱신했다(idempotent, 실행은 하지 않음). 조건에 이미 있는 `single_distance_km:5`는 활동 1건
+단위 필터("5km 이상만 포함")이고 `personal_record_break_metric`은 그 필터를 통과한 활동들
+사이에서 무엇을 기록으로 볼지 지정하는 별도 축이라 서로 충돌하지 않는다(발급 판정 기준).
 
 ### 변경된 파일
 ```
 jam-web/src/lib/badge-engine/repeatOccurrences.ts
-jam-web/src/lib/badge-engine/__tests__/repeat-gate-companion.test.ts (신규)
-jam-web/supabase/migrations/seed_personal_record_break_metric_r1_families.sql (신규, 미실행)
+jam-web/src/lib/badge-engine/activityFilters.ts
+jam-web/src/lib/badge-engine/badgeProgress.ts (주석만 — 지원 지표 갱신 반영)
+jam-web/src/lib/badge-engine/index.ts (주석·사용자 노출 문구만 — 지원 지표 갱신 반영)
+jam-web/src/lib/badge-engine/conditionRegistry.ts (주석만 — 지원 지표 갱신 반영)
+jam-web/src/lib/badge-engine/__tests__/repeat-gate-companion.test.ts (신규, 1차 라운드)
+jam-web/src/lib/badge-engine/__tests__/personal-record-break.test.ts (회귀 테스트 추가, 2차 라운드)
+jam-web/supabase/migrations/seed_personal_record_break_metric_r1_families.sql (2차 라운드에서
+  running:R2 포함하도록 갱신, 미실행)
 ```
 
 ### 테스트 결과
-- [x] `npx vitest run` 전체 — 69 파일 1190 테스트 통과(신규 5건 포함)
+- [x] `npx vitest run` 전체 — 69 파일 1195 테스트 통과(1차 라운드 신규 5건 + 2차 라운드 신규 5건)
 - [x] `npx tsc --noEmit` — 오류 없음
 - [x] `npm run lint` 전체 — 0 errors, 13 warnings(모두 기존 design-system 경고, 이번 변경과 무관)
 
@@ -149,9 +172,9 @@ jam-web/supabase/migrations/seed_personal_record_break_metric_r1_families.sql (�
 - 원인 ①은 게이트 키를 "활동 1건 단위 회차"(`CONSUMED_REPEAT_KEYS`)와 동일한 원칙으로
   "기간 단위·휴식 단위 회차"에도 동반 키로 허용해 비대칭을 없앴다 — 판정 함수를 공유하는
   `badgeProgress.ts`도 자동으로 함께 열린다.
-- 원인 ②는 3계열 중 2계열만 처리했다. `running:R2`는 엔진의 지표 지원 범위를 벗어나 콘텐츠
-  값을 임의로 확정하지 않고 HALT로 남겼다(아래 alerts 참고).
+- 원인 ②는 3계열 전부(24종) 처리 완료됐다. `running:R2`는 1차 라운드 HALT 이후, 엔진에
+  지표 방향(higher/lower) 개념을 추가하는 코드 변경으로 해소했다 — `conditionRegistry.ts`에
+  이미 있던 `ConditionDirection` 관례를 그대로 재사용해 새 추상화를 만들지 않았다.
 
 ### 잔여 이슈
-- `running:R2`(더 빠르게) `personal_record_break_metric` 미확정 — 지표 정의(감소 방향 기록
-  지원 또는 페이스 전용 지표 신설) 및 스펙 확정 필요.
+- 없음(원인 ①·② 모두 해결). 진행률 표시 관련 별도 발견 사항은 아래 alerts 참고.

@@ -541,8 +541,9 @@ function classifyConditionKind(condition: BadgeCondition): BadgeProgressKind | '
 
   // personal_record_break — 짝 필드(personal_record_break_metric) 자체가 없는 조합은
   // fail-closed(findBlockingConditionKeys의 unpaired)가 이미 위에서 걸렀다. 여기서는
-  // «값이 있지만 아직 콘텐츠가 없는 지표»(9종)를 추가로 막는다 — 발급 판정(index.ts)과
-  // 같은 3종만 진행률도 그린다(티켓 20260906_2055).
+  // «값이 있지만 아직 콘텐츠가 없는 지표»를 추가로 막는다 — 발급 판정(index.ts)과 같은
+  // 지원 지표(SUPPORTED_PERSONAL_RECORD_METRICS)만 진행률도 그린다(티켓 20260906_2055,
+  // 20260908_1438).
   if (condition.personal_record_break !== undefined && !isSupportedPersonalRecordMetric(condition.personal_record_break_metric)) {
     return 'unsupported'
   }
@@ -908,8 +909,10 @@ function buildCumulativeAxis(condition: BadgeCondition, metrics: UserPeriodMetri
     return makeHigherBetterAxis(key, current, condition.season_count, labelMap)
   }
   // personal_record_break — 발급 판정(index.ts)과 같은 함수(countPersonalRecordBreaks)로
-  // 센다. classifyConditionKind가 이 kind를 고르는 시점엔 지표가 이미 지원 3종 중
+  // 센다. classifyConditionKind가 이 kind를 고르는 시점엔 지표가 이미 지원 지표 중
   // 하나임이 확정돼 있다(위 unsupported 가드) — 그래도 방어적으로 한 번 더 확인한다.
+  // (지표 자체의 갱신 방향은 countPersonalRecordBreaks 내부에서 처리 — 이 axis는 항상
+  // "갱신 횟수"를 higher-better로 세는 것이라 지표 방향과 무관하다)
   if (condition.personal_record_break !== undefined) {
     const metric = condition.personal_record_break_metric
     if (isSupportedPersonalRecordMetric(metric)) {
