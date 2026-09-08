@@ -157,6 +157,11 @@ export interface BadgeRow {
   point_reward: number
   /** 소프트 삭제 시각. NULL 아니면 신규 발급/드랍/노출 대상에서 제외 — 기존 보유자 이력은 유지됨 */
   deleted_at: string | null
+  /** 컬렉션(item_books) 캐스케이드 비활성화가 이 배지를 죽였다면 그 컬렉션 id, 아니면 NULL.
+   *  개별 사유로 비활성화됐거나 활성 상태여도 NULL. 컬렉션 재활성화 캐스케이드가 "이 컬렉션이
+   *  죽인 배지만" 되살릴 때 판별 기준이며, 개별 배지 PATCH는 조작이 있을 때마다 이 값을
+   *  NULL로 리셋한다(티켓 20260908_2129 2차) */
+  deactivated_by_item_book_id: string | null
   created_at: string
   /** 배지 상세화면 배경 테마 컬러값 (20260818_002 선행 구조). background_image_url과 상호 배타적 */
   background_color: string | null

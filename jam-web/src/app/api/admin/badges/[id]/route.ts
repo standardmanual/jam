@@ -219,6 +219,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
  * DELETE 핸들러와는 별개의 동작이다(20260830_1912부터) — DELETE는 이력 없는 배지만 실제
  * 하드 삭제하고, 이력이 있으면 차단한다. 이 PATCH는 이력 유무와 무관하게 항상 소프트
  * 삭제/복원만 수행하는 가역적 토글로 그대로 유지한다.
+ *
+ * 개별 조작이 있을 때마다 `deactivated_by_item_book_id`를 NULL로 리셋한다(티켓 20260908_2129
+ * 2차) — active 값에 관계없이, 이 배지가 "컬렉션 캐스케이드 관리 대상"에서 "개별 관리"로
+ * 전환됐다는 뜻이다. 이래야 "컬렉션 비활성화로 죽은 배지를 관리자가 개별로 다시 살렸다가,
+ * 이후 컬렉션이 재활성화될 때 또 건드려지는" 이중 처리를 막는다(배지 목록의 일괄 활성화/
+ * 비활성화도 결국 이 API를 순차 호출하므로 자동으로 같은 규칙을 따른다).
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -235,7 +241,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('badges')
-    .update({ deleted_at: active ? null : new Date().toISOString() })
+    .update({ deleted_at: active ? null : new Date().toISOString(), deactivated_by_item_book_id: null })
     .eq('id', id)
     .select()
     .single()
