@@ -2,8 +2,9 @@
 id: 20260908_1512
 category: BadgeEngine
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-09-08
+closed: 2026-09-08
 ---
 
 # [BadgeEngine] running:R2 발급 로직이 스펙과 다르게 동작 + 진행률 표시 unsupported
@@ -128,9 +129,19 @@ jam-web/src/lib/badge-engine/__tests__/personal-record-break.test.ts — 기존 
 - [x] `npm run lint` — 0 error, 13 warning(전부 design-system 기존 경고, 이번 변경 파일과 무관)
 
 ### 배포 정보
-- 배포일: (미배포 — 사용자 승인 후 오케스트레이터가 main 승격)
-- 환경: staging (review 브랜치 push까지만 수행)
-- 커밋: (아래 push 브랜치 참조)
+- 배포일: 2026-09-08 (staging)
+- 환경: staging → production은 `/jam-ship`으로 별도 진행
+- 커밋: `ef32ecd7` staging에 fast-forward 병합
+
+### 게이트 리뷰 PASS — staging 병합·문서 동기화 완료 (2026-09-08)
+
+conservative-reviewer가 격리 워크트리에서 재검증(`vitest` 전체 69파일 1198건, `tsc --noEmit`
+0건, `lint` 0 errors + 5km 미만 활동 배제 회귀 테스트 직접 실행)해 PASS 판정. DB 마이그레이션
+불필요(순수 로직 수정), 아직 프로덕션 미배포라 회귀 위험 없음.
+
+`BADGE_ENGINE_UNIFIED.md`에 "`PER_ACTIVITY_KEYS` 필터가 `personal_record_break`와 결합되면
+후보 풀을 좁히는 필터로 흡수된다"는 단일 출처 규칙(`personalRecordBreakConsumedAxisKeys`/
+`personalRecordBreakPool`)을 반영했다.
 
 ### 주요 의사결정 / 핵심 메모
 - `matchesPerActivityCondition({[key]: condition[key]}, a)`를 키 단위로 순회하며 `every`로
