@@ -4,6 +4,29 @@ import { getAdminUser } from '@/lib/admin/auth'
 import { resolvePoiRadiusMeters } from '@/lib/poi/radius-policy'
 import { POI_REFERENCE_SOURCES, collectPoiReferences } from '@/lib/admin/poi-references'
 
+/**
+ * pending_review는 마이그레이션 143에서 추가된 컬럼이라 생성 타입(database.generated.ts)에
+ * 아직 없다 — db:types CLI 부재로 재생성 불가(`lib/admin/poi-review.ts`와 동일 사유). `.update()`의
+ * 초과 속성 검사가 이 컬럼을 알 수 없는 키로 보고 막으므로, 이 라우트가 실제로 쓰는 컬럼만 포함한
+ * 최소 인터페이스로 빌더를 좁게 캐스팅한다.
+ */
+interface PoiUpdateWithReviewColumn {
+  update: (values: {
+    name: string
+    latitude: number
+    longitude: number
+    radius_meters: number
+    category: string
+    linked_badge_id: string | null
+    is_active: boolean
+    pending_review?: boolean
+  }) => {
+    eq: (column: string, value: string) => {
+      select: () => { single: () => PromiseLike<{ data: unknown; error: { message: string } | null }> }
+    }
+  }
+}
+
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -13,21 +36,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { name, latitude, longitude, radius_meters, category, linked_badge_id, is_active } = body
 
   const supabase = createServiceClient()
-  const updatePayload = {
+  const resolvedIsActive = is_active !== undefined ? is_active : true
+  const updatePayload: Parameters<PoiUpdateWithReviewColumn['update']>[0] = {
     name,
     latitude,
     longitude,
     radius_meters: resolvePoiRadiusMeters(category, radius_meters),
     category,
     linked_badge_id,
-    is_active: is_active !== undefined ? is_active : true,
+    is_active: resolvedIsActive,
   }
-  const { data, error } = await supabase
-    .from('poi')
-    .update(updatePayload)
-    .eq('id', id)
-    .select()
-    .single()
+  // 티켓 20260907_1811 — 임시등록(비활성·검토대기) POI를 편집 화면에서 활성화(is_active=true)
+  // 하며 저장하면, 그 자체를 "확인·수정 완료 후 명시적 활성화"로 간주해 검토대기 플래그도 함께
+  // 해제한다. 비활성 상태로 저장할 때는 기존 pending_review 값을 건드리지 않는다(이미 검토
+  // 완료된 일반 POI를 잠시 끄는 것과, 아직 검토 전인 임시등록을 구분해야 하기 때문).
+  if (resolvedIsActive) updatePayload.pending_review = false
+
+  const table = supabase.from('poi') as unknown as PoiUpdateWithReviewColumn
+  const { data, error } = await table.update(updatePayload).eq('id', id).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ poi: data })

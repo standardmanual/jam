@@ -30,7 +30,15 @@ import type { PoiCategoryRow, PoiRow } from '@/types/database'
 
 export type PoiReviewRow = Pick<
   PoiRow,
-  'id' | 'name' | 'latitude' | 'longitude' | 'category' | 'naver_category' | 'naver_keyword' | 'created_at'
+  | 'id'
+  | 'name'
+  | 'latitude'
+  | 'longitude'
+  | 'category'
+  | 'naver_category'
+  | 'naver_keyword'
+  | 'created_at'
+  | 'is_active'
 >
 
 interface PoiReviewTableProps {
@@ -204,6 +212,23 @@ export function PoiReviewTable({ pois, categories }: PoiReviewTableProps) {
         enableSorting: false,
         meta: { label: '수집 키워드' },
         cell: ({ getValue }) => <span className="text-sm text-muted-foreground">{getValue() || '—'}</span>,
+      }),
+      columnHelper.accessor('is_active', {
+        id: 'isActive',
+        header: '노출',
+        enableSorting: false,
+        meta: { label: '노출' },
+        cell: ({ getValue }) => (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+              getValue()
+                ? 'bg-neutral-900/10 text-neutral-900'
+                : 'bg-white text-neutral-500 border border-neutral-200'
+            }`}
+          >
+            {getValue() ? '활성' : '비활성'}
+          </span>
+        ),
       }),
       columnHelper.display({
         id: 'coordinates',

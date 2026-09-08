@@ -10,7 +10,8 @@ import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchPar
 
 const PAGE_SIZE = 30
 
-const REVIEW_LIST_COLUMNS = 'id, name, latitude, longitude, category, naver_category, naver_keyword, created_at'
+const REVIEW_LIST_COLUMNS =
+  'id, name, latitude, longitude, category, naver_category, naver_keyword, created_at, is_active'
 
 interface AdminPoiReviewPageProps {
   searchParams: SearchParamsPromise
@@ -68,8 +69,9 @@ export default async function AdminPoiReviewPage({ searchParams }: AdminPoiRevie
         <div>
           <h1 className="text-2xl font-bold md:text-3xl">POI 검토 큐</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            네이버 원본 분류가 애매해 자동판정하지 못한 수집 건입니다. 카테고리 배정을 확인하고
-            승인·거부해주세요.
+            자동수집은 중단됐습니다(티켓 20260907_1811) — 신규 항목은 대부분 &apos;POI
+            임시등록&apos;으로 만든 비활성 건입니다. 이름을 눌러 편집 화면에서 정보를 확인·수정하고
+            활성화해 주세요. 승인은 검토 완료만 표시할 뿐 노출 여부(활성화)는 바꾸지 않습니다.
           </p>
         </div>
         <Link href="/admin/poi">
