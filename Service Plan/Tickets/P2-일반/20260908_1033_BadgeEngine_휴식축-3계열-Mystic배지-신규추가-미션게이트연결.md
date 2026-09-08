@@ -104,32 +104,78 @@ jam-developer가 신규 배지 3종의 이름·설명문·수치·게이트 조�
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`cycling:X1`(안장의 휴일) · `hiking:X1`(하산 다음 날) · `trail_running:X1`(내리막의 대가)
+3계열에 Mystic 등급을 신규 추가하고, 그 조건문에 `cross_between_axis`(각 종목 "누적" 축
+계열 전부, `min_level: 6`) + `gate_mission_badge`(각 종목 `Q7`) 게이트를 걸어
+`cycling:Q7`·`hiking:Q7`·`trail_running:Q7` 미션 보상 배지가 실제로 무언가를 열도록
+연결했다. `X2`는 이번 범위에 포함하지 않았다(아래 잔여 이슈 참고).
+
+수치는 같은 "휴식" 축의 걷기 선례(`walking:R1` Epic5→Mystic20 = 4배, `walking:R2`
+Epic30→Mystic100 = 3.33배)를 참고해 Epic→Mystic 약 3.3~3.5배를 적용했다:
+- `cycling:X1` Epic 30 → Mystic 100
+- `hiking:X1` Epic 20 → Mystic 70
+- `trail_running:X1` Epic 20 → Mystic 70
+
+게이트 대상(`cross_between_axis.family_keys`)은 v5_gate_build.py의 AXIS_RULES에 정의된
+"누적" 축 계열을 그대로 옮겼다: `cycling`은 K1·K2·K3, `hiking`은 K1·K3(K2는 설계상 결번 —
+누적 이동시간 조건 키가 레지스트리에 없어 v5 1차 시딩에서 제외됨, `seed_v5_activity_badges.sql`
+주석 확인), `trail_running`은 K1·K2·K3.
 
 ### 변경된 파일
 ```
--
+Service Plan/Specs/Content/ACTIVITY_BADGES.md
+jam-web/supabase/migrations/seed_gate_mission_rest_axis_mystic_badges.sql (신규)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `badges_condition_json_known_keys` CHECK 허용 키(`activity_type`·`single_distance_km`·
+  `duration_minutes`·`rest_after_long`·`repeat_count`·`cross_between_axis`·`gate_mission_badge`)
+  전부 마이그레이션 133에 이미 포함돼 있음을 코드로 확인(추가 마이그레이션 불필요).
+- [x] `check_family_condition_consistency()` 트리거의 `measurable_keys` 비교 대상 확인 —
+  신규 Mystic 행의 측정 필드 집합(`rest_after_long`·`repeat_count`·`single_distance_km`
+  또는 `duration_minutes`)이 같은 계열 Common·Rare·Epic 형제 행과 동일해 계열 정합성
+  검사를 통과함(`cross_between_axis`·`gate_mission_badge`는 measurable_keys에 없어
+  비교 대상이 아님 — 133 주석에서 확인).
+- [ ] 실제 DB 실행·SELECT 검증은 사용자 승인 후 오케스트레이터가 처리(이 티켓 범위 밖).
+- `cd jam-web && npm run lint` 미실행 — 이번 변경은 SQL·마크다운 문서만 수정했고 TS/JS
+  코드 변경이 없어 lint 대상 파일이 없음.
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+- [x] 용어 일관성: 배지 이름은 기존 계열명을 그대로 유지(신규 이름 없음), 설명문에 신규
+  용어 도입 없음
+- [x] 톤앤매너: 배지=신남/무게감 톤 유지, 같은 계열 Common~Epic 설명문의 "몸이 안다",
+  "계획에 넣는다" 계열 어휘를 이어받아 Mystic은 "본능·몸에 새겨진" 수준으로 격상
+- [x] 문장 규칙: 배지 설명문 관례("~습니다" 종결)를 기존 계열과 동일하게 유지, 완결된
+  문장으로 종결(fluent-korean.md 지침 — 명사구·연결어미로 끝내지 않음), 엠대시 미사용
+- [x] 표기 규칙: 해당 없음(날짜·시간·금액·기간 표기 없음)
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (미실행 — SQL 작성만 완료, 실행은 사용자 승인 후 오케스트레이터)
+- 환경: -
+- 커밋: (review 브랜치 push 후 기록)
 
 ### 주요 의사결정 / 핵심 메모
-> 개발 과정에서 검토·결정된 사항, 선택하지 않은 대안과 그 이유.
+- **X1만 추가하고 X2는 이번 범위에서 뺐다.** 티켓 본문이 "X2도 필요하다고 판단되면 함께
+  처리해도 된다"고 재량을 열어뒀지만, (1) 티켓의 사용자 확인 절이 "새 Mystic 배지 3종
+  (계열당 1개)"으로 범위를 명시했고, (2) X2는 게이트 대상 미션(Q7)이 이미 X1 Mystic
+  신설로 열리므로 X2에 Mystic이 없어도 `reward_family_not_gated` 문제 자체는 해결된다.
+  범위를 최소화하는 쪽을 택했다.
+- **`gate_mission_badge` 대상은 X1만 가리킨다** — `cross_between_axis`는 "누적" 축
+  전체(K1~K3)를 게이트 조건으로 걸고, `gate_mission_badge`는 Q7 미션 하나만 가리키는
+  구조(v5_gate_build.py의 patch 구조와 동일)라 X2 부재가 게이트 구조 자체에 영향을 주지
+  않는다.
+- **Mystic 수치는 정본 지표가 없어 선례 배율로 추정값을 산정했다** — 정확한 밸런싱 검증은
+  실측 유저 데이터가 쌓인 뒤 별도로 필요할 수 있다.
 
 ### 잔여 이슈
-- `X2` 계열(`cycling:X2`/`hiking:X2`/`trail_running:X2`)은 이번 범위에 포함하지 않았다면
-  그 사유와 함께 후속 검토 필요 여부를 남길 것.
+- `cycling:X2`(돌아온 라이더) · `hiking:X2`(돌아온 등반자) · `trail_running:X2`(돌아온
+  트레일러) 3계열은 여전히 Epic까지만 있고 Mystic이 없다. 위 "주요 의사결정"에서 설명한
+  대로 이번 게이트 문제 해결에는 지장이 없지만, 세 계열 다 게이트 없는 "무관문 배지"로
+  남는 상태이므로 컨텐츠 정책상 X2도 Mystic까지 채울지 별도 검토가 필요할 수 있다.
+- `Service Plan/Specs/Content/v5_seed_build.py`(정본 스크립트)에는 이번에 추가한 3종의
+  Mystic 사다리 값이 반영되지 않았다 — 티켓이 `ACTIVITY_BADGES.md` 직접 수정만 지시해
+  범위 밖으로 남겼다. 향후 누군가 `v5_seed_build.py`를 재실행해 문서를 재생성하면 이번에
+  손으로 추가한 Mystic 3행이 스크립트 산출물과 어긋나(드리프트) 문서에서 사라질 수 있다 —
+  스크립트도 함께 갱신하는 후속 작업이 필요하다.
