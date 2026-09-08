@@ -440,6 +440,17 @@
   backdrop-filter: blur(var(--blur-scrim));
   -webkit-backdrop-filter: blur(var(--blur-scrim));
 }
+
+/* 20260908_0040: 백드롭은 열려 있을 때만 탭을 받는다 — 기본값(pointer-events 미지정, 즉 auto)
+ * 상태로 두면 opacity가 0으로 떨어진 뒤에도(닫힘 트랜지션 --panel-close-dur, prefers-reduced-motion
+ * 에서는 즉시) 언마운트 타이머가 끝날 때까지 투명한 채로 화면 전체를 덮어 뒷화면 탭을 먹는다.
+ * .t-panel-slide(패널 본체)는 이미 이 패턴을 쓰고 있었는데 백드롭만 빠져 있었다. */
+.t-panel-backdrop {
+  pointer-events: none;
+}
+.t-panel-backdrop[data-open='true'] {
+  pointer-events: auto;
+}
 @media (prefers-reduced-transparency: reduce) {
   .t-panel-backdrop {
     backdrop-filter: none;

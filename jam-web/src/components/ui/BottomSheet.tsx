@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -11,7 +12,11 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { cssDurationMs } from '@/lib/motion'
-import { pushBottomOverlay } from '@/lib/uiOverlay'
+import { pushBottomOverlay, pushMainScrollLock } from '@/lib/uiOverlay'
+
+/** 포커스 트랩이 순환 대상으로 삼는 요소 셀렉터 — 비활성 상태는 제외한다. */
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 interface BottomSheetProps {
   open: boolean
@@ -127,6 +132,16 @@ export default function BottomSheet({
   const [lingering, setLingering] = useState(false)
 
   const hasFooter = Boolean(footer)
+  const titleId = useId()
+
+  // onClose는 대부분 호출부에서 인라인 화살표(`() => setOpen(false)`)로 넘어와 매 렌더 새
+  // 아이덴티티를 가진다. 아래 포커스 트랩 effect의 의존성에 넣으면 시트가 열려 있는 동안
+  // 부모가 리렌더될 때마다 effect가 재실행되어 포커스를 자꾸 되채간다 — ref로 최신 값만
+  // 들고 있고 effect 의존성에서는 뺀다.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
 
   // 20260825_039: 시트를 document.body로 포털링하기 위한 마운트 게이트.
   // `document`는 클라이언트에만 존재하므로 SSR·하이드레이션 렌더에서는 false를 돌려주고
@@ -172,6 +187,61 @@ export default function BottomSheet({
     }
   }, [open])
 
+  // 20260908_0040: 포커스 트랩·복귀·Escape 닫기.
+  // `open`이 true가 되는 순간(이미 DOM에 붙어 있음 — `!open && !lingering`에서만 렌더를 건너뛴다)
+  // 시트 안으로 포커스를 옮기고, 열려 있는 동안 Tab을 시트 내부로 가둔다. 닫히면 열기 전
+  // 포커스 요소로 되돌린다(예: 시트를 연 버튼). 그 요소가 그새 DOM에서 사라졌다면(예: 장착
+  // 성공 후 버튼 텍스트가 바뀌며 다른 요소로 교체) `.focus()`는 조용히 아무 일도 하지 않는다.
+  useEffect(() => {
+    if (!open) return
+    const sheetEl = sheetRef.current
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
+    const focusFirst = () => {
+      const focusable = sheetEl?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+      const first = focusable?.[0]
+      if (first) first.focus()
+      else sheetEl?.focus()
+    }
+    focusFirst()
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      if (e.key !== 'Tab' || !sheetEl) return
+
+      const focusable = Array.from(sheetEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      if (focusable.length === 0) {
+        e.preventDefault()
+        sheetEl.focus()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey) {
+        if (active === first || !sheetEl.contains(active)) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (active === last || !sheetEl.contains(active)) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus()
+    }
+  }, [open])
+
   // 20260826_005: footer가 있는 동안 "화면 하단부터 footer 상단까지의 높이"를 전역 스토어에
   // 신고해, 이 구간에 뜨는 토스트가 footer 버튼 위로 올라가게 한다. 토스트 사각형은
   // pointer-events-auto라서 겹치면 버튼 탭이 토스트 디스미스로 먹힌다(Toast.tsx 참고).
@@ -193,14 +263,13 @@ export default function BottomSheet({
 
   // 시트가 화면에 떠 있는 동안 배경(main 스크롤 컨테이너)의 스크롤을 잠근다 — 배경이 스크롤되며
   // iOS Safari 동적 툴바가 접혔다 펴지면 dvh 기반 시트 높이가 함께 흔들리는 문제를 막는다.
+  // 20260908_0040: 참조 카운팅(`pushMainScrollLock`)으로 바꿨다 — 인스턴스가 자기만의
+  // `prevOverflow`를 캡처/복원하던 이전 방식은 "닫히는 시트 → 여는 시트" 전환처럼 두 인스턴스의
+  // lingering 구간이 겹칠 때, 먼저 열렸던 시트가 잠기기 전 값(`''`)으로 배경을 되돌려버려
+  // 새로 뜬 시트 아래에서 스크롤이 풀리는 창이 생겼다.
   useEffect(() => {
     if (!lingering) return
-    const scroller = document.querySelector<HTMLElement>('main')
-    const prevOverflow = scroller?.style.overflow
-    if (scroller) scroller.style.overflow = 'hidden'
-    return () => {
-      if (scroller) scroller.style.overflow = prevOverflow ?? ''
-    }
+    return pushMainScrollLock()
   }, [lingering])
 
   if (!mounted) return null
@@ -260,10 +329,19 @@ export default function BottomSheet({
     document.body로 포털링하면 조상 스태킹 컨텍스트를 벗어나 z-50이 루트 기준으로 평가된다.
   */
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 430, margin: '0 auto' }}>
+    /* 20260908_0040: 루트 자체는 pointer-events-none — 백드롭·시트 본체가 각자
+       data-open(t-panel-backdrop/t-panel-slide)에 따라 auto를 켜지만, 이 루트 div는
+       화면 전체를 덮는 fixed inset-0라 그대로 두면 닫힘 트랜지션(--panel-close-dur) 동안,
+       특히 prefers-reduced-motion(트랜지션이 즉시 끝나 보이지만 언마운트 타이머는 그대로)
+       에서 뒷화면 탭을 350ms 더 먹는다. */
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end pointer-events-none"
+      style={{ maxWidth: 430, margin: '0 auto' }}
+    >
       {/* Backdrop — 20260823_003: 재질(가벼운 blur) + prefers-reduced-transparency 가드는
           .t-panel-backdrop(transitions.css)에 공용으로 정의(FeedSection·PoiCarouselModal과
-          공유). 시트 본체(아래 bg-[var(--color-surface)])는 계속 불투명 유지. */}
+          공유). 시트 본체(아래 bg-[var(--color-surface)])는 계속 불투명 유지.
+          pointer-events는 같은 파일의 .t-panel-backdrop[data-open]이 담당(20260908_0040). */}
       <div className="absolute inset-0 bg-surface/60 t-panel-backdrop" data-open={shown} onClick={onClose} />
 
       {/*
@@ -277,9 +355,15 @@ export default function BottomSheet({
         data-open={shown}
         style={{ '--panel-translate-y': '100%' } as CSSProperties}
       >
-      {/* Sheet */}
+      {/* Sheet — 20260908_0040: role="dialog"·aria-modal·aria-labelledby(title이 있을 때)로
+          보조기술에 다이얼로그로 announce된다. tabIndex=-1은 포커스 가능한 자식이 하나도
+          없을 때 시트 자체로 포커스를 옮기기 위한 폴백(포커스 트랩 effect 참조). */}
       <div
         ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={hasHeader ? titleId : undefined}
+        tabIndex={-1}
         className={[
           'relative rounded-t-[var(--radius-cards)] flex flex-col',
           'bg-[var(--color-surface)] text-text',
@@ -311,7 +395,12 @@ export default function BottomSheet({
 
         {hasHeader && (
           <div className={headerClassName ?? 'px-[var(--spacing-24)] pb-[var(--spacing-16)] shrink-0'}>
-            <h2 className={titleClassName ?? 'text-[length:var(--text-body)] leading-[var(--leading-body)]'}>{title}</h2>
+            <h2
+              id={titleId}
+              className={titleClassName ?? 'text-[length:var(--text-body)] leading-[var(--leading-body)]'}
+            >
+              {title}
+            </h2>
           </div>
         )}
 
