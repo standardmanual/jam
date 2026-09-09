@@ -170,20 +170,44 @@ interface StravaStreamsResponse {
     original_size: number
     resolution: string
   }
+  /** m/s 단위 순간 속도(스무딩됨). 교통수단 구간 감지(20260909_1012)에 사용 */
+  velocity_smooth?: {
+    data: number[]
+    series_type: string
+    original_size: number
+    resolution: string
+  }
+  /** 활동 시작 시점부터 누적된 초 단위 경과 시간. velocity_smooth와 같은 인덱스로 짝을 이룬다 */
+  time?: {
+    data: number[]
+    series_type: string
+    original_size: number
+    resolution: string
+  }
+}
+
+/** {@link getActivityStreams}의 반환값 — POI 매칭용 경로와 교통수단 구간 감지용 속도·시간 스트림 */
+export interface ActivityStreams {
+  /** [[lat, lng], ...] 배열, 또는 null (실내 활동 / 경로 없음) */
+  route: Array<[number, number]> | null
+  /** m/s 단위 속도 배열, 또는 null (스트림 없음) */
+  velocitySmooth: number[] | null
+  /** 누적 초 배열(velocitySmooth와 같은 길이·인덱스), 또는 null (스트림 없음) */
+  time: number[] | null
 }
 
 /**
- * 활동의 GPS 경로 데이터 조회 (Strava Streams API)
+ * 활동의 GPS 경로·속도·시간 스트림 데이터 조회 (Strava Streams API)
  * @param activityId Strava 활동 ID
  * @param accessToken Strava access_token (복호화된 평문)
- * @returns [[lat, lng], ...] 배열, 또는 null (실내 활동 / 경로 없음)
+ * @returns {@link ActivityStreams}, 또는 null (네트워크 오류·API 오류 — fail-open 신호)
  */
 export async function getActivityStreams(
   activityId: number,
   accessToken: string
-): Promise<Array<[number, number]> | null> {
+): Promise<ActivityStreams | null> {
   // resolution=medium: 최대 1000포인트로 제한 (high는 포인트 무제한으로 타임아웃 위험)
-  const url = `${STRAVA_API_BASE}/activities/${activityId}/streams?keys=latlng&key_by_type=true&resolution=medium`
+  const url = `${STRAVA_API_BASE}/activities/${activityId}/streams?keys=latlng,velocity_smooth,time&key_by_type=true&resolution=medium`
 
   let res: Response
   try {
@@ -195,16 +219,17 @@ export async function getActivityStreams(
       signal: AbortSignal.timeout(STRAVA_FETCH_TIMEOUT_MS),
     })
   } catch (err) {
-    // 타임아웃(AbortError) 포함 — 개별 활동 실패는 POI 매칭을 건너뛰고 계속 진행
+    // 타임아웃(AbortError) 포함 — 개별 활동 실패는 POI 매칭·교통수단 구간 감지를 건너뛰고
+    // (fail-open) 계속 진행
     console.error(`[getActivityStreams] 네트워크 오류 (activityId: ${activityId}):`, err)
     return null
   }
 
   checkRateLimit(res.headers)
 
-  // 404 = 경로 데이터 없음 (실내 활동 등) — 정상 케이스
+  // 404 = 스트림 데이터 없음 (실내 활동 등) — 정상 케이스. route/velocitySmooth/time 모두 null.
   if (res.status === 404) {
-    return null
+    return { route: null, velocitySmooth: null, time: null }
   }
 
   if (!res.ok) {
@@ -215,9 +240,11 @@ export async function getActivityStreams(
 
   const data = (await res.json()) as StravaStreamsResponse
 
-  if (!data.latlng?.data || data.latlng.data.length === 0) {
-    return null
-  }
+  const route = data.latlng?.data && data.latlng.data.length > 0 ? data.latlng.data : null
+  const velocitySmooth = data.velocity_smooth?.data && data.velocity_smooth.data.length > 0
+    ? data.velocity_smooth.data
+    : null
+  const time = data.time?.data && data.time.data.length > 0 ? data.time.data : null
 
-  return data.latlng.data
+  return { route, velocitySmooth, time }
 }

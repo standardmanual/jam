@@ -83,6 +83,10 @@ const POLICY_ROW: Record<string, unknown> = {
   poi_block_hours: 72,
   vehicle_speed_filter_kmh: 60,
   gps_daily_distance_cap_km: 3000,
+  transit_walk_max_speed_kmh: 20,
+  transit_run_max_speed_kmh: 27,
+  transit_cycling_max_speed_kmh: 55,
+  transit_segment_min_duration_sec: 30,
   updated_at: '2026-08-31T03:48:29+00:00',
 }
 
