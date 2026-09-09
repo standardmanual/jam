@@ -81,7 +81,7 @@ Phase가 전부 끝났다.
 선례(20260826_012·013) 때문에, 3단계는 **두 티켓으로 분리**해 진행한다.
 - **3단계a** (`20260826_014`): 공용 Data Table 컴포넌트 구축 + 배지 목록 화면 파일럿 전환
 - **3단계b** (티켓 번호 미정, 3단계a CLOSED 후 생성): 나머지 9개 화면(POI·아이템북·미션·
-  투데이·레시피·유저·세계관·포인트·어뷰징) 롤아웃
+  투데이·레시피·유저·트라이브·포인트·어뷰징) 롤아웃
 
 아래 범위·완료 기준은 3단계 전체(a+b 합산) 기준으로 작성돼 있다 — 화면 목록은 a/b로
 어떻게 나뉘는지 각 티켓에서 확인할 것.
@@ -105,14 +105,14 @@ Phase가 전부 끝났다.
   `[data-admin-theme]` 스코프 밖이다 — 시맨틱 토큰(`bg-popover` 등) 대신 기존 admin
   컴포넌트들과 같은 하드코딩 뉴트럴 팔레트(`bg-white`, `text-neutral-900` 등)를 써야 한다
   (Phase 4에서 Portal `container` 리다이렉션을 하기 전까지는 계속 이렇게 한다).
-- 배지 화면은 검색·서브 필터(액티비티/지점 카테고리/세계관+컬렉션)·정렬 드롭조합을 전부
+- 배지 화면은 검색·서브 필터(액티비티/지점 카테고리/트라이브+컬렉션)·정렬 드롭조합을 전부
   유지했다(기존 기능 축소 없음) — 3단계b 화면들도 필터 기능은 축소하지 말 것.
 
 ### 범위
 `@tanstack/react-table` 추가, 재사용 가능한 어드민 Data Table 컴포넌트 구축(행 선택
 체크박스 + 정렬 + 일괄 액션 툴바 + 공식 Toolbar 필터 패턴).
 
-**전환 대상**: 배지 · POI · 아이템북 · 미션 · 투데이 · 레시피 · 유저 · 세계관(factions) ·
+**전환 대상**: 배지 · POI · 아이템북 · 미션 · 투데이 · 레시피 · 유저 · 트라이브(factions) ·
 포인트 · 어뷰징 — 각 화면의 현재 목록 컴포넌트(`BadgesTable.tsx`, `PoiTable.tsx`,
 `ItemBookTable.tsx`, `MissionTable.tsx`, `TodayCardTable.tsx`, `RecipeTable.tsx`,
 `users/page.tsx`, `users/[id]/page.tsx`, `factions/page.tsx`, `points/page.tsx`,
@@ -136,13 +136,13 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 | 화면 | 컬럼 | 필터 | 일괄 액션 | 서버 페이지네이션 |
 |---|---|---|---|---|
 | POI | 이름(정렬)·카테고리·위도경도·반경·연결배지 | 카테고리 Faceted + 정렬 Select | 없음(하드 DELETE만 존재, "비활성화"로 오인될 수 있어 제외 — 아래 alert 참고) | 있음(기존 유지, PAGE_SIZE=30) |
-| 아이템북 | 선택·이름(정렬)·세계관·필수배지·아이템배지수·보상배지·관리 | 세계관 Faceted + 정렬 Select | 선택 항목 비활성화(PATCH is_active, 단건 API 순차 호출) | 있음(기존 유지, PAGE_SIZE=30) |
+| 아이템북 | 선택·이름(정렬)·트라이브·필수배지·아이템배지수·보상배지·관리 | 트라이브 Faceted + 정렬 Select | 선택 항목 비활성화(PATCH is_active, 단건 API 순차 호출) | 있음(기존 유지, PAGE_SIZE=30) |
 | 미션(45건) | 미션(정렬)·타입·기간·달성(정렬)·상태·액션 | 없음(원래 없었음) | 없음(하드 DELETE만 존재) | 없음(클라이언트 정렬) |
 | 투데이(40건) | 선택·제목(정렬)·템플릿·노출형태·노출조건·기간·상태·액션 | 없음(원래 없었음) | 선택 항목 비활성화(PATCH is_active, 단건 API 순차 호출) | 없음(클라이언트 정렬) |
 | 레시피(33건) | 재료·필수액티비티·결과·성공률(정렬)·공개·힌트·액션 | 없음(원래 없었음) | 없음(하드 DELETE만, is_public은 공개여부라 별개 개념) | 없음(클라이언트 정렬) |
 | 유저(10명) | 이름(정렬)·이메일·지역·보유배지(정렬)·보유아이템(정렬)·가입일(정렬)·액션 | 없음 | 없음(정책상 민감 — 티켓 명시 제외) | 없음(클라이언트 정렬) |
 | 유저상세(배지 이력) | 배지·등급·획득경로·획득근거·트리거활동·획득일시(정렬) | 없음 | 없음(읽기 전용) | 없음(클라이언트 정렬) |
-| 세계관(10건) | 선택·이름(정렬)·태그라인·드랍가중치(정렬)·배지수·컬렉션수·정렬순서(정렬)·상태·관리 | 없음(원래 없었음) | 선택 항목 비활성화(기존 `PUT` 재사용, 전체 필드 스프레드로 부분 body 버그 우회 — 아래 alert 참고) | 없음(클라이언트 정렬) |
+| 트라이브(10건) | 선택·이름(정렬)·태그라인·드랍가중치(정렬)·배지수·컬렉션수·정렬순서(정렬)·상태·관리 | 없음(원래 없었음) | 선택 항목 비활성화(기존 `PUT` 재사용, 전체 필드 스프레드로 부분 body 버그 우회 — 아래 alert 참고) | 없음(클라이언트 정렬) |
 | 포인트 | 배지·미션 발행 순위(정렬 없음, 순번 고정) + 고액 지급/회수(유저·금액(정렬)·사유·일시(정렬)) | 없음 | 없음(회계성 로그) | 없음(클라이언트 정렬) |
 | 어뷰징(밴 0건·POI블록 1건) | 밴: 선택·유저·레벨(정렬)·사유·만료·적용자·액션 / POI블록: 선택·유저·POI·사유·차단만료(정렬)·액션 | 없음 | 선택 항목 해제(기존 단건 해제 API 순차 호출) | 없음(클라이언트 정렬) |
 
@@ -164,7 +164,7 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 - **4a**: 선행 인프라 수정(아래 2건) + 배지 도메인 — `BadgeForm.tsx`(160)·
   `BackgroundGeneratorPreview.tsx`(28)·`BadgeMultiSearchSelect.tsx`(13)·
   `BadgeSearchSelect.tsx`(9) ≈ 210건
-- **4b**: POI·아이템북·세계관 — `CategoryManager.tsx`(45)·`PoiForm.tsx`(38)·
+- **4b**: POI·아이템북·트라이브 — `CategoryManager.tsx`(45)·`PoiForm.tsx`(38)·
   `Pagination.tsx`(10)·`ItemBookForm.tsx`(56)·`FactionForm.tsx`(45)·
   `AdjacencyEditor.tsx`(10)·기타 소형 파일 ≈ 209건
 - **4c**: 운영 도구 — `simulator/page.tsx`(72)·`AbusingClient.tsx`(44)·
@@ -212,7 +212,7 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   이 값은 shadcn 8종 시맨틱 토큰이 아니라 별도 named palette라는 점을 4b~4d에서
   유사한 "테마 없는 강조색"을 만나면 참고할 것.
 
-**2026-08-26 갱신 — 4단계b 구현 완료(리뷰 대기)**: POI·아이템북·세계관 도메인 12개 파일
+**2026-08-26 갱신 — 4단계b 구현 완료(리뷰 대기)**: POI·아이템북·트라이브 도메인 12개 파일
 (`CategoryManager.tsx`·`PoiForm.tsx`·`Pagination.tsx`·`ItemBookForm.tsx`·`FactionForm.tsx`·
 `AdjacencyEditor.tsx` + 소형 페이지 6개, 실측 217건) 전환 완료, 사용자 최종 승인 대기 중
 (`20260826_018`). 4c/4d 착수 시 참고할 구현 노트:
@@ -223,7 +223,7 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   "옅어지는" 효과 — opacity 축소로 동일 방향 재현), `bg-[#f3f4f6] hover:bg-[#e5e7eb]`(보조
   버튼) → `bg-muted hover:bg-accent`(shadcn 표준 secondary/ghost hover 관용구),
   `hover:border-[#d1d5db]`(드롭존 hover 테두리 강조, 대응 시맨틱 토큰 없음) →
-  `hover:border-foreground/30`. "선택됨" 칩(`AdjacencyEditor.tsx`의 인접 세계관 토글)은
+  `hover:border-foreground/30`. "선택됨" 칩(`AdjacencyEditor.tsx`의 인접 트라이브 토글)은
   `bg-[#111111]/15 border-[#111111]/60 text-[#111111]`처럼 텍스트가 opacity 없는 순수
   hex라 4a의 `BadgeMultiSearchSelect` 특례(전부 opacity 변형이라 `text-primary` 통일)와
   달리 `text-foreground`로 분리 매핑했다 — "칩 4개 속성이 전부 같은 hex의 opacity
@@ -242,7 +242,7 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
 - 검증: `npx tsc --noEmit`(0 에러) / `npm test`(60파일 562테스트 전부 통과) / `npx next
   build`(성공) 전부 통과. 로컬 `next dev` + 임시 `ADMIN_EMAILS` 셸 환경변수 +
   `/api/dev-login` + Playwright로 1440px 데스크탑 렌더링 확인 — POI 목록/등록/카테고리관리/
-  수정, 아이템북 목록/등록/수정(배경 테마 카드 포함), 세계관 목록/등록/수정(인접 세계관
+  수정, 아이템북 목록/등록/수정(배경 테마 카드 포함), 트라이브 목록/등록/수정(인접 트라이브
   토글 포함) 전 화면 스크린샷 및 콘솔 에러 0건 확인.
 
 **2026-08-27 갱신 — 4단계c 구현 완료(리뷰 대기)**: 운영 도구 5개 파일(`simulator/page.tsx`·
@@ -320,18 +320,18 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   `PoiBlockTable.tsx`·`BanTable.tsx`·`BadgesTable.tsx`·`BadgeActiveToggleButton.tsx`·
   `ItemBookTable.tsx`·`ItemBookActiveToggleButton.tsx`)에 4a `BadgeForm.tsx`와 동일한
   `document.querySelector('[data-admin-theme]')` idiom으로 `themeContainer` 상태를
-  추가해 전량 연결했다. 이 중 6곳은 4a/4b/4c 산출물(배지·아이템북·세계관 도메인)이라
+  추가해 전량 연결했다. 이 중 6곳은 4a/4b/4c 산출물(배지·아이템북·트라이브 도메인)이라
   이 티켓의 "절대 건드리면 안 되는 것" 목록에 해당하지만, 색상 클래스는 전혀 건드리지 않고
   `container` prop 배선(3줄: `useEffect` import, `themeContainer` state, prop 연결)만
   추가한 최소 회귀 수정이다 — `alert-dialog.tsx` 자체를 이 티켓에서 전환하는 이상 그
-  소비자 전원이 정상 동작해야 완료라고 판단했다. 수정 후 배지/아이템북/세계관/투데이
+  소비자 전원이 정상 동작해야 완료라고 판단했다. 수정 후 배지/아이템북/트라이브/투데이
   4개 도메인 전부 Playwright로 다이얼로그를 실제로 열어 텍스트 가시성을 재확인했다.
 - **검증**: `npx tsc --noEmit`(0 에러) / `npm test`(60파일 562테스트 전부 통과) / `npx next
   build`(성공) 전부 통과. 로컬 `next dev` + 임시 `ADMIN_EMAILS=dev-tester@jam.local` 셸
   환경변수 + `/api/dev-login` + Playwright로 1440px 데스크탑 렌더링 확인 — 대시보드·미션
   (목록+생성폼)·투데이(목록+생성폼+일괄비활성화 다이얼로그)·레시피(목록+등록폼)·테마·
   포인트(검색+지급/회수+고액확인 팝업)·유저 목록/상세·유저 초기화 확인 모달 전 화면 +
-  앰비언트 드랍 Switch 토글(on/off) + 배지·아이템북·세계관 비활성화 다이얼로그(회귀 수정
+  앰비언트 드랍 Switch 토글(on/off) + 배지·아이템북·트라이브 비활성화 다이얼로그(회귀 수정
   검증) 전부 스크린샷 및 콘솔 에러 0건 확인.
 - **최종 완료 기준 grep**: `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin
   src/components/admin` 결과 `BadgeDetailPreviewFrame.tsx`·`ItemBookDetailPreviewFrame.tsx`

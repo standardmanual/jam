@@ -12,7 +12,7 @@ closed: 2026-08-27
 ## 배경 / 문제 정의
 `jam-web/src/app/api/admin/badges/[id]/route.ts`의 PUT 핸들러가 body에 없는(undefined) 필드를
 `?? null`/`?? 기본값`으로 조용히 강제 덮어쓴다. 부분 body로 PUT을 호출하면 기존 값이 사라진다.
-동일 패턴 버그가 세계관(티켓 20260827_005)과 아이템북(티켓 20260827_009) PUT에서도 발견돼
+동일 패턴 버그가 트라이브(티켓 20260827_005)과 아이템북(티켓 20260827_009) PUT에서도 발견돼
 이미 수정됐다 — 배지 PUT만 아직 남아 있다.
 
 추가로 이 PUT은 **존재하지 않는 id에 대한 404 처리가 아예 없다** — select 없이 바로 update한다.
@@ -104,7 +104,7 @@ jam-web/src/app/api/admin/badges/[id]/route.ts
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
 
 새로 추가된 노출 텍스트는 404 에러 메시지 `'배지를 찾을 수 없습니다.'` 하나뿐이며
-factions(`'세계관을 찾을 수 없습니다.'`)·item_books(`'아이템북을 찾을 수 없습니다.'`)와
+factions(`'트라이브을 찾을 수 없습니다.'`)·item_books(`'아이템북을 찾을 수 없습니다.'`)와
 동일한 어투·구조로 맞췄다.
 
 - [x] 용어 일관성: 고정 용어("배지") 사용

@@ -32,9 +32,9 @@ closed: 2026-09-01
 
 **2. 아이템 배지 설계 총량(900) 근접 지점 — 여유 10%뿐 (INFO)**
 - `jam-web/src/app/admin/itembooks/[id]/page.tsx:22` (미배정 아이템 배지 풀)
-- `jam-web/src/app/admin/factions/page.tsx:9` (세계관별 배지 카운트)
+- `jam-web/src/app/admin/factions/page.tsx:9` (트라이브별 배지 카운트)
 - `jam-web/src/app/admin/itembooks/page.tsx:11` (`itemBadgesRaw` 조회)
-- 현재는 `FACTIONS.md` 설계 총량(세계관 10 × 아이템배지 90 = 900개)에 의해 구조적으로
+- 현재는 `FACTIONS.md` 설계 총량(트라이브 10 × 아이템배지 90 = 900개)에 의해 구조적으로
   1000 미만이 보장되지만, 콘텐츠가 설계 목표에 근접하거나 초과하면 절단 위험으로 전환된다
 - 콘텐츠 총량 확장 계획이 있는지 먼저 확인하고, 필요 시 range 페이지네이션 선제 적용
 
@@ -87,20 +87,20 @@ curl/스크립트를 짜서 우회하는 것도 같은 제약을 회피하는 �
   티켓(20260826_011)이 이 지점을 검색 기반 `unassigned=true` API
   (`api/admin/badges/search/route.ts`, `MAX_RESULTS=20`)로 이미 전환해 이번 티켓 범위의
   위험 자체가 소멸했다. 037 감사 표에도 이 API는 이미 "안전"으로 분류돼 있다.
-- `admin/factions/page.tsx:9`(세계관별 배지 카운트, `badges.select('faction_id')` 무필터)
+- `admin/factions/page.tsx:9`(트라이브별 배지 카운트, `badges.select('faction_id')` 무필터)
   — 변경 없음, 여전히 900건 상한이 구조적으로 유효.
 - `admin/itembooks/page.tsx`의 `itemBadgesRaw` 조회 — 티켓 작성 이후 20260826_011에서
   페이지네이션(PAGE_SIZE=30)이 도입되며 `.in('item_book_id', bookIds)`의 `bookIds`가
   "전체 책"에서 "현재 페이지의 책(최대 30권)"으로 좁혀졌다. 900 설계 상한보다도 더
   타이트해져 위험이 줄었을지언정 늘지는 않았다.
 
-**콘텐츠 총량 확장 계획 확인**: `Service Plan/Specs/Content/FACTIONS.md`의 "세계관 신규
+**콘텐츠 총량 확장 계획 확인**: `Service Plan/Specs/Content/FACTIONS.md`의 "트라이브 신규
 추가 시 체크리스트"가 미체크 상태이고, `Business/서비스플랜/02 JAM! 서비스 플랜.md`에도
-900(세계관 10×아이템배지 90) 총량을 늘리는 확정 계획은 없다(어드민에 세계관 CRUD 인프라가
+900(트라이브 10×아이템배지 90) 총량을 늘리는 확정 계획은 없다(어드민에 트라이브 CRUD 인프라가
 있다는 서술은 "착수 시 빠르게 가능"이라는 역량 설명일 뿐 확정 로드맵이 아님). 티켓의
 구현 계획 2번 분기("계획 없으면 안전, 재검토 필요 시점만 기록하고 종료")를 따라
 `admin/factions/page.tsx`·`admin/itembooks/page.tsx`는 **수정하지 않았다.**
-**재검토 필요 시점**: (a) 세계관이 11번째 이상으로 늘거나, (b) 세계관당 아이템배지 90종
+**재검토 필요 시점**: (a) 트라이브이 11번째 이상으로 늘거나, (b) 트라이브당 아이템배지 90종
 설계가 늘어나 총량이 1,000에 근접(여유 10% 이하로 좁혀지는 시점, 대략 총량 900→950
 이상)하면 두 지점 모두 range 페이지네이션 선제 적용 필요.
 
@@ -146,7 +146,7 @@ Service Plan/Tickets/20260825_035_bug_PostgREST절단위험-잔여지점-점검.
   없는 선제 리팩터링을 하지 않았다(가드레일 §7).
 
 ### 잔여 이슈
-- `admin/factions/page.tsx:9`(세계관별 배지 카운트 합산)는 세계관이 11개 이상으로 늘거나
-  세계관당 아이템배지 수가 90종을 초과하는 시점에 재검토 필요 — 현재는 페이지네이션
+- `admin/factions/page.tsx:9`(트라이브별 배지 카운트 합산)는 트라이브이 11개 이상으로 늘거나
+  트라이브당 아이템배지 수가 90종을 초과하는 시점에 재검토 필요 — 현재는 페이지네이션
   미적용.
 - 체크인 배지 탭 청크 조회 정상 동작(다건 획득 시나리오)은 staging 병합 후 실측 A/B 필요.

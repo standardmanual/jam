@@ -128,7 +128,7 @@ jam-web/src/lib/i18n/ko.ts (EmptyState description 3건 추가)
 
 ### UX Writing 검증
 - [x] 용어 일관성: 드랍·픽업·인벤토리 등 고정 용어만 사용, 신규 description도 표 기준 준수
-- [x] 톤앤매너: 드랍/픽업 문맥은 "설렘·세계관" 톤(`dropEmptyBody`), 이력 관련은 "담담·안내" 톤(`historyEmptyBody`)
+- [x] 톤앤매너: 드랍/픽업 문맥은 "설렘·트라이브" 톤(`dropEmptyBody`), 이력 관련은 "담담·안내" 톤(`historyEmptyBody`)
 - [x] 문장 규칙: 해요체, description은 기존 이웃 문구(011에서 확립된 패턴)와 동일하게 마침표 생략
 
 ### 배포 정보

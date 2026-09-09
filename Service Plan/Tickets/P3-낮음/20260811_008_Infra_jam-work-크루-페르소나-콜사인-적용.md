@@ -10,7 +10,7 @@ closed: 2026-08-11
 # [Infra] /jam-work 크루 페르소나(콜사인) 적용 — 롤백 대비 문서화
 
 ## 배경 / 문제 정의
-[티켓 007](./20260811_007_Infra_개발자-리뷰어-분리-워크플로우-jam-work-도입.md)에서 만든 `/jam-work` 파이프라인(jam-developer / conservative-reviewer / progressive-reviewer)에 정체성을 부여하기 위해, JAM! 서비스의 트레일/체크포인트 세계관을 반영한 콜사인 페르소나를 설계 → 사용자 검토(아티팩트) → 적용.
+[티켓 007](./20260811_007_Infra_개발자-리뷰어-분리-워크플로우-jam-work-도입.md)에서 만든 `/jam-work` 파이프라인(jam-developer / conservative-reviewer / progressive-reviewer)에 정체성을 부여하기 위해, JAM! 서비스의 트레일/체크포인트 트라이브을 반영한 콜사인 페르소나를 설계 → 사용자 검토(아티팩트) → 적용.
 
 **요청 조건**: 이 워크플로우를 나중에 쉽게 삭제할 수 있도록, 적용 시점과 변경 범위를 명확히 기록해 둘 것.
 

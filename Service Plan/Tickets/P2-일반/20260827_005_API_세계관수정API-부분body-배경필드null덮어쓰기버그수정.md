@@ -7,7 +7,7 @@ created: 2026-08-27
 closed: 2026-08-27
 ---
 
-# [API] 세계관 수정 API 부분 body 배경 필드 null 덮어쓰기 버그 수정
+# [API] 트라이브 수정 API 부분 body 배경 필드 null 덮어쓰기 버그 수정
 
 ## 배경 / 문제 정의
 `PUT /api/admin/factions/[id]`(`jam-web/src/app/api/admin/factions/[id]/route.ts`)는 요청 body를
@@ -18,10 +18,10 @@ update 페이로드에 명시적으로 포함되므로, **부분 body로 호출�
 (그 외 `name`/`tagline`/`drop_weight` 등은 `?? null`이 없어 `undefined`인 채로 update 객체에
 들어가고, `JSON.stringify`가 `undefined` 키를 드롭하므로 실제로는 이 필드들만 영향받는다.)
 
-이 버그는 티켓 20260826_015(어드민 shadcn Data Table 3단계b, 세계관 일괄 비활성화 기능 구현)
+이 버그는 티켓 20260826_015(어드민 shadcn Data Table 3단계b, 트라이브 일괄 비활성화 기능 구현)
 작업 중 발견됐다. 그 작업에서는 `FactionsTable.tsx`의 일괄 비활성화가 이미 서버에서 불러온
 `FactionRow` 전체 필드를 그대로 스프레드해 `is_active`만 덮어써 보내는 방식으로 이 버그를
-우회했다(`jam-web/src/app/admin/factions/FactionsTable.tsx:38-47`, `177-210`) — 즉 지금 세계관
+우회했다(`jam-web/src/app/admin/factions/FactionsTable.tsx:38-47`, `177-210`) — 즉 지금 트라이브
 화면의 일괄 액션 자체는 이 버그를 밟지 않지만, 다른 호출부가 부분 body로 이 엔드포인트를
 재사용하면 여전히 걸린다.
 
@@ -32,12 +32,12 @@ update 페이로드에 명시적으로 포함되므로, **부분 body로 호출�
   - 방향: PUT 핸들러 안에서 update 이전에 기존 row를 먼저 조회(GET 핸들러와 동일한
     `select('*').eq('id', id).single()`)하고, 각 필드를
     `body.field !== undefined ? body.field : existing.field` 패턴으로 병합해 update한다.
-    존재하지 않는 id면 update 시도 전에 404("세계관을 찾을 수 없습니다.")로 응답한다.
+    존재하지 않는 id면 update 시도 전에 404("트라이브을 찾을 수 없습니다.")로 응답한다.
   - 대안으로 검토했던 "item_books처럼 별도 PATCH 엔드포인트 신설"은 채택하지 않는다 —
     `item_books`의 PATCH(`jam-web/src/app/api/admin/itembooks/[id]/route.ts:51-89`)는 범용
     부분 업데이트가 아니라 `is_active` 단일 필드 즉시 토글 전용으로 좁게 설계된 것이고, 그
     PUT 본체는 여전히 이 티켓과 동일한 `?? null` 버그를 그대로 갖고 있다(이번 티켓 범위 밖 —
-    별도 발견물로 기록). 세계관 쪽은 "부분 body 호출을 안전하게 만든다"는 게 목적이므로
+    별도 발견물로 기록). 트라이브 쪽은 "부분 body 호출을 안전하게 만든다"는 게 목적이므로
     PUT 자체를 멱등한 병합으로 고치는 쪽이 더 맞는다.
 - `FactionsTable.tsx`의 일괄 비활성화 우회 코드(전체 필드 스프레드 + 주석)는 PUT 수정 후에는
   더 이상 필요 없다. body를 `{ is_active: false }`만 보내도록 단순화하고, 이제는 사실과
@@ -61,7 +61,7 @@ update 페이로드에 명시적으로 포함되므로, **부분 body로 호출�
 
 ### 구현 내용 요약
 - `PUT /api/admin/factions/[id]`에서 update 이전에 기존 row를 `select('*').eq('id', id).single()`로
-  먼저 조회하도록 추가했다. 조회 실패/없음이면 404(`세계관을 찾을 수 없습니다.`)로 즉시 응답하고
+  먼저 조회하도록 추가했다. 조회 실패/없음이면 404(`트라이브을 찾을 수 없습니다.`)로 즉시 응답하고
   update를 시도하지 않는다.
   - `id !== undefined ? id : existing.id` 방식 병합은 대상에서 제외했다 — `id`는 요청 body로
     바뀌지 않는 불변 식별자이고 update도 `.eq('id', id)`로 URL 경로의 id만 사용하므로 병합 대상
@@ -122,7 +122,7 @@ jam-web/src/app/admin/factions/FactionsTable.tsx
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [x] 용어 일관성: 신규/변경된 사용자 노출 문구 없음(기존 404 에러 메시지 `세계관을 찾을 수
+- [x] 용어 일관성: 신규/변경된 사용자 노출 문구 없음(기존 404 에러 메시지 `트라이브을 찾을 수
       없습니다.`를 GET 핸들러와 동일하게 재사용했을 뿐, 문구 자체는 이번 티켓에서 새로 만들지
       않았다).
 - [x] 톤앤매너: 해당 없음(문구 변경 없음)
@@ -131,7 +131,7 @@ jam-web/src/app/admin/factions/FactionsTable.tsx
 - [x] 표기 규칙: 해당 없음(문구 변경 없음)
 
 ### 문서 갱신
-- `Service Plan/Specs/PRD/02_DATA_MODEL.md` "5. 세계관 (faction)" 섹션에 `PUT /api/admin/factions/[id]`가
+- `Service Plan/Specs/PRD/02_DATA_MODEL.md` "5. 트라이브 (faction)" 섹션에 `PUT /api/admin/factions/[id]`가
   부분 body 병합을 지원한다는 API 계약을 명시했다(개선 리뷰 제안 반영).
 
 ### 배포 정보
@@ -144,7 +144,7 @@ jam-web/src/app/admin/factions/FactionsTable.tsx
 - 구현 중 `jam-web/src/app/admin/factions/[id]/AdjacencyEditor.tsx`가 `PUT /api/admin/factions/[id]`를
   `{ adjacent_faction_ids: [...] }`만 담아 호출하는 것을 발견했다 — 티켓 본문에 명시적으로
   언급되지는 않았지만, 이 코드가 정확히 이 티켓이 고치려는 버그의 실제 피해 사례였다(인접
-  세계관을 저장할 때마다 배경 4개 필드가 조용히 null로 덮어써지고 있었음). 이번 PUT 병합 로직
+  트라이브을 저장할 때마다 배경 4개 필드가 조용히 null로 덮어써지고 있었음). 이번 PUT 병합 로직
   수정으로 이 호출부도 함께 정상화됐다 — 별도 코드 수정은 필요 없었다(AdjacencyEditor.tsx 자체는
   변경하지 않음).
 - 티켓 지시대로 item_books PATCH 신설 대안은 채택하지 않았고, PUT 자체를 병합 로직으로 고치는

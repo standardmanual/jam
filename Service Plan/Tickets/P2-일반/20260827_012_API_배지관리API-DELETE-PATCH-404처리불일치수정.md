@@ -43,7 +43,7 @@ PUT과도 불일치한다는 점이 범위 밖 발견물로 지적됐다.
   더 간결하고 기존 로직 변경이 적은 쪽을 택할 것.)
 - 에러 메시지 문구는 PUT과 동일하게 `'배지를 찾을 수 없습니다.'`로 통일한다.
 - 참고 패턴: `jam-web/src/app/api/admin/factions/[id]/route.ts` GET(6-15행)의
-  `select('*').eq('id', id).single()` 후 `error || !data`면 `'세계관을 찾을 수 없습니다.'` 404
+  `select('*').eq('id', id).single()` 후 `error || !data`면 `'트라이브을 찾을 수 없습니다.'` 404
   반환하는 짧은 패턴, 그리고 이번 PUT(20260827_011)의 select-후-병합 구조.
 
 ### UI/UX 관점
