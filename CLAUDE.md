@@ -114,3 +114,21 @@ DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요�
 5. 위에서 찾지 못한 경우에만 코드(`jam-web/src/`) 탐색
 
 ---
+
+## gstack
+
+이 프로젝트는 `~/.claude/skills/gstack`에 설치된 gstack 스킬 모음을 사용한다
+(이 프로젝트에만 적용되며, 다른 프로젝트에는 설치되어 있지 않다).
+
+**웹 브라우징은 항상 gstack의 `/browse` 스킬을 사용한다. `mcp__claude-in-chrome__*` 도구는
+절대 사용하지 않는다.**
+
+사용 가능한 gstack 스킬 목록: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`,
+`/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`,
+`/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`,
+`/qa-only`, `/design-review`, `/scrape`, `/setup-browser-cookies`, `/setup-deploy`,
+`/setup-gbrain`, `/retro`, `/investigate`, `/document-release`, `/document-generate`, `/codex`,
+`/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`,
+`/unfreeze`, `/gstack-upgrade`, `/learn`.
+
+---
