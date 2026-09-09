@@ -27,10 +27,10 @@ export const ko = {
     back: '뒤로',
     countItems: '{count}개',
     networkError: '네트워크 오류가 발생했어요',
-    footerSlogan: 'JAM은 삐끗할 때도 있습니다. 하지만 곧 바로 잡습니다.',
+    footerSlogan: 'JAM!은 삐끗할 때도 있습니다.\n하지만 곧 바로 잡습니다.',
     footerPhilosophy: 'Philosophy',
     footerPrivacy: '개인정보처리방침',
-    footerCopyright: '© 2026 Standard Manual All Rights Reserved.',
+    footerCopyright: '© 2026 Standard Manual',
   },
 
   /** 바텀 탭바(글로벌 네비게이션) 라벨 */
