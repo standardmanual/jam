@@ -2,9 +2,9 @@
 id: 20260909_2319
 category: UI
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-09
-closed:
+closed: 2026-09-09
 ---
 
 # [UI] Footer 컴포넌트를 Figma 디자인으로 변경
@@ -65,29 +65,51 @@ Figma 스크린샷·`get_design_context` 결과를 참고해 `Footer.tsx`의 컨
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+`Footer.tsx`를 Figma 디자인(nodeId 13:39)에 맞춰 재구성했다: 가운데 정렬 → 좌측 정렬,
+슬로건/링크 2개/저작권 세로 3블록(gap 40px), 배경 `bg-transparent` → `bg-[#2f2f2f]`(기존
+색상 토큰에 정확히 일치하는 값이 없어 하드코딩 + 근거 주석), Philosophy·개인정보처리방침
+링크를 가로 → 세로 배치, 로고 이미지 제거하고 저작권 텍스트만 유지. `ko.ts`의
+`footerSlogan`·`footerCopyright` 문구도 Figma 표기 그대로 갱신했다.
+
+인터페이스 리뷰에서 세로 배치 전환 후 두 링크 히트박스가 16px 겹치는 HIGH 등급 접근성
+결함이 발견되어, 가로 배치 시절 상쇄용이던 `-my-4`를 제거해 겹침을 해소했다(재검증 완료).
 
 ### 변경된 파일
 ```
--
+jam-web/src/components/ui/Footer.tsx
+jam-web/src/lib/i18n/ko.ts
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npm run lint` 전체 실행 — 에러 0건, 경고 13건(모두 이번 변경과 무관한 기존 항목)
+- [x] `npx tsc --noEmit` — 오류 0건
+- [ ] 실렌더 확인 — 워크트리 환경 제약으로 로컬 next dev를 띄우지 못해 staging 배포 후
+      육안 확인 필요 (잔여 이슈에 기록)
 
-### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
-**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
-
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+### UX Writing 검증
+- [x] 용어 일관성: 신규 고정 용어 없음, Figma 지정 문구 그대로 반영
+- [x] 톤앤매너: 기존 슬로건 톤 유지
+- [x] 문장 규칙: 해요체 대상 아님(브랜드 슬로건·저작권 표기)
+- [x] 표기 규칙: 저작권 연도·표기 Figma 그대로 반영
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-09 (staging 머지)
+- 환경: staging
+- 커밋: cd62f8d2d0642fb25d16c2dd0b6918ffb4caba2f (머지 커밋)
 
 ### 주요 의사결정 / 핵심 메모
+- 배경색 `#2f2f2f`는 기존 토큰(`--color-surface-elevated` #1f1f1f, `--color-bg-tint`
+  #222222, `--color-base-grey-700` #2a2a2a) 전수 대조 후 일치하는 값이 없어 하드코딩.
+  Footer 단일 용도라 신규 시맨틱 토큰은 만들지 않았고, 재사용처가 생기면 그때 토큰화하기로
+  결정(개선 리뷰 제안과 일치)
+- `text-[15px] leading-[28px]` 타이포도 기존 스텝(`--text-caption` 12px, `--text-body`
+  16px 등)과 일치하지 않아 임의값 사용. 같은 조합이 이 컴포넌트 안에서 3번 반복되므로,
+  Footer 외 다른 곳에서도 필요해지면 토큰 추가를 검토할 것
+- MODULAR 승격 후보 없음(design-system에 Footer 대응 컴포넌트 없음, 신규 UI 생성도 아님)
 
 ### 잔여 이슈
--
+- 실렌더 확인 미완료 — staging 배포 후 `/badges`, `/profile` 등 Footer가 노출되는 화면에서
+  배경색·레이아웃·링크 히트박스를 육안으로 재확인할 것
+- 인터페이스 리뷰가 제안한 두 항목은 참고용으로 남김(병합 차단 대상 아님):
+  - `#2f2f2f`·`15px/28px` 임의값이 Footer 외 다른 곳에서도 필요해지면 시맨틱 토큰화 검토
+  - `/jam-logo-white.png`가 Footer 외 다른 곳에서도 쓰이는지 확인해 죽은 자산 여부 점검
