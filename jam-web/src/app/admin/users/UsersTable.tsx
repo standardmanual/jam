@@ -13,6 +13,7 @@ import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import { ResetUserButton } from './ResetUserButton'
+import { DeleteUserButton } from './DeleteUserButton'
 import type { UserRow } from '@/types/database'
 
 export interface UserListRow {
@@ -29,9 +30,9 @@ const columnHelper = createColumnHelper<DataTableFeatures, UserListRow>()
 
 /**
  * 유저 목록 테이블(20260826_015) — 3단계a 공용 Data Table 컴포넌트로 전환했다. 10명 규모라
- * 서버 페이지네이션은 두지 않는다(사전 조사 결과). 유저 계정에 대한 일괄 삭제/정지는 정책상
- * 민감해 이 티켓 범위 밖이다(티켓 명시) — 행 선택 UI 자체를 생략하고 표시 방식(정렬·컬럼
- * 관리)만 전환한다.
+ * 서버 페이지네이션은 두지 않는다(사전 조사 결과). 유저 계정에 대한 "일괄" 삭제/정지는
+ * 정책상 민감해 범위 밖이라 행 선택 UI는 두지 않지만(티켓 20260826_015 명시), 개별 유저를
+ * 대상으로 한 강제 완전 삭제는 티켓 20260909_0911로 액션 컬럼에 추가했다.
  */
 export function UsersTable({ rows }: UsersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
@@ -94,10 +95,17 @@ export function UsersTable({ rows }: UsersTableProps) {
         enableSorting: false,
         enableHiding: false,
         cell: ({ row }) => (
-          <ResetUserButton
-            userId={row.original.user.id}
-            userName={row.original.user.username ?? row.original.user.email}
-          />
+          <div className="flex items-center gap-2">
+            <ResetUserButton
+              userId={row.original.user.id}
+              userName={row.original.user.username ?? row.original.user.email}
+            />
+            <DeleteUserButton
+              userId={row.original.user.id}
+              userName={row.original.user.username ?? row.original.user.email}
+              userEmail={row.original.user.email}
+            />
+          </div>
         ),
       }),
     ]),
