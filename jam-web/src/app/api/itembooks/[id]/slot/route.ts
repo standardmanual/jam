@@ -28,6 +28,21 @@ const UNSLOT_ERROR_STATUS_MAP: Record<string, { status: number; message: string 
   item_not_found: { status: 404, message: '인벤토리 아이템을 찾을 수 없습니다.' },
 }
 
+// 티켓 20260910_0015: 교체는 "해제 → 장착" 순차 호출이 아니라 원자적 RPC
+// swap_item_in_book() 한 번으로 처리한다(마이그레이션 151). 이유는 마이그레이션
+// 파일 상단 주석 참고 — user_item_book_slots의 UNIQUE(user_id, item_book_id,
+// badge_id) 제약 때문에 순차 호출로 흉내내면 두 번째 호출이 slot_insert_failed로
+// 실패할 수 있고, 그 경우 슬롯이 빈 채로 남는다.
+const SWAP_ERROR_STATUS_MAP: Record<string, { status: number; message: string }> = {
+  slot_not_found: { status: 404, message: '슬롯을 찾을 수 없습니다.' },
+  item_not_found: { status: 404, message: '인벤토리 아이템을 찾을 수 없습니다.' },
+  already_dropped: { status: 409, message: '이미 드랍된 아이템입니다.' },
+  not_owner: { status: 403, message: '본인의 아이템만 슬롯에 넣을 수 있습니다.' },
+  already_slotted: { status: 409, message: '이미 슬롯에 장착된 아이템입니다.' },
+  wrong_badge: { status: 400, message: '같은 배지의 아이템만 교체할 수 있어요.' },
+  same_item: { status: 409, message: '이미 장착된 개체예요.' },
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: itemBookId } = await params
   const supabase = createServiceClient()
@@ -113,4 +128,49 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   void itemBookId
 
   return NextResponse.json({ ok: true })
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: itemBookId } = await params
+  const supabase = createServiceClient()
+
+  const authHeader = req.headers.get('authorization')
+  if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const token = authHeader.replace('Bearer ', '')
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await req.json()
+  const { slot_id, new_inventory_item_id } = body
+
+  if (!slot_id || !new_inventory_item_id) {
+    return NextResponse.json({ error: 'slot_id와 new_inventory_item_id가 필요합니다.' }, { status: 400 })
+  }
+
+  const rpcArgs = {
+    p_user_id: user.id,
+    p_item_book_id: itemBookId,
+    p_slot_id: slot_id,
+    p_new_inventory_item_id: new_inventory_item_id,
+  }
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('swap_item_in_book', rpcArgs)
+
+  if (rpcError) {
+    console.error('[itembooks/slot] swap_item_in_book RPC 오류:', rpcError)
+    return NextResponse.json({ error: '교체에 실패했습니다.' }, { status: 500 })
+  }
+
+  const result = rpcResult as { ok: boolean; error?: string; slot?: unknown }
+
+  if (!result.ok) {
+    const mapped = SWAP_ERROR_STATUS_MAP[result.error ?? '']
+    if (!mapped) {
+      console.error('[itembooks/slot] swap_item_in_book 알 수 없는 에러 코드:', result.error)
+      return NextResponse.json({ error: '교체에 실패했습니다.' }, { status: 500 })
+    }
+    return NextResponse.json({ error: mapped.message }, { status: mapped.status })
+  }
+
+  return NextResponse.json({ slot: result.slot })
 }
