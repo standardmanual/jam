@@ -94,7 +94,7 @@ VALUES (NEW.id, 50, 0);
 5. `POST /api/onboarding/complete` (body에 `faction_id` 없이 호출) → `users.username`,
    `users.display_name`만 저장. `onboarding_completed_at`은 아직 기록하지 않는다
 
-**2단계 — 트라이브(세계관) 선택 + 프로필이미지**
+**2단계 — 트라이브 선택 + 프로필이미지**
 1. `factions WHERE is_active = true` 목록을 카드 그리드로 노출(비활성 트라이브 및 0개 상황
    방어 로직 포함)
 2. 프로필 이미지는 구글 기본값을 보여주고, 변경 시 기존 `POST /api/profile/avatar`(Supabase

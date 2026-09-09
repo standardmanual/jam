@@ -68,7 +68,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 | username | 고유 닉네임 (`^[a-z0-9._]+$`, nullable — 온보딩 1단계 완료 전 null) |
 | display_name | 자유 형식 표시 이름 (nullable, 1~30자, 형식 제한 없음). 화면에서 username이 노출되던 위치는 이 값이 있으면 이 값을, 없으면 username을 대신 노출(표시 전용 폴백 — DB에 복사해 채우지 않음). 온보딩 1단계에서 필수 입력, 프로필 편집에서 임의 시점에 다시 변경 가능(필수 아님, 수정 횟수 제한 없음, 티켓 20260830_0113) |
 | avatar_url | 프로필 이미지. 온보딩 2단계에서 구글 기본값을 보여주고 변경 가능(선택) |
-| faction_id | 온보딩 2단계에서 선택한 세계관(유저 대면 명칭: 트라이브) FK → `factions.id`, nullable. **온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변** — 변경 API 없음. 기존 유저는 null 허용(강제 재온보딩 없음, 티켓 20260909_2119) |
+| faction_id | 온보딩 2단계에서 선택한 트라이브 FK → `factions.id`, nullable. **온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변** — 변경 API 없음. 기존 유저는 null 허용(강제 재온보딩 없음, 티켓 20260909_2119) |
 | onboarding_completed_at | 온보딩 2단계(트라이브 포함)까지 완료된 시각, nullable. null이면 `/auth/callback`이 온보딩으로 리다이렉트한다(티켓 20260909_2119) |
 | last_location_lat/lng/at | 최근 위치 (GPS 조작 감지용) |
 | initial_sync_done | 첫 Strava 동기화 시 common 등급만 발급하는 게이트 완료 여부 |
