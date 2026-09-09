@@ -368,7 +368,7 @@ function OnboardingContent() {
           <div className={`t-input-wrap w-[70%] flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
             <div
               ref={inputShakeRef}
-              className={`t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
+              className={`t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] bg-surface-elevated transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
             >
               <span className="text-text/60 mr-1">@</span>
               <input
@@ -397,7 +397,7 @@ function OnboardingContent() {
 
           {/* 이름(display_name) 입력 — 티켓 20260909_2119: 온보딩에서는 필수값. 가로 70%로 축소 */}
           <div className="w-[70%] flex flex-col gap-2">
-            <div className="t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+            <div className="t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] bg-surface-elevated shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
               <input
                 type="text"
                 value={nameInput}
@@ -414,7 +414,7 @@ function OnboardingContent() {
 
           {/* 만 14세 이상 자기확인 — 이미 아이디가 있던 유저(1단계 재진입 아님)는 생략 */}
           {currentUsername === null && (
-            <label className="w-full flex items-center gap-[var(--spacing-12)] min-h-11 cursor-pointer">
+            <label className="w-[70%] flex items-center gap-[var(--spacing-12)] min-h-11 cursor-pointer">
               <span
                 className={`relative shrink-0 w-5 h-5 rounded-[var(--radius-xs)] flex items-center justify-center transition-shadow ${
                   ageConfirmed

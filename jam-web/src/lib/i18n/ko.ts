@@ -665,7 +665,7 @@ export const ko = {
     factionsEmptyError: '지금은 고를 수 있는 트라이브가 없어요. 잠시 후 다시 시도해 주세요.',
     retryButton: '다시 시도',
     invalidFactionError: '이 트라이브는 지금 선택할 수 없어요. 다른 트라이브를 선택해 주세요.',
-    finishButton: 'JAM! 시작하기',
+    finishButton: '시작하기',
     finishing: '가입하는 중',
   },
 
