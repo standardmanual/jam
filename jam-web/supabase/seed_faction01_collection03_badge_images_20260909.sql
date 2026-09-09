@@ -1,0 +1,10 @@
+-- 01-03 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-03/item-01-03-1.png?v=1788944133098' WHERE id IN ('3dbcf0a5-a49b-41f8-a14a-74a203229f3f'); -- 삼각김밥 껍질
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-03/item-01-03-2.png?v=1788944133456' WHERE id IN ('be56370b-f160-4b1b-9415-59b173991597'); -- 전자레인지에 데운 핫바
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-03/item-01-03-3.png?v=1788944133727' WHERE id IN ('b4c2da9a-7a89-46fc-8676-3d65f60fbb97'); -- 바나나맛 우유 뚜껑
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-03/item-01-03-4.png?v=1788944134872' WHERE id IN ('082d4810-5707-42e0-b4cc-235c1959426c'); -- 차가운 도시락 용기
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-03/item-01-03-5.png?v=1788944135364' WHERE id IN ('667884e2-a877-48dd-a216-d41a214ab25c'); -- 2+1 행사 바코드
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-03/item-01-03-6.png?v=1788944135636' WHERE id IN ('ca9bbdd1-1ac7-4608-b564-0df7dd95b42b'); -- 구겨진 캔맥주
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-03/item-01-03-7.png?v=1788944136102' WHERE id IN ('2fb9833f-8266-433e-a9d1-d32787f53d2b'); -- 매운 컵라면 용기
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-03/item-01-03-8.png?v=1788944136318' WHERE id IN ('73c6d98e-83a2-43c9-a524-fc3c31c80b09'); -- 플라스틱 숟가락
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-03/item-01-03-9.png?v=1788944136761' WHERE id IN ('ae350e6a-dd9d-4704-93d3-2cc74599fa97'); -- 검은 비닐봉지

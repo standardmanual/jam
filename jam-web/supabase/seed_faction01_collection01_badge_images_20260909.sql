@@ -1,0 +1,10 @@
+-- 01-01 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-01/item-01-01-1.png?v=1788944088787' WHERE id IN ('848729b0-9acd-4aac-b0fb-ffd588373a74'); -- 매콤달콤 떡볶이
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-01/item-01-01-2.png?v=1788944089478' WHERE id IN ('fd066b1c-acc6-4c03-83ea-bf39610a482c'); -- 한 입 베어문 핫도그
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-01/item-01-01-3.png?v=1788944089748' WHERE id IN ('7748c696-d219-40c9-bfb1-e2ca3c2bf3f8'); -- 황금 슈크림 붕어빵
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-01/item-01-01-4.png?v=1788944090189' WHERE id IN ('3fdb8e3f-81bd-4ebb-bf0d-fc4e2201a501'); -- 반으로 갈라진 나무젓가락
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-01/item-01-01-5.png?v=1788944090466' WHERE id IN ('d88c2000-a743-4948-baee-c95d6dd2e7a9'); -- 기름 묻은 종이봉투
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-01/item-01-01-6.png?v=1788944090923' WHERE id IN ('c8f9755b-bc16-4841-8e90-be02932375fb'); -- 식어버린 타코야끼
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-01/item-01-01-7.png?v=1788944091453' WHERE id IN ('fa216981-356e-4506-b1f6-f0121f5d046d'); -- 바닥난 양념치킨 소스
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-01/item-01-01-8.png?v=1788944091968' WHERE id IN ('78857d60-bd5a-426b-8ba0-e0d6ea76fe9b'); -- 길거리 트럭 뻥튀기
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-01/item-01-01-9.png?v=1788944092228' WHERE id IN ('052a5fa1-3a25-46db-80d5-99c564de3d03'); -- 마지막 남은 어묵 국물

@@ -1,0 +1,10 @@
+-- 01-07 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-07/item-01-07-1.png?v=1788944149242' WHERE id IN ('0504520b-411e-4f03-8904-44742f9fca34'); -- 바삭한 해물파전 조각
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-07/item-01-07-2.png?v=1788944149611' WHERE id IN ('27c18a29-5c53-49c7-84b1-6fd14d35079c'); -- 녹두빈대떡 부스러기
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-07/item-01-07-3.png?v=1788944150138' WHERE id IN ('803a4fac-d6f4-408b-80de-e0c3b60cb2f7'); -- 막걸리 앙금
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-07/item-01-07-4.png?v=1788944150639' WHERE id IN ('e04ed534-0c92-4491-b12a-fdee7e984f9b'); -- 양파 장아찌 국물
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-07/item-01-07-5.png?v=1788944151153' WHERE id IN ('11d10277-32b7-4de4-8f36-4c6646315315'); -- 젖은 종이컵
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-07/item-01-07-6.png?v=1788944151362' WHERE id IN ('c07e1b77-e79c-4cbd-81c9-e065f9857d89'); -- 기름 튄 냅킨
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-07/item-01-07-7.png?v=1788944151870' WHERE id IN ('09ab76e3-f1ad-49a9-b11e-81380b2d2d27'); -- 비닐우산 손잡이
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-07/item-01-07-8.png?v=1788944152177' WHERE id IN ('7b4f1551-967d-4e5e-9a41-936ca6dc38bd'); -- 고추 썰린 간장장
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-07/item-01-07-9.png?v=1788944152387' WHERE id IN ('fb938371-e895-4e02-b8c3-5dea3672f8d1'); -- 막걸리병 뚜껑

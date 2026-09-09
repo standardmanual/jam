@@ -1,0 +1,10 @@
+-- 01-08 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-08/item-01-08-1.png?v=1788944152881' WHERE id IN ('d372e1f3-814b-4abf-9b32-57475e91967d'); -- 뚝배기 파편
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-08/item-01-08-2.png?v=1788944153170' WHERE id IN ('47779d37-a791-4ae5-b545-e5913536ed39'); -- 다대기 묻은 숟가락
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-08/item-01-08-3.png?v=1788944153429' WHERE id IN ('69905de6-711d-4b7e-8757-85a64ed2b546'); -- 깍두기 국물 자국
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-08/item-01-08-4.png?v=1788944153916' WHERE id IN ('3c641723-c758-4d60-8cdd-e7d321e2d0f2'); -- 빈 헛개수 병
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-08/item-01-08-5.png?v=1788944154181' WHERE id IN ('f6a45cbc-52ae-46f5-be20-fab4dc526ffd'); -- 공깃밥 뚜껑
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-08/item-01-08-6.png?v=1788944154444' WHERE id IN ('4721229e-be26-4489-b0e3-fa8935f69c39'); -- 새우젓 한 마리
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-08/item-01-08-7.png?v=1788944155044' WHERE id IN ('d0506264-4ac3-4a84-8ba3-acae8efd0bf5'); -- 들깨가루 뭉치
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-08/item-01-08-8.png?v=1788944155290' WHERE id IN ('261bbd6c-aef0-4353-995a-134643a1bf13'); -- 돼지국밥 영수증
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-08/item-01-08-9.png?v=1788944155762' WHERE id IN ('ca729be5-9e8a-4b77-8461-b38226421ada'); -- 입 닦은 물티슈
