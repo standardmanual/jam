@@ -127,6 +127,17 @@ staging 배포 후 `/badges`에서 실렌더 확인한 결과, 세 가지 폴리
 3. **슬로건/링크/저작권 블록 간 간격**: `gap-[var(--spacing-40)]`(40px, Figma 원안 값) →
    `gap-[var(--spacing-24)]`(24px)로 축소. Figma 스펙보다 실제 화면에서 더 조밀한 배치를
    선호한다는 피드백
+4. **(추가 피드백) Philosophy·개인정보처리방침 여전히 벌어져 보임**: gap-0으로도 히트박스
+   상하 여백(8px×2=16px)이 남아 있어 "슬로건처럼 줄바꿈 수준으로 붙여 달라"는 요청을 받음.
+   `min-h-11`(44px, WCAG AAA 권장치)을 제거 — 캡션 12px 시절에는 히트박스가 24×24(AA
+   최소)에도 못 미쳐 44px로 강제 확보해야 했지만, 이번 Figma 반영으로 폰트가 15px/
+   line-height 28px로 커지면서 텍스트 자체 높이(28px)가 이미 AA 기준(24×24)을 넘는다.
+   min-h-11 제거로 히트박스가 텍스트 크기 그대로(28px)가 되어 AAA(44px)에서 AA(28px)로
+   낮아지지만, 여전히 WCAG 2.5.8 최소 기준은 충족하며 슬로건과 동일한 줄바꿈 간격으로
+   붙게 됐다
+
+**최종 배포**: staging, 커밋 fbcaeca1c8e1b481f5ddf43c3f98c1aa399c478b, 배포 READY 확인 후
+`https://stage.j-a-m.app/badges`에서 실렌더로 최종 확인 완료
 
 **변경된 파일**: `jam-web/src/components/ui/Footer.tsx`
 **테스트**: `npx eslint src/components/ui/Footer.tsx` 통과(경고·에러 없음)
