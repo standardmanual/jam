@@ -2325,11 +2325,11 @@ export type Database = {
       }
       users: {
         Row: {
-          activity_types: string[]
           avatar_url: string | null
           created_at: string
           display_name: string | null
           email: string
+          faction_id: string | null
           gps_daily_distance_date: string | null
           gps_daily_distance_km: number
           id: string
@@ -2339,16 +2339,16 @@ export type Database = {
           last_location_lat: number | null
           last_location_lng: number | null
           notifications_seen_at: string | null
-          region: string
+          onboarding_completed_at: string | null
           updated_at: string
           username: string | null
         }
         Insert: {
-          activity_types?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email: string
+          faction_id?: string | null
           gps_daily_distance_date?: string | null
           gps_daily_distance_km?: number
           id: string
@@ -2358,16 +2358,16 @@ export type Database = {
           last_location_lat?: number | null
           last_location_lng?: number | null
           notifications_seen_at?: string | null
-          region?: string
+          onboarding_completed_at?: string | null
           updated_at?: string
           username?: string | null
         }
         Update: {
-          activity_types?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email?: string
+          faction_id?: string | null
           gps_daily_distance_date?: string | null
           gps_daily_distance_km?: number
           id?: string
@@ -2377,11 +2377,19 @@ export type Database = {
           last_location_lat?: number | null
           last_location_lng?: number | null
           notifications_seen_at?: string | null
-          region?: string
+          onboarding_completed_at?: string | null
           updated_at?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_faction_id_fkey"
+            columns: ["faction_id"]
+            isOneToOne: false
+            referencedRelation: "factions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

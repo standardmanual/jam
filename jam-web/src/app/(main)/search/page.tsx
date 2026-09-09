@@ -2,7 +2,7 @@ import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { UserRow } from '@/types/database'
-import { ACTIVITY_TYPE_LABELS, getDisplayName } from '@/lib/utils'
+import { getDisplayName } from '@/lib/utils'
 import UserSearchBar from '../UserSearchBar'
 import ListRowCard from '@/components/ui/ListRowCard'
 import TopNav from '@/components/ui/TopNav'
@@ -26,8 +26,6 @@ interface UserSearchResult {
   username: string
   display_name: string | null
   avatar_url: string | null
-  region: string | null
-  activity_types: string[] | null
 }
 
 /**
@@ -50,7 +48,7 @@ async function searchUsers(rawQuery: string): Promise<UserSearchResult[]> {
 
   const { data, error } = await service
     .from('users')
-    .select('id, username, display_name, avatar_url, region, activity_types')
+    .select('id, username, display_name, avatar_url')
     .not('username', 'is', null)
     .or(`username.ilike.${pattern},email.ilike.${pattern}`)
     .limit(30)
@@ -61,7 +59,7 @@ async function searchUsers(rawQuery: string): Promise<UserSearchResult[]> {
   const excludedIds = excludedTestUserIds()
   const rows = ((data ?? []) as Pick<
     UserRow,
-    'id' | 'username' | 'display_name' | 'avatar_url' | 'region' | 'activity_types'
+    'id' | 'username' | 'display_name' | 'avatar_url'
   >[]).filter((row) => !excludedIds.includes(row.id))
 
   return rows
@@ -71,8 +69,6 @@ async function searchUsers(rawQuery: string): Promise<UserSearchResult[]> {
       username: row.username as string,
       display_name: row.display_name ?? null,
       avatar_url: row.avatar_url ?? null,
-      region: row.region ?? null,
-      activity_types: row.activity_types ?? null,
     }))
     .sort((a, b) => {
       const aExact = a.username.toLowerCase() === lowerQ ? 0 : 1
@@ -122,12 +118,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             <p className="text-text/50 text-[length:var(--text-caption)] px-1">{t(d.search.resultCount, { count: results.length })}</p>
             {results.map((u) => {
               const displayName = getDisplayName(u)
-              const subtitle = [
-                u.region,
-                u.activity_types?.length ? u.activity_types.map((a) => ACTIVITY_TYPE_LABELS[a] ?? a).join(', ') : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')
               return (
                 <ListRowCard
                   key={u.id}
@@ -142,7 +132,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                     )
                   }
                   title={displayName}
-                  subtitle={subtitle || undefined}
                   trailing={<ChevronRightIcon className="w-4 h-4 text-text/40" />}
                 />
               )

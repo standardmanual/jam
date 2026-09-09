@@ -17,7 +17,7 @@ import { DeleteUserButton } from './DeleteUserButton'
 import type { UserRow } from '@/types/database'
 
 export interface UserListRow {
-  user: Pick<UserRow, 'id' | 'email' | 'username' | 'created_at' | 'region'>
+  user: Pick<UserRow, 'id' | 'email' | 'username' | 'created_at'>
   badgeCount: number
   itemCount: number
 }
@@ -57,13 +57,6 @@ export function UsersTable({ rows }: UsersTableProps) {
         enableSorting: false,
         meta: { label: '이메일' },
         cell: ({ row }) => <span>{row.original.user.email}</span>,
-      }),
-      columnHelper.accessor((r) => r.user.region ?? '', {
-        id: 'region',
-        header: '지역',
-        enableSorting: false,
-        meta: { label: '지역' },
-        cell: ({ row }) => <span>{row.original.user.region ?? '—'}</span>,
       }),
       columnHelper.accessor((r) => r.badgeCount, {
         id: 'badgeCount',
