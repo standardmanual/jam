@@ -130,4 +130,5 @@ staging 배포 후 `/badges`에서 실렌더 확인한 결과, 세 가지 폴리
 
 **변경된 파일**: `jam-web/src/components/ui/Footer.tsx`
 **테스트**: `npx eslint src/components/ui/Footer.tsx` 통과(경고·에러 없음)
-**배포**: staging (커밋은 push 후 갱신)
+**배포**: staging, 커밋 1ef2bfdf3a15cbd7af096933780d1fdee16e85ae, 배포 READY 확인 후
+`https://stage.j-a-m.app/badges`에서 실렌더로 배경 투명화·간격 축소를 최종 확인
