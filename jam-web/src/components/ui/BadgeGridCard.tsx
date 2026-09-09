@@ -137,7 +137,7 @@ export default function BadgeGridCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-[var(--spacing-4)] pt-[var(--spacing-8)] w-full">
-        <p className="text-[13px] font-bold text-text text-center truncate w-full leading-tight">
+        <p className="text-[13px] font-bold text-text text-center line-clamp-2 w-full leading-tight">
           {undiscovered ? '???' : name}
         </p>
         {/* ×N은 aria-hidden이라 보조기술에는 이 문장만이 횟수를 전달한다 */}
