@@ -269,13 +269,13 @@ export default function SlotGrid({
               highlighted={slotMode && !readOnly && isSlottable}
               className={isUndiscovered ? 'opacity-30' : ''}
             >
-              {/* 슬롯 해제 버튼 */}
+              {/* 슬롯 해제 버튼 — 장착(양성 액션, primary)과 구분되는 취소성 액션이라 그레이로 뺀다 */}
               {isSlotted && !readOnly && (
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(badge.id, slot!.id) }}
                   disabled={pending}
-                  className="block mx-auto px-3 py-1 text-[length:var(--text-micro)] leading-[var(--leading-micro)] rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-primary)] text-[color:var(--color-text-on-primary)] transition-all disabled:opacity-40"
+                  className="block mx-auto px-3 py-1 text-[length:var(--text-micro)] leading-[var(--leading-micro)] rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-base-grey-600)] text-[color:var(--color-text-on-primary)] transition-all disabled:opacity-40"
                 >
                   {pending ? '…' : d.itembooks.unslotButton}
                 </button>
