@@ -350,6 +350,54 @@ export default function AbusingClient({
               </div>
             </label>
             <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">교통수단 구간 감지 — 걷기 최고속도 임계값 (km/h) — 걷기 활동 중 이 속도를 30초 이상 연속으로 초과하는 구간을 지하철·버스 탑승으로 보고 거리·시간에서 제외 (20260909_1012)</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={policy.transit_walk_max_speed_kmh}
+                  onChange={(e) => policySet('transit_walk_max_speed_kmh', parseInt(e.target.value) || 20)}
+                  className="w-28 bg-white border border-border rounded-xl px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                />
+                <span className="text-sm text-muted-foreground">km/h (기본: 20)</span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">교통수단 구간 감지 — 러닝 최고속도 임계값 (km/h)</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={policy.transit_run_max_speed_kmh}
+                  onChange={(e) => policySet('transit_run_max_speed_kmh', parseInt(e.target.value) || 27)}
+                  className="w-28 bg-white border border-border rounded-xl px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                />
+                <span className="text-sm text-muted-foreground">km/h (기본: 27)</span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">교통수단 구간 감지 — 자전거 최고속도 임계값 (km/h)</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={policy.transit_cycling_max_speed_kmh}
+                  onChange={(e) => policySet('transit_cycling_max_speed_kmh', parseInt(e.target.value) || 55)}
+                  className="w-28 bg-white border border-border rounded-xl px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                />
+                <span className="text-sm text-muted-foreground">km/h (기본: 55)</span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground">교통수단 구간 감지 — 최소 연속 지속시간 (초) — 이 시간 이상 연속으로 임계값을 초과해야 교통수단 구간으로 판정</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={policy.transit_segment_min_duration_sec}
+                  onChange={(e) => policySet('transit_segment_min_duration_sec', parseInt(e.target.value) || 30)}
+                  className="w-28 bg-white border border-border rounded-xl px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                />
+                <span className="text-sm text-muted-foreground">초 (기본: 30)</span>
+              </div>
+            </label>
+            <label className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">POI 블록 지속 시간 (시간)</span>
               <div className="flex items-center gap-3">
                 <input
