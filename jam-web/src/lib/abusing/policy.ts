@@ -19,6 +19,14 @@ export interface AbusingPolicy {
   poi_block_hours: number
   vehicle_speed_filter_kmh: number
   gps_daily_distance_cap_km: number
+  /** 걷기 활동 중 교통수단 구간 감지 임계값 (km/h). 20260909_1012 */
+  transit_walk_max_speed_kmh: number
+  /** 러닝 활동 중 교통수단 구간 감지 임계값 (km/h). 20260909_1012 */
+  transit_run_max_speed_kmh: number
+  /** 자전거 활동 중 교통수단 구간 감지 임계값 (km/h). 20260909_1012 */
+  transit_cycling_max_speed_kmh: number
+  /** 교통수단 구간으로 판정하기 위한 최소 연속 지속시간 (초). 20260909_1012 */
+  transit_segment_min_duration_sec: number
 }
 
 /**
@@ -50,6 +58,14 @@ export const DEFAULT_POLICY: AbusingPolicy = {
   poi_block_hours: 72,
   vehicle_speed_filter_kmh: 60,
   gps_daily_distance_cap_km: 3000,
+  // 걷기 20km/h(엘리트 경보 선수 최고 기록보다도 높음)·러닝 27km/h(30초 지속 창 기준 800m~마일
+  // 세계기록 페이스 — 마라톤 페이스가 아니라 그 시간대에 버틸 수 있는 단거리 기록이 물리적
+  // 상한선)·자전거 55km/h(엘리트 로드 사이클링 평균속도 40~45km/h + 내리막 스퍼트 여유분).
+  // 근거는 티켓 20260909_1012 참조.
+  transit_walk_max_speed_kmh: 20,
+  transit_run_max_speed_kmh: 27,
+  transit_cycling_max_speed_kmh: 55,
+  transit_segment_min_duration_sec: 30,
 }
 
 /**
@@ -58,6 +74,7 @@ export const DEFAULT_POLICY: AbusingPolicy = {
  * 등)가 계속 `policy.ts`에서 import할 수 있도록 경로만 유지한다. 나머지 4개
  * (gps_max_speed_kmh·poi_block_hours·vehicle_speed_filter_kmh·gps_daily_distance_cap_km)는
  * 상한 없는 정수 임계값이라 검증 범위가 다르므로 여기 없다.
+ * (`rate-keys.ts`가 실제 목록을 소유 — 이 주석은 개요일 뿐 파생 로직의 출처가 아니다)
  */
 export { RATE_KEYS }
 

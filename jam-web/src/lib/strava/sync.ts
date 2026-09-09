@@ -10,6 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/server'
 import { decrypt, encrypt } from '@/lib/utils'
 import { getActivities, getActivityStreams, refreshStravaToken } from '@/lib/strava/api'
+import { detectAndExcludeTransitSegments } from '@/lib/strava/transitSegment'
 import { evaluateBadges } from '@/lib/badge-engine/index'
 import { tryItemDrop } from '@/lib/drop-engine/index'
 import { matchPoisForActivity } from '@/lib/poi/matcher'
@@ -652,17 +653,41 @@ export async function processFetchedActivities(
 
   const activities: NormalizedActivity[] = rawActivities.map(normalizeActivity)
 
-  // POI 매칭 — 각 활동의 GPS 경로를 Streams API로 조회 후 POI 반경 교차 검증
-  //   백필 시 Strava API 폭주 방지: 최신 활동 N개만 매칭.
+  // 어뷰징 정책 — 정식 로더로 한 번만 읽어 아래 교통수단 구간 감지(즉시)와 Phase 18 차량속도
+  // 필터(뒤쪽)가 같은 스냅샷을 공유한다. 주입된 supabase 클라이언트를 그대로 넘겨 클라이언트
+  // 주입 사슬을 유지한다(20260831_1300).
+  const abusingPolicy = await getAbusingPolicy(supabase)
+
+  // POI 매칭·교통수단 구간 감지 — 각 활동의 GPS 경로·속도·시간을 Streams API로 조회.
+  //   백필 시 Strava API 폭주 방지: 최신 활동 N개만 조회.
   const poiMatchTargets = [...rawActivities]
     .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
     .slice(0, MAX_POI_MATCH_ACTIVITIES_PER_SYNC)
-  const routesByActivity = await Promise.all(
+  const streamsByActivity = await Promise.all(
     poiMatchTargets.map(async (rawActivity) => ({
       rawActivity,
-      route: await getActivityStreams(rawActivity.id, accessToken),
+      streams: await getActivityStreams(rawActivity.id, accessToken),
     }))
   )
+  const routesByActivity = streamsByActivity.map(({ rawActivity, streams }) => ({
+    rawActivity,
+    route: streams?.route ?? null,
+  }))
+
+  // 교통수단 구간 감지·재산정(티켓 20260909_1012) — normalizeActivity() 이후·배지/드랍/미션
+  // 판정 이전에 activities 배열을 제자리에서 교체한다. 스트림 조회 실패(streams === null)
+  // 시에는 detectAndExcludeTransitSegments가 fail-open으로 원본을 그대로 돌려준다.
+  const activityIndexByStravaId = new Map(activities.map((a, idx) => [a.stravaId, idx]))
+  for (const { rawActivity, streams } of streamsByActivity) {
+    const idx = activityIndexByStravaId.get(rawActivity.id)
+    if (idx === undefined) continue
+    activities[idx] = detectAndExcludeTransitSegments(
+      activities[idx],
+      streams ? { velocitySmooth: streams.velocitySmooth, time: streams.time } : null,
+      abusingPolicy
+    )
+  }
+
   let poiBadgesEarned = 0
 
   /**
@@ -835,9 +860,9 @@ export async function processFetchedActivities(
   // Phase 18: 차량 속도 필터 적용 — 어뷰징 정책의 정식 로더로 임계값을 읽는다.
   // 20260831_1300 — 이전에는 여기서 abusing_policy를 직접 select해 정식 경로(getAbusingPolicy)의
   // NUMERIC 정규화·조회 실패 로그·키 누락 관측·`id = 1` 조건을 전부 건너뛰었고, truthy 검사
-  // 때문에 임계값 0이 조용히 60으로 둔갑했다. 주입된 supabase 클라이언트를 그대로 넘겨
-  // 호출부의 클라이언트 주입 사슬을 유지한다.
-  const abusingPolicy = await getAbusingPolicy(supabase)
+  // 때문에 임계값 0이 조용히 60으로 둔갑했다.
+  // (abusingPolicy는 위쪽 교통수단 구간 감지에서 이미 조회해 뒀다 — 20260909_1012, 같은 배치
+  // 안에서 두 번 조회하지 않도록 재사용한다)
   let vehicleSpeedFilterKmh = abusingPolicy.vehicle_speed_filter_kmh
   if (!Number.isFinite(vehicleSpeedFilterKmh) || vehicleSpeedFilterKmh <= 0) {
     // 페일세이프 — 필터식이 `평균속도 <= 임계값`이라 임계값이 0 이하면 사실상 모든 활동이
