@@ -4,7 +4,7 @@
 > 개발자가 아니어도 이해할 수 있는 "개념적 ERD"입니다.
 >
 > **2026-08-06 갱신**: `jam-web/supabase/migrations/` 001~074 전수 대조로 현재 DB 상태 기준
-> 재작성. 원안(2026-07-09) 대비 세계관·조합·미션·포인트·팔로우·어뷰징·드랍엔진v2·CMS 등
+> 재작성. 원안(2026-07-09) 대비 트라이브·조합·미션·포인트·팔로우·어뷰징·드랍엔진v2·CMS 등
 > 12개 도메인이 신규 추가됐고, 기존 12개 테이블 중 다수가 구조적으로 변경됨.
 
 ---
@@ -26,7 +26,7 @@
                  ├─1:N─ user_item_book_slots        (슬롯별 장착 현황)
                  └─1:N─ user_item_book_completions   (완성 기록)
 
-[세계관]        factions ─N:M(인접)─ factions (faction_adjacency, 드랍 모멘텀용)
+[트라이브]        factions ─N:M(인접)─ factions (faction_adjacency, 드랍 모멘텀용)
 
 [POI/드랍]      poi ──category──> poi_categories
                  ├─1:N─ poi_drops (유저 드랍)
@@ -101,7 +101,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 | level | 무한레벨형의 레벨(Lv.1~∞). 등급형은 NULL. `level >= 1` |
 | family_key | 계열 식별자. 이름 문자열 대신 쓰는 안정적인 키. 활동 배지에만 채운다 |
 | sort_order | 표시 순서(오름차순). 계열 레일 1~99(계열 안 모든 등급이 같은 값을 공유) / 독립 발급 배지 101~ . **`0`은 «아직 설정하지 않음»이며 화면에서 맨 뒤로 밀린다** — 저장소의 다른 `sort_order`(`today_cards`·`factions`·`item_books`)는 0이 앞이라는 반대 관습이므로, 배지에 한해 이 규약을 따른다 |
-| faction_id | 소속 세계관 (아이템 배지) |
+| faction_id | 소속 트라이브 (아이템 배지) |
 | item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |
 | valid_from / valid_until | 노출 기간 |
@@ -188,7 +188,7 @@ badges / item_books / factions 세 테이블이 같은 배경 컬럼 세트를 �
 ## 4. 컬렉션
 
 ### item_books
-`faction_id`로 세계관 연동, `story_text`, `is_active`, `drop_condition_json` 보유. **`required_item_badge_ids` 컬럼은 삭제됨** — 완성 조건은 이제 `badges.item_book_id`(배지→북 소속)로 역방향 관리.
+`faction_id`로 트라이브 연동, `story_text`, `is_active`, `drop_condition_json` 보유. **`required_item_badge_ids` 컬럼은 삭제됨** — 완성 조건은 이제 `badges.item_book_id`(배지→북 소속)로 역방향 관리.
 
 `background_color`/`background_shader_id`(20260818_004, 컬렉션 상세 배경 테마용) 외에
 `background_image_url`/`background_video_url`(nullable, 20260819_013),
@@ -215,13 +215,13 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 
 ---
 
-## 5. 세계관 (faction) — 신규 도메인
+## 5. 트라이브 (faction) — 신규 도메인
 
 ### factions
-10개 세계관. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/FACTIONS.md](FACTIONS.md) 참고.
+10개 트라이브. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/FACTIONS.md](FACTIONS.md) 참고.
 
 `background_color`/`background_shader_id`(20260818_004) 외에 `background_image_url`/`background_video_url`
-(nullable, 20260819_013), `background_animation`(jsonb nullable, 20260901_1944) 보유. 세계관 자체는
+(nullable, 20260819_013), `background_animation`(jsonb nullable, 20260901_1944) 보유. 트라이브 자체는
 서비스 공개 상세 페이지가 없어 이 값이 직접 렌더링되지는 않음 — 소속 컬렉션·배지 전체로 캐스케이드
 일괄 적용하기 위한 마스터 값 저장용.
 
@@ -229,11 +229,11 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 영상·이미지는 복사도 삭제도 하지 않는다(§2 «배경 렌더링 우선순위» 참고).
 
 `PUT /api/admin/factions/[id]`는 부분 body 병합을 지원한다(20260827_005) — body에 없는(=`undefined`)
-필드는 기존 DB 값을 그대로 유지하고, body에 명시적으로 포함된 필드만 갱신한다. 인접 세계관만 저장하는
+필드는 기존 DB 값을 그대로 유지하고, body에 명시적으로 포함된 필드만 갱신한다. 인접 트라이브만 저장하는
 `AdjacencyEditor.tsx`처럼 일부 필드만 담아 호출하는 화면도 안전하게 이 엔드포인트를 재사용할 수 있다.
 
 ### faction_adjacency
-세계관 간 인접 그래프 (PK: faction_id + adjacent_faction_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) §3.2 참고.
+트라이브 간 인접 그래프 (PK: faction_id + adjacent_faction_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) §3.2 참고.
 
 ---
 
@@ -389,7 +389,7 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 `ingredient_badge_ids[]`(2~3개 → **2~10개로 확장**), `result_badge_id`(nullable — 배지 삭제돼도 레시피 보존), `success_rate`, `hint_text`, `is_public`, `required_activity_badge_id`(소모되지 않는 필수 보유 조건).
 
 ### combine_policy / user_combine_state (신규)
-세계관 다양성 티어별 확률 정책(싱글톤) + 유저별 연속 실패 피티 카운터.
+트라이브 다양성 티어별 확률 정책(싱글톤) + 유저별 연속 실패 피티 카운터.
 
 > 조합 시스템은 v1(2026-07 초 계획) → v2(2026-07-27 재설계, "정석 레시피/재료 정확 매칭")로 갈아엎어짐. 현재 상세는 [Specs/Content/COMBINE_RECIPES.md](COMBINE_RECIPES.md) 참고.
 
@@ -503,7 +503,7 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 - 액티비티 배지는 영구 귀속(정체성), 아이템 배지는 거래 가능(경제), 체크인 배지는 반복 획득(같은 지점에 다시 체크인 가능) — 세 가지 획득 패턴이 근본적으로 달라 발급 테이블을 분리 유지.
 
 **컬렉션 소유 관계 역전**
-- 원안은 `item_books.required_item_badge_ids`(북이 배지 목록을 가짐)였으나, 세계관 연동과 슬롯 장착 UX가 추가되며 `badges.item_book_id`(배지가 소속 북을 가짐) 구조로 역전. 배지 하나가 정확히 하나의 북에만 속하는 현재 컨텐츠 구조(세계관 10개 = 컬렉션 10개, 각 90종)와 더 잘 맞음.
+- 원안은 `item_books.required_item_badge_ids`(북이 배지 목록을 가짐)였으나, 트라이브 연동과 슬롯 장착 UX가 추가되며 `badges.item_book_id`(배지가 소속 북을 가짐) 구조로 역전. 배지 하나가 정확히 하나의 북에만 속하는 현재 컨텐츠 구조(트라이브 10개 = 컬렉션 10개, 각 90종)와 더 잘 맞음.
 
 **포인트를 append-only 원장으로**
 - `point_wallets.balance`는 캐시일 뿐, 실제 진실은 `point_transactions`. 정합성 검증(어드민 `points` 화면의 유통량 대사)과 감사 추적을 위해 잔액을 직접 UPDATE하지 않고 RPC로만 변경.

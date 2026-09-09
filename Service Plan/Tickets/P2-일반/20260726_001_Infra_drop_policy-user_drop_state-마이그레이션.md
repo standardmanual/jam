@@ -15,7 +15,7 @@ Phase 11에서 드랍엔진 v2(3레이어) 도입. 싱글톤 drop_policy + 유�
 ## 상세 요구사항
 - `drop_policy` (싱글톤):
   - rarity_weights (common/rare/legendary/mythic %)
-  - momentum_weights (이전 드랍 세계관별 가중치)
+  - momentum_weights (이전 드랍 트라이브별 가중치)
   - pity_threshold, pity_bonus_rarity 등
 - `user_drop_state`:
   - user_id, last_drop_faction_id, last_drop_book_id

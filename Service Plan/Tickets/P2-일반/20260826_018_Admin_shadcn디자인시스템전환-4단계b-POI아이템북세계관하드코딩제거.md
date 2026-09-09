@@ -7,13 +7,13 @@ created: 2026-08-26
 closed: 2026-08-26
 ---
 
-# [Admin] shadcn 디자인시스템 전환 — 4단계b: POI·아이템북·세계관 하드코딩 제거
+# [Admin] shadcn 디자인시스템 전환 — 4단계b: POI·아이템북·트라이브 하드코딩 제거
 
 ## 배경 / 문제 정의
 
 4단계a(`20260826_017`, CLOSED)에서 선행 인프라 버그(`--color-border`/`--color-primary`/
 `--color-secondary` 스코프 누락, Radix Portal container 미적용)를 이미 고쳤고 배지 도메인
-전환도 마쳤다. 이 티켓(4단계b)은 그 기반 위에서 POI·아이템북·세계관 도메인의 하드코딩을
+전환도 마쳤다. 이 티켓(4단계b)은 그 기반 위에서 POI·아이템북·트라이브 도메인의 하드코딩을
 제거한다 — **인프라는 이미 갖춰져 있으니 재작업 불필요, 매핑 작업만 하면 된다.**
 
 시작 전 `Service Plan/Specs/PRD/AdminUI/PHASES.md`의 "Phase 4" 절과 `20260826_017` 티켓의
@@ -54,7 +54,7 @@ closed: 2026-08-26
 - 배지 도메인(4단계a 산출물) — 이 티켓과 무관, 손대지 않음
 - 4c/4d 대상 파일(운영 도구, 미션/투데이/레시피/유저/포인트/어뷰징 등) — 이 티켓에서
   손대지 않음
-- POI·아이템북·세계관 CRUD 로직·API — 색상 클래스만 교체
+- POI·아이템북·트라이브 CRUD 로직·API — 색상 클래스만 교체
 - `--color-border`/`--color-primary`/`--color-secondary` 스코프 오버라이드, Radix Portal
   container prop 인터페이스(4단계a 산출물) — 재사용만 하고 재설계하지 않는다
 
@@ -66,7 +66,7 @@ closed: 2026-08-26
    화면 1곳에서만 예시로 연결했다 — 이 티켓에서 다루는 화면의 다이얼로그/셀렉트도 동일하게
    `[data-admin-theme]`로 연결할 것)
 3. 로컬 dev 서버 + 임시 `ADMIN_EMAILS` 오버라이드로 실제 확인 — **1440px 데스크탑에서
-   POI·아이템북·세계관 목록/등록/수정 화면을 전부 실제 브라우저로 확인할 것**
+   POI·아이템북·트라이브 목록/등록/수정 화면을 전부 실제 브라우저로 확인할 것**
 4. `npx tsc --noEmit` / `npm test` / `npx next build` 통과 확인
 5. `grep -rn "text-\[#\|border-\[#\|bg-\[#" src/app/admin/poi src/app/admin/itembooks
    src/app/admin/factions`로 잔존 0건 확인(미리보기 프레임 제외)
@@ -103,7 +103,7 @@ closed: 2026-08-26
 theme]')`, `BadgeForm.tsx`와 동일 패턴)를 추가하고, Select 6곳 + `ItemBookForm.tsx`의
 AlertDialog(컬렉션 비활성화 확인 모달) 1곳에 `container={themeContainer ?? undefined}`를
 연결했다. Playwright로 `[role=listbox]`/`[role=alertdialog]`가 실제로 `[data-admin-theme]`
-스코프의 자손 DOM에 포털됨을 프로그램적으로 확인(POI 카테고리 Select, 아이템북 소속세계관
+스코프의 자손 DOM에 포털됨을 프로그램적으로 확인(POI 카테고리 Select, 아이템북 소속트라이브
 Select, 아이템북 비활성화 AlertDialog 3곳 표본 검증). `select.tsx`/`alert-dialog.tsx`/
 `dialog.tsx` 자체의 하드코딩 뉴트럴 팔레트는 4a와 동일하게 이번 티켓 범위 밖으로 판단해
 건드리지 않았다(티켓 대상 파일 목록·완료 기준 grep 모두 `src/components/admin/ui/`를
@@ -117,7 +117,7 @@ src/app/admin/poi src/app/admin/itembooks src/app/admin/factions` 결과
 `/api/dev-login` 세션 발급 후 Playwright로 1440px 데스크탑 실렌더링 확인:
 - POI 목록·등록·카테고리 관리·수정 화면
 - 아이템북(컬렉션) 목록·등록·수정 화면(배경 테마 카드, 배지 슬롯 관리 포함)
-- 세계관 목록·등록·수정 화면(인접 세계관 토글 칩 선택 상태 포함)
+- 트라이브 목록·등록·수정 화면(인접 트라이브 토글 칩 선택 상태 포함)
 - 전 화면 스크린샷 시각 확인 결과 기존과 색상·레이아웃 크게 다르지 않음, 콘솔 에러 0건
 - AlertDialog 오버레이(`bg-black/70`)가 `getComputedStyle`상 정확한 opacity·전체 뷰포트
   크기로 렌더링됨을 확인(스크린샷에서 오버레이가 흐릿하게 보이는 건 headless 캡처 시점

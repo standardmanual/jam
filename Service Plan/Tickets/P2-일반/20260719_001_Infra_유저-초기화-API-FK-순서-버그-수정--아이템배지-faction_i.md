@@ -28,7 +28,7 @@ SERVICE_OPERATIONS_20260719_1715 문서 기반 작업.
 
 ### 변경된 파일
 ```
-10개 세계관 + Public (019_seed_worldview.sql)
+10개 트라이브 + Public (019_seed_worldview.sql)
 ```
 
 ### 테스트 결과

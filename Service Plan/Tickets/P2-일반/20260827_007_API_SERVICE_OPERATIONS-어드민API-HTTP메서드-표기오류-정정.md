@@ -15,7 +15,7 @@ closed: 2026-08-27
 엔드포인트의 HTTP 메서드가 실제 코드(`jam-web/src/app/api/admin/*/[id]/route.ts` 등)와
 다르게 기재돼 있다. 예: `/api/admin/factions/[id]`는 문서상 `PATCH`지만 실제 구현은 `PUT`이다.
 
-티켓 20260827_005(세계관 PUT API 부분 body 버그 수정) 개선 리뷰 중 나온 범위 밖 발견물이다.
+티켓 20260827_005(트라이브 PUT API 부분 body 버그 수정) 개선 리뷰 중 나온 범위 밖 발견물이다.
 
 ## 상세 요구사항
 
