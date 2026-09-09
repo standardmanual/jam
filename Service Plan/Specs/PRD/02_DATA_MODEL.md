@@ -13,7 +13,8 @@
 
 ```
 [유저/인증]     users ─1:1─ strava_connections
-                 └─1:N─ strava_activities (동기화 원본 활동 기록)
+                 ├─1:N─ strava_activities (동기화 원본 활동 기록)
+                 └──faction_id──> factions (온보딩에서 1회 선택, 탈퇴 전까지 불변)
 
 [배지]          badges (activity/item/checkin) ──faction_id──> factions
                  ├─1:N─ user_activity_badges      (활동/아이템 배지, 행은 1개 · 반복 획득은 earn_count 누적)
@@ -57,17 +58,18 @@
 ## 1. 유저 / 인증
 
 ### users
-Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에서 username 설정.
+Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보딩(아이디·이름 → 트라이브·프로필이미지)에서
+필수 필드를 채운다.
 
 | 필드 | 설명 |
 |------|------|
 | id | Supabase auth.users FK |
 | email | 구글 계정 이메일 |
-| username | 고유 닉네임 (`^[a-z0-9._]+$`, nullable — 온보딩 완료 전 null) |
-| display_name | 자유 형식 표시 이름 (nullable, 1~30자, 형식 제한 없음). 화면에서 username이 노출되던 위치는 이 값이 있으면 이 값을, 없으면 username을 대신 노출(표시 전용 폴백 — DB에 복사해 채우지 않음). 프로필 편집 화면에서만 설정 가능, 필수 아님, 수정 횟수 제한 없음 (티켓 20260830_0113) |
-| avatar_url | 프로필 이미지 |
-| region | 활동 지역 |
-| activity_types[] | 활동 종목 복수 선택 |
+| username | 고유 닉네임 (`^[a-z0-9._]+$`, nullable — 온보딩 1단계 완료 전 null) |
+| display_name | 자유 형식 표시 이름 (nullable, 1~30자, 형식 제한 없음). 화면에서 username이 노출되던 위치는 이 값이 있으면 이 값을, 없으면 username을 대신 노출(표시 전용 폴백 — DB에 복사해 채우지 않음). 온보딩 1단계에서 필수 입력, 프로필 편집에서 임의 시점에 다시 변경 가능(필수 아님, 수정 횟수 제한 없음, 티켓 20260830_0113) |
+| avatar_url | 프로필 이미지. 온보딩 2단계에서 구글 기본값을 보여주고 변경 가능(선택) |
+| faction_id | 온보딩 2단계에서 선택한 세계관(유저 대면 명칭: 트라이브) FK → `factions.id`, nullable. **온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변** — 변경 API 없음. 기존 유저는 null 허용(강제 재온보딩 없음, 티켓 20260909_2119) |
+| onboarding_completed_at | 온보딩 2단계(트라이브 포함)까지 완료된 시각, nullable. null이면 `/auth/callback`이 온보딩으로 리다이렉트한다(티켓 20260909_2119) |
 | last_location_lat/lng/at | 최근 위치 (GPS 조작 감지용) |
 | initial_sync_done | 첫 Strava 동기화 시 common 등급만 발급하는 게이트 완료 여부 |
 
@@ -75,6 +77,10 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 온보딩에�
 > 2026-08-30(티켓 20260830_0113)에 `display_name`이 **별도의 표시 전용 필드**로
 > 재도입됨 — 지금은 `username`(로그인 식별자·URL 슬러그)과 `display_name`(자유 형식
 > 노출 이름, 없으면 username 폴백)이 공존한다.
+>
+> `region`·`activity_types[]`(활동 지역·활동 종목 복수 선택)는 마이그레이션 001부터 있었으나
+> 입력 UI가 한 번도 만들어진 적 없는 죽은 컬럼이었다 — 티켓 20260909_2119에서 PRD 삭제 +
+> DB 컬럼 삭제 + 참조 코드 정리로 완전히 제거했다.
 
 ### strava_connections
 원안과 거의 동일. `access_token`/`refresh_token` 암호화 저장, `backfill_completed` 유지.

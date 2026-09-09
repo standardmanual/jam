@@ -61,8 +61,17 @@ export interface UserRow {
   /** 자유 형식 표시 이름(20260830_0113). NULL이면 화면 렌더 시점에 username으로 폴백 — DB엔 복사해 채우지 않는다. */
   display_name: string | null
   avatar_url: string | null
-  region: string
-  activity_types: ActivityType[]
+  /**
+   * 온보딩에서 유저가 직접 선택한 세계관(유저 대면 명칭: "트라이브"). 티켓 20260909_2119.
+   * 온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변 — 변경 API가 어디에도 없다.
+   * 기존 유저는 NULL일 수 있다(강제 재온보딩 없음, 점진적 유도는 후속 과제).
+   */
+  faction_id: string | null
+  /**
+   * 온보딩 2단계(아이디·이름 + 트라이브·프로필이미지)까지 완료된 시각. 티켓 20260909_2119.
+   * NULL이면 온보딩 미완료 — `/auth/callback`이 이 값 기준으로 `/onboarding` 리다이렉트를 판정한다.
+   */
+  onboarding_completed_at: string | null
   /** 첫 Strava 싱크 완료 여부 — false이면 배지 엔진이 Common만 발급 */
   initial_sync_done: boolean
   /** GPS 조작 감지(checkAndUpdateLocation)가 유지하는 마지막 픽업/드랍 위치 — 감지 여부와 무관하게 매번 갱신 */

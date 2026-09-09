@@ -5,12 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { UserIcon } from '@/components/ui/icons'
+import { Card } from '@ds/components/cards/Card'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
-import { d } from '@/lib/i18n'
+import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
+import type { FactionRow } from '@/types/database'
 
-type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
+type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
+type Step = 'account' | 'tribe'
 
 function validateFormat(value: string): string | null {
   if (value.length === 0) return d.onboarding.errorEmpty
@@ -26,17 +29,58 @@ function OnboardingContent() {
   const searchParams = useSearchParams()
   const supabase = createClient()
 
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  // 현재 유저 로드가 끝나기 전에는 아무 단계도 그리지 않는다(깜빡임 방지).
+  const [loaded, setLoaded] = useState(false)
+  const [step, setStep] = useState<Step>('account')
+
+  // ── 1단계: 아이디 ────────────────────────────────────────────────────────
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [status, setStatus] = useState<CheckStatus>('idle')
   const [message, setMessage] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // 티켓 20260901_2217: 14세 미만 가입 제한 — self-declaration 체크박스. 실제 생년월일
-  // 검증이 아니다(구글 OAuth로 생년월일을 받아오지 않는 현재 구조의 한계).
+
+  // ── 1단계: 이름(display_name) — 20260830_0113 프로필 편집과 동일 기준(최대 30자, 형식 제한 없음).
+  // 온보딩에서는 필수값이다(프로필 편집과 달리 빈 값 허용 안 함, 티켓 20260909_2119).
+  const [nameInput, setNameInput] = useState('')
+
+  // 티켓 20260901_2217: 14세 미만 가입 제한 self-declaration. 이미 아이디가 있던 유저(1단계를
+  // 예전에 마쳤거나 이번 세션에서 방금 마친 유저)는 가입 시점에 이미 확인한 셈이라 다시
+  // 보여주지 않는다 — currentUsername이 null일 때(진짜 최초 1단계)만 렌더링한다.
   const [ageConfirmed, setAgeConfirmed] = useState(false)
 
-  // 현재 유저 정보 로드 (avatar_url + 이미 username 있으면 홈으로)
+  const [submittingStep1, setSubmittingStep1] = useState(false)
+
+  // ── 2단계: 트라이브 + 프로필이미지 ───────────────────────────────────────
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  type FactionsState =
+    | { kind: 'loading' }
+    | { kind: 'ready'; factions: Pick<FactionRow, 'id' | 'name' | 'tagline' | 'image_url'>[] }
+    | { kind: 'error' }
+  const [factionsState, setFactionsState] = useState<FactionsState>({ kind: 'loading' })
+  const [selectedFactionId, setSelectedFactionId] = useState<string | null>(null)
+  const [step2Error, setStep2Error] = useState('')
+  const [submittingStep2, setSubmittingStep2] = useState(false)
+
+  async function loadFactions() {
+    setFactionsState({ kind: 'loading' })
+    const { data, error } = await supabase
+      .from('factions')
+      .select('id, name, tagline, image_url')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+    if (error || !data) {
+      setFactionsState({ kind: 'error' })
+      return
+    }
+    setFactionsState({ kind: 'ready', factions: data as Pick<FactionRow, 'id' | 'name' | 'tagline' | 'image_url'>[] })
+  }
+
+  // 현재 유저 정보 로드 — username·display_name·avatar_url·온보딩 완료 여부 확인
   useEffect(() => {
     let cancelled = false
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -45,7 +89,6 @@ function OnboardingContent() {
         router.replace('/login')
         return
       }
-      // users 테이블에서 username / avatar_url 확인
       supabase
         .from('users')
         .select('*')
@@ -53,12 +96,33 @@ function OnboardingContent() {
         .single()
         .then(({ data: raw }) => {
           if (cancelled) return
-          const data = raw as { username: string | null; avatar_url: string | null } | null
-          if (data?.username) {
+          const data = raw as {
+            username: string | null
+            display_name: string | null
+            avatar_url: string | null
+            onboarding_completed_at: string | null
+          } | null
+
+          // 2단계(트라이브 포함)까지 이미 끝난 유저는 온보딩으로 올 이유가 없다.
+          if (data?.onboarding_completed_at) {
             router.replace('/')
             return
           }
+
           setAvatarUrl(data?.avatar_url ?? null)
+
+          if (data?.username) {
+            // 1단계는 이미 마쳤고 2단계(트라이브)만 남은 유저 — 아이디는 이미 확정된
+            // 값이므로 재확인 없이 곧장 2단계로 보낸다.
+            setCurrentUsername(data.username)
+            setInput(data.username)
+            setStatus('same')
+            setNameInput(data.display_name ?? '')
+            setAgeConfirmed(true)
+            setStep('tribe')
+            loadFactions()
+          }
+          setLoaded(true)
         })
     })
     return () => { cancelled = true }
@@ -80,16 +144,23 @@ function OnboardingContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  // 입력 변경 처리
+  // ── 1단계: 아이디 입력 ───────────────────────────────────────────────────
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, '')
     setInput(raw)
-    setStatus('idle')
     setMessage('')
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
-    if (raw.length === 0) return
+    if (raw.length === 0) {
+      setStatus('idle')
+      return
+    }
+
+    if (raw === currentUsername) {
+      setStatus('same')
+      return
+    }
 
     const formatError = validateFormat(raw)
     if (formatError) {
@@ -117,22 +188,31 @@ function OnboardingContent() {
     }, 500)
   }
 
-  async function handleSubmit() {
-    if (status !== 'available' || submitting || !ageConfirmed) return
-    setSubmitting(true)
+  function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setNameInput(e.target.value)
+  }
+
+  const canProceedStep1 =
+    (status === 'available' || status === 'same') &&
+    nameInput.trim().length > 0 &&
+    ageConfirmed &&
+    !submittingStep1
+
+  async function handleStep1Next() {
+    if (!canProceedStep1) return
+    setSubmittingStep1(true)
+    setMessage('')
     try {
       const res = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: input }),
+        body: JSON.stringify({ username: input, display_name: nameInput.trim() }),
       })
       const json = await res.json() as { success?: boolean; error?: string }
       if (json.success) {
-        // GA4 onboarding_complete — 현재 온보딩 플로우는 username 설정 1단계뿐이다
-        // (01_PRD.md "온보딩 — username 설정(최초 1회)"). 활동 종목·지역 입력 단계는
-        // 아직 서비스에 없다.
-        trackEvent('onboarding_complete')
-        router.replace('/')
+        setCurrentUsername(input)
+        setStep('tribe')
+        if (factionsState.kind !== 'ready') loadFactions()
       } else if (json.error === 'DUPLICATE') {
         setStatus('taken')
         setMessage(d.onboarding.taken)
@@ -142,7 +222,78 @@ function OnboardingContent() {
     } catch {
       setMessage(d.onboarding.networkError)
     } finally {
-      setSubmitting(false)
+      setSubmittingStep1(false)
+    }
+  }
+
+  // ── 2단계: 프로필이미지 변경 — 기존 /api/profile/avatar 재사용 ────────────
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowed.includes(file.type)) {
+      setUploadError(d.profileEdit.fileTypeError)
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError(d.profileEdit.fileSizeError)
+      return
+    }
+
+    setUploadError('')
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/profile/avatar', {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await res.json() as { avatar_url?: string; error?: string }
+      if (json.avatar_url) {
+        setAvatarUrl(json.avatar_url)
+      } else {
+        setUploadError(d.profileEdit.uploadError)
+      }
+    } catch {
+      setUploadError(d.onboarding.networkError)
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  // ── 2단계: 트라이브 선택 + 최종 제출 ──────────────────────────────────────
+  async function handleFinish() {
+    if (!selectedFactionId || submittingStep2) return
+    setSubmittingStep2(true)
+    setStep2Error('')
+    try {
+      const res = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: currentUsername, display_name: nameInput.trim(), faction_id: selectedFactionId }),
+      })
+      const json = await res.json() as { success?: boolean; error?: string }
+      if (json.success) {
+        // GA4 onboarding_complete — 티켓 20260909_2119: 2단계(트라이브 포함)까지 마쳤을 때만 전송.
+        trackEvent('onboarding_complete')
+        router.replace('/')
+      } else if (json.error === 'INVALID_FACTION') {
+        setStep2Error(d.onboarding.invalidFactionError)
+        setSelectedFactionId(null)
+        loadFactions()
+      } else if (json.error === 'ALREADY_SET') {
+        // 정상 UI 흐름에서는 도달하지 않는다(이미 온보딩 완료 유저는 로드 시점에 홈으로 리다이렉트됨).
+        router.replace('/')
+      } else {
+        setStep2Error(d.onboarding.genericError)
+      }
+    } catch {
+      setStep2Error(d.onboarding.networkError)
+    } finally {
+      setSubmittingStep2(false)
     }
   }
 
@@ -155,102 +306,259 @@ function OnboardingContent() {
   // 중복확인 상태 메시지 — 즉시 전환 대신 Text states swap (04)
   const { ref: messageRef, initialText: initialMessage } = useTextSwap<HTMLParagraphElement>(message)
   // 유효하지 않거나 이미 사용 중인 아이디 — Error state shake (12).
-  // `.is-error`는 선언적으로, `.is-shaking`은 훅이 명령형으로 재생한다.
   const inputShakeRef = useErrorShake<HTMLDivElement>(hasError ? status : null)
 
-  return (
-    <div className="min-h-full bg-surface text-text flex flex-col items-center justify-center px-[var(--spacing-24)] py-[var(--spacing-48)]">
-      <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
+  if (!loaded) {
+    return (
+      <div className="min-h-full bg-surface text-text flex items-center justify-center">
+        <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
-        {/* 프로필 이미지 */}
-        <div className="flex flex-col items-center gap-[var(--spacing-16)]">
-          {avatarUrl ? (
-            <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover" />
-          ) : (
-            <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center">
-              <UserIcon className="w-10 h-10 text-text/50" />
-            </div>
-          )}
-          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line">
-            {d.onboarding.title}
-          </h1>
-          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">
-            {d.onboarding.subtitle}
-          </p>
-        </div>
+  if (step === 'account') {
+    return (
+      <div className="min-h-full bg-surface text-text flex flex-col items-center justify-center px-[var(--spacing-24)] py-[var(--spacing-48)]">
+        <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
 
-        {/* 입력 영역 */}
-        <div className={`t-input-wrap w-full flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
-          <div
-            ref={inputShakeRef}
-            className={`t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
-          >
-            <span className="text-text/60 mr-1">@</span>
-            <input
-              type="text"
-              value={input}
-              onChange={handleChange}
-              placeholder={d.onboarding.usernamePlaceholder}
-              maxLength={30}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
-            />
-            {status === 'checking' && (
-              <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
+          <div className="flex flex-col items-center gap-[var(--spacing-16)]">
+            {avatarUrl ? (
+              <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover" />
+            ) : (
+              <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center">
+                <UserIcon className="w-10 h-10 text-text/50" />
+              </div>
             )}
+            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line">
+              {d.onboarding.step1Title}
+            </h1>
+            <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">
+              {d.onboarding.step1Subtitle}
+            </p>
           </div>
 
-          {/* 메시지는 항상 마운트한 채 텍스트만 교체한다(빈 문자열 = 숨김).
-              min-h-6로 자리를 잡아 스왑 중 레이아웃이 흔들리지 않게 한다. */}
-          <p
-            ref={messageRef}
-            aria-live="polite"
-            className="t-text-swap min-h-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70"
+          {/* 아이디 입력 */}
+          <div className={`t-input-wrap w-full flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
+            <div
+              ref={inputShakeRef}
+              className={`t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
+            >
+              <span className="text-text/60 mr-1">@</span>
+              <input
+                type="text"
+                value={input}
+                onChange={handleChange}
+                placeholder={d.onboarding.usernamePlaceholder}
+                maxLength={30}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
+              />
+              {status === 'checking' && (
+                <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin ml-2 shrink-0" />
+              )}
+            </div>
+            <p
+              ref={messageRef}
+              aria-live="polite"
+              className="t-text-swap min-h-6 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] px-1 text-text/70"
+            >
+              {initialMessage}
+            </p>
+          </div>
+
+          {/* 이름(display_name) 입력 — 티켓 20260909_2119: 온보딩에서는 필수값 */}
+          <div className="w-full flex flex-col gap-2">
+            <div className="t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
+              <input
+                type="text"
+                value={nameInput}
+                onChange={handleNameChange}
+                placeholder={d.profileEdit.namePlaceholder}
+                maxLength={30}
+                className="flex-1 bg-transparent placeholder:text-text/30 focus:outline-none"
+              />
+            </div>
+            <p className="text-right text-[length:var(--text-caption)] leading-[var(--leading-caption)] px-1 text-text/40">
+              {t(d.onboarding.nameCounter, { count: nameInput.length })}
+            </p>
+          </div>
+
+          {/* 만 14세 이상 자기확인 — 이미 아이디가 있던 유저(1단계 재진입 아님)는 생략 */}
+          {currentUsername === null && (
+            <label className="w-full flex items-center gap-[var(--spacing-12)] min-h-11 cursor-pointer">
+              <span
+                className={`relative shrink-0 w-5 h-5 rounded-[var(--radius-xs)] flex items-center justify-center transition-shadow ${
+                  ageConfirmed
+                    ? 'shadow-[inset_0_0_0_2px_var(--color-border-inverse)]'
+                    : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={ageConfirmed}
+                  onChange={(e) => setAgeConfirmed(e.target.checked)}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  aria-label={d.onboarding.ageConfirmLabel}
+                />
+                {ageConfirmed && (
+                  <svg viewBox="0 0 16 16" className="w-3 h-3 pointer-events-none" fill="none" aria-hidden="true">
+                    <path d="M3 8.5L6.5 12L13 4.5" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
+              <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/90">
+                {d.onboarding.ageConfirmLabel}
+              </span>
+            </label>
+          )}
+
+          <button
+            onClick={handleStep1Next}
+            disabled={!canProceedStep1}
+            className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
           >
-            {initialMessage}
+            {submittingStep1 ? d.onboarding.step1Saving : d.onboarding.step1NextButton}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── 2단계: 트라이브 선택 + 프로필이미지 ──────────────────────────────────
+  return (
+    <div className="min-h-full bg-surface text-text flex flex-col items-center px-[var(--spacing-24)] py-[var(--spacing-48)]">
+      <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
+
+        <div className="flex flex-col items-center gap-[var(--spacing-16)]">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="relative active:scale-95 transition-transform duration-100"
+            disabled={uploading}
+            aria-label={d.profileEdit.changePhotoAlt}
+          >
+            {avatarUrl ? (
+              <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover" />
+            ) : (
+              <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center">
+                <UserIcon className="w-10 h-10 text-text/50" />
+              </div>
+            )}
+            {uploading && (
+              <div className="absolute inset-0 rounded-[var(--radius-cards)] bg-surface/70 flex items-center justify-center">
+                <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </button>
+          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.profileEdit.changePhoto}</p>
+          {uploadError && (
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{uploadError}</p>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
+          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line mt-[var(--spacing-8)]">
+            {d.onboarding.step2Title}
+          </h1>
+          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">
+            {d.onboarding.step2Subtitle}
           </p>
         </div>
 
-        {/* 만 14세 이상 자기확인 — 티켓 20260901_2217. 서비스에 Checkbox 개념이 없어
-            (MODULAR Checkbox는 "미도입 8종", 티켓 20260820_010 유지/보류 확정) 네이티브
-            input[type=checkbox]를 최소 스타일링해 쓴다. 바이너리-컬러 원칙에 맞춰 체크
-            여부는 색이 아니라 보더 두께(체크 시 2px)와 체크 아이콘으로 구분한다. */}
-        <label className="w-full flex items-center gap-[var(--spacing-12)] min-h-11 cursor-pointer">
-          <span
-            className={`relative shrink-0 w-5 h-5 rounded-[var(--radius-xs)] flex items-center justify-center transition-shadow ${
-              ageConfirmed
-                ? 'shadow-[inset_0_0_0_2px_var(--color-border-inverse)]'
-                : 'shadow-[inset_0_0_0_1px_var(--color-border-inverse)]'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={ageConfirmed}
-              onChange={(e) => setAgeConfirmed(e.target.checked)}
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              aria-label={d.onboarding.ageConfirmLabel}
-            />
-            {ageConfirmed && (
-              <svg viewBox="0 0 16 16" className="w-3 h-3 pointer-events-none" fill="none" aria-hidden="true">
-                <path d="M3 8.5L6.5 12L13 4.5" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </span>
-          <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text/90">
-            {d.onboarding.ageConfirmLabel}
-          </span>
-        </label>
+        {/* 트라이브 카드 그리드 */}
+        {factionsState.kind === 'loading' && (
+          <div className="w-full flex items-center justify-center py-[var(--spacing-32)]">
+            <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
 
-        {/* 생성하기 버튼 */}
-        <button
-          onClick={handleSubmit}
-          disabled={status !== 'available' || submitting || !ageConfirmed}
-          className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
-        >
-          {submitting ? d.onboarding.submitting : d.onboarding.submitButton}
-        </button>
+        {factionsState.kind === 'error' && (
+          <div className="w-full flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center text-text/70">
+              {d.onboarding.factionsLoadError}
+            </p>
+            <button
+              onClick={loadFactions}
+              className="min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-pill-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
+            >
+              {d.onboarding.retryButton}
+            </button>
+          </div>
+        )}
+
+        {factionsState.kind === 'ready' && factionsState.factions.length === 0 && (
+          <div className="w-full flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center text-text/70">
+              {d.onboarding.factionsEmptyError}
+            </p>
+            <button
+              onClick={loadFactions}
+              className="min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-pill-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
+            >
+              {d.onboarding.retryButton}
+            </button>
+          </div>
+        )}
+
+        {factionsState.kind === 'ready' && factionsState.factions.length > 0 && (
+          <div className="w-full grid grid-cols-2 gap-[var(--spacing-8)]">
+            {factionsState.factions.map((faction) => {
+              const selected = selectedFactionId === faction.id
+              return (
+                <Card
+                  key={faction.id}
+                  tone={selected ? 'inverse' : 'default'}
+                  onClick={() => setSelectedFactionId(faction.id)}
+                  className="flex flex-col items-center text-center gap-[var(--spacing-8)]"
+                  style={{ minHeight: 140 }}
+                >
+                  {faction.image_url ? (
+                    <Image src={faction.image_url} alt="" width={48} height={48} className="w-12 h-12 rounded-[var(--radius-cards)] object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-[var(--radius-cards)] bg-black/10 flex items-center justify-center">
+                      <UserIcon className="w-6 h-6 opacity-40" />
+                    </div>
+                  )}
+                  <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
+                    {faction.name}
+                  </span>
+                  {faction.tagline && (
+                    <span className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] opacity-60">
+                      {faction.tagline}
+                    </span>
+                  )}
+                </Card>
+              )
+            })}
+          </div>
+        )}
+
+        {step2Error && (
+          <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{step2Error}</p>
+        )}
+
+        <div className="w-full flex flex-col gap-[var(--spacing-12)]">
+          <button
+            onClick={handleFinish}
+            disabled={!selectedFactionId || submittingStep2}
+            className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
+          >
+            {submittingStep2 ? d.onboarding.finishing : d.onboarding.finishButton}
+          </button>
+          {/* 1단계(아이디·이름)로 돌아가 값을 다시 확인·수정할 수 있게 한다. */}
+          <button
+            onClick={() => setStep('account')}
+            className="w-full min-h-11 text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:opacity-70 transition-opacity"
+          >
+            {d.common.back}
+          </button>
+        </div>
       </div>
     </div>
   )
