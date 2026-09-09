@@ -36,30 +36,27 @@ export default function Footer() {
       <span className="text-[15px] leading-[28px] font-normal text-text whitespace-pre-line">{d.common.footerSlogan}</span>
       {/* 20260901_2125: 슬로건 아래 → 저작권 줄 위. 캡션 톤을 그대로 따르고
           밑줄만 붙여 링크임을 알린다(과한 강조 금지).
-          min-h-11(44px)로 터치 영역을 확보한다 — 캡션 12px 그대로면 히트 박스가 약 72×12px로
-          WCAG 2.2의 24×24조차 못 미치는데, 이 링크가 철학 페이지로 가는 유일한 진입점이다.
           globals.css가 -webkit-tap-highlight-color를 전역으로 껐으므로 active 피드백을
           직접 준다(텍스트 링크에는 scale보다 opacity가 자연스럽다).
-          20260901_2217: 개인정보처리방침 링크를 추가하며 이 줄에 함께 둔다. 두 링크 모두
-          동일한 min-h-11 히트박스·스타일을 쓴다.
+          20260901_2217: 개인정보처리방침 링크를 추가하며 이 줄에 함께 둔다.
           20260909_2319: Figma 디자인이 두 링크를 세로로 쌓으므로 flex-row → flex-col로 변경.
-          가로 배치 시절 좌우 인접 요소와의 시각 간격을 맞추려 쓰던 -my-4(상하 마진 상쇄)는
-          세로 배치에서 상쇄할 대상이 없어지면서 오히려 컨테이너 gap과 겹쳐 두 44px 히트박스가
-          겹치는 오터치 결함을 만들어(인터페이스 리뷰 HIGH) 제거했다. 이후 실기기 확인 결과
-          컨테이너 gap(16px)에 각 링크의 44px 히트박스 상하 여백(텍스트 28px 기준 위아래 8px씩)이
-          더해져 텍스트 사이 시각적 공백이 32px로 과하게 벌어져 보인다는 피드백을 받아 gap을
-          0으로 줄였다 — 히트박스 44px는 그대로 유지되므로 겹침은 발생하지 않고(각 박스가
-          맞닿을 뿐), 텍스트 사이 실제 간격은 위아래 여백만 남아 16px(8+8)로 줄어든다. */}
+          당시 min-h-11(44px)로 터치 영역을 확보했던 것은 캡션 12px 기준(히트박스가 약
+          72×12px로 WCAG 2.2 AA 24×24조차 못 미치던 시절)의 유산이었는데, 이번 Figma 반영으로
+          폰트가 15px/line-height 28px로 커지면서 텍스트 자체 높이(28px)가 이미 AA 최소
+          기준(24×24)을 넘는다. 실기기 확인 후 "슬로건처럼 줄바꿈 수준으로 붙여 달라"는
+          피드백을 받아 min-h-11을 제거했다 — 44px 히트박스(AAA 권장치)를 버리고 텍스트 크기
+          그대로(28px, AA 기준 충족)를 히트박스로 쓴다. gap-0과 결합해 두 링크가 슬로건의
+          줄바꿈과 같은 간격으로 붙는다. */}
       <div className="flex flex-col items-start gap-0">
         <Link
           href="/philosophy"
-          className="inline-flex items-center min-h-11 text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerPhilosophy}
         </Link>
         <Link
           href="/privacy"
-          className="inline-flex items-center min-h-11 text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerPrivacy}
         </Link>
