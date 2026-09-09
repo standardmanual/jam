@@ -305,7 +305,7 @@ export const ko = {
     emptyCheckinTitle: '아직 획득한 체크인 배지가 없어요',
     emptyCheckinBody: '산, 지하철역 같은 지점을 지나는 활동이 기록되면 자동으로 획득돼요',
     emptyItembookTitle: '아직 컬렉션이 없어요',
-    emptyItembookBody: '관리자가 컬렉션을 등록하면 이 곳에 표시돼요',
+    emptyItembookBody: '아이템배지를 획득하면 컬렉션이 나타납니다',
 
     expiringSoon: '곧 만료',
     itembookCompleted: '완성',
