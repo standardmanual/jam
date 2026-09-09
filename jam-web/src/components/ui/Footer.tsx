@@ -36,25 +36,26 @@ export default function Footer() {
       <span className="text-[15px] leading-[28px] font-normal text-text whitespace-pre-line">{d.common.footerSlogan}</span>
       {/* 20260901_2125: 슬로건 아래 → 저작권 줄 위. 캡션 톤을 그대로 따르고
           밑줄만 붙여 링크임을 알린다(과한 강조 금지).
-          min-h-11(44px)로 터치 영역을 확보하고 -my-4로 늘어난 높이를 상쇄해 배치의
-          시각 간격은 그대로 둔다 — 캡션 12px 그대로면 히트 박스가 약 72×12px로 WCAG 2.2의
-          24×24조차 못 미치는데, 이 링크가 철학 페이지로 가는 유일한 진입점이다.
+          min-h-11(44px)로 터치 영역을 확보한다 — 캡션 12px 그대로면 히트 박스가 약 72×12px로
+          WCAG 2.2의 24×24조차 못 미치는데, 이 링크가 철학 페이지로 가는 유일한 진입점이다.
           globals.css가 -webkit-tap-highlight-color를 전역으로 껐으므로 active 피드백을
           직접 준다(텍스트 링크에는 scale보다 opacity가 자연스럽다).
           20260901_2217: 개인정보처리방침 링크를 추가하며 이 줄에 함께 둔다. 두 링크 모두
           동일한 min-h-11 히트박스·스타일을 쓴다.
-          20260909_2319: Figma 디자인이 두 링크를 세로로 쌓으므로 flex-row → flex-col로
-          변경(-my-4 상쇄·min-h-11 히트박스 규칙은 그대로 유지). */}
+          20260909_2319: Figma 디자인이 두 링크를 세로로 쌓으므로 flex-row → flex-col로 변경.
+          가로 배치 시절 좌우 인접 요소와의 시각 간격을 맞추려 쓰던 -my-4(상하 마진 상쇄)는
+          세로 배치에서 상쇄할 대상이 없어지면서 오히려 컨테이너 gap-16과 겹쳐 두 44px
+          히트박스가 16px 겹치는 오터치 결함을 만들었다(인터페이스 리뷰 HIGH) — 제거. */}
       <div className="flex flex-col items-start gap-[var(--spacing-16)]">
         <Link
           href="/philosophy"
-          className="inline-flex items-center min-h-11 -my-4 text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="inline-flex items-center min-h-11 text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerPhilosophy}
         </Link>
         <Link
           href="/privacy"
-          className="inline-flex items-center min-h-11 -my-4 text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
+          className="inline-flex items-center min-h-11 text-[15px] leading-[28px] font-normal text-text underline underline-offset-2 active:opacity-60 transition-opacity duration-[var(--duration-micro)]"
         >
           {d.common.footerPrivacy}
         </Link>
