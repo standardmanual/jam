@@ -13,7 +13,7 @@ CLAUDE.md에는 "어느 카테고리에 해당하는지" 판단 기준만 있다
 |---|---|---|---|---|
 | ① | PRD | 기능·스펙·로직 정의 | `Service Plan/Specs/PRD/` | 기존 파일 직접 수정 |
 | ② | 티켓 | 실행 계획·작업 이력 | `Service Plan/Tickets/` | 신규 파일 생성 |
-| ③ | 컨텐츠 | 배지·아이템북·세계관·POI | `Service Plan/Specs/Content/` | 기존 파일 직접 수정 |
+| ③ | 컨텐츠 | 배지·아이템북·트라이브·POI | `Service Plan/Specs/Content/` | 기존 파일 직접 수정 |
 | ④ | 배지엔진 | 발급·드랍 판정 로직 | `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` | 기존 파일 직접 수정 |
 | ⑤ | 서비스플랜 | 비전·장기 전략 | `Service Plan/Business/서비스플랜/` | 기존 파일 직접 수정 |
 
@@ -114,14 +114,14 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 
 ## ③ 컨텐츠
 
-**대상 변경**: 배지/아이템 추가·제거·조건값 변경 / 아이템북 구성·세계관 변경 / POI 카테고리·수집 소스 변경 / 조합 레시피 변경
+**대상 변경**: 배지/아이템 추가·제거·조건값 변경 / 아이템북 구성·트라이브 변경 / POI 카테고리·수집 소스 변경 / 조합 레시피 변경
 
 | 문서 | 대상 |
 |---|---|
 | `Content/ACTIVITY_BADGES.md` | 액티비티배지 전체 목록·조건·설명 |
-| `Content/ITEMBOOKS.xlsx` | 아이템북 + 아이템배지 목록, 세계관 인접 그래프 |
+| `Content/ITEMBOOKS.xlsx` | 아이템북 + 아이템배지 목록, 트라이브 인접 그래프 |
 | `Content/COMBINE_RECIPES.md` | 조합 레시피 |
-| `Content/FACTIONS.md` | 세계관(faction) |
+| `Content/FACTIONS.md` | 트라이브(faction) |
 | `Content/POI.md` | 장소(POI) |
 
 **기존 파일 직접 수정** — 컨텐츠는 "현재 상태"가 원칙, 버전 이력은 티켓에 남긴다.

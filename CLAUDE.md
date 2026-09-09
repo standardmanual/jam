@@ -76,7 +76,7 @@ DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요�
 |---|---|---|---|
 | ① | PRD | 기능·스펙·로직 정의 | `Service Plan/Specs/PRD/` |
 | ② | 티켓 | 실행 계획·작업 이력 | `Service Plan/Tickets/` |
-| ③ | 컨텐츠 | 액티비티배지·아이템북·아이템배지·세계관·POI | `Service Plan/Specs/Content/` |
+| ③ | 컨텐츠 | 액티비티배지·아이템북·아이템배지·트라이브·POI | `Service Plan/Specs/Content/` |
 | ④ | 배지 드랍 로직 | 배지 발급·드랍 엔진 판정 로직 | `Service Plan/Specs/BadgeEngine/` |
 | ⑤ | 서비스 플랜 | 비전·장기 전략, 현재/향후 구분 | `Service Plan/Business/서비스플랜/` |
 
@@ -109,7 +109,7 @@ DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요�
 
 1. `Tickets/`의 관련 최신 티켓 (유사 작업·의사결정 확인)
 2. `Specs/PRD/01_PRD.md` (필요 시 `02_DATA_MODEL.md`, 주제별 폴더 `PRD/{주제}/`)
-3. `Specs/Content/` (배지·아이템·세계관·POI 관련 시)
+3. `Specs/Content/` (배지·아이템·트라이브·POI 관련 시)
 4. `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` (배지·드랍 로직 관련 시)
 5. 위에서 찾지 못한 경우에만 코드(`jam-web/src/`) 탐색
 
@@ -130,5 +130,29 @@ DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요�
 `/setup-gbrain`, `/retro`, `/investigate`, `/document-release`, `/document-generate`, `/codex`,
 `/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`,
 `/unfreeze`, `/gstack-upgrade`, `/learn`.
+
+### gstack 산출물은 jam-docs 규칙으로 저장
+
+`/office-hours` 등 gstack 계열 스킬이 만드는 설계 문서(design doc)는 gstack 기본 저장
+위치(`~/.gstack/projects/`, repo의 `docs/designs/`)를 정본으로 쓰지 않는다. 이 프로젝트
+에서는 그런 산출물을 **② 티켓**(실행 계획·의사결정 기록)으로 취급해 `/jam-docs` 규칙을
+그대로 따른다:
+
+- 경로: `Service Plan/Tickets/P{0-3}-{라벨}/YYYYMMDD_HHMM_[카테고리]_[제목].md`
+  (`HHMM`은 문서 생성 시각, 카테고리 8종·우선순위 기준은 `.claude/skills/jam-docs/SKILL.md` 참고)
+- frontmatter: 티켓 템플릿(`Service Plan/Tickets/_TEMPLATE.md`) 형식 그대로 —
+  `id`(파일명과 동일), `status: OPEN`(설계 확정 전), `priority`(폴더와 일치) 등
+- gstack이 자체적으로 참조하는 `~/.gstack/projects/{slug}/` 사본은 세션 간 연속성을 위해
+  부가적으로 남겨도 되지만, 사용자·다른 세션이 참조하는 **정본은 항상 위 티켓 파일**이다
+- 설계가 승인(Approve)되면 해당 티켓의 `status`를 그대로 두거나(후속 구현 티켓으로 이어짐)
+  `/jam-work`로 넘겨 실제 구현 티켓으로 쪼갠다 — 스토리 형태의 원본 설계 문서 자체를
+  CLOSED로 성급히 바꾸지 않는다
+- 설계 문서(=티켓)는 아직 미구현 상태이므로 이 시점에 `Specs/SERVICE_OPERATIONS.md`나
+  해당하는 `/jam-docs` 카테고리 문서(①PRD·③컨텐츠·④배지 드랍 로직 등 "현재 상태"
+  원칙 문서)를 미리 덮어쓰지 않는다 — PRD가 이미 이런 선반영으로 문서-구현 불일치를
+  겪은 전례가 있다. 대신 티켓의 구현 계획에 "완료 시 갱신할 문서" 항목을 구체적으로
+  명시해 실제 구현이 끝난 뒤 `/jam-work` 완료 처리 단계에서 반영되게 한다. 특히
+  드랍엔진·발급 로직에 손대는 설계는 `Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md`
+  (단일 진실 원천) 갱신을 빠뜨리기 쉬우니 항상 후보로 검토한다
 
 ---
