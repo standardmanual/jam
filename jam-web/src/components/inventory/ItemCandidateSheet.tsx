@@ -33,6 +33,13 @@ export interface ItemCandidateSheetProps {
   isMuted?: (candidate: ItemCandidate) => boolean
   /** 행별 보조 표시(예: "처리 중") — 장착 시트 전용. */
   renderTrailing?: (candidate: ItemCandidate) => ReactNode
+  /**
+   * 후보 목록 아래에 보여줄 보조 액션(예: 교체 시트의 "해제하기") — 20260910_0015 후속.
+   * 교체 시트가 "해제" 버튼 자리를 완전히 대체하면서 순수 해제 경로가 사라지는 회귀가
+   * 있어, 시트 안에 대체 경로를 둔다. 이 값이 없으면 아무것도 렌더하지 않는다(장착·드랍·
+   * 픽업 시트는 지금대로 영향 없음).
+   */
+  secondaryAction?: { label: string; onClick: () => void; disabled?: boolean }
 }
 
 /**
@@ -53,6 +60,7 @@ export default function ItemCandidateSheet({
   isSelected,
   isMuted,
   renderTrailing,
+  secondaryAction,
 }: ItemCandidateSheetProps) {
   return (
     <BottomSheet
@@ -88,6 +96,16 @@ export default function ItemCandidateSheet({
             />
           ))}
         </div>
+        {secondaryAction && (
+          <button
+            type="button"
+            onClick={secondaryAction.onClick}
+            disabled={secondaryAction.disabled}
+            className="mt-[var(--spacing-8)] w-full py-2 rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-base-grey-600)] text-[color:var(--color-text-on-primary)] text-[length:var(--text-caption)] leading-[var(--leading-caption)] transition-all disabled:opacity-40"
+          >
+            {secondaryAction.label}
+          </button>
+        )}
       </div>
     </BottomSheet>
   )
