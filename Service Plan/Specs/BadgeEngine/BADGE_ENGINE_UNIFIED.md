@@ -82,6 +82,15 @@ Strava 싱크
 정규화 지점은 `src/lib/strava/sync.ts`의 `normalizeActivity()` **한 곳뿐**이다. 여기서 만든
 객체가 그대로 `strava_activities.normalized`(jsonb)에 저장되고 두 엔진의 입력이 된다.
 
+> **2026-09-09(티켓 20260909_1012) 추가**: 걷기·러닝·자전거 활동은 `normalizeActivity()` 직후
+> `detectAndExcludeTransitSegments()`(`src/lib/strava/transitSegment.ts`)가 `maxSpeedKmh`가
+> 활동 타입별 임계값(걷기 20km/h·러닝 27km/h·자전거 55km/h)을 30초 이상 연속으로 넘는 경우에
+> 한해 `distanceKm`·`movingTimeSec`·`averageSpeedKmh` 3개 필드를 한 번 더 고쳐 쓴 뒤 두 엔진에
+> 전달한다(임계값은 `abusing_policy`에서 조회, `getActivityStreams`가 이미 조회하던
+> `velocity_smooth` 스트림을 재사용해 추가 API 호출 없음). "정규화는 한 곳뿐"이라는 명제는
+> `strava_activities.normalized`에 최종 저장되는 객체 기준으로는 여전히 참이지만, 그 객체가
+> `normalizeActivity()`의 순수 출력 그대로는 아니라는 점에 유의한다.
+
 기존 12필드에 더해 **Strava Summary(목록) 응답에 이미 오던 6필드**를 함께 읽는다 —
 추가 API 호출이 없다.
 
