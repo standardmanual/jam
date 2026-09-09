@@ -84,6 +84,13 @@ export default function SlotGrid({
    * 실패는 시트 안에서 알린다**(20260907_2059).
    */
   const [sheetError, setSheetError] = useState<string | null>(null)
+  /**
+   * 시트가 열린 목적을 구분한다 — null이면 "장착"(빈 슬롯 채우기), 슬롯 id가 있으면
+   * "교체"(이미 채워진 슬롯의 개체를 바꾸기, 20260910_0015). `selectingBadgeId`만으로는
+   * 두 흐름을 구분할 수 없다 — 같은 배지·같은 시트 마크업을 그대로 재사용하되, 개체를
+   * 골랐을 때 호출할 API(POST vs PATCH)와 안내 문구만 이 값으로 갈린다.
+   */
+  const [swapSlotId, setSwapSlotId] = useState<string | null>(null)
   const gridRef = useRef<HTMLDivElement | null>(null)
 
   /**
@@ -154,15 +161,52 @@ export default function SlotGrid({
     setError(await requestSlot(badgeId, inventoryItemId))
   }
 
-  async function handleUnslot(badgeId: string, slotId: string) {
-    setError(null)
+  /**
+   * 교체 요청 — 기존 슬롯 해제 + 새 개체 장착을 **한 번의 원자적 RPC**(`swap_item_in_book`,
+   * 마이그레이션 151)로 처리한다. "해제 API 호출 → 성공하면 장착 API 호출"처럼 순차
+   * 호출로 흉내내면, 두 번째 호출이 실패했을 때 슬롯이 빈 채로 남는 정합성 문제가 생긴다
+   * (108/109/111이 반복해 온 "원자적 소유권 이전" 원칙, 20260910_0015 티켓 지적).
+   */
+  async function requestSwap(
+    badgeId: string,
+    slotId: string,
+    inventoryItemId: string
+  ): Promise<string | null> {
     setPendingBadgeId(badgeId)
     try {
       const token = await getToken()
-      if (!token) {
-        setError(d.itembooks.slotLoginRequired)
-        return
+      if (!token) return d.itembooks.slotLoginRequired
+      const res = await fetch(`/api/itembooks/${itemBookId}/slot`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ slot_id: slotId, new_inventory_item_id: inventoryItemId }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        return data.error ?? d.itembooks.swapFailed
       }
+      router.refresh()
+      return null
+    } catch {
+      return d.itembooks.networkError
+    } finally {
+      setPendingBadgeId(null)
+    }
+  }
+
+  /**
+   * 해제 요청 — 실패 사유를 문자열로 돌려주고(성공이면 null) 표시 위치는 호출부가 정한다.
+   * `requestSlot`/`requestSwap`과 같은 패턴이다. 그리드의 «해제» 버튼(그리드 배너)과
+   * 교체 시트 안의 «해제하기» 보조 액션(시트 배너, 20260910_0015 후속)이 함께 쓴다.
+   */
+  async function requestUnslot(badgeId: string, slotId: string): Promise<string | null> {
+    setPendingBadgeId(badgeId)
+    try {
+      const token = await getToken()
+      if (!token) return d.itembooks.slotLoginRequired
       const res = await fetch(`/api/itembooks/${itemBookId}/slot`, {
         method: 'DELETE',
         headers: {
@@ -173,15 +217,37 @@ export default function SlotGrid({
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error ?? d.itembooks.unslotFailed)
-        return
+        return data.error ?? d.itembooks.unslotFailed
       }
       router.refresh()
+      return null
     } catch {
-      setError(d.itembooks.networkError)
+      return d.itembooks.networkError
     } finally {
       setPendingBadgeId(null)
     }
+  }
+
+  /** 그리드의 «해제» 버튼 경로 — 실패 사유는 그리드 상단 배너에 띄운다(기존 동작). */
+  async function handleUnslot(badgeId: string, slotId: string) {
+    setError(null)
+    setError(await requestUnslot(badgeId, slotId))
+  }
+
+  /**
+   * 교체 시트 안의 «해제하기» 경로 — 인터페이스 리뷰 지적(교체가 해제 자리를 완전히
+   * 대체해 순수 해제 경로가 사라지는 회귀) 반영. 시트를 연 대상(`sheetView`)을 그대로
+   * 쓴다 — 그리드 버튼과 달리 badgeId·slotId를 인자로 받지 않는다.
+   */
+  async function handleSheetUnslot() {
+    if (!sheetView?.slot || pendingBadgeId) return
+    setSheetError(null)
+    const failure = await requestUnslot(sheetView.badge.id, sheetView.slot.id)
+    if (failure) {
+      setSheetError(failure)
+      return
+    }
+    closeSelectSheet()
   }
 
   /** 후보가 1개면 즉시 장착, 2개 이상이면 일련번호가 보이는 선택 시트를 연다(20260907_2059). */
@@ -194,6 +260,23 @@ export default function SlotGrid({
     setSheetError(null)
     setSelectedCandidateId(null)
     setSheetSlot(badgeSlot)
+    setSwapSlotId(null)
+    setSelectingBadgeId(badgeSlot.badge.id)
+  }
+
+  /**
+   * «교체» 버튼 경로 — 후보가 1개뿐이어도 항상 시트를 연다(장착과 다른 지점, 20260910_0015).
+   * 이미 장착된 것이 있는 상태에서 여는 흐름이라, "지금 장착된 것과 다른 개체로 바꾼다"는
+   * 걸 사용자가 확인하고 골라야 한다 — 후보가 1개면 자동으로 밀어넣는 장착 버튼의 지름길을
+   * 그대로 적용하면, 사용자가 무엇으로 바뀌는지 보지도 못한 채 교체가 일어난다.
+   */
+  function handleSwapButton(badgeSlot: BadgeSlot) {
+    if (!badgeSlot.slot) return
+    setError(null)
+    setSheetError(null)
+    setSelectedCandidateId(null)
+    setSheetSlot(badgeSlot)
+    setSwapSlotId(badgeSlot.slot.id)
     setSelectingBadgeId(badgeSlot.badge.id)
   }
 
@@ -226,7 +309,9 @@ export default function SlotGrid({
     if (!selectingBadgeId || pendingBadgeId) return
     setSheetError(null)
     setSelectedCandidateId(inventoryItemId)
-    const failure = await requestSlot(badgeId, inventoryItemId)
+    const failure = swapSlotId
+      ? await requestSwap(badgeId, swapSlotId, inventoryItemId)
+      : await requestSlot(badgeId, inventoryItemId)
     if (failure) {
       setSheetError(failure)
       setSelectedCandidateId(null)
@@ -269,16 +354,31 @@ export default function SlotGrid({
               highlighted={slotMode && !readOnly && isSlottable}
               className={isUndiscovered ? 'opacity-30' : ''}
             >
-              {/* 슬롯 해제 버튼 — 장착(양성 액션, primary)과 구분되는 취소성 액션이라 그레이로 뺀다 */}
+              {/* 슬롯 해제/교체 버튼 — 같은 배지의 미장착 후보가 있으면 "교체"가 이 자리를
+                  대신한다(20260910_0015). 교체는 장착 쪽에 가까운 양성 액션이라 장착과
+                  같은 톤(--color-primary)을 쓴다 — 완료 기록의 판단 근거 참고. 후보가 없어
+                  단순 해제만 가능할 때는 20260910_0025가 정한 대로 그레이를 유지한다
+                  (장착=양성/primary, 해제=취소성/그레이 구분). */}
               {isSlotted && !readOnly && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(badge.id, slot!.id) }}
-                  disabled={pending}
-                  className="block mx-auto px-3 py-1 text-[length:var(--text-micro)] leading-[var(--leading-micro)] rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-base-grey-600)] text-[color:var(--color-text-on-primary)] transition-all disabled:opacity-40"
-                >
-                  {pending ? '…' : d.itembooks.unslotButton}
-                </button>
+                candidates.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSwapButton(badgeSlot) }}
+                    disabled={pending}
+                    className="block mx-auto px-3 py-1 text-[length:var(--text-micro)] leading-[var(--leading-micro)] rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-primary)] text-[color:var(--color-text-on-primary)] transition-all disabled:opacity-40"
+                  >
+                    {pending ? '…' : d.itembooks.swapButton}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleUnslot(badge.id, slot!.id) }}
+                    disabled={pending}
+                    className="block mx-auto px-3 py-1 text-[length:var(--text-micro)] leading-[var(--leading-micro)] rounded-[var(--radius-pill-buttons)] bg-[color:var(--color-base-grey-600)] text-[color:var(--color-text-on-primary)] transition-all disabled:opacity-40"
+                  >
+                    {pending ? '…' : d.itembooks.unslotButton}
+                  </button>
+                )
               )}
 
               {/* 슬롯 장착 버튼 */}
@@ -309,7 +409,13 @@ export default function SlotGrid({
         onClose={handleSheetClose}
         badgeName={sheetView?.badge.name}
         rarity={sheetView?.badge.rarity as BadgeRarity | null}
-        bodyText={sheetView ? t(d.itembooks.selectItemBody, { count: String(sheetView.candidates.length) }) : ''}
+        bodyText={
+          sheetView
+            ? swapSlotId
+              ? d.itembooks.swapItemBody
+              : t(d.itembooks.selectItemBody, { count: String(sheetView.candidates.length) })
+            : ''
+        }
         candidates={sheetView?.candidates ?? []}
         error={sheetError}
         busy={sheetBusy}
@@ -330,6 +436,14 @@ export default function SlotGrid({
           if (!sheetView) return
           void handleSelectCandidate(sheetView.badge.id, candidate.id)
         }}
+        // 교체 시트에서만 "해제하기" 보조 액션을 보여준다(장착 시트는 아직 채워진 슬롯이
+        // 없으므로 해제할 대상 자체가 없다). 인터페이스 리뷰 지적(교체가 해제 자리를 완전히
+        // 대체해 순수 해제 경로가 사라지는 회귀) 반영 — 20260910_0015 후속.
+        secondaryAction={
+          swapSlotId
+            ? { label: d.itembooks.swapSheetUnslotButton, onClick: () => void handleSheetUnslot(), disabled: sheetBusy }
+            : undefined
+        }
       />
     </div>
   )

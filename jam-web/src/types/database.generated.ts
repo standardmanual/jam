@@ -2537,6 +2537,15 @@ export type Database = {
         }
         Returns: Json
       }
+      swap_item_in_book: {
+        Args: {
+          p_item_book_id: string
+          p_new_inventory_item_id: string
+          p_slot_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       unslot_item_from_book: {
         Args: { p_slot_id: string; p_user_id: string }
         Returns: Json
