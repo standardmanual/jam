@@ -641,11 +641,10 @@ export const ko = {
    */
   onboarding: {
     avatarAlt: '프로필',
-    step1Title: 'JAM! 아이디를\n만들어 주세요',
-    step1Subtitle: '아이디는 나중에 변경할 수 있어요',
-    usernamePlaceholder: 'username',
+    step1Title: '환영합니다!',
+    usernamePlaceholder: 'ID를 입력해 주세요',
     nameCounter: '{count}/30',
-    step1NextButton: '트라이브 고르러 가기',
+    step1NextButton: '다음',
     step1Saving: '저장하는 중',
     errorEmpty: '아이디를 입력해 주세요',
     errorTooLong: '30자 이하로 입력해 주세요',

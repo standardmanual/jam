@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { UserIcon } from '@/components/ui/icons'
+import { UserIcon, PencilIcon } from '@/components/ui/icons'
 import { Card } from '@ds/components/cards/Card'
 import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
@@ -318,27 +318,54 @@ function OnboardingContent() {
 
   if (step === 'account') {
     return (
-      <div className="min-h-full bg-surface text-text flex flex-col items-center justify-center px-[var(--spacing-24)] py-[var(--spacing-48)]">
+      <div className="min-h-full bg-surface text-text flex flex-col items-center justify-start px-[var(--spacing-24)] py-[var(--spacing-48)]">
         <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
 
-          <div className="flex flex-col items-center gap-[var(--spacing-16)]">
-            {avatarUrl ? (
-              <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover" />
-            ) : (
-              <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center">
-                <UserIcon className="w-10 h-10 text-text/50" />
-              </div>
-            )}
-            <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line">
-              {d.onboarding.step1Title}
-            </h1>
-            <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">
-              {d.onboarding.step1Subtitle}
-            </p>
-          </div>
+          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line">
+            {d.onboarding.step1Title}
+          </h1>
 
-          {/* 아이디 입력 */}
-          <div className={`t-input-wrap w-full flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
+          {/* 프로필 이미지 — 우측 상단에 편집 픽토그램 오버레이, 안내 텍스트 없이 아이콘만으로 변경 유도 */}
+          <div className="relative shrink-0">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="relative block active:scale-95 transition-transform duration-100"
+              disabled={uploading}
+              aria-label={d.profileEdit.changePhotoAlt}
+            >
+              {avatarUrl ? (
+                <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover" />
+              ) : (
+                <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center">
+                  <UserIcon className="w-10 h-10 text-text/50" />
+                </div>
+              )}
+              {uploading && (
+                <div className="absolute inset-0 rounded-[var(--radius-cards)] bg-surface/70 flex items-center justify-center">
+                  <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </button>
+            <span
+              aria-hidden="true"
+              className="absolute -top-2 -right-2 w-[22px] h-[22px] rounded-[var(--radius-pill)] bg-surface-elevated shadow-[inset_0_0_0_1px_var(--color-border-inverse)] flex items-center justify-center pointer-events-none"
+            >
+              <PencilIcon className="w-2.5 h-2.5" />
+            </span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </div>
+          {uploadError && (
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{uploadError}</p>
+          )}
+
+          {/* 아이디 입력 — 가로 70%로 축소 */}
+          <div className={`t-input-wrap w-[70%] flex flex-col gap-2${hasError ? ' is-error' : ''}`}>
             <div
               ref={inputShakeRef}
               className={`t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] transition-shadow ${inputBorderClass}${hasError ? ' is-error' : ''}`}
@@ -368,8 +395,8 @@ function OnboardingContent() {
             </p>
           </div>
 
-          {/* 이름(display_name) 입력 — 티켓 20260909_2119: 온보딩에서는 필수값 */}
-          <div className="w-full flex flex-col gap-2">
+          {/* 이름(display_name) 입력 — 티켓 20260909_2119: 온보딩에서는 필수값. 가로 70%로 축소 */}
+          <div className="w-[70%] flex flex-col gap-2">
             <div className="t-input flex items-center w-full min-h-11 rounded-[var(--radius-inputs)] px-[var(--spacing-16)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)]">
               <input
                 type="text"
@@ -417,7 +444,7 @@ function OnboardingContent() {
           <button
             onClick={handleStep1Next}
             disabled={!canProceedStep1}
-            className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
+            className="w-[70%] min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
           >
             {submittingStep1 ? d.onboarding.step1Saving : d.onboarding.step1NextButton}
           </button>
@@ -432,38 +459,8 @@ function OnboardingContent() {
       <div className="w-full max-w-sm flex flex-col items-center gap-[var(--spacing-32)]">
 
         <div className="flex flex-col items-center gap-[var(--spacing-16)]">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="relative active:scale-95 transition-transform duration-100"
-            disabled={uploading}
-            aria-label={d.profileEdit.changePhotoAlt}
-          >
-            {avatarUrl ? (
-              <Image src={avatarUrl} alt={d.onboarding.avatarAlt} width={96} height={96} className="w-24 h-24 rounded-[var(--radius-cards)] object-cover" />
-            ) : (
-              <div className="w-24 h-24 rounded-[var(--radius-cards)] bg-surface-elevated flex items-center justify-center">
-                <UserIcon className="w-10 h-10 text-text/50" />
-              </div>
-            )}
-            {uploading && (
-              <div className="absolute inset-0 rounded-[var(--radius-cards)] bg-surface/70 flex items-center justify-center">
-                <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-          </button>
-          <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)]">{d.profileEdit.changePhoto}</p>
-          {uploadError && (
-            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">{uploadError}</p>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-
-          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line mt-[var(--spacing-8)]">
+          {/* 프로필 이미지 변경 UI는 1단계로 이동(티켓 20260909_2119 추가 수정) */}
+          <h1 className="text-[length:var(--text-heading-sm)] leading-[var(--leading-heading-sm)] text-center whitespace-pre-line">
             {d.onboarding.step2Title}
           </h1>
           <p className="text-text/60 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center">
