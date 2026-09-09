@@ -30,14 +30,18 @@ export async function GET(request: NextRequest) {
   const serviceClient = createServiceClient()
   const googleAvatarUrl: string | null = user.user_metadata?.avatar_url ?? null
 
-  // 기존 프로필 조회 (avatar_url, username)
+  // 기존 프로필 조회 (avatar_url, username, onboarding_completed_at)
   const { data: existing } = await serviceClient
     .from('users')
-    .select('avatar_url, username')
+    .select('avatar_url, username, onboarding_completed_at')
     .eq('id', user.id)
     .maybeSingle()
 
-  const existingProfile = existing as { avatar_url: string | null; username: string | null } | null
+  const existingProfile = existing as {
+    avatar_url: string | null
+    username: string | null
+    onboarding_completed_at: string | null
+  } | null
 
   // avatar_url 갱신 여부 판단
   // 현재 값이 없거나 구글 URL이면 구글 사진으로 업데이트
@@ -56,8 +60,11 @@ export async function GET(request: NextRequest) {
   const usersTable = serviceClient.from('users')
   await usersTable.upsert(upsertData, { onConflict: 'id' })
 
-  // username 존재 여부 확인 → 온보딩 필요 여부 판단
-  const needsOnboarding = !existingProfile?.username
+  // 온보딩 2단계(트라이브 포함) 완료 여부로 온보딩 필요 여부를 판단한다(티켓 20260909_2119).
+  // username만으로 판단하면 1단계만 마친 유저가 재로그인 시 홈으로 잘못 보내진다 —
+  // onboarding_completed_at은 2단계까지 전부 채워졌을 때만 기록되므로, 이 값이 null이면
+  // 1단계만 했든 아예 안 했든 온보딩 화면(내부에서 단계를 자동으로 분기)으로 보낸다.
+  const needsOnboarding = !existingProfile?.onboarding_completed_at
 
   // GA4 sign_up_complete — "구글 로그인 최초 완료" 판정은 upsert 이전에 이미 읽어둔
   // `existing`(기존 users row 존재 여부)이 기준이다. `needsOnboarding`은 username 미설정

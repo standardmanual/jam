@@ -635,24 +635,39 @@ export const ko = {
     devLogin: '테스트 로그인 (개발 전용)',
   },
 
-  /** 온보딩(아이디 설정) */
+  /**
+   * 온보딩 — 티켓 20260909_2119: 2단계 카드형 온보딩으로 재설계.
+   * 1단계(아이디·이름) → 2단계(트라이브 선택 + 프로필이미지).
+   */
   onboarding: {
     avatarAlt: '프로필',
-    title: 'JAM! 아이디를\n만들어 주세요',
-    subtitle: '아이디는 나중에 변경할 수 있어요',
+    step1Title: 'JAM! 아이디를\n만들어 주세요',
+    step1Subtitle: '아이디는 나중에 변경할 수 있어요',
     usernamePlaceholder: 'username',
-    submitButton: '생성하기',
-    submitting: '저장 중',
+    nameCounter: '{count}/30',
+    step1NextButton: '트라이브 고르러 가기',
+    step1Saving: '저장하는 중',
     errorEmpty: '아이디를 입력해 주세요',
     errorTooLong: '30자 이하로 입력해 주세요',
     errorFormat: '영문, 숫자, ., _ 만 사용할 수 있어요',
     errorDot: '점(.)으로 시작하거나 끝날 수 없어요',
     errorDoubleDot: '점(.)을 연속으로 사용할 수 없어요',
+    nameEmptyError: '이름을 입력해 주세요',
     available: '사용 가능한 아이디예요',
     taken: '이미 사용 중인 아이디예요',
     genericError: '오류가 발생했어요. 다시 시도해 주세요.',
     networkError: '네트워크 오류가 발생했어요.',
     ageConfirmLabel: '만 14세 이상이에요',
+
+    // 2단계 — 트라이브 선택
+    step2Title: '당신의 트라이브를\n선택해 주세요',
+    step2Subtitle: '한 번 고른 트라이브는 탈퇴하기 전까지 바꿀 수 없어요',
+    factionsLoadError: '트라이브 목록을 불러오지 못했어요. 다시 시도해 주세요.',
+    factionsEmptyError: '지금은 고를 수 있는 트라이브가 없어요. 잠시 후 다시 시도해 주세요.',
+    retryButton: '다시 시도',
+    invalidFactionError: '이 트라이브는 지금 선택할 수 없어요. 다른 트라이브를 선택해 주세요.',
+    finishButton: 'JAM! 시작하기',
+    finishing: '가입하는 중',
   },
 
   /** 프로필 편집 */

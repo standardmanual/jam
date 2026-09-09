@@ -45,7 +45,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
         </Link>
         <h1 className="text-2xl font-bold mt-2">{user.username ?? '(닉네임 없음)'}</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          {user.email} · {user.region || '지역 미설정'} · 가입 {formatDateTime(user.created_at)}
+          {user.email} · 가입 {formatDateTime(user.created_at)}
         </p>
       </div>
 
