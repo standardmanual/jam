@@ -197,15 +197,16 @@ export default function SlotGrid({
     }
   }
 
-  async function handleUnslot(badgeId: string, slotId: string) {
-    setError(null)
+  /**
+   * 해제 요청 — 실패 사유를 문자열로 돌려주고(성공이면 null) 표시 위치는 호출부가 정한다.
+   * `requestSlot`/`requestSwap`과 같은 패턴이다. 그리드의 «해제» 버튼(그리드 배너)과
+   * 교체 시트 안의 «해제하기» 보조 액션(시트 배너, 20260910_0015 후속)이 함께 쓴다.
+   */
+  async function requestUnslot(badgeId: string, slotId: string): Promise<string | null> {
     setPendingBadgeId(badgeId)
     try {
       const token = await getToken()
-      if (!token) {
-        setError(d.itembooks.slotLoginRequired)
-        return
-      }
+      if (!token) return d.itembooks.slotLoginRequired
       const res = await fetch(`/api/itembooks/${itemBookId}/slot`, {
         method: 'DELETE',
         headers: {
@@ -216,15 +217,37 @@ export default function SlotGrid({
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error ?? d.itembooks.unslotFailed)
-        return
+        return data.error ?? d.itembooks.unslotFailed
       }
       router.refresh()
+      return null
     } catch {
-      setError(d.itembooks.networkError)
+      return d.itembooks.networkError
     } finally {
       setPendingBadgeId(null)
     }
+  }
+
+  /** 그리드의 «해제» 버튼 경로 — 실패 사유는 그리드 상단 배너에 띄운다(기존 동작). */
+  async function handleUnslot(badgeId: string, slotId: string) {
+    setError(null)
+    setError(await requestUnslot(badgeId, slotId))
+  }
+
+  /**
+   * 교체 시트 안의 «해제하기» 경로 — 인터페이스 리뷰 지적(교체가 해제 자리를 완전히
+   * 대체해 순수 해제 경로가 사라지는 회귀) 반영. 시트를 연 대상(`sheetView`)을 그대로
+   * 쓴다 — 그리드 버튼과 달리 badgeId·slotId를 인자로 받지 않는다.
+   */
+  async function handleSheetUnslot() {
+    if (!sheetView?.slot || pendingBadgeId) return
+    setSheetError(null)
+    const failure = await requestUnslot(sheetView.badge.id, sheetView.slot.id)
+    if (failure) {
+      setSheetError(failure)
+      return
+    }
+    closeSelectSheet()
   }
 
   /** 후보가 1개면 즉시 장착, 2개 이상이면 일련번호가 보이는 선택 시트를 연다(20260907_2059). */
@@ -413,6 +436,14 @@ export default function SlotGrid({
           if (!sheetView) return
           void handleSelectCandidate(sheetView.badge.id, candidate.id)
         }}
+        // 교체 시트에서만 "해제하기" 보조 액션을 보여준다(장착 시트는 아직 채워진 슬롯이
+        // 없으므로 해제할 대상 자체가 없다). 인터페이스 리뷰 지적(교체가 해제 자리를 완전히
+        // 대체해 순수 해제 경로가 사라지는 회귀) 반영 — 20260910_0015 후속.
+        secondaryAction={
+          swapSlotId
+            ? { label: d.itembooks.swapSheetUnslotButton, onClick: () => void handleSheetUnslot(), disabled: sheetBusy }
+            : undefined
+        }
       />
     </div>
   )
