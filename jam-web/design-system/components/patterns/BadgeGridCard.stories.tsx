@@ -256,6 +256,20 @@ export const LevelChip: Story = {
  * 반복 획득 «×N» (티켓 20260905_0038 B).
  * 1회면 아무것도 붙지 않는다 — 「한 번 받았다」를 굳이 숫자로 말하지 않는다.
  */
+/**
+ * 긴 이름 — 말줄임(ellipsis) 대신 2줄까지 그대로 보여준다(티켓 20260909_2226).
+ * 3줄 이상 넘치는 부분만 잘린다(line-clamp: 2).
+ */
+export const LongName: Story = {
+  name: '긴 이름 — 2줄 표시',
+  args: {
+    name: '겨울 한강 야간 러닝 마스터 챌린지',
+    imageUrl: SAMPLE_IMAGES.epic,
+    rarity: 'epic',
+    earned: true,
+  },
+};
+
 export const RepeatCount: Story = {
   name: '반복 획득 — 썸네일 ×N',
   render: () => (
