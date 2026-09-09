@@ -78,13 +78,44 @@ VALUES (NEW.id, 50, 0);
 - `username`은 초기에 NULL → 온보딩에서 설정
 - `max_slots` 기본값: **50슬롯**
 
-### 2-3. 온보딩 흐름
+### 2-3. 온보딩 흐름 (2단계 카드형, 티켓 20260909_2119)
 
-1. `/onboarding` 페이지 접근
-2. 유저네임 입력 → `GET /api/username/check` 중복 확인
-   - 규칙: 소문자 영문·숫자·언더스코어, 3~20자, UNIQUE
-3. 프로필 이미지 업로드(선택) → `POST /api/profile/avatar` → Supabase Storage `avatars` 버킷
-4. `POST /api/onboarding/complete` → `users.username` 업데이트, `users.onboarding_completed_at` 기록
+`GET /auth/callback`은 `users.onboarding_completed_at`이 NULL이면(1단계만 마쳤든 아예 안 마쳤든)
+항상 `/onboarding`으로 보낸다. 온보딩 화면 자체가 로드 시점에 유저 상태를 조회해 1단계부터
+시작할지 2단계로 곧장 건너뛸지 내부에서 분기한다.
+
+**1단계 — 아이디·이름**
+1. `/onboarding` 페이지 접근, `username`이 아직 NULL이면 1단계부터 시작
+2. 아이디 입력 → `GET /api/username/check` 중복 확인
+   - 규칙: 소문자 영문·숫자·언더스코어·마침표, 최대 **30자**, 마침표로 시작/끝 불가, 마침표 연속 불가, UNIQUE
+3. 이름(`display_name`) 입력 — 온보딩에서는 **필수**(자유 텍스트, 최대 30자, 형식 제한 없음).
+   프로필 편집에서는 선택값이라는 점과 다르다(20260830_0113)
+4. 만 14세 이상 자기확인 체크(최초 1회만 노출, 티켓 20260901_2217)
+5. `POST /api/onboarding/complete` (body에 `faction_id` 없이 호출) → `users.username`,
+   `users.display_name`만 저장. `onboarding_completed_at`은 아직 기록하지 않는다
+
+**2단계 — 트라이브 선택 + 프로필이미지**
+1. `factions WHERE is_active = true` 목록을 카드 그리드로 노출(비활성 트라이브 및 0개 상황
+   방어 로직 포함)
+2. 프로필 이미지는 구글 기본값을 보여주고, 변경 시 기존 `POST /api/profile/avatar`(Supabase
+   Storage `avatars` 버킷)를 그대로 재사용 — 선택 사항
+3. 트라이브 카드 선택 후 `POST /api/onboarding/complete` (body에 `faction_id` 포함) 호출:
+   - 이미 `faction_id`가 설정된 유저의 재호출은 409 `ALREADY_SET`으로 거부(트라이브 불변 강제)
+   - 제출한 `faction_id`가 존재하지 않거나 `is_active=false`면 400 `INVALID_FACTION`
+   - 두 거부 모두 `console.error`로 로깅(어뷰징·UI 버그 조기 감지)
+   - 통과 시 `users.faction_id`, `users.onboarding_completed_at`을 함께 기록 — 이 시점부터
+     온보딩 완료로 판정된다
+
+**트라이브 불변**: `faction_id`는 온보딩 2단계에서 1회 설정된 뒤 탈퇴 전까지 변경할 수 없다.
+`PATCH /api/profile`에는 애초에 `faction_id`를 다루는 코드가 없어 변경 API 자체가 존재하지
+않는다(프로필 편집은 프로필이미지·아이디·이름만 지원).
+
+**기존 유저**: `onboarding_completed_at` 컬럼은 이번 티켓(20260909_2119)에서 신규 추가됐으므로
+추가 직후에는 모든 로우가 NULL이다. 컬럼을 추가하는 마이그레이션(149번)이 같은 트랜잭션에서
+`username IS NOT NULL`인 기존 유저의 `onboarding_completed_at`을 즉시 백필한다(과거 1단계
+온보딩을 이미 마친 것으로 간주) — 이 백필이 없으면 기존 유저가 다음 로그인 때 전부 온보딩으로
+강제 이동한다. `faction_id`는 백필 대상이 아니라 NULL로 남고, 그 상태로 서비스를 계속
+이용할 수 있다(점진적 유도 UI는 후속 과제).
 
 ---
 

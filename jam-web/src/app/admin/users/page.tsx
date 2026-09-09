@@ -6,11 +6,11 @@ export default async function AdminUsersPage() {
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('users')
-    .select('id, email, username, created_at, region')
+    .select('id, email, username, created_at')
     .order('created_at', { ascending: false })
     .limit(100)
 
-  const users = (data ?? []) as Pick<UserRow, 'id' | 'email' | 'username' | 'created_at' | 'region'>[]
+  const users = (data ?? []) as Pick<UserRow, 'id' | 'email' | 'username' | 'created_at'>[]
   const userIds = users.map((u) => u.id)
 
   // 보유 배지 수 집계 쿼리와 인벤토리 조회는 서로 독립적이라 병렬화한다(20260826_011 A7).
