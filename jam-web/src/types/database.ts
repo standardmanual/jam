@@ -1322,6 +1322,10 @@ export interface AbusingPolicyRow {
   poi_block_hours: number
   vehicle_speed_filter_kmh: number
   gps_daily_distance_cap_km: number
+  transit_walk_max_speed_kmh: number
+  transit_run_max_speed_kmh: number
+  transit_cycling_max_speed_kmh: number
+  transit_segment_min_duration_sec: number
   updated_at: string
 }
 

@@ -802,7 +802,7 @@ hard 밴:
 ```
 
 > ⚠️ 위는 **설계 의도**다. **Epic 차단은 현재 꺼져 있다**(soft/hard 모두 배율 1.00).
-> 경위와 판단 보류 사유는 [12-5](#12-5-어뷰징-정책-싱글톤-abusing_policy) 참조.
+> 경위와 판단 보류 사유는 [12-6](#12-6-어뷰징-정책-싱글톤-abusing_policy) 참조.
 
 ### 12-4. POI 블록
 
@@ -814,10 +814,50 @@ poi_blocks { user_id, poi_id, blocked_until }
   기본 블록 기간: 72시간
 ```
 
-### 12-5. 어뷰징 정책 싱글톤 (abusing_policy)
+### 12-5. 교통수단 구간 감지·거리/시간 재산정
+
+**관련 파일:** `src/lib/strava/transitSegment.ts`, `src/lib/strava/api.ts`(`getActivityStreams`),
+`src/lib/strava/sync.ts`(`processFetchedActivities`)
+
+걷기 활동 중간에 지하철·버스 같은 교통수단 구간이 섞여도, 12-1의 차량속도필터와 걷기 배지
+게이트는 둘 다 `averageSpeedKmh`(전체 평균)만 검사해 걸러내지 못한다. 짧은 교통수단 구간은
+전체 평균을 크게 끌어올리지 않기 때문이다(실사례: distanceKm 2.5, maxSpeedKmh 119.5,
+averageSpeedKmh 7.0 — 집→지하철역 도보, 지하철 탑승, 하차 후 회사까지 도보. 티켓 20260909_1012).
+
+```
+Strava 동기화 시 (poiMatchTargets — 배치 최신 10건, POI 매칭과 동일 대상):
+  getActivityStreams(activityId)로 velocity_smooth(m/s)·time(누적 초) 스트림 조회
+
+  activity.jamActivityType이 걷기·러닝·자전거이고
+  activity.maxSpeedKmh > 활동 타입별 임계값인 경우에만:
+    velocity_smooth에서 그 임계값을 30초 이상 연속으로 초과하는 구간을 찾는다
+    → 그 구간의 거리·시간을 distanceKm/movingTimeSec에서 제외
+    → averageSpeedKmh 재계산
+    → normalizeActivity() 이후·배지/드랍/미션 판정 이전에 NormalizedActivity에 반영
+```
+
+- **활동 타입별 임계값**(`abusing_policy`, 어드민에서 조정 가능):
+  - 걷기 `transit_walk_max_speed_kmh` (기본 20km/h) — 엘리트 경보 선수 최고 기록보다도 높다
+  - 러닝 `transit_run_max_speed_kmh` (기본 27km/h) — 30초 지속 창 기준 800m~마일 세계기록
+    페이스. 마라톤 페이스(~21km/h)가 아니라 그 시간대에 버틸 수 있는 단거리 기록이 물리적
+    상한선이다 — 낮추면 정상 인터벌 훈련·라스트 스퍼트를 오탐한다
+  - 자전거 `transit_cycling_max_speed_kmh` (기본 55km/h) — 엘리트 로드 사이클링 평균속도
+    40~45km/h + 내리막 스퍼트 여유분. 12-1의 차량속도필터(평균 60km/h)와 별개로, "평균은
+    정상인데 짧은 구간만 교통수단이 섞인" 케이스를 잡는 보완재다
+  - 최소 지속시간 `transit_segment_min_duration_sec` (기본 30초) — 모든 타입 공통
+- **fail-open**: 스트림 조회 실패(네트워크 오류·404·부족한 스트림)는 기존 `averageSpeedKmh`
+  기준 판정으로 그대로 폴백한다 — POI 매칭 실패 처리와 같은 패턴이다.
+- **롤백**: 로직 전체가 위 임계값 필드로 게이팅돼 있다 — 문제가 생기면 임계값을 매우 높게
+  (예: 999km/h) 조정해 사실상 비활성화할 수 있다(어드민 화면에서 즉시 반영, 배포 롤백 불필요).
+- **범위 밖(후속 티켓)**: 이 로직 배포 전 이미 처리된 과거 활동·배지·드랍의 소급 재평가, 문제
+  발견 시 배지·드랍 자동 회수(현재 코드에 자동 회수 기능 자체가 없다 — 회수는 기존 포인트의
+  `abuse_reclaim` 사유와 같은 수동 절차), `MAX_POI_MATCH_ACTIVITIES_PER_SYNC`(10개) 밖
+  백필 활동의 검증은 모두 별도 티켓이다.
+
+### 12-6. 어뷰징 정책 싱글톤 (abusing_policy)
 
 ```sql
--- 컬럼 12종 + id + updated_at (2026-08-31 실측)
+-- 컬럼 16종 + id + updated_at (2026-09-09 마이그레이션 148 반영)
 abusing_policy {
   id: 1 (항상 단 1건)
   -- 밴 등급별 드랍 배율 (0.0 = 완전 차단, 1.0 = 정상). 8종 모두 0~1
@@ -830,10 +870,14 @@ abusing_policy {
   hard_epic_rate:    1.0            -- hard밴 시 epic 드랍률  ⚠️ 아래 주석 참조
   hard_mystic_rate:  0.0            -- hard밴 시 mystic 드랍률
   -- 임계값 (상한 없는 정수)
-  gps_max_speed_kmh:         300    -- GPS 조작 감지 기준
-  gps_daily_distance_cap_km: 3000   -- 일일 누적 이동거리 상한
-  vehicle_speed_filter_kmh:  60     -- 차량 탑승 판정 기준. 최소 20 (초과 활동은 배지·드랍·미션에서 제외)
-  poi_block_hours:           72     -- GPS 조작 감지 후 POI 블록 지속 시간
+  gps_max_speed_kmh:                300  -- GPS 조작 감지 기준
+  gps_daily_distance_cap_km:        3000 -- 일일 누적 이동거리 상한
+  vehicle_speed_filter_kmh:         60   -- 차량 탑승 판정 기준. 최소 20 (초과 활동은 배지·드랍·미션에서 제외)
+  poi_block_hours:                  72   -- GPS 조작 감지 후 POI 블록 지속 시간
+  transit_walk_max_speed_kmh:       20   -- 걷기 활동 중 교통수단 구간 감지 임계값 (12-5)
+  transit_run_max_speed_kmh:        27   -- 러닝 활동 중 교통수단 구간 감지 임계값 (12-5)
+  transit_cycling_max_speed_kmh:    55   -- 자전거 활동 중 교통수단 구간 감지 임계값 (12-5)
+  transit_segment_min_duration_sec: 30   -- 교통수단 구간 판정 최소 연속 지속시간 (12-5)
   updated_at
 }
 ```
@@ -849,8 +893,8 @@ abusing_policy {
 > Mystic 차단(0.00)은 그동안에도 정상 작동했다.
 
 어드민 패널(`/admin/abusing`)에서 `PUT /api/admin/abusing/policy`로 수정한다.
-라우트는 `DEFAULT_POLICY`의 12개 키만 통과시키는 화이트리스트를 돌린다 — 배율 8종은 0~1,
-임계값 4종은 0 이상만 검사하고 상한을 두지 않는다. 저장 실패는 500 + `error`로 화면에 노출된다
+라우트는 `DEFAULT_POLICY`의 16개 키만 통과시키는 화이트리스트를 돌린다 — 배율 8종은 0~1,
+임계값 8종은 0 이상만 검사하고 상한을 두지 않는다. 저장 실패는 500 + `error`로 화면에 노출된다
 (2026-08-13 ~ 08-31 사이 이 화면의 저장은 전부 무음 실패했다 — 티켓 20260831_1149).
 
 **불변식: `src/lib/abusing/policy.ts`의 `DEFAULT_POLICY`는 이 행의 미러다.**
