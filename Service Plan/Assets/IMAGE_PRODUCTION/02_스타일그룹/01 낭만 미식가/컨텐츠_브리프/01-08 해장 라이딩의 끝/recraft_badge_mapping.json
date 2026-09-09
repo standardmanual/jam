@@ -1,0 +1,77 @@
+{
+  "collection_id": "01-08",
+  "items": [
+    {
+      "filename": "item-01-08-1.png",
+      "slug": "item-01-08-1",
+      "name": "뚝배기 파편",
+      "ids": [
+        "d372e1f3-814b-4abf-9b32-57475e91967d"
+      ]
+    },
+    {
+      "filename": "item-01-08-2.png",
+      "slug": "item-01-08-2",
+      "name": "다대기 묻은 숟가락",
+      "ids": [
+        "47779d37-a791-4ae5-b545-e5913536ed39"
+      ]
+    },
+    {
+      "filename": "item-01-08-3.png",
+      "slug": "item-01-08-3",
+      "name": "깍두기 국물 자국",
+      "ids": [
+        "69905de6-711d-4b7e-8757-85a64ed2b546"
+      ]
+    },
+    {
+      "filename": "item-01-08-4.png",
+      "slug": "item-01-08-4",
+      "name": "빈 헛개수 병",
+      "ids": [
+        "3c641723-c758-4d60-8cdd-e7d321e2d0f2"
+      ]
+    },
+    {
+      "filename": "item-01-08-5.png",
+      "slug": "item-01-08-5",
+      "name": "공깃밥 뚜껑",
+      "ids": [
+        "f6a45cbc-52ae-46f5-be20-fab4dc526ffd"
+      ]
+    },
+    {
+      "filename": "item-01-08-6.png",
+      "slug": "item-01-08-6",
+      "name": "새우젓 한 마리",
+      "ids": [
+        "4721229e-be26-4489-b0e3-fa8935f69c39"
+      ]
+    },
+    {
+      "filename": "item-01-08-7.png",
+      "slug": "item-01-08-7",
+      "name": "들깨가루 뭉치",
+      "ids": [
+        "d0506264-4ac3-4a84-8ba3-acae8efd0bf5"
+      ]
+    },
+    {
+      "filename": "item-01-08-8.png",
+      "slug": "item-01-08-8",
+      "name": "돼지국밥 영수증",
+      "ids": [
+        "261bbd6c-aef0-4353-995a-134643a1bf13"
+      ]
+    },
+    {
+      "filename": "item-01-08-9.png",
+      "slug": "item-01-08-9",
+      "name": "입 닦은 물티슈",
+      "ids": [
+        "ca729be5-9e8a-4b77-8461-b38226421ada"
+      ]
+    }
+  ]
+}

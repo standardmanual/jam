@@ -1,0 +1,10 @@
+-- 01-06 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-06/item-01-06-1.png?v=1788944144715' WHERE id IN ('6bb40234-8d28-49ab-a0af-1d3887f32155'); -- 녹아버린 초코바
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-06/item-01-06-2.png?v=1788944145317' WHERE id IN ('bc6c0084-356b-4933-bc4e-4137dd021c9f'); -- 포도당 캔디 껍질
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-06/item-01-06-3.png?v=1788944145617' WHERE id IN ('34ce14f4-be0e-4b82-a708-28f7edb75da8'); -- 터진 파워젤
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-06/item-01-06-4.png?v=1788944146092' WHERE id IN ('97510ad5-7d8b-433a-9097-1fbf6fd245c9'); -- 양갱 포장지
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-06/item-01-06-5.png?v=1788944146345' WHERE id IN ('8e905b2d-ce87-45d8-86e0-5d5236d0609d'); -- 구미베어 한 마리
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-06/item-01-06-6.png?v=1788944146850' WHERE id IN ('89efd1e4-cd6d-4596-9b89-b3d63d08ccc8'); -- 끈적이는 캬라멜
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-06/item-01-06-7.png?v=1788944147079' WHERE id IN ('0954567e-d77c-4667-8a2c-bf5cba8452e4'); -- 콜라 빈 캔
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-06/item-01-06-8.png?v=1788944147300' WHERE id IN ('e26aee00-eb73-4af4-a4f6-a48089eef9fd'); -- 각설탕 부스러기
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-06/item-01-06-9.png?v=1788944148380' WHERE id IN ('5fa7d289-d77d-49cf-add5-8204b3119982'); -- 마카롱 꼬끄 조각

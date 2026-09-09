@@ -1,0 +1,10 @@
+-- 01-05 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-05/item-01-05-1.png?v=1788944140618' WHERE id IN ('6ae6b0c0-c6d3-4561-b7aa-24d6af8d78f1'); -- 설탕 묻은 꽈배기
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-05/item-01-05-2.png?v=1788944141220' WHERE id IN ('5565a686-2442-417d-a01a-4e9dbff50db7'); -- 씨앗 빠진 호떡
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-05/item-01-05-3.png?v=1788944141676' WHERE id IN ('5349829b-1d2f-4ad9-9122-c04ef983ff4b'); -- 윤기 나는 족발 뼈
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-05/item-01-05-4.png?v=1788944142262' WHERE id IN ('d00496e8-3a18-479c-8147-f23f613a43f6'); -- 찌그러진 막걸리 잔
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-05/item-01-05-5.png?v=1788944142584' WHERE id IN ('73ac7c90-9886-4852-a2f0-d5a78455498e'); -- 기름 밴 은박지
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-05/item-01-05-6.png?v=1788944142811' WHERE id IN ('32e77b6c-0d40-4743-a026-63471d725f09'); -- 부러진 이쑤시개
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-05/item-01-05-7.png?v=1788944143227' WHERE id IN ('9aeae51f-3798-4dd0-9cd0-a5ea726509f3'); -- 마르고 남은 순대
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-05/item-01-05-8.png?v=1788944143452' WHERE id IN ('2ce8277d-7daf-4c52-b7e3-9f38a34696ad'); -- 초장 묻은 비닐
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-05/item-01-05-9.png?v=1788944143881' WHERE id IN ('ae7842b7-f817-4252-bd69-ceb6feeb0573'); -- 낡은 시장 바구니 조각

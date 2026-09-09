@@ -1,0 +1,77 @@
+{
+  "collection_id": "01-02",
+  "items": [
+    {
+      "filename": "item-01-02-1.png",
+      "slug": "item-01-02-1",
+      "name": "꼬들한 라면 면발",
+      "ids": [
+        "b61a50af-236f-4e30-abfb-90b536a85818"
+      ]
+    },
+    {
+      "filename": "item-01-02-2.png",
+      "slug": "item-01-02-2",
+      "name": "옆구리 터진 김밥",
+      "ids": [
+        "0f386a08-0891-4faf-8368-bb80e79c50a7"
+      ]
+    },
+    {
+      "filename": "item-01-02-3.png",
+      "slug": "item-01-02-3",
+      "name": "바삭한 오징어튀김",
+      "ids": [
+        "65da4997-983d-458d-a18a-668043505a49"
+      ]
+    },
+    {
+      "filename": "item-01-02-4.png",
+      "slug": "item-01-02-4",
+      "name": "기름진 볶음밥",
+      "ids": [
+        "205d8192-9965-46ea-bf18-7afb9314bfbf"
+      ]
+    },
+    {
+      "filename": "item-01-02-5.png",
+      "slug": "item-01-02-5",
+      "name": "마요네즈 묻은 젓가락",
+      "ids": [
+        "a485bc9c-f759-4972-a017-261c4ba1c5ca"
+      ]
+    },
+    {
+      "filename": "item-01-02-6.png",
+      "slug": "item-01-02-6",
+      "name": "단무지 한 조각",
+      "ids": [
+        "73e46bb4-2cb4-4d13-bd74-93201b5fd8db"
+      ]
+    },
+    {
+      "filename": "item-01-02-7.png",
+      "slug": "item-01-02-7",
+      "name": "식어버린 짜장 소스",
+      "ids": [
+        "5d1c2796-4f9d-4fcb-9ea7-8fd46acef430"
+      ]
+    },
+    {
+      "filename": "item-01-02-8.png",
+      "slug": "item-01-02-8",
+      "name": "군만두 간장 팩",
+      "ids": [
+        "67a50e45-1de4-4899-aa3c-77c989f543c0"
+      ]
+    },
+    {
+      "filename": "item-01-02-9.png",
+      "slug": "item-01-02-9",
+      "name": "구겨진 배달 영수증",
+      "ids": [
+        "90625e2b-47f6-4075-9b78-9e959be80266"
+      ]
+    }
+  ]
+}

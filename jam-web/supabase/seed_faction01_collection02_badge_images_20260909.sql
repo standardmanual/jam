@@ -1,0 +1,10 @@
+-- 01-02 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-02/item-01-02-1.png?v=1788944129336' WHERE id IN ('b61a50af-236f-4e30-abfb-90b536a85818'); -- 꼬들한 라면 면발
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-02/item-01-02-2.png?v=1788944129677' WHERE id IN ('0f386a08-0891-4faf-8368-bb80e79c50a7'); -- 옆구리 터진 김밥
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-02/item-01-02-3.png?v=1788944130046' WHERE id IN ('65da4997-983d-458d-a18a-668043505a49'); -- 바삭한 오징어튀김
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-02/item-01-02-4.png?v=1788944130558' WHERE id IN ('205d8192-9965-46ea-bf18-7afb9314bfbf'); -- 기름진 볶음밥
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-02/item-01-02-5.png?v=1788944130791' WHERE id IN ('a485bc9c-f759-4972-a017-261c4ba1c5ca'); -- 마요네즈 묻은 젓가락
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-02/item-01-02-6.png?v=1788944131010' WHERE id IN ('73e46bb4-2cb4-4d13-bd74-93201b5fd8db'); -- 단무지 한 조각
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-02/item-01-02-7.png?v=1788944131494' WHERE id IN ('5d1c2796-4f9d-4fcb-9ea7-8fd46acef430'); -- 식어버린 짜장 소스
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-02/item-01-02-8.png?v=1788944131984' WHERE id IN ('67a50e45-1de4-4899-aa3c-77c989f543c0'); -- 군만두 간장 팩
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-02/item-01-02-9.png?v=1788944132414' WHERE id IN ('90625e2b-47f6-4075-9b78-9e959be80266'); -- 구겨진 배달 영수증

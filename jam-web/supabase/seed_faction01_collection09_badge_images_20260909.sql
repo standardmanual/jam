@@ -1,0 +1,10 @@
+-- 01-09 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-09/item-01-09-1.png?v=1788944182079' WHERE id IN ('c613ce8d-1ef5-4ad9-80e3-65b4e4f5f6f5'); -- 군고구마 껍질
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-09/item-01-09-2.png?v=1788944182442' WHERE id IN ('22540942-3c60-4005-90f3-2ddf4c52335a'); -- 김 모락모락 호빵
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-09/item-01-09-3.png?v=1788944182859' WHERE id IN ('34cd29b6-435f-49b6-a9d5-603446710bb0'); -- 붕어빵 봉투
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-09/item-01-09-4.png?v=1788944183094' WHERE id IN ('99204935-dc1f-4ff1-9280-2df630b44649'); -- 어묵 꼬치 끝동
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-09/item-01-09-5.png?v=1788944183334' WHERE id IN ('58ad4844-0f6a-4375-8654-4472f051f449'); -- 군밤 껍데기
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-09/item-01-09-6.png?v=1788944183818' WHERE id IN ('963449ff-4c04-4ebb-b308-3b891d8cea07'); -- 종이컵 어묵 국물
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-09/item-01-09-7.png?v=1788944184601' WHERE id IN ('f1ab340f-b980-4673-a6a5-fdeb2cf7bdd8'); -- 타버린 땅콩
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-09/item-01-09-8.png?v=1788944184839' WHERE id IN ('0d8ebeee-fe03-40a1-9399-28be5acd1284'); -- 호떡 꿀 묻은 장갑
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-09/item-01-09-9.png?v=1788944185354' WHERE id IN ('b7e2fd9c-d293-4735-abbe-53276c839a21'); -- 따뜻한 두유 병

@@ -1,0 +1,10 @@
+-- 01-10 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-10/item-01-10-1.png?v=1788944186088' WHERE id IN ('dc435287-4810-4962-a6c1-660eca85d4ac'); -- 탄맛 나는 파닭 꼬치
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-10/item-01-10-2.png?v=1788944186397' WHERE id IN ('450a7e66-05e3-4938-a23e-77195b146a35'); -- 염통 꼬치 막대
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-10/item-01-10-3.png?v=1788944186892' WHERE id IN ('aafa0e0c-4e86-4e4c-8bef-72e006c7b9d2'); -- 매운 데리야끼 소스
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-10/item-01-10-4.png?v=1788944187338' WHERE id IN ('ee8fd07b-d3ac-42c7-9dbf-3378a07025cd'); -- 토치에 그을린 자국
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-10/item-01-10-5.png?v=1788944187591' WHERE id IN ('a701d067-7f8d-40b8-939d-44f6ed1bf7f5'); -- 불향 나는 호일
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-10/item-01-10-6.png?v=1788944187796' WHERE id IN ('fa31c919-e579-430e-919e-3e9833bf4a0a'); -- 소금 구이 파편
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-10/item-01-10-7.png?v=1788944188027' WHERE id IN ('4e100432-5b97-49cd-8da5-3d19502ac3cd'); -- 은행 꼬치 한 알
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-10/item-01-10-8.png?v=1788944188269' WHERE id IN ('c4416d04-3071-4d12-bd48-145c35cf1db7'); -- 가스 토치 부품
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-10/item-01-10-9.png?v=1788944188509' WHERE id IN ('be6cc7d7-91b6-439c-96ac-a0803a7838fa'); -- 빈 양념통

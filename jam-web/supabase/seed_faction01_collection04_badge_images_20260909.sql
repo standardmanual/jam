@@ -1,0 +1,10 @@
+-- 01-04 배지 이미지 반영 (Recraft 생성 + 로고 합성, register-badge-images.js 실행 기록)
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-04/item-01-04-1.png?v=1788944137508' WHERE id IN ('13069000-6544-4c92-8d4d-2bac482cd50c'); -- 성에 낀 생맥주잔
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-04/item-01-04-2.png?v=1788944137983' WHERE id IN ('2076b883-37b8-4ab6-be3a-2e81f6271d2c'); -- 녹아내린 얼음 컵
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-04/item-01-04-3.png?v=1788944138253' WHERE id IN ('f42c9682-8dc8-401f-86c1-8f5b53404d3d'); -- 수박바 막대기
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-04/item-01-04-4.png?v=1788944138477' WHERE id IN ('2b21dc00-99da-4023-9861-ab5cbaf6546b'); -- 포카리 페트병
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-04/item-01-04-5.png?v=1788944138763' WHERE id IN ('a16821f5-1b65-4303-a25b-a4dad250361f'); -- 맺힌 이슬방울
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-04/item-01-04-6.png?v=1788944138987' WHERE id IN ('9ea6b5c9-227e-4e8b-8fa0-bcf84b178644'); -- 얼어붙은 생수통
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-04/item-01-04-7.png?v=1788944139214' WHERE id IN ('c0e1ddb1-cf8e-4de5-b1c9-6b9720a4f3a1'); -- 쭈쭈바 꼭지
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-04/item-01-04-8.png?v=1788944139640' WHERE id IN ('bef294e7-d2ce-411f-ac1a-dc33b6ee908d'); -- 레몬 슬라이스
+UPDATE badges SET image_url = 'https://ceehnkzdbecxwzxrhhns.supabase.co/storage/v1/object/public/images/badges/factions/01-04/item-01-04-9.png?v=1788944139928' WHERE id IN ('16fed937-2f96-4177-821c-40dad1355a90'); -- 바닥난 얼음틀

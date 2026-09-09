@@ -1,0 +1,77 @@
+{
+  "collection_id": "01-05",
+  "items": [
+    {
+      "filename": "item-01-05-1.png",
+      "slug": "item-01-05-1",
+      "name": "설탕 묻은 꽈배기",
+      "ids": [
+        "6ae6b0c0-c6d3-4561-b7aa-24d6af8d78f1"
+      ]
+    },
+    {
+      "filename": "item-01-05-2.png",
+      "slug": "item-01-05-2",
+      "name": "씨앗 빠진 호떡",
+      "ids": [
+        "5565a686-2442-417d-a01a-4e9dbff50db7"
+      ]
+    },
+    {
+      "filename": "item-01-05-3.png",
+      "slug": "item-01-05-3",
+      "name": "윤기 나는 족발 뼈",
+      "ids": [
+        "5349829b-1d2f-4ad9-9122-c04ef983ff4b"
+      ]
+    },
+    {
+      "filename": "item-01-05-4.png",
+      "slug": "item-01-05-4",
+      "name": "찌그러진 막걸리 잔",
+      "ids": [
+        "d00496e8-3a18-479c-8147-f23f613a43f6"
+      ]
+    },
+    {
+      "filename": "item-01-05-5.png",
+      "slug": "item-01-05-5",
+      "name": "기름 밴 은박지",
+      "ids": [
+        "73ac7c90-9886-4852-a2f0-d5a78455498e"
+      ]
+    },
+    {
+      "filename": "item-01-05-6.png",
+      "slug": "item-01-05-6",
+      "name": "부러진 이쑤시개",
+      "ids": [
+        "32e77b6c-0d40-4743-a026-63471d725f09"
+      ]
+    },
+    {
+      "filename": "item-01-05-7.png",
+      "slug": "item-01-05-7",
+      "name": "마르고 남은 순대",
+      "ids": [
+        "9aeae51f-3798-4dd0-9cd0-a5ea726509f3"
+      ]
+    },
+    {
+      "filename": "item-01-05-8.png",
+      "slug": "item-01-05-8",
+      "name": "초장 묻은 비닐",
+      "ids": [
+        "2ce8277d-7daf-4c52-b7e3-9f38a34696ad"
+      ]
+    },
+    {
+      "filename": "item-01-05-9.png",
+      "slug": "item-01-05-9",
+      "name": "낡은 시장 바구니 조각",
+      "ids": [
+        "ae7842b7-f817-4252-bd69-ceb6feeb0573"
+      ]
+    }
+  ]
+}
