@@ -158,6 +158,12 @@ export interface BadgeRow {
    *  (오버라이드, 티켓 20260830_1522). null이면 기존처럼 poi.category로 폴백한다.
    *  발급 판정 로직에는 관여하지 않는다. 체크인 타입 외에는 항상 NULL로 유지. */
   category: string | null
+  /** 어드민 전용 분류 태그(마이그레이션 156, 티켓 20260910_2055). 위 `category`(지점
+   *  카테고리, 체크인 전용)와는 완전히 별개다 — `type`과 무관하게 어느 타입에나 설정할 수
+   *  있고, 저장 API가 강제로 null 처리하지 않는다. 화이트리스트(CHECK 제약)는 현재 'jam'
+   *  1개뿐 — 서비스 사용량 지표(팔로워 수·팔로잉 수·일일 동기화 횟수) 조건 배지를 어드민에서
+   *  구분·관리하기 위한 값이다. 발급 판정 로직에는 관여하지 않는 순수 분류/표시용 필드. */
+  admin_category: string | null
   drop_weight: number
   drop_condition_json: Record<string, unknown> | null
   valid_from: string | null

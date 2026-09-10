@@ -59,3 +59,39 @@ export function missionTypeLabel(type: string): string {
  * 않도록 서버(`admin/badges/page.tsx`)와 클라이언트(`BadgesFilterBar.tsx`)가 공유한다.
  */
 export const UNASSIGNED_POI_CATEGORY = '__unassigned__'
+
+/**
+ * `badges.admin_category` 화이트리스트(마이그레이션 156, 티켓 20260910_2055) — DB CHECK
+ * 제약(`badges_admin_category_known_values`)과 같은 값 집합이다. 위 `category`(지점
+ * 카테고리, 체크인 전용·poi_categories 참조)와는 완전히 별개다 — `admin_category`는
+ * `type`과 무관하게 어느 타입에나 붙을 수 있는 어드민 전용 분류 태그다.
+ *
+ * 현재는 'jam' 1개뿐이다 — 서비스 사용량 지표(팔로워 수·팔로잉 수·일일 동기화 횟수) 조건
+ * 배지를 어드민에서 구분·관리하기 위한 값. 새 값이 필요해지면 CHECK 제약을 넓히는 후속
+ * 마이그레이션과 함께 여기도 늘린다.
+ */
+export const ADMIN_CATEGORIES = ['jam'] as const
+export type AdminCategory = (typeof ADMIN_CATEGORIES)[number]
+
+export const ADMIN_CATEGORY_LABEL: Record<AdminCategory, string> = {
+  jam: 'JAM!',
+}
+
+/** 모르는 값이 들어와도 화면이 비지 않도록 원시값을 그대로 돌려준다. 값이 없으면 null */
+export function adminCategoryLabel(category: string | null | undefined): string | null {
+  if (!category) return null
+  return ADMIN_CATEGORY_LABEL[category as AdminCategory] ?? category
+}
+
+/**
+ * JAM! 카테고리(서비스 사용량 지표 배지) 판별 — `admin_category` 컬럼으로 직접 판별한다.
+ *
+ * 이전에는 `condition_json`이 `follower_count`/`following_count`/`daily_sync_count` 중
+ * 하나를 갖고 있는지로 간접 판별했다(`badge-condition-guards.ts`의 비공개
+ * `USAGE_METRIC_CONDITION_KEYS`). 그 방식은 저장 시점 가드 하나에만 쓰였고 어드민 화면
+ * 전반의 분류 기준으로 쓰기엔 조건 필드 구성에 종속적이다 — 컬럼이 생긴 지금부터는 이
+ * 함수가 단일 출처다(티켓 20260910_2055).
+ */
+export function isJamCategoryBadge(adminCategory: string | null | undefined): boolean {
+  return adminCategory === 'jam'
+}

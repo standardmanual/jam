@@ -18,7 +18,7 @@ import type { FamilyBadge } from './badge-families'
 const PAGE_SIZE = 1000
 
 export const FAMILY_BADGE_COLUMNS =
-  'id, name, description, rarity, level, family_key, sort_order, image_url, condition_json, activity_types, deleted_at'
+  'id, name, description, rarity, level, family_key, sort_order, image_url, condition_json, activity_types, deleted_at, admin_category'
 
 export interface FamilyBadgeFetchResult {
   badges: FamilyBadge[]

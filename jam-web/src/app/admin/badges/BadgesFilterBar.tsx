@@ -7,7 +7,7 @@ import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
 import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
-import { BADGE_TYPES, BADGE_TYPE_LABEL, UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
+import { ADMIN_CATEGORIES, ADMIN_CATEGORY_LABEL, BADGE_TYPES, BADGE_TYPE_LABEL, UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
 import {
   BADGE_LIST_SORT_OPTIONS,
   CONDITION_FIELD_FILTER_OPTIONS,
@@ -15,6 +15,10 @@ import {
 } from '@/lib/admin/badge-list-view'
 
 const TYPE_OPTIONS = BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_TYPE_LABEL[t] }))
+
+// 어드민 전용 분류(JAM! 카테고리) — 지점 카테고리와 달리 타입과 무관하게 항상 노출한다
+// (티켓 20260910_2055).
+const ADMIN_CATEGORY_OPTIONS = ADMIN_CATEGORIES.map((c) => ({ value: c as string, label: ADMIN_CATEGORY_LABEL[c] }))
 
 const RARITY_OPTIONS = [
   { value: 'common', label: 'Common' },
@@ -111,6 +115,7 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
     searchParams.has('rarity') ||
     searchParams.has('status') ||
     searchParams.has('condition_field') ||
+    searchParams.has('admin_category') ||
     SUB_FILTER_KEYS.some((k) => searchParams.has(k))
 
   // 선택된 트라이브 기준으로 아이템북 필터링
@@ -197,6 +202,15 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
           options={RARITY_OPTIONS}
           selected={searchParams.get('rarity') ? [searchParams.get('rarity') as string] : []}
           onChange={(values) => update({ rarity: values[0] ?? null })}
+        />
+
+        {/* 어드민 전용 분류 필터 — 지점 카테고리(체크인 전용)와 달리 타입과 무관하게 항상
+            노출한다. 현재는 "JAM!"(서비스 사용량 지표 배지) 1개뿐이다(티켓 20260910_2055). */}
+        <DataTableFacetedFilter
+          title="카테고리"
+          options={ADMIN_CATEGORY_OPTIONS}
+          selected={searchParams.get('admin_category') ? [searchParams.get('admin_category') as string] : []}
+          onChange={(values) => update({ admin_category: values[0] ?? null })}
         />
 
         {/* 조건 필드 필터 — 선택지는 조건 레지스트리에서 파생된다(예: 평균 파워를 쓰는 배지만).

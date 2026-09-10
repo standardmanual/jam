@@ -245,6 +245,7 @@ export type Database = {
       badges: {
         Row: {
           activity_types: string[]
+          admin_category: string | null
           background_animation: Json | null
           background_color: string | null
           background_image_url: string | null
@@ -277,6 +278,7 @@ export type Database = {
         }
         Insert: {
           activity_types?: string[]
+          admin_category?: string | null
           background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null
@@ -309,6 +311,7 @@ export type Database = {
         }
         Update: {
           activity_types?: string[]
+          admin_category?: string | null
           background_animation?: Json | null
           background_color?: string | null
           background_image_url?: string | null

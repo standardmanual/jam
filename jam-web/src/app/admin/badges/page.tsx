@@ -11,6 +11,7 @@ import { UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
 import {
   badgeUsesConditionField,
   compareBadgeListRows,
+  parseAdminCategoryFilter,
   parseBadgeListSort,
   parseConditionFieldFilter,
   requiresFullFetchSort,
@@ -71,6 +72,9 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   // 조건 필드 키는 아래에서 jsonb 경로(`condition_json->>키`)로 들어가므로 임의 문자열을 통과시키지 않는다.
   const sortBy = parseBadgeListSort(params.sort)
   const filterConditionField = parseConditionFieldFilter(params.condition_field)
+  // 어드민 전용 분류(JAM! 카테고리) 필터 — 지점 카테고리와 달리 type과 무관하게 걸린다
+  // (티켓 20260910_2055).
+  const filterAdminCategory = parseAdminCategoryFilter(params.admin_category)
   const q = params.q?.trim() ?? ''
 
   const supabase = createServiceClient()
@@ -111,12 +115,13 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
         activity_types: string[]
         condition_json: Json
         category: string | null
+        admin_category: string | null
       }
     const [allCheckinRows, linkedPoiRows] = await Promise.all([
       fetchAllRows<CheckinCandidateRow>((from, to) =>
         supabase
           .from('badges')
-          .select(`${BADGE_LIST_COLUMNS}, ${BADGE_SORT_COLUMNS}, category`)
+          .select(`${BADGE_LIST_COLUMNS}, ${BADGE_SORT_COLUMNS}, category, admin_category`)
           .eq('type', 'checkin')
           .order('id')
           .range(from, to)
@@ -156,6 +161,10 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
         badgeUsesConditionField(b.condition_json as Record<string, unknown> | null, filterConditionField)
       )
     }
+    // 체크인 배지는 현재 admin_category를 갖지 않지만(어드민 전용 분류는 activity 타입인
+    // JAM! 배지 전용), 두 필터가 동시에 걸려도 결과가 어긋나지 않도록 메인 쿼리 분기와
+    // 같은 조건을 적용한다(티켓 20260910_2055).
+    if (filterAdminCategory) candidates = candidates.filter((b) => b.admin_category === filterAdminCategory)
 
     candidates.sort(compareBadgeListRows(sortBy))
 
@@ -192,6 +201,8 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
 
       if (filterType) query = query.eq('type', filterType)
       if (filterRarity) query = query.eq('rarity', filterRarity)
+      // 어드민 전용 분류(JAM! 카테고리) — type과 무관하게 걸린다(티켓 20260910_2055).
+      if (filterAdminCategory) query = query.eq('admin_category', filterAdminCategory)
       if (q) query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
 
       if (filterActivityType) query = query.contains('activity_types', [filterActivityType])
@@ -248,7 +259,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   const itemBooks = (itemBooksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name' | 'tribe_id'>[]
   const poiCategories = (poiCategoriesRaw ?? []) as Pick<PoiCategoryRow, 'slug' | 'label'>[]
 
-  const hasFilter = !!(q || filterType || filterRarity || filterActivityType || filterPoiCategory || filterTribeId || filterItemBookId || filterConditionField || status !== 'active')
+  const hasFilter = !!(q || filterType || filterRarity || filterActivityType || filterPoiCategory || filterTribeId || filterItemBookId || filterConditionField || filterAdminCategory || status !== 'active')
 
   return (
     <div className="p-4 md:p-8 space-y-6">
