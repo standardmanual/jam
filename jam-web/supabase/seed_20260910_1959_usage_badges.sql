@@ -12,6 +12,10 @@
 -- daily_sync_count: 1,000,000은 오타가 아니다 — 사용자가 명시적으로 확인한 값이며, 스트라바
 --   동기화 횟수로는 사실상 영원히 달성 불가능한 히든/전설급 조건으로 의도됐다.
 --
+-- 이름·설명은 한국어 리뷰(humanize-korean) 대안 반영본이다. 최초 가제(티켓 원문)는 수 분류사
+--   오류("손짓"을 '개'로 셈)와 이름·설명 방향 역전("닿지 않는 하루"가 부정형이라 목록에서
+--   미획득 배지로 오독될 위험)이 있어 교체했다 — 조건값·등급·구조는 티켓 그대로다.
+--
 -- 비활성 상태로 우선 등록: 배지 이미지가 아직 없다(실제 이미지 제작은 /jam-img 파이프라인의
 --   별도 후속 작업 — 사용자가 Gemini에 직접 프롬프트를 입력해야 하는 수작업이라 이번 범위 밖).
 --   이미지 없이 활성 상태로 두면 유저 화면(/badges)에 깨진 이미지가 그대로 노출되므로, 최초
@@ -40,36 +44,36 @@
 
 BEGIN;
 
--- ① follower_count: 10,000 — "만 명의 동행"
+-- ① follower_count: 10,000 — "만 명의 시선"
 INSERT INTO public.badges (
   name, description, type, rarity, activity_types, condition_json, deleted_at
 )
-SELECT '만 명의 동행',
-       '만 명이 이 사람의 발걸음을 눈여겨보고 있습니다.',
+SELECT '만 명의 시선',
+       '혼자 시작한 길을 만 명이 지켜봅니다.',
        'activity'::badge_type, 'mystic'::badge_rarity,
        ARRAY[]::text[], '{"follower_count":10000}'::jsonb, now()
  WHERE NOT EXISTS (
    SELECT 1 FROM public.badges WHERE type = 'activity' AND condition_json ? 'follower_count'
  );
 
--- ② following_count: 10,000 — "만 개의 손짓"
+-- ② following_count: 10,000 — "만 번의 손짓"
 INSERT INTO public.badges (
   name, description, type, rarity, activity_types, condition_json, deleted_at
 )
-SELECT '만 개의 손짓',
-       '만 명의 궤적을 하나하나 따라가고 있습니다.',
+SELECT '만 번의 손짓',
+       '먼저 손 내민 횟수가 만 번을 넘겼습니다.',
        'activity'::badge_type, 'mystic'::badge_rarity,
        ARRAY[]::text[], '{"following_count":10000}'::jsonb, now()
  WHERE NOT EXISTS (
    SELECT 1 FROM public.badges WHERE type = 'activity' AND condition_json ? 'following_count'
  );
 
--- ③ daily_sync_count: 1,000,000 — "닿지 않는 하루" (오타 아님 — 위 설명 참고)
+-- ③ daily_sync_count: 1,000,000 — "백만 번의 동기화" (오타 아님 — 위 설명 참고)
 INSERT INTO public.badges (
   name, description, type, rarity, activity_types, condition_json, deleted_at
 )
-SELECT '닿지 않는 하루',
-       '하루 동안 쉬지 않고 손을 뻗었습니다.',
+SELECT '백만 번의 동기화',
+       '하루 동안 동기화를 백만 번. 아직 아무도 닿지 못했습니다.',
        'activity'::badge_type, 'mystic'::badge_rarity,
        ARRAY[]::text[], '{"daily_sync_count":1000000}'::jsonb, now()
  WHERE NOT EXISTS (
@@ -91,7 +95,7 @@ COMMIT;
 -- ↩️ 롤백 — 이 시드가 넣은 행만 지운다 (발급 이력이 없는 신규 배지라 실삭제 가능)
 -- DELETE FROM public.badges
 --  WHERE type = 'activity' AND rarity = 'mystic'
---    AND name IN ('만 명의 동행', '만 개의 손짓', '닿지 않는 하루')
+--    AND name IN ('만 명의 시선', '만 번의 손짓', '백만 번의 동기화')
 --    AND (
 --      condition_json ? 'follower_count'
 --      OR condition_json ? 'following_count'
