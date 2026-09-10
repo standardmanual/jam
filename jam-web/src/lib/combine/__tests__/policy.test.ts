@@ -13,25 +13,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 const POLICY_ROW: Record<string, unknown> = {
   id: 1,
-  tier1_max_items: 3,
-  tier1_min_tribes: 1,
-  tier1_b_rate: 0.35,
-  tier1_b_count: 1,
-  tier2_max_items: 6,
-  tier2_min_tribes: 3,
-  tier2_b_rate: 0.45,
-  tier2_b_count: 2,
-  tier3_max_items: 10,
-  tier3_min_tribes: 5,
-  tier3_b_rate: 0.55,
-  tier3_b_count: 3,
-  pity_prob_increment: 0.03,
-  pity_prob_cap: 0.5,
-  pity_points_start_streak: 3,
-  pity_points_base: 5,
-  pity_points_step: 3,
-  pity_points_increment: 3,
-  pity_points_cap: 30,
+  // 마이그레이션 153(티켓 20260910_1408)에서 티어 12개·피티 7개 컬럼을 제거했다.
+  fail_reward_points: 7,
   updated_at: '2026-09-01T00:00:00.000Z',
 }
 
@@ -69,7 +52,7 @@ beforeEach(() => {
 describe('getCombinePolicy — 조회 실패 시 기본 정책 폴백 + 로그', () => {
   it('정상 행이면 DB 값을 그대로 돌려준다', async () => {
     const policy = await getCombinePolicy()
-    expect(policy.tier1_b_rate).toBe(0.35)
+    expect(policy.fail_reward_points).toBe(7)
   })
 
   it('조회 실패는 기본 정책으로 폴백하되 서버 로그를 남긴다', async () => {
@@ -79,6 +62,10 @@ describe('getCombinePolicy — 조회 실패 시 기본 정책 폴백 + 로그',
     expect(policy).toEqual(DEFAULT_COMBINE_POLICY)
     expect(spy).toHaveBeenCalled()
     spy.mockRestore()
+  })
+
+  it('기본 정책의 실패 보상 포인트는 10 — DB DEFAULT(마이그레이션 153)와 같다', () => {
+    expect(DEFAULT_COMBINE_POLICY.fail_reward_points).toBe(10)
   })
 
   it('행이 없어도 기본 정책으로 폴백한다', async () => {
@@ -92,17 +79,17 @@ describe('updateCombinePolicy — upsert 실패 전파', () => {
   it('upsert error를 받으면 예외를 던진다 (이전에는 삼켰다)', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     stub.upsertError = { code: 'PGRST204', message: "Could not find the 'foo' column" }
-    await expect(updateCombinePolicy({ tier1_b_rate: 0.4 })).rejects.toThrow('PGRST204')
+    await expect(updateCombinePolicy({ fail_reward_points: 9 })).rejects.toThrow('PGRST204')
     expect(spy).toHaveBeenCalled()
     spy.mockRestore()
   })
 
   it('정상이면 { id: 1, ...patch, updated_at } 페이로드로 저장한다', async () => {
-    await updateCombinePolicy({ tier1_b_rate: 0.4 })
+    await updateCombinePolicy({ fail_reward_points: 9 })
     expect(stub.upsertPayloads).toHaveLength(1)
     const payload = stub.upsertPayloads[0]
     expect(payload.id).toBe(1)
-    expect(payload.tier1_b_rate).toBe(0.4)
+    expect(payload.fail_reward_points).toBe(9)
     expect(typeof payload.updated_at).toBe('string')
   })
 })

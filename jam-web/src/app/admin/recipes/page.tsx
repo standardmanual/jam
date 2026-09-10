@@ -25,8 +25,8 @@ export default async function AdminRecipesPage() {
     ...new Set(
       recipes.flatMap((r) => [
         ...r.ingredient_badge_ids,
-        r.result_badge_id,
-        r.required_activity_badge_id,
+        ...(r.required_badge_ids ?? []),
+        ...(r.reward_badge_ids ?? []),
       ]).filter((id): id is string => !!id)
     ),
   ]
@@ -36,6 +36,15 @@ export default async function AdminRecipesPage() {
     : { data: [] as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[] }
   const badges = (usedBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'type'>[]
 
+  // 보상 배지 다중 선택의 후보 좁히기 필터(트라이브·컬렉션) 선택지 — 목록 자체는 소규모다
+  // (트라이브 10종, 활성 컬렉션 30종).
+  const [{ data: tribesRaw }, { data: itemBooksRaw }] = await Promise.all([
+    supabase.from('tribes').select('id, name').order('name'),
+    supabase.from('item_books').select('id, name').order('name'),
+  ])
+  const tribes = (tribesRaw ?? []) as { id: string; name: string }[]
+  const itemBooks = (itemBooksRaw ?? []) as { id: string; name: string }[]
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -44,7 +53,7 @@ export default async function AdminRecipesPage() {
           <p className="text-muted-foreground text-sm mt-1">아이템 믹스 공식 관리</p>
         </div>
       </div>
-      <RecipeList recipes={recipes} badges={badges} />
+      <RecipeList recipes={recipes} badges={badges} tribes={tribes} itemBooks={itemBooks} />
     </div>
   )
 }

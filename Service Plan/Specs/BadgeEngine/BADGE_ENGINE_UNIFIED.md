@@ -1185,12 +1185,22 @@ POST /api/admin/badges/reevaluate-all
   속하지 않는다** — `poi_drops`는 `source`가 `user`/`system` 무엇이든 항상 이미 발급된
   `inventory_items` row를 `inventory_item_id`로 참조하며, 픽업(`pickup_drop()` RPC)은
   그 개체의 소유자만 옮길 뿐 새 row를 만들지 않는다(일련번호 불변).
-- 개체 파괴(조합 소모 `Consume` / 미픽업 만료 `Expire`)는 소프트 삭제로 확정 —
+- 개체 파괴(믹스 소모 `Consume` / 미픽업 만료 `Expire`)는 소프트 삭제로 확정 —
   `inventory_items.destroyed_at`을 세우고, 번호는 `assign_random_serial()`의 유니크 체크
   (`destroyed_at IS NULL` 조건)에서 재사용 가능한 풀로 돌아간다. 같은 번호가 시간이 지나
   다른 개체에 재부여될 수 있으나, `custody_events`(아래 §3.5-1) 이력으로 항상 구분 가능하다.
 - 유저 드랍은 기한 개념이 없다 — 회수 액션도, 만료도 없이 픽업될 때까지 무기한 대기한다
   (`poi_drops.expires_at`은 유저 드랍이든 시스템 드랍이든 항상 NULL).
+- **믹스(`Consume`) 판정은 두 갈래다** (2026-09-10, 티켓 20260910_1408 — 상세 정책은
+  `Specs/Content/COMBINE_RECIPES.md`가 단일 출처):
+  ① 투입한 아이템 배지 집합이 레시피 `ingredient_badge_ids`와 순서 무관 완전 일치하고
+  `required_badge_ids`(액티비티·체크인 배지, 소각되지 않는 보유 조건)를 전부 보유하면
+  레시피의 `reward_points`·`reward_badge_ids`를 **확률 없이 전부 확정 지급**한다.
+  보상 배지는 아이템 배지만 지정할 수 있다(지급 경로가 `inventory_items` 개체 생성뿐이다).
+  ② 매칭되는 레시피가 없으면 배지를 전혀 지급하지 않고 `combine_policy.fail_reward_points`
+  (기본 10) 고정 포인트만 준다. 어느 갈래든 투입 아이템 개체는 항상 소각되며, 실패는
+  `user_combine_fail_logs`에 1건 적재된다. 확률형 경로(트라이브 다양성 티어)와 피티는 폐기됐다
+  — 배지 지급은 어드민이 등록한 레시피를 통해서만 일어난다.
 
 #### 3.5-1 `custody_events` — 점유(custody) 이력 (어드민 조회용, 신규)
 
@@ -1208,7 +1218,7 @@ Minted(발급 — ①직접지급 또는 ②앰비언트 배치 시점, 이때 s
                           └─ 기한 만료(미픽업)              ─▶ Destroyed
 
 Held ─▶ Slotted ─▶ Held
-Held ─▶ Consumed(조합 재료 소모) ─▶ Destroyed
+Held ─▶ Consumed(믹스 재료 소모 — 성공/실패 무관 항상) ─▶ Destroyed
 Held ─▶ Dropped(유저 배치 — 무기한, 회수·만료 없음) ─ 픽업(소유권 이전) ─▶ Held(새 소유자)
 Held/Slotted ─▶ Orphaned(소유자 계정 탈퇴 — 유저 비노출, 어드민 전용)
 ```
@@ -1599,7 +1609,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md ← 이 문서. 발급·드랍 로직 전체
 Specs/Content/ACTIVITY_BADGES.md          액티비티배지 115종 전체 목록·조건·설명
 Specs/Content/ITEMBOOKS.xlsx              아이템배지 ~900종 목록 + '트라이브 인접' 시트
-Specs/Content/COMBINE_RECIPES.md          조합 레시피 목록
+Specs/Content/COMBINE_RECIPES.md          믹스 판정 정책 · 레시피 카탈로그 현황
 Specs/Content/TRIBES.md                  트라이브 10종 개요·컬렉션 매핑·인접 그래프
 Specs/Content/POI.md                      지점(POI) 컨텐츠 (스텁)
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/admin/auth'
 import { collectRecipeReferences } from '@/lib/admin/recipe-references'
+import { buildRecipeRow } from '@/lib/admin/recipe-write'
 
 /**
  * 하드 삭제 — 참조 카운트 가드는 `lib/admin/recipe-references.ts`가 단일 출처다(티켓
@@ -54,11 +55,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (authError) return authError
 
   const { id } = await params
-  const body = await req.json()
+  const body = await req.json().catch(() => null)
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: '요청 형식이 올바르지 않아요.' }, { status: 400 })
+  }
+
   const supabase = createServiceClient()
+  // 티켓 20260910_1408: 이전에는 body를 `as never`로 캐스팅해 그대로 update했다. POST와 같은
+  // 검증·자동 분류 규칙을 `buildRecipeRow()` 한 곳에서 공유한다.
+  const built = await buildRecipeRow(supabase, body)
+  if (!built.ok) return NextResponse.json({ error: built.error }, { status: 400 })
+
   const { data, error } = await supabase
     .from('combination_recipes')
-    .update(body as never)
+    .update(built.row)
     .eq('id', id)
     .select()
     .single()
