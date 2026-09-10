@@ -48,19 +48,29 @@ export async function buildRecipeRow(
     return { ok: false, error: '선택한 재료 배지 중 삭제되었거나 존재하지 않는 배지가 있어요. 다시 선택해 주세요.' }
   }
 
-  // 보상 배지도 존재·미삭제를 확인한다 — 지급 시점에 없으면 매칭돼도 빈손이 된다.
+  // 보상 배지는 존재·미삭제 + **아이템 배지 여부**를 확인한다.
+  // 엔진의 배지 지급은 inventory_items에 개체를 꽂는 경로뿐이라, 액티비티·체크인 배지를
+  // 보상으로 두면 인벤토리에는 개체가 생기지만 각 타입의 획득 기록 테이블
+  // (user_activity_badges / user_checkin_badge_earns)에는 남지 않아 데이터가 어긋난다.
   if (rewardBadgeIds.length > 0) {
     const { data: rewardRaw, error: rewardError } = await supabase
       .from('badges')
-      .select('id')
+      .select('id, type')
       .in('id', rewardBadgeIds)
       .is('deleted_at', null)
     if (rewardError) {
       console.error('[recipe-write] 보상 배지 조회 실패:', rewardError)
       return { ok: false, error: '보상 배지를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.' }
     }
-    if ((rewardRaw ?? []).length !== rewardBadgeIds.length) {
+    const rewardBadges = (rewardRaw ?? []) as { id: string; type: string }[]
+    if (rewardBadges.length !== rewardBadgeIds.length) {
       return { ok: false, error: '선택한 보상 배지 중 삭제되었거나 존재하지 않는 배지가 있어요. 다시 선택해 주세요.' }
+    }
+    if (rewardBadges.some((b) => b.type !== 'item')) {
+      return {
+        ok: false,
+        error: '보상 배지는 아이템 배지만 지정할 수 있어요. 액티비티·체크인 배지는 보상으로 쓸 수 없어요.',
+      }
     }
   }
 

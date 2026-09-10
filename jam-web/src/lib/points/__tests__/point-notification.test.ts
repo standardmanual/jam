@@ -86,8 +86,8 @@ describe('포인트 적립 — 미션 보상 경유분은 제외한다', () => {
     expect(createNotificationMock).not.toHaveBeenCalled()
   })
 
-  it('조합 보상(combine_pity_reward)도 결산에 넣지 않는다', async () => {
-    await awardPoints(USER, 100, 'combine_pity_reward')
+  it('조합 보상(combine_fail_reward)도 결산에 넣지 않는다', async () => {
+    await awardPoints(USER, 100, 'combine_fail_reward')
     expect(createNotificationMock).not.toHaveBeenCalled()
   })
 })

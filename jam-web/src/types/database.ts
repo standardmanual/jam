@@ -1258,8 +1258,8 @@ export type PointReason =
   | 'mission_point_reward'
   | 'admin_grant'
   | 'admin_deduct'
-  /** 믹스 실패 보상 — 레시피 미매칭 시 정책의 고정 포인트 (구 피티 보상 코드값 유지) */
-  | 'combine_pity_reward'
+  /** 믹스 실패 보상 — 레시피 미매칭 시 정책의 고정 포인트 (마이그레이션 153, 구 combine_pity_reward) */
+  | 'combine_fail_reward'
   /** 믹스 레시피 매칭 성공 보상 포인트 (마이그레이션 153) */
   | 'combine_recipe_reward'
 

@@ -1196,8 +1196,9 @@ POST /api/admin/badges/reevaluate-all
   ① 투입한 아이템 배지 집합이 레시피 `ingredient_badge_ids`와 순서 무관 완전 일치하고
   `required_badge_ids`(액티비티·체크인 배지, 소각되지 않는 보유 조건)를 전부 보유하면
   레시피의 `reward_points`·`reward_badge_ids`를 **확률 없이 전부 확정 지급**한다.
+  보상 배지는 아이템 배지만 지정할 수 있다(지급 경로가 `inventory_items` 개체 생성뿐이다).
   ② 매칭되는 레시피가 없으면 배지를 전혀 지급하지 않고 `combine_policy.fail_reward_points`
-  고정 포인트만 준다. 어느 갈래든 투입 아이템 개체는 항상 소각되며, 실패는
+  (기본 10) 고정 포인트만 준다. 어느 갈래든 투입 아이템 개체는 항상 소각되며, 실패는
   `user_combine_fail_logs`에 1건 적재된다. 확률형 경로(트라이브 다양성 티어)와 피티는 폐기됐다
   — 배지 지급은 어드민이 등록한 레시피를 통해서만 일어난다.
 

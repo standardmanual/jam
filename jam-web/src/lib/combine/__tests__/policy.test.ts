@@ -64,6 +64,10 @@ describe('getCombinePolicy — 조회 실패 시 기본 정책 폴백 + 로그',
     spy.mockRestore()
   })
 
+  it('기본 정책의 실패 보상 포인트는 10 — DB DEFAULT(마이그레이션 153)와 같다', () => {
+    expect(DEFAULT_COMBINE_POLICY.fail_reward_points).toBe(10)
+  })
+
   it('행이 없어도 기본 정책으로 폴백한다', async () => {
     stub.row = null
     const policy = await getCombinePolicy()
