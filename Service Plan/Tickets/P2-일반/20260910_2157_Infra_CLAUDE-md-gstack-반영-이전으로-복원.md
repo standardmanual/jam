@@ -7,7 +7,7 @@ created: 2026-09-10
 closed: 2026-09-10
 ---
 
-# [Infra] CLAUDE.md를 gstack 반영 이전 상태로 복원
+# [Infra] CLAUDE.md·gstack 스킬 설치물을 gstack 반영 이전 상태로 복원
 
 ## 배경 / 문제 정의
 
@@ -73,19 +73,88 @@ gstack과 무관한 변경을 함께 포함하고 있는지 각각 diff로 확�
   과거 티켓 기록(`20260910_1246`, `20260910_1258`, 이번 티켓)에만 남아있음을 확인했다 —
   이력 문서는 원칙대로 손대지 않았다.
 
-### 다루지 않은 것 (별도 확인 필요)
+### 후속 — gstack 스킬 설치물 자체 제거 (같은 세션, 사용자 지시로 범위 확장)
 
-- **전역 `~/.claude/CLAUDE.md`**: 같은 "## gstack" 절이 있지만 git 미추적이라 이력 기반
-  복원이 불가능하고, "이 프로젝트에만 적용" 문구가 없어 다른 프로젝트에서도 참조할 가능성이
-  있다. 이번 지시("jam-work에... 복원")의 범위를 프로젝트로 한정해 손대지 않았다.
-- **`~/.claude/skills/gstack` 설치 자체**(128MB, git clone)와 전역 훅 등록
-  (`~/.claude/settings.json`의 Stop 훅)도 그대로 남아있다. CLAUDE.md에서 정책 참조를
-  없앴을 뿐, 설치물 삭제는 이번 범위에 포함하지 않았다.
+프로젝트 `CLAUDE.md` 복원 직후 사용자가 "gstack 스킬도 제거해"라고 명시적으로 지시해,
+위에서 "범위 밖"으로 남겨뒀던 두 항목도 이어서 처리했다.
+
+**삭제한 것**:
+- `~/.claude/skills/gstack` (128MB, `github.com/garrytan/gstack` git clone, 2026-09-09 설치)
+- `~/.claude/skills/_gstack-command`, `~/.claude/skills/gstack-upgrade`,
+  `~/.claude/skills/open-gstack-browser` (모두 `.gstack-owned` 마커 파일로 gstack 소유임을
+  자체 표시하고 있었다. 이 중 두 곳의 `SKILL 2.md`는 아이클라우드 동기화가 만든 중복
+  파일명 패턴으로, `~/Library/Mobile Documents/com~apple~CloudDocs/.claude/skills/gstack/...`를
+  가리키는 심볼릭 링크였다 — 이 프로젝트가 2026-08-16 티켓 20260816_005에서 이미 겪은
+  "`.claude/`가 아이클라우드와 얽혀 사본이 생긴다" 문제와 같은 유형이 전역 스킬 디렉토리에도
+  퍼져 있었다는 뜻이다.)
+- `~/.gstack` (24KB, gstack 자체 런타임 캐시 — analytics·sessions·slug-cache 등. CLAUDE.md에
+  이미 적어뒀듯 이 경로는 정본이 아니라 부가 캐시였으므로 삭제해도 손실 없음)
+- 전역 `~/.claude/settings.json`의 `hooks.Stop` 배열 전체(`_gstack_source: "gstack-timeline-stop"`
+  로 표시된 항목 하나뿐이었다). 이 파일에는 `autoMode` 환경 컨텍스트 등 민감한 설정이 함께
+  있어 해당 블록만 정확히 도려내고 나머지는 전혀 건드리지 않았다. 수정 후 `python3 -c
+  "import json; json.load(...)"`로 유효한 JSON임을 확인했다.
+- 전역 `~/.claude/CLAUDE.md`의 "## gstack" 절(브라우징 정책 문구 포함) — 스킬 자체가
+  사라진 상태에서 이 정책만 남겨두면 존재하지 않는 스킬을 쓰라고 지시하는 죽은 참조가
+  되므로 함께 제거했다.
+
+**전역 파일 변경 전 원본 전문** (git 이력에 남지 않으므로 여기 인용):
+
+`~/.claude/settings.json`의 `hooks` 블록(파일 최상단, 다른 키들 바로 앞):
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/sihyunhwang/.claude/skills/gstack/hosts/claude/hooks/timeline-stop-hook",
+            "timeout": 5
+          }
+        ],
+        "_gstack_source": "gstack-timeline-stop"
+      }
+    ]
+  },
+  "enableWorkflows": true,
+  ... (이하 동일, 무변경)
+```
+
+`~/.claude/CLAUDE.md` 전문(변경 전):
+```markdown
+# 전역 운영 규칙
+
+**항상 한국어로 대화할 것.** 대화 응답뿐 아니라 커밋 메시지, 작업 진행 상황 설명,
+빌드/배포 상태 요약 등 사용자에게 보여지는 모든 출력물에 예외 없이 적용한다.
+영어 문구를 그대로 노출하지 말고 반드시 한국어로 번역/서술한다.
+
+## gstack
+
+`~/.claude/skills/gstack`에 gstack 스킬 모음이 설치되어 있다.
+
+**웹 브라우징은 항상 gstack의 `/browse` 스킬을 사용한다. `mcp__claude-in-chrome__*` 도구는
+절대 사용하지 않는다.**
+
+사용 가능한 gstack 스킬은 세션 시작 시 스킬 목록으로 자동 주입되므로 여기에 나열하지 않는다
+(중복 목록은 낡기 쉬워 2026-09-10 티켓 20260910_1246에서 제거했다).
+```
+
+**중요한 후속 영향**: 전역 CLAUDE.md의 "웹 브라우징은 항상 gstack의 `/browse` 스킬을 사용한다.
+`mcp__claude-in-chrome__*` 도구는 절대 사용하지 않는다" 정책이 사라졌다. 이제 이 저장소를
+포함한 모든 프로젝트에서 브라우징 방식은 세션 환경이 제공하는 기본 도구(Browser 창 등)를
+따른다. 다른 프로젝트에서도 gstack 사용을 전제하고 있었다면 그쪽도 영향을 받는다.
 
 ### 변경된 파일
 ```
 CLAUDE.md                                                                    (gstack 절 2개 제거)
 Service Plan/Tickets/P2-일반/20260910_2157_Infra_CLAUDE-md-gstack-반영-이전으로-복원.md  (신규 — 이 파일)
+~/.claude/skills/gstack/                                                     (삭제 — 저장소 밖, git 미추적)
+~/.claude/skills/_gstack-command/                                           (삭제 — 저장소 밖, git 미추적)
+~/.claude/skills/gstack-upgrade/                                            (삭제 — 저장소 밖, git 미추적)
+~/.claude/skills/open-gstack-browser/                                       (삭제 — 저장소 밖, git 미추적)
+~/.gstack/                                                                   (삭제 — 저장소 밖, git 미추적)
+~/.claude/settings.json                                                     (hooks.Stop 블록 제거 — 저장소 밖, git 미추적)
+~/.claude/CLAUDE.md                                                         (gstack 절 제거 — 저장소 밖, git 미추적)
 ```
 
 ### 테스트 결과
@@ -111,5 +180,11 @@ Service Plan/Tickets/P2-일반/20260910_2157_Infra_CLAUDE-md-gstack-반영-이�
   범위까지 원하는지는 별도 확인이 필요하다.
 
 ### 잔여 이슈
-1. 전역 `~/.claude/CLAUDE.md`의 gstack 절 처리 여부 확인 필요.
-2. `~/.claude/skills/gstack` 설치물(128MB) 및 전역 `Stop` 훅 등록 삭제 여부 확인 필요.
+1. ~~전역 `~/.claude/CLAUDE.md`의 gstack 절 처리 여부 확인 필요.~~ — **해소.** 같은 세션에서
+   사용자 지시로 제거 완료.
+2. ~~`~/.claude/skills/gstack` 설치물(128MB) 및 전역 `Stop` 훅 등록 삭제 여부 확인 필요.~~ —
+   **해소.** 같은 세션에서 설치물 4개 디렉토리 + `~/.gstack` 캐시 + 훅 등록 전부 삭제 완료.
+3. gstack을 다시 쓰고 싶어지면 `git clone https://github.com/garrytan/gstack.git
+   ~/.claude/skills/gstack`로 재설치할 수 있다(공개 저장소). 다만 이번에 발견된 아이클라우드
+   심볼릭 링크 문제(`SKILL 2.md` 사본)가 재발할 수 있으니, 재설치 시 `~/.claude`가 아이클라우드
+   동기화 경로와 얽혀 있지 않은지 먼저 확인하는 편이 안전하다.
