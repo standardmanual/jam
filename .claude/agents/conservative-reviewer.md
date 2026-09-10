@@ -31,6 +31,14 @@ tools: Read, Grep, Glob, Bash
    문서 변경 등) 이 전체 lint 실행 자체를 건너뛴다** — 린트가 실패할 수 없는 변경이기 때문이다
    (push 시점 `.githooks/pre-push`가 코드 변경이 있는 push에는 어차피 전체 lint를 다시 돌리므로,
    여기서 매번 반복할 필요가 없다. 2026-09-08 jam-work 최적화 검토).
+   **추가 예외(2026-09-10): diff가 작고(`diffLineCount` 15줄 미만) jam-developer의 구현 요약에
+   `npm run lint` 전체 실행 결과(에러 0건·경고 26건 이하)가 이미 명시돼 있다면, 여기서
+   재실행하지 않고 그 수치를 그대로 인용한다** — 개발자도 이미 프로젝트 전체를 대상으로 같은
+   명령을 돌렸으므로 게이트에서의 재실행은 순수 중복이고, 어차피 push 시점 `.githooks/pre-push`가
+   전체 lint를 기계적으로 다시 검증하는 안전망이 있다. 단, 다음 중 하나라도 해당하면 diff
+   크기와 무관하게 직접 재실행한다: 개발자 보고에 에러가 1건이라도 있음 / 경고 수치가 없거나
+   26건을 초과 / `confidence: low` / `alerts`에 WARN·HALT가 있음. 확신이 없으면 재실행 쪽으로
+   기운다(이 파일 전체의 원칙과 동일).
 6. **"구글 로그인이 필요해서 확인할 수 없다"고 뭉뚱그리지 않는다.** `jam-stage.vercel.app`은
    `STAGING_MODE=true`로 미인증 요청을 `/api/dev-login`으로 자동 리다이렉트해 로그인 없이도
    접근 가능하다(단, 이 브랜치가 staging에 병합돼 반영된 경우에 한함 — review 브랜치 단계면
@@ -78,9 +86,10 @@ tools: Read, Grep, Glob, Bash
 이 추출은 verdict 판정과 무관한 별도 정보 전달이며, 후속 한국어 리뷰 단계가 별도 에이전트
 없이 이 값을 바로 쓴다. 그 외 유형에서는 두 필드 모두 비워둔다.
 
-### diffLineCount — 인터페이스 리뷰 규모 판정용 (`ui` 유형만)
+### diffLineCount — 리뷰 규모 판정용 (모든 유형 공통, 2026-09-10부터 유형 불문 채움)
 
-작업 유형이 `ui`면, `git diff --numstat <review 브랜치> origin/staging -- jam-web`로
-추가+삭제 라인 수 합계를 세어 `diffLineCount`에 채운다. 이 값도 verdict 판정과 무관하며,
-오케스트레이터가 인터페이스 리뷰 단계를 돌릴지 말지 정하는 데만 쓴다. 그 외 유형에서는
-비워둔다.
+`git diff --numstat <review 브랜치> origin/staging -- jam-web`로 추가+삭제 라인 수 합계를
+세어 `diffLineCount`에 채운다. 이 값도 verdict 판정과 무관하며, 오케스트레이터가 인터페이스
+리뷰·개선 리뷰 단계를 돌릴지, 그리고 위 5번 항목의 "게이트 lint 재실행 생략" 조건에 해당하는지
+판단하는 데 쓴다. 계산 자체가 가벼운 명령(`git diff --numstat`)이라 유형과 무관하게 항상
+채워도 비용이 크지 않다 (이전에는 `ui` 유형에서만 채웠다).
