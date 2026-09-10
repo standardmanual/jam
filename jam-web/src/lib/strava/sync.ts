@@ -27,7 +27,7 @@ import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
 // JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
 // recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
-import { recordDailySyncAndEvaluate } from '@/lib/badge-engine/usageBadges'
+import { recordDailySyncAndEvaluate, type UsageBadgeEarned } from '@/lib/badge-engine/usageBadges'
 import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engine/badgeProgress'
 // 배지 «종류» 판정의 단일 출처 — 계열 프런티어 산출이 발급 엔진과 같은 기준을 본다
 // (티켓 20260905_0031, 0030이 넘긴 「레벨형 계열 통째 누락」 항목).
@@ -224,8 +224,17 @@ export async function buildEarnedBadgePayload(
  *
  * 배지 엔진은 배치 전체를 한 번에 평가하므로 개별 활동에 귀속시킬 수 없다. 결산의 묶음
  * 단위가 KST 하루라 귀속이 필요 없어졌다.
+ *
+ * **JAM! 사용량 배지(활동배지 아님)도 이 함수로 알린다 — 티켓 20260910_2258.** 이 함수는
+ * badge id 목록을 `badges`로 되읽어 결산에 싣는 것일 뿐 배지 «종류»를 가정하지 않으므로,
+ * `id`만 넘기면 사용량 배지도 그대로 처리된다. 새 알림 타입·문구를 만들지 않고 기존
+ * `activity_recap` 결산에 그대로 합류시키는 것이 이 재사용의 목적이다. 호출부 2곳:
+ * - `processFetchedActivities`(이 파일) — 동기화로 발급된 활동배지 + JAM! 배지(사용량:
+ *   하루 동기화 횟수)를 함께 넘긴다.
+ * - `follows/route.ts` — 팔로우/팔로워 수로 발급된 JAM! 배지를 넘긴다(activityIds는 빈
+ *   배열 — 귀속시킬 활동이 없다).
  */
-async function notifyActivityBadgesEarned(
+export async function notifyActivityBadgesEarned(
   supabase: SupabaseClient,
   userId: string,
   activityBadgeIds: string[],
@@ -963,13 +972,9 @@ export async function processFetchedActivities(
   const badgesEarned = activityBadgeIds.length
   earnedBadgeIds.push(...activityBadgeIds)
 
-  // ① 결산에 활동배지를 싣는다 (묶음 단위는 KST 하루라 대표 활동을 고를 필요가 없다)
-  await notifyActivityBadgesEarned(
-    supabase,
-    userId,
-    activityBadgeIds,
-    activities.map((a) => a.stravaId)
-  )
+  // ① 결산에 활동배지를 싣는 알림 호출은 JAM! 사용량 배지 평가(아래, recordDailySyncAndEvaluate)
+  // 이후로 미룬다 — 활동배지와 JAM! 배지를 한 결산 행에 함께 실어야 하기 때문이다
+  // (티켓 20260910_2258). 실제 호출은 이 함수 하단 참고.
 
   // 아이템북 완성 체크 + reward_badge 발급
   const { completedIds, rewardBadgesIssued, rewardBadgeIds } = await checkItemBookCompletion(userId)
@@ -1015,12 +1020,24 @@ export async function processFetchedActivities(
   // 동기화 자체(위에서 이미 끝난 활동 배지·아이템 드랍·미션 등)는 계속 진행돼야 하므로
   // try/catch로 격리한다. 획득 배지는 earnedBadgeIds에 합류시켜 상위(syncStravaActivities)의
   // buildEarnedBadgePayload가 한 번에 상한·순서·isFirstBadgeEver를 처리하게 한다.
+  let usageEarned: UsageBadgeEarned[] = []
   try {
-    const usageEarned = await recordDailySyncAndEvaluate(userId, supabase)
+    usageEarned = await recordDailySyncAndEvaluate(userId, supabase)
     earnedBadgeIds.push(...usageEarned.map((b) => b.id))
   } catch (usageBadgeError) {
     console.error(`[processFetchedActivities] daily_sync_count 사용량 배지 평가 실패 (userId: ${userId}):`, usageBadgeError)
   }
+
+  // ① 결산에 활동배지 + JAM! 사용량 배지를 함께 싣는다 (묶음 단위는 KST 하루라 대표 활동을
+  // 고를 필요가 없다). 이전에는 이 호출이 활동배지 평가 직후(현재는 위로 이동)에 있어
+  // JAM! 배지가 평가되기 전에 알림 결산이 이미 끝나 있었다 — JAM! 배지 획득이 알림함에
+  // 전혀 반영되지 않는 원인이었다(티켓 20260910_2258).
+  await notifyActivityBadgesEarned(
+    supabase,
+    userId,
+    [...activityBadgeIds, ...usageEarned.map((b) => b.id)],
+    activities.map((a) => a.stravaId)
+  )
 
   return {
     badges: badgesEarned + poiBadgesEarned + rewardBadgesIssued,
