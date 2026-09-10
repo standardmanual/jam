@@ -32,32 +32,11 @@ export async function PUT(req: NextRequest) {
     patch[key] = n
   }
 
-  const merged = { ...(await getCombinePolicy()), ...patch }
-
-  // 확률 필드는 0~1 사이여야 함
-  const rateFields: (keyof CombinePolicy)[] = [
-    'tier1_b_rate', 'tier2_b_rate', 'tier3_b_rate', 'pity_prob_increment', 'pity_prob_cap',
-  ]
-  for (const key of rateFields) {
-    if (merged[key] > 1) {
-      return NextResponse.json({ error: `${key}: 1 이하의 값이어야 합니다.` }, { status: 400 })
-    }
-  }
-
-  // 티어 재료 상한은 오름차순이어야 함 (1 < 2 < 3)
-  if (!(merged.tier1_max_items < merged.tier2_max_items && merged.tier2_max_items <= merged.tier3_max_items)) {
-    return NextResponse.json(
-      { error: '티어별 재료 개수 상한은 티어1 < 티어2 ≤ 티어3 순서여야 합니다.' },
-      { status: 400 }
-    )
-  }
-
-  // 트라이브 다양성 요건도 오름차순 권장 (엄격 검증은 아님, 역전 시 경고성 차단)
-  if (!(merged.tier1_min_tribes <= merged.tier2_min_tribes && merged.tier2_min_tribes <= merged.tier3_min_tribes)) {
-    return NextResponse.json(
-      { error: '티어별 최소 트라이브 다양성은 티어1 ≤ 티어2 ≤ 티어3 순서여야 합니다.' },
-      { status: 400 }
-    )
+  // 마이그레이션 153에서 확률·티어 필드가 전부 사라져 교차 검증(0~1 범위, 티어 오름차순)의
+  // 대상이 없어졌다 — 남은 검증은 위 루프의 "0 이상 정수" 하나다.
+  const points = patch.fail_reward_points
+  if (points !== undefined && !Number.isInteger(points)) {
+    return NextResponse.json({ error: 'fail_reward_points: 정수여야 합니다.' }, { status: 400 })
   }
 
   try {

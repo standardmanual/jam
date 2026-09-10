@@ -487,50 +487,41 @@ export interface TradeRow {
 
 export interface CombinationRecipeRow {
   id: string
+  /** 소각되는 재료 — 아이템 배지만. 유저 투입 집합과 순서 무관 완전 일치해야 매칭된다 */
   ingredient_badge_ids: string[]
-  /** 결과 배지가 삭제되면 NULL — 결과 미지정 상태(재지정 전까지 매칭돼도 지급 불가) */
-  result_badge_id: string | null
-  success_rate: number
+  /** 소각되지 않는 보유 조건 — 액티비티·체크인 배지. 전부 보유해야 매칭된다 (마이그레이션 153) */
+  required_badge_ids: string[]
+  /** 매칭 성공 시 확정 지급하는 잼 포인트 — 0이면 미지급 */
+  reward_points: number
+  /** 매칭 성공 시 확정 지급하는 배지 — 무작위 없이 전부 지급 */
+  reward_badge_ids: string[]
   hint_text: string | null
   is_public: boolean
-  /** 소모되지 않는 보유 조건 — 설정 시 이 액티비티 배지를 보유해야 매칭됨 (item_books.required_activity_badge_id와 동일 패턴) */
-  required_activity_badge_id: string | null
   created_at: string
 }
 
 /**
- * Phase 19: 조합 v2 — 트라이브 다양성 티어 + 피티 정책 (싱글톤 id=1)
+ * 믹스 정책 (싱글톤 id=1) — 마이그레이션 153에서 티어·피티 19개 컬럼을 제거하고
+ * `fail_reward_points` 하나만 남겼다(티켓 20260910_1408).
  * 패턴: drop_policy — 실패 시 기본값 폴백
  */
 export interface CombinePolicyRow {
   id: number
-  tier1_max_items: number
-  tier1_min_tribes: number
-  tier1_b_rate: number
-  tier1_b_count: number
-  tier2_max_items: number
-  tier2_min_tribes: number
-  tier2_b_rate: number
-  tier2_b_count: number
-  tier3_max_items: number
-  tier3_min_tribes: number
-  tier3_b_rate: number
-  tier3_b_count: number
-  pity_prob_increment: number
-  pity_prob_cap: number
-  pity_points_start_streak: number
-  pity_points_base: number
-  pity_points_step: number
-  pity_points_increment: number
-  pity_points_cap: number
+  /** 레시피 미매칭 시 지급하는 고정 포인트 — 0이면 미지급 */
+  fail_reward_points: number
   updated_at: string
 }
 
-/** 유저별 조합 연속 실패 스트릭 (전역 1개 카운터 — 성공 시 리셋) */
-export interface UserCombineStateRow {
+/** 믹스 실패 이력 (어드민 조회 전용 — 마이그레이션 153) */
+export type CombineFailReason = 'no_recipe_match' | 'items_not_found' | 'invalid_count'
+
+export interface UserCombineFailLogRow {
+  id: string
   user_id: string
-  consecutive_fail_count: number
-  updated_at: string
+  attempted_at: string
+  ingredient_badge_ids: string[]
+  fail_reason: CombineFailReason
+  points_awarded: number
 }
 
 // =========================================
@@ -1267,7 +1258,10 @@ export type PointReason =
   | 'mission_point_reward'
   | 'admin_grant'
   | 'admin_deduct'
-  | 'combine_pity_reward'
+  /** 믹스 실패 보상 — 레시피 미매칭 시 정책의 고정 포인트 (마이그레이션 153, 구 combine_pity_reward) */
+  | 'combine_fail_reward'
+  /** 믹스 레시피 매칭 성공 보상 포인트 (마이그레이션 153) */
+  | 'combine_recipe_reward'
 
 /** 유저별 잔액 캐시 (직접 UPDATE 금지 — award_points RPC로만 변경) */
 export interface PointWalletRow {
@@ -1676,10 +1670,10 @@ export interface Database {
         Update: Partial<Omit<CombinePolicyRow, 'id'>>
         Relationships: []
       }
-      user_combine_state: {
-        Row: UserCombineStateRow
-        Insert: Partial<UserCombineStateRow> & { user_id: string }
-        Update: Partial<Omit<UserCombineStateRow, 'user_id'>>
+      user_combine_fail_logs: {
+        Row: UserCombineFailLogRow
+        Insert: Omit<UserCombineFailLogRow, 'id' | 'attempted_at'> & { id?: string; attempted_at?: string }
+        Update: Partial<Omit<UserCombineFailLogRow, 'id'>>
         Relationships: []
       }
       missions: {

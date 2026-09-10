@@ -19,7 +19,6 @@ interface InventoryItemWithBadge extends Pick<InventoryItemRow, 'id' | 'badge_id
 
 interface PublicHint {
   hint_text: string | null
-  result_badge_id: string | null
 }
 
 interface Props {
@@ -41,7 +40,9 @@ const MAX_SELECT = 10
 export default function CombineClient({ items, hints, publicRecipes }: Props) {
   const [selected, setSelected] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; names?: string[]; reason?: string } | null>(null)
+  const [result, setResult] = useState<
+    { success: boolean; names?: string[]; points?: number; reason?: string } | null
+  >(null)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -98,15 +99,17 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
           result_badge_ids: resultBadges.map((b) => b.id).join(','),
         })
         const names = resultBadges.map((b) => b.name)
-        setResult({ success: true, names })
+        // 20260910_1408: 레시피 보상은 배지·포인트를 함께 줄 수 있다(둘 중 하나만일 수도 있다).
+        setResult({ success: true, names, points: data.pointsAwarded ?? 0 })
         setSelected([])
         router.refresh()
       } else {
+        // 20260910_1408: 확률 실패(`recipe_fail`·`fail`)가 사라지고 「레시피 미매칭」
+        // (`no_recipe_match`) 하나로 통합됐다.
         const msgs: Record<string, string> = {
           invalid_count: d.combine.selectRangeError,
           items_not_found: d.combine.itemsNotFound,
-          recipe_fail: d.combine.recipeFail,
-          fail: d.combine.recipeFail,
+          no_recipe_match: d.combine.recipeFail,
         }
         let reason = msgs[data.reason] ?? d.combine.genericFail
         if (data.pointsAwarded > 0) {
@@ -146,7 +149,14 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
                   />
                 </svg>
               </span>
-              <p>{t(d.combine.successResult, { names: (result.names ?? []).join(', ') })}</p>
+              <p>
+                {(result.names ?? []).length > 0
+                  ? t(d.combine.successResult, { names: (result.names ?? []).join(', ') }) +
+                    ((result.points ?? 0) > 0
+                      ? t(d.combine.successPointsSuffix, { points: result.points ?? 0 })
+                      : '')
+                  : t(d.combine.successPointsOnly, { points: result.points ?? 0 })}
+              </p>
             </div>
           ) : (
             result.reason
@@ -229,10 +239,7 @@ export default function CombineClient({ items, hints, publicRecipes }: Props) {
           <div className="flex flex-col gap-[var(--spacing-8)]">
             {publicRecipes.map((r) => (
               <Card tone="inverse" key={r.id} className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/70">
-                {t(d.combine.recipeLine, {
-                  count: r.ingredient_badge_ids.length,
-                  pct: Math.round(r.success_rate * 100),
-                })}
+                {t(d.combine.recipeLine, { count: r.ingredient_badge_ids.length })}
               </Card>
             ))}
           </div>
