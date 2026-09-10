@@ -80,7 +80,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       condition_json: type === 'checkin' ? null : conditionJson,
       // 체크인 배지에는 트라이브/컬렉션 개념이 없다 — 저작 화면(BadgeForm)에서도 정리하지만
       // 서버에서도 같은 규칙을 강제한다(20260830_1344).
-      faction_id: type === 'checkin' ? null : (body.faction_id !== undefined ? body.faction_id : existing.faction_id),
+      tribe_id: type === 'checkin' ? null : (body.tribe_id !== undefined ? body.tribe_id : existing.tribe_id),
       item_book_id: type === 'checkin' ? null : (body.item_book_id !== undefined ? body.item_book_id : existing.item_book_id),
       // 배지 카테고리는 체크인 배지 전용(poi_categories.slug 재사용, 마이그레이션 113).
       category: type === 'checkin' ? (body.category !== undefined ? body.category : existing.category) : null,

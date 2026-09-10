@@ -53,7 +53,7 @@ export async function PUT(req: NextRequest) {
   }
 
   // 트라이브 다양성 요건도 오름차순 권장 (엄격 검증은 아님, 역전 시 경고성 차단)
-  if (!(merged.tier1_min_factions <= merged.tier2_min_factions && merged.tier2_min_factions <= merged.tier3_min_factions)) {
+  if (!(merged.tier1_min_tribes <= merged.tier2_min_tribes && merged.tier2_min_tribes <= merged.tier3_min_tribes)) {
     return NextResponse.json(
       { error: '티어별 최소 트라이브 다양성은 티어1 ≤ 티어2 ≤ 티어3 순서여야 합니다.' },
       { status: 400 }

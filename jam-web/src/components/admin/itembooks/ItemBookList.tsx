@@ -48,7 +48,7 @@ export function ItemBookList({
                   : undefined
               }
               tribeName={
-                book.faction_id ? tribeMap.get(book.faction_id) : undefined
+                book.tribe_id ? tribeMap.get(book.tribe_id) : undefined
               }
               itemBadgeCount={itemBadgeCountMap.get(book.id) ?? 0}
             />

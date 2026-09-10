@@ -16,9 +16,9 @@
  *   (사전 조사에 없던 참조 — 거의 모든 활성 유저가 `user_drop_state` 행을 가지므로 실무에서는
  *   이 한 자리가 컬렉션 하드 삭제를 사실상 항상 막는다). `badges.item_book_id`·
  *   `today_cards.item_book_id`는 SET NULL.
- * - **tribes(트라이브)**: `faction_adjacency`의 `faction_id`/`adjacent_faction_id` 모두
- *   **CASCADE**. `user_drop_state.last_drop_faction_id`는 **NO ACTION**(위와 같은 이유로
- *   실무 차단 확률이 높다). `badges.faction_id`·`item_books.faction_id`는 SET NULL.
+ * - **tribes(트라이브)**: `tribe_adjacency`의 `tribe_id`/`adjacent_tribe_id` 모두
+ *   **CASCADE**. `user_drop_state.last_drop_tribe_id`는 **NO ACTION**(위와 같은 이유로
+ *   실무 차단 확률이 높다). `badges.tribe_id`·`item_books.tribe_id`는 SET NULL.
  *
  * ## fail-closed
  * 조회가 하나라도 실패하면 `error`를 채운다 — 호출부는 이 경우 어떤 삭제도 실행하지 않는다.
@@ -268,27 +268,27 @@ export async function collectItemBookReferences(
 
 export const TRIBE_REFERENCE_SOURCES: ReferenceSource[] = [
   {
-    key: 'faction_adjacency',
+    key: 'tribe_adjacency',
     label: '드랍 인접 관계',
-    location: 'faction_adjacency.faction_id / adjacent_faction_id',
+    location: 'tribe_adjacency.tribe_id / adjacent_tribe_id',
     blocks: true, // CASCADE
   },
   {
     key: 'user_drop_state',
     label: '유저 드랍 상태(최근 드랍 계열)',
-    location: 'user_drop_state.last_drop_faction_id',
+    location: 'user_drop_state.last_drop_tribe_id',
     blocks: true, // NO ACTION — 사전 조사에 없던 참조. 거의 모든 활성 유저가 행을 갖는다.
   },
   {
     key: 'badges',
     label: '소속 배지',
-    location: 'badges.faction_id',
+    location: 'badges.tribe_id',
     blocks: false, // SET NULL
   },
   {
     key: 'item_books',
     label: '소속 컬렉션',
-    location: 'item_books.faction_id',
+    location: 'item_books.tribe_id',
     blocks: false, // SET NULL
   },
 ]
@@ -308,45 +308,45 @@ export async function collectTribeReferences(
     }
   }
 
-  // faction_adjacency는 두 컬럼(faction_id / adjacent_faction_id) 모두 대상을 가리킬 수 있다 —
+  // tribe_adjacency는 두 컬럼(tribe_id / adjacent_tribe_id) 모두 대상을 가리킬 수 있다 —
   // 어느 한쪽이라도 매칭되면 그 행은 대상 트라이브를 참조하는 것이다.
-  const asSource = await fetchAllRows<{ faction_id: string }>((from, to) =>
-    supabase.from('faction_adjacency').select('faction_id').in('faction_id', tribeIds).range(from, to)
+  const asSource = await fetchAllRows<{ tribe_id: string }>((from, to) =>
+    supabase.from('tribe_adjacency').select('tribe_id').in('tribe_id', tribeIds).range(from, to)
   )
-  if (asSource.error) errors.push(`faction_adjacency(faction_id): ${asSource.error}`)
-  tally('faction_adjacency', asSource.rows.map((r) => r.faction_id))
+  if (asSource.error) errors.push(`tribe_adjacency(tribe_id): ${asSource.error}`)
+  tally('tribe_adjacency', asSource.rows.map((r) => r.tribe_id))
 
-  const asAdjacent = await fetchAllRows<{ adjacent_faction_id: string }>((from, to) =>
+  const asAdjacent = await fetchAllRows<{ adjacent_tribe_id: string }>((from, to) =>
     supabase
-      .from('faction_adjacency')
-      .select('adjacent_faction_id')
-      .in('adjacent_faction_id', tribeIds)
+      .from('tribe_adjacency')
+      .select('adjacent_tribe_id')
+      .in('adjacent_tribe_id', tribeIds)
       .range(from, to)
   )
-  if (asAdjacent.error) errors.push(`faction_adjacency(adjacent_faction_id): ${asAdjacent.error}`)
-  tally('faction_adjacency', asAdjacent.rows.map((r) => r.adjacent_faction_id))
+  if (asAdjacent.error) errors.push(`tribe_adjacency(adjacent_tribe_id): ${asAdjacent.error}`)
+  tally('tribe_adjacency', asAdjacent.rows.map((r) => r.adjacent_tribe_id))
 
-  const dropState = await fetchAllRows<{ last_drop_faction_id: string | null }>((from, to) =>
+  const dropState = await fetchAllRows<{ last_drop_tribe_id: string | null }>((from, to) =>
     supabase
       .from('user_drop_state')
-      .select('last_drop_faction_id')
-      .in('last_drop_faction_id', tribeIds)
+      .select('last_drop_tribe_id')
+      .in('last_drop_tribe_id', tribeIds)
       .range(from, to)
   )
   if (dropState.error) errors.push(`user_drop_state: ${dropState.error}`)
-  tally('user_drop_state', dropState.rows.map((r) => r.last_drop_faction_id))
+  tally('user_drop_state', dropState.rows.map((r) => r.last_drop_tribe_id))
 
-  const badges = await fetchAllRows<{ faction_id: string | null }>((from, to) =>
-    supabase.from('badges').select('faction_id').in('faction_id', tribeIds).range(from, to)
+  const badges = await fetchAllRows<{ tribe_id: string | null }>((from, to) =>
+    supabase.from('badges').select('tribe_id').in('tribe_id', tribeIds).range(from, to)
   )
   if (badges.error) errors.push(`badges: ${badges.error}`)
-  tally('badges', badges.rows.map((r) => r.faction_id))
+  tally('badges', badges.rows.map((r) => r.tribe_id))
 
-  const itemBooks = await fetchAllRows<{ faction_id: string | null }>((from, to) =>
-    supabase.from('item_books').select('faction_id').in('faction_id', tribeIds).range(from, to)
+  const itemBooks = await fetchAllRows<{ tribe_id: string | null }>((from, to) =>
+    supabase.from('item_books').select('tribe_id').in('tribe_id', tribeIds).range(from, to)
   )
   if (itemBooks.error) errors.push(`item_books: ${itemBooks.error}`)
-  tally('item_books', itemBooks.rows.map((r) => r.faction_id))
+  tally('item_books', itemBooks.rows.map((r) => r.tribe_id))
 
   return { counts, error: errors.length > 0 ? errors.join(' / ') : null }
 }

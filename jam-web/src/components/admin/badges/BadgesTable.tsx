@@ -222,7 +222,7 @@ export default function BadgesTable({ badges, tribeMap = new Map() }: BadgesTabl
           )
         },
       }),
-      columnHelper.accessor('faction_id', {
+      columnHelper.accessor('tribe_id', {
         id: 'tribe',
         header: '트라이브',
         enableSorting: false,

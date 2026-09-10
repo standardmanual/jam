@@ -9,15 +9,15 @@ export default async function EditTribePage({ params }: { params: Promise<{ id: 
   const { id } = await params
   const supabase = createServiceClient()
   const [{ data }, { data: allTribesRaw }, { data: adjacencyRaw }] = await Promise.all([
-    supabase.from('factions').select('*').eq('id', id).single(),
-    supabase.from('factions').select('id, name').neq('id', id).order('sort_order'),
-    supabase.from('faction_adjacency').select('adjacent_faction_id').eq('faction_id', id),
+    supabase.from('tribes').select('*').eq('id', id).single(),
+    supabase.from('tribes').select('id, name').neq('id', id).order('sort_order'),
+    supabase.from('tribe_adjacency').select('adjacent_tribe_id').eq('tribe_id', id),
   ])
   if (!data) notFound()
 
   const allTribes = (allTribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]
-  const adjacentIds = ((adjacencyRaw ?? []) as Pick<TribeAdjacencyRow, 'adjacent_faction_id'>[]).map(
-    (r) => r.adjacent_faction_id
+  const adjacentIds = ((adjacencyRaw ?? []) as Pick<TribeAdjacencyRow, 'adjacent_tribe_id'>[]).map(
+    (r) => r.adjacent_tribe_id
   )
 
   return (

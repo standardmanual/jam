@@ -28,7 +28,7 @@ export type EngineDecisionEvent =
   | 'sync_result'
   | 'drop_attempt'
   | 'point_award_failed'
-  | 'faction_constant_missing'
+  | 'tribe_constant_missing'
   | 'drop_state_last_activity_mismatch'
   | 'reward_badge_skipped'
   /** 앰비언트(시스템) POI 드랍 배치 1회 실행 결과 (engine='drop', 티켓 20260826_009) */

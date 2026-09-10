@@ -155,7 +155,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
   // 폼 지원 필드인데도 **왕복이 성립하지 않는** 값 — 저장하면 바뀌거나 사라진다.
   const unrepresentableConditionKeys = findUnrepresentableConditionKeys(initCond)
 
-  const [tribeId, setTribeId] = useState(badge?.faction_id ?? '')
+  const [tribeId, setTribeId] = useState(badge?.tribe_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
   const [category, setCategory] = useState(badge?.category ?? '')
   const [dropWeight, setDropWeight] = useState<string>(
@@ -343,7 +343,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
         condition_json: conditionJson,
         // 체크인 배지는 트라이브/컬렉션 개념이 없다 — UI는 숨겼지만 기존 값이 남아있을 수 있으므로
         // 저장 시점에 명시적으로 null 처리한다(티켓 20260830_1344).
-        faction_id: type === 'checkin' ? null : tribeId || null,
+        tribe_id: type === 'checkin' ? null : tribeId || null,
         item_book_id: type === 'checkin' ? null : itemBookId || null,
         // 지점 카테고리는 체크인 배지 전용 — 다른 타입에서는 항상 null.
         category: type === 'checkin' ? category || null : null,

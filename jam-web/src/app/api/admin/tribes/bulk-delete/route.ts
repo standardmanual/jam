@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   let deleted: string[] = []
   if (deletable.length > 0) {
-    const { data, error } = await supabase.from('factions').delete().in('id', deletable).select('id')
+    const { data, error } = await supabase.from('tribes').delete().in('id', deletable).select('id')
     if (error) {
       console.error('[tribes bulk-delete] 삭제 실패:', error.message)
       return NextResponse.json(

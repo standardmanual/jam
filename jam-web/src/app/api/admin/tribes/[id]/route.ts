@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params
   const supabase = createServiceClient()
-  const { data, error } = await supabase.from('factions').select('*').eq('id', id).single()
+  const { data, error } = await supabase.from('tribes').select('*').eq('id', id).single()
   if (error || !data) return NextResponse.json({ error: '트라이브를 찾을 수 없습니다.' }, { status: 404 })
   return NextResponse.json({ tribe: data })
 }
@@ -21,14 +21,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { adjacent_faction_ids } = body
+  const { adjacent_tribe_ids } = body
 
   const supabase = createServiceClient()
 
   // 부분 body 병합을 위해 기존 row를 먼저 조회한다 — body에 없는(undefined) 필드는 기존 값을
   // 그대로 유지한다(20260827_005). 존재하지 않는 id면 update 시도 전에 404로 응답한다.
   const { data: existingData, error: fetchError } = await supabase
-    .from('factions')
+    .from('tribes')
     .select('*')
     .eq('id', id)
     .single()
@@ -36,7 +36,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const existing = existingData as TribeRow
 
   const { data, error } = await supabase
-    .from('factions')
+    .from('tribes')
     .update({
       name: body.name !== undefined ? body.name : existing.name,
       tagline: body.tagline !== undefined ? body.tagline : existing.tagline,
@@ -59,12 +59,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // 인접 트라이브 갱신 (배열 전달 시에만) — 드랍엔진 v2 Layer 2의 인접 버킷 원천
-  if (Array.isArray(adjacent_faction_ids)) {
-    const ids = (adjacent_faction_ids as string[]).filter((a) => a && a !== id)
-    await supabase.from('faction_adjacency').delete().eq('faction_id', id)
+  if (Array.isArray(adjacent_tribe_ids)) {
+    const ids = (adjacent_tribe_ids as string[]).filter((a) => a && a !== id)
+    await supabase.from('tribe_adjacency').delete().eq('tribe_id', id)
     if (ids.length > 0) {
-      const adjacencyQuery = supabase.from('faction_adjacency')
-      const adjInsertQuery = adjacencyQuery.insert(ids.map((adjacent_faction_id) => ({ faction_id: id, adjacent_faction_id })))
+      const adjacencyQuery = supabase.from('tribe_adjacency')
+      const adjInsertQuery = adjacencyQuery.insert(ids.map((adjacent_tribe_id) => ({ tribe_id: id, adjacent_tribe_id })))
       const { error: adjError } = await adjInsertQuery
       if (adjError) return NextResponse.json({ error: `인접 저장 실패: ${adjError.message}` }, { status: 500 })
     }
@@ -75,8 +75,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 /**
  * 하드 삭제 — 참조 가드는 `lib/admin/reference-guards.ts`가 단일 출처다(티켓 20260907_1134).
- * `faction_adjacency`는 CASCADE라 그냥 삭제하면 드랍엔진 인접 그래프가 조용히 깨지고,
- * `user_drop_state.last_drop_faction_id`는 NO ACTION이라 FK 위반으로 삭제 자체가 실패할 수
+ * `tribe_adjacency`는 CASCADE라 그냥 삭제하면 드랍엔진 인접 그래프가 조용히 깨지고,
+ * `user_drop_state.last_drop_tribe_id`는 NO ACTION이라 FK 위반으로 삭제 자체가 실패할 수
  * 있다. 참조가 있으면 비활성화를 안내한다.
  */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -86,7 +86,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params
   const supabase = createServiceClient()
 
-  const { data: existing, error: fetchError } = await supabase.from('factions').select('id').eq('id', id).single()
+  const { data: existing, error: fetchError } = await supabase.from('tribes').select('id').eq('id', id).single()
   if (fetchError || !existing) {
     return NextResponse.json({ error: '트라이브를 찾을 수 없습니다.' }, { status: 404 })
   }
@@ -110,7 +110,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     )
   }
 
-  const { error } = await supabase.from('factions').delete().eq('id', id)
+  const { error } = await supabase.from('tribes').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

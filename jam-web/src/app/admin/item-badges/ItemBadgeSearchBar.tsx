@@ -17,7 +17,7 @@ const RARITY_OPTIONS = [
 
 interface ItemBadgeSearchBarProps {
   tribes: { id: string; name: string }[]
-  itemBooks: { id: string; name: string; faction_id: string | null }[]
+  itemBooks: { id: string; name: string; tribe_id: string | null }[]
 }
 
 /**
@@ -31,7 +31,7 @@ export function ItemBadgeSearchBar({ tribes, itemBooks }: ItemBadgeSearchBarProp
   const searchParams = useSearchParams()
   const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '')
 
-  const currentTribeId = searchParams.get('faction_id') ?? 'all'
+  const currentTribeId = searchParams.get('tribe_id') ?? 'all'
   const currentItemBookId = searchParams.get('item_book_id') ?? 'all'
   const currentRarity = searchParams.get('rarity') ?? 'all'
 
@@ -56,14 +56,14 @@ export function ItemBadgeSearchBar({ tribes, itemBooks }: ItemBadgeSearchBarProp
 
   const handleTribeChange = (values: string[]) => {
     // 트라이브 변경 시 선택된 컬렉션이 새 트라이브 소속이 아니면 초기화한다(BadgesFilterBar.tsx와 동일).
-    update({ faction_id: values[0] ?? 'all', item_book_id: null })
+    update({ tribe_id: values[0] ?? 'all', item_book_id: null })
   }
 
-  const hasFilter = searchParams.has('q') || searchParams.has('faction_id') || searchParams.has('item_book_id') || searchParams.has('rarity')
+  const hasFilter = searchParams.has('q') || searchParams.has('tribe_id') || searchParams.has('item_book_id') || searchParams.has('rarity')
 
   // 선택된 트라이브 기준으로 컬렉션 옵션을 좁힌다
   const filteredItemBooks =
-    currentTribeId === 'all' ? itemBooks : itemBooks.filter((b) => b.faction_id === currentTribeId)
+    currentTribeId === 'all' ? itemBooks : itemBooks.filter((b) => b.tribe_id === currentTribeId)
 
   return (
     <div className="flex flex-col gap-3">
