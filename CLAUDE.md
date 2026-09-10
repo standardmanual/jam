@@ -123,13 +123,8 @@ DB 스키마/데이터 변경은 사용자에게 대신 실행해달라고 요�
 **웹 브라우징은 항상 gstack의 `/browse` 스킬을 사용한다. `mcp__claude-in-chrome__*` 도구는
 절대 사용하지 않는다.**
 
-사용 가능한 gstack 스킬 목록: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`,
-`/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`,
-`/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`,
-`/qa-only`, `/design-review`, `/scrape`, `/setup-browser-cookies`, `/setup-deploy`,
-`/setup-gbrain`, `/retro`, `/investigate`, `/document-release`, `/document-generate`, `/codex`,
-`/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`,
-`/unfreeze`, `/gstack-upgrade`, `/learn`.
+사용 가능한 gstack 스킬은 세션 시작 시 스킬 목록으로 자동 주입되므로 여기에 나열하지 않는다
+(중복 목록은 낡기 쉬워 2026-09-10 티켓 20260910_1246에서 제거했다).
 
 ### gstack 산출물은 jam-docs 규칙으로 저장
 
