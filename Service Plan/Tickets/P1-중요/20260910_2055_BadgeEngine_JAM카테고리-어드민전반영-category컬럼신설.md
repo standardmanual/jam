@@ -1,0 +1,146 @@
+---
+id: 20260910_2055
+category: BadgeEngine
+priority: P1
+status: OPEN
+created: 2026-09-10
+---
+
+# [BadgeEngine] JAM! 카테고리 — `category` 컬럼 신설 및 어드민 화면 전반 반영
+
+## 배경 / 문제 정의
+
+티켓 [20260910_1557](20260910_1557_BadgeEngine_JAM카테고리-서비스사용량-배지엔진-신설.md)로
+"서비스 사용량"(팔로워 수·팔로잉 수·일일 동기화 횟수) 조건 배지 엔진을 신설했고,
+[20260910_1959](../P2-일반/20260910_1959_Content_JAM카테고리-사용량배지3종-신규생성.md)로
+실제 배지 3종을 만들었다(현재 이미지 없어 비활성 상태).
+
+1557의 설계는 "유저에게 노출되는 배지 분류는 늘리지 않는다"는 원칙 아래, DB `badge_type`
+enum을 건드리지 않고 `type='activity'`로 저장했다. 이 판단 자체는 유효하다 — 문제는
+**어드민** 쪽이다. 어드민에서 이 배지들을 "JAM! 카테고리"로 구분할 방법이 전혀 없어서:
+
+- 배지 목록 필터에 이 배지들만 골라볼 옵션이 없다(조건 필드가 `role:'meta'`라 필터 후보에도
+  안 뜬다 — [badge-list-view.md 조사] `conditionRegistry.ts:1585-1587`).
+- 계열관리(`/admin/badge-families`)에서는 "계열 키 없음" 단독 계열로 섞여 노출되는데, 종목
+  칸·조건지표 칸이 전부 "—"로 나와 마치 데이터가 빠진 배지처럼 보인다
+  (`badge-families/page.tsx:131,144-146,164-168`).
+- 시뮬레이터(`/admin/simulator`)는 이 배지들을 애초에 평가 불가능한 지표인데도 매번 "미획득"
+  목록에 올려, 확인하려는 실제 활동 배지 결과를 가린다(`badge-engine/index.ts:419,1008-1021`).
+
+게다가 사용자 확인 결과, 이 카테고리는 여기서 멈추지 않는다 — **앞으로 레벨형·등급형으로
+확장**되고(현재 3종은 전부 `mystic` 단일 등급뿐), **게이트미션·아이템북 컬렉션 게이트의
+조건으로도 실제로 쓸 계획**이다. 즉 어드민에서 이 배지들은 "숨기거나 걸러낼 대상"이 아니라
+"정식으로 관리·선택 가능해야 할 대상"이다.
+
+## 상세 요구사항
+
+### 서비스/코드베이스 관점
+
+**설계 결정 (스펙 인터뷰로 확정)**
+
+1. **`badges.category` 컬럼 신설** — `badge_type` enum은 건드리지 않는다(유저 노출·배지
+   트리 로직이 전부 `type='activity'` 기준으로 이미 원하는 대로 동작 중이라 회귀 위험이 큼).
+   대신 nullable 컬럼을 하나 추가해 어드민 레이어에서만 구분자로 쓴다.
+   ```sql
+   ALTER TABLE public.badges ADD COLUMN category TEXT;
+   ALTER TABLE public.badges ADD CONSTRAINT badges_category_known_values
+     CHECK (category IS NULL OR category IN ('jam'));
+   ```
+   기존 `condition_json`에 화이트리스트 CHECK를 쓰는 패턴(`badges_condition_json_known_keys`,
+   마이그레이션 102/155)과 일관되게, 값도 화이트리스트로 관리해 오타·임의값 유입을 막는다.
+2. **기존 배지 3종 UPDATE** — `id IN ('5f1c677e-9786-4c81-956f-f3440bb78a93',
+   '2f89636b-1607-449f-9313-c6634de91996', 'b45ae272-1098-4522-a652-fbb6ce21ab30')`에
+   `category='jam'` 반영.
+3. **판별 함수 export** — `condition_json` 3키 체크 방식(`USAGE_METRIC_CONDITION_KEYS`,
+   `badge-condition-guards.ts:90`, 현재 비공개)을 쓰지 않고, 이제부터는 `category='jam'`
+   컬럼로 직접 판별한다. 라벨 상수("JAM!")와 함께 `badge-labels.ts`에 추가.
+
+**화면별 반영**
+
+| 화면 | 현재 문제 | 반영 방향 |
+|---|---|---|
+| 배지 목록(`/admin/badges`) | 필터 옵션 전무 (`BadgesFilterBar.tsx`, `badge-list-view.ts`, `badge-labels.ts:14`의 `BADGE_TYPES`는 하드코딩) | 카테고리 필터 추가 — "JAM!" 선택 시 `category='jam'`인 배지만 조회 |
+| 계열관리(`/admin/badge-families`) | `fetchActivityFamilyBadges()`(`badge-families-query.ts:44`)가 `type='activity'` 전량 조회, 종목 칸(`page.tsx:131`)·조건지표 칸(`:164-168`)이 "—" | JAM! 배지도 정상 조회하되(향후 레벨·등급 확장 대비), 종목 칸은 "JAM!" 카테고리 표시, 조건지표 칸은 사용량 지표 이름으로 표시 |
+| 게이트미션(`/admin/gate-missions`) | 계열 드롭다운(`GateMissionManager.tsx:246`)이 종목 미배정 배지를 "종목 없음"으로 뭉뚱그림 | JAM! 계열을 "JAM!" 라벨로 구분 표시하며 정상 선택 가능하게 유지(이미 `type='activity'`라 드롭다운엔 뜨고 있음 — 라벨 구분만 추가) |
+| 아이템북(`/admin/itembooks`) | "필수 액티비티 배지" 검색(`ItemBookForm.tsx:370` → `api/admin/badges/search/route.ts:44`)이 `type` 단순 일치라 구분 없이 섞임(`BadgeSearchSelect.tsx:134` 라벨도 미구분) | 검색 결과·라벨에 "[JAM!]" 구분 표시 추가(제외하지 않음 — 게이트미션과 동일 정책) |
+| 시뮬레이터(`/admin/simulator`) | `evaluateBadgesDetailed`(`badge-engine/index.ts:1008-1021`)가 `type='activity'` 전량을 후보로 가져와, JAM! 배지는 구조적으로 항상 "평가 가능한 조건 없음"으로 `badgesMissed`에 쌓임(`:419`, `simulator/page.tsx:362-381`) | `category='jam'`인 배지는 후보 조회 단계에서 `mission_reward`와 동일하게 제외 — 가상 활동으로는 팔로워 수 등을 애초에 시뮬레이션할 수 없는 구조적 한계이므로 |
+| 활동배지 이미지(`/admin/activity-badge-image`) | 배경이미지 검색(`api/.../search/route.ts:61`)에 JAM! 배지도 섞여 나옴 | `category='jam'` 배지는 검색 후보에서 제외(배경 이미지가 필요 없는 배지) |
+| 배지지표관리(`/admin/badge-metric-labels`) | JAM! 배지는 이미 meta 자동 제외로 대상에서 빠짐 | 변경 불필요 — 현재 동작이 이미 올바름 |
+| 유저 배지진단(`/admin/users` `BadgeDiagnosisButton`) | 시뮬레이터와 같은 구조적 이유로 JAM! 배지가 항상 "미충족"(`badge-diagnosis/route.ts:56`) | 이번 범위 밖(Out of Scope 참고) — 우선순위 낮음 |
+
+### 구현 계획
+
+1. 마이그레이션: `category` 컬럼 + CHECK 제약 + 기존 3건 UPDATE (`jam-web/supabase/migrations/NNN_badges_category.sql`)
+2. `badge-labels.ts`(또는 신규 유틸)에 판별 함수·라벨 상수 export
+3. 배지 목록 필터·계열관리·게이트미션·아이템북·시뮬레이터·activity-badge-image 순으로 반영
+4. `database.generated.ts` 수기 반영 후 MCP `generate_typescript_types`로 대조
+
+### Acceptance Criteria
+
+1. `badges.category` 컬럼이 존재하고, 화이트리스트 외 값은 CHECK 제약으로 거부된다.
+2. 기존 JAM! 배지 3건 모두 `category='jam'`으로 조회된다.
+3. `/admin/badges` 목록 필터에서 "JAM!"을 선택하면 이 3건만(및 향후 추가되는 동일 카테고리 배지) 조회된다.
+4. `/admin/badge-families`에서 이 배지들이 종목 칸·조건지표 칸에 "—"가 아닌 실제 정보를 보여준다.
+5. `/admin/gate-missions` 계열 선택지에서 JAM! 계열이 다른 활동 계열과 구분되는 라벨로 표시되며, 정상적으로 게이트 대상으로 선택 가능하다.
+6. `/admin/itembooks` "필수 액티비티 배지" 검색 결과에서 JAM! 배지가 구분 라벨과 함께 정상 노출·선택 가능하다.
+7. `/admin/simulator`에서 임의 유저로 시뮬레이션을 실행해도 JAM! 배지가 "미획득" 목록에 나타나지 않는다.
+8. `/admin/activity-badge-image` 배경이미지 검색 결과에 JAM! 배지가 나타나지 않는다.
+9. 기존 액티비티/아이템/체크인 배지의 어느 화면에서도 동작 회귀가 없다.
+
+### 테스트 계획
+
+| 레이어 | 내용 | 개수 |
+|---|---|---|
+| Unit | 카테고리 판별 함수 | +2 |
+| Unit | 배지 목록 쿼리 카테고리 필터 | +2 |
+| Integration | 계열관리·게이트미션·아이템북·시뮬레이터 각 화면 조회 결과 | +4 |
+| 수동 검증 | 6개 화면 실렌더로 AC 1~9 확인 | - |
+
+### 롤백 계획
+
+- **코드**: 화면별 변경 커밋 revert
+- **스키마**: `category` 컬럼 DROP (다른 컬럼에 의존성 없음, 신규 컬럼이라 안전)
+
+### Effort Estimate
+
+| 구성 요소 | 시간 |
+|---|---|
+| 마이그레이션 + 판별 함수 | 1h |
+| 배지 목록 필터 | 1.5h |
+| 계열관리 반영 | 2h |
+| 게이트미션·아이템북 반영 | 2h |
+| 시뮬레이터·activity-badge-image 제외 처리 | 1.5h |
+| 테스트 | 2h |
+| **합계** | **약 10h** |
+
+### Files Reference
+
+| 파일 | 변경 |
+|---|---|
+| `jam-web/supabase/migrations/NNN_badges_category.sql` (신규) | `category` 컬럼 + CHECK 제약 + 기존 3건 UPDATE |
+| `jam-web/src/lib/admin/badge-labels.ts` | 카테고리 판별 함수·"JAM!" 라벨 상수 export |
+| `jam-web/src/lib/admin/badge-list-view.ts` | 카테고리 필터 쿼리 분기 |
+| `jam-web/src/app/admin/badges/BadgesFilterBar.tsx` | 카테고리 필터 UI |
+| `jam-web/src/app/admin/badges/page.tsx` | 필터 파라미터 연결 |
+| `jam-web/src/lib/admin/badge-families-query.ts:44` | JAM! 배지 조회 시 표시값 처리 |
+| `jam-web/src/app/admin/badge-families/page.tsx:131,144-146,164-168` | 종목·조건지표 칸 표시 개선 |
+| `jam-web/src/app/admin/gate-missions/GateMissionManager.tsx:246` | 라벨 구분 표시 |
+| `jam-web/src/app/admin/itembooks/ItemBookForm.tsx:370` | 라벨 구분 표시 |
+| `jam-web/src/app/api/admin/badges/search/route.ts:44` | 카테고리 정보 포함 응답 |
+| `jam-web/src/components/admin/BadgeSearchSelect.tsx:134` | 라벨 구분 표시 |
+| `jam-web/src/lib/badge-engine/index.ts:1008-1021` | 시뮬레이터 후보 조회에서 `category='jam'` 제외 |
+| `jam-web/src/app/api/admin/.../activity-badge-image/search/route.ts:61` | 검색 후보에서 `category='jam'` 제외 |
+
+### Out of Scope
+
+- `badge_type` enum 자체 변경 — 유저 노출 로직 회귀 위험 회피 위해 명시적으로 배제
+- 실제 레벨형·등급형 JAM! 배지 콘텐츠 제작 — 이번 티켓은 계열관리가 "정상 동작"하게만 만든다. 실제 레벨·등급 배지를 만드는 건 별도 컨텐츠 작업
+- 실제 게이트미션 콘텐츠 설계 — 이번 티켓은 게이트미션 화면이 JAM! 배지를 "정상 선택 가능"하게만 만든다. 어떤 게이트 미션을 만들지는 사용자가 별도로 진행
+- 배지 생성·수정·조회 화면(`BadgeForm.tsx`) 자체의 레이아웃/사용성 개선 — 사용자가 별도로 진행
+- 유저 배지진단(`BadgeDiagnosisButton`) 반영 — 우선순위 낮음, 필요시 후속 티켓
+- 팔로우 리빌 애니메이션 연동 — 별도 티켓([20260910_2056](20260910_2056_BadgeEngine_JAM카테고리-팔로우리빌애니메이션연동.md))
+- 배지 트리 탭 노출, 진행률 UI — 사용자가 명시적으로 이번 범위에서 제외
+
+### 완료 시 갱신할 문서
+
+- `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` — `category` 컬럼과 어드민 분류 체계 설명 추가
