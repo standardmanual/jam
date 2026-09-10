@@ -172,6 +172,64 @@ describe('POST /api/follows — 신규 팔로우 성공', () => {
     const body = await res.json()
     expect(body.earnedBadges).toEqual([])
   })
+
+  // SyncButton(/api/strava/sync)과 동일한 계약을 맞춘다 — buildEarnedBadgePayload가 계산한
+  // earnedBadgesMore·isFirstBadgeEver가 응답에서 누락되던 결함 (티켓 20260910_2056).
+  it('buildEarnedBadgePayload의 earnedBadgesMore를 응답에 그대로 싣는다', async () => {
+    evaluateUsageBadgesMock.mockImplementation(async (userId: string, metric: string) => {
+      if (userId === ACTOR_ID && metric === 'following_count') return [{ id: 'b-actor', name: '내 배지' }]
+      return []
+    })
+    buildEarnedBadgePayloadMock.mockResolvedValueOnce({
+      earnedBadges: [
+        {
+          id: 'b-actor',
+          name: 'badge-b-actor',
+          description: '',
+          imageUrl: '',
+          rarity: 'common' as const,
+          level: null,
+          earnCount: 1,
+          type: 'activity' as const,
+        },
+      ],
+      earnedBadgesMore: 3,
+      isFirstBadgeEver: false,
+    })
+
+    const res = await POST(request(TARGET_ID))
+    const body = await res.json()
+
+    expect(body.earnedBadgesMore).toBe(3)
+  })
+
+  it('buildEarnedBadgePayload의 isFirstBadgeEver를 응답에 그대로 싣는다', async () => {
+    evaluateUsageBadgesMock.mockImplementation(async (userId: string, metric: string) => {
+      if (userId === ACTOR_ID && metric === 'following_count') return [{ id: 'b-actor', name: '내 배지' }]
+      return []
+    })
+    buildEarnedBadgePayloadMock.mockResolvedValueOnce({
+      earnedBadges: [
+        {
+          id: 'b-actor',
+          name: 'badge-b-actor',
+          description: '',
+          imageUrl: '',
+          rarity: 'common' as const,
+          level: null,
+          earnCount: 1,
+          type: 'activity' as const,
+        },
+      ],
+      earnedBadgesMore: 0,
+      isFirstBadgeEver: true,
+    })
+
+    const res = await POST(request(TARGET_ID))
+    const body = await res.json()
+
+    expect(body.isFirstBadgeEver).toBe(true)
+  })
 })
 
 describe('POST /api/follows — 배지 평가 실패는 팔로우 응답을 막지 않는다', () => {
