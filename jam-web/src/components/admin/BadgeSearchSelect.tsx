@@ -84,8 +84,10 @@ export default function BadgeSearchSelect({
 
   function select(badge: BadgeSearchResult) {
     onChange(badge.id, badge)
+    // JAM!(어드민 전용 분류)도 다른 배지와 같은 [type/rarity] 보조텍스트 안에 흡수한다 —
+    // 별도 접미·전용 칩으로 튀지 않게 한다(티켓 20260910_2258).
     setSelectedLabel(
-      `${badge.name} [${badge.type}/${badge.rarity}]${isJamCategoryBadge(badge.admin_category) ? ' [JAM!]' : ''}`
+      `${badge.name} [${badge.type}/${badge.rarity}${isJamCategoryBadge(badge.admin_category) ? ', JAM!' : ''}]`
     )
     setQuery('')
     setOpen(false)
@@ -137,12 +139,11 @@ export default function BadgeSearchSelect({
                 onClick={() => select(b)}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
               >
-                {b.name} <span className="text-muted-foreground text-xs">[{b.type}/{b.rarity}]</span>
-                {isJamCategoryBadge(b.admin_category) && (
-                  <span className="ml-1 rounded bg-indigo-100 px-1 text-[10px] font-medium text-indigo-700">
-                    JAM!
-                  </span>
-                )}
+                {b.name}{' '}
+                <span className="text-muted-foreground text-xs">
+                  [{b.type}/{b.rarity}
+                  {isJamCategoryBadge(b.admin_category) ? ', JAM!' : ''}]
+                </span>
               </button>
             ))}
         </div>
