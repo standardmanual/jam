@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconX } from '@tabler/icons-react'
-import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, FactionRow, ItemBookRow } from '@/types/database'
+import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, TribeRow, ItemBookRow } from '@/types/database'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
@@ -85,7 +85,7 @@ interface LinkablePoi {
 
 interface BadgeFormProps {
   badge?: BadgeRow
-  factions: Pick<FactionRow, 'id' | 'name'>[]
+  tribes: Pick<TribeRow, 'id' | 'name'>[]
   itemBooks: Pick<ItemBookRow, 'id' | 'name'>[]
   /** 체크인 배지 전용 "지점 카테고리" Select 옵션 — poi_categories 재사용(마이그레이션 113).
    *  값을 지정하면 연결된 지점의 카테고리보다 우선 적용된다(티켓 20260830_1522). */
@@ -97,7 +97,7 @@ const EMPTY_CONDITION: BadgeCondition = {}
 // Radix Select는 SelectItem value=""를 허용하지 않는다 — "선택 안 함"을 나타내는 전용 값.
 const NONE_VALUE = '__none__'
 
-export default function BadgeForm({ badge, factions, itemBooks, poiCategories }: BadgeFormProps) {
+export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: BadgeFormProps) {
   const router = useRouter()
   const isEdit = !!badge
 
@@ -155,7 +155,7 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
   // 폼 지원 필드인데도 **왕복이 성립하지 않는** 값 — 저장하면 바뀌거나 사라진다.
   const unrepresentableConditionKeys = findUnrepresentableConditionKeys(initCond)
 
-  const [factionId, setFactionId] = useState(badge?.faction_id ?? '')
+  const [tribeId, setTribeId] = useState(badge?.faction_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
   const [category, setCategory] = useState(badge?.category ?? '')
   const [dropWeight, setDropWeight] = useState<string>(
@@ -341,9 +341,9 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
         patch_available: patchAvailable,
         patch_price_krw: patchAvailable && patchPriceKrw ? Math.max(0, parseInt(patchPriceKrw, 10) || 0) : null,
         condition_json: conditionJson,
-        // 체크인 배지는 세계관/컬렉션 개념이 없다 — UI는 숨겼지만 기존 값이 남아있을 수 있으므로
+        // 체크인 배지는 트라이브/컬렉션 개념이 없다 — UI는 숨겼지만 기존 값이 남아있을 수 있으므로
         // 저장 시점에 명시적으로 null 처리한다(티켓 20260830_1344).
-        faction_id: type === 'checkin' ? null : factionId || null,
+        faction_id: type === 'checkin' ? null : tribeId || null,
         item_book_id: type === 'checkin' ? null : itemBookId || null,
         // 지점 카테고리는 체크인 배지 전용 — 다른 타입에서는 항상 null.
         category: type === 'checkin' ? category || null : null,
@@ -675,23 +675,23 @@ export default function BadgeForm({ badge, factions, itemBooks, poiCategories }:
           </label>
         )}
 
-        {/* 세계관/소속 컬렉션 — 체크인 배지에는 이 개념이 없어 숨긴다(티켓 20260830_1344).
+        {/* 트라이브/소속 컬렉션 — 체크인 배지에는 이 개념이 없어 숨긴다(티켓 20260830_1344).
             activity/item 타입에서는 기존과 동일하게 노출. */}
         {type !== 'checkin' && (
           <>
-            {/* 세계관 선택 */}
+            {/* 트라이브 선택 */}
             <label className="flex flex-col gap-1.5 col-span-2">
-              <span className="text-sm text-foreground">소속 세계관</span>
+              <span className="text-sm text-foreground">소속 트라이브</span>
               <Select
-                value={factionId || NONE_VALUE}
-                onValueChange={(v) => setFactionId(v === NONE_VALUE ? '' : v)}
+                value={tribeId || NONE_VALUE}
+                onValueChange={(v) => setTribeId(v === NONE_VALUE ? '' : v)}
               >
-                <SelectTrigger aria-label="소속 세계관">
+                <SelectTrigger aria-label="소속 트라이브">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent container={themeContainer ?? undefined}>
                   <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
-                  {factions.map((f) => (
+                  {tribes.map((f) => (
                     <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                   ))}
                 </SelectContent>

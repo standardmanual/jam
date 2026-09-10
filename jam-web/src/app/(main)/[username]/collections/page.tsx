@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import SafeImage from '@/components/SafeImage'
-import type { ItemBookRow, FactionRow } from '@/types/database'
+import type { ItemBookRow, TribeRow } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
 import TopNav from '@/components/ui/TopNav'
 import { BookIcon } from '@/components/ui/icons'
@@ -15,12 +15,12 @@ interface Props {
   params: Promise<{ username: string }>
 }
 
-type ItemBookWithFaction = ItemBookRow & {
-  faction: Pick<FactionRow, 'id' | 'name' | 'image_url'> | null
+type ItemBookWithTribe = ItemBookRow & {
+  tribe: Pick<TribeRow, 'id' | 'name' | 'image_url'> | null
 }
 
 interface BookCard {
-  book: ItemBookWithFaction
+  book: ItemBookWithTribe
   totalBadgeCount: number
   slottedCount: number
   isCompleted: boolean
@@ -94,7 +94,7 @@ export default async function UserItemBooksPage({ params }: Props) {
       ] = await Promise.all([
         service
           .from('item_books')
-          .select('*, faction:factions(id, name, image_url)')
+          .select('*, tribe:tribes(id, name, image_url)')
           .in('id', bookIds)
           .eq('is_active', true),
         service
@@ -119,7 +119,7 @@ export default async function UserItemBooksPage({ params }: Props) {
       if (slotsError) console.error('[[username]/collections/page] user_item_book_slots 조회 실패', slotsError)
       if (completionsError) console.error('[[username]/collections/page] user_item_book_completions 조회 실패', completionsError)
 
-      const books = (booksRaw ?? []) as unknown as ItemBookWithFaction[]
+      const books = (booksRaw ?? []) as unknown as ItemBookWithTribe[]
 
       const totalByBook = new Map<string, number>()
       for (const b of (bookBadgesRaw ?? []) as { id: string; item_book_id: string }[]) {
@@ -191,8 +191,8 @@ export default async function UserItemBooksPage({ params }: Props) {
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] line-clamp-2">{book.name}</h2>
-                      {book.faction && (
-                        <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-0.5 truncate">{book.faction.name}</p>
+                      {book.tribe && (
+                        <p className="text-[length:var(--text-caption)] text-text-inverse/50 mt-0.5 truncate">{book.tribe.name}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">

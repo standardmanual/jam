@@ -10,7 +10,7 @@ import { useTextSwap, useErrorShake } from '@/components/transitions-pages'
 import '@/components/transitions-pages.css'
 import { d, t } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics/gtag'
-import type { FactionRow } from '@/types/database'
+import type { TribeRow } from '@/types/database'
 
 type CheckStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'same'
 type Step = 'account' | 'tribe'
@@ -57,27 +57,27 @@ function OnboardingContent() {
   const [uploadError, setUploadError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  type FactionsState =
+  type TribesState =
     | { kind: 'loading' }
-    | { kind: 'ready'; factions: Pick<FactionRow, 'id' | 'name' | 'tagline' | 'image_url'>[] }
+    | { kind: 'ready'; tribes: Pick<TribeRow, 'id' | 'name' | 'tagline' | 'image_url'>[] }
     | { kind: 'error' }
-  const [factionsState, setFactionsState] = useState<FactionsState>({ kind: 'loading' })
-  const [selectedFactionId, setSelectedFactionId] = useState<string | null>(null)
+  const [tribesState, setTribesState] = useState<TribesState>({ kind: 'loading' })
+  const [selectedTribeId, setSelectedTribeId] = useState<string | null>(null)
   const [step2Error, setStep2Error] = useState('')
   const [submittingStep2, setSubmittingStep2] = useState(false)
 
-  async function loadFactions() {
-    setFactionsState({ kind: 'loading' })
+  async function loadTribes() {
+    setTribesState({ kind: 'loading' })
     const { data, error } = await supabase
       .from('factions')
       .select('id, name, tagline, image_url')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
     if (error || !data) {
-      setFactionsState({ kind: 'error' })
+      setTribesState({ kind: 'error' })
       return
     }
-    setFactionsState({ kind: 'ready', factions: data as Pick<FactionRow, 'id' | 'name' | 'tagline' | 'image_url'>[] })
+    setTribesState({ kind: 'ready', tribes: data as Pick<TribeRow, 'id' | 'name' | 'tagline' | 'image_url'>[] })
   }
 
   // 현재 유저 정보 로드 — username·display_name·avatar_url·온보딩 완료 여부 확인
@@ -120,7 +120,7 @@ function OnboardingContent() {
             setNameInput(data.display_name ?? '')
             setAgeConfirmed(true)
             setStep('tribe')
-            loadFactions()
+            loadTribes()
           }
           setLoaded(true)
         })
@@ -212,7 +212,7 @@ function OnboardingContent() {
       if (json.success) {
         setCurrentUsername(input)
         setStep('tribe')
-        if (factionsState.kind !== 'ready') loadFactions()
+        if (tribesState.kind !== 'ready') loadTribes()
       } else if (json.error === 'DUPLICATE') {
         setStatus('taken')
         setMessage(d.onboarding.taken)
@@ -266,14 +266,14 @@ function OnboardingContent() {
 
   // ── 2단계: 트라이브 선택 + 최종 제출 ──────────────────────────────────────
   async function handleFinish() {
-    if (!selectedFactionId || submittingStep2) return
+    if (!selectedTribeId || submittingStep2) return
     setSubmittingStep2(true)
     setStep2Error('')
     try {
       const res = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: currentUsername, display_name: nameInput.trim(), faction_id: selectedFactionId }),
+        body: JSON.stringify({ username: currentUsername, display_name: nameInput.trim(), faction_id: selectedTribeId }),
       })
       const json = await res.json() as { success?: boolean; error?: string }
       if (json.success) {
@@ -281,9 +281,9 @@ function OnboardingContent() {
         trackEvent('onboarding_complete')
         router.replace('/')
       } else if (json.error === 'INVALID_FACTION') {
-        setStep2Error(d.onboarding.invalidFactionError)
-        setSelectedFactionId(null)
-        loadFactions()
+        setStep2Error(d.onboarding.invalidTribeError)
+        setSelectedTribeId(null)
+        loadTribes()
       } else if (json.error === 'ALREADY_SET') {
         // 정상 UI 흐름에서는 도달하지 않는다(이미 온보딩 완료 유저는 로드 시점에 홈으로 리다이렉트됨).
         router.replace('/')
@@ -469,19 +469,19 @@ function OnboardingContent() {
         </div>
 
         {/* 트라이브 카드 그리드 */}
-        {factionsState.kind === 'loading' && (
+        {tribesState.kind === 'loading' && (
           <div className="w-full flex items-center justify-center py-[var(--spacing-32)]">
             <div className="w-6 h-6 border border-current border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
-        {factionsState.kind === 'error' && (
+        {tribesState.kind === 'error' && (
           <div className="w-full flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center text-text/70">
-              {d.onboarding.factionsLoadError}
+              {d.onboarding.tribesLoadError}
             </p>
             <button
-              onClick={loadFactions}
+              onClick={loadTribes}
               className="min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-pill-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
             >
               {d.onboarding.retryButton}
@@ -489,13 +489,13 @@ function OnboardingContent() {
           </div>
         )}
 
-        {factionsState.kind === 'ready' && factionsState.factions.length === 0 && (
+        {tribesState.kind === 'ready' && tribesState.tribes.length === 0 && (
           <div className="w-full flex flex-col items-center gap-[var(--spacing-16)] py-[var(--spacing-16)]">
             <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-center text-text/70">
-              {d.onboarding.factionsEmptyError}
+              {d.onboarding.tribesEmptyError}
             </p>
             <button
-              onClick={loadFactions}
+              onClick={loadTribes}
               className="min-h-11 px-[var(--spacing-24)] rounded-[var(--radius-pill-buttons)] shadow-[inset_0_0_0_1px_var(--color-border-inverse)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] active:scale-95 transition-transform duration-100"
             >
               {d.onboarding.retryButton}
@@ -503,31 +503,31 @@ function OnboardingContent() {
           </div>
         )}
 
-        {factionsState.kind === 'ready' && factionsState.factions.length > 0 && (
+        {tribesState.kind === 'ready' && tribesState.tribes.length > 0 && (
           <div className="w-full grid grid-cols-2 gap-[var(--spacing-8)]">
-            {factionsState.factions.map((faction) => {
-              const selected = selectedFactionId === faction.id
+            {tribesState.tribes.map((tribe) => {
+              const selected = selectedTribeId === tribe.id
               return (
                 <Card
-                  key={faction.id}
+                  key={tribe.id}
                   tone={selected ? 'inverse' : 'default'}
-                  onClick={() => setSelectedFactionId(faction.id)}
+                  onClick={() => setSelectedTribeId(tribe.id)}
                   className="flex flex-col items-center text-center gap-[var(--spacing-8)]"
                   style={{ minHeight: 140 }}
                 >
-                  {faction.image_url ? (
-                    <Image src={faction.image_url} alt="" width={48} height={48} className="w-12 h-12 rounded-[var(--radius-cards)] object-cover" />
+                  {tribe.image_url ? (
+                    <Image src={tribe.image_url} alt="" width={48} height={48} className="w-12 h-12 rounded-[var(--radius-cards)] object-cover" />
                   ) : (
                     <div className="w-12 h-12 rounded-[var(--radius-cards)] bg-black/10 flex items-center justify-center">
                       <UserIcon className="w-6 h-6 opacity-40" />
                     </div>
                   )}
                   <span className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] font-bold">
-                    {faction.name}
+                    {tribe.name}
                   </span>
-                  {faction.tagline && (
+                  {tribe.tagline && (
                     <span className="text-[length:var(--text-caption)] leading-[var(--leading-caption)] opacity-60">
-                      {faction.tagline}
+                      {tribe.tagline}
                     </span>
                   )}
                 </Card>
@@ -543,7 +543,7 @@ function OnboardingContent() {
         <div className="w-full flex flex-col gap-[var(--spacing-12)]">
           <button
             onClick={handleFinish}
-            disabled={!selectedFactionId || submittingStep2}
+            disabled={!selectedTribeId || submittingStep2}
             className="w-full min-h-11 bg-surface-inverse text-text-inverse py-[14px] rounded-[var(--radius-pill-buttons)] active:scale-95 transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed text-[length:var(--text-body)] leading-[var(--leading-body)]"
           >
             {submittingStep2 ? d.onboarding.finishing : d.onboarding.finishButton}

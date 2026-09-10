@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/admin/ui/button'
-import type { BadgeType, BadgeRarity, FactionRow, ItemBookRow, PoiCategoryRow } from '@/types/database'
+import type { BadgeType, BadgeRarity, TribeRow, ItemBookRow, PoiCategoryRow } from '@/types/database'
 import BadgeList, { type BadgeListRow } from '@/components/admin/badges/BadgeList'
 import type { Json } from '@/types/database.generated'
 import BadgesFilterBar from './BadgesFilterBar'
@@ -64,7 +64,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   const filterRarity = params.rarity as BadgeRarity | undefined
   const filterActivityType = params.activity_type
   const filterPoiCategory = params.poi_category
-  const filterFactionId = params.faction_id
+  const filterTribeId = params.faction_id
   const filterItemBookId = params.item_book_id
   const status = params.status === 'inactive' || params.status === 'all' ? params.status : 'active'
   // 정렬 값·조건 필드 키는 각각 목록 정렬 규칙·조건 레지스트리에서만 나온다(티켓 20260905_0032 C-2).
@@ -195,7 +195,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
       if (q) query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
 
       if (filterActivityType) query = query.contains('activity_types', [filterActivityType])
-      if (filterFactionId) query = query.eq('faction_id', filterFactionId)
+      if (filterTribeId) query = query.eq('faction_id', filterTribeId)
       if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
       // 조건 필드 필터 — `condition_json`에 그 키가 있는 배지만. jsonb에서 없는 키는 NULL이라
       // "not is null"로 «쓰는 배지»를 가려낸다. 키는 레지스트리를 통과한 값뿐이다.
@@ -234,21 +234,21 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
     }
   }
 
-  const [{ data: factionsRaw }, { data: itemBooksRaw }, { data: poiCategoriesRaw }] = await Promise.all([
+  const [{ data: tribesRaw }, { data: itemBooksRaw }, { data: poiCategoriesRaw }] = await Promise.all([
     supabase.from('factions').select('id, name').order('name'),
     supabase.from('item_books').select('id, name, faction_id').order('name'),
     supabase.from('poi_categories').select('slug, label').order('label'),
   ])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const factionMap = new Map(
-    ((factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]).map((f) => [f.id, f.name])
+  const tribeMap = new Map(
+    ((tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]).map((f) => [f.id, f.name])
   )
-  const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
+  const tribes = (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]
   const itemBooks = (itemBooksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name' | 'faction_id'>[]
   const poiCategories = (poiCategoriesRaw ?? []) as Pick<PoiCategoryRow, 'slug' | 'label'>[]
 
-  const hasFilter = !!(q || filterType || filterRarity || filterActivityType || filterPoiCategory || filterFactionId || filterItemBookId || filterConditionField || status !== 'active')
+  const hasFilter = !!(q || filterType || filterRarity || filterActivityType || filterPoiCategory || filterTribeId || filterItemBookId || filterConditionField || status !== 'active')
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -270,7 +270,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
       {/* 필터 */}
       <Suspense>
         <BadgesFilterBar
-          factions={factions}
+          tribes={tribes}
           itemBooks={itemBooks}
           poiCategories={poiCategories}
         />
@@ -285,7 +285,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
       {/* 목록 — 데스크탑 테이블(BadgesTable.tsx)이 정렬 상태를 URL과 동기화하려고
           useSearchParams()를 쓴다(20260826_014). BadgesFilterBar와 같은 이유로 Suspense로 감싼다. */}
       <Suspense>
-        <BadgeList badges={badges} factionMap={factionMap} />
+        <BadgeList badges={badges} tribeMap={tribeMap} />
       </Suspense>
 
       {/* 페이지네이션 */}

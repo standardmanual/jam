@@ -47,7 +47,7 @@ export async function PUT(req: NextRequest) {
     )
   }
 
-  // 세계관 버킷 합 ≤ 1 검증 (나머지는 탐험이 흡수)
+  // 트라이브 버킷 합 ≤ 1 검증 (나머지는 탐험이 흡수)
   const bucketSum = merged.momentum_weight + merged.adjacent_weight + merged.explore_weight
   if (bucketSum > 1.001) {
     return NextResponse.json(

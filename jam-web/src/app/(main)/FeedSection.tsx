@@ -353,8 +353,8 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
   const title = BADGE_EVENTS.has(item.event_type) ? String(meta.badge_name ?? '') : String(meta.mission_title ?? '')
   const sub = (() => {
     if (item.event_type === 'item_dropped') {
-      // 드랍엔진 v2: 세계관 이름 노출 ("아스팔트 레인저의 파편")
-      if (meta.faction_name) return t(d.feed.fragmentOf, { faction: String(meta.faction_name) })
+      // 드랍엔진 v2: 트라이브 이름 노출 ("아스팔트 레인저의 파편")
+      if (meta.faction_name) return t(d.feed.fragmentOf, { tribe: String(meta.faction_name) })
       return meta.poi_name ? String(meta.poi_name) : null
     }
     if (item.event_type === 'item_picked_up') return meta.poi_name ? String(meta.poi_name) : null

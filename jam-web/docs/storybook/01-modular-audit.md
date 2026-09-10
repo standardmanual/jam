@@ -200,7 +200,7 @@ Storybook (jam-web/.storybook/)
 | `shape` | `'rect' \| 'pill' \| 'circle' \| 'dome' \| 'triangle' \| 'flag' \| 'hex'` | — |
 | `colorIndex` | `number` | 0~7 |
 | `color` | `string` | 직접 지정 |
-| `faction` | `string` | 팩션명 → 자동 매핑 |
+| `tribe` | `string` | 트라이브명 → 자동 매핑 |
 | `surface` | `'light' \| 'dark'` | ⚠ v2에서 `dark: boolean` 대체 |
 
 ---

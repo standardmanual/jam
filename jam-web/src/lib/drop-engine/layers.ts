@@ -103,36 +103,36 @@ function mondayKey(d: Date): string {
 }
 
 // ────────────────────────────────────────────────────────────
-// Layer 2 — 세계관 선택 (모멘텀/인접/탐험)
+// Layer 2 — 트라이브 선택 (모멘텀/인접/탐험)
 // ────────────────────────────────────────────────────────────
 
-export interface FactionPickInput {
-  /** 드랍 후보가 존재하는 세계관 id 목록 (활성 + 해당 rarity 배지 보유) */
-  candidateFactionIds: string[]
-  lastDropFactionId: string | null
-  /** lastDropFactionId의 인접 세계관 id 목록 */
-  adjacentFactionIds: string[]
-  /** 미스터리 헌터 faction id — epic+ 전용 */
-  mysteryFactionId: string | null
+export interface TribePickInput {
+  /** 드랍 후보가 존재하는 트라이브 id 목록 (활성 + 해당 rarity 배지 보유) */
+  candidateTribeIds: string[]
+  lastDropTribeId: string | null
+  /** lastDropTribeId의 인접 트라이브 id 목록 */
+  adjacentTribeIds: string[]
+  /** 미스터리 헌터 tribe id — epic+ 전용 */
+  mysteryTribeId: string | null
   rarity: BadgeRarity
   /** 맥락 오버라이드 후보 (없으면 빈 배열) — 발동 여부는 호출부에서 rand로 결정 후 전달 */
-  contextFactionIds: string[]
+  contextTribeIds: string[]
 }
 
 /**
- * 세계관 선택.
+ * 트라이브 선택.
  * 1) 미스터리 스파이스: epic+ 드랍이면 mystery_spice_rate 확률로 미스터리 헌터
- * 2) 맥락 오버라이드: contextFactionIds 있으면 그중 랜덤 (호출부에서 발동률 판정 완료 상태)
+ * 2) 맥락 오버라이드: contextTribeIds 있으면 그중 랜덤 (호출부에서 발동률 판정 완료 상태)
  * 3) 모멘텀 50 / 인접 25 / 탐험 15(+오버라이드 미발동분은 모멘텀 흡수)
  * 미스터리 헌터는 rarity < epic이면 모든 버킷에서 제외.
  */
-export function pickFaction(policy: DropPolicy, input: FactionPickInput, rand: Rand): string | null {
+export function pickTribe(policy: DropPolicy, input: TribePickInput, rand: Rand): string | null {
   const isHighRarity = input.rarity === 'epic' || input.rarity === 'mystic'
-  const mystery = input.mysteryFactionId
+  const mystery = input.mysteryTribeId
 
   // 후보에서 미스터리 분리
-  const pool = input.candidateFactionIds.filter((id) => id !== mystery)
-  const mysteryAvailable = mystery !== null && input.candidateFactionIds.includes(mystery)
+  const pool = input.candidateTribeIds.filter((id) => id !== mystery)
+  const mysteryAvailable = mystery !== null && input.candidateTribeIds.includes(mystery)
 
   // 1) 미스터리 스파이스 (epic+ 전용)
   if (isHighRarity && mysteryAvailable && rand() < policy.mystery_spice_rate) {
@@ -142,7 +142,7 @@ export function pickFaction(policy: DropPolicy, input: FactionPickInput, rand: R
   if (pool.length === 0) return mysteryAvailable && isHighRarity ? mystery : null
 
   // 2) 맥락 오버라이드 — 미스터리 헌터는 rare+ 드랍일 때만 맥락 대상 (러너스 하이)
-  const contextPool = input.contextFactionIds.filter(
+  const contextPool = input.contextTribeIds.filter(
     (id) =>
       pool.includes(id) ||
       (id === mystery && mysteryAvailable && input.rarity !== 'common')
@@ -152,10 +152,10 @@ export function pickFaction(policy: DropPolicy, input: FactionPickInput, rand: R
   }
 
   // 3) 모멘텀 / 인접 / 탐험
-  const momentum = input.lastDropFactionId && pool.includes(input.lastDropFactionId)
-    ? input.lastDropFactionId
+  const momentum = input.lastDropTribeId && pool.includes(input.lastDropTribeId)
+    ? input.lastDropTribeId
     : null
-  const adjacent = input.adjacentFactionIds.filter((id) => id !== mystery && pool.includes(id))
+  const adjacent = input.adjacentTribeIds.filter((id) => id !== mystery && pool.includes(id))
 
   const mw = momentum ? policy.momentum_weight : 0
   const aw = adjacent.length > 0 ? policy.adjacent_weight : 0

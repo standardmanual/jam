@@ -74,7 +74,7 @@ const UNSET_SORT_ORDER = Number.MAX_SAFE_INTEGER
 /**
  * `export`인 이유: 어드민 계열 관리 화면(`lib/admin/badge-families.ts`)이 같은 순서로 계열을
  * 늘어놓아야 한다. 「`sort_order = 0`은 맨 뒤」는 이 저장소의 다른 `sort_order`
- * (`today_cards`·`factions`·`item_books`, 0이 앞)와 **반대 관습**이라, 다시 선언하면
+ * (`today_cards`·`tribes`·`item_books`, 0이 앞)와 **반대 관습**이라, 다시 선언하면
  * 습관대로 오름차순 정렬해 배지 트리와 순서가 갈린다(티켓 20260905_0032 B).
  */
 export function sortRank(sortOrder: number): number {

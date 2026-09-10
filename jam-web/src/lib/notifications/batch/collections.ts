@@ -280,7 +280,7 @@ export async function buildCollectionDrafts(ctx: BatchContext): Promise<StepOutp
 
   // 미장착 보유 아이템 — 드랍해서 넘긴 것(dropped_at)은 더 이상 내 소유가 아니다.
   // 아이템북 소속 배지 전체를 `.in()`에 싣는 자리라 **청크 분할이 필수**다
-  // (FACTIONS.md 목표치 900종이면 URL이 33KB로 Cloudflare 16KB 한계를 넘는다).
+  // (TRIBES.md 목표치 900종이면 URL이 33KB로 Cloudflare 16KB 한계를 넘는다).
   // inventory_id는 NULL 허용이다 — 드랍/파괴로 주인이 없어진 개체(migrations/108, "주인 없음").
   const invItems = await fetchAllRowsIn<
     { inventory_id: string | null; badge_id: string; obtained_at: string },

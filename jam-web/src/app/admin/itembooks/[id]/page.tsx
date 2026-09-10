@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Button } from '@/components/admin/ui/button'
 import { ItemBookDetail } from '@/components/admin/itembooks/ItemBookDetail'
 import ItemBookForm from '../ItemBookForm'
-import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
+import type { ItemBookRow, BadgeRow, TribeRow } from '@/types/database'
 
 export default async function EditItemBookPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -12,7 +12,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
 
   const [
     { data: bookRaw },
-    { data: factionsRaw },
+    { data: tribesRaw },
     { data: slottedRaw },
   ] = await Promise.all([
     supabase.from('item_books').select('*').eq('id', id).single(),
@@ -26,7 +26,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
   if (!bookRaw) notFound()
 
   const book = bookRaw as ItemBookRow
-  const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
+  const tribes = (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]
   const slottedBadges = (slottedRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url' | 'deleted_at'>[]
 
   const labelIds = [book.required_activity_badge_id, book.reward_badge_id].filter((v): v is string => !!v)
@@ -35,7 +35,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
     : { data: [] as Pick<BadgeRow, 'id' | 'name'>[] }
   const labelBadgeMap = new Map(((labelBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]).map((b) => [b.id, b.name]))
 
-  const factionLabel = factions.find(f => f.id === book.faction_id)?.name
+  const tribeLabel = tribes.find(f => f.id === book.faction_id)?.name
   // [20260902_1043] "소속 아이템배지" 요약 수치는 목록 페이지의 "아이템 배지 수" 컬럼과 동일하게
   // 활성 배지 수만 의미한다 — 아래 slottedBadges(전체 배정 목록)와는 다른 값이다.
   const activeSlottedBadgeCount = slottedBadges.filter((b) => !b.deleted_at).length
@@ -65,7 +65,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
             ? labelBadgeMap.get(book.reward_badge_id)
             : undefined
         }
-        factionName={factionLabel}
+        tribeName={tribeLabel}
         itemBadgeCount={activeSlottedBadgeCount}
       />
 
@@ -74,7 +74,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
         <h2 className="text-xl font-bold mb-6">편집</h2>
         <ItemBookForm
           book={book}
-          factions={factions}
+          tribes={tribes}
           slottedBadges={slottedBadges}
           requiredActivityBadgeLabel={book.required_activity_badge_id ? labelBadgeMap.get(book.required_activity_badge_id) : undefined}
           rewardBadgeLabel={book.reward_badge_id ? labelBadgeMap.get(book.reward_badge_id) : undefined}

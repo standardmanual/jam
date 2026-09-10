@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
-import { collectFactionReferences, FACTION_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
-import type { FactionRow } from '@/types/database'
+import { collectTribeReferences, TRIBE_REFERENCE_SOURCES, summarizeReference } from '@/lib/admin/reference-guards'
+import type { TribeRow } from '@/types/database'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -11,8 +11,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params
   const supabase = createServiceClient()
   const { data, error } = await supabase.from('factions').select('*').eq('id', id).single()
-  if (error || !data) return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
-  return NextResponse.json({ faction: data })
+  if (error || !data) return NextResponse.json({ error: '트라이브를 찾을 수 없습니다.' }, { status: 404 })
+  return NextResponse.json({ tribe: data })
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -32,8 +32,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     .select('*')
     .eq('id', id)
     .single()
-  if (fetchError || !existingData) return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
-  const existing = existingData as FactionRow
+  if (fetchError || !existingData) return NextResponse.json({ error: '트라이브를 찾을 수 없습니다.' }, { status: 404 })
+  const existing = existingData as TribeRow
 
   const { data, error } = await supabase
     .from('factions')
@@ -58,7 +58,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // 인접 세계관 갱신 (배열 전달 시에만) — 드랍엔진 v2 Layer 2의 인접 버킷 원천
+  // 인접 트라이브 갱신 (배열 전달 시에만) — 드랍엔진 v2 Layer 2의 인접 버킷 원천
   if (Array.isArray(adjacent_faction_ids)) {
     const ids = (adjacent_faction_ids as string[]).filter((a) => a && a !== id)
     await supabase.from('faction_adjacency').delete().eq('faction_id', id)
@@ -70,7 +70,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  return NextResponse.json({ faction: data })
+  return NextResponse.json({ tribe: data })
 }
 
 /**
@@ -88,23 +88,23 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { data: existing, error: fetchError } = await supabase.from('factions').select('id').eq('id', id).single()
   if (fetchError || !existing) {
-    return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
+    return NextResponse.json({ error: '트라이브를 찾을 수 없습니다.' }, { status: 404 })
   }
 
-  const { counts, error: refError } = await collectFactionReferences(supabase, [id])
+  const { counts, error: refError } = await collectTribeReferences(supabase, [id])
   if (refError) {
-    console.error('[factions DELETE] 참조 카운트 조회 실패 — 하드 삭제를 차단합니다:', refError)
+    console.error('[tribes DELETE] 참조 카운트 조회 실패 — 하드 삭제를 차단합니다:', refError)
     return NextResponse.json(
       { error: '삭제할 수 없습니다. 이력 조회 중 오류가 발생했어요. 다시 시도해도 같으면 개발자에게 전달해 주세요.' },
       { status: 500 }
     )
   }
 
-  const summary = summarizeReference(FACTION_REFERENCE_SOURCES, counts.get(id)!)
+  const summary = summarizeReference(TRIBE_REFERENCE_SOURCES, counts.get(id)!)
   if (summary.blockingTotal > 0) {
     return NextResponse.json(
       {
-        error: `삭제할 수 없습니다. 이 세계관에 연결된 참조가 ${summary.blockingTotal}건 있습니다(${summary.hitLabels}). 비활성화를 이용해주세요.`,
+        error: `삭제할 수 없습니다. 이 트라이브에 연결된 참조가 ${summary.blockingTotal}건 있습니다(${summary.hitLabels}). 비활성화를 이용해주세요.`,
       },
       { status: 409 }
     )

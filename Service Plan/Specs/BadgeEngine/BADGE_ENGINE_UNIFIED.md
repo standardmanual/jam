@@ -1156,13 +1156,13 @@ POST /api/admin/badges/reevaluate-all
 ```
 
 - 0% 북 100% / 50% 북 65% / 마지막 1개 남은 북 ~38% → 새 북 진입은 쉽게, 막바지는 귀하게.
-- **완성 북 계속 드랍**: 완성이 트라이브과의 "이별"이 되지 않게. 중복 배지는 조합·트레이드 등 후속 경제의 재료.
+- **완성 북 계속 드랍**: 완성이 트라이브와의 "이별"이 되지 않게. 중복 배지는 조합·트레이드 등 후속 경제의 재료.
 - **마지막 조각 규칙**: 북의 마지막 1개는 감쇠로 자연히 귀해짐(완성의 긴장감) → 단, 그 트라이브에서 5드랍 내 미획득 시 다음 드랍 확정 (좌절 상한). 드랍 시 UI에서 "○○ 컬렉션의 마지막 파편!" 강조 = 공유 가능한 milestone moment.
 - 배지 선택: 북 내 **미보유 우선**, rarity 일치 배지 없으면 인접 rarity 폴백.
 
 ### 3.4 맥락 오버라이드 — 드랍을 '성취의 증거'로
 
-활동 맥락이 트라이브과 정합하면 **60% 확률**로 해당 트라이브 강제. 보상이 활동의 증거(informational reward)가 되어 외적 보상의 내적 동기 침식(overjustification)을 방어한다.
+활동 맥락이 트라이브와 정합하면 **60% 확률**로 해당 트라이브 강제. 보상이 활동의 증거(informational reward)가 되어 외적 보상의 내적 동기 침식(overjustification)을 방어한다.
 
 | 활동 맥락 | 오버라이드 트라이브 | 예시 컬렉션 |
 |-----------|-----------------|--------------|
@@ -1600,7 +1600,7 @@ Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md ← 이 문서. 발급·드랍 로직 
 Specs/Content/ACTIVITY_BADGES.md          액티비티배지 115종 전체 목록·조건·설명
 Specs/Content/ITEMBOOKS.xlsx              아이템배지 ~900종 목록 + '트라이브 인접' 시트
 Specs/Content/COMBINE_RECIPES.md          조합 레시피 목록
-Specs/Content/FACTIONS.md                 트라이브 10종 개요·컬렉션 매핑·인접 그래프
+Specs/Content/TRIBES.md                  트라이브 10종 개요·컬렉션 매핑·인접 그래프
 Specs/Content/POI.md                      지점(POI) 컨텐츠 (스텁)
 
 [코드]

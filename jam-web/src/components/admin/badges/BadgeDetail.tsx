@@ -51,10 +51,10 @@ function formatCondition(c: BadgeCondition): string[] {
 
 interface BadgeDetailProps {
   badge: BadgeRow
-  factionName?: string
+  tribeName?: string
 }
 
-export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
+export default function BadgeDetail({ badge, tribeName }: BadgeDetailProps) {
   const router = useRouter()
   const condition = badge.condition_json as BadgeCondition | null
 
@@ -156,9 +156,9 @@ export default function BadgeDetail({ badge, factionName }: BadgeDetailProps) {
             </div>
 
             <div>
-              <div className="text-xs font-semibold text-gray-600 mb-1">세계관</div>
+              <div className="text-xs font-semibold text-gray-600 mb-1">트라이브</div>
               <div className="text-sm">
-                {factionName ?? (badge.faction_id ? '(로드 중...)' : '없음')}
+                {tribeName ?? (badge.faction_id ? '(로드 중...)' : '없음')}
               </div>
             </div>
 

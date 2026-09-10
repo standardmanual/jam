@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Button } from '@/components/admin/ui/button'
-import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
+import type { ItemBookRow, BadgeRow, TribeRow } from '@/types/database'
 import { ItemBookList } from '@/components/admin/itembooks/ItemBookList'
 import ItemBookFilters from './ItemBookFilters'
 import Pagination from '../poi/Pagination'
@@ -21,16 +21,16 @@ interface AdminItemBooksPageProps {
 
 export default async function AdminItemBooksPage({ searchParams }: AdminItemBooksPageProps) {
   const params = pickSingleQueryParams(await searchParams)
-  const faction = params.faction ?? 'all'
+  const tribe = params.tribe ?? 'all'
   const sort = params.sort ?? 'created_desc'
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
 
   const supabase = createServiceClient()
 
   // 20260826_011 A6: 전체 로드 후 클라이언트 필터·정렬하던 것을 admin/poi/page.tsx와 동일한
-  // 구조(searchParams로 세계관/정렬/페이지 구동 + range() 서버 필터링)로 전환.
+  // 구조(searchParams로 트라이브/정렬/페이지 구동 + range() 서버 필터링)로 전환.
   let query = supabase.from('item_books').select('*', { count: 'exact' })
-  if (faction !== 'all') query = query.eq('faction_id', faction)
+  if (tribe !== 'all') query = query.eq('faction_id', tribe)
 
   if (sort === 'name_asc') query = query.order('name', { ascending: true })
   else if (sort === 'name_desc') query = query.order('name', { ascending: false })
@@ -40,15 +40,15 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
   const to = from + PAGE_SIZE - 1
   query = query.range(from, to)
 
-  const [{ data: booksRaw, count }, { data: factionsRaw }] = await Promise.all([
+  const [{ data: booksRaw, count }, { data: tribesRaw }] = await Promise.all([
     query,
     supabase.from('factions').select('id, name'),
   ])
 
   const books = (booksRaw ?? []) as ItemBookRow[]
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
-  const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
-  const factionMap = new Map(factions.map((f) => [f.id, f.name]))
+  const tribes = (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]
+  const tribeMap = new Map(tribes.map((f) => [f.id, f.name]))
 
   // 이 페이지에 보여줄 책들이 참조하는 배지(필요/보상)의 이름만 bounded로 조회 — 배지 테이블
   // 필터 없이 전량(현재 5585건) 조회하면 PostgREST 기본 응답 상한(1000행)에 걸려 뒤쪽 배지가
@@ -80,7 +80,7 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
     itemBadgeCountMap.set(b.item_book_id, (itemBadgeCountMap.get(b.item_book_id) ?? 0) + 1)
   }
 
-  const emptyMessage = faction !== 'all' ? '조건에 맞는 컬렉션이 없습니다.' : '등록된 컬렉션이 없습니다.'
+  const emptyMessage = tribe !== 'all' ? '조건에 맞는 컬렉션이 없습니다.' : '등록된 컬렉션이 없습니다.'
 
   return (
     <div className="space-y-6 p-4 md:p-8">
@@ -96,7 +96,7 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
 
       {/* 필터 */}
       <Suspense>
-        <ItemBookFilters factions={factions} />
+        <ItemBookFilters tribes={tribes} />
       </Suspense>
 
       {/* 카운트 */}
@@ -108,7 +108,7 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
       <ItemBookList
         itemBooks={books}
         badgeMap={badgeMap}
-        factionMap={factionMap}
+        tribeMap={tribeMap}
         itemBadgeCountMap={itemBadgeCountMap}
         emptyMessage={emptyMessage}
       />

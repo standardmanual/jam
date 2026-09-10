@@ -93,7 +93,7 @@ export const PAGE_SIZE = 1000
  * PostgREST는 `.in()` 목록을 **URL 쿼리스트링**에 싣는다. Cloudflare의 URL 상한이 16KB라
  * UUID(36자 + 구분자)를 400개 넘게 실으면 한계에 근접한다. 걸리는 순간 조회가 실패하고
  * `runStep`이 잡아 **그 단계만 조용히 0건**이 된다(로그 한 줄뿐인 무증상 0건).
- * 아이템북 소속 배지는 FACTIONS.md 목표치가 세계관 10 × 90종 = 900종이라 실제로 도달한다.
+ * 아이템북 소속 배지는 TRIBES.md 목표치가 트라이브 10 × 90종 = 900종이라 실제로 도달한다.
  */
 export const IN_CHUNK_SIZE = 200
 

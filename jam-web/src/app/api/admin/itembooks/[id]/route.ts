@@ -15,7 +15,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const supabase = createServiceClient()
 
   // 부분 body 병합을 위해 기존 row를 먼저 조회한다 — body에 없는(undefined) 필드는 기존 값을
-  // 그대로 유지한다(20260827_007, factions PUT과 동일 패턴). 존재하지 않는 id면 update 시도
+  // 그대로 유지한다(20260827_007, tribes PUT과 동일 패턴). 존재하지 않는 id면 update 시도
   // 전에 404로 응답한다.
   const { data: existingData, error: fetchError } = await supabase
     .from('item_books')

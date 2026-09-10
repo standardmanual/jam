@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import type { ItemBookRow, BadgeRow, FactionRow } from '@/types/database'
+import type { ItemBookRow, BadgeRow, TribeRow } from '@/types/database'
 import BadgeSearchSelect from '@/components/admin/BadgeSearchSelect'
 import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
 import ImageUploadField from '@/components/admin/ImageUploadField'
@@ -27,7 +27,7 @@ import { BadgeActiveToggleButton } from '@/components/admin/badges/BadgeActiveTo
 
 interface ItemBookFormProps {
   book?: ItemBookRow
-  factions: Pick<FactionRow, 'id' | 'name'>[]
+  tribes: Pick<TribeRow, 'id' | 'name'>[]
   // [20260902_1043] 이 컬렉션에 배정된 전체 배지(활성+비활성) — deleted_at이 있으면 유저 노출에서
   // 회수된(비활성) 배지지만, 배정 관계(item_book_id) 자체는 남아있으므로 목록에서 제외하지 않는다.
   slottedBadges: Pick<BadgeRow, 'id' | 'name' | 'rarity' | 'image_url' | 'deleted_at'>[]
@@ -45,7 +45,7 @@ const NONE_VALUE = '__none__'
 
 export default function ItemBookForm({
   book,
-  factions,
+  tribes,
   slottedBadges,
   requiredActivityBadgeLabel,
   rewardBadgeLabel,
@@ -67,7 +67,7 @@ export default function ItemBookForm({
     book?.required_activity_badge_id ?? ''
   )
   const [rewardBadgeId, setRewardBadgeId] = useState(book?.reward_badge_id ?? '')
-  const [factionId, setFactionId] = useState(book?.faction_id ?? '')
+  const [tribeId, setTribeId] = useState(book?.faction_id ?? '')
   const [storyText, setStoryText] = useState(book?.story_text ?? '')
   const [isActive, setIsActive] = useState(book?.is_active ?? true)
   // 배경 테마 (20260818_004) — 컬렉션 자체에는 렌더링되지 않고, "하위 배지에 일괄 적용" 버튼으로
@@ -122,7 +122,7 @@ export default function ItemBookForm({
       image_url: imageUrl || null,
       required_activity_badge_id: requiredActivityBadgeId || null,
       reward_badge_id: rewardBadgeId || null,
-      faction_id: factionId || null,
+      faction_id: tribeId || null,
       story_text: storyText || null,
       is_active: isActive,
       // [20260901_1944] 애니메이션 모드에서는 배경색을 검증하지 않으므로 hex가 아닌 값은 null로
@@ -339,22 +339,22 @@ export default function ItemBookForm({
           onChange={(e) => setStoryText(e.target.value)}
           rows={3}
           className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
-          placeholder="세계관 스토리 또는 배경 설명"
+          placeholder="트라이브 스토리 또는 배경 설명"
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-foreground">소속 세계관</span>
+        <span className="text-sm text-foreground">소속 트라이브</span>
         <Select
-          value={factionId || NONE_VALUE}
-          onValueChange={(v) => setFactionId(v === NONE_VALUE ? '' : v)}
+          value={tribeId || NONE_VALUE}
+          onValueChange={(v) => setTribeId(v === NONE_VALUE ? '' : v)}
         >
-          <SelectTrigger aria-label="소속 세계관">
+          <SelectTrigger aria-label="소속 트라이브">
             <SelectValue />
           </SelectTrigger>
           <SelectContent container={themeContainer ?? undefined}>
             <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
-            {factions.map((f) => (
+            {tribes.map((f) => (
               <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
             ))}
           </SelectContent>

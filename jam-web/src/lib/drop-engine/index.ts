@@ -3,7 +3,7 @@
  *
  * 3레이어 드랍 결정 (로직 문서: Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md §3):
  *   Layer 1 — 드랍 발생: 활동당 최소 1개 확정, 변동성은 희귀도·보너스로
- *   Layer 2 — 세계관 선택: 모멘텀 50 / 인접 25 / 탐험 15 (하드캡·선택 UI 없이 가중치로만 집중)
+ *   Layer 2 — 트라이브 선택: 모멘텀 50 / 인접 25 / 탐험 15 (하드캡·선택 UI 없이 가중치로만 집중)
  *   Layer 3 — 아이템북·배지 선택: 완성도 감쇠 + 완성 북 잔류 + 마지막 조각 pity
  *
  * - 인벤토리 슬롯 초과 시 드랍 안 함 ("최소 1개"의 유일한 예외)
@@ -47,24 +47,24 @@ import {
   isComebackActivity,
   isWeeklyFirstActivity,
   rarityFallbackOrder,
-  pickFaction,
+  pickTribe,
   pickBook,
   type RarityContext,
   type BookCandidate,
 } from './layers'
-import { matchContextFactions, CONTEXT_FACTION_IDS } from './context'
+import { matchContextTribes, CONTEXT_TRIBE_IDS } from './context'
 import { logEngineDecision } from '@/lib/engine-log'
 
 import {
-  MYSTERY_FACTION_ID,
-  RESOLUTION_FACTION_ID,
-  ONBOARDING_FACTION_BY_ACTIVITY,
+  MYSTERY_TRIBE_ID,
+  RESOLUTION_TRIBE_ID,
+  ONBOARDING_TRIBE_BY_ACTIVITY,
   ONBOARDING_DROP_COUNT,
   ACTIVITY_TYPE_DROP_WEIGHT,
   DEFAULT_ACTIVITY_DROP_WEIGHT,
 } from './constants'
 
-export { MYSTERY_FACTION_ID, RESOLUTION_FACTION_ID }
+export { MYSTERY_TRIBE_ID, RESOLUTION_TRIBE_ID }
 
 // ────────────────────────────────────────────────────────────
 // 조건 가드 (v1 유지)
@@ -124,36 +124,36 @@ export function getActivityDropWeight(activity: NormalizedActivity | null): numb
 }
 
 // ────────────────────────────────────────────────────────────
-// 하드코딩 faction UUID 검증 (constants.ts / context.ts)
+// 하드코딩 tribe UUID 검증 (constants.ts / context.ts)
 // ────────────────────────────────────────────────────────────
 
 /** 검증 통과 후 프로세스 생존 기간 동안 재검증을 건너뛰기 위한 캐시 */
-let factionConstantsValidated = false
+let tribeConstantsValidated = false
 
 /**
- * DB 리셋·재시드 등으로 하드코딩된 faction UUID가 실제 factions 테이블과
+ * DB 리셋·재시드 등으로 하드코딩된 tribe UUID가 실제 tribes 테이블과
  * 어긋나면(예: 019_seed_worldview.sql이 다른 UUID로 재적용됨) 온보딩 필터·맥락
  * 오버라이드가 조용히 빈 배열로 폴백해 의도한 동작이 깨진다. 이미 조회한
- * factions 목록을 재사용해 추가 쿼리 없이 존재 여부만 확인한다.
+ * tribes 목록을 재사용해 추가 쿼리 없이 존재 여부만 확인한다.
  */
-async function validateFactionConstants(factionIds: Set<string>): Promise<void> {
-  if (factionConstantsValidated) return
+async function validateTribeConstants(tribeIds: Set<string>): Promise<void> {
+  if (tribeConstantsValidated) return
 
   const expected = new Set([
-    MYSTERY_FACTION_ID,
-    RESOLUTION_FACTION_ID,
-    ...Object.values(ONBOARDING_FACTION_BY_ACTIVITY),
-    ...CONTEXT_FACTION_IDS,
+    MYSTERY_TRIBE_ID,
+    RESOLUTION_TRIBE_ID,
+    ...Object.values(ONBOARDING_TRIBE_BY_ACTIVITY),
+    ...CONTEXT_TRIBE_IDS,
   ])
-  const missing = [...expected].filter((id) => !factionIds.has(id))
+  const missing = [...expected].filter((id) => !tribeIds.has(id))
 
   if (missing.length > 0) {
-    console.error(`[drop-engine] 하드코딩 faction UUID가 factions 테이블에 없음: ${missing.join(', ')}`)
+    console.error(`[drop-engine] 하드코딩 tribe UUID가 tribes 테이블에 없음: ${missing.join(', ')}`)
     await logEngineDecision('drop', 'faction_constant_missing', null, { missing })
     return // 다음 호출에서 재검증 (DB가 아직 정정되지 않았을 수 있으므로 캐시하지 않음)
   }
 
-  factionConstantsValidated = true
+  tribeConstantsValidated = true
 }
 
 // ────────────────────────────────────────────────────────────
@@ -174,16 +174,16 @@ type DropBadge = Pick<
 type DropBadgeFromDb = Omit<DropBadge, 'condition_json'> & { condition_json: Json }
 
 interface DropStructure {
-  /** 활성 북 id → faction id */
-  factionOfBook: Map<string, string>
-  /** faction id → 이름 (피드 이벤트 payload용) */
-  factionNames: Map<string, string>
+  /** 활성 북 id → tribe id */
+  tribeOfBook: Map<string, string>
+  /** tribe id → 이름 (피드 이벤트 payload용) */
+  tribeNames: Map<string, string>
   /** 활성 북 id → 소속 전체 배지 id 목록 (completion 계산용) */
   badgeIdsOfBook: Map<string, string[]>
   /** 유효기간 내 + 조건 통과한 드랍 후보 배지 */
   droppable: DropBadge[]
-  /** 직전 드랍 세계관의 인접 세계관 id */
-  adjacentFactionIds: string[]
+  /** 직전 드랍 트라이브의 인접 트라이브 id */
+  adjacentTribeIds: string[]
   /** 유저 보유(인벤토리) distinct 배지 id */
   owned: Set<string>
   inventory: Pick<InventoryRow, 'id' | 'used_slots' | 'max_slots'> | null
@@ -191,13 +191,13 @@ interface DropStructure {
 
 async function fetchDropStructure(
   userId: string,
-  lastFactionId: string | null,
+  lastTribeId: string | null,
   activities: NormalizedActivity[]
 ): Promise<DropStructure | null> {
   const supabase = createServiceClient()
   const now = new Date().toISOString()
 
-  const [{ data: booksRaw }, { data: inventoryRaw }, { data: factionsRaw }] = await Promise.all([
+  const [{ data: booksRaw }, { data: inventoryRaw }, { data: tribesRaw }] = await Promise.all([
     supabase.from('item_books').select('id, faction_id').eq('is_active', true),
     supabase.from('inventory').select('id, used_slots, max_slots').eq('user_id', userId).single(),
     supabase.from('factions').select('id, name'),
@@ -205,11 +205,11 @@ async function fetchDropStructure(
 
   const books = (booksRaw ?? []) as { id: string; faction_id: string | null }[]
   if (books.length === 0) return null
-  const factionOfBook = new Map<string, string>()
+  const tribeOfBook = new Map<string, string>()
   for (const b of books) {
-    if (b.faction_id) factionOfBook.set(b.id, b.faction_id)
+    if (b.faction_id) tribeOfBook.set(b.id, b.faction_id)
   }
-  const activeBookIds = [...factionOfBook.keys()]
+  const activeBookIds = [...tribeOfBook.keys()]
 
   // PostgREST 기본 max-rows(보통 1,000행) 제한을 넘는 테이블을 안전하게 전체 조회.
   // `.select('*')` 등 단일 호출은 결과가 조용히 잘려나가도 에러가 안 나므로
@@ -237,8 +237,8 @@ async function fetchDropStructure(
         data: [] as DropBadge[],
         error: { message: err instanceof Error ? err.message : String(err) },
       })),
-    lastFactionId
-      ? createServiceClient().from('faction_adjacency').select('adjacent_faction_id').eq('faction_id', lastFactionId)
+    lastTribeId
+      ? createServiceClient().from('faction_adjacency').select('adjacent_faction_id').eq('faction_id', lastTribeId)
       : Promise.resolve({ data: [] }),
     inventoryRaw
       ? createServiceClient()
@@ -269,7 +269,7 @@ async function fetchDropStructure(
     return isDroppableForActivity(b.condition_json as BadgeCondition | null, activities)
   })
 
-  const adjacentFactionIds = (
+  const adjacentTribeIds = (
     ((adjacencyRes as { data: { adjacent_faction_id: string }[] | null }).data ?? [])
   ).map((r) => r.adjacent_faction_id)
 
@@ -277,18 +277,18 @@ async function fetchDropStructure(
     (((ownedRes as { data: { badge_id: string }[] | null }).data ?? [])).map((r) => r.badge_id)
   )
 
-  const factionNames = new Map(
-    (((factionsRaw ?? []) as { id: string; name: string }[])).map((f) => [f.id, f.name])
+  const tribeNames = new Map(
+    (((tribesRaw ?? []) as { id: string; name: string }[])).map((f) => [f.id, f.name])
   )
 
-  void validateFactionConstants(new Set(factionNames.keys()))
+  void validateTribeConstants(new Set(tribeNames.keys()))
 
   return {
-    factionOfBook,
-    factionNames,
+    tribeOfBook,
+    tribeNames,
     badgeIdsOfBook,
     droppable,
-    adjacentFactionIds,
+    adjacentTribeIds,
     owned,
     inventory: (inventoryRaw as Pick<InventoryRow, 'id' | 'used_slots' | 'max_slots'> | null) ?? null,
   }
@@ -300,7 +300,7 @@ async function fetchDropStructure(
 
 interface PickResult {
   badge: DropBadge
-  factionId: string
+  tribeId: string
   bookId: string
   isLastPiece: boolean
 }
@@ -322,63 +322,63 @@ function selectBadge(
   structure: DropStructure,
   state: UserDropStateRow,
   rarity: BadgeRarity,
-  contextFactionIds: string[],
+  contextTribeIds: string[],
   rand: () => number
 ): PickResult | null {
   for (const tryRarity of rarityFallbackOrder(rarity)) {
     const candidates = structure.droppable.filter((b) => b.rarity === tryRarity && b.item_book_id)
     if (candidates.length === 0) continue
 
-    // 세계관 후보 (후보 배지가 존재하는 세계관)
-    let candidateFactionIds = [
-      ...new Set(candidates.map((b) => structure.factionOfBook.get(b.item_book_id as string)).filter(Boolean)),
+    // 트라이브 후보 (후보 배지가 존재하는 트라이브)
+    let candidateTribeIds = [
+      ...new Set(candidates.map((b) => structure.tribeOfBook.get(b.item_book_id as string)).filter(Boolean)),
     ] as string[]
 
-    // 신규 유저 온보딩: 첫 3드랍은 작심삼일 클럽 + 주 활동종목 세계관으로 제한 (가능할 때만)
+    // 신규 유저 온보딩: 첫 3드랍은 작심삼일 클럽 + 주 활동종목 트라이브로 제한 (가능할 때만)
     if (state.total_drops < ONBOARDING_DROP_COUNT) {
-      const onboarding = candidateFactionIds.filter(
-        (id) => id === RESOLUTION_FACTION_ID || Object.values(ONBOARDING_FACTION_BY_ACTIVITY).includes(id)
+      const onboarding = candidateTribeIds.filter(
+        (id) => id === RESOLUTION_TRIBE_ID || Object.values(ONBOARDING_TRIBE_BY_ACTIVITY).includes(id)
       )
-      if (onboarding.length > 0) candidateFactionIds = onboarding
+      if (onboarding.length > 0) candidateTribeIds = onboarding
     }
 
-    const factionId = pickFaction(
+    const tribeId = pickTribe(
       policy,
       {
-        candidateFactionIds,
-        lastDropFactionId: state.last_drop_faction_id,
-        adjacentFactionIds: structure.adjacentFactionIds,
-        mysteryFactionId: MYSTERY_FACTION_ID,
+        candidateTribeIds,
+        lastDropTribeId: state.last_drop_faction_id,
+        adjacentTribeIds: structure.adjacentTribeIds,
+        mysteryTribeId: MYSTERY_TRIBE_ID,
         rarity: tryRarity,
-        contextFactionIds,
+        contextTribeIds,
       },
       rand
     )
-    if (!factionId) continue
+    if (!tribeId) continue
 
-    const factionCandidates = candidates.filter(
-      (b) => structure.factionOfBook.get(b.item_book_id as string) === factionId
+    const tribeCandidates = candidates.filter(
+      (b) => structure.tribeOfBook.get(b.item_book_id as string) === tribeId
     )
-    if (factionCandidates.length === 0) continue
+    if (tribeCandidates.length === 0) continue
 
-    // 마지막 조각 pity: 이 세계관에서 1개 남은 북이 임계 도달 시 그 배지 확정
+    // 마지막 조각 pity: 이 트라이브에서 1개 남은 북이 임계 도달 시 그 배지 확정
     const pity = state.last_piece_pity ?? {}
-    for (const [bookId, factionOf] of structure.factionOfBook) {
-      if (factionOf !== factionId) continue
+    for (const [bookId, tribeOf] of structure.tribeOfBook) {
+      if (tribeOf !== tribeId) continue
       const missing = missingOfBook(structure, bookId)
       if (missing.length !== 1) continue
       if ((pity[bookId] ?? 0) < policy.last_piece_pity_threshold) continue
       const lastBadge = structure.droppable.find((b) => b.id === missing[0])
       if (lastBadge) {
-        return { badge: lastBadge, factionId, bookId, isLastPiece: true }
+        return { badge: lastBadge, tribeId, bookId, isLastPiece: true }
       }
     }
 
     // 아이템북 선택 (완성 페이싱)
-    const bookIds = [...new Set(factionCandidates.map((b) => b.item_book_id as string))]
+    const bookIds = [...new Set(tribeCandidates.map((b) => b.item_book_id as string))]
     const bookCandidates: BookCandidate[] = bookIds.map((bookId) => ({
       bookId,
-      baseWeight: factionCandidates
+      baseWeight: tribeCandidates
         .filter((b) => b.item_book_id === bookId)
         .reduce((s, b) => s + b.drop_weight, 0),
       completion: completionOfBook(structure, bookId),
@@ -387,13 +387,13 @@ function selectBadge(
     if (!bookId) continue
 
     // 배지 선택: 미보유 우선
-    const inBook = factionCandidates.filter((b) => b.item_book_id === bookId)
+    const inBook = tribeCandidates.filter((b) => b.item_book_id === bookId)
     const unowned = inBook.filter((b) => !structure.owned.has(b.id))
     const pool = unowned.length > 0 ? unowned : inBook
     const badge = weightedPick(pool, rand)
     const isLastPiece = missingOfBook(structure, bookId).length === 1 && !structure.owned.has(badge.id)
 
-    return { badge, factionId, bookId, isLastPiece }
+    return { badge, tribeId, bookId, isLastPiece }
   }
   return null
 }
@@ -409,21 +409,21 @@ function weightedPick<T extends { drop_weight: number }>(items: T[], rand: () =>
   return items[items.length - 1]
 }
 
-/** 마지막 조각 pity 카운터 갱신 — 이번 드랍이 발생한 세계관의 1개 남은 북들 */
+/** 마지막 조각 pity 카운터 갱신 — 이번 드랍이 발생한 트라이브의 1개 남은 북들 */
 function updateLastPiecePity(
   structure: DropStructure,
   state: UserDropStateRow,
-  factionId: string,
+  tribeId: string,
   pickedBadgeId: string
 ): void {
   const pity: Record<string, number> = { ...(state.last_piece_pity ?? {}) }
-  for (const [bookId, factionOf] of structure.factionOfBook) {
-    if (factionOf !== factionId) continue
+  for (const [bookId, tribeOf] of structure.tribeOfBook) {
+    if (tribeOf !== tribeId) continue
     const missing = missingOfBook(structure, bookId)
     if (missing.length === 1 && missing[0] === pickedBadgeId) {
       delete pity[bookId] // 이번 드랍으로 완성 → 카운터 제거
     } else if (missing.length === 1) {
-      pity[bookId] = (pity[bookId] ?? 0) + 1 // 이 세계관에서 드랍 발생했으나 마지막 조각 못 얻음
+      pity[bookId] = (pity[bookId] ?? 0) + 1 // 이 트라이브에서 드랍 발생했으나 마지막 조각 못 얻음
     }
   }
   state.last_piece_pity = pity
@@ -499,7 +499,7 @@ async function insertDrop(
   inventoryId: string,
   userId: string,
   picked: DropBadge,
-  factionName: string,
+  tribeName: string,
   isLastPiece: boolean,
   activityStartDate?: string,
   /**
@@ -546,7 +546,9 @@ async function insertDrop(
     badge_image_url: picked.image_url ?? '',
     rarity: picked.rarity,
     poi_name: '',
-    faction_name: factionName,
+    // 키 이름을 바꾸지 않는다 — 이미 쌓인 activity_feed.meta의 키이고,
+    // FeedSection이 이 키로 문구를 분기한다. 바꾸면 과거 피드가 전부 어긋난다.
+    faction_name: tribeName,
     is_last_piece: isLastPiece,
     // 20260827_018 — 지급한 포인트를 피드에도 남긴다. 프로필 묶음 카드가 포인트를
     // 합산할 때 아이템 배지 몫이 빠져 알림 결산 총액과 어긋나던 문제를 해소한다.
@@ -616,7 +618,7 @@ export async function tryItemDrop(
   const intense = act ? isIntenseActivity(policy, act) : false
 
   // 맥락 오버라이드 매칭 (복귀는 발동률 무시하고 항상 적용)
-  const contextMatch = matchContextFactions(act, comeback)
+  const contextMatch = matchContextTribes(act, comeback)
 
   // Layer 1: 드랍 개수 — 1개 확정(activity_type 가중치 미적용) + 보너스(가중치 적용)
   const dropCount = 1 + (rollBonusDrop(policy, intense, rand, activityWeight) ? 1 : 0)
@@ -650,10 +652,10 @@ export async function tryItemDrop(
     // 맥락 오버라이드 발동 판정 — 복귀는 항상, 그 외는 context_override_rate 확률
     const contextActive =
       contextMatch !== null && (contextMatch.always || rand() < policy.context_override_rate)
-    const contextFactionIds = contextActive ? contextMatch.factionIds : []
+    const contextTribeIds = contextActive ? contextMatch.tribeIds : []
 
-    // Layer 2·3: 세계관 → 아이템북 → 배지
-    const result = selectBadge(policy, structure, state, capped, contextFactionIds, rand)
+    // Layer 2·3: 트라이브 → 아이템북 → 배지
+    const result = selectBadge(policy, structure, state, capped, contextTribeIds, rand)
     if (!result) {
       await logEngineDecision('drop', 'drop_attempt', userId, {
         attempt: i, outcome: 'no_candidate', rolledRarity: rolled, cappedRarity: capped, contextActive,
@@ -665,7 +667,7 @@ export async function tryItemDrop(
       structure.inventory.id,
       userId,
       result.badge,
-      structure.factionNames.get(result.factionId) ?? '',
+      structure.tribeNames.get(result.tribeId) ?? '',
       result.isLastPiece,
       activityStartDate,
       act?.stravaId ?? null
@@ -685,7 +687,7 @@ export async function tryItemDrop(
       rarity: result.badge.rarity,
       rolledRarity: rolled,
       cappedRarity: capped,
-      factionId: result.factionId,
+      tribeId: result.tribeId,
       bookId: result.bookId,
       isLastPiece: result.isLastPiece,
       contextActive,
@@ -708,11 +710,11 @@ export async function tryItemDrop(
     }
 
     // 상태·구조 갱신 (다음 드랍/다음 싱크에 반영)
-    updateLastPiecePity(structure, state, result.factionId, result.badge.id)
+    updateLastPiecePity(structure, state, result.tribeId, result.badge.id)
     structure.owned.add(result.badge.id)
     state.daily_drop_count += 1
     state.total_drops += 1
-    state.last_drop_faction_id = result.factionId
+    state.last_drop_faction_id = result.tribeId
     state.last_drop_book_id = result.bookId
     if (result.badge.rarity === 'common') {
       // rare+ pity 진행 기여도에 activity_type 가중치 반영 (걷기는 0.4만큼만 전진)
@@ -723,7 +725,7 @@ export async function tryItemDrop(
 
     console.info(
       `[tryItemDrop] v2 드랍 — userId: ${userId}, badge: ${result.badge.name}, rarity: ${result.badge.rarity}, ` +
-        `faction: ${result.factionId}${result.isLastPiece ? ' [마지막 파편!]' : ''}` +
+        `tribe: ${result.tribeId}${result.isLastPiece ? ' [마지막 파편!]' : ''}` +
         `${comeback && i === 0 ? ' (복귀 보너스)' : ''}${i > 0 ? ' (보너스 드랍)' : ''}`
     )
   }
