@@ -9,6 +9,11 @@
 -- tribe_id/tribes 기준 코드)를 staging→main 순서로 신속히 배포해 창을 최소화한다. 이 파일이
 -- 커밋된 시점에는 아직 실행 전이므로 database.generated.ts는 여전히 옛 컬럼명 기준이고,
 -- npx tsc --noEmit이 실패할 수 있다 — 마이그레이션 실행 후 타입 재생성으로 해소한다.
+--
+-- 실행 기록 (2026-09-10): mcp__supabase__apply_migration으로 실행 완료. Storage 버킷
+-- images의 badges/factions/{collectionId}/* 171개 파일은 SQL로 표현할 수 없어 이 파일
+-- 밖에서 Storage Move API로 별도 이동했고(전량 성공), badges.image_url(90행)·
+-- item_books.image_url(10행)의 factions/ 문자열도 별도 UPDATE로 tribes/에 맞췄다.
 
 -- ────────────────────────────────────────────────────────────
 -- 1. 테이블 리네임
@@ -52,15 +57,19 @@ ALTER POLICY "faction_adjacency: 전체 읽기 허용" ON public.tribe_adjacency
 -- 3. RPC 리네임 + 본문 내부 참조 갱신
 --    (마이그레이션 092 도입 → 121 background_color 단일화 → 124 background_animation 추가.
 --     124가 최신 정의이므로 그 본문을 기준으로 테이블/컬럼 참조만 tribe로 바꿔 재정의한다.
---     ALTER FUNCTION ... RENAME TO는 함수 객체(및 기존 GRANT)를 보존하고, 그 직후
---     CREATE OR REPLACE로 새 이름에 새 본문을 얹는다 — 파라미터 개수·타입이 그대로라
---     반환 타입도 동일해 OR REPLACE로 허용된다.)
+--
+--     ⚠️ 실행 시 실측: 파라미터 이름이 p_faction_id → p_tribe_id로 바뀌므로
+--     ALTER FUNCTION ... RENAME TO 후 CREATE OR REPLACE는 Postgres가
+--     "42P13: cannot change name of input parameter"로 거부한다(같은 트랜잭션이라 전체
+--     롤백됨 — 실행 직후 확인). DROP 후 CREATE로 바꾸고, DROP이 기존 GRANT를 지우므로
+--     마이그레이션 109에서 잠가둔 권한(PUBLIC 차단 + service_role만 허용)을 명시적으로
+--     재부여한다.)
 -- ────────────────────────────────────────────────────────────
 
-ALTER FUNCTION public.count_faction_background_cascade(uuid) RENAME TO count_tribe_background_cascade;
-ALTER FUNCTION public.apply_faction_background_cascade(uuid) RENAME TO apply_tribe_background_cascade;
+DROP FUNCTION public.count_faction_background_cascade(uuid);
+DROP FUNCTION public.apply_faction_background_cascade(uuid);
 
-CREATE OR REPLACE FUNCTION public.count_tribe_background_cascade(p_tribe_id UUID)
+CREATE FUNCTION public.count_tribe_background_cascade(p_tribe_id UUID)
 RETURNS TABLE(direct_badges INT, item_books INT, item_book_badges INT)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -81,7 +90,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.apply_tribe_background_cascade(p_tribe_id UUID)
+CREATE FUNCTION public.apply_tribe_background_cascade(p_tribe_id UUID)
 RETURNS TABLE(direct_badges INT, item_books INT, item_book_badges INT)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -138,6 +147,11 @@ BEGIN
   RETURN QUERY SELECT v_direct_badges, v_item_books, v_item_book_badges;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.count_tribe_background_cascade(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.count_tribe_background_cascade(uuid) TO service_role;
+REVOKE ALL ON FUNCTION public.apply_tribe_background_cascade(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.apply_tribe_background_cascade(uuid) TO service_role;
 
 -- ────────────────────────────────────────────────────────────
 -- 4. jsonb 키 리네임 (faction 관련 키 → tribe)

@@ -258,7 +258,6 @@ export type Database = {
           description: string
           drop_condition_json: Json | null
           drop_weight: number
-          faction_id: string | null
           family_key: string | null
           id: string
           image_gen_params: Json | null
@@ -271,6 +270,7 @@ export type Database = {
           point_reward: number
           rarity: Database["public"]["Enums"]["badge_rarity"] | null
           sort_order: number
+          tribe_id: string | null
           type: Database["public"]["Enums"]["badge_type"]
           valid_from: string | null
           valid_until: string | null
@@ -290,7 +290,6 @@ export type Database = {
           description: string
           drop_condition_json?: Json | null
           drop_weight?: number
-          faction_id?: string | null
           family_key?: string | null
           id?: string
           image_gen_params?: Json | null
@@ -303,6 +302,7 @@ export type Database = {
           point_reward?: number
           rarity?: Database["public"]["Enums"]["badge_rarity"] | null
           sort_order?: number
+          tribe_id?: string | null
           type: Database["public"]["Enums"]["badge_type"]
           valid_from?: string | null
           valid_until?: string | null
@@ -322,7 +322,6 @@ export type Database = {
           description?: string
           drop_condition_json?: Json | null
           drop_weight?: number
-          faction_id?: string | null
           family_key?: string | null
           id?: string
           image_gen_params?: Json | null
@@ -335,6 +334,7 @@ export type Database = {
           point_reward?: number
           rarity?: Database["public"]["Enums"]["badge_rarity"] | null
           sort_order?: number
+          tribe_id?: string | null
           type?: Database["public"]["Enums"]["badge_type"]
           valid_from?: string | null
           valid_until?: string | null
@@ -355,20 +355,89 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "badges_faction_id_fkey"
-            columns: ["faction_id"]
-            isOneToOne: false
-            referencedRelation: "factions"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "badges_item_book_id_fkey"
             columns: ["item_book_id"]
             isOneToOne: false
             referencedRelation: "item_books"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "badges_tribe_id_fkey"
+            columns: ["tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      bak20260907_missions_pre_v5_cleanup: {
+        Row: {
+          condition_json: Json | null
+          created_at: string | null
+          description: string | null
+          ends_at: string | null
+          gate_axis: string | null
+          gate_stage: string | null
+          gated_badge_id: string | null
+          id: string | null
+          image_url: string | null
+          max_completions: number | null
+          mission_type: string | null
+          reward_badge_ids: string[] | null
+          reward_id: string | null
+          reward_points: number | null
+          reward_type: string | null
+          starts_at: string | null
+          status_display_type: string | null
+          title: string | null
+          visibility_rule_json: Json | null
+          visible_rank_count: number | null
+        }
+        Insert: {
+          condition_json?: Json | null
+          created_at?: string | null
+          description?: string | null
+          ends_at?: string | null
+          gate_axis?: string | null
+          gate_stage?: string | null
+          gated_badge_id?: string | null
+          id?: string | null
+          image_url?: string | null
+          max_completions?: number | null
+          mission_type?: string | null
+          reward_badge_ids?: string[] | null
+          reward_id?: string | null
+          reward_points?: number | null
+          reward_type?: string | null
+          starts_at?: string | null
+          status_display_type?: string | null
+          title?: string | null
+          visibility_rule_json?: Json | null
+          visible_rank_count?: number | null
+        }
+        Update: {
+          condition_json?: Json | null
+          created_at?: string | null
+          description?: string | null
+          ends_at?: string | null
+          gate_axis?: string | null
+          gate_stage?: string | null
+          gated_badge_id?: string | null
+          id?: string | null
+          image_url?: string | null
+          max_completions?: number | null
+          mission_type?: string | null
+          reward_badge_ids?: string[] | null
+          reward_id?: string | null
+          reward_points?: number | null
+          reward_type?: string | null
+          starts_at?: string | null
+          status_display_type?: string | null
+          title?: string | null
+          visibility_rule_json?: Json | null
+          visible_rank_count?: number | null
+        }
+        Relationships: []
       }
       combination_recipes: {
         Row: {
@@ -431,15 +500,15 @@ export type Database = {
           tier1_b_count: number
           tier1_b_rate: number
           tier1_max_items: number
-          tier1_min_factions: number
+          tier1_min_tribes: number
           tier2_b_count: number
           tier2_b_rate: number
           tier2_max_items: number
-          tier2_min_factions: number
+          tier2_min_tribes: number
           tier3_b_count: number
           tier3_b_rate: number
           tier3_max_items: number
-          tier3_min_factions: number
+          tier3_min_tribes: number
           updated_at: string
         }
         Insert: {
@@ -454,15 +523,15 @@ export type Database = {
           tier1_b_count?: number
           tier1_b_rate?: number
           tier1_max_items?: number
-          tier1_min_factions?: number
+          tier1_min_tribes?: number
           tier2_b_count?: number
           tier2_b_rate?: number
           tier2_max_items?: number
-          tier2_min_factions?: number
+          tier2_min_tribes?: number
           tier3_b_count?: number
           tier3_b_rate?: number
           tier3_max_items?: number
-          tier3_min_factions?: number
+          tier3_min_tribes?: number
           updated_at?: string
         }
         Update: {
@@ -477,15 +546,15 @@ export type Database = {
           tier1_b_count?: number
           tier1_b_rate?: number
           tier1_max_items?: number
-          tier1_min_factions?: number
+          tier1_min_tribes?: number
           tier2_b_count?: number
           tier2_b_rate?: number
           tier2_max_items?: number
-          tier2_min_factions?: number
+          tier2_min_tribes?: number
           tier3_b_count?: number
           tier3_b_rate?: number
           tier3_max_items?: number
-          tier3_min_factions?: number
+          tier3_min_tribes?: number
           updated_at?: string
         }
         Relationships: []
@@ -684,90 +753,6 @@ export type Database = {
           },
         ]
       }
-      faction_adjacency: {
-        Row: {
-          adjacent_faction_id: string
-          faction_id: string
-        }
-        Insert: {
-          adjacent_faction_id: string
-          faction_id: string
-        }
-        Update: {
-          adjacent_faction_id?: string
-          faction_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "faction_adjacency_adjacent_faction_id_fkey"
-            columns: ["adjacent_faction_id"]
-            isOneToOne: false
-            referencedRelation: "factions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "faction_adjacency_faction_id_fkey"
-            columns: ["faction_id"]
-            isOneToOne: false
-            referencedRelation: "factions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      factions: {
-        Row: {
-          background_animation: Json | null
-          background_color: string | null
-          background_image_url: string | null
-          background_shader_id: string | null
-          background_video_url: string | null
-          created_at: string
-          description: string | null
-          drop_condition_json: Json | null
-          drop_weight: number
-          id: string
-          image_url: string | null
-          is_active: boolean
-          name: string
-          sort_order: number
-          tagline: string | null
-        }
-        Insert: {
-          background_animation?: Json | null
-          background_color?: string | null
-          background_image_url?: string | null
-          background_shader_id?: string | null
-          background_video_url?: string | null
-          created_at?: string
-          description?: string | null
-          drop_condition_json?: Json | null
-          drop_weight?: number
-          id?: string
-          image_url?: string | null
-          is_active?: boolean
-          name: string
-          sort_order?: number
-          tagline?: string | null
-        }
-        Update: {
-          background_animation?: Json | null
-          background_color?: string | null
-          background_image_url?: string | null
-          background_shader_id?: string | null
-          background_video_url?: string | null
-          created_at?: string
-          description?: string | null
-          drop_condition_json?: Json | null
-          drop_weight?: number
-          id?: string
-          image_url?: string | null
-          is_active?: boolean
-          name?: string
-          sort_order?: number
-          tagline?: string | null
-        }
-        Relationships: []
-      }
       inventory: {
         Row: {
           created_at: string
@@ -902,7 +887,6 @@ export type Database = {
           created_at: string
           description: string
           drop_condition_json: Json | null
-          faction_id: string | null
           id: string
           image_url: string | null
           is_active: boolean
@@ -910,6 +894,7 @@ export type Database = {
           required_activity_badge_id: string | null
           reward_badge_id: string | null
           story_text: string | null
+          tribe_id: string | null
         }
         Insert: {
           background_animation?: Json | null
@@ -920,7 +905,6 @@ export type Database = {
           created_at?: string
           description: string
           drop_condition_json?: Json | null
-          faction_id?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -928,6 +912,7 @@ export type Database = {
           required_activity_badge_id?: string | null
           reward_badge_id?: string | null
           story_text?: string | null
+          tribe_id?: string | null
         }
         Update: {
           background_animation?: Json | null
@@ -938,7 +923,6 @@ export type Database = {
           created_at?: string
           description?: string
           drop_condition_json?: Json | null
-          faction_id?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -946,15 +930,9 @@ export type Database = {
           required_activity_badge_id?: string | null
           reward_badge_id?: string | null
           story_text?: string | null
+          tribe_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "item_books_faction_id_fkey"
-            columns: ["faction_id"]
-            isOneToOne: false
-            referencedRelation: "factions"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "item_books_required_activity_badge_id_fkey"
             columns: ["required_activity_badge_id"]
@@ -967,6 +945,13 @@ export type Database = {
             columns: ["reward_badge_id"]
             isOneToOne: false
             referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_books_tribe_id_fkey"
+            columns: ["tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
             referencedColumns: ["id"]
           },
         ]
@@ -1148,8 +1133,11 @@ export type Database = {
           linked_badge_id: string | null
           longitude: number
           name: string
+          naver_category: string | null
           naver_id: string | null
+          naver_keyword: string | null
           osm_id: string | null
+          pending_review: boolean
           poi_tier: number
           radius_meters: number
         }
@@ -1162,8 +1150,11 @@ export type Database = {
           linked_badge_id?: string | null
           longitude: number
           name: string
+          naver_category?: string | null
           naver_id?: string | null
+          naver_keyword?: string | null
           osm_id?: string | null
+          pending_review?: boolean
           poi_tier?: number
           radius_meters?: number
         }
@@ -1176,8 +1167,11 @@ export type Database = {
           linked_badge_id?: string | null
           longitude?: number
           name?: string
+          naver_category?: string | null
           naver_id?: string | null
+          naver_keyword?: string | null
           osm_id?: string | null
+          pending_review?: boolean
           poi_tier?: number
           radius_meters?: number
         }
@@ -1197,6 +1191,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      poi_backup_144: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          latitude: number | null
+          linked_badge_id: string | null
+          longitude: number | null
+          name: string | null
+          naver_category: string | null
+          naver_id: string | null
+          naver_keyword: string | null
+          osm_id: string | null
+          pending_review: boolean | null
+          poi_tier: number | null
+          radius_meters: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          latitude?: number | null
+          linked_badge_id?: string | null
+          longitude?: number | null
+          name?: string | null
+          naver_category?: string | null
+          naver_id?: string | null
+          naver_keyword?: string | null
+          osm_id?: string | null
+          pending_review?: boolean | null
+          poi_tier?: number | null
+          radius_meters?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          latitude?: number | null
+          linked_badge_id?: string | null
+          longitude?: number | null
+          name?: string | null
+          naver_category?: string | null
+          naver_id?: string | null
+          naver_keyword?: string | null
+          osm_id?: string | null
+          pending_review?: boolean | null
+          poi_tier?: number | null
+          radius_meters?: number | null
+        }
+        Relationships: []
       }
       poi_blocks: {
         Row: {
@@ -1243,25 +1291,31 @@ export type Database = {
       poi_categories: {
         Row: {
           created_at: string
-          keywords: string[]
+          display_on_map: boolean
+          keywords: Json
           label: string
           pipeline_linked: boolean
+          requires_review: boolean
           slug: string
           tier: number | null
         }
         Insert: {
           created_at?: string
-          keywords?: string[]
+          display_on_map?: boolean
+          keywords?: Json
           label: string
           pipeline_linked?: boolean
+          requires_review?: boolean
           slug: string
           tier?: number | null
         }
         Update: {
           created_at?: string
-          keywords?: string[]
+          display_on_map?: boolean
+          keywords?: Json
           label?: string
           pipeline_linked?: boolean
+          requires_review?: boolean
           slug?: string
           tier?: number | null
         }
@@ -1781,6 +1835,90 @@ export type Database = {
           },
         ]
       }
+      tribe_adjacency: {
+        Row: {
+          adjacent_tribe_id: string
+          tribe_id: string
+        }
+        Insert: {
+          adjacent_tribe_id: string
+          tribe_id: string
+        }
+        Update: {
+          adjacent_tribe_id?: string
+          tribe_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tribe_adjacency_adjacent_tribe_id_fkey"
+            columns: ["adjacent_tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tribe_adjacency_tribe_id_fkey"
+            columns: ["tribe_id"]
+            isOneToOne: false
+            referencedRelation: "tribes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tribes: {
+        Row: {
+          background_animation: Json | null
+          background_color: string | null
+          background_image_url: string | null
+          background_shader_id: string | null
+          background_video_url: string | null
+          created_at: string
+          description: string | null
+          drop_condition_json: Json | null
+          drop_weight: number
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          sort_order: number
+          tagline: string | null
+        }
+        Insert: {
+          background_animation?: Json | null
+          background_color?: string | null
+          background_image_url?: string | null
+          background_shader_id?: string | null
+          background_video_url?: string | null
+          created_at?: string
+          description?: string | null
+          drop_condition_json?: Json | null
+          drop_weight?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          tagline?: string | null
+        }
+        Update: {
+          background_animation?: Json | null
+          background_color?: string | null
+          background_image_url?: string | null
+          background_shader_id?: string | null
+          background_video_url?: string | null
+          created_at?: string
+          description?: string | null
+          drop_condition_json?: Json | null
+          drop_weight?: number
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          tagline?: string | null
+        }
+        Relationships: []
+      }
       user_activity_badges: {
         Row: {
           badge_id: string
@@ -1983,7 +2121,7 @@ export type Database = {
           daily_drop_date: string | null
           last_activity_at: string | null
           last_drop_book_id: string | null
-          last_drop_faction_id: string | null
+          last_drop_tribe_id: string | null
           last_piece_pity: Json
           total_drops: number
           updated_at: string
@@ -1995,7 +2133,7 @@ export type Database = {
           daily_drop_date?: string | null
           last_activity_at?: string | null
           last_drop_book_id?: string | null
-          last_drop_faction_id?: string | null
+          last_drop_tribe_id?: string | null
           last_piece_pity?: Json
           total_drops?: number
           updated_at?: string
@@ -2007,7 +2145,7 @@ export type Database = {
           daily_drop_date?: string | null
           last_activity_at?: string | null
           last_drop_book_id?: string | null
-          last_drop_faction_id?: string | null
+          last_drop_tribe_id?: string | null
           last_piece_pity?: Json
           total_drops?: number
           updated_at?: string
@@ -2022,10 +2160,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "user_drop_state_last_drop_faction_id_fkey"
-            columns: ["last_drop_faction_id"]
+            foreignKeyName: "user_drop_state_last_drop_tribe_id_fkey"
+            columns: ["last_drop_tribe_id"]
             isOneToOne: false
-            referencedRelation: "factions"
+            referencedRelation: "tribes"
             referencedColumns: ["id"]
           },
           {
@@ -2325,11 +2463,11 @@ export type Database = {
       }
       users: {
         Row: {
+          activity_types: string[]
           avatar_url: string | null
           created_at: string
           display_name: string | null
           email: string
-          faction_id: string | null
           gps_daily_distance_date: string | null
           gps_daily_distance_km: number
           id: string
@@ -2340,15 +2478,17 @@ export type Database = {
           last_location_lng: number | null
           notifications_seen_at: string | null
           onboarding_completed_at: string | null
+          region: string
+          tribe_id: string | null
           updated_at: string
           username: string | null
         }
         Insert: {
+          activity_types?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email: string
-          faction_id?: string | null
           gps_daily_distance_date?: string | null
           gps_daily_distance_km?: number
           id: string
@@ -2359,15 +2499,17 @@ export type Database = {
           last_location_lng?: number | null
           notifications_seen_at?: string | null
           onboarding_completed_at?: string | null
+          region?: string
+          tribe_id?: string | null
           updated_at?: string
           username?: string | null
         }
         Update: {
+          activity_types?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email?: string
-          faction_id?: string | null
           gps_daily_distance_date?: string | null
           gps_daily_distance_km?: number
           id?: string
@@ -2378,15 +2520,17 @@ export type Database = {
           last_location_lng?: number | null
           notifications_seen_at?: string | null
           onboarding_completed_at?: string | null
+          region?: string
+          tribe_id?: string | null
           updated_at?: string
           username?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "users_faction_id_fkey"
-            columns: ["faction_id"]
+            foreignKeyName: "users_tribe_id_fkey"
+            columns: ["tribe_id"]
             isOneToOne: false
-            referencedRelation: "factions"
+            referencedRelation: "tribes"
             referencedColumns: ["id"]
           },
         ]
@@ -2412,8 +2556,8 @@ export type Database = {
         }
         Returns: Json
       }
-      apply_faction_background_cascade: {
-        Args: { p_faction_id: string }
+      apply_tribe_background_cascade: {
+        Args: { p_tribe_id: string }
         Returns: {
           direct_badges: number
           item_book_badges: number
@@ -2448,8 +2592,8 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      count_faction_background_cascade: {
-        Args: { p_faction_id: string }
+      count_tribe_background_cascade: {
+        Args: { p_tribe_id: string }
         Returns: {
           direct_badges: number
           item_book_badges: number
@@ -2496,8 +2640,6 @@ export type Database = {
         Returns: Json
       }
       expire_stale_poi_drops: { Args: never; Returns: Json }
-      // ⚠️ 손으로 추가한 항목 — 마이그레이션 132가 아직 실행되지 않아 자동 생성에 잡히지
-      //    않는다(티켓 20260905_0030 B1). 132 실행 후 재생성하면 그대로 나온다.
       increment_activity_badge_earn: {
         Args: {
           p_badge_id: string
@@ -2607,12 +2749,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2636,11 +2778,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2661,11 +2803,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2686,11 +2828,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2703,11 +2845,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
