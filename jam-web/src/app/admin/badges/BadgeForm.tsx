@@ -7,6 +7,16 @@ import type { BadgeRow, BadgeCondition, ActivityType, BadgeType, BadgeRarity, Tr
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
+import { Button } from '@/components/admin/ui/button'
+import { Alert, AlertTitle, AlertDescription } from '@/components/admin/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from '@/components/admin/ui/alert-dialog'
 import BackgroundGeneratorPreview, {
   type BackgroundGeneratorLivePreviewState,
 } from './BackgroundGeneratorPreview'
@@ -161,6 +171,10 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
   // 어드민 전용 분류(JAM! 카테고리) — 위 category(지점 카테고리)와 달리 type과 무관하게
   // 독립적으로 유지된다(티켓 20260910_2055).
   const [adminCategory, setAdminCategory] = useState(badge?.admin_category ?? '')
+  // JAM! 카테고리는 condition_json을 서비스 사용량 지표(usageBadges.ts)로만 판정한다 —
+  // 일반 조건 빌더·2단 게이트·판정 시뮬레이션이 전부 무의미해 화면에서 숨긴다
+  // (티켓 20260911_0202 3단계).
+  const isJamCategory = adminCategory === 'jam'
   const [dropWeight, setDropWeight] = useState<string>(
     badge?.drop_weight?.toString() ?? '1.0'
   )
@@ -323,7 +337,10 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
       return
     }
 
-    // 체크인 배지는 활동 조건을 쓰지 않는다 — 조건 빌더 값이 남아 있어도 무시
+    // 체크인 배지는 활동 조건을 쓰지 않는다 — 조건 빌더 값이 남아 있어도 무시. JAM! 카테고리는
+    // 조건 빌더 UI를 숨기지만(3단계) condition_json 저장 방식은 바꾸지 않는다 — 팔로워 수 등
+    // 메타데이터 필드(followerCount 등)는 이 화면에서도 계속 condFields로 관리되므로
+    // buildConditionJson() 결과를 그대로 저장해야 usageBadges.ts의 조건 조회가 정상 동작한다.
     const conditionJson = type === 'checkin' ? null : buildConditionJson()
     const condError = validateCondition(conditionJson)
     if (condError) {
@@ -371,7 +388,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
         // (티켓 20260901_1929) — 제너레이터가 사라져 이 필드들을 새로 만들 방법이 없고, 저장
         // API는 누락된 필드를 기존 DB 값 그대로 둔다(undefined 병합, badges PUT/POST 참조).
         // [20260901_1944] 애니메이션 모드에서는 배경색 입력란이 화면에 없어 검증을 건너뛰므로,
-        // 형식이 어긋난 값이 DB로 새어들지 않도록 hex가 아닌 값은 null로 정리한다. 배경색 모드는
+        // 형태가 어긋난 값이 DB로 새어들지 않도록 hex가 아닌 값은 null로 정리한다. 배경색 모드는
         // 위에서 이미 검증돼 동작이 달라지지 않는다.
         background_color: HEX_COLOR_PATTERN.test(trimmedBackgroundColor) ? trimmedBackgroundColor : null,
         // 배경색과 배타 — 애니메이션 모드가 아니면 명시적으로 null을 보내 해제가 저장되게 한다
@@ -433,9 +450,12 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
   // 배지는 이 분류 결과와 무관하게 그 화면에 애초에 등장하지 않으므로, type이 'activity'가
   // 아닐 때 이 경고를 띄우면 "배지 트리 화면에 표시 안 됨"이라는 문구 자체가 부정확해진다
   // (체크인은 조건 빌더 자체가 이 블록 밖이라 자동으로 배제된다 — 티켓 20260904_1426).
+  // JAM! 카테고리도 같은 이유로 제외한다 — activity_types=[]로 저장되는 설계라 애초에
+  // 배지 트리 화면에 노출되지 않으므로(usageBadges.ts 주석 참고) 이 경고 자체가 항상
+  // 무의미하다(티켓 20260911_0202).
   // 경고가 **왜인지도 말한다** — 숨겨지는 축 키는 0031의 `unabsorbedAxisKeys`가 이미
   // 계산하고 있었다(티켓 20260905_0032).
-  const progressIssue = type === 'activity' ? explainUnsupportedProgress(condPreview ?? {}) : null
+  const progressIssue = type === 'activity' && !isJamCategory ? explainUnsupportedProgress(condPreview ?? {}) : null
 
   // 「평가 대기」 — 레지스트리에 선언은 됐지만 엔진이 아직 평가하지 않는 필드가 든 조건은
   // fail-closed로 막힌다. 저장은 되지만 **발급은 되지 않는다**는 걸 화면에서 알린다
@@ -446,7 +466,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
   const renderConditionControl = ({ meta, control }: ConditionFormEntry) => {
     const label = control.label ?? (meta.unit ? `${meta.label} (${meta.unit})` : meta.label)
     const raw = (condFields as Record<string, string | boolean>)[control.field]
-    const wideClass = control.wide ? 'col-span-2' : ''
+    const wideClass = control.wide ? 'sm:col-span-2' : ''
     const labelNode = (
       <span className="text-xs text-muted-foreground flex items-center gap-1.5">
         {label}
@@ -537,7 +557,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
             className={inputClass}
           />
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs text-muted-foreground">최소 등급</span>
             <Select
@@ -583,8 +603,139 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <label className="flex flex-col gap-1.5 col-span-2">
+      {/* 분류 카드 — 타입 선택을 최상단에 고정하고, 이후 모든 카드·섹션이 이 선택을 따라
+          조건부로 나타난다(티켓 20260911_0202 3단계). 등급/레벨·활동 종류처럼 타입에 종속된
+          메타 정보를 함께 묶었다. */}
+      <div className="border border-border rounded-2xl p-5 space-y-4">
+        <p className="text-sm font-semibold text-foreground">분류</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-foreground">타입 *</span>
+            <Select value={type} onValueChange={(v) => setType(v as BadgeType)}>
+              <SelectTrigger aria-label="타입">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent container={themeContainer ?? undefined}>
+                {BADGE_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>{BADGE_TYPE_LABEL[t]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+
+          {/* 배지 종류 — 등급형 / 레벨형. 레벨형은 활동 배지 전용이라 다른 타입에서는 숨긴다
+              (아이템은 등급으로 드랍 풀을, 체크인은 등급으로 표시를 가른다). */}
+          {type === 'activity' && (
+            <label className="flex flex-col gap-1.5 sm:col-span-2">
+              <span className="text-sm text-foreground">배지 종류 *</span>
+              <Select
+                value={leveledKind ? 'leveled' : 'graded'}
+                onValueChange={(v) => setLeveledKind(v === 'leveled')}
+              >
+                <SelectTrigger aria-label="배지 종류">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent container={themeContainer ?? undefined}>
+                  <SelectItem value="graded">등급형 (Common ~ Mystic)</SelectItem>
+                  <SelectItem value="leveled">레벨형 (Lv.1 ~ 무한)</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+          )}
+
+          {isLeveled ? (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm text-foreground">레벨 *</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+                className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                placeholder="예: 1"
+              />
+              <span className="text-xs text-muted-foreground">
+                레벨형 배지에는 등급이 없어요. 같은 계열 안에서 보유 레벨 다음 레벨부터 순서대로 발급돼요.
+              </span>
+            </label>
+          ) : (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm text-foreground">희귀도 *</span>
+              <Select value={rarity} onValueChange={(v) => setRarity(v as BadgeRarity)}>
+                <SelectTrigger aria-label="희귀도">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent container={themeContainer ?? undefined}>
+                  {RARITIES.map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          )}
+
+          {/* 계열 키 — **읽기 전용이다.** 2단 교차 게이트가 대상 계열을 이 키로 지정하므로
+              이름을 고쳐도 키가 바뀌면 게이트 참조가 조용히 끊긴다(티켓 20260905_0032 판단 ③). */}
+          {isEdit && (
+            <label className="flex flex-col gap-1.5 sm:col-span-2">
+              <span className="text-sm text-foreground">계열 키 (family_key)</span>
+              <input
+                value={badge.family_key ?? ''}
+                readOnly
+                disabled
+                placeholder="— 아직 없음 —"
+                className="bg-muted border border-border rounded-xl px-4 py-2.5 text-muted-foreground cursor-not-allowed"
+              />
+              <span className="text-xs text-muted-foreground">
+                2단 교차 게이트가 이 키로 계열을 가리켜요. 배지 이름을 바꿔도 키는 그대로 두므로 여기서는 고칠 수 없어요.
+              </span>
+            </label>
+          )}
+        </div>
+
+        {/* 활동 종류 — JAM!(어드민 전용 분류)도 여섯 번째 종류로 나란히 둔다. 유저에게는
+            보이지 않고 어드민 화면(목록 필터·계열관리·게이트미션·아이템북·시뮬레이터)에서만
+            구분에 쓴다. 종목과는 상호배타라 하나를 고르면 다른 쪽은 비운다(티켓 20260910_2258,
+            이전 20260910_2055). 체크인·아이템 배지에는 이 개념이 없어 activity 타입일 때만
+            노출한다(티켓 20260911_0202 3단계 — 이전에는 모든 타입에서 무조건 떴다). */}
+        {type === 'activity' && (
+          <div>
+            <p className="text-sm text-foreground mb-2">활동 종류 *</p>
+            <div className="flex gap-3 flex-wrap">
+              {ACTIVITY_TYPES.map((t) => (
+                <label key={t} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={activityTypes.includes(t)}
+                    onChange={() => toggleActivityType(t)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">{t}</span>
+                </label>
+              ))}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isJamCategory}
+                  onChange={toggleAdminCategoryJam}
+                  className="accent-primary"
+                />
+                <span className="text-sm">JAM!</span>
+              </label>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              JAM!은 유저에게는 보이지 않는 어드민 전용 분류예요. 서비스 사용량 지표(팔로워 수 등)
+              조건 배지에 사용하며, 다른 활동 종류와 동시에 선택할 수 없어요.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 기본정보 카드 */}
+      <div className="border border-border rounded-2xl p-5 space-y-4">
+        <p className="text-sm font-semibold text-foreground">기본정보</p>
+        <label className="flex flex-col gap-1.5">
           <span className="text-sm text-foreground">배지 이름 *</span>
           <input
             required
@@ -595,7 +746,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
           />
         </label>
 
-        <label className="flex flex-col gap-1.5 col-span-2">
+        <label className="flex flex-col gap-1.5">
           <span className="text-sm text-foreground">설명 *</span>
           <textarea
             required
@@ -607,96 +758,27 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
           />
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm text-foreground">타입 *</span>
-          <Select value={type} onValueChange={(v) => setType(v as BadgeType)}>
-            <SelectTrigger aria-label="타입">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent container={themeContainer ?? undefined}>
-              {BADGE_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>{BADGE_TYPE_LABEL[t]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
+        <ImageUploadField
+          value={imageUrl}
+          onChange={setImageUrl}
+          onAverageColor={(color) => { if (color) setBackgroundColor(color) }}
+          folder="badges"
+          required
+          label="배지 이미지"
+          allowManualUrl={false}
+        />
+      </div>
 
-        {/* 배지 종류 — 등급형 / 레벨형. 레벨형은 활동 배지 전용이라 다른 타입에서는 숨긴다
-            (아이템은 등급으로 드랍 풀을, 체크인은 등급으로 표시를 가른다). */}
-        {type === 'activity' && (
-          <label className="flex flex-col gap-1.5 col-span-2">
-            <span className="text-sm text-foreground">배지 종류 *</span>
-            <Select
-              value={leveledKind ? 'leveled' : 'graded'}
-              onValueChange={(v) => setLeveledKind(v === 'leveled')}
-            >
-              <SelectTrigger aria-label="배지 종류">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent container={themeContainer ?? undefined}>
-                <SelectItem value="graded">등급형 (Common ~ Mystic)</SelectItem>
-                <SelectItem value="leveled">레벨형 (Lv.1 ~ 무한)</SelectItem>
-              </SelectContent>
-            </Select>
-          </label>
-        )}
-
-        {isLeveled ? (
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-foreground">레벨 *</span>
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-              className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-              placeholder="예: 1"
-            />
-            <span className="text-xs text-muted-foreground">
-              레벨형 배지에는 등급이 없어요. 같은 계열 안에서 보유 레벨 다음 레벨부터 순서대로 발급돼요.
-            </span>
-          </label>
-        ) : (
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-foreground">희귀도 *</span>
-            <Select value={rarity} onValueChange={(v) => setRarity(v as BadgeRarity)}>
-              <SelectTrigger aria-label="희귀도">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent container={themeContainer ?? undefined}>
-                {RARITIES.map((r) => (
-                  <SelectItem key={r} value={r}>{r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
-        )}
-
-        {/* 계열 키 — **읽기 전용이다.** 2단 교차 게이트가 대상 계열을 이 키로 지정하므로
-            이름을 고쳐도 키가 바뀌면 게이트 참조가 조용히 끊긴다(티켓 20260905_0032 판단 ③). */}
-        {isEdit && (
-          <label className="flex flex-col gap-1.5 col-span-2">
-            <span className="text-sm text-foreground">계열 키 (family_key)</span>
-            <input
-              value={badge.family_key ?? ''}
-              readOnly
-              disabled
-              placeholder="— 아직 없음 —"
-              className="bg-muted border border-border rounded-xl px-4 py-2.5 text-muted-foreground cursor-not-allowed"
-            />
-            <span className="text-xs text-muted-foreground">
-              2단 교차 게이트가 이 키로 계열을 가리켜요. 배지 이름을 바꿔도 키는 그대로 두므로 여기서는 고칠 수 없어요.
-            </span>
-          </label>
-        )}
+      {/* 연결정보 카드 — 트라이브/컬렉션(체크인 제외)·지점 카테고리(체크인 전용)·
+          드랍 가중치(아이템 전용, 컬렉션 내 상대 확률이라 함께 둔다) */}
+      <div className="border border-border rounded-2xl p-5 space-y-4">
+        <p className="text-sm font-semibold text-foreground">연결정보</p>
 
         {/* 트라이브/소속 컬렉션 — 체크인 배지에는 이 개념이 없어 숨긴다(티켓 20260830_1344).
             activity/item 타입에서는 기존과 동일하게 노출. */}
         {type !== 'checkin' && (
           <>
-            {/* 트라이브 선택 */}
-            <label className="flex flex-col gap-1.5 col-span-2">
+            <label className="flex flex-col gap-1.5">
               <span className="text-sm text-foreground">소속 트라이브</span>
               <Select
                 value={tribeId || NONE_VALUE}
@@ -714,8 +796,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
               </Select>
             </label>
 
-            {/* 소속 아이템북 */}
-            <label className="flex flex-col gap-1.5 col-span-2">
+            <label className="flex flex-col gap-1.5">
               <span className="text-sm text-foreground">소속 컬렉션</span>
               <Select
                 value={itemBookId || NONE_VALUE}
@@ -739,7 +820,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
             값을 지정하면 연결된 지점의 카테고리보다 우선 적용돼 목록·배지함 분류 기준이
             된다(티켓 20260830_1522). */}
         {type === 'checkin' && (
-          <label className="flex flex-col gap-1.5 col-span-2">
+          <label className="flex flex-col gap-1.5">
             <span className="text-sm text-foreground">지점 카테고리</span>
             <Select
               value={category || NONE_VALUE}
@@ -764,38 +845,40 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
 
         {/* 아이템 배지 전용 설정 */}
         {type === 'item' && (
-          <>
-            <label className="flex flex-col gap-1.5 col-span-2">
-              <span className="text-sm text-foreground">드랍 가중치 (0.1 ~ 10.0)</span>
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                max="10"
-                value={dropWeight}
-                onChange={(e) => setDropWeight(e.target.value)}
-                className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-              />
-              {itemBookId && siblingWeightSum !== null && (
-                (() => {
-                  const own = parseFloat(dropWeight) || 0
-                  const total = siblingWeightSum + own
-                  const pct = total > 0 ? Math.round((own / total) * 1000) / 10 : 0
-                  return (
-                    <span className="text-xs text-muted-foreground">
-                      같은 컬렉션·희귀도 내 다른 배지 {siblingWeightSum > 0 ? `(가중치 합 ${siblingWeightSum.toFixed(1)})` : ''}
-                      {' '}대비 이 배지가 뽑힐 상대 확률 약 <strong className="text-foreground">{pct}%</strong>
-                      {siblingWeightSum === 0 && ' (이 믹스의 첫 배지)'}
-                    </span>
-                  )
-                })()
-              )}
-            </label>
-
-          </>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-foreground">드랍 가중치 (0.1 ~ 10.0)</span>
+            <input
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="10"
+              value={dropWeight}
+              onChange={(e) => setDropWeight(e.target.value)}
+              className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+            />
+            {itemBookId && siblingWeightSum !== null && (
+              (() => {
+                const own = parseFloat(dropWeight) || 0
+                const total = siblingWeightSum + own
+                const pct = total > 0 ? Math.round((own / total) * 1000) / 10 : 0
+                return (
+                  <span className="text-xs text-muted-foreground">
+                    같은 컬렉션·희귀도 내 다른 배지 {siblingWeightSum > 0 ? `(가중치 합 ${siblingWeightSum.toFixed(1)})` : ''}
+                    {' '}대비 이 배지가 뽑힐 상대 확률 약 <strong className="text-foreground">{pct}%</strong>
+                    {siblingWeightSum === 0 && ' (이 믹스의 첫 배지)'}
+                  </span>
+                )
+              })()
+            )}
+          </label>
         )}
+      </div>
 
-        <label className="flex flex-col gap-1.5 col-span-2">
+      {/* 보상·유효기간 카드 */}
+      <div className="border border-border rounded-2xl p-5 space-y-4">
+        <p className="text-sm font-semibold text-foreground">보상·유효기간</p>
+
+        <label className="flex flex-col gap-1.5">
           <span className="text-sm text-foreground">포인트 보상</span>
           <input
             type="number"
@@ -808,260 +891,318 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
           <span className="text-xs text-muted-foreground">이 배지를 획득할 때 함께 지급되는 잼 포인트. 0이면 없음. 획득 시점 값으로 1회 지급되며, 이후 값을 바꿔도 이미 지급된 포인트는 소급 변경되지 않습니다.</span>
         </label>
 
-        <div className="col-span-2">
-          <ImageUploadField
-            value={imageUrl}
-            onChange={setImageUrl}
-            onAverageColor={(color) => { if (color) setBackgroundColor(color) }}
-            folder="badges"
-            required
-            label="배지 이미지"
-            allowManualUrl={false}
-          />
-        </div>
-
-        {/* 배경 테마 — 배경색 / 애니메이션 배타 선택 (티켓 20260901_1944) */}
-        <div className="col-span-2">
-          <BackgroundGeneratorPreview
-            backgroundColor={backgroundColor}
-            onBackgroundColorChange={setBackgroundColor}
-            backgroundAnimation={backgroundAnimation}
-            onBackgroundAnimationChange={setBackgroundAnimation}
-            renderPreview={({ themed, backgroundLayerStyle, backgroundLayerRef, liveNode, backgroundAnimation: previewAnimation }: BackgroundGeneratorLivePreviewState) => (
-              <>
-                <BadgeDetailPreviewFrame
-                  badge={{
-                    image_url: imageUrl || null,
-                    name: name || '(배지 이름 미입력)',
-                    rarity: isLeveled ? null : rarity,
-                    description,
-                    background_color: backgroundColor || null,
-                    background_shader_id: null,
-                    background_image_url: null,
-                    // 편집 중인 애니메이션 파라미터를 그대로 넘긴다 — Hero 카드 내부의
-                    // `hasBadgeBackgroundTheme` 판정이 실제 화면과 동일하게 동작해야 한다.
-                    background_animation: previewAnimation,
-                  }}
-                  themed={themed}
-                  backgroundLayerStyle={backgroundLayerStyle}
-                  backgroundLayerRef={backgroundLayerRef}
-                  liveNode={liveNode}
-                  backgroundAnimation={previewAnimation}
-                  conditionText={PREVIEW_CONDITION_TEXT}
-                />
-                <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
-                  실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
-                </p>
-              </>
-            )}
-          />
-        </div>
-      </div>
-
-      {/* 활동 종류 — JAM!(어드민 전용 분류)도 여섯 번째 종류로 나란히 둔다. 유저에게는
-          보이지 않고 어드민 화면(목록 필터·계열관리·게이트미션·아이템북·시뮬레이터)에서만
-          구분에 쓴다. 종목과는 상호배타라 하나를 고르면 다른 쪽은 비운다(티켓 20260910_2258,
-          이전 20260910_2055). */}
-      <div>
-        <p className="text-sm text-foreground mb-2">활동 종류 *</p>
-        <div className="flex gap-3 flex-wrap">
-          {ACTIVITY_TYPES.map((t) => (
-            <label key={t} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={activityTypes.includes(t)}
-                onChange={() => toggleActivityType(t)}
-                className="accent-primary"
-              />
-              <span className="text-sm">{t}</span>
-            </label>
-          ))}
-          <label className="flex items-center gap-2 cursor-pointer">
+        {/* 패치 설정 */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
-              checked={adminCategory === 'jam'}
-              onChange={toggleAdminCategoryJam}
+              checked={patchAvailable}
+              onChange={(e) => setPatchAvailable(e.target.checked)}
               className="accent-primary"
             />
-            <span className="text-sm">JAM!</span>
+            <span className="text-sm">패치 구매 가능</span>
           </label>
+          {patchAvailable && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm text-foreground">패치 가격 (원)</span>
+              <input
+                type="number"
+                min="0"
+                value={patchPriceKrw}
+                onChange={(e) => setPatchPriceKrw(e.target.value)}
+                className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 max-w-xs"
+                placeholder="예: 9900"
+              />
+            </label>
+          )}
         </div>
-        <span className="text-xs text-muted-foreground">
-          JAM!은 유저에게는 보이지 않는 어드민 전용 분류예요. 서비스 사용량 지표(팔로워 수 등)
-          조건 배지에 사용하며, 다른 활동 종류와 동시에 선택할 수 없어요.
-        </span>
+
+        {/* 유효 기간 */}
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            {type === 'item'
+              ? '설정하면 해당 기간에만 드랍되며, 획득된 배지의 만료일은 종료일로 자동 설정됩니다. 설정하지 않으면 상시 드랍 / 만료 없음.'
+              : '설정하면 해당 기간에만 획득 조건이 평가됩니다. 기간 외 액티비티 싱크에서는 이 배지가 건너뛰어집니다. 설정하지 않으면 상시 평가.'}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">시작일 (yyyy-mm-dd)</span>
+              <input
+                type="date"
+                value={validFrom}
+                onChange={(e) => setValidFrom(e.target.value)}
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">종료일 (yyyy-mm-dd)</span>
+              <input
+                type="date"
+                value={validUntil}
+                onChange={(e) => setValidUntil(e.target.value)}
+                min={validFrom || undefined}
+                className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
+              />
+            </label>
+          </div>
+          {(validFrom || validUntil) && (
+            <button
+              type="button"
+              onClick={() => { setValidFrom(''); setValidUntil('') }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              기간 설정 초기화
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* 패치 설정 */}
-      <div className="space-y-3">
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={patchAvailable}
-            onChange={(e) => setPatchAvailable(e.target.checked)}
-            className="accent-primary"
-          />
-          <span className="text-sm">패치 구매 가능</span>
-        </label>
-        {patchAvailable && (
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-foreground">패치 가격 (원)</span>
-            <input
-              type="number"
-              min="0"
-              value={patchPriceKrw}
-              onChange={(e) => setPatchPriceKrw(e.target.value)}
-              className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 max-w-xs"
-              placeholder="예: 9900"
-            />
-          </label>
-        )}
+      {/* 디자인요소 카드 — 배경색 / 애니메이션 배타 선택 (티켓 20260901_1944) */}
+      <div className="border border-border rounded-2xl p-5 space-y-4">
+        <p className="text-sm font-semibold text-foreground">디자인요소</p>
+        <BackgroundGeneratorPreview
+          backgroundColor={backgroundColor}
+          onBackgroundColorChange={setBackgroundColor}
+          backgroundAnimation={backgroundAnimation}
+          onBackgroundAnimationChange={setBackgroundAnimation}
+          renderPreview={({ themed, backgroundLayerStyle, backgroundLayerRef, liveNode, backgroundAnimation: previewAnimation }: BackgroundGeneratorLivePreviewState) => (
+            <>
+              <BadgeDetailPreviewFrame
+                badge={{
+                  image_url: imageUrl || null,
+                  name: name || '(배지 이름 미입력)',
+                  rarity: isLeveled ? null : rarity,
+                  description,
+                  background_color: backgroundColor || null,
+                  background_shader_id: null,
+                  background_image_url: null,
+                  // 편집 중인 애니메이션 파라미터를 그대로 넘긴다 — Hero 카드 내부의
+                  // `hasBadgeBackgroundTheme` 판정이 실제 화면과 동일하게 동작해야 한다.
+                  background_animation: previewAnimation,
+                }}
+                themed={themed}
+                backgroundLayerStyle={backgroundLayerStyle}
+                backgroundLayerRef={backgroundLayerRef}
+                liveNode={liveNode}
+                backgroundAnimation={previewAnimation}
+                conditionText={PREVIEW_CONDITION_TEXT}
+              />
+              <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
+                실제 배지 상세화면과 같은 구조로 보여줘요. 본문 문구는 예시라 실제 조건과 달라요.
+              </p>
+            </>
+          )}
+        />
       </div>
 
       {/* condition_json 빌더 (activity + item 공통 — 체크인 배지는 조건 대신 연결 지점으로 판정) */}
       {type !== 'checkin' && (
-        <div className="border border-border rounded-2xl p-5 space-y-4">
-          <p className="text-sm font-semibold text-foreground">
-            {type === 'item' ? '드랍 조건 (condition_json)' : '획득 조건 (condition_json)'}
-          </p>
-          {type === 'item' && (
-            <p className="text-xs text-muted-foreground">조건을 설정하면 해당 조건을 충족한 유저에게만 이 배지가 드랍 풀에 포함됩니다. 설정하지 않으면 모든 유저에게 드랍 가능.</p>
-          )}
+        isJamCategory ? (
+          // JAM! 카테고리 — 일반 조건 빌더(축·게이트·시뮬레이션) 대신 사용량 지표 안내로
+          // 대체한다(티켓 20260911_0202 3단계). 2단 교차 게이트·미션 보상·판정 시뮬레이션은
+          // usageBadges.ts가 평가하지 않아 완전히 무의미하므로 숨긴다. 다만 팔로워 수 등
+          // 임계값(followerCount 등)은 이 배지의 유일한 조건 입력이라 — 숨기면 값을 설정할
+          // 방법 자체가 사라진다 — '메타데이터' 섹션 입력만은 그대로 남겨둔다.
+          <div className="border border-border rounded-2xl p-5 space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">사용량 지표 조건</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                이 배지는 서비스 사용량 지표로 자동 판정돼요. 팔로우·언팔로우, Strava 동기화
+                시점에 아래 값을 기준으로 즉시 평가되며, 일반 조건 빌더나 판정 시뮬레이션은
+                쓰지 않아요.
+              </p>
+            </div>
 
-          {/* 입력 UI는 conditionRegistry.ts의 `form` 선언에서 **생성한다** — 필드마다 JSX를
-              쓰지 않는다(티켓 20260905_0032 A-2). 섹션·순서 모두 그 선언 순서를 따른다.
-              2단 게이트(gate) 섹션만 아래 전용 블록에서 관계와 함께 그린다. */}
-          {CONDITION_FORM_SECTIONS_IN_USE.filter((section) => section !== 'gate').map((section) => (
-            <div key={section} className="space-y-2">
-              <p className="text-xs font-semibold text-foreground/70">{CONDITION_FORM_SECTION_LABEL[section]}</p>
-              <div className="grid grid-cols-2 gap-4">
-                {CONDITION_FORM_ENTRIES.filter((e) => e.section === section).map(renderConditionControl)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {CONDITION_FORM_ENTRIES.filter((e) => e.section === 'meta').map(renderConditionControl)}
+            </div>
+
+            {/* 폼 미지원 조건 필드 안내 — 값은 저장 시 원본 그대로 보존되지만 이 폼에서
+                보거나 고칠 수 없다는 걸 알린다(티켓 20260825_032). JAM! 카테고리에도 레거시
+                값이 남아있을 수 있어 그대로 유지한다. */}
+            {unsupportedConditionKeys.length > 0 && (
+              <Alert variant="warning">
+                <AlertTitle className="text-sm">이 폼에서 다룰 수 없는 조건 필드가 있어요</AlertTitle>
+                <AlertDescription>
+                  <p className="text-xs text-amber-800/80">
+                    {unsupportedConditionKeys.join(', ')} 값이 이미 설정돼 있어요. 이 화면에는 입력 항목이
+                    없어 여기서 보거나 고칠 수 없지만, 저장해도 값은 그대로 유지돼요.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* 왕복 불가 값 안내 — JAM! 카테고리에서도 형태가 깨진 값이 남아있을 수 있다. */}
+            {unrepresentableConditionKeys.length > 0 && (
+              <Alert variant="warning">
+                <AlertTitle className="text-sm">이 폼이 그대로 재현하지 못하는 값이 있어요</AlertTitle>
+                <AlertDescription>
+                  <p className="text-xs text-amber-800/80">
+                    {unrepresentableConditionKeys.join(', ')} 값의 형태가 입력 항목과 맞지 않아요. 이대로
+                    저장하면 값이 바뀌거나 사라져요. 아래 JSON 미리보기에서 실제 저장될 값을 확인해주세요.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="bg-muted border border-border rounded-xl p-3">
+              <p className="text-xs text-muted-foreground mb-1.5">JSON 미리보기</p>
+              <pre className="text-xs text-foreground/80 font-mono overflow-x-auto">
+                {condPreview ? JSON.stringify(condPreview, null, 2) : 'null (조건 없음)'}
+              </pre>
+            </div>
+          </div>
+        ) : (
+          <div className="border border-border rounded-2xl p-5 space-y-4">
+            <p className="text-sm font-semibold text-foreground">
+              {type === 'item' ? '드랍 조건 (condition_json)' : '획득 조건 (condition_json)'}
+            </p>
+            {type === 'item' && (
+              <p className="text-xs text-muted-foreground">조건을 설정하면 해당 조건을 충족한 유저에게만 이 배지가 드랍 풀에 포함됩니다. 설정하지 않으면 모든 유저에게 드랍 가능.</p>
+            )}
+
+            {/* 입력 UI는 conditionRegistry.ts의 `form` 선언에서 **생성한다** — 필드마다 JSX를
+                쓰지 않는다(티켓 20260905_0032 A-2). 섹션·순서 모두 그 선언 순서를 따른다.
+                2단 게이트(gate) 섹션만 아래 전용 블록에서 관계와 함께 그린다. */}
+            {CONDITION_FORM_SECTIONS_IN_USE.filter((section) => section !== 'gate').map((section) => (
+              <div key={section} className="space-y-2">
+                <p className="text-xs font-semibold text-foreground/70">{CONDITION_FORM_SECTION_LABEL[section]}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {CONDITION_FORM_ENTRIES.filter((e) => e.section === section).map(renderConditionControl)}
+                </div>
+              </div>
+            ))}
+
+            {/* 2단 게이트 — 관계(교차 둘은 OR, 미션 게이트는 AND)를 화면에서 드러낸다.
+                선행 배지 이름 한 줄만으로는 AND를 표현할 수 없었다(티켓 20260905_0032 A-4). */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-foreground/70">
+                {CONDITION_FORM_SECTION_LABEL.gate}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {CONDITION_FORM_ENTRIES.filter((e) => e.section === 'gate').map(renderConditionControl)}
+              </div>
+
+              <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-3">
+                <p className="text-xs font-semibold text-foreground">다음 중 하나만 충족해도 통과해요 (OR)</p>
+                {CROSS_GATE_BLOCKS.map((g) => (
+                  <div key={g.prefix}>{renderCrossGate(g.prefix, g.title, g.help)}</div>
+                ))}
+              </div>
+              <p className="text-center text-xs font-semibold text-foreground">그리고 (AND)</p>
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                {renderCrossGate(
+                  'gateMissionBadge',
+                  '미션 보상 배지',
+                  '미션 완료로만 지급되는 배지를 요구해요. 위 교차 조건과 함께 충족돼야 통과해요.'
+                )}
               </div>
             </div>
-          ))}
 
-          {/* 2단 게이트 — 관계(교차 둘은 OR, 미션 게이트는 AND)를 화면에서 드러낸다.
-              선행 배지 이름 한 줄만으로는 AND를 표현할 수 없었다(티켓 20260905_0032 A-4). */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-foreground/70">
-              {CONDITION_FORM_SECTION_LABEL.gate}
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              {CONDITION_FORM_ENTRIES.filter((e) => e.section === 'gate').map(renderConditionControl)}
-            </div>
-
-            <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-3">
-              <p className="text-xs font-semibold text-foreground">다음 중 하나만 충족해도 통과해요 (OR)</p>
-              {CROSS_GATE_BLOCKS.map((g) => (
-                <div key={g.prefix}>{renderCrossGate(g.prefix, g.title, g.help)}</div>
-              ))}
-            </div>
-            <p className="text-center text-xs font-semibold text-foreground">그리고 (AND)</p>
-            <div className="rounded-xl border border-border bg-muted/40 p-3">
-              {renderCrossGate(
-                'gateMissionBadge',
-                '미션 보상 배지',
-                '미션 완료로만 지급되는 배지를 요구해요. 위 교차 조건과 함께 충족돼야 통과해요.'
-              )}
-            </div>
-          </div>
-
-          {/* 메타데이터 필드 — 위 조건 필드들과 성격이 다르다(발급 판정에 관여하지 않음)는 것을
-              시각적으로도 드러내기 위해 별도 색상 박스로 구분한다 (티켓 20260825_031) */}
-          <label className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={condFields.missionReward}
-              onChange={(e) => setCondField('missionReward', e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-amber-600"
-            />
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-amber-900">미션 보상 배지 (mission_reward)</span>
-              <span className="text-xs text-amber-800/80">
-                미션 완료 시에만 지급되는 배지예요. 일반 배지 엔진 평가 대상이 아니며, 위 조건
-                필드는 이 배지의 획득 여부에 영향을 주지 않아요.
+            {/* 메타데이터 필드 — 위 조건 필드들과 성격이 다르다(발급 판정에 관여하지 않음)는 것을
+                시각적으로도 드러내기 위해 별도 색상 박스로 구분한다 (티켓 20260825_031) */}
+            <label className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={condFields.missionReward}
+                onChange={(e) => setCondField('missionReward', e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-amber-600"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-amber-900">미션 보상 배지 (mission_reward)</span>
+                <span className="text-xs text-amber-800/80">
+                  미션 완료 시에만 지급되는 배지예요. 일반 배지 엔진 평가 대상이 아니며, 위 조건
+                  필드는 이 배지의 획득 여부에 영향을 주지 않아요.
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
 
-          {/* 평가 대기 — 저장은 되지만 엔진이 그 필드를 아직 평가하지 않아 발급이 막힌다
-              (fail-closed). 0035 시딩이 0030 평가 구현보다 먼저 들어올 때 어드민이 화면에서
-              원인을 알 수 있게 한다(티켓 20260905_0032). */}
-          {pendingConditionKeys.length > 0 && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
-              <p className="text-sm font-medium text-amber-900">아직 평가되지 않는 조건 필드가 있어요</p>
-              <p className="text-xs text-amber-800/80 mt-0.5">
-                {pendingConditionKeys
-                  .map((k) => `${getConditionField(k)?.label ?? k}(${k})`)
-                  .join(', ')}
-                {' '}는 엔진이 아직 평가하지 않아요. 저장은 되지만 이 배지는 평가가 열릴 때까지 발급되지 않아요.
-              </p>
+            {/* 평가 대기 — 저장은 되지만 엔진이 그 필드를 아직 평가하지 않아 발급이 막힌다
+                (fail-closed). 0035 시딩이 0030 평가 구현보다 먼저 들어올 때 어드민이 화면에서
+                원인을 알 수 있게 한다(티켓 20260905_0032). */}
+            {pendingConditionKeys.length > 0 && (
+              <Alert variant="warning">
+                <AlertTitle className="text-sm">아직 평가되지 않는 조건 필드가 있어요</AlertTitle>
+                <AlertDescription>
+                  <p className="text-xs text-amber-800/80">
+                    {pendingConditionKeys
+                      .map((k) => `${getConditionField(k)?.label ?? k}(${k})`)
+                      .join(', ')}
+                    {' '}는 엔진이 아직 평가하지 않아요. 저장은 되지만 이 배지는 평가가 열릴 때까지 발급되지 않아요.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* 폼 미지원 조건 필드 안내 — 값은 저장 시 원본 그대로 보존되지만 이 폼에서
+                보거나 고칠 수 없다는 걸 알린다(티켓 20260825_032) */}
+            {unsupportedConditionKeys.length > 0 && (
+              <Alert variant="warning">
+                <AlertTitle className="text-sm">이 폼에서 다룰 수 없는 조건 필드가 있어요</AlertTitle>
+                <AlertDescription>
+                  <p className="text-xs text-amber-800/80">
+                    {unsupportedConditionKeys.join(', ')} 값이 이미 설정돼 있어요. 이 화면에는 입력 항목이
+                    없어 여기서 보거나 고칠 수 없지만, 저장해도 값은 그대로 유지돼요.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* 왕복 불가 값 안내 — 폼이 다루는 필드인데도 원본을 그대로 재현하지 못하는 값이다
+                (쉼표가 든 배지 이름, 형태가 깨진 교차 게이트 등). 저장하면 바뀌거나 사라진다.
+                저장을 막지는 않는다 — 어드민이 화면에서 고쳐 넣을 여지를 남긴다. */}
+            {unrepresentableConditionKeys.length > 0 && (
+              <Alert variant="warning">
+                <AlertTitle className="text-sm">이 폼이 그대로 재현하지 못하는 값이 있어요</AlertTitle>
+                <AlertDescription>
+                  <p className="text-xs text-amber-800/80">
+                    {unrepresentableConditionKeys.join(', ')} 값의 형태가 입력 항목과 맞지 않아요. 이대로
+                    저장하면 값이 바뀌거나 사라져요. 위 JSON 미리보기에서 실제 저장될 값을 확인해주세요.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* 진행 미지원 조건 경고 — 저장을 막지 않는다(§08 H 어드민 절반, 티켓 20260904_1426).
+                classifyBadgeProgressKind가 8개 유형(누적·기록·주기·2축·다중카운터·레벨·회차·휴식)
+                중 어디에도 못 걸리면, 이 조건은 배지 트리 화면에서 "진행 표시 준비 중"(화면 쪽,
+                badgeProgressText.ts)으로만 그려지고 진행률 수치는 못 보여준다 — 발급(획득) 자체는
+                기존 evaluateConditionDetailed/checkCondition이 그대로 판정하므로 영향 없다.
+                **왜인지도 함께 말한다** — 숨겨지는 축 키는 0031의 unabsorbedAxisKeys가 이미
+                계산한다(티켓 20260905_0032). */}
+            {progressIssue && (
+              <Alert variant="warning">
+                <AlertTitle className="text-sm">이 조건은 배지 트리 화면에 진행률이 표시되지 않아요</AlertTitle>
+                <AlertDescription className="space-y-0.5">
+                  <p className="text-xs text-amber-800/80">{progressIssue.reason}</p>
+                  {progressIssue.hiddenAxisLabels.length > 0 && (
+                    <p className="text-xs text-amber-800/80">
+                      화면에서 빠지는 축: {progressIssue.hiddenAxisLabels.join(', ')}
+                    </p>
+                  )}
+                  <p className="text-xs text-amber-800/80">배지 획득에는 영향이 없어요.</p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="bg-muted border border-border rounded-xl p-3">
+              <p className="text-xs text-muted-foreground mb-1.5">JSON 미리보기</p>
+              <pre className="text-xs text-foreground/80 font-mono overflow-x-auto">
+                {condPreview ? JSON.stringify(condPreview, null, 2) : 'null (조건 없음)'}
+              </pre>
             </div>
-          )}
 
-
-          {/* 폼 미지원 조건 필드 안내 — 값은 저장 시 원본 그대로 보존되지만 이 폼에서
-              보거나 고칠 수 없다는 걸 알린다(티켓 20260825_032) */}
-          {unsupportedConditionKeys.length > 0 && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
-              <p className="text-sm font-medium text-amber-900">이 폼에서 다룰 수 없는 조건 필드가 있어요</p>
-              <p className="text-xs text-amber-800/80 mt-0.5">
-                {unsupportedConditionKeys.join(', ')} 값이 이미 설정돼 있어요. 이 화면에는 입력 항목이
-                없어 여기서 보거나 고칠 수 없지만, 저장해도 값은 그대로 유지돼요.
-              </p>
-            </div>
-          )}
-
-          {/* 왕복 불가 값 안내 — 폼이 다루는 필드인데도 원본을 그대로 재현하지 못하는 값이다
-              (쉼표가 든 배지 이름, 형태가 깨진 교차 게이트 등). 저장하면 바뀌거나 사라진다.
-              저장을 막지는 않는다 — 어드민이 화면에서 고쳐 넣을 여지를 남긴다. */}
-          {unrepresentableConditionKeys.length > 0 && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
-              <p className="text-sm font-medium text-amber-900">이 폼이 그대로 재현하지 못하는 값이 있어요</p>
-              <p className="text-xs text-amber-800/80 mt-0.5">
-                {unrepresentableConditionKeys.join(', ')} 값의 형태가 입력 항목과 맞지 않아요. 이대로
-                저장하면 값이 바뀌거나 사라져요. 위 JSON 미리보기에서 실제 저장될 값을 확인해주세요.
-              </p>
-            </div>
-          )}
-
-          {/* 진행 미지원 조건 경고 — 저장을 막지 않는다(§08 H 어드민 절반, 티켓 20260904_1426).
-              classifyBadgeProgressKind가 8개 유형(누적·기록·주기·2축·다중카운터·레벨·회차·휴식)
-              중 어디에도 못 걸리면, 이 조건은 배지 트리 화면에서 "진행 표시 준비 중"(화면 쪽,
-              badgeProgressText.ts)으로만 그려지고 진행률 수치는 못 보여준다 — 발급(획득) 자체는
-              기존 evaluateConditionDetailed/checkCondition이 그대로 판정하므로 영향 없다.
-              **왜인지도 함께 말한다** — 숨겨지는 축 키는 0031의 unabsorbedAxisKeys가 이미
-              계산한다(티켓 20260905_0032). */}
-          {progressIssue && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
-              <p className="text-sm font-medium text-amber-900">이 조건은 배지 트리 화면에 진행률이 표시되지 않아요</p>
-              <p className="text-xs text-amber-800/80 mt-0.5">{progressIssue.reason}</p>
-              {progressIssue.hiddenAxisLabels.length > 0 && (
-                <p className="text-xs text-amber-800/80 mt-0.5">
-                  화면에서 빠지는 축: {progressIssue.hiddenAxisLabels.join(', ')}
-                </p>
-              )}
-              <p className="text-xs text-amber-800/80 mt-0.5">배지 획득에는 영향이 없어요.</p>
-            </div>
-          )}
-
-          <div className="bg-muted border border-border rounded-xl p-3">
-            <p className="text-xs text-muted-foreground mb-1.5">JSON 미리보기</p>
-            <pre className="text-xs text-foreground/80 font-mono overflow-x-auto">
-              {condPreview ? JSON.stringify(condPreview, null, 2) : 'null (조건 없음)'}
-            </pre>
+            {/* 판정 시뮬레이션 — 저장 전 실제 발급 엔진으로 이 조건을 미리 돌려본다
+                (티켓 20260908_1554). 저장 버튼과 별개이며 저장하지 않아도 언제든 실행 가능.
+                배지·미션 폼 공용 컴포넌트(티켓 20260908_1632) — "기존 유저"/"가상 활동" 대상
+                전환은 패널 내부가 갖는다(티켓 20260908_1631). */}
+            <ConditionSimulationPanel
+              condition={condPreview}
+              apiPath="/api/admin/badges/simulate-condition"
+              themeContainer={themeContainer}
+            />
           </div>
-
-          {/* 판정 시뮬레이션 — 저장 전 실제 발급 엔진으로 이 조건을 미리 돌려본다
-              (티켓 20260908_1554). 저장 버튼과 별개이며 저장하지 않아도 언제든 실행 가능.
-              배지·미션 폼 공용 컴포넌트(티켓 20260908_1632) — "기존 유저"/"가상 활동" 대상
-              전환은 패널 내부가 갖는다(티켓 20260908_1631). */}
-          <ConditionSimulationPanel
-            condition={condPreview}
-            apiPath="/api/admin/badges/simulate-condition"
-            themeContainer={themeContainer}
-          />
-        </div>
+        )
       )}
 
       {/* 연결된 지점 (checkin 타입 전용) */}
@@ -1184,100 +1325,51 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
         </div>
       )}
 
-      {/* 유효 기간 (공통) */}
-      <div className="border border-border rounded-2xl p-5 space-y-4">
-        <p className="text-sm font-semibold text-foreground">유효 기간</p>
-        <p className="text-xs text-muted-foreground">
-          {type === 'item'
-            ? '설정하면 해당 기간에만 드랍되며, 획득된 배지의 만료일은 종료일로 자동 설정됩니다. 설정하지 않으면 상시 드랍 / 만료 없음.'
-            : '설정하면 해당 기간에만 획득 조건이 평가됩니다. 기간 외 액티비티 싱크에서는 이 배지가 건너뛰어집니다. 설정하지 않으면 상시 평가.'}
-        </p>
-        <div className="grid grid-cols-2 gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted-foreground">시작일 (yyyy-mm-dd)</span>
-            <input
-              type="date"
-              value={validFrom}
-              onChange={(e) => setValidFrom(e.target.value)}
-              className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-muted-foreground">종료일 (yyyy-mm-dd)</span>
-            <input
-              type="date"
-              value={validUntil}
-              onChange={(e) => setValidUntil(e.target.value)}
-              min={validFrom || undefined}
-              className="bg-white border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-            />
-          </label>
-        </div>
-        {(validFrom || validUntil) && (
-          <button
-            type="button"
-            onClick={() => { setValidFrom(''); setValidUntil('') }}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            기간 설정 초기화
-          </button>
-        )}
-      </div>
-
       <div className="flex items-center gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
+        <Button type="submit" disabled={loading}>
           {loading ? '저장 중...' : isEdit ? '수정 저장' : '배지 등록'}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push('/admin/badges')}
-          className="text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl hover:bg-muted transition-colors"
-        >
+        </Button>
+        <Button type="button" variant="outline" onClick={() => router.push('/admin/badges')}>
           취소
-        </button>
+        </Button>
         {isEdit && (
-          <button
+          <Button
             type="button"
+            variant="destructive"
+            className="ml-auto"
             onClick={() => setShowDeleteConfirm(true)}
-            className="ml-auto text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2.5 rounded-xl transition-colors"
           >
             삭제
-          </button>
+          </Button>
         )}
       </div>
 
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold mb-2">배지 삭제</h3>
-            <p className="text-muted-foreground text-sm mb-5">
+      {/* 삭제 확인 — 커스텀 div 대신 BadgeDetail.tsx와 동일한 Radix AlertDialog 패턴을 쓴다.
+          role/aria-modal·포커스 트랩·ESC 닫기가 기본 제공된다(티켓 20260911_0202 1단계). */}
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => {
+          if (!open && !loading) setShowDeleteConfirm(false)
+        }}
+      >
+        <AlertDialogContent container={themeContainer ?? undefined}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>배지 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
               &apos;{badge?.name}&apos; 배지를 완전히 삭제합니다. 이 작업은 되돌릴 수 없습니다.
               단, 발급·드랍 등 이력이 있는 배지는 삭제할 수 없으며 비활성화만 가능합니다.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={loading}
-                className="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {loading ? '삭제 중...' : '삭제 확인'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 bg-white text-foreground py-2.5 rounded-xl hover:bg-muted transition-colors"
-              >
-                취소
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button type="button" variant="outline" disabled={loading} onClick={() => setShowDeleteConfirm(false)}>
+              취소
+            </Button>
+            <Button type="button" variant="destructive" disabled={loading} onClick={handleDelete}>
+              {loading ? '삭제 중...' : '삭제 확인'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   )
 }
