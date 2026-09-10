@@ -762,6 +762,12 @@ export interface UserMissionCompletionRow {
 // Phase 8: 트라이브(Tribes) + 아이템북 슬롯
 // =========================================
 
+/**
+ * DB 테이블명은 `factions`, 컬럼은 `faction_id`로 남아 있다. 티켓 20260910_1129에서
+ * 코드 식별자와 화면 표기만 트라이브로 통일했고 스키마는 건드리지 않았다 —
+ * staging·프로덕션이 단일 DB를 공유해 컬럼을 바꾸면 미배포 코드가 즉시 깨지기 때문이다.
+ * 따라서 아래 필드명이 faction 계열인 것은 리네이밍 누락이 아니라 의도적 보존이다.
+ */
 export interface TribeRow {
   id: string
   name: string
@@ -1702,6 +1708,8 @@ export interface Database {
         Update: Partial<Omit<ActivityFeedRow, 'id'>>
         Relationships: []
       }
+      // 아래 두 테이블 키(factions·faction_adjacency)는 실제 DB 테이블명이라 그대로 둔다.
+      // 값 쪽 타입 이름만 트라이브로 바뀌었다 (티켓 20260910_1129).
       factions: {
         Row: TribeRow
         Insert: Omit<TribeRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
