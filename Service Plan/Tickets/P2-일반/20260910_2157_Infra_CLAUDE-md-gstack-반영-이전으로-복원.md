@@ -98,7 +98,7 @@ Service Plan/Tickets/P2-일반/20260910_2157_Infra_CLAUDE-md-gstack-반영-이�
 ### 배포 정보
 - 배포일: 2026-09-10
 - 환경: staging (서비스 코드 무변경, Vercel 빌드 미발생)
-- 커밋: (staging push 직후 해시 기록)
+- 커밋: `3d3cfbea`
 
 ### 주요 의사결정 / 핵심 메모
 - gstack CLAUDE.md 반영은 이번이 두 번째 리버트다(`783fd5ee`가 첫 번째). 향후 세 번째로
