@@ -11,6 +11,7 @@
 import {
   findUnpairedConditionError,
   findRepeatRestConflictError,
+  findUsageMetricRepeatConflictError,
   findCrossGateShapeError,
   findRarityLevelError,
   findConditionShapeSaveError,
@@ -178,12 +179,64 @@ describe('④·⑤ 등급형/레벨형 배타 규칙', () => {
   })
 })
 
-describe('findConditionShapeSaveError — 세 검사를 한 진입점에서 돌린다', () => {
+describe('⑥ 사용량 지표(팔로워·팔로잉·일일동기화) + 회차 조합은 저장에서 거부된다 (티켓 20260910_1719)', () => {
+  // 배경: usageBadges.ts의 발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만)·레벨형만
+  // 지원한다. isLeveledBadge()가 rarity==null 여부로만 이진 판정해, rarity가 있는(등급형)
+  // 배지에 이 3개 키 중 하나 + repeat_count를 넣으면 에러 없이 저장은 되지만 실제로는
+  // 등급형 경로로 흘러가 repeat_count가 조용히 무시된다 — 저장 시점에 막는다.
+  it('follower_count + repeat_count는 막는다', () => {
+    const cond = { follower_count: 100, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findUsageMetricRepeatConflictError(cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('follower_count')
+    expect(error).toContain('repeat_count')
+    expect(error).toContain('등급형·레벨형')
+  })
+
+  it('following_count + repeat_count는 막는다', () => {
+    const cond = { following_count: 50, repeat_count: 2 } as unknown as BadgeCondition
+    expect(findUsageMetricRepeatConflictError(cond)).not.toBeNull()
+  })
+
+  it('daily_sync_count + repeat_count는 막는다', () => {
+    const cond = { daily_sync_count: 7, repeat_count: 5 } as unknown as BadgeCondition
+    expect(findUsageMetricRepeatConflictError(cond)).not.toBeNull()
+  })
+
+  it('사용량 지표 2개 이상이 함께 있으면 전부 메시지에 나열한다', () => {
+    const cond = { follower_count: 100, following_count: 50, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findUsageMetricRepeatConflictError(cond)!
+    expect(error).toContain('follower_count')
+    expect(error).toContain('following_count')
+  })
+
+  it('사용량 지표만 있고 repeat_count가 없으면 통과한다 (등급형·레벨형 정상 케이스)', () => {
+    expect(findUsageMetricRepeatConflictError({ follower_count: 100 } as unknown as BadgeCondition)).toBeNull()
+  })
+
+  it('회귀: 사용량 지표가 아닌 기존 활동 기반 배지의 repeat_count는 영향받지 않는다', () => {
+    expect(findUsageMetricRepeatConflictError({ repeat_count: 10, distance_km: 5 })).toBeNull()
+    expect(findUsageMetricRepeatConflictError({ repeat_count: 10 })).toBeNull()
+  })
+
+  it('조건이 없으면 통과한다', () => {
+    expect(findUsageMetricRepeatConflictError(null)).toBeNull()
+  })
+
+  it('findConditionShapeSaveError 진입점에서도 동일하게 거부된다', () => {
+    const cond = { daily_sync_count: 7, repeat_count: 5 } as unknown as BadgeCondition
+    const error = findConditionShapeSaveError(badge, cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('daily_sync_count')
+  })
+})
+
+describe('findConditionShapeSaveError — 네 검사를 한 진입점에서 돌린다', () => {
   it('정상 조건은 통과한다', () => {
     expect(findConditionShapeSaveError(badge, { distance_km: 100, total_count: 10 })).toBeNull()
   })
 
-  it('세 경로 중 하나라도 걸리면 오류를 돌려준다', () => {
+  it('네 경로 중 하나라도 걸리면 오류를 돌려준다', () => {
     expect(findConditionShapeSaveError(badge, { rest_after_streak: 2 })).not.toBeNull()
     // 휴식 키 1개(interval_days) + repeat_count는 이제 통과한다(§B-10 재설계) — 휴식 키
     // 2개(사건 경계 미정의)로 두 번째 경로를 검증한다.
@@ -192,6 +245,9 @@ describe('findConditionShapeSaveError — 세 검사를 한 진입점에서 돌�
     ).not.toBeNull()
     expect(
       findConditionShapeSaveError(badge, { cross_in_axis: {} } as unknown as BadgeCondition)
+    ).not.toBeNull()
+    expect(
+      findConditionShapeSaveError(badge, { follower_count: 100, repeat_count: 3 } as unknown as BadgeCondition)
     ).not.toBeNull()
   })
 
