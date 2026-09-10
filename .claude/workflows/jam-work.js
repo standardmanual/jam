@@ -82,12 +82,20 @@ const runKoreanReview = (gate.verdict === 'PASS' || gate.verdict === 'WARN') &&
 // 각 agent()에 opts.phase를 개별 지정해 병렬 실행 중에도 진행 표시가 올바른 제목으로 묶이게
 // 한다. 조건이 꺼진 단계는 agent()를 아예 부르지 않고 즉시 null로 해소되는 thunk를 넣어
 // parallel() 호출 형태(결과 배열 순서 고정)는 유지한다.
+//
+// 개선·인터페이스 리뷰는 2026-09-10부터 model을 haiku로 낮췄다 — 둘 다 승인 권한이 없는
+// 제안형 단계라(PASS/FAIL 판정은 이미 conservative-reviewer가 끝냄) 정확도 손실의 대가가
+// 낮고, 티켓 20260816_005 감사가 이미 후보로 지목했던 항목이다. 한국어 리뷰
+// (humanize-korean:humanize-monolith)는 model을 지정하지 않는다 — 그 플러그인 자체가
+// route_hint(light/standard/heavy)로 내부 모델·콜 수를 이미 조절하므로, 여기서 덮어쓰면
+// 그 자체 판단을 무력화한다. 게이트(conservative-reviewer)는 판정 정확도가 핵심이라
+// 그대로 세션 모델을 상속한다.
 const [progressive, interfaceReview, koreanReview] = await parallel([
   () => runProgressive ? agent(
     `티켓 문서: ${ticketPath}\n작업 유형: ${workType}\n\n개발자 구현 요약:\n${devResult}\n\n` +
     `게이트 리뷰 PASS 근거:\n${gate.reasons.join('\n')}\n\n` +
     `개선 제안·문서 갱신 필요 여부·MODULAR 승격 후보를 검토하라.`,
-    { agentType: 'progressive-reviewer', label: 'progressive-reviewer', phase: '개선 리뷰' }
+    { agentType: 'progressive-reviewer', label: 'progressive-reviewer', phase: '개선 리뷰', model: 'claude-haiku-4-5-20251001' }
   ) : Promise.resolve(null),
 
   () => runInterfaceReview ? agent(
@@ -100,7 +108,7 @@ const [progressive, interfaceReview, koreanReview] = await parallel([
     `git diff(review 브랜치 vs origin/staging)만 대상으로 하고, 손대지 않은 기존 코드는 다루지 ` +
     `마라. 이건 머지를 막는 게이트가 아니라 제안형 리뷰다 — PASS/FAIL 판정 없이 발견한 점과 ` +
     `제안만 나열하라.`,
-    { agentType: 'general-purpose', label: 'interface-reviewer', phase: '인터페이스 리뷰' }
+    { agentType: 'general-purpose', label: 'interface-reviewer', phase: '인터페이스 리뷰', model: 'claude-haiku-4-5-20251001' }
   ) : Promise.resolve(null),
 
   () => runKoreanReview ? agent(

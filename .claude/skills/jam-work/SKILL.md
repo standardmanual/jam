@@ -234,3 +234,15 @@ gate의 `sideFindings`와 progressive의 "## 범위 밖 발견물" 섹션이 비
   보고했다면 생략한다(2026-09-10, `conservative-reviewer.md` 참고). push 시점
   `.githooks/pre-push`의 전체 lint 재검증이 최종 안전망이므로 게이트에서의 중복 실행만
   없앤 것이다.
+- `jam-web`의 `npm run lint`·`lint:ci`에 ESLint 캐시(`--cache`)를 켰다(2026-09-10). 무캐시
+  전체 실행 17.8초 → 파일 무변경 재실행 2.1초로 실측 확인(약 8배). 캐시 파일
+  `.eslintcache`는 `.gitignore`에 추가했다.
+- `jam-work.js`의 개선·인터페이스 리뷰는 2026-09-10부터 `model: 'claude-haiku-4-5-20251001'`을
+  지정한다 — 둘 다 승인 권한이 없는 제안형 단계라(PASS/FAIL은 이미 게이트가 끝냄) 가벼운
+  모델로도 손실이 적다(티켓 20260816_005 감사가 이미 후보로 지목했던 항목). 게이트
+  (conservative-reviewer)는 판정 정확도가 핵심이라 그대로 세션 모델을 상속하고, 한국어 리뷰
+  (humanize-korean 플러그인)는 자체 route_hint로 모델·콜 수를 이미 조절하므로 지정하지 않는다.
+- `jam-web`에 `typecheck` 스크립트가 신설됐다(2026-09-10). 이전에는 conservative-reviewer가
+  `npm run typecheck`를 실행하라는 지시를 받았지만 스크립트 자체가 없어 사실상 타입체크가
+  전혀 이뤄지지 않고 있었다. `.next/types` 캐시 staleness로 인한 유령 에러 처리 방식은
+  `conservative-reviewer.md` 5번 항목 참고.
