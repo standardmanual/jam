@@ -1540,7 +1540,7 @@ export const CONDITION_FIELDS = [
     role: 'meta',
     input: 'integer',
     min: 1,
-    max: 100,
+    max: 1000000,
     step: 1,
     direction: 'higher',
     evaluation: 'external',
