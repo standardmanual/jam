@@ -3,7 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type {
   BadgeRow,
   ItemBookRow,
-  FactionRow,
+  TribeRow,
   InventoryItemRow,
   UserItemBookSlotRow,
 } from '@/types/database'
@@ -33,7 +33,7 @@ interface Props {
   }>
 }
 
-type ItemBookWithFaction = ItemBookRow & { faction: FactionRow | null }
+type ItemBookWithTribe = ItemBookRow & { tribe: TribeRow | null }
 
 const PAGE_BG = 'var(--color-surface)'
 const CARD_BG = '#000000'
@@ -78,16 +78,16 @@ export default async function ItemBookDetailPage({ params, searchParams }: Props
     subjectUsername ? `/${subjectUsername}#collections` :
     null
 
-  // 1) 아이템북 + 세계관
+  // 1) 아이템북 + 트라이브
   const { data: bookRaw, error: bookError } = await supabase
     .from('item_books')
-    .select('*, faction:factions(*)')
+    .select('*, tribe:tribes(*)')
     .eq('id', id)
     .single()
   // 20260901_1848: DB 조회 실패도 !bookRaw로 걸려 404(notFound)로 위장된다 — 로그로 구분
   if (bookError) console.error('[collections/[id]/page] item_books 조회 실패', bookError)
   if (!bookRaw) notFound()
-  const book = bookRaw as unknown as ItemBookWithFaction
+  const book = bookRaw as unknown as ItemBookWithTribe
 
   // 2) 배지 (아이템 + 체크인)
   // 소프트 삭제된 배지(badges.deleted_at)는 컬렉션 슬롯 목록에서 제외한다(20260824_007) —

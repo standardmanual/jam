@@ -3,7 +3,7 @@ import React from 'react';
 import { ShapeTag } from './ShapeTag';
 
 const SHAPES = ['rect', 'pill', 'circle', 'dome', 'triangle', 'flag', 'hex'] as const;
-const FACTIONS = ['fire', 'water', 'nature', 'shadow', 'light', 'storm', 'earth', 'void'] as const;
+const TRIBES = ['fire', 'water', 'nature', 'shadow', 'light', 'storm', 'earth', 'void'] as const;
 
 const meta: Meta<typeof ShapeTag> = {
   title: 'MODULAR/Cards/ShapeTag',
@@ -51,12 +51,12 @@ export const ColorPalette: Story = {
   ),
 };
 
-export const Factions: Story = {
-  name: '세계관 (faction) 색상',
+export const Tribes: Story = {
+  name: '트라이브 (tribe) 색상',
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {FACTIONS.map(faction => (
-        <ShapeTag key={faction} shape="pill" faction={faction}>{faction}</ShapeTag>
+      {TRIBES.map(tribe => (
+        <ShapeTag key={tribe} shape="pill" tribe={tribe}>{tribe}</ShapeTag>
       ))}
     </div>
   ),

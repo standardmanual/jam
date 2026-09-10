@@ -57,7 +57,7 @@ interface ItemBookItem {
   id: string
   name: string
   image_url: string | null
-  faction: { name: string } | null
+  tribe: { name: string } | null
   totalBadgeCount: number
   slottedCount: number
   isCompleted: boolean

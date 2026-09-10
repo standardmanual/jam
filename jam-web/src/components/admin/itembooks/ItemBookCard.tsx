@@ -9,7 +9,7 @@ interface ItemBookCardProps {
   itemBook: ItemBookRow
   requiredActivityBadgeName?: string
   rewardBadgeName?: string
-  factionName?: string
+  tribeName?: string
   itemBadgeCount?: number
 }
 
@@ -17,7 +17,7 @@ export function ItemBookCard({
   itemBook,
   requiredActivityBadgeName,
   rewardBadgeName,
-  factionName,
+  tribeName,
   itemBadgeCount = 0,
 }: ItemBookCardProps) {
   return (
@@ -27,9 +27,9 @@ export function ItemBookCard({
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <CardTitle className="truncate text-base">{itemBook.name}</CardTitle>
-              {factionName && (
+              {tribeName && (
                 <CardDescription className="text-xs mt-1">
-                  {factionName}
+                  {tribeName}
                 </CardDescription>
               )}
             </div>

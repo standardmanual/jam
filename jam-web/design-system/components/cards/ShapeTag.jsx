@@ -15,10 +15,10 @@ const TAG_COLORS = [
   'var(--color-tag-5)', 'var(--color-tag-6)', 'var(--color-tag-7)', 'var(--color-tag-8)',
 ];
 
-/* DS-018: faction → color mapping.
-   Stub values — finalize once FACTIONS.md is confirmed.
-   Unknown faction names fall back to colorIndex=0 (--color-tag-1). */
-const FACTION_COLORS = {
+/* DS-018: tribe → color mapping.
+   Stub values — finalize once TRIBES.md is confirmed.
+   Unknown tribe names fall back to colorIndex=0 (--color-tag-1). */
+const TRIBE_COLORS = {
   fire:    'var(--color-tag-1)',   /* red-orange */
   water:   'var(--color-tag-4)',   /* teal/green */
   nature:  'var(--color-tag-6)',   /* lime */
@@ -42,7 +42,7 @@ export function ShapeTag({
   shape = 'rect',
   colorIndex = 0,
   color,
-  faction,
+  tribe,
   surface = 'dark',
   children,
   style = {},
@@ -50,7 +50,7 @@ export function ShapeTag({
 }) {
   const s = SHAPES[shape] ?? SHAPES.rect;
   const bg = color
-    ?? (faction ? (FACTION_COLORS[faction] ?? TAG_COLORS[0]) : null)
+    ?? (tribe ? (TRIBE_COLORS[tribe] ?? TAG_COLORS[0]) : null)
     ?? TAG_COLORS[colorIndex % TAG_COLORS.length];
   const textColor = surface === 'dark' ? 'var(--color-text)' : 'var(--color-text-inverse)';
 

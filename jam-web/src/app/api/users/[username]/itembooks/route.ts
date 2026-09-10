@@ -69,7 +69,7 @@ export async function GET(
   ] = await Promise.all([
       service
       .from('item_books')
-      .select('id, name, image_url, faction:factions(name)')
+      .select('id, name, image_url, tribe:tribes(name)')
       .in('id', bookIds)
       .eq('is_active', true),
       service.from('badges').select('id, item_book_id, rarity, created_at').in('item_book_id', bookIds).eq('type', 'item').is('deleted_at', null).order('created_at', { ascending: true }),
@@ -96,13 +96,13 @@ export async function GET(
 
   const isOwnList = currentUser?.id === userId
 
-  type BookRaw = { id: string; name: string; image_url: string | null; faction: { name: string } | null }
+  type BookRaw = { id: string; name: string; image_url: string | null; tribe: { name: string } | null }
   const books = ((booksRaw ?? []) as unknown as BookRaw[])
     .map(book => ({
       id: book.id,
       name: book.name,
       image_url: book.image_url,
-      faction: book.faction,
+      tribe: book.tribe,
       totalBadgeCount: totalByBook.get(book.id) ?? 0,
       slottedCount: slottedByBook.get(book.id) ?? 0,
       isCompleted: completedSet.has(book.id),

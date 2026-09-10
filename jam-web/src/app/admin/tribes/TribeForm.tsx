@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { FactionRow } from '@/types/database'
+import type { TribeRow } from '@/types/database'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 import { HEX_COLOR_PATTERN } from '@/components/admin/BackgroundColorField'
 import BackgroundGeneratorPreview, {
@@ -11,8 +11,8 @@ import BackgroundGeneratorPreview, {
 import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 import ItemBookDetailPreviewFrame from '../itembooks/ItemBookDetailPreviewFrame'
 
-interface FactionFormProps {
-  faction?: FactionRow
+interface TribeFormProps {
+  tribe?: TribeRow
 }
 
 /** 3단 캐스케이드(직속 배지 / 소속 컬렉션 / 그 컬렉션의 아이템배지) 건수 — 20260819_015 */
@@ -22,29 +22,29 @@ interface CascadeCount {
   itemBookBadges: number
 }
 
-export default function FactionForm({ faction }: FactionFormProps) {
+export default function TribeForm({ tribe }: TribeFormProps) {
   const router = useRouter()
-  const isEdit = !!faction
+  const isEdit = !!tribe
 
-  const [name, setName] = useState(faction?.name ?? '')
-  const [tagline, setTagline] = useState(faction?.tagline ?? '')
-  const [description, setDescription] = useState(faction?.description ?? '')
-  const [imageUrl, setImageUrl] = useState(faction?.image_url ?? '')
+  const [name, setName] = useState(tribe?.name ?? '')
+  const [tagline, setTagline] = useState(tribe?.tagline ?? '')
+  const [description, setDescription] = useState(tribe?.description ?? '')
+  const [imageUrl, setImageUrl] = useState(tribe?.image_url ?? '')
   const [dropWeight, setDropWeight] = useState<string>(
-    faction?.drop_weight?.toString() ?? '1.0'
+    tribe?.drop_weight?.toString() ?? '1.0'
   )
-  const [isActive, setIsActive] = useState(faction?.is_active ?? true)
+  const [isActive, setIsActive] = useState(tribe?.is_active ?? true)
   const [sortOrder, setSortOrder] = useState<string>(
-    faction?.sort_order?.toString() ?? '0'
+    tribe?.sort_order?.toString() ?? '0'
   )
-  // 배경 테마 (20260818_004) — 세계관 자체에는 렌더링되지 않고, "하위에 일괄 적용" 버튼으로
+  // 배경 테마 (20260818_004) — 트라이브 자체에는 렌더링되지 않고, "하위에 일괄 적용" 버튼으로
   // 3단(직속 배지 → 소속 컬렉션 → 그 컬렉션의 아이템배지)에 1회성으로 복사하는 원본 값.
   // 제너레이터(패턴/애니메이션/Paper 필터)와 배경 쉐이더 드롭다운은 티켓 20260901_1929에서 제거.
-  const [backgroundColor, setBackgroundColor] = useState<string>(faction?.background_color ?? '')
+  const [backgroundColor, setBackgroundColor] = useState<string>(tribe?.background_color ?? '')
   // [20260901_1944] 배경색과 배타인 애니메이션 모드. null이면 배경색 모드다. 3단 캐스케이드의
   // 원본 값이기도 하다.
   const [backgroundAnimation, setBackgroundAnimation] = useState<BlobAnimationParams | null>(
-    () => parseBlobAnimation(faction?.background_animation)
+    () => parseBlobAnimation(tribe?.background_animation)
   )
 
   const [loading, setLoading] = useState(false)
@@ -71,8 +71,8 @@ export default function FactionForm({ faction }: FactionFormProps) {
   /** PUT/POST로 현재 폼 값을 저장한다. 성공 시 저장된 row, 실패 시 에러를 던진다.
    *  background_shader_id/background_image_url/background_video_url은 보내지 않는다
    *  (티켓 20260901_1929) — 제너레이터가 사라져 이 필드들을 새로 만들 방법이 없고, 저장 API는
-   *  누락된 필드를 기존 DB 값 그대로 둔다(undefined 병합, factions PUT 참조). */
-  const persist = async (): Promise<FactionRow> => {
+   *  누락된 필드를 기존 DB 값 그대로 둔다(undefined 병합, tribes PUT 참조). */
+  const persist = async (): Promise<TribeRow> => {
     const trimmedBackgroundColor = backgroundColor.trim()
 
     const body = {
@@ -91,7 +91,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
     }
 
     const res = await fetch(
-      isEdit ? `/api/admin/factions/${faction.id}` : '/api/admin/factions',
+      isEdit ? `/api/admin/tribes/${tribe.id}` : '/api/admin/tribes',
       {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -100,7 +100,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
     )
     const data = await res.json()
     if (!res.ok) throw new Error(data.error ?? '저장 실패')
-    return data.faction as FactionRow
+    return data.tribe as TribeRow
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,7 +116,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
     setLoading(true)
     try {
       await persist()
-      router.push('/admin/factions')
+      router.push('/admin/tribes')
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.')
@@ -128,10 +128,10 @@ export default function FactionForm({ faction }: FactionFormProps) {
   const handleDelete = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/factions/${faction!.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/admin/tribes/${tribe!.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '삭제 실패')
-      router.push('/admin/factions')
+      router.push('/admin/tribes')
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.')
@@ -144,7 +144,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
   // (티켓 20260901_1929 — 제너레이터·쉐이더 제거로 단순화).
   const hasBackgroundValue = Boolean(backgroundColor.trim()) || backgroundAnimation !== null
 
-  // 저장된 세계관에서만 가능 — 신규 등록 화면에는 아직 하위가 존재할 수 없다.
+  // 저장된 트라이브에서만 가능 — 신규 등록 화면에는 아직 하위가 존재할 수 없다.
   // 클릭 시 폼의 현재 값을 먼저 저장해(항상 최신 값 기준으로 적용) 실제 3단 캐스케이드 건수를
   // 조회한 뒤 확인 다이얼로그를 띄운다.
   const handleBulkApplyClick = async () => {
@@ -163,7 +163,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
 
       // 서버에서 3단 조건과 동일한 WHERE로 COUNT만 계산하는 미리보기 경로 — 전체 배지/컬렉션
       // 목록을 fetch하지 않는다 (20260819_016)
-      const res = await fetch(`/api/admin/factions/${faction!.id}/apply-background`)
+      const res = await fetch(`/api/admin/tribes/${tribe!.id}/apply-background`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? '하위 건수 조회 실패')
 
@@ -183,7 +183,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
   const handleBulkApplyConfirm = async () => {
     setBulkApplyLoading(true)
     try {
-      const res = await fetch(`/api/admin/factions/${faction!.id}/apply-background`, {
+      const res = await fetch(`/api/admin/tribes/${tribe!.id}/apply-background`, {
         method: 'POST',
       })
       const data = await res.json()
@@ -217,7 +217,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
       )}
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm text-foreground">세계관 이름 *</span>
+        <span className="text-sm text-foreground">트라이브 이름 *</span>
         <input
           required
           value={name}
@@ -244,11 +244,11 @@ export default function FactionForm({ faction }: FactionFormProps) {
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           className="bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 resize-none"
-          placeholder="세계관 상세 설명"
+          placeholder="트라이브 상세 설명"
         />
       </label>
 
-      {/* 세계관 이미지 — 원래 순수 자유 입력(https://... 텍스트 필드)이었다. 임의 호스트 URL이
+      {/* 트라이브 이미지 — 원래 순수 자유 입력(https://... 텍스트 필드)이었다. 임의 호스트 URL이
           DB에 들어오면 그 값을 렌더하는 화면이 통째로 500이 되는 구조라(20260824_004),
           다른 어드민 폼과 동일하게 Storage 업로드 전용으로 바꿨다 (20260824_005). */}
       <ImageUploadField
@@ -297,7 +297,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
         <div>
           <p className="text-sm font-semibold text-foreground">배경 테마</p>
           <p className="text-xs text-muted-foreground mt-1">
-            이 세계관 자체에는 배경이 적용되지 않아요. 이 설정은 이 세계관에 속한 배지, 소속
+            이 트라이브 자체에는 배경이 적용되지 않아요. 이 설정은 이 트라이브에 속한 배지, 소속
             컬렉션, 그 컬렉션의 아이템배지 전체에 일괄 적용돼요.
           </p>
         </div>
@@ -311,8 +311,8 @@ export default function FactionForm({ faction }: FactionFormProps) {
             <>
               <ItemBookDetailPreviewFrame
                 book={{
-                  name: name || '(세계관 이름 미입력)',
-                  description: '이 세계관 소속 컬렉션에 그대로 복사되는 배경을 미리 보여줘요.',
+                  name: name || '(트라이브 이름 미입력)',
+                  description: '이 트라이브 소속 컬렉션에 그대로 복사되는 배경을 미리 보여줘요.',
                   image_url: imageUrl || null,
                 }}
                 themed={previewThemed}
@@ -322,7 +322,7 @@ export default function FactionForm({ faction }: FactionFormProps) {
                 backgroundAnimation={previewAnimation}
               />
               <p className="text-xs text-muted-foreground mt-2 max-w-[430px]">
-                세계관 자체 화면은 없어요. 이 배경이 그대로 복사될 소속 컬렉션 상세화면과 같은
+                트라이브 자체 화면은 없어요. 이 배경이 그대로 복사될 소속 컬렉션 상세화면과 같은
                 구조로 보여줘요.
               </p>
             </>
@@ -340,10 +340,10 @@ export default function FactionForm({ faction }: FactionFormProps) {
           </button>
           <p className="text-xs text-muted-foreground mt-2">
             {!isEdit
-              ? '세계관을 먼저 등록해야 일괄 적용할 수 있어요.'
+              ? '트라이브를 먼저 등록해야 일괄 적용할 수 있어요.'
               : !hasBackgroundValue
                 ? '배경색이나 애니메이션을 먼저 지정해야 일괄 적용할 수 있어요.'
-                : '버튼을 누르면 지금 이 값이 먼저 저장되고, 이 세계관에 속한 배지·소속 컬렉션·그 컬렉션의 아이템배지에 즉시 복사돼요. 이후 세계관 배경을 바꿔도 이미 적용된 항목에는 자동 반영되지 않아요. 다시 이 버튼을 눌러야 해요.'}
+                : '버튼을 누르면 지금 이 값이 먼저 저장되고, 이 트라이브에 속한 배지·소속 컬렉션·그 컬렉션의 아이템배지에 즉시 복사돼요. 이후 트라이브 배경을 바꿔도 이미 적용된 항목에는 자동 반영되지 않아요. 다시 이 버튼을 눌러야 해요.'}
           </p>
         </div>
       </div>
@@ -354,11 +354,11 @@ export default function FactionForm({ faction }: FactionFormProps) {
           disabled={loading}
           className="bg-primary text-white font-bold px-6 py-2.5 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
-          {loading ? '저장 중...' : isEdit ? '수정 저장' : '세계관 등록'}
+          {loading ? '저장 중...' : isEdit ? '수정 저장' : '트라이브 등록'}
         </button>
         <button
           type="button"
-          onClick={() => router.push('/admin/factions')}
+          onClick={() => router.push('/admin/tribes')}
           className="text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl hover:bg-muted transition-colors"
         >
           취소
@@ -377,9 +377,9 @@ export default function FactionForm({ faction }: FactionFormProps) {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-white border border-border rounded-2xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-bold mb-2">세계관 삭제</h3>
+            <h3 className="text-lg font-bold mb-2">트라이브 삭제</h3>
             <p className="text-muted-foreground text-sm mb-5">
-              &apos;{faction?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+              &apos;{tribe?.name}&apos;을 삭제합니다. 이 작업은 되돌릴 수 없습니다.
             </p>
             <div className="flex gap-3">
               <button

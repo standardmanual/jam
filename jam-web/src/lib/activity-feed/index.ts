@@ -41,7 +41,7 @@ export interface FeedEventMeta {
     /** `badges.rarity`(nullable, 마이그레이션 130)를 그대로 옮긴 값 — badge_earned와 같은 규약 */
     rarity: string | null
     poi_name: string
-    /** 드랍엔진 v2: 드랍된 배지의 세계관 이름 (레거시 이벤트에는 없음) */
+    /** 드랍엔진 v2: 드랍된 배지의 트라이브 이름 (레거시 이벤트에는 없음) */
     faction_name?: string
     /** 드랍엔진 v2: 아이템북 마지막 파편 여부 */
     is_last_piece?: boolean

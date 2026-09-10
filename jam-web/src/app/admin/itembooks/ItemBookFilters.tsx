@@ -5,21 +5,21 @@ import { Button } from '@/components/admin/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
 import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
-import type { FactionRow } from '@/types/database'
+import type { TribeRow } from '@/types/database'
 
 interface ItemBookFiltersProps {
-  factions: Pick<FactionRow, 'id' | 'name'>[]
+  tribes: Pick<TribeRow, 'id' | 'name'>[]
 }
 
 /**
  * 컬렉션 목록 필터(20260826_015) — shadcn 공식 Data Table Toolbar 패턴으로 재구현
  * (배지 목록의 `BadgesFilterBar.tsx`와 동일 구조).
  */
-export default function ItemBookFilters({ factions }: ItemBookFiltersProps) {
+export default function ItemBookFilters({ tribes }: ItemBookFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const faction = searchParams.get('faction') ?? 'all'
+  const tribe = searchParams.get('tribe') ?? 'all'
   const sort = searchParams.get('sort') ?? 'created_desc'
 
   const updateParams = (updates: Record<string, string>) => {
@@ -32,7 +32,7 @@ export default function ItemBookFilters({ factions }: ItemBookFiltersProps) {
     router.push(`/admin/itembooks?${params.toString()}`)
   }
 
-  const hasFilter = searchParams.has('faction')
+  const hasFilter = searchParams.has('tribe')
 
   return (
     <DataTableToolbar
@@ -50,10 +50,10 @@ export default function ItemBookFilters({ factions }: ItemBookFiltersProps) {
       }
     >
       <DataTableFacetedFilter
-        title="세계관"
-        options={factions.map((f) => ({ value: f.id, label: f.name }))}
-        selected={faction === 'all' ? [] : [faction]}
-        onChange={(values) => updateParams({ faction: values[0] ?? 'all' })}
+        title="트라이브"
+        options={tribes.map((f) => ({ value: f.id, label: f.name }))}
+        selected={tribe === 'all' ? [] : [tribe]}
+        onChange={(values) => updateParams({ tribe: values[0] ?? 'all' })}
       />
 
       {hasFilter && (

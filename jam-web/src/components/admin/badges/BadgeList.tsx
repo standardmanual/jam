@@ -16,10 +16,10 @@ export type BadgeListRow = Pick<
 
 interface BadgeListProps {
   badges: BadgeListRow[]
-  factionMap?: Map<string, string>
+  tribeMap?: Map<string, string>
 }
 
-export default function BadgeList({ badges, factionMap = new Map() }: BadgeListProps) {
+export default function BadgeList({ badges, tribeMap = new Map() }: BadgeListProps) {
   // `md:hidden`/`hidden md:block`으로 카드 리스트와 테이블을 둘 다 마운트하면 렌더 비용이
   // 이중으로 든다(실측: /admin/badges 50건 페이지에서 <img> 100개, 20260826_011 A4) —
   // 실제 뷰포트에 맞는 한쪽만 마운트한다.
@@ -45,5 +45,5 @@ export default function BadgeList({ badges, factionMap = new Map() }: BadgeListP
     )
   }
 
-  return <BadgesTable badges={badges} factionMap={factionMap} />
+  return <BadgesTable badges={badges} tribeMap={tribeMap} />
 }

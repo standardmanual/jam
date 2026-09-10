@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     level: level === undefined || level === null || level === '' ? null : Math.trunc(Number(level)),
     family_key: familyKey,
     // ⚠️ `sort_order = 0`은 «미설정»이라 배지 트리에서 **맨 뒤로 밀린다** — 이 저장소의 다른
-    // sort_order(today_cards·factions·item_books, 0이 앞)와 반대 관습이다(마이그레이션 130).
+    // sort_order(today_cards·tribes·item_books, 0이 앞)와 반대 관습이다(마이그레이션 130).
     // 계열에 새 자리를 추가할 때 계열의 값을 물려주지 않으면 그 배지만 계열에서 떨어진다.
     sort_order: Number.isFinite(Number(sort_order)) ? Math.max(0, Math.trunc(Number(sort_order))) : 0,
     image_url,
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       : Math.max(0, Math.trunc(Number(patch_price_krw) || 0)),
     // POI 배지는 "어느 POI를 지나갔는가"로만 판정 — 활동 조건이 섞이지 않도록 강제 null
     condition_json: type === 'checkin' ? null : condition_json ?? null,
-    // 체크인 배지에는 세계관/컬렉션 개념이 없다 — 저작 화면(BadgeForm)에서도 정리하지만
+    // 체크인 배지에는 트라이브/컬렉션 개념이 없다 — 저작 화면(BadgeForm)에서도 정리하지만
     // 서버에서도 같은 규칙을 강제한다(20260830_1344).
     faction_id: type === 'checkin' ? null : faction_id ?? null,
     item_book_id: type === 'checkin' ? null : item_book_id ?? null,

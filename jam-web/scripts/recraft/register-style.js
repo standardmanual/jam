@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Recraft 커스텀 스타일 등록 (세계관 1개당 1회)
+ * Recraft 커스텀 스타일 등록 (트라이브 1개당 1회)
  *
  * 레퍼런스_이미지/ 폴더의 이미지들로 POST /v1/styles 호출 → style_id 발급.
- * 결과를 해당 세계관 폴더의 recraft_style.json에 저장한다 (재사용 위해).
+ * 결과를 해당 트라이브 폴더의 recraft_style.json에 저장한다 (재사용 위해).
  *
  * 필요 환경변수 (.env.local): RECRAFT_API_KEY
- * 실행: node scripts/recraft/register-style.js "<세계관 폴더 절대경로>" <baseStyle> <model>
+ * 실행: node scripts/recraft/register-style.js "<트라이브 폴더 절대경로>" <baseStyle> <model>
  *   예: node scripts/recraft/register-style.js \
  *     "/Users/.../02_스타일그룹/01 낭만 미식가" digital_illustration recraftv3
  */
@@ -28,7 +28,7 @@ const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
 async function main() {
   const [worldDir, baseStyle, model] = process.argv.slice(2)
   if (!worldDir || !baseStyle || !model) {
-    console.error('사용법: node register-style.js <세계관 폴더 절대경로> <baseStyle> <model>')
+    console.error('사용법: node register-style.js <트라이브 폴더 절대경로> <baseStyle> <model>')
     process.exit(1)
   }
 

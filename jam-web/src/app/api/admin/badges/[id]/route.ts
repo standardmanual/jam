@@ -16,7 +16,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const supabase = createServiceClient()
 
   // 부분 body 병합을 위해 기존 row를 먼저 조회한다 — body에 없는(undefined) 필드는 기존 값을
-  // 그대로 유지한다(20260827_011, factions·item_books PUT과 동일 패턴). 존재하지 않는 id면
+  // 그대로 유지한다(20260827_011, tribes·item_books PUT과 동일 패턴). 존재하지 않는 id면
   // update 시도 전에 404로 응답한다.
   const { data: existingData, error: fetchError } = await supabase
     .from('badges')
@@ -78,7 +78,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
             : Math.max(0, Math.trunc(Number(body.patch_price_krw) || 0)),
       // POI 배지는 "어느 POI를 지나갔는가"로만 판정 — 활동 조건이 섞이지 않도록 강제 null
       condition_json: type === 'checkin' ? null : conditionJson,
-      // 체크인 배지에는 세계관/컬렉션 개념이 없다 — 저작 화면(BadgeForm)에서도 정리하지만
+      // 체크인 배지에는 트라이브/컬렉션 개념이 없다 — 저작 화면(BadgeForm)에서도 정리하지만
       // 서버에서도 같은 규칙을 강제한다(20260830_1344).
       faction_id: type === 'checkin' ? null : (body.faction_id !== undefined ? body.faction_id : existing.faction_id),
       item_book_id: type === 'checkin' ? null : (body.item_book_id !== undefined ? body.item_book_id : existing.item_book_id),

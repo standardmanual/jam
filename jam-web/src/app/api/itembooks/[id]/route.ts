@@ -5,7 +5,7 @@ import type {
   InventoryItemRow,
   BadgeRow,
   ItemBookRow,
-  FactionRow,
+  TribeRow,
   UserItemBookSlotRow,
   UserItemBookCompletionRow,
 } from '@/types/database'
@@ -27,8 +27,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!bookRaw) return NextResponse.json({ error: '컬렉션을 찾을 수 없어요. 주소가 잘못됐거나 삭제된 컬렉션일 수 있어요. 목록으로 돌아가서 다시 확인해 주세요.' }, { status: 404 })
   const book = bookRaw as ItemBookRow
 
-  // 2) 팩션 + 3) 이 북에 속한 아이템 배지 병렬
-  const [factionRes, badgesRes] = await Promise.all([
+  // 2) 트라이브 + 3) 이 북에 속한 아이템 배지 병렬
+  const [tribeRes, badgesRes] = await Promise.all([
     book.faction_id
       ? supabase.from('factions').select('*').eq('id', book.faction_id).single()
       : Promise.resolve({ data: null }),
@@ -41,7 +41,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       .order('created_at', { ascending: true }),
   ])
 
-  const faction = (factionRes.data ?? null) as FactionRow | null
+  const tribe = (tribeRes.data ?? null) as TribeRow | null
   const badges = (badgesRes.data ?? []) as Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'>[]
   const badgeIds = badges.map((b) => b.id)
 
@@ -125,7 +125,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   })
 
   return NextResponse.json({
-    itemBook: { ...book, faction },
+    itemBook: { ...book, tribe },
     badgeSlots,
     isCompleted,
   })

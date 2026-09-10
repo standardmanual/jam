@@ -37,11 +37,11 @@ const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    title: 'Layer 2 — 세계관 선택 (서사 모멘텀)',
+    title: 'Layer 2 — 트라이브 선택 (서사 모멘텀)',
     description: '모멘텀+인접+탐험 합은 1 이하 (잔여분은 탐험이 흡수).',
     fields: [
-      { key: 'momentum_weight', label: '모멘텀 (직전 세계관)', step: '0.01' },
-      { key: 'adjacent_weight', label: '인접 세계관', step: '0.01' },
+      { key: 'momentum_weight', label: '모멘텀 (직전 트라이브)', step: '0.01' },
+      { key: 'adjacent_weight', label: '인접 트라이브', step: '0.01' },
       { key: 'explore_weight', label: '탐험 (전체 랜덤)', step: '0.01' },
       { key: 'context_override_rate', label: '맥락 오버라이드 발동률', step: '0.01' },
       { key: 'mystery_spice_rate', label: '미스터리 헌터 등장률 (epic+ 전용)', step: '0.01' },
@@ -54,7 +54,7 @@ const SECTIONS: SectionDef[] = [
       { key: 'completion_decay', label: '완성도 감쇠 계수', step: '0.01' },
       { key: 'completed_book_weight', label: '완성 북 잔류 가중치', step: '0.01' },
       { key: 'same_book_penalty', label: '직전 북 페널티 배율', step: '0.01' },
-      { key: 'last_piece_pity_threshold', label: '마지막 조각 pity (세계관 내 드랍 수)', step: '1' },
+      { key: 'last_piece_pity_threshold', label: '마지막 조각 pity (트라이브 내 드랍 수)', step: '1' },
     ],
   },
 ]
@@ -86,7 +86,7 @@ export default function DropPolicyForm({ initial }: { initial: DropPolicy }) {
 
   const handleSave = async () => {
     if (hasValidationError) {
-      setMessage({ type: 'error', text: 'rarity 합/세계관 버킷 합을 먼저 맞춰주세요.' })
+      setMessage({ type: 'error', text: 'rarity 합/트라이브 버킷 합을 먼저 맞춰주세요.' })
       return
     }
     setSaving(true)
@@ -149,7 +149,7 @@ export default function DropPolicyForm({ initial }: { initial: DropPolicy }) {
             rarity 합: {raritySum.toFixed(3)} {raritySumInvalid && '(1이어야 함)'}
           </span>
           <span className={bucketSumInvalid ? 'text-red-600' : 'text-muted-foreground'}>
-            세계관 버킷 합: {bucketSum.toFixed(3)} {bucketSumInvalid && '(1 이하여야 함)'}
+            트라이브 버킷 합: {bucketSum.toFixed(3)} {bucketSumInvalid && '(1 이하여야 함)'}
           </span>
         </div>
       </div>
