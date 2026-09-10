@@ -1,6 +1,14 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-10 (JAM! 카테고리 — 서비스 사용량 배지 엔진 신설. badge-engine 밖의
+> 최종 업데이트: 2026-09-10 (사용량 배지(팔로워·팔로잉·일일동기화) + 반복 획득(`repeat_count`)
+> 조합 저장 시점 차단 — `usageBadges.ts`의 발급 경로는 등급형·레벨형만 구현돼 있는데
+> `isLeveledBadge()`가 `rarity==null` 이진 판정만 해서, 어드민이 이 3개 키 중 하나와
+> `repeat_count`를 함께 저장하면 에러 없이 저장되고도 실제로는 등급형 경로(이름 그룹 내
+> 최상위 tier 1개만 발급)로 흘러가 반복 획득이 조용히 무시됐다. 저장 시점 가드
+> `findUsageMetricRepeatConflictError`(`badge-condition-guards.ts`) 신설 + 어드민 폼의
+> 충족 횟수(`repeat_count`) 도움말에 안내 추가 — 티켓 20260910_1719)
+>
+> 이전: 2026-09-10 (JAM! 카테고리 — 서비스 사용량 배지 엔진 신설. badge-engine 밖의
 > 세 번째 평가 경로 `src/lib/badge-engine/usageBadges.ts` 추가 — 팔로워 수·팔로잉 수·하루
 > 동기화 횟수 3개 지표. `badge_type` enum은 그대로 두고 `type='activity'` +
 > `activity_types=[]`로 저장(배지 트리 미노출, 일반 목록·프로필엔 노출). 조건 필드 3종
@@ -70,7 +78,7 @@ Strava 싱크
 |---|---|---|
 | 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) |
 | 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`, `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
-| 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()` — §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 최소 재구현(선행 배지·교차 게이트 미평가) |
+| 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()` — §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 최소 재구현(선행 배지·교차 게이트·**반복형(`repeat_count`) 미지원** — `isLeveledBadge()` 이진 판정만 써서 등급형/레벨형만 가른다. 저장 시점 가드는 아래 참고, 티켓 20260910_1719) |
 | 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(신규, `increment_daily_sync_count()` RPC로 원자 증가) |
 
 필드 스펙은 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §3(메타데이터 필드) 참고.
