@@ -1,9 +1,12 @@
 # 트라이브 (Tribes) 컨텐츠 관리
 
-> **DB 표기 주의** — 테이블명은 `factions`, 컬럼명은 `faction_id`로 남아 있다. 티켓
-> 20260910_1129에서 코드 식별자와 화면 표기만 트라이브로 통일했고, staging과 프로덕션이
-> 단일 DB를 공유하는 탓에 스키마는 바꾸지 않았다. 아래 본문이 마이그레이션 파일명이나
-> 컬럼명을 faction으로 지칭하는 것은 오기가 아니라 실제 DB 상태다.
+> **DB 표기 이력** — 테이블·컬럼은 처음엔 `factions`/`faction_id`로 만들어졌다(마이그레이션
+> 014 등). 티켓 20260910_1129에서 코드·화면 표기만 트라이브로 통일했고(당시 공용 단일 DB에
+> 미배포 코드가 남아 있어 스키마는 보류), 서비스 런칭 전인 시점에 티켓 20260910_1226에서
+> 마이그레이션 152로 DB 스키마까지 `tribes`/`tribe_id`로 완전히 리네임했다. **현재 실제
+> DB는 `tribes`/`tribe_id`다.** 아래 표에 남은 `014_factions.sql` 등 마이그레이션 파일명은
+> 실행 당시 이름 그대로다(기존 마이그레이션 파일은 소급 수정하지 않는 원칙) — 파일명과
+> 현재 테이블명이 다른 것은 오기가 아니라 리네임 이력이다.
 
 > 원천 소스: [`Service Plan/Business/04 JAM! 트라이브.md`](04%20JAM!%20트라이브.md) (트라이브 설정·서비스 노출 텍스트), [`Content/ITEMBOOKS.xlsx`](ITEMBOOKS.xlsx) (컬렉션·아이템배지 목록)
 
@@ -125,7 +128,7 @@
 |---|---|
 | 트라이브 설정·서비스 노출 텍스트 | `Service Plan/Business/04 JAM! 트라이브.md` |
 | 컬렉션·아이템배지 전체 목록·설명 | `Service Plan/Specs/Content/ITEMBOOKS.xlsx` (`팩션` 시트: 트라이브×컬렉션, `팩션1`~`팩션10` 시트: 아이템배지 900종, `트라이브 인접` 시트: 인접 그래프) |
-| DB 스키마 | `jam-web/supabase/migrations/014_factions.sql` |
+| DB 스키마 | `jam-web/supabase/migrations/014_factions.sql` (신설) → `152_factions_to_tribes_rename.sql` (테이블·컬럼·RPC를 tribes/tribe_id로 완전 리네임) |
 | 배지 연결 | `jam-web/supabase/migrations/015_badges_faction.sql`, `016_itembooks_faction.sql` |
 | 초기 시드 | `jam-web/supabase/migrations/019_seed_worldview.sql` |
 | 드랍엔진 v2 트라이브 모멘텀 로직 | `jam-web/supabase/migrations/034_drop_engine_v2_schema.sql`, `jam-web/src/lib/drop-engine/` |
@@ -138,7 +141,7 @@
 - [x] 트라이브별 소속 배지·컬렉션 매핑 (현재 1트라이브 = 1컬렉션 = 90배지 구조)
 - [x] 트라이브 인접 그래프 (조합/드랍 모멘텀에 영향)
 - [ ] 트라이브 신규 추가 시 체크리스트 (DB 마이그레이션 + 인접 그래프 갱신 + 아이템 90종 설계 절차 — 실제 추가 사례 발생 시 문서화)
-- [ ] DB(`factions` 테이블)의 실제 컬럼·값이 이 문서와 100% 일치하는지 검증 (본 문서는 Business/ITEMBOOKS 소스 기준으로 작성, 코드 대조 검증 별도 필요)
+- [ ] DB(`tribes` 테이블)의 실제 컬럼·값이 이 문서와 100% 일치하는지 검증 (본 문서는 Business/ITEMBOOKS 소스 기준으로 작성, 코드 대조 검증 별도 필요)
 
 ## 관련 문서
 - [BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) — 트라이브 모멘텀이 드랍 확률에 반영되는 로직
