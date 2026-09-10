@@ -78,6 +78,10 @@ export async function POST(request: Request) {
   // (팔로우당한 사람의 획득 정보는 싣지 않음 — §2-2 자기 행동의 메아리 원칙과 동일한 이유로
   // 프론트 노출 대상이 아니다).
   let earnedBadges: EarnedBadgeSummary[] = []
+  // SyncButton(/api/strava/sync)과 동일한 계약을 맞춘다 — buildEarnedBadgePayload가 이미
+  // 계산해두는 값인데 이전까지는 응답에서 누락돼 있었다 (티켓 20260910_2056).
+  let earnedBadgesMore = 0
+  let isFirstBadgeEver = false
   try {
     const { count: followingCount } = await supabase
       .from('user_follows')
@@ -88,6 +92,8 @@ export async function POST(request: Request) {
       const service = createServiceClient()
       const payload = await buildEarnedBadgePayload(service, actorEarned.map((b) => b.id), user.id)
       earnedBadges = payload.earnedBadges
+      earnedBadgesMore = payload.earnedBadgesMore
+      isFirstBadgeEver = payload.isFirstBadgeEver
     }
   } catch (usageBadgeError) {
     console.error('[follows] following_count 사용량 배지 평가 실패:', usageBadgeError)
@@ -103,5 +109,5 @@ export async function POST(request: Request) {
     console.error('[follows] follower_count 사용량 배지 평가 실패:', usageBadgeError)
   }
 
-  return NextResponse.json({ ok: true, earnedBadges })
+  return NextResponse.json({ ok: true, earnedBadges, earnedBadgesMore, isFirstBadgeEver })
 }
