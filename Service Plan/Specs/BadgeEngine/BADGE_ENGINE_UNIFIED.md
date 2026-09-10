@@ -1,6 +1,15 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-08 (`badgeProgress.ts`의 `classifyConditionKind`를 화이트리스트
+> 최종 업데이트: 2026-09-10 (JAM! 카테고리 — 서비스 사용량 배지 엔진 신설. badge-engine 밖의
+> 세 번째 평가 경로 `src/lib/badge-engine/usageBadges.ts` 추가 — 팔로워 수·팔로잉 수·하루
+> 동기화 횟수 3개 지표. `badge_type` enum은 그대로 두고 `type='activity'` +
+> `activity_types=[]`로 저장(배지 트리 미노출, 일반 목록·프로필엔 노출). 조건 필드 3종
+> (`follower_count`/`following_count`/`daily_sync_count`)은 `mission_reward`와 같은
+> `role: 'meta'` + `evaluation: 'external'` 패턴. 신규 테이블 `user_daily_sync_counts` +
+> 원자적 증가 RPC `increment_daily_sync_count()`(마이그레이션 154), CHECK 제약 확장
+> (마이그레이션 155) — 티켓 20260910_1557)
+>
+> 이전: 2026-09-08 (`badgeProgress.ts`의 `classifyConditionKind`를 화이트리스트
 > 기반으로 일반화 — 20260908_1318이 추가한 개별 가드 `NO_PROGRESS_AXIS_YET`(4개 키 하드코딩)를
 > `KNOWN_MEASURABLE_AXIS_KEYS` 화이트리스트 + `unknownMeasurableAxisKeys()`로 대체. `role:
 > 'measurable'`인 미지의 축이 하나라도 남으면 fail-safe로 `unsupported`를 반환하는 구조가 돼,
@@ -51,7 +60,25 @@ Strava 싱크
 | 구현 파일 | `src/lib/badge-engine/index.ts` ✅ 구현 | `src/lib/drop-engine/` ✅ v2 구현 (2026-07-21) |
 | 게이미피케이션 역할 | 장기 목표·티어 성장 (mastery) | 세션 보상·트라이브 서사·수집 (variable reward) |
 
-**공통 정책 (두 엔진 공유):**
+**③ JAM! 카테고리 — 서비스 사용량 배지 (2026-09-10, 티켓 20260910_1557)** — badge-engine
+밖의 세 번째 평가 경로. `type='activity'`(위 ①과 같은 테이블)이지만 Strava 활동 이력이
+아니라 팔로워 수·팔로잉 수·하루 동기화 횟수 같은 "서비스를 어떻게 쓰는가"를 잰다.
+`badge_type` enum을 늘리는 대신 기존 `activity` 타입 안에서 `activity_types=[]`로 저장해
+배지 트리에는 노출하지 않는다(`/badges` 일반 목록·프로필엔 정상 노출).
+
+| | ① 액티비티배지 엔진 | ③ 서비스 사용량 배지 |
+|---|---|---|
+| 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) |
+| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`, `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
+| 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()` — §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 최소 재구현(선행 배지·교차 게이트 미평가) |
+| 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(신규, `increment_daily_sync_count()` RPC로 원자 증가) |
+
+필드 스펙은 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §3(메타데이터 필드) 참고.
+언팔로우(`DELETE /api/follows/[userId]`)는 평가를 트리거하지 않는다 — 감소만 일어나고
+신규 발급은 없으므로, 이미 발급된 배지도 회수하지 않는다(조건 미충족으로 돌아가도 그대로
+보유).
+
+**공통 정책 (①·② 두 엔진 공유 — ③은 아래 중 섀도우밴·피드 이벤트만 같은 방식으로 따른다):**
 - 첫 싱크 게이트: `users.initial_sync_done=false`인 첫 싱크는 고가치 발급 제한 (액티비티=계열의 첫 칸만 — 등급형은 Common 외 차단·무한레벨형은 Lv.1 외 차단, 아이템=첫 드랍 확정이되 rarity 정책 적용)
 - **가입 시점 앵커**(티켓 20260905_0030 §5): 누적 조건이 보는 이력은 `users.created_at` 이후로 잘린다. `getActivityHistory(supabase, userId, sinceDate)`의 3번째 인자를 호출처 4곳(`badge-engine/index.ts` · `missions/checker.ts` · `strava/sync.ts`의 진행 스냅샷 · `badges/tree/page.tsx`)이 전부 넘긴다 — 한 곳이라도 빠지면 화면·미션·발급이 서로 다른 창을 본다. **이번 싱크 배치는 앵커를 거치지 않는다**(첫 싱크의 «마지막 활동 1건 정산»이 성립해야 하므로). 앵커로 `strava_connections.created_at`을 쓰지 않은 이유는 `activity-history.ts`의 `getSignupAnchorDate` 주석 참조
 - 섀도우밴: 밴 레벨에 따라 고가치(rarity) 발급 차단 — `src/lib/abusing/`

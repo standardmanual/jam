@@ -1475,6 +1475,81 @@ export const CONDITION_FIELDS = [
     detail: (c) => gateDetail('미션 보상 배지', c.gate_mission_badge),
     form: gateForm('gateMissionBadge'),
   }),
+
+  // ── ⑤ JAM! 카테고리 — 서비스 사용량 지표 3종 (티켓 20260910_1557) ─────────
+  //
+  // 셋 다 `role: 'meta'`(`mission_reward`와 같은 자리) + `evaluation: 'external'`이다.
+  // Strava 활동과 무관해 badge-engine이 직접 볼 수 있는 수치가 없으므로, role이
+  // `measurable`이 아니다 — `evaluateConditionDetailed`는 measurable 필드가 하나도 없는
+  // 조건을 「평가 가능한 조건 없음」으로 항상 fail 처리한다(기존 방어 분기, 별도 분기 추가
+  // 불필요). 실제 판정·발급은 `src/lib/badge-engine/usageBadges.ts`의
+  // `evaluateUsageBadges()`가 전담한다 — 팔로우 API·동기화 API가 직접 호출한다.
+  //
+  // `role: 'meta'`라 `badgeProgress.ts`의 진행률 계산·`badge_metric_labels`(측정 축 라벨)
+  // 대상에서 자동으로 빠진다(계열 정합성 트리거의 measurable_keys에도 넣지 않는다 —
+  // 마이그레이션 155 참고). 이 배지는 `activity_types=[]`로 저장하는 것이 설계 전제라
+  // `/badges/tree`(badgeTree.ts — activity_types[0] 기준 구성)에는 노출되지 않고,
+  // `/badges` 일반 목록·프로필은 `type==='activity'`만 보므로 정상 노출된다.
+  field({
+    key: 'follower_count',
+    label: '팔로워 수',
+    unit: '명',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `팔로워 ${c.follower_count}명↑`,
+    detail: (c) => `팔로워 ${c.follower_count}명 이상`,
+    form: integerForm('followerCount', {
+      section: 'meta',
+      label: '팔로워 수 (명)',
+      placeholder: '예: 100',
+      help: '팔로우 API 호출 직후 평가돼요(usageBadges.ts, 엔진 밖). activity_types는 비워두세요 — 배지 트리에는 노출되지 않아요.',
+    }),
+  }),
+  field({
+    key: 'following_count',
+    label: '팔로잉 수',
+    unit: '명',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 1000000,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `팔로잉 ${c.following_count}명↑`,
+    detail: (c) => `팔로잉 ${c.following_count}명 이상`,
+    form: integerForm('followingCount', {
+      section: 'meta',
+      label: '팔로잉 수 (명)',
+      placeholder: '예: 50',
+      help: '팔로우 API 호출 직후 평가돼요(usageBadges.ts, 엔진 밖). activity_types는 비워두세요 — 배지 트리에는 노출되지 않아요.',
+    }),
+  }),
+  field({
+    key: 'daily_sync_count',
+    label: '하루 동기화 횟수',
+    unit: '회',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 100,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `하루 동기화 ${c.daily_sync_count}회↑`,
+    detail: (c) => `하루(KST) 누적 동기화 ${c.daily_sync_count}회 이상`,
+    form: integerForm('dailySyncCount', {
+      section: 'meta',
+      label: '하루 동기화 횟수 (회)',
+      placeholder: '예: 7',
+      help: '동기화 API가 synced>0일 때만 평가해요(usageBadges.ts, 엔진 밖). activity_types는 비워두세요 — 배지 트리에는 노출되지 않아요.',
+    }),
+  }),
 ] as const
 
 // ── 파생 목록 ────────────────────────────────────────────────────────────

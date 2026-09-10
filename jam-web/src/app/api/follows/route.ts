@@ -2,8 +2,10 @@
 // 팔로우 추가 (승인 없이 바로 팔로우 — Twitter/X 방식)
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification, dailyGroupKey } from '@/lib/notifications'
+import { evaluateUsageBadges } from '@/lib/badge-engine/usageBadges'
+import { buildEarnedBadgePayload, type EarnedBadgeSummary } from '@/lib/strava/sync'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -67,5 +69,39 @@ export async function POST(request: Request) {
     appendKeys: ['actor_ids'],
   })
 
-  return NextResponse.json({ ok: true })
+  // JAM! 카테고리 — 서비스 사용량 배지 (티켓 20260910_1557).
+  //
+  // 팔로우 성공(신규 insert, 중복 아님) 직후 **양쪽 유저**를 평가한다 — 팔로우한 사람
+  // (user.id)의 following_count, 팔로우당한 사람(targetUserId)의 follower_count. 각각
+  // 독립적으로 try/catch로 감싸 한쪽이 실패해도 다른 쪽·원본 팔로우 응답(200)에 영향을
+  // 주지 않는다. 응답에는 **팔로우한 사람 본인**이 이번 액션으로 획득한 배지만 싣는다
+  // (팔로우당한 사람의 획득 정보는 싣지 않음 — §2-2 자기 행동의 메아리 원칙과 동일한 이유로
+  // 프론트 노출 대상이 아니다).
+  let earnedBadges: EarnedBadgeSummary[] = []
+  try {
+    const { count: followingCount } = await supabase
+      .from('user_follows')
+      .select('id', { count: 'exact', head: true })
+      .eq('follower_id', user.id)
+    const actorEarned = await evaluateUsageBadges(user.id, 'following_count', followingCount ?? 0)
+    if (actorEarned.length > 0) {
+      const service = createServiceClient()
+      const payload = await buildEarnedBadgePayload(service, actorEarned.map((b) => b.id), user.id)
+      earnedBadges = payload.earnedBadges
+    }
+  } catch (usageBadgeError) {
+    console.error('[follows] following_count 사용량 배지 평가 실패:', usageBadgeError)
+  }
+
+  try {
+    const { count: followerCount } = await supabase
+      .from('user_follows')
+      .select('id', { count: 'exact', head: true })
+      .eq('following_id', targetUserId)
+    await evaluateUsageBadges(targetUserId, 'follower_count', followerCount ?? 0)
+  } catch (usageBadgeError) {
+    console.error('[follows] follower_count 사용량 배지 평가 실패:', usageBadgeError)
+  }
+
+  return NextResponse.json({ ok: true, earnedBadges })
 }

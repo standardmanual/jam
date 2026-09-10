@@ -2054,6 +2054,35 @@ export type Database = {
           },
         ]
       }
+      user_daily_sync_counts: {
+        Row: {
+          count: number
+          sync_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          sync_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          sync_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_daily_sync_counts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_drop_state: {
         Row: {
           common_streak: number
@@ -2587,6 +2616,10 @@ export type Database = {
           p_history_limit?: number
           p_user_id: string
         }
+        Returns: number
+      }
+      increment_daily_sync_count: {
+        Args: { p_sync_date: string; p_user_id: string }
         Returns: number
       }
       jsonb_as_array: { Args: { p_value: Json }; Returns: Json }
