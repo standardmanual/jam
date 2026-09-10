@@ -158,11 +158,6 @@ function earnStateOf(badgeId: string): EarnState {
   return state.earnState[badgeId]
 }
 
-function own(...badges: BadgeRow[]) {
-  state.badges.push(...badges)
-  state.ownedBadgeIds.push(...badges.map((b) => b.id))
-}
-
 function oneRun() {
   state.storedActivities = [{ normalized: makeRun('2026-04-10T05:00:00Z'), start_date: '2026-04-10T05:00:00Z' }]
 }
