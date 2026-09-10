@@ -14,20 +14,20 @@
 ```
 [유저/인증]     users ─1:1─ strava_connections
                  ├─1:N─ strava_activities (동기화 원본 활동 기록)
-                 └──faction_id──> factions (온보딩에서 1회 선택, 탈퇴 전까지 불변)
+                 └──tribe_id──> tribes (온보딩에서 1회 선택, 탈퇴 전까지 불변)
 
-[배지]          badges (activity/item/checkin) ──faction_id──> factions
+[배지]          badges (activity/item/checkin) ──tribe_id──> tribes
                  ├─1:N─ user_activity_badges      (활동/아이템 배지, 행은 1개 · 반복 획득은 earn_count 누적)
                  └─1:N─ user_checkin_badge_earns  (체크인 배지, 반복 획득 가능)
 
 [인벤토리]      users ─1:1─ inventory ─1:N─ inventory_items ──badge_id──> badges
                                               └─ slotted_in ──> item_books (슬롯 장착)
 
-[컬렉션]        item_books ──faction_id──> factions
+[컬렉션]        item_books ──tribe_id──> tribes
                  ├─1:N─ user_item_book_slots        (슬롯별 장착 현황)
                  └─1:N─ user_item_book_completions   (완성 기록)
 
-[트라이브]        factions ─N:M(인접)─ factions (faction_adjacency, 드랍 모멘텀용)
+[트라이브]        tribes ─N:M(인접)─ tribes (tribe_adjacency, 드랍 모멘텀용)
 
 [POI/드랍]      poi ──category──> poi_categories
                  ├─1:N─ poi_drops (유저 드랍)
@@ -68,7 +68,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 | username | 고유 닉네임 (`^[a-z0-9._]+$`, nullable — 온보딩 1단계 완료 전 null) |
 | display_name | 자유 형식 표시 이름 (nullable, 1~30자, 형식 제한 없음). 화면에서 username이 노출되던 위치는 이 값이 있으면 이 값을, 없으면 username을 대신 노출(표시 전용 폴백 — DB에 복사해 채우지 않음). 온보딩 1단계에서 필수 입력, 프로필 편집에서 임의 시점에 다시 변경 가능(필수 아님, 수정 횟수 제한 없음, 티켓 20260830_0113) |
 | avatar_url | 프로필 이미지. 온보딩 2단계에서 구글 기본값을 보여주고 변경 가능(선택) |
-| faction_id | 온보딩 2단계에서 선택한 트라이브 FK → `factions.id`, nullable. **온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변** — 변경 API 없음. 기존 유저는 null 허용(강제 재온보딩 없음, 티켓 20260909_2119) |
+| tribe_id | 온보딩 2단계에서 선택한 트라이브 FK → `tribes.id`, nullable. **온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변** — 변경 API 없음. 기존 유저는 null 허용(강제 재온보딩 없음, 티켓 20260909_2119) |
 | onboarding_completed_at | 온보딩 2단계(트라이브 포함)까지 완료된 시각, nullable. null이면 `/auth/callback`이 온보딩으로 리다이렉트한다(티켓 20260909_2119) |
 | last_location_lat/lng/at | 최근 위치 (GPS 조작 감지용) |
 | initial_sync_done | 첫 Strava 동기화 시 common 등급만 발급하는 게이트 완료 여부 |
@@ -106,8 +106,8 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 | rarity | common / rare / epic / mystic. **nullable** — NULL이면 무한레벨형이며, 이것이 v5의 **유일한** 배지 종류 판정 기준이다(별도 `badge_kind` 컬럼을 두지 않는다 — 판정 기준이 둘이면 서로 어긋난다). `CHECK ((rarity IS NULL) = (level IS NOT NULL))`이 강제한다 |
 | level | 무한레벨형의 레벨(Lv.1~∞). 등급형은 NULL. `level >= 1` |
 | family_key | 계열 식별자. 이름 문자열 대신 쓰는 안정적인 키. 활동 배지에만 채운다 |
-| sort_order | 표시 순서(오름차순). 계열 레일 1~99(계열 안 모든 등급이 같은 값을 공유) / 독립 발급 배지 101~ . **`0`은 «아직 설정하지 않음»이며 화면에서 맨 뒤로 밀린다** — 저장소의 다른 `sort_order`(`today_cards`·`factions`·`item_books`)는 0이 앞이라는 반대 관습이므로, 배지에 한해 이 규약을 따른다 |
-| faction_id | 소속 트라이브 (아이템 배지) |
+| sort_order | 표시 순서(오름차순). 계열 레일 1~99(계열 안 모든 등급이 같은 값을 공유) / 독립 발급 배지 101~ . **`0`은 «아직 설정하지 않음»이며 화면에서 맨 뒤로 밀린다** — 저장소의 다른 `sort_order`(`today_cards`·`tribes`·`item_books`)는 0이 앞이라는 반대 관습이므로, 배지에 한해 이 규약을 따른다 |
+| tribe_id | 소속 트라이브 (아이템 배지) |
 | item_book_id | 소속 컬렉션 (구조 역전 — 컬렉션이 배지 목록을 갖는 게 아니라 배지가 소속 컬렉션을 가짐) |
 | drop_weight / drop_condition_json | 드랍엔진 판정용 |
 | valid_from / valid_until | 노출 기간 |
@@ -122,7 +122,7 @@ Strava를 쓰는 활동가. 구글 로그인으로 가입, 이후 2단계 온보
 
 #### 배경 렌더링 우선순위
 
-badges / item_books / factions 세 테이블이 같은 배경 컬럼 세트를 갖고, 판정은 전부
+badges / item_books / tribes 세 테이블이 같은 배경 컬럼 세트를 갖고, 판정은 전부
 `src/lib/badgeBackgroundTheme.ts` **한 곳**에서 한다(호출부가 우선순위를 각자 해석하지 않는다).
 
 **`background_animation` > `background_image_url` > `background_color`**
@@ -194,7 +194,7 @@ badges / item_books / factions 세 테이블이 같은 배경 컬럼 세트를 �
 ## 4. 컬렉션
 
 ### item_books
-`faction_id`로 트라이브 연동, `story_text`, `is_active`, `drop_condition_json` 보유. **`required_item_badge_ids` 컬럼은 삭제됨** — 완성 조건은 이제 `badges.item_book_id`(배지→북 소속)로 역방향 관리.
+`tribe_id`로 트라이브 연동, `story_text`, `is_active`, `drop_condition_json` 보유. **`required_item_badge_ids` 컬럼은 삭제됨** — 완성 조건은 이제 `badges.item_book_id`(배지→북 소속)로 역방향 관리.
 
 `background_color`/`background_shader_id`(20260818_004, 컬렉션 상세 배경 테마용) 외에
 `background_image_url`/`background_video_url`(nullable, 20260819_013),
@@ -223,7 +223,7 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 
 ## 5. 트라이브 (tribe) — 신규 도메인
 
-### factions
+### tribes
 10개 트라이브. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/TRIBES.md](../Content/TRIBES.md) 참고.
 
 `background_color`/`background_shader_id`(20260818_004) 외에 `background_image_url`/`background_video_url`
@@ -238,8 +238,8 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 필드는 기존 DB 값을 그대로 유지하고, body에 명시적으로 포함된 필드만 갱신한다. 인접 트라이브만 저장하는
 `AdjacencyEditor.tsx`처럼 일부 필드만 담아 호출하는 화면도 안전하게 이 엔드포인트를 재사용할 수 있다.
 
-### faction_adjacency
-트라이브 간 인접 그래프 (PK: faction_id + adjacent_faction_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) §3.2 참고.
+### tribe_adjacency
+트라이브 간 인접 그래프 (PK: tribe_id + adjacent_tribe_id). 드랍엔진 v2의 "서사 모멘텀" 판정에 사용 — 상세는 [Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) §3.2 참고.
 
 ---
 
@@ -490,7 +490,7 @@ FK 제약도 걸지 않는다 — `strava_activities` 적재보다 이벤트 기
 |---|---|
 | User | `users` — `display_name`→`username`, GPS/온보딩 컬럼 추가, 이후 `display_name` 표시 전용 필드로 재도입(20260830) |
 | StravaConnection | `strava_connections` — 거의 원형 유지 |
-| Badge | `badges` — faction/point/soft-delete 등 대폭 확장, `type`에 `poi` 추가 |
+| Badge | `badges` — tribe/point/soft-delete 등 대폭 확장, `type`에 `poi` 추가 |
 | UserActivityBadge | `user_activity_badges` — 트리거 메타·발급 스냅샷 추가 |
 | Inventory | `inventory` — 거의 원형 |
 | InventoryItem | `inventory_items` — 일련번호 랜덤화, 슬롯 참조 추가 |

@@ -91,30 +91,30 @@ VALUES (NEW.id, 50, 0);
 3. 이름(`display_name`) 입력 — 온보딩에서는 **필수**(자유 텍스트, 최대 30자, 형식 제한 없음).
    프로필 편집에서는 선택값이라는 점과 다르다(20260830_0113)
 4. 만 14세 이상 자기확인 체크(최초 1회만 노출, 티켓 20260901_2217)
-5. `POST /api/onboarding/complete` (body에 `faction_id` 없이 호출) → `users.username`,
+5. `POST /api/onboarding/complete` (body에 `tribe_id` 없이 호출) → `users.username`,
    `users.display_name`만 저장. `onboarding_completed_at`은 아직 기록하지 않는다
 
 **2단계 — 트라이브 선택 + 프로필이미지**
-1. `factions WHERE is_active = true` 목록을 카드 그리드로 노출(비활성 트라이브 및 0개 상황
+1. `tribes WHERE is_active = true` 목록을 카드 그리드로 노출(비활성 트라이브 및 0개 상황
    방어 로직 포함)
 2. 프로필 이미지는 구글 기본값을 보여주고, 변경 시 기존 `POST /api/profile/avatar`(Supabase
    Storage `avatars` 버킷)를 그대로 재사용 — 선택 사항
-3. 트라이브 카드 선택 후 `POST /api/onboarding/complete` (body에 `faction_id` 포함) 호출:
-   - 이미 `faction_id`가 설정된 유저의 재호출은 409 `ALREADY_SET`으로 거부(트라이브 불변 강제)
-   - 제출한 `faction_id`가 존재하지 않거나 `is_active=false`면 400 `INVALID_FACTION`
+3. 트라이브 카드 선택 후 `POST /api/onboarding/complete` (body에 `tribe_id` 포함) 호출:
+   - 이미 `tribe_id`가 설정된 유저의 재호출은 409 `ALREADY_SET`으로 거부(트라이브 불변 강제)
+   - 제출한 `tribe_id`가 존재하지 않거나 `is_active=false`면 400 `INVALID_TRIBE`
    - 두 거부 모두 `console.error`로 로깅(어뷰징·UI 버그 조기 감지)
-   - 통과 시 `users.faction_id`, `users.onboarding_completed_at`을 함께 기록 — 이 시점부터
+   - 통과 시 `users.tribe_id`, `users.onboarding_completed_at`을 함께 기록 — 이 시점부터
      온보딩 완료로 판정된다
 
-**트라이브 불변**: `faction_id`는 온보딩 2단계에서 1회 설정된 뒤 탈퇴 전까지 변경할 수 없다.
-`PATCH /api/profile`에는 애초에 `faction_id`를 다루는 코드가 없어 변경 API 자체가 존재하지
+**트라이브 불변**: `tribe_id`는 온보딩 2단계에서 1회 설정된 뒤 탈퇴 전까지 변경할 수 없다.
+`PATCH /api/profile`에는 애초에 `tribe_id`를 다루는 코드가 없어 변경 API 자체가 존재하지
 않는다(프로필 편집은 프로필이미지·아이디·이름만 지원).
 
 **기존 유저**: `onboarding_completed_at` 컬럼은 이번 티켓(20260909_2119)에서 신규 추가됐으므로
 추가 직후에는 모든 로우가 NULL이다. 컬럼을 추가하는 마이그레이션(149번)이 같은 트랜잭션에서
 `username IS NOT NULL`인 기존 유저의 `onboarding_completed_at`을 즉시 백필한다(과거 1단계
 온보딩을 이미 마친 것으로 간주) — 이 백필이 없으면 기존 유저가 다음 로그인 때 전부 온보딩으로
-강제 이동한다. `faction_id`는 백필 대상이 아니라 NULL로 남고, 그 상태로 서비스를 계속
+강제 이동한다. `tribe_id`는 백필 대상이 아니라 NULL로 남고, 그 상태로 서비스를 계속
 이용할 수 있다(점진적 유도 UI는 후속 과제).
 
 ---
@@ -1042,9 +1042,9 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | `user_activity_badges` | 유저 획득 배지 기록 (triggered_by, strava 메타) | 001 |
 | `inventory` | 유저 인벤토리 (max_slots, used_slots) | 001 |
 | `inventory_items` | 인벤토리 아이템 개별 레코드 (expires_at, slotted_in) | 001 |
-| `item_books` | 아이템북 정의 (faction_id, reward_badge_id, is_active) | 001 |
+| `item_books` | 아이템북 정의 (tribe_id, reward_badge_id, is_active) | 001 |
 | `poi` | 관심 지점 (위치, 반경, linked_badge_id, osm_id) | 001 |
-| `factions` | 트라이브 정의 | 014 |
+| `tribes` | 트라이브 정의 | 014, 152(리네임) |
 | `combination_recipes` | 조합 레시피 (ingredient_badge_ids, result_badge_id, success_rate) | 011 |
 | `missions` | 미션 정의 (type, condition_json, starts/ends_at, max_completions) | 011 |
 | `user_mission_participations` | 미션 참가 기록 | 012 |
