@@ -86,3 +86,30 @@ describe('family_key 불변 (판단 ③)', () => {
     expect(putCode).not.toMatch(/family_key:\s*body\./)
   })
 })
+
+describe('⑥ admin_category — 어드민 전용 분류(JAM!), type과 무관하게 저장 (티켓 20260910_2055)', () => {
+  it('POST가 admin_category를 body에서 읽어 insert 페이로드에 넣는다', () => {
+    expect(postCode).toMatch(/const \{[^}]*\badmin_category\b[^}]*\} = body/)
+    expect(postCode).toMatch(/admin_category:/)
+  })
+
+  it("POST·PUT의 admin_category 저장 줄에는 category처럼 type==='checkin' 가드가 없다", () => {
+    for (const code of [postCode, putCode]) {
+      const line = code.match(/admin_category:[^\n]*/)
+      expect(line).not.toBeNull()
+      expect(line![0]).not.toContain("type === 'checkin'")
+    }
+  })
+
+  it('PUT이 admin_category를 병합한다 — body에 없으면(undefined) 기존 값을 유지한다', () => {
+    expect(putCode).toMatch(/admin_category:\s*body\.admin_category\s*!==\s*undefined\s*\?\s*body\.admin_category\s*:\s*existing\.admin_category/)
+  })
+})
+
+describe('기존 category(지점 카테고리) 가드는 admin_category 추가로 건드리지 않는다', () => {
+  it("POST·PUT 모두 category는 여전히 type === 'checkin'일 때만 저장한다", () => {
+    for (const code of [postCode, putCode]) {
+      expect(code).toMatch(/category:\s*type === 'checkin'/)
+    }
+  })
+})

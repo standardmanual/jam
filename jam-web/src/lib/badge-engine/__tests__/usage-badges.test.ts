@@ -35,6 +35,7 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     tribe_id: null,
     item_book_id: null,
     category: null,
+    admin_category: null,
     drop_weight: 0,
     drop_condition_json: null,
     valid_from: null,

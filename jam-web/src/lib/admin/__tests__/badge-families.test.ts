@@ -42,6 +42,7 @@ function badge(overrides: Partial<FamilyBadge> = {}): FamilyBadge {
     condition_json: { activity_type: 'walking', distance_km: 10 } as BadgeCondition,
     activity_types: ['walking'],
     deleted_at: null,
+    admin_category: null,
     ...overrides,
   }
 }
@@ -121,6 +122,31 @@ describe('① 계열 그룹핑은 family_key 기준이고 비어 있으면 폴�
       badge({ condition_json: { activity_type: 'walking', daily_once_count: 30 } }),
     ])
     expect(family.pendingKeys).toContain('daily_once_count')
+  })
+})
+
+describe('⑤ JAM! 카테고리(admin_category) — 종목 없는 계열도 실제 정보를 보여준다 (티켓 20260910_2055)', () => {
+  it('activity_types가 비어 있어도 admin_category로 구분되고, 사용량 지표 키가 드러난다', () => {
+    const [family] = groupBadgesIntoFamilies([
+      badge({
+        name: '만 명의 시선',
+        family_key: null,
+        activity_types: [],
+        condition_json: { follower_count: 10000 } as BadgeCondition,
+        admin_category: 'jam',
+      }),
+    ])
+    expect(family.activityType).toBeNull()
+    expect(family.adminCategory).toBe('jam')
+    // follower_count는 role:'meta'라 measurable(엔진이 수치 검사하는 필드)에는 잡히지 않는다.
+    expect(family.measurableKeys).toEqual([])
+    expect(family.usageMetricKeys).toEqual(['follower_count'])
+  })
+
+  it('admin_category가 없는 일반 배지는 usageMetricKeys가 비어 있고 adminCategory는 null이다', () => {
+    const [family] = groupBadgesIntoFamilies([badge()])
+    expect(family.adminCategory).toBeNull()
+    expect(family.usageMetricKeys).toEqual([])
   })
 })
 

@@ -19,7 +19,7 @@ import {
   getUnsupportedConditionKeys,
   type ConditionFormFields,
 } from './conditionFormFields'
-import { BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
+import { ADMIN_CATEGORIES, ADMIN_CATEGORY_LABEL, BADGE_TYPES, BADGE_TYPE_LABEL } from '@/lib/admin/badge-labels'
 // 조건 입력 UI는 **레지스트리 선언에서 생성한다** — 필드마다 JSX를 하드코딩하던 구조를
 // 뒤집었다(티켓 20260905_0032 A-2). 새 조건 필드는 conditionRegistry.ts의 `form` 선언과
 // ConditionFormFields의 state 키만 추가하면 이 화면에 자동으로 나타난다.
@@ -158,6 +158,9 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
   const [tribeId, setTribeId] = useState(badge?.tribe_id ?? '')
   const [itemBookId, setItemBookId] = useState(badge?.item_book_id ?? '')
   const [category, setCategory] = useState(badge?.category ?? '')
+  // 어드민 전용 분류(JAM! 카테고리) — 위 category(지점 카테고리)와 달리 type과 무관하게
+  // 독립적으로 유지된다(티켓 20260910_2055).
+  const [adminCategory, setAdminCategory] = useState(badge?.admin_category ?? '')
   const [dropWeight, setDropWeight] = useState<string>(
     badge?.drop_weight?.toString() ?? '1.0'
   )
@@ -347,6 +350,9 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
         item_book_id: type === 'checkin' ? null : itemBookId || null,
         // 지점 카테고리는 체크인 배지 전용 — 다른 타입에서는 항상 null.
         category: type === 'checkin' ? category || null : null,
+        // 어드민 전용 분류(JAM! 카테고리)는 위 category와 달리 type과 무관하게 저장한다
+        // (티켓 20260910_2055).
+        admin_category: adminCategory || null,
         drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
         valid_from: validFrom ? new Date(validFrom).toISOString() : null,
         valid_until: validUntil ? new Date(validUntil).toISOString() : null,
@@ -745,6 +751,31 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories }: B
             </span>
           </label>
         )}
+
+        {/* 어드민 전용 분류(JAM! 카테고리) — 위 지점 카테고리와 달리 타입과 무관하게 항상
+            노출한다. 유저에게는 보이지 않고 어드민 화면(목록 필터·계열관리·게이트미션·
+            아이템북·시뮬레이터)에서만 구분에 쓴다(티켓 20260910_2055). */}
+        <label className="flex flex-col gap-1.5 col-span-2">
+          <span className="text-sm text-foreground">어드민 카테고리</span>
+          <Select
+            value={adminCategory || NONE_VALUE}
+            onValueChange={(v) => setAdminCategory(v === NONE_VALUE ? '' : v)}
+          >
+            <SelectTrigger aria-label="어드민 카테고리">
+              <SelectValue placeholder="카테고리를 선택해주세요" />
+            </SelectTrigger>
+            <SelectContent container={themeContainer ?? undefined}>
+              <SelectItem value={NONE_VALUE}>— 없음 —</SelectItem>
+              {ADMIN_CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>{ADMIN_CATEGORY_LABEL[c]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground">
+            유저에게는 보이지 않는 어드민 전용 분류예요. 서비스 사용량 지표(팔로워 수 등)
+            조건 배지는 &quot;JAM!&quot;으로 표시돼요.
+          </span>
+        </label>
 
         {/* 아이템 배지 전용 설정 */}
         {type === 'item' && (

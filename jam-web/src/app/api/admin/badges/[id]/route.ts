@@ -84,6 +84,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       item_book_id: type === 'checkin' ? null : (body.item_book_id !== undefined ? body.item_book_id : existing.item_book_id),
       // 배지 카테고리는 체크인 배지 전용(poi_categories.slug 재사용, 마이그레이션 113).
       category: type === 'checkin' ? (body.category !== undefined ? body.category : existing.category) : null,
+      // 어드민 전용 분류(JAM! 카테고리, 마이그레이션 156)는 위 category와 달리 type과 무관하게
+      // 병합한다 — JAM! 배지는 type='activity'라 type==='checkin' 가드를 그대로 쓰면 저장할
+      // 때마다 값이 사라진다(티켓 20260910_2055 AC9).
+      admin_category: body.admin_category !== undefined ? body.admin_category : existing.admin_category,
       drop_weight: body.drop_weight !== undefined ? body.drop_weight : existing.drop_weight,
       valid_from: body.valid_from !== undefined ? body.valid_from : existing.valid_from,
       valid_until: body.valid_until !== undefined ? body.valid_until : existing.valid_until,

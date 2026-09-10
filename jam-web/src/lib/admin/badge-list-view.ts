@@ -29,6 +29,7 @@ import {
 // 「0은 맨 뒤」·종목 탭 순서는 배지 트리와 같은 규칙을 써야 한다 — 다시 선언하지 않는다.
 import { sortRank, TREE_ACTIVITY_ORDER } from '@/lib/badgeTree'
 import { familySlotRank } from './badge-families'
+import { ADMIN_CATEGORIES, type AdminCategory } from './badge-labels'
 
 // ── 정렬 ────────────────────────────────────────────────────────────────────
 
@@ -163,4 +164,17 @@ export function badgeUsesConditionField(
   key: ConditionKey
 ): boolean {
   return !!condition && condition[key] !== undefined && condition[key] !== null
+}
+
+// ── 어드민 카테고리 필터 (티켓 20260910_2055) ────────────────────────────────
+
+/**
+ * URL 파라미터를 어드민 카테고리(`admin_category`)로 좁힌다. 화이트리스트(DB CHECK 제약과
+ * 같은 값 집합, `badge-labels.ts`)에 없는 값은 null — 지점 카테고리 필터
+ * (`parseConditionFieldFilter`)와 같은 이유로, 조회 필터에 검증 안 된 문자열이 그대로
+ * 들어가지 않게 한다.
+ */
+export function parseAdminCategoryFilter(value: string | null | undefined): AdminCategory | null {
+  if (!value) return null
+  return (ADMIN_CATEGORIES as readonly string[]).includes(value) ? (value as AdminCategory) : null
 }

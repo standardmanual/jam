@@ -14,6 +14,7 @@ import { filterFamilies, groupBadgesIntoFamilies } from '@/lib/admin/badge-famil
 import { MEASURABLE_CONDITION_KEYS, getConditionField } from '@/lib/badge-engine/conditionRegistry'
 import { TREE_ACTIVITY_ORDER } from '@/lib/badgeTree'
 import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
+import { adminCategoryLabel } from '@/lib/admin/badge-labels'
 import BadgeFamiliesFilterBar from './BadgeFamiliesFilterBar'
 import {
   Table,
@@ -128,7 +129,9 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
             {families.map((family) => (
               <TableRow key={family.key}>
                 <TableCell className="whitespace-nowrap">
-                  {family.activityType ? ACTIVITY_TYPE_LABELS[family.activityType] ?? family.activityType : '—'}
+                  {family.activityType
+                    ? ACTIVITY_TYPE_LABELS[family.activityType] ?? family.activityType
+                    : adminCategoryLabel(family.adminCategory) ?? '—'}
                 </TableCell>
                 <TableCell>
                   <Link
@@ -162,9 +165,11 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
                 <TableCell className="whitespace-nowrap">{family.topLabel}</TableCell>
                 <TableCell className="text-right tabular-nums">{family.variants.length}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {family.measurableKeys.length === 0
-                    ? '—'
-                    : family.measurableKeys.map((k) => getConditionField(k)?.label ?? k).join(' · ')}
+                  {family.measurableKeys.length > 0
+                    ? family.measurableKeys.map((k) => getConditionField(k)?.label ?? k).join(' · ')
+                    : family.usageMetricKeys.length > 0
+                      ? family.usageMetricKeys.map((k) => getConditionField(k)?.label ?? k).join(' · ')
+                      : '—'}
                 </TableCell>
                 <TableCell className="text-right tabular-nums whitespace-nowrap">
                   {family.withImage}/{family.variants.length}

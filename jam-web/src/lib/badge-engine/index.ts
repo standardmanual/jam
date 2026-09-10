@@ -1016,8 +1016,15 @@ export async function evaluateBadgesDetailed(
   // 미션 보상 배지(condition_json.mission_reward = true)는 발급 후보에서 아예 제외한다.
   // 이 배지들은 미션 완료 시 grantMissionRewards()로만 지급되며, 동기화 평가로 발급되면
   // 본 배지 Rare/Epic/Mystic의 선행 배지 게이트(§2.7)가 통째로 열린다 (티켓 20260825_028).
+  //
+  // JAM! 카테고리(admin_category='jam')도 같은 이유로 제외한다 — 팔로워 수 등은 Strava
+  // 활동 이력에 없는 값이라 이 평가 경로(evaluateConditionDetailed)는 항상
+  // "평가 가능한 조건 없음"으로 fail 처리한다(`role:'meta'`라 MEASURABLE_CONDITION_KEYS에
+  // 없음). 실제 발급은 usageBadges.ts가 전담하므로 여기서 제외해도 발급 동작은 그대로다 —
+  // 시뮬레이터·동기화의 `missed` 목록에서 평가 불가능한 항목이 매번 쌓이는 것만 막는다
+  // (티켓 20260910_2055).
   const allBadges = (allBadgesRaw as BadgeRow[] | null)?.filter(
-    (b) => (b.condition_json as BadgeCondition | null)?.mission_reward !== true
+    (b) => (b.condition_json as BadgeCondition | null)?.mission_reward !== true && b.admin_category !== 'jam'
   ) ?? null
 
   if (badgesError || !allBadges || allBadges.length === 0) {

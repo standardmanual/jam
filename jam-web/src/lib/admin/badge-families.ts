@@ -20,6 +20,7 @@
 import type { ActivityType, BadgeCondition, BadgeRarity, BadgeRow } from '@/types/database'
 import { familyKeyOf, isLeveledBadge } from '@/lib/badge-engine/badgeKind'
 import {
+  CONDITION_META_KEYS,
   MEASURABLE_CONDITION_KEYS,
   findBlockingConditionKeys,
   getConditionField,
@@ -44,7 +45,16 @@ export type FamilyBadge = Pick<
   | 'condition_json'
   | 'activity_types'
   | 'deleted_at'
+  | 'admin_category'
 >
+
+/**
+ * 사용량 지표(follower_count 등) 키 — `role: 'meta'`이지만 `mission_reward`(불리언 플래그,
+ * 지표가 아니다)는 제외한다. JAM! 카테고리 배지가 쓰는 조건 지표를 "조건지표" 칸에 사람이
+ * 읽을 이름으로 보여주는 용도(`measurableKeys`는 role이 'measurable'인 필드만 모으므로
+ * 이 배지들에는 항상 비어 있다) — 티켓 20260910_2055.
+ */
+const USAGE_METRIC_DISPLAY_KEYS: readonly ConditionKey[] = CONDITION_META_KEYS.filter((k) => k !== 'mission_reward')
 
 /** 계열 안 배지들의 종류 구성. `mixed`는 카탈로그 오류 신호다(같은 키에 등급형·레벨형 혼재) */
 export type FamilyKind = 'graded' | 'leveled' | 'mixed'
@@ -70,6 +80,13 @@ export interface BadgeFamily {
   measurableKeys: ConditionKey[]
   /** 그중 엔진이 아직 평가하지 않는 필드 — 「평가 대기」 표시용 */
   pendingKeys: ConditionKey[]
+  /** 사용 중인 사용량 지표(계열 전체의 합집합). `measurableKeys`와 달리 role:'meta'라
+   *  발급 판정에는 관여하지 않지만, 종목이 없는 JAM! 계열의 "조건지표" 칸을 채우는 용도
+   *  (티켓 20260910_2055) */
+  usageMetricKeys: ConditionKey[]
+  /** 어드민 전용 분류(`admin_category`, 티켓 20260910_2055). 형제가 있으면 첫 값을 쓴다 —
+   *  `familyKey`와 같은 방식(변형 간 대표값). null이면 일반 활동 배지 계열이다 */
+  adminCategory: string | null
   /** 이미지가 있는 배지 수 */
   withImage: number
   /** 표시 순서 — 계열 안 최솟값(`sortRank`, 0은 맨 뒤) */
@@ -125,6 +142,7 @@ export function groupBadgesIntoFamilies(badges: FamilyBadge[]): BadgeFamily[] {
 
     const measurable = new Set<ConditionKey>()
     const pending = new Set<ConditionKey>()
+    const usageMetrics = new Set<ConditionKey>()
     for (const v of variants) {
       for (const k of MEASURABLE_CONDITION_KEYS) {
         if (v.condition_json?.[k] !== undefined) measurable.add(k)
@@ -133,6 +151,11 @@ export function groupBadgesIntoFamilies(badges: FamilyBadge[]): BadgeFamily[] {
       // 좁은 타입을 쓰지 않는다. 여기 들어오는 값은 레지스트리 선언에서 나온 키뿐이다.
       for (const k of findBlockingConditionKeys(v.condition_json ?? null).pending) {
         pending.add(k as ConditionKey)
+      }
+      // JAM! 카테고리 배지의 사용량 지표 — role:'meta'라 measurable에는 잡히지 않는다
+      // (티켓 20260910_2055).
+      for (const k of USAGE_METRIC_DISPLAY_KEYS) {
+        if (v.condition_json?.[k] !== undefined) usageMetrics.add(k)
       }
     }
 
@@ -150,6 +173,8 @@ export function groupBadgesIntoFamilies(badges: FamilyBadge[]): BadgeFamily[] {
           : slotLabelOf(top),
       measurableKeys: [...measurable],
       pendingKeys: [...pending],
+      usageMetricKeys: [...usageMetrics],
+      adminCategory: variants.find((v) => v.admin_category)?.admin_category ?? null,
       withImage: variants.filter((v) => !!v.image_url).length,
       sortOrder: Math.min(...variants.map((v) => sortRank(v.sort_order))),
       missionReward: variants.some((v) => v.condition_json?.mission_reward === true),

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { BadgeType } from '@/types/database'
+import { isJamCategoryBadge } from '@/lib/admin/badge-labels'
 
 export interface BadgeSearchResult {
   id: string
@@ -11,6 +12,9 @@ export interface BadgeSearchResult {
   /** MissionList 보상 배지 "포인트 포함 여부" 경고에 쓰는 필드. /api/admin/badges/search가
    *  항상 내려주지만, 필요 없는 호출부는 무시하면 그만이다. */
   point_reward: number
+  /** 어드민 전용 분류(JAM! 카테고리). 검색 결과에서 제외하지 않고 구분 라벨만 붙인다
+   *  (티켓 20260910_2055) */
+  admin_category?: string | null
 }
 
 interface BadgeSearchSelectProps {
@@ -80,7 +84,9 @@ export default function BadgeSearchSelect({
 
   function select(badge: BadgeSearchResult) {
     onChange(badge.id, badge)
-    setSelectedLabel(`${badge.name} [${badge.type}/${badge.rarity}]`)
+    setSelectedLabel(
+      `${badge.name} [${badge.type}/${badge.rarity}]${isJamCategoryBadge(badge.admin_category) ? ' [JAM!]' : ''}`
+    )
     setQuery('')
     setOpen(false)
   }
@@ -132,6 +138,11 @@ export default function BadgeSearchSelect({
                 className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
               >
                 {b.name} <span className="text-muted-foreground text-xs">[{b.type}/{b.rarity}]</span>
+                {isJamCategoryBadge(b.admin_category) && (
+                  <span className="ml-1 rounded bg-indigo-100 px-1 text-[10px] font-medium text-indigo-700">
+                    JAM!
+                  </span>
+                )}
               </button>
             ))}
         </div>
