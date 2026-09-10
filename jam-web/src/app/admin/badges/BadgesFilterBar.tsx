@@ -46,11 +46,11 @@ const ACTIVITY_TYPE_OPTIONS = [
 ]
 
 // 타입 변경 시 초기화할 서브 필터 파라미터
-const SUB_FILTER_KEYS = ['activity_type', 'poi_category', 'faction_id', 'item_book_id']
+const SUB_FILTER_KEYS = ['activity_type', 'poi_category', 'tribe_id', 'item_book_id']
 
 interface BadgesFilterBarProps {
   tribes: { id: string; name: string }[]
-  itemBooks: { id: string; name: string; faction_id: string | null }[]
+  itemBooks: { id: string; name: string; tribe_id: string | null }[]
   poiCategories: { slug: string; label: string }[]
 }
 
@@ -67,7 +67,7 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
   const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '')
 
   const currentType = searchParams.get('type') ?? 'all'
-  const currentTribeId = searchParams.get('faction_id') ?? 'all'
+  const currentTribeId = searchParams.get('tribe_id') ?? 'all'
   const currentStatus = searchParams.get('status') ?? 'active'
 
   const update = (updates: Record<string, string | null>) => {
@@ -102,7 +102,7 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
 
   const handleTribeChange = (values: string[]) => {
     // 트라이브 변경 시 아이템북 초기화
-    update({ faction_id: values[0] ?? 'all', item_book_id: null })
+    update({ tribe_id: values[0] ?? 'all', item_book_id: null })
   }
 
   const hasFilter =
@@ -115,7 +115,7 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
 
   // 선택된 트라이브 기준으로 아이템북 필터링
   const filteredItemBooks =
-    currentTribeId === 'all' ? itemBooks : itemBooks.filter((b) => b.faction_id === currentTribeId)
+    currentTribeId === 'all' ? itemBooks : itemBooks.filter((b) => b.tribe_id === currentTribeId)
 
   return (
     <div className="flex flex-col gap-3">

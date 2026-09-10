@@ -42,7 +42,7 @@ export interface FeedEventMeta {
     rarity: string | null
     poi_name: string
     /** 드랍엔진 v2: 드랍된 배지의 트라이브 이름 (레거시 이벤트에는 없음) */
-    faction_name?: string
+    tribe_name?: string
     /** 드랍엔진 v2: 아이템북 마지막 파편 여부 */
     is_last_piece?: boolean
     /** inventory_items.id — 홈/프로필 피드가 inventory_items를 다시 훑어 "레거시" 항목을

@@ -149,7 +149,7 @@ async function validateTribeConstants(tribeIds: Set<string>): Promise<void> {
 
   if (missing.length > 0) {
     console.error(`[drop-engine] 하드코딩 tribe UUID가 tribes 테이블에 없음: ${missing.join(', ')}`)
-    await logEngineDecision('drop', 'faction_constant_missing', null, { missing })
+    await logEngineDecision('drop', 'tribe_constant_missing', null, { missing })
     return // 다음 호출에서 재검증 (DB가 아직 정정되지 않았을 수 있으므로 캐시하지 않음)
   }
 
@@ -198,16 +198,16 @@ async function fetchDropStructure(
   const now = new Date().toISOString()
 
   const [{ data: booksRaw }, { data: inventoryRaw }, { data: tribesRaw }] = await Promise.all([
-    supabase.from('item_books').select('id, faction_id').eq('is_active', true),
+    supabase.from('item_books').select('id, tribe_id').eq('is_active', true),
     supabase.from('inventory').select('id, used_slots, max_slots').eq('user_id', userId).single(),
-    supabase.from('factions').select('id, name'),
+    supabase.from('tribes').select('id, name'),
   ])
 
-  const books = (booksRaw ?? []) as { id: string; faction_id: string | null }[]
+  const books = (booksRaw ?? []) as { id: string; tribe_id: string | null }[]
   if (books.length === 0) return null
   const tribeOfBook = new Map<string, string>()
   for (const b of books) {
-    if (b.faction_id) tribeOfBook.set(b.id, b.faction_id)
+    if (b.tribe_id) tribeOfBook.set(b.id, b.tribe_id)
   }
   const activeBookIds = [...tribeOfBook.keys()]
 
@@ -238,7 +238,7 @@ async function fetchDropStructure(
         error: { message: err instanceof Error ? err.message : String(err) },
       })),
     lastTribeId
-      ? createServiceClient().from('faction_adjacency').select('adjacent_faction_id').eq('faction_id', lastTribeId)
+      ? createServiceClient().from('tribe_adjacency').select('adjacent_tribe_id').eq('tribe_id', lastTribeId)
       : Promise.resolve({ data: [] }),
     inventoryRaw
       ? createServiceClient()
@@ -270,8 +270,8 @@ async function fetchDropStructure(
   })
 
   const adjacentTribeIds = (
-    ((adjacencyRes as { data: { adjacent_faction_id: string }[] | null }).data ?? [])
-  ).map((r) => r.adjacent_faction_id)
+    ((adjacencyRes as { data: { adjacent_tribe_id: string }[] | null }).data ?? [])
+  ).map((r) => r.adjacent_tribe_id)
 
   const owned = new Set(
     (((ownedRes as { data: { badge_id: string }[] | null }).data ?? [])).map((r) => r.badge_id)
@@ -346,7 +346,7 @@ function selectBadge(
       policy,
       {
         candidateTribeIds,
-        lastDropTribeId: state.last_drop_faction_id,
+        lastDropTribeId: state.last_drop_tribe_id,
         adjacentTribeIds: structure.adjacentTribeIds,
         mysteryTribeId: MYSTERY_TRIBE_ID,
         rarity: tryRarity,
@@ -448,7 +448,7 @@ async function getDropState(userId: string): Promise<UserDropStateRow> {
   if (data) return data as UserDropStateRow
   return {
     user_id: userId,
-    last_drop_faction_id: null,
+    last_drop_tribe_id: null,
     last_drop_book_id: null,
     common_streak: 0,
     last_piece_pity: {},
@@ -546,9 +546,10 @@ async function insertDrop(
     badge_image_url: picked.image_url ?? '',
     rarity: picked.rarity,
     poi_name: '',
-    // 키 이름을 바꾸지 않는다 — 이미 쌓인 activity_feed.meta의 키이고,
-    // FeedSection이 이 키로 문구를 분기한다. 바꾸면 과거 피드가 전부 어긋난다.
-    faction_name: tribeName,
+    // 20260910_1226 — DB 스키마를 tribes/tribe_id로 완전 통일하며 이 피드 메타 키도
+    // faction_name → tribe_name으로 바꿨다(마이그레이션 152가 기존 11행도 함께 갱신).
+    // FeedSection도 tribe_name 키로 함께 맞춰뒀다.
+    tribe_name: tribeName,
     is_last_piece: isLastPiece,
     // 20260827_018 — 지급한 포인트를 피드에도 남긴다. 프로필 묶음 카드가 포인트를
     // 합산할 때 아이템 배지 몫이 빠져 알림 결산 총액과 어긋나던 문제를 해소한다.
@@ -590,7 +591,7 @@ export async function tryItemDrop(
   const activityWeight = getActivityDropWeight(act)
 
   const [policy, state] = await Promise.all([getDropPolicy(), getDropState(userId)])
-  const structure = await fetchDropStructure(userId, state.last_drop_faction_id, activities)
+  const structure = await fetchDropStructure(userId, state.last_drop_tribe_id, activities)
   if (!structure || !structure.inventory) {
     if (!structure) {
       console.info('[tryItemDrop] 드랍 구조 없음 (활성 북/배지 없음)')
@@ -714,7 +715,7 @@ export async function tryItemDrop(
     structure.owned.add(result.badge.id)
     state.daily_drop_count += 1
     state.total_drops += 1
-    state.last_drop_faction_id = result.tribeId
+    state.last_drop_tribe_id = result.tribeId
     state.last_drop_book_id = result.bookId
     if (result.badge.rarity === 'common') {
       // rare+ pity 진행 기여도에 activity_type 가중치 반영 (걷기는 0.4만큼만 전진)

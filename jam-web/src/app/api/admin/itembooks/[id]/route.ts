@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       image_url: body.image_url !== undefined ? body.image_url : existing.image_url,
       required_activity_badge_id: body.required_activity_badge_id !== undefined ? body.required_activity_badge_id : existing.required_activity_badge_id,
       reward_badge_id: body.reward_badge_id !== undefined ? body.reward_badge_id : existing.reward_badge_id,
-      faction_id: body.faction_id !== undefined ? body.faction_id : existing.faction_id,
+      tribe_id: body.tribe_id !== undefined ? body.tribe_id : existing.tribe_id,
       story_text: body.story_text !== undefined ? body.story_text : existing.story_text,
       is_active: nextIsActive,
       background_color: body.background_color !== undefined ? body.background_color : existing.background_color,

@@ -6,7 +6,7 @@ import type { TribeRow } from '@/types/database'
 export default async function NewItemBookPage() {
   const supabase = createServiceClient()
   const { data: tribesRaw } = await supabase
-    .from('factions')
+    .from('tribes')
     .select('id, name')
     .eq('is_active', true)
     .order('sort_order')

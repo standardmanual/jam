@@ -64,7 +64,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   const filterRarity = params.rarity as BadgeRarity | undefined
   const filterActivityType = params.activity_type
   const filterPoiCategory = params.poi_category
-  const filterTribeId = params.faction_id
+  const filterTribeId = params.tribe_id
   const filterItemBookId = params.item_book_id
   const status = params.status === 'inactive' || params.status === 'all' ? params.status : 'active'
   // 정렬 값·조건 필드 키는 각각 목록 정렬 규칙·조건 레지스트리에서만 나온다(티켓 20260905_0032 C-2).
@@ -78,7 +78,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   // 목록(카드/테이블)에 실제로 쓰는 컬럼만 select — condition_json 이외의 나머지 상세화면 전용
   // 필드(drop_weight, valid_from/until, background_* 등)는 목록에 불필요하다(20260826_011 A8).
   const BADGE_LIST_COLUMNS =
-    'id, name, description, type, rarity, image_url, condition_json, activity_types, patch_available, patch_price_krw, faction_id, deleted_at'
+    'id, name, description, type, rarity, image_url, condition_json, activity_types, patch_available, patch_price_krw, tribe_id, deleted_at'
 
   // 계열순·레벨순은 DB가 정렬할 수 없어(「sort_order = 0은 맨 뒤」·계열 키 폴백) 메모리에서
   // 비교한다 — 그 비교에 필요한 컬럼만 더 가져온다(티켓 20260905_0032 C-2).
@@ -173,7 +173,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
         activity_types: c.activity_types as BadgeListRow['activity_types'],
         patch_available: c.patch_available,
         patch_price_krw: c.patch_price_krw,
-        faction_id: c.faction_id,
+        tribe_id: c.tribe_id,
         deleted_at: c.deleted_at,
       })
     )
@@ -195,7 +195,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
       if (q) query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
 
       if (filterActivityType) query = query.contains('activity_types', [filterActivityType])
-      if (filterTribeId) query = query.eq('faction_id', filterTribeId)
+      if (filterTribeId) query = query.eq('tribe_id', filterTribeId)
       if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
       // 조건 필드 필터 — `condition_json`에 그 키가 있는 배지만. jsonb에서 없는 키는 NULL이라
       // "not is null"로 «쓰는 배지»를 가려낸다. 키는 레지스트리를 통과한 값뿐이다.
@@ -235,8 +235,8 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
   }
 
   const [{ data: tribesRaw }, { data: itemBooksRaw }, { data: poiCategoriesRaw }] = await Promise.all([
-    supabase.from('factions').select('id, name').order('name'),
-    supabase.from('item_books').select('id, name, faction_id').order('name'),
+    supabase.from('tribes').select('id, name').order('name'),
+    supabase.from('item_books').select('id, name, tribe_id').order('name'),
     supabase.from('poi_categories').select('slug, label').order('label'),
   ])
 
@@ -245,7 +245,7 @@ export default async function AdminBadgesPage({ searchParams }: AdminBadgesPageP
     ((tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]).map((f) => [f.id, f.name])
   )
   const tribes = (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]
-  const itemBooks = (itemBooksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name' | 'faction_id'>[]
+  const itemBooks = (itemBooksRaw ?? []) as Pick<ItemBookRow, 'id' | 'name' | 'tribe_id'>[]
   const poiCategories = (poiCategoriesRaw ?? []) as Pick<PoiCategoryRow, 'slug' | 'label'>[]
 
   const hasFilter = !!(q || filterType || filterRarity || filterActivityType || filterPoiCategory || filterTribeId || filterItemBookId || filterConditionField || status !== 'active')

@@ -9,15 +9,15 @@ export type CombinePolicy = Omit<CombinePolicyRow, 'id' | 'updated_at'>
 
 export const DEFAULT_COMBINE_POLICY: CombinePolicy = {
   tier1_max_items: 3,
-  tier1_min_factions: 1,
+  tier1_min_tribes: 1,
   tier1_b_rate: 0.35,
   tier1_b_count: 1,
   tier2_max_items: 6,
-  tier2_min_factions: 3,
+  tier2_min_tribes: 3,
   tier2_b_rate: 0.45,
   tier2_b_count: 2,
   tier3_max_items: 10,
-  tier3_min_factions: 5,
+  tier3_min_tribes: 5,
   tier3_b_rate: 0.55,
   tier3_b_count: 3,
   pity_prob_increment: 0.03,
@@ -76,10 +76,10 @@ export function resolveTier(
 ): { tier: 1 | 2 | 3; bRate: number; bCount: number } | null {
   if (itemCount < 2 || itemCount > policy.tier3_max_items) return null
 
-  if (itemCount <= policy.tier3_max_items && distinctTribeCount >= policy.tier3_min_factions) {
+  if (itemCount <= policy.tier3_max_items && distinctTribeCount >= policy.tier3_min_tribes) {
     return { tier: 3, bRate: policy.tier3_b_rate, bCount: policy.tier3_b_count }
   }
-  if (itemCount <= policy.tier2_max_items && distinctTribeCount >= policy.tier2_min_factions) {
+  if (itemCount <= policy.tier2_max_items && distinctTribeCount >= policy.tier2_min_tribes) {
     return { tier: 2, bRate: policy.tier2_b_rate, bCount: policy.tier2_b_count }
   }
   // tier1(기본) — 다양성 요건 미충족 시 이 티어로 강등

@@ -16,7 +16,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
     { data: slottedRaw },
   ] = await Promise.all([
     supabase.from('item_books').select('*').eq('id', id).single(),
-    supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
+    supabase.from('tribes').select('id, name').eq('is_active', true).order('sort_order'),
     // [20260902_1043] deleted_at 필터를 제거해 배정 관계(item_book_id) 자체가 남아있는 배지는
     // 활성/비활성 무관하게 전부 조회한다 — 어드민 화면에서만 전체 배정 목록이 보여야 한다
     // (유저 노출 회수는 badges.deleted_at으로 별개로 유지됨, 20260823_004).
@@ -35,7 +35,7 @@ export default async function EditItemBookPage({ params }: { params: Promise<{ i
     : { data: [] as Pick<BadgeRow, 'id' | 'name'>[] }
   const labelBadgeMap = new Map(((labelBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'name'>[]).map((b) => [b.id, b.name]))
 
-  const tribeLabel = tribes.find(f => f.id === book.faction_id)?.name
+  const tribeLabel = tribes.find(f => f.id === book.tribe_id)?.name
   // [20260902_1043] "소속 아이템배지" 요약 수치는 목록 페이지의 "아이템 배지 수" 컬럼과 동일하게
   // 활성 배지 수만 의미한다 — 아래 slottedBadges(전체 배정 목록)와는 다른 값이다.
   const activeSlottedBadgeCount = slottedBadges.filter((b) => !b.deleted_at).length

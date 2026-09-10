@@ -52,7 +52,7 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     activity_types: ['running'],
     patch_available: false,
     patch_price_krw: null,
-    faction_id: null,
+    tribe_id: null,
     item_book_id: null,
     category: null,
     drop_weight: 0,

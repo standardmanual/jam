@@ -66,7 +66,7 @@ export interface UserRow {
    * 온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변 — 변경 API가 어디에도 없다.
    * 기존 유저는 NULL일 수 있다(강제 재온보딩 없음, 점진적 유도는 후속 과제).
    */
-  faction_id: string | null
+  tribe_id: string | null
   /**
    * 온보딩 2단계(아이디·이름 + 트라이브·프로필이미지)까지 완료된 시각. 티켓 20260909_2119.
    * NULL이면 온보딩 미완료 — `/auth/callback`이 이 값 기준으로 `/onboarding` 리다이렉트를 판정한다.
@@ -151,7 +151,7 @@ export interface BadgeRow {
   activity_types: ActivityType[]
   patch_available: boolean
   patch_price_krw: number | null
-  faction_id: string | null
+  tribe_id: string | null
   item_book_id: string | null
   /** 체크인 배지가 속한 지점 계열 태그. poi_categories.slug 참조, nullable (마이그레이션 113).
    *  값이 있으면 연결된 지점의 poi.category보다 우선해 목록/배지함 분류 기준이 된다
@@ -405,7 +405,7 @@ export interface ItemBookRow {
   image_url: string | null
   required_activity_badge_id: string | null
   reward_badge_id: string | null
-  faction_id: string | null
+  tribe_id: string | null
   story_text: string | null
   is_active: boolean
   drop_condition_json: Record<string, unknown> | null
@@ -505,15 +505,15 @@ export interface CombinationRecipeRow {
 export interface CombinePolicyRow {
   id: number
   tier1_max_items: number
-  tier1_min_factions: number
+  tier1_min_tribes: number
   tier1_b_rate: number
   tier1_b_count: number
   tier2_max_items: number
-  tier2_min_factions: number
+  tier2_min_tribes: number
   tier2_b_rate: number
   tier2_b_count: number
   tier3_max_items: number
-  tier3_min_factions: number
+  tier3_min_tribes: number
   tier3_b_rate: number
   tier3_b_count: number
   pity_prob_increment: number
@@ -763,10 +763,8 @@ export interface UserMissionCompletionRow {
 // =========================================
 
 /**
- * DB 테이블명은 `factions`, 컬럼은 `faction_id`로 남아 있다. 티켓 20260910_1129에서
- * 코드 식별자와 화면 표기만 트라이브로 통일했고 스키마는 건드리지 않았다 —
- * staging·프로덕션이 단일 DB를 공유해 컬럼을 바꾸면 미배포 코드가 즉시 깨지기 때문이다.
- * 따라서 아래 필드명이 faction 계열인 것은 리네이밍 누락이 아니라 의도적 보존이다.
+ * 티켓 20260910_1129에서 코드 식별자·화면 표기를 트라이브로 통일했고, 티켓 20260910_1226에서
+ * DB 스키마(테이블명 `tribes`, 컬럼 `tribe_id` 등)까지 완전히 통일했다.
  */
 export interface TribeRow {
   id: string
@@ -791,13 +789,13 @@ export interface TribeRow {
 }
 
 export interface TribeAdjacencyRow {
-  faction_id: string
-  adjacent_faction_id: string
+  tribe_id: string
+  adjacent_tribe_id: string
 }
 
 export interface UserDropStateRow {
   user_id: string
-  last_drop_faction_id: string | null
+  last_drop_tribe_id: string | null
   last_drop_book_id: string | null
   common_streak: number
   last_piece_pity: Record<string, number>
@@ -1708,15 +1706,13 @@ export interface Database {
         Update: Partial<Omit<ActivityFeedRow, 'id'>>
         Relationships: []
       }
-      // 아래 두 테이블 키(factions·faction_adjacency)는 실제 DB 테이블명이라 그대로 둔다.
-      // 값 쪽 타입 이름만 트라이브로 바뀌었다 (티켓 20260910_1129).
-      factions: {
+      tribes: {
         Row: TribeRow
         Insert: Omit<TribeRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
         Update: Partial<Omit<TribeRow, 'id'>>
         Relationships: []
       }
-      faction_adjacency: {
+      tribe_adjacency: {
         Row: TribeAdjacencyRow
         Insert: TribeAdjacencyRow
         Update: Partial<TribeAdjacencyRow>

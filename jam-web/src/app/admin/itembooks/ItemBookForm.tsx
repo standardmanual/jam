@@ -67,7 +67,7 @@ export default function ItemBookForm({
     book?.required_activity_badge_id ?? ''
   )
   const [rewardBadgeId, setRewardBadgeId] = useState(book?.reward_badge_id ?? '')
-  const [tribeId, setTribeId] = useState(book?.faction_id ?? '')
+  const [tribeId, setTribeId] = useState(book?.tribe_id ?? '')
   const [storyText, setStoryText] = useState(book?.story_text ?? '')
   const [isActive, setIsActive] = useState(book?.is_active ?? true)
   // 배경 테마 (20260818_004) — 컬렉션 자체에는 렌더링되지 않고, "하위 배지에 일괄 적용" 버튼으로
@@ -122,7 +122,7 @@ export default function ItemBookForm({
       image_url: imageUrl || null,
       required_activity_badge_id: requiredActivityBadgeId || null,
       reward_badge_id: rewardBadgeId || null,
-      faction_id: tribeId || null,
+      tribe_id: tribeId || null,
       story_text: storyText || null,
       is_active: isActive,
       // [20260901_1944] 애니메이션 모드에서는 배경색을 검증하지 않으므로 hex가 아닌 값은 null로
