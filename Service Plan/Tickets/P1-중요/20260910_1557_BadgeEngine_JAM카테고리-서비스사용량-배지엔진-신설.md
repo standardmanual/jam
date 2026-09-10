@@ -253,6 +253,10 @@ jam-web/src/lib/strava/__tests__/sync-usage-badge-hook.test.ts (신규)
 - 배포일: 2026-09-10
 - 환경: staging (main 승격은 별도 `/jam-ship` 진행 대기)
 - 커밋: `b0762707`(머지) · `9f781c29`(구현) · 마이그레이션 154·155 실행 완료
+- Vercel `jam-stage` 프로젝트(⚠️ `jam` 프로젝트가 아니다 — `jam`은 main 전용이라 staging
+  push엔 항상 Canceled로 뜬다) `jam-stage-5i6n9exny`, target: production, Ready 확인.
+  `stage.j-a-m.app`·`jam-stage-standard-manual.vercel.app` alias가 이 배포를 정확히
+  가리킴(생성 시각 17:30:46이 머지 push 직후와 일치)
 
 ### 주요 의사결정 / 핵심 메모
 > `/spec`으로 3라운드 인터뷰를 거쳐 확정한 스펙. 주요 결정: `badge_type` enum에는 손대지
