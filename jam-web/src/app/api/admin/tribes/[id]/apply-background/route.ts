@@ -3,14 +3,14 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 
 /**
- * 이 세계관에 이미 저장된 background_color / background_animation 2필드를, 3단 전체로 1회성
+ * 이 트라이브에 이미 저장된 background_color / background_animation 2필드를, 3단 전체로 1회성
  * 복사한다 (20260819_015 도입 → 20260901_1929로 background_color 1필드로 축소 →
  * 20260901_1944에서 카드 안 애니메이션 파라미터 추가):
- *   (a) 이 세계관에 직속된 배지(badges.faction_id 일치, 소프트 삭제되지 않음)
- *   (b) 이 세계관 소속 모든 컬렉션(item_books.faction_id 일치)
+ *   (a) 이 트라이브에 직속된 배지(badges.faction_id 일치, 소프트 삭제되지 않음)
+ *   (b) 이 트라이브 소속 모든 컬렉션(item_books.faction_id 일치)
  *   (c) (b)에서 찾은 컬렉션들에 속한 모든 아이템배지(badges.item_book_id IN (...), 소프트 삭제
  *       되지 않음)
- * 자동 fallback이 아니라 버튼을 누른 순간의 값만 반영 — 이후 세계관 값이 바뀌어도 다시 이 API를
+ * 자동 fallback이 아니라 버튼을 누른 순간의 값만 반영 — 이후 트라이브 값이 바뀌어도 다시 이 API를
  * 호출하기 전까지는 하위 값이 그대로 유지된다. 항상 덮어쓴다(사용자 확정 방침, 예외 없음).
  *
  * 3단 UPDATE는 단일 plpgsql 함수(apply_faction_background_cascade, 마이그레이션 092 →
@@ -39,7 +39,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     item_books: number
     item_book_badges: number
   } | undefined
-  if (!row) return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
+  if (!row) return NextResponse.json({ error: '트라이브를 찾을 수 없습니다.' }, { status: 404 })
 
   return NextResponse.json({
     directBadges: row.direct_badges,
@@ -70,7 +70,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     item_books: number
     item_book_badges: number
   } | undefined
-  if (!row) return NextResponse.json({ error: '세계관을 찾을 수 없습니다.' }, { status: 404 })
+  if (!row) return NextResponse.json({ error: '트라이브를 찾을 수 없습니다.' }, { status: 404 })
 
   return NextResponse.json({
     directBadges: row.direct_badges,

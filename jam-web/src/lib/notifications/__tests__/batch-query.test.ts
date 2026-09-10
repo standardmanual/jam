@@ -365,7 +365,7 @@ describe('7개 단계 로더', () => {
     expect(snapshots?.orders).toEqual(['mission_id', 'user_id'])
   })
 
-  it('아이템북 소속 배지가 상한을 넘으면 inventory_items 조회를 쪼갠다 (FACTIONS 목표 900종)', async () => {
+  it('아이템북 소속 배지가 상한을 넘으면 inventory_items 조회를 쪼갠다 (TRIBES 목표 900종)', async () => {
     const stub = createStubClient(fixtures(IN_CHUNK_SIZE + 50))
     await buildCollectionDrafts(ctxOf(stub.client))
 

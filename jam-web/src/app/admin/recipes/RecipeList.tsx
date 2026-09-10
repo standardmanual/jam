@@ -164,7 +164,7 @@ export default function RecipeList({ recipes, badges }: Props) {
           {/* 재료 선택 */}
           <div>
             <label className="text-xs text-muted-foreground mb-2 block">
-              재료 배지 (2~{MAX_INGREDIENTS}개) — 소재 세계관을 제외한 세계관에서 결과가 나옵니다
+              재료 배지 (2~{MAX_INGREDIENTS}개) — 소재 트라이브를 제외한 트라이브에서 결과가 나옵니다
             </label>
             {form.ingredient_badge_ids.map((val, i) => (
               <div key={i} className="flex items-center gap-2 mb-2">

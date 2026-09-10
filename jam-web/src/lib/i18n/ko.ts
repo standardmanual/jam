@@ -145,7 +145,7 @@ export const ko = {
     rarityMystic: 'Mystic',
 
     // 카드 보조 문구
-    fragmentOf: '{faction}의 파편',
+    fragmentOf: '{tribe}의 파편',
     lastPiece: '마지막 파편!',
     rewardPoints: '+{points} 포인트',
 
@@ -661,10 +661,10 @@ export const ko = {
     // 2단계 — 트라이브 선택
     step2Title: '당신의 트라이브를\n선택해 주세요',
     step2Subtitle: '한 번 고른 트라이브는 탈퇴하기 전까지 바꿀 수 없어요',
-    factionsLoadError: '트라이브 목록을 불러오지 못했어요. 다시 시도해 주세요.',
-    factionsEmptyError: '지금은 고를 수 있는 트라이브가 없어요. 잠시 후 다시 시도해 주세요.',
+    tribesLoadError: '트라이브 목록을 불러오지 못했어요. 다시 시도해 주세요.',
+    tribesEmptyError: '지금은 고를 수 있는 트라이브가 없어요. 잠시 후 다시 시도해 주세요.',
     retryButton: '다시 시도',
-    invalidFactionError: '이 트라이브는 지금 선택할 수 없어요. 다른 트라이브를 선택해 주세요.',
+    invalidTribeError: '이 트라이브는 지금 선택할 수 없어요. 다른 트라이브를 선택해 주세요.',
     finishButton: '시작하기',
     finishing: '가입하는 중',
   },

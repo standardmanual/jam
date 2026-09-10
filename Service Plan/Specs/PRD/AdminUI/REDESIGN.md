@@ -108,7 +108,7 @@ npx shadcn@latest apply b5Jgcv00m --only theme,font
   `PoiFilters.tsx`/`ItemBookFilters.tsx`/`BadgesFilterBar.tsx` 같은 손수 배치형 필터바는
   전부 이 패턴으로 교체.
 
-**전환 대상 전체 목록 화면**: 배지·POI·아이템북·미션·투데이·레시피·유저·트라이브(factions)·
+**전환 대상 전체 목록 화면**: 배지·POI·아이템북·미션·투데이·레시피·유저·트라이브(tribes)·
 포인트·어뷰징. 일괄 삭제/비활성화용 백엔드 API가 없는 화면은 1단계 구현 시 필요 여부를
 화면별로 판단해 신설.
 

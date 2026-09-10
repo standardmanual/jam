@@ -32,7 +32,7 @@ import type { ItemBookRow } from '@/types/database'
 interface ItemBookTableProps {
   itemBooks: ItemBookRow[]
   badgeMap: Map<string, string>
-  factionMap: Map<string, string>
+  tribeMap: Map<string, string>
   itemBadgeCountMap: Map<string, number>
   emptyMessage?: string
 }
@@ -56,7 +56,7 @@ function sortingToParam(sorting: SortingState): string | null {
 export function ItemBookTable({
   itemBooks,
   badgeMap,
-  factionMap,
+  tribeMap,
   itemBadgeCountMap,
   emptyMessage = '등록된 컬렉션이 없습니다.',
 }: ItemBookTableProps) {
@@ -132,13 +132,13 @@ export function ItemBookTable({
         ),
       }),
       columnHelper.accessor('faction_id', {
-        id: 'faction',
-        header: '세계관',
+        id: 'tribe',
+        header: '트라이브',
         enableSorting: false,
-        meta: { label: '세계관' },
+        meta: { label: '트라이브' },
         cell: ({ getValue }) => {
           const id = getValue()
-          return <span className="text-sm text-muted-foreground">{id ? factionMap.get(id) ?? '—' : '—'}</span>
+          return <span className="text-sm text-muted-foreground">{id ? tribeMap.get(id) ?? '—' : '—'}</span>
         },
       }),
       columnHelper.accessor('required_activity_badge_id', {
@@ -180,7 +180,7 @@ export function ItemBookTable({
         ),
       }),
     ]),
-    [badgeMap, factionMap, itemBadgeCountMap]
+    [badgeMap, tribeMap, itemBadgeCountMap]
   )
 
   const table = useTable({

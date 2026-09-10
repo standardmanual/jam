@@ -38,7 +38,7 @@ jam-web/
 │   │   │                       # missions, onboarding, points, profile, search,
 │   │   │                       # today, [username] 등
 │   │   ├── admin/               # abusing, ambient-drop, badges, combine-policy,
-│   │   │                       # drop-policy, factions, itembooks, missions, poi,
+│   │   │                       # drop-policy, tribes, itembooks, missions, poi,
 │   │   │                       # points, recipes, simulator, theme, today, users
 │   │   ├── api/                 # admin, combine, cron, drops, follows, inventory,
 │   │   │                       # itembooks, missions, onboarding, poi-badges,

@@ -11,7 +11,7 @@
  * 클라이언트 필터 바(`BadgesFilterBar.tsx`)가 **같은 목록·같은 비교 함수**를 쓴다.
  *
  * ## ⚠️ `sort_order = 0`은 맨 뒤다
- * 저장소의 다른 `sort_order`(`today_cards`·`factions`·`item_books`)는 0이 앞이라는 **반대
+ * 저장소의 다른 `sort_order`(`today_cards`·`tribes`·`item_books`)는 0이 앞이라는 **반대
  * 관습**이라, 습관대로 오름차순 정렬하면 배지 트리·계열 관리 화면과 순서가 갈린다.
  * 규칙을 다시 선언하지 않고 `badgeTree.ts`의 `sortRank`를 그대로 쓴다(B묶음이 export해 뒀다).
  *

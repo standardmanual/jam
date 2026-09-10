@@ -5,7 +5,7 @@ import type {
   InventoryItemRow,
   BadgeRow,
   ItemBookRow,
-  FactionRow,
+  TribeRow,
   UserItemBookSlotRow,
   UserItemBookCompletionRow,
 } from '@/types/database'
@@ -91,30 +91,30 @@ export async function GET() {
     ((compRaw ?? []) as Pick<UserItemBookCompletionRow, 'item_book_id'>[]).map((c) => c.item_book_id)
   )
 
-  // 5) 팩션 조회
-  const factionIds = Array.from(
+  // 5) 트라이브 조회
+  const tribeIds = Array.from(
     new Set(books.map((b) => b.faction_id).filter((f): f is string => !!f))
   )
-  const factionMap = new Map<string, Pick<FactionRow, 'id' | 'name' | 'image_url'>>()
-  if (factionIds.length > 0) {
-    const { data: factionsRaw } = await supabase
+  const tribeMap = new Map<string, Pick<TribeRow, 'id' | 'name' | 'image_url'>>()
+  if (tribeIds.length > 0) {
+    const { data: tribesRaw } = await supabase
       .from('factions')
       .select('id, name, image_url')
-      .in('id', factionIds)
-    for (const f of (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name' | 'image_url'>[]) {
-      factionMap.set(f.id, f)
+      .in('id', tribeIds)
+    for (const f of (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name' | 'image_url'>[]) {
+      tribeMap.set(f.id, f)
     }
   }
 
   const itemBooks = books.map((book) => {
-    const faction = book.faction_id ? factionMap.get(book.faction_id) : undefined
+    const tribe = book.faction_id ? tribeMap.get(book.faction_id) : undefined
     return {
       id: book.id,
       name: book.name,
       description: book.description,
       image_url: book.image_url,
-      faction: faction
-        ? { id: faction.id, name: faction.name, image_url: faction.image_url }
+      tribe: tribe
+        ? { id: tribe.id, name: tribe.name, image_url: tribe.image_url }
         : null,
       totalBadgeCount: totalMap.get(book.id) ?? 0,
       discoveredBadgeCount: discoveredMap.get(book.id)?.size ?? 0,

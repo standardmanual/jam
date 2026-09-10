@@ -4,8 +4,8 @@
  * 두 갈래 경로:
  *  A) 정석 레시피(combination_recipes 재료 정확 일치) → Epic/Mystic 확정.
  *     피티 확률 보정 미적용(레시피 발견 가치가 확률형 트랙보다 항상 우월해야 함).
- *  B) 비매칭 임의 조합 → 세계관 다양성 티어(policy.ts)에 따른 확률로
- *     "소재 세계관을 제외한 다른 세계관의 최하위 등급 배지 n개" 또는 실패.
+ *  B) 비매칭 임의 조합 → 트라이브 다양성 티어(policy.ts)에 따른 확률로
+ *     "소재 트라이브를 제외한 다른 트라이브의 최하위 등급 배지 n개" 또는 실패.
  *     실패는 연속 실패 스트릭에 따라 성공 확률이 즉시 미세 상승(피티)하고,
  *     일정 스트릭 이상부터는 계단식 소액 포인트를 보상한다(둘 다 독립 상한).
  *
@@ -77,7 +77,7 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     return { success: false, reason: 'items_not_found', pointsAwarded: 0, streak: 0 }
   }
 
-  // 3. 재료 배지의 세계관(faction) 조회 — "소재 세계관 제외" 판정에 사용
+  // 3. 재료 배지의 트라이브(tribe) 조회 — "소재 트라이브 제외" 판정에 사용
   const badgeIds = items.map((i) => i.badge_id)
   const { data: sourceBadgesRaw } = await supabase
     .from('badges')
@@ -85,7 +85,7 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     .in('id', badgeIds)
 
   const sourceBadges = (sourceBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'faction_id'>[]
-  const sourceFactionIds = [...new Set(sourceBadges.map((b) => b.faction_id).filter((f): f is string => !!f))]
+  const sourceTribeIds = [...new Set(sourceBadges.map((b) => b.faction_id).filter((f): f is string => !!f))]
 
   // 4. 정석 레시피 정확 매칭 탐색 (순서 무관) — 재료가 일치해도 required_activity_badge_id가
   //    설정돼 있으면 해당 액티비티 배지를 보유해야 최종 매칭으로 인정한다(소모되지 않는 조건).
@@ -183,9 +183,9 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     return { success: false, reason: 'recipe_fail', pointsAwarded, streak }
   }
 
-  // B) 비매칭 임의 조합 — 세계관 다양성 티어 확률 경로
+  // B) 비매칭 임의 조합 — 트라이브 다양성 티어 확률 경로
   const policy = await getCombinePolicy()
-  const tierInfo = resolveTier(itemIds.length, sourceFactionIds.length, policy)
+  const tierInfo = resolveTier(itemIds.length, sourceTribeIds.length, policy)
   if (!tierInfo) {
     const { streak, pointsAwarded } = await recordFailure(supabase, userId)
     return { success: false, reason: 'fail', pointsAwarded, streak }
@@ -199,7 +199,7 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     return { success: false, reason: 'fail', pointsAwarded, streak }
   }
 
-  // 소재 세계관을 제외한 세계관의 최하위 등급(common) 아이템 배지 중 무작위 n개
+  // 소재 트라이브를 제외한 트라이브의 최하위 등급(common) 아이템 배지 중 무작위 n개
   const { data: candidatesRaw } = await supabase
     .from('badges')
     .select('id, name, rarity')
@@ -207,7 +207,7 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     .eq('rarity', 'common')
     .is('deleted_at', null)
     .not('faction_id', 'is', null)
-    .not('faction_id', 'in', `(${sourceFactionIds.length > 0 ? sourceFactionIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
+    .not('faction_id', 'in', `(${sourceTribeIds.length > 0 ? sourceTribeIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
 
   const candidates = (candidatesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity'>[]
   const shuffled = [...candidates].sort(() => Math.random() - 0.5)

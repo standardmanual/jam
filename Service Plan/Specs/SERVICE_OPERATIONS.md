@@ -1011,8 +1011,8 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | GET, POST | `/api/admin/badges` | 배지 목록/생성 |
 | PUT, PATCH, DELETE | `/api/admin/badges/[id]` | 배지 수정/삭제 |
 | PATCH | `/api/admin/badges/[id]/assign` | 배지 item_book_id 할당 |
-| GET, POST | `/api/admin/factions` | 팩션 목록/생성 |
-| GET, PUT, DELETE | `/api/admin/factions/[id]` | 팩션 수정 |
+| GET, POST | `/api/admin/tribes` | 트라이브 목록/생성 |
+| GET, PUT, DELETE | `/api/admin/tribes/[id]` | 트라이브 수정 |
 | GET, POST | `/api/admin/itembooks` | 아이템북 목록/생성 |
 | PUT, PATCH, DELETE | `/api/admin/itembooks/[id]` | 아이템북 수정/삭제 |
 | GET, POST | `/api/admin/missions` | 미션 목록/생성 |
@@ -1044,7 +1044,7 @@ common 배율이 1.0인 한 그 드랍은 살아남는다. 등급 → 배율 키
 | `inventory_items` | 인벤토리 아이템 개별 레코드 (expires_at, slotted_in) | 001 |
 | `item_books` | 아이템북 정의 (faction_id, reward_badge_id, is_active) | 001 |
 | `poi` | 관심 지점 (위치, 반경, linked_badge_id, osm_id) | 001 |
-| `factions` | 팩션(세력) 정의 | 014 |
+| `factions` | 트라이브 정의 | 014 |
 | `combination_recipes` | 조합 레시피 (ingredient_badge_ids, result_badge_id, success_rate) | 011 |
 | `missions` | 미션 정의 (type, condition_json, starts/ends_at, max_completions) | 011 |
 | `user_mission_participations` | 미션 참가 기록 | 012 |

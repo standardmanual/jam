@@ -121,7 +121,7 @@ CLOSED는 사용자 최종 승인 후 오케스트레이터가 staging에서만 
 | `Content/ACTIVITY_BADGES.md` | 액티비티배지 전체 목록·조건·설명 |
 | `Content/ITEMBOOKS.xlsx` | 아이템북 + 아이템배지 목록, 트라이브 인접 그래프 |
 | `Content/COMBINE_RECIPES.md` | 조합 레시피 |
-| `Content/FACTIONS.md` | 트라이브(faction) |
+| `Content/TRIBES.md` | 트라이브(tribe) |
 | `Content/POI.md` | 장소(POI) |
 
 **기존 파일 직접 수정** — 컨텐츠는 "현재 상태"가 원칙, 버전 이력은 티켓에 남긴다.

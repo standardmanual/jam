@@ -8,7 +8,7 @@ import {
   isIntenseActivity,
   isComebackActivity,
   isWeeklyFirstActivity,
-  pickFaction,
+  pickTribe,
   pickBook,
   rarityFallbackOrder,
   type RarityContext,
@@ -96,47 +96,47 @@ describe('Layer 1 — 보너스·강도·복귀·주간 판정', () => {
   })
 })
 
-describe('Layer 2 — pickFaction', () => {
+describe('Layer 2 — pickTribe', () => {
   const MYSTERY = 'mystery-id'
   const base = {
-    candidateFactionIds: ['a', 'b', 'c', MYSTERY],
-    lastDropFactionId: 'a',
-    adjacentFactionIds: ['b'],
-    mysteryFactionId: MYSTERY,
+    candidateTribeIds: ['a', 'b', 'c', MYSTERY],
+    lastDropTribeId: 'a',
+    adjacentTribeIds: ['b'],
+    mysteryTribeId: MYSTERY,
     rarity: 'common' as const,
-    contextFactionIds: [],
+    contextTribeIds: [],
   }
 
-  it('모멘텀: roll < 0.5이면 직전 세계관', () => {
-    expect(pickFaction(P, base, seq(0.3))).toBe('a')
+  it('모멘텀: roll < 0.5이면 직전 트라이브', () => {
+    expect(pickTribe(P, base, seq(0.3))).toBe('a')
   })
 
-  it('인접: 0.5 ≤ roll < 0.75이면 인접 세계관', () => {
-    expect(pickFaction(P, base, seq(0.6, 0.0))).toBe('b')
+  it('인접: 0.5 ≤ roll < 0.75이면 인접 트라이브', () => {
+    expect(pickTribe(P, base, seq(0.6, 0.0))).toBe('b')
   })
 
   it('탐험: roll ≥ 0.75이면 전체(미스터리 제외)에서 랜덤', () => {
-    const picked = pickFaction(P, base, seq(0.8, 0.0))
+    const picked = pickTribe(P, base, seq(0.8, 0.0))
     expect(['a', 'b', 'c']).toContain(picked)
   })
 
   it('common 드랍에서 미스터리 헌터는 절대 선택되지 않는다', () => {
     for (const roll of [0.0, 0.5, 0.9]) {
-      expect(pickFaction(P, base, seq(roll, 0.99))).not.toBe(MYSTERY)
+      expect(pickTribe(P, base, seq(roll, 0.99))).not.toBe(MYSTERY)
     }
   })
 
   it('epic 드랍은 mystery_spice_rate(15%) 확률로 미스터리 헌터', () => {
-    expect(pickFaction(P, { ...base, rarity: 'epic' }, seq(0.1))).toBe(MYSTERY)
-    expect(pickFaction(P, { ...base, rarity: 'epic' }, seq(0.2, 0.3))).toBe('a') // 스파이스 미발동 → 모멘텀
+    expect(pickTribe(P, { ...base, rarity: 'epic' }, seq(0.1))).toBe(MYSTERY)
+    expect(pickTribe(P, { ...base, rarity: 'epic' }, seq(0.2, 0.3))).toBe('a') // 스파이스 미발동 → 모멘텀
   })
 
   it('맥락 오버라이드 후보가 있으면 최우선', () => {
-    expect(pickFaction(P, { ...base, contextFactionIds: ['c'] }, seq(0.9, 0.0))).toBe('c')
+    expect(pickTribe(P, { ...base, contextTribeIds: ['c'] }, seq(0.9, 0.0))).toBe('c')
   })
 
   it('직전 드랍 없으면(신규) 모멘텀 없이 탐험으로', () => {
-    const picked = pickFaction(P, { ...base, lastDropFactionId: null, adjacentFactionIds: [] }, seq(0.5, 0.0))
+    const picked = pickTribe(P, { ...base, lastDropTribeId: null, adjacentTribeIds: [] }, seq(0.5, 0.0))
     expect(['a', 'b', 'c']).toContain(picked)
   })
 })

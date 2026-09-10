@@ -85,12 +85,12 @@ function sortingToParam(sorting: SortingState): string | null {
 
 interface BadgesTableProps {
   badges: BadgeListRow[]
-  factionMap?: Map<string, string>
+  tribeMap?: Map<string, string>
 }
 
 const columnHelper = createColumnHelper<DataTableFeatures, BadgeListRow>()
 
-export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTableProps) {
+export default function BadgesTable({ badges, tribeMap = new Map() }: BadgesTableProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -223,13 +223,13 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
         },
       }),
       columnHelper.accessor('faction_id', {
-        id: 'faction',
-        header: '세계관',
+        id: 'tribe',
+        header: '트라이브',
         enableSorting: false,
-        meta: { label: '세계관' },
+        meta: { label: '트라이브' },
         cell: ({ getValue }) => {
-          const factionId = getValue()
-          return <span className="text-sm">{factionId ? (factionMap.get(factionId) ?? '—') : '—'}</span>
+          const tribeId = getValue()
+          return <span className="text-sm">{tribeId ? (tribeMap.get(tribeId) ?? '—') : '—'}</span>
         },
       }),
       columnHelper.accessor('activity_types', {
@@ -295,7 +295,7 @@ export default function BadgesTable({ badges, factionMap = new Map() }: BadgesTa
         ),
       }),
     ]),
-    [factionMap]
+    [tribeMap]
   )
 
   const table = useTable({

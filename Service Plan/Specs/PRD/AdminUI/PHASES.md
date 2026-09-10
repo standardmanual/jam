@@ -112,10 +112,10 @@ Phase가 전부 끝났다.
 `@tanstack/react-table` 추가, 재사용 가능한 어드민 Data Table 컴포넌트 구축(행 선택
 체크박스 + 정렬 + 일괄 액션 툴바 + 공식 Toolbar 필터 패턴).
 
-**전환 대상**: 배지 · POI · 아이템북 · 미션 · 투데이 · 레시피 · 유저 · 트라이브(factions) ·
+**전환 대상**: 배지 · POI · 아이템북 · 미션 · 투데이 · 레시피 · 유저 · 트라이브(tribes) ·
 포인트 · 어뷰징 — 각 화면의 현재 목록 컴포넌트(`BadgesTable.tsx`, `PoiTable.tsx`,
 `ItemBookTable.tsx`, `MissionTable.tsx`, `TodayCardTable.tsx`, `RecipeTable.tsx`,
-`users/page.tsx`, `users/[id]/page.tsx`, `factions/page.tsx`, `points/page.tsx`,
+`users/page.tsx`, `users/[id]/page.tsx`, `tribes/page.tsx`, `points/page.tsx`,
 `AbusingClient.tsx`의 각 원시 `<table>`) 전부 교체.
 
 **사전 확인 필요**: 화면별 일괄 삭제/비활성화 백엔드 API 존재 여부. 없으면 이 Phase에서
@@ -165,7 +165,7 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   `BackgroundGeneratorPreview.tsx`(28)·`BadgeMultiSearchSelect.tsx`(13)·
   `BadgeSearchSelect.tsx`(9) ≈ 210건
 - **4b**: POI·아이템북·트라이브 — `CategoryManager.tsx`(45)·`PoiForm.tsx`(38)·
-  `Pagination.tsx`(10)·`ItemBookForm.tsx`(56)·`FactionForm.tsx`(45)·
+  `Pagination.tsx`(10)·`ItemBookForm.tsx`(56)·`TribeForm.tsx`(45)·
   `AdjacencyEditor.tsx`(10)·기타 소형 파일 ≈ 209건
 - **4c**: 운영 도구 — `simulator/page.tsx`(72)·`AbusingClient.tsx`(44)·
   `AmbientDropForm.tsx`(45)·`DropPolicyForm.tsx`(9)·`CombinePolicyForm.tsx`(7) ≈ 177건
@@ -213,7 +213,7 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   유사한 "테마 없는 강조색"을 만나면 참고할 것.
 
 **2026-08-26 갱신 — 4단계b 구현 완료(리뷰 대기)**: POI·아이템북·트라이브 도메인 12개 파일
-(`CategoryManager.tsx`·`PoiForm.tsx`·`Pagination.tsx`·`ItemBookForm.tsx`·`FactionForm.tsx`·
+(`CategoryManager.tsx`·`PoiForm.tsx`·`Pagination.tsx`·`ItemBookForm.tsx`·`TribeForm.tsx`·
 `AdjacencyEditor.tsx` + 소형 페이지 6개, 실측 217건) 전환 완료, 사용자 최종 승인 대기 중
 (`20260826_018`). 4c/4d 착수 시 참고할 구현 노트:
 
@@ -228,7 +228,7 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   hex라 4a의 `BadgeMultiSearchSelect` 특례(전부 opacity 변형이라 `text-primary` 통일)와
   달리 `text-foreground`로 분리 매핑했다 — "칩 4개 속성이 전부 같은 hex의 opacity
   변형인가"를 판별 기준으로 삼을 것.
-- Portal `container` 연결을 CategoryManager/PoiForm/ItemBookForm/FactionForm 4개 파일의
+- Portal `container` 연결을 CategoryManager/PoiForm/ItemBookForm/TribeForm 4개 파일의
   Select(총 6곳) + ItemBookForm의 AlertDialog(비활성화 확인, 1곳)에 실제로 연결했다 —
   Playwright로 `[data-admin-theme]` 스코프 안에 포털됨을 프로그램적으로 확인(`listbox`/
   `alertdialog` role 요소가 스코프 노드의 자손인지 `contains()` 체크).
@@ -316,7 +316,7 @@ API 라우트 신설 포함(구현 시 화면별로 실제 필요성 판단 — 
   기본값 흰색)을 그대로 물려받아 흰 배경 위 흰 글씨로 안 보이는 회귀였다. 하드코딩 hex는
   스코프와 무관한 리터럴이라 이 문제가 지금까지 잠복해 있었을 뿐이다. `grep`으로 전체 admin
   에서 `alert-dialog.tsx` 소비자 9곳을 전수조사한 결과 `container`가 연결된 곳은
-  `ItemBookForm.tsx` 1곳뿐이었고, 나머지 8곳(`TodayCardTable.tsx`·`FactionsTable.tsx`·
+  `ItemBookForm.tsx` 1곳뿐이었고, 나머지 8곳(`TodayCardTable.tsx`·`TribesTable.tsx`·
   `PoiBlockTable.tsx`·`BanTable.tsx`·`BadgesTable.tsx`·`BadgeActiveToggleButton.tsx`·
   `ItemBookTable.tsx`·`ItemBookActiveToggleButton.tsx`)에 4a `BadgeForm.tsx`와 동일한
   `document.querySelector('[data-admin-theme]')` idiom으로 `themeContainer` 상태를

@@ -221,10 +221,10 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 
 ---
 
-## 5. 트라이브 (faction) — 신규 도메인
+## 5. 트라이브 (tribe) — 신규 도메인
 
 ### factions
-10개 트라이브. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/FACTIONS.md](FACTIONS.md) 참고.
+10개 트라이브. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/TRIBES.md](TRIBES.md) 참고.
 
 `background_color`/`background_shader_id`(20260818_004) 외에 `background_image_url`/`background_video_url`
 (nullable, 20260819_013), `background_animation`(jsonb nullable, 20260901_1944) 보유. 트라이브 자체는
@@ -234,7 +234,7 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 캐스케이드는 컬렉션과 동일하게 **`background_color` + `background_animation` 2필드**만 복사하며,
 영상·이미지는 복사도 삭제도 하지 않는다(§2 «배경 렌더링 우선순위» 참고).
 
-`PUT /api/admin/factions/[id]`는 부분 body 병합을 지원한다(20260827_005) — body에 없는(=`undefined`)
+`PUT /api/admin/tribes/[id]`는 부분 body 병합을 지원한다(20260827_005) — body에 없는(=`undefined`)
 필드는 기존 DB 값을 그대로 유지하고, body에 명시적으로 포함된 필드만 갱신한다. 인접 트라이브만 저장하는
 `AdjacencyEditor.tsx`처럼 일부 필드만 담아 호출하는 화면도 안전하게 이 엔드포인트를 재사용할 수 있다.
 

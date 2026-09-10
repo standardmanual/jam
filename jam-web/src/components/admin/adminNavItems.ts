@@ -47,7 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/item-badges/orphaned', label: '미소유 아이템배지 현황', icon: IconUserOff },
       { href: '/admin/poi', label: 'POI 관리', icon: IconMapPin },
       { href: '/admin/itembooks', label: '컬렉션', icon: IconBook },
-      { href: '/admin/factions', label: '세계관', icon: IconWorld },
+      { href: '/admin/tribes', label: '트라이브', icon: IconWorld },
       { href: '/admin/recipes', label: '믹스 레시피', icon: IconFlask },
       { href: '/admin/today', label: '투데이 콘텐츠', icon: IconNews },
       { href: '/admin/missions', label: '미션 관리', icon: IconTarget },
