@@ -2,8 +2,9 @@
 id: 20260910_2027
 category: Admin
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-10
+closed: 2026-09-10
 ---
 
 # [Admin] `daily_sync_count` 조건 필드의 native `max` 속성이 실제 저장값을 초과해 수정 저장을 막을 수 있음

@@ -2,8 +2,9 @@
 id: 20260910_2056
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-10
+closed: 2026-09-10
 ---
 
 # [BadgeEngine] JAM! 카테고리 — 팔로우 획득 시 배지 리빌 애니메이션 연동
@@ -100,3 +101,59 @@ created: 2026-09-10
 ### 완료 시 갱신할 문서
 
 - 없음(기존 설계 문서의 "Out of Scope" 항목이 이번 구현으로 해소되는 것뿐, 새 정책 추가 아님)
+
+---
+## 완료 기록 *(작업 완료 후 작성)*
+
+### 구현 내용 요약
+
+Acceptance Criteria 6개를 전부 구현했다. `follows/route.ts` 응답에 `buildEarnedBadgePayload`가
+이미 계산해두고도 빠뜨리고 있던 `earnedBadgesMore`·`isFirstBadgeEver`를 추가해
+`/api/strava/sync`(SyncButton)와 완전히 동일한 계약으로 맞췄다. `FollowButton.tsx`의
+`toggle()`이 POST 응답을 `.json()`으로 파싱해 `earnedBadges.length > 0`이면
+`BadgeRevealOverlay`를 연다 — `SyncButton.tsx`의 상태관리·렌더 패턴을 그대로 이식했다.
+`profileHref`는 팔로우한 사람 본인(로그인 유저)의 배지이므로 `targetUserId`가 아니라 항상
+`/profile`로 고정했다. 언팔로우(DELETE) 분기는 전혀 손대지 않았다. GA4 분석 이벤트
+(`first_badge_earned`)는 티켓 AC·구현 계획 어디에도 요구가 없어 이식하지 않았다.
+
+### 변경된 파일
+```
+jam-web/src/app/api/follows/route.ts
+jam-web/src/app/(main)/[username]/FollowButton.tsx
+jam-web/src/app/api/follows/__tests__/route.test.ts (신규 2건)
+```
+
+### 테스트 결과
+- [x] 게이트 리뷰가 워크트리에서 직접 재실행 — `npm run lint` 0 errors/13 warnings(기존
+      기준선), `tsc --noEmit` 0 errors, `npx vitest run` 80 files/1314 tests 전부 통과
+- [x] 머지 후 오케스트레이터가 2055와 통합된 상태로 전체 재검증 — `npm run lint` 0
+      errors/13 warnings, `tsc --noEmit` 0 errors, `npx vitest run` 84 files/1332 tests
+      전부 통과
+- [ ] 실브라우저 E2E는 수행하지 않음 — 워크트리 구조적 제약(`next dev` 미동작)과 staging
+      미병합 당시 제약. 병합 완료 후에도 워크트리 환경이라 여전히 실렌더는 메인 트리에서
+      staging pull 후 확인 필요(잔여 이슈 참고)
+
+### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
+**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+
+리빌 오버레이가 표시하는 배지 이름·설명은 기존 배지 데이터 그대로이며 이번 변경으로 새로
+추가된 사용자 노출 문구는 없다(순수 프론트 배선).
+
+### 배포 정보
+- 배포일: 2026-09-10
+- 환경: staging (프로덕션 승격은 `/jam-ship`으로 별도 진행)
+- 커밋: 브랜치 `claude/jamwork-20260910_2056-follow-reveal`(커밋 `f33ecf09`)
+
+### 주요 의사결정 / 핵심 메모
+- 게이트 리뷰(PASS)·개선 리뷰·인터페이스 리뷰(MEDIUM 1건) 모두 완료. 개선 리뷰·인터페이스
+  리뷰가 짚은 범위 밖 발견물 2건은 규칙대로 자동 티켓화했다 — 아래 "잔여 이슈" 참고.
+- `router.refresh()` 미호출(개선 리뷰 제안) — `SyncButton`과 달리 `FollowButton`이 쓰이는
+  두 화면(팔로워/팔로잉 목록)엔 갱신할 서버 파생 데이터가 딱히 없어 이번엔 반영하지 않았다.
+
+### 잔여 이슈
+- [20260910_2132](../P2-일반/20260910_2132_UI_팔로우리빌-프로필화면2곳미연동.md) — 프로필
+  화면의 팔로우 버튼 2곳(`handleFollow`·`handleListFollow`)에 리빌 미연동 (P2)
+- [20260910_2133](../P2-일반/20260910_2133_UI_배지리빌오버레이-목록중첩가능성.md) — 목록
+  페이지에서 오버레이 다중 인스턴스 동시 노출 가능성, 인터페이스 리뷰 MEDIUM (P2)
+- `GA4_EVENTS.md`의 "알려진 계측 공백" 절에 팔로우 경로 미기재 — 개선 리뷰 제안, 급하지
+  않아 별도 티켓화하지 않음(다음에 그 문서를 만질 기회에 반영)

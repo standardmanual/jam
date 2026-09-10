@@ -2,8 +2,9 @@
 id: 20260910_2055
 category: BadgeEngine
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-09-10
+closed: 2026-09-10
 ---
 
 # [BadgeEngine] JAM! 카테고리 — `admin_category` 컬럼 신설 및 어드민 화면 전반 반영
@@ -184,3 +185,102 @@ enum을 건드리지 않고 `type='activity'`로 저장했다. 이 판단 자체
 ### 완료 시 갱신할 문서
 
 - `Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md` — `admin_category` 컬럼과 어드민 분류 체계 설명 추가(기존 `category`/지점카테고리와의 차이 명시)
+
+---
+## 완료 기록 *(작업 완료 후 작성)*
+
+### 구현 내용 요약
+
+Acceptance Criteria 10개를 전부 구현했다. `badges.admin_category TEXT` 컬럼 + 화이트리스트
+CHECK(`NULL` 또는 `'jam'`) 신설, 기존 JAM! 배지 3건 UPDATE(SQL 파일만 작성, 미실행), 어드민
+배지 생성(POST)·수정(PUT) API에 `admin_category` 저장 경로 추가(기존 `category`의
+`type==='checkin'` 강제 null 가드와 독립적으로 항상 그대로 저장/병합). 6개 화면(배지 목록
+필터·계열관리·게이트미션·아이템북·시뮬레이터·activity-badge-image) 전부 반영했고,
+`BadgeForm.tsx`에 "어드민 카테고리" 입력 필드를 신규 추가했다(Out of Scope 절이 "레이아웃
+개선은 제외하되 기능 추가는 포함"으로 명시했던 부분).
+
+**구현 중 티켓 서술과 실제 코드 동작이 달랐던 지점을 발견·수정했다** — 게이트미션 화면.
+티켓 원문은 "JAM! 배지가 이미 `type='activity'`라 드롭다운에 뜨고 있다"고 서술했으나, 실제로는
+JAM! 배지가 활동 종목이 없어 `family_key`를 발급받지 못했고 기존
+`.filter((f) => !!f.familyKey)`에 걸려 **드롭다운에 전혀 뜨지 않는 상태**였다(그대로 뒀으면
+AC5 미충족). `familyKeyOf()`의 `#name:` 폴백 키가 `visibility-server.ts`의
+`loadOwnedFamilyTiers`에서 이미 지원됨을 코드 추적으로 확인하고, `admin_category='jam'`
+예외로 필터를 완화 + 폴백 키를 그대로 쓰도록 수정했다. `crossGate.ts`의
+`normalizeGateRequirement`도 `#`-접두 키를 거부하지 않음을 확인해 저장 단계까지 안전함을
+검증했다. 이 최초 스펙 조사 오류는 오케스트레이터(나)의 사전 조사 단계에서 놓친 것이다.
+
+컬럼명은 원래 `category`로 스펙을 잡았으나, 구현 착수 직전 jam-developer가 이미 존재하는
+`badges.category`(마이그레이션 113, 체크인 배지 전용 "지점 카테고리", `poi_categories` FK)와
+정면 충돌한다는 걸 발견해 1차 시도를 HALT했다. 사용자 확인 후 `admin_category`로 개명해
+재작업했다(아래 "주요 의사결정" 참고).
+
+### 변경된 파일
+```
+jam-web/supabase/migrations/156_badges_admin_category.sql (신규, 미실행)
+jam-web/src/types/database.ts
+jam-web/src/types/database.generated.ts
+jam-web/src/lib/admin/badge-labels.ts
+jam-web/src/lib/admin/badge-list-view.ts
+jam-web/src/lib/admin/badge-families.ts
+jam-web/src/lib/admin/badge-families-query.ts
+jam-web/src/app/api/admin/badges/route.ts
+jam-web/src/app/api/admin/badges/[id]/route.ts
+jam-web/src/app/api/admin/badges/search/route.ts
+jam-web/src/app/api/admin/activity-badge-image/search/route.ts
+jam-web/src/app/admin/badges/page.tsx
+jam-web/src/app/admin/badges/BadgesFilterBar.tsx
+jam-web/src/app/admin/badges/BadgeForm.tsx
+jam-web/src/app/admin/badge-families/page.tsx
+jam-web/src/app/admin/gate-missions/page.tsx
+jam-web/src/app/admin/gate-missions/GateMissionManager.tsx
+jam-web/src/components/admin/BadgeSearchSelect.tsx
+jam-web/src/lib/badge-engine/index.ts
+Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md
++ 신규·확장 테스트 10개 파일(badge-labels.test.ts·admin-category-candidates-contract.test.ts·
+  gate-family-options-contract.test.ts·badges/search/route-contract.test.ts 등)
+```
+
+### 테스트 결과
+- [x] 게이트 리뷰가 워크트리에서 직접 재실행 — `npm run lint` 0 errors/13 warnings(기존
+      기준선), `tsc --noEmit` 0 errors, `npx vitest run`(범위) 84 files/1330 tests 통과
+- [x] 게이트 리뷰가 프로덕션 Supabase에 read-only 쿼리로 대상 배지 3건 실제 상태 대조,
+      `admin_category` 컬럼이 실제로 아직 없음(마이그레이션 미실행)도 확인
+- [x] 머지 후 오케스트레이터가 2056과 통합된 상태로 전체 재검증 — `npm run lint` 0
+      errors/13 warnings, `tsc --noEmit` 0 errors, `npx vitest run` 84 files/1332 tests
+      전부 통과(2055+2056 병합 후 신규 테스트 포함)
+- [ ] 실브라우저 6개 화면 검증 — 마이그레이션 미실행 상태라 보류. **마이그레이션 실행 후
+      별도 확인 필요**(아래 "잔여 이슈")
+
+### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
+**가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
+
+`BadgeForm.tsx`의 "어드민 카테고리" 입력 필드 라벨은 어드민 내부 전용 문구라 유저 노출 대상이
+아니다. 아이템북 검색 결과의 "[JAM!]" 구분 표시도 어드민 화면 전용.
+
+### 배포 정보
+- 배포일: 2026-09-10
+- 환경: staging (프로덕션 승격은 `/jam-ship`으로 별도 진행)
+- 커밋: `c7e742ba`(1차 HALT), 재작업 커밋(2차, 브랜치 `claude/jamwork-20260910_2055-admin-category`)
+- DB 마이그레이션(`156_badges_admin_category.sql`)은 이 티켓 CLOSED 처리와 별도로,
+  사용자 승인 후 오케스트레이터가 직접 실행
+
+### 주요 의사결정 / 핵심 메모
+- **컬럼명을 `category`에서 `admin_category`로 변경**(스펙 인터뷰 단계의 조사 누락을 구현
+  단계에서 발견·정정). 기존 `category`(마이그레이션 113)는 체크인 배지 전용 "지점 카테고리"이고
+  어드민 배지 생성·수정 API가 `type!=='checkin'`이면 무조건 null로 덮어쓰는 가드까지 있어,
+  이름만 바꾸는 게 아니라 완전히 독립된 신규 컬럼이 필요했다.
+- **게이트미션 드롭다운 노출 버그를 구현 단계에서 발견·수정**(위 "구현 내용 요약" 참고) —
+  스펙 조사가 실제 필터 로직(`family_key` 부재 시 완전 제외)을 놓쳤던 지점.
+- `badge-condition-guards.ts`의 `USAGE_METRIC_CONDITION_KEYS`는 의도적으로 그대로 뒀다 —
+  이 배열은 "사용량 지표 + `repeat_count`" 저장 시점 충돌 검증 전용이라 `admin_category`
+  판별과는 별개 용도.
+- 머지 시점에 병렬로 진행 중이던 다른 세션의 gstack 제거 작업(티켓 20260910_2157)과 실제
+  충돌 여부를 merge-base 대조로 확인 — 겹치는 파일(`conditionRegistry.ts`)이 있었으나 이
+  review 브랜치는 그 파일을 전혀 건드리지 않아 충돌 없었다.
+
+### 잔여 이슈
+- 실브라우저 6개 화면(배지 목록·계열관리·게이트미션·아이템북·시뮬레이터·activity-badge-image)
+  검증은 마이그레이션 실행 후 오케스트레이터가 별도로 진행한다.
+- 유저 배지진단(`/admin/users` `BadgeDiagnosisButton`)은 티켓 범위 밖으로 뒀으나, 시뮬레이터용
+  `admin_category!=='jam'` 제외 필터가 부수적으로 이 화면의 "JAM! 배지 항상 미충족" 문제도
+  개선한다는 점이 구현 중 확인됐다(별도 검증·문서화는 하지 않음).
