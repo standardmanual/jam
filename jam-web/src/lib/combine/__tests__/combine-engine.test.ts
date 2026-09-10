@@ -242,7 +242,7 @@ describe('레시피 미매칭 → 고정 포인트만', () => {
       expect(result.pointsAwarded).toBe(5)
     }
     expect(stub.grantedBadgeIds).toEqual([])
-    expect(awardPointsMock).toHaveBeenCalledWith(USER, 5, 'combine_pity_reward')
+    expect(awardPointsMock).toHaveBeenCalledWith(USER, 5, 'combine_fail_reward')
     expect(stub.failLogs).toHaveLength(1)
     expect(stub.failLogs[0].points_awarded).toBe(5)
   })
@@ -254,6 +254,24 @@ describe('레시피 미매칭 → 고정 포인트만', () => {
     const result = await combineItems(USER, [ITEM_1, ITEM_2])
     expect(result.success).toBe(false)
     expect(awardPointsMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('재료 매칭은 배지 종류 집합 비교 — 중복 재료 레시피는 미지원', () => {
+  it('재료 종류가 다르면 매칭되지 않는다', async () => {
+    stub.recipes = [recipe({ ingredient_badge_ids: [BADGE_A, 'badge-c'] })]
+
+    const result = await combineItems(USER, [ITEM_1, ITEM_2])
+    expect(result.success).toBe(false)
+  })
+
+  it('같은 배지를 2회 요구하는 레시피는 집합상 1종이라 2종 투입과 매칭되지 않는다', async () => {
+    // 저장 단계(normalizeRecipePayload)가 중복 재료를 거부하는 것이 정본 사양이고,
+    // 엔진도 집합 비교라 이런 행이 있어도 매칭되지 않는다.
+    stub.recipes = [recipe({ ingredient_badge_ids: [BADGE_A, BADGE_A] })]
+
+    const result = await combineItems(USER, [ITEM_1, ITEM_2])
+    expect(result.success).toBe(false)
   })
 })
 

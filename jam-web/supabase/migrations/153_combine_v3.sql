@@ -64,8 +64,12 @@ COMMENT ON COLUMN public.combination_recipes.reward_badge_ids IS
 -- 2. combine_policy — 티어 12개 · 피티 7개 컬럼 제거, fail_reward_points만 남김
 --    싱글톤(id=1) 구조는 그대로 유지한다.
 -- ----------------------------------------------------------------
+-- 기본값 10 — 마이그레이션 직후 미매칭 실패가 완전 빈손이 되지 않게 한다.
+-- (피티가 폐기되면서 실패 시 유일한 보상 경로가 이 컬럼 하나다)
 ALTER TABLE public.combine_policy
-  ADD COLUMN IF NOT EXISTS fail_reward_points INTEGER NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS fail_reward_points INTEGER NOT NULL DEFAULT 10;
+-- 이미 컬럼이 있던 환경(DEFAULT 0으로 만들어진 경우)에도 기본값·현재값을 10으로 맞춘다.
+ALTER TABLE public.combine_policy ALTER COLUMN fail_reward_points SET DEFAULT 10;
 
 ALTER TABLE public.combine_policy
   DROP COLUMN IF EXISTS tier1_max_items,
@@ -92,10 +96,11 @@ ALTER TABLE public.combine_policy DROP CONSTRAINT IF EXISTS combine_policy_fail_
 ALTER TABLE public.combine_policy ADD CONSTRAINT combine_policy_fail_reward_points_check
   CHECK (fail_reward_points >= 0);
 
-INSERT INTO public.combine_policy (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.combine_policy (id, fail_reward_points) VALUES (1, 10)
+  ON CONFLICT (id) DO UPDATE SET fail_reward_points = 10;
 
 COMMENT ON COLUMN public.combine_policy.fail_reward_points IS
-  '레시피에 매칭되지 않았을 때 지급하는 고정 포인트. 0이면 미지급.';
+  '레시피에 매칭되지 않았을 때 지급하는 고정 포인트(기본 10). 0이면 미지급.';
 
 -- ----------------------------------------------------------------
 -- 3. user_combine_fail_logs — 믹스 실패 이력 (어드민 조회 전용)
@@ -129,15 +134,13 @@ COMMENT ON TABLE public.user_combine_fail_logs IS
 DROP TABLE IF EXISTS public.user_combine_state;
 
 -- ----------------------------------------------------------------
--- 5. 포인트 사유 코드
---    'combine_pity_reward'는 코드값을 유지한다(타입 유니온·라벨 6개 파일에 퍼져 있고
---    지급 이력이 0건이라 마이그레이션 이득이 없다). 표시 라벨만 '믹스 실패 보상'으로
---    바꿨다 — 이제 이 코드는 「레시피 미매칭 시 고정 포인트」를 의미한다.
+-- 5. 포인트 사유 코드 — 폐기된 pity 개념 정리
+--    피티가 사라졌으므로 'combine_pity_reward'를 'combine_fail_reward'로 rename한다
+--    (「레시피 미매칭 시 고정 포인트」라는 실제 의미와 코드값을 일치시킨다).
+--    지급 이력이 0건이므로 기존 행 마이그레이션은 필요 없다.
 --
---    반대로 **레시피 매칭 성공 보상 포인트**는 새 코드값 'combine_recipe_reward'로
---    분리한다. 성공 지급을 '믹스 실패 보상' 라벨로 원장에 남기면 유저 포인트 내역과
---    어드민 요약이 사실과 다르게 표시되기 때문이다(reward_points는 이번 티켓의 신규 기능이라
---    기존 이력과의 호환 문제는 없다).
+--    레시피 매칭 성공 보상 포인트는 'combine_recipe_reward'로 분리한다 — 성공 지급을
+--    실패 보상 사유로 원장에 남기면 유저 포인트 내역·어드민 요약이 사실과 달라진다.
 -- ----------------------------------------------------------------
 ALTER TABLE public.point_transactions DROP CONSTRAINT IF EXISTS point_transactions_reason_check;
 ALTER TABLE public.point_transactions ADD CONSTRAINT point_transactions_reason_check CHECK (reason IN (
@@ -145,6 +148,6 @@ ALTER TABLE public.point_transactions ADD CONSTRAINT point_transactions_reason_c
   'mission_point_reward',
   'admin_grant',
   'admin_deduct',
-  'combine_pity_reward',
+  'combine_fail_reward',
   'combine_recipe_reward'
 ));

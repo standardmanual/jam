@@ -6,7 +6,7 @@ import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import type { BadgeSearchResult } from '@/components/admin/BadgeSearchSelect'
-import type { BadgeRarity, BadgeType } from '@/types/database'
+import type { BadgeRarity } from '@/types/database'
 
 export interface SelectedBadge {
   id: string
@@ -19,7 +19,6 @@ interface MultiBadgeSearchSelectProps {
   onChange: (next: SelectedBadge[]) => void
   tribes: { id: string; name: string }[]
   itemBooks: { id: string; name: string }[]
-  typeFilter?: BadgeType
   placeholder?: string
 }
 
@@ -31,6 +30,13 @@ const RARITIES: { value: BadgeRarity; label: string }[] = [
 ]
 
 const ALL = 'all'
+
+/**
+ * 보상 배지는 아이템 배지로 고정한다 — 엔진의 배지 지급 경로가 `inventory_items` 개체 생성
+ * 하나뿐이라, 액티비티·체크인 배지를 보상으로 두면 획득 기록 테이블과 어긋난다.
+ * 저장 단계(`lib/admin/recipe-write.ts`)도 같은 규칙으로 거부한다.
+ */
+const REWARD_BADGE_TYPE = 'item'
 
 export function badgeLabel(badge: { name: string; type: string; rarity: string | null }): string {
   return `${badge.name} [${badge.type}/${badge.rarity ?? '-'}]`
@@ -51,7 +57,6 @@ export default function MultiBadgeSearchSelect({
   onChange,
   tribes,
   itemBooks,
-  typeFilter,
   placeholder,
 }: MultiBadgeSearchSelectProps) {
   const [query, setQuery] = useState('')
@@ -81,7 +86,7 @@ export default function MultiBadgeSearchSelect({
       try {
         const params = new URLSearchParams()
         if (query.trim()) params.set('query', query.trim())
-        if (typeFilter) params.set('type', typeFilter)
+        params.set('type', REWARD_BADGE_TYPE)
         if (tribeId !== ALL) params.set('tribe_id', tribeId)
         if (itemBookId !== ALL) params.set('item_book_id', itemBookId)
         if (rarity !== ALL) params.set('rarity', rarity)
@@ -95,7 +100,7 @@ export default function MultiBadgeSearchSelect({
       }
     }, 250)
     return () => clearTimeout(handle)
-  }, [query, typeFilter, tribeId, itemBookId, rarity, hasCriteria])
+  }, [query, tribeId, itemBookId, rarity, hasCriteria])
 
   // 조건이 비면(필터를 초기화하고 검색어도 지웠을 때) 직전 결과를 그대로 안 보여준다
   // — effect에서 setState로 비우면 캐스케이딩 렌더가 된다(BadgeSearchSelect와 동일 패턴).

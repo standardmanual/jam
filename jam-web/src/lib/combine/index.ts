@@ -93,11 +93,10 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
 
   // 3. 레시피 정확 매칭 탐색 (순서 무관) — 재료가 일치해도 required_badge_ids(액티비티·체크인
   //    배지, 소각되지 않는 보유 조건)를 전부 보유해야 최종 매칭으로 인정한다.
-  const sortedInput = [...badgeIds].sort()
   const { data: recipesRaw } = await supabase.from('combination_recipes').select('*')
   const recipes = (recipesRaw ?? []) as CombinationRecipeRow[]
 
-  const ingredientMatches = recipes.filter((r) => sameMultiset(r.ingredient_badge_ids, sortedInput))
+  const ingredientMatches = recipes.filter((r) => sameBadgeSet(r.ingredient_badge_ids, badgeIds))
 
   let matched: CombinationRecipeRow | undefined
   for (const candidate of ingredientMatches) {
@@ -178,18 +177,28 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   const policy = await getCombinePolicy()
   let pointsAwarded = 0
   if (policy.fail_reward_points > 0) {
-    const ok = await awardPoints(userId, policy.fail_reward_points, 'combine_pity_reward')
+    const ok = await awardPoints(userId, policy.fail_reward_points, 'combine_fail_reward')
     if (ok) pointsAwarded = policy.fail_reward_points
   }
   await logFailure(supabase, userId, badgeIds, 'no_recipe_match', pointsAwarded)
   return { success: false, reason: 'no_recipe_match', pointsAwarded }
 }
 
-/** 순서 무관 완전 일치 — 같은 배지가 2개 이상 들어가는 레시피(중복 재료)도 정확히 비교한다. */
-function sameMultiset(recipeIds: string[], sortedInput: string[]): boolean {
-  if (recipeIds.length !== sortedInput.length) return false
-  const sorted = [...recipeIds].sort()
-  return sorted.every((id, idx) => id === sortedInput[idx])
+/**
+ * 순서 무관 완전 일치 — **배지 종류 집합**을 비교한다.
+ *
+ * 같은 배지를 2개 이상 요구하는 레시피(중복 재료)는 지원하지 않는 것이 확정 사양이다
+ * (저장 단계 `normalizeRecipePayload()`의 중복 거부가 정본). 그래서 개수까지 세는
+ * 다중집합 비교가 아니라 집합 비교로 판정한다.
+ */
+function sameBadgeSet(recipeIds: string[], inputBadgeIds: string[]): boolean {
+  const recipeSet = new Set(recipeIds)
+  const inputSet = new Set(inputBadgeIds)
+  if (recipeSet.size !== inputSet.size) return false
+  for (const id of recipeSet) {
+    if (!inputSet.has(id)) return false
+  }
+  return true
 }
 
 /**

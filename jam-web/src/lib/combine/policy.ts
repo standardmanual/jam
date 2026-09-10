@@ -11,8 +11,9 @@ import type { CombinePolicyRow } from '@/types/database'
 
 export type CombinePolicy = Omit<CombinePolicyRow, 'id' | 'updated_at'>
 
+/** DB 기본값(마이그레이션 153의 `DEFAULT 10`)과 동일하게 맞춘다 — 폴백 시 실패가 빈손이 되지 않게. */
 export const DEFAULT_COMBINE_POLICY: CombinePolicy = {
-  fail_reward_points: 0,
+  fail_reward_points: 10,
 }
 
 export async function getCombinePolicy(): Promise<CombinePolicy> {
