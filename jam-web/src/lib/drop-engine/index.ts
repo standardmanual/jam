@@ -546,6 +546,8 @@ async function insertDrop(
     badge_image_url: picked.image_url ?? '',
     rarity: picked.rarity,
     poi_name: '',
+    // 키 이름을 바꾸지 않는다 — 이미 쌓인 activity_feed.meta의 키이고,
+    // FeedSection이 이 키로 문구를 분기한다. 바꾸면 과거 피드가 전부 어긋난다.
     faction_name: tribeName,
     is_last_piece: isLastPiece,
     // 20260827_018 — 지급한 포인트를 피드에도 남긴다. 프로필 묶음 카드가 포인트를
