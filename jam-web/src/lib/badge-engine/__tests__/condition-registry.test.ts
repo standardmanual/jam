@@ -199,12 +199,13 @@ const V5_SAMPLE_VALUES: Record<(typeof V5_NEW_20_KEYS)[number], unknown> = {
 }
 
 describe('레지스트리 — 필드 구성', () => {
-  it('52종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3)을 선언한다', () => {
+  it('55종(기존 25 + v5 신규 20 + 반복 획득 1 + 교차 게이트 3 + v5 확장 3 + 서비스 사용량 3)을 선언한다', () => {
     // v5 확장 3종(티켓 20260906_0110) — cumulative_duration_hours · monthly_count ·
-    // personal_record_break_metric.
-    expect(CONDITION_FIELDS.length).toBe(52)
-    expect(ALL_CONDITION_KEYS.length).toBe(52)
-    expect(new Set(ALL_CONDITION_KEYS).size).toBe(52) // 중복 키 없음
+    // personal_record_break_metric. 서비스 사용량 3종(티켓 20260910_1557, JAM! 카테고리) —
+    // follower_count · following_count · daily_sync_count.
+    expect(CONDITION_FIELDS.length).toBe(55)
+    expect(ALL_CONDITION_KEYS.length).toBe(55)
+    expect(new Set(ALL_CONDITION_KEYS).size).toBe(55) // 중복 키 없음
   })
 
   it('기존 25종이 전부 들어 있고, route를 뺀 24종은 평가 주체가 있다', () => {
@@ -234,6 +235,9 @@ describe('레지스트리 — 필드 구성', () => {
     expect(byEval('external').sort()).toEqual([
       'cross_between_axis',
       'cross_in_axis',
+      'daily_sync_count',
+      'follower_count',
+      'following_count',
       'gate_mission_badge',
       'mission_reward',
       'poi_id',
@@ -248,6 +252,7 @@ describe('레지스트리 — 필드 구성', () => {
     // (cumulative_duration_hours·monthly_count, 티켓 20260906_0110 ①②)
     // + personal_record_break·personal_record_break_metric 2(티켓 20260906_2055)
     // + v5 잔여 5종(티켓 20260908_1318)
+    // 서비스 사용량 3종(티켓 20260910_1557)은 external이라 여기 포함되지 않는다.
     expect(byEval('engine').length).toBe(43)
   })
 
@@ -475,7 +480,7 @@ describe('조건 키 ↔ 정규화 필드 대응 (activityField)', () => {
   })
 })
 
-describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이션 140)', () => {
+describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이션 140 · 155)', () => {
   // 티켓 20260905_0028이 지목한 «누락돼도 조용히 통과하는» 복제 위치 중 DB 쪽 2곳
   // (CHECK 제약 · 계열 정합성 트리거의 measurable_keys)이 레지스트리와 어긋나면 여기서 깨진다.
   //
@@ -485,16 +490,25 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
   //    옛 파일을 계속 읽으면 「레지스트리가 늘었는데 DB는 그대로」인 상태를 통과시켜 버린다
   //    (이 대조의 존재 이유가 사라진다).
   //    CHECK/트리거를 다시 쓰는 마이그레이션을 추가할 때마다 이 경로를 함께 올릴 것.
+  //
+  // 155(티켓 20260910_1557, JAM! 카테고리 서비스 사용량 3종)부터 **두 마커가 갈라진다** —
+  // 155는 CHECK 제약만 다시 쓰고 트리거 함수(measurable_keys)는 건드리지 않는다(신규 3종이
+  // role: 'meta'라 measurable_keys 대상이 아니므로, 131·140이 필터 전용 필드를 뺀 것과 같은
+  // 이유). 그래서 CHECK 제약은 155를, 트리거 관련 검사는 여전히 140을 읽는다.
   const sql = readFileSync(join(process.cwd(), 'supabase/migrations/140_condition_keys_v5_extension.sql'), 'utf-8')
+  const sqlCheckLatest = readFileSync(
+    join(process.cwd(), 'supabase/migrations/155_condition_json_usage_keys.sql'),
+    'utf-8'
+  )
 
   /** SQL 텍스트에서 `ARRAY[ ... ]` 블록 안의 작은따옴표 리터럴을 뽑는다 */
-  function keysInArrayAfter(marker: string): string[] {
-    const from = sql.indexOf(marker)
+  function keysInArrayAfter(source: string, marker: string): string[] {
+    const from = source.indexOf(marker)
     expect(from, `마커를 찾지 못했다: ${marker}`).toBeGreaterThan(-1)
-    const open = sql.indexOf('ARRAY[', from)
-    const close = sql.indexOf(']', open)
+    const open = source.indexOf('ARRAY[', from)
+    const close = source.indexOf(']', open)
     // SQL 주석(-- ...)은 키가 아니다 — 먼저 걷어낸다
-    const body = sql
+    const body = source
       .slice(open + 'ARRAY['.length, close)
       .split('\n')
       .map((line) => line.replace(/--.*$/, ''))
@@ -503,13 +517,24 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
   }
 
   it('CHECK 제약(badges_condition_json_known_keys)의 허용 키가 ALL_CONDITION_KEYS와 같다', () => {
-    const sqlKeys = keysInArrayAfter('ADD CONSTRAINT badges_condition_json_known_keys')
+    const sqlKeys = keysInArrayAfter(sqlCheckLatest, 'ADD CONSTRAINT badges_condition_json_known_keys')
     expect([...sqlKeys].sort()).toEqual([...ALL_CONDITION_KEYS].sort())
   })
 
   it('트리거 함수의 measurable_keys가 MEASURABLE_CONDITION_KEYS와 같다', () => {
-    const sqlKeys = keysInArrayAfter('measurable_keys TEXT[] :=')
+    const sqlKeys = keysInArrayAfter(sql, 'measurable_keys TEXT[] :=')
     expect([...sqlKeys].sort()).toEqual([...MEASURABLE_CONDITION_KEYS].sort())
+  })
+
+  it('JAM! 카테고리 서비스 사용량 3종은 CHECK 제약엔 있지만 measurable_keys엔 없다 (티켓 20260910_1557)', () => {
+    // role: 'meta'라 mission_reward와 같은 자리 — measurable_keys에 들어가면 계열 정합성
+    // 트리거가 이 필드를 «측정 조건»으로 오인해 형제 배지 간 키 집합 비교에 끌어들인다.
+    const checkKeys = keysInArrayAfter(sqlCheckLatest, 'ADD CONSTRAINT badges_condition_json_known_keys')
+    const measurableKeys = keysInArrayAfter(sql, 'measurable_keys TEXT[] :=')
+    for (const key of ['follower_count', 'following_count', 'daily_sync_count']) {
+      expect(checkKeys, `${key}가 CHECK 제약에 없다`).toContain(key)
+      expect(measurableKeys, `${key}가 measurable_keys에 들어갔다`).not.toContain(key)
+    }
   })
 
   it('130이 넣은 무한레벨형 예외 두 줄을 되돌리지 않았다', () => {
@@ -550,7 +575,7 @@ describe('레지스트리 ↔ DB 마이그레이션 동기화 (마이그레이�
     // 계열 정합성 트리거는 «측정 조건 필드의 집합»이 형제끼리 같은지 비교한다. 게이트는
     // 등급마다 달라지는 것이 정상이라(Rare엔 없고 Epic엔 축 내 교차, Mystic엔 축 간 교차 +
     // 미션) 넣으면 정상적인 v5 계열이 통째로 EXCEPTION에 걸린다 — 마스터 티켓 B-4와 같은 형태.
-    const measurable = keysInArrayAfter('measurable_keys TEXT[] :=')
+    const measurable = keysInArrayAfter(sql, 'measurable_keys TEXT[] :=')
     for (const key of ['cross_in_axis', 'cross_between_axis', 'gate_mission_badge']) {
       expect(measurable, `${key}가 measurable_keys에 들어갔다`).not.toContain(key)
     }
