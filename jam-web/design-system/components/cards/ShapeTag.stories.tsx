@@ -3,7 +3,6 @@ import React from 'react';
 import { ShapeTag } from './ShapeTag';
 
 const SHAPES = ['rect', 'pill', 'circle', 'dome', 'triangle', 'flag', 'hex'] as const;
-const TRIBES = ['fire', 'water', 'nature', 'shadow', 'light', 'storm', 'earth', 'void'] as const;
 
 const meta: Meta<typeof ShapeTag> = {
   title: 'MODULAR/Cards/ShapeTag',
@@ -46,17 +45,6 @@ export const ColorPalette: Story = {
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       {Array.from({ length: 8 }, (_, i) => (
         <ShapeTag key={i} shape="pill" colorIndex={i}>{i}</ShapeTag>
-      ))}
-    </div>
-  ),
-};
-
-export const Tribes: Story = {
-  name: '트라이브 (tribe) 색상',
-  render: () => (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      {TRIBES.map(tribe => (
-        <ShapeTag key={tribe} shape="pill" tribe={tribe}>{tribe}</ShapeTag>
       ))}
     </div>
   ),
