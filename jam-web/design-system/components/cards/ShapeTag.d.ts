@@ -6,12 +6,6 @@ export interface ShapeTagProps {
   shape?: ShapeTagShape;
   colorIndex?: number;
   color?: string;
-  /**
-   * JAM! tribe name — maps to a tag color token. Unknown names fall back to colorIndex=0.
-   * Stub mapping: fire | water | nature | shadow | light | storm | earth | void.
-   * Update TRIBE_COLORS in ShapeTag.jsx once TRIBES.md is finalized.
-   */
-  tribe?: string;
   /** v2: dark: boolean replaced by surface for API consistency with Button/IconButton */
   surface?: 'light' | 'dark';
   children?: ReactNode;
