@@ -2,9 +2,9 @@
 id: 20260910_1557
 category: BadgeEngine
 priority: P1
-status: OPEN
+status: CLOSED
 created: 2026-09-10
-closed:
+closed: 2026-09-10
 ---
 
 # [BadgeEngine] JAM! 카테고리 — 서비스 사용량 기반 배지 엔진 신설 (팔로워·팔로잉·일일동기화)
@@ -228,10 +228,19 @@ jam-web/src/lib/strava/__tests__/sync-usage-badge-hook.test.ts (신규)
 - [x] `npx tsc --noEmit` — 오류 0건
 - [x] `npm run lint` — 오류 0건, 경고 0건 추가(기존 design-system 경고 13건은 무관한 사전 존재분)
 - [x] `npm run build` — 프로덕션 빌드 성공 (`/api/follows`·어드민 배지 폼 포함 전체 라우트)
-- [ ] 어드민 배지 폼 실브라우저 확인 — review 브랜치가 staging에 병합되지 않아 `jam-stage.vercel.app`에
-      미반영, 이 워크트리엔 `.env.local`(DB 접속 정보)이 없어 로컬 `next dev`도 불가. 코드
-      추적(레지스트리 → `CONDITION_FORM_ENTRIES` → `BadgeForm.tsx` 렌더 경로)으로 등급형·
-      레벨형 폼 렌더링을 확인했으나 실제 화면 스크린샷 확인은 병합 후 필요
+- [x] 어드민 배지 폼 실브라우저 확인 — staging 머지 후 오케스트레이터가 `DEV_PROCESS_GUARDRAILS.md`
+      패턴 13(`ADMIN_EMAILS=dev-tester@jam.local` 로컬 `next dev`, 공용 DB 읽기 전용)으로
+      `/admin/badges/new`를 직접 렌더해 확인. "메타데이터" 섹션에 "팔로워 수 (명)"·"팔로잉 수
+      (명)"·"하루 동기화 횟수 (회)" 숫자 입력 3개가 각각 정확한 도움말과 함께 렌더됨을
+      접근성 트리로 직접 읽어 확인. "배지 종류" 콤보박스에 "등급형"·"레벨형" 둘 다 옵션으로
+      존재함도 같은 화면에서 확인(Acceptance Criteria 1)
+- [x] 마이그레이션 154·155를 오케스트레이터가 직접 실행 — 동시성 스모크(연속 3회 호출 시
+      1/2/3 정확히 증가, 롤백)·권한(`increment_daily_sync_count`가 `service_role`에만
+      EXECUTE)·기존 배지 633건 CHECK 통과·신규 키 INSERT 스모크(롤백) 전부 확인. 보안
+      어드바이저(`get_advisors`)에도 이번 변경으로 인한 신규 경고 없음
+- [x] `database.generated.ts` 수기 반영분을 MCP `generate_typescript_types` 결과와 대조 —
+      `user_daily_sync_counts`·`increment_daily_sync_count` 둘 다 한 글자도 다르지 않음 확인.
+      코드 수정 불필요
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -241,9 +250,9 @@ jam-web/src/lib/strava/__tests__/sync-usage-badge-hook.test.ts (신규)
 뿐이며, 최종 사용자에게 노출되는 문구가 아니다.
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: 2026-09-10
+- 환경: staging (main 승격은 별도 `/jam-ship` 진행 대기)
+- 커밋: `b0762707`(머지) · `9f781c29`(구현) · 마이그레이션 154·155 실행 완료
 
 ### 주요 의사결정 / 핵심 메모
 > `/spec`으로 3라운드 인터뷰를 거쳐 확정한 스펙. 주요 결정: `badge_type` enum에는 손대지
@@ -271,9 +280,8 @@ jam-web/src/lib/strava/__tests__/sync-usage-badge-hook.test.ts (신규)
    코드가 된다고 판단해 레지스트리 선언만으로 마쳤다.
 
 ### 잔여 이슈
-- 어드민 배지 폼("메타데이터" 섹션에 팔로워/팔로잉/하루 동기화 횟수 입력 3개가 실제로
-  보이는지)의 실브라우저 확인은 review 브랜치가 staging에 병합된 뒤 진행 필요 — 위 "테스트
-  결과" 항목 참고
-- 마이그레이션 154·155 실행 후 `database.generated.ts`를 MCP `generate_typescript_types`로
-  재생성해 이번에 수기로 반영한 `user_daily_sync_counts`/`increment_daily_sync_count` 타입과
-  대조할 것(수기 반영분이 실제 스키마와 한 글자도 다르지 않은지 확인)
+- 없음 — 구현 시점의 잔여 이슈 2건(어드민 실브라우저 확인, `database.generated.ts` 대조)은
+  머지·마이그레이션 실행 후 오케스트레이터가 전부 해소했다(위 "테스트 결과" 항목 참고)
+- (참고, 이번 티켓 범위 밖으로 별도 티켓화됨) 게이트·개선 리뷰에서 발견한 두 건 —
+  [20260910_1719 액티비티 배지 섀도우밴 미적용](../P1-중요/20260910_1719_BadgeEngine_액티비티배지-섀도우밴-미적용.md),
+  [20260910_1719 사용량 배지 반복형 조용한 오동작](../P2-일반/20260910_1719_BadgeEngine_사용량배지-반복형-조용한오동작.md)
