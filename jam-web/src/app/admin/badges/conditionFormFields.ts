@@ -98,6 +98,11 @@ export type ConditionFormFields = {
   gateMissionBadgeMinCount: string
   /** 메타데이터 필드 — 미션 완료로만 지급되는 배지 표시용 플래그(발급 판정에는 관여하지 않음) */
   missionReward: boolean
+  // JAM! 카테고리 — 서비스 사용량 지표 3종 (티켓 20260910_1557). 발급 판정은 badge-engine이
+  // 아니라 usageBadges.ts가 전담한다(mission_reward와 같은 evaluation: 'external' 패턴).
+  followerCount: string
+  followingCount: string
+  dailySyncCount: string
 }
 
 /** 빈 폼(신규 등록)의 초기값. 조건 폼 state의 단일 출처다 */
@@ -160,6 +165,9 @@ export function emptyConditionFormFields(): ConditionFormFields {
     gateMissionBadgeMinRarity: '',
     gateMissionBadgeMinCount: '',
     missionReward: false,
+    followerCount: '',
+    followingCount: '',
+    dailySyncCount: '',
   }
 }
 

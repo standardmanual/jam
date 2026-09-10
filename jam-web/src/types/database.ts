@@ -898,6 +898,19 @@ export interface UserFollowRow {
 }
 
 // =========================================
+// JAM! 카테고리 — 서비스 사용량 배지 (티켓 20260910_1557)
+// =========================================
+
+/** 하루(KST) 동기화 성공 횟수 카운터. `increment_daily_sync_count()` RPC로만 증가한다 */
+export interface UserDailySyncCountRow {
+  user_id: string
+  /** KST 기준 날짜 (YYYY-MM-DD) */
+  sync_date: string
+  count: number
+  updated_at: string
+}
+
+// =========================================
 // Phase 15: 투데이 콘텐츠 카드 (today_cards)
 // =========================================
 export type TodayCardTemplateType =
@@ -1201,6 +1214,22 @@ export interface BadgeCondition {
    * (예: 한 달 8회 라이딩 × 12개월 → `cycling:G2`).
    */
   monthly_count?: number
+
+  // ── JAM! 카테고리 — 서비스 사용량 지표 3종 (티켓 20260910_1557) ──────────
+  //
+  // Strava 활동과 무관하게 "서비스를 어떻게 쓰는가"를 재는 지표. `mission_reward`와 같은
+  // `evaluation: 'external'` 패턴이다 — badge-engine의 `evaluateConditionDetailed`는 이
+  // 필드들이 있으면 (role: 'measurable' 필드가 없어) 항상 fail 처리하고, 실제 판정·발급은
+  // `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`가 전담한다.
+  // `badge_type` enum에는 손대지 않고 `type='activity'` + `activity_types=[]`로 저장한다
+  // (배지 트리 미노출, `/badges` 일반 목록·프로필엔 정상 노출).
+
+  /** [JAM!] 팔로워 수 ≥ 조건값. `user_follows`의 COUNT(*)로 구한다 */
+  follower_count?: number
+  /** [JAM!] 팔로잉 수 ≥ 조건값. `user_follows`의 COUNT(*)로 구한다 */
+  following_count?: number
+  /** [JAM!] 그날(KST) 누적 동기화 성공 횟수 ≥ 조건값. `user_daily_sync_counts` 기준 */
+  daily_sync_count?: number
 }
 
 // =========================================

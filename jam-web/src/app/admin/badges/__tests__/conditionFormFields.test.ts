@@ -126,6 +126,10 @@ describe('condition_json ↔ 폼 라운드트립 (티켓 20260905_0032)', () => 
     cross_between_axis: { family_keys: ['running:streak'], min_rarity: 'rare' },
     gate_mission_badge: { family_keys: ['running:oath'], min_count: 1 },
     mission_reward: true,
+    // JAM! 카테고리 — 서비스 사용량 3종 (티켓 20260910_1557)
+    follower_count: 100,
+    following_count: 50,
+    daily_sync_count: 7,
   }
 
   it('표본이 폼 지원 필드를 전부 덮는다 — 새 필드를 추가하면 여기도 채워야 한다', () => {

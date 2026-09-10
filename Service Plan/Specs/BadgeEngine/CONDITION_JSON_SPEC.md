@@ -341,6 +341,9 @@ interface BadgeGateRequirement {
 | 필드 | 타입 | 설명 | 평가 방식 |
 |------|------|------|-----------|
 | `mission_reward` | `boolean` | 미션 완료(`grantMissionRewards`)로만 지급되는 배지 표시용 플래그 | badge-engine 내 **항상 fail**(사유: "미션 보상 배지 — 미션 완료로만 지급") + 발급 후보 조회 단계에서 아예 제외. 배지 상세화면이 이 플래그로 "미션 보상 배지" 안내를 표시 |
+| `follower_count` | `number` | [JAM! 카테고리] 팔로워 수 ≥ 조건값 | badge-engine 내 **항상 fail**(measurable 필드가 없어 "평가 가능한 조건 없음") — `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`가 `POST /api/follows` 성공 직후 별도 판정·발급 |
+| `following_count` | `number` | [JAM! 카테고리] 팔로잉 수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `POST /api/follows` 성공 직후 판정 |
+| `daily_sync_count` | `number` | [JAM! 카테고리] 그날(KST) 누적 동기화 성공 횟수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `syncStravaActivities()`에서 `synced > 0`일 때만 판정(카운터는 `user_daily_sync_counts` + `increment_daily_sync_count()` RPC) |
 
 > ⚠️ 배경(티켓 20260825_028): 마이그레이션 `084_badge_condition_cleanup.sql`이 배지 상세화면
 > 표시용으로 미션보상배지 15종에 `{"mission_reward": true}`를 넣었는데, 당시 badge-engine은
@@ -348,6 +351,20 @@ interface BadgeGateRequirement {
 > 발급되고 레벨업 게이팅이 12일간 무력화됐다. 지금은 `mission_reward`가 §2의 조건 필드와
 > 명시적으로 분리돼 있고, 이 필드만 있는 조건은 위 방어 분기로 항상 fail 처리된다. 어드민
 > `BadgeForm.tsx`도 이 필드를 조건 필드와 시각적으로 구분된 체크박스로 노출한다(티켓 20260825_031).
+
+> **JAM! 카테고리 — 서비스 사용량 지표 3종** (2026-09-10, 티켓 20260910_1557): `mission_reward`와
+> 같은 자리(`role: 'meta'` + `evaluation: 'external'`)이지만 성격은 조금 다르다 — `mission_reward`는
+> 그 자체로 pass/fail을 만들지 않는 순수 플래그인 반면, 이 3종은 **실제로 수치 임계값이 발급
+> 여부를 결정한다**. 다만 그 판정이 badge-engine(`evaluateConditionDetailed`, Strava 활동 이력
+> 기반) 밖에서 일어나므로 §2가 아니라 여기 분류된다 — `MEASURABLE_CONDITION_KEYS`에 없어
+> `evaluateConditionDetailed`는 이 필드들이 있으면 (다른 measurable 필드가 없는 한) 항상
+> fail 처리하고, `role: 'meta'`라 진행률(`badgeProgress.ts`)도 그리지 않는다.
+>
+> `badge_type` enum에는 손대지 않고 `type='activity'` + `activity_types=[]`로 저장하는 것이
+> 설계 전제다 — `activity_types[0]`이 없으면 `/badges/tree`(배지 트리)에는 노출되지 않고,
+> `/badges` 일반 목록·프로필은 `type==='activity'`만 보므로 정상 노출된다. 발급 규칙(등급형
+> 성장 티어·레벨형 연속 발급)은 BADGE_ENGINE_UNIFIED.md §2.2(Step 3-A/3-B)와 같은 정책을
+> `usageBadges.ts`가 최소 재구현한다. 섀도우밴은 rarity가 있는(등급형) 배지만 차단 대상이다.
 
 ---
 
