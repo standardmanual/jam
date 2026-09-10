@@ -7,7 +7,7 @@ import { Input } from '@/components/admin/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { DataTableToolbar } from '@/components/admin/data-table/data-table-toolbar'
 import { DataTableFacetedFilter } from '@/components/admin/data-table/data-table-faceted-filter'
-import { ADMIN_CATEGORIES, ADMIN_CATEGORY_LABEL, BADGE_TYPES, BADGE_TYPE_LABEL, UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
+import { BADGE_TYPES, BADGE_TYPE_LABEL, UNASSIGNED_POI_CATEGORY } from '@/lib/admin/badge-labels'
 import {
   BADGE_LIST_SORT_OPTIONS,
   CONDITION_FIELD_FILTER_OPTIONS,
@@ -15,10 +15,6 @@ import {
 } from '@/lib/admin/badge-list-view'
 
 const TYPE_OPTIONS = BADGE_TYPES.map((t) => ({ value: t as string, label: BADGE_TYPE_LABEL[t] }))
-
-// 어드민 전용 분류(JAM! 카테고리) — 지점 카테고리와 달리 타입과 무관하게 항상 노출한다
-// (티켓 20260910_2055).
-const ADMIN_CATEGORY_OPTIONS = ADMIN_CATEGORIES.map((c) => ({ value: c as string, label: ADMIN_CATEGORY_LABEL[c] }))
 
 const RARITY_OPTIONS = [
   { value: 'common', label: 'Common' },
@@ -41,16 +37,20 @@ const STATUS_OPTIONS = [
 // 여기서 다시 나열하면 서버가 모르는 값을 고를 수 있다(티켓 20260905_0032 C-2).
 const SORT_OPTIONS = BADGE_LIST_SORT_OPTIONS
 
+// JAM!(어드민 전용 분류, admin_category='jam')을 여섯 번째 종목처럼 이 목록에 함께 둔다 —
+// 별도의 "카테고리" 드롭다운으로 분리해 두면 종목을 고르려는 어드민이 못 찾는다(티켓
+// 20260910_2258). 선택값 매핑은 handleActivityTypeChange 참고.
 const ACTIVITY_TYPE_OPTIONS = [
   { value: 'cycling', label: '사이클링' },
   { value: 'running', label: '러닝' },
   { value: 'trail_running', label: '트레일 러닝' },
   { value: 'hiking', label: '하이킹' },
   { value: 'walking', label: '걷기' },
+  { value: 'jam', label: 'JAM!' },
 ]
 
 // 타입 변경 시 초기화할 서브 필터 파라미터
-const SUB_FILTER_KEYS = ['activity_type', 'poi_category', 'tribe_id', 'item_book_id']
+const SUB_FILTER_KEYS = ['activity_type', 'admin_category', 'poi_category', 'tribe_id', 'item_book_id']
 
 interface BadgesFilterBarProps {
   tribes: { id: string; name: string }[]
@@ -109,13 +109,24 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
     update({ tribe_id: values[0] ?? 'all', item_book_id: null })
   }
 
+  // "액티비티" 드롭다운에서 JAM!을 고르면 activity_type이 아니라 admin_category=jam으로
+  // 매핑한다(서버 쿼리 파라미터는 그대로, 티켓 20260910_2258). 둘은 동시에 걸리지 않는
+  // 상호배타 선택이라 하나를 세팅하면 다른 하나는 비운다.
+  const handleActivityTypeChange = (values: string[]) => {
+    const value = values[0]
+    if (value === 'jam') {
+      update({ activity_type: null, admin_category: 'jam' })
+    } else {
+      update({ activity_type: value ?? null, admin_category: null })
+    }
+  }
+
   const hasFilter =
     searchParams.has('q') ||
     searchParams.has('type') ||
     searchParams.has('rarity') ||
     searchParams.has('status') ||
     searchParams.has('condition_field') ||
-    searchParams.has('admin_category') ||
     SUB_FILTER_KEYS.some((k) => searchParams.has(k))
 
   // 선택된 트라이브 기준으로 아이템북 필터링
@@ -154,13 +165,20 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
           onChange={handleTypeChange}
         />
 
-        {/* 액티비티 서브 필터 */}
+        {/* 액티비티 서브 필터 — JAM!(admin_category='jam')도 여섯 번째 종목으로 여기 섞여
+            있다(티켓 20260910_2258). */}
         {currentType === 'activity' && (
           <DataTableFacetedFilter
             title="액티비티"
             options={ACTIVITY_TYPE_OPTIONS}
-            selected={searchParams.get('activity_type') ? [searchParams.get('activity_type') as string] : []}
-            onChange={(values) => update({ activity_type: values[0] ?? null })}
+            selected={
+              searchParams.get('admin_category') === 'jam'
+                ? ['jam']
+                : searchParams.get('activity_type')
+                  ? [searchParams.get('activity_type') as string]
+                  : []
+            }
+            onChange={handleActivityTypeChange}
           />
         )}
 
@@ -202,15 +220,6 @@ export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: Ba
           options={RARITY_OPTIONS}
           selected={searchParams.get('rarity') ? [searchParams.get('rarity') as string] : []}
           onChange={(values) => update({ rarity: values[0] ?? null })}
-        />
-
-        {/* 어드민 전용 분류 필터 — 지점 카테고리(체크인 전용)와 달리 타입과 무관하게 항상
-            노출한다. 현재는 "JAM!"(서비스 사용량 지표 배지) 1개뿐이다(티켓 20260910_2055). */}
-        <DataTableFacetedFilter
-          title="카테고리"
-          options={ADMIN_CATEGORY_OPTIONS}
-          selected={searchParams.get('admin_category') ? [searchParams.get('admin_category') as string] : []}
-          onChange={(values) => update({ admin_category: values[0] ?? null })}
         />
 
         {/* 조건 필드 필터 — 선택지는 조건 레지스트리에서 파생된다(예: 평균 파워를 쓰는 배지만).
