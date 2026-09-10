@@ -824,13 +824,21 @@ checkAndUpdateLocation(userId, lat, lng):
 user_shadow_bans { user_id, ban_level: 'soft'|'hard', reason, expires_at }
 
 soft 밴:
-  epic, mystic 드랍 → 0% (차단)
+  epic, mystic 발급 → 0% (차단)
   rare, common 정상 유지
 
 hard 밴:
-  rare, epic, mystic 드랍 → 0% (차단)
+  rare, epic, mystic 발급 → 0% (차단)
   common만 정상 유지
 ```
+
+적용 경로 (`getUserBanLevel()`·`shouldAllowDrop()` 공용, `src/lib/abusing/shadow-ban.ts`):
+- 아이템 드랍(`src/lib/drop-engine/index.ts`) — 차단된 등급은 common으로 강등한다("활동당
+  최소 1개 확정" 보장을 지키기 위한 예외), common도 차단이면 그 드랍 자체가 취소된다
+- 액티비티 배지 발급(`src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed`) — rarity가
+  있는 배지(등급형·반복형 등급 사다리)만 대상. 레벨형(`rarity` NULL)은 등급 서열이 없어
+  대상이 아니다. 강등 없이 차단되며, 그 배치에서는 단순 미발급으로 남는다(조건 자체는
+  유지되므로 밴이 풀린 뒤 다음 평가에서 정상 발급된다)
 
 > ⚠️ 위는 **설계 의도**다. **Epic 차단은 현재 꺼져 있다**(soft/hard 모두 배율 1.00).
 > 경위와 판단 보류 사유는 [12-6](#12-6-어뷰징-정책-싱글톤-abusing_policy) 참조.

@@ -23,6 +23,11 @@ import { recordFeedEvent } from '@/lib/activity-feed'
 import { awardPoints } from '@/lib/points'
 import { recordActivityRecap } from '@/lib/notifications/recap'
 import { logEngineDecision } from '@/lib/engine-log'
+// 섀도우밴 게이트 — usageBadges.ts(티켓 20260910_1557)가 세운 패턴을 그대로 재사용한다.
+// drop-engine과 달리 새 service client를 만드는 헬퍼 두 개(getUserBanLevel/getAbusingPolicy)를
+// 그대로 호출한다 — 두 헬퍼 모두 이 패턴이 기존 소비처 전역의 관례다(티켓 20260910_1719).
+import { getUserBanLevel, shouldAllowDrop } from '@/lib/abusing/shadow-ban'
+import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { getActivityHistory, getSignupAnchorDate, mergeActivityHistory } from '@/lib/strava/activity-history'
 import type { NormalizedActivity } from '@/types/strava'
 import { kmhToPaceSecPerKm, formatPaceSecPerKm } from '@/types/strava'
@@ -1379,6 +1384,54 @@ export async function evaluateBadgesDetailed(
     }
   }
 
+  // ── 2.9단계: 섀도우밴 게이트 — 고가치(rarity) 발급 차단 (티켓 20260910_1719) ──
+  //
+  // BADGE_ENGINE_UNIFIED.md §1 "공통 정책(두 엔진 공유)"이 명시한 섀도우밴이 drop-engine
+  // (아이템배지)·usageBadges.ts(서비스 사용량 배지)에만 연결돼 있고 이 경로(일반 액티비티
+  // 배지)엔 전혀 연결돼 있지 않았다 — 과거 티켓·PRD를 확인했으나 의도적으로 제외했다는
+  // 근거는 없고, 오히려 §1이 「공통」이라 명시해 놓친 구현으로 판단했다.
+  //
+  // usageBadges.ts가 세운 판정을 그대로 재사용한다: **rarity가 있는 배지만** 대상이다
+  // (등급형·반복형 등급 사다리 포함). 무한레벨형(rarity NULL)은 등급 서열이 없어 이
+  // 게이트의 대상이 아니다 — `badges` 테이블은 `(rarity IS NULL) = (level IS NOT NULL)`
+  // CHECK 제약(마이그레이션 130)을 가지므로 `badge.rarity` 존재 여부만으로 판별할 수 있다.
+  // 카운터 증가(`action === 'increment'`, 반복형이 이미 보유한 등급의 회차만 올리는 경로)는
+  // 새 행을 만들지 않으므로 대상이 아니다 — 2.8단계 첫 싱크 게이트와 동일한 예외.
+  //
+  // drop-engine의 `applyShadowBanCap()`과 달리 **강등(rarity 하향)은 하지 않는다.** 강등은
+  // "활동당 최소 1개 확정"이라는 드랍 고유의 보장을 지키기 위한 장치이고, 액티비티 배지는
+  // «조건을 충족한 바로 그 배지»가 성취의 증명이라 대신 지급할 하위 등급이 없다 — 차단되면
+  // 이번 배치에서는 단순히 미발급으로 남고(다음 평가에서 밴이 풀리면 조건은 그대로 유지되어
+  // 정상 발급된다), missed에 사유를 남긴다.
+  //
+  // 조회 비용은 발급 후보가 있을 때만 든다(usageBadges.ts와 동일한 최적화) — 대부분의
+  // 호출(신규 발급 없음)은 이 블록에서 DB 왕복이 전혀 없다.
+  const hasShadowBanCandidate = gatedIssueList.some((c) => c.action === 'issue' && c.badge.rarity)
+  const shadowBanLevel = hasShadowBanCandidate ? await getUserBanLevel(userId) : 'none'
+  const shadowBanPolicy = shadowBanLevel !== 'none' ? await getAbusingPolicy() : null
+
+  const finalIssueList: typeof gatedIssueList = []
+  for (const c of gatedIssueList) {
+    if (c.action !== 'issue' || !c.badge.rarity || !shadowBanPolicy) {
+      finalIssueList.push(c)
+      continue
+    }
+    if (!shouldAllowDrop(c.badge.rarity, shadowBanLevel, shadowBanPolicy)) {
+      console.info(
+        `[evaluateBadgesDetailed] 섀도우밴으로 발급 차단 — userId: ${userId}, badge: ${c.badge.name}, rarity: ${c.badge.rarity}`
+      )
+      missed.push({
+        id: c.badge.id,
+        name: c.badge.name,
+        reason: '섀도우밴 — 고가치 등급 발급 차단',
+        actual: c.badge.rarity,
+        required: '밴 해제 필요',
+      })
+      continue
+    }
+    finalIssueList.push(c)
+  }
+
   const earned: BadgeEarnedInfo[] = []
   /** 이번 호출에서 회차 카운터만 오른 배지 — 엔진 로그 전용. `earned`에는 절대 넣지 않는다 */
   const counted: { id: string; name: string; addedEarnCount: number }[] = []
@@ -1388,7 +1441,7 @@ export async function evaluateBadgesDetailed(
   // 세 단계를 한 루프 안에서 순서대로 밟되 **경계를 지킨다**: DB 반영이 실패하면
   // `continue`로 부수효과(포인트·피드·결산·연출)를 전부 건너뛴다. 예전에는 `earned.push`가
   // INSERT보다 먼저라 실패한 발급이 결산·연출에 그대로 나갔다(B-3).
-  for (const plan of gatedIssueList) {
+  for (const plan of finalIssueList) {
     const { badge: toIssue, condition, evalResult, action, occurrences, newOccurrences } = plan
 
     // ── 3-a. 계기 활동 선정 (selectTriggerActivity — 순수 함수, 파일 하단)
