@@ -18,10 +18,10 @@ interface SectionDef {
 const SECTIONS: SectionDef[] = [
   {
     title: '티어 1 — 기본 (다양성 요건 미충족 시 강등되는 바닥)',
-    description: '재료 개수 상한 + 최소 서로 다른 세계관 수. b) 결과 배지 개수(n)와 성공 확률을 결정합니다.',
+    description: '재료 개수 상한 + 최소 서로 다른 트라이브 수. b) 결과 배지 개수(n)와 성공 확률을 결정합니다.',
     fields: [
       { key: 'tier1_max_items', label: '재료 개수 상한', step: '1' },
-      { key: 'tier1_min_factions', label: '최소 세계관 다양성', step: '1' },
+      { key: 'tier1_min_factions', label: '최소 트라이브 다양성', step: '1' },
       { key: 'tier1_b_rate', label: 'b) 성공 확률', step: '0.01' },
       { key: 'tier1_b_count', label: 'b) 지급 배지 개수(n)', step: '1' },
     ],
@@ -31,7 +31,7 @@ const SECTIONS: SectionDef[] = [
     description: '티어1 요건을 넘어 재료·다양성이 더 많을 때 적용.',
     fields: [
       { key: 'tier2_max_items', label: '재료 개수 상한', step: '1' },
-      { key: 'tier2_min_factions', label: '최소 세계관 다양성', step: '1' },
+      { key: 'tier2_min_factions', label: '최소 트라이브 다양성', step: '1' },
       { key: 'tier2_b_rate', label: 'b) 성공 확률', step: '0.01' },
       { key: 'tier2_b_count', label: 'b) 지급 배지 개수(n)', step: '1' },
     ],
@@ -41,7 +41,7 @@ const SECTIONS: SectionDef[] = [
     description: '최대 재료 개수(10개)까지 허용하는 최상위 티어.',
     fields: [
       { key: 'tier3_max_items', label: '재료 개수 상한', step: '1' },
-      { key: 'tier3_min_factions', label: '최소 세계관 다양성', step: '1' },
+      { key: 'tier3_min_factions', label: '최소 트라이브 다양성', step: '1' },
       { key: 'tier3_b_rate', label: 'b) 성공 확률', step: '0.01' },
       { key: 'tier3_b_count', label: 'b) 지급 배지 개수(n)', step: '1' },
     ],

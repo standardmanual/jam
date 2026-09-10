@@ -25,25 +25,25 @@ import { DataTable } from '@/components/admin/data-table/data-table'
 import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
-import type { FactionRow } from '@/types/database'
+import type { TribeRow } from '@/types/database'
 
-interface FactionsTableProps {
-  factions: FactionRow[]
+interface TribesTableProps {
+  tribes: TribeRow[]
   badgeCountMap: Map<string, number>
   bookCountMap: Map<string, number>
 }
 
-const columnHelper = createColumnHelper<DataTableFeatures, FactionRow>()
+const columnHelper = createColumnHelper<DataTableFeatures, TribeRow>()
 
 /**
- * 세계관 목록 테이블(20260826_015) — 3단계a 공용 Data Table 컴포넌트로 전환했다. 10건
+ * 트라이브 목록 테이블(20260826_015) — 3단계a 공용 Data Table 컴포넌트로 전환했다. 10건
  * 규모라 서버 페이지네이션은 두지 않는다(사전 조사 결과).
  *
- * 세계관은 `is_active`가 있어 일괄 비활성화가 가능하다(티켓 명시). `PUT /api/admin/factions/[id]`가
+ * 트라이브는 `is_active`가 있어 일괄 비활성화가 가능하다(티켓 명시). `PUT /api/admin/tribes/[id]`가
  * 부분 body를 받으면 body에 없는 필드는 기존 값을 유지하도록 병합하므로(20260827_005),
  * `{ is_active: false }`만 보내면 된다.
  */
-export function FactionsTable({ factions, badgeCountMap, bookCountMap }: FactionsTableProps) {
+export function TribesTable({ tribes, badgeCountMap, bookCountMap }: TribesTableProps) {
   const router = useRouter()
   const [sorting, setSorting] = useState<SortingState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
@@ -149,7 +149,7 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
         enableHiding: false,
         cell: ({ row }) => (
           <div className="text-right">
-            <Link href={`/admin/factions/${row.original.id}`} className="text-xs text-muted-foreground hover:text-foreground">
+            <Link href={`/admin/tribes/${row.original.id}`} className="text-xs text-muted-foreground hover:text-foreground">
               편집
             </Link>
           </div>
@@ -161,7 +161,7 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
 
   const table = useTable({
     features: dataTableFeatures,
-    data: factions,
+    data: tribes,
     columns,
     getRowId: (row) => row.id,
     state: { sorting, rowSelection, columnVisibility },
@@ -176,8 +176,8 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
     setBulkLoading(true)
     try {
       let failCount = 0
-      for (const faction of selectedRows) {
-        const res = await fetch(`/api/admin/factions/${faction.id}`, {
+      for (const tribe of selectedRows) {
+        const res = await fetch(`/api/admin/tribes/${tribe.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           // PUT 라우트가 body에 없는 필드는 기존 값을 유지하도록 병합하므로(20260827_005),
@@ -187,7 +187,7 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
         if (!res.ok) failCount += 1
       }
       if (failCount > 0) {
-        alert(`${failCount}개 세계관의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
+        alert(`${failCount}개 트라이브의 상태 변경에 실패했습니다. 다시 시도해주세요.`)
       }
       router.refresh()
       setRowSelection({})
@@ -199,11 +199,11 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
 
   // 일괄 하드 삭제(20260907_1134) — 참조 가드(`lib/admin/reference-guards.ts`)를 통과한
   // 항목만 서버가 한 번의 DELETE 쿼리로 지운다(순차 단건 호출이 아니다). 참조가 있는
-  // 세계관은 건너뛰고 항목별 사유를 돌려받는다.
+  // 트라이브는 건너뛰고 항목별 사유를 돌려받는다.
   const handleBulkDelete = async () => {
     setBulkLoading(true)
     try {
-      const res = await fetch('/api/admin/factions/bulk-delete', {
+      const res = await fetch('/api/admin/tribes/bulk-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: selectedRows.map((f) => f.id) }),
@@ -243,7 +243,7 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
         </Button>
       </DataTableBulkActionBar>
 
-      <DataTable table={table} columnCount={columns.length} emptyMessage="등록된 세계관이 없습니다." />
+      <DataTable table={table} columnCount={columns.length} emptyMessage="등록된 트라이브가 없습니다." />
 
       <AlertDialog
         open={showBulkConfirm}
@@ -253,9 +253,9 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
       >
         <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
-            <AlertDialogTitle>세계관 일괄 비활성화</AlertDialogTitle>
+            <AlertDialogTitle>트라이브 일괄 비활성화</AlertDialogTitle>
             <AlertDialogDescription>
-              선택한 {selectedRows.length}개 세계관을 비활성화합니다. 계속하시겠습니까?
+              선택한 {selectedRows.length}개 트라이브를 비활성화합니다. 계속하시겠습니까?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -277,10 +277,10 @@ export function FactionsTable({ factions, badgeCountMap, bookCountMap }: Faction
       >
         <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
-            <AlertDialogTitle>세계관 일괄 삭제</AlertDialogTitle>
+            <AlertDialogTitle>트라이브 일괄 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              선택한 {selectedRows.length}개 세계관을 삭제합니다. 삭제하면 되돌릴 수 없습니다. 연결된
-              참조가 있는 세계관은 삭제되지 않고 결과에서 안내됩니다.
+              선택한 {selectedRows.length}개 트라이브를 삭제합니다. 삭제하면 되돌릴 수 없습니다. 연결된
+              참조가 있는 트라이브는 삭제되지 않고 결과에서 안내됩니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -68,18 +68,18 @@ export async function updateCombinePolicy(patch: Partial<CombinePolicy>): Promis
   }
 }
 
-/** 재료 개수 + 서로 다른 소재 세계관 수로 티어 결정. 요건 미충족 시 하위 티어로 강등. */
+/** 재료 개수 + 서로 다른 소재 트라이브 수로 티어 결정. 요건 미충족 시 하위 티어로 강등. */
 export function resolveTier(
   itemCount: number,
-  distinctFactionCount: number,
+  distinctTribeCount: number,
   policy: CombinePolicy
 ): { tier: 1 | 2 | 3; bRate: number; bCount: number } | null {
   if (itemCount < 2 || itemCount > policy.tier3_max_items) return null
 
-  if (itemCount <= policy.tier3_max_items && distinctFactionCount >= policy.tier3_min_factions) {
+  if (itemCount <= policy.tier3_max_items && distinctTribeCount >= policy.tier3_min_factions) {
     return { tier: 3, bRate: policy.tier3_b_rate, bCount: policy.tier3_b_count }
   }
-  if (itemCount <= policy.tier2_max_items && distinctFactionCount >= policy.tier2_min_factions) {
+  if (itemCount <= policy.tier2_max_items && distinctTribeCount >= policy.tier2_min_factions) {
     return { tier: 2, bRate: policy.tier2_b_rate, bCount: policy.tier2_b_count }
   }
   // tier1(기본) — 다양성 요건 미충족 시 이 티어로 강등

@@ -1,17 +1,17 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import ItemBookForm from '../ItemBookForm'
-import type { FactionRow } from '@/types/database'
+import type { TribeRow } from '@/types/database'
 
 export default async function NewItemBookPage() {
   const supabase = createServiceClient()
-  const { data: factionsRaw } = await supabase
+  const { data: tribesRaw } = await supabase
     .from('factions')
     .select('id, name')
     .eq('is_active', true)
     .order('sort_order')
 
-  const factions = (factionsRaw ?? []) as Pick<FactionRow, 'id' | 'name'>[]
+  const tribes = (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]
 
   return (
     <div className="p-8">
@@ -22,7 +22,7 @@ export default async function NewItemBookPage() {
         <h1 className="text-2xl font-bold mt-2">컬렉션 등록</h1>
       </div>
       <ItemBookForm
-        factions={factions}
+        tribes={tribes}
         slottedBadges={[]}
       />
     </div>

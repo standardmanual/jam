@@ -62,7 +62,7 @@ export interface UserRow {
   display_name: string | null
   avatar_url: string | null
   /**
-   * 온보딩에서 유저가 직접 선택한 세계관(유저 대면 명칭: "트라이브"). 티켓 20260909_2119.
+   * 온보딩에서 유저가 직접 선택한 트라이브. 티켓 20260909_2119.
    * 온보딩 완료 시 1회 설정된 뒤 탈퇴 전까지 불변 — 변경 API가 어디에도 없다.
    * 기존 유저는 NULL일 수 있다(강제 재온보딩 없음, 점진적 유도는 후속 과제).
    */
@@ -499,7 +499,7 @@ export interface CombinationRecipeRow {
 }
 
 /**
- * Phase 19: 조합 v2 — 세계관 다양성 티어 + 피티 정책 (싱글톤 id=1)
+ * Phase 19: 조합 v2 — 트라이브 다양성 티어 + 피티 정책 (싱글톤 id=1)
  * 패턴: drop_policy — 실패 시 기본값 폴백
  */
 export interface CombinePolicyRow {
@@ -759,10 +759,16 @@ export interface UserMissionCompletionRow {
 }
 
 // =========================================
-// Phase 8: 세계관(Factions) + 아이템북 슬롯
+// Phase 8: 트라이브(Tribes) + 아이템북 슬롯
 // =========================================
 
-export interface FactionRow {
+/**
+ * DB 테이블명은 `factions`, 컬럼은 `faction_id`로 남아 있다. 티켓 20260910_1129에서
+ * 코드 식별자와 화면 표기만 트라이브로 통일했고 스키마는 건드리지 않았다 —
+ * staging·프로덕션이 단일 DB를 공유해 컬럼을 바꾸면 미배포 코드가 즉시 깨지기 때문이다.
+ * 따라서 아래 필드명이 faction 계열인 것은 리네이밍 누락이 아니라 의도적 보존이다.
+ */
+export interface TribeRow {
   id: string
   name: string
   tagline: string | null
@@ -773,18 +779,18 @@ export interface FactionRow {
   sort_order: number
   drop_condition_json: Record<string, unknown> | null
   created_at: string
-  /** 20260818_004 — "하위 배지에 일괄 적용" 원본 값. 세계관 자체에는 렌더링되지 않는다. */
+  /** 20260818_004 — "하위 배지에 일괄 적용" 원본 값. 트라이브 자체에는 렌더링되지 않는다. */
   background_color: string | null
   background_shader_id: string | null
   /** 20260819_013 — 배경 제너레이터 결과(정적 이미지). 하위 배지 일괄 적용 원본 값. */
   background_image_url: string | null
   /** 20260819_013 — 배경 제너레이터 애니메이션 결과(반복 재생 MP4). background_image_url은 poster로 함께 채워진다. */
   background_video_url: string | null
-  /** 20260901_1944 — 하위 일괄 적용 원본이 되는 배경 애니메이션 파라미터(jsonb). 세계관 자체에는 렌더링되지 않는다. */
+  /** 20260901_1944 — 하위 일괄 적용 원본이 되는 배경 애니메이션 파라미터(jsonb). 트라이브 자체에는 렌더링되지 않는다. */
   background_animation: Record<string, unknown> | null
 }
 
-export interface FactionAdjacencyRow {
+export interface TribeAdjacencyRow {
   faction_id: string
   adjacent_faction_id: string
 }
@@ -1702,16 +1708,18 @@ export interface Database {
         Update: Partial<Omit<ActivityFeedRow, 'id'>>
         Relationships: []
       }
+      // 아래 두 테이블 키(factions·faction_adjacency)는 실제 DB 테이블명이라 그대로 둔다.
+      // 값 쪽 타입 이름만 트라이브로 바뀌었다 (티켓 20260910_1129).
       factions: {
-        Row: FactionRow
-        Insert: Omit<FactionRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
-        Update: Partial<Omit<FactionRow, 'id'>>
+        Row: TribeRow
+        Insert: Omit<TribeRow, 'id' | 'created_at'> & { id?: string; created_at?: string }
+        Update: Partial<Omit<TribeRow, 'id'>>
         Relationships: []
       }
       faction_adjacency: {
-        Row: FactionAdjacencyRow
-        Insert: FactionAdjacencyRow
-        Update: Partial<FactionAdjacencyRow>
+        Row: TribeAdjacencyRow
+        Insert: TribeAdjacencyRow
+        Update: Partial<TribeAdjacencyRow>
         Relationships: []
       }
       user_drop_state: {

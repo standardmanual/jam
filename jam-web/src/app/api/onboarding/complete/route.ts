@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'DUPLICATE' }, { status: 409 })
   }
 
-  const factionId = body.faction_id
+  const tribeId = body.faction_id
 
   // faction_id 없이 호출됐다면 1단계(아이디·이름)만 저장하고 끝난다.
-  if (!factionId) {
+  if (!tribeId) {
     const { error } = await serviceClient
       .from('users')
       .update({ username, display_name: displayName })
@@ -96,15 +96,15 @@ export async function POST(request: NextRequest) {
   }
 
   // 유저가 화면을 띄운 사이 어드민이 비활성화했을 수 있으므로 서버에서 다시 검증한다.
-  const { data: faction } = await serviceClient
+  const { data: tribe } = await serviceClient
     .from('factions')
     .select('id')
-    .eq('id', factionId)
+    .eq('id', tribeId)
     .eq('is_active', true)
     .maybeSingle()
 
-  if (!faction) {
-    console.error('[onboarding/complete] 비활성/존재하지 않는 트라이브 제출 거부:', factionId)
+  if (!tribe) {
+    console.error('[onboarding/complete] 비활성/존재하지 않는 트라이브 제출 거부:', tribeId)
     return NextResponse.json({ error: 'INVALID_FACTION' }, { status: 400 })
   }
 
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     .update({
       username,
       display_name: displayName,
-      faction_id: factionId,
+      faction_id: tribeId,
       onboarding_completed_at: new Date().toISOString(),
     })
     .eq('id', user.id)

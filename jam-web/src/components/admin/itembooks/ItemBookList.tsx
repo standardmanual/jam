@@ -8,7 +8,7 @@ import type { ItemBookRow } from '@/types/database'
 interface ItemBookListProps {
   itemBooks: ItemBookRow[]
   badgeMap: Map<string, string>
-  factionMap: Map<string, string>
+  tribeMap: Map<string, string>
   itemBadgeCountMap: Map<string, number>
   emptyMessage: string
 }
@@ -16,7 +16,7 @@ interface ItemBookListProps {
 export function ItemBookList({
   itemBooks,
   badgeMap,
-  factionMap,
+  tribeMap,
   itemBadgeCountMap,
   emptyMessage,
 }: ItemBookListProps) {
@@ -47,8 +47,8 @@ export function ItemBookList({
                   ? badgeMap.get(book.reward_badge_id)
                   : undefined
               }
-              factionName={
-                book.faction_id ? factionMap.get(book.faction_id) : undefined
+              tribeName={
+                book.faction_id ? tribeMap.get(book.faction_id) : undefined
               }
               itemBadgeCount={itemBadgeCountMap.get(book.id) ?? 0}
             />
@@ -62,7 +62,7 @@ export function ItemBookList({
     <ItemBookTable
       itemBooks={itemBooks}
       badgeMap={badgeMap}
-      factionMap={factionMap}
+      tribeMap={tribeMap}
       itemBadgeCountMap={itemBadgeCountMap}
       emptyMessage={emptyMessage}
     />

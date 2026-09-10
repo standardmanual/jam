@@ -1,5 +1,5 @@
 /**
- * 미션·컬렉션(item_books)·세계관(factions) 하드 삭제 참조 가드 (티켓 20260907_1134)
+ * 미션·컬렉션(item_books)·트라이브(tribes) 하드 삭제 참조 가드 (티켓 20260907_1134)
  *
  * `lib/admin/badge-references.ts`와 같은 목적(참조를 세어 하드 삭제를 막을지 판정)이지만,
  * 엔티티마다 참조처·FK 규칙이 완전히 다르므로 **하나의 공용 함수로 추상화하지 않는다** —
@@ -16,7 +16,7 @@
  *   (사전 조사에 없던 참조 — 거의 모든 활성 유저가 `user_drop_state` 행을 가지므로 실무에서는
  *   이 한 자리가 컬렉션 하드 삭제를 사실상 항상 막는다). `badges.item_book_id`·
  *   `today_cards.item_book_id`는 SET NULL.
- * - **factions(세계관)**: `faction_adjacency`의 `faction_id`/`adjacent_faction_id` 모두
+ * - **tribes(트라이브)**: `faction_adjacency`의 `faction_id`/`adjacent_faction_id` 모두
  *   **CASCADE**. `user_drop_state.last_drop_faction_id`는 **NO ACTION**(위와 같은 이유로
  *   실무 차단 확률이 높다). `badges.faction_id`·`item_books.faction_id`는 SET NULL.
  *
@@ -264,9 +264,9 @@ export async function collectItemBookReferences(
   return { counts, error: errors.length > 0 ? errors.join(' / ') : null }
 }
 
-// ── 세계관(factions) ─────────────────────────────────────────────────────
+// ── 트라이브(tribes) ─────────────────────────────────────────────────────
 
-export const FACTION_REFERENCE_SOURCES: ReferenceSource[] = [
+export const TRIBE_REFERENCE_SOURCES: ReferenceSource[] = [
   {
     key: 'faction_adjacency',
     label: '드랍 인접 관계',
@@ -293,14 +293,14 @@ export const FACTION_REFERENCE_SOURCES: ReferenceSource[] = [
   },
 ]
 
-export async function collectFactionReferences(
+export async function collectTribeReferences(
   supabase: ServiceClient,
-  factionIds: string[]
+  tribeIds: string[]
 ): Promise<ReferenceCollectResult> {
-  const counts = new Map(factionIds.map((id) => [id, emptyCounts(FACTION_REFERENCE_SOURCES)]))
-  if (factionIds.length === 0) return { counts, error: null }
+  const counts = new Map(tribeIds.map((id) => [id, emptyCounts(TRIBE_REFERENCE_SOURCES)]))
+  if (tribeIds.length === 0) return { counts, error: null }
 
-  const targetSet = new Set(factionIds)
+  const targetSet = new Set(tribeIds)
   const errors: string[] = []
   const tally = (key: string, rows: (string | null)[]) => {
     for (const id of rows) {
@@ -309,9 +309,9 @@ export async function collectFactionReferences(
   }
 
   // faction_adjacency는 두 컬럼(faction_id / adjacent_faction_id) 모두 대상을 가리킬 수 있다 —
-  // 어느 한쪽이라도 매칭되면 그 행은 대상 세계관을 참조하는 것이다.
+  // 어느 한쪽이라도 매칭되면 그 행은 대상 트라이브를 참조하는 것이다.
   const asSource = await fetchAllRows<{ faction_id: string }>((from, to) =>
-    supabase.from('faction_adjacency').select('faction_id').in('faction_id', factionIds).range(from, to)
+    supabase.from('faction_adjacency').select('faction_id').in('faction_id', tribeIds).range(from, to)
   )
   if (asSource.error) errors.push(`faction_adjacency(faction_id): ${asSource.error}`)
   tally('faction_adjacency', asSource.rows.map((r) => r.faction_id))
@@ -320,7 +320,7 @@ export async function collectFactionReferences(
     supabase
       .from('faction_adjacency')
       .select('adjacent_faction_id')
-      .in('adjacent_faction_id', factionIds)
+      .in('adjacent_faction_id', tribeIds)
       .range(from, to)
   )
   if (asAdjacent.error) errors.push(`faction_adjacency(adjacent_faction_id): ${asAdjacent.error}`)
@@ -330,20 +330,20 @@ export async function collectFactionReferences(
     supabase
       .from('user_drop_state')
       .select('last_drop_faction_id')
-      .in('last_drop_faction_id', factionIds)
+      .in('last_drop_faction_id', tribeIds)
       .range(from, to)
   )
   if (dropState.error) errors.push(`user_drop_state: ${dropState.error}`)
   tally('user_drop_state', dropState.rows.map((r) => r.last_drop_faction_id))
 
   const badges = await fetchAllRows<{ faction_id: string | null }>((from, to) =>
-    supabase.from('badges').select('faction_id').in('faction_id', factionIds).range(from, to)
+    supabase.from('badges').select('faction_id').in('faction_id', tribeIds).range(from, to)
   )
   if (badges.error) errors.push(`badges: ${badges.error}`)
   tally('badges', badges.rows.map((r) => r.faction_id))
 
   const itemBooks = await fetchAllRows<{ faction_id: string | null }>((from, to) =>
-    supabase.from('item_books').select('faction_id').in('faction_id', factionIds).range(from, to)
+    supabase.from('item_books').select('faction_id').in('faction_id', tribeIds).range(from, to)
   )
   if (itemBooks.error) errors.push(`item_books: ${itemBooks.error}`)
   tally('item_books', itemBooks.rows.map((r) => r.faction_id))

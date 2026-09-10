@@ -216,11 +216,11 @@ Storybook
 |-----------|----------|
 | `AllShapes` | 7 shape 갤러리 |
 | `AllColors` | colorIndex 0~7 |
-| `FactionMapping` | faction prop → 자동 색상 매핑 |
+| `TribeMapping` | tribe prop → 자동 색상 매핑 |
 | `SurfaceDark` | surface=dark |
 | `SurfaceLight` | surface=light |
 
-**Controls:** `shape`, `colorIndex`, `color`, `faction`, `surface`, `children`
+**Controls:** `shape`, `colorIndex`, `color`, `tribe`, `surface`, `children`
 
 ---
 
@@ -544,7 +544,7 @@ Storybook `autodocs` 태그를 붙여 자동 Props 테이블을 생성한다.
 | **Button** | surface 선택 기준, loading 사용 정책, UX Writing 예시 ("드랍하러 가기", "취소", "더보기 →") |
 | **BadgeFrame** | 7개 shape 사용 맥락, clip-path 주의사항, 이미지 비율 가이드 |
 | **RarityBadge** | 레어리티 색상 절대 재매핑 금지 정책 |
-| **ShapeTag** | faction 매핑 테이블, colorIndex 순환 규칙 |
+| **ShapeTag** | tribe 매핑 테이블, colorIndex 순환 규칙 |
 | **Toast vs ModalToast** | 두 컴포넌트 선택 기준 (Bottom anchor vs 중앙 모달) |
 | **TabBar** | 6개 탭 키 고정 정책, 신규 탭 추가 프로세스 |
 | **BadgeGridCard** | earned/undiscovered 상태 전환 로직, 그리드 레이아웃은 호출부 책임 |

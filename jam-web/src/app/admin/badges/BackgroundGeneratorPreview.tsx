@@ -7,9 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/admin/ui/
 import BlobAnimationFields from './BlobAnimationFields'
 import { DEFAULT_BLOB_ANIMATION, type BlobAnimationParams } from '@/lib/blobAnimation'
 
-/** 라이브 미리보기 상태 — 호출부가 실제 화면 맥락(배지 상세/컬렉션/세계관)에 맞는 프레임을 그릴 때 쓴다.
+/** 라이브 미리보기 상태 — 호출부가 실제 화면 맥락(배지 상세/컬렉션/트라이브)에 맞는 프레임을 그릴 때 쓴다.
  *  제너레이터(패턴/애니메이션/Paper 필터) 제거(티켓 20260901_1929) 이후에도 3개 호출부
- *  (BadgeForm/ItemBookForm/FactionForm)가 동일한 프리뷰 프레임 위임 패턴(`renderPreview`)을
+ *  (BadgeForm/ItemBookForm/TribeForm)가 동일한 프리뷰 프레임 위임 패턴(`renderPreview`)을
  *  공유하므로, 프레임 컴포넌트(`BadgeDetailPreviewFrame`/`ItemBookDetailPreviewFrame`)의 기존
  *  prop shape는 그대로 두고 이 컴포넌트만 얇게 줄였다. `backgroundLayerRef`는 이제 굽기(bake)
  *  대상이 아니라 프레임 컴포넌트가 요구하는 DOM ref 자리표시자일 뿐이고, `liveNode`는 항상
@@ -51,7 +51,7 @@ interface BackgroundGeneratorPreviewProps {
  * 되살린 것이 아니라, 이미지 카드 안에서 라이브 실행되는 블롭 애니메이션 타입 하나만 추가한 것이다.
  * - 배타의 구현: 애니메이션 모드에서는 `backgroundAnimation`이 값을 갖고, 배경색 모드에서는
  *   null이다. 실제 렌더링 우선순위 판단은 `badgeBackgroundTheme.ts` 한 곳에 있다.
- * - **badge 전용 결합 없음**: 편집 대상이 배지인지 컬렉션인지 세계관인지 이 컴포넌트는 모른다.
+ * - **badge 전용 결합 없음**: 편집 대상이 배지인지 컬렉션인지 트라이브인지 이 컴포넌트는 모른다.
  *   실제 상세화면과 같은 구조의 미리보기 프레임은 `renderPreview` 렌더 함수로 호출부에 위임한다.
  * - admin 화면이므로 MODULAR 디자인 시스템 적용 대상이 아니다(기존 정책).
  */

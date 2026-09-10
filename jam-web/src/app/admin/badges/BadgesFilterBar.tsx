@@ -49,7 +49,7 @@ const ACTIVITY_TYPE_OPTIONS = [
 const SUB_FILTER_KEYS = ['activity_type', 'poi_category', 'faction_id', 'item_book_id']
 
 interface BadgesFilterBarProps {
-  factions: { id: string; name: string }[]
+  tribes: { id: string; name: string }[]
   itemBooks: { id: string; name: string; faction_id: string | null }[]
   poiCategories: { slug: string; label: string }[]
 }
@@ -61,13 +61,13 @@ interface BadgesFilterBarProps {
  * 필터라 TanStack `table` 인스턴스와 무관하게 URL(searchParams)로 서버 필터링을 직접
  * 제어한다(`DataTableFacetedFilter`가 `column` 대신 값/콜백을 받는 이유).
  */
-export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: BadgesFilterBarProps) {
+export default function BadgesFilterBar({ tribes, itemBooks, poiCategories }: BadgesFilterBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '')
 
   const currentType = searchParams.get('type') ?? 'all'
-  const currentFactionId = searchParams.get('faction_id') ?? 'all'
+  const currentTribeId = searchParams.get('faction_id') ?? 'all'
   const currentStatus = searchParams.get('status') ?? 'active'
 
   const update = (updates: Record<string, string | null>) => {
@@ -100,8 +100,8 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
     update({ type: value, ...cleared })
   }
 
-  const handleFactionChange = (values: string[]) => {
-    // 세계관 변경 시 아이템북 초기화
+  const handleTribeChange = (values: string[]) => {
+    // 트라이브 변경 시 아이템북 초기화
     update({ faction_id: values[0] ?? 'all', item_book_id: null })
   }
 
@@ -113,9 +113,9 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
     searchParams.has('condition_field') ||
     SUB_FILTER_KEYS.some((k) => searchParams.has(k))
 
-  // 선택된 세계관 기준으로 아이템북 필터링
+  // 선택된 트라이브 기준으로 아이템북 필터링
   const filteredItemBooks =
-    currentFactionId === 'all' ? itemBooks : itemBooks.filter((b) => b.faction_id === currentFactionId)
+    currentTribeId === 'all' ? itemBooks : itemBooks.filter((b) => b.faction_id === currentTribeId)
 
   return (
     <div className="flex flex-col gap-3">
@@ -174,14 +174,14 @@ export default function BadgesFilterBar({ factions, itemBooks, poiCategories }: 
           />
         )}
 
-        {/* 아이템 서브 필터: 세계관 + 아이템북 */}
+        {/* 아이템 서브 필터: 트라이브 + 아이템북 */}
         {currentType === 'item' && (
           <>
             <DataTableFacetedFilter
-              title="세계관"
-              options={factions.map((f) => ({ value: f.id, label: f.name }))}
-              selected={currentFactionId === 'all' ? [] : [currentFactionId]}
-              onChange={handleFactionChange}
+              title="트라이브"
+              options={tribes.map((f) => ({ value: f.id, label: f.name }))}
+              selected={currentTribeId === 'all' ? [] : [currentTribeId]}
+              onChange={handleTribeChange}
             />
             <DataTableFacetedFilter
               title="컬렉션"

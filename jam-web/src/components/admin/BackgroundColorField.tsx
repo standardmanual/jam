@@ -2,11 +2,11 @@
 
 /**
  * 배경색 피커 + hex 입력 + 스와치 + 지우기 UI 공통 컴포넌트 (20260818_004).
- * BadgeForm에 처음 구현된 UI를 그대로 컴포넌트화해 FactionForm·ItemBookForm에서도 재사용한다.
+ * BadgeForm에 처음 구현된 UI를 그대로 컴포넌트화해 TribeForm·ItemBookForm에서도 재사용한다.
  * 어드민 전용이라 MODULAR 대상 아님 — 서비스(어드민) 내부 재사용 컴포넌트.
  *
  * 자동 평균컬러 추출은 이 컴포넌트 책임이 아니다(BadgeForm은 ImageUploadField의
- * onAverageColor 콜백으로 이 필드의 value를 직접 채운다). 세계관·컬렉션은 특정 이미지 1장에
+ * onAverageColor 콜백으로 이 필드의 value를 직접 채운다). 트라이브·컬렉션은 특정 이미지 1장에
  * 종속되지 않으므로 수동 입력만 제공한다.
  */
 export const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
