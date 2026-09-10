@@ -224,7 +224,7 @@ fallback이 아니며 항상 덮어쓴다. 예전에는 4필드 스냅샷을 복
 ## 5. 트라이브 (tribe) — 신규 도메인
 
 ### factions
-10개 트라이브. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/TRIBES.md](TRIBES.md) 참고.
+10개 트라이브. `name`, `tagline`, `description`, `drop_weight`, `is_active`, `sort_order`, `drop_condition_json`. 상세 컨텐츠는 [Specs/Content/TRIBES.md](../Content/TRIBES.md) 참고.
 
 `background_color`/`background_shader_id`(20260818_004) 외에 `background_image_url`/`background_video_url`
 (nullable, 20260819_013), `background_animation`(jsonb nullable, 20260901_1944) 보유. 트라이브 자체는
