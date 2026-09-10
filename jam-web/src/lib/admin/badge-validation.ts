@@ -6,6 +6,7 @@ import {
   findConditionShapeSaveError,
   findUnpairedConditionError,
   findRepeatRestConflictError,
+  findUsageMetricRepeatConflictError,
   findRarityLevelError,
   findCrossGateShapeError,
 } from './badge-condition-guards'
@@ -15,6 +16,7 @@ export {
   findConditionShapeSaveError,
   findUnpairedConditionError,
   findRepeatRestConflictError,
+  findUsageMetricRepeatConflictError,
   findRarityLevelError,
   findCrossGateShapeError,
 }

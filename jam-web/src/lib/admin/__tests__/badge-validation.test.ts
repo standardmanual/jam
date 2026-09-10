@@ -11,7 +11,7 @@
  * 실행: `npx vitest run src/lib/admin/__tests__/badge-validation.test.ts`
  */
 
-import { findUnknownConditionKeyError, findCumulativeConditionError } from '../badge-validation'
+import { findUnknownConditionKeyError, findCumulativeConditionError, findBadgeConditionSaveError } from '../badge-validation'
 import { ALL_CONDITION_KEYS } from '@/lib/badge-engine/condition-schema'
 import type { BadgeCondition } from '@/types/database'
 
@@ -65,5 +65,54 @@ describe('findCumulativeConditionError (기존 동작 확인)', () => {
 
   it('activity 배지는 누적조건이 있어도 통과한다', () => {
     expect(findCumulativeConditionError('activity', { monthly_km: 100 })).toBeNull()
+  })
+})
+
+/**
+ * 사용량 지표(팔로워·팔로잉·일일동기화) + repeat_count 조합 — 저장 시점 가드 (티켓 20260910_1719)
+ *
+ * 배경: usageBadges.ts는 등급형·레벨형만 지원하는데, isLeveledBadge()가 rarity==null 여부로만
+ * 이진 판정해 이 3개 키 중 하나 + repeat_count(반복 획득)를 함께 저장하면 에러 없이 저장은
+ * 되지만 실제로는 등급형 경로로 흘러가 repeat_count가 조용히 무시된다. 어드민 저장 API가
+ * 실제로 부르는 진입점(findBadgeConditionSaveError)에서 막히고, 그 구체적인 안내 메시지가
+ * 나오는지 확인한다(이 3개 키는 티켓 20260910_1557이 `ALL_CONDITION_KEYS`에 이미 등록했으므로
+ * `findUnknownConditionKeyError`가 먼저 걸리지 않는다).
+ */
+describe('findBadgeConditionSaveError — 사용량 지표 + repeat_count 조합 거부 (티켓 20260910_1719)', () => {
+  const badge = { name: '테스트 배지', family_key: 'jam:test' }
+
+  it('follower_count + repeat_count는 저장을 막는다', () => {
+    const cond = { follower_count: 100, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('등급형·레벨형')
+    expect(error).not.toContain('모르는 필드')
+  })
+
+  it('following_count + repeat_count는 저장을 막는다', () => {
+    const cond = { following_count: 20, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('등급형·레벨형')
+  })
+
+  it('daily_sync_count + repeat_count는 저장을 막는다', () => {
+    const cond = { daily_sync_count: 7, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('등급형·레벨형')
+  })
+
+  it('회귀: 기존에 repeat_count를 쓰는 활동 기반 배지는 영향받지 않는다', () => {
+    expect(findBadgeConditionSaveError(badge, 'activity', { repeat_count: 10, distance_km: 5 })).toBeNull()
+    expect(
+      findBadgeConditionSaveError(badge, 'activity', { repeat_count: 5, activity_type: 'running', total_count: 20 })
+    ).toBeNull()
+  })
+
+  it('회귀: repeat_count 없는 정상 사용량 지표 조건(등급형·레벨형)은 그대로 저장된다', () => {
+    expect(findBadgeConditionSaveError(badge, 'activity', { follower_count: 100 })).toBeNull()
+    expect(findBadgeConditionSaveError(badge, 'activity', { following_count: 50 })).toBeNull()
+    expect(findBadgeConditionSaveError(badge, 'activity', { daily_sync_count: 7 })).toBeNull()
   })
 })
