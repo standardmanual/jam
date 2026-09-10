@@ -37,6 +37,9 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   trail_running: '트레일러닝',
   hiking: '등산',
   walking: '걷기',
+  /** 실제 종목이 아니라 서비스 사용량 지표 배지 분류(`badges.admin_category='jam'`)의
+   *  필터 라벨이다 — 배지 메뉴 액티비티 탭 분류 필터 전용(티켓 20260910_2258) */
+  jam: 'JAM!',
 }
 
 /**
