@@ -172,23 +172,73 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+Acceptance Criteria 15개를 전부 구현했다.
+
+- **조건 필드 3종** — `follower_count`/`following_count`/`daily_sync_count`를
+  `conditionRegistry.ts`에 `role: 'meta'` + `evaluation: 'external'`로 등록(`mission_reward`와
+  같은 자리). 별도 fail-closed 분기를 추가하지 않아도 "measurable 필드 없음" 기존 방어
+  분기로 badge-engine이 항상 fail 처리한다.
+- **신규 테이블·RPC** — `user_daily_sync_counts` + `increment_daily_sync_count()`(원자적
+  UPSERT, 마이그레이션 154). CHECK 제약 확장은 마이그레이션 155(role:'meta'라
+  `measurable_keys`에는 넣지 않음 — 140은 그대로 둠).
+- **평가 함수** — `src/lib/badge-engine/usageBadges.ts` 신규. `evaluateUsageBadges()`가
+  BADGE_ENGINE_UNIFIED.md §Step 3-A(등급형 성장 티어: 이름 그룹 내 최상위 tier 1개만)·
+  §Step 3-B(레벨형: family_key 내 보유 레벨+1부터 연속)와 같은 정책을 최소 재구현. 섀도우밴은
+  rarity가 있는(등급형) 배지만 차단(`shouldAllowDrop`). `recordDailySyncAndEvaluate()`가
+  daily_sync_count 전용 진입점(RPC 호출 + 평가를 한 곳에 묶음).
+- **트리거 연결** — `POST /api/follows`: 신규 insert 성공 시에만(23505 제외) 양쪽 유저를
+  각자 try/catch로 격리해 평가, 응답에 `earnedBadges`(팔로우한 사람 본인 몫만) 포함.
+  `DELETE /api/follows/[userId]`는 변경 없음(평가 트리거 없음). `syncStravaActivities`
+  →`processFetchedActivities` 안에서 `rawActivities.length>0`(=synced>0)일 때만
+  `recordDailySyncAndEvaluate` 호출, 결과를 기존 `earnedBadgeIds`에 합류시켜
+  `buildEarnedBadgePayload`가 상한·순서·`isFirstBadgeEver`를 한 번에 처리.
+- **어드민 폼** — `conditionFormFields.ts`에 상태 키 3종 추가. `BadgeForm.tsx`는 **코드 변경
+  없이** 기존 `CONDITION_FORM_ENTRIES`/`CONDITION_FORM_SECTIONS_IN_USE` 제네릭 렌더링이
+  자동으로 "메타데이터" 섹션에 숫자 입력 3개를 그린다(레지스트리 선언만으로 폼이 완성되는
+  기존 설계를 그대로 활용 — Files Reference의 BadgeForm.tsx 항목과 달리 실제 diff는 0줄).
+- **주입 클라이언트 체인 유지** — `evaluateUsageBadges`/`recordDailySyncAndEvaluate`에
+  `client?: SupabaseClient` 선택 인자 추가(`getAbusingPolicy`와 동일 패턴).
+  `processFetchedActivities`는 자신이 주입받은 클라이언트를 넘겨야 한다는 기존 테스트
+  계약(`sync-vehicle-speed-filter.test.ts`)을 위반하지 않기 위함 — 1차 구현에서 이 계약을
+  놓쳐 기존 테스트가 실패하는 것을 확인하고 수정했다.
 
 ### 변경된 파일
 ```
--
+jam-web/supabase/migrations/154_user_daily_sync_counts.sql (신규)
+jam-web/supabase/migrations/155_condition_json_usage_keys.sql (신규)
+jam-web/src/types/database.ts
+jam-web/src/types/database.generated.ts (신규 테이블·RPC 수기 반영 — 미실행 마이그레이션이라 npm run db:types 불가, 실행 후 재생성 필요)
+jam-web/src/lib/badge-engine/conditionRegistry.ts
+jam-web/src/lib/badge-engine/usageBadges.ts (신규)
+jam-web/src/app/admin/badges/conditionFormFields.ts
+jam-web/src/app/api/follows/route.ts
+jam-web/src/lib/strava/sync.ts
+Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
+Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md
+jam-web/src/lib/badge-engine/__tests__/usage-badges.test.ts (신규)
+jam-web/src/lib/badge-engine/__tests__/condition-registry.test.ts (55종 반영 + 155 대조)
+jam-web/src/app/admin/badges/__tests__/conditionFormFields.test.ts (표본에 3종 추가)
+jam-web/src/app/api/follows/__tests__/route.test.ts (신규)
+jam-web/src/lib/strava/__tests__/sync-usage-badge-hook.test.ts (신규)
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `npx vitest run` — 79 files / 1291 tests 전부 통과 (신규 +59 근방: usage-badges 24 ·
+      follows route 9 · sync-usage-badge-hook 5 · condition-registry 대조 보강 · conditionFormFields 표본 보강)
+- [x] `npx tsc --noEmit` — 오류 0건
+- [x] `npm run lint` — 오류 0건, 경고 0건 추가(기존 design-system 경고 13건은 무관한 사전 존재분)
+- [x] `npm run build` — 프로덕션 빌드 성공 (`/api/follows`·어드민 배지 폼 포함 전체 라우트)
+- [ ] 어드민 배지 폼 실브라우저 확인 — review 브랜치가 staging에 병합되지 않아 `jam-stage.vercel.app`에
+      미반영, 이 워크트리엔 `.env.local`(DB 접속 정보)이 없어 로컬 `next dev`도 불가. 코드
+      추적(레지스트리 → `CONDITION_FORM_ENTRIES` → `BadgeForm.tsx` 렌더 경로)으로 등급형·
+      레벨형 폼 렌더링을 확인했으나 실제 화면 스크린샷 확인은 병합 후 필요
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
 
-- [ ] 용어 일관성: 고정 용어만 사용 (획득·드랍·픽업·체크인·포인트 등)
-- [ ] 톤앤매너: 상황에 맞는 톤 (배지=신남, 거래=단호, 오류=전문)
-- [ ] 에러 메시지: [현상] → [원인] → [해결책] 3단계 구조
-- [ ] 문장 규칙: 해요체, 간결함, 마침표 위치 정확
-- [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
+해당 없음 — 이번 티켓은 엔진만 구현하고 실제 배지 콘텐츠(이름·설명·이미지)는 Out of Scope다.
+추가한 텍스트는 어드민 조건 빌더의 내부 라벨·도움말(`conditionRegistry.ts`의 `label`/`help`)
+뿐이며, 최종 사용자에게 노출되는 문구가 아니다.
 
 ### 배포 정보
 - 배포일:
@@ -203,5 +253,27 @@ closed:
 > 정책을 그대로 재사용. 언팔로우는 회수·재평가 모두 하지 않음. 실패는 원본 API 응답에
 > 영향 주지 않도록 격리.
 
+**구현 중 티켓 본문과 달라진 부분 2건 (범위 변경 아님, 실행 방법 판단):**
+1. **CONDITION_JSON_SPEC.md 문서 위치** — 티켓은 "§2.14 신설"을 지시했으나, §2는 문서
+   자체가 "badge-engine의 evaluateConditionDetailed가 실제로 검사에 사용"하는 필드로
+   정의돼 있다. 신규 3종은 `role: 'meta'`(§1에서 결정한 값)라 그 정의에 맞지 않고, 오히려
+   `mission_reward`가 있는 §3(메타데이터 필드)과 같은 카테고리다. §3에 3개 행 + 설명
+   문단을 추가하는 것으로 대체했다(§2.14는 신설하지 않음). 문서 자체의 분류 기준과
+   내부적으로 일관되게 유지하기 위한 판단이며, 필드 스펙 자체(3종의 의미·평가 주체)는
+   티켓 그대로다.
+2. **BadgeForm.tsx** — Files Reference는 이 파일에 "조건 빌더 입력 UI 3종 추가"를
+   지시했으나, 실제 diff는 0줄이다. 이 코드베이스의 조건 빌더는 이미
+   `conditionRegistry.ts`의 `form` 선언에서 입력 UI를 제네릭하게 생성하도록 설계돼 있다
+   (파일 자체 주석: "입력 UI는 conditionRegistry.ts의 form 선언에서 생성한다 — 필드마다
+   JSX를 쓰지 않는다"). `role: 'meta'` + `section: 'meta'` + `form.controls`를 선언하면
+   "메타데이터" 섹션에 숫자 입력 3개가 자동으로 뜬다(등급형·레벨형 배지 생성 모두 지원 —
+   Acceptance Criteria 1 충족). 새 JSX를 추가하는 것은 오히려 이 설계와 어긋나는 중복
+   코드가 된다고 판단해 레지스트리 선언만으로 마쳤다.
+
 ### 잔여 이슈
--
+- 어드민 배지 폼("메타데이터" 섹션에 팔로워/팔로잉/하루 동기화 횟수 입력 3개가 실제로
+  보이는지)의 실브라우저 확인은 review 브랜치가 staging에 병합된 뒤 진행 필요 — 위 "테스트
+  결과" 항목 참고
+- 마이그레이션 154·155 실행 후 `database.generated.ts`를 MCP `generate_typescript_types`로
+  재생성해 이번에 수기로 반영한 `user_daily_sync_counts`/`increment_daily_sync_count` 타입과
+  대조할 것(수기 반영분이 실제 스키마와 한 글자도 다르지 않은지 확인)

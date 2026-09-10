@@ -25,6 +25,9 @@ import type { CreateNotificationInput, NotificationType } from '@/lib/notificati
 import { logEngineDecision } from '@/lib/engine-log'
 import { getAbusingPolicy, DEFAULT_POLICY } from '@/lib/abusing/policy'
 import { getActivityHistory, getSignupAnchorDate } from '@/lib/strava/activity-history'
+// JAM! 카테고리 — 서비스 사용량 배지(티켓 20260910_1557). 카운터 증가·판정 로직은
+// recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 이 파일은 synced>0 게이트만 쥔다.
+import { recordDailySyncAndEvaluate } from '@/lib/badge-engine/usageBadges'
 import { computeUserPeriodMetrics, computeBadgeProgress } from '@/lib/badge-engine/badgeProgress'
 // 배지 «종류» 판정의 단일 출처 — 계열 프런티어 산출이 발급 엔진과 같은 기준을 본다
 // (티켓 20260905_0031, 0030이 넘긴 「레벨형 계열 통째 누락」 항목).
@@ -1004,6 +1007,21 @@ export async function processFetchedActivities(
   // 주지 않는다 — 함수 내부에서 전부 try/catch로 흡수한다.
   await updateFamilyProgressSnapshots(supabase, userId, activities)
 
+  // JAM! 카테고리 — 서비스 사용량 배지: 하루 동기화 횟수 (티켓 20260910_1557).
+  //
+  // 이 지점은 함수 최상단의 `rawActivities.length === 0` 이른 반환을 지난 뒤라 —
+  // "synced > 0"(= 이번 배치로 새 활동을 실제로 받아온 경우)일 때만 도달한다. 카운터
+  // 증가·판정 로직은 recordDailySyncAndEvaluate() 한 곳(usageBadges.ts)에 있다 — 실패해도
+  // 동기화 자체(위에서 이미 끝난 활동 배지·아이템 드랍·미션 등)는 계속 진행돼야 하므로
+  // try/catch로 격리한다. 획득 배지는 earnedBadgeIds에 합류시켜 상위(syncStravaActivities)의
+  // buildEarnedBadgePayload가 한 번에 상한·순서·isFirstBadgeEver를 처리하게 한다.
+  try {
+    const usageEarned = await recordDailySyncAndEvaluate(userId, supabase)
+    earnedBadgeIds.push(...usageEarned.map((b) => b.id))
+  } catch (usageBadgeError) {
+    console.error(`[processFetchedActivities] daily_sync_count 사용량 배지 평가 실패 (userId: ${userId}):`, usageBadgeError)
+  }
+
   return {
     badges: badgesEarned + poiBadgesEarned + rewardBadgesIssued,
     itemBooksCompleted: completedIds.length,
@@ -1165,6 +1183,8 @@ export async function syncStravaActivities(
 
     // 획득 배지 상세는 엔진 4경로를 각각 개조하는 대신, 수집된 id로 여기서 1회만 조회한다.
     // 카드 상한(10장)도 여기서 적용한다 — 클라이언트는 받은 배열을 그대로 그린다.
+    // (earnedBadgeIds는 processFetchedActivities 안에서 daily_sync_count 사용량 배지까지
+    // 이미 합류된 최종 목록이다 — 티켓 20260910_1557)
     const { earnedBadges, earnedBadgesMore, isFirstBadgeEver } = await buildEarnedBadgePayload(supabase, earnedBadgeIds, userId)
 
     // last_synced_at은 4-1 잠금 단계에서 이미 선점 갱신됨 (여기서 재갱신하면
