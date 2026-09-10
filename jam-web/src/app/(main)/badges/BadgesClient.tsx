@@ -32,7 +32,16 @@ function normalizeTab(raw: string | undefined | null): TabKey | null {
   return LEGACY_TAB_ALIASES[raw] ?? null
 }
 
-const ACTIVITY_TYPE_ORDER: ActivityType[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking']
+/**
+ * 액티비티 탭 분류 필터 전용 식별자. 실제 종목(`ActivityType`)에 `'jam'`을 더한 값이다.
+ * `activity_types` DB 컬럼에는 `'jam'`이 절대 채워지지 않으므로(JAM! 배지는 계속 `[]`),
+ * `ActivityType` 유니온 자체에 합치지 않고 필터 전용 타입으로 분리한다 — 배지엔진 등
+ * 실제 종목 값을 다루는 다른 코드에 `'jam'`이 유효값처럼 섞여 들어가는 것을 막기 위함
+ * (티켓 20260910_2258).
+ */
+type ActivityFilterValue = ActivityType | 'jam'
+
+const ACTIVITY_TYPE_ORDER: ActivityFilterValue[] = ['running', 'cycling', 'trail_running', 'hiking', 'walking', 'jam']
 const RARITY_ORDER: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 
 /** 체크인 배지 — 산/지하철역 등 지점을 지나며 획득하는 배지. 반복 획득 가능. */
@@ -95,7 +104,7 @@ export default function BadgesClient({
     }
     return 'activity'
   })
-  const [activityFilter, setActivityFilter] = useState<ActivityType | 'all'>('all')
+  const [activityFilter, setActivityFilter] = useState<ActivityFilterValue | 'all'>('all')
   const [rarityFilter, setRarityFilter] = useState<BadgeRarity | 'all'>('all')
   const [checkinCategoryFilter, setCheckinCategoryFilter] = useState<string>('all')
   const [checkinSortOrder, setCheckinSortOrder] = useState<CheckinSortOrder>('latest')
@@ -168,7 +177,12 @@ export default function BadgesClient({
   // 이제 badges는 획득분만 들어오며, 서버 쿼리가 이미 earned_at 내림차순으로 정렬해
   // 온다(page.tsx) — 클라이언트에서 다시 정렬할 필요가 없다.
   const filteredActivityBadges = badges.filter(({ badge }) => {
-    if (activityFilter !== 'all' && !badge.activity_types.includes(activityFilter)) return false
+    // JAM! 배지는 activity_types가 항상 []라 종목으로 걸러지지 않는다 — admin_category로 판정한다.
+    if (activityFilter === 'jam') {
+      if (badge.admin_category !== 'jam') return false
+    } else if (activityFilter !== 'all' && !badge.activity_types.includes(activityFilter)) {
+      return false
+    }
     if (rarityFilter !== 'all' && badge.rarity !== rarityFilter) return false
     return true
   })
@@ -209,7 +223,7 @@ export default function BadgesClient({
               <div className="flex gap-2 mb-[var(--spacing-16)]">
                 <select
                   value={activityFilter}
-                  onChange={(e) => setActivityFilter(e.target.value as ActivityType | 'all')}
+                  onChange={(e) => setActivityFilter(e.target.value as ActivityFilterValue | 'all')}
                   className="flex-1 min-h-11 px-[var(--spacing-16)] rounded-[var(--radius-nav-buttons)] bg-white/10 text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text"
                 >
                   <option value="all">{d.badges.filterActivityAll}</option>
