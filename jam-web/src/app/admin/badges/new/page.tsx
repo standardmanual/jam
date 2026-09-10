@@ -6,7 +6,7 @@ import type { TribeRow, ItemBookRow, PoiCategoryRow } from '@/types/database'
 export default async function NewBadgePage() {
   const supabase = createServiceClient()
   const [{ data: tribesRaw }, { data: itemBooksRaw }, { data: poiCategoriesRaw }] = await Promise.all([
-    supabase.from('factions').select('id, name').eq('is_active', true).order('sort_order'),
+    supabase.from('tribes').select('id, name').eq('is_active', true).order('sort_order'),
     supabase.from('item_books').select('id, name').order('name'),
     supabase.from('poi_categories').select('slug, label').order('label'),
   ])

@@ -8,7 +8,7 @@ export default async function BadgeDetailPage({ params }: { params: Promise<{ id
   const supabase = createServiceClient()
   const [{ data }, { data: tribesRaw }] = await Promise.all([
     supabase.from('badges').select('*').eq('id', id).single(),
-    supabase.from('factions').select('id, name'),
+    supabase.from('tribes').select('id, name'),
   ])
 
   if (!data) notFound()
@@ -17,7 +17,7 @@ export default async function BadgeDetailPage({ params }: { params: Promise<{ id
   const tribeMap = new Map(
     ((tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name'>[]).map((f) => [f.id, f.name])
   )
-  const tribeName = badge.faction_id ? tribeMap.get(badge.faction_id) : undefined
+  const tribeName = badge.tribe_id ? tribeMap.get(badge.tribe_id) : undefined
 
   return (
     <div className="p-4 md:p-8">

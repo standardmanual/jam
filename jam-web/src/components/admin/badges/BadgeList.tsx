@@ -11,7 +11,7 @@ import type { BadgeRow } from '@/types/database'
 export type BadgeListRow = Pick<
   BadgeRow,
   | 'id' | 'name' | 'description' | 'type' | 'rarity' | 'image_url' | 'condition_json'
-  | 'activity_types' | 'patch_available' | 'patch_price_krw' | 'faction_id' | 'deleted_at'
+  | 'activity_types' | 'patch_available' | 'patch_price_krw' | 'tribe_id' | 'deleted_at'
 >
 
 interface BadgeListProps {

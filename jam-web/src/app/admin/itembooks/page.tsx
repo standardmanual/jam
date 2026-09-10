@@ -30,7 +30,7 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
   // 20260826_011 A6: 전체 로드 후 클라이언트 필터·정렬하던 것을 admin/poi/page.tsx와 동일한
   // 구조(searchParams로 트라이브/정렬/페이지 구동 + range() 서버 필터링)로 전환.
   let query = supabase.from('item_books').select('*', { count: 'exact' })
-  if (tribe !== 'all') query = query.eq('faction_id', tribe)
+  if (tribe !== 'all') query = query.eq('tribe_id', tribe)
 
   if (sort === 'name_asc') query = query.order('name', { ascending: true })
   else if (sort === 'name_desc') query = query.order('name', { ascending: false })
@@ -42,7 +42,7 @@ export default async function AdminItemBooksPage({ searchParams }: AdminItemBook
 
   const [{ data: booksRaw, count }, { data: tribesRaw }] = await Promise.all([
     query,
-    supabase.from('factions').select('id, name'),
+    supabase.from('tribes').select('id, name'),
   ])
 
   const books = (booksRaw ?? []) as ItemBookRow[]

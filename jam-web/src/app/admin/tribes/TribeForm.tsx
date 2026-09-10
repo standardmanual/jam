@@ -251,12 +251,13 @@ export default function TribeForm({ tribe }: TribeFormProps) {
       {/* 트라이브 이미지 — 원래 순수 자유 입력(https://... 텍스트 필드)이었다. 임의 호스트 URL이
           DB에 들어오면 그 값을 렌더하는 화면이 통째로 500이 되는 구조라(20260824_004),
           다른 어드민 폼과 동일하게 Storage 업로드 전용으로 바꿨다 (20260824_005).
-          folder는 이미 업로드된 이미지가 쌓인 Storage 경로라 "factions"를 유지한다
-          (티켓 20260910_1129 — 코드·UI 명칭만 트라이브로 바꾸고 저장소 경로는 두었다). */}
+          20260910_1226 — DB 스키마를 tribes로 완전 통일하며 신규 업로드 폴더도 "tribes"로
+          바꿨다. 과거 "factions" 폴더에 이미 올라간 기존 이미지의 image_url은 그대로
+          유효하다(파일 자체를 옮기지 않는 한 URL을 재작성하지 않는다). */}
       <ImageUploadField
         value={imageUrl}
         onChange={setImageUrl}
-        folder="factions"
+        folder="tribes"
         label="이미지"
       />
 

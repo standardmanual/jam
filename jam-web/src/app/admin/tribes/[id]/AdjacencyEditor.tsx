@@ -36,7 +36,7 @@ export default function AdjacencyEditor({ tribeId, allTribes, initialAdjacentIds
       const res = await fetch(`/api/admin/tribes/${tribeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adjacent_faction_ids: [...selected] }),
+        body: JSON.stringify({ adjacent_tribe_ids: [...selected] }),
       })
       const json = await res.json()
       if (!res.ok) setMessage({ type: 'error', text: json.error ?? '저장 실패' })

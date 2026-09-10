@@ -158,7 +158,7 @@ export default function BadgeDetail({ badge, tribeName }: BadgeDetailProps) {
             <div>
               <div className="text-xs font-semibold text-gray-600 mb-1">트라이브</div>
               <div className="text-sm">
-                {tribeName ?? (badge.faction_id ? '(로드 중...)' : '없음')}
+                {tribeName ?? (badge.tribe_id ? '(로드 중...)' : '없음')}
               </div>
             </div>
 

@@ -6,19 +6,19 @@ import { TribesTable } from './TribesTable'
 export default async function AdminTribesPage() {
   const supabase = createServiceClient()
   const [{ data }, { data: badgesRaw }, { data: booksRaw }] = await Promise.all([
-    supabase.from('factions').select('*').order('sort_order', { ascending: true }),
-    supabase.from('badges').select('faction_id').not('faction_id', 'is', null).is('deleted_at', null),
-    supabase.from('item_books').select('faction_id').not('faction_id', 'is', null),
+    supabase.from('tribes').select('*').order('sort_order', { ascending: true }),
+    supabase.from('badges').select('tribe_id').not('tribe_id', 'is', null).is('deleted_at', null),
+    supabase.from('item_books').select('tribe_id').not('tribe_id', 'is', null),
   ])
   const tribes = (data ?? []) as TribeRow[]
 
   const badgeCountMap = new Map<string, number>()
-  for (const b of (badgesRaw ?? []) as { faction_id: string }[]) {
-    badgeCountMap.set(b.faction_id, (badgeCountMap.get(b.faction_id) ?? 0) + 1)
+  for (const b of (badgesRaw ?? []) as { tribe_id: string }[]) {
+    badgeCountMap.set(b.tribe_id, (badgeCountMap.get(b.tribe_id) ?? 0) + 1)
   }
   const bookCountMap = new Map<string, number>()
-  for (const b of (booksRaw ?? []) as { faction_id: string }[]) {
-    bookCountMap.set(b.faction_id, (bookCountMap.get(b.faction_id) ?? 0) + 1)
+  for (const b of (booksRaw ?? []) as { tribe_id: string }[]) {
+    bookCountMap.set(b.tribe_id, (bookCountMap.get(b.tribe_id) ?? 0) + 1)
   }
 
   return (

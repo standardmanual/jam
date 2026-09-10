@@ -1,11 +1,11 @@
 // POST /api/onboarding/complete
-// 온보딩 완료 — username·display_name·faction_id 저장 (인증 필요)
+// 온보딩 완료 — username·display_name·tribe_id 저장 (인증 필요)
 //
 // 티켓 20260909_2119: 2단계 카드형 온보딩(아이디·이름 → 트라이브·프로필이미지)에 맞춰
 // 이 엔드포인트를 두 단계에서 각각 호출한다.
-//   - 1단계 호출: { username, display_name } — faction_id 없이 호출. username·display_name만
+//   - 1단계 호출: { username, display_name } — tribe_id 없이 호출. username·display_name만
 //     저장하고 onboarding_completed_at은 건드리지 않는다.
-//   - 2단계 호출: { username, display_name, faction_id } — faction_id까지 채워지면 그 시점에만
+//   - 2단계 호출: { username, display_name, tribe_id } — tribe_id까지 채워지면 그 시점에만
 //     onboarding_completed_at을 기록한다. 이 값이 "온보딩 완료" 판정 기준이다
 //     (`/auth/callback`의 needsOnboarding 참고).
 
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
   }
 
-  const body = await request.json() as { username?: string; display_name?: string; faction_id?: string }
+  const body = await request.json() as { username?: string; display_name?: string; tribe_id?: string }
   const raw = body.username ?? ''
   const username = raw.toLowerCase()
   const displayName = (body.display_name ?? '').trim()
@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'DUPLICATE' }, { status: 409 })
   }
 
-  const tribeId = body.faction_id
+  const tribeId = body.tribe_id
 
-  // faction_id 없이 호출됐다면 1단계(아이디·이름)만 저장하고 끝난다.
+  // tribe_id 없이 호출됐다면 1단계(아이디·이름)만 저장하고 끝난다.
   if (!tribeId) {
     const { error } = await serviceClient
       .from('users')
@@ -77,10 +77,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   }
 
-  // 2단계 — 트라이브(faction_id)까지 함께 저장한다.
+  // 2단계 — 트라이브(tribe_id)까지 함께 저장한다.
   const { data: currentRow, error: currentRowError } = await serviceClient
     .from('users')
-    .select('faction_id')
+    .select('tribe_id')
     .eq('id', user.id)
     .single()
 
@@ -90,14 +90,14 @@ export async function POST(request: NextRequest) {
   }
 
   // 트라이브 불변 강제 — 이미 설정된 유저가 재호출(devtools/curl 등)해도 덮어쓸 수 없다.
-  if (currentRow.faction_id) {
+  if (currentRow.tribe_id) {
     console.error('[onboarding/complete] 트라이브 재설정 시도 거부(이미 설정됨):', user.id)
     return NextResponse.json({ error: 'ALREADY_SET' }, { status: 409 })
   }
 
   // 유저가 화면을 띄운 사이 어드민이 비활성화했을 수 있으므로 서버에서 다시 검증한다.
   const { data: tribe } = await serviceClient
-    .from('factions')
+    .from('tribes')
     .select('id')
     .eq('id', tribeId)
     .eq('is_active', true)
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     .update({
       username,
       display_name: displayName,
-      faction_id: tribeId,
+      tribe_id: tribeId,
       onboarding_completed_at: new Date().toISOString(),
     })
     .eq('id', user.id)
