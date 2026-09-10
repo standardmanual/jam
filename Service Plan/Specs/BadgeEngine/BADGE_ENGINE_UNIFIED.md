@@ -1,6 +1,13 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-10 (JAM! 카테고리 — 서비스 사용량 배지 엔진 신설. badge-engine 밖의
+> 최종 업데이트: 2026-09-10 (액티비티 배지 발급 경로에 섀도우밴 게이트 신설 — §1의 "공통
+> 정책"에는 이미 명시돼 있었으나 실제로는 drop-engine·서비스 사용량 배지(usageBadges.ts)에만
+> 연결돼 있고 이 경로(`evaluateBadgesDetailed`)엔 빠져 있었다. 과거 티켓·PRD를 조사했으나
+> 의도적 제외 근거는 없어 놓친 구현으로 판단, §2.2 Step 4.9로 연결했다 — rarity가 있는 배지
+> (등급형·반복형)만 대상이고 레벨형은 대상이 아니다. drop-engine과 달리 강등(rarity 하향)은
+> 하지 않는다 — 티켓 20260910_1719)
+>
+> 이전: 2026-09-10 (JAM! 카테고리 — 서비스 사용량 배지 엔진 신설. badge-engine 밖의
 > 세 번째 평가 경로 `src/lib/badge-engine/usageBadges.ts` 추가 — 팔로워 수·팔로잉 수·하루
 > 동기화 횟수 3개 지표. `badge_type` enum은 그대로 두고 `type='activity'` +
 > `activity_types=[]`로 저장(배지 트리 미노출, 일반 목록·프로필엔 노출). 조건 필드 3종
@@ -184,6 +191,12 @@ Step 4. [진행 트랙 중복 제거] 단일 조건 배지는 activity_type:조�
   ※ 무한레벨형·반복형은 트랙 병합 대상이 아니다(progressionKey=null) — 걸리면 발급분이 1개로 접힌다
 Step 4.8. [첫 싱크 게이트] 첫 싱크면 계열의 첫 칸(등급형=Common / 레벨형=Lv.1) 외 전부 missed
           ※ action='increment'는 발급이 아니므로 이 게이트의 대상이 아니다
+Step 4.9. [섀도우밴 게이트] (2026-09-10, 티켓 20260910_1719) rarity가 있는 배지(등급형·
+          반복형)만 대상 — getUserBanLevel()·shouldAllowDrop() 재사용, usageBadges.ts와
+          같은 판정. 차단되면 missed(사유: '섀도우밴 — 고가치 등급 발급 차단'). 레벨형(rarity
+          NULL)은 대상이 아니다. action='increment'도 새 행을 만들지 않으므로 대상이 아니다
+          ※ drop-engine의 applyShadowBanCap()과 달리 **강등(rarity 하향)은 하지 않는다** —
+          «조건을 충족한 그 배지»가 성취의 증명이라 대신 지급할 하위 등급이 없다
 Step 5. [홍수 방지] ❌ **제거됨** — 30일 롤링 캡은 더 이상 없다 (§2.6 참조, 코드에도 캡 없음)
 Step 6. [DB 반영] action='issue' → user_activity_badges INSERT (earn_count·earn_history 포함)
                   action='increment' → increment_activity_badge_earn() RPC (회차 카운터만)
