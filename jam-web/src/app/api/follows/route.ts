@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { createNotification, dailyGroupKey } from '@/lib/notifications'
 import { evaluateUsageBadges } from '@/lib/badge-engine/usageBadges'
-import { buildEarnedBadgePayload, type EarnedBadgeSummary } from '@/lib/strava/sync'
+import { buildEarnedBadgePayload, notifyActivityBadgesEarned, type EarnedBadgeSummary } from '@/lib/strava/sync'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -94,6 +94,10 @@ export async function POST(request: Request) {
       earnedBadges = payload.earnedBadges
       earnedBadgesMore = payload.earnedBadgesMore
       isFirstBadgeEver = payload.isFirstBadgeEver
+      // 알림함 반영 (티켓 20260910_2258) — 동기화 경로(sync.ts)가 쓰는 결산 함수를 그대로
+      // 재사용한다. 새 NotificationType 없이 기존 activity_recap 문구·아이콘 그대로 나간다.
+      // activityIds는 빈 배열 — 팔로우 액션에는 귀속시킬 Strava 활동이 없다.
+      await notifyActivityBadgesEarned(service, user.id, actorEarned.map((b) => b.id), [])
     }
   } catch (usageBadgeError) {
     console.error('[follows] following_count 사용량 배지 평가 실패:', usageBadgeError)
@@ -104,7 +108,14 @@ export async function POST(request: Request) {
       .from('user_follows')
       .select('id', { count: 'exact', head: true })
       .eq('following_id', targetUserId)
-    await evaluateUsageBadges(targetUserId, 'follower_count', followerCount ?? 0)
+    const targetEarned = await evaluateUsageBadges(targetUserId, 'follower_count', followerCount ?? 0)
+    if (targetEarned.length > 0) {
+      // 팔로우당한 사람(targetUserId) 본인에게 알림 — §2-2 "자기 행동의 메아리" 원칙은
+      // 팔로우한 사람(user.id)에게만 적용된다. targetUserId는 이 액션을 스스로 하지
+      // 않았으므로 배지 획득 알림을 받아야 정상이다.
+      const service = createServiceClient()
+      await notifyActivityBadgesEarned(service, targetUserId, targetEarned.map((b) => b.id), [])
+    }
   } catch (usageBadgeError) {
     console.error('[follows] follower_count 사용량 배지 평가 실패:', usageBadgeError)
   }
