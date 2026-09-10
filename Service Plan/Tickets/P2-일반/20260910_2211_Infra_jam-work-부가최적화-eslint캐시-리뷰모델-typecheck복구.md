@@ -124,7 +124,7 @@ Service Plan/Tickets/P2-일반/20260910_2211_Infra_jam-work-부가최적화-esli
 - 배포일: 2026-09-10
 - 환경: staging (`jam-web/` 코드 변경 있음 — 서비스 로직은 무변경이나 push 시 pre-push
   lint 게이트가 정상 실행됨)
-- 커밋: (staging push 직후 해시 기록)
+- 커밋: `74e83ef7`
 
 ### 주요 의사결정 / 핵심 메모
 - `.eslintcache`를 `.gitignore`에 추가한 것은 CLAUDE.md 절대 규칙 4("gitignore에 새 항목
