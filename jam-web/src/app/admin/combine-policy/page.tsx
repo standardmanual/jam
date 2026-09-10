@@ -9,7 +9,7 @@ export default async function AdminCombinePolicyPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">믹스 정책</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          정석 레시피(믹스 레시피 메뉴)에 매칭되지 않는 임의 믹스의 확률·피티 파라미터.
+          등록된 레시피(믹스 레시피 메뉴)에 매칭되지 않는 임의 믹스의 보상 설정.
           저장 즉시 다음 믹스부터 적용됩니다.
         </p>
       </div>

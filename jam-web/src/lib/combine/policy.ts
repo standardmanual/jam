@@ -1,6 +1,10 @@
 /**
- * 조합 정책(combine_policy) 로딩 — service_role 클라이언트 전용
+ * 믹스 정책(combine_policy) 로딩 — service_role 클라이언트 전용
  * 패턴: src/lib/drop-engine/policy.ts (싱글톤 id=1, 실패 시 기본값 폴백)
+ *
+ * 마이그레이션 153(티켓 20260910_1408)에서 트라이브 다양성 티어(경로 B)와 피티를
+ * 전면 폐기했다 — 남은 설정은 「레시피 미매칭 시 지급할 고정 포인트」 하나뿐이다.
+ * 싱글톤 구조·기본값 폴백·저장 실패 시 예외 던지기 패턴은 그대로 지킨다.
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { CombinePolicyRow } from '@/types/database'
@@ -8,25 +12,7 @@ import type { CombinePolicyRow } from '@/types/database'
 export type CombinePolicy = Omit<CombinePolicyRow, 'id' | 'updated_at'>
 
 export const DEFAULT_COMBINE_POLICY: CombinePolicy = {
-  tier1_max_items: 3,
-  tier1_min_tribes: 1,
-  tier1_b_rate: 0.35,
-  tier1_b_count: 1,
-  tier2_max_items: 6,
-  tier2_min_tribes: 3,
-  tier2_b_rate: 0.45,
-  tier2_b_count: 2,
-  tier3_max_items: 10,
-  tier3_min_tribes: 5,
-  tier3_b_rate: 0.55,
-  tier3_b_count: 3,
-  pity_prob_increment: 0.03,
-  pity_prob_cap: 0.5,
-  pity_points_start_streak: 3,
-  pity_points_base: 5,
-  pity_points_step: 3,
-  pity_points_increment: 3,
-  pity_points_cap: 30,
+  fail_reward_points: 0,
 }
 
 export async function getCombinePolicy(): Promise<CombinePolicy> {
@@ -66,22 +52,4 @@ export async function updateCombinePolicy(patch: Partial<CombinePolicy>): Promis
     console.error('[combine-policy] 저장 실패:', error)
     throw new Error(`combine_policy upsert 실패 (${error.code}): ${error.message}`)
   }
-}
-
-/** 재료 개수 + 서로 다른 소재 트라이브 수로 티어 결정. 요건 미충족 시 하위 티어로 강등. */
-export function resolveTier(
-  itemCount: number,
-  distinctTribeCount: number,
-  policy: CombinePolicy
-): { tier: 1 | 2 | 3; bRate: number; bCount: number } | null {
-  if (itemCount < 2 || itemCount > policy.tier3_max_items) return null
-
-  if (itemCount <= policy.tier3_max_items && distinctTribeCount >= policy.tier3_min_tribes) {
-    return { tier: 3, bRate: policy.tier3_b_rate, bCount: policy.tier3_b_count }
-  }
-  if (itemCount <= policy.tier2_max_items && distinctTribeCount >= policy.tier2_min_tribes) {
-    return { tier: 2, bRate: policy.tier2_b_rate, bCount: policy.tier2_b_count }
-  }
-  // tier1(기본) — 다양성 요건 미충족 시 이 티어로 강등
-  return { tier: 1, bRate: policy.tier1_b_rate, bCount: policy.tier1_b_count }
 }

@@ -1,80 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import { Input } from '@/components/admin/ui/input'
 import type { CombinePolicy } from '@/lib/combine/policy'
 
-interface FieldDef {
-  key: keyof CombinePolicy
-  label: string
-  step?: string
-}
-
-interface SectionDef {
-  title: string
-  description: string
-  fields: FieldDef[]
-}
-
-const SECTIONS: SectionDef[] = [
-  {
-    title: '티어 1 — 기본 (다양성 요건 미충족 시 강등되는 바닥)',
-    description: '재료 개수 상한 + 최소 서로 다른 트라이브 수. b) 결과 배지 개수(n)와 성공 확률을 결정합니다.',
-    fields: [
-      { key: 'tier1_max_items', label: '재료 개수 상한', step: '1' },
-      { key: 'tier1_min_tribes', label: '최소 트라이브 다양성', step: '1' },
-      { key: 'tier1_b_rate', label: 'b) 성공 확률', step: '0.01' },
-      { key: 'tier1_b_count', label: 'b) 지급 배지 개수(n)', step: '1' },
-    ],
-  },
-  {
-    title: '티어 2 — 중급',
-    description: '티어1 요건을 넘어 재료·다양성이 더 많을 때 적용.',
-    fields: [
-      { key: 'tier2_max_items', label: '재료 개수 상한', step: '1' },
-      { key: 'tier2_min_tribes', label: '최소 트라이브 다양성', step: '1' },
-      { key: 'tier2_b_rate', label: 'b) 성공 확률', step: '0.01' },
-      { key: 'tier2_b_count', label: 'b) 지급 배지 개수(n)', step: '1' },
-    ],
-  },
-  {
-    title: '티어 3 — 최상급',
-    description: '최대 재료 개수(10개)까지 허용하는 최상위 티어.',
-    fields: [
-      { key: 'tier3_max_items', label: '재료 개수 상한', step: '1' },
-      { key: 'tier3_min_tribes', label: '최소 트라이브 다양성', step: '1' },
-      { key: 'tier3_b_rate', label: 'b) 성공 확률', step: '0.01' },
-      { key: 'tier3_b_count', label: 'b) 지급 배지 개수(n)', step: '1' },
-    ],
-  },
-  {
-    title: '피티 — 성공 확률 보정',
-    description: '연속 실패 1회차부터 즉시 소폭 상승. 정석 레시피 경로에는 적용되지 않음.',
-    fields: [
-      { key: 'pity_prob_increment', label: '실패 1회당 확률 증가폭', step: '0.001' },
-      { key: 'pity_prob_cap', label: '확률 보정 상한 (절대값)', step: '0.01' },
-    ],
-  },
-  {
-    title: '피티 — 포인트 보상 (지연 지급, 보수적)',
-    description: '일정 연속 실패 이후부터만 지급 시작. 계단식으로 소폭 증가하며 별도 상한을 가짐.',
-    fields: [
-      { key: 'pity_points_start_streak', label: '지급 시작 연속실패 횟수', step: '1' },
-      { key: 'pity_points_base', label: '시작 시점 지급액', step: '1' },
-      { key: 'pity_points_step', label: '증가 단위(N회마다)', step: '1' },
-      { key: 'pity_points_increment', label: '단위당 증가액', step: '1' },
-      { key: 'pity_points_cap', label: '지급 상한', step: '1' },
-    ],
-  },
-]
-
+/**
+ * 믹스 정책 화면 (티켓 20260910_1408) — 트라이브 다양성 티어 3개 섹션(12개 입력)과
+ * 피티 2개 섹션(7개 입력)을 전면 제거했다. 배지 지급은 어드민이 등록한 레시피를 통해서만
+ * 일어나므로, 정책에 남는 설정은 「레시피 미매칭 시 지급할 고정 포인트」 하나뿐이다.
+ */
 export default function CombinePolicyForm({ initial }: { initial: CombinePolicy }) {
-  const [values, setValues] = useState<Record<string, string>>(() => {
-    const v: Record<string, string> = {}
-    for (const section of SECTIONS) {
-      for (const f of section.fields) v[f.key] = String(initial[f.key])
-    }
-    return v
-  })
+  const [failRewardPoints, setFailRewardPoints] = useState(String(initial.fail_reward_points))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
 
@@ -82,8 +18,12 @@ export default function CombinePolicyForm({ initial }: { initial: CombinePolicy 
     setSaving(true)
     setMessage(null)
     try {
-      const patch: Record<string, number> = {}
-      for (const [k, v] of Object.entries(values)) patch[k] = parseFloat(v)
+      const points = Number(failRewardPoints || '0')
+      if (!Number.isInteger(points) || points < 0) {
+        setMessage({ type: 'error', text: '실패 시 지급 포인트는 0 이상의 정수여야 해요.' })
+        return
+      }
+      const patch: Partial<CombinePolicy> = { fail_reward_points: points }
       const res = await fetch('/api/admin/combine-policy', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -104,27 +44,24 @@ export default function CombinePolicyForm({ initial }: { initial: CombinePolicy 
 
   return (
     <div className="space-y-8 max-w-3xl">
-      {SECTIONS.map((section) => (
-        <section key={section.title} className="bg-white border border-border rounded-2xl p-6">
-          <h2 className="font-bold mb-1">{section.title}</h2>
-          <p className="text-muted-foreground text-xs mb-4">{section.description}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {section.fields.map((f) => (
-              <label key={f.key} className="block">
-                <span className="text-foreground text-xs">{f.label}</span>
-                <input
-                  type="number"
-                  step={f.step ?? '0.01'}
-                  min="0"
-                  value={values[f.key]}
-                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  className="mt-1 w-full bg-white border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                />
-              </label>
-            ))}
-          </div>
-        </section>
-      ))}
+      <section className="bg-white border border-border rounded-2xl p-6">
+        <h2 className="font-bold mb-1">실패 보상</h2>
+        <p className="text-muted-foreground text-xs mb-4">
+          등록된 레시피에 맞지 않는 조합은 배지를 전혀 지급하지 않고, 아래 고정 포인트만
+          지급합니다. 0이면 미지급입니다.
+        </p>
+        <label className="block max-w-[16rem]">
+          <span className="text-foreground text-xs">실패 시 지급 포인트</span>
+          <Input
+            type="number"
+            step="1"
+            min="0"
+            value={failRewardPoints}
+            onChange={(e) => setFailRewardPoints(e.target.value)}
+            className="mt-1"
+          />
+        </label>
+      </section>
 
       <div className="flex items-center gap-4">
         <button

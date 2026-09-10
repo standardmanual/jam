@@ -21,7 +21,6 @@ import {
 } from '@/components/admin/ui/alert-dialog'
 import { dataTableFeatures, type DataTableFeatures } from '@/components/admin/data-table/features'
 import { DataTable } from '@/components/admin/data-table/data-table'
-import { DataTableColumnHeader } from '@/components/admin/data-table/data-table-column-header'
 import { DataTableViewOptions } from '@/components/admin/data-table/data-table-view-options'
 import { DataTableBulkActionBar } from '@/components/admin/data-table/data-table-bulk-action-bar'
 import type { CombinationRecipeRow } from '@/types/database'
@@ -36,8 +35,10 @@ interface RecipeTableProps {
 const columnHelper = createColumnHelper<DataTableFeatures, CombinationRecipeRow>()
 
 /**
- * 레시피 목록 테이블(20260826_015) — `RecipeList.tsx`의 저작 폼과 분리된 자식 컴포넌트로,
- * 3단계a 공용 Data Table 컴포넌트로 전환했다. 33건 규모라 서버 페이지네이션은 두지 않는다
+ * 레시피 목록 테이블(20260826_015). 20260910_1408에서 성공률 컬럼을 제거하고 결과 배지 1종
+ * 컬럼을 "보상(포인트 + 배지 다중)"으로, 필수 액티비티 컬럼을 "보유 조건(액티비티·체크인 다중)"
+ * 으로 바꿨다. — `RecipeList.tsx`의 저작 폼과 분리된 자식 컴포넌트로,
+ * 3단계a 공용 Data Table 컴포넌트로 전환했다. 소규모라 서버 페이지네이션은 두지 않는다
  * (사전 조사 결과). 레시피는 하드 DELETE만 있고(`is_public`은 삭제/비활성화가 아니라
  * 재료 공개 여부) 소프트 삭제 개념이 없다 — 20260826_015에서는 이 이유로 행 선택/일괄
  * 액션을 제외했으나, 20260827_011에서 사용자 재확인 후 명시적 경고와 함께 일괄 하드
@@ -102,35 +103,38 @@ function RecipeTableInner({ recipes, badgeMap, onEdit, onDelete }: RecipeTablePr
           </span>
         ),
       }),
-      columnHelper.accessor('required_activity_badge_id', {
-        id: 'requiredActivity',
-        header: '필수 액티비티',
+      columnHelper.display({
+        id: 'required',
+        header: '보유 조건',
         enableSorting: false,
-        meta: { label: '필수 액티비티' },
-        cell: ({ getValue }) => {
-          const id = getValue()
-          return <span className="text-xs text-muted-foreground">{id ? badgeMap.get(id) ?? '—' : '—'}</span>
-        },
-      }),
-      columnHelper.accessor('result_badge_id', {
-        id: 'result',
-        header: '결과',
-        enableSorting: false,
-        meta: { label: '결과' },
-        cell: ({ getValue }) => {
-          const id = getValue()
-          return id ? (
-            <span className="text-sm">{badgeMap.get(id) ?? '—'}</span>
-          ) : (
-            <span className="text-xs text-red-600">결과 미지정</span>
+        meta: { label: '보유 조건' },
+        cell: ({ row }) => {
+          const ids = row.original.required_badge_ids ?? []
+          return (
+            <span className="text-xs text-muted-foreground">
+              {ids.length === 0 ? '—' : ids.map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(', ')}
+            </span>
           )
         },
       }),
-      columnHelper.accessor('success_rate', {
-        id: 'successRate',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="성공률" />,
-        meta: { label: '성공률' },
-        cell: ({ getValue }) => <span>{Math.round(getValue() * 100)}%</span>,
+      columnHelper.display({
+        id: 'reward',
+        header: '보상',
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => {
+          const { reward_points: points, reward_badge_ids: badgeIds } = row.original
+          const parts: string[] = []
+          if (points > 0) parts.push(`${points}P`)
+          if ((badgeIds ?? []).length > 0) {
+            parts.push((badgeIds ?? []).map((id) => badgeMap.get(id) ?? id.slice(0, 8)).join(', '))
+          }
+          return parts.length > 0 ? (
+            <span className="text-sm">{parts.join(' + ')}</span>
+          ) : (
+            <span className="text-xs text-red-600">보상 미지정</span>
+          )
+        },
       }),
       columnHelper.accessor('is_public', {
         id: 'isPublic',

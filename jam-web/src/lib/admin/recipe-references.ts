@@ -6,9 +6,8 @@
  * combination_recipes` 패턴 + `database.generated.ts`의 Relationships 블록 대조)로 재확인한
  * 결과, **`combination_recipes.id`를 참조하는 테이블은 하나도 없다.**
  *
- * `combination_recipes`는 `ingredient_badge_ids`·`result_badge_id`·
- * `required_activity_badge_id`로 **배지를 참조하는 방향**만 있고(이 방향은
- * `combination_recipes_result_badge_id_fkey` 등으로 `database.generated.ts`에 확인됨),
+ * `combination_recipes`는 `ingredient_badge_ids`·`required_badge_ids`·`reward_badge_ids`로
+ * **배지를 참조하는 방향**만 있고(마이그레이션 153에서 세 컬럼 모두 uuid[] 배열이 됐다),
  * 반대로 레시피 행을 가리키는 인바운드 FK나 uuid[] 참조는 존재하지 않는다.
  *
  * 그래서 이 파일은 `badge-references.ts`/`poi-references.ts`와 **같은 계약**

@@ -446,9 +446,9 @@ export type Database = {
           id: string
           ingredient_badge_ids: string[]
           is_public: boolean
-          required_activity_badge_id: string | null
-          result_badge_id: string | null
-          success_rate: number
+          required_badge_ids: string[]
+          reward_badge_ids: string[]
+          reward_points: number
         }
         Insert: {
           created_at?: string
@@ -456,9 +456,9 @@ export type Database = {
           id?: string
           ingredient_badge_ids: string[]
           is_public?: boolean
-          required_activity_badge_id?: string | null
-          result_badge_id?: string | null
-          success_rate?: number
+          required_badge_ids?: string[]
+          reward_badge_ids?: string[]
+          reward_points?: number
         }
         Update: {
           created_at?: string
@@ -466,95 +466,26 @@ export type Database = {
           id?: string
           ingredient_badge_ids?: string[]
           is_public?: boolean
-          required_activity_badge_id?: string | null
-          result_badge_id?: string | null
-          success_rate?: number
+          required_badge_ids?: string[]
+          reward_badge_ids?: string[]
+          reward_points?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "combination_recipes_required_activity_badge_id_fkey"
-            columns: ["required_activity_badge_id"]
-            isOneToOne: false
-            referencedRelation: "badges"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "combination_recipes_result_badge_id_fkey"
-            columns: ["result_badge_id"]
-            isOneToOne: false
-            referencedRelation: "badges"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       combine_policy: {
         Row: {
+          fail_reward_points: number
           id: number
-          pity_points_base: number
-          pity_points_cap: number
-          pity_points_increment: number
-          pity_points_start_streak: number
-          pity_points_step: number
-          pity_prob_cap: number
-          pity_prob_increment: number
-          tier1_b_count: number
-          tier1_b_rate: number
-          tier1_max_items: number
-          tier1_min_tribes: number
-          tier2_b_count: number
-          tier2_b_rate: number
-          tier2_max_items: number
-          tier2_min_tribes: number
-          tier3_b_count: number
-          tier3_b_rate: number
-          tier3_max_items: number
-          tier3_min_tribes: number
           updated_at: string
         }
         Insert: {
+          fail_reward_points?: number
           id?: number
-          pity_points_base?: number
-          pity_points_cap?: number
-          pity_points_increment?: number
-          pity_points_start_streak?: number
-          pity_points_step?: number
-          pity_prob_cap?: number
-          pity_prob_increment?: number
-          tier1_b_count?: number
-          tier1_b_rate?: number
-          tier1_max_items?: number
-          tier1_min_tribes?: number
-          tier2_b_count?: number
-          tier2_b_rate?: number
-          tier2_max_items?: number
-          tier2_min_tribes?: number
-          tier3_b_count?: number
-          tier3_b_rate?: number
-          tier3_max_items?: number
-          tier3_min_tribes?: number
           updated_at?: string
         }
         Update: {
+          fail_reward_points?: number
           id?: number
-          pity_points_base?: number
-          pity_points_cap?: number
-          pity_points_increment?: number
-          pity_points_start_streak?: number
-          pity_points_step?: number
-          pity_prob_cap?: number
-          pity_prob_increment?: number
-          tier1_b_count?: number
-          tier1_b_rate?: number
-          tier1_max_items?: number
-          tier1_min_tribes?: number
-          tier2_b_count?: number
-          tier2_b_rate?: number
-          tier2_max_items?: number
-          tier2_min_tribes?: number
-          tier3_b_count?: number
-          tier3_b_rate?: number
-          tier3_max_items?: number
-          tier3_min_tribes?: number
           updated_at?: string
         }
         Relationships: []
@@ -2088,27 +2019,36 @@ export type Database = {
           },
         ]
       }
-      user_combine_state: {
+      user_combine_fail_logs: {
         Row: {
-          consecutive_fail_count: number
-          updated_at: string
+          attempted_at: string
+          fail_reason: string
+          id: string
+          ingredient_badge_ids: string[]
+          points_awarded: number
           user_id: string
         }
         Insert: {
-          consecutive_fail_count?: number
-          updated_at?: string
+          attempted_at?: string
+          fail_reason: string
+          id?: string
+          ingredient_badge_ids?: string[]
+          points_awarded?: number
           user_id: string
         }
         Update: {
-          consecutive_fail_count?: number
-          updated_at?: string
+          attempted_at?: string
+          fail_reason?: string
+          id?: string
+          ingredient_badge_ids?: string[]
+          points_awarded?: number
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "user_combine_state_user_id_fkey"
+            foreignKeyName: "user_combine_fail_logs_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },

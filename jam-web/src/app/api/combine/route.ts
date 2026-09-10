@@ -1,6 +1,10 @@
 /**
  * POST /api/combine
  * Body: { item_ids: string[] } — 인벤토리 아이템 ID 2~10개
+ *
+ * 응답은 `CombineResult`를 그대로 내려준다(마이그레이션 153 이후):
+ *  - 성공: { success: true, path: 'recipe', resultBadges, pointsAwarded }
+ *  - 실패: { success: false, reason: 'no_recipe_match'|'items_not_found'|'invalid_count', pointsAwarded }
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'

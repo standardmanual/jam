@@ -26,7 +26,7 @@ export default async function CombinePage() {
   const publicRecipes = recipes.filter((r) => r.is_public)
   const hints = recipes
     .filter((r) => !r.is_public && r.hint_text)
-    .map((r) => ({ hint_text: r.hint_text, result_badge_id: r.result_badge_id }))
+    .map((r) => ({ hint_text: r.hint_text }))
 
   let items: Array<Pick<InventoryItemRow, 'id' | 'badge_id' | 'serial_prefix' | 'serial_number'> & { badge: Pick<BadgeRow, 'id' | 'name' | 'image_url' | 'rarity'> }> = []
 

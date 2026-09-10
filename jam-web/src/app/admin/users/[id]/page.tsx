@@ -6,6 +6,7 @@ import UserGrantForm from '../../points/UserGrantForm'
 import { BadgeHistoryTable, type BadgeHistoryRow } from './BadgeHistoryTable'
 import { AdminRoleToggle } from './AdminRoleToggle'
 import { BadgeDiagnosisButton } from './BadgeDiagnosisButton'
+import { CombineFailTable, type CombineFailRow } from './CombineFailTable'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -32,6 +33,24 @@ export default async function AdminUserDetailPage({ params }: Props) {
     .order('earned_at', { ascending: false })
 
   const badgeHistory = (badgeHistoryRaw ?? []) as unknown as BadgeHistoryRow[]
+
+  // 믹스 실패 이력 (티켓 20260910_1408) — 최신순. 재료 배지 이름은 실제로 쓰인 id만
+  // 골라 조회한다(배지 전체를 훑으면 PostgREST 응답 상한에 절단된다 — recipes/page.tsx 주석 참고).
+  const { data: combineFailsRaw } = await service
+    .from('user_combine_fail_logs')
+    .select('id, attempted_at, ingredient_badge_ids, fail_reason, points_awarded')
+    .eq('user_id', id)
+    .order('attempted_at', { ascending: false })
+    .limit(200)
+  const combineFails = (combineFailsRaw ?? []) as CombineFailRow[]
+
+  const failBadgeIds = [...new Set(combineFails.flatMap((r) => r.ingredient_badge_ids ?? []))]
+  const { data: failBadgesRaw } = failBadgeIds.length > 0
+    ? await service.from('badges').select('id, name').in('id', failBadgeIds)
+    : { data: [] as { id: string; name: string }[] }
+  const failBadgeNames = Object.fromEntries(
+    ((failBadgesRaw ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name])
+  )
 
   // ADMIN_EMAILS 화이트리스트 계정인지 (20260827_015) — 안내 문구에만 사용, 판정 로직은 lib/admin/auth.ts 공용
   const adminEmails = (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim()).filter(Boolean)
@@ -74,6 +93,13 @@ export default async function AdminUserDetailPage({ params }: Props) {
       </div>
 
       <BadgeHistoryTable rows={badgeHistory} />
+
+      <div className="mt-10 mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-bold">믹스 실패 이력</h2>
+        <p className="text-muted-foreground text-sm">총 {combineFails.length}건</p>
+      </div>
+
+      <CombineFailTable rows={combineFails} badgeNames={failBadgeNames} />
     </div>
   )
 }

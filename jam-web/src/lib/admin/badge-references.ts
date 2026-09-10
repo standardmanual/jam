@@ -192,8 +192,8 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
   {
     key: 'recipes_result',
     group: 'content',
-    label: '믹스 레시피 결과',
-    location: 'combination_recipes.result_badge_id',
+    label: '믹스 레시피 보상',
+    location: 'combination_recipes.reward_badge_ids',
     blocksDelete: false,
     cascades: false,
     detachable: false,
@@ -202,7 +202,7 @@ export const BADGE_REFERENCE_SOURCES: BadgeReferenceSource[] = [
     key: 'recipes_required',
     group: 'content',
     label: '믹스 레시피 보유 조건',
-    location: 'combination_recipes.required_activity_badge_id',
+    location: 'combination_recipes.required_badge_ids',
     blocksDelete: true,
     cascades: false,
     detachable: false,
@@ -424,25 +424,24 @@ export async function collectBadgeReferences(
     }
   }
 
+  // 마이그레이션 153: 결과 배지 1종 → 보상 배지 배열, 필수 액티비티 배지 1종 → 보유 조건 배열
   const recipesResult = await fetchAllRows<{
     id: string
     ingredient_badge_ids: string[] | null
-    result_badge_id: string | null
-    required_activity_badge_id: string | null
+    reward_badge_ids: string[] | null
+    required_badge_ids: string[] | null
   }>((from, to) =>
     supabase
       .from('combination_recipes')
-      .select('id, ingredient_badge_ids, result_badge_id, required_activity_badge_id')
+      .select('id, ingredient_badge_ids, reward_badge_ids, required_badge_ids')
       .order('id')
       .range(from, to)
   )
   if (recipesResult.error) errors.push(`combination_recipes: ${recipesResult.error}`)
   for (const recipe of recipesResult.rows) {
     if (hits(recipe.ingredient_badge_ids ?? []).length > 0) counts.recipes_ingredient += 1
-    if (recipe.result_badge_id && targetSet.has(recipe.result_badge_id)) counts.recipes_result += 1
-    if (recipe.required_activity_badge_id && targetSet.has(recipe.required_activity_badge_id)) {
-      counts.recipes_required += 1
-    }
+    if (hits(recipe.reward_badge_ids ?? []).length > 0) counts.recipes_result += 1
+    if (hits(recipe.required_badge_ids ?? []).length > 0) counts.recipes_required += 1
   }
 
   const itemBooksResult = await fetchAllRows<{
