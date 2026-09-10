@@ -280,7 +280,7 @@ function OnboardingContent() {
         // GA4 onboarding_complete — 티켓 20260909_2119: 2단계(트라이브 포함)까지 마쳤을 때만 전송.
         trackEvent('onboarding_complete')
         router.replace('/')
-      } else if (json.error === 'INVALID_FACTION') {
+      } else if (json.error === 'INVALID_TRIBE') {
         setStep2Error(d.onboarding.invalidTribeError)
         setSelectedTribeId(null)
         loadTribes()

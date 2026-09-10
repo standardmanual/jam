@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
   if (!tribe) {
     console.error('[onboarding/complete] 비활성/존재하지 않는 트라이브 제출 거부:', tribeId)
-    return NextResponse.json({ error: 'INVALID_FACTION' }, { status: 400 })
+    return NextResponse.json({ error: 'INVALID_TRIBE' }, { status: 400 })
   }
 
   const { error } = await serviceClient
