@@ -68,14 +68,21 @@ export default async function AdminGateMissionsPage() {
 
   // 노출 조건 입력에 쓸 계열 목록 — **계열 키가 발급된 계열만** 고를 수 있다.
   // 키가 없는 계열은 교차 게이트·노출 조건의 대상이 될 수 없다(계열 관리 화면이 같은 경고를 쓴다).
+  //
+  // ⚠️ JAM! 카테고리(admin_category='jam')는 예외다(티켓 20260910_2055) — family_key를
+  // 발급하지 않는다(활동 종목이 없어 `buildFamilyKey`의 전제인 activityType이 없다). 대신
+  // `familyKeyOf()`의 `#name:` 폴백 키를 그대로 쓴다 — `loadOwnedFamilyTiers`
+  // (`visibility-server.ts`)가 이미 이 폴백 키를 `family_key IS NULL` + 이름 매칭으로
+  // 평가하므로, 일반 계열과 같은 방식으로 게이트 대상이 될 수 있다.
   const families: GateFamilyOption[] = groupBadgesIntoFamilies(familyResult.badges)
-    .filter((f) => !!f.familyKey)
+    .filter((f) => !!f.familyKey || f.adminCategory === 'jam')
     .map((f) => ({
-      familyKey: f.familyKey as string,
+      familyKey: (f.familyKey ?? f.key) as string,
       name: f.name,
       activityType: f.activityType,
       kind: f.kind,
       topLabel: f.topLabel,
+      adminCategory: f.adminCategory,
     }))
 
   // 이미 미션에 연결된 보상 배지의 표시용 라벨 (신규 선택은 검색 API가 채운다)

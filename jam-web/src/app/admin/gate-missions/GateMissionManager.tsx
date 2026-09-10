@@ -29,7 +29,7 @@ import {
 } from '@/lib/missions/gateMissions'
 import { buildFamilyKey } from '@/lib/admin/badge-families'
 import { MISSION_CONDITION_VALUE_RULE, type MissionConditionValueRule } from '@/lib/missions/condition-keys'
-import { MISSION_TYPE_LABEL } from '@/lib/admin/badge-labels'
+import { MISSION_TYPE_LABEL, adminCategoryLabel } from '@/lib/admin/badge-labels'
 import { RARITY_LABEL } from '@/lib/rarity'
 import { TREE_ACTIVITY_ORDER } from '@/lib/badgeTree'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
@@ -42,13 +42,18 @@ import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
 import type { BadgeSearchResult } from '@/components/admin/BadgeSearchSelect'
 import ImageUploadField from '@/components/admin/ImageUploadField'
 
-/** 노출 조건에서 고를 수 있는 계열 — **계열 키가 발급된 계열만** 들어온다 */
+/**
+ * 노출 조건에서 고를 수 있는 계열 — **계열 키가 발급된 계열만** 들어온다. 예외는 JAM!
+ * 카테고리(`adminCategory==='jam'`, 티켓 20260910_2055) — family_key 없이 `#name:` 폴백
+ * 키로 들어온다.
+ */
 export interface GateFamilyOption {
   familyKey: string
   name: string
   activityType: string | null
   kind: 'graded' | 'leveled' | 'mixed'
   topLabel: string
+  adminCategory: string | null
 }
 
 interface Props {
@@ -243,7 +248,10 @@ function FamilyPicker({
               <span className="block text-sm">
                 {family.name}
                 <span className="ml-1.5 text-xs text-muted-foreground">
-                  {family.activityType ? activityTypeLabels[family.activityType] ?? family.activityType : '종목 없음'} ·{' '}
+                  {family.activityType
+                    ? activityTypeLabels[family.activityType] ?? family.activityType
+                    : adminCategoryLabel(family.adminCategory) ?? '종목 없음'}{' '}
+                  ·{' '}
                   {family.kind === 'leveled' ? '레벨형' : family.kind === 'graded' ? '등급형' : '혼재'} · 최고{' '}
                   {family.topLabel}
                 </span>

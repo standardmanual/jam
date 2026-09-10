@@ -39,7 +39,9 @@ export async function GET(req: NextRequest) {
     .from('badges')
     // point_reward: MissionList의 "보상 배지 포인트 포함 여부" 경고에 필요. 나머지 호출부는
     // 무시하면 그만이라 부작용 없음.
-    .select('id, name, rarity, type, point_reward')
+    // admin_category: 어드민 전용 분류(JAM! 카테고리) — 검색 결과에서 제외하지 않고 구분
+    // 라벨만 붙인다(게이트미션·아이템북과 같은 정책, 티켓 20260910_2055).
+    .select('id, name, rarity, type, point_reward, admin_category')
     .is('deleted_at', null)
     .order('name', { ascending: true })
     .limit(MAX_RESULTS)

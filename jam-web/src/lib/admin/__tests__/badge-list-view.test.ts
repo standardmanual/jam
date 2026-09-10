@@ -16,6 +16,7 @@ import {
   badgeUsesConditionField,
   compareBadgeListRows,
   parseBadgeListSort,
+  parseAdminCategoryFilter,
   parseConditionFieldFilter,
   requiresFullFetchSort,
   type BadgeListSortRow,
@@ -150,5 +151,18 @@ describe('② 조건 필드 필터는 레지스트리에서 파생된다', () =>
     expect(badgeUsesConditionField({ avg_watts: 0 }, 'avg_watts')).toBe(true)
     expect(badgeUsesConditionField({ distance_km: 10 }, 'avg_watts')).toBe(false)
     expect(badgeUsesConditionField(null, 'avg_watts')).toBe(false)
+  })
+})
+
+describe('③ 어드민 카테고리(JAM!) 필터는 화이트리스트 밖 값을 거부한다 (티켓 20260910_2055)', () => {
+  it("'jam'은 그대로 통과한다", () => {
+    expect(parseAdminCategoryFilter('jam')).toBe('jam')
+  })
+
+  it('화이트리스트에 없는 값·빈 값·undefined는 null — 지점 카테고리 값과 섞이지 않는다', () => {
+    expect(parseAdminCategoryFilter('hiking-trail')).toBeNull()
+    expect(parseAdminCategoryFilter('')).toBeNull()
+    expect(parseAdminCategoryFilter(undefined)).toBeNull()
+    expect(parseAdminCategoryFilter(null)).toBeNull()
   })
 })
