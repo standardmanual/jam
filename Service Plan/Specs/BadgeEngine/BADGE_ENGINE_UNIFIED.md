@@ -100,6 +100,34 @@ Strava 싱크
 이름이 비슷하다고 섞어 쓰지 않는다. 판별은 `badge-labels.ts`의 `isJamCategoryBadge()`가
 단일 출처다.
 
+**화면 표시는 종목의 여섯 번째 항목처럼 다룬다(2026-09-10, 티켓 20260910_2258)** —
+판정 필드(`activity_types`, Strava 화이트리스트)는 손대지 않되, 어드민·유저가 보는 목록에서는
+JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분류 하나로 노출한다.
+- **어드민**: `/admin/badges` 목록 필터가 "액티비티"와 "카테고리" 두 드롭다운으로 쪼개져
+  있던 것을 하나로 통합했고, `BadgeSearchSelect`(아이템북 검색)·`BadgeForm`(활동 종류
+  체크박스 그룹)도 JAM!을 별도 칩·별도 섹션이 아니라 같은 자리에 섞어 보여준다.
+- **유저**: 배지 메뉴 액티비티 탭(`/badges`, `BadgesClient.tsx`)의 분류 필터에도 JAM!이
+  여섯 번째 옵션으로 뜬다. 필터링은 `activity_types.includes()`가 아니라
+  `admin_category==='jam'`로 판정한다 — `ActivityType`(DB `activity_types` 컬럼 유니온)
+  자체에는 `'jam'`을 합치지 않고, `BadgesClient.tsx` 내부의 필터 전용 타입으로만 좁혔다.
+  배지 트리(`/badges/tree`)는 이 변경 대상이 아니다 — 여전히 미노출.
+- 알려진 잔여 이슈: `utils.ts`의 `ACTIVITY_TYPE_LABELS`가 배지 메뉴 전용이 아니라
+  `/admin/activity-badge-image`와 공유하는 맵이라, JAM! 라벨 추가가 그 화면의 종목 검색
+  드롭다운에도 새어 들어간다(검색 API가 이미 `admin_category='jam'`을 제외해 선택해도
+  결과는 0건 — 기능 오작동은 없음). 정리는 후속 티켓([20260910_2316](../../Tickets/P3-낮음/20260910_2316_UI_ACTIVITY_TYPE_LABELS공유모듈-JAM라벨오염.md)) 참고.
+
+**발급 시 알림함(`/notifications`) 반영(2026-09-10, 티켓 20260910_2258)** — 새
+`NotificationType`을 만들지 않고 기존 `activity_recap` 결산을 그대로 재사용한다.
+- **동기화 경로**: `sync.ts`가 `recordDailySyncAndEvaluate` 평가 결과를
+  `notifyActivityBadgesEarned` 호출 인자에 활동배지 id와 합쳐서(`[...activityBadgeIds,
+  ...usageEarned.map(b => b.id)]`) 넘긴다. 호출 시점을 사용량 배지 평가 이후로 늦췄을
+  뿐, 함수 내부 로직(badge id → `badges` 재조회 → 결산)은 배지 종류를 가정하지 않아
+  그대로 재사용된다.
+- **팔로우 경로**: `follows/route.ts`가 `evaluateUsageBadges` 발급 결과(actor의
+  following_count, target의 follower_count 양쪽)가 있으면 `notifyActivityBadgesEarned`를
+  `activityIds=[]`로 호출해 결산 알림을 남긴다. 이전에는 이 경로에 알림 생성 호출 자체가
+  없어 JAM! 배지를 획득해도 본인에게 알림이 전혀 가지 않았다.
+
 | | ① 액티비티배지 엔진 | ③ 서비스 사용량 배지 |
 |---|---|---|
 | 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) |
