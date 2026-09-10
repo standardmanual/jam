@@ -81,11 +81,11 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   const badgeIds = items.map((i) => i.badge_id)
   const { data: sourceBadgesRaw } = await supabase
     .from('badges')
-    .select('id, faction_id')
+    .select('id, tribe_id')
     .in('id', badgeIds)
 
-  const sourceBadges = (sourceBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'faction_id'>[]
-  const sourceTribeIds = [...new Set(sourceBadges.map((b) => b.faction_id).filter((f): f is string => !!f))]
+  const sourceBadges = (sourceBadgesRaw ?? []) as Pick<BadgeRow, 'id' | 'tribe_id'>[]
+  const sourceTribeIds = [...new Set(sourceBadges.map((b) => b.tribe_id).filter((f): f is string => !!f))]
 
   // 4. 정석 레시피 정확 매칭 탐색 (순서 무관) — 재료가 일치해도 required_activity_badge_id가
   //    설정돼 있으면 해당 액티비티 배지를 보유해야 최종 매칭으로 인정한다(소모되지 않는 조건).
@@ -206,8 +206,8 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     .eq('type', 'item')
     .eq('rarity', 'common')
     .is('deleted_at', null)
-    .not('faction_id', 'is', null)
-    .not('faction_id', 'in', `(${sourceTribeIds.length > 0 ? sourceTribeIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
+    .not('tribe_id', 'is', null)
+    .not('tribe_id', 'in', `(${sourceTribeIds.length > 0 ? sourceTribeIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
 
   const candidates = (candidatesRaw ?? []) as Pick<BadgeRow, 'id' | 'name' | 'rarity'>[]
   const shuffled = [...candidates].sort(() => Math.random() - 0.5)

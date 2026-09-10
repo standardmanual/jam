@@ -29,8 +29,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   // 2) 트라이브 + 3) 이 북에 속한 아이템 배지 병렬
   const [tribeRes, badgesRes] = await Promise.all([
-    book.faction_id
-      ? supabase.from('factions').select('*').eq('id', book.faction_id).single()
+    book.tribe_id
+      ? supabase.from('tribes').select('*').eq('id', book.tribe_id).single()
       : Promise.resolve({ data: null }),
     supabase
       .from('badges')

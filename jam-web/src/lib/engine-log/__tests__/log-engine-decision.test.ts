@@ -46,12 +46,12 @@ describe('logEngineDecision — insert row 계약', () => {
   })
 
   it('userId가 null인 판정(엔진 전역 경고)도 그대로 기록한다', async () => {
-    await logEngineDecision('drop', 'faction_constant_missing', null, { missing: ['x'] })
+    await logEngineDecision('drop', 'tribe_constant_missing', null, { missing: ['x'] })
 
     expect(insertMock.mock.calls[0][0]).toEqual({
       user_id: null,
       engine: 'drop',
-      event: 'faction_constant_missing',
+      event: 'tribe_constant_missing',
       payload: { missing: ['x'] },
     })
   })

@@ -8,7 +8,7 @@ export async function GET() {
 
   const supabase = createServiceClient()
   const { data, error } = await supabase
-    .from('factions')
+    .from('tribes')
     .select('*')
     .order('sort_order', { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     // [20260901_1944] 하위 일괄 적용의 원본이 되는 애니메이션 파라미터(jsonb)
     background_animation: background_animation ?? null,
   }
-  const tribesQuery = supabase.from('factions')
+  const tribesQuery = supabase.from('tribes')
   const insertQuery = tribesQuery.insert(insertPayload)
   const { data, error } = await insertQuery.select().single()
 

@@ -93,12 +93,12 @@ export async function GET() {
 
   // 5) 트라이브 조회
   const tribeIds = Array.from(
-    new Set(books.map((b) => b.faction_id).filter((f): f is string => !!f))
+    new Set(books.map((b) => b.tribe_id).filter((f): f is string => !!f))
   )
   const tribeMap = new Map<string, Pick<TribeRow, 'id' | 'name' | 'image_url'>>()
   if (tribeIds.length > 0) {
     const { data: tribesRaw } = await supabase
-      .from('factions')
+      .from('tribes')
       .select('id, name, image_url')
       .in('id', tribeIds)
     for (const f of (tribesRaw ?? []) as Pick<TribeRow, 'id' | 'name' | 'image_url'>[]) {
@@ -107,7 +107,7 @@ export async function GET() {
   }
 
   const itemBooks = books.map((book) => {
-    const tribe = book.faction_id ? tribeMap.get(book.faction_id) : undefined
+    const tribe = book.tribe_id ? tribeMap.get(book.tribe_id) : undefined
     return {
       id: book.id,
       name: book.name,

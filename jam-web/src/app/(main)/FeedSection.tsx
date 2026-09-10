@@ -157,8 +157,8 @@ function BadgeChip({ item }: { item: ActivityFeedRow }) {
 
 /**
  * item_dropped는 두 가지 출처를 하나의 이벤트 타입으로 공유한다:
- * - 활동 연동(Strava) 후 드랍엔진이 지급한 경우 → faction_name이 항상 채워짐 → "아이템 획득"
- * - 지점에 아이템배지를 직접 드랍한 경우(레거시 poi_drops 동기화) → faction_name 없음 → "아이템 드랍"
+ * - 활동 연동(Strava) 후 드랍엔진이 지급한 경우 → tribe_name이 항상 채워짐 → "아이템 획득"
+ * - 지점에 아이템배지를 직접 드랍한 경우(레거시 poi_drops 동기화) → tribe_name 없음 → "아이템 드랍"
  *
  * 체크인 배지 획득(badge_earned + poi_name·visit_count)만 짧은 라벨이 아니라 **문장**으로
  * 표시한다(20260826_004 사용자 확정) — 첫 획득은 "체크인 했어요", 두 번째부터는
@@ -168,7 +168,7 @@ function BadgeChip({ item }: { item: ActivityFeedRow }) {
 function eventLabel(item: ActivityFeedRow): ReactNode {
   if (item.event_type === 'item_dropped') {
     const meta = item.metadata as Record<string, unknown>
-    return meta.faction_name ? d.feed.eventItemEarned : d.feed.eventItemDropped
+    return meta.tribe_name ? d.feed.eventItemEarned : d.feed.eventItemDropped
   }
   const checkin = checkinInfo(item)
   if (checkin) {
@@ -354,7 +354,7 @@ function FeedCard({ item, onClick }: { item: ActivityFeedRow; onClick: () => voi
   const sub = (() => {
     if (item.event_type === 'item_dropped') {
       // 드랍엔진 v2: 트라이브 이름 노출 ("아스팔트 레인저의 파편")
-      if (meta.faction_name) return t(d.feed.fragmentOf, { tribe: String(meta.faction_name) })
+      if (meta.tribe_name) return t(d.feed.fragmentOf, { tribe: String(meta.tribe_name) })
       return meta.poi_name ? String(meta.poi_name) : null
     }
     if (item.event_type === 'item_picked_up') return meta.poi_name ? String(meta.poi_name) : null

@@ -131,7 +131,7 @@ export function ItemBookTable({
           </Link>
         ),
       }),
-      columnHelper.accessor('faction_id', {
+      columnHelper.accessor('tribe_id', {
         id: 'tribe',
         header: '트라이브',
         enableSorting: false,

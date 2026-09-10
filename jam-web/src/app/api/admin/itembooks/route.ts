@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, image_url, required_activity_badge_id, reward_badge_id, faction_id, story_text, is_active, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
+  const { name, description, image_url, required_activity_badge_id, reward_badge_id, tribe_id, story_text, is_active, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
 
   if (!name || !description || !required_activity_badge_id) {
     return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 })
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     image_url: image_url ?? null,
     required_activity_badge_id,
     reward_badge_id: reward_badge_id ?? null,
-    faction_id: faction_id ?? null,
+    tribe_id: tribe_id ?? null,
     story_text: story_text ?? null,
     is_active: is_active ?? true,
     background_color: background_color ?? null,

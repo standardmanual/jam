@@ -32,7 +32,7 @@ interface Props {
 export default async function ItemBadgesSearchPage({ searchParams }: Props) {
   const params = pickSingleQueryParams(await searchParams)
   const q = params.q?.trim() ?? ''
-  const filterTribeId = params.faction_id
+  const filterTribeId = params.tribe_id
   const filterItemBookId = params.item_book_id
   const filterRarity = params.rarity
   const hasFilter = !!(q || filterTribeId || filterItemBookId || filterRarity)
@@ -40,11 +40,11 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
   const supabase = createServiceClient()
 
   const [{ data: tribesRaw }, { data: itemBooksRaw }] = await Promise.all([
-    supabase.from('factions').select('id, name').order('name'),
-    supabase.from('item_books').select('id, name, faction_id').order('name'),
+    supabase.from('tribes').select('id, name').order('name'),
+    supabase.from('item_books').select('id, name, tribe_id').order('name'),
   ])
   const tribes = (tribesRaw ?? []) as { id: string; name: string }[]
-  const itemBooks = (itemBooksRaw ?? []) as { id: string; name: string; faction_id: string | null }[]
+  const itemBooks = (itemBooksRaw ?? []) as { id: string; name: string; tribe_id: string | null }[]
 
   let badges: SearchBadgeRow[] = []
   const totalCountByBadge = new Map<string, number>()
@@ -52,7 +52,7 @@ export default async function ItemBadgesSearchPage({ searchParams }: Props) {
   if (hasFilter) {
     let query = supabase.from('badges').select('id, name, image_url, rarity').eq('type', 'item')
     if (q) query = query.ilike('name', `%${q}%`)
-    if (filterTribeId) query = query.eq('faction_id', filterTribeId)
+    if (filterTribeId) query = query.eq('tribe_id', filterTribeId)
     if (filterItemBookId) query = query.eq('item_book_id', filterItemBookId)
     // filterRarity는 쿼리스트링에서 온 string이라 badges.rarity 유니언으로 좁혀 넘긴다.
     // 유효하지 않은 값이 들어와도 지금과 똑같이 "결과 0건"이 되도록 검증 없이 그대로 전달한다.

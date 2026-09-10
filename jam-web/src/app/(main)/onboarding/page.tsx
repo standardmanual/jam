@@ -69,7 +69,7 @@ function OnboardingContent() {
   async function loadTribes() {
     setTribesState({ kind: 'loading' })
     const { data, error } = await supabase
-      .from('factions')
+      .from('tribes')
       .select('id, name, tagline, image_url')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
@@ -273,7 +273,7 @@ function OnboardingContent() {
       const res = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: currentUsername, display_name: nameInput.trim(), faction_id: selectedTribeId }),
+        body: JSON.stringify({ username: currentUsername, display_name: nameInput.trim(), tribe_id: selectedTribeId }),
       })
       const json = await res.json() as { success?: boolean; error?: string }
       if (json.success) {
