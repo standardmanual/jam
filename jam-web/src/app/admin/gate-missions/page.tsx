@@ -13,7 +13,6 @@ import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { MissionRow } from '@/types/database'
 import { fetchActivityFamilyBadges } from '@/lib/admin/badge-families-query'
-import { groupBadgesIntoFamilies } from '@/lib/admin/badge-families'
 import {
   buildGateMatrix,
   checkGateMissionConsistency,
@@ -21,11 +20,9 @@ import {
   isLegacyGateMission,
   type GateMissionBadge,
 } from '@/lib/missions/gateMissions'
-import { ACTIVITY_TYPE_LABELS } from '@/lib/utils'
-import GateMissionManager, { type GateFamilyOption } from './GateMissionManager'
+import GateMissionManager from './GateMissionManager'
 import GateMissionPreview from './GateMissionPreview'
 import GateConsistencyPanel from './GateConsistencyPanel'
-import type { BadgeSearchResult } from '@/components/admin/BadgeSearchSelect'
 
 /** 정합성 검사·보상 배지 표시에 필요한 컬럼 (소프트삭제된 배지도 가져와야 «삭제됨»을 구분한다) */
 const REFERENCED_BADGE_COLUMNS =
@@ -66,34 +63,6 @@ export default async function AdminGateMissionsPage() {
     referencedBadges,
   })
 
-  // 노출 조건 입력에 쓸 계열 목록 — **계열 키가 발급된 계열만** 고를 수 있다.
-  // 키가 없는 계열은 교차 게이트·노출 조건의 대상이 될 수 없다(계열 관리 화면이 같은 경고를 쓴다).
-  //
-  // ⚠️ JAM! 카테고리(admin_category='jam')는 예외다(티켓 20260910_2055) — family_key를
-  // 발급하지 않는다(활동 종목이 없어 `buildFamilyKey`의 전제인 activityType이 없다). 대신
-  // `familyKeyOf()`의 `#name:` 폴백 키를 그대로 쓴다 — `loadOwnedFamilyTiers`
-  // (`visibility-server.ts`)가 이미 이 폴백 키를 `family_key IS NULL` + 이름 매칭으로
-  // 평가하므로, 일반 계열과 같은 방식으로 게이트 대상이 될 수 있다.
-  const families: GateFamilyOption[] = groupBadgesIntoFamilies(familyResult.badges)
-    .filter((f) => !!f.familyKey || f.adminCategory === 'jam')
-    .map((f) => ({
-      familyKey: (f.familyKey ?? f.key) as string,
-      name: f.name,
-      activityType: f.activityType,
-      kind: f.kind,
-      topLabel: f.topLabel,
-      adminCategory: f.adminCategory,
-    }))
-
-  // 이미 미션에 연결된 보상 배지의 표시용 라벨 (신규 선택은 검색 API가 채운다)
-  const rewardBadgeLabels: BadgeSearchResult[] = referencedRows.map((b) => ({
-    id: b.id,
-    name: b.name,
-    type: b.type,
-    rarity: b.rarity ?? (b.level != null ? `Lv.${b.level}` : '등급없음'),
-    point_reward: b.point_reward ?? 0,
-  }))
-
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
@@ -128,12 +97,7 @@ export default async function AdminGateMissionsPage() {
 
       <GateConsistencyPanel issues={issues} />
 
-      <GateMissionManager
-        missions={[...gateMissions, ...legacyMissions]}
-        families={families}
-        rewardBadgeLabels={rewardBadgeLabels}
-        activityTypeLabels={ACTIVITY_TYPE_LABELS}
-      />
+      <GateMissionManager missions={[...gateMissions, ...legacyMissions]} />
 
       <GateMissionPreview />
     </div>
