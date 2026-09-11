@@ -52,6 +52,10 @@ function Inner() {
   // 앱 내부 링크 클릭 감지 → SHOW_DELAY_MS 후에도 탐색 중이면 그때 표시
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
+      // 어드민 화면(/admin/*)은 DB 조회가 있는 서버 컴포넌트가 많아 SHOW_DELAY_MS를 자주
+      // 넘겨 로더가 유독 잦게 뜬다 — 어드민 경로에서는 로더를 아예 띄우지 않는다.
+      // (일반 사용자 화면의 동작은 그대로 유지)
+      if (window.location.pathname.startsWith('/admin')) return
       // 이미 다른 핸들러(예: 카드 안에 중첩된 버튼)가 preventDefault로 이동을 막았다면
       // 실제 이동이 일어나지 않으므로 pending 진입 자체를 취소한다.
       if (e.defaultPrevented) return
