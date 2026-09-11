@@ -929,6 +929,7 @@ export type TodayCardTemplateType =
   | 'location_trend'
   | 'drop_alert'
   | 'editorial_article'
+  | 'ranking_board'
 
 /** 카드가 화면에 어떤 형태로 노출될지 — template_type(콘텐츠 종류)과 별개 축 */
 export type TodayCardLayoutType =
@@ -937,6 +938,7 @@ export type TodayCardLayoutType =
   | 'shortcut'         // 바로가기형 — 이미지 없이 짧은 CTA 한 줄
   | 'banner'           // 배너형 — 가로로 넓은 띠 배너, 이미지 위 텍스트 오버레이
   | 'other'            // 기타 — 위 4종에 안 맞는 경우의 기본형
+  | 'ranking_list'     // 순위 리스트형 — 랭킹보드 전용, 포디엄 없이 순위 목록만(티켓 20260911_1440)
 
 export interface TodayCardRow {
   id: string
@@ -956,6 +958,48 @@ export interface TodayCardRow {
   ends_at: string
   sort_order: number
   is_active: boolean
+  created_at: string
+  created_by: string | null
+  /** ranking_board 전용 참조 — 그 외 템플릿은 항상 null(티켓 20260911_1440) */
+  ranking_mode_id: string | null
+}
+
+// =========================================
+// 홈 피드 랭킹보드 — 랭킹모드 (ranking_modes, 티켓 20260911_1440)
+// =========================================
+
+/** 대상 선정 방식 — 미션 참가자 전원, 또는 관리자가 수동으로 지정한 유저 목록 */
+export type RankingModeTargetType = 'mission_participants' | 'manual_users'
+
+/**
+ * 정렬 지표 종류.
+ * - `mission_progress`: target_type='mission_participants' 전용. 미션의 기존 순위 비교
+ *   규칙(완료 여부 → 완료 시각 → 진행도, `lib/missions/ranking.ts`)을 그대로 감싸 쓴다.
+ * - `condition_field`: target_type='manual_users' 전용. 배지 조건 레지스트리의 필드 키
+ *   하나(`metric_field_key`)를 정렬 기준으로 쓴다 — 1차 지원 필드는
+ *   `lib/ranking/metricValues.ts`의 화이트리스트를 따른다.
+ * - `badge_count`: target_type='manual_users' 전용. 배지 타입(`metric_badge_type`)별 보유
+ *   개수를 정렬 기준으로 쓴다.
+ */
+export type RankingModeMetricType = 'mission_progress' | 'condition_field' | 'badge_count'
+
+export interface RankingModeRow {
+  id: string
+  title: string
+  target_type: RankingModeTargetType
+  /** target_type='mission_participants'일 때만 값을 가진다 */
+  target_mission_id: string | null
+  /** target_type='manual_users'일 때만 값을 가진다 */
+  target_user_ids: string[]
+  metric_type: RankingModeMetricType
+  /** metric_type='condition_field'일 때만 값을 가진다 — conditionRegistry.ts의 필드 키 */
+  metric_field_key: string | null
+  /** metric_type='badge_count'일 때만 값을 가진다 */
+  metric_badge_type: BadgeType | null
+  starts_at: string
+  ends_at: string
+  /** 공개할 순위 인원 제한(선택) — missions.visible_rank_count와 같은 개념 */
+  visible_rank_count: number | null
   created_at: string
   created_by: string | null
 }

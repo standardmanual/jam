@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import TopNav from '@/components/ui/TopNav'
 import ListRowCard from '@/components/ui/ListRowCard'
+import RankingListRow from '@/components/ranking/RankingListRow'
 import { UserIcon, UsersIcon } from '@/components/ui/icons'
 import { d, t } from '@/lib/i18n'
 import type { MissionType } from '@/types/database'
@@ -199,86 +200,6 @@ function PodiumColumn({
         )}
       </div>
     </div>
-  )
-}
-
-/** 4위~ 순위 행 */
-function RankingListRow({
-  entry,
-  maxProgress,
-  isMe,
-  missionType,
-}: {
-  entry: RankingEntry
-  maxProgress: number
-  isMe: boolean
-  missionType: MissionType
-}) {
-  const fillRatio = maxProgress > 0 ? Math.min(1, entry.progressValue / maxProgress) : 0
-  // 내 순위 행만 h4 토큰(24px)으로 확대 강조, 그 외에는 small 토큰(14px) 그대로
-  const emphasisFontSize = isMe ? 'var(--text-h4)' : 'var(--text-small)'
-
-  return (
-    <ListRowCard
-      href={entry.username ? `/${entry.username}` : undefined}
-      icon={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* 순위 번호 — 내 순위는 --color-primary(레드)로 강조 */}
-          <span style={{
-            fontSize: emphasisFontSize,
-            fontWeight: 'bold',
-            color: isMe ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-            width: 20,
-            textAlign: 'center',
-          }}>
-            {entry.rank}
-          </span>
-
-          {/* 20260816_012: 아바타 보더 제거 — bg는 --color-border 토큰(#2a2a2a와 동일값) 재사용 */}
-          <div style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            backgroundColor: 'var(--color-border)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-          }}>
-            {entry.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={entry.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <UserIcon className="w-[18px] h-[18px] text-[#666]" />
-            )}
-          </div>
-        </div>
-      }
-      trailing={
-        <span style={{ fontSize: emphasisFontSize, fontWeight: 'bold', color: isMe ? 'var(--color-primary)' : 'var(--color-text)' }}>
-          {formatMissionProgress(entry.progressValue, missionType)}
-        </span>
-      }
-    >
-      <div className="flex flex-col gap-2">
-        <p
-          className="m-0 truncate"
-          style={{ fontSize: 'var(--text-small)', fontWeight: isMe ? 'bold' : 'normal', color: 'var(--color-text)' }}
-        >
-          {entry.displayName}
-        </p>
-        {/* 강조색은 --color-primary 하나로 통일(랭킹별 그라디언트 제거) */}
-        {/* [20260820_006] scaleX 인라인 마크업 → ProgressBar(radius override)로 전환 */}
-        <ProgressBar
-          percent={fillRatio * 100}
-          labelType="none"
-          height={6}
-          color="var(--color-primary)"
-          trackColor="var(--color-border)"
-          radius="3px"
-        />
-      </div>
-    </ListRowCard>
   )
 }
 
@@ -521,10 +442,17 @@ export default function MissionStatusClient({
                 {rest.map(entry => (
                   <RankingListRow
                     key={entry.userId}
-                    entry={entry}
-                    maxProgress={maxProgress}
+                    entry={{
+                      userId: entry.userId,
+                      displayName: entry.displayName,
+                      username: entry.username,
+                      avatarUrl: entry.avatarUrl,
+                      value: entry.progressValue,
+                      rank: entry.rank,
+                    }}
+                    maxValue={maxProgress}
                     isMe={isMeInEntries(entry.userId)}
-                    missionType={missionType}
+                    formatValue={(v) => formatMissionProgress(v, missionType)}
                   />
                 ))}
               </div>

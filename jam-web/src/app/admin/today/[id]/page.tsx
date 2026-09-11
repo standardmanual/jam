@@ -19,7 +19,7 @@ export default async function TodayCardDetailPage({ params, searchParams }: Toda
   if (!data) notFound()
   const card = data as TodayCardRow
 
-  const [{ data: badgesRaw }, { data: missionRaw }, { data: itemBookRaw }] = await Promise.all([
+  const [{ data: badgesRaw }, { data: missionRaw }, { data: itemBookRaw }, { data: rankingModeRaw }] = await Promise.all([
     (card.badge_ids ?? []).length > 0
       ? supabase.from('badges').select('id, name').in('id', card.badge_ids ?? [])
       : Promise.resolve({ data: [] as TodayCardDetailBadge[] }),
@@ -27,15 +27,26 @@ export default async function TodayCardDetailPage({ params, searchParams }: Toda
     card.item_book_id
       ? supabase.from('item_books').select('name').eq('id', card.item_book_id).single()
       : Promise.resolve({ data: null }),
+    card.ranking_mode_id
+      ? supabase.from('ranking_modes').select('title').eq('id', card.ranking_mode_id).single()
+      : Promise.resolve({ data: null }),
   ])
 
   const linkedBadges = (badgesRaw ?? []) as TodayCardDetailBadge[]
   const missionTitle = (missionRaw as { title: string } | null)?.title
   const itemBookName = (itemBookRaw as { name: string } | null)?.name
+  const rankingModeTitle = (rankingModeRaw as { title: string } | null)?.title
 
   return (
     <div className="p-4 md:p-8">
-      <TodayCardDetail card={card} linkedBadges={linkedBadges} missionTitle={missionTitle} itemBookName={itemBookName} returnDate={returnDate} />
+      <TodayCardDetail
+        card={card}
+        linkedBadges={linkedBadges}
+        missionTitle={missionTitle}
+        itemBookName={itemBookName}
+        rankingModeTitle={rankingModeTitle}
+        returnDate={returnDate}
+      />
     </div>
   )
 }

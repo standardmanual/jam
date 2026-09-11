@@ -23,10 +23,11 @@ export default async function EditTodayCardPage({ params, searchParams }: EditTo
   const returnDate = normalizeDateParam(singleQueryParam((await searchParams).date))
   const supabase = createServiceClient()
 
-  const [{ data }, { data: missionsRaw }, { data: booksRaw }] = await Promise.all([
+  const [{ data }, { data: missionsRaw }, { data: booksRaw }, { data: rankingModesRaw }] = await Promise.all([
     supabase.from('today_cards').select('*').eq('id', id).single(),
     supabase.from('missions').select('id, title').order('created_at', { ascending: false }),
     supabase.from('item_books').select('id, name').order('name'),
+    supabase.from('ranking_modes').select('id, title').order('title'),
   ])
   if (!data) notFound()
   const card = data as TodayCardRow
@@ -41,6 +42,7 @@ export default async function EditTodayCardPage({ params, searchParams }: EditTo
 
   const missions = (missionsRaw ?? []) as { id: string; title: string }[]
   const itemBooks = (booksRaw ?? []) as { id: string; name: string }[]
+  const rankingModes = (rankingModesRaw ?? []) as { id: string; title: string }[]
 
   return (
     <div className="p-4 md:p-8">
@@ -48,6 +50,7 @@ export default async function EditTodayCardPage({ params, searchParams }: EditTo
         card={card}
         missions={missions}
         itemBooks={itemBooks}
+        rankingModes={rankingModes}
         badgeLabels={badgeLabels}
         returnDate={returnDate}
         header={

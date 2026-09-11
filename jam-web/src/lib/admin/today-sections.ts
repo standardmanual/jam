@@ -25,6 +25,8 @@ export interface TodayCardFormValues {
   itemBookId: string
   regionLabel: string
   bodyMarkdown: string
+  /** ranking_board 전용 — 연결할 랭킹모드 id (티켓 20260911_1440) */
+  rankingModeId: string
   targetHref: string
   exposureTags: string[]
   /** datetime-local input 문자열("YYYY-MM-DDTHH:mm") — 비어 있지 않다고 가정한다(저장 전 필수 검증 통과 후 호출) */
@@ -45,6 +47,7 @@ export interface TodayCardSavePayload {
   item_book_id: string | null
   region_label: string | null
   body_markdown: string | null
+  ranking_mode_id: string | null
   target_href: string | null
   exposure_tags: string[]
   starts_at: string
@@ -63,6 +66,7 @@ export const TODAY_TEMPLATE_OPTIONS: readonly { value: TodayCardTemplateType; la
   { value: 'location_trend', label: '지역 트렌드 (location_trend)' },
   { value: 'drop_alert', label: '드랍 유도 (drop_alert)' },
   { value: 'editorial_article', label: '에디토리얼 기사 (editorial_article)' },
+  { value: 'ranking_board', label: '랭킹보드 (ranking_board)' },
 ]
 
 export const TODAY_LAYOUT_OPTIONS: readonly { value: TodayCardLayoutType; label: string }[] = [
@@ -71,6 +75,7 @@ export const TODAY_LAYOUT_OPTIONS: readonly { value: TodayCardLayoutType; label:
   { value: 'shortcut', label: '바로가기형 — 이미지 없는 짧은 CTA' },
   { value: 'banner', label: '배너형 — 가로 띠 배너' },
   { value: 'other', label: '기타 — 기본형' },
+  { value: 'ranking_list', label: '순위 리스트형 — 랭킹보드 목록(포디엄 없음)' },
 ]
 
 /** 템플릿을 고르면 처음엔 이 레이아웃을 기본 선택해둠(추천값일 뿐, 어드민이 자유롭게 바꿀 수 있음) */
@@ -82,6 +87,7 @@ export const SUGGESTED_LAYOUT_FOR: Record<TodayCardTemplateType, TodayCardLayout
   location_trend: 'badge_gallery',
   drop_alert: 'shortcut',
   editorial_article: 'large_thumbnail',
+  ranking_board: 'ranking_list',
 }
 
 export interface TodayTemplateFields {
@@ -90,6 +96,8 @@ export interface TodayTemplateFields {
   itemBook?: boolean
   region?: boolean
   body?: boolean
+  /** ranking_board 전용 — 연결할 랭킹모드 선택 입력(티켓 20260911_1440) */
+  rankingMode?: boolean
   targetHref?: boolean
 }
 
@@ -102,6 +110,7 @@ export const TODAY_FIELDS_FOR: Record<TodayCardTemplateType, TodayTemplateFields
   location_trend: { badges: true, region: true, targetHref: true },
   drop_alert: {}, // target 고정 /drops
   editorial_article: { body: true }, // target 고정 /today/{id}
+  ranking_board: { rankingMode: true, targetHref: true },
 }
 
 export function todayTemplateFields(templateType: TodayCardTemplateType): TodayTemplateFields {
@@ -143,7 +152,9 @@ export function todaySectionHeadingId(id: TodaySectionId): string {
  */
 export function visibleTodaySections(templateType: TodayCardTemplateType): TodaySectionId[] {
   const fields = todayTemplateFields(templateType)
-  const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body)
+  const hasRef = Boolean(
+    fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode
+  )
   return TODAY_SECTION_ORDER.filter((id) => (id === 'ref' ? hasRef : true))
 }
 
@@ -198,6 +209,8 @@ export interface TodaySectionSnapshot {
   itemBookId: string | null
   regionLabel: string
   bodyMarkdown: string
+  /** ranking_board 전용(티켓 20260911_1440) */
+  rankingModeId: string | null
   exposureTagCount: number
   hasStartsAt: boolean
   hasEndsAt: boolean
@@ -213,6 +226,7 @@ export function computeTodaySectionStatuses(s: TodaySectionSnapshot): Record<Tod
     fields.itemBook && Boolean(s.itemBookId),
     fields.region && s.regionLabel.trim().length > 0,
     fields.body && s.bodyMarkdown.trim().length > 0,
+    fields.rankingMode && Boolean(s.rankingModeId),
   ].filter(Boolean).length
 
   const periodMissing = [!s.hasStartsAt, !s.hasEndsAt].filter(Boolean).length
@@ -249,6 +263,7 @@ export function buildTodayCardSavePayload(v: TodayCardFormValues): TodayCardSave
     item_book_id: fields.itemBook ? v.itemBookId || null : null,
     region_label: fields.region ? v.regionLabel.trim() || null : null,
     body_markdown: fields.body ? v.bodyMarkdown || null : null,
+    ranking_mode_id: fields.rankingMode ? v.rankingModeId || null : null,
     // editorial_article/drop_alert 은 target_href 무시(자동/고정)
     target_href: fields.targetHref ? v.targetHref.trim() || null : null,
     exposure_tags: v.exposureTags,

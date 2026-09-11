@@ -7,10 +7,11 @@
  *   ORDER BY sort_order ASC, starts_at DESC
  */
 import { createServiceClient } from '@/lib/supabase/server'
-import type { TodayCardRow } from '@/types/database'
+import type { RankingModeRow, TodayCardRow } from '@/types/database'
 import { computeUserExposureTags } from './exposure'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
 import { resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
+import { computeRankingModeResult, type RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 /**
  * 순수 함수라 서버 전용 의존이 없는 `targetHref.ts`로 옮겼다(티켓 20260911_1454) — 이 파일
  * 안(`getTodayCards` 등)에서 쓰기 위해 값으로 import하고, 기존 호출부가 그대로
@@ -47,6 +48,12 @@ export type TodayCardWithHref = TodayCardRow & {
   resolved_href: string
   /** badge_ids 를 실제 배지 정보로 조회한 결과 (badge_gallery 레이아웃 렌더링용, badge_ids 없으면 빈 배열) */
   resolved_badges: ResolvedBadge[]
+  /**
+   * ranking_board 카드가 참조하는 랭킹모드를 서버가 미리 계산한 순위 목록(티켓 20260911_1440).
+   * ranking_list 레이아웃 렌더링용 — ranking_board가 아니거나 ranking_mode_id가 비어있거나
+   * 랭킹모드를 찾지 못하면 null.
+   */
+  resolved_ranking: RankingBoardResult | null
 }
 
 /**
@@ -84,12 +91,61 @@ export async function getTodayCards(
   // 이미 완료했거나 아직 열리지 않은 미션은 오늘 카드로도 권하지 않는다.
   const cards = await filterMissionSpotlightCards(userId, allCards)
   const badgesById = await fetchBadgesById(supabase, cards.flatMap((c) => c.badge_ids ?? []), userId)
+  const rankingByModeId = await fetchRankingBoardData(supabase, cards)
 
-  return cards.map((card) => ({
-    ...card,
-    resolved_href: resolveTargetHref(card),
-    resolved_badges: (card.badge_ids ?? []).map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b)),
-  }))
+  return cards.map((card) => {
+    const ranking = card.ranking_mode_id ? rankingByModeId.get(card.ranking_mode_id) : undefined
+    return {
+      ...card,
+      resolved_href: resolveTargetHref(
+        card,
+        ranking?.mode.target_type === 'mission_participants'
+          ? { rankingModeTargetMissionId: ranking.mode.target_mission_id }
+          : {}
+      ),
+      resolved_badges: (card.badge_ids ?? []).map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b)),
+      resolved_ranking: ranking?.result ?? null,
+    }
+  })
+}
+
+/**
+ * ranking_board 카드가 참조하는 랭킹모드를 배치 조회해 순위를 계산한다(`fetchBadgesById`와
+ * 같은 이유 — 카드마다 개별 조회하면 홈 피드 1회 로드에 N번 왕복한다). id → { mode, result } 맵.
+ *
+ * export하는 이유: 어드민 날짜별 미리보기(`lib/admin/todayPreview.ts`)도 같은 배치 조회가
+ * 필요하다 — 그 파일은 유저 개인화(참가 여부 등)는 의도적으로 생략하지만, 랭킹 계산 자체는
+ * 유저 컨텍스트가 필요 없어(팔로워 수·활동 이력 등은 대상 유저 자신의 것) 그대로 재사용할 수 있다.
+ */
+export async function fetchRankingBoardData(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  cards: TodayCardRow[],
+): Promise<Map<string, { mode: RankingModeRow; result: RankingBoardResult }>> {
+  const modeIds = [
+    ...new Set(
+      cards
+        .filter((c) => c.template_type === 'ranking_board' && c.ranking_mode_id)
+        .map((c) => c.ranking_mode_id as string)
+    ),
+  ]
+  const map = new Map<string, { mode: RankingModeRow; result: RankingBoardResult }>()
+  if (modeIds.length === 0) return map
+
+  const { data, error } = await supabase.from('ranking_modes').select('*').in('id', modeIds)
+  if (error) {
+    console.error('[fetchRankingBoardData] 랭킹모드 조회 오류:', error.message)
+    return map
+  }
+
+  const modes = (data ?? []) as RankingModeRow[]
+  await Promise.all(
+    modes.map(async (mode) => {
+      const result = await computeRankingModeResult(mode, supabase)
+      map.set(mode.id, { mode, result })
+    })
+  )
+  return map
 }
 
 /**

@@ -16,7 +16,7 @@
  */
 import { createServiceClient } from '@/lib/supabase/server'
 import type { TodayCardRow } from '@/types/database'
-import { resolveTargetHref, type TodayCardWithHref, type ResolvedBadge } from '@/lib/today/cards'
+import { resolveTargetHref, fetchRankingBoardData, type TodayCardWithHref, type ResolvedBadge } from '@/lib/today/cards'
 import { kstDayBoundsIso } from './today-calendar'
 
 /**
@@ -54,9 +54,22 @@ export async function getAdminTodayPreviewCards(dateStr: string): Promise<TodayC
     for (const b of (badgesRaw ?? []) as ResolvedBadge[]) badgesById.set(b.id, b)
   }
 
-  return cards.map((card) => ({
-    ...card,
-    resolved_href: resolveTargetHref(card),
-    resolved_badges: (card.badge_ids ?? []).map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b)),
-  }))
+  // 랭킹 계산은 유저 개인화가 필요 없다(팔로워 수·활동 이력은 대상 유저 자신의 것) — 위 두
+  // 가지 단순화(exposure_tags·참가여부 미필터링)와 달리 그대로 실제 값을 보여준다.
+  const rankingByModeId = await fetchRankingBoardData(supabase, cards)
+
+  return cards.map((card) => {
+    const ranking = card.ranking_mode_id ? rankingByModeId.get(card.ranking_mode_id) : undefined
+    return {
+      ...card,
+      resolved_href: resolveTargetHref(
+        card,
+        ranking?.mode.target_type === 'mission_participants'
+          ? { rankingModeTargetMissionId: ranking.mode.target_mission_id }
+          : {}
+      ),
+      resolved_badges: (card.badge_ids ?? []).map((id) => badgesById.get(id)).filter((b): b is ResolvedBadge => Boolean(b)),
+      resolved_ranking: ranking?.result ?? null,
+    }
+  })
 }

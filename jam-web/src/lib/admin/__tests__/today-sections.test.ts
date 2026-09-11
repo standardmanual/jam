@@ -22,6 +22,7 @@ const ALL_TEMPLATES: TodayCardTemplateType[] = [
   'location_trend',
   'drop_alert',
   'editorial_article',
+  'ranking_board',
 ]
 
 const base: TodaySectionSnapshot = {
@@ -32,6 +33,7 @@ const base: TodaySectionSnapshot = {
   itemBookId: null,
   regionLabel: '',
   bodyMarkdown: '',
+  rankingModeId: null,
   exposureTagCount: 1,
   hasStartsAt: true,
   hasEndsAt: true,
@@ -41,7 +43,7 @@ describe('visibleTodaySections — 참조 컨텐츠가 없는 템플릿(drop_ale
   it('drop_alert는 참조 컨텐츠 섹션이 없다', () => {
     expect(visibleTodaySections('drop_alert')).toEqual(['class', 'basic', 'expose', 'period'])
   })
-  it('그 외 6개 템플릿은 참조 컨텐츠 섹션을 포함한 5개 섹션을 모두 보인다', () => {
+  it('그 외 7개 템플릿은 참조 컨텐츠 섹션을 포함한 5개 섹션을 모두 보인다', () => {
     for (const t of ALL_TEMPLATES) {
       if (t === 'drop_alert') continue
       expect(visibleTodaySections(t)).toEqual(['class', 'basic', 'ref', 'expose', 'period'])
@@ -78,7 +80,10 @@ describe('TODAY_FIELDS_FOR — 템플릿별 노출 필드 매트릭스(기존 To
   it('editorial_article은 본문만 쓴다(경로 고정 /today/{id})', () => {
     expect(todayTemplateFields('editorial_article')).toEqual({ body: true })
   })
-  it('7개 템플릿 모두 매핑이 존재한다', () => {
+  it('ranking_board는 랭킹모드·이동경로를 쓴다(티켓 20260911_1440)', () => {
+    expect(todayTemplateFields('ranking_board')).toEqual({ rankingMode: true, targetHref: true })
+  })
+  it('8개 템플릿 모두 매핑이 존재한다', () => {
     expect(Object.keys(TODAY_FIELDS_FOR).sort()).toEqual([...ALL_TEMPLATES].sort())
   })
 })
@@ -113,6 +118,14 @@ describe('computeTodaySectionStatuses', () => {
       tone: 'idle',
       text: '선택',
     })
+    // ranking_board — rankingModeId를 채우면 1개 설정(티켓 20260911_1440)
+    expect(
+      computeTodaySectionStatuses({ ...base, templateType: 'ranking_board', rankingModeId: 'rm1' }).ref
+    ).toEqual({ tone: 'set', text: '1개 설정' })
+    expect(computeTodaySectionStatuses({ ...base, templateType: 'ranking_board' }).ref).toEqual({
+      tone: 'idle',
+      text: '선택',
+    })
   })
 })
 
@@ -128,6 +141,7 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
     itemBookId: '',
     regionLabel: '',
     bodyMarkdown: '',
+    rankingModeId: '',
     targetHref: '',
     exposureTags: ['all'],
     startsAt: '2026-09-11T00:00',
@@ -200,5 +214,26 @@ describe('buildTodayCardSavePayload — 저장 페이로드 구성(기존 TodayC
   it('이동 경로를 비우면 null로 저장한다(자동 생성은 서버·유저 화면 쪽 로직, 이 함수 범위 밖)', () => {
     const p = buildTodayCardSavePayload({ ...baseValues, templateType: 'location_trend', targetHref: '   ' })
     expect(p.target_href).toBeNull()
+  })
+  it('ranking_board — rankingModeId를 저장하고 다른 참조 필드는 값이 있어도 null로 비운다(티켓 20260911_1440)', () => {
+    const p = buildTodayCardSavePayload({
+      ...baseValues,
+      templateType: 'ranking_board',
+      rankingModeId: 'rm1',
+      missionId: 'm1',
+      itemBookId: 'ib1',
+      regionLabel: '성수동',
+      bodyMarkdown: '본문',
+    })
+    expect(p.ranking_mode_id).toBe('rm1')
+    expect(p.badge_ids).toEqual([])
+    expect(p.mission_id).toBeNull()
+    expect(p.item_book_id).toBeNull()
+    expect(p.region_label).toBeNull()
+    expect(p.body_markdown).toBeNull()
+  })
+  it('ranking_board가 아닌 템플릿은 rankingModeId가 있어도 ranking_mode_id를 null로 비운다', () => {
+    const p = buildTodayCardSavePayload({ ...baseValues, templateType: 'badge_spotlight', rankingModeId: 'rm1' })
+    expect(p.ranking_mode_id).toBeNull()
   })
 })

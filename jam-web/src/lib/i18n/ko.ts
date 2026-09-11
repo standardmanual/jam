@@ -281,8 +281,10 @@ export const ko = {
     locationTrend: '지역 트렌드',
     dropAlert: '드랍',
     editorialArticle: '기사',
+    rankingBoard: '랭킹보드',
     backToToday: '투데이로',
     noBody: '본문이 없어요',
+    rankingEmpty: '아직 순위가 없어요',
   },
 
   /** 배지 목록/상세 화면 */

@@ -56,6 +56,16 @@ export function MedalIcon(props: IconProps) {
   )
 }
 
+/** 랭킹보드 — 투데이 카드 템플릿 칩(티켓 20260911_1440). 오름차순 막대 그래프로 순위 경쟁을 표현 */
+export function RankingIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20v-7M10 20V9M16 20V4" />
+      <path d="M3 20h18" />
+    </Svg>
+  )
+}
+
 /** 아이템북 */
 export function BookIcon(props: IconProps) {
   return (
