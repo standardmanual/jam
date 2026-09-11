@@ -354,8 +354,8 @@ export const ko = {
     shareErrorNoTriggerBody: '연결된 Strava 활동 기록이 없어 거리·페이스 정보를 채울 수 없어요',
     shareErrorFetchFailedTitle: '지금은 이미지를 만들 수 없어요',
     shareErrorFetchFailedBody: '잠시 후 다시 시도해주세요',
-    shareErrorActivityNotFoundTitle: 'Strava에서 이 기록을 확인할 수 없어요',
-    shareErrorActivityNotFoundBody: 'Strava 앱에서 활동이 삭제되지 않았는지 확인해보세요',
+    shareErrorActivityNotFoundTitle: 'Strava에서\n기록을 확인할 수 없어요.',
+    shareErrorActivityNotFoundBody: '활동이 삭제되지 않았는지\n확인해보세요.',
     shareErrorUnknownTitle: '이미지를 만들지 못했어요',
     shareErrorUnknownBody: '잠시 후 다시 시도해주세요',
 
