@@ -2,9 +2,9 @@
 id: 20260911_2304
 category: BadgeEngine
 priority: P2
-status: OPEN
+status: CLOSED
 created: 2026-09-11
-closed:
+closed: 2026-09-12
 ---
 
 # [BadgeEngine] 어드민 배지 생성 — JAM! 종목 "연속 동기화 일수" 조건 추가
@@ -117,9 +117,14 @@ Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
 - [x] `npm run lint` 전체 실행 — 0 errors, 13 warnings(전부 `design-system/`의 기존 경고,
   이번 변경과 무관)
 - [x] `npx tsc --noEmit` — 오류 없음
-- 로컬 실렌더는 하지 않았다 — UI를 변경하지 않았고(위 요약 참고), 어드민 조건 폼은
-  레지스트리 선언 하나로 필드가 자동 생성되는 기존 검증된 구조라 판단했다(§ alerts에 낮은
-  확신도로 명시).
+- [x] **오케스트레이터 실렌더 검증(2026-09-12)**: staging 머지 후 마이그레이션 161 실행
+  (`ALTER TABLE ... CHECK` 갱신, 기존 배지 639건 영향 없음 확인) → DO 블록 스모크 테스트로
+  `daily_sync_streak_days` 키가 실제로 CHECK를 통과함을 확인(고의 RAISE EXCEPTION으로
+  롤백, 잔존 행 0건 확인) → 로컬 `next dev`(`ADMIN_EMAILS=dev-tester@jam.local`)로
+  `/admin/badges/new`에서 분류 "JAM!" 선택 → "획득 조건 > 사용량 지표" 그룹에 "연속 동기화
+  일수" 입력 필드가 정상 노출됨을 확인 → 값 7 입력 시 우측 요약과 상세 미리보기 카드에
+  "연속 동기화 7일↑" 조건 칩이 정확히 반영됨을 확인. (이미지 필수라 실제 등록까지는
+  진행하지 않음 — DB 저장 가능 여부는 스모크 테스트로 이미 확인했으므로 충분하다고 판단)
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -131,9 +136,9 @@ Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
 - [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
 
 ### 배포 정보
-- 배포일: (미배포 — review 브랜치 push까지만 완료, staging 병합·배포는 사용자 승인 후)
-- 환경: -
-- 커밋: (아래 push한 review 브랜치 참고)
+- 배포일: 2026-09-12
+- 환경: production (Supabase `jam-prod`, staging·프로덕션 공용 단일 DB — 마이그레이션 161 실행 완료)
+- 커밋: staging에 머지 (review 브랜치 `claude/jamwork-20260911_2304-daily-sync-streak`)
 
 ### 주요 의사결정 / 핵심 메모
 - "연속 N일" 판정 기준은 **현재(오늘 기준) 연속일수가 N일에 도달하는 순간 달성**으로
@@ -145,5 +150,8 @@ Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
 ### 잔여 이슈
 - 티켓 §UI/UX 관점의 전제("JAM! 선택 시 조건 입력 섹션 전체가 숨겨져 있다")가 선행 티켓
   20260911_0901로 이미 갱신돼 있었다 — 이번 구현에서는 `BadgeForm.tsx`를 손대지 않고
-  레지스트리 `form` 선언만 추가했다. 어드민에서 실제 화면으로 "사용량 지표" 그룹에 입력
-  칸이 뜨는지 리뷰어가 한 번 실렌더로 확인해 주면 좋겠다(로컬 `next dev` 또는 staging 병합 후).
+  레지스트리 `form` 선언만 추가했다. 오케스트레이터가 실렌더로 정상 노출을 확인 완료(위
+  테스트 결과 참고).
+- 개선 리뷰 제안(경미, 이번 범위에는 미반영): `UsageMetric` 타입을 `conditionRegistry.ts`에서
+  export해 단일 소스화하는 방안(4번째 지표 추가 계기로 검토 가치 언급됨), PRD/컨텐츠
+  문서에 신규 지표 반영 여부 검토.
