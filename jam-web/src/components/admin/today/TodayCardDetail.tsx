@@ -9,9 +9,9 @@
  */
 import { Fragment, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/admin/ui/button'
+import SafeImage from '@/components/SafeImage'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -169,13 +169,16 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
           {card.subtitle || <Empty />}
         </ReadOnlyItem>
         <ReadOnlyItem label="커버 이미지" span={3}>
-          {card.cover_image_url ? (
-            <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-              <Image src={card.cover_image_url} alt={card.title} fill className="object-cover" />
-            </div>
-          ) : (
-            <Empty>이미지 없음</Empty>
-          )}
+          {/* 20260824_004: cover_image_url은 어드민 자유 입력이라 호스트를 알 수 없다.
+              next/image에 그대로 넘기면 미등록 호스트에서 이 화면 전체가 500으로 죽는다
+              (티켓 20260911_1454 게이트 리뷰 FAIL) → SafeImage 경유 */}
+          <SafeImage
+            src={card.cover_image_url}
+            alt={card.title}
+            className="object-cover"
+            containerClassName="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted"
+            fallback={<Empty>이미지 없음</Empty>}
+          />
         </ReadOnlyItem>
       </ReadOnlyGrid>
     </TodaySectionCard>
