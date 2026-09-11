@@ -18,6 +18,7 @@
  *   404 { error: 'not_earned' }                  — 조회 대상 유저가 아직 획득하지 않음
  *   404 { error: 'no_strava_trigger' }           — 획득은 했으나 연결된 스트라바 활동이 없음(레거시/어드민 발급)
  *   404 { error: 'strava_disconnected' }         — 스트라바 연동 해제 또는 토큰 갱신 실패(재인증 필요)
+ *   404 { error: 'strava_activity_not_found' }   — 스트라바 활동이 삭제되었거나 비공개로 전환됨
  *   502 { error: 'strava_fetch_failed' }         — 스트라바 API 조회 실패(레이트리밋·5xx 등)
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -174,6 +175,11 @@ export async function GET(
   if ('error' in activityResult) {
     if (activityResult.status === 401) {
       return NextResponse.json({ error: 'strava_disconnected' }, { status: 404 })
+    }
+    if (activityResult.status === 404) {
+      // 스트라바 쪽에서 활동이 삭제되었거나 비공개로 전환된 경우 — 재시도해도 동일하게
+      // 실패하므로 일시적 오류(strava_fetch_failed)와 구분해 별도 사유로 반환한다.
+      return NextResponse.json({ error: 'strava_activity_not_found' }, { status: 404 })
     }
     console.error(
       `[/api/badges/[id]/share-data] 스트라바 활동 조회 실패 (status: ${activityResult.status}):`,
