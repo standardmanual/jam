@@ -258,6 +258,7 @@ export type Database = {
           deleted_at: string | null
           description: string
           drop_condition_json: Json | null
+          drop_excluded: boolean
           drop_weight: number
           family_key: string | null
           id: string
@@ -291,6 +292,7 @@ export type Database = {
           deleted_at?: string | null
           description: string
           drop_condition_json?: Json | null
+          drop_excluded?: boolean
           drop_weight?: number
           family_key?: string | null
           id?: string
@@ -324,6 +326,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string
           drop_condition_json?: Json | null
+          drop_excluded?: boolean
           drop_weight?: number
           family_key?: string | null
           id?: string
@@ -821,6 +824,7 @@ export type Database = {
           created_at: string
           description: string
           drop_condition_json: Json | null
+          drop_excluded: boolean
           id: string
           image_url: string | null
           is_active: boolean
@@ -840,6 +844,7 @@ export type Database = {
           created_at?: string
           description: string
           drop_condition_json?: Json | null
+          drop_excluded?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -859,6 +864,7 @@ export type Database = {
           created_at?: string
           description?: string
           drop_condition_json?: Json | null
+          drop_excluded?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean

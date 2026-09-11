@@ -26,6 +26,7 @@ import {
   IconStackPop,
   IconLock,
   IconTrophy,
+  IconBan,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -58,6 +59,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: '정책 및 밸런스',
     items: [
       { href: '/admin/drop-policy', label: '드랍 정책', icon: IconDice },
+      { href: '/admin/drop-policy/exclusions', label: '드랍 제외 관리', icon: IconBan },
       { href: '/admin/ambient-drop', label: '앰비언트 드랍', icon: IconCloudFog },
       { href: '/admin/combine-policy', label: '믹스 정책', icon: IconTestPipe },
       { href: '/admin/inventory-policy', label: '인벤토리 최대치', icon: IconBackpack },

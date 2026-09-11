@@ -178,6 +178,10 @@ export interface BadgeRow {
    *  NULL로 리셋한다(티켓 20260908_2129 2차) */
   deactivated_by_item_book_id: string | null
   created_at: string
+  /** 드랍 후보에서만 제외한다(마이그레이션 159, 티켓 20260911_2220). `deleted_at`(소프트 삭제)·
+   *  `item_book_id`가 가리키는 컬렉션의 `is_active`(화면 노출 자체 차단)와는 별개 — 이 값만
+   *  true면 보유자 화면·인벤토리 등 기존 노출은 그대로 두고 신규 드랍 후보에서만 뺀다. */
+  drop_excluded: boolean
   /** 배지 상세화면 배경 테마 컬러값 (20260818_002 선행 구조). background_image_url과 상호 배타적 */
   background_color: string | null
   /** 배지 상세화면 배경 쉐이더 식별자 (20260818_002 선행 구조 — 쉐이더 스택 미정, 아직 UI에서 미사용) */
@@ -427,6 +431,10 @@ export interface ItemBookRow {
   background_animation: Record<string, unknown> | null
   /** 20260911_1259 — 이 컬렉션을 완성할 때 함께 지급하는 잼 포인트. 0이면 지급 없음. */
   reward_points: number
+  /** 드랍 후보에서만 컬렉션 전체를 제외한다(마이그레이션 159, 티켓 20260911_2220).
+   *  `is_active`(화면 노출 자체 차단)와는 별개 — true여도 기존 노출·보유자 화면은 그대로 두고
+   *  신규 드랍 후보에서만 소속 배지 전체를 뺀다. */
+  drop_excluded: boolean
 }
 
 export interface PoiRow {
