@@ -68,15 +68,16 @@ import { findConditionShapeSaveError, findRarityLevelError } from '@/lib/admin/b
 // `next/headers` 등 서버 전용 의존을 물지 않는 순수 함수라 이 클라이언트 컴포넌트에서
 // 값(value) import로 바로 써도 안전하다(티켓 20260904_0921 게이트 리뷰에서 `npm run build`로 실증됨).
 import { explainUnsupportedProgress } from '@/lib/badge-engine/badgeProgress'
+// 드랍 엔진 본체는 서버 전용이라 import할 수 없다 — 의존 없는 목록 모듈만 가져온다.
+import { CUMULATIVE_CONDITION_FIELDS } from '@/lib/drop-engine/cumulativeConditionFields'
 
 const RARITIES: BadgeRarity[] = ['common', 'rare', 'epic', 'mystic']
 const RARITY_LABEL: Record<BadgeRarity, string> = { common: 'Common', rare: 'Rare', epic: 'Epic', mystic: 'Mystic' }
 
-/** drop-engine의 CUMULATIVE_CONDITION_FIELDS와 동일 — 아이템 배지엔 이 필드들을 설정할 수 없다
- *  (설정하면 hasCumulativeCondition()이 항상 true가 되어 영원히 드랍 후보에서 제외됨) */
-const CUMULATIVE_CONDITION_KEYS: (keyof BadgeCondition)[] = [
-  'monthly_km', 'season_count', 'weekly_count', 'streak_days', 'total_count',
-]
+/** 아이템 배지엔 이 필드들을 설정할 수 없다 — 설정하면 드랍 엔진의 hasCumulativeCondition()이
+ *  항상 true가 되어 영원히 드랍 후보에서 제외된다. 드랍 엔진·저장 검증과 **같은 배열**을 쓴다
+ *  (예전에는 5개만 복제해 둬서 엔진의 11개와 어긋났다, 티켓 20260911_0901 D-2). */
+const CUMULATIVE_CONDITION_KEYS = CUMULATIVE_CONDITION_FIELDS
 const ITEM_BLOCKED_KEYS: ReadonlySet<string> = new Set(CUMULATIVE_CONDITION_KEYS)
 const NO_BLOCKED_KEYS: ReadonlySet<string> = new Set()
 
@@ -290,6 +291,10 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
   const changeType = (next: BadgeType) => {
     setType(next)
     if (next !== 'activity') setAdminCategory('')
+    // 아이템에서는 발급 방식 전환이 숨겨진다. `{mission_reward: true}`는 드랍 엔진에서 「평가할
+    // 수 있는 조건 없음」으로 판정돼 영구히 드랍되지 않는데 서버 검증도 막지 않으므로, 액티비티에서
+    // 켜 둔 값이 숨은 채 따라가지 않게 비운다(티켓 20260911_0901 D-1).
+    if (next === 'item') setCondField('missionReward', false)
   }
 
   const toggleActivityType = (t: ActivityType) => {
@@ -301,8 +306,15 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
   // JAM!(admin_category='jam')도 분류 태그 안에서 여섯 번째 종류처럼 고른다.
   // 종목과 상호배타라 선택하면 기존 종목 선택을 비운다(티켓 20260910_2258).
   const toggleAdminCategoryJam = () => {
-    setAdminCategory((prev) => (prev === 'jam' ? '' : 'jam'))
+    const turningOn = adminCategory !== 'jam'
+    setAdminCategory(turningOn ? 'jam' : '')
     setActivityTypes((prev) => (prev.length > 0 ? [] : prev))
+    // JAM!에서는 연결 정보 섹션이 숨겨진다. 트라이브·컬렉션은 액티비티 배지의 발급 판정에 쓰이지
+    // 않지만, 화면에 보이지 않는 값이 DB에 남지 않도록 JAM!을 켜는 순간 비운다(티켓 20260911_0901 D-3).
+    if (turningOn) {
+      setTribeId('')
+      setItemBookId('')
+    }
   }
 
   const validateCondition = (cond: BadgeCondition | null): string | null => {
@@ -600,6 +612,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
                   id={`badge-activity-type-${t}`}
                   type="button"
                   aria-pressed={on}
+                  aria-describedby={activityTypesInvalid ? 'badge-activity-types-error' : undefined}
                   onClick={() => toggleActivityType(t)}
                   className={cn(
                     'inline-flex h-8 items-center rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -615,6 +628,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
               id="badge-activity-type-jam"
               type="button"
               aria-pressed={isJamCategory}
+              aria-describedby={activityTypesInvalid ? 'badge-activity-types-error' : undefined}
               onClick={toggleAdminCategoryJam}
               className={cn(
                 'inline-flex h-8 items-center rounded-full border px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -1103,8 +1117,13 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
           required
           label="배지 이미지"
           allowManualUrl={false}
+          describedBy={imageInvalid ? 'badge-image-error' : undefined}
         />
-        {imageInvalid && <FieldMessage tone="error">배지 이미지를 업로드해 주세요.</FieldMessage>}
+        {imageInvalid && (
+          <FieldMessage id="badge-image-error" tone="error">
+            배지 이미지를 업로드해 주세요.
+          </FieldMessage>
+        )}
       </div>
 
       {/* 배경 — 배경색 / 애니메이션 배타 선택(티켓 20260901_1944). 미리보기는 오른쪽 레일이 그린다 */}
