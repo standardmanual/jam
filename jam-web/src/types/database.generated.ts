@@ -827,6 +827,7 @@ export type Database = {
           name: string
           required_activity_badge_id: string | null
           reward_badge_id: string | null
+          reward_points: number
           story_text: string | null
           tribe_id: string | null
         }
@@ -845,6 +846,7 @@ export type Database = {
           name: string
           required_activity_badge_id?: string | null
           reward_badge_id?: string | null
+          reward_points?: number
           story_text?: string | null
           tribe_id?: string | null
         }
@@ -863,6 +865,7 @@ export type Database = {
           name?: string
           required_activity_badge_id?: string | null
           reward_badge_id?: string | null
+          reward_points?: number
           story_text?: string | null
           tribe_id?: string | null
         }
@@ -1402,6 +1405,7 @@ export type Database = {
           id: string
           reason: string
           source_badge_id: string | null
+          source_item_book_id: string | null
           source_mission_id: string | null
           user_id: string
         }
@@ -1413,6 +1417,7 @@ export type Database = {
           id?: string
           reason: string
           source_badge_id?: string | null
+          source_item_book_id?: string | null
           source_mission_id?: string | null
           user_id: string
         }
@@ -1424,6 +1429,7 @@ export type Database = {
           id?: string
           reason?: string
           source_badge_id?: string | null
+          source_item_book_id?: string | null
           source_mission_id?: string | null
           user_id?: string
         }
@@ -1433,6 +1439,13 @@ export type Database = {
             columns: ["source_badge_id"]
             isOneToOne: false
             referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "point_transactions_source_item_book_id_fkey"
+            columns: ["source_item_book_id"]
+            isOneToOne: false
+            referencedRelation: "item_books"
             referencedColumns: ["id"]
           },
           {
@@ -2543,6 +2556,7 @@ export type Database = {
           p_amount: number
           p_reason: string
           p_source_badge_id?: string
+          p_source_item_book_id?: string
           p_source_mission_id?: string
           p_user_id: string
         }
@@ -2554,6 +2568,7 @@ export type Database = {
           id: string
           reason: string
           source_badge_id: string | null
+          source_item_book_id: string | null
           source_mission_id: string | null
           user_id: string
         }

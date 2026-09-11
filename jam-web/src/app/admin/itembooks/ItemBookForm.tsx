@@ -21,6 +21,7 @@ import {
 import BackgroundGeneratorPreview, {
   type BackgroundGeneratorLivePreviewState,
 } from '../badges/BackgroundGeneratorPreview'
+import { FieldLabel, FieldMessage, SuffixInput } from '../badges/BadgeFormControls'
 import { parseBlobAnimation, type BlobAnimationParams } from '@/lib/blobAnimation'
 import ItemBookDetailPreviewFrame from './ItemBookDetailPreviewFrame'
 import { BadgeActiveToggleButton } from '@/components/admin/badges/BadgeActiveToggleButton'
@@ -67,6 +68,9 @@ export default function ItemBookForm({
     book?.required_activity_badge_id ?? ''
   )
   const [rewardBadgeId, setRewardBadgeId] = useState(book?.reward_badge_id ?? '')
+  // 컬렉션 완성 시 지급하는 포인트 보상 (20260911_1259) — BadgeForm의 '포인트 보상' 필드와
+  // 동일한 패턴(FieldLabel + SuffixInput + FieldMessage).
+  const [rewardPoints, setRewardPoints] = useState<string>(book?.reward_points?.toString() ?? '0')
   const [tribeId, setTribeId] = useState(book?.tribe_id ?? '')
   const [storyText, setStoryText] = useState(book?.story_text ?? '')
   const [isActive, setIsActive] = useState(book?.is_active ?? true)
@@ -122,6 +126,7 @@ export default function ItemBookForm({
       image_url: imageUrl || null,
       required_activity_badge_id: requiredActivityBadgeId || null,
       reward_badge_id: rewardBadgeId || null,
+      reward_points: Math.max(0, parseInt(rewardPoints, 10) || 0),
       tribe_id: tribeId || null,
       story_text: storyText || null,
       is_active: isActive,
@@ -383,6 +388,24 @@ export default function ItemBookForm({
           onChange={(id) => setRewardBadgeId(id)}
         />
       </label>
+
+      <div className="flex flex-col gap-1.5">
+        <FieldLabel htmlFor="itembook-reward-points">포인트 보상</FieldLabel>
+        <SuffixInput
+          id="itembook-reward-points"
+          type="number"
+          inputMode="numeric"
+          min="0"
+          value={rewardPoints}
+          onChange={(e) => setRewardPoints(e.target.value)}
+          placeholder="0"
+          suffix="포인트"
+          describedBy="itembook-reward-points-help"
+        />
+        <FieldMessage id="itembook-reward-points-help">
+          컬렉션을 완성하는 순간 1번 지급돼요. 나중에 바꿔도 이미 지급한 포인트는 그대로예요. 0이면 지급하지 않아요.
+        </FieldMessage>
+      </div>
 
       <label className="flex items-center gap-3 cursor-pointer">
         <Switch checked={isActive} onCheckedChange={handleActiveToggle} />
