@@ -20,13 +20,21 @@ export default async function EditBadgePage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="p-4 md:p-8">
-      <div className="mb-6">
-        <Link href={`/admin/badges/${id}`} className="text-gray-600 hover:text-gray-900 text-sm transition-colors">
-          ← 배지 상세
-        </Link>
-        <h1 className="text-3xl font-bold mt-2">배지 수정</h1>
-      </div>
-      <BadgeForm badge={data as BadgeRow} tribes={tribes} itemBooks={itemBooks} poiCategories={poiCategories} />
+      {/* 제목은 폼의 섹션 열 위에 둔다 — 오른쪽 레일이 페이지 맨 위에서 시작하도록(티켓 20260911_0901) */}
+      <BadgeForm
+        badge={data as BadgeRow}
+        tribes={tribes}
+        itemBooks={itemBooks}
+        poiCategories={poiCategories}
+        header={
+          <div>
+            <Link href={`/admin/badges/${id}`} className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+              ← 배지 상세
+            </Link>
+            <h1 className="text-2xl font-bold mt-2">배지 수정</h1>
+          </div>
+        }
+      />
     </div>
   )
 }

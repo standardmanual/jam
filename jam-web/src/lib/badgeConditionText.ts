@@ -191,23 +191,39 @@ const USER_PHRASE: Partial<Record<ConditionKey, (c: BadgeCondition) => string | 
 
 /**
  * 표기 규칙 「①기간 ②맥락 ③지표 ④달성 횟수」의 정렬 키.
- * 어드민 조건 폼의 섹션을 그대로 재사용한다 — 그 분류가 이미 같은 축이고,
+ * 어드민 조건 폼의 섹션을 그대로 재사용한다 — 그 분류가 대체로 같은 축이고,
  * 여기서 따로 목록을 만들면 필드가 늘 때 두 곳이 어긋난다.
+ *
+ * 0 기간 · 1 맥락 · 2 지표 · 3 이력 패턴 · 4 게이트 · 5 채우는 방식·메타 · 6 달성 횟수
  */
 const SECTION_ORDER: Record<ConditionFormSection, number> = {
   period: 0,
-  environment: 1,
-  basic: 2,
+  scope: 1,
+  cumulative: 2,
   single: 2,
-  pattern: 3,
+  rhythm: 3,
+  record: 3,
   gate: 4,
   meta: 5,
   repeat: 6,
 }
 
-/** 섹션만으로는 자리가 어긋나는 예외. `same_activity`는 지표가 아니라 «채우는 방식»이라 뒤로 뺀다 */
+/**
+ * 섹션만으로는 자리가 어긋나는 예외.
+ *
+ * - `same_activity`는 지표가 아니라 «채우는 방식»이라 뒤로 뺀다.
+ * - 나머지는 **어드민 폼 그룹 재편(티켓 20260911_0901) 전의 자리를 지키는** 예외다. 폼은
+ *   「대상 활동」에 기간 필터(월·지정일·계절)를, 「누적 목표」에 하루 1회 활동일을, 「휴식 ·
+ *   간격」에 서로 다른 시간대를 모았지만 유저가 읽는 문구의 순서는 그대로여야 한다 —
+ *   어드민 화면 배치가 서비스 문구를 바꾸면 안 된다.
+ */
 const ORDER_OVERRIDE: Partial<Record<ConditionKey, number>> = {
   same_activity: 5,
+  season: 0,
+  month: 0,
+  day_of_month: 0,
+  daily_once_count: 3,
+  distinct_time_bands: 1,
 }
 
 function orderOf(meta: AnyConditionFieldMeta): number {
@@ -215,8 +231,8 @@ function orderOf(meta: AnyConditionFieldMeta): number {
   if (override !== undefined) return override
   const section = meta.form?.section
   if (section) return SECTION_ORDER[section]
-  // 폼이 없는 필드(day_of_week·route·poi_id) — 역할로 자리를 정한다
-  return meta.role === 'filter' ? SECTION_ORDER.environment : SECTION_ORDER.basic
+  // 폼이 없는 필드(day_of_week·route·poi_id) — 역할로 자리를 정한다(필터는 맥락, 그 밖은 지표)
+  return meta.role === 'filter' ? SECTION_ORDER.scope : SECTION_ORDER.cumulative
 }
 
 /**

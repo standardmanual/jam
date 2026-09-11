@@ -142,13 +142,23 @@ export interface ConditionFieldMeta<K extends keyof BadgeCondition = keyof Badge
 // 「무엇을 읽는가(read)」뿐 아니라 「어떻게 그리는가(controls)」·「기존 값을 폼에 어떻게
 // 되돌리는가(write)」까지 여기 둔다.
 
-/** 조건 폼의 묶음(입력 그룹). 선언 순서가 곧 화면 순서다 */
+/**
+ * 조건 폼의 묶음(입력 그룹). 선언 순서가 곧 화면 순서다.
+ *
+ * 티켓 20260911_0901에서 9개 주제 그룹으로 재편했다 — 예전 「기본 조건」 하나에 누적 목표·
+ * 한 번의 활동 기록·필터가 섞여 있었고, 한 번의 활동 기록은 「단일 활동 지표」와도 겹쳤다.
+ * **표시 묶음만 바꿨다.** 필드의 평가 의미(`role`·`evaluation`·`read`·`write`)는 그대로다.
+ *
+ * ⚠️ `badgeConditionText.ts`(유저 배지 상세의 조건 문구)가 이 섹션을 정렬 키로 재사용한다.
+ * 섹션을 옮기면 그쪽 `SECTION_ORDER`·`ORDER_OVERRIDE`도 함께 맞춰 유저 문구 순서를 지킨다.
+ */
 export const CONDITION_FORM_SECTIONS = [
-  'basic',
-  'period',
-  'environment',
+  'scope',
+  'cumulative',
   'single',
-  'pattern',
+  'period',
+  'rhythm',
+  'record',
   'repeat',
   'gate',
   'meta',
@@ -156,14 +166,28 @@ export const CONDITION_FORM_SECTIONS = [
 export type ConditionFormSection = (typeof CONDITION_FORM_SECTIONS)[number]
 
 export const CONDITION_FORM_SECTION_LABEL: Record<ConditionFormSection, string> = {
-  basic: '기본 조건',
-  period: '기간·주기',
-  environment: '환경·시간대',
-  single: '단일 활동 지표',
-  pattern: '이력 패턴',
+  scope: '대상 활동',
+  cumulative: '누적 목표',
+  single: '한 번의 활동 기록',
+  period: '기간 · 주기',
+  rhythm: '휴식 · 간격',
+  record: '개인 기록 비교',
   repeat: '반복 획득',
-  gate: '2단 게이트',
-  meta: '메타데이터',
+  gate: '획득 게이트',
+  meta: '사용량 지표',
+}
+
+/** 그룹 머리의 한 줄 설명 — 어드민 조건 폼·배지 상세가 같은 문구를 쓴다 */
+export const CONDITION_FORM_SECTION_DESCRIPTION: Record<ConditionFormSection, string> = {
+  scope: '어떤 활동만 셀지 좁혀요',
+  cumulative: '가입 후 지금까지 얼마나 쌓였나요',
+  single: '활동 1건에서 얼마나 해냈나요',
+  period: '정해진 기간 안에서 얼마나 꾸준했나요',
+  rhythm: '쉬고 돌아오는 리듬을 봐요',
+  record: '과거의 나를 넘어섰나요',
+  repeat: '같은 조건을 몇 번 채워야 하나요',
+  gate: '먼저 갖춰야 할 배지가 있나요',
+  meta: '서비스를 얼마나 쓰는지로 판정해요',
 }
 
 /**
@@ -171,18 +195,31 @@ export const CONDITION_FORM_SECTION_LABEL: Record<ConditionFormSection, string> 
  *
  * 수치 범위(min·max·step)와 단위는 **여기 다시 적지 않는다** — 필드 메타가 이미 갖고 있고
  * 어드민 폼이 렌더 시점에 그 값을 그대로 읽는다(레지스트리 안에서도 값을 두 번 적지 않는다).
+ * 단위는 라벨 괄호가 아니라 **입력칸 안쪽 오른쪽 접미사**로 그린다(티켓 20260911_0901).
  */
 export interface ConditionFormControl {
   /** `ConditionFormFields`의 state 키 */
   field: string
   kind: 'number' | 'text' | 'time' | 'checkbox' | 'select'
-  /** 입력 라벨. 생략하면 필드 메타의 `label`(+단위) */
+  /** 입력 라벨. 생략하면 필드 메타의 `label`. **단위를 넣지 않는다** — 접미사가 따로 그린다 */
   label?: string
+  /** 값 예시. 「예:」 접두사를 붙이지 않는다 — 설명은 `help`로 */
   placeholder?: string
   /** 입력 아래 보조 설명 */
   help?: string
-  /** 2열 그리드에서 한 줄 전체를 차지한다 */
-  wide?: boolean
+  /** 3열 그리드에서 차지하는 칸 수. 3이면 한 줄 전체. 생략하면 1칸 */
+  span?: 2 | 3
+  /**
+   * 입력칸 안쪽 오른쪽 접미사. 생략하면 필드 메타의 `unit`.
+   * 단위만으로 뜻이 갈리지 않는 짝 입력(기온 이상·이하, 기준 시간·횟수)에만 따로 적는다.
+   */
+  suffix?: string
+  /**
+   * 다음 컨트롤(`with`)과 한 줄로 묶어 그린다 — 시간대 시작~끝, 기온, 기준 시간과 횟수.
+   * 묶음 라벨은 `label`, 두 입력 사이 글자는 `separator`다. 각 입력의 `label`은 보조기술용
+   * 이름(aria-label)으로 쓴다.
+   */
+  pair?: { with: string; label: string; separator: string }
   /** `kind: 'select'` 전용 선택지 */
   options?: readonly { value: string; label: string }[]
   /** `kind: 'select'`의 «선택 안 함» 항목 문구. 생략하면 「— 없음 —」 */
@@ -213,6 +250,14 @@ export interface ConditionFormBinding<V> {
    */
   controls?: readonly ConditionFormControl[]
   section: ConditionFormSection
+  /**
+   * 섹션 안 표시 순서(작은 값 먼저). 생략하면 순서를 준 필드 뒤에 선언 순서대로 선다.
+   * `CONDITION_FIELDS` 선언 순서는 칩·상세·유저 문구의 순서이기도 해서 폼 배치 때문에
+   * 옮길 수 없다 — 그래서 폼 순서만 따로 둔다(티켓 20260911_0901).
+   */
+  order?: number
+  /** 섹션 안 소제목. 같은 소제목을 가진 필드끼리 묶인다 (`single` 섹션의 거리·속도·센서) */
+  subsection?: string
 }
 
 /** 폼 연결 헬퍼가 공통으로 받는 UI 명세 */
@@ -221,11 +266,22 @@ type FormUi = {
   label?: string
   placeholder?: string
   help?: string
-  wide?: boolean
+  span?: 2 | 3
+  suffix?: string
+  order?: number
+  subsection?: string
 }
 
 function controlOf(field: string, kind: ConditionFormControl['kind'], ui: FormUi): ConditionFormControl {
-  return { field, kind, label: ui.label, placeholder: ui.placeholder, help: ui.help, wide: ui.wide }
+  return {
+    field,
+    kind,
+    label: ui.label,
+    placeholder: ui.placeholder,
+    help: ui.help,
+    span: ui.span,
+    suffix: ui.suffix,
+  }
 }
 
 /** 소수 허용 수치 1개짜리 폼 연결 */
@@ -236,6 +292,8 @@ function numberForm(field: string, ui: FormUi): ConditionFormBinding<number> {
     write: (v) => ({ [field]: String(v) }),
     controls: [controlOf(field, 'number', ui)],
     section: ui.section,
+    order: ui.order,
+    subsection: ui.subsection,
   }
 }
 
@@ -247,6 +305,8 @@ function integerForm(field: string, ui: FormUi): ConditionFormBinding<number> {
     write: (v) => ({ [field]: String(v) }),
     controls: [controlOf(field, 'number', ui)],
     section: ui.section,
+    order: ui.order,
+    subsection: ui.subsection,
   }
 }
 
@@ -262,6 +322,8 @@ function booleanForm(field: string, ui: FormUi): ConditionFormBinding<boolean> {
     write: () => ({ [field]: true }),
     controls: [controlOf(field, 'checkbox', ui)],
     section: ui.section,
+    order: ui.order,
+    subsection: ui.subsection,
   }
 }
 
@@ -279,7 +341,7 @@ function csv(raw: string | boolean | undefined): string[] {
  *
  * 세 게이트가 값 스키마(`family_keys` + `min_rarity?` + `min_count?`)를 공유하므로 폼 연결도
  * 하나로 둔다. **입력 UI는 전용 블록이 그린다** — 게이트끼리의 결합 규칙(교차 둘은 OR,
- * 미션 게이트는 AND)을 화면에서 드러내야 해서 2열 그리드에 흩어 놓을 수 없다.
+ * 미션 게이트는 AND)을 화면에서 드러내야 해서 입력 그리드에 흩어 놓을 수 없다.
  */
 function gateForm(prefix: string): ConditionFormBinding<BadgeGateRequirement> {
   const keysField = `${prefix}FamilyKeys`
@@ -346,13 +408,17 @@ const SEASON_FORM_OPTIONS = [
   { value: 'all', label: '전 계절' },
 ] as const
 
-/** 종목 Select 선택지. 라벨은 기존 어드민 폼과 같은 원문 슬러그를 유지한다 */
+/**
+ * 종목 Select 선택지. 라벨은 어드민 배지 폼 「분류」 태그와 같은 한글 표기다
+ * (`ADMIN_ACTIVITY_TYPE_LABEL`, 티켓 20260911_0901 — 예전에는 원문 슬러그를 그대로 노출했다).
+ * 값(value)은 `ActivityType` 그대로라 저장 결과는 바뀌지 않는다.
+ */
 const ACTIVITY_TYPE_FORM_OPTIONS = [
-  { value: 'cycling', label: 'cycling' },
-  { value: 'running', label: 'running' },
-  { value: 'trail_running', label: 'trail_running' },
-  { value: 'hiking', label: 'hiking' },
-  { value: 'walking', label: 'walking' },
+  { value: 'running', label: '러닝' },
+  { value: 'cycling', label: '사이클' },
+  { value: 'trail_running', label: '트레일러닝' },
+  { value: 'hiking', label: '하이킹' },
+  { value: 'walking', label: '걷기' },
 ] as const
 
 /**
@@ -457,7 +523,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `누적 ${c.distance_km}km`,
     detail: (c) => `거리 누적 ${c.distance_km}km`,
-    form: numberForm('distanceKm', { section: 'basic', label: '최소 거리 (km)', placeholder: '예: 30' }),
+    form: numberForm('distanceKm', { section: 'cumulative', order: 2, label: '누적 거리', placeholder: '30' }),
   }),
   field({
     key: 'total_count',
@@ -472,7 +538,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `${c.total_count}회`,
     detail: (c) => `총 ${c.total_count}회`,
-    form: integerForm('totalCount', { section: 'basic', label: '누적 활동 횟수', placeholder: '예: 10' }),
+    form: integerForm('totalCount', { section: 'cumulative', order: 5, label: '누적 활동 횟수', placeholder: '10' }),
   }),
   field({
     key: 'streak_days',
@@ -487,7 +553,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `${c.streak_days}일 연속`,
     detail: (c) => `${c.streak_days}일 연속 활동`,
-    form: integerForm('streakDays', { section: 'basic', label: '연속 활동 일수', placeholder: '예: 7' }),
+    form: integerForm('streakDays', { section: 'cumulative', order: 7, label: '연속 활동 일수', placeholder: '7' }),
   }),
   field({
     key: 'active_days_count',
@@ -502,7 +568,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `누적 ${c.active_days_count}일`,
     detail: (c) => `누적 활동일수 ${c.active_days_count}일`,
-    form: integerForm('activeDaysCount', { section: 'basic', label: '누적 활동일수 (일)', placeholder: '예: 100' }),
+    form: integerForm('activeDaysCount', { section: 'cumulative', order: 6, label: '누적 활동일수', placeholder: '100' }),
   }),
   field({
     key: 'elevation_gain_m',
@@ -517,7 +583,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `고도 ${c.elevation_gain_m}m`,
     detail: (c) => `고도 ${c.elevation_gain_m}m 이상`,
-    form: numberForm('elevationM', { section: 'basic', label: '고도 상승 누적 (m)', placeholder: '예: 500' }),
+    form: numberForm('elevationM', { section: 'cumulative', order: 3, label: '누적 고도 상승', placeholder: '500' }),
   }),
   field({
     key: 'min_speed_kmh',
@@ -532,7 +598,14 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `${c.min_speed_kmh}km/h+`,
     detail: (c) => `최소 속력 ${c.min_speed_kmh}km/h`,
-    form: numberForm('minSpeedKmh', { section: 'basic', label: '최소 속도 (km/h)', placeholder: '예: 25' }),
+    // 엔진은 활동의 평균 속도(`averageSpeedKmh`)를 이 값과 비교한다 — 라벨을 그 뜻대로 적는다
+    form: numberForm('minSpeedKmh', {
+      section: 'single',
+      subsection: '속도 · 페이스',
+      order: 5,
+      label: '평균 속도',
+      placeholder: '25',
+    }),
   }),
   field({
     key: 'max_pace_sec_per_km',
@@ -557,11 +630,16 @@ export const CONDITION_FIELDS = [
         {
           field: 'maxPace',
           kind: 'text',
-          label: '최대 페이스 (mm:ss/km, 러닝 계열용)',
-          placeholder: '예: 5:30 (값이 작을수록 빠름)',
+          label: '페이스',
+          placeholder: '5:30',
+          // unit이 null이다(포맷터가 단위를 붙인다) — 입력 형식 `mm:ss` 뒤의 `/km`만 접미사로 보인다
+          suffix: '/km',
+          help: '분:초로 적어요. 작을수록 빨라요. 러닝 계열에 써요.',
         },
       ],
-      section: 'basic',
+      section: 'single',
+      subsection: '속도 · 페이스',
+      order: 7,
     },
   }),
   field({
@@ -579,7 +657,13 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `${c.duration_minutes}분+`,
     detail: (c) => `최소 활동 시간 ${c.duration_minutes}분`,
-    form: integerForm('durationMinutes', { section: 'basic', label: '한 번의 이동 시간 (분)', placeholder: '예: 60' }),
+    form: integerForm('durationMinutes', {
+      section: 'single',
+      subsection: '거리 · 고도 · 시간',
+      order: 3,
+      label: '한 번의 이동시간',
+      placeholder: '60',
+    }),
   }),
   field({
     key: 'weekend_duration_hours',
@@ -596,8 +680,9 @@ export const CONDITION_FIELDS = [
     detail: (c) => `주말 활동 시간 ${c.weekend_duration_hours}시간`,
     form: numberForm('weekendDurationHours', {
       section: 'period',
-      label: '주말 활동 최소 이동 시간 (시간)',
-      placeholder: '예: 2',
+      order: 5,
+      label: '주말 최소 이동시간',
+      placeholder: '2',
     }),
   }),
   field({
@@ -613,7 +698,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `주 ${c.weekly_count}회`,
     detail: (c) => `주 ${c.weekly_count}회 이상`,
-    form: integerForm('weeklyCount', { section: 'period', label: '한 주(월~일) 내 최소 활동 횟수', placeholder: '예: 3' }),
+    form: integerForm('weeklyCount', { section: 'period', order: 1, label: '한 주(월~일) 최소 횟수', placeholder: '3' }),
   }),
   field({
     key: 'day_of_week',
@@ -656,9 +741,17 @@ export const CONDITION_FIELDS = [
       },
       write: (v) => ({ month: [v].flat().join(', ') }),
       controls: [
-        { field: 'month', kind: 'text', label: '해당 월 (1~12)', placeholder: '예: 8 · 여러 달은 6, 7' },
+        {
+          field: 'month',
+          kind: 'text',
+          label: '해당 월',
+          placeholder: '8',
+          suffix: '월',
+          help: '1~12 사이로 적어요. 여러 달은 쉼표로 구분해요 (6, 7).',
+        },
       ],
-      section: 'period',
+      section: 'scope',
+      order: 3,
     },
   }),
   field({
@@ -675,7 +768,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `${c.month !== undefined ? `${monthsText(c.month)}월 ` : '월간 '}${c.monthly_km}km`,
     detail: (c) => `${c.month !== undefined ? `${monthsText(c.month)}월 ` : '월간 '}${c.monthly_km}km 이상`,
-    form: numberForm('monthlyKm', { section: 'period', label: '월 누적 거리 (km)', placeholder: '예: 100' }),
+    form: numberForm('monthlyKm', { section: 'period', order: 4, label: '월 누적 거리', placeholder: '100' }),
   }),
   field({
     key: 'season',
@@ -693,8 +786,9 @@ export const CONDITION_FIELDS = [
       fields: ['season'],
       read: (f) => (typeof f.season === 'string' && f.season ? (f.season as NonNullable<BadgeCondition['season']>) : undefined),
       write: (v) => ({ season: v }),
-      controls: [{ field: 'season', kind: 'select', label: '계절', wide: true, options: SEASON_FORM_OPTIONS }],
-      section: 'period',
+      controls: [{ field: 'season', kind: 'select', label: '계절', options: SEASON_FORM_OPTIONS, noneLabel: '제한 없음' }],
+      section: 'scope',
+      order: 2,
     },
   }),
   field({
@@ -711,7 +805,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => (c.season ? `${SEASON_SHORT[c.season] ?? c.season} ${c.season_count}회` : `계절 ${c.season_count}회`),
     detail: (c) => (c.season ? `${SEASON_SHORT[c.season] ?? c.season} ${c.season_count}회` : `계절 ${c.season_count}회`),
-    form: integerForm('seasonCount', { section: 'period', label: '계절 활동 횟수', placeholder: '예: 5' }),
+    form: integerForm('seasonCount', { section: 'period', order: 6, label: '계절 활동 횟수', placeholder: '5' }),
   }),
   field({
     key: 'season_count_all',
@@ -728,10 +822,11 @@ export const CONDITION_FIELDS = [
     detail: (c) => `4계절 각 ${c.season_count_all}회`,
     form: integerForm('seasonCountAll', {
       section: 'period',
-      label: '계절별 활동 횟수 (회)',
-      placeholder: '예: 3',
-      wide: true,
-      help: '네 계절 각각에서 이 횟수를 채워야 해요.',
+      order: 7,
+      label: '네 계절 각각 활동 횟수',
+      placeholder: '3',
+      span: 3,
+      help: '봄·여름·가을·겨울 모두 이 횟수를 채워야 해요.',
     }),
   }),
   field({
@@ -747,7 +842,23 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `≥${c.temperature_min_c}°C`,
     detail: (c) => `최저 기온 ${c.temperature_min_c}°C 이상`,
-    form: numberForm('tempMinC', { section: 'environment', label: '최저 기온 조건 (°C 이상 · 폭염)', placeholder: '예: 30' }),
+    // 최고 기온(temperature_max_c)과 한 줄로 묶는다. 둘 다 채우면 엔진은 두 조건을 **모두** 본다
+    // (index.ts의 개별 검사) — 사이 글자로 「또는」을 쓰지 않는다
+    form: {
+      ...numberForm('tempMinC', { section: 'scope', order: 5 }),
+      controls: [
+        {
+          field: 'tempMinC',
+          kind: 'number',
+          label: '최저 기온',
+          placeholder: '30',
+          suffix: '°C 이상',
+          span: 2,
+          pair: { with: 'tempMaxC', label: '기온', separator: '·' },
+          help: '폭염 배지는 이상 칸, 한파 배지는 이하 칸을 채워요. 둘 다 채우면 두 조건을 모두 봐요.',
+        },
+      ],
+    },
   }),
   field({
     key: 'temperature_max_c',
@@ -762,7 +873,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `≤${c.temperature_max_c}°C`,
     detail: (c) => `최고 기온 ${c.temperature_max_c}°C 이하`,
-    form: numberForm('tempMaxC', { section: 'environment', label: '최고 기온 조건 (°C 이하 · 한파)', placeholder: '예: 0' }),
+    form: numberForm('tempMaxC', { section: 'scope', order: 6, label: '최고 기온', placeholder: '0', suffix: '°C 이하' }),
   }),
   field({
     key: 'time_range',
@@ -782,15 +893,22 @@ export const CONDITION_FIELDS = [
           : undefined,
       write: (v) => ({ timeStart: v?.start ?? '', timeEnd: v?.end ?? '' }),
       controls: [
-        { field: 'timeStart', kind: 'time', label: '활동 시작 시간대 — 시작 (HH:MM)' },
+        {
+          field: 'timeStart',
+          kind: 'time',
+          label: '시작 시각',
+          span: 3,
+          pair: { with: 'timeEnd', label: '활동 시작 시간대', separator: '~' },
+        },
         {
           field: 'timeEnd',
           kind: 'time',
-          label: '활동 시작 시간대 — 종료 (HH:MM)',
-          help: '자정을 넘겨 설정할 수 있어요(예: 22:00~05:00 심야). 종료 시각이 시작보다 이르면 익일로 봐요.',
+          label: '끝 시각',
+          help: '자정을 넘겨 설정할 수 있어요. 끝이 시작보다 이르면 다음 날로 봐요 (22:00 ~ 05:00).',
         },
       ],
-      section: 'environment',
+      section: 'scope',
+      order: 7,
     },
   }),
   field({
@@ -811,12 +929,13 @@ export const CONDITION_FIELDS = [
         {
           field: 'activityType',
           kind: 'select',
-          label: '활동 종류 (조건)',
+          label: '종목',
           options: ACTIVITY_TYPE_FORM_OPTIONS,
-          noneLabel: '— 전체 —',
+          noneLabel: '전체 종목',
         },
       ],
-      section: 'basic',
+      section: 'scope',
+      order: 1,
     },
   }),
   field({
@@ -868,10 +987,10 @@ export const CONDITION_FIELDS = [
         {
           field: 'prerequisiteNames',
           kind: 'text',
-          label: '선행 배지 이름 (쉼표 구분)',
-          placeholder: '예: 첫 페달, 아스팔트 입문',
-          wide: true,
-          help: '나열된 배지 중 하나만 보유하면 통과해요(OR). 여러 개를 모두 요구하려면 아래 교차 게이트를 쓰세요.',
+          label: '선행 배지 이름',
+          placeholder: '첫 페달, 아스팔트 입문',
+          span: 3,
+          help: '쉼표로 구분해요. 나열한 배지 중 하나만 가지고 있어도 통과해요(OR). 여러 개를 모두 요구하려면 아래 교차 게이트를 써요.',
         },
       ],
       section: 'gate',
@@ -889,10 +1008,11 @@ export const CONDITION_FIELDS = [
     chip: (c) => (c.same_activity === true ? '단일 활동' : null),
     detail: (c) => (c.same_activity === true ? '한 번의 활동에서 충족' : null),
     form: booleanForm('sameActivity', {
-      section: 'basic',
-      label: '한 번의 활동에서 충족',
-      wide: true,
-      help: '거리·고도 조건을 누적이 아니라 활동 1건 안에서 채워야 해요.',
+      section: 'cumulative',
+      order: 1,
+      label: '한 번의 활동 안에서 채워야 해요',
+      span: 3,
+      help: '켜면 거리·고도를 누적이 아니라 활동 1건 기준으로 판정해요.',
     }),
   }),
   field({
@@ -905,7 +1025,8 @@ export const CONDITION_FIELDS = [
     evaluation: 'external',
     chip: (c) => (c.mission_reward === true ? '미션 보상' : null),
     detail: (c) => (c.mission_reward === true ? '미션 완료로만 지급' : null),
-    // 전용 UI(별도 색상 박스)를 쓰므로 `controls`를 두지 않는다 — 값 조립·복원만 담당한다.
+    // 전용 UI(획득 조건 섹션 맨 위의 「발급 방식」 세그먼트)를 쓰므로 `controls`를 두지 않는다 —
+    // 값 조립·복원만 담당한다(티켓 20260911_0901에서 노란 체크박스 박스를 세그먼트로 바꿨다).
     form: {
       fields: ['missionReward'],
       read: (f) => (f.missionReward === true ? true : undefined),
@@ -939,7 +1060,13 @@ export const CONDITION_FIELDS = [
     activityField: 'maxElevationM',
     chip: (c) => `최고 고도 ${c.max_elevation_m}m`,
     detail: (c) => `최고 도달 고도 ${c.max_elevation_m}m 이상`,
-    form: numberForm('maxElevationM', { section: 'single', label: '최고 도달 고도 (m)', placeholder: '예: 1200' }),
+    form: numberForm('maxElevationM', {
+      section: 'single',
+      subsection: '거리 · 고도 · 시간',
+      order: 4,
+      label: '최고 도달 고도',
+      placeholder: '1200',
+    }),
   }),
   field({
     key: 'max_speed_kmh',
@@ -955,7 +1082,13 @@ export const CONDITION_FIELDS = [
     activityField: 'maxSpeedKmh',
     chip: (c) => `최고 ${c.max_speed_kmh}km/h`,
     detail: (c) => `최고 속도 ${c.max_speed_kmh}km/h 이상`,
-    form: numberForm('maxSpeedKmh', { section: 'single', label: '최고 속도 (km/h)', placeholder: '예: 60' }),
+    form: numberForm('maxSpeedKmh', {
+      section: 'single',
+      subsection: '속도 · 페이스',
+      order: 6,
+      label: '최고 속도',
+      placeholder: '60',
+    }),
   }),
   field({
     key: 'single_distance_km',
@@ -971,7 +1104,13 @@ export const CONDITION_FIELDS = [
     activityField: 'distanceKm',
     chip: (c) => `한 번 ${c.single_distance_km}km`,
     detail: (c) => `한 번의 거리 ${c.single_distance_km}km 이상`,
-    form: numberForm('singleDistanceKm', { section: 'single', label: '한 번의 거리 (km)', placeholder: '예: 100' }),
+    form: numberForm('singleDistanceKm', {
+      section: 'single',
+      subsection: '거리 · 고도 · 시간',
+      order: 1,
+      label: '한 번의 거리',
+      placeholder: '100',
+    }),
   }),
   field({
     key: 'single_elevation_m',
@@ -987,7 +1126,13 @@ export const CONDITION_FIELDS = [
     activityField: 'elevationGainM',
     chip: (c) => `한 번 고도 ${c.single_elevation_m}m`,
     detail: (c) => `한 번의 고도 ${c.single_elevation_m}m 이상`,
-    form: numberForm('singleElevationM', { section: 'single', label: '한 번의 고도 (m)', placeholder: '예: 1000' }),
+    form: numberForm('singleElevationM', {
+      section: 'single',
+      subsection: '거리 · 고도 · 시간',
+      order: 2,
+      label: '한 번의 고도 상승',
+      placeholder: '1000',
+    }),
   }),
   field({
     key: 'avg_heartrate_bpm',
@@ -1005,9 +1150,11 @@ export const CONDITION_FIELDS = [
     detail: (c) => `평균 심박수 ${c.avg_heartrate_bpm}bpm 이상`,
     form: integerForm('avgHeartrateBpm', {
       section: 'single',
-      label: '평균 심박수 (bpm)',
-      placeholder: '예: 150',
-      help: '심박계 데이터가 없는 활동은 카운트되지 않아요.',
+      subsection: '센서 데이터 — 없는 활동은 세지 않아요',
+      order: 9,
+      label: '평균 심박수',
+      placeholder: '150',
+      help: '심박계 데이터가 있는 활동만 세요.',
     }),
   }),
   field({
@@ -1026,9 +1173,11 @@ export const CONDITION_FIELDS = [
     detail: (c) => `평균 파워 ${c.avg_watts}W 이상`,
     form: integerForm('avgWatts', {
       section: 'single',
-      label: '평균 파워 (W)',
-      placeholder: '예: 200',
-      help: '파워미터 데이터가 없는 활동은 카운트되지 않아요.',
+      subsection: '센서 데이터 — 없는 활동은 세지 않아요',
+      order: 10,
+      label: '평균 파워',
+      placeholder: '200',
+      help: '파워미터 데이터가 있는 활동만 세요.',
     }),
   }),
   field({
@@ -1048,11 +1197,14 @@ export const CONDITION_FIELDS = [
     activityField: 'avgCadence',
     chip: (c) => `케이던스 ${c.avg_cadence}`,
     detail: (c) => `평균 케이던스 ${c.avg_cadence} 이상`,
+    // 접미사를 붙이지 않는다 — unit이 null이다(종목마다 단위가 다르다, UX 라이팅 가이드 「케이던스」)
     form: integerForm('avgCadence', {
       section: 'single',
+      subsection: '센서 데이터 — 없는 활동은 세지 않아요',
+      order: 11,
       label: '평균 케이던스',
-      placeholder: '예: 90',
-      help: '단위가 종목마다 달라요 — 러닝·트레일러닝은 저장 시 ×2 정규화된 spm(양발 합계), 자전거는 rpm 그대로예요.',
+      placeholder: '90',
+      help: '단위가 종목마다 달라요. 러닝·트레일러닝은 저장할 때 ×2로 맞춘 양발 합계 spm, 자전거는 rpm 그대로예요.',
     }),
   }),
 
@@ -1073,11 +1225,11 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `연속 후 휴식 ${c.rest_after_streak}일`,
     detail: (c) => `연속 활동 후 휴식 ${c.rest_after_streak}일 이상`,
+    // 짝 필드 안내는 입력 아래 빨간 한 줄로 **빠졌을 때만** 그린다(티켓 20260911_0901)
     form: integerForm('restAfterStreak', {
-      section: 'pattern',
-      label: '연속 활동 후 휴식일 (일)',
-      placeholder: '예: 2',
-      help: '연속 활동 일수를 함께 지정해야 해요 — 없으면 저장할 수 없어요.',
+      section: 'rhythm',
+      label: '연속 활동 후 휴식일',
+      placeholder: '2',
     }),
   }),
   field({
@@ -1098,10 +1250,9 @@ export const CONDITION_FIELDS = [
     chip: (c) => `장거리 후 휴식 ${c.rest_after_long}일`,
     detail: (c) => `장거리 활동 후 휴식 ${c.rest_after_long}일 이상`,
     form: integerForm('restAfterLong', {
-      section: 'pattern',
-      label: '장거리 활동 후 휴식일 (일)',
-      placeholder: '예: 3',
-      help: '한 번의 거리(single_distance_km) 또는 한 번의 이동시간(duration_minutes) 중 하나를 함께 지정해야 해요 — 없으면 저장할 수 없어요.',
+      section: 'rhythm',
+      label: '장거리 활동 후 휴식일',
+      placeholder: '3',
     }),
   }),
   field({
@@ -1119,7 +1270,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `복귀 전 휴식 ${c.return_gap_days}일`,
     detail: (c) => `복귀 전 휴식 ${c.return_gap_days}일 이상`,
-    form: integerForm('returnGapDays', { section: 'pattern', label: '복귀 전 휴식일 (일)', placeholder: '예: 90' }),
+    form: integerForm('returnGapDays', { section: 'rhythm', label: '복귀 전 휴식일', placeholder: '90' }),
   }),
   field({
     key: 'interval_days',
@@ -1135,7 +1286,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `간격 ${c.interval_days}일`,
     detail: (c) => `활동 간격 ${c.interval_days}일 이상`,
-    form: integerForm('intervalDays', { section: 'pattern', label: '활동 간격 (일)', placeholder: '예: 90' }),
+    form: integerForm('intervalDays', { section: 'rhythm', label: '활동 간격', placeholder: '90' }),
   }),
   field({
     key: 'daily_once_count',
@@ -1150,7 +1301,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'pending',
     chip: (c) => `하루 1회 ${c.daily_once_count}일`,
     detail: (c) => `하루 1회만 활동한 날 ${c.daily_once_count}일 이상`,
-    form: integerForm('dailyOnceCount', { section: 'pattern', label: '하루 1회 활동일 (일)', placeholder: '예: 30' }),
+    form: integerForm('dailyOnceCount', { section: 'cumulative', order: 8, label: '하루 1회 활동일', placeholder: '30' }),
   }),
   field({
     key: 'negative_split',
@@ -1165,8 +1316,10 @@ export const CONDITION_FIELDS = [
     detail: (c) => (c.negative_split === true ? '후반 구간이 전반보다 빠른 활동' : null),
     form: booleanForm('negativeSplit', {
       section: 'single',
+      subsection: '속도 · 페이스',
+      order: 8,
       label: '후반 구간이 전반보다 빠른 활동만',
-      wide: true,
+      span: 3,
       help: '누적 활동 횟수와 함께 써야 뜻이 완성돼요.',
     }),
   }),
@@ -1189,7 +1342,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `${c.weekly_streak}주 연속`,
     detail: (c) => `${c.weekly_streak}주(월~일) 연속 이상`,
-    form: integerForm('weeklyStreak', { section: 'period', label: '연속 주(월~일) 수', placeholder: '예: 12' }),
+    form: integerForm('weeklyStreak', { section: 'period', order: 2, label: '연속 주(월~일) 수', placeholder: '12' }),
   }),
   field({
     key: 'distinct_time_bands',
@@ -1208,7 +1361,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `시간대 ${c.distinct_time_bands}개`,
     detail: (c) => `서로 다른 시간대 ${c.distinct_time_bands}개 이상`,
-    form: integerForm('distinctTimeBands', { section: 'environment', label: '서로 다른 시간대 (개)', placeholder: '예: 3' }),
+    form: integerForm('distinctTimeBands', { section: 'rhythm', label: '서로 다른 시간대', placeholder: '3' }),
   }),
   field({
     key: 'day_of_month',
@@ -1226,11 +1379,14 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `매달 ${c.day_of_month}일`,
     detail: (c) => `매달 ${c.day_of_month}일`,
+    // unit이 null이다(「매달 1일」로 읽는 날짜라 수량 단위가 아니다) — 접미사로만 「일」을 붙인다
     form: integerForm('dayOfMonth', {
-      section: 'period',
-      label: '매달 지정일 (1~31)',
-      placeholder: '예: 1',
-      help: '누적 활동 횟수와 함께 써야 뜻이 완성돼요.',
+      section: 'scope',
+      order: 4,
+      label: '매달 지정일',
+      placeholder: '1',
+      suffix: '일',
+      help: '1~31 사이로 적어요. 누적 활동 횟수와 함께 써야 뜻이 완성돼요.',
     }),
   }),
   field({
@@ -1259,10 +1415,24 @@ export const CONDITION_FIELDS = [
         activitiesWithinHoursCount: typeof v?.count === 'number' ? String(v.count) : '',
       }),
       controls: [
-        { field: 'activitiesWithinHoursHours', kind: 'number', label: '기준 시간 (시간)', placeholder: '예: 24' },
-        { field: 'activitiesWithinHoursCount', kind: 'number', label: '그 안의 활동 횟수 (회)', placeholder: '예: 3' },
+        {
+          field: 'activitiesWithinHoursHours',
+          kind: 'number',
+          label: '기준 시간',
+          placeholder: '24',
+          suffix: '시간',
+          span: 3,
+          pair: { with: 'activitiesWithinHoursCount', label: '지정 시간 안의 활동 횟수', separator: '안에' },
+        },
+        {
+          field: 'activitiesWithinHoursCount',
+          kind: 'number',
+          label: '그 안의 활동 횟수',
+          placeholder: '3',
+          help: '두 칸을 모두 채워야 조건이 만들어져요.',
+        },
       ],
-      section: 'pattern',
+      section: 'rhythm',
     },
   }),
   field({
@@ -1283,7 +1453,7 @@ export const CONDITION_FIELDS = [
     pairedWith: ['personal_record_break_metric'],
     chip: (c) => `기록 갱신 ${c.personal_record_break}회`,
     detail: (c) => `개인 기록 갱신 ${c.personal_record_break}회 이상`,
-    form: integerForm('personalRecordBreak', { section: 'pattern', label: '개인 기록 갱신 (회)', placeholder: '예: 3' }),
+    form: integerForm('personalRecordBreak', { section: 'record', label: '개인 기록 갱신', placeholder: '3' }),
   }),
   field({
     key: 'personal_record_break_metric',
@@ -1314,12 +1484,13 @@ export const CONDITION_FIELDS = [
         {
           field: 'personalRecordBreakMetric',
           kind: 'select',
-          label: '개인 기록 지표',
+          label: '비교 지표',
           options: PERSONAL_RECORD_METRIC_FORM_OPTIONS,
-          help: '개인 기록 갱신(personal_record_break)이 어느 지표를 보는지 지정해요 — 없으면 같은 조건의 다른 계열과 구분되지 않아요.',
+          noneLabel: '선택 안 함',
+          help: '개인 기록 갱신이 어느 지표의 기록을 볼지 정해요.',
         },
       ],
-      section: 'pattern',
+      section: 'record',
     },
   }),
   field({
@@ -1338,7 +1509,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `전월 대비 ${c.month_over_month_ratio}배`,
     detail: (c) => `전월 대비 ${c.month_over_month_ratio}배 이상`,
-    form: numberForm('monthOverMonthRatio', { section: 'pattern', label: '전월 대비 배수', placeholder: '예: 1.5' }),
+    form: numberForm('monthOverMonthRatio', { section: 'record', label: '전월 대비', placeholder: '1.5' }),
   }),
   field({
     key: 'vs_personal_average',
@@ -1356,7 +1527,7 @@ export const CONDITION_FIELDS = [
     evaluation: 'engine',
     chip: (c) => `평소 대비 ${c.vs_personal_average}배`,
     detail: (c) => `평소 평균 대비 ${c.vs_personal_average}배 이상`,
-    form: numberForm('vsPersonalAverage', { section: 'pattern', label: '평소 평균 대비 배수', placeholder: '예: 2' }),
+    form: numberForm('vsPersonalAverage', { section: 'record', label: '평소 평균 대비', placeholder: '2' }),
   }),
 
   // ── v5 확장 (티켓 20260906_0110 ①) — 누적 이동시간 · 월간 활동 횟수 ────
@@ -1377,9 +1548,10 @@ export const CONDITION_FIELDS = [
     chip: (c) => `누적 ${c.cumulative_duration_hours}시간`,
     detail: (c) => `이동시간 누적 ${c.cumulative_duration_hours}시간`,
     form: numberForm('cumulativeDurationHours', {
-      section: 'basic',
-      label: '누적 이동시간 (시간)',
-      placeholder: '예: 120',
+      section: 'cumulative',
+      order: 4,
+      label: '누적 이동시간',
+      placeholder: '120',
     }),
   }),
   field({
@@ -1397,9 +1569,10 @@ export const CONDITION_FIELDS = [
     detail: (c) => `한 달 ${c.monthly_count}회 이상`,
     form: integerForm('monthlyCount', {
       section: 'period',
-      label: '한 달 최소 활동 횟수',
-      placeholder: '예: 8',
-      help: '`repeat_count`와 함께 쓰면 이 횟수를 채운 달이 몇 번 있었는지를 세요.',
+      order: 3,
+      label: '한 달 최소 횟수',
+      placeholder: '8',
+      help: '반복 획득의 충족 횟수와 함께 쓰면 이 횟수를 채운 달이 몇 번 있었는지 세요.',
     }),
   }),
 
@@ -1422,13 +1595,13 @@ export const CONDITION_FIELDS = [
     detail: (c) => `기준 조건 ${c.repeat_count}회 충족`,
     form: integerForm('repeatCount', {
       section: 'repeat',
-      label: '충족 횟수 (회)',
-      placeholder: '예: 5',
-      wide: true,
+      label: '충족 횟수',
+      placeholder: '5',
+      span: 2,
       // 사용량 지표(팔로워·팔로잉·일일동기화) 안내는 티켓 20260910_1719 — 그 3개 키는
       // 등급형·레벨형 순차 발급 경로만 구현돼 있어 반복 획득과 결합할 수 없다(저장 시점에
       // findUsageMetricRepeatConflictError가 실제로 막는다. badge-condition-guards.ts).
-      help: '휴식 조건(연속·장거리 후 휴식, 복귀 전 휴식, 활동 간격)은 1개까지만 함께 쓸 수 있어요. 팔로워·팔로잉·일일동기화 지표와는 함께 쓸 수 없어요.',
+      help: '휴식 조건(연속·장거리 후 휴식, 복귀 전 휴식, 활동 간격)은 1개까지만 함께 쓸 수 있어요. 팔로워 수·팔로잉 수·하루 동기화 횟수 지표와는 함께 쓸 수 없어요.',
     }),
   }),
 
@@ -1506,11 +1679,13 @@ export const CONDITION_FIELDS = [
     evaluation: 'external',
     chip: (c) => `팔로워 ${c.follower_count}명↑`,
     detail: (c) => `팔로워 ${c.follower_count}명 이상`,
+    // 세 지표 공통 안내(판정 시점·반복 획득 불가)는 그룹 머리 아래 한 줄로 그린다 — 필드마다
+    // 같은 문장을 되풀이하지 않는다(티켓 20260911_0901). activity_types는 JAM! 분류를 고르면
+    // 폼이 자동으로 비운다.
     form: integerForm('followerCount', {
       section: 'meta',
-      label: '팔로워 수 (명)',
-      placeholder: '예: 100',
-      help: '팔로우 API 호출 직후 평가돼요(usageBadges.ts, 엔진 밖). activity_types는 비워두세요 — 배지 트리에는 노출되지 않아요.',
+      label: '팔로워 수',
+      placeholder: '100',
     }),
   }),
   field({
@@ -1528,9 +1703,8 @@ export const CONDITION_FIELDS = [
     detail: (c) => `팔로잉 ${c.following_count}명 이상`,
     form: integerForm('followingCount', {
       section: 'meta',
-      label: '팔로잉 수 (명)',
-      placeholder: '예: 50',
-      help: '팔로우 API 호출 직후 평가돼요(usageBadges.ts, 엔진 밖). activity_types는 비워두세요 — 배지 트리에는 노출되지 않아요.',
+      label: '팔로잉 수',
+      placeholder: '50',
     }),
   }),
   field({
@@ -1548,9 +1722,9 @@ export const CONDITION_FIELDS = [
     detail: (c) => `하루(KST) 누적 동기화 ${c.daily_sync_count}회 이상`,
     form: integerForm('dailySyncCount', {
       section: 'meta',
-      label: '하루 동기화 횟수 (회)',
-      placeholder: '예: 7',
-      help: '동기화 API가 synced>0일 때만 평가해요(usageBadges.ts, 엔진 밖). activity_types는 비워두세요 — 배지 트리에는 노출되지 않아요.',
+      label: '하루 동기화 횟수',
+      placeholder: '7',
+      help: '새 활동을 1건 이상 불러온 동기화만 세요.',
     }),
   }),
 ] as const
@@ -1633,22 +1807,53 @@ export type ConditionFormEntry = {
   meta: AnyConditionFieldMeta
   control: ConditionFormControl
   section: ConditionFormSection
+  /** 섹션 안 소제목(없으면 undefined) */
+  subsection?: string
 }
 
 /**
- * 조건 폼이 그릴 입력 목록. **선언 순서가 곧 화면 순서다**(칩·상세 목록과 같은 규칙).
+ * 조건 폼이 그릴 입력 목록. `CONDITION_FIELDS` 선언 순서 그대로다 — 섹션 안 **화면 순서**는
+ * `conditionFormEntriesOf()`가 `form.order`로 다시 정렬한다.
  * `controls`가 없는 필드(미션 보상·교차 게이트 3종)는 전용 UI가 따로 그리므로 빠진다.
  */
 export const CONDITION_FORM_ENTRIES: readonly ConditionFormEntry[] = CONDITION_FIELDS.flatMap((f) => {
   const meta = f as AnyConditionFieldMeta
   if (!meta.form?.controls) return []
-  return meta.form.controls.map((control) => ({ meta, control, section: meta.form!.section }))
+  return meta.form.controls.map((control) => ({
+    meta,
+    control,
+    section: meta.form!.section,
+    subsection: meta.form!.subsection,
+  }))
 })
+
+/**
+ * 한 섹션이 그릴 입력 목록 — 화면 순서대로(티켓 20260911_0901).
+ * `form.order`가 작은 것부터, 순서가 없으면 그 뒤에 선언 순서대로 선다(안정 정렬).
+ */
+export function conditionFormEntriesOf(section: ConditionFormSection): ConditionFormEntry[] {
+  return CONDITION_FORM_ENTRIES.filter((e) => e.section === section)
+    .map((entry, index) => ({ entry, index, order: entry.meta.form?.order ?? Number.POSITIVE_INFINITY }))
+    .sort((a, b) => (a.order === b.order ? a.index - b.index : a.order - b.order))
+    .map((x) => x.entry)
+}
 
 /** 입력이 하나라도 있는 섹션만, 선언 순서대로 */
 export const CONDITION_FORM_SECTIONS_IN_USE: readonly ConditionFormSection[] = CONDITION_FORM_SECTIONS.filter(
   (s) => CONDITION_FORM_ENTRIES.some((e) => e.section === s)
 )
+
+/**
+ * 조건 키가 속한 폼 그룹. 어드민 조건 폼의 요약 칩·배지 상세의 그룹별 표시가 쓴다.
+ *
+ * 폼 입력이 없는 필드(`day_of_week`·`route`·`poi_id`)는 셋 다 활동군을 좁히는 필터라
+ * 「대상 활동」으로 모은다. 레지스트리에 없는 키는 null — 호출부가 따로 모아 보여 준다.
+ */
+export function conditionFormSectionOf(key: string): ConditionFormSection | null {
+  const meta = FIELD_BY_KEY.get(key)
+  if (!meta) return null
+  return meta.form?.section ?? 'scope'
+}
 
 // ── fail-closed 판정 ─────────────────────────────────────────────────────
 
@@ -1787,28 +1992,47 @@ function safeFormat(
   return text
 }
 
-/** 어드민 목록의 압축 칩 목록. 선언 순서를 그대로 따른다 */
-export function formatConditionChips(condition: BadgeCondition | null | undefined): string[] {
+/** 조건 표시 문구 1줄 + 그 문구를 만든 조건 키 — 폼 그룹과 문구를 잇는 데 쓴다 */
+export type ConditionTextEntry = { key: ConditionKey; text: string }
+
+/**
+ * 칩 문구를 **조건 키와 함께** 돌려준다(티켓 20260911_0901 — 어드민 폼의 요약 칩을 누르면
+ * 그 조건이 속한 그룹으로 이동해야 한다). 문구·순서는 `formatConditionChips`와 같다.
+ */
+export function formatConditionChipEntries(condition: BadgeCondition | null | undefined): ConditionTextEntry[] {
   if (!condition) return []
-  const chips: string[] = []
+  const chips: ConditionTextEntry[] = []
   for (const meta of CONDITION_FIELDS) {
     if (condition[meta.key] === undefined) continue
     const text = safeFormat(meta, meta.chip, condition)
-    if (text) chips.push(text)
+    if (text) chips.push({ key: meta.key, text })
   }
   return chips
 }
 
-/** 어드민 상세의 조건 줄 목록. 선언 순서를 그대로 따른다 */
-export function formatConditionDetail(condition: BadgeCondition | null | undefined): string[] {
+/** 어드민 목록의 압축 칩 목록. 선언 순서를 그대로 따른다 */
+export function formatConditionChips(condition: BadgeCondition | null | undefined): string[] {
+  return formatConditionChipEntries(condition).map((e) => e.text)
+}
+
+/**
+ * 상세 문구를 **조건 키와 함께** 돌려준다 — 배지 상세가 폼과 같은 그룹 제목 아래에 나눠
+ * 그리는 데 쓴다(티켓 20260911_0901). 문구·순서는 `formatConditionDetail`과 같다.
+ */
+export function formatConditionDetailEntries(condition: BadgeCondition | null | undefined): ConditionTextEntry[] {
   if (!condition) return []
-  const parts: string[] = []
+  const parts: ConditionTextEntry[] = []
   for (const meta of CONDITION_FIELDS) {
     if (condition[meta.key] === undefined) continue
     const text = safeFormat(meta, meta.detail, condition)
-    if (text) parts.push(text)
+    if (text) parts.push({ key: meta.key, text })
   }
   return parts
+}
+
+/** 어드민 상세의 조건 줄 목록. 선언 순서를 그대로 따른다 */
+export function formatConditionDetail(condition: BadgeCondition | null | undefined): string[] {
+  return formatConditionDetailEntries(condition).map((e) => e.text)
 }
 
 // ── 컴파일 타임 동기화 체크 ──────────────────────────────────────────────
