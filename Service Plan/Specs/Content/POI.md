@@ -107,10 +107,9 @@ stadium/tourist_attraction)는 지도에 즉시 노출되는 버그가 있었다
       `162_poi_category_michelin.sql`(2026-09-12, 티켓 [[20260912_0115]]). mountain·
       train_subway·route와 같은 수동 큐레이션 카테고리로 `pipeline_linked=false`·
       `requires_review=false`·`display_on_map=true`·`keywords=[]`. 미쉐린 가이드 서울
-      3/2/1스타 레스토랑 41곳을 `seed_poi_michelin_seoul_2026.sql`로 등록(좌표는 구글맵
-      검색 결과에서 추출). 신규 등록 정책대로 전부 `is_active=false`·`pending_review=true`로
-      들어가 `/admin/poi/review` 승인이 필요하다. 1스타 '무니'는 구글맵에서 단일 매치를
-      찾지 못해 이번 등록에서 제외 — 좌표 확인 후 별도 추가 필요.
+      3/2/1스타 레스토랑 42곳을 `seed_poi_michelin_seoul_2026.sql`로 등록(좌표는 구글맵
+      검색 결과·사용자가 준 place 링크에서 추출). 신규 등록 정책대로 전부
+      `is_active=false`·`pending_review=true`로 들어가 `/admin/poi/review` 승인이 필요하다.
 
 ## 관련 문서
 - [BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) — POI 기반 배지 발급 로직
