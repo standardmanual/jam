@@ -1,0 +1,48 @@
+-- seed_poi_michelin_seoul_2026.sql
+-- 미쉐린 가이드 서울 3/2/1스타 레스토랑 41곳을 POI로 등록.
+-- 좌표는 구글맵 검색 결과(단일 매치)에서 추출. 1스타 '무니'는 구글맵에서 단일 매치를
+-- 찾지 못해 이 시드에서 제외 — 별도로 좌표를 확인해 추가해야 한다.
+-- 일반 어드민 수동 등록과 동일한 정책으로 is_active=false, pending_review=true로 넣는다
+-- (Service Plan/Specs/Content/POI.md "신규 등록 정책") — /admin/poi/review에서 승인 필요.
+insert into poi (name, latitude, longitude, category, is_active, pending_review) values
+  ('밍글스', 37.5253386, 127.0441452, 'michelin', false, true),
+  ('권숙수', 37.5243775, 127.0435589, 'michelin', false, true),
+  ('서울신라호텔 라연', 37.5557646, 127.0050866, 'michelin', false, true),
+  ('Restaurant Allen', 37.5036006, 127.0418041, 'michelin', false, true),
+  ('모수 서울', 37.5411532, 126.9961548, 'michelin', false, true),
+  ('미토우', 37.5221974, 127.0450306, 'michelin', false, true),
+  ('스와니예', 37.5193295, 127.0190326, 'michelin', false, true),
+  ('소수헌', 37.5529456, 126.9634031, 'michelin', false, true),
+  ('알라프리마', 37.5134138, 127.0260405, 'michelin', false, true),
+  ('에빗', 37.5233759, 127.0362133, 'michelin', false, true),
+  ('정식당', 37.5256734, 127.0410846, 'michelin', false, true),
+  ('가겐 by 최준호', 37.5245133, 127.0452367, 'michelin', false, true),
+  ('강민철 레스토랑', 37.5249753, 127.0436445, 'michelin', false, true),
+  ('고료리 켄', 37.5229904, 127.0348126, 'michelin', false, true),
+  ('기가스', 37.5569672, 126.9780934, 'michelin', false, true),
+  ('GiwaKang 기와강', 37.5210768, 127.0289385, 'michelin', false, true),
+  ('꼴라쥬', 37.5161887, 127.0309946, 'michelin', false, true),
+  ('뛰뚜아멍', 37.5496704, 127.066647, 'michelin', false, true),
+  ('라망 시크레', 37.5598403, 126.9795134, 'michelin', false, true),
+  ('라미띠에', 37.5259177, 127.0445553, 'michelin', false, true),
+  ('LEGUME', 37.519457, 127.0191187, 'michelin', false, true),
+  ('레스토랑 산', 37.526329, 127.0339376, 'michelin', false, true),
+  ('레스토랑 주은', 37.5727602, 126.9699196, 'michelin', false, true),
+  ('무오키', 37.5189698, 127.0422219, 'michelin', false, true),
+  ('비채나', 37.5126072, 127.1025386, 'michelin', false, true),
+  ('빈호', 37.5186361, 127.0381596, 'michelin', false, true),
+  ('세븐스 도어', 37.5223712, 127.0542979, 'michelin', false, true),
+  ('소설한남', 37.5352946, 127.0092129, 'michelin', false, true),
+  ('소울다이닝', 37.5453354, 126.9844339, 'michelin', false, true),
+  ('솔밤', 37.5157568, 127.0341109, 'michelin', false, true),
+  ('스시마츠모토', 37.5257571, 127.0456661, 'michelin', false, true),
+  ('히노츠키 그랜드인터컨티넨탈', 37.5091716, 127.0606392, 'michelin', false, true),
+  ('에스콘디도', 37.5351551, 127.0104919, 'michelin', false, true),
+  ('온지음', 37.5804867, 126.9733488, 'michelin', false, true),
+  ('유 유안', 37.570896, 126.9754786, 'michelin', false, true),
+  ('윤서울', 37.5241019, 127.0390343, 'michelin', false, true),
+  ('이스트', 37.5263299, 127.0355669, 'michelin', false, true),
+  ('이타닉 가든', 37.5030426, 127.041588, 'michelin', false, true),
+  ('익스퀴진', 37.5210272, 127.049659, 'michelin', false, true),
+  ('제로컴플렉스', 37.5208176, 126.9929013, 'michelin', false, true),
+  ('하쿠시', 37.5241408, 127.0322736, 'michelin', false, true);
