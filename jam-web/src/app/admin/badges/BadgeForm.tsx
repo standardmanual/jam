@@ -465,7 +465,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
         condition_json: conditionJson,
         // 체크인 배지는 트라이브/컬렉션 개념이 없다 — UI는 숨겼지만 기존 값이 남아있을 수 있으므로
         // 저장 시점에 명시적으로 null 처리한다(티켓 20260830_1344). JAM! 배지는 연결 정보 섹션을
-        // 숨기지만 값은 그대로 보낸다(티켓 20260911_0901 — 숨긴 입력의 기존 값은 바꾸지 않는다).
+        // 숨기고, JAM!을 켜는 순간 toggleAdminCategoryJam이 트라이브·컬렉션을 비운다(티켓 20260911_0901 D-3).
         tribe_id: type === 'checkin' ? null : tribeId || null,
         item_book_id: type === 'checkin' ? null : itemBookId || null,
         // 지점 카테고리는 체크인 배지 전용 — 다른 타입에서는 항상 null.
@@ -808,7 +808,7 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
   const linkSection = !isJamActivity && (
     <BadgeSectionCard {...sectionHeader('link')}>
       {/* 트라이브/소속 컬렉션 — 체크인 배지에는 이 개념이 없어 숨긴다(티켓 20260830_1344).
-          JAM! 배지는 섹션째 숨기되 값은 저장 페이로드에 그대로 둔다(티켓 20260911_0901). */}
+          JAM! 배지는 섹션째 숨긴다. JAM!을 켜는 순간 트라이브·컬렉션을 비운다(티켓 20260911_0901 D-3). */}
       {type !== 'checkin' && (
         <div className="@container">
           <div className={FIELD_GRID_CLASS}>

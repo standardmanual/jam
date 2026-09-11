@@ -117,8 +117,9 @@ export default function BadgeConditionSection({
   themeContainer,
 }: BadgeConditionSectionProps) {
   const jam = type === 'activity' && isJam
-  // 발급 방식(자동/미션)은 일반 액티비티 배지에서만 고른다. 아이템·JAM!에서는 숨기되
-  // missionReward 값은 폼 state에 그대로 두어 저장 페이로드를 바꾸지 않는다.
+  // 발급 방식(자동/미션)은 일반 액티비티 배지에서만 고른다. 아이템·JAM!에서는 숨긴다.
+  // JAM!에서는 missionReward 값을 폼 state에 그대로 둔다. 아이템으로 전환할 때는 BadgeForm의
+  // changeType이 이 값을 비운다 — 아이템의 mission_reward는 영구 드랍 제외로 이어진다(티켓 20260911_0901 D-1).
   const showIssuance = type === 'activity' && !jam
   const missionMode = showIssuance && condFields.missionReward
 
