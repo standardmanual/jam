@@ -344,6 +344,7 @@ interface BadgeGateRequirement {
 | `follower_count` | `number` | [JAM! 카테고리] 팔로워 수 ≥ 조건값 | badge-engine 내 **항상 fail**(measurable 필드가 없어 "평가 가능한 조건 없음") — `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()`가 `POST /api/follows` 성공 직후 별도 판정·발급 |
 | `following_count` | `number` | [JAM! 카테고리] 팔로잉 수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `POST /api/follows` 성공 직후 판정 |
 | `daily_sync_count` | `number` | [JAM! 카테고리] 그날(KST) 누적 동기화 성공 횟수 ≥ 조건값 | 위와 동일 — `evaluateUsageBadges()`가 `syncStravaActivities()`에서 `synced > 0`일 때만 판정(카운터는 `user_daily_sync_counts` + `increment_daily_sync_count()` RPC) |
+| `daily_sync_streak_days` | `number` | [JAM! 카테고리] 오늘 기준 «현재» 연속 동기화 일수 ≥ 조건값. **역대 최장이 아니다** — 하루라도 거르면 0으로 리셋된다 | 위와 동일 — `evaluateUsageBadges()`가 `daily_sync_count`와 같은 시점(`increment_daily_sync_count()` RPC 직후)에 `dailySyncStreak.ts`의 `fetchCurrentSyncStreakDays()`로 계산해 판정 |
 
 > ⚠️ 배경(티켓 20260825_028): 마이그레이션 `084_badge_condition_cleanup.sql`이 배지 상세화면
 > 표시용으로 미션보상배지 15종에 `{"mission_reward": true}`를 넣었는데, 당시 badge-engine은
@@ -352,13 +353,20 @@ interface BadgeGateRequirement {
 > 명시적으로 분리돼 있고, 이 필드만 있는 조건은 위 방어 분기로 항상 fail 처리된다. 어드민
 > `BadgeForm.tsx`도 이 필드를 조건 필드와 시각적으로 구분된 체크박스로 노출한다(티켓 20260825_031).
 
-> **JAM! 카테고리 — 서비스 사용량 지표 3종** (2026-09-10, 티켓 20260910_1557): `mission_reward`와
-> 같은 자리(`role: 'meta'` + `evaluation: 'external'`)이지만 성격은 조금 다르다 — `mission_reward`는
-> 그 자체로 pass/fail을 만들지 않는 순수 플래그인 반면, 이 3종은 **실제로 수치 임계값이 발급
-> 여부를 결정한다**. 다만 그 판정이 badge-engine(`evaluateConditionDetailed`, Strava 활동 이력
-> 기반) 밖에서 일어나므로 §2가 아니라 여기 분류된다 — `MEASURABLE_CONDITION_KEYS`에 없어
-> `evaluateConditionDetailed`는 이 필드들이 있으면 (다른 measurable 필드가 없는 한) 항상
-> fail 처리하고, `role: 'meta'`라 진행률(`badgeProgress.ts`)도 그리지 않는다.
+> **JAM! 카테고리 — 서비스 사용량 지표 3종** (2026-09-10, 티켓 20260910_1557) **+ 연속 동기화
+> 일수 1종** (2026-09-11, 티켓 20260911_2304): `mission_reward`와 같은 자리(`role: 'meta'` +
+> `evaluation: 'external'`)이지만 성격은 조금 다르다 — `mission_reward`는 그 자체로 pass/fail을
+> 만들지 않는 순수 플래그인 반면, 이 4종은 **실제로 수치 임계값이 발급 여부를 결정한다**. 다만
+> 그 판정이 badge-engine(`evaluateConditionDetailed`, Strava 활동 이력 기반) 밖에서 일어나므로
+> §2가 아니라 여기 분류된다 — `MEASURABLE_CONDITION_KEYS`에 없어 `evaluateConditionDetailed`는
+> 이 필드들이 있으면 (다른 measurable 필드가 없는 한) 항상 fail 처리하고, `role: 'meta'`라
+> 진행률(`badgeProgress.ts`)도 그리지 않는다.
+>
+> `daily_sync_streak_days`는 `daily_sync_count`(하루 누적 횟수)와 판정 기준이 다르다 —
+> "오늘까지 하루라도 거르지 않고 이어진 연속"만 보는 진행 중 스트릭이고, 활동배지의
+> `streak_days`(Strava 활동 기반 **역대 최장**)와도 다른 별개 지표다. 계산은
+> `src/lib/badge-engine/dailySyncStreak.ts`의 `calcCurrentSyncStreakDays()`(순수 함수) +
+> `fetchCurrentSyncStreakDays()`(DB 조회)가 전담한다.
 >
 > `badge_type` enum에는 손대지 않고 `type='activity'` + `activity_types=[]`로 저장하는 것이
 > 설계 전제다 — `activity_types[0]`이 없으면 `/badges/tree`(배지 트리)에는 노출되지 않고,
@@ -396,8 +404,9 @@ interface BadgeGateRequirement {
 - 휴식 4종(§2.13)은 **`repeat_count`와 휴식 키 1개까지 조합 가능하다**(2026-09-06, 티켓
   20260906_2056) — 전용 술어가 "휴식 조건을 만족한 복귀 사건"만 센다. 휴식 키 2개 이상은
   사건 경계가 정의되지 않아 여전히 「회차와 함께 쓸 수 없는 조건」으로 막힌다
-- **사용량 지표 3종(§3 — `follower_count`·`following_count`·`daily_sync_count`)은
-  `repeat_count`와 함께 쓸 수 없다**(2026-09-10, 티켓 20260910_1719) — `usageBadges.ts`의
+- **사용량 지표 4종(§3 — `follower_count`·`following_count`·`daily_sync_count`·
+  `daily_sync_streak_days`)은 `repeat_count`와 함께 쓸 수 없다**(2026-09-10, 티켓 20260910_1719;
+  20260911_2304에서 4번째 키로 확장) — `usageBadges.ts`의
   발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만)·레벨형(family_key 연속 발급)만
   구현돼 있다. `badgeKindOf()`가 아니라 `isLeveledBadge()`(rarity==null 이진 판정)로만
   갈라 반복형(세 번째 종류)을 구분하지 못하므로, 등급형 경로로 흘러가 회차가 조용히
