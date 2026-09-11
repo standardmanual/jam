@@ -425,6 +425,8 @@ export interface ItemBookRow {
   background_video_url: string | null
   /** 20260901_1944 — 컬렉션 상세화면 대표 이미지 카드 안에서 실행하는 배경 애니메이션 파라미터(jsonb) */
   background_animation: Record<string, unknown> | null
+  /** 20260911_1259 — 이 컬렉션을 완성할 때 함께 지급하는 잼 포인트. 0이면 지급 없음. */
+  reward_points: number
 }
 
 export interface PoiRow {
@@ -1297,6 +1299,8 @@ export type PointReason =
   | 'combine_fail_reward'
   /** 믹스 레시피 매칭 성공 보상 포인트 (마이그레이션 153) */
   | 'combine_recipe_reward'
+  /** 컬렉션(아이템북) 완성 보상 포인트 (마이그레이션 157) */
+  | 'item_book_completion_point_reward'
 
 /** 유저별 잔액 캐시 (직접 UPDATE 금지 — award_points RPC로만 변경) */
 export interface PointWalletRow {
@@ -1315,6 +1319,8 @@ export interface PointTransactionRow {
   source_mission_id: string | null
   admin_reason_label: string | null
   admin_reason_note: string | null
+  /** 컬렉션(아이템북) 완성 보상일 때만(마이그레이션 157) */
+  source_item_book_id: string | null
   created_at: string
 }
 
@@ -1557,6 +1563,8 @@ export interface AwardPointsArgs {
   p_source_mission_id?: string | null
   p_admin_reason_label?: string | null
   p_admin_reason_note?: string | null
+  /** 컬렉션(아이템북) 완성 보상일 때만(마이그레이션 157) */
+  p_source_item_book_id?: string | null
 }
 
 // =========================================

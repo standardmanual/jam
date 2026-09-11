@@ -35,6 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       image_url: body.image_url !== undefined ? body.image_url : existing.image_url,
       required_activity_badge_id: body.required_activity_badge_id !== undefined ? body.required_activity_badge_id : existing.required_activity_badge_id,
       reward_badge_id: body.reward_badge_id !== undefined ? body.reward_badge_id : existing.reward_badge_id,
+      reward_points: body.reward_points !== undefined ? Math.max(0, body.reward_points) : existing.reward_points,
       tribe_id: body.tribe_id !== undefined ? body.tribe_id : existing.tribe_id,
       story_text: body.story_text !== undefined ? body.story_text : existing.story_text,
       is_active: nextIsActive,
