@@ -430,6 +430,8 @@ export default function BadgeShareButton({
                 const showLoader = kind === 'card' ? showCardLoader : showBadgeLoader
                 return (
                   <div
+                    role="group"
+                    aria-label={kind === 'card' ? '통계 포함 공유 카드' : '배지 이미지 단독'}
                     className="relative w-full h-full rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center"
                     style={{
                       backgroundImage:
@@ -464,10 +466,15 @@ export default function BadgeShareButton({
           </div>
 
           {activeItemState.kind === 'error' && (
-            <div className="shrink-0 py-[var(--spacing-16)] text-center">
+            <div role="status" aria-live="polite" className="shrink-0 py-[var(--spacing-16)] text-center">
               <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{errorCopy(activeItemState.reason).title}</p>
               <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{errorCopy(activeItemState.reason).body}</p>
             </div>
+          )}
+          {activeItemState.kind === 'loading' && (
+            <span role="status" aria-live="polite" className="sr-only">
+              {d.badges.shareImageLoading}
+            </span>
           )}
         </div>
       </BottomSheet>
