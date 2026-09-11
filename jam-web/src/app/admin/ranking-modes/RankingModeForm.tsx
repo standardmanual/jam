@@ -331,7 +331,7 @@ export default function RankingModeForm({ mode, missions, initialTargetUsers }: 
 
       <div className="flex gap-2">
         <Button type="submit" disabled={loading}>
-          {loading ? '저장 중...' : isEdit ? '수정 저장' : '랭킹모드 등록'}
+          {loading ? '저장 중...' : isEdit ? '수정 저장' : '랭킹 규칙 등록'}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.push('/admin/ranking-modes')}>
           취소
@@ -346,9 +346,9 @@ export default function RankingModeForm({ mode, missions, initialTargetUsers }: 
       <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => { if (!open && !loading) setShowDeleteConfirm(false) }}>
         <AlertDialogContent container={themeContainer ?? undefined}>
           <AlertDialogHeader>
-            <AlertDialogTitle>랭킹모드 삭제</AlertDialogTitle>
+            <AlertDialogTitle>랭킹 규칙 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              &apos;{mode?.title}&apos; 랭킹모드를 삭제합니다. 이 랭킹모드를 연결한 투데이 카드가 있다면
+              &apos;{mode?.title}&apos; 랭킹 규칙을 삭제합니다. 이 랭킹 규칙을 연결한 투데이 카드가 있다면
               연결이 풀리고 빈 순위 목록으로 남습니다. 삭제하면 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>

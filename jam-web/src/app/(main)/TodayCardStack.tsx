@@ -213,10 +213,15 @@ function OtherCard({ card }: { card: TodayCardWithHref }) {
  * 이미 계산해 넘긴 값 — 이 컴포넌트는 그리기만 한다.
  *
  * 다른 레이아웃과 달리 카드 전체를 `<Link>`로 감싸지 않는다 — 순위 행(`RankingListRow`)이 각자
- * 유저 프로필로 이동하는 `<Link>`를 이미 갖고 있어(User Story 11, 미션 상세 화면과 동일 동작),
- * 카드 전체를 감싸면 앵커 안에 앵커가 중첩되는 무효 마크업이 된다. 대신 제목 영역만 카드
- * 이동 경로(`resolved_href`, User Story 10)로 링크한다 — `TodayCardStack`이 이 컴포넌트를
- * 호출할 때 공통 `<Link>` 래핑을 건너뛴다.
+ * 유저 프로필로 이동하는 `<Link>`를 대상 방식과 무관하게 이미 갖고 있어(User Story 11, 미션
+ * 상세 화면과 동일 동작), 카드 전체를 감싸면 앵커 안에 앵커가 중첩되는 무효 마크업이 된다.
+ *
+ * 제목 영역은 대상이 미션 참가자일 때만(`ranking.metricType === 'mission_progress'` — 대상
+ * 선정이 미션 참가자일 때만 정렬 지표가 이 값으로 고정된다, `lib/admin/ranking-modes.ts`의
+ * `buildRankingModeSavePayload` 참고) 그 미션의 기존 랭킹 화면(`resolved_href`, User Story 10)
+ * 으로 링크한다. 유저 직접 지정 랭킹은 탭해도 이동할 "더 자세히 볼" 기존 화면이 없어(Out of
+ * Scope — 랭킹모드를 투데이카드 밖에 노출하지 않음) 제목 영역에 아무 링크도 걸지 않는다
+ * (2026-09-11 게이트 리뷰 WARN 대응 — 이전에는 `/missions` 목록으로 보냈었다).
  */
 function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; currentUserId?: string }) {
   const ranking = card.resolved_ranking
@@ -229,14 +234,24 @@ function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; cur
           conditionFieldKey: ranking.conditionFieldKey,
         })
       : String(v)
+  const isMissionTarget = ranking?.metricType === 'mission_progress'
+  const header = (
+    <>
+      <div className="mb-2"><TemplateChip card={card} /></div>
+      <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
+      {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
+    </>
+  )
 
   return (
     <Card tone="inverse">
-      <Link href={card.resolved_href} className="block active:scale-[0.98] transition-transform duration-100">
-        <div className="mb-2"><TemplateChip card={card} /></div>
-        <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
-        {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
-      </Link>
+      {isMissionTarget ? (
+        <Link href={card.resolved_href} className="block active:scale-[0.98] transition-transform duration-100">
+          {header}
+        </Link>
+      ) : (
+        <div>{header}</div>
+      )}
 
       {entries.length > 0 ? (
         <div className="flex flex-col mt-[var(--spacing-16)]">

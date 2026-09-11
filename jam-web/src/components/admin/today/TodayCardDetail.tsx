@@ -204,7 +204,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
           </ReadOnlyItem>
         )}
         {fields.rankingMode && (
-          <ReadOnlyItem label="랭킹모드">
+          <ReadOnlyItem label="랭킹 규칙">
             {rankingModeTitle ?? (card.ranking_mode_id ? '(찾을 수 없음)' : <Empty />)}
           </ReadOnlyItem>
         )}

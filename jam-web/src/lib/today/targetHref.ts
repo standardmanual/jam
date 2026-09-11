@@ -66,7 +66,11 @@ export function resolveTargetHref(card: TodayCardRow, ctx: ResolveTargetHrefCont
       // 대상이 미션 참가자면 그 미션의 기존 랭킹 화면(User Story 10 — "더 자세한 순위와 내
       // 진행 내역"은 이미 그 화면이 갖고 있다, 새로 만들지 않는다). 수동 지정 유저 대상은
       // 랭킹모드 데이터를 홈 피드 카드 밖의 다른 화면에 노출하지 않는다는 원칙(Out of
-      // Scope) 때문에 자연히 이동할 "더 자세한" 화면이 없다 — 미션 목록으로 보낸다.
+      // Scope) 때문에 자연히 이동할 "더 자세한" 화면이 없다 — 이 값(`/missions`)은 그 경우
+      // 실제 이동 경로로 쓰이지 않는다. `resolved_href`가 `string`(non-null) 계약이라 자리를
+      // 채우는 타입 안전 폴백일 뿐이다. 실제 탭 동작(유저 직접 지정 카드는 제목 영역에 링크
+      // 자체를 걸지 않음, 2026-09-11 게이트 리뷰 WARN 대응)은 UI 쪽(`TodayCardStack.tsx`의
+      // `RankingListCard`)이 `ranking.metricType`으로 판단한다.
       return ctx.rankingModeTargetMissionId ? `/missions/${ctx.rankingModeTargetMissionId}/status` : '/missions'
     default:
       return '/'

@@ -34,7 +34,7 @@ export default async function EditRankingModePage({ params }: Props) {
 
   return (
     <div className="p-8">
-      <h1 className="mb-6 text-2xl font-bold">랭킹모드 수정</h1>
+      <h1 className="mb-6 text-2xl font-bold">랭킹 규칙 수정</h1>
       <RankingModeForm mode={mode} missions={missions} initialTargetUsers={initialTargetUsers} />
     </div>
   )

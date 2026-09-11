@@ -43,13 +43,13 @@ export default async function AdminRankingModesPage() {
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">랭킹모드 관리</h1>
+          <h1 className="text-2xl font-bold">랭킹 규칙 관리</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             홈 피드 랭킹보드 카드가 연결할 순위 정의 — 대상 선정과 정렬 지표를 미리 만들어 둔다
           </p>
         </div>
         <Link href="/admin/ranking-modes/new">
-          <Button>+ 랭킹모드 추가</Button>
+          <Button>+ 랭킹 규칙 추가</Button>
         </Link>
       </div>
 
@@ -69,7 +69,7 @@ export default async function AdminRankingModesPage() {
             {modes.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
-                  아직 만든 랭킹모드가 없어요.
+                  아직 만든 랭킹 규칙이 없어요.
                 </td>
               </tr>
             )}
