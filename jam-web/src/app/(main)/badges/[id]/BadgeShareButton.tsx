@@ -470,7 +470,10 @@ export default function BadgeShareButton({
                         style={{ transform: kind === 'card' ? 'scale(1.3)' : 'scale(0.5)' }}
                       />
                     ) : itemState.kind === 'error' ? (
-                      <div className="px-[var(--spacing-24)] text-center">
+                      // 실제 알림은 프레임 바깥의 sr-only 블록(aria-live="polite")이 전담한다 —
+                      // 같은 문구가 여기 시각 텍스트에도 있어 aria-hidden 없이 두면 스크린 리더가
+                      // 두 번 읽는다(인터페이스 리뷰 지적, 티켓 20260911_1156).
+                      <div className="px-[var(--spacing-24)] text-center" aria-hidden="true">
                         <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">
                           {errorCopy(itemState.reason).title}
                         </p>
