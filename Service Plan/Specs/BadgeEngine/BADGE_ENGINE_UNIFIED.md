@@ -1,6 +1,17 @@
 # JAM! 통합 배지 발급 로직 — 액티비티배지 엔진 + 아이템배지 드랍 엔진
 
-> 최종 업데이트: 2026-09-10 (`badges.admin_category` 컬럼 신설(마이그레이션 156) — JAM!
+> 최종 업데이트: 2026-09-11 (JAM! 종목 조건에 **연속 동기화 일수**(`daily_sync_streak_days`)
+> 1종 추가 — `daily_sync_count`(하루 누적 횟수)와 별개로, "오늘 기준 현재 연속 동기화
+> 일수가 N일 이상이 되는 순간 달성"을 판정한다(역대 최장이 아니라 하루라도 거르면 리셋되는
+> 진행 중 스트릭 — 사용자 확정 기준). 계산은 신규 `src/lib/badge-engine/dailySyncStreak.ts`
+> (`calcCurrentSyncStreakDays()` 순수 함수 + `fetchCurrentSyncStreakDays()` DB 조회)가
+> 전담하고, `usageBadges.ts`의 `recordDailySyncAndEvaluate()`가 `increment_daily_sync_count()`
+> RPC 직후 `daily_sync_count`와 함께 평가한다. `conditionRegistry.ts`에 `role: 'meta'` +
+> `evaluation: 'external'`로 등록(기존 3종과 같은 패턴), CHECK 제약 확장(마이그레이션 161),
+> 어드민 조건 폼의 "사용량 지표" 그룹(`BadgeConditionSection.tsx`)에 입력 필드 자동 노출 —
+> 티켓 20260911_2304)
+>
+> 이전: 2026-09-10 (`badges.admin_category` 컬럼 신설(마이그레이션 156) — JAM!
 > 카테고리(서비스 사용량 배지)를 **어드민 화면**에서 구분·관리하기 위한 순수 분류 필드.
 > 기존 `category`(지점 카테고리, 체크인 전용·`poi_categories` FK)와는 완전히 별개다 —
 > `admin_category`는 `type`과 무관하게 독립적으로 저장되며(어드민 배지 생성·수정 API가
@@ -87,9 +98,10 @@ Strava 싱크
 | 구현 파일 | `src/lib/badge-engine/index.ts` ✅ 구현 | `src/lib/drop-engine/` ✅ v2 구현 (2026-07-21) |
 | 게이미피케이션 역할 | 장기 목표·티어 성장 (mastery) | 세션 보상·트라이브 서사·수집 (variable reward) |
 
-**③ JAM! 카테고리 — 서비스 사용량 배지 (2026-09-10, 티켓 20260910_1557)** — badge-engine
-밖의 세 번째 평가 경로. `type='activity'`(위 ①과 같은 테이블)이지만 Strava 활동 이력이
-아니라 팔로워 수·팔로잉 수·하루 동기화 횟수 같은 "서비스를 어떻게 쓰는가"를 잰다.
+**③ JAM! 카테고리 — 서비스 사용량 배지 (2026-09-10, 티켓 20260910_1557; 연속 동기화 일수
+1종 추가 — 2026-09-11, 티켓 20260911_2304)** — badge-engine 밖의 세 번째 평가 경로.
+`type='activity'`(위 ①과 같은 테이블)이지만 Strava 활동 이력이 아니라 팔로워 수·팔로잉 수·
+하루 동기화 횟수·연속 동기화 일수 같은 "서비스를 어떻게 쓰는가"를 잰다.
 `badge_type` enum을 늘리는 대신 기존 `activity` 타입 안에서 `activity_types=[]`로 저장해
 배지 트리에는 노출하지 않는다(`/badges` 일반 목록·프로필엔 정상 노출).
 
@@ -131,9 +143,9 @@ JAM!을 "달리기·자전거·트레일러닝·등산·걷기"와 나란한 분
 | | ① 액티비티배지 엔진 | ③ 서비스 사용량 배지 |
 |---|---|---|
 | 트리거 | Strava 동기화 1회(배치) | `POST /api/follows`(팔로우 성공 직후) · `syncStravaActivities()`(`synced>0`일 때만) |
-| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`, `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
+| 조건 필드 | `evaluation: 'engine'` — badge-engine이 직접 수치 검사 | `follower_count`/`following_count`/`daily_sync_count`/`daily_sync_streak_days`, `role: 'meta'` + `evaluation: 'external'`(`mission_reward`와 같은 자리) — badge-engine의 `evaluateConditionDetailed`는 이 필드들을 **항상 fail** 처리(measurable 필드 없음) |
 | 실제 평가·발급 | `src/lib/badge-engine/index.ts`의 `evaluateBadgesDetailed()` | `src/lib/badge-engine/usageBadges.ts`의 `evaluateUsageBadges()` — §2.2 Step 3-A(등급형 성장 티어)·Step 3-B(레벨형 연속 발급)와 같은 정책을 최소 재구현(선행 배지·교차 게이트·**반복형(`repeat_count`) 미지원** — `isLeveledBadge()` 이진 판정만 써서 등급형/레벨형만 가른다. 저장 시점 가드는 아래 참고, 티켓 20260910_1719) |
-| 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(신규, `increment_daily_sync_count()` RPC로 원자 증가) |
+| 카운터 원천 | `strava_activities` | `user_follows`(COUNT) · `user_daily_sync_counts`(신규, `increment_daily_sync_count()` RPC로 원자 증가 — `daily_sync_count`·`daily_sync_streak_days` 둘 다 이 테이블에서 파생) |
 
 필드 스펙은 [`CONDITION_JSON_SPEC.md`](CONDITION_JSON_SPEC.md) §3(메타데이터 필드) 참고.
 언팔로우(`DELETE /api/follows/[userId]`)는 평가를 트리거하지 않는다 — 감소만 일어나고

@@ -103,6 +103,9 @@ export type ConditionFormFields = {
   followerCount: string
   followingCount: string
   dailySyncCount: string
+  // JAM! 카테고리 — 연속 동기화 일수 1종 (티켓 20260911_2304). daily_sync_count(하루 누적
+  // 횟수)와는 별개 지표 — 오늘까지 끊기지 않은 «현재» 연속일수.
+  dailySyncStreakDays: string
 }
 
 /** 빈 폼(신규 등록)의 초기값. 조건 폼 state의 단일 출처다 */
@@ -168,6 +171,7 @@ export function emptyConditionFormFields(): ConditionFormFields {
     followerCount: '',
     followingCount: '',
     dailySyncCount: '',
+    dailySyncStreakDays: '',
   }
 }
 

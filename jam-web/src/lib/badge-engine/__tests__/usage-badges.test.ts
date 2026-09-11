@@ -15,6 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { evaluateConditionDetailed } from '../index'
 import { findBlockingConditionKeys } from '../conditionRegistry'
 import type { BadgeCondition, BadgeRow } from '@/types/database'
+import { kstDateString } from '@/lib/notifications/kst'
 
 // ── 배지 fixture — badge-engine-v5.test.ts의 makeBadge()와 동일한 전체 컬럼 ──────
 function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
@@ -68,6 +69,9 @@ const stub = vi.hoisted(() => ({
   /** RPC가 돌려줄 값. null이면 에러를 돌려준다 */
   syncCountRpcResult: null as number | null,
   syncCountRpcError: null as { message: string } | null,
+  /** `user_daily_sync_counts` 조회가 돌려줄 동기화 발생일(KST) 목록 — daily_sync_streak_days 평가용 */
+  syncStreakDates: [] as string[],
+  syncStreakDatesError: null as { message: string } | null,
 }))
 
 const getUserBanLevelMock = vi.hoisted(() =>
@@ -82,6 +86,8 @@ function resetStub() {
   stub.syncCountRpcCalls = []
   stub.syncCountRpcResult = null
   stub.syncCountRpcError = null
+  stub.syncStreakDates = []
+  stub.syncStreakDatesError = null
   getUserBanLevelMock.mockReset()
   getUserBanLevelMock.mockResolvedValue('none')
 }
@@ -96,6 +102,14 @@ function mockSupabase() {
     builder.is = self
     builder.or = self
     builder.in = self
+    builder.order = self
+    // `dailySyncStreak.ts`의 fetchCurrentSyncStreakDays()가 마지막에 부르는 체인 끝 —
+    // user_daily_sync_counts만 스텁 값을 돌려주고, 그 외 테이블은 빈 결과로 폴백한다.
+    builder.limit = () => {
+      if (table !== 'user_daily_sync_counts') return Promise.resolve({ data: null, error: null })
+      if (stub.syncStreakDatesError) return Promise.resolve({ data: null, error: stub.syncStreakDatesError })
+      return Promise.resolve({ data: stub.syncStreakDates.map((d) => ({ sync_date: d })), error: null })
+    }
     builder.insert = (payload: { user_id: string; badge_id: string; triggered_by: string }) => {
       if (table !== 'user_activity_badges') return Promise.resolve({ data: null, error: null })
       // UNIQUE(user_id, badge_id) — 이미 보유한 배지의 INSERT는 23505로 떨어진다
@@ -387,5 +401,58 @@ describe('recordDailySyncAndEvaluate — 하루 동기화 카운터 증가 + 배
     const earned = await recordDailySyncAndEvaluate('user-1')
     expect(earned).toEqual([])
     expect(stub.insertedBadgeIds).toEqual([])
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// ④ recordDailySyncAndEvaluate() — 연속 동기화 일수(daily_sync_streak_days) 평가
+//    (티켓 20260911_2304)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('recordDailySyncAndEvaluate — 연속 동기화 일수 평가', () => {
+  it('오늘까지 연속인 날짜가 있으면 그 길이로 daily_sync_streak_days 배지를 평가한다', async () => {
+    const today = kstDateString()
+    const yesterday = kstDateString(new Date(Date.now() - 86_400_000))
+    stub.syncCountRpcResult = 1
+    stub.syncStreakDates = [today, yesterday]
+    stub.badges = [makeBadge({ id: 'streak-2', condition_json: { daily_sync_streak_days: 2 } })]
+
+    const earned = await recordDailySyncAndEvaluate('user-1')
+    expect(earned.map((e) => e.id)).toEqual(['streak-2'])
+  })
+
+  it('연속일수가 조건 미만이면 발급되지 않는다', async () => {
+    stub.syncCountRpcResult = 1
+    stub.syncStreakDates = [kstDateString()] // 오늘 하루뿐 — 연속 1일
+    stub.badges = [makeBadge({ id: 'streak-7', condition_json: { daily_sync_streak_days: 7 } })]
+
+    const earned = await recordDailySyncAndEvaluate('user-1')
+    expect(earned).toEqual([])
+  })
+
+  it('연속 동기화 기록 조회가 실패해도 daily_sync_count 평가는 그대로 진행된다', async () => {
+    stub.syncCountRpcResult = 5
+    stub.syncStreakDatesError = { message: 'DB 장애' }
+    stub.badges = [
+      makeBadge({ id: 'sync-5', condition_json: { daily_sync_count: 5 } }),
+      makeBadge({ id: 'streak-3', condition_json: { daily_sync_streak_days: 3 } }),
+    ]
+
+    const earned = await recordDailySyncAndEvaluate('user-1')
+    // 스트릭 조회 실패는 0으로 폴백해 streak-3은 발급되지 않지만, daily_sync_count 평가는 영향받지 않는다.
+    expect(earned.map((e) => e.id)).toEqual(['sync-5'])
+  })
+
+  it('daily_sync_count·daily_sync_streak_days 둘 다 충족하면 함께 발급된다', async () => {
+    const today = kstDateString()
+    stub.syncCountRpcResult = 3
+    stub.syncStreakDates = [today]
+    stub.badges = [
+      makeBadge({ id: 'sync-3', condition_json: { daily_sync_count: 3 } }),
+      makeBadge({ id: 'streak-1', condition_json: { daily_sync_streak_days: 1 } }),
+    ]
+
+    const earned = await recordDailySyncAndEvaluate('user-1')
+    expect(new Set(earned.map((e) => e.id))).toEqual(new Set(['sync-3', 'streak-1']))
   })
 })

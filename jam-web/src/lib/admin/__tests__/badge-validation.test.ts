@@ -103,6 +103,13 @@ describe('findBadgeConditionSaveError — 사용량 지표 + repeat_count 조합
     expect(error).toContain('등급형·레벨형')
   })
 
+  it('daily_sync_streak_days + repeat_count는 저장을 막는다 (티켓 20260911_2304)', () => {
+    const cond = { daily_sync_streak_days: 7, repeat_count: 3 } as unknown as BadgeCondition
+    const error = findBadgeConditionSaveError(badge, 'activity', cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('등급형·레벨형')
+  })
+
   it('회귀: 기존에 repeat_count를 쓰는 활동 기반 배지는 영향받지 않는다', () => {
     expect(findBadgeConditionSaveError(badge, 'activity', { repeat_count: 10, distance_km: 5 })).toBeNull()
     expect(
@@ -114,5 +121,6 @@ describe('findBadgeConditionSaveError — 사용량 지표 + repeat_count 조합
     expect(findBadgeConditionSaveError(badge, 'activity', { follower_count: 100 })).toBeNull()
     expect(findBadgeConditionSaveError(badge, 'activity', { following_count: 50 })).toBeNull()
     expect(findBadgeConditionSaveError(badge, 'activity', { daily_sync_count: 7 })).toBeNull()
+    expect(findBadgeConditionSaveError(badge, 'activity', { daily_sync_streak_days: 7 })).toBeNull()
   })
 })
