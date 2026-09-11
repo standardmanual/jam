@@ -118,6 +118,27 @@ function drawContain(
   ctx.drawImage(img, x, y, w, h)
 }
 
+/** 배지 이미지 단독 공유용 정사각형 변환 크기 (티켓 20260911_1102) */
+const BADGE_IMAGE_ONLY_SIZE = 300
+
+/**
+ * 배지 원본 이미지를 300×300 정사각형 투명 PNG Blob으로 변환한다 (티켓 20260911_1102).
+ * 위 `buildBadgeShareBlob`과 같은 `drawContain` 캔버스 합성 패턴을 재사용한다 — 통계 텍스트나
+ * 로고 없이 배지 이미지만 담는다.
+ */
+export async function buildBadgeImageBlob(imageUrl: string): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = BADGE_IMAGE_ONLY_SIZE
+  canvas.height = BADGE_IMAGE_ONLY_SIZE
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('공유 이미지를 그릴 캔버스를 만들지 못했어요.')
+
+  const badgeImg = await loadImageFromUrl(imageUrl, { crossOrigin: 'anonymous' })
+  drawContain(ctx, badgeImg, 0, 0, BADGE_IMAGE_ONLY_SIZE)
+
+  return canvasToBlob(canvas)
+}
+
 export async function buildBadgeShareBlob(data: BadgeShareTemplateData): Promise<Blob> {
   await waitForFonts()
 
