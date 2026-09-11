@@ -332,22 +332,14 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
         {/* 미션 노출 — 티켓 20260912_0139 */}
         <div className="col-span-2 border border-border rounded-2xl p-4 space-y-2">
           <p className="text-xs font-bold text-foreground">미션 노출</p>
-          <div className="flex gap-2">
-            {exposureModes.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, exposure_mode: m.value }))}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-                  form.exposure_mode === m.value
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-white text-muted-foreground border-border hover:border-primary/50'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <Select value={form.exposure_mode} onValueChange={(v) => setForm((f) => ({ ...f, exposure_mode: v }))}>
+            <SelectTrigger className="w-full" aria-label="미션 노출">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {exposureModes.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <p className="text-muted-foreground text-xs">
             {form.exposure_mode === 'hidden' && '서비스 어디에도 노출되지 않아요.'}
             {form.exposure_mode === 'start_date' && '아래 시작 일시에 노출돼요.'}
