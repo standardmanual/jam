@@ -261,3 +261,43 @@ describe('formatBadgeConditionSpec — 조건 표기 둘째 줄', () => {
     expect(formatBadgeConditionSpec(broken)).toBe('누적 거리 10km 이상')
   })
 })
+
+/**
+ * 티켓 20260911_0901 — 어드민 조건 폼을 9개 그룹으로 재편하면서 `form.section`이 바뀌었다.
+ * 이 파일은 그 섹션을 정렬 키로 재사용하므로, **재편 전과 같은 순서**를 지키는지 고정한다.
+ * 기댓값은 재편 직전 코드로 뽑은 실제 출력이다.
+ */
+describe('어드민 폼 그룹 재편 후에도 유저 조건 문구 순서가 그대로다', () => {
+  it('기간 필터(월·계절)는 맥락(시간대·요일)보다, 시간대 수는 누적 지표보다 앞선다', () => {
+    const cond: BadgeCondition = {
+      monthly_km: 100,
+      month: [6, 7],
+      season: 'summer',
+      day_of_week: ['monday', 'friday'],
+      time_range: { start: '05:00', end: '07:00' },
+      total_count: 3,
+      daily_once_count: 4,
+      distinct_time_bands: 2,
+    }
+    expect(formatBadgeConditionSpec(cond)).toBe(
+      '6월·7월 한 달 동안 100km 이상 · 여름(6~8월) · 월요일·금요일 각 요일마다 3회 이상 · 새벽 시간대(05:00~07:00) · 서로 다른 시간대 2개 이상 · 하루 1회 활동일 4일 이상'
+    )
+  })
+
+  it('옮겨진 필드(매달 지정일·기온·하루 1회·서로 다른 시간대)의 자리가 재편 전과 같다', () => {
+    const cond: BadgeCondition = {
+      day_of_month: 1,
+      temperature_min_c: 30,
+      distinct_time_bands: 3,
+      distance_km: 30,
+      cumulative_duration_hours: 120,
+      daily_once_count: 30,
+      rest_after_streak: 2,
+      streak_days: 7,
+      same_activity: true,
+    }
+    expect(formatBadgeConditionSpec(cond)).toBe(
+      '매달 1일 · 기온 30°C 이상일 때 · 서로 다른 시간대 3개 이상 · 누적 거리 30km 이상 · 7일 연속 활동 · 누적 이동시간 120시간 이상 · 연속 활동 후 휴식일 2일 이상 · 하루 1회 활동일 30일 이상 · 한 번의 활동에서 동시에 채워야 해요'
+    )
+  })
+})

@@ -33,9 +33,13 @@ interface BackgroundGeneratorPreviewProps {
   /** 애니메이션 파라미터. null이면 배경색 모드. — [20260901_1944] */
   backgroundAnimation: BlobAnimationParams | null
   onBackgroundAnimationChange: (value: BlobAnimationParams | null) => void
-  /** 라이브 미리보기를 실제 화면 맥락에 맞게 그리는 렌더 함수. 호출부(BadgeForm 등)가 자신의
-   *  상세화면과 동일한 구조로 프레임을 그린다 — 이 컴포넌트는 어떤 화면을 흉내 내는지 모른다. */
-  renderPreview: (state: BackgroundGeneratorLivePreviewState) => ReactNode
+  /** 라이브 미리보기를 실제 화면 맥락에 맞게 그리는 렌더 함수. 호출부(ItemBookForm 등)가 자신의
+   *  상세화면과 동일한 구조로 프레임을 그린다 — 이 컴포넌트는 어떤 화면을 흉내 내는지 모른다.
+   *
+   *  **생략할 수 있다**(티켓 20260911_0901). 배지 폼은 미리보기를 오른쪽 레일로 옮겨 이 컴포넌트
+   *  밖에서 직접 그린다 — 그 경우 설정 영역만 그리고, 미리보기 칸을 위해 섹션 폭을 어드민 본문
+   *  폭까지 넓히던 처리도 하지 않는다(2단 레이아웃의 섹션 열 밖으로 넘친다). */
+  renderPreview?: (state: BackgroundGeneratorLivePreviewState) => ReactNode
 }
 
 /**
@@ -80,8 +84,10 @@ export default function BackgroundGeneratorPreview({
 
   // 2단 배치에서 설정 영역이 눌리지 않도록, 넓은 화면(xl↑)에서는 이 섹션만 폼 기본 폭
   // (max-w-2xl)을 넘어 어드민 본문 가용 폭까지 넓힌다(사이드바 16rem + 여백 감안).
+  // 미리보기를 그리지 않는 호출부(배지 폼)는 넓힐 이유가 없다.
+  const widenClass = renderPreview ? 'xl:w-[calc(100vw-22rem)] xl:max-w-[1040px]' : ''
   return (
-    <div className="border border-dashed border-purple-600/40 rounded-2xl p-5 space-y-5 bg-fuchsia-50 xl:w-[calc(100vw-22rem)] xl:max-w-[1040px]">
+    <div className={`border border-dashed border-purple-600/40 rounded-2xl p-5 space-y-5 bg-fuchsia-50 ${widenClass}`}>
       <div className="flex flex-col gap-1">
         <p className="text-xs font-semibold text-purple-600">배경 테마</p>
         <p className="text-xs text-muted-foreground">배경색과 애니메이션 중 하나를 골라요.</p>
@@ -133,15 +139,17 @@ export default function BackgroundGeneratorPreview({
         </div>
 
         {/* 호출부가 실제 화면과 동일한 구조로 그리는 미리보기 프레임 */}
-        <div className="xl:shrink-0 overflow-x-auto">
-          {renderPreview({
-            themed,
-            backgroundLayerStyle,
-            backgroundLayerRef: previewLayerRef,
-            liveNode: null,
-            backgroundAnimation,
-          })}
-        </div>
+        {renderPreview && (
+          <div className="xl:shrink-0 overflow-x-auto">
+            {renderPreview({
+              themed,
+              backgroundLayerStyle,
+              backgroundLayerRef: previewLayerRef,
+              liveNode: null,
+              backgroundAnimation,
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
