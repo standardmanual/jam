@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { data, error } = await supabase.from('ranking_modes').select('*').eq('id', id).maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data) return NextResponse.json({ error: '랭킹 규칙을 찾을 수 없어요.' }, { status: 404 })
+  if (!data) return NextResponse.json({ error: '랭킹 규칙을 찾을 수 없습니다.' }, { status: 404 })
 
   const result = await computeRankingModeResult(data as RankingModeRow, supabase)
   return NextResponse.json(result)
