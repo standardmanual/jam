@@ -25,6 +25,7 @@ const REASON_KIND: Record<PointTransactionRow['reason'], string> = {
   admin_deduct: '운영자 회수',
   combine_fail_reward: '믹스 실패 보상',
   combine_recipe_reward: '믹스 보상',
+  item_book_completion_point_reward: '컬렉션 완성 보상',
 }
 
 export async function GET(req: NextRequest) {
