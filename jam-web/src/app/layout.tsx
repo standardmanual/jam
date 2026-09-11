@@ -3,7 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { NavigationLoader } from "@/components/NavigationLoader";
-import { getActiveThemeColors } from "@/lib/theme/get-active-preset";
+
+// 어드민 테마 컬러 기능 완전 제거(티켓 20260908_1806)로 DB 조회 대신 고정값을 쓴다.
+// 제거 시점 활성 프리셋 색상과 동일(코발트/아이스).
+const THEME_COLORS = { mainColor: "#0033e5", subColor: "#f0f7ff" };
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,12 +32,12 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { mainColor, subColor } = await getActiveThemeColors();
+  const { mainColor, subColor } = THEME_COLORS;
   const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
   return (
@@ -43,7 +46,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        {/* 어드민에서 활성화한 테마 프리셋 컬러 — globals.css의 기본값을 런타임에 덮어씀 */}
+        {/* 고정 테마 컬러 — globals.css의 기본값을 명시적으로 덮어씀 */}
         <style>{`:root { --color-main: ${mainColor}; --color-sub: ${subColor}; }`}</style>
       </head>
       <body className="min-h-full flex flex-col">
