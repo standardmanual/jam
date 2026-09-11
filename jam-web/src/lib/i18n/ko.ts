@@ -344,6 +344,7 @@ export const ko = {
     shareButtonLabel: '공유',
     shareActionShare: '공유하기',
     shareActionDownload: '저장하기',
+    shareImageLoading: '공유 이미지를 준비하고 있어요',
     shareSaveSuccess: '이미지를 저장했어요',
     shareSaveError: '이미지를 저장하지 못했어요. 잠시 후 다시 시도해주세요',
     shareSaveIOSHint: '곧 열리는 공유 시트에서 \'저장\'을 눌러주세요',
