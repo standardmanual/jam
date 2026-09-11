@@ -10,7 +10,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import type { RankingModeRow, TodayCardRow } from '@/types/database'
 import { computeUserExposureTags } from './exposure'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
-import { resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
+import { isMissionExposed, resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
 import { computeRankingModeResult, type RankingBoardResult } from '@/lib/ranking/rankingDataSource'
 /**
  * 순수 함수라 서버 전용 의존이 없는 `targetHref.ts`로 옮겼다(티켓 20260911_1454) — 이 파일
@@ -166,12 +166,20 @@ async function filterMissionSpotlightCards(userId: string, cards: TodayCardRow[]
   // 더하는 마이그레이션 135가 아직 실행되지 않은 환경에서 없는 컬럼을 명시하면 쿼리 자체가
   // 실패해 오늘 카드가 통째로 사라진다(참가 API가 같은 이유로 select('*')를 쓴다).
   const { data } = await supabase.from('missions').select('*').in('id', missionIds)
-  const missions = (data ?? []) as unknown as MissionVisibilityInput[]
+  type SpotlightMission = MissionVisibilityInput & {
+    starts_at: string
+    exposure_mode: import('@/types/database').MissionExposureMode | null | undefined
+    exposure_at: string | null | undefined
+  }
+  const missions = (data ?? []) as unknown as SpotlightMission[]
   if (missions.length === 0) return cards
 
-  const ctx = await loadMissionVisibilityContext(userId, missions)
+  // 관리자 수동 노출 제어(티켓 20260912_0139) — 게이트 판정보다 먼저 걸러진다.
+  const exposedMissions = missions.filter((m) => isMissionExposed(m))
+
+  const ctx = await loadMissionVisibilityContext(userId, exposedMissions)
   const openMissionIds = new Set(
-    missions.filter((m) => resolveMissionVisibility(m, ctx).visibility === 'open').map((m) => m.id)
+    exposedMissions.filter((m) => resolveMissionVisibility(m, ctx).visibility === 'open').map((m) => m.id)
   )
 
   return cards.filter((c) => {

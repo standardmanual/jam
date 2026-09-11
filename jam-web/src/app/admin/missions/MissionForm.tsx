@@ -47,6 +47,13 @@ const statusDisplayTypes = [
   { value: 'individual', label: '개인형 (본인 진행상황만)' },
 ] as const
 
+// 미션 노출 옵션 (티켓 20260912_0139)
+const exposureModes = [
+  { value: 'hidden', label: '숨김' },
+  { value: 'start_date', label: '시작일 노출' },
+  { value: 'scheduled', label: '노출일 지정' },
+] as const
+
 const emptyForm = {
   title: '',
   description: '',
@@ -61,6 +68,8 @@ const emptyForm = {
   is_permanent: false, // 상시 미션(종료일 없음)
   max_completions: '',
   image_url: '',
+  exposure_mode: 'start_date' as string, // 티켓 20260912_0139: 미션 노출 옵션 (기본값: 시작일 노출)
+  exposure_at: '',
 }
 
 // datetime-local input은 `YYYY-MM-DDTHH:mm` 형식을 요구 — ISO 문자열에서 초/타임존 부분 제거
@@ -85,6 +94,8 @@ function formFromMission(m: MissionRow): typeof emptyForm {
     is_permanent: m.ends_at === null,
     max_completions: m.max_completions != null ? String(m.max_completions) : '',
     image_url: m.image_url ?? '',
+    exposure_mode: m.exposure_mode ?? 'start_date',
+    exposure_at: m.exposure_at ? toDatetimeLocalValue(m.exposure_at) : '',
   }
 }
 
@@ -149,6 +160,14 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
 
   async function handleSave() {
     setConditionError('')
+
+    // '노출일 지정'은 노출 시각이 없으면 fail-closed로 항상 숨겨진다(lib/missions/visibility.ts)
+    // — 저장 전에 막아 관리자가 의도치 않게 미션을 영구히 숨기지 않도록 한다.
+    if (form.exposure_mode === 'scheduled' && !form.exposure_at) {
+      setConditionError('노출일 지정을 선택하면 노출 일시를 입력해야 해요.')
+      return
+    }
+
     setSaving(true)
 
     const body = {
@@ -166,6 +185,8 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
       ends_at: form.is_permanent ? null : new Date(form.ends_at).toISOString(),
       max_completions: form.max_completions ? Number(form.max_completions) : null,
       image_url: form.image_url || null,
+      exposure_mode: form.exposure_mode,
+      exposure_at: form.exposure_mode === 'scheduled' ? new Date(form.exposure_at).toISOString() : null,
     }
 
     const res = await fetch(editingId ? `/api/admin/missions/${editingId}` : '/api/admin/missions', {
@@ -306,6 +327,40 @@ export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
             placeholder="본 배지 이름 검색..."
             onChange={setGatedBadge}
           />
+        </div>
+
+        {/* 미션 노출 — 티켓 20260912_0139 */}
+        <div className="col-span-2 border border-border rounded-2xl p-4 space-y-2">
+          <p className="text-xs font-bold text-foreground">미션 노출</p>
+          <div className="flex gap-2">
+            {exposureModes.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, exposure_mode: m.value }))}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                  form.exposure_mode === m.value
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white text-muted-foreground border-border hover:border-primary/50'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-muted-foreground text-xs">
+            {form.exposure_mode === 'hidden' && '서비스 어디에도 노출되지 않아요.'}
+            {form.exposure_mode === 'start_date' && '아래 시작 일시에 노출돼요.'}
+            {form.exposure_mode === 'scheduled' && '지정한 일시에 노출돼요. 시작 일시와는 별개예요.'}
+          </p>
+          {form.exposure_mode === 'scheduled' && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">노출 일시</label>
+              <input type="datetime-local" value={form.exposure_at}
+                onChange={(e) => setForm((f) => ({ ...f, exposure_at: e.target.value }))}
+                className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" />
+            </div>
+          )}
         </div>
 
         <div>

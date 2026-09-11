@@ -37,6 +37,8 @@ function makeMission(overrides: Partial<MissionRow> & { gate_axis: string; rewar
     gated_badge_id: null,
     gate_stage: 'rare_to_epic',
     visibility_rule_json: null as unknown as MissionVisibilityRule,
+    exposure_mode: 'start_date',
+    exposure_at: null,
     created_at: '2026-01-01T00:00:00.000Z',
     ...overrides,
   }

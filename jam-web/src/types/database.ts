@@ -570,6 +570,12 @@ export type MissionRewardType = 'badge' | 'points' | 'item_badge'
 /** individual: 개인형 — 다른 참가자 조회 없이 본인 진행상황/달성여부만 반환 (티켓 20260813_001) */
 export type MissionStatusDisplayType = 'ranking' | 'achievement' | 'individual'
 
+/**
+ * 티켓 20260912_0139: 관리자 수동 노출 제어 모드.
+ * hidden(무조건 숨김) / start_date(starts_at 시각 노출, 기본값) / scheduled(exposure_at 시각 노출)
+ */
+export type MissionExposureMode = 'hidden' | 'start_date' | 'scheduled'
+
 /** `engine_condition` 타입의 「주기(streak) + 부분집합」 짝 필드 — `weekly_streak`/`monthly_streak`와 함께 쓴다 */
 export interface MissionStreakSubset {
   /** 이 요일들 중 하나라도 맞으면 부분집합에 포함 (예: 주말 = ['saturday','sunday']) */
@@ -747,6 +753,16 @@ export interface MissionRow {
   gate_stage: MissionGateStage | null
   /** 노출 조건. 게이트 미션에만 허용한다. null이면 노출 제한 없음 */
   visibility_rule_json: MissionVisibilityRule | null
+  /**
+   * 티켓 20260912_0139: 관리자 수동 노출 제어. 게이트 미션 노출 판정(`visibility_rule_json`)
+   * 보다 먼저 적용되는 별도 레이어다 — `hidden`은 게이트 판정에 도달하기 전에 걸러진다.
+   * - `hidden`: 서비스 어디에도 노출하지 않는다(목록·오늘 카드·참가 API·상세 직접 접근 전부)
+   * - `start_date`: `starts_at` 시각에 노출한다(기본값, 기존 미션 전체가 이 값)
+   * - `scheduled`: `exposure_at` 시각에 노출한다. `starts_at`과 무관하게 노출 시점만 조정
+   */
+  exposure_mode: MissionExposureMode
+  /** `exposure_mode='scheduled'`일 때만 사용하는 노출 시각. 그 외 모드에서는 무시된다 */
+  exposure_at: string | null
   created_at: string
 }
 

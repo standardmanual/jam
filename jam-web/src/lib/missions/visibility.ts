@@ -62,7 +62,7 @@
  * 삭제·오설정 하나로 기간형 미션이 통째로 사라지는 것보다 낫다는 기존 판단
  * (티켓 20260825_028·029)이고, 그 경우는 `visibility-server.ts`가 경고 로그로 관측한다.
  */
-import type { BadgeRarity, MissionGateStage, MissionVisibilityRule } from '@/types/database'
+import type { BadgeRarity, MissionExposureMode, MissionGateStage, MissionVisibilityRule } from '@/types/database'
 // 등급 서열표는 @/lib/rarity 한 곳에만 둔다 (티켓 20260831_1115에서 통합)
 import { RARITY_TIER, rarityTier } from '@/lib/rarity'
 // 계열 요구의 형태 검증은 2단 교차 게이트와 같은 함수를 쓴다 — 재선언하지 않는다
@@ -319,4 +319,35 @@ export function resolveMissionVisibilityMap<T extends MissionVisibilityInput>(
 /** 참가(join) 가능 여부 — 목록/상세/API가 같은 기준을 쓰도록 이 함수 하나로 통일 */
 export function isMissionJoinable(result: MissionVisibilityResult): boolean {
   return result.visibility === 'open'
+}
+
+/**
+ * 관리자 수동 노출 제어(티켓 20260912_0139) — 게이트 미션 노출 판정(위 §게이트 미션)보다
+ * **먼저** 적용되는 별도 레이어다. 여기서 `false`면 게이트 판정 자체를 실행하지 않고 완전히
+ * 숨긴다(목록·오늘 카드·참가 API·상세 직접 접근 전 지점이 이 함수 하나로 판정을 통일한다).
+ *
+ * - `hidden`: 항상 `false`
+ * - `start_date`: `starts_at <= now`일 때만 `true` (기본값 — 지금까지 목록 쿼리에 빠져 있던
+ *   `starts_at` 필터를 메운다)
+ * - `scheduled`: `exposure_at`이 있고 `exposure_at <= now`일 때만 `true`. `exposure_at`이
+ *   비어 있으면(형태 오류) fail-closed로 숨긴다 — 노출 시각을 지정하지 않은 「노출일 지정」
+ *   미션이 조용히 항상 노출되는 사고를 막는다.
+ * - 마이그레이션 미반영 환경 대비: `exposure_mode`가 DB에 없어 `undefined`로 오면
+ *   `start_date`로 취급한다(기존 미션 전체의 기본값과 동일한 동작 — 배포 순서가 어긋나도
+ *   미션 목록이 통째로 사라지지 않는다).
+ */
+export interface MissionExposureInput {
+  exposure_mode: MissionExposureMode | null | undefined
+  exposure_at: string | null | undefined
+  starts_at: string
+}
+
+export function isMissionExposed(mission: MissionExposureInput, now: Date = new Date()): boolean {
+  const mode = mission.exposure_mode ?? 'start_date'
+  if (mode === 'hidden') return false
+  if (mode === 'scheduled') {
+    if (!mission.exposure_at) return false
+    return new Date(mission.exposure_at).getTime() <= now.getTime()
+  }
+  return new Date(mission.starts_at).getTime() <= now.getTime()
 }

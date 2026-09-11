@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { MissionRow, UserMissionParticipationRow, UserMissionCompletionRow } from '@/types/database'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
-import { resolveMissionVisibility } from '@/lib/missions/visibility'
+import { isMissionExposed, resolveMissionVisibility } from '@/lib/missions/visibility'
 import MissionDetailClient from './MissionDetailClient'
 
 type Props = { params: Promise<{ id: string }> }
@@ -25,6 +25,10 @@ export default async function MissionDetailPage({ params }: Props) {
   if (!missionRaw) notFound()
 
   const mission = missionRaw as MissionRow
+
+  // 관리자 수동 노출 제어(티켓 20260912_0139) — URL 직접 진입도 목록과 같은 기준으로
+  // 걸러야 「숨김」이 무조건 숨김이 된다. 게이트 판정보다 먼저 확인한다.
+  if (!isMissionExposed(mission)) notFound()
   const participation = participationRaw as UserMissionParticipationRow | null
   const completion = completionRaw as Pick<UserMissionCompletionRow, 'id'> | null
 

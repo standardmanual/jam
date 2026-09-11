@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { BadgeRarity, MissionRow, UserMissionCompletionRow, UserMissionParticipationRow } from '@/types/database'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
-import { resolveMissionVisibilityMap } from '@/lib/missions/visibility'
+import { isMissionExposed, resolveMissionVisibilityMap } from '@/lib/missions/visibility'
 import { dedupeByRewardBadge } from '@/lib/missions/dedupeReward'
 import MissionsListClient, { type MissionListItem, type RewardBadgeInfo } from './MissionsListClient'
 
@@ -29,7 +29,9 @@ export default async function MissionsPage() {
   if (completionsError) console.error('[missions/page] user_mission_completions 조회 실패', completionsError)
   if (participationsError) console.error('[missions/page] user_mission_participations 조회 실패', participationsError)
 
-  const ongoingMissions = (ongoingRaw ?? []) as MissionRow[]
+  // 관리자 수동 노출 제어(티켓 20260912_0139) — 게이트 판정보다 먼저 걸러진다.
+  // 'start_date' 모드가 기존에 빠져 있던 starts_at<=now 필터를 여기서 보강한다.
+  const ongoingMissions = ((ongoingRaw ?? []) as MissionRow[]).filter((m) => isMissionExposed(m))
   const completions = (completionsRaw ?? []) as Pick<UserMissionCompletionRow, 'mission_id' | 'completed_at'>[]
   const participations = (participationsRaw ?? []) as Pick<UserMissionParticipationRow, 'mission_id' | 'progress_value'>[]
 
