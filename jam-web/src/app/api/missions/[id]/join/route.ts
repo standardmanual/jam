@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { recordFeedEvent } from '@/lib/activity-feed'
 import { loadMissionVisibilityContext } from '@/lib/missions/visibility-server'
-import { resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
+import { isMissionExposed, resolveMissionVisibility, type MissionVisibilityInput } from '@/lib/missions/visibility'
 import { RARITY_LABEL } from '@/lib/rarity'
 import { d, t } from '@/lib/i18n'
 
@@ -28,11 +28,23 @@ export async function POST(_req: Request, { params }: Params) {
     .eq('id', missionId)
     .single() as {
       data:
-        | ({ id: string; title: string; ends_at: string | null } & MissionVisibilityInput)
+        | ({
+            id: string
+            title: string
+            ends_at: string | null
+            starts_at: string
+            exposure_mode: import('@/types/database').MissionExposureMode | null | undefined
+            exposure_at: string | null | undefined
+          } & MissionVisibilityInput)
         | null
     }
 
   if (!mission) return NextResponse.json({ error: '미션을 찾을 수 없어요.' }, { status: 404 })
+  // 관리자 수동 노출 제어(티켓 20260912_0139) — 숨김/노출 예정 미션은 없는 것과 동일하게
+  // 취급한다(존재 여부를 노출하지 않는다).
+  if (!isMissionExposed(mission)) {
+    return NextResponse.json({ error: '미션을 찾을 수 없어요.' }, { status: 404 })
+  }
   // ends_at이 null이면 상시 미션(종료 없음) — 종료 체크 건너뜀
   if (mission.ends_at !== null && new Date(mission.ends_at) < new Date()) {
     return NextResponse.json({ error: '이미 종료된 미션이에요.' }, { status: 400 })

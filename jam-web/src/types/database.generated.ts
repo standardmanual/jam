@@ -941,6 +941,8 @@ export type Database = {
           created_at: string
           description: string | null
           ends_at: string | null
+          exposure_at: string | null
+          exposure_mode: string
           gate_axis: string | null
           gate_stage: string | null
           gated_badge_id: string | null
@@ -963,6 +965,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           ends_at?: string | null
+          exposure_at?: string | null
+          exposure_mode?: string
           gate_axis?: string | null
           gate_stage?: string | null
           gated_badge_id?: string | null
@@ -985,6 +989,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           ends_at?: string | null
+          exposure_at?: string | null
+          exposure_mode?: string
           gate_axis?: string | null
           gate_stage?: string | null
           gated_badge_id?: string | null

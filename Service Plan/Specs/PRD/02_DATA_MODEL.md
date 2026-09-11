@@ -411,6 +411,17 @@ INSERT하지 않고 기존 개체의 소유자(`inventory_id`)만 옮긴다(일�
 (`dedupeByRewardBadge`, 티켓 20260907_0043) — DB 행 수와 화면에 보이는 카드 수가 다른 것은
 버그가 아니라 이 정책 때문이다.
 
+`exposure_mode`/`exposure_at`(2026-09-12 추가, 마이그레이션 163, 티켓 20260912_0139 — 관리자
+수동 노출 제어). `exposure_mode`는 `hidden`/`start_date`(기본값)/`scheduled` 중 하나(CHECK
+제약). `hidden`은 목록·오늘 피드 카드·참가 API·상세 직접 접근 등 모든 사용자 노출 지점에서
+무조건 제외한다. `start_date`는 `starts_at` 시각에 노출한다 — 기존에 목록 쿼리가 `ends_at`만
+필터링해 아직 시작하지 않은 미션도 노출되던 갭을 이 모드가 메운다. `scheduled`는
+`exposure_at`(그 모드일 때만 사용)에 지정한 시각에 노출하며 `starts_at`과는 무관하게 노출
+시점만 별도로 조정할 수 있다. 판정은 `isMissionExposed()`(`src/lib/missions/visibility.ts`)
+하나로 통일하고, 게이트 미션 노출 판정(`gate_axis`/`visibility_rule_json`)보다 **먼저** 적용되는
+별도 레이어다 — `hidden`이면 게이트 판정에 도달하기 전에 걸러진다. `exposure_at`이 비어 있는
+`scheduled` 미션은 fail-closed로 항상 숨김 처리된다.
+
 ### user_mission_participations / user_mission_completions
 참가(진행도 추적)와 완료를 별도 테이블로 관리. "참가 필수·취소 불가" 정책 — 참가자만 완료 보상 대상.
 
