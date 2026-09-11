@@ -7,7 +7,6 @@ import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader
 import { Carousel } from '@ds/components/navigation/Carousel'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { useToast } from '@/components/ui/Toast'
-import { MedalIcon } from '@/components/ui/icons'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
 import { buildBadgeShareBlob, buildBadgeImageBlob, type BadgeShareStats } from './buildBadgeShareBlob'
 import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
@@ -34,7 +33,12 @@ interface BadgeShareButtonProps {
   earnCount?: number | null
 }
 
-type ShareErrorReason = 'strava_disconnected' | 'no_strava_trigger' | 'strava_fetch_failed' | 'unknown'
+type ShareErrorReason =
+  | 'strava_disconnected'
+  | 'no_strava_trigger'
+  | 'strava_fetch_failed'
+  | 'strava_activity_not_found'
+  | 'unknown'
 
 type ShareItemState =
   | { kind: 'loading' }
@@ -58,7 +62,12 @@ const SHARE_ITEM_KINDS: ShareItemKind[] = ['card', 'badge']
 /** 저장/공유 파일명 접미사 — 항목에 따라 구분한다(티켓 20260911_1102 구현 계획 4). */
 const FILENAME_SUFFIX: Record<ShareItemKind, string> = { card: 'jam', badge: 'badge' }
 
-const KNOWN_ERROR_REASONS: ShareErrorReason[] = ['strava_disconnected', 'no_strava_trigger', 'strava_fetch_failed']
+const KNOWN_ERROR_REASONS: ShareErrorReason[] = [
+  'strava_disconnected',
+  'no_strava_trigger',
+  'strava_fetch_failed',
+  'strava_activity_not_found',
+]
 
 /** 사전 비활성화 사유 — 클릭 전에 판별 가능한 것만 다룬다(런타임 API 실패는 시트 내부 에러 상태로 별도 처리) */
 type DisabledReason = 'not-earned' | 'strava-disconnected'
@@ -77,6 +86,8 @@ function errorCopy(reason: ShareErrorReason): { title: string; body: string } {
       return { title: d.badges.shareErrorNoTriggerTitle, body: d.badges.shareErrorNoTriggerBody }
     case 'strava_fetch_failed':
       return { title: d.badges.shareErrorFetchFailedTitle, body: d.badges.shareErrorFetchFailedBody }
+    case 'strava_activity_not_found':
+      return { title: d.badges.shareErrorActivityNotFoundTitle, body: d.badges.shareErrorActivityNotFoundBody }
     default:
       return { title: d.badges.shareErrorUnknownTitle, body: d.badges.shareErrorUnknownBody }
   }
@@ -459,7 +470,17 @@ export default function BadgeShareButton({
                         style={{ transform: kind === 'card' ? 'scale(1.3)' : 'scale(0.5)' }}
                       />
                     ) : itemState.kind === 'error' ? (
-                      <MedalIcon className="w-16 h-16 text-text/40" />
+                      // 실제 알림은 프레임 바깥의 sr-only 블록(aria-live="polite")이 전담한다 —
+                      // 같은 문구가 여기 시각 텍스트에도 있어 aria-hidden 없이 두면 스크린 리더가
+                      // 두 번 읽는다(인터페이스 리뷰 지적, 티켓 20260911_1156).
+                      <div className="px-[var(--spacing-24)] text-center" aria-hidden="true">
+                        <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">
+                          {errorCopy(itemState.reason).title}
+                        </p>
+                        <p className="mt-1 text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60">
+                          {errorCopy(itemState.reason).body}
+                        </p>
+                      </div>
                     ) : showLoader ? (
                       <WanderingEyesLoader />
                     ) : null}
@@ -470,10 +491,11 @@ export default function BadgeShareButton({
           </div>
 
           {activeItemState.kind === 'error' && (
-            <div role="status" aria-live="polite" className="shrink-0 py-[var(--spacing-16)] text-center">
-              <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{errorCopy(activeItemState.reason).title}</p>
-              <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{errorCopy(activeItemState.reason).body}</p>
-            </div>
+            // 안내 문구 자체는 캐러셀 프레임 안(renderItem)에 직접 표시한다 — 이 블록은 스크린
+            // 리더 알림 역할만 유지하고 화면에는 노출하지 않는다(중복 방지).
+            <span role="status" aria-live="polite" className="sr-only">
+              {errorCopy(activeItemState.reason).title} {errorCopy(activeItemState.reason).body}
+            </span>
           )}
           {activeItemState.kind === 'loading' && (
             <span role="status" aria-live="polite" className="sr-only">
