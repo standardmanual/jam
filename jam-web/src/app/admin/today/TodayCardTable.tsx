@@ -2,6 +2,7 @@
 
 import { memo, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   createColumnHelper,
   useTable,
@@ -28,7 +29,9 @@ import type { TodayCardRow } from '@/types/database'
 
 interface TodayCardTableProps {
   cards: TodayCardRow[]
-  onEdit: (card: TodayCardRow) => void
+  /** 현재 캘린더뷰가 보고 있는 날짜('YYYY-MM-DD') — [수정]·[상세보기] 링크의 `?date=`로 실어
+   *  날라 전용 화면에서 저장·취소·삭제 후 이 날짜의 목록으로 돌아오게 한다(티켓 20260911_1454). */
+  selectedDate: string
   onToggleActive: (card: TodayCardRow) => void
   onDelete: (id: string) => void
 }
@@ -54,8 +57,12 @@ function statusOf(c: TodayCardRow, now: Date): Status {
  * `is_active`가 실존 컬럼이라(배지/컬렉션과 동일하게 소프트 비활성화 개념) 행 선택 + 일괄
  * 비활성화를 추가한다 — 기존 단건 PATCH(`/api/admin/today/[id]`)를 순차 호출한다
  * (20260826_014 배지 파일럿과 동일 방식).
+ *
+ * [수정]은 인라인 폼을 펼치던 콜백에서 전용 수정 화면(`[id]/edit`)으로 이동하는 링크로
+ * 바뀌었다(User Story 12) — 목록 자체의 테이블 디자인·일괄 작업은 이번 티켓 범위 밖이라
+ * 그대로 뒀다(티켓 20260911_1454).
  */
-function TodayCardTableInner({ cards, onEdit, onToggleActive, onDelete }: TodayCardTableProps) {
+function TodayCardTableInner({ cards, selectedDate, onToggleActive, onDelete }: TodayCardTableProps) {
   const router = useRouter()
   const [sorting, setSorting] = useState<SortingState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
@@ -164,9 +171,12 @@ function TodayCardTableInner({ cards, onEdit, onToggleActive, onDelete }: TodayC
         enableHiding: false,
         cell: ({ row }) => (
           <div className="flex items-center gap-3 whitespace-nowrap">
-            <button onClick={() => onEdit(row.original)} className="text-xs hover:opacity-70">
+            <Link href={`/admin/today/${row.original.id}?date=${selectedDate}`} className="text-xs hover:opacity-70">
+              상세보기
+            </Link>
+            <Link href={`/admin/today/${row.original.id}/edit?date=${selectedDate}`} className="text-xs hover:opacity-70">
               수정
-            </button>
+            </Link>
             <button onClick={() => onToggleActive(row.original)} className="text-xs hover:opacity-70">
               {row.original.is_active ? '비활성화' : '활성화'}
             </button>
@@ -178,7 +188,7 @@ function TodayCardTableInner({ cards, onEdit, onToggleActive, onDelete }: TodayC
       }),
     ]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [onEdit, onToggleActive, onDelete]
+    [selectedDate, onToggleActive, onDelete]
   )
 
   const table = useTable({

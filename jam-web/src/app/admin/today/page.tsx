@@ -1,11 +1,11 @@
+import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/server'
 import type { TodayCardRow } from '@/types/database'
+import { Button } from '@/components/admin/ui/button'
 import TodayCardList from './TodayCardList'
 import TodayDateNav from './TodayDateNav'
 import { normalizeDateParam, kstDayBoundsIso } from '@/lib/admin/today-calendar'
 import { singleQueryParam, type SearchParamValue } from '@/lib/searchParams'
-
-type BadgeLabelRow = { id: string; name: string; rarity: string; type: string; point_reward: number }
 
 /**
  * ⚠️ `date`의 타입을 `string`으로 좁히지 말 것 — `?date=a&date=b`처럼 같은 키가 두 번 오면
@@ -19,38 +19,24 @@ interface AdminTodayPageProps {
 export default async function AdminTodayPage({ searchParams }: AdminTodayPageProps) {
   const date = singleQueryParam((await searchParams).date)
   // 20260902_1028: 날짜별 캘린더뷰로 전환 — 선택 날짜(KST 달력 기준)에 걸치는 카드만 조회한다
-  // (구간형 카드는 starts_at~ends_at에 포함되는 모든 날짜의 목록에 매일 반복 노출로 나타남).
+  // (구간형 카드는 starts_at~ends_at에 포함되는 모든 날짜의 목록에 매일 반복 노출로 나타난다).
   const selectedDate = normalizeDateParam(date)
   const { startIso, endIso } = kstDayBoundsIso(selectedDate)
 
   const supabase = createServiceClient()
 
-  const [{ data: cardsRaw }, { data: missionsRaw }, { data: booksRaw }] = await Promise.all([
-    supabase
-      .from('today_cards')
-      .select('*')
-      .lte('starts_at', endIso)
-      .gte('ends_at', startIso)
-      .order('sort_order', { ascending: true })
-      .order('starts_at', { ascending: false }),
-    supabase.from('missions').select('id, title').order('created_at', { ascending: false }),
-    supabase.from('item_books').select('id, name').order('name'),
-  ])
+  // 20260911_1454: 생성·수정 폼이 전용 화면(new · [id]/edit)으로 분리되면서, 이 목록 화면은
+  // 카드 테이블 · 캘린더 날짜 탐색만 남았다 — 폼 전용 참조 데이터(missions · itemBooks ·
+  // badgeLabels)는 더 이상 여기서 조회하지 않는다.
+  const { data: cardsRaw } = await supabase
+    .from('today_cards')
+    .select('*')
+    .lte('starts_at', endIso)
+    .gte('ends_at', startIso)
+    .order('sort_order', { ascending: true })
+    .order('starts_at', { ascending: false })
 
   const cards = (cardsRaw ?? []) as TodayCardRow[]
-  const missions = (missionsRaw ?? []) as { id: string; title: string }[]
-  const itemBooks = (booksRaw ?? []) as { id: string; name: string }[]
-
-  // 카드가 이미 참조하는 배지(badge_ids)의 표시용 라벨 조회. 이전에는 배지 2172건 전량을
-  // range-loop로 끌어온 뒤 클라이언트 필터링했지만(PostgREST 1000행 상한 방지, 티켓
-  // 20260825_029), 저작 폼의 배지 검색 UI가 /api/admin/badges/search 기반 컴포넌트로
-  // 바뀌면서(20260826_011 A1·A2) 더 이상 전량이 필요 없다 — 실제로 참조되는 id만
-  // bounded로 조회한다(admin/itembooks/page.tsx의 labelIds 패턴과 동일).
-  const referencedBadgeIds = [...new Set(cards.flatMap((c) => c.badge_ids ?? []))]
-  const { data: badgeLabelsRaw } = referencedBadgeIds.length > 0
-    ? await supabase.from('badges').select('id, name, rarity, type, point_reward').in('id', referencedBadgeIds)
-    : { data: [] as BadgeLabelRow[] }
-  const badgeLabels = (badgeLabelsRaw ?? []) as BadgeLabelRow[]
 
   return (
     <div className="p-8">
@@ -61,16 +47,13 @@ export default async function AdminTodayPage({ searchParams }: AdminTodayPagePro
             홈(투데이) 카드 CMS — 템플릿별 카드 제작 · 예약 발행 · 노출조건 태그
           </p>
         </div>
+        <Link href={`/admin/today/new?date=${selectedDate}`}>
+          <Button>+ 콘텐츠 추가</Button>
+        </Link>
       </div>
       <TodayDateNav selectedDate={selectedDate} />
       <div className="border-t border-border my-4" />
-      <TodayCardList
-        cards={cards}
-        badgeLabels={badgeLabels}
-        missions={missions}
-        itemBooks={itemBooks}
-        selectedDate={selectedDate}
-      />
+      <TodayCardList cards={cards} selectedDate={selectedDate} />
     </div>
   )
 }

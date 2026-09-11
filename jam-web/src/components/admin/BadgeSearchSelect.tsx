@@ -15,6 +15,10 @@ export interface BadgeSearchResult {
   /** 어드민 전용 분류(JAM! 카테고리). 검색 결과에서 제외하지 않고 구분 라벨만 붙인다
    *  (티켓 20260910_2055) */
   admin_category?: string | null
+  /** 투데이 카드 폼의 레일 실시간 미리보기가 배지 썸네일을 그리는 데 쓴다(티켓 20260911_1454).
+   *  /api/admin/badges/search가 항상 내려주지만, 다른 호출부(MissionList 등)는 이 필드 없이
+   *  직접 구성한 목록을 같은 타입으로 써 왔으므로 선택 필드로 둔다. */
+  image_url?: string | null
 }
 
 interface BadgeSearchSelectProps {
