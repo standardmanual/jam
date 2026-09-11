@@ -16,7 +16,6 @@ import {
   IconDeviceGamepad2,
   IconUsers,
   IconShieldExclamation,
-  IconPalette,
   IconUserOff,
   IconPhoto,
   IconPhotoEdit,
@@ -72,8 +71,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: '운영 도구',
     items: [
       { href: '/admin/simulator', label: '시뮬레이터', icon: IconDeviceGamepad2 },
-      { href: '/admin/badge-image', label: '체크인 배지 이미지 생성', icon: IconPhoto },
-      { href: '/admin/activity-badge-image', label: '액티비티 배지 이미지 생성', icon: IconPhotoEdit },
       { href: '/admin/users', label: '유저 조회', icon: IconUsers },
       { href: '/admin/strava-backfill', label: 'Strava 확장 필드 백필', icon: IconDatabaseImport },
       { href: '/admin/abusing', label: '어뷰징 관리', icon: IconShieldExclamation },
@@ -82,7 +79,10 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'design',
     label: '디자인',
-    items: [{ href: '/admin/theme', label: '테마 컬러', icon: IconPalette }],
+    items: [
+      { href: '/admin/badge-image', label: '체크인 배지 이미지 생성', icon: IconPhoto },
+      { href: '/admin/activity-badge-image', label: '액티비티 배지 이미지 생성', icon: IconPhotoEdit },
+    ],
   },
 ]
 
