@@ -120,6 +120,23 @@ export function numericAxisKeysOf(condition: BadgeCondition | null | undefined):
 }
 
 /**
+ * 화면에서 «편집 가능한» 수치 지표 키 — measurable(엔진이 발급 판정에 쓰는 필드) +
+ * usage-metric(role:'meta'인 사용량 지표, 예: `daily_sync_count`)의 합집합이다.
+ *
+ * `numericAxisKeysOf`와 다른 이유: 'JAM! 출석!' 계열처럼 `condition_json`이 meta 지표뿐인
+ * 계열은 `numericAxisKeysOf`로 열을 만들면 조건값 칸 자체가 생기지 않아 값을 볼 수도 고칠
+ * 수도 없다(티켓 20260911_2321). 인라인 편집 표(열 구성·행 값)와 「자리 추가」 초안처럼
+ * **사람이 값을 보고 고치는 화면**에서만 쓴다 — 엔진의 발급 판정 의미(`MEASURABLE_CONDITION_KEYS`)
+ * 자체를 넓히는 것이 아니므로 `numericAxisKeysOf`는 그대로 두고 별도 함수로 둔다.
+ */
+export function editableAxisKeysOf(condition: BadgeCondition | null | undefined): ConditionKey[] {
+  if (!condition) return []
+  return [...MEASURABLE_CONDITION_KEYS, ...USAGE_METRIC_DISPLAY_KEYS].filter(
+    (key) => typeof condition[key] === 'number'
+  )
+}
+
+/**
  * 활동 배지 목록을 계열로 묶는다. **그룹핑 키는 `familyKeyOf`다** — `family_key`가 정본이고
  * 비어 있을 때만 이름 폴백(`#name:`)으로 묶인다.
  */
@@ -314,9 +331,9 @@ export const LEVEL_STEP_RULES = ['arithmetic', 'geometric', 'manual'] as const
 export type LevelStepRule = (typeof LEVEL_STEP_RULES)[number]
 
 export const LEVEL_STEP_RULE_LABEL: Record<LevelStepRule, string> = {
-  arithmetic: '등차 — 직전 값에 증가량을 더해요',
-  geometric: '등비 — 직전 값에 배율을 곱해요',
-  manual: '수동 — 직전 값을 그대로 두고 직접 고쳐요',
+  arithmetic: '일정하게 늘어남 — 이전 값에 정해진 양을 더해요',
+  geometric: '배로 늘어남 — 이전 값에 정해진 배수를 곱해요',
+  manual: '직접 입력 — 이전 값을 그대로 두고 내가 직접 고쳐요',
 }
 
 /** 계열의 다음 자리. 등급형은 다음 등급, 레벨형은 다음 레벨. Mystic까지 다 찼으면 null */
@@ -434,7 +451,7 @@ export function buildNextLevelDraft(
 
   const axes: AxisStep[] = []
   let inferred = false
-  for (const key of numericAxisKeysOf(source.condition_json)) {
+  for (const key of editableAxisKeysOf(source.condition_json)) {
     const before = source.condition_json![key] as number
     const prev = previous?.condition_json?.[key]
     let amount = options.amount

@@ -36,6 +36,7 @@ import {
   LEVEL_STEP_RULES,
   LEVEL_STEP_RULE_LABEL,
   buildNextLevelDraft,
+  editableAxisKeysOf,
   numericAxisKeysOf,
   slotLabelOf,
   type BadgeFamily,
@@ -58,7 +59,7 @@ function makeRows(family: BadgeFamily): Record<string, RowDraft> {
   const rows: Record<string, RowDraft> = {}
   for (const variant of family.variants) {
     const axes: Record<string, string> = {}
-    for (const key of numericAxisKeysOf(variant.condition_json)) {
+    for (const key of editableAxisKeysOf(variant.condition_json)) {
       axes[key] = String(variant.condition_json![key])
     }
     rows[variant.id] = {
@@ -106,8 +107,22 @@ export default function FamilyDetailManager({
   const [rowError, setRowError] = useState<string | null>(null)
   const [rowNotice, setRowNotice] = useState<string | null>(null)
 
-  /** 계열이 쓰는 수치 축(합집합) — 표의 열이 된다 */
+  /** 계열이 쓰는 «편집 가능한» 수치 축(측정 지표 + 사용량 지표 합집합) — 인라인 표의 열이 된다 */
   const axisKeys = useMemo(() => {
+    const keys = new Set<ConditionKey>()
+    for (const variant of family.variants) {
+      for (const key of editableAxisKeysOf(variant.condition_json)) keys.add(key)
+    }
+    return [...keys]
+  }, [family])
+
+  /**
+   * 일괄 재계산이 다룰 수 있는 축 — **측정 지표(measurable)만**이다. 재계산 API
+   * (`/api/admin/badge-families/recalculate`)가 `MEASURABLE_CONDITION_KEYS`로만 축을 검증하므로
+   * `daily_sync_count` 같은 사용량 지표(meta)를 여기 섞으면 「다시 계산할 수 없는 지표입니다」
+   * 에러가 난다 — 인라인 표(`axisKeys`)와 다른 목록을 써야 한다(티켓 20260911_2321).
+   */
+  const recalcAxisKeys = useMemo(() => {
     const keys = new Set<ConditionKey>()
     for (const variant of family.variants) {
       for (const key of numericAxisKeysOf(variant.condition_json)) keys.add(key)
@@ -255,7 +270,7 @@ export default function FamilyDetailManager({
   }
 
   // ── 일괄 재계산 ─────────────────────────────────────────────────────────
-  const [recalcAxis, setRecalcAxis] = useState<ConditionKey | ''>(axisKeys[0] ?? '')
+  const [recalcAxis, setRecalcAxis] = useState<ConditionKey | ''>(recalcAxisKeys[0] ?? '')
   const [recalcRule, setRecalcRule] = useState<LevelStepRule>('arithmetic')
   const [recalcBase, setRecalcBase] = useState('')
   const [recalcAmount, setRecalcAmount] = useState('')
@@ -331,13 +346,13 @@ export default function FamilyDetailManager({
           </span>
           <span>
             <span className="text-muted-foreground">종류</span>{' '}
-            {family.kind === 'leveled' ? '레벨형' : family.kind === 'graded' ? '등급형' : '혼재'}
+            {family.kind === 'leveled' ? '레벨형' : family.kind === 'graded' ? '등급형' : '섞임'}
           </span>
           <span>
-            <span className="text-muted-foreground">최고 자리</span> {family.topLabel}
+            <span className="text-muted-foreground">가장 높은 단계</span> {family.topLabel}
           </span>
           <span>
-            <span className="text-muted-foreground">자리 수</span> {family.variants.length}
+            <span className="text-muted-foreground">단계 수</span> {family.variants.length}
           </span>
           <span>
             <span className="text-muted-foreground">이미지</span> {family.withImage}/{family.variants.length}
@@ -350,7 +365,8 @@ export default function FamilyDetailManager({
             <>
               <Input value={family.familyKey} readOnly disabled className="font-mono" />
               <span className="text-xs text-muted-foreground">
-                2단 교차 게이트가 이 키로 계열을 가리켜요. 배지 이름을 바꿔도 키는 그대로 두므로 여기서는 고칠 수 없어요.
+                다른 미션 조건(2단 교차 게이트)이 이 키로 이 계열을 가리킬 수 있어요. 배지 이름을 바꿔도 이 키는
+                그대로 둬야 해서 여기서는 고칠 수 없어요.
               </span>
             </>
           ) : (
@@ -362,8 +378,8 @@ export default function FamilyDetailManager({
                 </Button>
               </div>
               <span className="text-xs text-amber-700">
-                이 계열에는 아직 계열 키가 없어요. 키가 없으면 배지 이름으로만 묶여 2단 교차 게이트의 대상이 될 수 없어요.
-                발급한 키는 나중에 바꿀 수 없어요.
+                이 계열에는 아직 계열 키가 없어요. 키가 없으면 배지 이름만으로 묶이고, 다른 미션 조건(2단 교차
+                게이트)의 대상으로 지정할 수 없어요. 한 번 발급한 키는 나중에 바꿀 수 없어요.
               </span>
             </>
           )}
@@ -372,7 +388,8 @@ export default function FamilyDetailManager({
 
         {family.kind === 'mixed' && (
           <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
-            이 계열에 등급형과 레벨형이 섞여 있어요. 다음 자리를 어느 쪽으로 만들지 판단할 수 없어 레벨 추가를 쓸 수 없어요.
+            이 계열에 등급형과 레벨형이 섞여 있어요. 다음 단계를 어느 쪽으로 만들지 판단할 수 없어 단계 추가를
+            쓸 수 없어요.
           </div>
         )}
 
@@ -389,7 +406,7 @@ export default function FamilyDetailManager({
       <section className="bg-white border border-border rounded-2xl overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-border">
           <div>
-            <h2 className="font-bold">계열 구성</h2>
+            <h2 className="font-bold">단계별 값 고치기</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               값을 고친 뒤 「변경사항 저장」을 누르면 고친 배지만 저장돼요. 계열 키는 여기서 바꿀 수 없어요.
             </p>
@@ -408,7 +425,7 @@ export default function FamilyDetailManager({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap">자리</TableHead>
+                <TableHead className="whitespace-nowrap">단계</TableHead>
                 <TableHead className="min-w-[160px]">이름</TableHead>
                 <TableHead className="min-w-[220px]">설명</TableHead>
                 {axisKeys.map((key) => (
@@ -472,31 +489,31 @@ export default function FamilyDetailManager({
       {/* 레벨(자리) 추가 */}
       <section className="bg-white border border-border rounded-2xl p-5 space-y-4">
         <div>
-          <h2 className="font-bold">자리 추가</h2>
+          <h2 className="font-bold">단계 추가</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            가장 높은 자리의 조건 축·이미지·설명을 물려받아 다음 자리를 만들어요. 증가 폭을 비워 두면 직전 두 자리에서
-            유추해요.
+            가장 높은 단계의 조건값·이미지·설명을 그대로 물려받아 다음 단계를 만들어요. 늘어나는 양을 비워 두면
+            이전 두 단계의 값을 보고 자동으로 계산해요.
           </p>
         </div>
 
         {!draft ? (
           <p className="text-sm text-muted-foreground">
-            이 계열에는 자리를 더 만들 수 없어요. (Mystic까지 채워졌거나 등급형·레벨형이 섞여 있어요)
+            이 계열에는 단계를 더 만들 수 없어요. (Mystic까지 채워졌거나 등급형·레벨형이 섞여 있어요)
           </p>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {ruleSelect(addRule, setAddRule, '증가 규칙')}
+              {ruleSelect(addRule, setAddRule, '값이 느는 방식')}
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm text-foreground">
-                  {addRule === 'geometric' ? '배율' : '증가량'}
+                  {addRule === 'geometric' ? '배수' : '늘어나는 양'}
                 </span>
                 <Input
                   type="number"
                   step="any"
                   value={addAmount}
                   onChange={(e) => setAddAmount(e.target.value)}
-                  placeholder={draft.inferred ? '비우면 직전 두 자리에서 유추' : '예: 10'}
+                  placeholder={draft.inferred ? '비우면 이전 두 단계 값으로 자동 계산' : '예: 10'}
                   disabled={addRule === 'manual'}
                 />
               </label>
@@ -537,7 +554,7 @@ export default function FamilyDetailManager({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>상속한 조건 축</TableHead>
+                      <TableHead>물려받은 조건값</TableHead>
                       <TableHead className="text-right">{family.topLabel}</TableHead>
                       <TableHead className="text-right">{draft.slot.label}</TableHead>
                     </TableRow>
@@ -567,7 +584,8 @@ export default function FamilyDetailManager({
 
             {!draft.family_key && (
               <p className="text-xs text-amber-700">
-                계열 키가 없어 새 배지도 키 없이 만들어져요. 먼저 위에서 계열 키를 발급하면 새 자리도 같은 계열로 묶여요.
+                계열 키가 없어 새 배지도 키 없이 만들어져요. 먼저 위에서 계열 키를 발급하면 새 단계도 같은 계열로
+                묶여요.
               </p>
             )}
             {createError && <p className="text-sm text-red-600">{createError}</p>}
@@ -578,25 +596,26 @@ export default function FamilyDetailManager({
       {/* 일괄 재계산 */}
       <section className="bg-white border border-border rounded-2xl p-5 space-y-4">
         <div>
-          <h2 className="font-bold">일괄 재계산</h2>
+          <h2 className="font-bold">여러 단계 값 한번에 바꾸기</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            지표 하나의 임계값 공식을 바꿔 계열 전체를 다시 계산해요. <strong>변경 전후를 확인한 뒤에만 적용돼요.</strong>
+            조건값 하나를 골라 계산 방법을 바꾸면 계열에 속한 모든 단계의 값이 한 번에 새로 계산돼요.{' '}
+            <strong>바뀔 내용을 먼저 확인한 뒤에만 실제로 적용돼요.</strong>
           </p>
         </div>
 
-        {axisKeys.length === 0 ? (
-          <p className="text-sm text-muted-foreground">이 계열에는 다시 계산할 수치 지표가 없어요.</p>
+        {recalcAxisKeys.length === 0 ? (
+          <p className="text-sm text-muted-foreground">이 계열에는 다시 계산할 수 있는 조건값이 없어요.</p>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm text-foreground">지표</span>
+                <span className="text-sm text-foreground">조건값</span>
                 <Select value={recalcAxis} onValueChange={(v) => { setRecalcAxis(v as ConditionKey); setPlan(null) }}>
-                  <SelectTrigger aria-label="지표">
+                  <SelectTrigger aria-label="조건값">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent container={themeContainer ?? undefined}>
-                    {axisKeys.map((key) => (
+                    {recalcAxisKeys.map((key) => (
                       <SelectItem key={key} value={key}>
                         {axisLabel(key)}
                       </SelectItem>
@@ -604,9 +623,9 @@ export default function FamilyDetailManager({
                   </SelectContent>
                 </Select>
               </label>
-              {ruleSelect(recalcRule, (v) => { setRecalcRule(v); setPlan(null) }, '증가 규칙')}
+              {ruleSelect(recalcRule, (v) => { setRecalcRule(v); setPlan(null) }, '값이 느는 방식')}
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm text-foreground">첫 자리 값</span>
+                <span className="text-sm text-foreground">첫 단계 값</span>
                 <Input
                   type="number"
                   step="any"
@@ -617,7 +636,7 @@ export default function FamilyDetailManager({
                 />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm text-foreground">{recalcRule === 'geometric' ? '배율' : '증가량'}</span>
+                <span className="text-sm text-foreground">{recalcRule === 'geometric' ? '배수' : '늘어나는 양'}</span>
                 <Input
                   type="number"
                   step="any"
@@ -654,7 +673,7 @@ export default function FamilyDetailManager({
 
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" onClick={() => callRecalculate()} disabled={recalcBusy}>
-                {recalcBusy && !plan ? '계산 중...' : '변경 전후 확인'}
+                {recalcBusy && !plan ? '계산 중...' : '바뀔 값 미리 보기'}
               </Button>
               {plan && (
                 <>
@@ -676,7 +695,7 @@ export default function FamilyDetailManager({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>자리</TableHead>
+                      <TableHead>단계</TableHead>
                       <TableHead className="text-right">지금 ({plan.axisLabel})</TableHead>
                       <TableHead className="text-right">바꾼 뒤</TableHead>
                     </TableRow>

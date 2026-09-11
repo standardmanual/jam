@@ -29,7 +29,7 @@ import { pickSingleQueryParams, type SearchParamsPromise } from '@/lib/searchPar
 const FAMILY_KIND_LABEL = {
   graded: '등급형',
   leveled: '레벨형',
-  mixed: '혼재',
+  mixed: '섞임',
 } as const
 
 /**
@@ -72,8 +72,9 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">계열 관리</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          같은 계열의 배지(Lv.1~N 또는 Common~Mystic)를 한 화면에서 보고 고쳐요. 계열은
-          계열 키(family_key)로 묶이고, 키가 없는 배지만 이름으로 묶여요.
+          레벨(Lv.1~N)이나 등급(Common~Mystic)으로 단계가 나뉘는 같은 시리즈의 배지를 한 화면에서
+          보고 고쳐요. 이 시리즈를 &apos;계열&apos;이라고 불러요. 계열 키(family_key)라는 값으로
+          배지들을 하나의 계열로 묶고, 계열 키가 없는 배지는 이름이 같으면 자동으로 같은 계열로 봐요.
         </p>
       </div>
 
@@ -100,7 +101,7 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
         )}
         {keyless > 0 && (
           <span className="ml-2 text-amber-700">
-            · 계열 키가 없는 계열 {keyless}개 (교차 게이트 대상이 될 수 없어요)
+            · 계열 키가 없는 계열 {keyless}개 (다른 미션 조건이 이 계열을 지정할 수 없어요)
           </span>
         )}
       </div>
@@ -112,9 +113,9 @@ export default async function AdminBadgeFamiliesPage({ searchParams }: AdminBadg
               <TableHead>종목</TableHead>
               <TableHead>계열</TableHead>
               <TableHead>종류</TableHead>
-              <TableHead>최고 자리</TableHead>
-              <TableHead className="text-right">자리 수</TableHead>
-              <TableHead>사용 조건 지표</TableHead>
+              <TableHead>가장 높은 단계</TableHead>
+              <TableHead className="text-right">단계 수</TableHead>
+              <TableHead>조건값</TableHead>
               <TableHead className="text-right">이미지</TableHead>
             </TableRow>
           </TableHeader>

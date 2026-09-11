@@ -74,7 +74,7 @@ export default function BadgeFamiliesFilterBar({
       />
 
       <DataTableFacetedFilter
-        title="사용 조건 지표"
+        title="조건값"
         options={conditionOptions}
         selected={searchParams.get('condition_key') ? [searchParams.get('condition_key') as string] : []}
         onChange={(values) => update({ condition_key: values[0] ?? null })}
