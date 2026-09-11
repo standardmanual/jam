@@ -413,7 +413,8 @@ const SEASON_FORM_OPTIONS = [
  * (`ADMIN_ACTIVITY_TYPE_LABEL`, 티켓 20260911_0901 — 예전에는 원문 슬러그를 그대로 노출했다).
  * 값(value)은 `ActivityType` 그대로라 저장 결과는 바뀌지 않는다.
  */
-const ACTIVITY_TYPE_FORM_OPTIONS = [
+/** 미션 조건 폼(`missionConditionFields.ts`)도 같은 선택지를 쓴다 — 종목 값·라벨의 단일 출처 */
+export const ACTIVITY_TYPE_FORM_OPTIONS = [
   { value: 'running', label: '러닝' },
   { value: 'cycling', label: '사이클' },
   { value: 'trail_running', label: '트레일러닝' },

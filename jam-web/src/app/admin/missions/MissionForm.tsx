@@ -14,13 +14,25 @@ import BadgeMultiSearchSelect from '@/components/admin/BadgeMultiSearchSelect'
 // mission_type='engine_condition'일 때만 붙인다 — 나머지 5종은 checker.ts의 boolean-only
 // 판정 경로라 사유·실제값 대 필요값 표시가 불가능하다.
 import ConditionSimulationPanel from '@/components/admin/ConditionSimulationPanel'
+// 달성 조건 필드 빌더 — 원시 JSON textarea 대체 (티켓 20260911_2118)
+import MissionConditionSection from './MissionConditionSection'
+import {
+  buildMissionConditionJson,
+  missionConditionFieldsFrom,
+  unsupportedMissionConditionKeys,
+  type MissionConditionFormFields,
+} from './missionConditionFields'
 
 interface Props {
   /** 수정 대상 — 없으면 생성 모드 */
   mission?: MissionRow
-  /** 이미 미션에 연결된(reward_badge_ids/gated_badge_id) 배지의 이름 등 표시용 라벨 —
-   *  전체 배지 프리로드가 아니라 실제로 참조되는 id만 bounded 조회한 결과 (20260826_011 A2). */
+  /** 이미 미션에 연결된(reward_badge_ids/gated_badge_id/condition_json.badge_id) 배지의 이름 등
+   *  표시용 라벨 — 전체 배지 프리로드가 아니라 실제로 참조되는 id만 bounded 조회한 결과
+   *  (20260826_011 A2). */
   badgeLabels: BadgeSearchResult[]
+  /** 체크인 타입(condition_json.poi_id)의 표시용 지점 이름 — 없으면 미지정(생성 모드 등)
+   *  (티켓 20260911_2118) */
+  poiLabel?: string
 }
 
 function formatBadgeLabel(b?: BadgeSearchResult): string {
@@ -39,7 +51,6 @@ const emptyForm = {
   title: '',
   description: '',
   mission_type: 'distance' as string,
-  condition_json: '{"distance_km": 50}',
   reward_badge_ids: [] as string[],
   reward_points: 100,
   status_display_type: 'ranking' as string,
@@ -64,7 +75,6 @@ function formFromMission(m: MissionRow): typeof emptyForm {
     title: m.title,
     description: m.description ?? '',
     mission_type: m.mission_type,
-    condition_json: JSON.stringify(m.condition_json),
     reward_badge_ids: m.reward_badge_ids ?? [],
     reward_points: m.reward_points ?? 0,
     status_display_type: m.status_display_type,
@@ -83,7 +93,7 @@ function formFromMission(m: MissionRow): typeof emptyForm {
  * `/admin/missions/new`, `/admin/missions/[id]` 별도 페이지로 이동해 연다. 폼 자체(입력
  * 필드·검증 로직)는 기존 `MissionList.tsx`에서 그대로 옮겨왔다.
  */
-export default function MissionForm({ mission, badgeLabels }: Props) {
+export default function MissionForm({ mission, badgeLabels, poiLabel }: Props) {
   const editingId = mission?.id ?? null
   const [form, setForm] = useState(mission ? formFromMission(mission) : emptyForm)
   const [saving, setSaving] = useState(false)
@@ -91,30 +101,30 @@ export default function MissionForm({ mission, badgeLabels }: Props) {
   const [badgeLabelCache, setBadgeLabelCache] = useState(
     () => new Map(badgeLabels.map((b) => [b.id, b]))
   )
+  // 달성 조건 필드 빌더 state (티켓 20260911_2118) — 원본 condition_json은 engine_condition의
+  // time_band_counts(이 폼이 다루지 않는 필드) 보존에 계속 쓴다.
+  const initCondition = mission?.condition_json ?? null
+  const [conditionFields, setConditionFields] = useState<MissionConditionFormFields>(() =>
+    missionConditionFieldsFrom(initCondition)
+  )
   const router = useRouter()
+
+  const setConditionField = (field: keyof MissionConditionFormFields, value: string | boolean) => {
+    setConditionFields((f) => ({ ...f, [field]: value }))
+  }
+
+  // 저장될 condition_json — 필드 빌더가 채운 값만으로 조립한다(폼은 값을 만들지 않는다).
+  const missionConditionPreview = buildMissionConditionJson(
+    form.mission_type as MissionType,
+    conditionFields,
+    initCondition
+  )
 
   // 저장을 막지는 않지만 달성 판정에 아무 영향도 주지 않는 조건 필드 고지 (티켓 20260905_1141).
   // 서버 검증과 같은 순수 함수를 그대로 써서 판정 기준이 갈리지 않게 한다.
-  const conditionWarning = (() => {
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(form.condition_json)
-    } catch {
-      return null
-    }
-    return checkMissionCondition(form.mission_type as MissionType, parsed).warning
-  })()
-
-  // 판정 시뮬레이션에 넘길 파싱된 조건값 — mission_type='engine_condition'일 때만 쓴다.
-  // JSON이 아직 유효하지 않으면(입력 중) null을 넘겨 조건 없음으로 취급한다(저장 자체는
-  // conditionError가 이미 막는다).
-  const missionConditionPreview = (() => {
-    try {
-      return JSON.parse(form.condition_json)
-    } catch {
-      return null
-    }
-  })()
+  const conditionWarning = missionConditionPreview
+    ? checkMissionCondition(form.mission_type as MissionType, missionConditionPreview).warning
+    : null
 
   const rewardBadgeChips = form.reward_badge_ids
     .map((id) => badgeLabelCache.get(id))
@@ -138,12 +148,6 @@ export default function MissionForm({ mission, badgeLabels }: Props) {
   }
 
   async function handleSave() {
-    try {
-      JSON.parse(form.condition_json)
-    } catch {
-      setConditionError('조건 JSON 형식이 올바르지 않아요.')
-      return
-    }
     setConditionError('')
     setSaving(true)
 
@@ -151,7 +155,7 @@ export default function MissionForm({ mission, badgeLabels }: Props) {
       title: form.title,
       description: form.description || null,
       mission_type: form.mission_type,
-      condition_json: JSON.parse(form.condition_json),
+      condition_json: missionConditionPreview,
       reward_badge_ids: form.reward_badge_ids,
       reward_points: missionPoints > 0 ? missionPoints : null,
       status_display_type: form.status_display_type,
@@ -234,13 +238,19 @@ export default function MissionForm({ mission, badgeLabels }: Props) {
             className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm" placeholder="상위 N명 (본인은 항상 표시)" />
         </div>
 
-        <div className="col-span-2">
-          <label className="text-xs text-muted-foreground mb-1 block">조건 JSON</label>
-          <textarea value={form.condition_json} onChange={(e) => setForm((f) => ({ ...f, condition_json: e.target.value }))}
-            rows={2} className="w-full bg-white border border-border rounded-xl px-3 py-2 text-sm font-mono" />
+        <div className="col-span-2 border border-border rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-bold text-foreground">달성 조건</p>
+          <MissionConditionSection
+            missionType={form.mission_type as MissionType}
+            fields={conditionFields}
+            setField={setConditionField}
+            conditionPreview={missionConditionPreview}
+            unsupportedKeys={unsupportedMissionConditionKeys(initCondition)}
+            badgeIdInitialLabel={formatBadgeLabel(badgeLabelCache.get(conditionFields.badgeId))}
+            poiIdInitialLabel={poiLabel}
+          />
           {conditionError && <p className="text-red-600 text-xs mt-1">{conditionError}</p>}
           {!conditionError && conditionWarning && <p className="text-amber-600 text-xs mt-1">{conditionWarning}</p>}
-          <p className="text-muted-foreground text-xs mt-1">예: {`{"distance_km": 50, "activity_type": "cycling"}`}</p>
         </div>
 
         {/* 판정 시뮬레이션 — mission_type='engine_condition' 전용 (티켓 20260908_1632).
