@@ -135,7 +135,8 @@ item 타입은 스트라바 데이터가 필요 없어 이 API를 호출하지 �
 | 404 | `not_earned` | 조회 대상 유저가 아직 획득하지 않음 |
 | 404 | `no_strava_trigger` | 획득했으나 연결된 스트라바 활동/거리 스냅샷이 없음(레거시·어드민 발급) |
 | 404 | `strava_disconnected` | 스트라바 연동 해제 또는 토큰 갱신 실패 |
-| 502 | `strava_fetch_failed` | 스트라바 API 조회 실패(레이트리밋·5xx 등) |
+| 404 | `strava_activity_not_found` | 트리거 스트라바 활동이 삭제되었거나 비공개로 전환됨 — 재시도해도 동일하게 실패하므로 `strava_fetch_failed`와 구분한다(티켓 20260911_1156) |
+| 502 | `strava_fetch_failed` | 스트라바 API 조회 실패(레이트리밋·5xx 등) — 일시적 오류로, 재시도 시 성공할 수 있음 |
 
 ## 9. 범위 밖 (이번 PRD에 포함하지 않음)
 
