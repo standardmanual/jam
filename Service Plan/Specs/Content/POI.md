@@ -58,14 +58,23 @@ tourist_attraction/stadium/school/park/hospital/pharmacy/food) 전부 다시 `tr
 해결되지 않았고 재발 가능성이 있다** — 정책만 되돌린 상태다. 상세 실측·검토 근거는
 [[20260907_1242]]·[[20260907_1811]]·[[20260911_1310]] 참고.
 
-**검증 게이트·검토 큐 동작**: `jam-web/src/app/api/drops/route.ts`의
-`searchAndPersistCategories`(119~140행)가 신규 수집 POI를 카테고리별
-`requires_review`(검증 게이트 적용 여부)·`display_on_map`(지도 노출 여부) 설정에 따라
-`pending_review`·`is_active` 값으로 저장한다. 검토 큐에 쌓인 항목은 `/admin/poi/review`에서
-이름을 눌러 `/admin/poi/[id]` 편집 화면으로 이동해 이름·좌표·반경·카테고리를 확인·수정한 뒤,
-활성화 스위치를 켜고 저장해야 지도·드랍에 노출된다(저장 시 `is_active=true`이면 서버가
-`pending_review`도 함께 `false`로 자동 해제한다). 검토 큐의 "승인" 버튼은 `pending_review`만
-해제할 뿐 노출 여부는 바꾸지 않는다 — 노출(활성화)은 편집 화면에서만 명시적으로 이뤄진다.
+**검증 게이트·검토 큐 동작 (2026-09-11 저녁 버그 수정, [[20260911_1343]])**:
+`jam-web/src/app/api/drops/route.ts`의 `searchAndPersistCategories`가 신규 수집 POI를
+저장할 때 `pending_review=true`(검토대기)이면 카테고리의 `display_on_map` 값과 무관하게
+항상 `is_active=false`로 저장한다 — 검토를 거치지 않은 POI가 지도에 노출되지 않도록 하는
+불변식이다. `pending_review=false`(자동승인, 또는 애초에 `requires_review`가 꺼진
+카테고리)일 때만 카테고리별 `display_on_map` 값을 그대로 `is_active`에 반영한다.
+(수정 전에는 `is_active`가 `pending_review`와 무관하게 `display_on_map`만 따라, 검토대기
+상태인데도 `display_on_map=true`인 카테고리(government/convenience/nature/school/
+stadium/tourist_attraction)는 지도에 즉시 노출되는 버그가 있었다.)
+
+검토 큐에 쌓인 항목은 두 경로로 노출시킬 수 있다:
+- `/admin/poi/review`의 "승인" 버튼 — `pending_review`를 해제하면서, 배정될 카테고리의
+  `display_on_map=true`이면 `is_active`도 함께 `true`로 활성화한다(false인 카테고리는
+  원래도 비노출 정책이므로 `is_active=false` 유지).
+- `/admin/poi/review`에서 이름을 눌러 `/admin/poi/[id]` 편집 화면으로 이동해 이름·좌표·
+  반경·카테고리를 확인·수정한 뒤 활성화 스위치를 켜고 저장하는 방법(저장 시
+  `is_active=true`이면 서버가 `pending_review`도 함께 `false`로 자동 해제한다).
 
 **수동등록 흐름은 그대로 병행 유지된다**: `/admin/poi/new`에서 등록하면 클라이언트 입력과
 무관하게 항상 **임시등록(비활성 `is_active=false` · 검토대기 `pending_review=true`)** 으로

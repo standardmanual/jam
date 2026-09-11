@@ -123,6 +123,11 @@ async function searchAndPersistCategories(
   // 20260907_1243: 카테고리별 display_on_map을 그대로 is_active에 반영한다 — false인
   // 카테고리(예: 병원/약국)는 자동수집은 계속하되 지도/목록에는 노출하지 않는다. 이 필드가
   // 없던 이전에는 전부 무조건 활성(true)으로 저장됐다.
+  //
+  // 20260911_1343: 단, pendingReview=true(검증 게이트 판정 결과 검토대기)이면 display_on_map
+  // 값과 무관하게 is_active=false를 강제한다 — 검토 전 POI가 지도에 즉시 노출되던 버그 수정.
+  // display_on_map을 따르는 건 게이트를 통과(자동승인)했거나 애초에 게이트가 꺼진
+  // (requiresReview=false) 카테고리뿐이다.
   const displayOnMapByCategory = new Map(toSearch.map((cfg) => [cfg.category, cfg.displayOnMap]))
 
   const inserts = gated.map(({ poi: p, pendingReview }) => ({
@@ -136,7 +141,7 @@ async function searchAndPersistCategories(
     naver_keyword: p.naverKeyword || null,
     poi_tier: 2,
     pending_review: pendingReview,
-    is_active: displayOnMapByCategory.get(p.category) ?? true,
+    is_active: pendingReview ? false : (displayOnMapByCategory.get(p.category) ?? true),
   }))
   const poiInsertQuery = service.from('poi') as unknown as PoiInsertWithGateColumns
   const { data: inserted, error: insertError } = await poiInsertQuery
