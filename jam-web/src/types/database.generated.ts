@@ -1511,6 +1511,69 @@ export type Database = {
           },
         ]
       }
+      ranking_modes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          id: string
+          metric_badge_type: string | null
+          metric_field_key: string | null
+          metric_type: string
+          starts_at: string
+          target_mission_id: string | null
+          target_type: string
+          target_user_ids: string[]
+          title: string
+          visible_rank_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          metric_badge_type?: string | null
+          metric_field_key?: string | null
+          metric_type: string
+          starts_at: string
+          target_mission_id?: string | null
+          target_type: string
+          target_user_ids?: string[]
+          title: string
+          visible_rank_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          metric_badge_type?: string | null
+          metric_field_key?: string | null
+          metric_type?: string
+          starts_at?: string
+          target_mission_id?: string | null
+          target_type?: string
+          target_user_ids?: string[]
+          title?: string
+          visible_rank_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranking_modes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_modes_target_mission_id_fkey"
+            columns: ["target_mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       strava_activities: {
         Row: {
           created_at: string
@@ -1646,6 +1709,7 @@ export type Database = {
           item_book_id: string | null
           layout_type: string
           mission_id: string | null
+          ranking_mode_id: string | null
           region_label: string | null
           sort_order: number
           starts_at: string
@@ -1667,6 +1731,7 @@ export type Database = {
           item_book_id?: string | null
           layout_type?: string
           mission_id?: string | null
+          ranking_mode_id?: string | null
           region_label?: string | null
           sort_order?: number
           starts_at: string
@@ -1688,6 +1753,7 @@ export type Database = {
           item_book_id?: string | null
           layout_type?: string
           mission_id?: string | null
+          ranking_mode_id?: string | null
           region_label?: string | null
           sort_order?: number
           starts_at?: string
@@ -1716,6 +1782,13 @@ export type Database = {
             columns: ["mission_id"]
             isOneToOne: false
             referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "today_cards_ranking_mode_id_fkey"
+            columns: ["ranking_mode_id"]
+            isOneToOne: false
+            referencedRelation: "ranking_modes"
             referencedColumns: ["id"]
           },
         ]

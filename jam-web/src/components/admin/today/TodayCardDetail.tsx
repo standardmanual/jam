@@ -57,6 +57,8 @@ interface TodayCardDetailProps {
   linkedBadges: TodayCardDetailBadge[]
   missionTitle?: string
   itemBookName?: string
+  /** ranking_board 카드가 연결한 랭킹모드 제목(티켓 20260911_1440) */
+  rankingModeTitle?: string
   /** 저장·취소 후 돌아갈 목록 날짜('YYYY-MM-DD') — 캘린더뷰 맥락 보존(20260902_1028) */
   returnDate: string
 }
@@ -83,7 +85,7 @@ function formatYmdHm(iso: string): string {
   return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export default function TodayCardDetail({ card, linkedBadges, missionTitle, itemBookName, returnDate }: TodayCardDetailProps) {
+export default function TodayCardDetail({ card, linkedBadges, missionTitle, itemBookName, rankingModeTitle, returnDate }: TodayCardDetailProps) {
   const router = useRouter()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -129,7 +131,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
   }
 
   const fields = todayTemplateFields(card.template_type)
-  const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body)
+  const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode)
   const sections = visibleTodaySections(card.template_type)
   const statuses = computeTodaySectionStatuses({
     templateType: card.template_type,
@@ -139,6 +141,7 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
     itemBookId: card.item_book_id,
     regionLabel: card.region_label ?? '',
     bodyMarkdown: card.body_markdown ?? '',
+    rankingModeId: card.ranking_mode_id,
     exposureTagCount: card.exposure_tags?.length ?? 0,
     hasStartsAt: Boolean(card.starts_at),
     hasEndsAt: Boolean(card.ends_at),
@@ -198,6 +201,11 @@ export default function TodayCardDetail({ card, linkedBadges, missionTitle, item
         {fields.body && (
           <ReadOnlyItem label="본문" span={3}>
             {card.body_markdown ? <span className="whitespace-pre-line">{card.body_markdown}</span> : <Empty />}
+          </ReadOnlyItem>
+        )}
+        {fields.rankingMode && (
+          <ReadOnlyItem label="랭킹모드">
+            {rankingModeTitle ?? (card.ranking_mode_id ? '(찾을 수 없음)' : <Empty />)}
           </ReadOnlyItem>
         )}
       </ReadOnlyGrid>

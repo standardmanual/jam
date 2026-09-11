@@ -12,7 +12,7 @@
  * 구성 로직은 예전 `TodayCardList.tsx`에서 그대로 옮겼다 — 값 자체는 바뀌지 않았다. 템플릿
  * 타입 → 필요한 섹션/필드 매핑은 `lib/admin/today-sections.ts`로 옮겼다.
  */
-import { Fragment, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/admin/ui/select'
 import { Button } from '@/components/admin/ui/button'
@@ -70,11 +70,19 @@ interface ItemBookOption {
   id: string
   name: string
 }
+interface RankingModeOption {
+  id: string
+  title: string
+}
 
 interface TodayCardFormProps {
   card?: TodayCardRow
   missions: MissionOption[]
   itemBooks: ItemBookOption[]
+  /** ranking_board 카드가 연결할 수 있는 랭킹모드 전체 목록(티켓 20260911_1440) — missions·itemBooks와
+   *  같은 방식(전체 목록을 그대로 넘김, 배지처럼 검색 API를 쓰지 않는다 — 운영 큐레이션 목적이라
+   *  개수가 적을 것으로 본다). */
+  rankingModes: RankingModeOption[]
   /** 이미 카드에 연결된(badge_ids) 배지의 표시용 라벨 — 실제로 참조되는 id만 bounded 조회한
    *  결과다(수정 화면 전용, 20260826_011 A2와 동일 패턴). 생성 화면은 빈 배열로 시작한다. */
   badgeLabels: BadgeSearchResult[]
@@ -104,7 +112,7 @@ const FOCUS_ID = {
   endsAt: 'today-card-ends-at',
 } as const
 
-export default function TodayCardForm({ card, missions, itemBooks, badgeLabels, initialDate, returnDate, header }: TodayCardFormProps) {
+export default function TodayCardForm({ card, missions, itemBooks, rankingModes, badgeLabels, initialDate, returnDate, header }: TodayCardFormProps) {
   const router = useRouter()
   const isEdit = !!card
 
@@ -128,6 +136,31 @@ export default function TodayCardForm({ card, missions, itemBooks, badgeLabels, 
   const [itemBookId, setItemBookId] = useState(card?.item_book_id ?? '')
   const [regionLabel, setRegionLabel] = useState(card?.region_label ?? '')
   const [bodyMarkdown, setBodyMarkdown] = useState(card?.body_markdown ?? '')
+  const [rankingModeId, setRankingModeId] = useState(card?.ranking_mode_id ?? '')
+  // 레일 실시간 미리보기(User Story 6)용 — 랭킹모드가 실제로 계산하는 순위 목록을 그 랭킹모드가
+  // 바뀔 때만 가져온다(다른 필드 입력마다 다시 불러오지 않는다). 랭킹모드는 이미 저장돼 있어야
+  // 카드에 연결할 수 있으므로(User Story 4) id로 바로 조회할 수 있다 — targetHref.ts 주석 참고.
+  const [previewRanking, setPreviewRanking] = useState<TodayCardWithHref['resolved_ranking']>(null)
+  // 이펙트 본문에서 동기 setState를 피하기 위해 조회 자체를 별도 async 함수로 분리하고 그
+  // 안에서만 상태를 갱신한다(TodayPreviewModal.tsx·UserGrantForm.tsx와 동일 패턴, react-hooks/set-state-in-effect).
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      if (!rankingModeId) {
+        setPreviewRanking(null)
+        return
+      }
+      try {
+        const res = await fetch(`/api/admin/ranking-modes/${rankingModeId}/preview`)
+        const data = res.ok ? await res.json() : null
+        if (alive) setPreviewRanking(data)
+      } catch {
+        if (alive) setPreviewRanking(null)
+      }
+    }
+    load()
+    return () => { alive = false }
+  }, [rankingModeId])
   const [targetHref, setTargetHref] = useState(card?.target_href ?? '')
   const [exposureTags, setExposureTags] = useState<string[]>(card?.exposure_tags ?? ['all'])
   const [startsAt, setStartsAt] = useState(() => {
@@ -146,7 +179,7 @@ export default function TodayCardForm({ card, missions, itemBooks, badgeLabels, 
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
 
   const fields = todayTemplateFields(templateType)
-  const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body)
+  const hasRef = Boolean(fields.badges || fields.mission || fields.itemBook || fields.region || fields.body || fields.rankingMode)
   const selectedBadgeChips = badgeIds.map((id) => badgeLabelCache.get(id)).filter((b): b is BadgeSearchResult => !!b)
 
   function changeTemplateType(next: TodayCardTemplateType) {
@@ -214,6 +247,7 @@ export default function TodayCardForm({ card, missions, itemBooks, badgeLabels, 
         itemBookId,
         regionLabel,
         bodyMarkdown,
+        rankingModeId,
         targetHref,
         exposureTags,
         startsAt,
@@ -268,6 +302,7 @@ export default function TodayCardForm({ card, missions, itemBooks, badgeLabels, 
     itemBookId: itemBookId || null,
     regionLabel,
     bodyMarkdown,
+    rankingModeId: rankingModeId || null,
     exposureTagCount: exposureTags.length,
     hasStartsAt: Boolean(startsAt),
     hasEndsAt: Boolean(endsAt),
@@ -299,6 +334,7 @@ export default function TodayCardForm({ card, missions, itemBooks, badgeLabels, 
     item_book_id: itemBookId || null,
     region_label: regionLabel.trim() || null,
     body_markdown: bodyMarkdown || null,
+    ranking_mode_id: rankingModeId || null,
     target_href: targetHref.trim() || null,
     exposure_tags: exposureTags,
     starts_at: startsAt ? new Date(startsAt).toISOString() : new Date().toISOString(),
@@ -310,6 +346,9 @@ export default function TodayCardForm({ card, missions, itemBooks, badgeLabels, 
   }
   const previewCard: TodayCardWithHref = {
     ...previewCardBase,
+    // 랭킹모드의 대상이 미션 참가자일 때 미션 링크까지 정확히 재현하려면 랭킹모드 전체 행이
+    // 필요한데, 이 폼은 목록용 { id, title }만 들고 있다 — 레일 미리보기는 카드 모양(제목·
+    // 순위 목록) 확인이 목적이라 이동 경로 정확도는 범위 밖으로 남겨둔다(비대화형 미리보기).
     resolved_href: resolveTargetHref(previewCardBase),
     resolved_badges: selectedBadgeChips.map((b) => ({
       id: b.id,
@@ -318,6 +357,7 @@ export default function TodayCardForm({ card, missions, itemBooks, badgeLabels, 
       rarity: b.rarity ?? null,
       earned: true,
     })),
+    resolved_ranking: previewRanking,
   }
 
   // ── 섹션 본문 ─────────────────────────────────────────────────────────
@@ -480,6 +520,32 @@ export default function TodayCardForm({ card, missions, itemBooks, badgeLabels, 
             aria-describedby="today-card-body-help"
           />
           <FieldMessage id="today-card-body-help">빈 줄로 문단을 구분해요.</FieldMessage>
+        </div>
+      )}
+
+      {fields.rankingMode && (
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <FieldLabel htmlFor="today-card-ranking-mode">랭킹모드</FieldLabel>
+          <Select value={rankingModeId || NONE_VALUE} onValueChange={(v) => setRankingModeId(v === NONE_VALUE ? '' : v)}>
+            <SelectTrigger id="today-card-ranking-mode" aria-describedby="today-card-ranking-mode-help">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent container={themeContainer ?? undefined}>
+              <SelectItem value={NONE_VALUE}>없음</SelectItem>
+              {rankingModes.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FieldMessage id="today-card-ranking-mode-help">
+            이 카드가 보여줄 순위예요. 랭킹모드가 없다면{' '}
+            <a href="/admin/ranking-modes/new" target="_blank" rel="noreferrer" className="underline">
+              먼저 만들어 주세요
+            </a>
+            .
+          </FieldMessage>
         </div>
       )}
     </TodaySectionCard>

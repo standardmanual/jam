@@ -67,6 +67,7 @@ function makeCard(partial: Partial<TodayCardRow>): TodayCardRow {
     is_active: true,
     created_at: '2026-07-26T00:00:00Z',
     created_by: null,
+    ranking_mode_id: null,
     ...partial,
   }
 }
@@ -102,6 +103,18 @@ check('resolveTargetHref: drop_alert → /drops', () => {
 check('resolveTargetHref: progress_nudge 배지없고 미션있으면 → /missions/{id}', () => {
   const card = makeCard({ template_type: 'progress_nudge', mission_id: 'm9' })
   assert.equal(resolveTargetHref(card), '/missions/m9')
+})
+check('resolveTargetHref: ranking_board 명시적 target_href 우선(티켓 20260911_1440)', () => {
+  const card = makeCard({ template_type: 'ranking_board', ranking_mode_id: 'rm1', target_href: '/custom' })
+  assert.equal(resolveTargetHref(card), '/custom')
+})
+check('resolveTargetHref: ranking_board 랭킹모드가 미션 참가자 대상이면 → /missions/{id}/status', () => {
+  const card = makeCard({ template_type: 'ranking_board', ranking_mode_id: 'rm1' })
+  assert.equal(resolveTargetHref(card, { rankingModeTargetMissionId: 'm1' }), '/missions/m1/status')
+})
+check('resolveTargetHref: ranking_board 수동 지정 유저 대상(미션 컨텍스트 없음) → /missions', () => {
+  const card = makeCard({ template_type: 'ranking_board', ranking_mode_id: 'rm1' })
+  assert.equal(resolveTargetHref(card), '/missions')
 })
 
 check('resolveFriendActivityHref: 1명 + username 있음 → 프로필 href', () => {

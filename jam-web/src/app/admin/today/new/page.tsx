@@ -18,12 +18,14 @@ interface NewTodayCardPageProps {
 export default async function NewTodayCardPage({ searchParams }: NewTodayCardPageProps) {
   const date = normalizeDateParam(singleQueryParam((await searchParams).date))
   const supabase = createServiceClient()
-  const [{ data: missionsRaw }, { data: booksRaw }] = await Promise.all([
+  const [{ data: missionsRaw }, { data: booksRaw }, { data: rankingModesRaw }] = await Promise.all([
     supabase.from('missions').select('id, title').order('created_at', { ascending: false }),
     supabase.from('item_books').select('id, name').order('name'),
+    supabase.from('ranking_modes').select('id, title').order('title'),
   ])
   const missions = (missionsRaw ?? []) as { id: string; title: string }[]
   const itemBooks = (booksRaw ?? []) as { id: string; name: string }[]
+  const rankingModes = (rankingModesRaw ?? []) as { id: string; title: string }[]
 
   return (
     <div className="p-4 md:p-8">
@@ -31,6 +33,7 @@ export default async function NewTodayCardPage({ searchParams }: NewTodayCardPag
       <TodayCardForm
         missions={missions}
         itemBooks={itemBooks}
+        rankingModes={rankingModes}
         badgeLabels={[]}
         initialDate={date}
         returnDate={date}

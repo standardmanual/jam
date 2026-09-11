@@ -4,6 +4,8 @@ import type { TodayCardWithHref } from '@/lib/today/cards'
 import type { TodayCardTemplateType } from '@/types/database'
 import { Card } from '@ds/components/cards/Card'
 import SafeImage from '@/components/SafeImage'
+import RankingListRow from '@/components/ranking/RankingListRow'
+import { formatRankingMetricValue } from '@/lib/ranking/format'
 import { d } from '@/lib/i18n'
 import {
   MedalIcon,
@@ -13,6 +15,7 @@ import {
   PinIcon,
   PackageIcon,
   NewspaperIcon,
+  RankingIcon,
 } from '@/components/ui/icons'
 
 const templateLabel: Record<TodayCardTemplateType, string> = {
@@ -23,6 +26,7 @@ const templateLabel: Record<TodayCardTemplateType, string> = {
   location_trend: d.todayCard.locationTrend,
   drop_alert: d.todayCard.dropAlert,
   editorial_article: d.todayCard.editorialArticle,
+  ranking_board: d.todayCard.rankingBoard,
 }
 
 /** 콘텐츠 유형 식별은 색상이 아닌 아이콘 모양으로만 구분한다(바이너리 컬러 원칙 — 제3의 컬러 도입 금지) */
@@ -34,6 +38,7 @@ const TemplateIcon: Record<TodayCardTemplateType, ComponentType<SVGProps<SVGSVGE
   location_trend: PinIcon,
   drop_alert: PackageIcon,
   editorial_article: NewspaperIcon,
+  ranking_board: RankingIcon,
 }
 
 function TemplateChip({ card }: { card: TodayCardWithHref }) {
@@ -203,11 +208,70 @@ function OtherCard({ card }: { card: TodayCardWithHref }) {
 }
 
 /**
+ * 순위 리스트형 — 랭킹보드 전용(티켓 20260911_1440). 미션 상세 화면의 순위 리스트를 재사용하되
+ * 1·2·3위 강조 포디엄 그래프는 뺀다(User Story 12). `resolved_ranking`은 서버(`lib/today/cards.ts`)가
+ * 이미 계산해 넘긴 값 — 이 컴포넌트는 그리기만 한다.
+ *
+ * 다른 레이아웃과 달리 카드 전체를 `<Link>`로 감싸지 않는다 — 순위 행(`RankingListRow`)이 각자
+ * 유저 프로필로 이동하는 `<Link>`를 이미 갖고 있어(User Story 11, 미션 상세 화면과 동일 동작),
+ * 카드 전체를 감싸면 앵커 안에 앵커가 중첩되는 무효 마크업이 된다. 대신 제목 영역만 카드
+ * 이동 경로(`resolved_href`, User Story 10)로 링크한다 — `TodayCardStack`이 이 컴포넌트를
+ * 호출할 때 공통 `<Link>` 래핑을 건너뛴다.
+ */
+function RankingListCard({ card, currentUserId }: { card: TodayCardWithHref; currentUserId?: string }) {
+  const ranking = card.resolved_ranking
+  const entries = ranking?.entries ?? []
+  const maxValue = entries[0]?.value ?? 0
+  const formatValue = (v: number) =>
+    ranking
+      ? formatRankingMetricValue(ranking.metricType, v, {
+          missionType: ranking.missionType,
+          conditionFieldKey: ranking.conditionFieldKey,
+        })
+      : String(v)
+
+  return (
+    <Card tone="inverse">
+      <Link href={card.resolved_href} className="block active:scale-[0.98] transition-transform duration-100">
+        <div className="mb-2"><TemplateChip card={card} /></div>
+        <h3 className="text-[length:var(--text-subheading)] leading-[var(--leading-subheading)]">{card.title}</h3>
+        {card.subtitle && <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-1">{card.subtitle}</p>}
+      </Link>
+
+      {entries.length > 0 ? (
+        <div className="flex flex-col mt-[var(--spacing-16)]">
+          {entries.map((entry) => (
+            <RankingListRow
+              key={entry.userId}
+              entry={entry}
+              maxValue={maxValue}
+              isMe={entry.userId === currentUserId}
+              formatValue={formatValue}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text-inverse/60 mt-2">
+          {d.todayCard.rankingEmpty}
+        </p>
+      )}
+    </Card>
+  )
+}
+
+/**
  * 투데이 카드 스택 (홈 화면 최상단). 카드 0개면 아무것도 렌더링하지 않는다.
  * layout_type에 따라 서로 다른 UI로 렌더링(콘텐츠 종류인 template_type과는 별개 축).
  * 카드 클릭 시 resolved_href 로 이동 (editorial_article은 /today/[id]).
  */
-export default function TodayCardStack({ cards }: { cards: TodayCardWithHref[] }) {
+export default function TodayCardStack({
+  cards,
+  currentUserId,
+}: {
+  cards: TodayCardWithHref[]
+  /** 랭킹보드 카드(ranking_list 레이아웃)에서 내 순위 행을 강조하는 데 쓴다(선택 — 없으면 강조 없음) */
+  currentUserId?: string
+}) {
   if (!cards || cards.length === 0) return null
 
   return (
@@ -218,15 +282,21 @@ export default function TodayCardStack({ cards }: { cards: TodayCardWithHref[] }
       </div>
 
       <div className="flex flex-col gap-[var(--spacing-16)]">
-        {cards.map((card) => (
-          <Link key={card.id} href={card.resolved_href} className="block">
-            {card.layout_type === 'badge_gallery' ? <BadgeGalleryCard card={card} />
-              : card.layout_type === 'shortcut' ? <ShortcutCard card={card} />
-              : card.layout_type === 'banner' ? <BannerCard card={card} />
-              : card.layout_type === 'other' ? <OtherCard card={card} />
-              : <LargeThumbnailCard card={card} />}
-          </Link>
-        ))}
+        {cards.map((card) =>
+          // ranking_list는 행마다 자체 <Link>(유저 프로필)를 가지므로 공통 카드 래핑
+          // <Link>를 건너뛴다 — 중첩 앵커 방지(RankingListCard 주석 참고).
+          card.layout_type === 'ranking_list' ? (
+            <RankingListCard key={card.id} card={card} currentUserId={currentUserId} />
+          ) : (
+            <Link key={card.id} href={card.resolved_href} className="block">
+              {card.layout_type === 'badge_gallery' ? <BadgeGalleryCard card={card} />
+                : card.layout_type === 'shortcut' ? <ShortcutCard card={card} />
+                : card.layout_type === 'banner' ? <BannerCard card={card} />
+                : card.layout_type === 'other' ? <OtherCard card={card} />
+                : <LargeThumbnailCard card={card} />}
+            </Link>
+          )
+        )}
       </div>
     </section>
   )
