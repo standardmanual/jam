@@ -15,14 +15,21 @@ export default async function NewBadgePage() {
   const poiCategories = (poiCategoriesRaw ?? []) as Pick<PoiCategoryRow, 'slug' | 'label'>[]
 
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <Link href="/admin/badges" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
-          ← 배지 목록
-        </Link>
-        <h1 className="text-2xl font-bold mt-2">배지 등록</h1>
-      </div>
-      <BadgeForm tribes={tribes} itemBooks={itemBooks} poiCategories={poiCategories} />
+    <div className="p-4 md:p-8">
+      {/* 제목은 폼의 섹션 열 위에 둔다 — 오른쪽 레일이 페이지 맨 위에서 시작하도록(티켓 20260911_0901) */}
+      <BadgeForm
+        tribes={tribes}
+        itemBooks={itemBooks}
+        poiCategories={poiCategories}
+        header={
+          <div>
+            <Link href="/admin/badges" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+              ← 배지 목록
+            </Link>
+            <h1 className="text-2xl font-bold mt-2">배지 등록</h1>
+          </div>
+        }
+      />
     </div>
   )
 }

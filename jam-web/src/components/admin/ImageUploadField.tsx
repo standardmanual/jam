@@ -25,6 +25,11 @@ interface ImageUploadFieldProps {
    * (20260818_003 — 배지 배경색 자동 프리필용) 지정하지 않으면 아무 동작도 하지 않는다.
    */
   onAverageColor?: (color: string | null) => void
+  /**
+   * 파일 선택 버튼에 연결할 오류 문구의 id. 저장 검증에 걸렸을 때 포커스가 이 버튼으로 오면
+   * 스크린리더가 오류를 함께 읽는다. 버튼은 `aria-invalid`를 지원하지 않아 describedby로 잇는다.
+   */
+  describedBy?: string
 }
 
 export default function ImageUploadField({
@@ -35,6 +40,7 @@ export default function ImageUploadField({
   label = '이미지',
   allowManualUrl = false,
   onAverageColor,
+  describedBy,
 }: ImageUploadFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -104,6 +110,7 @@ export default function ImageUploadField({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
+          aria-describedby={describedBy}
           className={[
             'shrink-0 bg-white border border-border rounded-xl px-4 py-2.5 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors whitespace-nowrap',
             allowManualUrl ? '' : 'flex-1',

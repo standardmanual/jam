@@ -31,6 +31,15 @@ import {
   ALL_CONDITION_FORM_FIELDS,
   CONDITION_FIELDS,
   CONDITION_FORM_ENTRIES,
+  CONDITION_FORM_SECTIONS,
+  CONDITION_FORM_SECTION_DESCRIPTION,
+  CONDITION_FORM_SECTION_LABEL,
+  conditionFormEntriesOf,
+  conditionFormSectionOf,
+  formatConditionChipEntries,
+  formatConditionChips,
+  formatConditionDetail,
+  formatConditionDetailEntries,
 } from '@/lib/badge-engine/conditionRegistry'
 import type { BadgeCondition } from '@/types/database'
 
@@ -317,5 +326,108 @@ describe('findUnrepresentableConditionKeys — 키 순서에 속지 않는다', 
     // 둘 다 폼이 그대로 재현하므로 경고는 없지만, 비교 함수가 순서를 무시해서는 안 된다
     expect(findUnrepresentableConditionKeys(a)).toEqual([])
     expect(findUnrepresentableConditionKeys(b)).toEqual([])
+  })
+})
+
+describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
+  it('폼 컨트롤이 있는 레지스트리 필드는 모두 9개 그룹 중 하나에 속한다', () => {
+    const sections = new Set<string>(CONDITION_FORM_SECTIONS)
+    const outside = CONDITION_FIELDS.filter((f) => f.form?.controls && !sections.has(f.form.section)).map((f) => f.key)
+    expect(outside).toEqual([])
+    expect(CONDITION_FORM_SECTIONS).toEqual([
+      'scope', 'cumulative', 'single', 'period', 'rhythm', 'record', 'repeat', 'gate', 'meta',
+    ])
+  })
+
+  it('모든 그룹이 라벨과 한 줄 설명을 갖는다', () => {
+    for (const s of CONDITION_FORM_SECTIONS) {
+      expect(CONDITION_FORM_SECTION_LABEL[s]).toBeTruthy()
+      expect(CONDITION_FORM_SECTION_DESCRIPTION[s]).toBeTruthy()
+    }
+  })
+
+  it('그리는 입력은 conditionFormEntriesOf()로 빠짐없이 한 번씩만 나온다', () => {
+    const drawn = CONDITION_FORM_SECTIONS.flatMap((s) => conditionFormEntriesOf(s).map((e) => e.control.field))
+    expect([...drawn].sort()).toEqual(CONDITION_FORM_ENTRIES.map((e) => e.control.field).sort())
+  })
+
+  it('플레이스홀더에 「예:」가 남아 있지 않다', () => {
+    const offending = CONDITION_FORM_ENTRIES.filter((e) => e.control.placeholder?.includes('예:')).map(
+      (e) => e.control.field
+    )
+    expect(offending).toEqual([])
+  })
+
+  it('라벨에 단위 괄호가 남아 있지 않다 — 단위는 입력칸 접미사로 그린다', () => {
+    const units = [...new Set(CONDITION_FIELDS.map((f) => f.unit).filter((u): u is string => !!u))]
+    const offending = CONDITION_FORM_ENTRIES.filter((e) => {
+      const label = e.control.label ?? e.meta.label
+      return units.some((u) => label.includes(`(${u})`)) || /\((HH:MM|mm:ss|1~12|1~31)/.test(label)
+    }).map((e) => e.control.field)
+    expect(offending).toEqual([])
+  })
+
+  it('짝 입력의 상대는 같은 그룹에 있다', () => {
+    for (const e of CONDITION_FORM_ENTRIES) {
+      if (!e.control.pair) continue
+      const partner = CONDITION_FORM_ENTRIES.find((x) => x.control.field === e.control.pair!.with)
+      expect(partner, `${e.control.field} → ${e.control.pair.with}`).toBeDefined()
+      expect(partner!.section).toBe(e.section)
+    }
+  })
+
+  it('티켓 매핑표대로 필드가 그룹에 들어간다', () => {
+    const fieldsOf = (s: (typeof CONDITION_FORM_SECTIONS)[number]) =>
+      new Set(CONDITION_FIELDS.filter((f) => f.form?.section === s).map((f) => f.key as string))
+    expect(fieldsOf('scope')).toEqual(
+      new Set(['activity_type', 'season', 'month', 'day_of_month', 'time_range', 'temperature_min_c', 'temperature_max_c'])
+    )
+    expect(fieldsOf('cumulative')).toEqual(
+      new Set([
+        'same_activity', 'distance_km', 'elevation_gain_m', 'cumulative_duration_hours', 'total_count',
+        'active_days_count', 'streak_days', 'daily_once_count',
+      ])
+    )
+    expect(fieldsOf('single')).toEqual(
+      new Set([
+        'single_distance_km', 'single_elevation_m', 'duration_minutes', 'max_elevation_m', 'min_speed_kmh',
+        'max_speed_kmh', 'max_pace_sec_per_km', 'negative_split', 'avg_heartrate_bpm', 'avg_watts', 'avg_cadence',
+      ])
+    )
+    expect(fieldsOf('period')).toEqual(
+      new Set([
+        'weekly_count', 'weekly_streak', 'monthly_count', 'monthly_km', 'weekend_duration_hours', 'season_count',
+        'season_count_all',
+      ])
+    )
+    expect(fieldsOf('rhythm')).toEqual(
+      new Set([
+        'rest_after_streak', 'rest_after_long', 'return_gap_days', 'interval_days', 'distinct_time_bands',
+        'activities_within_hours',
+      ])
+    )
+    expect(fieldsOf('record')).toEqual(
+      new Set(['personal_record_break', 'personal_record_break_metric', 'month_over_month_ratio', 'vs_personal_average'])
+    )
+    expect(fieldsOf('repeat')).toEqual(new Set(['repeat_count']))
+    expect(fieldsOf('gate')).toEqual(
+      new Set(['prerequisite_badge_names', 'cross_in_axis', 'cross_between_axis', 'gate_mission_badge'])
+    )
+    // mission_reward는 입력 컨트롤 없이 획득 조건 섹션 맨 위의 「발급 방식」 세그먼트가 다룬다
+    expect(fieldsOf('meta')).toEqual(new Set(['follower_count', 'following_count', 'daily_sync_count', 'mission_reward']))
+  })
+
+  it('폼 입력이 없는 필드(day_of_week·route·poi_id)는 「대상 활동」 그룹으로 모인다', () => {
+    expect(conditionFormSectionOf('day_of_week')).toBe('scope')
+    expect(conditionFormSectionOf('route')).toBe('scope')
+    expect(conditionFormSectionOf('poi_id')).toBe('scope')
+    expect(conditionFormSectionOf('mission_reward')).toBe('meta')
+    expect(conditionFormSectionOf('unknown_key')).toBeNull()
+  })
+
+  it('칩·상세 문구는 키와 함께 뽑아도 기존 문자열 목록과 같다', () => {
+    const cond: BadgeCondition = { distance_km: 30, month: [6, 7], monthly_km: 100, season: 'winter', season_count: 5 }
+    expect(formatConditionChipEntries(cond).map((e) => e.text)).toEqual(formatConditionChips(cond))
+    expect(formatConditionDetailEntries(cond).map((e) => e.text)).toEqual(formatConditionDetail(cond))
   })
 })
