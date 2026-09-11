@@ -395,6 +395,7 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     category: null,
     admin_category: null,
     drop_weight: 0,
+    drop_excluded: false,
     drop_condition_json: null,
     valid_from: null,
     valid_until: null,

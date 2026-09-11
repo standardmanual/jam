@@ -134,7 +134,7 @@ async function validateTribeConstants(tribeIds: Set<string>): Promise<void> {
 
 type DropBadge = Pick<
   BadgeRow,
-  'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight' | 'valid_from' | 'valid_until' | 'condition_json' | 'item_book_id' | 'point_reward'
+  'id' | 'name' | 'image_url' | 'rarity' | 'drop_weight' | 'valid_from' | 'valid_until' | 'condition_json' | 'item_book_id' | 'point_reward' | 'drop_excluded'
 >
 
 /**
@@ -170,7 +170,7 @@ async function fetchDropStructure(
   const now = new Date().toISOString()
 
   const [{ data: booksRaw }, { data: inventoryRaw }, { data: tribesRaw }] = await Promise.all([
-    supabase.from('item_books').select('id, tribe_id').eq('is_active', true),
+    supabase.from('item_books').select('id, tribe_id').eq('is_active', true).eq('drop_excluded', false),
     supabase.from('inventory').select('id, used_slots, max_slots').eq('user_id', userId).single(),
     supabase.from('tribes').select('id, name'),
   ])
@@ -181,6 +181,10 @@ async function fetchDropStructure(
   for (const b of books) {
     if (b.tribe_id) tribeOfBook.set(b.id, b.tribe_id)
   }
+  // 위 item_books 조회가 is_active=true·drop_excluded=false로 이미 걸렀으므로, 이 목록으로
+  // 조회하는 배지(badgeIdsOfBook 포함)도 자연히 드랍 제외 컬렉션을 제외한다. is_active=false
+  // 컬렉션이 기존에도 완성률 계산(badgeIdsOfBook)에서 빠졌던 것과 동일한 동작 범위다 — 이
+  // drop-engine 모듈 밖의 별도 완성 보상 판정(아이템북 완성 시 잼 포인트 지급)에는 영향 없음.
   const activeBookIds = [...tribeOfBook.keys()]
 
   // PostgREST 기본 max-rows(보통 1,000행) 제한을 넘는 테이블을 안전하게 전체 조회.
@@ -195,7 +199,7 @@ async function fetchDropStructure(
     fetchAllRows<DropBadgeFromDb>('drop-engine:item-badges', 'id', () =>
       supabase
         .from('badges')
-        .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json, item_book_id, point_reward')
+        .select('id, name, image_url, rarity, drop_weight, valid_from, valid_until, condition_json, item_book_id, point_reward, drop_excluded')
         .eq('type', 'item')
         .is('deleted_at', null)
         .in('item_book_id', activeBookIds)
@@ -236,6 +240,7 @@ async function fetchDropStructure(
   }
 
   const droppable = allBadges.filter((b) => {
+    if (b.drop_excluded) return false
     if (b.valid_from && b.valid_from > now) return false
     if (b.valid_until && b.valid_until < now) return false
     return isDroppableForActivity(b.condition_json as BadgeCondition | null, activities)
