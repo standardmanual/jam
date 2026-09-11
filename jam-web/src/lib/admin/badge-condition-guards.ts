@@ -78,16 +78,21 @@ export function findRepeatRestConflictError(condition: BadgeCondition | null): s
 }
 
 /**
- * 서비스 사용량 지표 3종(팔로워·팔로잉·일일동기화, 티켓 20260910_1557) — `usageBadges.ts`의
- * 발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만 순차 발급)·레벨형(family_key 내 보유
- * 레벨+1부터 연속 발급)만 구현돼 있다.
+ * 서비스 사용량 지표 4종(팔로워·팔로잉·일일동기화·연속동기화일수, 티켓 20260910_1557·
+ * 20260911_2304) — `usageBadges.ts`의 발급 경로는 등급형(이름 그룹 내 최상위 tier 1개만
+ * 순차 발급)·레벨형(family_key 내 보유 레벨+1부터 연속 발급)만 구현돼 있다.
  *
  * ⚠️ 이 배열은 `conditionRegistry.ts`(단일 소스)가 아니라 여기 직접 선언한다 — 이 가드는
- * 그 3개 키가 `ALL_CONDITION_KEYS`에 아직 등록되지 않은 시점(리뷰 브랜치 병합 순서에 따라
+ * 그 키들이 `ALL_CONDITION_KEYS`에 아직 등록되지 않은 시점(리뷰 브랜치 병합 순서에 따라
  * 일시적으로 그럴 수 있다)에도 먼저 활성화돼 있어야 한다. `ALL_CONDITION_KEYS`에 없는 동안은
  * `findUnknownConditionKeyError`가 이미 저장을 막으므로 이중 방어라도 충돌하지 않는다.
  */
-const USAGE_METRIC_CONDITION_KEYS = ['follower_count', 'following_count', 'daily_sync_count'] as const
+const USAGE_METRIC_CONDITION_KEYS = [
+  'follower_count',
+  'following_count',
+  'daily_sync_count',
+  'daily_sync_streak_days',
+] as const
 
 /**
  * 사용량 지표(팔로워·팔로잉·일일동기화)와 충족 횟수(`repeat_count`, 반복 획득) 조합을 막는다.

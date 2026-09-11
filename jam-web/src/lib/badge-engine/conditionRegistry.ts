@@ -1602,7 +1602,7 @@ export const CONDITION_FIELDS = [
       // 사용량 지표(팔로워·팔로잉·일일동기화) 안내는 티켓 20260910_1719 — 그 3개 키는
       // 등급형·레벨형 순차 발급 경로만 구현돼 있어 반복 획득과 결합할 수 없다(저장 시점에
       // findUsageMetricRepeatConflictError가 실제로 막는다. badge-condition-guards.ts).
-      help: '휴식 조건(연속·장거리 후 휴식, 복귀 전 휴식, 활동 간격)은 1개까지만 함께 쓸 수 있어요. 팔로워 수·팔로잉 수·하루 동기화 횟수 지표와는 함께 쓸 수 없어요.',
+      help: '휴식 조건(연속·장거리 후 휴식, 복귀 전 휴식, 활동 간격)은 1개까지만 함께 쓸 수 있어요. 팔로워 수·팔로잉 수·하루 동기화 횟수·연속 동기화 일수 지표와는 함께 쓸 수 없어요.',
     }),
   }),
 
@@ -1653,9 +1653,10 @@ export const CONDITION_FIELDS = [
     form: gateForm('gateMissionBadge'),
   }),
 
-  // ── ⑤ JAM! 카테고리 — 서비스 사용량 지표 3종 (티켓 20260910_1557) ─────────
+  // ── ⑤ JAM! 카테고리 — 서비스 사용량 지표 3종 (티켓 20260910_1557) +
+  //    연속 동기화 일수 1종 (티켓 20260911_2304) ────────────────────────────
   //
-  // 셋 다 `role: 'meta'`(`mission_reward`와 같은 자리) + `evaluation: 'external'`이다.
+  // 넷 다 `role: 'meta'`(`mission_reward`와 같은 자리) + `evaluation: 'external'`이다.
   // Strava 활동과 무관해 badge-engine이 직접 볼 수 있는 수치가 없으므로, role이
   // `measurable`이 아니다 — `evaluateConditionDetailed`는 measurable 필드가 하나도 없는
   // 조건을 「평가 가능한 조건 없음」으로 항상 fail 처리한다(기존 방어 분기, 별도 분기 추가
@@ -1664,7 +1665,7 @@ export const CONDITION_FIELDS = [
   //
   // `role: 'meta'`라 `badgeProgress.ts`의 진행률 계산·`badge_metric_labels`(측정 축 라벨)
   // 대상에서 자동으로 빠진다(계열 정합성 트리거의 measurable_keys에도 넣지 않는다 —
-  // 마이그레이션 155 참고). 이 배지는 `activity_types=[]`로 저장하는 것이 설계 전제라
+  // 마이그레이션 155·161 참고). 이 배지는 `activity_types=[]`로 저장하는 것이 설계 전제라
   // `/badges/tree`(badgeTree.ts — activity_types[0] 기준 구성)에는 노출되지 않고,
   // `/badges` 일반 목록·프로필은 `type==='activity'`만 보므로 정상 노출된다.
   field({
@@ -1726,6 +1727,28 @@ export const CONDITION_FIELDS = [
       label: '하루 동기화 횟수',
       placeholder: '7',
       help: '새 활동을 1건 이상 불러온 동기화만 세요.',
+    }),
+  }),
+  field({
+    key: 'daily_sync_streak_days',
+    label: '연속 동기화 일수',
+    unit: '일',
+    role: 'meta',
+    input: 'integer',
+    min: 1,
+    max: 3650,
+    step: 1,
+    direction: 'higher',
+    evaluation: 'external',
+    chip: (c) => `연속 동기화 ${c.daily_sync_streak_days}일↑`,
+    detail: (c) => `오늘 기준 연속 동기화 ${c.daily_sync_streak_days}일 이상`,
+    // "오늘까지 끊기지 않은 연속" 판정이라 `daily_sync_count`(하루 누적 횟수)와는 다른
+    // 지표다 — 하루라도 거르면 카운트가 리셋된다(티켓 20260911_2304).
+    form: integerForm('dailySyncStreakDays', {
+      section: 'meta',
+      label: '연속 동기화 일수',
+      placeholder: '7',
+      help: '오늘까지 하루라도 거르지 않고 동기화한 일수예요. 하루라도 거르면 리셋돼요.',
     }),
   }),
 ] as const

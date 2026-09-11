@@ -203,6 +203,13 @@ describe('⑥ 사용량 지표(팔로워·팔로잉·일일동기화) + 회차 �
     expect(findUsageMetricRepeatConflictError(cond)).not.toBeNull()
   })
 
+  it('daily_sync_streak_days + repeat_count는 막는다 (티켓 20260911_2304)', () => {
+    const cond = { daily_sync_streak_days: 7, repeat_count: 5 } as unknown as BadgeCondition
+    const error = findUsageMetricRepeatConflictError(cond)
+    expect(error).not.toBeNull()
+    expect(error).toContain('daily_sync_streak_days')
+  })
+
   it('사용량 지표 2개 이상이 함께 있으면 전부 메시지에 나열한다', () => {
     const cond = { follower_count: 100, following_count: 50, repeat_count: 3 } as unknown as BadgeCondition
     const error = findUsageMetricRepeatConflictError(cond)!

@@ -1,12 +1,12 @@
 /**
  * JAM! 카테고리 — 서비스 사용량 배지 평가·발급 (서버 사이드 전용, 티켓 20260910_1557)
  *
- * 팔로워 수·팔로잉 수·하루 동기화 횟수처럼 Strava 활동과 무관한 "서비스 사용량" 지표로
- * 배지를 판정·발급한다. 이 3개 조건 키(`follower_count`/`following_count`/
- * `daily_sync_count`)는 `conditionRegistry.ts`에 `role: 'meta'` + `evaluation: 'external'`로
- * 선언돼 있어 — `mission_reward`와 같은 자리 — badge-engine의 `evaluateConditionDetailed`는
- * (role: 'measurable'인 필드가 하나도 없으므로) 이 조건들을 항상 fail 처리한다. 이 파일이
- * 그 대신 판정·발급을 전담한다.
+ * 팔로워 수·팔로잉 수·하루 동기화 횟수·연속 동기화 일수처럼 Strava 활동과 무관한 "서비스
+ * 사용량" 지표로 배지를 판정·발급한다. 이 4개 조건 키(`follower_count`/`following_count`/
+ * `daily_sync_count`/`daily_sync_streak_days`)는 `conditionRegistry.ts`에 `role: 'meta'` +
+ * `evaluation: 'external'`로 선언돼 있어 — `mission_reward`와 같은 자리 — badge-engine의
+ * `evaluateConditionDetailed`는 (role: 'measurable'인 필드가 하나도 없으므로) 이 조건들을
+ * 항상 fail 처리한다. 이 파일이 그 대신 판정·발급을 전담한다.
  *
  * 발급 규칙은 BADGE_ENGINE_UNIFIED.md §Step 3-A(등급형)·§Step 3-B(레벨형)와 **같은 정책**을
  * 최소 재구현한다 — 순수 함수를 그대로 재사용하지 않은 이유는, `index.ts`의 그 로직이 활동
@@ -29,10 +29,13 @@ import { getAbusingPolicy } from '@/lib/abusing/policy'
 import { kstDateString } from '@/lib/notifications/kst'
 import { isLeveledBadge, familyKeyOf } from './badgeKind'
 import { rarityTier } from '@/lib/rarity'
+import { fetchCurrentSyncStreakDays } from './dailySyncStreak'
 import type { BadgeRow } from '@/types/database'
 
-/** 이 파일이 판정하는 서비스 사용량 지표 3종 — `conditionRegistry.ts` 선언과 1:1 대응 */
-export type UsageMetric = 'follower_count' | 'following_count' | 'daily_sync_count'
+/** 이 파일이 판정하는 서비스 사용량 지표 4종 — `conditionRegistry.ts` 선언과 1:1 대응.
+ *  `daily_sync_streak_days`(연속 동기화 일수, 티켓 20260911_2304)는 오늘까지 끊기지 않은
+ *  «현재» 연속만 보는 별개 지표다 — `daily_sync_count`(하루 누적 횟수)와 혼동하지 않는다. */
+export type UsageMetric = 'follower_count' | 'following_count' | 'daily_sync_count' | 'daily_sync_streak_days'
 
 export interface UsageBadgeEarned {
   id: string
@@ -208,14 +211,19 @@ export async function evaluateUsageBadges(
 }
 
 /**
- * `daily_sync_count` 전용 진입점 — 하루(KST) 동기화 카운터를 원자적으로 올리고, 그 최신
- * 카운트로 배지를 판정·발급한다. `syncStravaActivities()`가 `synced > 0`(= 이번 배치로 새
+ * `daily_sync_count`·`daily_sync_streak_days` 전용 진입점 — 하루(KST) 동기화 카운터를
+ * 원자적으로 올리고, 그 최신 카운트와 "오늘 기준 현재 연속일수"(`dailySyncStreak.ts`)로
+ * 두 지표를 각각 판정·발급한다. `syncStravaActivities()`가 `synced > 0`(= 이번 배치로 새
  * 활동을 실제로 받아온 경우)일 때만 호출한다 — 호출 여부 게이트는 호출부의 책임이다.
  *
  * 원자적 증가는 `increment_daily_sync_count()` RPC(마이그레이션 154)가 담당한다 —
  * `INSERT ... ON CONFLICT DO UPDATE SET count = count + 1`은 한 문장 원자 연산이라 동시
  * 요청이 겹쳐도 유실되지 않는다. RPC가 반환하는 값(그 날짜의 최신 카운트)을 그대로 평가에
  * 쓰므로 별도 SELECT 왕복이 필요 없다.
+ *
+ * 연속일수(`daily_sync_streak_days`, 티켓 20260911_2304)는 이 RPC가 "오늘" 행을 반드시
+ * 만든 직후에만 계산한다 — 오늘 동기화가 실제로 기록됐다는 전제가 있어야 "오늘까지 끊기지
+ * 않은 연속"이 의미를 갖는다.
  *
  * RPC 실패는 예외를 던지지 않고 빈 배열로 폴백한다(로그만 남긴다) — 카운터 증가 실패가
  * 동기화 자체(활동 배지·아이템 드랍 등)를 막으면 안 된다.
@@ -237,5 +245,10 @@ export async function recordDailySyncAndEvaluate(userId: string, client?: Supaba
   }
   if (typeof syncCount !== 'number') return []
 
-  return evaluateUsageBadges(userId, 'daily_sync_count', syncCount, supabase)
+  const countEarned = await evaluateUsageBadges(userId, 'daily_sync_count', syncCount, supabase)
+
+  const streakDays = await fetchCurrentSyncStreakDays(userId, supabase)
+  const streakEarned = await evaluateUsageBadges(userId, 'daily_sync_streak_days', streakDays, supabase)
+
+  return [...countEarned, ...streakEarned]
 }
