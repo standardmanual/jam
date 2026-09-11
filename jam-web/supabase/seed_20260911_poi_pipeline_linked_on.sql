@@ -19,11 +19,20 @@
 -- mountain·train_subway(마이그레이션 144에서 별도 사유로 pipeline_linked=false 전환)는
 -- 이번 복원 대상이 아니다 — 그대로 둔다.
 --
--- 이미 poi_categories.requires_review·display_on_map 값은 09-07 오전/저녁 어느 티켓에서도
--- 건드리지 않았으므로 이번에도 손대지 않는다(카테고리별 기존 값 유지).
+-- ⚠️ 2026-09-11 게이트 리뷰 FAIL로 수정: 마이그레이션 143(`requires_review BOOLEAN NOT NULL
+-- DEFAULT false`) 이후 이 10개 카테고리의 requires_review를 true로 켠 마이그레이션/시드가
+-- 하나도 없다 — 09-07 오전 티켓도 "기본 꺼짐, 지도 노출 카테고리 위주로 켜는 것을 권장"이라고만
+-- 적었을 뿐 실제로 켜지는 않았다. requires_review가 전부 false인 채로는
+-- `jam-web/src/app/api/drops/route.ts`의 gatePois(66~78행)가 `classifyNaverCategory`를
+-- 아예 호출하지 않고 무조건 verdict='approved'로 처리해(73행,
+-- `requiresReview ? classifyNaverCategory(...) : 'approved'`), 검토 큐(`pending_review=true`)에
+-- 아무것도 쌓이지 않고 지도 노출 카테고리(is_active=true)는 검증 없이 바로 노출된다 —
+-- pipeline_linked만 복원해서는 09-07 오전에 의도한 "검토 큐 방식"이 재현되지 않는다.
+-- 그래서 pipeline_linked 복원과 함께 이번 10개 카테고리 전부 requires_review도 true로 켠다.
 
 UPDATE public.poi_categories
-SET pipeline_linked = true
+SET pipeline_linked = true,
+    requires_review = true
 WHERE slug IN (
   'government', 'convenience', 'nature', 'tourist_attraction', 'stadium',
   'school', 'park', 'hospital', 'pharmacy', 'food'
@@ -35,6 +44,11 @@ WHERE slug IN (
 --     WHERE slug IN ('government','convenience','nature','tourist_attraction','stadium',
 --                     'school','park','hospital','pharmacy','food')
 --     ORDER BY slug;
---   -- 전부 pipeline_linked=true여야 한다.
+--   -- 전부 pipeline_linked=true, requires_review=true여야 한다.
 
 -- ↩️ 롤백: jam-web/supabase/seed_20260907_poi_pipeline_linked_off.sql 재실행
+--    (단, requires_review는 그 파일이 건드리지 않으므로 완전 원복하려면 별도로
+--    `UPDATE public.poi_categories SET requires_review = false WHERE slug IN (...)`를
+--    함께 실행해야 한다 — 09-07 저녁 이전 상태도 어차피 requires_review=false였으므로
+--    엄밀히는 "이번 변경 이전" 원복이 아니라 "09-07 저녁 이전(자동수집 켜짐+게이트 꺼짐)"
+--    상태로 돌아간다는 점에 유의.)

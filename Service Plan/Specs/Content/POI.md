@@ -39,6 +39,17 @@ tourist_attraction/stadium/school/park/hospital/pharmacy/food) 전부 다시 `tr
 게이트를 거쳐 `pending_review=true`(검토대기)로 어드민 검토 큐에 쌓이고, 관리자가 승인·수정한
 뒤 노출된다.
 
+> ⚠️ **`requires_review`도 이번에 함께 `true`로 켰다.** 마이그레이션 143은 이 컬럼을
+> `DEFAULT false`로 도입했고, 09-07 오전 티켓도 "기본 꺼짐, 지도 노출 카테고리 위주로 켜는
+> 것을 권장"이라고 서술만 했을 뿐 실제로 켠 적이 없었다 — `pipeline_linked`만 복원하면
+> `gatePois`(`jam-web/src/app/api/drops/route.ts` 66~78행)가 `requires_review=false`
+> 분기를 타 검증 게이트를 아예 건너뛰고 전부 `verdict='approved'`로 즉시 노출/저장해버려
+> 검토 큐가 비는 문제가 재발한다(2026-09-11 게이트 리뷰에서 실측 확인). 이번 복원 SQL
+> (`seed_20260911_poi_pipeline_linked_on.sql`)은 `pipeline_linked`와 `requires_review`를
+> 같은 UPDATE에서 함께 `true`로 세팅한다. `stadium`·`school`·`park`는
+> `jam-web/src/lib/poi/category-gate.ts`에 allow/reject 패턴이 아직 없어 항상
+> `pending`(검토대기)으로 떨어진다 — 자동승인되지 않는다는 뜻이며 의도된 안전한 기본값이다.
+
 **경과**: 09-07 오전 검증 게이트/검토 큐 도입 → 같은 날 저녁 네이버 지역검색 API의 구조적
 한계(좌표·반경 검색 미지원, 실제 최근접 매장 매치율 0~15%, "시청"·"국립공원"·"전망대"·
 "시장"·"공원" 같은 포괄 명사 키워드로 인한 명칭 오염)를 이유로 자동수집 전면 중단
