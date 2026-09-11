@@ -64,8 +64,26 @@ ALTER TABLE public.point_transactions ADD CONSTRAINT point_transactions_reason_c
 
 -- ----------------------------------------------------------------
 -- 4. award_points() — p_source_item_book_id 파라미터 추가(기존 파라미터 뒤,
---    DEFAULT NULL) — 기존 호출부(배지·미션·믹스 지급)는 그대로 동작한다.
+--    DEFAULT NULL).
+--
+--    주의: PostgreSQL의 CREATE OR REPLACE FUNCTION은 "파라미터 타입 목록이
+--    정확히 같을 때만" 기존 함수를 교체한다. 파라미터 개수가 다르면 기존
+--    함수를 대체하지 않고 새 오버로드를 추가로 만든다 — 즉 아래에서 바로
+--    CREATE OR REPLACE FUNCTION으로 8개 인자 시그니처를 만들면, 마이그레이션
+--    080이 만든 7개 인자 시그니처가 사라지지 않고 그대로 남아 award_points가
+--    7개짜리·8개짜리 두 개로 공존하게 된다. 이 상태에서
+--    lib/points/index.ts의 awardPoints()가 (기존과 동일하게) 7개 파라미터만
+--    이름 지정으로 호출하면, 그 호출이 7개짜리 함수에도 8개짜리 함수(8번째
+--    값이 DEFAULT NULL로 채워짐)에도 동시에 들어맞아 PostgreSQL이
+--    "function award_points(...) is not unique" 오버로드 모호성 에러를
+--    던진다 — 배지 발급·미션 완료·믹스 보상·어드민 지급 등 기존 포인트
+--    지급 경로 전체가 이 마이그레이션 반영 즉시 깨지는 회귀다.
+--
+--    따라서 8개 인자 CREATE OR REPLACE FUNCTION 전에 기존 7개 인자
+--    시그니처를 명시적으로 DROP해 오버로드가 하나만 남도록 한다.
 -- ----------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.award_points(UUID, INTEGER, TEXT, UUID, UUID, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.award_points(
   p_user_id UUID,
   p_amount INTEGER,              -- 양수=적립, 음수=차감
