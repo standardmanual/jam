@@ -41,7 +41,8 @@ export default function BackgroundColorField({ value, onChange, label = '배경�
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm font-mono"
+          // min-w-0 — 입력의 기본 최소 폭 때문에 좁은 폭(320px)에서 줄 밖으로 넘쳤다(티켓 20260911_0901 실측)
+          className="min-w-0 flex-1 bg-white border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 text-sm font-mono"
           placeholder="#1a1a1a (미지정 시 기본 배경 유지)"
         />
         {value && (
