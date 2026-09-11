@@ -474,10 +474,10 @@ export default function BadgeShareButton({
                       // 같은 문구가 여기 시각 텍스트에도 있어 aria-hidden 없이 두면 스크린 리더가
                       // 두 번 읽는다(인터페이스 리뷰 지적, 티켓 20260911_1156).
                       <div className="px-[var(--spacing-24)] text-center" aria-hidden="true">
-                        <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">
+                        <p className="whitespace-pre-line text-[length:var(--text-body)] text-[var(--color-text-inverse)]">
                           {errorCopy(itemState.reason).title}
                         </p>
-                        <p className="mt-1 text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60">
+                        <p className="mt-1 whitespace-pre-line text-[length:var(--text-caption)] text-[var(--color-text-inverse)]/70">
                           {errorCopy(itemState.reason).body}
                         </p>
                       </div>
