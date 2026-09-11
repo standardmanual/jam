@@ -1,7 +1,7 @@
 -- seed_poi_michelin_seoul_2026.sql
--- 미쉐린 가이드 서울 3/2/1스타 레스토랑 41곳을 POI로 등록.
--- 좌표는 구글맵 검색 결과(단일 매치)에서 추출. 1스타 '무니'는 구글맵에서 단일 매치를
--- 찾지 못해 이 시드에서 제외 — 별도로 좌표를 확인해 추가해야 한다.
+-- 미쉐린 가이드 서울 3/2/1스타 레스토랑 42곳을 POI로 등록.
+-- 좌표는 구글맵 검색 결과(단일 매치)에서 추출. 1스타 '무니'는 이름 검색으로는 다른
+-- 업체와 계속 혼동돼 사용자가 준 구글맵 place 링크(청담동 도산대로70길 26)로 확정.
 -- 일반 어드민 수동 등록과 동일한 정책으로 is_active=false, pending_review=true로 넣는다
 -- (Service Plan/Specs/Content/POI.md "신규 등록 정책") — /admin/poi/review에서 승인 필요.
 insert into poi (name, latitude, longitude, category, is_active, pending_review) values
@@ -28,6 +28,7 @@ insert into poi (name, latitude, longitude, category, is_active, pending_review)
   ('LEGUME', 37.519457, 127.0191187, 'michelin', false, true),
   ('레스토랑 산', 37.526329, 127.0339376, 'michelin', false, true),
   ('레스토랑 주은', 37.5727602, 126.9699196, 'michelin', false, true),
+  ('무니', 37.5219508, 127.0450292, 'michelin', false, true),
   ('무오키', 37.5189698, 127.0422219, 'michelin', false, true),
   ('비채나', 37.5126072, 127.1025386, 'michelin', false, true),
   ('빈호', 37.5186361, 127.0381596, 'michelin', false, true),
