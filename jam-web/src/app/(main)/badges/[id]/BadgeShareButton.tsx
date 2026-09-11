@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import { IconButton } from '@ds/components/buttons/IconButton'
 import { Button } from '@ds/components/buttons/Button'
 import { WanderingEyesLoader } from '@ds/components/feedback/WanderingEyesLoader'
+import { Carousel } from '@ds/components/navigation/Carousel'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { useToast } from '@/components/ui/Toast'
 import { MedalIcon } from '@/components/ui/icons'
 import { pushTabBarHidden } from '@/lib/uiOverlay'
-import { buildBadgeShareBlob, type BadgeShareStats } from './buildBadgeShareBlob'
+import { buildBadgeShareBlob, buildBadgeImageBlob, type BadgeShareStats } from './buildBadgeShareBlob'
 import { useDebouncedLoading } from '@/hooks/useDebouncedLoading'
 import { d } from '@/lib/i18n'
 import type { BadgeType } from '@/types/database'
@@ -35,10 +36,27 @@ interface BadgeShareButtonProps {
 
 type ShareErrorReason = 'strava_disconnected' | 'no_strava_trigger' | 'strava_fetch_failed' | 'unknown'
 
-type ShareState =
+type ShareItemState =
   | { kind: 'loading' }
   | { kind: 'ready'; blobUrl: string; blob: Blob }
   | { kind: 'error'; reason: ShareErrorReason }
+
+/**
+ * 공유 시트 캐러셀 2항목 (티켓 20260911_1102). `card`는 기존 통계 포함 공유 카드(1080×1920),
+ * `badge`는 배지 원본 이미지를 300px 정사각형으로 변환한 것 — 두 blob은 독립적으로 준비된다
+ * (하나가 로딩/에러여도 다른 하나는 이미 완료돼 있을 수 있다).
+ */
+type ShareItemKind = 'card' | 'badge'
+
+interface ShareState {
+  card: ShareItemState
+  badge: ShareItemState
+}
+
+const SHARE_ITEM_KINDS: ShareItemKind[] = ['card', 'badge']
+
+/** 저장/공유 파일명 접미사 — 항목에 따라 구분한다(티켓 20260911_1102 구현 계획 4). */
+const FILENAME_SUFFIX: Record<ShareItemKind, string> = { card: 'jam', badge: 'badge' }
 
 const KNOWN_ERROR_REASONS: ShareErrorReason[] = ['strava_disconnected', 'no_strava_trigger', 'strava_fetch_failed']
 
@@ -111,8 +129,10 @@ export default function BadgeShareButton({
 }: BadgeShareButtonProps) {
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
-  const [state, setState] = useState<ShareState>({ kind: 'loading' })
-  const objectUrlRef = useRef<string | null>(null)
+  const [state, setState] = useState<ShareState>({ card: { kind: 'loading' }, badge: { kind: 'loading' } })
+  const [activeIndex, setActiveIndex] = useState(0)
+  const cardObjectUrlRef = useRef<string | null>(null)
+  const badgeObjectUrlRef = useRef<string | null>(null)
 
   const disabledReason: DisabledReason | null = !hasEarned
     ? 'not-earned'
@@ -121,14 +141,21 @@ export default function BadgeShareButton({
       : null
   const isDisabled = disabledReason !== null
 
-  /** 이미지 URL 자체가 없으면 생성 자체가 불가능하므로 state와 무관하게 에러로 본다. */
-  const effectiveState: ShareState = imageUrl ? state : { kind: 'error', reason: 'unknown' }
+  /** 이미지 URL 자체가 없으면 두 항목 모두 생성 자체가 불가능하므로 state와 무관하게 에러로 본다. */
+  const effectiveState: ShareState = imageUrl
+    ? state
+    : { card: { kind: 'error', reason: 'unknown' }, badge: { kind: 'error', reason: 'unknown' } }
 
-  // 페치+캔버스 합성(buildBadgeShareBlob)이 빠르게 끝나도 로더부터 스치듯 보이지 않도록
-  // 디바운스 적용 (NavigationLoader와 동일한 정책, 20260908_0544). ready/error는 아래
-  // 렌더링에서 이 값보다 먼저 확인하므로, 실제 콘텐츠가 준비되면 minVisibleMs와 무관하게
-  // 즉시 노출된다 — 인위적으로 늦춰지지 않는다.
-  const showShareLoader = useDebouncedLoading(effectiveState.kind === 'loading')
+  // 페치+캔버스 합성(buildBadgeShareBlob/buildBadgeImageBlob)이 빠르게 끝나도 로더부터
+  // 스치듯 보이지 않도록 디바운스 적용 (NavigationLoader와 동일한 정책, 20260908_0544).
+  // 두 캐러셀 항목은 독립적으로 준비되므로 로딩 상태도 항목별로 각각 디바운스한다
+  // (티켓 20260911_1102). ready/error는 아래 렌더링에서 이 값보다 먼저 확인하므로, 실제
+  // 콘텐츠가 준비되면 minVisibleMs와 무관하게 즉시 노출된다 — 인위적으로 늦춰지지 않는다.
+  const showCardLoader = useDebouncedLoading(effectiveState.card.kind === 'loading')
+  const showBadgeLoader = useDebouncedLoading(effectiveState.badge.kind === 'loading')
+
+  const activeKind: ShareItemKind = SHARE_ITEM_KINDS[activeIndex] ?? 'card'
+  const activeItemState = effectiveState[activeKind]
 
   const [popoverOpen, setPopoverOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
@@ -157,9 +184,9 @@ export default function BadgeShareButton({
   useEffect(() => {
     if (!open) return
 
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current)
-      objectUrlRef.current = null
+    if (cardObjectUrlRef.current) {
+      URL.revokeObjectURL(cardObjectUrlRef.current)
+      cardObjectUrlRef.current = null
     }
 
     if (!imageUrl) return
@@ -178,7 +205,7 @@ export default function BadgeShareButton({
             const reason = KNOWN_ERROR_REASONS.includes(body.error as ShareErrorReason)
               ? (body.error as ShareErrorReason)
               : 'unknown'
-            if (!cancelled) setState({ kind: 'error', reason })
+            if (!cancelled) setState((prev) => ({ ...prev, card: { kind: 'error', reason } }))
             return
           }
           stats = (await res.json()) as BadgeShareStats
@@ -187,11 +214,11 @@ export default function BadgeShareButton({
         const blob = await buildBadgeShareBlob({ badgeImageUrl: imageUrl as string, stats, level, earnCount })
         if (cancelled) return
         const blobUrl = URL.createObjectURL(blob)
-        objectUrlRef.current = blobUrl
-        setState({ kind: 'ready', blobUrl, blob })
+        cardObjectUrlRef.current = blobUrl
+        setState((prev) => ({ ...prev, card: { kind: 'ready', blobUrl, blob } }))
       } catch (err) {
-        console.error('[BadgeShareButton] 공유 이미지 생성 실패:', err)
-        if (!cancelled) setState({ kind: 'error', reason: 'unknown' })
+        console.error('[BadgeShareButton] 공유 카드 생성 실패:', err)
+        if (!cancelled) setState((prev) => ({ ...prev, card: { kind: 'error', reason: 'unknown' } }))
       }
     }
 
@@ -202,15 +229,50 @@ export default function BadgeShareButton({
     }
   }, [open, badgeType, badgeId, subjectUsername, imageUrl, level, earnCount])
 
+  // 배지 이미지 단독(300px 정사각형) 항목 — 통계 API 조회가 필요 없어 카드 생성과 독립적으로
+  // 진행된다(티켓 20260911_1102). 하나가 아직 로딩 중이어도 다른 하나는 먼저 준비될 수 있다.
+  useEffect(() => {
+    if (!open) return
+
+    if (badgeObjectUrlRef.current) {
+      URL.revokeObjectURL(badgeObjectUrlRef.current)
+      badgeObjectUrlRef.current = null
+    }
+
+    if (!imageUrl) return
+
+    let cancelled = false
+
+    async function generate() {
+      try {
+        const blob = await buildBadgeImageBlob(imageUrl as string)
+        if (cancelled) return
+        const blobUrl = URL.createObjectURL(blob)
+        badgeObjectUrlRef.current = blobUrl
+        setState((prev) => ({ ...prev, badge: { kind: 'ready', blobUrl, blob } }))
+      } catch (err) {
+        console.error('[BadgeShareButton] 배지 이미지 변환 실패:', err)
+        if (!cancelled) setState((prev) => ({ ...prev, badge: { kind: 'error', reason: 'unknown' } }))
+      }
+    }
+
+    generate()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, imageUrl])
+
   // 언마운트 시 마지막으로 만든 objectURL 정리
   useEffect(() => {
     return () => {
-      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+      if (cardObjectUrlRef.current) URL.revokeObjectURL(cardObjectUrlRef.current)
+      if (badgeObjectUrlRef.current) URL.revokeObjectURL(badgeObjectUrlRef.current)
     }
   }, [])
 
-  async function handleAction(blob: Blob) {
-    const file = new File([blob], `${badgeName}-jam.png`, { type: 'image/png' })
+  async function handleAction(blob: Blob, filenameSuffix: string) {
+    const file = new File([blob], `${badgeName}-${filenameSuffix}.png`, { type: 'image/png' })
 
     if (supportsFileShare() && navigator.canShare({ files: [file] })) {
       try {
@@ -227,7 +289,7 @@ export default function BadgeShareButton({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${badgeName}-jam.png`
+    a.download = `${badgeName}-${filenameSuffix}.png`
     document.body.appendChild(a)
     a.click()
     a.remove()
@@ -250,12 +312,12 @@ export default function BadgeShareButton({
    *   알린다.
    * - 데스크톱: 사진 앱 개념이 없어 `<a download>`로 파일을 내려받는 것이 곧 "저장"이다.
    */
-  async function handleSave(blob: Blob) {
+  async function handleSave(blob: Blob, filenameSuffix: string) {
     if (isIOS()) {
       // 시트가 뜨면 화면 대부분을 시트가 덮으므로, 열리기 직전에 토스트로 어떤 액션을 눌러야
       // 하는지 안내한다(시트 자체는 handleAction과 완전히 동일한 navigator.share 호출).
       toast(d.badges.shareSaveIOSHint, 'info')
-      await handleAction(blob)
+      await handleAction(blob, filenameSuffix)
       return
     }
 
@@ -263,7 +325,7 @@ export default function BadgeShareButton({
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${badgeName}-jam.png`
+      a.download = `${badgeName}-${filenameSuffix}.png`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -280,8 +342,10 @@ export default function BadgeShareButton({
       setPopoverOpen((v) => !v)
       return
     }
-    // 이전에 열었을 때의 ready/error 결과가 남아 있으므로 여는 시점에 loading으로 되돌린다.
-    setState({ kind: 'loading' })
+    // 이전에 열었을 때의 ready/error 결과가 남아 있으므로 여는 시점에 loading으로 되돌리고,
+    // 캐러셀 선택도 첫 항목(공유 카드)으로 초기화한다.
+    setState({ card: { kind: 'loading' }, badge: { kind: 'loading' } })
+    setActiveIndex(0)
     setOpen(true)
   }
 
@@ -318,10 +382,14 @@ export default function BadgeShareButton({
         contentScrollable={false}
         footerBottomInset="safe-area"
         footer={
-          effectiveState.kind === 'ready' ? (
+          activeItemState.kind === 'ready' ? (
             <div className="flex gap-[var(--spacing-8)]">
               <div className="flex-1">
-                <Button surface="dark" fullWidth onClick={() => handleAction(effectiveState.blob)}>
+                <Button
+                  surface="dark"
+                  fullWidth
+                  onClick={() => handleAction(activeItemState.blob, FILENAME_SUFFIX[activeKind])}
+                >
                   {d.badges.shareActionShare}
                 </Button>
               </div>
@@ -330,7 +398,7 @@ export default function BadgeShareButton({
                   surface="dark"
                   variant="secondary"
                   fullWidth
-                  onClick={() => handleSave(effectiveState.blob)}
+                  onClick={() => handleSave(activeItemState.blob, FILENAME_SUFFIX[activeKind])}
                 >
                   {d.badges.shareActionDownload}
                 </Button>
@@ -341,48 +409,64 @@ export default function BadgeShareButton({
       >
         <div className="h-full flex flex-col min-h-0 px-[var(--spacing-16)]">
           {/*
-            체크보드 미리보기 프레임 — 투명 PNG의 투명 영역을 시각화한다.
-            다크 서피스 톤에 맞춰 라이트톤 체크보드(과거 배경 제너레이터 스파이크의 기본 체크보드,
-            해당 스파이크 라우트는 20260901_1851에서 삭제)보다 대비를 낮춘 흰색 저투명도 2톤
-            조합으로 재조정했다(20260821_003 결정 유지).
-            aspect-square가 아니라 flex-1로 시트 헤더~푸터 사이 세로 공간을 남김없이 전부 채운다
-            (상하 여백 없음 — 2026-08-21 재작업: "미리보기 영역을 최대한 위/아래로 확대" 피드백 반영).
-            실제 이미지는 1080×1920 세로 비율이라, 정사각형으로 눌러두면 실제보다 작게 보였다.
+            "기존 이미지(공유 카드)"·"배지 이미지" 2항목 캐러셀 (티켓 20260911_1102).
+            MODULAR Carousel(센터 포커스, 좌우 peek)을 그대로 재사용 — 슬라이드 전환 시
+            activeIndex가 바뀌고, 아래 푸터의 "공유"·"저장" 버튼은 항상 이 activeIndex에
+            해당하는 항목의 blob을 대상으로 한다.
+            체크보드 프레임·130% 확대 스타일은 각 슬라이드(renderItem) 안에 그대로 유지한다
+            (아래 원래 주석 — 20260821_003 결정 유지, 2026-08-21 재작업).
+            aspect-square가 아니라 flex-1로 시트 헤더~푸터 사이 세로 공간을 남김없이 전부 채운다.
           */}
-          <div
-            className="relative w-full flex-1 min-h-0 rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center"
-            style={{
-              backgroundImage:
-                'repeating-conic-gradient(rgba(255,255,255,0.06) 0% 25%, rgba(255,255,255,0.02) 0% 50%)',
-              backgroundSize: '20px 20px',
-            }}
-          >
-            {effectiveState.kind === 'ready' ? (
-              // eslint-disable-next-line @next/next/no-img-element -- 클라이언트에서 즉석 생성한 blob: URL, next/image 최적화 대상 아님
-              <img
-                src={effectiveState.blobUrl}
-                alt={badgeName}
-                className="w-full h-full object-contain"
-                /*
-                  실제 저장/공유되는 파일은 원본 그대로 두고, 미리보기 화면에서만 130% 확대한다.
-                  캔버스 자체에 위/아래 여백(스토리 템플릿 특성상 배지+텍스트 블록 주위로 넓은
-                  여백)이 있어 그대로 보여주면 작아 보인다 — 확대해서 프레임 밖으로 여백이
-                  잘려나가더라도 배지 이미지~마지막 텍스트까지는 더 크게 보이는 쪽을 택했다
-                  (2026-08-21 사용자 피드백). 프레임의 overflow-hidden이 잘라내는 역할을 한다.
-                */
-                style={{ transform: 'scale(1.3)' }}
-              />
-            ) : effectiveState.kind === 'error' ? (
-              <MedalIcon className="w-16 h-16 text-text/40" />
-            ) : showShareLoader ? (
-              <WanderingEyesLoader />
-            ) : null}
+          <div className="relative w-full flex-1 min-h-0">
+            <Carousel
+              items={SHARE_ITEM_KINDS}
+              activeIndex={activeIndex}
+              onActiveIndexChange={setActiveIndex}
+              getItemKey={(kind: ShareItemKind) => kind}
+              ariaLabel="공유 이미지 선택"
+              style={{ height: '100%', alignItems: 'stretch' }}
+              renderItem={(kind: ShareItemKind) => {
+                const itemState = effectiveState[kind]
+                const showLoader = kind === 'card' ? showCardLoader : showBadgeLoader
+                return (
+                  <div
+                    className="relative w-full h-full rounded-[var(--radius-cards)] overflow-hidden flex items-center justify-center"
+                    style={{
+                      backgroundImage:
+                        'repeating-conic-gradient(rgba(255,255,255,0.06) 0% 25%, rgba(255,255,255,0.02) 0% 50%)',
+                      backgroundSize: '20px 20px',
+                    }}
+                  >
+                    {itemState.kind === 'ready' ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- 클라이언트에서 즉석 생성한 blob: URL, next/image 최적화 대상 아님
+                      <img
+                        src={itemState.blobUrl}
+                        alt={badgeName}
+                        className="w-full h-full object-contain"
+                        /*
+                          실제 저장/공유되는 파일은 원본 그대로 두고, 미리보기 화면에서만 130% 확대한다.
+                          캔버스 자체에 위/아래 여백(스토리 템플릿 특성상 배지+텍스트 블록 주위로 넓은
+                          여백)이 있어 그대로 보여주면 작아 보인다 — 확대해서 프레임 밖으로 여백이
+                          잘려나가더라도 배지 이미지~마지막 텍스트까지는 더 크게 보이는 쪽을 택했다
+                          (2026-08-21 사용자 피드백). 프레임의 overflow-hidden이 잘라내는 역할을 한다.
+                        */
+                        style={{ transform: 'scale(1.3)' }}
+                      />
+                    ) : itemState.kind === 'error' ? (
+                      <MedalIcon className="w-16 h-16 text-text/40" />
+                    ) : showLoader ? (
+                      <WanderingEyesLoader />
+                    ) : null}
+                  </div>
+                )
+              }}
+            />
           </div>
 
-          {effectiveState.kind === 'error' && (
+          {activeItemState.kind === 'error' && (
             <div className="shrink-0 py-[var(--spacing-16)] text-center">
-              <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{errorCopy(effectiveState.reason).title}</p>
-              <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{errorCopy(effectiveState.reason).body}</p>
+              <p className="text-[length:var(--text-body)] text-[var(--color-text-secondary)]">{errorCopy(activeItemState.reason).title}</p>
+              <p className="text-[length:var(--text-caption)] text-[var(--color-text-secondary)]/60 mt-1">{errorCopy(activeItemState.reason).body}</p>
             </div>
           )}
         </div>
