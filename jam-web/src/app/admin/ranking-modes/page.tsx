@@ -45,7 +45,8 @@ export default async function AdminRankingModesPage() {
         <div>
           <h1 className="text-2xl font-bold">랭킹 규칙 관리</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            홈 피드 랭킹보드 카드가 연결할 순위 정의 — 대상 선정과 정렬 지표를 미리 만들어 둔다
+            홈 피드 랭킹 카드에 연결할 랭킹을 미리 만들어 둡니다. 누구를 줄 세울지와 어떤
+            지표로 줄 세울지를 여기서 정합니다.
           </p>
         </div>
         <Link href="/admin/ranking-modes/new">
