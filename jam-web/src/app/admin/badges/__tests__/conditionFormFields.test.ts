@@ -139,6 +139,8 @@ describe('condition_json ↔ 폼 라운드트립 (티켓 20260905_0032)', () => 
     follower_count: 100,
     following_count: 50,
     daily_sync_count: 7,
+    // JAM! 카테고리 — 연속 동기화 일수 1종 (티켓 20260911_2304)
+    daily_sync_streak_days: 7,
   }
 
   it('표본이 폼 지원 필드를 전부 덮는다 — 새 필드를 추가하면 여기도 채워야 한다', () => {
@@ -414,7 +416,9 @@ describe('조건 폼 그룹 재편 (티켓 20260911_0901)', () => {
       new Set(['prerequisite_badge_names', 'cross_in_axis', 'cross_between_axis', 'gate_mission_badge'])
     )
     // mission_reward는 입력 컨트롤 없이 획득 조건 섹션 맨 위의 「발급 방식」 세그먼트가 다룬다
-    expect(fieldsOf('meta')).toEqual(new Set(['follower_count', 'following_count', 'daily_sync_count', 'mission_reward']))
+    expect(fieldsOf('meta')).toEqual(
+      new Set(['follower_count', 'following_count', 'daily_sync_count', 'daily_sync_streak_days', 'mission_reward'])
+    )
   })
 
   it('폼 입력이 없는 필드(day_of_week·route·poi_id)는 「대상 활동」 그룹으로 모인다', () => {

@@ -63,14 +63,63 @@ closed:
 ## 완료 기록 *(작업 완료 후 작성)*
 
 ### 구현 내용 요약
+- `daily_sync_streak_days` 조건 키를 신설해 "오늘 기준 현재 연속 동기화 일수 ≥ N" 판정을
+  추가했다. `conditionRegistry.ts`에 `role: 'meta'` + `evaluation: 'external'`로 등록(기존
+  `daily_sync_count` 패턴 그대로).
+- 연속일수 계산은 신규 파일 `dailySyncStreak.ts`에 순수 함수(`calcCurrentSyncStreakDays`) +
+  DB 조회 함수(`fetchCurrentSyncStreakDays`)로 분리 구현. 오늘 날짜가 `user_daily_sync_counts`
+  목록에 없으면 0(리셋), 있으면 오늘부터 거꾸로 하루씩 끊기지 않은 구간을 센다. 기존
+  `calcMaxStreak`(활동배지, 역대 최장)는 재사용하지 않고 판정 기준이 다른 별개 로직으로
+  새로 작성했다(요청 사항).
+- `usageBadges.ts`의 `recordDailySyncAndEvaluate()`가 `increment_daily_sync_count()` RPC
+  직후 `daily_sync_count` 평가에 이어 `fetchCurrentSyncStreakDays()` → `daily_sync_streak_days`
+  평가를 추가로 수행하고, 두 지표의 발급 결과를 합쳐 반환한다.
+- `badge-condition-guards.ts`의 `USAGE_METRIC_CONDITION_KEYS`에도 추가해 `repeat_count`와의
+  조합을 저장 시점에 막는다(기존 3종과 같은 이유 — `usageBadges.ts`는 등급형·레벨형만 지원).
+- **UI 변경은 하지 않았다** — 티켓 배경(§UI/UX 관점)이 "JAM! 선택 시 조건 입력 섹션 전체가
+  숨겨져 있다"고 전제했으나, 실제 코드(현재 브랜치 기준)는 이미 `BadgeConditionSection.tsx`가
+  JAM! 카테고리에서 `role: 'meta'` 필드 전용 "사용량 지표" 그룹을 자동으로 렌더링한다(선행
+  티켓 20260911_0901에서 도입됨 — `follower_count`·`following_count`·`daily_sync_count` 입력
+  필드가 이미 그 그룹에 떠 있다). 이 그룹은 `conditionRegistry.ts`의 `form` 선언에서 필드
+  입력 UI를 자동 생성하는 구조라, `daily_sync_streak_days`에 `form: integerForm(...)`을
+  선언한 것만으로 어드민 화면 "사용량 지표" 그룹에 "연속 동기화 일수" 입력 칸이 자동으로
+  나타난다. `BadgeForm.tsx`를 별도로 손대지 않았다(자세한 내용은 `alerts` 참고).
+- DB 마이그레이션(161)은 작성만 하고 실행하지 않았다 — 실행은 사용자 승인 후 오케스트레이터가
+  처리한다.
+- 관련 문서(`BADGE_ENGINE_UNIFIED.md`, `CONDITION_JSON_SPEC.md`) 갱신.
 
 ### 변경된 파일
 ```
--
+jam-web/src/lib/badge-engine/dailySyncStreak.ts (신규)
+jam-web/src/lib/badge-engine/__tests__/daily-sync-streak.test.ts (신규)
+jam-web/src/lib/badge-engine/usageBadges.ts
+jam-web/src/lib/badge-engine/conditionRegistry.ts
+jam-web/src/lib/badge-engine/__tests__/usage-badges.test.ts
+jam-web/src/lib/badge-engine/__tests__/condition-registry.test.ts
+jam-web/src/lib/admin/badge-condition-guards.ts
+jam-web/src/lib/admin/__tests__/badge-condition-guards.test.ts
+jam-web/src/lib/admin/__tests__/badge-validation.test.ts
+jam-web/src/app/admin/badges/conditionFormFields.ts
+jam-web/src/app/admin/badges/__tests__/conditionFormFields.test.ts
+jam-web/src/types/database.ts
+jam-web/supabase/migrations/161_condition_json_sync_streak_key.sql (신규, 미실행)
+Service Plan/Specs/BadgeEngine/BADGE_ENGINE_UNIFIED.md
+Service Plan/Specs/BadgeEngine/CONDITION_JSON_SPEC.md
 ```
 
 ### 테스트 결과
-- [ ]
+- [x] `daily-sync-streak.test.ts`(신규) — 순수 함수 경계값 9건 + DB 조회 3건, 전부 통과
+- [x] `usage-badges.test.ts` — 기존 케이스 + 신규 `daily_sync_streak_days` 평가 4건 추가, 전부 통과
+- [x] `condition-registry.test.ts` — 필드 수·CHECK 제약 대조 갱신 후 전부 통과
+- [x] `badge-condition-guards.test.ts`·`badge-validation.test.ts` — 신규 지표 + `repeat_count`
+  충돌 케이스 추가, 전부 통과
+- [x] `conditionFormFields.test.ts` — 라운드트립 표본·그룹 매핑표 갱신 후 전부 통과
+- [x] `npm run lint` 전체 실행 — 0 errors, 13 warnings(전부 `design-system/`의 기존 경고,
+  이번 변경과 무관)
+- [x] `npx tsc --noEmit` — 오류 없음
+- 로컬 실렌더는 하지 않았다 — UI를 변경하지 않았고(위 요약 참고), 어드민 조건 폼은
+  레지스트리 선언 하나로 필드가 자동 생성되는 기존 검증된 구조라 판단했다(§ alerts에 낮은
+  확신도로 명시).
 
 ### UX Writing 검증 *(사용자 노출 텍스트가 있을 경우 필수)*
 **가이드:** `Service Plan/Specs/UX_WRITING_GUIDELINE.md` 참조
@@ -82,9 +131,9 @@ closed:
 - [ ] 표기 규칙: 날짜/시간/금액/기간 직관적 형식
 
 ### 배포 정보
-- 배포일:
-- 환경: production
-- 커밋:
+- 배포일: (미배포 — review 브랜치 push까지만 완료, staging 병합·배포는 사용자 승인 후)
+- 환경: -
+- 커밋: (아래 push한 review 브랜치 참고)
 
 ### 주요 의사결정 / 핵심 메모
 - "연속 N일" 판정 기준은 **현재(오늘 기준) 연속일수가 N일에 도달하는 순간 달성**으로
@@ -94,4 +143,7 @@ closed:
   횟수, 연속 아님)와 혼동하지 않도록 구분.
 
 ### 잔여 이슈
--
+- 티켓 §UI/UX 관점의 전제("JAM! 선택 시 조건 입력 섹션 전체가 숨겨져 있다")가 선행 티켓
+  20260911_0901로 이미 갱신돼 있었다 — 이번 구현에서는 `BadgeForm.tsx`를 손대지 않고
+  레지스트리 `form` 선언만 추가했다. 어드민에서 실제 화면으로 "사용량 지표" 그룹에 입력
+  칸이 뜨는지 리뷰어가 한 번 실렌더로 확인해 주면 좋겠다(로컬 `next dev` 또는 staging 병합 후).

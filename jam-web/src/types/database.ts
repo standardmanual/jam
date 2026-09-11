@@ -1290,6 +1290,14 @@ export interface BadgeCondition {
   following_count?: number
   /** [JAM!] 그날(KST) 누적 동기화 성공 횟수 ≥ 조건값. `user_daily_sync_counts` 기준 */
   daily_sync_count?: number
+  /**
+   * [JAM!] 오늘 기준 «현재» 연속 동기화 일수 ≥ 조건값 (티켓 20260911_2304).
+   * 역대 최장이 아니라 하루라도 거르면 리셋되는 진행 중 스트릭이다 — 활동배지의
+   * `streak_days`(Strava 활동 기반 최장 연속)와는 판정 기준이 다른 별개 지표라
+   * `daily_sync_` 접두어로 `daily_sync_count`와 같은 지표군임을 명시한다.
+   * `user_daily_sync_counts` 기준 — `lib/badge-engine/dailySyncStreak.ts`가 계산한다.
+   */
+  daily_sync_streak_days?: number
 }
 
 // =========================================
