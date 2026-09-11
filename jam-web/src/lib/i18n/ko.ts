@@ -281,10 +281,10 @@ export const ko = {
     locationTrend: '지역 트렌드',
     dropAlert: '드랍',
     editorialArticle: '기사',
-    rankingBoard: '랭킹보드',
+    rankingBoard: '랭킹',
     backToToday: '투데이로',
     noBody: '본문이 없어요',
-    rankingEmpty: '아직 순위가 없어요',
+    rankingEmpty: '아직 랭킹이 없어요',
   },
 
   /** 배지 목록/상세 화면 */
@@ -621,7 +621,7 @@ export const ko = {
     statusAchievementLabel: '달성 현황',
     statusIndividualLabel: '나의 현황',
     statusParticipants: '참가자 {count}명',
-    statusAllRanks: '전체 순위',
+    statusAllRanks: '전체 랭킹',
     statusLoadError: '불러오지 못했어요',
     statusMeRanking: '— 내 순위 —',
     statusMeAchievement: '— 나 —',

@@ -51,7 +51,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/tribes', label: '트라이브', icon: IconWorld },
       { href: '/admin/recipes', label: '믹스 레시피', icon: IconFlask },
       { href: '/admin/today', label: '투데이 콘텐츠', icon: IconNews },
-      { href: '/admin/ranking-modes', label: '랭킹모드 관리', icon: IconTrophy },
+      { href: '/admin/ranking-modes', label: '랭킹 규칙 관리', icon: IconTrophy },
       { href: '/admin/missions', label: '미션 관리', icon: IconTarget },
     ],
   },

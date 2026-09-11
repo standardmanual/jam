@@ -525,7 +525,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
 
       {fields.rankingMode && (
         <div className="flex min-w-0 flex-col gap-1.5">
-          <FieldLabel htmlFor="today-card-ranking-mode">랭킹모드</FieldLabel>
+          <FieldLabel htmlFor="today-card-ranking-mode">랭킹 규칙</FieldLabel>
           <Select value={rankingModeId || NONE_VALUE} onValueChange={(v) => setRankingModeId(v === NONE_VALUE ? '' : v)}>
             <SelectTrigger id="today-card-ranking-mode" aria-describedby="today-card-ranking-mode-help">
               <SelectValue />
@@ -540,7 +540,7 @@ export default function TodayCardForm({ card, missions, itemBooks, rankingModes,
             </SelectContent>
           </Select>
           <FieldMessage id="today-card-ranking-mode-help">
-            이 카드가 보여줄 순위예요. 랭킹모드가 없다면{' '}
+            이 카드가 보여줄 순위예요. 랭킹 규칙이 없다면{' '}
             <a href="/admin/ranking-modes/new" target="_blank" rel="noreferrer" className="underline">
               먼저 만들어 주세요
             </a>
