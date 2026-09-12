@@ -18,6 +18,11 @@ export const EXACT_MATCH_RADIUS_BY_CATEGORY: Record<string, number> = {
   // poi.category='transit'인 행이 존재하지 않으므로 그 항목도 함께 제거했다.
   train_subway: 50,
   mountain: 150,
+  // 2026-09-12(티켓 20260912_1025): 미슐랭 레스토랑 42곳 체크인 배지 연동. 매장 단위
+  // 좌표(구글맵 place 검색)라 산 정상처럼 GPS drift를 흡수할 필요가 없다 — 지하철역과
+  // 동일한 50m를 그대로 적용한다. 이 값을 등록하지 않으면 기본값 500m가 적용되어
+  // 2026-08-11 오탐 인시던트가 재발한다.
+  michelin: 50,
 }
 
 // 20260907_1243: stadium(경기장)·school(학교)·park(공원)은 신규/재정의 자동수집 카테고리지만

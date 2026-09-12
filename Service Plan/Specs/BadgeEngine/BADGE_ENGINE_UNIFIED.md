@@ -1611,7 +1611,17 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
   상세 문구·N 산정 기준(badge_id 단위)·묶음 알림 합성 규칙은 `Specs/PRD/Notification/PRD.md` §3 참조.
 - **재현용 SQL**: `supabase/seed_poi_badges_20260727.sql` (INSERT/UPDATE 전량 기록, service_role 키로 직접 실행됨).
 
-**POI 매칭 반경 — 카테고리별 기준값 (2026-08-24 기준)**
+> **2026-09-12 추가([[20260912_1025]])**: `michelin`(미쉐린 가이드 서울 스타 레스토랑, 42곳)도
+> 동일 패턴으로 편입됐다 — 이름·설명 자동생성("{POI명}에서 식사했습니다")·`rarity='common'`은
+> 동일하고, 지점 카테고리 태깅(`badges.category`, 마이그레이션 113)만 `'michelin'`으로 새로
+> 붙는다. 재현용 SQL은 `supabase/migrations/164_michelin_checkin_badges.sql`(작성 완료,
+> 실행 대기). **커스텀 배지 이미지(Figma fileKey `UXcBEgFagmO5ARwH5F0mMW`, node `15:127`)는
+> 이 티켓 세션에 Figma MCP 접근 권한이 없어 아직 생성되지 못했다** — 실행 시점에는 임시로
+> 기존 공용 플레이스홀더(`/badges/poi/anyway_star.png`)를 쓰고, 커스텀 이미지가 프로덕션에
+> 배포된 뒤 별도 SQL로 `image_url`을 갱신한다. POI 자체의 활성화(`is_active`)도 그 배포
+> 확인 후 진행한다(`supabase/migrations/165_michelin_poi_activate.sql`).
+
+**POI 매칭 반경 — 카테고리별 기준값 (2026-09-12 기준)**
 
 `src/lib/poi/radius-policy.ts`의 `EXACT_MATCH_RADIUS_BY_CATEGORY`가 최종값을 강제한다
 (호출부가 다른 값을 넘겨도 덮어쓴다).
@@ -1620,6 +1630,7 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 |---|---|
 | `mountain` (산) | **150m** ← 2026-08-11 50m에서 상향 |
 | `train_subway` (기차/지하철) | **50m** ← 2026-08-24 `transit`에서 분리, 같은 값 유지 |
+| `michelin` (미슐랭) | **50m** ← 2026-09-12 신설, 매장 단위 좌표라 지하철역과 동일 |
 | 기타 카테고리 | POI별 개별 설정 (기본 500m) |
 
 > `transit`(대중교통) 행은 2026-09-07([[20260907_1243]]) 카테고리 자체가 삭제되며 함께
