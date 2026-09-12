@@ -34,7 +34,7 @@
  * 하드코딩돼 있어(패키지 비공개 모듈, `layer-registry.ts`의 `textParams.fontWeight`가 보여주는
  * 100~900은 원본이 기본으로 노출하는 `sans` 슬롯 기준값일 뿐이다), 우리가 이 필드의 UI
  * min/max를 얼마로 두든 실제로 반영되는 값은 400~900을 벗어날 수 없다. Pretendard Variable의
- * 실제 `wght` 축(45~920, `shaderTextDissolve.ts`의 `FONT_WEIGHT_RANGE`)보다도 좁다 —
+ * 실제 `wght` 축(45~920)보다도 좁다 —
  * 즉 이 폰트가 지원하는 가장 얇은 획(Thin~Light, 45~390)은 이 슬롯을 통해서는 애초에 표현할
  * 수 없다. UI가 실제로 반영되지 않는 값까지 슬라이더로 보여주면 사용자에게 거짓 정보를 주는
  * 셈이라, **UI 범위 자체를 400~900으로 맞췄다**(원본이나 Pretendard 실제 축을 그대로 노출하지
@@ -54,6 +54,18 @@
 /** 패키지가 하이재킹 대상으로 고른 슬롯의 CSS 커스텀 프로퍼티 이름. `layout.tsx`가 이 값을
  *  덮어쓴다. */
 export const SHADER_LAB_TEXT_FONT_CSS_VARIABLE = '--bsmnt-grotesque' as const
+
+/**
+ * 텍스트 레이어가 쓰는 Pretendard **Variable** 웹폰트 CDN 스타일시트. `/admin/shader-lab`
+ * 라우트에서만 `layout.tsx`가 `<link rel="stylesheet">`로 로드한다 — 사이트 전역
+ * `globals.css`의 static 배포판 `@import`는 건드리지 않는다.
+ *
+ * 버전은 static 배포판과 같은 태그(`v1.3.9`)로 고정한다 — `@main` 등 추적 태그를 쓰면 검증
+ * 시점 이후 릴리스가 슬쩍 바뀔 수 있어 금지(티켓 20260912_1532 명시, 티켓 20260913_0413에서
+ * 이 파일로 이관).
+ */
+export const PRETENDARD_VARIABLE_CSS_URL =
+  'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css'
 
 export interface ShaderLabTextFontOption {
   label: string

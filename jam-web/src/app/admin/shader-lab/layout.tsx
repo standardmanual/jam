@@ -1,6 +1,8 @@
 import '@basementstudio/shader-lab/fonts.css'
-import { PRETENDARD_VARIABLE_CSS_URL } from '@/lib/admin/shaderTextDissolve'
-import { SHADER_LAB_TEXT_FONT_CSS_VARIABLE } from '@/lib/admin/shaderLab/textFontOptions'
+import {
+  PRETENDARD_VARIABLE_CSS_URL,
+  SHADER_LAB_TEXT_FONT_CSS_VARIABLE,
+} from '@/lib/admin/shaderLab/textFontOptions'
 
 /**
  * `/admin/shader-lab` 전용 레이아웃 (티켓 20260912_1951, 텍스트 레이어 폰트 로드 20260912_2157).
@@ -9,9 +11,9 @@ import { SHADER_LAB_TEXT_FONT_CSS_VARIABLE } from '@/lib/admin/shaderLab/textFon
  * `--geist-mono`·`--bsmnt-grotesque` CSS 변수를 선언한다(패키지가 오픈 라이선스로 동봉하는
  * 3종 폰트). 이 라우트에서만 로드해 전역 타이포그래피에 영향을 주지 않는다.
  *
- * 텍스트 레이어는 Pretendard Variable을 쓴다(`/admin/shader-text`, 티켓 20260912_1532가
- * 확립한 CDN URL을 `PRETENDARD_VARIABLE_CSS_URL` 상수로 그대로 재사용 — 값을 다시 베끼지
- * 않는다). 다만 패키지의 텍스트 렌더링 패스는 `fontFamily` 파라미터 값을 자유 문자열로 받지
+ * 텍스트 레이어는 Pretendard Variable을 쓴다(`PRETENDARD_VARIABLE_CSS_URL` 상수, 원래
+ * 티켓 20260912_1532가 확립한 CDN URL을 티켓 20260913_0413에서 `textFontOptions.ts`로
+ * 이관). 다만 패키지의 텍스트 렌더링 패스는 `fontFamily` 파라미터 값을 자유 문자열로 받지
  * 않고, 내부에 미리 정의된 슬롯 이름(`sans`/`mono`/`bsmnt-grotesque` 등) 중 하나여야만
  * 실제 폰트가 반영된다 — 그 슬롯이 참조하는 CSS 커스텀 프로퍼티를 우리가 여기서 덮어써야
  * 한다. 왜 `--bsmnt-grotesque` 슬롯을 골랐는지, `fontWeight` 범위가 왜 400~900인지는

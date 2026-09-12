@@ -16,7 +16,7 @@ export default function ShaderLabWebGpuGate({ children }: { children: ReactNode 
 
   useEffect(() => {
     // 이펙트 본문에서 곧바로 setState를 동기 호출하면 react-hooks/set-state-in-effect에
-    // 걸린다(`ShaderTextPresetPanel.tsx`와 동일한 이유) — 마이크로태스크로 한 틱 미룬다.
+    // 걸린다 — 마이크로태스크로 한 틱 미룬다.
     Promise.resolve().then(() => setSupported(isWebGpuSupported()))
   }, [])
 
