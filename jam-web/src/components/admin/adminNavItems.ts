@@ -28,6 +28,7 @@ import {
   IconTrophy,
   IconBan,
   IconTypography,
+  IconLayersIntersect,
 } from '@tabler/icons-react'
 import { isPathActive } from '@/lib/isPathActive'
 
@@ -86,6 +87,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/badge-image', label: '체크인 배지 이미지 생성', icon: IconPhoto },
       { href: '/admin/activity-badge-image', label: '액티비티 배지 이미지 생성', icon: IconPhotoEdit },
       { href: '/admin/shader-text', label: '쉐이더 텍스트 생성', icon: IconTypography },
+      { href: '/admin/shader-lab', label: '쉐이더 랩', icon: IconLayersIntersect },
     ],
   },
 ]
