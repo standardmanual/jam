@@ -31,6 +31,27 @@ staging 배포 자체가 실패한 상태면 프로덕션 승격은 의미가 �
 NODE_EXTRA_CA_CERTS=/tmp/system-ca.pem npx vercel ls jam-stage --scope standard-manual
 ```
 
+## 2.5. 어드민 전용 변경 로컬 빌드 검증
+
+`jam-web/scripts/vercel-ignore.sh` 규칙 ③에 따라, 어드민 전용 경로(`src/app/admin`·
+`src/app/api/admin`·`src/lib/admin`)만 바뀐 커밋은 jam-stage에서 빌드 자체를 건너뛴다
+(어드민은 staging을 운영하지 않으므로). 즉 이 코드는 **jam-stage에서 한 번도 컴파일
+검증을 거치지 않은 채** main으로 승격될 수 있다. 승격 대상에 어드민 경로가 섞여 있으면
+main 승격 전에 로컬 빌드로 대신 검증한다:
+
+```bash
+git -C "<repo>" diff --name-only origin/main origin/staging -- jam-web/src/app/admin jam-web/src/app/api/admin jam-web/src/lib/admin
+```
+
+결과가 있으면:
+
+```bash
+cd "<repo>/jam-web" && npm run build
+```
+
+**빌드가 실패하면 승격을 중단하고 원인을 보고한다.** 결과가 없으면(어드민 변경 없음)
+이 단계를 건너뛴다.
+
 ## 3. main 승격
 
 ```bash

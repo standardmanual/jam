@@ -27,6 +27,17 @@
 #   문서 커밋이 섞였을 때 코드 변경이 배포되지 않는다 — 마커 방식은 건너뛴 구간을
 #   누적해서 비교하므로 그 사고가 구조적으로 불가능하다.
 #   판단 근거가 없으면(캐시 콜드 · 얕은 클론) 항상 빌드하는 쪽으로 넘어진다.
+#
+# 규칙 ③ (2026-09-12 추가): jam-stage(staging→production 매핑 프로젝트)에서,
+#   변경 파일이 전부 어드민 전용 경로(src/app/admin·api/admin·lib/admin)면 빌드하지
+#   않는다. 어드민은 staging을 운영하지 않으므로(사용자 확인) 어차피 아무도 열어보지
+#   않는 jam-stage 빌드다. jam(main) 프로젝트에는 이 규칙을 적용하지 않는다 — 어드민도
+#   실사용자 서비스와 같은 빌드로 나가므로 프로덕션 승격 시에는 반드시 빌드해야 한다.
+#   두 프로젝트 구분은 커스텀 환경변수 JAM_DEPLOY_TARGET으로 한다 — Vercel 대시보드에서
+#   jam-stage 프로젝트의 Production 환경에만 `JAM_DEPLOY_TARGET=stage`를 설정해 둔다.
+#   이 변수가 없으면(미설정) 규칙 ③은 발동하지 않고 항상 빌드하는 기존 동작으로 넘어간다.
+#   어드민 전용 커밋은 이 규칙 때문에 jam-stage에서 단 한 번도 빌드되지 않은 채 main에
+#   처음 올라간다 — 그 리스크는 /jam-ship이 main 승격 직전 로컬 빌드 검증으로 상쇄한다.
 set -u
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 1
@@ -50,9 +61,19 @@ if ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
   exit 1
 fi
 
-if git diff --quiet "$BASE" HEAD -- ':(top)jam-web'; then
+CHANGED_FILES="$(git diff --name-only "$BASE" HEAD -- ':(top)jam-web')"
+if [ -z "$CHANGED_FILES" ]; then
   echo "[ignore] ${BASE}..HEAD에 jam-web/ 변경 없음(문서 전용) — 빌드를 건너뜁니다"
   exit 0
+fi
+
+# ③ jam-stage 대상이고 변경 파일이 전부 어드민 전용 경로면 건너뛴다
+if [ "${JAM_DEPLOY_TARGET:-}" = "stage" ]; then
+  NON_ADMIN="$(echo "$CHANGED_FILES" | grep -vE '^jam-web/(src/app/admin/|src/app/api/admin/|src/lib/admin/)')"
+  if [ -z "$NON_ADMIN" ]; then
+    echo "[ignore] ${BASE}..HEAD 변경이 전부 어드민 전용 경로 — jam-stage는 어드민을 운영하지 않으므로 빌드를 건너뜁니다"
+    exit 0
+  fi
 fi
 
 echo "[ignore] ${BASE}..HEAD에 jam-web/ 변경 있음 — 빌드합니다"
