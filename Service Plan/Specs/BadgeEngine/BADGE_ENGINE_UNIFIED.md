@@ -1619,10 +1619,10 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 > `UXcBEgFagmO5ARwH5F0mMW`, node `15:127`, 텍스트 레이어 `15:113` 'POI') 디자인을 배경
 > SVG로 조립해 `scripts/badge-image-gen/configs/michelin-poi-badge.config.js`를 신규
 > 작성하고 `generate.js`로 42개를 렌더링했다(다른 POI 배지와 달리 지하철역·산과 동일하게
-> 배지별로 서로 다른 이미지를 쓰는 방식). 이미지가 프로덕션에 배포된 뒤
-> `supabase/seed/update_michelin-poi-badge_images.sql`로 `image_url`을 갱신하고,
-> POI 자체의 활성화(`is_active`)도 그 배포 확인 후 진행한다
-> (`supabase/migrations/165_michelin_poi_activate.sql`).
+> 배지별로 서로 다른 이미지를 쓰는 방식). 이미지가 프로덕션(`j-a-m.app`)에 배포된 것을
+> 확인한 뒤 `supabase/seed/update_michelin-poi-badge_images.sql`로 `image_url`을
+> 42/42 갱신했고, POI 42곳의 활성화(`is_active=true`)도
+> `supabase/migrations/165_michelin_poi_activate.sql` 실행으로 완료했다.
 
 **POI 매칭 반경 — 카테고리별 기준값 (2026-09-12 기준)**
 
