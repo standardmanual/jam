@@ -52,8 +52,8 @@ export default function ShaderLabSavePanel({ layers, onLoad }: ShaderLabSavePane
   }
 
   useEffect(() => {
-    // `ShaderTextPresetPanel`과 동일한 이유로 마이크로태스크로 지연한다
-    // (react-hooks/set-state-in-effect 회피).
+    // 이펙트 본문에서 곧바로 setState를 동기 호출하면 react-hooks/set-state-in-effect에
+    // 걸려 마이크로태스크로 지연한다.
     Promise.resolve().then(() => loadList())
   }, [])
 

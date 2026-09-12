@@ -1,8 +1,7 @@
 /**
  * 쉐이더 랩 — 컴포지션(레이어 스택) 기본값·직렬화 헬퍼 (티켓 20260912_1951)
  *
- * 1차 출력 규격은 1:1 고정, 기존 도구(`/admin/shader-text`) 관례상 1280×1280을 그대로
- * 따른다(티켓 명시).
+ * 1차 출력 규격은 1:1 고정, 1280×1280을 그대로 따른다(티켓 명시).
  */
 import type { ShaderLabConfig, ShaderLabLayerConfig } from '@basementstudio/shader-lab'
 
