@@ -38,7 +38,7 @@ export const DASHBOARD_ITEM: NavItem = { href: '/admin', label: '대시보드', 
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'content',
-    label: '배지 관리',
+    label: '컨텐츠 관리',
     items: [
       { href: '/admin/badges', label: '배지 관리', icon: IconAward },
       { href: '/admin/badge-families', label: '배지 계열 관리', icon: IconBinaryTree },
