@@ -84,6 +84,13 @@ const VIEWPORT_DEBOUNCE_MS = 350
  */
 const VIEWPORT_MARGIN_RATIO = 0.02
 
+/**
+ * 마지막 실제 조회로부터 이 시간(ms)이 지나면, 뷰포트가 마진 범위 안이라도
+ * 강제로 재조회한다. 서버 데이터(배지 유효기간 시작/종료, show_on_map 토글 등)가
+ * 바뀌었는데도 사용자가 같은 지역 안에서만 움직이면 영영 갱신되지 않는 문제를 막는다.
+ */
+const VIEWPORT_STALE_TTL_MS = 90_000
+
 type MapsReadyCallback = () => void
 const globalCallbacks = window as unknown as Record<string, MapsReadyCallback | undefined>
 
@@ -255,6 +262,8 @@ export default function MapView({
   // idle 디바운스 타이머 + 마지막으로 조회한 뷰포트(범위 밖으로 나갔을 때만 재조회)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastViewportRef = useRef<MapViewport | null>(null)
+  // 마지막으로 실제 fetch(재조회)를 트리거한 시각 — TTL 경과 시 마진 범위 안이어도 강제 재조회
+  const lastFetchAtRef = useRef<number | null>(null)
   // 최신 콜백을 리스너 재등록 없이 참조하기 위한 ref
   const onViewportChangeRef = useRef(onViewportChange)
   useEffect(() => {
@@ -338,10 +347,14 @@ export default function MapView({
         }
 
         const prev = lastViewportRef.current
-        // 이전 조회 범위 안이고 줌도 그대로면 재조회하지 않는다
-        if (prev && prev.zoom === next.zoom && isWithin(next, prev)) return
+        const lastFetchAt = lastFetchAtRef.current
+        const isStale = lastFetchAt === null || Date.now() - lastFetchAt >= VIEWPORT_STALE_TTL_MS
+        // 이전 조회 범위 안이고 줌도 그대로면 재조회하지 않는다 — 단, 마지막 조회로부터
+        // TTL 이상 지났으면(스테일) 서버 데이터가 바뀌었을 수 있으므로 강제로 재조회한다.
+        if (prev && prev.zoom === next.zoom && isWithin(next, prev) && !isStale) return
 
         lastViewportRef.current = next
+        lastFetchAtRef.current = Date.now()
         onViewportChangeRef.current?.(next)
       }
 
