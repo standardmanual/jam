@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { name, description, type, rarity, level, family_key, sort_order, image_url, activity_types, patch_available, patch_price_krw, condition_json, tribe_id, item_book_id, category, admin_category, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
+  const { name, description, type, rarity, level, family_key, sort_order, image_url, activity_types, patch_available, patch_price_krw, condition_json, tribe_id, item_book_id, category, admin_category, show_on_map, drop_weight, valid_from, valid_until, point_reward, background_color, background_shader_id, background_image_url, background_video_url, background_animation } = body
 
   // `rarity`는 더 이상 필수가 아니다 — 무한레벨형 배지는 `rarity IS NULL` + `level`이다
   // (마이그레이션 130). 이 검사가 `!rarity`를 요구하는 동안 어드민은 **레벨형 배지를 아예
@@ -114,6 +114,9 @@ export async function POST(req: NextRequest) {
     // 독립적으로 저장한다 — JAM! 배지는 type='activity'라 type==='checkin' 가드를 그대로
     // 쓰면 저장할 수 없다(티켓 20260910_2055).
     admin_category: admin_category ?? null,
+    // 지도 드롭메뉴 마커 노출 여부(마이그레이션 166, 티켓 20260912_1053) — 체크인 배지에만
+    // 의미가 있으나 컬럼 자체는 전 타입 공통, 기본값 true(생략 시 노출).
+    show_on_map: show_on_map ?? true,
     drop_weight: drop_weight ?? 1.0,
     valid_from: valid_from ?? null,
     valid_until: valid_until ?? null,

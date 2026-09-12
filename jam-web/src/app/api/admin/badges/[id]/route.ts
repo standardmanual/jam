@@ -88,6 +88,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       // 병합한다 — JAM! 배지는 type='activity'라 type==='checkin' 가드를 그대로 쓰면 저장할
       // 때마다 값이 사라진다(티켓 20260910_2055 AC9).
       admin_category: body.admin_category !== undefined ? body.admin_category : existing.admin_category,
+      // 지도 드롭메뉴 마커 노출 여부(마이그레이션 166, 티켓 20260912_1053) — admin_category와
+      // 동일하게 type과 무관하게 그대로 병합한다.
+      show_on_map: body.show_on_map !== undefined ? body.show_on_map : existing.show_on_map,
       drop_weight: body.drop_weight !== undefined ? body.drop_weight : existing.drop_weight,
       valid_from: body.valid_from !== undefined ? body.valid_from : existing.valid_from,
       valid_until: body.valid_until !== undefined ? body.valid_until : existing.valid_until,
