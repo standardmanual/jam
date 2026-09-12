@@ -271,6 +271,7 @@ export type Database = {
           patch_price_krw: number | null
           point_reward: number
           rarity: Database["public"]["Enums"]["badge_rarity"] | null
+          show_on_map: boolean
           sort_order: number
           tribe_id: string | null
           type: Database["public"]["Enums"]["badge_type"]
@@ -305,6 +306,7 @@ export type Database = {
           patch_price_krw?: number | null
           point_reward?: number
           rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          show_on_map?: boolean
           sort_order?: number
           tribe_id?: string | null
           type: Database["public"]["Enums"]["badge_type"]
@@ -339,6 +341,7 @@ export type Database = {
           patch_price_krw?: number | null
           point_reward?: number
           rarity?: Database["public"]["Enums"]["badge_rarity"] | null
+          show_on_map?: boolean
           sort_order?: number
           tribe_id?: string | null
           type?: Database["public"]["Enums"]["badge_type"]
