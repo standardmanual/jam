@@ -31,6 +31,7 @@
 | [PointSystem/](./PointSystem/) | 포인트 시스템 |
 | [Notification/](./Notification/) | 알림(소식) — 인앱 소식 히스토리 28종. 푸시 알림 아님 |
 | [Analytics/](./Analytics/) | GA4 커스텀 이벤트 계측 명세 |
+| [Inventory/](./Inventory/) | 인벤토리 포화 인지·드랍 순환 유도 |
 
 새 주제별 PRD 세트 생성 시 `Specs/PRD/{주제}/` 하위 폴더로 구분한다 (파일명 접두어 사용 안 함).
 
