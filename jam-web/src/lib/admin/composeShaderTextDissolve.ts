@@ -34,10 +34,21 @@ import {
   type ShaderTextParams,
 } from '@/lib/admin/shaderTextDissolve'
 
-const FONT_LOAD_FAMILY = 'Pretendard'
+/**
+ * `Pretendard Variable`(가변 축)만 쓴다. `globals.css`가 로드하는 static 배포판(`Pretendard`)은
+ * 굵기가 9단계 고정이라 이 화면의 연속 슬라이더와 맞지 않는다 — 이 라우트 전용
+ * `layout.tsx`가 `PRETENDARD_VARIABLE_CSS_URL`을 별도로 로드해 두므로, 여기서도 같은 폰트
+ * 패밀리명으로 로딩 완료를 기다린다(2026-09-12 게이트 재시도 "폰트 굵기 결정 변경").
+ */
+const FONT_LOAD_FAMILY = 'Pretendard Variable'
 const FONT_FAMILY = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
 
-/** 웹폰트 로딩을 기다린다 — 기다리지 않으면 폴백 폰트로 구워진다(`buildBadgeShareBlob.ts`와 동일 이유). */
+/**
+ * 웹폰트 로딩을 기다린다 — 기다리지 않으면 폴백 폰트로 구워진다(`buildBadgeShareBlob.ts`와 동일
+ * 이유). 가변 폰트는 `@font-face`가 파일 1개(`font-weight: 45 920`)만 등록하므로, 요청한 굵기
+ * 문자열로 `document.fonts.load()`를 호출하면 그 굵기가 가변 축 범위 안에 있는 한 브라우저가
+ * 같은 파일에서 보간해 제공한다(굵기별로 파일이 따로 있는 static 폰트와 다른 점).
+ */
 export async function ensureShaderTextFonts(weight: number, size: number): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) return
   try {

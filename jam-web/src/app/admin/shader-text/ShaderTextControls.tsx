@@ -10,13 +10,10 @@ import { Textarea } from '@/components/admin/ui/textarea'
 import {
   ECHO_PATTERNS,
   ECHO_PATTERN_LABELS,
-  FONT_WEIGHTS,
-  FONT_WEIGHT_LABELS,
   MAX_TEXT_LENGTH,
   SHADER_TEXT_RANGES,
   type ShaderTextBackgroundMode,
   type ShaderTextEchoPattern,
-  type ShaderTextFontWeight,
   type ShaderTextParams,
 } from '@/lib/admin/shaderTextDissolve'
 
@@ -50,6 +47,7 @@ function SliderField({
   range,
   decimals = 0,
   suffix = '',
+  hint,
   onChange,
 }: {
   label: string
@@ -57,6 +55,7 @@ function SliderField({
   range: { min: number; max: number; step: number }
   decimals?: number
   suffix?: string
+  hint?: string
   onChange: (value: number) => void
 }) {
   return (
@@ -73,6 +72,7 @@ function SliderField({
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(Number(e.target.value))}
         className="accent-primary"
       />
+      {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
     </label>
   )
 }
@@ -207,23 +207,13 @@ export default function ShaderTextControls({
             </Field>
           )}
 
-          <Field label="폰트 굵기" hint="Pretendard 고정 — static 배포판이 제공하는 9단계 중 선택해요(가변 보간 아님).">
-            <Select
-              value={String(params.font.weight)}
-              onValueChange={(v) => setFont('weight', Number(v) as ShaderTextFontWeight)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FONT_WEIGHTS.map((w) => (
-                  <SelectItem key={w} value={String(w)}>
-                    {FONT_WEIGHT_LABELS[w]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          <SliderField
+            label="폰트 굵기"
+            value={params.font.weight}
+            range={R.font.weight}
+            hint="Pretendard Variable 가변 축 — 이 화면 전용으로 별도 로드한 웹폰트라 임의의 굵기로 연속 조절돼요."
+            onChange={(v) => setFont('weight', v)}
+          />
 
           <SliderField label="폰트 크기" value={params.font.size} range={R.font.size} suffix="px" onChange={(v) => setFont('size', v)} />
           <SliderField label="자간" value={params.font.tracking} range={R.font.tracking} decimals={1} suffix="px" onChange={(v) => setFont('tracking', v)} />

@@ -37,23 +37,26 @@ export const MAX_TEXT_LENGTH = 300
 export const MAX_PRESET_NAME_LENGTH = 60
 
 /**
- * Pretendard **static** 배포판이 제공하는 9단계 고정 굵기(가변 축 보간 아님).
- * `jam-web/src/app/globals.css`가 CDN static 번들을 import하므로 이 9개 값만 실제로 로드된다.
+ * 이 어드민 라우트(`/admin/shader-text`)에 한해서만 로드하는 Pretendard **Variable** 웹폰트
+ * CDN 스타일시트 (2026-09-12 게이트 재시도 — "폰트 굵기 결정 변경"). `jam-web/src/app/globals.css`의
+ * 사이트 전역 static 배포판 `@import`는 건드리지 않는다 — 이 URL은
+ * `src/app/admin/shader-text/layout.tsx`에서만 `<link rel="stylesheet">`로 참조된다.
+ *
+ * 버전은 static 배포판과 같은 태그(`v1.3.9`)로 고정한다 — `@main` 등 추적 태그를 쓰면 검증
+ * 시점 이후 릴리스가 슬쩍 바뀔 수 있어 금지(티켓 명시).
  */
-export const FONT_WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900] as const
-export type ShaderTextFontWeight = (typeof FONT_WEIGHTS)[number]
+export const PRETENDARD_VARIABLE_CSS_URL =
+  'https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css'
 
-export const FONT_WEIGHT_LABELS: Record<ShaderTextFontWeight, string> = {
-  100: 'Thin (100)',
-  200: 'Extra Light (200)',
-  300: 'Light (300)',
-  400: 'Regular (400)',
-  500: 'Medium (500)',
-  600: 'SemiBold (600)',
-  700: 'Bold (700)',
-  800: 'Extra Bold (800)',
-  900: 'Black (900)',
-}
+/**
+ * Pretendard Variable의 `wght` 축 실측 범위. 추측값이 아니라 위 CSS 파일을 직접 받아
+ * `@font-face { font-weight: 45 920; }` 선언값을 그대로 옮겼다(2026-09-12 확인, 티켓 명시
+ * 요구사항 — 코드에 값을 추측해 넣지 않는다).
+ */
+export const FONT_WEIGHT_RANGE = { min: 45, max: 920, step: 1 } as const
+
+/** 가변 축 연속 슬라이더로 다루므로 특정 정수 목록이 아니라 범위 안의 임의 정수다. */
+export type ShaderTextFontWeight = number
 
 /** Echo Path / Freehand Brush — 실제 드로잉 UI 없이 대체하는 배치 프리셋 3종 (사용자 결정) */
 export const ECHO_PATTERNS = ['linear', 'zigzag', 'circular'] as const
@@ -192,6 +195,7 @@ export interface ShaderTextParams {
 
 export const SHADER_TEXT_RANGES = {
   font: {
+    weight: FONT_WEIGHT_RANGE,
     size: { min: 20, max: 320, step: 1 },
     tracking: { min: -20, max: 40, step: 0.5 },
     lineHeight: { min: 0.8, max: 2.5, step: 0.05 },
@@ -306,9 +310,7 @@ function text(value: unknown, max: number): string {
 }
 
 function weight(value: unknown, fallback: ShaderTextFontWeight): ShaderTextFontWeight {
-  return typeof value === 'number' && (FONT_WEIGHTS as readonly number[]).includes(value)
-    ? (value as ShaderTextFontWeight)
-    : fallback
+  return num(value, FONT_WEIGHT_RANGE, fallback)
 }
 
 function pattern(value: unknown, fallback: ShaderTextEchoPattern): ShaderTextEchoPattern {
