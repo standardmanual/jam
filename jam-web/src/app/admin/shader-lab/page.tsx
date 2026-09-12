@@ -34,6 +34,13 @@ export default function ShaderLabPage() {
 
   function handleAdd(type: SupportedShaderLabLayerType) {
     const layer = createLayer(type)
+    // 새 레이어는 배열 맨 앞(목록 맨 위)에 추가한다 — 실제 런타임 호출부
+    // (`node_modules/@basementstudio/shader-lab/dist/src/renderer/create-webgpu-renderer.js`
+    // L38 `pipeline.syncLayers([...frame.layers].reverse())`)가 배열을 뒤집은 뒤 순서대로
+    // 합성하므로, 배열 인덱스 0(목록 맨 위)이 실제로는 합성 순서상 "가장 나중에(맨 위에)"
+    // 그려진다. 게이트 리뷰 재시도(20260912_1951) 당시 `pipeline-manager.js`의 forward
+    // 루프만 보고 이 reverse() 호출을 놓쳐 반대로 진단됐다 — 실제 브라우저(WebGPU) 렌더로
+    // 재현/반증한 근거는 완료 기록 참고.
     setLayers((prev) => [layer, ...prev])
     setSelectedLayerId(layer.id)
   }
