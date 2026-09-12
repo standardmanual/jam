@@ -394,6 +394,7 @@ function makeBadge(overrides: Partial<BadgeRow>): BadgeRow {
     item_book_id: null,
     category: null,
     admin_category: null,
+    show_on_map: true,
     drop_weight: 0,
     drop_excluded: false,
     drop_condition_json: null,

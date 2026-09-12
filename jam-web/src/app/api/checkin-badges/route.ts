@@ -39,6 +39,7 @@ type BadgePick = {
   type: string
   image_url: string | null
   deleted_at: string | null
+  show_on_map: boolean
 }
 
 export async function GET(req: NextRequest) {
@@ -100,12 +101,15 @@ export async function GET(req: NextRequest) {
     new Set(candidatePois.map((p) => p.linked_badge_id).filter((id): id is string => !!id))
   )
 
+  // show_on_map=false는 관리자가 마커 노출을 끈 체크인 배지 — is_active·deleted_at과 같은
+  // 위치에서 병렬로 필터링한다(티켓 20260912_1053, 마이그레이션 166).
   const { data: badgesRaw, error: badgeError } = await service
     .from('badges')
-    .select('id, type, image_url, deleted_at')
+    .select('id, type, image_url, deleted_at, show_on_map')
     .in('id', badgeIds)
     .eq('type', 'checkin')
     .is('deleted_at', null)
+    .eq('show_on_map', true)
 
   if (badgeError) {
     return NextResponse.json({ error: '배지 조회 실패' }, { status: 500 })

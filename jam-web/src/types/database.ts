@@ -164,6 +164,10 @@ export interface BadgeRow {
    *  1개뿐 — 서비스 사용량 지표(팔로워 수·팔로잉 수·일일 동기화 횟수) 조건 배지를 어드민에서
    *  구분·관리하기 위한 값이다. 발급 판정 로직에는 관여하지 않는 순수 분류/표시용 필드. */
   admin_category: string | null
+  /** 지도 드롭메뉴에 마커로 표시할지 여부(마이그레이션 166, 티켓 20260912_1053). `type='checkin'`
+   *  배지에만 의미가 있다 — `/api/checkin-badges`가 마커 조회 시 이 값이 true인 배지만 반환한다.
+   *  다른 타입에는 영향이 없으며 기본값 true. */
+  show_on_map: boolean
   drop_weight: number
   drop_condition_json: Record<string, unknown> | null
   valid_from: string | null
