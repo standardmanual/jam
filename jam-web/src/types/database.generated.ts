@@ -1589,6 +1589,30 @@ export type Database = {
           },
         ]
       }
+      shader_text_presets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          params: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          params: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          params?: Json
+        }
+        Relationships: []
+      }
       strava_activities: {
         Row: {
           created_at: string
