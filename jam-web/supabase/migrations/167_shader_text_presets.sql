@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS public.shader_text_presets (
   created_by TEXT
 );
 
+-- 게이트 리뷰 FAIL로 확인된 필수 항목: RLS를 켜지 않으면 정책이 없어도 PostgREST가 anon
+-- 키로 전체 조회·수정을 허용한다(마이그레이션 074·147과 동일 유형 사고). 정책(POLICY)은
+-- 추가하지 않는다 — RLS만 켜면 service_role 키를 쓰는 서버 라우트만 접근 가능해지고,
+-- 그게 이 테이블의 유일한 접근 경로다.
+ALTER TABLE public.shader_text_presets ENABLE ROW LEVEL SECURITY;
+
 COMMENT ON TABLE public.shader_text_presets IS
   '쉐이더 텍스트 생성기(디졸브 에코) 스타일 프리셋. 티켓 20260912_1532';
 
@@ -45,3 +51,6 @@ COMMIT;
 --   FROM information_schema.columns
 --  WHERE table_schema = 'public' AND table_name = 'shader_text_presets'
 --  ORDER BY ordinal_position;
+--
+-- SELECT relrowsecurity FROM pg_class WHERE oid = 'public.shader_text_presets'::regclass;
+--  → true 여야 한다 (게이트 리뷰 FAIL 재발 방지 확인 항목).
