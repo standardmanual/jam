@@ -350,7 +350,18 @@ function applyGradientMap(target: HTMLCanvasElement, gm: ShaderTextGradientMapPa
 // 노이즈 텍스처 / 필름 그레인 — 작은 난수 타일을 확대해 GPU 합성에 맡긴다
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * (cells, seed) 조합별로 캐시한다. 그레인은 기본값(20%)부터 켜져 있어 애니메이션 재생 중
+ * 매 프레임(최대 60fps) 호출되는데, 시드는 그레인 설정이 바뀔 때만 달라진다 — 캐시가 없으면
+ * 매 프레임 최대 45,000픽셀짜리 `createImageData`/`putImageData`를 다시 돌려 재생이 끊긴다.
+ */
+const randomTileCache = new Map<string, HTMLCanvasElement>()
+
 function buildRandomTile(cells: number, seed: number): HTMLCanvasElement {
+  const key = `${cells}:${seed}`
+  const cached = randomTileCache.get(key)
+  if (cached) return cached
+
   const tile = document.createElement('canvas')
   tile.width = cells
   tile.height = cells
@@ -366,6 +377,7 @@ function buildRandomTile(cells: number, seed: number): HTMLCanvasElement {
     imageData.data[i * 4 + 3] = 255
   }
   ctx.putImageData(imageData, 0, 0)
+  randomTileCache.set(key, tile)
   return tile
 }
 
