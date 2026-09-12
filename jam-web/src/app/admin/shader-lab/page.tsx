@@ -130,7 +130,7 @@ export default function ShaderLabPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <ShaderLabViewport ref={canvasRef} config={config} playing={playing} onTogglePlaying={() => setPlaying((p) => !p)} />
-              <ShaderLabExportPanel canvasRef={canvasRef} />
+              <ShaderLabExportPanel canvasRef={canvasRef} applyDisabled={playing} />
             </CardContent>
           </Card>
 
