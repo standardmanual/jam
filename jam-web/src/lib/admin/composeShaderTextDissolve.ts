@@ -309,9 +309,17 @@ function hexToRgb(hex: string): [number, number, number] {
   return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]
 }
 
+/**
+ * 헤일로/코어 위치 슬라이더가 만드는 각 색상 구간이 최소 이 폭(256단계 LUT 기준 약 5%)은
+ * 확보하도록 강제한다. 이 하한이 없으면 두 슬라이더를 같은 값(특히 둘 다 0)으로 두는 순간
+ * 그 구간 폭이 0이 되어, `그림자`·`헤일로`·`코어` 중 일부 색이 결과물에 전혀 나타나지 않고
+ * 사실상 단색으로 뭉개진다(2026-09-12 실사용 중 발견 — 티켓 20260912_1729).
+ */
+const GRADIENT_STOP_MIN_GAP = 0.05
+
 function buildGradientLut(gm: ShaderTextGradientMapParams): Uint8ClampedArray {
-  const haloPos = clamp01(gm.haloPosition)
-  const corePos = clamp(gm.corePosition, haloPos, 1)
+  const haloPos = clamp(gm.haloPosition, GRADIENT_STOP_MIN_GAP, 1 - GRADIENT_STOP_MIN_GAP * 2)
+  const corePos = clamp(gm.corePosition, haloPos + GRADIENT_STOP_MIN_GAP, 1 - GRADIENT_STOP_MIN_GAP)
   const stops: { pos: number; rgb: [number, number, number] }[] = [
     { pos: 0, rgb: hexToRgb(gm.shadow) },
     { pos: haloPos, rgb: hexToRgb(gm.halo) },
