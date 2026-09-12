@@ -4,8 +4,8 @@
  * 쉐이더 랩 — 파라미터 필드 제너릭 렌더러 (티켓 20260912_1951, `text` 타입 추가 20260912_2157)
  *
  * `effectRegistry.ts`의 `ShaderLabFieldDefinition` 하나를 받아 타입에 맞는 입력 UI를
- * 그린다. 어드민 화면이라 MODULAR 대상이 아니다(정책) — `/admin/shader-text`의
- * `ShaderTextControls.tsx` 관례(네이티브 range/color, shadcn Select·Switch)를 그대로 따른다.
+ * 그린다. 어드민 화면이라 MODULAR 대상이 아니다(정책) — 네이티브 range/color, shadcn
+ * Select·Switch 조합을 그대로 따른다.
  *
  * 필드 타입 분기(number/boolean/select/color/vec2/text)는 원본 저장소
  * (`src/components/editor/properties-sidebar-fields.tsx`, 비공개 앱 소스)의 필드 렌더러
