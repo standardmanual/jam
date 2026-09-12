@@ -103,6 +103,10 @@ export async function GET(req: NextRequest) {
 
   // show_on_map=false는 관리자가 마커 노출을 끈 체크인 배지 — is_active·deleted_at과 같은
   // 위치에서 병렬로 필터링한다(티켓 20260912_1053, 마이그레이션 166).
+  // valid_from/valid_until(유효기간)은 배지 활성/비활성 조건이다 — badge-engine의 발급 판정
+  // (index.ts, usageBadges.ts)과 동일한 필터를 병행(AND) 조건으로 추가한다. show_on_map을
+  // 대체하지 않는다 — show_on_map=false면 유효기간과 무관하게 계속 숨겨진다(티켓 20260912_1121).
+  const now = new Date().toISOString()
   const { data: badgesRaw, error: badgeError } = await service
     .from('badges')
     .select('id, type, image_url, deleted_at, show_on_map')
@@ -110,6 +114,8 @@ export async function GET(req: NextRequest) {
     .eq('type', 'checkin')
     .is('deleted_at', null)
     .eq('show_on_map', true)
+    .or(`valid_from.is.null,valid_from.lte.${now}`)
+    .or(`valid_until.is.null,valid_until.gte.${now}`)
 
   if (badgeError) {
     return NextResponse.json({ error: '배지 조회 실패' }, { status: 500 })
