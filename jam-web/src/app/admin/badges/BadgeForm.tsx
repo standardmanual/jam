@@ -11,6 +11,7 @@ import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
 import { Textarea } from '@/components/admin/ui/textarea'
 import { Checkbox } from '@/components/admin/ui/checkbox'
+import { Switch } from '@/components/admin/ui/switch'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -184,6 +185,9 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
   // 어드민 전용 분류(JAM! 카테고리) — 위 category(지점 카테고리)와 달리 type과 무관하게
   // 저장된다(티켓 20260910_2055). 단 타입을 activity 밖으로 바꾸면 비운다(아래 changeType).
   const [adminCategory, setAdminCategory] = useState(badge?.admin_category ?? '')
+  // 지도 드롭메뉴 마커 노출 여부(마이그레이션 166, 티켓 20260912_1053) — 체크인 배지 전용
+  // 옵션. 기본값 ON(신규 생성 시 노출).
+  const [showOnMap, setShowOnMap] = useState<boolean>(badge?.show_on_map ?? true)
   // JAM! 카테고리는 condition_json을 서비스 사용량 지표(usageBadges.ts)로만 판정한다 —
   // 일반 조건 그룹·2단 게이트·판정 시뮬레이션이 전부 무의미해 화면에서 숨긴다(티켓 20260911_0202).
   const isJamCategory = adminCategory === 'jam'
@@ -473,6 +477,9 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
         // 어드민 전용 분류(JAM! 카테고리)는 위 category와 달리 type과 무관하게 저장한다
         // (티켓 20260910_2055).
         admin_category: adminCategory || null,
+        // 지도 드롭메뉴 마커 노출 여부는 체크인 배지 전용 옵션이나, 다른 타입에는 저장 API가
+        // 어차피 마커 조회에 쓰지 않으므로 값 그대로 보낸다(티켓 20260912_1053).
+        show_on_map: showOnMap,
         drop_weight: type === 'item' ? parseFloat(dropWeight) : 1.0,
         valid_from: validFrom ? new Date(validFrom).toISOString() : null,
         valid_until: validUntil ? new Date(validUntil).toISOString() : null,
@@ -914,6 +921,14 @@ export default function BadgeForm({ badge, tribes, itemBooks, poiCategories, hea
               </div>
             </div>
           </div>
+
+          {/* 지도 마커 노출 토글 — 체크인 배지 전용(티켓 20260912_1053). 끄면 지도 드롭메뉴에
+              마커로 표시되지 않지만(`/api/checkin-badges`), 이미 획득한 배지는 마이페이지
+              이력에 그대로 남는다. */}
+          <label className="flex items-center gap-3 cursor-pointer" htmlFor="badge-show-on-map">
+            <Switch id="badge-show-on-map" checked={showOnMap} onCheckedChange={setShowOnMap} />
+            <span className="text-sm text-foreground">지도에 마커로 표시</span>
+          </label>
 
           <div className="flex flex-col gap-1.5">
             <FieldLabel htmlFor="badge-poi-search">연결된 지점</FieldLabel>
