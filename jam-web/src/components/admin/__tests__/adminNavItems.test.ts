@@ -48,7 +48,7 @@ describe('mostSpecificActiveItem', () => {
 describe('NAV_GROUPS (티켓 20260908_1806: 그룹·항목 전면 재배열)', () => {
   it('그룹 레이블·순서가 목표 구조와 일치한다', () => {
     expect(NAV_GROUPS.map((g) => g.id)).toEqual(['content', 'policy', 'ops', 'design'])
-    expect(NAV_GROUPS.map((g) => g.label)).toEqual(['배지 관리', '정책 및 밸런스', '운영 도구', '디자인'])
+    expect(NAV_GROUPS.map((g) => g.label)).toEqual(['컨텐츠 관리', '정책 및 밸런스', '운영 도구', '디자인'])
   })
 
   it('디자인 그룹은 배지 이미지 생성 2종만 포함하고 테마 컬러 항목은 완전히 제거됐다', () => {
