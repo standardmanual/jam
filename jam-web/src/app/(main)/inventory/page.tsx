@@ -81,6 +81,23 @@ export default async function InventoryPage() {
         <p className="mt-1 text-[length:var(--text-small)] text-[var(--color-text-secondary)]">
           {t(d.inventory.slotsDetail, { used: usedSlots, max: maxSlots, remaining: remainingSlots })}
         </p>
+
+        {/* 20260912_1940: 슬롯 포화 상시 안내 — 가득 찼을 때만 노출, 카드형 인셋(edge-to-edge 금지) */}
+        {remainingSlots === 0 && (
+          <div
+            className="mt-[var(--spacing-12)] rounded-[var(--radius-card)] px-[var(--spacing-16)] py-[var(--spacing-12)] bg-surface-elevated"
+          >
+            <p className="text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] text-text">
+              {d.inventory.fullNoticeBody}
+            </p>
+            <Link
+              href="/drops"
+              className="mt-[var(--spacing-12)] inline-flex items-center justify-center min-h-11 rounded-[var(--radius-nav-buttons)] px-[var(--spacing-16)] text-[length:var(--text-body-sm)] leading-[var(--leading-body-sm)] bg-surface active:scale-95 transition-transform duration-100"
+            >
+              {d.inventory.fullNoticeCta}
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* 아이템 그리드 */}
