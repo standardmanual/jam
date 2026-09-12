@@ -36,3 +36,4 @@ describe('adminCategoryLabel — 모르는 값이 들어와도 화면이 비지 
     expect(adminCategoryLabel('__future_category__')).toBe('__future_category__')
   })
 })
+
