@@ -40,6 +40,10 @@ const stub = vi.hoisted(() => ({
   grantedBadgeIds: [] as string[],
   destroyedItemIds: [] as string[],
   failRewardPoints: 0,
+  /** inventory.used_slots — 조합 전 초기값. 소각/지급마다 이 값이 갱신된다(20260912_2101). */
+  usedSlots: 5,
+  maxSlots: 10,
+  usedSlotsHistory: [] as number[],
 }))
 
 const awardPointsMock = vi.hoisted(() => vi.fn())
@@ -82,9 +86,15 @@ function makeBuilder(table: string) {
       stub.destroyedItemIds = [ITEM_1, ITEM_2]
       return { data: [{ id: ITEM_1 }, { id: ITEM_2 }], error: null }
     }
+    if (state.op === 'update' && table === 'inventory') {
+      const payload = state.payload as { used_slots: number }
+      stub.usedSlots = payload.used_slots
+      stub.usedSlotsHistory.push(payload.used_slots)
+      return { data: null, error: null }
+    }
     switch (table) {
       case 'inventory':
-        return { data: { id: INVENTORY_ID }, error: null }
+        return { data: { id: INVENTORY_ID, used_slots: stub.usedSlots, max_slots: stub.maxSlots }, error: null }
       case 'inventory_items':
         return {
           data: [
@@ -157,6 +167,9 @@ beforeEach(() => {
   stub.grantedBadgeIds = []
   stub.destroyedItemIds = []
   stub.failRewardPoints = 0
+  stub.usedSlots = 5
+  stub.maxSlots = 10
+  stub.usedSlotsHistory = []
   awardPointsMock.mockReset()
   awardPointsMock.mockResolvedValue({ id: 'tx-1' })
 })
@@ -283,5 +296,66 @@ describe('재료 개수 오류', () => {
     expect(stub.destroyedItemIds).toEqual([])
     expect(stub.failLogs).toHaveLength(1)
     expect(stub.failLogs[0].fail_reason).toBe('invalid_count')
+  })
+})
+
+describe('인벤토리 used_slots 카운터 (티켓 20260912_2101)', () => {
+  it('레시피 매칭 성공 시 소각(-2)과 보상 지급(+1)이 모두 반영된다', async () => {
+    stub.usedSlots = 5
+    stub.maxSlots = 10
+    stub.recipes = [recipe({ reward_badge_ids: [REWARD] })]
+
+    const result = await combineItems(USER, [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    // 소각 직후 5 - 2 = 3, 보상 1개 지급으로 3 + 1 = 4
+    expect(stub.usedSlotsHistory).toEqual([3, 4])
+    expect(stub.usedSlots).toBe(4)
+  })
+
+  it('미매칭(보상 배지 없음) 시 소각분만 반영되고 지급으로 인한 증가는 없다', async () => {
+    stub.usedSlots = 5
+    stub.maxSlots = 10
+    stub.recipes = [] // 매칭되는 레시피 없음
+
+    const result = await combineItems(USER, [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(false)
+    // 소각 직후 5 - 2 = 3, 지급이 없으므로 추가 반영 없음
+    expect(stub.usedSlotsHistory).toEqual([3])
+    expect(stub.usedSlots).toBe(3)
+  })
+
+  it('소각으로 반환된 칸보다 보상 배지가 많으면 칸이 찬 시점부터 지급을 생략한다', async () => {
+    // 조합 전 이미 가득 찬 인벤토리(7/7) — 재료 2개를 소각해 5/7로 여유가 2칸 생기지만,
+    // 레시피가 보상 배지 3개를 지정해 세 번째 지급 시점엔 다시 가득 차 지급을 생략해야 한다.
+    stub.usedSlots = 7
+    stub.maxSlots = 7
+    const REWARD_2 = 'badge-reward-2'
+    const REWARD_3 = 'badge-reward-3'
+    stub.recipes = [recipe({ reward_badge_ids: [REWARD, REWARD_2, REWARD_3] })]
+
+    const result = await combineItems(USER, [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    // 소각 직후 7 - 2 = 5 → 지급 1(=6) → 지급 2(=7, 가득 참) → 지급 3은 생략(칸 미소비)
+    expect(stub.usedSlotsHistory).toEqual([5, 6, 7])
+    expect(stub.usedSlots).toBe(7)
+    expect(stub.grantedBadgeIds).toEqual([REWARD, REWARD_2])
+    if (result.success) {
+      expect(result.resultBadges).toHaveLength(2)
+    }
+  })
+
+  it('재료보다 적은 보상 배지는 소각 전보다 used_slots가 순감소한다', async () => {
+    stub.usedSlots = 6
+    stub.maxSlots = 10
+    stub.recipes = [recipe({ reward_badge_ids: [] })] // 배지 없이 포인트만 지급하는 레시피
+
+    const result = await combineItems(USER, [ITEM_1, ITEM_2])
+
+    expect(result.success).toBe(true)
+    expect(stub.usedSlotsHistory).toEqual([4])
+    expect(stub.usedSlots).toBe(4)
   })
 })

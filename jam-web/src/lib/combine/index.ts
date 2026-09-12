@@ -49,6 +49,12 @@ export type CombineResult =
 const MIN_ITEMS = 2
 const MAX_ITEMS = 10
 
+/**
+ * `combineItems()` 실행 중 갱신되는 `inventory.used_slots` 캐시 카운터의 로컬 사본.
+ * 소각·지급이 일어날 때마다 이 값을 갱신하며 DB에도 함께 반영한다(20260912_2101).
+ */
+type InventorySlotState = { id: string; used_slots: number; max_slots: number }
+
 export async function combineItems(userId: string, itemIds: string[]): Promise<CombineResult> {
   if (itemIds.length < MIN_ITEMS || itemIds.length > MAX_ITEMS || new Set(itemIds).size !== itemIds.length) {
     // 재료를 특정할 수 없는 단계라 소각·포인트 없이 이력만 남긴다.
@@ -59,14 +65,14 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
 
   const supabase = createServiceClient()
 
-  // 1. 인벤토리 조회
+  // 1. 인벤토리 조회 — used_slots/max_slots도 함께 가져와 소각·지급 시 카운터 증감에 쓴다
   const { data: invRaw } = await supabase
     .from('inventory')
-    .select('id')
+    .select('id, used_slots, max_slots')
     .eq('user_id', userId)
     .single()
 
-  const inventory = invRaw as { id: string } | null
+  const inventory = invRaw as InventorySlotState | null
   if (!inventory) {
     await logFailure(supabase, userId, [], 'items_not_found', 0)
     return { success: false, reason: 'items_not_found', pointsAwarded: 0 }
@@ -141,6 +147,19 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
     return { success: false, reason: 'items_not_found', pointsAwarded: 0 }
   }
 
+  // used_slots 감소 — 소각한 재료 개수만큼 인벤토리 칸을 반환한다(20260912_2101).
+  // 음수 방지 클램프는 111_item_slot_atomic_rpc.sql의 GREATEST(0, ...) 패턴을 그대로 따른다.
+  const usedSlotsAfterDestroy = Math.max(0, inventory.used_slots - destroyedRows.length)
+  const { error: slotDecError } = await supabase
+    .from('inventory')
+    .update({ used_slots: usedSlotsAfterDestroy })
+    .eq('id', inventory.id)
+  if (slotDecError) {
+    console.error('[combineItems] used_slots 감소 오류:', slotDecError)
+  } else {
+    inventory.used_slots = usedSlotsAfterDestroy
+  }
+
   // Consume 이벤트 — actor 유저명을 스냅샷으로 기록한다(라이브 조인 의존 금지).
   const { data: actorRaw } = await supabase.from('users').select('username').eq('id', userId).maybeSingle()
   const actorUsername = (actorRaw as { username: string } | null)?.username ?? null
@@ -160,7 +179,7 @@ export async function combineItems(userId: string, itemIds: string[]): Promise<C
   if (matched) {
     const resultBadges: { id: string; name: string; rarity: string }[] = []
     for (const badgeId of matched.reward_badge_ids ?? []) {
-      const granted = await grantBadge(supabase, inventory.id, badgeId)
+      const granted = await grantBadge(supabase, inventory, badgeId)
       if (granted) resultBadges.push(granted)
     }
 
@@ -234,7 +253,7 @@ async function hasAllRequiredBadges(
 
 async function grantBadge(
   supabase: ServiceClient,
-  inventoryId: string,
+  inventory: InventorySlotState,
   badgeId: string
 ): Promise<{ id: string; name: string; rarity: string } | null> {
   // 지급 전에 배지 존재/삭제 여부를 먼저 확인한다 — INSERT를 먼저 하고 나중에
@@ -254,9 +273,18 @@ async function grantBadge(
     return null
   }
 
+  // 재료 소각으로 칸이 반환되긴 하지만, 레시피가 소각한 재료 수보다 많은 보상 배지를
+  // 지급하는 경우(reward_badge_ids 배열)엔 그래도 칸이 모자랄 수 있다. 미션 보상 지급
+  // (missions/rewards.ts)과 동일하게 "슬롯 부족 → 조용히 skip" 정책을 따른다 — 인벤토리
+  // 칸을 초과해서 지급하지 않는다(20260912_2101).
+  if (inventory.used_slots >= inventory.max_slots) {
+    console.info('[combineItems] 인벤토리 슬롯 부족으로 보상 배지 지급을 생략함:', badgeId)
+    return null
+  }
+
   const q = supabase.from('inventory_items')
   const payload: InventoryItemInsertByTrigger = {
-    inventory_id: inventoryId,
+    inventory_id: inventory.id,
     badge_id: badgeId,
     obtained_by: 'system_event',
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -266,6 +294,16 @@ async function grantBadge(
   if (insertError) {
     console.error('[combineItems] 보상 아이템 추가 오류:', insertError)
     return null
+  }
+
+  const { error: slotIncError } = await supabase
+    .from('inventory')
+    .update({ used_slots: inventory.used_slots + 1 })
+    .eq('id', inventory.id)
+  if (slotIncError) {
+    console.error('[combineItems] used_slots 증가 오류:', slotIncError)
+  } else {
+    inventory.used_slots += 1
   }
 
   return badge
