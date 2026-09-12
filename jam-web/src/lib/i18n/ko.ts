@@ -397,6 +397,12 @@ export const ko = {
     emptyTitle: '아직 아이템이 없어요',
     emptyBody: '활동을 완료하면 아이템 배지가 드랍돼요',
 
+    // 슬롯 포화 안내 (20260912_1940): 슬롯이 가득 찬 동안 드랍이 스킵되는 상황을
+    // [현상 → 원인 → 해결책] 구조로 즉시 안내한다.
+    fullNoticeBody:
+      '인벤토리 슬롯이 가득 찼어요. 이 상태에서는 활동을 동기화해도 새 아이템 배지가 드랍되지 않아요. 드랍하기를 눌러 슬롯을 비워보세요.',
+    fullNoticeCta: '드랍하기',
+
     backToInventory: '인벤토리',
     infoSectionTitle: '아이템 정보',
     descSectionTitle: '이 아이템 정보',
