@@ -1,4 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import {
+  APPLY_GENERATED_IMAGE_BUCKET,
+  type ApplyGeneratedImageTable,
+} from '@/lib/admin/applyGeneratedImageConstants'
 
 /**
  * 생성 이미지 -> 대상 레코드 이미지 컬럼 적용 공용 함수 (티켓 20260913_0414)
@@ -11,12 +15,15 @@ import { createServiceClient } from '@/lib/supabase/server'
  * 대상 테이블(badges/missions/item_books) 모두 id 컬럼이 id, 이미지 컬럼이 image_url로
  * 동일해 idColumn/imageColumn을 별도 매개변수로 받지 않는다. table만으로 갱신 대상이
  * 정해진다(다른 컬럼명을 쓰는 대상이 생기면 그때 매개변수화한다).
+ *
+ * 상수(`APPLY_GENERATED_IMAGE_BUCKET`/`MAX_APPLY_IMAGE_BYTES`)와 `ApplyGeneratedImageTable`
+ * 타입은 `applyGeneratedImageConstants.ts`에 있다 - 클라이언트 컴포넌트가 이 파일(서버 전용
+ * `@/lib/supabase/server` import 포함)을 거치지 않고 상수만 가져올 수 있게 하기 위함이다.
+ * 기존 호출부(`apply/route.ts` 등)와의 호환을 위해 이 파일에서도 재수출한다.
  */
 
-export const APPLY_GENERATED_IMAGE_BUCKET = 'images'
-export const MAX_APPLY_IMAGE_BYTES = 5 * 1024 * 1024
-
-export type ApplyGeneratedImageTable = 'badges' | 'missions' | 'item_books'
+export { APPLY_GENERATED_IMAGE_BUCKET, MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
+export type { ApplyGeneratedImageTable } from '@/lib/admin/applyGeneratedImageConstants'
 
 export interface ApplyGeneratedImageParams {
   /** 대상 테이블. id/image_url 컬럼 이름이 세 테이블 모두 동일하다고 가정한다. */
