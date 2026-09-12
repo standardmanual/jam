@@ -1,5 +1,6 @@
 /**
- * 쉐이더 랩 — 레이어 속성 패널 필드 스키마 (티켓 20260912_1951)
+ * 쉐이더 랩 — 레이어 속성 패널 필드 스키마 (티켓 20260912_1951, `text` 필드 타입 추가
+ * 20260912_2157)
  *
  * `@basementstudio/shader-lab`(npm, Apache 2.0) 런타임의 `ShaderLabLayerConfig.params`는
  * `Record<string, ShaderLabParameterValue>`로만 타입돼 있어 "이 레이어 종류엔 어떤 파라미터가
@@ -49,12 +50,18 @@ export type Vec2FieldDefinition = FieldBase<'vec2', [number, number]> & {
   step?: number
 }
 
+/** 자유 입력 한 줄 텍스트. ASCII의 커스텀 문자 세트, 텍스트 레이어의 본문 등에 쓴다. */
+export type TextFieldDefinition = FieldBase<'text', string> & {
+  maxLength?: number
+}
+
 export type ShaderLabFieldDefinition =
   | NumberFieldDefinition
   | BooleanFieldDefinition
   | SelectFieldDefinition
   | ColorFieldDefinition
   | Vec2FieldDefinition
+  | TextFieldDefinition
 
 export type ShaderLabFieldDefinitions = readonly ShaderLabFieldDefinition[]
 
