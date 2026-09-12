@@ -24,6 +24,8 @@ interface ShaderTextControlsProps {
   onTogglePlaying: () => void
   silhouetteFileName: string | null
   onSilhouetteFileSelected: (file: File | null) => void
+  backgroundFileName: string | null
+  onBackgroundFileSelected: (file: File | null) => void
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -129,6 +131,8 @@ export default function ShaderTextControls({
   onTogglePlaying,
   silhouetteFileName,
   onSilhouetteFileSelected,
+  backgroundFileName,
+  onBackgroundFileSelected,
 }: ShaderTextControlsProps) {
   const set = <K extends keyof ShaderTextParams>(key: K, value: ShaderTextParams[K]) =>
     onChange({ ...params, [key]: value })
@@ -470,11 +474,25 @@ export default function ShaderTextControls({
               <SelectContent>
                 <SelectItem value="transparent">투명(알파 유지 PNG)</SelectItem>
                 <SelectItem value="color">단색</SelectItem>
+                <SelectItem value="image">배경 이미지</SelectItem>
               </SelectContent>
             </Select>
           </Field>
           {params.background.mode === 'color' && (
             <ColorField label="배경색" value={params.background.color} onChange={(v) => setBackground('color', v)} />
+          )}
+          {params.background.mode === 'image' && (
+            <Field label="배경 이미지" hint="업로드한 이미지 위에 텍스트 이펙트가 합성돼요. 이미지는 저장되지 않아 재편집 시 다시 올려야 해요.">
+              <input
+                type="file"
+                accept="image/png,image/webp,image/jpeg"
+                onChange={(e) => onBackgroundFileSelected(e.target.files?.[0] ?? null)}
+                className="text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border file:border-border file:bg-transparent file:px-3 file:py-1.5 file:text-sm"
+              />
+              {backgroundFileName && (
+                <span className="text-xs text-muted-foreground">선택됨: {backgroundFileName}</span>
+              )}
+            </Field>
           )}
         </AccordionContent>
       </AccordionItem>

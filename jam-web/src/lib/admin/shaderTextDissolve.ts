@@ -74,7 +74,7 @@ export type ShaderTextNoiseType = (typeof NOISE_TYPES)[number]
 export const NOISE_BLEND_MODES = ['overlay'] as const
 export type ShaderTextNoiseBlendMode = (typeof NOISE_BLEND_MODES)[number]
 
-export const BACKGROUND_MODES = ['color', 'transparent'] as const
+export const BACKGROUND_MODES = ['color', 'transparent', 'image'] as const
 export type ShaderTextBackgroundMode = (typeof BACKGROUND_MODES)[number]
 
 // ─────────────────────────────────────────────────────────────────────────────

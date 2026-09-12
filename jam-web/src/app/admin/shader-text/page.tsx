@@ -8,7 +8,7 @@ import {
   type ShaderTextParams,
   type ShaderTextStyleParams,
 } from '@/lib/admin/shaderTextDissolve'
-import { loadShaderTextSilhouette } from '@/lib/admin/composeShaderTextDissolve'
+import { loadShaderTextImage } from '@/lib/admin/composeShaderTextDissolve'
 import ShaderTextCanvas from './ShaderTextCanvas'
 import ShaderTextControls from './ShaderTextControls'
 import ShaderTextPresetPanel from './ShaderTextPresetPanel'
@@ -31,6 +31,8 @@ export default function ShaderTextPage() {
   const [playing, setPlaying] = useState(false)
   const [silhouetteFile, setSilhouetteFile] = useState<File | null>(null)
   const [silhouetteImage, setSilhouetteImage] = useState<HTMLImageElement | null>(null)
+  const [backgroundFile, setBackgroundFile] = useState<File | null>(null)
+  const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null)
 
   /**
    * 배지 선택·프리셋 불러오기처럼 "새 선택"이 발생할 때마다 올리는 토큰
@@ -66,10 +68,24 @@ export default function ShaderTextPage() {
       return
     }
     try {
-      const img = await loadShaderTextSilhouette(file)
+      const img = await loadShaderTextImage(file)
       setSilhouetteImage(img)
     } catch {
       setSilhouetteImage(null)
+    }
+  }
+
+  async function handleBackgroundFileSelected(file: File | null) {
+    setBackgroundFile(file)
+    if (!file) {
+      setBackgroundImage(null)
+      return
+    }
+    try {
+      const img = await loadShaderTextImage(file)
+      setBackgroundImage(img)
+    } catch {
+      setBackgroundImage(null)
     }
   }
 
@@ -106,6 +122,8 @@ export default function ShaderTextPage() {
                 onTogglePlaying={() => setPlaying((p) => !p)}
                 silhouetteFileName={silhouetteFile?.name ?? null}
                 onSilhouetteFileSelected={handleSilhouetteFileSelected}
+                backgroundFileName={backgroundFile?.name ?? null}
+                onBackgroundFileSelected={handleBackgroundFileSelected}
               />
             </CardContent>
           </Card>
@@ -131,6 +149,7 @@ export default function ShaderTextPage() {
               <ShaderTextCanvas
                 params={params}
                 silhouetteImage={silhouetteImage}
+                backgroundImage={backgroundImage}
                 playing={playing}
                 selectionKey={selectionKey}
                 onPause={handlePause}
@@ -138,7 +157,11 @@ export default function ShaderTextPage() {
               />
               <p className="text-xs text-muted-foreground">
                 정지 위상 {params.animation.bakedPhase.toFixed(2)} · 1280×1280 ·{' '}
-                {params.background.mode === 'transparent' ? '투명 배경' : '단색 배경'}
+                {params.background.mode === 'transparent'
+                  ? '투명 배경'
+                  : params.background.mode === 'image'
+                    ? '배경 이미지'
+                    : '단색 배경'}
               </p>
               <ShaderTextExportPanel
                 canvasRef={canvasRef}

@@ -8,6 +8,8 @@ interface ShaderTextCanvasProps {
   params: ShaderTextParams
   /** 실루엣 이미지 사용 시의 소스 이미지. 파라미터엔 저장되지 않는 휘발성 값이다. */
   silhouetteImage: HTMLImageElement | null
+  /** `background.mode === 'image'`일 때의 배경 이미지. 실루엣과 동일하게 휘발성 값이다. */
+  backgroundImage: HTMLImageElement | null
   /** 재생 중이면 rAF로 위상을 누적하며 계속 다시 그린다. */
   playing: boolean
   /**
@@ -31,6 +33,7 @@ interface ShaderTextCanvasProps {
 export default function ShaderTextCanvas({
   params,
   silhouetteImage,
+  backgroundImage,
   playing,
   selectionKey,
   onPause,
@@ -38,6 +41,7 @@ export default function ShaderTextCanvas({
 }: ShaderTextCanvasProps) {
   const paramsRef = useRef(params)
   const silhouetteRef = useRef(silhouetteImage)
+  const backgroundImageRef = useRef(backgroundImage)
   const onPauseRef = useRef(onPause)
   const phaseRef = useRef(params.animation.bakedPhase)
   const fontsReadyRef = useRef<{ weight: number; size: number } | null>(null)
@@ -45,6 +49,7 @@ export default function ShaderTextCanvas({
   useEffect(() => {
     paramsRef.current = params
     silhouetteRef.current = silhouetteImage
+    backgroundImageRef.current = backgroundImage
     onPauseRef.current = onPause
   })
 
@@ -64,12 +69,12 @@ export default function ShaderTextCanvas({
     let cancelled = false
     void ensureFonts(params).then(() => {
       if (cancelled || !canvasRef.current) return
-      drawShaderTextDissolve(canvasRef.current, params, silhouetteImage)
+      drawShaderTextDissolve(canvasRef.current, params, silhouetteImage, backgroundImage)
     })
     return () => {
       cancelled = true
     }
-  }, [params, silhouetteImage, playing, canvasRef])
+  }, [params, silhouetteImage, backgroundImage, playing, canvasRef])
 
   // 재생 루프. 언마운트·일시정지 시 rAF를 반드시 해제하고 누적 위상을 확정한다.
   useEffect(() => {
@@ -89,7 +94,8 @@ export default function ShaderTextCanvas({
         drawShaderTextDissolve(
           canvas,
           { ...current, animation: { ...current.animation, bakedPhase: phaseRef.current } },
-          silhouetteRef.current
+          silhouetteRef.current,
+          backgroundImageRef.current
         )
       }
       raf = requestAnimationFrame(loop)

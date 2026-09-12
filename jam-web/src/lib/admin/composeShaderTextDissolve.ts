@@ -61,14 +61,16 @@ export async function ensureShaderTextFonts(weight: number, size: number): Promi
 }
 
 /**
- * Source Content의 "실루엣 이미지 사용" 옵션용 이미지 로더.
+ * File → HTMLImageElement 범용 로더. 원래 Source Content의 "실루엣 이미지 사용" 옵션 전용으로
+ * 만들었으나(`loadShaderTextSilhouette`) 내부 로직에 실루엣 특화 부분이 없어, 배경 이미지 업로드
+ * (`20260912_1840`)에도 이 함수를 그대로 재사용한다 — 로직을 복사하지 않는다.
  *
- * **이미지 자체의 알파 채널을 실루엣으로 쓴다** — 이미 배경이 제거된 로고·실루엣 PNG를
- * 올리는 용도를 가정한다(임의의 사진에서 인물을 자동 분리하는 세그멘테이션은 이 티켓
- * 범위 밖). 업로드한 이미지는 `image_gen_params`에 저장되지 않는다 — 재편집 시 다시
- * 업로드해야 한다(JSON 파라미터 모델에 이미지 바이너리를 넣지 않기 위한 의도된 제약).
+ * 실루엣 용도로 쓸 때는 **이미지 자체의 알파 채널을 실루엣으로 쓴다** — 이미 배경이 제거된
+ * 로고·실루엣 PNG를 올리는 용도를 가정한다(임의의 사진에서 인물을 자동 분리하는 세그멘테이션은
+ * 범위 밖). 어느 용도로 쓰든 업로드한 이미지는 `image_gen_params`에 저장되지 않는다 — 재편집
+ * 시 다시 업로드해야 한다(JSON 파라미터 모델에 이미지 바이너리를 넣지 않기 위한 의도된 제약).
  */
-export function loadShaderTextSilhouette(file: File): Promise<HTMLImageElement> {
+export function loadShaderTextImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
@@ -493,7 +495,8 @@ function overlayMaskedNoise(
 export function drawShaderTextDissolve(
   canvas: HTMLCanvasElement,
   params: ShaderTextParams,
-  silhouetteImage: HTMLImageElement | null = null
+  silhouetteImage: HTMLImageElement | null = null,
+  backgroundImage: HTMLImageElement | null = null
 ): void {
   const size = canvas.width
   const ctx = canvas.getContext('2d')
@@ -549,7 +552,15 @@ export function drawShaderTextDissolve(
   if (params.background.mode === 'color') {
     ctx.fillStyle = params.background.color
     ctx.fillRect(0, 0, size, size)
+  } else if (params.background.mode === 'image' && backgroundImage && backgroundImage.naturalWidth > 0) {
+    // cover 방식으로 1280×1280을 꽉 채운다(레터박스 없음). 종횡비가 다르면 짧은 변에 맞춰
+    // 확대하고 넘치는 부분은 중앙 기준으로 잘라낸다.
+    const scale = Math.max(size / backgroundImage.naturalWidth, size / backgroundImage.naturalHeight)
+    const w = backgroundImage.naturalWidth * scale
+    const h = backgroundImage.naturalHeight * scale
+    ctx.drawImage(backgroundImage, (size - w) / 2, (size - h) / 2, w, h)
   }
+  // mode === 'transparent'면 아무것도 채우지 않는다(기존 동작 유지)
   ctx.filter = params.edgeBlur > 0 ? `blur(${params.edgeBlur}px)` : 'none'
   ctx.drawImage(finalMask, 0, 0)
   ctx.filter = 'none'
