@@ -7,7 +7,7 @@ import { Button } from '@/components/admin/ui/button'
 import { Input } from '@/components/admin/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/admin/ui/table'
 import { canvasToBlob } from '@/app/admin/badges/bakePreviewToBlob'
-import { MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImage'
+import { MAX_APPLY_IMAGE_BYTES } from '@/lib/admin/applyGeneratedImageConstants'
 
 // 쉐이더 랩 -> 배지/미션/컬렉션 적용 탭 (티켓 20260913_0414)
 // ShaderTextBadgeApply.tsx(검색 -> 선택 -> 미리보기 -> 적용)의 UI 패턴을 target별로
