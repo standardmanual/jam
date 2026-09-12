@@ -14,12 +14,15 @@ import ShaderLabExportPanel from './ShaderLabExportPanel'
 import ShaderLabSavePanel from './ShaderLabSavePanel'
 
 /**
- * 쉐이더 랩 — 1차: 에디터 골격 + 핵심 이펙트 6종 + 1:1 PNG 내보내기 (티켓 20260912_1951)
+ * 쉐이더 랩 — 1차: 에디터 골격 + 핵심 이펙트 6종 + 1:1 PNG 내보내기 (티켓 20260912_1951),
+ * 2차: 텍스트 레이어 + 재생 루프 버그 수정(2차 1차분) + 나머지 소스 4종·이펙트 18종(2차
+ * 2차분, 티켓 20260912_2157) — 총 29종(소스 6종 + 이펙트 23종) 지원.
  *
  * basement.studio의 `shader-lab`(https://github.com/basementstudio/shader-lab, Apache 2.0)
  * 런타임(`@basementstudio/shader-lab`, WebGPU + Three.js + TSL)을 그대로 설치해 쓰고, 에디터
  * 애플리케이션 UI(레이어 사이드바·속성 패널·캔버스 뷰포트)만 JAM! 어드민 스타일로 재작성해
  * 이식했다. 커뮤니티(씬 공유·좋아요·리믹스·신고)·자체 인증·MCP 에이전트 브릿지는 제외했다.
+ * 원본 32종 중 비디오·카메라·커스텀 셰이더 3종은 범위 밖(사용자 결정, 티켓 20260912_2157).
  *
  * 라이선스 고지는 `jam-web/THIRD_PARTY_NOTICES.md` 참고.
  */
@@ -82,8 +85,9 @@ export default function ShaderLabPage() {
       <div>
         <h1 className="text-2xl font-bold md:text-3xl">쉐이더 랩</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          레이어를 쌓아 이미지 위에 이펙트를 합성해요. 1차 범위는 6종 이펙트(이미지·디스플레이스먼트맵·
-          블룸·디더링·ASCII·하프톤)와 1:1 1280×1280 PNG 내보내기예요.
+          레이어를 쌓아 이미지 위에 이펙트를 합성해요. 소스 6종(이미지·텍스트·플루이드·픽셀
+          트레일·매그니파이 렌즈·메시 그라디언트)과 이펙트 23종, 1:1 1280×1280 PNG 내보내기를
+          지원해요.
         </p>
       </div>
 
