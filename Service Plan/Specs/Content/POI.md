@@ -110,8 +110,8 @@ stadium/tourist_attraction)는 지도에 즉시 노출되는 버그가 있었다
       3/2/1스타 레스토랑 42곳을 `seed_poi_michelin_seoul_2026.sql`로 등록(좌표는 구글맵
       검색 결과·사용자가 준 place 링크에서 추출). 신규 등록 정책대로 전부
       `is_active=false`·`pending_review=true`로 들어가 `/admin/poi/review` 승인이 필요하다.
-- [ ] 미슐랭 POI 42곳 체크인 배지 연동·활성화 (2026-09-12, 티켓 [[20260912_1025]]) — mountain·
-      train_subway와 동일한 1:1 체크인 배지(`type='checkin'`)로 편입하는 작업. 진행 상황:
+- [x] 미슐랭 POI 42곳 체크인 배지 연동·활성화 완료 (2026-09-12, 티켓 [[20260912_1025]]) —
+      mountain·train_subway와 동일한 1:1 체크인 배지(`type='checkin'`)로 편입.
       - [x] 체크인 배지 생성·`poi.linked_badge_id` 연결 SQL 실행 완료 —
         `supabase/migrations/164_michelin_checkin_badges.sql` (42/42/42 확인)
       - [x] `src/lib/poi/radius-policy.ts`에 `michelin: 50` 등록 완료
@@ -120,9 +120,11 @@ stadium/tourist_attraction)는 지도에 즉시 노출되는 버그가 있었다
         `scripts/badge-image-gen/configs/michelin-poi-badge.config.js`를 신규 작성하고
         `generate.js`로 42개 렌더링(256×256). 최장 상호명("가겐 by 최준호")·최단("빈호")
         양쪽 육안 확인 완료
-      - [ ] POI 42곳 활성화 — `supabase/migrations/165_michelin_poi_activate.sql` 작성
-        완료(실행 대기). **이미지가 프로덕션에 배포된 것을 확인한 뒤에만 실행할 것**
-        ([[20260824_020]] 순서 원칙)
+      - [x] 이미지 프로덕션 배포 확인(`j-a-m.app`에서 200 응답) 후
+        `supabase/seed/update_michelin-poi-badge_images.sql` 실행 —
+        `badges.image_url` 42/42 커스텀 경로로 갱신 완료
+      - [x] POI 42곳 활성화 — `supabase/migrations/165_michelin_poi_activate.sql` 실행
+        완료(`is_active=true` 42/42, `pending_review` 42/42 해제 확인)
 
 ## 관련 문서
 - [BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) — POI 기반 배지 발급 로직
