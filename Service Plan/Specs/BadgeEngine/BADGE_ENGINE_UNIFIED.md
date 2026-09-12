@@ -1614,12 +1614,15 @@ Phase 16에서 스키마만 추가됐던 `type='checkin'` 배지에 실제 데�
 > **2026-09-12 추가([[20260912_1025]])**: `michelin`(미쉐린 가이드 서울 스타 레스토랑, 42곳)도
 > 동일 패턴으로 편입됐다 — 이름·설명 자동생성("{POI명}에서 식사했습니다")·`rarity='common'`은
 > 동일하고, 지점 카테고리 태깅(`badges.category`, 마이그레이션 113)만 `'michelin'`으로 새로
-> 붙는다. 재현용 SQL은 `supabase/migrations/164_michelin_checkin_badges.sql`(작성 완료,
-> 실행 대기). **커스텀 배지 이미지(Figma fileKey `UXcBEgFagmO5ARwH5F0mMW`, node `15:127`)는
-> 이 티켓 세션에 Figma MCP 접근 권한이 없어 아직 생성되지 못했다** — 실행 시점에는 임시로
-> 기존 공용 플레이스홀더(`/badges/poi/anyway_star.png`)를 쓰고, 커스텀 이미지가 프로덕션에
-> 배포된 뒤 별도 SQL로 `image_url`을 갱신한다. POI 자체의 활성화(`is_active`)도 그 배포
-> 확인 후 진행한다(`supabase/migrations/165_michelin_poi_activate.sql`).
+> 붙는다. 재현용 SQL은 `supabase/migrations/164_michelin_checkin_badges.sql`(실행 완료,
+> 42/42/42 확인). **커스텀 배지 이미지 42개도 생성 완료**됐다 — Figma(fileKey
+> `UXcBEgFagmO5ARwH5F0mMW`, node `15:127`, 텍스트 레이어 `15:113` 'POI') 디자인을 배경
+> SVG로 조립해 `scripts/badge-image-gen/configs/michelin-poi-badge.config.js`를 신규
+> 작성하고 `generate.js`로 42개를 렌더링했다(다른 POI 배지와 달리 지하철역·산과 동일하게
+> 배지별로 서로 다른 이미지를 쓰는 방식). 이미지가 프로덕션에 배포된 뒤
+> `supabase/seed/update_michelin-poi-badge_images.sql`로 `image_url`을 갱신하고,
+> POI 자체의 활성화(`is_active`)도 그 배포 확인 후 진행한다
+> (`supabase/migrations/165_michelin_poi_activate.sql`).
 
 **POI 매칭 반경 — 카테고리별 기준값 (2026-09-12 기준)**
 

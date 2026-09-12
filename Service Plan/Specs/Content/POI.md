@@ -112,18 +112,17 @@ stadium/tourist_attraction)는 지도에 즉시 노출되는 버그가 있었다
       `is_active=false`·`pending_review=true`로 들어가 `/admin/poi/review` 승인이 필요하다.
 - [ ] 미슐랭 POI 42곳 체크인 배지 연동·활성화 (2026-09-12, 티켓 [[20260912_1025]]) — mountain·
       train_subway와 동일한 1:1 체크인 배지(`type='checkin'`)로 편입하는 작업. 진행 상황:
-      - [x] 체크인 배지 생성·`poi.linked_badge_id` 연결 SQL 작성 —
-        `supabase/migrations/164_michelin_checkin_badges.sql` (실행 대기, 커스텀 이미지
-        준비 전이라 임시로 공용 플레이스홀더 `/badges/poi/anyway_star.png` 사용)
+      - [x] 체크인 배지 생성·`poi.linked_badge_id` 연결 SQL 실행 완료 —
+        `supabase/migrations/164_michelin_checkin_badges.sql` (42/42/42 확인)
       - [x] `src/lib/poi/radius-policy.ts`에 `michelin: 50` 등록 완료
-      - [ ] 커스텀 배지 이미지 42개 생성 — **차단**: Figma fileKey
-        `UXcBEgFagmO5ARwH5F0mMW`, node `15:127`(텍스트 레이어 `15:113` 'POI') 디자인을
-        읽어와야 하는데 이 티켓 세션에는 Figma MCP 접근 권한이 없었다. 후속 세션에서
-        `scripts/badge-image-gen/configs/michelin-poi-badge.config.js`를 작성하고
-        `generate.js`로 생성해야 한다.
-      - [ ] POI 42곳 활성화 — `supabase/migrations/165_michelin_poi_activate.sql`
-        작성 완료(실행 대기). **커스텀 이미지가 프로덕션에 배포된 것을 확인한 뒤에만
-        실행할 것** (이미지 먼저 배포 → DB 반영 순서, [[20260824_020]] 재발 방지 원칙).
+      - [x] 커스텀 배지 이미지 42개 생성 완료 — Figma(fileKey `UXcBEgFagmO5ARwH5F0mMW`,
+        node `15:127`, 텍스트 레이어 `15:113` 'POI') 디자인을 배경 SVG로 조립해
+        `scripts/badge-image-gen/configs/michelin-poi-badge.config.js`를 신규 작성하고
+        `generate.js`로 42개 렌더링(256×256). 최장 상호명("가겐 by 최준호")·최단("빈호")
+        양쪽 육안 확인 완료
+      - [ ] POI 42곳 활성화 — `supabase/migrations/165_michelin_poi_activate.sql` 작성
+        완료(실행 대기). **이미지가 프로덕션에 배포된 것을 확인한 뒤에만 실행할 것**
+        ([[20260824_020]] 순서 원칙)
 
 ## 관련 문서
 - [BadgeEngine/BADGE_ENGINE_UNIFIED.md](BADGE_ENGINE_UNIFIED.md) — POI 기반 배지 발급 로직
