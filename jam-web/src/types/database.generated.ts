@@ -1589,6 +1589,30 @@ export type Database = {
           },
         ]
       }
+      shader_lab_compositions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          scene_json: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          scene_json: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          scene_json?: Json
+        }
+        Relationships: []
+      }
       shader_text_presets: {
         Row: {
           created_at: string

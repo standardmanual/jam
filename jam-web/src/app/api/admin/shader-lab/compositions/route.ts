@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getAdminUser } from '@/lib/admin/auth'
 import { buildComposition, parseStoredComposition } from '@/lib/admin/shaderLab/composition'
+import type { Json } from '@/types/database.generated'
 
 /**
  * 쉐이더 랩 — 컴포지션 목록/저장 API (티켓 20260912_1951)
@@ -56,7 +57,8 @@ export async function POST(req: NextRequest) {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('shader_lab_compositions')
-    .insert({ name, scene_json: composition, created_by: admin.email })
+    // ShaderLabConfig(패키지 타입)는 인덱스 시그니처가 없어 Json에 구조적으로 대입되지 않는다 — 이 컬럼 하나만 좁혀서 캐스팅한다.
+    .insert({ name, scene_json: composition as unknown as Json, created_by: admin.email })
     .select('id, name, scene_json, created_at, created_by')
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
