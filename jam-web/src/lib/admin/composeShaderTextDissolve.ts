@@ -33,6 +33,7 @@ import {
   type ShaderTextHaloParams,
   type ShaderTextParams,
 } from '@/lib/admin/shaderTextDissolve'
+import { buildRingLayer } from '@/lib/admin/shaderTextRingField'
 
 /**
  * `Pretendard Variable`(가변 축)만 쓴다. `globals.css`가 로드하는 static 배포판(`Pretendard`)은
@@ -302,7 +303,46 @@ function buildGlow(source: HTMLCanvasElement, halo: ShaderTextHaloParams): HTMLC
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 그라디언트맵 — 256단계 LUT로 알파(=밀도)를 4색 그라디언트로 매핑
+// 링 텍스처 — 거리장 기반 동심원 링 (티켓 20260912_1742)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `buildRingLayer()`는 480×480로 축소해 2-패스 챔퍼 거리 변환을 도는 무거운 연산이라, 애니메이션
+ * 재생 중 매 프레임 다시 구우면 안 된다(`20260912_1532`가 그레인 타일에 적용한 캐시 패턴과 동일
+ * 이유). 링 레이어의 소스인 `full`(에코 합성 실루엣)에 영향을 주는 값이 하나라도 바뀔 때만 다시
+ * 굽는다. 메인 문구 웨이브·에코 플로트 애니메이션이 켜져 있으면 `bakedPhase`가 매 프레임 `full`
+ * 자체를 바꾸므로 그 경우엔 키에 위상을 포함해 매 프레임 재계산이 불가피하다(티켓 3절에서
+ * 구현자 재량으로 명시).
+ */
+let ringLayerCache: { key: string; canvas: HTMLCanvasElement } | null = null
+
+function ringLayerCacheKey(params: ShaderTextParams, silhouetteImage: HTMLImageElement | null): string {
+  const phaseMatters = params.animation.mainWave.enabled || params.animation.echoFloat.enabled
+  return JSON.stringify({
+    text: params.text,
+    font: params.font,
+    echo: params.echo,
+    source: params.source,
+    ring: params.ring,
+    silhouetteSrc: silhouetteImage?.src ?? null,
+    phase: phaseMatters ? params.animation.bakedPhase : 0,
+  })
+}
+
+function getRingLayer(
+  full: HTMLCanvasElement,
+  params: ShaderTextParams,
+  silhouetteImage: HTMLImageElement | null
+): HTMLCanvasElement {
+  const key = ringLayerCacheKey(params, silhouetteImage)
+  if (ringLayerCache && ringLayerCache.key === key) return ringLayerCache.canvas
+  const canvas = buildRingLayer(full, params.ring, CANVAS_SIZE)
+  ringLayerCache = { key, canvas }
+  return canvas
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 그라디언트맵 — 256단계 LUT로 밝기(=링 레이어 명암)를 4색 그라디언트로 매핑
 // ─────────────────────────────────────────────────────────────────────────────
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -347,7 +387,14 @@ function buildGradientLut(gm: ShaderTextGradientMapParams): Uint8ClampedArray {
   return lut
 }
 
-/** `target`의 RGB를 알파 기반 LUT로 덮어쓴다(알파는 그대로 유지 — 실루엣 바깥은 계속 투명). */
+/**
+ * `target`의 RGB를 밝기 기반 LUT로 덮어쓴다(알파는 그대로 유지 — 실루엣 바깥은 계속 투명).
+ *
+ * 링 레이어(`buildRingLayer()`)는 이미 스스로 명암(그레이스케일, R=G=B)을 인코딩한다 — 예전처럼
+ * 알파를 LUT 키로 쓰면 링이 만든 밝고 어두운 무늬가 사라지고 실루엣 알파(거의 균일)만 남아
+ * 명암이 뭉개진다(2026-09-12 프로토타입에서 실제로 겪은 문제, 티켓 20260912_1742). 그래서
+ * `data[p]`(R 채널, 이미 그레이스케일이므로 R=G=B)를 LUT 인덱스로 쓴다.
+ */
 function applyGradientMap(target: HTMLCanvasElement, gm: ShaderTextGradientMapParams): void {
   const ctx = target.getContext('2d')
   if (!ctx) return
@@ -356,11 +403,11 @@ function applyGradientMap(target: HTMLCanvasElement, gm: ShaderTextGradientMapPa
   const imageData = ctx.getImageData(0, 0, width, height)
   const data = imageData.data
   for (let p = 0; p < data.length; p += 4) {
-    const a = data[p + 3]
-    if (a === 0) continue
-    data[p] = lut[a * 3]
-    data[p + 1] = lut[a * 3 + 1]
-    data[p + 2] = lut[a * 3 + 2]
+    if (data[p + 3] === 0) continue
+    const v = data[p]
+    data[p] = lut[v * 3]
+    data[p + 1] = lut[v * 3 + 1]
+    data[p + 2] = lut[v * 3 + 2]
   }
   ctx.putImageData(imageData, 0, 0)
 }
@@ -455,9 +502,10 @@ export function drawShaderTextDissolve(
   // ── 1~2. 텍스트/실루엣 마스크 + 에코 합성 ─────────────────────────────────
   const { full, echoOnly } = buildEchoLayers(params, silhouetteImage)
 
-  // ── 3. 이중 블러 헤일로 ────────────────────────────────────────────────
+  // ── 3. 이중 블러 헤일로 + 거리장 링 텍스처 ─────────────────────────────
   const haloSource = params.halo.preserveSharpCore ? echoOnly : full
   const glow = buildGlow(haloSource, params.halo)
+  const ringLayer = getRingLayer(full, params, silhouetteImage)
 
   const finalMask = scratch('final-mask', size)
   const fctx = finalMask.getContext('2d')
@@ -465,10 +513,10 @@ export function drawShaderTextDissolve(
   resetCtx(fctx, size)
   fctx.drawImage(glow, 0, 0)
   fctx.globalCompositeOperation = 'lighter'
-  fctx.drawImage(full, 0, 0)
+  fctx.drawImage(ringLayer, 0, 0)
   fctx.globalCompositeOperation = 'source-over'
 
-  // ── 4. 그라디언트맵 색상 매핑(4색) ─────────────────────────────────────
+  // ── 4. 그라디언트맵 색상 매핑(4색, 밝기 기반) ──────────────────────────
   applyGradientMap(finalMask, params.gradientMap)
 
   // ── 5. 노이즈 텍스처 오버레이 ──────────────────────────────────────────

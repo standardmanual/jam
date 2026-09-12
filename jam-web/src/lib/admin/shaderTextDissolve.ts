@@ -138,6 +138,26 @@ export interface ShaderTextGrainParams {
   amount: number
 }
 
+/**
+ * 거리장 기반 링 텍스처 (티켓 20260912_1742). 에코 합성 실루엣(`full`)의 경계선까지의 거리를
+ * 기준으로 밝고 어두운 링이 반복되도록 그린다 — Brik "LOVE" 레퍼런스의 동심원/등고선 무늬를
+ * 재현하기 위해 "리퀴드 메탈" 프로토타입의 거리장 기법을 디졸브 에코에 결합했다.
+ * `insideRange`/`outsideRange`는 캔버스 크기(`CANVAS_SIZE`)에 대한 비율이다(절대 px가 아님) —
+ * 프리셋을 다른 캔버스 크기에서도 그대로 쓸 수 있도록.
+ */
+export interface ShaderTextRingParams {
+  /** 경계 근처에 몇 겹의 링이 맺히는가 */
+  density: number
+  /** 링 경계가 뚜렷한 정도 */
+  sharpness: number
+  /** 링이 경계에서 멀어질수록 잦아드는 속도(지수) */
+  decay: number
+  /** 안쪽으로 얼마나 깊이 포화(평평)되는가. 캔버스 크기 대비 비율 */
+  insideRange: number
+  /** 바깥으로 얼마나 멀리 글로우가 번지는가. 캔버스 크기 대비 비율 */
+  outsideRange: number
+}
+
 export interface ShaderTextGradientMapParams {
   shadow: string
   halo: string
@@ -180,6 +200,7 @@ export interface ShaderTextParams {
   font: ShaderTextFontParams
   echo: ShaderTextEchoParams
   halo: ShaderTextHaloParams
+  ring: ShaderTextRingParams
   noise: ShaderTextNoiseParams
   grain: ShaderTextGrainParams
   gradientMap: ShaderTextGradientMapParams
@@ -220,6 +241,13 @@ export const SHADER_TEXT_RANGES = {
     offsetY: { min: -50, max: 50, step: 1 },
     contrast: { min: -100, max: 100, step: 1 },
   },
+  ring: {
+    density: { min: 3, max: 24, step: 1 },
+    sharpness: { min: 1, max: 6, step: 0.1 },
+    decay: { min: 0.5, max: 4, step: 0.1 },
+    insideRange: { min: 0.01, max: 0.08, step: 0.001 },
+    outsideRange: { min: 0.005, max: 0.06, step: 0.001 },
+  },
   noise: {
     scale: { min: 1, max: 64, step: 1 },
     intensity: { min: 0, max: 100, step: 1 },
@@ -257,6 +285,7 @@ export const DEFAULT_SHADER_TEXT_PARAMS: ShaderTextParams = {
     contrast: 0,
     preserveSharpCore: false,
   },
+  ring: { density: 11, sharpness: 2.4, decay: 1.6, insideRange: 0.028, outsideRange: 0.02 },
   noise: { enabled: true, type: 'perlin', scale: 4, intensity: 18, blendMode: 'overlay' },
   grain: { size: 2, amount: 20 },
   gradientMap: {
@@ -342,6 +371,7 @@ export function parseShaderTextParams(value: unknown): ShaderTextParams | null {
   const rawFont = (raw.font ?? {}) as Record<string, unknown>
   const rawEcho = (raw.echo ?? {}) as Record<string, unknown>
   const rawHalo = (raw.halo ?? {}) as Record<string, unknown>
+  const rawRing = (raw.ring ?? {}) as Record<string, unknown>
   const rawNoise = (raw.noise ?? {}) as Record<string, unknown>
   const rawGrain = (raw.grain ?? {}) as Record<string, unknown>
   const rawGradientMap = (raw.gradientMap ?? {}) as Record<string, unknown>
@@ -383,6 +413,13 @@ export function parseShaderTextParams(value: unknown): ShaderTextParams | null {
       offsetY: num(rawHalo.offsetY, R.halo.offsetY, d.halo.offsetY),
       contrast: num(rawHalo.contrast, R.halo.contrast, d.halo.contrast),
       preserveSharpCore: bool(rawHalo.preserveSharpCore, d.halo.preserveSharpCore),
+    },
+    ring: {
+      density: num(rawRing.density, R.ring.density, d.ring.density),
+      sharpness: num(rawRing.sharpness, R.ring.sharpness, d.ring.sharpness),
+      decay: num(rawRing.decay, R.ring.decay, d.ring.decay),
+      insideRange: num(rawRing.insideRange, R.ring.insideRange, d.ring.insideRange),
+      outsideRange: num(rawRing.outsideRange, R.ring.outsideRange, d.ring.outsideRange),
     },
     noise: {
       enabled: bool(rawNoise.enabled, d.noise.enabled),
@@ -459,6 +496,7 @@ export function extractShaderTextStyle(params: ShaderTextParams): ShaderTextStyl
     font: params.font,
     echo: params.echo,
     halo: params.halo,
+    ring: params.ring,
     noise: params.noise,
     grain: params.grain,
     gradientMap: params.gradientMap,

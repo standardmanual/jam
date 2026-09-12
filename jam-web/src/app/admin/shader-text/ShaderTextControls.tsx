@@ -138,6 +138,8 @@ export default function ShaderTextControls({
     onChange({ ...params, echo: { ...params.echo, [key]: value } })
   const setHalo = <K extends keyof ShaderTextParams['halo']>(key: K, value: ShaderTextParams['halo'][K]) =>
     onChange({ ...params, halo: { ...params.halo, [key]: value } })
+  const setRing = <K extends keyof ShaderTextParams['ring']>(key: K, value: ShaderTextParams['ring'][K]) =>
+    onChange({ ...params, ring: { ...params.ring, [key]: value } })
   const setNoise = <K extends keyof ShaderTextParams['noise']>(key: K, value: ShaderTextParams['noise'][K]) =>
     onChange({ ...params, noise: { ...params.noise, [key]: value } })
   const setGrain = <K extends keyof ShaderTextParams['grain']>(key: K, value: ShaderTextParams['grain'][K]) =>
@@ -163,6 +165,7 @@ export default function ShaderTextControls({
         'echo',
         'echo-path',
         'halo',
+        'ring',
         'noise',
         'grain',
         'gradient',
@@ -274,6 +277,52 @@ export default function ShaderTextControls({
             hint="켜면 코어(메인 문구)는 글로우 계산에서 제외해 선명하게 남겨요."
             checked={params.halo.preserveSharpCore}
             onChange={(v) => setHalo('preserveSharpCore', v)}
+          />
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Ring Field — 거리장 링 텍스처 */}
+      <AccordionItem value="ring">
+        <AccordionTrigger>Ring Field — 링 텍스처</AccordionTrigger>
+        <AccordionContent className="flex flex-col gap-4">
+          <SliderField
+            label="링 밀도"
+            hint="경계 근처에 몇 겹의 링이 맺히는지예요."
+            value={params.ring.density}
+            range={R.ring.density}
+            onChange={(v) => setRing('density', v)}
+          />
+          <SliderField
+            label="링 선명도"
+            hint="링 경계가 뚜렷한 정도예요."
+            value={params.ring.sharpness}
+            range={R.ring.sharpness}
+            decimals={1}
+            onChange={(v) => setRing('sharpness', v)}
+          />
+          <SliderField
+            label="링 감쇠"
+            hint="링이 경계에서 멀어질수록 잦아드는 속도예요."
+            value={params.ring.decay}
+            range={R.ring.decay}
+            decimals={1}
+            onChange={(v) => setRing('decay', v)}
+          />
+          <SliderField
+            label="안쪽 포화 범위"
+            hint="안쪽으로 얼마나 깊이 들어가야 평평해지는지예요."
+            value={params.ring.insideRange}
+            range={R.ring.insideRange}
+            decimals={3}
+            onChange={(v) => setRing('insideRange', v)}
+          />
+          <SliderField
+            label="바깥쪽 확산 범위"
+            hint="바깥으로 얼마나 멀리 글로우가 번지는지예요."
+            value={params.ring.outsideRange}
+            range={R.ring.outsideRange}
+            decimals={3}
+            onChange={(v) => setRing('outsideRange', v)}
           />
         </AccordionContent>
       </AccordionItem>
