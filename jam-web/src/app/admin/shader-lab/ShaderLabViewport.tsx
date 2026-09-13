@@ -1,31 +1,27 @@
 'use client'
 
 /**
- * 쉐이더 랩 — 캔버스 뷰포트 (티켓 20260912_1951)
+ * 쉐이더 랩 — 캔버스 뷰포트 (티켓 20260912_1951, 재생 기능 제거 20260913_1819)
  *
- * 실시간 프리뷰(WYSIWYG) + 재생/정지. 내부 렌더링 배관은 `useShaderLabPlayback.ts` 참고.
+ * 실시간 프리뷰(WYSIWYG). 내부 렌더링 배관은 `useShaderLabPlayback.ts` 참고.
  * 내보내기(`ShaderLabExportPanel`)는 이 컴포넌트가 갖는 `<canvas>`를 그대로
  * `canvas.toBlob()`한다 — 별도 오프스크린 렌더링을 만들지 않는다.
  */
 import { forwardRef, useEffect, useState } from 'react'
 import type { ShaderLabConfig } from '@basementstudio/shader-lab'
-import { IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react'
-import { Button } from '@/components/admin/ui/button'
 import { useShaderLabPlayback } from '@/lib/admin/shaderLab/useShaderLabPlayback'
 
 interface ShaderLabViewportProps {
   config: ShaderLabConfig
-  playing: boolean
-  onTogglePlaying: () => void
 }
 
 const ShaderLabViewport = forwardRef<HTMLCanvasElement, ShaderLabViewportProps>(function ShaderLabViewport(
-  { config, playing, onTogglePlaying },
+  { config },
   canvasRef
 ) {
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null)
   const [runtimeError, setRuntimeError] = useState<string | null>(null)
-  const { ready } = useShaderLabPlayback(config, { canvas: canvasEl, playing })
+  const { ready } = useShaderLabPlayback(config, { canvas: canvasEl })
 
   // 렌더러 초기화 실패는 useShaderLabCanvasSource가 예외를 던지지 않고 조용히
   // `ready=false`로 남는다(패키지 소스 확인) — 일정 시간 후에도 준비되지 않으면 안내한다.
@@ -62,13 +58,7 @@ const ShaderLabViewport = forwardRef<HTMLCanvasElement, ShaderLabViewportProps>(
           </div>
         )}
       </div>
-      <div className="flex items-center justify-center gap-2">
-        <Button type="button" variant="outline" onClick={onTogglePlaying}>
-          {playing ? <IconPlayerPause className="mr-1 h-4 w-4" /> : <IconPlayerPlay className="mr-1 h-4 w-4" />}
-          {playing ? '정지' : '재생'}
-        </Button>
-        <span className="text-xs text-muted-foreground">1280×1280 · 애니메이션 파라미터가 있는 레이어만 재생에 영향을 받아요.</span>
-      </div>
+      <p className="text-center text-xs text-muted-foreground">1280×1280</p>
     </div>
   )
 })

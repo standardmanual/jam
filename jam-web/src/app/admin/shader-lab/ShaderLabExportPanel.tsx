@@ -14,7 +14,6 @@ import ShaderLabApplyTab from './ShaderLabApplyTab'
 
 interface ShaderLabExportPanelProps {
   canvasRef: RefObject<HTMLCanvasElement | null>
-  applyDisabled: boolean
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
@@ -26,7 +25,7 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url)
 }
 
-export default function ShaderLabExportPanel({ canvasRef, applyDisabled }: ShaderLabExportPanelProps) {
+export default function ShaderLabExportPanel({ canvasRef }: ShaderLabExportPanelProps) {
   const [error, setError] = useState<string | null>(null)
 
   async function downloadPng() {
@@ -61,13 +60,13 @@ export default function ShaderLabExportPanel({ canvasRef, applyDisabled }: Shade
           <TabsTrigger value="collection">컬렉션 대표이미지</TabsTrigger>
         </TabsList>
         <TabsContent value="badge">
-          <ShaderLabApplyTab target="badge" canvasRef={canvasRef} applyDisabled={applyDisabled} />
+          <ShaderLabApplyTab target="badge" canvasRef={canvasRef} />
         </TabsContent>
         <TabsContent value="mission">
-          <ShaderLabApplyTab target="mission" canvasRef={canvasRef} applyDisabled={applyDisabled} />
+          <ShaderLabApplyTab target="mission" canvasRef={canvasRef} />
         </TabsContent>
         <TabsContent value="collection">
-          <ShaderLabApplyTab target="collection" canvasRef={canvasRef} applyDisabled={applyDisabled} />
+          <ShaderLabApplyTab target="collection" canvasRef={canvasRef} />
         </TabsContent>
       </Tabs>
     </div>

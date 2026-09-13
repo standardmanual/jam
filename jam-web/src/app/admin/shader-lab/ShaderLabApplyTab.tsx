@@ -93,10 +93,9 @@ async function applyToTarget(target: ShaderLabApplyTarget, id: string, blob: Blo
 interface ShaderLabApplyTabProps {
   target: ShaderLabApplyTarget
   canvasRef: RefObject<HTMLCanvasElement | null>
-  applyDisabled: boolean
 }
 
-export default function ShaderLabApplyTab({ target, canvasRef, applyDisabled }: ShaderLabApplyTabProps) {
+export default function ShaderLabApplyTab({ target, canvasRef }: ShaderLabApplyTabProps) {
   const [query, setQuery] = useState('')
   const [searchLoading, setSearchLoading] = useState(false)
   const [results, setResults] = useState<SearchItem[] | null>(null)
@@ -254,12 +253,9 @@ export default function ShaderLabApplyTab({ target, canvasRef, applyDisabled }: 
           </div>
 
           <div className="flex items-center gap-3">
-            <Button onClick={runApply} disabled={applying || applyDisabled}>
+            <Button onClick={runApply} disabled={applying}>
               {applying ? `적용 중…` : `적용`}
             </Button>
-            {applyDisabled && (
-              <span className="text-xs text-muted-foreground">재생 중에는 적용할 수 없어요.</span>
-            )}
           </div>
 
           {applyError && (
