@@ -1,8 +1,8 @@
 diff --git a/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js b/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js
-index cf82971..481bb7c 100644
+index cf82971..a370d8a 100644
 --- a/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js
 +++ b/node_modules/@basementstudio/shader-lab/dist/src/renderer/text-pass.js
-@@ -156,34 +156,43 @@ export class TextPass extends PassNode {
+@@ -156,34 +156,51 @@ export class TextPass extends PassNode {
          context.textAlign = "left";
          context.textBaseline = "alphabetic";
          context.font = `${normalizedFontWeight} ${fontSize}px ${fontFamily}`;
@@ -68,11 +68,19 @@ index cf82971..481bb7c 100644
 +            }
 +            return { glyphLayout, visualLeft, visualRight };
 +        });
-+        const metrics = getTextMetrics(context, lines[0] ?? text, fontSize);
++        // 세로 정렬은 "첫 줄의 ascent + 마지막 줄의 descent"로 블록 전체 높이를 잡는다 —
++        // 게이트 리뷰(20260913_1901)가 지적한 대로, 첫 줄만으로 ascent/descent를 재사용하면
++        // 첫/마지막 줄의 글리프 하강폭(디센더 유무)이 다를 때 center/bottom 정렬이 어긋난다.
++        // lines.length===1이면 firstLineMetrics와 lastLineMetrics가 같은 텍스트를 측정하므로
++        // 원본과 동일한 결과가 나온다(회귀 없음, 재검증 완료).
++        const firstLineMetrics = getTextMetrics(context, lines[0] ?? text, fontSize);
++        const lastLineMetrics = lines.length > 1
++            ? getTextMetrics(context, lines[lines.length - 1], fontSize)
++            : firstLineMetrics;
          let anchorX = this.width * 0.5;
          if (horizontal === "left") {
              anchorX = 0;
-@@ -200,23 +209,28 @@ export class TextPass extends PassNode {
+@@ -200,23 +217,28 @@ export class TextPass extends PassNode {
          }
          const offsetX = offset[0] * this.width;
          const offsetY = offset[1] * this.height;
@@ -85,17 +93,17 @@ index cf82971..481bb7c 100644
 -        }
 -        let baselineY = anchorY - offsetY + (metrics.ascent - metrics.descent) * 0.5;
 +        const blockExtraHeight = (lines.length - 1) * lineHeight;
-+        let firstBaselineY = anchorY - offsetY + (metrics.ascent - metrics.descent - blockExtraHeight) * 0.5;
++        let firstBaselineY = anchorY - offsetY + (firstLineMetrics.ascent - lastLineMetrics.descent - blockExtraHeight) * 0.5;
          if (vertical === "top") {
 -            baselineY = anchorY - offsetY + metrics.ascent;
-+            firstBaselineY = anchorY - offsetY + metrics.ascent;
++            firstBaselineY = anchorY - offsetY + firstLineMetrics.ascent;
          }
          else if (vertical === "bottom") {
 -            baselineY = anchorY - offsetY - metrics.descent;
 -        }
 -        for (const glyph of glyphLayout) {
 -            context.fillText(glyph.char, startX + glyph.x, baselineY);
-+            firstBaselineY = anchorY - offsetY - metrics.descent - blockExtraHeight;
++            firstBaselineY = anchorY - offsetY - lastLineMetrics.descent - blockExtraHeight;
          }
 +        lines.forEach((lineText, lineIndex) => {
 +            const { glyphLayout, visualLeft, visualRight } = lineLayouts[lineIndex];
