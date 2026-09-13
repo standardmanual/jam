@@ -15,6 +15,12 @@
  * `text` 타입은 `field.multiline`(텍스트 레이어의 본문 입력에만 켜짐)에 따라 shadcn
  * Textarea/Input 둘 중 하나로 갈린다 — ASCII의 커스텀 문자 세트처럼 한 줄이어야 하는
  * 다른 `text` 타입 필드는 `multiline`이 없어(기본 false) 그대로 Input을 쓴다.
+ *
+ * `color` 타입은 `field.alpha`(텍스트 레이어의 `textColor`, 리퀴드 메탈의 `colorBack`에만
+ * 켜짐, 티켓 20260913_2110)가 true면 hex6 컬러피커 + 알파 슬라이더 조합으로 렌더링하고
+ * 값을 8자리 hex(`#RRGGBBAA`)로 저장한다 — 나머지 색상 필드는 원본 런타임(TSL 기반 레이어
+ * 대부분)이 알파를 구조적으로 버려 의미가 없으므로 `alpha`가 없어(기본 false) 기존
+ * 6자리 hex 그대로 쓴다.
  */
 import type { ChangeEvent } from 'react'
 import { Input } from '@/components/admin/ui/input'
@@ -22,6 +28,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/admin/ui/switch'
 import { Textarea } from '@/components/admin/ui/textarea'
 import type { ShaderLabFieldDefinition } from '@/lib/admin/shaderLab/paramFields'
+
+/**
+ * 8자리(`#RRGGBBAA`) 또는 6자리(`#RRGGBB`) hex를 hex6 + 알파(0~1)로 분리한다
+ * (티켓 20260913_2110, `field.alpha` 컬러 필드 전용).
+ */
+function splitHexAlpha(hex: string): { hex6: string; alpha: number } {
+  const normalized = hex.trim().replace('#', '')
+  if (normalized.length === 8) {
+    const alphaByte = Number.parseInt(normalized.slice(6, 8), 16)
+    return { hex6: `#${normalized.slice(0, 6)}`, alpha: Number.isFinite(alphaByte) ? alphaByte / 255 : 1 }
+  }
+  if (normalized.length === 6) {
+    return { hex6: `#${normalized}`, alpha: 1 }
+  }
+  return { hex6: '#000000', alpha: 1 }
+}
+
+/** hex6 + 알파(0~1)를 8자리 hex(`#RRGGBBAA`)로 합친다. */
+function combineHexAlpha(hex6: string, alpha: number): string {
+  const clamped = Math.max(0, Math.min(1, alpha))
+  const alphaHex = Math.round(clamped * 255)
+    .toString(16)
+    .padStart(2, '0')
+  return `${hex6}${alphaHex}`
+}
 
 interface ShaderLabParamFieldProps {
   field: ShaderLabFieldDefinition
@@ -98,6 +129,36 @@ export default function ShaderLabParamField({ field, value, onChange }: ShaderLa
 
   if (field.type === 'color') {
     const current = typeof value === 'string' ? value : field.defaultValue
+
+    if (field.alpha) {
+      const { hex6, alpha } = splitHexAlpha(current)
+      return (
+        <FieldShell label={field.label} hint={field.description}>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={hex6}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(combineHexAlpha(e.target.value, alpha))}
+              className="h-9 w-14 shrink-0 cursor-pointer rounded border border-input bg-transparent p-1"
+            />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={alpha}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(combineHexAlpha(hex6, Number(e.target.value)))}
+              className="accent-primary flex-1"
+              aria-label={`${field.label} 투명도`}
+            />
+            <span className="w-10 shrink-0 text-right font-mono text-xs text-muted-foreground">
+              {Math.round(alpha * 100)}%
+            </span>
+          </div>
+        </FieldShell>
+      )
+    }
+
     return (
       <FieldShell label={field.label} hint={field.description}>
         <div className="flex items-center gap-2">

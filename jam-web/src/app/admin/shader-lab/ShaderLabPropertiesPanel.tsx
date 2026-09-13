@@ -164,6 +164,35 @@ export default function ShaderLabPropertiesPanel({ layer, onChange }: ShaderLabP
         </div>
       )}
 
+      {layer.type === 'liquid-metal' && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-foreground">이미지(선택)</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleImageFileSelected(e.target.files?.[0] ?? null)}
+          />
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+              <IconUpload className="mr-1 h-4 w-4" />
+              {layer.asset?.fileName ?? '이미지 선택'}
+            </Button>
+            {layer.asset && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => patch({ asset: undefined })}>
+                제거
+              </Button>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {layer.asset
+              ? '올린 이미지의 형태에 리퀴드 메탈이 입혀져요(벡터 이미지도 지원해요).'
+              : '이미지를 올리지 않으면 배경 전체에 적용돼요.'}
+          </span>
+        </div>
+      )}
+
       {definition && (
         <div className="flex flex-col gap-4">
           {definition.fields
