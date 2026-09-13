@@ -12,9 +12,17 @@
  * 개념(추가·삭제·순서·표시 토글)을 참고해 JAM! 어드민 스타일로 새로 작성했다 — 코드를
  * 복붙하지 않았다. 출처: https://github.com/basementstudio/shader-lab (Apache License 2.0)
  *
- * UI 개선(티켓 20260913_1613): 레이어 추가 드롭다운을 `kind`(소스/이펙트) 기준 2그룹으로
- * 나누고, 레이어 행의 위로/아래로/삭제를 "⋮ 더보기" 메뉴로 묶어 260px 사이드바 폭 안에서
- * 레이어 이름이 심하게 잘리던 문제를 해소했다(표시 토글만 인라인 유지).
+ * UI 개선(티켓 20260913_1613): 레이어 행의 위로/아래로/삭제를 "⋮ 더보기" 메뉴로 묶어
+ * 260px 사이드바 폭 안에서 레이어 이름이 심하게 잘리던 문제를 해소했다(표시 토글만
+ * 인라인 유지).
+ *
+ * 레이어 추가 컨트롤은 처음에 `Select`(`SelectGroup`으로 소스/이펙트 그룹화)로
+ * 구현했으나, 실제 배포 환경에서 29개 항목이 여전히 잘리고 스크롤도 되지 않는다는
+ * 사용자 재현 보고를 받았다 — Radix Select의 popper 뷰포트가 항목 수가 많을 때
+ * 신뢰할 수 있게 동작하지 않는 것으로 보고, `Popover`+`Command`(둘 다 프로젝트에 이미
+ * 있는 컴포넌트)로 완전히 교체했다. `CommandList`는 `max-h-[300px] overflow-y-auto`인
+ * 평범한 스크롤 컨테이너라 Radix Select 특유의 "충돌 인식 가용 높이" 계산에 기대지
+ * 않고, 검색까지 덤으로 얻는다.
  */
 import { useState } from 'react'
 import type { ShaderLabLayerConfig } from '@basementstudio/shader-lab'
@@ -26,23 +34,24 @@ import {
   IconTrash,
   IconPlus,
   IconDotsVertical,
+  IconChevronDown,
 } from '@tabler/icons-react'
 import { Button } from '@/components/admin/ui/button'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/admin/ui/command'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/admin/ui/dropdown-menu'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/admin/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/admin/ui/popover'
 import {
   SHADER_LAB_LAYER_TYPES,
   getLayerTypeDefinition,
@@ -75,40 +84,68 @@ export default function ShaderLabLayerSidebar({
   onToggleVisible,
   onMove,
 }: ShaderLabLayerSidebarProps) {
-  // Select/DropdownMenu(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn
+  // Popover/DropdownMenu(Radix Portal)는 기본적으로 document.body에 렌더링되는데, shadcn
   // 어드민 테마 실값은 [data-admin-theme] 스코프 안에만 존재한다 — 포털 컨테이너를 그
   // 스코프 노드로 지정한다(BadgeForm.tsx와 동일 패턴, 20260826_018).
   const [themeContainer] = useState<HTMLElement | null>(() =>
     typeof document === 'undefined' ? null : document.querySelector<HTMLElement>('[data-admin-theme]')
   )
+  const [addOpen, setAddOpen] = useState(false)
+
+  function handleAddSelect(type: SupportedShaderLabLayerType) {
+    onAdd(type)
+    setAddOpen(false)
+  }
 
   return (
     <div className="flex flex-col gap-3">
-      <Select onValueChange={(value) => onAdd(value as SupportedShaderLabLayerType)}>
-        <SelectTrigger>
-          <SelectValue placeholder="레이어 추가" />
-        </SelectTrigger>
-        <SelectContent container={themeContainer ?? undefined}>
-          <SelectGroup>
-            <SelectLabel>소스</SelectLabel>
-            {SOURCE_LAYER_TYPES.map((type) => (
-              <SelectItem key={type} value={type}>
-                <IconPlus className="mr-1 inline h-3.5 w-3.5" />
-                {getLayerTypeDefinition(type).label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-          <SelectGroup>
-            <SelectLabel>이펙트</SelectLabel>
-            {EFFECT_LAYER_TYPES.map((type) => (
-              <SelectItem key={type} value={type}>
-                <IconPlus className="mr-1 inline h-3.5 w-3.5" />
-                {getLayerTypeDefinition(type).label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+      <Popover open={addOpen} onOpenChange={setAddOpen}>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" className="w-full justify-between font-normal">
+            <span className="flex items-center gap-1">
+              <IconPlus className="h-3.5 w-3.5" />
+              레이어 추가
+            </span>
+            <IconChevronDown className="h-4 w-4 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-[var(--radix-popover-trigger-width)] p-0"
+          container={themeContainer ?? undefined}
+        >
+          <Command>
+            <CommandInput placeholder="레이어 검색…" />
+            <CommandList>
+              <CommandEmpty>검색 결과가 없어요.</CommandEmpty>
+              <CommandGroup heading="소스">
+                {SOURCE_LAYER_TYPES.map((type) => (
+                  <CommandItem
+                    key={type}
+                    value={getLayerTypeDefinition(type).label}
+                    onSelect={() => handleAddSelect(type)}
+                  >
+                    <IconPlus className="h-3.5 w-3.5" />
+                    {getLayerTypeDefinition(type).label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandGroup heading="이펙트">
+                {EFFECT_LAYER_TYPES.map((type) => (
+                  <CommandItem
+                    key={type}
+                    value={getLayerTypeDefinition(type).label}
+                    onSelect={() => handleAddSelect(type)}
+                  >
+                    <IconPlus className="h-3.5 w-3.5" />
+                    {getLayerTypeDefinition(type).label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
       {layers.length === 0 ? (
         <p className="text-sm text-muted-foreground">레이어가 없어요. 위에서 추가해 보세요.</p>
